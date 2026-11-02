@@ -47,16 +47,13 @@ Net_Media :: struct {
 	started:  bool,
 }
 
-net_media: Net_Media
-
 @(private = "file")
 Demux_Ctx :: struct { m: ^Net_Media, kinds: [dynamic]media.Track_Kind, duration: media.Time }
 
-net_media_active :: proc() -> bool { return net_media.mode != .None }
+net_media_active :: proc(app: ^App) -> bool { return app.net_media.mode != .None }
 
-net_media_release :: proc() {
-	m := &net_media
-	app := the_app
+net_media_release :: proc(app: ^App) {
+	m := &app.net_media
 	switch m.mode {
 	case .Player:
 		media.player_destroy(m.player)
@@ -83,7 +80,7 @@ sniff_container :: proc(b: []byte) -> enum { Unknown, Mp4, Webm } {
 
 @(private = "file")
 net_media_open :: proc(app: ^App, e: ^Net_Entry) {
-	m := &net_media
+	m := &app.net_media
 	if m.volume == 0 && !m.muted { m.volume = 0.7 }
 	m.id = e.id
 	body := e.body[:]
@@ -273,7 +270,7 @@ Video_Paint :: struct { has: bool, tex: render.Texture, size: [2]int, audio_only
 @(private = "file")
 video_stage_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	app := the_app
-	m := &net_media
+	m := &app.net_media
 	r := b.rect
 	draw.rect(dc, r, draw.Color{0.03, 0.03, 0.04, 1})
 	if m.mode == .Player && m.video {
@@ -305,14 +302,14 @@ video_stage_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 }
 
 net_media_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
-	m := &net_media
+	m := &app.net_media
 	if m.mode != .None && m.owner != nil && m.owner != dev() {
 		// (one media at a time: another window's developer tools play theirs)
 		dt_empty("###dt_pm_err", .File_Media, "Playing in another window", "The developer tools of another window are playing a media; one plays at a time.")
 		return
 	}
 	if m.id != e.id || m.owner != dev() {
-		net_media_release()
+		net_media_release(app)
 		net_media_open(app, e)
 	}
 	m.owner = dev()
@@ -364,8 +361,8 @@ net_media_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 
 // Called every frame by devtools_panel after its tabs: a media whose preview was not built is closed (the tab was changed,
 // the request is no longer chosen).
-net_media_frame_end :: proc() {
-	if net_media.mode == .None || net_media.owner != dev() { return }   // (another window's panel builds its own frames)
-	if !net_media.seen { net_media_release() }
-	net_media.seen = false
+net_media_frame_end :: proc(app: ^App) {
+	if app.net_media.mode == .None || app.net_media.owner != dev() { return }   // (another window's panel builds its own frames)
+	if !app.net_media.seen { net_media_release(app) }
+	app.net_media.seen = false
 }

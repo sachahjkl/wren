@@ -221,7 +221,7 @@ driver_step :: proc(app: ^App) {
 		case .Go:
 			if t != nil { navigate(app, t, s.arg, origin = .User) }
 		case .Command:
-			if c := command(s.arg); c != nil { command_run(app, t, c) }
+			if c := command(app, s.arg); c != nil { command_run(app, t, c) }
 		case .Load:
 			driver.waiting, driver.deadline = true, time.tick_add(time.tick_now(), time.Duration(driver.load_ms * f64(time.Millisecond)))
 			return
@@ -267,7 +267,7 @@ driver_stats :: proc(app: ^App, label: string) {
 	line := fmt.tprintf("%d,%s,%.0f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", driver.next, label, time.duration_milliseconds(time.tick_since(driver.t0)),
 		m.live_bytes, m.live_blocks, m.peak_bytes, m.permanent_bytes, c.private_bytes, c.working_set, c.handles, c.gdi, c.user, len(tabs_all(app)),
 		sp.heap_allocated, sp.heap_committed, sp.vm_rw, sp.vm_exec, wc.entries, wc.code_bytes, wasm.instances_alive(), jc.entries, jc.bytes,
-		is.entries, is.bytes, fe, fb, render.targets_bytes(&app.r), memory_trim_count())
+		is.entries, is.bytes, fe, fb, render.targets_bytes(&app.r), memory_trim_count(app))
 	_, _ = os.write_string(driver.stats, line)
 }
 

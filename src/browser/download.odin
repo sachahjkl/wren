@@ -339,18 +339,14 @@ Downloads :: struct {
 	cfg:   struct { ask: bool, dir: string, max_bytes, flush, max_buffered, list_max: int, suffix: string, button: string },
 }
 
-dls: Downloads
 
 // The folder picker of the downloads page: the folder chosen becomes browser.download.directory.
 @(private = "file")
 Folder_Job :: struct { app: ^App, start, chosen: string }
 
-@(private = "file")
-dl_picking: bool
-
 download_pick_folder :: proc(app: ^App) {
-	if dl_picking { return }
-	dl_picking = true
+	if app.dl_picking { return }
+	app.dl_picking = true
 	job := new(Folder_Job)
 	job.app, job.start = app, strings.clone(download_dir(app))
 	host.run_blocking(&app.blocking, proc(data: rawptr) {
@@ -361,7 +357,7 @@ download_pick_folder :: proc(app: ^App) {
 		if res.status == .Chosen && len(res.paths) > 0 { j.chosen = strings.clone(res.paths[0]) }
 	}, proc(data: rawptr) {
 		j := (^Folder_Job)(data)
-		dl_picking = false
+		j.app.dl_picking = false
 		if j.chosen != "" {
 			if err := config.set_from_string(&j.app.prefs, "browser.download.directory", j.chosen, .User); err != .None {
 				ui.toast(.Warn, "browser.download.directory: %s", config.set_error_text(err))
@@ -382,22 +378,22 @@ dl_now_ms :: proc() -> i64 { return time.time_to_unix_nano(time.now()) / 1e6 }
 
 @(private = "file")
 download_cfg :: proc(app: ^App) {
-	delete(dls.cfg.dir); delete(dls.cfg.suffix); delete(dls.cfg.button)
+	delete(app.dls.cfg.dir); delete(app.dls.cfg.suffix); delete(app.dls.cfg.button)
 	p := &app.prefs
-	dls.cfg.button = strings.clone(config.string_of(p, "browser.download.button"))
-	dls.cfg.ask = config.bool_of(p, "browser.download.ask")
-	dls.cfg.dir = strings.clone(config.string_of(p, "browser.download.directory"))
-	dls.cfg.max_bytes = int(config.int_of(p, "browser.download.max_bytes"))
-	dls.cfg.flush = int(config.int_of(p, "browser.download.flush_bytes"))
-	dls.cfg.max_buffered = int(config.int_of(p, "browser.download.max_buffered_bytes"))
-	dls.cfg.list_max = int(config.int_of(p, "browser.download.list_max"))
+	app.dls.cfg.button = strings.clone(config.string_of(p, "browser.download.button"))
+	app.dls.cfg.ask = config.bool_of(p, "browser.download.ask")
+	app.dls.cfg.dir = strings.clone(config.string_of(p, "browser.download.directory"))
+	app.dls.cfg.max_bytes = int(config.int_of(p, "browser.download.max_bytes"))
+	app.dls.cfg.flush = int(config.int_of(p, "browser.download.flush_bytes"))
+	app.dls.cfg.max_buffered = int(config.int_of(p, "browser.download.max_buffered_bytes"))
+	app.dls.cfg.list_max = int(config.int_of(p, "browser.download.list_max"))
 	suffix := config.string_of(p, "browser.download.temp_suffix")
-	dls.cfg.suffix = strings.clone(suffix != "" ? suffix : ".wrenpart")
+	app.dls.cfg.suffix = strings.clone(suffix != "" ? suffix : ".wrenpart")
 }
 
 // The folder downloads go to: the preference, else the system's Downloads folder, else the profile.
 download_dir :: proc(app: ^App) -> string {
-	if dls.cfg.dir != "" { return dls.cfg.dir }
+	if app.dls.cfg.dir != "" { return app.dls.cfg.dir }
 	if d := platform.known_folder_path(.Downloads, context.temp_allocator); d != "" { return d }
 	return app.profile_dir
 }
@@ -415,13 +411,13 @@ file_exists :: proc(path: string) -> bool {
 
 // The navigation `load` got an answer to save rather than show (`task` is its request, `r` the answer).
 download_from_navigation :: proc(app: ^App, load: ^Doc_Load, task: base.Handle, r: ^fetch.Response, disposition: string) {
-	if dls.cfg.suffix == "" { download_cfg(app) }
-	downloads_prune()   // (only here: no download is being worked on)
+	if app.dls.cfg.suffix == "" { download_cfg(app) }
+	downloads_prune(app)   // (only here: no download is being worked on)
 	_, suggested := parse_content_disposition(disposition)
 	mime := r.has_mime ? http.mime_essence(r.mime) : ""
 	d := new(Download)
-	dls.ids += 1
-	d.app, d.id, d.total = app, dls.ids, -1
+	app.dls.ids += 1
+	d.app, d.id, d.total = app, app.dls.ids, -1
 	d.started_ms = dl_now_ms()
 	d.sample_ms = d.started_ms
 	d.url = strings.clone(r.url)
@@ -431,24 +427,24 @@ download_from_navigation :: proc(app: ^App, load: ^Doc_Load, task: base.Handle, 
 	}
 	d.scope = base.scope_make("download", app.process)
 	d.task = task
-	max_body := dls.cfg.max_bytes > 0 ? dls.cfg.max_bytes : max(int)
+	max_body := app.dls.cfg.max_bytes > 0 ? app.dls.cfg.max_bytes : max(int)
 	fetch.task_hand_over(&app.loader, task, d.scope, download_event, d, collect = false, max_body = max_body)
 	base.on_close(d.scope, proc(data: rawptr) {
 		dl := (^Download)(data)
 		dl.task, dl.scope = base.NIL_HANDLE, nil   // the scope's own cleanup cancels the request
 		if dl.state == .Receiving { dl.state = .Cancelled }
 	}, d)
-	append(&dls.list, d)
+	append(&app.dls.list, d)
 	load.task = base.NIL_HANDLE
 
 	// the temporary file, next to where it will most likely go
 	d.dir = strings.clone(download_dir(app))
-	if !download_open_temp(d) {
+	if !download_open_temp(app, d) {
 		download_fail(d, fmt.tprintf("cannot write in %s", d.dir))
 	} else {
 		window_own(app).downloads_panel_request = true   // the button's drop-down shows it running (downloads_ui.odin)
-		if dls.cfg.button == "never" { ui.toast(.Info, "Downloading %s", d.name) }
-		if dls.cfg.ask {
+		if app.dls.cfg.button == "never" { ui.toast(.Info, "Downloading %s", d.name) }
+		if app.dls.cfg.ask {
 			d.asking = true
 			host.run_blocking(&app.blocking, download_dialog_work, download_dialog_done, d)
 		}
@@ -458,10 +454,10 @@ download_from_navigation :: proc(app: ^App, load: ^Doc_Load, task: base.Handle, 
 }
 
 @(private = "file")
-download_open_temp :: proc(d: ^Download) -> bool {
+download_open_temp :: proc(app: ^App, d: ^Download) -> bool {
 	for i in 0 ..< 1000 {
 		base_name := i == 0 ? d.name : fmt.tprintf("%s (%d)", d.name, i)
-		path := path_join(d.dir, strings.concatenate({base_name, dls.cfg.suffix}, context.temp_allocator))
+		path := path_join(d.dir, strings.concatenate({base_name, app.dls.cfg.suffix}, context.temp_allocator))
 		// O_EXCL: the open fails when the name is taken (CREATE_NEW), so a name free when it opens stays this download's.
 		// A taken name is tried again under the next number; any other failure (an unwritable folder) stops at once, which
 		// os.exists distinguishes without inspecting a platform-specific error code.
@@ -483,7 +479,7 @@ download_restore_tab :: proc(app: ^App, load: ^Doc_Load) {
 	t := load.tab
 	if load.pushed {
 		page.session_drop_current(&t.session)
-		sync_history(t)
+		sync_history(app, t)
 	}
 	if t.hold.active && t.hold.page != nil {
 		h := &t.hold
@@ -578,7 +574,7 @@ write_at :: proc(h: ^os.File, buf: []byte, offset: i64) -> (ok: bool, err: os.Er
 download_advance :: proc(d: ^Download) {
 	if d.state != .Receiving { return }
 	app := d.app
-	if !d.writing && len(d.pending) > 0 && (len(d.pending) >= dls.cfg.flush || d.net_done) {
+	if !d.writing && len(d.pending) > 0 && (len(d.pending) >= app.dls.cfg.flush || d.net_done) {
 		job := new(Write_Job)
 		job.d, job.handle, job.offset = d, d.handle, d.queued
 		job.buf = make([]byte, len(d.pending))
@@ -590,7 +586,7 @@ download_advance :: proc(d: ^Download) {
 			j := (^Write_Job)(data)
 			j.ok, j.err = write_at(j.handle, j.buf, j.offset)
 		}, write_done, job)
-	} else if d.writing && len(d.pending) > dls.cfg.max_buffered {
+	} else if d.writing && len(d.pending) > app.dls.cfg.max_buffered {
 		// the disk is slower than the network: this thread writes too (the network waits meanwhile)
 		ok, err := write_at(d.handle, d.pending[:], d.queued)
 		if !ok { download_fail(d, fmt.tprintf("cannot write %s (%v)", d.temp, err)); return }
@@ -598,7 +594,7 @@ download_advance :: proc(d: ^Download) {
 		clear(&d.pending)
 	}
 	if d.net_done && !d.writing && len(d.pending) == 0 && !d.asking && d.path != "" { download_finish(d) }
-	if d.net_done && !d.writing && len(d.pending) == 0 && !d.asking && d.path == "" && !dls.cfg.ask {
+	if d.net_done && !d.writing && len(d.pending) == 0 && !d.asking && d.path == "" && !app.dls.cfg.ask {
 		taken :: proc(name: string, user: rawptr) -> bool { return file_exists(path_join((^Download)(user).dir, name)) }
 		d.path = path_join(d.dir, unique_file_name(d.name, taken, d), context.allocator)
 		download_finish(d)
@@ -728,26 +724,26 @@ download_dialog_done :: proc(data: rawptr) {
 ////////////////////////////////
 // List, menu, life cycle
 
-downloads_active :: proc() -> int {
+downloads_active :: proc(app: ^App) -> int {
 	n := 0
-	for d in dls.list { if d.state == .Receiving || d.state == .Saving { n += 1 } }
+	for d in app.dls.list { if d.state == .Receiving || d.state == .Saving { n += 1 } }
 	return n
 }
 
 // Stops every download in progress (wren ctl reset).
-downloads_cancel_all :: proc() {
-	for d in dls.list { download_cancel(d) }
+downloads_cancel_all :: proc(app: ^App) {
+	for d in app.dls.list { download_cancel(d) }
 }
 
 // The finished downloads past browser.download.list_max go (never one with work still out).
 @(private = "file")
-downloads_prune :: proc() {
+downloads_prune :: proc(app: ^App) {
 	finished := 0
-	for d in dls.list { if d.state == .Done || d.state == .Failed || d.state == .Cancelled { finished += 1 } }
-	for i := 0; i < len(dls.list) && finished > dls.cfg.list_max; {
-		d := dls.list[i]
+	for d in app.dls.list { if d.state == .Done || d.state == .Failed || d.state == .Cancelled { finished += 1 } }
+	for i := 0; i < len(app.dls.list) && finished > app.dls.cfg.list_max; {
+		d := app.dls.list[i]
 		if (d.state == .Done || d.state == .Failed || d.state == .Cancelled) && !d.writing && !d.asking && !d.moving {
-			ordered_remove(&dls.list, i)
+			ordered_remove(&app.dls.list, i)
 			download_free(d)
 			finished -= 1
 		} else { i += 1 }
@@ -775,7 +771,7 @@ downloads_removable :: proc(d: ^Download) -> bool { return download_finished(d) 
 // Takes a finished download off the list (the file stays where it is).
 download_remove :: proc(app: ^App, d: ^Download) {
 	if !downloads_removable(d) { return }
-	for x, i in dls.list { if x == d { ordered_remove(&dls.list, i); break } }
+	for x, i in app.dls.list { if x == d { ordered_remove(&app.dls.list, i); break } }
 	download_free(d)
 	downloads_save(app)
 	request_frames(app, 2)
@@ -783,8 +779,8 @@ download_remove :: proc(app: ^App, d: ^Download) {
 
 // "Clear list": every finished download goes off the list (the files stay).
 download_clear_finished :: proc(app: ^App) {
-	for i := 0; i < len(dls.list); {
-		if d := dls.list[i]; downloads_removable(d) { ordered_remove(&dls.list, i); download_free(d) } else { i += 1 }
+	for i := 0; i < len(app.dls.list); {
+		if d := app.dls.list[i]; downloads_removable(d) { ordered_remove(&app.dls.list, i); download_free(d) } else { i += 1 }
 	}
 	downloads_save(app)
 	request_frames(app, 2)
@@ -825,16 +821,16 @@ download_retry :: proc(app: ^App, d: ^Download) {
 	tab_open(app, strings.clone(d.url, context.temp_allocator), origin = .User)
 }
 
-downloads_mark_seen :: proc() {
-	for d in dls.list { d.unseen = false }
+downloads_mark_seen :: proc(app: ^App) {
+	for d in app.dls.list { d.unseen = false }
 }
 
 // What the button shows: how many are running, how far they are all together (known: every size is announced), and the
 // speed of the whole.
-downloads_progress :: proc() -> (active: int, frac: f32, known: bool, speed: f64) {
+downloads_progress :: proc(app: ^App) -> (active: int, frac: f32, known: bool, speed: f64) {
 	got, of: i64
 	known = true
-	for d in dls.list {
+	for d in app.dls.list {
 		if d.state != .Receiving && d.state != .Saving { continue }
 		active += 1
 		if d.state == .Receiving && d.total <= 0 { known = false } else { got += d.state == .Saving ? d.total : d.received; of += d.total }
@@ -870,7 +866,7 @@ downloads_save :: proc(app: ^App) {
 	if path == "" { return }
 	sb := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&sb, "%s\n", DOWNLOADS_HEADER)
-	for d in dls.list {
+	for d in app.dls.list {
 		if !download_finished(d) { continue }
 		fmt.sbprintf(&sb, "%d\t%d\t%d\t%d\t%s\t%s\t%s\t%s\n", int(d.state), d.started_ms, d.done_ms, d.size, line_safe(d.url), line_safe(d.path), line_safe(d.name), line_safe(d.error))
 	}
@@ -893,19 +889,19 @@ downloads_load :: proc(app: ^App) {
 		size, ok3 := strconv.parse_i64(f[3])
 		if !ok || !ok1 || !ok2 || !ok3 || st < int(Download_State.Done) || st > int(Download_State.Cancelled) || f[6] == "" { continue }
 		d := new(Download)
-		dls.ids += 1
-		d.app, d.id, d.restored = app, dls.ids, true
+		app.dls.ids += 1
+		d.app, d.id, d.restored = app, app.dls.ids, true
 		d.state = Download_State(st)
 		d.started_ms, d.done_ms, d.size = started, ended, size
 		d.received, d.total = size, size
 		d.url, d.path, d.name, d.error = strings.clone(f[4]), strings.clone(f[5]), strings.clone(f[6]), strings.clone(f[7])
-		append(&dls.list, d)
+		append(&app.dls.list, d)
 	}
 }
 
 // What a download-less profile shows on its button: nothing, until one happens (restored ones do not count).
-downloads_session_started :: proc() -> bool {
-	for d in dls.list { if !d.restored { return true } }
+downloads_session_started :: proc(app: ^App) -> bool {
+	for d in app.dls.list { if !d.restored { return true } }
 	return false
 }
 
@@ -928,7 +924,7 @@ show_in_folder :: proc(path: string) {
 downloads_init :: proc(app: ^App) {
 	download_cfg(app)
 	downloads_load(app)
-	downloads_prune()
+	downloads_prune(app)
 }
 
 // Preferences changed.
@@ -936,9 +932,9 @@ downloads_apply :: proc(app: ^App) { download_cfg(app) }
 
 // After the blocking threads stopped (nothing writes any more, no callback will come): what is left goes; unfinished
 // downloads lose their temporary file.
-downloads_shutdown :: proc() {
-	for d in dls.list { download_free(d) }
-	delete(dls.list)
-	delete(dls.cfg.dir); delete(dls.cfg.suffix); delete(dls.cfg.button)
-	dls = {}
+downloads_shutdown :: proc(app: ^App) {
+	for d in app.dls.list { download_free(d) }
+	delete(app.dls.list)
+	delete(app.dls.cfg.dir); delete(app.dls.cfg.suffix); delete(app.dls.cfg.button)
+	app.dls = {}
 }

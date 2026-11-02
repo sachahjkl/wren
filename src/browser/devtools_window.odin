@@ -98,11 +98,11 @@ devtools_window_make :: proc(app: ^App) {
 	platform.set_dark_title(w, pal_ok ? pal.dark : true)
 	ui.init(&dw.ui, &app.fonts, &app.theme)
 	dw.ui.icon_font = app.icons
-	autoscroll_toolkit_setup(&dw.ui)   // page_autoscroll.odin: middle-click autoscroll for the detached tools' regions
+	autoscroll_toolkit_setup(app, &dw.ui)   // page_autoscroll.odin: middle-click autoscroll for the detached tools' regions
 	ui.use(active_window(app).ui)
 	d.win = dw
 	d.visible = true
-	network_sync_observer()
+	network_sync_observer(app)
 	console_arm_all(app)
 	request_frames(app, 4)
 	dw.busy = true
@@ -176,7 +176,7 @@ devtools_follow_tab :: proc(app: ^App, src, dest: ^Browser_Window) {
 		d.win.owner = owner
 		d.win.win.user = rawptr(uintptr(owner))
 	}
-	if net_media.owner == a { net_media.owner = b } else if net_media.owner == b { net_media.owner = a }
+	if app.net_media.owner == a { app.net_media.owner = b } else if app.net_media.owner == b { app.net_media.owner = a }
 	window_request(app, src, 3)
 	window_request(app, dest, 3)
 }

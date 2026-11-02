@@ -37,10 +37,10 @@ Dev_Memory :: struct {
 
 MEM_MAX_SAMPLES :: 600
 
-memory_destroy :: proc() {
+memory_destroy :: proc(app: ^App) {
 	m := &dev().mem
 	delete(m.samples)
-	if m.tick != base.NIL_HANDLE && the_app != nil { host.clear_timer(&the_app.loop, m.tick) }
+	if m.tick != base.NIL_HANDLE { host.clear_timer(&app.loop, m.tick) }
 	m^ = {}
 }
 

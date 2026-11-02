@@ -150,7 +150,7 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	address_bar(app, t)
 	address_chips(app, t)
 	ui.spacer(ui.px(em * 0.4))
-	if downloads_button_visible() { downloads_button(app, t); ui.spacer(ui.px(em * 0.2)) }   // downloads_ui.odin
+	if downloads_button_visible(app) { downloads_button(app, t); ui.spacer(ui.px(em * 0.2)) }   // downloads_ui.odin
 	blocker_button(app, t)   // blocker_ui.odin: the content blocker's icon and panel
 	ui.spacer(ui.px(em * 0.2))
 	main_menu_button(app, t)
@@ -185,7 +185,7 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 	if ui.row(.Center, {}, "###address_bar") {
 		// rounded like the popovers and menus of the chrome (popups: em * 0.5)
 		field := ui.Style_Mod{width = ui.pct(1), height = ui.pct(1), radius = em * 0.5}
-		if classic_on() {
+		if classic_on(app) {
 			// the bar draws the field's frame (white, hollow, outlined: toolbar_draw's neighbour) and the field only its text
 			cf := ui.frame_new(Classic_Field)
 			cf^ = {c = classic_colors_frame(app), radius = em * CHROME_BUTTON_RADIUS}
@@ -225,7 +225,7 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 	if res.committed && t != nil {
 		address := strings.clone(strings.trim_space(ui.field_string(&wnd.address)), context.temp_allocator)
 		if address != "" {
-			navigate(app, t, address_or_search(address), origin = .User)
+			navigate(app, t, address_or_search(app, address), origin = .User)
 			ui.set_focus(0)
 			forms_focus_from_chrome(app, t, 1)   // the page has the keyboard after a navigation from the address bar
 		}
@@ -395,7 +395,7 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 			chip_segment.divider = ui.color("border")
 			f := ui.color("background")   // a translucent field: what shows is the field over the window
 			chip_segment.under = draw.mix(window_bg, draw.Color{f.r, f.g, f.b, 1}, f.a)
-			if classic_on() {
+			if classic_on(app) {
 				cc := classic_colors_frame(app)
 				chip_segment.divider = cc.field_edge
 				chip_segment.under = ui.srgb_step(cc.field_top, cc.field, 0.5)
@@ -404,7 +404,7 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 		if field != nil {
 			// to the bar's edge, under its frame (chip_segment_draw)
 			// (a classic field has no border of its own: the bar draws its frame, field_frame_draw)
-			chip_segment.border, chip_segment.border_w = classic_on() ? classic_colors_frame(app).field_edge : field.border, inset
+			chip_segment.border, chip_segment.border_w = classic_on(app) ? classic_colors_frame(app).field_edge : field.border, inset
 			chip_segment.bar_right = field.rect.max.x
 			if field.focus_t > CHIP_RING_SHOWN {
 				chip_segment.ring = ui.color("focus border")
@@ -707,7 +707,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 // the page's: route_key lets them through).
 chrome_shortcuts :: proc(app: ^App) {
 	// the open command palette has the keyboard (palette.odin), and so has the Setup dialog (setup_ui.odin)
-	if palette_open() || setup_is_open() { return }
+	if palette_open(app) || setup_is_open(app) { return }
 	t := current_tab(app)
 	n := len(active_window(app).tabs)
 	ctrl := platform.Modifiers{.Ctrl}

@@ -381,7 +381,7 @@ remote_arm :: proc(app: ^App) {
 	next := max(i64)
 	for op in r.ops {
 		next = min(next, op.deadline)
-		if op_polls(op) { next = min(next, now + op_poll_ns(op)) }
+		if op_polls(app, op) { next = min(next, now + op_poll_ns(op)) }
 	}
 	if r.timer != base.NIL_HANDLE {
 		if r.timer_at <= next { return }   // (it fires early enough: the tick arms again)
@@ -413,10 +413,10 @@ op_poll_ns :: proc(op: ^Remote_Op) -> i64 {
 
 // Does the op need to be looked at on a timer (nothing else tells when its condition becomes true)?
 @(private = "file")
-op_polls :: proc(op: ^Remote_Op) -> bool {
+op_polls :: proc(app: ^App, op: ^Remote_Op) -> bool {
 	switch op.kind {
 	case .Wait:    return true
-	case .Capture: return op.stage != 0 || render_capture_busy()
+	case .Capture: return op.stage != 0 || render_capture_busy(app)
 	case .Replay:  return true
 	case .Frames, .Eval, .Click, .Drag: return false
 	}

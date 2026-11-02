@@ -252,7 +252,7 @@ show_cache_page :: proc(app: ^App, t: ^Tab, target: string, acts: bool) {
 		cleared = true
 		// the entry is about:cache again: going back here must not clear it once more
 		page.session_replace(&t.session, CACHE_URL)
-		sync_history(t)
+		sync_history(app, t)
 	}
 	base.scope_close(t.nav)
 	t.nav = base.scope_make("navigation", t.scope)

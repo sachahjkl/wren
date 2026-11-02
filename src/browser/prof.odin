@@ -628,7 +628,7 @@ report_pacing :: proc(app: ^App, sb: ^strings.Builder) {
 		if s.latency_ms >= 0 { append(&lat, f64(s.latency_ms)) }
 	}
 	ls := stat_of(lat[:])
-	fmt.sbprintf(sb, "  on screen %d, missed refreshes %d | input -> screen n %d  mean %.2f  p50 %.2f  p95 %.2f  max %.2f ms | measured %.3f Hz\n\n", len(prof.shown), missed, ls.n, ls.mean, ls.p50, ls.p95, ls.max, render.measured_refresh_hz(&the_app.r))
+	fmt.sbprintf(sb, "  on screen %d, missed refreshes %d | input -> screen n %d  mean %.2f  p50 %.2f  p95 %.2f  max %.2f ms | measured %.3f Hz\n\n", len(prof.shown), missed, ls.n, ls.mean, ls.p50, ls.p95, ls.max, render.measured_refresh_hz(&app.r))
 }
 
 // Start-up moments since the process was created (its creation time, brought into the QPC time line).

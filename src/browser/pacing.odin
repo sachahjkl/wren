@@ -288,7 +288,7 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 		input = shell_user_input_pending(), presented = wnd.presented, resized = resized,
 		// a splitter, the sidebar's handle, a tab: paced one frame per slot, never as a resize step (and shown at once on a
 		// variable refresh screen, whose refresh waits at the rate it rests at)
-		dragging = ui.active_key() != 0 || tab_dragging(),
+		dragging = ui.active_key() != 0 || tab_dragging(app),
 		slot_held = pacer.slot_held,
 	})
 	pacer.decision = d

@@ -55,13 +55,12 @@ Selection_Shell :: struct {
 }
 
 ix: Interaction_Settings
-@(private = "file") ix_watch: int
 
 // Start-up: the preferences of this part of the shell, then follows them.
 interaction_init :: proc(app: ^App) {
 	ix = interaction_settings_from_prefs(&app.prefs)
 	search_engines_init(app)
-	ix_watch = config.watch(&app.prefs, "browser.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	app.watches[.Interaction] = config.watch(&app.prefs, "browser.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		interaction_settings_destroy(&ix)
 		ix = interaction_settings_from_prefs(p)
 		request_frames((^App)(user), 2)
@@ -69,11 +68,11 @@ interaction_init :: proc(app: ^App) {
 }
 
 interaction_destroy :: proc(app: ^App) {
-	config.unwatch(&app.prefs, ix_watch)
+	config.unwatch(&app.prefs, app.watches[.Interaction])
 	interaction_settings_destroy(&ix)
-	search_engines_destroy()
+	search_engines_destroy(app)
 	find_destroy(find_state(app))
-	closed_tabs_destroy()
+	closed_tabs_destroy(app)
 	context_menu_destroy(app)
 }
 

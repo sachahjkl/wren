@@ -1026,7 +1026,7 @@ downloads :: proc(s: ^Session, loc := #caller_location) -> []Download {
 	context = s.ctx
 	prev := enter(s, loc)
 	defer browser.control_leave(s.app, prev)
-	return browser.control_downloads(back)
+	return browser.control_downloads(s.app, back)
 }
 
 console :: proc(s: ^Session, since := 0, clear := false, loc := #caller_location) -> []Console_Line {

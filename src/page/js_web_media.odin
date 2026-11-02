@@ -32,7 +32,7 @@ Media_Page :: struct {
 	has_env: bool,
 }
 
-@(private)
+@(private, thread_local)   // (the thread's: an App's pages run on the thread of its loop)
 media_pages: map[^Page]^Media_Page
 
 mql_vt := Object_VTable{

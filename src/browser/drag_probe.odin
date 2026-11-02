@@ -31,20 +31,17 @@ Drag_Probe :: struct {
 
 drag_probe: Drag_Probe
 
-// The pointer moves of the frame whose events were just read (pacer_begin_frame).
-drag_probe_moves: i32
-
 drag_probe_count_moves :: proc(app: ^App, events: []platform.Event) {
-	drag_probe_moves = 0
+	app.drag_probe_moves = 0
 	if !app.pacing.cfg.drag_probe { return }
-	for e in events { if e.kind == .Mouse_Move { drag_probe_moves += 1 } }
+	for e in events { if e.kind == .Mouse_Move { app.drag_probe_moves += 1 } }
 }
 
 // The dragged tab was built for this frame (tab_box): `finger_x` is the pointer position the tab's left edge implies.
 drag_probe_note :: proc(app: ^App, mouse_x, finger_x: f32) {
 	if !app.pacing.cfg.drag_probe { return }
 	pacer := pacer_of(app)
-	drag_probe.ring[drag_probe.n % DRAG_PROBE_CAP] = {read = pacer.read_tick, mouse_x = mouse_x, finger_x = finger_x, dt = pacer.dt, moves = drag_probe_moves, waited = f32(pacer.waited_ms)}
+	drag_probe.ring[drag_probe.n % DRAG_PROBE_CAP] = {read = pacer.read_tick, mouse_x = mouse_x, finger_x = finger_x, dt = pacer.dt, moves = app.drag_probe_moves, waited = f32(pacer.waited_ms)}
 	drag_probe.n += 1
 }
 
@@ -68,4 +65,3 @@ drag_probe_displayed :: proc(app: ^App, d: render.Displayed_Frame) {
 }
 
 drag_probe_reset :: proc() { drag_probe.n = 0 }
-

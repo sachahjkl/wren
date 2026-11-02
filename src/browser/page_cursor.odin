@@ -66,8 +66,6 @@ cursor_settings_from_prefs :: proc(p: ^config.Prefs) -> Cursor_Settings {
 	}
 }
 
-ccfg: Cursor_Settings
-
 // What the window shows: a keyword cursor, or a custom one with the keyword as its fallback.
 Window_Cursor :: struct {
 	keyword: platform.Cursor,
@@ -87,17 +85,16 @@ Page_Cursor_View :: struct {
 	shown:    Window_Cursor,
 }
 
-@(private = "file")
+@(private)
 Page_Cursor_State :: struct {
 	watch:    int,
 }
 
-@(private = "file") pcs: Page_Cursor_State
-
 page_cursor_init :: proc(app: ^App) {
-	ccfg = cursor_settings_from_prefs(&app.prefs)
-	pcs.watch = config.watch(&app.prefs, "browser.cursor.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		ccfg = cursor_settings_from_prefs(p)
+	app.ccfg = cursor_settings_from_prefs(&app.prefs)
+	app.pcs.watch = config.watch(&app.prefs, "browser.cursor.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		app := (^App)(user)
+		app.ccfg = cursor_settings_from_prefs(p)
 		request_frames((^App)(user), 2)
 	}, app)
 }
@@ -109,12 +106,12 @@ page_cursor_view_destroy :: proc(v: ^Page_Cursor_View) {
 }
 
 page_cursor_shutdown :: proc(app: ^App) {
-	config.unwatch(&app.prefs, pcs.watch)
+	config.unwatch(&app.prefs, app.pcs.watch)
 	platform.set_cursor(active_window(app).win, .Arrow)
 	v := &window_own(app).cursor
 	for e in v.cache { platform.custom_cursor_release(active_window(app).win, e.cc) }
 	page_cursor_view_destroy(v)
-	pcs = {}
+	app.pcs = {}
 }
 
 ////////////////////////////////
@@ -274,7 +271,7 @@ cache_find :: proc(v: ^Page_Cursor_View, key: u64) -> platform.Custom_Cursor {
 cache_add :: proc(app: ^App, v: ^Page_Cursor_View, key: u64, cc: platform.Custom_Cursor) {
 	v.clock += 1
 	append(&v.cache, Cursor_Cache_Entry{key = key, cc = cc, used = v.clock})
-	for len(v.cache) > max(ccfg.cache_entries, 1) {
+	for len(v.cache) > max(app.ccfg.cache_entries, 1) {
 		oldest := -1
 		for e, i in v.cache {
 			if e.cc == v.shown.custom || e.cc == v.frozen.custom { continue }
@@ -291,7 +288,7 @@ cache_add :: proc(app: ^App, v: ^Page_Cursor_View, key: u64, cc: platform.Custom
 @(private = "file")
 cursor_image :: proc(app: ^App, t: ^Tab, images: []style.Cursor_Image, pos: [2]f32, scale: f32) -> platform.Custom_Cursor {
 	wnd := active_window(app)
-	if !ccfg.images || len(images) == 0 || t.page == nil { return 0 }
+	if !app.ccfg.images || len(images) == 0 || t.page == nil { return 0 }
 	dppx := f32(1)
 	if t.page.engine != nil && t.page.engine.env.dppx > 0 { dppx = f32(t.page.engine.env.dppx) }
 	for img in images {
@@ -300,10 +297,10 @@ cursor_image :: proc(app: ^App, t: ^Tab, images: []style.Cursor_Image, pos: [2]f
 		v := page.css_image_view(t.page, src.url)
 		if v.state != .Ready || v.id == 0 { continue }
 		css := v.natural / max(src.density, 0.01)
-		if css.x <= 0 || css.y <= 0 || css.x > f32(ccfg.image_max_css) || css.y > f32(ccfg.image_max_css) { continue }
+		if css.x <= 0 || css.y <= 0 || css.x > f32(app.ccfg.image_max_css) || css.y > f32(app.ccfg.image_max_css) { continue }
 		hot := img.has_hotspot ? img.hotspot : [2]f32{}
 		hot = {clamp(hot.x, 0, css.x), clamp(hot.y, 0, css.y)}
-		if ccfg.large_css > 0 && (css.x > f32(ccfg.large_css) || css.y > f32(ccfg.large_css)) {
+		if app.ccfg.large_css > 0 && (css.x > f32(app.ccfg.large_css) || css.y > f32(app.ccfg.large_css)) {
 			lo := pos - hot * scale
 			hi := lo + css * scale
 			r := wnd.page_rect
@@ -322,7 +319,7 @@ cursor_image :: proc(app: ^App, t: ^Tab, images: []style.Cursor_Image, pos: [2]f
 			pixels = make([]u8, fp.width * fp.height * 4, context.temp_allocator)
 			for y in 0 ..< fp.height { copy(pixels[y * fp.width * 4:][:fp.width * 4], fp.pixels[y * fp.stride:][:fp.width * 4]) }
 		}
-		cc, err := platform.custom_cursor_create(wnd.win, pixels, {fp.width, fp.height}, hot * density, density, key, ccfg.image_max_css)
+		cc, err := platform.custom_cursor_create(wnd.win, pixels, {fp.width, fp.height}, hot * density, density, key, app.ccfg.image_max_css)
 		if err != .None { continue }
 		cache_add(app, pv, key, cc)
 		return cc
@@ -345,11 +342,11 @@ page_window_cursor :: proc(app: ^App, t: ^Tab, pos: [2]f32) -> Window_Cursor {
 	if fv := frame_under(app, t, pos, wnd.page_rect); fv != nil && fv.tab.page != nil && fv.tab.page.styled != nil && fv.tab.layout.valid {
 		ct, origin, area = &fv.tab, fv.rect.min, draw.rect_size(fv.rect)
 	}
-	pc := page_cursor_at(&ct.layout, ct.page.doc, ct.page.styled, pos - origin, area, ct.scroll, ccfg.page_css)
+	pc := page_cursor_at(&ct.layout, ct.page.doc, ct.page.styled, pos - origin, area, ct.scroll, app.ccfg.page_css)
 	wc := Window_Cursor{keyword = pc.keyword, scale = scale}
 	wc.custom = cursor_image(app, ct, pc.images, pos, scale)
 	// while the tab loads, the arrow is the arrow with the "working in background" sign (as Chromium does)
-	if ccfg.progress_loading && wc.keyword == .Arrow && wc.custom == 0 && tab_loading(t) { wc.keyword = .Progress }
+	if app.ccfg.progress_loading && wc.keyword == .Arrow && wc.custom == 0 && tab_loading(t) { wc.keyword = .Progress }
 	return wc
 }
 
@@ -390,7 +387,7 @@ window_cursor_apply :: proc(app: ^App) {
 	} else if t := page_tab(app); t != nil && st.mouse_valid && wc.keyword == .Arrow && draw.rect_contains(wnd.page_rect, pos) &&
 	          ui.hot_key() == 0 && ui.active_key() == 0 && !ui.ctx_menu_any_open() && !hud_captures(app, pos) {
 		wc = page_window_cursor(app, t, pos)
-	} else if ct := current_tab(app); ct != nil && ct.kind == .Web && ccfg.progress_loading && tab_loading(ct) && st.mouse_valid && wc.keyword == .Arrow &&
+	} else if ct := current_tab(app); ct != nil && ct.kind == .Web && app.ccfg.progress_loading && tab_loading(ct) && st.mouse_valid && wc.keyword == .Arrow &&
 	          draw.rect_contains(wnd.page_rect, pos) && ui.hot_key() == 0 && ui.active_key() == 0 && !ui.ctx_menu_any_open() && !hud_captures(app, pos) {
 		wc.keyword = .Progress   // (nothing laid out yet: a document on its way)
 	}

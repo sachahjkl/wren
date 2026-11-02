@@ -18,13 +18,11 @@ PRINT_PREFS := [?]config.Def{
 
 register_print_prefs :: proc(p: ^config.Prefs) { config.register(p, PRINT_PREFS[:]) }
 
-@(private = "file") print_last: time.Tick
-
 print_request :: proc(app: ^App) {
 	if !config.bool_of(&app.prefs, "browser.print.notice") { return }
 	interval := f64(config.int_of(&app.prefs, "browser.print.notice_interval_ms"))
-	if print_last != {} && time.duration_milliseconds(time.tick_since(print_last)) < interval { return }
-	print_last = time.tick_now()
+	if app.print_last != {} && time.duration_milliseconds(time.tick_since(app.print_last)) < interval { return }
+	app.print_last = time.tick_now()
 	ui.toast(.Info, "Printing is not available in %s", APP_NAME)
 	request_frames(app, 2)
 }

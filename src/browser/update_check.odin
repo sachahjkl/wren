@@ -26,7 +26,7 @@ import "wb:fetch"
 UPDATE_FILE :: "update.txt"
 UPDATE_EVERY_SECONDS :: 24 * 60 * 60
 
-@(private = "file")
+@(private)
 Update_State :: struct {
 	checking: bool,
 	forced:   bool,          // asked by the command: the answer is shown even when there is nothing new
@@ -37,16 +37,15 @@ Update_State :: struct {
 	loaded:   bool,
 }
 
-@(private = "file") upd: Update_State
 
-update_destroy :: proc() {
-	delete(upd.latest); delete(upd.url); delete(upd.notified)
-	upd = {}
+update_destroy :: proc(app: ^App) {
+	delete(app.upd.latest); delete(app.upd.url); delete(app.upd.notified)
+	app.upd = {}
 }
 
 // The newest version known to be out, when it is newer than this one ("" when none or unknown).
-update_available :: proc() -> (version, url: string) {
-	if upd.latest != "" && desktop.compare_versions(upd.latest, APP_VERSION) > 0 { return upd.latest, upd.url }
+update_available :: proc(app: ^App) -> (version, url: string) {
+	if app.upd.latest != "" && desktop.compare_versions(app.upd.latest, APP_VERSION) > 0 { return app.upd.latest, app.upd.url }
 	return "", ""
 }
 
@@ -55,19 +54,19 @@ update_path :: proc(app: ^App) -> string { return strings.concatenate({app.profi
 
 @(private = "file")
 update_load :: proc(app: ^App) {
-	if upd.loaded { return }
-	upd.loaded = true
+	if app.upd.loaded { return }
+	app.upd.loaded = true
 	data, err := os.read_entire_file(update_path(app), context.temp_allocator)
 	if err != nil { return }
 	for line in strings.split_lines(string(data), context.temp_allocator) {
 		l := strings.trim_space(line)
 		switch {
-		case strings.has_prefix(l, "checked="):  upd.checked = parse_i64(l[len("checked="):])
+		case strings.has_prefix(l, "checked="):  app.upd.checked = parse_i64(l[len("checked="):])
 		// (the file is the profile's, but whatever it says is checked as the answer was: a version is a version, an address one of the
 		// web page that a tab opens)
-		case strings.has_prefix(l, "latest="):   delete(upd.latest); upd.latest = update_version_ok(l[len("latest="):]) ? strings.clone(l[len("latest="):]) : ""
-		case strings.has_prefix(l, "url="):      delete(upd.url); upd.url = update_page_ok(l[len("url="):]) ? strings.clone(l[len("url="):]) : ""
-		case strings.has_prefix(l, "notified="): delete(upd.notified); upd.notified = update_version_ok(l[len("notified="):]) ? strings.clone(l[len("notified="):]) : ""
+		case strings.has_prefix(l, "latest="):   delete(app.upd.latest); app.upd.latest = update_version_ok(l[len("latest="):]) ? strings.clone(l[len("latest="):]) : ""
+		case strings.has_prefix(l, "url="):      delete(app.upd.url); app.upd.url = update_page_ok(l[len("url="):]) ? strings.clone(l[len("url="):]) : ""
+		case strings.has_prefix(l, "notified="): delete(app.upd.notified); app.upd.notified = update_version_ok(l[len("notified="):]) ? strings.clone(l[len("notified="):]) : ""
 		}
 	}
 }
@@ -81,7 +80,7 @@ parse_i64 :: proc(s: string) -> (n: i64) {
 @(private = "file")
 update_save :: proc(app: ^App) {
 	if !app.cfg.persist_profile { return }
-	text := fmt.tprintf("wren update check\nchecked=%d\nlatest=%s\nurl=%s\nnotified=%s\n", upd.checked, upd.latest, upd.url, upd.notified)
+	text := fmt.tprintf("wren update check\nchecked=%d\nlatest=%s\nurl=%s\nnotified=%s\n", app.upd.checked, app.upd.latest, app.upd.url, app.upd.notified)
 	_ = os.write_entire_file(update_path(app), text)
 }
 
@@ -93,27 +92,27 @@ update_startup :: proc(app: ^App, profile_explicit: bool) {
 	}
 	if desktop_profile_is_disposable(app, profile_explicit) { return }
 	update_load(app)
-	if time.to_unix_seconds(time.now()) - upd.checked < UPDATE_EVERY_SECONDS && upd.checked != 0 { return }
+	if time.to_unix_seconds(time.now()) - app.upd.checked < UPDATE_EVERY_SECONDS && app.upd.checked != 0 { return }
 	update_request(app, false)
 }
 
 // What a client of the channel reads (Wren.updateState): whether a request is out.
 // A request is out.
-update_checking :: proc() -> bool { return upd.checking }
+update_checking :: proc(app: ^App) -> bool { return app.upd.checking }
 
 // The command: asks now.
 update_check_now :: proc(app: ^App) {
 	update_load(app)
-	if upd.checking { ui.toast(.Info, "Already checking for updates\u2026"); return }
+	if app.upd.checking { ui.toast(.Info, "Already checking for updates\u2026"); return }
 	update_request(app, true)
 	ui.toast(.Info, "Checking for updates\u2026")
 }
 
 @(private = "file")
 update_request :: proc(app: ^App, forced: bool) {
-	if upd.checking { return }
-	upd.checking, upd.forced = true, forced
-	upd.checked = i64(time.to_unix_seconds(time.now()))
+	if app.upd.checking { return }
+	app.upd.checking, app.upd.forced = true, forced
+	app.upd.checked = i64(time.to_unix_seconds(time.now()))
 	update_save(app)
 	url := config.string_of(&app.prefs, "browser.update.url")
 	fetch.start(&app.loader, {
@@ -121,45 +120,44 @@ update_request :: proc(app: ^App, forced: bool) {
 			url = url, mode = .Cors, credentials = .Omit, redirect = .Follow, destination = .Empty,
 			headers = {{"Accept", "application/vnd.github+json"}}, max_body = 1 << 18,
 		},
-		on_event = update_event, scope = app.process, collect = true,
+		on_event = update_event, user = app, scope = app.process, collect = true,
 	})
 }
 
 @(private = "file")
 update_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
-	app := the_app
-	if app == nil { return }
+	app := (^App)(user)
 	#partial switch ev.kind {
 	case .Done:
-		upd.checking = false
+		app.upd.checking = false
 		tag, page, ok := update_parse(ev.data)
 		if !ok { update_failed(app, "the answer is not a release"); return }
 		version := strings.trim_prefix(tag, "v")   // (update_parse checked it)
-		delete(upd.latest); upd.latest = strings.clone(version)
-		delete(upd.url); upd.url = strings.clone(page)
+		delete(app.upd.latest); app.upd.latest = strings.clone(version)
+		delete(app.upd.url); app.upd.url = strings.clone(page)
 		newer := desktop.compare_versions(version, APP_VERSION) > 0
-		announce := newer && (upd.forced || upd.notified != version)
-		if newer { delete(upd.notified); upd.notified = strings.clone(version) }
+		announce := newer && (app.upd.forced || app.upd.notified != version)
+		if newer { delete(app.upd.notified); app.upd.notified = strings.clone(version) }
 		update_save(app)
 		switch {
-		case announce && upd.forced:
+		case announce && app.upd.forced:
 			ui.toast(.Info, "%s v%s is available (you have v%s): opening its page", APP_NAME, version, APP_VERSION)
 			if page != "" { tab_open(app, page) }
 		case announce:
 			ui.toast(.Info, "%s v%s is available (you have v%s). Menu > Check for updates opens its page.", APP_NAME, version, APP_VERSION)
-		case upd.forced:
+		case app.upd.forced:
 			ui.toast(.Good, "%s is up to date (v%s)", APP_NAME, APP_VERSION)
 		}
 		request_frames(app, 3)
 	case .Failed:
-		upd.checking = false
+		app.upd.checking = false
 		update_failed(app, ev.detail)
 	}
 }
 
 @(private = "file")
 update_failed :: proc(app: ^App, why: string) {
-	if upd.forced { ui.toast(.Warn, "Could not check for updates: %s", why) }
+	if app.upd.forced { ui.toast(.Warn, "Could not check for updates: %s", why) }
 	request_frames(app, 2)
 }
 

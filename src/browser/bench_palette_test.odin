@@ -28,7 +28,7 @@ bench_palette :: proc(t: ^testing.T) {
 	app.prefs = config.prefs_make()
 	defer config.prefs_destroy(&app.prefs)
 	register_all_prefs(&app.prefs)
-	defer palette_destroy()
+	defer palette_destroy(app)
 	palette_collect(app, "")
 	pages := make([dynamic]Palette_Item)
 	defer { for p in pages { delete(p.title); delete(p.detail) }; delete(pages) }
@@ -36,7 +36,7 @@ bench_palette :: proc(t: ^testing.T) {
 		u := fmt.aprintf("https://site%d.example.org/articles/%d/the-title-of-page-%d", i % 97, i, i)
 		append(&pages, Palette_Item{title = fmt.aprintf("The title of page %d on site %d", i, i % 97), detail = u, key = u})
 	}
-	palette_add_source({name = "Bench", prefix = '/', items = bench_pages, user = &pages})
+	palette_add_source(app, {name = "Bench", prefix = '/', items = bench_pages, user = &pages})
 	// the matcher alone, over the source's titles
 	for q in ([]string{"page 42", "site title"}) {
 		fq := fuzzy_query_make(q)
@@ -53,6 +53,6 @@ bench_palette :: proc(t: ^testing.T) {
 		start := time.tick_now()
 		for _ in 0 ..< runs { palette_collect(app, q); free_all(context.temp_allocator) }
 		ms := time.duration_milliseconds(time.tick_since(start)) / f64(runs)
-		fmt.printf("palette_collect %-14q %7.3f ms  %5d rows\n", q, ms, len(cpal.rows))
+		fmt.printf("palette_collect %-14q %7.3f ms  %5d rows\n", q, ms, len(app.cpal.rows))
 	}
 }

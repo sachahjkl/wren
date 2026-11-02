@@ -54,7 +54,7 @@ show_downloads :: proc(app: ^App, t: ^Tab, address: string) {
 	set_status(t, DOWNLOADS_URL)
 	address_set(app, t, address)
 	dview.focus_search = true
-	downloads_mark_seen()
+	downloads_mark_seen(app)
 }
 
 // Ctrl+J, the menu: about:downloads in a new tab (or the tab already showing it).
@@ -69,8 +69,8 @@ open_downloads :: proc(app: ^App) {
 // What a row says
 
 @(private = "file")
-dl_by_id :: proc(id: u64) -> ^Download {
-	for d in dls.list { if d.id == id { return d } }
+dl_by_id :: proc(app: ^App, id: u64) -> ^Download {
+	for d in app.dls.list { if d.id == id { return d } }
 	return nil
 }
 
@@ -425,7 +425,7 @@ dl_menu :: proc(app: ^App, menu_key: ui.Key) {
 
 @(private = "file")
 dl_menu_items :: proc(app: ^App) {
-	d := dl_by_id(dview.menu_id)
+	d := dl_by_id(app, dview.menu_id)
 	if d == nil || !download_finished(d) { ui.ctx_menu_close(); return }
 	present := download_file_present(d)
 	if ui.menu_item("Open", enabled = present).clicked { ui.ctx_menu_close(); download_open_file(d); return }
@@ -460,16 +460,16 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 				ui.spacer(ui.px(em * 0.6))
 				ui.next({width = ui.px(em * 8.5), height = ui.px(ui.dense(em * 2))})
 				cb := ui.button("Clear the list###dl_clear")
-				if cb.clicked { download_clear_finished(app); downloads_mark_seen() }
+				if cb.clicked { download_clear_finished(app); downloads_mark_seen(app) }
 				tip(cb, "Takes the finished downloads off the list; the files stay where they are")
 				ui.spacer(ui.px(em * 0.4))
 				ui.next({width = ui.px(em * 9.5), height = ui.px(ui.dense(em * 2))})
 				if ui.button("Open the folder###dl_folder").clicked { platform_open_dir(download_dir(app)) }
 				ui.spacer(ui.fill())
-				active, _, _, speed := downloads_progress()
+				active, _, _, speed := downloads_progress(app)
 				if ui.tags("weak") {
 					ui.next({width = ui.text_size(em * 0.4), height = ui.px(ui.dense(em * 2))})
-					summary := fmt.tprintf(len(dls.list) == 1 ? "%d download" : "%d downloads", len(dls.list))
+					summary := fmt.tprintf(len(app.dls.list) == 1 ? "%d download" : "%d downloads", len(app.dls.list))
 					if active > 0 { summary = fmt.tprintf("%d in progress%s", active, speed > 0 ? fmt.tprintf(" \u00b7 %s/s", human_bytes(i64(speed))) : "") }
 					ui.label(fmt.tprintf("%s###dl_count", summary))
 				}
@@ -479,7 +479,7 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 			if ui.row(.Center) {
 				ui.spacer(ui.px(em * 0.8))
-				ask := dls.cfg.ask
+				ask := app.dls.cfg.ask
 				ui.next({width = ui.px(em * 21), height = ui.px(ui.dense(em * 1.8))})
 				if ui.toggle("###dl_ask", "Ask where to save each file", &ask).clicked {
 					_ = config.set_from_string(&app.prefs, "browser.download.ask", ask ? "true" : "false", .User)
@@ -493,7 +493,7 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 				fb := ui.button("Change\u2026###dl_pick")
 				tip(fb, "Choose the folder the downloads go to (browser.download.directory)")
 				if fb.clicked { download_pick_folder(app) }
-				if dls.cfg.dir != "" {
+				if app.dls.cfg.dir != "" {
 					ui.spacer(ui.px(em * 0.4))
 					ui.next({width = ui.px(em * 7.5), height = ui.px(ui.dense(em * 1.9)), radius = em * CHROME_BUTTON_RADIUS})
 					rb := ui.button("Default###dl_default")
@@ -508,7 +508,7 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 		}
 	}
 	dl_menu(app, menu_key)
-	downloads_mark_seen()
+	downloads_mark_seen(app)
 }
 
 @(private = "file")
@@ -526,8 +526,8 @@ downloads_list :: proc(app: ^App, menu_key: ui.Key) {
 	}
 	shown := 0
 	// the running ones first, newest first
-	for i := len(dls.list) - 1; i >= 0; i -= 1 {
-		d := dls.list[i]
+	for i := len(app.dls.list) - 1; i >= 0; i -= 1 {
+		d := app.dls.list[i]
 		if !dl_running(d) || !matches(d, query) { continue }
 		shown += 1
 		ui.next({width = ui.fill(), height = ui.children_sum()})
@@ -546,8 +546,8 @@ downloads_list :: proc(app: ^App, menu_key: ui.Key) {
 	yl := local_time(local_midnight(now) - 1000)
 	today, yesterday := tl.year * 10000 + tl.month * 100 + tl.day, yl.year * 10000 + yl.month * 100 + yl.day
 	last_day := -1
-	for i := len(dls.list) - 1; i >= 0; i -= 1 {
-		d := dls.list[i]
+	for i := len(app.dls.list) - 1; i >= 0; i -= 1 {
+		d := app.dls.list[i]
 		if dl_running(d) || !matches(d, query) { continue }
 		lt := local_time(d.done_ms > 0 ? d.done_ms : d.started_ms)
 		key := lt.year * 10000 + lt.month * 100 + lt.day
@@ -583,12 +583,12 @@ downloads_list :: proc(app: ^App, menu_key: ui.Key) {
 // The toolbar's button and its drop-down
 
 // The button shows once a download has run in this session (browser.download.button).
-downloads_button_visible :: proc() -> bool {
-	switch dls.cfg.button {
+downloads_button_visible :: proc(app: ^App) -> bool {
+	switch app.dls.cfg.button {
 	case "never":  return false
 	case "always": return true
 	}
-	return downloads_session_started() || dview.popup_open
+	return downloads_session_started(app) || dview.popup_open
 }
 
 Dl_Button :: struct {
@@ -676,11 +676,11 @@ dl_button_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 }
 
 downloads_button :: proc(app: ^App, t: ^Tab) {
-	if !downloads_button_visible() { return }
+	if !downloads_button_visible(app) { return }
 	em := ui.font_size()
-	active, frac, known, speed := downloads_progress()
+	active, frac, known, speed := downloads_progress(app)
 	unseen := false
-	for x in dls.list { if x.unseen { unseen = true; break } }
+	for x in app.dls.list { if x.unseen { unseen = true; break } }
 	d := ui.frame_new(Dl_Button)
 	acc := ui.color("accent")
 	txt := ui.color("text")
@@ -727,7 +727,7 @@ downloads_panel :: proc(app: ^App, key: ui.Key) {
 downloads_panel_body :: proc(app: ^App) {
 	em := ui.font_size()
 	w := em * DL_PANEL_W_EM
-	downloads_mark_seen()
+	downloads_mark_seen(app)
 	ui.spacer(ui.px(em * 0.4))
 	ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.4))})
 	if ui.row(.Center) {
@@ -741,8 +741,8 @@ downloads_panel_body :: proc(app: ^App) {
 	ui.hline(ui.px(w))
 	ui.spacer(ui.px(em * 0.3))
 	n := 0
-	for i := len(dls.list) - 1; i >= 0 && n < 6; i -= 1 {
-		d := dls.list[i]
+	for i := len(app.dls.list) - 1; i >= 0 && n < 6; i -= 1 {
+		d := app.dls.list[i]
 		n += 1
 		ui.next({width = ui.px(w), height = ui.children_sum()})
 		if ui.row(.Center) {

@@ -69,9 +69,9 @@ tab_busy :: proc(t: ^Tab) -> bool {
 }
 
 // The loading indicator still turns (browser.tabs.spinner_max_s after the navigation started, it stands still).
-spinner_turning :: proc(t: ^Tab) -> bool {
-	if favs.cfg.spinner_max_ms <= 0 { return true }
-	return shell_elapsed_ms(t.hold.started) < favs.cfg.spinner_max_ms
+spinner_turning :: proc(app: ^App, t: ^Tab) -> bool {
+	if app.favs.cfg.spinner_max_ms <= 0 { return true }
+	return shell_elapsed_ms(t.hold.started) < app.favs.cfg.spinner_max_ms
 }
 
 ////////////////////////////////
@@ -86,13 +86,13 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 	h := ui.dense(em * 2.6)
 	if integrated { h = max(h, math.round(32 * dpi)) }   // never lower than the system's title bar
 	ui.reorder_frame(&own.strip.drag)   // the button went up (wherever): no drag
-	favicon_frame()
+	favicon_frame(app)
 
-	classic := classic_on()
+	classic := classic_on(app)
 	cg: Classic_Geom
 	cc: ^Classic_Colors
 	if classic {
-		cg = classic_geom(em, dpi, h, chrome_cfg.slope_deg)
+		cg = classic_geom(em, dpi, h, app.chrome_cfg.slope_deg)
 		cc = classic_colors_frame(app)
 	}
 
@@ -122,10 +122,10 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		plus_pull: f32
 		if classic { _, _, _, plus_pull = classic_plus_metrics(&cg, em, dpi, plus_w) }
 		plus_room := classic ? plus_w - plus_pull : new_w + em * 0.3
-		fixed := lead + plus_room + buttons + (integrated ? wchrome.cfg.min_drag_em * em : em * 0.4) + extra
+		fixed := lead + plus_room + buttons + (integrated ? app.wchrome.cfg.min_drag_em * em : em * 0.4) + extra
 		avail := max(f32(active_window(app).win.size.x) - fixed, em * 4)
 		n := len(wnd.tabs)
-		w := math.round(tab_width(avail - cg.overlap, n, favs.cfg.min_w_em * em, favs.cfg.max_w_em * em))
+		w := math.round(tab_width(avail - cg.overlap, n, app.favs.cfg.min_w_em * em, app.favs.cfg.max_w_em * em))
 		vis := min(f32(n) * w + cg.overlap, avail)   // what the tabs show of the strip, flares apart
 		view_w := vis - cg.overlap                   // (what strip_offset calls the width: the pitches' share)
 		area_w := vis + extra
@@ -205,9 +205,9 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		any_turning := false
 		for t, i in wnd.tabs {
 			tab_refresh(app, t, tab_icon_px(app))
-			any_turning ||= tab_busy(t) && spinner_turning(t)
+			any_turning ||= tab_busy(t) && spinner_turning(app, t)
 			// (an icon not drawn this frame is still in use: the cache keeps what its tabs show)
-			if (i < first || i >= last) && t.icon.url != "" { _, _ = favicon_texture(t.icon.url) }
+			if (i < first || i >= last) && t.icon.url != "" { _, _ = favicon_texture(app, t.icon.url) }
 		}
 		if any_turning { spinner_wake(app) }
 
@@ -340,7 +340,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		if speaker != .None && !t.pinned {
 			if ui.tab_stops(false) { _ = tab_speaker_button(app, t, speaker, math.round(em * 1.45), "###speaker") }
 		}
-		show_close := !t.pinned && (on || inside || w >= favs.cfg.close_min_em * em)
+		show_close := !t.pinned && (on || inside || w >= app.favs.cfg.close_min_em * em)
 		if show_close {
 			cs := math.round(em * 1.45)
 			if ui.tab_stops(false) {
@@ -365,18 +365,18 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 	sig := ui.signal(b)
 	if (sig.pressed || sig.clicked) && !on { tab_select(app, i) }   // the press selects; Enter / Space too
 	if sig.right_clicked { tab_context_menu(app, i, ui.mouse_pos()) }
-	if sig.middle_clicked && favs.cfg.middle_close { tab_close(app, i); return .Closed }
+	if sig.middle_clicked && app.favs.cfg.middle_close { tab_close(app, i); return .Closed }
 	if !(classic && own.strip.drag.active) { tip(sig, t.title) }   // (classic: the title's tip does not cover the tab being dragged)
 	// drag to reorder (straight down starts a drag too: it may leave the bar)
-	if sig.dragging && favs.cfg.drag_reorder && (n > 1 || favs.cfg.drag_detach) {
-		ui.reorder_begin(&own.strip.drag, t.id, ui.reorder_moved(sig.drag_delta, .X, favs.cfg.drag_detach), favs.cfg.drag_threshold * dpi,
+	if sig.dragging && app.favs.cfg.drag_reorder && (n > 1 || app.favs.cfg.drag_detach) {
+		ui.reorder_begin(&own.strip.drag, t.id, ui.reorder_moved(sig.drag_delta, .X, app.favs.cfg.drag_detach), app.favs.cfg.drag_threshold * dpi,
 			ui.mouse_pos().x - sig.drag_delta.x - area.rect.min.x, slot)
 		if ui.reorder_dragging(&own.strip.drag, t.id) {
 			to := drag_slot(x + own.strip.offset, w, n)
 			if to != i { move_from^, move_to^ = i, to }
 			request_frames(app, 2)
 			// far enough below (or above) the row: the tab leaves for a window of its own (tab_drag.odin)
-			if favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), false, favs.cfg.detach_distance_em * em) {
+			if app.favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), false, app.favs.cfg.detach_distance_em * em) {
 				own.strip.drag.active = false
 				if tab_drag_begin(app, t, ui.mouse_pos()) && len(wnd.tabs) != n { return .Closed }
 			}
@@ -444,16 +444,16 @@ tab_icon_of :: proc(app: ^App, t: ^Tab, size: f32) -> ^Tab_Icon_Draw {
 		if !waiting { d.color = ui.color("accent") }
 		ms := shell_elapsed_ms(t.hold.started)
 		period: f64 = waiting ? 1600 : 900
-		d.phase = spinner_turning(t) ? f32(math.mod(ms, period) / period) : 0
+		d.phase = spinner_turning(app, t) ? f32(math.mod(ms, period) / period) : 0
 		return d
 	}
 	switch {
 	case t.kind == .Config || t.kind == .Blocker || t.kind == .Downloads: d.kind = .Gear
 	case t.load != nil && t.load.failed != .None: d.kind = .Globe   // an error page is not the browser's own page
-	case t.page != nil && t.page.env.location.scheme == "about": d.kind = wchrome.icon_px > 0 ? .App : .Globe; d.tex = wchrome.icon
+	case t.page != nil && t.page.env.location.scheme == "about": d.kind = app.wchrome.icon_px > 0 ? .App : .Globe; d.tex = app.wchrome.icon
 	case t.page != nil && t.page.env.location.scheme == "file": d.kind = .File
 	case t.icon.url != "":
-		if tex, ok := favicon_texture(t.icon.url); ok { d.kind, d.tex = .Favicon, tex }
+		if tex, ok := favicon_texture(app, t.icon.url); ok { d.kind, d.tex = .Favicon, tex }
 	}
 	return d
 }

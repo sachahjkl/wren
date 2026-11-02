@@ -79,34 +79,33 @@ Window_Chrome :: struct {
 	menu_at:      [2]f32,
 }
 
-wchrome: Window_Chrome
 
 window_chrome_init :: proc(app: ^App) {
-	wchrome.cfg = window_settings_from_prefs(&app.prefs)
-	platform.set_square_corners(active_window(app).win, wchrome.cfg.square_corners)
-	wchrome.watch = config.watch(&app.prefs, "browser.window.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	app.wchrome.cfg = window_settings_from_prefs(&app.prefs)
+	platform.set_square_corners(active_window(app).win, app.wchrome.cfg.square_corners)
+	app.wchrome.watch = config.watch(&app.prefs, "browser.window.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
-		wchrome.cfg = window_settings_from_prefs(p)
-		platform.set_square_corners(active_window(app).win, wchrome.cfg.square_corners)
+		app.wchrome.cfg = window_settings_from_prefs(p)
+		platform.set_square_corners(active_window(app).win, app.wchrome.cfg.square_corners)
 		request_frames(app, 2)
 	}, app)
 }
 
 window_chrome_destroy :: proc(app: ^App) {
-	config.unwatch(&app.prefs, wchrome.watch)
-	if wchrome.icon_px > 0 { render.destroy_texture(&app.r, wchrome.icon) }
-	wchrome = {}
+	config.unwatch(&app.prefs, app.wchrome.watch)
+	if app.wchrome.icon_px > 0 { render.destroy_texture(&app.r, app.wchrome.icon) }
+	app.wchrome = {}
 }
 
 // Before the frame's build: the title bar the preference asks for, smooth scrolling of the toolkit's lists like the page's.
 window_chrome_frame :: proc(app: ^App) {
 	wnd := active_window(app)
-	if !platform.is_fullscreen(wnd.win) && platform.is_integrated_title(wnd.win) != wchrome.cfg.integrated {
-		platform.set_integrated_title(wnd.win, wchrome.cfg.integrated)
+	if !platform.is_fullscreen(wnd.win) && platform.is_integrated_title(wnd.win) != app.wchrome.cfg.integrated {
+		platform.set_integrated_title(wnd.win, app.wchrome.cfg.integrated)
 		render.resize(&app.r, wnd.win.size)
 	}
 	// about:config and the other lists of the chrome scroll along the page's curve (smooth_scroll.odin)
-	sc := smooth_cfg
+	sc := app.smooth_cfg
 	curve: ui.Scroll_Curve = sc.curve == .Ease_Out ? .Ease_Out : .Impulse
 	dur := f32(sc.wheel_ms)
 	if !sc.enabled || (sc.reduced_motion && (app.page_settings.style.reduced_motion || !os_animations_enabled(app))) { dur = 0 }
@@ -129,18 +128,18 @@ Icon_Draw :: struct { tex: render.Texture, ok: bool }
 // The exe's icon: the window title (version, build, statistics) in its tooltip; a click opens the system menu.
 app_icon :: proc(app: ^App, size: f32) {
 	px := int(size)
-	if px != wchrome.icon_px && px != wchrome.icon_failed {
-		if wchrome.icon_px > 0 { render.destroy_texture(&app.r, wchrome.icon); wchrome.icon_px = 0 }
+	if px != app.wchrome.icon_px && px != app.wchrome.icon_failed {
+		if app.wchrome.icon_px > 0 { render.destroy_texture(&app.r, app.wchrome.icon); app.wchrome.icon_px = 0 }
 		if pixels, ok := platform.app_icon_rgba(px, context.temp_allocator); ok {
-			wchrome.icon = render.create_texture_rgba(&app.r, px, px, mips = false)
-			render.update_texture_rgba(&app.r, wchrome.icon, 0, 0, px, px, pixels)
-			wchrome.icon_px = px
+			app.wchrome.icon = render.create_texture_rgba(&app.r, px, px, mips = false)
+			render.update_texture_rgba(&app.r, app.wchrome.icon, 0, 0, px, px, pixels)
+			app.wchrome.icon_px = px
 		} else {
-			wchrome.icon_failed = px
+			app.wchrome.icon_failed = px
 		}
 	}
 	d := ui.frame_new(Icon_Draw)
-	d^ = {wchrome.icon, wchrome.icon_px == px}
+	d^ = {app.wchrome.icon, app.wchrome.icon_px == px}
 	ui.next({width = ui.px(size), height = ui.px(size)})
 	b := ui.custom("###app_icon", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		d := (^Icon_Draw)(user)
@@ -149,21 +148,21 @@ app_icon :: proc(app: ^App, size: f32) {
 	b.cursor = .Arrow
 	sig := ui.signal(b)
 	if hud.title_text != "" { tip(sig, hud.title_text) }
-	if sig.clicked || sig.right_clicked { wchrome.menu_win, wchrome.menu_at = active_window(app).win, {b.rect.min.x, b.rect.max.y} }
+	if sig.clicked || sig.right_clicked { app.wchrome.menu_win, app.wchrome.menu_at = active_window(app).win, {b.rect.min.x, b.rect.max.y} }
 }
 
 // At the end of a frame: the system menu the icon asked for. Not from the build: the menu's loop paints the window
 // (window_on_frame), and a frame made inside the build broke the one being built (windows.odin: the frame gate).
 window_chrome_after_frame :: proc(app: ^App) {
-	w := wchrome.menu_win
+	w := app.wchrome.menu_win
 	if w == nil || w != active_window(app).win { return }
-	wchrome.menu_win = nil
-	if !platform.is_closed(w) { platform.show_system_menu(w, wchrome.menu_at) }
+	app.wchrome.menu_win = nil
+	if !platform.is_closed(w) { platform.show_system_menu(w, app.wchrome.menu_at) }
 }
 
 // A window that closes: a menu it asked for is not opened.
-window_chrome_forget :: proc(w: ^platform.Window) {
-	if wchrome.menu_win == w { wchrome.menu_win = nil }
+window_chrome_forget :: proc(app: ^App, w: ^platform.Window) {
+	if app.wchrome.menu_win == w { app.wchrome.menu_win = nil }
 }
 
 // Full screen: the bars over the top of the page while revealed. Built after the page so they draw over it.
@@ -171,10 +170,10 @@ fullscreen_bars :: proc(app: ^App, t: ^Tab) {
 	wnd := active_window(app)
 	fw := &window_own(app).full
 	if !platform.is_fullscreen(wnd.win) { fw.revealed = false; return }
-	if !wchrome.cfg.reveal || fullscreen_shell_active(app.active) { fw.revealed = false; return }   // (a page's own full screen keeps the whole window)
+	if !app.wchrome.cfg.reveal || fullscreen_shell_active(app.active) { fw.revealed = false; return }   // (a page's own full screen keeps the whole window)
 	m := ui.mouse_pos()
 	if !fw.revealed {
-		fw.revealed = m.y >= 0 && m.y < wchrome.cfg.reveal_px && m.x >= 0 && m.x < f32(wnd.win.size.x)
+		fw.revealed = m.y >= 0 && m.y < app.wchrome.cfg.reveal_px && m.x >= 0 && m.x < f32(wnd.win.size.x)
 	} else {
 		// they stay while the pointer is over them, a menu of theirs is open or the address bar has the keyboard
 		over := m.y < fw.overlay.max.y + ui.font_size()

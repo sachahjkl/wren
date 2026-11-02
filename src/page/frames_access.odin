@@ -328,8 +328,9 @@ frames_bridge_call :: proc(from: ^Page, realm: u64, request: []u8) -> []u8 {
 ////////////////////////////////
 // Closing a document in use
 
-frames_pending_closes: [dynamic]^Page
-@(private = "file") pending_timer_armed: bool
+// (the thread's: the pages of an App close on the thread of its loop)
+@(thread_local) frames_pending_closes: [dynamic]^Page
+@(private = "file", thread_local) pending_timer_armed: bool
 
 @(private = "file")
 page_in_use :: proc(p: ^Page) -> bool {

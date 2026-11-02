@@ -24,7 +24,7 @@ import "wb:remote/api"
 
 ui_toast_remote :: proc(text: string) { ui.toast(.Warn, "%s", text) }
 ui_needs_frame :: proc(app: ^App) -> bool { return ui.needs_frame(active_window(app).ui) }
-render_capture_busy :: proc() -> bool { return the_app != nil && render.capture_pending(&the_app.r) }
+render_capture_busy :: proc(app: ^App) -> bool { return render.capture_pending(&app.r) }
 
 ////////////////////////////////
 // Dispatch
@@ -108,8 +108,8 @@ remote_dispatch_in_window :: proc(app: ^App, c: ^Call) -> Reply {
 	case "Wren.runCommand":      return m_command(app, c)
 	case "Wren.openDevTools":    return m_devtools(app, c)
 	case "Wren.openSetup":       setup_open(app, .Command); return done()
-	case "Wren.setupState":      return m_setup_state()
-	case "Wren.updateState":     return done(fmt.tprintf(`{{"checking":%v}}`, control_update_checking()))
+	case "Wren.setupState":      return m_setup_state(app)
+	case "Wren.updateState":     return done(fmt.tprintf(`{{"checking":%v}}`, control_update_checking(app)))
 	case "Wren.recordInput":     return m_record(app, c)
 	case "Wren.timeline":        return m_timeline(app, c)
 	case "Wren.replayInput":     return m_replay(app, c)
@@ -223,8 +223,8 @@ m_version :: proc() -> Reply {
 }
 
 @(private = "file")
-m_setup_state :: proc() -> Reply {
-	x := control_setup_state()
+m_setup_state :: proc(app: ^App) -> Reply {
+	x := control_setup_state(app)
 	box :: proc(r: api.Rect) -> string { return fmt.tprintf("[%v,%v,%v,%v]", r.x, r.y, r.w, r.h) }
 	return done(fmt.tprintf(`{{"open":%v,"known":%v,"confirmUninstall":%v,"busy":%d,"note":%s,"primary":%s,"uninstall":%s,"secondary":%s}}`,
 		x.open, x.known, x.confirm_uninstall, x.busy, remote.quote(x.note), box(x.primary), box(x.uninstall), box(x.secondary)))
@@ -860,16 +860,13 @@ scale_rgba :: proc(src: []u8, w, h: int, scale: f32) -> (out: []u8, nw, nh: int)
 ////////////////////////////////
 // Input: the events go to the window's queue and take the path of a real device's
 
-// the buttons held, as a real device's events carry them (e.buttons, a drag that needs the left button held)
-inject_held: platform.Mouse_Buttons
-
 inject :: proc(app: ^App, ev: platform.Event) {
 	ev := ev
 	#partial switch ev.kind {
-	case .Mouse_Press: inject_held += {ev.button}
-	case .Mouse_Release: inject_held -= {ev.button}
+	case .Mouse_Press: app.inject_held += {ev.button}
+	case .Mouse_Release: app.inject_held -= {ev.button}
 	}
-	held := inject_held
+	held := app.inject_held
 	if ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release { ev.buttons = held }
 	platform.inject_event(active_window(app).win, ev)
 	the_remote.inputs += 1
@@ -1083,7 +1080,7 @@ remote_drag_steps :: proc(app: ^App) -> ([]platform.Drag_Step, bool) {
 		steps := make([dynamic]platform.Drag_Step, context.temp_allocator)
 		for k in op.idx + 1 ..= total { append(&steps, platform.Drag_Step{pos = drag_point(op, pts, k)}) }
 		if len(steps) == 0 { append(&steps, platform.Drag_Step{pos = op.to}) }
-		inject_held -= {op.button}   // (released in the system's drag: no release event follows)
+		app.inject_held -= {op.button}   // (released in the system's drag: no release event follows)
 		op.stage = 3
 		op.until = the_remote.frame_no + u64(max(the_remote.cfg.settle_frames, 1))
 		return steps[:], true

@@ -62,7 +62,7 @@ Dev_Network :: struct {
 
 Net_Col_Pos :: struct { col: Net_Col, x, w: f32 }
 
-network_destroy :: proc() {
+network_destroy :: proc(app: ^App) {
 	v := &dev().net
 	dt_list_destroy(&v.list)
 	delete(v.rows)
@@ -71,10 +71,10 @@ network_destroy :: proc() {
 	delete(v.layout)
 	for b in v.blocked { delete(b) }
 	delete(v.blocked)
-	net_detail_destroy(&v.detail)
-	if net_media.owner == dev() { net_media_release() }
+	net_detail_destroy(app, &v.detail)
+	if app.net_media.owner == dev() { net_media_release(app) }
 	net_prof_edit_destroy(&v.prof)
-	if v.tick != base.NIL_HANDLE && the_app != nil { host.clear_timer(&the_app.loop, v.tick) }
+	if v.tick != base.NIL_HANDLE { host.clear_timer(&app.loop, v.tick) }
 	v^ = {}
 }
 
@@ -161,12 +161,12 @@ network_reset_layout :: proc(app: ^App) {
 // The pixel columns of this frame for `avail` physical px: fixed widths, the rest for the waterfall (or the name); the
 // columns that do not fit are dropped from the right.
 @(private = "file")
-net_layout :: proc(v: ^Dev_Network, avail: f32) {
+net_layout :: proc(app: ^App, v: ^Dev_Network, avail: f32) {
 	clear(&v.layout)
 	fixed: f32
 	has_wf := false
 	for c in v.cols {
-		if c.col == .Waterfall { if net_prefs.waterfall { has_wf = true }; continue }
+		if c.col == .Waterfall { if app.net_prefs.waterfall { has_wf = true }; continue }
 		fixed += dt_px(c.w)
 	}
 	extra := avail - fixed
@@ -478,7 +478,7 @@ net_toolbar :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 		dt_vsep("###dt_nb0")
 		// the filter takes what the other items leave (they never shrink), but never less than DT_FILTER_MIN: on a narrow
 		// panel the last buttons run past its edge instead of the field being squeezed to nothing under them
-		prof := net_profile_of(t)
+		prof := net_profile_of(app, t)
 		fixed := dt_px(3) * 2 + dtm.btn * 4 + dtm.line * 3 + dt_btn_width(.None, "Invert") + dt_btn_width(.Pin, "Preserve log") + dt_btn_width(.None, "Disable cache") + dt_btn_width(.Throttle, prof.name, true)
 		filter_w := max(dev_width() - fixed, dt_px(DT_FILTER_MIN))
 		ui.next({width = ui.px(filter_w), height = ui.px(dtm.bar), axis = .X, cross = .Center})
@@ -488,9 +488,9 @@ net_toolbar :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 		inv := dt_btn("###dt_net_inv", .None, "Invert", tooltip = "Invert the filter", on = v.filter.invert)
 		if inv.clicked { v.filter.invert = !v.filter.invert }
 		dt_vsep("###dt_nb1")
-		pres := dt_btn("###dt_net_pres", .Pin, "Preserve log", tooltip = "Keep the requests when the page navigates", on = net_prefs.preserve)
+		pres := dt_btn("###dt_net_pres", .Pin, "Preserve log", tooltip = "Keep the requests when the page navigates", on = app.net_prefs.preserve)
 		if pres.clicked { dev_toggle_pref(app, "browser.devtools.network.preserve") }
-		dc := dt_btn("###dt_net_cache", .None, "Disable cache", tooltip = "Do not use the HTTP cache while the developer tools are open", on = net_prefs.disable_cache)
+		dc := dt_btn("###dt_net_cache", .None, "Disable cache", tooltip = "Do not use the HTTP cache while the developer tools are open", on = app.net_prefs.disable_cache)
 		if dc.clicked { dev_toggle_pref(app, "browser.devtools.network.disable_cache") }
 		throttled := net_profile_active(prof)
 		tkey := dt_menu_btn("###dt_net_throttle", .Throttle, prof.name, tooltip = throttled ? fmt.tprintf("Network speed. Held to: %s", net_profile_text(prof)) : "Network speed", on = throttled, tone = throttled ? draw.Color{0.93, 0.62, 0.10, 1} : draw.Color{})
@@ -508,11 +508,11 @@ net_toolbar :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 network_settings_items :: proc(app: ^App, t: ^Tab) {
 	ui.menu_heading("Network")
 	v := &dev().net
-	if ui.menu_item("Preserve log###dt_ns_preserve", checked = net_prefs.preserve, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.network.preserve") }
-	if ui.menu_item("Disable cache###dt_ns_cache", checked = net_prefs.disable_cache, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.network.disable_cache") }
-	if ui.menu_item("Show the waterfall###dt_ns_wf", checked = net_prefs.waterfall, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.network.waterfall") }
+	if ui.menu_item("Preserve log###dt_ns_preserve", checked = app.net_prefs.preserve, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.network.preserve") }
+	if ui.menu_item("Disable cache###dt_ns_cache", checked = app.net_prefs.disable_cache, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.network.disable_cache") }
+	if ui.menu_item("Show the waterfall###dt_ns_wf", checked = app.net_prefs.waterfall, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.network.waterfall") }
 	if ui.menu_item("Hide data: URLs###dt_ns_data", checked = v.hide_data, keep_open = true).clicked { v.hide_data = !v.hide_data }
-	if ui.menu_item("Keep audio and video bodies###dt_ns_media", checked = net_prefs.keep_media, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.network.keep_media") }
+	if ui.menu_item("Keep audio and video bodies###dt_ns_media", checked = app.net_prefs.keep_media, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.network.keep_media") }
 	if ui.menu_submenu("Columns###dt_ns_cols") { columns_menu(app, v) }
 }
 
@@ -565,7 +565,7 @@ net_table :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, menu_key: ui.Key) {
 	if v.has_sel { avail = avail * f32(config_float(app, "browser.devtools.network.split")) }
 	if avail <= 0 { avail = f32(active_window(app).win.size.x) }
 	scroll_w := dt_px(10)
-	net_layout(v, avail - scroll_w)
+	net_layout(app, v, avail - scroll_w)
 	net_header(app, t, v)
 
 	n := len(v.rows)

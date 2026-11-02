@@ -237,8 +237,8 @@ tab_settings :: proc(app: ^App, t: ^Tab) {
 			ui.spacer(ui.px(em * 0.9))
 			if ui.tags("weak") { cell(i18n.tr("Large media are blocked on sites that ask for it above"), "bs_lm_l", em * 28, true); cell(fmt.tprintf("%d KB (blocker.large_media_kb)", b.cfg.large_media_kb), "bs_lm_v", em * 14) }
 		}
-		section(i18n.tr("Updates"), "upd")
-		pref_row(app, i18n.tr("Download and update the filter lists in the background"), "blocker.update.enabled", "upd")
+		section(i18n.tr("Updates"), "app.upd")
+		pref_row(app, i18n.tr("Download and update the filter lists in the background"), "blocker.update.enabled", "app.upd")
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.1))})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.9))

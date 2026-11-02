@@ -22,6 +22,7 @@ package page
 //     see it closed, its window.opener is null, its name is cleared, and the windows it opened lose their opener.
 
 import "core:strings"
+import "core:sync"
 import "wb:base"
 import "wb:fetch"
 import "wb:host"
@@ -264,8 +265,7 @@ navigable_commit_policy :: proc(n: ^Navigable, p: ^Page, policy: Opener_Policy) 
 @(private)
 navigable_new_group :: proc(n: ^Navigable) {
 	delete_key(&navigables, n.id)
-	next_navigable_id += 1
-	n.id = next_navigable_id
+	n.id = sync.atomic_add(&next_navigable_id, 1) + 1
 	navigables[n.id] = n
 	n.opener = 0
 	n.group = n.id

@@ -202,7 +202,7 @@ forms_shell_frame :: proc(app: ^App) {
 				fv.blink_timer = host.set_timer(&app.loop, max(next, 1), 0, proc(data: rawptr) {
 					// (one frame per toggle: counted as a task as well, it asked for two)
 					if the_app != nil { host.quiet_note(&the_app.loop) }
-					if w := forms_timer_window(data); w != nil { w.own.forms.blink_timer = base.NIL_HANDLE; window_request_errand(the_app, w, .Caret) }
+					if w := forms_timer_window(the_app, data); w != nil { w.own.forms.blink_timer = base.NIL_HANDLE; window_request_errand(the_app, w, .Caret) }
 				}, wid)
 			}
 		} else {
@@ -213,7 +213,7 @@ forms_shell_frame :: proc(app: ^App) {
 	}
 	if _, _, shown := forms.current_report(f); shown && fv.report_timer == base.NIL_HANDLE {
 		fv.report_timer = host.set_timer(&app.loop, FORMS_REPORT_POLL_MS, 0, proc(data: rawptr) {
-			if w := forms_timer_window(data); w != nil { w.own.forms.report_timer = base.NIL_HANDLE; window_request(the_app, w, 1) }
+			if w := forms_timer_window(the_app, data); w != nil { w.own.forms.report_timer = base.NIL_HANDLE; window_request(the_app, w, 1) }
 		}, wid)
 	}
 }
@@ -226,8 +226,7 @@ Caret_Painted :: struct {
 
 // The window a timer of the form controls was set for (nil: it closed). An App with no window (a test's) has its bare one.
 @(private = "file")
-forms_timer_window :: proc(data: rawptr) -> ^Browser_Window {
-	app := the_app
+forms_timer_window :: proc(app: ^App, data: rawptr) -> ^Browser_Window {
 	if app == nil { return nil }
 	if len(app.windows) == 0 { return &app.bare }
 	return window_by_id(app, int(uintptr(data)))
@@ -271,16 +270,16 @@ is_rendered :: proc(p: ^page.Page, h: base.Handle) -> bool {
 // Where the border box of `h` shows, in document coordinates (physical pixels, scroll offsets of containers applied):
 // the bounds of the transformed box when a CSS transform applies.
 @(private = "file")
-layout_rect :: proc(t: ^Tab, h: base.Handle) -> (draw.Rect, bool) {
-	r, ok := lay.box_of(&t.layout, h, draw.rect_size(active_window(the_app).page_rect), t.scroll)
+layout_rect :: proc(app: ^App, t: ^Tab, h: base.Handle) -> (draw.Rect, bool) {
+	r, ok := lay.box_of(&t.layout, h, draw.rect_size(active_window(app).page_rect), t.scroll)
 	if !ok { return {}, false }
 	return draw.Rect{r.bounds.min, r.bounds.max}, true
 }
 
 // A document point relative to the border box of `h`, in the box's own (untransformed) coordinates: offsetX / offsetY.
 @(private = "file")
-layout_offset :: proc(t: ^Tab, h: base.Handle, doc_pos: [2]f32) -> ([2]f32, bool) {
-	r, ok := lay.box_of(&t.layout, h, draw.rect_size(active_window(the_app).page_rect), t.scroll)
+layout_offset :: proc(app: ^App, t: ^Tab, h: base.Handle, doc_pos: [2]f32) -> ([2]f32, bool) {
+	r, ok := lay.box_of(&t.layout, h, draw.rect_size(active_window(app).page_rect), t.scroll)
 	if !ok { return {}, false }
 	return lay.box_point_to_local(r, doc_pos) - r.border.min, true
 }
@@ -302,7 +301,7 @@ forms_content_painter :: proc(user: rawptr, dc: ^draw.Context, doc: ^dom.Documen
 scroll_into_view :: proc(app: ^App, t: ^Tab, h: base.Handle) {
 	wnd := active_window(app)
 	if t == nil || h == base.NIL_HANDLE { return }
-	r, ok := layout_rect(t, h)
+	r, ok := layout_rect(app, t, h)
 	if !ok { return }
 	view_h := wnd.page_rect.max.y - wnd.page_rect.min.y
 	if r.min.y < t.scroll { t.scroll = max(r.min.y - 16, t.layout.doc_min_y) } else if r.max.y > t.scroll + view_h { t.scroll = r.max.y - view_h + 16 }
@@ -816,7 +815,7 @@ paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: 
 	if focused && a == b && forms.is_mutable(f, node) {
 		x := math.round(origin.x + cxy.x)
 		y := origin.y + cxy.y
-		cw := max(page_scale(the_app), 1)
+		cw := max(page_scale(app), 1)
 		caret := draw.Rect{{x, y + ft.line_h * 0.1}, {x + cw, y + ft.line_h * 0.9}}
 		// (whether it shows or not: what its toggle changes on screen. In a layer or a 3D plane the picture goes through more than a transform: no region.)
 		fv.caret_painted = {at = draw.affine_bounds(draw.current_transform(dc), caret), exact = draw.layer_depth(dc) == 0 && !ctl_plane.ok}
@@ -827,7 +826,7 @@ paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: 
 		dxy := caret_xy(ft, min(at, len(edit)), size, fid, fonts)
 		x := math.round(origin.x + dxy.x)
 		y := origin.y + dxy.y
-		cw := max(page_scale(the_app), 1)
+		cw := max(page_scale(app), 1)
 		draw.rect(dc, {{x, y + ft.line_h * 0.1}, {x + cw, y + ft.line_h * 0.9}}, fg)
 	}
 }
@@ -884,8 +883,8 @@ select_rows :: proc(f: ^forms.Forms, sel: base.Handle) -> []Row {
 }
 
 @(private = "file")
-paint_rows :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, f: ^forms.Forms, rows: []Row, first: int, area: draw.Rect, row_h, size: f32, fg: draw.Color, hover: int, focused: bool, pal: ^Control_Palette) {
-	scale := page_scale(the_app)
+paint_rows :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, f: ^forms.Forms, rows: []Row, first: int, area: draw.Rect, row_h, size: f32, fg: draw.Color, hover: int, focused: bool, pal: ^Control_Palette) {
+	scale := page_scale(app)
 	draw.push_clip(dc, area)
 	defer draw.pop_clip(dc)
 	for i := first; i < len(rows); i += 1 {
@@ -914,7 +913,7 @@ paint_list_box :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: fo
 	row_h := math.ceil((m.ascent + m.descent) * 1.25)
 	sc := forms_view(app).scroll[node]
 	first := clamp(int(sc.y), 0, max(len(rows) - 1, 0))
-	paint_rows(dc, fonts, fid, f, rows, first, pt.content, row_h, pt.size, fg, -1, focused, pal)
+	paint_rows(app, dc, fonts, fid, f, rows, first, pt.content, row_h, pt.size, fg, -1, focused, pal)
 }
 
 ////////////////////////////////
@@ -924,7 +923,7 @@ forms_paint_overlays :: proc(app: ^App, dc: ^draw.Context, page_rect: draw.Rect)
 	_, p, f := current_page(app)
 	if f == nil { return }
 	fv := forms_view(app)
-	scale := page_scale(the_app)
+	scale := page_scale(app)
 	fid := app.ui_font
 	if fv.popup.open {
 		pp := &fv.popup
@@ -950,7 +949,7 @@ forms_paint_overlays :: proc(app: ^App, dc: ^draw.Context, page_rect: draw.Rect)
 			draw.rect(dc, pp.rect, pal.field, 3 * scale)
 			draw.rect(dc, pp.rect, pal.popup_border, 3 * scale, max(scale, 1))
 			inner := draw.rect_pad(pp.rect, -scale)
-			paint_rows(dc, &app.fonts, fid, f, rows, pp.first, inner, pp.row_h, size, pal.field_text, pp.hover, true, &pal)
+			paint_rows(app, dc, &app.fonts, fid, f, rows, pp.first, inner, pp.row_h, size, pal.field_text, pp.hover, true, &pal)
 			if len(rows) > visible {
 				// scroll indicator
 				track := draw.Rect{{inner.max.x - 4 * scale, inner.min.y}, inner.max}
@@ -1141,7 +1140,7 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 }
 
 @(private = "file")
-keyboard_to_page :: proc(app: ^App) -> bool { return forms_view(app).page_focus && ui.focus_key() == 0 && !ui.ctx_menu_any_open() && !setup_captures() }
+keyboard_to_page :: proc(app: ^App) -> bool { return forms_view(app).page_focus && ui.focus_key() == 0 && !ui.ctx_menu_any_open() && !setup_captures(app) }
 
 // Set when Shift+Tab leaves the page before its first element: the chrome takes the focus back from the page area.
 page_focus_leave_backward: bool
@@ -1305,7 +1304,7 @@ open_popup :: proc(app: ^App, f: ^forms.Forms, sel: base.Handle) {
 	rows := select_rows(f, sel)
 	hover := -1
 	for r, i in rows { if r.option != base.NIL_HANDLE && forms.option_selected(f, r.option) { hover = i } }
-	fv.popup = Popup{open = true, sel = sel, page_id = f.id, hover = hover, anchor = draw.rect_pad(painted_bounds(pt), 3 * page_scale(the_app))}
+	fv.popup = Popup{open = true, sel = sel, page_id = f.id, hover = hover, anchor = draw.rect_pad(painted_bounds(pt), 3 * page_scale(app))}
 	fv.popup.first = max(hover - app.page_settings.forms.select_rows / 2, 0)
 	request_frames(app)
 }
@@ -1371,7 +1370,7 @@ forms_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.
 	p := t.page
 	if p == nil || p.formctl == nil { return true }
 	f := page.page_forms(p)
-	scale := page_scale(the_app)
+	scale := page_scale(app)
 	// what the pointer is over for the scripts: an empty part of the page (the canvas, a `pointer-events: none` overlay) is the root
 	// element's, as in other browsers (hit_or_root)
 	et := hit_or_root(t, target)
@@ -1491,7 +1490,7 @@ forms_pointer_up :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Ha
 	fv := forms_view(app)
 	p := t.page
 	if p == nil { return }
-	scale := page_scale(the_app)
+	scale := page_scale(app)
 	was_down := fv.press_down
 	fv.press_down = false
 	if fv.drag == .Range && p.formctl != nil {
@@ -1531,14 +1530,14 @@ forms_pointer_up :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Ha
 // The click with its activation behaviour (checkbox toggling, buttons submitting, labels...). True when not cancelled.
 forms_click :: proc(app: ^App, t: ^Tab, target: base.Handle, ev: platform.Event, local: [2]f32) -> bool {
 	p := t.page
-	scale := page_scale(the_app)
+	scale := page_scale(app)
 	cx, cy := page_client_xy(t, local, scale)
 	info := forms.Click_Info{x = cx, y = cy, button = i32(ev.button), mods = dom_mods(ev.mods), trusted = true}
 	if p.formctl == nil {
 		return page.dispatch_event(p, target, dom.Event{type = "click", bubbles = true, cancelable = true, x = info.x, y = info.y, button = info.button})
 	}
 	f := page.page_forms(p)
-	if o, ok := layout_offset(t, target, local); ok { info.offset = {i32(o.x / scale), i32(o.y / scale)} }
+	if o, ok := layout_offset(app, t, target, local); ok { info.offset = {i32(o.x / scale), i32(o.y / scale)} }
 	ok := forms.click(f, target, info)
 	request_frames(app)
 	return ok

@@ -44,10 +44,7 @@ Global_History :: struct {
 	again:    bool,             // ... and another change came meanwhile
 	unreadable: bool,           // the file is not a history file: never overwritten
 	timer:    base.Handle,
-	app:      ^App,
 }
-
-ghist: Global_History
 
 @(private = "file")
 now_ms :: proc() -> i64 { return time.time_to_unix_nano(time.now()) / 1e6 }
@@ -211,48 +208,48 @@ history_delete :: proc(visits: ^[dynamic]Visit, ids: []u64, from_ms: i64 = 0, to
 // The profile's history
 
 @(private = "file")
-oldest_kept :: proc() -> i64 {
-	if hcfg.retention_days <= 0 { return 0 }
-	return now_ms() - i64(hcfg.retention_days) * 86_400_000
+oldest_kept :: proc(app: ^App) -> i64 {
+	if app.hcfg.retention_days <= 0 { return 0 }
+	return now_ms() - i64(app.hcfg.retention_days) * 86_400_000
 }
 
 global_history_init :: proc(app: ^App) {
-	ghist.app = app
 	if !app.cfg.persist_profile { return }
-	ghist.path = strings.concatenate({app.profile_dir, "/history.txt"})
-	data, err := os.read_entire_file(ghist.path, context.temp_allocator)
+	app.ghist.path = strings.concatenate({app.profile_dir, "/history.txt"})
+	data, err := os.read_entire_file(app.ghist.path, context.temp_allocator)
 	if err != nil { return }
-	v, next, ok := history_parse(string(data), hcfg.max_visits, oldest_kept(), hcfg.max_url_bytes)
+	v, next, ok := history_parse(string(data), app.hcfg.max_visits, oldest_kept(app), app.hcfg.max_url_bytes)
 	if !ok {
 		// not a history file: kept aside as history.txt.bad (once), a new history starts
 		visits_destroy(&v)
-		bad := strings.concatenate({ghist.path, ".bad"}, context.temp_allocator)
-		if os.exists(bad) || os.rename(ghist.path, bad) != nil { ghist.unreadable = true }
+		bad := strings.concatenate({app.ghist.path, ".bad"}, context.temp_allocator)
+		if os.exists(bad) || os.rename(app.ghist.path, bad) != nil { app.ghist.unreadable = true }
 		return
 	}
-	ghist.visits, ghist.next_id = v, next
-	ghist.serial += 1
+	app.ghist.visits, app.ghist.next_id = v, next
+	app.ghist.serial += 1
 }
 
 // Preferences changed: limits apply now.
 global_history_apply :: proc(app: ^App) {
-	if history_trim(&ghist.visits, hcfg.max_visits, oldest_kept()) { global_history_changed(app) }
+	if history_trim(&app.ghist.visits, app.hcfg.max_visits, oldest_kept(app)) { global_history_changed(app) }
 }
 
 global_history_changed :: proc(app: ^App) {
-	ghist.serial += 1
-	ghist.dirty = true
-	if ghist.path == "" || ghist.timer != base.NIL_HANDLE { return }
-	if ghist.saving { ghist.again = true; return }
-	ghist.timer = host.set_timer(&app.loop, max(hcfg.save_delay_ms, 1), 0, proc(data: rawptr) {
-		ghist.timer = base.NIL_HANDLE
-		host.quiet_note(&(^App)(data).loop)   // (the disk, not the screen)
-		global_history_save((^App)(data))
+	app.ghist.serial += 1
+	app.ghist.dirty = true
+	if app.ghist.path == "" || app.ghist.timer != base.NIL_HANDLE { return }
+	if app.ghist.saving { app.ghist.again = true; return }
+	app.ghist.timer = host.set_timer(&app.loop, max(app.hcfg.save_delay_ms, 1), 0, proc(data: rawptr) {
+		app := (^App)(data)
+		app.ghist.timer = base.NIL_HANDLE
+		host.quiet_note(&app.loop)   // (the disk, not the screen)
+		global_history_save(app)
 	}, app)
 }
 
 @(private = "file")
-Save_Job :: struct { path, text: string, ok: bool }
+Save_Job :: struct { app: ^App, path, text: string, ok: bool }
 
 @(private = "file")
 write_atomic :: proc(path, text: string) -> bool {
@@ -263,47 +260,49 @@ write_atomic :: proc(path, text: string) -> bool {
 
 // Writes the history on the blocking pool (one write at a time).
 global_history_save :: proc(app: ^App) {
-	if ghist.path == "" || !ghist.dirty || ghist.unreadable { return }
-	if ghist.saving { ghist.again = true; return }
-	ghist.dirty = false
-	ghist.saving = true
+	if app.ghist.path == "" || !app.ghist.dirty || app.ghist.unreadable { return }
+	if app.ghist.saving { app.ghist.again = true; return }
+	app.ghist.dirty = false
+	app.ghist.saving = true
 	job := new(Save_Job)
-	job.path = strings.clone(ghist.path)
-	job.text = strings.clone(history_serialize(ghist.visits[:]))
+	job.app = app
+	job.path = strings.clone(app.ghist.path)
+	job.text = strings.clone(history_serialize(app.ghist.visits[:]))
 	host.run_blocking(&app.blocking, proc(data: rawptr) {
 		j := (^Save_Job)(data)
 		j.ok = write_atomic(j.path, j.text)
 		free_all(context.temp_allocator)
 	}, proc(data: rawptr) {
 		j := (^Save_Job)(data)
-		if ghist.app != nil { host.quiet_note(&ghist.app.loop) }
-		ghist.saving = false
-		if !j.ok { ghist.dirty = true }
+		app := j.app
+		host.quiet_note(&app.loop)
+		app.ghist.saving = false
+		if !j.ok { app.ghist.dirty = true }
 		delete(j.path); delete(j.text); free(j)
-		if (ghist.again || ghist.dirty) && ghist.app != nil { ghist.again = false; global_history_changed(ghist.app) }
+		if app.ghist.again || app.ghist.dirty { app.ghist.again = false; global_history_changed(app) }
 	}, job)
 }
 
 // At exit: what is not written yet is written now, on this thread.
 global_history_shutdown :: proc(app: ^App) {
-	if ghist.saving { host.blocking_settle(&app.blocking) }   // (a write on its way: its completion frees what it holds)
-	if ghist.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, ghist.timer) }
-	if ghist.path != "" && ghist.dirty && !ghist.unreadable { _ = write_atomic(ghist.path, history_serialize(ghist.visits[:])) }
-	visits_destroy(&ghist.visits)
-	delete(ghist.path)
-	ghist = {}
+	if app.ghist.saving { host.blocking_settle(&app.blocking) }   // (a write on its way: its completion frees what it holds)
+	if app.ghist.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.ghist.timer) }
+	if app.ghist.path != "" && app.ghist.dirty && !app.ghist.unreadable { _ = write_atomic(app.ghist.path, history_serialize(app.ghist.visits[:])) }
+	visits_destroy(&app.ghist.visits)
+	delete(app.ghist.path)
+	app.ghist = {}
 }
 
 // A tab shows `address` (a new document, or a same-document change of address).
 global_history_visit :: proc(app: ^App, t: ^Tab, address, title: string) {
-	if !hcfg.global { return }
-	a := history_address(address, hcfg.record_files, hcfg.max_url_bytes)
+	if !app.hcfg.global { return }
+	a := history_address(address, app.hcfg.record_files, app.hcfg.max_url_bytes)
 	if a == "" || a == t.nav_state.last_visit { return }
 	delete(t.nav_state.last_visit)
 	t.nav_state.last_visit = strings.clone(a)
-	ghist.next_id += 1
-	append(&ghist.visits, Visit{id = ghist.next_id, at_ms = now_ms(), url = strings.clone(a), title = strings.clone(title)})
-	history_trim(&ghist.visits, hcfg.max_visits, oldest_kept())
+	app.ghist.next_id += 1
+	append(&app.ghist.visits, Visit{id = app.ghist.next_id, at_ms = now_ms(), url = strings.clone(a), title = strings.clone(title)})
+	history_trim(&app.ghist.visits, app.hcfg.max_visits, oldest_kept(app))
 	global_history_changed(app)
 }
 
@@ -311,8 +310,8 @@ global_history_visit :: proc(app: ^App, t: ^Tab, address, title: string) {
 global_history_title :: proc(app: ^App, t: ^Tab, title: string, icon := "") {
 	a := t.nav_state.last_visit
 	if a == "" || title == "" { return }
-	for i := len(ghist.visits) - 1; i >= max(len(ghist.visits) - 64, 0); i -= 1 {
-		v := &ghist.visits[i]
+	for i := len(app.ghist.visits) - 1; i >= max(len(app.ghist.visits) - 64, 0); i -= 1 {
+		v := &app.ghist.visits[i]
 		if v.url != a { continue }
 		if v.title != title { delete(v.title); v.title = strings.clone(title); global_history_changed(app) }
 		if v.icon != icon { delete(v.icon); v.icon = strings.clone(icon); global_history_changed(app) }
@@ -321,9 +320,9 @@ global_history_title :: proc(app: ^App, t: ^Tab, title: string, icon := "") {
 }
 
 global_history_remove :: proc(app: ^App, ids: []u64) {
-	if history_delete(&ghist.visits, ids) > 0 { global_history_changed(app) }
+	if history_delete(&app.ghist.visits, ids) > 0 { global_history_changed(app) }
 }
 
 global_history_remove_range :: proc(app: ^App, from_ms, to_ms: i64) {
-	if history_delete(&ghist.visits, nil, from_ms, to_ms) > 0 { global_history_changed(app) }
+	if history_delete(&app.ghist.visits, nil, from_ms, to_ms) > 0 { global_history_changed(app) }
 }

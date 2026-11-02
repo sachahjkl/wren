@@ -58,13 +58,11 @@ autoscroll_settings_from_prefs :: proc(p: ^config.Prefs) -> Autoscroll_Settings_
 	return {enabled = config.bool_of(p, "browser.scroll.autoscroll.enabled"), cfg = cfg}
 }
 
-autoscroll_cfg: Autoscroll_Settings_B
-@(private = "file") autoscroll_watch: int
-
 autoscroll_init :: proc(app: ^App) {
-	autoscroll_cfg = autoscroll_settings_from_prefs(&app.prefs)
-	autoscroll_watch = config.watch(&app.prefs, "browser.scroll.autoscroll.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		autoscroll_cfg = autoscroll_settings_from_prefs(p)
+	app.autoscroll_cfg = autoscroll_settings_from_prefs(&app.prefs)
+	app.watches[.Autoscroll] = config.watch(&app.prefs, "browser.scroll.autoscroll.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		app := (^App)(user)
+		app.autoscroll_cfg = autoscroll_settings_from_prefs(p)
 		autoscroll_toolkit_sync_all((^App)(user))
 	}, app)
 	autoscroll_toolkit_sync_all(app)
@@ -72,22 +70,22 @@ autoscroll_init :: proc(app: ^App) {
 
 // Applies the enabled flag and the curve to one toolkit state, so its scroll regions (about: pages, the chrome's own
 // lists, the developer tools) autoscroll with the same settings as the page (ui/autoscroll_region.odin).
-autoscroll_toolkit_setup :: proc(st: ^ui.State) {
+autoscroll_toolkit_setup :: proc(app: ^App, st: ^ui.State) {
 	if st == nil { return }
-	ui.set_autoscroll_enabled(st, autoscroll_cfg.enabled)
-	ui.set_autoscroll_settings(st, autoscroll_cfg.cfg)
+	ui.set_autoscroll_enabled(st, app.autoscroll_cfg.enabled)
+	ui.set_autoscroll_settings(st, app.autoscroll_cfg.cfg)
 }
 
 // Re-applies the settings to every window's toolkit state and its detached developer tools (a pref changed, or startup).
 autoscroll_toolkit_sync_all :: proc(app: ^App) {
 	for w in app.windows {
-		autoscroll_toolkit_setup(w.ui)
-		if dw := w.own.devtools.win; dw != nil { autoscroll_toolkit_setup(&dw.ui) }
+		autoscroll_toolkit_setup(app, w.ui)
+		if dw := w.own.devtools.win; dw != nil { autoscroll_toolkit_setup(app, &dw.ui) }
 	}
-	autoscroll_toolkit_setup(app.bare.ui)
+	autoscroll_toolkit_setup(app, app.bare.ui)
 }
 
-autoscroll_shutdown :: proc(app: ^App) { config.unwatch(&app.prefs, autoscroll_watch) }
+autoscroll_shutdown :: proc(app: ^App) { config.unwatch(&app.prefs, app.watches[.Autoscroll]) }
 
 // The page autoscroll session of one window: the toolkit state, the scroller it drives, and the anchor in window
 // pixels (for the marker). `applied` guards against another scroll stealing the scroller (as smooth_tick does).
@@ -106,7 +104,7 @@ autoscroll_running_page :: proc(app: ^App) -> bool { return window_own(app).auto
 // not do anything else). Never starts over a link (that opens a new tab), nor while a text field, selection or menu is
 // busy.
 autoscroll_page_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: base.Handle, allowed: bool) -> bool {
-	if !autoscroll_cfg.enabled || !allowed || t.page == nil || !t.layout.valid { return false }
+	if !app.autoscroll_cfg.enabled || !allowed || t.page == nil || !t.layout.valid { return false }
 	wnd := active_window(app)
 	if !draw.rect_contains(wnd.page_rect, ev.pos) { return false }
 	if ui.ctx_menu_any_open() { return false }
@@ -144,7 +142,7 @@ autoscroll_page_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: b
 autoscroll_page_release :: proc(app: ^App, ev: platform.Event) -> bool {
 	ps := &window_own(app).autoscroll
 	if !ps.auto.active || ev.button != .Middle || !ps.auto.held { return false }
-	if !ui.autoscroll_release(&ps.auto, autoscroll_cfg.cfg, frame_now_ms()) { autoscroll_end(app) }
+	if !ui.autoscroll_release(&ps.auto, app.autoscroll_cfg.cfg, frame_now_ms()) { autoscroll_end(app) }
 	request_frames(app, 2)
 	return true
 }
@@ -185,7 +183,7 @@ autoscroll_tick :: proc(app: ^App, t: ^Tab) -> bool {
 	}
 	pos := wnd.ui.mouse   // the window's toolkit state tracks the pointer in window pixels (same events as the page)
 	ui.autoscroll_point(&ps.auto, pos)
-	vel := ui.autoscroll_velocity(&ps.auto, autoscroll_cfg.cfg)   // CSS px / s
+	vel := ui.autoscroll_velocity(&ps.auto, app.autoscroll_cfg.cfg)   // CSS px / s
 	scale := max(page_scale(app), 0.01)
 	dt := pacer_of(app).period_ms / 1000.0
 	if vel != {} {
@@ -202,7 +200,7 @@ autoscroll_tick :: proc(app: ^App, t: ^Tab) -> bool {
 autoscroll_page_cursor :: proc(app: ^App) -> (platform.Cursor, bool) {
 	ps := &window_own(app).autoscroll
 	if !ps.auto.active { return .Arrow, false }
-	return ui.autoscroll_cursor(&ps.auto, autoscroll_cfg.cfg), true
+	return ui.autoscroll_cursor(&ps.auto, app.autoscroll_cfg.cfg), true
 }
 
 // Draws the anchor marker over everything (window pixels). Called after the UI tree and the page are composed.

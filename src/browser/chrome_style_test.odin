@@ -117,18 +117,18 @@ tab_shape_geometry :: proc(t: ^testing.T) {
 // The cache hands the same shape back for the same size (a frame that draws again builds none) and one shape per size.
 @(test)
 tab_shapes_are_cached :: proc(t: ^testing.T) {
-	tab_shapes_destroy()
-	defer tab_shapes_destroy()
-	a := tab_shape_get(metrics(200))
-	built := shape_cache.built
-	b := tab_shape_get(metrics(200))
+	cache: Shape_Cache
+	defer tab_shapes_destroy(&cache)
+	a := tab_shape_get(&cache, metrics(200))
+	built := cache.built
+	b := tab_shape_get(&cache, metrics(200))
 	testing.expect(t, a == b)
-	testing.expect_value(t, shape_cache.built, built)
-	c := tab_shape_get(metrics(120))
+	testing.expect_value(t, cache.built, built)
+	c := tab_shape_get(&cache, metrics(120))
 	testing.expect(t, c != a)
-	testing.expect_value(t, shape_cache.built, built + 1)
-	testing.expect(t, tab_shape_get(metrics(200)) == a, "the first size is still there")
-	testing.expect_value(t, shape_cache.built, built + 1)
+	testing.expect_value(t, cache.built, built + 1)
+	testing.expect(t, tab_shape_get(&cache, metrics(200)) == a, "the first size is still there")
+	testing.expect_value(t, cache.built, built + 1)
 }
 
 // Neighbours overlap: the next tab's foot covers this one's, their tops stay apart by the gap.
@@ -240,12 +240,14 @@ classic_colors_compose_with_palettes :: proc(t: ^testing.T) {
 // The classic look is the style chosen, wherever the tabs are (top, left, right); the modern one likewise.
 @(test)
 classic_on_follows_the_style_at_every_position :: proc(t: ^testing.T) {
-	saved_style, saved_pos := chrome_cfg.style, favs.cfg.position
-	defer { chrome_cfg.style, favs.cfg.position = saved_style, saved_pos }
+	app := new(App)
+	defer free(app)
+	saved_pos := app.favs.cfg.position
+	defer app.favs.cfg.position = saved_pos
 	for style in Chrome_Style {
 		for pos in Tabs_Position {
-			chrome_cfg.style, favs.cfg.position = style, pos
-			testing.expectf(t, classic_on() == (style == .Classic), "%v at %v", style, pos)
+			app.chrome_cfg.style, app.favs.cfg.position = style, pos
+			testing.expectf(t, classic_on(app) == (style == .Classic), "%v at %v", style, pos)
 		}
 	}
 }

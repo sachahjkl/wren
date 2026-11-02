@@ -39,8 +39,8 @@ DEV_DOCK_TITLES := [Dev_Dock]string{.Bottom = "Dock to bottom", .Right = "Dock t
 DEV_DOCK_COMMANDS := [Dev_Dock]string{.Bottom = "view.devtools_dock_bottom", .Right = "view.devtools_dock_right", .Left = "view.devtools_dock_left", .Floating = "view.devtools_dock_floating"}
 
 // The first shortcut of a command, as a menu shows it ("" when it has none).
-cmd_key :: proc(name: string) -> string {
-	c := command(name)
+cmd_key :: proc(app: ^App, name: string) -> string {
+	c := command(app, name)
 	return c == nil ? "" : command_shortcut_text(c)
 }
 
@@ -121,13 +121,12 @@ dev :: proc() -> ^Devtools {
 
 // (an App's that is not the_app: a unit test's)
 @(private = "file") dev_none: Devtools
-@(private = "file") dev_watch: int
 
 devtools_init :: proc(app: ^App) {
 	devtools_view_init(app, dev(), true)
 	if app.cfg.show_console && !dev().visible { dev().visible, dev().panel = true, .Console }   // browser.console.visible: the older way to ask for it
-	dev_watch = config.watch(&app.prefs, "browser.devtools.", proc(user: rawptr, name: string, p: ^config.Prefs) { devtools_pref_changed((^App)(user), name, p) }, app)
-	network_apply_prefs(&app.prefs)
+	app.watches[.Devtools] = config.watch(&app.prefs, "browser.devtools.", proc(user: rawptr, name: string, p: ^config.Prefs) { devtools_pref_changed((^App)(user), name, p) }, app)
+	network_apply_prefs(app, &app.prefs)
 	console_apply_prefs(&app.prefs)
 	console_arm_all(app)
 	app.loader.observer = {user = app, event = net_observe, block = net_blocked, throttle = net_link_for}   // devtools_net_model.odin, devtools_network.odin
@@ -168,7 +167,7 @@ devtools_pref_changed :: proc(app: ^App, name: string, p: ^config.Prefs) {
 	view_from_prefs(dev(), p, name)
 	for w in app.windows { if w != app.active { view_from_prefs(&w.own.devtools, p, "-") } }
 	console_apply_prefs(p)
-	network_apply_prefs(p)
+	network_apply_prefs(app, p)
 	console_arm_all(app)   // (the pages describe their console arguments while a panel is open)
 	for w in app.windows { window_request(app, w, 2) }
 }
@@ -178,12 +177,12 @@ devtools_view_destroy :: proc(app: ^App) {
 	devtools_window_destroy(app)
 	console_panel_destroy()
 	elements_destroy()
-	network_destroy()
+	network_destroy(app)
 	application_destroy()
 	performance_destroy()
-	memory_destroy()
+	memory_destroy(app)
 	dev()^ = {}
-	network_sync_observer()
+	network_sync_observer(app)
 	console_arm_all(app)
 }
 
@@ -191,12 +190,12 @@ devtools_view_destroy :: proc(app: ^App) {
 // keeps for them.
 devtools_destroy :: proc(app: ^App) {
 	devtools_view_destroy(app)
-	config.unwatch(&app.prefs, dev_watch)
-	net_media_release()
+	config.unwatch(&app.prefs, app.watches[.Devtools])
+	net_media_release(app)
 	net_profiles_destroy()
-	delete(net_prefs.profile)
-	net_prefs.profile = ""
-	net_destroy_owner()
+	delete(app.net_prefs.profile)
+	app.net_prefs.profile = ""
+	net_destroy_owner(app)
 }
 
 // Whether any window shows its developer tools (the loader's observer keeps bodies, the pages describe their console lines).
@@ -277,7 +276,7 @@ devtools_toggle :: proc(app: ^App) {
 	dev().visible = !dev().visible
 	if !dev().visible { dev().picking = false }
 	set_pref_bool(app, "browser.devtools.visible", dev().visible)
-	network_sync_observer()
+	network_sync_observer(app)
 	console_arm_all(app)
 	request_frames(app, 3)
 }
@@ -286,7 +285,7 @@ devtools_open :: proc(app: ^App, panel: Dev_Panel) {
 	changed := !dev().visible || dev().panel != panel
 	dev().visible, dev().panel = true, panel
 	if changed { devtools_save(app) }
-	network_sync_observer()
+	network_sync_observer(app)
 	console_arm_all(app)
 	request_frames(app, 3)
 }
@@ -300,7 +299,7 @@ devtools_set_dock :: proc(app: ^App, dock: Dev_Dock) {
 	dev().dock = dock
 	dev().visible = true
 	devtools_save(app)
-	network_sync_observer()
+	network_sync_observer(app)
 	console_arm_all(app)
 	request_frames(app, 3)
 }
@@ -379,7 +378,7 @@ devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_
 				}
 			}
 		}
-		net_media_frame_end()   // a media that was not previewed this frame is closed
+		net_media_frame_end(app)   // a media that was not previewed this frame is closed
 	}
 }
 
@@ -387,7 +386,7 @@ devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_
 // (the chrome's shortcuts would zoom the page, the toolkit's lists would scroll). Called by main.odin's frame with the
 // events of the frame; returns the others.
 devtools_events :: proc(app: ^App, events: []platform.Event, in_window := false) -> []platform.Event {
-	if !dev().visible && net_media_active() && net_media.owner == dev() { net_media_release() }
+	if !dev().visible && net_media_active(app) && app.net_media.owner == dev() { net_media_release(app) }
 	if devtools_detached() != in_window { return events }   // (the panel's rectangle is of the window it is in)
 	if !dev().visible || dev().rect.max.x <= dev().rect.min.x || ui.ctx_menu_any_open() { return events }
 	taken := false
@@ -502,7 +501,7 @@ devtools_header :: proc(app: ^App, t: ^Tab, floating: bool) {
 	if dt_bar("###dt_header", dtm.tab) {
 		// a floating panel is moved by its header: this box takes the press under the buttons
 		dt_gap(2)
-		pick := dt_btn("###dt_pick", .Inspect, tooltip = "Select an element in the page to inspect it", shortcut = cmd_key("view.devtools_pick"), on = dev().picking)
+		pick := dt_btn("###dt_pick", .Inspect, tooltip = "Select an element in the page to inspect it", shortcut = cmd_key(app, "view.devtools_pick"), on = dev().picking)
 		if pick.clicked { devtools_pick(app) }
 		dt_vsep("###dt_hs0")
 		dt_gap(2)
@@ -531,7 +530,7 @@ devtools_header :: proc(app: ^App, t: ^Tab, floating: bool) {
 			d := ui.frame_new(Tab_Draw)
 			d.icon, d.label, d.on, d.hot, d.down, d.t = DEV_PANEL_ICONS[p], DEV_PANEL_TITLES[p], on, sig.hovering, sig.dragging && sig.hovering, grow
 			d.badges, d.tones, d.badge_w, d.label_w = bs, tones, bw, lw
-			d.warn = p == .Network && net_profile_active(net_profile_of(t))
+			d.warn = p == .Network && net_profile_active(net_profile_of(app, t))
 			tb.custom, tb.custom_user = tab_paint, d
 			ui.a11y_set(tb, {role = .Tab, name = DEV_PANEL_TITLES[p], selected = on, position = int(p) + 1, set_size = len(Dev_Panel)})
 			if sig.clicked && !on {
@@ -573,13 +572,13 @@ devtools_header :: proc(app: ^App, t: ^Tab, floating: bool) {
 		dkey := dt_menu_btn("###dt_dock", DEV_DOCK_ICONS[dev().dock], tooltip = "Dock side", caret = false)
 		if ui.ctx_menu(dkey, dt_px(240)) {
 			for d in Dev_Dock {
-				if ui.menu_item(fmt.tprintf("%s###dt_dock_%d", DEV_DOCK_TITLES[d], int(d)), cmd_key(DEV_DOCK_COMMANDS[d]), checked = dev().dock == d && !devtools_detached(), icon = "").clicked { if devtools_detached() { devtools_attach(app) }; devtools_set_dock(app, d) }
+				if ui.menu_item(fmt.tprintf("%s###dt_dock_%d", DEV_DOCK_TITLES[d], int(d)), cmd_key(app, DEV_DOCK_COMMANDS[d]), checked = dev().dock == d && !devtools_detached(), icon = "").clicked { if devtools_detached() { devtools_attach(app) }; devtools_set_dock(app, d) }
 			}
 			ui.menu_separator()
 			if devtools_detached() {
-				if ui.menu_item("Dock back into the browser window###dt_dock_win", cmd_key("view.devtools_detach")).clicked { devtools_attach(app) }
+				if ui.menu_item("Dock back into the browser window###dt_dock_win", cmd_key(app, "view.devtools_detach")).clicked { devtools_attach(app) }
 			} else {
-				if ui.menu_item("Open in a separate window###dt_dock_win", cmd_key("view.devtools_detach")).clicked { devtools_detach(app) }
+				if ui.menu_item("Open in a separate window###dt_dock_win", cmd_key(app, "view.devtools_detach")).clicked { devtools_detach(app) }
 			}
 		}
 		dt_gap(2)
@@ -618,7 +617,7 @@ devtools_settings_menu :: proc(app: ^App, t: ^Tab) {
 	case .Network: network_settings_items(app, t)
 	}
 	ui.menu_separator()
-	if ui.menu_item("Select an element in the page###dt_m_pick", cmd_key("view.devtools_pick")).clicked { devtools_pick(app) }
+	if ui.menu_item("Select an element in the page###dt_m_pick", cmd_key(app, "view.devtools_pick")).clicked { devtools_pick(app) }
 	if ui.menu_item("Open the command palette###dt_m_palette", "Ctrl+Shift+P").clicked { palette_toggle(app) }
 	if ui.menu_item("Reset the layout of the panels###dt_m_layout").clicked { devtools_reset_layout(app) }
 	if ui.menu_item("Open about:config for the developer tools###dt_m_cfg").clicked { open_in_new_tab(app, "about:config?q=browser.devtools", origin = .User) }

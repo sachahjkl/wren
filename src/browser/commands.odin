@@ -49,17 +49,15 @@ Command_Registry :: struct {
 	built: bool,
 }
 
-cmds: Command_Registry
-
 // The registry, built at first use.
-commands :: proc() -> []Command {
-	if !cmds.built { commands_build(&cmds) }
-	return cmds.list[:]
+commands :: proc(app: ^App) -> []Command {
+	if !app.cmds.built { commands_build(&app.cmds) }
+	return app.cmds.list[:]
 }
 
-command :: proc(name: string) -> ^Command {
-	if !cmds.built { commands_build(&cmds) }
-	if i, ok := cmds.index[name]; ok { return &cmds.list[i] }
+command :: proc(app: ^App, name: string) -> ^Command {
+	if !app.cmds.built { commands_build(&app.cmds) }
+	if i, ok := app.cmds.index[name]; ok { return &app.cmds.list[i] }
 	return nil
 }
 
@@ -132,7 +130,7 @@ RESERVED_SHORTCUTS := [?]Shortcut{
 // chrome's single switch did). True when one ran.
 commands_dispatch :: proc(app: ^App) -> bool {
 	t := current_tab(app)
-	for &c in commands() {
+	for &c in commands(app) {
 		for s in c.keys {
 			if s.pref != "" && !config.bool_of(&app.prefs, s.pref) { continue }
 			if c.guarded && !command_enabled(app, t, &c) { continue }
@@ -146,7 +144,7 @@ commands_dispatch :: proc(app: ^App) -> bool {
 
 // A menu item for a command: its title, first shortcut, glyph, check mark and condition. True when it ran.
 menu_command :: proc(app: ^App, t: ^Tab, name: string, title := "", force_disabled := false) -> bool {
-	c := command(name)
+	c := command(app, name)
 	if c == nil { return false }
 	checked := c.checked != nil && c.checked(app, t, c)
 	if ui.menu_item(title != "" ? title : c.title, command_shortcut_text(c), checked = checked, icon = c.glyph, enabled = !force_disabled && command_enabled(app, t, c)).clicked {
@@ -194,7 +192,7 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "tab.new", title = "New tab", category = "Tabs", glyph = GLYPH_ADD, keys = keys(&r.arena, {key = .T, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_open_new(app) }})
 	add(r, {name = "tab.reopen_closed", title = "Reopen closed tab", category = "Tabs", keywords = "undo close restore", keys = keys(&r.arena, {key = .T, mods = cs}),
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(closed_tabs) > 0 },
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(app.closed_tabs) > 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { reopen_closed_tab(app) }})
 	add(r, {name = "tab.close", title = "Close tab", category = "Tabs", glyph = GLYPH_CLOSE, keys = keys(&r.arena, {key = .W, mods = ctrl}, {key = .F4, mods = ctrl}),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_close(app, active_window(app).current) }})
@@ -241,7 +239,7 @@ commands_build :: proc(r: ^Command_Registry) {
 			if gi := group_index(w.groups[:], t.group); gi >= 0 { group_set_collapsed(app, w, t.group, !w.groups[gi].collapsed) }
 		}})
 	add(r, {name = "tab.group_rename", title = i18n.tr("Rename the tab's group"), category = "Tabs", keywords = "group name title",
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.group != 0 && favs.cfg.position != .Top },
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.group != 0 && app.favs.cfg.position != .Top },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { group_rename_begin(app, t.group) }})
 	for gc in Group_Color {
 		add(r, {name = fmt.aprintf("tab.group_color.%s", GROUP_COLOR_NAMES[gc], allocator = a), title = fmt.aprintf("%s: %s", i18n.tr("Tab group colour"), GROUP_COLOR_NAMES[gc], allocator = a),
@@ -334,14 +332,14 @@ commands_build :: proc(r: ^Command_Registry) {
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return hud.cfg.bar_visible },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { toggle_status_bar(app) }})
 	add(r, {name = "view.smooth_scrolling", title = "Smooth scrolling", category = "View", keywords = "animated scroll wheel motion browser.scroll.smooth.enabled",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return smooth_cfg.enabled },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.smooth_cfg.enabled },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) {
-			if err := config.set_from_string(&app.prefs, "browser.scroll.smooth.enabled", smooth_cfg.enabled ? "false" : "true", .User); err != .None { ui.toast(.Warn, "browser.scroll.smooth.enabled: %s", config.set_error_text(err)) }
+			if err := config.set_from_string(&app.prefs, "browser.scroll.smooth.enabled", app.smooth_cfg.enabled ? "false" : "true", .User); err != .None { ui.toast(.Warn, "browser.scroll.smooth.enabled: %s", config.set_error_text(err)) }
 		}})
 	add(r, {name = "view.autoscroll", title = "Autoscroll (middle-click)", category = "View", keywords = "middle button wheel drag pan speed browser.scroll.autoscroll.enabled",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return autoscroll_cfg.enabled },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.autoscroll_cfg.enabled },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) {
-			if err := config.set_from_string(&app.prefs, "browser.scroll.autoscroll.enabled", autoscroll_cfg.enabled ? "false" : "true", .User); err != .None { ui.toast(.Warn, "browser.scroll.autoscroll.enabled: %s", config.set_error_text(err)) }
+			if err := config.set_from_string(&app.prefs, "browser.scroll.autoscroll.enabled", app.autoscroll_cfg.enabled ? "false" : "true", .User); err != .None { ui.toast(.Warn, "browser.scroll.autoscroll.enabled: %s", config.set_error_text(err)) }
 		}})
 	add(r, {name = "view.frame_statistics", title = "Frame statistics", category = "View", keywords = "fps performance hud timing", keys = keys(&r.arena, {key = .B, mods = cs}),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return hud.panel_open },
@@ -404,26 +402,26 @@ commands_build :: proc(r: ^Command_Registry) {
 	for p in NET_BUILTIN {
 		add(r, {name = fmt.aprintf("view.devtools_speed.%s", p.id, allocator = a), title = fmt.aprintf("Developer tools: network speed: %s", p.name, allocator = a), category = "View",
 			keywords = "devtools throttle throttling network speed slow offline 3g bandwidth latency", arg = p.id, enabled = has_tab,
-			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return net_profile_of(t).id == c.arg },
+			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return net_profile_of(app, t).id == c.arg },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) { net_profile_set(app, t, c.arg) }})
 	}	add(r, {name = "view.full_screen", title = "Full screen", category = "View", keywords = "fullscreen kiosk", keys = keys(&r.arena, {key = .F11}),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return platform.is_fullscreen(active_window(app).win) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { toggle_fullscreen(app) }})
 	add(r, {name = "view.tabs_in_title_bar", title = "Tabs in the title bar", category = "View", keywords = "integrated titlebar window",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return wchrome.cfg.integrated },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "browser.window.integrated_titlebar", !wchrome.cfg.integrated) }})
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.wchrome.cfg.integrated },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "browser.window.integrated_titlebar", !app.wchrome.cfg.integrated) }})
 	// the tabs along the top or in a sidebar (tab_sidebar.odin)
 	pos_titles := [Tabs_Position]string{.Top = i18n.tr("Tabs: at the top"), .Left = i18n.tr("Tabs: in a sidebar at the left"), .Right = i18n.tr("Tabs: in a sidebar at the right")}
 	for pos in Tabs_Position {
 		add(r, {name = fmt.aprintf("view.tabs_position.%s", TABS_POSITION_NAMES[pos], allocator = a), title = pos_titles[pos], category = "View", arg = TABS_POSITION_NAMES[pos],
 			keywords = "tabs sidebar vertical side bar position left right top row horizontal layout",
-			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return TABS_POSITION_NAMES[favs.cfg.position] == c.arg },
+			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return TABS_POSITION_NAMES[app.favs.cfg.position] == c.arg },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) { tabs_set_position(app, tabs_position_of(c.arg)) }})
 	}
 	add(r, {name = "view.tabs_sidebar_collapse", title = i18n.tr("Tab sidebar: icons only"), category = "View", keywords = "tabs sidebar vertical collapse narrow compact titles",
 		keys = keys(&r.arena, {key = .Comma, mods = cs}),
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return favs.cfg.position != .Top },
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return favs.cfg.side_collapsed },
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.favs.cfg.position != .Top },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.favs.cfg.side_collapsed },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tabs_toggle_collapsed(app) }})
 	for np in ui.NAMED_PALETTES {
 		name := strings.to_lower(np.name, virtual.arena_allocator(&r.arena))
@@ -440,7 +438,7 @@ commands_build :: proc(r: ^Command_Registry) {
 		add(r, {name = fmt.aprintf("view.chrome_style.%s", style, allocator = a), category = "View", arg = style,
 			title = style == "classic" ? i18n.tr("Appearance: classic tabs") : i18n.tr("Appearance: modern tabs"),
 			keywords = "chrome tabs style look trapezoid sloped angular gradient flat pill appearance interface",
-			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return (c.arg == "classic") == (chrome_cfg.style == .Classic) },
+			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return (c.arg == "classic") == (app.chrome_cfg.style == .Classic) },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) {
 				if err := config.set_from_string(&app.prefs, "browser.ui.chrome_style", c.arg, .User); err != .None { ui.toast(.Warn, "browser.ui.chrome_style: %s", config.set_error_text(err)) }
 			}})

@@ -148,11 +148,10 @@ Net_Prefs :: struct {
 	profile:     string,   // owned: the id of the speed profile the tabs start from
 }
 
-net_prefs: Net_Prefs
 
-network_apply_prefs :: proc(p: ^config.Prefs) {
-	old_profile := net_prefs.profile
-	net_prefs = {
+network_apply_prefs :: proc(app: ^App, p: ^config.Prefs) {
+	old_profile := app.net_prefs.profile
+	app.net_prefs = {
 		max_entries = int(config.int_of(p, "browser.devtools.network.max_entries")),
 		max_body = int(config.int_of(p, "browser.devtools.network.max_body_kb")) * BYTES_PER_KIB,
 		max_total = config.int_of(p, "browser.devtools.network.max_body_mb") * BYTES_PER_MIB,
@@ -162,18 +161,16 @@ network_apply_prefs :: proc(p: ^config.Prefs) {
 		waterfall = config.bool_of(p, "browser.devtools.network.waterfall"),
 	}
 	delete(old_profile)
-	net_prefs.profile = strings.clone(config.string_of(p, "browser.devtools.network.throttle"))
+	app.net_prefs.profile = strings.clone(config.string_of(p, "browser.devtools.network.throttle"))
 	net_profiles_load(config.string_of(p, "browser.devtools.network.profiles"))
-	network_sync_observer()
+	network_sync_observer(app)
 }
 
 // The loader passes on pieces of bodies only while the panel is open and keeps are allowed.
-network_sync_observer :: proc() {
-	if the_app != nil {
-		shown := devtools_any_visible(the_app)
-		the_app.loader.observer.body_limit = shown && net_prefs.max_body > 0 ? net_prefs.max_body : 0
-		the_app.loader.observer.no_cache = shown && net_prefs.disable_cache
-	}
+network_sync_observer :: proc(app: ^App) {
+	shown := devtools_any_visible(app)
+	app.loader.observer.body_limit = shown && app.net_prefs.max_body > 0 ? app.net_prefs.max_body : 0
+	app.loader.observer.no_cache = shown && app.net_prefs.disable_cache
 }
 
 ////////////////////////////////
@@ -206,7 +203,6 @@ net_log_destroy :: proc(l: ^Net_Log) {
 	l^ = {}
 }
 
-@(private = "file") net_owner: map[u64]u64   // request id -> id of its tab
 
 // The tab a scope belongs to, and the scope of its navigation (the child of the tab's scope on the way up).
 tab_of_scope :: proc(app: ^App, s: ^base.Scope) -> (t: ^Tab, nav: uintptr) {
@@ -230,15 +226,15 @@ net_entry_of :: proc(l: ^Net_Log, id: u64) -> ^Net_Entry {
 	return nil
 }
 
-net_destroy_owner :: proc() {
-	delete(net_owner)
-	net_owner = nil
+net_destroy_owner :: proc(app: ^App) {
+	delete(app.net_owner)
+	app.net_owner = nil
 }
 
 // Drops the oldest entries (a batch at a time) once the limit is passed.
 @(private = "file")
-net_trim :: proc(l: ^Net_Log) {
-	limit := max(net_prefs.max_entries, NET_LOG_MIN_ENTRIES)
+net_trim :: proc(app: ^App, l: ^Net_Log) {
+	limit := max(app.net_prefs.max_entries, NET_LOG_MIN_ENTRIES)
 	if len(l.entries) <= limit + max(limit / 8, 16) { return }
 	drop := len(l.entries) - limit
 	for &e in l.entries[:drop] {
@@ -251,15 +247,15 @@ net_trim :: proc(l: ^Net_Log) {
 
 // The bodies of a tab stay within the total: the oldest are freed first.
 @(private = "file")
-net_enforce_total :: proc(l: ^Net_Log) {
-	if l.body_bytes <= net_prefs.max_total { return }
+net_enforce_total :: proc(app: ^App, l: ^Net_Log) {
+	if l.body_bytes <= app.net_prefs.max_total { return }
 	for &e in l.entries {
 		if len(e.body) == 0 { continue }
 		l.body_bytes -= i64(len(e.body))
 		delete(e.body)
 		e.body = nil
 		e.body_cut = true
-		if l.body_bytes <= net_prefs.max_total * 3 / 4 { break }
+		if l.body_bytes <= app.net_prefs.max_total * 3 / 4 { break }
 	}
 }
 
@@ -274,11 +270,11 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 		if t == nil { return }
 		touched = t
 		if t.net.nav != nav {
-			if net_prefs.preserve && len(t.net.entries) > 0 { t.net.nav = nav } else { net_clear(&t.net); t.net.nav = nav }
+			if app.net_prefs.preserve && len(t.net.entries) > 0 { t.net.nav = nav } else { net_clear(&t.net); t.net.nav = nav }
 		}
-		if net_owner == nil { net_owner = make(map[u64]u64) }
-		net_owner[ev.id] = t.id
-		net_trim(&t.net)
+		if app.net_owner == nil { app.net_owner = make(map[u64]u64) }
+		app.net_owner[ev.id] = t.id
+		net_trim(app, &t.net)
 		if len(t.net.entries) == 0 { t.net.t0_ms = now_ms }
 		t.net.next_seq += 1
 		t.net.pending += 1
@@ -294,12 +290,12 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 			e.type = net_type_of(e)
 		}
 	case:
-		tid, found := net_owner[ev.id]
+		tid, found := app.net_owner[ev.id]
 		if !found { return }
 		t := tab_by_id(app, tid)
-		if t == nil { delete_key(&net_owner, ev.id); return }
+		if t == nil { delete_key(&app.net_owner, ev.id); return }
 		e := net_entry_of(&t.net, ev.id)
-		if e == nil { delete_key(&net_owner, ev.id); return }
+		if e == nil { delete_key(&app.net_owner, ev.id); return }
 		touched = t
 		was_pending := e.ms < 0
 		#partial switch ev.kind {
@@ -336,8 +332,8 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 				fetch.sse_feed(e.sse, ev.data, &events)
 				for se in events { net_msg_push(e, now_ms, false, false, false, transmute([]byte)se.data, se.type, se.last_event_id) }
 				e.body_total += len(ev.data)
-			} else if net_keep_body(e) {
-				room := net_prefs.max_body - len(e.body)
+			} else if net_keep_body(app, e) {
+				room := app.net_prefs.max_body - len(e.body)
 				take := min(room, len(ev.data))
 				if take > 0 {
 					append(&e.body, ..ev.data[:take])
@@ -345,7 +341,7 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 				}
 				if take < len(ev.data) { e.body_cut = true }
 				e.body_total += len(ev.data)
-				net_enforce_total(&t.net)
+				net_enforce_total(app, &t.net)
 			} else {
 				e.body_total += len(ev.data)
 				e.body_cut = true
@@ -358,7 +354,7 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 			if ev.has_timing { e.timing, e.has_timing = ev.timing, true }
 			t.net.bytes += i64(e.transfer)
 			if was_pending { t.net.pending = max(t.net.pending - 1, 0) }
-			delete_key(&net_owner, ev.id)
+			delete_key(&app.net_owner, ev.id)
 		case .Failed:
 			e.failed, e.ms = true, f32(now_ms - e.start_ms)
 			if ev.bytes > e.bytes { e.bytes = ev.bytes }
@@ -368,7 +364,7 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 			if e.is_ws { e.ws_state = .Failed }
 			t.net.bytes += i64(ev.bytes)
 			if was_pending { t.net.pending = max(t.net.pending - 1, 0) }
-			delete_key(&net_owner, ev.id)
+			delete_key(&app.net_owner, ev.id)
 		case .Ws_Response:
 			e.status = ev.status
 			delete(e.res_headers); e.res_headers = strings.clone(ev.headers)
@@ -386,7 +382,7 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 			delete(e.ws_reason); e.ws_reason = strings.clone(ev.detail)
 			e.ms = f32(now_ms - e.start_ms)
 			if was_pending { t.net.pending = max(t.net.pending - 1, 0) }
-			delete_key(&net_owner, ev.id)
+			delete_key(&app.net_owner, ev.id)
 		}
 	}
 	// whatever the event was, the rows of that tab are made again, and a frame shows it
@@ -419,9 +415,9 @@ net_msg_push :: proc(e: ^Net_Entry, now_ms: f64, out, binary, control: bool, dat
 	append(&e.msgs, m)
 }
 @(private = "file")
-net_keep_body :: proc(e: ^Net_Entry) -> bool {
-	if net_prefs.max_body <= 0 { return false }
-	if !net_prefs.keep_media && (e.dest == .Audio || e.dest == .Video || strings.has_prefix(e.mime, "audio/") || strings.has_prefix(e.mime, "video/")) { return false }
+net_keep_body :: proc(app: ^App, e: ^Net_Entry) -> bool {
+	if app.net_prefs.max_body <= 0 { return false }
+	if !app.net_prefs.keep_media && (e.dest == .Audio || e.dest == .Video || strings.has_prefix(e.mime, "audio/") || strings.has_prefix(e.mime, "video/")) { return false }
 	return true
 }
 

@@ -43,7 +43,7 @@ Picker :: struct {
 blocker_picker_active :: proc() -> bool { return pick.active }
 
 blocker_picker_begin :: proc(app: ^App, t: ^Tab) {
-	picker_reset()
+	picker_reset(app)
 	pick.active, pick.stage, pick.tab = true, 0, t.id
 	request_frames(app, 3)
 }
@@ -55,8 +55,8 @@ blocker_picker_target :: proc(app: ^App, t: ^Tab, el: base.Handle) {
 }
 
 @(private = "file")
-picker_reset :: proc() {
-	if pick.preview != nil { picker_unpreview(current_tab(the_app)) }
+picker_reset :: proc(app: ^App) {
+	if pick.preview != nil { picker_unpreview(current_tab(app)) }
 	for c in pick.cands { delete(c) }
 	delete(pick.cands); delete(pick.matches); delete(pick.field_text)
 	ui.field_destroy(&pick.field)
@@ -65,7 +65,7 @@ picker_reset :: proc() {
 
 blocker_picker_cancel :: proc(app: ^App) {
 	if !pick.active { return }
-	picker_reset()
+	picker_reset(app)
 	request_frames(app, 3)
 }
 
@@ -337,14 +337,14 @@ picker_create :: proc(app: ^App, t: ^Tab, site: string) {
 	// it applies to the page right now, as the saved filter will on the next ones
 	if t.page != nil && t.page.engine != nil { style.engine_add_injected_sheet(t.page.engine, fmt.tprintf("%s{{display:none!important}}", sel)) }
 	dash_add_filter(app, fmt.tprintf("%s##%s", site, sel))
-	picker_reset_keep_sheet()
+	picker_reset_keep_sheet(app)
 	request_frames(app, 3)
 }
 
 @(private = "file")
-picker_reset_keep_sheet :: proc() {
+picker_reset_keep_sheet :: proc(app: ^App) {
 	pick.preview = nil
-	picker_reset()
+	picker_reset(app)
 }
 
 // "Block this resource": the request URL of an image, a frame or a script, as a network filter for every site.

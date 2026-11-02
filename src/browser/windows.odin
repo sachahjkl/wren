@@ -280,31 +280,29 @@ windows_spill :: proc(app: ^App, n: int) {
 
 // The window's own wake-up for the loop: platform.wake posts to a real window that still exists, or signals the
 // auto-reset event / eventfd an offscreen (headless) window waits on (it has no message queue). Both forms are
-// thread-safe, so the loop is woken from any thread (host.post from a worker). `wake_target` is the front window the
+// thread-safe, so the loop is woken from any thread (host.post from a worker). App.wake_target is the front window the
 // loop waits on now, read atomically as a pointer (retarget runs on the UI thread; the window outlives the target).
-@(private = "file") wake_target: rawptr
-
 wake_window :: proc(user: rawptr) {
-	if w := (^platform.Window)(sync.atomic_load(&wake_target)); w != nil { platform.wake(w) }
+	app := (^App)(user)
+	if w := (^platform.Window)(sync.atomic_load(&app.wake_target)); w != nil { platform.wake(w) }
 }
 
 @(private = "file")
 wake_retarget :: proc(app: ^App) {
 	w: rawptr
 	if front := window_front(app); front != nil && front.win != nil { w = front.win }
-	sync.atomic_store(&wake_target, w)
+	sync.atomic_store(&app.wake_target, w)
 }
 
 ////////////////////////////////
 // Opening and closing windows
 
-@(private = "file") window_ids: int
+@(private = "file") window_ids: int   // (atomic: every App of the process numbers its windows from it)
 
 // The first window, opened by main before the renderer: its swap chain is the renderer's own.
 window_adopt_primary :: proc(app: ^App, w: ^platform.Window) -> ^Browser_Window {
 	bw := new(Browser_Window)
-	window_ids += 1
-	bw.id, bw.win, bw.primary, bw.ui = window_ids, w, true, new(ui.State)
+	bw.id, bw.win, bw.primary, bw.ui = sync.atomic_add(&window_ids, 1) + 1, w, true, new(ui.State)
 	bw.opened = time.tick_now()
 	append(&app.windows, bw)
 	w.user = bw
@@ -385,11 +383,11 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 		if p, ok := at.?; ok { platform.move_window(nw, p.x, p.y) }
 		bw.headless_shared = true   // renders into the primary offscreen target (no Surface of its own)
 	} else {
-		nw = platform.open_window(APP_NAME, size, on_frame = window_on_frame, transparent = fixed, integrated_title = wchrome.cfg.integrated)
+		nw = platform.open_window(APP_NAME, size, on_frame = window_on_frame, transparent = fixed, integrated_title = app.wchrome.cfg.integrated)
 		if nw == nil { free(bw); return nil }
-		platform.set_square_corners(nw, wchrome.cfg.square_corners)
+		platform.set_square_corners(nw, app.wchrome.cfg.square_corners)
 		dnd_window_attach(nw)   // dnd_shell.odin
-		when ODIN_OS == .Windows { app_commands_attach(nw.hwnd) }   // app_commands.odin (Win32 menu commands; a no-op elsewhere)
+		when ODIN_OS == .Windows { app_commands_attach(app, nw.hwnd) }   // app_commands.odin (Win32 menu commands; a no-op elsewhere)
 		if p, ok := at.?; ok { platform.move_window(nw, p.x, p.y) }
 		if nw.size.x <= 0 || nw.size.y <= 0 {
 			when ODIN_OS == .Windows {
@@ -407,14 +405,13 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 			return nil
 		}
 	}
-	window_ids += 1
-	bw.id, bw.win, bw.ui = window_ids, nw, new(ui.State)
+	bw.id, bw.win, bw.ui = sync.atomic_add(&window_ids, 1) + 1, nw, new(ui.State)
 	bw.opened = time.tick_now()
 	nw.user = bw
 	ui.init(bw.ui, &app.fonts, &app.theme)
 	bw.ui.icon_font = app.icons
 	bw.ui.mono_font = active_window(app).ui.mono_font
-	autoscroll_toolkit_setup(bw.ui)   // page_autoscroll.odin: middle-click autoscroll for this window's toolkit regions
+	autoscroll_toolkit_setup(app, bw.ui)   // page_autoscroll.odin: middle-click autoscroll for this window's toolkit regions
 	ui.use(active_window(app).ui)
 	bw.frames_requested = 4
 	devtools_view_init(app, &bw.own.devtools, false)   // devtools.odin: closed until asked for in this window (or a tab brings its own)
@@ -460,7 +457,7 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 	free(w.ui)
 	delete(w.title)
 	dnd_window_detach(w.win)
-	window_chrome_forget(w.win)
+	window_chrome_forget(app, w.win)
 	platform.destroy_window(w.win)
 	free(w)
 	if was_front || app.front == w { app.front = nil }
@@ -485,19 +482,17 @@ window_causes :: proc(app: ^App, w: ^Browser_Window) -> (causes: Frame_Causes) {
 }
 
 
-@(private = "file") pass_order: [dynamic]^Browser_Window
-@(private = "file") pass_causes: [dynamic]Frame_Causes
 
 // One pass of the loop: sleep when no window has a cause, then one frame for each window (the front one first, which runs the
 // tasks of the loop). false: the last window was closed.
 windows_pass :: proc(app: ^App) -> bool {
 	front := window_front(app)
 	// (not the temporary allocator: a frame frees it at its end, and the next window's frame is made after)
-	clear(&pass_order); clear(&pass_causes)
-	if front != nil { append(&pass_order, front) }
-	for w in app.windows { if w != front { append(&pass_order, w) } }
-	for _ in pass_order { append(&pass_causes, Frame_Causes{}) }
-	order, causes := pass_order[:], pass_causes[:]
+	clear(&app.pass_order); clear(&app.pass_causes)
+	if front != nil { append(&app.pass_order, front) }
+	for w in app.windows { if w != front { append(&app.pass_order, w) } }
+	for _ in app.pass_order { append(&app.pass_causes, Frame_Causes{}) }
+	order, causes := app.pass_order[:], app.pass_causes[:]
 	any_cause := devtools_windows_busy(app)
 	wake := 0
 	for w, i in order {
@@ -513,7 +508,7 @@ windows_pass :: proc(app: ^App) -> bool {
 		timeout := devtools_windows_timeout(app, wake)
 		if t := host.next_timeout_ms(&app.loop); t >= 0 && (timeout <= 0 || t < timeout) { timeout = max(t, 1) }
 		prof_begin(.Idle)
-		platform.wait_event(order[0].win, memcheck_wake(memory_trim_wake(timeout)))
+		platform.wait_event(order[0].win, memcheck_wake(memory_trim_wake(app, timeout)))
 		prof_end(.Idle)
 		idled = true
 		app.rates.sleeps += 1
@@ -563,7 +558,7 @@ windows_pass :: proc(app: ^App) -> bool {
 
 // A tab taken out of its window for good: its page and everything the shell keeps for it go, and it can be reopened (closed tabs).
 tab_discard :: proc(app: ^App, t: ^Tab) {
-	closed_tabs_push(t.url)
+	closed_tabs_push(app, t.url)
 	key := strings.clone(tab_key(t), context.temp_allocator)
 	tab_free(app, t)
 	page.storage_drop_session(&app.storage, key)
@@ -683,7 +678,7 @@ windows_shutdown_begin :: proc(app: ^App) {
 		window_own_destroy(app, &w.own)
 	}
 	window_activate(app, front)
-	sync.atomic_store(&wake_target, nil)
+	sync.atomic_store(&app.wake_target, nil)
 }
 
 // Every tab was freed: the lists forget them.
@@ -717,8 +712,8 @@ windows_destroy :: proc(app: ^App) {
 	}
 	delete(app.windows)
 	tab_groups_destroy(&app.bare.groups)
-	delete(pass_order); delete(pass_causes)
-	pass_order, pass_causes = nil, nil
+	delete(app.pass_order); delete(app.pass_causes)
+	app.pass_order, app.pass_causes = nil, nil
 	app.windows = nil
 	app.active, app.front = nil, nil
 }

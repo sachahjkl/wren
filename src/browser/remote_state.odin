@@ -216,12 +216,12 @@ remote_cancel_ops :: proc(why: string) -> int {
 // command palette, the element picker, full screen, downloads in progress.
 chrome_reset :: proc(app: ^App) {
 	find_close(app)
-	if palette_open() { palette_close(app) }
+	if palette_open(app) { palette_close(app) }
 	if blocker_picker_active() { blocker_picker_cancel(app) }
 	if devtools_detached() { devtools_attach(app) }
 	if dev().visible { devtools_toggle(app) }
 	if platform.is_fullscreen(active_window(app).win) { toggle_fullscreen(app) }
-	downloads_cancel_all()
+	downloads_cancel_all(app)
 }
 
 // One blank tab (or one at `address`) and no other: returns it. The tabs that stand in for a frame are not tabs.
@@ -236,7 +236,7 @@ tabs_reset :: proc(app: ^App, address: string, closed: ^int) -> ^Tab {
 	}
 	for t, i in wnd.tabs { if t == fresh { wnd.current = i } }
 	ui.field_set(&wnd.address, fresh.url)
-	closed_tabs_destroy()
+	closed_tabs_destroy(app)
 	request_frames(app, 3)
 	return fresh
 }
@@ -252,7 +252,7 @@ data_wipe :: proc(app: ^App, sum: ^api.Reset_Report) {
 }
 
 history_wipe :: proc(app: ^App, sum: ^api.Reset_Report) {
-	sum.history_visits = len(ghist.visits)
+	sum.history_visits = len(app.ghist.visits)
 	global_history_remove_range(app, 0, max(i64))
 }
 

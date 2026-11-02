@@ -37,7 +37,7 @@ History_Row_Kind :: enum u8 { Day, Visit }
 
 History_Row :: struct {
 	kind:  History_Row_Kind,
-	visit: int,      // index into ghist.visits
+	visit: int,      // index into app.ghist.visits
 	day:   string,   // Day: its heading (temp of the model's arena: model_text)
 }
 
@@ -123,7 +123,7 @@ history_title_seen :: proc(app: ^App, t: ^Tab) {
 		page.session_set_icon(&t.session, t.icon.url)
 	}
 	// the last visit belongs to the document shown: a built-in page (not recorded) or an error page has a title of its own
-	if cur != nil && history_address(cur.url, hcfg.record_files, hcfg.max_url_bytes) != t.nav_state.last_visit { return }
+	if cur != nil && history_address(cur.url, app.hcfg.record_files, app.hcfg.max_url_bytes) != t.nav_state.last_visit { return }
 	global_history_title(app, t, t.title, t.icon.url)
 }
 
@@ -145,7 +145,7 @@ nav_history_button :: proc(app: ^App, t: ^Tab, id, glyph, tooltip: string, enabl
 	nav_press := &window_own(app).nav_press
 	if sig.pressed { nav_press^ = {key = sig.box.key, at = time.tick_now()} }
 	if sig.dragging && nav_press.key == sig.box.key && !nav_press.opened {
-		if f64(time.duration_milliseconds(time.tick_since(nav_press.at))) >= hcfg.long_press_ms {
+		if f64(time.duration_milliseconds(time.tick_since(nav_press.at))) >= app.hcfg.long_press_ms {
 			nav_press.opened = true
 			open = true
 		} else {
@@ -163,7 +163,7 @@ nav_history_button :: proc(app: ^App, t: ^Tab, id, glyph, tooltip: string, enabl
 @(private = "file")
 entry_icon_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	address := (^string)(user)^
-	tex, ok := favicon_texture(address)
+	tex, ok := favicon_texture(the_app, address)   // (drawn by the App's thread: draw_tree)
 	if !ok { return }
 	r := b.rect
 	s := min(r.max.y - r.min.y, f32(tab_icon_px(the_app)))
@@ -199,7 +199,7 @@ nav_history_items :: proc(app: ^App, t: ^Tab, dir: int) {
 	em := ui.font_size()
 	sh := &t.session
 	shown := 0
-	for d := dir; shown < hcfg.menu_entries; d += dir {
+	for d := dir; shown < app.hcfg.menu_entries; d += dir {
 		e := page.session_peek(sh, d)
 		if e == nil { break }
 		shown += 1
@@ -281,10 +281,10 @@ day_heading :: proc(lt: Local_Time, today, yesterday: int, allocator := context.
 now_unix_ms :: proc() -> i64 { return time.time_to_unix_nano(time.now()) / 1e6 }
 
 @(private = "file")
-history_model :: proc(query: string) {
+history_model :: proc(app: ^App, query: string) {
 	v := &hview
-	if v.model_valid && v.model_serial == ghist.serial && v.model_query == query { return }
-	v.model_valid, v.model_serial = true, ghist.serial
+	if v.model_valid && v.model_serial == app.ghist.serial && v.model_query == query { return }
+	v.model_valid, v.model_serial = true, app.ghist.serial
 	history_rows_free()
 	delete(v.model_query)
 	v.model_query = strings.clone(query)
@@ -295,8 +295,8 @@ history_model :: proc(query: string) {
 	yl := local_time(local_midnight(now) - 1000)
 	today, yesterday := tl.year * 10000 + tl.month * 100 + tl.day, yl.year * 10000 + yl.month * 100 + yl.day
 	last_day := -1
-	for i in history_search(ghist.visits[:], query) {
-		vis := ghist.visits[i]
+	for i in history_search(app.ghist.visits[:], query) {
+		vis := app.ghist.visits[i]
 		lt := local_time(vis.at_ms)
 		key := lt.year * 10000 + lt.month * 100 + lt.day
 		if key != last_day {
@@ -339,7 +339,7 @@ history_page :: proc(app: ^App, t: ^Tab) {
 					delete(t.url); t.url = strings.clone(a)
 					address_set(app, t, a)
 					page.session_replace(&t.session, a, set_state = false)
-					sync_history(t)
+					sync_history(app, t)
 				}
 				ui.spacer(ui.px(em * 1.0))
 				if hview.mode == 0 { browsing_toolbar(app, t) } else { tree_toolbar(app, t) }
@@ -375,7 +375,7 @@ browsing_toolbar :: proc(app: ^App, t: ^Tab) {
 	ui.spacer(ui.px(em * 0.4))
 	if ui.tags("weak") {
 		ui.next({width = ui.text_size(em * 0.4), height = ui.px(ui.dense(em * 2))})
-		state := hcfg.global ? fmt.tprintf("%d visits", len(ghist.visits)) : "not recording (history.global.enabled)"
+		state := app.hcfg.global ? fmt.tprintf("%d visits", len(app.ghist.visits)) : "not recording (history.global.enabled)"
 		ui.label(fmt.tprintf("%s###h_count", state))
 	}
 }
@@ -391,7 +391,7 @@ browsing_list :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
 	query := strings.trim_space(ui.field_string(&hview.search))
 	if query != hview.model_query { ui.list_select(&hview.list.list, -1); ui.vlist_scroll_to(&hview.list, 0) }
-	history_model(query)
+	history_model(app, query)
 	delete_id: u64
 	if rows, ok := ui.vlist("###h_list", &hview.list, hview.ids[:], hview.labels[:], hview.selectable[:]); ok {
 		for i in rows.first ..< rows.last {
@@ -408,7 +408,7 @@ browsing_list :: proc(app: ^App, t: ^Tab) {
 					}
 				}
 			case .Visit:
-				vis := ghist.visits[r.visit]
+				vis := app.ghist.visits[r.visit]
 				// the whole row lights up under the pointer (and stays lit over its cross), a hand: it opens the visit
 				ui.next({height = ui.px(ui.dense(em * 2.2)), cursor = .Hand})
 				row := ui.list_row(&hview.list.list, i, hview.labels[i])
@@ -454,11 +454,11 @@ browsing_list :: proc(app: ^App, t: ^Tab) {
 	}
 	// Enter on the active row
 	if hview.list.activated && hview.list.sel >= 0 && hview.list.sel < len(hview.rows) && hview.rows[hview.list.sel].kind == .Visit {
-		visit_open(app, t, ghist.visits[hview.rows[hview.list.sel].visit].url, false)
+		visit_open(app, t, app.ghist.visits[hview.rows[hview.list.sel].visit].url, false)
 		return
 	}
 	if hview.list.focused && ui.key_press(.Delete) && hview.list.sel >= 0 && hview.list.sel < len(hview.rows) && hview.rows[hview.list.sel].kind == .Visit {
-		ids := []u64{ghist.visits[hview.rows[hview.list.sel].visit].id}
+		ids := []u64{app.ghist.visits[hview.rows[hview.list.sel].visit].id}
 		global_history_remove(app, ids)
 	}
 	row_menu(app, t)
@@ -472,9 +472,9 @@ row_menu :: proc(app: ^App, t: ^Tab) {
 @(private = "file")
 row_menu_items :: proc(app: ^App, t: ^Tab) {
 	at := -1
-	for v, i in ghist.visits { if v.id == hview.menu_visit { at = i; break } }
+	for v, i in app.ghist.visits { if v.id == hview.menu_visit { at = i; break } }
 	if at < 0 { ui.ctx_menu_close(); return }
-	address := strings.clone(ghist.visits[at].url, context.temp_allocator)
+	address := strings.clone(app.ghist.visits[at].url, context.temp_allocator)
 	if ui.menu_item("Open").clicked { ui.ctx_menu_close(); visit_open(app, t, address, false); return }
 	if ui.menu_item("Open in a new tab").clicked { ui.ctx_menu_close(); visit_open(app, t, address, true); return }
 	if ui.menu_item("Copy address", icon = GLYPH_COPY).clicked { clip_set(address); ui.ctx_menu_close() }
@@ -489,7 +489,7 @@ row_menu_items :: proc(app: ^App, t: ^Tab) {
 	if h := host_of(address); h != "" {
 		if ui.menu_item(fmt.tprintf("Delete every visit of %s###h_del_host", safe_label(h))).clicked {
 			ids := make([dynamic]u64, context.temp_allocator)
-			for v in ghist.visits { if host_of(v.url) == h { append(&ids, v.id) } }
+			for v in app.ghist.visits { if host_of(v.url) == h { append(&ids, v.id) } }
 			global_history_remove(app, ids[:])
 			ui.ctx_menu_close()
 		}
@@ -523,7 +523,7 @@ tree_toolbar :: proc(app: ^App, t: ^Tab) {
 	if tt != nil {
 		if ui.tags("weak") {
 			ui.next({width = ui.text_size(em * 0.4), height = ui.px(ui.dense(em * 2))})
-			ui.label(fmt.tprintf("%d entries \u00b7 %d on the path \u00b7 %d cached###h_tree_count", tt.session.count, page.session_length(&tt.session), bfcache_count(tt)))
+			ui.label(fmt.tprintf("%d entries \u00b7 %d on the path \u00b7 %d cached###h_tree_count", tt.session.count, page.session_length(&tt.session), bfcache_count(app, tt)))
 		}
 	}
 }
@@ -573,9 +573,9 @@ address_host :: proc(a: string) -> string {
 	return s
 }
 
-bfcache_count :: proc(t: ^Tab) -> int {
+bfcache_count :: proc(app: ^App, t: ^Tab) -> int {
 	n := 0
-	for e in bf.entries { if e.tab == t.id { n += 1 } }
+	for e in app.bf.entries { if e.tab == t.id { n += 1 } }
 	return n
 }
 

@@ -1,263 +1,564 @@
-# The globals of src\browser and their class (src\tools\test_all\lint_globals.odin fails on one that is not here). "<file> <name> <class>  # why".
-# process: the process's; window: one window's (to move into Browser_Window); page: one page's or tab's (to move into Page / Tab);
-# test: a test's. Inventory of 2026-10-27 (refactor T4); see windows.odin.
-about_card_engrave.odin engr_cache process  # a cache of the process
-about_card_relief.odin GLYPHS process  # a table
-about_card_seal.odin SEAL_TICK process  # a table
-about_pages.odin ABOUT_PAGES process  # a table
-app_commands.odin APP_COMMAND_PREFS process  # a table
-app_commands_windows.odin cmd_hwnd process
-appearance_other.odin watch_app process  # the colour-scheme watcher (the platform's bus connection)
-appearance_windows.odin LOOK_KEYS process  # a table
-appearance_windows.odin look_watch process  # preferences read once and on change
-bfcache.odin bf process
-blocker_dashboard.odin DASH_NAMES process  # a table
-blocker_dashboard.odin dash page  # the blocker's dashboard page
-blocker_measure.odin lm process
-blocker_measure.odin report_path process
-blocker_measure.odin settle_ms process
-blocker_measure.odin checked process
-blocker_picker.odin pick page  # the element picker on a page
-blocker_shell.odin bl process
-blocker_ui.odin SHIELD_GREEN process  # a table
-blocker_ui.odin SHIELD_AMBER process  # a table
-blocker_ui.odin SHIELD_GREY process  # a table
-blocker_ui.odin BLOCK_RED process  # a table
-blocker_ui.odin COLUMNS process  # a table
-canvas_gpu.odin cgpu process
-canvas_gpu_test.odin test_lock test
-canvas_gpu_test.odin op_global test
-canvas_gpu_test.odin test_glyph_a test
-canvas_gpu_test.odin test_glyph_o test
-canvas_shell.odin outline_cache page  # cached outlines of a page's canvas text
-canvas_shell.odin color_glyph_cache process  # the cache of the colour glyph bitmaps of the canvas text (cleared with the canvases)
-canvas_shell.odin color_glyph_next_uid process  # the next name of a cached colour glyph bitmap
-cdp.odin the_cdp process  # the DevTools-protocol server of the process (the debugging port)
-chrome_style.odin CHROME_PREFS process  # a table
-chrome_style.odin chrome_cfg process  # preferences read once and on change
-chrome_style.odin chrome_watch process  # preferences read once and on change
-chrome_style.odin shape_cache process
-chrome_style.odin cur_gap process
-commands.odin cmds process
-commands.odin RESERVED_SHORTCUTS process  # a table
-compositor.odin COMPOSITOR_PREFS process  # a table
-compositor.odin compositor_settings process  # preferences read once and on change
-compositor.odin composite_stats process
-compositor.odin comp_stuck process  # the fixed and sticky parts of the last paint (window pixels)
-compositor.odin comps process
-compositor_test.odin compositor_test_lock test
-console_eval.odin GLOBALS process  # a table
-console_eval.odin MEMBERS process  # a table
-context_menu.odin closed_tabs process
-crash_recovery.odin CRASH_PREFS process  # a table
-crash_recovery.odin recovery process
-date_display_other.odin MONTHS_ABBR process  # a table
-demos.odin DEMOS_PREFS process  # a table
-demos.odin DEMO_THEME_TITLES process  # a table
-demos.odin DEMOS process  # a table
-desktop_shell.odin DESKTOP_PREFS process  # a table
-desktop_shell.odin dsk process
-devtools.odin DEV_DOCK_NAMES process  # a table
-devtools.odin DEV_PANEL_NAMES process  # a table
-devtools.odin DEV_PANEL_TITLES process  # a table
-devtools.odin DEV_PANEL_ICONS process  # a table
-devtools.odin DEV_DOCK_TITLES process  # a table
-devtools.odin DEV_DOCK_COMMANDS process  # a table
-devtools.odin DEV_DOCK_ICONS process  # a table
-devtools.odin DEVTOOLS_PREFS process  # a table
-devtools.odin dev_none test  # the developer tools of an App that is not the_app (a unit test's); a window's are Window_Own.devtools
-devtools.odin dev_watch process  # preferences read once and on change
-devtools_console_log.odin CONSOLE_PREFS process  # a table
-devtools_console_log.odin con_prefs process  # preferences read once and on change
-devtools_elements.odin VOID_ELEMENTS process  # a table
-devtools_kit.odin dtm process
-devtools_kit.odin dtc process
-devtools_net_detail.odin DETAIL_TABS process  # a table
-devtools_net_detail.odin DETAIL_PREFS process  # a table
-devtools_net_detail.odin TABS_STREAM process  # a table
-devtools_net_detail.odin TABS_PLAIN process  # a table
-devtools_net_detail.odin TABS_ALL process  # a table
-devtools_net_media.odin net_media process
-devtools_net_model.odin NET_TYPE_NAMES process  # a table
-devtools_net_model.odin NET_TYPE_LONG process  # a table
-devtools_net_model.odin NET_TYPE_ICONS process  # a table
-devtools_net_model.odin NETWORK_PREFS process  # a table
-devtools_net_model.odin net_prefs process  # preferences read once and on change
-devtools_net_model.odin net_owner process
-devtools_net_model.odin NET_COL_NAMES process  # a table
-devtools_net_model.odin NET_COL_TITLES process  # a table
-devtools_net_preview.odin FONT_FORMAT_NAMES process  # a table of the names of the font formats
-devtools_net_preview.odin HEADING_SCALE process  # a table
-devtools_net_throttle.odin NET_BUILTIN process  # a table
-devtools_net_throttle.odin net_custom process
-devtools_performance.odin perf_names process
-devtools_styles.odin ELEMENTS_PREFS process  # a table
-devtools_styles.odin SIDE_TABS process  # a table
-devtools_styles.odin SIDE_PREFS process  # a table
-devtools_syntax.odin JS_KEYWORDS process  # a table
-devtools_syntax.odin JS_ATOMS process  # a table
-dnd_image.odin DND_IMAGE_PREFS process  # a table
-dnd_image.odin dimg page  # the picture of the page's drag
-dnd_image.odin dnd_last_picture page  # the picture of the page's drag
-dnd_shell.odin DND_PREFS process  # a table
-dnd_shell.odin dnd page  # the drag of a page (one at a time in the process)
-download.odin DOWNLOAD_PREFS process  # a table
-download.odin dls process
-download.odin dl_picking process  # the folder dialog of the downloads page is open
-download_test.odin downloads_test_lock test
-downloads_ui.odin dview page  # about:downloads' view (a page of the browser) and the button's drop-down
-drag_probe.odin drag_probe process
-drag_probe.odin drag_probe_moves process
-effects_cache.odin fx_settings process  # preferences read once and on change
-effects_cache.odin FX_CACHE_PREFS process  # a table
-favicon.odin TAB_PREFS process  # a table
-favicon.odin favs process
-first_paint.odin FIRST_PAINT_PREFS process  # a table
-first_paint.odin scheme_ui process
-first_paint.odin first_paint_watch process  # preferences read once and on change
-first_paint.odin first_paint_timer process
-font_settings.odin FONT_PREFS process  # a table
-font_settings.odin emoji_applied process
-font_settings.odin font_watch process  # preferences read once and on change
-font_settings.odin text_watch process  # preferences read once and on change
-fonts.odin ALIASES process  # a table
-fonts.odin text_ctx process
-forms_plane.odin ctl_plane process
-forms_shell.odin page_focus_leave_backward page
-frame_log.odin frame_log process
-frames_shell.odin frame_views page  # the views of the frames (iframes) of pages
-frames_shell.odin frame_tab_ids page  # which tab each frame view is in
-frames_shell.odin paint_stack page  # the frames being painted
-fs_shell.odin ask_state page  # a page's file system permission prompt
-global_history.odin ghist process
-gpu_steps.odin gpu_steps_state process
-gpu_steps.odin GPU_STEP_NAMES process  # a table
-gpu_steps.odin gpu_slow process
-gpu_steps.odin gpu_slow_frames process
-gpu_steps.odin gpu_kept process
-history_settings.odin HISTORY_PREFS process  # a table
-history_settings.odin hcfg process  # preferences read once and on change
-history_settings.odin history_watch process  # preferences read once and on change
-history_tree.odin HISTORY_TREE_PREFS process  # a table
-history_tree.odin tcfg process  # preferences read once and on change
-history_tree.odin tree_watch process  # preferences read once and on change
-history_tree.odin tview page  # about:history's tree view
-history_ui.odin hview page  # about:history's view (a page of the browser)
-history_ui.odin WEEKDAYS process  # a table
-history_ui.odin MONTHS process  # a table
-hud.odin HUD_PREFS process  # a table
-hud.odin HUD_SERIES_NAMES process  # a table
-hud.odin HUD_SERIES_HELP process  # a table
-hud.odin hud process
-hud.odin TITLE_FIELD_NAMES process  # a table
-images_shell.odin shell process
-instance_shell.odin INSTANCE_PREFS process  # a table
-instance_shell.odin inst process  # one single-instance channel per process
-interaction_settings.odin INTERACTION_PREFS process  # a table
-license_shell.odin LICENSE_PREFS process  # a table
-license_shell.odin memory_text process
-license_shell.odin memory_len process
-license_shell.odin memory_seeded process
-local_paths.odin LOCAL_PATH_PREFS process  # a table
-local_paths_windows.odin drop_hwnd process
-main.odin the_app process
-main.odin tab_ids process
-main.odin headless_software process  # the renderer the next headless App is made on (browser.Options would take it: there is no such thing yet)
-measure_test.odin MEASURE_TEXTS test
-memcheck.odin driver process
-memory_trim.odin MEMORY_PREFS process  # a table
-memory_trim.odin trim_state process
-newtab_art.odin ART_PREFS process  # a table
-newtab_art.odin art process  # the artistic new tab's cache, task and preferences
-newtab_art.odin ART_COMMONS_CATEGORIES process  # a table
-os_settings.odin OS_SETTINGS_PREFS process  # a table
-os_settings.odin os_anim process
-pacing.odin FRAME_PREFS process  # a table
-page_autoscroll.odin AUTOSCROLL_PREFS process  # a table
-page_autoscroll.odin autoscroll_cfg process  # preferences read once and on change
-page_autoscroll.odin autoscroll_watch process  # preferences read once and on change
-page_cursor.odin CURSOR_PREFS process  # a table
-page_cursor.odin ccfg process  # preferences read once and on change
-page_cursor.odin pcs process  # the preference watch and the log's path (a window's cursors: Window_Own.cursor)
-page_thread.odin PAGE_THREAD_PREFS process  # a table
-page_thread.odin pt process
-page_thread.odin pt_thread_id process
-paint_backgrounds.odin gradient_dither process
-paint_effects.odin EFFECTS_PREFS process  # a table
-paint_effects.odin effects_settings process  # preferences read once and on change
-paint_effects.odin effects_watch process  # preferences read once and on change
-paint_effects.odin effects_font_watch process  # preferences read once and on change
-paint_masks.odin text_clip_caches process
-paint_planes.odin PLANE_PREFS process  # a table
-paint_planes.odin plane_settings process  # preferences read once and on change
-paint_planes.odin planes_watch process  # preferences read once and on change
-paint_planes.odin planes_culled process
-paint_planes.odin plane_mem process
-paint_planes.odin plane_settle process
-paint_srgb_test.odin png_tex test
-palette.odin PALETTE_PREFS process  # a table
-palette.odin cpal process  # preferences read once and on change
-prefs_apply.odin prefs_apply_counts process
-print.odin PRINT_PREFS process  # a table
-print.odin print_last process
-prof.odin phase_clock process
-prof.odin qpc_freq_cached process  # the performance counter's frequency, read once
-remote_methods.odin inject_held process
-remote_shell.odin the_remote process
-remote_shell.odin remote_exit_code process
-remote_shell.odin remote_fast_exit process
-remote_state.odin KEEP_NAMES process  # a table
-render.odin page_render process
-render_settings.odin RENDER_PREFS process  # a table
-render_settings.odin render_settings process  # preferences read once and on change
-render_settings.odin render_watch process  # preferences read once and on change
-search_engines.odin BUILTIN_ENGINES process  # a table
-search_engines.odin sengines process  # the list of engines of the profile
-selection_shell.odin ix process
-selection_shell.odin ix_watch process  # preferences read once and on change
-selection_shell.odin spaint page  # the painted selection of a page
-session.odin SESSION_PREFS process  # a table
-session.odin session_last process
-session.odin rest_text process
-settings.odin PREFS process  # a table
-setup.odin SETUP_PAYLOAD process  # a table
-setup.odin stp process
-setup.odin SETUP_PREFS process  # a table
-setup_test_windows.odin TEST_FILE_TYPES test
-shaders.odin CARD_FOIL_PASSES process  # a table
-shaders.odin CARD_FOIL_ARGS process  # a table
-shaders.odin SHADERS process  # a table
-shaders.odin shader_states process  # the shaders of the process
-shell_frames.odin SHELL_FRAME_PREFS process  # a table
-shell_frames.odin chrome_frames process
-smooth_scroll.odin SCROLL_PREFS process  # a table
-smooth_scroll.odin smooth_cfg process  # preferences read once and on change
-smooth_scroll.odin smooth_watch process  # preferences read once and on change
-smooth_scroll_test.odin CURVES test
-storage_access_shell.odin sa_queue page  # the pages' storage access prompts
-tab_drag.odin tab_drag process
-tab_groups.odin TAB_GROUP_PREFS process  # a table
-tab_groups.odin GROUP_COLOR_NAMES process  # a table
-tab_groups.odin GROUP_COLOR_HEX process  # a table
-tab_sidebar.odin SIDEBAR_PREFS process  # a table
-tab_sidebar.odin TABS_POSITION_NAMES process  # a table
-tab_sidebar.odin TITLEBAR_SLOT_IDS process  # a table
-tab_sound.odin TAB_SOUND_PREFS process  # a table
-test_globals_test.odin page_render_test_mutex test
-third_party.odin LICENSE_TEXTS process  # a table
-touch_shell.odin TOUCH_PREFS process  # a table
-touch_shell.odin tsh process
-update_check.odin upd process
-urlbar.odin URLBAR_PREFS process  # a table
-urlbar.odin ub process  # the history index, its build, the preferences (a window's suggestions: Window_Own.urlbar)
-urlbar_test.odin globals_lock test
-video_fast_path.odin vfast process  # the video fast path: what each video drew in the last page frame
-video_shell.odin vshell page  # the pages' video players
-web_font_faces.odin WEB_FACE_PREFS process  # a table
-web_font_faces.odin GENERIC_FAMILIES process  # a table
-window_chrome.odin WINDOW_PREFS process  # a table
-window_chrome.odin wchrome process  # the preferences, the exe's icon, the system menu asked for (full screen's bars: Window_Own.full)
-windows.odin wake_target process
-windows.odin window_ids process
-windows.odin pass_order process
-windows.odin pass_causes process
+# The globals of the browser's packages (src\browser, src\page, src\style, src\layout, src\media, src\js) and their class: src\tools\test_all\lint_globals.odin fails on one that is not
+# here, on one listed that is gone, and on a class that is not what the code says. "<dir>/<file> <name> <class>  # why". The rule is docs\architecture.md, "Where state lives".
+# const: a table, written once and only read (any thread). process: a resource of the process, one whatever the number of Apps (locked, atomic, or bound to a thread the note
+# names). app: one App's state still in a global (to move into App: two Apps would share it). window: one window's (to move into Browser_Window). page: one page's or tab's
+# (to move into Page / Tab). thread: @(thread_local). test: a test's.
+browser/about_card_engrave.odin engr_cache thread  # the engraved cards' textures, of the thread that draws them
+browser/about_card_relief.odin GLYPHS const  # a table
+browser/about_card_seal.odin SEAL_TICK const  # a table
+browser/about_pages.odin ABOUT_PAGES const  # a table
+browser/app_commands.odin APP_COMMAND_PREFS const  # a table
+browser/appearance_other.odin watch_app app  # the App the colour-scheme watcher tells (the platform's bus connection)
+browser/appearance_windows.odin LOOK_KEYS const  # a table
+browser/appearance_windows.odin look_watch app  # preferences read once and on change
+browser/blocker_dashboard.odin DASH_NAMES const  # a table
+browser/blocker_dashboard.odin dash page  # the blocker's dashboard page
+browser/blocker_measure.odin lm app  # a measure of the App's loads (WREN_BLOCKER_MEASURE)
+browser/blocker_measure.odin report_path app  # ... its report
+browser/blocker_measure.odin settle_ms app  # ... its settle time
+browser/blocker_measure.odin checked app  # ... the environment read
+browser/blocker_picker.odin pick page  # the element picker on a page
+browser/blocker_shell.odin bl app  # the content blocker of the App's loader
+browser/blocker_ui.odin SHIELD_GREEN const  # a table
+browser/blocker_ui.odin SHIELD_AMBER const  # a table
+browser/blocker_ui.odin SHIELD_GREY const  # a table
+browser/blocker_ui.odin BLOCK_RED const  # a table
+browser/blocker_ui.odin COLUMNS const  # a table
+browser/canvas_gpu.odin cgpu app  # the canvases drawn on the App's renderer
+browser/canvas_gpu_test.odin test_lock test
+browser/canvas_gpu_test.odin op_global test
+browser/canvas_gpu_test.odin test_glyph_a test
+browser/canvas_gpu_test.odin test_glyph_o test
+browser/canvas_shell.odin outline_cache page  # cached outlines of a page's canvas text
+browser/canvas_shell.odin color_glyph_cache thread  # the cache of the colour glyph bitmaps of the canvas text (cleared with the canvases), of the thread that draws them
+browser/canvas_shell.odin color_glyph_next_uid thread  # the next name of a cached colour glyph bitmap, of that thread
+browser/cdp.odin the_cdp process  # the DevTools-protocol server of the process (the debugging port: one per process)
+browser/chrome_style.odin CHROME_PREFS const  # a table
+browser/chrome_style.odin cur_gap window  # where the current tab of the window being drawn meets its toolbar
+browser/commands.odin RESERVED_SHORTCUTS const  # a table
+browser/compositor.odin COMPOSITOR_PREFS const  # a table
+browser/compositor.odin compositor_settings app  # preferences read once and on change
+browser/compositor.odin composite_stats thread  # the last composited frame's diagnostics, of the thread that paints
+browser/compositor.odin comp_stuck thread  # the fixed and sticky parts of the last paint (window pixels), of the thread that paints
+browser/compositor.odin comps thread  # the compositor's layers of each layout, of the thread that paints
+browser/compositor_test.odin compositor_test_lock test
+browser/console_eval.odin GLOBALS const  # a table
+browser/console_eval.odin MEMBERS const  # a table
+browser/crash_recovery.odin CRASH_PREFS const  # a table
+browser/crash_recovery.odin recovery app  # the profile's marker and snapshot
+browser/date_display_other.odin MONTHS_ABBR const  # a table
+browser/demos.odin DEMOS_PREFS const  # a table
+browser/demos.odin DEMO_THEME_TITLES const  # a table
+browser/demos.odin DEMOS const  # a table
+browser/desktop_shell.odin DESKTOP_PREFS const  # a table
+browser/desktop_shell.odin dsk app  # the desktop integration's job and status
+browser/devtools.odin DEV_DOCK_NAMES const  # a table
+browser/devtools.odin DEV_PANEL_NAMES const  # a table
+browser/devtools.odin DEV_PANEL_TITLES const  # a table
+browser/devtools.odin DEV_PANEL_ICONS const  # a table
+browser/devtools.odin DEV_DOCK_TITLES const  # a table
+browser/devtools.odin DEV_DOCK_COMMANDS const  # a table
+browser/devtools.odin DEV_DOCK_ICONS const  # a table
+browser/devtools.odin DEVTOOLS_PREFS const  # a table
+browser/devtools.odin dev_none test  # the developer tools of an App that is not the_app (a unit test's); a window's are Window_Own.devtools
+browser/devtools_console_log.odin CONSOLE_PREFS const  # a table
+browser/devtools_console_log.odin con_prefs app  # preferences read once and on change
+browser/devtools_elements.odin VOID_ELEMENTS const  # a table
+browser/devtools_kit.odin dtm app  # the developer tools' metrics (the App's fonts)
+browser/devtools_kit.odin dtc app  # the developer tools' colours
+browser/devtools_net_detail.odin DETAIL_TABS const  # a table
+browser/devtools_net_detail.odin DETAIL_PREFS const  # a table
+browser/devtools_net_detail.odin TABS_STREAM const  # a table
+browser/devtools_net_detail.odin TABS_PLAIN const  # a table
+browser/devtools_net_detail.odin TABS_ALL const  # a table
+browser/devtools_net_model.odin NET_TYPE_NAMES const  # a table
+browser/devtools_net_model.odin NET_TYPE_LONG const  # a table
+browser/devtools_net_model.odin NET_TYPE_ICONS const  # a table
+browser/devtools_net_model.odin NETWORK_PREFS const  # a table
+browser/devtools_net_model.odin NET_COL_NAMES const  # a table
+browser/devtools_net_model.odin NET_COL_TITLES const  # a table
+browser/devtools_net_preview.odin FONT_FORMAT_NAMES const  # a table of the names of the font formats
+browser/devtools_net_preview.odin HEADING_SCALE const  # a table
+browser/devtools_net_throttle.odin NET_BUILTIN const  # a table
+browser/devtools_net_throttle.odin net_custom app  # the profile's throttling profiles
+browser/devtools_performance.odin perf_names const  # a table
+browser/devtools_styles.odin ELEMENTS_PREFS const  # a table
+browser/devtools_styles.odin SIDE_TABS const  # a table
+browser/devtools_styles.odin SIDE_PREFS const  # a table
+browser/devtools_syntax.odin JS_KEYWORDS const  # a table
+browser/devtools_syntax.odin JS_ATOMS const  # a table
+browser/dnd_image.odin DND_IMAGE_PREFS const  # a table
+browser/dnd_image.odin dimg page  # the picture of the page's drag
+browser/dnd_image.odin dnd_last_picture page  # the picture of the page's drag
+browser/dnd_shell.odin DND_PREFS const  # a table
+browser/dnd_shell.odin dnd page  # the drag of a page (one at a time in the process)
+browser/download.odin DOWNLOAD_PREFS const  # a table
+browser/downloads_ui.odin dview page  # about:downloads' view (a page of the browser) and the button's drop-down
+browser/drag_probe.odin drag_probe app  # the measure of a drag (frames, moves)
+browser/effects_cache.odin fx_settings app  # preferences read once and on change
+browser/effects_cache.odin FX_CACHE_PREFS const  # a table
+browser/favicon.odin TAB_PREFS const  # a table
+browser/first_paint.odin FIRST_PAINT_PREFS const  # a table
+browser/first_paint.odin scheme_ui app  # preferences read once and on change
+browser/font_settings.odin FONT_PREFS const  # a table
+browser/font_settings.odin font_watch app  # preferences read once and on change
+browser/font_settings.odin text_watch app  # preferences read once and on change
+browser/fonts.odin ALIASES const  # a table
+browser/fonts.odin text_ctx thread  # what the text API of the thread measures with (a page thread lays out while the App's thread draws)
+browser/forms_plane.odin ctl_plane thread  # the plane a control is painted in, of the thread that paints
+browser/forms_shell.odin page_focus_leave_backward page
+browser/frames_shell.odin frame_views page  # the views of the frames (iframes) of pages
+browser/frames_shell.odin frame_tab_ids page  # which tab each frame view is in
+browser/frames_shell.odin paint_stack page  # the frames being painted
+browser/fs_shell.odin ask_state page  # a page's file system permission prompt
+browser/gpu_steps.odin gpu_steps_state app  # the GPU steps of the App's frames
+browser/gpu_steps.odin GPU_STEP_NAMES const  # a table
+browser/history_settings.odin HISTORY_PREFS const  # a table
+browser/history_tree.odin HISTORY_TREE_PREFS const  # a table
+browser/history_tree.odin tcfg app  # preferences read once and on change
+browser/history_tree.odin tview page  # about:history's tree view
+browser/history_ui.odin hview page  # about:history's view (a page of the browser)
+browser/history_ui.odin WEEKDAYS const  # a table
+browser/history_ui.odin MONTHS const  # a table
+browser/hud.odin HUD_PREFS const  # a table
+browser/hud.odin HUD_SERIES_NAMES const  # a table
+browser/hud.odin HUD_SERIES_HELP const  # a table
+browser/hud.odin hud app  # the status bar's statistics of the App's frames
+browser/hud.odin TITLE_FIELD_NAMES const  # a table
+browser/images_shell.odin shell app  # the images' textures on the App's renderer
+browser/instance_shell.odin INSTANCE_PREFS const  # a table
+browser/instance_shell.odin inst process  # one single-instance channel per process
+browser/interaction_settings.odin INTERACTION_PREFS const  # a table
+browser/license_shell.odin LICENSE_PREFS const  # a table
+browser/local_paths.odin LOCAL_PATH_PREFS const  # a table
+browser/main.odin the_app thread  # the App of this thread (its loop's, its page thread's): what code that has no ^App reaches
+browser/main.odin tab_ids process  # atomic: a tab's id is unique in the process
+browser/main.odin headless_software process  # the renderer the next headless App is made on (browser.Options would take it: there is no such thing yet)
+browser/measure_test.odin MEASURE_TEXTS test
+browser/memcheck.odin driver process  # the check build's script (one per process)
+browser/memory_trim.odin MEMORY_PREFS const  # a table
+browser/newtab_art.odin ART_PREFS const  # a table
+browser/newtab_art.odin art app  # the artistic new tab's cache, task and preferences
+browser/newtab_art.odin ART_COMMONS_CATEGORIES const  # a table
+browser/os_settings.odin OS_SETTINGS_PREFS const  # a table
+browser/os_settings.odin os_anim app  # the system's animation setting, read and watched
+browser/pacing.odin FRAME_PREFS const  # a table
+browser/page_autoscroll.odin AUTOSCROLL_PREFS const  # a table
+browser/page_cursor.odin CURSOR_PREFS const  # a table
+browser/page_thread.odin PAGE_THREAD_PREFS const  # a table
+browser/page_thread.odin pt app  # the App's page thread
+browser/paint_backgrounds.odin gradient_dither app  # a preference
+browser/paint_effects.odin EFFECTS_PREFS const  # a table
+browser/paint_effects.odin effects_settings app  # preferences read once and on change
+browser/paint_masks.odin text_clip_caches thread  # the text clips of each layout, of the thread that paints
+browser/paint_planes.odin PLANE_PREFS const  # a table
+browser/paint_planes.odin plane_settings app  # preferences read once and on change
+browser/paint_planes.odin plane_mem thread  # the scale each plane was rasterized at, of the thread that paints
+browser/paint_planes.odin planes_culled thread  # planes not painted (what the tests count), of the thread that paints
+browser/paint_planes.odin plane_settle app  # the timer of the App's loop
+browser/paint_srgb_test.odin png_tex thread  # a test's texture
+browser/palette.odin PALETTE_PREFS const  # a table
+browser/print.odin PRINT_PREFS const  # a table
+browser/prof.odin phase_clock app  # the phase clock of the frame being drawn
+browser/prof.odin qpc_freq_cached process  # the performance counter's frequency, read once
+browser/remote_shell.odin the_remote app  # the App's remote control channel
+browser/remote_shell.odin remote_exit_code process  # what the process ends with (Browser.close)
+browser/remote_shell.odin remote_fast_exit process  # the process ends at once, without the teardown
+browser/remote_state.odin KEEP_NAMES const  # a table
+browser/render.odin page_render app  # the page renderer: the fonts of the pages, the painters
+browser/render_settings.odin RENDER_PREFS const  # a table
+browser/search_engines.odin BUILTIN_ENGINES const  # a table
+browser/selection_shell.odin ix app  # preferences read once and on change
+browser/selection_shell.odin spaint page  # the painted selection of a page
+browser/session.odin SESSION_PREFS const  # a table
+browser/settings.odin PREFS const  # a table
+browser/setup.odin SETUP_PAYLOAD const  # a table
+browser/setup.odin SETUP_PREFS const  # a table
+browser/setup_test_windows.odin TEST_FILE_TYPES test
+browser/shaders.odin CARD_FOIL_PASSES const  # a table
+browser/shaders.odin CARD_FOIL_ARGS const  # a table
+browser/shaders.odin SHADERS const  # a table
+browser/shaders.odin shader_states thread  # the shaders, of the thread that draws (its renderer's)
+browser/shell_frames.odin SHELL_FRAME_PREFS const  # a table
+browser/shell_frames.odin chrome_frames app  # chrome frames while a page holds the App's thread
+browser/smooth_scroll.odin SCROLL_PREFS const  # a table
+browser/smooth_scroll_test.odin CURVES test
+browser/storage_access_shell.odin sa_queue page  # the pages' storage access prompts
+browser/tab_groups.odin TAB_GROUP_PREFS const  # a table
+browser/tab_groups.odin GROUP_COLOR_NAMES const  # a table
+browser/tab_groups.odin GROUP_COLOR_HEX const  # a table
+browser/tab_sidebar.odin SIDEBAR_PREFS const  # a table
+browser/tab_sidebar.odin TABS_POSITION_NAMES const  # a table
+browser/tab_sidebar.odin TITLEBAR_SLOT_IDS const  # a table
+browser/tab_sound.odin TAB_SOUND_PREFS const  # a table
+browser/test_globals_test.odin page_render_test_mutex test
+browser/third_party.odin LICENSE_TEXTS const  # a table
+browser/touch_shell.odin TOUCH_PREFS const  # a table
+browser/urlbar.odin URLBAR_PREFS const  # a table
+browser/urlbar.odin ub app  # the history index, its build, the preferences (a window's suggestions: Window_Own.urlbar)
+browser/urlbar_test.odin globals_lock test
+browser/video_shell.odin vshell page  # the pages' video players
+browser/web_font_faces.odin WEB_FACE_PREFS const  # a table
+browser/web_font_faces.odin GENERIC_FAMILIES const  # a table
+browser/window_chrome.odin WINDOW_PREFS const  # a table
+browser/windows.odin window_ids process  # atomic: a window's id is unique in the process
+page/api_generated.odin api_imports const  # the imports the engine is given (generated)
+page/async.odin promise_vt const  # a host object's table of procedures
+page/async.odin buffer_vt const  # a host object's table of procedures
+page/async.odin all_vt const  # a host object's table of procedures
+page/bindings_abort.odin abort_signal_vt const  # a host object's table of procedures
+page/bindings_abort.odin abort_controller_vt const  # a host object's table of procedures
+page/bindings_audio_decoder.odin audio_decoder_vt const  # a host object's table of procedures
+page/bindings_crypto_subtle.odin crypto_key_vt const  # a host object's table of procedures
+page/bindings_crypto_subtle.odin OID_RSA const  # a table
+page/bindings_crypto_subtle.odin OID_EC const  # a table
+page/bindings_crypto_subtle.odin OID_P256 const  # a table
+page/bindings_crypto_subtle.odin OID_P384 const  # a table
+page/bindings_crypto_subtle.odin OID_P521 const  # a table
+page/bindings_crypto_subtle.odin OID_ED25519 const  # a table
+page/bindings_crypto_subtle.odin OID_X25519 const  # a table
+page/bindings_encoders.odin encoder_vt const  # a host object's table of procedures
+page/bindings_encoding.odin text_decoder_vt const  # a host object's table of procedures
+page/bindings_fetch.odin body_stream_vt const  # a host object's table of procedures
+page/bindings_history.odin window_vt const  # a host object's table of procedures
+page/bindings_image_decoder.odin image_decoder_vt const  # a host object's table of procedures
+page/bindings_image_decoder.odin image_track_vt const  # a host object's table of procedures
+page/bindings_image_decoder.odin image_track_list_vt const  # a host object's table of procedures
+page/bindings_locks.odin lock_registry app  # the Web Locks of the profile (locked: workers ask from their threads)
+page/bindings_url.odin url_vt const  # a host object's table of procedures
+page/bindings_url.odin params_vt const  # a host object's table of procedures
+page/bindings_urlpattern.odin pattern_vt const  # a host object's table of procedures
+page/bindings_video_decoder.odin video_decoder_vt const  # a host object's table of procedures
+page/bindings_webaudio.odin graph_vt const  # a host object's table of procedures
+page/bindings_webaudio.odin pcm_vt const  # a host object's table of procedures
+page/bindings_webaudio.odin WORKLET_SCRIPT const  # a table
+page/bindings_webauthn.odin webauthn_embedder app  # the shell's hooks
+page/bindings_webauthn.odin webauthn_docs thread  # the passkey requests of the thread's documents
+page/bindings_webauthn.odin webauthn_ops app  # every op whose thread may still run (shutdown joins them)
+page/bindings_webauthn.odin webauthn_credential_vt const  # a host object's table of procedures
+page/bindings_webcodecs.odin video_frame_vt const  # a host object's table of procedures
+page/bindings_webcodecs.odin frame_transfers process  # locked: frames in transit between realms of any thread, by unique token
+page/bindings_webgl.odin create_error_bytes thread
+page/bindings_webgl.odin create_error_len thread
+page/cache_store.odin cache_store app  # the Cache API's index of every origin of the profile
+page/canvas.odin canvas_released app  # the canvases released, whose GPU resources the shell frees
+page/canvas.odin canvas_next_id process  # atomic: workers make canvases too
+page/canvas.odin canvas_text_engine app  # the text engine of canvases (the shell's fonts)
+page/canvas.odin canvas_gpu_host app  # the GPU a canvas draws on (the App's renderer)
+page/canvas.odin canvas_vt const  # a host object's table of procedures
+page/canvas_bindings.odin FONT_KERNING const  # a table
+page/canvas_bindings.odin FONT_STRETCH const  # a table
+page/canvas_bindings.odin FONT_VARIANT_CAPS const  # a table
+page/canvas_bindings.odin TEXT_RENDERING const  # a table
+page/canvas_offscreen.odin offscreen_tokens process  # locked: OffscreenCanvas transfers between threads
+page/canvas_offscreen.odin offscreen_tokens_mu process  # ... their lock
+page/compression.odin zip_vt const  # a host object's table of procedures
+page/devtools_api.odin computed_names const  # a table
+page/devtools_api.odin dev_console_max app  # a preference
+page/dialog_modal.odin dialog_opening_modal thread
+page/dnd.odin local_file_vt const  # a host object's table of procedures
+page/dnd.odin EFFECT_ALLOWED const  # a table
+page/dnd.odin DROP_EFFECT_NAMES const  # a table
+page/dnd.odin drag_store_vt const  # a host object's table of procedures
+page/dnd_entries.odin fs_entry_vt const  # a host object's table of procedures
+page/dnd_entries.odin fs_reader_vt const  # a host object's table of procedures
+page/embedder.odin embedder app  # the shell's hooks
+page/eventsource.odin EVENTSOURCE_PREFS const  # a table
+page/eventsource.odin eventsource_vt const  # a host object's table of procedures
+page/formdata.odin formdata_vt const  # a host object's table of procedures
+page/frames.odin frame_hooks app  # the shell's hooks for nested documents
+page/frames.odin navigables thread  # the navigables of the thread's pages (an App's: its pages run on the thread of its loop)
+page/frames.odin next_navigable_id process  # atomic: a navigable's id is unique in the process
+page/frames.odin navigable_count thread  # ... how many
+page/frames_access.odin frames_pending_closes thread  # the frames' documents of the thread waiting to close
+page/frames_access.odin pending_timer_armed thread  # ... their timer is set
+page/frames_policy.odin SANDBOX_TOKEN_NAMES const  # a table
+page/frames_policy.odin FEATURE_NAMES const  # a table
+page/frames_settings.odin FRAME_PREFS const  # a table
+page/fs_api.odin fs_embedder app  # the shell's hooks
+page/fs_store.odin fs_store app  # the profile's file system roots, writables, locks
+page/fullscreen.odin FULLSCREEN_PREFS const  # a table
+page/fullscreen.odin fullscreen_embedder app  # the shell's hooks
+page/images.odin cache app  # the decoded images and their decoding threads (bound to the first loop it sees)
+page/images.odin image_serial process  # a counter unique in the process
+page/inline_svg.odin SVG_ELEMENTS const  # a table
+page/inline_svg.odin SVG_ATTRIBUTES const  # a table
+page/js_clipboard.odin clipboard_embedder app  # the shell's hooks
+page/js_clipboard.odin fake_clipboard process  # the clipboard of a process with no system one (tools, tests)
+page/js_cssom.odin css_sheet_vt const  # a host object's table of procedures
+page/js_dom_collections.odin collection_vt const  # a host object's table of procedures
+page/js_dom_layout.odin forced_layouts app  # statistics of the App's pages
+page/js_dom_observe.odin mo_vt const  # a host object's table of procedures
+page/js_dom_settings.odin JS_DOM_PREFS const  # a table
+page/js_events_host.odin event_target_vt const  # a host object's table of procedures
+page/js_intersection_observer.odin io_vt const  # a host object's table of procedures
+page/js_load.odin js_mime_types const  # a table
+page/js_load_compile.odin compiler app  # the script compile service, posting to the loop it was asked from
+page/js_load_settings.odin JS_LOAD_PREFS const  # a table
+page/js_profile.odin profile_seq app  # the profiles of the App's pages
+page/js_realm.odin js_engine_version process  # the engine's image, read once
+page/js_realm.odin js_engine_digest process  # ... its digest
+page/js_realm.odin js_engine_digest_known process  # ... it is known
+page/js_realm.odin js_image_override process  # an engine of a tool, set before the first realm
+page/js_realm.odin js_on_realm process  # a tool's procedure for each new realm, set before the first
+page/js_realm.odin js_on_realm_started process  # ... and once one has started
+page/js_realm.odin js_engine_once process  # the engine is loaded once
+page/js_resize_observer.odin ro_vt const  # a host object's table of procedures
+page/js_shadow.odin internals_vt const  # a host object's table of procedures
+page/js_web_media.odin media_pages thread  # the media queries of the thread's pages
+page/js_web_media.odin mql_vt const  # a host object's table of procedures
+page/js_web_settings.odin JS_WEB_PREFS const  # a table
+page/js_workers.odin worker_error_text thread
+page/media_source.odin media_source_vt const  # a host object's table of procedures
+page/media_source.odin source_buffer_vt const  # a host object's table of procedures
+page/media_source.odin source_buffer_list_vt const  # a host object's table of procedures
+page/media_texttracks.odin text_track_vt const  # a host object's table of procedures
+page/media_texttracks.odin text_cue_vt const  # a host object's table of procedures
+page/media_texttracks.odin text_cue_list_vt const  # a host object's table of procedures
+page/media_tracks.odin track_vt const  # a host object's table of procedures
+page/media_tracks.odin track_list_vt const  # a host object's table of procedures
+page/mse_worker.odin mse_handle_vt const  # a host object's table of procedures
+page/mse_worker.odin mse_tokens process  # locked: Media Source handles in transit between threads
+page/mse_worker.odin mse_tokens_mu process  # ... their lock
+page/nested_workers.odin nested_worker_vt const  # a host object's table of procedures
+page/offthread.odin THREAD_PREFS const  # a table
+page/offthread.odin style_pool process  # the style threads
+page/offthread.odin style_pool_size process  # ... how many
+page/ports.odin router app  # the message ports of the App's realms (locked: workers' threads)
+page/service_worker.odin SW_STATE_NAMES const  # a table
+page/service_worker.odin sw_embedder app  # the shell's hooks
+page/service_worker.odin sw_registry app  # the profile's service worker registrations
+page/settings.odin PREFS const  # a table
+page/shared_worker.odin shared_workers app  # the App's shared workers
+page/shared_worker.odin shared_next app  # ... their ids
+page/shared_worker.odin shared_scope app  # ... the host pages' parent
+page/shared_worker.odin shared_worker_vt const  # a host object's table of procedures
+page/storage.odin storage_events_delivered app  # statistics
+page/storage.odin commit_gate app  # the order of the profile's storage writes across threads
+page/storage_access.odin storage_access_embedder app  # the shell's hooks
+page/storage_access.odin sa_decisions app  # the profile's decisions
+page/storage_buckets.odin buckets_state app  # the profile's storage buckets
+page/storage_buckets.odin buckets_mu app  # ... their lock (pages and workers ask)
+page/styles.odin styles_stats app  # statistics
+page/sw_settings.odin SW_PREFS const  # a table
+page/timeline.odin TIMELINE_PREFS const  # a table
+page/timeline.odin tl_pending app  # the resources the timelines of the App's pages wait for
+page/timeline.odin tl_loader app  # (its address names the timelines' observer of a loader)
+page/web.odin live_pages thread  # the live pages of the thread (an App's: its pages run on the thread of its loop)
+page/web.odin next_page_id process  # atomic: a page's id is unique in the process
+page/web_animations.odin web_animation_vt const  # a host object's table of procedures
+page/web_settings.odin WEB_PREFS const  # a table
+page/webassembly.odin wasm_module_vt const  # a host object's table of procedures
+page/webcodecs_chunks.odin encoded_chunk_vt const  # a host object's table of procedures
+page/webcodecs_chunks.odin audio_data_vt const  # a host object's table of procedures
+page/webcodecs_settings.odin WEBCODECS_PREFS const  # a table
+page/websocket.odin WEBSOCKET_PREFS const  # a table
+page/websocket.odin websocket_vt const  # a host object's table of procedures
+page/worker.odin worker_total process  # atomic: the workers of the process
+page/worker.odin worker_client_next process  # atomic: worker client ids
+page/worker.odin worker_vt const  # a host object's table of procedures
+page/worker.odin worker_global_vt const  # a host object's table of procedures
+page/worker_settings.odin WORKER_PREFS const  # a table
+page/worker_test.odin SPIN_MODULE test
+page/worker_test.odin worker_tests test
+page/worker_test.odin LOGGING_SPIN_MODULE test
+style/audit.odin audit_vars thread
+style/cascade.odin styled_serial process  # atomic: stamps of computed styles (the style threads stamp too)
+style/color_scheme.odin os_look process  # the system's appearance (the machine's)
+style/color_scheme.odin SYSTEM_COLOR_NAMES const  # a table
+style/color_scheme.odin COLOR_KEYS const  # a table
+style/color_scheme.odin FALLBACK_SYSTEM const  # a table
+style/color_scheme.odin color_prefs_once const  # a table built once
+style/color_scheme.odin color_prefs const  # ... the table
+style/counters.odin QUOTES_BY_LANG const  # a table
+style/counters.odin DIGITS_ARABIC_INDIC const  # a table
+style/counters.odin DIGITS_PERSIAN const  # a table
+style/counters.odin DIGITS_DEVANAGARI const  # a table
+style/counters.odin DIGITS_BENGALI const  # a table
+style/counters.odin DIGITS_GURMUKHI const  # a table
+style/counters.odin DIGITS_GUJARATI const  # a table
+style/counters.odin DIGITS_ORIYA const  # a table
+style/counters.odin DIGITS_TAMIL const  # a table
+style/counters.odin DIGITS_TELUGU const  # a table
+style/counters.odin DIGITS_KANNADA const  # a table
+style/counters.odin DIGITS_MALAYALAM const  # a table
+style/counters.odin DIGITS_THAI const  # a table
+style/counters.odin DIGITS_LAO const  # a table
+style/counters.odin DIGITS_MYANMAR const  # a table
+style/counters.odin DIGITS_KHMER const  # a table
+style/counters.odin DIGITS_TIBETAN const  # a table
+style/counters.odin DIGITS_MONGOLIAN const  # a table
+style/counters.odin DIGITS_CJK const  # a table
+style/counters.odin ALPHA_GREEK const  # a table
+style/counters.odin ALPHA_HIRAGANA const  # a table
+style/counters.odin ALPHA_KATAKANA const  # a table
+style/counters.odin ALPHA_HIRAGANA_IROHA const  # a table
+style/counters.odin ALPHA_KATAKANA_IROHA const  # a table
+style/counters.odin ALPHA_EARTHLY const  # a table
+style/counters.odin ALPHA_HEAVENLY const  # a table
+style/counters.odin ROMAN_UPPER const  # a table
+style/counters.odin ROMAN_LOWER const  # a table
+style/counters.odin ARMENIAN_UPPER const  # a table
+style/counters.odin ARMENIAN_LOWER const  # a table
+style/counters.odin GEORGIAN const  # a table
+style/counters.odin HEBREW const  # a table
+style/engine.odin rebuild_total app  # statistics
+style/engine.odin pointer_caps process  # the computer's pointing devices
+style/font_features.odin LIGATURE_NAMES const  # a table
+style/font_features.odin NUMERIC_NAMES const  # a table
+style/font_features.odin EAST_ASIAN_NAMES const  # a table
+style/font_features.odin FONT_RESETS const  # a table
+style/fontface.odin FONT_STRETCH_KW const  # a table
+style/hints.odin hint_complex const  # a shared, read-only selector record
+style/invalidation.odin key_sets process  # the interned key sets, locked (the pages' engines run on their own threads)
+style/layout_change.odin change_once const  # a table built once
+style/layout_change.odin layout_only_set const  # ... the table
+style/layout_change.odin layout_runs const  # ... the table
+style/layout_change.odin extra_fields const  # ... the table
+style/masks.odin MASK_MODES_INITIAL const  # a table
+style/masks.odin MASK_BOXES_INITIAL const  # a table
+style/masks.odin MASK_COMPOSITES_INITIAL const  # a table
+style/paint_change.odin tiers_once const  # a table built once
+style/paint_change.odin tier_table const  # ... the table
+style/paint_change.odin paint_set const  # ... the table
+style/paint_change.odin layout_fields const  # ... the table
+style/props.odin props_once const  # a table built once
+style/props.odin inherited_table const  # ... the table
+style/props.odin inherited_set const  # ... the table
+style/props.odin inherited_list const  # ... the table
+style/props.odin computed_fields const  # ... the table
+style/props.odin prop_slots const  # ... the table
+style/restyle_dom.odin trace_roots process  # a trace for debugging (WREN_RESTYLE_TRACE), one thread at a time
+style/restyle_dom.odin trace_note process  # ... the anchor being applied
+style/restyle_dom.odin trace_why process  # ... why it flipped
+style/restyle_dom_test.odin TAGS test
+style/restyle_dom_test.odin CLASSES test
+style/settings.odin PREFS const  # a table
+style/shorthands.odin tables_ready const  # a table built once
+style/shorthands.odin prop_by_name const  # ... the table
+style/shorthands.odin short_by_name const  # ... the table
+style/shorthands.odin alias_by_name const  # ... the table
+style/shorthands.odin logical_names const  # ... the table
+style/shorthands.odin prop_names const  # ... the table
+style/shorthands.odin INITIAL_KW const  # a table
+style/shorthands.odin NORMAL_KW const  # a table
+style/shorthands.odin WS_VALUE const  # a table
+style/shorthands.odin tables_once const  # ... its guard
+style/shorthands_more.odin COMMA_VALUE const  # a table
+style/shorthands_more.odin SLASH_VALUE const  # a table
+style/shorthands_more.odin FONT_SYSTEM const  # a table
+style/shorthands_more.odin WRAP_STYLES const  # a table
+style/shorthands_more.odin COLLAPSES const  # a table
+style/shorthands_more.odin FONT_VARIANT_OTHER const  # a table
+style/shorthands_more.odin FONT_VARIANT_CAPS const  # a table
+style/timeline.odin ANIM_EVENT_TYPES const  # a table
+style/values.odin INITIAL_TRANSITION_PROPERTY const  # a table
+style/values.odin ZERO_TIMES const  # a table
+style/values.odin EASE_LIST const  # a table
+style/values.odin FALSE_LIST const  # a table
+style/values.odin NONE_NAMES const  # a table
+style/values.odin ONE_LIST const  # a table
+style/values.odin NORMAL_DIRECTION const  # a table
+style/values.odin NO_FILL const  # a table
+style/values.odin RUNNING const  # a table
+style/values.odin REPLACE const  # a table
+style/values.odin NO_IMAGES const  # a table
+style/values.odin REPEATS const  # a table
+style/values.odin ORIGIN_POSITIONS const  # a table
+style/values.odin AUTO_SIZES const  # a table
+style/values.odin PADDING_BOX const  # a table
+style/values.odin BORDER_BOX const  # a table
+style/values.odin SCROLL const  # a table
+style/values.odin AUTO_TRACKS const  # a table
+style/values.odin ABSOLUTE_SIZES const  # a table
+style/values.odin KEYWORD_SIZES_16 const  # a table
+style/values.odin KEYWORD_SIZES_13 const  # a table
+style/values_more.odin FONT_STRETCH const  # a table
+style/writing_modes.odin flow_maps_once const  # a table built once
+style/writing_modes.odin flow_maps const  # ... the table
+layout/bench_load_test.odin smp test
+layout/context.odin VERTICAL_FEATURES const  # a table
+layout/parallel.odin par_mu process  # the layout threads' lock
+layout/parallel.odin par_pool process  # the layout threads
+layout/parallel.odin par_pool_size process  # ... how many
+layout/refresh.odin anon_once const  # a table built once
+layout/refresh.odin anon_list const  # ... the table
+layout/refresh.odin anon_count const  # ... its length
+layout/selection.odin VOID_ELEMENTS const  # a table
+layout/settings.odin PREFS const  # a table
+media/av1_soft.odin software_threads process  # the software decoders' threads (set from the first App's preferences)
+media/av1_soft.odin software_vp9 process  # ... the software VP9 decoder is on
+media/av1_soft.odin software_av1 process  # ... the software AV1 decoder is on
+media/av1_soft.odin software_preferred process  # ... before the system's
+media/backend_linux.odin audio_backend process  # the audio output of the process
+media/backend_windows.odin audio_null_asked process  # the audio output of the process
+media/h264_linux.odin h264_backend process  # the H.264 decoder of the process
+media/h264_linux.odin h264_openh264_path process  # ... the library a preference names
+media/h264_linux.odin h264_openh264_path_len process  # ... its length
+media/h264_linux.odin h264_path_mu process  # ... its lock
+media/h264_linux.odin openh264_lib process  # a library of the system, loaded once
+media/h264_linux.odin openh264_once process  # ... once
+media/h264_linux.odin openh264_ok process  # ... it loaded
+media/mf_com_windows.odin MF_MT_MAJOR_TYPE const  # a table
+media/mf_com_windows.odin MF_MT_SUBTYPE const  # a table
+media/mf_com_windows.odin MF_MT_FRAME_SIZE const  # a table
+media/mf_com_windows.odin MF_MT_FRAME_RATE const  # a table
+media/mf_com_windows.odin MF_MT_PIXEL_ASPECT_RATIO const  # a table
+media/mf_com_windows.odin MF_MT_INTERLACE_MODE const  # a table
+media/mf_com_windows.odin MF_MT_MPEG_SEQUENCE_HEADER const  # a table
+media/mf_com_windows.odin MF_MT_USER_DATA const  # a table
+media/mf_com_windows.odin MF_MT_AUDIO_NUM_CHANNELS const  # a table
+media/mf_com_windows.odin MF_MT_AUDIO_SAMPLES_PER_SECOND const  # a table
+media/mf_com_windows.odin MF_MT_AUDIO_BITS_PER_SAMPLE const  # a table
+media/mf_com_windows.odin MF_MT_AUDIO_BLOCK_ALIGNMENT const  # a table
+media/mf_com_windows.odin MF_MT_AUDIO_AVG_BYTES_PER_SECOND const  # a table
+media/mf_com_windows.odin MF_MT_AUDIO_CHANNEL_MASK const  # a table
+media/mf_com_windows.odin MF_MT_AAC_PAYLOAD_TYPE const  # a table
+media/mf_com_windows.odin MF_MT_AAC_AUDIO_PROFILE_LEVEL_INDICATION const  # a table
+media/mf_com_windows.odin MF_MT_ALL_SAMPLES_INDEPENDENT const  # a table
+media/mf_com_windows.odin MF_MT_VIDEO_NOMINAL_RANGE const  # a table
+media/mf_com_windows.odin MF_MT_YUV_MATRIX const  # a table
+media/mf_com_windows.odin MF_MT_VIDEO_PRIMARIES const  # a table
+media/mf_com_windows.odin MF_MT_TRANSFER_FUNCTION const  # a table
+media/mf_com_windows.odin MF_MT_DEFAULT_STRIDE const  # a table
+media/mf_com_windows.odin MF_MT_MINIMUM_DISPLAY_APERTURE const  # a table
+media/mf_com_windows.odin MF_MT_GEOMETRIC_APERTURE const  # a table
+media/mf_com_windows.odin MF_MT_PAN_SCAN_APERTURE const  # a table
+media/mf_com_windows.odin MF_SA_D3D11_BINDFLAGS const  # a table
+media/mf_com_windows.odin MF_SA_D3D11_AWARE const  # a table
+media/mf_com_windows.odin MF_TRANSFORM_ASYNC const  # a table
+media/mf_com_windows.odin MF_LOW_LATENCY const  # a table
+media/mf_com_windows.odin MFSampleExtension_CleanPoint const  # a table
+media/mf_com_windows.odin MFSampleExtension_Discontinuity const  # a table
+media/mf_com_windows.odin IID_IMFDXGIBuffer const  # a table
+media/mf_com_windows.odin IID_ID3D11Texture2D const  # a table
+media/mf_com_windows.odin IID_ID3D10Multithread const  # a table
+media/mf_com_windows.odin IID_IMFTransform const  # a table
+media/mf_com_windows.odin mf_started process  # Media Foundation, started once for the process
+media/mf_com_windows.odin mf_once process  # ... once
+media/mf_video_windows.odin gpu_device process  # the graphics device the decoders share (locked)
+media/mf_video_windows.odin gpu_manager process  # ... the manager Media Foundation uses it through
+media/mf_video_windows.odin gpu_token process  # ... its token
+media/mf_video_windows.odin gpu_mu process  # ... their lock
+media/mf_video_windows.odin IID_IMF2DBuffer const  # a table
+media/settings.odin MEDIA_PREFS const  # a table
+media/vaapi_linux.odin vaapi_lib process  # a library of the system, loaded once
+media/vaapi_linux.odin vaapi_once process  # ... once
+media/vaapi_linux.odin vaapi_h264 process  # ... the GPU decodes H.264
+media/wasapi_windows.odin CLSID_MMDeviceEnumerator const  # a table
+media/wasapi_windows.odin IID_IMMDeviceEnumerator const  # a table
+media/wasapi_windows.odin IID_IAudioClient const  # a table
+media/wasapi_windows.odin IID_IAudioRenderClient const  # a table
+media/wasapi_windows.odin IID_IAudioClock const  # a table
+js/cache.odin cache process  # the engine's compiled code on the disk
+js/jit.odin JIT_PREFS const  # a table
+js/memprof.odin PROF_ROWS const  # a table
+js/memprof.odin PROF_SIZES const  # a table
+js/settings.odin PREFS const  # a table
+js/timezone_linux.odin tz_name_cache process  # the machine's time zone, read once
+js/timezone_linux.odin tz_name_len process  # ... its length
+js/timezone_linux.odin tz_name_done process  # ... it was read
+js/timezone_windows.odin tz_name_cache process  # the machine's time zone, read once
+js/timezone_windows.odin tz_name_len process  # ... its length
+js/timezone_windows.odin tz_name_done process  # ... it was read
+js/touch.odin hardware_touch_points process  # the machine's touch screen

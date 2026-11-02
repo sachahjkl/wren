@@ -31,6 +31,34 @@ feature list, see the [README](../README.md).
 8. **Everything is configurable.** Each package declares its preferences in a `settings.odin` (`config.Def`: dotted
    lower-case name, description, type, bounds, unit) and reads them through `settings_from_prefs`; the shell registers
    every table (`src/browser/settings.odin`) and `src/browser/prefs_test.odin` checks that each one is well formed.
+9. **State lives with what owns it.** See below: what is one App's is not a global.
+
+## Where state lives
+
+The aim is several Apps (`browser.App`: one browser, its profile, its loop, its windows) in one process, each on a thread
+of its own, so that tests run side by side in one binary. An App runs on one thread, the one that runs its loop
+(`app_start`'s); its page thread works for it. So a global is allowed only for what it is, and
+`tools/globals_allowed.txt` gives every global of `src/browser`, `src/page`, `src/style`, `src/layout`, `src/media` and
+`src/js` its class (`src/tools/test_all/lint_globals.odin` fails on a new one, a gone one, or a class the code
+contradicts):
+
+- **const**: a table, written by the compiler or once (a `sync.Once`) before anything reads it. Any thread reads it.
+- **process**: a resource there is one of whatever the number of Apps: the Wasm engine, a thread pool, a library of the
+  system, the single-instance channel, an id unique in the process (atomic). Locked, atomic, or bound to a thread the
+  note names.
+- **thread**: `@(thread_local)`, and only then (the lint holds the class to the attribute both ways). In packages that
+  have no App (`page`, `style`, `layout`), what is one App's is its thread's: the live pages, the navigables, the frames
+  waiting to close (`page/web.odin`, `page/frames.odin`). In `browser`, what the thread that paints keeps (the
+  compositor's layers, the planes, the canvas text's glyphs) and `the_app`, the App of this thread.
+- **app**, **window**, **page**: one App's, one window's, one tab's or page's state still in a global, to move into
+  `App`, `Browser_Window.own` or `Tab` / `Page`. Two Apps would share it: each is a debt the list counts.
+- **test**: a test's own.
+
+What belongs to the App is a field of `App` (`src/browser/main.odin`), reached through the `^App` the code is given.
+A callback the App sets up carries it: a timer's or a watch's data, a job's struct (`Setup_Job.app`), a window
+subclass's reference data (`app_commands_windows.odin`). `the_app` is what is left for code that has no `^App` yet,
+mostly hooks of other packages (`page.Embedder_Hooks`, the canvas' text engine) and the painting code: a thread of its
+own sees nil.
 
 ## Wasm engine
 

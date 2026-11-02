@@ -70,6 +70,7 @@ Con_Prefs :: struct {
 
 con_prefs: Con_Prefs
 
+
 console_apply_prefs :: proc(p: ^config.Prefs) {
 	con_prefs = {
 		levels = u32(config.int_of(p, "browser.devtools.console.levels")),

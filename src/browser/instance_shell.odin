@@ -164,6 +164,7 @@ instance_frame :: proc(app: ^App) {
 
 @(private = "file")
 Instance_Open :: struct {
+	app:       ^App,
 	addresses: [dynamic]string,
 	setup:     bool,
 }
@@ -171,16 +172,16 @@ Instance_Open :: struct {
 // Inside the window's message (the sender waits): decode Wren's message, take a copy and leave the work to the loop.
 @(private = "file")
 instance_handler :: proc(user: rawptr, message: []byte) {
-	if the_app == nil { return }
+	app := (^App)(user)   // (instance_begin: the App whose window takes the addresses)
 	m, ok := decode_message(message)
 	if !ok { return }
 	d := new(Instance_Open)
-	d.setup = m.setup
+	d.app, d.setup = app, m.setup
 	for a, i in m.addresses {
 		if i >= 64 { break }   // (a message from a program that means harm is not a way to open a thousand tabs)
 		append(&d.addresses, strings.clone(a))
 	}
-	host.post(&the_app.loop, instance_open, d)
+	host.post(&app.loop, instance_open, d)
 }
 
 @(private = "file")
@@ -191,8 +192,7 @@ instance_open :: proc(data: rawptr) {
 		delete(d.addresses)
 		free(d)
 	}
-	app := the_app
-	if app == nil { return }
+	app := d.app
 	wnd := active_window(app)
 	first := -1
 	for a in d.addresses {

@@ -67,8 +67,8 @@ Webauthn_Op :: struct {
 	cancel_ns: i64,           // loop clock of the first cancellation (0: none)
 }
 
-// UI thread only.
-@(private="file") webauthn_docs: map[u64]^Webauthn_Doc
+// UI thread only (each App's: its pages run on the thread of its loop).
+@(private="file", thread_local) webauthn_docs: map[u64]^Webauthn_Doc
 @(private="file") webauthn_ops: [dynamic]^Webauthn_Op   // every op whose thread may still run (shutdown joins them)
 
 @(private="file")

@@ -92,7 +92,7 @@ entry_capture :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry) {
 	} else {
 		ps.scroll = {t.layout.doc_scroll_x, t.scroll} / scale
 	}
-	if hcfg.restore_forms { page.persisted_capture_controls(t.page, ps) }
+	if app.hcfg.restore_forms { page.persisted_capture_controls(t.page, ps) }
 }
 
 // The current entry, if it is the document's.
@@ -121,18 +121,18 @@ page_entry_entered :: proc(user: rawptr, p: ^page.Page, e: ^page.History_Entry) 
 // arrives, restore_tick takes the first page it sees).
 restore_begin :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry, kind: Restore_Kind) {
 	restore_stop(app, t)
-	if e == nil || !hcfg.restore || !e.persisted.saved { return }
+	if e == nil || !app.hcfg.restore || !e.persisted.saved { return }
 	r := &t.nav_state.restore
 	r.active, r.kind, r.entry, r.started = true, kind, e.id, host.now_ns(&app.loop)
 	r.page = kind == .Same_Document ? rawptr(t.page) : nil
 	r.applied, r.applied_x = t.scroll, t.layout.doc_scroll_x
 	r.doc_done = e.scroll_manual
-	r.controls_done = kind == .Same_Document || !hcfg.restore_forms
+	r.controls_done = kind == .Same_Document || !app.hcfg.restore_forms
 	r.load_seen = false
 	r.fragment = !e.scroll_manual
 	clear(&r.done)
 	for _ in e.persisted.containers { append(&r.done, e.scroll_manual) }
-	restore_arm(app, t, hcfg.restore_max_ms)
+	restore_arm(app, t, app.hcfg.restore_max_ms)
 	request_frames(app, 2)
 }
 
@@ -192,9 +192,9 @@ restore_tick :: proc(app: ^App, t: ^Tab, viewport: [2]f32) {
 	}
 	if !r.load_seen && page_loaded(p) {
 		r.load_seen, r.load_at = true, host.now_ns(&app.loop)
-		restore_arm(app, t, hcfg.restore_after_ms)
+		restore_arm(app, t, app.hcfg.restore_after_ms)
 	}
-	expired := restore_expired(host.now_ns(&app.loop), r.started, r.load_at, r.load_seen, hcfg.restore_max_ms, hcfg.restore_after_ms)
+	expired := restore_expired(host.now_ns(&app.loop), r.started, r.load_at, r.load_seen, app.hcfg.restore_max_ms, app.hcfg.restore_after_ms)
 	scale := t.layout.scale > 0 ? t.layout.scale : 1
 	if !r.doc_done {
 		// (an offset below 0 goes as far as the document reaches on that side)

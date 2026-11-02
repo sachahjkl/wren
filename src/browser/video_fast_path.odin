@@ -46,7 +46,7 @@ Video_Fast_Record :: struct {
 	eligible: bool,
 }
 
-@(private = "file")
+@(private)
 Video_Fast :: struct {
 	mode:    Video_Fast_Mode,
 	watch:   int,
@@ -54,20 +54,18 @@ Video_Fast :: struct {
 	overlaid: u64,          // statistics: pictures drawn by the fast path
 }
 
-@(private = "file")
-vfast: Video_Fast
-
 video_fast_path_init :: proc(app: ^App) {
-	vfast.mode = video_fast_mode(&app.prefs)
-	vfast.watch = config.watch(&app.prefs, "browser.video.fast_path", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		vfast.mode = video_fast_mode(p)
+	app.vfast.mode = video_fast_mode(&app.prefs)
+	app.vfast.watch = config.watch(&app.prefs, "browser.video.fast_path", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		app := (^App)(user)
+		app.vfast.mode = video_fast_mode(p)
 	}, app)
 }
 
 video_fast_path_destroy :: proc(app: ^App) {
-	config.unwatch(&app.prefs, vfast.watch)
-	delete(vfast.records)
-	vfast = {}
+	config.unwatch(&app.prefs, app.vfast.watch)
+	delete(app.vfast.records)
+	app.vfast = {}
 }
 
 @(private = "file")
@@ -82,17 +80,17 @@ video_fast_mode :: proc(p: ^config.Prefs) -> Video_Fast_Mode {
 // At the start of a full (non-chrome) frame: the records of the previous frame are stale.
 video_fast_path_begin_frame :: proc(app: ^App) {
 	if chrome_frames.nested { return }   // a chrome frame reads the records; it does not clear them
-	clear(&vfast.records)
+	clear(&app.vfast.records)
 }
 
 // Called from video_paint_content for each video painted in the real page pass: remembers its picture and box so a
 // chrome frame can keep it moving.
 video_fast_path_record :: proc(app: ^App, p: ^page.Page, node: base.Handle, tex: render.Texture, dst: draw.Rect, eligible: bool) {
-	if vfast.mode == .Off || chrome_frames.nested { return }
+	if app.vfast.mode == .Off || chrome_frames.nested { return }
 	t := current_tab(app)
 	if t == nil || t.page != p { return }
 	wnd := active_window(app)
-	append(&vfast.records, Video_Fast_Record{
+	append(&app.vfast.records, Video_Fast_Record{
 		tab = t.id, page = page.page_id(p), node = node, tex = tex, dst = dst,
 		page_rect = wnd.page_rect, scroll = doc_scroll_vec(t), frame = chrome_frames.frame_no, eligible = eligible,
 	})
@@ -102,13 +100,13 @@ video_fast_path_record :: proc(app: ^App, p: ^page.Page, node: base.Handle, tex:
 // picture over it, shifted the same way the snapshot was, so the video keeps playing while the page is frozen. Returns
 // how many were drawn.
 video_fast_path_overlay :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) -> int {
-	if vfast.mode == .Off { return 0 }
+	if app.vfast.mode == .Off { return 0 }
 	s := shell_snapshot_of(t.id)
 	if s == nil { return 0 }   // no page frame to overlay onto
 	drawn := 0
 	// the snapshot's shift this chrome frame (same as shell_paint_page): the page area moved and the wheel scrolled it
 	scroll := shell_shown_scroll(t)
-	for &r in vfast.records {
+	for &r in app.vfast.records {
 		if r.tab != t.id || !r.eligible || r.tex == 0 { continue }
 		// the newest picture the player has now (its decode threads kept running under the script)
 		tex, size, ok := video_fast_live_texture(app, r.page, r.node)
@@ -122,8 +120,8 @@ video_fast_path_overlay :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: dra
 		draw.image(dc, tex, dst, {}, draw.Color{1, 1, 1, 1})
 		draw.pop_clip(dc)
 		drawn += 1
-		vfast.overlaid += 1
-		if vfast.mode == .Verify { video_fast_verify(app, &r, dst) }
+		app.vfast.overlaid += 1
+		if app.vfast.mode == .Verify { video_fast_verify(app, &r, dst) }
 	}
 	return drawn
 }

@@ -40,7 +40,7 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	page_world_check("page_prepare: a chrome frame, or the page thread has the layout")
 	page_prep := &window_own(app).page_prep
 	page_prep^ = Page_Prep{frame = chrome_frames.frame_no, tab = t, page = t.page, size = size, scale = page_scale(app), state = .None, canvas = expected_canvas(app)}
-	hold_commit(t)
+	hold_commit(app, t)
 	scale := page_prep.scale
 	// an incremental layout reads what the style passes changed (layout.incremental.*)
 	ls := &page_render.settings
@@ -96,11 +96,11 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 			return
 		}
 		page.first_paint_done(t.page)
-		hold_release(t)
+		hold_release(app, t)
 		prof_first_paint(t)
 	}
 	restore_tick(app, t, size)   // history_restore.odin: an entry shown again comes back where it was
-	scroll_to_fragment(t, size)
+	scroll_to_fragment(app, t, size)
 	layout_commit_anchors(&t.layout)
 	t.scroll = clamp(t.scroll, t.layout.doc_min_y, max(0, t.layout.height - size.y))
 	doc_scroll_x_set(t, t.layout.doc_scroll_x, size.x)

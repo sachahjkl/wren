@@ -49,22 +49,21 @@ Bfcache :: struct {
 	last_refusal: string,          // owned: why the last page could not be kept
 }
 
-bf: Bfcache
 
 bfcache_shutdown :: proc(app: ^App) {
-	if bf.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, bf.timer) }
-	for e in bf.entries { bf_entry_free(e, close = true) }
-	delete(bf.entries)
-	delete(bf.last_refusal)
-	for k in bf.reasons { delete(k) }
-	delete(bf.reasons)
-	bf = {}
+	if app.bf.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.bf.timer) }
+	for e in app.bf.entries { bf_entry_free(e, close = true) }
+	delete(app.bf.entries)
+	delete(app.bf.last_refusal)
+	for k in app.bf.reasons { delete(k) }
+	delete(app.bf.reasons)
+	app.bf = {}
 }
 
-// One more page (or traversal) for why (bf.reasons).
+// One more page (or traversal) for why (app.bf.reasons).
 @(private = "file")
-bf_count :: proc(why: string) {
-	if why in bf.reasons { bf.reasons[why] += 1 } else { bf.reasons[strings.clone(why)] = 1 }
+bf_count :: proc(app: ^App, why: string) {
+	if why in app.bf.reasons { app.bf.reasons[why] += 1 } else { app.bf.reasons[strings.clone(why)] = 1 }
 }
 
 @(private = "file")
@@ -78,7 +77,7 @@ bf_entry_free :: proc(e: ^Bf_Entry, close: bool) {
 
 // Why the tab's page cannot be kept ("" when it can).
 bfcache_refusal :: proc(app: ^App, t: ^Tab) -> string {
-	if !hcfg.bf_enabled || hcfg.bf_max_entries == 0 { return "the back/forward cache is off" }
+	if !app.hcfg.bf_enabled || app.hcfg.bf_max_entries == 0 { return "the back/forward cache is off" }
 	if t.kind != .Web || t.page == nil { return "not a document" }
 	p := t.page
 	if t.load != nil && t.load.failed != .None { return "an error page" }
@@ -105,13 +104,13 @@ leave_page :: proc(app: ^App, t: ^Tab, keep := true, save := true) {
 	if save { entry_capture(app, t, cur) }
 	if !keep { page.page_unload(p); return }
 	if why := bfcache_refusal(app, t); why != "" {
-		bf.refusals += 1
-		delete(bf.last_refusal)
-		bf.last_refusal = strings.clone(why)
+		app.bf.refusals += 1
+		delete(app.bf.last_refusal)
+		app.bf.last_refusal = strings.clone(why)
 		if b := page.bfcache_blockers(p); b != {} {
-			for x in page.Bfcache_Blocker { if x in b { bf_count(fmt.tprintf("%v", x)) } }
+			for x in page.Bfcache_Blocker { if x in b { bf_count(app, fmt.tprintf("%v", x)) } }
 		} else {
-			bf_count(why)
+			bf_count(app, why)
 		}
 		page.page_unload(p)
 		return
@@ -162,22 +161,22 @@ bfcache_take_held :: proc(app: ^App, t: ^Tab) -> bool {
 @(private = "file")
 bf_store :: proc(app: ^App, e: ^Bf_Entry) {
 	// one page per entry: an older one for it goes
-	for i := len(bf.entries) - 1; i >= 0; i -= 1 {
-		o := bf.entries[i]
-		if o.tab == e.tab && o.entry == e.entry { ordered_remove(&bf.entries, i); bf_entry_free(o, close = true) }
+	for i := len(app.bf.entries) - 1; i >= 0; i -= 1 {
+		o := app.bf.entries[i]
+		if o.tab == e.tab && o.entry == e.entry { ordered_remove(&app.bf.entries, i); bf_entry_free(o, close = true) }
 	}
-	e.bytes = bf_estimate(e)
-	append(&bf.entries, e)
-	bf.stores += 1
+	e.bytes = bf_estimate(app, e)
+	append(&app.bf.entries, e)
+	app.bf.stores += 1
 	bfcache_evict(app)
 }
 
 @(private = "file")
-bf_estimate :: proc(e: ^Bf_Entry) -> int {
+bf_estimate :: proc(app: ^App, e: ^Bf_Entry) -> int {
 	p := e.page
 	n := p.held + p.doc.nodes.count * 256
 	n += len(e.layout.items) * size_of(e.layout.items[0]) + len(e.layout.boxes) * size_of(e.layout.boxes[0])
-	if p.js != nil || len(p.instances) > 0 { n += hcfg.bf_overhead }
+	if p.js != nil || len(p.instances) > 0 { n += app.hcfg.bf_overhead }
 	return n
 }
 
@@ -186,54 +185,55 @@ bf_estimate :: proc(e: ^Bf_Entry) -> int {
 bfcache_evict :: proc(app: ^App) {
 	now := host.now_ns(&app.loop)
 	total := 0
-	for i := len(bf.entries) - 1; i >= 0; i -= 1 {
-		e := bf.entries[i]
+	for i := len(app.bf.entries) - 1; i >= 0; i -= 1 {
+		e := app.bf.entries[i]
 		t := tab_by_id(app, e.tab)
 		gone := t == nil || page.session_find(&t.session, e.entry) == nil || e.page.closed
-		expired := f64(now - e.stored) / NS_PER_MS_F >= hcfg.bf_timeout_ms
-		if gone || expired || !hcfg.bf_enabled {
-			ordered_remove(&bf.entries, i)
+		expired := f64(now - e.stored) / NS_PER_MS_F >= app.hcfg.bf_timeout_ms
+		if gone || expired || !app.hcfg.bf_enabled {
+			ordered_remove(&app.bf.entries, i)
 			bf_entry_free(e, close = t != nil)
-			bf.evictions += 1
+			app.bf.evictions += 1
 			continue
 		}
 		total += e.bytes
 	}
-	for len(bf.entries) > 0 && (len(bf.entries) > hcfg.bf_max_entries || total > hcfg.bf_max_bytes) {
-		e := bf.entries[0]
+	for len(app.bf.entries) > 0 && (len(app.bf.entries) > app.hcfg.bf_max_entries || total > app.hcfg.bf_max_bytes) {
+		e := app.bf.entries[0]
 		total -= e.bytes
-		ordered_remove(&bf.entries, 0)
+		ordered_remove(&app.bf.entries, 0)
 		bf_entry_free(e, close = true)
-		bf.evictions += 1
+		app.bf.evictions += 1
 	}
-	if bf.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, bf.timer); bf.timer = base.NIL_HANDLE }
-	if len(bf.entries) > 0 {
-		left := hcfg.bf_timeout_ms - f64(now - bf.entries[0].stored) / NS_PER_MS_F
-		bf.timer = host.set_timer(&app.loop, max(left, 1) + 1, 0, proc(data: rawptr) {
-			bf.timer = base.NIL_HANDLE
+	if app.bf.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.bf.timer); app.bf.timer = base.NIL_HANDLE }
+	if len(app.bf.entries) > 0 {
+		left := app.hcfg.bf_timeout_ms - f64(now - app.bf.entries[0].stored) / NS_PER_MS_F
+		app.bf.timer = host.set_timer(&app.loop, max(left, 1) + 1, 0, proc(data: rawptr) {
+			app := (^App)(data)
+			app.bf.timer = base.NIL_HANDLE
 			bfcache_evict((^App)(data))
 		}, app)
 	}
 }
 
 // A tab closes: its cached pages go (its scope closes them: only the rest is freed here).
-bfcache_drop_tab :: proc(t: ^Tab) {
-	for i := len(bf.entries) - 1; i >= 0; i -= 1 {
-		e := bf.entries[i]
+bfcache_drop_tab :: proc(app: ^App, t: ^Tab) {
+	for i := len(app.bf.entries) - 1; i >= 0; i -= 1 {
+		e := app.bf.entries[i]
 		if e.tab != t.id { continue }
-		ordered_remove(&bf.entries, i)
+		ordered_remove(&app.bf.entries, i)
 		bf_entry_free(e, close = false)
 	}
 }
 
 // The page cached for `entry` of `t`, if any, goes (another document now shows that entry).
-bfcache_forget :: proc(t: ^Tab, entry: u64) {
-	for i := len(bf.entries) - 1; i >= 0; i -= 1 {
-		e := bf.entries[i]
+bfcache_forget :: proc(app: ^App, t: ^Tab, entry: u64) {
+	for i := len(app.bf.entries) - 1; i >= 0; i -= 1 {
+		e := app.bf.entries[i]
 		if e.tab != t.id || e.entry != entry { continue }
-		ordered_remove(&bf.entries, i)
+		ordered_remove(&app.bf.entries, i)
 		bf_entry_free(e, close = true)
-		bf.evictions += 1
+		app.bf.evictions += 1
 	}
 }
 
@@ -243,8 +243,8 @@ tab_by_id :: proc(app: ^App, id: u64) -> ^Tab {
 }
 
 // Whether `entry` of `t` has a page in the cache.
-bfcache_has :: proc(t: ^Tab, entry: u64) -> bool {
-	for e in bf.entries { if e.tab == t.id && e.entry == entry && !e.page.closed { return true } }
+bfcache_has :: proc(app: ^App, t: ^Tab, entry: u64) -> bool {
+	for e in app.bf.entries { if e.tab == t.id && e.entry == entry && !e.page.closed { return true } }
 	return false
 }
 
@@ -252,13 +252,13 @@ bfcache_has :: proc(t: ^Tab, entry: u64) -> bool {
 // itself when it may). False: the caller loads the entry.
 bfcache_restore :: proc(app: ^App, t: ^Tab, entry: ^page.History_Entry) -> bool {
 	at := -1
-	for e, i in bf.entries { if e.tab == t.id && e.entry == entry.id && !e.page.closed { at = i; break } }
-	bf.traversals += 1
-	if at < 0 { bf.misses += 1; bf_count("evicted or never kept"); return false }
-	e := bf.entries[at]
-	ordered_remove(&bf.entries, at)
+	for e, i in app.bf.entries { if e.tab == t.id && e.entry == entry.id && !e.page.closed { at = i; break } }
+	app.bf.traversals += 1
+	if at < 0 { app.bf.misses += 1; bf_count(app, "evicted or never kept"); return false }
+	e := app.bf.entries[at]
+	ordered_remove(&app.bf.entries, at)
 	// the tab's own page, frozen by leave_page when it may be kept, or closed
-	hold_release(t)
+	hold_release(app, t)
 	if bfcache_take(app, t) {
 		base.scope_close(t.nav)   // the empty one it left
 	} else {
@@ -273,7 +273,7 @@ bfcache_restore :: proc(app: ^App, t: ^Tab, entry: ^page.History_Entry) -> bool 
 	page_fonts_transfer(&page_render.fonts, e, t)
 	t.web_font_page, t.web_fonts, t.image_sizes = e.page, e.web_fonts, e.image_sizes
 	t.scroll, t.scroll_target = e.scroll, base.NIL_HANDLE
-	if hcfg.restore_zoom && e.zoom > 0 { t.zoom = e.zoom }
+	if app.hcfg.restore_zoom && e.zoom > 0 { t.zoom = e.zoom }
 	t.nav_state.no_store = e.no_store
 	t.nav_state.left = nil
 	delete(t.fragment_seen); t.fragment_seen = e.fragment_seen
@@ -286,7 +286,7 @@ bfcache_restore :: proc(app: ^App, t: ^Tab, entry: ^page.History_Entry) -> bool 
 	set_status(t, "Restored from the back/forward cache")
 	address_set(app, t, t.url)
 	bf_entry_free(e, close = false)
-	bf.restores += 1
+	app.bf.restores += 1
 	global_history_visit(app, t, t.url, t.title)
 	timing_begin(t, true)
 	page.page_thaw(t.page, visible = current_tab(app) == t)

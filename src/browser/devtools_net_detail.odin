@@ -49,11 +49,11 @@ Net_Detail :: struct {
 	pv:         Preview_State,      // the decoded preview of the chosen request (devtools_net_preview.odin)
 }
 
-net_detail_destroy :: proc(d: ^Net_Detail) {
+net_detail_destroy :: proc(app: ^App, d: ^Net_Detail) {
 	dt_list_destroy(&d.hdr)
 	dt_list_destroy(&d.txt)
 	dt_list_destroy(&d.jlist)
-	preview_release(&d.pv)
+	preview_release(app, &d.pv)
 	dt_list_destroy(&d.msg_list)
 	dt_list_destroy(&d.msg_pane)
 	dt_filter_destroy(&d.msg_filter)
@@ -88,7 +88,7 @@ detail_tabs :: proc(e: ^Net_Entry) -> []int {
 
 net_detail_panel :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, e: ^Net_Entry) {
 	d := &v.detail
-	if d.pv.id != e.id && d.pv.id != 0 { preview_release(&d.pv) }
+	if d.pv.id != e.id && d.pv.id != 0 { preview_release(app, &d.pv) }
 	// the caches are of one request and one body
 	key := e.id * 0x9e3779b97f4a7c15 + u64(len(e.body)) * 31 + u64(d.pretty ? 1 : 0)
 	if d.cache_key != key { detail_reset(d, e, key) }
@@ -536,7 +536,7 @@ detail_response :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 		switch {
 		case e.ms < 0: why, hint = "The request is still going", "Its body shows when it is complete."
 		case e.failed: why, hint = "The request failed", e.error
-		case e.body_total > 0 && net_prefs.max_body <= 0: why, hint = "Bodies are not kept", "Raise browser.devtools.network.max_body_kb to see them."
+		case e.body_total > 0 && app.net_prefs.max_body <= 0: why, hint = "Bodies are not kept", "Raise browser.devtools.network.max_body_kb to see them."
 		case e.body_total > 0: why, hint = "The body was not kept", "It was over the limit, was media, or was freed to make room (browser.devtools.network.max_body_mb)."
 		case e.status == 204 || e.status == 304: why, hint = fmt.tprintf("No content (%d)", e.status), "The server sent no body."
 		}

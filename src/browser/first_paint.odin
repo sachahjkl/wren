@@ -66,10 +66,9 @@ FIRST_PAINT_PREFS := [?]config.Def{
 		description = "Scroll bar tracks in the dark color scheme (CSS color, transparent = none). The light ones: layout.scrollbar.track_color."},
 }
 
-scheme_ui: First_Paint_Settings
-@(private = "file") first_paint_watch: int
-
 register_first_paint_prefs :: proc(p: ^config.Prefs) { config.register(p, FIRST_PAINT_PREFS[:]) }
+
+scheme_ui: First_Paint_Settings
 
 @(private = "file")
 pref_color :: proc(p: ^config.Prefs, name: string, fallback: css.Color) -> css.Color {
@@ -91,7 +90,7 @@ first_paint_settings_from :: proc(p: ^config.Prefs) -> First_Paint_Settings {
 
 first_paint_init :: proc(app: ^App) {
 	scheme_ui = first_paint_settings_from(&app.prefs)
-	first_paint_watch = config.watch(&app.prefs, "browser.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	app.watches[.First_Paint] = config.watch(&app.prefs, "browser.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		scheme_ui = first_paint_settings_from(p)
 		request_frames((^App)(user), 2)
 	}, app)
@@ -129,7 +128,7 @@ hold_begin :: proc(app: ^App, t: ^Tab, target: string) {
 	t.hold.started = host.now_ns(&app.loop)
 	t.hold.committed = false
 	if holdable(t, target) {
-		hold_release(t)   // a page already held goes: the current one painted after it
+		hold_release(app, t)   // a page already held goes: the current one painted after it
 		h := &t.hold
 		h.active = true
 		h.nav, h.page = t.nav, t.page
@@ -139,7 +138,7 @@ hold_begin :: proc(app: ^App, t: ^Tab, target: string) {
 		t.nav_state.bf_entry = 0
 		h.canvas = t.page.styled != nil ? t.page.styled.canvas : expected_canvas(app)
 		page.set_page_visible(t.page, false)   // its timers slow down to background pace; nothing paints it again
-	} else if !bfcache_take(the_app, t) {
+	} else if !bfcache_take(app, t) {
 		base.scope_close(t.nav)   // the page that was never painted (or nothing): what is held, if anything, stays
 	} else {
 		base.scope_close(t.nav)   // (the empty scope the cached page left)
@@ -149,10 +148,10 @@ hold_begin :: proc(app: ^App, t: ^Tab, target: string) {
 }
 
 // Stops holding: the old page closes.
-hold_release :: proc(t: ^Tab) {
+hold_release :: proc(app: ^App, t: ^Tab) {
 	h := &t.hold
 	if !h.active { return }
-	if !bfcache_take_held(the_app, t) {
+	if !bfcache_take_held(app, t) {
 		base.scope_close(h.nav)   // the old page, its modules and every request it still had
 		layout_reset(&h.layout)
 	}
@@ -172,7 +171,7 @@ hold_destroy :: proc(t: ^Tab) {
 hold_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect, fallback: css.Color) -> bool {
 	h := &t.hold
 	if h.active && h.committed && shell_elapsed_ms(h.commit) >= scheme_ui.timeout_ms {
-		hold_release(t)
+		hold_release(app, t)
 	}
 	if !h.active || h.page == nil || !h.layout.valid || h.layout.mutations != h.page.doc.mutations {
 		draw.rect(dc, r, to_draw(h.active ? h.canvas : fallback))
@@ -191,12 +190,12 @@ hold_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect, fallback
 }
 
 // The new document of `t` arrived: the hold now counts down (and ends at once across origins when that is not allowed).
-hold_commit :: proc(t: ^Tab) {
+hold_commit :: proc(app: ^App, t: ^Tab) {
 	h := &t.hold
 	if h.committed { return }
 	h.committed = true
 	h.commit = shell_now_ns()
-	if h.active && !scheme_ui.cross_origin && t.page != nil && h.page != nil && !url.same_origin(t.page.env.origin, h.page.env.origin) { hold_release(t) }
+	if h.active && !scheme_ui.cross_origin && t.page != nil && h.page != nil && !url.same_origin(t.page.env.origin, h.page.env.origin) { hold_release(app, t) }
 }
 
 // Something of the layout is content (CSS Paint Timing's "contentful": text, images, form controls, list markers).
@@ -237,8 +236,6 @@ prof_first_paint :: proc(t: ^Tab) {
 _ :: fmt   // used by the profile build only
 _ :: os
 
-@(private = "file") first_paint_timer: base.Handle
-
 // A blocked first paint or a hold ends at a known time even if nothing else happens: a frame is requested then.
 first_paint_wake :: proc(app: ^App, t: ^Tab) {
 	wait := hold_wait_ms(t)
@@ -246,9 +243,10 @@ first_paint_wake :: proc(app: ^App, t: ^Tab) {
 		if d := page.first_paint_next_deadline_ms(t.page); d >= 0 && (wait < 0 || d < wait) { wait = d }
 	}
 	if wait < 0 { return }
-	if first_paint_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, first_paint_timer) }
-	first_paint_timer = host.set_timer(&app.loop, max(wait, 1), 0, proc(data: rawptr) {
-		first_paint_timer = base.NIL_HANDLE
+	if app.first_paint_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.first_paint_timer) }
+	app.first_paint_timer = host.set_timer(&app.loop, max(wait, 1), 0, proc(data: rawptr) {
+		app := (^App)(data)
+		app.first_paint_timer = base.NIL_HANDLE
 		a := (^App)(data)
 		request_frames(a, 2)
 	}, app)

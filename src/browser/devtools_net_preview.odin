@@ -72,8 +72,7 @@ preview_kind_of :: proc(e: ^Net_Entry) -> Pv_Kind {
 	return .None
 }
 
-preview_release :: proc(pv: ^Preview_State) {
-	app := the_app
+preview_release :: proc(app: ^App, pv: ^Preview_State) {
 	if app != nil {
 		if pv.tex_ok { render.destroy_texture(&app.r, pv.tex) }
 		if pv.font_ok { font.unload(&app.fonts, pv.font_id) }
@@ -86,7 +85,7 @@ preview_release :: proc(pv: ^Preview_State) {
 	preview_render_free(&pv.render)
 	dt_list_destroy(&pv.list)
 	delete(pv.err)
-	net_media_release()
+	net_media_release(app)
 	pv^ = {}
 }
 
@@ -96,7 +95,7 @@ preview_ensure :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry, kind: Pv_Kind) 
 	pv := &d.pv
 	if pv.id == e.id && pv.kind == kind && pv.len == len(e.body) { return }
 	keep_fit, keep_unfit := pv.fit, pv.unfit
-	preview_release(pv)
+	preview_release(app, pv)
 	pv.id, pv.kind, pv.len = e.id, kind, len(e.body)
 	pv.fit, pv.unfit = keep_fit, keep_unfit
 	if !pv.unfit { pv.fit = true }

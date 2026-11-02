@@ -49,9 +49,6 @@ Chrome_Style_Settings :: struct {
 	gloss:     f32,
 }
 
-chrome_cfg: Chrome_Style_Settings
-chrome_watch: int
-
 chrome_settings_from_prefs :: proc(p: ^config.Prefs) -> Chrome_Style_Settings {
 	return {
 		style = config.string_of(p, "browser.ui.chrome_style") == "classic" ? .Classic : .Modern,
@@ -61,23 +58,23 @@ chrome_settings_from_prefs :: proc(p: ^config.Prefs) -> Chrome_Style_Settings {
 }
 
 chrome_style_init :: proc(app: ^App) {
-	chrome_cfg = chrome_settings_from_prefs(&app.prefs)
-	chrome_watch = config.watch(&app.prefs, "browser.ui.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		chrome_cfg = chrome_settings_from_prefs(p)
+	app.chrome_cfg = chrome_settings_from_prefs(&app.prefs)
+	app.watches[.Chrome_Style] = config.watch(&app.prefs, "browser.ui.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
+		app.chrome_cfg = chrome_settings_from_prefs(p)
 		request_frames(app, 3)
 	}, app)
 }
 
 chrome_style_destroy :: proc(app: ^App) {
-	config.unwatch(&app.prefs, chrome_watch)
-	tab_shapes_destroy()
-	chrome_cfg = {}
+	config.unwatch(&app.prefs, app.watches[.Chrome_Style])
+	tab_shapes_destroy(&app.shape_cache)
+	app.chrome_cfg = {}
 }
 
 // The classic look, wherever the tabs are: a row of trapezoids along the top, or a sidebar whose current tab is a panel
 // that flows into the page (tab_sidebar.odin; its geometry and colors: "The classic sidebar" below).
-classic_on :: proc() -> bool { return chrome_cfg.style == .Classic }
+classic_on :: proc(app: ^App) -> bool { return app.chrome_cfg.style == .Classic }
 
 ////////////////////////////////
 // Geometry (pure)
@@ -227,25 +224,23 @@ Shape_Cache :: struct {
 	built:  int,   // how many shapes were made (the tests: a frame that draws again makes none)
 }
 
-shape_cache: Shape_Cache
-
 // The shape for `m`: the cached one, else made (replacing the oldest). The pointer is good until the next call that
 // makes one: a frame uses at most SHAPE_CACHE_N sizes.
-tab_shape_get :: proc(m: Tab_Metrics) -> ^Tab_Shape {
+tab_shape_get :: proc(cache: ^Shape_Cache, m: Tab_Metrics) -> ^Tab_Shape {
 	for i in 0 ..< SHAPE_CACHE_N {
-		if shape_cache.valid[i] && shape_cache.shapes[i].m == m { return &shape_cache.shapes[i] }
+		if cache.valid[i] && cache.shapes[i].m == m { return &cache.shapes[i] }
 	}
-	i := shape_cache.next
-	shape_cache.next = (i + 1) % SHAPE_CACHE_N
-	tab_shape_build(&shape_cache.shapes[i], m)
-	shape_cache.valid[i] = true
-	shape_cache.built += 1
-	return &shape_cache.shapes[i]
+	i := cache.next
+	cache.next = (i + 1) % SHAPE_CACHE_N
+	tab_shape_build(&cache.shapes[i], m)
+	cache.valid[i] = true
+	cache.built += 1
+	return &cache.shapes[i]
 }
 
-tab_shapes_destroy :: proc() {
-	for i in 0 ..< SHAPE_CACHE_N { tab_shape_destroy(&shape_cache.shapes[i]) }
-	shape_cache = {}
+tab_shapes_destroy :: proc(cache: ^Shape_Cache) {
+	for i in 0 ..< SHAPE_CACHE_N { tab_shape_destroy(&cache.shapes[i]) }
+	cache^ = {}
 }
 
 // The order tabs are built in (the last is on top, and gets the clicks): the others left to right, then the current
@@ -260,6 +255,7 @@ tab_stack_order :: proc(n, current, dragged: int, order: ^[dynamic]int) {
 // Colors (pure)
 
 Classic_Colors :: struct {
+	shapes:     ^Shape_Cache,   // the App's tab shapes (what draws a tab reads them through its colours)
 	dark:       bool,
 	edge:       f32,     // hairline thickness, physical pixels
 	strip_top, strip_bot:             draw.Color,   // the tab bar
@@ -314,8 +310,9 @@ classic_colors :: proc(base_in, border: draw.Color, gloss: f32, edge: f32) -> (c
 // This frame's colors, from the theme in force (the palette's window and border colors).
 classic_colors_frame :: proc(app: ^App) -> ^Classic_Colors {
 	c := ui.frame_new(Classic_Colors)
-	c^ = classic_colors(ui.color("background"), ui.color("border"), chrome_cfg.gloss, max(math.round(ui_scale_of(app)), 1))
+	c^ = classic_colors(ui.color("background"), ui.color("border"), app.chrome_cfg.gloss, max(math.round(ui_scale_of(app)), 1))
 	c.edge_light = ui.tuned(c.edge_light)
+	c.shapes = &app.shape_cache
 	return c
 }
 
@@ -369,7 +366,7 @@ Classic_Tab :: struct {
 
 classic_tab_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	t := (^Classic_Tab)(user)
-	s := tab_shape_get(t.m)
+	s := tab_shape_get(t.c.shapes, t.m)
 	r := b.rect
 	d := s.d
 	c := t.c
@@ -499,7 +496,7 @@ field_frame_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 toolbar_row :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.8))})
-	if !classic_on() {
+	if !classic_on(app) {
 		if ui.row(.Center) { address_row(app, t) }
 		return
 	}
@@ -635,7 +632,7 @@ classic_side_tab_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		vgradient(dc, inner, inner.min.y, inner.max.y, top, bot, {1, 1, 1, a}, {rad - lw, rad - lw, rad - lw, rad - lw})
 	}
 	if t.selected < 0.01 { return }
-	s := tab_shape_get(t.m)
+	s := tab_shape_get(t.c.shapes, t.m)
 	origin := side_tab_origin(r, s.d)
 	across := t.m.h
 	if t.selected < 0.999 { draw.push_alpha(dc, t.selected) }
@@ -660,4 +657,3 @@ classic_side_tab_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	classic_edge_line(dc, c, x0, r.min.y - ext, r.min.y - ext * 0.62, outer_l, true)
 	if t.selected < 0.999 { draw.pop_alpha(dc) }
 }
-

@@ -251,11 +251,11 @@ dnd_cursor :: proc() -> (platform.Cursor, bool) {
 }
 
 @(private = "file")
-end_page_drag :: proc(op: page.Drag_Op) {
+end_page_drag :: proc(app: ^App, op: page.Drag_Op) {
 	p := dnd.src_page
 	dnd.active, dnd.src_page, dnd.op, dnd.over_chrome = false, nil, .None, false
 	dnd.handoff_pending = false
-	dnd_image_end(the_app)
+	dnd_image_end(app)
 	dnd_image_target(nil)
 	if p != nil { page.drag_finish(p, op) }
 }
@@ -271,7 +271,7 @@ hand_off :: proc(app: ^App, t: ^Tab) {
 	page.drag_leave_page(p)
 	set_caret(app, p, nil)
 	dnd_image_target(nil)
-	if t.page != p { end_page_drag(.None); return }
+	if t.page != p { end_page_drag(app, .None); return }
 	pl, allowed := page.drag_session_payload(p)
 	data: platform.Drag_Data
 	defer { delete(data.files); delete(data.custom) }
@@ -279,14 +279,14 @@ hand_off :: proc(app: ^App, t: ^Tab) {
 	data.text, data.html, data.url = pl.text, pl.html, pl.url
 	if data.url != "" && data.text == "" { data.text = data.url }
 	for e in pl.custom { append(&data.custom, platform.Drag_Entry{e.mime, e.data}) }
-	if platform.drag_data_empty(data) || allowed == {} { end_page_drag(.None); return }
+	if platform.drag_data_empty(data) || allowed == {} { end_page_drag(app, .None); return }
 	// the remote control's drag goes on through the window's own drop target; a window nobody sees (driven by it)
 	// never runs the system's drag, which would follow the real mouse of the person at the computer
 	steps, scripted := remote_drag_steps(app)   // remote_methods.odin
 	if scripted {
 		platform.drag_script(wnd.win, steps)
 	} else if !platform.is_window_visible(wnd.win) {
-		end_page_drag(.None)
+		end_page_drag(app, .None)
 		return
 	}
 	platform.drop_sync_set(wnd.win, dnd_sync, app)
@@ -296,7 +296,7 @@ hand_off :: proc(app: ^App, t: ^Tab) {
 	effect, _ := platform.drag_start(wnd.win, data, effects_of(allowed), dnd_image_system())
 	dnd.sync_tab = nil
 	if t.page != p { dnd.src_page = nil }
-	end_page_drag(op_of(effect))
+	end_page_drag(app, op_of(effect))
 	request_frames(app, 2)
 }
 
@@ -432,7 +432,7 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 	}
 	if !dnd.active { return false }
 	p := dnd.src_page
-	if t.page != p || p == nil { end_page_drag(.None); return false }
+	if t.page != p || p == nil { end_page_drag(app, .None); return false }
 	#partial switch ev.kind {
 	case .Mouse_Move:
 		size := [2]f32{f32(wnd.win.size.x), f32(wnd.win.size.y)}
@@ -454,7 +454,7 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 			dnd.over_chrome = false
 			hit, cx, cy := page_point(app, t, ev.pos)
 			op, ok := page.drag_update(p, hit, cx, cy, dom_mods(ev.mods))
-			if !ok { end_page_drag(.None); return true }
+			if !ok { end_page_drag(app, .None); return true }
 			dnd.op = op
 			follow_caret(app, t, p, ev.pos)
 		} else {
@@ -479,7 +479,7 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 			op = page.drag_drop(p, hit, cx, cy, dom_mods(ev.mods)).op
 		}
 		if t.page != p { dnd.src_page = nil }
-		end_page_drag(op)
+		end_page_drag(app, op)
 		request_frames(app, 2)
 		return true
 	case .Key_Press:

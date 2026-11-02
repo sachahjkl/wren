@@ -39,28 +39,28 @@ engines_search_def :: proc() -> config.Def {
 }
 
 // The names and ids of the engines, for the default's choice.
-engines_choices :: proc() -> (names, ids: []string) {
-	names = make([]string, len(sengines.list), context.temp_allocator)
-	ids = make([]string, len(sengines.list), context.temp_allocator)
-	for e, i in sengines.list { names[i], ids[i] = e.name, e.id }
+engines_choices :: proc(app: ^App) -> (names, ids: []string) {
+	names = make([]string, len(app.sengines.list), context.temp_allocator)
+	ids = make([]string, len(app.sengines.list), context.temp_allocator)
+	for e, i in app.sengines.list { names[i], ids[i] = e.name, e.id }
 	return
 }
 
 // What changes the row's height: the list, the form and its error, the default.
-engines_row_id :: proc(ed: ^Engines_Editor) -> u64 {
-	h := u64(0x9e3779b97f4a7c15) ~ sengines.serial * 0x100000001b3
+engines_row_id :: proc(app: ^App, ed: ^Engines_Editor) -> u64 {
+	h := u64(0x9e3779b97f4a7c15) ~ app.sengines.serial * 0x100000001b3
 	h = (h ~ u64(ed.edit + 2)) * 0x100000001b3
 	h = (h ~ u64(ed.error)) * 0x100000001b3
-	h = (h ~ u64(search_default_index() + 2)) * 0x100000001b3
+	h = (h ~ u64(search_default_index(app) + 2)) * 0x100000001b3
 	return h
 }
 
 // Opens the form for engine `i` (-1: a new one).
-engines_edit_start :: proc(ed: ^Engines_Editor, i: int) {
+engines_edit_start :: proc(app: ^App, ed: ^Engines_Editor, i: int) {
 	ed.error = .None
 	ed.want_focus = true
-	if i >= 0 && i < len(sengines.list) {
-		e := sengines.list[i]
+	if i >= 0 && i < len(app.sengines.list) {
+		e := app.sengines.list[i]
 		ed.edit = i + 1
 		ui.field_set(&ed.name, e.name); ui.field_set(&ed.keyword, e.keyword); ui.field_set(&ed.url, e.url)
 	} else {
@@ -73,9 +73,9 @@ engines_edit_start :: proc(ed: ^Engines_Editor, i: int) {
 engines_edit_apply :: proc(app: ^App, ed: ^Engines_Editor) -> bool {
 	self := ed.edit > 0 ? ed.edit - 1 : -1
 	name, kw, url := ui.field_string(&ed.name), ui.field_string(&ed.keyword), ui.field_string(&ed.url)
-	ed.error = engine_validate(&sengines, self, name, kw, url)
+	ed.error = engine_validate(&app.sengines, self, name, kw, url)
 	if ed.error != .None { return false }
-	if self >= 0 { engines_update(&sengines, self, name, kw, url) } else { _ = engines_add(&sengines, name, kw, url) }
+	if self >= 0 { engines_update(&app.sengines, self, name, kw, url) } else { _ = engines_add(&app.sengines, name, kw, url) }
 	ed.edit = 0
 	search_engines_changed(app)
 	return true
@@ -99,9 +99,8 @@ engine_badge :: proc(id: string, e: Search_Engine, size: f32, clickable := false
 }
 
 // The row of about:config.
-engines_row :: proc(v: ^Config_View, index: int) {
+engines_row :: proc(app: ^App, v: ^Config_View, index: int) {
 	em := ui.font_size()
-	app := the_app
 	ed := &v.engines
 	row := ui.list_row(&v.list.list, index, v.labels[index])
 	ui.push_parent(row.box)
@@ -121,9 +120,9 @@ engines_row :: proc(v: ^Config_View, index: int) {
 		}
 		ui.spacer(ui.px(em * 0.4))
 		ui.tab_stops(index == v.list.sel)
-		def := search_default_index()
+		def := search_default_index(app)
 		action, target := 0, -1   // 1 default, 2 edit, 3 up, 4 down, 5 remove
-		for e, i in sengines.list {
+		for e, i in app.sengines.list {
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * ENGINES_ROW_H_EM))})
 			if ui.row(.Center, {}, fmt.tprintf("###eng_%d", i)) {
 				engine_badge(fmt.tprintf("###eb_%d", i), e, math.round(em * 1.5))
@@ -164,8 +163,8 @@ engines_row :: proc(v: ^Config_View, index: int) {
 				ui.next({width = ui.text_size(em * 0.6), height = ui.px(ui.dense(em * 1.8))})
 				if ui.tags("ghost_button") { if ui.button(fmt.tprintf("%s###ee_%d", i18n.tr("Edit"), i)).clicked { action, target = 2, i } }
 				if btn(fmt.tprintf("###eup_%d", i), ui.ICON_UP, i18n.tr("Move up"), i > 0) { action, target = 3, i }
-				if btn(fmt.tprintf("###edn_%d", i), ui.ICON_DOWN, i18n.tr("Move down"), i + 1 < len(sengines.list)) { action, target = 4, i }
-				if btn(fmt.tprintf("###erm_%d", i), GLYPH_CLOSE, i18n.tr("Remove"), len(sengines.list) > 1) { action, target = 5, i }
+				if btn(fmt.tprintf("###edn_%d", i), ui.ICON_DOWN, i18n.tr("Move down"), i + 1 < len(app.sengines.list)) { action, target = 4, i }
+				if btn(fmt.tprintf("###erm_%d", i), GLYPH_CLOSE, i18n.tr("Remove"), len(app.sengines.list) > 1) { action, target = 5, i }
 				ui.spacer(ui.px(em * 0.6))
 			}
 			if ed.edit == i + 1 { engines_form(app, ed) }
@@ -175,23 +174,23 @@ engines_row :: proc(v: ^Config_View, index: int) {
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.1))})
 		if ui.row(.Center, {}, "###eng_actions") {
 			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-			if ui.button(i18n.tr("Add a search engine###eng_add")).clicked { engines_edit_start(ed, -1) }
+			if ui.button(i18n.tr("Add a search engine###eng_add")).clicked { engines_edit_start(app, ed, -1) }
 			ui.spacer(ui.px(em * 0.6))
-			missing := engines_missing_builtins(&sengines)
+			missing := engines_missing_builtins(&app.sengines)
 			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			if ui.disabled(missing == 0) {
 				label := missing > 0 ? fmt.tprintf(i18n.tr("Restore the built-in engines (%d)###eng_restore"), missing) : i18n.tr("Restore the built-in engines###eng_restore")
-				if ui.button(label).clicked && missing > 0 { engines_restore_builtins(&sengines); search_engines_changed(app) }
+				if ui.button(label).clicked && missing > 0 { engines_restore_builtins(&app.sengines); search_engines_changed(app) }
 			}
 		}
 		ui.spacer(ui.px(em * 0.55))
 		switch action {
 		case 1: search_set_default(app, target)
-		case 2: engines_edit_start(ed, target)
-		case 3, 4: engines_move(&sengines, target, action == 3 ? -1 : 1); if ed.edit > 0 { ed.edit = 0 }; search_engines_changed(app)
+		case 2: engines_edit_start(app, ed, target)
+		case 3, 4: engines_move(&app.sengines, target, action == 3 ? -1 : 1); if ed.edit > 0 { ed.edit = 0 }; search_engines_changed(app)
 		case 5:
 			if ed.edit > 0 { ed.edit = 0 }
-			engines_remove(&sengines, target)
+			engines_remove(&app.sengines, target)
 			search_engines_changed(app)
 		}
 	}
@@ -270,10 +269,10 @@ engines_form :: proc(app: ^App, ed: ^Engines_Editor) {
 
 // The address bar's "This time, search with": a badge per engine, the one the search rows use marked; the engine
 // clicked (-1: none).
-urlbar_engine_row :: proc(uv: ^Urlbar_View, w, h, pad: f32) -> int {
+urlbar_engine_row :: proc(app: ^App, uv: ^Urlbar_View, w, h, pad: f32) -> int {
 	em := ui.font_size()
 	picked := -1
-	cur, _ := urlbar_search_of(uv)
+	cur, _ := urlbar_search_of(app, uv)
 	ui.next({width = ui.px(w), height = ui.px(h), axis = .X, cross = .Center, flags = {.Clip}})
 	if ui.row(.Center, {}, "###ub_engines") {
 		ui.spacer(ui.px(pad + em * 0.5))
@@ -282,7 +281,7 @@ urlbar_engine_row :: proc(uv: ^Urlbar_View, w, h, pad: f32) -> int {
 			ui.label(i18n.tr("This time, search with:###ub_sw"))
 		}
 		ui.spacer(ui.px(em * 0.6))
-		for e, i in sengines.list {
+		for e, i in app.sengines.list {
 			s := engine_badge(fmt.tprintf("###ube_%d", i), e, math.round(em * 1.5), clickable = true, selected = i == cur)
 			tip(s, e.keyword != "" ? fmt.tprintf("%s  (%s)", e.name, e.keyword) : e.name)
 			if s.clicked { picked = i }

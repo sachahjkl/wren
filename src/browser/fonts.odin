@@ -473,14 +473,15 @@ adopt_web_fonts :: proc(t: ^Tab) {
 ////////////////////////////////
 // The text interface the layout engine measures with
 
-@(private = "file")
+@(private)
 Text_Ctx :: struct {
 	fonts:   ^Page_Fonts,
 	measure: ^Measure,
 	style:   ^style.Settings,
 }
 
-@(private = "file")
+// (each thread its own: what the layout of a page thread and the drawing of the App's thread measure with)
+@(private = "file", thread_local)
 text_ctx: Text_Ctx
 
 page_text_api :: proc(pf: ^Page_Fonts, m: ^Measure, settings: ^style.Settings) -> lay.Text_Api {

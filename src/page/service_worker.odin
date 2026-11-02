@@ -35,6 +35,7 @@ import "core:fmt"
 import "core:os"
 import "core:strconv"
 import "core:strings"
+import "core:sync"
 import "core:time"
 import "wb:base"
 import "wb:fetch"
@@ -564,7 +565,7 @@ sw_redundant :: proc(v: ^Sw_Version) {
 @(private)
 sw_unregister :: proc(r: ^Sw_Registration) {
 	r.uninstalling = true
-	r.uninstall_after = next_page_id
+	r.uninstall_after = sync.atomic_load(&next_page_id)
 	if !sw_has_clients(r) { sw_remove(r); return }
 	sw_save(r.dir)   // (not kept: a restart forgets it)
 	sw_changed(r)
@@ -851,7 +852,7 @@ sw_try_activate :: proc(r: ^Sw_Registration) {
 	if old != nil { sw_redundant(old) }
 	if !r.counted {
 		r.counted = true
-		r.after_page = next_page_id
+		r.after_page = sync.atomic_load(&next_page_id)
 		sw_registry.active += 1
 	}
 	sw_store_script(w)
@@ -1024,7 +1025,7 @@ sw_request :: proc(v: ^Sw_Version, request: u64, op: Sw_Request_Op, text, extra:
 	case .Open_Window:
 		open := sw_embedder.open
 		if open == nil { sw_answer(v.id, request, false, "InvalidAccessError: this browser cannot open a window now"); return }
-		after := next_page_id
+		after := sync.atomic_load(&next_page_id)
 		if !open(sw_embedder.user, text) { sw_answer(v.id, request, false, "InvalidAccessError: the window was not opened"); return }
 		sw_wait_document(v, request, after, text)
 	case .Navigate:
@@ -1032,7 +1033,7 @@ sw_request :: proc(v: ^Sw_Version, request: u64, op: Sw_Request_Op, text, extra:
 		if pg == nil || sw_controller(pg) != r { sw_answer(v.id, request, false, "TypeError: the client is not controlled by this service worker"); return }
 		nav := pg.web.embedder.navigate
 		if nav == nil { sw_answer(v.id, request, false, "TypeError: the client cannot navigate"); return }
-		after := next_page_id
+		after := sync.atomic_load(&next_page_id)
 		Nav :: struct { page: u64, url: string }
 		n := new(Nav)
 		n^ = {pg.web.id, strings.clone(text)}

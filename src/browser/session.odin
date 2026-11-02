@@ -58,8 +58,6 @@ SESSION_PREFS := [?]config.Def{
 
 register_session_prefs :: proc(p: ^config.Prefs) { config.register(p, SESSION_PREFS[:]) }
 
-@(private = "file") session_last: string   // what was written last (nothing is written when it did not change)
-
 session_path :: proc(app: ^App) -> string { return strings.concatenate({app.profile_dir, "/session.txt"}, context.temp_allocator) }
 
 // One window of a session file: where it was, and its tabs.
@@ -359,11 +357,11 @@ session_save :: proc(app: ^App) {
 	if !app.cfg.persist_profile { return }
 	if !config.bool_of(&app.prefs, "browser.session.restore") { pinned_save(app); return }
 	text := session_text(app)
-	if text == session_last { return }
+	if text == app.session_last { return }
 	path := session_path(app)
 	if !base.file_write_atomic(path, transmute([]byte)text) { return }   // temp file renamed over the old one
-	delete(session_last)
-	session_last = strings.clone(text)
+	delete(app.session_last)
+	app.session_last = strings.clone(text)
 }
 
 // The tabs to open at start-up (none when restoring is off, there is no file, or it is not a session file).
@@ -388,8 +386,6 @@ session_restore :: proc(app: ^App) -> bool {
 	return session_open_windows(app, windows, text)
 }
 
-@(private = "file") rest_text: string   // the text of a session whose other windows open once the renderer exists
-
 // Opens the first window of a session in the window there is (its rectangle, its tabs); the others wait for
 // session_open_other_windows (a window needs the renderer, which starts later). false: nothing to open.
 session_open_windows :: proc(app: ^App, windows: []Session_Window, text: string) -> bool {
@@ -398,17 +394,17 @@ session_open_windows :: proc(app: ^App, windows: []Session_Window, text: string)
 	if len(first.tabs) > 0 { session_open_tabs(app, first.tabs, first.current, first.groups) } else { tab_open(app) }
 	if first.has_rect && app.active != nil { window_placement_set(app.active, first.rect, first.maximized) }
 	if len(windows) > 1 {
-		delete(rest_text)
-		rest_text = strings.clone(text)
+		delete(app.rest_text)
+		app.rest_text = strings.clone(text)
 	}
 	return true
 }
 
 // The windows after the first one of the session that was just opened (main.odin, once the renderer and the first window are up).
 session_open_other_windows :: proc(app: ^App) {
-	if rest_text == "" { return }
-	text := rest_text
-	defer { delete(text); rest_text = "" }
+	if app.rest_text == "" { return }
+	text := app.rest_text
+	defer { delete(text); app.rest_text = "" }
 	windows, ok := session_parse_windows(text, int(config.int_of(&app.prefs, "browser.session.max_tabs")), int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), max_windows = int(config.int_of(&app.prefs, "browser.session.max_windows")))
 	if !ok || len(windows) < 2 { return }
 	for w in windows[1:] {
@@ -449,13 +445,13 @@ session_open_tabs :: proc(app: ^App, tabs: []Session_Tab, current: int, groups: 
 		t.lazy = true
 		if len(st.entries) > 0 {
 			page.session_load(&t.session, st.entries, st.current, w.history_max_entries, w.history_max_nodes)
-			sync_history(t)
+			sync_history(app, t)
 			if cur := page.session_current(&t.session); cur != nil {
 				delete(t.url); t.url = strings.clone(cur.url)
 				if cur.title != "" { delete(t.title); t.title = strings.clone(cur.title) }
 			}
 		}
-		if page.session_current(&t.session) == nil { history_push(t, st.url) }
+		if page.session_current(&t.session) == nil { history_push(app, t, st.url) }
 	}
 	wnd.current = first + clamp(current, 0, max(len(tabs) - 1, 0))
 	if app.active != nil { tabs_fix(app, app.active) } else {
@@ -512,7 +508,7 @@ pinned_restore :: proc(app: ^App) {
 	session_open_tabs(app, tabs, 0)
 }
 
-session_destroy :: proc() {
-	delete(session_last)
-	session_last = ""
+session_destroy :: proc(app: ^App) {
+	delete(app.session_last)
+	app.session_last = ""
 }

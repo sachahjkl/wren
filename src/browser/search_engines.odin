@@ -342,7 +342,6 @@ engines_save_file :: proc(se: ^Search_Engines, path: string) -> bool {
 ////////////////////////////////
 // The browser's list
 
-sengines: Search_Engines
 
 @(private = "file")
 engines_path :: proc(app: ^App) -> string {
@@ -353,43 +352,43 @@ engines_path :: proc(app: ^App) -> string {
 // Start-up (interaction_init): the profile's list, or the built-in engines and what a former profile chose.
 search_engines_init :: proc(app: ^App) {
 	path := engines_path(app)
-	if path != "" && engines_load_file(&sengines, path) { return }
+	if path != "" && engines_load_file(&app.sengines, path) { return }
 	custom, has_custom := config.user_text(&app.prefs, "browser.search.custom_url")
-	migrated := engines_migrate(&sengines, config.string_of(&app.prefs, "browser.search.engine"), custom, has_custom)
+	migrated := engines_migrate(&app.sengines, config.string_of(&app.prefs, "browser.search.engine"), custom, has_custom)
 	// (a file that is there but not read, another version's, is left alone until the user changes the list)
 	if migrated && path != "" && !os.exists(path) { search_engines_save(app) }
 }
 
-search_engines_destroy :: proc() { engines_destroy(&sengines) }
+search_engines_destroy :: proc(app: ^App) { engines_destroy(&app.sengines) }
 
 // After a change of the list: written to the profile; a default that is gone gives way to the first engine.
 search_engines_changed :: proc(app: ^App) {
 	search_engines_save(app)
-	if len(sengines.list) > 0 && engines_find(&sengines, ix.search_engine) < 0 {
-		_ = config.set_from_string(&app.prefs, "browser.search.engine", sengines.list[0].id, .User)
+	if len(app.sengines.list) > 0 && engines_find(&app.sengines, ix.search_engine) < 0 {
+		_ = config.set_from_string(&app.prefs, "browser.search.engine", app.sengines.list[0].id, .User)
 	}
 	request_frames(app, 2)
 }
 
 search_engines_save :: proc(app: ^App) {
-	if path := engines_path(app); path != "" { _ = engines_save_file(&sengines, path) }
+	if path := engines_path(app); path != "" { _ = engines_save_file(&app.sengines, path) }
 }
 
 search_set_default :: proc(app: ^App, i: int) {
-	if i < 0 || i >= len(sengines.list) { return }
-	_ = config.set_from_string(&app.prefs, "browser.search.engine", sengines.list[i].id, .User)
+	if i < 0 || i >= len(app.sengines.list) { return }
+	_ = config.set_from_string(&app.prefs, "browser.search.engine", app.sengines.list[i].id, .User)
 }
 
 // Index of the default engine of the browser's list.
-search_default_index :: proc() -> int { return engines_default(&sengines, ix.search_engine) }
+search_default_index :: proc(app: ^App) -> int { return engines_default(&app.sengines, ix.search_engine) }
 
 // The address that searches `words`: with engine `engine` (an index of the list), or the default one (-1).
-search_url :: proc(words: string, engine := -1) -> string {
-	return engine_url(engine_at(&sengines, engine >= 0 ? engine : search_default_index()), words)
+search_url :: proc(app: ^App, words: string, engine := -1) -> string {
+	return engine_url(engine_at(&app.sengines, engine >= 0 ? engine : search_default_index(app)), words)
 }
 
-search_engine_name :: proc(engine := -1) -> string {
-	return engine_at(&sengines, engine >= 0 ? engine : search_default_index()).name
+search_engine_name :: proc(app: ^App, engine := -1) -> string {
+	return engine_at(&app.sengines, engine >= 0 ? engine : search_default_index(app)).name
 }
 
 @(private = "file")

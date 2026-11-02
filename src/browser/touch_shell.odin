@@ -47,7 +47,7 @@ touch_devices_apply :: proc(app: ^App) {
 	shown := d
 	shown.touch_points = points
 	style.set_pointer_caps(pointer_caps_of(shown))
-	prefs_apply_counts[.Touch] += 1
+	app.prefs_apply_counts[.Touch] += 1
 }
 
 // The media features' view of a set of devices. Pure.
@@ -105,7 +105,7 @@ touch_pinch_steps :: proc(acc: ^f32, scale, step: f32) -> int {
 	return n
 }
 
-@(private = "file")
+@(private)
 Touch_Shell :: struct {
 	g:         platform.Touch_Gesture,
 	tab:       ^Tab,
@@ -120,8 +120,6 @@ Touch_Shell :: struct {
 	hit:       base.Handle,
 }
 
-@(private = "file")
-tsh: Touch_Shell
 
 @(private = "file")
 now_ms :: proc() -> f64 { return f64(time.tick_now()._nsec) / 1e6 }
@@ -132,38 +130,38 @@ touch_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event, hit: base.Handle, 
 	if ev.pointer.kind != .Touch || t.page == nil { return }
 	p := t.page
 	scale := max(page_scale(app), 0.01)
-	if !platform.touch_gesture_active(&tsh.g) && ev.kind == .Pointer_Down {
+	if !platform.touch_gesture_active(&app.tsh.g) && ev.kind == .Pointer_Down {
 		s := platform.TOUCH_GESTURE_DEFAULTS
 		s.slop = f32(config.float_of(&app.prefs, "browser.touch.pan_slop_px")) * scale
 		s.long_press_ms = f64(config.int_of(&app.prefs, "browser.touch.long_press_ms"))
 		s.fling_min_speed = f32(config.float_of(&app.prefs, "browser.touch.fling_min_speed")) * scale
-		platform.touch_gesture_init(&tsh.g, s)
-		tsh.tab, tsh.page, tsh.cancelled, tsh.panned, tsh.pinch, tsh.hit = t, p, false, false, 1, hit
-		tsh.blocked = touch_blocked_along(p, hit)
-		tsh.scroller = base.NIL_HANDLE
+		platform.touch_gesture_init(&app.tsh.g, s)
+		app.tsh.tab, app.tsh.page, app.tsh.cancelled, app.tsh.panned, app.tsh.pinch, app.tsh.hit = t, p, false, false, 1, hit
+		app.tsh.blocked = touch_blocked_along(p, hit)
+		app.tsh.scroller = base.NIL_HANDLE
 	}
-	if tsh.page != p { return }
+	if app.tsh.page != p { return }
 	// touchstart, and touchmove until the pan began, may keep the gesture for the page
-	if !allowed && (ev.kind == .Pointer_Down || (ev.kind == .Pointer_Move && !tsh.panned)) { tsh.cancelled = true }
-	if !allowed && ev.kind == .Pointer_Up { tsh.cancelled = true }
+	if !allowed && (ev.kind == .Pointer_Down || (ev.kind == .Pointer_Move && !app.tsh.panned)) { app.tsh.cancelled = true }
+	if !allowed && ev.kind == .Pointer_Up { app.tsh.cancelled = true }
 	ms := now_ms()
 	ge: platform.Touch_Gesture_Event
 	#partial switch ev.kind {
-	case .Pointer_Down: ge = platform.touch_gesture_down(&tsh.g, ev.pointer.id, ev.pos, ms)
-	case .Pointer_Move: ge = platform.touch_gesture_move(&tsh.g, ev.pointer.id, ev.pos, ms)
-	case .Pointer_Up: ge = platform.touch_gesture_up(&tsh.g, ev.pointer.id, ev.pos, ms)
-	case .Pointer_Cancel: ge = platform.touch_gesture_cancel(&tsh.g)
+	case .Pointer_Down: ge = platform.touch_gesture_down(&app.tsh.g, ev.pointer.id, ev.pos, ms)
+	case .Pointer_Move: ge = platform.touch_gesture_move(&app.tsh.g, ev.pointer.id, ev.pos, ms)
+	case .Pointer_Up: ge = platform.touch_gesture_up(&app.tsh.g, ev.pointer.id, ev.pos, ms)
+	case .Pointer_Cancel: ge = platform.touch_gesture_cancel(&app.tsh.g)
 	}
 	touch_apply(app, t, ge)
-	if platform.touch_gesture_active(&tsh.g) { request_frames(app, 2) }
+	if platform.touch_gesture_active(&app.tsh.g) { request_frames(app, 2) }
 }
 
 // Every frame (dnd_events): a finger held still becomes a long press.
 touch_frame :: proc(app: ^App) {
-	if !platform.touch_gesture_active(&tsh.g) || tsh.tab == nil { return }
-	t := tsh.tab
-	if t != current_tab(app) || t.page != tsh.page { platform.touch_gesture_cancel(&tsh.g); return }
-	touch_apply(app, t, platform.touch_gesture_tick(&tsh.g, now_ms()))
+	if !platform.touch_gesture_active(&app.tsh.g) || app.tsh.tab == nil { return }
+	t := app.tsh.tab
+	if t != current_tab(app) || t.page != app.tsh.page { platform.touch_gesture_cancel(&app.tsh.g); return }
+	touch_apply(app, t, platform.touch_gesture_tick(&app.tsh.g, now_ms()))
 	request_frames(app, 2)
 }
 
@@ -175,23 +173,23 @@ touch_apply :: proc(app: ^App, t: ^Tab, ge: platform.Touch_Gesture_Event) {
 	switch ge.kind {
 	case .None:
 	case .Pan, .Pinch:
-		tsh.panned = true
-		if tsh.cancelled { return }
-		if ge.kind == .Pinch && .Pinch_Zoom not_in tsh.blocked {
-			if n := touch_pinch_steps(&tsh.pinch, ge.scale, f32(config.float_of(&app.prefs, "browser.touch.pinch_step"))); n != 0 {
+		app.tsh.panned = true
+		if app.tsh.cancelled { return }
+		if ge.kind == .Pinch && .Pinch_Zoom not_in app.tsh.blocked {
+			if n := touch_pinch_steps(&app.tsh.pinch, ge.scale, f32(config.float_of(&app.prefs, "browser.touch.pinch_step"))); n != 0 {
 				for _ in 0 ..< abs(n) { zoom_step(app, t, n > 0 ? 1 : -1) }
 			}
 		}
-		if ge.first { tsh.x_ok, tsh.y_ok = touch_pan_axes(-ge.pan, tsh.blocked) }
-		d := touch_scroll_delta(ge.pan, tsh.x_ok, tsh.y_ok)
-		if d != {} { tsh.scroller = touch_scroll(app, t, ge.pos - wnd.page_rect.min, d) }
+		if ge.first { app.tsh.x_ok, app.tsh.y_ok = touch_pan_axes(-ge.pan, app.tsh.blocked) }
+		d := touch_scroll_delta(ge.pan, app.tsh.x_ok, app.tsh.y_ok)
+		if d != {} { app.tsh.scroller = touch_scroll(app, t, ge.pos - wnd.page_rect.min, d) }
 	case .Fling:
-		if tsh.cancelled || !config.bool_of(&app.prefs, "browser.touch.fling") { return }
+		if app.tsh.cancelled || !config.bool_of(&app.prefs, "browser.touch.fling") { return }
 		dist, ms := platform.touch_fling(ge.velocity, f32(config.float_of(&app.prefs, "browser.touch.fling_friction")))
-		d := touch_scroll_delta(dist, tsh.x_ok, tsh.y_ok)
-		if d != {} && ms > 0 { smooth_scroll_by(app, t, tsh.scroller, d, ms) }
+		d := touch_scroll_delta(dist, app.tsh.x_ok, app.tsh.y_ok)
+		if d != {} && ms > 0 { smooth_scroll_by(app, t, app.tsh.scroller, d, ms) }
 	case .Tap:
-		if tsh.cancelled { return }
+		if app.tsh.cancelled { return }
 		// the compatibility mouse events of a tap, through the window's queue as the mouse's (marked emulated: no
 		// second set of pointer events)
 		for kind in ([]platform.Event_Kind{.Mouse_Move, .Mouse_Press, .Mouse_Release}) {
@@ -200,10 +198,10 @@ touch_apply :: proc(app: ^App, t: ^Tab, ge: platform.Touch_Gesture_Event) {
 		}
 		request_frames(app, 3)
 	case .Long_Press:
-		if tsh.cancelled { return }
+		if app.tsh.cancelled { return }
 		local := ge.pos - wnd.page_rect.min + doc_scroll_vec(t)
 		page_context_press(app, t, ge.pos)
-		if t.page == p { page_context_menu(app, t, tsh.hit, ge.pos, local, false) }
+		if t.page == p { page_context_menu(app, t, app.tsh.hit, ge.pos, local, false) }
 	case .End:
 	}
 }
