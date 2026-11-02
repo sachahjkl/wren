@@ -380,7 +380,8 @@ begin_session :: proc() {
 		pid, started := parse_session(prev)
 		if pid != 0 && !process_is(pid, started) {
 			unclean_text = prev   // (before the thread starts: it reads it at once)
-			head := strings.builder_make(runtime.heap_allocator())   // (not the tracker: the thread keeps it)
+			untracked := runtime.default_context()   // memcheck: not the tracker (the thread keeps what this makes)
+			head := strings.builder_make(untracked.allocator)
 			unclean_report_begin(prev, &head)
 			unclean_report_head = strings.to_string(head)
 			h := win.CreateThread(nil, 1 << 20, unclean_thread, nil, 0, nil)   // (wevtutil takes a moment: not on the start-up path)
