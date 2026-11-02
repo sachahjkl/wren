@@ -259,18 +259,19 @@ apply_response_headers :: proc(p: ^Page, csp_values, csp_report_only_values: []s
 // What makes a SharedArrayBuffer safe here is that a realm cannot read another's memory at all (each is a Wasm instance): the
 // embedder policy still holds, since what such a page may read is what the web expects of it.
 apply_isolation_headers :: proc(p: ^Page, headers: http.Headers, parent: ^Page = nil) {
+	// a frame of its parent's origin is in its parent's agent cluster, a secure context or not (a WebAssembly.Module goes between them)
+	same := parent != nil && url.same_origin(p.env.origin, parent.env.origin)
+	if same {
+		p.env.agent_cluster = page_cluster(parent)
+		wasm.user_cluster_retain(p.env.agent_cluster)
+		base.on_close(p.scope, proc(data: rawptr) { wasm.user_cluster_release(u64(uintptr(data))) }, rawptr(uintptr(p.env.agent_cluster)))
+	}
 	if !p.env.secure_context { return }
 	coep, _ := http.get_header(headers, "cross-origin-embedder-policy")
 	p.env.embedder_policy = parse_embedder_policy(coep)
 	coop, _ := http.get_header(headers, "cross-origin-opener-policy")
 	if parent != nil {
-		same := url.same_origin(p.env.origin, parent.env.origin)
 		p.env.cross_origin_isolated = parent.env.cross_origin_isolated && same && p.env.embedder_policy != .Unsafe_None
-		if same {
-			p.env.agent_cluster = page_cluster(parent)
-			wasm.user_cluster_retain(p.env.agent_cluster)
-			base.on_close(p.scope, proc(data: rawptr) { wasm.user_cluster_release(u64(uintptr(data))) }, rawptr(uintptr(p.env.agent_cluster)))
-		}
 		return
 	}
 	value := strings.trim_space(strings.split(coop, ";", context.temp_allocator)[0])

@@ -84,6 +84,7 @@ Task :: struct {
 	script:          Script_Type,
 	parser_inserted: bool,
 	origin:          url.Origin,    // the request origin; becomes opaque once a cross-origin redirect tainted it
+	policy_origin:   url.Origin,    // the request origin as it started: what the cross-origin resource policy check compares (a tainted origin is CORS's)
 	max_body:        int,
 	early_error:     Error_Kind,    // a validation failure found at start, reported from the loop
 
@@ -167,6 +168,7 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 	if len(r.body) > 0 { t.body = make([]byte, len(r.body)); copy(t.body, r.body) }
 	cache_task_init(&t, r)
 	if r.initiator != nil { t.origin = url.origin_clone(r.initiator.origin) } else { t.origin = url.new_opaque_origin() }
+	t.policy_origin = url.origin_clone(t.origin)
 	if r.initiator != nil { t.embedder_policy = r.initiator.embedder_policy }
 
 	h, tp := base.pool_insert(&l.tasks, t)
@@ -230,6 +232,7 @@ release :: proc(l: ^Loader, h: base.Handle) -> bool {
 	cache_task_release(l, &t)
 	url.destroy(&t.target)
 	url.origin_destroy(&t.origin)
+	url.origin_destroy(&t.policy_origin)
 	http.headers_destroy(&t.headers)
 	http.headers_destroy(&t.raw_headers)
 	delete(t.method)
@@ -837,7 +840,7 @@ check_and_send_response :: proc(t: ^Task) -> bool {
 
 	// Fetch: the cross-origin resource policy check, for each response of a request without CORS
 	if t.mode == .No_Cors {
-		if why := resource_policy_refuses(t.origin, t.target, t.embedder_policy, raw); why != "" {
+		if why := resource_policy_refuses(t.policy_origin, t.target, t.embedder_policy, raw); why != "" {
 			fail(t, .Blocked_Cors, why)
 			return false
 		}
