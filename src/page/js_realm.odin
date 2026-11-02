@@ -31,7 +31,15 @@ Js_Realm :: struct {
 	has_pending_key: bool,
 	interrupt:       ^i32,       // the engine's interrupt flag, in its memory
 	soft_fired:      int,        // slow-script interruptions already reported
+	gc_nodes:        int,        // the document's live nodes after the last collection the DOM asked for (js_after_task)
 }
+
+// A collection when the document's live nodes grew this many times over since the last one the DOM asked for, and are at
+// least JS_GC_NODES_FLOOR: a removed node lives as long as its wrapper, which the engine frees only when it collects, and
+// the engine counts its own heap, not the nodes. Without it a script that rebuilds 10 000 nodes a frame left them by the
+// hundred thousand, and every array of style and layout indexed by node grew with them.
+JS_GC_NODES_GROWTH :: 2
+JS_GC_NODES_FLOOR :: 4096
 
 @(private)
 js_engine_version: string
@@ -180,6 +188,15 @@ js_after_task :: proc(p: ^Page, r: ^Js_Realm, what: string) {
 	if r.inst.soft_fired > r.soft_fired {
 		r.soft_fired = r.inst.soft_fired
 		log(p, .Warn, fmt.tprintf("a script took longer than javascript.slow_script_ms (%d ms) and was stopped: %s", p.settings.js.slow_script_ms, what))
+	}
+	// the nodes scripts dropped go back with their wrappers: their handle indices are reused, the document's arrays stay its size
+	if p.doc != nil && p.worker == nil && p.objects.depth == 0 && !r.failed && !r.inst.dead {
+		live := p.doc.nodes.count
+		r.gc_nodes = min(r.gc_nodes, live)   // (the document shrank: growth counts from there)
+		if live >= JS_GC_NODES_FLOOR && live > JS_GC_NODES_GROWTH * r.gc_nodes {
+			js.collect(r.inst)
+			r.gc_nodes = p.doc.nodes.count
+		}
 	}
 }
 
