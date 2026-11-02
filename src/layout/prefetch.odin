@@ -23,13 +23,6 @@ BUILD_FIELDS :: [?]uintptr{
 @(private)
 FONT_FIELDS :: [?]uintptr{offset_of(style.Computed, inherited_group)}
 
-// What the key of a font reads (font_key_of), beyond the line of font_family.
-@(private)
-FONT_KEY_FIELDS :: [?]uintptr{
-	offset_of(style.Computed, font_stretch), offset_of(style.Computed, font_kerning), offset_of(style.Computed, content_language),
-	offset_of(style.Computed, writing_mode),
-}
-
 // What the block layout reads (resolve_box_model, block_width, specified heights).
 @(private)
 LAYOUT_FIELDS :: [?]uintptr{
