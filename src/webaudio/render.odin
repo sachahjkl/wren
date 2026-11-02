@@ -34,7 +34,7 @@ Render_Thread :: struct {
 // (the lock not held) Makes the context run. A closed context stays closed.
 graph_resume :: proc(g: ^Graph, latency_frames: int) {
 	context.allocator = alloc()
-	sync.lock(&g.mu)
+	graph_lock(g)
 	defer sync.unlock(&g.mu)
 	if g.state != .Suspended || g.thread.th != nil { return }
 	g.thread.latency = max(latency_frames, RENDER_QUANTUM)
@@ -49,7 +49,7 @@ graph_resume :: proc(g: ^Graph, latency_frames: int) {
 // (the lock not held) Stops rendering and the thread. No event.
 thread_stop :: proc(g: ^Graph) {
 	context.allocator = alloc()
-	sync.lock(&g.mu)
+	graph_lock(g)
 	th := g.thread.th
 	g.thread.th = nil
 	sync.atomic_store(&g.thread.quit, true)
@@ -63,23 +63,23 @@ thread_stop :: proc(g: ^Graph) {
 }
 
 graph_suspend :: proc(g: ^Graph) {
-	sync.lock(&g.mu)
+	graph_lock(g)
 	running := g.state == .Running
 	sync.unlock(&g.mu)
 	if !running { return }
 	thread_stop(g)
-	sync.guard(&g.mu)
+	graph_guard(g)
 	g.state = .Suspended
 	post_event(g, .State_Changed, 0, i32(Graph_State.Suspended))
 }
 
 graph_close :: proc(g: ^Graph) {
-	sync.lock(&g.mu)
+	graph_lock(g)
 	closed := g.state == .Closed
 	sync.unlock(&g.mu)
 	if closed { return }
 	thread_stop(g)
-	sync.guard(&g.mu)
+	graph_guard(g)
 	g.state = .Closed
 	post_event(g, .State_Changed, 0, i32(Graph_State.Closed))
 }
@@ -88,12 +88,12 @@ graph_set_muted :: proc(g: ^Graph, muted: bool) { sync.atomic_store(&g.thread.mu
 
 // Reads for the page.
 graph_time :: proc(g: ^Graph) -> f64 {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	return f64(g.frame) / g.rate
 }
 
 graph_state :: proc(g: ^Graph) -> Graph_State {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	return g.state
 }
 
@@ -147,7 +147,7 @@ online_main :: proc(data: rawptr) {
 			time.sleep(RENDER_WAIT)
 			continue
 		}
-		sync.lock(&g.mu)
+		render_lock(g)
 		render_quantum(g)
 		interleave(g, &stereo, block[:])
 		sync.atomic_store(&t.audible, !g.output.silent)
@@ -168,7 +168,7 @@ online_main :: proc(data: rawptr) {
 // Closed; the page then takes the result with offline_take_result.
 offline_start :: proc(g: ^Graph, frames: int) -> bool {
 	context.allocator = alloc()
-	sync.guard(&g.mu)
+	graph_guard(g)
 	if g.thread.th != nil { return false }
 	g.thread.total = frames
 	g.thread.result = pcm_new(g.channels, frames, g.rate)
@@ -187,7 +187,7 @@ offline_render :: proc(g: ^Graph, result: ^Pcm) -> bool {
 	defer bus_destroy(&mixed)
 	at := 0
 	for at < frames {
-		sync.lock(&g.mu)
+		render_lock(g)
 		if sync.atomic_load(&t.quit) { sync.unlock(&g.mu); return false }
 		// a suspend() that comes due
 		for len(t.suspends) > 0 && t.suspends[0] <= g.frame {
@@ -225,7 +225,7 @@ offline_main :: proc(data: rawptr) {
 
 // The page takes the finished rendering (one reference, nil when it is not there).
 offline_take_result :: proc(g: ^Graph) -> ^Pcm {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	if g.state != .Closed { return nil }
 	r := g.thread.result
 	g.thread.result = nil
@@ -235,7 +235,7 @@ offline_take_result :: proc(g: ^Graph) -> ^Pcm {
 // OfflineAudioContext.suspend(when): the frame, rounded up to a quantum. false: there is one there already, or past.
 offline_add_suspend :: proc(g: ^Graph, frame: i64) -> bool {
 	context.allocator = alloc()
-	sync.guard(&g.mu)
+	graph_guard(g)
 	t := &g.thread
 	f := (frame + RENDER_QUANTUM - 1) / RENDER_QUANTUM * RENDER_QUANTUM
 	if f <= g.frame && g.state == .Running { return false }
@@ -249,7 +249,7 @@ offline_add_suspend :: proc(g: ^Graph, frame: i64) -> bool {
 }
 
 offline_resume :: proc(g: ^Graph) {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	g.thread.waiting = false
 	sync.cond_broadcast(&g.thread.wake)
 }

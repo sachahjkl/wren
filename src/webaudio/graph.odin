@@ -6,6 +6,7 @@ package webaudio
 
 import "base:runtime"
 import "core:sync"
+import "core:time"
 import "wb:base"
 
 Kind :: enum i32 {
@@ -76,6 +77,7 @@ Event :: struct { type: Event_Type, node, value: i32 }
 
 Graph :: struct {
 	mu:        sync.Mutex,
+	page_waiting: i32,             // atomic: threads other than the render thread waiting for mu (graph_lock)
 	rate:      f64,
 	frame:     i64,                // the next frame to render: currentTime
 	channels:  int,                // of the destination
@@ -100,6 +102,28 @@ Graph :: struct {
 }
 
 alloc :: #force_inline proc "contextless" () -> runtime.Allocator { return base.process_allocator() }
+
+// The lock, for what is not the render thread. A graph that takes longer to render than it plays never lets the render thread sleep: it
+// takes the lock again as soon as it lets it go, and whoever waits (a lock is not a queue) could wait for a thousand quanta at one call.
+graph_lock :: proc(g: ^Graph) {
+	sync.atomic_add(&g.page_waiting, 1)
+	sync.lock(&g.mu)
+	sync.atomic_sub(&g.page_waiting, 1)
+}
+
+graph_unlock :: proc(g: ^Graph) { sync.unlock(&g.mu) }
+
+@(deferred_in = graph_unlock)
+graph_guard :: proc(g: ^Graph) -> bool {
+	graph_lock(g)
+	return true
+}
+
+// The lock, for the render thread between two quanta: whoever is waiting goes first.
+render_lock :: proc(g: ^Graph) {
+	for sync.atomic_load(&g.page_waiting) > 0 { time.sleep(0) }   // (yields the processor: the one it waits for is ready to run)
+	sync.lock(&g.mu)
+}
 
 graph_new :: proc(rate: f64, channels: int, offline: bool) -> ^Graph {
 	context.allocator = alloc()
@@ -211,7 +235,7 @@ node_of :: #force_inline proc "contextless" (g: ^Graph, id: i32) -> ^Node {
 // A new node of a kind; a and b: what its kind needs at creation (see node_init). -1: refused.
 node_create :: proc(g: ^Graph, kind: Kind, a: f64 = 0, b: f64 = 0) -> i32 {
 	context.allocator = alloc()
-	sync.guard(&g.mu)
+	graph_guard(g)
 	if !node_args_valid(kind, a, b) { return -1 }
 	n := node_init(g, kind, a, b)
 	return n != nil ? n.id : -1
@@ -220,7 +244,7 @@ node_create :: proc(g: ^Graph, kind: Kind, a: f64 = 0, b: f64 = 0) -> i32 {
 // The page's object of a node is gone. It leaves the graph once nothing can come out of it any more (node_sweep).
 node_release :: proc(g: ^Graph, id: i32) {
 	context.allocator = alloc()
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := node_of(g, id)
 	if n == nil { return }
 	if id == DESTINATION_ID || id == LISTENER_ID { return }
@@ -231,7 +255,7 @@ node_release :: proc(g: ^Graph, id: i32) {
 // The connection already there is kept (the specification: connecting twice changes nothing).
 connect :: proc(g: ^Graph, from: i32, output: int, to: i32, input: int) -> bool {
 	context.allocator = alloc()
-	sync.guard(&g.mu)
+	graph_guard(g)
 	a, b := node_of(g, from), node_of(g, to)
 	if a == nil || b == nil || output >= len(a.outputs) || input >= len(b.inputs) { return false }
 	for c in b.inputs[input].conns { if c.node == a && c.output == output { return true } }
@@ -243,7 +267,7 @@ connect :: proc(g: ^Graph, from: i32, output: int, to: i32, input: int) -> bool 
 
 connect_param :: proc(g: ^Graph, from: i32, output: int, to: i32, param: int) -> bool {
 	context.allocator = alloc()
-	sync.guard(&g.mu)
+	graph_guard(g)
 	a, b := node_of(g, from), node_of(g, to)
 	if a == nil || b == nil || output >= len(a.outputs) || param >= len(b.params) { return false }
 	for c in b.params[param].inputs { if c.node == a && c.output == output { return true } }
@@ -257,7 +281,7 @@ connect_param :: proc(g: ^Graph, from: i32, output: int, to: i32, param: int) ->
 // index). The number of connections that went.
 disconnect :: proc(g: ^Graph, from: i32, output: int, to: i32, input: int, param: bool) -> int {
 	context.allocator = alloc()
-	sync.guard(&g.mu)
+	graph_guard(g)
 	a := node_of(g, from)
 	if a == nil { return 0 }
 	removed := 0
@@ -294,7 +318,7 @@ post_event :: proc(g: ^Graph, type: Event_Type, node, value: i32) {
 // The page takes the events waiting (the caller deletes the result).
 take_events :: proc(g: ^Graph, allocator := context.allocator) -> []Event {
 	context.allocator = alloc()
-	sync.guard(&g.mu)
+	graph_guard(g)
 	g.notified = false
 	out := make([]Event, len(g.events), allocator)
 	copy(out, g.events[:])
@@ -458,7 +482,7 @@ delay_write :: proc(n: ^Node) {
 }
 
 live_nodes :: proc(g: ^Graph) -> int {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := 0
 	for node in g.nodes { if node != nil { n += 1 } }
 	return n

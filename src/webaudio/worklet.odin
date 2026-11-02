@@ -72,7 +72,7 @@ Worklet_Data :: struct {
 // A context's worklet: one reference for the graph, one for the caller.
 worklet_attach :: proc(g: ^Graph, stall_limit: time.Duration) -> ^Worklet {
 	context.allocator = alloc()
-	sync.guard(&g.mu)
+	graph_guard(g)
 	if g.worklet != nil { return nil }
 	w := new(Worklet)
 	w.refs = 2
@@ -96,7 +96,7 @@ worklet_release :: proc(w: ^Worklet) {
 // A new node for a registered processor. -1: refused.
 worklet_node_create :: proc(g: ^Graph, inputs, outputs, params: int, processor: i32, output_channels: []i32) -> i32 {
 	context.allocator = alloc()
-	sync.guard(&g.mu)
+	graph_guard(g)
 	if g.worklet == nil || inputs < 0 || outputs < 0 || (inputs == 0 && outputs == 0) { return -1 }
 	if inputs > WORKLET_MAX_PORTS || outputs > WORKLET_MAX_PORTS || params < 0 || params > WORKLET_MAX_PARAMS { return -1 }
 	if len(output_channels) != 0 && len(output_channels) != outputs { return -1 }
@@ -114,7 +114,7 @@ worklet_node_create :: proc(g: ^Graph, inputs, outputs, params: int, processor: 
 
 // What a registered parameter is (AudioParamDescriptor).
 worklet_param_init :: proc(g: ^Graph, id: i32, index: int, default_value, min_value, max_value: f32, a_rate: bool) {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	if p := param_of(g, id, index); p != nil { param_init(p, default_value, min_value, max_value, a_rate) }
 }
 

@@ -313,7 +313,7 @@ shaper_set_curve :: proc(g: ^Graph, id: i32, curve: []f32) {
 	context.allocator = alloc()
 	c := make([]f32, len(curve))
 	copy(c, curve)
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := node_of(g, id)
 	d: ^Shaper_Data
 	ok: bool
@@ -397,7 +397,7 @@ analyser_run :: proc(g: ^Graph, n: ^Node) {
 // getFloat/ByteFrequencyData, getFloat/ByteTimeDomainData: `out` holds floats or bytes. The number of values written.
 analyser_read :: proc(g: ^Graph, id: i32, what: Analyser_Read, out: []u8) -> int {
 	context.allocator = alloc()
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := node_of(g, id)
 	if n == nil { return 0 }
 	d, ok := n.data.(^Analyser_Data)
@@ -538,7 +538,7 @@ convolver_set :: proc(g: ^Graph, id: i32, pcm: ^Pcm, normalize: bool) {
 		new_data.work_re, new_data.work_im = make([]f64, CONV_FFT), make([]f64, CONV_FFT)
 		new_data.sum_re, new_data.sum_im = make([]f64, CONV_FFT), make([]f64, CONV_FFT)
 	}
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := node_of(g, id)
 	d: ^Convolver_Data
 	ok: bool
@@ -663,7 +663,7 @@ element_destroy :: proc(d: ^Element_Data) {
 
 // From the player's thread: interleaved stereo at `rate`, converted to the context's rate (linear).
 element_push :: proc(g: ^Graph, id: i32, samples: []f32, rate: f64) {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := node_of(g, id)
 	if n == nil { return }
 	d, ok := n.data.(^Element_Data)
@@ -772,7 +772,7 @@ script_run :: proc(g: ^Graph, n: ^Node) {
 
 // The page takes the oldest full input block (planar).
 script_pull :: proc(g: ^Graph, id: i32, out: []u8) {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := node_of(g, id)
 	if n == nil { return }
 	d, ok := n.data.(^Script_Data)
@@ -784,7 +784,7 @@ script_pull :: proc(g: ^Graph, id: i32, out: []u8) {
 
 // The page's answer (planar) goes after the others.
 script_push :: proc(g: ^Graph, id: i32, data: []u8) {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := node_of(g, id)
 	if n == nil { return }
 	d, ok := n.data.(^Script_Data)
@@ -818,7 +818,7 @@ iir_destroy :: proc(d: ^IIR_Data) {
 
 iir_set :: proc(g: ^Graph, id: i32, feedforward, feedback: []f64) {
 	context.allocator = alloc()
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := node_of(g, id)
 	if n == nil { return }
 	d, ok := n.data.(^IIR_Data)
@@ -861,7 +861,7 @@ iir_run :: proc(n: ^Node) {
 }
 
 iir_frequency_response :: proc(g: ^Graph, id: i32, frequencies: []f32, mag, phase: []f32) {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := node_of(g, id)
 	if n == nil { return }
 	d, ok := n.data.(^IIR_Data)
