@@ -19,6 +19,7 @@ package page
 // The shell asks for natural sizes (layout), pixels of the current frame (painting) and reports where elements are
 // relative to the viewport (lazy loading, priorities). See the "Shell" section at the end.
 
+import "core:container/bit_array"
 import "core:fmt"
 import "core:slice"
 import "core:strconv"
@@ -374,6 +375,11 @@ Page_Images :: struct {
 	css_bases:  map[string]string,      // URL as written -> the base of the sheet that declares it
 	css_rebuilds: u64,
 	css_serial: u64,
+	css_pass:   u64,                    // the full style pass css_images_sync last walked (style.Styled.pass_id)
+	css_tree:   u64,                    // the document's tree_version then
+	css_users:  bit_array.Bit_Array,    // by node index: the element's styles used CSS image URLs when last looked at
+	css_user_count: int,
+	css_records: int,                   // the Styled's image_records then
 	mutations:  u64,
 	env:        css.Media_Env,          // what the last selection saw
 	pass:       u64,
@@ -427,6 +433,7 @@ images_destroy :: proc(p: ^Page) {
 	delete(pi.css_urls)
 	for k, v in pi.css_bases { delete(k); delete(v) }
 	delete(pi.css_bases)
+	bit_array.destroy(&pi.css_users)
 	for _, r in pi.requests { request_free(r) }
 	delete(pi.requests)
 	delete(pi.queue)
@@ -727,8 +734,16 @@ images_adopt_document :: proc(p: ^Page) {
 	pi.doc = p.doc
 	pi.mutations = 0
 	pi.css_serial = 0
+	pi.css_pass = 0
+	bit_array.clear(&pi.css_users)
+	pi.css_user_count = 0
+	pi.css_records = 0
 	pi.sizes = next_serial()
 }
+
+// A node images_sync looks at, and whether its subtree goes with it.
+@(private)
+Image_Walk :: struct { node: base.Handle, subtree: bool }
 
 // Finds <img> / <input type=image> elements, runs source selection where something it depends on changed, follows
 // CSS image URLs, starts downloads. Cheap when nothing changed. UI thread, from a task (never inside a guest call).
@@ -742,18 +757,35 @@ images_sync :: proc(p: ^Page) {
 	env_changed := env.width != pi.env.width || env.dppx != pi.env.dppx || env.height != pi.env.height
 	mutated := pi.mutations != p.doc.mutations
 	if mutated || env_changed {
+		// the image elements are found again only when the document changed: a new viewport alone (a window being
+		// resized) runs source selection on the known ones. What changed comes from the mutation journal (the subtrees
+		// inserted, the elements whose attributes changed); the whole document is walked only when the journal does not
+		// cover the change.
+		changes, journaled := dom.journal_since(p.doc, pi.mutations)
 		pi.mutations = p.doc.mutations
 		pi.env = env
-		// the image elements are found again only when the document changed: a new viewport alone (a window being
-		// resized) runs source selection on the known ones, without a walk of the whole document at every step
 		if mutated { pi.pass += 1 }
-		stack := make([dynamic]base.Handle, 0, 64, context.temp_allocator)
-		if mutated { append(&stack, p.doc.root) }
+		stack := make([dynamic]Image_Walk, 0, 64, context.temp_allocator)
+		removed := false
+		if mutated && !journaled { append(&stack, Image_Walk{p.doc.root, true}) }
+		if mutated && journaled {
+			for &c in changes {
+				switch c.kind {
+				case .Insert: append(&stack, Image_Walk{c.node, true})
+				case .Attribute: append(&stack, Image_Walk{c.node, false})   // (an <input> whose type changed: itself only)
+				case .Remove: removed = true
+				case .Text, .Reslot:
+				}
+			}
+			// what the document held before keeps its place unless something left it
+			for h, el in pi.elements { if !removed || dom.is_connected(p.doc, h) { el.seen = pi.pass } }
+		}
 		for len(stack) > 0 {
-			h := pop(&stack)
+			w := pop(&stack)
+			h := w.node
 			n := dom.get(p.doc, h)
 			if n == nil { continue }
-			if n.kind == .Element && (n.name == "img" || n.name == "input") && is_image_element(p.doc, h) {
+			if n.kind == .Element && (n.name == "img" || n.name == "input") && is_image_element(p.doc, h) && (!journaled || dom.is_connected(p.doc, h)) {
 				el, ok := pi.elements[h]
 				if !ok {
 					el = new(Img_Element)
@@ -763,8 +795,9 @@ images_sync :: proc(p: ^Page) {
 				}
 				el.seen = pi.pass
 			}
-			for c := n.last_child; c != base.NIL_HANDLE; c = dom.get(p.doc, c).prev { append(&stack, c) }
-			if n.kind == .Element && n.shadow != base.NIL_HANDLE { append(&stack, n.shadow) }   // shadow trees' images too
+			if !w.subtree { continue }
+			for c := n.last_child; c != base.NIL_HANDLE; c = dom.get(p.doc, c).prev { append(&stack, Image_Walk{c, true}) }
+			if n.kind == .Element && n.shadow != base.NIL_HANDLE { append(&stack, Image_Walk{n.shadow, true}) }   // shadow trees' images too
 		}
 		gone := make([dynamic]base.Handle, 0, 8, context.temp_allocator)
 		for h, el in pi.elements {
@@ -1207,39 +1240,48 @@ css_base_note :: proc(pi: ^Page_Images, written, base_url: string) {
 }
 
 // After a style pass: the URLs of background images in use (on elements that are rendered) get requests; those no
-// longer used are released.
+// longer used are released. After a full pass every computed style is looked at; after partial restyles only the
+// elements the style journal names, unless one of them, or a node that left the tree, may have been the last user of
+// a URL (css_users): then everything again.
 @(private)
 css_images_sync :: proc(p: ^Page) {
 	pi := &p.images
 	if p.engine == nil || p.styled == nil { return }
 	if p.engine.rebuilds != pi.css_rebuilds { css_bases_rebuild(p); pi.css_rebuilds = p.engine.rebuilds; pi.css_serial = 0 }
-	if p.styled.serial == pi.css_serial { return }
-	pi.css_serial = p.styled.serial
+	s := p.styled
+	if s.serial == pi.css_serial { return }
 	used := make(map[string]bool, 16, context.temp_allocator)
 	seen := make(map[rawptr]bool, 16, context.temp_allocator)
 	dppx := f32(p.engine.env.dppx > 0 ? p.engine.env.dppx : 1)
-	note :: proc(c: ^style.Computed, used: ^map[string]bool, seen: ^map[rawptr]bool, dppx: f32) {
-		if c == nil || c.display == .None { return }
-		// background and mask layers (mask-image: MDN's icons)
-		for list in ([2][]style.Image{c.background_images, c.mask_images}) {
-			if len(list) == 0 || raw_data(list) in seen { continue }
-			seen[raw_data(list)] = true
-			for im in list { if im.kind == .Url && im.url != "" { used[im.url] = true } }
+	since := pi.css_serial
+	pi.css_serial = s.serial
+	tree_moved := p.doc.tree_version != pi.css_tree
+	pi.css_tree = p.doc.tree_version
+	records := pi.css_records
+	pi.css_records = s.image_records
+	// no style made since with images, none used before, no animated record: nothing to request, nothing to release
+	if len(s.overlaid) == 0 && s.image_records == 0 && len(pi.css_urls) == 0 && pi.css_user_count == 0 { pi.css_pass = s.pass_id; return }
+	if s.pass_id == pi.css_pass && since != 0 && len(s.overlaid) == 0 && s.image_records == records && pi.css_user_count == 0 { return }
+	if changes, ok := style.journal_since(s, since); ok && since != 0 && s.pass_id == pi.css_pass {
+		users_before := pi.css_user_count
+		last_user := false
+		for e in changes {
+			had := css_user_set(pi, e.node, css_note_element(style.style_of(s, e.node), &used, &seen, dppx))
+			last_user ||= had
 		}
-		// cursor images: the candidate for the screen's density (browser/page_cursor.odin shows them)
-		if len(c.cursor_images) > 0 && raw_data(c.cursor_images) not_in seen {
-			seen[raw_data(c.cursor_images)] = true
-			for img in c.cursor_images {
-				if src, ok := style.cursor_image_pick(img, dppx); ok && src.url != "" { used[src.url] = true }
-			}
+		if !last_user && !(tree_moved && users_before > 0) {
+			css_images_request(p, used)
+			return
 		}
+		clear(&used)
+		clear(&seen)
 	}
-	for c in p.styled.by_node {
+	pi.css_pass = s.pass_id
+	bit_array.clear(&pi.css_users)
+	pi.css_user_count = 0
+	for c in s.by_node {
 		if c == nil || c.display == .None { continue }
-		note(c, &used, &seen, dppx)
-		// ::before / ::after boxes (an icon after every external link)
-		note(c.before, &used, &seen, dppx)
-		note(c.after, &used, &seen, dppx)
+		_ = css_user_set(pi, c.node, css_note_element(c, &used, &seen, dppx))
 	}
 	stale := make([dynamic]string, 0, 4, context.temp_allocator)
 	for k in pi.css_urls { if k not_in used { append(&stale, k) } }
@@ -1250,6 +1292,55 @@ css_images_sync :: proc(p: ^Page) {
 		delete(key)
 		request_release(r)
 	}
+	css_images_request(p, used)
+}
+
+// The CSS image URLs of an element's styles (its ::before and ::after boxes too: an icon after every external link) into
+// `used`; whether it has some. `seen`: lists already read (they are shared by inheritance and between records).
+@(private)
+css_note_element :: proc(c: ^style.Computed, used: ^map[string]bool, seen: ^map[rawptr]bool, dppx: f32) -> bool {
+	note :: proc(c: ^style.Computed, used: ^map[string]bool, seen: ^map[rawptr]bool, dppx: f32) -> (some: bool) {
+		if c == nil || c.display == .None { return }
+		// background and mask layers (mask-image: MDN's icons)
+		for list in ([2][]style.Image{c.background_images, c.mask_images}) {
+			for im in list { if im.kind == .Url && im.url != "" { some = true; break } }
+			if len(list) == 0 || raw_data(list) in seen { continue }
+			seen[raw_data(list)] = true
+			for im in list { if im.kind == .Url && im.url != "" { used[im.url] = true } }
+		}
+		// cursor images: the candidate for the screen's density (browser/page_cursor.odin shows them)
+		if len(c.cursor_images) > 0 {
+			some = true
+			if raw_data(c.cursor_images) in seen { return }
+			seen[raw_data(c.cursor_images)] = true
+			for img in c.cursor_images {
+				if src, ok := style.cursor_image_pick(img, dppx); ok && src.url != "" { used[src.url] = true }
+			}
+		}
+		return
+	}
+	if c == nil || c.display == .None { return false }
+	a := note(c, used, seen, dppx)
+	b := note(c.before, used, seen, dppx)
+	d := note(c.after, used, seen, dppx)
+	return a || b || d
+}
+
+// Records whether `h`'s styles use CSS images; returns whether they did before.
+@(private)
+css_user_set :: proc(pi: ^Page_Images, h: base.Handle, uses: bool) -> (had: bool) {
+	i := int(base.handle_index(h))
+	had = bit_array.unsafe_get(&pi.css_users, i) if i < bit_array.len(&pi.css_users) else false
+	if had == uses { return }
+	_ = bit_array.set(&pi.css_users, i, uses)
+	pi.css_user_count += uses ? 1 : -1
+	return
+}
+
+// Requests for the URLs of `used` that have none yet.
+@(private)
+css_images_request :: proc(p: ^Page, used: map[string]bool) {
+	pi := &p.images
 	for written in used {
 		if written in pi.css_urls { continue }
 		base_url := pi.css_bases[written] or_else p.env.location.href

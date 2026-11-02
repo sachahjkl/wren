@@ -113,6 +113,9 @@ Styled :: struct {
 	// compiled style attributes and CSSOM declarations by text (inline_cache.odin), in `alloc`
 	inline_rules:   map[string]^Rule,
 	inline_decls:   map[string]Inline_Decl,
+	// records made by this pass and the partial restyles since with background, mask or cursor images: when it has not moved,
+	// the page's image loader has no new CSS image URL to look for (page/images.odin css_images_sync)
+	image_records:  int,
 }
 
 // A computed style replaced by a partial restyle: `old` is what was in effect (animated values included), `new` the
@@ -360,6 +363,7 @@ Pass :: struct {
 	host_ctx:  map[base.Handle]Elem_Ctx,
 	fs_chain:  map[base.Handle]struct{},   // the ancestors of the fullscreen element (host-including), when there is one
 	made_with: runtime.Allocator,          // what allocated the Pass: a style thread's (the process heap), freed by the caller
+	image_records: int,                    // records made with background, mask or cursor images (added to Styled.image_records)
 }
 
 @(private)
@@ -834,7 +838,19 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 	}
 	// ::selection: only its colors are used (the painter looks for the nearest element that has one)
 	if len(selection_entries) > 0 { c.selection = build_style(p, h, c, selection_entries[:], nil) }
+	if has_image_layers(c) || has_image_layers(c.before) || has_image_layers(c.after) { p.image_records += 1 }
 	return c
+}
+
+// The style has background, mask or cursor images of a URL (what the page's image loader looks for: Styled.image_records).
+@(private)
+has_image_layers :: proc(c: ^Computed) -> bool {
+	if c == nil { return false }
+	if len(c.cursor_images) > 0 { return true }
+	for list in ([2][]Image{c.background_images, c.mask_images}) {
+		for im in list { if im.kind == .Url { return true } }
+	}
+	return false
 }
 
 @(private)
@@ -866,6 +882,7 @@ pass_make :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, state: State) -> ^
 @(private)
 pass_destroy :: proc(p: ^Pass) {
 	stats_merge(p.e, p.stats)
+	if p.image_records > 0 { sync.atomic_add(&p.s.image_records, p.image_records) }   // (the passes of a parallel one end on their threads)
 	match_ctx_destroy(&p.mc)
 	delete(p.fs_chain)
 	delete(p.touched)
