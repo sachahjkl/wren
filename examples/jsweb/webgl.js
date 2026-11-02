@@ -102,7 +102,7 @@ test("a canvas has one kind of context", () => {
 });
 
 test("what getParameter says", () => {
-  if (!available) return;
+  if (!available) { skip("webgl-adapter", "no context at the start of the script"); return; }
   const [, gl] = mk();
   ok(gl.getParameter(gl.VERSION).startsWith("WebGL 1.0"), "VERSION");
   ok(gl.getParameter(gl.SHADING_LANGUAGE_VERSION).startsWith("WebGL GLSL ES 1.0"), "SHADING_LANGUAGE_VERSION");
@@ -141,7 +141,7 @@ test("what getParameter says", () => {
 });
 
 test("shaders and programs", () => {
-  if (!available) return;
+  if (!available) { skip("webgl-adapter", "no context at the start of the script"); return; }
   const [, gl] = mk();
   const bad = shader(gl, gl.FRAGMENT_SHADER, "void main() { nope; }");
   eq(gl.getShaderParameter(bad, gl.COMPILE_STATUS), false, "a broken shader");
@@ -199,7 +199,7 @@ test("shaders and programs", () => {
 });
 
 test("a triangle", () => {
-  if (!available) return;
+  if (!available) { skip("webgl-adapter", "no context at the start of the script"); return; }
   const [, gl] = mk();
   eq(px(gl), "0,0,0,0", "the buffer starts transparent");
   gl.clearColor(0, 0, 1, 1);
@@ -238,7 +238,7 @@ test("a triangle", () => {
 });
 
 test("the bounds of draws", () => {
-  if (!available) return;
+  if (!available) { skip("webgl-adapter", "no context at the start of the script"); return; }
   const [, gl] = mk();
   const p = program(gl);
   cover(gl, p);
@@ -293,7 +293,7 @@ test("the bounds of draws", () => {
 });
 
 test("indices, modes, attributes", () => {
-  if (!available) return;
+  if (!available) { skip("webgl-adapter", "no context at the start of the script"); return; }
   const [, gl] = mk();
   const p = program(gl, "attribute vec2 p; attribute vec3 k; varying vec3 v; void main(){ v = k; gl_Position = vec4(p, 0.0, 1.0); gl_PointSize = 8.0; }", "precision mediump float; varying vec3 v; void main(){ gl_FragColor = vec4(v, 1.0); }");
   gl.useProgram(p);
@@ -366,7 +366,7 @@ test("indices, modes, attributes", () => {
 });
 
 test("textures", () => {
-  if (!available) return;
+  if (!available) { skip("webgl-adapter", "no context at the start of the script"); return; }
   const [, gl] = mk();
   const p = program(gl, VS, "precision mediump float; uniform sampler2D t; void main(){ gl_FragColor = texture2D(t, gl_FragCoord.xy / " + SIZE + ".0); }");
   cover(gl, p);
@@ -481,7 +481,7 @@ test("textures", () => {
 });
 
 test("framebuffers, renderbuffers, depth, stencil, blending", () => {
-  if (!available) return;
+  if (!available) { skip("webgl-adapter", "no context at the start of the script"); return; }
   const [, gl] = mk("webgl", { stencil: true });
   const p = program(gl, "attribute vec2 p; uniform float z; void main(){ gl_Position = vec4(p, z, 1.0); }", FS);
   cover(gl, p);
@@ -610,7 +610,7 @@ test("framebuffers, renderbuffers, depth, stencil, blending", () => {
 });
 
 test("the canvas: toDataURL, drawImage, presenting, a new size", async () => {
-  if (!available) return;
+  if (!available) { skip("webgl-adapter", "no context at the start of the script"); return; }
   const [c, gl] = mk("webgl", { preserveDrawingBuffer: true, antialias: false });
   gl.clearColor(1, 0, 0, 1);
   gl.clear(gl.COLOR_BUFFER_BIT);
@@ -667,7 +667,7 @@ test("the canvas: toDataURL, drawImage, presenting, a new size", async () => {
 });
 
 test("a canvas with an origin the page may not read", async () => {
-  if (!available) return;
+  if (!available) { skip("webgl-adapter", "no context at the start of the script"); return; }
   // a canvas tainted by a cross-origin image taints what reads it; the same goes for the image itself
   const url = location.origin.replace("127.0.0.1", "localhost") + CROSS_ORIGIN_IMAGE;
   const img = await loadImage(url);
@@ -683,7 +683,7 @@ test("a canvas with an origin the page may not read", async () => {
 });
 
 test("context loss", async () => {
-  if (!available) return;
+  if (!available) { skip("webgl-adapter", "no context at the start of the script"); return; }
   const [c, gl] = mk();
   const ext = gl.getExtension("WEBGL_lose_context");
   const b = gl.createBuffer();
@@ -718,7 +718,7 @@ test("context loss", async () => {
 });
 
 test("hostile programs", () => {
-  if (!available) return;
+  if (!available) { skip("webgl-adapter", "no context at the start of the script"); return; }
   const [, gl] = mk();
   // deep nesting and huge expressions are refused at compile time, the page goes on
   const deep = "void main(){ gl_Position = vec4(" + "(".repeat(20000) + "0.0" + ")".repeat(20000) + "); }";
