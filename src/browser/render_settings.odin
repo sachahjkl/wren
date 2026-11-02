@@ -36,9 +36,6 @@ RENDER_PREFS := [?]config.Def{
 		description = "Room the window's frame buffers keep to grow, per axis. Resizing the window within it only changes the region shown (no reallocation, which costs 1.5 to 3.5 ms a step); the buffers are reallocated once per this many pixels crossed, and made smaller when they hold more than twice the pixels shown. 0: buffers of the exact window size, reallocated at every step."},
 }
 
-@(private) render_settings: Render_Settings
-@(private) render_watch: int
-
 register_render_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, RENDER_PREFS[:])
 	config.register(p, COMPOSITOR_PREFS[:])
@@ -69,7 +66,7 @@ render_settings_from_prefs :: proc(p: ^config.Prefs) -> Render_Settings {
 @(private)
 render_settings_init :: proc(app: ^App) {
 	render_settings_apply(app, render_settings_from_prefs(&app.prefs))
-	render_watch = config.watch(&app.prefs, "render.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	app.watches[.Render] = config.watch(&app.prefs, "render.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		a := (^App)(user)
 		render_settings_apply(a, render_settings_from_prefs(p))
 		request_frames(a, 2)
@@ -78,7 +75,7 @@ render_settings_init :: proc(app: ^App) {
 
 @(private)
 render_settings_apply :: proc(app: ^App, s: Render_Settings) {
-	render_settings = s
+	app.render_settings = s
 	gradient_dither = s.dither
 	compositor_settings = compositor_settings_from_prefs(&app.prefs)
 	render.set_blend_space(&app.r, s.space)

@@ -114,6 +114,7 @@ Desktop_Job_Kind :: enum u8 { Read, Install, Remove }
 Desktop_Reason :: enum u8 { Refresh, User }
 
 Desktop_Job :: struct {
+	app:    ^App,              // whose integration status it reports to
 	kind:   Desktop_Job_Kind,
 	reason: Desktop_Reason,
 	opts:   desktop.Options,   // owned copy
@@ -151,13 +152,13 @@ desktop_shell_shutdown :: proc(app: ^App) {
 	host.shutdown_step("setup jobs, uninstall helper")
 	setup_shutdown(app)   // setup.odin: its jobs, and the deletion of what this process held
 	host.shutdown_step("update_destroy")
-	update_destroy()   // update_check.odin
+	update_destroy(app)   // update_check.odin
 }
 
 @(private = "file")
 desktop_job_start :: proc(app: ^App, kind: Desktop_Job_Kind, reason: Desktop_Reason) {
 	job := new(Desktop_Job)
-	job.kind, job.reason = kind, reason
+	job.app, job.kind, job.reason = app, kind, reason
 	job.opts = desktop.options_clone(desktop_options(app))
 	dsk.jobs += 1
 	if kind != .Read { dsk.writes += 1 }
@@ -179,16 +180,15 @@ desktop_job_work :: proc(data: rawptr) {
 @(private = "file")
 desktop_job_done :: proc(data: rawptr) {
 	job := (^Desktop_Job)(data)
-	app := the_app
 	defer {
 		delete(job.result.detail)
 		desktop.options_destroy(&job.opts)
 		desktop.status_destroy(&job.status)
-		free(job)
 		if job.kind != .Read { dsk.writes = max(dsk.writes - 1, 0) }
 		dsk.jobs -= 1
+		free(job)   // (last: the lines above read it)
 	}
-	if app == nil { return }
+	app := job.app
 	changed := !dsk.known || dsk.status.state != job.status.state || dsk.status.stale_exe != job.status.stale_exe || dsk.status.incomplete != job.status.incomplete
 	desktop.status_destroy(&dsk.status)
 	dsk.status, job.status = job.status, {}
@@ -221,16 +221,15 @@ desktop_watch_wake :: proc(user: rawptr) {
 	app := (^App)(user)
 	sync.atomic_store(&dsk.stale, true)
 	sync.atomic_add(&dsk.changes, 1)
-	if app != nil { host.post(&app.loop, desktop_changed_on_loop, nil) }
+	if app != nil { host.post(&app.loop, desktop_changed_on_loop, app) }
 }
 
 // On the loop's thread (a woken idle loop builds no frame by itself): what shows the integration is drawn again. Nothing
 // is drawn for the changes nobody looks at (HKCU\Software changes all the time).
 @(private = "file")
-desktop_changed_on_loop :: proc(_: rawptr) {
-	app := the_app
-	if app == nil { return }
-	if t := current_tab(app); setup_is_open() || (t != nil && t.kind == .Config) { request_frames(app, 3) }
+desktop_changed_on_loop :: proc(data: rawptr) {
+	app := (^App)(data)
+	if t := current_tab(app); setup_is_open(app) || (t != nil && t.kind == .Config) { request_frames(app, 3) }
 }
 
 // After the first tab exists, before Setup's start-up: the system tells us when the integration changes (its registry

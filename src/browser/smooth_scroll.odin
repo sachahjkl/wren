@@ -162,17 +162,15 @@ Smooth_Scroll :: struct {
 // How long (device px) a document's range must be for a middle press to start an autoscroll it cannot use yet.
 AUTOSCROLL_MIN_RANGE :: 0.5
 
-smooth_cfg: Smooth_Settings
-@(private = "file") smooth_watch: int
-
 smooth_init :: proc(app: ^App) {
-	smooth_cfg = smooth_settings_from_prefs(&app.prefs)
-	smooth_watch = config.watch(&app.prefs, "browser.scroll.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		smooth_cfg = smooth_settings_from_prefs(p)
+	app.smooth_cfg = smooth_settings_from_prefs(&app.prefs)
+	app.watches[.Smooth_Scroll] = config.watch(&app.prefs, "browser.scroll.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		app := (^App)(user)
+		app.smooth_cfg = smooth_settings_from_prefs(p)
 	}, app)
 }
 
-smooth_shutdown :: proc(app: ^App) { config.unwatch(&app.prefs, smooth_watch) }
+smooth_shutdown :: proc(app: ^App) { config.unwatch(&app.prefs, app.watches[.Smooth_Scroll]) }
 
 smooth_destroy :: proc(s: ^Smooth_Scroll) {
 	delete(s.anims)
@@ -182,8 +180,8 @@ smooth_destroy :: proc(s: ^Smooth_Scroll) {
 // Animations wanted now (preferences, reduced motion).
 @(private = "file")
 smooth_allowed :: proc(app: ^App) -> bool {
-	if !smooth_cfg.enabled { return false }
-	if smooth_cfg.reduced_motion && (app.page_settings.style.reduced_motion || !os_animations_enabled(app)) { return false }
+	if !app.smooth_cfg.enabled { return false }
+	if app.smooth_cfg.reduced_motion && (app.page_settings.style.reduced_motion || !os_animations_enabled(app)) { return false }
 	return true
 }
 
@@ -278,7 +276,7 @@ smooth_scroll_to :: proc(app: ^App, t: ^Tab, node: base.Handle, target: [2]f32, 
 			start = now - pacer.period_ms   // this frame already shows the first step
 		}
 		if f64(to[k]) == (ax.active ? ax.to : f64(cur[k])) { continue }
-		axis_retarget(ax, pos, vel, f64(to[k]), start, dur_ms, smooth_cfg.curve, smooth_cfg.impulse)
+		axis_retarget(ax, pos, vel, f64(to[k]), start, dur_ms, app.smooth_cfg.curve, app.smooth_cfg.impulse)
 		moved = true
 	}
 	return moved
@@ -338,8 +336,8 @@ smooth_tick :: proc(app: ^App, t: ^Tab) -> bool {
 smooth_wheel :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2, precise: bool) {
 	if !t.layout.valid { return }
 	node := wheel_scroller(app, t, p, d)
-	dur := smooth_cfg.wheel_ms
-	if precise && !smooth_cfg.precise_wheel { dur = 0 }
+	dur := app.smooth_cfg.wheel_ms
+	if precise && !app.smooth_cfg.precise_wheel { dur = 0 }
 	smooth_scroll_by(app, t, node, d, dur)
 }
 
@@ -437,7 +435,7 @@ wheel_is_precise :: proc(delta: draw.Vec2) -> bool {
 
 // The root element asks for smooth scrolling (scroll-behavior: smooth), and the preferences let it.
 css_smooth :: proc(app: ^App, t: ^Tab) -> bool {
-	if !smooth_cfg.css_smooth || t.page == nil || t.page.styled == nil { return false }
+	if !app.smooth_cfg.css_smooth || t.page == nil || t.page.styled == nil { return false }
 	d := t.page.doc
 	r := dom.get(d, d.root)
 	if r == nil { return false }
@@ -449,7 +447,7 @@ css_smooth :: proc(app: ^App, t: ^Tab) -> bool {
 
 // The document to `to` for a fragment or a script: animated when the page asks for it, else at once (stopping any animation).
 scroll_document_to :: proc(app: ^App, t: ^Tab, to: [2]f32, smooth: bool) {
-	if smooth && smooth_scroll_to(app, t, base.NIL_HANDLE, to, smooth_cfg.page_ms) { return }
+	if smooth && smooth_scroll_to(app, t, base.NIL_HANDLE, to, app.smooth_cfg.page_ms) { return }
 	if a := find_anim(smooth_of(t), base.NIL_HANDLE); a != nil { a.axis = {} }
 	t.scroll = max(to.y, t.layout.doc_min_y)
 	lay.set_doc_scroll_x(&t.layout, max(to.x, t.layout.doc_min_x))
@@ -532,7 +530,7 @@ scrollbar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 			step := max(hit.port * app.cfg.key_page_fraction, app.cfg.key_line_px * t.layout.scale)
 			d: [2]f32
 			d[ax] = p[ax] < hit.thumb.min[ax] ? -step : step
-			smooth_scroll_by(app, t, hit.node, d, smooth_cfg.page_ms)
+			smooth_scroll_by(app, t, hit.node, d, app.smooth_cfg.page_ms)
 		}
 		return true
 	case .Mouse_Move:

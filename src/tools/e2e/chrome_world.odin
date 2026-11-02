@@ -137,7 +137,7 @@ chrome_end :: proc(w: ^Chrome_World) {
 	browser.favicons_destroy(app)
 	browser.window_chrome_destroy(app)
 	browser.chrome_style_destroy(app)
-	browser.commands_destroy(&browser.cmds)
+	browser.commands_destroy(&app.cmds)
 	delete(app.cfg.homepage)
 	delete(app.cfg.ui_theme)
 	if w.pixels {

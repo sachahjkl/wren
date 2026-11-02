@@ -101,7 +101,7 @@ Urlbar_View :: struct {
 	sel:          int,                 // the chosen row (0: the first, what Enter does as typed)
 	fill_text:    string,              // owned: the field's text with the inline completion ("" = none)
 	fill_address: string,              // owned: what the completion opens
-	rows_serial:  u64,                 // ghist.serial the rows were made with
+	rows_serial:  u64,                 // app.ghist.serial the rows were made with
 	tab_id:       u64,                 // the tab the list was opened for
 	focused:      bool,                // the address field had the keyboard last frame
 	just_focused: bool,                // ... and did not have it the frame before
@@ -142,11 +142,11 @@ urlbar_index_ready :: proc(app: ^App, age := false) -> bool {
 	if j.state != .Idle { return false }
 	now := unix_ms_now()
 	stale := ub.idx.serial == 0 || (age && now - ub.idx.now_ms > URL_INDEX_MAX_AGE_MS)
-	if stale && len(ghist.visits) >= URLBAR_THREAD_VISITS {
+	if stale && len(app.ghist.visits) >= URLBAR_THREAD_VISITS {
 		urlbar_index_start(app, now)
 		return false
 	}
-	url_index_sync(&ub.idx, ghist.visits[:], ghist.serial, now, age)
+	url_index_sync(&ub.idx, app.ghist.visits[:], app.ghist.serial, now, age)
 	return true
 }
 
@@ -154,9 +154,9 @@ urlbar_index_ready :: proc(app: ^App, age := false) -> bool {
 urlbar_index_start :: proc(app: ^App, now: i64) {
 	j := &ub.job
 	size := 0
-	for v in ghist.visits { size += len(v.url) + len(v.title) + len(v.icon) }
+	for v in app.ghist.visits { size += len(v.url) + len(v.title) + len(v.icon) }
 	j.text = make([]u8, size)
-	j.visits = make([]Visit, len(ghist.visits))
+	j.visits = make([]Visit, len(app.ghist.visits))
 	at := 0
 	take :: proc(text: []u8, at: ^int, s: string) -> string {
 		copy(text[at^:], s)
@@ -164,10 +164,10 @@ urlbar_index_start :: proc(app: ^App, now: i64) {
 		at^ += len(s)
 		return out
 	}
-	for v, i in ghist.visits {
+	for v, i in app.ghist.visits {
 		j.visits[i] = Visit{id = v.id, at_ms = v.at_ms, url = take(j.text, &at, v.url), title = take(j.text, &at, v.title), icon = take(j.text, &at, v.icon)}
 	}
-	j.serial, j.now_ms, j.state = ghist.serial, now, .Running
+	j.serial, j.now_ms, j.state = app.ghist.serial, now, .Running
 	host.run_blocking(&app.blocking, proc(data: rawptr) {
 		j := (^Urlbar_Index_Job)(data)
 		url_index_build(&j.idx, j.visits, j.serial, j.now_ms)
@@ -259,15 +259,15 @@ skipped_address :: proc(a: string) -> bool {
 
 // Is `text` searched for (not an address)?
 @(private = "file")
-is_search_text :: proc(text: string) -> bool { _, s := address_target(text); return s != nil }
+is_search_text :: proc(app: ^App, text: string) -> bool { _, s := address_target(app, text); return s != nil }
 
 // The engine and the words of the search rows: the engine picked this time, else the keyword's, else the default; the
 // words without the keyword.
-urlbar_search_of :: proc(uv: ^Urlbar_View) -> (engine: int, words: string) {
+urlbar_search_of :: proc(app: ^App, uv: ^Urlbar_View) -> (engine: int, words: string) {
 	q := strings.trim_space(uv.typed)
-	engine, words = search_default_index(), q
-	if i, w, ok := engines_keyword(&sengines, q); ok { engine, words = i, w }
-	if uv.engine_pick > 0 && uv.engine_pick <= len(sengines.list) { engine = uv.engine_pick - 1 }
+	engine, words = search_default_index(app), q
+	if i, w, ok := engines_keyword(&app.sengines, q); ok { engine, words = i, w }
+	if uv.engine_pick > 0 && uv.engine_pick <= len(app.sengines.list) { engine = uv.engine_pick - 1 }
 	return
 }
 
@@ -275,9 +275,9 @@ urlbar_search_of :: proc(uv: ^Urlbar_View) -> (engine: int, words: string) {
 @(private = "file")
 urlbar_cycle_engine :: proc(app: ^App, dir: int) {
 	uv := urlbar_view(app)
-	n := len(sengines.list)
+	n := len(app.sengines.list)
 	if n == 0 { return }
-	cur, _ := urlbar_search_of(uv)
+	cur, _ := urlbar_search_of(app, uv)
 	uv.engine_pick = (cur + dir + n) % n + 1
 	for r, i in uv.rows { if r.kind == .Search { urlbar_choose(app, i); break } }
 	request_frames(app, 2)
@@ -295,9 +295,9 @@ urlbar_refresh :: proc(app: ^App, fill: Fill_Mode) {
 	clear(&uv.rows)
 	uv.sel = 0
 	if fill != .Keep { set_owned(&uv.fill_text, ""); set_owned(&uv.fill_address, "") }
-	uv.rows_serial = ghist.serial
+	uv.rows_serial = app.ghist.serial
 	q := uv.zero ? "" : strings.trim_space(uv.typed)
-	history := ub.cfg.history && hcfg.global
+	history := ub.cfg.history && app.hcfg.global
 	max_rows := max(ub.cfg.max_rows, 1)
 	if !ub.cfg.enabled { uv.open = false; return }
 	if history {
@@ -333,7 +333,7 @@ urlbar_refresh :: proc(app: ^App, fill: Fill_Mode) {
 	} else if fill == .Keep && uv.fill_text != "" {
 		if i, ok := ub.idx.by_url[uv.fill_address]; ok { fill_entry = i } else if len(matches) > 0 && matches[0].prefix { fill_entry = matches[0].entry }
 	}
-	searching := is_search_text(q)
+	searching := is_search_text(app, q)
 	if fill_entry >= 0 { append(&uv.rows, Urlbar_Row{kind = .History, entry = fill_entry, fill = true}) }
 	else { append(&uv.rows, Urlbar_Row{kind = searching ? .Search : .Go}) }
 	extra_search := !searching && ub.cfg.search
@@ -393,8 +393,8 @@ row_address :: proc(app: ^App, r: Urlbar_Row) -> string {
 	uv := urlbar_view(app)
 	q := strings.trim_space(uv.typed)
 	switch r.kind {
-	case .Go:      return address_or_search(q)
-	case .Search:  engine, words := urlbar_search_of(uv); return search_url(words, engine)
+	case .Go:      return address_or_search(app, q)
+	case .Search:  engine, words := urlbar_search_of(app, uv); return search_url(app, words, engine)
 	case .Tab:     if x := tab_by_id(app, r.tab_id); x != nil { return x.url }
 	case .History:
 		if r.fill { return uv.fill_address }
@@ -425,7 +425,7 @@ urlbar_remove_row :: proc(app: ^App, i: int) {
 	e := &ub.idx.entries[r.entry]
 	address := strings.clone(e.url, context.temp_allocator)
 	ids := make([dynamic]u64, context.temp_allocator)
-	for v in ghist.visits { if v.url == address { append(&ids, v.id) } }
+	for v in app.ghist.visits { if v.url == address { append(&ids, v.id) } }
 	if len(ids) > 0 {
 		global_history_remove(app, ids[:])
 		global_history_save(app)   // at once (history.global.save_delay_ms is for the browsing)
@@ -488,17 +488,17 @@ urlbar_keys :: proc(app: ^App, t: ^Tab) {
 		set_owned(&uv.typed, ui.field_string(&wnd.address))
 		uv.tab_id = t != nil ? t.id : 0
 		// the index in step now (a first build, or the day's new weights), not at the first letter typed
-		if ub.cfg.enabled && ub.cfg.history && hcfg.global { _ = urlbar_index_ready(app, age = true) }
+		if ub.cfg.enabled && ub.cfg.history && app.hcfg.global { _ = urlbar_index_ready(app, age = true) }
 		if ub.cfg.top_sites { uv.zero, uv.idle = true, true; urlbar_refresh(app, .None) }
 	}
 	uv.focused = true
 	if t != nil && t.id != uv.tab_id { urlbar_close(uv); uv.tab_id = t.id }
-	if uv.open && uv.rows_serial != ghist.serial { sel := uv.sel; urlbar_refresh(app, .Keep); urlbar_choose(app, sel) }
+	if uv.open && uv.rows_serial != app.ghist.serial { sel := uv.sel; urlbar_refresh(app, .Keep); urlbar_choose(app, sel) }
 
 	if ui.key_press(.Return, {.Alt}) || ui.key_press(.Return, {.Ctrl}) {
 		if uv.idle || !urlbar_open(app, t, uv.sel, true) {
 			text := strings.clone(strings.trim_space(ui.field_string(&wnd.address)), context.temp_allocator)
-			if text != "" { urlbar_close(uv); tab_open(app, address_or_search(text), origin = .User); ui.set_focus(0) }
+			if text != "" { urlbar_close(uv); tab_open(app, address_or_search(app, text), origin = .User); ui.set_focus(0) }
 		}
 		return
 	}
@@ -692,8 +692,8 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 						title, hint = q, "Go to address"
 					case .Search:
 						icon.kind = .Search
-						engine, words := urlbar_search_of(uv)
-						title, hint = words, fmt.tprintf(i18n.tr("Search with %s"), search_engine_name(engine))
+						engine, words := urlbar_search_of(app, uv)
+						title, hint = words, fmt.tprintf(i18n.tr("Search with %s"), search_engine_name(app, engine))
 					case .Tab:
 						if x := tab_by_id(app, r.tab_id); x != nil {
 							icon.tab = tab_icon_of(app, x, f32(tab_icon_px(app)))
@@ -702,7 +702,7 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 					case .History:
 						e := &ub.idx.entries[r.entry]
 						icon.kind = .Globe
-						if e.icon != "" { if tex, ok := favicon_texture(e.icon); ok { icon.kind, icon.tex = .Favicon, tex } }
+						if e.icon != "" { if tex, ok := favicon_texture(app, e.icon); ok { icon.kind, icon.tex = .Favicon, tex } }
 						title = e.title != "" ? e.title : default_tab_title(e.url)
 						detail = shown_address(e.url)
 					}
@@ -757,8 +757,8 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 			}
 		}
 		// this time, another engine
-		if q != "" && len(sengines.list) > 1 && ub.cfg.engines_row {
-			if i := urlbar_engine_row(uv, w, rh, pad); i >= 0 { search_with = i }
+		if q != "" && len(app.sengines.list) > 1 && ub.cfg.engines_row {
+			if i := urlbar_engine_row(app, uv, w, rh, pad); i >= 0 { search_with = i }
 		}
 		ui.spacer(ui.px(pad))
 	}
@@ -772,8 +772,8 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 urlbar_search_with :: proc(app: ^App, t: ^Tab, engine: int) {
 	uv := urlbar_view(app)
 	uv.engine_pick = engine + 1
-	_, words := urlbar_search_of(uv)
-	address := strings.clone(search_url(words, engine), context.temp_allocator)
+	_, words := urlbar_search_of(app, uv)
+	address := strings.clone(search_url(app, words, engine), context.temp_allocator)
 	urlbar_close(uv)
 	ui.set_focus(0)
 	if t == nil { tab_open(app, address, origin = .User); return }

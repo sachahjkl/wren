@@ -61,8 +61,6 @@ Plane_Settings :: struct {
 }
 
 @(private) plane_settings := Plane_Settings{max_scale = 16, min_scale = 0.0625, taps = 8, mips = true, layer_bytes = 96 << 20, tolerance = 2, settle_ms = 120, detach = true}
-@(private) planes_watch: int
-@(private) planes_culled: int   // planes not painted because they are hidden and turned away (what the tests count)
 
 register_plane_prefs :: proc(p: ^config.Prefs) { config.register(p, PLANE_PREFS[:]) }
 
@@ -82,7 +80,7 @@ plane_settings_from_prefs :: proc(p: ^config.Prefs) -> Plane_Settings {
 
 planes_init :: proc(app: ^App) {
 	plane_settings = plane_settings_from_prefs(&app.prefs)
-	planes_watch = config.watch(&app.prefs, "paint.planes.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	app.watches[.Planes] = config.watch(&app.prefs, "paint.planes.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		plane_settings = plane_settings_from_prefs(p)
 		clear(&plane_mem)
 		draw.layer_cache_clear(&(^App)(user).dc)   // kept planes were rasterized at the old scales
@@ -213,7 +211,9 @@ Plane_Mem :: struct {
 	ms:    f64,
 }
 
-@(private) plane_mem: map[u64]Plane_Mem
+// (the painting thread's, as the compositor's layers are: compositor.odin comps)
+@(private, thread_local) plane_mem: map[u64]Plane_Mem
+@(private, thread_local) planes_culled: int   // planes not painted because they are hidden and turned away (what the tests count)
 @(private) plane_settle: base.Handle
 
 @(private)

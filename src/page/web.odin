@@ -9,6 +9,7 @@ package page
 //   * the error codes beyond dom.Error (Web IDL exceptions and DOMException names), the same for every area;
 //   * the Embedder: what the shell supplies (navigation, the tab's session history, the profile's storage).
 
+import "core:sync"
 import "core:time"
 import "wb:base"
 import "wb:host"
@@ -119,22 +120,22 @@ Event_Detail :: struct {
 	flags:     u8,      // bit 0 key is null, bit 1 old value is null, bit 2 new value is null
 }
 
-@(private)
+// The live pages of this thread: an App runs its pages on the thread of its loop (docs/architecture.md, Where state lives).
+@(private, thread_local)
 live_pages: map[u64]^Page
 @(private)
-next_page_id: u64
+next_page_id: u64   // (atomic: a page's id is unique in the process)
 
 @(private)
 // `live`: register the page in the registry of live pages (storage events, page_by_id). That registry belongs to the
-// UI thread: a worker's realm, which runs on its own thread, gets the web state without being registered.
+// UI thread (its App's thread): a worker's realm, which runs on its own thread, gets the web state without being registered.
 web_init :: proc(p: ^Page, live := true) {
 	w := new(Web_State)
 	p.web = w
 	w.live = live
 	if live {
 		if live_pages == nil { live_pages = make(map[u64]^Page, base.process_allocator()) }
-		next_page_id += 1
-		w.id = next_page_id
+		w.id = sync.atomic_add(&next_page_id, 1) + 1
 	}
 	w.visible = true
 	w.origin_ns = host.now_ns(p.loop)

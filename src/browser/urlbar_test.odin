@@ -220,9 +220,9 @@ urlbar_rows_and_removal :: proc(t: ^testing.T) {
 	defer host.blocking_destroy(&app.blocking)
 	sync.mutex_lock(&globals_lock)   // (the history, its settings and the bar are globals)
 	defer sync.mutex_unlock(&globals_lock)
-	saved_ghist, saved_hcfg, saved_ub := ghist, hcfg, ub
-	defer { ghist, hcfg, ub = saved_ghist, saved_hcfg, saved_ub }
-	hcfg = {global = true, max_visits = 1000, max_url_bytes = 8192, save_delay_ms = 1}
+	saved_ghist, saved_hcfg, saved_ub := app.ghist, app.hcfg, ub
+	defer { app.ghist, app.hcfg, ub = saved_ghist, saved_hcfg, saved_ub }
+	app.hcfg = {global = true, max_visits = 1000, max_url_bytes = 8192, save_delay_ms = 1}
 	ub = {}
 	ub.cfg = {enabled = true, history = true, tabs = true, search = true, autofill = true, max_rows = 8, max_tab_rows = 3, min_chars = 1}
 	uv := urlbar_view(app)
@@ -230,20 +230,20 @@ urlbar_rows_and_removal :: proc(t: ^testing.T) {
 	_ = os.make_directory_all(dir)
 	path := strings.concatenate({dir, "/history.txt"}, context.temp_allocator)
 	now := time.time_to_unix_nano(time.now()) / 1e6
-	ghist = {app = app, path = strings.clone(path)}
-	add :: proc(url, title: string, at: i64) {
-		ghist.next_id += 1
-		append(&ghist.visits, Visit{id = ghist.next_id, at_ms = at, url = strings.clone(url), title = strings.clone(title)})
+	app.ghist = {path = strings.clone(path)}
+	add :: proc(app: ^App, url, title: string, at: i64) {
+		app.ghist.next_id += 1
+		append(&app.ghist.visits, Visit{id = app.ghist.next_id, at_ms = at, url = strings.clone(url), title = strings.clone(title)})
 	}
-	add("https://github.com/", "GitHub", now - 3000)
-	add("https://github.com/", "GitHub", now - 2000)
-	add("https://gitlab.com/", "GitLab", now - 1500)
-	add("https://example.com/gitea", "Gitea notes", now - 1000)
-	add("data:text/html,git", "", now - 900)   // (never recorded; never shown either)
-	ghist.serial = 1
+	add(app, "https://github.com/", "GitHub", now - 3000)
+	add(app, "https://github.com/", "GitHub", now - 2000)
+	add(app, "https://gitlab.com/", "GitLab", now - 1500)
+	add(app, "https://example.com/gitea", "Gitea notes", now - 1000)
+	add(app, "data:text/html,git", "", now - 900)   // (never recorded; never shown either)
+	app.ghist.serial = 1
 	defer {
-		visits_destroy(&ghist.visits)
-		delete(ghist.path)
+		visits_destroy(&app.ghist.visits)
+		delete(app.ghist.path)
 		url_index_destroy(&ub.idx)
 		delete(uv.rows); delete(uv.typed); delete(uv.fill_text); delete(uv.fill_address)
 		delete(active_window(app).address.buf)
@@ -298,11 +298,11 @@ urlbar_rows_and_removal :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(uv.rows), n - 1)
 	testing.expect_value(t, uv.typed, "git")
 	for r in uv.rows { if r.kind == .History { testing.expect(t, ub.idx.entries[r.entry].url != "https://gitlab.com/", "gone from the list") } }
-	for v in ghist.visits { testing.expect(t, v.url != "https://gitlab.com/", "gone from the history") }
+	for v in app.ghist.visits { testing.expect(t, v.url != "https://gitlab.com/", "gone from the history") }
 	testing.expect_value(t, uv.sel, min(at, len(uv.rows) - 1))
 	// written at once: wait for the background write
 	deadline := time.tick_now()
-	for ghist.saving && time.duration_seconds(time.tick_since(deadline)) < SAVE_DEADLINE_S { host.loop_wait(&app.loop, SAVE_LOOK_MS) }
+	for app.ghist.saving && time.duration_seconds(time.tick_since(deadline)) < SAVE_DEADLINE_S { host.loop_wait(&app.loop, SAVE_LOOK_MS) }
 	data, err := os.read_entire_file(path, context.temp_allocator)
 	testing.expect(t, err == nil, "the history file was written")
 	testing.expect(t, strings.contains(string(data), "https://github.com/") && !strings.contains(string(data), "gitlab"), "the profile's history has no gitlab")
@@ -321,21 +321,21 @@ urlbar_thread_build :: proc(t: ^testing.T) {
 	defer host.blocking_destroy(&app.blocking)
 	sync.mutex_lock(&globals_lock)   // (the history, its settings and the bar are globals)
 	defer sync.mutex_unlock(&globals_lock)
-	saved_ghist, saved_hcfg, saved_ub := ghist, hcfg, ub
-	defer { ghist, hcfg, ub = saved_ghist, saved_hcfg, saved_ub }
-	hcfg = {global = true, max_visits = 100_000, max_url_bytes = 8192}
+	saved_ghist, saved_hcfg, saved_ub := app.ghist, app.hcfg, ub
+	defer { app.ghist, app.hcfg, ub = saved_ghist, saved_hcfg, saved_ub }
+	app.hcfg = {global = true, max_visits = 100_000, max_url_bytes = 8192}
 	ub = {app = app}
 	ub.cfg = {enabled = true, history = true, max_rows = 8, min_chars = 1}
 	uv := urlbar_view(app)
-	ghist = {app = app}
+	app.ghist = {}
 	now := time.time_to_unix_nano(time.now()) / 1e6
 	for i in 0 ..< URLBAR_THREAD_VISITS + 100 {
-		ghist.next_id += 1
-		append(&ghist.visits, Visit{id = ghist.next_id, at_ms = now - i64(URLBAR_THREAD_VISITS + 100 - i) * 1000, url = fmt.aprintf("https://site%d.example/", i % 1000), title = fmt.aprintf("Site %d", i % 1000)})
+		app.ghist.next_id += 1
+		append(&app.ghist.visits, Visit{id = app.ghist.next_id, at_ms = now - i64(URLBAR_THREAD_VISITS + 100 - i) * 1000, url = fmt.aprintf("https://site%d.example/", i % 1000), title = fmt.aprintf("Site %d", i % 1000)})
 	}
-	ghist.serial = 1
+	app.ghist.serial = 1
 	defer {
-		visits_destroy(&ghist.visits)
+		visits_destroy(&app.ghist.visits)
 		delete(uv.rows); delete(uv.typed); delete(uv.fill_text); delete(uv.fill_address)
 		delete(active_window(app).address.buf)
 	}
@@ -344,11 +344,11 @@ urlbar_thread_build :: proc(t: ^testing.T) {
 	testing.expect(t, ub.job.state != .Idle, "a build on the pool")
 	for r in uv.rows { testing.expect(t, r.kind != .History, "no history rows before the index is built") }
 	// meanwhile: a visit deleted, one appended
-	ids := []u64{ghist.visits[0].id}
-	history_delete(&ghist.visits, ids)
-	ghist.next_id += 1
-	append(&ghist.visits, Visit{id = ghist.next_id, at_ms = now, url = strings.clone("https://site12-new.example/"), title = strings.clone("New")})
-	ghist.serial = 2
+	ids := []u64{app.ghist.visits[0].id}
+	history_delete(&app.ghist.visits, ids)
+	app.ghist.next_id += 1
+	append(&app.ghist.visits, Visit{id = app.ghist.next_id, at_ms = now, url = strings.clone("https://site12-new.example/"), title = strings.clone("New")})
+	app.ghist.serial = 2
 	start := time.tick_now()
 	for ub.job.state != .Idle && time.duration_seconds(time.tick_since(start)) < INDEX_JOB_DEADLINE_S { host.loop_wait(&app.loop, INDEX_JOB_LOOK_MS) }
 	testing.expect(t, ub.job.state == .Idle, "the build came back")
@@ -357,7 +357,7 @@ urlbar_thread_build :: proc(t: ^testing.T) {
 	for r in uv.rows { if r.kind == .History { append(&urls, ub.idx.entries[r.entry].url) } }
 	testing.expectf(t, len(urls) >= 2, "history rows: %v", urls)
 	testing.expect_value(t, len(url_index_query(&ub.idx, "site12-new", 5)), 1)   // appended during the build: there
-	testing.expect_value(t, len(ub.idx.vis), len(ghist.visits))
+	testing.expect_value(t, len(ub.idx.vis), len(app.ghist.visits))
 
 	// a build running when the bar goes: waited for, freed (the tracking allocator reports a leak otherwise)
 	ub.idx.now_ms = 0   // a day old: the next focus builds again

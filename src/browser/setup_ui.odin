@@ -74,17 +74,17 @@ versions_line :: proc(f: ^Setup_Facts, known: bool) -> string {
 
 // The line in the bordered box under the options: what is the case, or the outcome of the last action.
 @(private = "file")
-status_text :: proc(f: ^Setup_Facts) -> (text, tone: string) {
+status_text :: proc(app: ^App, f: ^Setup_Facts) -> (text, tone: string) {
 	switch {
-	case stp.busy > 0:
+	case app.stp.busy > 0:
 		return "Working\u2026", "weak"
-	case stp.confirm_uninstall:
+	case app.stp.confirm_uninstall:
 		return fmt.tprintf("Click Confirm uninstall to remove %s: its shortcuts, its PATH entry, its entry in Settings > Apps and the files in %s. Your profile (bookmarks, history, settings) stays.", APP_NAME, f.inst.exe_present ? f.inst.dir : f.installed_dir), "warn"
-	case stp.path_problem != "" && stp.path_ready:
-		return stp.path_problem, "bad"
-	case stp.note != "":
-		return stp.note, stp.note_tone
-	case !stp.known:
+	case app.stp.path_problem != "" && app.stp.path_ready:
+		return app.stp.path_problem, "bad"
+	case app.stp.note != "":
+		return app.stp.note, app.stp.note_tone
+	case !app.stp.known:
 		return "Reading what is installed\u2026", "weak"
 	}
 	switch f.kind {
@@ -123,12 +123,12 @@ missing_parts :: proc(f: ^Setup_Facts) -> string {
 }
 
 @(private = "file")
-primary_label :: proc(f: ^Setup_Facts, known: bool) -> string {
+primary_label :: proc(app: ^App, f: ^Setup_Facts, known: bool) -> string {
 	if !known { return "Install" }
 	switch f.kind {
 	case .Loading:           return "Install"
 	case .Not_Installed:     return "Install"
-	case .Running_Installed: return setup_moving() ? "Move installation" : "Modify"
+	case .Running_Installed: return setup_moving(app) ? "Move installation" : "Modify"
 	case .Other_Copy, .Older: return "Replace installed copy"
 	case .Repair:            return "Repair"
 	}
@@ -146,18 +146,18 @@ secondary_label :: proc(kind: Setup_Kind) -> string {
 
 // One option: a bordered tile with a check box and its label (the whole tile is the check box's row).
 @(private = "file")
-option_tile :: proc(opt: Setup_Opt, label: string, w: ui.Size, enabled: bool, extra_button := "", extra_id := "") -> bool {
+option_tile :: proc(app: ^App, opt: Setup_Opt, label: string, w: ui.Size, enabled: bool, extra_button := "", extra_id := "") -> bool {
 	em := ui.font_size()
 	clicked_extra := false
 	ui.next({width = w, height = ui.px(ui.dense(em * 2.3))})
 	if ui.tags("card") {
 		if ui.row(.Center, {.Draw_Background, .Draw_Border}, fmt.aprintf("###setup_tile_%v", opt, allocator = ui.frame_allocator())) {
 			if ui.disabled(!enabled) {
-				checked := stp.opts[opt]
+				checked := app.stp.opts[opt]
 				ui.next({width = ui.fill(), height = ui.pct(1)})
 				if ui.checkbox(fmt.aprintf("###setup_opt_%v", opt, allocator = ui.frame_allocator()), label, &checked).clicked {
-					stp.opts[opt] = checked
-					stp.confirm_uninstall = false
+					app.stp.opts[opt] = checked
+					app.stp.confirm_uninstall = false
 				}
 			}
 			if extra_button != "" {
@@ -172,29 +172,29 @@ option_tile :: proc(opt: Setup_Opt, label: string, w: ui.Size, enabled: bool, ex
 
 // Builds the dialog over everything else. Nothing (and no frame) while it is closed.
 setup_build :: proc(app: ^App) {
-	if !stp.open { return }
+	if !app.stp.open { return }
 	setup_follow_disk(app)
 	setup_sync_inputs(app)
-	setup_validate()
+	setup_validate(app)
 	em := ui.font_size()
 	win_w, win_h := f32(active_window(app).win.size.x), f32(active_window(app).win.size.y)
 	pad := math.round(em * 1.1)
 	max_w := max(win_w - em * 2, 22 * em)
-	if stp.width_em == 0 { stp.width_em = 46 }
-	width := clamp(math.round(stp.width_em * em), min(36 * em, max_w), max_w)
+	if app.stp.width_em == 0 { app.stp.width_em = 46 }
+	width := clamp(math.round(app.stp.width_em * em), min(36 * em, max_w), max_w)
 	inner := width - 2 * pad
 	// placed near the top, and not moved by its own content: centred on its height, it jumped when the first frame (height not known
 	// yet) became the second, and again when the disk was read and "Loading" became the real state. It only moves up when it would
 	// not fit under that line. Before the first frame measured the dialog (fit_h still 0), an estimate keeps it from being placed
 	// too low and then jumping up: a capture taken right after it opens (wren ctl shot) then shows it in its place, at any DPI.
-	est_h := stp.fit_h > 0 ? stp.fit_h : min(win_h * 0.7, em * 34)
+	est_h := app.stp.fit_h > 0 ? app.stp.fit_h : min(win_h * 0.7, em * 34)
 	top := win_h * 0.12
 	if top + est_h > win_h { top = max(win_h - est_h, em * 0.6) }
 	open := true
 	if ui.modal("setup", width, &open, top / win_h) {
 		if ui.style({radius = 0}) { setup_frame(app, width, inner, pad, win_h) }
 	}
-	if !open && stp.busy == 0 { setup_dismiss(app) }   // Escape, a click outside (not while it works)
+	if !open && app.stp.busy == 0 { setup_dismiss(app) }   // Escape, a click outside (not while it works)
 }
 
 @(private = "file")
@@ -204,17 +204,17 @@ setup_frame :: proc(app: ^App, width, inner, pad, win_h: f32) {
 	if panel := ui.parent_box(); panel != nil { panel.flags -= {.Draw_Background, .Draw_Border, .Draw_Shadow} }
 	ui.next({width = ui.px(width), height = ui.children_sum(), axis = .Y})
 	frame := ui.build_box({.Draw_Background, .Draw_Border, .Draw_Shadow}, "###setup_frame")
-	stp.fit_h = frame.rect.max.y - frame.rect.min.y   // (last frame's: the window places the next one)
+	app.stp.fit_h = frame.rect.max.y - frame.rect.min.y   // (last frame's: the window places the next one)
 	if ui.parent(frame) { setup_body(app, width, inner, pad, win_h) }
 }
 
 @(private = "file")
 setup_body :: proc(app: ^App, width, inner, pad, win_h: f32) {
 	em := ui.font_size()
-	f := &stp.facts
-	known := stp.known
+	f := &app.stp.facts
+	known := app.stp.known
 	kind := known ? f.kind : Setup_Kind.Loading
-	busy := stp.busy > 0
+	busy := app.stp.busy > 0
 	title, badge, badge_tone, badge_solid := header_texts(kind)
 
 	// the title bar: the name, and the close box
@@ -241,12 +241,12 @@ setup_body :: proc(app: ^App, width, inner, pad, win_h: f32) {
 	// everything between the title bar and the buttons scrolls when the window is too short for all of it
 	avail := win_h - title_h - buttons_h - grip_h - em * 1.2
 	scroll_key := ui.key_from_string(ui.parent_box().key, "###setup_scroll")
-	ui.next({width = ui.px(width), height = stp.mid_h > 0 ? ui.px(min(stp.mid_h, max(avail, em * 8))) : ui.children_sum()})
+	ui.next({width = ui.px(width), height = app.stp.mid_h > 0 ? ui.px(min(app.stp.mid_h, max(avail, em * 8))) : ui.children_sum()})
 	if ui.scroll_y("###setup_scroll") {
 		ui.spacer(ui.px(em * 0.7))
 		setup_middle(app, width, inner, pad, f, known, busy, title, badge, badge_tone, badge_solid)
 	}
-	if b := ui.box_from_key(scroll_key); b != nil && b.view_bounds.y > 0 { stp.mid_h = b.view_bounds.y }   // (the content's height: last frame's)
+	if b := ui.box_from_key(scroll_key); b != nil && b.view_bounds.y > 0 { app.stp.mid_h = b.view_bounds.y }   // (the content's height: last frame's)
 
 	// the buttons
 	ui.next({width = ui.fill(), height = ui.px(buttons_h)})
@@ -255,23 +255,23 @@ setup_body :: proc(app: ^App, width, inner, pad, win_h: f32) {
 		can_remove := known && !busy && (f.inst.exe_present || f.inst.manifest || f.integ.state != .Absent)
 		ui.next({width = ui.text_size(em * 2.2), height = ui.pct(1)})
 		if ui.disabled(!can_remove) {
-			if ui.tags(stp.confirm_uninstall ? "danger_button" : "button") {
-				ub := ui.button(fmt.aprintf("%s###setup_uninstall", stp.confirm_uninstall ? "Confirm uninstall" : "Uninstall", allocator = ui.frame_allocator()))
-				if ub.box != nil { stp.at_uninstall = ub.box.rect }
+			if ui.tags(app.stp.confirm_uninstall ? "danger_button" : "button") {
+				ub := ui.button(fmt.aprintf("%s###setup_uninstall", app.stp.confirm_uninstall ? "Confirm uninstall" : "Uninstall", allocator = ui.frame_allocator()))
+				if ub.box != nil { app.stp.at_uninstall = ub.box.rect }
 				if ub.clicked {
-					if stp.confirm_uninstall { setup_uninstall(app) } else { stp.confirm_uninstall = true; request_frames(app, 3) }
+					if app.stp.confirm_uninstall { setup_uninstall(app) } else { app.stp.confirm_uninstall = true; request_frames(app, 3) }
 				}
 			}
 		}
 		ui.next({width = ui.fill(), height = ui.pct(1)})
 		ui.spacer(ui.fill())
-		primary_ok := setup_primary_enabled()
+		primary_ok := setup_primary_enabled(app)
 		ui.next({width = ui.text_size(em * 2.2), height = ui.pct(1)})
 		if ui.disabled(!primary_ok) {
 			if ui.tags("accent_button") {
-				pb := ui.button(fmt.aprintf("%s###setup_primary", primary_label(f, known), allocator = ui.frame_allocator()))
-				if pb.box != nil { stp.at_primary = pb.box.rect }
-				if stp.focus_primary && pb.box != nil && known { stp.focus_primary = false; ui.set_focus(pb.box.key) }
+				pb := ui.button(fmt.aprintf("%s###setup_primary", primary_label(app, f, known), allocator = ui.frame_allocator()))
+				if pb.box != nil { app.stp.at_primary = pb.box.rect }
+				if app.stp.focus_primary && pb.box != nil && known { app.stp.focus_primary = false; ui.set_focus(pb.box.key) }
 				if pb.clicked { setup_primary(app) }
 			}
 		}
@@ -279,7 +279,7 @@ setup_body :: proc(app: ^App, width, inner, pad, win_h: f32) {
 		ui.next({width = ui.text_size(em * 2.2), height = ui.pct(1)})
 		if ui.disabled(busy) {
 			sb := ui.button(fmt.aprintf("%s###setup_secondary", secondary_label(kind), allocator = ui.frame_allocator()))
-			if sb.box != nil { stp.at_secondary = sb.box.rect }
+			if sb.box != nil { app.stp.at_secondary = sb.box.rect }
 			if sb.clicked {
 				if kind == .Running_Installed || kind == .Repair { setup_dismiss(app) } else { setup_use_standalone(app) }
 			}
@@ -297,8 +297,8 @@ setup_body :: proc(app: ^App, width, inner, pad, win_h: f32) {
 		gb := ui.custom("###setup_grip", grip_draw, g, {.Clickable})
 		gb.cursor = .Resize_NWSE
 		sig := ui.signal(gb)
-		if sig.pressed { stp.grip_width = stp.width_em }
-		if sig.dragging && em > 0 { stp.width_em = clamp(stp.grip_width + 2 * sig.drag_delta.x / em, 36, 90); request_frames(app, 2) }
+		if sig.pressed { app.stp.grip_width = app.stp.width_em }
+		if sig.dragging && em > 0 { app.stp.width_em = clamp(app.stp.grip_width + 2 * sig.drag_delta.x / em, 36, 90); request_frames(app, 2) }
 	}
 }
 
@@ -348,11 +348,11 @@ setup_middle :: proc(app: ^App, width, inner, pad: f32, f: ^Setup_Facts, known, 
 		ui.spacer(ui.px(pad))
 		ui.next({width = ui.px(inner), height = ui.pct(1)})
 		res: ui.Edit_Result
-		bad := stp.path_problem != "" && stp.path_ready
+		bad := app.stp.path_problem != "" && app.stp.path_ready
 		if bad { ui.push_tags("bad") }
-		if ui.disabled(busy || !known) { res = ui.line_edit("###setup_path", &stp.path, "C:\\path\\to\\install\\folder") }
+		if ui.disabled(busy || !known) { res = ui.line_edit("###setup_path", &app.stp.path, "C:\\path\\to\\install\\folder") }
 		if bad { ui.pop_tags() }
-		if res.changed { stp.confirm_uninstall = false; setup_note("", "weak"); setup_validate() }
+		if res.changed { app.stp.confirm_uninstall = false; setup_note(app, "", "weak"); setup_validate(app) }
 		if res.committed { setup_primary(app) }
 		ui.spacer(ui.px(pad))
 	}
@@ -375,10 +375,10 @@ setup_middle :: proc(app: ^App, width, inner, pad: f32, f: ^Setup_Facts, known, 
 		ui.spacer(ui.px(pad))
 	}
 	ui.spacer(ui.px(em * 0.4))
-	setup_options_grid(width, inner, pad, known && !busy)
+	setup_options_grid(app, width, inner, pad, known && !busy)
 
 	// what is the case, in words
-	text, tone := status_text(f)
+	text, tone := status_text(app, f)
 	ui.next({width = ui.px(width), height = ui.children_sum()})
 	if ui.row(.Center) {
 		ui.spacer(ui.px(pad))
@@ -392,7 +392,7 @@ setup_middle :: proc(app: ^App, width, inner, pad: f32, f: ^Setup_Facts, known, 
 					ui.next({width = ui.fill(), text_pad = 0})
 					ui.paragraph(fmt.aprintf("%s###setup_status_text", text, allocator = ui.frame_allocator()))
 				}
-				if v, link := update_available(); v != "" && !busy {
+				if v, link := update_available(app); v != "" && !busy {
 					ui.spacer(ui.px(em * 0.6))
 					ui.next({width = ui.text_size(em * 1.2), height = ui.px(ui.dense(em * 1.9))})
 					if ui.tags("ghost_button") { if ui.button(fmt.aprintf("v%s is available###setup_update", v, allocator = ui.frame_allocator())).clicked { tab_open(app, link); request_frames(app, 3) } }
@@ -448,7 +448,7 @@ setup_badge :: proc(text, tone: string, solid: bool) {
 
 // The tiles, two to a row; the option that has a button of its own takes a row.
 @(private = "file")
-setup_options_grid :: proc(width, inner, pad: f32, enabled: bool) {
+setup_options_grid :: proc(app: ^App, width, inner, pad: f32, enabled: bool) {
 	em := ui.font_size()
 	parts := desktop.supported_parts()
 	menu := fmt.tprintf("Add to %s", desktop.menu_name())
@@ -465,10 +465,10 @@ setup_options_grid :: proc(width, inner, pad: f32, enabled: bool) {
 		ui.next({width = ui.px(width), height = ui.children_sum()})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(pad))
-			option_tile(tiles[i].opt, tiles[i].label, ui.px(i + 1 < len(tiles) ? half : inner), enabled)
+			option_tile(app, tiles[i].opt, tiles[i].label, ui.px(i + 1 < len(tiles) ? half : inner), enabled)
 			if i + 1 < len(tiles) {
 				ui.spacer(ui.px(gap))
-				option_tile(tiles[i + 1].opt, tiles[i + 1].label, ui.px(half), enabled)
+				option_tile(app, tiles[i + 1].opt, tiles[i + 1].label, ui.px(half), enabled)
 			}
 			ui.spacer(ui.px(pad))
 		}
@@ -479,22 +479,22 @@ setup_options_grid :: proc(width, inner, pad: f32, enabled: bool) {
 		if ui.row(.Center) {
 			ui.spacer(ui.px(pad))
 			label := fmt.tprintf("Register as a web browser (appears in %s)", desktop.default_apps_name())
-			if option_tile(.Register_Browser, label, ui.px(inner), enabled, desktop_has_default_apps() ? "Open default apps" : "", "setup_defaults") { desktop_open_default_apps() }
+			if option_tile(app, .Register_Browser, label, ui.px(inner), enabled, desktop_has_default_apps() ? "Open default apps" : "", "setup_defaults") { desktop_open_default_apps() }
 			ui.spacer(ui.px(pad))
 		}
 	}
 }
 
 @(private = "file")
-setup_primary_enabled :: proc() -> bool {
-	if stp.busy > 0 || !stp.known || stp.path_problem != "" { return false }
-	if stp.facts.kind == .Running_Installed && !setup_moving() && stp.opts == stp.baseline { return false }   // nothing to apply
+setup_primary_enabled :: proc(app: ^App) -> bool {
+	if app.stp.busy > 0 || !app.stp.known || app.stp.path_problem != "" { return false }
+	if app.stp.facts.kind == .Running_Installed && !setup_moving(app) && app.stp.opts == app.stp.baseline { return false }   // nothing to apply
 	return true
 }
 
 // The main button (and Enter in the folder field).
 @(private = "file")
 setup_primary :: proc(app: ^App) {
-	if !setup_primary_enabled() { return }
+	if !setup_primary_enabled(app) { return }
 	setup_apply(app)
 }

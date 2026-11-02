@@ -22,27 +22,26 @@ foreign comctl32_cmd {
 @(private = "file") WM_APPCOMMAND :: 0x0319
 @(private = "file") FAPPCOMMAND_MOUSE :: 0x8000
 
-@(private = "file") cmd_hwnd: win.HWND
-
 app_commands_init :: proc(app: ^App) {
 	hwnd := active_window(app).win.hwnd
 	if hwnd == nil { return }
-	win.SetWindowSubclass(hwnd, cmd_subclass, CMD_SUBCLASS_ID, 0)
-	cmd_hwnd = hwnd
+	win.SetWindowSubclass(hwnd, cmd_subclass, CMD_SUBCLASS_ID, win.DWORD_PTR(uintptr(app)))   // (the subclass's data: the App its commands go to)
+	app.cmd_hwnd = hwnd
 }
 
 // The back / forward buttons of the mouse in another window of the browser (windows.odin).
-app_commands_attach :: proc(hwnd: win.HWND) { if hwnd != nil { win.SetWindowSubclass(hwnd, cmd_subclass, CMD_SUBCLASS_ID, 0) } }
+app_commands_attach :: proc(app: ^App, hwnd: win.HWND) { if hwnd != nil { win.SetWindowSubclass(hwnd, cmd_subclass, CMD_SUBCLASS_ID, win.DWORD_PTR(uintptr(app))) } }
 
-app_commands_destroy :: proc() {
-	if cmd_hwnd == nil { return }
-	RemoveWindowSubclass(cmd_hwnd, cmd_subclass, CMD_SUBCLASS_ID)
-	cmd_hwnd = nil
+app_commands_destroy :: proc(app: ^App) {
+	if app.cmd_hwnd == nil { return }
+	RemoveWindowSubclass(app.cmd_hwnd, cmd_subclass, CMD_SUBCLASS_ID)
+	app.cmd_hwnd = nil
 }
 
 @(private = "file")
 cmd_subclass :: proc "system" (hwnd: win.HWND, msg: win.UINT, wparam: win.WPARAM, lparam: win.LPARAM, id: win.UINT_PTR, ref: win.DWORD_PTR) -> win.LRESULT {
 	context = base.process_context()
+	app := (^App)(uintptr(ref))
 	c := Browser_Command.None
 	switch msg {
 	case WM_XBUTTONDOWN, WM_XBUTTONDBLCLK:
@@ -52,14 +51,14 @@ cmd_subclass :: proc "system" (hwnd: win.HWND, msg: win.UINT, wparam: win.WPARAM
 		case 1: c = .Back      // XBUTTON1
 		case 2: c = .Forward   // XBUTTON2
 		}
-		if c != .None && the_app != nil { host.post(&the_app.loop, app_command_run, rawptr(uintptr(c))) }
+		if c != .None { host.post(&app.loop, app_command_run, new_clone(App_Command_Post{app, c})) }
 		return 1   // (no WM_APPCOMMAND follows: DefWindowProc is not called)
 	case WM_APPCOMMAND:
 		raw := int(win.HIWORD(u32(lparam)))
 		if raw & FAPPCOMMAND_MOUSE != 0 { break }   // (the buttons above)
 		c = browser_command_of_appcommand(raw & 0x0FFF)
 		if c != .None {
-			if the_app != nil { host.post(&the_app.loop, app_command_run, rawptr(uintptr(c))) }
+			host.post(&app.loop, app_command_run, new_clone(App_Command_Post{app, c}))
 			return 1
 		}
 	}

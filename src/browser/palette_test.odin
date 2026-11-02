@@ -96,70 +96,70 @@ query_prefixes :: proc(t: ^testing.T) {
 	app.prefs = config.prefs_make()
 	defer config.prefs_destroy(&app.prefs)
 	register_all_prefs(&app.prefs)
-	defer palette_destroy()
+	defer palette_destroy(app)
 
-	m, _, q := palette_parse_query("  >rel ")
+	m, _, q := palette_parse_query(app, "  >rel ")
 	testing.expect(t, m == .Commands && q == "rel")
-	m, _, q = palette_parse_query("@doc")
+	m, _, q = palette_parse_query(app, "@doc")
 	testing.expect(t, m == .Tabs && q == "doc")
-	m, _, q = palette_parse_query(":theme")
+	m, _, q = palette_parse_query(app, ":theme")
 	testing.expect(t, m == .Prefs && q == "theme")
-	m, _, q = palette_parse_query("reload")
+	m, _, q = palette_parse_query(app, "reload")
 	testing.expect(t, m == .All && q == "reload")
 
 	palette_collect(app, ">zoom")
-	testing.expect(t, len(cpal.rows) >= 3)
-	for r in cpal.rows { testing.expect(t, r.kind == .Command) }
+	testing.expect(t, len(app.cpal.rows) >= 3)
+	for r in app.cpal.rows { testing.expect(t, r.kind == .Command) }
 
 	// the other words a command is known by match whole, not scattered ("rel" is not in "...palette light")
 	// (no tab here: Reload cannot run, so it comes first of those that cannot)
-	first_named :: proc(prefix: string) -> int {
-		for r, i in cpal.rows { if strings.has_prefix(commands()[r.index].name, prefix) { return i } }
+	first_named :: proc(app: ^App, prefix: string) -> int {
+		for r, i in app.cpal.rows { if strings.has_prefix(commands(app)[r.index].name, prefix) { return i } }
 		return -1
 	}
 	palette_collect(app, ">rel")
-	first_off := len(cpal.rows)
-	for r, i in cpal.rows { if r.disabled { first_off = min(first_off, i) } }
-	testing.expect_value(t, first_named("nav.reload"), first_off)
-	for r in cpal.rows {   // a theme shows only when its title holds r, e, l in this order, never through its keywords
+	first_off := len(app.cpal.rows)
+	for r, i in app.cpal.rows { if r.disabled { first_off = min(first_off, i) } }
+	testing.expect_value(t, first_named(app, "nav.reload"), first_off)
+	for r in app.cpal.rows {   // a theme shows only when its title holds r, e, l in this order, never through its keywords
 		if !strings.has_prefix(r.title, "Theme") { continue }
 		want, hit := "rel", 0
 		for ch in strings.to_lower(r.title, context.temp_allocator) { if hit < len(want) && ch == rune(want[hit]) { hit += 1 } }
 		testing.expectf(t, hit == len(want), "%q matches rel", r.title)
 	}
 	palette_collect(app, ">refresh")   // a keyword of Reload
-	testing.expect(t, len(cpal.rows) >= 1 && first_named("nav.reload") >= 0)
+	testing.expect(t, len(app.cpal.rows) >= 1 && first_named(app, "nav.reload") >= 0)
 
 	palette_collect(app, ">theme dayl")
-	testing.expect(t, len(cpal.rows) >= 1 && cpal.rows[0].kind == .Command && commands()[cpal.rows[0].index].name == "view.theme.daylight")
+	testing.expect(t, len(app.cpal.rows) >= 1 && app.cpal.rows[0].kind == .Command && commands(app)[app.cpal.rows[0].index].name == "view.theme.daylight")
 
 	palette_collect(app, ":ui.theme")
-	testing.expect(t, len(cpal.rows) >= 1)
-	for r in cpal.rows { testing.expect(t, r.kind == .Pref) }
-	if len(cpal.rows) > 0 { testing.expect_value(t, cpal.rows[0].title, "browser.ui.theme") }
+	testing.expect(t, len(app.cpal.rows) >= 1)
+	for r in app.cpal.rows { testing.expect(t, r.kind == .Pref) }
+	if len(app.cpal.rows) > 0 { testing.expect_value(t, app.cpal.rows[0].title, "browser.ui.theme") }
 
 	// no tabs: the tab prefix lists nothing, and never a command
 	palette_collect(app, "@")
-	testing.expect_value(t, len(cpal.rows), 0)
+	testing.expect_value(t, len(app.cpal.rows), 0)
 
 	// what cannot run comes last (Back without history), or not at all
 	palette_collect(app, ">")
 	last_enabled := -1
-	first_disabled := len(cpal.rows)
-	for r, i in cpal.rows { if r.disabled { first_disabled = min(first_disabled, i) } else { last_enabled = i } }
+	first_disabled := len(app.cpal.rows)
+	for r, i in app.cpal.rows { if r.disabled { first_disabled = min(first_disabled, i) } else { last_enabled = i } }
 	testing.expect(t, last_enabled < first_disabled)
 	config.set_from_string(&app.prefs, "browser.palette.show_disabled", "false", .User)
 	palette_collect(app, ">")
-	for r in cpal.rows { testing.expect(t, !r.disabled) }
+	for r in app.cpal.rows { testing.expect(t, !r.disabled) }
 
 	// a command used comes first when nothing is typed
 	now := time.to_unix_nanoseconds(time.now()) / 1e6
-	for _ in 0 ..< 3 { usage_record(&cpal.usage, "cmd:view.console", now, 100, 14) }
+	for _ in 0 ..< 3 { usage_record(&app.cpal.usage, "cmd:view.console", now, 100, 14) }
 	palette_collect(app, "")
-	testing.expect(t, len(cpal.rows) > 0 && commands()[cpal.rows[0].index].name == "view.console")
+	testing.expect(t, len(app.cpal.rows) > 0 && commands(app)[app.cpal.rows[0].index].name == "view.console")
 
 	// a pluggable source answers its prefix
-	m, _, q = palette_parse_query("/exa")
+	m, _, q = palette_parse_query(app, "/exa")
 	testing.expect(t, m == .Source && q == "exa")
 }
 

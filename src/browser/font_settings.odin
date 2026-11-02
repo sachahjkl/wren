@@ -108,25 +108,23 @@ emoji_font_path :: proc(p: ^config.Prefs, allocator := context.temp_allocator) -
 	return len(emoji_builtin) > 0 ? EMOJI_BUILTIN : ""
 }
 
-@(private) emoji_applied: string   // what the font state has: a path (heap), EMOJI_BUILTIN, or "" for none
-
 // Hands the emoji font to the font state, or takes it away. Returns true when what the font state draws emoji from changed.
 @(private)
 emoji_source_apply :: proc(app: ^App) -> bool {
 	want := emoji_font_path(&app.prefs)
 	if want != "" && want != EMOJI_BUILTIN && !is_file(want) { want = "" }   // missing: the system's emoji font, as with text.emoji = system
-	if want == emoji_applied { return false }
-	if emoji_applied != EMOJI_BUILTIN { delete(emoji_applied) }
+	if want == app.emoji_applied { return false }
+	if app.emoji_applied != EMOJI_BUILTIN { delete(app.emoji_applied) }
 	switch want {
 	case "":
-		emoji_applied = ""
+		app.emoji_applied = ""
 		font.set_emoji_source(&app.fonts)
 	case EMOJI_BUILTIN:
-		emoji_applied = EMOJI_BUILTIN
+		app.emoji_applied = EMOJI_BUILTIN
 		font.set_emoji_source(&app.fonts, data = emoji_builtin)
 	case:
-		emoji_applied = strings.clone(want)
-		font.set_emoji_source(&app.fonts, emoji_applied)
+		app.emoji_applied = strings.clone(want)
+		font.set_emoji_source(&app.fonts, app.emoji_applied)
 	}
 	return true
 }

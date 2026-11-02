@@ -84,31 +84,29 @@ foreign user32_drop {
 @(private = "file") MSGFLT_ALLOW :: 1
 
 @(private = "file")
-Dropped :: struct { paths: [dynamic]string }
-
-@(private = "file") drop_hwnd: win.HWND
+Dropped :: struct { app: ^App, paths: [dynamic]string }
 
 drop_files_platform_init :: proc(app: ^App) {
 	hwnd := active_window(app).win.hwnd
 	if hwnd == nil { return }
-	win.SetWindowSubclass(hwnd, drop_subclass, DROP_SUBCLASS_ID, 0)   // (core:sys/windows declares it without its result)
-	drop_hwnd = hwnd
+	win.SetWindowSubclass(hwnd, drop_subclass, DROP_SUBCLASS_ID, win.DWORD_PTR(uintptr(app)))   // (the subclass's data: the App the files go to)   // (core:sys/windows declares it without its result)
+	app.drop_hwnd = hwnd
 	// an elevated browser still takes drops from Explorer (UIPI lets these three messages through). Only an elevated one: a normal
 	// browser keeps the default, which refuses them from processes of a lower integrity (a sandbox would otherwise open any path)
 	if instance.is_elevated() { for m in ([]win.UINT{win.WM_DROPFILES, win.WM_COPYDATA, WM_COPYGLOBALDATA}) { ChangeWindowMessageFilterEx(hwnd, m, MSGFLT_ALLOW, nil) } }
 }
 
 drop_files_platform_destroy :: proc(app: ^App) {
-	if drop_hwnd == nil { return }
-	win.DragAcceptFiles(drop_hwnd, false)
-	RemoveWindowSubclass(drop_hwnd, drop_subclass, DROP_SUBCLASS_ID)
-	drop_hwnd = nil
+	if app.drop_hwnd == nil { return }
+	win.DragAcceptFiles(app.drop_hwnd, false)
+	RemoveWindowSubclass(app.drop_hwnd, drop_subclass, DROP_SUBCLASS_ID)
+	app.drop_hwnd = nil
 }
 
 // Whether the shell asks the window for WM_DROPFILES: only when the toolkit drop target is off (an elevated browser) and
 // the preference allows it. Called by drop_files_apply (local_paths.odin) on start-up and when the preference changes.
 drop_files_platform_apply :: proc(app: ^App) {
-	if drop_hwnd != nil { win.DragAcceptFiles(drop_hwnd, win.BOOL(config.bool_of(&app.prefs, "browser.drop.open_files") && !platform.drop_target_enabled(active_window(app).win))) }
+	if app.drop_hwnd != nil { win.DragAcceptFiles(app.drop_hwnd, win.BOOL(config.bool_of(&app.prefs, "browser.drop.open_files") && !platform.drop_target_enabled(active_window(app).win))) }
 }
 
 @(private = "file")
@@ -117,6 +115,7 @@ drop_subclass :: proc "system" (hwnd: win.HWND, msg: win.UINT, wparam: win.WPARA
 	context = base.process_context()
 	hdrop := win.HDROP(wparam)
 	d := new(Dropped)
+	d.app = (^App)(uintptr(ref))
 	count := win.DragQueryFileW(hdrop, 0xFFFF_FFFF, nil, 0)
 	for i in 0 ..< count {
 		n := win.DragQueryFileW(hdrop, i, nil, 0)
@@ -128,8 +127,8 @@ drop_subclass :: proc "system" (hwnd: win.HWND, msg: win.UINT, wparam: win.WPARA
 		delete(buf)
 	}
 	win.DragFinish(hdrop)
-	if the_app != nil && len(d.paths) > 0 {
-		host.post(&the_app.loop, drop_open, d)
+	if len(d.paths) > 0 {
+		host.post(&d.app.loop, drop_open, d)
 	} else {
 		dropped_free(d)
 	}
@@ -147,7 +146,7 @@ dropped_free :: proc(d: ^Dropped) {
 drop_open :: proc(data: rawptr) {
 	d := (^Dropped)(data)
 	defer dropped_free(d)
-	app := the_app
+	app := d.app
 	if !config.bool_of(&app.prefs, "browser.drop.open_files") { return }
 	open_dropped_paths(app, d.paths[:])
 }

@@ -58,12 +58,12 @@ gpu_steps_frame :: proc(app: ^App) {
 // The per-step profile of a recorded frame, when it arrives (a few frames late): matched by its timed submit.
 gpu_steps_attach :: proc(app: ^App, frames: []Frame_Rec) {
 	cs := draw.layer_cache_stats(&app.dc)   // the frame just recorded
-	append(&gpu_kept, [3]i32{i32(cs.hits), i32(cs.misses), i32(cs.stored)})
+	append(&app.gpu_kept, [3]i32{i32(cs.hits), i32(cs.misses), i32(cs.stored)})
 	p, ok := render.gpu_profile(&app.r)
 	if !ok { return }
 	for k := len(frames) - 1; k >= max(0, len(frames) - 16); k -= 1 {
 		if frames[k].gpu_index == p.frame {
-			if !frames[k].gpu_steps.valid { gpu_steps_slowest(p) }
+			if !frames[k].gpu_steps.valid { gpu_steps_slowest(app, p) }
 			frames[k].gpu_steps = gpu_steps_of(p)
 			break
 		}
@@ -92,22 +92,19 @@ gpu_steps_csv_row :: proc(sb: ^strings.Builder, g: Gpu_Steps_Frame) {
 // The slowest steps of the detailed profile, by batch, summed over the frames.
 @(private)
 Slow_Step :: struct { ms: f64, n: int, rec: render.Gpu_Step_Rec }
-@(private) gpu_slow: map[i32]Slow_Step
-@(private) gpu_slow_frames: int
-@(private) gpu_kept: [dynamic][3]i32   // per recorded frame: kept effect results reused, redrawn, kept anew
 
 @(private)
-gpu_steps_slowest :: proc(p: render.Gpu_Profile) {
-	if !render.gpu_profile_enabled(&the_app.r) { return }
-	gpu_slow_frames += 1
+gpu_steps_slowest :: proc(app: ^App, p: render.Gpu_Profile) {
+	if !render.gpu_profile_enabled(&app.r) { return }
+	app.gpu_slow_frames += 1
 	for i in 0 ..< p.n_slowest {
 		s := p.slowest[i]
 		if s.batch < 0 { continue }
-		e := gpu_slow[s.batch]
+		e := app.gpu_slow[s.batch]
 		e.ms += f64(s.ms)
 		e.n += 1
 		e.rec = s
-		gpu_slow[s.batch] = e
+		app.gpu_slow[s.batch] = e
 	}
 }
 
@@ -116,10 +113,10 @@ when PROFILE {
 // The profiler's report: per step, frames profiled, mean count, mean / p95 / max milliseconds, written pixels and
 // estimated traffic.
 gpu_steps_report :: proc(sb: ^strings.Builder, frames: []Frame_Rec) {
-	if len(gpu_kept) > 0 {
+	if len(app.gpu_kept) > 0 {
 		k: [3]f64
-		for v in gpu_kept { k += {f64(v[0]), f64(v[1]), f64(v[2])} }
-		fmt.sbprintf(sb, "\n-- kept effect results per frame: reused %.2f, redrawn %.2f, kept anew %.3f\n", k[0] / f64(len(gpu_kept)), k[1] / f64(len(gpu_kept)), k[2] / f64(len(gpu_kept)))
+		for v in app.gpu_kept { k += {f64(v[0]), f64(v[1]), f64(v[2])} }
+		fmt.sbprintf(sb, "\n-- kept effect results per frame: reused %.2f, redrawn %.2f, kept anew %.3f\n", k[0] / f64(len(app.gpu_kept)), k[1] / f64(len(app.gpu_kept)), k[2] / f64(len(app.gpu_kept)))
 	}
 	n := 0
 	for f in frames { if f.gpu_steps.valid { n += 1 } }
@@ -142,17 +139,17 @@ gpu_steps_report :: proc(sb: ^strings.Builder, frames: []Frame_Rec) {
 		fmt.sbprintf(sb, "  %-14s %7.1f %8.3f %8.3f %8.3f %8.3f %9.2f\n", GPU_STEP_NAMES[k], cnt / f64(n), s.mean, s.p95, s.max, px / f64(n), mb / f64(n))
 	}
 	fmt.sbprintf(sb, "  render targets bound per frame: %.1f\n", targets / f64(n))
-	if len(gpu_slow) == 0 { return }
+	if len(app.gpu_slow) == 0 { return }
 	// detailed profile: the draw calls that were among the slowest of their frame, by batch index
 	Row :: struct { batch: i32, s: Slow_Step }
-	rows := make([dynamic]Row, 0, len(gpu_slow), context.temp_allocator)
-	for b, s in gpu_slow { append(&rows, Row{b, s}) }
+	rows := make([dynamic]Row, 0, len(app.gpu_slow), context.temp_allocator)
+	for b, s in app.gpu_slow { append(&rows, Row{b, s}) }
 	slice.sort_by(rows[:], proc(a, b: Row) -> bool { return a.s.ms > b.s.ms })
-	fmt.sbprintf(sb, "  slowest draw calls (ms per profiled frame, %d frames): batch, insts, kinds (bit k = KIND k, 31 = picture), flags, scissor\n", gpu_slow_frames)
+	fmt.sbprintf(sb, "  slowest draw calls (ms per profiled frame, %d frames): batch, insts, kinds (bit k = KIND k, 31 = picture), flags, scissor\n", app.gpu_slow_frames)
 	for r, i in rows {
 		if i >= 25 { break }
 		x := r.s.rec
-		fmt.sbprintf(sb, "    %8.4f  %-11v batch %4d  insts %5d  kinds %08x  flags %08x  scissor %v\n", r.s.ms / f64(max(gpu_slow_frames, 1)), x.kind, r.batch, x.insts, x.kinds, x.flags, x.scissor)
+		fmt.sbprintf(sb, "    %8.4f  %-11v batch %4d  insts %5d  kinds %08x  flags %08x  scissor %v\n", r.s.ms / f64(max(app.gpu_slow_frames, 1)), x.kind, r.batch, x.insts, x.kinds, x.flags, x.scissor)
 	}
 }
 

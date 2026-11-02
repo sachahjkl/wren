@@ -40,6 +40,7 @@ register_page_thread_prefs :: proc(p: ^config.Prefs) { config.register(p, PAGE_T
 
 @(private = "file")
 Layout_Job :: struct {
+	app:      ^App,
 	l:        ^Layout,
 	t:        ^Tab,
 	styled:   ^style.Styled,
@@ -55,6 +56,7 @@ Page_Thread :: struct {
 	job:      Layout_Job,
 	stop:     bool,
 	passes:   u64,           // passes run on the thread (statistics)
+	thread_id: int,          // the page thread's id (page_world_check)
 }
 
 @(private = "file")
@@ -64,7 +66,7 @@ pt: Page_Thread
 page_layout :: proc(app: ^App, t: ^Tab, styled: ^style.Styled, size: draw.Vec2, scale: f32, fonts_gen: u64) {
 	t0 := time.tick_now()
 	defer t.layout_ms, t.layout_ms_known = time.duration_milliseconds(time.tick_since(t0)), true
-	job := Layout_Job{&t.layout, t, styled, size, scale, fonts_gen}
+	job := Layout_Job{app, &t.layout, t, styled, size, scale, fonts_gen}
 	if !page_thread_wanted(app) || (t.layout_ms_known && t.layout_ms < config.float_of(&app.prefs, "browser.shell.page_thread_min_ms")) {
 		layout_job_run(&job)
 		return
@@ -90,12 +92,9 @@ page_layout :: proc(app: ^App, t: ^Tab, styled: ^style.Styled, size: draw.Vec2, 
 page_world_check :: #force_inline proc(what: string) {
 	when ODIN_DEBUG {
 		if chrome_frames.nested { panic(what) }
-		if chrome_frames.page_locked && sync.current_thread_id() != sync.atomic_load(&pt_thread_id) { panic(what) }
+		if chrome_frames.page_locked && sync.current_thread_id() != sync.atomic_load(&pt.thread_id) { panic(what) }
 	}
 }
-
-@(private = "file")
-pt_thread_id: int   // (the page thread's id: page_world_check)
 
 // The last layout pass of `t` was long enough for the page thread (and the preference allows it).
 page_layout_is_long :: proc(app: ^App, t: ^Tab) -> bool {
@@ -110,17 +109,18 @@ page_thread_wanted :: proc(app: ^App) -> bool {
 
 @(private = "file")
 layout_job_run :: proc(j: ^Layout_Job) {
-	app := the_app
+	app := j.app
 	layout_document(j.l, j.t.page.doc, j.styled, &app.measure, &app.page_settings.style, j.size, j.scale, app.cfg.layout_band_px, j.t.image_sizes, j.fonts_gen)
 }
 
 @(private = "file")
 page_thread_main :: proc(data: rawptr) {
 	p := (^Page_Thread)(data)
-	sync.atomic_store(&pt_thread_id, sync.current_thread_id())
+	sync.atomic_store(&p.thread_id, sync.current_thread_id())
 	for {
 		sync.sema_wait(&p.go)
 		if sync.atomic_load(&p.stop) { return }
+		the_app = p.job.app   // (this thread is the App's: what the layout reaches of it without an argument)
 		layout_job_run(&p.job)
 		free_all(context.temp_allocator)
 		sync.sema_post(&p.done)

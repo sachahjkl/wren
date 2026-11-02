@@ -93,18 +93,17 @@ tree_settings_from_prefs :: proc(p: ^config.Prefs) -> Tree_Settings {
 }
 
 tcfg: Tree_Settings
-@(private = "file") tree_watch: int
 
 // (history_settings_init / _shutdown)
 history_tree_settings_init :: proc(app: ^App) {
 	tcfg = tree_settings_from_prefs(&app.prefs)
-	tree_watch = config.watch(&app.prefs, "browser.history.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	app.watches[.History_Tree] = config.watch(&app.prefs, "browser.history.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		tcfg = tree_settings_from_prefs(p)
 		request_frames((^App)(user), 2)
 	}, app)
 }
 
-history_tree_settings_shutdown :: proc(app: ^App) { config.unwatch(&app.prefs, tree_watch) }
+history_tree_settings_shutdown :: proc(app: ^App) { config.unwatch(&app.prefs, app.watches[.History_Tree]) }
 
 ////////////////////////////////
 // Geometry (pure: history_tree_test.odin). World units are em of the interface: a zoom of 1 draws the tree at the
@@ -564,7 +563,7 @@ tree_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		x := r.min.x + 0.5 * s
 		if detail == .Icon { x = r.min.x + (r.max.x - r.min.x) * 0.5 - icon * 0.5 }
 		cy := r.min.y + h * 0.5
-		if tex, ok := favicon_texture(e.icon); ok && e.icon != "" {
+		if tex, ok := favicon_texture(the_app, e.icon); ok && e.icon != "" {   // (drawn by the App's thread: draw_tree)
 			draw.image(dc, tex, snap({{x, cy - icon * 0.5}, {x + icon, cy + icon * 0.5}}))
 		} else {
 			dot := icon * 0.42
@@ -1099,8 +1098,8 @@ tree_menu_items :: proc(app: ^App, t: ^Tab) {
 		for a := page.session_current(&t.session); a != nil; a = a.parent { if a == e { holds_current = true } }
 		if ui.menu_item("Forget this branch", enabled = !holds_current).clicked {
 			ids := page.session_forget(&t.session, e)
-			for id in ids { bfcache_forget(t, id) }
-			sync_history(t)
+			for id in ids { bfcache_forget(app, t, id) }
+			sync_history(app, t)
 			ui.ctx_menu_close()
 		}
 		return
@@ -1141,7 +1140,7 @@ tree_tooltip :: proc(app: ^App, t: ^Tab, m: ^Tree_Model, now: f64) {
 			yl := local_time(local_midnight(nowl) - 1000)
 			lt := local_time(at)
 			when_ := fmt.tprintf("Visited %s, %02d:%02d", day_heading(lt, tl.year * 10000 + tl.month * 100 + tl.day, yl.year * 10000 + yl.month * 100 + yl.day), lt.hour, lt.minute)
-			if bfcache_has(t, e.id) { when_ = fmt.tprintf("%s  \u00b7  kept in the back/forward cache", when_) }
+			if bfcache_has(app, t, e.id) { when_ = fmt.tprintf("%s  \u00b7  kept in the back/forward cache", when_) }
 			ui.next({width = ui.text_size(em * 0.7), height = ui.px(ui.dense(em * 1.5))})
 			ui.label(fmt.tprintf("%s###h_tt_when", when_))
 		}
@@ -1149,4 +1148,3 @@ tree_tooltip :: proc(app: ^App, t: ^Tab, m: ^Tree_Model, now: f64) {
 	}
 	_ = m
 }
-

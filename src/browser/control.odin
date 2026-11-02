@@ -270,7 +270,7 @@ control_drag :: proc(app: ^App, c: ^Call, d: Drag_Request) -> Reply {
 	for v in d.via { append(&op.via, v) }
 	op.hold = d.hold
 	if d.resume {
-		if op.button not_in inject_held { op_finish(op, fail(remote.ERR_FAILED, "no drag is held (drag --hold first)")); return Reply{deferred = true} }
+		if op.button not_in app.inject_held { op_finish(op, fail(remote.ERR_FAILED, "no drag is held (drag --hold first)")); return Reply{deferred = true} }
 		op.stage, op.idx = 1, 0
 	}
 	op.until = the_remote.frame_no
@@ -334,7 +334,7 @@ control_tabs :: proc(app: ^App, allocator := context.temp_allocator) -> api.Targ
 				x.group_name, x.group_color, x.group_collapsed = s(g.name, allocator), GROUP_COLOR_NAMES[g.color], g.collapsed
 			}
 			id := fmt.tprintf("###tab_%d", t.id)
-			if r, ok := chrome_box_rect(w, t.pinned && favs.cfg.position != .Top ? w.own.sidebar.pins_key : w.own.strip.area_key, id); ok {
+			if r, ok := chrome_box_rect(w, t.pinned && app.favs.cfg.position != .Top ? w.own.sidebar.pins_key : w.own.strip.area_key, id); ok {
 				x.rect, x.has_rect = api_rect(r), true
 			}
 			append(&tabs, x)
@@ -511,7 +511,7 @@ api_rect :: proc(r: draw.Rect) -> api.Rect { return {f64(int(r.min.x)), f64(int(
 
 // A command of the interface by name. "": it ran, else why not.
 control_command :: proc(app: ^App, t: ^Tab, name: string) -> string {
-	cmd := command(name)
+	cmd := command(app, name)
 	if cmd == nil { return fmt.tprintf("no command %q (Wren.listCommands lists them)", name) }
 	if !command_enabled(app, t, cmd) { return fmt.tprintf("the command %s is not available now", name) }
 	command_run(app, t, cmd)
@@ -596,7 +596,7 @@ control_prefs :: proc(app: ^App, prefix := "", allocator := context.temp_allocat
 // The commands of the interface, and which can run now.
 control_commands :: proc(app: ^App, allocator := context.temp_allocator) -> []api.Command {
 	t := current_tab(app)
-	all := commands()
+	all := commands(app)
 	list := make([]api.Command, len(all), allocator)
 	for &cmd, i in all {
 		list[i] = {
@@ -709,12 +709,12 @@ control_network :: proc(t: ^Tab, clear_after := false, allocator := context.temp
 }
 
 // The back/forward cache's numbers (bfcache.odin).
-control_bfcache :: proc(allocator := context.temp_allocator) -> api.Bfcache_Stats {
-	reasons := make([dynamic]api.Bfcache_Reason, 0, len(bf.reasons), allocator)
-	for k, v in bf.reasons { append(&reasons, api.Bfcache_Reason{strings.clone(k, allocator), v}) }
+control_bfcache :: proc(app: ^App, allocator := context.temp_allocator) -> api.Bfcache_Stats {
+	reasons := make([dynamic]api.Bfcache_Reason, 0, len(app.bf.reasons), allocator)
+	for k, v in app.bf.reasons { append(&reasons, api.Bfcache_Reason{strings.clone(k, allocator), v}) }
 	return {
-		cached = len(bf.entries), stores = bf.stores, restores = bf.restores, evictions = bf.evictions,
-		refusals = bf.refusals, traversals = bf.traversals, misses = bf.misses, reasons = reasons[:],
+		cached = len(app.bf.entries), stores = app.bf.stores, restores = app.bf.restores, evictions = app.bf.evictions,
+		refusals = app.bf.refusals, traversals = app.bf.traversals, misses = app.bf.misses, reasons = reasons[:],
 	}
 }
 
@@ -729,11 +729,11 @@ control_stats_all :: proc(app: ^App, allocator := context.temp_allocator) -> api
 	st := control_stats(app, allocator)
 	wnd := active_window(app)
 	n := &hud.nums
-	gaps := frame_log_intervals()
+	gaps := frame_log_intervals(app)
 	pacer := &wnd.pacer   // (the window's pacing; the preferences are the process's)
 	st.frames, st.cpu_ms, st.cpu_p95_ms, st.cpu_p99_ms, st.cpu_max_ms = int(n.frames), f64(n.cpu_mean), f64(n.cpu_p95), f64(n.cpu_p99), f64(n.cpu_max)
 	st.gpu_ms, st.gpu_measured = f64(n.gpu_mean), n.gpu_n > 0
-	st.frames_requested, st.frames_at_once, st.frame_gaps = int(wnd.frames_requested), int(frame_log.at_once), int(gaps.count)
+	st.frames_requested, st.frames_at_once, st.frame_gaps = int(wnd.frames_requested), int(app.frame_log.at_once), int(gaps.count)
 	st.frame_gap_p50_ms, st.frame_gap_p95_ms, st.frame_gap_p99_ms, st.frame_gap_max_ms = gaps.p50, gaps.p95, gaps.p99, gaps.max
 	st.ignored_size_moves = int(platform.pump_stats(wnd.win).ignored_size_moves)
 	if app.pacing.cfg.drag_probe { st.drag_samples, st.has_drag_samples = control_drag_samples(allocator), true }
@@ -757,14 +757,14 @@ control_stats_all :: proc(app: ^App, allocator := context.temp_allocator) -> api
 	for count, cause in pacer.resize_causes { if count > 0 { fmt.sbprintf(&causes, "%v=%d ", cause, count) } }
 	for count, kind in pacer.resize_event_kinds { if count > 0 { fmt.sbprintf(&causes, "ev.%v=%d ", kind, count) } }
 	st.resize_frame_causes = strings.clone(strings.trim_space(strings.to_string(causes)), allocator)
-	st.prefs_cache_applied, st.prefs_downloads_applied = int(prefs_apply_counts[.Http_Cache]), int(prefs_apply_counts[.Downloads])
+	st.prefs_cache_applied, st.prefs_downloads_applied = int(app.prefs_apply_counts[.Http_Cache]), int(app.prefs_apply_counts[.Downloads])
 	if t := current_tab(app); t != nil && t.page != nil { st.layout_items = len(t.layout.items) }
 	st.cpu_time_ms, st.cpu_user_ms, st.cpu_kernel_ms = process_cpu_ms()
 	pc := process_counters()
 	st.threads, st.handles, st.gdi_objects, st.user_objects = process_thread_count(), int(pc.handles), int(pc.gdi), int(pc.user)
 	st.cookies, st.storage_sites = cookies.count(&app.profile.jar), len(page.storage_sites(&app.storage))
 	if app.profile.cache != nil { st.cache_entries = int(httpcache.summary(app.profile.cache).entries) }
-	st.history_visits, st.closed_tabs, st.downloads_active, st.checkpoints = len(ghist.visits), len(closed_tabs), downloads_active(), len(the_remote.checkpoints)
+	st.history_visits, st.closed_tabs, st.downloads_active, st.checkpoints = len(app.ghist.visits), len(app.closed_tabs), downloads_active(app), len(the_remote.checkpoints)
 	return st
 }
 
@@ -772,7 +772,7 @@ control_stats_all :: proc(app: ^App, allocator := context.temp_allocator) -> api
 control_stats_reset :: proc(app: ^App, frames, latency: bool) {
 	if latency { render.latency_reset(&app.r) }
 	if frames {
-		frame_log_reset()
+		frame_log_reset(app)
 		drag_probe_reset()
 		active_window(app).win.stats = {}
 	}
@@ -791,7 +791,7 @@ control_stats :: proc(app: ^App, allocator := context.temp_allocator) -> api.Sta
 		menu_open = ui.ctx_menu_any_open(), devtools = dev().visible, front_window = window_is_front(app),
 		caret_blinking = fv.blink_timer != base.NIL_HANDLE, caret_shown = fv.blink_on, drop_target = platform.drop_target_enabled(wnd.win),
 		chrome_animating = ui.needs_frame(wnd.ui), backend = strings.clone(render.backend_name(), allocator),
-		prefs_net_applied = int(prefs_apply_counts[.Net]), bfcache = control_bfcache(allocator),
+		prefs_net_applied = int(app.prefs_apply_counts[.Net]), bfcache = control_bfcache(app, allocator),
 		workers_running = page.workers_running(), shared_workers = page.shared_workers_live(), history_restoring = control_history_restoring(app),
 	}
 	if lp.size.x > 0 {
@@ -811,9 +811,9 @@ control_stats :: proc(app: ^App, allocator := context.temp_allocator) -> api.Sta
 control_forget_clicks :: proc(app: ^App) { active_window(app).ui.last_click_key = 0 }
 
 // The browser's list of downloads.
-control_downloads :: proc(allocator := context.temp_allocator) -> []api.Download {
-	list := make([]api.Download, len(dls.list), allocator)
-	for d, i in dls.list {
+control_downloads :: proc(app: ^App, allocator := context.temp_allocator) -> []api.Download {
+	list := make([]api.Download, len(app.dls.list), allocator)
+	for d, i in app.dls.list {
 		list[i] = {name = strings.clone(d.name, allocator), error = strings.clone(d.error, allocator), finished = download_finished(d) && !d.moving, saved = d.state == .Done}
 	}
 	return list
@@ -881,16 +881,16 @@ control_subscribe :: proc(app: ^App, conn: u64, on: bool) {
 }
 
 // The Setup dialog as the last frame showed it.
-control_setup_state :: proc(allocator := context.temp_allocator) -> api.Setup_State {
+control_setup_state :: proc(app: ^App, allocator := context.temp_allocator) -> api.Setup_State {
 	rect :: proc(r: draw.Rect) -> api.Rect { return {f64(r.min.x), f64(r.min.y), f64(r.max.x - r.min.x), f64(r.max.y - r.min.y)} }
 	return {
-		open = stp.open, known = stp.known, confirm_uninstall = stp.confirm_uninstall, busy = stp.busy, note = strings.clone(stp.note, allocator),
-		primary = rect(stp.at_primary), uninstall = rect(stp.at_uninstall), secondary = rect(stp.at_secondary),
+		open = app.stp.open, known = app.stp.known, confirm_uninstall = app.stp.confirm_uninstall, busy = app.stp.busy, note = strings.clone(app.stp.note, allocator),
+		primary = rect(app.stp.at_primary), uninstall = rect(app.stp.at_uninstall), secondary = rect(app.stp.at_secondary),
 	}
 }
 
 // The daily update check has a request out (update_check.odin).
-control_update_checking :: proc() -> bool { return update_checking() }
+control_update_checking :: proc(app: ^App) -> bool { return update_checking(app) }
 
 ////////////////////////////////
 // Recording, playing back, the timeline

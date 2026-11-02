@@ -292,18 +292,18 @@ config_set_category :: proc(v: ^Config_View, category: string) {
 }
 
 // Builds the page. `prefs` is the registry; changes go through `config.set_from_string` so every observer runs.
-config_page :: proc(v: ^Config_View, prefs: ^config.Prefs) {
+config_page :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs) {
 	with_desktop := desktop_available()
 	query := strings.to_lower(strings.trim_space(ui.field_string(&v.search)), context.temp_allocator)
 	if !v.started { v.started = true; v.list.sel = -1 }
 	if query != v.model_query { ui.list_select(&v.list.list, -1); ui.vlist_scroll_to(&v.list, 0) }   // another search: from the top
 	config_model(v, prefs, query, with_desktop)
 	if v.desktop_row >= 0 {
-		desktop_status_poll(the_app)
+		desktop_status_poll(app)
 		note, _ := desktop_config_note()
 		v.ids[v.desktop_row] = cfg_hash(CFG_HASH_SEED, "\x00desktop:") ~ cfg_hash(0x84222325cbf29ce4, note)
 	}
-	if v.engines_row >= 0 { v.ids[v.engines_row] = engines_row_id(&v.engines) }
+	if v.engines_row >= 0 { v.ids[v.engines_row] = engines_row_id(app, &v.engines) }
 
 	// the layout follows the page's width (last frame's: the same unless the window was resized)
 	em := ui.font_size()
@@ -329,9 +329,9 @@ config_page :: proc(v: ^Config_View, prefs: ^config.Prefs) {
 					ui.next({width = ui.px(max(1, ui.scale())), height = ui.fill(), bg = ui.color("border")})
 					ui.build_box({.Draw_Background}, "###cfg_split")
 				}
-				config_list(v, prefs)
+				config_list(app, v, prefs)
 			}
-			config_list_keys(v, prefs)
+			config_list_keys(app, v, prefs)
 		}
 	}
 }
@@ -465,7 +465,7 @@ modified_badge :: proc(text: string) {
 }
 
 @(private = "file")
-config_list :: proc(v: ^Config_View, prefs: ^config.Prefs) {
+config_list :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs) {
 	em := ui.font_size()
 	ui.next({width = ui.fill(), height = ui.fill()})
 	ui.a11y({name = i18n.tr("Preferences")})
@@ -475,9 +475,9 @@ config_list :: proc(v: ^Config_View, prefs: ^config.Prefs) {
 			row := v.model[i]
 			switch row.kind {
 			case .Header:  group_header(v, i, row)
-			case .Pref:    config_row(v, prefs, row.ref, config.entry(prefs, row.ref), i)
-			case .Desktop: desktop_row(v, i)
-			case .Engines: engines_row(v, i)
+			case .Pref:    config_row(app, v, prefs, row.ref, config.entry(prefs, row.ref), i)
+			case .Desktop: desktop_row(app, v, i)
+			case .Engines: engines_row(app, v, i)
 			}
 		}
 		if len(v.model) == 0 {
@@ -549,7 +549,7 @@ group_header :: proc(v: ^Config_View, index: int, r: Config_Row) {
 
 // What the keyboard does on the active row (after the list took the moves).
 @(private = "file")
-config_list_keys :: proc(v: ^Config_View, prefs: ^config.Prefs) {
+config_list_keys :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs) {
 	if (v.list.focused || v.cat_list.focused) && ui.key_press(.F, {.Ctrl}) { v.focus_search = true }
 	if v.list.focused {
 		if ui.key_press(.Left, {.Ctrl}) { for r in v.model { if r.kind == .Header { toggle_group(v, r.group, true) } } }
@@ -570,11 +570,11 @@ config_list_keys :: proc(v: ^Config_View, prefs: ^config.Prefs) {
 		if v.list.focused && ui.key_press(.Right) { toggle_group(v, row.group, false) }
 		return
 	case .Desktop:
-		if v.list.activated && !desktop_config_busy() { desktop_toggle(the_app) }
+		if v.list.activated && !desktop_config_busy() { desktop_toggle(app) }
 		if v.list.focused && ui.key_press(.Left) { config_to_header(v, sel) }
 		return
 	case .Engines:
-		if v.list.activated && v.engines.edit == 0 { engines_edit_start(&v.engines, -1) }
+		if v.list.activated && v.engines.edit == 0 { engines_edit_start(app, &v.engines, -1) }
 		if v.list.focused && ui.key_press(.Left) { config_to_header(v, sel) }
 		return
 	case .Pref:
@@ -681,7 +681,7 @@ TEXT_MAX_EM :: 40.0
 LEAD_EM :: 1.6
 
 @(private)
-config_row :: proc(v: ^Config_View, prefs: ^config.Prefs, r: config.Ref, e: ^config.Entry, index: int) {
+config_row :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: config.Ref, e: ^config.Entry, index: int) {
 	em := ui.font_size()
 	name := e.def.name
 	st := row_for(v, name)
@@ -751,7 +751,7 @@ config_row :: proc(v: ^Config_View, prefs: ^config.Prefs, r: config.Ref, e: ^con
 			// a narrow list: the editor under the text
 			ui.spacer(ui.px(em * 0.35))
 			ui.tab_stops(index == v.list.sel)
-			config_editor(v, prefs, r, e, st, title)
+			config_editor(app, v, prefs, r, e, st, title)
 		}
 		if st.error != "" {
 			if ui.tags("bad") {
@@ -769,7 +769,7 @@ config_row :: proc(v: ^Config_View, prefs: ^config.Prefs, r: config.Ref, e: ^con
 		ui.next({width = ui.px(v.editor_w), height = ui.children_sum()})
 		if ui.column() {
 			ui.spacer(ui.px(em * 0.5))
-			config_editor(v, prefs, r, e, st, title)
+			config_editor(app, v, prefs, r, e, st, title)
 			ui.spacer(ui.px(em * 0.5))
 		}
 	}
@@ -788,7 +788,7 @@ config_row :: proc(v: ^Config_View, prefs: ^config.Prefs, r: config.Ref, e: ^con
 // The value's editor (a switch, a choice, a field and its unit) and the reset button, on one line as wide as the
 // parent gives.
 @(private = "file")
-config_editor :: proc(v: ^Config_View, prefs: ^config.Prefs, r: config.Ref, e: ^config.Entry, st: ^Row_State, title: string) {
+config_editor :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: config.Ref, e: ^config.Entry, st: ^Row_State, title: string) {
 	em := ui.font_size()
 	name := e.def.name
 	locked := e.locked || e.source == .Command_Line
@@ -808,11 +808,11 @@ config_editor :: proc(v: ^Config_View, prefs: ^config.Prefs, r: config.Ref, e: ^
 			case .String:
 				// the default search engine: a choice of the list's names (its value is the engine's id)
 				items, values := e.def.choices, e.def.choices
-				if name == SEARCH_ENGINE_PREF { items, values = engines_choices() }
+				if name == SEARCH_ENGINE_PREF { items, values = engines_choices(app) }
 				if len(items) > 0 {
 					sel := 0
 					for c, i in values { if c == e.value.s { sel = i } }
-					if name == SEARCH_ENGINE_PREF { sel = max(search_default_index(), 0) }
+					if name == SEARCH_ENGINE_PREF { sel = max(search_default_index(app), 0) }
 					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 					dd_id := fmt.tprintf("%s###dd", id)
 					if b := ui.prev_box(dd_id); b != nil { st.editor = b.key }
@@ -859,9 +859,8 @@ config_editor :: proc(v: ^Config_View, prefs: ^config.Prefs, r: config.Ref, e: ^
 
 // The desktop integration's row: its title, what it touches, its state and buttons; the switch in the editor column.
 @(private = "file")
-desktop_row :: proc(v: ^Config_View, index: int) {
+desktop_row :: proc(app: ^App, v: ^Config_View, index: int) {
 	em := ui.font_size()
-	app := the_app
 	row := ui.list_row(&v.list.list, index, v.labels[index])
 	ui.push_parent(row.box)
 	defer ui.pop_parent()

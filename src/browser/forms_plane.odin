@@ -20,7 +20,7 @@ Ctl_Plane :: struct {
 	h:  [9]f32,
 }
 
-@(private) ctl_plane: Ctl_Plane
+@(thread_local) ctl_plane: Ctl_Plane   // (the painting thread's)
 
 @(private)
 ctl_plane_for :: proc(e: ^Effects, it: ^lay.Display_Item) {

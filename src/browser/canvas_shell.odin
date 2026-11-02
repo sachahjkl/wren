@@ -35,10 +35,11 @@ Color_Glyph_Entry :: struct {
 	ok:     bool,
 }
 
-@(private = "file")
+// (each thread its own: the canvases' text is drawn on the thread of their App)
+@(private = "file", thread_local)
 color_glyph_cache: map[Color_Glyph_Key]^Color_Glyph_Entry
 
-@(private = "file")
+@(private = "file", thread_local)
 color_glyph_next_uid: u64
 
 // A bit high enough that it never meets canvas2d's next_bitmap_uid (a running counter from 1).
@@ -156,7 +157,7 @@ canvas_color_glyphs_clear :: proc() {
 	clear(&color_glyph_cache)
 }
 
-canvas_shell_destroy :: proc() {
+canvas_shell_destroy :: proc(app: ^App) {
 	canvas_outlines_clear()
 	delete(outline_cache)
 	outline_cache = nil

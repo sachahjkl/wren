@@ -450,13 +450,13 @@ usage_path :: proc(app: ^App) -> string { return strings.concatenate({app.profil
 
 @(private = "file")
 usage_load :: proc(app: ^App) {
-	u := &cpal.usage
+	u := &app.cpal.usage
 	if u.loaded { return }
 	u.loaded = true
 	if !app.cfg.persist_profile { return }
 	data, err := os.read_entire_file(usage_path(app), context.temp_allocator)
 	if err != nil { return }
-	_ = usage_parse(u, string(data), cpal.cfg.usage_max)
+	_ = usage_parse(u, string(data), app.cpal.cfg.usage_max)
 }
 
 // Written as soon as it changes (a few hundred bytes), to a temporary file then moved over the old one.
@@ -464,22 +464,22 @@ usage_load :: proc(app: ^App) {
 usage_save :: proc(app: ^App) {
 	if !app.cfg.persist_profile { return }
 	path := usage_path(app)
-	_ = base.file_write_atomic(path, transmute([]byte)usage_serialize(&cpal.usage))
+	_ = base.file_write_atomic(path, transmute([]byte)usage_serialize(&app.cpal.usage))
 }
 
 @(private = "file")
 usage_note :: proc(app: ^App, key: string) {
-	if !cpal.cfg.remember { return }
+	if !app.cpal.cfg.remember { return }
 	usage_load(app)
-	usage_record(&cpal.usage, key, now_unix_ms(), cpal.cfg.usage_max, cpal.cfg.half_life_days)
+	usage_record(&app.cpal.usage, key, now_unix_ms(), app.cpal.cfg.usage_max, app.cpal.cfg.half_life_days)
 	usage_save(app)
 }
 
 @(private = "file")
-usage_of :: proc(key: string, now_ms: i64) -> f64 {
-	if !cpal.cfg.remember { return 0 }
-	e, ok := cpal.usage.entries[key]
-	return ok ? usage_weight(e, now_ms, cpal.cfg.half_life_days) : 0
+usage_of :: proc(app: ^App, key: string, now_ms: i64) -> f64 {
+	if !app.cpal.cfg.remember { return 0 }
+	e, ok := app.cpal.usage.entries[key]
+	return ok ? usage_weight(e, now_ms, app.cpal.cfg.half_life_days) : 0
 }
 
 ////////////////////////////////
@@ -504,14 +504,14 @@ Palette_Source :: struct {
 }
 
 // Adds (or replaces, by name) a source. The name must outlive the palette (a literal).
-palette_add_source :: proc(s: Palette_Source) {
-	for &x in cpal.sources { if x.name == s.name { x = s; cpal.cache_valid = false; return } }
-	append(&cpal.sources, s)
-	cpal.cache_valid = false
+palette_add_source :: proc(app: ^App, s: Palette_Source) {
+	for &x in app.cpal.sources { if x.name == s.name { x = s; app.cpal.cache_valid = false; return } }
+	append(&app.cpal.sources, s)
+	app.cpal.cache_valid = false
 }
 
-palette_remove_source :: proc(name: string) {
-	for x, i in cpal.sources { if x.name == name { ordered_remove(&cpal.sources, i); cpal.cache_valid = false; return } }
+palette_remove_source :: proc(app: ^App, name: string) {
+	for x, i in app.cpal.sources { if x.name == name { ordered_remove(&app.cpal.sources, i); app.cpal.cache_valid = false; return } }
 }
 
 // The built-in source of pages: what the open tabs visited (each tab's session history).
@@ -547,7 +547,7 @@ tab_history_version :: proc(user: rawptr, app: ^App) -> u64 {
 Palette_Mode :: enum u8 { All, Commands, Tabs, Prefs, Source }
 
 // What the query asks for: its prefix's mode (Source: `prefix`, the character) and the words after it.
-palette_parse_query :: proc(text: string) -> (mode: Palette_Mode, prefix: u8, query: string) {
+palette_parse_query :: proc(app: ^App, text: string) -> (mode: Palette_Mode, prefix: u8, query: string) {
 	s := strings.trim_left_space(text)
 	if len(s) == 0 { return .All, 0, "" }
 	switch s[0] {
@@ -555,7 +555,7 @@ palette_parse_query :: proc(text: string) -> (mode: Palette_Mode, prefix: u8, qu
 	case '@': return .Tabs, 0, strings.trim_space(s[1:])
 	case ':': return .Prefs, 0, strings.trim_space(s[1:])
 	case '/', '#', '!', '*', '%', '&', '$', '~', '^':
-		for src in cpal.sources { if src.prefix == s[0] { return .Source, s[0], strings.trim_space(s[1:]) } }
+		for src in app.cpal.sources { if src.prefix == s[0] { return .Source, s[0], strings.trim_space(s[1:]) } }
 	}
 	return .All, 0, strings.trim_space(s)
 }
@@ -577,7 +577,7 @@ Palette_Row :: struct {
 	order:    int,
 	disabled: bool,
 	ranges:   []ui.Fuzzy_Range,
-	range_lo, range_hi: int,  // (while collecting: its ranges in cpal.pool)
+	range_lo, range_hi: int,  // (while collecting: its ranges in app.cpal.pool)
 }
 
 Palette_State :: struct {
@@ -606,39 +606,38 @@ Palette_State :: struct {
 	sources_ready: bool,
 }
 
-cpal: Palette_State
 
 // (The palette belongs to the window it was opened in: the others show nothing of it.)
-palette_open :: proc() -> bool { return cpal.open && the_app != nil && the_app.active != nil && cpal.window == the_app.active.id }
+palette_open :: proc(app: ^App) -> bool { return app.cpal.open && app.active != nil && app.cpal.window == app.active.id }
 
-palette_destroy :: proc() {
-	ui.field_destroy(&cpal.field)
-	delete(cpal.rows)
-	delete(cpal.pool)
-	fuzzy_scratch_destroy(&cpal.scratch)
-	if cpal.arena_ready { virtual.arena_destroy(&cpal.arena) }
-	delete(cpal.cache_text)
-	usage_destroy(&cpal.usage)
-	delete(cpal.sources)
-	cpal = {}
-	commands_destroy(&cmds)
+palette_destroy :: proc(app: ^App) {
+	ui.field_destroy(&app.cpal.field)
+	delete(app.cpal.rows)
+	delete(app.cpal.pool)
+	fuzzy_scratch_destroy(&app.cpal.scratch)
+	if app.cpal.arena_ready { virtual.arena_destroy(&app.cpal.arena) }
+	delete(app.cpal.cache_text)
+	usage_destroy(&app.cpal.usage)
+	delete(app.cpal.sources)
+	app.cpal = {}
+	commands_destroy(&app.cmds)
 }
 
 @(private = "file")
 palette_ready :: proc(app: ^App) {
-	if !cpal.cfg_ready || cpal.cfg_version != app.prefs.version {
-		cpal.cfg = palette_settings_from_prefs(&app.prefs)
-		cpal.cfg_version, cpal.cfg_ready = app.prefs.version, true
+	if !app.cpal.cfg_ready || app.cpal.cfg_version != app.prefs.version {
+		app.cpal.cfg = palette_settings_from_prefs(&app.prefs)
+		app.cpal.cfg_version, app.cpal.cfg_ready = app.prefs.version, true
 	}
-	if !cpal.arena_ready { _ = virtual.arena_init_growing(&cpal.arena); cpal.arena_ready = true }
-	if !cpal.sources_ready {
-		cpal.sources_ready = true
-		palette_add_source({name = "Visited", prefix = '/', in_default = true, items = tab_history_items, activate = tab_history_activate, version = tab_history_version})
+	if !app.cpal.arena_ready { _ = virtual.arena_init_growing(&app.cpal.arena); app.cpal.arena_ready = true }
+	if !app.cpal.sources_ready {
+		app.cpal.sources_ready = true
+		palette_add_source(app, {name = "Visited", prefix = '/', in_default = true, items = tab_history_items, activate = tab_history_activate, version = tab_history_version})
 	}
 }
 
 palette_toggle :: proc(app: ^App) {
-	if cpal.open { palette_close(app) } else { palette_show(app) }
+	if app.cpal.open { palette_close(app) } else { palette_show(app) }
 }
 
 // Opens the palette (with `text` typed, a prefix for instance).
@@ -646,31 +645,31 @@ palette_show :: proc(app: ^App, text := "") {
 	palette_ready(app)
 	usage_load(app)
 	ui.ctx_menu_close()
-	cpal.open = true
-	cpal.window = app.active != nil ? app.active.id : 0
-	ui.field_set(&cpal.field, text)
-	cpal.sel, cpal.first, cpal.scroll_acc = 0, 0, 0
-	cpal.cache_valid = false
-	cpal.saved_focus = ui.focus_key()
-	cpal.focus_pending = true
-	cpal.opened = time.tick_now()
-	cpal.last_mouse = ui.mouse_pos()
+	app.cpal.open = true
+	app.cpal.window = app.active != nil ? app.active.id : 0
+	ui.field_set(&app.cpal.field, text)
+	app.cpal.sel, app.cpal.first, app.cpal.scroll_acc = 0, 0, 0
+	app.cpal.cache_valid = false
+	app.cpal.saved_focus = ui.focus_key()
+	app.cpal.focus_pending = true
+	app.cpal.opened = time.tick_now()
+	app.cpal.last_mouse = ui.mouse_pos()
 	request_frames(app, 3)
 }
 
 // Closes it; the keyboard goes back to what had it (when that is still there).
 palette_close :: proc(app: ^App) {
-	if !cpal.open { return }
-	cpal.open = false
-	k := cpal.saved_focus
+	if !app.cpal.open { return }
+	app.cpal.open = false
+	k := app.cpal.saved_focus
 	ui.set_focus(k != 0 && ui.box_from_key(k) != nil ? k : 0)
-	clear(&cpal.rows)
-	cpal.cache_valid = false
+	clear(&app.cpal.rows)
+	app.cpal.cache_valid = false
 	request_frames(app, 2)
 }
 
 // While it is open the palette takes every press and wheel turn: the page under it gets none (hud_captures).
-palette_captures :: proc(pos: draw.Vec2) -> bool { return palette_open() }
+palette_captures :: proc(app: ^App, pos: draw.Vec2) -> bool { return palette_open(app) }
 
 @(private = "file")
 fnv :: proc(h: u64, s: string) -> u64 {
@@ -688,94 +687,94 @@ results_key :: proc(app: ^App) -> u64 {
 	h: u64 = 0xcbf29ce484222325
 	h = mix(h, app.prefs.version)
 	h = mix(h, u64(active_window(app).current))
-	h = mix(h, cpal.usage.version)
-	h = mix(h, u64(len(closed_tabs)))
+	h = mix(h, app.cpal.usage.version)
+	h = mix(h, u64(len(app.closed_tabs)))
 	for t in tabs_all(app) { h = mix(h, t.id); h = fnv(h, t.title); h = fnv(h, t.url) }
 	t := current_tab(app)
-	for &c, i in commands() { if command_enabled(app, t, &c) { h = mix(h, u64(i) + 1) } }
-	for s in cpal.sources { h = fnv(h, s.name); if s.version != nil { h = mix(h, s.version(s.user, app)) } else { h = mix(h, u64(ui.now_ms())) } }
+	for &c, i in commands(app) { if command_enabled(app, t, &c) { h = mix(h, u64(i) + 1) } }
+	for s in app.cpal.sources { h = fnv(h, s.name); if s.version != nil { h = mix(h, s.version(s.user, app)) } else { h = mix(h, u64(ui.now_ms())) } }
 	return h
 }
 
-// The rows for `text` (in cpal.rows, best first). Pure apart from the registry, the usage memory and the sources.
+// The rows for `text` (in app.cpal.rows, best first). Pure apart from the registry, the usage memory and the sources.
 // The candidates keep the strings they come with (the frame's); only the rows kept are copied, into the palette's arena.
 palette_collect :: proc(app: ^App, text: string) {
 	palette_ready(app)
-	virtual.arena_free_all(&cpal.arena)
-	clear(&cpal.rows)
-	clear(&cpal.pool)
-	mode, prefix, q := palette_parse_query(text)
+	virtual.arena_free_all(&app.cpal.arena)
+	clear(&app.cpal.rows)
+	clear(&app.cpal.pool)
+	mode, prefix, q := palette_parse_query(app, text)
 	fq := fuzzy_query_make(q)
 	now := now_unix_ms()
 	t := current_tab(app)
 	order := 0
-	push :: proc(row: Palette_Row, order: ^int) {
+	push :: proc(app: ^App, row: Palette_Row, order: ^int) {
 		r := row
 		r.order = order^
 		order^ += 1
-		append(&cpal.rows, r)
+		append(&app.cpal.rows, r)
 	}
 	// match on the title (highlighted), else on the other words it is known by, for less
-	match :: proc(fq: ^Fuzzy_Query, title, other: string) -> (score: int, lo, hi: int, ok: bool) {
+	match :: proc(app: ^App, fq: ^Fuzzy_Query, title, other: string) -> (score: int, lo, hi: int, ok: bool) {
 		if len(fq.words) == 0 { return 0, 0, 0, true }
-		lo = len(cpal.pool)
-		score, ok = fuzzy_match(fq, title, &cpal.scratch, &cpal.pool)
-		if ok || other == "" { return score, lo, len(cpal.pool), ok }
+		lo = len(app.cpal.pool)
+		score, ok = fuzzy_match(fq, title, &app.cpal.scratch, &app.cpal.pool)
+		if ok || other == "" { return score, lo, len(app.cpal.pool), ok }
 		// (strictly: each word typed as it is written there, else a long description matches almost anything)
 		for &w in fq.words { if !contains_fold(other, w.low) { return 0, 0, 0, false } }
-		s, ook := fuzzy_match(fq, other, &cpal.scratch, &cpal.pool)
-		resize(&cpal.pool, lo)   // (nothing of it is highlighted)
+		s, ook := fuzzy_match(fq, other, &app.cpal.scratch, &app.cpal.pool)
+		resize(&app.cpal.pool, lo)   // (nothing of it is highlighted)
 		return s / 2, lo, lo, ook
 	}
 
 	if mode == .All || mode == .Commands {
-		for &c, i in commands() {
+		for &c, i in commands(app) {
 			if c.hidden { continue }
 			enabled := command_enabled(app, t, &c)
-			if !enabled && !cpal.cfg.show_disabled { continue }
-			s, lo, hi, ok := match(&fq, c.title, strings.concatenate({c.category, " ", c.keywords, " ", c.name}, context.temp_allocator))
+			if !enabled && !app.cpal.cfg.show_disabled { continue }
+			s, lo, hi, ok := match(app, &fq, c.title, strings.concatenate({c.category, " ", c.keywords, " ", c.name}, context.temp_allocator))
 			if !ok { continue }
-			push({kind = .Command, index = i, title = c.title, category = c.category, glyph = c.glyph, score = s, range_lo = lo, range_hi = hi,
-				usage = usage_of(strings.concatenate({"cmd:", c.name}, context.temp_allocator), now), disabled = !enabled}, &order)
+			push(app, {kind = .Command, index = i, title = c.title, category = c.category, glyph = c.glyph, score = s, range_lo = lo, range_hi = hi,
+				usage = usage_of(app, strings.concatenate({"cmd:", c.name}, context.temp_allocator), now), disabled = !enabled}, &order)
 		}
 	}
 	if mode == .All || mode == .Tabs {
 		for tab in tabs_all(app) {
-			s, lo, hi, ok := match(&fq, tab.title, tab.url)
+			s, lo, hi, ok := match(app, &fq, tab.title, tab.url)
 			if !ok { continue }
-			push({kind = .Tab, tab_id = tab.id, title = tab.title, detail = tab.url, category = "Tab", score = s, range_lo = lo, range_hi = hi}, &order)
+			push(app, {kind = .Tab, tab_id = tab.id, title = tab.title, detail = tab.url, category = "Tab", score = s, range_lo = lo, range_hi = hi}, &order)
 		}
 	}
 	if mode == .Tabs || (mode == .All && q != "") {
-		for i := len(closed_tabs) - 1; i >= 0; i -= 1 {
-			u := closed_tabs[i]
+		for i := len(app.closed_tabs) - 1; i >= 0; i -= 1 {
+			u := app.closed_tabs[i]
 			title := default_tab_title(u)
-			s, lo, hi, ok := match(&fq, title, u)
+			s, lo, hi, ok := match(app, &fq, title, u)
 			if !ok { continue }
-			push({kind = .Closed_Tab, index = i, key = u, title = title, detail = u, category = "Closed tab", score = s, range_lo = lo, range_hi = hi}, &order)
+			push(app, {kind = .Closed_Tab, index = i, key = u, title = title, detail = u, category = "Closed tab", score = s, range_lo = lo, range_hi = hi}, &order)
 		}
 	}
 	if mode == .Prefs {
 		for name in config.sorted_names(&app.prefs) {
 			r := config.ref_of(&app.prefs, name)
 			e := config.entry(&app.prefs, r)
-			s, lo, hi, ok := match(&fq, name, e.def.description)
+			s, lo, hi, ok := match(app, &fq, name, e.def.description)
 			if !ok { continue }
-			push({kind = .Pref, ref = r, title = name, category = "Setting", score = s, range_lo = lo, range_hi = hi,
-				usage = usage_of(strings.concatenate({"pref:", name}, context.temp_allocator), now), disabled = e.locked}, &order)
+			push(app, {kind = .Pref, ref = r, title = name, category = "Setting", score = s, range_lo = lo, range_hi = hi,
+				usage = usage_of(app, strings.concatenate({"pref:", name}, context.temp_allocator), now), disabled = e.locked}, &order)
 		}
 	}
 	if mode == .Source || (mode == .All && q != "") {
-		for src, si in cpal.sources {
+		for src, si in app.cpal.sources {
 			if mode == .Source ? src.prefix != prefix : !src.in_default { continue }
 			if src.items == nil { continue }
 			items := make([dynamic]Palette_Item, context.temp_allocator)
 			src.items(src.user, app, &items)
 			for it, n in items {
-				if n >= cpal.cfg.source_max { break }
-				s, lo, hi, ok := match(&fq, it.title, it.detail)
+				if n >= app.cpal.cfg.source_max { break }
+				s, lo, hi, ok := match(app, &fq, it.title, it.detail)
 				if !ok { continue }
-				push({kind = .Source, index = si, key = it.key, title = it.title, detail = it.detail,
+				push(app, {kind = .Source, index = si, key = it.key, title = it.title, detail = it.detail,
 					category = src.name, glyph = it.glyph, score = s - 4, range_lo = lo, range_hi = hi}, &order)   // (pages after commands and tabs that match as well)
 			}
 		}
@@ -783,8 +782,8 @@ palette_collect :: proc(app: ^App, text: string) {
 
 	// ranked on small keys (thousands of candidates from a source of pages: the rows are moved once, the kept ones)
 	Rank :: struct { disabled: bool, score: int, usage: f64, title_len, order, index: int }
-	ranks := make([]Rank, len(cpal.rows), context.temp_allocator)
-	for &r, i in cpal.rows {
+	ranks := make([]Rank, len(app.cpal.rows), context.temp_allocator)
+	for &r, i in app.cpal.rows {
 		// the score, raised a little by use (bounded: a good match still beats a frequent poor one)
 		if q != "" { r.score += int(min(r.usage * 6, 30)) }
 		ranks[i] = {r.disabled, r.score, r.usage, len(r.title), r.order, i}
@@ -804,60 +803,60 @@ palette_collect :: proc(app: ^App, text: string) {
 			return x.order < y.order
 		})
 	}
-	kept := min(len(ranks), cpal.cfg.max_results)
+	kept := min(len(ranks), app.cpal.cfg.max_results)
 	sorted := make([]Palette_Row, kept, context.temp_allocator)
-	for k in 0 ..< kept { sorted[k] = cpal.rows[ranks[k].index] }
-	clear(&cpal.rows)
-	append(&cpal.rows, ..sorted)
+	for k in 0 ..< kept { sorted[k] = app.cpal.rows[ranks[k].index] }
+	clear(&app.cpal.rows)
+	append(&app.cpal.rows, ..sorted)
 	// what is kept outlives the frame
-	a := virtual.arena_allocator(&cpal.arena)
-	for &r in cpal.rows {
+	a := virtual.arena_allocator(&app.cpal.arena)
+	for &r in app.cpal.rows {
 		r.title = strings.clone(r.title, a)
 		r.detail = strings.clone(r.detail, a)
 		r.key = strings.clone(r.key, a)
 		r.glyph = strings.clone(r.glyph, a)
 		if r.range_hi > r.range_lo {
 			r.ranges = make([]ui.Fuzzy_Range, r.range_hi - r.range_lo, a)
-			copy(r.ranges, cpal.pool[r.range_lo:r.range_hi])
+			copy(r.ranges, app.cpal.pool[r.range_lo:r.range_hi])
 		}
 	}
 }
 
 @(private = "file")
-row_usable :: proc(i: int) -> bool { return i >= 0 && i < len(cpal.rows) && !cpal.rows[i].disabled }
+row_usable :: proc(app: ^App, i: int) -> bool { return i >= 0 && i < len(app.cpal.rows) && !app.cpal.rows[i].disabled }
 
 // The next usable row from `from` by `dir` (±1 wraps; a page stops at the ends).
 @(private = "file")
-palette_step :: proc(dir: int, page := false) {
-	n := len(cpal.rows)
+palette_step :: proc(app: ^App, dir: int, page := false) {
+	n := len(app.cpal.rows)
 	if n == 0 { return }
 	if !page {
-		i := cpal.sel
+		i := app.cpal.sel
 		for _ in 0 ..< n {
 			i = (i + dir + n) %% n
-			if row_usable(i) { cpal.sel = i; return }
+			if row_usable(app, i) { app.cpal.sel = i; return }
 		}
 		return
 	}
-	target := clamp(cpal.sel + dir, 0, n - 1)
-	for i := target; i >= 0 && i < n; i += dir > 0 ? 1 : -1 { if row_usable(i) { cpal.sel = i; return } }
-	for i := target; i >= 0 && i < n; i -= dir > 0 ? 1 : -1 { if row_usable(i) { cpal.sel = i; return } }
+	target := clamp(app.cpal.sel + dir, 0, n - 1)
+	for i := target; i >= 0 && i < n; i += dir > 0 ? 1 : -1 { if row_usable(app, i) { app.cpal.sel = i; return } }
+	for i := target; i >= 0 && i < n; i -= dir > 0 ? 1 : -1 { if row_usable(app, i) { app.cpal.sel = i; return } }
 }
 
 @(private = "file")
-first_usable :: proc() -> int {
-	for i in 0 ..< len(cpal.rows) { if row_usable(i) { return i } }
+first_usable :: proc(app: ^App) -> int {
+	for i in 0 ..< len(app.cpal.rows) { if row_usable(app, i) { return i } }
 	return 0
 }
 
 // Runs row `i`. `new_tab`: what opens a page opens it in a new tab.
 palette_execute :: proc(app: ^App, i: int, new_tab: bool) {
-	if !row_usable(i) { return }
-	r := cpal.rows[i]
+	if !row_usable(app, i) { return }
+	r := app.cpal.rows[i]
 	t := current_tab(app)
 	switch r.kind {
 	case .Command:
-		c := &commands()[r.index]
+		c := &commands(app)[r.index]
 		if !command_enabled(app, t, c) { return }
 		key := strings.concatenate({"cmd:", c.name}, context.temp_allocator)
 		palette_close(app)
@@ -869,8 +868,8 @@ palette_execute :: proc(app: ^App, i: int, new_tab: bool) {
 	case .Closed_Tab:
 		address := strings.clone(r.key, context.temp_allocator)
 		palette_close(app)
-		for k := len(closed_tabs) - 1; k >= 0; k -= 1 {
-			if closed_tabs[k] == address { delete(closed_tabs[k]); ordered_remove(&closed_tabs, k); break }
+		for k := len(app.closed_tabs) - 1; k >= 0; k -= 1 {
+			if app.closed_tabs[k] == address { delete(app.closed_tabs[k]); ordered_remove(&app.closed_tabs, k); break }
 		}
 		open_in_new_tab(app, address, origin = .User)
 	case .Pref:
@@ -880,7 +879,7 @@ palette_execute :: proc(app: ^App, i: int, new_tab: bool) {
 		if e.def.kind == .Bool && !new_tab {
 			// toggled in place: the palette stays, showing the new value
 			set_pref_bool(app, name, !e.value.b)
-			cpal.cache_valid = false
+			app.cpal.cache_valid = false
 			return
 		}
 		palette_close(app)
@@ -889,8 +888,8 @@ palette_execute :: proc(app: ^App, i: int, new_tab: bool) {
 		ui.field_set(&app.config_view.search, name)
 		app.config_view.focus_list = true
 	case .Source:
-		if r.index < 0 || r.index >= len(cpal.sources) { return }
-		src := cpal.sources[r.index]
+		if r.index < 0 || r.index >= len(app.cpal.sources) { return }
+		src := app.cpal.sources[r.index]
 		key := strings.clone(r.key, context.temp_allocator)
 		palette_close(app)
 		if src.activate != nil { src.activate(src.user, app, key, new_tab) }
@@ -930,20 +929,20 @@ label_id :: proc(text, suffix: string) -> string {
 // Builds the palette over the window (after the chrome, the page and the menus). Nothing when it is closed.
 palette_build :: proc(app: ^App) {
 	wnd := active_window(app)
-	if !palette_open() { return }
+	if !palette_open(app) { return }
 	palette_ready(app)
 	em := ui.font_size()
 	win_w, win_h := f32(wnd.win.size.x), f32(wnd.win.size.y)
 	ctrl, cs := platform.Modifiers{.Ctrl}, platform.Modifiers{.Ctrl, .Shift}
 
 	// its own shortcut closes it; Tab stays in it
-	if ui.key_press(.P, cs) || (cpal.cfg.ctrl_k && ui.key_press(.K, ctrl)) { palette_close(app); return }
+	if ui.key_press(.P, cs) || (app.cpal.cfg.ctrl_k && ui.key_press(.K, ctrl)) { palette_close(app); return }
 	for ui.key_press(.Tab) || ui.key_press(.Tab, {.Shift}) {}
 
 	// opening: a short fade and slide down (none when Windows turns animations off)
 	k: f32 = 1
-	if cpal.cfg.open_ms > 0 && os_animations_enabled(app) {
-		k = f32(clamp(time.duration_milliseconds(time.tick_since(cpal.opened)) / cpal.cfg.open_ms, 0, 1))
+	if app.cpal.cfg.open_ms > 0 && os_animations_enabled(app) {
+		k = f32(clamp(time.duration_milliseconds(time.tick_since(app.cpal.opened)) / app.cpal.cfg.open_ms, 0, 1))
 		if k < 1 { request_frames(app, 2) }
 	}
 	ease := 1 - (1 - k) * (1 - k) * (1 - k)
@@ -954,7 +953,7 @@ palette_build :: proc(app: ^App) {
 	scrim.cursor = .Arrow
 	if s := ui.signal(scrim); s.pressed || s.right_clicked || s.middle_clicked { palette_close(app); return }
 
-	w := math.round(min(cpal.cfg.width_em * em, win_w - em * 2))
+	w := math.round(min(app.cpal.cfg.width_em * em, win_w - em * 2))
 	x := math.round((win_w - w) * 0.5)
 	// over the address row, as VS Code's over its title bar
 	y := em * 0.5
@@ -962,8 +961,8 @@ palette_build :: proc(app: ^App) {
 	y = math.round(y - (1 - ease) * em * 0.6)
 	rh := ui.dense(em * 2.1)
 	pad := math.round(em * 0.4)
-	mouse_moved := ui.mouse_pos() != cpal.last_mouse
-	cpal.last_mouse = ui.mouse_pos()
+	mouse_moved := ui.mouse_pos() != app.cpal.last_mouse
+	app.cpal.last_mouse = ui.mouse_pos()
 
 	if ui.tags("floating") {
 		ui.next({fixed_x = x, fixed_y = y, width = ui.px(w), height = ui.children_sum(), axis = .Y, radius = em * 0.5, transparency = 1 - ease})
@@ -977,35 +976,35 @@ palette_build :: proc(app: ^App) {
 			if ui.row(.Center) {
 				ui.spacer(ui.px(pad))
 				ui.next({width = ui.fill(), height = ui.pct(1), radius = em * CHROME_BUTTON_RADIUS})
-				res = ui.line_edit("###palette_field", &cpal.field, PALETTE_PLACEHOLDER)
+				res = ui.line_edit("###palette_field", &app.cpal.field, PALETTE_PLACEHOLDER)
 				ui.spacer(ui.px(pad))
 			}
-			if cpal.focus_pending && res.box != nil { cpal.focus_pending = false; ui.set_focus(res.box.key) }
+			if app.cpal.focus_pending && res.box != nil { app.cpal.focus_pending = false; ui.set_focus(res.box.key) }
 			if res.cancelled { palette_close(app); return }
 
 			// the rows, again only when something they depend on changed
-			text := ui.field_string(&cpal.field)
+			text := ui.field_string(&app.cpal.field)
 			key := results_key(app)
-			if !cpal.cache_valid || key != cpal.cache_key || text != cpal.cache_text {
-				query_changed := text != cpal.cache_text || !cpal.cache_valid
+			if !app.cpal.cache_valid || key != app.cpal.cache_key || text != app.cpal.cache_text {
+				query_changed := text != app.cpal.cache_text || !app.cpal.cache_valid
 				palette_collect(app, text)
-				cpal.cache_key, cpal.cache_valid = key, true
+				app.cpal.cache_key, app.cpal.cache_valid = key, true
 				if query_changed {
-					delete(cpal.cache_text)
-					cpal.cache_text = strings.clone(text)
-					cpal.sel, cpal.first = first_usable(), 0
+					delete(app.cpal.cache_text)
+					app.cpal.cache_text = strings.clone(text)
+					app.cpal.sel, app.cpal.first = first_usable(app), 0
 				}
 			}
-			n := len(cpal.rows)
-			cpal.sel = clamp(cpal.sel, 0, max(n - 1, 0))
-			if row_usable(cpal.sel) == false && n > 0 { cpal.sel = first_usable() }
-			vis := min(max(cpal.cfg.rows, 1), n)
+			n := len(app.cpal.rows)
+			app.cpal.sel = clamp(app.cpal.sel, 0, max(n - 1, 0))
+			if row_usable(app, app.cpal.sel) == false && n > 0 { app.cpal.sel = first_usable(app) }
+			vis := min(max(app.cpal.cfg.rows, 1), n)
 
 			// keyboard
-			if ui.key_press(.Down) { palette_step(+1) }
-			if ui.key_press(.Up) { palette_step(-1) }
-			if ui.key_press(.Page_Down) { palette_step(max(vis - 1, 1), page = true) }
-			if ui.key_press(.Page_Up) { palette_step(-max(vis - 1, 1), page = true) }
+			if ui.key_press(.Down) { palette_step(app, +1) }
+			if ui.key_press(.Up) { palette_step(app, -1) }
+			if ui.key_press(.Page_Down) { palette_step(app, max(vis - 1, 1), page = true) }
+			if ui.key_press(.Page_Up) { palette_step(app, -max(vis - 1, 1), page = true) }
 			run, run_new := res.committed, ui.key_press(.Return, ctrl)
 
 			ui.spacer(ui.px(pad * 0.75))
@@ -1016,19 +1015,19 @@ palette_build :: proc(app: ^App) {
 			ui.next({width = ui.px(w), height = ui.px(f32(max(vis, 1)) * rh), axis = .Y})
 			list := ui.build_box({.Scroll_Self, .Clip}, "###palette_list")
 			if s := ui.signal(list); s.scrolled.y != 0 {
-				cpal.scroll_acc += s.scrolled.y * 3
-				step := int(cpal.scroll_acc)
-				cpal.scroll_acc -= f32(step)
-				cpal.first += step
+				app.cpal.scroll_acc += s.scrolled.y * 3
+				step := int(app.cpal.scroll_acc)
+				app.cpal.scroll_acc -= f32(step)
+				app.cpal.first += step
 				mouse_moved = false   // the rows move under the pointer: that is no choice
 			} else {
 				// keep the selection in view (a wheel turn scrolls freely)
-				if cpal.sel < cpal.first { cpal.first = cpal.sel }
-				if cpal.sel >= cpal.first + vis { cpal.first = cpal.sel - vis + 1 }
+				if app.cpal.sel < app.cpal.first { app.cpal.first = app.cpal.sel }
+				if app.cpal.sel >= app.cpal.first + vis { app.cpal.first = app.cpal.sel - vis + 1 }
 			}
-			cpal.first = clamp(cpal.first, 0, max(n - vis, 0))
+			app.cpal.first = clamp(app.cpal.first, 0, max(n - vis, 0))
 			thumb := ui.frame_new(Thumb_Draw)
-			thumb^ = {cpal.first, vis, n, ui.color("border")}
+			thumb^ = {app.cpal.first, vis, n, ui.color("border")}
 			list.custom, list.custom_user = thumb_draw, thumb
 			clicked, clicked_new := -1, false
 			if ui.parent(list) {
@@ -1043,13 +1042,13 @@ palette_build :: proc(app: ^App) {
 				// the category and shortcut columns: as wide as their widest visible entry, so they line up
 				cols: [2]f32
 				font := ui.top_style().font
-				for i in cpal.first ..< min(cpal.first + vis, n) {
-					r := &cpal.rows[i]
+				for i in app.cpal.first ..< min(app.cpal.first + vis, n) {
+					r := &app.cpal.rows[i]
 					cols[0] = max(cols[0], ui.text_width(font, em, r.category))
-					if r.kind == .Command { cols[1] = max(cols[1], ui.text_width(font, em, command_shortcut_text(&commands()[r.index]))) }
+					if r.kind == .Command { cols[1] = max(cols[1], ui.text_width(font, em, command_shortcut_text(&commands(app)[r.index]))) }
 				}
 				cols = {math.ceil(cols[0]) + 2, math.ceil(cols[1]) + 2}
-				for i in cpal.first ..< min(cpal.first + vis, n) {
+				for i in app.cpal.first ..< min(app.cpal.first + vis, n) {
 					if c, nc := palette_row(app, t, i, w, rh, pad, cols, mouse_moved); c { clicked, clicked_new = i, nc }
 				}
 			}
@@ -1073,8 +1072,8 @@ palette_build :: proc(app: ^App) {
 			ui.spacer(ui.px(pad * 0.5))
 
 			if clicked >= 0 { palette_execute(app, clicked, clicked_new); return }
-			if run_new { palette_execute(app, cpal.sel, true); return }
-			if run { palette_execute(app, cpal.sel, false); return }
+			if run_new { palette_execute(app, app.cpal.sel, true); return }
+			if run { palette_execute(app, app.cpal.sel, false); return }
 		}
 	}
 }
@@ -1082,9 +1081,9 @@ palette_build :: proc(app: ^App) {
 // One result row. True when it was clicked (`new_tab`: with Ctrl).
 @(private = "file")
 palette_row :: proc(app: ^App, t: ^Tab, i: int, w, rh, pad: f32, cols: [2]f32, mouse_moved: bool) -> (clicked, new_tab: bool) {
-	r := &cpal.rows[i]
+	r := &app.cpal.rows[i]
 	em := ui.font_size()
-	selected := i == cpal.sel
+	selected := i == app.cpal.sel
 	checked := false
 	shortcut := ""
 	state := ""
@@ -1092,7 +1091,7 @@ palette_row :: proc(app: ^App, t: ^Tab, i: int, w, rh, pad: f32, cols: [2]f32, m
 	ident: u64
 	switch r.kind {
 	case .Command:
-		c := &commands()[r.index]
+		c := &commands(app)[r.index]
 		if c.checked != nil { checked = c.checked(app, t, c) }
 		shortcut = command_shortcut_text(c)
 		ident = u64(r.index)
@@ -1176,7 +1175,7 @@ palette_row :: proc(app: ^App, t: ^Tab, i: int, w, rh, pad: f32, cols: [2]f32, m
 		}
 		ui.spacer(ui.px(pad))
 	}
-	if sig.hovering && mouse_moved && !r.disabled { cpal.sel = i }
+	if sig.hovering && mouse_moved && !r.disabled { app.cpal.sel = i }
 	if sig.clicked && !r.disabled { return true, .Ctrl in sig.mods }
 	return false, false
 }

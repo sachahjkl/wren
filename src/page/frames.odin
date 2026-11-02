@@ -36,6 +36,7 @@ package page
 
 import "core:fmt"
 import "core:strings"
+import "core:sync"
 import "wb:base"
 import "wb:csp"
 import "wb:dom"
@@ -114,14 +115,15 @@ Page_Frames :: struct {
 	ready_poll:    base.Handle,         // a document without scripts: waits for its resources before it is complete
 }
 
-@(private)
+// The navigables of the thread's pages: an App runs its pages on the thread of its loop (docs/architecture.md, Where state lives).
+@(private, thread_local)
 navigables: map[u64]^Navigable
 @(private)
-next_navigable_id: u64
-@(private)
+next_navigable_id: u64   // (atomic: an id is unique in the process)
+@(private, thread_local)
 navigable_count: int
 
-// Process end (process_shutdown): the registry of navigables (empty once every page is closed).
+// The end of the pages of this thread (an App's, at its end; process_shutdown): the registry of navigables (empty once every page is closed).
 frames_shutdown :: proc() {
 	shared_workers_shutdown()   // (lingering ones: extendedLifetime)
 	ports_shutdown()
@@ -163,9 +165,8 @@ page_navigable :: proc(p: ^Page) -> ^Navigable {
 @(private)
 navigable_new :: proc() -> ^Navigable {
 	if navigables == nil { navigables = make(map[u64]^Navigable) }
-	next_navigable_id += 1
 	n := new(Navigable)
-	n.id = next_navigable_id
+	n.id = sync.atomic_add(&next_navigable_id, 1) + 1
 	n.distance = max(f32)
 	navigables[n.id] = n
 	navigable_count += 1

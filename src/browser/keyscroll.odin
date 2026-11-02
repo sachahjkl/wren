@@ -49,7 +49,7 @@ keyboard_scroll :: proc(app: ^App, t: ^Tab, start: base.Handle, k: Key_Scroll) -
 		return 0
 	}
 	// smooth_scroll.odin: animated, from where the scroller is already going (held keys add up)
-	dur := k == .Line_Up || k == .Line_Down || k == .Line_Left || k == .Line_Right ? smooth_cfg.key_ms : smooth_cfg.page_ms
+	dur := k == .Line_Up || k == .Line_Down || k == .Line_Left || k == .Line_Right ? app.smooth_cfg.key_ms : app.smooth_cfg.page_ms
 	d := t.page.doc
 	viewport := draw_size(app)
 	for n := start; n != base.NIL_HANDLE; {

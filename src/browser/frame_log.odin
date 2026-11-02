@@ -14,16 +14,14 @@ Frame_Log :: struct {
 	at_once:   int,                  // of them, presented without waiting for a refresh (framesAtOnce)
 }
 
-frame_log: Frame_Log
-
-frame_log_presented :: proc(at_once: bool) {
-	frame_log.at[frame_log.n % FRAME_LOG_CAP] = time.tick_now()._nsec
-	frame_log.n += 1
-	frame_log.presented += 1
-	if at_once { frame_log.at_once += 1 }
+frame_log_presented :: proc(app: ^App, at_once: bool) {
+	app.frame_log.at[app.frame_log.n % FRAME_LOG_CAP] = time.tick_now()._nsec
+	app.frame_log.n += 1
+	app.frame_log.presented += 1
+	if at_once { app.frame_log.at_once += 1 }
 }
 
-frame_log_reset :: proc() { frame_log = {} }
+frame_log_reset :: proc(app: ^App) { app.frame_log = {} }
 
 Frame_Intervals :: struct {
 	count:               int,
@@ -31,14 +29,14 @@ Frame_Intervals :: struct {
 }
 
 // The gaps between consecutive presents kept in the ring. Percentiles by nearest rank.
-frame_log_intervals :: proc(allocator := context.temp_allocator) -> (s: Frame_Intervals) {
-	kept := min(frame_log.n, FRAME_LOG_CAP)
+frame_log_intervals :: proc(app: ^App, allocator := context.temp_allocator) -> (s: Frame_Intervals) {
+	kept := min(app.frame_log.n, FRAME_LOG_CAP)
 	if kept < 2 { return }
-	first := frame_log.n - kept
+	first := app.frame_log.n - kept
 	gaps := make([]f64, kept - 1, allocator)
 	for i in 1 ..< kept {
-		a := frame_log.at[(first + i - 1) % FRAME_LOG_CAP]
-		b := frame_log.at[(first + i) % FRAME_LOG_CAP]
+		a := app.frame_log.at[(first + i - 1) % FRAME_LOG_CAP]
+		b := app.frame_log.at[(first + i) % FRAME_LOG_CAP]
 		gaps[i - 1] = f64(b - a) / 1e6
 	}
 	slice.sort(gaps)

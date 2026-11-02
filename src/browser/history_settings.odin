@@ -95,16 +95,14 @@ history_settings_from_prefs :: proc(p: ^config.Prefs) -> History_Settings {
 	}
 }
 
-hcfg: History_Settings
-@(private = "file") history_watch: int
 
 // At start-up, before the first navigation.
 history_settings_init :: proc(app: ^App) {
-	hcfg = history_settings_from_prefs(&app.prefs)
+	app.hcfg = history_settings_from_prefs(&app.prefs)
 	history_tree_settings_init(app)
-	history_watch = config.watch(&app.prefs, "history.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	app.watches[.History] = config.watch(&app.prefs, "history.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
-		hcfg = history_settings_from_prefs(p)
+		app.hcfg = history_settings_from_prefs(p)
 		bfcache_evict(app)
 		global_history_apply(app)
 		for t in tabs_all(app) { tab_history_limits(app, t) }
@@ -112,7 +110,7 @@ history_settings_init :: proc(app: ^App) {
 }
 
 history_settings_shutdown :: proc(app: ^App) {
-	config.unwatch(&app.prefs, history_watch)
+	config.unwatch(&app.prefs, app.watches[.History])
 	history_tree_settings_shutdown(app)
 }
 
@@ -120,5 +118,5 @@ history_settings_shutdown :: proc(app: ^App) {
 tab_history_limits :: proc(app: ^App, t: ^Tab) {
 	w := &app.page_settings.web
 	page.session_set_limits(&t.session, w.history_max_entries, w.history_max_nodes)
-	sync_history(t)
+	sync_history(app, t)
 }

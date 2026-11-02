@@ -70,8 +70,8 @@ net_profile_find :: proc(id: string) -> (Net_Profile, bool) {
 }
 
 // The profile a tab is held to: its own choice, else the preference's.
-net_profile_of :: proc(t: ^Tab) -> Net_Profile {
-	id := t != nil && t.net.profile != "" ? t.net.profile : net_prefs.profile
+net_profile_of :: proc(app: ^App, t: ^Tab) -> Net_Profile {
+	id := t != nil && t.net.profile != "" ? t.net.profile : app.net_prefs.profile
 	p, _ := net_profile_find(id)
 	return p
 }
@@ -105,7 +105,7 @@ net_link_for :: proc(user: rawptr, scope: ^base.Scope) -> ^net.Throttle_Link {
 	t, _ := tab_of_scope(app, scope)
 	if t == nil { return nil }
 	if d, _ := devtools_of_tab(app, t); d == nil || !d.visible { return nil }   // (the developer tools of the tab's window)
-	p := net_profile_of(t)
+	p := net_profile_of(app, t)
 	if p.offline || !net_profile_active(p) { return nil }
 	l := &t.net.link
 	if t.net.link_id != p.id || l.latency_ms != p.latency_ms {
@@ -123,7 +123,7 @@ net_blocked :: proc(user: rawptr, scope: ^base.Scope, url: string) -> bool {
 	t, _ := tab_of_scope(app, scope)
 	d := dev()
 	if t != nil { if td, _ := devtools_of_tab(app, t); td != nil { d = td } }
-	if d.visible && t != nil && net_profile_of(t).offline { return true }
+	if d.visible && t != nil && net_profile_of(app, t).offline { return true }
 	for p in d.net.blocked { if net_glob(p, url) { return true } }
 	return false
 }
@@ -214,7 +214,7 @@ net_profile_delete :: proc(app: ^App, t: ^Tab, id: string) {
 
 // The items of the speed menu.
 net_speed_menu :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
-	cur := net_profile_of(t)
+	cur := net_profile_of(app, t)
 	ui.menu_heading("Network speed")
 	for p in NET_BUILTIN {
 		if ui.menu_item(fmt.tprintf("%s###dt_th_%s", p.name, p.id), checked = cur.id == p.id).clicked { net_profile_set(app, t, p.id) }

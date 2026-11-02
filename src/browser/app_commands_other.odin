@@ -8,4 +8,4 @@ package browser
 // forward (the shell's own key handling), as on every system.
 
 app_commands_init :: proc(app: ^App) {}
-app_commands_destroy :: proc() {}
+app_commands_destroy :: proc(app: ^App) {}

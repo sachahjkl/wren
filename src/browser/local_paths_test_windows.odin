@@ -39,11 +39,13 @@ typed_paths_become_file_urls :: proc(t: ^testing.T) {
 
 @(test)
 address_bar_rules :: proc(t: ^testing.T) {
-	testing.expect_value(t, address_or_search(`S:\wb\examples\site`), "file:///S:/wb/examples/site")
-	testing.expect_value(t, address_or_search(`\\nas\films`), "file://nas/films")
-	testing.expect(t, strings.contains(address_or_search(`docs\a.html`), "?q="), "a relative path is ambiguous: a search")
-	testing.expect_value(t, address_or_search("example.com"), "example.com")
-	testing.expect_value(t, address_or_search("about:"), "about:")
+	app := new(App)   // (the built-in search engines)
+	defer free(app)
+	testing.expect_value(t, address_or_search(app, `S:\wb\examples\site`), "file:///S:/wb/examples/site")
+	testing.expect_value(t, address_or_search(app, `\\nas\films`), "file://nas/films")
+	testing.expect(t, strings.contains(address_or_search(app, `docs\a.html`), "?q="), "a relative path is ambiguous: a search")
+	testing.expect_value(t, address_or_search(app, "example.com"), "example.com")
+	testing.expect_value(t, address_or_search(app, "about:"), "about:")
 	testing.expect_value(t, normalize_address("about:"), ABOUT_URL)
 	testing.expect_value(t, normalize_address(`C:\x y\`), "file:///C:/x%20y/")
 	testing.expect_value(t, normalize_address("file:///C:/x"), "file:///C:/x")

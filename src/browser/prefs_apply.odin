@@ -14,9 +14,6 @@ Pref_Groups :: bit_set[Pref_Group; u8]
 
 PREF_GROUPS_ALL :: Pref_Groups{.Net, .Http_Cache, .Downloads, .Touch}
 
-// How many times each subsystem was configured again since the start (the measure of this file's effect; tests).
-prefs_apply_counts: [Pref_Group]int
-
 // The subsystems a write of preference `name` concerns. Pure.
 pref_groups_of :: proc(name: string) -> Pref_Groups {
 	switch {
@@ -34,5 +31,5 @@ net_apply :: proc(app: ^App) {
 	ns := net.settings_from_prefs(&app.prefs)
 	net.client_apply(&app.client, ns)
 	net.settings_destroy(&ns)
-	prefs_apply_counts[.Net] += 1
+	app.prefs_apply_counts[.Net] += 1
 }

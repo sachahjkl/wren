@@ -98,7 +98,6 @@ Setup_Dialog :: struct {
 	at_primary, at_uninstall, at_secondary: draw.Rect,   // where the last frame put its buttons (control_setup_state)
 }
 
-@(private) stp: Setup_Dialog
 
 SETUP_PREFS := [?]config.Def{
 	{name = "browser.update.check_daily", kind = .Bool, default = {b = false},
@@ -107,20 +106,20 @@ SETUP_PREFS := [?]config.Def{
 		description = "The address the update check reads (a JSON document with tag_name and html_url, as GitHub's \"latest release\" answers). For tests and mirrors."},
 }
 
-setup_destroy :: proc() {
-	ui.field_destroy(&stp.path)
-	setup_facts_destroy(&stp.facts)
-	delete(stp.path_text); delete(stp.path_problem); delete(stp.note)
-	for f in stp.cleanup { delete(f) }
-	delete(stp.cleanup)
-	delete(stp.cleanup_dir)
-	stp = {}
+setup_destroy :: proc(app: ^App) {
+	ui.field_destroy(&app.stp.path)
+	setup_facts_destroy(&app.stp.facts)
+	delete(app.stp.path_text); delete(app.stp.path_problem); delete(app.stp.note)
+	for f in app.stp.cleanup { delete(f) }
+	delete(app.stp.cleanup)
+	delete(app.stp.cleanup_dir)
+	app.stp = {}
 }
 
-setup_is_open :: proc() -> bool { return stp.open }
+setup_is_open :: proc(app: ^App) -> bool { return app.stp.open }
 
 // While it is open the dialog takes every press and wheel turn: the page under it gets none.
-setup_captures :: proc() -> bool { return stp.open }
+setup_captures :: proc(app: ^App) -> bool { return app.stp.open }
 
 ////////////////////////////////
 // The profile's memory of what the user answered
@@ -156,6 +155,7 @@ Setup_Job_Kind :: enum u8 { Read, Apply, Uninstall, Clean }
 
 @(private)
 Setup_Job :: struct {
+	app:         ^App,                 // whose dialog it reports to
 	kind:        Setup_Job_Kind,
 	reason:      Setup_Reason,
 	opts:        desktop.Options,      // the options the job works with (owned copy; exe is the executable the integration runs)
@@ -179,10 +179,11 @@ setup_options :: proc(app: ^App) -> desktop.Options {
 @(private)
 setup_job_start :: proc(app: ^App, kind: Setup_Job_Kind, reason: Setup_Reason) {
 	job := new(Setup_Job)
+	job.app = app
 	job.kind, job.reason = kind, reason
 	job.opts = desktop.options_clone(setup_options(app))
 	job.running_exe = strings.clone(desktop.executable_path())
-	stp.busy += 1
+	app.stp.busy += 1
 	host.run_blocking(&app.blocking, setup_job_work, setup_job_done, job)
 }
 
@@ -291,7 +292,7 @@ setup_uninstall_work :: proc(job: ^Setup_Job) {
 @(private)
 setup_job_done :: proc(data: rawptr) {
 	job := (^Setup_Job)(data)
-	app := the_app
+	app := job.app
 	defer {
 		delete(job.result.detail)
 		for l in job.leftovers { delete(l) }
@@ -303,40 +304,39 @@ setup_job_done :: proc(data: rawptr) {
 		desktop.options_destroy(&job.opts)
 		setup_facts_destroy(&job.facts)
 		free(job)
-		stp.busy -= 1
+		app.stp.busy -= 1
 	}
-	if app == nil { return }
 	if job.kind == .Clean { return }
-	setup_facts_destroy(&stp.facts)
-	stp.facts, job.facts = job.facts, {}
-	stp.known = true
+	setup_facts_destroy(&app.stp.facts)
+	app.stp.facts, job.facts = job.facts, {}
+	app.stp.known = true
 	if job.reason == .Startup && job.kind == .Read {
 		// the first run of a copy that is not the installed one (or an installation that wants attention): the dialog opens
-		if !stp.open && setup_should_offer(&stp.facts) { stp.open, stp.reason = true, .Startup; stp.focus_primary = true }
+		if !app.stp.open && setup_should_offer(&app.stp.facts) { app.stp.open, app.stp.reason = true, .Startup; app.stp.focus_primary = true }
 	}
 	if job.kind != .Read {
-		stp.opts_ready = false   // the checkboxes follow the disk again
-		stp.path_ready = false
-		stp.confirm_uninstall = false
+		app.stp.opts_ready = false   // the checkboxes follow the disk again
+		app.stp.path_ready = false
+		app.stp.confirm_uninstall = false
 		for l in job.leftovers {
-			append(&stp.cleanup, strings.clone(l))
+			append(&app.stp.cleanup, strings.clone(l))
 		}
-		if job.folder_left != "" && stp.cleanup_dir == "" { stp.cleanup_dir = strings.clone(job.folder_left) }
+		if job.folder_left != "" && app.stp.cleanup_dir == "" { app.stp.cleanup_dir = strings.clone(job.folder_left) }
 		verb := job.kind == .Apply ? "install" : "uninstall"
 		if job.result.error != .None {
-			setup_note(fmt.tprintf("Could not %s: %s (%s)", verb, desktop.error_text(job.result.error), job.result.detail), "bad")
-			ui.toast(.Warn, "%s", stp.note)
+			setup_note(app, fmt.tprintf("Could not %s: %s (%s)", verb, desktop.error_text(job.result.error), job.result.detail), "bad")
+			ui.toast(.Warn, "%s", app.stp.note)
 		} else if job.kind == .Apply {
 			setup_remember_options(app)
-			setup_note(fmt.tprintf("%s is installed in %s. The Start menu and the other shortcuts open that copy.", APP_NAME, job.target_dir), "good")
+			setup_note(app, fmt.tprintf("%s is installed in %s. The Start menu and the other shortcuts open that copy.", APP_NAME, job.target_dir), "good")
 			ui.toast(.Good, "%s is installed", APP_NAME)
 			setup_choice_write(app, "installed")
 			// installed again in the folder that was uninstalled while it ran: its manifest and folder are not for the helper to delete
-			if desktop.same_path(stp.cleanup_dir, job.target_dir) { delete(stp.cleanup_dir); stp.cleanup_dir = "" }
+			if desktop.same_path(app.stp.cleanup_dir, job.target_dir) { delete(app.stp.cleanup_dir); app.stp.cleanup_dir = "" }
 		} else {
 			msg := "Wren is uninstalled: its shortcuts, its entry in Settings > Apps and its files are gone."
 			if len(job.leftovers) > 0 { msg = "Wren is uninstalled. The files of this running copy are deleted when you close it." }
-			setup_note(msg, "good")
+			setup_note(app, msg, "good")
 			ui.toast(.Good, "%s is uninstalled", APP_NAME)
 		}
 	}
@@ -344,23 +344,23 @@ setup_job_done :: proc(data: rawptr) {
 }
 
 @(private)
-setup_note :: proc(text, tone: string) {
-	delete(stp.note)
-	stp.note = strings.clone(text)
-	stp.note_tone = tone
+setup_note :: proc(app: ^App, text, tone: string) {
+	delete(app.stp.note)
+	app.stp.note = strings.clone(text)
+	app.stp.note_tone = tone
 }
 
 // Waits for the jobs out (their completion frees them); before the pool and the loop go.
 setup_shutdown :: proc(app: ^App) {
-	for stp.busy > 0 { host.blocking_settle(&app.blocking) }
+	for app.stp.busy > 0 { host.blocking_settle(&app.blocking) }
 	// files a running program held (this one's own): deleted once this process has ended
-	if len(stp.cleanup) > 0 {
+	if len(app.stp.cleanup) > 0 {
 		files := make([dynamic]string, context.temp_allocator)
-		for f in stp.cleanup { append(&files, f) }
-		if stp.cleanup_dir != "" { append(&files, strings.concatenate({stp.cleanup_dir, desktop.PATH_SEP, desktop.MANIFEST_NAME}, context.temp_allocator)) }
-		desktop.cleanup_later(files[:], stp.cleanup_dir, desktop.current_process_id())
+		for f in app.stp.cleanup { append(&files, f) }
+		if app.stp.cleanup_dir != "" { append(&files, strings.concatenate({app.stp.cleanup_dir, desktop.PATH_SEP, desktop.MANIFEST_NAME}, context.temp_allocator)) }
+		desktop.cleanup_later(files[:], app.stp.cleanup_dir, desktop.current_process_id())
 	}
-	setup_destroy()
+	setup_destroy(app)
 }
 
 ////////////////////////////////
@@ -369,18 +369,18 @@ setup_shutdown :: proc(app: ^App) {
 // Opens the dialog (the command, --setup): the disk is read again.
 setup_open :: proc(app: ^App, reason := Setup_Reason.Command) {
 	if !desktop.supported() { ui.toast(.Info, "Setup is not available on this platform"); return }
-	if stp.open { return }
-	stp.open, stp.reason = true, reason
-	stp.opts_ready, stp.path_ready = false, false
-	stp.confirm_uninstall = false
-	stp.focus_primary = true
-	if stp.width_em == 0 { stp.width_em = 46 }
-	setup_note("", "weak")
+	if app.stp.open { return }
+	app.stp.open, app.stp.reason = true, reason
+	app.stp.opts_ready, app.stp.path_ready = false, false
+	app.stp.confirm_uninstall = false
+	app.stp.focus_primary = true
+	if app.stp.width_em == 0 { app.stp.width_em = 46 }
+	setup_note(app, "", "weak")
 	desktop_watch_ensure(app)   // desktop_shell.odin: the dialog follows the disk it shows
-	stp.seen_changes = desktop_changes()
+	app.stp.seen_changes = desktop_changes()
 	if reason == .Command {   // (at start-up the interface does not exist yet)
 		ui.ctx_menu_close()
-		if cpal.open { palette_close(app) }
+		if app.cpal.open { palette_close(app) }
 	}
 	setup_job_start(app, .Read, reason)
 	request_frames(app, 3)
@@ -392,22 +392,22 @@ setup_open :: proc(app: ^App, reason := Setup_Reason.Command) {
 @(private)
 setup_follow_disk :: proc(app: ^App) {
 	n := desktop_changes()
-	if n == stp.seen_changes || stp.busy > 0 || !stp.known { return }
-	stp.seen_changes = n
+	if n == app.stp.seen_changes || app.stp.busy > 0 || !app.stp.known { return }
+	app.stp.seen_changes = n
 	setup_job_start(app, .Read, .Command)
 }
 
 // The dialog was closed (X, Escape, a click outside): not an answer, so it is asked again after the next update.
 setup_dismiss :: proc(app: ^App) {
-	stp.open = false
-	stp.confirm_uninstall = false
-	if stp.reason == .Startup { setup_choice_write(app, "dismissed") }
+	app.stp.open = false
+	app.stp.confirm_uninstall = false
+	if app.stp.reason == .Startup { setup_choice_write(app, "dismissed") }
 	request_frames(app, 2)
 }
 
 // "Use standalone": carry on without installing, and do not ask again.
 setup_use_standalone :: proc(app: ^App) {
-	stp.open = false
+	app.stp.open = false
 	setup_choice_write(app, "standalone")
 	ui.toast(.Info, "%s runs standalone. Setup is in the menu if you change your mind.", APP_NAME)
 	request_frames(app, 2)
@@ -472,67 +472,69 @@ setup_startup :: proc(app: ^App, profile_explicit: bool, force: bool) {
 
 // The folder the field names (trimmed).
 @(private)
-setup_target :: proc() -> string { return strings.trim_space(ui.field_string(&stp.path)) }
+setup_target :: proc(app: ^App) -> string { return strings.trim_space(ui.field_string(&app.stp.path)) }
 
 // Is the folder asked for another than the one of the installed copy?
-setup_moving :: proc() -> bool {
-	return stp.facts.inst.exe_present && !desktop.same_path(stp.facts.inst.dir, setup_target())
+setup_moving :: proc(app: ^App) -> bool {
+	return app.stp.facts.inst.exe_present && !desktop.same_path(app.stp.facts.inst.dir, setup_target(app))
 }
 
 setup_apply :: proc(app: ^App) {
-	if stp.busy > 0 || !stp.known || stp.path_problem != "" { return }
+	if app.stp.busy > 0 || !app.stp.known || app.stp.path_problem != "" { return }
 	job := new(Setup_Job)
+	job.app = app
 	job.kind, job.reason = .Apply, .Command
 	o := setup_options(app)
-	o.start_menu = stp.opts[.Start_Menu]
-	o.desktop_shortcut = stp.opts[.Desktop_Shortcut]
-	o.add_to_path = stp.opts[.Add_To_Path]
-	o.register_browser = stp.opts[.Register_Browser]
+	o.start_menu = app.stp.opts[.Start_Menu]
+	o.desktop_shortcut = app.stp.opts[.Desktop_Shortcut]
+	o.add_to_path = app.stp.opts[.Add_To_Path]
+	o.register_browser = app.stp.opts[.Register_Browser]
 	job.opts = desktop.options_clone(o)
 	job.running_exe = strings.clone(desktop.executable_path())
-	job.target_dir = strings.clone(setup_target())
-	if stp.facts.inst.exe_present && setup_moving() { job.old_dir = strings.clone(stp.facts.inst.dir) }
+	job.target_dir = strings.clone(setup_target(app))
+	if app.stp.facts.inst.exe_present && setup_moving(app) { job.old_dir = strings.clone(app.stp.facts.inst.dir) }
 	// the checkboxes are the preferences from now on (Modify, --desktop-integration and the box in about:config agree)
 	setup_remember_options(app)
-	stp.busy += 1
+	app.stp.busy += 1
 	host.run_blocking(&app.blocking, setup_job_work, setup_job_done, job)
-	setup_note("Working…", "weak")
+	setup_note(app, "Working…", "weak")
 	request_frames(app, 3)
 }
 
 @(private)
 setup_remember_options :: proc(app: ^App) {
 	set :: proc(app: ^App, name: string, v: bool) { _ = config.set_from_string(&app.prefs, name, v ? "true" : "false", .User) }
-	set(app, "browser.desktop_integration.start_menu", stp.opts[.Start_Menu])
-	set(app, "browser.desktop_integration.desktop_shortcut", stp.opts[.Desktop_Shortcut])
-	set(app, "browser.desktop_integration.add_to_path", stp.opts[.Add_To_Path])
-	set(app, "browser.desktop_integration.register_browser", stp.opts[.Register_Browser])
-	set(app, "browser.update.check_daily", stp.opts[.Check_Daily])
+	set(app, "browser.desktop_integration.start_menu", app.stp.opts[.Start_Menu])
+	set(app, "browser.desktop_integration.desktop_shortcut", app.stp.opts[.Desktop_Shortcut])
+	set(app, "browser.desktop_integration.add_to_path", app.stp.opts[.Add_To_Path])
+	set(app, "browser.desktop_integration.register_browser", app.stp.opts[.Register_Browser])
+	set(app, "browser.update.check_daily", app.stp.opts[.Check_Daily])
 }
 
 setup_uninstall :: proc(app: ^App) {
-	if stp.busy > 0 || !stp.known { return }
+	if app.stp.busy > 0 || !app.stp.known { return }
 	job := new(Setup_Job)
+	job.app = app
 	job.kind, job.reason = .Uninstall, .Command
 	job.opts = desktop.options_clone(setup_options(app))
 	job.running_exe = strings.clone(desktop.executable_path())
-	job.target_dir = stp.facts.inst.exe_present || stp.facts.inst.manifest ? strings.clone(stp.facts.inst.dir) : ""
-	stp.busy += 1
+	job.target_dir = app.stp.facts.inst.exe_present || app.stp.facts.inst.manifest ? strings.clone(app.stp.facts.inst.dir) : ""
+	app.stp.busy += 1
 	host.run_blocking(&app.blocking, setup_job_work, setup_job_done, job)
-	setup_note("Working…", "weak")
+	setup_note(app, "Working…", "weak")
 	request_frames(app, 3)
 }
 
 // The dialog's checkboxes and field follow the disk (or the preferences when nothing is installed).
 @(private)
 setup_sync_inputs :: proc(app: ^App) {
-	if !stp.known { return }
-	f := &stp.facts
-	if !stp.path_ready {
-		ui.field_set(&stp.path, f.installed_dir)
-		stp.path_ready = true
+	if !app.stp.known { return }
+	f := &app.stp.facts
+	if !app.stp.path_ready {
+		ui.field_set(&app.stp.path, f.installed_dir)
+		app.stp.path_ready = true
 	}
-	if !stp.opts_ready {
+	if !app.stp.opts_ready {
 		installed := f.inst.exe_present
 		pref :: proc(app: ^App, name: string) -> bool { return config.bool_of(&app.prefs, name) }
 		// what the boxes show: the disk for an installation that is as it should be (they say what IS there), and what was
@@ -548,23 +550,23 @@ setup_sync_inputs :: proc(app: ^App) {
 			}
 			return wanted
 		}
-		stp.opts[.Start_Menu] = part(f, .Launcher, pref(app, "browser.desktop_integration.start_menu"), from_disk, both)
-		stp.opts[.Desktop_Shortcut] = part(f, .Desktop_Shortcut, pref(app, "browser.desktop_integration.desktop_shortcut"), from_disk, both)
-		stp.opts[.Add_To_Path] = part(f, .Path, pref(app, "browser.desktop_integration.add_to_path"), from_disk, both)
-		stp.opts[.Register_Browser] = part(f, .Registration, pref(app, "browser.desktop_integration.register_browser"), from_disk, both)
-		stp.opts[.Check_Daily] = pref(app, "browser.update.check_daily")
-		stp.baseline = stp.opts
-		stp.opts_ready = true
+		app.stp.opts[.Start_Menu] = part(f, .Launcher, pref(app, "browser.desktop_integration.start_menu"), from_disk, both)
+		app.stp.opts[.Desktop_Shortcut] = part(f, .Desktop_Shortcut, pref(app, "browser.desktop_integration.desktop_shortcut"), from_disk, both)
+		app.stp.opts[.Add_To_Path] = part(f, .Path, pref(app, "browser.desktop_integration.add_to_path"), from_disk, both)
+		app.stp.opts[.Register_Browser] = part(f, .Registration, pref(app, "browser.desktop_integration.register_browser"), from_disk, both)
+		app.stp.opts[.Check_Daily] = pref(app, "browser.update.check_daily")
+		app.stp.baseline = app.stp.opts
+		app.stp.opts_ready = true
 	}
 }
 
 // The field's text has changed: is it a folder Wren can be installed in?
 @(private)
-setup_validate :: proc() {
-	text := setup_target()
-	if text == stp.path_text && stp.path_ready { return }
-	delete(stp.path_text)
-	stp.path_text = strings.clone(text)
-	delete(stp.path_problem)
-	stp.path_problem = strings.clone(desktop.check_install_dir(text))
+setup_validate :: proc(app: ^App) {
+	text := setup_target(app)
+	if text == app.stp.path_text && app.stp.path_ready { return }
+	delete(app.stp.path_text)
+	app.stp.path_text = strings.clone(text)
+	delete(app.stp.path_problem)
+	app.stp.path_problem = strings.clone(desktop.check_install_dir(text))
 }

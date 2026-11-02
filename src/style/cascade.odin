@@ -176,8 +176,7 @@ base_style_of :: proc(s: ^Styled, h: base.Handle) -> ^Computed {
 
 // Gives every style a new serial: layout notices that something changed (and lays out again).
 styled_touch :: proc(s: ^Styled) {
-	styled_serial += 1
-	s.serial = styled_serial
+	s.serial = sync.atomic_add(&styled_serial, 1) + 1   // (atomic: the style threads stamp too)
 	s.layout_serial = s.serial
 	journal_stamp(s)
 }
@@ -1024,8 +1023,7 @@ styled_make :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 	s.mutations = doc.mutations
 	s.state = state
 	s.state.target_id = strings.clone(state.target_id, s.alloc)
-	styled_serial += 1
-	s.serial = styled_serial
+	s.serial = sync.atomic_add(&styled_serial, 1) + 1   // (atomic: the style threads stamp too)
 	s.layout_serial = s.serial
 	s.pass_id = s.serial
 	s.line_height_normal = e.settings.line_height_normal
@@ -1323,8 +1321,7 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 	}
 	set_state(s, new_state)
 	if p.changed {
-		styled_serial += 1
-		s.serial = styled_serial
+		s.serial = sync.atomic_add(&styled_serial, 1) + 1   // (atomic: the style threads stamp too)
 		if p.layout_changed { s.layout_serial = s.serial }
 		journal_stamp(s)
 		update_canvas(s, doc)

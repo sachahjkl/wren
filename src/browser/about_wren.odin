@@ -449,7 +449,7 @@ show_wren_page :: proc(app: ^App, t: ^Tab, address: string, acts := false, notic
 	if (d.state.registered || d.card_sample) && !strings.has_prefix(shown, LICENSES_URL) { page.scripts_start(t.page) }
 	if shown != address {
 		page.session_replace(&t.session, shown)
-		sync_history(t)
+		sync_history(app, t)
 	}
 	delete(t.url); t.url = strings.clone(shown)
 	delete(t.title); t.title = strings.clone(strings.has_prefix(shown, LICENSES_URL) ? "Licences" : "About Wren")

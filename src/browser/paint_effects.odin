@@ -49,7 +49,6 @@ EFFECTS_PREFS := [?]config.Def{
 }
 
 @(private) effects_settings: Effects_Settings
-@(private) effects_watch: int
 
 register_effects_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, EFFECTS_PREFS[:])
@@ -77,7 +76,7 @@ effects_init :: proc(app: ^App) {
 	fx_settings = fx_settings_from_prefs(&app.prefs)
 	fx_settings_apply(app)
 	planes_init(app)
-	effects_watch = config.watch(&app.prefs, "paint.effects.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	app.watches[.Effects] = config.watch(&app.prefs, "paint.effects.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		a := (^App)(user)
 		effects_settings = effects_settings_from_prefs(p)
 		render.set_blur_sigma_limit(&a.r, effects_settings.blur_sigma_limit)
@@ -85,12 +84,10 @@ effects_init :: proc(app: ^App) {
 		fx_settings_apply(a)
 	}, app)
 	// kept text shadows were rasterized with the text settings of their time
-	effects_font_watch = config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	app.watches[.Effects_Font] = config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		draw.layer_cache_clear(&(^App)(user).dc)
 	}, app)
 }
-
-@(private) effects_font_watch: int
 
 @(private)
 Effects :: struct {

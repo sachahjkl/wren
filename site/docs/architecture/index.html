@@ -261,7 +261,33 @@ buffers.</li>
 <li><strong>Everything is configurable.</strong> Each package declares its preferences in a <code>settings.odin</code> (<code>config.Def</code>: dotted
 lower-case name, description, type, bounds, unit) and reads them through <code>settings_from_prefs</code>; the shell registers
 every table (<code>src/browser/settings.odin</code>) and <code>src/browser/prefs_test.odin</code> checks that each one is well formed.</li>
+<li><strong>State lives with what owns it.</strong> See below: what is one App's is not a global.</li>
 </ol>
+<h2 id="where-state-lives"><a class="anchor" href="#where-state-lives" aria-hidden="true">#</a>Where state lives</h2>
+<p>The aim is several Apps (<code>browser.App</code>: one browser, its profile, its loop, its windows) in one process, each on a thread
+of its own, so that tests run side by side in one binary. An App runs on one thread, the one that runs its loop
+(<code>app_start</code>'s); its page thread works for it. So a global is allowed only for what it is, and
+<code>tools/globals_allowed.txt</code> gives every global of <code>src/browser</code>, <code>src/page</code>, <code>src/style</code>, <code>src/layout</code>, <code>src/media</code> and
+<code>src/js</code> its class (<code>src/tools/test_all/lint_globals.odin</code> fails on a new one, a gone one, or a class the code
+contradicts):</p>
+<ul>
+<li><strong>const</strong>: a table, written by the compiler or once (a <code>sync.Once</code>) before anything reads it. Any thread reads it.</li>
+<li><strong>process</strong>: a resource there is one of whatever the number of Apps: the Wasm engine, a thread pool, a library of the
+system, the single-instance channel, an id unique in the process (atomic). Locked, atomic, or bound to a thread the
+note names.</li>
+<li><strong>thread</strong>: <code>@(thread_local)</code>, and only then (the lint holds the class to the attribute both ways). In packages that
+have no App (<code>page</code>, <code>style</code>, <code>layout</code>), what is one App's is its thread's: the live pages, the navigables, the frames
+waiting to close (<code>page/web.odin</code>, <code>page/frames.odin</code>). In <code>browser</code>, what the thread that paints keeps (the
+compositor's layers, the planes, the canvas text's glyphs) and <code>the_app</code>, the App of this thread.</li>
+<li><strong>app</strong>, <strong>window</strong>, <strong>page</strong>: one App's, one window's, one tab's or page's state still in a global, to move into
+<code>App</code>, <code>Browser_Window.own</code> or <code>Tab</code> / <code>Page</code>. Two Apps would share it: each is a debt the list counts.</li>
+<li><strong>test</strong>: a test's own.</li>
+</ul>
+<p>What belongs to the App is a field of <code>App</code> (<code>src/browser/main.odin</code>), reached through the <code>^App</code> the code is given.
+A callback the App sets up carries it: a timer's or a watch's data, a job's struct (<code>Setup_Job.app</code>), a window
+subclass's reference data (<code>app_commands_windows.odin</code>). <code>the_app</code> is what is left for code that has no <code>^App</code> yet,
+mostly hooks of other packages (<code>page.Embedder_Hooks</code>, the canvas' text engine) and the painting code: a thread of its
+own sees nil.</p>
 <h2 id="wasm-engine"><a class="anchor" href="#wasm-engine" aria-hidden="true">#</a>Wasm engine</h2>
 <p>Wasmtime, the official C API release <strong>v49.0.3</strong>, downloaded by <code>wrentool fetch wasmtime</code> (version and SHA-256
 pinned in the script) into <code>build\wasmtime</code>; the static <code>wasmtime.lib</code> is linked into the exe (no DLL; it adds about
@@ -442,6 +468,7 @@ matrices. The painter (<code>src/browser/render.odin</code>) maps the display li
 <p class="doc-toc-title">On this page</p>
 <ul>
 <li><a href="#the-rules-that-keep-it-from-breaking-at-scale">The rules that keep it from breaking at scale</a></li>
+<li><a href="#where-state-lives">Where state lives</a></li>
 <li><a href="#wasm-engine">Wasm engine</a></li>
 <li><a href="#the-web-api-one-description-everything-generated">The web API: one description, everything generated</a></li>
 <li><a href="#javascript">JavaScript</a></li>

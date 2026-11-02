@@ -37,9 +37,12 @@ License_State :: struct {
 	err:        license.Error,
 }
 
-// The key kept in memory when the profile is not persisted (no allocation: a licence is a few hundred bytes).
-@(private = "file") memory_text: [license.MAX_TEXT]u8
-@(private = "file") memory_len: int
+// The key kept in memory when the profile is not persisted (no allocation: a licence is a few hundred bytes): App.license_mem.
+License_Memory :: struct {
+	text:   [license.MAX_TEXT]u8,
+	len:    int,
+	seeded: bool,   // the build's own licence was put there
+}
 
 // An experimental build (wrentool experimental: build.bat with WREN_ACCEPT_DEV_LICENSE_KEY=1) accepts the development pair's licences too, so that
 // the demonstration licence it is handed out with shows its card with no setting. A release never does.
@@ -83,8 +86,6 @@ license_path :: proc(app: ^App) -> string {
 // is asked for its licence and holds none, this one is put there (license_seed), and from then on it is the profile's own like any other.
 EMBEDDED_LICENSE :: #config(WREN_EMBEDDED_LICENSE, "")
 
-@(private = "file") memory_seeded: bool
-
 // Puts `text`, the licence a build is handed out with, where the profile keeps its licence, ONCE: only when nothing is stored there and
 // it was never put there. The file `<licence file>.seeded` says it was: removing the licence (about:wren) then removes it for good, and
 // registering another one replaces it, as for a licence the user typed in. A profile that already holds a licence (a real one, kept
@@ -94,11 +95,11 @@ license_seed :: proc(app: ^App, text: string) {
 	if strings.trim_space(text) == "" { return }
 	path := license_path(app)
 	if path == "" {
-		if memory_seeded || memory_len > 0 { return }
-		memory_seeded = true
+		if app.license_mem.seeded || app.license_mem.len > 0 { return }
+		app.license_mem.seeded = true
 		if lic, err := license_check(app, text, context.temp_allocator); err == .None {
 			_ = lic
-			memory_len = copy(memory_text[:], license.normalize(text, context.temp_allocator))
+			app.license_mem.len = copy(app.license_mem.text[:], license.normalize(text, context.temp_allocator))
 		}
 		return
 	}
@@ -117,7 +118,7 @@ license_seed :: proc(app: ^App, text: string) {
 license_stored_text :: proc(app: ^App) -> string {
 	when EMBEDDED_LICENSE != "" { license_seed(app, EMBEDDED_LICENSE) }
 	path := license_path(app)
-	if path == "" { return string(memory_text[:memory_len]) }
+	if path == "" { return string(app.license_mem.text[:app.license_mem.len]) }
 	info, err := os.stat(path, context.temp_allocator)
 	if err != nil || info.size <= 0 || info.size > license.MAX_TEXT { return "" }
 	data, rerr := os.read_entire_file(path, context.temp_allocator)
@@ -139,7 +140,7 @@ license_install :: proc(app: ^App, text: string) -> license.Error {
 	canonical := license.normalize(text, context.temp_allocator)
 	path := license_path(app)
 	if path == "" {
-		memory_len = copy(memory_text[:], canonical)
+		app.license_mem.len = copy(app.license_mem.text[:], canonical)
 		return .None
 	}
 	if dir := os.dir(path); dir != "" { _ = os.make_directory_all(dir) }
@@ -148,7 +149,7 @@ license_install :: proc(app: ^App, text: string) -> license.Error {
 }
 
 license_remove :: proc(app: ^App) {
-	if path := license_path(app); path != "" { _ = os.remove(path) } else { memory_len = 0 }
+	if path := license_path(app); path != "" { _ = os.remove(path) } else { app.license_mem.len = 0 }
 }
 
 @(private = "file")
@@ -178,7 +179,7 @@ license_open_file :: proc(app: ^App, t: ^Tab, address: string) {
 	// the tab's entry is about:wren, not the file
 	show_wren_page(app, t, WREN_URL, notice = notice)
 	page.session_replace(&t.session, WREN_URL)
-	sync_history(t)
+	sync_history(app, t)
 }
 
 // Reads `path` (a licence is small: a larger file is not one) and installs it.

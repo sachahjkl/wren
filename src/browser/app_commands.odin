@@ -30,13 +30,18 @@ browser_command_of_appcommand :: proc(cmd: int) -> Browser_Command {
 	return .None
 }
 
+// A browser command for an App's loop (posted by a backend's window hook; app_command_run frees it).
+App_Command_Post :: struct { app: ^App, cmd: Browser_Command }
+
 // Runs a browser command on the current tab (posted to the loop by a backend's window hook). Shared.
 app_command_run :: proc(data: rawptr) {
-	app := the_app
-	if app == nil || !config.bool_of(&app.prefs, "browser.mouse.back_forward_buttons") { return }
+	post := (^App_Command_Post)(data)
+	app, cmd := post.app, post.cmd
+	free(post)
+	if !config.bool_of(&app.prefs, "browser.mouse.back_forward_buttons") { return }
 	t := current_tab(app)
 	if t == nil { return }
-	switch Browser_Command(uintptr(data)) {
+	switch cmd {
 	case .Back: go_history(app, t, -1)
 	case .Forward: go_history(app, t, +1)
 	case .Refresh: reload(app, t)

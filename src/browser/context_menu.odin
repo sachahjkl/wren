@@ -275,15 +275,15 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		sep(&groups)
 		if ui.menu_item("Copy", "Ctrl+C").clicked { copy_selection(app, t) }
 		words := strings.trim_space(r.selection)
-		if ui.menu_item(fmt.tprintf("Search %s for “%s”###ctx_search", search_engine_name(), short(words, 28))).clicked {
-			open_in_new_tab(app, search_url(words), origin = .User)
+		if ui.menu_item(fmt.tprintf("Search %s for “%s”###ctx_search", search_engine_name(app), short(words, 28))).clicked {
+			open_in_new_tab(app, search_url(app, words), origin = .User)
 		}
-		if len(sengines.list) > 1 {
+		if len(app.sengines.list) > 1 {
 			if ui.menu_submenu(fmt.tprintf("%s###ctx_search_with", i18n.tr("Search with"))) {
-				def := search_default_index()
-				for e, i in sengines.list {
+				def := search_default_index(app)
+				for e, i in app.sengines.list {
 					if i == def { continue }
-					if ui.menu_item(fmt.tprintf("%s###ctx_sw_%d", e.name, i)).clicked { open_in_new_tab(app, search_url(words, i), origin = .User) }
+					if ui.menu_item(fmt.tprintf("%s###ctx_sw_%d", e.name, i)).clicked { open_in_new_tab(app, search_url(app, words, i), origin = .User) }
 				}
 			}
 		}
@@ -331,7 +331,7 @@ tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 	ui.menu_separator()
 	if ui.menu_item("Close tab", "Ctrl+W", icon = GLYPH_CLOSE).clicked { tab_close(app, r.tab); return }
 	if ui.menu_item("Close other tabs", enabled = len(wnd.tabs) > 1).clicked { close_other_tabs(app, r.tab); return }
-	if ui.menu_item("Reopen closed tab", "Ctrl+Shift+T", enabled = len(closed_tabs) > 0).clicked { reopen_closed_tab(app) }
+	if ui.menu_item("Reopen closed tab", "Ctrl+Shift+T", enabled = len(app.closed_tabs) > 0).clicked { reopen_closed_tab(app) }
 	ui.menu_separator()
 	menu_command(app, t, "tab.move_to_new_window")
 	if len(app.windows) > 1 {
@@ -367,7 +367,7 @@ address_menu_items :: proc(app: ^App) {
 	if ui.menu_item("Paste", "Ctrl+V", enabled = clip != "").clicked { ui.field_paste(f) }
 	if ui.menu_item("Paste and go", enabled = strings.trim_space(clip) != "").clicked {
 		target := strings.clone(strings.trim_space(clip), context.temp_allocator)
-		if t := current_tab(app); t != nil { navigate(app, t, address_or_search(target), origin = .User) }
+		if t := current_tab(app); t != nil { navigate(app, t, address_or_search(app, target), origin = .User) }
 	}
 	if ui.menu_item("Delete", "Del", enabled = sel).clicked { ui.field_delete(f) }
 	ui.menu_separator()
@@ -375,18 +375,18 @@ address_menu_items :: proc(app: ^App) {
 }
 
 // What the address bar does with words that are not an address: a search.
-address_or_search :: proc(input: string) -> string {
-	target, _ := address_target(input)
+address_or_search :: proc(app: ^App, input: string) -> string {
+	target, _ := address_target(app, input)
 	return target
 }
 
-// What the address bar opens for `input`, and the search it is (engine: an index of sengines.list; words: what is
+// What the address bar opens for `input`, and the search it is (engine: an index of app.sengines.list; words: what is
 // searched) when it is one: a keyword first ("@g cats": "cats" with that engine), else words that are no address
 // (with the default engine).
 Address_Search :: struct { engine: int, words: string }
 
-address_target :: proc(input: string) -> (target: string, search: Maybe(Address_Search)) {
-	return address_target_in(&sengines, ix.search_engine, input)
+address_target :: proc(app: ^App, input: string) -> (target: string, search: Maybe(Address_Search)) {
+	return address_target_in(&app.sengines, ix.search_engine, input)
 }
 
 // The same with the engines `se`, `default_id` naming the default one.
@@ -407,24 +407,22 @@ address_target_in :: proc(se: ^Search_Engines, default_id, input: string) -> (ta
 ////////////////////////////////
 // Tabs
 
-closed_tabs: [dynamic]string
-
-closed_tabs_destroy :: proc() {
-	for s in closed_tabs { delete(s) }
-	delete(closed_tabs)
-	closed_tabs = nil
+closed_tabs_destroy :: proc(app: ^App) {
+	for s in app.closed_tabs { delete(s) }
+	delete(app.closed_tabs)
+	app.closed_tabs = nil
 }
 
 // A tab closing (tab_close): its address can be reopened.
-closed_tabs_push :: proc(address: string) {
+closed_tabs_push :: proc(app: ^App, address: string) {
 	if address == "" || ix.closed_tabs_max <= 0 { return }
-	append(&closed_tabs, strings.clone(address))
-	for len(closed_tabs) > ix.closed_tabs_max { delete(closed_tabs[0]); ordered_remove(&closed_tabs, 0) }
+	append(&app.closed_tabs, strings.clone(address))
+	for len(app.closed_tabs) > ix.closed_tabs_max { delete(app.closed_tabs[0]); ordered_remove(&app.closed_tabs, 0) }
 }
 
 reopen_closed_tab :: proc(app: ^App) {
-	if len(closed_tabs) == 0 { return }
-	address := pop(&closed_tabs)
+	if len(app.closed_tabs) == 0 { return }
+	address := pop(&app.closed_tabs)
 	defer delete(address)
 	open_in_new_tab(app, address, origin = .Replay)
 }

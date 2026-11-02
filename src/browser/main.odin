@@ -8,6 +8,7 @@ package browser
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:sync"
 import "core:time"
 import win "core:sys/windows"
 
@@ -173,8 +174,64 @@ App :: struct {
 	hidden:     bool,                     // windows that are made and never shown (--hidden)
 	frames_at_once: bool,                 // a program in this process drives the browser: a headless window's frames wait for nothing (control.odin)
 	quitting:   bool,                     // the browser ends (a remote Browser.close): every window goes, none is closed on its own first
+
+	// What the shell's subsystems keep for the App, the file that owns each named beside it (docs/architecture.md, Where state lives: what
+	// is one App's is not a global, so that several Apps can live in one process)
+	watches:       [Pref_Watch]int,          // the preference watches of the subsystems that follow their preferences
+	cmds:          Command_Registry,         // commands.odin: the commands of the menu, the palette and the shortcuts
+	ghist:         Global_History,           // global_history.odin: the profile's history
+	favs:          Favicons,                 // favicon.odin: the tabs' icons
+	bf:            Bfcache,                  // bfcache.odin: the back/forward cache of the tabs
+	dls:           Downloads,                // download.odin: the profile's downloads
+	sengines:      Search_Engines,           // search_engines.odin: the profile's search engines
+	hcfg:          History_Settings,         // history_settings.odin
+	upd:           Update_State,             // update_check.odin: the daily check
+	cpal:          Palette_State,            // palette.odin: the command palette
+	stp:           Setup_Dialog,             // setup.odin: the Setup dialog
+	wchrome:       Window_Chrome,            // window_chrome.odin: its preferences, the program's icon, the system menu asked for
+	tsh:           Touch_Shell,              // touch_shell.odin: touch input and its preferences
+	tab_drag:      Tab_Drag,                 // tab_drag.odin: the tab being dragged
+	closed_tabs:   [dynamic]string,          // context_menu.odin: the tabs closed, to reopen (owned)
+	session_last:  string,                   // session.odin: the session written last (nothing is written when it did not change)
+	rest_text:     string,                   // session.odin: a session whose other windows open once the renderer exists
+	trim_state:    Trim_State,               // memory_trim.odin
+	pass_order:    [dynamic]^Browser_Window, // windows.odin: the windows of a pass of the loop, in order
+	pass_causes:   [dynamic]Frame_Causes,    // windows.odin: ... and why each draws
+	wake_target:   rawptr,                   // windows.odin: the window the loop waits on (wake_window; read atomically, from any thread)
+	first_paint_timer: base.Handle,          // first_paint.odin: a frame when a held or blocked first paint ends
+	print_last:    time.Tick,                // print.odin: the last window.print()
+	render_settings: Render_Settings,        // render_settings.odin
+	chrome_cfg:    Chrome_Style_Settings,    // chrome_style.odin
+	ccfg:          Cursor_Settings,          // page_cursor.odin
+	pcs:           Page_Cursor_State,        // page_cursor.odin: its preference watch and log
+	autoscroll_cfg: Autoscroll_Settings_B,   // page_autoscroll.odin
+	smooth_cfg:    Smooth_Settings,          // smooth_scroll.odin
+	net_prefs:     Net_Prefs,                // devtools_net_model.odin
+	vfast:         Video_Fast,               // video_fast_path.odin: what each video drew in the last page frame
+	emoji_applied: string,                   // font_settings.odin: what the font state has: a path (heap), EMOJI_BUILTIN, or "" for none
+	prefs_apply_counts: [Pref_Group]int,     // prefs_apply.odin: how many times each subsystem was configured again
+	gpu_slow:      map[i32]Slow_Step,        // gpu_steps.odin: the slow GPU steps
+	gpu_slow_frames: int,                    // gpu_steps.odin
+	gpu_kept:      [dynamic][3]i32,          // gpu_steps.odin: per recorded frame: kept effect results reused, redrawn, kept anew
+	net_owner:     map[u64]u64,              // devtools_net_model.odin: request id -> id of its tab
+	net_media:     Net_Media,                // devtools_net_media.odin: the media the Network tab plays
+	dl_picking:    bool,                     // download.odin: the folder dialog of the downloads page is open
+	drag_probe_moves: i32,                   // drag_probe.odin: the pointer moves of the frame whose events were just read
+	inject_held:   platform.Mouse_Buttons,   // remote_methods.odin: the buttons a remote client holds
+	cmd_hwnd:      win.HWND,                 // app_commands_windows.odin: the window the system's app commands reach
+	drop_hwnd:     win.HWND,                 // local_paths_windows.odin: the window files are dropped on
+	// (the large ones last: the fields read at every frame stay together)
+	shape_cache:   Shape_Cache,              // chrome_style.odin: the tabs' shapes (Classic_Colors.shapes)
+	license_mem:   License_Memory,           // license_shell.odin: the key, when the profile is not kept
+	frame_log:     Frame_Log,                // frame_log.odin: when the frames were presented (a ring of FRAME_LOG_CAP)
 }
 
+// The preference watches of the App's subsystems (App.watches).
+Pref_Watch :: enum u8 { Render, First_Paint, Planes, Effects, Effects_Font, History_Tree, History, Devtools, Autoscroll, Chrome_Style, Interaction, Smooth_Scroll }
+
+// The App of this thread: the one whose loop it runs (app_start's thread), or whose page thread it is (page_thread.odin). What reaches
+// the App through it is code that does not take the App yet (a callback of the system, a hook of a package): a thread of its own sees nil.
+@(thread_local)
 the_app: ^App
 
 clip_get :: proc() -> string { return platform.get_clipboard(active_window(the_app).win, context.temp_allocator) }
@@ -188,7 +245,7 @@ current_tab :: proc(app: ^App) -> ^Tab {
 ////////////////////////////////
 // Tabs
 
-@(private = "file") tab_ids: u64
+@(private = "file") tab_ids: u64   // (atomic: every App of the process numbers its tabs from it)
 
 tab_open :: proc(app: ^App, address := "", from: ^page.Page = nil, origin := Nav_Origin.Page) -> ^Tab {
 	wnd := active_window(app)
@@ -211,8 +268,7 @@ tab_open_new :: proc(app: ^App) -> ^Tab {
 // A tab at the end of the strip, showing nothing yet.
 tab_new :: proc(app: ^App) -> ^Tab {
 	t := new(Tab)
-	tab_ids += 1
-	t.id = tab_ids
+	t.id = sync.atomic_add(&tab_ids, 1) + 1
 	t.hist = -1
 	t.zoom = 1
 	t.scope = base.scope_make("tab", app.process)
@@ -233,7 +289,7 @@ tab_close_in :: proc(app: ^App, w: ^Browser_Window, index: int) {
 	tabs := window_tabs(app, w)
 	t := tabs[index]
 	if shell_defer({kind = .Close_Tab, tab = t.id}) { return }   // (shell_frames.odin: its page may be the one running)
-	closed_tabs_push(t.url)
+	closed_tabs_push(app, t.url)
 	ordered_remove(tabs, index)
 	tab_groups_prune(tabs[:], &w.groups)   // tab_groups.odin: its group goes with its last tab
 	key := strings.clone(tab_key(t), context.temp_allocator)
@@ -256,7 +312,7 @@ tab_close_tab :: proc(app: ^App, t: ^Tab) {
 
 // Frees a tab taken out of the strip (closed, or at exit): its page and everything the shell keeps for it.
 tab_free :: proc(app: ^App, t: ^Tab) {
-	bfcache_drop_tab(t)
+	bfcache_drop_tab(app, t)
 	tab_nav_destroy(app, t)
 	base.scope_close(t.scope)   // page, instances, DOM, requests, timers: all gone (a held page too)
 	page.navigable_top_free(t.top)   // (the windows holding it see it closed)
@@ -323,7 +379,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	verdict := nav_judge(origin, from != nil ? &from.env : nil, app.loader.profile.settings.file_access, target)
 	if words, searched := home_search_words(target); searched && verdict.acts {
 		// the start page's search box (about:home?q=...): what the address bar does with the same text
-		target = strings.trim_space(words) == "" ? HOME_URL : strings.clone(normalize_address(address_or_search(words)), context.temp_allocator)
+		target = strings.trim_space(words) == "" ? HOME_URL : strings.clone(normalize_address(address_or_search(app, words)), context.temp_allocator)
 		verdict = nav_judge(origin, from != nil ? &from.env : nil, app.loader.profile.settings.file_access, target)
 	}
 	if verdict.refuse != "" { nav_refused(t, from, target, verdict.refuse); return false }
@@ -336,16 +392,16 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if record {
 		cur := page.session_current(&t.session)
 		pushed = cur == nil || cur.url != target   // (visiting the current entry's URL again adds none)
-		history_push(t, target)
+		history_push(app, t, target)
 	}
 	// built-in pages show at once (they paint in their first frame)
 	entry := page.session_current(&t.session)
 	restore_stop(app, t)
-	if restore && entry != nil && hcfg.restore_zoom && entry.persisted.zoom > 0 { t.zoom = entry.persisted.zoom }
+	if restore && entry != nil && app.hcfg.restore_zoom && entry.persisted.zoom > 0 { t.zoom = entry.persisted.zoom }
 	if restore { timing_begin(t, false) }
 	defer if restore { restore_begin(app, t, entry, .New_Document) }
 	license_file := is_license_file_address(target) && verdict.acts   // license_shell.odin
-	if is_builtin_address(target) || license_file { hold_release(t); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
+	if is_builtin_address(target) || license_file { hold_release(app, t); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
 	if target == "about:config" { show_config(app, t); return }
 	if is_history_address(target) { show_history(app, t, target); return }
 	if is_blocker_address(target) { show_blocker(app, t, target); return }   // blocker_dashboard.odin
@@ -356,8 +412,8 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if target == ABOUT_URL { show_about_pages(app, t); return }
 	if is_wren_address(target) { show_wren_page(app, t, target, verdict.acts); return }   // about_wren.odin
 	if license_file { license_open_file(app, t, target); return }
-	if is_cache_address(target) { hold_release(t); bfcache_take(app, t); show_cache_page(app, t, target, verdict.acts); return }   // http_cache_ui.odin
-	if is_sites_address(target) { hold_release(t); bfcache_take(app, t); show_sites_page(app, t, target, verdict.acts); return }   // site_data_ui.odin
+	if is_cache_address(target) { hold_release(app, t); bfcache_take(app, t); show_cache_page(app, t, target, verdict.acts); return }   // http_cache_ui.odin
+	if is_sites_address(target) { hold_release(app, t); bfcache_take(app, t); show_sites_page(app, t, target, verdict.acts); return }   // site_data_ui.odin
 	load := new(Doc_Load)
 	load.tab = t
 	load.started_ns = host.now_ns(&app.loop)
@@ -402,18 +458,18 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	return
 }
 
-history_push :: proc(t: ^Tab, target: string) {
-	page.session_push(&t.session, target, 0, max_entries = the_app.page_settings.web.history_max_entries)
-	sync_history(t)
+history_push :: proc(app: ^App, t: ^Tab, target: string) {
+	page.session_push(&t.session, target, 0, max_entries = app.page_settings.web.history_max_entries)
+	sync_history(app, t)
 }
 
 // The chrome's view of the session history (back / forward buttons).
-sync_history :: proc(t: ^Tab) {
+sync_history :: proc(app: ^App, t: ^Tab) {
 	for h in t.history { delete(h) }
 	clear(&t.history)
 	for e in t.session.entries { append(&t.history, strings.clone(e.url)) }
 	t.hist = t.session.index
-	recovery_touch(the_app)   // (every change of a tab's history: a navigation, back, forward, a redirect)
+	recovery_touch(app)   // (every change of a tab's history: a navigation, back, forward, a redirect)
 }
 
 go_history :: proc(app: ^App, t: ^Tab, delta: int) {
@@ -432,14 +488,14 @@ go_entry :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry) {
 		#partial switch page.history_traverse_to(t.page, e) {
 		case .Canceled: return   // (a navigate listener of the document refused it)
 		case .Same_Document:
-			sync_history(t)
+			sync_history(app, t)
 			same_document_url(app, t, t.page.env.location.href)
 			return
 		}
 	}
 	leave_page(app, t)
 	page.session_goto(&t.session, e)
-	sync_history(t)
+	sync_history(app, t)
 	if bfcache_restore(app, t, e) { return }
 	navigate(app, t, strings.clone(e.url, context.temp_allocator), record = false, restore = true, cache = history_cache_mode(app), origin = .Replay)
 }
@@ -473,7 +529,7 @@ page_navigate :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 		if cur := page.session_current(&t.session); cur != nil { page.persisted_clear(&cur.persisted) }   // another document in the entry
 		page.session_replace(&t.session, v.address)
 		if req.has_nav_state { page.session_set_nav_state(&t.session, req.nav_state, true) }
-		sync_history(t)
+		sync_history(app, t)
 		navigate(app, t, strings.clone(req.url, context.temp_allocator), p, record = false)
 	case .Reload:
 		if req.has_nav_state { page.session_set_nav_state(&t.session, req.nav_state, true) }
@@ -481,7 +537,7 @@ page_navigate :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 	case .Traverse:
 		go_history(app, t, req.delta)
 	case .Url_Changed:
-		sync_history(t)
+		sync_history(app, t)
 		same_document_url(app, t, req.url)
 		global_history_visit(app, t, req.url, t.title)
 	}
@@ -523,7 +579,7 @@ attach_page :: proc(app: ^App, t: ^Tab, p: ^page.Page) {
 	page.navigable_attach(t.top, p)
 	page.set_embedder(p, {navigate = page_navigate, user = t, session = &t.session, tab_key = tab_key(t), storage = &app.storage, print = page_print, leaving = page_entry_leaving, entered = page_entry_entered,
 		open = page_open_window, close = page_close_window})
-	if cur := page.session_current(&t.session); cur != nil { bfcache_forget(t, cur.id) }   // a new document for the entry: an older one cached for it is stale
+	if cur := page.session_current(&t.session); cur != nil { bfcache_forget(app, t, cur.id) }   // a new document for the entry: an older one cached for it is stale
 	attach_js_layout(app, t, p)   // geometry for scripts (js_layout_shell.odin)
 }
 
@@ -618,7 +674,7 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		// the document exists from here on, with the origin of its *final* URL
 		if cc, ok := http.get_header(r.headers, "cache-control"); ok && strings.contains(strings.to_lower(cc, context.temp_allocator), "no-store") { t.nav_state.no_store = true }
 		// a redirect: the entry is the final address
-		if cur := page.session_current(&t.session); cur != nil && !load.view_source && cur.url != r.url { page.session_replace(&t.session, r.url, set_state = false); sync_history(t) }
+		if cur := page.session_current(&t.session); cur != nil && !load.view_source && cur.url != r.url { page.session_replace(&t.session, r.url, set_state = false); sync_history(app, t) }
 		load.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, r.url, console_sink, t)
 		if load.cache == .Reload { load.page.env.cache_override = .Reload }   // Ctrl+F5: everything it loads, from the network
 		load.response_ns = host.now_ns(&app.loop)
@@ -786,7 +842,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		if t != nil { loading_bar(app, t, dc, b.rect) }   // (the full frames draw it: it would blink between the two kinds)
 		return
 	}
-	for other in wnd.tabs { if other != t { hold_release(other) } }   // a frame held in a tab not shown is of no use
+	for other in wnd.tabs { if other != t { hold_release(app, other) } }   // a frame held in a tab not shown is of no use
 	if t == nil || t.kind != .Web {
 		draw.rect(dc, b.rect, to_draw(expected_canvas(app)))
 		return
@@ -803,25 +859,25 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 
 // HTML "scroll to the fragment": when the document URL changes (load, link to #id, location.hash, history), the view
 // goes to the element whose id (or <a name>) is the fragment; "top" or an empty fragment goes to the top.
-scroll_to_fragment :: proc(t: ^Tab, viewport: draw.Vec2) {
+scroll_to_fragment :: proc(app: ^App, t: ^Tab, viewport: draw.Vec2) {
 	href := t.page.env.location.href
 	if href == t.fragment_seen || !t.layout.valid { return }
 	// within the same document the page's scroll-behavior: smooth animates it (smooth_scroll.odin); a new one jumps
-	smooth := t.fragment_seen != "" && css_smooth(the_app, t)
+	smooth := t.fragment_seen != "" && css_smooth(app, t)
 	delete(t.fragment_seen)
 	t.fragment_seen = strings.clone(href)
 	loc := t.page.env.location
 	if !loc.has_fragment { return }
 	frag := loc.fragment
 	frag = percent_decode_bytes(frag)   // HTML: the decoded fragment is tried as an id
-	if frag == "" || strings.equal_fold(frag, "top") { scroll_document_to(the_app, t, {t.layout.doc_scroll_x, 0}, smooth); return }
+	if frag == "" || strings.equal_fold(frag, "top") { scroll_document_to(app, t, {t.layout.doc_scroll_x, 0}, smooth); return }
 	target := dom.find_by_id(t.page.doc, frag)
 	if target == base.NIL_HANDLE { target = find_named_anchor(t.page.doc, frag) }
 	if target == base.NIL_HANDLE { return }
 	if r, ok := lay.box_of(&t.layout, target, viewport, t.scroll); ok && !r.fixed {
 		lo, hi := lay.doc_scroll_x_range(&t.layout, viewport.x)
 		x := clamp(scroll_nearest(r.border.min.x, r.border.max.x, viewport.x, t.layout.doc_scroll_x), lo, hi)
-		scroll_document_to(the_app, t, {x, max(r.border.min.y, 0)}, smooth)
+		scroll_document_to(app, t, {x, max(r.border.min.y, 0)}, smooth)
 	}
 }
 
@@ -866,7 +922,7 @@ find_named_anchor :: proc(d: ^dom.Document, name: string) -> base.Handle {
 page_view :: proc(app: ^App, t: ^Tab) {
 	ui.next({width = ui.fill(), height = ui.fill()})
 	if t != nil && t.kind == .Config {
-		config_page(&app.config_view, &app.prefs)
+		config_page(app, &app.config_view, &app.prefs)
 	} else if t != nil && t.kind == .History {
 		history_page(app, t)   // history_ui.odin
 	} else if t != nil && t.kind == .Blocker {
@@ -934,7 +990,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 			}
 			elem_fs := fullscreen_shell_active(app.active)   // a page's element in full screen: the page has the whole window
 			if side {
-				pos := favs.cfg.position
+				pos := app.favs.cfg.position
 				ui.next({width = ui.fill(), height = ui.fill()})
 				if ui.row(.Start, {}, "###sidebar_row") {
 					if pos == .Left { if tab_sidebar(app, pos) { return } }
@@ -1147,7 +1203,7 @@ apply_prefs :: proc(app: ^App, changed := "") {
 	fetch.settings_destroy(&app.profile.settings)
 	app.profile.settings = fetch.settings_from_prefs(&app.prefs)
 	app.profile.jar.settings = cookies.settings_from_prefs(&app.prefs)
-	if .Http_Cache in groups { http_cache_apply(app); prefs_apply_counts[.Http_Cache] += 1 }
+	if .Http_Cache in groups { http_cache_apply(app); app.prefs_apply_counts[.Http_Cache] += 1 }
 	if .Touch in groups { touch_devices_apply(app) }
 
 	page.settings_destroy(&app.page_settings)
@@ -1158,9 +1214,9 @@ apply_prefs :: proc(app: ^App, changed := "") {
 	delete(app.cfg.homepage)
 	delete(app.cfg.ui_theme)
 	app.cfg = settings_from_prefs(&app.prefs)
-	memory_trim_settings(&app.prefs)   // memory_trim.odin
+	memory_trim_settings(app, &app.prefs)   // memory_trim.odin
 	app.show_console = app.cfg.show_console
-	if .Downloads in groups { downloads_apply(app); prefs_apply_counts[.Downloads] += 1 }
+	if .Downloads in groups { downloads_apply(app); app.prefs_apply_counts[.Downloads] += 1 }
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	arm_autosave(app)
 	request_frames(app, 3)
@@ -1271,7 +1327,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	// a frame on an errand, or for a timed wake of the toolkit (a caret of the interface, a tooltip), is no activity: the browser stays at rest
 	// (the memory given back, the status bar's numbers at 0)
 	if why != {.Asked} { wnd.errand = .None }
-	if wnd.errand == .None && why != {.Interface_Wake} { memory_trim_active() } else { hud.settle_skip = true }   // memory_trim.odin; hud.odin: no sample
+	if wnd.errand == .None && why != {.Interface_Wake} { memory_trim_active(app) } else { hud.settle_skip = true }   // memory_trim.odin; hud.odin: no sample
 	forms_view(app).caret_painted = {}
 	prof_begin(.Input)
 	page_cursor_events(app, events)   // page_cursor.odin: a press on the page keeps its cursor
@@ -1369,7 +1425,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	render.frame_end(&app.r, !pacer_at_once(app))   // a resize step, the frames right after it, or an input frame are shown at once
 	wnd.presented = true
 	prof_end(.Present)
-	frame_log_presented(pacer_at_once(app))
+	frame_log_presented(app, pacer_at_once(app))
 	pacer_end_frame(app)
 	{
 		items, nodes := 0, 0
@@ -1455,7 +1511,7 @@ app_start :: proc(args: []string) -> ^App {
 	if policy_file != "" { config.load_file(&app.prefs, policy_file, .Policy) }
 	register_all_prefs(&app.prefs)
 	app.cfg = settings_from_prefs(&app.prefs)
-	memory_trim_settings(&app.prefs)   // memory_trim.odin
+	memory_trim_settings(app, &app.prefs)   // memory_trim.odin
 	prof_mark(.Prefs)
 	if cli_bad != "" { desktop.console_write(fmt.tprintf("--desktop-integration: unknown mode %q (install, remove, status or uninstall)\n", cli_bad)); os.exit(2) }
 	// `ctl` as an address is nearly always `wren ctl ...` meant for the remote control client that did not run as such (an option before it:
@@ -1499,7 +1555,7 @@ app_start :: proc(args: []string) -> ^App {
 	prof_mark(.Window)
 
 	host.phase("loop, network, cache, blocker")
-	host.loop_init(&app.loop, wake_window, nil)
+	host.loop_init(&app.loop, wake_window, app)   // (any thread wakes it: the App is its user)
 	instance_begin(app)   // instance_shell.odin: the window that takes the second starts' addresses
 	crashtrace.begin_session()   // (a session that ended without a report: crashes\unclean exit <date>.txt at this start)
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
@@ -1605,7 +1661,7 @@ app_start :: proc(args: []string) -> ^App {
 	shell_frames_init(app)   // shell_frames.odin: chrome frames while a page holds the thread
 	smooth_init(app)
 	autoscroll_init(app)   // page_autoscroll.odin (syncs every window's toolkit regions)
-	autoscroll_toolkit_setup(active_window(app).ui)
+	autoscroll_toolkit_setup(app, active_window(app).ui)
 	page_cursor_init(app)
 	window_chrome_init(app)
 	chrome_style_init(app)   // chrome_style.odin
@@ -1708,7 +1764,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	favicons_destroy(app)
 	host.shutdown_step("images_shell_destroy")
 	images_shell_destroy(app)
-	canvas_shell_destroy()
+	canvas_shell_destroy(app)
 	host.shutdown_step("page.storage_manager_destroy")
 	page.storage_manager_destroy(&app.storage)   // writes what is not saved yet
 	host.shutdown_step("page.shutdown_threads")
@@ -1736,7 +1792,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("host.blocking_destroy")
 	host.blocking_destroy(&app.blocking)
 	host.shutdown_step("downloads_shutdown")
-	downloads_shutdown()   // (no write or dialog of theirs is running any more)
+	downloads_shutdown(app)   // (no write or dialog of theirs is running any more)
 	host.shutdown_step("net.client_destroy")
 	net.client_destroy(&app.client)
 	host.shutdown_step("fetch.profile_destroy")
@@ -1754,7 +1810,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("drop_files_destroy")
 	drop_files_destroy(app)
 	host.shutdown_step("app_commands_destroy")
-	app_commands_destroy()
+	app_commands_destroy(app)
 	host.shutdown_step("window_chrome_destroy")
 	window_chrome_destroy(app)
 	chrome_style_destroy(app)
@@ -1793,10 +1849,10 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("console_eval_destroy")
 	console_eval_destroy()
 	host.shutdown_step("session_destroy")
-	session_destroy()
+	session_destroy(app)
 	recovery_destroy()
 	host.shutdown_step("palette_destroy")
-	palette_destroy()   // palette.odin (and the command registry)
+	palette_destroy(app)   // palette.odin (and the command registry)
 	host.shutdown_step("ui.destroy")
 	windows_destroy_ui(app)
 	host.shutdown_step("ui.theme_destroy")

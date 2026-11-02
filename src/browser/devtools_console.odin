@@ -741,7 +741,7 @@ console_toolbar :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 		level_chip(app, "###dt_lv_i", .Info, infos, 2, dtc.accent, "Info")
 		level_chip(app, "###dt_lv_v", .Verbose, t.conlog.counts[.Debug], 1, dtc.faint, "Verbose")
 		// the levels menu
-		lkey := dt_menu_btn("###dt_con_levels", .None, levels_label(), tooltip = "Log levels")
+		lkey := dt_menu_btn("###dt_con_levels", .None, levels_label(app), tooltip = "Log levels")
 		if ui.ctx_menu(lkey, dt_px(220)) {
 			ui.menu_heading("Levels")
 			for lv in ([?]struct{ bit: u32, name: string, kind: Con_Kind }{{1, "Verbose", .Debug}, {2, "Info", .Log}, {4, "Warnings", .Warn}, {8, "Errors", .Error}}) {
@@ -764,7 +764,7 @@ console_toolbar :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 }
 
 @(private = "file")
-levels_label :: proc() -> string {
+levels_label :: proc(app: ^App) -> string {
 	switch con_prefs.levels {
 	case 0b1110: return "Default levels"
 	case 0b1111: return "All levels"

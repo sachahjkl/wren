@@ -68,7 +68,7 @@ tabs_position_of :: proc(s: string) -> Tabs_Position {
 
 // The tabs are in a sidebar now (not in full screen: its bars bring the row of tabs over the page).
 tabs_in_sidebar :: proc(app: ^App) -> bool {
-	return favs.cfg.position != .Top && !platform.is_fullscreen(active_window(app).win)
+	return app.favs.cfg.position != .Top && !platform.is_fullscreen(active_window(app).win)
 }
 
 // A window's tab sidebar from frame to frame (Window_Own.sidebar).
@@ -265,12 +265,12 @@ titlebar_wants :: proc(app: ^App, chips_w: f32) -> (want: [Titlebar_Part]f32, dr
 		.Lead = math.round(10 * dpi) + math.round(16 * dpi) + math.round(6 * dpi),   // (as in the row of tabs)
 		.Back = nav, .Forward = nav, .Reload = nav,
 		.Gap_Before = em * 0.4,
-		.Field = favs.cfg.side_address_min_em * em,
+		.Field = app.favs.cfg.side_address_min_em * em,
 		.Chips = chips_w,
 		.Gap_After = em * 0.4,
-		.Shield = (bl.started ? em * 2.3 + em * 0.2 : 0) + (downloads_button_visible() ? em * 2.3 + em * 0.2 : 0),   // (the downloads button and blocker_button, and the gap before each)
+		.Shield = (bl.started ? em * 2.3 + em * 0.2 : 0) + (downloads_button_visible(app) ? em * 2.3 + em * 0.2 : 0),   // (the downloads button and blocker_button, and the gap before each)
 		.Menu = em * 2.3,
-		.Drag = max(wchrome.cfg.min_drag_em * em, em * 0.5),
+		.Drag = max(app.wchrome.cfg.min_drag_em * em, em * 0.5),
 		.Buttons = 3 * math.round(ui.CAPTION_BUTTON_WIDTH * dpi),
 	}
 	return want, em * 0.5
@@ -308,7 +308,7 @@ sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
 		case .Field: address_bar(app, t)
 		case .Chips: address_chips(app, t)
 		case .Shield:
-			if downloads_button_visible() { downloads_button(app, t); ui.spacer(ui.px(ui.font_size() * 0.2)) }
+			if downloads_button_visible(app) { downloads_button(app, t); ui.spacer(ui.px(ui.font_size() * 0.2)) }
 			if bl.started {
 				blocker_button(app, t)
 				ui.spacer(ui.px(ui.font_size() * 0.2))
@@ -318,7 +318,7 @@ sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
 		case .Gap_Before, .Gap_After, .Drag:   // (the window's)
 		}
 	}, tb)
-	if classic_on() { bar.custom, bar.custom_user = titlebar_toolbar_draw, classic_colors_frame(app) }
+	if classic_on(app) { bar.custom, bar.custom_user = titlebar_toolbar_draw, classic_colors_frame(app) }
 }
 
 // The sidebar: header, list of tabs and, over its inner edge, the width handle. Returns true when a tab closed (the build
@@ -331,25 +331,25 @@ tab_sidebar :: proc(app: ^App, pos: Tabs_Position) -> (closed: bool) {
 	if own.sidebar.resizing && own.sidebar.handle != 0 && ui.active_key() == own.sidebar.handle {
 		own.sidebar.live_w = sidebar_drag_width(own.sidebar.grab_w, own.sidebar.press_x, ui.mouse_pos().x, dpi, pos)
 	}
-	width_css := own.sidebar.live_w > 0 ? own.sidebar.live_w : favs.cfg.side_w
+	width_css := own.sidebar.live_w > 0 ? own.sidebar.live_w : app.favs.cfg.side_w
 	win_w := f32(active_window(app).win.size.x)
-	closed_e := sidebar_extent(win_w, width_css, dpi, true, favs.cfg.side_collapsed_w)
-	opened_e := sidebar_extent(win_w, width_css, dpi, false, favs.cfg.side_collapsed_w)
+	closed_e := sidebar_extent(win_w, width_css, dpi, true, app.favs.cfg.side_collapsed_w)
+	opened_e := sidebar_extent(win_w, width_css, dpi, false, app.favs.cfg.side_collapsed_w)
 	// 0: icons only, 1: the titles; eased between when the preference changes (the toolkit's animation: it asks for the
 	// frames while it moves, and none after), and done once the width is within half a pixel of its end (the ease's tail
 	// would ask for frames that change nothing)
 	akey := ui.key_from_string(0, "###side_open")
-	target: f32 = favs.cfg.side_collapsed ? 0 : 1
-	open := ui.anim(akey, target, sidebar_open_rate(favs.cfg.side_anim_ms))
+	target: f32 = app.favs.cfg.side_collapsed ? 0 : 1
+	open := ui.anim(akey, target, sidebar_open_rate(app.favs.cfg.side_anim_ms))
 	if abs(open - target) * abs(opened_e - closed_e) < 0.5 { open = ui.anim(akey, target, sidebar_open_rate(0)) }
 	extent := sidebar_open_extent(closed_e, opened_e, open)
 	ui.reorder_frame(&own.strip.drag)   // the button went up (wherever): no drag
-	favicon_frame()
+	favicon_frame(app)
 
 	// classic (chrome_style.odin): the panel is the tab bar, its current tab flows into the page; the toolbar's line along
 	// its top is whole (no tab of the top row interrupts it)
 	cc: ^Classic_Colors
-	if classic_on() {
+	if classic_on(app) {
 		cc = classic_colors_frame(app)
 		cur_gap.valid = false
 	}
@@ -400,7 +400,7 @@ sidebar_header :: proc(app: ^App, pos: Tabs_Position, open, extent: f32) {
 	bw := math.round(em * 2.4)
 	bh := ui.dense(em * 2.2)
 	inset := math.round(em * 0.35)
-	collapsed := favs.cfg.side_collapsed
+	collapsed := app.favs.cfg.side_collapsed
 	l := side_header_layout(extent, bw, bh, inset, open)
 	toggle := proc(app: ^App, pos: Tabs_Position, collapsed: bool, bw, bh, em: f32, at: [2]f32) {
 		ui.next({fixed_x = at.x, fixed_y = at.y, width = ui.px(bw), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
@@ -467,12 +467,12 @@ sidebar_handle :: proc(app: ^App, pos: Tabs_Position, bar: ^ui.Box, extent, dpi:
 	ui.next({fixed_x = pos == .Left ? extent - grab : 0, fixed_y = 0, width = ui.px(grab), height = ui.pct(1), cursor = .Resize_H})
 	hb := ui.build_box({.Clickable}, "###side_handle")
 	ui.a11y_set(hb, {role = .Splitter, name = i18n.tr("Sidebar width"), orientation = .Y,
-		numeric = f64(own.sidebar.live_w > 0 ? own.sidebar.live_w : favs.cfg.side_w), min = f64(SIDEBAR_MIN_CSS), max = f64(SIDEBAR_MAX_CSS)})
+		numeric = f64(own.sidebar.live_w > 0 ? own.sidebar.live_w : app.favs.cfg.side_w), min = f64(SIDEBAR_MIN_CSS), max = f64(SIDEBAR_MAX_CSS)})
 	own.sidebar.handle = hb.key
 	sig := ui.signal(hb)
 	if sig.pressed {
 		own.sidebar.resizing = true
-		own.sidebar.grab_w = own.sidebar.live_w > 0 ? own.sidebar.live_w : favs.cfg.side_w
+		own.sidebar.grab_w = own.sidebar.live_w > 0 ? own.sidebar.live_w : app.favs.cfg.side_w
 		own.sidebar.press_x = ui.mouse_pos().x - sig.drag_delta.x
 	}
 	if sig.dragging && own.sidebar.resizing {
@@ -517,5 +517,5 @@ tabs_set_position :: proc(app: ^App, pos: Tabs_Position) {
 }
 
 tabs_toggle_collapsed :: proc(app: ^App) {
-	set_pref_bool(app, "browser.tabs.sidebar_collapsed", !favs.cfg.side_collapsed)
+	set_pref_bool(app, "browser.tabs.sidebar_collapsed", !app.favs.cfg.side_collapsed)
 }

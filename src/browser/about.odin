@@ -178,14 +178,14 @@ HOME_TEMPLATE :: `<!doctype html>
 </html>
 `
 
-home_html :: proc() -> string {
+home_html :: proc(app: ^App) -> string {
 	s, _ := strings.replace_all(HOME_TEMPLATE, "$TAGLINE$", APP_TAGLINE, context.temp_allocator)
 	s, _ = strings.replace_all(s, "$NAME$", APP_NAME, context.temp_allocator)
 	s, _ = strings.replace_all(s, "$VERSION$", APP_VERSION, context.temp_allocator)
 	s, _ = strings.replace_all(s, "$ACCENT$", IS_DEV_BUILD ? "#7fb2ff" : "#ffb84d", context.temp_allocator)
 	s, _ = strings.replace_all(s, "$ACCENT_LIGHT$", IS_DEV_BUILD ? "#1d5aa8" : "#d98200", context.temp_allocator)
 	s, _ = strings.replace_all(s, "$DEV$", dev_badge_html(), context.temp_allocator)
-	s, _ = strings.replace_all(s, "$SEARCH$", escape_html(fmt.tprintf("Search with %s or type an address", search_engine_name())), context.temp_allocator)
+	s, _ = strings.replace_all(s, "$SEARCH$", escape_html(fmt.tprintf("Search with %s or type an address", search_engine_name(app))), context.temp_allocator)
 	s, _ = strings.replace_all(s, "$FROMENT_URL$", FROMENT_URL, context.temp_allocator)
 	s, _ = strings.replace_all(s, "$FROMENT_LOGO$", png_url(FROMENT_LOGO_PNG), context.temp_allocator)
 	s, _ = strings.replace_all(s, "$LOGO$", app_logo_url(), context.temp_allocator)   // last: the longest
@@ -224,7 +224,7 @@ show_home :: proc(app: ^App, t: ^Tab, want_next := false) {
 	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0
 	console_reset(t)
-	page.load_html(t.page, transmute([]byte)home_html())
+	page.load_html(t.page, transmute([]byte)home_html(app))
 	delete(t.url); t.url = strings.clone(HOME_URL)
 	delete(t.title); t.title = strings.clone("New tab")
 	set_status(t, fmt.tprintf("%s %s", APP_NAME, APP_VERSION))

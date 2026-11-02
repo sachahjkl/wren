@@ -138,6 +138,7 @@ tab_icon_destroy :: proc(i: ^Tab_Icon) {
 Favicon_State :: enum u8 { Loading, Decoding, Ready, Failed }
 
 Favicon :: struct {
+	app:       ^App,            // whose cache it is (what its request and decoding report to)
 	url:       string,          // owned (the cache's key)
 	state:     Favicon_State,
 	task:      base.Handle,     // the request while Loading
@@ -157,31 +158,28 @@ Favicons :: struct {
 	entries:  map[string]^Favicon,
 	port:     images.Port_Id,
 	frame:    u64,
-	app:      ^App,
 	timer:    base.Handle,   // the title refresh's deadline
 	spin:     base.Handle,   // the spinner's next turn
 }
 
-favs: Favicons
-
 favicons_init :: proc(app: ^App) {
-	favs.app = app
-	favs.cfg = tab_settings_from_prefs(&app.prefs)
-	favs.entries = make(map[string]^Favicon)
-	favs.watch = config.watch(&app.prefs, "browser.tabs.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		favs.cfg = tab_settings_from_prefs(p)
-		request_frames((^App)(user), 2)
+	app.favs.cfg = tab_settings_from_prefs(&app.prefs)
+	app.favs.entries = make(map[string]^Favicon)
+	app.favs.watch = config.watch(&app.prefs, "browser.tabs.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		app := (^App)(user)
+		app.favs.cfg = tab_settings_from_prefs(p)
+		request_frames(app, 2)
 	}, app)
 }
 
 favicons_destroy :: proc(app: ^App) {
-	config.unwatch(&app.prefs, favs.watch)
-	if favs.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, favs.timer) }
-	if favs.spin != base.NIL_HANDLE { host.clear_timer(&app.loop, favs.spin) }
-	if favs.port != 0 { images.port_close(favs.port) }   // jobs not delivered are freed by the image threads
-	for _, e in favs.entries { favicon_free(app, e) }
-	delete(favs.entries)
-	favs = {}
+	config.unwatch(&app.prefs, app.favs.watch)
+	if app.favs.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.favs.timer) }
+	if app.favs.spin != base.NIL_HANDLE { host.clear_timer(&app.loop, app.favs.spin) }
+	if app.favs.port != 0 { images.port_close(app.favs.port) }   // jobs not delivered are freed by the image threads
+	for _, e in app.favs.entries { favicon_free(app, e) }
+	delete(app.favs.entries)
+	app.favs = {}
 }
 
 @(private = "file")
@@ -317,7 +315,7 @@ icon_links :: proc(p: ^page.Page) -> []Icon_Link {
 
 // The icon URL of `t`'s page ("" = none).
 @(private = "file")
-icon_url_of :: proc(t: ^Tab, want: int) -> string {
+icon_url_of :: proc(app: ^App, t: ^Tab, want: int) -> string {
 	p := t.page
 	scheme := p.env.location.scheme
 	if scheme == "about" || scheme == "file" || scheme == "data" || strings.has_prefix(t.url, VIEW_SOURCE) { return "" }
@@ -327,7 +325,7 @@ icon_url_of :: proc(t: ^Tab, want: int) -> string {
 			return u.href
 		}
 	}
-	if favs.cfg.fallback_ico && (scheme == "http" || scheme == "https") {
+	if app.favs.cfg.fallback_ico && (scheme == "http" || scheme == "https") {
 		return strings.concatenate({url.origin_serialize(p.env.origin, context.temp_allocator), "/favicon.ico"}, context.temp_allocator)
 	}
 	return ""
@@ -348,8 +346,8 @@ tab_refresh :: proc(app: ^App, t: ^Tab, icon_px: int) {
 	same := rawptr(p) == t.icon.page && rawptr(p.doc) == t.icon.doc
 	if same && p.doc.mutations == t.icon.mutations && loaded == t.icon.loaded { return }
 	now := f64(host.now_ns(&app.loop)) / 1e6
-	if same && now - t.icon.read_ms < favs.cfg.title_refresh_ms {
-		title_wake(app, t.icon.read_ms + favs.cfg.title_refresh_ms - now)
+	if same && now - t.icon.read_ms < app.favs.cfg.title_refresh_ms {
+		title_wake(app, t.icon.read_ms + app.favs.cfg.title_refresh_ms - now)
 		return
 	}
 	t.icon.page, t.icon.doc, t.icon.mutations, t.icon.read_ms, t.icon.loaded = p, p.doc, p.doc.mutations, now, loaded
@@ -359,7 +357,7 @@ tab_refresh :: proc(app: ^App, t: ^Tab, icon_px: int) {
 	if title == "" { title = default_tab_title(t.url) }
 	if title != t.title { delete(t.title); t.title = strings.clone(title) }
 
-	icon := favs.cfg.favicons ? icon_url_of(t, icon_px) : ""
+	icon := app.favs.cfg.favicons ? icon_url_of(app, t, icon_px) : ""
 	if icon != t.icon.url {
 		delete(t.icon.url)
 		t.icon.url = strings.clone(icon)
@@ -370,9 +368,10 @@ tab_refresh :: proc(app: ^App, t: ^Tab, icon_px: int) {
 
 @(private = "file")
 title_wake :: proc(app: ^App, ms: f64) {
-	if favs.timer != base.NIL_HANDLE { return }
-	favs.timer = host.set_timer(&app.loop, max(ms, 1), 0, proc(data: rawptr) {
-		favs.timer = base.NIL_HANDLE
+	if app.favs.timer != base.NIL_HANDLE { return }
+	app.favs.timer = host.set_timer(&app.loop, max(ms, 1), 0, proc(data: rawptr) {
+		app := (^App)(data)
+		app.favs.timer = base.NIL_HANDLE
 		a := (^App)(data)
 		request_frames(a, 1)
 	}, app)
@@ -380,23 +379,24 @@ title_wake :: proc(app: ^App, ms: f64) {
 
 // The loading indicators turn: one wake per turn while a tab loads, none once it is over.
 spinner_wake :: proc(app: ^App) {
-	if favs.spin != base.NIL_HANDLE { return }
-	favs.spin = host.set_timer(&app.loop, f64(1000 / max(favs.cfg.spinner_fps, 1)), 0, proc(data: rawptr) {
-		favs.spin = base.NIL_HANDLE
+	if app.favs.spin != base.NIL_HANDLE { return }
+	app.favs.spin = host.set_timer(&app.loop, f64(1000 / max(app.favs.cfg.spinner_fps, 1)), 0, proc(data: rawptr) {
+		app := (^App)(data)
+		app.favs.spin = base.NIL_HANDLE
 		a := (^App)(data)
 		request_frames(a, 1)
 	}, app)
 }
 
 // The icon at `address` if it is ready to draw (marks it used).
-favicon_texture :: proc(address: string) -> (tex: render.Texture, ok: bool) {
-	e := favs.entries[address]
+favicon_texture :: proc(app: ^App, address: string) -> (tex: render.Texture, ok: bool) {
+	e := app.favs.entries[address]
 	if e == nil || e.state != .Ready { return {}, false }
-	e.used = favs.frame
+	e.used = app.favs.frame
 	// a window's scale grew past what it was decoded for (it moved to another monitor): decoded again at that size, the picture it
 	// has drawn meanwhile
-	if e.job == 0 && e.blob != nil && favs.app != nil && favs.port != 0 {
-		if px := favicon_decode_px(favs.app); px > e.px { favicon_decode(favs.app, e, px) }
+	if e.job == 0 && e.blob != nil && app.favs.port != 0 {
+		if px := favicon_decode_px(app); px > e.px { favicon_decode(app, e, px) }
 	}
 	return e.tex, true
 }
@@ -404,36 +404,37 @@ favicon_texture :: proc(address: string) -> (tex: render.Texture, ok: bool) {
 @(private = "file")
 favicon_decode :: proc(app: ^App, e: ^Favicon, px: int) {
 	lim := app.page_settings.images.limits
-	lim.max_dimension = min(lim.max_dimension, favs.cfg.icon_max_dim)
-	lim.max_pixels = min(lim.max_pixels, i64(favs.cfg.icon_max_dim) * i64(favs.cfg.icon_max_dim))
-	lim.max_encoded_bytes = min(lim.max_encoded_bytes, favs.cfg.icon_max_bytes)
+	lim.max_dimension = min(lim.max_dimension, app.favs.cfg.icon_max_dim)
+	lim.max_pixels = min(lim.max_pixels, i64(app.favs.cfg.icon_max_dim) * i64(app.favs.cfg.icon_max_dim))
+	lim.max_encoded_bytes = min(lim.max_encoded_bytes, app.favs.cfg.icon_max_bytes)
 	opts := images.Decode_Options{limits = lim, target_w = px, target_h = px, downscale_below = 0.99, first_frame_only = true}
 	e.px = px
-	e.job = images.submit(favs.port, images.job_make(.Decode, e.blob, opts, user = e))
+	e.job = images.submit(app.favs.port, images.job_make(.Decode, e.blob, opts, user = e))
 }
 
-favicon_frame :: proc() { favs.frame += 1 }
+favicon_frame :: proc(app: ^App) { app.favs.frame += 1 }
 
 @(private = "file")
 favicon_request :: proc(app: ^App, t: ^Tab, address: string) {
-	if address in favs.entries { return }
+	if address in app.favs.entries { return }
 	favicon_evict(app)
 	e := new(Favicon)
+	e.app = app
 	e.url = strings.clone(address)
-	e.used = favs.frame
-	favs.entries[e.url] = e
+	e.used = app.favs.frame
+	app.favs.entries[e.url] = e
 	e.scope = t.nav
 	e.task = fetch.start(&app.loader, {
 		request = {
 			url = address, mode = .No_Cors, credentials = .Include, redirect = .Follow, destination = .Image,
-			initiator = &t.page.env, max_body = favs.cfg.icon_max_bytes,
+			initiator = &t.page.env, max_body = app.favs.cfg.icon_max_bytes,
 		},
 		on_event = favicon_event, user = e, scope = t.nav, collect = true,
 	})
 	// the page going away cancels the request silently: the entry goes too (another page will ask again)
 	e.cleanup = base.on_close(t.nav, proc(data: rawptr) {
 		f := (^Favicon)(data)
-		delete_key(&favs.entries, f.url)
+		delete_key(&f.app.favs.entries, f.url)
 		delete(f.url)
 		free(f)
 	}, e)
@@ -442,7 +443,7 @@ favicon_request :: proc(app: ^App, t: ^Tab, address: string) {
 @(private = "file")
 favicon_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	e := (^Favicon)(user)
-	app := favs.app
+	app := e.app
 	#partial switch ev.kind {
 	case .Done:
 		base.forget_cleanup(e.scope, e.cleanup)
@@ -454,8 +455,8 @@ favicon_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			if n < 0 { n = clamp(host.processor_count() / 2, 1, 4) }
 			images.decoder_start(n, s.decode_stack_bytes > 0 ? s.decode_stack_bytes : images.DECODER_STACK_DEFAULT, s.decode_idle_ms)
 		}
-		if favs.port == 0 { favs.port = images.port_open(&app.loop, favicon_decoded, nil) }
-		if favs.port == 0 { e.state = .Failed; return }
+		if app.favs.port == 0 { app.favs.port = images.port_open(&app.loop, favicon_decoded, nil) }
+		if app.favs.port == 0 { e.state = .Failed; return }
 		bytes := make([]byte, len(ev.data))
 		copy(bytes, ev.data)
 		e.blob = images.blob_make(bytes)   // (kept: decoded again for a window of a larger scale)
@@ -473,7 +474,7 @@ favicon_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 favicon_decoded :: proc(user: rawptr, j: ^images.Job) {
 	defer images.job_free(j)
 	e := (^Favicon)(j.user)
-	app := favs.app
+	app := e.app
 	e.job = 0
 	img := j.image
 	if j.err != .None || img == nil || len(img.frames) == 0 || img.width <= 0 || img.height <= 0 {
@@ -491,14 +492,14 @@ favicon_decoded :: proc(user: rawptr, j: ^images.Job) {
 // Room for one more entry: the least recently drawn ones go (never one still loading or decoding).
 @(private = "file")
 favicon_evict :: proc(app: ^App) {
-	for len(favs.entries) >= favs.cfg.icon_cache {
+	for len(app.favs.entries) >= app.favs.cfg.icon_cache {
 		oldest: ^Favicon
-		for _, e in favs.entries {
+		for _, e in app.favs.entries {
 			if e.state == .Loading || e.state == .Decoding { continue }
 			if oldest == nil || e.used < oldest.used { oldest = e }
 		}
 		if oldest == nil { return }
-		delete_key(&favs.entries, oldest.url)
+		delete_key(&app.favs.entries, oldest.url)
 		favicon_free(app, oldest)
 	}
 }

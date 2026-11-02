@@ -77,7 +77,7 @@ requests_are_logged_in_the_tab_they_run_in :: proc(t: ^testing.T) {
 	tab := new(Tab)
 	tab.scope = base.scope_make("tab")
 	append(&app.bare.tabs, tab)
-	defer { delete(app.bare.tabs); net_log_destroy(&tab.net); base.scope_close(tab.scope); free(tab); net_destroy_owner() }
+	defer { delete(app.bare.tabs); net_log_destroy(&tab.net); base.scope_close(tab.scope); free(tab); net_destroy_owner(app) }
 
 	nav1 := base.scope_make("navigation", tab.scope)
 	page1 := base.scope_make("page", nav1)

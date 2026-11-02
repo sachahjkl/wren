@@ -3,7 +3,7 @@
 //   build/test_all -Quick [-CI] [-Ui] [-Perf] [-NoCache] [-Cache] [-NoAsan] [-Jobs n] [-LightJobs n] [-StepTimeoutSec n]
 //                  [-Only regex] [-Except regex] [-Failed] [-Changed] [-Base commit] [-List] [-Profile] [-Odin path]
 //   build/test_all -ProfileReport base | -ProfileCompare a b    the tables of runs that were profiled (build/prof)
-//   build/test_all -Globals | -GlobalsWrite                     the globals of src/browser with their class; the list rewritten from the code
+//   build/test_all -Globals | -GlobalsWrite                     the globals of the browser's packages with their class; the list rewritten from the code
 //   build/test_all -AsanBrowser [-AsanConsole] | -AsanProgram dir | -AsanPackages a,b [-AsanNames names]    ASan builds by hand (asan.odin)
 // The step table is steps.odin, what a run does with it scheduler.odin, the result cache cache.odin, the end of a run report.odin.
 package test_all

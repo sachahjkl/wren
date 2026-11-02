@@ -24,26 +24,26 @@ import "wb:browser"
 // The history the bar reads, as a profile's would give it.
 @(private = "file")
 known_history :: proc(t: ^testing.T, w: ^Chrome_World) {
-	browser.hcfg = browser.history_settings_from_prefs(&w.app.prefs)
-	browser.ghist.app = w.app
+	w.app.hcfg = browser.history_settings_from_prefs(&w.app.prefs)
 	now := time.time_to_unix_nano(time.now()) / i64(time.Millisecond)
 	id: u64
 	for k in KNOWN {
 		for _ in 0 ..< k.visits {
 			id += 1
-			append(&browser.ghist.visits, browser.Visit{id = id, at_ms = now - i64(id) * VISIT_APART_MS, url = strings.clone(k.url), title = strings.clone(k.title)})
+			append(&w.app.ghist.visits, browser.Visit{id = id, at_ms = now - i64(id) * VISIT_APART_MS, url = strings.clone(k.url), title = strings.clone(k.title)})
 		}
 	}
-	browser.ghist.serial = 1
-	testing.cleanup(t, proc(_: rawptr) {
-		browser.visits_destroy(&browser.ghist.visits)
-		browser.ghist = {}
-	}, nil)
+	w.app.ghist.serial = 1
+	testing.cleanup(t, proc(data: rawptr) {
+		app := (^browser.App)(data)
+		browser.visits_destroy(&app.ghist.visits)
+		app.ghist = {}
+	}, w.app)
 }
 
 @(private = "file")
-visits_of :: proc(part: string) -> (n: int) {
-	for v in browser.ghist.visits { if strings.contains(v.url, part) { n += 1 } }
+visits_of :: proc(w: ^Chrome_World, part: string) -> (n: int) {
+	for v in w.app.ghist.visits { if strings.contains(v.url, part) { n += 1 } }
 	return
 }
 
@@ -68,7 +68,7 @@ chrome_address_bar_suggestions :: proc(t: ^testing.T) {
 	// Shift+Delete on the completed row: out of the list and out of the history
 	session.key(w.s, .Delete, {.Shift})
 	session.frames(w.s, 2)
-	testing.expect_value(t, visits_of(GITLAB), 0)
+	testing.expect_value(t, visits_of(w, GITLAB), 0)
 	testing.expect(t, !listed(w, GITLAB), "gone from the list")
 
 	// the cross of a row, under the pointer: a click takes it out too
@@ -82,7 +82,7 @@ chrome_address_bar_suggestions :: proc(t: ^testing.T) {
 	testing.expect(t, cross != {}, "its cross is laid out")
 	session.click_at(w.s, cross)
 	session.frames(w.s, 2)
-	testing.expect_value(t, visits_of(GIT_SCM), 0)
+	testing.expect_value(t, visits_of(w, GIT_SCM), 0)
 	testing.expect(t, !listed(w, GIT_SCM), "gone from the list")
 
 	session.key(w.s, .Down)

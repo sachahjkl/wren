@@ -213,15 +213,22 @@ the_globals_are_the_mutable_declarations_of_the_top_level :: proc(t: ^testing.T)
 	root := fmt.tprintf("%s/lint_test_%d", TEMP_DIR, os.get_pid())
 	_ = os.make_directory_all(root)
 	defer os.remove_all(root)
-	_ = os.write_entire_file(fmt.tprintf("%s/a.odin", root), "package p\nCONSTANT :: 1\nglobal := 2\nmany, more: int\n@(private)\nmarked: bool\nfunction :: proc() { inside := 1; _ = inside }\nwhen true {\n\tin_when: int\n}\nText := `{`\nafter_text: int\n")
+	_ = os.write_entire_file(fmt.tprintf("%s/a.odin", root), "package p\nCONSTANT :: 1\nglobal := 2\nmany, more: int\n@(private)\nmarked: bool\nfunction :: proc() { inside := 1; _ = inside }\nwhen true {\n\tin_when: int\n}\nText := `{`\nafter_text: int\n@(thread_local)\nper_thread: int\n@(private = \"file\", thread_local)\nalso_per_thread: int\n")
 	_ = os.write_entire_file(fmt.tprintf("%s/b_test.odin", root), "package p\nof_a_test: int\n")
 	names: [dynamic]string
 	test_names: [dynamic]string
-	for g in find_globals(root) { if g.test { append(&test_names, g.name) } else { append(&names, g.name) } }
-	want := []string{"global", "many", "more", "marked", "Text", "after_text"}
+	thread_names: [dynamic]string
+	for g in find_globals(root) {
+		if g.test { append(&test_names, g.name) } else { append(&names, g.name) }
+		if g.thread_local { append(&thread_names, g.name) }
+	}
+	want := []string{"global", "many", "more", "marked", "Text", "after_text", "per_thread", "also_per_thread"}
 	testing.expect_value(t, len(names), len(want))
 	for w in want { testing.expectf(t, slice.contains(names[:], w), "a global: %s", w) }
 	testing.expect_value(t, len(test_names), 1)
+	// (the lint holds a @(thread_local) global to the class thread, and that class to the attribute)
+	testing.expect_value(t, len(thread_names), 2)
+	testing.expect(t, slice.contains(thread_names[:], "per_thread") && slice.contains(thread_names[:], "also_per_thread"), "the thread-local globals, with the attribute alone or among others")
 }
 
 @(test)

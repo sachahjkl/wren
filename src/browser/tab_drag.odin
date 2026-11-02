@@ -118,9 +118,8 @@ Tab_Drag :: struct {
 	grab:    [2]int,     // where the pointer holds the carried window (window pixels from its top left)
 }
 
-tab_drag: Tab_Drag
 
-tab_dragging :: proc() -> bool { return tab_drag.active }
+tab_dragging :: proc(app: ^App) -> bool { return app.tab_drag.active }
 
 @(private = "file")
 client_origin :: proc(w: ^Browser_Window) -> draw.Vec2 {
@@ -139,7 +138,7 @@ client_origin :: proc(w: ^Browser_Window) -> draw.Vec2 {
 // from the build of the bar: the tab list changes under it, so the caller stops its build. false: nothing was done.
 tab_drag_begin :: proc(app: ^App, t: ^Tab, pos: draw.Vec2) -> bool {
 	src := app.active
-	if src == nil || tab_drag.active { return false }
+	if src == nil || app.tab_drag.active { return false }
 	scale := max(src.win.dpi_scale, 0.5)
 	grab := [2]int{int(60 * scale), int(16 * scale)}
 	screen := client_origin(src) + pos
@@ -148,7 +147,7 @@ tab_drag_begin :: proc(app: ^App, t: ^Tab, pos: draw.Vec2) -> bool {
 		carried = tab_detach(app, t, [2]int{int(screen.x) - grab.x, int(screen.y) - grab.y}, focus = false)
 		if carried == nil { return false }
 	}
-	tab_drag = {active = true, tab = t.id, window = carried.id, source = src.id, grab = grab}
+	app.tab_drag = {active = true, tab = t.id, window = carried.id, source = src.id, grab = grab}
 	window_request(app, src, 2)
 	return true
 }
@@ -156,9 +155,9 @@ tab_drag_begin :: proc(app: ^App, t: ^Tab, pos: draw.Vec2) -> bool {
 // The events of the window the press began in, while a tab is carried: the carried window follows the pointer, the bar under it
 // shows the place, the release drops. Called by the frame of that window with what it polled.
 tab_drag_events :: proc(app: ^App, events: []platform.Event) {
-	if !tab_drag.active || app.active == nil || app.active.id != tab_drag.source { return }
-	carried := window_by_id(app, tab_drag.window)
-	t := tab_by_id(app, tab_drag.tab)
+	if !app.tab_drag.active || app.active == nil || app.active.id != app.tab_drag.source { return }
+	carried := window_by_id(app, app.tab_drag.window)
+	t := tab_by_id(app, app.tab_drag.tab)
 	if carried == nil || t == nil { tab_drag_end(app); return }
 	for ev in events {
 		#partial switch ev.kind {
@@ -172,7 +171,7 @@ tab_drag_events :: proc(app: ^App, events: []platform.Event) {
 				if dest != nil {
 					platform.move_window(carried.win, -32000, -32000)
 				} else {
-					x, y := keep_on_screen(int(screen.x) - tab_drag.grab.x, int(screen.y) - tab_drag.grab.y, carried)
+					x, y := keep_on_screen(int(screen.x) - app.tab_drag.grab.x, int(screen.y) - app.tab_drag.grab.y, carried)
 					platform.move_window(carried.win, x, y)
 				}
 			}
@@ -218,7 +217,7 @@ tab_drop_target :: proc(app: ^App, carried: ^Browser_Window, t: ^Tab, screen: dr
 // tab_sidebar_list.odin move them by `extent`), and a faded copy of the tab stands in the gap (`from`: where it starts along the bar
 // and `extent` its length, in the bar's own pixels; a list: `x` and `w`, its side).
 drop_ghost :: proc(app: ^App, area: ^ui.Box, vertical: bool, from, extent, x, w: f32) {
-	t := tab_by_id(app, tab_drag.tab)
+	t := tab_by_id(app, app.tab_drag.tab)
 	if t == nil { return }
 	em := ui.font_size()
 	isz := f32(tab_icon_px(app))
@@ -243,5 +242,5 @@ drop_ghost :: proc(app: ^App, area: ^ui.Box, vertical: bool, from, extent, x, w:
 }
 tab_drag_end :: proc(app: ^App) {
 	for w in app.windows { if w.dropping { w.dropping = false; window_request(app, w, 2) } }
-	tab_drag = {}
+	app.tab_drag = {}
 }
