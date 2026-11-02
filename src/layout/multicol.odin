@@ -495,6 +495,17 @@ mark_flow :: proc(c: ^Ctx, container, x: i32, block_path: bool) {
 	}
 }
 
+// The flows of every container, marked as their layout marks them (outer containers first), before the layout threads
+// start: they read the boxes mark_flow writes.
+@(private)
+flows_mark :: proc(c: ^Ctx) {
+	l := c.l
+	for x in preorder(l) {
+		b := &l.boxes[x]
+		if .Multicol in b.fx && .Dead not_in b.flags { mark_flow(c, x, x, true) }
+	}
+}
+
 // Moves what is inside `bi` (at `top` in the strip, now at `new_top` in the flow).
 @(private)
 apply_shifts :: proc(c: ^Ctx, bi: i32, top, new_top: f32, shifts: []Shift) {
@@ -564,7 +575,7 @@ layout_multicol :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx) -> f32
 	gap := column_gap_px(c, cs, cw)
 	n, colw := columns_used(c, cs, cw, gap)
 
-	mark_flow(c, bi, bi, true)
+	if c.pre == nil { mark_flow(c, bi, bi, true) }   // (else marked before the threads started: flows_mark)
 	saved_full := c.mc_full_w
 	c.mc_full_w = cw
 	strip_h: f32
@@ -827,6 +838,19 @@ frag_overlaps :: proc(fr: ^Flow_Frag, r: Rect) -> bool {
 	return r.min.x < fr.region.max.x && r.max.x >= fr.region.min.x && r.min.y < fr.region.max.y && r.max.y >= fr.region.min.y
 }
 
+// What fragment `fr` shows of rect `r` of the flow (before its shift), and whether it counts: a fragment `r` does not
+// reach shows nothing, and once some fragment showed part of it, nothing is shown where a column just begins (a box that
+// ends on the band's edge).
+@(private)
+flow_cut :: #force_inline proc(fr: ^Flow_Frag, r: Rect, shown: bool) -> (cut: Rect, ok: bool) {
+	if !frag_overlaps(fr, r) { return }
+	cut = rect_intersect(r, fr.region)
+	if cut.max.y < cut.min.y { cut.max.y = cut.min.y }
+	if cut.max.x < cut.min.x { cut.max.x = cut.min.x }
+	if shown && rect_empty(cut) && !rect_empty(r) { return }
+	return cut, true
+}
+
 // The part of a rect of the flow shown in each fragment, in layout coordinates, through the containers around it.
 flow_rects :: proc(l: ^Layout, container: i32, r: Rect, out: ^[dynamic]Rect) {
 	rec, ok := &l.mc_records[container]
@@ -834,13 +858,7 @@ flow_rects :: proc(l: ^Layout, container: i32, r: Rect, out: ^[dynamic]Rect) {
 	n0 := len(out)
 	for fi in rec.phys[0] ..< rec.phys[1] {
 		fr := &l.flow_frags[fi]
-		if !frag_overlaps(fr, r) { continue }
-		cut := rect_intersect(r, fr.region)
-		if cut.max.y < cut.min.y { cut.max.y = cut.min.y }
-		if cut.max.x < cut.min.x { cut.max.x = cut.min.x }
-		// nothing of it shown where a column just begins (a box that ends on the band's edge)
-		if len(out) > n0 && rect_empty(cut) && !rect_empty(r) { continue }
-		append(out, rect_shift(cut, fr.shift))
+		if cut, shows := flow_cut(fr, r, len(out) > n0); shows { append(out, rect_shift(cut, fr.shift)) }
 	}
 	if len(out) == n0 { append(out, r) }
 	// a container inside another: then through that one's
@@ -854,15 +872,39 @@ flow_rects :: proc(l: ^Layout, container: i32, r: Rect, out: ^[dynamic]Rect) {
 	}
 }
 
+// The union of what flow_rects gives, without making the list (called for every box and line of a flow).
 flow_bounds :: proc(l: ^Layout, container: i32, r: Rect) -> Rect {
-	list := make([dynamic]Rect, 0, 4, context.temp_allocator)
-	flow_rects(l, container, r, &list)
-	u := list[0]
-	for q in list[1:] {
-		if rect_empty(q) && !rect_empty(u) { continue }
-		u = rect_empty(u) && !rect_empty(q) ? q : rect_union(u, q)
-	}
+	u: Rect
+	n := 0
+	flow_bounds_add(l, container, r, &u, &n)
 	return u
+}
+
+// The parts of `r` united into `u` in the order flow_rects lists them (`n`: how many so far): an empty one adds nothing to
+// a union that is not empty, and is replaced by the first that is not.
+@(private)
+flow_bounds_add :: proc(l: ^Layout, container: i32, r: Rect, u: ^Rect, n: ^int) {
+	unite :: proc(u: ^Rect, n: ^int, q: Rect) {
+		switch {
+		case n^ == 0: u^ = q
+		case rect_empty(q) && !rect_empty(u^):
+		case rect_empty(u^) && !rect_empty(q): u^ = q
+		case: u^ = rect_union(u^, q)
+		}
+		n^ += 1
+	}
+	rec, ok := &l.mc_records[container]
+	if !ok { unite(u, n, r); return }
+	outer := .In_Flow in l.boxes[container].fx ? flow_container(l, container) : NONE
+	shown := false
+	for fi in rec.phys[0] ..< rec.phys[1] {
+		fr := &l.flow_frags[fi]
+		cut, shows := flow_cut(fr, r, shown)
+		if !shows { continue }
+		shown = true
+		if q := rect_shift(cut, fr.shift); outer != NONE { flow_bounds_add(l, outer, q, u, n) } else { unite(u, n, q) }
+	}
+	if !shown { if outer != NONE { flow_bounds_add(l, outer, r, u, n) } else { unite(u, n, r) } }
 }
 
 // Finishing: the spaces of a container's columns. `b.content_space` becomes the flow's.

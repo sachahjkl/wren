@@ -152,9 +152,9 @@ principal_rtl :: proc(c: ^Ctx) -> bool {
 }
 
 // Every box back in the logical coordinates of its frame (exactly what the last pass left: see frames_to_physical), and the style
-// records of the frame.
+// records of the frame. Returns whether some frame is vertical.
 @(private)
-frames_to_logical :: proc(c: ^Ctx) {
+frames_to_logical :: proc(c: ^Ctx) -> (vertical: bool) {
 	l := c.l
 	for &s in l.frame_saved {
 		b := &l.boxes[s.box]
@@ -206,10 +206,12 @@ frames_to_logical :: proc(c: ^Ctx) {
 		}
 		c.phys_cs[i] = b.cs
 		if is_vert(f) && b.cs != nil { b.cs = transposed(c, b.cs, f) }
+		if is_vert(b.wm) { vertical = true }
 	}
 	c.vp_phys = c.vp
 	c.vp_logical = is_vert(root_wm)
 	if c.vp_logical { c.vp = {c.vp.y, c.vp.x} }
+	return vertical || c.vp_logical
 }
 
 // Inline size available to an orthogonal box when its frame's block size is not known: the viewport's size in that axis

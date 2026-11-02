@@ -279,6 +279,10 @@ pre_widths :: proc(c: ^Ctx, pred: []f32, boxes: []Pre_Box, ifcs: ^[dynamic]i32) 
 		if int(p) >= i { continue }
 		pcw := pred[p]
 		if pcw < 0 { continue }
+		// in the columns of a multi-column container, the width of a column; a spanner, the container's (flow_children)
+		if pb := &l.boxes[p]; .Multicol in pb.fx && .Spanner not_in l.boxes[i].fx {
+			_, pcw = columns_used(c, pb.cs, pcw, column_gap_px(c, pb.cs, pcw))
+		}
 		ml, mr, pbw := x.ml, x.mr, x.pbw
 		if x.relative { ml, mr, pbw = pre_edges(c, l.boxes[i].cs, pcw) }
 		w := max(pcw - ml - mr, pbw)
@@ -319,14 +323,27 @@ pre_run :: proc(c: ^Ctx, walk: proc(c: ^Ctx)) {
 	l.pre_counts = {}
 	defer c.pre_boxes, c.plain = nil, nil   // found for this block layout only
 	if l.frames_on {
-		// content widths do not follow from the viewport's down the tree, the boxes change coordinates: no threads
-		frames_to_logical(c)
-		walk(c)
+		// a vertical frame: content widths do not follow from the viewport's down the tree, the boxes change coordinates;
+		// an incremental pass: as many flows as its block layout reaches (mark_flow drops the caches it does not take).
+		// No threads then. Columns alone in a full pass: the threads, the flows marked before they start (they read
+		// the boxes mark_flow writes)
+		if frames_to_logical(c) || c.inc != nil {
+			walk(c)
+		} else {
+			flows_mark(c)
+			pre_walk(c, walk)
+		}
 		frames_to_physical(c)
 		if l.anchor_uses { anchored_pass(c) }
 		c.phys_cs = nil
 		return
 	}
+	pre_walk(c, walk)
+}
+
+// The block layout with the contexts that qualify laid out on the layout threads meanwhile (or alone, when none do).
+@(private)
+pre_walk :: proc(c: ^Ctx, walk: proc(c: ^Ctx)) {
 	pool, pre := pre_layout(c)
 	if pre == nil { walk(c); return }
 	defer par_release()
