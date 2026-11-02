@@ -100,7 +100,43 @@ The style stage is a restyle of the 7 500 new elements whichever way it goes: wi
 (`style.incremental.max_ratio=1`) each costs 8.9 ms against 8.3 ms for a full pass, and the style stage per frame is the
 same (8.1 against 8.3 ms).
 
-**Bottleneck:** the script stage (JS interpreter, the DOM bindings, the collections that free the wrappers), then layout.
+**Where the script stage goes** (round 3, before its change; `WREN_SAMPLE_STACK=1 WREN_SAMPLE_UNDER=page::run_animation_frames`
+for the browser's side, `jspage -image <engine built with buildjs -names> -profile` for the engine's, and micro-benchmarks
+of single calls in `jspage`). A frame makes about 65 000 crossings from Wasm to the browser: `document` 10 000 times
+(`Window_document`), createElement 7 500 times (three each: `Window_document` again, `Document_createElementChecked`,
+`Node_wrap` for the pin and the interface), createTextNode 2 500 (two), appendChild 10 000, lastChild 5 000, removeChild
+2 500, and the collection's `Node_unpin` for each of the 10 000 wrappers it frees.
+
+| part | share of the script stage | ms a frame (of ~37) | what is in it |
+|---|---|---|---|
+| the collection the DOM asks for after the task (`js_after_task`) | 36 to 38 % | ~14 | the prologue that moves every node wrapper to its tree's group (half of it: one `Node_treeRoots` over all wrappers, a hash table of their ancestors in the browser, a reference taken and dropped on each), the finalizers (`Node_unpin`, `destroy_subtree`, the wrappers' memory), the trial deletion of the host references (a hash table of every referenced cell) |
+| making the wrappers (`wj_wrap_node`) | ~15 % | ~5.5 | `Node_wrap`, the engine object and its `Obj`, the handle table, joining the document's group |
+| the DOM's own work in the browser | ~12 % | ~4.5 | `pre_insert` and its hooks (scripts, links, media the insertion may start), `create_element` (2 %: a Unicode lower-casing through a string builder), the journal, the pins |
+| the interpreter, property lookups up the prototype chains, argument conversions | the rest | ~13 | |
+| the crossings themselves | ~4 % | ~1.5 | a getter that crosses costs what one that does not costs, ~25 ns apart (`firstChild` of a leaf 300 ns, `nodeType` 274 ns, a JavaScript call 115 ns): the call from the interpreter into a native function is the price of a DOM call, not the trip to the browser |
+
+The engine's epoch callback (the chrome's preemption, `shell_preempt`) shows in 12 % of these samples; the sampler and the
+epoch ticker both tick every millisecond, so that share is the bias already noted above, not work.
+
+So a command buffer in the realm's memory (mutations recorded and applied in one pass, node indices reserved ahead,
+names as atoms) would save the crossings, about 4 % of the stage, and keep everything else; the collection was more than a
+third of it. Round 3 fixed that instead (below).
+
+After round 3 (medians of 6 runs of each build, interleaved, `js_nodes10k` at 180 Hz, 8 s; the machine quiet):
+
+| | before | after |
+|---|---|---|
+| frames/s | 49.4 | 59.6 |
+| CPU work per frame, mean | 57.9 ms | 46.7 ms |
+| script (Animation) | 35.8 ms | 25.1 ms |
+| the collection's share of the script stage (sampled, 3 runs each) | 35 to 38 % | 19 to 20 % |
+| style / layout | 8.9 / 9.6 ms | 8.8 / 9.4 ms |
+| private memory | 304 MB | 295 MB |
+
+Sampled against the style stage, which did not change, the script stage is 4.0 to 4.15 times the style stage before and
+2.82 to 2.84 after (3 runs each): the collection 61 % less, the rest 10 % less.
+
+**Bottleneck:** the script stage (the interpreter and its native calls, making wrappers, the collection), then layout.
 
 ### 3. Scrolling a long page (p10k, 3 wheel notches every 16 ms)
 
@@ -290,6 +326,29 @@ and the shares of the samples.
    sampled in proportion to its CPU time; per thread, the functions anywhere on its stack. nodes10k: the page thread
    160 -> 1 900 samples in 15 s; the main sampler, which it counted as the busiest thread, is left out.
 
+## What changed, round 3: the script stage
+
+The script stage of nodes10k, measured first (the table in section 2), then the largest part of it.
+
+1. **A wrapper that carries nothing of its own is in no group** (`native/js/odin/wj/qjs_platform.odin`, `wrapper_plain`,
+   `gc_prologue`). Every node wrapper was a member of its tree's group, the document's included, so every collection's
+   prologue placed every wrapper (a reference taken and dropped on each, the browser walking every wrapper's ancestors
+   through a hash table) and the trial deletion counted them all. A wrapper with no listener, no [SameObject] value, no
+   data of the engine, no own property, its interface's prototype, extensible, and never a WeakMap / WeakSet key, a
+   WeakRef or FinalizationRegistry target (`OBJ_HELD_WEAKLY` in `src/engine/jsrt`, `JS_IsUntouched`) can go when no
+   script holds it, connected or not, and be made again, the same, when a script reaches its node: nothing tells the two
+   apart. It joins a group only when its tree is detached and has a group (holding any wrapper of a detached tree must
+   keep the others), and new wrappers start in none (only a collection frees, and its prologue places them). The
+   prologue crosses for the other wrappers alone, and for the plain ones only when some detached tree has a group.
+   Test: `js_plain_wrappers_go_the_others_stay_the_same` (web_realm.odin).
+2. **The trial deletion of host references without a hash table** (`src/engine/jsrt/gc.odin` `gc_mark_ext`,
+   `host_class.odin` `host_mark_value`): the counts are subtracted in the cells themselves and put back from a flat array.
+3. **Element names lower-cased in ASCII** (`src/dom/dom.odin` `create_element`, `lower_name`): DOM's createElement
+   and getElementsByTagName ask for ASCII lower case; the Unicode lower-casing went through a string builder rune by
+   rune (2 % of the script stage). WPT dom/nodes: 27 subtests better (case.html, createElement("İnput"),
+   getElementsByTagName of non-ASCII names); one worse, case.html's `getElementsByTagName a:Ä`, which compares names the
+   way the other `a:` cases of that file already got wrong.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -373,14 +432,15 @@ pass. Most of layout and paint already use the temporary allocator or an arena.
 After round 3. Round 2's items 2, 3 and 8 are done (item 3 measured: a partial restyle of nodes10k costs what a full
 pass does); what is left of them is folded in below. Round 3 also measured round 2's item 7 as it stood (the loop's and
 the network's locks) and kept the mutexes; item 7 is now the job queues, to be measured the same way before anything
-replaces them.
+replaces them. Round 2's item 1 is done in part: the engine traces, it counts no reference a script holds, so a plain
+wrapper still waits for a collection, but the collection no longer pays for it.
 
-1. **Wrappers freed by reference counting** (nodes10k: the collections the DOM asks for are about a quarter of the window
-   thread's samples, the script stage 36 to 42 ms of a 57 to 67 ms frame). A wrapper that carries nothing of its own (no
-   expando property, no listener, its interface's prototype, no weak reference to it) can go when its count reaches zero
-   and be made again if a script reaches the node later; only the others need the groups of
-   `native/js/odin/wj/qjs_platform.odin` and a collection. A removed node would then give its index back as soon as no
-   script holds it, without a collection.
+1. **The script stage of DOM-heavy pages** (nodes10k: 25 ms of a 47 ms frame). In order of the samples: the interpreter's
+   native calls and the property lookups up the prototype chains (`get_property` is a quarter of the engine's samples;
+   the interpreter is `src/engine`'s); the collection the DOM still asks for every frame (a fifth of the stage: the
+   finalizers, `Node_unpin` one wrapper at a time, the prologue's visit of every wrapper); making wrappers
+   (`make_wrapper`, `Node_wrap`); the DOM work of an insertion (its hooks walk the inserted subtree). Not the crossings
+   (4 %, section 2).
 2. **The cost of styling one element** (nodes10k: 8.3 ms a frame for 7 500 new elements, full pass or partial). On the
    style threads (round 3's profiler): matching (`collect_entries`, about a quarter), `build_style`, and zeroing the
    arena they take back (`arena_free_all`, 13 %). Next steps: the inherited properties in a group of their own, shared
