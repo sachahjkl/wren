@@ -16,6 +16,7 @@ JS_THREAD_STACK_BYTES :: 32 << 20
 // What makes every Wren a test starts keep its connections on this machine (src/net/settings.odin: network.loopback_only).
 LOOPBACK_ONLY_ENV :: "WREN_NETWORK_LOOPBACK_ONLY"
 SHA256_BYTES :: 32
+NATIVE_LIBRARY :: "build/native/wren_native.lib" when ODIN_OS == .Windows else "build/native-linux/libwren_native.a"
 
 // The repository of the program that runs: its executable is in <repository>/build; WREN_REPO says otherwise.
 repo_root :: proc(allocator := context.allocator) -> string {
@@ -93,6 +94,8 @@ build_if_stale :: proc(output, flags: string, command: []string, log := "") -> b
 		if err == nil && string(text) == flags {
 			fresh := !any_newer("src", built, is_source_of_a_program) && !any_newer("ext/gui_toolkit", built, is_source_of_a_program)
 			if image, has := modified("build/js/wren_js.wasm"); has && time.diff(built, image) > 0 { fresh = false }
+			// (the Rust library a program links: the network stack's settings are in it)
+			if native, has := modified(NATIVE_LIBRARY); has && time.diff(built, native) > 0 { fresh = false }
 			if fresh { return true }
 		}
 	}
