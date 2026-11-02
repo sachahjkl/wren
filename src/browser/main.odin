@@ -1378,7 +1378,7 @@ main :: proc() {
 // console). The program's main and the end-to-end tests (src/e2e) come through here; a browser needs app_turn to go on and app_stop to end.
 // A headless window draws on the system's software rasterizer, whatever GPU the machine has: set by a program in this process before app_start, for a test
 // (e2e.Options.software) of what shows only there, where a frame's GPU time is many times longer.
-headless_software: bool
+headless_software: bool   // (read once, by app_start)
 
 app_start :: proc(args: []string) -> ^App {
 	app := new(App)
