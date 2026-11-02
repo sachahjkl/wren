@@ -163,7 +163,7 @@ worker_fetch_sync :: proc(p: ^Page, target: string) -> (final_url: string, body:
 @(private)
 host_signal_after_wait :: proc(p: ^Page) {
 	g := p.worker
-	sync.atomic_store(&g.link.loop.pending, 0)
+	sync.atomic_store(&g.link.loop.pending, false)
 	host.signal(&g.link.loop)
 }
 
@@ -195,6 +195,7 @@ worker_fetch_wait :: proc(p: ^Page, h: base.Handle, limit_ms: i64) -> (res: Sync
 		if rec == nil || rec.state >= 2 { return .Done }
 		if link_stopping(l) { return .Stopping }
 		if limit_ms >= 0 && i64(time.duration_milliseconds(time.tick_since(start))) > limit_ms { return .Timed_Out }
+		sync.atomic_store(&l.loop.pending, false)
 		mine := make([dynamic]^Worker_Msg, context.temp_allocator)
 		sync.mutex_lock(&l.mu)
 		rest := make([dynamic]^Worker_Msg, 0, len(l.to_worker))
@@ -206,7 +207,7 @@ worker_fetch_wait :: proc(p: ^Page, h: base.Handle, limit_ms: i64) -> (res: Sync
 		sync.mutex_unlock(&l.mu)
 		for m in mine { worker_fetch_event(p, m); msg_free(m) }
 		if rec = base.pool_get(&p.fetches, h); rec == nil || rec.state >= 2 { return .Done }
-		host.loop_sleep(&l.loop, WORKER_SYNC_WAIT_POLL)
+		sync.sema_wait_with_timeout(&l.loop.sema, WORKER_SYNC_WAIT_POLL)
 	}
 }
 

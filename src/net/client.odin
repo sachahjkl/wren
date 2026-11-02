@@ -4,8 +4,8 @@
 // Design
 //   * No thread of ours: WinHTTP's own pool runs the state machine (send, receive headers, read chunks) and calls
 //     `status_callback` on its threads. Thousands of requests cost memory, not threads.
-//   * Callback threads never touch browser state. They push `Event`s into a lock-free inbox (host/mpsc.odin) that
-//     posts `drain` to the host loop (one post per burst). All user callbacks run on the loop thread.
+//   * Callback threads never touch browser state. They push `Event`s into a mutex-protected queue and ask the host
+//     loop to run `drain` on the main thread (one post per burst). All user callbacks run on the loop thread.
 //   * A request is a generational Handle. Cancelling, finishing or closing the owning Scope invalidates it, and any
 //     event still in flight for it is dropped. Late events can never reach a recycled request.
 //   * Exactly one place closes a request's WinHTTP handle: the main thread (`release`). The per-request `Job`, which
@@ -160,10 +160,12 @@ Client :: struct {
 	active:        map[string]int,
 	active_total:  int,
 	settings:      Settings,
+	shutting_down: bool,
 
-	// WinHTTP's threads push, the loop drains (closed by client_destroy: a late completion is dropped)
-	inbox:         host.Inbox(Event),
-	scratch:       [dynamic]Event,   // loop thread: what a drain handles
+	mu:            sync.Mutex,
+	events:        [dynamic]Event,
+	scratch:       [dynamic]Event,
+	drain_pending: bool,
 	live_jobs:     int,   // atomic
 	ws:            ^Ws_Manager,   // WebSockets of this client (websocket.odin), created on first use
 	rs:            rawptr,        // the Rust stack's client (rust.odin) when settings.backend == .Rust
@@ -190,7 +192,7 @@ client_init :: proc(c: ^Client, loop: ^host.Loop, settings: Settings = {}) -> bo
 	if !WINHTTP_AVAILABLE { c.settings.backend = .Rust }   // the built-in stack is the only one on this system
 	// (names it resolves itself are the built-in stack's)
 	if c.settings.hosts != "" { c.settings.backend = .Rust }
-	host.inbox_init(&c.inbox)
+	c.events = make([dynamic]Event, heap())    // appended to from WinHTTP threads
 	c.scratch = make([dynamic]Event, heap())
 	if c.settings.backend == .Rust { return rust_init(c) }
 	return winhttp_open(c)
@@ -210,7 +212,9 @@ client_apply :: proc(c: ^Client, s: Settings) {
 // Cancels everything, waits for WinHTTP to let go of every job, frees the rest.
 client_destroy :: proc(c: ^Client) {
 	websockets_destroy(c)
-	host.inbox_close(&c.inbox)
+	sync.mutex_lock(&c.mu)
+	c.shutting_down = true
+	sync.mutex_unlock(&c.mu)
 	it: u32
 	handles: [dynamic]base.Handle
 	defer delete(handles)
@@ -220,11 +224,8 @@ client_destroy :: proc(c: ^Client) {
 	rust_destroy(c)
 	start := time.tick_now()
 	for sync.atomic_load(&c.live_jobs) > 0 && time.duration_seconds(time.tick_since(start)) < NET_STOP_DRAIN_S { time.sleep(time.Millisecond) }
-	for {
-		ev := host.inbox_pop(&c.inbox) or_break
-		free_event(&ev)
-	}
-	host.inbox_destroy(&c.inbox)
+	for &ev in c.events { free_event(&ev) }
+	delete(c.events)
 	delete(c.scratch)
 	for &q in c.queues { delete(q) }
 	for k in c.active { delete(k, heap()) }
@@ -259,7 +260,7 @@ fetch :: proc(c: ^Client, d: Request_Desc) -> base.Handle {
 // Starts every queued request that fits under the limits, highest priority first, FIFO within a priority.
 @(private)
 pump :: proc(c: ^Client) {
-	if host.inbox_closed(&c.inbox) { return }   // shutting down
+	if c.shutting_down { return }
 	for &q in c.queues {
 		w := 0
 		for i in 0 ..< len(q) {
@@ -492,22 +493,27 @@ release :: proc(c: ^Client, h: base.Handle) -> bool {
 
 @(private)
 push_event :: proc(c: ^Client, ev: Event) {
-	if !host.inbox_push(c.loop, &c.inbox, ev, drain, c) {   // client_destroy closed it: a late completion is dropped
+	sync.mutex_lock(&c.mu)
+	if c.shutting_down {   // client_destroy freed (or is freeing) the queue: a late completion is dropped
+		sync.mutex_unlock(&c.mu)
 		ev := ev
 		free_event(&ev)
+		return
 	}
+	append(&c.events, ev)
+	post := !c.drain_pending
+	c.drain_pending = true
+	sync.mutex_unlock(&c.mu)
+	if post { host.post(c.loop, drain, c) }
 }
 
 @(private)
 drain :: proc(data: rawptr) {
 	c := (^Client)(data)
-	host.inbox_begin(&c.inbox)
-	// what was pushed until now (what comes meanwhile, or from handling it, the next drain takes)
-	end := host.inbox_mark(&c.inbox)
-	for {
-		ev := host.inbox_pop(&c.inbox, end) or_break
-		append(&c.scratch, ev)
-	}
+	sync.mutex_lock(&c.mu)
+	c.drain_pending = false
+	c.events, c.scratch = c.scratch, c.events
+	sync.mutex_unlock(&c.mu)
 	for &ev in c.scratch {
 		handle_event(c, &ev)
 		free_event(&ev)
