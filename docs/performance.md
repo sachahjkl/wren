@@ -181,6 +181,85 @@ scenario n times and prints the medians.
    restyled elements. nodes10k: 0.6 -> 0.02 to 0.035 ms a frame (1.2 -> 0.2 % of the work); mutation page 2.6 to 4.6 %
    -> 0.2 to 0.6 %.
 
+## What changed, round 3: the locks of the loop and the network
+
+Item 7 of round 2's list. The locks of `src/host`, `src/net` and `src/fetch`, and of what posts between them and the
+loop, as producers and consumers:
+
+| lock | produces | consumes | how often | held for | now |
+|---|---|---|---|---|---|
+| `host/loop.odin` `Loop.mu` | any thread posts a task (network drains, blocking jobs' completions, image decoders, the page thread, workers' links) | the loop thread, once a turn | every post: thousands a second during a load | an append; the turn's swap of the arrays | **gone**: `Mpsc(Task)` |
+| `net/client.odin` `Client.mu` | WinHTTP's threads (headers, each chunk of `read_chunk` bytes, done, failed) | the loop, one posted `drain` per burst | every network event | an append; the drain's swap | **gone**: `Inbox(Event)` |
+| `net/websocket.odin` `Ws_Manager.mu` | WinHTTP's threads (frames, writes done, close) | the loop, one `ws_drain` per burst | every WebSocket event | an append; the swap | **gone**: `Inbox(Raw)` |
+| `host/thread_pool.odin` `mu` + `cond` | `parallel_for` (style passes, a few a frame) | the pool's threads | every round | three stores; the helpers' wake-up re-takes it | **gone**: one atomic round word (a futex) and a sequence lock |
+| `host/loop.odin` `Loop.sema` | `signal` | `loop_wait` | every wake | (a counter, no lock) | **gone**: the loop sleeps on `pending` itself |
+| `host/blocking.odin` `Blocking_Pool.mu` + 2 conds | the loop (`run_blocking`) | 4 workers | each blocking job (file reads, hashing): tens a second | an append; `ordered_remove(0)` | stays: jobs take milliseconds, the lock nanoseconds; next, a ring and a futex |
+| `host/thread.odin` `live_mu` | a thread starting or ending | the teardown's report | per thread | an append | stays: a registry, cold |
+| `host/shutdown.odin` `sd.mu` | the teardown's steps | its watchdog | per step of a teardown | a copy of a name | stays: cold |
+| `fetch/blob_urls.odin` `blob_store.mu` | `URL.createObjectURL`, `revokeObjectURL` (any App's thread) | a load of a `blob:` URL | per blob URL | a map lookup | stays: a registry of the process |
+
+The built-in network stack (`network.backend = rust`) queues its events in the library (`native/`) and posts one
+`rust_drain` when its queue stops being empty: nothing of ours to lock. The page <-> worker queues (`page/worker.odin`)
+are listed below.
+
+What replaced them:
+
+1. **`Mpsc(T)`** (`src/host/mpsc.odin`): blocks of `MPSC_BLOCK_SLOTS` values; a producer claims the next position with
+   one compare-and-swap on the tail, writes its slot and stamps it with its position; the consumer takes the slots in
+   order, each once it bears its stamp. A slot still being written ends the take: its producer, done, signals, so the
+   next turn has it. Order is kept per producer, nothing is lost, nobody waits for the consumer. The producer of a
+   block's last slot links the next block first (the others yield on the one position between blocks that no push
+   takes); the emptied blocks are kept as spares (`MPSC_SPARES`), so a running queue allocates nothing. A producer with
+   a stale block pointer never touches it: its claim fails first, positions only grow. `run_ready` runs the tasks
+   straight from the queue up to the position the turn began at (`mpsc_mark`), not through a copied array;
+   `discard_posted` (loop thread only now) moves the queue aside into `Loop.taken` and filters it, and a turn runs what
+   was set aside first.
+2. **The wake is the flag** (`Loop.pending`, a `sync.Futex`): `signal` sets it from 0 to 1 and wakes the futex, `loop_wait`
+   sleeps on it, `run_ready` clears it before taking. The semaphore it replaces counted one post per wake, and a wait
+   after the turn that had already run those tasks returned for nothing. `loop_sleep` is the wait without a turn (a
+   worker's thread blocked in a synchronous call, a test that runs its turns itself). `signal` reads the flag before its
+   compare-and-swap: a pending wake costs a post no write to the line every post reads.
+3. **`Inbox(T)`**: an `Mpsc(T)`, a flag "a drain is posted" (the first push of a burst posts it, the drain clears it
+   before it takes) and a gate word (closed, plus a count of the producers inside a push): `inbox_close` waits for the
+   few instructions of those inside, and every later push is refused, so the caller frees what it carried: what the
+   mutexes and `shutting_down` did for a client being destroyed. The drain takes what was pushed until it began.
+4. **`parallel_for`'s round** (`Thread_Pool.round`): odd while the caller writes the round's procedure, data and count,
+   even once written; a helper reads them under an even value and keeps them only if the value has not moved (the
+   caller never waits for a reader), then sleeps on the word for the next one.
+
+Measured: `post_rate_and_latency` (`src/host/loop_test.odin`, `-Perf`), the same test on the code before and after
+(`-o:speed`, 7 runs each, alternated; the median, range in brackets):
+
+| | before (mutex) | after (lock-free) |
+|---|---|---|
+| 1 million posts through the running loop, 1 thread | 27.3 M/s (23.6-43.9) | 22.7 M/s (19.5-27.8) |
+| the same, 4 threads at once | 24.7 M/s (20.2-31.9) | 10.1 M/s (9.5-11.4) |
+| one thread posting, the loop not running | 40.3 M/s (34.9-41.0) | 45.2 M/s (36.8-46.0) |
+| the loop taking and running them alone | 206 M/s (201-209) | 68.5 M/s (64.3-70.7) |
+| post to run on a waiting loop (wake included), median | 0.3 us (0.3-0.6) | 0.3 us (0.3) |
+| the same, 99th percentile | 0.7 us (0.6-0.7) | 0.7 us (0.3-7.1) |
+
+The post-to-run latency, the wake included, is what a page waits for: the same within the clock's 0.1 us. A post alone
+is a little cheaper. What the change buys is that no thread waits for another: a producer descheduled in the middle of
+a post no longer holds the loop, nor the loop a producer. The rates of a flood are lower: the loop never waits for
+a producer any more, so it runs more turns of fewer tasks each (1 million posts from 4 threads: 11 000 to 17 000 turns
+before, 260 000 to 370 000 after), and four threads that do nothing but post fight for the tail's line with
+compare-and-swaps where a mutex put three of them to sleep. A browser posts thousands of tasks a second, not millions:
+at either rate a post costs well under a microsecond. The loop alone runs 60 to 70 million posted tasks a second, a
+third of what running through a swapped array did (each task is read from its slot, not handed over with the array).
+
+The browser (`wrentool bench perf`, the profile builds before and after, headless, 3 runs of each alternated; the
+median, range in brackets): within the noise of this machine, as expected of a cost that was nanoseconds a post.
+
+| scenario | before | after |
+|---|---|---|
+| p10k_load: load, ms | 311 (257-411) | 255 (251-740) |
+| p10k_load: CPU, ms | 563 (375-625) | 453 (344-1672) |
+| mutation: frames/s | 75.5 (71.6-86.2) | 73.5 (72.4-104.5) |
+| mutation: load, ms | 249 (241-253) | 232 (227-248) |
+| js_nodes10k: frames/s | 47.2 (43.9-47.9) | 44.8 (44.4-47.0) |
+| js_nodes10k: load, ms | 348 (335-431) | 358 (348-364) |
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -226,18 +305,16 @@ Per box or element, per pass: `layout/context.odin:53` (`plain`), `layout/finish
 `map[...]bool` used as sets: `style/match.odin:56,64`, `style/engine.odin:68`, `style/restyle_dom.odin:144-147`,
 `font/raster.odin:76-77` (per glyph); `draw/bsp.odin:241` (n x n per 3D sort).
 
-### Mutexes (51 in Wren, 17 in the toolkit, outside tests)
+### Mutexes (47 in Wren, 17 in the toolkit, outside tests)
 
-The ones on a per-frame or per-item path, and what fits instead:
+The ones on a per-frame or per-item path, and what fits instead (the loop's, the network's and `parallel_for`'s went in
+round 3):
 
 | where | guards | threads | instead |
 |---|---|---|---|
 | `font/raster.odin:72` `Atlas.mu` | glyph maps, atlas pages, Slug store; rasterizes under it | every drawing thread, the color-glyph thread | per-thread lookup front, misses to a raster owner over an MPSC queue |
 | `font/shape.odin:398` `Word_Shard.mu` x 64 | shaped words; glyphs copied out under it | layout threads, page, chrome paint | goes with the word cache |
 | `style/invalidation.odin:454` `Key_Sets.mu` | interned selector keys, process-wide | every page's style engine | per-engine tables |
-| `host/loop.odin:46` `Loop.mu` | posted tasks | any thread -> the loop | MPSC queue |
-| `host/thread_pool.odin:17` | `parallel_for`'s generation | caller and workers | atomic generation and a futex wake |
-| `net/client.odin:165`, `net/websocket.odin:184` | events to the loop | network threads -> loop | MPSC queue |
 | `webaudio/graph.odin:79` | the audio graph | page vs the real-time render thread | SPSC command ring |
 | `media/store.odin:57` | coded frames | demux vs decoder | SPSC ring |
 | `page/worker.odin:95` | page <-> worker queues | two threads | two SPSC rings |
@@ -261,7 +338,8 @@ paint already use the temporary allocator or an arena.
 
 ## Next, ranked by measured cost on a bottleneck
 
-After round 2. Round 1's items 1 (in part), 3, 4 and 5 are done; what is left of them is folded in below.
+After round 2. Round 1's items 1 (in part), 3, 4 and 5 are done; what is left of them is folded in below. Round 3 did
+item 7 as it stood (the loop's and the network's locks); item 7 is now what is left of the job queues.
 
 1. **Wrappers freed by reference counting** (nodes10k: the collections the DOM asks for are about a quarter of the window
    thread's samples, the script stage 42 ms of a 67 ms frame). A wrapper that carries nothing of its own (no expando
@@ -279,6 +357,7 @@ After round 2. Round 1's items 1 (in part), 3, 4 and 5 are done; what is left of
    scans of the boxes the layout journal says changed.
 5. **The atlas lock per glyph and the word cache's 64 locks** (toolkit): a per-thread front, misses to one owner.
 6. **The style index's string tables** (`style/engine.odin:66-68`): atoms (interned ids) and flat arrays by atom.
-7. **`Loop.mu` and the network event mutexes**: MPSC queues.
+7. **The job queues of the blocking pool, the image decoders, the script compiler and the caches** (the table above):
+   the queue of `src/host/mpsc.odin` for what comes back to the loop, a ring and a futex for what goes to the workers.
 8. **The profiler**: sample the threads that ran (their cycle counters) rather than all ninety in turn, and correct the
    bias of samples taken in a system call; the style threads, where most of a style pass runs, are barely seen.
