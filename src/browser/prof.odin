@@ -41,6 +41,7 @@ foreign kernel32_prof {
 	GetModuleHandleExW :: proc(flags: u32, address: rawptr, out: ^win.HMODULE) -> win.BOOL ---
 	RtlLookupFunctionEntry :: proc(pc: u64, image_base: ^u64, history: rawptr) -> rawptr ---
 	RtlVirtualUnwind :: proc(kind: u32, image_base: u64, pc: u64, entry: rawptr, ctx: ^win.CONTEXT, handler_data: ^rawptr, establisher: ^u64, pointers: rawptr) -> rawptr ---
+	QueryThreadCycleTime :: proc(thread: win.HANDLE, cycles: ^u64) -> win.BOOL ---
 }
 }
 
@@ -335,6 +336,7 @@ callers_in_exe :: proc(ctx: ^win.CONTEXT) -> (out: [SAMPLE_DEPTH]u64) {
 }
 
 sampler_proc :: proc(_: ^thread.Thread) {
+	sync.atomic_store(&sampler_tid, win.GetCurrentThreadId())   // (the other threads' sampler leaves it out)
 	for !sync.atomic_load(&prof.stop) {
 		win.Sleep(1)
 		if win.SuspendThread(prof.target) == ~u32(0) { continue }
@@ -398,38 +400,55 @@ module_of :: proc(addr: u64) -> string {
 	return name
 }
 
-// WREN_SAMPLE_THREADS=1: every millisecond one of the other threads of the process, in turn, is stopped and its instruction
-// pointer and callers read (the main thread has its own sampler). A thread is sampled about 1000 / (threads) times a second.
+// WREN_SAMPLE_THREADS=1: every millisecond one of the other threads of the process is stopped and its instruction pointer
+// and callers read (the main thread has its own sampler): the one that ran the most CPU cycles since its last sample, so
+// that a thread is sampled in proportion to the time it runs (a busy worker among ninety mostly idle threads gets most of
+// the samples, not one in ninety). Its "wait" samples are those that found it blocked all the same (it ran, then waited).
 other_sampler_proc :: proc(_: ^thread.Thread) {
 	pid := win.GetCurrentProcessId()
 	me := win.GetCurrentThreadId()
-	ids := make([dynamic]u32, 0, 128)
+	// per thread of the process: its handle, its cycle counter when last read, the cycles it ran since its last sample
+	Watched :: struct { tid: u32, h: win.HANDLE, cycles, owed: u64 }
+	threads := make([dynamic]Watched, 0, 128)
 	next_refresh: i64
-	turn := 0
 	for !sync.atomic_load(&prof.stop) {
 		win.Sleep(1)
 		now := qpc()
 		if now >= next_refresh {
 			next_refresh = now + i64(prof.freq / 2)
-			clear(&ids)
+			old := threads
+			threads = make([dynamic]Watched, 0, max(len(old), 128))
 			snap := win.CreateToolhelp32Snapshot(win.TH32CS_SNAPTHREAD, 0)
 			if snap != win.INVALID_HANDLE_VALUE {
 				te: win.THREADENTRY32
 				te.dwSize = size_of(te)
 				ok := win.Thread32First(snap, &te)
 				for ok {
-					if te.th32OwnerProcessID == pid && te.th32ThreadID != me && te.th32ThreadID != prof.main_tid { append(&ids, te.th32ThreadID) }
+					tid := te.th32ThreadID
+					if te.th32OwnerProcessID == pid && tid != me && tid != prof.main_tid {
+						w := Watched{tid = tid}
+						for &o in old { if o.tid == tid { w, o.h = o, nil; break } }   // (a thread seen before keeps what it owes)
+						if w.h == nil { w.h = win.OpenThread(0x2 | 0x8 | 0x800, false, tid) }   // SUSPEND_RESUME | GET_CONTEXT | QUERY_LIMITED_INFORMATION
+						if w.h != nil { append(&threads, w) }
+					}
 					ok = win.Thread32Next(snap, &te)
 				}
 				win.CloseHandle(snap)
 			}
+			for o in old { if o.h != nil { win.CloseHandle(o.h) } }
+			delete(old)
 		}
-		if len(ids) == 0 { continue }
-		tid := ids[turn % len(ids)]
-		turn += 1
-		if tid == sync.atomic_load(&sampler_tid) { continue }
-		h := win.OpenThread(0x2 | 0x8 | 0x800, false, tid)   // SUSPEND_RESUME | GET_CONTEXT | QUERY_LIMITED_INFORMATION
-		if h == nil { continue }
+		best := -1
+		for &w, i in threads {
+			c: u64
+			if !QueryThreadCycleTime(w.h, &c) { continue }
+			if w.cycles != 0 { w.owed += c - w.cycles }
+			w.cycles = c
+			if w.tid != sync.atomic_load(&sampler_tid) && w.owed > 0 && (best < 0 || w.owed > threads[best].owed) { best = i }
+		}
+		if best < 0 { continue }
+		threads[best].owed = 0
+		h, tid := threads[best].h, threads[best].tid
 		got := false
 		s: Osample
 		if win.SuspendThread(h) != ~u32(0) {
@@ -446,8 +465,9 @@ other_sampler_proc :: proc(_: ^thread.Thread) {
 			prof.osamples[prof.n_osamples] = s
 			prof.n_osamples += 1
 		}
-		win.CloseHandle(h)
 	}
+	for w in threads { win.CloseHandle(w.h) }
+	delete(threads)
 }
 
 @(private = "file")
@@ -484,7 +504,7 @@ report_threads :: proc(sb: ^strings.Builder) {
 		}
 		return false
 	}
-	Thread_Row :: struct { tid: u32, total, wait: int, by: map[string]int }
+	Thread_Row :: struct { tid: u32, total, wait: int, by: map[string]int, incl: map[string]int }   // incl: by function anywhere on the stack
 	rows := make(map[u32]^Thread_Row, context.temp_allocator)
 	for s in prof.osamples[:prof.n_osamples] {
 		r, ok := rows[s.tid]
@@ -492,6 +512,7 @@ report_threads :: proc(sb: ^strings.Builder) {
 			r = new(Thread_Row, context.temp_allocator)
 			r.tid = s.tid
 			r.by = make(map[string]int, context.temp_allocator)
+			r.incl = make(map[string]int, context.temp_allocator)
 			rows[s.tid] = r
 		}
 		r.total += 1
@@ -504,6 +525,18 @@ report_threads :: proc(sb: ^strings.Builder) {
 			key = fmt.tprintf("%s <- %s", key, sym(a, proc_h, buf[:], &cache))
 		}
 		r.by[key] += 1
+		// inclusive: each function once per sample (recursion counted once)
+		seen: [SAMPLE_DEPTH + 1]string
+		n := 0
+		frames: for j in 0 ..= SAMPLE_DEPTH {
+			addr := j == 0 ? s.rip : s.from[j - 1]
+			if addr == 0 { break }
+			name := sym(addr, proc_h, buf[:], &cache)
+			for k in 0 ..< n { if seen[k] == name { continue frames } }
+			seen[n] = name
+			n += 1
+			r.incl[name] += 1
+		}
 	}
 	list := make([dynamic]^Thread_Row, context.temp_allocator)
 	for _, r in rows { append(&list, r) }
@@ -523,8 +556,19 @@ report_threads :: proc(sb: ^strings.Builder) {
 			if j >= 7 { break }
 			fmt.sbprintf(sb, "    %5.1f %%  %s\n", f64(it.v) * 100 / f64(max(r.total - r.wait, 1)), it.k)
 		}
+		clear(&items)
+		for k, v in r.incl { append(&items, Row{k, v}) }
+		slice.sort_by(items[:], proc(a, b: Row) -> bool { return a.v > b.v })
+		fmt.sbprintf(sb, "    on the stack (inclusive):\n")
+		for it, j in items {
+			if j >= THREAD_INCLUSIVE_ROWS { break }
+			fmt.sbprintf(sb, "    %5.1f %%  %s\n", f64(it.v) * 100 / f64(max(r.total - r.wait, 1)), it.k)
+		}
 	}
 }
+
+// The functions on the stack listed for each of the busiest other threads.
+@(private = "file") THREAD_INCLUSIVE_ROWS :: 30
 prof_report :: proc(app: ^App) {
 	if !prof.on { return }
 	latency_probe_report()   // shell_latency.odin
