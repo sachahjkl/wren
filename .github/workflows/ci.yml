@@ -25,17 +25,19 @@ jobs:
         with:
           submodules: recursive
 
-      # A few seconds: every fragment of changelog.d is well formed and none was already released (CONTRIBUTING.md); then the
-      # script's own tests.
-      - name: CHANGELOG fragments (tools\changelog.ps1 -Check)
-        run: |
-          ./tools/changelog.ps1 -Check
-          if ($LASTEXITCODE) { exit 1 }
-          ./tools/changelog_test.ps1
-          if ($LASTEXITCODE) { exit 1 }
-
       - uses: ./.github/actions/setup
 
+      # A few seconds: every fragment of changelog.d is well formed and none was already released (CONTRIBUTING.md); then the
+      # tool's own tests.
+      - name: CHANGELOG fragments (wrentool changelog -Check)
+        run: |
+          New-Item -ItemType Directory -Force build | Out-Null
+          odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe
+          if ($LASTEXITCODE) { exit 1 }
+          build/wrentool changelog -Check
+          if ($LASTEXITCODE) { exit 1 }
+          odin test src/tools/wrentool/changelog -collection:wb=src -vet -out:build/changelog_test.exe
+          if ($LASTEXITCODE) { exit 1 }
       # The build takes one to two minutes here (dependencies from the caches). A build that runs for 20 minutes is a defect (a local
       # render.Surface in window_open once kept the -o:speed -debug codegen of one module going past the job's 90 minutes): it fails.
       - name: Build (optimized, development channel)
@@ -98,9 +100,11 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Package (smoke test of tools\package.ps1)
+      - name: Package (smoke test of wrentool package)
         shell: cmd
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\package.ps1 -Dev -Extras
+        run: |
+          odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe || exit /b 1
+          build\wrentool.exe package -Dev -Extras
 
       - uses: actions/upload-artifact@v4
         with:
@@ -108,7 +112,7 @@ jobs:
           path: build/dist/*.zip
           retention-days: 14
 
-      # the build's map (tools\symbols.ps1): names the frames of its crash reports (tools\crash_symbolize.ps1); not in the package
+      # the build's map (wrentool symbols): names the frames of its crash reports (wrentool crash-symbolize); not in the package
       - uses: actions/upload-artifact@v4
         with:
           name: wren-symbols-${{ github.sha }}
@@ -164,10 +168,9 @@ jobs:
       - name: Native libraries and the JavaScript engine (what build.bat builds first)
         timeout-minutes: 20
         run: |
-          ./tools/fetch_wasmtime.ps1
-          ./tools/build_lexbor.ps1
-          ./tools/build_native.ps1 -Profile quick
-          ./tools/fetch_emoji.ps1
+          New-Item -ItemType Directory -Force build | Out-Null
+          odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe
+          build/wrentool deps -Profile quick
           odin run src/tools/buildjs -collection:wb=src -out:build/buildjs.exe
 
       - name: test262 (src\tools\test_all -CI -Only "^test262")
@@ -177,7 +180,7 @@ jobs:
           build\test_all.exe -CI -NoAsan -Only "^test262"
 
   # The packages that are portable already (docs/portability.md): odin check for Linux and their unit tests, without a
-  # window. Every download pinned as on Windows: Odin by SHA-256 here, Wasmtime in tools/fetch_wasmtime.sh, crates by
+  # window. Every download pinned as on Windows: Odin by SHA-256 here, Wasmtime in src/tools/wrentool/deps/fetch.odin, crates by
   # Cargo.lock (--locked), Rust by version.
   linux:
     runs-on: ubuntu-24.04
@@ -210,15 +213,17 @@ jobs:
           path: |
             build/native-linux
             ~/.cargo/registry
-          key: native-linux-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-${{ hashFiles('native/**/*.rs', 'native/**/Cargo.toml', 'tools/build_native.sh') }}
+          key: native-linux-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-${{ hashFiles('native/**/*.rs', 'native/**/Cargo.toml', 'src/tools/wrentool/deps/native.odin') }}
           restore-keys: native-linux-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-
 
       - name: Native libraries (Wasmtime, Lexbor, the Rust library)
         run: |
-          tools/fetch_wasmtime.sh
-          tools/fetch_wgpu.sh
-          CC=clang tools/build_lexbor.sh
-          tools/build_native.sh --profile quick
+          mkdir -p build
+          odin build src/tools/wrentool -collection:wb=src -out:build/wrentool
+          build/wrentool fetch wasmtime
+          build/wrentool fetch wgpu
+          CC=clang build/wrentool build lexbor
+          build/wrentool build native -Profile quick
 
       - name: odin check and unit tests (src/tools/test_all)
         run: |
@@ -226,5 +231,5 @@ jobs:
           odin build src/tools/test_all -collection:wb=src -vet -out:build/test_all
           build/test_all -CI
 
-      - name: Crash reports end to end (tools/crash_e2e.sh)
-        run: tools/crash_e2e.sh odin
+      - name: Crash reports end to end (wrentool crash-e2e)
+        run: build/wrentool crash-e2e

@@ -2,7 +2,7 @@ name: Release
 
 # A version tag vX.Y.Z (annotated: git tag -a vX.Y.Z -m "Wren X.Y.Z") builds the release package and publishes it.
 # The tag must match APP_VERSION of src/browser/about.odin, and CHANGELOG.md must have its section, assembled from changelog.d
-# (tools/changelog.ps1 -Assemble -Version X.Y.Z, which writes APP_VERSION too; CONTRIBUTING.md).
+# (wrentool changelog -Assemble -Version X.Y.Z, which writes APP_VERSION too; CONTRIBUTING.md).
 on:
   push:
     tags: ['v*']
@@ -36,8 +36,11 @@ jobs:
           $m = Select-String -Path src\browser\about.odin -Pattern 'APP_VERSION\s*::\s*"([^"]+)"'
           $v = $m.Matches[0].Groups[1].Value
           if ("v$v" -ne $tag) { throw "tag $tag does not match APP_VERSION $v (src/browser/about.odin)" }
-          # the CHANGELOG was assembled for this version (tools/changelog.ps1 -Assemble -Version): its section, no fragment left
-          ./tools/changelog.ps1 -Check -Release $v
+          # the CHANGELOG was assembled for this version (wrentool changelog -Assemble -Version): its section, no fragment left
+          New-Item -ItemType Directory -Force build | Out-Null
+          odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe
+          if ($LASTEXITCODE) { throw 'wrentool did not build' }
+          build/wrentool changelog -Check -Release $v
           if ($LASTEXITCODE) { throw "CHANGELOG.md is not ready for $v" }
           "version=$v" >> $env:GITHUB_OUTPUT
 
@@ -56,10 +59,10 @@ jobs:
       - name: Package
         shell: cmd
         run: |
-          powershell -NoProfile -ExecutionPolicy Bypass -File tools\package.ps1 -Version ${{ steps.version.outputs.version }} || exit /b 1
-          powershell -NoProfile -ExecutionPolicy Bypass -File tools\release_notes.ps1 -Tag ${{ github.ref_name }} -Out build\dist\NOTES.md || exit /b 1
+          build\wrentool.exe package -Version ${{ steps.version.outputs.version }} || exit /b 1
+          build\wrentool.exe notes -Tag ${{ github.ref_name }} -Out build\dist\NOTES.md || exit /b 1
 
-      # the release's map (tools\symbols.ps1): not published with it; tools\crash_symbolize.ps1 names the frames of its crash
+      # the release's map (wrentool symbols): not published with it; wrentool crash-symbolize names the frames of its crash
       # reports with it. Kept as long as GitHub keeps an artifact.
       - uses: actions/upload-artifact@v4
         with:
