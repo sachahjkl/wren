@@ -1,9 +1,9 @@
 package deps
 
-import "core:fmt"
-import "core:os"
-import "wb:base"
-import "wb:tools/tooling"
+@(require) import "core:fmt"
+@(require) import "core:os"
+@(require) import "wb:base"   // (each of these is of one system: fetch_linux.odin has the other)
+@(require) import "wb:tools/tooling"
 
 // To move to another Wasmtime: change the version and the digests (GitHub shows them for each *-c-api asset), then WASMTIME_VERSION of src/wasm/wasmtime.odin (part of the compiled-code cache key).
 WASMTIME_VERSION :: "49.0.3"
@@ -74,8 +74,8 @@ fetch_openh264 :: proc(o: Options) -> bool { return fail(o, "OpenH264 is fetched
 
 // Noto Color Emoji (COLR v1) for the built-in emoji: compiled into wren.exe (src/browser/font_settings.odin); -Unicode: Unicode's emoji data too (the toolkit's tests/colr).
 fetch_emoji :: proc(o: Options) -> bool {
-	dest := o.dest != "" ? o.dest : EMOJI_DEST
 	when ODIN_OS == .Windows {
+		dest := o.dest != "" ? o.dest : EMOJI_DEST
 		cmd := make([dynamic]string, context.temp_allocator)
 		append(&cmd, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", TOOLKIT_FETCH_EMOJI, "-Dest", dest)
 		if o.unicode { append(&cmd, "-Unicode") }

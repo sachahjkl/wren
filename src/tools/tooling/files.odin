@@ -32,7 +32,8 @@ odin_program :: proc() -> string {
 	text, code := capture({"odin", "root"})
 	if code == 0 {
 		candidate, _ := filepath.join({strings.trim_space(text), strings.concatenate({"odin", EXE_SUFFIX})})
-		if os.exists(candidate) { found = candidate }
+		// (it must run: the flake's root on a Windows drive holds a copy with no execute bit)
+		if os.is_file(candidate) { if _, runs := capture({candidate, "version"}, allocator = context.temp_allocator); runs == 0 { found = candidate } }
 	}
 	return found
 }

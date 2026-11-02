@@ -11,11 +11,11 @@ import "wb:testserver"
 import "wb:tools/tooling"
 
 // The browser on real pages with real input, through the channel. Needs the profile build: each scenario's report (per-phase statistics, CPU, sampling profile) is written by the browser at its
-// end in build/bench/perf/<scenario><tag>.txt and .csv (one row per frame). The table has what the channel says of each. -Url u -Action a: a scenario of your own.
+// end in build/perf/<scenario><tag>.txt and .csv (one row per frame). The table has what the channel says of each. -Url u -Action a: a scenario of your own.
 // -Pref browser.frame.target_hz=60 -Tag _60 simulates another rate; -Pref canvas.gpu.enabled=false -Tag _sw the software rasterizer.
 // Frame pacing against a real refresh needs a window: -Shown, on its own desktop.
 
-PERF_DIR :: "build/bench/perf"
+PERF_DIR :: "build/perf"   // (about:demos links its pages from there)
 SEED :: 42
 WORDS := []string{"lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "sed", "do", "eiusmod", "tempor", "incididunt", "ut", "labore", "et", "dolore", "magna", "aliqua"}
 TYPED := "the quick brown fox jumps over the lazy dog "
