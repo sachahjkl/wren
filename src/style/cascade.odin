@@ -130,7 +130,7 @@ Style_Change :: struct {
 styled_destroy :: proc(s: ^Styled) {
 	if s == nil { return }
 	delete(s.by_node)
-	for a in s.thread_arenas { virtual.arena_destroy(a); free(a, base.process_allocator()) }   // (made on style threads: thread_arena_make)
+	for a in s.thread_arenas { thread_arena_free(a) }
 	delete(s.thread_arenas)
 	delete(s.overlaid)
 	delete(s.changes)
@@ -151,6 +151,11 @@ STYLED_RESERVE :: uint(1) << 33
 // (style.recycle_bytes): a new pass then writes into pages already mapped instead of faulting fresh ones in.
 styled_recycle :: proc(e: ^Engine, s: ^Styled) {
 	if s == nil { return }
+	// the threads' arenas go back to the engine in every case
+	if e != nil {
+		for a in s.thread_arenas { thread_arena_give(e, a) }
+		clear(&s.thread_arenas)
+	}
 	if e == nil || e.has_spare || int(s.arena.total_used) > e.settings.recycle_bytes || s.arena.curr_block == nil || s.arena.curr_block.prev != nil {
 		styled_destroy(s)
 		return
@@ -162,7 +167,6 @@ styled_recycle :: proc(e: ^Engine, s: ^Styled) {
 	delete(s.scheme_metas)
 	inline_cache_destroy(s)
 	journal_destroy(s)
-	for a in s.thread_arenas { virtual.arena_destroy(a); free(a, base.process_allocator()) }
 	delete(s.thread_arenas)
 	virtual.arena_free_all(&s.arena)
 	e.spare = s.arena
@@ -507,7 +511,7 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	c.node = h
 	c.inherits = {}
 	if parent != nil {
-		for pr in inherited_list { copy_prop(c, parent, pr) }
+		inherit_all(c, parent)
 		c.custom = parent.custom
 		c.inherits = inherited_set
 		c.content_language = parent.content_language   // `lang` inherits; overridden below by the element's own attribute
