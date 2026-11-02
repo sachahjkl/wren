@@ -131,6 +131,7 @@ Page :: struct {
 	template_doc: Template_Doc,         // the inert document the contents of <template>s belong to (js_dom_tree.odin)
 	fullscreen:   ^Page_Fullscreen,     // the document's fullscreen element, made on first use (fullscreen.odin)
 	timeline:     ^Page_Timeline,       // Performance Timeline entries: navigation, resources, paints, slow input (timeline.odin)
+	image_document: Image_Document,     // an image opened by itself: the viewer's state (image_document.odin)
 }
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives
