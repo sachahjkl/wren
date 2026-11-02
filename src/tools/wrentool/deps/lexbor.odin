@@ -86,7 +86,7 @@ lexbor_compile :: proc(o: Options, objects: string) -> bool {
 		i += 1
 		_ = os.make_directory_all(dir)
 		cmd := make([dynamic]string, context.temp_allocator)
-		append(&cmd, "cl")
+		append(&cmd, msvc_tool(env, "cl.exe"))
 		append(&cmd, ..flags)
 		append(&cmd, fmt.tprintf("/Fo%s/", dir))
 		append(&cmd, ..list[:])
@@ -95,7 +95,7 @@ lexbor_compile :: proc(o: Options, objects: string) -> bool {
 	all := make([dynamic]string, context.temp_allocator)
 	files_under(objects, &all)
 	cmd := make([dynamic]string, context.temp_allocator)
-	append(&cmd, "lib", "/nologo", fmt.tprintf("/OUT:%s", LEXBOR_LIB))
+	append(&cmd, msvc_tool(env, "lib.exe"), "/nologo", fmt.tprintf("/OUT:%s", LEXBOR_LIB))
 	append(&cmd, ..all[:])
 	if tooling.run({command = cmd[:], env = env, log = log}) != 0 { return fail(o, fmt.tprintf("lib failed: read %s", log)) }
 	return true

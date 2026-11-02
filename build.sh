@@ -5,9 +5,9 @@
 # package and the native libraries from `./build.sh deps`; `./build.sh wren` attempts it so any remaining errors show.
 #   ./build.sh deps       the native libraries for this system: Wasmtime (pinned release, SHA-256), Lexbor, the Rust library
 #   ./build.sh check      odin check for Linux and the unit tests of every portable package (src/tools/test_all)
-#   ./build.sh crash      the crash reports end to end (tools/crash_e2e.sh)
+#   ./build.sh crash      the crash reports end to end (wrentool crash-e2e)
 #   ./build.sh wren       attempt to link build/wren (needs libwgpu_native.a and ./build.sh deps; src/browser type-checks now)
-#   ./build.sh release    build/wren as the release has it: the release channel, the Rust library with fat LTO (tools/package_linux.sh packs it)
+#   ./build.sh release    build/wren as the release has it: the release channel, the Rust library with fat LTO (wrentool package packs it)
 #   ./build.sh all        deps, check, crash
 #   ./build.sh help
 # ODIN: the compiler (default: odin on PATH). PROFILE: the Rust profile (quick, the default, or release).
@@ -17,11 +17,21 @@ cd "$ROOT"
 ODIN="${ODIN:-odin}"
 PROFILE="${PROFILE:-quick}"
 
+# src/tools/wrentool: built when this script needs it (a second or two), it needs nothing of what it fetches.
+wrentool() {
+  if [ -z "${WRENTOOL_BUILT:-}" ]; then
+    mkdir -p build
+    "$ODIN" build src/tools/wrentool -collection:wb=src -out:build/wrentool
+    WRENTOOL_BUILT=1
+  fi
+  WREN_ODIN="$ODIN" build/wrentool "$@"
+}
+
 deps() {
-  tools/fetch_wasmtime.sh
-  tools/fetch_wgpu.sh
-  CC="${CC:-clang}" tools/build_lexbor.sh
-  tools/build_native.sh --profile "$PROFILE"
+  wrentool fetch wasmtime
+  wrentool fetch wgpu
+  CC="${CC:-clang}" wrentool build lexbor
+  wrentool build native -Profile "$PROFILE"
 }
 
 # odin check and the unit tests: the test program of the repository, built each time (a second).
@@ -33,7 +43,7 @@ tests() {
 
 # The linker flags the browser executable needs on Linux, the counterpart of build.bat's
 # "/STACK:33554432 /NODEFAULTLIB:... /MAP":
-#   --build-id        a build id in the binary, so a crash report can name the build (tools/crash_symbolize.sh,
+#   --build-id        a build id in the binary, so a crash report can name the build (wrentool crash-symbolize,
 #                     docs/portability.md "An executable linked without --build-id ...")
 #   -z noexecstack    a non-executable stack (the Rust and C objects are already marked; make it explicit)
 #   -lpthread -ldl    threads (host.thread_start) and dlopen (openh264, libfido2, libva loaded at run time)
@@ -50,7 +60,7 @@ wren() {
   local out="build/wren"
   # The text and accessibility backends are compiled into the native library here (build.bat's default features);
   # the toolkit is then told not to link them itself (-define:FONT_NATIVE_LINK=false / -define:A11Y_NATIVE_LINK=false).
-  tools/build_native.sh --profile "$PROFILE" --features text,a11y
+  wrentool build native -Profile "$PROFILE" -Features text,a11y
   local flags=(-collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -target:linux_amd64)
   flags+=(-extra-linker-flags:"$(link_flags)")
   # as build.bat: the channel, the first block of each thread's temporary allocator (1 MiB), the version of the sources
@@ -68,9 +78,9 @@ wren() {
 case "${1:-help}" in
   deps)  deps ;;
   check) tests ;;
-  crash) tools/crash_e2e.sh "$ODIN" ;;
+  crash) wrentool crash-e2e ;;
   wren)  wren ;;
   release) PROFILE=release; WREN_CHANNEL=release; wren ;;
-  all)   deps; tests; tools/crash_e2e.sh "$ODIN" ;;
+  all)   deps; tests; wrentool crash-e2e ;;
   *)     sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac
