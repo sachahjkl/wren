@@ -50,14 +50,70 @@ collect_inputs :: proc(dir: string, recursive: bool, suffixes: []string, out: ^[
 	}
 }
 
-// What the engine is made of: change any of it and it is built again (the Odin engine and its packages count: the glue imports them from src).
+// The packages the glue compiles, followed through their imports (relative and wb:, not the compiler's own) from GLUE_PACKAGE: their sources, tests aside, and what they
+// #load. Not the folders beside them that nothing imports (the engine's judges and generators, the ABI's benches and checks): a change there builds nothing again.
+GLUE_PACKAGE :: "native/js/odin"
+WB_COLLECTION :: "src"
+TOOLKIT_COLLECTION :: "ext/gui_toolkit"
+
+@(private = "file")
+quoted_after :: proc(line, prefix: string) -> (string, bool) {
+	k := strings.index(line, prefix)
+	if k < 0 { return "", false }
+	rest := line[k + len(prefix):]
+	a := strings.index_byte(rest, '"')
+	if a < 0 { return "", false }
+	b := strings.index_byte(rest[a + 1:], '"')
+	if b < 0 { return "", false }
+	return rest[a + 1:][:b], true
+}
+
+@(private = "file")
+glue_inputs :: proc(dir: string, seen: ^map[string]bool, out: ^[dynamic]string) {
+	clean, _ := filepath.clean(dir, context.temp_allocator)
+	key, _ := strings.replace_all(clean, "\\", "/", context.temp_allocator)
+	if key in seen { return }
+	seen[key] = true
+	entries, err := os.read_all_directory_by_path(key, context.temp_allocator)
+	if err != nil { return }
+	for e in entries {
+		if e.type == .Directory || !strings.has_suffix(e.name, ".odin") || strings.has_suffix(e.name, "_test.odin") { continue }
+		path := strings.clone(e.fullpath, context.temp_allocator)
+		append(out, path)
+		data, _ := os.read_entire_file(path, context.temp_allocator)
+		for line in strings.split_lines(string(data), context.temp_allocator) {
+			l := strings.trim_space(line)
+			if strings.has_prefix(l, "import ") {
+				target, ok := quoted_after(l, "import")
+				if !ok || strings.has_prefix(target, "base:") || strings.has_prefix(target, "core:") || strings.has_prefix(target, "vendor:") { continue }
+				switch {
+				case strings.has_prefix(target, "wb:"): glue_inputs(fmt.tprintf("%s/%s", WB_COLLECTION, target[3:]), seen, out)
+				case strings.has_prefix(target, "toolkit:"): glue_inputs(fmt.tprintf("%s/%s", TOOLKIT_COLLECTION, target[8:]), seen, out)
+				case: glue_inputs(fmt.tprintf("%s/%s", key, target), seen, out)
+				}
+			}
+			if loaded, ok := quoted_after(l, "#load_directory("); ok {
+				collect_inputs(fmt.tprintf("%s/%s", key, loaded), false, {""}, out)
+			} else if loaded, ok = quoted_after(l, "#load("); ok {
+				append(out, fmt.tprintf("%s/%s", key, loaded))
+			}
+		}
+	}
+}
+
+// What the engine is made of: change any of it and it is built again. The glue's packages (glue_inputs); the snapshot tool and the runtime it runs the engine on, tests aside.
 @(private = "file")
 js_stamp :: proc(o: Js_Options) -> string {
 	files := make([dynamic]string, context.temp_allocator)
-	collect_inputs("native/js", true, {".c", ".h", ".js", ".odin"}, &files)
-	collect_inputs("src/engine", true, {".odin"}, &files)
-	collect_inputs("src/wasm", false, {".odin"}, &files)
-	collect_inputs("src/tools/jsengine", false, {".odin"}, &files)
+	seen := make(map[string]bool, context.temp_allocator)
+	glue_inputs(GLUE_PACKAGE, &seen, &files)
+	for dir in ([]string{"src/wasm", "src/tools/jsengine"}) {
+		start := len(files)
+		collect_inputs(dir, false, {".odin"}, &files)
+		kept := start
+		for f in files[start:] { if !strings.has_suffix(f, "_test.odin") { files[kept] = f; kept += 1 } }
+		resize(&files, kept)
+	}
 	append(&files, THIS_FILE)
 	slice.sort(files[:])
 	all := strings.builder_make(context.temp_allocator)
@@ -112,7 +168,8 @@ build_js_engine :: proc(options: Js_Options) -> bool {
 	if o.no_snapshot { return true }
 
 	// Pre-initialize (src/tools/jsengine: runs wj_preinit under Wasmtime and writes the snapshot). Wasm calls run on the main thread: room for wasm.wasmtime.max_stack_bytes.
-	exe := fmt.tprintf("build/jsengine%s", EXE_SUFFIX)
+	// (in <out>: the test image of test262 is built beside the browser's engine, at the same time)
+	exe := fmt.tprintf("%s/jsengine%s", o.out, EXE_SUFFIX)
 	build := make([dynamic]string, context.temp_allocator)
 	append(&build, odin_program(), "build", "src/tools/jsengine", "-collection:wb=src", "-vet", fmt.tprintf("-out:%s", exe), "-o:speed")
 	append(&build, ..STACK_FLAGS)

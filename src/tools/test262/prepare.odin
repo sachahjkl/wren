@@ -8,7 +8,8 @@ import "wb:tools/tooling"
 // What a run needs, each kept when up to date, in build/test262: run/test262, the suite (the commit QuickJS-ng 0.17.0 runs, its submodule, as a GitHub archive checked by SHA-256); run/test262.conf and
 // run/test262_errors.txt, QuickJS-ng's runner configuration, unchanged, from the engine's release source; build/js-test262, the test image of the engine (the shipped engine plus $262, print, the module loader:
 // native/js/odin/test262_host.odin). Outputs: wasm_errors.txt (run-test262's error-file format).
-//   build/test262 [-quick] [-update] [-stride k] [-threads n] [-jit [-jit-threshold n] [-jit-loop n] [-jit-step] [-jit-sync]]
+//   build/test262 [-quick] [-update] [-prepare] [-stride k] [-threads n] [-jit [-jit-threshold n] [-jit-loop n] [-jit-step] [-jit-sync]]
+// -prepare: only that, no test run (test_all: one step makes it, the runs read it).
 // -quick: every QUICK_STRIDE-th test. Exit status 1 on a regression: a test failing that src/tools/test262/known_failures.txt does not list. -update rewrites that list from a full run.
 
 TEST262_COMMIT :: "5ef1e5723be95296f36afb0386676fed0205869c"
@@ -20,6 +21,8 @@ TEST_IMAGE_DIR :: "build/js-test262"
 KNOWN_FAILURES :: "src/tools/test262/known_failures.txt"
 QUICK_STRIDE :: 25
 ERRORS_FILE :: "wasm_errors.txt"
+// The JIT's run writes its own: it runs beside the interpreter's (test_all: two steps).
+JIT_ERRORS_FILE :: "wasm_jit_errors.txt"
 
 // Fetches and builds what is missing. False: said on standard error.
 prepare :: proc() -> bool {
@@ -45,7 +48,10 @@ prepare :: proc() -> bool {
 	for f in ([]string{"test262.conf", "test262-fast.conf", "test262_errors.txt"}) {
 		data, rerr := os.read_entire_file(fmt.tprintf("%s/%s", source, f), context.temp_allocator)
 		if rerr != nil { fmt.eprintfln("test262: no %s in %s", f, source); return false }
-		if os.write_entire_file(fmt.tprintf("%s/%s", RUN_DIR, f), data) != nil { return false }
+		// (written only when it differs: two runs at once, the interpreter's and the JIT's, read it)
+		to := fmt.tprintf("%s/%s", RUN_DIR, f)
+		if have, herr := os.read_entire_file(to, context.temp_allocator); herr == nil && string(have) == string(data) { continue }
+		if os.write_entire_file(to, data) != nil { return false }
 	}
 	return tooling.build_js_engine({out = TEST_IMAGE_DIR, test262 = true})
 }
