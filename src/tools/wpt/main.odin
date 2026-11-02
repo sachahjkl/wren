@@ -869,6 +869,10 @@ Child_State :: struct {
 
 child_on_console :: proc(d: ^headless.Doc, level: page.Log_Level, text: string) {
 	cs := (^Child_State)(d.user)
+	if d.root != nil {   // a window the test opened: its messages are no report (WPT_CONSOLE=1 shows them)
+		if os.get_env("WPT_CONSOLE", context.temp_allocator) != "" { fmt.eprintfln("console (window %s) %v: %s", d.url, level, text) }
+		return
+	}
 	if strings.has_prefix(text, "WPTRESULT ") && !cs.got {
 		cs.result_json = strings.clone(text[len("WPTRESULT "):])
 		cs.got = true
@@ -906,6 +910,13 @@ page_busy :: proc(p: ^page.Page) -> bool {
 	if p == nil || p.closed { return false }
 	if p.scripts != nil && p.scripts.ready_state != .Complete { return true }
 	return p.timers.count > 0 || p.fetches.count > 0 || fetch.in_flight(p.loader) > 0 || page.wants_animation_frame(p) || len(p.workers.hosts) > 0 || page.shared_workers_live() > 0 || len(p.offthread.jobs) > 0 || p.crypto_jobs > 0 || page.media_busy(p) || page.idb_busy(p)
+}
+
+// The test's document and every window it opened are loaded and can no longer do anything by themselves.
+windows_idle :: proc(d: ^headless.Doc) -> bool {
+	if !headless.loaded(d) || page_busy(d.page) { return false }
+	for w in d.popups { if !headless.loaded(w) || page_busy(w.page) { return false } }
+	return true
 }
 
 HARNESS_STATUS := [?]string{"OK", "ERROR", "TIMEOUT", "PRECONDITION_FAILED"}
@@ -1029,7 +1040,7 @@ child_main :: proc(out_path: string) -> int {
 			// (dynamic-import/microtasks/basic.any.html, 1e6 of them) leaves no timer nor request, and the module it awaits had
 			// not been asked for yet: it was taken for an idle page and stopped as soon as its chain ended
 			if time.duration_milliseconds(time.tick_since(slice_start)) > PUMP_BUSY_MS { idle = false; continue }
-			if opts.idle_ms > 0 && headless.loaded(d) && !page_busy(d.page) {
+			if opts.idle_ms > 0 && windows_idle(d) {
 				if !idle { idle = true; idle_since = time.tick_now() }
 				if time.duration_milliseconds(time.tick_since(idle_since)) >= f64(opts.idle_ms) { break }
 			} else {

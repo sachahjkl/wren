@@ -2632,10 +2632,19 @@ foreign _wr_wj_frames {
 	// otherWindow.location = url, location.href = url, location.replace(url): Security when the calling document may
 	// not navigate it (HTML "allowed to navigate", the sandbox; the console says why), Syntax for an invalid URL.
 	@(link_name = "Frame_navigate") wr_Frame_navigate :: proc(navigable: u64, url: [^]u8, url_len: u32, replace: i32) -> i32 ---
-	// window.open(url, target): a frame's name, _self, _parent or _top is navigated and its navigable returned; any
-	// other target opens a new tab (when the embedder can) and gives 0 (no opener relationship, as noopener).
-	// Not_Allowed in a sandboxed document without allow-popups, Syntax for an invalid URL.
-	@(link_name = "Frame_open") wr_Frame_open :: proc(url: [^]u8, url_len: u32, target: [^]u8, target_len: u32, _ret: ^u64) -> i32 ---
+	// window.open(url, target, features): _self, _parent, _top, or the name of a frame or of a window of the calling
+	// document's browsing context group is navigated and its navigable returned; _blank or a name nothing has opens a new
+	// window (when the embedder can: src/page/auxiliary.odin) whose opener is the calling document, and gives its
+	// navigable. 0 when nothing was opened, and under the features noopener / noreferrer. Syntax for an invalid URL.
+	@(link_name = "Frame_open") wr_Frame_open :: proc(url: [^]u8, url_len: u32, target: [^]u8, target_len: u32, features: [^]u8, features_len: u32, _ret: ^u64) -> i32 ---
+	// window.opener: the navigable whose document opened this top-level one; 0 for a frame, a window opened with
+	// noopener, one whose opener relationship ended (Cross-Origin-Opener-Policy, opener = null), or once the opener is gone.
+	@(link_name = "Frame_opener") wr_Frame_opener :: proc(navigable: u64) -> u64 ---
+	// window.close(): a window a script opened is closed (closed is true at once; its embedder closes it in a task). Any
+	// other window stays open (the console says why).
+	@(link_name = "Frame_close") wr_Frame_close :: proc(navigable: u64) ---
+	// window.opener = null: the calling document's window has no opener any more.
+	@(link_name = "Frame_disown") wr_Frame_disown :: proc() ---
 	// otherWindow.postMessage(message, targetOrigin, [ports]): the same, with the MessagePorts of the transfer list
 	// shipped as port ends (Port_ship / Port_entangle): the receiver's MessageEvent.ports are bound to them.
 	@(link_name = "Frame_postMessagePorts") wr_Frame_postMessagePorts :: proc(navigable: u64, data: [^]u8, data_len: u32, target_origin: [^]u8, target_origin_len: u32, ports: [^]u64, ports_len: u32) -> i32 ---

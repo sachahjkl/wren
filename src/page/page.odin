@@ -258,6 +258,8 @@ apply_response_headers :: proc(p: ^Page, csp_values, csp_report_only_values: []s
 // capability. A frame (`parent`) has it from its parent, when of the same origin; it has no opener policy of its own.
 // What makes a SharedArrayBuffer safe here is that a realm cannot read another's memory at all (each is a Wasm instance): the
 // embedder policy still holds, since what such a page may read is what the web expects of it.
+// A top-level document's opener policy is matched with that of the document it replaces (auxiliary.odin): a mismatch puts its
+// navigable in a new browsing context group. A document that is no secure context has none (unsafe-none).
 apply_isolation_headers :: proc(p: ^Page, headers: http.Headers, parent: ^Page = nil) {
 	// a frame of its parent's origin is in its parent's agent cluster, a secure context or not (a WebAssembly.Module goes between them)
 	same := parent != nil && url.same_origin(p.env.origin, parent.env.origin)
@@ -266,10 +268,14 @@ apply_isolation_headers :: proc(p: ^Page, headers: http.Headers, parent: ^Page =
 		wasm.user_cluster_retain(p.env.agent_cluster)
 		base.on_close(p.scope, proc(data: rawptr) { wasm.user_cluster_release(u64(uintptr(data))) }, rawptr(uintptr(p.env.agent_cluster)))
 	}
-	if !p.env.secure_context { return }
+	if !p.env.secure_context {
+		if parent == nil { navigable_commit_policy(page_navigable(p), p, .Unsafe_None) }
+		return
+	}
 	coep, _ := http.get_header(headers, "cross-origin-embedder-policy")
 	p.env.embedder_policy = parse_embedder_policy(coep)
 	coop, _ := http.get_header(headers, "cross-origin-opener-policy")
+	if parent == nil { navigable_commit_policy(page_navigable(p), p, opener_policy_parse(http.get_all(headers, "cross-origin-opener-policy"), p.env.embedder_policy)) }
 	if parent != nil {
 		p.env.cross_origin_isolated = parent.env.cross_origin_isolated && same && p.env.embedder_policy != .Unsafe_None
 		return
@@ -400,8 +406,9 @@ meta_refresh_fire :: proc(data: rawptr) {
 	p := m.page
 	// (one turn more once it has: its container's load event goes first)
 	if !p.closed && !m.loaded {
+		// (a frame's document, a window's initial about:blank: their frames state says; a tab's, its scripts' load)
 		f := frame_navigable_of(p) != nil ? p.frames : nil
-		m.loaded = f != nil ? f.complete : p.scripts == nil || p.scripts.timing.load_end_ms != 0
+		m.loaded = f != nil ? f.complete : (p.frames != nil && p.frames.complete) || p.scripts == nil || p.scripts.timing.load_end_ms != 0
 		host.set_timer(p.loop, p.settings.js_load.poll_ms, 0, meta_refresh_fire, m, p.scope)
 		return
 	}

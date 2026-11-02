@@ -3,7 +3,8 @@
 // native/js/odin/frames.odin). A window of another document is named by its navigable's id: each document runs in its
 // own engine instance, so another window is a WindowProxy of the calling realm. Across origins it reaches what HTML lets
 // a cross-origin window reach (postMessage, location as a setter, closed, frames, length, top, parent, opener, window,
-// self, close, focus, blur). Between documents of one origin, nodes are reached directly: every node handle names its
+// self, close, focus, blur). The windows a script opens (window.open, links to _blank) are top-level navigables of the same
+// kind (src/page/auxiliary.odin). Between documents of one origin, nodes are reached directly: every node handle names its
 // document (base.pool_insert_tagged), the browser routes the call to it and checks the origin on each call.
 package web
 
@@ -35,7 +36,10 @@ foreign _m_frames {
 	@(link_name = "Frame_adoptNode") _Frame_adoptNode :: proc(node: u64, into: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Frame_postMessage") _Frame_postMessage :: proc(navigable: u64, data: [^]u8, data_len: u32, target_origin: [^]u8, target_origin_len: u32) -> Error ---
 	@(link_name = "Frame_navigate") _Frame_navigate :: proc(navigable: u64, url: [^]u8, url_len: u32, replace: i32) -> Error ---
-	@(link_name = "Frame_open") _Frame_open :: proc(url: [^]u8, url_len: u32, target: [^]u8, target_len: u32, _ret: ^u64) -> Error ---
+	@(link_name = "Frame_open") _Frame_open :: proc(url: [^]u8, url_len: u32, target: [^]u8, target_len: u32, features: [^]u8, features_len: u32, _ret: ^u64) -> Error ---
+	@(link_name = "Frame_opener") _Frame_opener :: proc(navigable: u64) -> u64 ---
+	@(link_name = "Frame_close") _Frame_close :: proc(navigable: u64) ---
+	@(link_name = "Frame_disown") _Frame_disown :: proc() ---
 	@(link_name = "Frame_postMessagePorts") _Frame_postMessagePorts :: proc(navigable: u64, data: [^]u8, data_len: u32, target_origin: [^]u8, target_origin_len: u32, ports: [^]u64, ports_len: u32) -> Error ---
 	@(link_name = "Window_get_name") _Window_get_name :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Window_set_name") _Window_set_name :: proc(value: [^]u8, value_len: u32) ---
@@ -235,12 +239,30 @@ Frame_navigate :: proc "contextless" (navigable: u64, url: string, replace: bool
 	return _Frame_navigate(navigable, raw_data(url), u32(len(url)), i32(1 if replace else 0))
 }
 
-// window.open(url, target): a frame's name, _self, _parent or _top is navigated and its navigable returned; any
-// other target opens a new tab (when the embedder can) and gives 0 (no opener relationship, as noopener).
-// Not_Allowed in a sandboxed document without allow-popups, Syntax for an invalid URL.
-Frame_open :: proc "contextless" (url: string, target: string) -> (result: u64, err: Error) {
-	err = _Frame_open(raw_data(url), u32(len(url)), raw_data(target), u32(len(target)), &result)
+// window.open(url, target, features): _self, _parent, _top, or the name of a frame or of a window of the calling
+// document's browsing context group is navigated and its navigable returned; _blank or a name nothing has opens a new
+// window (when the embedder can: src/page/auxiliary.odin) whose opener is the calling document, and gives its
+// navigable. 0 when nothing was opened, and under the features noopener / noreferrer. Syntax for an invalid URL.
+Frame_open :: proc "contextless" (url: string, target: string, features: string) -> (result: u64, err: Error) {
+	err = _Frame_open(raw_data(url), u32(len(url)), raw_data(target), u32(len(target)), raw_data(features), u32(len(features)), &result)
 	return
+}
+
+// window.opener: the navigable whose document opened this top-level one; 0 for a frame, a window opened with
+// noopener, one whose opener relationship ended (Cross-Origin-Opener-Policy, opener = null), or once the opener is gone.
+Frame_opener :: proc "contextless" (navigable: u64) -> u64 {
+	return _Frame_opener(navigable)
+}
+
+// window.close(): a window a script opened is closed (closed is true at once; its embedder closes it in a task). Any
+// other window stays open (the console says why).
+Frame_close :: proc "contextless" (navigable: u64) {
+	_Frame_close(navigable)
+}
+
+// window.opener = null: the calling document's window has no opener any more.
+Frame_disown :: proc "contextless" () {
+	_Frame_disown()
 }
 
 // otherWindow.postMessage(message, targetOrigin, [ports]): the same, with the MessagePorts of the transfer list

@@ -66,7 +66,7 @@ function not exposed to workers is not instantiated.
 | [`fetch`](fetch.md) | 11 | Window | The promise side of the Fetch API, on the same records as the callback API of module net (a Response is a Fetch: |
 | [`fontface`](fontface.md) | 2 | Window | What `document.fonts.add(new FontFace(...))` puts in force: a rule of its own for the document's fonts (src/page/fonts.odin), in |
 | [`forms`](forms.md) | 186 | Window | Form controls (HTML forms): values, checkedness, validity, selection, select / option / form members, focus, and |
-| [`frames`](frames.md) | 26 | Window | Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin, frames_access.odin; |
+| [`frames`](frames.md) | 29 | Window | Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin, frames_access.odin; |
 | [`fs`](fs.md) | 20 | Window, Worker | File handles (WHATWG File System, WICG File System Access; src/page/fs_store.odin, fs_api.odin; |
 | [`fullscreen`](fullscreen.md) | 6 | Window | The Fullscreen API (src/page/fullscreen.odin): an element fills the screen. The page keeps one fullscreen element per |
 | [`history`](history.md) | 14 | Window | Window, Location and History (HTML). Navigations requested by a module happen from a task of their own, never |
@@ -107,4 +107,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1578 imports in 1479 functions.
+1581 imports in 1482 functions.

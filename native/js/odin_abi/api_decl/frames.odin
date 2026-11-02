@@ -27,6 +27,9 @@ Frame_bridge      :: #type proc(realm: u64, request: abi.Bytes) -> u32
 Frame_bridgeReply :: #type proc() -> abi.Bytes
 Frame_ofElement   :: #type proc(element: Element) -> Navigable
 Frame_navigate    :: #type proc(navigable: Navigable, url: string, replace: bool) -> abi.Api_Error
-Frame_open        :: #type proc(url: string, target: string) -> (Navigable, abi.Api_Error)
+Frame_open        :: #type proc(url: string, target: string, features: string) -> (Navigable, abi.Api_Error)
+Frame_opener      :: #type proc(navigable: Navigable) -> Navigable
+Frame_close       :: #type proc(navigable: Navigable)
+Frame_disown      :: #type proc()
 // a structured-clone of the message and the transferred ports' ends
 Frame_postMessagePorts :: #type proc(navigable: Navigable, data: abi.Bytes, target_origin: string, ports: []u64) -> abi.Api_Error

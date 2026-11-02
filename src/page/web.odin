@@ -59,9 +59,14 @@ Embedder :: struct {
 	// state is saved now. Then `entered` after a same-document traversal: restore it. nil = nothing.
 	leaving:  proc(user: rawptr, p: ^Page, entry: ^History_Entry),
 	entered:  proc(user: rawptr, p: ^Page, entry: ^History_Entry),
-	// window.open() to a new window, from document `p` (it may be a frame of this tab): the embedder opens `url` (absolute)
-	// in a new tab, without an opener relationship. nil = new windows are not opened.
-	open:     proc(user: rawptr, p: ^Page, url: string),
+	// window.open() to a new window, a link to one, from document `p` (it may be a frame of this tab; auxiliary.odin): the
+	// embedder makes a window for it (a tab; a window without a shell) with a top-level navigable of its own (navigable_top_new),
+	// whose first document is the one auxiliary_document makes, connected as its other documents are; then it navigates it to
+	// req.url unless that is about:blank. Its navigable; nil = no window was opened. nil = new windows are not opened.
+	open:     proc(user: rawptr, p: ^Page, req: Open_Request) -> ^Navigable,
+	// window.close() of the window of `p`, one a script opened, from a task of its own: the embedder closes it. nil = scripts
+	// close no window here.
+	close:    proc(user: rawptr, p: ^Page),
 }
 
 Web_State :: struct {

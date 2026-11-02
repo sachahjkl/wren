@@ -11,7 +11,8 @@ package page
 //
 //   * a handle resolves in its own document only: the tag is in the slot's generation, so a handle given to the wrong
 //     document fails like a dead one, in any implementation, routed or not;
-//   * the document is looked up on each call, among the documents of the caller's tab, and its origin compared with the
+//   * the document is looked up on each call, among the documents of the caller's tab and of the windows of its browsing
+//     context group (a popup and its opener, auxiliary.odin), and its origin compared with the
 //     caller's (frames_may_reach): a frame gone, navigated to another origin or sandboxed without allow-same-origin leaves
 //     handles that resolve to nothing. A cross-origin frame's nodes never get a handle in another realm in the first place;
 //   * all documents of a tab live on one thread (they share the page's loop), and a worker has no route.
@@ -61,10 +62,26 @@ find_by_tag :: proc(p: ^Page, tag: u32) -> ^Page {
 	return nil
 }
 
-// The document of `tag` in the tab of `from`, when `from` may reach it; nil otherwise.
+// The document of `tag` (of page id `id`) among those of `from`'s browsing context group: its own tab first, then the
+// windows related to it by openers (auxiliary.odin).
+@(private = "file")
+group_find_by_tag :: proc(from: ^Page, tag: u32) -> ^Page {
+	if t := find_by_tag(page_top(from), tag); t != nil { return t }
+	for top in group_tops(from)[1:] { if t := find_by_tag(top, tag); t != nil { return t } }
+	return nil
+}
+
+@(private = "file")
+group_find_by_id :: proc(from: ^Page, id: u64) -> ^Page {
+	if t := find_by_id(page_top(from), id); t != nil { return t }
+	for top in group_tops(from)[1:] { if t := find_by_id(top, id); t != nil { return t } }
+	return nil
+}
+
+// The document of `tag` in the browsing context group of `from`, when `from` may reach it; nil otherwise.
 frames_reach_tag :: proc(from: ^Page, tag: u32) -> ^Page {
 	if from == nil || from.worker != nil || from.close_pending { return nil }
-	t := find_by_tag(page_top(from), tag)
+	t := group_find_by_tag(from, tag)
 	if t == nil || !frames_may_reach(from, t) { return nil }
 	return t
 }
@@ -150,7 +167,7 @@ foreign_owner_instance :: proc(p: ^Page, owner: u32) -> ^wasm.Instance {
 	i := int(owner &~ FOREIGN_OWNER)
 	if i >= len(p.foreign_owners) { return nil }
 	o := p.foreign_owners[i]
-	q := find_by_id(page_top(p), o.page)
+	q := group_find_by_id(p, o.page)
 	if q == nil || !frames_may_reach(q, p) { return nil }
 	return instance_by_index(q, o.index)
 }
@@ -247,7 +264,7 @@ move_custom_element :: proc(src, dst: ^Page, from, to: base.Handle) {
 
 // The page numbered `id` in the tab of `p`, when `p` may reach it.
 frames_page_by_id :: proc(p: ^Page, id: u64) -> ^Page {
-	q := find_by_id(page_top(p), id)
+	q := group_find_by_id(p, id)
 	return q != nil && frames_may_reach(p, q) ? q : nil
 }
 
@@ -264,7 +281,7 @@ move_listeners :: proc(src, dst: ^Page, from, to: base.Handle) {
 			i := int(l.owner &~ FOREIGN_OWNER)
 			if i >= len(src.foreign_owners) { continue }
 			o := src.foreign_owners[i]
-			page = find_by_id(page_top(src), o.page)
+			page = group_find_by_id(src, o.page)
 			index = o.index
 			if page == nil { continue }
 		}
@@ -280,7 +297,7 @@ move_listeners :: proc(src, dst: ^Page, from, to: base.Handle) {
 // progress takes this one on top: it is what a script calling another realm calling back is.
 frames_bridge_call :: proc(from: ^Page, realm: u64, request: []u8) -> []u8 {
 	if from == nil || from.worker != nil || from.close_pending { return nil }
-	t := find_by_id(page_top(from), realm)
+	t := group_find_by_id(from, realm)
 	if t == nil || t == from || !frames_may_reach(from, t) { return nil }
 	r := js_realm(t)
 	if r == nil || r.failed || r.inst == nil || r.inst.dead { return nil }
@@ -339,6 +356,7 @@ frames_close_later :: proc(p: ^Page) -> bool {
 	if f := p.frames; f != nil && !f.owns_nav {
 		if n := f.nav; n != nil {
 			p.frames_pending_parent = n.parent
+			if n.parent == nil && n.page == p { n.page = nil }   // (an embedder's navigable)
 			f.nav = nil
 		}
 	}

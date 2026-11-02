@@ -4428,7 +4428,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly frames`: C `wjr_Window_get_frames`
 - `readonly length`: C `wjr_Window_get_length`
 - `readonly top`: C `wjr_Window_get_top`
-- `opener`: C `wjr_Window_get_opener (setter not supported)`
+- `opener`: C `wjr_Window_get_opener`
 - `readonly parent`: C `wjr_Window_get_parent`
 - `readonly frameElement`: C `wjr_Window_get_frameElement`
 - `open()`: C `wjr_Window_open`

@@ -125,6 +125,29 @@ What is not there:
   response beside `page_create` (headers, CSP, encoding, documents that are not HTML), with a new `Document` in an old page;
 - **`precommitHandler`** of `NavigateEvent.intercept()`.
 
+## Windows that scripts open
+
+`window.open()` to `_blank` or to a name nothing has, and a script's click on a link to one, open a window: a top-level navigable
+of the same kind (`src/page/auxiliary.odin`), whose embedder makes the window around it (the browser a tab, the WPT runner's
+headless host a window without a shell) and whose first document is the initial about:blank the page package makes (the
+opener's origin, or an opaque one under `noopener`). The window keeps its id across its documents, so the `WindowProxy` that
+`window.open` returned still names it after it navigated.
+
+- **The opener.** `window.opener`, a name the opener's group finds (`window.open(url, name)`, a link's target), `postMessage`
+  both ways, the DOM of a same-origin popup (its handles are looked up among the documents of the caller's browsing context
+  group: its tab and the windows related to it by openers). `noopener` / `noreferrer` (features, or `rel`; a link to `_blank`
+  has no opener unless `rel=opener`) open a window of its own group, and `window.open` returns null. `window.opener = null` ends it.
+- **Closing.** `close()` closes a window a script opened: `closed` is true at once, the embedder closes it in a task. A tab the user
+  opened stays open.
+- **Cross-Origin-Opener-Policy.** A top-level document's policy is matched with that of the document it replaces (an initial
+  about:blank has its opener's, when the opener is same origin with its top-level document): a mismatch puts the window in a new
+  browsing context group. It gets a new id, so the opener's `WindowProxy` sees it closed; its `opener` is null, its name cleared,
+  and the windows it opened lose theirs. `same-origin-allow-popups` keeps the popups it opens that have no policy.
+
+Not there: a redirect's own policy (only the final response's counts), reports (`report-to`, `Report-Only`), sandboxed popups
+inheriting their opener's sandbox, the window features (sizes, `popup`), and the browser's `noreferrer` (its navigations send
+the Referer; the WPT runner's do not).
+
 ## Cost
 
 A page without frames pays two comparisons per handle argument of an import call, and one load per call. The tag replaces bits of

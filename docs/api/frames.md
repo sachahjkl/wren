@@ -6,7 +6,8 @@ Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.od
 native/js/odin/frames.odin). A window of another document is named by its navigable's id: each document runs in its
 own engine instance, so another window is a WindowProxy of the calling realm. Across origins it reaches what HTML lets
 a cross-origin window reach (postMessage, location as a setter, closed, frames, length, top, parent, opener, window,
-self, close, focus, blur). Between documents of one origin, nodes are reached directly: every node handle names its
+self, close, focus, blur). The windows a script opens (window.open, links to _blank) are top-level navigables of the same
+kind (src/page/auxiliary.odin). Between documents of one origin, nodes are reached directly: every node handle names its
 document (base.pool_insert_tagged), the browser routes the call to it and checks the origin on each call.
 
 Exposed to: Window. Source: `api/frames.widl`.
@@ -254,16 +255,49 @@ Host: `Frame_navigate :: proc(c: ^Call, navigable: u64, url: string, replace: bo
 ### `Frame_open`
 
 ```
-u64 Frame_open(usvstring url, string target) raises
+u64 Frame_open(usvstring url, string target, string features) raises
 ```
 
-window.open(url, target): a frame's name, _self, _parent or _top is navigated and its navigable returned; any
-other target opens a new tab (when the embedder can) and gives 0 (no opener relationship, as noopener).
-Not_Allowed in a sandboxed document without allow-popups, Syntax for an invalid URL.
+window.open(url, target, features): _self, _parent, _top, or the name of a frame or of a window of the calling
+document's browsing context group is navigated and its navigable returned; _blank or a name nothing has opens a new
+window (when the embedder can: src/page/auxiliary.odin) whose opener is the calling document, and gives its
+navigable. 0 when nothing was opened, and under the features noopener / noreferrer. Syntax for an invalid URL.
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Frame_open :: proc(c: ^Call, url: string, target: string) -> (u64, Api_Error)`
+Host: `Frame_open :: proc(c: ^Call, url: string, target: string, features: string) -> (u64, Api_Error)`
+
+### `Frame_opener`
+
+```
+u64 Frame_opener(u64 navigable)
+```
+
+window.opener: the navigable whose document opened this top-level one; 0 for a frame, a window opened with
+noopener, one whose opener relationship ended (Cross-Origin-Opener-Policy, opener = null), or once the opener is gone.
+
+Host: `Frame_opener :: proc(c: ^Call, navigable: u64) -> u64`
+
+### `Frame_close`
+
+```
+void Frame_close(u64 navigable)
+```
+
+window.close(): a window a script opened is closed (closed is true at once; its embedder closes it in a task). Any
+other window stays open (the console says why).
+
+Host: `Frame_close :: proc(c: ^Call, navigable: u64)`
+
+### `Frame_disown`
+
+```
+void Frame_disown()
+```
+
+window.opener = null: the calling document's window has no opener any more.
+
+Host: `Frame_disown :: proc(c: ^Call)`
 
 ### `Frame_postMessagePorts`
 

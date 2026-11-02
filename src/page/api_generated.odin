@@ -12367,7 +12367,7 @@ _t_frames_Frame_navigate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	return nil
 }
 
-// Frame_open :: proc(c: ^Call, url: string, target: string) -> (u64, Api_Error)
+// Frame_open :: proc(c: ^Call, url: string, target: string, features: string) -> (u64, Api_Error)
 @(private = "file")
 _t_frames_Frame_open :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -12380,14 +12380,21 @@ _t_frames_Frame_open :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	_n1 := wasm.addr(&f, a[3])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "frames.Frame_open", "target") }
-	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	_n2 := wasm.addr(&f, a[5])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[4]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "frames.Frame_open", "features") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "frames.Frame_open", "result pointer") }
 	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "frames.Frame_open: argument target is not valid UTF-8")
 	}
-	_r, _err := Frame_open(&c, _p0, _p1)
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "frames.Frame_open: argument features is not valid UTF-8")
+	}
+	_r, _err := Frame_open(&c, _p0, _p1, _p2)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -12396,6 +12403,51 @@ _t_frames_Frame_open :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	intrinsics.unaligned_store((^u64)(_rs), _r)
 	a[0] = {}
 	a[0].i32 = 0
+	return nil
+}
+
+// Frame_opener :: proc(c: ^Call, navigable: u64) -> u64
+@(private = "file")
+_t_frames_Frame_opener :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := u64(a[0].i64)
+	_r := Frame_opener(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Frame_close :: proc(c: ^Call, navigable: u64)
+@(private = "file")
+_t_frames_Frame_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := u64(a[0].i64)
+	Frame_close(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Frame_disown :: proc(c: ^Call)
+@(private = "file")
+_t_frames_Frame_disown :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	Frame_disown(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
 
@@ -38456,7 +38508,10 @@ api_imports := [?]wasm.Import{
 	{module = "frames", name = "Frame_adoptNode", fn = _t_frames_Frame_adoptNode, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "frames", name = "Frame_postMessage", fn = _t_frames_Frame_postMessage, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "frames", name = "Frame_navigate", fn = _t_frames_Frame_navigate, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "frames", name = "Frame_open", fn = _t_frames_Frame_open, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "frames", name = "Frame_open", fn = _t_frames_Frame_open, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "frames", name = "Frame_opener", fn = _t_frames_Frame_opener, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "frames", name = "Frame_close", fn = _t_frames_Frame_close, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "frames", name = "Frame_disown", fn = _t_frames_Frame_disown, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{}},
 	{module = "frames", name = "Frame_postMessagePorts", fn = _t_frames_Frame_postMessagePorts, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "frames", name = "Window_get_name", fn = _t_frames_Window_get_name, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "frames", name = "Window_set_name", fn = _t_frames_Window_set_name, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},

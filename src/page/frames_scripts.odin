@@ -71,7 +71,7 @@ Frame_childNames :: proc(c: ^Call, navigable: u64) -> string {
 
 Frame_closed :: proc(c: ^Call, navigable: u64) -> bool {
 	n := navigable_by_id(navigable)
-	return n == nil || n.page == nil || n.page.closed
+	return n == nil || n.page == nil || n.page.closed || n.closing
 }
 
 Frame_sameOrigin :: proc(c: ^Call, navigable: u64) -> bool {
@@ -163,7 +163,7 @@ Frame_navigate :: proc(c: ^Call, navigable: u64, u: string, replace: bool) -> Ap
 	return .None
 }
 
-Frame_open :: proc(c: ^Call, u: string, target: string) -> (u64, Api_Error) {
+Frame_open :: proc(c: ^Call, u: string, target_in: string, features: string) -> (u64, Api_Error) {
 	p := c.page
 	href := "about:blank"
 	if u != "" {
@@ -171,35 +171,33 @@ Frame_open :: proc(c: ^Call, u: string, target: string) -> (u64, Api_Error) {
 		if !ok { return 0, fail(c, .Syntax, "SyntaxError: Failed to execute 'open' on 'Window': Unable to open a window with invalid URL.") }
 		href = r.href
 	}
-	if n := frames_find_target(p, target); n != nil {
-		if why := frames_navigate_from(p, n, href, false); why != "" {
-			log(p, .Error, strings.concatenate({"window.open: ", why}, context.temp_allocator))
-			return 0, .None
+	feat := open_features_parse(features)
+	noopener := feat.noopener || feat.noreferrer
+	target := target_in == "" ? "_blank" : target_in
+	if n := frames_find_target(p, target, noopener); n != nil {
+		// (an existing window: about:blank, or no URL, leaves it as it is)
+		if u != "" {
+			if why := frames_navigate_from(p, n, href, false); why != "" {
+				log(p, .Error, strings.concatenate({"window.open: ", why}, context.temp_allocator))
+				return 0, .None
+			}
 		}
-		return n.id, .None
+		return noopener ? 0 : n.id, .None
 	}
-	// a new window
-	sb := page_sandbox(p)
-	if sb.active && .Popups not_in sb.allow {
-		log(p, .Error, "Blocked opening a new window in a sandboxed frame without allow-popups.")
-		return 0, .None
-	}
-	// the content blocker's `$popup` filters: a popup a script opens without a recent click of the user is stopped. A
-	// popup the user asked for (a gesture) is let through unless a filter explicitly names it.
-	if check := embedder.popup_check; check != nil {
-		gesture := popup_has_gesture(p)
-		if check(embedder.user, p, href, gesture) {
-			log(p, .Log, strings.concatenate({"window.open blocked by the content blocker ($popup): ", href}, context.temp_allocator))
-			return 0, .None
-		}
-	}
-	top := page_top(p)
-	if open := top.web.embedder.open; open != nil {
-		open(top.web.embedder.user, p, href)
-	} else {
-		log(p, .Warn, "window.open: this browser cannot open a new window here")
-	}
-	return 0, .None
+	n := auxiliary_open(p, href, target, feat)
+	return n != nil && n.opener != 0 ? n.id : 0, .None   // (no opener: noopener, asked or imposed by the opener policy)
+}
+
+Frame_opener :: proc(c: ^Call, navigable: u64) -> u64 {
+	return navigable_opener(navigable_by_id(navigable))
+}
+
+Frame_close :: proc(c: ^Call, navigable: u64) {
+	navigable_close(c.page, navigable_by_id(navigable))
+}
+
+Frame_disown :: proc(c: ^Call) {
+	if n := page_navigable(c.page); n != nil && n.parent == nil { n.opener = 0 }
 }
 
 Window_get_name :: proc(c: ^Call) -> string {

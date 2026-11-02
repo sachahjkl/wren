@@ -90,6 +90,13 @@ Navigable :: struct {
 	activated:   bool,           // a navigation brought its document (navigation.activation)
 	activated_by: Nav_Type,
 	activated_from: u64,         // the entry it came from (0: none the API shows)
+	// a top-level navigable's (auxiliary.odin):
+	opener:      u64,            // the navigable whose document opened it (window.opener); 0: none, or severed
+	group:       u64,            // its browsing context group: the windows it finds by name and reaches
+	coop:        Opener_Policy,  // the opener policy of its active document (an initial about:blank's: its opener's)
+	coop_origin: url.Origin,     // owned: that document's origin
+	script_opened: bool,         // made by window.open or a link: its scripts may close it
+	closing:     bool,           // window.close() was called: closed for scripts, its embedder closes it in a task
 }
 
 // A page's side of nesting (made on first use).
@@ -147,6 +154,7 @@ page_navigable :: proc(p: ^Page) -> ^Navigable {
 	if f.nav != nil { return f.nav }
 	n := navigable_new()
 	n.page = p
+	n.group = n.id
 	f.nav = n
 	f.owns_nav = true
 	return n
@@ -172,6 +180,7 @@ navigable_free :: proc(n: ^Navigable) {
 	delete(n.lazy_url)
 	permissions_policy_destroy(&n.allow)
 	url.origin_destroy(&n.src_origin)
+	url.origin_destroy(&n.coop_origin)
 	session_destroy(&n.session)
 	free(n)
 }
@@ -186,7 +195,11 @@ frames_cleanup :: proc(data: rawptr) {
 	shared_workers_page_closed(p)   // the shared workers it connected to (shared_worker.odin)
 	for len(f.children) > 0 { frame_destroy(f.children[len(f.children) - 1]) }
 	delete(f.children)
-	if f.owns_nav && f.nav != nil { navigable_free(f.nav) }
+	if f.owns_nav && f.nav != nil {
+		navigable_free(f.nav)
+	} else if n := f.nav; n != nil && n.parent == nil && n.page == p {
+		n.page = nil   // (an embedder's navigable: it shows no document until the embedder gives it the next)
+	}
 	permissions_policy_destroy(&f.declared)
 	delete(f.fallback_base)
 	if f.ready_poll != base.NIL_HANDLE { host.clear_timer(p.loop, f.ready_poll) }
@@ -1071,6 +1084,11 @@ navigation_allowed :: proc(src: ^Page, target: ^Navigable) -> string {
 		return ""
 	}
 	if sb.active { return "a sandboxed frame may only navigate itself and its descendants" }
+	// another window: one of the source's browsing context group (its opener, a window it or its group opened)
+	if target.parent == nil {
+		if top != nil && target.group == top.group { return "" }
+		return "the window is not in this browsing context group"
+	}
 	// another frame: when the source is same origin with the target's parent document ("familiar with")
 	if target.parent != nil && url.same_origin(src.env.origin, target.parent.env.origin) { return "" }
 	return "the frame is not allowed to navigate this browsing context"
@@ -1101,8 +1119,9 @@ frames_navigate_from :: proc(src: ^Page, target_in: ^Navigable, href: string, re
 }
 
 // The navigable a target name designates for `src` (HTML "the rules for choosing a navigable"): "_self", "_parent",
-// "_top", "" (self), or the name of a frame anywhere in the tab. nil: none (a new window would be opened).
-frames_find_target :: proc(src: ^Page, name: string) -> ^Navigable {
+// "_top", "" (self), or the name of a frame anywhere in the tab, then of a window of its browsing context group or a frame
+// of one. nil: none (a new window would be opened). `noopener`: only the first four, a name opens a new window.
+frames_find_target :: proc(src: ^Page, name: string, noopener := false) -> ^Navigable {
 	sn := page_navigable(src)
 	if sn == nil { return nil }
 	switch strings.to_lower(name, context.temp_allocator) {
@@ -1111,9 +1130,15 @@ frames_find_target :: proc(src: ^Page, name: string) -> ^Navigable {
 	case "_top": return page_navigable(page_top(src))
 	case "_blank": return nil
 	}
-	// a named frame: the source's descendants first, then the whole tab
+	if noopener { return nil }
+	// a named frame: the source's descendants first, then the whole tab, then the other windows of its group
 	if n := find_named_below(src, name); n != nil { return n }
-	return find_named_below(page_top(src), name)
+	if n := find_named_below(page_top(src), name); n != nil { return n }
+	if n := find_named_window(src, name); n != nil { return n }
+	for t in group_tops(src)[1:] {
+		if n := find_named_below(t, name); n != nil { return n }
+	}
+	return nil
 }
 
 @(private)

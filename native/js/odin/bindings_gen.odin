@@ -28767,7 +28767,7 @@ wj_install_bindings :: proc "c" () {
 	m_Window[50] = wj.Member{name = "frames", kind = wj.M_ATTRIBUTE, flags = wj.F_REPLACEABLE, length = 0, get = wjr_Window_get_frames, set = wj.wj_replaceable_setter}
 	m_Window[51] = wj.Member{name = "length", kind = wj.M_ATTRIBUTE, flags = wj.F_REPLACEABLE, length = 0, get = wjr_Window_get_length, set = wj.wj_replaceable_setter}
 	m_Window[52] = wj.Member{name = "top", kind = wj.M_ATTRIBUTE, flags = wj.F_UNFORGEABLE, length = 0, get = wjr_Window_get_top, set = nil}
-	m_Window[53] = wj.Member{name = "opener", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = wjr_Window_get_opener, set = nil}
+	m_Window[53] = wj.Member{name = "opener", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Window_get_opener, set = wjr_Window_set_opener}
 	m_Window[54] = wj.Member{name = "parent", kind = wj.M_ATTRIBUTE, flags = wj.F_REPLACEABLE, length = 0, get = wjr_Window_get_parent, set = wj.wj_replaceable_setter}
 	m_Window[55] = wj.Member{name = "frameElement", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Window_get_frameElement, set = nil}
 	m_Window[56] = wj.Member{name = "open", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_Window_open}
