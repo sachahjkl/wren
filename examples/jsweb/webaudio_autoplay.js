@@ -32,16 +32,24 @@ test("a context waits for a gesture", async () => {
 
   // Nodes the page has let go of leave the graph: one-shot sounds by the thousand leave nothing behind.
   const buffer = c.createBuffer(1, 64, c.sampleRate);
+  let ended = 0;
   for (let i = 0; i < 2000; i++) {
     const s = c.createBufferSource();
     const g = c.createGain();
     s.buffer = buffer;
+    s.onended = () => { ended++; };
     s.connect(g).connect(c.destination);
     s.start();
   }
   // (they end, their `ended` comes, what the page held is collected, the render thread sees the nodes are free)
-  let live = 0;
-  await until(async () => { await signal("collect"); live = await signal("count"); return live < MAX_LIVE_NODES; }, "the sounds gone from the graph");
+  let live = 0, said = -1;
+  await until(async () => {
+    await signal("collect");
+    live = await signal("count");
+    // (what a failure has to say, among the last lines of the section: which of those steps stopped)
+    if (live !== said) { said = live; console.log(live + " nodes in the graph, " + ended + " ended, context " + c.state + " at " + c.currentTime + " s"); }
+    return live < MAX_LIVE_NODES;
+  }, "the sounds gone from the graph");
   ok(live < MAX_LIVE_NODES, live + " nodes are still in the graph");
   // (and c is left running: the page closes with it)
 });

@@ -16,6 +16,7 @@ package webtests
 import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
 
 import "core:fmt"
+import "core:os"
 import "core:strings"
 import "core:testing"
 import "core:time"
@@ -31,7 +32,7 @@ import "wb:wasm"
 
 BLOCKING_THREADS :: 2
 SCRIPT_CACHE_BYTES :: 16 << 20
-STORAGE_DIR :: "build/web_test_profile"
+STORAGE_ROOT :: "build/web_test_profile"   // a folder per process in it: subjects run side by side, and each empties its profile first
 TEST_LIMIT :: 5 * time.Minute          // ends a test that hangs
 DEFAULT_WAIT :: 60.0                   // seconds: only ends a run that fails
 LOOP_LOOK_MS :: 5                      // the most the loop waits before a test looks again: anything that happens ends the wait sooner
@@ -89,12 +90,15 @@ end :: proc() {
 	current = nil
 }
 
+// This process's profile folder (temporary memory).
+storage_dir :: proc() -> string { return fmt.tprintf("%s/%d", STORAGE_ROOT, os.get_pid()) }
+
 // The profile's stores for a page's embedder.
 storage_world :: proc() -> ^page.Storage_Manager {
 	if !storage_made {
 		storage_made = true
-		testenv.remove_tree(STORAGE_DIR)
-		page.storage_manager_init(&storage, &loop, &blocking, STORAGE_DIR)
+		testenv.remove_tree(storage_dir())   // (a process of the same number, long gone, may have been killed before its end)
+		page.storage_manager_init(&storage, &loop, &blocking, storage_dir())
 	}
 	return &storage
 }
@@ -229,6 +233,7 @@ zz_the_process_ends_with_nothing_left :: proc(t: ^testing.T) {
 	if storage_made {
 		page.storage_manager_destroy(&storage)
 		host.blocking_settle(&blocking)
+		testenv.remove_tree(storage_dir())
 	}
 	if world_level >= .Pages { page.process_shutdown() }
 	if world_level >= .Net {
