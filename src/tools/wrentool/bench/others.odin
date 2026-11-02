@@ -167,8 +167,9 @@ bench_blocker :: proc(o: ^Options) -> int {
 	if !has { return 1 }
 	from := tooling.flag(o.flags, "-Profile")
 	urls := tooling.flag_list(o.flags, "-Urls")
+	for u in urls { if !strings.has_prefix(u, "http") { fmt.eprintfln("%s: the load report is of pages over http", u); return EXIT_USAGE } }
 	if from == "" || len(urls) == 0 { fmt.eprintln("wrentool bench blocker -Profile <folder with blocker lists> -Urls a,b [-Runs n]"); return EXIT_USAGE }
-	report := fmt.tprintf("%s/%s", tooling_abs("."), BLOCKER_REPORT)
+	report := tooling_abs(BLOCKER_REPORT)
 	_ = os.remove(report)
 	work := "build/bench/blocker_profile"
 	runs := o.runs > 0 ? o.runs : BLOCKER_RUNS

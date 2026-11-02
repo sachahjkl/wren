@@ -23,6 +23,13 @@ BACKSPACE_EVERY :: 17
 WHEEL_NOTCH_DOWN :: -1.0
 // A high-resolution wheel, a touchpad: a quarter of a notch at a time.
 TOUCHPAD_NOTCH :: -0.25
+// The rate of the input: a headless Wren makes a frame for each as soon as it is asked, and a bench must not make the machine run flat out for nothing. What a scenario sends, as a hand or a mouse sends it.
+HOVER_PERIOD_MS :: 8
+SCROLL_PERIOD_MS :: 16
+WHEEL_PERIOD_MS :: 4
+KEY_PERIOD_MS :: 220
+TYPING_PERIOD_MS :: 30
+RESIZE_PERIOD_STEP_MS :: 16
 // How long a wheel goes one way before it comes back: a long run never sits at an end of the page.
 WHEEL_TURN :: 2 * time.Second
 // The window moves between these parts of its width.
@@ -205,29 +212,33 @@ perf_action :: proc(w: ^Wren, action: Action, measure: time.Duration) {
 			t := time.duration_seconds(time.tick_since(begin))
 			at := api.Point{width * (HOVER_X + HOVER_X_SWING * math.sin(t * HOVER_X_RATE)), height * (HOVER_Y + HOVER_Y_SWING * math.sin(t * HOVER_Y_RATE))}
 			if api.hover(ses, at, .Window) != .None { return }
+			pace(w, HOVER_PERIOD_MS)
 		}
 	case .Scroll:
-		for left(begin, measure) { if api.scroll(ses, 3 * WHEEL_NOTCH_DOWN, {width / 2, height / 2}) != .None { return } }
+		for left(begin, measure) { if api.scroll(ses, 3 * WHEEL_NOTCH_DOWN, {width / 2, height / 2}) != .None { return }; pace(w, SCROLL_PERIOD_MS) }
 	case .Wheel, .Touchpad:
 		notch := action == .Wheel ? WHEEL_NOTCH_DOWN : TOUCHPAD_NOTCH
 		for left(begin, measure) {
 			back := int(time.tick_since(begin) / WHEEL_TURN) % 2 == 1
 			if api.scroll(ses, back ? -notch : notch, {width / 2, height / 2}) != .None { return }
+			pace(w, WHEEL_PERIOD_MS)
 		}
 	case .Keys:
 		KEYS := []string{"PageDown", "PageDown", "PageDown", "PageDown", "PageUp", "PageUp", "PageUp", "PageUp", "Down", "Down", "Down", "Down", "Space", "End", "Home"}
-		for i := 0; left(begin, measure); i += 1 { if api.key(ses, KEYS[i % len(KEYS)]) != .None { return } }
+		for i := 0; left(begin, measure); i += 1 { if api.key(ses, KEYS[i % len(KEYS)]) != .None { return }; pace(w, KEY_PERIOD_MS) }
 	case .Typing:
 		for i := 0; left(begin, measure); i += 1 {
 			c := TYPED[i % len(TYPED)]
 			if api.type_text(ses, fmt.tprintf("%c", c)) != .None { return }
 			if i % BACKSPACE_EVERY == 0 { _ = api.key(ses, "Backspace") }
+			pace(w, TYPING_PERIOD_MS)
 		}
 	case .Resize:
 		for left(begin, measure) {
 			ms := time.duration_milliseconds(time.tick_since(begin))
 			w_now := int(width * (RESIZE_FROM + RESIZE_SWING * math.sin(ms / RESIZE_PERIOD_MS)))
 			if _, e := api.set_window(ses, {size = [2]int{w_now, int(height)}}); e != .None { return }
+			pace(w, RESIZE_PERIOD_STEP_MS)
 		}
 		_, _ = api.set_window(ses, {size = [2]int{int(width), int(height)}})
 	case .Fullscreen:
@@ -237,6 +248,9 @@ perf_action :: proc(w: ^Wren, action: Action, measure: time.Duration) {
 		hold(w, measure)
 	}
 }
+
+// The next input is due then: a wait on the process, which ends it if the Wren dies.
+pace :: proc(w: ^Wren, ms: int) { _ = api.process_wait(&w.launched.process, ms) }
 
 ////////////////////////////////
 // The generated pages (build/bench/perf, made once)

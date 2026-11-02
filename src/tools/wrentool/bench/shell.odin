@@ -25,6 +25,12 @@ MENU_ROUNDS :: 4
 WHEEL_ROUNDS :: 40
 RESIZE_STEPS :: 20
 RESIZE_BASE, RESIZE_STEP :: 0.85, 0.1
+// The rate of each kind of input, as a person sends it.
+TAB_PERIOD_MS :: 16
+TYPING_MS :: 40
+MENU_MS :: 300
+WHEEL_MS :: 50
+RESIZE_MS :: 120
 
 Shell_Note :: struct {
 	at:    i64,
@@ -85,28 +91,34 @@ shell_interact :: proc(w: ^Wren, notes: ^[dynamic]Shell_Note) -> (first: i64) {
 		t := time.duration_seconds(time.tick_since(begin))
 		note(notes, "tab")
 		_ = api.hover(ses, {TAB_X + TAB_SWING * (0.5 + 0.5 * math.sin(t * TAB_RATE)), TAB_Y}, .Window)
+		pace(w, TAB_PERIOD_MS)
 	}
 	note(notes, "address")
 	_ = api.click_at(ses, {f64(width) / 2, ADDRESS_Y}, .Window)
 	for c in SHELL_TEXT {
 		note(notes, "address")
 		_ = api.type_text(ses, fmt.tprintf("%c", c))
+		pace(w, TYPING_MS)
 	}
 	for _ in 0 ..< 2 { note(notes, "address"); _ = api.key(ses, "Escape") }
 	for _ in 0 ..< MENU_ROUNDS {
 		note(notes, "menu")
 		_ = api.click_at(ses, {f64(width) - MENU_FROM_RIGHT, ADDRESS_Y}, .Window)
+		pace(w, MENU_MS)
 		note(notes, "menu")
 		_ = api.key(ses, "Escape")
+		pace(w, MENU_MS)
 	}
 	for i in 0 ..< WHEEL_ROUNDS {
 		note(notes, "wheel")
 		_ = api.scroll(ses, i < WHEEL_ROUNDS / 2 ? -1 : 1, {f64(width) / 2, f64(height) / 2})
+		pace(w, WHEEL_MS)
 	}
 	for i in 0 ..< RESIZE_STEPS {
 		w_now := int(f64(width) * (RESIZE_BASE + RESIZE_STEP * f64(i % 2))) - i
 		note(notes, "resize", w_now)
 		_, _ = api.set_window(ses, {size = [2]int{w_now, height}})
+		pace(w, RESIZE_MS)
 	}
 	note(notes, "resize", width)
 	_, _ = api.set_window(ses, {size = [2]int{width, height}})

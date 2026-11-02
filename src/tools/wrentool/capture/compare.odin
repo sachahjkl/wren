@@ -74,7 +74,7 @@ run_compare :: proc(args: []string) -> int {
 	exe := tooling.flag(f, "-Exe", bench.WREN_EXE)
 	if !os.exists(exe) { fmt.eprintfln("%s is missing (build.bat)", exe); return 1 }
 	if bench.edge_exe() == "" { fmt.eprintln("Microsoft Edge is not installed"); return 1 }
-	out, _ := filepath.abs(tooling.flag(f, "-OutDir", COMPARE_OUT), context.temp_allocator)
+	out, _ := filepath.abs(tooling.flag(f, "-OutDir", COMPARE_OUT), context.allocator)   // (it outlives the temporary memory each page frees)
 	_ = os.make_directory_all(out)
 	c := Compare_Run{out = out, width = tooling.flag_int(f, "-Width", COMPARE_WIDTH), height = tooling.flag_int(f, "-Height", COMPARE_HEIGHT),
 		dark = tooling.flag_has(f, "-Dark"), js = tooling.flag_has(f, "-Js"), wait_ms = tooling.flag_int(f, "-WaitMs", COMPARE_EDGE_WAIT_MS)}
@@ -116,7 +116,7 @@ run_compare :: proc(args: []string) -> int {
 			_, _ = bench.run_text({"magick", wren_png, edge_png, "-background", COMPARE_BACKGROUND, "+smush", COMPARE_GAP, side_png})
 		}
 		top := compare_js_groups(errors, &groups)
-		fmt.printfln("%-60s diff %5.1f %%  %s%s", url, share, sizes, c.js ? fmt.tprintf("  js errors %d  %s", len(errors), top) : "")
+		fmt.printfln("%-60s diff %.1f %%  %s%s", url, share, sizes, c.js ? fmt.tprintf("  js errors %d  %s", len(errors), top) : "")
 		fmt.sbprintfln(&summary, "%s\t%s\t%.1f\t%s\t%d\t%s", name, url, share, strings.trim_space(sizes), len(errors), top)
 		free_all(context.temp_allocator)
 	}
@@ -229,5 +229,5 @@ compare_print_groups :: proc(all: map[string]Js_Group) {
 	for _, g in all { append(&list, g) }
 	slice.sort_by(list[:], proc(a, b: Js_Group) -> bool { return a.sites != b.sites ? a.sites > b.sites : a.errors > b.errors })
 	fmt.println("\nwhat the JavaScript errors say (sites, errors)")
-	for g in list { fmt.printfln("%5d %6d  %s", g.sites, g.errors, g.key) }
+	for g in list { fmt.printfln("%d sites, %d errors  %s", g.sites, g.errors, g.key) }
 }

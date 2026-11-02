@@ -60,6 +60,7 @@ when ODIN_OS == .Windows {
 // (the program built and crashed for real: test_all runs this outside the CI, and the crash leaves a report, no window)
 @(test)
 a_release_crash_is_named_from_its_map :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator   // (what tooling keeps for the process: this test is the only one that asks)
 	root := tooling.repo_root()
 	testing.expect(t, os.set_working_directory(root) == nil)
 	code := tooling.run({command = {tooling.odin_program(), "build", "src/tools/crashmodes", "-collection:wb=src", "-o:speed", "-vet", "-out:" + CRASH_EXE, "-extra-linker-flags:/MAP"}})
