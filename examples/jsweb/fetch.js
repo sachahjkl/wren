@@ -59,8 +59,9 @@ test("abort", async () => {
   c.abort("gave up");
   try { await p; ok(false, "aborted fetch rejects"); } catch (e) { eq(e, "gave up", "rejected with the signal's reason"); }
   await rejects(fetch("/jsweb/json", { signal: AbortSignal.abort() }), "AbortError", "an aborted signal: AbortError");
-  const slow = await fetch("/webapi/slow?ms=3000", { signal: AbortSignal.timeout(100) });
-  await rejects(slow.text(), "TimeoutError", "AbortSignal.timeout: the body read fails with TimeoutError");
+  // (the time may end before the headers on a loaded machine, or while the body arrives: the promise either way)
+  const timed = async () => { const slow = await fetch("/webapi/slow?ms=3000", { signal: AbortSignal.timeout(100) }); await slow.text(); };
+  await rejects(timed(), "TimeoutError", "AbortSignal.timeout: fails with TimeoutError");
   const c2 = new AbortController();
   const r = await fetch("/webapi/slow?ms=3000", { signal: c2.signal });
   const t = r.text();
