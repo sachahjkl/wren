@@ -101,13 +101,13 @@ style_sums :: proc(c: ^Ctx) {
 		for i in lo ..< hi {
 			if i + PREFETCH_STYLES_AHEAD < hi {
 				ahead := rawptr(sp.st.by_node[i + PREFETCH_STYLES_AHEAD])
-				prefetch_fields(ahead, BUILD_FIELDS)
-				prefetch_fields(ahead, FONT_KEY_FIELDS)
+				prefetch_fields(ahead, BUILD_FIELDS)   // (the font's properties are inherited: in the group BUILD_FIELDS points at)
 			}
 			if cs := sp.st.by_node[i]; cs != nil {
 				sp.sums[i] = style_sum_of(cs)
 				sp.sums[i].node = sp.st.nodes[i]
-				if ps := style.style_of(sp.st, up(sp.c, sp.st.nodes[i])); ps != nil && font_key_of(ps, true) == font_key_of(cs, true) { sp.sums[i].bits += {.Parent_Font} }
+				// (a group shared with the parent: the same font, without reading its key)
+				if ps := style.style_of(sp.st, up(sp.c, sp.st.nodes[i])); ps != nil && (ps.inherited_group == cs.inherited_group || font_key_of(ps, true) == font_key_of(cs, true)) { sp.sums[i].bits += {.Parent_Font} }
 			} else {
 				sp.sums[i] = {}
 			}
