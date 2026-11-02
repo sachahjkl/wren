@@ -66,6 +66,7 @@ av1_software_decoder_decodes_the_clip :: proc(t: ^testing.T) {
 // finish the seek and reach the end, every time.
 @(test)
 av1_software_player_seeks_and_ends_on_a_machine_short_of_processors :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()   // (what the player's threads free is theirs: the same allocator)
 	data := fixture("clip.webm")
 	defer delete(data)
 	if !testing.expect(t, len(data) > 0, "clip.webm missing") { return }
