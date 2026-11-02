@@ -31,7 +31,7 @@ import (
 //	                      "close-cut:<code>"    a close frame, then TCP ends without waiting for the client's
 //	                      "badutf8"             a text frame that is not UTF-8
 //	                      "big:<n>"             a text message of n bytes, in frames of 64 KiB
-//	/ws/drop            after the handshake: one text "bye", then the TCP connection is cut without a close frame
+//	/ws/drop            after the handshake: one text "bye", and when a message comes back the TCP connection is cut without a closeframe
 //	/ws/bad-proto       selects a subprotocol nobody offered
 //	/ws/deflate         answers with Sec-WebSocket-Extensions: permessage-deflate
 //	/ws/forbidden       answers 403 instead of 101
@@ -351,7 +351,10 @@ func registerWebSocketHandlers(mux *http.ServeMux) {
 			return
 		}
 		wsWrite(brw.Writer, true, opText, []byte("bye"))
-		time.Sleep(100 * time.Millisecond)
+		// Until the client says it has it: a reset takes along what the client's side has not read yet, and a client that took more than the time
+		// slept here (100 ms under load) lost "bye" and the upgrade itself.
+		conn.SetReadDeadline(time.Now().Add(2 * time.Minute))
+		wsRead(brw.Reader)
 		if tc, ok := conn.(*net.TCPConn); ok {
 			tc.SetLinger(0) // RST: an abrupt end, not a FIN after a close frame
 		}

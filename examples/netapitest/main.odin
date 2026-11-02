@@ -307,6 +307,9 @@ ws_on_message :: proc "contextless" (id: i32, ev: web.Event) {
 	case S_WS_PING:
 		note(id, data); note(id, ";")
 		web.WebSocket_close(h, 1000)
+	case S_WS_DROP:
+		note(id, "msg:"); note(id, data); note(id, ";")
+		web.WebSocket_send(h, "got it")   // (the server cuts the connection on this)
 	case:
 		note(id, "msg:"); note(id, data); note(id, ";")
 	}

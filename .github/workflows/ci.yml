@@ -53,6 +53,7 @@ jobs:
       # that failed under three (the wasm preemption tick count, a 50 000 element innerHTML under its 20 s limit, a font edge of canvas2d) are not run
       # here any more or read a stronger pixel; one that fails again under the load depends on the machine's speed and goes behind -Perf. The AddressSanitizer unit tests
       # are the long step (six minutes one package after the other): the `asan` job below runs them beside this one, three packages at a time.
+      # The end-to-end scenarios run here too, on the runner's software rasterizer; those that cost too much there, or do not hold there, say why at their step (.No_CI in src\tools\test_all\steps.odin).
       # The tests that measure time are not run here (the runner's speed is unknown): `test_all -Perf` is for our own machines, and is ignored when CI is set.
       # A pull request does not run again what has passed with exactly the same inputs (src\tools\test_all\cache.odin: results by the content of what a step reads, its text, its flags and Odin's
       # version); master, and a run by hand, always run everything: a result never comes from a cache there.
