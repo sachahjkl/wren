@@ -705,6 +705,9 @@ the_end :: proc(p: ^Page) -> bool {
 		return true
 	}
 	if s.loaded || len(s.asap) > 0 || len(s.in_order) > 0 { return false }
+	// the parsed document's <img> elements start their requests at an image pass (images.odin): one now, so that they
+	// delay the load instead of coming after it (a page whose images nothing follows, ready false, has none to wait for)
+	if p.images.ready { images_sync(p) }
 	if load_delayed(p) { return false }
 	s.loaded = true
 	s.timing.complete_ms = now_ms(p)

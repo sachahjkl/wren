@@ -1113,6 +1113,7 @@ element_settle :: proc(p: ^Page, el: ^Img_Element) {
 @(private)
 queue_element_event :: proc(p: ^Page, node: base.Handle, type: string, media_error := false) {
 	images_init(p)
+	images_adopt_document(p)   // (the queue is of this document: an adoption later would drop it)
 	append(&p.images.events, Pending_Image_Event{node, strings.clone(type), media_error})
 	if p.images.event_timer != base.NIL_HANDLE { return }
 	p.images.event_timer = host.set_timer(p.loop, 0, 0, proc(data: rawptr) {
