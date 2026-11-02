@@ -425,7 +425,6 @@ run_i18n :: proc(args: []string) -> int {
 	}
 	if tooling.flag_has(f, "-Missing") { fmt.printfln("%d interface texts bypass tr", missing); return 0 }
 	if path := tooling.flag(f, "-Json"); path != "" {
-		Out :: struct { text, context_, plural, file: string `json:"file"`, line: int }
 		b := strings.builder_make(context.temp_allocator)
 		strings.write_string(&b, "[\n")
 		for t, i in found {

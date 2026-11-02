@@ -15,7 +15,7 @@ package wasm
 
 import "base:runtime"
 import "core:fmt"
-import "core:os"
+@(require) import "core:os"   // (a release has no use of it: the test cache below)
 import "core:strings"
 import "core:sync"
 import "wb:base"

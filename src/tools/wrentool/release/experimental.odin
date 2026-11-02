@@ -96,7 +96,7 @@ run_experimental :: proc(args: []string) -> int {
 		append(&env_build, fmt.tprintf("WREN_VERSION_LABEL=%s", label), "WREN_ACCEPT_DEV_LICENSE_KEY=1")
 		if embed { append(&env_build, fmt.tprintf("WREN_EMBEDDED_LICENSE=%s", key)) }
 		fmt.printfln("build.bat release (%s-%s)", version, label)
-		if tooling.run({command = {"cmd", "/c", "build.bat", "release"}, env = env_build[:]}) != 0 { return fail("build.bat release failed") }
+		if tooling.run({command = {"cmd", "/c", ".\\build.bat", "release"}, env = env_build[:]}) != 0 { return fail("build.bat release failed") }
 		base.remove_tree(DIST)
 		os.set_env("WREN_VERSION_LABEL", label)
 		code := run_package({})
