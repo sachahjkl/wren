@@ -127,6 +127,7 @@ js_string_codePointRange :: proc "c" (ctx: ^Context, this_val: JSValue, argc: i3
 	JS_IsMap :: jscapi.JS_IsMap
 	JS_IsPromise :: jscapi.JS_IsPromise
 	JS_IsProxy :: jscapi.JS_IsProxy
+	JS_IsRevokedProxy :: jscapi.JS_IsRevokedProxy
 	JS_IsRegExp :: jscapi.JS_IsRegExp
 	JS_IsSet :: jscapi.JS_IsSet
 	JS_IsStrictEqual :: jscapi.JS_IsStrictEqual

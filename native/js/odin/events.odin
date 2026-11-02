@@ -574,8 +574,11 @@ wj_wrap_target :: proc "c" (ctx: ^wj.Context, h: u64) -> wj.JSValue {
 @(export, link_name = "wjr_Window_get_event")
 wjr_Window_get_event :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj.JS_DupValue(ctx, current_event) }
 
+@(private = "file") NO_HANDLE_EVENT :: cstring("listener has no handleEvent method")
+
 // Calls a listener's callback: a function, or an object's handleEvent method. Reports what it throws, at the global of the
-// callback's realm. A callback of a realm that is gone (its frame removed or navigated) is not called (DOM "inner invoke").
+// callback's realm, and a listener of another realm that cannot be called fails with a TypeError of that realm. A callback of a
+// realm that is gone (its frame removed or navigated) is not called (DOM "inner invoke").
 @(private = "file")
 call_listener :: proc "contextless" (ctx: ^wj.Context, cb, target, ev: wj.JSValue) {
 	ev := ev
@@ -591,7 +594,11 @@ call_listener :: proc "contextless" (ctx: ^wj.Context, cb, target, ev: wj.JSValu
 			r = he
 		case !wj.JS_IsFunction(ctx, he):
 			wj.JS_FreeValue(ctx, he)
-			r = wj.JS_ThrowTypeError(ctx, "listener has no handleEvent method")
+			r = realm != 0 ? frames_bridge_throw_type_error(ctx, realm, NO_HANDLE_EVENT) : wj.JS_ThrowTypeError(ctx, NO_HANDLE_EVENT)
+		case realm != 0 && wj.JS_IsRevokedProxy(he):
+			// (a revoked Proxy of this realm as the method of another realm's listener: the call fails in that realm)
+			wj.JS_FreeValue(ctx, he)
+			r = frames_bridge_throw_type_error(ctx, realm, "revoked proxy")
 		case:
 			r = wj.JS_Call(ctx, he, cb, 1, &ev)
 			wj.JS_FreeValue(ctx, he)

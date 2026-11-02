@@ -5,10 +5,10 @@
 // a WindowProxy exotic object (Class_Exotic_Methods), named by the navigable's id, that reaches what HTML lets a
 // cross-origin window reach (postMessage, location as a setter, closed, frames, length, top, parent, opener, window,
 // self, close, focus, blur, indexed and named child frames). A same-origin frame also yields its `document`, a Document
-// wrapper of this realm whose calls go to the frame's document (src/page/frames_access.odin), this realm's own
-// ECMAScript built-ins and the platform's interface objects / functions (for a pristine copy). Here: those exotic objects and
-// their cache, the Window and HTMLIFrameElement members that return windows, and the delivery of messages posted by other
-// documents (wj_frames_message).
+// wrapper of this realm whose calls go to the frame's document (src/page/frames_access.odin), and whatever its global holds
+// through the value bridge (frames_bridge.odin): its own ECMAScript built-ins, its interface objects (which are this realm's,
+// by name). Here: those exotic objects and their cache, the Window and HTMLIFrameElement members that return windows, and
+// the delivery of messages posted by other documents (wj_frames_message).
 //
 // The calls into the browser are the declarations of api_decl/frames.odin, through jsb.host.
 package odin_glue
@@ -54,15 +54,6 @@ WP_FUNCTIONS := [?]string{"fetch", "setTimeout", "clearTimeout", "setInterval", 
 	"cancelAnimationFrame", "requestIdleCallback", "cancelIdleCallback", "queueMicrotask", "structuredClone", "atob",
 	"btoa", "getComputedStyle", "matchMedia", "reportError", "createImageBitmap", "addEventListener",
 	"removeEventListener", "dispatchEvent"}
-
-@(private = "file")
-WP_BUILTINS := [?]string{"JSON", "Math", "Reflect", "Intl", "Object", "Function", "Array", "String", "Number", "Boolean",
-	"Symbol", "BigInt", "Date", "RegExp", "Error", "TypeError", "RangeError", "SyntaxError", "ReferenceError",
-	"EvalError", "URIError", "AggregateError", "Map", "Set", "WeakMap", "WeakSet", "WeakRef", "Promise", "Proxy",
-	"ArrayBuffer", "DataView", "Int8Array", "Uint8Array", "Uint8ClampedArray", "Int16Array", "Uint16Array",
-	"Int32Array", "Uint32Array", "Float32Array", "Float64Array", "BigInt64Array", "BigUint64Array", "parseInt",
-	"parseFloat", "isNaN", "isFinite", "encodeURI", "encodeURIComponent", "decodeURI", "decodeURIComponent", "escape",
-	"unescape", "NaN", "Infinity", "undefined"}
 
 @(private = "file")
 in_list :: proc "contextless" (list: []string, s: string) -> bool {
@@ -449,13 +440,6 @@ wp_member :: proc "contextless" (ctx: ^wj.Context, self: wj.JSValue, w: ^Window_
 	return wj.UNINITIALIZED
 }
 
-// A same-origin frame's ECMAScript built-in (this realm's own), or UNINITIALIZED.
-@(private = "file")
-wp_builtin :: proc "contextless" (ctx: ^wj.Context, id: Navigable, c: cstring, p: string) -> wj.JSValue {
-	if !in_list(WP_BUILTINS[:], p) || !frame_same_origin(id) { return wj.UNINITIALIZED }
-	return global_prop(ctx, c)
-}
-
 // The Document of a frame the calling document may reach, a wrapper of this realm (the browser routes its calls to that document,
 // src/page/frames_access.odin); UNINITIALIZED when it may not (another origin, a sandbox: a SecurityError).
 @(private = "file")
@@ -496,29 +480,14 @@ wp_dispatch_event_fn :: proc "contextless" (ctx: ^wj.Context, id: Navigable) -> 
 	return fn
 }
 
-// Registers this realm's ECMAScript built-ins and their prototypes with the bridge (what WP_BUILTINS gives is the reader's own).
-frames_builtins_each :: proc "contextless" (ctx: ^wj.Context, register: wj.JSValue) {
-	for name in WP_BUILTINS {
-		key := wj.new_string_len(ctx, name)
-		defer wj.JS_FreeValue(ctx, key)
-		atom := wj.JS_ValueToAtom(ctx, key)
-		defer wj.JS_FreeAtom(ctx, atom)
-		v := wj.JS_GetProperty(ctx, wj.realm_global(), atom)
-		defer wj.JS_FreeValue(ctx, v)
-		proto := wj.is_object(v) ? wj.JS_GetPropertyStr(ctx, v, "prototype") : wj.UNDEFINED
-		defer wj.JS_FreeValue(ctx, proto)
-		args := [3]wj.JSValue{key, v, proto}
-		wj.JS_FreeValue(ctx, wj.JS_Call(ctx, register, wj.UNDEFINED, 3, &args[0]))
-	}
-}
-
 // Objects a same-origin frame's own would answer the same for: this realm's are given (a page takes a clean `navigator` or `crypto`
 // from a blank frame it made).
 @(private = "file", rodata) WP_SHARED := [?]string{"console", "navigator", "screen", "crypto"}
 
 // Pristine platform object / function from a same-origin frame, or UNINITIALIZED. `history` is an object with
-// History.prototype and no brand, for a frame without a realm (one with a realm gives its own, by the bridge); WP_SHARED are this realm's own; functions are bound; constructors (an upper-case
-// name of a native function) are given as is.
+// History.prototype and no brand, for a frame without a realm (one with a realm gives its own, by the bridge); WP_SHARED are this
+// realm's own; for a frame without a realm, functions are bound copies and constructors (an upper-case name of a native function)
+// this realm's.
 @(private = "file")
 wp_pristine :: proc "contextless" (ctx: ^wj.Context, w: ^Window_State, c: cstring, p: string) -> wj.JSValue {
 	if !frame_same_origin(w.id) { return wj.UNINITIALIZED }
@@ -548,7 +517,8 @@ wp_pristine :: proc "contextless" (ctx: ^wj.Context, w: ^Window_State, c: cstrin
 	case in_list(WP_FUNCTIONS[:], p):
 		// the frame's own (its timers, its listeners); without a realm (a sandbox without scripts), a copy of this realm's
 		return frames_bridge_realm(w.id) != 0 ? wj.UNINITIALIZED : pristine_function(ctx, c)
-	case len(p) > 0 && p[0] >= 'A' && p[0] <= 'Z':
+	case len(p) > 0 && p[0] >= 'A' && p[0] <= 'Z' && frames_bridge_realm(w.id) == 0:
+		// a frame without a realm (a sandbox without scripts): this realm's constructors (with one, its own, by the bridge)
 		// Object.getOwnPropertyDescriptor(globalThis, p) !== undefined && nativeFunction(v)
 		objc := global_prop(ctx, "Object")
 		gopd := wj.JS_GetPropertyStr(ctx, objc, "getOwnPropertyDescriptor")
@@ -566,17 +536,16 @@ wp_pristine :: proc "contextless" (ctx: ^wj.Context, w: ^Window_State, c: cstrin
 	return wj.UNINITIALIZED
 }
 
-// The WindowProxy's [[Get]] combining member / child / builtin / pristine, as the old proxy get trap did. found is
-// false when the name is none of them (the SecurityError).
+// The WindowProxy's [[Get]] combining member / child / pristine, as the old proxy get trap did. found is false when the
+// name is none of them (then the frame's global, or the SecurityError).
 @(private = "file")
 wp_lookup :: proc "contextless" (ctx: ^wj.Context, self: wj.JSValue, w: ^Window_State, prop: wj.Atom) -> (v: wj.JSValue, found: bool) {
 	if is_fallback(ctx, prop) { return wj.UNDEFINED, true }
-	c, p := prop_name(ctx, prop)   // a member / child / builtin / pristine is only ever a string name
+	c, p := prop_name(ctx, prop)   // a member / child / pristine is only ever a string name
 	if c == nil { return wj.UNINITIALIZED, false }
 	defer wj.JS_FreeCString(ctx, c)
 	if v = wp_member(ctx, self, w, p); !wj.is_uninitialized(v) { return v, true }
 	if v = wp_child(ctx, w.id, p); !wj.is_uninitialized(v) { return v, true }
-	if v = wp_builtin(ctx, w.id, c, p); !wj.is_uninitialized(v) { return v, true }
 	if v = wp_pristine(ctx, w, c, p); !wj.is_uninitialized(v) { return v, true }
 	return wj.UNINITIALIZED, false
 }
@@ -633,7 +602,6 @@ wp_has :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, prop: wj.Atom) -> i32 {
 	defer wj.JS_FreeCString(ctx, c)
 	if in_list(WP_MEMBERS[:], p) { return 1 }
 	if v := wp_child(ctx, w.id, p); !wj.is_uninitialized(v) { wj.JS_FreeValue(ctx, v); return 1 }
-	if v := wp_builtin(ctx, w.id, c, p); !wj.is_uninitialized(v) { wj.JS_FreeValue(ctx, v); return 1 }
 	if v := wp_pristine(ctx, w, c, p); !wj.is_uninitialized(v) { wj.JS_FreeValue(ctx, v); return 1 }
 	if realm := frames_bridge_realm(w.id); realm != 0 {
 		r := frames_bridge_has(ctx, realm, wj.JS_AtomToValue(ctx, prop))
@@ -672,9 +640,7 @@ wp_get_own :: proc "c" (ctx: ^wj.Context, desc: ^wj.Property_Descriptor, obj: wj
 		return 1
 	}
 	if c != nil {
-		v := wp_builtin(ctx, w.id, c, p)
-		if wj.is_uninitialized(v) { v = wp_pristine(ctx, w, c, p) }
-		if !wj.is_uninitialized(v) {
+		if v := wp_pristine(ctx, w, c, p); !wj.is_uninitialized(v) {
 			if desc != nil { fill_desc(desc, wj.PROP_CONFIGURABLE, v) } else { wj.JS_FreeValue(ctx, v) }
 			return 1
 		}

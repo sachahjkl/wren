@@ -415,6 +415,13 @@ JS_IsProxy :: proc "c" (v: JSValue) -> bool {
 	return ok && cl == .proxy
 }
 
+// A Proxy whose revoke() ran: calling it can only fail (the browser makes that failure an error of the callback's realm).
+JS_IsRevokedProxy :: proc "c" (v: JSValue) -> bool {
+	if !JS_IsProxy(v) {return false}
+	pd, ok := js.as_obj(dec(v)).data.(^js.Proxy_Data)
+	return ok && pd.revoked
+}
+
 JS_IsMap :: proc "c" (v: JSValue) -> bool {
 	cl, ok := class_of(v)
 	return ok && cl == .jsmap

@@ -453,7 +453,8 @@ addEventListener("load", () => {
   d.body.appendChild(d.createElement("in-frame"));
   try { document.getElementById("f").contentWindow.customElements.define("no good", class extends HTMLElement {}); log("no throw"); }
   catch (e) { log("define threw " + e.name + " " + (e instanceof DOMException)); }
-  try { document.getElementById("f").contentWindow.eval("null.x"); } catch (e) { log("eval threw " + (e instanceof TypeError)); }
+  const fw = document.getElementById("f").contentWindow;
+  try { fw.eval("null.x"); } catch (e) { log("eval threw " + (e instanceof TypeError) + " " + (e instanceof fw.TypeError) + " " + (e.constructor === fw.TypeError) + " " + e.name); }
 });
 </script></body>`)
 	check(pr, wait_note(pr, "after move connected here, disconnected, adopted true false, connected there"), "a custom element moved to a frame keeps its class: disconnected, adopted, connected, in order")
@@ -462,7 +463,7 @@ addEventListener("load", () => {
 	check(pr, wait_note(pr, "home connected there, disconnected, adopted false true, connected here true"), "and back home, where it has no foreign owner")
 	check(pr, wait_note(pr, "frame element connected true"), "an element of the frame's registry made from the parent reacts in the frame")
 	check(pr, wait_note(pr, "define threw SyntaxError true"), "a DOMException of the frame is one of this realm to its catcher")
-	check(pr, wait_note(pr, "eval threw true"), "and so is a TypeError")
+	check(pr, wait_note(pr, "eval threw false true true TypeError"), "a TypeError of the frame is the frame's, not this realm's")
 	close_page(pr, min_checks = 7)
 }
 
@@ -961,6 +962,7 @@ t("push", () => { w.history.pushState.call(history, 1, "", "#second"); return lo
 t("brandless", () => w.history.length);
 t("instanceof", () => (w.history instanceof History) + " " + (w.history === w.history));
 t("builtins", () => (w.Array === Array) + " " + (w.JSON === JSON) + " " + (w.Node === Node) + " " + (w.XMLHttpRequest === XMLHttpRequest));
+t("realm", () => { const a = new w.Array(1, 2), o = new w.Object; return (a instanceof Array) + " " + (a instanceof w.Array) + " " + Array.isArray(a) + " " + (Object.getPrototypeOf(o) === w.Object.prototype) + " " + (o.constructor === w.Object) + " " + (o instanceof Object) + " " + w.JSON.stringify([a, o]) + " " + w.Array.isArray([]); });
 t("console", () => w.console === console);
 t("fetch", () => typeof w.fetch + " " + (w.fetch !== fetch));
 t("timer", () => typeof w.setTimeout(() => {}, 0));
@@ -973,7 +975,7 @@ t("navigator", () => w.navigator);
 t("descriptor", () => Object.getOwnPropertyDescriptor(w, "history").value === w.history);
 log("same-origin " + r.join(" | "));
 </script></body>`)
-	check(pr, wait_note(pr, "same-origin pushState:function false | replace:#viaframe 7 | push:#second 1 | brandless:1 | instanceof:true true | builtins:true true true true | console:true | fetch:function true | timer:number | in:true true false | document:[object Document] | location:about:blank | page global:undefined | page lowercase:undefined | navigator:[object Navigator] | descriptor:false"), "the built-ins, the interface objects and navigator of this realm; the frame's document, location, history and globals are its own, and its history's methods act on the history they are called on")
+	check(pr, wait_note(pr, "same-origin pushState:function false | replace:#viaframe 7 | push:#second 1 | brandless:1 | instanceof:true true | builtins:false false true true | realm:false true true true true false [[1,2],{}] true | console:true | fetch:function true | timer:number | in:true true false | document:[object Document] | location:about:blank | page global:undefined | page lowercase:undefined | navigator:[object Navigator] | descriptor:false"), "the frame's own ECMAScript built-ins (instanceof across realms is false, Array.isArray sees through), the interface objects and navigator of this realm; the frame's document, location, history and globals are its own, and its history's methods act on the history they are called on")
 	close_page(pr, min_checks = 1)
 }
 

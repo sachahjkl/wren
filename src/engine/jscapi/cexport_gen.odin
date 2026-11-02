@@ -165,6 +165,8 @@ export_JS_IsRegExp :: proc "c" (v: JSValue) -> bool {return JS_IsRegExp(v)}
 export_JS_IsPromise :: proc "c" (v: JSValue) -> bool {return JS_IsPromise(v)}
 @(export, link_name = "JS_IsProxy")
 export_JS_IsProxy :: proc "c" (v: JSValue) -> bool {return JS_IsProxy(v)}
+@(export, link_name = "JS_IsRevokedProxy")
+export_JS_IsRevokedProxy :: proc "c" (v: JSValue) -> bool {return JS_IsRevokedProxy(v)}
 @(export, link_name = "JS_IsMap")
 export_JS_IsMap :: proc "c" (v: JSValue) -> bool {return JS_IsMap(v)}
 @(export, link_name = "JS_IsSet")
