@@ -1,3 +1,0 @@
-type: Changed
-
-**The back/forward cache, downloads, storage partitions, service workers, workers, file systems, what a page can do to a remote answer, and history are end-to-end tests in the browser's process** (`src/tools/e2e`), with no window, no fixed wait, and `build\e2e_test_check.exe`, the same tests with every allocation tracked. History no longer needs the machine's keyboard, and is now a step of `test_all`. `WREN_HISTORY_TIMING` is gone: the tab's console says the time of each traversal. `Wren.stats` also says `workersRunning`, `sharedWorkers` and `historyRestoring`. A second browser in one process no longer loses or misdirects messages between realms.

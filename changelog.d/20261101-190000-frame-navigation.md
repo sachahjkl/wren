@@ -1,3 +1,0 @@
-type: Fixed
-
-Navigating a frame: the navigate event fires in the frame's document whoever starts it (`location` of another window, `window.open`, a link or a form with a target, `src`, `srcdoc`), a frame keeps its session history across its documents (`navigation.entries()`, `back()`, `reload()`), the document that leaves gets `beforeunload`, `pagehide` and `unload`, a 204, a 205 or an attachment leaves it in place, a form or a script's click on a link with a target navigates the frame without a shell, `<meta http-equiv=refresh content=N>` reloads, and `history.go()` is ignored past 200 calls in 10 s.

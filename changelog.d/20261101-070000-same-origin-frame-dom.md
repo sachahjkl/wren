@@ -1,3 +1,0 @@
-type: Added
-
-**The DOM of a same-origin frame** is reachable: `iframe.contentDocument`, `contentWindow.document`, `parent.document`, `top.document` and `frameElement` are real documents and elements, with listeners from both realms, inserted scripts running in the frame's realm, `document.open` / `write` / `close`, and blank frames that show what is written in them. `frame.contentWindow.foo` and `parent.foo()` work through a value bridge between realms (primitives copied, objects and functions as proxies). A cross-origin or sandboxed frame stays out of reach by every route, with the origin checked on each call (docs/frames.md).
