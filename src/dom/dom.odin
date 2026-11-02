@@ -119,6 +119,25 @@ Document :: struct {
 	slot_user:     rawptr,
 	custom_states: map[base.Handle][dynamic]string,   // ElementInternals.states (shadow.odin)
 	ce_custom:     map[base.Handle]bool,              // custom elements whose definition ran (:defined)
+	// elements that were given an `elementtiming` attribute (Element Timing: the only ones its scan visits). Stale entries
+	// (a node freed, the attribute removed) are dropped by the reader, and here when the list would grow.
+	timed:         [dynamic]base.Handle,
+}
+
+// The attribute Element Timing looks for (page/timeline_lcp.odin).
+TIMED_ATTRIBUTE :: "elementtiming"
+
+// Lists `h` among the elements with an `elementtiming` attribute.
+@(private)
+timed_add :: proc(d: ^Document, h: base.Handle) {
+	if len(d.timed) == cap(d.timed) {
+		kept := 0
+		for t in d.timed {
+			if _, has := get_attribute(d, t, TIMED_ATTRIBUTE); has { d.timed[kept] = t; kept += 1 }
+		}
+		resize(&d.timed, kept)
+	}
+	append(&d.timed, h)
 }
 
 Ns_Extra :: struct {
@@ -199,6 +218,7 @@ free_document :: proc(d: ^Document) {
 	for _, x in d.ns_extra { delete(x.uri); delete(x.prefix) }
 	delete(d.ns_extra)
 	delete(d.templates)
+	delete(d.timed)
 	shadow_free_all(d)
 	free(d)
 }
@@ -435,6 +455,7 @@ set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string) -> Erro
 	touch(d)
 	d.attr_version += 1
 	if lname == "id" { ids_changed(d, h, "", false, value, true) }
+	if lname == TIMED_ATTRIBUTE { timed_add(d, h) }
 	journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, "", false)
 	if len(d.shadow_roots) > 0 { shadow_attribute(d, h, lname) }
 	notify_attribute(d, h, lname)
