@@ -299,7 +299,7 @@ export class LicenseOrder {
 		log("purged", { txn: s.stored.txn, order: s.stored.order });
 	}
 
-	// Mirrors the record into KV (what thanks.html reads). The order and e-mail indexes are written once, at issue; this
+	// Mirrors the record into KV (what the thanks/ page reads). The order and e-mail indexes are written once, at issue; this
 	// only rewrites the txn: record as the mail state changes, so a purchase still costs four writes (txn, order, email,
 	// then the txn update when the mail settles).
 	private async publish(stored: Stored): Promise<void> {

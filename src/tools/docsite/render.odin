@@ -82,18 +82,18 @@ render_page :: proc(p: ^Page, nav: ^Nav, pages: []Page, by_rel: map[string]^Page
 write_header :: proc(b: ^strings.Builder, current: string) {
 	ws := strings.write_string
 	ws(b, "<header class=\"top\">\n<div class=\"wrap\">\n")
-	ws(b, "<a class=\"brand\" href=\"/index.html\"><img src=\"/img/logo-64.png\" alt=\"\" width=\"30\" height=\"30\">Wren</a>\n")
+	ws(b, "<a class=\"brand\" href=\"/\"><img src=\"/img/logo-64.png\" alt=\"\" width=\"30\" height=\"30\">Wren</a>\n")
 	ws(b, "<input class=\"menu-check\" type=\"checkbox\" id=\"menu\">\n")
 	ws(b, "<label class=\"burger\" for=\"menu\" aria-label=\"Menu\"><span></span><span></span><span></span></label>\n")
 	ws(b, "<ul class=\"nav\">\n")
 	items := [?][2]string{
-		{"/index.html#features", "Features"},
-		{"/gallery.html", "Gallery"},
-		{"/architecture.html", "Architecture"},
-		{"/docs/index.html", "Docs"},
-		{"/write.html", "Write a page"},
-		{"/changelog.html", "Changelog"},
-		{"/support.html", "Pricing"},
+		{"/#features", "Features"},
+		{"/gallery/", "Gallery"},
+		{"/architecture/", "Architecture"},
+		{"/docs/", "Docs"},
+		{"/write/", "Write a page"},
+		{"/changelog/", "Changelog"},
+		{"/pricing/", "Pricing"},
 	}
 	for it in items {
 		ws(b, "<li><a href=\"")
@@ -116,11 +116,11 @@ write_footer :: proc(b: ^strings.Builder) {
 	ws(b, "<p class=\"foot-line\">Wren · a browser where WebAssembly runs everything · by ")
 	ws(b, "<span class=\"maker\"><img src=\"/img/froment-software-64.png\" alt=\"\" width=\"16\" height=\"16\"><a href=\"https://froment.software\">Froment Software</a></span></p>\n")
 	ws(b, "<nav class=\"foot-links\">\n")
-	ws(b, "<a href=\"/docs/index.html\">Docs</a>\n")
-	ws(b, "<a href=\"/changelog.html\">Changelog</a>\n")
-	ws(b, "<a href=\"/support.html\">Pricing</a>\n")
-	ws(b, "<a href=\"/privacy.html\">Privacy</a>\n")
-	ws(b, "<a href=\"/terms.html\">Terms</a>\n")
+	ws(b, "<a href=\"/docs/\">Docs</a>\n")
+	ws(b, "<a href=\"/changelog/\">Changelog</a>\n")
+	ws(b, "<a href=\"/pricing/\">Pricing</a>\n")
+	ws(b, "<a href=\"/privacy/\">Privacy</a>\n")
+	ws(b, "<a href=\"/terms/\">Terms</a>\n")
 	ws(b, "<a href=\"")
 	ws(b, REPO_URL)
 	ws(b, "\">GitHub</a>\n")
@@ -179,7 +179,7 @@ contains_current :: proc(item: ^Nav_Item, current: string) -> bool {
 write_breadcrumb :: proc(b: ^strings.Builder, p: ^Page) {
 	ws := strings.write_string
 	ws(b, "<nav class=\"doc-crumbs\" aria-label=\"Breadcrumb\"><ol>\n")
-	ws(b, "<li><a href=\"/docs/index.html\">Docs</a></li>\n")
+	ws(b, "<li><a href=\"/docs/\">Docs</a></li>\n")
 	if p.section != "" && p.rel != "index.md" {
 		ws(b, "<li>")
 		write_html_escaped(b, p.section)
@@ -249,9 +249,9 @@ write_edit_link :: proc(b: ^strings.Builder, p: ^Page) {
 	ws(b, "\" rel=\"noopener\">Edit this page on GitHub</a></p>\n")
 }
 
-// the root-absolute URL of a generated page: "cdp.html" -> "/docs/cdp.html"
+// the root-absolute URL of a generated page, its folder: "cdp/index.html" -> "/docs/cdp/", "index.html" -> "/docs/"
 url_of :: proc(out_rel: string) -> string {
-	return strings.concatenate({"/docs/", out_rel}, context.allocator)
+	return strings.concatenate({"/docs/", strings.trim_suffix(out_rel, "index.html")}, context.allocator)
 }
 
 // A short description from the first sentence of the body text.

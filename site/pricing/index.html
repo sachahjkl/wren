@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Pricing - Wren</title>
+  <meta name="description" content="Wren is free during the beta. A supporter licence is one payment of 29 euros, taxes included, that helps pay for its development; it unlocks nothing.">
+  <link rel="icon" type="image/png" sizes="32x32" href="../img/logo-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="../img/logo-64.png">
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    /* The pricing page: a headline, one card, the facts to read before paying, the rest folded away. */
+    .price-hero { padding: 72px 0 8px; text-align: center; background: linear-gradient(180deg, #16232c 0%, #121212 100%); }
+    .price-hero h1 { font-size: 52px; margin-bottom: 0.25em; }
+    .price-hero .intro { max-width: 560px; margin: 0 auto; }
+
+    .offer-section { padding: 36px 0 56px; }
+    .offer {
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 28px 28px 24px;
+      background: linear-gradient(160deg, #1b2b36 0%, #1a1a1a 62%);
+      border: 1px solid #2f4d61;
+      border-radius: 10px;
+      font-variant-numeric: tabular-nums;
+    }
+    .offer h2 { font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; color: #a8dcf7; margin-bottom: 12px; }
+    .offer .price { font-size: 56px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; margin: 0 0 6px; }
+    .offer .terms-line { color: var(--muted); font-size: 14px; margin: 0 0 18px; }
+    .offer .list { margin-bottom: 22px; }
+    .offer .list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .offer .btn { display: flex; width: 100%; }
+    .offer .btn:disabled { background: var(--surface-2); border-color: var(--line); color: var(--muted); opacity: 1; }
+    .offer .fine { margin: 12px 0 0; text-align: center; }
+
+    /* the info mark: opens the answer below that says more */
+    .info {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border: 1px solid var(--line-2);
+      border-radius: 50%;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      font-style: normal;
+      line-height: 1;
+    }
+    .info:hover { color: var(--accent); border-color: var(--accent); text-decoration: none; }
+
+    .pricing .section { padding: 52px 0; }
+    .pricing h2.block { font-size: 26px; margin-bottom: 18px; }
+    .facts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 32px; max-width: 860px; margin: 0; }
+    .facts div { padding: 12px 0; border-top: 1px solid var(--line); }
+    .facts dt { color: var(--text); font-weight: 650; font-size: 14px; }
+    .facts dd { margin: 2px 0 0; color: var(--muted); font-size: 14.5px; }
+
+    .faq { max-width: 860px; }
+    .faq details { border-top: 1px solid var(--line); }
+    .faq details:last-child { border-bottom: 1px solid var(--line); }
+    .faq summary { padding: 14px 0; cursor: pointer; font-weight: 650; }
+    .faq summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .faq details > div { padding: 0 0 16px; color: var(--muted); font-size: 15.5px; }
+    .faq details p { margin: 0 0 0.6em; }
+    .faq details p:last-child { margin-bottom: 0; }
+    .faq ol { margin: 0 0 0.6em; padding-left: 20px; }
+    .faq li { margin-bottom: 4px; }
+    .faq details[id] { scroll-margin-top: 76px; }
+
+    @media (max-width: 760px) {
+      .facts { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 560px) {
+      .price-hero { padding: 48px 0 4px; }
+      .pricing .section { padding: 40px 0; }
+      .price-hero h1 { font-size: 38px; }
+      .offer { padding: 22px 20px 20px; }
+      .offer .price { font-size: 48px; }
+    }
+  </style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="../"><img src="../img/logo-64.png" alt="" width="30" height="30">Wren</a>
+    <input class="menu-check" type="checkbox" id="menu">
+    <label class="burger" for="menu" aria-label="Menu"><span></span><span></span><span></span></label>
+    <ul class="nav">
+      <li><a href="../#features">Features</a></li>
+      <li><a href="../gallery/">Gallery</a></li>
+      <li><a href="../architecture/">Architecture</a></li>
+      <li><a href="../docs/">Docs</a></li>
+      <li><a href="../write/">Write a page</a></li>
+      <li><a href="../changelog/">Changelog</a></li>
+      <li><a href="./" aria-current="page">Pricing</a></li>
+      <li><a class="btn primary nav-dl" href="https://github.com/sachahjkl/wren/releases/latest">Download</a></li>
+    </ul>
+  </div>
+</header>
+
+<main id="main" class="pricing">
+
+<section class="price-hero">
+  <div class="wrap">
+    <h1>Pay once. That is all.</h1>
+    <p class="intro">Wren is free during the beta. A supporter licence keeps the work going; it unlocks nothing.</p>
+  </div>
+</section>
+
+<section class="offer-section">
+  <div class="wrap">
+    <!--
+      Purchase (Paddle Billing, checkout overlay). While data-client-token and the price id are empty, the button
+      stays on "Coming soon". To go live, fill in (docs/licence.md):
+        data-environment   "sandbox" or "production"
+        data-client-token  Paddle > Developer tools > Authentication > Client-side tokens (test_... / live_...)
+        data-price-supporter  the Paddle price id (pri_...)
+        data-worker        the Worker's address, e.g. https://wren-licence.<account>.workers.dev (no trailing slash)
+        data-thanks        the absolute address of the thanks page
+    -->
+    <div class="offer" id="buy"
+         data-environment="sandbox"
+         data-client-token=""
+         data-price-supporter=""
+         data-worker=""
+         data-thanks="https://sachahjkl.github.io/wren/thanks/">
+      <h2 id="buy-title">Supporter licence</h2>
+      <p class="price">29&nbsp;&euro;</p>
+      <p class="terms-line">Once. Taxes included.</p>
+      <ul class="list yes">
+        <li>No subscription, no renewal, no expiry <a class="info" href="#q-once" aria-label="More about the one payment" title="More about the one payment">i</a></li>
+        <li>Checked offline, on your computer <a class="info" href="#q-offline" aria-label="More about the offline check" title="More about the offline check">i</a></li>
+        <li>Nothing pops up, nothing is limited <a class="info" href="#q-nag" aria-label="More about what changes" title="More about what changes">i</a></li>
+      </ul>
+      <button class="btn primary" type="button" data-edition="supporter" disabled>Coming soon</button>
+      <p class="fine" id="buy-note">Nothing to buy yet, and nothing missing from Wren while you wait.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2 class="block">Before you buy</h2>
+    <dl class="facts">
+      <div><dt>Seller</dt><dd><a href="https://www.paddle.com">Paddle</a> sells the licence on behalf of
+        <a href="https://froment.software">Froment Software</a>, and handles VAT and receipts.</dd></div>
+      <div><dt>Delivery</dt><dd>The key is shown on the next page and sent to the e-mail address you give.</dd></div>
+      <div><dt>Checkout</dt><dd>Paddle's checkout is only loaded when you press the button.</dd></div>
+      <div><dt>The code</dt><dd>Public under the PolyForm Strict License 1.0.0; the licence changes nothing about it.</dd></div>
+      <div><dt>Terms</dt><dd><a href="../terms/">Licence terms</a>, <a href="../refunds/">refunds</a>,
+        <a href="../privacy/">privacy</a>, <a href="../imprint/">imprint</a>.</dd></div>
+      <div><dt>Questions</dt><dd>Open an issue on <a href="https://github.com/sachahjkl/wren/issues">GitHub</a>.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2 class="block">Questions</h2>
+    <div class="faq">
+      <details id="q-unlock">
+        <summary>What does the licence unlock?</summary>
+        <div><p>Nothing. It is a thank-you, not a key to a door: Wren is the same browser with it or without it. Every
+          version is free and complete while Wren is a beta.</p></div>
+      </details>
+      <details id="q-versions">
+        <summary>Which versions does it cover?</summary>
+        <div><p>Every future version of Wren, the 1.0 included, on every computer you use. The price may rise after
+          1.0; licences bought before stay valid.</p></div>
+      </details>
+      <details id="q-once">
+        <summary>Is it a subscription?</summary>
+        <div><p>No. You pay once: no subscription, no renewal, no expiry.</p></div>
+      </details>
+      <details id="q-offline">
+        <summary>Does Wren check the licence online?</summary>
+        <div><p>No. A licence is a signed key. Wren checks the signature itself, offline: it never contacts a server
+          about your licence.</p></div>
+      </details>
+      <details id="q-nag">
+        <summary>What changes without a licence?</summary>
+        <div><p>Nothing. No window pops up, nothing reminds you, no feature is limited. Without a licence,
+          <code>about:wren</code> says &ldquo;Unregistered &mdash; free during the beta&rdquo;; with one, it says
+          &ldquo;Registered to&rdquo; your name, with the date and order number.</p></div>
+      </details>
+      <details id="q-code">
+        <summary>What about the source code?</summary>
+        <div><p>It is public under the PolyForm Strict License 1.0.0 (versions up to 0.3.0 stay MIT). A supporter
+          licence does not change what anyone may do with the code.</p></div>
+      </details>
+      <details id="q-register">
+        <summary>How do I register it?</summary>
+        <div>
+          <ol>
+            <li>Open <code>about:wren</code> in Wren (menu, <em>About Wren</em>), paste the key into the box and press
+              <em>Register</em>.</li>
+            <li>Or drop the <code>.wrenlicense</code> file you received onto the Wren window.</li>
+            <li>To remove it, use <em>Remove the licence</em> on the same page.</li>
+          </ol>
+          <p>Keep the e-mail, or the downloaded file, in case you change computers.</p>
+        </div>
+      </details>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  // an info mark opens the answer it points to
+  var marks = document.querySelectorAll("a.info");
+  for (var i = 0; i < marks.length; i++) {
+    marks[i].addEventListener("click", function () {
+      var target = document.getElementById(this.getAttribute("href").slice(1));
+      if (target) target.open = true;
+    });
+  }
+
+  var box = document.getElementById("buy");
+  var button = box.querySelector("button[data-edition]");
+  var d = box.dataset;
+  var price = d.priceSupporter;
+  if (!d.clientToken || !d.worker || !price) return;   // "Coming soon" stays
+
+  document.getElementById("buy-note").textContent = "One payment, no subscription.";
+  button.textContent = "Get the licence";
+  button.disabled = false;
+
+  var loading = null;
+  function paddle() {
+    if (loading) return loading;
+    loading = new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = "https://cdn.paddle.com/paddle/v2/paddle.js";
+      s.onload = function () {
+        if (d.environment === "sandbox") Paddle.Environment.set("sandbox");
+        Paddle.Initialize({
+          token: d.clientToken,
+          eventCallback: function (e) {
+            // Paddle gives the transaction id here; the thank-you page asks the Worker for its licence
+            if (e.name === "checkout.completed" && e.data && e.data.transaction_id) {
+              location.href = d.thanks + "?txn=" + encodeURIComponent(e.data.transaction_id);
+            }
+          }
+        });
+        resolve(Paddle);
+      };
+      s.onerror = function () { loading = null; reject(new Error("Paddle.js did not load")); };
+      document.head.appendChild(s);
+    });
+    return loading;
+  }
+
+  button.addEventListener("click", function () {
+    paddle().then(function (P) {
+      P.Checkout.open({ items: [{ priceId: price, quantity: 1 }], settings: { displayMode: "overlay" } });
+    }, function () {
+      document.getElementById("buy-note").textContent = "The payment page could not be loaded. Check your connection, or an ad blocker, and try again.";
+    });
+  });
+})();
+</script>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p class="foot-line">Wren · a browser where WebAssembly runs everything · by
+      <span class="maker"><img src="../img/froment-software-64.png" alt="" width="16" height="16"><a href="https://froment.software">Froment Software</a></span></p>
+    <nav class="foot-links">
+      <a href="../docs/">Docs</a>
+      <a href="../changelog/">Changelog</a>
+      <a href="../archive/">Archive</a>
+      <a href="./" aria-current="page">Pricing</a>
+      <a href="../privacy/">Privacy</a>
+      <a href="../terms/">Terms</a>
+      <a href="../refunds/">Refunds</a>
+      <a href="../imprint/">Imprint</a>
+      <a href="https://github.com/sachahjkl/wren">GitHub</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

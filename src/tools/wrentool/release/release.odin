@@ -381,7 +381,7 @@ PackageVersion: %[1]s
 PackageLocale: en-US
 Publisher: Froment Software
 PublisherUrl: https://froment.software
-PublisherSupportUrl: https://sachahjkl.github.io/wren/support.html
+PublisherSupportUrl: https://sachahjkl.github.io/wren/pricing/
 PackageName: Wren
 PackageUrl: https://github.com/%[3]s
 License: PolyForm Strict License 1.0.0
