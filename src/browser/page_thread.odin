@@ -11,6 +11,7 @@ package browser
 // the cache meanwhile since no loop task runs) is safe to share. Only one pass at a time; the thread has the window
 // thread's stack (deep documents recurse).
 
+import "base:runtime"
 import "core:sync"
 import "core:time"
 import "toolkit:draw"
@@ -111,17 +112,34 @@ layout_job_run :: proc(j: ^Layout_Job) {
 	layout_document(j.l, j.t.page.doc, j.styled, &app.measure, &app.page_settings.style, j.size, j.scale, app.cfg.layout_band_px, j.t.image_sizes, j.fonts_gen)
 }
 
+// The layout's temporary memory on the page thread: one block, as large as the largest pass needed (with some room),
+// kept from pass to pass and emptied after each. The runtime's temporary arena keeps only its first block: a pass that
+// outgrew it mapped more blocks, gave them back to the system at the end (free_all) and faulted fresh pages in at the
+// next pass, every pass of a large page. Past PAGE_TEMP_KEEP_MAX the block goes back to its first size.
+@(private = "file") PAGE_TEMP_FIRST :: 4 << 20
+@(private = "file") PAGE_TEMP_KEEP_MAX :: 512 << 20
+@(private = "file") PAGE_TEMP_ROOM_NUM, PAGE_TEMP_ROOM_DEN :: 5, 4   // the block: what the largest pass used times 5 / 4
+
 @(private = "file")
 page_thread_main :: proc(data: rawptr) {
 	p := (^Page_Thread)(data)
 	sync.atomic_store(&p.thread_id, sync.current_thread_id())
+	temp: runtime.Arena
+	if runtime.arena_init(&temp, PAGE_TEMP_FIRST, runtime.heap_allocator()) == nil { context.temp_allocator = runtime.arena_allocator(&temp) }
+	defer runtime.arena_destroy(&temp)
 	for {
 		sync.sema_wait(&p.go)
 		if sync.atomic_load(&p.stop) { return }
 		the_app = p.job.app   // (this thread is the App's: what the layout reaches of it without an argument)
 		page.bind(&p.job.app.pages)
 		layout_job_run(&p.job)
+		used, grew := temp.total_used, temp.curr_block != nil && temp.curr_block.prev != nil
 		free_all(context.temp_allocator)
+		if grew && temp.backing_allocator.procedure != nil {
+			size := used <= PAGE_TEMP_KEEP_MAX ? used * PAGE_TEMP_ROOM_NUM / PAGE_TEMP_ROOM_DEN : PAGE_TEMP_FIRST
+			runtime.arena_destroy(&temp)
+			_ = runtime.arena_init(&temp, size, runtime.heap_allocator())
+		}
 		sync.sema_post(&p.done)
 	}
 }
