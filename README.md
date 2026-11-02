@@ -74,8 +74,8 @@ Media Foundation, WASAPI, UI Automation and BCrypt.
 | The **Daylight** palette of the interface (`browser.ui.theme`) | |
 
 The demo pages are in [`examples/site`](examples/site); `about:demos` lists them all (see [Try it](#try-it)).
-Screenshots show the whole window and are all taken in one pass by `wrentool shots` (README and site). These are of
-Wren 0.6.1: later versions changed some of what they show, the start page above all (0.6.10 and 0.6.11).
+Screenshots show the whole window and are all taken in one pass by `wrentool shots` (README and site), each the browser's
+own render of its window. These are of Wren 0.6.25.
 
 ## Features
 
@@ -101,8 +101,8 @@ Everything below exists in the code today and is covered by the tests of [`src/t
   hard deadline behind it (`wasm.max_call_ms`); a crash of the engine loses that page's scripts, never the browser.
 - **Bindings generated from the specifications**: `src/tools/bindgen` reads the Web IDL of
   [webref](https://github.com/w3c/webref) (`native/js/webref`, pinned) and writes the glue with Web IDL's rules
-  (conversions, dictionaries, unions, overloads, `[Reflect]`, iterables, named and indexed properties). 3,798 of
-  5,308 members are implemented; a member that is not is absent, so feature detection sees the truth.
+  (conversions, dictionaries, unions, overloads, `[Reflect]`, iterables, named and indexed properties). 3,821 of
+  5,310 members are implemented; a member that is not is absent, so feature detection sees the truth.
   [`docs/js/coverage.md`](docs/js/coverage.md) lists every interface and member.
 - **The DOM**: tree and mutations, live collections, `innerHTML`, selectors, CSSOM and `getComputedStyle`, geometry,
   UI events, `MutationObserver`, `IntersectionObserver`, `PerformanceObserver`, ranges and traversal, custom elements,
@@ -123,7 +123,7 @@ Everything below exists in the code today and is covered by the tests of [`src/t
   content and their Wasm modules still run.
 
 **The web API of Wasm pages: one description, everything generated** ([`api/`](api), [`docs/api`](docs/api))
-- 53 modules, 1,355 functions: DOM, events, document, forms, timers and `requestAnimationFrame`, fetch (with streams),
+- 58 modules, 1,482 functions: DOM, events, document, forms, timers and `requestAnimationFrame`, fetch (with streams),
   AbortController, URL, TextEncoder / TextDecoder, crypto (`getRandomValues`, digests), Web Storage, history,
   performance, images, EventSource, WebSocket, workers, console, and what the JavaScript engine needs from the
   browser.
