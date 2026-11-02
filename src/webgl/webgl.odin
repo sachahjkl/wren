@@ -43,8 +43,8 @@ MS_PER_S :: 1000
 gpu_process_role :: proc "contextless" () { wg_process_role() }
 
 // The GPU process now (0: none), and how many this browser has started.
-gpu_process_id :: proc() -> int { return int(wg_test_process_id()) }
-gpu_process_starts :: proc() -> int { return int(wg_test_process_starts()) }
+gpu_process_id :: proc() -> int { return int(wg_process_id()) }
+gpu_process_starts :: proc() -> int { return int(wg_process_starts()) }
 
 // What a machine says when a page got no context: asked on its own, away from the page, with all the time it takes.
 Adapter_Verdict :: enum {
@@ -127,8 +127,8 @@ foreign wren_native {
 	wg_restore :: proc(h: Handle) -> i32 ---
 	wg_console :: proc(h: Handle, out: [^]u8, cap: uint) -> uint ---
 	wg_process_role :: proc() ---
-	wg_test_process_id :: proc() -> u64 ---
-	wg_test_process_starts :: proc() -> u64 ---
+	wg_process_id :: proc() -> u64 ---
+	wg_process_starts :: proc() -> u64 ---
 }
 
 Settings :: struct {
