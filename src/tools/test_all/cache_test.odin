@@ -224,6 +224,24 @@ the_globals_are_the_mutable_declarations_of_the_top_level :: proc(t: ^testing.T)
 	testing.expect_value(t, len(test_names), 1)
 }
 
+@(test)
+the_code_a_test_file_runs_at_every_start_is_found :: proc(t: ^testing.T) {
+	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
+	root := fmt.tprintf("%s/lint_inits_test_%d", TEMP_DIR, os.get_pid())
+	_ = os.make_directory_all(fmt.tprintf("%s/sub", root))
+	defer os.remove_all(root)
+	_ = os.write_entire_file(fmt.tprintf("%s/sub/a_test.odin", root), "package p\n@(init)\nfirst :: proc \"contextless\" () {}\n@(private = \"file\", init)\nsecond :: proc \"contextless\" () {}\n@fini\nthird :: proc \"contextless\" () {}\ncalled := make_it()\nnested := Thing{f = g(1)}\nwhen true {\n\tin_when := h()\n}\nCONSTANT :: 3\ndata := [2]int{1, 2}\nlater := proc() { make_it() }\ntyped: int\n@(test)\nits_test :: proc(t: ^testing.T) { inside := make_it(); _ = inside }\n")
+	_ = os.write_entire_file(fmt.tprintf("%s/b.odin", root), "package p\n@(init)\nof_the_product :: proc \"contextless\" () {}\nalso := make_it()\n")
+	names: [dynamic]string
+	for f in find_test_inits({root}) {
+		append(&names, f.name)
+		if f.name == "called" { testing.expect_value(t, f.line, 8) }
+	}
+	want := []string{"first", "second", "third", "called", "nested", "in_when"}
+	testing.expect_value(t, len(names), len(want))
+	for w in want { testing.expectf(t, slice.contains(names[:], w), "found: %s", w) }
+}
+
 // What another package reaches outside the walk, or names among the outputs of a build, changes nothing of a key computed before or after it.
 @(test)
 a_key_does_not_depend_on_the_packages_read_before_it :: proc(t: ^testing.T) {

@@ -1,11 +1,16 @@
 package adblock
 
 import "core:strings"
+import "core:sync"
 import "core:testing"
 
-@(private = "file", init)
-install_hook :: proc "contextless" () {
-	suffix_labels_hook = proc(host: string) -> int { return strings.has_suffix(host, ".co.uk") ? 2 : 1 }
+@(private = "file")
+hook_once: sync.Once
+
+// A public suffix list that knows co.uk, installed by the tests that need one (by the first of them; never by an init, which would run in every program linking the package).
+@(private = "file")
+install_hook :: proc() {
+	sync.once_do(&hook_once, proc() { suffix_labels_hook = proc(host: string) -> int { return strings.has_suffix(host, ".co.uk") ? 2 : 1 } })
 }
 
 @(private = "file")
@@ -67,6 +72,7 @@ test_types_and_party :: proc(t: ^testing.T) {
 
 @(test)
 test_domain_option :: proc(t: ^testing.T) {
+	install_hook()
 	e := engine_from_text("/tracking.js$domain=a.com|b.org|~sub.a.com\n||ads.net^$domain=c.*\n")
 	defer engine_destroy(e)
 	u := "https://x.net/tracking.js"
@@ -201,6 +207,7 @@ test_page_flags :: proc(t: ^testing.T) {
 
 @(test)
 test_cosmetic :: proc(t: ^testing.T) {
+	install_hook()
 	text := `##.banner
 example.com###sidebar-ad
 example.com,~sub.example.com##div.promo:has-text(Ad)
