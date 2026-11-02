@@ -12,7 +12,7 @@ components below; their license texts are in the executable (bout:licenses) and
 | [Noto Color Emoji](https://github.com/googlefonts/noto-emoji) (COLR v1, Google) | Emoji 18, Google Fonts' build, commit `142c8963e7606b510c93a644c82a4c4cdeae6ef9` of `google/fonts`; the file without its OT-SVG table (`tools\fetch_emoji.ps1` pins both SHA-256) | SIL OFL 1.1 | the built-in emoji (`text.emoji` = `builtin`): `build\emoji`, shipped as `emoji\NotoColorEmoji-COLRv1.ttf`; text in `licenses\NotoColorEmoji-OFL.txt` |
 | [Unicode emoji data](https://www.unicode.org/Public/18.0.0/ucd/emoji/emoji-data.txt) (`emoji-data.txt`) | 18.0.0 | Unicode License v3 | which characters are emoji (generated `font/emoji_data.odin` of gui_toolkit) |
 | [Wasmtime](https://github.com/bytecodealliance/wasmtime) C API | 49.0.3 | Apache-2.0 WITH LLVM-exception | `build\wasmtime` (`tools\fetch_wasmtime.ps1`) |
-| [QuickJS-ng](https://github.com/quickjs-ng/quickjs) | 0.17.0, patched (`native/js/patches`) | MIT | the JavaScript engine, compiled to WebAssembly (`tools\build_js.ps1`) and embedded |
+| [QuickJS-ng](https://github.com/quickjs-ng/quickjs) | 0.17.0, patched (`native/js/patches`) | MIT | the JavaScript engine, compiled to WebAssembly (`src\tools\buildjs`) and embedded |
 | [emmalloc](https://github.com/emscripten-core/emscripten), through Odin's `base:runtime` (`wasm_allocator`) | | MIT / NCSA (Emscripten) | the heap of the JavaScript module |
 | [webref](https://github.com/w3c/webref) `@webref/idl` | 3.85.2 (`native/js/webref/VERSION`) | MIT | the Web IDL the JavaScript bindings are generated from (`native/js/gen`) |
 | [Lexbor](https://github.com/lexbor/lexbor) | 3.0.1 | Apache-2.0 | submodule `ext/lexbor` |

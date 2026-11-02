@@ -1,6 +1,6 @@
 package testenv
 
-// The memory check of the end-to-end tools. tools\test_all.ps1 builds them with -define:WREN_TRACK_MEMORY=true: every
+// The memory check of the end-to-end tools. src\tools\test_all builds them with -define:WREN_TRACK_MEMORY=true: every
 // allocation of the process (every thread, the Wasm host calls, the callbacks of WinHTTP) goes through the tracker of
 // package base, and the tool fails when anything is still allocated once it has shut everything down. A normal build
 // checks nothing.

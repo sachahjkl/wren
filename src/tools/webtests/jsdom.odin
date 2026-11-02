@@ -709,7 +709,7 @@ jsdom_dnd :: proc(t: ^testing.T) {
 	page_test(t, "dnd.html", checks = DND_CHECKS, prepare = proc() { settings.js.touch_handlers, settings.js.touch_points = true, TOUCH_POINTS }, after = proc(pr: ^Probe, _: ^Layout_Host) { dnd_checks(pr) })
 }
 
-// (the micro-benchmarks only measure: a performance run, tools\test_all.ps1 -Perf)
+// (the micro-benchmarks only measure: a performance run, test_all -Perf)
 @(test)
 jsdom_bench :: proc(t: ^testing.T) {
 	if base.perf_skip("web_test jsdom_bench: the micro-benchmarks of the DOM bindings (examples/jsdom/bench.html)") { return }

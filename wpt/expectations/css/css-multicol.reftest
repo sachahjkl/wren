@@ -1,4 +1,4 @@
-# web-platform-tests reference tests of Wren for css/css-multicol, written by tools\wpt.ps1 -Update
+# web-platform-tests reference tests of Wren for css/css-multicol, written by build/wpt -update
 # <test>: PASS|FAIL|TIMEOUT|ERROR|CRASH; "A|B" accepts either
 /css/css-multicol/abspos-after-spanner-static-pos.html: PASS
 /css/css-multicol/abspos-after-spanner.html: PASS

@@ -1,4 +1,4 @@
-# web-platform-tests expectations of Wren for custom-elements, written by tools\wpt.ps1 -Update
+# web-platform-tests expectations of Wren for custom-elements, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /custom-elements/CustomElementRegistry-constructor-and-callbacks-are-held-strongly.html: OK
 	adoptedCallback: PASS

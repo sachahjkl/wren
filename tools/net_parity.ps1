@@ -1,6 +1,6 @@
 # Runs the subjects of the web tests (src\tools\webtests) that go through the network stack on one backend (network.backend: the
 # WREN_NET_BACKEND environment variable, read by net.client_init): what proves the built-in stack (rust) does what WinHTTP did.
-# tools\test_all.ps1 runs the same tests on the default backend. Uses build\web_test.exe and the guests as test_all's build steps left them.
+# src\tools\test_all runs the same tests on the default backend. Uses build\web_test.exe and the guests as test_all's build steps left them.
 #   powershell -NoProfile -File tools\net_parity.ps1 [-Backend rust|winhttp] [-Only name,name]
 # Logs: build\parity\<backend>\<subject>.txt. Exit code: the number of subjects that failed.
 param([ValidateSet('rust', 'winhttp')][string]$Backend = 'rust', [string[]]$Only)

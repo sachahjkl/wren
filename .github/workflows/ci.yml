@@ -53,8 +53,8 @@ jobs:
       # that failed under three (the wasm preemption tick count, a 50 000 element innerHTML under its 20 s limit, a font edge of canvas2d) are not run
       # here any more or read a stronger pixel; one that fails again under the load depends on the machine's speed and goes behind -Perf. The AddressSanitizer unit tests
       # are the long step (six minutes one package after the other): the `asan` job below runs them beside this one, three packages at a time.
-      # The tests that measure time are not run here (the runner's speed is unknown): `test_all.ps1 -Perf` is for our own machines, and is ignored when CI is set.
-      # A pull request does not run again what has passed with exactly the same inputs (tools\test_cache.ps1: results by the content of what a step reads, its text, its flags and Odin's
+      # The tests that measure time are not run here (the runner's speed is unknown): `test_all -Perf` is for our own machines, and is ignored when CI is set.
+      # A pull request does not run again what has passed with exactly the same inputs (src\tools\test_all\cache.odin: results by the content of what a step reads, its text, its flags and Odin's
       # version); master, and a run by hand, always run everything: a result never comes from a cache there.
       - name: Results of earlier runs of this pull request's steps
         if: github.event_name == 'pull_request'
@@ -64,11 +64,13 @@ jobs:
           key: test-results-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: test-results-${{ github.event.pull_request.number }}-
 
-      - name: Tests (tools\test_all.ps1 -CI -NoAsan)
+      - name: Tests (src\tools\test_all -CI -NoAsan)
         shell: cmd
         env:
           WREN_CI_CACHE: ${{ github.event_name == 'pull_request' && '-Cache' || '' }}
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI -NoAsan -Except "^test262" %WREN_CI_CACHE%
+        run: |
+          odin build src/tools/test_all -collection:wb=src -vet -out:build/test_all.exe || exit /b 1
+          build\test_all.exe -CI -NoAsan -Except "^test262" %WREN_CI_CACHE%
 
       # what the JavaScript conformance steps of test_all measured (WPT sample per folder, test262 failures)
       - uses: actions/upload-artifact@v4
@@ -112,9 +114,9 @@ jobs:
           path: build/dist/symbols/*.map
           retention-days: 14
 
-  # The unit tests of every package under AddressSanitizer (tools\asan.ps1): what test_all -CI runs without -NoAsan. A job of its own, so that
+  # The unit tests of every package under AddressSanitizer (src\tools\test_all\asan.odin): what test_all -CI runs without -NoAsan. A job of its own, so that
   # the wall clock of a run is the longer of the two, not their sum. It builds the browser's dependencies as the first job does (the caches
-  # are shared: the second to start restores what the first saved, or builds the same), because asan.ps1 reads the libraries the browser links.
+  # are shared: the second to start restores what the first saved, or builds the same), because the links read the libraries the browser links.
   asan:
     runs-on: windows-2025
     timeout-minutes: 60
@@ -137,9 +139,11 @@ jobs:
           "build.bat took {0:N0} s" -f $sw.Elapsed.TotalSeconds
           exit $code
 
-      - name: Unit tests under AddressSanitizer (tools\asan.ps1 -Jobs 3)
+      - name: Unit tests under AddressSanitizer (src\tools\test_all -Only AddressSanitizer)
         shell: cmd
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\asan.ps1 -Jobs 3
+        run: |
+          odin build src/tools/test_all -collection:wb=src -vet -out:build/test_all.exe || exit /b 1
+          build\test_all.exe -CI -Only "AddressSanitizer"
 
   # test262, interpreted and with the JIT: the longest step of test_all on this runner (390 to 460 s of 850 to 1040, two steps at a time; 200 s of CPU on any machine). A job of its own, as the
   # AddressSanitizer one: the wall clock of a run is the longest job, and this one needs no browser.
@@ -163,11 +167,13 @@ jobs:
           ./tools/build_lexbor.ps1
           ./tools/build_native.ps1 -Profile quick
           ./tools/fetch_emoji.ps1
-          ./tools/build_js.ps1
+          odin run src/tools/buildjs -collection:wb=src -out:build/buildjs.exe
 
-      - name: test262 (tools\test_all.ps1 -CI -Only "^test262")
+      - name: test262 (src\tools\test_all -CI -Only "^test262")
         shell: cmd
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI -NoAsan -Only "^test262"
+        run: |
+          odin build src/tools/test_all -collection:wb=src -vet -out:build/test_all.exe || exit /b 1
+          build\test_all.exe -CI -NoAsan -Only "^test262"
 
   # The packages that are portable already (docs/portability.md): odin check for Linux and their unit tests, without a
   # window. Every download pinned as on Windows: Odin by SHA-256 here, Wasmtime in tools/fetch_wasmtime.sh, crates by
@@ -213,8 +219,11 @@ jobs:
           CC=clang tools/build_lexbor.sh
           tools/build_native.sh --profile quick
 
-      - name: odin check and unit tests (tools/linux_ci.sh)
-        run: tools/linux_ci.sh odin
+      - name: odin check and unit tests (src/tools/test_all)
+        run: |
+          mkdir -p build
+          odin build src/tools/test_all -collection:wb=src -vet -out:build/test_all
+          build/test_all -CI
 
       - name: Crash reports end to end (tools/crash_e2e.sh)
         run: tools/crash_e2e.sh odin

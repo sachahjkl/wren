@@ -487,7 +487,7 @@ grid_subgrid :: proc(t: ^testing.T) {
 }
 
 // Layout time of a 10000-item grid against a flex container with the same items (the same order of magnitude). A
-// performance test: off unless tools\test_all.ps1 -Perf (base.perf_skip).
+// performance test: off unless test_all -Perf (base.perf_skip).
 @(test)
 grid_vs_flex_timing :: proc(t: ^testing.T) {
 	if base.perf_skip("grid_vs_flex_timing: the layout time of 10000 items, grid against flex") { return }

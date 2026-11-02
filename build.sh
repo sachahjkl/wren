@@ -4,7 +4,7 @@
 # type-checks for Linux too (docs/portability.md). Linking build/wren needs libwgpu_native.a beside Odin's wgpu vendor
 # package and the native libraries from `./build.sh deps`; `./build.sh wren` attempts it so any remaining errors show.
 #   ./build.sh deps       the native libraries for this system: Wasmtime (pinned release, SHA-256), Lexbor, the Rust library
-#   ./build.sh check      odin check for Linux and the unit tests of every portable package (tools/linux_ci.sh)
+#   ./build.sh check      odin check for Linux and the unit tests of every portable package (src/tools/test_all)
 #   ./build.sh crash      the crash reports end to end (tools/crash_e2e.sh)
 #   ./build.sh wren       attempt to link build/wren (needs libwgpu_native.a and ./build.sh deps; src/browser type-checks now)
 #   ./build.sh release    build/wren as the release has it: the release channel, the Rust library with fat LTO (tools/package_linux.sh packs it)
@@ -22,6 +22,13 @@ deps() {
   tools/fetch_wgpu.sh
   CC="${CC:-clang}" tools/build_lexbor.sh
   tools/build_native.sh --profile "$PROFILE"
+}
+
+# odin check and the unit tests: the test program of the repository, built each time (a second).
+tests() {
+  mkdir -p build
+  "$ODIN" build src/tools/test_all -collection:wb=src -vet -out:build/test_all
+  build/test_all -Odin "$ODIN"
 }
 
 # The linker flags the browser executable needs on Linux, the counterpart of build.bat's
@@ -60,10 +67,10 @@ wren() {
 
 case "${1:-help}" in
   deps)  deps ;;
-  check) tools/linux_ci.sh "$ODIN" ;;
+  check) tests ;;
   crash) tools/crash_e2e.sh "$ODIN" ;;
   wren)  wren ;;
   release) PROFILE=release; WREN_CHANNEL=release; wren ;;
-  all)   deps; tools/linux_ci.sh "$ODIN"; tools/crash_e2e.sh "$ODIN" ;;
+  all)   deps; tests; tools/crash_e2e.sh "$ODIN" ;;
   *)     sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac

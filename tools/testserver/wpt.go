@@ -1,4 +1,4 @@
-// The web-platform-tests server (src/tools/wpt, tools/wpt.ps1): the pinned WPT checkout (build/wpt/wpt) served at its
+// The web-platform-tests server (src/tools/wpt, src/tools/wpt): the pinned WPT checkout (build/wpt/wpt) served at its
 // own origin, http://127.0.0.1:8768/ on the default block of ports (ports.go), since WPT paths are absolute (/resources/testharness.js), with the parts of
 // wptserve the measured folders need:
 //
@@ -17,7 +17,7 @@
 //
 // Cross-origin tests: the "www" domains are localhost (the same listener under another host name, so another origin);
 // https: 127.0.0.1:8769 (the next port) with a self-signed certificate. With -wpt-port N the ports are N and N+1; with -wpt-only the
-// server serves nothing else (tools\wpt.ps1 runs the whole suite that way, on ports no other test uses).
+// server serves nothing else (src\tools\wpt runs the whole suite that way, on ports no other test uses).
 // The checkout: WREN_WPT_ROOT, else build/wpt/wpt (from the repository root, as the tests run), else next to the
 // executable (build\testserver.exe -> build\wpt\wpt). No checkout: the listener answers 503 with how to get one.
 package testserver
@@ -42,7 +42,7 @@ import (
 const wptWWWHost = "localhost"
 
 // The WPT origin is 127.0.0.1:N (https: N+1): by default the fourth and fifth ports of the block (ports.go: 8768 / 8769 on the
-// default block), or Options.WPTPort. Options.WPTOnly: nothing else is served (tools\wpt.ps1 runs the full suite on ports of
+// default block), or Options.WPTPort. Options.WPTOnly: nothing else is served (src\tools\wpt runs the full suite on ports of
 // its own); there Options.Scan takes the next free pair (N+10...).
 var (
 	wptHTTPPort  = defaultBasePort + 3
@@ -396,7 +396,7 @@ func splitArgs(s string) []string {
 
 func serveWPT(w http.ResponseWriter, r *http.Request) {
 	if _, err := os.Stat(wptRoot); err != nil {
-		http.Error(w, "no web-platform-tests checkout at "+wptRoot+": run tools\\wpt.ps1 -Fetch", http.StatusServiceUnavailable)
+		http.Error(w, "no web-platform-tests checkout at "+wptRoot+": run build\\wpt.exe -fetch", http.StatusServiceUnavailable)
 		return
 	}
 	rel := path.Clean("/" + r.URL.Path)

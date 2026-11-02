@@ -244,7 +244,7 @@ arenas where they help, comptime‑generated opcode/atom tables, and layouts fri
 Divergences are deliberate and listed at the end.</p>
 <h2 id="conformance-test262"><a class="anchor" href="#conformance-test262" aria-hidden="true">#</a>Conformance (test262)</h2>
 <p><code>tools/jsrt_test262.ps1</code> builds the judge (<code>src/engine/jsrt/judge</code>) and runs the suite pinned by
-<code>tools/test262.ps1</code> in worker processes (a crash or hang costs one test), with the rules of QuickJS‑ng's
+<code>src/tools/test262</code> in worker processes (a crash or hang costs one test), with the rules of QuickJS‑ng's
 <code>test262.conf</code>. The harness files and the <code>includes</code> / <code>flags</code> of each test's front matter are honoured
 (<code>onlyStrict</code>, <code>raw</code>, <code>async</code>, <code>module</code>, <code>CanBlockIsFalse</code>); <code>$262</code> provides <code>createRealm</code>, <code>evalScript</code>,
 <code>detachArrayBuffer</code>, <code>gc</code>, <code>IsHTMLDDA</code> and real <code>agent</code>s (threads with their own runtime, sharing

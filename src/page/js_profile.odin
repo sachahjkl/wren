@@ -2,7 +2,7 @@ package page
 
 // WREN_WASM_PROFILE=<prefix>: the measuring tools' sampling profile of the engine's code (wasm.profile_start) for the window
 // realm of every page, written as <prefix>.<n>.json (Firefox Profiler format; tools\wasm_profile.ps1 sums it up) when the page
-// closes. Function names need an engine built with tools\build_js.ps1 -Names.
+// closes. Function names need an engine built with src\tools\buildjs -names.
 // WREN_JS_PROFILE=<prefix>: the page's own functions: the engine counts the frames of the stack every few interrupt checks
 // (native/js/odin/qjs_realm.odin), written as <prefix>.<n>.js.txt when the page closes: the functions with the most samples of their
 // own, and with the most on the stack.

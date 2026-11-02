@@ -4,7 +4,7 @@ package wasm
 // profile runs on an instance, every epoch tick (wasm.wasmtime.epoch_tick_ms, the ticker runs while a call is in
 // progress) records the instance's Wasm call stack. `profile_finish` writes the samples in the Firefox Profiler's format
 // (profiler.firefox.com opens it; tools\wasm_profile.ps1 sums it up). Function names come from the module's name
-// section: build the engine with tools\build_js.ps1 -Names for a readable profile.
+// section: build the engine with src\tools\buildjs -names for a readable profile.
 
 import "core:os"
 import "core:time"

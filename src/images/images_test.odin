@@ -421,7 +421,7 @@ job_cancelled_after_delivery :: proc(t: ^testing.T) {
 
 // Jobs submitted, cancelled at random moments (queued, running, finished, delivered) by their holder, ports closed with jobs in every
 // state, on three decoding threads: nothing freed twice, nothing read after it was freed (run it under AddressSanitizer too:
-// tools\asan.ps1 -Packages images), and the decoder keeps no job of a closed port or of a delivered one.
+// test_all -AsanPackages images), and the decoder keeps no job of a closed port or of a delivered one.
 @(test)
 jobs_cancelled_at_random_moments :: proc(t: ^testing.T) {
 	sync.mutex_lock(&decoder_tests)

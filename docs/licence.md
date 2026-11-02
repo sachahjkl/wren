@@ -406,7 +406,7 @@ cd licence\worker
 node --test "test/*.test.ts"      # Node 22.18+ (or: bun test test/); no network, no dependency
 ```
 
-`tools\test_all.ps1` runs them (SKIP when neither node nor bun is installed). The tests drive the Durable Object through
+`src\tools\test_all` runs them (SKIP when neither node nor bun is installed). The tests drive the Durable Object through
 a fake `ORDERS` namespace (one in-memory `LicenseOrder` per id, with a fake storage and a manually-fired alarm). They
 cover the webhook signature (valid, altered, wrong secret, too old, malformed, rotation), a `transaction.completed` in
 Paddle Billing's format (`licence/worker/test/fixtures`), idempotency (a double webhook issues and mails once), the mail

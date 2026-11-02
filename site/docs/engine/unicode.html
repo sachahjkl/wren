@@ -243,7 +243,7 @@ freestanding build with a <code>#+build</code> tag.</p>
 <code>libunicode-table.h</code>:</p>
 <ul>
 <li><code>tools/gen_unicode.ps1</code> downloads the pinned UCD files for a fixed Unicode release (17.0.0, the version QuickJS-ng 0.17 ships), verifies each
-file's SHA-256 (the same idiom as <code>tools/build_js.ps1</code>), then runs the generator.</li>
+file's SHA-256 (the same idiom as <code>src/tools/buildjs</code>), then runs the generator.</li>
 <li><code>src/engine/unicode/gen/</code> (an Odin program) parses the UCD text and writes <code>tables_generated.odin</code>: sorted
 half-open interval runs for every property / category / script, simple and full case/fold tables, and the
 decomposition / combining-class / composition tables for normalization.</li>

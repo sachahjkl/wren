@@ -1,6 +1,6 @@
 // test262: the ECMAScript conformance suite (tc39/test262) in Wren's JavaScript engine compiled to Wasm, test by test
 // as QuickJS-ng's own runner (run-test262.c, of the pinned engine release) runs it natively, so that the two results
-// compare file by file and mode by mode. tools\test262.ps1 fetches the pinned suite, builds the test image of the
+// compare file by file and mode by mode. prepare.odin fetches the pinned suite, builds the test image of the
 // engine (the shipped engine plus native/js/runtime/test262_host.c) and the native runner, and drives this tool.
 //
 //   test262 [-c file.conf]... [-a] [-image m.wasm] [-threads n] [-stride k] [-timeout ms] [-errors out.txt]
@@ -31,6 +31,7 @@ import "core:sync"
 import "core:time"
 import "wb:host"
 import "wb:js"
+import "wb:tools/tooling"
 import "wb:wasm"
 import "wb:base"
 
@@ -635,7 +636,7 @@ read_error_file :: proc(path: string) -> (m: map[Key]string, ok: bool) {
 }
 
 usage :: proc() -> ! {
-	fmt.eprintln("usage: test262 [-c file.conf]... [-a] [-image m.wasm] [-threads n] [-stride k] [-timeout ms] [-errors out.txt] [-known failures.txt] [-native errors.txt] [-md table.md] [-v] [files...]")
+	fmt.eprintln("usage: test262 [-quick] [-update] [-jit...] [-c file.conf]... [-a] [-image m.wasm] [-threads n] [-stride k] [-timeout ms] [-errors out.txt] [-known failures.txt] [-native errors.txt] [-md table.md] [-v] [files...]")
 	os.exit(2)
 }
 
@@ -650,6 +651,7 @@ main :: proc() {
 	stride := 1
 	errors_out, known_path, native_path, md_out := "", "", "", ""
 	force_all := false
+	quick, update := false, false
 	for i := 0; i < len(args); i += 1 {
 		a := args[i]
 		need :: proc(args: []string, i: ^int) -> string { i^ += 1; if i^ >= len(args) { usage() }; return args[i^] }
@@ -665,6 +667,8 @@ main :: proc() {
 		case "-native": native_path = need(args, &i)
 		case "-md": md_out = need(args, &i)
 		case "-v": verbose = true
+		case "-quick": quick = true
+		case "-update": update = true
 		case "-jit": jit.enabled = true
 		case "-jit-threshold": jit.call_threshold = max(1, parse_int(need(args, &i)))
 		case "-jit-step": jit.step_only = true
@@ -676,7 +680,20 @@ main :: proc() {
 			append(&files, a)
 		}
 	}
-	if image_path == "" { fmt.eprintln("test262: -image is required (the test image: build\\js-test262\\wren_js.wasm)"); os.exit(2) }
+	// With no -image, the whole of a run: what it needs (prepare.odin), the suite's configuration, the list of known failures.
+	whole_run := image_path == ""
+	if whole_run {
+		root := tooling.repo_root()
+		if os.set_working_directory(root) != nil { fmt.eprintfln("test262: cannot work in %s", root); os.exit(2) }
+		if !prepare() { os.exit(1) }
+		image_path = abs_of(TEST_IMAGE_DIR + "/wren_js.wasm")
+		errors_out = abs_of(OUT_DIR + "/" + ERRORS_FILE)
+		if !update { known_path = abs_of(KNOWN_FAILURES) }
+		if update { stride = 1 } else if quick && stride == 1 { stride = QUICK_STRIDE }
+		append(&confs, "test262.conf")
+		force_all = true
+		if os.set_working_directory(RUN_DIR) != nil { fmt.eprintfln("test262: cannot work in %s", RUN_DIR); os.exit(2) }
+	}
 	ignore := len(files) > 0 ? "testdir" : ""
 	for c in confs { if !load_config(c, ignore) { os.exit(2) } }
 	for f in files { append(&cfg.tests, strings.clone(f)) }
@@ -775,6 +792,10 @@ main :: proc() {
 
 	if md_out != "" {
 		write_markdown(md_out, all[:], runs, skipped, len(list), native_path, in_list, elapsed, threads)
+	}
+	if update && status == 0 {
+		if !copy_file(errors_out, abs_of(KNOWN_FAILURES)) { fmt.eprintln("test262: the list of known failures cannot be written"); os.exit(1) }
+		fmt.printfln("known failures updated: %s", KNOWN_FAILURES)
 	}
 	os.exit(status)
 }

@@ -1,4 +1,4 @@
-# web-platform-tests expectations of Wren for webidl/ecmascript-binding, written by tools\wpt.ps1 -Update
+# web-platform-tests expectations of Wren for webidl/ecmascript-binding, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /webidl/ecmascript-binding/allow-resizable.html: OK
 	APIs with [AllowShared] but without [AllowResizable] throw when passed growable SharedArrayBuffers: FAIL

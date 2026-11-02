@@ -5,7 +5,7 @@
 // Tests go one at a time (-define:ODIN_TEST_THREADS=1) on one world: what the process keeps (the Wasm runtime, the image cache, the
 // stores) binds to the first loop it sees, so a loop per test would leave it on a dead one. The world is made as far as a test asks
 // (`begin`), and undone by the last test, `zz_the_process_ends_with_nothing_left`, which finds the leaks (-define:WREN_TRACK_MEMORY=true).
-// test_all runs one subject per process (tools\test_env.ps1 Invoke-WrenWebTests); `build\web_test.exe -tests:cache_freshness` runs one test, and
+// test_all runs one subject per process (src\tools\test_all\steps.odin web_run); `build\web_test.exe -tests:cache_freshness` runs one test, and
 // the program with no name runs them all.
 //
 // The test server is in the process (`serve`). A page's script talks to its test through `wrenTest` (`open_page`: src/tools/testhost);
@@ -220,7 +220,7 @@ close_page :: proc(pr: ^Probe, tests := -1, min_checks := 0, script_ends := fals
 }
 
 // Last, whatever else ran: everything the world made goes, and what is still allocated then was left behind. (-tests: does not bring it:
-// tools\test_env.ps1 Invoke-WrenWebTests names it.)
+// test_all's step names it.)
 @(test)
 zz_the_process_ends_with_nothing_left :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()

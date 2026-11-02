@@ -3,7 +3,7 @@
 Where Wren depends on Windows, what is portable already, and the order of the work left. Measured with
 `tools\portability.ps1` (`odin check <package> -target:linux_amd64 -no-entry-point` for every package of `src\` and of
 the toolkit, the errors counted in the package's own files), and with the unit tests run on Linux (NixOS in WSL, Odin
-dev-2026-10, the same flags as `tools\test_all.ps1`).
+dev-2026-10, the same flags as `src\tools\test_all`).
 
 The counts are lower bounds: Odin stops checking a procedure body once its declarations fail, so a package can show
 more errors once the first ones are fixed.
@@ -44,7 +44,7 @@ Before: master `4c37924` (slice 1 and the Rust network stack merged). After: `fe
 |---|---|---|
 | Every package (Wren and the toolkit) passing `odin check` for Linux | 45 / 152 | 78 / 153 |
 | The engine's (`src\` without `src\tools`) | 30 / 36 | 35 / 37 (left: `browser`, and `a11y` through the toolkit's platform) |
-| Unit tests passing on Linux (`tools/linux_ci.sh`) | 27 packages | 33 packages (+ net, fetch, media, page, blocker, remote/client, tools/crashtrace) |
+| Unit tests passing on Linux (`src/tools/test_all`) | 27 packages | 33 packages (+ net, fetch, media, page, blocker, remote/client, tools/crashtrace) |
 
 | Package | Before | After | How |
 |---|---|---|---|
@@ -152,7 +152,7 @@ What still calls Win32 directly in `src/browser` (next slice, each a small neutr
 ## Slice 6 (2026-10-28, night): `src/browser` type-checks for Linux
 
 `odin check src/browser -target:linux_amd64` now passes but for the build-artifact `#load`s (`build/js/wren_js.wasm`,
-`build/wasmtime/LICENSE`, `ext/lexbor/LICENSE`, `ext/lexbor/NOTICE`; `tools/linux_ci.sh` and `build.sh deps` provide or
+`build/wasmtime/LICENSE`, `ext/lexbor/LICENSE`, `ext/lexbor/NOTICE`; `src/tools/test_all` and `build.sh deps` provide or
 stub them). **Errors in `src/browser`'s own files for Linux (excluding those `#load`s): ≈28 (slice 5) → 0.** The engine
 (`src\` without `src\tools`) is now **36 / 37** for Linux (left: a full Linux *link*, which needs `libwgpu_native.a`).
 `a11y` also passes now that the toolkit's platform a11y stub is in.
@@ -201,7 +201,7 @@ and GitHub's repository page load and draw. What it took:
 - The system's `libopus`, `libasound` and `libfontconfig` to link; `libwayland-client`, `libxkbcommon` (or `libxcb`) and
   a Vulkan or GL driver at run time. On NixOS: `nix shell` with clang, lld, nasm, pkg-config, rustup (1.99.1), and
   `LIBRARY_PATH` / `LD_LIBRARY_PATH` for those libraries.
-- `build/js/wren_js.wasm` is the JS engine's image: a Windows build makes it (`tools\build_js.ps1`) and the file is
+- `build/js/wren_js.wasm` is the JS engine's image: a Windows build makes it (`src\tools\buildjs`) and the file is
   portable, so a Linux checkout copies it.
 
 A bug Linux found: `Performance_timeline` freed the navigation entry's strings (a `defer` in the `if` block) before
@@ -306,8 +306,8 @@ thread priorities and `instance` have a Linux-only file to extend.
 - Linux's thread priorities are nice values: lowering one again (the boost on join) needs CAP_SYS_NICE, so it is best
   effort there.
 - The Wasm compiled-code cache key is not wrapped by a keyring on Linux (a file readable by its owner only).
-- `tools/linux_ci.sh` as a whole takes more than 8 minutes in WSL on a Windows drive (/mnt/s): run it by package
-  (`tools/linux_ci.sh odin net fetch ...`) there; the CI runner (native ext4) is well inside its 45 minutes.
+- `src/tools/test_all` as a whole takes more than 8 minutes in WSL on a Windows drive (/mnt/s): run it by package
+  (`build/test_all -Only "(net|fetch)"`) there; the CI runner (native ext4) is well inside its 45 minutes.
 - An executable linked without `--build-id` gives crash reports without a build line's id (`build.sh` and
   `tools/crash_e2e.sh` ask for it; the browser's Linux link must too).
 - core:sys/linux's `getsockopt` passes the size of the pointer, not of the value: `remote.same_user` calls the system

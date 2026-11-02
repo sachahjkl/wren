@@ -1,15 +1,20 @@
 // wpt: a pinned subset of web-platform-tests in Wren without a window: one page per test (the document loaded as the
 // browser loads it, src/tools/headless), testharness.js and Wren's testharnessreport.js (wpt/), which hands the results
-// to this tool as one console message. tools\wpt.ps1 fetches the pinned checkout and runs this tool against the test
-// server (tools/testserver/wpt.go, http://127.0.0.1:8768/).
+// to this tool as one console message. It fetches the pinned checkout and runs against the test server in its own process
+// (orchestrate.odin; tools/testserver/wpt.go).
 //
-//   wpt [-root build/wpt/wpt] [-suites wpt/suites.txt] [-expect wpt/expectations] [-server http://127.0.0.1:8768]
-//       [-timeout ms] [-timeout-cap ms] [-idle ms] [-jobs n] [-quick] [-update] [-md report.md] [-results results.txt] [-only prefix]
-//       [-only-file list.txt] [-reference edge_results.txt] [-list] [--pref name=value]... [-reftests | -no-reftests] [-reftest-folder folder]...
-//       [-dump dir] [-dump-all]
+//   odin build src/tools/wpt -collection:wb=src -vet -o:speed -use-separate-modules -out:build/wpt.exe -extra-linker-flags:/STACK:33554432   (test_all's step does)
+//   build/wpt [-quick] [-update] [-only prefix] [-jobs n] [-timeout ms] [-fast-timeouts | -no-fast-timeouts] [--pref name=value]... [-suites file]
+//       [-reftests | -no-reftests] [-reftest-folder folder]... [-dump dir] [-dump-all]
+//       [-fetch] [-update-manifest] [-no-server -server http://127.0.0.1:8768] [-root another_checkout] [-edge]
+//       [-expect wpt/expectations] [-timeout-cap ms] [-idle ms] [-md report.md] [-results results.txt] [-reference edge_results.txt] [-list]
+// -suites: run (and with -update rewrite the expectations of) the folders of another list, a subset of wpt/suites.txt: the checkout stays that of wpt/suites.txt.
+// -update-manifest rewrites wpt/MANIFEST.txt after a change of the commit or of the folders; -fetch only fetches and verifies. -no-server uses a server already running.
+// -edge runs the same tests in Microsoft Edge headless instead (build/wpt/edge_results.txt): the reference columns of the table of later runs.
+// -root: another checkout, not verified, for a look at the rasteriser on folders that are not measured (with -reftest-folder).
 // WPT_CONSOLE=1 writes every console message of the tests to the children's logs (build/wpt/children/log_*.txt).
 // -list prints the tests (path, long timeout, folder) and stops; -reference adds the subtests of a reference run in
-// another browser to the table (tools\wpt.ps1 -Edge writes it in the format of the expectations).
+// another browser to the table.
 //
 // Isolation: the tests run in child processes (`wpt -child list out`), a few dozen each, `-jobs` at a time; a child
 // that dies or stops answering loses only the test it was running (CRASH), the others go to a new child.
@@ -36,6 +41,7 @@ import "core:os"
 import "core:path/filepath"
 import "core:slice"
 import "core:strings"
+import "core:terminal"
 import "core:time"
 import "wb:config"
 import "wb:desktop"
@@ -46,12 +52,15 @@ import "wb:page"
 import "wb:wasm"
 import "wb:tools/headless"
 import "wb:tools/testenv"
+import "wb:tools/tooling"
 import "wb:tools/wpt/reftest"
 
 // A test with <meta name=timeout content=long> has this many times the time limit.
 LONG_TIMEOUT_FACTOR :: 6
 // What a hung child gets on top of the longest time a test may take, ms.
 CHILD_HANG_MARGIN_MS :: 30_000
+// A page that can no longer do anything gets this much before it is timed out.
+IDLE_MS_DEFAULT :: 1000
 
 Test :: struct {
 	folder: string,   // the suite folder it belongs to ("dom/nodes")
@@ -80,17 +89,21 @@ Suite :: struct {
 Options :: struct {
 	root, suites, expect, server, md, results, only, only_file, self, reference, dump: string,
 	timeout_ms, idle_ms, jobs, chunk, timeout_cap_ms: int,
-	quick, update, list, reftests_only, no_reftests, dump_all: bool,
+	quick, update, list, reftests_only, no_reftests, dump_all, quiet: bool,
+	only_paths: map[string]bool,   // exactly these tests (the second chance, all at once: looking for the tests takes seconds, for each)
 	reftest_folders: [dynamic]string,
 	prefs_args: [dynamic]string,
 }
 
 opts: Options
+// What the last pass over the tests found regressed: the paths, and its lines.
+regressed_paths: [dynamic]string
+last_regressions: string
 
 main :: proc() {
 	opts = {
 		root = "build/wpt/wpt", suites = "wpt/suites.txt", expect = "wpt/expectations", server = testenv.url("http://127.0.0.1:8768"),
-		timeout_ms = 10_000, idle_ms = 1000, jobs = max(1, host.processor_count() / 2), chunk = 25, self = os.args[0],
+		timeout_ms = 10_000, idle_ms = IDLE_MS_DEFAULT, jobs = max(1, host.processor_count() / 2), chunk = 25, self = os.args[0],
 	}
 	opts.dump = dump_dir_from_env()
 	args := desktop.command_line_args(context.allocator)   // (os.args is the C runtime's ANSI: a folder may have accents)
@@ -98,12 +111,15 @@ main :: proc() {
 		parse_options(args[3:])
 		os.exit(child_main(args[1], args[2]))
 	}
+	root := tooling.repo_root()
+	if !strings.has_prefix(opts.self, root) { opts.self = abs_path(opts.self) }
+	if os.set_working_directory(root) != nil { fmt.eprintfln("wpt: cannot work in %s", root); os.exit(2) }
 	parse_options(args)
-	os.exit(parent_main())
+	os.exit(run_main())
 }
 
 usage :: proc() -> ! {
-	fmt.eprintln("usage: wpt [-root dir] [-suites file] [-expect dir] [-server url] [-timeout ms] [-idle ms] [-jobs n] [-quick] [-update] [-md file] [-results file] [-only prefix] [--pref name=value]... [-reftests | -no-reftests] [-reftest-folder folder]... [-dump dir] [-dump-all]")
+	fmt.eprintln("usage: wpt [-quick] [-update] [-only prefix] [-jobs n] [-timeout ms] [-fast-timeouts | -no-fast-timeouts] [--pref name=value]... [-suites file] [-reftests | -no-reftests] [-reftest-folder folder]... [-dump dir] [-dump-all] [-fetch] [-update-manifest] [-no-server -server url] [-root checkout] [-edge] [-expect dir] [-timeout-cap ms] [-idle ms] [-md file] [-results file] [-reference file] [-list]")
 	os.exit(2)
 }
 
@@ -111,7 +127,15 @@ parse_options :: proc(args: []string) {
 	for i := 0; i < len(args); i += 1 {
 		need :: proc(args: []string, i: ^int) -> string { i^ += 1; if i^ >= len(args) { usage() }; return args[i^] }
 		switch args[i] {
-		case "-root": opts.root = need(args, &i)
+		case "-root":
+			opts.root = need(args, &i)
+			flags.other_root = opts.root
+		case "-fetch": flags.fetch_only = true
+		case "-update-manifest": flags.update_manifest = true
+		case "-no-server": flags.no_server = true
+		case "-edge": flags.edge = true
+		case "-fast-timeouts": flags.fast_timeouts = true
+		case "-no-fast-timeouts": flags.no_fast_timeouts = true
 		case "-suites": opts.suites = need(args, &i)
 		case "-expect": opts.expect = need(args, &i)
 		case "-server": opts.server = strings.trim_right(need(args, &i), "/")
@@ -422,9 +446,9 @@ Child :: struct {
 	alive:    bool,
 }
 
-// The ports the expectations were recorded on (tools\wpt.ps1 on its default port): subtest names that print a URL
+// The ports the expectations were recorded on (on the default block of the WPT origin alone): subtest names that print a URL
 // ("Fetch http://127.0.0.1:8778/...") are compared under these ports whatever port this run's server has, so that
-// runs on per-worktree ports (tools\test_all.ps1) and on the shared server match the same expectations.
+// runs on per-worktree ports and on the shared server match the same expectations.
 WPT_RECORDED_PORT :: 8778
 
 // A clone of `name` with the server's http and https ports (":N", ":N+1", not part of a longer number) written as the
@@ -508,7 +532,7 @@ child_start :: proc(c: ^Child, index: int, tests: []Test) -> bool {
 parent_main :: proc() -> int {
 	suites, ok := read_suites(opts.suites)
 	if !ok { return 2 }
-	if !os.exists(opts.root) { fmt.eprintfln("wpt: no checkout at %s (tools\\wpt.ps1 -Fetch)", opts.root); return 2 }
+	if !os.exists(opts.root) { fmt.eprintfln("wpt: no checkout at %s (build/wpt -fetch)", opts.root); return 2 }
 	if opts.reftests_only && opts.no_reftests { usage() }
 	if opts.dump != "" && !dump_dir_allowed(opts.dump) { fmt.printfln("wpt: %s is inside a repository: pictures go elsewhere", opts.dump); return 2 }
 	for f in opts.reftest_folders {
@@ -535,13 +559,13 @@ parent_main :: proc() -> int {
 		read_expectations(reftest_expect_file(s.folder), &expected)
 	}
 	if opts.only_file != "" {
-		// (the tests of the second chance of tools\wpt.ps1, all at once: looking for the tests takes seconds, for each)
 		data, ferr := os.read_entire_file(opts.only_file, context.allocator)
 		if ferr != nil { fmt.eprintfln("wpt: cannot read %s", opts.only_file); return 2 }
-		wanted := make(map[string]bool)
-		for line in strings.split_lines(string(data)) { if l := strings.trim_space(line); l != "" { wanted[l] = true } }
+		for line in strings.split_lines(string(data)) { if l := strings.trim_space(line); l != "" { opts.only_paths[l] = true } }
+	}
+	if len(opts.only_paths) > 0 {
 		kept := make([dynamic]Test)
-		for t in tests { if t.path in wanted { append(&kept, t) } }
+		for t in tests { if t.path in opts.only_paths { append(&kept, t) } }
 		tests = kept
 	}
 	if opts.quick {
@@ -572,7 +596,7 @@ parent_main :: proc() -> int {
 	if len(tests) == 0 { fmt.eprintln("wpt: no test"); return 2 }
 	// A test expected to time out spends its whole limit waiting for what will not come (58 % of the time of a full run: 1300 tests, 50 of them
 	// 60 s each), and what its expectations check came early if it came: it gets -timeout-cap ms. A subtest expected to pass that it has not
-	// reached by then is a regression of this run, which tools\wpt.ps1 runs again with the whole limit: only a real regression counts. What
+	// reached by then is a regression of this run, which run_main runs again with the whole limit: only a real regression counts. What
 	// this does not see is a test that has begun to pass: -update and a run without the cap do.
 	capped := 0
 	if opts.timeout_cap_ms > 0 {
@@ -586,8 +610,8 @@ parent_main :: proc() -> int {
 		for t in tests { if !t.is_reftest { fmt.printfln("%s\t%d\t%s", t.path, t.long ? 1 : 0, t.folder) } }
 		return 0
 	}
-	fmt.printfln("%d tests in %d folders, %d at a time", len(tests), len(suites), opts.jobs)
-	if capped > 0 { fmt.printfln("%d of them expected to time out: at most %d ms each (-timeout-cap)", capped, opts.timeout_cap_ms) }
+	if !opts.quiet { fmt.printfln("%d tests in %d folders, %d at a time", len(tests), len(suites), opts.jobs) }
+	if capped > 0 && !opts.quiet { fmt.printfln("%d of them expected to time out: at most %d ms each (-timeout-cap)", capped, opts.timeout_cap_ms) }
 
 	results := make(map[string]^Result)
 	queue := make([dynamic][]Test)
@@ -596,13 +620,14 @@ parent_main :: proc() -> int {
 	next_index := 0
 	t0 := time.tick_now()
 	// A first child with no test: it compiles the engine and writes the disk cache (and its key) alone, the others read it.
-	if opts.jobs > 1 {
+	if opts.jobs > 1 && !opts.quiet {
 		warm: Child
 		if child_start(&warm, next_index, nil) { _, _ = os.process_wait(warm.process) }
 		next_index += 1
 	}
 	hang_ms := f64(opts.timeout_ms) * LONG_TIMEOUT_FACTOR + CHILD_HANG_MARGIN_MS   // longer than any one test may take
 	done_tests := 0
+	show_progress := terminal.is_terminal(os.stderr)   // (a log has no use for a line per tick)
 	for {
 		running := 0
 		for &c in children {
@@ -661,7 +686,7 @@ parent_main :: proc() -> int {
 			if c.alive { running += 1 }
 		}
 		if running == 0 && len(queue) == 0 { break }
-		fmt.eprintf("%d/%d\r", done_tests, len(tests))
+		if show_progress { fmt.eprintf("%d/%d\r", done_tests, len(tests)) }
 		time.sleep(50 * time.Millisecond)
 	}
 	elapsed := time.duration_seconds(time.tick_since(t0))
@@ -679,6 +704,10 @@ Folder_Stats :: struct {
 Reftest_Stats :: struct {
 	tests, pass, fail, timeout, error, crash: int,
 	regressions, improvements, new_tests: int,
+}
+
+note_regressed :: proc(path: string) {
+	if !slice.contains(regressed_paths[:], path) { append(&regressed_paths, path) }
 }
 
 report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expected: map[string]Expect, elapsed: f64) -> int {
@@ -707,6 +736,7 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 				if status_ok(e.status, STATUS_PASS) && !status_ok(e.status, r.status) {
 					rs.regressions += 1
 					fmt.sbprintfln(&regress, "REGRESSION %s: %s (expected %s) %s", t.path, r.status, e.status, r.message)
+					note_regressed(t.path)
 				} else if r.status == STATUS_PASS && !status_ok(e.status, STATUS_PASS) {
 					rs.improvements += 1
 					fmt.sbprintfln(&better, "better %s: PASS (expected %s)", t.path, e.status)
@@ -748,6 +778,7 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 			if status_ok(e.status, "OK") && !status_ok(e.status, r.status) {
 				st.regressions += 1
 				fmt.sbprintfln(&regress, "REGRESSION %s: %s (expected %s) %s", t.path, r.status, e.status, r.message)
+				note_regressed(t.path)
 			} else if !status_ok(e.status, r.status) && r.status == "OK" {
 				st.improvements += 1
 				fmt.sbprintfln(&better, "better %s: %s (expected %s)", t.path, r.status, e.status)
@@ -758,6 +789,7 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 				if status_ok(want, "PASS") && got != "PASS" && !status_ok(want, got) {
 					st.regressions += 1
 					fmt.sbprintfln(&regress, "REGRESSION %s | %s: %s (expected %s)", t.path, name, got, want)
+					note_regressed(t.path)
 				}
 			}
 			for name, got in seen {
@@ -829,10 +861,11 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 	}
 	fmt.sbprintfln(&md, "\n%d reference tests: %d PASS, %d not; %d improvement(s) over the expectations, %d test(s) without expectations.",
 		ref_total.tests, ref_total.pass, ref_total.tests - ref_total.pass, ref_total.improvements, ref_total.new_tests)
-	fmt.print(strings.to_string(md))
+	if !opts.quiet { fmt.print(strings.to_string(md)) }
 	if opts.md != "" { _ = os.write_entire_file(opts.md, strings.to_string(md)) }
-	if strings.builder_len(regress) > 0 { fmt.print(strings.to_string(regress)) }
-	if strings.builder_len(better) > 0 {
+	last_regressions = strings.to_string(regress)
+	if strings.builder_len(regress) > 0 && !opts.quiet { fmt.print(strings.to_string(regress)) }
+	if strings.builder_len(better) > 0 && !opts.quiet {
 		lines := strings.split_lines(strings.to_string(better), context.temp_allocator)
 		for l, i in lines { if i < 40 && l != "" { fmt.println(l) } }
 		if len(lines) > 41 { fmt.printfln("... and %d more improvements", len(lines) - 41) }
@@ -861,7 +894,7 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 				list := ref_by_folder[s.folder]
 				slice.sort_by(list[:], proc(a, b: ^Result) -> bool { return a.path < b.path })
 				b := strings.builder_make()
-				fmt.sbprintfln(&b, "# web-platform-tests reference tests of Wren for %s, written by tools\\wpt.ps1 -Update", s.folder)
+				fmt.sbprintfln(&b, "# web-platform-tests reference tests of Wren for %s, written by build/wpt -update", s.folder)
 				fmt.sbprintln(&b, "# <test>: PASS|FAIL|TIMEOUT|ERROR|CRASH; \"A|B\" accepts either")
 				write_results(&b, list[:])
 				path := reftest_expect_file(s.folder)
@@ -872,7 +905,7 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 			list := by_folder[s.folder]
 			slice.sort_by(list[:], proc(a, b: ^Result) -> bool { return a.path < b.path })
 			b := strings.builder_make()
-			fmt.sbprintfln(&b, "# web-platform-tests expectations of Wren for %s, written by tools\\wpt.ps1 -Update", s.folder)
+			fmt.sbprintfln(&b, "# web-platform-tests expectations of Wren for %s, written by build/wpt -update", s.folder)
 			fmt.sbprintln(&b, "# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; \"A|B\" accepts either")
 			write_results(&b, list[:])
 			path := expect_file(s.folder)
@@ -882,7 +915,7 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 		fmt.printfln("expectations written in %s", opts.expect)
 		return 0
 	}
-	fmt.printfln("%d regression(s)", total.regressions + ref_total.regressions)
+	if !opts.quiet { fmt.printfln("%d regression(s)", total.regressions + ref_total.regressions) }
 	return total.regressions + ref_total.regressions > 0 ? 1 : 0
 }
 
@@ -964,7 +997,7 @@ child_main :: proc(list_path, out_path: string) -> int {
 	wasm.configure_from_args(opts.prefs_args[:], filepath.dir(out_path))
 	env: headless.Env
 	if !headless.init(&env, &prefs, fmt.tprintf("%s.profile", out_path)) { fmt.eprintln("wpt: the page stack could not start"); return 2 }
-	// A script gets the time its test gets: wpt.ps1's second chance gives more of it, and a harness running one long task (idlharness)
+	// A script gets the time its test gets: the second chance gives more of it, and a harness running one long task (idlharness)
 	// was stopped at 10 s whatever the limit, and regressed twice.
 	env.settings.js.slow_script_ms = i64(opts.timeout_ms)
 	js.cache_start({memory_bytes = 64 << 20, min_source_bytes = 0})

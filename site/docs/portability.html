@@ -232,7 +232,7 @@
 <p>Where Wren depends on Windows, what is portable already, and the order of the work left. Measured with
 <code>tools\portability.ps1</code> (<code>odin check &lt;package&gt; -target:linux_amd64 -no-entry-point</code> for every package of <code>src\</code> and of
 the toolkit, the errors counted in the package's own files), and with the unit tests run on Linux (NixOS in WSL, Odin
-dev-2026-10, the same flags as <code>tools\test_all.ps1</code>).</p>
+dev-2026-10, the same flags as <code>src\tools\test_all</code>).</p>
 <p>The counts are lower bounds: Odin stops checking a procedure body once its declarations fail, so a package can show
 more errors once the first ones are fixed.</p>
 <h2 id="how-a-package-is-made-portable"><a class="anchor" href="#how-a-package-is-made-portable" aria-hidden="true">#</a>How a package is made portable</h2>
@@ -268,7 +268,7 @@ the two share. The Windows archive links as shipped.</p>
 <tbody>
 <tr><td>Every package (Wren and the toolkit) passing <code>odin check</code> for Linux</td><td>45 / 152</td><td>78 / 153</td></tr>
 <tr><td>The engine's (<code>src\</code> without <code>src\tools</code>)</td><td>30 / 36</td><td>35 / 37 (left: <code>browser</code>, and <code>a11y</code> through the toolkit's platform)</td></tr>
-<tr><td>Unit tests passing on Linux (<code>tools/linux_ci.sh</code>)</td><td>27 packages</td><td>33 packages (+ net, fetch, media, page, blocker, remote/client, tools/crashtrace)</td></tr>
+<tr><td>Unit tests passing on Linux (<code>src/tools/test_all</code>)</td><td>27 packages</td><td>33 packages (+ net, fetch, media, page, blocker, remote/client, tools/crashtrace)</td></tr>
 </tbody>
 </table></div>
 <div class="table-box"><table>
@@ -370,7 +370,7 @@ callers and a few small Win32 uses (the profiler clock, the shutdown hide) were 
 </table></div>
 <h2 id="slice-6-2026-10-28-night-srcbrowser-type-checks-for-linux"><a class="anchor" href="#slice-6-2026-10-28-night-srcbrowser-type-checks-for-linux" aria-hidden="true">#</a>Slice 6 (2026-10-28, night): <code>src/browser</code> type-checks for Linux</h2>
 <p><code>odin check src/browser -target:linux_amd64</code> now passes but for the build-artifact <code>#load</code>s (<code>build/js/wren_js.wasm</code>,
-<code>build/wasmtime/LICENSE</code>, <code>ext/lexbor/LICENSE</code>, <code>ext/lexbor/NOTICE</code>; <code>tools/linux_ci.sh</code> and <code>build.sh deps</code> provide or
+<code>build/wasmtime/LICENSE</code>, <code>ext/lexbor/LICENSE</code>, <code>ext/lexbor/NOTICE</code>; <code>src/tools/test_all</code> and <code>build.sh deps</code> provide or
 stub them). <strong>Errors in <code>src/browser</code>'s own files for Linux (excluding those <code>#load</code>s): ≈28 (slice 5) → 0.</strong> The engine
 (<code>src\</code> without <code>src\tools</code>) is now <strong>36 / 37</strong> for Linux (left: a full Linux <em>link</em>, which needs <code>libwgpu_native.a</code>).
 <code>a11y</code> also passes now that the toolkit's platform a11y stub is in.</p>
@@ -417,7 +417,7 @@ and GitHub's repository page load and draw. What it took:</p>
 <li>The system's <code>libopus</code>, <code>libasound</code> and <code>libfontconfig</code> to link; <code>libwayland-client</code>, <code>libxkbcommon</code> (or <code>libxcb</code>) and
 a Vulkan or GL driver at run time. On NixOS: <code>nix shell</code> with clang, lld, nasm, pkg-config, rustup (1.99.1), and
 <code>LIBRARY_PATH</code> / <code>LD_LIBRARY_PATH</code> for those libraries.</li>
-<li><code>build/js/wren_js.wasm</code> is the JS engine's image: a Windows build makes it (<code>tools\build_js.ps1</code>) and the file is
+<li><code>build/js/wren_js.wasm</code> is the JS engine's image: a Windows build makes it (<code>src\tools\buildjs</code>) and the file is
 portable, so a Linux checkout copies it.</li>
 </ul>
 <p>A bug Linux found: <code>Performance_timeline</code> freed the navigation entry's strings (a <code>defer</code> in the <code>if</code> block) before
@@ -518,8 +518,8 @@ assembly; the next quick build links but misses <code>dav1d_*_avx2</code> symbol
 <li>Linux's thread priorities are nice values: lowering one again (the boost on join) needs CAP_SYS_NICE, so it is best
 effort there.</li>
 <li>The Wasm compiled-code cache key is not wrapped by a keyring on Linux (a file readable by its owner only).</li>
-<li><code>tools/linux_ci.sh</code> as a whole takes more than 8 minutes in WSL on a Windows drive (/mnt/s): run it by package
-(<code>tools/linux_ci.sh odin net fetch ...</code>) there; the CI runner (native ext4) is well inside its 45 minutes.</li>
+<li><code>src/tools/test_all</code> as a whole takes more than 8 minutes in WSL on a Windows drive (/mnt/s): run it by package
+(<code>build/test_all -Only "(net|fetch)"</code>) there; the CI runner (native ext4) is well inside its 45 minutes.</li>
 <li>An executable linked without <code>--build-id</code> gives crash reports without a build line's id (<code>build.sh</code> and
 <code>tools/crash_e2e.sh</code> ask for it; the browser's Linux link must too).</li>
 <li>core:sys/linux's <code>getsockopt</code> passes the size of the pointer, not of the value: <code>remote.same_user</code> calls the system

@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>WPT /workers/: what still fails, and why · Wren docs</title>
-<meta name="description" content="WPT /workers/: what still fails, and why tools\wpt.ps1 runs the whole /workers/ folder (its sub-folders included).">
+<meta name="description" content="WPT /workers/: what still fails, and why src\tools\wpt runs the whole /workers/ folder (its sub-folders included).">
 <link rel="icon" type="image/png" sizes="32x32" href="../img/logo-32.png">
 <link rel="stylesheet" href="../style.css">
 <link rel="stylesheet" href="../docs/docs.css">
@@ -229,8 +229,8 @@
 <li aria-current="page">WPT /workers/: what still fails, and why</li>
 </ol></nav>
 <h1 id="wpt-workers-what-still-fails-and-why"><a class="anchor" href="#wpt-workers-what-still-fails-and-why" aria-hidden="true">#</a>WPT <code>/workers/</code>: what still fails, and why</h1>
-<p><code>tools\wpt.ps1</code> runs the whole <code>/workers/</code> folder (its sub-folders included). Expectations: <code>wpt\expectations\workers.txt</code>
-(written by <code>tools\wpt.ps1 -Update -Suites &lt;a file listing workers&gt;</code>). State on 2026-10-26 (tranche 5): 295 tests,
+<p><code>src\tools\wpt</code> runs the whole <code>/workers/</code> folder (its sub-folders included). Expectations: <code>wpt\expectations\workers.txt</code>
+(written by <code>build\wpt.exe -update -suites &lt;a file listing workers&gt;</code>). State on 2026-10-26 (tranche 5): 295 tests,
 271 OK, 1021 of 1323 subtests pass (77.2 %).</p>
 <p>The 23 tests that still end in TIMEOUT (some only under the load of 8 tests at once), by cause:</p>
 <div class="table-box"><table>

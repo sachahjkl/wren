@@ -1,4 +1,4 @@
-# web-platform-tests expectations of Wren for html/semantics/embedded-content/media-elements, written by tools\wpt.ps1 -Update
+# web-platform-tests expectations of Wren for html/semantics/embedded-content/media-elements, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /html/semantics/embedded-content/media-elements/audio_loop_base.html: ERROR
 	Check if audio.loop is set to true that expecting the seeking event is fired more than once: FAIL

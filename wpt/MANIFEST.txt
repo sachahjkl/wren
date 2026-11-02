@@ -1,4 +1,4 @@
-# web-platform-tests 4ad507b28db0a636f528def9161d109fe11b93a3: SHA-256 of every file fetched by tools\wpt.ps1
+# web-platform-tests 4ad507b28db0a636f528def9161d109fe11b93a3: SHA-256 of every file fetched by build/wpt -fetch
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  common/__init__.py
 59ad7be0990e4780a512575d0fc9b33e8e838b17e5f87af5e67ddff9f4931fbb  common/arrays.js
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  common/blank.html

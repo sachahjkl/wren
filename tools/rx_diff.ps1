@@ -10,7 +10,7 @@ $root = Split-Path $PSScriptRoot -Parent
 $cref = Join-Path $root 'build\cref'
 New-Item -ItemType Directory -Force $cref | Out-Null
 
-# Copy the pinned QuickJS 0.17 sources used as the reference (same tree tools\build_js.ps1 fetches). The fetched
+# Copy the pinned QuickJS 0.17 sources used as the reference (same tree src\tools\buildjs fetches). The fetched
 # tree may live in this worktree or in the main checkout (S:\wren); the files may also already be in build\cref.
 $qjsCandidates = @(
     (Join-Path $root 'build\js\src\quickjs-0.17.0'),
@@ -21,7 +21,7 @@ $haveAll = $true
 foreach ($f in $needed) { if (-not (Test-Path (Join-Path $cref $f))) { $haveAll = $false } }
 if (-not $haveAll) {
     $qjs = $qjsCandidates | Where-Object { Test-Path (Join-Path $_ 'libregexp.c') } | Select-Object -First 1
-    if (-not $qjs) { throw "QuickJS 0.17 sources not found; run tools\build_js.ps1 first" }
+    if (-not $qjs) { throw "QuickJS 0.17 sources not found; run src\tools\buildjs first" }
     foreach ($f in $needed) { Copy-Item -Force (Join-Path $qjs $f) $cref }
 }
 

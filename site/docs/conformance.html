@@ -345,7 +345,7 @@ folder; it says nothing about the subtests Wren does not run yet.</p>
 </table></div>
 <p>The <code>/workers/</code> folder has its own page, <a href="../docs/wpt-workers.html">WPT /workers/</a>, with what still fails and why.</p>
 <h2 id="how-this-is-measured"><a class="anchor" href="#how-this-is-measured" aria-hidden="true">#</a>How this is measured</h2>
-<p><code>tools\wpt.ps1 -Update</code> runs the tests and writes the expectations; <code>tools\wpt.ps1 -Only &lt;folder&gt;</code> runs one
+<p><code>build\wpt.exe -update</code> runs the tests and writes the expectations; <code>build\wpt.exe -only &lt;folder&gt;</code> runs one
 folder. The chart and the table on this page are generated from <code>wpt/expectations</code> (and <code>build\wpt\report.md</code>
 when a run has produced it) by <code>src/tools/docsite</code>, the same tool that builds this site. Nothing here is typed by
 hand, so it cannot drift from the recorded results.</p>
@@ -354,11 +354,11 @@ hand, so it cannot drift from the recorded results.</p>
 never in the chart or the table above, in a table of their own in <code>build\wpt\report.md</code>, with expectations of their own
 (<code>wpt/expectations/&lt;folder&gt;.reftest</code>, one result per test: <code>PASS</code>, <code>FAIL</code>, <code>TIMEOUT</code>, <code>ERROR</code>, <code>CRASH</code>). They run only in
 the folders of <code>REFTEST_FOLDERS</code> (<code>src/tools/wpt/layout_host.odin</code>): <code>css/css-multicol</code> and <code>css/css-writing-modes</code>.</p>
-<div class="code"><pre><code>tools\wpt.ps1 -Reftests                                  all of them
-tools\wpt.ps1 -Reftests -Only css/css-multicol           one folder's
-tools\wpt.ps1 -Reftests -Only css/css-multicol -Update   ...and rewrite that folder's expectations
-tools\wpt.ps1 -NoReftests                                testharness tests only
-tools\wpt.ps1 -Reftests -ReftestDump &lt;directory&gt;         the pictures of what fails</code></pre></div>
+<div class="code"><pre><code>build\wpt.exe -reftests all of them
+build\wpt.exe -reftests -only css/css-multicol one folder's
+build\wpt.exe -reftests -only css/css-multicol -update ...and rewrite that folder's expectations
+build\wpt.exe -no-reftests testharness tests only
+build\wpt.exe -reftests -dump &lt;directory&gt; the pictures of what fails</code></pre></div>
 <p><strong>How a test is told.</strong> As WPT's manifest does at the pinned commit: a page with <code>&lt;link rel=match&gt;</code> or <code>rel=mismatch</code>, not
 one with <code>testharness.js</code> (that is a testharness test), not one WPT's names make a reference (a <code>reference</code> folder, <code>-ref</code>,
 <code>ref-</code>, <code>-notref</code>), a print test (<code>-print</code>, a <code>print</code> folder, <code>&lt;meta name=reftest-pages&gt;</code>: there is no paged layout here)
@@ -390,7 +390,7 @@ the pinned commit); a reference's own links must hold in turn. With <code>-Refte
 <code>WPT_REFTEST_DUMP</code>), the first comparison that failed goes to <code>&lt;test&gt;.test.png</code>, <code>.ref.png</code> and <code>.diff.png</code> in that directory,
 which the tool refuses inside a repository, with the display list of each page (<code>.test.items.txt</code>, <code>.ref.items.txt</code>: the
 quickest way to tell a layout's fault from the rasteriser's); <code>-ReftestDumpAll</code> adds what passes.</p>
-<p><code>tools\wpt.ps1 -ReftestFolder css/css-flexbox -WptRoot &lt;another checkout&gt; -Reftests</code> looks at a folder that is not measured:
+<p><code>build\wpt.exe -reftest-folder css/css-flexbox -root &lt;another checkout&gt; -reftests</code> looks at a folder that is not measured:
 a check of the rasteriser on code that is known to work. It records nothing unless <code>-Update</code> is given.</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../docs/wpt-workers.html"><span>Previous</span><strong>WPT /workers/: what still fails, and why</strong></a>

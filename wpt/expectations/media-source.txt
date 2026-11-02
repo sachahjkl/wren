@@ -1,4 +1,4 @@
-# web-platform-tests expectations of Wren for media-source, written by tools\wpt.ps1 -Update
+# web-platform-tests expectations of Wren for media-source, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /media-source/SourceBuffer-abort-readyState.html: OK
 	SourceBuffer#abort() (video/mp4) : If the readyState attribute of the parent media source is not in the "open" state then throw an INVALID_STATE_ERR exception and abort these steps.: PASS

@@ -1,5 +1,5 @@
 // jsengine: the JavaScript engine module (native/js) outside the browser.
-//   jsengine snapshot <raw.wasm> <out.wasm>     pre-initializes the engine (build_js.ps1 runs it)
+//   jsengine snapshot <raw.wasm> <out.wasm>     pre-initializes the engine (src/tools/buildjs runs it)
 //   jsengine run [-image m.wasm] [-raw] [-e code] [-profile out.json] [file.js ...]
 //                                               runs scripts in a fresh realm; console output on stdout, uncaught
 //                                               errors on stderr; exit code 1 when one was uncaught; -profile samples

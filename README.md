@@ -79,7 +79,7 @@ Wren 0.6.1: later versions changed some of what they show, the start page above 
 
 ## Features
 
-Everything below exists in the code today and is covered by the tests of [`tools\test_all.ps1`](tools/test_all.ps1).
+Everything below exists in the code today and is covered by the tests of [`src/tools/test_all`](src/tools/test_all).
 
 **WebAssembly, the only execution engine**
 - **A content blocker, built in** ([docs/blocker.md](docs/blocker.md)): advertising, tracking and malware are stopped before the request leaves the machine, in a few microseconds each (a filter engine in Odin for the Adblock Plus / uBlock Origin / AdGuard syntax, compiled to a compact index that loads in milliseconds), the elements ads leave behind are hidden before the first paint, scriptlets defuse anti-blocker scripts, and the interface is native: a shield at the end of the address bar with its panel and bout:blocker. Lists are downloaded, never shipped; nothing is reported anywhere.
@@ -278,7 +278,7 @@ What `build.bat` does, each step skipped when it is already up to date:
    `build.bat release` and `profile` link it with fat LTO, 2 minutes; see `docs/architecture.md`, "The Rust library").
 4. `src/tools/bindgen` regenerates the web API bindings, SDK and docs from `api/*.widl`, and the JavaScript bindings
    and their coverage from the Web IDL of `native/js/webref` (only what changed).
-5. `tools\build_js.ps1` compiles the engine and the browser's bindings (Odin) to one wasm32 object, links it with Odin's
+5. `src\tools\buildjs` compiles the engine and the browser's bindings (Odin) to one wasm32 object, links it with Odin's
    `wasm-ld` and pre-initializes it into `build\js\wren_js.wasm`.
 6. `odin build src/tools/wrencom` builds `build\wren.com`, the console launcher that makes `wren ctl ...` behave in a
    terminal ([docs/console-launcher.md](docs/console-launcher.md)); `wren.exe` embeds it.
@@ -295,9 +295,10 @@ build\testserver.exe
 ## Tests
 
 ```powershell
-powershell -NoProfile -File tools\test_all.ps1 -Quick   # every suite but the long network stress
-powershell -NoProfile -File tools\test_all.ps1          # everything
-powershell -NoProfile -File tools\test_all.ps1 -CI      # what continuous integration runs (see below)
+odin build src/tools/test_all -collection:wb=src -out:build/test_all.exe
+build\test_all.exe -Quick   # every suite but the long network stress
+build\test_all.exe          # everything
+build\test_all.exe -CI      # what continuous integration runs (see below)
 ```
 
 The suite runs the unit tests of every package (`odin test src/<package> -vet`), checks that the generated web API and
@@ -316,18 +317,18 @@ comes from `base.permanent_allocator()` and is never reported. `build.bat check`
 with a script driver (`WREN_MEMCHECK_SCRIPT`, `src/browser/memcheck.odin`) that runs whole sessions without the
 desktop's input: [`src\tools\e2e\memcheck.odin`](src/tools/e2e/memcheck.odin) (tabs, scripts, images, forms, the
 back/forward cache, the palette, history, then a normal exit with nothing left) and
-[`tools\endurance.ps1`](tools/endurance.ps1) (400 tabs and 2,000 navigations: the tracked bytes, the private bytes
-and the kernel, GDI and USER handles must stop growing). [`tools\asan.ps1`](tools/asan.ps1) builds the unit tests
+[`src/tools/endurance`](src/tools/endurance) (400 tabs and 2,000 navigations: the tracked bytes, the private bytes
+and the kernel, GDI and USER handles must stop growing). [`src/tools/test_all/asan.odin`](src/tools/test_all/asan.odin) builds the unit tests
 and the browser with AddressSanitizer. `-CI` and full runs include the check build's session and a short endurance
 run.
 
 Two standard conformance suites run too, pinned by commit and checked against committed expectations, so that any
 regression fails the run:
 
-- **test262**, the ECMAScript suite ([`tools\test262.ps1`](tools/test262.ps1)): the engine compiled to Wasm passes
+- **test262**, the ECMAScript suite ([`src/tools/test262`](src/tools/test262)): the engine compiled to Wasm passes
   99.92 % of 82,220 runs (what fails: `Atomics.pause` and growable `SharedArrayBuffer`, without threads in WASI).
   `test_all` runs a sample of it.
-- **web-platform-tests** ([`tools\wpt.ps1`](tools/wpt.ps1), [`wpt/suites.txt`](wpt/suites.txt)): the tests of 48
+- **web-platform-tests** ([`src/tools/wpt`](src/tools/wpt), [`wpt/suites.txt`](wpt/suites.txt)): the tests of 48
   folders (DOM, HTML, URL, encoding, Fetch, XHR, streams, storage, workers, shadow DOM, custom elements…), of which more
   than 130,000 subtests pass ([`wpt/expectations`](wpt/expectations), [`docs/conformance.md`](docs/conformance.md)).
 

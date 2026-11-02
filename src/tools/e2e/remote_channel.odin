@@ -190,9 +190,10 @@ an_oversized_message_ends_its_connection_only :: proc(t: ^testing.T) {
 the_pipe_survives_clients_that_go_at_once_and_is_this_users_only :: proc(t: ^testing.T) {
 	p := e2e.launch(t)
 	connected := 0
-	for _ in 0 ..< CONNECT_AND_GO {
+	for i in 0 ..< CONNECT_AND_GO {
 		c: api.Conn
-		if api.connect(&c, p.wren.name, 0) { connected += 1; api.disconnect(&c) }
+		// (the first waits for the instance the server makes after the one the session holds: under load its accept thread may not have run within all the others)
+		if api.connect(&c, p.wren.name, i == 0 ? api.START_WAIT_MS : 0) { connected += 1; api.disconnect(&c) }
 		free_all(context.temp_allocator)
 	}
 	testing.expect(t, connected > 0, "they connected")

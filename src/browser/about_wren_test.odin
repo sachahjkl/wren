@@ -58,9 +58,9 @@ third_party_list_of_the_repository :: proc(t: ^testing.T) {
 
 @(test)
 pinned_versions_match_the_scripts :: proc(t: ^testing.T) {
-	data, err := os.read_entire_file("tools/build_js.ps1", context.temp_allocator)
+	data, err := os.read_entire_file("src/tools/tooling/js_engine.odin", context.temp_allocator)
 	testing.expect_value(t, err, nil)
-	testing.expectf(t, strings.contains(string(data), "$QjsVersion = '" + QUICKJS_VERSION + "'"), "QUICKJS_VERSION (%s) is the version tools\\build_js.ps1 builds", QUICKJS_VERSION)
+	testing.expectf(t, strings.contains(string(data), "QJS_VERSION :: \"" + QUICKJS_VERSION + "\""), "QUICKJS_VERSION (%s) is the version src\\tools\\tooling\\js_engine.odin pins", QUICKJS_VERSION)
 	data, err = os.read_entire_file("tools/fetch_wasmtime.ps1", context.temp_allocator)
 	testing.expect_value(t, err, nil)
 	testing.expectf(t, strings.contains(string(data), "$Version = '" + wasm.WASMTIME_VERSION + "'"), "WASMTIME_VERSION (%s) is the version tools\\fetch_wasmtime.ps1 fetches", wasm.WASMTIME_VERSION)
