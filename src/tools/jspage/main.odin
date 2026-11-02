@@ -133,7 +133,7 @@ main :: proc() {
 		context.allocator = mem.tracking_allocator(&tracker)
 	}
 	prefs := config.prefs_make()
-	page.register_prefs(&prefs)
+	headless.register_prefs(&prefs)
 	_, errs := config.apply_args(&prefs, pref_args[:])
 	for e in errs { fmt.eprintln("jspage:", e) }
 	// -wasm-cache dir: the authenticated disk cache of compiled modules (the engine, the JIT's functions) in dir, as a

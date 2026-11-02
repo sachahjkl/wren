@@ -34,4 +34,16 @@ func WrenTestServerStart(basePort C.int, why *C.char, whyBytes C.int) C.int {
 //export WrenTestServerReset
 func WrenTestServerReset() { testserver.Reset() }
 
+// The test authority's certificate (PEM) into `out`: its length, or 0 when it does not fit.
+//
+//export WrenTestServerCA
+func WrenTestServerCA(out *C.char, outBytes C.int) C.int {
+	pem := testserver.TestAuthorityPEM()
+	if len(pem) > int(outBytes) {
+		return 0
+	}
+	copy(unsafe.Slice((*byte)(unsafe.Pointer(out)), int(outBytes)), pem)
+	return C.int(len(pem))
+}
+
 func main() {}

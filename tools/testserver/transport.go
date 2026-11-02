@@ -62,6 +62,9 @@ func newTestAuthority() *testAuthority {
 	return &testAuthority{cert: cert, key: key, pem: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})}
 }
 
+// TestAuthorityPEM is the certificate of the authority that signs the https origins (a client trusts it through network.tls.extra_ca_file).
+func TestAuthorityPEM() []byte { return testCA.pem }
+
 // A leaf of the test authority for these names, valid from..until.
 func (ca *testAuthority) leaf(names []string, from, until time.Time) tls.Certificate {
 	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

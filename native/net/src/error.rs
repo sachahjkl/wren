@@ -6,6 +6,7 @@ use std::fmt;
 pub const ERROR_BAD_URL: u32 = 1;
 pub const ERROR_BODY_TOO_LARGE: u32 = 2;
 pub const ERROR_START_FAILED: u32 = 3;
+pub const ERROR_NOT_LOOPBACK: u32 = 4; // network.loopback_only: an address that is not this machine's
 pub const WS_ERROR_MESSAGE_TOO_BIG: u32 = 21;
 pub const WS_ERROR_INVALID_UTF8: u32 = 22;
 pub const WS_ERROR_PROTOCOL: u32 = 24;

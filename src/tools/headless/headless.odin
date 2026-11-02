@@ -58,11 +58,20 @@ Doc :: struct {
 	created_ns: i64,
 }
 
+// The preferences `init` reads: the page's and the network's.
+register_prefs :: proc(p: ^config.Prefs) {
+	page.register_prefs(p)
+	net.register_prefs(p)
+}
+
 // Starts the stack: event loop, network client, blocking pool, the Fetch profile, the page settings (from `prefs` when
-// given: --pref name=value of the command line, else the defaults). `profile_dir` holds Web Storage ("" = none).
+// given, made with register_prefs: --pref name=value of the command line, else the defaults). `profile_dir` holds Web Storage ("" = none).
 init :: proc(e: ^Env, prefs: ^config.Prefs = nil, profile_dir := "", blocking_threads := 2) -> bool {
 	host.loop_init(&e.loop)
-	if !net.client_init(&e.client, &e.loop) { return false }
+	// the network.* preferences too (network.hosts, network.loopback_only: what a test run gives its pages)
+	ns: net.Settings
+	if prefs != nil { ns = net.settings_from_prefs(prefs, context.temp_allocator) }
+	if !net.client_init(&e.client, &e.loop, ns) { return false }
 	host.blocking_init(&e.blocking, &e.loop, blocking_threads)
 	e.profile = fetch.profile_make()
 	{

@@ -3,10 +3,10 @@
 // to this tool as one console message. It fetches the pinned checkout and runs against the test server in its own process
 // (orchestrate.odin; tools/testserver/wpt.go).
 //
-//   odin build src/tools/wpt -collection:wb=src -vet -o:speed -use-separate-modules -out:build/wpt.exe -extra-linker-flags:/STACK:33554432   (test_all's step does)
+//   odin build src/tools/wpt -collection:wb=src -vet -o:speed -use-separate-modules -out:build/wpt.exe   (test_all's step does)
 //   build/wpt [-quick] [-update] [-only prefix] [-jobs n] [-timeout ms] [-fast-timeouts | -no-fast-timeouts] [--pref name=value]... [-suites file]
 //       [-reftests | -no-reftests] [-reftest-folder folder]... [-dump dir] [-dump-all]
-//       [-fetch] [-update-manifest] [-no-server -server http://127.0.0.1:8768] [-root another_checkout] [-edge]
+//       [-fetch] [-update-manifest] [-no-server -server http://web-platform.test:8768] [-root another_checkout] [-edge]
 //       [-expect wpt/expectations] [-timeout-cap ms] [-idle ms] [-md report.md] [-results results.txt] [-reference edge_results.txt] [-list]
 // -suites: run (and with -update rewrite the expectations of) the folders of another list, a subset of wpt/suites.txt: the checkout stays that of wpt/suites.txt.
 // -update-manifest rewrites wpt/MANIFEST.txt after a change of the commit or of the folders; -fetch only fetches and verifies. -no-server uses a server already running.
@@ -104,7 +104,7 @@ last_regressions: string
 
 main :: proc() {
 	opts = {
-		root = "build/wpt/wpt", suites = "wpt/suites.txt", expect = "wpt/expectations", server = testenv.url("http://127.0.0.1:8768"),
+		root = "build/wpt/wpt", suites = "wpt/suites.txt", expect = "wpt/expectations", server = testenv.url("http://web-platform.test:8768"),
 		timeout_ms = 10_000, idle_ms = IDLE_MS_DEFAULT, jobs = max(1, host.processor_count() / 2), chunk = 25, self = os.args[0],
 	}
 	opts.dump = dump_dir_from_env()
@@ -853,6 +853,18 @@ child_on_console :: proc(d: ^headless.Doc, level: page.Log_Level, text: string) 
 
 got_result :: proc(d: ^headless.Doc) -> bool { return (^Child_State)(d.user).got }
 
+// Where a test is loaded, as wptrunner does: a test named .https. (or .h2.) on the https origin, the next port (a page of http://web-platform.test is no secure
+// context, as one of http://127.0.0.1 was), the others on -server.
+test_url :: proc(path: string) -> string {
+	name := path
+	if q := strings.index_byte(name, '?'); q >= 0 { name = name[:q] }
+	if !strings.contains(name, ".https.") && !strings.contains(name, ".h2.") { return strings.concatenate({opts.server, path}, context.temp_allocator) }
+	colon := strings.last_index_byte(opts.server, ':')
+	scheme_end := strings.index(opts.server, "://")
+	if colon < 0 || scheme_end < 0 { return strings.concatenate({opts.server, path}, context.temp_allocator) }
+	return fmt.tprintf("https://%s:%d%s", opts.server[scheme_end + 3:colon], atoi(opts.server[colon + 1:]) + 1, path)
+}
+
 PUMP_SLICE_MS :: 20
 PUMP_BUSY_MS :: 200
 
@@ -938,7 +950,7 @@ child_on_its_stack :: proc(out_path: string) -> int {
 
 child_main :: proc(out_path: string) -> int {
 	prefs := config.prefs_make()
-	page.register_prefs(&prefs)
+	headless.register_prefs(&prefs)
 	rest, errs := config.apply_args(&prefs, opts.prefs_args[:])
 	for e in errs { fmt.eprintln("wpt:", e) }
 	_ = rest
@@ -973,7 +985,7 @@ child_main :: proc(out_path: string) -> int {
 		t0 := time.tick_now()
 		if wants_layout(path) { cs.layout = host_make() }
 		defer host_destroy(cs.layout)
-		d := headless.open(&env, strings.concatenate({opts.server, path}, context.temp_allocator), child_on_console, &cs)
+		d := headless.open(&env, test_url(path), child_on_console, &cs)
 		d.on_parsed = host_attach
 		// until the report, the time limit, or a page that can no longer do anything
 		idle_since: time.Tick

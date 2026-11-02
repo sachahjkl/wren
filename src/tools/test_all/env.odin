@@ -1,6 +1,10 @@
 package test_all
 
 import "core:os"
+import "wb:tools/tooling"
+
+// (tooling's name of it: what src/net reads, without linking the network stack into this program)
+LOOPBACK_ONLY_ENV :: tooling.LOOPBACK_ONLY_ENV
 
 // The environment of every step, the same on every machine: part of what a step's result depends on (this file is an input of every step, cache.odin).
 set_test_environment :: proc(cfg: ^Config) {
@@ -16,6 +20,8 @@ set_test_environment :: proc(cfg: ^Config) {
 	os.set_env("WREN_AUDIO_OUTPUT", "null")
 	// ... and none lets itself be taken for the user's Wren, or for another run's (src/browser/instance_shell.odin). The one scenario that checks it (src/tools/e2e/instance.odin) turns it on.
 	os.set_env("WREN_SINGLE_INSTANCE", "off")
+	// ... and none reaches past this machine: a connection to anything but loopback and the names the test server answers to fails at once, named on the step's log (network.loopback_only, src/net).
+	os.set_env(LOOPBACK_ONLY_ENV, "1")
 	// ... and all share the code the JavaScript engine's image compiled to (src/wasm/module_cache.odin): 5 s of CPU per process otherwise, with hundreds of processes in a run.
 	if cfg.no_cache {
 		os.unset_env("WREN_TEST_WASM_CACHE")

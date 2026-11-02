@@ -26,6 +26,7 @@ RESULTS_TXT :: "build/wpt/results.txt"
 EDGE_RESULTS :: "build/wpt/edge_results.txt"
 AGAIN_TXT :: "build/wpt/again.txt"
 AGAIN_MD :: "build/wpt/again.md"
+TEST_CA_FILE :: "build/wpt/testca.pem"
 // What the tests of the measured folders load from elsewhere in WPT.
 SHARED_PATTERNS := []string{"/resources/", "/common/", "/interfaces/", "/images/", "/fonts/", "/dom/common.js", "/dom/events/resources/",
 	"/html/resources/", "/fetch/api/resources/", "/fetch/resources/", "/xhr/resources/", "/encoding/resources/",
@@ -38,6 +39,10 @@ SHARED_PATTERNS := []string{"/resources/", "/common/", "/interfaces/", "/images/
 	"/css/reference/"}   // (the references reftests of many folders share)
 // The base port's offset of the WPT origin (tools/testserver/ports.go).
 WPT_PORT_OFFSET :: 3
+// wptserve's host and the names under it and its alternate host (tools/testserver/wpt.go: WPTHostsPref), all this machine.
+WPT_HOST :: "web-platform.test"
+WPT_HOSTS :: "web-platform.test=127.0.0.1,not-web-platform.test=127.0.0.1"
+EDGE_HOST_RULES :: "--host-resolver-rules=MAP web-platform.test 127.0.0.1, MAP *.web-platform.test 127.0.0.1, MAP not-web-platform.test 127.0.0.1, MAP *.not-web-platform.test 127.0.0.1"
 // More tests than this regressing at once is no matter of load: no second chance. (With -fast-timeouts, a test expected to time out may just not have reached its subtests by the cap: those go too.)
 SECOND_CHANCE_MOST :: 60
 SECOND_CHANCE_MOST_FAST :: 600
@@ -196,8 +201,13 @@ run_main :: proc() -> int {
 		if flags.other_root != "" { os.set_env("WREN_WPT_ROOT", abs_path(flags.other_root)) }
 		base, why := testserver.start()
 		if base == 0 { fmt.eprintfln("wpt: %s", why); return 1 }
-		opts.server = fmt.aprintf("http://127.0.0.1:%d", base + WPT_PORT_OFFSET)
+		opts.server = fmt.aprintf("http://%s:%d", WPT_HOST, base + WPT_PORT_OFFSET)
+		// the authority of its https origin, trusted by the children only (as wptrunner hands its browsers WPT's own)
+		if os.write_entire_file(TEST_CA_FILE, testserver.ca_pem(context.temp_allocator)) != nil { fmt.eprintfln("wpt: cannot write %s", TEST_CA_FILE); return 1 }
+		append(&opts.prefs_args, "--pref", fmt.aprintf("network.tls.extra_ca_file=%s", abs_path(TEST_CA_FILE)))
 	}
+	// wptserve's names, resolved by the browser itself to the server on this machine, and nothing else reached (tools/testserver/wpt.go)
+	append(&opts.prefs_args, "--pref", "network.hosts=" + WPT_HOSTS, "--pref", "network.loopback_only=true")
 	if opts.md == "" { opts.md = REPORT_MD }
 	if opts.results == "" { opts.results = RESULTS_TXT }
 	// media tests call play() without a gesture (the harness of other browsers runs with autoplay allowed too)
@@ -303,7 +313,7 @@ edge_main :: proc() -> int {
 			r.profile = fmt.aprintf("%s/p%d", folder, started)
 			r.dom = fmt.aprintf("%s/d%d.html", folder, started)
 			r.limit_seconds = f64(budget) / 1000 + EDGE_MARGIN_SECONDS
-			p, why := tooling.spawn({command = {edge, "--headless=new", "--disable-gpu", "--no-first-run", "--disable-extensions", fmt.tprintf("--user-data-dir=%s", r.profile), fmt.tprintf("--virtual-time-budget=%d", budget), "--dump-dom", fmt.tprintf("%s%s", opts.server, t.path)}, log = r.dom})
+			p, why := tooling.spawn({command = {edge, "--headless=new", "--disable-gpu", "--no-first-run", "--disable-extensions", EDGE_HOST_RULES, "--ignore-certificate-errors", fmt.tprintf("--user-data-dir=%s", r.profile), fmt.tprintf("--virtual-time-budget=%d", budget), "--dump-dom", test_url(t.path)}, log = r.dom})
 			if why != "" { fmt.eprintfln("wpt: Edge does not start: %s", why); return 1 }
 			r.process, r.alive = p, true
 		}

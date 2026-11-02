@@ -19,36 +19,37 @@ EXIT_USAGE :: 2
 Command :: struct {
 	name, about: string,
 	run:         proc(args: []string) -> int,
+	test:        bool,   // a test, not a tool: what it starts keeps its connections on this machine (network.loopback_only)
 }
 
 COMMANDS := []Command{
-	{"deps", "what a build needs, each up to date: [-Profile quick|release] [-Force]", deps.run_all},
-	{"fetch", "wasmtime | wgpu | openh264 | emoji [-Force] [-Unicode] [-Dest dir]", deps.run_fetch},
-	{"build", "lexbor | native [-Force] [-Profile quick|release] [-Features a,b]", deps.run_build},
-	{"version-h", "build/wren_version.h from APP_VERSION", release.run_version_h},
-	{"stale", "<output> <folder>...: exit code 1 when a source is newer than the output", release.run_stale},
-	{"symbols", "-Publish exe [-Store] | -Fingerprint exe", deps.run_symbols},
-	{"crash-symbolize", "<report> [-Symbols folder or .map] [-Exe exe]: names the frames of a crash report", deps.run_crash_symbolize},
-	{"symbolize", "-Exe exe <offset>...: the function and line at an offset of a module", deps.run_symbolize},
-	{"bench", "perf | shell | js | idle | webgl | blocker | sidebar | startup | cadence (bench help)", bench.run},
-	{"capture", "-Url u -Out f.png [-Width n] [-Height n] [-Actions a] [-Exe path] [-Pref a=b] [-Page]: a page, headless", capture.run_capture},
-	{"shots", "[-Only a,b] [-Width n] [-Height n] [-NoConvert] [-Exe path]: the README's and the site's pictures, headless", capture.run_shots},
-	{"compare", "-Urls a,b | -List f [-OutDir d] [-Width n] [-Height n] [-Dark] [-Js] [-Exe path]: Wren against headless Edge", capture.run_compare},
-	{"gen", "psl | unicode [-Force] | media-fixtures | video-fixtures | perf-media [-Force] | rust-crates [-Check]", gen.run_gen},
-	{"docs", "[-Check] [-NoBuild] [-ChartUpdate]: the documentation site, its links checked", gen.run_docs},
-	{"license", "keygen | pubkey | issue | verify ...: Wren's licences (docs/licence.md)", gen.run_license},
-	{"i18n", "[-Missing] [-Json f]: the texts passed to tr, the interface's that are not", gen.run_i18n},
-	{"portability", "[-Target t] [-Only a,b] [-Csv f] [-Expect f]: every package checked for another target", gen.run_portability},
-	{"engine", "test262 [-Filter d] [-Stride n] [-Jobs n] [-NoBuild] | rx-diff [-Seed n] [-Fuzz n] [-NoC]", gen.run_engine},
-	{"desktop", "<program> [arguments]: a command on a Windows desktop of its own", gen.run_desktop},
-	{"changelog", "-New | -Check [-Release v] | -Assemble [-Version v] | -Section -Version v | -Migrate", changelog.run},
-	{"package", "[-Version v] [-Dev] [-Extras] [-AllowUnreleased]: the release file from a finished build", release.run_package},
-	{"sign", "a.exe b.exe: Authenticode, when the environment names an identity", release.run_sign},
-	{"winget", "-Version v [-Url u] [-Sha256 h] [-Out d]: the manifest files; submits nothing", release.run_winget},
-	{"notes", "-Tag v [-Ref r] [-Out f]: the notes of a release", release.run_notes},
-	{"experimental", "[-Label l] [-NoBuild] [-NoUpload] [-NoVerify] [-NoEmbed] [-Notes f] [-Vault d]: a labelled build to hand out", release.run_experimental},
-	{"smoke", "<wren executable>: the packaged executable end to end (needs a display)", release.run_smoke},
-	{"crash-e2e", "Linux: every death of src/tools/crashmodes leaves its report", release.run_crash_e2e},
+	{name = "deps", about = "what a build needs, each up to date: [-Profile quick|release] [-Force]", run = deps.run_all},
+	{name = "fetch", about = "wasmtime | wgpu | openh264 | emoji [-Force] [-Unicode] [-Dest dir]", run = deps.run_fetch},
+	{name = "build", about = "lexbor | native [-Force] [-Profile quick|release] [-Features a,b]", run = deps.run_build},
+	{name = "version-h", about = "build/wren_version.h from APP_VERSION", run = release.run_version_h},
+	{name = "stale", about = "<output> <folder>...: exit code 1 when a source is newer than the output", run = release.run_stale},
+	{name = "symbols", about = "-Publish exe [-Store] | -Fingerprint exe", run = deps.run_symbols},
+	{name = "crash-symbolize", about = "<report> [-Symbols folder or .map] [-Exe exe]: names the frames of a crash report", run = deps.run_crash_symbolize},
+	{name = "symbolize", about = "-Exe exe <offset>...: the function and line at an offset of a module", run = deps.run_symbolize},
+	{name = "bench", about = "perf | shell | js | idle | webgl | blocker | sidebar | startup | cadence (bench help)", run = bench.run},
+	{name = "capture", about = "-Url u -Out f.png [-Width n] [-Height n] [-Actions a] [-Exe path] [-Pref a=b] [-Page]: a page, headless", run = capture.run_capture},
+	{name = "shots", about = "[-Only a,b] [-Width n] [-Height n] [-NoConvert] [-Exe path]: the README's and the site's pictures, headless", run = capture.run_shots},
+	{name = "compare", about = "-Urls a,b | -List f [-OutDir d] [-Width n] [-Height n] [-Dark] [-Js] [-Exe path]: Wren against headless Edge", run = capture.run_compare},
+	{name = "gen", about = "psl | unicode [-Force] | media-fixtures | video-fixtures | perf-media [-Force] | rust-crates [-Check]", run = gen.run_gen},
+	{name = "docs", about = "[-Check] [-NoBuild] [-ChartUpdate]: the documentation site, its links checked", run = gen.run_docs},
+	{name = "license", about = "keygen | pubkey | issue | verify ...: Wren's licences (docs/licence.md)", run = gen.run_license},
+	{name = "i18n", about = "[-Missing] [-Json f]: the texts passed to tr, the interface's that are not", run = gen.run_i18n},
+	{name = "portability", about = "[-Target t] [-Only a,b] [-Csv f] [-Expect f]: every package checked for another target", run = gen.run_portability},
+	{name = "engine", about = "test262 [-Filter d] [-Stride n] [-Jobs n] [-NoBuild] | rx-diff [-Seed n] [-Fuzz n] [-NoC]", run = gen.run_engine},
+	{name = "desktop", about = "<program> [arguments]: a command on a Windows desktop of its own", run = gen.run_desktop},
+	{name = "changelog", about = "-New | -Check [-Release v] | -Assemble [-Version v] | -Section -Version v | -Migrate", run = changelog.run},
+	{name = "package", about = "[-Version v] [-Dev] [-Extras] [-AllowUnreleased]: the release file from a finished build", run = release.run_package},
+	{name = "sign", about = "a.exe b.exe: Authenticode, when the environment names an identity", run = release.run_sign},
+	{name = "winget", about = "-Version v [-Url u] [-Sha256 h] [-Out d]: the manifest files; submits nothing", run = release.run_winget},
+	{name = "notes", about = "-Tag v [-Ref r] [-Out f]: the notes of a release", run = release.run_notes},
+	{name = "experimental", about = "[-Label l] [-NoBuild] [-NoUpload] [-NoVerify] [-NoEmbed] [-Notes f] [-Vault d]: a labelled build to hand out", run = release.run_experimental},
+	{name = "smoke", about = "<wren executable>: the packaged executable end to end (needs a display)", run = release.run_smoke, test = true},
+	{name = "crash-e2e", about = "Linux: every death of src/tools/crashmodes leaves its report", run = release.run_crash_e2e, test = true},
 }
 
 main :: proc() {
@@ -56,7 +57,9 @@ main :: proc() {
 	root := tooling.repo_root()
 	if os.set_working_directory(root) != nil { fmt.eprintfln("wrentool: cannot work in %s", root); os.exit(EXIT_USAGE) }
 	for c in COMMANDS {
-		if c.name == os.args[1] { os.exit(c.run(os.args[2:])) }
+		if c.name != os.args[1] { continue }
+		if c.test { os.set_env(tooling.LOOPBACK_ONLY_ENV, "1") }
+		os.exit(c.run(os.args[2:]))
 	}
 	fmt.eprintfln("wrentool: no command %s", os.args[1])
 	usage()

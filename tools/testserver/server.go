@@ -198,4 +198,5 @@ func Reset() {
 	httpCacheStash.Lock()
 	httpCacheStash.m = map[string][]map[string]any{}
 	httpCacheStash.Unlock()
+	wptDispatcherReset()
 }

@@ -64,7 +64,9 @@ pub struct WnConfig {
     pub http2: u8,
     pub http3: u8,
     pub proxy_system: u8,
-    pub _pad: u8,
+    pub loopback_only: u8,        // a connection to an address that is not loopback fails (NOT_LOOPBACK): the tests stay on this machine
+    pub hosts: *const u8,         // "name address" lines: the name and its subdomains resolve to that address here, never through the system
+    pub hosts_len: usize,
 }
 
 #[derive(Clone)]
@@ -82,6 +84,8 @@ pub(crate) struct Settings {
     pub http2: bool,
     pub http3: bool,
     pub proxy_system: bool,
+    pub loopback_only: bool,
+    pub hosts: Vec<(String, std::net::IpAddr)>,
 }
 
 fn ms(v: u32) -> Option<Duration> {
@@ -108,9 +112,24 @@ impl Settings {
             h3_broken: Duration::from_millis(c.h3_broken_ms as u64),
             http2: c.http2 != 0,
             http3: c.http3 != 0,
-            proxy_system: c.proxy_system != 0,
+            // (on loopback only, no proxy: it would be the way out)
+            proxy_system: c.proxy_system != 0 && c.loopback_only == 0,
+            loopback_only: c.loopback_only != 0,
+            hosts: parse_hosts(&String::from_utf8_lossy(bytes(c.hosts, c.hosts_len))),
         }
     }
+}
+
+/// "name address" per line (a line that is not that is skipped), names lowercased.
+pub(crate) fn parse_hosts(text: &str) -> Vec<(String, std::net::IpAddr)> {
+    text.lines()
+        .filter_map(|l| {
+            let mut f = l.split_whitespace();
+            let name = f.next()?.trim_end_matches('.').to_ascii_lowercase();
+            let ip = f.next()?.parse().ok()?;
+            Some((name, ip))
+        })
+        .collect()
 }
 
 /// One event as the library keeps it until the host took it.
