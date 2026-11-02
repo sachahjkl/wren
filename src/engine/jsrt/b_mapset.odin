@@ -206,6 +206,13 @@ can_be_held_weakly :: proc(rt: ^Runtime, v: Value) -> bool {
 	return false
 }
 
+// `v` is now held weakly: an object keeps that mark (OBJ_HELD_WEAKLY, object_untouched).
+@(private = "file")
+held_weakly :: #force_inline proc "contextless" (v: Value) -> Value {
+	if v.tag == .object {as_obj(v).flags |= OBJ_HELD_WEAKLY}
+	return v
+}
+
 // Map (class map) / Set / WeakMap / WeakSet constructors; magic = class.
 @(private = "file")
 collection_ctor :: proc(ctx: ^Context, nt: Value, args: []Value, magic: i32) -> Value {
@@ -291,11 +298,11 @@ collection_method :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32)
 		return i < 0 ? UNDEFINED : ms.entries[i].value
 	case MAP_SET:
 		if weak && !can_be_held_weakly(rt, key) {return throw_type_error(ctx, "invalid value used as weak map key")}
-		map_set(rt, ms, key, arg(args, 1))
+		map_set(rt, ms, weak ? held_weakly(key) : key, arg(args, 1))
 		return this
 	case MAP_ADD:
 		if weak && !can_be_held_weakly(rt, key) {return throw_type_error(ctx, "invalid value used in weak set")}
-		if map_find(rt, ms, key) < 0 {map_set(rt, ms, key, UNDEFINED)}
+		if map_find(rt, ms, key) < 0 {map_set(rt, ms, weak ? held_weakly(key) : key, UNDEFINED)}
 		return this
 	case MAP_HAS:
 		if weak && !can_be_held_weakly(rt, key) {return FALSE}
@@ -324,7 +331,7 @@ collection_method :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32)
 			v = call(ctx, v, UNDEFINED, {k})
 			if is_exception(v) {return EXCEPTION}
 		}
-		map_set(rt, ms, k, v)
+		map_set(rt, ms, weak ? held_weakly(k) : k, v)
 		return v
 	}
 	return UNDEFINED
@@ -695,7 +702,7 @@ weakref_ctor :: proc(ctx: ^Context, nt: Value, args: []Value, magic: i32) -> Val
 	if !ok {return EXCEPTION}
 	o := object_new_proto(ctx, proto, .weakref)
 	d := new(Weak_Ref_Data, rt_allocator(ctx.rt))
-	d.target = t
+	d.target = held_weakly(t)
 	o.data = d
 	append(&ctx.rt.weak_list, o)
 	return mk_obj(o)
@@ -736,7 +743,7 @@ finrec_register :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -
 	if !can_be_held_weakly(rt, t) {return throw_type_error(ctx, "register: invalid target")}
 	if same_value(ctx, t, held) {return throw_type_error(ctx, "register: target and held value must differ")}
 	if !is_undefined(token) && !can_be_held_weakly(rt, token) {return throw_type_error(ctx, "register: invalid unregister token")}
-	append(&d.cells, Fin_Rec_Cell{target = t, held = held, token = token})
+	append(&d.cells, Fin_Rec_Cell{target = held_weakly(t), held = held, token = held_weakly(token)})
 	return UNDEFINED
 }
 

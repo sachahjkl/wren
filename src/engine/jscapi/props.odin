@@ -291,6 +291,14 @@ JS_HasLazyMembers :: proc "c" (obj: JSValue) -> bool {
 	return ok && js.object_is_lazy(o)
 }
 
+// Whether `obj` is as it was made with prototype `proto`: no own property, extensible, never held weakly (jsrt
+// object_untouched). Nothing but a reference to it tells it from a copy made the same way.
+JS_IsUntouched :: proc "c" (obj: JSValue, proto: JSValue) -> bool {
+	o, ok := obj_arg(obj)
+	p, pok := obj_arg(proto)
+	return ok && pok && js.object_untouched(o, p)
+}
+
 @(private = "file")
 lazy_thunk :: proc(ctx: ^js.Context, o: ^js.Object, p: rawptr, user: i32) {
 	cb := cast(Lazy_Members_Callback)p

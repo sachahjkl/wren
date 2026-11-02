@@ -9,11 +9,13 @@
 //     members are the wrappers of one tree, so the wrappers of a tree form one cycle: it is kept alive by anything
 //     else that references any of them (a variable, a closure), and collected as a whole when nothing does. The group
 //     of the document's own tree is held by the realm: the wrappers of connected nodes (with their listeners and
-//     expando properties) live as long as the page. Trees change between collections, so before each collection
-//     (JS_SetGCPrologue) every wrapper is moved to the group of its node's current tree (Node_treeRoots, one call for
-//     all). New wrappers start in the document's group: kept alive at least until the next collection, which is
-//     always safe. Between collections no wrapper is ever freed by reference counting alone (its group holds it), so
-//     a stale group never loses one.
+//     expando properties) live as long as the page. A group exists for the wrappers that carry something of their
+//     own: a plain one (wrapper_plain) goes when no script holds it, to be made again, the same, if a script reaches
+//     its node later, so it is a member only of a detached tree's group that has others (holding it must keep them).
+//     Trees change between collections, so before each collection (JS_SetGCPrologue) every wrapper is placed again
+//     by its node's current tree (Node_treeRoots: one call for the others, one for the plain ones when some detached
+//     tree has a group). New wrappers start in no group: nothing is freed but by a collection, and its prologue
+//     places them.
 //   * A finalized node wrapper unpins its node; the browser frees a detached tree nothing pins.
 package wj
 
@@ -271,7 +273,27 @@ group_remove :: proc "contextless" (ctx: ^Context, o: ^Obj) {
 	JS_FreeValue(ctx, gv)   // last: may free the group
 }
 
-// Before each collection: every node wrapper to the group of its node's current tree.
+// A node wrapper that carries nothing of its own: no listener, no [SameObject] value, no data of the engine, no
+// property, its interface's prototype, never held weakly (JS_IsUntouched). It belongs to no group: once no script
+// holds it the collector frees it and its node is unpinned, and a script that reaches the node later gets a wrapper
+// made the same way, which nothing can tell from the first.
+@(private = "file")
+wrapper_plain :: #force_inline proc "contextless" (o: ^Obj) -> bool {
+	return o.listeners == nil && o.n_same == 0 && o.impl == nil && JS_IsUntouched(o.self, wj_the_realm.protos[o.iface])
+}
+
+// Whether some detached tree's group has members.
+@(private = "file")
+detached_group_held :: proc "contextless" () -> bool {
+	for i: u32 = 0; i < groups.cap; i += 1 {
+		if groups.slots[i].key == 0 { continue }
+		if g := (^Group)(JS_GetOpaque(groups.slots[i].obj, wj_class_group)); g != nil && g.count > 0 { return true }
+	}
+	return false
+}
+
+// Before each collection: every node wrapper that carries something of its own to the group of its node's current
+// tree; the plain ones out of any, but into a detached tree's group that holds some.
 @(private = "file")
 gc_prologue :: proc "c" (rt: ^Runtime, opaque: rawptr) {
 	r := &wj_the_realm
@@ -286,14 +308,25 @@ gc_prologue :: proc "c" (rt: ^Runtime, opaque: rawptr) {
 	roots := ([^]u64)(libc_malloc(uint(n) * 8))
 	objs := ([^]JSValue)(libc_malloc(uint(n) * size_of(JSValue)))
 	if handles != nil && roots != nil && objs != nil {
-		k: u32 = 0
-		for i: u32 = 0; i < nodes.cap && k < n; i += 1 {
+		// the wrappers that carry something from the start of the arrays, the plain ones (out of their groups) from the
+		// end: `k` of the first, from `p` on the others
+		k, p: u32 = 0, n
+		for i: u32 = 0; i < nodes.cap; i += 1 {
 			if nodes.slots[i].key == 0 { continue }
+			o := obj_of(nodes.slots[i].obj)
+			if o == nil { continue }
+			if wrapper_plain(o) {
+				if o.group != nil { group_remove(ctx, o) }   // (not freed here: only a collection frees, and its finalizer clears the slot)
+				p -= 1
+				handles[p] = nodes.slots[i].key
+				objs[p] = nodes.slots[i].obj
+				continue
+			}
 			handles[k] = nodes.slots[i].key
 			objs[k] = JS_DupValue(ctx, nodes.slots[i].obj)   // nothing is freed while they move
 			k += 1
 		}
-		wr_Node_treeRoots(handles, k, ([^]u8)(roots), k * 8)
+		if k > 0 { wr_Node_treeRoots(handles, k, ([^]u8)(roots), k * 8) }
 		for i: u32 = 0; i < k; i += 1 {
 			o := obj_of(objs[i])
 			if o == nil { continue }
@@ -318,6 +351,16 @@ gc_prologue :: proc "c" (rt: ^Runtime, opaque: rawptr) {
 			group_remove(ctx, o)
 			group_add(ctx, target, o)
 			if fresh { JS_FreeValue(ctx, target) }   // now held by its member
+		}
+		// a plain wrapper of a detached tree whose group holds some: in it too, since a script that holds any wrapper
+		// of the tree reaches the others (the document's group is the realm's: its plain wrappers need not be in it)
+		if p < n && detached_group_held() {
+			wr_Node_treeRoots(handles[p:], n - p, ([^]u8)(roots[p:]), (n - p) * 8)
+			for i := p; i < n; i += 1 {
+				if roots[i] <= 1 { continue }
+				g := map_get(&groups, roots[i])
+				if gr := (^Group)(JS_GetOpaque(g, wj_class_group)); gr != nil && gr.count > 0 { group_add(ctx, g, obj_of(objs[i])) }
+			}
 		}
 		for i: u32 = 0; i < k; i += 1 { JS_FreeValue(ctx, objs[i]) }
 	}
@@ -759,15 +802,9 @@ wj_wrap_node :: proc "c" (ctx: ^Context, node: u64) -> JSValue {
 	if iface >= u32(wj_interface_count) { wr_Node_unpin(node); return JS_ThrowTypeError(ctx, "not a live node") }
 	obj := make_wrapper(ctx, i32(iface), KIND_NODE, node, UNDEFINED)
 	if is_exception(obj) { wr_Node_unpin(node); return obj }
-	o := obj_of(obj)
-	// from here the wrapper's finalizer unpins
+	// from here the wrapper's finalizer unpins; it is in no group until a collection's prologue finds it carrying
+	// something of its own (wrapper_plain)
 	if !map_put(&nodes, node, obj) { JS_FreeValue(ctx, obj); return JS_ThrowOutOfMemory(ctx) }
-	// out of memory: the wrapper waits outside any group for the next collection to place it (tried again then)
-	if is_undefined(doc_group) {
-		g := group_new(ctx, 1)
-		if is_exception(g) { JS_FreeValue(ctx, JS_GetException(ctx)) } else { doc_group = g }
-	}
-	if !is_undefined(doc_group) { group_add(ctx, doc_group, o) }
 	return obj
 }
 

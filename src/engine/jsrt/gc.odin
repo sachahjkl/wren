@@ -396,13 +396,16 @@ gc_mark_ext :: proc(rt: ^Runtime) {
 		for c in rt.ext_cells {mark_cell(rt, c)}
 		return
 	}
-	counts := make(map[^Cell]u32, len(rt.ext_cells), rt.allocator)
-	defer delete(counts)
-	for c in rt.ext_cells {counts[c] = c.ext}
-	st := Host_Mark_State{rt = rt, counts = &counts}
+	// the counts are subtracted from in place (host_mark_value), then put back
+	saved := make([]u32, len(rt.ext_cells), rt.allocator)
+	defer delete(saved, rt.allocator)
+	for c, i in rt.ext_cells {saved[i] = c.ext}
+	st := Host_Mark_State{rt = rt, counting = true}
 	for o in rt.gc_hooked {host_class_mark(rt, o, &st)}
-	for c in rt.ext_cells {
-		if counts[c] > 0 {mark_cell(rt, c)}
+	for c, i in rt.ext_cells {
+		held := c.ext > 0
+		c.ext = saved[i]
+		if held {mark_cell(rt, c)}
 	}
 }
 

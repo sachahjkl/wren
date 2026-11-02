@@ -216,6 +216,41 @@ document.body.lastChild.addEventListener("x", () => wrenTest.check(true, "the wr
 	close_page(pr, min_checks = 3)
 }
 
+// A wrapper that carries nothing of its own goes with the collection even when its node is connected, and is made again
+// when a script reaches the node; one with a property, a WeakMap or WeakRef holding it, another prototype, a [SameObject]
+// value, or made non-extensible stays, the same object.
+@(test)
+js_plain_wrappers_go_the_others_stay_the_same :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	pr := load(t, "plain wrappers", HEAD + `<body><ul id=list><li id=e0><li id=e1><li id=e2><li id=e3><li id=e4><li id=e5><li id=plain></ul><script>
+(function () {
+  const li = document.getElementById("list").children;
+  li[0].foo = 42;
+  window.wm = new WeakMap([[li[1], "weak"]]);
+  window.ref = new WeakRef(li[2]);
+  Object.setPrototypeOf(li[3], Object.create(HTMLLIElement.prototype, {tag: {value: "mine"}}));
+  window.cl = li[4].classList;
+  Object.preventExtensions(li[5]);
+  li[6].id;
+  const root = document.createElement("div");
+  root.appendChild(document.createElement("b")).bar = 7;
+  window.root = root;
+})();
+</script></body>`)
+	js.collect(pr.p.js.inst)
+	pins :: proc(pr: ^Probe, id: string) -> u32 { return dom.get(pr.p.doc, dom.find_by_id(pr.p.doc, id)).pins }
+	check(pr, pins(pr, "plain") == 0, "the plain wrapper of a connected node is collected (its node unpinned)")
+	kept := 0
+	for id in ([?]string{"e0", "e1", "e2", "e3", "e4", "e5"}) { if pins(pr, id) > 0 { kept += 1 } }
+	check(pr, kept == 6, fmt.tprintf("the wrappers that carry something stay (%d of 6)", kept))
+	run(pr, `const li = document.getElementById("list").children;
+is("42 weak true mine true false 7 plain", "the same objects after the collection: property, WeakMap key, WeakRef target, prototype, [SameObject] value, extensibility, a detached tree's member",
+  li[0].foo, wm.get(li[1]), ref.deref() === li[2], li[3].tag, cl === li[4].classList, Object.isExtensible(li[5]), root.firstChild.bar, li[6].id)`)
+	close_page(pr, min_checks = 3)
+}
+
 // (one script in each page: another one could be what the cache finds)
 @(test)
 js_bytecode_cache :: proc(t: ^testing.T) {
