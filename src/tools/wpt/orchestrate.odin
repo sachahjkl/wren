@@ -227,11 +227,17 @@ run_main :: proc() -> int {
 
 	// A second chance for a test that failed among the others (out of time, or its script stopped by a time limit): it runs again with more time, and only a test that regresses twice counts.
 	// (Which tests time out under load changes from one run to the next.)
+	// (one that ran out of its limit from history is not counted against the most: that limit was this run's choice, the test gets its whole limit again)
 	paths := slice.clone(regressed_paths[:])
 	most := (opts.quick || flags.fast_timeouts) ? SECOND_CHANCE_MOST_FAST : SECOND_CHANCE_MOST
-	if len(paths) == 0 || len(paths) > most { return status }
+	not_cut := 0
+	for p in paths {
+		if p in cut_short { retimed[p] = true } else { not_cut += 1 }
+	}
+	if len(paths) == 0 || not_cut > most { return status }
 	opts.quick = false
 	opts.timeout_cap_ms = 0
+	opts.history_limits = false
 	opts.idle_ms = IDLE_MS_DEFAULT
 	opts.timeout_ms *= SECOND_CHANCE_TIME_FACTOR
 	opts.jobs = SECOND_CHANCE_JOBS
@@ -246,7 +252,7 @@ run_main :: proc() -> int {
 	}
 	status = again(paths)
 	still := slice.clone(regressed_paths[:])
-	fmt.printfln("again, two at a time: %d of %d tests pass (a timeout under load, or -fast-timeouts)", len(paths) - len(still), len(paths))
+	fmt.printfln("again, two at a time: %d of %d tests pass (a timeout under load, -fast-timeouts or a limit from history)", len(paths) - len(still), len(paths))
 	// (what is left truly alone: a script stopped by a wall-clock limit of the engine, with the other test beside it)
 	if status != 0 && len(still) > 0 && len(still) <= most {
 		opts.jobs = 1

@@ -110,6 +110,12 @@ With `-quick`, and `-fast-timeouts` for a whole run:
 - all that fails then goes through the second chance: run again together, without either, with 4 times the limit and the
   engine's limit on one script out of the way, and what still fails alone. Only a test that regresses there counts.
 
+In every run but `-update` (and `-no-history-limits`), a test with a time in `build\wpt\times.txt` gets 4 times that time, at least 2 s
+(`HISTORY_LIMIT_FACTOR`, `HISTORY_LIMIT_FLOOR_MS`), instead of its whole limit: a test that stops finishing no longer waits out 10 s. One
+that runs out of it and regresses goes through the second chance with the whole limit (not counted against its most), and its time there
+is written; one that runs out of it and regresses nothing keeps the time that gave the limit. A test with no time, or one that timed out
+last time, has its whole limit.
+
 The tests wait in one queue, the costliest first (`build\wpt\times.txt`, each test's time in the last run; else its whole limit for a test expected to time out), and a child process takes the next one on its standard input as it ends one (`src/tools/wpt/queue.odin`, at most `-chunk` per child): a folder of slow tests is spread over every child instead of leaving one alone at the end. A child runs its pages on a thread it makes with the stack JavaScript needs (no linker flag to remember); a child whose JavaScript cannot start stops the run at once with its reason. Every 30 s the runner says on its standard output how many tests are done and how many regressed so far.
 
 The pages see wptserve's names: `web-platform.test` (`{{host}}`), `www1.web-platform.test`..., `not-web-platform.test`, all on this machine. The browser resolves them itself (`network.hosts`), never the system or a hosts file, trusts the test server's authority for its https origin (`network.tls.extra_ca_file`, `build\wpt\testca.pem`), loads a `.https.` test over https, and connects to nothing else (`network.loopback_only`).

@@ -54,17 +54,36 @@ Run_Queue :: struct {
 	logs:      string,
 }
 
+// A test's whole limit, ms: what it gets with no history and on its second chance.
+full_limit :: proc(t: Test) -> int { return opts.timeout_ms * (t.long ? LONG_TIMEOUT_FACTOR : 1) }
+
+// What a child is told to give a test at most, ms: the least of its caps (0: its whole limit).
+test_cap :: proc(t: Test) -> int {
+	if t.cap_ms > 0 && t.short_ms > 0 { return min(t.cap_ms, t.short_ms) }
+	return max(t.cap_ms, t.short_ms)
+}
+
+// A test's limit from its time in the last run: HISTORY_LIMIT_FACTOR times it, at least HISTORY_LIMIT_FLOOR_MS; 0 when that is not shorter than its whole limit.
+history_limit :: proc(t: Test, last_ms: int) -> int {
+	short := max(HISTORY_LIMIT_FLOOR_MS, HISTORY_LIMIT_FACTOR * last_ms)
+	return short < full_limit(t) ? short : 0
+}
+
 // What a test is expected to cost, ms: its time in the last run, else its whole limit when it is expected to time out.
 test_cost :: proc(t: Test, times: map[string]int, expected: ^map[string]Expect) -> int {
-	limit := opts.timeout_ms * (t.long ? LONG_TIMEOUT_FACTOR : 1)
-	if t.cap_ms > 0 { limit = min(limit, t.cap_ms) }
+	limit := full_limit(t)
+	if c := test_cap(t); c > 0 { limit = min(limit, c) }
 	if ms, known := times[t.path]; known { return min(ms, limit) }
 	if e, found := expected[t.path]; found && strings.contains(e.status, "TIMEOUT") { return limit }
 	return 0
 }
 
+// `tests` get their limits from their times in the last run (opts.history_limits).
 queue_make :: proc(q: ^Run_Queue, tests: []Test, expected: ^map[string]Expect) {
 	times := read_times()
+	if opts.history_limits {
+		for &t in tests { if ms, known := times[t.path]; known { t.short_ms = history_limit(t, ms) } }
+	}
 	Costed :: struct { t: Test, cost: int }
 	costed := make([]Costed, len(tests), context.temp_allocator)
 	for t, i in tests { costed[i] = {t, test_cost(t, times, expected)} }
@@ -94,10 +113,13 @@ read_times :: proc() -> map[string]int {
 	return times
 }
 
-// This pass's times over those of the runs before (a pass of some tests keeps the others').
-write_times :: proc(results: map[string]^Result) {
+// This pass's times over those of the runs before (a pass of some tests keeps the others'): those of `only` when given, none of `skip`.
+write_times :: proc(results: map[string]^Result, skip: map[string]bool = nil, only: map[string]bool = nil) {
 	times := read_times()
-	for path, r in results { times[path] = r.ms }
+	for path, r in results {
+		if path in skip || (only != nil && path not_in only) { continue }
+		times[path] = r.ms
+	}
 	paths := make([dynamic]string, 0, len(times), context.temp_allocator)
 	for p in times { append(&paths, p) }
 	slice.sort(paths[:])
@@ -202,7 +224,7 @@ child_ended :: proc(q: ^Run_Queue, c: ^Child, exit_code: int) -> (why: string) {
 child_feed :: proc(q: ^Run_Queue, c: ^Child) {
 	for c.phase == .Taking && len(c.handed) < CHILD_AHEAD && c.given < opts.chunk && len(q.waiting) > 0 {
 		t := pop(&q.waiting)
-		line := fmt.tprintf("%s\t%d\t%d\t%d\n", t.path, t.long ? 1 : 0, t.is_reftest ? 1 : 0, t.cap_ms)
+		line := fmt.tprintf("%s\t%d\t%d\t%d\n", t.path, t.long ? 1 : 0, t.is_reftest ? 1 : 0, test_cap(t))
 		if len(c.handed) == 0 { c.last_grow = time.tick_now() }
 		if _, err := os.write_string(c.feed, line); err != nil {
 			append(&q.waiting, t)   // (it has ended: its exit says why)

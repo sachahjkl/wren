@@ -7,7 +7,7 @@
 //   build/wpt [-quick] [-update] [-timeouts] [-only prefix] [-jobs n] [-timeout ms] [-fast-timeouts | -no-fast-timeouts] [--pref name=value]... [-suites file]
 //       [-reftests | -no-reftests] [-reftest-folder folder]... [-dump dir] [-dump-all]
 //       [-fetch] [-update-manifest] [-no-server -server http://web-platform.test:8768] [-root another_checkout] [-edge]
-//       [-expect wpt/expectations] [-timeout-cap ms] [-idle ms] [-md report.md] [-results results.txt] [-reference edge_results.txt] [-list]
+//       [-expect wpt/expectations] [-timeout-cap ms] [-no-history-limits] [-idle ms] [-md report.md] [-results results.txt] [-reference edge_results.txt] [-list]
 // -suites: run (and with -update rewrite the expectations of) the folders of another list, a subset of wpt/suites.txt: the checkout stays that of wpt/suites.txt.
 // -update-manifest rewrites wpt/MANIFEST.txt after a change of the commit or of the folders; -fetch only fetches and verifies. -no-server uses a server already running.
 // -edge runs the same tests in Microsoft Edge headless instead (build/wpt/edge_results.txt): the reference columns of the table of later runs.
@@ -21,7 +21,9 @@
 // in one queue, the costliest first (build/wpt/times.txt: each test's time in the last run; else its whole limit for a test
 // expected to time out), and a child takes the next one on its standard input as it finishes one (queue.odin): no child is
 // left alone with a folder of slow tests while the others have ended.
-// Time: a test has -timeout (x6 with <meta name=timeout content=long>), then the runner calls testharness.js's
+// Time: a test has -timeout (x3 with <meta name=timeout content=long>), or, when it has a time in times.txt, HISTORY_LIMIT_FACTOR times
+// that time with a floor (one that runs out of it and regresses runs again with the whole limit; -no-history-limits and -update give
+// every test its whole limit), then the runner calls testharness.js's
 // timeout() and waits for the report a little longer; a page that can no longer do anything (loaded, no timer, no
 // request, no animation frame, no worker for -idle ms) is timed out at once.
 // Expectations: wpt/expectations/<folder>.txt, per test its status (OK, ERROR, TIMEOUT, CRASH, PRECONDITION_FAILED)
@@ -60,6 +62,10 @@ import "wb:tools/wpt/reftest"
 // A test with <meta name=timeout content=long> has this many times the time limit: the cap of any one test (30 s at -timeout 10000). It was 6
 // (60 s): the tests that used it all were timeouts waiting for what never came (html/cross-origin-opener-policy: 25 of them, 20 minutes).
 LONG_TIMEOUT_FACTOR :: 3
+// A test with a time in the last run (build/wpt/times.txt) gets this many times it, at least the floor, instead of its whole limit: one that
+// never finishes no longer waits out 10 s. One that runs out of it and regresses has the second chance, with the whole limit (-no-history-limits: none).
+HISTORY_LIMIT_FACTOR :: 4
+HISTORY_LIMIT_FLOOR_MS :: 2000
 // The tests a run did not run as known timeouts.
 SKIPPED_FILE :: "build/wpt/skipped_timeouts.txt"
 
@@ -80,6 +86,7 @@ Test :: struct {
 	long:   bool,     // <meta name=timeout content=long> / META: timeout=long
 	is_reftest: bool, // compared with its references (else testharness.js reports)
 	cap_ms: int,      // -timeout-cap: this test is expected to time out, it gets this much (0: its normal limit)
+	short_ms: int,    // its limit from its time in the last run (history_limit; 0: its normal limit)
 }
 
 Sub :: struct { name, status, message: string }
@@ -102,6 +109,7 @@ Options :: struct {
 	root, suites, expect, server, md, results, only, only_file, self, reference, dump: string,
 	timeout_ms, idle_ms, jobs, chunk, timeout_cap_ms: int,
 	quick, update, list, reftests_only, no_reftests, dump_all, quiet, timeouts: bool,
+	history_limits: bool,    // each test with a time in the last run gets a limit from it (off for -update and the second chance)
 	skipped_timeouts: int,   // tests of this pass not run as known timeouts
 	only_paths: map[string]bool,   // exactly these tests (the second chance, all at once: looking for the tests takes seconds, for each)
 	reftest_folders: [dynamic]string,
@@ -109,14 +117,17 @@ Options :: struct {
 }
 
 opts: Options
-// What the last pass over the tests found regressed: the paths, and its lines.
+// What the last pass over the tests found regressed: the paths, and its lines; of them, those that ran out of their limit from history.
 regressed_paths: [dynamic]string
+cut_short: map[string]bool
+// The tests whose time the second chance writes to times.txt: those that regressed after running out of their limit from history.
+retimed: map[string]bool
 last_regressions: string
 
 main :: proc() {
 	opts = {
 		root = "build/wpt/wpt", suites = "wpt/suites.txt", expect = "wpt/expectations", server = testenv.url("http://web-platform.test:8768"),
-		timeout_ms = 10_000, idle_ms = IDLE_MS_DEFAULT, jobs = max(1, host.processor_count() / 2), chunk = 25, self = os.args[0],
+		timeout_ms = 10_000, idle_ms = IDLE_MS_DEFAULT, jobs = max(1, host.processor_count() / 2), chunk = 25, self = os.args[0], history_limits = true,
 	}
 	opts.dump = dump_dir_from_env()
 	args := desktop.command_line_args(context.allocator)   // (os.args is the C runtime's ANSI: a folder may have accents)
@@ -132,7 +143,7 @@ main :: proc() {
 }
 
 usage :: proc() -> ! {
-	fmt.eprintln("usage: wpt [-quick] [-update] [-timeouts] [-only prefix] [-jobs n] [-timeout ms] [-fast-timeouts | -no-fast-timeouts] [--pref name=value]... [-suites file] [-reftests | -no-reftests] [-reftest-folder folder]... [-dump dir] [-dump-all] [-fetch] [-update-manifest] [-no-server -server url] [-root checkout] [-edge] [-expect dir] [-timeout-cap ms] [-idle ms] [-md file] [-results file] [-reference file] [-list]")
+	fmt.eprintln("usage: wpt [-quick] [-update] [-timeouts] [-only prefix] [-jobs n] [-timeout ms] [-fast-timeouts | -no-fast-timeouts] [--pref name=value]... [-suites file] [-reftests | -no-reftests] [-reftest-folder folder]... [-dump dir] [-dump-all] [-fetch] [-update-manifest] [-no-server -server url] [-root checkout] [-edge] [-expect dir] [-timeout-cap ms] [-no-history-limits] [-idle ms] [-md file] [-results file] [-reference file] [-list]")
 	os.exit(2)
 }
 
@@ -155,6 +166,7 @@ parse_options :: proc(args: []string) {
 		case "-timeout": opts.timeout_ms = max(500, atoi(need(args, &i)))
 		case "-idle": opts.idle_ms = atoi(need(args, &i))
 		case "-timeout-cap": opts.timeout_cap_ms = atoi(need(args, &i))
+		case "-no-history-limits": opts.history_limits = false
 		case "-jobs": opts.jobs = max(1, atoi(need(args, &i)))
 		case "-chunk": opts.chunk = max(1, atoi(need(args, &i)))
 		case "-quick": opts.quick = true
@@ -566,6 +578,7 @@ parent_main :: proc() -> int {
 	for s in suites { if strings.trim(opts.only, "/") == s.folder { whole_folder = true } }
 	if opts.update && (opts.quick || (opts.only != "" && !whole_folder)) { fmt.eprintln("wpt: -update needs a full run (no -quick, -only of one whole folder at most)"); return 2 }
 	if opts.update && opts.timeout_cap_ms > 0 { fmt.eprintln("wpt: -update needs every test's whole time limit (no -timeout-cap)"); return 2 }
+	if opts.update { opts.history_limits = false }   // (what it records is what a test does with its whole limit)
 	if len(tests) == 0 { fmt.eprintln("wpt: no test"); return 2 }
 	// A test expected to time out spends its whole limit waiting for what will not come (58 % of the time of a full run: 1300 tests, 50 of them
 	// 60 s each), and what its expectations check came early if it came: it gets -timeout-cap ms. A subtest expected to pass that it has not
@@ -610,8 +623,27 @@ parent_main :: proc() -> int {
 		fmt.eprintfln("wpt: %s", why)
 		return 2
 	}
-	if !opts.quiet { write_times(q.results) }
 	elapsed := time.duration_seconds(time.tick_since(t0))
+	// A test that ran out of its limit from history: when it lost nothing by it (no regression), its time stays the one that gave the limit, else
+	// the next run would give it HISTORY_LIMIT_FACTOR times the cut and soon its whole limit again; when it regressed, the second chance's time is its own.
+	clear(&cut_short)
+	keep_time := make(map[string]bool, context.temp_allocator)
+	shortened := 0
+	for t in tests {
+		if t.short_ms == 0 { continue }
+		shortened += 1
+		r, found := q.results[t.path]
+		if !found || r.ms < t.short_ms { continue }
+		cut_short[t.path] = true
+		e, has := expected[t.path]
+		if !has || regressions_of(t, r, e) == 0 { keep_time[t.path] = true }
+	}
+	if !opts.quiet {
+		write_times(q.results, skip = keep_time)
+		if shortened > 0 { fmt.printfln("%d tests had a limit from their last time (%d times it, at least %d ms): %d ran out of it", shortened, HISTORY_LIMIT_FACTOR, HISTORY_LIMIT_FLOOR_MS, len(cut_short)) }
+	} else if len(retimed) > 0 {
+		write_times(q.results, only = retimed)
+	}
 	return report(suites[:], tests[:], q.results, expected, elapsed)
 }
 
@@ -1018,9 +1050,9 @@ child_main :: proc(out_path: string) -> int {
 		parts := strings.split(line, "\t", context.temp_allocator)
 		path := parts[0]
 		long := len(parts) > 1 && parts[1] == "1"
-		if len(parts) > 2 && parts[2] == "1" { reftest_one(out, path, long); continue }
 		limit := f64(opts.timeout_ms) * (long ? LONG_TIMEOUT_FACTOR : 1)
 		if len(parts) > 3 && atoi(parts[3]) > 0 { limit = min(limit, f64(atoi(parts[3]))) }
+		if len(parts) > 2 && parts[2] == "1" { reftest_one(out, path, limit); continue }
 		cs: Child_State
 		t0 := time.tick_now()
 		if wants_layout(path) { cs.layout = host_make() }
