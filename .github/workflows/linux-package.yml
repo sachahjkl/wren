@@ -78,7 +78,7 @@ jobs:
         run: ./build.sh release
 
       - name: Package
-        run: build/wrentool package -Version ${{ inputs.version }}
+        run: build/wrentool package ${{ inputs.version && format('-Version {0}', inputs.version) || '' }}   # (by hand: the sources' version)
 
       - name: The packaged executable end to end (wrentool smoke)
         run: |
