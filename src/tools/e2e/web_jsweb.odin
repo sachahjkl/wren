@@ -283,9 +283,14 @@ jsweb_perf_timeline :: proc(t: ^testing.T) {
 }
 
 // A section that fails or runs out of time closes its page in the middle of what it does (requests, workers, crypto, transactions): what
-// follows in the process does not suffer from it.
-@(test)
-jsweb_sections_cut_short :: proc(t: ^testing.T) {
+// follows in the process does not suffer from it. One test per time of the cut, so that they run side by side (src/tools/test_all: the 37 sections at
+// four times, one after the other, were 21 s of pages left at a set time).
+@(test) jsweb_sections_cut_short_at_once :: proc(t: ^testing.T) { sections_cut_short(t, CUT_AFTER_MS[0]) }
+@(test) jsweb_sections_cut_short_after_10ms :: proc(t: ^testing.T) { sections_cut_short(t, CUT_AFTER_MS[1]) }
+@(test) jsweb_sections_cut_short_after_100ms :: proc(t: ^testing.T) { sections_cut_short(t, CUT_AFTER_MS[2]) }
+@(test) jsweb_sections_cut_short_after_300ms :: proc(t: ^testing.T) { sections_cut_short(t, CUT_AFTER_MS[3]) }
+
+sections_cut_short :: proc(t: ^testing.T, ms: f64) {
 	context.allocator = base.process_allocator()
 	section_begin(t)
 	defer section_end()
@@ -301,18 +306,16 @@ jsweb_sections_cut_short :: proc(t: ^testing.T) {
 		delete(pr.uncaught)
 		free(pr)
 	}
-	for ms in CUT_AFTER_MS {
-		// (a script that cannot be compiled, one that throws: nothing of a section ran)
-		for html in BROKEN_PAGES {
-			pr := page_make(t, "broken", testenv.url(PAGE))
-			page.set_embedder(pr.p, {navigate = navigate_hook, session = &session, tab_key = "tab-1", storage = storage_world()})
-			page_load(pr, html)
-			abandon(pr, ms)
-		}
-		for name in CUT_SECTIONS {
-			abandon(open(t, name), ms)
-			free_all(context.temp_allocator)
-		}
+	// (a script that cannot be compiled, one that throws: nothing of a section ran)
+	for html in BROKEN_PAGES {
+		pr := page_make(t, "broken", testenv.url(PAGE))
+		page.set_embedder(pr.p, {navigate = navigate_hook, session = &session, tab_key = "tab-1", storage = storage_world()})
+		page_load(pr, html)
+		abandon(pr, ms)
+	}
+	for name in CUT_SECTIONS {
+		abandon(open(t, name), ms)
+		free_all(context.temp_allocator)
 	}
 	script(t, "xhr", tests = 6)
 }

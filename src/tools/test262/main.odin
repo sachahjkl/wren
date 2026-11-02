@@ -363,6 +363,8 @@ Result :: struct {
 }
 
 image: []byte
+// Its SHA-256, once: instance_create would hash the 7 MB image for every test (23 ms of the 48 a test cost, the test itself aside).
+image_digest: wasm.Digest
 timeout_ms: i64 = 20_000
 verbose: bool
 
@@ -516,7 +518,7 @@ run_one :: proc(t: ^Test_Info, buf: []byte, strict: bool) -> (failure: string, t
 	opt := wasm.options_default()
 	opt.max_call_ms = timeout_ms * 2
 	opt.soft_call_ms = timeout_ms
-	inst, err := wasm.instance_create(image, nil, nil, opt, "test262")
+	inst, err := wasm.instance_create(image, nil, nil, opt, "test262", nil, &image_digest)
 	if inst == nil { return fmt.tprintf("the engine did not start: %s", err), true }
 	defer wasm.destroy(inst)
 	inst.lenient = true
@@ -720,6 +722,7 @@ main :: proc() {
 	data, ierr := os.read_entire_file(image_path, context.allocator)
 	if ierr != nil { fmt.eprintfln("test262: cannot read %s", image_path); os.exit(2) }
 	image = data
+	image_digest, _ = wasm.digest(image)
 	origin_tick = time.tick_now()
 	wasm.configure_from_args(os.args[1:])
 	if !wasm.runtime_init() || !wasm.register_wasi() || !wasm.register(IMPORTS[:]) { fmt.eprintln("test262: the Wasm engine could not start"); os.exit(1) }

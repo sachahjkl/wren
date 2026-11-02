@@ -431,7 +431,7 @@ step_text :: proc(s: ^Step, allocator := context.temp_allocator) -> string {
 	for a in s.actions {
 		switch v in a {
 		case Command:
-			fmt.sbprintfln(&b, "%v | %v | %s | %s | %s", v.argv, v.env, v.dir, v.tests_of, v.also)
+			fmt.sbprintfln(&b, "%v | %v | %s | %s | %s | %v", v.argv, v.env, v.dir, v.tests_of, v.also, v.only)
 		case Task:
 			fmt.sbprintfln(&b, "task %s %s", v.name, v.arg)
 		}
