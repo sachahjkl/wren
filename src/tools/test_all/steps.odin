@@ -57,6 +57,7 @@ Command :: struct {
 	out:      string,      // the program it leaves: a kept result stands only while this file is as it left it
 	tests_of: string,      // a source file: the tests it declares are given to the program as -tests:
 	also:     string,      // a test that goes with them
+	only:     []string,    // of the tests of `tests_of`, only these (a step per test or group of tests: e2e_step's each_test, web_split)
 }
 
 // An action done in test_all's own process, on a thread (no process for what needs none): what it says goes to `t.log`.
@@ -139,11 +140,42 @@ web_run :: proc(subject: string, env: []string = nil) -> Action {
 	return Command{argv = strs(exe("build/e2e_test")), tests_of = fmt.aprintf("src/tools/e2e/web_%s.odin", subject), also = "zz_the_process_ends_with_nothing_left", env = slice.clone(env), rule = .Says_Successful}
 }
 
-// A scenario of src/tools/e2e, as a step.
-e2e_step :: proc(t: ^[dynamic]Step, name, file: string, marks := Marks{}, weight := 0, browser := false) {
+// A scenario of src/tools/e2e, as a step. `each_test`: a step per test it declares, side by side: tests that mostly wait on processes of their own (real Wrens, their starts
+// and ends, a watcher's limit), which one after the other in one process added up to a minute. Each step's name is the scenario's with its test.
+e2e_step :: proc(t: ^[dynamic]Step, name, file: string, marks := Marks{}, weight := 0, browser := false, each_test := false) {
 	needs := COMMON_NEEDS + {.E2E, .Test_Server}
 	if browser { needs += {.Browser} }
+	path := fmt.aprintf("src/tools/e2e/%s.odin", file)
+	if names, why := declared_tests(path); each_test && why == "" {
+		for test in names {
+			append(t, Step{name = fmt.aprintf("%s [%s]", name, test), actions = slice_of(Command{argv = strs(exe("build/e2e_test")), tests_of = path, only = strs(test), rule = .Says_Successful}),
+				marks = marks, weight = weight / len(names), needs = needs, inputs = .Tree})
+		}
+		return
+	}
+	// (a file that does not parse: the step says so when it runs)
 	append(t, Step{name = name, actions = slice_of(e2e_run(file)), marks = marks, weight = weight, needs = needs, inputs = .Tree})
+}
+
+// A subject of the web tests in several steps side by side: each group of its tests in a process of its own, and the tests no group names in one more step, so that a new
+// test is never left out. Each step's name is the subject's with its group.
+web_split :: proc(t: ^[dynamic]Step, name, subject: string, groups: [][]string, marks := Marks{}) {
+	path := fmt.aprintf("src/tools/e2e/web_%s.odin", subject)
+	names, why := declared_tests(path)
+	if why != "" { web_step(t, name, subject, marks); return }
+	rest := make([dynamic]string)
+	for test in names {
+		named := false
+		for g in groups { if slice.contains(g, test) { named = true } }
+		if !named { append(&rest, test) }
+	}
+	add :: proc(t: ^[dynamic]Step, name, subject, label: string, tests: []string, marks: Marks) {
+		run := web_run(subject).(Command)
+		run.only = tests
+		append(t, Step{name = fmt.aprintf("%s [%s]", name, label), actions = slice_of(run), marks = marks, needs = COMMON_NEEDS + {.Guests, .E2E, .Test_Server}, sources = web_sources(subject)})
+	}
+	for g in groups { add(t, name, subject, strings.join(g, ","), g, marks) }
+	if len(rest) > 0 { add(t, name, subject, "the others", rest[:], marks) }
 }
 
 // What a subject of the web tests depends on: its file and the harness, and what they import. Not the browser the program also links: it does not run in a process of these.
@@ -208,7 +240,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	e2e_step(&t, "the interface with no browser around it (src\\tools\\e2e\\chrome_interface.odin: its zoom, by the keys and the wheel; the developer tools docked at their size; an open menu over the top resize band; the themes' colours)", "chrome_interface")
 	e2e_step(&t, "the tab sidebar with no browser around it (src\\tools\\e2e\\chrome_sidebar.odin: opening and closing through the widths between, pinned tabs, tab groups, by commands and by the pointer)", "chrome_sidebar")
 	e2e_step(&t, "the address bar's list with no browser around it (src\\tools\\e2e\\chrome_address_bar.odin: the inline completion, Shift+Delete, the cross of a row, Down, Escape)", "chrome_address_bar")
-	e2e_step(&t, "the remote channel itself (src\\tools\\e2e\\remote_channel.odin: off at no cost when not asked for, the protocol, a client that vanishes, an oversized message, clients that connect and go, the ACL of the pipe, a taken name, quit with a client connected, wren ctl run)", "remote_channel", weight = 20, browser = true)
+	e2e_step(&t, "the remote channel itself (src\\tools\\e2e\\remote_channel.odin: off at no cost when not asked for, the protocol, a client that vanishes, an oversized message, clients that connect and go, the ACL of the pipe, a taken name, quit with a client connected, wren ctl run)", "remote_channel", weight = 20, browser = true, each_test = true)
 	e2e_step(&t, "reset and checkpoints of a driven Wren (src\\tools\\e2e\\remote_state.odin: everything they name is back, a page sees no cookie or storage, a wait of another client ends)", "remote_state", weight = 10, browser = true)
 	e2e_step(&t, "what a program does to a page (src\\tools\\e2e\\driven.odin: script, input, the logs, captures and their pixels, a window off the screen or minimized, a tab moved between windows; no window at all)", "driven")
 	// (Not on the CI: on a runner's software rasterizer, 160 s of CPU for 30 captures.)
@@ -233,7 +265,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	e2e_step(&t, "the frame gate end to end (src\\tools\\e2e\\frame_gate.odin, a real window that nobody sees: the system's drag of a page drag, the page's context menu, a long script preempted by chrome frames; under them a loop of the system paints: a chrome frame, never a full one, deferred where no frame may begin)", "frame_gate")
 	e2e_step(&t, "tab sidebar resized by its handle (src\\tools\\e2e\\sidebar_resize.odin: the edge where the pointer is in every frame, the page at its area's width, the width written on release; an injected pointer, no window at all)", "sidebar_resize")
 	e2e_step(&t, "the page's cursors (src\\tools\\e2e\\cursor.odin: what the page asks for over each element, images and their hotspots, a press held; no window at all)", "cursor")
-	e2e_step(&t, "the GPU process in the real browser (src\\tools\\e2e\\webgl_process.odin: none without WebGL, one for the first context, killed and restored, hung and killed by the watcher, it ends with a killed browser)", "webgl_process", browser = true)
+	e2e_step(&t, "the GPU process in the real browser (src\\tools\\e2e\\webgl_process.odin: none without WebGL, one for the first context, killed and restored, hung and killed by the watcher, it ends with a killed browser)", "webgl_process", browser = true, each_test = true)
 	e2e_step(&t, "the small core on a real window (src\\tools\\e2e\\real_window.odin, never shown: WM_DPICHANGED, WM_NCHITTEST and WM_SETCURSOR through the window procedure, the system's z-order for a drop, the swap chain)", "real_window", marks = {.No_CI})   // (a runner's screen and scale are not the test's)
 	e2e_step(&t, "service workers, Cache API, BroadcastChannel, OffscreenCanvas in a worker end to end (src\\tools\\e2e\\sw.odin: register, install / activate, claim, fetch intercepted and answered from the cache, a navigation answered by the worker, messages, versions and update, clients, idle stop, navigation preload, Vary; no window shown)", "sw", weight = 20)
 	e2e_step(&t, "storage partitioning end to end (src\\tools\\e2e\\partition.odin: a third party embedded in another site has its own cookies, localStorage, sessionStorage, Cache API, BroadcastChannel and service workers there, Sec-Fetch-Storage-Access, document.requestStorageAccess() after a click; no window shown)", "partition", weight = 10)
@@ -243,12 +275,12 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	e2e_step(&t, "downloads end to end on both network stacks (src\\tools\\e2e\\download.odin: an attachment, a binary named by its URL, a slow body; no window shown)", "download")
 	e2e_step(&t, "shared workers and module workers end to end (src\\tools\\e2e\\workers.odin: two tabs share one worker, connect, ports, lifetime, close(), module imports; no window shown)", "workers", weight = 10)
 	e2e_step(&t, "the policy file is read beside the executable, never from the working directory (src\\tools\\e2e\\policy_file.odin)", "policy_file", browser = true)
-	e2e_step(&t, "the console launcher wren.com (src\\tools\\e2e\\wrencom.odin: wren ctl gives its output and exit code whatever its outputs are; an address lets go at once; it dies with its child and will not start itself; Setup writes it beside wren.exe with the PATH entry and takes it away with it)", "wrencom", browser = true)
+	e2e_step(&t, "the console launcher wren.com (src\\tools\\e2e\\wrencom.odin: wren ctl gives its output and exit code whatever its outputs are; an address lets go at once; it dies with its child and will not start itself; Setup writes it beside wren.exe with the PATH entry and takes it away with it)", "wrencom", browser = true, each_test = true)
 	e2e_step(&t, "a program of the working directory never runs in place of the system's (src\\tools\\e2e\\planted_program.odin: the report of a session that ended without one asks wevtutil.exe for the Windows record; one planted beside the document must not run)", "planted_program", browser = true)
 	e2e_step(&t, "what a page can do to the answers of wren ctl eval (src\\tools\\e2e\\remote_page.odin: it sees the line, so the line holds no secret; another tab's forgery and a value with a line break change nothing)", "remote_page", weight = 15, browser = true)
 	e2e_step(&t, "wren ctl stop ends the Wren it started and nothing else (src\\tools\\e2e\\ctl_stop.odin: a session file whose pid is another program's now, or that does not say who the process was, leaves that program alone; a throwaway profile goes)", "ctl_stop", browser = true)
 	e2e_step(&t, "tabs come back after a crash and never loop (src\\tools\\e2e\\crash_recovery.odin: a killed Wren leaves running.txt and recovery.txt, the next start restores the tabs, a restoring start that ends too is followed by a blank page and the tabs kept in a file, a normal end removes both files, a Wren that still runs is not taken for a crash)", "crash_recovery", browser = true)
-	e2e_step(&t, "one Wren per profile (src\\tools\\e2e\\instance.odin: a second start hands its addresses over and ends with code 0; another profile, another executable, --new-window, a first one that does not answer keep their own; hidden windows)", "instance", browser = true)
+	e2e_step(&t, "one Wren per profile (src\\tools\\e2e\\instance.odin: a second start hands its addresses over and ends with code 0; another profile, another executable, --new-window, a first one that does not answer keep their own; hidden windows)", "instance", browser = true, each_test = true)
 	e2e_step(&t, "Setup (src\\tools\\e2e\\setup.odin: the real dialog, registry and files against throwaway roots: install, uninstall of the running copy, standalone, the automatic opening and its exceptions, the daily update check)", "setup", browser = true)
 	append(&t, Step{name = "crash reports (src\\tools\\e2e\\crash_reports.odin: src/tools/crashmodes dies by an access violation, an assertion, a stack overflow, a corrupted heap, a fail-fast: each leaves a report with a stack and a minidump, or the session file the next start turns into an unclean-exit report)",
 		actions = slice_of(odin_build("src/tools/crashmodes", "build/crashmodes.exe", {WB, "-debug", "-vet"}), e2e_run("crash_reports")), needs = COMMON_NEEDS + {.E2E, .Test_Server}, inputs = .Tree})
@@ -349,7 +381,11 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	web_step(&t, "JavaScript loading end-to-end test (script order, document.write, dynamic scripts, modules, handlers, CSP, noscript, timers, errors, workers, cloning)", "jsload")
 	web_step(&t, "nested documents end-to-end test (src\\tools\\e2e\\web_frames.odin: iframes, srcdoc, load events, postMessage across origins, cross-origin WindowProxy, sandbox, X-Frame-Options, frame-ancestors, frame-src, navigation, Permissions Policy)", "frames")
 	web_step(&t, "site compatibility end-to-end test (src\\tools\\e2e\\web_sitecompat.odin: reduced fixtures of real sites: stylesheet load events, media swap, scroll events)", "sitecompat")
-	web_step(&t, "JavaScript web APIs end-to-end test (fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging; src\\tools\\e2e\\web_jsweb.odin)", "jsweb")
+	// (in steps side by side: its sections are independent, and the long ones alone were 80 s one after the other on an idle machine: webcrypto 18 s, the WebGL API 16 s on the
+	// software adapter, the sections cut short 21 s of pages left at a set time, Web Audio 6 s, the media 12 s)
+	web_split(&t, "JavaScript web APIs end-to-end test (fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging; src\\tools\\e2e\\web_jsweb.odin)", "jsweb",
+		{{"jsweb_webcrypto"}, {"jsweb_webgl_api"}, {"jsweb_webaudio", "jsweb_webaudio_autoplay"}, {"jsweb_htmlmedia", "jsweb_mse", "jsweb_mse_builtin_decoders"},
+		 {"jsweb_sections_cut_short_at_once", "jsweb_sections_cut_short_after_10ms"}, {"jsweb_sections_cut_short_after_100ms"}, {"jsweb_sections_cut_short_after_300ms"}})
 	web_step(&t, "style run-time test (web fonts, transitions, animations)", "style")
 	web_step(&t, "image formats end-to-end test (AVIF, WebP, SVG images and backgrounds, inline <svg>, Accept, <picture>)", "media", {.Ui_Only})
 	web_step(&t, "images end-to-end test (events, srcset, picture, lazy, CSS images, cache, cancellation, 200 x 1 Mpx)", "images", {.Light})

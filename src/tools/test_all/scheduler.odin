@@ -381,6 +381,13 @@ start_action :: proc(s: ^Scheduler, r: ^Step_Run) {
 		argv := a.argv
 		if a.tests_of != "" {
 			names, why := declared_tests(a.tests_of)
+			if why == "" && len(a.only) > 0 {
+				for name in a.only {
+					if !slice.contains(names[:], name) { why = fmt.tprintf("%s declares no test %s", a.tests_of, name) }
+				}
+				clear(&names)
+				append(&names, ..a.only)
+			}
 			if why != "" {
 				tooling.append_text(r.log, fmt.tprintln(why))
 				action_ended(s, r, false)
