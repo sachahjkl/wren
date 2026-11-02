@@ -367,7 +367,10 @@ start_action :: proc(s: ^Scheduler, r: ^Step_Run) {
 		r.offset = file_size(r.log)
 		spawn_argv := slice.clone(argv, context.temp_allocator)
 		if spawn_argv[0] == "odin" { spawn_argv[0] = tooling.odin_program() }
-		p, why := tooling.spawn(s.profile != nil ? profile_spawn(s.profile, r, spawn_argv, a) : tooling.Spawn{command = spawn_argv, env = a.env, dir = a.dir, log = r.log})
+		spawning := s.profile != nil ? profile_spawn(s.profile, r, spawn_argv, a) : tooling.Spawn{command = spawn_argv, env = a.env, dir = a.dir, log = r.log}
+		// Never the run's console, which all would queue for (tooling.Console_Use); a test program, the one with threads by the dozen, none at all.
+		spawning.console = a.tests_of != "" ? .None : .Own
+		p, why := tooling.spawn(spawning)
 		if why != "" {
 			tooling.append_text(r.log, fmt.tprintfln("%s cannot start: %s", argv[0], why))
 			action_ended(s, r, false)
@@ -394,7 +397,7 @@ task_thread :: proc(t: ^Task_Run) {
 task_exec :: proc(t: ^Task_Run, command: []string, env: []string = nil, dir := "") -> int {
 	argv := slice.clone(command, context.temp_allocator)
 	if argv[0] == "odin" { argv[0] = tooling.odin_program() }
-	p, why := tooling.spawn({command = argv, env = env, dir = dir, log = t.log})
+	p, why := tooling.spawn({command = argv, env = env, dir = dir, log = t.log, console = .Own})
 	if why != "" {
 		tooling.append_text(t.log, fmt.tprintfln("%s cannot start: %s", command[0], why))
 		return -1

@@ -12,12 +12,22 @@ import "core:time"
 // How often a blocking wait looks at the process.
 WAIT_SLICE :: 10 * time.Millisecond
 
+// The console of what starts (Windows). In a process that has one, the start and the end of every thread call the console's host while they hold the loader lock (KERNELBASE, DLL_THREAD_ATTACH and
+// DETACH; measured with a graphics driver's dozens of threads per device, every core busy: a thread started or joined in 15 s, 3 teardowns in 150 forced to their end; 0 without one, the same tests in 20 s instead of 50).
+// A console shared by the whole of a run is one thread of a process at normal priority that all of them queue for.
+Console_Use :: enum {
+	Inherited,   // this process's
+	Own,         // a hidden one for this process and what it starts
+	None,        // none: it writes to files. (A console program it starts makes a console of its own)
+}
+
 // What to start. `env`: KEY=VALUE on top of this process's environment. `log`: the file standard output and error are appended to; "": this process's own.
 Spawn :: struct {
 	command: []string,
 	env:     []string,
 	dir:     string,
 	log:     string,
+	console: Console_Use,
 	// (Windows, the profiler of test_all: the completion port the process tree's births and ends are told to, with this key)
 	port:     rawptr,
 	port_key: uintptr,
