@@ -34,6 +34,9 @@ SLOW_SCRIPT_MS :: 120_000   // a task that waits for the software rasterizer, 20
 WEBGL_TEST_HANG_MS :: 10_000
 WEBGL_TEST_RESTARTS :: 1000
 IDB_QUOTA_TEST_BYTES :: 1 << 20
+CUT_SECTIONS := [?]string{"abort", "blob", "canvas", "canvas_gc", "compat", "compile_large", "core", "fetch", "fetch_objects", "gc", "geometry", "history", "htmlmedia", "idb", "idb_buckets", "idb_clear", "idb_keys", "idb_pages_a", "idb_pages_b", "idb_persist", "idb_quota", "idb_worker", "media", "message", "navigator", "perf_crypto", "perf_timeline", "sockets", "storage", "storage_listener", "streams", "url", "webassembly", "webaudio", "webaudio_autoplay", "webcrypto", "xhr"}
+BROKEN_PAGES := [?]string{"<!doctype html><script>}{</script>", "<!doctype html><script>throw new Error(\"on purpose\")</script>"}
+CUT_AFTER_MS := [?]f64{0, 10, 100, 300}
 OTHER_PROGRAM_TEST :: "webapi_closing_and_restart"   // (a test of a few milliseconds that empties a profile first)
 GC_MAX_HOST_OBJECTS :: 100
 CANVAS_BYTES_BEFORE_MIN :: 100_000_000
@@ -298,6 +301,41 @@ jsweb_perf_timeline :: proc(t: ^testing.T) {
 	actions := make(map[string]Action, context.temp_allocator)
 	actions["click"] = proc(pr: ^Probe) -> string { page.dispatch_event(pr.p, pr.p.body, dom.Event{type = "click", bubbles = true, cancelable = true}); return "" }
 	script(t, "perf_timeline", tests = 7, actions = actions)
+}
+
+// A section that fails or runs out of time closes its page in the middle of what it does (requests, workers, crypto, transactions): what
+// follows in the process does not suffer from it.
+@(test)
+jsweb_sections_cut_short :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	section_begin(t)
+	defer section_end()
+	// (the verdict of a page closed in the middle says nothing)
+	abandon :: proc(pr: ^Probe, ms: f64) {
+		start := time.tick_now()
+		for time.duration_milliseconds(time.tick_since(start)) < ms && !pr.section.finished { host.loop_wait(&loop, LOOP_LOOK_MS) }
+		page.page_close(pr.p)
+		testhost.forget(&pr.section)
+		for l in pr.lines { delete(l) }
+		delete(pr.lines)
+		for l in pr.uncaught { delete(l) }
+		delete(pr.uncaught)
+		free(pr)
+	}
+	for ms in CUT_AFTER_MS {
+		// (a script that cannot be compiled, one that throws: nothing of a section ran)
+		for html in BROKEN_PAGES {
+			pr := page_make(t, "broken", testenv.url(PAGE))
+			page.set_embedder(pr.p, {navigate = navigate_hook, session = &session, tab_key = "tab-1", storage = storage_world()})
+			page_load(pr, html)
+			abandon(pr, ms)
+		}
+		for name in CUT_SECTIONS {
+			abandon(open(t, name), ms)
+			free_all(context.temp_allocator)
+		}
+	}
+	script(t, "xhr", tests = 6)
 }
 
 // Test programs run side by side, and each starts by emptying its profile: what one has on disk is not another's to empty. With one
