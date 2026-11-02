@@ -136,6 +136,9 @@ After round 3 (medians of 6 runs of each build, interleaved, `js_nodes10k` at 18
 Sampled against the style stage, which did not change, the script stage is 4.0 to 4.15 times the style stage before and
 2.82 to 2.84 after (3 runs each): the collection 61 % less, the rest 10 % less.
 
+After round 4 (medians of 5 interleaved runs): the window thread waits 8.1 -> 5.3 ms a frame on layout, a full pass
+5.9 -> 3.5 ms (its paragraphs in columns now on the layout threads), 52.3 -> 55.1 frames/s.
+
 **Bottleneck:** the script stage (the interpreter and its native calls, making wrappers, the collection), then layout.
 
 ### 3. Scrolling a long page (p10k, 3 wheel notches every 16 ms)
@@ -349,6 +352,65 @@ The script stage of nodes10k, measured first (the table in section 2), then the 
    getElementsByTagName of non-ASCII names); one worse, case.html's `getElementsByTagName a:Ä`, which compares names the
    way the other `a:` cases of that file already got wrong.
 
+
+## What changed, round 4: layout of DOM-heavy pages
+
+Item 3 of round 3's list. Measured as in round 3 (`wrentool bench perf`, the base and the new profile build in turn, 5
+runs each; the median, range in brackets) and with the profiler on the page thread (`WREN_SAMPLE_THREADS=1`).
+
+1. **Column balancing: measured, not changed.** Counted on nodes10k (2 500 list items in six columns): a multi-column
+   container lays its content out once per pass (`layout_multicol` already lays it out in one strip and cuts it:
+   `gather_units`, `place_units`), and balancing tries 4 heights, each a walk of the 2 500 units in their flat array:
+   0.05 ms of a 2.3 ms block layout. Laying the content out again is left to what forces it (a nested container that
+   crosses a column, `MC_NEST_TRIES`). What the 36 % of the page thread in the multi-column layout was: the paragraphs in
+   the columns laid out on the page thread alone. A page with columns turned `frames_on` on, and a pass with frames ran
+   without the layout threads. Now a full pass whose frames are all horizontal (columns, no vertical writing mode) lays
+   its simple paragraphs out ahead on the threads like any other page (`pre_run`, `parallel.odin`): the width
+   prediction goes into the columns (`pre_widths`: a column's width, a spanner the container's), and the flows are
+   marked before the threads start (`flows_mark`: `mark_flow` writes flags of the boxes the threads read). Incremental
+   passes and vertical frames keep one thread. nodes10k: 2 501 of 2 501 paragraphs laid out ahead and taken; the block
+   layout's step 2.64 -> 1.19 ms.
+2. **The font of an element** (`font_info`, `context.odin`; `Style_Sum`, `style_sum.odin`). The per-pass map from a 64
+   byte key to a font (hashing the key cost about 380 cycles a lookup, half the elements of nodes10k looked one up) and
+   its one-entry memo are gone: a pass's fonts are a short flat list compared whole, tried after the font of the
+   parent (`near`). The summaries made on the layout threads say which elements have their parent's font
+   (`Parent_Font`, the keys compared there): construction then reads none of their font properties, and a text whose
+   style is its parent element's takes that element's font (`Frame.font_el`, `Frame.fi`). Not a cache: nothing is kept
+   from one pass to the next, the list is the pass's fonts. The summaries also carry the decorations, `column-span` and
+   negative margins, which construction and `mark_bfc_floats` read from each style before (each a cache miss on a style
+   made on another thread). The tree step: 1.81 -> 1.08 ms.
+3. **The page thread's temporary block, as round 3 meant it** (`page_thread.odin`): the block was set as the context's
+   temporary allocator inside an `if`, and an assignment to the context lasts as long as its block: every pass ran on
+   the runtime's own temporary arena, mapping blocks past the first and giving them back (`NtFreeVirtualMemory` 3 to 5 %
+   of the page thread once the threads made the pass use more). Set at the scope of the thread's procedure, the block
+   grew once (to 6.6 MB, then 7.4 MB a pass) in 410 passes.
+4. **Smaller ones**: the bounds of a box in a flow without a list on the heap (`flow_bounds`, once for every box and
+   line of the flow in `compute_overflow`: the finish step 0.69 -> 0.35 ms); the incremental attempt adds a container as
+   a rebuild root once, not once per child that changed (`add_target`: 7 500 entries of the same `ul` on nodes10k).
+5. **Short text runs: measured, not changed.** Before 1, measuring words was `word_find` (the toolkit's word cache), 3.6 %
+   of the page thread; with the paragraphs on the layout threads it no longer shows on the page thread, and shaping
+   proper (`shape_run`) shows only in the window thread's paint (5.7 % of `Paint_Items`, 1.4 ms a frame). An advance
+   table for ASCII runs would save little here, and its exact fallback needs what the font's kerning and ligature
+   tables do with those characters: not done.
+
+The private memory grows by the summaries' and the predictions' temporary arrays and the layout threads' own; p10k_load,
+p10k_scroll and mutation move within their noise (the load of p10k by the machine's other programs, a factor of 3), and
+multicol.html resized makes incremental passes, which keep one thread.
+
+| | before | after |
+|---|---|---|
+| nodes10k: the window thread waiting on layout, p50 a frame | 8.14 ms (8.02-31.5) | 5.27 ms (5.19-14.5) |
+| nodes10k: a full pass (p50 of each step) | 5.94 ms | 3.48 ms |
+| ... tree | 1.81 (1.75-6.45) | 1.08 (1.06-3.75) |
+| ... block layout | 2.64 (2.61-11.3) | 1.19 (1.16-2.90) |
+| ... finish | 0.69 (0.69-1.64) | 0.35 (0.35-0.68) |
+| ... display list, bands | 0.70 + 0.15 | 0.73 + 0.13 |
+| nodes10k: frames/s, CPU work per frame (mean) | 52.3, 54.9 ms | 55.1, 52.2 ms |
+| nodes10k: private memory | 279 MB | 288 MB |
+| p10k_load: load, first layout | 742 ms (255-792), 1.94 ms (1.04-3.20) | 789 ms (250-943), 1.80 ms (0.90-2.63) |
+| p10k_scroll: frames/s, CPU work per frame p50 | 167, 0.52 ms | 165, 0.40 ms |
+| mutation: frames/s, CPU work per frame mean | 73.1, 1.01 ms | 73.5, 0.99 ms |
+| examples/site/multicol.html resized (incremental passes): layout p50 | 0.074 ms | 0.074 ms |
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -366,7 +428,7 @@ To remove:
 | `ext/gui_toolkit/font/shape.odin:383-611` | `Word_Cache`: 64 shards of shaped words, a mutex each, plus `l1_words` per thread | every word measured or painted |
 | `style/inline_cache.odin:37`, `cascade.odin:114` | compiled `style` attributes by text | every element with a style attribute |
 | `style/match.odin:55-64` | `sibs`, `filled`, `has_memo`: maps by handle per pass (and `seen` at `:191` written, never read) | nth-child and `:has()` |
-| `layout/context.odin:26-29`, `layout/types.odin:435` | style -> font index maps, a one-entry memo | every box and inline item |
+| `layout/types.odin:435` | `font_lookup`: fonts by content across partial passes (the per-pass map and its one-entry memo went in round 4) | a font a pass has not found yet |
 | `layout/types.odin:220`, `block.odin:268-311` | `Box.cache_*`: a block's result for the same inputs | block layout |
 | `browser/fonts.odin:343-379` | `Page_Fonts.resolved`: request string (built per lookup) -> font | font resolution |
 | `browser/paint_masks.odin:126-156` | text items per box for `background-clip: text`, wiped every pass | that property |
@@ -380,7 +442,7 @@ To remove:
 `style/engine.odin:66-68` (`by_id`, `by_class`, `by_tag`, `by_attr`: string keys looked up per class, id, tag and attribute
 of every element, plus a concatenation per indexed attribute at `cascade.odin:443`); `style/match.odin:55-64`;
 `style/cascade.odin:345-361` (custom properties, contexts, `fs_chain` per element); `layout/context.odin:26-60`
-(`font_cache`, `anon_cs`, `frame_cs`); `layout/types.odin:454` (`scroll`, read per space); `browser/compositor.odin:115`
+(`anon_cs`, `frame_cs`; `font_cache` gone in round 4); `layout/types.odin:454` (`scroll`, read per space); `browser/compositor.odin:115`
 (`node_items`, a heap list per node) and `:421-556` (per rebuild); `page/images.odin` `css_images_sync` and
 `page/fonts.odin` `fonts_sync` (a `seen` table of shared lists, now only when something new may be used);
 `ext/gui_toolkit/font/raster.odin:74-79` (per glyph, under the atlas lock); `page/timeline_lcp.odin` `et_seen` (per
@@ -429,7 +491,7 @@ pass. Most of layout and paint already use the temporary allocator or an arena.
 
 ## Next, ranked by measured cost on a bottleneck
 
-After round 3. Round 2's items 2, 3 and 8 are done (item 3 measured: a partial restyle of nodes10k costs what a full
+After round 4 (item 3 of round 3's list, in part). Round 2's items 2, 3 and 8 are done (item 3 measured: a partial restyle of nodes10k costs what a full
 pass does); what is left of them is folded in below. Round 3 also measured round 2's item 7 as it stood (the loop's and
 the network's locks) and kept the mutexes; item 7 is now the job queues, to be measured the same way before anything
 replaces them. Round 2's item 1 is done in part: the engine traces, it counts no reference a script holds, so a plain
@@ -448,14 +510,19 @@ wrapper still waits for a collection, but the collection no longer pays for it.
    take care of are the derived values of the cascade, `scheme_settle`, `derive_fields`, the content language, and the
    copies of inherited values outside it: layout's refresh of anonymous boxes, the timeline's `push_inherited` and
    `pseudo_inherit`); an arena that need not be zeroed for the records the cascade overwrites whole.
-3. **Layout of DOM-heavy pages** (nodes10k: 9 to 10 ms a frame, every pass full, "too much changed"): the page thread
-   spends 36 % in the multi-column block layout and 20 % building the box tree (`font_info` 5 to 8 %: the style ->
-   font map per element), 6 to 10 % in its temporary allocator's allocations.
+3. **Layout of DOM-heavy pages, what round 4 left** (nodes10k: the window thread waits 5.3 ms a frame on a pass
+   of 3.5 ms; the page thread's samples after round 4): the display list of the flow (`emit_lines` and
+   `push_flow_item`, 12 to 15 %: every text item is copied once per column it may lie in, and `emit_lines` reads two
+   fields of each text's style for visibility and pointer-events, which the box's flags already hold); the incremental
+   attempt that ends in "too much changed" (`add_target`, `touched_ancestor`, `subtree_size`, `plan_children` over the
+   5 000 removed and inserted list items: 6 to 8 %, before the full pass starts; a bound from the journal's size would
+   decide it first); building the box tree (place_element, push_children, list markers: 13 to 17 %); the zeroing of
+   the page thread's temporary block at the end of each pass (`memset` in `free_all`, 2 to 5 %).
 4. **The layout's boxes as arrays of what the scans read** (the LCP scan's remaining cost is `box_border` reading each
    box's struct, 57 % of it; the layout-shift scan reads the same): border rects and flags in flat arrays by box, or
    scans of the boxes the layout journal says changed.
 5. **The atlas lock per glyph and the word cache's 64 locks** (toolkit): a per-thread front, misses to one owner
-   (`word_find` is 4 % of the page thread on nodes10k).
+   (`word_find` was 4 % of the page thread on nodes10k before round 4 moved its paragraphs to the layout threads).
 6. **The style index's string tables** (`style/engine.odin:66-68`): atoms (interned ids) and flat arrays by atom.
 7. **The job queues of the blocking pool, the image decoders, the script compiler and the caches** (the table above):
    measured first (round 3: a lock-free queue lost to the loop's mutex); a worker's `ordered_remove(0)` is a cost of its own.
