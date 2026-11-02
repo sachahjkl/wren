@@ -4,11 +4,6 @@ package e2e_scenarios
 // only its own tabs and pages. Both open two pages of one origin (the test server's), each its own, on profiles of their own; then each, while the other does the
 // same: a script's value, the page's storage, a BroadcastChannel between its two tabs (its realms' message ports), the picture of its frame.
 // Neither sees what the other did.
-//
-// TOOLKIT_UI_OF_THE_PROCESS: the toolkit keeps the interface state it draws with in one variable of the process (ext/gui_toolkit/ui/state.odin,`g`), so
-// two threads that draw at once break each other's. Until it is the thread's (`@(private, thread_local) g: ^State`), the two Apps' own threads
-// take turns between the meetings; what they run besides (page threads, workers, loaders, decoders, compile threads) runs at once all the same.
-// With that one change and this false, the two run their steps at once too (it passes so).
 
 import "base:runtime"
 import "core:fmt"
@@ -22,7 +17,6 @@ import "wb:base"
 import "wb:e2e"
 
 @(private = "file") APPS :: 2
-@(private = "file") TOOLKIT_UI_OF_THE_PROCESS :: true
 @(private = "file") WINDOW :: [2]int{640, 400}
 // What each App's page is: its letter, the colour of its page.
 @(private = "file") LETTERS := [APPS]string{"A", "B"}
@@ -38,14 +32,9 @@ import "wb:e2e"
 @(private = "file") LISTEN :: `window.got = ""; new BroadcastChannel("wren").onmessage = e => { window.got += e.data }; "listening"`
 @(private = "file") POST :: `new BroadcastChannel("wren").postMessage("%s"); "posted"`
 
-// Where the two threads wait for each other: a count of arrivals, one round after another; and the turn of their steps (TOOLKIT_UI_OF_THE_PROCESS).
+// Where the two threads wait for each other: a count of arrivals, one round after another; between them both run at once (the toolkit's interface state is the thread's).
 @(private = "file")
-Meeting :: struct { arrived: sync.Futex, turn: sync.Mutex }
-
-@(private = "file")
-step_begin :: proc(m: ^Meeting) { when TOOLKIT_UI_OF_THE_PROCESS { sync.mutex_lock(&m.turn) } }
-@(private = "file")
-step_end :: proc(m: ^Meeting) { when TOOLKIT_UI_OF_THE_PROCESS { sync.mutex_unlock(&m.turn) } }
+Meeting :: struct { arrived: sync.Futex }
 
 @(private = "file")
 meet :: proc(m: ^Meeting, round: u32) -> bool {
@@ -86,15 +75,12 @@ app_run :: proc(data: rawptr) {
 	context.logger = r.logger
 	letter := LETTERS[r.index]
 	m := r.meeting
-	step_begin(m)
 	s := e2e.start(r.t, {url = r.url, profile = r.profile, size = WINDOW, own_thread = true})
 	first := e2e.targets(s).tabs[0].id
 	e2e.new_tab(s, r.url)
 	e2e.wait_load(s)
-	step_end(m)
 	r.met = meet(m, 1)   // both have their two tabs
 	r.users = e2e.process_share_users()
-	step_begin(m)
 	r.value = strings.clone(e2e.eval(s, fmt.tprintf(`document.title + " " + (6 * 7) + " %s"`, letter)))
 	{
 		s.tab = first
@@ -102,13 +88,9 @@ app_run :: proc(data: rawptr) {
 		_ = e2e.eval(s, LISTEN)
 		_ = e2e.eval(s, fmt.tprintf(`localStorage.setItem("k", "%s"); "stored"`, letter))
 	}
-	step_end(m)
 	r.met = r.met && meet(m, 2)   // both listen, both stored
-	step_begin(m)
 	_ = e2e.eval(s, fmt.tprintf(POST, letter))
-	step_end(m)
 	r.met = r.met && meet(m, 3)   // both posted
-	step_begin(m)
 	{
 		s.tab = first
 		defer s.tab = 0
@@ -120,11 +102,8 @@ app_run :: proc(data: rawptr) {
 	page := e2e.capture(s, {target = .Page})   // (its current tab: the second)
 	r.centre = e2e.pixel(page, page.width / 2, page.height / 2)
 	for tab in e2e.targets(s).tabs { append(&r.tabs, strings.clone(tab.title)) }
-	step_end(m)
 	r.met = r.met && meet(m, 4)   // both looked: each stops its own
-	step_begin(m)
 	e2e.stop(s)
-	step_end(m)
 }
 
 @(private = "file")
