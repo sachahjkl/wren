@@ -225,24 +225,6 @@ crlf :: proc(s: string, allocator := context.temp_allocator) -> string {
 	return strings.to_string(sb)
 }
 
-// application/x-www-form-urlencoded percent-encoding of one string (UTF-8): alphanumerics and *-._ stay, space is '+'.
-urlencode_into :: proc(sb: ^strings.Builder, s: string, space_as_plus := true) {
-	HEX := "0123456789ABCDEF"
-	for i in 0 ..< len(s) {
-		c := s[i]
-		switch {
-		case (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '*' || c == '-' || c == '.' || c == '_':
-			strings.write_byte(sb, c)
-		case c == ' ' && space_as_plus:
-			strings.write_byte(sb, '+')
-		case:
-			strings.write_byte(sb, '%')
-			strings.write_byte(sb, HEX[c >> 4])
-			strings.write_byte(sb, HEX[c & 15])
-		}
-	}
-}
-
 // The name/value pairs of the urlencoded and text/plain encodings: newlines normalized, files replaced by their name.
 @(private)
 pair_value :: proc(e: Entry) -> string { return e.is_file ? e.file.name : crlf(e.value) }
@@ -251,9 +233,9 @@ urlencode :: proc(list: []Entry, allocator := context.allocator, charset := "UTF
 	sb := strings.builder_make(allocator)
 	for e, i in list {
 		if i > 0 { strings.write_byte(&sb, '&') }
-		urlencode_into(&sb, in_charset(crlf(e.name), charset))
+		url.percent_encode(&sb, in_charset(crlf(e.name), charset), url.FORM_KEEP, space_plus = true)
 		strings.write_byte(&sb, '=')
-		urlencode_into(&sb, in_charset(pair_value(e), charset))
+		url.percent_encode(&sb, in_charset(pair_value(e), charset), url.FORM_KEEP, space_plus = true)
 	}
 	return strings.to_string(sb)
 }
@@ -506,7 +488,7 @@ submit :: proc(f: ^Forms, form: base.Handle, submitter: base.Handle, from_method
 			body: string
 			if enctype == .Text_Plain {
 				sb := strings.builder_make(context.temp_allocator)
-				urlencode_into(&sb, text_plain(list[:], context.temp_allocator, charset), false)
+				url.percent_encode(&sb, text_plain(list[:], context.temp_allocator, charset), url.FORM_KEEP)
 				body = strings.to_string(sb)
 			} else {
 				body = urlencode(list[:], context.temp_allocator, charset)

@@ -39,6 +39,7 @@ import "wb:config"
 import "wb:fetch"
 import "wb:host"
 import "wb:images"
+import "wb:url"
 
 ////////////////////////////////
 // Preferences
@@ -526,7 +527,7 @@ art_commons_list :: proc() {
 	width := max(1920, the_app.art.cfg.min_width_px)
 	// categorymembers as a generator, imageinfo for each: url at a bounded width, the mime, the size, the licence metadata
 	url := fmt.tprintf("%s?action=query&format=json&formatversion=2&generator=categorymembers&gcmtype=file&gcmlimit=%d&gcmtitle=%s&prop=imageinfo&iiprop=url|size|mime|extmetadata&iiurlwidth=%d",
-		COMMONS_API, max(the_app.art.cfg.window, 8), art_url_encode(cat), width)
+		COMMONS_API, max(the_app.art.cfg.window, 8), url.percent_encoded(cat, url.UNRESERVED), width)
 	art_get(url, 6 << 20, art_commons_event)
 }
 
@@ -584,7 +585,7 @@ art_commons_parse :: proc(body: []byte) -> int {
 			artist = strings.clone(artist),
 			date = strings.clone(date),
 			museum = strings.clone("Wikimedia Commons"),
-			record = strings.concatenate({"https://commons.wikimedia.org/wiki/", art_url_encode(title)}),
+			record = strings.concatenate({"https://commons.wikimedia.org/wiki/", url.percent_encoded(title, url.UNRESERVED)}),
 			license = strings.clone(license == "" ? "Public domain" : license),
 		}
 		append(&the_app.art.candidates, c)
@@ -946,20 +947,6 @@ art_safe_stem :: proc(id: string) -> string {
 		case: strings.write_byte(&sb, '_')
 		}
 		if strings.builder_len(sb) >= 120 { break }
-	}
-	return strings.to_string(sb)
-}
-
-// Percent-encode what a query / path segment may not carry literally (spaces, the reserved set). Enough for the API
-// titles and category names we build URLs from.
-@(private = "file")
-art_url_encode :: proc(s: string) -> string {
-	sb := strings.builder_make(context.temp_allocator)
-	for c in transmute([]u8)s {
-		switch c {
-		case 'a' ..= 'z', 'A' ..= 'Z', '0' ..= '9', '-', '_', '.', '~': strings.write_byte(&sb, c)
-		case: fmt.sbprintf(&sb, "%%%2X", c)
-		}
 	}
 	return strings.to_string(sb)
 }

@@ -50,34 +50,11 @@ params_parse :: proc(sp: ^Search_Params, input: string) {
 // '+' is a space, then percent-decoding, then UTF-8 decoding without BOM (invalid bytes become U+FFFD).
 @(private)
 form_decode :: proc(s: string, allocator: runtime.Allocator) -> string {
-	bytes := make([dynamic]byte, 0, len(s), context.temp_allocator)
-	for i := 0; i < len(s); i += 1 {
-		c := s[i]
-		switch {
-		case c == '+':
-			append(&bytes, ' ')
-		case c == '%' && i + 2 < len(s) && is_hex(s[i + 1]) && is_hex(s[i + 2]):
-			append(&bytes, hex_val(s[i + 1]) << 4 | hex_val(s[i + 2]))
-			i += 2
-		case:
-			append(&bytes, c)
-		}
-	}
-	return utf8_decode(bytes[:], allocator)
+	return utf8_decode(transmute([]byte)percent_decode(s, plus_as_space = true), allocator)
 }
 
 @(private)
 is_hex :: proc(c: u8) -> bool { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') }
-
-@(private)
-hex_val :: proc(c: u8) -> u8 {
-	switch c {
-	case '0' ..= '9': return c - '0'
-	case 'a' ..= 'f': return c - 'a' + 10
-	case 'A' ..= 'F': return c - 'A' + 10
-	}
-	return 0
-}
 
 // The Encoding Standard's UTF-8 decoder (replacement mode, BOM kept): each maximal invalid subpart is one U+FFFD.
 utf8_decode :: proc(b: []byte, allocator := context.allocator) -> string {
@@ -122,26 +99,11 @@ params_serialize :: proc(sp: Search_Params, allocator := context.allocator) -> s
 	b := strings.builder_make(allocator)
 	for p, i in sp.list {
 		if i > 0 { strings.write_byte(&b, '&') }
-		form_encode(&b, p.name)
+		percent_encode(&b, p.name, FORM_KEEP, space_plus = true)
 		strings.write_byte(&b, '=')
-		form_encode(&b, p.value)
+		percent_encode(&b, p.value, FORM_KEEP, space_plus = true)
 	}
 	return strings.to_string(b)
-}
-
-@(private)
-form_encode :: proc(b: ^strings.Builder, s: string) {
-	HEX := "0123456789ABCDEF"
-	for i in 0 ..< len(s) {
-		c := s[i]
-		switch {
-		case c == ' ': strings.write_byte(b, '+')
-		case (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '*' || c == '-' || c == '.' || c == '_':
-			strings.write_byte(b, c)
-		case:
-			strings.write_byte(b, '%'); strings.write_byte(b, HEX[c >> 4]); strings.write_byte(b, HEX[c & 15])
-		}
-	}
 }
 
 params_append :: proc(sp: ^Search_Params, name, value: string) {

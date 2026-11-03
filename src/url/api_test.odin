@@ -115,3 +115,15 @@ whatwg_utf8_decoder :: proc(t: ^testing.T) {
 	testing.expect_value(t, utf8_decode([]byte{0xED, 0xA0, 0x80}, context.temp_allocator), "\uFFFD\uFFFD\uFFFD")
 	testing.expect_value(t, utf8_decode([]byte{0xF0, 0x9F, 0x98, 0x80}, context.temp_allocator), "\U0001F600")
 }
+
+// Percent-encoding with a caller's set of kept bytes, decoding with and without '+' as a space (raw bytes, no UTF-8 repair).
+@(test)
+percent_codec :: proc(t: ^testing.T) {
+	testing.expect_value(t, percent_decode("a%20b+c%2Fd", plus_as_space = true), "a b c/d")
+	testing.expect_value(t, percent_decode("a%20b+c%2fd"), "a b+c/d")
+	testing.expect_value(t, percent_decode("100%"), "100%")
+	testing.expect_value(t, percent_decode("%4%zz%41"), "%4%zzA")
+	testing.expect_value(t, percent_decode("%e2%82"), "\xe2\x82")
+	testing.expect_value(t, percent_encoded("a b~*/é", UNRESERVED), "a%20b~%2A%2F%C3%A9")
+	testing.expect_value(t, percent_encoded("a b~*/é", FORM_KEEP, space_plus = true), "a+b%7E*%2F%C3%A9")
+}
