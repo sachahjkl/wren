@@ -7,6 +7,7 @@ import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "core:time"
+import "wb:base"
 import "wb:url"
 
 Jar :: struct {
@@ -392,12 +393,7 @@ save :: proc(j: ^Jar, path: string, now: i64 = 0) -> bool {
 		fmt.sbprintf(&sb, "%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%s\n", escape(c.name), escape(c.value), escape(c.domain), escape(c.path),
 			c.expires_ms, c.created_ms, c.accessed_ms, flags, int(c.same_site), escape(c.partition))
 	}
-	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
-	if err := os.write_entire_file(tmp, transmute([]byte)strings.to_string(sb)); err != nil { return false }
-	if err := os.rename(tmp, path); err != nil {
-		_ = os.remove(path)   // Windows refuses to rename over an existing file
-		if err2 := os.rename(tmp, path); err2 != nil { return false }
-	}
+	if !base.file_write_atomic(path, transmute([]byte)strings.to_string(sb)) { return false }
 	j.dirty = false
 	return true
 }

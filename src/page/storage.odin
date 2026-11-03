@@ -271,12 +271,7 @@ storage_commit :: proc(path: string, data: []byte, seq: u64) -> (ok: bool) {
 		}
 	}
 	if e.seq >= seq { return true }
-	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
-	if os.write_entire_file(tmp, data) != nil { return false }
-	if os.rename(tmp, path) != nil {
-		_ = os.remove(path)
-		if os.rename(tmp, path) != nil { return false }
-	}
+	if !base.file_write_atomic(path, data) { return false }
 	e.seq = seq
 	return true
 }

@@ -14,6 +14,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:sync"
+import "wb:base"
 
 Cached_Response :: struct {
 	id:           u64,
@@ -204,9 +205,7 @@ index_save :: proc(oc: ^Origin_Caches) {
 	_ = os.make_directory_all(oc.dir)
 	data := cache_index_serialize(oc, context.temp_allocator)
 	path := strings.concatenate({oc.dir, "/index.wcs"}, context.temp_allocator)
-	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
-	if os.write_entire_file(tmp, data) != nil { return }
-	if os.rename(tmp, path) != nil { _ = os.remove(path); _ = os.rename(tmp, path) }
+	_ = base.file_write_atomic(path, data)
 }
 
 @(private)
