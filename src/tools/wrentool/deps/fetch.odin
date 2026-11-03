@@ -27,8 +27,9 @@ OPENH264_URL :: "http://ciscobinary.openh264.org"
 OPENH264_SONAME :: "libopenh264.so.7"
 
 EMOJI_DEST :: "build/emoji"
-// (the toolkit's own script, pinned by commit and SHA-256: it belongs to the toolkit's repository)
-TOOLKIT_FETCH_EMOJI :: "ext/gui_toolkit/tools/fetch_emoji.ps1"
+// (the toolkit's own tool: fetch_emoji, pinned by commit and SHA-256, belongs to the toolkit's repository)
+TOOLKIT_TK :: "ext/gui_toolkit/tools/tk"
+TOOLKIT_TK_EXE :: "-out:build/tk.exe"
 
 when ODIN_ARCH == .amd64 {
 	@(private) ARCH_NAME :: "x86_64"
@@ -67,7 +68,7 @@ fetch_wasmtime :: proc(o: Options) -> bool {
 	return write_stamp(stamp, WASMTIME_VERSION)
 }
 
-fetch_wgpu :: proc(o: Options) -> bool { return fail(o, "wgpu-native is fetched this way on Linux: on Windows, ext/gui_toolkit/tools/fetch_wgpu.ps1 (wrentool build, WREN_RENDER=wgpu)") }
+fetch_wgpu :: proc(o: Options) -> bool { return fail(o, "wgpu-native is fetched this way on Linux: on Windows, ext/gui_toolkit/tools/tk fetch_wgpu (wrentool build, WREN_RENDER=wgpu)") }
 fetch_openh264 :: proc(o: Options) -> bool { return fail(o, "OpenH264 is fetched on Linux: Windows decodes H.264 through Media Foundation") }
 
 }
@@ -77,8 +78,8 @@ fetch_emoji :: proc(o: Options) -> bool {
 	when ODIN_OS == .Windows {
 		dest := o.dest != "" ? o.dest : EMOJI_DEST
 		cmd := make([dynamic]string, context.temp_allocator)
-		append(&cmd, "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", TOOLKIT_FETCH_EMOJI, "-Dest", dest)
-		if o.unicode { append(&cmd, "-Unicode") }
+		append(&cmd, tooling.odin_program(), "run", TOOLKIT_TK, TOOLKIT_TK_EXE, "--", "fetch_emoji", fmt.tprintf("-dest:%s", dest))
+		if o.unicode { append(&cmd, "-unicode") }
 		return tooling.run({command = cmd[:], log = o.log}) == 0
 	} else {
 		return fail(o, "the emoji font is fetched on Windows")

@@ -43,8 +43,8 @@ warn_programs_running :: proc() {
 	}
 }
 
-// The emoji font and Unicode's emoji data (the toolkit's tests/colr skip without them), before the steps start. The toolkit's own script, pinned by commit and SHA-256: once on a machine.
+// The emoji font and Unicode's emoji data (the toolkit's tests/colr skip without them), before the steps start. The toolkit's own tool, pinned by commit and SHA-256: once on a machine.
 fetch_emoji_when_missing :: proc() {
 	if os.exists("build/emoji/NotoColorEmoji-COLRv1.ttf") && os.exists("build/emoji/emoji-test.txt") && os.exists("build/emoji/emoji-data.txt") { return }
-	_ = tooling.run({command = {"powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "ext/gui_toolkit/tools/fetch_emoji.ps1", "-Dest", "build/emoji", "-Unicode"}, log = fmt.tprintf("%s/fetch_emoji.log", LOG_DIR)})
+	_ = tooling.run({command = {tooling.odin_program(), "run", "ext/gui_toolkit/tools/tk", "-out:build/tk.exe", "--", "fetch_emoji", "-dest:build/emoji", "-unicode"}, log = fmt.tprintf("%s/fetch_emoji.log", LOG_DIR)})
 }
