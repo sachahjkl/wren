@@ -530,7 +530,7 @@ layout_table :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32) -> f32 {
 		k := &c.l.boxes[gc.box]
 		cell_content[i] = k.tmp + pb_h(k)
 		cell_h[i] = max(r.h, cell_content[i])
-		if gc.rs == 1 { heights[gc.row] = max(heights[gc.row], r.h) }
+		if gc.rs == 1 { heights[gc.row] = max(heights[gc.row], cell_h[i]) }
 	}
 	for &gc, i in g.cells {
 		if gc.rs == 1 { continue }
