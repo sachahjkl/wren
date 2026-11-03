@@ -720,44 +720,6 @@ dt_empty :: proc(id: string, icon: Dt_Icon, title, hint: string) {
 }
 
 ////////////////////////////////
-// Dividers the user drags
-
-// A one-pixel rule with a wider grab area, vertical (between side by side panes). Returns the drag delta in pixels while
-// it is dragged (and whether it was pressed this frame).
-dt_vsplit :: proc(id: string) -> (dx: f32, started, dragging: bool) {
-	ui.next({width = ui.px(dt_px(5)), height = ui.fill(), cursor = .Resize_H})
-	b := ui.build_box({.Clickable}, id)
-	sig := ui.signal(b)
-	d := ui.frame_new(Dt_Btn_Draw)
-	d.hot, d.down = sig.hovering, sig.dragging
-	b.custom, b.custom_user = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-		d := (^Dt_Btn_Draw)(user)
-		x := math.round((b.rect.min.x + b.rect.max.x) * 0.5)
-		col := d.hot || d.down ? the_app.dtc.accent : the_app.dtc.border
-		w := d.hot || d.down ? the_app.dtm.line * 2 : the_app.dtm.line
-		draw.rect(dc, {{x - w * 0.5, b.rect.min.y}, {x + w * 0.5, b.rect.max.y}}, col)
-	}, d
-	return sig.drag_delta.x, sig.pressed, sig.dragging
-}
-
-// Same, horizontal (between stacked panes).
-dt_hsplit :: proc(id: string) -> (dy: f32, started, dragging: bool) {
-	ui.next({width = ui.fill(), height = ui.px(dt_px(5)), cursor = .Resize_V})
-	b := ui.build_box({.Clickable}, id)
-	sig := ui.signal(b)
-	d := ui.frame_new(Dt_Btn_Draw)
-	d.hot, d.down = sig.hovering, sig.dragging
-	b.custom, b.custom_user = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-		d := (^Dt_Btn_Draw)(user)
-		y := math.round((b.rect.min.y + b.rect.max.y) * 0.5)
-		col := d.hot || d.down ? the_app.dtc.accent : the_app.dtc.border
-		w := d.hot || d.down ? the_app.dtm.line * 2 : the_app.dtm.line
-		draw.rect(dc, {{b.rect.min.x, y - w * 0.5}, {b.rect.max.x, y + w * 0.5}}, col)
-	}, d
-	return sig.drag_delta.y, sig.pressed, sig.dragging
-}
-
-////////////////////////////////
 // Text for the clipboard and for messages
 
 // "1.5 kB" the way the panel writes sizes (powers of 1000, as the network panels of other browsers do).

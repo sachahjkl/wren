@@ -8,11 +8,15 @@ package browser
 // is told, as for a script's setItem, so its "storage" events fire); the cookies are the profile's jar.
 
 import "core:fmt"
+import "core:math"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:ui"
 import "wb:cookies"
 import "wb:page"
+
+// The chosen item's value under the list: its height by default, in rows.
+DEV_APP_VALUE_ROWS :: 5
 
 App_Area :: enum u8 { Local, Session, Cookies }
 
@@ -22,6 +26,7 @@ Dev_Application :: struct {
 	filter:   Dt_Filter,
 	sel:      string,          // owned: the key (a cookie: name + domain + path) of the chosen item
 	has_sel:  bool,
+	value_pane: ui.Pane,      // the chosen item's value under the list: its height (in memory; 0: five rows)
 	// editing a cell
 	editing:  bool,
 	edit_col: int,             // 0 key, 1 value
@@ -193,7 +198,7 @@ app_table :: proc(app: ^App, t: ^Tab, a: ^Dev_Application) {
 		return
 	}
 	menu_key := ui.key_from_string(0, "###dt_app_menu")
-	split_h := app.dtm.row * 5
+	split_h := app.dtm.row * DEV_APP_VALUE_ROWS / ui.scale()   // (CSS px)
 	ui.next({width = ui.fill(), height = ui.fill(), axis = .Y})
 	if ui.column(.Start, {}, "###dt_app_tbl") {
 		ui.next({width = ui.fill(), height = ui.fill()})
@@ -326,10 +331,10 @@ expiry_text :: proc(ms: i64) -> string {
 
 @(private = "file")
 value_pane :: proc(a: ^Dev_Application, r: App_Row, h: f32) {
-	dy, _, dragging := dt_hsplit("###dt_app_vs")
-	_ = dy
-	_ = dragging
-	ui.next({width = ui.fill(), height = ui.px(h), axis = .Y, bg = the_app.dtc.bar, border = the_app.dtc.border})
+	pr := ui.parent_box().rect
+	opts := ui.Pane_Options{side = .After, default_size = h, total = (pr.max.y - pr.min.y) / ui.scale(), thickness = dt_px(5)}
+	ps := ui.pane_split("###dt_app_vs", .Y, &a.value_pane, opts)
+	ui.next({width = ui.fill(), height = ui.px(math.round(ps.size * ui.scale())), axis = .Y, bg = the_app.dtc.bar, border = the_app.dtc.border})
 	box := ui.build_box({.Draw_Background}, "###dt_app_val")
 	if ui.parent(box) {
 		text := r.value

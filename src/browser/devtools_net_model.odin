@@ -124,7 +124,7 @@ NETWORK_PREFS := [?]config.Def{
 		description = "How the Network table is sorted: a column name, then :asc or :desc (empty: in order of arrival)."},
 	{name = "browser.devtools.network.types", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 1023,
 		description = "The request types the Network tab shows: a sum of bits (1 doc, 2 js, 4 css, 8 img, 16 media, 32 font, 64 fetch/xhr, 128 ws, 256 wasm, 512 other); 0 shows all."},
-	{name = "browser.devtools.network.split", kind = .Float, default = {f = 0.5}, bounded = true, min = 0.15, max = 0.85,
+	{name = "browser.devtools.network.split", kind = .Float, default = {f = DEV_NET_SPLIT_DEFAULT}, bounded = true, min = 0.01, max = 0.99,
 		description = "The share of the Network tab's width (or height) the request list keeps while a request's details are open."},
 	{name = "browser.devtools.network.detail_tab", kind = .String, default = {s = "headers"}, choices = {"headers", "payload", "preview", "response", "timing", "cookies", "messages"},
 		description = "The view of a request's details that is shown."},

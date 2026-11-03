@@ -23,8 +23,8 @@ import "wb:page"
 import "wb:style"
 
 ELEMENTS_PREFS := [?]config.Def{
-	{name = "browser.devtools.elements.split", kind = .Float, default = {f = 0.55}, bounded = true, min = 0.2, max = 0.8,
-		description = "The share of the Elements tab's width (or height) the tree keeps; the rest is the Styles pane."},
+	{name = "browser.devtools.elements.sidebar", kind = .String, default = {s = "0 0 0 auto"},
+		description = "The pane at the side of the Elements tree (Styles, Computed, Layout...): its width at the side and its height below in CSS pixels (0: the default), whether it is folded (1), and where it goes (auto: at the side when there is room, side, below), as \"width height folded place\"."},
 	{name = "browser.devtools.elements.side_tab", kind = .String, default = {s = "styles"}, choices = {"styles", "computed", "layout", "listeners", "accessibility"},
 		description = "The view at the side of the Elements tree that is shown."},
 	{name = "browser.devtools.elements.show_ua", kind = .Bool, default = {b = false},
@@ -685,9 +685,18 @@ styles_panel :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		for p, i in SIDE_PREFS { if p == pref { s.tab = i } }
 	}
 	if dt_bar("###dt_sty_tabs", app.dtm.bar - dt_px(2)) {
+		// first (it stays in view however narrow the pane is): a chevron that folds the pane (its bar brings it back), where it goes
 		dt_gap(2)
-		room := dev_width()
-		narrow := room < dt_px(900)
+		if dt_btn("###dt_stt_fold", e.side_axis == .X ? .Chevron_Right : .Chevron_Down, tooltip = "Hide this pane (its bar brings it back)").clicked {
+			e.side_pane.collapsed = true
+			e.side_opts.on_save(app, &e.side_pane)
+		}
+		place := dt_menu_btn("###dt_stt_place", e.side_axis == .X ? .Dock_Right : .Dock_Bottom, tooltip = "Where this pane goes", caret = false)
+		if ui.ctx_menu(place, dt_px(160)) {
+			if ui.pane_place_menu(&e.side_pane) { e.side_opts.on_save(app, &e.side_pane) }
+		}
+		dt_vsep("###dt_stt_sep")
+		narrow := e.side_w < dt_px(DEV_ELEMENTS_SIDE_SHORT_PX)
 		for name, i in SIDE_TABS {
 			label := name
 			if narrow { switch i { case 3: label = "Events"; case 4: label = "A11y" } }

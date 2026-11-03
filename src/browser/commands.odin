@@ -353,13 +353,13 @@ commands_build :: proc(r: ^Command_Registry) {
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_toggle(app) }})
 	add(r, {name = "view.console", title = "Console", category = "View", keywords = "log javascript eval devtools",
 		keys = keys(&r.arena, {key = .J, mods = cs}),
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible && dev().panel == .Console },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev_shows(dev(), .Console) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_toggle_panel(app, .Console) }})
 	add(r, {name = "view.devtools_elements", title = "Developer tools: Elements", category = "View", keywords = "inspect dom document tree html",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible && dev().panel == .Elements },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev_shows(dev(), .Elements) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Elements) }})
 	add(r, {name = "view.devtools_network", title = "Developer tools: Network", category = "View", keywords = "requests http fetch log",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible && dev().panel == .Network },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev_shows(dev(), .Network) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Network) }})
 	add(r, {name = "view.devtools_dock_bottom", title = "Developer tools: dock at the bottom", category = "View", keywords = "devtools panel position",
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().dock == .Bottom },
@@ -371,13 +371,13 @@ commands_build :: proc(r: ^Command_Registry) {
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().dock == .Floating },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_set_dock(app, .Floating) }})
 	add(r, {name = "view.devtools_application", title = "Developer tools: Application", category = "View", keywords = "storage cookies local session cache manifest",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible && dev().panel == .Application },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev_shows(dev(), .Application) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Application) }})
 	add(r, {name = "view.devtools_performance", title = "Developer tools: Performance", category = "View", keywords = "frames timing fps cpu gpu profile",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible && dev().panel == .Performance },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev_shows(dev(), .Performance) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Performance) }})
 	add(r, {name = "view.devtools_memory", title = "Developer tools: Memory", category = "View", keywords = "heap allocation leak usage",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible && dev().panel == .Memory },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev_shows(dev(), .Memory) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Memory) }})
 	add(r, {name = "view.devtools_pick", title = "Developer tools: select an element in the page", category = "View", keywords = "inspect picker element select eyedropper",
 		keys = keys(&r.arena, {key = .C, mods = cs}), enabled = has_tab,
