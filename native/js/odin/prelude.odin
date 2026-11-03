@@ -33,6 +33,28 @@ eval_prelude :: proc "contextless" (ctx: ^wj.Context, file_name: string, data: [
 	return r
 }
 
+// A native function of an interface's JavaScript (prelude_call).
+Prelude_Native :: struct { name: cstring, fn: wj.Native, length: i32 }
+
+PRELUDE_ARGS_MAX :: 3   // the object of the natives and what prelude_call passes after it
+
+// The JavaScript of an interface built on natives (web_audio.js, web_crypto.js, web_wasm.js, web_webgl.js): the prelude
+// `data` is a function, called with an object of `natives` and then `args`. Its result (the caller's), or the exception.
+prelude_call :: proc "contextless" (ctx: ^wj.Context, file_name: string, data: []u8, natives: []Prelude_Native, args: ..wj.JSValue) -> wj.JSValue {
+	fn := eval_prelude(ctx, file_name, data)
+	if wj.is_exception(fn) { return fn }
+	defer wj.JS_FreeValue(ctx, fn)
+	native := wj.JS_NewObject(ctx)
+	defer wj.JS_FreeValue(ctx, native)
+	for &e in natives {
+		wj.JS_DefinePropertyValueStr(ctx, native, e.name, wj.new_cfunction(ctx, e.fn, e.name, e.length), wj.PROP_C_W_E)
+	}
+	all: [PRELUDE_ARGS_MAX]wj.JSValue
+	all[0] = native
+	n := 1 + copy(all[1:], args)
+	return wj.JS_Call(ctx, fn, wj.UNDEFINED, i32(n), &all[0])
+}
+
 @(export, link_name = "wj_run_preludes")
 wj_run_preludes :: proc "c" (ctx: ^wj.Context) -> i32 {
 	// custom elements: the registry, definitions, upgrades and reactions are native (custom_elements.odin), built into

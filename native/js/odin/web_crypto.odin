@@ -469,13 +469,7 @@ crypto_ops_get :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
 		def := wj.Class_Def{class_name = "CryptoKeyData", finalizer = data_finalizer}
 		if wj.JS_NewClass(rt, data_class, &def) < 0 { data_class = 0; return wj.JS_ThrowOutOfMemory(ctx) }
 	}
-	fn := eval_prelude(ctx, "web_crypto.js", #load("web_crypto.js"))
-	if wj.is_exception(fn) { return fn }
-	defer wj.JS_FreeValue(ctx, fn)
-	native := wj.JS_NewObject(ctx)
-	defer wj.JS_FreeValue(ctx, native)
-	Entry :: struct { name: cstring, fn: wj.Native, length: i32 }
-	entries := [?]Entry{
+	entries := [?]Prelude_Native{
 		{"copy", native_copy, 1},
 		{"isBuffer", native_is_buffer, 1},
 		{"dom", native_dom, 2},
@@ -497,10 +491,7 @@ crypto_ops_get :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
 		{"agree", native_agree, 2},
 		{"derive", native_derive, 6},
 	}
-	for &e in entries {
-		wj.JS_DefinePropertyValueStr(ctx, native, e.name, wj.new_cfunction(ctx, e.fn, e.name, e.length), wj.PROP_C_W_E)
-	}
-	ops := wj.JS_Call(ctx, fn, wj.UNDEFINED, 1, &native)
+	ops := prelude_call(ctx, "web_crypto.js", #load("web_crypto.js"), entries[:])
 	if wj.is_exception(ops) { return ops }
 	crypto_ops, crypto_ops_ready = ops, true
 	return ops
