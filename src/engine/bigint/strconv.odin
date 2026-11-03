@@ -6,6 +6,7 @@ package bigint
 // buffer to js_bigint_from_string). The digit chunking mirrors numconv: pack many base-R digits into
 // one limb before the big multiply, so parsing a million-digit number stays close to linear.
 
+import "core:strings"
 import "base:intrinsics"
 
 @(private)
@@ -92,7 +93,7 @@ digit_value :: proc(c: u8) -> int {
 // Convert to a base-`radix` string (2..36). Owned result; caller deletes it.
 to_string :: proc(a: Int, radix: int) -> string {
 	if is_zero(a) {
-		return clone_string("0")
+		return strings.clone("0")
 	}
 
 	// Collect digits least-significant first by repeated division by the largest chunk base.
@@ -134,13 +135,6 @@ to_string :: proc(a: Int, radix: int) -> string {
 	}
 	delete(out)
 	return string(buf)
-}
-
-@(private)
-clone_string :: proc(s: string) -> string {
-	b := make([]u8, len(s))
-	copy(b, transmute([]u8)s)
-	return string(b)
 }
 
 // --- f64 conversion ---

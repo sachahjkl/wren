@@ -156,9 +156,9 @@ list_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 		}
 		delete(b.upd.pending_etag); delete(b.upd.pending_lm)
 		v, _ := http.get_header(hdr, "etag")
-		b.upd.pending_etag = clone_str(v)
+		b.upd.pending_etag = strings.clone(v)
 		v, _ = http.get_header(hdr, "last-modified")
-		b.upd.pending_lm = clone_str(v)
+		b.upd.pending_lm = strings.clone(v)
 		b.upd.pending_status = ev.status
 	case .Done:
 		l := list_by_id(&b.conf, c.id)

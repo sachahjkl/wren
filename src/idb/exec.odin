@@ -2,6 +2,7 @@ package idb
 
 import "core:bytes"
 import "core:math"
+import "core:slice"
 
 // What a transaction does to the data of its database, and what it reads from it. The reads are plain functions of the
 // data; the changes go through an Exec: each is checked (the specification's constraints), applied with its undo, and
@@ -34,7 +35,7 @@ emit :: proc(x: ^Exec, op: Op) -> Error {
 		if s := find_store(x.db, o.store); s != nil {
 			if cur, found := ordered_get(&s.records, o.key); found {
 				rec := (^Record)(cur)
-				if rec.value != nil { append(x.values, Value_Ref{store = o.store, key = clone_bytes(o.key, x.d.allocator), ptr = raw_data(rec.value), rel = vp, len = rec.vlen}) }
+				if rec.value != nil { append(x.values, Value_Ref{store = o.store, key = slice.clone(o.key, x.d.allocator), ptr = raw_data(rec.value), rel = vp, len = rec.vlen}) }
 			}
 		}
 	}

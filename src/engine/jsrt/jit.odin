@@ -21,6 +21,7 @@ package jsrt
 // ("e" "memory") and exports "f" (args, locals, stack) -> i64.
 
 import "core:reflect"
+import "core:slice"
 import "core:strings"
 
 JIT_STACK_MAX :: 32
@@ -979,14 +980,7 @@ int_str :: proc(n: int) -> string {
 		i -= 1
 		buf[i] = '-'
 	}
-	return string(clone_bytes(buf[i:]))
-}
-
-@(private = "file")
-clone_bytes :: proc(b: []u8) -> []u8 {
-	r := make([]u8, len(b))
-	copy(r, b)
-	return r
+	return string(slice.clone(buf[i:]))
 }
 
 @(private = "file")

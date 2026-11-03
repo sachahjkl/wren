@@ -14,7 +14,8 @@
 // backend_*.odin, so that VA-API (Linux) and VideoToolbox (macOS) can be added beside the Windows one.
 package media
 
-import "base:runtime"
+import "core:slice"
+import "core:strings"
 import "wb:base"
 
 // All times are in nanoseconds: exact for every timescale of the containers (90 kHz, 44.1 kHz, 12288...) over days.
@@ -80,9 +81,9 @@ Track :: struct {
 track_clone :: proc(t: Track) -> Track {
 	allocator := base.process_allocator()
 	c := t
-	c.config = clone_bytes(t.config, allocator)
-	c.codec_string = clone_str(t.codec_string, allocator)
-	c.language = clone_str(t.language, allocator)
+	c.config = slice.clone(t.config, allocator)
+	c.codec_string = strings.clone(t.codec_string, allocator)
+	c.language = strings.clone(t.language, allocator)
 	return c
 }
 
@@ -92,22 +93,6 @@ track_destroy :: proc(t: ^Track) {
 	delete(t.codec_string, allocator)
 	delete(t.language, allocator)
 	t^ = {}
-}
-
-@(private)
-clone_bytes :: proc(b: []u8, allocator: runtime.Allocator) -> []u8 {
-	if len(b) == 0 { return nil }
-	c := make([]u8, len(b), allocator)
-	copy(c, b)
-	return c
-}
-
-@(private)
-clone_str :: proc(s: string, allocator: runtime.Allocator) -> string {
-	if len(s) == 0 { return "" }
-	b := make([]u8, len(s), allocator)
-	copy(b, s)
-	return string(b)
 }
 
 Sample_Flag :: enum u8 {

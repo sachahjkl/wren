@@ -77,7 +77,7 @@ store_load_start :: proc(o: ^Origin, db: ^Database, s: ^Store) {
 		data_init(&pd, a)
 		pd.replay_gen = u8(j.jgen & 1)
 		pdb := new(Database)
-		pdb.name = clone_str(j.db, a)
+		pdb.name = strings.clone(j.db, a)
 		pdb.stores = make([dynamic]^Store)
 		st := new(Store)
 		st.id = j.store

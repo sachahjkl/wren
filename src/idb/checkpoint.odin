@@ -5,6 +5,7 @@ import "core:bytes"
 import "core:encoding/endian"
 import "core:hash"
 import "core:slice"
+import "core:strings"
 
 // The checkpoint of an origin: a file next to its journal (`<origin>.widx`) with the keys of every store, so that opening
 // does not read the journal. It holds the schema (databases, stores, indexes, key generators) and, for each store, its records
@@ -204,7 +205,7 @@ checkpoint_plan :: proc(d: ^Data, journal_len: i64, allocator: runtime.Allocator
 	endian.put_u32(plan.head[20:], .Little, hash.crc32(dir.data[:]))
 	copy(plan.head[CK_HEADER:], dir.data[:])
 	// (the store names in the plan are the database's: they live as long as the data does; copies for a job on another thread)
-	for &c in plan.stores { c.db = clone_str(c.db, allocator) }
+	for &c in plan.stores { c.db = strings.clone(c.db, allocator) }
 	return
 }
 
@@ -293,7 +294,7 @@ ck_read_directory :: proc(f: File, journal_size: i64, allocator: runtime.Allocat
 	dir.next_ids = make([dynamic]Ck_Next, 0, nd, allocator)
 	for _ in 0 ..< nd {
 		name := r_str(&r)
-		append(&dir.next_ids, Ck_Next{db = clone_str(name, allocator), store = u32(r_uv(&r)), index = u32(r_uv(&r))})
+		append(&dir.next_ids, Ck_Next{db = strings.clone(name, allocator), store = u32(r_uv(&r)), index = u32(r_uv(&r))})
 	}
 	ns_u := r_uv(&r)
 	if r.bad || ns_u > u64(len(raw)) { ck_dir_destroy(&dir, allocator); return }
@@ -302,7 +303,7 @@ ck_read_directory :: proc(f: File, journal_size: i64, allocator: runtime.Allocat
 	base := i64(CK_HEADER) + i64(dl)
 	for _ in 0 ..< ns {
 		name := r_str(&r)
-		e := Ck_Entry{db = clone_str(name, allocator), store = u32(r_uv(&r))}
+		e := Ck_Entry{db = strings.clone(name, allocator), store = u32(r_uv(&r))}
 		// (every number is checked as unsigned against the file before it is turned into a signed offset or length that sums can overflow)
 		rel, length, count, bytes := r_uv(&r), r_uv(&r), r_uv(&r), r_uv(&r)
 		avail := u64(size - base)

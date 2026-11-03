@@ -3,6 +3,7 @@ package idb
 import "base:runtime"
 import "core:fmt"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:sync"
 import "core:testing"
@@ -118,7 +119,7 @@ drain :: proc(h: ^Harness, c: ^Client) -> [dynamic]Event {
 		if !ok { break }
 		// the data is copied to the temp allocator and the event released
 		cp := ev
-		cp.data = clone_bytes(ev.data, context.temp_allocator)
+		cp.data = slice.clone(ev.data, context.temp_allocator)
 		append(&out, cp)
 		event_free(c, &ev)
 	}

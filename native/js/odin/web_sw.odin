@@ -22,6 +22,7 @@ package odin_glue
 // The browser's failure text is "Name: message" when what comes before the colon is shorter than this.
 @(private = "file") ERROR_NAME_MAX_BYTES :: 48
 
+import "core:strings"
 import "../odin_abi/abi"
 import "../odin_abi/api_decl"
 import "../odin/jsb"
@@ -578,7 +579,7 @@ wjr_ServiceWorkerContainer_getRegistrations :: proc "c" (ctx: ^wj.Context, t: wj
 	if wj.wj_this(ctx, t, ifc("ServiceWorkerContainer")) == nil { return wj.web_promise_reject_pending(ctx) }
 	listing: string
 	jsb.host(&listing, api_decl.ServiceWorker_registrationIds, wj.wr_ServiceWorker_registrationIds)
-	ids := clone_string(listing)
+	ids := strings.clone(listing, wj.libc_allocator())
 	defer if ids != "" { delete(ids, wj.libc_allocator()) }
 	arr := wj.JS_NewArray(ctx)
 	k: u32
@@ -600,15 +601,6 @@ wjr_ServiceWorkerContainer_getRegistrations :: proc "c" (ctx: ^wj.Context, t: wj
 @(export, link_name = "wjr_ServiceWorkerContainer_startMessages")
 wjr_ServiceWorkerContainer_startMessages :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	return wj.wj_this(ctx, t, ifc("ServiceWorkerContainer")) != nil ? wj.UNDEFINED : wj.EXCEPTION
-}
-
-// A copy on the libc heap ("" for an empty string).
-@(private = "file")
-clone_string :: proc(s: string) -> string {
-	if len(s) == 0 { return "" }
-	b := make([]u8, len(s), wj.libc_allocator())
-	copy(b, s)
-	return string(b)
 }
 
 // The browser: an event of navigator.serviceWorker (0 controllerchange, 1 the messages waiting from service workers, 2 a
@@ -1226,7 +1218,7 @@ fire_preload :: proc(ctx: ^wj.Context, info: ^wj.wr_SwEventInfo) {
 	}
 	text: string
 	jsb.host(&text, api_decl.SwEvent_text, wj.wr_SwEvent_text, i32(0))
-	url := clone_string(text)
+	url := strings.clone(text, wj.libc_allocator())
 	defer if url != "" { delete(url, wj.libc_allocator()) }
 	jsb.host(&text, api_decl.SwEvent_text, wj.wr_SwEvent_text, i32(2))
 	headers := web_headers_new(ctx, .None)
@@ -1354,7 +1346,7 @@ wj_sw_event :: proc "c" () {
 		case .Answer:
 			t: string
 			jsb.host(&t, api_decl.SwEvent_text, wj.wr_SwEvent_text, i32(0))
-			text := clone_string(t)
+			text := strings.clone(t, wj.libc_allocator())
 			answer(ctx, info.id, info.mode == 0, text)
 			if text != "" { delete(text, wj.libc_allocator()) }
 		case .Registration:

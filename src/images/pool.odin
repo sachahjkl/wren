@@ -19,6 +19,7 @@ package images
 //     job_cancel and job_set_priority take the id and look it up under the decoder's lock: an id that is not live (delivered, cancelled,
 //     its port closed) is not the caller's job any more, and nothing is touched. Every move between those states is made under the lock.
 
+import "core:strings"
 import "base:runtime"
 import "core:sync"
 import "core:time"
@@ -311,7 +312,7 @@ job_make :: proc(kind: Job_Kind, data: ^Blob, opts: Decode_Options, priority: i3
 	context.allocator = base.process_allocator()
 	j := new(Job)
 	j.kind, j.data, j.opts, j.priority, j.user, j.tag = kind, blob_retain(data), opts, priority, user, tag
-	j.opts.mime = clone_string(opts.mime)
+	j.opts.mime = strings.clone(opts.mime)
 	return j
 }
 
@@ -380,14 +381,6 @@ job_set_priority :: proc(id: Job_Id, priority: i32) {
 	defer sync.mutex_unlock(&d.mu)
 	if j, ok := d.live[id]; ok { j.priority = priority }
 }
-@(private)
-clone_string :: proc(s: string) -> string {
-	if s == "" { return "" }
-	b := make([]u8, len(s))
-	copy(b, s)
-	return string(b)
-}
-
 @(private)
 decoder_thread :: proc(data: rawptr) {
 	d := (^Decoder)(data)

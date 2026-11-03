@@ -2,6 +2,7 @@ package idb
 
 import "core:fmt"
 import "core:os"
+import "core:slice"
 import "core:testing"
 
 @(private)
@@ -18,7 +19,7 @@ populate :: proc(f: ^Fixture, n: int) -> (redo: []byte) {
 		exec_put(&f.x, sid, nil, transmute([]byte)fmt.tprintf("value %d", i),
 			[]Index_Key{{iid, str_key(fmt.tprintf("a%d", i % 5))}, {iid, str_key("common")}}, false)
 	}
-	return clone_bytes(f.redo.data[:], context.temp_allocator)
+	return slice.clone(f.redo.data[:], context.temp_allocator)
 }
 
 @(test)
@@ -82,7 +83,7 @@ a_journal_cut_anywhere_loads_a_prefix :: proc(t: ^testing.T) {
 		fixture_begin(&f, "db")
 		s := f.x.db.stores[0]
 		exec_put(&f.x, s.id, nil, transmute([]byte)fmt.tprintf("more %d", round), nil, false)
-		frame_payload(&out, clone_bytes(f.redo.data[:], context.temp_allocator))
+		frame_payload(&out, slice.clone(f.redo.data[:], context.temp_allocator))
 		append(&ends, len(out))
 	}
 	// expected state after each complete record, by loading the exact prefix

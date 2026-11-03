@@ -555,22 +555,22 @@ mp4_sample_entry :: proc(buf: []u8, e: Box, t: ^Mp4_Track) {
 		data := buf[c.payload:c.end]
 		switch c.type {
 		case "avcC":
-			info.config = clone_bytes(data, heap)
+			info.config = slice.clone(data, heap)
 			if len(data) >= 5 { info.nal_length_size = int(data[4] & 3) + 1 }
 			if len(data) >= 4 { info.codec_string = strings.clone(fmt_hex_codec(string(kind[:]), data[1:4]), heap) }
 		case "hvcC":
-			info.config = clone_bytes(data, heap)
+			info.config = slice.clone(data, heap)
 			if len(data) >= 22 { info.nal_length_size = int(data[21] & 3) + 1 }
 			info.codec_string = strings.clone(string(kind[:]), heap)
 		case "vpcC":
-			info.config = clone_bytes(data, heap)
+			info.config = slice.clone(data, heap)
 			if len(data) >= 12 {
 				// FullBox(4) profile level bitdepth|chroma|range colourPrimaries transfer matrix
 				info.bit_depth = int(data[6] >> 4)
 				info.color = Color_Info{known = true, full_range = data[6] & 1 != 0, primaries = data[7], coeffs = h273_matrix(data[9]), transfer = h273_transfer(data[8])}
 			}
 		case "av1C":
-			info.config = clone_bytes(data, heap)
+			info.config = slice.clone(data, heap)
 			if len(data) >= 4 { info.bit_depth = (data[2] & 0x40) != 0 ? ((data[2] & 0x20) != 0 ? 12 : 10) : 8 }
 		case "esds": mp4_esds(data, info, heap)
 		case "dOps":
@@ -593,7 +593,7 @@ mp4_sample_entry :: proc(buf: []u8, e: Box, t: ^Mp4_Track) {
 			}
 		case "dfLa":
 			// FLAC in MP4: after the FullBox, metadata blocks; the STREAMINFO block is the first
-			if len(data) > 8 { info.config = clone_bytes(data[4:], heap) }
+			if len(data) > 8 { info.config = slice.clone(data[4:], heap) }
 		case "colr":
 			if len(data) >= 11 && string(data[:4]) == "nclx" {
 				info.color = Color_Info{known = true, primaries = u8(be16(data, 4)), transfer = h273_transfer(u8(be16(data, 6))), coeffs = h273_matrix(u8(be16(data, 8))), full_range = data[10] & 0x80 != 0}
@@ -687,7 +687,7 @@ mp4_esds :: proc(data: []u8, info: ^Track, heap: runtime.Allocator) {
 			pos += 13
 		case 0x05:   // DecoderSpecificInfo: the AudioSpecificConfig
 			if pos + size > len(data) { return }
-			info.config = clone_bytes(data[pos:pos + size], heap)
+			info.config = slice.clone(data[pos:pos + size], heap)
 			if info.codec == .AAC && size >= 2 {
 				r := Bit_Reader{data = data[pos:pos + size]}
 				aot := bits_read(&r, 5)
