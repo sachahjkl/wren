@@ -258,20 +258,6 @@ svg_case :: proc(table: [][2]string, name: string) -> string {
 	return name
 }
 
-@(private = "file")
-write_escaped :: proc(b: ^strings.Builder, s: string, attr: bool) {
-	for i in 0 ..< len(s) {
-		c := s[i]
-		switch c {
-		case '&': strings.write_string(b, "&amp;")
-		case '<': strings.write_string(b, "&lt;")
-		case '>': strings.write_string(b, "&gt;")
-		case '"': strings.write_string(b, attr ? "&quot;" : "\"")
-		case: strings.write_byte(b, c)
-		}
-	}
-}
-
 // The ids an attribute value references: `#id` (href) and `url(#id)` (paint, clip-path, mask, filter, markers).
 @(private = "file")
 note_refs :: proc(name, value: string, refs: ^[dynamic]string) {
@@ -346,7 +332,7 @@ write_tree :: proc(s: ^Serializer, top: base.Handle, root_extra: string, skip_si
 		}
 		switch n.kind {
 		case .Text:
-			write_escaped(&s.b, n.text, false)
+			base.write_escaped(&s.b, n.text)
 			continue
 		case .Comment, .Document, .Doctype, .Fragment:
 			continue
@@ -364,8 +350,8 @@ write_tree :: proc(s: ^Serializer, top: base.Handle, root_extra: string, skip_si
 			if strings.has_prefix(a.name, "on") || a.name == "xmlns" || strings.has_prefix(a.name, "xmlns:") { continue }
 			if css != "" && a.name == "style" {
 				strings.write_string(&s.b, ` style="`)
-				write_escaped(&s.b, css, true)
-				write_escaped(&s.b, a.value, true)
+				base.write_escaped(&s.b, css, {.Quote})
+				base.write_escaped(&s.b, a.value, {.Quote})
 				strings.write_byte(&s.b, '"')
 				wrote_style = true
 				continue
@@ -376,12 +362,12 @@ write_tree :: proc(s: ^Serializer, top: base.Handle, root_extra: string, skip_si
 			strings.write_byte(&s.b, ' ')
 			strings.write_string(&s.b, svg_case(SVG_ATTRIBUTES[:], a.name))
 			strings.write_string(&s.b, "=\"")
-			write_escaped(&s.b, a.value, true)
+			base.write_escaped(&s.b, a.value, {.Quote})
 			strings.write_byte(&s.b, '"')
 		}
 		if css != "" && !wrote_style {
 			strings.write_string(&s.b, ` style="`)
-			write_escaped(&s.b, css, true)
+			base.write_escaped(&s.b, css, {.Quote})
 			strings.write_byte(&s.b, '"')
 		}
 		if n.first_child == base.NIL_HANDLE {
@@ -511,7 +497,7 @@ svg_serialize :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32) -> (string
 	}
 	if strings.builder_len(st) > 0 {
 		strings.write_string(&extra, ` style="`)
-		write_escaped(&extra, strings.to_string(st), true)
+		base.write_escaped(&extra, strings.to_string(st), {.Quote})
 		strings.write_byte(&extra, '"')
 	}
 	write_tree(&s, node, strings.to_string(extra), !has_vb && css_w > 0 && css_h > 0)

@@ -188,16 +188,16 @@ art_page_html :: proc(app: ^App, it: ^Art_Item, landscape: bool) -> string {
 	if app.art.cfg.show_caption {
 		strings.write_string(&sb, "<div class=\"art-text\">\n")
 		title := it != nil && it.title != "" ? it.title : (it == nil && app.art.fails == 0 ? i18n.tr("Loading a painting\u2026") : i18n.tr("A painting"))
-		fmt.sbprintf(&sb, "<p class=\"art-title\">%s</p>\n", art_escape(title))
+		fmt.sbprintf(&sb, "<p class=\"art-title\">%s</p>\n", base.escaped(title, {.Quote, .Apos}))
 		art_write_meta(&sb, it)
-		if it != nil && it.license != "" { fmt.sbprintf(&sb, "<p class=\"art-license\">%s</p>\n", art_escape(it.license)) }
+		if it != nil && it.license != "" { fmt.sbprintf(&sb, "<p class=\"art-license\">%s</p>\n", base.escaped(it.license, {.Quote, .Apos})) }
 		strings.write_string(&sb, "</div>\n")
 	} else {
 		strings.write_string(&sb, "<div class=\"art-text\"></div>\n")
 	}
 	strings.write_string(&sb, "<div class=\"art-actions\">\n")
 	fmt.sbprintf(&sb, "<a class=\"art-btn\" href=\"%s\">%s</a>\n", ART_NEXT_URL, i18n.tr("Another painting"))
-	if it != nil && it.record != "" { fmt.sbprintf(&sb, "<a class=\"art-btn\" href=\"%s\">%s</a>\n", art_escape(it.record), i18n.tr("Open the record")) }
+	if it != nil && it.record != "" { fmt.sbprintf(&sb, "<a class=\"art-btn\" href=\"%s\">%s</a>\n", base.escaped(it.record, {.Quote, .Apos}), i18n.tr("Open the record")) }
 	// back to the plain start page (the same switch as browser.newtab.art.enabled)
 	strings.write_string(&sb, "<span class=\"art-sep\"></span>\n")
 	fmt.sbprintf(&sb, "<a class=\"art-btn\" href=\"%s\">%s</a>\n", ART_OFF_URL, i18n.tr("Plain start page"))
@@ -215,7 +215,7 @@ ART_ICON_DEMOS :: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4"
 
 @(private = "file")
 art_shortcut :: proc(sb: ^strings.Builder, href, icon, label: string) {
-	fmt.sbprintf(sb, "<a class=\"art-chip\" href=\"%s\">%s%s</a>", href, icon, art_escape(label))
+	fmt.sbprintf(sb, "<a class=\"art-chip\" href=\"%s\">%s%s</a>", href, icon, base.escaped(label, {.Quote, .Apos}))
 }
 
 // "cover" for a painting whose orientation matches the window (it fills every pixel), "contain" otherwise (it is shown
@@ -235,9 +235,9 @@ art_write_meta :: proc(sb: ^strings.Builder, it: ^Art_Item) {
 	}
 	strings.write_string(sb, "<p class=\"art-meta\">")
 	parts := make([dynamic]string, context.temp_allocator)
-	if it.artist != "" { append(&parts, art_escape(it.artist)) }
-	if it.date != "" { append(&parts, art_escape(it.date)) }
-	if it.museum != "" { append(&parts, art_escape(it.museum)) }
+	if it.artist != "" { append(&parts, base.escaped(it.artist, {.Quote, .Apos})) }
+	if it.date != "" { append(&parts, base.escaped(it.date, {.Quote, .Apos})) }
+	if it.museum != "" { append(&parts, base.escaped(it.museum, {.Quote, .Apos})) }
 	strings.write_string(sb, strings.join(parts[:], " &middot; ", context.temp_allocator))
 	strings.write_string(sb, "</p>\n")
 }
@@ -264,21 +264,4 @@ art_mime_of :: proc(path: string) -> string {
 	case strings.has_suffix(s, ".bmp"):  return "image/bmp"
 	}
 	return "image/jpeg"
-}
-
-// Escapes text for an HTML attribute or text node (the caption shows values from the sources).
-@(private = "file")
-art_escape :: proc(s: string) -> string {
-	sb := strings.builder_make(context.temp_allocator)
-	for c in s {
-		switch c {
-		case '&': strings.write_string(&sb, "&amp;")
-		case '<': strings.write_string(&sb, "&lt;")
-		case '>': strings.write_string(&sb, "&gt;")
-		case '"': strings.write_string(&sb, "&quot;")
-		case '\'': strings.write_string(&sb, "&#39;")
-		case: strings.write_rune(&sb, c)
-		}
-	}
-	return strings.to_string(sb)
 }

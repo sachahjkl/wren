@@ -31,34 +31,6 @@ is_raw_text_parent :: proc(n: ^dom.Node) -> bool {
 	return false
 }
 
-@(private)
-write_escaped_text :: proc(b: ^strings.Builder, s: string, attr: bool) {
-	start := 0
-	for i := 0; i < len(s); i += 1 {
-		c := s[i]
-		rep := ""
-		switch c {
-		case '&': rep = "&amp;"
-		case '<': rep = "&lt;"
-		case '>': rep = "&gt;"
-		case '"': if attr { rep = "&quot;" }
-		case 0xC2:
-			if i + 1 < len(s) && s[i + 1] == 0xA0 {   // U+00A0
-				strings.write_string(b, s[start:i])
-				strings.write_string(b, "&nbsp;")
-				i += 1
-				start = i + 1
-			}
-			continue
-		}
-		if rep == "" { continue }
-		strings.write_string(b, s[start:i])
-		strings.write_string(b, rep)
-		start = i + 1
-	}
-	strings.write_string(b, s[start:])
-}
-
 // The serialized name of an element (HTML: the qualified name of a foreign element, the local name otherwise).
 @(private)
 serialized_tag :: proc(d: ^dom.Document, h: base.Handle, n: ^dom.Node) -> string {
@@ -130,7 +102,7 @@ serialize_node :: proc(d: ^dom.Document, b: ^strings.Builder, h: base.Handle, ou
 				strings.write_byte(b, ' ')
 				strings.write_string(b, jd_attr_name(n, a.name))
 				strings.write_string(b, "=\"")
-				write_escaped_text(b, a.value, true)
+				base.write_escaped(b, a.value, {.Quote, .Nbsp})
 				strings.write_byte(b, '"')
 			}
 			strings.write_byte(b, '>')
@@ -139,7 +111,7 @@ serialize_node :: proc(d: ^dom.Document, b: ^strings.Builder, h: base.Handle, ou
 			push_children(d, &stack, s.h)
 			if wants_shadow(d, shadow, n.shadow) { append(&stack, Step{h = n.shadow, template = true}) }   // before the children
 		case .Text:
-			if is_raw_text_parent(dom.get(d, n.parent)) { strings.write_string(b, n.text) } else { write_escaped_text(b, n.text, false) }
+			if is_raw_text_parent(dom.get(d, n.parent)) { strings.write_string(b, n.text) } else { base.write_escaped(b, n.text, {.Nbsp}) }
 		case .Comment:
 			strings.write_string(b, "<!--")
 			strings.write_string(b, n.text)

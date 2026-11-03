@@ -8,6 +8,7 @@ import "core:os"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
+import "wb:base"
 
 CHANGELOG_PAGE :: "site/changelog/index.html"
 MARK_BEGIN     :: "<!-- releases:begin -->"
@@ -182,7 +183,7 @@ write_inline :: proc(b: ^strings.Builder, s: string) {
 		case !code && c == '[':
 			if close := strings.index_byte(s[i:], ']'); close > 0 && i + close + 1 < len(s) && s[i + close + 1] == '(' {
 				if paren := strings.index_byte(s[i + close:], ')'); paren > 0 {
-					write_escaped_text(b, s[i + 1:i + close])
+					base.write_escaped(b, s[i + 1:i + close])
 					i += close + paren + 1
 					continue
 				}
@@ -197,17 +198,6 @@ write_inline :: proc(b: ^strings.Builder, s: string) {
 	}
 	if code { strings.write_string(b, "</code>") }
 	if bold { strings.write_string(b, "</strong>") }
-}
-
-write_escaped_text :: proc(b: ^strings.Builder, s: string) {
-	for c in s {
-		switch c {
-		case '&': strings.write_string(b, "&amp;")
-		case '<': strings.write_string(b, "&lt;")
-		case '>': strings.write_string(b, "&gt;")
-		case: strings.write_rune(b, c)
-		}
-	}
 }
 
 // The home page names the latest version between <!-- latest --> and <!-- /latest -->.

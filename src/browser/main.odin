@@ -689,13 +689,7 @@ show_error_page :: proc(app: ^App, load: ^Doc_Load, e: Error_Text) {
 	tab_log(t, .Error, fmt.tprintf("%s: %s", e.headline, e.detail))
 }
 
-escape_html :: proc(s: string) -> string {
-	r, _ := strings.replace_all(s, "&", "&amp;", context.temp_allocator)
-	r, _ = strings.replace_all(r, "<", "&lt;", context.temp_allocator)
-	r, _ = strings.replace_all(r, ">", "&gt;", context.temp_allocator)
-	r, _ = strings.replace_all(r, "\"", "&quot;", context.temp_allocator)
-	return r
-}
+escape_html :: proc(s: string) -> string { return base.escaped(s, {.Quote}) }
 
 document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	load := (^Doc_Load)(user)

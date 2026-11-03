@@ -2,6 +2,7 @@ package browser
 
 import "core:fmt"
 import "core:strings"
+import "wb:base"
 
 ////////////////////////////////
 // examples\site\index.html: the index of every demo, made from the same table as about:demos (DEMOS, demos.odin), so
@@ -44,19 +45,6 @@ DEMOS_INDEX_STYLE :: `
 `
 
 @(private = "file")
-index_escape :: proc(sb: ^strings.Builder, s: string) {
-	for i in 0 ..< len(s) {
-		switch s[i] {
-		case '&': strings.write_string(sb, "&amp;")
-		case '<': strings.write_string(sb, "&lt;")
-		case '>': strings.write_string(sb, "&gt;")
-		case '"': strings.write_string(sb, "&quot;")
-		case: strings.write_byte(sb, s[i])
-		}
-	}
-}
-
-@(private = "file")
 theme_anchor :: proc(theme: Demo_Theme) -> string {
 	switch theme {
 	case .Css:         return "css"
@@ -92,17 +80,17 @@ demos_index_html :: proc(allocator := context.temp_allocator) -> string {
 	strings.write_string(&sb, DEMOS_INDEX_STYLE)
 	strings.write_string(&sb, "</style>\n</head>\n<body>\n<div class=\"head\">\n<h1><span class=\"w\">W</span>ren demos and tests</h1>\n")
 	strings.write_string(&sb, "<p class=\"intro\">Every page that comes with the browser, by theme, with what it shows. The pages marked <span class=\"badge srv\">test server</span> load from <b>testserver.exe</b> (")
-	index_escape(&sb, DEMOS_INDEX_SERVER)
+	base.write_escaped(&sb, DEMOS_INDEX_SERVER, {.Quote})
 	strings.write_string(&sb, "): start it first (<code>demo.bat</code> in the release, <code>build\\testserver.exe</code> from the repository). The same list is built into the browser: <a href=\"about:demos\">about:demos</a>.</p>\n<nav>")
 	for theme in Demo_Theme {
 		fmt.sbprintf(&sb, "<a href=\"#%s\">", theme_anchor(theme))
-		index_escape(&sb, DEMO_THEME_TITLES[theme])
+		base.write_escaped(&sb, DEMO_THEME_TITLES[theme], {.Quote})
 		strings.write_string(&sb, "</a>")
 	}
 	strings.write_string(&sb, "</nav>\n</div>\n<div class=\"main\">\n")
 	for theme in Demo_Theme {
 		fmt.sbprintf(&sb, "<h2 id=\"%s\">", theme_anchor(theme))
-		index_escape(&sb, DEMO_THEME_TITLES[theme])
+		base.write_escaped(&sb, DEMO_THEME_TITLES[theme], {.Quote})
 		strings.write_string(&sb, "</h2>\n")
 		if theme == .E2e {
 			strings.write_string(&sb, "<p class=\"intro\">Run without a window by <code>src\\tools\\test_all</code> (from the repository, with the test server it starts itself).</p>\n")
@@ -113,19 +101,19 @@ demos_index_html :: proc(allocator := context.temp_allocator) -> string {
 			strings.write_string(&sb, "<div class=\"demo\"><h3>")
 			if d.tool == "" && href != "" {
 				strings.write_string(&sb, "<a href=\"")
-				index_escape(&sb, href)
+				base.write_escaped(&sb, href, {.Quote})
 				strings.write_string(&sb, "\">")
-				index_escape(&sb, d.title)
+				base.write_escaped(&sb, d.title, {.Quote})
 				strings.write_string(&sb, "</a>")
 			} else {
 				strings.write_string(&sb, "<span class=\"off\">")
-				index_escape(&sb, d.title)
+				base.write_escaped(&sb, d.title, {.Quote})
 				strings.write_string(&sb, "</span>")
 			}
 			if d.server { strings.write_string(&sb, "<span class=\"badge srv\">test server</span>") }
 			if d.tool != "" {
 				strings.write_string(&sb, "<span class=\"badge tool\">")
-				index_escape(&sb, d.tool)
+				base.write_escaped(&sb, d.tool, {.Quote})
 				strings.write_string(&sb, "</span>")
 			}
 			strings.write_string(&sb, "</h3><p>")
@@ -134,9 +122,9 @@ demos_index_html :: proc(allocator := context.temp_allocator) -> string {
 			switch {
 			case d.tool != "" && href != "":
 				strings.write_string(&sb, "<p class=\"where\">page: <a href=\"")
-				index_escape(&sb, href)
+				base.write_escaped(&sb, href, {.Quote})
 				strings.write_string(&sb, "\">")
-				index_escape(&sb, d.path)
+				base.write_escaped(&sb, d.path, {.Quote})
 				strings.write_string(&sb, "</a></p>")
 			case d.perf:
 				strings.write_string(&sb, "<p class=\"where\">made by <code>wrentool bench perf</code> in <code>build\\perf\\</code> of the repository; about:demos links to it once it is there</p>")

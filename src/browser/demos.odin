@@ -317,19 +317,6 @@ file_url_of_dir :: proc(dir: string, allocator := context.temp_allocator) -> str
 	return fetch.file_url_from_path(dir, directory = true, allocator = allocator)
 }
 
-@(private = "file")
-html_escape :: proc(sb: ^strings.Builder, s: string) {
-	for r in s {
-		switch r {
-		case '&': strings.write_string(sb, "&amp;")
-		case '<': strings.write_string(sb, "&lt;")
-		case '>': strings.write_string(sb, "&gt;")
-		case '"': strings.write_string(sb, "&quot;")
-		case: strings.write_rune(sb, r)
-		}
-	}
-}
-
 // The link of a demo ("" for a test without a page, or a generated page that is not there).
 demo_href :: proc(app: ^App, d: Demo, base_url: string, allocator := context.temp_allocator) -> string {
 	server := demos_server(app)
@@ -386,9 +373,9 @@ demos_html :: proc(app: ^App) -> string {
 	strings.write_string(&sb, DEMOS_STYLE)
 	strings.write_string(&sb, "</style>\n</head>\n<body>\n<div class=\"head\">\n<h1><span class=\"w\">W</span>ren demos and tests</h1>\n")
 	strings.write_string(&sb, "<p class=\"intro\">Every page that comes with the browser, by theme, with what it shows. Pages marked <span class=\"badge srv\">test server</span> fetch from <b>testserver.exe</b> (")
-	html_escape(&sb, server)
+	base.write_escaped(&sb, server, {.Quote})
 	strings.write_string(&sb, "): start it first (<code>demo.bat</code> in the release, <code>build\\testserver.exe</code> from the repository).</p>\n<p class=\"from\">Pages from <code>")
-	html_escape(&sb, base_url)
+	base.write_escaped(&sb, base_url, {.Quote})
 	switch source {
 	case .Preference: strings.write_string(&sb, "</code> (preference <code>browser.demos.path</code>).")
 	case .Package:    strings.write_string(&sb, "</code> (the <code>demos</code> folder next to the browser).")
@@ -409,13 +396,13 @@ demos_html :: proc(app: ^App) -> string {
 			strings.write_string(&sb, "<div class=\"demo\"><h3>")
 			if d.tool == "" && href != "" {
 				strings.write_string(&sb, "<a href=\"")
-				html_escape(&sb, href)
+				base.write_escaped(&sb, href, {.Quote})
 				strings.write_string(&sb, "\">")
-				html_escape(&sb, d.title)
+				base.write_escaped(&sb, d.title, {.Quote})
 				strings.write_string(&sb, "</a>")
 			} else {
 				strings.write_string(&sb, "<span class=\"off\">")
-				html_escape(&sb, d.title)
+				base.write_escaped(&sb, d.title, {.Quote})
 				strings.write_string(&sb, "</span>")
 			}
 			if d.server { strings.write_string(&sb, "<span class=\"badge srv\">test server</span>") }
@@ -426,15 +413,15 @@ demos_html :: proc(app: ^App) -> string {
 			switch {
 			case d.tool != "" && href != "":
 				strings.write_string(&sb, "<p class=\"where\">page: <a href=\"")
-				html_escape(&sb, href)
+				base.write_escaped(&sb, href, {.Quote})
 				strings.write_string(&sb, "\">")
-				html_escape(&sb, d.path)
+				base.write_escaped(&sb, d.path, {.Quote})
 				strings.write_string(&sb, "</a></p>")
 			case d.perf && href == "":
 				strings.write_string(&sb, "<p class=\"where\">not generated yet: run <code>wrentool bench perf</code> from the repository</p>")
 			case href != "":
 				strings.write_string(&sb, "<p class=\"where\">")
-				html_escape(&sb, href)
+				base.write_escaped(&sb, href, {.Quote})
 				strings.write_string(&sb, "</p>")
 			}
 			strings.write_string(&sb, "</div>\n")

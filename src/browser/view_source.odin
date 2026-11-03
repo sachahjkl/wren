@@ -5,6 +5,7 @@ package browser
 // document of its own built from escaped text: nothing of it runs.
 
 import "core:strings"
+import "wb:base"
 import "wb:html"
 import "wb:page"
 
@@ -25,22 +26,10 @@ pre { margin: 0; padding: 8px 12px; font: 13px/1.45 Consolas, "Cascadia Mono", m
 </style>`
 
 @(private = "file")
-put_escaped :: proc(sb: ^strings.Builder, s: string) {
-	for i in 0 ..< len(s) {
-		switch s[i] {
-		case '&': strings.write_string(sb, "&amp;")
-		case '<': strings.write_string(sb, "&lt;")
-		case '>': strings.write_string(sb, "&gt;")
-		case: strings.write_byte(sb, s[i])
-		}
-	}
-}
-
-@(private = "file")
 span :: proc(sb: ^strings.Builder, class, s: string, colors: bool) {
 	if s == "" { return }
 	if colors { strings.write_string(sb, `<span class="`); strings.write_string(sb, class); strings.write_string(sb, `">`) }
-	put_escaped(sb, s)
+	base.write_escaped(sb, s)
 	if colors { strings.write_string(sb, "</span>") }
 }
 
@@ -56,7 +45,7 @@ source_markup :: proc(src: string, colors: bool, truncated: bool) -> string {
 		if c != '<' {
 			j := strings.index_byte(src[i:], '<')
 			end := j < 0 ? len(src) : i + j
-			put_escaped(&sb, src[i:end])
+			base.write_escaped(&sb, src[i:end])
 			i = end
 			continue
 		}
@@ -78,13 +67,13 @@ source_markup :: proc(src: string, colors: bool, truncated: bool) -> string {
 		k := i + 1
 		if k < len(src) && src[k] == '/' { k += 1 }
 		for k < len(src) && !is_space(src[k]) && src[k] != '>' && src[k] != '/' { k += 1 }
-		if k == i + 1 { put_escaped(&sb, "<"); i += 1; continue }
+		if k == i + 1 { base.write_escaped(&sb, "<"); i += 1; continue }
 		span(&sb, "t", src[i:k], colors)
 		for k < len(src) && src[k] != '>' {
 			if is_space(src[k]) {
 				s := k
 				for k < len(src) && is_space(src[k]) { k += 1 }
-				put_escaped(&sb, src[s:k])
+				base.write_escaped(&sb, src[s:k])
 				continue
 			}
 			if src[k] == '/' { span(&sb, "t", "/", colors); k += 1; continue }
@@ -94,7 +83,7 @@ source_markup :: proc(src: string, colors: bool, truncated: bool) -> string {
 			if k == s { k += 1 }
 			span(&sb, "n", src[s:k], colors)
 			if k < len(src) && src[k] == '=' {
-				put_escaped(&sb, "=")
+				base.write_escaped(&sb, "=")
 				k += 1
 				s = k
 				if k < len(src) && (src[k] == '"' || src[k] == '\'') {
