@@ -4,6 +4,7 @@
 package js
 
 import "core:strings"
+import "wb:base"
 import "wb:config"
 
 Settings :: struct {
@@ -133,7 +134,7 @@ split_sites :: proc(v: string) -> []string {
 		item := i < 0 ? rest : rest[:i]
 		rest = i < 0 ? "" : rest[i + 1:]
 		item = strings.trim_space(item)
-		if item != "" { append(&out, strings.to_lower(item)) }
+		if item != "" { append(&out, base.ascii_lower_clone(item)) }
 	}
 	return out[:]
 }
@@ -149,7 +150,7 @@ host_matches :: proc(host, pattern: string) -> bool {
 
 // Whether scripts run on a document of `host` (lower case; "" for documents without one: file:, about:, data:).
 enabled_for :: proc(s: ^Settings, host: string) -> bool {
-	h := strings.to_lower(host, context.temp_allocator)
+	h := base.ascii_lower(host)
 	for p in s.sites_disabled { if host_matches(h, p) { return false } }
 	if s.enabled { return true }
 	for p in s.sites_enabled { if host_matches(h, p) { return true } }

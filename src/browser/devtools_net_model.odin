@@ -444,7 +444,7 @@ net_header :: proc(block: string, name: string) -> string {
 		ln = strings.trim_right(ln, "\r")
 		colon := strings.index_byte(ln, ':')
 		if colon <= 0 || colon != len(name) { continue }
-		if strings.equal_fold(ln[:colon], name) { return strings.trim_space(ln[colon + 1:]) }
+		if base.ascii_equal_fold(ln[:colon], name) { return strings.trim_space(ln[colon + 1:]) }
 	}
 	return ""
 }
@@ -622,7 +622,7 @@ net_shell_quote :: proc(s: string) -> string {
 
 @(private = "file")
 net_skip_header :: proc(name: string) -> bool {
-	l := strings.to_lower(name, context.temp_allocator)
+	l := base.ascii_lower(name)
 	switch l {
 	case "host", "content-length", "connection", "accept-encoding", "sec-fetch-dest", "sec-fetch-mode", "sec-fetch-site", "sec-fetch-user": return true
 	}

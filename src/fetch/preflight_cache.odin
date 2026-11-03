@@ -1,6 +1,7 @@
 package fetch
 
 import "core:strings"
+import "wb:base"
 import "wb:http"
 
 // CORS-preflight cache (Fetch Standard §4.9): remembers what a server allowed, so a repeated cross-origin request does
@@ -86,7 +87,7 @@ preflight_cache_store :: proc(c: ^Preflight_Cache, origin, request_url: string, 
 		expires_ms = now + i64(min(max_age_s, age_cap_s)) * 1000, used_ms = now,
 	}
 	for m in methods { append(&e.methods, strings.clone(m)) }
-	for h in headers { append(&e.headers, strings.clone(strings.to_lower(h, context.temp_allocator))) }
+	for h in headers { append(&e.headers, base.ascii_lower_clone(h)) }
 	append(&c.entries, e)
 }
 

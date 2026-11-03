@@ -9,6 +9,7 @@ package adblock
 
 import "core:slice"
 import "core:strings"
+import "wb:base"
 
 REGEX_MAX_PROGRAM :: 6000
 // The longest pattern compiled.
@@ -97,14 +98,14 @@ regex_compile :: proc(pattern: string, icase: bool) -> (re: Regex, ok: bool) {
 	col_flush(&col)
 	if len(col.best) >= 2 {
 		b := make([]u8, len(col.best))
-		for c, i in col.best { b[i] = icase ? lower_byte(c) : c }
+		for c, i in col.best { b[i] = icase ? base.ascii_lower_byte(c) : c }
 		re.literal = string(b)
 	}
 	if len(col.runs) > 0 {
 		re.lits = make([]string, len(col.runs))
 		for r, i in col.runs {
 			b := make([]u8, len(r))
-			for k in 0 ..< len(r) { b[k] = icase ? lower_byte(r[k]) : r[k] }
+			for k in 0 ..< len(r) { b[k] = icase ? base.ascii_lower_byte(r[k]) : r[k] }
 			re.lits[i] = string(b)
 		}
 	}	if root >= 0 {
@@ -407,7 +408,7 @@ emit :: proc(p: ^Parser, prog: ^[dynamic]Inst, n: i32) -> bool {
 	case .Empty:
 	case .Char:
 		if p.icase && is_alnum(nd.c) && !(nd.c >= '0' && nd.c <= '9') {
-			append(prog, Inst{op = .Char2, c1 = lower_byte(nd.c), c2 = lower_byte(nd.c) - 32})
+			append(prog, Inst{op = .Char2, c1 = base.ascii_lower_byte(nd.c), c2 = base.ascii_lower_byte(nd.c) - 32})
 		} else {
 			append(prog, Inst{op = .Char, c1 = nd.c})
 		}
@@ -637,12 +638,12 @@ find_literal :: proc(text, lit: string, icase: bool) -> int {
 	first := lit[0]
 	for i := 0; i + m <= n; i += 1 {
 		c := text[i]
-		if icase { c = lower_byte(c) }
+		if icase { c = base.ascii_lower_byte(c) }
 		if c != first { continue }
 		ok := true
 		for j in 1 ..< m {
 			d := text[i + j]
-			if icase { d = lower_byte(d) }
+			if icase { d = base.ascii_lower_byte(d) }
 			if d != lit[j] { ok = false; break }
 		}
 		if ok { return i }

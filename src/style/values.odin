@@ -5,6 +5,7 @@ import "core:math"
 import "core:mem"
 import "core:reflect"
 import "core:strings"
+import "wb:base"
 import "wb:css"
 
 // Integers kept as an i32 (z-index, order, the values in values_more.odin) are clamped to +/- this.
@@ -110,7 +111,7 @@ parse_length :: proc(cx: ^Cx, input: []css.Value, flags: Len_Flags) -> (Length, 
 		case .Percentage:
 			if .Percent in flags && (t.num >= 0 || .Negative in flags) { return Length{kind = .Percent, v = f32(t.num)}, true }
 		case .Ident:
-			id := css.lower_temp(t.text)
+			id := base.ascii_lower(t.text)
 			switch id {
 			case "auto": if .Auto in flags { return Length{kind = .Auto}, true }
 			case "none": if .None in flags { return Length{kind = .None}, true }
@@ -284,7 +285,7 @@ initial_groups_fill :: proc(c: ^Computed) {
 @(private)
 apply_paint :: proc(cx: ^Cx, vs: []css.Value, dst: ^Svg_Paint) -> bool {
 	if id, ok := ident_raw(vs); ok {
-		switch css.lower_temp(id) {
+		switch base.ascii_lower(id) {
 		case "none": dst^ = Svg_Paint{kind = .None}; return true
 		case "currentcolor": dst^ = Svg_Paint{kind = .Current_Color}; return true
 		}
@@ -332,7 +333,7 @@ font_size_relative :: proc(vs: []css.Value) -> bool {
 	case .Percentage: return true
 	case .Dimension:
 		u := v[0].tok.text
-		return strings.equal_fold(u, "em") || strings.equal_fold(u, "ex") || strings.equal_fold(u, "ch") || strings.equal_fold(u, "cap") || strings.equal_fold(u, "ic")
+		return base.ascii_equal_fold(u, "em") || base.ascii_equal_fold(u, "ex") || base.ascii_equal_fold(u, "ch") || base.ascii_equal_fold(u, "cap") || base.ascii_equal_fold(u, "ic")
 	}
 	return false
 }
@@ -382,11 +383,11 @@ parse_font_family :: proc(cx: ^Cx, input: []css.Value) -> ([]string, bool) {
 			n += 1
 		}
 		name := strings.to_string(sb)
-		switch css.lower_temp(name) {
+		switch base.ascii_lower(name) {
 		case "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui", "ui-sans-serif", "ui-serif", "ui-monospace", "ui-rounded", "emoji", "math", "fangsong":
 			generic = true
 		}
-		append(&out, generic ? strings.to_lower(name, cx.alloc) : strings.clone(name, cx.alloc))
+		append(&out, generic ? base.ascii_lower_clone(name, cx.alloc) : strings.clone(name, cx.alloc))
 	}
 	if len(out) == 0 { return nil, false }
 	return out[:], true
@@ -395,14 +396,14 @@ parse_font_family :: proc(cx: ^Cx, input: []css.Value) -> ([]string, bool) {
 @(private)
 parse_shadows :: proc(cx: ^Cx, input: []css.Value) -> ([]Shadow, bool) {
 	vs := css.trim_values(input)
-	if id, ok := ident_raw(vs); ok && strings.equal_fold(id, "none") { return nil, true }
+	if id, ok := ident_raw(vs); ok && base.ascii_equal_fold(id, "none") { return nil, true }
 	out := make([dynamic]Shadow, cx.alloc)
 	for part in css.split_commas(vs, context.temp_allocator) {
 		s := Shadow{color = cx.c.color}
 		nums := 0
 		lens: [4]f32
 		for it in split_items(part) {
-			if it.kind == .Token && it.tok.kind == .Ident && strings.equal_fold(it.tok.text, "inset") { s.inset = true; continue }
+			if it.kind == .Token && it.tok.kind == .Ident && base.ascii_equal_fold(it.tok.text, "inset") { s.inset = true; continue }
 			one := [1]css.Value{it}
 			if l, ok := parse_length(cx, one[:], {.Negative}); ok && l.kind == .Px {
 				if nums >= 4 { return nil, false }
@@ -438,7 +439,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		size: f32
 		src := Font_Size_Src{keyword = -1, absolute = parent_src.absolute}
 		if id, ok := ident_raw(vs); ok {
-			lid := css.lower_temp(id)
+			lid := base.ascii_lower(id)
 			mono := is_generic_monospace(c.font_family)
 			switch lid {
 			// (relative, as em: no longer a keyword size, as in Chromium)
@@ -491,7 +492,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	case .Font_Weight:
 		if id, ok := ident_raw(vs); ok {
 			parent_w := cx.parent != nil ? int(cx.parent.font_weight) : 400
-			switch css.lower_temp(id) {
+			switch base.ascii_lower(id) {
 			case "normal": c.font_weight = 400
 			case "bold": c.font_weight = 700
 			case "bolder": c.font_weight = parent_w < 350 ? 400 : (parent_w < 550 ? 700 : 900)
@@ -506,7 +507,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	case .Font_Style: return set_enum(vs, &c.font_style)
 	case .Line_Height:
 		if id, ok := ident_raw(vs); ok {
-			if !strings.equal_fold(id, "normal") { return false }
+			if !base.ascii_equal_fold(id, "normal") { return false }
 			c.line_height = Line_Height{kind = .Normal}
 			return true
 		}
@@ -524,7 +525,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		case: return false
 		}
 	case .Letter_Spacing, .Word_Spacing:
-		if id, ok := ident_raw(vs); ok && strings.equal_fold(id, "normal") {
+		if id, ok := ident_raw(vs); ok && base.ascii_equal_fold(id, "normal") {
 			if p == .Letter_Spacing { c.letter_spacing = 0 } else { c.word_spacing = 0 }
 			return true
 		}
@@ -533,7 +534,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		if p == .Letter_Spacing { c.letter_spacing = l.v } else { c.word_spacing = l.v }
 	case .Text_Align:
 		if id, ok := ident_raw(vs); ok {
-			switch css.lower_temp(id) {
+			switch base.ascii_lower(id) {
 			case "-webkit-center": c.text_align = .Legacy_Center; return true
 			case "-webkit-left": c.text_align = .Legacy_Left; return true
 			case "-webkit-right": c.text_align = .Legacy_Right; return true
@@ -549,11 +550,11 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		}
 		return set_enum(vs, &c.text_align)
 	case .Text_Decoration_Line:
-		if id, ok := ident_raw(vs); ok && strings.equal_fold(id, "none") { c.text_decoration = {}; return true }
+		if id, ok := ident_raw(vs); ok && base.ascii_equal_fold(id, "none") { c.text_decoration = {}; return true }
 		set: Decorations
 		for it in split_items(vs) {
 			if it.kind != .Token || it.tok.kind != .Ident { return false }
-			switch css.lower_temp(it.tok.text) {
+			switch base.ascii_lower(it.tok.text) {
 			case "underline": set += {.Underline}
 			case "overline": set += {.Overline}
 			case "line-through": set += {.Line_Through}
@@ -575,7 +576,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	case .Text_Overflow:
 		id, ok := ident_raw(vs)
 		if !ok { return false }
-		switch css.lower_temp(id) {
+		switch base.ascii_lower(id) {
 		case "clip": c.text_ellipsis = false
 		case "ellipsis": c.text_ellipsis = true
 		case: return false
@@ -598,8 +599,8 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 			// two-keyword syntax: `block flow`, `inline flow-root`, `block flex`...
 			items := split_items(vs)
 			if len(items) != 2 || items[0].kind != .Token || items[1].kind != .Token { return false }
-			a := css.lower_temp(items[0].tok.text)
-			b := css.lower_temp(items[1].tok.text)
+			a := base.ascii_lower(items[0].tok.text)
+			b := base.ascii_lower(items[1].tok.text)
 			if a == "flow" { a, b = b, a }
 			switch {
 			case a == "block" && b == "flow": c.display = .Block
@@ -615,7 +616,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 			}
 			return true
 		}
-		switch css.lower_temp(id) {
+		switch base.ascii_lower(id) {
 		case "-webkit-box": c.display = .Flex
 		case "-webkit-inline-box": c.display = .Inline_Flex
 		case "run-in": c.display = .Block
@@ -624,7 +625,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	case .Position: return set_enum(vs, &c.position)
 	case .Float:
 		if id, ok := ident_raw(vs); ok {
-			switch css.lower_temp(id) {
+			switch base.ascii_lower(id) {
 			case "inline-start": c.float = c.direction == .Ltr ? .Left : .Right; return true
 			case "inline-end": c.float = c.direction == .Ltr ? .Right : .Left; return true
 			}
@@ -636,7 +637,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		if !ok { return false }
 		c.inset[Side(int(p) - int(Prop.Top))] = l
 	case .Z_Index:
-		if id, ok := ident_raw(vs); ok && strings.equal_fold(id, "auto") { c.z_auto = true; return true }
+		if id, ok := ident_raw(vs); ok && base.ascii_equal_fold(id, "auto") { c.z_auto = true; return true }
 		n, ok := css.parse_integer(vs)
 		if !ok { return false }
 		c.z_auto, c.z_index = false, i32(clamp(n, -CSS_INT_CLAMP, CSS_INT_CLAMP))
@@ -692,7 +693,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		c.radius[Corner(int(p) - int(Prop.Border_Top_Left_Radius))] = Corner_Radius{h, v}
 	case .Overflow_X, .Overflow_Y:
 		o: Overflow
-		if id, ok := ident_raw(vs); ok && strings.equal_fold(id, "overlay") { o = .Auto } else if !set_enum(vs, &o) { return false }
+		if id, ok := ident_raw(vs); ok && base.ascii_equal_fold(id, "overlay") { o = .Auto } else if !set_enum(vs, &o) { return false }
 		if p == .Overflow_X { c.overflow_x = o } else { c.overflow_y = o }
 	case .Visibility: return set_enum(vs, &c.visibility)
 	case .Opacity:
@@ -703,7 +704,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		c.opacity = clamp(f32(n), 0, 1)
 	case .Vertical_Align:
 		if id, ok := ident_raw(vs); ok {
-			lid := css.lower_temp(id)
+			lid := base.ascii_lower(id)
 			k: Vertical_Align_Kind
 			switch lid {
 			case "baseline": k = .Baseline
@@ -730,7 +731,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		for i < len(items) {
 			it := items[i]
 			if it.kind == .Token && it.tok.kind == .Ident {
-				if !strings.equal_fold(it.tok.text, "auto") || auto { return false }
+				if !base.ascii_equal_fold(it.tok.text, "auto") || auto { return false }
 				auto = true
 				i += 1
 				continue
@@ -762,14 +763,14 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		if !ok { return false }
 		if p == .Flex_Grow { c.flex_grow = n } else { c.flex_shrink = n }
 	case .Flex_Basis:
-		if id, ok := ident_raw(vs); ok && strings.equal_fold(id, "content") { c.flex_basis = Length{kind = .Max_Content}; return true }
+		if id, ok := ident_raw(vs); ok && base.ascii_equal_fold(id, "content") { c.flex_basis = Length{kind = .Max_Content}; return true }
 		l, ok := parse_length(cx, vs, {.Auto, .Percent, .Intrinsic})
 		if !ok { return false }
 		c.flex_basis = l
 	case .Justify_Content, .Align_Items, .Align_Self, .Align_Content:
 		a: Content_Align
 		if id, ok := ident_raw(vs); ok {
-			switch css.lower_temp(id) {
+			switch base.ascii_lower(id) {
 			case "left", "self-start", "start": a = .Start
 			case "right", "self-end", "end": a = .End
 			case "safe", "unsafe": return false
@@ -854,7 +855,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	case .Pointer_Events:
 		id, ok := ident_raw(vs)
 		if !ok { return false }
-		switch css.lower_temp(id) {
+		switch base.ascii_lower(id) {
 		case "none": c.pointer_events = false
 		case "auto", "all", "visible", "visiblepainted", "visiblefill", "visiblestroke", "painted", "fill", "stroke": c.pointer_events = true
 		case: return false
@@ -869,7 +870,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		if !ok { return false }
 		c.outline_width = w
 	case .Outline_Style:
-		if id, ok := ident_raw(vs); ok && strings.equal_fold(id, "auto") { c.outline_style = .Solid; return true }
+		if id, ok := ident_raw(vs); ok && base.ascii_equal_fold(id, "auto") { c.outline_style = .Solid; return true }
 		return set_enum(vs, &c.outline_style)
 	case .Outline_Color:
 		col, ok := parse_color(cx, vs)
@@ -883,7 +884,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	case .Border_Collapse:
 		id, ok := ident_raw(vs)
 		if !ok { return false }
-		switch css.lower_temp(id) {
+		switch base.ascii_lower(id) {
 		case "collapse": c.border_collapse = true
 		case "separate": c.border_collapse = false
 		case: return false
@@ -933,7 +934,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 
 parse_line_width :: proc(cx: ^Cx, vs: []css.Value) -> (f32, bool) {
 	if id, ok := ident_raw(vs); ok {
-		switch css.lower_temp(id) {
+		switch base.ascii_lower(id) {
 		case "thin": return 1, true
 		case "medium": return 3, true
 		case "thick": return 5, true

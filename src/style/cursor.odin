@@ -2,6 +2,7 @@ package style
 
 import "core:fmt"
 import "core:strings"
+import "wb:base"
 import "wb:css"
 
 // `cursor` (CSS Basic User Interface 4 §5.1.1): a list of images, each with an optional hotspot, then a keyword.
@@ -40,7 +41,7 @@ cursor_keyword_name :: proc(c: Cursor) -> string {
 @(private)
 cursor_keyword :: proc(v: css.Value) -> (Cursor, bool) {
 	if !tok_is(v, .Ident) { return {}, false }
-	id := css.lower_temp(v.tok.text)
+	id := base.ascii_lower(v.tok.text)
 	if strings.has_prefix(id, "-webkit-") {
 		switch id[8:] {
 		case "grab", "grabbing", "zoom-in", "zoom-out": id = id[8:]
@@ -57,7 +58,7 @@ cursor_resolution :: proc(v: css.Value) -> (f32, bool) {
 	if !tok_is(v, .Dimension) { return 0, false }
 	n := f32(v.tok.num)
 	if n <= 0 { return 0, false }
-	switch css.lower_temp(v.tok.text) {
+	switch base.ascii_lower(v.tok.text) {
 	case "x", "dppx": return n, true
 	case "dpi": return n / 96, true
 	case "dpcm": return n * 2.54 / 96, true
@@ -68,7 +69,7 @@ cursor_resolution :: proc(v: css.Value) -> (f32, bool) {
 // image/* types the image decoder reads (an image-set() candidate with another type() is skipped).
 @(private)
 cursor_type_supported :: proc(t: string) -> bool {
-	switch css.lower_temp(t) {
+	switch base.ascii_lower(t) {
 	case "image/png", "image/apng", "image/jpeg", "image/gif", "image/webp", "image/avif", "image/bmp", "image/svg+xml",
 	     "image/x-icon", "image/vnd.microsoft.icon", "image/tiff":
 		return true
@@ -79,7 +80,7 @@ cursor_type_supported :: proc(t: string) -> bool {
 @(private)
 cursor_url_of :: proc(v: css.Value) -> (string, bool) {
 	if tok_is(v, .Url) { return v.tok.text, true }
-	if v.kind == .Function && (strings.equal_fold(v.tok.text, "url") || strings.equal_fold(v.tok.text, "src")) {
+	if v.kind == .Function && (base.ascii_equal_fold(v.tok.text, "url") || base.ascii_equal_fold(v.tok.text, "src")) {
 		for a in v.children { if tok_is(a, .String) { return a.tok.text, true } }
 	}
 	return "", false
@@ -105,7 +106,7 @@ cursor_image_set :: proc(cx: ^Cx, v: css.Value) -> ([]Cursor_Image_Src, bool) {
 		for it in items[1:] {
 			if r, ok := cursor_resolution(it); ok && !have_res {
 				density, have_res = r, true
-			} else if it.kind == .Function && strings.equal_fold(it.tok.text, "type") && !have_type {
+			} else if it.kind == .Function && base.ascii_equal_fold(it.tok.text, "type") && !have_type {
 				have_type = true
 				t := ""
 				for a in it.children { if tok_is(a, .String) { t = a.tok.text } }
@@ -139,8 +140,8 @@ parse_cursor :: proc(cx: ^Cx, vs: []css.Value, c: ^Computed) -> bool {
 			return srcs, true
 		}
 		if v.kind != .Function { return nil, false }
-		if strings.equal_fold(v.tok.text, "image-set") || strings.equal_fold(v.tok.text, "-webkit-image-set") { return cursor_image_set(cx, v) }
-		if strings.equal_fold(v.tok.text, "light-dark") && !nested {
+		if base.ascii_equal_fold(v.tok.text, "image-set") || base.ascii_equal_fold(v.tok.text, "-webkit-image-set") { return cursor_image_set(cx, v) }
+		if base.ascii_equal_fold(v.tok.text, "light-dark") && !nested {
 			args := css.split_commas(v.children, context.temp_allocator)
 			if len(args) != 2 { return nil, false }
 			branch: [2][]Cursor_Image_Src

@@ -437,7 +437,7 @@ detail_cookies :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	}
 	got := make([dynamic][2]string, 0, 8, context.temp_allocator)
 	for h in net_header_pairs(e.res_headers) {
-		if !strings.equal_fold(h[0], "set-cookie") { continue }
+		if !base.ascii_equal_fold(h[0], "set-cookie") { continue }
 		semi := strings.index_byte(h[1], ';')
 		first := semi < 0 ? h[1] : h[1][:semi]
 		attrs := semi < 0 ? "" : strings.trim_space(h[1][semi + 1:])

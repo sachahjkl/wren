@@ -130,7 +130,7 @@ forms_plan_navigation :: proc(user: rawptr, s: ^forms.Submission) {
 // The planned navigation to `target` (a form's target: "" and _self are one), -1 when there is none.
 @(private = "file")
 planned_for :: proc(pf: ^Page_Forms, target: string) -> int {
-	key :: proc(target: string) -> string { t := strings.trim_space(target); return strings.equal_fold(t, "_self") ? "" : t }
+	key :: proc(target: string) -> string { t := strings.trim_space(target); return base.ascii_equal_fold(t, "_self") ? "" : t }
 	k := key(target)
 	for e, i in pf.pending { if key(e.s.target) == k { return i } }
 	return -1

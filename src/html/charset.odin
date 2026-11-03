@@ -1,6 +1,7 @@
 package html
 
 import "core:strings"
+import "wb:base"
 
 when ODIN_OS == .Windows {
 	foreign import lexbor_enc {
@@ -66,8 +67,8 @@ decode_document :: proc(data: []byte, header_charset: string, default_encoding: 
 			// a <meta> found by the prescan is in ASCII bytes: the document cannot be UTF-16, whatever it says
 			// (HTML §13.2.3.2 "get an encoding"); x-user-defined means windows-1252 there
 			if d.source == .Meta {
-				if strings.equal_fold(d.encoding, "UTF-16LE") || strings.equal_fold(d.encoding, "UTF-16BE") { d.encoding = "UTF-8" }
-				if strings.equal_fold(d.encoding, "x-user-defined") { d.encoding = "windows-1252" }
+				if base.ascii_equal_fold(d.encoding, "UTF-16LE") || base.ascii_equal_fold(d.encoding, "UTF-16BE") { d.encoding = "UTF-8" }
+				if base.ascii_equal_fold(d.encoding, "x-user-defined") { d.encoding = "windows-1252" }
 			}
 		}
 	}

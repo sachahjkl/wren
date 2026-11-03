@@ -57,14 +57,14 @@ hsts_note :: proc(h: ^Hsts, host: string, header: string, now: i64) -> bool {
 		name, value := d, ""
 		if eq := strings.index_byte(d, '='); eq >= 0 { name, value = strings.trim_space(d[:eq]), strings.trim_space(d[eq + 1:]) }
 		switch {
-		case strings.equal_fold(name, "max-age"):
+		case base.ascii_equal_fold(name, "max-age"):
 			if seen_max_age { return false }   // duplicate directives make the whole header invalid
 			seen_max_age = true
 			if len(value) >= 2 && value[0] == '"' && value[len(value) - 1] == '"' { value = value[1:len(value) - 1] }
 			v, ok := strconv.parse_i64(value, 10)
 			if !ok || v < 0 { return false }
 			max_age = v
-		case strings.equal_fold(name, "includesubdomains"):
+		case base.ascii_equal_fold(name, "includesubdomains"):
 			include = true
 		}
 	}

@@ -9,6 +9,7 @@ package page
 // The decode runs on the page thread (the built-in decoders are memory-safe and the inputs are bounded by the image
 // limits); the decode() promise still resolves from a task of its own, so its reactions run at a clean checkpoint.
 
+import "wb:base"
 import "wb:images"
 
 // An ImageDecoder: its source bytes and, once decoded, the Image. One track (the primary image) is exposed; the format
@@ -131,16 +132,7 @@ image_mime_supported :: proc(mime: string) -> bool {
 image_mime_essence :: proc(mime: string) -> string {
 	end := len(mime)
 	for i in 0 ..< len(mime) { if mime[i] == ';' || mime[i] == ' ' { end = i; break } }
-	// lower-case into a temp buffer only when needed
-	has_upper := false
-	for i in 0 ..< end { if mime[i] >= 'A' && mime[i] <= 'Z' { has_upper = true; break } }
-	if !has_upper { return mime[:end] }
-	b := make([]u8, end, context.temp_allocator)
-	for i in 0 ..< end {
-		c := mime[i]
-		b[i] = c >= 'A' && c <= 'Z' ? c + 32 : c
-	}
-	return string(b)
+	return base.ascii_lower(mime[:end])
 }
 
 ImageDecoder_type :: proc(c: ^Call, d: Api_ImageDecoder) -> string { return d.data == nil ? "" : d.data.mime }

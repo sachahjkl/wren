@@ -141,7 +141,7 @@ page_editable :: proc(d: ^dom.Document, h: base.Handle) -> bool {
 	case "textarea": return true
 	case "input":
 		t, _ := dom.get_attribute(d, h, "type")
-		switch strings.to_lower(strings.trim_space(t), context.temp_allocator) {
+		switch base.ascii_lower(strings.trim_space(t)) {
 		case "", "text", "search", "url", "tel", "email", "password", "number": return true
 		}
 		return false
@@ -151,7 +151,7 @@ page_editable :: proc(d: ^dom.Document, h: base.Handle) -> bool {
 		if cn == nil { break }
 		if cn.kind == .Element {
 			if v, ok := dom.get_attribute(d, cur, "contenteditable"); ok {
-				return v == "" || strings.equal_fold(v, "true") || strings.equal_fold(v, "plaintext-only")
+				return v == "" || base.ascii_equal_fold(v, "true") || base.ascii_equal_fold(v, "plaintext-only")
 			}
 		}
 		cur = cn.parent

@@ -25,16 +25,8 @@ jd_qualified_name :: proc(d: ^dom.Document, h: base.Handle, upper: bool) -> stri
 	if n == nil { return "" }
 	qualified := jd_local_name(n)
 	if prefix := dom.ns_prefix(d, h); prefix != "" { qualified = strings.concatenate({prefix, ":", qualified}, context.temp_allocator) }
-	if n.ns == .HTML && upper && n.xml != .Element { qualified = ascii_upper(qualified) }
+	if n.ns == .HTML && upper && n.xml != .Element { qualified = base.ascii_upper(qualified) }
 	return qualified
-}
-
-// `s` in ASCII upper case (DOM: other letters keep their case), in the temp allocator.
-@(private)
-ascii_upper :: proc(s: string) -> string {
-	b := make([]u8, len(s), context.temp_allocator)
-	for i in 0 ..< len(s) { c := s[i]; b[i] = c >= 'a' && c <= 'z' ? c - ('a' - 'A') : c }
-	return string(b)
 }
 
 // The local name as the DOM gives it: SVG names in their mixed case (the browser keeps them lower case).
@@ -153,7 +145,7 @@ Element_setAttributeOfAttr :: proc(c: ^Call, element: Api_Element, namespace: Ma
 set_attribute_ns :: proc(c: ^Call, element: Api_Element, ns, qualified_name, value: string, replace_prefix := false) -> Api_Error {
 	d := c.page.doc
 	n := element.data
-	lower := dom.lower_name(qualified_name)
+	lower := base.ascii_lower(qualified_name)
 	stored := n.ns == .SVG && jd_attr_name(n, lower) == qualified_name ? lower : qualified_name
 	return dom_error(dom.set_attribute_ns(d, H(element.handle), dom.attr_ns_of(d, ns), stored, value, replace_prefix))
 }
@@ -207,7 +199,7 @@ HTMLTemplateElement_content :: proc(c: ^Call, element: Api_Element) -> u64 {
 HTMLElement_hiddenState :: proc(c: ^Call, element: Api_Element) -> i32 {
 	v, ok := dom.get_attribute(c.page.doc, H(element.handle), "hidden")
 	if !ok { return 0 }
-	return strings.equal_fold(v, "until-found") ? 2 : 1
+	return base.ascii_equal_fold(v, "until-found") ? 2 : 1
 }
 
 HTMLElement_dir :: proc(c: ^Call, element: Api_Element) -> string {
@@ -227,8 +219,8 @@ inherited_flag :: proc(d: ^dom.Document, h: base.Handle, attr, yes, no: string, 
 		n := dom.get(d, cur)
 		if n == nil || n.kind != .Element { break }
 		if v, ok := dom.get_attribute(d, cur, attr); ok {
-			if strings.equal_fold(v, yes) || (yes == "true" && v == "") { return true }
-			if strings.equal_fold(v, no) { return false }
+			if base.ascii_equal_fold(v, yes) || (yes == "true" && v == "") { return true }
+			if base.ascii_equal_fold(v, no) { return false }
 		}
 		cur = n.parent
 	}
@@ -247,8 +239,8 @@ HTMLElement_draggable :: proc(c: ^Call, element: Api_Element) -> bool {
 	d := c.page.doc
 	h := H(element.handle)
 	if v, ok := dom.get_attribute(d, h, "draggable"); ok {
-		if strings.equal_fold(v, "true") { return true }
-		if strings.equal_fold(v, "false") { return false }
+		if base.ascii_equal_fold(v, "true") { return true }
+		if base.ascii_equal_fold(v, "false") { return false }
 	}
 	// auto: images and links with an href are draggable
 	n := element.data
@@ -279,7 +271,7 @@ focusable_by_default :: proc(d: ^dom.Document, h: base.Handle, n: ^dom.Node) -> 
 	case "button", "select", "textarea", "iframe", "summary", "frame", "object", "embed": return true
 	case "input":
 		t, _ := dom.get_attribute(d, h, "type")
-		return !strings.equal_fold(t, "hidden")
+		return !base.ascii_equal_fold(t, "hidden")
 	case "a", "area":
 		_, has := dom.get_attribute(d, h, "href")
 		return has
@@ -287,7 +279,7 @@ focusable_by_default :: proc(d: ^dom.Document, h: base.Handle, n: ^dom.Node) -> 
 		_, has := dom.get_attribute(d, h, "controls")
 		return has
 	}
-	if ce, ok := dom.get_attribute(d, h, "contenteditable"); ok { return ce == "" || strings.equal_fold(ce, "true") || strings.equal_fold(ce, "plaintext-only") }
+	if ce, ok := dom.get_attribute(d, h, "contenteditable"); ok { return ce == "" || base.ascii_equal_fold(ce, "true") || base.ascii_equal_fold(ce, "plaintext-only") }
 	return false
 }
 
@@ -331,9 +323,9 @@ ElementContentEditable_contentEditable :: proc(c: ^Call, element: Api_Element) -
 	v, ok := dom.get_attribute(c.page.doc, H(element.handle), "contenteditable")
 	if !ok { return "inherit" }
 	switch {
-	case v == "" || strings.equal_fold(v, "true"): return "true"
-	case strings.equal_fold(v, "false"): return "false"
-	case strings.equal_fold(v, "plaintext-only"): return "plaintext-only"
+	case v == "" || base.ascii_equal_fold(v, "true"): return "true"
+	case base.ascii_equal_fold(v, "false"): return "false"
+	case base.ascii_equal_fold(v, "plaintext-only"): return "plaintext-only"
 	}
 	return "inherit"
 }
@@ -342,10 +334,10 @@ ElementContentEditable_set_contentEditable :: proc(c: ^Call, element: Api_Elemen
 	d := c.page.doc
 	h := H(element.handle)
 	switch {
-	case strings.equal_fold(value, "inherit"): dom.remove_attribute(d, h, "contenteditable"); return .None
-	case strings.equal_fold(value, "true"): return dom_error(dom.set_attribute(d, h, "contenteditable", "true"))
-	case strings.equal_fold(value, "false"): return dom_error(dom.set_attribute(d, h, "contenteditable", "false"))
-	case strings.equal_fold(value, "plaintext-only"): return dom_error(dom.set_attribute(d, h, "contenteditable", "plaintext-only"))
+	case base.ascii_equal_fold(value, "inherit"): dom.remove_attribute(d, h, "contenteditable"); return .None
+	case base.ascii_equal_fold(value, "true"): return dom_error(dom.set_attribute(d, h, "contenteditable", "true"))
+	case base.ascii_equal_fold(value, "false"): return dom_error(dom.set_attribute(d, h, "contenteditable", "false"))
+	case base.ascii_equal_fold(value, "plaintext-only"): return dom_error(dom.set_attribute(d, h, "contenteditable", "plaintext-only"))
 	}
 	return fail(c, .Syntax, "The value provided is not one of 'true', 'false', 'plaintext-only', or 'inherit'.")
 }
@@ -356,8 +348,8 @@ ElementContentEditable_isContentEditable :: proc(c: ^Call, element: Api_Element)
 		n := dom.get(d, cur)
 		if n == nil || n.kind != .Element { break }
 		if v, ok := dom.get_attribute(d, cur, "contenteditable"); ok {
-			if v == "" || strings.equal_fold(v, "true") || strings.equal_fold(v, "plaintext-only") { return dom.is_connected(d, H(element.handle)) }
-			if strings.equal_fold(v, "false") { return false }
+			if v == "" || base.ascii_equal_fold(v, "true") || base.ascii_equal_fold(v, "plaintext-only") { return dom.is_connected(d, H(element.handle)) }
+			if base.ascii_equal_fold(v, "false") { return false }
 		}
 		cur = n.parent
 	}

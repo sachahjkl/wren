@@ -2,6 +2,7 @@ package fetch
 
 import "core:os"
 import "core:strings"
+import "wb:base"
 import "wb:http"
 import "wb:url"
 
@@ -65,7 +66,7 @@ process_data_url :: proc(u: url.URL, allocator := context.allocator) -> (d: Data
 	body := transmute([]byte)url.percent_decode(input[comma + 1:])
 
 	is_base64 := false
-	lower := strings.to_lower(header, context.temp_allocator)
+	lower := base.ascii_lower(header)
 	if strings.has_suffix(lower, ";base64") {
 		is_base64 = true
 		header = strings.trim_right(header[:len(header) - len(";base64")], " ")
@@ -155,10 +156,10 @@ file_path_safe :: proc(p: string) -> bool {
 // trailing spaces, Windows opens the device.
 @(private)
 is_device_name :: proc(seg: string) -> bool {
-	base := seg
-	if i := strings.index_byte(base, '.'); i >= 0 { base = base[:i] }
-	base = strings.trim_right(base, " ")
-	upper := strings.to_upper(base, context.temp_allocator)
+	stem := seg
+	if i := strings.index_byte(stem, '.'); i >= 0 { stem = stem[:i] }
+	stem = strings.trim_right(stem, " ")
+	upper := base.ascii_upper(stem)
 	switch upper {
 	case "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$": return true
 	}
@@ -182,7 +183,7 @@ file_directory :: proc(u: url.URL, allocator := context.allocator) -> string {
 // Windows)?
 path_within :: proc(root, path: string) -> bool {
 	if root == "" || len(path) < len(root) { return false }
-	same := strings.equal_fold(path[:len(root)], root) when ODIN_OS == .Windows else path[:len(root)] == root
+	same := base.ascii_equal_fold(path[:len(root)], root) when ODIN_OS == .Windows else path[:len(root)] == root
 	if !same { return false }
 	return len(path) == len(root) || path[len(root)] == FILE_SEP || strings.has_suffix(root, FILE_SEP_STR)
 }
@@ -190,7 +191,7 @@ path_within :: proc(root, path: string) -> bool {
 mime_for_extension :: proc(path: string) -> string {
 	dot := strings.last_index_byte(path, '.')
 	if dot < 0 { return "application/octet-stream" }
-	switch strings.to_lower(path[dot + 1:], context.temp_allocator) {
+	switch base.ascii_lower(path[dot + 1:]) {
 	case "html", "htm": return "text/html;charset=utf-8"
 	case "xhtml", "xht": return "application/xhtml+xml"
 	case "css":         return "text/css"

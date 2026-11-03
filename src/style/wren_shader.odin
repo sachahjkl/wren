@@ -1,6 +1,6 @@
 package style
 
-import "core:strings"
+import "wb:base"
 import "wb:css"
 
 // -wren-shader (non-standard): `none` | <name> <number>*. Built-in pages of the browser (about:wren...) fill a box with one of the
@@ -39,7 +39,7 @@ apply_shader_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		first := items[0]
 		if first.kind != .Token || first.tok.kind != .Ident { return false }
 		name := first.tok.text
-		if strings.equal_fold(name, "none") {
+		if base.ascii_equal_fold(name, "none") {
 			if len(items) != 1 { return false }
 			cx.c.wren_shader = {}
 			return true
@@ -60,7 +60,7 @@ apply_shader_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 				args[i] = f32(n)
 			}
 		}
-		cx.c.wren_shader = Shader_Call{name = strings.clone(strings.to_lower(name, context.temp_allocator), cx.alloc), args = args}
+		cx.c.wren_shader = Shader_Call{name = base.ascii_lower_clone(name, cx.alloc), args = args}
 	case: return false
 	}
 	return true

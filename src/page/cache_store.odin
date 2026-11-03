@@ -252,7 +252,7 @@ header_combined :: proc(lines: string, name: string, allocator := context.alloca
 	for line in strings.split_lines_iterator(&text) {
 		l := strings.trim_right(line, "\r")
 		colon := strings.index_byte(l, ':')
-		if colon <= 0 || !strings.equal_fold(strings.trim_space(l[:colon]), name) { continue }
+		if colon <= 0 || !base.ascii_equal_fold(strings.trim_space(l[:colon]), name) { continue }
 		if n > 0 { strings.write_string(&b, ", ") }
 		strings.write_string(&b, strings.trim_space(l[colon + 1:]))
 		n += 1

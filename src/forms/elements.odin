@@ -502,7 +502,7 @@ is_focusable_element :: proc(f: ^Forms, h: base.Handle) -> bool {
 	case "summary", "iframe": return true
 	}
 	if _, ok := tabindex(n); ok { return true }
-	if ce, ok := attr(n, "contenteditable"); ok && (ce == "" || strings.equal_fold(ce, "true")) { return true }
+	if ce, ok := attr(n, "contenteditable"); ok && (ce == "" || base.ascii_equal_fold(ce, "true")) { return true }
 	return false
 }
 

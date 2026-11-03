@@ -249,6 +249,35 @@ the_code_a_test_file_runs_at_every_start_is_found :: proc(t: ^testing.T) {
 	for w in want { testing.expectf(t, slice.contains(names[:], w), "found: %s", w) }
 }
 
+@(test)
+a_unicode_case_call_passes_only_listed :: proc(t: ^testing.T) {
+	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
+	testing.expect(t, calls_unicode_case("\tif strings.equal_fold(a, b) {"), "a call")
+	testing.expect(t, calls_unicode_case("x := unicode.to_upper(r)"), "a rune's")
+	testing.expect(t, !calls_unicode_case("x := base.ascii_equal_fold(a, b)"), "ASCII")
+	testing.expect(t, !calls_unicode_case("x := mystrings.to_lower(a)"), "another package")
+	testing.expect(t, !calls_unicode_case("y := 1 // strings.to_lower(s) lowers by Unicode"), "a comment")
+	testing.expect(t, !calls_unicode_case("say(\"no strings.to_lower(s) here\", 'x')"), "a string")
+	root := fmt.tprintf("%s/lint_case_test_%d", TEMP_DIR, os.get_pid())
+	_ = os.make_directory_all(fmt.tprintf("%s/src/page", root))
+	_ = os.make_directory_all(fmt.tprintf("%s/src/tools/x", root))
+	_ = os.make_directory_all(fmt.tprintf("%s/tools", root))
+	defer os.remove_all(root)
+	_ = os.write_entire_file(fmt.tprintf("%s/src/page/a.odin", root), "package page\n// strings.to_lower: a comment\nis_div :: proc(s: string) -> bool { return strings.equal_fold(s, \"div\") }\n")
+	_ = os.write_entire_file(fmt.tprintf("%s/src/tools/x/x.odin", root), "package x\nlow :: proc(s: string) -> string { return strings.to_lower(s) }\n")
+	uses := find_unicode_case(root, {"src"}, {"src/tools"})
+	testing.expect_value(t, len(uses), 1)
+	if len(uses) == 1 { testing.expect_value(t, uses[0].path, "src/page/a.odin"); testing.expect_value(t, uses[0].line, 3) }
+	list := fmt.tprintf("%s/%s", root, UNICODE_CASE_LIST)
+	testing.expect(t, !lint_unicode_case(root = root), "a call the list does not name fails")
+	_ = os.write_entire_file(list, "# a comment\nsrc/page/a.odin strings.equal_fold(s, \"div\")  # a test's\n")
+	testing.expect(t, lint_unicode_case(root = root), "listed, it passes")
+	_ = os.write_entire_file(list, "src/page/a.odin strings.equal_fold(s, \"div\")  # a test's\nsrc/page/gone.odin strings.to_lower(x)  # gone\n")
+	testing.expect(t, !lint_unicode_case(root = root), "an entry that matches nothing fails")
+	_ = os.write_entire_file(list, "src/page/a.odin strings.equal_fold(s, \"div\")\n")
+	testing.expect(t, !lint_unicode_case(root = root), "an entry without why fails")
+}
+
 // What another package reaches outside the walk, or names among the outputs of a build, changes nothing of a key computed before or after it.
 @(test)
 a_key_does_not_depend_on_the_packages_read_before_it :: proc(t: ^testing.T) {

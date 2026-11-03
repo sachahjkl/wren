@@ -2,6 +2,7 @@ package fetch
 
 import "core:strconv"
 import "core:strings"
+import "wb:base"
 import "wb:http"
 import "wb:url"
 
@@ -55,7 +56,7 @@ check_preflight_response :: proc(origin: url.Origin, credentials_include: bool, 
 	if raw, found := http.get_header(h, "access-control-allow-methods"); found { methods = split_header_list(raw) }
 	hdrs := make([dynamic]string, context.temp_allocator)
 	if raw, found := http.get_header(h, "access-control-allow-headers"); found {
-		for t in split_header_list(raw) { append(&hdrs, strings.to_lower(t, context.temp_allocator)) }
+		for t in split_header_list(raw) { append(&hdrs, base.ascii_lower(t)) }
 	}
 	v.methods, v.headers = methods, hdrs[:]
 
@@ -89,14 +90,14 @@ filter_cors_response_headers :: proc(h: http.Headers, credentials_include: bool,
 	out := http.headers_make(allocator)
 	exposed := make([dynamic]string, context.temp_allocator)
 	if raw, found := http.get_header(h, "access-control-expose-headers"); found {
-		for t in split_header_list(raw) { append(&exposed, strings.to_lower(t, context.temp_allocator)) }
+		for t in split_header_list(raw) { append(&exposed, base.ascii_lower(t)) }
 	}
 	star := false
 	for e in exposed { if e == "*" { star = true } }
 	for e in h.list {
 		if http.is_forbidden_response_header(e.name) { continue }
 		visible := http.is_cors_safelisted_response_header(e.name)
-		lname := strings.to_lower(e.name, context.temp_allocator)
+		lname := base.ascii_lower(e.name)
 		for x in exposed { if x == lname { visible = true } }
 		if star && !credentials_include { visible = true }
 		if visible { http.append_header(&out, e.name, e.value) }

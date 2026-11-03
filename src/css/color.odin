@@ -1,7 +1,7 @@
 package css
 
 import "core:math"
-import "core:strings"
+import "wb:base"
 
 // CSS Color 4 and 5: every color space of color() and the color functions, color-mix() in any space with hue
 // interpolation methods and missing components, and relative colors (`oklch(from var(--x) l c h / 50%)`). Colors are
@@ -22,7 +22,7 @@ Space_Color :: struct {
 Hue_Interpolation :: enum u8 { Shorter, Longer, Increasing, Decreasing }
 
 color_space_of_name :: proc(name: string) -> (Color_Space, bool) {
-	switch lower_temp(name) {
+	switch base.ascii_lower(name) {
 	case "srgb": return .Srgb, true
 	case "srgb-linear": return .Srgb_Linear, true
 	case "display-p3": return .Display_P3, true
@@ -292,7 +292,7 @@ replace_channels :: proc(vs: []Value, chans: ^Channels, a := context.temp_alloca
 		case .Token:
 			if v.tok.kind != .Ident { continue }
 			for name, k in chans.names {
-				if name != "" && strings.equal_fold(v.tok.text, name) {
+				if name != "" && base.ascii_equal_fold(v.tok.text, name) {
 					out[i].tok = Token{kind = .Number, num = chans.vals[k]}
 					break
 				}
@@ -306,7 +306,7 @@ replace_channels :: proc(vs: []Value, chans: ^Channels, a := context.temp_alloca
 
 @(private)
 parse_color_function_sc :: proc(f: Value, env: ^Color_Env) -> (sc: Space_Color, current: bool, ok: bool) {
-	name := lower_temp(f.tok.text)
+	name := base.ascii_lower(f.tok.text)
 	args := trim_values(f.children)
 	switch name {
 	case "light-dark":
@@ -332,7 +332,7 @@ parse_color_function_sc :: proc(f: Value, env: ^Color_Env) -> (sc: Space_Color, 
 	// relative color: `from <color>` first
 	rest := args
 	origin: Maybe(Space_Color)
-	if len(rest) > 0 && rest[0].kind == .Token && rest[0].tok.kind == .Ident && strings.equal_fold(rest[0].tok.text, "from") {
+	if len(rest) > 0 && rest[0].kind == .Token && rest[0].tok.kind == .Ident && base.ascii_equal_fold(rest[0].tok.text, "from") {
 		i := 1
 		for i < len(rest) && is_ws_value(rest[i]) { i += 1 }
 		if i >= len(rest) { return {}, false, false }
@@ -428,12 +428,12 @@ parse_color_mix_sc :: proc(args: []Value, env: ^Color_Env) -> (sc: Space_Color, 
 	hue := Hue_Interpolation.Shorter
 	colors := parts
 	head := trim_values(parts[0]) if len(parts) > 0 else nil
-	if len(head) > 0 && head[0].kind == .Token && head[0].tok.kind == .Ident && strings.equal_fold(head[0].tok.text, "in") {
+	if len(head) > 0 && head[0].kind == .Token && head[0].tok.kind == .Ident && base.ascii_equal_fold(head[0].tok.text, "in") {
 		words := make([dynamic]string, context.temp_allocator)
 		for v in head[1:] {
 			if is_ws_value(v) { continue }
 			if v.kind != .Token || v.tok.kind != .Ident { return {}, false, false }
-			append(&words, lower_temp(v.tok.text))
+			append(&words, base.ascii_lower(v.tok.text))
 		}
 		if len(words) == 0 { return {}, false, false }
 		s, good := color_space_of_name(words[0])
@@ -463,7 +463,7 @@ parse_color_mix_sc :: proc(args: []Value, env: ^Color_Env) -> (sc: Space_Color, 
 			if v.kind == .Token && v.tok.kind == .Percentage {
 				if sides[i].has_p || v.tok.num < 0 || v.tok.num > 100 { return {}, false, false }
 				sides[i].p, sides[i].has_p = v.tok.num / 100, true
-			} else if v.kind == .Function && strings.equal_fold(v.tok.text, "calc") {
+			} else if v.kind == .Function && base.ascii_equal_fold(v.tok.text, "calc") {
 				n, good := eval_simple_calc(v)
 				if !good { append(&rest, v); continue }   // a color function named calc does not exist: keep for the color parser
 				sides[i].p, sides[i].has_p = n / 100, true

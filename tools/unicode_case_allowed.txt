@@ -1,0 +1,63 @@
+# The calls of strings.to_lower, to_upper, equal_fold and unicode.to_lower, to_upper that are meant to fold by Unicode, in src (not src\tools) and native:
+# src\tools\test_all\lint_unicode_case.odin fails on any other (the web platform's case is ASCII: base.ascii_lower, ascii_equal_fold...) and on an entry here
+# that matches no line. "<path> <code>  # why": the line of <path> that holds <code>.
+src/blocker/jsre.odin return unicode.to_lower(r)  # a JavaScript regular expression's i flag: Unicode simple case folding (ECMA-262 Canonicalize)
+src/blocker/jsre.odin lo, up := unicode.to_lower(r), unicode.to_upper(r)  # a JavaScript regular expression's i flag
+src/blocker/jsre.odin re.icase && strings.equal_fold(  # a JavaScript regular expression's i flag
+src/browser/about_card_back.odin strings.to_upper(APP_NAME  # display text
+src/browser/about_card_engrave.odin strings.to_upper(parts[1]  # display text
+src/browser/blocker_dashboard.odin strings.to_upper(text, context.temp_allocator), id  # display text: a section's title in capitals
+src/browser/blocker_dashboard.odin q := strings.to_lower(query  # user text: the dashboard's search
+src/browser/blocker_dashboard.odin !strings.contains(strings.to_lower(e.url  # user text: the dashboard's search
+src/browser/config_ui.odin query := strings.to_lower(  # user text: the settings' search
+src/browser/console_eval.odin strings.has_prefix(strings.to_lower(name  # user text: the Console's completion of what is typed
+src/browser/context_menu.odin strings.to_upper(ext[1:]  # display text: "PNG file"
+src/browser/desktop_shell.odin strings.replace_all(strings.to_lower(s  # a Windows path (the file system folds by Unicode)
+src/browser/desktop_shell_test.odin strings.to_upper(tmp  # a Windows path in another case
+src/browser/devtools_application.odin fmt.tprintf("No %s", strings.to_lower(area_title  # display text
+src/browser/devtools_net_model.odin case .Name:     return cmp(strings.to_lower(  # display order of names
+src/browser/download.odin strings.to_upper(ext[1:]  # display text: "PNG file"
+src/browser/downloads_ui.odin ext := strings.to_upper(  # display text: the extension on a download's icon
+src/browser/downloads_ui.odin query := strings.to_lower(  # user text: the downloads' search
+src/browser/downloads_ui.odin return strings.contains(strings.to_lower(x.name  # user text: the downloads' search
+src/browser/find_bar.odin utf8.encode_rune(unicode.to_lower(r))  # user text: find in page
+src/browser/global_history.odin q := strings.to_lower(  # user text: the history's search
+src/browser/global_history.odin !strings.contains(strings.to_lower(v.url  # user text: the history's search
+src/browser/http_cache_ui.odin needle := strings.to_lower(filter  # user text: the cache page's filter
+src/browser/http_cache_ui.odin !strings.contains(strings.to_lower(e.key  # user text: the cache page's filter
+src/browser/palette.odin return unicode.to_lower(r)  # user text: the command palette's fuzzy match
+src/browser/palette_test.odin for ch in strings.to_lower(r.title  # the palette's fuzzy match, as it matches
+src/browser/search_engines.odin strings.equal_fold(e.keyword, kw)  # user text: a search engine's keyword
+src/browser/search_engines.odin return strings.to_upper(e.name[i:]  # display text: a search engine's initial
+src/browser/search_engines.odin strings.equal_fold(e.name, n)  # user text: a search engine's name
+src/browser/site_data_ui.odin needle := strings.to_lower(filter  # user text: the site data page's filter
+src/browser/urlbar.odin terms := strings.fields(strings.to_lower(q  # user text: the address bar's search
+src/browser/urlbar.odin lt, lu := strings.to_lower(x.title  # user text: the address bar's search
+src/browser/urlbar.odin low := strings.to_lower(text  # user text: the address bar's highlights
+src/browser/urlbar_index.odin low := strings.to_lower(rest, allocator)  # user text: the address bar's index
+src/browser/urlbar_index.odin e.low_title = strings.to_lower(v.title)  # user text: the address bar's index
+src/browser/urlbar_index.odin low_title = strings.to_lower(v.title), visits  # user text: the address bar's index
+src/browser/urlbar_index.odin q := strings.to_lower(strings.trim_space(query)  # user text: the address bar's index
+src/browser/urlbar_index.odin low := strings.to_lower(typed  # user text: the address bar's index
+src/desktop/install.odin strings.equal_fold(a[:len(b)], b)  # a Windows path
+src/desktop/integration.odin strings.equal_fold(normalize_slashes(a)  # a Windows path
+src/desktop/integration.odin e := strings.to_lower(strings.trim_space(ext), allocator)  # a file extension of the system's registry
+src/desktop/integration_test_windows.odin strings.to_upper(dir  # a Windows path in another case
+src/desktop/integration_test_windows.odin strings.count(strings.to_lower(v  # a Windows path
+src/desktop/integration_windows.odin strings.equal_fold(registered, l.capabilities)  # a Windows path of the registry
+src/desktop/system_test_windows.odin strings.has_suffix(strings.to_lower(p  # a Windows path
+src/desktop/system_test_windows.odin !strings.contains(strings.to_lower(p  # a Windows path
+src/fetch/directory.odin strings.compare(strings.to_lower(ea  # display order of a folder's listing
+src/fetch/directory.odin html_text(&sb, strings.to_upper(ext  # display text: a folder listing's file type
+src/layout/build.odin case .Uppercase: out = unicode.to_upper(r)  # text-transform: Unicode by CSS Text
+src/layout/build.odin case .Lowercase: out = unicode.to_lower(r)  # text-transform: Unicode by CSS Text
+src/layout/selection.odin case .Uppercase: out = unicode.to_upper(r)  # text-transform: Unicode by CSS Text
+src/layout/selection.odin case .Lowercase: out = unicode.to_lower(r)  # text-transform: Unicode by CSS Text
+src/page/fs_store.odin if strings.equal_fold(da, db)  # a Windows path of the disk
+src/page/fs_store.odin strings.has_prefix(strings.to_lower(db  # a Windows path of the disk
+src/remote/api/process_windows.odin return strings.equal_fold(a, b)  # a Windows path
+src/remote/api/process_windows.odin strings.equal_fold(name_of(v)  # a Windows program's name
+src/remote/client/commands.odin filter := len(args) > 0 ? strings.to_lower(  # user text: a filter typed at the command line
+src/remote/client/commands.odin strings.contains(strings.to_lower(line  # user text: a filter typed at the command line
+src/remote/names.odin p = strings.to_lower(p, context.temp_allocator)  # a Windows path
+src/testserver/testserver.odin lower := strings.to_lower(strings.trim_right(root  # a Windows path

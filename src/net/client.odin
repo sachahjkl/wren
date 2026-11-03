@@ -376,7 +376,7 @@ heap :: proc() -> runtime.Allocator { return base.process_allocator() }
 
 // localhost, a name under .localhost, or a loopback address (127.0.0.0/8, ::1).
 host_is_this_machine :: proc(host: string) -> bool {
-	h := strings.to_lower(strings.trim_suffix(strings.trim(host, "[]"), "."), context.temp_allocator)
+	h := base.ascii_lower(strings.trim_suffix(strings.trim(host, "[]"), "."))
 	if h == "localhost" || strings.has_suffix(h, ".localhost") || h == "::1" { return true }
 	if !strings.has_prefix(h, "127.") { return false }
 	dots := 0
@@ -389,7 +389,7 @@ host_is_this_machine :: proc(host: string) -> bool {
 
 // A name under .invalid, .test or .example (RFC 6761: reserved, never in the public DNS; native/net/src/conn.rs never_resolves).
 host_never_resolves :: proc(host: string) -> bool {
-	h := strings.to_lower(strings.trim_suffix(host, "."), context.temp_allocator)
+	h := base.ascii_lower(strings.trim_suffix(host, "."))
 	for tld in ([]string{"invalid", "test", "example"}) {
 		if h == tld || strings.has_suffix(h, strings.concatenate({".", tld}, context.temp_allocator)) { return true }
 	}

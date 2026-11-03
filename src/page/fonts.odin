@@ -121,7 +121,7 @@ fonts_sync :: proc(p: ^Page) {
 		note :: proc(c: ^style.Computed, used: ^map[string]bool, seen: ^map[rawptr]bool) {
 			if c == nil || len(c.font_family) == 0 || raw_data(c.font_family) in seen { return }
 			seen[raw_data(c.font_family)] = true
-			for fam in c.font_family { used[strings.to_lower(fam, context.temp_allocator)] = true }
+			for fam in c.font_family { used[base.ascii_lower(fam)] = true }
 		}
 		if changes, ok := style.journal_since(p.styled, since); ok && !rebuilt && since != 0 && pass == p.styled.pass_id {
 			for ch in changes { note(style.style_of(p.styled, ch.node), &used, &seen) }
@@ -131,7 +131,7 @@ fonts_sync :: proc(p: ^Page) {
 	}
 	for &ff in faces {
 		if ff.key in p.fonts.faces { continue }
-		if used != nil && strings.to_lower(ff.family, context.temp_allocator) not_in used { continue }
+		if used != nil && base.ascii_lower(ff.family) not_in used { continue }
 		if len(p.fonts.faces) >= s.webfont_max_faces { log(p, .Warn, fmt.tprintf("@font-face: more than %d faces, the rest is ignored", s.webfont_max_faces)); break }
 		f := new(Web_Font)
 		f.page = p
@@ -261,7 +261,7 @@ fonts_blocking_families :: proc(p: ^Page, allocator := context.temp_allocator) -
 		left := f.started_ms + font_block_ms(s, f) - now
 		if left <= 0 { continue }
 		if next_ms < 0 || left < next_ms { next_ms = left }
-		name := strings.to_lower(strings.trim_space(f.family), allocator)
+		name := base.ascii_lower_clone(strings.trim_space(f.family), allocator)
 		dup := false
 		for o in out { if o == name { dup = true; break } }
 		if !dup { append(&out, name) }

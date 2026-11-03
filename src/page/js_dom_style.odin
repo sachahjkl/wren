@@ -197,7 +197,7 @@ inline_block :: proc(c: ^Call, element: Api_Element) -> [dynamic]Style_Decl {
 block_value :: proc(block: []Style_Decl, name: string) -> (value: string, important: bool) {
 	for d in block { if d.name == name { return d.value, d.important } }
 	if strings.has_prefix(name, "--") { return "", false }
-	lp0, sh, known := style.lookup_property(strings.to_lower(name, context.temp_allocator))
+	lp0, sh, known := style.lookup_property(base.ascii_lower(name))
 	if !known { return "", false }
 	if sh == .None {
 		// another name of a longhand (block-size: height)
@@ -303,14 +303,14 @@ write_block :: proc(c: ^Call, element: Api_Element, block: []Style_Decl, always 
 
 InlineStyle_getProperty :: proc(c: ^Call, element: Api_Element, name: string) -> string {
 	block := inline_block(c, element)
-	n := strings.has_prefix(name, "--") ? name : strings.to_lower(name, context.temp_allocator)
+	n := strings.has_prefix(name, "--") ? name : base.ascii_lower(name)
 	v, _ := block_value(block[:], n)
 	return v
 }
 
 InlineStyle_priority :: proc(c: ^Call, element: Api_Element, name: string) -> string {
 	block := inline_block(c, element)
-	n := strings.has_prefix(name, "--") ? name : strings.to_lower(name, context.temp_allocator)
+	n := strings.has_prefix(name, "--") ? name : base.ascii_lower(name)
 	v, imp := block_value(block[:], n)
 	return v != "" && imp ? "important" : ""
 }
@@ -318,14 +318,14 @@ InlineStyle_priority :: proc(c: ^Call, element: Api_Element, name: string) -> st
 InlineStyle_setProperty :: proc(c: ^Call, element: Api_Element, name: string, value: string, priority: string) -> Api_Error {
 	if value == "" { _, err := InlineStyle_removeProperty(c, element, name); return err }
 	custom := strings.has_prefix(name, "--")
-	n := custom ? name : strings.to_lower(name, context.temp_allocator)
+	n := custom ? name : base.ascii_lower(name)
 	if !custom {
 		if _, _, known := style.lookup_property(n); !known { return .None }
 	}
 	important := false
 	switch {
 	case priority == "":
-	case strings.equal_fold(priority, "important"): important = true
+	case base.ascii_equal_fold(priority, "important"): important = true
 	case: return .None
 	}
 	// the value alone, as one declaration (a ';' or '!important' inside makes it invalid), validated alone first: an
@@ -375,7 +375,7 @@ remove_named :: proc(block: ^[dynamic]Style_Decl, name: string) -> bool {
 InlineStyle_removeProperty :: proc(c: ^Call, element: Api_Element, name: string) -> (string, Api_Error) {
 	block := inline_block(c, element)
 	custom := strings.has_prefix(name, "--")
-	n := custom ? name : strings.to_lower(name, context.temp_allocator)
+	n := custom ? name : base.ascii_lower(name)
 	old, _ := block_value(block[:], n)
 	old = strings.clone(old, context.temp_allocator)
 	removed := remove_named(&block, n)
@@ -910,7 +910,7 @@ ComputedStyle_get :: proc(c: ^Call, element: Api_Element, pseudo: string, name: 
 		used = used_box(p, h)
 	}
 	if cs == nil { return "" }
-	n := strings.has_prefix(name, "--") ? name : strings.to_lower(name, context.temp_allocator)
+	n := strings.has_prefix(name, "--") ? name : base.ascii_lower(name)
 	if !strings.has_prefix(n, "--") {
 		if _, _, known := style.lookup_property(n); known {
 			// aliases (-webkit-*) read their standard property; a logical name what it means on this element

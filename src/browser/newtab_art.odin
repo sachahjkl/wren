@@ -606,7 +606,7 @@ art_commons_meta :: proc(meta: json.Object, key: string) -> string {
 // non-commercial, no-derivatives, fair-use or unknown is refused.
 @(private = "file")
 art_license_free :: proc(short, code: string) -> bool {
-	s := strings.to_lower(strings.concatenate({short, " ", code}, context.temp_allocator), context.temp_allocator)
+	s := base.ascii_lower(strings.concatenate({short, " ", code}, context.temp_allocator))
 	if strings.contains(s, "non-commercial") || strings.contains(s, "noncommercial") || strings.contains(s, "-nc") { return false }
 	if strings.contains(s, "no derivative") || strings.contains(s, "-nd") || strings.contains(s, "fair use") { return false }
 	if strings.contains(s, "public domain") || strings.contains(s, "pd-") || strings.contains(s, "cc0") { return true }
@@ -929,7 +929,7 @@ art_ext :: proc(u: string) -> string {
 	s := u
 	if i := strings.index_byte(s, '?'); i >= 0 { s = s[:i] }
 	if i := strings.last_index_byte(s, '.'); i >= 0 {
-		ext := strings.to_lower(s[i:], context.temp_allocator)
+		ext := base.ascii_lower(s[i:])
 		switch ext {
 		case ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp": return strings.clone(ext, context.temp_allocator)
 		}

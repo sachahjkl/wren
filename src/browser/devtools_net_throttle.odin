@@ -179,7 +179,7 @@ net_prof_edit_save :: proc(app: ^App, t: ^Tab, e: ^Net_Prof_Edit) -> bool {
 			// a new id from the name that no profile has
 			sb := strings.builder_make(context.temp_allocator)
 			strings.write_string(&sb, "c_")
-			for r in strings.to_lower(name, context.temp_allocator) { strings.write_rune(&sb, (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') ? r : '_') }
+			for r in base.ascii_lower(name) { strings.write_rune(&sb, (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') ? r : '_') }
 			base_id := strings.to_string(sb)
 			id = base_id
 			for n := 2; ; n += 1 {

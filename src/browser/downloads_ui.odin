@@ -136,7 +136,7 @@ Dl_Kind :: enum u8 { Other, Archive, Document, Image, Media, Program }
 
 @(private = "file")
 dl_kind_of :: proc(name: string) -> Dl_Kind {
-	switch strings.to_lower(strings.trim_left(filepath.ext(name), "."), context.temp_allocator) {
+	switch base.ascii_lower(strings.trim_left(filepath.ext(name), ".")) {
 	case "zip", "rar", "7z", "gz", "tgz", "tar", "xz", "bz2", "zst": return .Archive
 	case "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf", "odt", "ods", "csv", "epub", "md", "json": return .Document
 	case "png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "tif", "tiff", "avif", "heic": return .Image

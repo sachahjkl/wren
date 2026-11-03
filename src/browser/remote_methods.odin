@@ -1191,7 +1191,7 @@ parse_combo :: proc(s: string) -> (key: platform.Key, mods: platform.Modifiers, 
 		parts[len(parts) - 1] = "plus"
 	}
 	for p, i in parts {
-		name := strings.to_lower(strings.trim_space(p), context.temp_allocator)
+		name := base.ascii_lower(strings.trim_space(p))
 		if i < len(parts) - 1 {
 			switch name {
 			case "ctrl", "control": mods += {.Ctrl}

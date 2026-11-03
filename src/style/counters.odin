@@ -4,7 +4,6 @@ import "base:runtime"
 import "core:strconv"
 import "core:strings"
 import "wb:base"
-import "wb:css"
 import "wb:dom"
 
 // CSS counters (CSS Lists 3 §4) and quotes (CSS Generated Content 3), resolved while a full style pass walks the document
@@ -311,7 +310,7 @@ quote_pairs :: proc(doc: ^dom.Document, h: base.Handle, q: Quotes) -> [][2]strin
 	for cur := h; cur != base.NIL_HANDLE; {
 		n := dom.get(doc, cur)
 		if n == nil || n.kind != .Element { break }
-		if v, ok := attr(n, "lang"); ok { lang = css.lower_temp(strings.trim_space(v)); break }
+		if v, ok := attr(n, "lang"); ok { lang = base.ascii_lower(strings.trim_space(v)); break }
 		cur = n.parent
 	}
 	best := -1

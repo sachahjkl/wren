@@ -59,7 +59,7 @@ allowed_step :: proc(f: ^Forms, n: ^dom.Node, t: Input_Type) -> (step: f64, has:
 	info := step_info(t)
 	s := info.default_step
 	if v, ok := attr(n, "step"); ok {
-		if strings.equal_fold(trim_ascii_ws(v), "any") { return 0, false }
+		if base.ascii_equal_fold(trim_ascii_ws(v), "any") { return 0, false }
 		if x, good := parse_float_lenient(v); good && x > 0 {
 			s = x
 			if t == .Date || t == .Month || t == .Week { s = max(math.round(s), 1) }

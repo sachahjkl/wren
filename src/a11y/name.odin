@@ -24,7 +24,7 @@ attr :: proc(src: ^Source, h: base.Handle, name: string) -> (string, bool) { ret
 // computed style at all when the document has some: inside a display: none subtree), visibility: hidden.
 hidden_self :: proc(src: ^Source, h: base.Handle, n: ^dom.Node) -> (gone, invisible: bool) {
 	if n.kind != .Element { return false, false }
-	if v, ok := attr(src, h, "aria-hidden"); ok && strings.equal_fold(strings.trim_space(v), "true") { return true, true }
+	if v, ok := attr(src, h, "aria-hidden"); ok && base.ascii_equal_fold(strings.trim_space(v), "true") { return true, true }
 	if _, ok := attr(src, h, "inert"); ok { return true, true }
 	if src.styled != nil {
 		cs := style.style_of(src.styled, h)
@@ -56,7 +56,7 @@ role_of :: proc(src: ^Source, h: base.Handle, n: ^dom.Node) -> Role {
 	if n.kind == .Text { return .Label }
 	if n.kind != .Element { return .Unknown }
 	if v, ok := attr(src, h, "role"); ok {
-		for tok in strings.fields(strings.to_lower(v, context.temp_allocator), context.temp_allocator) {
+		for tok in strings.fields(base.ascii_lower(v), context.temp_allocator) {
 			if r, known := aria_role(tok); known {
 				// none / presentation is ignored on focusable elements and on those with global ARIA (ARIA §9.3)
 				if r == .Unknown && (is_focusable(src, h, n) || has_global_aria(n)) { break }
@@ -97,9 +97,9 @@ is_focusable :: proc(src: ^Source, h: base.Handle, n: ^dom.Node) -> bool {
 	case "button", "select", "textarea", "iframe", "summary": return true
 	case "input":
 		t, _ := attr(src, h, "type")
-		return !strings.equal_fold(t, "hidden")
+		return !base.ascii_equal_fold(t, "hidden")
 	}
-	if v, ok := attr(src, h, "contenteditable"); ok && !strings.equal_fold(v, "false") { return true }
+	if v, ok := attr(src, h, "contenteditable"); ok && !base.ascii_equal_fold(v, "false") { return true }
 	return false
 }
 
@@ -220,11 +220,11 @@ native_name :: proc(src: ^Source, h: base.Handle, n: ^dom.Node, visited: ^map[ba
 	switch n.name {
 	case "input":
 		t, _ := attr(src, h, "type")
-		switch strings.to_lower(t, context.temp_allocator) {
+		switch base.ascii_lower(t) {
 		case "button", "submit", "reset":
 			if v, ok := attr(src, h, "value"); ok && strings.trim_space(v) != "" { return strings.trim_space(v) }
-			if strings.equal_fold(t, "submit") { return "Submit" }
-			if strings.equal_fold(t, "reset") { return "Reset" }
+			if base.ascii_equal_fold(t, "submit") { return "Submit" }
+			if base.ascii_equal_fold(t, "reset") { return "Reset" }
 			return ""
 		case "image":
 			if v, ok := attr(src, h, "alt"); ok && strings.trim_space(v) != "" { return strings.trim_space(v) }

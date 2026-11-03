@@ -553,7 +553,7 @@ visit :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame) {
 	}
 	replaced := is_replaced_element(n)
 	if n.name == "input" {
-		if t, ok := dom.get_attribute(c.d, f.node, "type"); ok && strings.equal_fold(t, "hidden") { return }
+		if t, ok := dom.get_attribute(c.d, f.node, "type"); ok && base.ascii_equal_fold(t, "hidden") { return }
 	}
 	// a top layer element's ::backdrop: its box just before the element's, in the same layer, painted under it
 	if cs.backdrop != nil { place_element(c, stack, f, f.node, n, cs.backdrop, false, true) }

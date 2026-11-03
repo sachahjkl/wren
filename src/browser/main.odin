@@ -765,7 +765,7 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		// an image is shown by a document the browser writes once the image is in (download.odin show_image_document)
 		if load.action == .Image && !load.view_source { return }
 		// the document exists from here on, with the origin of its *final* URL
-		if cc, ok := http.get_header(r.headers, "cache-control"); ok && strings.contains(strings.to_lower(cc, context.temp_allocator), "no-store") { t.nav_state.no_store = true }
+		if cc, ok := http.get_header(r.headers, "cache-control"); ok && base.ascii_contains_fold(cc, "no-store") { t.nav_state.no_store = true }
 		// a redirect: the entry is the final address
 		if cur := page.session_current(&t.session); cur != nil && !load.view_source && cur.url != r.url { page.session_replace(&t.session, r.url, set_state = false); sync_history(app, t) }
 		load.page = kept != nil ? kept : page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, r.url, console_sink, t)

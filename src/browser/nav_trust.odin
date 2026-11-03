@@ -2,6 +2,7 @@ package browser
 
 import "core:fmt"
 import "core:strings"
+import "wb:base"
 import "wb:fetch"
 import "wb:page"
 import "wb:url"
@@ -56,7 +57,7 @@ nav_judge :: proc(origin: Nav_Origin, from: ^fetch.Environment, policy: fetch.Fi
 	if origin == .Page && !v.trusted {
 		inner := target
 		for strings.has_prefix(inner, VIEW_SOURCE) { inner = inner[len(VIEW_SOURCE):] }
-		if len(inner) >= 5 && strings.equal_fold(inner[:5], "file:") {
+		if len(inner) >= 5 && base.ascii_equal_fold(inner[:5], "file:") {
 			host := ""
 			if u, ok := url.parse(inner, allocator = context.temp_allocator); ok { host = u.host }
 			if from == nil || from.location.scheme != "file" || !fetch.file_navigation_allowed(from, policy, host) {

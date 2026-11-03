@@ -14,7 +14,6 @@ package page
 //     (Navigation_scroll): a traversal puts the entry's positions back unless the document was scrolled since its
 //     navigate event, anything else goes to the fragment, else to the top.
 
-import "core:strings"
 import "wb:base"
 import "wb:dom"
 import "wb:style"
@@ -30,7 +29,7 @@ indicated_part :: proc(p: ^Page) -> (el: base.Handle, top: bool) {
 	if h := potential_indicated(p.doc, loc.fragment); h != base.NIL_HANDLE { return h, false }
 	decoded := url.percent_decode(loc.fragment)
 	if h := potential_indicated(p.doc, decoded); h != base.NIL_HANDLE { return h, false }
-	return base.NIL_HANDLE, strings.equal_fold(decoded, "top")
+	return base.NIL_HANDLE, base.ascii_equal_fold(decoded, "top")
 }
 
 @(private = "file")

@@ -144,7 +144,7 @@ block_from_decls :: proc(s: ^Dev_Styles, key: uintptr, engine: []style.Dev_Decl)
 		same := true
 		for d in full {
 			if !d.enabled || d.name == "" || d.value == "" { continue }
-			if n >= len(engine) || engine[n].name != strings.to_lower(d.name, context.temp_allocator) && engine[n].name != d.name { same = false; break }
+			if n >= len(engine) || engine[n].name != base.ascii_lower(d.name) && engine[n].name != d.name { same = false; break }
 			n += 1
 		}
 		if same && n == len(engine) {

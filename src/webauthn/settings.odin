@@ -1,6 +1,7 @@
 package webauthn
 
 import "core:strings"
+import "wb:base"
 import "wb:config"
 
 // Everything about passkeys a user or an administrator may want to decide (about:config, `security.webauthn.*`).
@@ -91,7 +92,7 @@ settings_from_prefs :: proc(p: ^config.Prefs, allocator := context.allocator) ->
 	s.attestation = config.string_of(p, "security.webauthn.attestation") == "none" ? .None : .Allow
 	ids := make([dynamic]string, allocator)
 	for part in strings.split(config.string_of(p, "security.webauthn.enterprise_rp_ids"), ",", context.temp_allocator) {
-		t := strings.to_lower(strings.trim_space(part), context.temp_allocator)
+		t := base.ascii_lower(strings.trim_space(part))
 		if t != "" { append(&ids, strings.clone(t, allocator)) }
 	}
 	s.enterprise_rp_ids = ids[:]

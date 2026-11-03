@@ -858,7 +858,7 @@ check_and_send_response :: proc(t: ^Task) -> bool {
 	raw = t.raw_headers
 	m, has_mime := http.extract_mime(raw, context.temp_allocator)
 	nosniff := false
-	if v, ok := http.get_header(raw, "x-content-type-options"); ok { nosniff = strings.equal_fold(strings.trim_space(strings.split(v, ",", context.temp_allocator)[0]), "nosniff") }
+	if v, ok := http.get_header(raw, "x-content-type-options"); ok { nosniff = base.ascii_equal_fold(strings.trim_space(strings.split(v, ",", context.temp_allocator)[0]), "nosniff") }
 	if why, ok := check_task_mime(t, m, has_mime, nosniff); !ok {
 		fail(t, .Bad_Mime, why)
 		return false
@@ -1057,7 +1057,7 @@ File_Job :: struct {
 file_navigation_allowed :: proc(env: ^Environment, policy: File_Access, target_host := "") -> bool {
 	if env == nil { return true }
 	if policy == .None || env.location.scheme != "file" { return false }
-	if target_host != "" && target_host != "localhost" && !strings.equal_fold(target_host, env.location.host) { return false }
+	if target_host != "" && target_host != "localhost" && !base.ascii_equal_fold(target_host, env.location.host) { return false }
 	return true
 }
 

@@ -3,6 +3,7 @@ package style
 import "base:runtime"
 import "core:slice"
 import "core:strings"
+import "wb:base"
 import "wb:css"
 
 // @keyframes (CSS Animations 1 §4): the rule of each name that wins (origin, then cascade layer, then document order),
@@ -59,7 +60,7 @@ compile_keyframes_into :: proc(e: ^Engine, refs: []Keyframes_Ref, out: ^map[stri
 	}
 	for ref, i in refs {
 		name := ref.rule.name
-		if name == "" || strings.equal_fold(name, "none") { continue }
+		if name == "" || base.ascii_equal_fold(name, "none") { continue }
 		if prev, ok := winners[name]; ok && !stronger(ref, refs[prev]) { continue }
 		winners[name] = i
 	}
@@ -218,7 +219,7 @@ mentions_var :: proc(vs: []css.Value, names: map[string]bool) -> bool {
 		switch v.kind {
 		case .Token:
 		case .Function:
-			if strings.equal_fold(v.tok.text, "var") {
+			if base.ascii_equal_fold(v.tok.text, "var") {
 				for a in v.children {
 					if a.kind == .Token && a.tok.kind == .Ident { if a.tok.text in names { return true }; break }
 				}

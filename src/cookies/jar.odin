@@ -86,7 +86,7 @@ store :: proc(j: ^Jar, header: string, ctx: Context) -> Store_Result {
 
 	// domain
 	if p.has_domain {
-		d := strings.to_lower(p.domain_attr, context.temp_allocator)
+		d := base.ascii_lower(p.domain_attr)
 		if url.is_ip_host(u) {
 			if d != host { return .Rejected_Domain }
 			c.domain, c.host_only = host, true
@@ -164,7 +164,7 @@ store :: proc(j: ^Jar, header: string, ctx: Context) -> Store_Result {
 
 @(private)
 prefix_ok_ci :: proc(c: Cookie, secure_origin: bool) -> bool {
-	n := strings.to_lower(c.name, context.temp_allocator)
+	n := base.ascii_lower(c.name)
 	if strings.has_prefix(n, "__secure-") && !(c.secure && secure_origin) { return false }
 	if strings.has_prefix(n, "__host-") && !(c.secure && secure_origin && c.host_only && c.path == "/") { return false }
 	return true

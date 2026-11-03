@@ -74,7 +74,7 @@ local_file_from_path :: proc(path: string, allocator := context.allocator) -> (f
 mime_type_for_name :: proc(name: string) -> string {
 	dot := strings.last_index_byte(name, '.')
 	if dot < 0 || dot < strings.last_index_any(name, "\\/") { return "" }
-	switch strings.to_lower(name[dot + 1:], context.temp_allocator) {
+	switch base.ascii_lower(name[dot + 1:]) {
 	case "txt": return "text/plain"
 	case "html", "htm": return "text/html"
 	case "css": return "text/css"
@@ -207,7 +207,7 @@ store_clear :: proc(st: ^Drag_Store) {
 // HTML: "text" means text/plain and "url" text/uri-list; other formats are lower cased.
 @(private)
 normal_format :: proc(format: string) -> string {
-	f := strings.to_lower(format, context.temp_allocator)
+	f := base.ascii_lower(format)
 	switch f {
 	case "text": return "text/plain"
 	case "url": return "text/uri-list"
@@ -231,7 +231,7 @@ store_set_string :: proc(st: ^Drag_Store, format, data: string) {
 @(private)
 store_get_string :: proc(st: ^Drag_Store, format: string) -> (string, bool) {
 	f := normal_format(format)
-	want_url := strings.equal_fold(format, "url")
+	want_url := base.ascii_equal_fold(format, "url")
 	for it in st.items {
 		if it.is_file || it.type != f { continue }
 		if want_url { return uri_list_first(it.data), true }
@@ -393,7 +393,7 @@ DataTransfer_itemFsHandle :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) ->
 DataTransfer_addString :: proc(c: ^Call, dt: Api_DataTransfer, data, type: string) -> Api_Error {
 	st := dt.data
 	if st.mode != .Read_Write { return fail(c, .Invalid_State, "the DataTransfer is not in read/write mode") }
-	t := strings.to_lower(type, context.temp_allocator)
+	t := base.ascii_lower(type)
 	for it in st.items { if !it.is_file && it.type == t { return fail(c, .Not_Supported, "an item of this type exists already") } }
 	append(&st.items, Drag_Item{type = strings.clone(t), data = strings.clone(data)})
 	return .None

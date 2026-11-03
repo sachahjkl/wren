@@ -3,6 +3,7 @@ package layout
 import "core:math"
 import "core:strings"
 import "core:unicode/utf8"
+import "wb:base"
 import "wb:dom"
 import "wb:style"
 
@@ -586,9 +587,9 @@ control_baseline :: proc(c: ^Ctx, k: ^Box) -> (f32, bool) {
 		t, _ := dom.get_attribute(c.d, k.node, "type")
 		t = strings.trim_space(t)
 		switch {
-		case strings.equal_fold(t, "checkbox"), strings.equal_fold(t, "radio"):
+		case base.ascii_equal_fold(t, "checkbox"), base.ascii_equal_fold(t, "radio"):
 			return k.size.y, true
-		case strings.equal_fold(t, "range"), strings.equal_fold(t, "color"), strings.equal_fold(t, "image"), strings.equal_fold(t, "hidden"):
+		case base.ascii_equal_fold(t, "range"), base.ascii_equal_fold(t, "color"), base.ascii_equal_fold(t, "image"), base.ascii_equal_fold(t, "hidden"):
 			return 0, false
 		}
 	case "select":

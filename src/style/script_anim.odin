@@ -189,7 +189,7 @@ script_keyframes_compile :: proc(e: ^Engine, packed: string, a: runtime.Allocato
 			// one declaration of that property, nothing else
 			text := strings.concatenate({name, ":", value}, context.temp_allocator)
 			parsed := css.parse_declarations(text, opt, a)
-			if len(parsed) != 1 || parsed[0].important || !strings.equal_fold(parsed[0].name, name) { continue }
+			if len(parsed) != 1 || parsed[0].important || !base.ascii_equal_fold(parsed[0].name, name) { continue }
 			append(&decls, parsed[0])
 		}
 		compiled, customs := compile_declarations(e, decls[:], a)

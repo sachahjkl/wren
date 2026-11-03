@@ -1,6 +1,7 @@
 package style
 
 import "core:strings"
+import "wb:base"
 import "wb:css"
 
 // What repeat() counts and grid line numbers are held to (+/- for a line).
@@ -34,7 +35,7 @@ parse_breadth :: proc(cx: ^Cx, v: css.Value, allow_flex: bool) -> (Track_Breadth
 	case "": 
 	case: return {}, false
 	}
-	if tok_is(v, .Dimension) && strings.equal_fold(v.tok.text, "fr") {
+	if tok_is(v, .Dimension) && base.ascii_equal_fold(v.tok.text, "fr") {
 		if !allow_flex || v.tok.num < 0 { return {}, false }
 		return Track_Breadth{kind = .Fr, fr = f32(v.tok.num)}, true
 	}
@@ -47,7 +48,7 @@ parse_breadth :: proc(cx: ^Cx, v: css.Value, allow_flex: bool) -> (Track_Breadth
 parse_track_size :: proc(cx: ^Cx, v: css.Value) -> (Grid_Track, bool) {
 	if v.kind == .Function {
 		args := css.split_commas(v.children, context.temp_allocator)
-		switch css.lower_temp(v.tok.text) {
+		switch base.ascii_lower(v.tok.text) {
 		case "minmax":
 			if len(args) != 2 { return {}, false }
 			a, b := css.trim_values(args[0]), css.trim_values(args[1])
@@ -91,7 +92,7 @@ parse_track_list :: proc(cx: ^Cx, items: []css.Value, allow_repeat: bool) -> (tr
 			continue
 		}
 		t: Grid_Track
-		if it.kind == .Function && strings.equal_fold(it.tok.text, "repeat") {
+		if it.kind == .Function && base.ascii_equal_fold(it.tok.text, "repeat") {
 			if !allow_repeat { return nil, nil, false }
 			args := css.split_commas(it.children, context.temp_allocator)
 			if len(args) != 2 { return nil, nil, false }

@@ -283,7 +283,7 @@ natural_size_of :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
 		return math.ceil(widest) + (c.set.select_start + c.set.select_arrow) * s, f32(rows) * f.line_h, true, true
 	case "input":
 		t, _ := dom.get_attribute(c.d, h_node, "type")
-		t = strings.to_lower(strings.trim_space(t), context.temp_allocator)
+		t = base.ascii_lower(strings.trim_space(t))
 		switch t {
 		case "checkbox", "radio": return 13 * s, 13 * s, true, true
 		case "range": return 129 * s, 16 * s, true, true

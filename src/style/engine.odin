@@ -564,7 +564,7 @@ contains_var :: proc(vs: []css.Value) -> bool {
 		switch v.kind {
 		case .Token:
 		case .Function:
-			if strings.equal_fold(v.tok.text, "var") || contains_var(v.children) { return true }
+			if base.ascii_equal_fold(v.tok.text, "var") || contains_var(v.children) { return true }
 		case .Block:
 			if contains_var(v.children) { return true }
 		}
@@ -999,7 +999,7 @@ supports_condition :: proc(e: ^Engine, vs_in: []css.Value) -> bool {
 	if len(vs) == 0 { return false }
 	// not <cond>
 	if css.is_ws_value(vs[0]) { return false }
-	if vs[0].kind == .Token && vs[0].tok.kind == .Ident && strings.equal_fold(vs[0].tok.text, "not") {
+	if vs[0].kind == .Token && vs[0].tok.kind == .Ident && base.ascii_equal_fold(vs[0].tok.text, "not") {
 		return !supports_condition(e, vs[1:])
 	}
 	result := false
@@ -1012,20 +1012,20 @@ supports_condition :: proc(e: ^Engine, vs_in: []css.Value) -> bool {
 		v := vs[i]
 		i += 1
 		if v.kind == .Token && v.tok.kind == .Ident {
-			w := css.lower_temp(v.tok.text)
+			w := base.ascii_lower(v.tok.text)
 			if w == "and" || w == "or" { op = w; continue }
 			return false
 		}
 		val := false
 		switch {
-		case v.kind == .Function && strings.equal_fold(v.tok.text, "selector"):
+		case v.kind == .Function && base.ascii_equal_fold(v.tok.text, "selector"):
 			_, ok := css.parse_selector_list(css.trim_values(v.children), context.temp_allocator, nil)
 			val = ok
-		case v.kind == .Function && strings.equal_fold(v.tok.text, "font-format"):
+		case v.kind == .Function && base.ascii_equal_fold(v.tok.text, "font-format"):
 			args := css.trim_values(v.children)
 			val = len(args) == 1 && args[0].kind == .Token && (args[0].tok.kind == .Ident || args[0].tok.kind == .String) &&
 			      font_format_supported(face_format(args[0].tok.text))
-		case v.kind == .Function && strings.equal_fold(v.tok.text, "font-tech"):
+		case v.kind == .Function && base.ascii_equal_fold(v.tok.text, "font-tech"):
 			args := css.trim_values(v.children)
 			val = len(args) == 1 && args[0].kind == .Token && args[0].tok.kind == .Ident && font_tech_supported(args[0].tok.text)
 		case v.kind == .Function:
@@ -1061,7 +1061,7 @@ supports_block :: proc(e: ^Engine, children: []css.Value) -> bool {
 	inner := css.trim_values(children)
 	if len(inner) == 0 { return false }
 	// a nested condition
-	if inner[0].kind == .Block || inner[0].kind == .Function || (inner[0].kind == .Token && inner[0].tok.kind == .Ident && strings.equal_fold(inner[0].tok.text, "not")) {
+	if inner[0].kind == .Block || inner[0].kind == .Function || (inner[0].kind == .Token && inner[0].tok.kind == .Ident && base.ascii_equal_fold(inner[0].tok.text, "not")) {
 		return supports_condition(e, inner)
 	}
 	// (property: value)
@@ -1072,7 +1072,7 @@ supports_block :: proc(e: ^Engine, children: []css.Value) -> bool {
 	value := css.trim_values(inner[i + 1:])
 	name := inner[0].tok.text
 	if strings.has_prefix(name, "--") { return true }
-	p, sh, known := lookup_property(css.lower_temp(name))
+	p, sh, known := lookup_property(base.ascii_lower(name))
 	if !known || len(value) == 0 { return false }
 	if contains_var(value) { return true }
 	if css_wide_keyword(value) != "" { return true }

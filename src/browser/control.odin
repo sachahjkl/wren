@@ -571,7 +571,7 @@ control_pref :: proc(app: ^App, name: string, allocator := context.temp_allocato
 	p = {
 		name = strings.clone(e.def.name, allocator), text = strings.clone(config.value_string(&app.prefs, config.Ref(i)), allocator),
 		default_text = strings.clone(config.default_string(&app.prefs, config.Ref(i)), allocator),
-		source = strings.to_lower(fmt.tprintf("%v", e.source), allocator), locked = e.locked, restart = e.def.restart,
+		source = base.ascii_lower_clone(fmt.tprintf("%v", e.source), allocator), locked = e.locked, restart = e.def.restart,
 	}
 	switch e.def.kind {
 	case .Bool:   p.value = e.value.b
@@ -700,7 +700,7 @@ control_network :: proc(t: ^Tab, clear_after := false, allocator := context.temp
 	for en, i in t.net.entries {
 		r.requests[i] = {
 			id = int(en.id), url = strings.clone(en.url, allocator), method = strings.clone(en.method, allocator), mime = strings.clone(en.mime, allocator), error = strings.clone(en.error, allocator),
-			destination = strings.to_lower(fmt.tprintf("%v", en.dest), allocator), cache = strings.to_lower(fmt.tprintf("%v", en.cache), allocator),
+			destination = base.ascii_lower_clone(fmt.tprintf("%v", en.dest), allocator), cache = base.ascii_lower_clone(fmt.tprintf("%v", en.cache), allocator),
 			status = en.status, bytes = en.bytes, ms = f64(en.ms), has_ms = en.ms >= 0, failed = en.failed,
 		}
 	}

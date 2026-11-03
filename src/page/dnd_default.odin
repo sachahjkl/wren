@@ -37,7 +37,7 @@ editing_host_of :: proc(p: ^Page, h: base.Handle) -> base.Handle {
 		if n == nil { break }
 		if n.kind == .Element {
 			if v, ok := dom.get_attribute(p.doc, cur, "contenteditable"); ok {
-				if v == "" || strings.equal_fold(v, "true") || strings.equal_fold(v, "plaintext-only") { host = cur } else { break }
+				if v == "" || base.ascii_equal_fold(v, "true") || base.ascii_equal_fold(v, "plaintext-only") { host = cur } else { break }
 			}
 		}
 		cur = n.parent

@@ -4,6 +4,7 @@ package media
 // canPlayType, MediaSource.isTypeSupported and the media capabilities API answer.
 
 import "core:strings"
+import "wb:base"
 
 Container :: enum u8 { None, MP4, WebM, Audio_Only_MP3, Ogg, Wav, Flac }
 
@@ -30,8 +31,8 @@ parse_type :: proc(s: string) -> (t: Parsed_Type, ok: bool) {
 	essence := strings.trim_space(semi < 0 ? s : s[:semi])
 	slash := strings.index_byte(essence, '/')
 	if slash <= 0 || slash == len(essence) - 1 { return {}, false }
-	main := strings.to_lower(essence[:slash], context.temp_allocator)
-	sub := strings.to_lower(essence[slash + 1:], context.temp_allocator)
+	main := base.ascii_lower(essence[:slash])
+	sub := base.ascii_lower(essence[slash + 1:])
 	t.video = main == "video"
 	switch main {
 	case "video", "audio":
@@ -60,7 +61,7 @@ parse_type :: proc(s: string) -> (t: Parsed_Type, ok: bool) {
 			rest = end < len(rest) ? rest[end + 1:] : ""
 			eq := strings.index_byte(param, '=')
 			if eq <= 0 { continue }
-			name := strings.to_lower(strings.trim_space(param[:eq]), context.temp_allocator)
+			name := base.ascii_lower(strings.trim_space(param[:eq]))
 			value := strings.trim_space(param[eq + 1:])
 			if len(value) >= 2 && value[0] == '"' && value[len(value) - 1] == '"' { value = value[1:len(value) - 1] }
 			if name != "codecs" { continue }
@@ -78,7 +79,7 @@ parse_type :: proc(s: string) -> (t: Parsed_Type, ok: bool) {
 
 // The codec an RFC 6381 string names.
 codec_of_string :: proc(c: string) -> Codec {
-	lc := strings.to_lower(c, context.temp_allocator)
+	lc := base.ascii_lower(c)
 	has :: proc(s, prefix: string) -> bool { return strings.has_prefix(s, prefix) }
 	switch {
 	case has(lc, "avc1.") || has(lc, "avc3.") || lc == "avc1" || lc == "avc3": return .H264

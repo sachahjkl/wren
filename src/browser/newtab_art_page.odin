@@ -256,7 +256,7 @@ art_data_url :: proc(it: ^Art_Item) -> string {
 
 @(private = "file")
 art_mime_of :: proc(path: string) -> string {
-	s := strings.to_lower(path, context.temp_allocator)
+	s := base.ascii_lower(path)
 	switch {
 	case strings.has_suffix(s, ".png"):  return "image/png"
 	case strings.has_suffix(s, ".webp"): return "image/webp"

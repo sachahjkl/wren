@@ -267,7 +267,7 @@ short_longhands :: proc(s: Short) -> []Prop {
 
 @(private)
 is_ident :: proc(v: css.Value, name: string) -> bool {
-	return v.kind == .Token && v.tok.kind == .Ident && strings.equal_fold(v.tok.text, name)
+	return v.kind == .Token && v.tok.kind == .Ident && base.ascii_equal_fold(v.tok.text, name)
 }
 
 @(private)
@@ -304,7 +304,7 @@ is_width_item :: proc(v: css.Value) -> bool {
 	case .Token:
 		#partial switch v.tok.kind {
 		case .Dimension, .Number: return true
-		case .Ident: switch css.lower_temp(v.tok.text) { case "thin", "medium", "thick": return true }
+		case .Ident: switch base.ascii_lower(v.tok.text) { case "thin", "medium", "thick": return true }
 		}
 	case .Function:
 		return css.is_math_function(v.tok.text)
@@ -317,7 +317,7 @@ is_line_style_item :: proc(v: css.Value) -> bool {
 	if v.kind != .Token || v.tok.kind != .Ident { return false }
 	one := [1]css.Value{v}
 	_, ok := parse_enum(one[:], Border_Style)
-	return ok || strings.equal_fold(v.tok.text, "auto")
+	return ok || base.ascii_equal_fold(v.tok.text, "auto")
 }
 
 // width / style / color in any order, each at most once (border, outline).
@@ -474,7 +474,7 @@ expand_shorthand :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -> ([]
 
 	case .Flex:
 		if len(items) == 1 && items[0].kind == .Token && items[0].tok.kind == .Ident {
-			switch css.lower_temp(items[0].tok.text) {
+			switch base.ascii_lower(items[0].tok.text) {
 			case "none":
 				emit(&res, .Flex_Grow, zero_value(a)); emit(&res, .Flex_Shrink, zero_value(a)); emit(&res, .Flex_Basis, auto_value(a))
 				return res[:], true
@@ -511,7 +511,7 @@ expand_shorthand :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -> ([]
 			if _, ok := parse_enum(one[:], List_Style_Position); ok { pos = items[i:i + 1]; continue }
 			if is_ident(it, "none") && typ == nil { typ = items[i:i + 1]; continue }
 			if it.kind == .Token && it.tok.kind == .Url { continue }
-			if it.kind == .Function && strings.equal_fold(it.tok.text, "url") { continue }
+			if it.kind == .Function && base.ascii_equal_fold(it.tok.text, "url") { continue }
 			if typ != nil { return nil, false }
 			typ = items[i:i + 1]
 		}
@@ -522,7 +522,7 @@ expand_shorthand :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -> ([]
 		col, style, thick: []css.Value
 		for it, i in items {
 			if it.kind == .Token && it.tok.kind == .Ident {
-				switch css.lower_temp(it.tok.text) {
+				switch base.ascii_lower(it.tok.text) {
 				case "none", "underline", "overline", "line-through", "blink": append(&lines, it); continue
 				case "solid", "double", "dotted", "dashed", "wavy":
 					if style != nil { return nil, false }

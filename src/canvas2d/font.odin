@@ -2,6 +2,7 @@ package canvas2d
 
 import "core:strconv"
 import "core:strings"
+import "wb:base"
 
 // A parsed `font` of the 2D context (the CSS font shorthand, HTML §4.12.5.1.10): what the text engine needs to pick a
 // face. Strings are owned by the spec (`font_spec_destroy`).
@@ -55,7 +56,7 @@ font_parse :: proc(input: string, base_size: f64) -> (f: Font_Spec, ok: bool) {
 	i := 0
 	for i < len(toks) {
 		t := toks[i]
-		lower := strings.to_lower(t, context.temp_allocator)
+		lower := base.ascii_lower(t)
 		switch {
 		case lower == "normal":
 			// stands for any of the four optional keywords: nothing to record
@@ -185,8 +186,8 @@ parse_number_unit :: proc(s: string) -> (v: f64, unit: string, ok: bool) {
 }
 
 @(private)
-font_size_of :: proc(s: string, base: f64) -> (px: f64, ok: bool) {
-	lower := strings.to_lower(s, context.temp_allocator)
+font_size_of :: proc(s: string, parent: f64) -> (px: f64, ok: bool) {
+	lower := base.ascii_lower(s)
 	switch lower {
 	case "xx-small": return 9, true
 	case "x-small": return 10, true
@@ -196,8 +197,8 @@ font_size_of :: proc(s: string, base: f64) -> (px: f64, ok: bool) {
 	case "x-large": return 24, true
 	case "xx-large": return 32, true
 	case "xxx-large": return 48, true
-	case "smaller": return base / 1.2, true
-	case "larger": return base * 1.2, true
+	case "smaller": return parent / 1.2, true
+	case "larger": return parent * 1.2, true
 	}
 	v, unit, vok := parse_number_unit(lower)
 	if !vok || v < 0 { return }
@@ -209,11 +210,11 @@ font_size_of :: proc(s: string, base: f64) -> (px: f64, ok: bool) {
 	case "cm": return v * 96 / 2.54, true
 	case "mm": return v * 96 / 25.4, true
 	case "q": return v * 96 / 101.6, true
-	case "em": return v * base, true
+	case "em": return v * parent, true
 	case "rem": return v * 16, true
-	case "ex": return v * base * 0.5, true
-	case "ch": return v * base * 0.5, true
-	case "%": return v * base / 100, true
+	case "ex": return v * parent * 0.5, true
+	case "ch": return v * parent * 0.5, true
+	case "%": return v * parent / 100, true
 	case "vw", "vh": return 0, false
 	}
 	return

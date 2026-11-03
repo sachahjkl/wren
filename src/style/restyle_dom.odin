@@ -295,8 +295,8 @@ mark_keyed :: proc(m: ^Marker, h: base.Handle, set: u32) {
 carries_key :: proc(n: ^dom.Node, keys: []Subject_Key) -> bool {
 	for k in keys {
 		switch k.kind {
-		case .Type: if strings.equal_fold(n.name, k.name) { return true }
-		case .Id: if v, ok := attr(n, "id"); ok && strings.equal_fold(v, k.name) { return true }
+		case .Type: if base.ascii_equal_fold(n.name, k.name) { return true }
+		case .Id: if v, ok := attr(n, "id"); ok && base.ascii_equal_fold(v, k.name) { return true }
 		case .Class:
 			if v, ok := attr(n, "class"); ok {
 				rest := v
@@ -304,7 +304,7 @@ carries_key :: proc(n: ^dom.Node, keys: []Subject_Key) -> bool {
 					for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
 					end := 0
 					for end < len(rest) && !is_space(rest[end]) { end += 1 }
-					if end > 0 && strings.equal_fold(rest[:end], k.name) { return true }
+					if end > 0 && base.ascii_equal_fold(rest[:end], k.name) { return true }
 					rest = rest[end:]
 				}
 			}
@@ -588,7 +588,7 @@ legend_in :: proc(doc: ^dom.Document, h: base.Handle) -> bool {
 @(private = "file")
 group_control :: proc(doc: ^dom.Document, h: base.Handle, n: ^dom.Node) -> bool {
 	if n.name == "input" {
-		if v, ok := dom.get_attribute(doc, h, "type"); ok && strings.equal_fold(strings.trim_space(v), "radio") { return true }
+		if v, ok := dom.get_attribute(doc, h, "type"); ok && base.ascii_equal_fold(strings.trim_space(v), "radio") { return true }
 	}
 	_, owned := dom.get_attribute(doc, h, "form")
 	return owned
@@ -1647,7 +1647,7 @@ arg_reads_attr :: proc(ha: ^Has_Anchor, name: string) -> bool {
 		switch sp.kind {
 		case .Id: if name == "id" { return true }
 		case .Class: if name == "class" { return true }
-		case .Attribute: if strings.equal_fold(sp.name, name) { return true }
+		case .Attribute: if base.ascii_equal_fold(sp.name, name) { return true }
 		case .Type, .Universal, .Pseudo_Class, .Nesting:
 		}
 	}
@@ -1852,7 +1852,7 @@ compound_reads_attr :: proc(comp: css.Compound, name: string) -> bool {
 		switch sp.kind {
 		case .Id: if name == "id" { return true }
 		case .Class: if name == "class" { return true }
-		case .Attribute: if strings.equal_fold(sp.name, name) { return true }
+		case .Attribute: if base.ascii_equal_fold(sp.name, name) { return true }
 		case .Pseudo_Class:
 			if sp.list != nil { for &cx in sp.list^ { for c in cx.compounds { if compound_reads_attr(c, name) { return true } } } }
 		case .Type, .Universal, .Nesting:

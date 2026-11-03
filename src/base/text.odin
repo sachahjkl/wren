@@ -1,6 +1,6 @@
 package base
 
-// Small text helpers the packages share: numbers as text, the fields of the profile's text files, escaping for HTML and XML.
+// Small text helpers the packages share: numbers as text, ASCII case, the fields of the profile's text files, escaping for HTML and XML.
 
 import "base:intrinsics"
 import "core:fmt"
@@ -12,17 +12,6 @@ import "core:unicode/utf8"
 itoa :: proc(n: int, allocator := context.temp_allocator) -> string {
 	buf: [len("-9223372036854775808")]u8
 	return strings.clone(strconv.write_int(buf[:], i64(n), 10), allocator)
-}
-
-// `s` with its ASCII letters lowered and nothing else changed (HTML's and CSS's "ASCII lowercase": strings.to_lower lowers
-// by Unicode, the Kelvin sign U+212A to 'k' with). `s` itself when it has no uppercase ASCII letter.
-ascii_lower :: proc(s: string, allocator := context.temp_allocator) -> string {
-	i := 0
-	for i < len(s) && !(s[i] >= 'A' && s[i] <= 'Z') { i += 1 }
-	if i == len(s) { return s }
-	out := make([]u8, len(s), allocator)
-	for c, k in transmute([]u8)s { out[k] = c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c }
-	return string(out)
 }
 
 // The value of a hexadecimal digit (a byte or a rune), or -1.
@@ -47,6 +36,65 @@ write_file_stem :: proc(b: ^strings.Builder, key: string) {
 		}
 	}
 }
+
+////////////////////////////////
+// ASCII case: the web platform's "ASCII lowercase", "ASCII uppercase" and "ASCII case-insensitive" (HTML names and
+// keywords, CSS identifiers, MIME types, header names, URL schemes, encoding labels). Only A-Z and a-z change: the Kelvin
+// sign U+212A and the long s U+017F stay what they are, where strings.to_lower, to_upper and equal_fold fold by Unicode
+// ("K" is 'k' to them). Those are for user text (the address bar's search, text-transform): the lint of test_all
+// (src\tools\test_all\lint_unicode_case.odin) fails on a use that tools/unicode_case_allowed.txt does not list.
+
+ascii_lower_byte :: #force_inline proc "contextless" (c: u8) -> u8 { return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c }
+ascii_upper_byte :: #force_inline proc "contextless" (c: u8) -> u8 { return c >= 'a' && c <= 'z' ? c - ('a' - 'A') : c }
+
+// `s` in ASCII lowercase: `s` itself when it has no uppercase ASCII letter (the usual case: no allocation), else a copy.
+ascii_lower :: proc(s: string, allocator := context.temp_allocator) -> string {
+	i := 0
+	for i < len(s) && !(s[i] >= 'A' && s[i] <= 'Z') { i += 1 }
+	if i == len(s) { return s }
+	return ascii_lower_clone(s, allocator)
+}
+
+// `s` in ASCII lowercase, always a copy (one to keep, and free).
+ascii_lower_clone :: proc(s: string, allocator := context.allocator) -> string {
+	out := make([]u8, len(s), allocator)
+	for c, k in transmute([]u8)s { out[k] = ascii_lower_byte(c) }
+	return string(out)
+}
+
+// `s` in ASCII uppercase, a copy.
+ascii_upper :: proc(s: string, allocator := context.temp_allocator) -> string {
+	out := make([]u8, len(s), allocator)
+	for c, k in transmute([]u8)s { out[k] = ascii_upper_byte(c) }
+	return string(out)
+}
+
+ascii_equal_fold :: proc "contextless" (a, b: string) -> bool {
+	if len(a) != len(b) { return false }
+	for i in 0 ..< len(a) {
+		if a[i] != b[i] && ascii_lower_byte(a[i]) != ascii_lower_byte(b[i]) { return false }
+	}
+	return true
+}
+
+ascii_has_prefix_fold :: proc "contextless" (s, prefix: string) -> bool {
+	return len(s) >= len(prefix) && ascii_equal_fold(s[:len(prefix)], prefix)
+}
+
+ascii_has_suffix_fold :: proc "contextless" (s, suffix: string) -> bool {
+	return len(s) >= len(suffix) && ascii_equal_fold(s[len(s) - len(suffix):], suffix)
+}
+
+// The first index of `needle` in `hay` compared ASCII case-insensitively, or -1.
+ascii_index_fold :: proc "contextless" (hay, needle: string) -> int {
+	if len(needle) > len(hay) { return -1 }
+	for i in 0 ..= len(hay) - len(needle) {
+		if ascii_equal_fold(hay[i:][:len(needle)], needle) { return i }
+	}
+	return -1
+}
+
+ascii_contains_fold :: proc "contextless" (hay, needle: string) -> bool { return ascii_index_fold(hay, needle) >= 0 }
 
 ////////////////////////////////
 // JSON

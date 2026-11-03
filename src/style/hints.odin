@@ -97,9 +97,9 @@ hint_text :: proc(doc: ^dom.Document, h: base.Handle, n: ^dom.Node, quirks_rules
 		}
 		if v, ok := attr(n, "align"); ok {
 			switch {
-			case strings.equal_fold(v, "left"): strings.write_string(w, "float:left;")
-			case strings.equal_fold(v, "right"): strings.write_string(w, "float:right;")
-			case strings.equal_fold(v, "center"), strings.equal_fold(v, "middle"): strings.write_string(w, "margin-left:auto;margin-right:auto;")
+			case base.ascii_equal_fold(v, "left"): strings.write_string(w, "float:left;")
+			case base.ascii_equal_fold(v, "right"): strings.write_string(w, "float:right;")
+			case base.ascii_equal_fold(v, "center"), base.ascii_equal_fold(v, "middle"): strings.write_string(w, "margin-left:auto;margin-right:auto;")
 			}
 		}
 		table_border_hints(w, n)
@@ -110,9 +110,9 @@ hint_text :: proc(doc: ^dom.Document, h: base.Handle, n: ^dom.Node, quirks_rules
 	case "caption":
 		if v, ok := attr(n, "align"); ok {
 			switch {
-			case strings.equal_fold(v, "left"): strings.write_string(w, "text-align:left;")
-			case strings.equal_fold(v, "right"): strings.write_string(w, "text-align:right;")
-			case strings.equal_fold(v, "center"): strings.write_string(w, "text-align:center;")
+			case base.ascii_equal_fold(v, "left"): strings.write_string(w, "text-align:left;")
+			case base.ascii_equal_fold(v, "right"): strings.write_string(w, "text-align:right;")
+			case base.ascii_equal_fold(v, "center"): strings.write_string(w, "text-align:center;")
 			}
 		}
 	case "thead", "tbody", "tfoot", "tr":
@@ -143,7 +143,7 @@ hint_text :: proc(doc: ^dom.Document, h: base.Handle, n: ^dom.Node, quirks_rules
 	case "p", "h1", "h2", "h3", "h4", "h5", "h6":
 		if v, ok := attr(n, "align"); ok {
 			for k in ([?]string{"left", "right", "center", "justify"}) {
-				if strings.equal_fold(v, k) { fmt.sbprintf(w, "text-align:%s;", k) }
+				if base.ascii_equal_fold(v, k) { fmt.sbprintf(w, "text-align:%s;", k) }
 			}
 		}
 	case "pre", "listing", "xmp":
@@ -157,21 +157,21 @@ hint_text :: proc(doc: ^dom.Document, h: base.Handle, n: ^dom.Node, quirks_rules
 	case "br":
 		if v, ok := attr(n, "clear"); ok {
 			switch {
-			case strings.equal_fold(v, "left"): strings.write_string(w, "clear:left;")
-			case strings.equal_fold(v, "right"): strings.write_string(w, "clear:right;")
-			case strings.equal_fold(v, "all"), strings.equal_fold(v, "both"): strings.write_string(w, "clear:both;")
+			case base.ascii_equal_fold(v, "left"): strings.write_string(w, "clear:left;")
+			case base.ascii_equal_fold(v, "right"): strings.write_string(w, "clear:right;")
+			case base.ascii_equal_fold(v, "all"), base.ascii_equal_fold(v, "both"): strings.write_string(w, "clear:both;")
 			}
 		}
 	case "img":
 		embedded_hints(w, n, true, true)
 		if quirks {
 			if v, ok := attr(n, "align"); ok {
-				if strings.equal_fold(v, "left") { strings.write_string(w, "margin-right:3px;") }
-				if strings.equal_fold(v, "right") { strings.write_string(w, "margin-left:3px;") }
+				if base.ascii_equal_fold(v, "left") { strings.write_string(w, "margin-right:3px;") }
+				if base.ascii_equal_fold(v, "right") { strings.write_string(w, "margin-left:3px;") }
 			}
 		}
 	case "input":
-		if t, ok := attr(n, "type"); ok && strings.equal_fold(strings.trim_space(t), "image") {
+		if t, ok := attr(n, "type"); ok && base.ascii_equal_fold(strings.trim_space(t), "image") {
 			embedded_hints(w, n, true, true)
 		} else if quirks {
 			strings.write_string(w, "box-sizing:border-box;")
@@ -261,8 +261,8 @@ parse_dimension :: proc(s: string) -> (value: f64, percent: bool, ok: bool) {
 // Rules for parsing a legacy colour value (HTML §2.3.6.4). Returns 0xRRGGBB.
 parse_legacy_color :: proc(input: string) -> (rgb: u32, ok: bool) {
 	s := strings.trim(input, " \t\n\f\r")
-	if s == "" || strings.equal_fold(s, "transparent") { return 0, false }
-	lower := css.lower_temp(s)
+	if s == "" || base.ascii_equal_fold(s, "transparent") { return 0, false }
+	lower := base.ascii_lower(s)
 	for e in css.NAMED_COLORS { if e.name == lower { return e.rgb, true } }
 	hexv :: proc(c: u8) -> (u32, bool) {
 		switch c {
@@ -407,10 +407,10 @@ hint_cell_align :: proc(w: ^strings.Builder, n: ^dom.Node) {
 	if !ok { return }
 	v = strings.trim_space(v)
 	switch {
-	case strings.equal_fold(v, "left"): strings.write_string(w, "text-align:-webkit-left;")
-	case strings.equal_fold(v, "right"): strings.write_string(w, "text-align:-webkit-right;")
-	case strings.equal_fold(v, "center"), strings.equal_fold(v, "middle"): strings.write_string(w, "text-align:-webkit-center;")
-	case strings.equal_fold(v, "justify"): strings.write_string(w, "text-align:justify;")
+	case base.ascii_equal_fold(v, "left"): strings.write_string(w, "text-align:-webkit-left;")
+	case base.ascii_equal_fold(v, "right"): strings.write_string(w, "text-align:-webkit-right;")
+	case base.ascii_equal_fold(v, "center"), base.ascii_equal_fold(v, "middle"): strings.write_string(w, "text-align:-webkit-center;")
+	case base.ascii_equal_fold(v, "justify"): strings.write_string(w, "text-align:justify;")
 	}
 }
 
@@ -420,7 +420,7 @@ hint_valign :: proc(w: ^strings.Builder, n: ^dom.Node) {
 	if !ok { return }
 	v = strings.trim_space(v)
 	for k in ([?]string{"top", "middle", "bottom", "baseline"}) {
-		if strings.equal_fold(v, k) { fmt.sbprintf(w, "vertical-align:%s;", k) }
+		if base.ascii_equal_fold(v, k) { fmt.sbprintf(w, "vertical-align:%s;", k) }
 	}
 }
 
@@ -434,7 +434,7 @@ hint_font_face :: proc(w: ^strings.Builder, v: string) {
 		if name == "" { continue }
 		strings.write_string(w, first ? "font-family:" : ",")
 		first = false
-		switch css.lower_temp(name) {
+		switch base.ascii_lower(name) {
 		case "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui":
 			strings.write_string(w, name)
 		case:
@@ -468,13 +468,13 @@ embedded_hints :: proc(w: ^strings.Builder, n: ^dom.Node, border, ratio: bool) {
 		v = strings.trim_space(v)
 		// as Blink maps them (the HTML Standard lists the same keywords)
 		switch {
-		case strings.equal_fold(v, "left"): strings.write_string(w, "float:left;")
-		case strings.equal_fold(v, "right"): strings.write_string(w, "float:right;")
-		case strings.equal_fold(v, "top"): strings.write_string(w, "vertical-align:top;")
-		case strings.equal_fold(v, "texttop"): strings.write_string(w, "vertical-align:text-top;")
-		case strings.equal_fold(v, "middle"), strings.equal_fold(v, "absmiddle"), strings.equal_fold(v, "center"): strings.write_string(w, "vertical-align:middle;")
-		case strings.equal_fold(v, "bottom"), strings.equal_fold(v, "baseline"): strings.write_string(w, "vertical-align:baseline;")
-		case strings.equal_fold(v, "absbottom"): strings.write_string(w, "vertical-align:bottom;")
+		case base.ascii_equal_fold(v, "left"): strings.write_string(w, "float:left;")
+		case base.ascii_equal_fold(v, "right"): strings.write_string(w, "float:right;")
+		case base.ascii_equal_fold(v, "top"): strings.write_string(w, "vertical-align:top;")
+		case base.ascii_equal_fold(v, "texttop"): strings.write_string(w, "vertical-align:text-top;")
+		case base.ascii_equal_fold(v, "middle"), base.ascii_equal_fold(v, "absmiddle"), base.ascii_equal_fold(v, "center"): strings.write_string(w, "vertical-align:middle;")
+		case base.ascii_equal_fold(v, "bottom"), base.ascii_equal_fold(v, "baseline"): strings.write_string(w, "vertical-align:baseline;")
+		case base.ascii_equal_fold(v, "absbottom"): strings.write_string(w, "vertical-align:bottom;")
 		}
 	}
 }
@@ -483,9 +483,9 @@ embedded_hints :: proc(w: ^strings.Builder, n: ^dom.Node, border, ratio: bool) {
 hr_hints :: proc(w: ^strings.Builder, n: ^dom.Node) {
 	if v, ok := attr(n, "align"); ok {
 		switch {
-		case strings.equal_fold(v, "left"): strings.write_string(w, "margin-left:0;margin-right:auto;")
-		case strings.equal_fold(v, "right"): strings.write_string(w, "margin-left:auto;margin-right:0;")
-		case strings.equal_fold(v, "center"): strings.write_string(w, "margin-left:auto;margin-right:auto;")
+		case base.ascii_equal_fold(v, "left"): strings.write_string(w, "margin-left:0;margin-right:auto;")
+		case base.ascii_equal_fold(v, "right"): strings.write_string(w, "margin-left:auto;margin-right:0;")
+		case base.ascii_equal_fold(v, "center"): strings.write_string(w, "margin-left:auto;margin-right:auto;")
 		}
 	}
 	hint_dimension(w, n, "width", "width", true)
@@ -518,7 +518,7 @@ ordered_type :: proc(v: string) -> string {
 @(private)
 unordered_type :: proc(v: string) -> string {
 	t := strings.trim_space(v)
-	for k in ([?]string{"none", "disc", "circle", "square"}) { if strings.equal_fold(t, k) { return k } }
+	for k in ([?]string{"none", "disc", "circle", "square"}) { if base.ascii_equal_fold(t, k) { return k } }
 	return ""
 }
 
@@ -566,14 +566,14 @@ table_border_hints :: proc(w: ^strings.Builder, n: ^dom.Node) {
 		// which sides the frame draws (top right bottom left)
 		sides: [4]bool
 		switch {
-		case strings.equal_fold(frame, "void"):
-		case strings.equal_fold(frame, "above"): sides = {true, false, false, false}
-		case strings.equal_fold(frame, "below"): sides = {false, false, true, false}
-		case strings.equal_fold(frame, "hsides"): sides = {true, false, true, false}
-		case strings.equal_fold(frame, "lhs"): sides = {false, false, false, true}
-		case strings.equal_fold(frame, "rhs"): sides = {false, true, false, false}
-		case strings.equal_fold(frame, "vsides"): sides = {false, true, false, true}
-		case strings.equal_fold(frame, "box"), strings.equal_fold(frame, "border"): sides = {true, true, true, true}
+		case base.ascii_equal_fold(frame, "void"):
+		case base.ascii_equal_fold(frame, "above"): sides = {true, false, false, false}
+		case base.ascii_equal_fold(frame, "below"): sides = {false, false, true, false}
+		case base.ascii_equal_fold(frame, "hsides"): sides = {true, false, true, false}
+		case base.ascii_equal_fold(frame, "lhs"): sides = {false, false, false, true}
+		case base.ascii_equal_fold(frame, "rhs"): sides = {false, true, false, false}
+		case base.ascii_equal_fold(frame, "vsides"): sides = {false, true, false, true}
+		case base.ascii_equal_fold(frame, "box"), base.ascii_equal_fold(frame, "border"): sides = {true, true, true, true}
 		case: has_frame = false
 		}
 		if has_frame {
@@ -597,7 +597,7 @@ table_border_hints :: proc(w: ^strings.Builder, n: ^dom.Node) {
 group_border_hints :: proc(w: ^strings.Builder, n: ^dom.Node, table: ^dom.Node) {
 	rules, ok := attr(table, "rules")
 	if !ok { return }
-	if (strings.equal_fold(rules, "groups") && n.name != "tr") || (strings.equal_fold(rules, "rows") && n.name == "tr") {
+	if (base.ascii_equal_fold(rules, "groups") && n.name != "tr") || (base.ascii_equal_fold(rules, "rows") && n.name == "tr") {
 		strings.write_string(w, "border-top:1px solid;border-bottom:1px solid;")
 	}
 }
@@ -607,10 +607,10 @@ group_border_hints :: proc(w: ^strings.Builder, n: ^dom.Node, table: ^dom.Node) 
 cell_border_hints :: proc(w: ^strings.Builder, table: ^dom.Node) {
 	if rules, ok := attr(table, "rules"); ok {
 		switch {
-		case strings.equal_fold(rules, "none"), strings.equal_fold(rules, "groups"): strings.write_string(w, "border-width:1px;border-style:none;")
-		case strings.equal_fold(rules, "rows"): strings.write_string(w, "border-width:1px;border-style:solid none;")
-		case strings.equal_fold(rules, "cols"): strings.write_string(w, "border-width:1px;border-style:none solid;")
-		case strings.equal_fold(rules, "all"): strings.write_string(w, "border-width:1px;border-style:solid;")
+		case base.ascii_equal_fold(rules, "none"), base.ascii_equal_fold(rules, "groups"): strings.write_string(w, "border-width:1px;border-style:none;")
+		case base.ascii_equal_fold(rules, "rows"): strings.write_string(w, "border-width:1px;border-style:solid none;")
+		case base.ascii_equal_fold(rules, "cols"): strings.write_string(w, "border-width:1px;border-style:none solid;")
+		case base.ascii_equal_fold(rules, "all"): strings.write_string(w, "border-width:1px;border-style:solid;")
 		case: return
 		}
 		strings.write_string(w, "border-color:inherit;")

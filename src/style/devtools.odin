@@ -109,7 +109,7 @@ dev_set_rule_decls :: proc(e: ^Engine, sheet: ^Sheet, rule: ^css.Rule, decls: []
 		vals := css.parse_component_values(d.value, opt, a)
 		vals = trim_ws(vals)
 		if len(vals) == 0 && !strings.has_prefix(d.name, "--") { continue }
-		name := strings.has_prefix(d.name, "--") ? strings.clone(d.name, a) : strings.to_lower(d.name, a)
+		name := strings.has_prefix(d.name, "--") ? strings.clone(d.name, a) : base.ascii_lower_clone(d.name, a)
 		out[n] = css.Declaration{name = name, value = vals, important = d.important}
 		n += 1
 	}

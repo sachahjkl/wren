@@ -16,6 +16,7 @@ import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
 import "toolkit:ui"
+import "wb:base"
 
 // Where a label made by dev_line is cut by default (runes).
 DEV_LINE_MAX_RUNES :: 500
@@ -407,24 +408,6 @@ dt_filter_destroy :: proc(f: ^Dt_Filter) {
 	f^ = {}
 }
 
-// ASCII case-insensitive "contains" without allocating (`needle` is lower case already).
-dt_contains_fold :: proc(hay, needle: string) -> bool {
-	n := len(needle)
-	if n == 0 { return true }
-	if n > len(hay) { return false }
-	for i in 0 ..= len(hay) - n {
-		j := 0
-		for j < n {
-			c := hay[i + j]
-			if c >= 'A' && c <= 'Z' { c += 32 }
-			if c != needle[j] { break }
-			j += 1
-		}
-		if j == n { return true }
-	}
-	return false
-}
-
 dt_filter_text :: proc(f: ^Dt_Filter) -> string { return strings.trim_space(ui.field_string(&f.field)) }
 
 dt_filter_active :: proc(f: ^Dt_Filter) -> bool { return dt_filter_text(f) != "" }
@@ -451,7 +434,7 @@ dt_filter_prepare :: proc(f: ^Dt_Filter) -> u64 {
 	for term in strings.fields_iterator(&it) {
 		neg := len(term) > 1 && term[0] == '-'
 		t := neg ? term[1:] : term
-		append(&f.terms, Dt_Term{text = f.cased ? strings.clone(t) : strings.to_lower(t), neg = neg})
+		append(&f.terms, Dt_Term{text = strings.clone(t), neg = neg})
 	}
 	return ser
 }
@@ -481,7 +464,7 @@ dt_filter_match :: proc(f: ^Dt_Filter, text: string) -> bool {
 	} else {
 		ok = true
 		for term in f.terms {
-			has := f.cased ? strings.contains(text, term.text) : dt_contains_fold(text, term.text)
+			has := f.cased ? strings.contains(text, term.text) : base.ascii_contains_fold(text, term.text)
 			if term.neg == has { ok = false; break }
 		}
 	}

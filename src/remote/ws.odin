@@ -9,6 +9,7 @@ package remote
 import "core:crypto/legacy/sha1"
 import "core:encoding/base64"
 import "core:strings"
+import "wb:base"
 
 WS_GUID :: "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"   // RFC 6455 §1.3
 
@@ -49,11 +50,11 @@ ws_parse_handshake :: proc(buf: []byte) -> (h: Ws_Handshake) {
 		name := strings.trim_space(hl[:colon])
 		value := strings.trim_space(hl[colon + 1:])
 		switch {
-		case ascii_equal_fold(name, "sec-websocket-key"):     h.key = value
-		case ascii_equal_fold(name, "origin"):                h.origin = value
-		case ascii_equal_fold(name, "host"):                  h.host = value
-		case ascii_equal_fold(name, "upgrade"):               upgrade_ws = ascii_contains_fold(value, "websocket")
-		case ascii_equal_fold(name, "connection"):            has_upgrade = ascii_contains_fold(value, "upgrade")
+		case base.ascii_equal_fold(name, "sec-websocket-key"):     h.key = value
+		case base.ascii_equal_fold(name, "origin"):                h.origin = value
+		case base.ascii_equal_fold(name, "host"):                  h.host = value
+		case base.ascii_equal_fold(name, "upgrade"):               upgrade_ws = base.ascii_contains_fold(value, "websocket")
+		case base.ascii_equal_fold(name, "connection"):            has_upgrade = base.ascii_contains_fold(value, "upgrade")
 		}
 	}
 	h.ok = upgrade_ws && has_upgrade && h.key != ""
@@ -157,30 +158,3 @@ ws_close_frame :: proc(code: u16, allocator := context.allocator) -> []byte {
 	body := [2]byte{u8(code >> 8), u8(code)}
 	return ws_encode_frame(.Close, body[:], allocator)
 }
-
-////////////////////////////////
-// ASCII helpers (header names and tokens are ASCII; case-insensitive comparisons)
-
-ascii_equal_fold :: proc(a, b: string) -> bool {
-	if len(a) != len(b) { return false }
-	for i in 0 ..< len(a) {
-		if ascii_lower(a[i]) != ascii_lower(b[i]) { return false }
-	}
-	return true
-}
-
-ascii_contains_fold :: proc(haystack, needle: string) -> bool {
-	if len(needle) == 0 { return true }
-	if len(haystack) < len(needle) { return false }
-	for i in 0 ..= len(haystack) - len(needle) {
-		match := true
-		for j in 0 ..< len(needle) {
-			if ascii_lower(haystack[i + j]) != ascii_lower(needle[j]) { match = false; break }
-		}
-		if match { return true }
-	}
-	return false
-}
-
-@(private = "file")
-ascii_lower :: proc(c: byte) -> byte { return c >= 'A' && c <= 'Z' ? c + 32 : c }

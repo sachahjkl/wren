@@ -3,6 +3,7 @@ package canvas2d
 import "core:math"
 import "core:strconv"
 import "core:strings"
+import "wb:base"
 
 // The `filter` property of the context (CSS Filter Effects): a list of blur(), brightness(), contrast(), grayscale(),
 // hue-rotate(), invert(), opacity(), saturate(), sepia() and drop-shadow(), applied in order to what each drawing
@@ -23,7 +24,7 @@ Filter_Op :: struct {
 filter_parse :: proc(c: ^Context, text: string, out: ^[dynamic]Filter_Op) -> bool {
 	s := strings.trim_space(text)
 	if s == "" { return false }
-	if strings.equal_fold(s, "none") { return true }
+	if base.ascii_equal_fold(s, "none") { return true }
 	start := len(out)
 	i := 0
 	for i < len(s) {
@@ -32,7 +33,7 @@ filter_parse :: proc(c: ^Context, text: string, out: ^[dynamic]Filter_Op) -> boo
 		name_start := i
 		for i < len(s) && s[i] != '(' && s[i] != ' ' { i += 1 }
 		if i >= len(s) || s[i] != '(' { resize(out, start); return false }
-		name := strings.to_lower(s[name_start:i], context.temp_allocator)
+		name := base.ascii_lower(s[name_start:i])
 		depth := 0
 		arg_start := i + 1
 		for i < len(s) {
@@ -88,7 +89,7 @@ filter_function :: proc(c: ^Context, name, args: string) -> (op: Filter_Op, ok: 
 		v, unit, vok := parse_number_unit(args)
 		if !vok { return }
 		deg: f64
-		switch strings.to_lower(unit, context.temp_allocator) {
+		switch base.ascii_lower(unit) {
 		case "deg", "": deg = v   // (a bare 0 is allowed)
 		case "rad": deg = v * 180 / math.PI
 		case "grad": deg = v * 0.9
@@ -134,7 +135,7 @@ filter_function :: proc(c: ^Context, name, args: string) -> (op: Filter_Op, ok: 
 parse_length :: proc(s: string, base_size: f64) -> (px: f64, ok: bool) {
 	t := strings.trim_space(s)
 	if t == "" { return }
-	lower := strings.to_lower(t, context.temp_allocator)
+	lower := base.ascii_lower(t)
 	v, unit, vok := parse_number_unit(lower)
 	if !vok { return }
 	if unit == "" { return v, v == 0 }

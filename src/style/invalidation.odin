@@ -576,17 +576,17 @@ watch_sync :: proc(ix: ^Inv_Index, doc: ^dom.Document, force := false) -> (fresh
 			m: u64
 			for k in ha.feat.classes { m |= dom.watch_bit(doc, .Class, k) }
 			for k in ha.feat.ids { m |= dom.watch_bit(doc, .Id, k) }
-			for k in ha.feat.attrs { m |= dom.watch_bit(doc, .Attr, strings.to_lower(k, context.temp_allocator)) }
-			for k in ha.feat.types { m |= dom.watch_bit(doc, .Tag, strings.to_lower(k, context.temp_allocator)) }
+			for k in ha.feat.attrs { m |= dom.watch_bit(doc, .Attr, base.ascii_lower(k)) }
+			for k in ha.feat.types { m |= dom.watch_bit(doc, .Tag, base.ascii_lower(k)) }
 			ha.feat.mask = m
 			if ha.exact {
 				lm: u64
 				for sp in ha.arg.simples {
 					#partial switch sp.kind {
-					case .Type: lm |= dom.watch_bit(doc, .Tag, strings.to_lower(sp.name, context.temp_allocator))
+					case .Type: lm |= dom.watch_bit(doc, .Tag, base.ascii_lower(sp.name))
 					case .Id: lm |= dom.watch_bit(doc, .Id, sp.name)
 					case .Class: lm |= dom.watch_bit(doc, .Class, sp.name)
-					case .Attribute: lm |= dom.watch_bit(doc, .Attr, strings.to_lower(sp.name, context.temp_allocator))
+					case .Attribute: lm |= dom.watch_bit(doc, .Attr, base.ascii_lower(sp.name))
 					}
 				}
 				ha.last_mask = lm
@@ -595,10 +595,10 @@ watch_sync :: proc(ix: ^Inv_Index, doc: ^dom.Document, force := false) -> (fresh
 					fm: u64
 					for sp in ha.cx.compounds[0].simples {
 						#partial switch sp.kind {
-						case .Type: fm |= dom.watch_bit(doc, .Tag, strings.to_lower(sp.name, context.temp_allocator))
+						case .Type: fm |= dom.watch_bit(doc, .Tag, base.ascii_lower(sp.name))
 						case .Id: fm |= dom.watch_bit(doc, .Id, sp.name)
 						case .Class: fm |= dom.watch_bit(doc, .Class, sp.name)
-						case .Attribute: fm |= dom.watch_bit(doc, .Attr, strings.to_lower(sp.name, context.temp_allocator))
+						case .Attribute: fm |= dom.watch_bit(doc, .Attr, base.ascii_lower(sp.name))
 						}
 					}
 					ha.first_mask = fm

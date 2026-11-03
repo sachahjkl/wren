@@ -232,7 +232,7 @@ start_fetch_with_body :: proc(p: ^Page, f: ^Fetch, target, method, headers: stri
 	pairs := make([dynamic]fetch.Header_Pair, context.temp_allocator)
 	parse_header_lines(headers, &pairs)
 	has_ct := false
-	for hp in pairs { if strings.equal_fold(hp.name, "content-type") { has_ct = true } }
+	for hp in pairs { if base.ascii_equal_fold(hp.name, "content-type") { has_ct = true } }
 	if !has_ct && content_type != "" { append(&pairs, fetch.Header_Pair{"Content-Type", content_type}) }
 	o := options
 	mode := fetch.Mode.Cors

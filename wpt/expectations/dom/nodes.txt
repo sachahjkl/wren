@@ -15124,7 +15124,7 @@
 /dom/nodes/getElementsByClassName-13.htm: OK
 	element.getElementsByClassName(): adding an element: PASS
 /dom/nodes/getElementsByClassName-14.htm: OK
-	Unicode-case should be sensitive even in quirks mode.: FAIL
+	Unicode-case should be sensitive even in quirks mode.: PASS
 	document.getElementsByClassName(): case-insensitive (quirks mode): PASS
 /dom/nodes/getElementsByClassName-15.htm: OK
 	document.getElementsByClassName(array): "a\\n": PASS

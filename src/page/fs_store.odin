@@ -88,7 +88,7 @@ fs_disk_name_valid :: proc(name: string) -> bool {
 	}
 	last := name[len(name) - 1]
 	if last == '.' || last == ' ' { return false }
-	stem := strings.to_lower(name[:strings.index_byte(name, '.') if strings.index_byte(name, '.') > 0 else len(name)], context.temp_allocator)
+	stem := base.ascii_lower(name[:strings.index_byte(name, '.') if strings.index_byte(name, '.') > 0 else len(name)])
 	switch stem {
 	case "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
 	     "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9": return false
@@ -179,7 +179,7 @@ fs_local_root :: proc(origin, dir: string, read, write: Fs_Permission) -> u64 {
 	sync.mutex_lock(&the_pages.fs_store.mu)
 	defer sync.mutex_unlock(&the_pages.fs_store.mu)
 	for id, r in the_pages.fs_store.roots {
-		if r.kind == .Local && r.key == origin && strings.equal_fold(r.dir, dir) {
+		if r.kind == .Local && r.key == origin && base.ascii_equal_fold(r.dir, dir) {
 			if read == .Granted { r.read = .Granted }
 			if write == .Granted { r.write = .Granted }
 			return id
@@ -377,7 +377,7 @@ fs_same :: proc(root_a: u64, path_a: string, root_b: u64, path_b: string) -> boo
 	da, ea := fs_disk_path(ra, path_a)
 	db, eb := fs_disk_path(rb, path_b)
 	if ea != .None || eb != .None { return false }
-	return ra.kind == .Opfs ? da == db : strings.equal_fold(da, db)
+	return ra.kind == .Opfs ? da == db : base.ascii_equal_fold(da, db)
 }
 
 ////////////////////////////////

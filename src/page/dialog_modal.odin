@@ -7,7 +7,6 @@ package page
 //
 // The list is with the popovers, the other part of the top layer (popover.odin). ::backdrop is not generated.
 
-import "core:strings"
 import "wb:base"
 import "wb:dom"
 import "wb:forms"
@@ -57,7 +56,7 @@ closed_by_name :: proc(state: Closed_By) -> string {
 @(private)
 dialog_closed_by :: proc(p: ^Page, h: base.Handle) -> Closed_By {
 	if v, ok := node_attr(dom.get(p.doc, h), "closedby"); ok {
-		for state in Closed_By { if strings.equal_fold(v, closed_by_name(state)) { return state } }
+		for state in Closed_By { if base.ascii_equal_fold(v, closed_by_name(state)) { return state } }
 	}
 	return dialog_is_modal(p, h) ? .Close_Request : .None
 }

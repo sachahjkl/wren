@@ -200,9 +200,9 @@ colors_from_prefs :: proc(p: ^config.Prefs, s: ^Settings) {
 			text := strings.trim_space(config.string_of(p, strings.concatenate({prefix, k.key}, context.temp_allocator)))
 			fallback := scheme == .Dark ? k.dark : k.light
 			switch {
-			case strings.equal_fold(text, "auto"):
+			case base.ascii_equal_fold(text, "auto"):
 				autos[c] = true
-			case strings.equal_fold(text, "system"):
+			case base.ascii_equal_fold(text, "system"):
 				s.colors[scheme][c] = system_value(look, c, scheme, s.colors[scheme])
 			case:
 				col, ok := parse_pref_color(text)
@@ -260,7 +260,7 @@ parse_color_scheme :: proc(vs: []css.Value) -> (Color_Scheme_Value, bool) {
 	names := 0
 	for it in items {
 		if it.kind != .Token || it.tok.kind != .Ident { return {}, false }
-		id := css.lower_temp(it.tok.text)
+		id := base.ascii_lower(it.tok.text)
 		switch id {
 		case "normal":
 			if len(items) != 1 { return {}, false }
@@ -301,7 +301,7 @@ scheme_settle :: proc(cx: ^Cx, page_scheme: Color_Scheme_Value, prefer_dark: boo
 @(private)
 apply_color :: proc(cx: ^Cx, vs: []css.Value) -> bool {
 	c := cx.c
-	if id, ok := ident_raw(vs); ok && strings.equal_fold(id, "currentcolor") {
+	if id, ok := ident_raw(vs); ok && base.ascii_equal_fold(id, "currentcolor") {
 		// `color: currentcolor` is `inherit`
 		if cx.parent != nil { c.color_pair = cx.parent.color_pair } else { c.color_pair = cx.initial.color_pair }
 		c.color = scheme_pick(c.color_pair, c.used_scheme)
@@ -332,7 +332,7 @@ scheme_sensitive :: proc(vs: []css.Value) -> bool {
 	for v in vs {
 		switch v.kind {
 		case .Token: if v.tok.kind == .Ident { return true }
-		case .Function, .Block: if strings.equal_fold(v.tok.text, "light-dark") || scheme_sensitive(v.children) { return true }
+		case .Function, .Block: if base.ascii_equal_fold(v.tok.text, "light-dark") || scheme_sensitive(v.children) { return true }
 		}
 	}
 	return false
@@ -359,7 +359,7 @@ page_color_scheme :: proc(doc: ^dom.Document, metas: ^[dynamic]base.Handle = nil
 	for h in in_tree {
 		n := dom.get(doc, h)
 		name, has_name := attr(n, "name")
-		if !has_name || !strings.equal_fold(strings.trim(name, " \t\n\r\f"), "color-scheme") { continue }
+		if !has_name || !base.ascii_equal_fold(strings.trim(name, " \t\n\r\f"), "color-scheme") { continue }
 		content, has := attr(n, "content")
 		if !has { continue }
 		if metas != nil { append(metas, h) }

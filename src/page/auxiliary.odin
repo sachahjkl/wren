@@ -186,7 +186,7 @@ auxiliary_open :: proc(src: ^Page, href, name: string, feat: Open_Features) -> ^
 	if n == nil { return nil }
 	n.script_opened = true
 	if sb.active { n.navigator = sn.id }   // (HTML "one permitted sandboxed navigator")
-	if !strings.equal_fold(name, "_blank") {
+	if !base.ascii_equal_fold(name, "_blank") {
 		delete(n.name)
 		n.name = strings.clone(name)
 	}
@@ -204,7 +204,7 @@ open_features_parse :: proc(features: string) -> (out: Open_Features) {
 		for i < len(s) && is_sep(s[i]) { i += 1 }
 		start := i
 		for i < len(s) && !is_sep(s[i]) { i += 1 }
-		name := strings.to_lower(s[start:i], context.temp_allocator)
+		name := base.ascii_lower(s[start:i])
 		for i < len(s) && s[i] != '=' {
 			if s[i] == ',' || !is_sep(s[i]) { break }
 			i += 1
@@ -214,7 +214,7 @@ open_features_parse :: proc(features: string) -> (out: Open_Features) {
 			for i < len(s) && is_sep(s[i]) && s[i] != ',' { i += 1 }
 			vstart := i
 			for i < len(s) && !is_sep(s[i]) { i += 1 }
-			value = strings.to_lower(s[vstart:i], context.temp_allocator)
+			value = base.ascii_lower(s[vstart:i])
 		}
 		switch name {
 		case "noopener": out.noopener = open_feature_bool(value)
@@ -241,14 +241,14 @@ open_feature_bool :: proc(value: string) -> bool {
 // and a link to _blank has none unless rel=opener.
 link_open_features :: proc(rel, target: string) -> (out: Open_Features) {
 	opener := false
-	for tok in strings.fields(strings.to_lower(rel, context.temp_allocator), context.temp_allocator) {
+	for tok in strings.fields(base.ascii_lower(rel), context.temp_allocator) {
 		switch tok {
 		case "noopener": out.noopener = true
 		case "noreferrer": out.noreferrer, out.noopener = true, true
 		case "opener": opener = true
 		}
 	}
-	if strings.equal_fold(target, "_blank") && !opener { out.noopener = true }
+	if base.ascii_equal_fold(target, "_blank") && !opener { out.noopener = true }
 	return
 }
 

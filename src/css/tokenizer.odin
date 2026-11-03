@@ -240,7 +240,7 @@ consume_ident_like :: proc(l: ^Lexer) -> Token {
 	name := consume_name(l)
 	if peek(l) == '(' {
 		l.pos += 1
-		if strings.equal_fold(name, "url") {
+		if base.ascii_equal_fold(name, "url") {
 			// url( "..." ) is an ordinary function; only an unquoted argument makes a <url-token>
 			i := 0
 			for is_ws(peek(l, i)) { i += 1 }

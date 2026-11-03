@@ -1,6 +1,5 @@
 package page
 
-import "core:strings"
 import "wb:base"
 import "wb:dom"
 import "wb:forms"
@@ -70,8 +69,8 @@ popover_kind :: proc(n: ^dom.Node) -> Popover_Kind {
 	if n == nil || n.kind != .Element || n.ns != .HTML { return .None }
 	v, ok := node_attr(n, "popover")
 	if !ok { return .None }
-	if v == "" || strings.equal_fold(v, "auto") { return .Auto }
-	if strings.equal_fold(v, "hint") { return .Hint }
+	if v == "" || base.ascii_equal_fold(v, "auto") { return .Auto }
+	if base.ascii_equal_fold(v, "hint") { return .Hint }
 	return .Manual
 }
 
@@ -305,8 +304,8 @@ popover_invoke :: proc(p: ^Page, invoker: base.Handle) {
 	action, _ := node_attr(n, "popovertargetaction")
 	showing := popover_showing(p, target)
 	switch {
-	case strings.equal_fold(action, "show"): if !showing { popover_show(p, target, invoker) }
-	case strings.equal_fold(action, "hide"): if showing { popover_hide(p, target) }
+	case base.ascii_equal_fold(action, "show"): if !showing { popover_show(p, target, invoker) }
+	case base.ascii_equal_fold(action, "hide"): if showing { popover_hide(p, target) }
 	case: if showing { popover_hide(p, target) } else { popover_show(p, target, invoker) }
 	}
 }

@@ -2,6 +2,7 @@ package http
 
 import "base:runtime"
 import "core:strings"
+import "wb:base"
 
 Mime_Param :: struct { name, value: string }
 
@@ -50,8 +51,8 @@ parse_mime :: proc(input: string, allocator := context.allocator) -> (m: Mime, o
 
 	m.allocator = allocator
 	m.params = make([dynamic]Mime_Param, allocator)
-	m.type = strings.to_lower(typ, allocator)
-	m.subtype = strings.to_lower(sub, allocator)
+	m.type = base.ascii_lower_clone(typ, allocator)
+	m.subtype = base.ascii_lower_clone(sub, allocator)
 
 	p := params_src
 	for len(p) > 0 {
@@ -86,7 +87,7 @@ parse_mime :: proc(input: string, allocator := context.allocator) -> (m: Mime, o
 			value = strings.trim_right(value, "\t\n\r ")
 			if value == "" { continue }
 		}
-		lname := strings.to_lower(name, context.temp_allocator)
+		lname := base.ascii_lower(name)
 		if lname == "" || !is_token(lname) { continue }
 		valid := true
 		for c in transmute([]u8)value { if !is_quoted_string_token_char(c) { valid = false; break } }

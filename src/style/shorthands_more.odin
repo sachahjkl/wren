@@ -1,7 +1,7 @@
 package style
 
 import "base:runtime"
-import "core:strings"
+import "wb:base"
 import "wb:css"
 
 // Expansion of the shorthands with list values or a richer grammar: font, background (every layer), white-space,
@@ -72,7 +72,7 @@ expand_font :: proc(input: []css.Value, a: runtime.Allocator) -> ([]Longhand, bo
 	for i < len(vs) {
 		v := vs[i]
 		if v.kind == .Token && v.tok.kind == .Ident {
-			switch css.lower_temp(v.tok.text) {
+			switch base.ascii_lower(v.tok.text) {
 			case "normal": i += 1; skip_ws(vs, &i); continue
 			case "small-caps": variant = vs[i:i + 1]; i += 1; skip_ws(vs, &i); continue
 			case "ultra-condensed", "extra-condensed", "condensed", "semi-condensed", "semi-expanded", "expanded", "extra-expanded", "ultra-expanded":
@@ -140,7 +140,7 @@ expand_background :: proc(input: []css.Value, a: runtime.Allocator) -> ([]Longha
 			}
 			#partial switch it.kind {
 			case .Function:
-				switch css.lower_temp(it.tok.text) {
+				switch base.ascii_lower(it.tok.text) {
 				case "url", "image", "image-set", "-webkit-image-set", "cross-fade", "element",
 				     "linear-gradient", "radial-gradient", "conic-gradient", "repeating-linear-gradient", "repeating-radial-gradient", "repeating-conic-gradient",
 				     "-webkit-linear-gradient", "-webkit-radial-gradient", "-webkit-repeating-linear-gradient", "-webkit-repeating-radial-gradient",
@@ -163,7 +163,7 @@ expand_background :: proc(input: []css.Value, a: runtime.Allocator) -> ([]Longha
 					l.color = items[i:i + 1]
 				case .Dimension, .Percentage, .Number: append(in_size ? &l.size : &l.pos, it)
 				case .Ident:
-					switch css.lower_temp(it.tok.text) {
+					switch base.ascii_lower(it.tok.text) {
 					case "none":
 						if l.image != nil { return }
 						l.image = items[i:i + 1]
@@ -394,7 +394,7 @@ expand_grid_template :: proc(items: []css.Value, a: runtime.Allocator) -> ([]Lon
 		append(&areas, row_items[i])
 		i += 1
 		if i < len(row_items) && !is_line_names(row_items[i]) && !tok_is(row_items[i], .String) {
-			if row_items[i].kind == .Function && strings.equal_fold(row_items[i].tok.text, "repeat") { return nil, false }
+			if row_items[i].kind == .Function && base.ascii_equal_fold(row_items[i].tok.text, "repeat") { return nil, false }
 			append(&rows, row_items[i])
 			i += 1
 		} else {
@@ -403,7 +403,7 @@ expand_grid_template :: proc(items: []css.Value, a: runtime.Allocator) -> ([]Lon
 	}
 	cols := len(parts) == 2 ? join_items(parts[1], a) : idents(a, "none")
 	if len(parts) == 2 {
-		for it in parts[1] { if it.kind == .Function && strings.equal_fold(it.tok.text, "repeat") {
+		for it in parts[1] { if it.kind == .Function && base.ascii_equal_fold(it.tok.text, "repeat") {
 			args := css.split_commas(it.children, context.temp_allocator)
 			if len(args) > 0 { switch css.ident_of(args[0]) { case "auto-fill", "auto-fit": return nil, false } }
 		} }
@@ -464,7 +464,7 @@ is_easing_value :: proc(v: css.Value) -> bool {
 	case "linear", "ease", "ease-in", "ease-out", "ease-in-out", "step-start", "step-end": return true
 	}
 	if v.kind == .Function {
-		switch css.lower_temp(v.tok.text) { case "cubic-bezier", "steps", "linear": return true }
+		switch base.ascii_lower(v.tok.text) { case "cubic-bezier", "steps", "linear": return true }
 	}
 	return false
 }

@@ -612,9 +612,9 @@ sw_job_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		res := ev.response
 		r.job_status = res.status
 		for h in res.headers.list {
-			if strings.equal_fold(h.name, "content-security-policy") { append(&r.job_csp, strings.clone(h.value)) }
-			if strings.equal_fold(h.name, "content-security-policy-report-only") { append(&r.job_csp, strings.concatenate({"\x00", h.value})) }
-			if strings.equal_fold(h.name, "service-worker-allowed") && !sw_scope_allowed(r, h.value) {
+			if base.ascii_equal_fold(h.name, "content-security-policy") { append(&r.job_csp, strings.clone(h.value)) }
+			if base.ascii_equal_fold(h.name, "content-security-policy-report-only") { append(&r.job_csp, strings.concatenate({"\x00", h.value})) }
+			if base.ascii_equal_fold(h.name, "service-worker-allowed") && !sw_scope_allowed(r, h.value) {
 				delete(r.job_error)
 				r.job_error = fmt.aprintf("SecurityError: the scope %s is not allowed by Service-Worker-Allowed: %s", r.scope, h.value)
 			}
@@ -642,7 +642,7 @@ sw_script_dir :: proc(script: string) -> string {
 
 @(private)
 sw_has_allowed :: proc(list: []http.Header) -> bool {
-	for h in list { if strings.equal_fold(h.name, "service-worker-allowed") { return true } }
+	for h in list { if base.ascii_equal_fold(h.name, "service-worker-allowed") { return true } }
 	return false
 }
 

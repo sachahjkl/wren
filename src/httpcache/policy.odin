@@ -10,6 +10,7 @@ package httpcache
 
 import "core:strconv"
 import "core:strings"
+import "wb:base"
 import "wb:cookies"
 import "wb:http"
 
@@ -69,7 +70,7 @@ parse_cache_control :: proc(value: string) -> Cache_Control {
 				rest = rest[k:]
 			}
 		}
-		lower := strings.to_lower(name, context.temp_allocator)
+		lower := base.ascii_lower(name)
 		delta :: proc(arg: string, has: bool) -> i64 {
 			if !has { return 0 }
 			n := 0
@@ -283,7 +284,7 @@ has_validator :: proc(resp: http.Headers) -> bool { return http.has_header(resp,
 @(private)
 is_not_updated_by_304 :: proc(name: string) -> bool {
 	for n in ([]string{"content-length", "content-encoding", "transfer-encoding", "content-range", "content-type"}) {
-		if strings.equal_fold(name, n) { return true }
+		if base.ascii_equal_fold(name, n) { return true }
 	}
 	return false
 }
@@ -306,7 +307,7 @@ merge_304 :: proc(stored, fresh: http.Headers, allocator := context.allocator) -
 // Connection-level fields: they describe one hop, never a stored response (RFC 9111 §3.1).
 is_hop_by_hop :: proc(name: string) -> bool {
 	for n in ([]string{"connection", "keep-alive", "proxy-connection", "te", "transfer-encoding", "upgrade", "proxy-authenticate", "proxy-authorization", "trailer"}) {
-		if strings.equal_fold(name, n) { return true }
+		if base.ascii_equal_fold(name, n) { return true }
 	}
 	return false
 }
@@ -314,7 +315,7 @@ is_hop_by_hop :: proc(name: string) -> bool {
 // Fields a stored response does not keep: cookies are set by the network response that carried them, never again by
 // a stored copy (as Chromium persists headers "sans cookies"); the transport's own fields.
 is_never_stored :: proc(name: string) -> bool {
-	return strings.equal_fold(name, "set-cookie") || strings.equal_fold(name, "set-cookie2") || strings.equal_fold(name, "alt-svc")
+	return base.ascii_equal_fold(name, "set-cookie") || base.ascii_equal_fold(name, "set-cookie2") || base.ascii_equal_fold(name, "alt-svc")
 }
 
 // The Vary field names of a response, lower case. `star`: Vary: * (never matches).
@@ -325,7 +326,7 @@ vary_names :: proc(resp: http.Headers, allocator := context.temp_allocator) -> (
 			n := strings.trim_space(f)
 			if n == "" { continue }
 			if n == "*" { star = true; continue }
-			l := strings.to_lower(n, allocator)
+			l := base.ascii_lower_clone(n, allocator)
 			dup := false
 			for o in out { if o == l { dup = true; break } }
 			if !dup { append(&out, l) }

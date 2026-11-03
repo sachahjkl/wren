@@ -4,6 +4,7 @@ import "core:strings"
 import "core:testing"
 import "wb:base"
 import "wb:dom"
+import "wb:forms"
 import "wb:host"
 import "wb:url"
 import "wb:tools/testenv"
@@ -21,6 +22,30 @@ meta_refresh_content :: proc(t: ^testing.T) {
 	testing.expect(t, ok && d == 30 && u == "", "a delay alone reloads")
 	_, _, ok = meta_refresh_parse("soon; url=/x")
 	testing.expect(t, !ok, "no delay")
+}
+
+// <script type> and <input type> are ASCII case-insensitive: the long s U+017F is no 's', the Kelvin sign U+212A no 'k'.
+@(test)
+script_and_input_types_fold_ascii_alone :: proc(t: ^testing.T) {
+	test_pages(t)
+	d := dom.document_create()
+	defer dom.document_destroy(d)
+	script := dom.create_element(d, "script")
+	kind_of :: proc(d: ^dom.Document, el: base.Handle, type: string) -> (Script_Kind, bool) {
+		dom.set_attribute(d, el, "type", type)
+		return script_kind_of(d, el)
+	}
+	k, ok := kind_of(d, script, " MODULE ")
+	testing.expect(t, ok && k == .Module, "MODULE")
+	_, ok = kind_of(d, script, "Text/JavaScript")
+	testing.expect(t, ok, "Text/JavaScript")
+	_, ok = kind_of(d, script, "text/javaſcript")
+	testing.expect(t, !ok, "text/javaſcript is a data block")
+	input := dom.create_element(d, "input")
+	dom.set_attribute(d, input, "type", "CheckBox")
+	testing.expect_value(t, forms.input_type_of(dom.get(d, input)), forms.Input_Type.Checkbox)
+	dom.set_attribute(d, input, "type", "checKbox")
+	testing.expect_value(t, forms.input_type_of(dom.get(d, input)), forms.Input_Type.Text)
 }
 
 @(test)

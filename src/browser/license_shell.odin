@@ -165,7 +165,7 @@ is_license_file_address :: proc(a: string) -> bool {
 	if !strings.has_prefix(a, "file:") { return false }
 	end := strings.index_any(a, "?#")
 	path := end >= 0 ? a[:end] : a
-	return strings.has_suffix(strings.to_lower(path, context.temp_allocator), license.FILE_EXTENSION)
+	return base.ascii_has_suffix_fold(path, license.FILE_EXTENSION)
 }
 
 // Reads the file of a file: address and installs the key; about:wren then says how it went.

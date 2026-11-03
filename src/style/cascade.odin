@@ -374,7 +374,7 @@ substitute :: proc(env: ^Var_Env, vs: []css.Value, depth: int) -> ([]css.Value, 
 			nv.children = kids
 			append(&out, nv)
 		case .Function:
-			if !strings.equal_fold(v.tok.text, "var") {
+			if !base.ascii_equal_fold(v.tok.text, "var") {
 				nv := v
 				kids, ok := substitute(env, v.children, depth)
 				if !ok { return nil, false }

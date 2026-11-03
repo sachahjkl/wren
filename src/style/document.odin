@@ -16,7 +16,7 @@ is_css_type :: proc(n: ^dom.Node) -> bool {
 	t, ok := attr(n, "type")
 	if !ok { return true }
 	t = strings.trim_space(t)
-	return t == "" || strings.equal_fold(t, "text/css")
+	return t == "" || base.ascii_equal_fold(t, "text/css")
 }
 
 @(private)
@@ -26,7 +26,7 @@ has_token :: proc(list, token: string) -> bool {
 		for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
 		end := 0
 		for end < len(rest) && !is_space(rest[end]) { end += 1 }
-		if end > 0 && strings.equal_fold(rest[:end], token) { return true }
+		if end > 0 && base.ascii_equal_fold(rest[:end], token) { return true }
 		rest = rest[end:]
 	}
 	return false

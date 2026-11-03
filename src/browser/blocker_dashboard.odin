@@ -503,8 +503,8 @@ tab_my_rules :: proc(app: ^App, t: ^Tab) {
 		ui.next({width = ui.px(em * 7), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		ui.dropdown("###mr_action", []string{i18n.tr("rule action", "block"), i18n.tr("rule action", "allow")}, &app.dash.rule_action)
 		ui.spacer(ui.px(em * 0.4))
-		src := strings.to_lower(strings.trim_space(ui.field_string(&app.dash.rule_src)), context.temp_allocator)
-		dst := strings.to_lower(strings.trim_space(ui.field_string(&app.dash.rule_dst)), context.temp_allocator)
+		src := base.ascii_lower(strings.trim_space(ui.field_string(&app.dash.rule_src)))
+		dst := base.ascii_lower(strings.trim_space(ui.field_string(&app.dash.rule_dst)))
 		if src == "" { src = "*" }
 		if ui.disabled(dst == "") {
 			if tool_button(i18n.tr("Add rule"), "mr_add", em * 7) {
@@ -569,7 +569,7 @@ tab_whitelist :: proc(app: ^App, t: ^Tab) {
 		ui.next({width = ui.px(em * 26), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		res := ui.line_edit("###wl_add", &app.dash.wl_add, i18n.tr("example.org: a site where the blocker stays off"))
 		ui.spacer(ui.px(em * 0.5))
-		host := strings.to_lower(strings.trim_space(ui.field_string(&app.dash.wl_add)), context.temp_allocator)
+		host := base.ascii_lower(strings.trim_space(ui.field_string(&app.dash.wl_add)))
 		host = strings.trim_prefix(strings.trim_prefix(host, "https://"), "http://")
 		if i := strings.index_any(host, "/?#"); i >= 0 { host = host[:i] }
 		if ui.disabled(host == "") {

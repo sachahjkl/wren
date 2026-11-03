@@ -347,15 +347,15 @@ apply_meta :: proc(p: ^Page) {
 		}
 		if n.kind == .Element && n.name == "meta" {
 			content, _ := dom.get_attribute(p.doc, cur, "content")
-			if he, ok := dom.get_attribute(p.doc, cur, "http-equiv"); ok && strings.equal_fold(he, "content-security-policy") && csp_on(p) {
+			if he, ok := dom.get_attribute(p.doc, cur, "http-equiv"); ok && base.ascii_equal_fold(he, "content-security-policy") && csp_on(p) {
 				before := len(p.env.policies.policies)
 				csp.parse_header(&p.env.policies, content, .Enforce)   // a <meta> policy cannot be report-only
 				if script_seen {
 					for &pol in p.env.policies.policies[before:] { pol.held_by = u64(cur) }
 				}
 			}
-			if he, ok := dom.get_attribute(p.doc, cur, "http-equiv"); ok && strings.equal_fold(he, "refresh") { meta_refresh(p, content) }
-			if name, ok := dom.get_attribute(p.doc, cur, "name"); ok && strings.equal_fold(name, "referrer") {
+			if he, ok := dom.get_attribute(p.doc, cur, "http-equiv"); ok && base.ascii_equal_fold(he, "refresh") { meta_refresh(p, content) }
+			if name, ok := dom.get_attribute(p.doc, cur, "name"); ok && base.ascii_equal_fold(name, "referrer") {
 				if rp := fetch.parse_referrer_policy(content); rp != .Default { p.env.referrer_policy = rp }
 			}
 		}
@@ -386,7 +386,7 @@ meta_refresh_parse :: proc(content: string) -> (delay: f64, target: string, ok: 
 	}
 	rest := strings.trim_left(s[i:], " \t\r\n;,")
 	if rest == "" { return whole + frac, "", true }
-	if len(rest) >= 3 && strings.equal_fold(rest[:3], "url") {
+	if len(rest) >= 3 && base.ascii_equal_fold(rest[:3], "url") {
 		rest = strings.trim_left(rest[3:], " \t\r\n")
 		if len(rest) == 0 || rest[0] != '=' { return }
 		rest = strings.trim_left(rest[1:], " \t\r\n")

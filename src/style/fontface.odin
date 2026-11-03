@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:math"
 import "core:strconv"
 import "core:strings"
+import "wb:base"
 import "wb:css"
 
 // @font-face (CSS Fonts 4 §4): the descriptors of every rule in force, parsed on each rebuild. Loading the files is the
@@ -136,14 +137,14 @@ face_family :: proc(vs: []css.Value, a := context.allocator) -> (string, bool) {
 		strings.write_string(&sb, v.tok.text)
 	}
 	name := strings.to_string(sb)
-	switch css.lower_temp(name) {
+	switch base.ascii_lower(name) {
 	case "", "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui", "inherit", "initial", "default": return "", false
 	}
 	return name, true
 }
 
 face_format :: proc(name: string) -> Font_Format {
-	switch css.lower_temp(name) {
+	switch base.ascii_lower(name) {
 	case "woff", "woff-variations": return .Woff
 	case "woff2", "woff2-variations": return .Woff2
 	case "truetype", "ttf", "truetype-variations": return .Truetype
@@ -165,10 +166,10 @@ face_sources :: proc(vs: []css.Value, a := context.allocator) -> ([]Font_Source,
 		head := items[0]
 		switch {
 		case tok_is(head, .Url): src = Font_Source{kind = .Url, url = strings.clone(head.tok.text, a)}
-		case head.kind == .Function && strings.equal_fold(head.tok.text, "url"):
+		case head.kind == .Function && base.ascii_equal_fold(head.tok.text, "url"):
 			for x in head.children { if tok_is(x, .String) { src = Font_Source{kind = .Url, url = strings.clone(x.tok.text, a)} } }
 			if src.url == "" { continue }
-		case head.kind == .Function && strings.equal_fold(head.tok.text, "local"):
+		case head.kind == .Function && base.ascii_equal_fold(head.tok.text, "local"):
 			name, ok := face_family(css.trim_values(head.children), a)
 			if !ok { continue }
 			src = Font_Source{kind = .Local, name = name}
@@ -177,7 +178,7 @@ face_sources :: proc(vs: []css.Value, a := context.allocator) -> ([]Font_Source,
 		valid := true
 		for it in items[1:] {
 			if it.kind != .Function { valid = false; break }
-			switch css.lower_temp(it.tok.text) {
+			switch base.ascii_lower(it.tok.text) {
 			case "format":
 				args := split_items(it.children)
 				if len(args) != 1 { valid = false; break }
@@ -212,7 +213,7 @@ font_format_supported :: proc(f: Font_Format) -> bool {
 
 // Font technologies (CSS Fonts 4 §11.1, tech()) the font engine renders.
 font_tech_supported :: proc(name: string) -> bool {
-	switch css.lower_temp(name) {
+	switch base.ascii_lower(name) {
 	case "variations", "features-opentype", "features-aat", "palettes", "incremental": return true
 	}
 	return false

@@ -175,7 +175,7 @@ header_value :: proc(lines: string, name: string) -> string {
 		l := strings.trim_right(line, "\r")
 		colon := strings.index_byte(l, ':')
 		if colon <= 0 { continue }
-		if strings.equal_fold(strings.trim_space(l[:colon]), name) { return strings.trim_space(l[colon + 1:]) }
+		if base.ascii_equal_fold(strings.trim_space(l[:colon]), name) { return strings.trim_space(l[colon + 1:]) }
 	}
 	return ""
 }

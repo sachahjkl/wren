@@ -185,7 +185,7 @@ implicit_role :: proc(d: ^dom.Document, h: base.Handle, n: ^dom.Node, has_name: 
 input_role :: proc(d: ^dom.Document, h: base.Handle) -> Role {
 	t, _ := dom.get_attribute(d, h, "type")
 	_, has_list := dom.get_attribute(d, h, "list")
-	switch strings.to_lower(t, context.temp_allocator) {
+	switch base.ascii_lower(t) {
 	case "button", "submit", "reset", "image": return .Button
 	case "checkbox": return .Check_Box
 	case "radio": return .Radio_Button
@@ -213,7 +213,7 @@ input_role :: proc(d: ^dom.Document, h: base.Handle) -> Role {
 @(private)
 header_role :: proc(d: ^dom.Document, h: base.Handle) -> Role {
 	if s, ok := dom.get_attribute(d, h, "scope"); ok {
-		switch strings.to_lower(s, context.temp_allocator) {
+		switch base.ascii_lower(s) {
 		case "row", "rowgroup": return .Row_Header
 		case "col", "colgroup": return .Column_Header
 		}

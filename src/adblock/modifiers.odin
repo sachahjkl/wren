@@ -3,6 +3,7 @@ package adblock
 import "base:runtime"
 import "core:slice"
 import "core:strings"
+import "wb:base"
 
 // Filters that change a request instead of blocking it: `$removeparam` (rewrites the URL), `$csp` (adds a policy to the
 // document's answer) and `$header` (blocks on a response header).
@@ -146,7 +147,7 @@ match_response_headers :: proc(e: ^Engine, req: ^Request, lookup: Header_Lookup,
 		if i := strings.index_byte(arg, ':'); i >= 0 { name, want, has_value = arg[:i], arg[i + 1:], true }
 		neg := strings.has_prefix(want, "~")
 		if neg { want = want[1:] }
-		val, ok := lookup(user, strings.to_lower(name, context.temp_allocator))
+		val, ok := lookup(user, base.ascii_lower(name))
 		hit := ok
 		if ok && has_value {
 			if len(want) > 2 && want[0] == '/' && want[len(want) - 1] == '/' {
@@ -159,7 +160,7 @@ match_response_headers :: proc(e: ^Engine, req: ^Request, lookup: Header_Lookup,
 				}
 				hit = re != nil && regex_match(re, &e.scratch, val)
 			} else {
-				hit = strings.equal_fold(val, want) || strings.contains(strings.to_lower(val, context.temp_allocator), strings.to_lower(want, context.temp_allocator))
+				hit = base.ascii_contains_fold(val, want)
 			}
 			if neg { hit = !hit }
 		}

@@ -102,8 +102,8 @@ drag_source_for :: proc(p: ^Page, h: base.Handle) -> (base.Handle, Drag_Source_K
 		if n == nil { break }
 		if n.kind == .Element {
 			if v, ok := dom.get_attribute(p.doc, cur, "draggable"); ok {
-				if strings.equal_fold(v, "true") { return cur, .Element }
-				if strings.equal_fold(v, "false") { return base.NIL_HANDLE, .None }
+				if base.ascii_equal_fold(v, "true") { return cur, .Element }
+				if base.ascii_equal_fold(v, "false") { return base.NIL_HANDLE, .None }
 			}
 			switch n.name {
 			case "img": return cur, .Image
