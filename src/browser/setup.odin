@@ -73,6 +73,7 @@ Setup_Dialog :: struct {
 	open:       bool,
 	reason:     Setup_Reason,
 	busy:       int,                    // jobs out in the pool
+	acting:     int,                    // of them, those that change the disk (install, uninstall): only they show "Working…"
 	facts:      Setup_Facts,
 	known:      bool,
 
@@ -303,6 +304,7 @@ setup_job_done :: proc(data: rawptr) {
 		delete(job.old_dir)
 		desktop.options_destroy(&job.opts)
 		setup_facts_destroy(&job.facts)
+		if job.kind == .Apply || job.kind == .Uninstall { app.stp.acting -= 1 }
 		free(job)
 		app.stp.busy -= 1
 	}
@@ -496,6 +498,7 @@ setup_apply :: proc(app: ^App) {
 	// the checkboxes are the preferences from now on (Modify, --desktop-integration and the box in about:config agree)
 	setup_remember_options(app)
 	app.stp.busy += 1
+	app.stp.acting += 1
 	host.run_blocking(&app.blocking, setup_job_work, setup_job_done, job)
 	setup_note(app, "Working…", "weak")
 	request_frames(app, 3)
@@ -520,6 +523,7 @@ setup_uninstall :: proc(app: ^App) {
 	job.running_exe = strings.clone(desktop.executable_path())
 	job.target_dir = app.stp.facts.inst.exe_present || app.stp.facts.inst.manifest ? strings.clone(app.stp.facts.inst.dir) : ""
 	app.stp.busy += 1
+	app.stp.acting += 1
 	host.run_blocking(&app.blocking, setup_job_work, setup_job_done, job)
 	setup_note(app, "Working…", "weak")
 	request_frames(app, 3)
