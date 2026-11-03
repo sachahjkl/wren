@@ -387,7 +387,7 @@ literals and <code>new RegExp</code> share one matcher. Unicode properties, case
 <h2 id="embedding-interface-embedodin-runtimeodin"><a class="anchor" href="#embedding-interface-embedodin-runtimeodin" aria-hidden="true">#</a>Embedding interface (<code>embed.odin</code>, <code>runtime.odin</code>)</h2>
 <p><code>engine_new</code> / <code>context_new</code> / <code>eval_source</code> / <code>eval_bytecode</code> / <code>call_function</code> / <code>run_jobs</code> /
 <code>retain</code> / <code>release</code> / <code>heap_stats</code>, with the hooks in <code>Host_Config</code>: <code>compile</code>, <code>load_module</code>,
-<code>import_meta</code>, <code>interrupt</code>, <code>rejection</code>, <code>gc_prologue</code>, <code>compile_strings</code>, <code>dynamic_import</code>,
+<code>import_meta</code>, <code>interrupt</code>, <code>rejection</code>, <code>gc_prologue</code>, <code>gc_epilogue</code>, <code>compile_strings</code>, <code>dynamic_import</code>,
 <code>atomics_wait</code>/<code>atomics_notify</code>, <code>can_block</code>, <code>malloc_limit</code>. Values handed to the host live until the
 next call into the engine unless retained.</p>
 <p><code>src/engine/jsrt/wasm</code> is the freestanding module (<code>jsrt_init/new/alloc/eval/run_jobs/free</code>).</p>

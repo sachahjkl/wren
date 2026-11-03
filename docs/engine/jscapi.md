@@ -47,6 +47,12 @@ The API types (`Context`, `Runtime`, `Class_Def`, `Native`, `Property_Descriptor
   outside any JavaScript (a host event) are released when it returns.
 - **Hooks**: interrupt handler, GC prologue, rejection tracker, compile‑strings hook, dynamic‑import hook,
   module normalize/loader/attribute check, `JS_SetCanBlock`, `JS_SetMemoryLimit`, GC threshold (and floor).
+  Wren's own `JS_SetGCEpilogue` is called at the end of every collection, after its finalizers (the glue unpins the
+  nodes of the wrappers they finalized in one call to the browser).
+- **Strings read in place**: Wren's own `JS_ToStringView(ctx, &len, val)` gives the bytes of a string value that is
+  all ASCII (a rope flattened first), with no copy and nothing to free, nil for anything else: not NUL-terminated,
+  valid while the value lives (the glue's `STR_VIEW`: the generated bindings' string arguments, read by the import
+  before the native returns).
 - **Modules**: `JS_NewCModule` + `JS_AddModuleExport` + `JS_SetModuleExport` (init run before the first
   import), `JS_LoadModule(WithFuncs)`, `JS_ResolveModule`, `JS_GetModuleRequest*`, `JS_GetImportMeta`,
   `EVAL_FLAG_WREN_NO_RESOLVE`.
@@ -69,7 +75,7 @@ Distinct `JS_*` / `js_*` names the glue references: **176**.
 | helper names of the glue that are not API (`js_str`, `js_cstr` …) | 5 |
 | missing | 0 |
 
-The API itself is tested natively by `judge capi` (48 checks); the glue runs on it in every build.
+The API itself is tested natively by `judge capi` (56 checks); the glue runs on it in every build.
 
 ### What is approximated or absent (by weight)
 
@@ -98,7 +104,8 @@ The API itself is tested natively by `judge capi` (48 checks); the glue runs on 
 
 `judge capi` (`src/engine/jsrt/judge/capi_test.odin`) runs the API natively on a heap below 4 GiB: values,
 strings, properties, native functions with data and magic, formatted exceptions, classes with opaque data,
-cycles through `gc_mark`, counted references as roots, opaque data in the object's block (zeroed, one per object,
+cycles through `gc_mark`, counted references as roots, the GC epilogue (once a collection, after its finalizers),
+strings read in place (ASCII and concatenations; none of Latin-1, UTF-16 or other values), opaque data in the object's block (zeroed, one per object,
 cycles through it collected, 10 000 made and dropped without the heap keeping them), exotic objects, promises and jobs, adopted buffers,
 a native module imported by a script module, a compiled function written out and read back, and a soak of
 20 000 temporaries that must be collected.

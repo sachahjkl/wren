@@ -372,8 +372,11 @@ the check of what was inserted (<code>inserted_exceed</code>, 18 %), the style t
 collection included) 26.7 (22.0-27.0) -&gt; 17.6 (15.8-18.5) ms a frame p50, 93.2 (91.5-93.8) -&gt; 122.5 (120.1-123.8)
 frames/s, CPU work per frame 30.7 (30.5-31.3) -&gt; 23.3 (23.1-24.2) ms; the collection the DOM asks for 8.1 -&gt; 5.3 ms
 (timed in jspage, every 2 to 3 frames).</p>
-<p><strong>Bottleneck:</strong> the script stage (the browser's part of making nodes and wrappers, the collection, the copies of the
-arguments' strings, the interpreter), then layout.</p>
+<p>After round 7 (6 runs of each build, interleaved; median, range in brackets): the script stage 18.9 (17.0-19.1) -&gt;
+14.3 (13.6-14.9) ms a frame p50, 119.0 (114.6-123.2) -&gt; 142.3 (133.9-143.0) frames/s, CPU work per frame 24.0
+(23.2-24.9) -&gt; 20.0 (19.9-21.3) ms; the collection the DOM asks for 5.4 (5.3-5.6) -&gt; 3.8 (3.6-4.3) ms (jspage).</p>
+<p><strong>Bottleneck:</strong> the script stage (the interpreter and the wrappers it makes, the browser's insertions and the trees
+the collection frees), then layout.</p>
 <h3 id="3-scrolling-a-long-page-p10k-3-wheel-notches-every-16-ms"><a class="anchor" href="#3-scrolling-a-long-page-p10k-3-wheel-notches-every-16-ms" aria-hidden="true">#</a>3. Scrolling a long page (p10k, 3 wheel notches every 16 ms)</h3>
 <p>167 to 177 frames/s (headless: one frame per input, the input's rate). CPU per frame 0.54 ms mean, 0.31 p50, 1.0 p95:
 building the chrome 0.12, page paint 0.017, style 0.002, no layout. GPU draw 0.43 ms p50, 0.73 p95; present 0.06 ms.
@@ -408,6 +411,9 @@ of each, interleaved, the order turning): a partial restyle 0.193 (0.187-0.203) 
 3.30 (3.28-3.39) ms. <code>mutation</code> and <code>mutation_class</code> the same before and after: CPU work per frame 0.69 and 0.71 ms,
 1.20 and 1.21 ms; a partial restyle of <code>mutation_class</code> 0.152 (0.149-0.152) and 0.153 (0.152-0.160) ms.</p>
 <p>After round 6: the three pages the same (CPU work per frame 0.71, 1.22 and 3.26 ms before and after, 5 runs of each).</p>
+<p>After round 7: the same within the noise (CPU work per frame, mean, 5 runs of each: <code>mutation</code> 0.72 (0.70-0.80) and
+0.71 (0.70-0.74) ms, <code>mutation_class</code> 1.46 (1.30-1.82) and 1.41 (1.27-1.46), <code>mutation_fullstyle</code> 3.38 (3.36-7.02) and
+3.25 (3.22-5.30)).</p>
 <h2 id="what-changed-round-1"><a class="anchor" href="#what-changed-round-1" aria-hidden="true">#</a>What changed, round 1</h2>
 <ol>
 <li><strong>The frame pacer books no slot for a frame it does not pace</strong> (<code>src/browser/pacing.odin</code>, <code>pacer_wait</code>). A headless
@@ -843,6 +849,72 @@ to the C heap and freed), the collection a fifth (its finalizers four fifths of 
 <code>Node_unpin</code> and the destruction of the trees it frees; the prologue's visit of every wrapper), <code>appendChild</code> a tenth
 (the browser's <code>Node_preInsert</code>), <code>createTextNode</code> 8 %, the arguments' strings copied for the browser (<code>JS_ToCStringLen2</code>)
 8 %, the getters (<code>document</code>, <code>lastChild</code>) 5 %, the interpreter's own loop the rest.</p>
+<h2 id="what-changed-round-7-the-script-stage-of-dom-heavy-pages-what-was-left"><a class="anchor" href="#what-changed-round-7-the-script-stage-of-dom-heavy-pages-what-was-left" aria-hidden="true">#</a>What changed, round 7: the script stage of DOM-heavy pages, what was left</h2>
+<p>Item 1 of round 6's list, measured as round 6 did: the engine's samples (the guest profiler in <code>jspage</code>, its bias noted
+there: the finalizers' <code>Node_unpin</code> showed as <code>libc_free</code>, 13 % of the samples, <code>Node_preInsert</code> as <code>JS_DupValue</code>), the
+browser's under <code>page::run_animation_frames</code> and under each import (<code>WREN_SAMPLE_UNDER</code>). Each change was timed in
+<code>jspage</code> on a copy of nodes10k (<code>build()</code> a frame, p50 of 400 frames; the collection with a timer around <code>js.collect</code> in
+a build of jspage that was not kept), the build before it and the build with it in turn, 4 to 8 runs each; then the
+browser, all of it (6 runs of each build, interleaved).</p>
+<ol>
+<li><strong>A collection unpins its nodes in one call</strong> (<code>unpin_later</code>, <code>gc_epilogue</code>, <code>native/js/odin/wj/qjs_platform.odin</code>;
+<code>JS_SetGCEpilogue</code>, <code>src/engine/jscapi</code>; <code>Host_Config.gc_epilogue</code>, <code>src/engine/jsrt</code>). A finalized node wrapper
+called the browser's <code>Node_unpin</code>, one call for each of the 10 000 wrappers a collection frees; their handles now go
+into a flat array and the epilogue, called at the end of every collection and at the runtime's teardown, hands them
+to <code>Node_unpinAll</code> (which, as <code>Node_unpin</code> did, runs nothing when it returns: <code>hold_reactions</code>). The collection 5.45
+(5.20-6.03) -&gt; 4.98 (4.90-6.24) ms. Test: <code>judge capi</code> (the epilogue once a collection, after its finalizers).</li>
+<li><strong>The string arguments of the bindings read in place</strong> (<code>JS_ToStringView</code>, <code>src/engine/jscapi/misc.odin</code>;
+<code>STR_VIEW</code>, <code>native/js/odin/wj</code>). Every string argument was copied to the C heap (<code>JS_ToCStringLen2</code>: an UTF-8 copy
+in a fresh block) and freed after the call. A string that is all ASCII is its own UTF-8: the generated bindings,
+whose imports read the bytes before the native returns while the caller holds the argument, and <code>createElement</code>, now
+pass its bytes where they are (a rope is flattened first; any other string is copied as before). <code>build()</code> 12.35
+(12.34-13.68) -&gt; 11.08 (10.98-11.47) ms. Test: <code>judge capi</code> (ASCII, a concatenation; no view of Latin-1, UTF-16, a
+number, an object).</li>
+<li><strong>Element names are the program's strings</strong> (<code>STATIC_NAMES</code>, <code>static_name</code>, <code>set_name</code>, <code>src/dom/names.odin</code>;
+<code>Node.name_static</code>). <code>create_element</code> copied each name to the heap (half of the browser's <code>createElement</code>, under
+<code>RtlAllocateHeap</code>) and the destruction of the tree freed it. A name of the HTML elements, the older ones the parser
+meets, or SVG's and MathML's most used (by first letter, at most <code>NAME_STATIC_MAX</code> bytes) is now the program's
+string, shared by every element of that name and its clones; any other is copied as before. <code>build()</code> 11.06
+(10.97-11.22) -&gt; 10.62 (10.53-10.69) ms. Test: <code>element_names_static_or_copied</code> (the test runner's allocator reports
+a static name freed or a copy leaked).</li>
+<li><strong>The wrappers of nodes in an array by handle index</strong> (<code>Node_Table</code>, <code>qjs_platform.odin</code>). The glue found a node's
+wrapper through a hash table (open addressing, a backward shift on every delete: 10 000 deletes a collection); a
+node handle is its pool slot's index and generation, so the wrapper now sits at the index, the full handle in the
+entry telling a node from the one that had the slot before. A handle whose entry is taken (a node of another
+document, a slot reused while the old wrapper waits for a collection) goes to the hash table, empty otherwise. The
+collection 4.30 (4.23-5.45) -&gt; 3.55 (3.53-3.74) ms; <code>build()</code> the same.</li>
+<li><strong>Measured, not kept.</strong> A flag per interface saying whether it or one it inherits from has [LegacyUnforgeable]
+members, so that a new wrapper does not walk its five interfaces to find none (<code>wj_define_unforgeables</code>, 1.4 % of the
+engine's samples): <code>build()</code> 10.81 (10.60-11.29) against 10.68 (10.63-12.29) ms, 10 runs each. The <code>document</code>
+getter crosses to the browser on every read (<code>Window_document</code>, 10 000 times a frame, 2 % of the engine's samples):
+keeping the realm's document in the glue would assume the page's document never changes under a realm, which
+<code>adopt_document</code> does not promise; not done.</li>
+</ol>
+<p>The browser, all of it (6 runs of each build for nodes10k, 5 for the others, interleaved; median, range in brackets):</p>
+<div class="table-box"><table>
+<thead><tr><th></th><th>before</th><th>after</th></tr></thead>
+<tbody>
+<tr><td>nodes10k: frames/s</td><td>119.0 (114.6-123.2)</td><td>142.3 (133.9-143.0)</td></tr>
+<tr><td>nodes10k: CPU work per frame, mean</td><td>24.0 (23.2-24.9) ms</td><td>20.0 (19.9-21.3) ms</td></tr>
+<tr><td>nodes10k: script (Animation, with the collection), p50</td><td>18.9 (17.0-19.1) ms</td><td>14.3 (13.6-14.9) ms</td></tr>
+<tr><td>nodes10k: style stage, the window thread waiting on layout, p50</td><td>1.64, 3.31 ms</td><td>1.58, 3.24 ms</td></tr>
+<tr><td>nodes10k: the collection the DOM asks for (jspage)</td><td>5.40 (5.26-5.57) ms</td><td>3.77 (3.59-4.29) ms</td></tr>
+<tr><td>nodes10k: <code>build()</code> (jspage)</td><td>12.57 (12.46-12.62) ms</td><td>10.73 (10.64-11.06) ms</td></tr>
+<tr><td><code>mutation</code>: frames/s, CPU work per frame mean</td><td>76.4, 0.72 ms</td><td>75.3, 0.71 ms</td></tr>
+<tr><td><code>mutation_class</code>: CPU work per frame mean</td><td>1.46 ms</td><td>1.41 ms</td></tr>
+<tr><td><code>mutation_fullstyle</code>: CPU work per frame mean, style stage p50</td><td>3.38, 0.94 ms</td><td>3.25, 0.90 ms</td></tr>
+<tr><td>p10k_load: load</td><td>262 (250-265) ms</td><td>252 (250-262) ms</td></tr>
+<tr><td>p10k_scroll: frames/s, CPU work per frame p50</td><td>170.6, 0.292 ms</td><td>171.9, 0.304 ms</td></tr>
+<tr><td><code>examples/site/modern-css.html</code> resized: CPU work per frame mean, a full pass</td><td>0.64 (0.41-0.70), 1.44 ms</td><td>0.67 (0.41-0.73), 1.47 ms</td></tr>
+<tr><td>private memory: nodes10k, <code>mutation_fullstyle</code></td><td>260, 237 MB</td><td>256, 237 MB</td></tr>
+</tbody>
+</table></div>
+<p>The machine ran other programs (single runs of p10k_scroll and modern-css moved by a factor of 2 in both builds). What
+the browser's samples of nodes10k's script stage are now (under <code>page::run_animation_frames</code>, 8 219 samples): the
+engine itself 84 % (the interpreter, the wrappers it makes: the object, its host block, the glue's <code>Obj</code>), <code>Node_preInsert</code>
+6.4 % (<code>insert_before</code>, the journal, the insertion steps' walk), <code>Node_unpinAll</code> 3.8 % (the trees it frees,
+<code>destroy_subtree</code> 2.6 %), <code>createElement</code> 2.9 %, <code>Node_wrap</code> and <code>createTextNode</code> 2 % each; the collection is 13 % of
+the engine's samples (was 20 %).</p>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
@@ -882,7 +954,8 @@ of every element, plus a concatenation per indexed attribute at <code>cascade.od
 element with <code>elementtiming</code> only). Gone in round 1: <code>page/timeline_lcp.odin</code> <code>ls_prev</code> (per box, per mutated frame).
 Added in round 4, flat: <code>style/share.odin</code> (a style pass's shared styles: open addressing, the keys' words in one array,
 one lookup per element). Gone in round 5: <code>style/restyle_dom.odin</code> <code>inserted_exceed</code> (the inserted nodes of a restyle,
-now bits by handle index).</p>
+now bits by handle index). Gone in round 7: the glue's node handle -&gt; wrapper table (<code>native/js/odin/wj/qjs_platform.odin</code>,
+now an array by handle index; the hash table holds only the handles whose entry is taken, none on nodes10k).</p>
 <h3 id="arrays-of-bools"><a class="anchor" href="#arrays-of-bools" aria-hidden="true">#</a>Arrays of bools</h3>
 <p>Per box or element, per pass: <code>layout/context.odin:53</code> (<code>plain</code>), <code>layout/finish.odin:37,81</code>, <code>layout/effects.odin:45</code>,
 <code>layout/incremental.odin:563</code>, <code>layout/query.odin:91</code> (<code>View.singular</code>, per frame), <code>style/cascade.odin:349</code>
@@ -932,18 +1005,22 @@ inserted); of item 3, the incremental attempt is done, the display list of the f
 block were measured and left as they were (round 5, item 5); what is left of both is below.</p>
 <p>After round 6. Round 5's item 1 is done in part (round 6: the named class, the interface by name, the insertion steps'
 walks, the wrapper's allocations, the C API's decoding, the getters); what is left of it is item 1 below.</p>
+<p>After round 7. Round 6's item 1 is done in part (round 7: the collection's unpins in one call, the arguments' strings
+read in place, element names as the program's strings, the wrappers by handle index); what is left of it is item 1
+below.</p>
 <ol>
-<li><strong>The script stage of DOM-heavy pages, what is left</strong> (nodes10k: 17.6 ms of a 23 ms frame). In order of the
-engine's samples: making nodes and wrappers (a quarter: the browser's <code>create_element</code> copies each name to the heap,
-<code>create_text</code> each text, the collection frees them: names as atoms, texts in an arena of the document; the wrapper,
-<code>JS_NewObjectProtoClassPayload</code> and its handle in the glue's <code>nodes</code> hash table); the collection the DOM asks for
-(a fifth, 5.3 ms every 2 to 3 frames: the finalizers' <code>Node_unpin</code>, one crossing per wrapper, could be one
-<code>Node_unpinAll</code>-like call after the collection, and the trees it frees; the prologue's visit of every wrapper, a
-fifth of the collection, memory-bound: the wrapper, its host block, its shape); the arguments' strings copied to the
-C heap and freed for each call (<code>JS_ToCStringLen2</code>, 8 %: an ASCII flat string could be handed over as it is, given a
-length-only contract); <code>Node_preInsert</code> (the journal); the interpreter's prototype walks for methods (five shapes
-for <code>li.appendChild</code>). Not the crossings (4 %, section 2). Measured in round 6 and left: an inline list in
-<code>destroy_subtree</code>.</li>
+<li><strong>The script stage of DOM-heavy pages, what is left</strong> (nodes10k: 14.3 ms of a 20 ms frame). In order of the
+engine's samples: the interpreter itself (<code>interp_hot</code>, <code>interp_run</code>, <code>call_native</code> and the C API's bridge: about a
+third, with the prototype walks for methods, five shapes for <code>li.appendChild</code>); making the wrappers (<code>make_wrapper</code>,
+<code>host_object_new</code>, <code>mem_alloc</code>, the appends to the engine's temporary roots: about a fifth with the browser's
+<code>createElement</code>, <code>createTextNode</code> and <code>Node_wrap</code>, two crossings for each new node where one could pin and name the
+interface); the collection the DOM asks for (13 %, 3.8 ms every 2 to 3 frames: the mark and the sweep, the prologue's
+visit of every wrapper, a sixth of it, memory-bound, and the browser's <code>destroy_subtree</code> of the trees it frees);
+<code>Node_preInsert</code> (6 % of the browser's samples: <code>insert_before</code>, the journal, the insertion steps' walk); the
+<code>document</code> getter's crossing (2 %, its answer never changes for a realm once its page's document is adopted: to be
+shown first). Texts are still copied to the heap and freed one by one (<code>create_text</code>; an arena of the document needs
+texts that change to give their bytes back). Not the crossings themselves (section 2). Measured and left: an inline
+list in <code>destroy_subtree</code> (round 6); a flag per interface for the unforgeable members of its chain (round 7).</li>
 <li><strong>Layout of DOM-heavy pages</strong> (nodes10k: the window thread waits 3.3 ms a frame, the page thread's full pass and
 nothing else now): the paragraphs laid out ahead on the layout threads, the page thread waiting for them (<code>pre_run</code>,
 40 % of its samples, <code>parallel_for</code> 30 %); the multi-column layout (28 %); the display list (22 %: its cost is the
@@ -995,6 +1072,7 @@ measured first (round 3: a lock-free queue lost to the loop's mutex); a worker's
 <li><a href="#what-changed-round-4-the-cost-of-styling-one-element">What changed, round 4: the cost of styling one element</a></li>
 <li><a href="#what-changed-round-5-matching-the-walks-in-tree-order-the-incremental-attempt">What changed, round 5: matching, the walks in tree order, the incremental attempt</a></li>
 <li><a href="#what-changed-round-6-the-script-stage-of-dom-heavy-pages">What changed, round 6: the script stage of DOM-heavy pages</a></li>
+<li><a href="#what-changed-round-7-the-script-stage-of-dom-heavy-pages-what-was-left">What changed, round 7: the script stage of DOM-heavy pages, what was left</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
