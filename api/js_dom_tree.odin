@@ -217,6 +217,11 @@ Document_createElementInert :: proc(local_name: string) -> Element
 //@wb fn raises optional=namespace
 Document_createElementNSChecked :: proc(namespace: string, qualified_name: string) -> Element
 
+/// document.createAttributeNS(namespace, qualifiedName)'s checks: Invalid_Character, Namespace as DOM "validate and
+/// extract" (the engine makes the Attr).
+//@wb fn raises optional=namespace
+Document_validateAttributeNS :: proc(namespace: string, qualified_name: string)
+
 /// document.createDocumentFragment()
 //@wb fn raises
 Document_createDocumentFragment :: proc() -> Node

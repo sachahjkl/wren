@@ -115,6 +115,9 @@ partial module dom {
   Element Document_createElementInert(string local_name) raises;
   /// document.createElementNS(namespace, qualifiedName): Invalid_Character, Namespace as DOM "validate and extract".
   Element Document_createElementNSChecked(optional string namespace, string qualified_name) raises;
+  /// document.createAttributeNS(namespace, qualifiedName)'s checks: Invalid_Character, Namespace as DOM "validate and
+  /// extract" (the engine makes the Attr).
+  void Document_validateAttributeNS(optional string namespace, string qualified_name) raises;
   /// document.createDocumentFragment()
   Node Document_createDocumentFragment() raises;
   /// document.createComment(data)

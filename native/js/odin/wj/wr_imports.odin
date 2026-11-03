@@ -1977,6 +1977,9 @@ foreign _wr_wj_dom {
 	@(link_name = "Document_createElementInert") wr_Document_createElementInert :: proc(local_name: [^]u8, local_name_len: u32, _ret: ^u64) -> i32 ---
 	// document.createElementNS(namespace, qualifiedName): Invalid_Character, Namespace as DOM "validate and extract".
 	@(link_name = "Document_createElementNSChecked") wr_Document_createElementNSChecked :: proc(namespace: [^]u8, namespace_len: u32, qualified_name: [^]u8, qualified_name_len: u32, _ret: ^u64) -> i32 ---
+	// document.createAttributeNS(namespace, qualifiedName)'s checks: Invalid_Character, Namespace as DOM "validate and
+	// extract" (the engine makes the Attr).
+	@(link_name = "Document_validateAttributeNS") wr_Document_validateAttributeNS :: proc(namespace: [^]u8, namespace_len: u32, qualified_name: [^]u8, qualified_name_len: u32) -> i32 ---
 	// document.createDocumentFragment()
 	@(link_name = "Document_createDocumentFragment") wr_Document_createDocumentFragment :: proc(_ret: ^u64) -> i32 ---
 	// document.createComment(data)

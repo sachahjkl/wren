@@ -294,6 +294,22 @@ section("DOMParser", () => {
   throws("a type outside the enumeration", () => p.parseFromString("x", "text/plain"), "TypeError");
 });
 
+section("Attr nodes and their document", () => {
+  const doc = document.implementation.createHTMLDocument("t");
+  const made = doc.createAttribute("data-a");
+  eq("an Attr belongs to the document that made it", made.ownerDocument, doc);
+  const el = doc.createElement("div");
+  el.setAttributeNode(made);
+  el.setAttributeNS("x", "p:y", "1");
+  document.adoptNode(el);
+  t("its element adopted, it is adopted", made.ownerDocument === document && el.getAttributeNodeNS("x", "y").ownerDocument === document);
+  const copy = made.cloneNode();
+  t("cloneNode copies an Attr, detached", copy !== made && copy.name === "data-a" && copy.ownerDocument === document && copy.ownerElement === null);
+  const imported = doc.importNode(el.getAttributeNodeNS("x", "y"));
+  t("importNode of an Attr: a copy of the importing document", imported.prefix === "p" && imported.namespaceURI === "x" && imported.value === "1" && imported.ownerDocument === doc);
+  throws("createAttributeNS checks the qualified name", () => document.createAttributeNS("ns", "p:"), "InvalidCharacterError");
+});
+
 done();
 </script>
 </body></html>

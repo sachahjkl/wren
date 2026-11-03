@@ -892,6 +892,11 @@ Document_createElementNSChecked :: proc(c: ^Call, namespace: Maybe(string), qual
 	return u64(h), .None
 }
 
+Document_validateAttributeNS :: proc(c: ^Call, namespace: Maybe(string), qualified_name: string) -> Api_Error {
+	_, _, _, err := validate_and_extract(c, namespace, qualified_name, false)
+	return err
+}
+
 Document_createDocumentFragment :: proc(c: ^Call) -> (u64, Api_Error) {
 	d := jd_doc(c)
 	if d == nil { return 0, no_document(c) }

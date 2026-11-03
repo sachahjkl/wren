@@ -331,6 +331,7 @@ foreign _m_dom {
 	@(link_name = "Document_createElementChecked") _Document_createElementChecked :: proc(local_name: [^]u8, local_name_len: u32, _ret: ^Element) -> Error ---
 	@(link_name = "Document_createElementInert") _Document_createElementInert :: proc(local_name: [^]u8, local_name_len: u32, _ret: ^Element) -> Error ---
 	@(link_name = "Document_createElementNSChecked") _Document_createElementNSChecked :: proc(namespace: [^]u8, namespace_len: u32, qualified_name: [^]u8, qualified_name_len: u32, _ret: ^Element) -> Error ---
+	@(link_name = "Document_validateAttributeNS") _Document_validateAttributeNS :: proc(namespace: [^]u8, namespace_len: u32, qualified_name: [^]u8, qualified_name_len: u32) -> Error ---
 	@(link_name = "Document_createDocumentFragment") _Document_createDocumentFragment :: proc(_ret: ^Node) -> Error ---
 	@(link_name = "Document_createComment") _Document_createComment :: proc(data: [^]u8, data_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "Document_createCDATASection") _Document_createCDATASection :: proc(data: [^]u8, data_len: u32, _ret: ^Node) -> Error ---
@@ -3693,6 +3694,15 @@ Document_createElementNSChecked :: proc "contextless" (namespace: Maybe(string) 
 	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
 	err = _Document_createElementNSChecked(_namespace_p, _namespace_n, raw_data(qualified_name), u32(len(qualified_name)), &result)
 	return
+}
+
+// document.createAttributeNS(namespace, qualifiedName)'s checks: Invalid_Character, Namespace as DOM "validate and
+// extract" (the engine makes the Attr).
+Document_validateAttributeNS :: proc "contextless" (namespace: Maybe(string) = nil, qualified_name: string) -> Error {
+	_namespace_p: [^]u8
+	_namespace_n := max(u32)
+	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
+	return _Document_validateAttributeNS(_namespace_p, _namespace_n, raw_data(qualified_name), u32(len(qualified_name)))
 }
 
 // document.createDocumentFragment()

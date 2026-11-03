@@ -1744,7 +1744,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly nodeName`: C `wjr_Node_get_nodeName`
 - `readonly baseURI`: import `dom.Node_baseURI`
 - `readonly isConnected`: import `dom.Node_isConnected`
-- `readonly ownerDocument`: import `dom.Node_ownerDocument`
+- `readonly ownerDocument`: C `wjr_Node_get_ownerDocument`
 - `getRootNode()`: C `wjr_Node_getRootNode`
 - `readonly parentNode`: import `dom.Node_parentNode`
 - `readonly parentElement`: import `dom.Node_parentElement`
@@ -1757,7 +1757,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `nodeValue`: C `wjr_Node_get_nodeValue`
 - `textContent`: C `wjr_Node_get_textContent`
 - `normalize()`: import `dom.Node_normalize`
-- `cloneNode()`: import `dom.Node_cloneNode`
+- `cloneNode()`: C `wjr_Node_cloneNode`
 - `isEqualNode()`: import `dom.Node_isEqualNode`
 - `isSameNode()`: import `dom.Node_isSameNode`
 - `const DOCUMENT_POSITION_DISCONNECTED`: generic (constant)

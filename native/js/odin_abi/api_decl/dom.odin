@@ -61,6 +61,7 @@ Window_document                 :: #type proc() -> Document
 Document_createElementChecked   :: #type proc(local_name: string) -> (Element, abi.Api_Error)
 Document_createElementInert     :: #type proc(local_name: string) -> (Element, abi.Api_Error)
 Document_createElementNSChecked :: #type proc(namespace: Maybe(string), qualified_name: string) -> (Element, abi.Api_Error)
+Document_validateAttributeNS    :: #type proc(namespace: Maybe(string), qualified_name: string) -> abi.Api_Error
 // an element of a document of its own (XML keeps the name's case); Not_Found: that document is an HTML one
 Document_createXMLElement       :: #type proc(document: Document, namespace: Maybe(string), qualified_name: string, with_namespace: bool) -> (Element, abi.Api_Error)
 Document_getElementById         :: #type proc(id: string) -> Element
