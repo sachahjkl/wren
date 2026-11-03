@@ -180,9 +180,21 @@ a blank no script touched, a document of another origin or a group switch get a 
   browsing context group. It gets a new id, so the opener's `WindowProxy` sees it closed; its `opener` is null, its name cleared,
   and the windows it opened lose theirs. `same-origin-allow-popups` keeps the popups it opens that have no policy.
 
-Not there: a redirect's own policy (only the final response's counts), reports (`report-to`, `Report-Only`), sandboxed popups
-inheriting their opener's sandbox, the window features (sizes, `popup`), and the browser's `noreferrer` (its navigations send
-the Referer; the WPT runner's do not).
+- **Sandboxing.** A window that a sandboxed document opens is sandboxed as that document is, each of its documents
+  (`Navigable.sandbox`, applied by `navigable_attach`), unless the sandbox has `allow-popups-to-escape-sandbox`.
+
+Not there: a redirect's own policy (only the final response's counts), reports (`report-to`, `Report-Only`), the window features
+(sizes, `popup`), and the browser's `noreferrer` (its navigations send the Referer; the WPT runner's do not).
+
+## Policies a frame requires
+
+`<iframe csp="...">` (CSP Embedded Enforcement, `src/page/frames_csp.odin`) is a policy the frame's documents must take; a frame
+without one takes its parent's own. Its requests send it (`Sec-Required-CSP`). A response with `Allow-CSP-From: *` or the parent's
+origin takes it, enforced on the document; one whose own enforced policies are as strict (a policy with each of its directives and
+the same sources: the part of the standard's subsumption that does not compare source lists) takes it as it is; about:blank, srcdoc,
+`data:` and `blob:` documents take it enforced. Any other is refused, as `X-Frame-Options` refuses: the frame shows an error
+document. The `sandbox` directive of any enforced policy, a response's header or a required one, sandboxes the document on top of
+what its container asks.
 
 ## Cost
 

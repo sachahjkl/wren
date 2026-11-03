@@ -154,7 +154,7 @@ open_hook :: proc(user: rawptr, p: ^page.Page, req: page.Open_Request) -> ^page.
 	connect(d)
 	d.parsed = true
 	append(&root.popups, d)
-	if req.url != "about:blank" { navigation_start(d, req.url, &req.source.env, req.noreferrer) }
+	if !page.open_is_blank(req.url) { navigation_start(d, req.url, &req.source.env, req.noreferrer) }
 	return d.top
 }
 

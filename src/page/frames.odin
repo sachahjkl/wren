@@ -73,8 +73,10 @@ Navigable :: struct {
 	element:     base.Handle,    // the container in parent.doc
 	kind:        Container_Kind,
 	name:        string,         // owned: window.name, the target name of links and forms
-	sandbox:     Sandbox,        // the container's sandbox attribute as of the last navigation
-	allow:       Permissions_Policy,   // the container's allow attribute as of the last navigation
+	sandbox:     Sandbox,        // the container's sandbox attribute as of the last navigation; a window's: its opener's sandboxing (auxiliary.odin)
+	allow:      Permissions_Policy,   // the container's allow attribute as of the last navigation
+	required_csp: string,        // owned: the policy its documents must take (frames_csp.odin), as of the last navigation; "" none
+	navigator:   u64,            // a window's: the navigable of the sandboxed document that opened it, which may navigate it; 0 none
 	src_origin:  url.Origin,     // owned: the origin of the container's src at the last navigation ('src' allowlists)
 	load:        ^Frame_Load,    // the navigation in flight
 	delaying:    bool,           // the parent's load event waits for this document
@@ -181,6 +183,7 @@ navigable_free :: proc(n: ^Navigable) {
 	delete(n.name)
 	delete(n.path)
 	delete(n.lazy_url)
+	delete(n.required_csp)
 	permissions_policy_destroy(&n.allow)
 	url.origin_destroy(&n.src_origin)
 	url.origin_destroy(&n.coop_origin)
@@ -418,13 +421,19 @@ frame_destroy :: proc(n: ^Navigable) {
 	navigable_free(n)
 }
 
-// The sandbox and allow attributes are read when a navigation starts (HTML: changing them affects the next one).
+// The sandbox, allow and csp attributes are read when a navigation starts (HTML: changing them affects the next one).
 @(private)
 frame_snapshot_container :: proc(n: ^Navigable) {
 	p := n.parent
 	d := p.doc
 	n.sandbox = {}
 	if v, ok := dom.get_attribute(d, n.element, "sandbox"); ok && n.kind == .Iframe { n.sandbox = sandbox_parse(v) }
+	required, has := dom.get_attribute(d, n.element, "csp")
+	required = frame_required_csp(n, required, has && n.kind == .Iframe)
+	if required != n.required_csp {
+		delete(n.required_csp)
+		n.required_csp = strings.clone(required)
+	}
 	permissions_policy_destroy(&n.allow)
 	if n.kind == .Iframe {
 		allow, _ := dom.get_attribute(d, n.element, "allow")
@@ -609,11 +618,12 @@ frame_navigate :: proc(n: ^Navigable, href: string, replace := false, method := 
 	n.delaying = true
 	rp := fetch.Referrer_Policy.Default
 	if v, has := dom.get_attribute(p.doc, n.element, "referrerpolicy"); has { rp = fetch.parse_referrer_policy(v) }
-	headers: []fetch.Header_Pair
-	if content_type != "" { headers = {{"Content-Type", content_type}} }
+	headers := make([dynamic]fetch.Header_Pair, 0, 2, context.temp_allocator)
+	if content_type != "" { append(&headers, fetch.Header_Pair{"Content-Type", content_type}) }
+	if n.required_csp != "" && (target.scheme == "http" || target.scheme == "https") { append(&headers, fetch.Header_Pair{REQUIRED_CSP_HEADER, n.required_csp}) }
 	l.task = fetch.start(p.loader, {
 		request = {url = target.href, mode = .Navigate, credentials = .Include, redirect = .Follow, destination = n.kind == .Frame ? .Frame : .Iframe,
-			initiator = &p.env, referrer_policy = rp, method = method, body = body, headers = headers},
+			initiator = &p.env, referrer_policy = rp, method = method, body = body, headers = headers[:]},
 		on_event = frame_fetch_event, user = l, scope = p.scope, collect = true,
 	})
 }
@@ -671,6 +681,16 @@ frame_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			frame_show_error(n, fmt.tprintf("%s refused to connect.", host_name), why)
 			return
 		}
+		required := required_csp_verdict(n, final, r.headers)
+		if required == .Refused {
+			p := n.parent
+			why := "it does not take the Content-Security-Policy its frame requires (csp attribute): no Allow-CSP-From, no policy of its own as strict"
+			log(p, .Error, fmt.tprintf("Refused to display '%s' in a frame: %s", r.url, why))
+			fetch.cancel(p.loader, l.task)
+			l.task = base.NIL_HANDLE
+			frame_show_error(n, "This content can't be shown.", why)
+			return
+		}
 		// HTML "navigate": no document comes of these, the frame keeps the one it has
 		disposition := strings.to_lower(strings.trim_space(l.disposition), context.temp_allocator)
 		if r.status == HTTP_NO_CONTENT || r.status == HTTP_RESET_CONTENT || strings.has_prefix(disposition, "attachment") {
@@ -693,6 +713,7 @@ frame_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		ro_h := http.get_all(r.headers, "content-security-policy-report-only")
 		rp, _ := http.get_header(r.headers, "referrer-policy")
 		apply_response_headers(c, csp_h, ro_h, rp)
+		if required == .Enforced { frame_enforce_required_csp(n, c) }
 		apply_isolation_headers(c, r.headers, n.parent)
 		frame_apply_permissions_header(c, http.get_all(r.headers, "permissions-policy"))
 	case .Data:
@@ -980,7 +1001,11 @@ frame_install_page :: proc(n_in: ^Navigable, href_in: string, mode: Origin_Mode,
 	}
 	p := n.parent
 	if p == nil || p.closed { return nil }
-	if n.initial && frame_keeps_window(n, href, mode) { return frame_keep_window(n, href, mode, commit) }
+	if n.initial && frame_keeps_window(n, href, mode) {
+		c := frame_keep_window(n, href, mode, commit)
+		if c != nil && mode == .Inherit { frame_enforce_required_csp(n, c) }   // (about:blank, srcdoc: a local scheme takes it)
+		return c
+	}
 	frame_session_commit(n, href, commit, p.settings.web.history_max_entries)
 	n.initial = false
 	c := page_create(p.loop, p.loader, p.settings, p.scope, href, p.console != nil ? frame_console : nil, n)
@@ -1021,6 +1046,7 @@ frame_install_page :: proc(n_in: ^Navigable, href_in: string, mode: Origin_Mode,
 		n := (^Navigable)(data)
 		n.page = nil
 	}, n)
+	if mode == .Inherit { frame_enforce_required_csp(n, c) }   // (about:blank, srcdoc: a local scheme takes it)
 	if the_pages.frame_hooks.attached != nil { the_pages.frame_hooks.attached(the_pages.frame_hooks.user, c) }
 	return c
 }
@@ -1154,6 +1180,8 @@ navigation_allowed :: proc(src: ^Page, target: ^Navigable) -> string {
 		}
 		return ""
 	}
+	// (a window a sandboxed document opened: that document's navigable is its one permitted sandboxed navigator)
+	if target.parent == nil && target.navigator == sn.id { return "" }
 	if sb.active { return "a sandboxed frame may only navigate itself and its descendants" }
 	// another window: one of the source's browsing context group (its opener, a window it or its group opened)
 	if target.parent == nil {

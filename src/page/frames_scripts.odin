@@ -167,7 +167,9 @@ Frame_open :: proc(c: ^Call, u: string, target_in: string, features: string) -> 
 	p := c.page
 	href := "about:blank"
 	if u != "" {
-		r, ok := url.parse(u, &p.env.location, context.temp_allocator)
+		// (against the document's base URL: an about:srcdoc document has its parent's)
+		base, _ := url.parse(document_base_url(p), nil, context.temp_allocator)
+		r, ok := url.parse(u, &base, context.temp_allocator)
 		if !ok { return 0, fail(c, .Syntax, "SyntaxError: Failed to execute 'open' on 'Window': Unable to open a window with invalid URL.") }
 		href = r.href
 	}

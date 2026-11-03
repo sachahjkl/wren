@@ -1256,6 +1256,33 @@ o.onload = () => { try { log("other " + o.contentWindow.kept); } catch (e) { log
 	close_page(pr, min_checks = 4)
 }
 
+// CSP Embedded Enforcement (frames_csp.odin): an iframe's csp attribute is a policy its documents take, its sandbox directive with it.
+// A srcdoc document takes it, a response with Allow-CSP-From: * takes it (document.domain throws in both: they are sandboxed), a response
+// without it nor a policy as strict is refused (the frame shows an error document of an opaque origin).
+@(test)
+frames_required_csp :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	probe :: `<script>try { document.domain = document.domain; parent.postMessage(name + " allowed", "*") } catch (e) { parent.postMessage(name + " " + e.name, "*") }</script>`
+	pr := load(t, fill(`<body><script>
+addEventListener("message", e => log(e.data));
+const policy = "sandbox allow-scripts allow-same-origin";
+function frame(name) { const f = document.createElement("iframe"); f.name = name; f.csp = policy; return f; }
+const s = frame("srcdoc"); s.srcdoc = %s; document.body.appendChild(s);
+const a = frame("allowed"); a.src = "%s"; document.body.appendChild(a);
+const r = frame("refused"); r.src = "%s"; r.onload = () => log("refused " + (r.contentDocument === null)); document.body.appendChild(r);
+log("attribute " + (s.csp === policy && s.getAttribute("csp") === policy));
+</script></body>`, strings.concatenate({"`", probe[:len(probe) - len("</script>")], "<\\/script>`"}, context.temp_allocator), doc(SAME, probe, "Allow-CSP-From: *"), doc(SAME, probe)))
+	check(pr, said(pr, "attribute true"), "iframe.csp reflects the csp attribute")
+	check(pr, wait_note(pr, "srcdoc SecurityError"), "a srcdoc document takes the required policy: its sandbox directive forbids document.domain")
+	check(pr, wait_note(pr, "allowed SecurityError"), "a response with Allow-CSP-From: * takes the required policy and its sandbox")
+	check(pr, wait_note(pr, "refused true"), "a response that does not take the required policy is refused: an error document of an opaque origin")
+	check(pr, !said(pr, "refused allowed") && !said(pr, "refused SecurityError"), "nothing of the refused document ran")
+	close_page(pr, min_checks = 5)
+}
+
 // nesting: frames of frames, top and parent, a frame closed with its parent
 @(test)
 frames_nesting :: proc(t: ^testing.T) {

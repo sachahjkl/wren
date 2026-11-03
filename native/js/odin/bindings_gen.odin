@@ -24961,7 +24961,7 @@ wjd_WriteParams_from :: proc "c" (ctx: ^wj.Context, v: wj.JSValue, out: ^wjd_Wri
 @(private = "file") m_HTMLHRElement: [5]wj.Member
 @(private = "file") m_HTMLHeadingElement: [1]wj.Member
 @(private = "file") m_HTMLHtmlElement: [1]wj.Member
-@(private = "file") m_HTMLIFrameElement: [19]wj.Member
+@(private = "file") m_HTMLIFrameElement: [20]wj.Member
 @(private = "file") m_HTMLImageElement: [28]wj.Member
 @(private = "file") m_HTMLInputElement: [61]wj.Member
 @(private = "file") m_HTMLLIElement: [2]wj.Member
@@ -27500,25 +27500,26 @@ wj_install_bindings :: proc "c" () {
 	m_HTMLHRElement[4] = wj.Member{name = "width", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLHRElement_get_width, set = wjg_HTMLHRElement_set_width}
 	m_HTMLHeadingElement[0] = wj.Member{name = "align", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLHeadingElement_get_align, set = wjg_HTMLHeadingElement_set_align}
 	m_HTMLHtmlElement[0] = wj.Member{name = "version", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLHtmlElement_get_version, set = wjg_HTMLHtmlElement_set_version}
-	m_HTMLIFrameElement[0] = wj.Member{name = "src", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_src, set = wjg_HTMLIFrameElement_set_src}
-	m_HTMLIFrameElement[1] = wj.Member{name = "srcdoc", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_srcdoc, set = wjg_HTMLIFrameElement_set_srcdoc}
-	m_HTMLIFrameElement[2] = wj.Member{name = "name", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_name, set = wjg_HTMLIFrameElement_set_name}
-	m_HTMLIFrameElement[3] = wj.Member{name = "sandbox", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 76, get = wjr_HTMLIFrameElement_get_sandbox, set = wjg_HTMLIFrameElement_set_sandbox}
-	m_HTMLIFrameElement[4] = wj.Member{name = "allow", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_allow, set = wjg_HTMLIFrameElement_set_allow}
-	m_HTMLIFrameElement[5] = wj.Member{name = "allowFullscreen", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_allowFullscreen, set = wjg_HTMLIFrameElement_set_allowFullscreen}
-	m_HTMLIFrameElement[6] = wj.Member{name = "width", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_width, set = wjg_HTMLIFrameElement_set_width}
-	m_HTMLIFrameElement[7] = wj.Member{name = "height", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_height, set = wjg_HTMLIFrameElement_set_height}
-	m_HTMLIFrameElement[8] = wj.Member{name = "referrerPolicy", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_HTMLIFrameElement_get_referrerPolicy, set = wjr_HTMLIFrameElement_set_referrerPolicy}
-	m_HTMLIFrameElement[9] = wj.Member{name = "loading", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_HTMLIFrameElement_get_loading, set = wjr_HTMLIFrameElement_set_loading}
-	m_HTMLIFrameElement[10] = wj.Member{name = "contentDocument", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_HTMLIFrameElement_get_contentDocument, set = nil}
-	m_HTMLIFrameElement[11] = wj.Member{name = "contentWindow", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_HTMLIFrameElement_get_contentWindow, set = nil}
-	m_HTMLIFrameElement[12] = wj.Member{name = "getSVGDocument", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_HTMLIFrameElement_getSVGDocument}
-	m_HTMLIFrameElement[13] = wj.Member{name = "align", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_align, set = wjg_HTMLIFrameElement_set_align}
-	m_HTMLIFrameElement[14] = wj.Member{name = "scrolling", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_scrolling, set = wjg_HTMLIFrameElement_set_scrolling}
-	m_HTMLIFrameElement[15] = wj.Member{name = "frameBorder", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_frameBorder, set = wjg_HTMLIFrameElement_set_frameBorder}
-	m_HTMLIFrameElement[16] = wj.Member{name = "longDesc", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_longDesc, set = wjg_HTMLIFrameElement_set_longDesc}
-	m_HTMLIFrameElement[17] = wj.Member{name = "marginHeight", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_marginHeight, set = wjg_HTMLIFrameElement_set_marginHeight}
-	m_HTMLIFrameElement[18] = wj.Member{name = "marginWidth", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_marginWidth, set = wjg_HTMLIFrameElement_set_marginWidth}
+	m_HTMLIFrameElement[0] = wj.Member{name = "csp", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_HTMLIFrameElement_get_csp, set = wjr_HTMLIFrameElement_set_csp}
+	m_HTMLIFrameElement[1] = wj.Member{name = "src", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_src, set = wjg_HTMLIFrameElement_set_src}
+	m_HTMLIFrameElement[2] = wj.Member{name = "srcdoc", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_srcdoc, set = wjg_HTMLIFrameElement_set_srcdoc}
+	m_HTMLIFrameElement[3] = wj.Member{name = "name", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_name, set = wjg_HTMLIFrameElement_set_name}
+	m_HTMLIFrameElement[4] = wj.Member{name = "sandbox", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 76, get = wjr_HTMLIFrameElement_get_sandbox, set = wjg_HTMLIFrameElement_set_sandbox}
+	m_HTMLIFrameElement[5] = wj.Member{name = "allow", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_allow, set = wjg_HTMLIFrameElement_set_allow}
+	m_HTMLIFrameElement[6] = wj.Member{name = "allowFullscreen", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_allowFullscreen, set = wjg_HTMLIFrameElement_set_allowFullscreen}
+	m_HTMLIFrameElement[7] = wj.Member{name = "width", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_width, set = wjg_HTMLIFrameElement_set_width}
+	m_HTMLIFrameElement[8] = wj.Member{name = "height", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_height, set = wjg_HTMLIFrameElement_set_height}
+	m_HTMLIFrameElement[9] = wj.Member{name = "referrerPolicy", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_HTMLIFrameElement_get_referrerPolicy, set = wjr_HTMLIFrameElement_set_referrerPolicy}
+	m_HTMLIFrameElement[10] = wj.Member{name = "loading", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_HTMLIFrameElement_get_loading, set = wjr_HTMLIFrameElement_set_loading}
+	m_HTMLIFrameElement[11] = wj.Member{name = "contentDocument", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_HTMLIFrameElement_get_contentDocument, set = nil}
+	m_HTMLIFrameElement[12] = wj.Member{name = "contentWindow", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_HTMLIFrameElement_get_contentWindow, set = nil}
+	m_HTMLIFrameElement[13] = wj.Member{name = "getSVGDocument", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_HTMLIFrameElement_getSVGDocument}
+	m_HTMLIFrameElement[14] = wj.Member{name = "align", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_align, set = wjg_HTMLIFrameElement_set_align}
+	m_HTMLIFrameElement[15] = wj.Member{name = "scrolling", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_scrolling, set = wjg_HTMLIFrameElement_set_scrolling}
+	m_HTMLIFrameElement[16] = wj.Member{name = "frameBorder", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_frameBorder, set = wjg_HTMLIFrameElement_set_frameBorder}
+	m_HTMLIFrameElement[17] = wj.Member{name = "longDesc", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_longDesc, set = wjg_HTMLIFrameElement_set_longDesc}
+	m_HTMLIFrameElement[18] = wj.Member{name = "marginHeight", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_marginHeight, set = wjg_HTMLIFrameElement_set_marginHeight}
+	m_HTMLIFrameElement[19] = wj.Member{name = "marginWidth", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLIFrameElement_get_marginWidth, set = wjg_HTMLIFrameElement_set_marginWidth}
 	m_HTMLImageElement[0] = wj.Member{name = "x", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
 	m_HTMLImageElement[1] = wj.Member{name = "y", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
 	m_HTMLImageElement[2] = wj.Member{name = "alt", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLImageElement_get_alt, set = wjg_HTMLImageElement_set_alt}
@@ -31385,7 +31386,7 @@ wj_install_bindings :: proc "c" () {
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
 	the_interfaces[284] = wj.Interface{name = "HTMLIFrameElement", parent = 259, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_CTOR_UNSUPPORTED), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
-		members = rawptr(&m_HTMLIFrameElement[0]), n_members = 19, subtree_end = 285,
+		members = rawptr(&m_HTMLIFrameElement[0]), n_members = 20, subtree_end = 285,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
 	the_interfaces[285] = wj.Interface{name = "HTMLImageElement", parent = 259, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_CTOR_UNSUPPORTED), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
