@@ -691,8 +691,9 @@ block were measured and left as they were (round 5, item 5); what is left of bot
    after each frame or job (`mem_free_all` and its `memset` are 6 to 12 % of some pool threads' samples on nodes10k), and
    given back past their first block. Allocations that need no zero (`make` of what is overwritten whole) are the gain
    there, not when the zeroing happens (round 5, item 5).
-6. **The atlas lock per glyph and the word cache's 64 locks** (toolkit): a per-thread front, misses to one owner
-   (`word_find` was 4 % of the page thread on nodes10k before round 4 moved its paragraphs to the layout threads).
+6. **The atlas lock and the word cache's 64 locks** (toolkit): toolkit 0.64.0 took the atlas lock once per run of glyphs
+   and a word cache hit under a shared lock (its `docs/locks.md`: 8 threads, a word's shape 442 -> 194 ns, a glyph's bitmap
+   120 -> 17 ns); what is left is measuring the page's text again before any per-thread front.
 7. **The style index's string tables** (`style/engine.odin:66-68`): atoms (interned ids) and flat arrays by atom (looked
    up now only for the first element of each kind of a family).
 8. **The job queues of the blocking pool, the image decoders, the script compiler and the caches** (the table above):
