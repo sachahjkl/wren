@@ -60,6 +60,9 @@ test("FileReader", async () => {
   r4.readAsText(new Blob([new Uint8Array([0xE9])]), "windows-1252");
   await new Promise(res => r4.onload = res);
   eq(r4.result, "\u00e9", "readAsText with an encoding");
+  const read = async (bytes, label) => { const r = new FileReader(); r.readAsText(new Blob([new Uint8Array(bytes)]), label); await new Promise(res => r.onload = res); return r.result; };
+  eq(await read([0xFF, 0xFE, 0x41, 0x00], "windows-1252"), "A", "readAsText: a byte order mark chooses the encoding");
+  eq(await read([0x41, 0x42], "iso-2022-kr"), "\ufffd", "readAsText: the replacement encoding gives one U+FFFD");
   const r5 = new FileReader();
   let loaded = false;
   r5.onload = () => { loaded = true; };
