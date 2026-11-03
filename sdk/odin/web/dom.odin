@@ -207,6 +207,8 @@ foreign _m_dom {
 	@(link_name = "HTMLScriptElement_text") _HTMLScriptElement_text :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "HTMLScriptElement_set_text") _HTMLScriptElement_set_text :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
 	@(link_name = "HTMLInputElement_list") _HTMLInputElement_list :: proc(input: u64) -> Element ---
+	@(link_name = "HTMLDialogElement_closedBy") _HTMLDialogElement_closedBy :: proc(dialog: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLDialogElement_set_closedBy") _HTMLDialogElement_set_closedBy :: proc(dialog: u64, value: [^]u8, value_len: u32) ---
 	@(link_name = "HTMLDialogElement_show") _HTMLDialogElement_show :: proc(dialog: u64) -> Error ---
 	@(link_name = "HTMLDialogElement_showModal") _HTMLDialogElement_showModal :: proc(dialog: u64) -> Error ---
 	@(link_name = "HTMLDialogElement_close") _HTMLDialogElement_close :: proc(dialog: u64, result: [^]u8, result_len: u32) ---
@@ -2420,7 +2422,42 @@ HTMLInputElement_list :: proc "contextless" (input: $T_input) -> Element where i
 	return _HTMLInputElement_list(u64(input))
 }
 
-// dialog.show()
+// dialog.closedBy: the closedby attribute's state ("any", "closerequest", "none"); without a valid one, "closerequest"
+// for a modal dialog, else "none".
+HTMLDialogElement_closedBy :: proc "contextless" (dialog: $T_dialog, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_dialog)) && size_of(T_dialog) == 8 {
+	n := _HTMLDialogElement_closedBy(u64(dialog), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of HTMLDialogElement_closedBy's result.
+HTMLDialogElement_closedBy_len :: proc "contextless" (dialog: $T_dialog) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_dialog)) && size_of(T_dialog) == 8 {
+	n := _HTMLDialogElement_closedBy(u64(dialog), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HTMLDialogElement_closedBy's result in a buffer allocated to fit.
+HTMLDialogElement_closedBy_alloc :: proc(dialog: $T_dialog, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_dialog)) && size_of(T_dialog) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HTMLDialogElement_closedBy(u64(dialog), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// dialog.closedBy = value: sets the closedby attribute.
+HTMLDialogElement_set_closedBy :: proc "contextless" (dialog: $T_dialog, value: string) where intrinsics.type_is_integer(intrinsics.type_core_type(T_dialog)) && size_of(T_dialog) == 8 {
+	_HTMLDialogElement_set_closedBy(u64(dialog), raw_data(value), u32(len(value)))
+}
+
+// dialog.show(): Invalid_State when it is open as a modal dialog.
 HTMLDialogElement_show :: proc "contextless" (dialog: $T_dialog) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_dialog)) && size_of(T_dialog) == 8 {
 	return _HTMLDialogElement_show(u64(dialog))
 }

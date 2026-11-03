@@ -86,6 +86,7 @@ forms_attach :: proc(p: ^Page) {
 		popover_invoke = proc(user: rawptr, invoker: base.Handle) { popover_invoke((^Page)(user), invoker) },
 		popover_dismiss = proc(user: rawptr, target: base.Handle) { popover_light_dismiss((^Page)(user), target) },
 		close_request = proc(user: rawptr) -> bool { return popover_close_request((^Page)(user)) || dialog_close_request((^Page)(user)) },
+		dialog_closing = proc(user: rawptr, dialog: base.Handle) { dialog_closing((^Page)(user), dialog) },
 		dialog_closed = proc(user: rawptr, dialog: base.Handle) { dialog_closed((^Page)(user), dialog) },
 		queue_close = proc(user: rawptr, dialog: base.Handle) { dialog_queue_close((^Page)(user), dialog) },
 		inert = proc(user: rawptr, h: base.Handle) -> bool { return dialog_makes_inert((^Page)(user), h) },

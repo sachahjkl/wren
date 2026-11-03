@@ -150,7 +150,9 @@ Host :: struct {
 	popover_invoke:  proc(user: rawptr, invoker: base.Handle),
 	popover_dismiss: proc(user: rawptr, target: base.Handle),
 	close_request:   proc(user: rawptr) -> bool,
-	// A dialog closes; whether a modal dialog makes an element inert (no focus by Tab). Optional.
+	// A dialog is to close (its beforetoggle; it may stay open), it closed; whether a modal dialog makes an element inert
+	// (no focus by Tab). Optional.
+	dialog_closing:  proc(user: rawptr, dialog: base.Handle),
 	dialog_closed:   proc(user: rawptr, dialog: base.Handle),
 	queue_close:     proc(user: rawptr, dialog: base.Handle),   // "close" is fired from a task (at once without this)
 	inert:           proc(user: rawptr, h: base.Handle) -> bool,

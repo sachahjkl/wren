@@ -4536,6 +4536,18 @@ wjg_HTMLDialogElement_set_returnValue :: proc "c" (ctx: ^wj.Context, this_val: w
 }
 
 wjg_HTMLDialogElement_set_closedBy :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 271, "closedby", 0, v, 0, 0, 0) }
+// HTMLDialogElement.closedBy -> dom.HTMLDialogElement_closedBy
+wjg_HTMLDialogElement_get_closedBy :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	self := wj.wj_this(ctx, this_val, 271)
+	if self == nil { return wj.EXCEPTION }
+	n := i32(wj.wr_HTMLDialogElement_closedBy(self.handle, wj.wj_scratch.data, wj.wj_scratch.cap))
+	if n > 0 && u32(n) > wj.wj_scratch.cap {
+		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_HTMLDialogElement_closedBy(self.handle, wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
+	}
+	if n < 0 { return wj.wj_throw_status(ctx, n, "HTMLDialogElement.closedBy") }
+	return wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n))
+}
+
 // HTMLDialogElement.show() -> dom.HTMLDialogElement_show
 wjg_HTMLDialogElement_show :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 271)
@@ -27483,7 +27495,7 @@ wj_install_bindings :: proc "c" () {
 	m_HTMLDetailsElement[1] = wj.Member{name = "open", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLDetailsElement_get_open, set = wjg_HTMLDetailsElement_set_open}
 	m_HTMLDialogElement[0] = wj.Member{name = "open", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLDialogElement_get_open, set = wjg_HTMLDialogElement_set_open}
 	m_HTMLDialogElement[1] = wj.Member{name = "returnValue", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLDialogElement_get_returnValue, set = wjg_HTMLDialogElement_set_returnValue}
-	m_HTMLDialogElement[2] = wj.Member{name = "closedBy", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
+	m_HTMLDialogElement[2] = wj.Member{name = "closedBy", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLDialogElement_get_closedBy, set = wjg_HTMLDialogElement_set_closedBy}
 	m_HTMLDialogElement[3] = wj.Member{name = "show", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjg_HTMLDialogElement_show}
 	m_HTMLDialogElement[4] = wj.Member{name = "showModal", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjg_HTMLDialogElement_showModal}
 	m_HTMLDialogElement[5] = wj.Member{name = "close", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjg_HTMLDialogElement_close}

@@ -540,10 +540,15 @@ attr_or :: proc(n: ^dom.Node, name: string) -> string {
 	return v
 }
 
-// Closes a <dialog> with a return value (method=dialog submissions): `open` removed, `close` fired.
+// Closes a <dialog> with a return value (method=dialog submissions): the host told first (beforetoggle: a listener may
+// close it itself), `open` removed, `close` fired.
 close_dialog :: proc(f: ^Forms, dialog: base.Handle, result: string, has_result: bool) {
 	n := element(f, dialog)
 	if n == nil || !has_attr(n, "open") { return }
+	if f.host.dialog_closing != nil {
+		f.host.dialog_closing(f.host.user, dialog)
+		if n = element(f, dialog); n == nil || !has_attr(n, "open") { return }
+	}
 	dom.remove_attribute(f.doc, dialog, "open")
 	if f.host.dialog_closed != nil { f.host.dialog_closed(f.host.user, dialog) }
 	if c := control_of(f, dialog); c != nil && has_result { replace_owned(&c.return_value, result) }

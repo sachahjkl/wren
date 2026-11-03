@@ -668,7 +668,7 @@ jsdom_every_page_has_a_test :: proc(t: ^testing.T) {
 @(test) jsdom_custom :: proc(t: ^testing.T) { page_test(t, "custom.html", checks = 34) }
 @(test) jsdom_domparser_xml :: proc(t: ^testing.T) { page_test(t, "domparser-xml.html", checks = 41) }
 @(test) jsdom_elements :: proc(t: ^testing.T) { page_test(t, "elements.html", checks = 179) }
-@(test) jsdom_html :: proc(t: ^testing.T) { page_test(t, "html.html", checks = 145) }
+@(test) jsdom_html :: proc(t: ^testing.T) { page_test(t, "html.html", checks = 152) }
 @(test) jsdom_intersection :: proc(t: ^testing.T) { page_test(t, "intersection.html", checks = 35) }
 @(test) jsdom_navigation :: proc(t: ^testing.T) { page_test(t, "navigation.html", checks = 85) }
 @(test) jsdom_observer :: proc(t: ^testing.T) { page_test(t, "observer.html", checks = 25) }

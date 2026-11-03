@@ -67,6 +67,7 @@ func Start(o Options) (int, error) {
 	siteDir = findSiteDir(o.SiteDir)
 	wptRoot = findWPTFile("WREN_WPT_ROOT", "build", "wpt", "wpt")
 	wptReport = findWPTFile("WREN_WPT_REPORT", "wpt", "testharnessreport.js")
+	wptVendor = findWPTFile("WREN_WPT_VENDOR", "wpt", "testdriver-vendor.js")
 	if o.WPTOnly {
 		return startWPTOnly(o)
 	}

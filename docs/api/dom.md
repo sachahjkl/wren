@@ -1915,13 +1915,34 @@ input.list: the datalist of the id its `list` attribute gives.
 
 Host: `HTMLInputElement_list :: proc(c: ^Call, input: Api_Element) -> u64`
 
+### `HTMLDialogElement_closedBy`
+
+```
+string HTMLDialogElement_closedBy(Element dialog)
+```
+
+dialog.closedBy: the closedby attribute's state ("any", "closerequest", "none"); without a valid one, "closerequest"
+for a modal dialog, else "none".
+
+Host: `HTMLDialogElement_closedBy :: proc(c: ^Call, dialog: Api_Element) -> string`
+
+### `HTMLDialogElement_set_closedBy`
+
+```
+void HTMLDialogElement_set_closedBy(Element dialog, string value)
+```
+
+dialog.closedBy = value: sets the closedby attribute.
+
+Host: `HTMLDialogElement_set_closedBy :: proc(c: ^Call, dialog: Api_Element, value: string)`
+
 ### `HTMLDialogElement_show`
 
 ```
 void HTMLDialogElement_show(Element dialog) raises
 ```
 
-dialog.show()
+dialog.show(): Invalid_State when it is open as a modal dialog.
 
 Raises: returns an `Error` (see [web](web.md)).
 

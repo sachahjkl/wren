@@ -1730,7 +1730,12 @@ foreign _wr_wj_dom {
 	@(link_name = "HTMLScriptElement_set_text") wr_HTMLScriptElement_set_text :: proc(element: u64, value: [^]u8, value_len: u32) -> i32 ---
 	// input.list: the datalist of the id its `list` attribute gives.
 	@(link_name = "HTMLInputElement_list") wr_HTMLInputElement_list :: proc(input: u64) -> u64 ---
-	// dialog.show()
+	// dialog.closedBy: the closedby attribute's state ("any", "closerequest", "none"); without a valid one, "closerequest"
+	// for a modal dialog, else "none".
+	@(link_name = "HTMLDialogElement_closedBy") wr_HTMLDialogElement_closedBy :: proc(dialog: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	// dialog.closedBy = value: sets the closedby attribute.
+	@(link_name = "HTMLDialogElement_set_closedBy") wr_HTMLDialogElement_set_closedBy :: proc(dialog: u64, value: [^]u8, value_len: u32) ---
+	// dialog.show(): Invalid_State when it is open as a modal dialog.
 	@(link_name = "HTMLDialogElement_show") wr_HTMLDialogElement_show :: proc(dialog: u64) -> i32 ---
 	// dialog.showModal(): Invalid_State when it is open without being modal, not connected, or a showing popover.
 	@(link_name = "HTMLDialogElement_showModal") wr_HTMLDialogElement_showModal :: proc(dialog: u64) -> i32 ---

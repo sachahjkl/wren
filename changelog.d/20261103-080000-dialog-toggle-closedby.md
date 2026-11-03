@@ -1,0 +1,3 @@
+type: Fixed
+
+**`<dialog>` as the standard has it now**: opening and closing a dialog fire `beforetoggle` (cancelable when it opens: a listener can keep it closed) and a `toggle` event from a task, coalesced as a popover's; `dialog.closedBy` reflects the `closedby` attribute (`closerequest` for a modal dialog without one, else `none`) and Escape leaves a modal dialog with `closedby=none` open; `show()` of a dialog open as a modal one throws `InvalidStateError`; `requestClose()` does nothing for a dialog out of the document or from its own `cancel` listener.

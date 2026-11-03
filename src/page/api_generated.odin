@@ -19188,6 +19188,60 @@ _t_dom_HTMLInputElement_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	return nil
 }
 
+// HTMLDialogElement_closedBy :: proc(c: ^Call, dialog: Api_Element) -> string
+@(private = "file")
+_t_dom_HTMLDialogElement_closedBy :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLDialogElement_closedBy", "result buffer") }
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLDialogElement_closedBy: argument dialog is not a live Element") }
+		return wasm.trap_new("dom.HTMLDialogElement_closedBy: argument dialog is not a live Element")
+	}
+	_r := HTMLDialogElement_closedBy(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLDialogElement_set_closedBy :: proc(c: ^Call, dialog: Api_Element, value: string)
+@(private = "file")
+_t_dom_HTMLDialogElement_set_closedBy :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLDialogElement_set_closedBy", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.HTMLDialogElement_set_closedBy: argument value is not valid UTF-8") }
+		return wasm.trap_new("dom.HTMLDialogElement_set_closedBy: argument value is not valid UTF-8")
+	}
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.HTMLDialogElement_set_closedBy: argument dialog is not a live Element") }
+		return wasm.trap_new("dom.HTMLDialogElement_set_closedBy: argument dialog is not a live Element")
+	}
+	HTMLDialogElement_set_closedBy(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
 // HTMLDialogElement_show :: proc(c: ^Call, dialog: Api_Element) -> Api_Error
 @(private = "file")
 _t_dom_HTMLDialogElement_show :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -38812,6 +38866,8 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "HTMLScriptElement_text", fn = _t_dom_HTMLScriptElement_text, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "HTMLScriptElement_set_text", fn = _t_dom_HTMLScriptElement_set_text, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "HTMLInputElement_list", fn = _t_dom_HTMLInputElement_list, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLDialogElement_closedBy", fn = _t_dom_HTMLDialogElement_closedBy, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "HTMLDialogElement_set_closedBy", fn = _t_dom_HTMLDialogElement_set_closedBy, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "dom", name = "HTMLDialogElement_show", fn = _t_dom_HTMLDialogElement_show, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "HTMLDialogElement_showModal", fn = _t_dom_HTMLDialogElement_showModal, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "HTMLDialogElement_close", fn = _t_dom_HTMLDialogElement_close, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},

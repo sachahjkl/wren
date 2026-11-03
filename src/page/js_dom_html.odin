@@ -284,13 +284,13 @@ HTMLInputElement_list :: proc(c: ^Call, input: Api_Element) -> u64 {
 ////////////////////////////////
 // <dialog>
 
-// show(): open, not modal. showModal(): dialog_modal.odin.
+// show(): open, not modal; showModal(): modal (dialog_modal.odin: dialog_open after their checks).
 HTMLDialogElement_show :: proc(c: ^Call, dialog: Api_Element) -> Api_Error {
-	if _, open := attr_of(dialog.data, "open"); open { return .None }
-	err := dom_error(dom.set_attribute(c.page.doc, H(dialog.handle), "open", ""))
-	forms.changed(page_forms(c.page), H(dialog.handle))
-	if err == .None && !dialog_opening_modal { dialog_shown(c.page, H(dialog.handle)) }
-	return err
+	if _, open := attr_of(dialog.data, "open"); open {
+		return dialog_is_modal(c.page, H(dialog.handle)) ? fail(c, .Invalid_State, "The dialog is already open as a modal dialog.") : .None
+	}
+	dialog_open(c.page, H(dialog.handle), false)
+	return .None
 }
 
 HTMLDialogElement_showModal :: proc(c: ^Call, dialog: Api_Element) -> Api_Error {
@@ -298,14 +298,12 @@ HTMLDialogElement_showModal :: proc(c: ^Call, dialog: Api_Element) -> Api_Error 
 	if _, open := attr_of(dialog.data, "open"); open { return fail(c, .Invalid_State, "The dialog is already open.") }
 	if !dom.is_connected(c.page.doc, H(dialog.handle)) { return fail(c, .Invalid_State, "The dialog is not connected.") }
 	if popover_showing(c.page, H(dialog.handle)) { return fail(c, .Invalid_State, "The dialog is a showing popover.") }
-	dialog_opening_modal = true
-	err := HTMLDialogElement_show(c, dialog)
-	dialog_opening_modal = false
-	if err != .None { return err }
-	dialog_modal_shown(c.page, H(dialog.handle))
+	dialog_open(c.page, H(dialog.handle), true)
 	return .None
 }
 
+HTMLDialogElement_closedBy :: proc(c: ^Call, dialog: Api_Element) -> string { return closed_by_name(dialog_closed_by(c.page, H(dialog.handle))) }
+HTMLDialogElement_set_closedBy :: proc(c: ^Call, dialog: Api_Element, value: string) { dom.set_attribute(c.page.doc, H(dialog.handle), "closedby", value) }
 // close(result): `open` removed, returnValue set, "close" fired (package forms).
 HTMLDialogElement_close :: proc(c: ^Call, dialog: Api_Element, result: Maybe(string)) {
 	r, has := result.?
@@ -313,10 +311,10 @@ HTMLDialogElement_close :: proc(c: ^Call, dialog: Api_Element, result: Maybe(str
 	forms_repaint(c.page)
 }
 
-// requestClose(result): a cancelable "cancel" first; closed unless a listener cancels it.
+// requestClose(result): a cancelable "cancel" first (dialog_cancel); closed unless a listener cancels it. Nothing for a
+// dialog out of the document, or whose "cancel" is being fired (a listener asking again).
 HTMLDialogElement_requestClose :: proc(c: ^Call, dialog: Api_Element, result: Maybe(string)) {
-	if _, open := attr_of(dialog.data, "open"); !open { return }
-	if !dispatch_event(c.page, H(dialog.handle), dom.Event{type = "cancel", cancelable = true}) { return }
-	if dom.get(c.page.doc, H(dialog.handle)) == nil { return }
+	if _, open := attr_of(dialog.data, "open"); !open || !dom.is_connected(c.page.doc, H(dialog.handle)) { return }
+	if !dialog_cancel(c.page, H(dialog.handle)) || dom.get(c.page.doc, H(dialog.handle)) == nil { return }
 	HTMLDialogElement_close(c, dialog, result)
 }
