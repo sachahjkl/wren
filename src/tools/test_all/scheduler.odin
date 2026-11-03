@@ -481,7 +481,7 @@ advance :: proc(s: ^Scheduler, r: ^Step_Run) {
 		command := r.step.actions[r.action].(Command)
 		ok := code == 0
 		if ok && command.rule == .Says_Successful { ok = log_says_successful(r.log, r.offset) }
-		if code != 0 { tooling.append_text(r.log, fmt.tprintfln("(exit code %d: 0x%8X)", code, u32(i32(code)))) }
+		if code != 0 { tooling.append_text(r.log, fmt.tprintfln("(exit code %d: 0x%08X)", code, u32(i32(code)))) }
 		collect_process(s, r)
 		action_ended(s, r, ok)
 		return

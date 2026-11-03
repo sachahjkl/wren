@@ -244,7 +244,7 @@ Requirements (CI installs the same: [.github/actions/setup](.github/actions/setu
 | Tool | Version | Used for |
 |---|---|---|
 | Windows | 10 or 11, x64 | the only platform |
-| [Odin](https://github.com/odin-lang/Odin/releases/tag/dev-2026-10) | **`dev-2026-10`** (`dev-2026-10-nightly:84bc3fc`) | the browser and its tools |
+| [Odin](https://github.com/odin-lang/Odin/releases/tag/dev-2026-11) | **`dev-2026-11`** (`dev-2026-11-nightly:9a69916`) | the browser and its tools |
 | Visual Studio 2022 or later (or its Build Tools) | "Desktop development with C++": MSVC x64 and a Windows SDK (CI: the runner's Visual Studio) | Odin's linker, Lexbor and the C shims |
 | [Rust](https://rustup.rs) | 1.99.1 (CI's pinned version; any recent stable works), `x86_64-pc-windows-msvc` | the built-in image and font decoders, the network stack, the text backend and the accessibility adapter (`native/`) |
 | [Go](https://go.dev/dl/) | ≥ 1.25.6 | only the test server (`tools/testserver`) |

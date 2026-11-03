@@ -83,7 +83,7 @@ link_out_of_the_document_tree :: proc(t: ^testing.T) {
 				case .Failed: g.done, g.failed, g.kind = true, true, ev.error
 				}
 			},
-			user = &g, collect = true,
+			user = rawptr(&g), collect = true,   // (until the request ends, waited for below)
 		})
 		for !g.done { host.loop_wait(loop) }   // a file read ends with a post: the wait always ends
 		return g

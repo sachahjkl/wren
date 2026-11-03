@@ -420,7 +420,7 @@ hash_file :: proc(c: ^Cache, rel: string) -> string {
 	data, err := os.read_entire_file(full_path(c, rel), context.temp_allocator)
 	if err != nil { return "unreadable" }
 	h := xxhash.XXH3_128(data)
-	text := fmt.aprintf("%32x", h)
+	text := fmt.aprintf("%032x", h)
 	if m, ok := c.memo[rel]; ok { delete(m.hash) }
 	c.memo[intern(c, rel)] = {stamp, text}
 	return text
@@ -445,7 +445,7 @@ step_key :: proc(c: ^Cache, s: ^Step) -> string {
 	b := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&b, "%s\n%s\n%s", c.prefix, s.name, step_text(s))
 	for f in files { fmt.sbprintf(&b, "\n%s %s", f, hash_file(c, f)) }
-	return fmt.aprintf("%32x", xxhash.XXH3_128(b.buf[:]))
+	return fmt.aprintf("%032x", xxhash.XXH3_128(b.buf[:]))
 }
 
 // What a step wrote that a later step uses: a result stands only while they are what the step left (going back to sources of two changes ago finds the result, but the program on the disk is another's).

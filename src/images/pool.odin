@@ -284,7 +284,8 @@ port_open :: proc(loop: ^host.Loop, on_done: Done_Proc, user: rawptr) -> Port_Id
 	sync.mutex_lock(&d.mu)
 	defer sync.mutex_unlock(&d.mu)
 	context.allocator = d.allocator
-	h, p := base.pool_insert(&d.ports, Port{loop = loop, on_done = on_done, user = user})
+	// the loop is the caller's, kept until port_close (rawptr: on purpose)
+	h, p := base.pool_insert(&d.ports, Port{loop = (^host.Loop)(rawptr(loop)), on_done = on_done, user = user})
 	p.done = make([dynamic]^Job)
 	return Port_Id(h)
 }

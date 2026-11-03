@@ -214,7 +214,7 @@ png_round_trip :: proc(t: ^testing.T) {
 	defer image.destroy(back, context.temp_allocator)
 	testing.expect_value(t, back.width, W)
 	testing.expect_value(t, back.height, H)
-	testing.expect(t, bytes.equal(back.pixels.buf[:], img.rgba), "the same pixels")
+	testing.expect(t, bytes.equal(back.pixels[:], img.rgba), "the same pixels")
 }
 
 ////////////////////////////////

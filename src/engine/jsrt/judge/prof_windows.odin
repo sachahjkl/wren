@@ -73,8 +73,8 @@ prof_report :: proc() {
 			}
 			cache_fn[rip] = name
 			ln := name
-			line: win.IMAGEHLP_LINE64
-			line.SizeOfStruct = size_of(win.IMAGEHLP_LINE64)
+			line: win.IMAGEHLP_LINEW64
+			line.SizeOfStruct = size_of(win.IMAGEHLP_LINEW64)
 			d2: win.DWORD
 			if win.SymGetLineFromAddrW64(proc_, win.DWORD64(rip), &d2, &line) {
 				fs, _ := win.wstring_to_utf8(line.FileName, -1)

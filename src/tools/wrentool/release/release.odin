@@ -24,7 +24,7 @@ EXIT_USAGE :: 2
 DIST :: "build/dist"
 REPOSITORY :: "sachahjkl/wren"
 BYTES_PER_MB :: 1024 * 1024
-RUNTIME_DLLS := []string{"vcruntime", "msvcp", "vcomp", "concrt", "ucrtbase"}
+RUNTIME_DLLS := []string{"vcruntime", "msvcp", "vcomp", "concrt", "ucrtbase", "api-ms-win-crt"}
 EXTRAS_GUESTS := []string{"counter", "formstest", "mutation", "mutation_class", "workerstest_worker"}
 DEMOS_INDEX_MARK :: "Made from the DEMOS table"
 EXTRAS_README :: `Wren %s: demos and test material (%s)
@@ -124,7 +124,7 @@ check_no_runtime_imports :: proc() -> bool {
 		dll := strings.to_lower(strings.trim_space(line), context.temp_allocator)
 		if !strings.has_suffix(dll, ".dll") { continue }
 		for bad in RUNTIME_DLLS {
-			if strings.has_prefix(dll, bad) { fmt.eprintfln("wren.exe imports %s: the release must carry its runtime (wrentool build links libvcruntime)", dll); return false }
+			if strings.has_prefix(dll, bad) { fmt.eprintfln("wren.exe imports %s: the release must carry its runtime (Wren links the C runtime in: libcmt, libucrt, libvcruntime)", dll); return false }
 		}
 	}
 	return true

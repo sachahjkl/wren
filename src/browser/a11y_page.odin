@@ -236,7 +236,7 @@ doc_tree_update :: proc(app: ^App, pa: ^Page_A11y, d: ^Doc_Tree, t: ^Tab, viewpo
 		focus = focus, title = title, url = t.frame != nil ? p.env.location.href : t.url,
 		max_nodes = set.max_nodes,
 	}
-	if set.frames { v.frame_tree, v.frame_user = frame_tree_of, &fc }
+	if set.frames { v.frame_tree, v.frame_user = frame_tree_of, rawptr(&fc) }   // (read during the update only)
 	d.live.hashes = set.verify
 	whole := a11y.live_update(&d.live, &v, &d.full, set.incremental && d.sent)
 	d.full.tree = d.tree

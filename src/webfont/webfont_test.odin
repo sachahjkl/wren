@@ -1,92 +1,20 @@
 package webfont
 
+import "core:compress/deflate"
 import "core:os"
 import "core:testing"
 
-// The tests build WOFF files from a real TrueType font. Odin's core library only inflates, so a small deflate encoder
-// (LZ77 with fixed Huffman codes, RFC 1951 Â§3.2.6) lives here to produce genuinely compressed tables.
+// The tests build WOFF files from a real TrueType font, its tables compressed by core:compress/deflate.
 
 @(private = "file")
 FONT_PATH :: "ext/gui_toolkit/font/data/Roboto-Regular.ttf"
 
 @(private = "file")
-Bits :: struct { out: [dynamic]byte, acc: u32, n: u32 }
-
-@(private = "file")
-put_bits :: proc(b: ^Bits, v: u32, n: u32) {
-	b.acc |= v << b.n
-	b.n += n
-	for b.n >= 8 { append(&b.out, u8(b.acc)); b.acc >>= 8; b.n -= 8 }
-}
-
-// Huffman codes go most significant bit first.
-@(private = "file")
-put_code :: proc(b: ^Bits, code: u32, n: u32) {
-	r: u32
-	for i in 0 ..< n { r = r << 1 | (code >> i) & 1 }
-	put_bits(b, r, n)
-}
-
-@(private = "file")
-put_litlen :: proc(b: ^Bits, v: u32) {
-	switch {
-	case v <= 143: put_code(b, 0x30 + v, 8)
-	case v <= 255: put_code(b, 0x190 + (v - 144), 9)
-	case v <= 279: put_code(b, v - 256, 7)
-	case: put_code(b, 0xC0 + (v - 280), 8)
-	}
-}
-
-@(private = "file") LEN_BASE := [29]u32{3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258}
-@(private = "file") LEN_EXTRA := [29]u32{0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0}
-@(private = "file") DIST_BASE := [30]u32{1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577}
-@(private = "file") DIST_EXTRA := [30]u32{0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13}
-
-@(private = "file")
 zlib_compress :: proc(data: []byte) -> []byte {
-	b := Bits{out = make([dynamic]byte, context.temp_allocator)}
-	append(&b.out, 0x78, 0x01)
-	put_bits(&b, 1, 1)   // final block
-	put_bits(&b, 1, 2)   // fixed Huffman codes
-	head := make([]i32, 1 << 15, context.temp_allocator)
-	for &h in head { h = -1 }
-	hash :: proc(d: []byte, i: int) -> int { return int((u32(d[i]) << 10 ~ u32(d[i + 1]) << 5 ~ u32(d[i + 2])) & 0x7fff) }
-	i := 0
-	for i < len(data) {
-		best_len, best_dist := 0, 0
-		if i + 3 <= len(data) {
-			h := hash(data, i)
-			cand := int(head[h])
-			head[h] = i32(i)
-			if cand >= 0 && i - cand <= 32768 {
-				l := 0
-				for l < 258 && i + l < len(data) && data[cand + l] == data[i + l] { l += 1 }
-				if l >= 3 { best_len, best_dist = l, i - cand }
-			}
-		}
-		if best_len == 0 {
-			put_litlen(&b, u32(data[i]))
-			i += 1
-			continue
-		}
-		code := 28
-		for code > 0 && LEN_BASE[code] > u32(best_len) { code -= 1 }
-		put_litlen(&b, 257 + u32(code))
-		put_bits(&b, u32(best_len) - LEN_BASE[code], LEN_EXTRA[code])
-		dc := 29
-		for dc > 0 && DIST_BASE[dc] > u32(best_dist) { dc -= 1 }
-		put_code(&b, u32(dc), 5)
-		put_bits(&b, u32(best_dist) - DIST_BASE[dc], DIST_EXTRA[dc])
-		for k in 1 ..< best_len { if i + k + 3 <= len(data) { head[hash(data, i + k)] = i32(i + k) } }
-		i += best_len
-	}
-	put_litlen(&b, 256)
-	if b.n > 0 { append(&b.out, u8(b.acc)) }
-	a, s := u32(1), u32(0)
-	for x in data { a = (a + u32(x)) % 65521; s = (s + a) % 65521 }
-	adler := s << 16 | a
-	append(&b.out, u8(adler >> 24), u8(adler >> 16), u8(adler >> 8), u8(adler))
-	return b.out[:]
+	out := make([dynamic]byte, context.temp_allocator)
+	err := deflate.deflate_zlib(&out, data, allocator = context.temp_allocator)
+	assert(err == nil)
+	return out[:]
 }
 
 // A WOFF 1.0 file holding the tables of `ttf` (compressed when that is smaller, as the format says).

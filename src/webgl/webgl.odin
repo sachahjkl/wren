@@ -16,8 +16,8 @@ when ODIN_OS == .Windows {
 		"system:ntdll.lib",
 		"system:kernel32.lib",
 		"system:bcrypt.lib",
-		"system:msvcrt.lib",
-		"system:ucrt.lib",
+		"system:libcmt.lib",
+		"system:libucrt.lib",
 		"system:libvcruntime.lib",
 	}
 } else {

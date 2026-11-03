@@ -128,7 +128,7 @@ hits :: proc(t: ^testing.T, path: string) -> int {
 			case .Failed: a.count, a.done = -1, true
 			}
 		},
-		user = &answer, collect = true,
+		user = rawptr(&answer), collect = true,   // (until the request ends, waited for below)
 	})
 	if !wait_until(t, path, &answer, proc(a: ^Hits_Answer) -> bool { return a.done }) { return -1 }
 	return answer.count

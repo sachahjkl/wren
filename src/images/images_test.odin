@@ -253,7 +253,7 @@ decoding_threads :: proc(t: ^testing.T) {
 		s := (^Pool_Test)(user)
 		append(&s.done, j)
 		append(&s.order, j.tag)
-	}, &st)
+	}, rawptr(&st))
 	testing.expect(t, port != 0, "port")
 	blob := blob_make(read(t, "anim.gif"))
 	defer blob_release(blob)
@@ -288,7 +288,7 @@ decoding_threads :: proc(t: ^testing.T) {
 	nothing: Nothing
 	testing.expect(t, base.await(&nothing, proc(_: ^Nothing) -> bool { return decoder_threads() == 0 }), "the idle thread ended")
 	testing.expect_value(t, decoder_threads(), 0)
-	port2 := port_open(&loop, proc(user: rawptr, j: ^Job) { append(&(^Pool_Test)(user).done, j) }, &st)
+	port2 := port_open(&loop, proc(user: rawptr, j: ^Job) { append(&(^Pool_Test)(user).done, j) }, rawptr(&st))
 	before := len(st.done)
 	testing.expect(t, submit(port2, job_make(.Decode, blob, opts(), tag = 50)) != 0)
 	for len(st.done) == before { host.loop_wait(&loop) }
@@ -438,7 +438,7 @@ jobs_cancelled_at_random_moments :: proc(t: ^testing.T) {
 	St :: struct { delivered: int }
 	st: St
 	on_done :: proc(user: rawptr, j: ^Job) { (^St)(user).delivered += 1; job_free(j) }
-	port := port_open(&loop, on_done, &st)
+	port := port_open(&loop, on_done, rawptr(&st))
 	rng: u64 = 88172645463325252
 	next :: proc(r: ^u64) -> u64 { r^ ~= r^ << 13; r^ ~= r^ >> 7; r^ ~= r^ << 17; return r^ }
 	held := make([dynamic]Job_Id)
@@ -463,7 +463,7 @@ jobs_cancelled_at_random_moments :: proc(t: ^testing.T) {
 			port_close(port)   // jobs in every state; the holder cancels them afterwards, as the cache does at shutdown
 			for id in held { job_cancel(id) }
 			clear(&held)
-			port = port_open(&loop, on_done, &st)
+			port = port_open(&loop, on_done, rawptr(&st))
 		}
 		if len(held) > 200 { clear(&held) }
 	}

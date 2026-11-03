@@ -85,8 +85,8 @@ they run besides runs at once); with that one change they run at once too.
 
 Wasmtime, the official C API release **v49.0.3**, downloaded by `wrentool fetch wasmtime` (version and SHA-256
 pinned in the script) into `build\wasmtime`; the static `wasmtime.lib` is linked into the exe (no DLL; it adds about
-12 MB). It needs `ws2_32 advapi32 userenv ntdll shell32 ole32 bcrypt kernel32` and the dynamic CRT
-(`msvcrt ucrt libvcruntime`: the Visual C++ runtime is linked in, so `wren.exe` needs no `vcruntime140.dll`), declared in `src/wasm/wasmtime.odin`. Modules are compiled by Cranelift (or Winch,
+12 MB). It needs `ws2_32 advapi32 userenv ntdll shell32 ole32 bcrypt kernel32` and the C runtime, linked in as for every native library of Wren
+(`libcmt libucrt libvcruntime`, the static C runtime that Odin's `core:c/libc` is: `wren.exe` needs no runtime DLL), declared in `src/wasm/wasmtime.odin`. Modules are compiled by Cranelift (or Winch,
 `wasm.wasmtime.compiler`), kept in a memory cache and in an HMAC-authenticated disk cache of the profile
 (`wasm-cache`), and every call from the host has a wall-clock deadline (`wasm.max_call_ms`, epoch interruption; with
 `wasm.wasmtime.fuel`, also an instruction budget). `src/tools/wasmbench` compares the compiler configurations and

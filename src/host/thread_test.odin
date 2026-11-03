@@ -119,7 +119,7 @@ parallel_for_wait_hook :: proc(t: ^testing.T) {
 	defer thread_pool_destroy(pool)
 	Job :: struct { done: [64]int, hooks, helpers: int, caller: int, measuring: bool }
 	job := Job{caller = sync.current_thread_id(), measuring = base.perf_enabled()}
-	set_parallel_wait_hook(proc(user: rawptr) { sync.atomic_add(&(^Job)(user).hooks, 1) }, &job, WAIT_HOOK_EVERY_NS)
+	set_parallel_wait_hook(proc(user: rawptr) { sync.atomic_add(&(^Job)(user).hooks, 1) }, rawptr(&job), WAIT_HOOK_EVERY_NS)   // (until the deferred reset)
 	defer set_parallel_wait_hook(nil, nil, 0)
 	parallel_for(pool, len(job.done), proc(data: rawptr, i: int) {
 		j := (^Job)(data)

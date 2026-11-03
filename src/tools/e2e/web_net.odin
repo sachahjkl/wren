@@ -256,12 +256,13 @@ net_an_answer_slower_than_the_receive_timeout :: proc(t: ^testing.T) {
 	defer end()
 	serve(t)
 	impatient: net.Client
+	c := (^net.Client)(rawptr(&impatient))   // (the loop's until destroyed)
 	s := net.settings_default()
 	defer net.settings_destroy(&s)
 	s.timeout_receive_ms, s.timeout_send_ms = SHORT_TIMEOUT_MS, SHORT_TIMEOUT_MS
-	ok := net.client_init(&impatient, &loop, s)
-	defer net.client_destroy(&impatient)
-	r := get(t, &impatient, at("http", HTTP, fmt.tprintf("/stall?ms=%d", RECEIVE_TIMEOUT_SERVER_WAIT_MS)))
+	ok := net.client_init(c, &loop, s)
+	defer net.client_destroy(c)
+	r := get(t, c, at("http", HTTP, fmt.tprintf("/stall?ms=%d", RECEIVE_TIMEOUT_SERVER_WAIT_MS)))
 	testing.expectf(t, ok && r.failed && r.error == ERROR_TIMED_OUT, "an answer slower than the receive timeout: 12002 (%d)", r.error)
 }
 

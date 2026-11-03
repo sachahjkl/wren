@@ -52,7 +52,8 @@ setup :: proc(t: ^testing.T, w: ^Setup) {
 	w.prefs = config.prefs_make()
 	blocker.register_prefs(&w.prefs)
 	config.set_from_string(&w.prefs, "blocker.update.enabled", "false", .User)
-	blocker.start(&w.b, &loop, &client, &loader, &w.prefs, PROFILE)
+	// (the blocker and its prefs stay with the loader and the blocker package until shut)
+	blocker.start((^blocker.Blocker)(rawptr(&w.b)), &loop, &client, &loader, (^config.Prefs)(rawptr(&w.prefs)), PROFILE)
 	w.tab = base.scope_make("tab", process)
 	blocker.tab_register(&w.b, TAB, w.tab)
 	w.held_at_start = loader.hold

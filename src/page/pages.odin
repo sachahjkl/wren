@@ -61,5 +61,5 @@ Forced_Layouts :: struct { n: int, ns: i64 }
 @(thread_local)
 the_pages: ^Pages
 
-// This thread runs the pages of `s` from here on (nil: none).
-bind :: proc(s: ^Pages) { the_pages = s }
+// This thread runs the pages of `s` from here on (nil: none). `s` is the caller's, kept until it binds another (rawptr: on purpose).
+bind :: proc(s: ^Pages) { the_pages = (^Pages)(rawptr(s)) }

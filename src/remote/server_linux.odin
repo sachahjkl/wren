@@ -57,7 +57,8 @@ start :: proc(loop: ^host.Loop, name: string, max_message, max_clients: int, han
 	if linux.listen(s, 64) != .NONE { linux.close(s); linux.unlink(cpath); return "cannot create the socket (listen)" }
 	stop_ev, eerr := linux.eventfd(0, {.CLOEXEC, .NONBLOCK})
 	if eerr != .NONE { linux.close(s); linux.unlink(cpath); return "cannot create the stop event" }
-	srv = {loop = loop, handler = handler, on_close = on_close, user = user, max_message = max_message, max_clients = max_clients}
+	// the loop is the caller's, kept until stop (rawptr: on purpose)
+	srv = {loop = (^host.Loop)(rawptr(loop)), handler = handler, on_close = on_close, user = user, max_message = max_message, max_clients = max_clients}
 	srv.path = strings.clone(path, base.process_allocator())
 	srv.listen, srv.stop_event = s, stop_ev
 	srv.accept = thread.create(accept_main)

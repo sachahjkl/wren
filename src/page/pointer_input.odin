@@ -218,7 +218,7 @@ touch_dispatch :: proc(p: ^Page, phase: Touch_Phase, t: Touch_Point, mods: u32, 
 	ch := []Touch_Point{changed}
 	d := Touch_Dispatch{touches = all[:], target = on_target[:], changed = ch, scroll = scroll}
 	saved := pp.dispatch
-	pp.dispatch = &d
+	pp.dispatch = (^Touch_Dispatch)(rawptr(&d))   // (for the dispatch: put back after it, or gone with the pointer page)
 	names := [Touch_Phase]string{.Start = "touchstart", .Move = "touchmove", .End = "touchend", .Cancel = "touchcancel"}
 	ok := dispatch_event(p, target, dom.Event{type = names[phase], bubbles = true, cancelable = phase != .Cancel, composed = true, x = changed.x, y = changed.y, mods = mods})
 	if pp2 := pointer_page(p, false); pp2 == pp {

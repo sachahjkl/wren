@@ -2,7 +2,6 @@ package api
 
 // Pictures read back: a PNG of a capture as pixels, a pixel of it, two of them compared.
 
-import "core:bytes"
 import "core:image"
 import "core:image/png"
 import "core:os"
@@ -25,7 +24,7 @@ decode_png :: proc(data: []byte) -> (p: Image, ok: bool) {
 	if ierr != nil || img == nil { set_failure("not a PNG picture"); return }
 	defer image.destroy(img, context.temp_allocator)
 	w, h := img.width, img.height
-	buf := bytes.buffer_to_bytes(&img.pixels)
+	buf := img.pixels[:]
 	rgba := make([]u8, w * h * 4, context.temp_allocator)
 	switch img.channels {
 	case 4: copy(rgba, buf)

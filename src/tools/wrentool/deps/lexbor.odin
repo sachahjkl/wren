@@ -123,7 +123,7 @@ lexbor_compile :: proc(o: Options, objects: string) -> bool {
 	env := msvc_environment()
 	log := fmt.tprintf("%s/build.log", LEXBOR_OUT)
 	_ = os.remove(log)
-	flags := []string{"/nologo", "/c", "/MP", "/O2", "/DNDEBUG", "/MD", "/W1", "/wd4100", "/wd4255", "/wd4820", "/wd4668",
+	flags := []string{"/nologo", "/c", "/MP", "/O2", "/DNDEBUG", "/MT", "/W1", "/wd4100", "/wd4255", "/wd4820", "/wd4668",
 		"/D_CRT_SECURE_NO_WARNINGS", "/DLEXBOR_STATIC", fmt.tprintf("/I%s", LEXBOR_SOURCE), fmt.tprintf("/I%s/lexbor/ports/windows_nt", LEXBOR_SOURCE)}
 	// same file names exist in several folders (state.c, res.c...): one object folder per source folder
 	groups := make(map[string][dynamic]string, context.temp_allocator)

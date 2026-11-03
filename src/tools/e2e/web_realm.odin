@@ -513,7 +513,7 @@ t();
 	// load ran its turns under the flood (each one ends: the loop's time slice, host tests); a task the shell posts meanwhile (input,
 	// painting) runs at the very next turn
 	posted := false
-	host.post(&loop, proc(data: rawptr) { (^bool)(data)^ = true }, &posted)
+	host.post(&loop, proc(data: rawptr) { (^bool)(data)^ = true }, rawptr(&posted))   // (run by the wait below)
 	host.loop_wait(&loop, 0)
 	check(pr, posted, "timers doubling at every run: a task posted meanwhile runs at the next turn")
 	run(pr, `is("true", "the timers did run in those turns", n >= 100)`)

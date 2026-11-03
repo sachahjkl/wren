@@ -1327,9 +1327,10 @@ js_parse_expr :: proc(s: ^Parse_State) -> bool {
 
 // --- break / continue / return ------------------------------------------------------------------------------
 
+// `be` is the caller's (on its stack, as QuickJS keeps it), on the list until its pop_break_entry (rawptr: on purpose).
 push_break_entry :: proc(fd: ^Func_Def, be: ^Block_Env, label_name: Atom, label_break, label_cont, drop_count: int) {
 	be.prev = fd.top_break
-	fd.top_break = be
+	fd.top_break = (^Block_Env)(rawptr(be))
 	be.label_name = label_name
 	be.label_break = label_break
 	be.label_cont = label_cont
