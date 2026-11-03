@@ -419,10 +419,12 @@ scroll_into_view :: proc(p: ^Page, h: base.Handle, block, inline_pos: Scroll_Ali
 			}
 		}
 	}
-	g, _, vp := element_geometry(p, h)
+	g, l, vp := element_geometry(p, h)
 	if !g.ok || g.fixed { return }
-	y := pick(f64(g.border.min.y), f64(g.border.max.y), vp.height, vp.scroll_y, block)
-	x := pick(f64(g.border.min.x), f64(g.border.max.x), vp.width, vp.scroll_x, inline_pos)
+	// (what the document shows: the viewport less its classic scroll bars)
+	client := doc_client_size(l, vp)
+	y := pick(f64(g.border.min.y), f64(g.border.max.y), client.y, vp.scroll_y, block)
+	x := pick(f64(g.border.min.x), f64(g.border.max.x), client.x, vp.scroll_x, inline_pos)
 	scroll_document_to(p, x, math.max(y, 0), smooth)
 }
 

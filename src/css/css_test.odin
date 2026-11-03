@@ -323,6 +323,8 @@ colors :: proc(t: ^testing.T) {
 	testing.expect(t, ok && near(c, {0, 1, 0, 0.5}))
 	c, _, ok = col("RebeccaPurple")
 	testing.expect(t, ok && near(c, {0.4, 0.2, 0.6, 1}))
+	_, _, ok = col("blacK")   // (keywords are ASCII case-insensitive: the Kelvin sign is no K)
+	testing.expect(t, !ok, "a keyword with the Kelvin sign for its K is no color")
 	c, _, ok = col("rgb(255 128 0 / 50%)")
 	testing.expect(t, ok && near(c, {1, 0.502, 0, 0.5}))
 	c, _, ok = col("rgba(100%, 0%, 0%, 0.25)")
