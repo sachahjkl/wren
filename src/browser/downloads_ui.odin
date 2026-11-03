@@ -400,9 +400,9 @@ dl_folder_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	draw.rect(dc, {{body.min.x, body.min.y - s * 0.17}, {body.min.x + s * 0.4, body.min.y + th}}, col, s * 0.08, th)
 }
 
-// What a row asked for.
+// What a row asked for. `nested`: the row is in a menu (the drop-down), its menu opens over it.
 @(private = "file")
-dl_do :: proc(app: ^App, d: ^Download, act: Dl_Row_Act, at: draw.Rect, menu_key: ui.Key, anchor: ui.Key) {
+dl_do :: proc(app: ^App, d: ^Download, act: Dl_Row_Act, at: draw.Rect, menu_key: ui.Key, nested: bool) {
 	switch act {
 	case .None:
 	case .Open:    download_open_file(d)
@@ -412,28 +412,33 @@ dl_do :: proc(app: ^App, d: ^Download, act: Dl_Row_Act, at: draw.Rect, menu_key:
 	case .Remove:  download_remove(app, d)
 	case .Menu:
 		app.dview.menu_id = d.id
-		if at.min == at.max { ui.ctx_menu_open(menu_key, at.min) } else { ui.ctx_menu_open_rect(menu_key, at, anchor) }
+		switch {
+		case nested && at.min == at.max: ui.menu_nested_open(menu_key, at.min)
+		case nested:                     ui.menu_nested_open_rect(menu_key, at)
+		case at.min == at.max:           ui.ctx_menu_open(menu_key, at.min)
+		case:                            ui.ctx_menu_open_rect(menu_key, at)
+		}
 	}
 }
 
-// The menu of a finished row.
+// The finished row the menu is about (nil: gone, the menu is not built and closes).
 @(private = "file")
-dl_menu :: proc(app: ^App, menu_key: ui.Key) {
-	if ui.ctx_menu(menu_key) { dl_menu_items(app) }
+dl_menu_row :: proc(app: ^App) -> ^Download {
+	d := dl_by_id(app, app.dview.menu_id)
+	return d if d != nil && download_finished(d) else nil
 }
 
+// The menu of a finished row (choosing an item closes it).
 @(private = "file")
-dl_menu_items :: proc(app: ^App) {
-	d := dl_by_id(app, app.dview.menu_id)
-	if d == nil || !download_finished(d) { ui.ctx_menu_close(); return }
+dl_menu_items :: proc(app: ^App, d: ^Download) {
 	present := download_file_present(d)
-	if ui.menu_item("Open", enabled = present).clicked { ui.ctx_menu_close(); download_open_file(d); return }
-	if ui.menu_item("Show in folder", enabled = d.path != "").clicked { ui.ctx_menu_close(); download_reveal(d); return }
-	if ui.menu_item("Copy download link", icon = GLYPH_COPY).clicked { clip_set(d.url); ui.ctx_menu_close(); return }
-	if ui.menu_item("Download again", enabled = d.url != "").clicked { ui.ctx_menu_close(); download_retry(app, d); return }
+	if ui.menu_item("Open", enabled = present).clicked { download_open_file(d); return }
+	if ui.menu_item("Show in folder", enabled = d.path != "").clicked { download_reveal(d); return }
+	if ui.menu_item("Copy download link", icon = GLYPH_COPY).clicked { clip_set(d.url); return }
+	if ui.menu_item("Download again", enabled = d.url != "").clicked { download_retry(app, d); return }
 	ui.menu_separator()
-	if ui.menu_item("Delete the file", enabled = present).clicked { ui.ctx_menu_close(); download_delete_file(app, d); return }
-	if ui.menu_item("Remove from the list").clicked { ui.ctx_menu_close(); download_remove(app, d); return }
+	if ui.menu_item("Delete the file", enabled = present).clicked { download_delete_file(app, d); return }
+	if ui.menu_item("Remove from the list").clicked { download_remove(app, d); return }
 }
 
 ////////////////////////////////
@@ -506,7 +511,7 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 			if ui.scroll_y("###dl_scroll") { downloads_list(app, menu_key) }
 		}
 	}
-	dl_menu(app, menu_key)
+	if d := dl_menu_row(app); d != nil { if ui.ctx_menu(menu_key) { dl_menu_items(app, d) } }
 	downloads_mark_seen(app)
 }
 
@@ -534,7 +539,7 @@ downloads_list :: proc(app: ^App, menu_key: ui.Key) {
 			ui.spacer(ui.px(em * 0.5))
 			act, at := dl_row(app, d, -1, false)
 			ui.spacer(ui.px(em * 0.5))
-			dl_do(app, d, act, at, menu_key, 0)
+			dl_do(app, d, act, at, menu_key, false)
 			if act != .None && act != .Menu { break }
 		}
 		ui.spacer(ui.px(em * 0.2))
@@ -567,7 +572,7 @@ downloads_list :: proc(app: ^App, menu_key: ui.Key) {
 			ui.spacer(ui.px(em * 0.5))
 			act, at := dl_row(app, d, -1, false)
 			ui.spacer(ui.px(em * 0.5))
-			dl_do(app, d, act, at, menu_key, 0)
+			dl_do(app, d, act, at, menu_key, false)
 			if act != .None && act != .Menu { break }
 		}
 		ui.spacer(ui.px(em * 0.2))
@@ -739,6 +744,8 @@ downloads_panel_body :: proc(app: ^App) {
 	}
 	ui.hline(ui.px(w))
 	ui.spacer(ui.px(em * 0.3))
+	// a row's menu opens over the drop-down, which stays open behind it
+	menu_key := ui.key_from_string(0, "###dlp_row_menu")
 	n := 0
 	for i := len(app.dls.list) - 1; i >= 0 && n < 6; i -= 1 {
 		d := app.dls.list[i]
@@ -749,10 +756,11 @@ downloads_panel_body :: proc(app: ^App) {
 			act, at := dl_row(app, d, w - em * 0.8, true)
 			ui.spacer(ui.px(em * 0.4))
 			if act == .Open || act == .Reveal { ui.ctx_menu_close() }
-			dl_do(app, d, act, at, 0, 0)
+			dl_do(app, d, act, at, menu_key, true)
 			if act != .None { break }
 		}
 	}
+	if d := dl_menu_row(app); d != nil { if ui.menu_nested(menu_key) { dl_menu_items(app, d) } }
 	if n == 0 {
 		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 4))})
 		if ui.tags("weak") { if ui.style({text_align = .Center}) { ui.label("No download yet.###dlp_none") } }
