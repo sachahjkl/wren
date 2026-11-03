@@ -987,7 +987,7 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 			c.backdrop = bc
 		}
 	}
-	if has_image_layers(c) || has_image_layers(c.before) || has_image_layers(c.after) { p.image_records += 1 }
+	if has_image_layers(c) || has_image_layers(c.before) || has_image_layers(c.after) || has_image_layers(c.backdrop) { p.image_records += 1 }
 	if shareable && share_value_ok(c) {
 		resolve_static(p.mc.doc, h, c, p.alloc)   // (what the counter walks would resolve: the same for every element sharing it)
 		share_put(&p.share, inline_text, c)

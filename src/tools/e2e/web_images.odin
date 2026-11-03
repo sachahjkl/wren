@@ -242,6 +242,28 @@ images_deduplication_and_css_images :: proc(t: ^testing.T) {
 	shut(&s, min_checks = 8)
 }
 
+// The background image of a modal dialog's ::backdrop loads as an element's does (css_note_element), and only once the dialog is
+// in the top layer.
+BACKDROP_PAGE :: `<style>dialog::backdrop { background-image: url(/images/f/still.gif) }</style><dialog id=d>modal</dialog>`
+
+@(test)
+images_of_a_backdrop :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	no_cache_yet()
+	pr := page_make(t, "images", testenv.url(ORIGIN + "/site/images.html"))
+	page_load(pr, BACKDROP_PAGE)
+	turn(pr)
+	check(pr, page.css_image_view(pr.p, "/images/f/still.gif").state == .None, "no request for the backdrop of a dialog that is not shown")
+	run(pr, `document.getElementById("d").showModal()`)
+	check(pr, wait(pr, "the backdrop's image", proc(pr: ^Probe) -> bool { return page.css_image_view(pr.p, "/images/f/still.gif").state == .Ready }),
+		"the background image of a modal dialog's ::backdrop is loaded")
+	close_page(pr, min_checks = 2)
+	no_cache_left(t)
+}
+
 // Brings the lazy image in.
 near_the_viewport :: proc(s: ^Site) {
 	page.images_set_distance(s.pr.p, node(s.pr, "lazy"), NEAR_PX)
