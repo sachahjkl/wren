@@ -367,15 +367,19 @@ rejects with a <code>SecurityError</code>);</li>
 </ul>
 <p>What is not there:</p>
 <ul>
-<li><strong>a Window kept for a window that <code>window.open</code> made</strong>: only a frame's initial about:blank keeps its <code>Window</code> (above);</li>
 <li><strong><code>precommitHandler</code></strong> of <code>NavigateEvent.intercept()</code>.</li>
 </ul>
 <h2 id="windows-that-scripts-open"><a class="anchor" href="#windows-that-scripts-open" aria-hidden="true">#</a>Windows that scripts open</h2>
 <p><code>window.open()</code> to <code>_blank</code> or to a name nothing has, and a script's click on a link to one, open a window: a top-level navigable
 of the same kind (<code>src/page/auxiliary.odin</code>), whose embedder makes the window around it (the browser a tab, the WPT runner's
 headless host a window without a shell) and whose first document is the initial about:blank the page package makes (the
-opener's origin, or an opaque one under <code>noopener</code>). The window keeps its id across its documents, so the <code>WindowProxy</code> that
-<code>window.open</code> returned still names it after it navigated.</p>
+opener's origin, or an opaque one under <code>noopener</code>; the opener's agent cluster, cross-origin isolated as the opener is). The
+window keeps its id across its documents, so the <code>WindowProxy</code> that <code>window.open</code> returned still names it after it navigated.</p>
+<p>Its first document keeps the initial about:blank's <code>Window</code>, as a frame's does (above): <code>w = window.open(url); w.onload = ...</code>
+and <code>w.foo = 1</code> are the new document's when it is of the blank's origin and its <code>Cross-Origin-Opener-Policy</code> keeps the browsing
+context group (<code>navigable_keep_window</code>, <code>src/page/auxiliary.odin</code>, which the embedder asks with the response). The embedder keeps the
+blank document, shown and reachable, until then (the browser's <code>navigate</code>, <code>Doc_Load.blank</code>; the WPT runner's headless host);
+a blank no script touched, a document of another origin or a group switch get a <code>Window</code> of their own, and the blank goes.</p>
 <ul>
 <li><strong>The opener.</strong> <code>window.opener</code>, a name the opener's group finds (<code>window.open(url, name)</code>, a link's target), <code>postMessage</code>
 both ways, the DOM of a same-origin popup (its handles are looked up among the documents of the caller's browsing context
@@ -388,9 +392,20 @@ about:blank has its opener's, when the opener is same origin with its top-level 
 browsing context group. It gets a new id, so the opener's <code>WindowProxy</code> sees it closed; its <code>opener</code> is null, its name cleared,
 and the windows it opened lose theirs. <code>same-origin-allow-popups</code> keeps the popups it opens that have no policy.</li>
 </ul>
-<p>Not there: a redirect's own policy (only the final response's counts), reports (<code>report-to</code>, <code>Report-Only</code>), sandboxed popups
-inheriting their opener's sandbox, the window features (sizes, <code>popup</code>), and the browser's <code>noreferrer</code> (its navigations send
-the Referer; the WPT runner's do not).</p>
+<ul>
+<li><strong>Sandboxing.</strong> A window that a sandboxed document opens is sandboxed as that document is, each of its documents
+(<code>Navigable.sandbox</code>, applied by <code>navigable_attach</code>), unless the sandbox has <code>allow-popups-to-escape-sandbox</code>.</li>
+</ul>
+<p>Not there: a redirect's own policy (only the final response's counts), reports (<code>report-to</code>, <code>Report-Only</code>), the window features
+(sizes, <code>popup</code>), and the browser's <code>noreferrer</code> (its navigations send the Referer; the WPT runner's do not).</p>
+<h2 id="policies-a-frame-requires"><a class="anchor" href="#policies-a-frame-requires" aria-hidden="true">#</a>Policies a frame requires</h2>
+<p><code>&lt;iframe csp="..."&gt;</code> (CSP Embedded Enforcement, <code>src/page/frames_csp.odin</code>) is a policy the frame's documents must take; a frame
+without one takes its parent's own. Its requests send it (<code>Sec-Required-CSP</code>). A response with <code>Allow-CSP-From: *</code> or the parent's
+origin takes it, enforced on the document; one whose own enforced policies are as strict (a policy with each of its directives and
+the same sources: the part of the standard's subsumption that does not compare source lists) takes it as it is; about:blank, srcdoc,
+<code>data:</code> and <code>blob:</code> documents take it enforced. Any other is refused, as <code>X-Frame-Options</code> refuses: the frame shows an error
+document. The <code>sandbox</code> directive of any enforced policy, a response's header or a required one, sandboxes the document on top of
+what its container asks.</p>
 <h2 id="cost"><a class="anchor" href="#cost" aria-hidden="true">#</a>Cost</h2>
 <p>A page without frames pays two comparisons per handle argument of an import call, and one load per call. The tag replaces bits of
 the generation: <code>pool_get</code> compares what it compared. A slot reused 65536 times is retired rather than wrapped.</p>
@@ -408,6 +423,7 @@ the generation: <code>pool_get</code> compares what it compared. A slot reused 6
 <li><a href="#globals-a-value-bridge">Globals: a value bridge</a></li>
 <li><a href="#navigating-a-frame">Navigating a frame</a></li>
 <li><a href="#windows-that-scripts-open">Windows that scripts open</a></li>
+<li><a href="#policies-a-frame-requires">Policies a frame requires</a></li>
 <li><a href="#cost">Cost</a></li>
 </ul>
 </nav>
