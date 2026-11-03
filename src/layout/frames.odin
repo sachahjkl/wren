@@ -295,7 +295,7 @@ frame_layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32) -> Resul
 		b.size = {w, own_w}
 		b.baseline, b.last_baseline = -1, -1
 		// (a table's vertical-align moves a cell's content across its frame's block axis: here that is its own inline axis)
-		if b.kind == .Cell { b.tmp = own_w }
+		if b.kind == .Cell { b.tmp = own_w - pb_h(b) }
 		return Result{h = own_w}
 	}
 	b.size = {w, r.h}
