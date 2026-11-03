@@ -13,8 +13,7 @@ import "wb:tools/tooling"
 // Database of the Unicode tables (UCD_FILES).
 IDNA_TABLES :: "src/shim/wb_idna_tables.h"
 IDNA_UCD :: []string{"UnicodeData.txt", "extracted/DerivedGeneralCategory.txt", "extracted/DerivedJoiningType.txt"}
-// UnicodeData.txt's fields: the general category, the canonical combining class; a virama's class.
-UCD_FIELD_CATEGORY :: 2
+// UnicodeData.txt's field of the canonical combining class; a virama's class.
 UCD_FIELD_COMBINING_CLASS :: 3
 VIRAMA_COMBINING_CLASS :: "9"
 // Values per line of the generated arrays.
