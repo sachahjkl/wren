@@ -970,6 +970,7 @@ frame_install_page :: proc(n_in: ^Navigable, href_in: string, mode: Origin_Mode,
 	}
 	p := n.parent
 	if p == nil || p.closed { return nil }
+	if n.initial && frame_keeps_window(n, href, mode) { return frame_keep_window(n, href, mode, commit) }
 	frame_session_commit(n, href, commit, p.settings.web.history_max_entries)
 	n.initial = false
 	c := page_create(p.loop, p.loader, p.settings, p.scope, href, p.console != nil ? frame_console : nil, n)
@@ -1009,6 +1010,52 @@ frame_install_page :: proc(n_in: ^Navigable, href_in: string, mode: Origin_Mode,
 		n.page = nil
 	}, n)
 	if the_pages.frame_hooks.attached != nil { the_pages.frame_hooks.attached(the_pages.frame_hooks.user, c) }
+	return c
+}
+
+// HTML "navigate" keeps the Window of a frame's initial about:blank for the first document that replaces it, when that
+// document is of its origin: what a script set on that Window (expandos, `navigation.onnavigate`, listeners, timers) is the
+// next document's. Only a blank document whose realm was started has anything to keep; any other gets a Page of its own.
+@(private)
+frame_keeps_window :: proc(n: ^Navigable, href: string, mode: Origin_Mode) -> bool {
+	c, p := n.page, n.parent
+	if c == nil || c.js == nil || c.js.failed || c.close_pending || c.frames == nil || mode == .Opaque { return false }
+	sandbox := sandbox_combine(page_sandbox(p), n.sandbox)
+	if sandbox != c.frames.sandbox || sandbox.active && .Same_Origin not_in sandbox.allow { return false }
+	if mode == .Inherit { return url.same_origin(p.env.origin, c.env.origin) }
+	u, ok := url.parse(href, nil, context.temp_allocator)
+	return ok && url.same_origin(url.origin_of(u, context.temp_allocator), c.env.origin)
+}
+
+// The blank document's Page takes the navigable's next document: its realm and its Window's objects stay; the new tree gets a
+// tag of its own when it is parsed (the blank one's nodes die in every realm, the Window's objects keep the old tag: prior_tag),
+// its URL, policies, frames and scripts are the new document's.
+@(private)
+frame_keep_window :: proc(n: ^Navigable, href: string, mode: Origin_Mode, commit: Frame_Commit) -> ^Page {
+	c, p := n.page, n.parent
+	frame_session_commit(n, href, commit, p.settings.web.history_max_entries)
+	n.initial = false
+	c.prior_tag, c.tag = c.tag, base.tag_new()
+	c.dp.tag = c.tag
+	cf := c.frames
+	for len(cf.children) > 0 { frame_destroy(cf.children[len(cf.children) - 1]) }
+	cf.complete = false
+	if cf.ready_poll != base.NIL_HANDLE {
+		host.clear_timer(c.loop, cf.ready_poll)
+		cf.ready_poll = base.NIL_HANDLE
+	}
+	delete(cf.fallback_base)
+	cf.fallback_base = mode == .Inherit ? strings.clone(document_base_url(p)) : ""
+	cf.inherited_off = inherited_disabled(frames_of(p).features, p.env.origin, &n.allow, c.env.origin, n.src_origin)
+	cf.features = enabled_features(cf.inherited_off, nil, c.env.origin)
+	set_document_url(c, href)
+	csp.list_destroy(&c.env.policies)
+	c.env.referrer_policy = mode == .Inherit ? p.env.referrer_policy : .Default
+	set_history_state(c, "", false)
+	scripts_free(c)   // (the new document's start from its parse: js_load.odin)
+	// what the realm holds of the document: history, the custom element registry, navigation.activation (native/js/odin/load.odin)
+	if r := c.js; r != nil && !r.failed && r.inst != nil && !r.inst.dead { js_call(c, r.inst, "wj_document_replaced", nil) }
+	if c.closed || n.page != c { return nil }
 	return c
 }
 

@@ -472,6 +472,12 @@ wjr_Navigation_get_activation :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 	return a
 }
 
+// The Window has a new document (wj_document_replaced): its activation is the new one's.
+nav_document_replaced :: proc "contextless" (ctx: ^wj.Context) {
+	wj.JS_FreeValue(ctx, activation)
+	activation = wj.UNDEFINED
+}
+
 @(private = "file")
 activation_member :: proc "contextless" (ctx: ^wj.Context, this_val: wj.JSValue, name: cstring) -> wj.JSValue {
 	if wj.wj_this(ctx, this_val, ifc("NavigationActivation")) == nil { return wj.EXCEPTION }

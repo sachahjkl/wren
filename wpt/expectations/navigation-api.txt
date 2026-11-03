@@ -104,38 +104,38 @@
 /navigation-api/navigate-event/cross-window/click-samedocument-crossorigin-sameorigindomain.sub.html: ERROR
 /navigation-api/navigate-event/cross-window/click-samedocument-crossorigin.html: OK
 	clicking on an <a> element that navigates same-document targeting a cross-origin window: PASS
-/navigation-api/navigate-event/cross-window/click-samedocument-sameorigin.html: TIMEOUT
-	clicking on an <a> element that navigates same-document targeting a same-origin window: TIMEOUT
+/navigation-api/navigate-event/cross-window/click-samedocument-sameorigin.html: OK
+	clicking on an <a> element that navigates same-document targeting a same-origin window: PASS
 /navigation-api/navigate-event/cross-window/location-crossdocument-crossorigin-sameorigindomain.sub.html: ERROR
 /navigation-api/navigate-event/cross-window/location-crossdocument-crossorigin.html: OK
 	using location.href to navigate cross-document targeting a cross-origin window: PASS
-/navigation-api/navigate-event/cross-window/location-crossdocument-sameorigin.html: TIMEOUT
-	using location.href to navigate cross-document targeting a same-origin window: TIMEOUT
+/navigation-api/navigate-event/cross-window/location-crossdocument-sameorigin.html: OK
+	using location.href to navigate cross-document targeting a same-origin window: PASS
 /navigation-api/navigate-event/cross-window/location-samedocument-crossorigin-sameorigindomain.sub.html: ERROR
 /navigation-api/navigate-event/cross-window/location-samedocument-crossorigin.html: OK
 	using location.href to navigate same-document targeting a cross-origin window: PASS
-/navigation-api/navigate-event/cross-window/location-samedocument-sameorigin.html: TIMEOUT
-	using location.href to navigate same-document targeting a same-origin window: TIMEOUT
+/navigation-api/navigate-event/cross-window/location-samedocument-sameorigin.html: OK
+	using location.href to navigate same-document targeting a same-origin window: PASS
 /navigation-api/navigate-event/cross-window/open-crossdocument-crossorigin-sameorigindomain.sub.html: ERROR
 /navigation-api/navigate-event/cross-window/open-crossdocument-crossorigin.html: OK
 	using window.open() to navigate cross-document targeting a cross-origin window: PASS
-/navigation-api/navigate-event/cross-window/open-crossdocument-sameorigin.html: TIMEOUT
-	using window.open() to navigate cross-document targeting a same-origin window: TIMEOUT
+/navigation-api/navigate-event/cross-window/open-crossdocument-sameorigin.html: OK
+	using window.open() to navigate cross-document targeting a same-origin window: PASS
 /navigation-api/navigate-event/cross-window/open-samedocument-crossorigin-sameorigindomain.sub.html: ERROR
 /navigation-api/navigate-event/cross-window/open-samedocument-crossorigin.html: OK
 	using window.open() to navigate same-document targeting a cross-origin window: PASS
-/navigation-api/navigate-event/cross-window/open-samedocument-sameorigin.html: TIMEOUT
-	using window.open() to navigate same-document targeting a same-origin window: TIMEOUT
+/navigation-api/navigate-event/cross-window/open-samedocument-sameorigin.html: OK
+	using window.open() to navigate same-document targeting a same-origin window: PASS
 /navigation-api/navigate-event/cross-window/submit-crossdocument-crossorigin-sameorigindomain.sub.html: ERROR
 /navigation-api/navigate-event/cross-window/submit-crossdocument-crossorigin.html: OK
 	submitting a <form> element that navigates cross-document targeting a cross-origin window: PASS
-/navigation-api/navigate-event/cross-window/submit-crossdocument-sameorigin.html: TIMEOUT
-	submitting a <form> element that navigates cross-document targeting a same-origin window: TIMEOUT
+/navigation-api/navigate-event/cross-window/submit-crossdocument-sameorigin.html: OK
+	submitting a <form> element that navigates cross-document targeting a same-origin window: PASS
 /navigation-api/navigate-event/cross-window/submit-samedocument-crossorigin-sameorigindomain.sub.html: ERROR
 /navigation-api/navigate-event/cross-window/submit-samedocument-crossorigin.html: OK
 	submitting a <form> element that navigates same-document targeting a cross-origin window: PASS
-/navigation-api/navigate-event/cross-window/submit-samedocument-sameorigin.html: TIMEOUT
-	submitting a <form> element that navigates same-document targeting a same-origin window: TIMEOUT
+/navigation-api/navigate-event/cross-window/submit-samedocument-sameorigin.html: OK
+	submitting a <form> element that navigates same-document targeting a same-origin window: PASS
 /navigation-api/navigate-event/dangling-navigate-event-after-bfcache-restore.html: OK
 	navigateerror should not fire when calling pushState after restoring from bfcache: FAIL
 /navigation-api/navigate-event/defaultPrevented-navigation-preempted.html: OK

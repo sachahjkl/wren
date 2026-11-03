@@ -68,6 +68,7 @@ Timer :: struct {
 Page :: struct {
 	scope:     ^base.Scope,
 	tag:       u32,            // in the handles of its nodes, events and host objects (base.pool_insert_tagged)
+	prior_tag: u32,            // the tag of what its Window made before its document was replaced in it (frame_keep_window); 0: none
 	route_next:     u32,       // the tag the realm's next import acts on (Frame_target, frames_access.odin)
 	route_busy:     int,       // import calls of other realms acting on this document now
 	dispatching:    int,       // events being dispatched at this document now (a listener of another realm may remove its frame)

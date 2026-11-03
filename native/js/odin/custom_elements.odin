@@ -637,6 +637,21 @@ wjr_Window_get_customElements :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 	return wj.JS_DupValue(ctx, registry)
 }
 
+// The Window has a new document (wj_document_replaced): the registry is the new document's, without definitions.
+ce_document_replaced :: proc "c" (ctx: ^wj.Context) {
+	if registry_made {
+		wj.JS_FreeValue(ctx, registry)
+		registry_made = false
+	}
+	if !ce_ready { return }
+	maps := [2]wj.JSValue{ce_by_name, ce_by_ctor}
+	for m in maps {
+		f := wj.JS_GetPropertyStr(ctx, m, "clear")
+		r := wj.JS_Call(ctx, f, m, 0, nil)
+		wj.JS_FreeValue(ctx, r); wj.JS_FreeValue(ctx, f)
+	}
+}
+
 @(private = "file")
 registry_this :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> bool { return wj.wj_this(ctx, this_val, i_registry()) != nil }
 

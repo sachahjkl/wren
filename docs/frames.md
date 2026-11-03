@@ -56,6 +56,16 @@ A frame with no address (`about:blank`, the initial document) is a real document
 made on first need. Reached by another realm, it becomes a document that finished loading, shown in its frame
 (`frames_make_live`).
 
+The first document that replaces it keeps its `Window` when it is of the same origin, as HTML says: what a script put on the
+blank frame's window (`frame.contentWindow.navigation.onnavigate = ...`, `window[0].foo = ...`, its listeners and timers) is the
+next document's. The blank document's `Page` takes the new document (`frame_keep_window`, `src/page/frames.odin`) instead of a
+`Page` of its own, but only when its realm was started: a blank frame no script touched has nothing to keep. The realm, its
+instance and the `Window`'s objects stay; the new tree gets a tag of its own when it is parsed, so that a wrapper of the blank
+document is dead in every realm, while the objects the `Window` made keep the old tag (`Page.prior_tag`, which the routing of
+`frames_access.odin` takes for the page's own). The URL, the policies, the frames and the scripts are the new document's, and the
+realm forgets what belongs to the document (`wj_document_replaced`): `history`, the custom element registry with its definitions,
+`navigation.activation`. A document of another origin, or one a sandbox makes opaque, gets a `Window` of its own.
+
 ## Globals: a value bridge
 
 `frame.contentWindow.foo` and `parent.foo()` go through `native/js/odin/frames_bridge.odin` and `web_bridge.js`. A request is
@@ -118,13 +128,7 @@ What is not there:
 
 - **joint session history.** Each frame has its own: `history.back()` in the tab does not go back in a frame, a traversal moves one
   frame, and a push in a frame does not prune another's forward entries. The browser's back button leaves the tab's document;
-- **a Window kept from the initial about:blank.** HTML keeps the `Window` when a frame goes from its initial about:blank to a document
-  of the same origin. Here every document has an instance of its own, so what a script put on a blank frame's window
-  (`frame.contentWindow.navigation.onnavigate = ...`, `window[0].foo = ...`) goes with that document. Keeping it means one of two
-  things, both larger than a fix: handing the blank document's realm to the next `Page` (the realm is numbered by its page, its
-  instance calls the browser as that page, and what the window holds, `navigation` and its handlers, the window's listeners, timers,
-  are objects of that page's pools), or loading the fetched document into the blank `Page` itself, a second way to load a
-  response beside `page_create` (headers, CSP, encoding, documents that are not HTML), with a new `Document` in an old page;
+- **a Window kept for a window that `window.open` made**: only a frame's initial about:blank keeps its `Window` (above);
 - **`precommitHandler`** of `NavigateEvent.intercept()`.
 
 ## Windows that scripts open

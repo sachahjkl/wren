@@ -802,6 +802,13 @@ web_singleton :: proc "c" (ctx: ^Context, which: i32, make: Singleton_Make) -> J
 	return JS_DupValue(ctx, singles[which])
 }
 
+// Forgets the singleton `which`: the next use makes a new one (an object of the document, whose Window has a new one).
+web_singleton_drop :: proc "c" (ctx: ^Context, which: i32) {
+	if !singles_init { return }
+	JS_FreeValue(ctx, singles[which])
+	singles[which] = UNDEFINED
+}
+
 @(private = "file") pins: [^]JSValue
 @(private = "file") pins_n, pins_cap: u32
 @(private = "file") pins_free: [^]u32
