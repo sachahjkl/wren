@@ -13,7 +13,6 @@ package browser
 import "base:runtime"
 import "core:math"
 import "core:os"
-import "core:strconv"
 import "core:strings"
 import "core:time"
 import "core:unicode/utf8"
@@ -688,7 +687,7 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 			centered_text(dc, fonts, fid, size, b, pal.face_text, label, line_h = lh)
 			fl := forms.files(f, node)
 			names := "No file chosen"
-			if len(fl) == 1 { names = fl[0].name } else if len(fl) > 1 { names = strings.concatenate({itoa(len(fl)), " files"}, context.temp_allocator) }
+			if len(fl) == 1 { names = fl[0].name } else if len(fl) > 1 { names = strings.concatenate({base.itoa(len(fl)), " files"}, context.temp_allocator) }
 			draw.push_clip(dc, {{b.max.x + 6 * scale, content.min.y}, content.max})
 			centered_text(dc, fonts, fid, size, {{b.max.x + 6 * scale, content.min.y}, content.max}, fg, names, false, lh)
 			draw.pop_clip(dc)
@@ -1023,7 +1022,7 @@ dom_key :: proc(k: platform.Key, shift: bool) -> (code: u32, name: string) {
 		return 48 + i, strings.clone(string([]u8{u8('0' + i)}), context.temp_allocator)
 	case .F1 ..= .F12:
 		i := u32(k) - u32(platform.Key.F1)
-		return 112 + i, strings.concatenate({"F", itoa(int(i) + 1)}, context.temp_allocator)
+		return 112 + i, strings.concatenate({"F", base.itoa(int(i) + 1)}, context.temp_allocator)
 	case .Escape: return 27, "Escape"
 	case .Return: return 13, "Enter"
 	case .Tab: return 9, "Tab"
@@ -1854,9 +1853,6 @@ picker_done :: proc(data: rawptr) {
 }
 
 _ :: runtime
-
-@(private = "file")
-itoa :: proc(n: int) -> string { buf: [24]u8; return strings.clone(strconv.write_int(buf[:], i64(n), 10), context.temp_allocator) }
 // Controls whose whole look is drawn by paint_control: the layout painter draws no background or border for them.
 forms_bare_control :: proc(user: rawptr, doc: ^dom.Document, node: base.Handle) -> bool {
 	n := dom.get(doc, node)

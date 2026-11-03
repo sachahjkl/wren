@@ -10,6 +10,7 @@
 package csp
 
 import "core:strings"
+import "wb:base"
 import "wb:url"
 
 Disposition :: enum u8 { Enforce, Report_Only }
@@ -346,17 +347,10 @@ port_ok :: proc(s: Source, self: url.Origin, u: url.URL) -> bool {
 	case s.port == "":  return up == url.default_port(u.scheme)
 	case s.port == "*": return true
 	}
-	if s.port == itoa(up) { return true }
+	if s.port == base.itoa(up) { return true }
 	// 443 written for an https source also covers the default port of the scheme it was upgraded to
 	scheme := s.scheme != "" ? s.scheme : self.scheme
-	return s.port == itoa(url.default_port(scheme)) && up == url.default_port(u.scheme)
-}
-
-@(private)
-itoa :: proc(n: int) -> string {
-	sb := strings.builder_make(context.temp_allocator)
-	strings.write_int(&sb, n)
-	return strings.to_string(sb)
+	return s.port == base.itoa(url.default_port(scheme)) && up == url.default_port(u.scheme)
 }
 
 Violation :: struct {

@@ -12,6 +12,7 @@ import "core:strings"
 import "core:time"
 import "wb:forms"
 import "wb:host"
+import "wb:url"
 
 Fs_Entry :: struct {
 	root:   string,   // the dropped item (absolute path, owned)
@@ -89,22 +90,9 @@ DataTransfer_itemEntry :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (u
 	if err != .None { return 0, err }
 	if dt.data.mode == .Protected || !it.is_file || it.file.path == "" { return 0, .None }
 	// one file system per drop: its name says which store it came from
-	name := strings.concatenate({"wren-drop-", itoa_u64(dt.handle)}, context.temp_allocator)
-	return fs_entry_new(c.page, c.owner, it.file.path, "", name, it.is_dir), .None
-}
-
-@(private)
-itoa_u64 :: proc(v: u64) -> string {
 	buf: [24]u8
-	i := len(buf)
-	x := v
-	for {
-		i -= 1
-		buf[i] = u8('0' + x % 10)
-		x /= 10
-		if x == 0 { break }
-	}
-	return strings.clone(string(buf[i:]), context.temp_allocator)
+	name := strings.concatenate({"wren-drop-", url.uint_to_string(dt.handle, buf[:])}, context.temp_allocator)
+	return fs_entry_new(c.page, c.owner, it.file.path, "", name, it.is_dir), .None
 }
 
 FsEntry_info :: proc(c: ^Call, entry: Api_FsEntry) -> Api_FsEntryInfo { return {is_dir = entry.data.is_dir} }

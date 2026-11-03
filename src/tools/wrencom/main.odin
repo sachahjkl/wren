@@ -1,6 +1,7 @@
 #+build windows
 package wrencom
 
+import "core:strconv"
 import "core:strings"
 import win "core:sys/windows"
 
@@ -114,7 +115,8 @@ run :: proc() -> int {
 	}
 
 	if !win.CreateProcessW(win.utf8_to_wstring(target, context.temp_allocator), cstring16(line), nil, nil, inherit, 0, nil, nil, &si, &pi) {
-		fail(strings.concatenate({"cannot start ", target, " (error ", itoa(int(win.GetLastError())), ")."}, context.temp_allocator))
+		buf: [len("4294967295")]u8
+		fail(strings.concatenate({"cannot start ", target, " (error ", strconv.write_uint(buf[:], u64(win.GetLastError()), 10), ")."}, context.temp_allocator))
 		return EXIT_NOT_RUNNABLE
 	}
 	win.CloseHandle(pi.hThread)
@@ -133,20 +135,6 @@ inheritable :: proc(h: win.HANDLE) -> win.HANDLE {
 	if h == nil || h == win.INVALID_HANDLE_VALUE { return nil }
 	win.SetHandleInformation(h, win.HANDLE_FLAG_INHERIT, win.HANDLE_FLAG_INHERIT)
 	return h
-}
-
-@(private = "file")
-itoa :: proc(n: int) -> string {
-	buf: [20]byte
-	i := len(buf)
-	v := n
-	for {
-		i -= 1
-		buf[i] = byte('0' + v % 10)
-		v /= 10
-		if v == 0 { break }
-	}
-	return strings.clone(string(buf[i:]), context.temp_allocator)
 }
 
 // The arguments (without the program's own name), UTF-8, as the C runtime of Odin does not give them (it hands over the
