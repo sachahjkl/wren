@@ -105,22 +105,6 @@ scenario :: proc(pr: ^Probe, export: cstring, id: int, args: []u32 = nil) -> str
 	return wait_published(pr, string(export), id)
 }
 
-// A plain GET from the test itself (no page, no policy): server-side counters.
-Get_State :: struct { done: bool, body: string }
-
-http_get :: proc(t: ^testing.T, target: string) -> string {
-	st := new(Get_State, context.temp_allocator)
-	net.fetch(&client, {url = testenv.url(target), collect = true, user = st, on_event = proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
-		s := (^Get_State)(user)
-		#partial switch ev.kind {
-		case .Done:   s.done, s.body = true, strings.clone(string(ev.data), base.process_context().temp_allocator)
-		case .Failed: s.done = true
-		}
-	}})
-	wait_until(t, target, st, proc(s: ^Get_State) -> bool { return s.done })
-	return st.body
-}
-
 count_of :: proc(s: string) -> int {
 	n := 0
 	for c in s { if c >= '0' && c <= '9' { n = n * 10 + int(c - '0') } }
@@ -157,14 +141,14 @@ netapi_eventsource_delivers_and_closes :: proc(t: ^testing.T) {
 	virtual_clock(t)
 	pr, ok := open(t, "eventsource", testenv.url(ORIGIN + "/netapi.html"))
 	if !ok { return }
-	hits := http_get(t, ORIGIN + "/sse/hits?name=basic")
+	hits := net_get(t, testenv.url(ORIGIN + "/sse/hits?name=basic"))
 	s := scenario(pr, "es_basic", S_ES_BASIC)
 	want := testenv.url("open;message:hello::" + ORIGIN + ";ping:p1:1:" + ORIGIN + ";message:line1\nline2:2:" + ORIGIN + ";done:3:2:" + ORIGIN + ";closed=2")
 	check(pr, s == want, fmt.tprintf("messages, named events, ids, CR/CRLF, BOM, comments, origin (got %q)", s))
 	check(pr, fetch.in_flight(&loader) == 0, "close() cancelled the request")
 	host.clock_advance(&loop, PAST_ANY_RETRY)
 	check(pr, fetch.in_flight(&loader) == 0, "no reconnection started once the time of a retry has passed")
-	after := http_get(t, ORIGIN + "/sse/hits?name=basic")
+	after := net_get(t, testenv.url(ORIGIN + "/sse/hits?name=basic"))
 	check(pr, count_of(after) == count_of(hits) + 1, "one connection, no reconnection after close()")
 	page.call_export(pr.p, pr.p.instances[0], "publish_now", {S_ES_BASIC})
 	again, _ := result(pr.p, S_ES_BASIC)
@@ -194,11 +178,11 @@ netapi_eventsource_wrong_type_never_reconnects :: proc(t: ^testing.T) {
 	virtual_clock(t)
 	pr, ok := open(t, "eventsource wrong type", testenv.url(ORIGIN + "/netapi.html"))
 	if !ok { return }
-	before := count_of(http_get(t, ORIGIN + "/sse/hits?name=wrong-type"))
+	before := count_of(net_get(t, testenv.url(ORIGIN + "/sse/hits?name=wrong-type")))
 	s := scenario(pr, "es_wrong_type", S_ES_WRONG)
 	check(pr, s == ES_FAILED, fmt.tprintf("a response that is not text/event-stream fails the EventSource (got %q)", s))
 	host.clock_advance(&loop, PAST_ANY_RETRY)
-	check(pr, fetch.in_flight(&loader) == 0 && count_of(http_get(t, ORIGIN + "/sse/hits?name=wrong-type")) == before + 1, "...and it never reconnects")
+	check(pr, fetch.in_flight(&loader) == 0 && count_of(net_get(t, testenv.url(ORIGIN + "/sse/hits?name=wrong-type"))) == before + 1, "...and it never reconnects")
 	close_page(pr, min_checks = 2)
 }
 
@@ -344,12 +328,12 @@ netapi_csp_connect_src_blocks :: proc(t: ^testing.T) {
 	pr := page_make(t, "csp", testenv.url(ORIGIN + "/csp.html"))
 	page.apply_response_headers(pr.p, {"connect-src 'self'"}, {}, "")
 	if !load(pr) { close_page(pr); return }
-	hits := http_get(t, ORIGIN + "/ws/hits")
+	hits := net_get(t, testenv.url(ORIGIN + "/ws/hits"))
 	s := scenario(pr, "ws_blocked", S_WS_BLOCKED, {0})
 	check(pr, s == SOCKET_FAILED, fmt.tprintf("CSP connect-src blocks a WebSocket to another origin (got %q)", s))
 	s = scenario(pr, "es_blocked", S_ES_BLOCKED, {0})
 	check(pr, s == ES_FAILED, fmt.tprintf("CSP connect-src blocks an EventSource to another origin (got %q)", s))
-	check(pr, http_get(t, ORIGIN + "/ws/hits") == hits, "nothing reached the server")
+	check(pr, net_get(t, testenv.url(ORIGIN + "/ws/hits")) == hits, "nothing reached the server")
 	close_page(pr, min_checks = 3)
 }
 
@@ -387,7 +371,7 @@ netapi_closing_a_page_with_live_connections :: proc(t: ^testing.T) {
 	check(pr, fetch.in_flight(&loader) == 0 && net.in_flight(&client) == 0, "...and cancelled the stream")
 	// what could still come: the loop's timers, and the network, a request through it being the barrier
 	host.clock_advance(&loop, PAST_ANY_RETRY)
-	http_get(t, ORIGIN + "/ws/hits")
+	net_get(t, testenv.url(ORIGIN + "/ws/hits"))
 	drain()
 	check(pr, len(pr.lines) == lines, "no late callback after the page is gone")
 	close_page(pr, min_checks = 5)

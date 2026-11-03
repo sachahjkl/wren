@@ -121,6 +121,61 @@ wait_until :: proc(t: ^testing.T, what: string, data: $T, ready: proc(data: T) -
 	return true
 }
 
+@(private = "file")
+Get :: struct { done: bool, body: string }
+
+// The body of a plain GET from the browser itself (fetch's loader, no document): the test server's counters. "" when it
+// failed.
+http_get :: proc(t: ^testing.T, u: string) -> string {
+	g := new(Get, context.temp_allocator)
+	fetch.start(&loader, {
+		request = {url = u, mode = .Cors, credentials = .Omit},
+		on_event = proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
+			g := (^Get)(user)
+			#partial switch ev.kind {
+			case .Done:
+				g.body = strings.clone(string(ev.data), base.process_context().temp_allocator)
+				g.done = true
+			case .Failed:
+				g.done = true
+			}
+		}, user = g, collect = true,
+	})
+	wait_until(t, u, g, proc(g: ^Get) -> bool { return g.done })
+	return g.body
+}
+
+// The same from the network client alone (no page, no fetch policy).
+net_get :: proc(t: ^testing.T, u: string) -> string {
+	g := new(Get, context.temp_allocator)
+	net.fetch(&client, {url = u, collect = true, user = g, on_event = proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
+		g := (^Get)(user)
+		#partial switch ev.kind {
+		case .Done:   g.done, g.body = true, strings.clone(string(ev.data), base.process_context().temp_allocator)
+		case .Failed: g.done = true
+		}
+	}})
+	wait_until(t, u, g, proc(g: ^Get) -> bool { return g.done })
+	return g.body
+}
+
+// Percent-encodes `s` for a query value.
+enc :: proc(s: string) -> string {
+	sb := strings.builder_make(context.temp_allocator)
+	hex := "0123456789ABCDEF"
+	for c in transmute([]u8)s {
+		switch {
+		case (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~':
+			strings.write_byte(&sb, c)
+		case:
+			strings.write_byte(&sb, '%')
+			strings.write_byte(&sb, hex[c >> 4])
+			strings.write_byte(&sb, hex[c & 15])
+		}
+	}
+	return strings.to_string(sb)
+}
+
 // The loop's time stands still from now on, until the test moves it (host.clock_advance) or ends: for what happens on a timer of the
 // loop, or must not. The network does not wait for it.
 virtual_clock :: proc(t: ^testing.T) {

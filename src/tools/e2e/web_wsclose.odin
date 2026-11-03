@@ -83,21 +83,6 @@ run_case :: proc(t: ^testing.T, c: ^Case) -> string {
 	return strings.to_string(r.log)
 }
 
-Get_State :: struct { done: bool, body: string }
-
-http_get :: proc(t: ^testing.T, target: string) -> string {
-	st := new(Get_State, context.temp_allocator)
-	net.fetch(&client, {url = target, collect = true, user = st, on_event = proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
-		s := (^Get_State)(user)
-		#partial switch ev.kind {
-		case .Done:   s.done, s.body = true, strings.clone(string(ev.data), base.process_context().temp_allocator)
-		case .Failed: s.done = true
-		}
-	}})
-	wait_until(t, target, st, proc(s: ^Get_State) -> bool { return s.done })
-	return st.body
-}
-
 // Runs `c` n times; every run must log `want` (and the server must have read `wire` as our close frame, when given); no socket stays.
 repeat :: proc(t: ^testing.T, what: string, c: Case, want: string, n: int, wire := "", loc := #caller_location) {
 	c := c
@@ -105,7 +90,7 @@ repeat :: proc(t: ^testing.T, what: string, c: Case, want: string, n: int, wire 
 	first_bad, first_wire: string
 	for _ in 0 ..< n {
 		got := run_case(t, &c)
-		w := wire != "" ? http_get(t, fmt.tprintf("%s?tag=%d", testenv.url("http://127.0.0.1:8765/ws/last-close"), os.get_pid())) : ""
+		w := wire != "" ? net_get(t, fmt.tprintf("%s?tag=%d", testenv.url("http://127.0.0.1:8765/ws/last-close"), os.get_pid())) : ""
 		if got != want || w != wire {
 			if bad == 0 { first_bad, first_wire = got, w }
 			bad += 1

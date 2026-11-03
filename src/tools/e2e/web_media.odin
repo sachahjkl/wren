@@ -13,7 +13,6 @@ import "core:strings"
 import "core:testing"
 import "wb:base"
 import "wb:dom"
-import "wb:fetch"
 import "wb:host"
 import "wb:images"
 import "wb:page"
@@ -68,27 +67,6 @@ shut :: proc(pr: ^Probe, min_checks: int, loc := #caller_location) {
 	page.images_shutdown()
 	images.decoder_stop()   // (the process's: the harness is the only embedder)
 	testing.expect(t, !images.decoder_running(), "decoding threads stopped", loc = loc)
-}
-
-Get :: struct { done: bool, body: string }
-
-http_get :: proc(t: ^testing.T, u: string) -> string {
-	g := new(Get, context.temp_allocator)
-	fetch.start(&loader, {
-		request = {url = u, mode = .Cors, credentials = .Omit},
-		on_event = proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
-			g := (^Get)(user)
-			#partial switch ev.kind {
-			case .Done:
-				g.body = strings.clone(string(ev.data), base.process_context().temp_allocator)
-				g.done = true
-			case .Failed:
-				g.done = true
-			}
-		}, user = g, collect = true,
-	})
-	wait_until(t, u, g, proc(g: ^Get) -> bool { return g.done })
-	return g.body
 }
 
 Painted :: struct {
