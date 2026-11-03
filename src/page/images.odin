@@ -738,10 +738,6 @@ images_adopt_document :: proc(p: ^Page) {
 	pi.sizes = next_serial()
 }
 
-// A node images_sync looks at, and whether its subtree goes with it.
-@(private)
-Image_Walk :: struct { node: base.Handle, subtree: bool }
-
 // Finds <img> / <input type=image> elements, runs source selection where something it depends on changed, follows
 // CSS image URLs, starts downloads. Cheap when nothing changed. UI thread, from a task (never inside a guest call).
 images_sync :: proc(p: ^Page) {
@@ -754,35 +750,27 @@ images_sync :: proc(p: ^Page) {
 	env_changed := env.width != pi.env.width || env.dppx != pi.env.dppx || env.height != pi.env.height
 	mutated := pi.mutations != p.doc.mutations
 	if mutated || env_changed {
-		// the image elements are found again only when the document changed: a new viewport alone (a window being
-		// resized) runs source selection on the known ones. What changed comes from the mutation journal (the subtrees
-		// inserted, the elements whose attributes changed); the whole document is walked only when the journal does not
-		// cover the change.
+		// the image elements are found again only when the document changed in a way that can concern them (the mutation
+		// journal: a node inserted or removed, an attribute of an <img> or <input>; anything when the journal does not
+		// cover the change); a new viewport alone (a window being resized) runs source selection on the known ones. They
+		// are found among the <img> and <input> elements the document made (dom.Document.images), those in its tree,
+		// shadow trees included.
 		changes, journaled := dom.journal_since(p.doc, pi.mutations)
+		look := mutated && !journaled
+		for &c in changes {
+			if look { break }
+			switch c.kind {
+			case .Insert, .Remove: look = true
+			case .Attribute: if n := dom.get(p.doc, c.node); n != nil && (n.name == dom.IMG_NAME || n.name == dom.INPUT_NAME) { look = true }
+			case .Text, .Reslot:
+			}
+		}
 		pi.mutations = p.doc.mutations
 		pi.env = env
-		if mutated { pi.pass += 1 }
-		stack := make([dynamic]Image_Walk, 0, 64, context.temp_allocator)
-		removed := false
-		if mutated && !journaled { append(&stack, Image_Walk{p.doc.root, true}) }
-		if mutated && journaled {
-			for &c in changes {
-				switch c.kind {
-				case .Insert: append(&stack, Image_Walk{c.node, true})
-				case .Attribute: append(&stack, Image_Walk{c.node, false})   // (an <input> whose type changed: itself only)
-				case .Remove: removed = true
-				case .Text, .Reslot:
-				}
-			}
-			// what the document held before keeps its place unless something left it
-			for h, el in pi.elements { if !removed || dom.is_connected(p.doc, h) { el.seen = pi.pass } }
-		}
-		for len(stack) > 0 {
-			w := pop(&stack)
-			h := w.node
-			n := dom.get(p.doc, h)
-			if n == nil { continue }
-			if n.kind == .Element && (n.name == "img" || n.name == "input") && is_image_element(p.doc, h) && (!journaled || dom.is_connected(p.doc, h)) {
+		if look {
+			pi.pass += 1
+			for h in p.doc.images {
+				if !is_image_element(p.doc, h) || !dom.is_connected(p.doc, h) { continue }
 				el, ok := pi.elements[h]
 				if !ok {
 					el = new(Img_Element)
@@ -792,13 +780,10 @@ images_sync :: proc(p: ^Page) {
 				}
 				el.seen = pi.pass
 			}
-			if !w.subtree { continue }
-			for c := n.last_child; c != base.NIL_HANDLE; c = dom.get(p.doc, c).prev { append(&stack, Image_Walk{c, true}) }
-			if n.kind == .Element && n.shadow != base.NIL_HANDLE { append(&stack, Image_Walk{n.shadow, true}) }   // shadow trees' images too
 		}
 		gone := make([dynamic]base.Handle, 0, 8, context.temp_allocator)
 		for h, el in pi.elements {
-			if !is_image_element(p.doc, h) || (el.seen != pi.pass && !el.held) { append(&gone, h); continue }
+			if !is_image_element(p.doc, h) || (look && el.seen != pi.pass && !el.held) { append(&gone, h); continue }
 			element_update(p, el)
 		}
 		for h in gone {

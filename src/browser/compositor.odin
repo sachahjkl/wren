@@ -373,7 +373,6 @@ item_hash :: proc(c: ^Comp, l: ^Layout, it: ^lay.Display_Item, cache: ^map[^styl
 		h = mix(mix(h, u64(fi.font)), u64(transmute(u32)fi.size))
 	}
 	h = mix(h, u64(transmute(u32)it.baseline) | u64(transmute(u32)it.extra) << 32)
-	h = hash_bytes(h, &it.thumb, size_of(it.thumb))
 	deco := it.deco
 	h = hash_bytes(h, &deco, size_of(deco))
 	h = hash_bytes(h, &it.deco_color, size_of(it.deco_color))
