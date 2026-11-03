@@ -233,6 +233,10 @@ After round 8: `mutation_fullstyle` a full pass 1.53 (1.46-1.74) -> 1.47 (1.40-1
 those take a third off what is left of the style stage (12 runs of each build, interleaved, on a busy machine: 1.65 (1.21-2.91) ->
 1.10 (0.80-1.57) ms p50); `mutation` and `mutation_class` the same (CPU work per frame 0.85 and 0.85, 1.66 and 1.67 ms).
 
+After round 14 (5 runs of each build, interleaved; median, range in brackets): `mutation_fullstyle`'s style stage 0.835
+(0.833-1.235) -> 0.753 (0.747-0.815) ms a frame p50, what `::backdrop` had added to it (0.715 ms before it, round 13),
+CPU work per frame 3.10 (3.00-5.69) -> 2.86 (2.81-4.77) ms; a full pass in process 0.632 -> 0.569 ms.
+
 ## What changed, round 1
 
 1. **The frame pacer books no slot for a frame it does not pace** (`src/browser/pacing.odin`, `pacer_wait`). A headless
@@ -1172,6 +1176,71 @@ roots, the sweep's loop, and the browser's `Node_unpinAll` counted to it), the p
 (`obj_of` and `JS_IsUntouched` for each, to find the plain ones), the finalizers' chain 18 % (the bridge, `obj_finalizer`,
 `node_del`, `libc_free`), the sweep's frees 14 %, `gc_drain` 12 %.
 
+## What changed, round 14: the static C runtime, measured; what ::backdrop cost every element
+
+The machine quiet. The browser: `wrentool bench perf`, profile builds, 5 runs of each build, interleaved, the order
+turning; median, range in brackets. A full style pass also timed in process (a test not kept: a copy of `mutation.html`,
+10 000 elements, styled 600 times with seven style threads, each pass recycled as the page recycles it; 6 runs of each
+build in turn).
+
+1. **The static C runtime: measured, kept.** The move to Odin dev-2026-11 linked every Wren program with the static C
+   runtime (libcmt, libucrt; Lexbor `/MT`, the Rust libraries `crt-static`), since `core:testing` now links Odin's
+   `core:c/libc`, the static UCRT, into every test program, and the dynamic one beside it did not link. A noisy run had
+   shown nodes10k at 132 frames/s against 159 with the dynamic runtime. The dynamic variant rebuilt on a scratch branch
+   from that commit's diff (msvcrt and ucrt in the foreign imports, Lexbor `/MD`, no `crt-static`, the static vcruntime
+   switch back: it imports `api-ms-win-crt-*`, the static one no runtime DLL), against master at 5fe0a76b:
+
+   | | static | dynamic |
+   |---|---|---|
+   | nodes10k: frames/s | 163.2 (157.4-165.4) | 165.3 (137.3-167.0) |
+   | nodes10k: script (Animation) p50, CPU work per frame mean | 11.66 (11.51-11.78), 17.37 (17.18-18.06) ms | 11.57 (11.55-13.68), 17.13 (16.97-20.70) ms |
+   | nodes10k: style stage p50 | 1.708 (1.699-1.718) ms | 1.699 (1.688-1.869) ms |
+   | `mutation_fullstyle`: style stage p50, CPU work per frame mean | 0.835 (0.831-0.841), 3.09 (3.02-3.54) ms | 0.850 (0.833-0.970), 3.87 (3.21-5.08) ms |
+   | p10k_load: load | 247 (242-644) ms | 242 (233-259) ms |
+   | p10k_scroll: frames/s, CPU work per frame mean | 170.7, 0.403 ms | 169.1, 0.474 ms |
+   | `examples/site/modern-css.html` resized: CPU work per frame mean | 0.425 (0.393-1.071) ms | 0.412 (0.389-0.839) ms |
+   | `wrentool bench startup`, first present, single instance off / on (6 runs) | 250 (248-265) / 248 (246-252) ms | 249 (246-252) / 250 (245-273) ms |
+
+   The same within the noise, and the sampler says why: what the runtime does on a hot path is the same code in both.
+   The C library's `malloc` (Lexbor's, the C the Rust crates compile) is `HeapAlloc` on the process heap in both UCRTs,
+   as Odin's heap allocator and Rust's are (`RtlAllocateHeap` 0.8 and 0.7 % of nodes10k's samples); `memcpy` and `memset`
+   are the static vcruntime's in both (Wren linked `libvcruntime` before the move too: 1.0 and 1.2 %, 0.9 and 0.7 %).
+   The 132 frames/s was the machine, not the runtime. Nothing to route elsewhere; the browser stays static with its test
+   programs.
+2. **The ::backdrop entries tried for the elements of the top layer alone** (`Index.backdrop`, `src/style/engine.odin`
+   `bucket_add`; `collect_entries`, `src/style/cascade.odin`; `match_element`, `src/style/sibling_match.odin`). Since
+   `::backdrop` gets a style, the UA's `::backdrop`, `:fullscreen:not(:root)::backdrop` and `:popover-open::backdrop`
+   were universal entries matched for every element (the last two `own`, so matched again for each sibling the walk
+   shares matching with), and every element's ::backdrop list (the UA's first rule) went into its share key, to be
+   dropped by `compute_element` for an element outside the top layer. They are now in a list of their own, whatever
+   their subject (Tailwind's `*, ::before, ::after, ::backdrop` too), tried only for an element of the top layer; such an
+   element neither takes a family's matching nor gives its own (its siblings would get or miss its backdrop). The share
+   key and the lists of every other element are those of before `::backdrop`. A full pass in process 0.632
+   (0.624-0.643) -> 0.569 (0.565-0.579) ms; the browser below. Test: `backdrop_styles` (three alike siblings, each in
+   turn in the top layer: it alone has a backdrop). `::placeholder` needs nothing of the kind: the UA's rules are by tag
+   (`input`, `textarea`).
+3. **Not done: the script stage's leftovers** (round 13's item 1). What the sampler shows of the browser's side is as
+   round 13 left it (`journal_record`, the insertion hooks, `destroy_subtree`, `unpin`, about 1.4 of 11.6 ms); texts in
+   a document's own memory instead of the heap one by one (`create_text`, about 0.1 ms a frame) is a change of the DOM's
+   memory for that.
+
+The browser, all of it (the base is master at 5fe0a76b, static):
+
+| | before | after |
+|---|---|---|
+| `mutation_fullstyle`: style stage p50 | 0.835 (0.833-1.235) ms | 0.753 (0.747-0.815) ms |
+| `mutation_fullstyle`: CPU work per frame, mean | 3.10 (3.00-5.69) ms | 2.86 (2.81-4.77) ms |
+| nodes10k: style stage p50 | 1.708 (1.677-1.762) ms | 1.652 (1.595-1.701) ms |
+| nodes10k: script (Animation) p50, frames/s | 11.81 (11.42-12.06) ms, 142.1 (130.7-170.4) | 12.11 (11.57-12.61) ms, 143.3 (138.1-168.3) |
+| `mutation`: CPU work per frame, mean | 0.79 (0.72-1.48) ms | 0.96 (0.75-1.52) ms |
+| `mutation_class`: CPU work per frame, mean | 1.31 (1.23-2.35) ms | 1.32 (1.25-1.92) ms |
+| p10k_load: load | 239 (235-250) ms | 244 (236-352) ms |
+| p10k_scroll: frames/s, CPU work per frame mean | 172.5, 0.377 ms | 172.1, 0.362 ms |
+| `examples/site/modern-css.html` resized: CPU work per frame mean | 0.388 (0.386-0.398) ms | 0.395 (0.384-0.907) ms |
+
+nodes10k's frames moved by a third within each build in these runs (the first round's ranges are narrower), and the
+pages that do not restyle whole are the same within their noise.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -1306,6 +1375,9 @@ After round 13. Round 12's item 1 is done in part (round 13: the counting pass a
 hold nothing, a detached tree freed by its links); what is left of it is item 1 below, and what round 13 found of the
 interpreter's code generation is item 9.
 
+After round 14. The static C runtime measured against the dynamic one: the same (round 14, item 1). Item 3 below no
+longer pays for `::backdrop` on every element (round 14, item 2); item 1 is unchanged.
+
 1. **The script stage of DOM-heavy pages, what is left** (nodes10k: 11.4 ms of a 16.8 ms frame; the browser's side
    1.4 ms of it). In order of the engine's samples: the interpreter itself (`interp_hot` 17 %, `call_native` and the
    bridge 8 %; a DOM call costs 50 to 100 ns over the loop, a method found five shapes up its chain 20 ns more); the
@@ -1326,8 +1398,9 @@ interpreter's code generation is item 9.
    whose paragraph came from the threads and whose style is its siblings' is what is left to try); finishing (`finish`
    itself 6 %); `note_refresh_inputs` (4.5 %: every display item and inline item read again after the list is made,
    which the shares making the list could note as they go); the bands (4.4 %).
-3. **What a full style pass still costs per page** (`mutation_fullstyle`, a pass 0.95 ms in the browser, 0.48 ms in
-   process with seven threads, four fifths of that on the threads since round 9): on the style threads, matching
+3. **What a full style pass still costs per page** (`mutation_fullstyle`, the style stage 0.75 ms in the browser, a pass
+   0.57 ms in process with seven threads since round 14, four fifths of that on the threads since round 9): on the
+   style threads, matching
    (`match_chain`, the families of pages whose elements are each of their own kind: modern-css, p10k, matched in full
    as before) and the journal's comparison of the pairs that differ; on the window thread, the weights of the subtrees
    (0.07 ms, one walk since round 9: weights the DOM keeps would cost every insertion).

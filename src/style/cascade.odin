@@ -553,6 +553,7 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 	}
 	if l, found := ix.by_tag[n.name]; found { check(p, el, l[:], ancestors, rec) }
 	check(p, el, ix.universal[:], ancestors, rec)
+	if len(ix.backdrop) > 0 && in_top_layer(p, el) { check(p, el, ix.backdrop[:], ancestors, rec) }
 }
 
 @(private)
@@ -954,7 +955,7 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 		if k == .Element || len(l) == 0 { continue }
 		// (::placeholder: a text field's only)
 		if k == .Placeholder && n.name != "input" && n.name != "textarea" { continue }
-		// (::backdrop: a top layer element's only)
+		// (::backdrop: a top layer element's only; the index tries it for those alone, ::part()::backdrop for any part)
 		if k == .Backdrop && !in_top_layer(p, h) { continue }
 		kept[k] = make([dynamic]Entry, context.temp_allocator)
 		append(&kept[k], ..l[:])
