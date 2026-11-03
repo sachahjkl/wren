@@ -82,6 +82,12 @@ DEMOS := [?]Demo{
 		"The page the long one links to: the back button's menu (right click) lists the way back.", false, "", false},
 	{.E2e, "History: branches", "history/other.html",
 		"Go back twice, then somewhere else: the old way stays as a branch of the tab's history tree (Ctrl+H, Tab history), where a click goes back to it.", false, "", false},
+	{.E2e, "History: a page with a frame", "history/framed.html",
+		"Follow the frame's link, then go back: the frame goes back and the page stays, as one history with the tab's own entries. <code>src\\tools\\e2e\\history.odin</code> does it.", false, "", false},
+	{.E2e, "History: the frame's first page", "history/frame_a.html",
+		"The document the frame of the page with a frame starts on.", false, "", false},
+	{.E2e, "History: the frame's second page", "history/frame_b.html",
+		"Where the frame's link goes.", false, "", false},
 
 	{.Layout, "Layout engine", "layout.html",
 		"Flexbox, floats and clearance, positioning and stacking order, tables, lists, overflow and scroll boxes, borders, preformatted text.", false, "", false},

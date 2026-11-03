@@ -87,6 +87,52 @@ history_tree_limits :: proc(t: ^testing.T) {
 	for e in session_flatten(&sh) { testing.expect(t, e.url != "p3") }
 }
 
+// The joint session history (history_joint.odin): a frame's steps are positions after their top-level entry; a traversal of the
+// top-level session shows its frames as they were left; a push drops the steps ahead; a frame's push cuts the entries ahead;
+// a step of a navigable gone no longer counts.
+@(test)
+history_joint_steps :: proc(t: ^testing.T) {
+	test_pages(t)
+	sh: Session_History
+	defer session_destroy(&sh)
+	f := navigable_new()
+	defer navigable_free(f)
+	session_push(&sh, "a", 1)
+	session_push(&sh, "a#top", 1)
+	add := proc(sh: ^Session_History, f: ^Navigable, entry: u64) {
+		append(&sh.steps, Joint_Step{top = sh.current.id, nav = f.id, entry = entry, from = entry - 1})
+		sh.frame_at += 1
+	}
+	add(&sh, f, 2)
+	add(&sh, f, 3)
+	view :: proc(sh: ^Session_History) -> string {
+		tops, cur := joint_view(sh)
+		s := ""
+		for e, i in tops { s = fmt.tprintf("%s%s%s%s", s, i > 0 ? " " : "", i == cur ? "*" : "", e.url) }
+		return s
+	}
+	testing.expect_value(t, view(&sh), "a a#top a#top *a#top")
+	session_go(&sh, -1)
+	testing.expect_value(t, view(&sh), "*a a#top a#top a#top")
+	session_go(&sh, 1)   // (back on an entry: its frames as they were left)
+	testing.expect_value(t, view(&sh), "a a#top a#top *a#top")
+	// back one step in the frame, then a push of the top-level document: the step ahead goes
+	sh.frame_at = 1
+	testing.expect_value(t, view(&sh), "a a#top *a#top a#top")
+	session_push(&sh, "a#next", 1, dedupe = false)
+	testing.expect_value(t, view(&sh), "a a#top a#top *a#next")
+	// a frame's step on an entry with entries ahead: they are no longer on the path
+	session_go(&sh, -1)
+	testing.expect(t, session_cut_ahead(&sh))
+	testing.expect_value(t, view(&sh), "a a#top *a#top")
+	// a frame gone: its steps no longer count
+	g := navigable_new()
+	append(&sh.steps, Joint_Step{top = sh.current.id, nav = g.id, entry = 9, from = 8})
+	testing.expect_value(t, view(&sh), "a a#top *a#top a#top")
+	navigable_free(g)
+	testing.expect_value(t, view(&sh), "a a#top *a#top")
+}
+
 @(test)
 history_tree_load :: proc(t: ^testing.T) {
 	test_pages(t)

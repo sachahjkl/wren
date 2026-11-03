@@ -514,19 +514,33 @@ history_push :: proc(app: ^App, t: ^Tab, target: string) {
 	sync_history(app, t)
 }
 
-// The chrome's view of the session history (back / forward buttons).
+// The chrome's view of the session history (back / forward buttons): the joint session history, the steps of the tab's
+// frames between its entries, each shown as the tab's address (page/history_joint.odin).
 sync_history :: proc(app: ^App, t: ^Tab) {
 	for h in t.history { delete(h) }
 	clear(&t.history)
-	for e in t.session.entries { append(&t.history, strings.clone(e.url)) }
-	t.hist = t.session.index
+	tops, cur := page.joint_view(&t.session)
+	for e in tops { append(&t.history, strings.clone(e.url)) }
+	t.hist = cur
 	recovery_touch(app)   // (every change of a tab's history: a navigation, back, forward, a redirect)
 }
 
+// Back, forward: `delta` steps of the joint session history, in the tab's frames first when they have steps there.
 go_history :: proc(app: ^App, t: ^Tab, delta: int) {
 	if t == nil || delta == 0 { return }
 	if shell_defer({kind = .History, tab = t.id, delta = delta}) { return }   // (shell_frames.odin)
-	go_entry(app, t, page.session_peek(&t.session, delta))
+	if t.page == nil || t.kind != .Web {
+		go_entry(app, t, page.session_peek(&t.session, delta))
+		return
+	}
+	switch move, e := page.joint_traverse(t.page, delta, user = true); move {
+	case .None:
+	case .Frames: sync_history(app, t)
+	case .Top:
+		sync_history(app, t)
+		same_document_url(app, t, t.page.env.location.href)
+	case .Other_Document: go_entry(app, t, e)
+	}
 }
 
 // Makes `e` (any entry of the tab's history tree: the path to it becomes the active one) the current entry: popstate
@@ -586,11 +600,13 @@ page_navigate :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 		if req.has_nav_state { page.session_set_nav_state(&t.session, req.nav_state, true) }
 		reload(app, t)
 	case .Traverse:
-		go_history(app, t, req.delta)
+		go_entry(app, t, page.session_peek(&t.session, req.delta))
 	case .Url_Changed:
 		sync_history(app, t)
 		same_document_url(app, t, req.url)
 		global_history_visit(app, t, req.url, t.title)
+	case .History_Changed:
+		sync_history(app, t)
 	}
 	request_frames(app, 2)
 }

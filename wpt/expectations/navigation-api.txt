@@ -94,8 +94,8 @@
 	manual + after-transition: PASS
 /navigation-api/navigate-event/cross-origin-traversal-does-not-fire-navigate.html: TIMEOUT
 	A cross-origin traversal does not fire the navigate event: TIMEOUT
-/navigation-api/navigate-event/cross-origin-traversal-redirect.html: TIMEOUT
-	A traversal that redirects from same-origin to cross-origin fires the navigate event: TIMEOUT
+/navigation-api/navigate-event/cross-origin-traversal-redirect.html: OK
+	A traversal that redirects from same-origin to cross-origin fires the navigate event: PASS
 /navigation-api/navigate-event/cross-window/click-crossdocument-crossorigin-sameorigindomain.sub.html: ERROR
 /navigation-api/navigate-event/cross-window/click-crossdocument-crossorigin.html: OK
 	clicking on an <a> element that navigates cross-document targeting a cross-origin window: PASS
@@ -278,7 +278,7 @@
 /navigation-api/navigate-event/navigate-history-back-cross-document.html: OK
 	navigate event for history.back() - cross-document: PASS
 /navigation-api/navigate-event/navigate-history-back-noop.html: OK
-	history.back() does not fire a navigate event when there's nothing to navigate: FAIL
+	history.back() does not fire a navigate event when there's nothing to navigate: PASS
 /navigation-api/navigate-event/navigate-history-go-0.html: OK
 	history.go(0) fires the navigate event: PASS
 /navigation-api/navigate-event/navigate-history-pushState.html: OK
@@ -332,8 +332,8 @@
 	navigation.back() same-document preventDefault: FAIL
 /navigation-api/navigate-event/navigation-traverseTo-in-iframe-same-document-preventDefault.html: OK
 	navigation.traverseTo() in an iframe with same-document preventDefault in its parent: FAIL
-/navigation-api/navigate-event/navigation-traverseTo-navigates-top-and-same-doc-child-and-cross-doc-child.html: TIMEOUT
-	navigation.traverseTo() can navigate 3 frames of different types with correct navigate event cancelable values: TIMEOUT
+/navigation-api/navigate-event/navigation-traverseTo-navigates-top-and-same-doc-child-and-cross-doc-child.html: OK
+	navigation.traverseTo() can navigate 3 frames of different types with correct navigate event cancelable values: PASS
 /navigation-api/navigate-event/navigation-traverseTo-same-document-preventDefault-multiple-windows.html: OK
 	navigation.traverseTo() - if a top window cancels the traversal, any iframes should not fire navigate: PASS
 /navigation-api/navigate-event/navigation-traverseTo-top-cancels-cross-document-child.html: OK
@@ -489,8 +489,8 @@
 	entry.sameDocument after cross-document navigation: FAIL
 /navigation-api/navigation-history-entry/state-after-navigate-restore.html: OK
 	entry.getState() is properly restored after cross-document back: PASS
-/navigation-api/navigation-methods/back-forward-multiple-frames.html: TIMEOUT
-	navigation.back() and navigation.forward() can navigate multiple frames: TIMEOUT
+/navigation-api/navigation-methods/back-forward-multiple-frames.html: OK
+	navigation.back() and navigation.forward() can navigate multiple frames: PASS
 /navigation-api/navigation-methods/disambigaute-back.html: OK
 	navigation.back() goes to the nearest back entry: PASS
 /navigation-api/navigation-methods/disambigaute-forward.html: OK
@@ -706,8 +706,8 @@
 	Repeated navigation.traverseTo() with the same key: PASS
 /navigation-api/navigation-methods/return-value/traverseTo.html: OK
 	traverseTo() promises: PASS
-/navigation-api/navigation-methods/sandboxing-back-parent.html: TIMEOUT
-	A sandboxed iframe cannot navigate its parent via its own navigation object by using back(): TIMEOUT
+/navigation-api/navigation-methods/sandboxing-back-parent.html: OK
+	A sandboxed iframe cannot navigate its parent via its own navigation object by using back(): PASS
 /navigation-api/navigation-methods/sandboxing-back-sibling.html: OK
 	A sandboxed iframe cannot navigate its sibling via its own navigation object by using back(): FAIL
 /navigation-api/navigation-methods/sandboxing-navigate-parent.html: OK
@@ -717,19 +717,19 @@
 /navigation-api/navigation-methods/traverseTo-after-adding-iframe.html: OK
 	navigation.traverseTo() should work in an iframe that is not present in all history entries: PASS
 /navigation-api/navigation-methods/traverseTo-after-data-url.html: OK
-	navigation.traverseTo() should work in an iframe that started at a data: url: FAIL
+	navigation.traverseTo() should work in an iframe that started at a data: url: PASS
 /navigation-api/navigation-methods/traverseTo-cross-document.html: OK
 	cross-document traverseTo(), back(), and forward(): PASS
 /navigation-api/navigation-methods/traverseTo-detach-between-navigate-and-navigatesuccess.html: OK
 	Detach a window between when a traverseTo() fires navigate and navigatesuccess: FAIL
 /navigation-api/navigation-methods/traverseTo-multiple-steps.html: OK
 	goto() can precisely traverse multiple steps in the joint session history: PASS
-/navigation-api/navigation-methods/traverseTo-navigates-multiple-iframes.html: TIMEOUT
-	entries() should be correct after a traversal that navigates multiple browsing contexts: TIMEOUT
+/navigation-api/navigation-methods/traverseTo-navigates-multiple-iframes.html: OK
+	entries() should be correct after a traversal that navigates multiple browsing contexts: FAIL
 /navigation-api/navigation-methods/traverseTo-same-document.html: OK
 	same-document navigate.traverseTo(), back(), and forward(): PASS
 /navigation-api/navigation-methods/traverseTo-with-cross-origin-in-history.html: OK
-	navigation.traverseTo() should work in an iframe that has navigated across origins: FAIL
+	navigation.traverseTo() should work in an iframe that has navigated across origins: PASS
 /navigation-api/ordering-and-transition/anchor-download-aborts-previous-navigation.html: OK
 	<a download> aborts previous navigations: PASS
 /navigation-api/ordering-and-transition/anchor-download-intercept-reject.html?currententrychange: OK
@@ -864,9 +864,9 @@
 /navigation-api/per-entry-events/dispose-for-full-session-history.tentative.html: OK
 	Dispose should fire when an entry is removed from session history due to too many entries: PASS
 /navigation-api/per-entry-events/dispose-for-navigation-in-child-entries-updated.html: OK
-	Entries truncated by a child frame's push must be removed from entries() before their dispose events fire: FAIL
+	Entries truncated by a child frame's push must be removed from entries() before their dispose events fire: PASS
 /navigation-api/per-entry-events/dispose-for-navigation-in-child.html: OK
-	Dispose events should fire when entries are removed by a navigation in a different frame: FAIL
+	Dispose events should fire when entries are removed by a navigation in a different frame: PASS
 /navigation-api/per-entry-events/dispose-for-navigation-in-sibling-detach-frame.html: TIMEOUT
 	Detaching a frame from its own dispose handler during another frame's truncating push must not crash: TIMEOUT
 /navigation-api/per-entry-events/dispose-same-document-intercept.html: OK
@@ -1017,10 +1017,10 @@
 	scroll: scroll() should throw if invoked on a synthetic event.: PASS
 /navigation-api/scroll-behavior/scroll-without-intercept.html: OK
 	scroll: scroll() should throw for non-intercept: PASS
-/navigation-api/state/cross-document-away-and-back.html?method=navigate: TIMEOUT
-	entry.getState() behavior after navigating away and back: TIMEOUT
-/navigation-api/state/cross-document-away-and-back.html?method=updateCurrentEntry: TIMEOUT
-	entry.getState() behavior after navigating away and back: TIMEOUT
+/navigation-api/state/cross-document-away-and-back.html?method=navigate: OK
+	entry.getState() behavior after navigating away and back: PASS
+/navigation-api/state/cross-document-away-and-back.html?method=updateCurrentEntry: OK
+	entry.getState() behavior after navigating away and back: PASS
 /navigation-api/state/cross-document-getState-undefined.html: OK
 	Default behavior for entry.getState() for a non-current cross-document entry: PASS
 /navigation-api/state/cross-document-getState.html: OK

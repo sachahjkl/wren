@@ -124,10 +124,28 @@ another window, `window.open` or a link or a form with a target, the `src` and `
 document started from another origin. The document that leaves gets `beforeunload`, then `pagehide` and `unload`, and starts no
 navigation while they run. A 204, a 205 or an attachment leaves the document as it is.
 
+The tab's history is one for its frames and itself, HTML's joint session history (`src/page/history_joint.odin`). The tab's session
+(its tree, `history.odin`) keeps, beside its entries, the steps of its frames: a push in a frame (another document, a fragment,
+`pushState`, an intercepted navigation) is a step, filed after the entry of the tab that was current then, with the entry it made
+current in the frame's session and the one it left. Flat arrays (`Session_History.steps`, `#soa`), navigables named by id: the web
+sees one line, each entry of the tab followed by its steps.
+
+- `history.length` in any document of the tab counts that line;
+- `history.go(delta)`, `back()`, `forward()` in any document, and the browser's back and forward buttons, move `delta` positions:
+  each frame then shows the entry of its last step at or before the position (before its first step, the entry that step left),
+  traversed in its document or loaded again, and the tab its entry there: one of its own document's (popstate), or another
+  document, which the shell loads (its frames start from their attributes, unless it comes from the back/forward cache);
+- `navigation.traverseTo()` (`back()`, `forward()`) in a frame goes to the nearest position where that frame shows the entry;
+- a push drops the positions ahead, a frame's push the tab's entries ahead too (another branch of the tree, `History_Entry.cut`),
+  and the documents whose entries went get their `dispose` events;
+- a sandboxed document's traversal moves nothing when it would move a navigable it may not navigate (its `navigation.traverseTo()`
+  rejects with a `SecurityError`);
+- a step of a frame that is gone (removed, or its document left) no longer counts.
+
 What is not there:
 
-- **joint session history.** Each frame has its own: `history.back()` in the tab does not go back in a frame, a traversal moves one
-  frame, and a push in a frame does not prune another's forward entries. The browser's back button leaves the tab's document;
+- **a frame's entries after its document is loaded again**: going back to a document of the tab that is not in the back/forward cache
+  loads its frames from their attributes, where HTML would show each frame's entry of that position;
 - **a Window kept for a window that `window.open` made**: only a frame's initial about:blank keeps its `Window` (above);
 - **`precommitHandler`** of `NavigateEvent.intercept()`.
 

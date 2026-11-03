@@ -30,9 +30,9 @@ package page
 //   * Embedding: the shell lays out and paints each child document in its container's content box (frame_hooks),
 //     routes input to it by hit testing and reports how far a lazy frame is from the viewport.
 //
-// Session history: a nested document keeps a private session (history.length counts the tab's entries plus its own);
-// navigations of frames do not add entries to the tab's history tree. Chromium adds joint entries; documented as a
-// limit in docs and the session note.
+// Session history: a navigable keeps its entries across its documents (Navigable.session: navigation.entries()); a push in
+// a frame is also a step of its tab's joint session history, which history.length counts and traversals move through
+// (history_joint.odin).
 
 import "core:fmt"
 import "core:strings"
@@ -937,8 +937,10 @@ frame_session_commit :: proc(n: ^Navigable, href: string, commit: Frame_Commit, 
 	if type != .Replace && prev != nil { n.activated_from = prev.id }
 	switch type {
 	case .Push:
+		from := session_current_id(sh)
 		session_push(sh, href, 0, dedupe = false, max_entries = max_entries)
 		session_set_nav_state(sh, commit.state, commit.has_state)
+		if from != 0 { joint_note_push(n, sh.current.id, from) }
 	case .Replace:
 		session_replace(sh, href)
 		session_set_nav_state(sh, commit.state, commit.has_state)
@@ -1090,12 +1092,7 @@ frame_navigate_hook :: proc(user: rawptr, p: ^Page, req: Navigate_Request) {
 	case .Reload:
 		commit.type = .Reload
 		frame_navigate(n, strings.clone(p.env.location.href, context.temp_allocator), commit = commit)
-	case .Traverse:
-		e := session_peek(&n.session, req.delta)
-		if e == nil { return }
-		commit.type, commit.entry = .Traverse, e.id
-		frame_navigate(n, strings.clone(e.url, context.temp_allocator), commit = commit)
-	case .Url_Changed:
+	case .Traverse, .Url_Changed, .History_Changed:   // (a frame's traversals are the joint session history's: history_joint.odin)
 	}
 }
 

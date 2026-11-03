@@ -376,8 +376,8 @@
 /html/semantics/embedded-content/the-iframe-element/srcdoc-lifecycle-crash-crbug-1472607.https.html: OK
 	common setup: FAIL
 	requestStorageAccess() from about:blank Document before it gets replaced with a srcdoc resource does not crash the host process: PASS
-/html/semantics/embedded-content/the-iframe-element/srcdoc_change_hash.html: TIMEOUT
-	same-document navigation inside an srcdoc iframe using location.hash: TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/srcdoc_change_hash.html: OK
+	same-document navigation inside an srcdoc iframe using location.hash: PASS
 /html/semantics/embedded-content/the-iframe-element/srcdoc_process_attributes.html: OK
 	Adding `srcdoc` attribute triggers attributes processing: PASS
 	Removing `srcdoc` attribute triggers attributes processing: PASS

@@ -5,8 +5,8 @@ package page
 // "active branch" of an entry is its child visited last. The web sees only the active path (HTML's joint session
 // history stays linear): from the oldest ancestor of the current entry down through it, then on through the active
 // child of each entry. history.length, back / forward / go(n), popstate and the shell's back and forward buttons all
-// walk that path; the other branches are reached from the browser's interface (the tab's history tree), which makes
-// the path to the chosen entry the active one.
+// walk that path, with the steps of the tab's frames between its entries (history_joint.odin); the other branches are
+// reached from the browser's interface (the tab's history tree), which makes the path to the chosen entry the active one.
 //
 // The shell keeps one per tab and hands it to each page of the tab (Embedder.session); a page without an embedder keeps
 // a private one. Entries remember which document created them (`doc`, a page id): traversing to an entry of the current
@@ -20,6 +20,10 @@ import "core:slice"
 import "core:strings"
 import "core:time"
 
+// The sizes of a session without limits of its own (session_set_limits): history.max_entries and history.tree.max_nodes.
+SESSION_WINDOW_DEFAULT :: 50
+SESSION_MAX_NODES_DEFAULT :: 1000
+
 History_Entry :: struct {
 	id:        u64,      // unique in its tree, stable (serialized)
 	url:       string,   // owned
@@ -31,6 +35,7 @@ History_Entry :: struct {
 	created_ms: i64,     // Unix time the entry was made
 	visited_ms: i64,     // ... last made current
 	seq:       u64,      // order of the last visits within the tree: the child with the highest is the active branch
+	cut:       u64,      // a frame's step dropped the entries ahead: no child visited before this seq is its active branch (history_joint.odin)
 	scroll_manual: bool, // history.scrollRestoration = "manual" for this entry
 	nav_id:    u64,      // Navigation API "id": new for every entry, and again when the entry is replaced (`id` is its "key")
 	nav_state: string,   // owned; the Navigation API state (navigation.navigate({state}), updateCurrentEntry) when has_nav_state
@@ -49,9 +54,13 @@ Session_History :: struct {
 	next_id:   u64,
 	next_nav_id: u64,                    // Navigation API ids (History_Entry.nav_id)
 	seq:       u64,
-	window:    int,                      // most entries in `entries` (0: 50)
-	max_nodes: int,                      // most nodes (0: 1000)
+	window:    int,                      // most entries in `entries` (0: SESSION_WINDOW_DEFAULT)
+	max_nodes: int,                      // most nodes (0: SESSION_MAX_NODES_DEFAULT)
 	serial:    u64,                      // bumped at every change (the interface redraws its tree)
+	// The joint session history (history_joint.odin): the steps of the nested navigables of a top-level one, in the order they
+	// were made, each after the entry that was current then; `frame_at` of the current entry's are applied.
+	steps:     #soa[dynamic]Joint_Step,
+	frame_at:  int,
 }
 
 @(private = "file")
@@ -66,6 +75,7 @@ entry_free :: proc(e: ^History_Entry) {
 session_destroy :: proc(sh: ^Session_History) {
 	if sh.root != nil { entry_free(sh.root) }
 	delete(sh.entries)
+	delete(sh.steps)
 	sh^ = {}
 }
 
@@ -85,12 +95,14 @@ session_current :: proc(sh: ^Session_History) -> ^History_Entry {
 	return sh.current
 }
 
+session_current_id :: proc(sh: ^Session_History) -> u64 { return sh != nil && sh.current != nil ? sh.current.id : 0 }
+
 session_length :: proc(sh: ^Session_History) -> int { return len(sh.entries) if sh != nil else 0 }
 
 // The child of `e` visited last (its active branch), nil for a leaf.
 session_active_child :: proc(e: ^History_Entry) -> ^History_Entry {
 	best: ^History_Entry
-	for c in e.children { if best == nil || c.seq > best.seq { best = c } }
+	for c in e.children { if c.seq > e.cut && (best == nil || c.seq > best.seq) { best = c } }
 	return best
 }
 
@@ -125,7 +137,11 @@ visit :: proc(sh: ^Session_History, e: ^History_Entry) {
 	}
 	e.visited_ms = now_unix_ms()
 	sh.current = e
+	sh.frame_at = joint_steps_of(sh, e.id)   // (its frames as they were left)
 }
+
+// The most entries of the path the web sees (history.max_entries).
+session_window :: proc(sh: ^Session_History) -> int { return sh.window > 0 ? sh.window : SESSION_WINDOW_DEFAULT }
 
 // Recomputes the web's view: the current entry's ancestors, it, then its active descendants, at most `window` of them.
 @(private = "file")
@@ -138,7 +154,7 @@ rebuild :: proc(sh: ^Session_History) {
 	slice.reverse(chain[:])
 	ci := len(chain) - 1
 	for d := session_active_child(sh.current); d != nil; d = session_active_child(d) { append(&chain, d) }
-	window := sh.window > 0 ? sh.window : 50
+	window := session_window(sh)
 	start := 0
 	if len(chain) > window { start = min(len(chain) - window, ci) }
 	end := min(len(chain), start + window)
@@ -156,6 +172,7 @@ session_push :: proc(sh: ^Session_History, url: string, doc: u64, state := "", h
 		if cur := sh.current; cur != nil && cur.url == url { return cur }
 	}
 	parent := sh.current != nil ? sh.current : root
+	if parent != root { joint_drop_ahead(sh) }
 	sh.next_id += 1
 	e := new(History_Entry)
 	sh.next_nav_id += 1
@@ -231,7 +248,18 @@ session_drop_current :: proc(sh: ^Session_History) {
 	parent := e.parent
 	detach(sh, e)
 	sh.current = parent != sh.root ? parent : session_active_child(sh.root)
+	sh.frame_at = sh.current != nil ? joint_steps_of(sh, sh.current.id) : 0
 	rebuild(sh)
+}
+
+// A step of a frame drops the entries ahead of the current one from the path the web sees (they stay in the tree, another
+// branch the interface reaches). False when there were none.
+session_cut_ahead :: proc(sh: ^Session_History) -> bool {
+	cur := sh.current
+	if cur == nil || session_active_child(cur) == nil { return false }
+	cur.cut = sh.seq
+	rebuild(sh)
+	return true
 }
 
 // Removes `e` with all the entries that grew from it (the browser's "forget this branch"). Refused (0) when the branch
@@ -277,7 +305,7 @@ detach :: proc(sh: ^Session_History, e: ^History_Entry) {
 // ancestors of the active path. The current entry always stays.
 @(private = "file")
 prune :: proc(sh: ^Session_History) {
-	limit := sh.max_nodes > 0 ? sh.max_nodes : 1000
+	limit := sh.max_nodes > 0 ? sh.max_nodes : SESSION_MAX_NODES_DEFAULT
 	for sh.count > limit {
 		victim: ^History_Entry
 		stack := make([dynamic]^History_Entry, 0, 64, context.temp_allocator)
