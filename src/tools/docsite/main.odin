@@ -1,4 +1,5 @@
-// docsite: turns the Markdown under docs/ into the static documentation site under site/docs/.
+// docsite: turns the Markdown under docs/ into the static documentation site under site/docs/, and the site's classic
+// presentation under site/classic/ (classic.odin).
 //   docsite            writes what changed (wrentool docs runs it), then checks every link, file and anchor of site/
 //   docsite -check     writes nothing, fails if a generated file is missing or stale or a link is dead (CI, like wrentool changelog -Check)
 //   docsite -chart f.svg   writes only the WPT conformance chart (ports make_chart.js); used on its own to refresh it
@@ -97,19 +98,27 @@ run :: proc() {
 	// search index entries, collected as pages render
 	search := make([dynamic]Search_Doc)
 
-	// render every page
+	// render every page, in both presentations
+	classic_keep := make(map[string]bool, context.temp_allocator)
 	for &p in pages {
-		html := render_page(&p, nav, pages[:], page_by_rel, &search)
-		emit(filepath.join({OUT_DIR, p.out_rel}) or_else "", site_relative(html, p.out_rel))
+		modern, classic := render_page(&p, nav, pages[:], page_by_rel, &search)
+		page := strings.concatenate({"docs/", p.out_rel}, context.allocator)
+		emit(filepath.join({OUT_DIR, p.out_rel}) or_else "", site_relative(modern, page))
+		emit(filepath.join({CLASSIC_DIR, page}) or_else "", site_relative(classic, page))
+		classic_keep[page] = true
 	}
 
 	// shared assets
 	emit(filepath.join({OUT_DIR, "docs.css"}) or_else "", docs_css())
-	emit(filepath.join({OUT_DIR, "search.js"}) or_else "", search_js())
+	emit(filepath.join({OUT_DIR, "search.js"}) or_else "", search_js("search-index.json"))
+	emit(filepath.join({CLASSIC_DIR, "docs/search.js"}) or_else "", search_js(CLASSIC_SEARCH_INDEX))
 	emit(filepath.join({OUT_DIR, "search-index.json"}) or_else "", build_search_index(search[:]))
 
-	// the releases timeline of the site's changelog page
-	build_changelog_page()
+	// the releases timeline of the site's changelog page, then the classic pages made of the site's pages
+	releases := read_releases()
+	build_changelog_page(releases)
+	build_classic_site(releases, &classic_keep)
+	prune_html(CLASSIC_DIR, classic_keep)
 
 	// the address a page had before the folders (cdp.html) sends to its folder, so old links keep working
 	keep := make(map[string]bool, context.temp_allocator)
@@ -253,11 +262,11 @@ prune_html :: proc(dir: string, keep: map[string]bool) {
 }
 
 // The site is served from a path of its own (https://<user>.github.io/wren/), where a link that starts with "/" leaves it:
-// every root-absolute href and src of a page becomes relative to the site's root, from the page's depth (docs/ + its folders).
-site_relative :: proc(html, out_rel: string) -> string {
+// every root-absolute href and src of a page becomes relative to the root, from the page's depth (`page` is its path
+// from the root: "docs/cdp/index.html"; a classic page's root is site/classic/). The root itself from a page there is "./".
+site_relative :: proc(html, page: string) -> string {
 	root := strings.builder_make(context.temp_allocator)
-	strings.write_string(&root, "../")
-	for c in out_rel { if c == '/' { strings.write_string(&root, "../") } }
+	for c in page { if c == '/' { strings.write_string(&root, "../") } }
 	prefix := strings.to_string(root)
 	b := strings.builder_make(context.allocator)
 	i := 0
@@ -266,6 +275,7 @@ site_relative :: proc(html, out_rel: string) -> string {
 			if strings.has_prefix(html[i:], attr) && !strings.has_prefix(html[i + len(attr):], "/") {
 				strings.write_string(&b, attr[:len(attr) - 1])
 				strings.write_string(&b, prefix)
+				if prefix == "" && strings.has_prefix(html[i + len(attr):], "\"") { strings.write_string(&b, "./") }
 				i += len(attr)
 				continue scan
 			}
