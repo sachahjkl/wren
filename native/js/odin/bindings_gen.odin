@@ -2037,9 +2037,9 @@ wjg_Document_createProcessingInstruction :: proc "c" (ctx: ^wj.Context, this_val
 	_ = self
 	if argc < 2 { return throw_arity_of(ctx, self.handle, "Document.createProcessingInstruction", 2, argc) }
 	a0: wj.Str
-	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, 0, "") { return wj.EXCEPTION }
+	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	a1: wj.Str
-	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 1), &a1, 0, "") { wj.wj_str_free(ctx, &a0); return wj.EXCEPTION }
+	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 1), &a1, wj.STR_VIEW, "") { wj.wj_str_free(ctx, &a0); return wj.EXCEPTION }
 	if !wj.wj_doc_target(self.handle) { wj.wj_str_free(ctx, &a0); wj.wj_str_free(ctx, &a1); return wj.wj_throw_gone(ctx) }
 	r: u64
 	st := wj.wr_Document_createProcessingInstruction((a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len), (a1.ptr if a1.ptr != nil else wj.empty_ptr()), u32(a1.len), &r)
