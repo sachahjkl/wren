@@ -173,29 +173,6 @@ sw_script_file :: proc(dir: string, version: u64) -> string { return fmt.tprintf
 @(private)
 sw_now :: proc() -> i64 { return time.time_to_unix(time.now()) }
 
-// Tabs and line breaks of a stored field.
-@(private)
-sw_escape :: proc(s: string) -> string {
-	out, _ := strings.replace_all(s, "\\", "\\\\", context.temp_allocator)
-	out, _ = strings.replace_all(out, "\t", "\\t", context.temp_allocator)
-	out, _ = strings.replace_all(out, "\n", "\\n", context.temp_allocator)
-	return out
-}
-
-@(private)
-sw_unescape :: proc(s: string) -> string {
-	b := strings.builder_make(context.temp_allocator)
-	for i := 0; i < len(s); i += 1 {
-		if s[i] == '\\' && i + 1 < len(s) {
-			i += 1
-			switch s[i] { case 't': strings.write_byte(&b, '\t'); case 'n': strings.write_byte(&b, '\n'); case: strings.write_byte(&b, s[i]) }
-			continue
-		}
-		strings.write_byte(&b, s[i])
-	}
-	return strings.to_string(b)
-}
-
 // Loads the registrations of the profile (storage_manager_init) and installs the loader's hook.
 //   v2 lines: "2", id, origin, scope, script, updateViaCache, last check, preload, preload header, version, module
 //   v1 lines (before versions were stored): id, origin, scope, script, updateViaCache, state
@@ -215,7 +192,7 @@ sw_registry_load :: proc(dir: string) {
 			r.origin, r.scope, r.script, r.via_cache = strings.clone(f[2]), strings.clone(f[3]), strings.clone(f[4]), strings.clone(f[5])
 			r.last_check, _ = strconv.parse_i64(f[6])
 			r.preload = f[7] == "1"
-			r.preload_header = strings.clone(sw_unescape(f[8]))
+			r.preload_header = base.field_unescape(f[8])
 			vid, _ = strconv.parse_u64(f[9])
 			r.module = f[10] == "1"
 		} else if len(f) >= 6 && f[5] == "activated" {
@@ -250,7 +227,7 @@ sw_save :: proc(dir: string) {
 		if r.dir != dir || r.active == nil || r.uninstalling { continue }
 		v := r.active
 		fmt.sbprintf(&b, "2\t%d\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%d\t%s\n", r.id, r.origin, r.scope, v.script, r.via_cache, r.last_check,
-			r.preload ? "1" : "0", sw_escape(r.preload_header), v.id, v.module ? "1" : "0")
+			r.preload ? "1" : "0", base.field_escaped(r.preload_header), v.id, v.module ? "1" : "0")
 	}
 	_ = os.write_entire_file(sw_file(dir), transmute([]byte)strings.to_string(b))
 }
@@ -479,7 +456,7 @@ sw_event :: proc(kind: Sw_Event_Kind, id: u64 = 0) -> ^Worker_Msg {
 sw_reg_info :: proc(r: ^Sw_Registration, allocator := context.temp_allocator) -> string {
 	b := strings.builder_make(allocator)
 	vid :: proc(v: ^Sw_Version) -> u64 { return v != nil ? v.id : 0 }
-	fmt.sbprintf(&b, "%s\n%s\n%d\n%d\n%d\n%d\n%s", r.scope, r.via_cache, vid(r.installing), vid(r.waiting), vid(r.active), r.preload ? 1 : 0, sw_escape(r.preload_header))
+	fmt.sbprintf(&b, "%s\n%s\n%d\n%d\n%d\n%d\n%s", r.scope, r.via_cache, vid(r.installing), vid(r.waiting), vid(r.active), r.preload ? 1 : 0, base.field_escaped(r.preload_header))
 	// then a line per version: id TAB state TAB script (what a service worker's realm reads ServiceWorker_info from)
 	for v in ([3]^Sw_Version{r.installing, r.waiting, r.active}) {
 		if v != nil { fmt.sbprintf(&b, "\n%d\t%s\t%s", v.id, SW_STATE_NAMES[v.state], v.script) }
@@ -1414,7 +1391,7 @@ ServiceWorkerRegistration_preload :: proc(c: ^Call, id: u64, op: i32, header: st
 		}
 		f := strings.split(g.info, "\n", context.temp_allocator)
 		enabled := len(f) > 5 && f[5] == "1"
-		hv := len(f) > 6 ? sw_unescape(f[6]) : "true"
+		hv := len(f) > 6 ? base.field_unescape(f[6], context.temp_allocator) : "true"
 		if op == 1 { enabled = true } else if op == 2 { enabled = false } else if op == 3 { hv = header }
 		return fmt.tprintf("%d\n%s", enabled ? 1 : 0, hv), .None
 	}

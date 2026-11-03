@@ -124,7 +124,7 @@ session_write_tabs :: proc(sb: ^strings.Builder, tabs: []Session_Tab, current: i
 	fmt.sbprintf(sb, "current %d\n", cur)
 	for g in groups {
 		fmt.sbprintf(sb, "tgroup\t%d\t%s\t%d\t", g.id, GROUP_COLOR_NAMES[g.color], g.collapsed ? 1 : 0)
-		field_escape(sb, g.name)
+		base.field_escape(sb, g.name)
 		strings.write_byte(sb, '\n')
 	}
 	for i in kept {
@@ -145,13 +145,13 @@ session_write_tabs :: proc(sb: ^strings.Builder, tabs: []Session_Tab, current: i
 			state := e.has_state && len(e.state) <= max_state_bytes
 			if state { flags |= 4 }
 			fmt.sbprintf(sb, "e\t%d\t%d\t%d\t%d\t%d\t%d\t%.1f\t%.1f\t%.3f\t", e.id, parent, e.seq, e.created_ms, e.visited_ms, flags, e.scroll.x, e.scroll.y, e.zoom)
-			field_escape(sb, e.url)
+			base.field_escape(sb, e.url)
 			strings.write_byte(sb, '\t')
-			field_escape(sb, e.title)
+			base.field_escape(sb, e.title)
 			strings.write_byte(sb, '\t')
-			field_escape(sb, e.icon)
+			base.field_escape(sb, e.icon)
 			strings.write_byte(sb, '\t')
-			if state { field_escape(sb, e.state) }
+			if state { base.field_escape(sb, e.state) }
 			strings.write_byte(sb, '\n')
 		}
 	}
@@ -250,7 +250,7 @@ session_parse_windows :: proc(text: string, max_tabs, max_url_bytes: int, alloca
 			col, cok := group_color_of(f[1])
 			if !iok || id == 0 || len(grps) >= max_tabs { continue }
 			if !cok { col = .Grey }
-			append(&grps, Session_Group{id = id, color = col, collapsed = f[2] == "1", name = field_unescape(f[3], allocator)})
+			append(&grps, Session_Group{id = id, color = col, collapsed = f[2] == "1", name = base.field_unescape(f[3], allocator)})
 		case line == "pin":
 			if skipping || len(out) == 0 { continue }
 			out[len(out) - 1].pinned = true
@@ -272,13 +272,13 @@ session_parse_windows :: proc(text: string, max_tabs, max_url_bytes: int, alloca
 			sy, k8 := strconv.parse_f32(f[7])
 			zoom, k9 := strconv.parse_f32(f[8])
 			if !(k1 && k2 && k3 && k4 && k5 && k6 && k7 && k8 && k9) || id == 0 { continue }
-			u := field_unescape(f[9], context.temp_allocator)
+			u := base.field_unescape(f[9], context.temp_allocator)
 			if len(u) > max_url_bytes { continue }
 			if _, pok := url.parse_absolute(u, context.temp_allocator); !pok { continue }
 			e = {id = id, parent = parent, seq = seq, created_ms = created, visited_ms = visited, scroll_manual = flags & 1 != 0,
 				scroll = {max(sx, 0), max(sy, 0)}, zoom = clamp(zoom, 0, 100), url = strings.clone(u, allocator),
-				title = field_unescape(f[10], allocator), icon = field_unescape(f[11], allocator)}
-			if flags & 4 != 0 { e.state, e.has_state = field_unescape(f[12], allocator), true }
+				title = base.field_unescape(f[10], allocator), icon = base.field_unescape(f[11], allocator)}
+			if flags & 4 != 0 { e.state, e.has_state = base.field_unescape(f[12], allocator), true }
 			append(&entries, e)
 			if flags & 2 != 0 { out[len(out) - 1].current = id }
 		}
