@@ -1047,29 +1047,37 @@ frame_keep_window :: proc(n: ^Navigable, href: string, mode: Origin_Mode, commit
 	c, p := n.page, n.parent
 	frame_session_commit(n, href, commit, p.settings.web.history_max_entries)
 	n.initial = false
+	cf := c.frames
+	delete(cf.fallback_base)
+	cf.fallback_base = mode == .Inherit ? strings.clone(document_base_url(p)) : ""
+	c.origin_owner = mode == .Inherit ? origin_owner_of(p) : 0
+	cf.inherited_off = inherited_disabled(frames_of(p).features, p.env.origin, &n.allow, c.env.origin, n.src_origin)
+	cf.features = enabled_features(cf.inherited_off, nil, c.env.origin)
+	c.env.referrer_policy = mode == .Inherit ? p.env.referrer_policy : .Default
+	window_keep(c, href)
+	if c.closed || n.page != c { return nil }
+	return c
+}
+
+// What a kept Window's Page forgets of the blank document (frame_keep_window, navigable_keep_window): its tag, frames, URL,
+// policies, history state and scripts; the realm forgets what it holds of the document.
+@(private)
+window_keep :: proc(c: ^Page, href: string) {
 	c.prior_tag, c.tag = c.tag, base.tag_new()
 	c.dp.tag = c.tag
-	cf := c.frames
+	cf := frames_of(c)
 	for len(cf.children) > 0 { frame_destroy(cf.children[len(cf.children) - 1]) }
 	cf.complete = false
 	if cf.ready_poll != base.NIL_HANDLE {
 		host.clear_timer(c.loop, cf.ready_poll)
 		cf.ready_poll = base.NIL_HANDLE
 	}
-	delete(cf.fallback_base)
-	cf.fallback_base = mode == .Inherit ? strings.clone(document_base_url(p)) : ""
-	c.origin_owner = mode == .Inherit ? origin_owner_of(p) : 0
-	cf.inherited_off = inherited_disabled(frames_of(p).features, p.env.origin, &n.allow, c.env.origin, n.src_origin)
-	cf.features = enabled_features(cf.inherited_off, nil, c.env.origin)
 	set_document_url(c, href)
 	csp.list_destroy(&c.env.policies)
-	c.env.referrer_policy = mode == .Inherit ? p.env.referrer_policy : .Default
 	set_history_state(c, "", false)
 	scripts_free(c)   // (the new document's start from its parse: js_load.odin)
 	// what the realm holds of the document: history, the custom element registry, navigation.activation (native/js/odin/load.odin)
 	if r := c.js; r != nil && !r.failed && r.inst != nil && !r.inst.dead { js_call(c, r.inst, "wj_document_replaced", nil) }
-	if c.closed || n.page != c { return nil }
-	return c
 }
 
 // A nested document's console is its tab's, each message prefixed with the frame's URL.

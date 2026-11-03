@@ -62,6 +62,7 @@ Doc_Load :: struct {
 	tab:        ^Tab,
 	initiator:  fetch.Environment,      // who asked (a clone: the old page may already be gone)
 	has_initiator: bool,
+	blank:      ^page.Page,              // the window's initial about:blank, until the response keeps its Window or closes it
 	page:       ^page.Page,
 	status:     int,
 	mime:       string,                  // essence
@@ -438,7 +439,10 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	accepted = true   // (from here on the early returns of the built-in pages are acceptances)
 	target = verdict.address
 	cache_prof_leave(t)   // (profile build: what the page cost, http_cache_ui.odin)
-	leave_page(app, t)   // the entry being left keeps what it shows; the page may go to the back/forward cache
+	// a window's initial about:blank stays, shown and in its scope, until the response says whether its Window is the next
+	// document's (document_event); a navigation already under way leaves it as any page
+	blank := t.load == nil && page.navigable_blank_window(t.top, t.page) ? t.page : nil
+	if blank == nil { leave_page(app, t) }   // the entry being left keeps what it shows; the page may go to the back/forward cache
 	t.nav_state.no_store = false
 	pushed := false
 	if record {
@@ -480,12 +484,15 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if from != nil && !verdict.trusted { load.initiator, load.has_initiator = fetch.environment_clone(from.env), true }
 
 	// the previous page stays on screen until this one paints, or closes now (first_paint.odin)
-	hold_begin(app, t, target)
+	load.blank = blank
+	if blank == nil {
+		hold_begin(app, t, target)
+		t.nav = base.scope_make("navigation", t.scope)
+		t.page = nil
+	}
 	load_measure_begin(app, t, target)   // blocker_measure.odin
 	t.kind = .Web
-	t.nav = base.scope_make("navigation", t.scope)
 	base.on_close(t.nav, load_closed, load)
-	t.page = nil
 	t.load = load
 	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0
@@ -694,6 +701,10 @@ show_config :: proc(app: ^App, t: ^Tab) {
 // (error_pages.odin writes it.)
 show_error_page :: proc(app: ^App, load: ^Doc_Load, e: Error_Text) {
 	t := load.tab
+	if b := load.blank; b != nil {
+		load.blank = nil
+		blank_close(t, b)
+	}
 	if load.page == nil {
 		load.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, "about:blank", console_sink, t)
 		t.page = load.page
@@ -706,6 +717,13 @@ show_error_page :: proc(app: ^App, load: ^Doc_Load, e: Error_Text) {
 	t.title = strings.clone(title)
 	set_status(t, e.headline)
 	tab_log(t, .Error, fmt.tprintf("%s: %s", e.headline, e.detail))
+}
+
+// The window's initial about:blank a navigation kept (navigate) does not take the next document: it goes as a page left does.
+blank_close :: proc(t: ^Tab, b: ^page.Page) {
+	if t.page == b { t.page = nil }
+	page.page_unload(b)
+	page.page_close(b)
 }
 
 escape_html :: proc(s: string) -> string { return base.escaped(s, {.Quote}) }
@@ -732,6 +750,13 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			if cs, ok := http.mime_param(r.mime, "charset"); ok { load.charset = strings.clone(cs) }
 		}
 		load.from_cache = r.cache
+		// a window's initial about:blank: the document takes its Window when it may (HTML "navigate"), else it goes
+		kept: ^page.Page
+		if b := load.blank; b != nil {
+			load.blank = nil
+			if load.action == .Render && !load.view_source { kept = page.navigable_keep_window(t.top, b, r.url, r.headers) }
+			if kept == nil { blank_close(t, b) }
+		}
 		set_status(t, fmt.tprintf("HTTP %d%s", r.status, cache_status_suffix(r.cache)))
 		shown := load.view_source ? strings.concatenate({VIEW_SOURCE, r.url}, context.temp_allocator) : r.url
 		delete(t.url)
@@ -743,7 +768,7 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		if cc, ok := http.get_header(r.headers, "cache-control"); ok && strings.contains(strings.to_lower(cc, context.temp_allocator), "no-store") { t.nav_state.no_store = true }
 		// a redirect: the entry is the final address
 		if cur := page.session_current(&t.session); cur != nil && !load.view_source && cur.url != r.url { page.session_replace(&t.session, r.url, set_state = false); sync_history(app, t) }
-		load.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, r.url, console_sink, t)
+		load.page = kept != nil ? kept : page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, r.url, console_sink, t)
 		if load.cache == .Reload { load.page.env.cache_override = .Reload }   // Ctrl+F5: everything it loads, from the network
 		load.response_ns = host.now_ns(&app.loop)
 		page.set_navigation_timing(load.page, {

@@ -121,3 +121,25 @@ back_from_the_back_forward_cache :: proc(t: ^testing.T) {
 back_loads_the_page_again :: proc(t: ^testing.T) {
 	back_restores(t, {"history.bfcache.enabled=false"}, "false", "back loads the page again")
 }
+
+// A window a script opens keeps its initial about:blank's Window for its first document of the same origin (page.navigable_keep_window, the
+// shell's navigate keeping the blank until the response): what the opener set on it, an expando and onload, are the document's. A window
+// opened to another origin gets a Window of its own.
+@(private = "file") OPEN_SAME :: `const w = window.open("next.html"); w.kept = "yes"; w.onload = () => { w.document.title = "onload " + w.kept }; 1`
+@(private = "file") OPENED_SAME :: `document.title === "onload yes" && window.kept === "yes" && location.pathname.endsWith("next.html")`
+@(private = "file") OTHER_HOST :: "//localhost:"
+
+@(test)
+window_open_keeps_the_initial_window :: proc(t: ^testing.T) {
+	server := e2e.test_server(t)
+	s := e2e.start(t, {size = HISTORY_SIZE, url = e2e.url(server, LONG_PAGE)})
+	e2e.wait_load(s)
+	e2e.eval(s, OPEN_SAME)
+	e2e.wait_js(s, OPENED_SAME)
+	e2e.expect_eval(s, `String(opener.location.pathname.endsWith("long.html"))`, "true", "the opened window's document has the Window the opener set its expando and onload on")
+	other, _ := strings.replace_all(e2e.url(server, "/site/history/other.html"), "127.0.0.1", "localhost", context.temp_allocator)
+	e2e.eval(s, strings.concatenate({`const o = window.open("`, other, `"); o.kept = "yes"; 1`}, context.temp_allocator))
+	e2e.wait_until(s, string(OTHER_HOST), at_address, "the window opened to another origin")
+	e2e.wait_load(s)
+	e2e.expect_eval(s, "String(window.kept)", "undefined", "a window opened to another origin has a Window of its own")
+}

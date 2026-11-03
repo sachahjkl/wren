@@ -153,7 +153,6 @@ sees one line, each entry of the tab followed by its steps.
 
 What is not there:
 
-- **a Window kept for a window that `window.open` made**: only a frame's initial about:blank keeps its `Window` (above);
 - **`precommitHandler`** of `NavigateEvent.intercept()`.
 
 ## Windows that scripts open
@@ -161,8 +160,14 @@ What is not there:
 `window.open()` to `_blank` or to a name nothing has, and a script's click on a link to one, open a window: a top-level navigable
 of the same kind (`src/page/auxiliary.odin`), whose embedder makes the window around it (the browser a tab, the WPT runner's
 headless host a window without a shell) and whose first document is the initial about:blank the page package makes (the
-opener's origin, or an opaque one under `noopener`). The window keeps its id across its documents, so the `WindowProxy` that
-`window.open` returned still names it after it navigated.
+opener's origin, or an opaque one under `noopener`; the opener's agent cluster, cross-origin isolated as the opener is). The
+window keeps its id across its documents, so the `WindowProxy` that `window.open` returned still names it after it navigated.
+
+Its first document keeps the initial about:blank's `Window`, as a frame's does (above): `w = window.open(url); w.onload = ...`
+and `w.foo = 1` are the new document's when it is of the blank's origin and its `Cross-Origin-Opener-Policy` keeps the browsing
+context group (`navigable_keep_window`, `src/page/auxiliary.odin`, which the embedder asks with the response). The embedder keeps the
+blank document, shown and reachable, until then (the browser's `navigate`, `Doc_Load.blank`; the WPT runner's headless host);
+a blank no script touched, a document of another origin or a group switch get a `Window` of their own, and the blank goes.
 
 - **The opener.** `window.opener`, a name the opener's group finds (`window.open(url, name)`, a link's target), `postMessage`
   both ways, the DOM of a same-origin popup (its handles are looked up among the documents of the caller's browsing context

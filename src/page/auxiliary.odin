@@ -26,6 +26,7 @@ import "core:sync"
 import "wb:base"
 import "wb:fetch"
 import "wb:host"
+import "wb:http"
 import "wb:url"
 
 // Cross-Origin-Opener-Policy values (HTML "opener policy value"); Same_Origin_Plus_Coep is same-origin with an embedder
@@ -82,6 +83,9 @@ auxiliary_document :: proc(n: ^Navigable, req: Open_Request, scope: ^base.Scope,
 	} else {
 		env_set_origin(&c.env, url.origin_clone(src.env.origin))
 		c.env.referrer_policy = src.env.referrer_policy
+		// (its opener's agent cluster, isolated as the opener is: the document its Window may take shares memory with the opener)
+		page_join_cluster(c, src)
+		c.env.embedder_policy, c.env.cross_origin_isolated = src.env.embedder_policy, src.env.cross_origin_isolated
 		top := page_top(src)
 		if tn := page_navigable(top); tn != nil && url.same_origin(src.env.origin, top.env.origin) { n.coop = tn.coop }
 	}
@@ -95,6 +99,40 @@ auxiliary_document :: proc(n: ^Navigable, req: Open_Request, scope: ^base.Scope,
 	if !req.noopener { f.fallback_base = strings.clone(document_base_url(src)) }
 	f.complete = true   // (nothing to load: scripts of the opener reaching it find a finished document, frames_make_live)
 	return c
+}
+
+// Whether `p` is the initial about:blank of the top-level navigable `n`: a navigation from it may keep its Window
+// (navigable_keep_window), so its embedder keeps it, reachable by the opener's scripts, until the response.
+navigable_blank_window :: proc(n: ^Navigable, p: ^Page) -> bool {
+	if n == nil || p == nil || n.parent != nil || !n.initial || n.page != p || p.closed || p.close_pending { return false }
+	return p.env.location.href == "about:blank"
+}
+
+// HTML "navigate" keeps the Window of a window's initial about:blank for the first document that replaces it, as a frame's
+// (frame_keep_window): when that document is of its origin and its opener policy keeps the browsing context group, what a
+// script set on the window (`w = window.open(url); w.onload = ...`) is the next document's. The embedder asks with the response
+// of `href`; the Page returned takes the document (then apply_response_headers, apply_isolation_headers as for a new one). nil:
+// the document gets a Page of its own (and so does one after a blank no script touched: its realm was never started).
+navigable_keep_window :: proc(n: ^Navigable, blank: ^Page, href: string, headers: http.Headers) -> ^Page {
+	if !navigable_blank_window(n, blank) || blank.js == nil || blank.js.failed { return nil }
+	u, ok := url.parse(href, nil, context.temp_allocator)
+	if !ok { return nil }
+	origin := url.origin_of(u, context.temp_allocator)
+	if !url.same_origin(origin, blank.env.origin) { return nil }
+	policy := Opener_Policy.Unsafe_None
+	if url.is_potentially_trustworthy(u) {
+		policy = opener_policy_parse(http.get_all(headers, "cross-origin-opener-policy"), parse_embedder_policy(http.get_header(headers, "cross-origin-embedder-policy") or_else ""))
+	}
+	if coop_requires_switch(n.initial, n.coop, n.coop_origin, policy, origin) { return nil }
+	f := frames_of(blank)
+	delete(f.fallback_base)
+	f.fallback_base = ""
+	f.features = enabled_features({}, nil, blank.env.origin)
+	blank.env.referrer_policy = .Default
+	window_keep(blank, href)
+	blank.env.secure_context = url.is_potentially_trustworthy(blank.env.location)
+	if blank.closed || n.page != blank { return nil }
+	return blank
 }
 
 // A new window for `src` (window.open to _blank or to a name nothing has; a link to one): the sandbox and the content
