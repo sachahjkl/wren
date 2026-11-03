@@ -34,6 +34,56 @@ static lxb_status_t sbuf_cb(const lxb_char_t *data, size_t len, void *ctx)
     return LXB_STATUS_OK;
 }
 
+/* A special scheme (http, https, ws, wss, ftp, file): Lexbor's own test, static in its url.c. */
+static int is_special(const lxb_url_t *url) { return url->scheme.type != LXB_URL_SCHEMEL_TYPE__UNKNOWN; }
+
+/* URL Standard: "cannot have a username/password/port": no host, an empty host (Lexbor's empty opaque host of a
+ * non-special URL too), or the file scheme. */
+static int cannot_have_credentials(const lxb_url_t *url)
+{
+    return url->host.type == LXB_URL_HOST_TYPE__UNDEF || url->host.type == LXB_URL_HOST_TYPE_EMPTY
+        || (url->host.type == LXB_URL_HOST_TYPE_OPAQUE && url->host.u.opaque.length == 0)
+        || url->scheme.type == LXB_URL_SCHEMEL_TYPE_FILE;
+}
+
+/* The file host state: a host that is "localhost" once percent-decoded, in any case, is the empty host (Lexbor compares
+ * before decoding). */
+static void file_localhost(lxb_url_t *url)
+{
+    static const char localhost[] = "localhost";
+    const size_t n = sizeof(localhost) - 1;
+    if (url->scheme.type != LXB_URL_SCHEMEL_TYPE_FILE || url->host.type != LXB_URL_HOST_TYPE_DOMAIN || url->host.u.domain.length != n) { return; }
+    for (size_t i = 0; i < n; i++) {
+        uint8_t c = url->host.u.domain.data[i];
+        if ((c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c) != (uint8_t) localhost[i]) { return; }
+    }
+    url->host.type = LXB_URL_HOST_TYPE_EMPTY;
+}
+
+/* The host setter where Lexbor 3.0.1 differs from the host state with a state override: the host is set from what
+ * precedes a ':' (outside brackets, before the path, query or fragment), then the port from the ASCII digits after it,
+ * if any; a port out of range leaves the host set (anything after the digits is ignored). Returns -1 when the value
+ * has no such ':' or the URL is a file URL (Lexbor's setter applies), 1 when the host is refused, 0 when set. */
+static int host_with_port(lxb_url_t *url, lxb_url_parser_t *parser, const uint8_t *value, size_t len)
+{
+    int special = is_special(url);
+    int brackets = 0;
+    size_t colon = len;
+    for (size_t i = 0; i < len; i++) {
+        uint8_t c = value[i];
+        if (c == '/' || c == '?' || c == '#' || (special && c == '\\')) { break; }
+        if (c == '[') { brackets = 1; }
+        else if (c == ']') { brackets = 0; }
+        else if (c == ':' && !brackets) { colon = i; break; }
+    }
+    if (colon == len || url->scheme.type == LXB_URL_SCHEMEL_TYPE_FILE) { return -1; }
+    if (colon == 0 || lxb_url_api_hostname_set(url, parser, value, colon) != LXB_STATUS_OK) { return 1; }   /* (an empty one: host-missing) */
+    size_t digits = colon + 1;
+    while (digits < len && value[digits] >= '0' && value[digits] <= '9') { digits++; }
+    if (digits > colon + 1) { (void) lxb_url_api_port_set(url, parser, value + colon + 1, digits - colon - 1); }
+    return 0;
+}
+
 /* component: 0 href, 1 protocol, 2 username, 3 password, 4 host, 5 hostname, 6 port, 7 pathname, 8 search, 9 hash.
  * Returns 0 with the new href; 1 when the href setter got an invalid URL (TypeError); -1 on other failures. A setter whose
  * value the standard ignores (a bad port, a host on a URL without one...) succeeds and leaves the URL unchanged.
@@ -56,12 +106,22 @@ int wb_url_set(const uint8_t *href, size_t href_len, int component, const uint8_
     if (url == NULL) { goto done; }
 
     lxb_status_t st = LXB_STATUS_OK;
-    switch (component) {
+    /* what the standard's setters refuse and Lexbor's do not: credentials or a port where there cannot be any, the host of
+     * a non-special URL with credentials or a port emptied */
+    int credentials = url->username.length > 0 || url->password.length > 0 || url->has_port;
+    if ((component == 2 || component == 3 || component == 6) && cannot_have_credentials(url)) { st = LXB_STATUS_ERROR; }
+    else if ((component == 4 || component == 5) && value_len == 0 && !is_special(url) && credentials) { st = LXB_STATUS_ERROR; }
+    else switch (component) {
     case 0: st = lxb_url_api_href_set(url, parser, value, value_len); break;
     case 1: st = lxb_url_api_protocol_set(url, parser, value, value_len); break;
     case 2: st = lxb_url_api_username_set(url, value, value_len); break;
     case 3: st = lxb_url_api_password_set(url, value, value_len); break;
-    case 4: st = lxb_url_api_host_set(url, parser, value, value_len); break;
+    case 4:
+        switch (host_with_port(url, parser, value, value_len)) {
+        case -1: st = lxb_url_api_host_set(url, parser, value, value_len); break;
+        case 1: st = LXB_STATUS_ERROR; break;
+        }
+        break;
     case 5: st = lxb_url_api_hostname_set(url, parser, value, value_len); break;
     case 6: st = lxb_url_api_port_set(url, parser, value, value_len); break;
     case 7: st = lxb_url_api_pathname_set(url, parser, value, value_len); break;
@@ -82,6 +142,7 @@ int wb_url_set(const uint8_t *href, size_t href_len, int component, const uint8_
         *out_len = href_len;
         return 0;
     }
+    if (component == 4 || component == 5) { file_localhost(url); }
     if (wb_url_fix(url) != 0 || lxb_url_serialize(url, sbuf_cb, &buf, false) != LXB_STATUS_OK || buf.failed) { goto done; }
     if (buf.data == NULL) { sbuf_cb((const lxb_char_t *) "", 0, &buf); }
     if (buf.failed) { goto done; }

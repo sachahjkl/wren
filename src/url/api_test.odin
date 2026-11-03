@@ -66,6 +66,16 @@ setters :: proc(t: ^testing.T) {
 	testing.expect_value(t, after_set(base, .Href, "not a url"), "<refused>")
 	testing.expect_value(t, after_set("mailto:a@b", .Host, "x.org"), "mailto:a@b")   // no host to set
 	testing.expect_value(t, after_set("file:///C:/x", .Port, "8"), "file:///C:/x")    // file: has no port
+	// the host setter's port: digits after the ':' or nothing; one out of range leaves the host it set
+	testing.expect_value(t, after_set("http://example.net:8080/", .Host, "example.com:"), "http://example.com:8080/")
+	testing.expect_value(t, after_set("http://example.net:8080/", .Host, "[::1]:invalid"), "http://[::1]:8080/")
+	testing.expect_value(t, after_set("http://example.net/path", .Host, "example.com:65536"), "http://example.com/path")
+	testing.expect_value(t, after_set("http://example.net/", .Host, ":80"), "http://example.net/")   // no host before it
+	// no credentials nor port on an empty host; no emptying the host of credentials or a port
+	testing.expect_value(t, after_set("sc:///", .Username, "x"), "sc:///")
+	testing.expect_value(t, after_set("sc:///", .Port, "12"), "sc:///")
+	testing.expect_value(t, after_set("sc://test:12/", .Host, ""), "sc://test:12/")
+	testing.expect_value(t, after_set("file://y/", .Hostname, "loc%41lhost"), "file:///")   // localhost, decoded
 }
 
 @(test)
