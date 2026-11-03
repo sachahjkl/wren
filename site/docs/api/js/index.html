@@ -252,6 +252,15 @@ zone, and the bookkeeping of the wrappers that keep DOM nodes alive (a node refe
 <tr><td><code>Debug</code></td><td style="text-align:right">4</td><td></td></tr>
 </tbody>
 </table></div>
+<h3 id="struct-wrappednode"><a class="anchor" href="#struct-wrappednode" aria-hidden="true">#</a>struct <code>WrappedNode</code></h3>
+<p>A new node of the realm's own document with what its wrapper needs (Node_wrap's work in the same call).</p>
+<div class="table-box"><table>
+<thead><tr><th>field</th><th>type</th><th></th></tr></thead>
+<tbody>
+<tr><td><code>node</code></td><td><code>u64</code></td><td>The new node, pinned.</td></tr>
+<tr><td><code>iface</code></td><td><code>u32</code></td><td>Its wrapper's interface, as Node_wrap gives it; past the engine's table (not pinned) for another module.</td></tr>
+</tbody>
+</table></div>
 <h2 id="functions"><a class="anchor" href="#functions" aria-hidden="true">#</a>Functions</h2>
 <h3 id="engine-console"><a class="anchor" href="#engine-console" aria-hidden="true">#</a><code>Engine_console</code></h3>
 <div class="code"><pre><code>void Engine_console(ConsoleLevel level, usvstring text)</code></pre></div>
@@ -298,6 +307,19 @@ compiles; 0 when it failed (the ticket is then forgotten).</p>
 and returns the wrapper's interface, an index into the engine's interface table (gen/bindings.c) chosen from the
 node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...). One call per new wrapper.</p>
 <p>Host: <code>Node_wrap :: proc(c: ^Call, node: Api_Node) -&gt; u32</code></p>
+<h3 id="document-createelementwrapped"><a class="anchor" href="#document-createelementwrapped" aria-hidden="true">#</a><code>Document_createElementWrapped</code></h3>
+<div class="code"><pre><code>WrappedNode Document_createElementWrapped(string local_name) raises</code></pre></div>
+<p>document.createElement(localName) in the realm's own document (Document_createElementChecked: its checks, its
+errors, a defined custom element constructed before it returns), then Node_wrap's pin and interface: one call for
+the element and its wrapper. A custom element's constructor may have made the wrapper already: the engine then
+drops the extra pin.</p>
+<p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
+<p>Host: <code>Document_createElementWrapped :: proc(c: ^Call, local_name: string) -&gt; (Api_WrappedNode, Api_Error)</code></p>
+<h3 id="document-createtextwrapped"><a class="anchor" href="#document-createtextwrapped" aria-hidden="true">#</a><code>Document_createTextWrapped</code></h3>
+<div class="code"><pre><code>WrappedNode Document_createTextWrapped(string text) raises</code></pre></div>
+<p>document.createTextNode(data) in the realm's own document, then Node_wrap's pin and interface.</p>
+<p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
+<p>Host: <code>Document_createTextWrapped :: proc(c: ^Call, text: string) -&gt; (Api_WrappedNode, Api_Error)</code></p>
 <h3 id="node-unpin"><a class="anchor" href="#node-unpin" aria-hidden="true">#</a><code>Node_unpin</code></h3>
 <div class="code"><pre><code>void Node_unpin(u64 node)</code></pre></div>
 <p>That object is gone (called while the engine collects garbage: a handle that died meanwhile is ignored). A
@@ -320,6 +342,7 @@ wrappers of one tree alive together.</p>
 <ul>
 <li><a href="#types">Types</a></li>
 <li class="lvl3"><a href="#enum-consolelevel-i32">enum ConsoleLevel : i32</a></li>
+<li class="lvl3"><a href="#struct-wrappednode">struct WrappedNode</a></li>
 <li><a href="#functions">Functions</a></li>
 <li class="lvl3"><a href="#engine-console">Engine_console</a></li>
 <li class="lvl3"><a href="#engine-reportexception">Engine_reportException</a></li>
@@ -330,6 +353,8 @@ wrappers of one tree alive together.</p>
 <li class="lvl3"><a href="#engine-jitcompile">Engine_jitCompile</a></li>
 <li class="lvl3"><a href="#engine-jitpoll">Engine_jitPoll</a></li>
 <li class="lvl3"><a href="#node-wrap">Node_wrap</a></li>
+<li class="lvl3"><a href="#document-createelementwrapped">Document_createElementWrapped</a></li>
+<li class="lvl3"><a href="#document-createtextwrapped">Document_createTextWrapped</a></li>
 <li class="lvl3"><a href="#node-unpin">Node_unpin</a></li>
 <li class="lvl3"><a href="#node-treeroots">Node_treeRoots</a></li>
 </ul>
