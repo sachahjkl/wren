@@ -1659,8 +1659,14 @@ createDocument or parseHTMLUnsafe made, else the page's URL (DOMParser's documen
 <p>Host: <code>Document_lastModified :: proc(c: ^Call) -&gt; string</code></p>
 <h3 id="document-domain"><a class="anchor" href="#document-domain" aria-hidden="true">#</a><code>Document_domain</code></h3>
 <div class="code"><pre><code>string Document_domain()</code></pre></div>
-<p>document.domain (getter)</p>
+<p>document.domain: the effective domain of the document's origin (its domain once set, else its host; "" for an opaque origin)</p>
 <p>Host: <code>Document_domain :: proc(c: ^Call) -&gt; string</code></p>
+<h3 id="document-set-domain"><a class="anchor" href="#document-set-domain" aria-hidden="true">#</a><code>Document_set_domain</code></h3>
+<div class="code"><pre><code>void Document_set_domain(string value) raises</code></pre></div>
+<p>document.domain = value: the origin's domain becomes <code>value</code>, a registrable domain suffix of the effective domain or that
+domain itself (HTML); Security when sandboxed, opaque or not such a suffix; nothing in an origin-keyed agent cluster.</p>
+<p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
+<p>Host: <code>Document_set_domain :: proc(c: ^Call, value: string) -&gt; Api_Error</code></p>
 <h3 id="document-scrollingelement"><a class="anchor" href="#document-scrollingelement" aria-hidden="true">#</a><code>Document_scrollingElement</code></h3>
 <div class="code"><pre><code>Element Document_scrollingElement()</code></pre></div>
 <p>document.scrollingElement</p>
@@ -2314,6 +2320,7 @@ well-formed-checked). Range past page.max_fetch_bytes.</p>
 <li class="lvl3"><a href="#document-referrer">Document_referrer</a></li>
 <li class="lvl3"><a href="#document-lastmodified">Document_lastModified</a></li>
 <li class="lvl3"><a href="#document-domain">Document_domain</a></li>
+<li class="lvl3"><a href="#document-set-domain">Document_set_domain</a></li>
 <li class="lvl3"><a href="#document-scrollingelement">Document_scrollingElement</a></li>
 <li class="lvl3"><a href="#document-set-body">Document_set_body</a></li>
 <li class="lvl3"><a href="#domimplementation-createhtmldocument">DOMImplementation_createHTMLDocument</a></li>
