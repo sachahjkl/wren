@@ -495,14 +495,13 @@ mark_flow :: proc(c: ^Ctx, container, x: i32, block_path: bool) {
 	}
 }
 
-// The flows of every container, marked as their layout marks them (outer containers first), before the layout threads
-// start: they read the boxes mark_flow writes.
+// The flows of every container, marked as their layout marks them (outer containers first: a full pass makes a parent
+// before its children), before the layout threads start: they read the boxes mark_flow writes.
 @(private)
 flows_mark :: proc(c: ^Ctx) {
 	l := c.l
-	for x in preorder(l) {
-		b := &l.boxes[x]
-		if .Multicol in b.fx && .Dead not_in b.flags { mark_flow(c, x, x, true) }
+	for &b, i in l.boxes {
+		if .Multicol in b.fx && .Dead not_in b.flags { mark_flow(c, i32(i), i32(i), true) }
 	}
 }
 
@@ -968,6 +967,7 @@ flow_fix_box :: proc(l: ^Layout, x: i32) {
 push_flow_item :: proc(c: ^Ctx, it: Display_Item) {
 	l := c.l
 	sp := l.spaces[it.space]
+	out := c.dl_out != nil ? c.dl_out : &l.items
 	it2 := it
 	placed := false
 	for fi in sp.flow[0] ..< sp.flow[1] {
@@ -978,15 +978,22 @@ push_flow_item :: proc(c: ^Ctx, it: Display_Item) {
 		if it.rect.max.x == fr.region.min.x && it.rect.min.x < it.rect.max.x && it.rect.max.y > it.rect.min.y { continue }
 		it2.space = fr.space
 		it2.clip = flow_clip(c, it.clip, sp.clip, it.space, fr)
-		append(&l.items, it2)
+		append(out, it2)
 		placed = true
 	}
 	if !placed {
 		fr := l.flow_frags[sp.flow[0]]
 		it2.space = fr.space
 		it2.clip = flow_clip(c, it.clip, sp.clip, it.space, fr)
-		append(&l.items, it2)
+		append(out, it2)
 	}
+}
+
+// No clip lies in the space of a flow: flow_clip makes none, and the display list can be made on the layout threads.
+@(private)
+flows_clip_free :: proc(l: ^Layout) -> bool {
+	for &cl in l.clips { if l.spaces[cl.space].kind == .Flow { return false } }
+	return true
 }
 
 // Clip `ci` for an item shown in fragment `fr`: the clips inside the flow again, in the fragment's space, under the fragment's clip.

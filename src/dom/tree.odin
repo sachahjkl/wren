@@ -165,6 +165,7 @@ clone_one :: proc(d: ^Document, h: base.Handle, work: ^[dynamic]Clone_Work, root
 		if x, ok := d.ns_extra[h]; ok { d.ns_extra[nh] = Ns_Extra{uri = heap_str(x.uri), prefix = heap_str(x.prefix)} }
 		if d.ids.on { for a in c.attrs { if a.name == "id" { ids_add(d, nh, a.value); break } } }
 		for a in c.attrs { if a.name == TIMED_ATTRIBUTE { timed_add(d, nh); break } }
+		if c.name == META_NAME { metas_add(d, nh) }
 		// HTML's cloning steps of <template>: its contents are copied too
 		if content, ok := d.templates[h]; ok && get(d, content) != nil && get(d, content).first_child != base.NIL_HANDLE {
 			dup := create_fragment(d)

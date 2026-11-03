@@ -204,7 +204,10 @@ pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box 
 		pre_widths(c, pred, keep.boxes[:], nil)
 		return keep.boxes[:]
 	}
-	pp := Pre_Predict{c = c, boxes = make([]Pre_Box, len(l.boxes), context.temp_allocator), plain = make([]bool, len(l.boxes), context.temp_allocator)}
+	// found in place, for this pass and the next ones (each entry written whole on the threads)
+	non_zero_resize(&keep.boxes, len(l.boxes))
+	non_zero_resize(&keep.plain, len(l.boxes))
+	pp := Pre_Predict{c = c, boxes = keep.boxes[:], plain = keep.plain[:]}
 	c.plain = pp.plain
 	pp.chunks = clamp(len(l.boxes) / 1024, 1, host.thread_pool_size(pool) * 4)
 	host.parallel_for(pool, pp.chunks, proc(data: rawptr, k: int) {
@@ -218,7 +221,8 @@ pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box 
 			b := &l.boxes[i]
 			x := &pp.boxes[i]
 			p := b.parent
-			x.parent = p
+			x^ = Pre_Box{parent = p}
+			pp.plain[i] = false
 			// dead boxes (partial rebuilds) may point at styles freed since
 			if p == NONE || .Dead in b.flags { continue }
 			if cs := b.cs; cs != nil {
@@ -259,8 +263,6 @@ pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box 
 	clear(&keep.ifcs)
 	pre_widths(c, pred, pp.boxes, &keep.ifcs)
 	keep.key = dl_walks_key(l)
-	resize(&keep.boxes, len(pp.boxes)); copy(keep.boxes[:], pp.boxes)
-	resize(&keep.plain, len(pp.plain)); copy(keep.plain[:], pp.plain)
 	return pp.boxes
 }
 
@@ -326,14 +328,15 @@ pre_run :: proc(c: ^Ctx, walk: proc(c: ^Ctx)) {
 		// a vertical frame: content widths do not follow from the viewport's down the tree, the boxes change coordinates;
 		// an incremental pass: as many flows as its block layout reaches (mark_flow drops the caches it does not take).
 		// No threads then. Columns alone in a full pass: the threads, the flows marked before they start (they read
-		// the boxes mark_flow writes)
-		if frames_to_logical(c) || c.inc != nil {
+		// the boxes mark_flow writes); no box to turn physical after
+		vertical := frames_to_logical(c)
+		if vertical || c.inc != nil {
 			walk(c)
 		} else {
 			flows_mark(c)
 			pre_walk(c, walk)
 		}
-		frames_to_physical(c)
+		if vertical { frames_to_physical(c) }
 		if l.anchor_uses { anchored_pass(c) }
 		c.phys_cs = nil
 		return
@@ -705,6 +708,7 @@ paint_content_shared :: proc(p: ^Paint_Ctx, root: i32) -> bool {
 	sh.chunks = clamp(len(walk) / 512, 1, host.thread_pool_size(pool) * 8)
 	for len(l.pre_chunks) < sh.chunks { append(&l.pre_chunks, Pre_Chunk{}) }
 	host.parallel_for(pool, sh.chunks, dl_chunk, &sh)
+	l.dl_shares += sh.chunks
 
 	// 4 (floats) and the stacking context's own lines, between the shares' steps 3 and 5, made here aside
 	mid := make([dynamic]Display_Item, 0, 16, context.temp_allocator)
