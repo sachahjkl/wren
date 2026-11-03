@@ -274,6 +274,7 @@ Font_Info :: struct {
 	ascent, descent, x_height: f32,
 	line_h:   f32,                  // used line-height
 	lh_normal: bool,                // line-height: normal (line_h follows the face: font_resolve)
+	normal_h: f32,                  // what line-height: normal is (a text field's line is never shorter: natural_size_of)
 	space:    f32,                  // width of U+0020
 	// what it was made from, to make it again when the faces change (families, features, variations: in the layout's
 	// arena)

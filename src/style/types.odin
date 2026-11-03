@@ -217,6 +217,7 @@ Computed :: struct {
 	custom:     ^Custom_Props,
 	before, after: ^Computed,   // generated boxes (nil when `content` is none/normal)
 	selection:  ^Computed,      // ::selection rules of the element (nil: none; colors only are used)
+	placeholder: ^Computed,     // ::placeholder of a text field (nil: none)
 }
 
 // Properties in groups behind a pointer each, a group shared until a style sets one of its properties: then the style

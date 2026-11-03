@@ -475,7 +475,7 @@ top of the last), interleaved, `wrentool bench perf` and the sampler as in round
 
 1. **Identical styles shared** (`src/style/share.odin`). A computed style is a value, made of: its parent's style (the
    record), the declarations that match the element (its matched entries: rule, selector, encapsulation context, for the
-   element and for its ::before, ::after and ::selection), its style attribute (by text), its encapsulation depth, and
+   element and for its styled pseudo-elements: ::before, ::after, ::selection, ::placeholder), its style attribute (by text), its encapsulation depth, and
    what is the same for the whole pass (the rules, the media environment, the page's color scheme, the settings). Two
    elements of one pass whose inputs are equal get one record: a table per pass (flat, open addressing; the keys' words
    in one array) maps the inputs to the record the first one got. It is not a cache: it holds the values the pass made,

@@ -417,6 +417,23 @@ substitute :: proc(env: ^Var_Env, vs: []css.Value, depth: int) -> ([]css.Value, 
 ////////////////////////////////
 // One element
 
+// The lists of entries an element matched (Pass.lists): its own, then those of the pseudo-elements that get a style.
+@(private)
+Entry_List :: enum u8 { Element, Before, After, Selection, Placeholder }
+
+// The list of a pseudo-element's entries; false: a pseudo-element that gets no style of its own.
+@(private)
+entry_list_of :: proc(pe: css.Pseudo) -> (Entry_List, bool) {
+	#partial switch pe {
+	case .None: return .Element, true
+	case .Before: return .Before, true
+	case .After: return .After, true
+	case .Selection: return .Selection, true
+	case .Placeholder: return .Placeholder, true
+	}
+	return {}, false
+}
+
 @(private)
 Pass :: struct {
 	saw_logical: bool,                 // a flow-relative declaration was considered for this element (writing_modes.odin)
@@ -431,7 +448,7 @@ Pass :: struct {
 	cust_map:  map[string]Custom_Cand,   // the element's custom property candidates, resolved values and states (build_style): kept between elements
 	res_map:   map[string]string,
 	state_map: map[string]u8,
-	lists:    [4][dynamic]Entry,   // matched entries: the element, ::before, ::after, ::selection
+	lists:    [Entry_List][dynamic]Entry,   // matched entries: the element's, its pseudo-elements'
 	gate_probe: []bool,        // media_gate.odin: the entries of the gates in it are the only ones matched, on or off (which elements a flip reaches)
 	compare:  bool,            // partial restyle: keep the old computed style when nothing changed
 	changed:  bool,            // ... and report whether some element really changed
@@ -490,14 +507,8 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 	check :: proc(p: ^Pass, el: base.Handle, list: []Entry, ancestors: ^Bloom, rec: ^[dynamic]Sib_Hit) {
 		for &ent in list {
 			if !entry_live(p, &ent) { continue }
-			slot: int
-			#partial switch ent.complex.pseudo_element {
-			case .None: slot = 0
-			case .Before: slot = 1
-			case .After: slot = 2
-			case .Selection: slot = 3
-			case: continue
-			}
+			slot, styled := entry_list_of(ent.complex.pseudo_element)
+			if !styled { continue }
 			rejected := false
 			for k in 0 ..< int(ent.n_anc) { if !bloom_has(ancestors, ent.anc[k]) { rejected = true; break } }
 			if rejected { continue }
@@ -507,10 +518,10 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 				x.ctx = p.own_depth
 				append(&p.lists[slot], x)
 			}
-			if rec != nil && (matched || ent.own || ent.above) { append(rec, Sib_Hit{ent = &ent, slot = u8(slot), matched = matched}) }
+			if rec != nil && (matched || ent.own || ent.above) { append(rec, Sib_Hit{ent = &ent, slot = slot, matched = matched}) }
 		}
 	}
-	for i in 0 ..< 4 { clear(&p.lists[i]) }
+	for &l in p.lists { clear(&l) }
 	p.own_depth = ctx.depth
 	rs := ctx.set != nil ? ctx.set : &p.e.rules
 	p.mc.featureless = ctx.host
@@ -937,11 +948,16 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 	inline_rule: ^Rule
 	if inline_text != "" { inline_rule = inline_rule_of(p, inline_text) }
 	// the element's own lists are consumed before ::before / ::after reuse the buffers
-	before_entries, after_entries, selection_entries: [dynamic]Entry
-	if len(p.lists[1]) > 0 { before_entries = make([dynamic]Entry, context.temp_allocator); append(&before_entries, ..p.lists[1][:]) }
-	if len(p.lists[2]) > 0 { after_entries = make([dynamic]Entry, context.temp_allocator); append(&after_entries, ..p.lists[2][:]) }
-	if len(p.lists[3]) > 0 { selection_entries = make([dynamic]Entry, context.temp_allocator); append(&selection_entries, ..p.lists[3][:]) }
-	c = build_style(p, h, parent, p.lists[0][:], inline_rule)
+	kept: [Entry_List][dynamic]Entry
+	for &l, k in p.lists {
+		if k == .Element || len(l) == 0 { continue }
+		// (::placeholder: a text field's only)
+		if k == .Placeholder && n.name != "input" && n.name != "textarea" { continue }
+		kept[k] = make([dynamic]Entry, context.temp_allocator)
+		append(&kept[k], ..l[:])
+	}
+	before_entries, after_entries := kept[.Before], kept[.After]
+	c = build_style(p, h, parent, p.lists[.Element][:], inline_rule)
 	if len(p.e.forced_hidden) > 0 { if h in p.e.forced_hidden { c.display = .None } }
 
 	for i in 1 ..< 3 {
@@ -955,7 +971,9 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 		if i == 1 { c.before = pc } else { c.after = pc }
 	}
 	// ::selection: only its colors are used (the painter looks for the nearest element that has one)
-	if len(selection_entries) > 0 { c.selection = build_style(p, h, c, selection_entries[:], nil) }
+	if len(kept[.Selection]) > 0 { c.selection = build_style(p, h, c, kept[.Selection][:], nil) }
+	// ::placeholder: what the forms painter reads of it (its color, opacity, font and alignment)
+	if len(kept[.Placeholder]) > 0 { c.placeholder = build_style(p, h, c, kept[.Placeholder][:], nil) }
 	if has_image_layers(c) || has_image_layers(c.before) || has_image_layers(c.after) { p.image_records += 1 }
 	if shareable && share_value_ok(c) {
 		resolve_static(p.mc.doc, h, c, p.alloc)   // (what the counter walks would resolve: the same for every element sharing it)
@@ -997,7 +1015,7 @@ pass_make :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, state: State) -> ^
 	// a popover nested in another one stays in the top layer itself (its own z-index, its own box)
 	for el in e.top_layer { delete_key(&p.fs_chain, el) }
 	p.touched = make([dynamic]Prop)
-	for i in 0 ..< 4 { p.lists[i] = make([dynamic]Entry) }
+	for &l in p.lists { l = make([dynamic]Entry) }
 	return p
 }
 
@@ -1009,7 +1027,7 @@ pass_destroy :: proc(p: ^Pass) {
 	delete(p.fs_chain)
 	delete(p.touched)
 	delete(p.cust_map); delete(p.res_map); delete(p.state_map)
-	for i in 0 ..< 4 { delete(p.lists[i]) }
+	for l in p.lists { delete(l) }
 	share_destroy(&p.share)
 	sib_match_destroy(&p.sib)
 	virtual.arena_destroy(&p.scratch)

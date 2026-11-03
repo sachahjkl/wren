@@ -8,7 +8,7 @@ import "wb:dom"
 //
 // What an element's style is made of: its parent's style (the record: inherited values, custom properties, the query
 // containers above it, the writing mode its flow-relative properties map by), the declarations that match it (its
-// matched entries: rule, selector, encapsulation context; for the element, its ::before, ::after and ::selection), its
+// matched entries: rule, selector, encapsulation context; for the element and its styled pseudo-elements), its
 // style attribute (by text), its encapsulation depth, and what is the same for the whole pass (the rules, the media
 // environment and viewport, the page's color scheme, the settings). Two elements of one pass with equal inputs have
 // equal styles; the second gets the record made for the first. The table maps the inputs to that record. It is not a
@@ -87,7 +87,7 @@ share_value_ok :: proc(c: ^Computed) -> bool {
 
 // The key of the element being styled: its parent's record, its encapsulation depth and what it matched (p.lists).
 @(private)
-share_key :: proc(t: ^Share_Table, parent: ^Computed, depth: u16, lists: ^[4][dynamic]Entry, inline: string) {
+share_key :: proc(t: ^Share_Table, parent: ^Computed, depth: u16, lists: ^[Entry_List][dynamic]Entry, inline: string) {
 	clear(&t.key)
 	append(&t.key, uintptr(rawptr(parent)), uintptr(depth))
 	for &l in lists { append(&t.key, uintptr(len(l))) }

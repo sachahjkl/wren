@@ -341,13 +341,9 @@ font_resolve :: proc(c: ^Ctx, info: ^Font_Info) {
 	}
 	// line-height: normal (CSS Inline 3 §4.2): the face's ascent + descent + line gap, as other browsers do, unless
 	// font.line_height.normal sets a multiple of the font size
-	if info.lh_normal {
-		if c.st.line_height_normal > 0 || m.line_height <= 0 {
-			info.line_h = info.size * (c.st.line_height_normal > 0 ? c.st.line_height_normal : 1.2)
-		} else {
-			info.line_h = normal
-		}
-	}
+	info.normal_h = normal
+	if c.st.line_height_normal > 0 || m.line_height <= 0 { info.normal_h = info.size * (c.st.line_height_normal > 0 ? c.st.line_height_normal : 1.2) }
+	if info.lh_normal { info.line_h = info.normal_h }
 	info.space = c.text.width(c.text.user, info.font, info.size, " ")
 }
 

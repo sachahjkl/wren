@@ -413,6 +413,24 @@ replaced_and_controls :: proc(t: ^testing.T) {
 	testing.expect(t, item_index(f, "in", .Control) >= 0, "control item for the forms painter")
 }
 
+// A text field's line is never shorter than normal (Blink, Edge: a field with line-height: 10px is as tall as one
+// without); a taller line-height makes it taller. (The fixture's normal: 1.2 times the font size.)
+@(test)
+text_field_line_at_least_normal :: proc(t: ^testing.T) {
+	f := fixture_load(`<body style="margin:0;font-size:10px;line-height:10px">
+<div><input id=short style="font-size:10px;padding:0;border:0;line-height:5px"></div>
+<div><input id=tall style="font-size:10px;padding:0;border:0;line-height:30px"></div>
+<div><input id=date type=date style="font-size:10px;padding:0;border:0;line-height:1"></div>
+<div><textarea id=ta rows=2 style="font-size:10px;padding:0;border:0;line-height:5px;overflow:hidden"></textarea></div>
+</body>`)
+	defer fixture_unload(f)
+	h :: proc(f: ^Fixture, id: string) -> f32 { r := rect(f, id); return r.max.y - r.min.y }
+	testing.expectf(t, near(h(f, "short"), 12), "line-height 5px: the normal 12, got %v", h(f, "short"))
+	testing.expectf(t, near(h(f, "tall"), 30), "line-height 30px: 30, got %v", h(f, "tall"))
+	testing.expectf(t, near(h(f, "date"), 12), "a date field likewise, got %v", h(f, "date"))
+	testing.expectf(t, near(h(f, "ta"), 10), "a textarea keeps its rows of line-height, got %v", h(f, "ta"))
+}
+
 @(test)
 percent_max_width_image_in_inline_block :: proc(t: ^testing.T) {
 	// a link made inline-block holding an image whose max-width is 100% (WordPress): the image is compressible (CSS Sizing 3

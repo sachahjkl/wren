@@ -116,7 +116,7 @@ restyle_media :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Th
 		if n == nil || n.kind != .Element { continue }
 		collect_entries(p, f.h, n, &f.bloom, f.ctx, nil)
 		hit := false
-		for i in 0 ..< 4 { if len(p.lists[i]) > 0 { hit = true; break } }
+		for l in p.lists { if len(l) > 0 { hit = true; break } }
 		if hit { append(&hits, f.h) }
 		child_bloom := f.bloom
 		bloom_add_element(&child_bloom, n)

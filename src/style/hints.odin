@@ -28,7 +28,7 @@ LEGACY_FONT_SIZE_DIGITS_MAX :: 100
 @(private)
 hint_complex: css.Complex
 
-// Appends to `p.lists[0]` the entry holding the presentational hints of element `n`, if it has some (true).
+// Appends to `p.lists[.Element]` the entry holding the presentational hints of element `n`, if it has some (true).
 @(private)
 add_hint_entry :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node) -> bool {
 	if !p.e.settings.presentational_hints || !p.e.settings.author_stylesheets { return false }
@@ -40,7 +40,7 @@ add_hint_entry :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node) -> bool {
 	own_custom_names(customs, p.alloc)
 	r := new(Rule, context.temp_allocator)
 	r^ = Rule{decls = pre, customs = customs, origin = .Author, layer = 0, order = 0, hint = true}
-	append(&p.lists[0], Entry{rule = r, complex = &hint_complex, ctx = p.own_depth})
+	append(&p.lists[.Element], Entry{rule = r, complex = &hint_complex, ctx = p.own_depth})
 	return true
 }
 
