@@ -1,9 +1,9 @@
 package remote
 
 // The socket server of Linux: the pipe server of server_windows.odin on a Unix socket, the same threads and the same
-// contract. Threads that wait in the kernel (poll): one accepts, one per client reads and writes. A request line is
-// queued for the interface thread and `host.post` wakes its loop: nothing runs while no client sends anything, and
-// nothing exists at all in a process that did not start the channel.
+// contract (server.odin: what they share). Threads that wait in the kernel (poll): one accepts, one per client reads and
+// writes. A request line is queued for the interface thread and `host.post` wakes its loop: nothing runs while no client
+// sends anything, and nothing exists at all in a process that did not start the channel.
 //
 //   accept thread  poll(listening socket, stop)  ->  a Conn and its thread
 //   client thread  poll(socket, outbox eventfd, stop)  ->  lines into Conn.inbox, replies out of Conn.outbox
@@ -15,7 +15,6 @@ package remote
 // makes it on Windows); one left by a process that died is replaced. A request line longer than the limit ends the
 // connection, and a page cannot reach the channel.
 
-import "core:os"
 import "core:strings"
 import "core:sync"
 import "core:sys/linux"
@@ -23,48 +22,17 @@ import "core:thread"
 import "wb:base"
 import "wb:host"
 
-Handler  :: proc(user: rawptr, conn: u64, line: []byte)   // the loop thread; `line` is valid during the call
-On_Close :: proc(user: rawptr, conn: u64)                 // the loop thread: the client has gone
-
 @(private)
-Conn :: struct {
-	id:        u64,
+Conn_Sys :: struct {
 	sock:      linux.Fd,
-	thread:    ^thread.Thread,
-	out_event: linux.Fd,          // eventfd: the outbox has lines, or the loop asks for the end
-	inbox:     [dynamic][]byte,   // lines read, not yet handled (guarded by srv.mu; the process heap)
-	outbox:    [dynamic][]byte,   // lines to write, each with its "\n" (guarded by srv.mu)
-	done:      bool,              // the thread has finished (guarded by srv.mu)
-	closing:   bool,              // the loop asked for the end after the outbox is written (guarded by srv.mu)
+	out_event: linux.Fd,   // eventfd: the outbox has lines, or the loop asks for the end
 }
 
 @(private)
-Server :: struct {
-	running:     bool,
-	mu:          sync.Mutex,
-	conns:       [dynamic]^Conn,
-	loop:        ^host.Loop,
-	handler:     Handler,
-	on_close:    On_Close,
-	user:        rawptr,
-	path:        string,       // the socket's (process heap)
-	listen:      linux.Fd,
-	stop_event:  linux.Fd,     // eventfd, written once: every thread sees it readable from then on
-	accept:      ^thread.Thread,
-	max_message: int,
-	max_clients: int,
-	next_id:     u64,
-	active:      int,   // clients connected (atomic)
-}
-
-@(private) srv: Server
-
-running :: proc() -> bool { return srv.running }
-
-client_count :: proc() -> int {
-	sync.mutex_lock(&srv.mu)
-	defer sync.mutex_unlock(&srv.mu)
-	return len(srv.conns)
+Server_Sys :: struct {
+	path:       string,     // the socket's (process heap)
+	listen:     linux.Fd,
+	stop_event: linux.Fd,   // eventfd, written once: every thread sees it readable from then on
 }
 
 // Opens the socket and starts listening. `name` is valid_name. On failure `err` says why (no server then).
@@ -99,72 +67,15 @@ start :: proc(loop: ^host.Loop, name: string, max_message, max_clients: int, han
 	return ""
 }
 
-// Stops listening and drops every client (their threads end, their sockets close). Loop thread.
-stop :: proc() {
-	if !srv.running { return }
-	srv.running = false
-	host.shutdown_step("remote_stop: accept thread")
-	signal(srv.stop_event)
-	thread.join(srv.accept)
-	thread.destroy(srv.accept)
-	host.shutdown_step("remote_stop: client threads")
-	sync.mutex_lock(&srv.mu)
-	conns := srv.conns
-	srv.conns = nil
-	sync.mutex_unlock(&srv.mu)
-	for c in conns { conn_free(c) }
-	host.shutdown_step("remote_stop: files")
-	delete(conns)
+@(private)
+stop_threads :: proc() { signal(srv.stop_event) }
+
+@(private)
+server_close :: proc() {
 	linux.close(srv.listen)
 	linux.unlink(strings.clone_to_cstring(srv.path, context.temp_allocator))
 	linux.close(srv.stop_event)
 	delete(srv.path, base.process_allocator())
-	srv = {}
-}
-
-@(private)
-conn_free :: proc(c: ^Conn) {
-	thread.join(c.thread)
-	thread.destroy(c.thread)
-	for l in c.inbox { delete(l, base.process_allocator()) }
-	for l in c.outbox { delete(l, base.process_allocator()) }
-	delete(c.inbox); delete(c.outbox)
-	linux.close(c.out_event)
-	free(c, base.process_allocator())
-}
-
-// Queues `line` (JSON, no newline) for client `id`. False when that client is gone. Loop thread.
-send :: proc(id: u64, line: string) -> bool {
-	sync.mutex_lock(&srv.mu)
-	defer sync.mutex_unlock(&srv.mu)
-	for c in srv.conns {
-		if c.id != id || c.done { continue }
-		out := make([]byte, len(line) + 1, base.process_allocator())
-		copy(out, line)
-		out[len(line)] = '\n'
-		append(&c.outbox, out)
-		signal(c.out_event)
-		return true
-	}
-	return false
-}
-
-// Ends the connection of `id` once what was queued for it has been written.
-close_client :: proc(id: u64) {
-	sync.mutex_lock(&srv.mu)
-	defer sync.mutex_unlock(&srv.mu)
-	for c in srv.conns {
-		if c.id == id { c.closing = true; signal(c.out_event) }
-	}
-}
-
-// The ids of the clients connected now.
-client_ids :: proc(allocator := context.temp_allocator) -> []u64 {
-	sync.mutex_lock(&srv.mu)
-	defer sync.mutex_unlock(&srv.mu)
-	ids := make([dynamic]u64, allocator)
-	for c in srv.conns { if !c.done { append(&ids, c.id) } }
-	return ids[:]
 }
 
 ////////////////////////////////
@@ -197,6 +108,9 @@ signal :: proc(ev: linux.Fd) {
 	one := u64(1)
 	linux.write(ev, ([^]u8)(&one)[:8])
 }
+
+@(private)
+event_close :: proc(ev: linux.Fd) { linux.close(ev) }
 
 @(private)
 drain_event :: proc(ev: linux.Fd) {
@@ -235,10 +149,6 @@ same_user :: proc(s: linux.Fd) -> bool {
 ////////////////////////////////
 // Threads
 
-// A wake for the loop: the task runs on_input (the data is not used: the server is a global).
-@(private)
-notify :: proc() { host.post(srv.loop, on_input, nil) }
-
 @(private)
 accept_main :: proc(_: ^thread.Thread) {
 	context = base.process_context()
@@ -265,30 +175,14 @@ start_client :: proc(s: linux.Fd) {
 	if err != .NONE { linux.close(s); return }
 	c := new(Conn, base.process_allocator())
 	c.sock, c.out_event = s, ev
-	sync.mutex_lock(&srv.mu)
-	srv.next_id += 1
-	c.id = srv.next_id
-	append(&srv.conns, c)
-	sync.mutex_unlock(&srv.mu)
-	sync.atomic_add(&srv.active, 1)
-	c.thread = thread.create(client_main)
-	c.thread.data = c
-	c.thread.init_context = nil
-	thread.start(c.thread)
+	conn_start(c)
 }
 
 @(private)
 client_main :: proc(t: ^thread.Thread) {
 	context = base.process_context()
 	c := (^Conn)(t.data)
-	defer {
-		linux.close(c.sock)
-		sync.mutex_lock(&srv.mu)
-		c.done = true
-		sync.mutex_unlock(&srv.mu)
-		sync.atomic_sub(&srv.active, 1)
-		notify()
-	}
+	defer { linux.close(c.sock); conn_done(c) }
 	buf := make([]byte, 64 << 10, base.process_allocator())
 	defer delete(buf, base.process_allocator())
 	pending := make([dynamic]byte, base.process_allocator())
@@ -306,58 +200,8 @@ client_main :: proc(t: ^thread.Thread) {
 		}
 		if fds[1].revents != {} {
 			drain_event(c.out_event)
-			if !flush_outbox(c) { return }
-			sync.mutex_lock(&srv.mu)
-			closing := c.closing && len(c.outbox) == 0
-			sync.mutex_unlock(&srv.mu)
-			if closing { return }
+			if !flush_outbox(c) || conn_closing(c) { return }
 		}
-	}
-}
-
-// Moves the complete lines of `pending` to the inbox. False: a line is longer than the limit (answered, then the end).
-@(private)
-take_lines :: proc(c: ^Conn, pending: ^[dynamic]byte) -> bool {
-	got := false
-	for {
-		nl := -1
-		for b, i in pending^ { if b == '\n' { nl = i; break } }
-		if nl < 0 { break }
-		line := pending[:nl]
-		if nl > 0 && line[nl - 1] == '\r' { line = line[:nl - 1] }
-		if len(line) > srv.max_message { too_long(c); return false }
-		if len(line) > 0 {
-			l := make([]byte, len(line), base.process_allocator())
-			copy(l, line)
-			sync.mutex_lock(&srv.mu)
-			append(&c.inbox, l)
-			sync.mutex_unlock(&srv.mu)
-			got = true
-		}
-		remove_range(pending, 0, nl + 1)
-	}
-	if len(pending) > srv.max_message { too_long(c); return false }
-	if got { notify() }
-	return true
-}
-
-@(private)
-too_long :: proc(c: ^Conn) {
-	msg := transmute([]byte)string(`{"id":null,"error":{"code":-32600,"message":"request line longer than browser.remote.max_message_bytes"}}` + "\n")
-	write_all(c, msg)
-}
-
-@(private)
-flush_outbox :: proc(c: ^Conn) -> bool {
-	for {
-		sync.mutex_lock(&srv.mu)
-		if len(c.outbox) == 0 { sync.mutex_unlock(&srv.mu); return true }
-		line := c.outbox[0]
-		ordered_remove(&c.outbox, 0)
-		sync.mutex_unlock(&srv.mu)
-		ok := write_all(c, line)
-		delete(line, base.process_allocator())
-		if !ok { return false }
 	}
 }
 
@@ -377,66 +221,4 @@ write_all :: proc(c: ^Conn, data: []byte) -> bool {
 		rest = rest[n:]
 	}
 	return true
-}
-
-////////////////////////////////
-// Loop side
-
-// The lines that came go to the handler, the clients that went are forgotten. (The loop thread.)
-@(private)
-on_input :: proc(_: rawptr) {
-	if !srv.running { return }
-	// (see server_windows.odin: a request that only reads leaves a resting browser at rest)
-	host.quiet_note(srv.loop)
-	for {
-		line: []byte
-		id: u64
-		sync.mutex_lock(&srv.mu)
-		for c in srv.conns {
-			if len(c.inbox) > 0 { line, id = c.inbox[0], c.id; ordered_remove(&c.inbox, 0); break }
-		}
-		sync.mutex_unlock(&srv.mu)
-		if line == nil { break }
-		srv.handler(srv.user, id, line)
-		delete(line, base.process_allocator())
-		if !srv.running { return }   // (the handler stopped the channel)
-	}
-	for {
-		gone: ^Conn
-		sync.mutex_lock(&srv.mu)
-		for c, i in srv.conns {
-			if c.done && len(c.inbox) == 0 { gone = c; unordered_remove(&srv.conns, i); break }
-		}
-		sync.mutex_unlock(&srv.mu)
-		if gone == nil { break }
-		id := gone.id
-		conn_free(gone)
-		if srv.on_close != nil { srv.on_close(srv.user, id) }
-	}
-}
-
-////////////////////////////////
-// The profile's files
-
-// <profile>/remote.json: what a client reads to find this instance.
-write_info :: proc(profile_dir, name, version: string) -> bool {
-	text := strings.concatenate({
-		`{"name":`, quote(name), `,"pipe":`, quote(pipe_path(name)), `,"pid":`, itoa(os.get_pid()),
-		`,"protocol":`, itoa(PROTOCOL_VERSION), `,"version":`, quote(version), `,"profile":`, quote(full_path(profile_dir)), "}\n",
-	}, context.temp_allocator)
-	return os.write_entire_file(info_path(profile_dir), transmute([]byte)text) == nil
-}
-
-remove_info :: proc(profile_dir: string) { _ = os.remove(info_path(profile_dir)) }
-
-@(private)
-itoa :: proc(n: int) -> string {
-	buf: [24]byte
-	i := len(buf)
-	v := n
-	neg := v < 0
-	if neg { v = -v }
-	for { i -= 1; buf[i] = byte('0' + v % 10); v /= 10; if v == 0 { break } }
-	if neg { i -= 1; buf[i] = '-' }
-	return strings.clone(string(buf[i:]), context.temp_allocator)
 }
