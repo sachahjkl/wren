@@ -159,6 +159,10 @@ After round 7 (6 runs of each build, interleaved; median, range in brackets): th
 14.3 (13.6-14.9) ms a frame p50, 119.0 (114.6-123.2) -> 142.3 (133.9-143.0) frames/s, CPU work per frame 24.0
 (23.2-24.9) -> 20.0 (19.9-21.3) ms; the collection the DOM asks for 5.4 (5.3-5.6) -> 3.8 (3.6-4.3) ms (jspage).
 
+After round 8 (5 runs of each build, interleaved; median, range in brackets): the window thread waiting on layout
+3.62 (3.53-3.95) -> 3.16 (3.14-3.19) ms a frame p50 (the display list 0.63 -> 0.39 ms, the block layout 1.24 -> 1.03),
+the style stage 1.85 (1.82-1.98) -> 1.73 (1.73-1.74) ms, CPU work per frame 22.7 (21.3-26.8) -> 20.7 (20.6-21.4) ms.
+
 **Bottleneck:** the script stage (the interpreter and the wrappers it makes, the browser's insertions and the trees
 the collection frees), then layout.
 
@@ -212,6 +216,10 @@ After round 6: the three pages the same (CPU work per frame 0.71, 1.22 and 3.26 
 After round 7: the same within the noise (CPU work per frame, mean, 5 runs of each: `mutation` 0.72 (0.70-0.80) and
 0.71 (0.70-0.74) ms, `mutation_class` 1.46 (1.30-1.82) and 1.41 (1.27-1.46), `mutation_fullstyle` 3.38 (3.36-7.02) and
 3.25 (3.22-5.30)).
+
+After round 8: `mutation_fullstyle` a full pass 1.53 (1.46-1.74) -> 1.47 (1.40-1.61) ms without the journal's pairs, and
+those take a third off what is left of the style stage (12 runs of each build, interleaved, on a busy machine: 1.65 (1.21-2.91) ->
+1.10 (0.80-1.57) ms p50); `mutation` and `mutation_class` the same (CPU work per frame 0.85 and 0.85, 1.66 and 1.67 ms).
 
 ## What changed, round 1
 
@@ -724,6 +732,76 @@ engine itself 84 % (the interpreter, the wrappers it makes: the object, its host
 `destroy_subtree` 2.6 %), `createElement` 2.9 %, `Node_wrap` and `createTextNode` 2 % each; the collection is 13 % of
 the engine's samples (was 20 %).
 
+## What changed, round 8: layout of DOM-heavy pages, what a full style pass costs per page
+
+Items 2 and 3 of round 7's list. Profiled first on the page thread and the style threads (`WREN_SAMPLE_THREADS=1
+WREN_SAMPLE_STACK=1`, in a build that listed more of each thread's functions, not kept), and on the window thread under
+`style::compute_styles` (`WREN_SAMPLE_UNDER`); then the base and the new profile build in turn (`wrentool bench perf`, 5
+runs each, the order turning; median, range in brackets). The steps of a full layout pass (tree, layout, finish,
+display, bands, p50 of each) tell the changes of layout apart.
+
+What nodes10k's page thread did (1 052 samples while running, the base): the block layout 26 % (the 2 500 list items in
+columns, `layout_multicol`: the items themselves, their paragraphs taken from the threads, the columns cut), the display
+list 19 %, building the box tree 16 %, finishing 15 % (the overflow of each box and line of the flow, `flow_bounds_add`
+6 %), the bands 5 %, the walks of writing modes around the block layout 4 %, copying the predictions of the layout
+threads 2 %.
+
+1. **The display list of a page with columns on the layout threads** (`build_display_list`, `push_flow_item`,
+   `flows_clip_free`). A page with columns turned `frames_on` on and its display list was made on the page thread alone:
+   an item of a flow becomes one copy for each column it shows in, and `push_flow_item` appended them to the layout's
+   list whatever share was making them. They now go to the share's own list, as the other items do; a clip inside a flow
+   is made again for each column (`flow_clip` adds clips), so a flow that holds one keeps the display list on one thread.
+   `Layout.dl_shares` says how many shares the threads made. nodes10k: the display step 0.63 (0.62-0.70) -> 0.39
+   (0.38-0.40) ms. Test: `parallel_multicol` (the columns, a box across three columns: its item in each, against one
+   thread; a clip in the columns: one thread).
+2. **No turn to physical coordinates when no frame is vertical** (`pre_run`): after the block layout every box was
+   visited to make it physical (`frames_to_physical`: a walk in tree order, the frame of each box), which with columns
+   alone changes nothing. **The predictions of the layout threads written in place** (`pre_predict`): made in temporary
+   arrays and copied whole into `Pre_Keep` (a megabyte on nodes10k), they are written there by the threads. **The flows
+   marked in box order** (`flows_mark`): a full pass makes a parent before its children; the walk in tree order went.
+   The layout step 1.24 (1.20-1.29) -> 1.03 (1.00-1.04) ms; the finishing step 0.35 -> 0.41 ms (the walk that went had
+   brought the boxes into the cache for it): both together 1.59 -> 1.44 ms.
+3. **The page's color scheme looked for among the document's `<meta>` elements** (`Document.metas`, `page_color_scheme`).
+   Every full style pass walked the whole document for `<meta name="color-scheme">` on the window thread: a quarter of
+   the window thread's style samples on `mutation_fullstyle`. The document lists the `<meta>` elements it makes (created,
+   cloned; a freed one is dropped by the reader); those in its tree are the candidates, in tree order. Test:
+   `page_color_scheme_metas_in_tree_order` (made in another order than the tree's, one never inserted, one inside another
+   `<meta>`). **`:disabled` answers at once for what is not a form control** (`matches_simple`): the UA's `:disabled`
+   reaches every element and asked the forms model (a call through the page, a switch on the name) before finding it
+   is none. nodes10k: the style stage 1.85 (1.82-1.98) -> 1.73 (1.73-1.74) ms; `mutation_fullstyle` 1.28 (1.28-1.32) ->
+   1.21 (1.20-1.23) ms.
+4. **The journal of a full pass compares a pair of records once per chunk** (`Diff_Pair`, `diff_chunk`). The layout
+   journal compares every element's old and new record (`layout_level`, 28 to 36 % of the busiest style threads on
+   `mutation_fullstyle`, and on the window thread, which takes chunks too). Alike elements share their record in both
+   passes (round 4), so a chunk keeps the answer of each pair it compared, by slot (`JOURNAL_DIFF_PAIRS`): an element
+   whose two records are a pair already compared takes the answer. Not a cache: the pairs are of these two passes, live
+   while the chunk is compared, and nothing in them is invalidated. `mutation_fullstyle` (12 runs of each build,
+   interleaved, a busy machine; 10 of the 12 pairs went the same way): the style stage 1.65 (1.21-2.91) -> 1.10
+   (0.80-1.57) ms p50, a full pass 2.24 -> 1.51 ms.
+5. **Measured, not kept.** The bands reading each item once instead of twice (its space and vertical extent in a small
+   array): 0.126 against 0.132 ms. The finishing step looking up a box's columns once for all its lines
+   (`flow_bounds_add` finds the container's record in a map for each rect): 0.402 against 0.406 ms.
+
+| | before | after |
+|---|---|---|
+| nodes10k: the window thread waiting on layout, p50 | 3.62 (3.53-3.95) ms | 3.16 (3.14-3.19) ms |
+| nodes10k: a full pass, tree + layout + finish + display + bands (p50 of each) | 0.93 + 1.24 + 0.35 + 0.63 + 0.13 ms | 0.92 + 1.03 + 0.41 + 0.39 + 0.13 ms |
+| nodes10k: style stage p50, CPU work per frame (mean) | 1.85, 22.7 (21.3-26.8) ms | 1.73, 20.7 (20.6-21.4) ms |
+| `mutation_fullstyle`: style stage p50 (without 4, then 4) | 1.28 (1.28-1.32) ms; 1.65 (1.21-2.91) ms | 1.21 (1.20-1.23) ms; 1.10 (0.80-1.57) ms |
+| `mutation`: CPU work per frame mean, a partial restyle | 0.85 (0.82-0.93), 0.017 ms | 0.85 (0.81-1.11), 0.016 ms |
+| `mutation_class`: CPU work per frame mean, a partial restyle | 1.66 (1.45-1.86), 0.219 ms | 1.67 (1.40-1.93), 0.213 ms |
+| p10k_load: load | 257 (241-278) ms | 252 (243-268) ms |
+| p10k_scroll: frames/s, CPU work per frame mean | 156.4, 0.51 ms | 157.0, 0.50 ms |
+| `examples/site/modern-css.html` resized: CPU work per frame mean, a full pass | 0.44 (0.41-0.50), 1.09 ms | 0.46 (0.41-0.52), 1.12 ms |
+
+The other pages were measured while other agents' builds ran (single runs moved by a factor of 2): the same within that
+noise. WPT reference tests of css/css-multicol (464) and css/css-writing-modes (1 141), base and new against the same
+checkout: the same results (303 and 620 pass, no regression).
+
+What is left on the window thread's style stage of `mutation_fullstyle`: `flat_sizes`, the walk of the whole document
+that weighs the subtrees before the style threads share them (`compute_styles` and the flat-tree steps under it, about
+a third of its samples).
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -736,7 +814,8 @@ the glyph atlas (`font/raster.odin:71`), Slug glyph data (`font/slug_cache.odin:
 either: the table of a style pass that gives elements with the same inputs the same computed style (`style/share.odin`,
 round 4): it holds the values that pass made and goes with it, nothing in it is invalidated; nor the families of the
 walk that share matching between alike elements (`style/sibling_match.odin`, round 5): what the pass matched for the
-first of a kind, dropped when the walk leaves that family.
+first of a kind, dropped when the walk leaves that family; nor the pairs of records a chunk of the layout journal's
+comparison has compared (`style/journal.odin`, round 8), which live while that chunk is compared.
 
 To remove:
 
@@ -763,7 +842,8 @@ of every element, plus a concatenation per indexed attribute at `cascade.odin:44
 (`node_items`, a heap list per node) and `:421-556` (per rebuild); `page/images.odin` `css_images_sync` and
 `page/fonts.odin` `fonts_sync` (a `seen` table of shared lists, now only when something new may be used);
 `ext/gui_toolkit/font/raster.odin:74-79` (per glyph, under the atlas lock); `page/timeline_lcp.odin` `et_seen` (per
-element with `elementtiming` only). Gone in round 1: `page/timeline_lcp.odin` `ls_prev` (per box, per mutated frame).
+element with `elementtiming` only); `layout/multicol.odin` `mc_records` (a container's columns, looked up for each box
+and line of its flow by finishing, `flow_bounds_add`). Gone in round 1: `page/timeline_lcp.odin` `ls_prev` (per box, per mutated frame).
 Added in round 4, flat: `style/share.odin` (a style pass's shared styles: open addressing, the keys' words in one array,
 one lookup per element). Gone in round 5: `style/restyle_dom.odin` `inserted_exceed` (the inserted nodes of a restyle,
 now bits by handle index). Gone in round 7: the glue's node handle -> wrapper table (`native/js/odin/wj/qjs_platform.odin`,
@@ -830,6 +910,10 @@ After round 7. Round 6's item 1 is done in part (round 7: the collection's unpin
 read in place, element names as the program's strings, the wrappers by handle index); what is left of it is item 1
 below.
 
+After round 8. Round 7's items 2 and 3 are done in part (round 8: the display list of a page with columns on the
+layout threads, the walks of writing modes and the copies around the block layout, the page's color scheme, `:disabled`,
+the journal's pairs of records); what is left of them is items 2 and 3 below.
+
 1. **The script stage of DOM-heavy pages, what is left** (nodes10k: 14.3 ms of a 20 ms frame). In order of the
    engine's samples: the interpreter itself (`interp_hot`, `interp_run`, `call_native` and the C API's bridge: about a
    third, with the prototype walks for methods, five shapes for `li.appendChild`); making the wrappers (`make_wrapper`,
@@ -842,16 +926,18 @@ below.
    shown first). Texts are still copied to the heap and freed one by one (`create_text`; an arena of the document needs
    texts that change to give their bytes back). Not the crossings themselves (section 2). Measured and left: an inline
    list in `destroy_subtree` (round 6); a flag per interface for the unforgeable members of its chain (round 7).
-2. **Layout of DOM-heavy pages** (nodes10k: the window thread waits 3.3 ms a frame, the page thread's full pass and
-   nothing else now): the paragraphs laid out ahead on the layout threads, the page thread waiting for them (`pre_run`,
-   40 % of its samples, `parallel_for` 30 %); the multi-column layout (28 %); the display list (22 %: its cost is the
-   number of items, about 10 000 texts of 150 bytes each, not copies: round 5, item 5); building the box tree
-   (`build_loop`, `place_element`: 15 to 18 %); the bands (5 %).
-3. **What a full style pass still costs per element** (`mutation_fullstyle`, the busiest style threads): the layout
-   journal of a full pass (`diff_chunk`: `layout_level` of each element's old and new style, 28 to 36 %, now the largest
-   part), the entries every element matches again (`match_chain` 12 to 21 %: the browser's `:disabled` asks the forms
-   model for every element, with `:focus-visible`, `:popover-open`, `:fullscreen`), the families of pages whose elements
-   are each of their own kind (modern-css, p10k: matched in full as before).
+2. **Layout of DOM-heavy pages** (nodes10k: the window thread waits 3.2 ms a frame, the page thread's full pass): the
+   block layout of the columns (35 % of the page thread's samples: the 2 500 list items on the page thread, their
+   paragraphs taken from the threads, `gather_box` 7 % and `apply_shifts` 4 % cutting the strip into columns); finishing
+   (19 %: the overflow of every box and line of the flow, `flow_bounds_add` 8 %, which looks the container's columns up
+   in a map, `mc_records`, for each; looked up once per box, no difference measured: round 8, item 5); building the box tree
+   (`build_loop`, `place_element`: 15 %); the display list (10 %, on the threads since round 8); the bands (5 %); the
+   last walk over the display items (`note_refresh_inputs`, 3 %).
+3. **What a full style pass still costs per page** (`mutation_fullstyle`): on the window thread, `flat_sizes`, the walk
+   of the whole document that weighs the subtrees before the style threads share them (about a third of the stage's
+   samples there; a walk the threads could share, or weights the DOM keeps); on the style threads, matching
+   (`match_chain`, the families of pages whose elements are each of their own kind: modern-css, p10k, matched in full
+   as before) and the journal's comparison of the pairs that differ.
 4. **The layout's boxes as arrays of what the scans read** (the LCP scan's remaining cost is `box_border` reading each
    box's struct, 57 % of it; the layout-shift scan reads the same): border rects and flags in flat arrays by box, or
    scans of the boxes the layout journal says changed.
