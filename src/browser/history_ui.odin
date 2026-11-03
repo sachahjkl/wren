@@ -211,7 +211,7 @@ nav_history_items :: proc(app: ^App, t: ^Tab, dir: int) {
 			ui.custom(fmt.tprintf("###hmi_%d", e.id), entry_icon_draw, addr)
 			ui.pop_parent()
 		}
-		if sig.clicked { ui.ctx_menu_close(); go_history(app, t, d); return }
+		if sig.clicked { ui.ctx_menu_close(); go_entry(app, t, e); return }   // (an entry of the tab: go_history counts its frames' steps too)
 	}
 	ui.menu_separator()
 	if ui.menu_item("Tab history tree", "").clicked { ui.ctx_menu_close(); open_history(app, t, true); return }

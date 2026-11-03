@@ -83,11 +83,19 @@ request_navigation :: proc(p: ^Page, kind: Navigate_Kind, href: string, delta :=
 		if pg == nil { return }
 		if t.nav != nil && pg.frames != nil && pg.frames.nav == t.nav && (t.nav.navigations != t.gen || t.request != 0 && t.request != t.nav.requests) { return }
 		if t.kind == .Traverse {
-			switch history_traverse(pg, t.delta) {
-			case .None, .Canceled: return
-			case .Same_Document: notify_url_changed(pg); return
+			// (the tab's joint session history: frames and the top-level document move here, another top-level document is the embedder's)
+			top := page_top(pg)
+			move, target := joint_traverse(pg, t.delta)
+			switch move {
+			case .None: return
+			case .Frames: notify_history_changed(top); return
+			case .Top: notify_url_changed(top); return
 			case .Other_Document:
 			}
+			delta, _ := session_delta_of(top.web.session, target)
+			emb := top.web.embedder
+			if emb.navigate != nil { emb.navigate(emb.user, top, Navigate_Request{kind = .Traverse, url = target.url, delta = delta}) }
+			return
 		}
 		emb := pg.web.embedder
 		if emb.navigate == nil {
@@ -104,13 +112,26 @@ notify_url_changed :: proc(p: ^Page) {
 	if emb.navigate != nil { emb.navigate(emb.user, p, Navigate_Request{kind = .Url_Changed, url = p.env.location.href}) }
 }
 
+// A frame of the top-level document `p` changed the joint session history (history_joint.odin): the embedder's interface follows.
+@(private)
+notify_history_changed :: proc(p: ^Page) {
+	emb := p.web.embedder
+	if emb.navigate != nil { emb.navigate(emb.user, p, Navigate_Request{kind = .History_Changed, url = p.env.location.href}) }
+}
+
 // HTML "navigate to a fragment": same document, new entry (or replaced), history.state becomes null, hashchange.
 @(private)
 navigate_fragment :: proc(p: ^Page, target: url.URL, replace: bool) {
 	old := strings.clone(p.env.location.href, context.temp_allocator)
 	sh := p.web.session
 	if !replace { entry_leaving(p) }
-	if replace { session_replace(sh, target.href) } else { session_push(sh, target.href, p.web.id, dedupe = false, max_entries = p.settings.web.history_max_entries) }
+	if replace {
+		session_replace(sh, target.href)
+	} else {
+		from := session_current_id(sh)
+		session_push(sh, target.href, p.web.id, dedupe = false, max_entries = p.settings.web.history_max_entries)
+		joint_pushed(p, from)
+	}
 	set_document_url(p, target.href)
 	set_history_state(p, "", false)
 	scroll_to_fragment(p)   // (history_scroll.odin)
@@ -203,16 +224,11 @@ entry_leaving :: proc(p: ^Page) {
 	if emb.leaving != nil { emb.leaving(emb.user, p, cur) } else { persisted_capture_scroll(p, cur) }
 }
 
-// history.go(delta) / back / forward. An entry of this document is reached here (popstate, and hashchange when only the
-// fragment differs); for another document's entry nothing changes and the caller navigates (the shell does it for its
-// back / forward buttons, the page asks the embedder for history.go).
-history_traverse :: proc(p: ^Page, delta: int) -> Traverse_Result {
-	if p == nil || p.closed || delta == 0 { return .None }
-	return history_traverse_to(p, session_peek(p.web.session, delta), user = false)
-}
-
-// The same towards any entry of the tab's history tree (the interface's tree view): it becomes the current one, and the
-// path to it the active one, when it belongs to this document. `user`: the browser's buttons (navigate's userInitiated).
+// A traversal of the document to `target`, any entry of its session (the tab's history tree for a top-level document: the
+// interface's tree view too): an entry of this document is reached here (popstate, and hashchange when only the fragment
+// differs), it becomes the current one and the path to it the active one; for another document's entry nothing changes
+// and the caller navigates (the joint session history, history_joint.odin; the shell). `user`: the browser's buttons
+// (navigate's userInitiated).
 history_traverse_to :: proc(p: ^Page, target: ^History_Entry, user := true) -> Traverse_Result {
 	if p == nil || p.closed || target == nil { return .None }
 	sh := p.web.session
@@ -333,7 +349,8 @@ Location_set :: proc(c: ^Call, component: Api_URLComponent, value: string) -> Ap
 	return .None
 }
 
-History_length :: proc(c: ^Call) -> i32 { return i32(session_length(c.page.web.session)) }
+// history.length: the tab's joint session history, its frames' steps with its entries (history_joint.odin).
+History_length :: proc(c: ^Call) -> i32 { return i32(joint_length(c.page)) }
 
 // history.state: Not_Found when it is null.
 History_state :: proc(c: ^Call) -> (string, Api_Error) {
@@ -371,7 +388,9 @@ history_change :: proc(c: ^Call, state_arg, url_arg: Maybe(string), replace: boo
 		session_replace(sh, href, state, has_state)
 	} else {
 		entry_leaving(p)
+		from := session_current_id(sh)
 		session_push(sh, href, p.web.id, state, has_state, dedupe = false, max_entries = s.history_max_entries)
+		joint_pushed(p, from)
 	}
 	session_set_nav_state(sh, nav_state, has_nav_state)
 	set_document_url(p, href)

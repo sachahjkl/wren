@@ -6,20 +6,86 @@
 	Do only fully active documents count for session history?: FAIL
 /html/browsers/history/joint-session-history/joint-session-history-remove-iframe.html: OK
 	Joint session history length does not include entries from a removed iframe.: PASS
-/html/browsers/history/the-history-interface/001.html: TIMEOUT
-	history.length should update when loading pages in an iframe: FAIL
-	history.length should update when pushing a state: FAIL
-	history.length should update when setting location.hash: FAIL
+/html/browsers/history/the-history-interface/001.html: OK
+	history.length should not decrease after going back: PASS
+	history.length should update when loading pages in an iframe: PASS
+	history.length should update when pushing a state: PASS
+	history.length should update when setting location.hash: PASS
 	history.pushState must exist: PASS
 	history.pushState must exist within iframes: PASS
+	history.state should also reference a clone of the original object: PASS
+	history.state should also reference a clone of the original object (2): PASS
+	history.state should be a clone of the original object, not a reference to it: PASS
+	history.state should be a clone of the original object, not a reference to it (2): PASS
+	history.state should be identical to the object passed to the event handler unless history.state is updated: FAIL
 	history.state should update after a state is pushed: PASS
 	initial history.state should be null: PASS
-/html/browsers/history/the-history-interface/002.html: TIMEOUT
-	history.length should update when loading pages in an iframe: FAIL
-	history.length should update when setting location.hash: FAIL
+	location.hash must be allowed to change (part 1): PASS
+	location.hash must be allowed to change (part 2): PASS
+	popstate event should fire when navigation occurs: PASS
+	popstate event should pass the state data: FAIL
+	pushState must be able to make structured clones of complex objects: PASS
+	pushState must be able to set absolute URLs to the same host: PASS
+	pushState must be able to set location.hash: PASS
+	pushState must be able to set location.pathname: PASS
+	pushState must be able to use an error object as data: PASS
+	pushState must not alter location.hash when no URL is provided: PASS
+	pushState must not be able to use a DOM node as data: PASS
+	pushState must not be able to use a function as data: PASS
+	pushState must not be allowed to create cross-origin URLs: PASS
+	pushState must not be allowed to create cross-origin URLs (about:blank): PASS
+	pushState must not be allowed to create cross-origin URLs (data:URI): PASS
+	pushState must not be allowed to create invalid URLs: FAIL
+	pushState must not fire hashchange events: PASS
+	pushState must not remove tasks queued by the history traversal task source: FAIL
+	pushState must remove all history after the current state: PASS
+	pushState should not actually load the new URL: PASS
+	reloading a pushed state should actually load the new URL: PASS
+	security errors are expected to be thrown in the context of the document that owns the history object: PASS
+	security errors are expected to be thrown in the context of the document that owns the history object (2): PASS
+	state data should be a clone of the original object, not a reference to it: PASS
+	state data should cope with circular object references: PASS
+	traversing history must also traverse hash changes: PASS
+	traversing history must traverse pushed states: PASS
+/html/browsers/history/the-history-interface/002.html: OK
+	.go must queue a task with the history traversal task source (run asynchronously): PASS
+	hash should change when replaceState is called with a URL: PASS
+	hash should not change when replaceState is called without a URL: PASS
+	history.length should not update when replacing a state with a URL: PASS
+	history.length should not update when replacing a state with no URL: PASS
+	history.length should update when loading pages in an iframe: PASS
+	history.length should update when setting location.hash: PASS
 	history.replaceState must exist: PASS
 	history.replaceState must exist within iframes: PASS
+	history.state should also reference a clone of the original object: PASS
+	history.state should also reference a clone of the original object (2): PASS
+	history.state should be a clone of the original object, not a reference to it: PASS
+	history.state should be a clone of the original object, not a reference to it (2): PASS
+	history.state should be identical to the object passed to the event handler unless history.state is updated: FAIL
+	history.state should update after a state is pushed: PASS
 	initial history.state should be null: PASS
+	popstate event should fire when navigation occurs: PASS
+	popstate event should pass the state data: FAIL
+	reloading a replaced state should actually load the new URL: PASS
+	replaceState must be able to make structured clones of complex objects: PASS
+	replaceState must be able to set absolute URLs to the same host: PASS
+	replaceState must be able to set location.pathname: PASS
+	replaceState must be able to use an error object as data: PASS
+	replaceState must not be able to use a DOM node as data: PASS
+	replaceState must not be able to use a function as data: PASS
+	replaceState must not be allowed to create cross-origin URLs: PASS
+	replaceState must not be allowed to create cross-origin URLs (about:blank): PASS
+	replaceState must not be allowed to create cross-origin URLs (data:URI): PASS
+	replaceState must not be allowed to create invalid URLs: FAIL
+	replaceState must not fire hashchange events: PASS
+	replaceState must not remove any tasks queued by the history traversal task source: PASS
+	replaceState must replace the existing state and not add an extra one: PASS
+	replaceState must replace the existing state without altering the forward history: PASS
+	replaceState should not actually load the new URL: PASS
+	security errors are expected to be thrown in the context of the document that owns the history object: PASS
+	security errors are expected to be thrown in the context of the document that owns the history object (2): PASS
+	state data should be a clone of the original object, not a reference to it: PASS
+	state data should cope with circular object references: PASS
 /html/browsers/history/the-history-interface/004.html: OK
 	.go commands should be queued until the thread has ended: PASS
 	browser needs to support hashchange events for this testcase: PASS
@@ -189,14 +255,14 @@
 	history state: PASS
 /html/browsers/history/the-history-interface/iframe_history_go_0.html: OK
 	iframe's history.go(0) performs a location.reload(): PASS
-/html/browsers/history/the-history-interface/joint_session_history/001.html: TIMEOUT
-	Navigating first iframe: NOTRUN
-	Navigating second iframe: FAIL
+/html/browsers/history/the-history-interface/joint_session_history/001.html: OK
+	Navigating first iframe: PASS
+	Navigating second iframe: PASS
 	Session history length on adding new iframe: PASS
 	Session history length on initial load: PASS
-	Traversing history back (1): NOTRUN
-	Traversing history back (2): NOTRUN
-	Traversing history forward: NOTRUN
+	Traversing history back (1): PASS
+	Traversing history back (2): PASS
+	Traversing history forward: PASS
 /html/browsers/history/the-history-interface/joint_session_history/002.html: OK
 	Navigating second iframe: FAIL
 	Session history length on adding new iframe: PASS

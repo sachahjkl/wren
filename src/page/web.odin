@@ -35,14 +35,15 @@ Navigate_Kind :: enum u8 {
 	Assign,        // location.assign / href setter: a new entry
 	Replace,       // location.replace: replaces the current entry
 	Reload,
-	Traverse,      // history.go(delta) towards an entry of another document
+	Traverse,      // the joint session history goes to an entry of another top-level document, `delta` entries away in its session
 	Url_Changed,   // same-document change (pushState, replaceState, fragment): the session history already has it
+	History_Changed,   // a frame's step was added or traversed (history_joint.odin): the session history already has it
 }
 
 Navigate_Request :: struct {
 	kind:  Navigate_Kind,
 	url:   string,   // absolute, valid during the call
-	delta: int,      // Traverse
+	delta: int,      // Traverse: in the entries of the top-level session's path
 	nav_state: string,      // Assign / Replace / Reload: the Navigation API state of the entry (navigation.navigate({state}))
 	has_nav_state: bool,    // ... when there is one: the embedder sets it on the entry (session_set_nav_state)
 }

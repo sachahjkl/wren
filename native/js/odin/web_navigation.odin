@@ -472,6 +472,17 @@ wjr_Navigation_get_activation :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 	return a
 }
 
+// The browser says the session history changed without a navigation of this document (a frame's step dropped the entries
+// ahead): the entries are read again, those gone get their dispose event.
+@(export, link_name = "wj_nav_sync")
+wj_nav_sync :: proc "c" () {
+	context = wj.heap_context()
+	ctx := wj.realm_ctx()
+	if ctx == nil || wj.is_undefined(nav_obj) { return }
+	wj.wj_stack_enter(ctx)
+	nav_sync(ctx)
+}
+
 // The Window has a new document (wj_document_replaced): its activation is the new one's.
 nav_document_replaced :: proc "contextless" (ctx: ^wj.Context) {
 	wj.JS_FreeValue(ctx, activation)

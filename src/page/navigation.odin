@@ -185,6 +185,14 @@ navigation_detached :: proc(p: ^Page) {
 	call_export(p, inst, "wj_nav_detach", argv[:])
 }
 
+// Another navigable's step changed the document's entries (the joint session history dropped those ahead): the engine reads
+// them again, those gone get their dispose event.
+navigation_sync :: proc(p: ^Page) {
+	inst := nav_realm(p)
+	if inst == nil { return }
+	call_export(p, inst, "wj_nav_sync", nil)
+}
+
 // An intercepted push / replace towards any URL the document can be rewritten to: a same-document change, like
 // pushState, with a null history.state and the navigation's own state.
 @(private)
@@ -194,7 +202,9 @@ navigation_commit_url :: proc(p: ^Page, href: string, replace: bool, opts: Nav_O
 		session_replace(sh, href)
 	} else {
 		entry_leaving(p)
+		from := session_current_id(sh)
 		session_push(sh, href, p.web.id, dedupe = false, max_entries = p.settings.web.history_max_entries)
+		joint_pushed(p, from)
 	}
 	session_set_nav_state(sh, opts.state, opts.has_state)
 	set_document_url(p, href)
@@ -376,15 +386,17 @@ Navigation_reload :: proc(c: ^Call, state: Maybe(string)) -> Api_Error {
 }
 
 // navigation.traverseTo(key) (back() and forward() too): Invalid_State when no entry of navigation.entries() has
-// this key. The traversal happens from a task of its own, as history.go does.
+// this key. The traversal happens from a task of its own, as history.go does, to the nearest position of the tab's joint
+// session history where the document's navigable shows that entry (history_joint.odin).
 Navigation_traverseTo :: proc(c: ^Call, key: i64) -> Api_Error {
 	p := c.page
 	if p.web.unloading > 0 { return fail(c, .Invalid_State, NAV_WHILE_UNLOADING) }
 	list, _ := nav_entries(p)
 	for e in list {
 		if e.id != u64(key) { continue }
-		delta, ok := session_delta_of(p.web.session, e)
+		delta, ok := joint_delta_to(p, e)
 		if !ok { break }
+		if !joint_traverse_allowed(p, delta) { return fail(c, .Security, "SecurityError: the traversal would navigate what this sandboxed document may not") }
 		if delta != 0 { request_navigation(p, .Traverse, "", delta) }
 		return .None
 	}
