@@ -78,6 +78,13 @@ section("documents of their own", () => {
   eq("createProcessingInstruction", pi.nodeType + " " + pi.target + " " + pi.data, "7 app some data");
   throws("a target that is not a name", () => document.createProcessingInstruction("1a", "x"), "InvalidCharacterError");
   throws("data with ?>", () => document.createProcessingInstruction("a", "x?>"), "InvalidCharacterError");
+  const x = document.implementation.createDocument(null, "r", null), d = parse("<a/>");
+  const cd = x.createCDATASection("x<y");
+  t("createCDATASection of an XML document", cd instanceof CDATASection && cd.nodeType === 4 && cd.data === "x<y" && cd.ownerDocument === x && d.createCDATASection("z").ownerDocument === d);
+  x.documentElement.append(cd);
+  eq("serialized as a CDATA section", new XMLSerializer().serializeToString(x), "<r><![CDATA[x<y]]></r>");
+  throws("data with ]]>", () => x.createCDATASection("a]]>b"), "InvalidCharacterError");
+  throws("in an HTML document", () => html.createCDATASection("x"), "NotSupportedError");
 });
 done();
 </script>

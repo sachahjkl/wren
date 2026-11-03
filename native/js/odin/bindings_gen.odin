@@ -1954,13 +1954,11 @@ wjg_Document_get_compatMode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue)
 wjg_Document_createCDATASection :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
-	_ = self
 	if argc < 1 { return throw_arity_of(ctx, self.handle, "Document.createCDATASection", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
-	if !wj.wj_doc_target(self.handle) { wj.wj_str_free(ctx, &a0); return wj.wj_throw_gone(ctx) }
 	r: u64
-	st := wj.wr_Document_createCDATASection((a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len), &r)
+	st := wj.wr_Document_createCDATASection(self.handle, (a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len), &r)
 	wj.wj_str_free(ctx, &a0)
 	if st < 0 { return wj.wj_throw_status(ctx, i32(st), "Document.createCDATASection") }
 	return wj.wj_wrap_node(ctx, r)

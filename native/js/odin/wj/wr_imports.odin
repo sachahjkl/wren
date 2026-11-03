@@ -1990,8 +1990,9 @@ foreign _wr_wj_dom {
 	@(link_name = "Document_createDocumentFragment") wr_Document_createDocumentFragment :: proc(_ret: ^u64) -> i32 ---
 	// document.createComment(data)
 	@(link_name = "Document_createComment") wr_Document_createComment :: proc(data: [^]u8, data_len: u32, _ret: ^u64) -> i32 ---
-	// document.createCDATASection(data): Not_Supported (an HTML document).
-	@(link_name = "Document_createCDATASection") wr_Document_createCDATASection :: proc(data: [^]u8, data_len: u32, _ret: ^u64) -> i32 ---
+	// document.createCDATASection(data) of `document` (the page's, or a document of its own, whose node it is): Not_Supported
+	// for an HTML document, Invalid_Character when `data` contains "]]>".
+	@(link_name = "Document_createCDATASection") wr_Document_createCDATASection :: proc(document: u64, data: [^]u8, data_len: u32, _ret: ^u64) -> i32 ---
 	// document.createProcessingInstruction(target, data): Invalid_Character when `target` is not an XML Name or `data`
 	// contains "?>".
 	@(link_name = "Document_createProcessingInstruction") wr_Document_createProcessingInstruction :: proc(target: [^]u8, target_len: u32, data: [^]u8, data_len: u32, _ret: ^u64) -> i32 ---

@@ -334,7 +334,7 @@ foreign _m_dom {
 	@(link_name = "Document_validateAttributeNS") _Document_validateAttributeNS :: proc(namespace: [^]u8, namespace_len: u32, qualified_name: [^]u8, qualified_name_len: u32) -> Error ---
 	@(link_name = "Document_createDocumentFragment") _Document_createDocumentFragment :: proc(_ret: ^Node) -> Error ---
 	@(link_name = "Document_createComment") _Document_createComment :: proc(data: [^]u8, data_len: u32, _ret: ^Node) -> Error ---
-	@(link_name = "Document_createCDATASection") _Document_createCDATASection :: proc(data: [^]u8, data_len: u32, _ret: ^Node) -> Error ---
+	@(link_name = "Document_createCDATASection") _Document_createCDATASection :: proc(document: u64, data: [^]u8, data_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "Document_createProcessingInstruction") _Document_createProcessingInstruction :: proc(target: [^]u8, target_len: u32, data: [^]u8, data_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "Document_adoptNode") _Document_adoptNode :: proc(document: u64, node: u64, _ret: ^Node) -> Error ---
 	@(link_name = "Document_documentURI") _Document_documentURI :: proc(document: u64, _buf: [^]u8, _cap: u32) -> i32 ---
@@ -3717,9 +3717,10 @@ Document_createComment :: proc "contextless" (data: string) -> (result: Node, er
 	return
 }
 
-// document.createCDATASection(data): Not_Supported (an HTML document).
-Document_createCDATASection :: proc "contextless" (data: string) -> (result: Node, err: Error) {
-	err = _Document_createCDATASection(raw_data(data), u32(len(data)), &result)
+// document.createCDATASection(data) of `document` (the page's, or a document of its own, whose node it is): Not_Supported
+// for an HTML document, Invalid_Character when `data` contains "]]>".
+Document_createCDATASection :: proc "contextless" (document: $T_document, data: string) -> (result: Node, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_document)) && size_of(T_document) == 8 {
+	err = _Document_createCDATASection(u64(document), raw_data(data), u32(len(data)), &result)
 	return
 }
 

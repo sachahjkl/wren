@@ -3239,14 +3239,15 @@ Host: `Document_createComment :: proc(c: ^Call, data: string) -> (u64, Api_Error
 ### `Document_createCDATASection`
 
 ```
-Node Document_createCDATASection(string data) raises
+Node Document_createCDATASection(Node document, string data) raises
 ```
 
-document.createCDATASection(data): Not_Supported (an HTML document).
+document.createCDATASection(data) of `document` (the page's, or a document of its own, whose node it is): Not_Supported
+for an HTML document, Invalid_Character when `data` contains "]]>".
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Document_createCDATASection :: proc(c: ^Call, data: string) -> (u64, Api_Error)`
+Host: `Document_createCDATASection :: proc(c: ^Call, document: Api_Node, data: string) -> (u64, Api_Error)`
 
 ### `Document_createProcessingInstruction`
 
