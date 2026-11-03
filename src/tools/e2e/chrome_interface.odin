@@ -1,8 +1,9 @@
 package e2e_scenarios
 
-// The interface as a whole with no browser around it (chrome_world.odin): its own zoom, the developer tools docked at their size, the main menu over the window's edge, the themes, the history tree's text through a zoom, a row's menu over the downloads drop-down.
+// The interface as a whole with no browser around it (chrome_world.odin): its own zoom, the developer tools docked at their size, the main menu over the window's edge and in a window lower than it, the themes, the history tree's text through a zoom, a row's menu over the downloads drop-down.
 
 import "core:fmt"
+import "core:math"
 import "core:strings"
 import "core:testing"
 import "toolkit:draw"
@@ -115,6 +116,31 @@ chrome_open_menu_over_the_resize_band :: proc(t: ^testing.T) {
 	testing.expect_value(t, hit(w, corner), platform.Hit.Client)       // the open menu over the band and its corner is the browser's
 	testing.expect_value(t, hit(w, band), platform.Hit.Client)
 	testing.expect_value(t, hit(w, beside), platform.Hit.Top)          // beside the menu the band still resizes
+}
+
+// The main menu in a window lower than it: as tall as the window, whole inside it, and scrolled; its rows are the toolkit's dense
+// ones (MENU_ITEM_EM of the interface's em); End brings its last item into view, out of it at first.
+@(test)
+chrome_main_menu_scrolls_in_a_short_window :: proc(t: ^testing.T) {
+	SIZE :: [2]int{1280, 500}
+	w := chrome_start(t, {size = SIZE})
+	chrome_still(w)
+	chrome_command(w, "browser.main_menu")
+	chrome_still(w)
+	menu, sel, ok := ui.menu_rect(0)
+	testing.expect(t, ok, "the menu is open")
+	testing.expectf(t, menu.min.y == 0 && menu.max.y == f32(SIZE.y), "as tall as the window: %v", menu)
+	row, _ := ui.menu_item_rect(0, sel)
+	testing.expect_value(t, row.max.y - row.min.y, math.round(w.app.cfg.ui_font_size * ui.MENU_ITEM_EM))
+	shown :: proc(menu: ui.Rect, idx: int) -> bool {
+		r, ok := ui.menu_item_rect(0, idx)
+		return ok && r.min.y >= menu.min.y && r.max.y <= menu.max.y
+	}
+	session.key(w.s, .End)
+	chrome_still(w)
+	_, last, _ := ui.menu_rect(0)
+	testing.expect(t, last > sel, "End selects the last item")
+	testing.expect(t, shown(menu, last) && !shown(menu, sel), "End scrolls the last item into view, the first out")
 }
 
 // Every theme of the interface paints the window from its own palette: in a real frame, on the offscreen renderer.
