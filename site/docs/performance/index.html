@@ -1052,6 +1052,60 @@ own code.</p>
 <p>WPT reference tests of css/css-multicol (464) and css/css-writing-modes (1 141), base and new against the same checkout:
 the same result for every test (303 and 619 pass; <code>wm-propagation-svg-root-scrollbar.svg</code> fails in both builds on this
 checkout, against its expectation).</p>
+<h2 id="what-changed-round-10-what-the-steps-of-layout-read-measured"><a class="anchor" href="#what-changed-round-10-what-the-steps-of-layout-read-measured" aria-hidden="true">#</a>What changed, round 10: what the steps of layout read, measured</h2>
+<p>Item 2 of round 9's list: the idea was that layout's steps wait on memory, walking <code>Box</code> records (352 bytes) for a few
+fields each, and would go faster with what each step reads in arrays of its own. Measured before anything was split, in
+process (a test not kept: a copy of nodes10k, 2 500 items in six columns, 7 505 boxes and 12 506 display items, laid out
+600 times with the default layout threads, the p50 of each step; 3 runs of each build, interleaved), then in the browser
+(<code>wrentool bench perf</code>, the profile build, <code>WREN_SAMPLE_THREADS=1 WREN_SAMPLE_STACK=1</code> with a listing of each thread's
+own functions that was not kept).</p>
+<ol>
+<li><strong>Measured, not kept: the layout of <code>Box</code> and <code>Display_Item</code>.</strong> What a split into arrays can save is bounded by two
+builds that change only where the bytes lie: <code>Box</code> twice as large (352 bytes of padding at its end), and <code>Box</code> with its
+fields reordered so that what the walks of finishing, the display list and the scans read shares its first two cache
+lines (the tree links, flags and kind, the spaces and clips, positions and sizes, the line and item ranges). The full pass: 2.57 ms with
+the boxes as they are, 2.66 with them twice as large (tree +0.06, display +0.02, finish and the block layout within
+their noise), 2.56 reordered (every step within 0.01 ms). The scan of every box's rects (below) took 12 % longer with
+the boxes twice as large. Display items twice as large (256 bytes): the display step +0.06 ms (it writes them), the
+bands +0.008 ms (they read the rect and the space of each). With the caches emptied between passes (64 MB written
+before each, as a script stage would leave them) every step doubles and the builds above stay within each other's
+noise. The 2.6 MB of boxes fit the processor's last cache (32 MB on the machine measured): the steps are bound by
+their own code, not by memory, so no field moved; the profile below says where that code is.</li>
+<li><strong>The scans of every box read the union of a flow's fragments directly</strong> (<code>box_border</code>, <code>src/layout/query.odin</code>;
+<code>timeline_present</code>, <code>timeline_layout_shift_check</code>, <code>src/page/timeline_lcp.odin</code>). After each frame that changed the
+document, the largest-paint scan and the layout-shift scan read the border rect of every box. For a box in a
+multi-column flow <code>box_border</code> answered "fragmented" and the scans called <code>box_of_view</code> (the padding and content
+rects, the walk up the spaces, the transform checks, and for the largest paint <code>geometry_of_rects</code> and the candidate's
+checks before the area that rules it out). It now gives the union of the fragments, <code>flow_bounds</code> of the border rect,
+which is what <code>box_of_view</code> gave, and the largest paint's area check rules a small box out before its candidacy is
+looked at. The layout-shift scan's reads in process: 0.233 (0.227-0.246) -&gt; 0.133 (0.133-0.135) ms. Test: <code>multicol_box_border</code> (a box
+across two columns, one in one column, the container: <code>box_border</code> against <code>box_of</code>).</li>
+</ol>
+<p>The browser (6 runs of each build for nodes10k, 4 for the others, interleaved, the order turning, on a quiet machine;
+a first series while other agents built moved single runs by a factor of 2 and was dropped). The scans run in
+<code>page_prepare</code> after the layout phase ends, under no phase of their own: the phase table leaves them out (they were
+counted to <code>UI_Draw</code> by the sampler), the CPU work per frame has them.</p>
+<div class="table-box"><table>
+<thead><tr><th></th><th>before</th><th>after</th></tr></thead>
+<tbody>
+<tr><td>nodes10k: CPU work per frame, mean</td><td>20.29 (20.02-20.51) ms</td><td>19.89 (19.81-20.74) ms</td></tr>
+<tr><td>nodes10k: the scans' samples on the window thread (<code>box_of_view</code>, <code>flow_bounds_add</code>, <code>box_border</code>, <code>lcp_candidate_of</code>, the two scans) a frame</td><td>0.40 ms (369 in 919 frames)</td><td>0.19 ms (192 in 999 frames)</td></tr>
+<tr><td>nodes10k: the window thread waiting on layout, p50</td><td>3.10 (3.10-3.12) ms</td><td>3.08 (3.07-3.15) ms</td></tr>
+<tr><td>nodes10k: a full pass, tree + layout + finish + display + bands (p50 of each)</td><td>0.92 + 1.03 + 0.35 + 0.40 + 0.13 ms</td><td>0.92 + 1.02 + 0.35 + 0.40 + 0.13 ms</td></tr>
+<tr><td><code>mutation</code>: CPU work per frame, mean</td><td>0.80 (0.79-0.87) ms</td><td>0.79 (0.78-0.82) ms</td></tr>
+<tr><td>p10k_scroll: CPU work per frame, mean</td><td>0.382 (0.379-0.405) ms</td><td>0.380 (0.378-0.388) ms</td></tr>
+<tr><td>p10k_load: navigation to the first paint of the page</td><td>152 (150-153) ms</td><td>153 (151-155) ms</td></tr>
+</tbody>
+</table></div>
+<p>Layout itself is unchanged: the in-process copy of nodes10k gives the same boxes, lines, display items and bands in
+every build above (a hash of them), and no layout code changed, so no reference test was run again.</p>
+<p>What nodes10k's page thread does (the browser, 621 samples while running): the block layout of the columns 41 %
+inclusive (<code>layout_contents</code> 9.5 % of its own, <code>layout_ifc</code> 6.3, <code>flow_children</code> 4.7, <code>gather_child</code> and <code>gather_box</code>
+5.8), finishing 21 % (<code>flow_bounds_add</code> 8.5 % of its own: a box or line of a flow cut against each of the six columns,
+<code>finish</code> 6.9, <code>compute_overflow</code> 4.3), the display list 9 %, building the box tree 9 % on this thread (its summaries of
+the styles on the layout threads), the bands 6 %, <code>note_refresh_inputs</code> 3.4 %. On the window thread, after 2: <code>flow_bounds_add</code>
+and <code>box_border</code> for the two scans, and <code>images_sync</code> (the inserted subtrees walked for images every frame, a quarter of
+<code>UI_Draw</code>'s samples).</p>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
@@ -1154,6 +1208,9 @@ the journal's pairs of records); what is left of them is items 2 and 3 below.</p
 <p>After round 9. Round 8's items 2 and 3 are done in part (round 9: the weights of the subtrees in one walk, the slots
 of a recycled pass, a container's record by index); what round 9 measured of layout's steps moves item 2 below to the
 arrays they read (round 8's item 4 folded in); what is left of the style pass is item 3.</p>
+<p>After round 10. Round 9's item 2 was measured before anything was split: the steps are not bound by the layout of the
+records (round 10, item 1); the scans of every box no longer take the long way for a box in a flow (item 2). Item 2 below
+is now the steps' own code.</p>
 <ol>
 <li><strong>The script stage of DOM-heavy pages, what is left</strong> (nodes10k: 14.3 ms of a 20 ms frame). In order of the
 engine's samples: the interpreter itself (<code>interp_hot</code>, <code>interp_run</code>, <code>call_native</code> and the C API's bridge: about a
@@ -1167,17 +1224,18 @@ visit of every wrapper, a sixth of it, memory-bound, and the browser's <code>des
 shown first). Texts are still copied to the heap and freed one by one (<code>create_text</code>; an arena of the document needs
 texts that change to give their bytes back). Not the crossings themselves (section 2). Measured and left: an inline
 list in <code>destroy_subtree</code> (round 6); a flag per interface for the unforgeable members of its chain (round 7).</li>
-<li><strong>Layout of DOM-heavy pages: what each step reads, in arrays of its own</strong> (nodes10k: the window thread waits 3.2
-ms a frame, the page thread's full pass: tree 0.92, layout 1.04, finish 0.36, display 0.39, bands 0.13 ms). Round 9
-measured the steps' own code against what they cost and found little to take there (a binary search of the columns,
-the record of a container by index, the walks of finishing in one: no difference); each step walks <code>Box</code> records of
-400 bytes for a few fields scattered across them: the block layout of the columns (<code>gather_box</code>, <code>apply_shifts</code>:
-positions, flags, the style's break values), finishing (<code>place_box</code>, <code>compute_overflow</code>: positions, sizes, flags,
-<code>flow_bounds_add</code> about 15 ns a call for each box and line of a flow, 0.15 ms of the 0.36), building the box tree
-(<code>build_loop</code>, <code>place_element</code>), the bands (two reads of every display item of 150 bytes) and the last walk over them
-(<code>note_refresh_inputs</code>). The same arrays serve the window thread's scans (the LCP scan's <code>box_border</code>, 57 % of it;
-the layout-shift scan; <code>box_of_view</code> and <code>flow_bounds_add</code> were a third of nodes10k's <code>UI_Draw</code> samples): positions,
-sizes and flags in flat arrays by box, the rects of the display items apart from the rest of them.</li>
+<li><strong>Layout of DOM-heavy pages: the steps' own code</strong> (nodes10k: the window thread waits 3.2 ms a frame, the page
+thread's full pass: tree 0.92, layout 1.04, finish 0.36, display 0.39, bands 0.13 ms). Round 10 measured the layout
+of the records against the steps and found nothing there (<code>Box</code> twice as large or reordered, display items twice as
+large: within 0.06 ms of a 2.6 ms pass; the boxes fit the last cache): arrays of their own by box are not the gain.
+What the profile shows, by cost: the block layout of the columns (<code>layout_contents</code>, <code>layout_ifc</code>, <code>flow_children</code>,
+<code>gather_child</code> and <code>gather_box</code>: 41 % of the page thread); <code>flow_bounds_add</code> (8.5 % of the page thread for finishing,
+and with <code>box_border</code> most of what is left of the window thread's scans: each box and line of a flow cut against every
+column, where a rect inside one column needs one test; round 9's binary search did not shorten it, the cut of a box's
+lines against the column its box lies in is the next thing to measure); the display list (9 %; it writes 12 506 items
+of 128 bytes, and their size shows: a smaller item, not a split one); the bands and <code>note_refresh_inputs</code>. On the
+window thread, <code>images_sync</code> walks the inserted subtrees for images every frame (a quarter of <code>UI_Draw</code>'s samples on
+nodes10k): the DOM could list the image elements as it lists the <code>&lt;meta&gt;</code> ones (round 8).</li>
 <li><strong>What a full style pass still costs per page</strong> (<code>mutation_fullstyle</code>, a pass 0.95 ms in the browser, 0.48 ms in
 process with seven threads, four fifths of that on the threads since round 9): on the style threads, matching
 (<code>match_chain</code>, the families of pages whose elements are each of their own kind: modern-css, p10k, matched in full
@@ -1224,6 +1282,7 @@ measured first (round 3: a lock-free queue lost to the loop's mutex); a worker's
 <li><a href="#what-changed-round-7-the-script-stage-of-dom-heavy-pages-what-was-left">What changed, round 7: the script stage of DOM-heavy pages, what was left</a></li>
 <li><a href="#what-changed-round-8-layout-of-dom-heavy-pages-what-a-full-style-pass-costs-per-page">What changed, round 8: layout of DOM-heavy pages, what a full style pass costs per page</a></li>
 <li><a href="#what-changed-round-9-what-a-full-style-pass-costs-on-the-window-thread-the-finishing-of-a-flow">What changed, round 9: what a full style pass costs on the window thread, the finishing of a flow</a></li>
+<li><a href="#what-changed-round-10-what-the-steps-of-layout-read-measured">What changed, round 10: what the steps of layout read, measured</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
