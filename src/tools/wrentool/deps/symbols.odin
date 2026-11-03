@@ -6,6 +6,7 @@ import "core:path/filepath"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
+import "wb:base"
 import "wb:tools/tooling"
 
 // The symbols of a build: the linker's map (wrentool build links with /MAP), named by the build's fingerprint, and what reads them.
@@ -53,7 +54,7 @@ fingerprint_of :: proc(path: string) -> (fp: string, ok: bool) {
 
 is_hex :: proc(s: string) -> bool {
 	if s == "" { return false }
-	for c in transmute([]u8)s { if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F') { return false } }
+	for c in transmute([]u8)s { if base.hex_value(c) < 0 { return false } }
 	return true
 }
 

@@ -139,7 +139,7 @@ highlight_into :: proc(b: ^strings.Builder, src: string, lang: string) {
 		// number
 		if is_digit(c) || (c == '.' && i + 1 < n && is_digit(src[i + 1]) && !ident_before(src, i)) {
 			j := i
-			for j < n && (is_hex(src[j]) || src[j] == '.' || src[j] == 'x' || src[j] == 'X' || src[j] == '_') { j += 1 }
+			for j < n && (base.hex_value(src[j]) >= 0 || src[j] == '.' || src[j] == 'x' || src[j] == 'X' || src[j] == '_') { j += 1 }
 			// a suffix like f64, u8
 			for j < n && is_ident(src[j]) { j += 1 }
 			span(b, .Number, src[i:j])
@@ -197,7 +197,6 @@ starts :: proc(s: string, i: int, p: string) -> bool {
 is_ident_start :: proc(c: byte) -> bool { return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') }
 is_ident :: proc(c: byte) -> bool { return is_ident_start(c) || is_digit(c) }
 is_digit :: proc(c: byte) -> bool { return c >= '0' && c <= '9' }
-is_hex :: proc(c: byte) -> bool { return is_digit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') }
 
 at_line_start :: proc(s: string, i: int) -> bool {
 	j := i - 1

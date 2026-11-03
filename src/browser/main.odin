@@ -933,18 +933,10 @@ scroll_to_fragment :: proc(app: ^App, t: ^Tab, viewport: draw.Vec2) {
 @(private = "file")
 percent_decode_bytes :: proc(s: string) -> string {
 	if strings.index_byte(s, '%') < 0 { return s }
-	hex :: proc(c: u8) -> int {
-		switch c {
-		case '0' ..= '9': return int(c - '0')
-		case 'a' ..= 'f': return int(c - 'a') + 10
-		case 'A' ..= 'F': return int(c - 'A') + 10
-		}
-		return -1
-	}
 	out := make([dynamic]u8, 0, len(s), context.temp_allocator)
 	for i := 0; i < len(s); i += 1 {
-		if s[i] == '%' && i + 2 < len(s) && hex(s[i + 1]) >= 0 && hex(s[i + 2]) >= 0 {
-			append(&out, u8(hex(s[i + 1]) * 16 + hex(s[i + 2])))
+		if s[i] == '%' && i + 2 < len(s) && base.hex_value(s[i + 1]) >= 0 && base.hex_value(s[i + 2]) >= 0 {
+			append(&out, u8(base.hex_value(s[i + 1]) * 16 + base.hex_value(s[i + 2])))
 			i += 2
 		} else { append(&out, s[i]) }
 	}

@@ -367,23 +367,13 @@ percent_decode :: proc(s: string) -> string {
 		c := s[i]
 		if c == '+' { append(&out, ' '); i += 1; continue }
 		if c == '%' && i + 2 < len(s) {
-			a, b := hex_digit(s[i + 1]), hex_digit(s[i + 2])
+			a, b := base.hex_value(s[i + 1]), base.hex_value(s[i + 2])
 			if a >= 0 && b >= 0 { append(&out, u8(a * 16 + b)); i += 3; continue }
 		}
 		append(&out, c)
 		i += 1
 	}
 	return string(out[:])
-}
-
-@(private = "file")
-hex_digit :: proc(c: u8) -> int {
-	switch {
-	case c >= '0' && c <= '9': return int(c - '0')
-	case c >= 'a' && c <= 'f': return int(c - 'a') + 10
-	case c >= 'A' && c <= 'F': return int(c - 'A') + 10
-	}
-	return -1
 }
 
 // The text operations on an element whose name matches (or on a text node, for `#text`).

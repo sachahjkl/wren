@@ -779,22 +779,11 @@ url_decode :: proc(s: string) -> string {
 		c := s[i]
 		if c == '+' { strings.write_byte(&b, ' '); i += 1; continue }
 		if c == '%' && i + 2 < len(s) {
-			h, ok1 := hex_val(s[i + 1])
-			l, ok2 := hex_val(s[i + 2])
-			if ok1 && ok2 { strings.write_byte(&b, u8(h * 16 + l)); i += 3; continue }
+			h, l := base.hex_value(s[i + 1]), base.hex_value(s[i + 2])
+			if h >= 0 && l >= 0 { strings.write_byte(&b, u8(h * 16 + l)); i += 3; continue }
 		}
 		strings.write_byte(&b, c)
 		i += 1
 	}
 	return strings.to_string(b)
-}
-
-@(private = "file")
-hex_val :: proc(c: u8) -> (int, bool) {
-	switch {
-	case c >= '0' && c <= '9': return int(c - '0'), true
-	case c >= 'a' && c <= 'f': return int(c - 'a') + 10, true
-	case c >= 'A' && c <= 'F': return int(c - 'A') + 10, true
-	}
-	return 0, false
 }
