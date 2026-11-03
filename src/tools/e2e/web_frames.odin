@@ -245,16 +245,20 @@ frames_encoding_of_nested_documents :: proc(t: ^testing.T) {
 	serve(t)
 	undeclared := strings.concatenate({doc(SAME, "<p id=e>é</p>"), "&type=", enc("text/html")}, context.temp_allocator)
 	text := strings.concatenate({testenv.url(SAME + "/frames/text?body="), enc("é"), "&type=", enc("text/plain; charset=windows-1251")}, context.temp_allocator)
-	pr := load(t, fill(`<body><iframe id=h src="%s"></iframe><iframe id=t src="%s"></iframe><script>
+	xml := strings.concatenate({testenv.url(SAME + "/frames/text?body="), enc("<Foo>é</Foo>"), "&type=", enc("application/xml")}, context.temp_allocator)
+	pr := load(t, fill(`<body><iframe id=h src="%s"></iframe><iframe id=t src="%s"></iframe><iframe id=x src="%s"></iframe><script>
 addEventListener("load", () => {
   const h = document.getElementById("h").contentDocument, x = document.getElementById("t").contentDocument;
   log("undeclared " + h.characterSet + " " + h.getElementById("e").textContent);
   log("text " + x.characterSet + " " + x.body.textContent);
+  const m = document.getElementById("x").contentDocument;
+  log("xml " + m.contentType + " " + m.characterSet + " " + m.documentElement.tagName + " " + m.documentElement.textContent + " " + m.createElement("Bar").tagName);
 });
-</script></body>`, undeclared, text))
+</script></body>`, undeclared, text, xml))
 	check(pr, wait_note(pr, "undeclared UTF-8 é"), "a frame's document without a declaration is in its same-origin parent's encoding")
 	check(pr, said(pr, "text windows-1251 Г©"), "a text document is decoded in its response's charset")
-	close_page(pr, min_checks = 2)
+	check(pr, said(pr, "xml application/xml UTF-8 Foo é Bar"), "an XML document is parsed as XML, in UTF-8 without a declaration")
+	close_page(pr, min_checks = 3)
 }
 
 // a frame gone, or navigated: its wrappers do no harm

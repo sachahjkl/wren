@@ -24,11 +24,18 @@ REFLECTED_INT_MAX_DIGITS :: 18
 jd_qualified_name :: proc(d: ^dom.Document, h: base.Handle, upper: bool) -> string {
 	n := dom.get(d, h)
 	if n == nil { return "" }
-	local := jd_local_name(n)
-	if n.ns == .HTML && upper && n.xml != .Element { local = strings.to_upper(local, context.temp_allocator) }
-	prefix := dom.ns_prefix(d, h)
-	if prefix == "" { return local }
-	return strings.concatenate({prefix, ":", local}, context.temp_allocator)
+	qualified := jd_local_name(n)
+	if prefix := dom.ns_prefix(d, h); prefix != "" { qualified = strings.concatenate({prefix, ":", qualified}, context.temp_allocator) }
+	if n.ns == .HTML && upper && n.xml != .Element { qualified = ascii_upper(qualified) }
+	return qualified
+}
+
+// `s` in ASCII upper case (DOM: other letters keep their case), in the temp allocator.
+@(private)
+ascii_upper :: proc(s: string) -> string {
+	b := make([]u8, len(s), context.temp_allocator)
+	for i in 0 ..< len(s) { c := s[i]; b[i] = c >= 'a' && c <= 'z' ? c - ('a' - 'A') : c }
+	return string(b)
 }
 
 // The local name as the DOM gives it: SVG names in their mixed case (the browser keeps them lower case).
@@ -105,14 +112,13 @@ attr_namespace :: proc(name: string) -> string {
 @(private)
 find_attr_ns :: proc(n: ^dom.Node, namespace: Maybe(string), local_name: string) -> string {
 	ns, _ := namespace.?
-	local := n.xml == .Element ? local_name : strings.to_lower(local_name, context.temp_allocator)
-	if n.name == "xmlns" && ns == dom.NS_XMLNS && local == "xmlns" { return "xmlns" }
+	if n.name == "xmlns" && ns == dom.NS_XMLNS && local_name == "xmlns" { return "xmlns" }
 	for a in n.attrs {
 		a_ns := attr_namespace(a.name)
 		a_local := a.name
 		if colon := strings.index_byte(a.name, ':'); colon >= 0 { a_local = a.name[colon + 1:] }
 		if a.name == "xmlns" { a_ns = dom.NS_XMLNS }
-		if a_local != local { continue }
+		if jd_attr_name(n, a_local) != local_name { continue }
 		if ns == "" { if a_ns == "" { return a.name } } else if a_ns == ns || a_ns == "?" { return a.name }
 	}
 	return ""
@@ -121,8 +127,8 @@ find_attr_ns :: proc(n: ^dom.Node, namespace: Maybe(string), local_name: string)
 Element_getAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), local_name: string) -> (string, Api_Error) {
 	name := find_attr_ns(element.data, namespace, local_name)
 	if name == "" { return "", .Not_Found }
-	v, _ := dom.get_attribute(c.page.doc, H(element.handle), name)
-	return v, .None
+	for a in element.data.attrs { if a.name == name { return a.value, .None } }
+	return "", .Not_Found
 }
 
 Element_setAttributeChecked :: proc(c: ^Call, element: Api_Element, name: string, value: string) -> Api_Error {
@@ -135,14 +141,18 @@ Element_setAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(
 	if err != .None { return err }
 	// an attribute of that namespace and local name already there keeps its qualified name
 	if existing := find_attr_ns(element.data, ns, local); existing != "" {
-		return dom_error(dom.set_attribute(c.page.doc, H(element.handle), existing, value))
+		return dom_error(dom.set_attribute(c.page.doc, H(element.handle), existing, value, exact = true))
 	}
-	return dom_error(dom.set_attribute(c.page.doc, H(element.handle), qualified_name, value))
+	// the name as given; an SVG name in its own case is kept in the browser's lower-case form (what the renderer reads)
+	n := element.data
+	lower := dom.lower_name(qualified_name)
+	exact := !(n.ns == .SVG && jd_attr_name(n, lower) == qualified_name)
+	return dom_error(dom.set_attribute(c.page.doc, H(element.handle), exact ? qualified_name : lower, value, exact = true))
 }
 
 Element_removeAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), local_name: string) {
 	if name := find_attr_ns(element.data, namespace, local_name); name != "" {
-		dom.remove_attribute(c.page.doc, H(element.handle), strings.clone(name, context.temp_allocator))
+		dom.remove_attribute(c.page.doc, H(element.handle), strings.clone(name, context.temp_allocator), exact = true)
 	}
 }
 

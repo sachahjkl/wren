@@ -8453,169 +8453,169 @@
 	Firing an event at D1 with relatedNode at B1a with open mode shadow trees: PASS
 /shadow-dom/execcommand-insertList-in-shadow.html: OK
 	Toggle off List for all the child nodes in the ShadowRoot: FAIL
-/shadow-dom/focus-navigation/delegatesFocus-highlight-sibling.html: TIMEOUT
-	crbug/474687 :focus style should properly be applied to shadow hosts.: TIMEOUT
-/shadow-dom/focus-navigation/focus-navigation-slot-fallback-default-tabindex.html: TIMEOUT
-	Default tabindex for a slot node should be 0.: TIMEOUT
-/shadow-dom/focus-navigation/focus-navigation-slot-fallback.html: TIMEOUT
-	Focus should jump to fallback elements when a slot does not have any assigned nodes.: TIMEOUT
-/shadow-dom/focus-navigation/focus-navigation-slot-nested-2levels.html: TIMEOUT
-	Focus controller should treat each slot as a focus scope.: TIMEOUT
-/shadow-dom/focus-navigation/focus-navigation-slot-nested-delegatesFocus.html: TIMEOUT
-	Focus controller should treat each slot as a focus scope.: TIMEOUT
-/shadow-dom/focus-navigation/focus-navigation-slot-nested-fallback.html: TIMEOUT
-	Focus should cover assigned elements of an assigned slot espacially there are fallback contents.: TIMEOUT
-/shadow-dom/focus-navigation/focus-navigation-slot-nested.html: TIMEOUT
-	Focus controller should treat each slot as a focus scope.: TIMEOUT
-/shadow-dom/focus-navigation/focus-navigation-slot-shadow-in-fallback.html: TIMEOUT
-	Focus should cover assigned elements of an assigned slot, as well as elements that are directly assigned to a slot.: TIMEOUT
-/shadow-dom/focus-navigation/focus-navigation-slot-shadow-in-slot.html: TIMEOUT
-	Focus should cover assigned elements of an assigned slot, as well as elements that are directly assigned to a slot.: TIMEOUT
-/shadow-dom/focus-navigation/focus-navigation-slot-with-tabindex.html: TIMEOUT
-	Slots tabindex should be considred in focus navigation.: TIMEOUT
-/shadow-dom/focus-navigation/focus-navigation-slots-in-slot.html: TIMEOUT
-	Focus should cover assigned nodes of slot, especially for nested slots in slot scope.: TIMEOUT
-/shadow-dom/focus-navigation/focus-navigation-slots.html: TIMEOUT
-	Focus should cover assigned elements of an assigned slot, as well as elements that are directly assigned to a slot.: TIMEOUT
-/shadow-dom/focus-navigation/focus-navigation-web-component-radio.html: TIMEOUT
-	Focus for web component input type elements should be bound by <form> inside shadow DOM: TIMEOUT
-/shadow-dom/focus-navigation/focus-navigation-with-delegatesFocus.html: TIMEOUT
-	Testing tab navigation order with mode closed, no tabindex and delegatesFocus=false.: NOTRUN
-	Testing tab navigation order with mode closed, no tabindex and delegatesFocus=true.: NOTRUN
-	Testing tab navigation order with mode closed, tabindex=-1 and delegatesFocus=false.: NOTRUN
-	Testing tab navigation order with mode closed, tabindex=-1 and delegatesFocus=true.: NOTRUN
-	Testing tab navigation order with mode closed, tabindex=0 and delegatesFocus=false.: NOTRUN
-	Testing tab navigation order with mode closed, tabindex=0 and delegatesFocus=true.: NOTRUN
-	Testing tab navigation order with mode closed, tabindex=1 and delegatesFocus=false.: NOTRUN
-	Testing tab navigation order with mode closed, tabindex=1 and delegatesFocus=true.: NOTRUN
-	Testing tab navigation order with mode open, no tabindex and delegatesFocus=false.: TIMEOUT
-	Testing tab navigation order with mode open, no tabindex and delegatesFocus=true.: NOTRUN
-	Testing tab navigation order with mode open, tabindex=-1 and delegatesFocus=false.: NOTRUN
-	Testing tab navigation order with mode open, tabindex=-1 and delegatesFocus=true.: NOTRUN
-	Testing tab navigation order with mode open, tabindex=0 and delegatesFocus=false.: NOTRUN
-	Testing tab navigation order with mode open, tabindex=0 and delegatesFocus=true.: NOTRUN
-	Testing tab navigation order with mode open, tabindex=1 and delegatesFocus=false.: NOTRUN
-	Testing tab navigation order with mode open, tabindex=1 and delegatesFocus=true.: NOTRUN
-/shadow-dom/focus-navigation/focus-navigation.html: TIMEOUT
-	Focus controller should treat slots as a focus scope.: TIMEOUT
-/shadow-dom/focus-navigation/focus-negative-tabindex-at-end-of-shadow-tree.html: TIMEOUT
-	Shift+Tab moves focus before the shadow host, not back to the end of the shadow tree: NOTRUN
-	Tab moves focus past the shadow host, not back to the start of the shadow tree: TIMEOUT
-/shadow-dom/focus-navigation/focus-nested-slots.html: TIMEOUT
-	Verifies that focus order goes in flat tree order with buttons inside nested slots which have a mixture of assigned and unassigned states.: TIMEOUT
+/shadow-dom/focus-navigation/delegatesFocus-highlight-sibling.html: OK
+	crbug/474687 :focus style should properly be applied to shadow hosts.: FAIL
+/shadow-dom/focus-navigation/focus-navigation-slot-fallback-default-tabindex.html: OK
+	Default tabindex for a slot node should be 0.: FAIL
+/shadow-dom/focus-navigation/focus-navigation-slot-fallback.html: OK
+	Focus should jump to fallback elements when a slot does not have any assigned nodes.: FAIL
+/shadow-dom/focus-navigation/focus-navigation-slot-nested-2levels.html: OK
+	Focus controller should treat each slot as a focus scope.: FAIL
+/shadow-dom/focus-navigation/focus-navigation-slot-nested-delegatesFocus.html: OK
+	Focus controller should treat each slot as a focus scope.: FAIL
+/shadow-dom/focus-navigation/focus-navigation-slot-nested-fallback.html: OK
+	Focus should cover assigned elements of an assigned slot espacially there are fallback contents.: FAIL
+/shadow-dom/focus-navigation/focus-navigation-slot-nested.html: OK
+	Focus controller should treat each slot as a focus scope.: FAIL
+/shadow-dom/focus-navigation/focus-navigation-slot-shadow-in-fallback.html: OK
+	Focus should cover assigned elements of an assigned slot, as well as elements that are directly assigned to a slot.: FAIL
+/shadow-dom/focus-navigation/focus-navigation-slot-shadow-in-slot.html: OK
+	Focus should cover assigned elements of an assigned slot, as well as elements that are directly assigned to a slot.: FAIL
+/shadow-dom/focus-navigation/focus-navigation-slot-with-tabindex.html: OK
+	Slots tabindex should be considred in focus navigation.: FAIL
+/shadow-dom/focus-navigation/focus-navigation-slots-in-slot.html: OK
+	Focus should cover assigned nodes of slot, especially for nested slots in slot scope.: FAIL
+/shadow-dom/focus-navigation/focus-navigation-slots.html: OK
+	Focus should cover assigned elements of an assigned slot, as well as elements that are directly assigned to a slot.: FAIL
+/shadow-dom/focus-navigation/focus-navigation-web-component-radio.html: OK
+	Focus for web component input type elements should be bound by <form> inside shadow DOM: FAIL
+/shadow-dom/focus-navigation/focus-navigation-with-delegatesFocus.html: OK
+	Testing tab navigation order with mode closed, no tabindex and delegatesFocus=false.: FAIL
+	Testing tab navigation order with mode closed, no tabindex and delegatesFocus=true.: FAIL
+	Testing tab navigation order with mode closed, tabindex=-1 and delegatesFocus=false.: FAIL
+	Testing tab navigation order with mode closed, tabindex=-1 and delegatesFocus=true.: FAIL
+	Testing tab navigation order with mode closed, tabindex=0 and delegatesFocus=false.: FAIL
+	Testing tab navigation order with mode closed, tabindex=0 and delegatesFocus=true.: FAIL
+	Testing tab navigation order with mode closed, tabindex=1 and delegatesFocus=false.: FAIL
+	Testing tab navigation order with mode closed, tabindex=1 and delegatesFocus=true.: FAIL
+	Testing tab navigation order with mode open, no tabindex and delegatesFocus=false.: FAIL
+	Testing tab navigation order with mode open, no tabindex and delegatesFocus=true.: FAIL
+	Testing tab navigation order with mode open, tabindex=-1 and delegatesFocus=false.: FAIL
+	Testing tab navigation order with mode open, tabindex=-1 and delegatesFocus=true.: FAIL
+	Testing tab navigation order with mode open, tabindex=0 and delegatesFocus=false.: FAIL
+	Testing tab navigation order with mode open, tabindex=0 and delegatesFocus=true.: FAIL
+	Testing tab navigation order with mode open, tabindex=1 and delegatesFocus=false.: FAIL
+	Testing tab navigation order with mode open, tabindex=1 and delegatesFocus=true.: FAIL
+/shadow-dom/focus-navigation/focus-navigation.html: OK
+	Focus controller should treat slots as a focus scope.: FAIL
+/shadow-dom/focus-navigation/focus-negative-tabindex-at-end-of-shadow-tree.html: OK
+	Shift+Tab moves focus before the shadow host, not back to the end of the shadow tree: FAIL
+	Tab moves focus past the shadow host, not back to the start of the shadow tree: FAIL
+/shadow-dom/focus-navigation/focus-nested-slots.html: OK
+	Verifies that focus order goes in flat tree order with buttons inside nested slots which have a mixture of assigned and unassigned states.: FAIL
 /shadow-dom/focus-navigation/focus-reverse-unassignable-slot.html: OK
 	Verifies that focusing backwards from an input inside a slot which has no shadow root goes to the previous focusable element in light DOM.: FAIL
 /shadow-dom/focus-navigation/focus-reverse-unassigned-slot.html: OK
 	Verifies that focusing backwards from a button inside a slot which has no assigned nodes goes to the previous focusable element.: FAIL
-/shadow-dom/focus-navigation/focus-unassignable-slot.html: TIMEOUT
-	Verifies that focusing forwards from an input inside a slot which has no shadow root goes to the next focusable element in light DOM.: TIMEOUT
-/shadow-dom/focus-navigation/focus-with-negative-index.html: TIMEOUT
-	Focus controller should treat slots as a focus scope.: TIMEOUT
-	This is a regression test: After focusing negative tabindex-ed elements, focus moves in tree order.: NOTRUN
-/shadow-dom/focus-navigation/menu/tentative/focus-menu-elements.html: TIMEOUT
-	Focus navigation should skip over other menuitems in menubars.: TIMEOUT
+/shadow-dom/focus-navigation/focus-unassignable-slot.html: OK
+	Verifies that focusing forwards from an input inside a slot which has no shadow root goes to the next focusable element in light DOM.: FAIL
+/shadow-dom/focus-navigation/focus-with-negative-index.html: OK
+	Focus controller should treat slots as a focus scope.: FAIL
+	This is a regression test: After focusing negative tabindex-ed elements, focus moves in tree order.: FAIL
+/shadow-dom/focus-navigation/menu/tentative/focus-menu-elements.html: OK
+	Focus navigation should skip over other menuitems in menubars.: FAIL
 /shadow-dom/focus-navigation/reading-flow/tentative/carousel-grid-order.html: OK
 	Grid items in carousel should follow grid-order reading flow: FAIL
-/shadow-dom/focus-navigation/reading-flow/tentative/flex-flow.html: TIMEOUT
-	Flex items in flexbox should follow flex-flow reading flow: TIMEOUT
-	Flex items in rtl flexbox should follow flex-flow reading flow: NOTRUN
-	Flex items in vertical-lr flexbox should follow flex-flow reading flow: NOTRUN
-/shadow-dom/focus-navigation/reading-flow/tentative/flex-visual-fragmentation.html: TIMEOUT
-	CSS order is honored across fragments: flex-visual reading order follows visual placement, not source order: NOTRUN
-	Nested reading-flow flex that itself fragments across 3 columns keeps all items in reading order: NOTRUN
-	Reading-flow flex items fragmented across 3 columns are all reachable in flex-visual order: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/flex-visual-order.html: TIMEOUT
-	Flex items in flexbox should follow flex-visual reading flow: TIMEOUT
-	Flex items in row-reverse and vertical-lr flexbox should follow flex-visual reading flow: NOTRUN
-	Flex items in row-reverse flexbox should follow flex-visual reading flow: NOTRUN
-	Flex items in row-reverse rtl flexbox should follow flex-visual reading flow: NOTRUN
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-auto-flow-reading-order.html: TIMEOUT
-	Grid items should follow grid-rows reading flow, but let reading-order can move item's focus order to the top.: TIMEOUT
-	Grid items should follow reading flow, mix of reading-order and order values.: NOTRUN
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-columns.html: TIMEOUT
-	Grid items in grid template columns should follow grid-columns reading flow: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-column-reading-flow-001.html: TIMEOUT
-	`normal` follows source order and overrides visual placement: TIMEOUT
-	`source-order` groups by `reading-order` and breaks ties by `source-order`: NOTRUN
-	`source-order` ignores CSS order on Grid Lanes items: NOTRUN
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-column-reading-flow-002.html: TIMEOUT
-	Invalid `column` keyword for reading-flow falls back to normal focus order: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-column-reading-flow-003.html: TIMEOUT
-	`grid-columns` follows CSS order right-to-left within columns in `vertical-rl`: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-column-reading-flow-004.html: TIMEOUT
-	CSS Grid Lanes: reading-flow reads down each stacking axis with auto-placement: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-column-reading-flow-006.html: TIMEOUT
-	Grid-order uses CSS order and source order for ties: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-column-reading-flow-007.html: TIMEOUT
-	Grid-columns reads left-to-right columns with track-reverse placement: TIMEOUT
-	Grid-columns reads top-to-bottom within columns with fill-reverse placement: NOTRUN
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-column-reading-flow-008.html: TIMEOUT
-	Grid-columns follows visual column order after dense backfill: NOTRUN
-	Grid-columns reads spanning items once in visual column order: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-row-reading-flow-001.html: TIMEOUT
-	Grid-rows reads left-to-right within rows with fill-reverse placement: NOTRUN
-	Grid-rows reads top-to-bottom rows with track-reverse placement: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-row-reading-flow-002.html: TIMEOUT
-	Grid-rows follows visual row order after dense backfill: NOTRUN
-	Grid-rows reads spanning items once in visual row order: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-row-reading-flow-003.html: TIMEOUT
-	Grid-rows reads each row completely before the next: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-across-scopes.html: TIMEOUT
-	Grid items in shadow host that is a display contents grid item: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-on-shadow-host.html: TIMEOUT
-	Grid items in shadow host with delegatesFocus: TIMEOUT
-	Grid items in shadow host without delegatesFocus: NOTRUN
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-pseudo-elements.html: TIMEOUT
-	Grid pseudo items are not focusable: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-with-display-contents.html: TIMEOUT
-	Grid items are in nested display contents containers.: NOTRUN
-	Items in display contents are sorted in same grid container and are placed in the position where their first child resides.: TIMEOUT
-	Items in display contents are sorted in same grid container and are placed in the position where their first child resides. The display contents have tabindex and should be focusable.: NOTRUN
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-with-iframe.html: TIMEOUT
-	Grid items are iframes.: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-with-nested-grids.html: TIMEOUT
-	Grid items are grid containers.: NOTRUN
-	Grid items are not grid containers.: TIMEOUT
-	Only has grid containers.: NOTRUN
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-with-popover.html: TIMEOUT
-	Popover is reading-flow item and reading-flow container.: NOTRUN
-	Popover is reading-flow item.: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-with-position-absolute.html: TIMEOUT
-	Items in position:absolute container are visited at the end of the focus sequence. reading-order can override DOM order.: TIMEOUT
-	Items that have position:absolute are visited at the end of the focus sequence, in DOM order.: NOTRUN
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-with-position-fixed.html: TIMEOUT
-	Items in position:fixed container are visited at the end of the focus sequence. reading-order can override DOM order.: TIMEOUT
-	Items that have position:fixed are visited at the end of the focus sequence, in DOM order.: NOTRUN
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-with-slots.html: TIMEOUT
-	Slot assigned element is a grid with reading-flow.: TIMEOUT
-	Slot is a display block inside a grid container.: NOTRUN
-	Slot is a display contents inside a grid container.: NOTRUN
-	Slot is a grid with reading-flow inside a grid container with reading-flow.: NOTRUN
-	Slot is a grid with reading-flow.: NOTRUN
-	Slot is inside a grid container with reading-flow.: NOTRUN
-	Slot is not inside a shadow host.: NOTRUN
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-order.html: TIMEOUT
-	Grid items with `order` property: NOTRUN
-	Grid items with `order` property and tabindex. Positive tabindex doesn't reorder reading flow item, but can affect its descendants.: NOTRUN
-	Grid items without `order` property: TIMEOUT
-	Items in display block are not in parent grid container.: NOTRUN
-/shadow-dom/focus-navigation/reading-flow/tentative/grid-rows.html: TIMEOUT
-	Grid items in grid template columns should follow grid-rows reading flow: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/normal.html: TIMEOUT
-	Block elements. Focus should be in DOM tabindexed-order.: NOTRUN
-	Grid items. Focus should be in DOM tabindexed-order.: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/source-order-invalid.html: TIMEOUT
-	Inline elements. Focus should be in DOM tabindexed-order.: TIMEOUT
-/shadow-dom/focus-navigation/reading-flow/tentative/source-order-valid.html: TIMEOUT
-	Block elements. Focus should be in DOM tabindexed-order, but reading-order takes effect.: TIMEOUT
-	Block inline elements. Focus should be in DOM tabindexed-order, but reading-order takes effect.: NOTRUN
-	Flex elements. Focus should be in DOM tabindexed-order, but reading-order takes effect.: NOTRUN
-	Flow root elements. Focus should be in DOM tabindexed-order, but reading-order takes effect.: NOTRUN
-	Grid elements. Focus should be in DOM tabindexed-order, but reading-order takes effect.: NOTRUN
+/shadow-dom/focus-navigation/reading-flow/tentative/flex-flow.html: OK
+	Flex items in flexbox should follow flex-flow reading flow: FAIL
+	Flex items in rtl flexbox should follow flex-flow reading flow: FAIL
+	Flex items in vertical-lr flexbox should follow flex-flow reading flow: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/flex-visual-fragmentation.html: OK
+	CSS order is honored across fragments: flex-visual reading order follows visual placement, not source order: FAIL
+	Nested reading-flow flex that itself fragments across 3 columns keeps all items in reading order: FAIL
+	Reading-flow flex items fragmented across 3 columns are all reachable in flex-visual order: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/flex-visual-order.html: OK
+	Flex items in flexbox should follow flex-visual reading flow: FAIL
+	Flex items in row-reverse and vertical-lr flexbox should follow flex-visual reading flow: FAIL
+	Flex items in row-reverse flexbox should follow flex-visual reading flow: FAIL
+	Flex items in row-reverse rtl flexbox should follow flex-visual reading flow: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-auto-flow-reading-order.html: OK
+	Grid items should follow grid-rows reading flow, but let reading-order can move item's focus order to the top.: FAIL
+	Grid items should follow reading flow, mix of reading-order and order values.: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-columns.html: OK
+	Grid items in grid template columns should follow grid-columns reading flow: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-column-reading-flow-001.html: OK
+	`normal` follows source order and overrides visual placement: FAIL
+	`source-order` groups by `reading-order` and breaks ties by `source-order`: FAIL
+	`source-order` ignores CSS order on Grid Lanes items: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-column-reading-flow-002.html: OK
+	Invalid `column` keyword for reading-flow falls back to normal focus order: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-column-reading-flow-003.html: OK
+	`grid-columns` follows CSS order right-to-left within columns in `vertical-rl`: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-column-reading-flow-004.html: OK
+	CSS Grid Lanes: reading-flow reads down each stacking axis with auto-placement: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-column-reading-flow-006.html: OK
+	Grid-order uses CSS order and source order for ties: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-column-reading-flow-007.html: OK
+	Grid-columns reads left-to-right columns with track-reverse placement: FAIL
+	Grid-columns reads top-to-bottom within columns with fill-reverse placement: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-column-reading-flow-008.html: OK
+	Grid-columns follows visual column order after dense backfill: FAIL
+	Grid-columns reads spanning items once in visual column order: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-row-reading-flow-001.html: OK
+	Grid-rows reads left-to-right within rows with fill-reverse placement: FAIL
+	Grid-rows reads top-to-bottom rows with track-reverse placement: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-row-reading-flow-002.html: OK
+	Grid-rows follows visual row order after dense backfill: FAIL
+	Grid-rows reads spanning items once in visual row order: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-lanes-row-reading-flow-003.html: OK
+	Grid-rows reads each row completely before the next: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-across-scopes.html: OK
+	Grid items in shadow host that is a display contents grid item: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-on-shadow-host.html: OK
+	Grid items in shadow host with delegatesFocus: FAIL
+	Grid items in shadow host without delegatesFocus: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-pseudo-elements.html: OK
+	Grid pseudo items are not focusable: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-with-display-contents.html: OK
+	Grid items are in nested display contents containers.: FAIL
+	Items in display contents are sorted in same grid container and are placed in the position where their first child resides.: FAIL
+	Items in display contents are sorted in same grid container and are placed in the position where their first child resides. The display contents have tabindex and should be focusable.: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-with-iframe.html: OK
+	Grid items are iframes.: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-with-nested-grids.html: OK
+	Grid items are grid containers.: FAIL
+	Grid items are not grid containers.: FAIL
+	Only has grid containers.: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-with-popover.html: OK
+	Popover is reading-flow item and reading-flow container.: FAIL
+	Popover is reading-flow item.: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-with-position-absolute.html: OK
+	Items in position:absolute container are visited at the end of the focus sequence. reading-order can override DOM order.: FAIL
+	Items that have position:absolute are visited at the end of the focus sequence, in DOM order.: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-with-position-fixed.html: OK
+	Items in position:fixed container are visited at the end of the focus sequence. reading-order can override DOM order.: FAIL
+	Items that have position:fixed are visited at the end of the focus sequence, in DOM order.: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-order-with-slots.html: OK
+	Slot assigned element is a grid with reading-flow.: FAIL
+	Slot is a display block inside a grid container.: FAIL
+	Slot is a display contents inside a grid container.: FAIL
+	Slot is a grid with reading-flow inside a grid container with reading-flow.: FAIL
+	Slot is a grid with reading-flow.: FAIL
+	Slot is inside a grid container with reading-flow.: FAIL
+	Slot is not inside a shadow host.: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-order.html: OK
+	Grid items with `order` property: FAIL
+	Grid items with `order` property and tabindex. Positive tabindex doesn't reorder reading flow item, but can affect its descendants.: FAIL
+	Grid items without `order` property: FAIL
+	Items in display block are not in parent grid container.: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/grid-rows.html: OK
+	Grid items in grid template columns should follow grid-rows reading flow: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/normal.html: OK
+	Block elements. Focus should be in DOM tabindexed-order.: FAIL
+	Grid items. Focus should be in DOM tabindexed-order.: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/source-order-invalid.html: OK
+	Inline elements. Focus should be in DOM tabindexed-order.: FAIL
+/shadow-dom/focus-navigation/reading-flow/tentative/source-order-valid.html: OK
+	Block elements. Focus should be in DOM tabindexed-order, but reading-order takes effect.: FAIL
+	Block inline elements. Focus should be in DOM tabindexed-order, but reading-order takes effect.: FAIL
+	Flex elements. Focus should be in DOM tabindexed-order, but reading-order takes effect.: FAIL
+	Flow root elements. Focus should be in DOM tabindexed-order, but reading-order takes effect.: FAIL
+	Grid elements. Focus should be in DOM tabindexed-order, but reading-order takes effect.: FAIL
 /shadow-dom/focus-navigation/tentative/focus-navigation-scroller-delegatesFocus.html: OK
 	Should focus on scroller across shadow boundaries depending on delegatesFocus value.: PASS
-/shadow-dom/focus-navigation/tentative/focus-navigation-scroller-interactive-child.html: TIMEOUT
-	While focusing a keyboard-focusable scroller, adding interactive content should not cancel focusability: TIMEOUT
+/shadow-dom/focus-navigation/tentative/focus-navigation-scroller-interactive-child.html: OK
+	While focusing a keyboard-focusable scroller, adding interactive content should not cancel focusability: FAIL
 /shadow-dom/focus-navigation/tentative/focus-navigation-scroller-tabindex.html: OK
 	Should focus on scroller depending on tabindex value.: PASS
 /shadow-dom/focus-navigation/tentative/focus-scroller-layout-update.html: OK
@@ -8729,38 +8729,38 @@
 /shadow-dom/focus/focus-shadowhost-display-none.html: TIMEOUT
 	when shadow host itself is focused, it should match display:none, lose focus then becomes display:block again.: TIMEOUT
 	when shadow host with delegatesFocus=true has focused element inside the shadow, it should also match display:none, then lose focus and become display:block again.: NOTRUN
-/shadow-dom/focus/focus-slot-box-generated-tabindex-0.html: TIMEOUT
-	slot with tabindex=0 that generates a box should be focusable: TIMEOUT
-/shadow-dom/focus/focus-tab-on-shadow-host.html: TIMEOUT
-	:focus should be applied to the host and :focus-visible should be applied to the child node when the focus is moved by <tab>: TIMEOUT
-/shadow-dom/focus/focus-tabindex-order-shadow-negative-delegatesFocus.html: TIMEOUT
-	Order when all tabindex=-1 is and delegatesFocus = true: TIMEOUT
-/shadow-dom/focus/focus-tabindex-order-shadow-negative.html: TIMEOUT
-	Order when all elements in shadow tree has negative tabindex: TIMEOUT
-/shadow-dom/focus/focus-tabindex-order-shadow-slot-one.html: TIMEOUT
-	Order when all tabindex=0, except for one slot that has tabindex=1: TIMEOUT
-/shadow-dom/focus/focus-tabindex-order-shadow-varying-delegatesFocus.html: TIMEOUT
-	Order when tabindex varies and delegatesFocus = true: TIMEOUT
-/shadow-dom/focus/focus-tabindex-order-shadow-varying-tabindex-2.html: TIMEOUT
-	Order with different tabindex on host: TIMEOUT
-/shadow-dom/focus/focus-tabindex-order-shadow-varying-tabindex-3.html: TIMEOUT
-	Order with different tabindex on host: TIMEOUT
-/shadow-dom/focus/focus-tabindex-order-shadow-varying-tabindex.html: TIMEOUT
-	Order with various tabindex values: TIMEOUT
-/shadow-dom/focus/focus-tabindex-order-shadow-zero-delegatesFocus.html: TIMEOUT
-	Order when all tabindex=0 is and delegatesFocus = true: TIMEOUT
-/shadow-dom/focus/focus-tabindex-order-shadow-zero-host-negative.html: TIMEOUT
-	Order when all tabindex=0 except for host, which has tabindex=-1: TIMEOUT
-/shadow-dom/focus/focus-tabindex-order-shadow-zero-host-not-set-scrollable.html: TIMEOUT
-	Order when all tabindex=0 except scrollable host (tabindex not set): TIMEOUT
-/shadow-dom/focus/focus-tabindex-order-shadow-zero-host-not-set.html: TIMEOUT
-	Order when all tabindex=0 except host (tabindex not set): TIMEOUT
-/shadow-dom/focus/focus-tabindex-order-shadow-zero-host-one.html: TIMEOUT
-	Order when all tabindex=0 except for host, which has tabindex=1: TIMEOUT
-/shadow-dom/focus/focus-tabindex-order-shadow-zero-host-scrollable.html: TIMEOUT
-	Order when all tabindex=0 and host is scrollable: TIMEOUT
-/shadow-dom/focus/focus-tabindex-order-shadow-zero.html: TIMEOUT
-	Order when all tabindex=0 is and delegatesFocus = false: TIMEOUT
+/shadow-dom/focus/focus-slot-box-generated-tabindex-0.html: OK
+	slot with tabindex=0 that generates a box should be focusable: FAIL
+/shadow-dom/focus/focus-tab-on-shadow-host.html: OK
+	:focus should be applied to the host and :focus-visible should be applied to the child node when the focus is moved by <tab>: FAIL
+/shadow-dom/focus/focus-tabindex-order-shadow-negative-delegatesFocus.html: OK
+	Order when all tabindex=-1 is and delegatesFocus = true: FAIL
+/shadow-dom/focus/focus-tabindex-order-shadow-negative.html: OK
+	Order when all elements in shadow tree has negative tabindex: FAIL
+/shadow-dom/focus/focus-tabindex-order-shadow-slot-one.html: OK
+	Order when all tabindex=0, except for one slot that has tabindex=1: FAIL
+/shadow-dom/focus/focus-tabindex-order-shadow-varying-delegatesFocus.html: OK
+	Order when tabindex varies and delegatesFocus = true: FAIL
+/shadow-dom/focus/focus-tabindex-order-shadow-varying-tabindex-2.html: OK
+	Order with different tabindex on host: FAIL
+/shadow-dom/focus/focus-tabindex-order-shadow-varying-tabindex-3.html: OK
+	Order with different tabindex on host: FAIL
+/shadow-dom/focus/focus-tabindex-order-shadow-varying-tabindex.html: OK
+	Order with various tabindex values: FAIL
+/shadow-dom/focus/focus-tabindex-order-shadow-zero-delegatesFocus.html: OK
+	Order when all tabindex=0 is and delegatesFocus = true: FAIL
+/shadow-dom/focus/focus-tabindex-order-shadow-zero-host-negative.html: OK
+	Order when all tabindex=0 except for host, which has tabindex=-1: FAIL
+/shadow-dom/focus/focus-tabindex-order-shadow-zero-host-not-set-scrollable.html: OK
+	Order when all tabindex=0 except scrollable host (tabindex not set): FAIL
+/shadow-dom/focus/focus-tabindex-order-shadow-zero-host-not-set.html: OK
+	Order when all tabindex=0 except host (tabindex not set): FAIL
+/shadow-dom/focus/focus-tabindex-order-shadow-zero-host-one.html: OK
+	Order when all tabindex=0 except for host, which has tabindex=1: FAIL
+/shadow-dom/focus/focus-tabindex-order-shadow-zero-host-scrollable.html: OK
+	Order when all tabindex=0 and host is scrollable: FAIL
+/shadow-dom/focus/focus-tabindex-order-shadow-zero.html: OK
+	Order when all tabindex=0 is and delegatesFocus = false: FAIL
 /shadow-dom/focus/text-selection-with-delegatesFocus-on-slotted-content.html: OK
 	select slotted text in shadow root with delegatesFocus.: FAIL
 /shadow-dom/focus/text-selection-with-delegatesFocus-text-control.html: OK
@@ -8844,7 +8844,7 @@
 	getElementsById() should not leak nodes in shadow tree: PASS
 	getElementsByName() should not leak nodes in shadow tree: PASS
 	getElementsByTagName() should not leak nodes in shadow tree: PASS
-	getElementsByTagNameNS() should not leak nodes in shadow tree: FAIL
+	getElementsByTagNameNS() should not leak nodes in shadow tree: PASS
 /shadow-dom/leaktests/html-collection.html: OK
 	document.all should not contain shadow nodes: PASS
 	document.anchors should not contain shadow nodes: PASS

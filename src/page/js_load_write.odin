@@ -229,18 +229,25 @@ document_replace :: proc(p: ^Page, markup: string) {
 	document_close(p)
 }
 
+// HTML: document.open(), write() and close() of an XML document throw an InvalidStateError.
+@(private)
+xml_refuses_markup :: proc(c: ^Call) -> bool { return c.page.doc != nil && dom.is_xml_document(dom.get(c.page.doc, c.page.doc.root)) }
+
 Document_writeMarkup :: proc(c: ^Call, markup: string) -> Api_Error {
+	if xml_refuses_markup(c) { return fail(c, .Invalid_State, "write() is not supported on an XML document.") }
 	return document_write(c.page, markup)
 }
 
 Document_openStream :: proc(c: ^Call) -> Api_Error {
 	if c.page.worker != nil { return .Invalid_State }
+	if xml_refuses_markup(c) { return fail(c, .Invalid_State, "open() is not supported on an XML document.") }
 	document_open(c.page)
 	return .None
 }
 
 Document_closeStream :: proc(c: ^Call) -> Api_Error {
 	if c.page.worker != nil { return .Invalid_State }
+	if xml_refuses_markup(c) { return fail(c, .Invalid_State, "close() is not supported on an XML document.") }
 	document_close(c.page)
 	return .None
 }

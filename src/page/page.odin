@@ -306,12 +306,12 @@ page_cluster :: proc(p: ^Page) -> u64 {
 // Replaces the blank skeleton by the parsed document, then applies <meta http-equiv="Content-Security-Policy"> and
 // <meta name="referrer">. `utf8` is already decoded (see html.decode_document).
 // Synchronous, on the calling thread; `parse_document` + `adopt_document` is the same with decoding, off the UI thread.
-// `mime` application/xhtml+xml: parsed as XML (offthread.odin).
+// `mime` an XML type (xml_document_kind): parsed as XML (offthread.odin).
 load_html :: proc(p: ^Page, utf8: []byte, mime := "") -> html.Parse_Result {
 	j := html_job_make(p, utf8, false, "")
 	defer html_job_free(j)
 	j.page = nil
-	if mime == "application/xhtml+xml" { j.xhtml, j.location = true, strings.clone(p.env.location.href) }
+	if kind := xml_document_kind(mime); kind != .None { j.xml, j.location = kind, strings.clone(p.env.location.href) }
 	html_work(j)
 	return adopt_document(p, &j.out)
 }

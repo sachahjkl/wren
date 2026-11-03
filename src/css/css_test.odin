@@ -205,9 +205,19 @@ selectors_and_specificity :: proc(t: ^testing.T) {
 	testing.expect_value(t, l[0].combinators[1], Combinator.Subsequent_Sibling)
 	testing.expect_value(t, l[0].combinators[2], Combinator.Descendant)
 
-	for bad in ([]string{"", "a >", "> a", "a > > b", "a,", ",a", "a::bogus", "a:bogus", "#1x", "a[", "a[=b]", ":nth-child(x)", "a::before b", "p:not()"}) {
+	for bad in ([]string{"", "a >", "> a", "a > > b", "a,", ",a", "a::bogus", "a:bogus", "#1x", "a[", "a[=b]", ":nth-child(x)", "a::before b", "p:not()", "ns|div", "|", "*|", "[ns|a]"}) {
 		_, good := sel(bad, ar)
 		testing.expect(t, !good, bad)
+	}
+	// namespace prefixes: `*|` any namespace, `|` none
+	ln, okn := sel("*|div, |div, |*, *|*, [*|title]", ar)
+	testing.expect(t, okn)
+	if okn {
+		testing.expect(t, ln[0].compounds[0].simples[0].kind == .Type && ln[0].compounds[0].simples[0].name == "div" && !ln[0].compounds[0].simples[0].no_namespace)
+		testing.expect(t, ln[1].compounds[0].simples[0].kind == .Type && ln[1].compounds[0].simples[0].no_namespace)
+		testing.expect(t, ln[2].compounds[0].simples[0].kind == .Universal && ln[2].compounds[0].simples[0].no_namespace)
+		testing.expect(t, ln[3].compounds[0].simples[0].kind == .Universal && !ln[3].compounds[0].simples[0].no_namespace)
+		testing.expect(t, ln[4].compounds[0].simples[0].kind == .Attribute && ln[4].compounds[0].simples[0].name == "title")
 	}
 	// forgiving lists keep the valid items
 	l2, ok2 := sel(":is(a, ???, b)", ar)

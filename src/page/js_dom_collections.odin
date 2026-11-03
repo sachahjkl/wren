@@ -328,8 +328,9 @@ collection_accepts :: proc(p: ^Page, col: ^Dom_Collection, h: base.Handle, n: ^d
 	case .All: return true
 	case .Tag_Name:
 		if col.arg == "*" { return true }
-		if html { return n.name == dom.lower_name(col.arg) }
-		return jd_qualified_name(p.doc, h, false) == col.arg || n.name == dom.lower_name(col.arg)
+		// an HTML element of an HTML document: its qualified name against the argument in ASCII lower case
+		if html && n.xml != .Element { return jd_qualified_name(p.doc, h, false) == dom.lower_name(col.arg) }
+		return jd_qualified_name(p.doc, h, false) == col.arg
 	case .Tag_Name_NS:
 		if col.ns != "*" && dom.ns_uri(p.doc, h) != col.ns { return false }
 		return col.arg == "*" || jd_local_name(n) == col.arg
