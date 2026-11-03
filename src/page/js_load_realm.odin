@@ -67,7 +67,7 @@ content_handlers_register :: proc(p: ^Page, el: base.Handle) {
 	if n == nil || n.kind != .Element || len(n.attrs) == 0 { return }
 	names := make([dynamic]string, context.temp_allocator)
 	for a in n.attrs {
-		if len(a.name) > 2 && a.name[0] == 'o' && a.name[1] == 'n' { append(&names, strings.clone(a.name, context.temp_allocator)) }
+		if len(a.name) > 2 && a.name[0] == 'o' && a.name[1] == 'n' && a.ns == dom.ATTR_NS_NONE { append(&names, strings.clone(a.name, context.temp_allocator)) }
 	}
 	for name in names { content_handler_changed(p, el, name) }
 }

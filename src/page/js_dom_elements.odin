@@ -4,8 +4,7 @@ package page
 // of the hyperlink elements.
 //
 // Attributes are kept by their qualified name, lower case (package dom; as given on an element of an XML document,
-// dom.is_xml_element): an attribute's namespace is that of its
-// prefix (xlink:, xml:, xmlns:), and the *NS methods match on the local name and that implied namespace.
+// dom.is_xml_element), with their namespace (dom.Attr_Ns): the *NS methods match on it and the local name.
 
 import "core:fmt"
 import "core:strconv"
@@ -95,40 +94,39 @@ Element_attributeNameAt :: proc(c: ^Call, element: Api_Element, index: u32) -> (
 	return jd_attr_name(element.data, element.data.attrs[index].name), .None
 }
 
-// The namespace of a stored attribute name, from its prefix.
-@(private)
-attr_namespace :: proc(name: string) -> string {
-	colon := strings.index_byte(name, ':')
-	if colon < 0 { return "" }
-	switch name[:colon] {
-	case "xlink": return dom.NS_XLINK
-	case "xml": return dom.NS_XML
-	case "xmlns": return dom.NS_XMLNS
-	}
-	return "?"   // a prefix whose namespace was not kept: matches any namespace but null
+// The namespace URI of the attribute at `index` (Not_Found: null; past the end too).
+Element_attributeNamespaceAt :: proc(c: ^Call, element: Api_Element, index: u32) -> (string, Api_Error) {
+	if int(index) >= len(element.data.attrs) { return "", .Not_Found }
+	uri := dom.attr_ns_uri(c.page.doc, element.data.attrs[index].ns)
+	if uri == "" { return "", .Not_Found }
+	return uri, .None
 }
 
-// The stored attribute that (namespace, local name) designates; "" when none.
+// The index of the attribute getAttribute(name) reads, -1 when none.
+Element_attributeIndex :: proc(c: ^Call, element: Api_Element, name: string) -> i32 {
+	return i32(dom.attribute_index(element.data, name))
+}
+
+// The index of the attribute getAttributeNS(namespace, localName) reads, -1 when none.
+Element_attributeIndexNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), local_name: string) -> i32 {
+	return i32(find_attr_ns(c.page.doc, element.data, namespace, local_name))
+}
+
+// The index of the attribute that (namespace, local name) designates, an SVG element's names compared in their DOM
+// case; -1 when none.
 @(private)
-find_attr_ns :: proc(n: ^dom.Node, namespace: Maybe(string), local_name: string) -> string {
-	ns, _ := namespace.?
-	if n.name == "xmlns" && ns == dom.NS_XMLNS && local_name == "xmlns" { return "xmlns" }
-	for a in n.attrs {
-		a_ns := attr_namespace(a.name)
-		a_local := a.name
-		if colon := strings.index_byte(a.name, ':'); colon >= 0 { a_local = a.name[colon + 1:] }
-		if a.name == "xmlns" { a_ns = dom.NS_XMLNS }
-		if jd_attr_name(n, a_local) != local_name { continue }
-		if ns == "" { if a_ns == "" { return a.name } } else if a_ns == ns || a_ns == "?" { return a.name }
-	}
-	return ""
+find_attr_ns :: proc(d: ^dom.Document, n: ^dom.Node, namespace: Maybe(string), local_name: string) -> int {
+	uri, _ := namespace.?
+	ns, known := dom.attr_ns_find(d, uri)
+	if !known { return -1 }
+	for a, i in n.attrs { if a.ns == ns && jd_attr_name(n, dom.attr_local(a)) == local_name { return i } }
+	return -1
 }
 
 Element_getAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), local_name: string) -> (string, Api_Error) {
-	name := find_attr_ns(element.data, namespace, local_name)
-	if name == "" { return "", .Not_Found }
-	for a in element.data.attrs { if a.name == name { return a.value, .None } }
-	return "", .Not_Found
+	i := find_attr_ns(c.page.doc, element.data, namespace, local_name)
+	if i < 0 { return "", .Not_Found }
+	return element.data.attrs[i].value, .None
 }
 
 Element_setAttributeChecked :: proc(c: ^Call, element: Api_Element, name: string, value: string) -> Api_Error {
@@ -137,22 +135,34 @@ Element_setAttributeChecked :: proc(c: ^Call, element: Api_Element, name: string
 }
 
 Element_setAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), qualified_name: string, value: string) -> Api_Error {
-	ns, _, local, err := validate_and_extract(c, namespace, qualified_name, false)
+	ns, _, _, err := validate_and_extract(c, namespace, qualified_name, false)
 	if err != .None { return err }
-	// an attribute of that namespace and local name already there keeps its qualified name
-	if existing := find_attr_ns(element.data, ns, local); existing != "" {
-		return dom_error(dom.set_attribute(c.page.doc, H(element.handle), existing, value, exact = true))
-	}
-	// the name as given; an SVG name in its own case is kept in the browser's lower-case form (what the renderer reads)
+	return set_attribute_ns(c, element, ns, qualified_name, value)
+}
+
+// The value of an Attr object's attribute (setAttributeNode, attr.value): its namespace and qualified name as the Attr
+// has them, not validated again (setAttribute("pre:fix") made one of no namespace with a colon).
+Element_setAttributeOfAttr :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), qualified_name: string, value: string) -> Api_Error {
+	ns, _ := namespace.?
+	return set_attribute_ns(c, element, ns, qualified_name, value, replace_prefix = true)
+}
+
+// An attribute of namespace `ns` (an existing one keeps its prefix, but for `replace_prefix`); an SVG name in its own
+// case is kept in the browser's lower-case form (what the renderer reads).
+@(private = "file")
+set_attribute_ns :: proc(c: ^Call, element: Api_Element, ns, qualified_name, value: string, replace_prefix := false) -> Api_Error {
+	d := c.page.doc
 	n := element.data
 	lower := dom.lower_name(qualified_name)
-	exact := !(n.ns == .SVG && jd_attr_name(n, lower) == qualified_name)
-	return dom_error(dom.set_attribute(c.page.doc, H(element.handle), exact ? qualified_name : lower, value, exact = true))
+	stored := n.ns == .SVG && jd_attr_name(n, lower) == qualified_name ? lower : qualified_name
+	return dom_error(dom.set_attribute_ns(d, H(element.handle), dom.attr_ns_of(d, ns), stored, value, replace_prefix))
 }
 
 Element_removeAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), local_name: string) {
-	if name := find_attr_ns(element.data, namespace, local_name); name != "" {
-		dom.remove_attribute(c.page.doc, H(element.handle), strings.clone(name, context.temp_allocator), exact = true)
+	d := c.page.doc
+	if i := find_attr_ns(d, element.data, namespace, local_name); i >= 0 {
+		a := element.data.attrs[i]
+		dom.remove_attribute_ns(d, H(element.handle), a.ns, strings.clone(dom.attr_local(a), context.temp_allocator))
 	}
 }
 
@@ -160,7 +170,7 @@ Element_toggleAttributeChecked :: proc(c: ^Call, element: Api_Element, name: str
 	if !valid_attribute_name(name) { return false, fail(c, .Invalid_Character, "The attribute name provided is not a valid name.") }
 	d := c.page.doc
 	h := H(element.handle)
-	_, has := dom.get_attribute(d, h, name)
+	_, has := dom.get_attribute_exact(d, h, name)
 	if !has {
 		if force == 0 { return false, .None }
 		return true, dom_error(dom.set_attribute(d, h, name, ""))
@@ -176,7 +186,7 @@ Element_hasAttribute :: proc(c: ^Call, element: Api_Element, name: string) -> bo
 }
 
 Element_hasAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), local_name: string) -> bool {
-	return find_attr_ns(element.data, namespace, local_name) != ""
+	return find_attr_ns(c.page.doc, element.data, namespace, local_name) >= 0
 }
 
 // element.shadowRoot: its shadow root when open (DOM §4.9).

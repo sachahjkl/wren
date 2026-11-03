@@ -1554,6 +1554,15 @@ foreign _wr_wj_dom {
 	@(link_name = "Element_attributeCount") wr_Element_attributeCount :: proc(element: u64) -> u32 ---
 	// The name of the attribute at `index` (Not_Found past the end).
 	@(link_name = "Element_attributeNameAt") wr_Element_attributeNameAt :: proc(element: u64, index: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	// The namespace URI of the attribute at `index` (Not_Found: null, or past the end).
+	@(link_name = "Element_attributeNamespaceAt") wr_Element_attributeNamespaceAt :: proc(element: u64, index: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	// The index of the attribute element.getAttribute(name) reads, -1 when none.
+	@(link_name = "Element_attributeIndex") wr_Element_attributeIndex :: proc(element: u64, name: [^]u8, name_len: u32) -> i32 ---
+	// The index of the attribute element.getAttributeNS(namespace, localName) reads, -1 when none.
+	@(link_name = "Element_attributeIndexNS") wr_Element_attributeIndexNS :: proc(element: u64, namespace: [^]u8, namespace_len: u32, local_name: [^]u8, local_name_len: u32) -> i32 ---
+	// The value of an Attr object's attribute (setAttributeNode, attr.value): its namespace and qualified name as the Attr
+	// has them, not validated again.
+	@(link_name = "Element_setAttributeOfAttr") wr_Element_setAttributeOfAttr :: proc(element: u64, namespace: [^]u8, namespace_len: u32, qualified_name: [^]u8, qualified_name_len: u32, value: [^]u8, value_len: u32) -> i32 ---
 	// element.getAttributeNS(namespace, localName) (Not_Found: null).
 	@(link_name = "Element_getAttributeNS") wr_Element_getAttributeNS :: proc(element: u64, namespace: [^]u8, namespace_len: u32, local_name: [^]u8, local_name_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
 	// element.setAttribute(name, value): Invalid_Character for a name that is not a valid attribute name.

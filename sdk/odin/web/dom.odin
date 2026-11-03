@@ -111,6 +111,10 @@ foreign _m_dom {
 	@(link_name = "Element_attributeNames") _Element_attributeNames :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Element_attributeCount") _Element_attributeCount :: proc(element: u64) -> u32 ---
 	@(link_name = "Element_attributeNameAt") _Element_attributeNameAt :: proc(element: u64, index: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_attributeNamespaceAt") _Element_attributeNamespaceAt :: proc(element: u64, index: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Element_attributeIndex") _Element_attributeIndex :: proc(element: u64, name: [^]u8, name_len: u32) -> i32 ---
+	@(link_name = "Element_attributeIndexNS") _Element_attributeIndexNS :: proc(element: u64, namespace: [^]u8, namespace_len: u32, local_name: [^]u8, local_name_len: u32) -> i32 ---
+	@(link_name = "Element_setAttributeOfAttr") _Element_setAttributeOfAttr :: proc(element: u64, namespace: [^]u8, namespace_len: u32, qualified_name: [^]u8, qualified_name_len: u32, value: [^]u8, value_len: u32) -> Error ---
 	@(link_name = "Element_getAttributeNS") _Element_getAttributeNS :: proc(element: u64, namespace: [^]u8, namespace_len: u32, local_name: [^]u8, local_name_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Element_setAttributeChecked") _Element_setAttributeChecked :: proc(element: u64, name: [^]u8, name_len: u32, value: [^]u8, value_len: u32) -> Error ---
 	@(link_name = "Element_setAttributeNS") _Element_setAttributeNS :: proc(element: u64, namespace: [^]u8, namespace_len: u32, qualified_name: [^]u8, qualified_name_len: u32, value: [^]u8, value_len: u32) -> Error ---
@@ -1378,6 +1382,57 @@ Element_attributeNameAt_alloc :: proc(element: $T_element, index: u32, allocator
 		cap = int(n)
 	}
 	return {}, .Truncated
+}
+
+// The namespace URI of the attribute at `index` (Not_Found: null, or past the end).
+Element_attributeNamespaceAt :: proc "contextless" (element: $T_element, index: u32, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_attributeNamespaceAt(u64(element), index, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Element_attributeNamespaceAt's result.
+Element_attributeNamespaceAt_len :: proc "contextless" (element: $T_element, index: u32) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	n := _Element_attributeNamespaceAt(u64(element), index, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Element_attributeNamespaceAt's result in a buffer allocated to fit.
+Element_attributeNamespaceAt_alloc :: proc(element: $T_element, index: u32, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Element_attributeNamespaceAt(u64(element), index, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The index of the attribute element.getAttribute(name) reads, -1 when none.
+Element_attributeIndex :: proc "contextless" (element: $T_element, name: string) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_attributeIndex(u64(element), raw_data(name), u32(len(name)))
+}
+
+// The index of the attribute element.getAttributeNS(namespace, localName) reads, -1 when none.
+Element_attributeIndexNS :: proc "contextless" (element: $T_element, namespace: Maybe(string) = nil, local_name: string) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	_namespace_p: [^]u8
+	_namespace_n := max(u32)
+	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
+	return _Element_attributeIndexNS(u64(element), _namespace_p, _namespace_n, raw_data(local_name), u32(len(local_name)))
+}
+
+// The value of an Attr object's attribute (setAttributeNode, attr.value): its namespace and qualified name as the Attr
+// has them, not validated again.
+Element_setAttributeOfAttr :: proc "contextless" (element: $T_element, namespace: Maybe(string) = nil, qualified_name: string, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	_namespace_p: [^]u8
+	_namespace_n := max(u32)
+	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
+	return _Element_setAttributeOfAttr(u64(element), _namespace_p, _namespace_n, raw_data(qualified_name), u32(len(qualified_name)), raw_data(value), u32(len(value)))
 }
 
 // element.getAttributeNS(namespace, localName) (Not_Found: null).

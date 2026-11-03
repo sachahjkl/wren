@@ -2,12 +2,12 @@
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /dom/nodes/Attr-prefix-xhtml.xhtml: OK
 	Attr.prefix absent: PASS
-	Attr.prefix present: FAIL
+	Attr.prefix present: PASS
 /dom/nodes/Attr-prefix.html: OK
 	Attr.prefix absent (HTML): PASS
 	Attr.prefix absent (MathML): PASS
 	Attr.prefix absent (SVG): PASS
-	Attr.prefix present (HTML): FAIL
+	Attr.prefix present (HTML): PASS
 	Attr.prefix present (MathML): PASS
 	Attr.prefix present (SVG): PASS
 /dom/nodes/CharacterData-appendChild.html: OK
@@ -1748,36 +1748,36 @@
 	HTML document.createAttribute("") should throw: PASS
 	HTML document.createAttribute("'"): PASS
 	HTML document.createAttribute("0"): PASS
-	HTML document.createAttribute("0:a"): FAIL
-	HTML document.createAttribute(":"): FAIL
-	HTML document.createAttribute(":a"): FAIL
+	HTML document.createAttribute("0:a"): PASS
+	HTML document.createAttribute(":"): PASS
+	HTML document.createAttribute(":a"): PASS
 	HTML document.createAttribute("TITLE"): PASS
 	HTML document.createAttribute("X"): PASS
 	HTML document.createAttribute("\\""): PASS
 	HTML document.createAttribute("\\\\"): PASS
-	HTML document.createAttribute("a:0"): FAIL
+	HTML document.createAttribute("a:0"): PASS
 	HTML document.createAttribute("invalid^Name"): PASS
 	HTML document.createAttribute("title"): PASS
 	HTML document.createAttribute("x"): PASS
-	HTML document.createAttribute("x:y:x"): FAIL
+	HTML document.createAttribute("x:y:x"): PASS
 	HTML document.createAttribute("~"): PASS
 	HTML document.createAttribute(null): PASS
 	HTML document.createAttribute(undefined): PASS
 	XML document.createAttribute("") should throw: PASS
 	XML document.createAttribute("'"): PASS
 	XML document.createAttribute("0"): PASS
-	XML document.createAttribute("0:a"): FAIL
-	XML document.createAttribute(":"): FAIL
-	XML document.createAttribute(":a"): FAIL
-	XML document.createAttribute("TITLE"): FAIL
-	XML document.createAttribute("X"): FAIL
+	XML document.createAttribute("0:a"): PASS
+	XML document.createAttribute(":"): PASS
+	XML document.createAttribute(":a"): PASS
+	XML document.createAttribute("TITLE"): PASS
+	XML document.createAttribute("X"): PASS
 	XML document.createAttribute("\\""): PASS
 	XML document.createAttribute("\\\\"): PASS
-	XML document.createAttribute("a:0"): FAIL
-	XML document.createAttribute("invalid^Name"): FAIL
+	XML document.createAttribute("a:0"): PASS
+	XML document.createAttribute("invalid^Name"): PASS
 	XML document.createAttribute("title"): PASS
 	XML document.createAttribute("x"): PASS
-	XML document.createAttribute("x:y:x"): FAIL
+	XML document.createAttribute("x:y:x"): PASS
 	XML document.createAttribute("~"): PASS
 	XML document.createAttribute(null): PASS
 	XML document.createAttribute(undefined): PASS
@@ -5284,18 +5284,18 @@
 	remove() should work if element does have a parent and siblings: PASS
 	remove() should work if element doesn't have a parent: PASS
 /dom/nodes/Element-removeAttribute.html: OK
-	removeAttribute should remove the first attribute, irrespective of namespace, when the first attribute is in a namespace: FAIL
-	removeAttribute should remove the first attribute, irrespective of namespace, when the first attribute is not in a namespace: FAIL
+	removeAttribute should remove the first attribute, irrespective of namespace, when the first attribute is in a namespace: PASS
+	removeAttribute should remove the first attribute, irrespective of namespace, when the first attribute is not in a namespace: PASS
 /dom/nodes/Element-removeAttributeNS.html: OK
-	removeAttributeNS should take a local name.: FAIL
+	removeAttributeNS should take a local name.: PASS
 /dom/nodes/Element-setAttribute-crbug-1138487.html: OK
 	Attributes first seen in mixed ASCII case should not be corrupted.: PASS
 /dom/nodes/Element-setAttribute.html: OK
-	setAttribute should change the first attribute, irrespective of namespace: FAIL
+	setAttribute should change the first attribute, irrespective of namespace: PASS
 	setAttribute should lowercase before setting: PASS
 /dom/nodes/Element-setAttributeNodeNS.html: OK
-	Replacing an attribute prefix preserves name lookup order with namespacedFirst=false: FAIL
-	Replacing an attribute prefix preserves name lookup order with namespacedFirst=true: FAIL
+	Replacing an attribute prefix preserves name lookup order with namespacedFirst=false: PASS
+	Replacing an attribute prefix preserves name lookup order with namespacedFirst=true: PASS
 	Replacing an attribute prefix preserves other attributes with the old qualified name: PASS
 /dom/nodes/Element-siblingElement-null-xhtml.xhtml: OK
 	Null Test: PASS
@@ -5980,7 +5980,7 @@
 	UNDEFINED Element.webkitMatchesSelector no parameter: PASS
 	UNDEFINED Element.webkitMatchesSelector(null): PASS
 	UNDEFINED Element.webkitMatchesSelector(undefined): PASS
-/dom/nodes/MutationObserver-attributes.html: TIMEOUT
+/dom/nodes/MutationObserver-attributes.html: OK
 	attributeFilter alone Element.id/Element.className: multiple filter update mutation: PASS
 	attributeOldValue alone Element.id: update mutation: PASS
 	attributes Element.attributes.value: same id mutation: PASS
@@ -6010,13 +6010,13 @@
 	attributes Element.removeAttribute: removal mutation: PASS
 	attributes Element.removeAttribute: removal no mutation: PASS
 	attributes Element.removeAttributeNS: prefixed attribute removal no mutation: PASS
-	attributes Element.removeAttributeNS: removal mutation: TIMEOUT
+	attributes Element.removeAttributeNS: removal mutation: PASS
 	attributes Element.removeAttributeNS: removal no mutation: PASS
 	attributes Element.setAttribute: classname mutation: PASS
 	attributes Element.setAttribute: id mutation: PASS
 	attributes Element.setAttribute: same class mutation: PASS
-	attributes Element.setAttributeNS: creation mutation: FAIL
-	attributes Element.setAttributeNS: prefixed attribute creation mutation: FAIL
+	attributes Element.setAttributeNS: creation mutation: PASS
+	attributes Element.setAttributeNS: prefixed attribute creation mutation: PASS
 	attributes Element.unknown: IDL attribute no mutation: PASS
 	attributes HTMLInputElement.type: type update mutation: PASS
 	attributes/attributeFilter Element.id/Element.className: multiple filter update mutation: PASS
@@ -6420,13 +6420,13 @@
 	isEqualNode should return true if elements have same namespace, prefix, and local name: PASS
 	isEqualNode should return true when only the internal subsets of DocumentTypes differ.: FAIL
 	isEqualNode should return true when the attributes are in a different order: PASS
-	isEqualNode should return true when the attributes have different prefixes: FAIL
+	isEqualNode should return true when the attributes have different prefixes: PASS
 /dom/nodes/Node-isEqualNode.html: OK
 	comments should be compared on data: PASS
 	doctypes should be compared on name, public ID, and system ID: PASS
 	document fragments should not be compared based on properties: PASS
 	documents should not be compared based on properties: PASS
-	elements should be compared on attribute namespace, local name, and value: FAIL
+	elements should be compared on attribute namespace, local name, and value: PASS
 	elements should be compared on namespace, namespace prefix, local name, and number of attributes: PASS
 	node equality testing should test descendant equality too: PASS
 	processing instructions should be compared on target and data: PASS
@@ -11079,40 +11079,40 @@
 	an attribute set by setAttribute should be accessible as a field on the `attributes` field of an Element: PASS
 	an attribute with a null namespace should be accessible as a field on the `attributes` field of an Element: PASS
 	an attribute with a set namespace should be accessible as a field on the `attributes` field of an Element: PASS
-	setNamedItem and removeNamedItem on `attributes` should add and remove fields from `attributes`: FAIL
-	setNamedItem and removeNamedItem on `attributes` should not interfere with existing method names: FAIL
+	setNamedItem and removeNamedItem on `attributes` should add and remove fields from `attributes`: PASS
+	setNamedItem and removeNamedItem on `attributes` should not interfere with existing method names: PASS
 	setting an attribute should not overwrite the length property of an `NamedNodeMap` object: PASS
 	setting an attribute should not overwrite the methods defined by prototype ancestors of an `NamedNodeMap` object: PASS
 	setting an attribute should not overwrite the methods of an `NamedNodeMap` object: PASS
 /dom/nodes/attributes.html: OK
 	A namespace is required to use a prefix.: PASS
-	Attribute loses its owner when removed: FAIL
+	Attribute loses its owner when removed: PASS
 	Attribute values should not be parsed.: PASS
-	Attribute with prefix in local name: FAIL
+	Attribute with prefix in local name: PASS
 	Attributes should work in document fragments.: PASS
 	Basic functionality of getAttributeNode/getAttributeNodeNS: PASS
-	Basic functionality of removeAttributeNode: FAIL
-	Basic functionality of setAttributeNode: FAIL
-	Basic functionality of setAttributeNodeNS: FAIL
+	Basic functionality of removeAttributeNode: PASS
+	Basic functionality of setAttributeNode: PASS
+	Basic functionality of setAttributeNodeNS: PASS
 	Basic functionality should be intact.: PASS
 	Basic functionality should be intact. (toggleAttribute): PASS
 	Entities in attributes should have been expanded while parsing.: PASS
-	First set attribute is returned by getAttribute: FAIL
-	First set attribute is returned with mapped attribute set first: FAIL
-	First set attribute is returned with mapped attribute set later: FAIL
+	First set attribute is returned by getAttribute: PASS
+	First set attribute is returned with mapped attribute set first: PASS
+	First set attribute is returned with mapped attribute set later: PASS
 	If attr’s element is neither null nor element, throw an InUseAttributeError.: PASS
 	Non-HTML element with upper-case attribute: PASS
-	Only lowercase attributes are returned on HTML elements (mixed case attribute): FAIL
-	Only lowercase attributes are returned on HTML elements (upper case attribute): FAIL
+	Only lowercase attributes are returned on HTML elements (mixed case attribute): PASS
+	Only lowercase attributes are returned on HTML elements (upper case attribute): PASS
 	Own property correctness with basic attributes: PASS
-	Own property correctness with namespaced attribute before same-name non-namespaced one: FAIL
-	Own property correctness with non-namespaced attribute before same-name namespaced one: FAIL
-	Own property correctness with two namespaced attributes with the same name-with-prefix: FAIL
+	Own property correctness with namespaced attribute before same-name non-namespaced one: PASS
+	Own property correctness with non-namespaced attribute before same-name namespaced one: PASS
+	Own property correctness with two namespaced attributes with the same name-with-prefix: PASS
 	Own property names should include all qualified names for a non-HTML element in an HTML document: PASS
-	Own property names should include all qualified names for an HTML element in a non-HTML document: FAIL
+	Own property names should include all qualified names for an HTML element in a non-HTML document: PASS
 	Own property names should only include all-lowercase qualified names for an HTML element in an HTML document: PASS
-	Replacing an attr by itself: FAIL
-	Setting the same attribute with another prefix should not change the prefix: FAIL
+	Replacing an attr by itself: PASS
+	Setting the same attribute with another prefix should not change the prefix: PASS
 	Specified attributes should be accessible.: PASS
 	Style attributes are not normalized: PASS
 	The XMLNS namespace should require xmlns as prefix or qualified name: PASS
@@ -11125,31 +11125,31 @@
 	When qualifiedName does not match the Name production, an INVALID_CHARACTER_ERR exception is to be thrown. (setAttributeNS): PASS
 	When qualifiedName does not match the Name production, an INVALID_CHARACTER_ERR exception is to be thrown. (toggleAttribute): PASS
 	When qualifiedName does not match the QName production, an INVALID_CHARACTER_ERR exception is to be thrown.: PASS
-	XML-namespaced attributes don't need an xml prefix: FAIL
-	getAttributeNames tests: FAIL
+	XML-namespaced attributes don't need an xml prefix: PASS
+	getAttributeNames tests: PASS
 	null and the empty string should result in a null namespace.: PASS
 	setAttribute should lowercase its name argument (mixed case attribute): PASS
 	setAttribute should lowercase its name argument (upper case attribute): PASS
 	setAttribute should not change the order of previously set attributes.: PASS
 	setAttribute should not throw even if a load is not allowed: PASS
 	setAttribute should not throw even when qualifiedName starts with 'xmlns': PASS
-	setAttribute should set the attribute with the given qualified name: FAIL
-	setAttribute should set the first attribute with the given name: FAIL
+	setAttribute should set the attribute with the given qualified name: PASS
+	setAttribute should set the first attribute with the given name: PASS
 	setAttributeNode called with an Attr that has the same name as an existing one should not change attribute order: PASS
-	setAttributeNode doesn't have case-insensitivity even with an HTMLElement 1: FAIL
-	setAttributeNode doesn't have case-insensitivity even with an HTMLElement 2: FAIL
-	setAttributeNode doesn't have case-insensitivity even with an HTMLElement 3: FAIL
+	setAttributeNode doesn't have case-insensitivity even with an HTMLElement 1: PASS
+	setAttributeNode doesn't have case-insensitivity even with an HTMLElement 2: PASS
+	setAttributeNode doesn't have case-insensitivity even with an HTMLElement 3: PASS
 	setAttributeNode on bound attribute should throw InUseAttributeError: PASS
-	setAttributeNode should distinguish attributes with same local name and different namespaces: FAIL
+	setAttributeNode should distinguish attributes with same local name and different namespaces: PASS
 	setAttributeNode, if it fires mutation events, should fire one with the new node when resetting an existing attribute: PASS
-	setAttributeNode, if it fires mutation events, should fire one with the new node when resetting an existing attribute (outer shell): FAIL
+	setAttributeNode, if it fires mutation events, should fire one with the new node when resetting an existing attribute (outer shell): PASS
 	toggleAttribute should lowercase its name argument (mixed case attribute): PASS
 	toggleAttribute should lowercase its name argument (upper case attribute): PASS
 	toggleAttribute should not change the order of previously set attributes.: PASS
 	toggleAttribute should not throw even when qualifiedName starts with 'xmlns': PASS
-	toggleAttribute should set the attribute with the given qualified name: FAIL
-	toggleAttribute should set the first attribute with the given name: FAIL
-	xmlns should be allowed as local name: FAIL
+	toggleAttribute should set the attribute with the given qualified name: PASS
+	toggleAttribute should set the first attribute with the given name: PASS
+	xmlns should be allowed as local name: PASS
 	xmlns should be allowed as prefix in the XMLNS namespace: PASS
 	xmlns should be allowed as qualified name in the XMLNS namespace: PASS
 /dom/nodes/case.html: OK
@@ -11842,29 +11842,29 @@
 	Valid and invalid characters in setAttributeNS and createAttributeNS.: FAIL
 /dom/nodes/namespaced-attribute-mutations.html: OK
 	A namespaced multiple attribute does not reset a select: FAIL
-	A namespaced open attribute does not fire a toggle event: FAIL
+	A namespaced open attribute does not fire a toggle event: PASS
 	A namespaced selected attribute does not change an option's selectedness: FAIL
 	A namespaced size attribute does not reset a select: FAIL
-	A namespaced slot attribute does not assign a slot: FAIL
-	A namespaced src attribute does not navigate an iframe: FAIL
+	A namespaced slot attribute does not assign a slot: PASS
+	A namespaced src attribute does not navigate an iframe: PASS
 	A namespaced src attribute does not prepare a script: PASS
-	A namespaced type attribute does not change an input's state: FAIL
-	append a namespaced event handler attribute preserves an HTML event handler: FAIL
-	append a namespaced event handler attribute preserves an SVG event handler: FAIL
-	append a namespaced style attribute preserves HTML inline style: FAIL
-	append a namespaced style attribute preserves SVG inline style: FAIL
-	change a namespaced event handler attribute preserves an HTML event handler: FAIL
-	change a namespaced event handler attribute preserves an SVG event handler: FAIL
-	change a namespaced style attribute preserves HTML inline style: FAIL
-	change a namespaced style attribute preserves SVG inline style: FAIL
+	A namespaced type attribute does not change an input's state: PASS
+	append a namespaced event handler attribute preserves an HTML event handler: PASS
+	append a namespaced event handler attribute preserves an SVG event handler: PASS
+	append a namespaced style attribute preserves HTML inline style: PASS
+	append a namespaced style attribute preserves SVG inline style: PASS
+	change a namespaced event handler attribute preserves an HTML event handler: PASS
+	change a namespaced event handler attribute preserves an SVG event handler: PASS
+	change a namespaced style attribute preserves HTML inline style: PASS
+	change a namespaced style attribute preserves SVG inline style: PASS
 	remove a namespaced event handler attribute preserves an HTML event handler: PASS
 	remove a namespaced event handler attribute preserves an SVG event handler: PASS
 	remove a namespaced style attribute preserves HTML inline style: PASS
 	remove a namespaced style attribute preserves SVG inline style: PASS
-	replace a namespaced event handler attribute preserves an HTML event handler: FAIL
-	replace a namespaced event handler attribute preserves an SVG event handler: FAIL
-	replace a namespaced style attribute preserves HTML inline style: FAIL
-	replace a namespaced style attribute preserves SVG inline style: FAIL
+	replace a namespaced event handler attribute preserves an HTML event handler: PASS
+	replace a namespaced event handler attribute preserves an SVG event handler: PASS
+	replace a namespaced style attribute preserves HTML inline style: PASS
+	replace a namespaced style attribute preserves SVG inline style: PASS
 /dom/nodes/node-creation-realm.html: OK
 	DOMImplementation.createDocument() creates the document in the target realm: PASS
 	DOMImplementation.createDocumentType() creates a node in the associated document's realm: PASS

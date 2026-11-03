@@ -94,6 +94,13 @@ Element_namespaceURI           :: #type proc(element: Element) -> (string, abi.A
 Element_attributeNames         :: #type proc(element: Element) -> abi.Bytes   // NUL-separated
 Element_attributeCount         :: #type proc(element: Element) -> u32
 Element_attributeNameAt        :: #type proc(element: Element, index: u32) -> (string, abi.Api_Error)
+Element_attributeNamespaceAt   :: #type proc(element: Element, index: u32) -> (string, abi.Api_Error)   // Not_Found: null
+// the index of the attribute getAttribute / getAttributeNS read, -1 when none
+Element_attributeIndex         :: #type proc(element: Element, name: string) -> i32
+Element_attributeIndexNS       :: #type proc(element: Element, namespace: Maybe(string), local_name: string) -> i32
+Element_getAttributeNS         :: #type proc(element: Element, namespace: Maybe(string), local_name: string) -> (string, abi.Api_Error)   // Not_Found: absent
+Element_setAttributeOfAttr     :: #type proc(element: Element, namespace: Maybe(string), qualified_name: string, value: string) -> abi.Api_Error
+Element_removeAttributeNS      :: #type proc(element: Element, namespace: Maybe(string), local_name: string)
 Element_getAttribute           :: #type proc(element: Element, name: string) -> (string, abi.Api_Error)   // Not_Found: absent
 Element_hasAttribute           :: #type proc(element: Element, name: string) -> bool
 Element_setAttribute           :: #type proc(element: Element, name: string, value: string) -> abi.Api_Error

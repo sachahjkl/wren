@@ -43,6 +43,7 @@ Mo_Record :: struct {
 	added:    [dynamic]base.Handle,
 	removed:  [dynamic]base.Handle,
 	name:     string,          // owned
+	ns:       dom.Attr_Ns,     // the attribute's namespace
 	old:      string,          // owned
 	has_old:  bool,
 	batch:    u32,
@@ -209,8 +210,8 @@ put_u64 :: proc(b: ^[dynamic]u8, v: u64) { for k in 0 ..< 8 { append(b, u8(v >> 
 put_str :: proc(b: ^[dynamic]u8, s: string) { put_u32(b, u32(len(s))); append(b, ..transmute([]u8)s) }
 
 // records_pack: per record, kind u8, target u64, previousSibling u64, nextSibling u64, added count u32, removed count
-// u32, the added then the removed handles (u64 each), attributeName (u32 length + UTF-8), oldValue present u8, oldValue
-// (u32 length + UTF-8). Little endian.
+// u32, the added then the removed handles (u64 each), attributeName (u32 length + UTF-8), attributeNamespace (u32 length +
+// UTF-8, empty for null), oldValue present u8, oldValue (u32 length + UTF-8). Little endian.
 MutationObserver_takeRecords :: proc(c: ^Call, observer: u64) -> []u8 {
 	mo := observer_of(c, observer)
 	if mo == nil { return nil }
@@ -222,6 +223,7 @@ MutationObserver_takeRecords :: proc(c: ^Call, observer: u64) -> []u8 {
 		for h in r.added { put_u64(&b, u64(h)) }
 		for h in r.removed { put_u64(&b, u64(h)) }
 		put_str(&b, r.name)
+		put_str(&b, dom.attr_ns_uri(c.page.doc, r.ns))
 		put_u8(&b, r.has_old ? 1 : 0)
 		put_str(&b, r.old)
 	}
@@ -310,6 +312,8 @@ registration_wants :: proc(r: ^Mo_Registration, kind: u8, e: ^dom.Journal_Entry)
 	case 0:
 		if r.options & MO_ATTRIBUTES == 0 { return false }
 		if r.options & MO_ATTRIBUTE_FILTER != 0 {
+			// (DOM: a filter names attributes of no namespace)
+			if e.ns != dom.ATTR_NS_NONE { return false }
 			for f in r.filter { if f == e.name { return true } }
 			return false
 		}
@@ -357,7 +361,7 @@ mo_record :: proc(p: ^Page, mo: ^Mutation_Observer, kind: u8, target: base.Handl
 		if e.kind == .Insert { append(&rec.added, e.node) } else { append(&rec.removed, e.node) }
 		dom.pin(d, e.node)
 	} else {
-		if kind == 0 { rec.name = strings.clone(e.name) }
+		if kind == 0 { rec.name = strings.clone(e.name); rec.ns = e.ns }
 		if want_old && e.had_old { rec.old = strings.clone(e.old); rec.has_old = true }
 	}
 	append(&mo.queue, rec)

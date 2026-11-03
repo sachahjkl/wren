@@ -158,13 +158,13 @@ clone_one :: proc(d: ^Document, h: base.Handle, work: ^[dynamic]Clone_Work, root
 	c := Node{kind = n.kind, ns = n.ns, xml = n.xml, name = n.name_static ? n.name : heap_str(n.name), name_static = n.name_static, text = heap_str(n.text), doc = n.doc}
 	if len(n.attrs) > 0 {
 		c.attrs = make([dynamic]Attr, 0, len(n.attrs))
-		for a in n.attrs { append(&c.attrs, Attr{heap_str(a.name), heap_str(a.value)}) }
+		for a in n.attrs { append(&c.attrs, Attr{heap_str(a.name), heap_str(a.value), a.ns}) }
 	}
 	nh, _ := base.pool_insert_tagged(&d.nodes, d.tag, c)
 	if c.kind == .Element {
 		if x, ok := d.ns_extra[h]; ok { d.ns_extra[nh] = Ns_Extra{uri = heap_str(x.uri), prefix = heap_str(x.prefix)} }
-		if d.ids.on { for a in c.attrs { if a.name == "id" { ids_add(d, nh, a.value); break } } }
-		for a in c.attrs { if a.name == TIMED_ATTRIBUTE { timed_add(d, nh); break } }
+		if d.ids.on { for a in c.attrs { if a.name == "id" && a.ns == ATTR_NS_NONE { ids_add(d, nh, a.value); break } } }
+		for a in c.attrs { if a.name == TIMED_ATTRIBUTE && a.ns == ATTR_NS_NONE { timed_add(d, nh); break } }
 		if c.name == META_NAME { metas_add(d, nh) }
 		// HTML's cloning steps of <template>: its contents are copied too
 		if content, ok := d.templates[h]; ok && get(d, content) != nil && get(d, content).first_child != base.NIL_HANDLE {
@@ -197,7 +197,7 @@ copy_across :: proc(src, dst: ^Document, h: base.Handle) -> base.Handle {
 	case .Element:
 		extra := src.ns_extra[h]
 		c = create_element_ns(dst, n.name, n.ns, extra.uri, extra.prefix)
-		for a in n.attrs { set_attribute(dst, c, a.name, a.value) }
+		for a in n.attrs { set_attribute_ns(dst, c, attr_ns_of(dst, attr_ns_uri(src, a.ns)), a.name, a.value) }
 		if content, ok := src.templates[h]; ok && get(src, content) != nil {
 			dup := create_fragment(dst)
 			get(dst, dup).held = true
@@ -277,7 +277,7 @@ is_equal_node :: proc(d: ^Document, a, b: base.Handle) -> bool {
 		}
 		for ax in x.attrs {
 			found := false
-			for ay in y.attrs { if ay.name == ax.name { found = ay.value == ax.value; break } }
+			for ay in y.attrs { if ay.ns == ax.ns && attr_local(ay) == attr_local(ax) { found = ay.value == ax.value; break } }
 			if !found { return false }
 		}
 		cx, cy := x.first_child, y.first_child

@@ -319,8 +319,8 @@ locate_namespace :: proc(d: ^dom.Document, h: base.Handle, prefix: string) -> (s
 	for el := lookup_element_of(d, h); el != base.NIL_HANDLE; {
 		uri := dom.ns_uri(d, el)
 		if uri != "" && dom.ns_prefix(d, el) == prefix { return uri, true }
-		attr := prefix == "" ? "xmlns" : strings.concatenate({"xmlns:", prefix}, context.temp_allocator)
-		if v, ok := dom.get_attribute(d, el, attr); ok { return v, v != "" }
+		// its xmlns="" or xmlns:prefix="" attribute (of the XMLNS namespace)
+		if v, ok := dom.get_attribute_ns(d, el, dom.ATTR_NS_XMLNS, prefix == "" ? "xmlns" : prefix); ok { return v, v != "" }
 		n := dom.get(d, el)
 		el = jd_is_element(d, n.parent) ? n.parent : base.NIL_HANDLE
 	}
@@ -334,7 +334,7 @@ Node_lookupPrefix :: proc(c: ^Call, node: Api_Node, namespace: Maybe(string)) ->
 	for el := lookup_element_of(d, H(node.handle)); el != base.NIL_HANDLE; {
 		if dom.ns_uri(d, el) == ns && dom.ns_prefix(d, el) != "" { return dom.ns_prefix(d, el), .None }
 		for a in dom.get(d, el).attrs {
-			if strings.has_prefix(a.name, "xmlns:") && a.value == ns { return a.name[6:], .None }
+			if a.ns == dom.ATTR_NS_XMLNS && dom.attr_prefix(a) == "xmlns" && a.value == ns { return dom.attr_local(a), .None }
 		}
 		n := dom.get(d, el)
 		el = jd_is_element(d, n.parent) ? n.parent : base.NIL_HANDLE

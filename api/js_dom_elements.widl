@@ -22,6 +22,15 @@ partial module dom {
   u32 Element_attributeCount(Element element);
   /// The name of the attribute at `index` (Not_Found past the end).
   string Element_attributeNameAt(Element element, u32 index) raises;
+  /// The namespace URI of the attribute at `index` (Not_Found: null, or past the end).
+  string Element_attributeNamespaceAt(Element element, u32 index) raises;
+  /// The index of the attribute element.getAttribute(name) reads, -1 when none.
+  i32 Element_attributeIndex(Element element, string name);
+  /// The index of the attribute element.getAttributeNS(namespace, localName) reads, -1 when none.
+  i32 Element_attributeIndexNS(Element element, optional string namespace, string local_name);
+  /// The value of an Attr object's attribute (setAttributeNode, attr.value): its namespace and qualified name as the Attr
+  /// has them, not validated again.
+  void Element_setAttributeOfAttr(Element element, optional string namespace, string qualified_name, string value) raises;
   /// element.getAttributeNS(namespace, localName) (Not_Found: null).
   string Element_getAttributeNS(Element element, optional string namespace, string local_name) raises;
   /// element.setAttribute(name, value): Invalid_Character for a name that is not a valid attribute name.

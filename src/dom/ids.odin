@@ -68,7 +68,7 @@ ids_changed :: proc(d: ^Document, h: base.Handle, old: string, had_old: bool, va
 @(private)
 ids_forget_node :: proc(d: ^Document, h: base.Handle, n: ^Node) {
 	if !d.ids.on { return }
-	for a in n.attrs { if a.name == "id" { ids_remove(d, h, a.value); return } }
+	for a in n.attrs { if a.name == "id" && a.ns == ATTR_NS_NONE { ids_remove(d, h, a.value); return } }
 }
 
 @(private = "file")
@@ -78,7 +78,7 @@ ids_build :: proc(d: ^Document) {
 	it: u32
 	for h, n in base.pool_next(&d.nodes, &it) {
 		if n.kind != .Element { continue }
-		for a in n.attrs { if a.name == "id" { ids_add(d, h, a.value); break } }
+		for a in n.attrs { if a.name == "id" && a.ns == ATTR_NS_NONE { ids_add(d, h, a.value); break } }
 	}
 }
 
@@ -124,7 +124,7 @@ find_by_id_in :: proc(d: ^Document, root: base.Handle, id: string) -> base.Handl
 	for cur := next_in_tree(d, root, root); cur != base.NIL_HANDLE; cur = next_in_tree(d, cur, root) {
 		n := get(d, cur)
 		if n.kind != .Element { continue }
-		for a in n.attrs { if a.name == "id" { if a.value == id { return cur }; break } }
+		for a in n.attrs { if a.name == "id" && a.ns == ATTR_NS_NONE { if a.value == id { return cur }; break } }
 	}
 	return base.NIL_HANDLE
 }

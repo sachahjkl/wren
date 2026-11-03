@@ -66,7 +66,7 @@ xml_build :: proc(d: ^dom.Document, f: base.Handle, src: string, limit: int) -> 
 		h := xml_create_element(b.d, uri, prefix, local)
 		for a in attrs {
 			name := a.prefix != "" ? strings.concatenate({a.prefix, ":", a.local}, context.temp_allocator) : a.local
-			dom.set_attribute(b.d, h, name, a.value)
+			dom.set_attribute_ns(b.d, h, dom.attr_ns_of(b.d, a.uri), name, a.value)
 		}
 		if build_add(b, h) { append(&b.stack, h) } else { append(&b.stack, base.NIL_HANDLE) }
 	}

@@ -382,3 +382,46 @@ element_names_static_or_copied :: proc(t: ^testing.T) {
 	append_child(d, d.root, copy)
 	append_child(d, d.root, long)
 }
+
+// An attribute of a namespace is not the browser's: one named style beside the plain style leaves the plain one what the
+// browser reads and the hooks hear of, an id of a namespace is no id; setAttribute and getAttribute take the first of a
+// qualified name whatever its namespace; the namespace URI is kept once per document.
+@(test)
+namespaced_attributes_beside_plain_ones :: proc(t: ^testing.T) {
+	d := document_create()
+	defer document_destroy(d)
+	heard: [dynamic]string
+	defer delete(heard)
+	hooks_set(d, Hooks{user = &heard, attribute = proc(user: rawptr, d: ^Document, el: base.Handle, name: string) { append((^[dynamic]string)(user), name) }})
+	el := create_element(d, "div")
+	append_child(d, d.root, el)
+	ns := attr_ns_of(d, "https://example.com/attributes")
+	testing.expect_value(t, attr_ns_of(d, "https://example.com/attributes"), ns)
+	testing.expect_value(t, attr_ns_of(d, NS_XLINK), ATTR_NS_XLINK)
+
+	set_attribute_ns(d, el, ns, "style", "color: red")
+	set_attribute(d, el, "id", "plain")
+	set_attribute_ns(d, el, ns, "p:id", "namespaced")
+	set_attribute_ns(d, el, ATTR_NS_NONE, "style", "color: green")
+	set_attribute_ns(d, el, ns, "style", "color: blue")
+	testing.expect_value(t, len(get(d, el).attrs), 4)
+	v, _ := get_attribute(d, el, "style")
+	testing.expect_value(t, v, "color: green")
+	v, _ = get_attribute_ns(d, el, ns, "style")
+	testing.expect_value(t, v, "color: blue")
+	v, _ = get_attribute_exact(d, el, "style")   // getAttribute: the first of that name
+	testing.expect_value(t, v, "color: blue")
+	testing.expect_value(t, find_by_id(d, "plain"), el)
+	testing.expect_value(t, find_by_id(d, "namespaced"), base.NIL_HANDLE)
+	testing.expect_value(t, len(heard), 2)   // id and the plain style only
+	testing.expect_value(t, heard[0], "id")
+	testing.expect_value(t, heard[1], "style")
+
+	remove_attribute_ns(d, el, ns, "style")
+	v, _ = get_attribute_exact(d, el, "style")
+	testing.expect_value(t, v, "color: green")
+	testing.expect_value(t, len(heard), 2)
+	testing.expect_value(t, attribute_index(get(d, el), "p:id"), 1)
+	testing.expect_value(t, attr_local(get(d, el).attrs[1]), "id")
+	testing.expect_value(t, attr_prefix(get(d, el).attrs[1]), "p")
+}

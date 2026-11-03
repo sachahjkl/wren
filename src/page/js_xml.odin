@@ -14,17 +14,6 @@ import "wb:dom"
 @(private = "file")
 VOID_ELEMENTS :: [?]string{"area", "base", "basefont", "bgsound", "br", "col", "embed", "frame", "hr", "img", "input", "keygen", "link", "meta", "param", "source", "track", "wbr"}
 
-// Known prefixes of attributes the HTML parser keeps with their prefix (SVG's xlink:href, xml:lang...).
-@(private = "file")
-prefix_uri :: proc(prefix: string) -> string {
-	switch prefix {
-	case "xlink": return dom.NS_XLINK
-	case "xml": return dom.NS_XML
-	case "xmlns": return dom.NS_XMLNS
-	}
-	return ""
-}
-
 // The XML serialization of `root` (a node of the page's document or of one of its inert documents).
 xml_serialize :: proc(p: ^Page, root: base.Handle, limit: int) -> (out: string, ok: bool) {
 	d := p.doc
@@ -40,7 +29,7 @@ xml_serialize :: proc(p: ^Page, root: base.Handle, limit: int) -> (out: string, 
 	stack := make([dynamic]Item, 0, 64, context.temp_allocator)
 	declared :: proc(prefixes: [][2]string, prefix: string) -> string {
 		for i := len(prefixes) - 1; i >= 0; i -= 1 { if prefixes[i][0] == prefix { return prefixes[i][1] } }
-		return prefix_uri(prefix) if prefix == "xml" else ""
+		return dom.NS_XML if prefix == "xml" else ""
 	}
 	start := root
 	if rn := dom.get(d, root); rn != nil && (rn.kind == .Document || rn.kind == .Fragment) {
@@ -137,12 +126,11 @@ xml_serialize :: proc(p: ^Page, root: base.Handle, limit: int) -> (out: string, 
 			}
 			child_ns = uri
 		}
-		// attributes: a prefix not in scope is declared first (the ones the HTML parser keeps: xlink, xml)
+		// attributes: a prefix not in scope is declared first, with its attribute's namespace
 		for a in n.attrs {
-			if colon := strings.index_byte(a.name, ':'); colon > 0 {
-				ap := a.name[:colon]
+			if ap := dom.attr_prefix(a); ap != "" {
 				if ap != "xmlns" && ap != "xml" && declared(prefixes[:], ap) == "" {
-					if u := prefix_uri(ap); u != "" {
+					if u := dom.attr_ns_uri(d, a.ns); u != "" {
 						already := false
 						for x in n.attrs { if x.name == strings.concatenate({"xmlns:", ap}, context.temp_allocator) { already = true } }
 						if !already {
