@@ -27,6 +27,11 @@ The tables are **generated** from the authoritative Unicode Character Database, 
   decomposition / combining-class / composition tables for normalization.
 - `src/engine/unicode/tables_generated.odin` is committed so a normal build needs no network. Re-run the script
   to move to another Unicode release; the pinned version shows up as the `unicode.version` preference.
+- `wrentool gen idna` reads the same pinned files (and `DerivedJoiningType.txt`) for the URL parser:
+  `src/shim/wb_idna_tables.h`, the combining marks, viramas and joining types of the rules of UTS #46 that Lexbor's
+  IDNA leaves out (a label beginning with a combining mark, CheckJoiners), which `src/shim/wb_idna.c` applies. Lexbor's
+  `url.c` calls it in place of `lxb_unicode_idna_to_ascii` (`LEXBOR_RENAMES`, `src/tools/wrentool/deps/lexbor.odin`);
+  a domain all of ASCII is only lower-cased there, as the URL Standard's domain to ASCII asks.
 
 ## Char_Range and set operations
 
