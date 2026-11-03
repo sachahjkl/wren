@@ -1,6 +1,7 @@
 package page
 
 import "core:testing"
+import "wb:csp"
 import "wb:url"
 
 @(private = "file")
@@ -24,6 +25,25 @@ sandbox_tokens :: proc(t: ^testing.T) {
 	testing.expect_value(t, sandbox_combine({}, child), child)
 	testing.expect_value(t, sandbox_combine(parent, {}), parent)
 	testing.expect(t, sandbox_allows({}, .Forms) && !sandbox_allows(child, .Forms))
+}
+
+// CSP Embedded Enforcement (frames_csp.odin): what a csp attribute may require, and when a response's own policies take it.
+@(test)
+required_csp_policies :: proc(t: ^testing.T) {
+	test_pages(t)
+	testing.expect(t, required_csp_valid(" script-src 'self'; sandbox allow-scripts "), "a policy of printable ASCII is a required one")
+	testing.expect(t, !required_csp_valid(""), "nothing is none")
+	testing.expect(t, !required_csp_valid("script-src 'self', img-src 'none'"), "a list of policies is not one")
+	testing.expect(t, !required_csp_valid("script-src 'self'; report-uri /r"), "a required policy reports nothing")
+	testing.expect(t, !required_csp_valid("script-src 'café'"), "only printable ASCII")
+	own: csp.Policy_List
+	defer csp.list_destroy(&own)
+	csp.parse_header(&own, "img-src 'none'", .Report_Only)
+	testing.expect(t, !policies_subsume(&own, "img-src 'none'"), "a report-only policy enforces nothing")
+	csp.parse_header(&own, "default-src 'self'; script-src https://a.example 'self'", .Enforce)
+	testing.expect(t, policies_subsume(&own, "script-src 'self' https://a.example"), "the same sources in another order")
+	testing.expect(t, !policies_subsume(&own, "script-src 'self'"), "fewer sources are a stricter policy than the response's")
+	testing.expect(t, !policies_subsume(&own, "script-src 'self' https://a.example; sandbox"), "a directive the response does not have")
 }
 
 @(test)

@@ -637,7 +637,7 @@ page_open_window :: proc(user: rawptr, p: ^page.Page, req: page.Open_Request) ->
 	t.page = page.auxiliary_document(t.top, req, t.nav, console_sink, t)
 	attach_page(app, t, t.page)
 	page.render_begin(t.page)
-	if req.url == "about:blank" {
+	if page.open_is_blank(req.url) {
 		delete(t.url)
 		t.url = strings.clone(req.url)
 		address_set(app, t, t.url)

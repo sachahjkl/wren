@@ -42,7 +42,7 @@ Open_Features :: struct {
 // A new window asked of the embedder (Embedder.open).
 Open_Request :: struct {
 	source:     ^Page,    // the document that asked (window.open, a link)
-	url:        string,   // absolute; about:blank: the initial document stays
+	url:        string,   // absolute; about:blank (a fragment or not): the initial document stays (open_is_blank)
 	noopener:   bool,     // its initial document has an opaque origin and nothing of the source
 	noreferrer: bool,     // its navigation sends no Referer
 }
@@ -70,6 +70,11 @@ navigable_attach :: proc(n: ^Navigable, p: ^Page) {
 	if f.owns_nav && f.nav != nil { navigable_free(f.nav) }
 	f.nav, f.owns_nav = n, false
 	n.page = p
+	// a window a sandboxed document opened: each of its documents is sandboxed as that one was (HTML "popup sandboxing flag set")
+	if n.parent == nil && n.sandbox.active {
+		f.sandbox = sandbox_combine(f.sandbox, n.sandbox)
+		if .Same_Origin not_in f.sandbox.allow { env_set_origin(&p.env, url.new_opaque_origin()); p.origin_owner = 0 }
+	}
 }
 
 // The initial about:blank document of a new window `n` (HTML "create a new browsing context and document"), in the embedder's
@@ -77,7 +82,8 @@ navigable_attach :: proc(n: ^Navigable, p: ^Page) {
 // document's opener policy; under noopener an opaque origin and nothing of the source. Connected to `n`, complete.
 auxiliary_document :: proc(n: ^Navigable, req: Open_Request, scope: ^base.Scope, console: Console_Proc, console_user: rawptr) -> ^Page {
 	src := req.source
-	c := page_create(src.loop, src.loader, src.settings, scope, "about:blank", console, console_user)
+	// (about:blank with a fragment is this document too, at that URL: no navigation follows, open_is_blank)
+	c := page_create(src.loop, src.loader, src.settings, scope, open_is_blank(req.url) ? req.url : "about:blank", console, console_user)
 	if req.noopener {
 		env_set_origin(&c.env, url.new_opaque_origin())
 	} else {
@@ -94,6 +100,8 @@ auxiliary_document :: proc(n: ^Navigable, req: Open_Request, scope: ^base.Scope,
 	url.origin_destroy(&n.coop_origin)
 	n.coop_origin = url.origin_clone(c.env.origin)
 	n.initial = true
+	// what sandboxes the source sandboxes the window, unless it lets popups escape (HTML "create a new auxiliary browsing context")
+	if sb := page_sandbox(src); sb.active && .Popups_To_Escape_Sandbox not_in sb.allow { n.sandbox = sb }
 	navigable_attach(n, c)
 	f := frames_of(c)
 	if !req.noopener { f.fallback_base = strings.clone(document_base_url(src)) }
@@ -101,11 +109,18 @@ auxiliary_document :: proc(n: ^Navigable, req: Open_Request, scope: ^base.Scope,
 	return c
 }
 
+// Whether a new window's URL is about:blank, with a fragment or not: its initial document is all there is (HTML "the rules for
+// choosing a navigable" do not navigate it), so the embedder starts no navigation.
+open_is_blank :: proc(href: string) -> bool {
+	u, ok := url.parse(href, nil, context.temp_allocator)
+	return ok && url.without_fragment(u) == "about:blank"
+}
+
 // Whether `p` is the initial about:blank of the top-level navigable `n`: a navigation from it may keep its Window
 // (navigable_keep_window), so its embedder keeps it, reachable by the opener's scripts, until the response.
 navigable_blank_window :: proc(n: ^Navigable, p: ^Page) -> bool {
 	if n == nil || p == nil || n.parent != nil || !n.initial || n.page != p || p.closed || p.close_pending { return false }
-	return p.env.location.href == "about:blank"
+	return open_is_blank(p.env.location.href)
 }
 
 // HTML "navigate" keeps the Window of a window's initial about:blank for the first document that replaces it, as a frame's
@@ -170,6 +185,7 @@ auxiliary_open :: proc(src: ^Page, href, name: string, feat: Open_Features) -> ^
 	n := open(top.web.embedder.user, src, Open_Request{source = src, url = href, noopener = noopener, noreferrer = feat.noreferrer})
 	if n == nil { return nil }
 	n.script_opened = true
+	if sb.active { n.navigator = sn.id }   // (HTML "one permitted sandboxed navigator")
 	if !strings.equal_fold(name, "_blank") {
 		delete(n.name)
 		n.name = strings.clone(name)

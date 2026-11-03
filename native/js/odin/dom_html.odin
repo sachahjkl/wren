@@ -165,6 +165,10 @@ string_get :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, iface: i32, attr: cstri
 @(export, link_name = "wjr_HTMLTextAreaElement_get_autocomplete") wjr_HTMLTextAreaElement_get_autocomplete :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return string_get(ctx, t, ifc("HTMLTextAreaElement"), "autocomplete") }
 @(export, link_name = "wjr_HTMLTextAreaElement_set_autocomplete") wjr_HTMLTextAreaElement_set_autocomplete :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return enum_set(ctx, t, ifc("HTMLTextAreaElement"), "autocomplete", v) }
 
+// iframe.csp (CSP Embedded Enforcement): the attribute as written; the browser reads it as the policy the frame requires
+@(export, link_name = "wjr_HTMLIFrameElement_get_csp") wjr_HTMLIFrameElement_get_csp :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return string_get(ctx, t, ifc("HTMLIFrameElement"), "csp") }
+@(export, link_name = "wjr_HTMLIFrameElement_set_csp") wjr_HTMLIFrameElement_set_csp :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return enum_set(ctx, t, ifc("HTMLIFrameElement"), "csp", v) }
+
 // form.action, button.formAction: the attribute's URL, the document's URL when it is missing or empty
 @(private = "file")
 action_get :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, attr: cstring) -> wj.JSValue {

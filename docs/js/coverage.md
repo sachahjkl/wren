@@ -14,8 +14,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 |---|---:|
 | interfaces, namespaces in the table | 605 |
 | exposed by default | 375 |
-| members | 5310 |
-| members implemented | 3823 (72.0 %) |
+| members | 5311 |
+| members implemented | 3824 (72.0 %) |
 
 ## By specification
 
@@ -52,7 +52,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (8) | 126 / 126 |
 | `hr-time.idl` | 1 (1) | 15 / 17 |
-| `html.idl` | 161 (136) | 1577 / 1829 |
+| `html.idl` | 161 (136) | 1578 / 1830 |
 | `intersection-observer.idl` | 2 (2) | 20 / 20 |
 | `is-input-pending.idl` | 1 (1) | 1 / 1 |
 | `largest-contentful-paint.idl` | 1 (1) | 9 / 9 |
@@ -2793,8 +2793,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLIFrameElement : HTMLElement
 
-19 / 20 members.
+20 / 21 members.
 
+- `csp`: C `wjr_HTMLIFrameElement_get_csp`
 - `constructor()`: not supported
 - `src`: generic (reflects a content attribute)
 - `srcdoc`: import `dom.HTMLIFrameElement_srcdoc`

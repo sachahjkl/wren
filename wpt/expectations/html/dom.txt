@@ -1875,7 +1875,7 @@
 	Setting document.body when there's no root element.: PASS
 	existing document's body: PASS
 /html/dom/documents/dom-tree-accessors/Document.currentScript.html: TIMEOUT
-	Script cross-origin: NOTRUN
+	Script cross-origin: PASS
 	Script document-write: PASS
 	Script dom-ext: PASS
 	Script dom-inline: PASS
@@ -2196,7 +2196,7 @@
 /html/dom/documents/resource-metadata-management/document-compatmode-05.xhtml: OK
 	document.compatMode: Standards: PASS
 /html/dom/documents/resource-metadata-management/document-compatmode-06.xhtml: OK
-	document.compatMode: Standards: FAIL
+	document.compatMode: Standards: PASS
 /html/dom/documents/resource-metadata-management/document-cookie.html: OK
 	A null char: PASS
 	A simple cookie: PASS
@@ -2230,11 +2230,11 @@
 	HTMLElement member must be nuked: commandTriggers: PASS
 	HTMLElement member must be nuked: commandType: PASS
 	HTMLElement member must be nuked: dropzone: PASS
-/html/dom/elements/global-attributes/cdata-dir_auto.html: TIMEOUT
+/html/dom/elements/global-attributes/cdata-dir_auto.html: OK
 	Content of CDATA is ignored for dir=auto in html document: FAIL
-	Directionality is updated when changing text of CDATASection: NOTRUN
-	Directionality is updated when removing CDATASection: NOTRUN
-	Text in CDATASection is considered when determining auto directionality: TIMEOUT
+	Directionality is updated when changing text of CDATASection: FAIL
+	Directionality is updated when removing CDATASection: FAIL
+	Text in CDATASection is considered when determining auto directionality: PASS
 /html/dom/elements/global-attributes/classlist-nonstring.html: OK
 	classList: non-string contains: PASS
 	classList: non-string contains 1: PASS
@@ -2421,8 +2421,8 @@
 	<textarea dir=auto> directionality: FAIL
 /html/dom/elements/global-attributes/dir-bdi-script.html: OK
 	BDI test: Directionality: FAIL
-/html/dom/elements/global-attributes/dir-not-changed-text-input-typing.html: TIMEOUT
-	entering LTR text doesn't change directionality of a text input without dir=auto: TIMEOUT
+/html/dom/elements/global-attributes/dir-not-changed-text-input-typing.html: OK
+	entering LTR text doesn't change directionality of a text input without dir=auto: PASS
 /html/dom/elements/global-attributes/dir-slots-directionality.html: OK
 	Slot assigned node manual removal: FAIL
 	Slots: Directionality: dir=auto in shadow tree with Arabic light tree content: PASS
@@ -2686,7 +2686,7 @@
 	text-transform applied to parent element ("<div id='parent'><div id='target'>abc"): PASS
 /html/dom/elements/the-innertext-and-outertext-properties/getter-first-letter-marker-multicol.html: OK
 	Test innerText/outerText for a combination of a list item with ::first-letter in multicol: PASS
-/html/dom/elements/the-innertext-and-outertext-properties/getter.html: TIMEOUT
+/html/dom/elements/the-innertext-and-outertext-properties/getter.html: OK
 	 ("<table><tfoot><tr><td>footer</tfoot><thead><tr><td style='visibility:collapse'>thead</thead><tbody><tr><td>tbody</tbody></table>"): FAIL
 	 <iframe> subdocument ignored ("<div><iframe src='data:text/html,abc'>"): PASS
 	&nbsp; preserved ("<div>&nbsp;"): PASS
@@ -6736,7 +6736,7 @@
 	Document interface: attribute defaultView: PASS
 	Document interface: attribute designMode: FAIL
 	Document interface: attribute dir: PASS
-	Document interface: attribute domain: FAIL
+	Document interface: attribute domain: PASS
 	Document interface: attribute embeds: PASS
 	Document interface: attribute forms: PASS
 	Document interface: attribute head: PASS
@@ -7361,7 +7361,7 @@
 	HTMLDetailsElement must be primary interface of document.createElement("details"): PASS
 	HTMLDialogElement interface object length: PASS
 	HTMLDialogElement interface object name: PASS
-	HTMLDialogElement interface: attribute closedBy: FAIL
+	HTMLDialogElement interface: attribute closedBy: PASS
 	HTMLDialogElement interface: attribute open: PASS
 	HTMLDialogElement interface: attribute returnValue: PASS
 	HTMLDialogElement interface: existence and properties of interface object: FAIL
@@ -10990,7 +10990,8 @@
 	\n  HTML partial updates - positional pseudo class invalidation with streaming\n: FAIL
 /html/dom/partial-updates/tentative/stream-append-with-template-for.html: OK
 	streamHTML methods can apply template with for: FAIL
-/html/dom/partial-updates/tentative/template-for-case-sensitive-dom-inserted.html: ERROR
+/html/dom/partial-updates/tentative/template-for-case-sensitive-dom-inserted.html: OK
+	marker/end/start PI targets are parsed as lower case, but attributes are case-sensitive: FAIL
 /html/dom/partial-updates/tentative/template-for-case-sensitive.html: OK
 	marker/end/start PI targets, attributes and their values are case-sensitive: FAIL
 /html/dom/partial-updates/tentative/template-for-empty.html: OK
@@ -72501,20 +72502,20 @@
 	self.origin should be correct: PASS
 /html/dom/self-origin.any.worker.html: OK
 	self.origin should be correct: PASS
-/html/dom/self-origin.sub.html: TIMEOUT
+/html/dom/self-origin.sub.html: OK
 	Assigning blob url: PASS
-	Should have the right origin for IDN subframe: NOTRUN
-	Should have the right origin for IDN subframe after setting document.domain: NOTRUN
+	Should have the right origin for IDN subframe: PASS
+	Should have the right origin for IDN subframe after setting document.domain: PASS
 	Should have the right origin for cross-origin subframe: PASS
-	Should have the right origin for cross-origin subframe after setting document.domain: FAIL
-	Should have the right origin for sandboxed iframe: NOTRUN
+	Should have the right origin for cross-origin subframe after setting document.domain: PASS
+	Should have the right origin for sandboxed iframe: PASS
 	We should have the right origin for our page: PASS
 	about:blank subframe origins: PASS
 	blob: subframe origins: PASS
 	javascript: subframe origins: PASS
 	srcdoc subframe origins: PASS
 /html/dom/usvstring-reflection.https.html: OK
-	Document URLs: unpaired surrogate codepoint should be replaced with U+FFFD: FAIL
+	Document URLs: unpaired surrogate codepoint should be replaced with U+FFFD: PASS
 	EventSource : unpaired surrogate codepoint should be replaced with U+FFFD: PASS
 	RTCDataChannel.send: unpaired surrogate codepoint should be replaced with U+FFFD.: FAIL
 	RegisterProtocolHandler URL: unpaired surrogate codepoint should not make any exceptions.: FAIL
@@ -72527,9 +72528,9 @@
 	iframe : unpaired surrogate codepoint should be replaced with U+FFFD: PASS
 	link : unpaired surrogate codepoint should be replaced with U+FFFD: PASS
 	location.hash : unpaired surrogate codepoint should be replaced with U+FFFD: PASS
-	location.href : unpaired surrogate codepoint should be replaced with U+FFFD: FAIL
+	location.href : unpaired surrogate codepoint should be replaced with U+FFFD: PASS
 	sendBeacon URL: unpaired surrogate codepoint should not make any exceptions.: PASS
 	source : unpaired surrogate codepoint should be replaced with U+FFFD: PASS
 	storage event : unpaired surrogate codepoint should be replaced with U+FFFD: FAIL
 	websocket url : unpaired surrogate codepoint should be replaced with U+FFFD: PASS
-	window.open : unpaired surrogate codepoint should be replaced with U+FFFD: FAIL
+	window.open : unpaired surrogate codepoint should be replaced with U+FFFD: PASS

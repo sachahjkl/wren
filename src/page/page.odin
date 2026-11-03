@@ -254,6 +254,7 @@ apply_response_headers :: proc(p: ^Page, csp_values, csp_report_only_values: []s
 	if csp_on(p) {
 		for v in csp_values { csp.parse_header(&p.env.policies, v, .Enforce) }
 		for v in csp_report_only_values { csp.parse_header(&p.env.policies, v, .Report_Only) }
+		csp_sandbox_apply(p)   // (frames_csp.odin)
 	}
 	if referrer_policy_value != "" {
 		if rp := fetch.parse_referrer_policy(referrer_policy_value); rp != .Default { p.env.referrer_policy = rp }
