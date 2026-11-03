@@ -18,7 +18,8 @@
 // Cross-origin tests: the names of wptserve's configuration, all on this listener: web-platform.test ({{host}}), its subdomains
 // www, www1, www2, xn--n8j6ds53lwwkrqhv28a and xn--lve-6lad ({{domains[..]}}), not-web-platform.test and its subdomains ({{hosts[alt][..]}}).
 // The browser resolves them itself (network.hosts: web-platform.test=127.0.0.1 not-web-platform.test=127.0.0.1), never the system nor
-// a hosts file; https: 127.0.0.1:8769 (the next port) with a self-signed certificate for those names. With -wpt-port N the ports are N and N+1; with -wpt-only the
+// a hosts file; https: 127.0.0.1:8769 (the next port) with a self-signed certificate for those names; a second http port, 8767 (the block's
+// second origin, answering the WPT names as this one: wptOrSite). With -wpt-port N the ports are N and N+1 (and N-1 with -wpt-only); with -wpt-only the
 // server serves nothing else (src\tools\wpt runs the whole suite that way, on ports no other test uses).
 // The checkout: WREN_WPT_ROOT, else build/wpt/wpt (from the repository root, as the tests run), else next to the
 // executable (build\testserver.exe -> build\wpt\wpt). No checkout: the listener answers 503 with how to get one.
@@ -79,7 +80,35 @@ func wptName(alt bool, sub string) string {
 var (
 	wptHTTPPort  = defaultBasePort + 3
 	wptHTTPSPort = wptHTTPPort + 1
+	// {{ports[http][1]}}, wptserve's second http port (another origin of the same names): the block's second http origin (base+2), whose
+	// listener answers requests to the WPT names as the WPT origin does (wptOrSite); with -wpt-only the port before the pair. 0: none.
+	wptHTTPPort2 = 0
 )
+
+// Whether a request names the WPT origin: one of wptserve's names or a subdomain of them.
+func wptNamed(r *http.Request) bool {
+	host, _, err := net.SplitHostPort(r.Host)
+	if err != nil {
+		host = r.Host
+	}
+	for _, h := range []string{wptHost, wptAltHost} {
+		if host == h || strings.HasSuffix(host, "."+h) {
+			return true
+		}
+	}
+	return false
+}
+
+// The second http origin of the block: the WPT origin's second port for requests to the WPT names, the site's for the others.
+func wptOrSite(site http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if wptNamed(r) {
+			serveWPT(w, r)
+			return
+		}
+		site.ServeHTTP(w, r)
+	})
+}
 
 // The WPT origin alone: returns its first port.
 func startWPTOnly(o Options) (int, error) {
@@ -91,11 +120,12 @@ func startWPTOnly(o Options) (int, error) {
 	if first == 0 {
 		first = basePort + 3
 	}
-	var plain, secure net.Listener
+	var plain, secure, second net.Listener
 	var err error
 	for i := 0; i < tries; i++ {
 		wptHTTPPort = first + i*scanStep
 		wptHTTPSPort = wptHTTPPort + 1
+		wptHTTPPort2 = wptHTTPPort - 1   // (where the block has its second origin: base+2)
 		if plain, err = net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", wptHTTPPort)); err != nil {
 			continue
 		}
@@ -103,13 +133,19 @@ func startWPTOnly(o Options) (int, error) {
 			plain.Close()
 			continue
 		}
+		if second, err = net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", wptHTTPPort2)); err != nil {
+			plain.Close()
+			secure.Close()
+			continue
+		}
 		break
 	}
 	if err != nil {
-		return 0, fmt.Errorf("no free pair of ports for web-platform-tests from %d: %w", first, err)
+		return 0, fmt.Errorf("no free ports for web-platform-tests from %d: %w", first, err)
 	}
-	log.Printf("web-platform-tests: http://127.0.0.1:%d  https://127.0.0.1:%d (self-signed), checkout %s", wptHTTPPort, wptHTTPSPort, wptRoot)
+	log.Printf("web-platform-tests: http://127.0.0.1:%d  https://127.0.0.1:%d (self-signed)  http://127.0.0.1:%d, checkout %s", wptHTTPPort, wptHTTPSPort, wptHTTPPort2, wptRoot)
 	serveWPTOn(plain, tls.NewListener(secure, &tls.Config{Certificates: []tls.Certificate{wptCert()}}))
+	serve(second, http.HandlerFunc(serveWPT))
 	return wptHTTPPort, nil
 }
 
@@ -300,6 +336,9 @@ func substitute(text string, r *http.Request) string {
 			case "https", "wss", "h2":
 				return strconv.Itoa(wptHTTPSPort)
 			default:
+				if at(1) == "1" && wptHTTPPort2 != 0 {
+					return strconv.Itoa(wptHTTPPort2)
+				}
 				return strconv.Itoa(wptHTTPPort)
 			}
 		case "location":

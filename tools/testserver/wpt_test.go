@@ -49,6 +49,22 @@ func TestWPTWrappers(t *testing.T) {
 	if got := get("/a/b/h.sub.js").Body.String(); got != "www1.web-platform.test xn--lve-6lad.web-platform.test not-web-platform.test www2.not-web-platform.test www.web-platform.test" {
 		t.Errorf("host names: %q", got)
 	}
+	// wptserve's second http port: the block's second origin, which answers the WPT names as the WPT origin, the site's others
+	savedPort2 := wptHTTPPort2
+	wptHTTPPort2 = 8767
+	defer func() { wptHTTPPort2 = savedPort2 }()
+	os.WriteFile(filepath.Join(dir, "a", "b", "p.sub.js"), []byte("{{ports[http][0]}} {{ports[http][1]}} {{ports[https][0]}}"), 0o644)
+	if got := get("/a/b/p.sub.js").Body.String(); got != "8768 8767 8769" {
+		t.Errorf("ports: %q", got)
+	}
+	site := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("site")) })
+	for host, want := range map[string]string{"www1.web-platform.test:8767": "8768 8767 8769", "127.0.0.1:8767": "site"} {
+		rr := httptest.NewRecorder()
+		wptOrSite(site).ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "http://"+host+"/a/b/p.sub.js", nil))
+		if got := rr.Body.String(); got != want {
+			t.Errorf("the second origin, as %s: %q", host, got)
+		}
+	}
 	rr := get("/a/b/z.txt?pipe=header(X-Two,a\\,b)|status(202)")
 	if rr.Code != 202 || rr.Header().Get("X-One") != "1" || rr.Header().Get("X-Dir") != "d" || rr.Header().Get("X-Two") != "a,b" || rr.Header().Get("Content-Type") != "text/plain" {
 		t.Errorf("pipes and headers files: %d %v", rr.Code, rr.Header())

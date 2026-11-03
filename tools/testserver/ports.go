@@ -3,7 +3,7 @@
 //
 //	base+0  http   127.0.0.1 and localhost (two sites, one listener)
 //	base+1  https  self-signed
-//	base+2  http   a second origin of the same hosts
+//	base+2  http   a second origin of the same hosts; for the WPT names, the WPT origin's second http port ({{ports[http][1]}}, wpt.go)
 //	base+3  http   the web-platform-tests origin (wpt.go)
 //	base+4  https  the web-platform-tests origin, self-signed
 //	base+5 .. base+9  the network stack's transport origins (transport.go): HTTP/2 + HTTP/3, TLS 1.3 only, bad

@@ -35,11 +35,12 @@
 	The window is cross-origin isolated: PASS
 	postMessaging a wasm module to a same-origin iframe succeeds: PASS
 	postMessaging a wasm module to a same-site cross-origin iframe fails: PASS
-/wasm/serialization/module/window-cross-site-failure.html: TIMEOUT
-	postMessaging a wasm module to a cross-site iframe fails: TIMEOUT
-	postMessaging a wasm module to a same-host iframe with a different scheme fails: NOTRUN
-	postMessaging a wasm module to a sandboxed iframe fails: NOTRUN
-/wasm/serialization/module/window-domain-success.sub.html: ERROR
+/wasm/serialization/module/window-cross-site-failure.html: OK
+	postMessaging a wasm module to a cross-site iframe fails: PASS
+	postMessaging a wasm module to a same-host iframe with a different scheme fails: PASS
+	postMessaging a wasm module to a sandboxed iframe fails: PASS
+/wasm/serialization/module/window-domain-success.sub.html: TIMEOUT
+	postMessaging to a same-origin-domain (but not same-origin) iframe allows them to instantiate: TIMEOUT
 /wasm/serialization/module/window-messagechannel-success.html: OK
 	postMessaging to a dedicated worker via MessageChannel allows them to instantiate: PASS
 /wasm/serialization/module/window-same-site-success.sub.html: TIMEOUT
@@ -49,9 +50,10 @@
 	WebAssembly.Module cannot cross agent clusters, service worker edition: FAIL
 /wasm/serialization/module/window-sharedworker-failure.html: OK
 	WebAssembly.Modules cannot cross agent clusters, shared worker edition: FAIL
-/wasm/serialization/module/window-similar-but-cross-origin-success.sub.html: ERROR
+/wasm/serialization/module/window-similar-but-cross-origin-success.sub.html: TIMEOUT
+	postMessaging to a not same-origin-domain, but similar origin, iframe allows them to instantiate: TIMEOUT
 /wasm/serialization/module/window-simple-success.html: OK
 	postMessaging to a dedicated worker allows them to instantiate: PASS
 	postMessaging to a same-origin deeply-nested iframe allows them to instantiate: PASS
 	postMessaging to a same-origin iframe allows them to instantiate: PASS
-	postMessaging to a same-origin opened window allows them to instantiate: FAIL
+	postMessaging to a same-origin opened window allows them to instantiate: PASS

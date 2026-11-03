@@ -92,8 +92,8 @@
 	after-transition + manual: PASS
 	manual + (not provided): PASS
 	manual + after-transition: PASS
-/navigation-api/navigate-event/cross-origin-traversal-does-not-fire-navigate.html: TIMEOUT
-	A cross-origin traversal does not fire the navigate event: TIMEOUT
+/navigation-api/navigate-event/cross-origin-traversal-does-not-fire-navigate.html: OK
+	A cross-origin traversal does not fire the navigate event: FAIL
 /navigation-api/navigate-event/cross-origin-traversal-redirect.html: OK
 	A traversal that redirects from same-origin to cross-origin fires the navigate event: PASS
 /navigation-api/navigate-event/cross-window/click-crossdocument-crossorigin-sameorigindomain.sub.html: OK
@@ -295,9 +295,9 @@
 	history.replaceState() fires the navigate event: PASS
 /navigation-api/navigate-event/navigate-history-traversal-during-onnavigate-should-reject.html: TIMEOUT
 	Test that await navigation.back().finished during onnavigate should reject: TIMEOUT
-/navigation-api/navigate-event/navigate-history-traversal-during-onnavigate.html: TIMEOUT
-	Test that navigation.back() silently aborts during onnavigate: TIMEOUT
-	Test that navigation.traverseTo() works during onnavigate: NOTRUN
+/navigation-api/navigate-event/navigate-history-traversal-during-onnavigate.html: OK
+	Test that navigation.back() silently aborts during onnavigate: FAIL
+	Test that navigation.traverseTo() works during onnavigate: FAIL
 /navigation-api/navigate-event/navigate-iframe-location.html: OK
 	location API on another window fires navigate event in the target window only: PASS
 /navigation-api/navigate-event/navigate-location.html: OK
@@ -335,7 +335,7 @@
 /navigation-api/navigate-event/navigatesuccess-same-document.html: OK
 	navigatesuccess fires for a same-document navigation: PASS
 /navigation-api/navigate-event/navigation-back-cross-document-preventDefault.html: OK
-	navigation.back() cross-document cannot be cancelled with the navigate event: FAIL
+	navigation.back() cross-document cannot be cancelled with the navigate event: PASS
 /navigation-api/navigate-event/navigation-back-same-document-preventDefault.html: OK
 	navigation.back() same-document preventDefault: FAIL
 /navigation-api/navigate-event/navigation-traverseTo-in-iframe-same-document-preventDefault.html: OK
@@ -349,8 +349,8 @@
 /navigation-api/navigate-event/reentry-from-focus-reset-navigate-api-tracker.html: OK
 	Re-entry via focus reset using navigate(): PASS
 	Re-entry via focus reset using pushState: PASS
-/navigation-api/navigate-event/replaceState-inside-back-handler-infinite.optional.html: TIMEOUT
-	infinite replaceState inside a navigate event for navigation.back(): TIMEOUT
+/navigation-api/navigate-event/replaceState-inside-back-handler-infinite.optional.html: OK
+	infinite replaceState inside a navigate event for navigation.back(): FAIL
 /navigation-api/navigate-event/replaceState-inside-back-handler.html: OK
 	replaceState inside a navigate event for navigation.back(): PASS
 /navigation-api/navigate-event/same-url-replace-cross-document.html: OK
@@ -410,7 +410,7 @@
 /navigation-api/navigation-activation/activation-initial-about-blank.html: OK
 	navigation.activation interaction with initial about:blank: PASS
 /navigation-api/navigation-activation/activation-push-cross-origin.html: OK
-	navigation.activation after push cross-origin: FAIL
+	navigation.activation after push cross-origin: PASS
 /navigation-api/navigation-activation/activation-push.html: OK
 	navigation.activation after push: PASS
 /navigation-api/navigation-activation/activation-reload.html: OK
@@ -421,8 +421,8 @@
 	navigation.activation after replace: FAIL
 /navigation-api/navigation-activation/activation-same-document-then-cross-document.html: OK
 	navigation.activation same-document then cross-document: PASS
-/navigation-api/navigation-activation/activation-traverse-not-in-entries.html: TIMEOUT
-	navigation.activation - traverse from a non-contiguous same-origin url: TIMEOUT
+/navigation-api/navigation-activation/activation-traverse-not-in-entries.html: OK
+	navigation.activation - traverse from a non-contiguous same-origin url: PASS
 /navigation-api/navigation-activation/activation-traverse-then-clobber.html: OK
 	navigation.activation - traverse, then push same-document: PASS
 /navigation-api/navigation-activation/activation-traverse.html: OK
@@ -436,7 +436,7 @@
 /navigation-api/navigation-history-entry/entries-after-bfcache-in-iframe.html: ERROR
 /navigation-api/navigation-history-entry/entries-after-bfcache.html: ERROR
 /navigation-api/navigation-history-entry/entries-after-blank-navigation-from-cross-origin.html: OK
-	entries() should not be leaked from cross-origin when navigating to about:blank: FAIL
+	entries() should not be leaked from cross-origin when navigating to about:blank: PASS
 /navigation-api/navigation-history-entry/entries-after-blank-navigation.html: OK
 	entries() after navigation to about:blank: FAIL
 /navigation-api/navigation-history-entry/entries-after-blob-navigation.html: OK

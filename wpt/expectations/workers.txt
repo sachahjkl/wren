@@ -9,39 +9,39 @@
 	Test recursive worker creation results in exception.: PASS
 	Test toString exception propagated correctly.: PASS
 /workers/SharedWorker-detach-frame-in-error-event.html: OK|TIMEOUT
-	Test frame detach in shared worker's error handler: FAIL
+	Test frame detach in shared worker's error handler: FAIL|TIMEOUT
 /workers/SharedWorker-exception-propagation.html: OK
 	Uncaught error in shared worker should not propagate to window: PASS
 /workers/SharedWorker-exception.html: OK
 	This test checks whether exceptions in SharedWorkers are logged to the parent document. An exception should be logged to the error console.: PASS
-/workers/SharedWorker-extendedLifetime-blob.html: TIMEOUT
-	Blob URL SharedWorker should survive across navigations with extendedLifetime: TIMEOUT
-/workers/SharedWorker-extendedLifetime-data.html: TIMEOUT
-	Data URL SharedWorker should survive across navigations with extendedLifetime: TIMEOUT
-/workers/SharedWorker-extendedLifetime-named-module.html: TIMEOUT
-	Module SharedWorker should survive across navigations with extendedLifetime: NOTRUN
-	Named SharedWorker should survive across navigations with extendedLifetime: TIMEOUT
-/workers/SharedWorker-extendedLifetime.html: TIMEOUT
-	SharedWorker lifetime should be extended with extendedLifetime: TIMEOUT
+/workers/SharedWorker-extendedLifetime-blob.html: OK
+	Blob URL SharedWorker should survive across navigations with extendedLifetime: PASS
+/workers/SharedWorker-extendedLifetime-data.html: OK
+	Data URL SharedWorker should survive across navigations with extendedLifetime: PASS
+/workers/SharedWorker-extendedLifetime-named-module.html: OK
+	Module SharedWorker should survive across navigations with extendedLifetime: PASS
+	Named SharedWorker should survive across navigations with extendedLifetime: PASS
+/workers/SharedWorker-extendedLifetime.html: OK
+	SharedWorker lifetime should be extended with extendedLifetime: PASS
 /workers/SharedWorker-script-error.html: OK
 	Test script error handled.: PASS
 	Test script error unhandled.: PASS
 /workers/SharedWorker-simple.html: OK
 	Test simple shared worker construction case.: PASS
 /workers/SharedWorkerPerformanceNow.html: OK|TIMEOUT
-	performance.now() exists in shared workers and reports reasonable times: FAIL
+	performance.now() exists in shared workers and reports reasonable times: FAIL|TIMEOUT
 /workers/SharedWorker_blobUrl.html: TIMEOUT
 	Blob URL shared by document on SharedWorker: TIMEOUT
-/workers/SharedWorker_dataUrl.html: TIMEOUT
-	Data URL not shared by cross-origin SharedWorkers: TIMEOUT
-	Data URLs shared by same-origin SharedWorkers: NOTRUN
+/workers/SharedWorker_dataUrl.html: OK
+	Data URL not shared by cross-origin SharedWorkers: PASS
+	Data URLs shared by same-origin SharedWorkers: PASS
 /workers/Worker-base64.any.worker.html: OK
 	Tests that atob() / btoa() functions are exposed to workers: PASS
 /workers/Worker-call.worker.html: OK
 	Test calling functions from WorkerContext.: PASS
 /workers/Worker-constructor-proto.any.worker.html: OK
 	Tests that setting the proto of a built in constructor is not reset.: FAIL
-/workers/Worker-creation-happens-in-parallel.https.html: OK
+/workers/Worker-creation-happens-in-parallel.https.html: OK|TIMEOUT
 	Tests that creation of a "new Worker()" will occur in parallel: FAIL
 /workers/Worker-custom-event.any.worker.html: OK
 	Test CustomEvents on workers.: PASS
@@ -406,8 +406,8 @@
 	existence of window: PASS
 /workers/constructors/Worker/use-base-url.html: OK
 	Use the document base url when resolving worker URLs: FAIL
-/workers/data-url-shared.html: TIMEOUT
-	A data: URL shared worker should not be shared among origins.: TIMEOUT
+/workers/data-url-shared.html: OK
+	A data: URL shared worker should not be shared among origins.: PASS
 	application/javascript MIME allowed: PASS
 	communication goes both ways: PASS
 	cross-origin worker: PASS
@@ -480,7 +480,7 @@
 	importScripts() requires scripty MIME types for blob: URLs: TeXt/HtMl is blocked.: PASS
 	importScripts() requires scripty MIME types for blob: URLs: Text/html is blocked.: PASS
 	importScripts() requires scripty MIME types for blob: URLs: aaa/aaa is blocked.: PASS
-	importScripts() requires scripty MIME types for blob: URLs: application/javascript is allowed.: FAIL
+	importScripts() requires scripty MIME types for blob: URLs: application/javascript is allowed.: PASS
 	importScripts() requires scripty MIME types for blob: URLs: application/octet-stream is blocked.: PASS
 	importScripts() requires scripty MIME types for blob: URLs: application/xml is blocked.: PASS
 	importScripts() requires scripty MIME types for blob: URLs: image/png is blocked.: PASS
@@ -490,40 +490,40 @@
 	importScripts() requires scripty MIME types for blob: URLs: text/csv; charset=utf-8 is blocked.: PASS
 	importScripts() requires scripty MIME types for blob: URLs: text/csv;bla;bla is blocked.: PASS
 	importScripts() requires scripty MIME types for blob: URLs: text/csv;charset=utf-8 is blocked.: PASS
-	importScripts() requires scripty MIME types for blob: URLs: text/ecmascript is allowed.: FAIL
+	importScripts() requires scripty MIME types for blob: URLs: text/ecmascript is allowed.: PASS
 	importScripts() requires scripty MIME types for blob: URLs: text/html is blocked.: PASS
-	importScripts() requires scripty MIME types for blob: URLs: text/javascript is allowed.: FAIL
-	importScripts() requires scripty MIME types for blob: URLs: text/javascript; charset=utf-8 is allowed.: FAIL
-	importScripts() requires scripty MIME types for blob: URLs: text/javascript;bla;bla is allowed.: FAIL
-	importScripts() requires scripty MIME types for blob: URLs: text/javascript;charset=utf-8 is allowed.: FAIL
+	importScripts() requires scripty MIME types for blob: URLs: text/javascript is allowed.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: text/javascript; charset=utf-8 is allowed.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: text/javascript;bla;bla is allowed.: PASS
+	importScripts() requires scripty MIME types for blob: URLs: text/javascript;charset=utf-8 is allowed.: PASS
 	importScripts() requires scripty MIME types for blob: URLs: text/plain is blocked.: PASS
 	importScripts() requires scripty MIME types for blob: URLs: text/potato is blocked.: PASS
 	importScripts() requires scripty MIME types for blob: URLs: video/mpeg is blocked.: PASS
 	importScripts() requires scripty MIME types for blob: URLs: zzz/zzz is blocked.: PASS
-	importScripts() requires scripty MIME types for data: URLs: TEXT/HTML is blocked.: FAIL
-	importScripts() requires scripty MIME types for data: URLs: TeXt/HtMl is blocked.: FAIL
-	importScripts() requires scripty MIME types for data: URLs: Text/html is blocked.: FAIL
-	importScripts() requires scripty MIME types for data: URLs: aaa/aaa is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: TEXT/HTML is blocked.: PASS
+	importScripts() requires scripty MIME types for data: URLs: TeXt/HtMl is blocked.: PASS
+	importScripts() requires scripty MIME types for data: URLs: Text/html is blocked.: PASS
+	importScripts() requires scripty MIME types for data: URLs: aaa/aaa is blocked.: PASS
 	importScripts() requires scripty MIME types for data: URLs: application/javascript is allowed.: PASS
-	importScripts() requires scripty MIME types for data: URLs: application/octet-stream is blocked.: FAIL
-	importScripts() requires scripty MIME types for data: URLs: application/xml is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: application/octet-stream is blocked.: PASS
+	importScripts() requires scripty MIME types for data: URLs: application/xml is blocked.: PASS
 	importScripts() requires scripty MIME types for data: URLs: image/png is blocked.: PASS
-	importScripts() requires scripty MIME types for data: URLs: potato/text is blocked.: FAIL
-	importScripts() requires scripty MIME types for data: URLs: text/Html is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: potato/text is blocked.: PASS
+	importScripts() requires scripty MIME types for data: URLs: text/Html is blocked.: PASS
 	importScripts() requires scripty MIME types for data: URLs: text/csv is blocked.: PASS
 	importScripts() requires scripty MIME types for data: URLs: text/csv; charset=utf-8 is blocked.: PASS
 	importScripts() requires scripty MIME types for data: URLs: text/csv;bla;bla is blocked.: PASS
 	importScripts() requires scripty MIME types for data: URLs: text/csv;charset=utf-8 is blocked.: PASS
 	importScripts() requires scripty MIME types for data: URLs: text/ecmascript is allowed.: PASS
-	importScripts() requires scripty MIME types for data: URLs: text/html is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: text/html is blocked.: PASS
 	importScripts() requires scripty MIME types for data: URLs: text/javascript is allowed.: PASS
 	importScripts() requires scripty MIME types for data: URLs: text/javascript; charset=utf-8 is allowed.: PASS
 	importScripts() requires scripty MIME types for data: URLs: text/javascript;bla;bla is allowed.: PASS
 	importScripts() requires scripty MIME types for data: URLs: text/javascript;charset=utf-8 is allowed.: PASS
-	importScripts() requires scripty MIME types for data: URLs: text/plain is blocked.: FAIL
-	importScripts() requires scripty MIME types for data: URLs: text/potato is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: text/plain is blocked.: PASS
+	importScripts() requires scripty MIME types for data: URLs: text/potato is blocked.: PASS
 	importScripts() requires scripty MIME types for data: URLs: video/mpeg is blocked.: PASS
-	importScripts() requires scripty MIME types for data: URLs: zzz/zzz is blocked.: FAIL
+	importScripts() requires scripty MIME types for data: URLs: zzz/zzz is blocked.: PASS
 /workers/interfaces/DedicatedWorkerGlobalScope/EventTarget.worker.html: OK
 	removeEventListener: PASS
 	target: PASS
@@ -705,22 +705,22 @@
 	importScripts(1): PASS
 /workers/interfaces/WorkerUtils/importScripts/blob-url.worker.html: OK
 	A revoked blob URL will fail: PASS
-	Blob URLs work on importScripts: FAIL
-	Revoking a blob URL in an earlier script will not fail: FAIL
+	Blob URLs work on importScripts: PASS
+	Revoking a blob URL in an earlier script will not fail: PASS
 /workers/interfaces/WorkerUtils/importScripts/catch.sub.any.worker.html: OK
-	Cross-origin syntax error: PASS
-	Cross-origin throw: PASS
-	Redirect-to-Cross-origin throw: PASS
-	Redirect-to-cross-origin syntax error: PASS
+	Cross-origin syntax error: FAIL
+	Cross-origin throw: FAIL
+	Redirect-to-Cross-origin throw: FAIL
+	Redirect-to-cross-origin syntax error: FAIL
 	Same-origin syntax error: PASS
 	Same-origin throw: PASS
 /workers/interfaces/WorkerUtils/importScripts/report-error-cross-origin.sub.any.worker.html: OK
-	WorkerGlobalScope error event: error: PASS
+	WorkerGlobalScope error event: error: FAIL
 	WorkerGlobalScope error event: filename: FAIL
 	WorkerGlobalScope error event: lineno: FAIL
 	WorkerGlobalScope error event: message: PASS
 /workers/interfaces/WorkerUtils/importScripts/report-error-redirect-to-cross-origin.sub.any.worker.html: OK
-	WorkerGlobalScope error event: error: PASS
+	WorkerGlobalScope error event: error: FAIL
 	WorkerGlobalScope error event: filename: FAIL
 	WorkerGlobalScope error event: lineno: FAIL
 	WorkerGlobalScope error event: message: PASS
@@ -730,12 +730,12 @@
 	WorkerGlobalScope error event: lineno: PASS
 	WorkerGlobalScope error event: message: PASS
 /workers/interfaces/WorkerUtils/importScripts/report-error-setTimeout-cross-origin.sub.any.worker.html: OK
-	WorkerGlobalScope error event: error: PASS
+	WorkerGlobalScope error event: error: FAIL
 	WorkerGlobalScope error event: filename: FAIL
 	WorkerGlobalScope error event: lineno: FAIL
 	WorkerGlobalScope error event: message: PASS
 /workers/interfaces/WorkerUtils/importScripts/report-error-setTimeout-redirect-to-cross-origin.sub.any.worker.html: OK
-	WorkerGlobalScope error event: error: PASS
+	WorkerGlobalScope error event: error: FAIL
 	WorkerGlobalScope error event: filename: FAIL
 	WorkerGlobalScope error event: lineno: FAIL
 	WorkerGlobalScope error event: message: PASS
@@ -765,7 +765,7 @@
 	Dynamic import.: PASS
 	Nested dynamic import.: PASS
 	Nested static import.: PASS
-	Static import (cross-origin).: FAIL
+	Static import (cross-origin).: PASS
 	Static import (redirect).: PASS
 	Static import and then dynamic import.: PASS
 	Static import.: PASS
@@ -775,23 +775,23 @@
 	Dynamic import.: PASS
 	Nested dynamic import.: PASS
 	Nested static import.: PASS
-	Static import (cross-origin).: FAIL
+	Static import (cross-origin).: PASS
 	Static import (redirect).: PASS
 	Static import and then dynamic import.: PASS
 	Static import.: PASS
 	eval(import()).: FAIL
-/workers/modules/dedicated-worker-import-csp.html: TIMEOUT
-	script-src 'self' directive should disallow cross origin dynamic import.: NOTRUN
-	script-src 'self' directive should disallow cross origin static import.: NOTRUN
-	script-src * directive should allow cross origin dynamic import.: NOTRUN
-	script-src * directive should allow cross origin static import.: NOTRUN
-	script-src-elem 'self' directive should disallow cross origin dynamic import.: NOTRUN
-	script-src-elem 'self' directive should not take effect on static import.: NOTRUN
-	worker-src 'self' directive should disallow cross origin static import.: TIMEOUT
-	worker-src 'self' directive should not take effect on dynamic import.: NOTRUN
-	worker-src 'self' directive should override script-src * directive and disallow cross origin static import.: NOTRUN
-	worker-src * directive should allow cross origin static import.: NOTRUN
-	worker-src * directive should override script-src 'self' directive and allow cross origin static import.: NOTRUN
+/workers/modules/dedicated-worker-import-csp.html: OK
+	script-src 'self' directive should disallow cross origin dynamic import.: PASS
+	script-src 'self' directive should disallow cross origin static import.: FAIL
+	script-src * directive should allow cross origin dynamic import.: PASS
+	script-src * directive should allow cross origin static import.: PASS
+	script-src-elem 'self' directive should disallow cross origin dynamic import.: PASS
+	script-src-elem 'self' directive should not take effect on static import.: PASS
+	worker-src 'self' directive should disallow cross origin static import.: FAIL
+	worker-src 'self' directive should not take effect on dynamic import.: PASS
+	worker-src 'self' directive should override script-src * directive and disallow cross origin static import.: FAIL
+	worker-src * directive should allow cross origin static import.: PASS
+	worker-src * directive should override script-src 'self' directive and allow cross origin static import.: PASS
 /workers/modules/dedicated-worker-import-data-url-cross-origin.html: OK
 	dynamic import data url from data: URL should be allowed.: PASS
 	dynamic import script from data: URL should be blocked.: PASS
@@ -802,7 +802,7 @@
 	Dynamic import.: PASS
 	Nested dynamic import.: PASS
 	Nested static import.: PASS
-	Static import (cross-origin).: FAIL
+	Static import (cross-origin).: PASS
 	Static import (redirect).: FAIL
 	Static import and then dynamic import.: PASS
 	Static import.: PASS
@@ -812,7 +812,7 @@
 	Dynamic import.: PASS
 	Nested dynamic import.: PASS
 	Nested static import.: PASS
-	Static import (cross-origin).: FAIL
+	Static import (cross-origin).: PASS
 	Static import (redirect).: FAIL
 	Static import and then dynamic import.: PASS
 	Static import.: PASS
@@ -828,28 +828,28 @@
 	Test import.meta.url on the imported module script with a fragment.: PASS
 	Test import.meta.url on the imported module script.: PASS
 	Test import.meta.url on the top-level module script.: PASS
-/workers/modules/dedicated-worker-import-referrer.html: TIMEOUT
-	Cross-origin dynamic import with "no-referrer" referrer policy.: NOTRUN
-	Cross-origin dynamic import with "origin" referrer policy.: NOTRUN
-	Cross-origin dynamic import with "same-origin" referrer policy.: NOTRUN
-	Cross-origin static import with "no-referrer" referrer policy.: NOTRUN
-	Cross-origin static import with "origin" referrer policy.: NOTRUN
-	Cross-origin static import with "same-origin" referrer policy.: NOTRUN
-	Same-origin dynamic import with "no-referrer" referrer policy.: NOTRUN
-	Same-origin dynamic import with "origin" referrer policy.: NOTRUN
-	Same-origin dynamic import with "same-origin" referrer policy.: NOTRUN
-	Same-origin static import with "no-referrer" referrer policy.: NOTRUN
-	Same-origin static import with "origin" referrer policy.: NOTRUN
-	Same-origin static import with "same-origin" referrer policy.: NOTRUN
-	Same-origin top-level module script loading with "no-referrer" referrer policy: TIMEOUT
-	Same-origin top-level module script loading with "origin" referrer policy: NOTRUN
-	Same-origin top-level module script loading with "same-origin" referrer policy: NOTRUN
+/workers/modules/dedicated-worker-import-referrer.html: OK
+	Cross-origin dynamic import with "no-referrer" referrer policy.: FAIL
+	Cross-origin dynamic import with "origin" referrer policy.: PASS
+	Cross-origin dynamic import with "same-origin" referrer policy.: FAIL
+	Cross-origin static import with "no-referrer" referrer policy.: PASS
+	Cross-origin static import with "origin" referrer policy.: PASS
+	Cross-origin static import with "same-origin" referrer policy.: PASS
+	Same-origin dynamic import with "no-referrer" referrer policy.: FAIL
+	Same-origin dynamic import with "origin" referrer policy.: FAIL
+	Same-origin dynamic import with "same-origin" referrer policy.: PASS
+	Same-origin static import with "no-referrer" referrer policy.: PASS
+	Same-origin static import with "origin" referrer policy.: PASS
+	Same-origin static import with "same-origin" referrer policy.: PASS
+	Same-origin top-level module script loading with "no-referrer" referrer policy: PASS
+	Same-origin top-level module script loading with "origin" referrer policy: PASS
+	Same-origin top-level module script loading with "same-origin" referrer policy: PASS
 /workers/modules/dedicated-worker-import.any.html: OK
 	Dynamic import and then static import.: PASS
 	Dynamic import.: PASS
 	Nested dynamic import.: PASS
 	Nested static import.: PASS
-	Static import (cross-origin).: FAIL
+	Static import (cross-origin).: PASS
 	Static import (redirect).: PASS
 	Static import and then dynamic import.: PASS
 	Static import.: PASS
@@ -859,13 +859,13 @@
 	Dynamic import.: PASS
 	Nested dynamic import.: PASS
 	Nested static import.: PASS
-	Static import (cross-origin).: FAIL
+	Static import (cross-origin).: PASS
 	Static import (redirect).: PASS
 	Static import and then dynamic import.: PASS
 	Static import.: PASS
 	eval(import()).: PASS
 /workers/modules/dedicated-worker-options-credentials.html: OK
-	Test initialization: setting up cross-origin cookie: FAIL
+	Test initialization: setting up cross-origin cookie: PASS
 	new Worker() with type-module credentials=omit should not send the credentials for cross-origin dynamic imports: PASS
 	new Worker() with type-module credentials=omit should not send the credentials for cross-origin static imports: PASS
 	new Worker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (default).: PASS
@@ -912,36 +912,36 @@
 	Dynamic import.: PASS
 	Nested dynamic import.: PASS
 	Nested static import.: PASS
-	Static import (cross-origin).: FAIL
+	Static import (cross-origin).: PASS
 	Static import (redirect).: PASS
 	Static import and then dynamic import.: PASS
 	Static import.: PASS
 	eval(import()).: FAIL
-/workers/modules/shared-worker-import-csp.html: TIMEOUT
-	script-src 'self' directive should disallow cross origin dynamic import.: NOTRUN
-	script-src 'self' directive should disallow cross origin static import.: NOTRUN
-	script-src * directive should allow cross origin dynamic import.: NOTRUN
-	script-src * directive should allow cross origin static import.: NOTRUN
-	worker-src 'self' directive should disallow cross origin static import.: TIMEOUT
-	worker-src 'self' directive should not take effect on dynamic import.: NOTRUN
-	worker-src 'self' directive should override script-src * directive and disallow cross origin static import.: NOTRUN
-	worker-src * directive should allow cross origin static import.: NOTRUN
-	worker-src * directive should override script-src 'self' directive and allow cross origin static import.: NOTRUN
+/workers/modules/shared-worker-import-csp.html: OK
+	script-src 'self' directive should disallow cross origin dynamic import.: PASS
+	script-src 'self' directive should disallow cross origin static import.: FAIL
+	script-src * directive should allow cross origin dynamic import.: PASS
+	script-src * directive should allow cross origin static import.: PASS
+	worker-src 'self' directive should disallow cross origin static import.: FAIL
+	worker-src 'self' directive should not take effect on dynamic import.: PASS
+	worker-src 'self' directive should override script-src * directive and disallow cross origin static import.: FAIL
+	worker-src * directive should allow cross origin static import.: PASS
+	worker-src * directive should override script-src 'self' directive and allow cross origin static import.: PASS
 /workers/modules/shared-worker-import-data-url-cross-origin.html: OK
 	dynamic import data url from data: URL should be allowed.: PASS
 	dynamic import script from data: URL should be blocked.: PASS
 	static import data url from data: URL should be allowed.: PASS
 	static import script from data: URL should be allowed.: FAIL
-/workers/modules/shared-worker-import-data-url.window.html: TIMEOUT
-	Dynamic import and then static import.: NOTRUN
-	Dynamic import.: NOTRUN
-	Nested dynamic import.: NOTRUN
+/workers/modules/shared-worker-import-data-url.window.html: OK
+	Dynamic import and then static import.: PASS
+	Dynamic import.: PASS
+	Nested dynamic import.: PASS
 	Nested static import.: PASS
-	Static import (cross-origin).: FAIL
+	Static import (cross-origin).: PASS
 	Static import (redirect).: FAIL
-	Static import and then dynamic import.: TIMEOUT
+	Static import and then dynamic import.: PASS
 	Static import.: PASS
-	eval(import()).: NOTRUN
+	eval(import()).: FAIL
 /workers/modules/shared-worker-import-failure.html: OK
 	Dynamic import for non-existent script should throw an exception.: PASS
 	SharedWorker construction for a file URL should throw an exception.: FAIL
@@ -953,34 +953,34 @@
 	Test import.meta.url on the imported module script with a fragment.: PASS
 	Test import.meta.url on the imported module script.: PASS
 	Test import.meta.url on the top-level module script.: PASS
-/workers/modules/shared-worker-import-referrer.html: TIMEOUT
-	Cross-origin dynamic import with "no-referrer" referrer policy.: NOTRUN
-	Cross-origin dynamic import with "origin" referrer policy.: NOTRUN
-	Cross-origin dynamic import with "same-origin" referrer policy.: NOTRUN
-	Cross-origin static import with "no-referrer" referrer policy.: NOTRUN
-	Cross-origin static import with "origin" referrer policy.: NOTRUN
-	Cross-origin static import with "same-origin" referrer policy.: NOTRUN
-	Same-origin dynamic import with "no-referrer" referrer policy.: NOTRUN
-	Same-origin dynamic import with "origin" referrer policy.: NOTRUN
-	Same-origin dynamic import with "same-origin" referrer policy.: NOTRUN
-	Same-origin static import with "no-referrer" referrer policy.: NOTRUN
-	Same-origin static import with "origin" referrer policy.: NOTRUN
-	Same-origin static import with "same-origin" referrer policy.: NOTRUN
-	Same-origin top-level module script loading with "no-referrer" referrer policy: TIMEOUT
-	Same-origin top-level module script loading with "origin" referrer policy: NOTRUN
-	Same-origin top-level module script loading with "same-origin" referrer policy: NOTRUN
+/workers/modules/shared-worker-import-referrer.html: OK
+	Cross-origin dynamic import with "no-referrer" referrer policy.: FAIL
+	Cross-origin dynamic import with "origin" referrer policy.: PASS
+	Cross-origin dynamic import with "same-origin" referrer policy.: FAIL
+	Cross-origin static import with "no-referrer" referrer policy.: FAIL
+	Cross-origin static import with "origin" referrer policy.: PASS
+	Cross-origin static import with "same-origin" referrer policy.: FAIL
+	Same-origin dynamic import with "no-referrer" referrer policy.: FAIL
+	Same-origin dynamic import with "origin" referrer policy.: FAIL
+	Same-origin dynamic import with "same-origin" referrer policy.: PASS
+	Same-origin static import with "no-referrer" referrer policy.: FAIL
+	Same-origin static import with "origin" referrer policy.: FAIL
+	Same-origin static import with "same-origin" referrer policy.: PASS
+	Same-origin top-level module script loading with "no-referrer" referrer policy: FAIL
+	Same-origin top-level module script loading with "origin" referrer policy: FAIL
+	Same-origin top-level module script loading with "same-origin" referrer policy: PASS
 /workers/modules/shared-worker-import.window.html: OK
 	Dynamic import and then static import.: PASS
 	Dynamic import.: PASS
 	Nested dynamic import.: PASS
 	Nested static import.: PASS
-	Static import (cross-origin).: FAIL
+	Static import (cross-origin).: PASS
 	Static import (redirect).: PASS
 	Static import and then dynamic import.: PASS
 	Static import.: PASS
 	eval(import()).: PASS
 /workers/modules/shared-worker-options-credentials.html: OK
-	Test initialization: setting up cross-origin cookie: FAIL
+	Test initialization: setting up cross-origin cookie: PASS
 	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (default).: PASS
 	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (include).: PASS
 	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (omit).: PASS
@@ -1059,34 +1059,34 @@
 /workers/postMessage_target_source.htm: OK
 	 postMessage(): target port and source port : PASS
 /workers/same-origin-check.sub.html: OK
-	SharedWorker: cross-origin (classic): FAIL
-	SharedWorker: cross-origin (module): FAIL
+	SharedWorker: cross-origin (classic): PASS
+	SharedWorker: cross-origin (module): PASS
 	SharedWorker: cross-origin-to-same-origin-redirect (classic): PASS
 	SharedWorker: cross-origin-to-same-origin-redirect (module): PASS
 	SharedWorker: same-origin-to-cross-origin-redirect (classic): PASS
 	SharedWorker: same-origin-to-cross-origin-redirect (module): PASS
 	SharedWorker: same-origin-to-cross-origin-to-same-origin-redirect (classic): PASS
 	SharedWorker: same-origin-to-cross-origin-to-same-origin-redirect (module): PASS
-	Worker: cross-origin (classic): FAIL
-	Worker: cross-origin (module): FAIL
+	Worker: cross-origin (classic): PASS
+	Worker: cross-origin (module): PASS
 	Worker: cross-origin-to-same-origin-redirect (classic): PASS
 	Worker: cross-origin-to-same-origin-redirect (module): PASS
 	Worker: same-origin-to-cross-origin-redirect (classic): PASS
 	Worker: same-origin-to-cross-origin-redirect (module): PASS
 	Worker: same-origin-to-cross-origin-to-same-origin-redirect (classic): PASS
 	Worker: same-origin-to-cross-origin-to-same-origin-redirect (module): PASS
-/workers/same-site-cookies/first-party.all.tentative.https.window.html: OK
-	Check SharedWorker sameSiteCookies option all for first-party: FAIL
-/workers/same-site-cookies/first-party.default.tentative.https.window.html: OK
-	Check SharedWorker sameSiteCookies option default for first-party: FAIL
-/workers/same-site-cookies/first-party.none.tentative.https.window.html: OK
-	Check SharedWorker sameSiteCookies option none for first-party: FAIL
-/workers/same-site-cookies/third-party.all.tentative.sub.https.window.html: OK
-	Check SharedWorker sameSiteCookies option all for third-party: FAIL
-/workers/same-site-cookies/third-party.default.tentative.sub.https.window.html: OK
-	Check SharedWorker sameSiteCookies option default for third-party: FAIL
-/workers/same-site-cookies/third-party.none.tentative.sub.https.window.html: OK
-	Check SharedWorker sameSiteCookies option none for third-party: FAIL
+/workers/same-site-cookies/first-party.all.tentative.https.window.html: TIMEOUT
+	Check SharedWorker sameSiteCookies option all for first-party: TIMEOUT
+/workers/same-site-cookies/first-party.default.tentative.https.window.html: TIMEOUT
+	Check SharedWorker sameSiteCookies option default for first-party: TIMEOUT
+/workers/same-site-cookies/first-party.none.tentative.https.window.html: TIMEOUT
+	Check SharedWorker sameSiteCookies option none for first-party: TIMEOUT
+/workers/same-site-cookies/third-party.all.tentative.sub.https.window.html: TIMEOUT
+	Check SharedWorker sameSiteCookies option all for third-party: TIMEOUT
+/workers/same-site-cookies/third-party.default.tentative.sub.https.window.html: TIMEOUT
+	Check SharedWorker sameSiteCookies option default for third-party: TIMEOUT
+/workers/same-site-cookies/third-party.none.tentative.sub.https.window.html: TIMEOUT
+	Check SharedWorker sameSiteCookies option none for third-party: TIMEOUT
 /workers/semantics/encodings/001.html: OK
 	encoding, dedicated worker: PASS
 /workers/semantics/encodings/002.html: OK
@@ -1208,18 +1208,18 @@
 /workers/semantics/multiple-workers/exposure.any.worker.html: OK
 	SharedWorker exposure: PASS
 	Worker exposure: PASS
-/workers/semantics/navigation/001.html: TIMEOUT
-	navigating: NOTRUN
-/workers/semantics/navigation/002.html: TIMEOUT
-	navigating 2: TIMEOUT
+/workers/semantics/navigation/001.html: OK
+	navigating: PASS
+/workers/semantics/navigation/002.html: OK
+	navigating 2: FAIL
 /workers/semantics/reporting-errors/001.html: OK
 	shared worker, not handled: FAIL
 /workers/semantics/reporting-errors/002.html: OK
 	shared worker, addEventListener: FAIL
 /workers/semantics/reporting-errors/003.html: OK
 	shared worker, no error event on worker or port: PASS
-/workers/semantics/reporting-errors/004.html: TIMEOUT
-	shared worker in two documents and window.onerror: TIMEOUT
+/workers/semantics/reporting-errors/004.html: OK
+	shared worker in two documents and window.onerror: PASS
 /workers/semantics/run-a-worker/001.html: OK
 	worker global scope, dedicated worker: PASS
 /workers/semantics/run-a-worker/002.html: OK
@@ -1332,7 +1332,7 @@
 	Object with non-writable property: PASS
 	Object with property on prototype: PASS
 	ObjectPrototype must lose its exotic-ness when cloned: PASS
-	OffscreenCanvas: FAIL
+	OffscreenCanvas: PASS
 	RangeError object: PASS
 	ReferenceError object: PASS
 	RegExp empty: PASS
@@ -1485,7 +1485,7 @@
 	Object with non-writable property: PASS
 	Object with property on prototype: PASS
 	ObjectPrototype must lose its exotic-ness when cloned: PASS
-	OffscreenCanvas: FAIL
+	OffscreenCanvas: PASS
 	RangeError object: PASS
 	ReferenceError object: PASS
 	RegExp empty: PASS
@@ -1593,8 +1593,8 @@
 	Static import on classic shared worker should dispatch an event named error.: PASS
 /workers/shared-worker-partitioned-cookies.tentative.https.html: OK
 	SharedWorker: Partitioned Cookies: FAIL
-/workers/shared-worker-partitioned.tentative.html: TIMEOUT
-	Test partitioning of shared workers: TIMEOUT
+/workers/shared-worker-partitioned.tentative.html: OK
+	Test partitioning of shared workers: PASS
 /workers/shared-worker-runtime-error-is-not-parse-error.html: OK
 	JSON.parse() error fires at global scope but not at SharedWorker: PASS
 	Script parse error dispatches plain Event at SharedWorker: PASS
