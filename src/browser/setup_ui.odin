@@ -73,10 +73,10 @@ versions_line :: proc(f: ^Setup_Facts, known: bool) -> string {
 }
 
 // The line in the bordered box under the options: what is the case, or the outcome of the last action.
-@(private = "file")
+@(private)
 status_text :: proc(app: ^App, f: ^Setup_Facts) -> (text, tone: string) {
 	switch {
-	case app.stp.busy > 0:
+	case app.stp.acting > 0:
 		return "Working\u2026", "weak"
 	case app.stp.confirm_uninstall:
 		return fmt.tprintf("Click Confirm uninstall to remove %s: its shortcuts, its PATH entry, its entry in Settings > Apps and the files in %s. Your profile (bookmarks, history, settings) stays.", APP_NAME, f.inst.exe_present ? f.inst.dir : f.installed_dir), "warn"
@@ -194,7 +194,7 @@ setup_build :: proc(app: ^App) {
 	if ui.modal("setup", width, &open, top / win_h) {
 		if ui.style({radius = 0}) { setup_frame(app, width, inner, pad, win_h) }
 	}
-	if !open && app.stp.busy == 0 { setup_dismiss(app) }   // Escape, a click outside (not while it works)
+	if !open && app.stp.acting == 0 { setup_dismiss(app) }   // Escape, a click outside (not while it works)
 }
 
 @(private = "file")
@@ -214,7 +214,7 @@ setup_body :: proc(app: ^App, width, inner, pad, win_h: f32) {
 	f := &app.stp.facts
 	known := app.stp.known
 	kind := known ? f.kind : Setup_Kind.Loading
-	busy := app.stp.busy > 0
+	busy := app.stp.acting > 0   // (a read of the disk while the dialog shows it changes nothing on screen)
 	title, badge, badge_tone, badge_solid := header_texts(kind)
 
 	// the title bar: the name, and the close box
