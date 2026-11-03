@@ -16,7 +16,7 @@ import "wb:tools/wpt/reftest"
 // are rendered under the same layout, with the natural sizes of images besides (reftest_run.odin); those of every other
 // folder are not run.
 @(private)
-LAYOUT_FOLDERS :: [?]string{"/css/css-anchor-position/", "/css/css-multicol/", "/css/css-writing-modes/"}
+LAYOUT_FOLDERS :: [?]string{"/css/css-anchor-position/", "/css/css-multicol/", "/css/css-writing-modes/", "/css/cssom/"}
 @(private)
 REFTEST_FOLDERS :: [?]string{"css/css-multicol", "css/css-writing-modes"}
 @(private)

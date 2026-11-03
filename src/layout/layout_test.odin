@@ -672,3 +672,31 @@ grid_item_with_a_stated_minimum_does_not_stretch_flexible_tracks :: proc(t: ^tes
 	m := rect(f, "m")
 	testing.expectf(t, near(m.max.x - m.min.x, 500, 1), "the nested grid is its 5fr share of 600 px: %v", m.max.x - m.min.x)
 }
+// getComputedStyle's insets of positioned boxes (CSSOM "resolved value"): a side that is not auto against the containing
+// block, an auto one where the box is (absolute), the opposite negated (relative), auto still (sticky); the percentages of
+// a sticky box are of its scroll container.
+@(test)
+positioned_insets_resolve :: proc(t: ^testing.T) {
+	f := load(`<body style="margin:0"><div style="position:relative; margin:10px; padding:5px 7px; border:2px solid; width:200px; height:100px">
+<div id=abs style="position:absolute; top:10%; right:auto; bottom:auto; left:5px; width:50px; height:20px; margin:3px"></div>
+<div id=rel style="position:relative; top:auto; bottom:4px; left:25%; width:40px; height:10px"></div>
+<div id=both style="position:relative; width:40px; height:10px"></div></div>
+<div style="overflow:hidden; height:300px"><div style="height:50px"><div id=sticky style="position:sticky; top:10%; left:auto"></div></div></div>
+<div id=static style="top:3px"></div>`)
+	defer unload(f)
+	ins :: proc(f: ^Fx, id: string) -> (insets: [4]f32, auto_inset: [4]bool, ok: bool) { return positioned_insets(&f.l, box_index(&f.l, node(f, id)), 1) }
+	// absolute: the padding box of the relative div is 214 x 110; the margin box 56 x 26 at (5, 11)
+	a, a_auto, a_ok := ins(f, "abs")
+	testing.expect(t, a_ok && a_auto == {})
+	testing.expect_value(t, a, [4]f32{11, 214 - 5 - 56, 110 - 11 - 26, 5})
+	r, r_auto, r_ok := ins(f, "rel")
+	testing.expect(t, r_ok && r_auto == {})
+	testing.expect_value(t, r, [4]f32{-4, -50, 4, 50})
+	b, _, _ := ins(f, "both")
+	testing.expect_value(t, b, [4]f32{0, 0, 0, 0})
+	s, s_auto, s_ok := ins(f, "sticky")
+	testing.expect(t, s_ok && s_auto == {false, true, true, true})
+	testing.expect_value(t, s[0], 30)
+	_, _, static_ok := ins(f, "static")
+	testing.expect(t, !static_ok, "a static box answers with its computed values")
+}

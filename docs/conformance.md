@@ -36,6 +36,11 @@ folder. The chart and the table on this page are generated from `wpt/expectation
 when a run has produced it) by `src/tools/docsite`, the same tool that builds this site. Nothing here is typed by
 hand, so it cannot drift from the recorded results.
 
+Most folders run without layout: what their tests read of geometry is 0, and their expectations say so. The folders that
+test geometry (`LAYOUT_FOLDERS` in `src/tools/wpt/layout_host.odin`: `css/css-anchor-position`, `css/css-multicol`,
+`css/css-writing-modes`, `css/cssom`) get a layout of an 800 x 600 viewport with fixed text metrics, so that
+`getComputedStyle`, `offsetTop` or `getBoundingClientRect` answer there as a page's would.
+
 ## Reference tests
 
 The numbers above are testharness subtests. Reference tests compare two pages pixel by pixel, and they are counted apart:

@@ -98,7 +98,7 @@
 	getComputedStyle() with fragmented containing block in inline layout: FAIL
 	getComputedStyle() with fragmented containing block in multicolumn layout: PASS
 /css/css-anchor-position/anchor-getComputedStyle-003.html: OK
-	getComputedStyle() should return and absolutize the first @try rule style for target1: FAIL
+	getComputedStyle() should return and absolutize the first @try rule style for target1: PASS
 	getComputedStyle() should return and absolutize the second @try rule style for target2: FAIL
 /css/css-anchor-position/anchor-getComputedStyle-004.html: OK
 	'auto' inset properties resolve to 0px when position-area is non-initial: PASS
@@ -4226,7 +4226,7 @@
 	anchor-scope:all on sibling: PASS
 	anchor-scope:all scopes multiple names: PASS
 /css/css-anchor-position/anchor-scope-display-contents.tentative.html: OK
-	Can anchor to a name both defined and scoped by the same element: FAIL
+	Can anchor to a name both defined and scoped by the same element: PASS
 	Sibling can not anchor into anchor-scope, even when anchor-name present: PASS
 	anchor-scope:--a on common ancestor: PASS
 	anchor-scope:--a scopes only --a: FAIL
@@ -9347,7 +9347,7 @@
 	Both base position and flip-inline works, keep base position since it's the last successful option: PASS
 	Starts rendering with flip-inline fallback: PASS
 /css/css-anchor-position/last-successful-iframe.html: OK
-	Base position without fallback now successful: FAIL
+	Base position without fallback now successful: PASS
 	No successful position, keep flip-block: FAIL
 	Starts rendering with flip-block: FAIL
 /css/css-anchor-position/last-successful-intermediate-ignored.html: OK
@@ -13677,9 +13677,9 @@
 /css/css-anchor-position/try-tactic-base.html: OK
 	flip-start affects base values: PASS
 /css/css-anchor-position/try-tactic-basic-anchor.html: OK
-	Uses flip-block: FAIL
-	Uses flip-block flip-inline: FAIL
-	Uses flip-inline: FAIL
+	Uses flip-block: PASS
+	Uses flip-block flip-inline: PASS
+	Uses flip-inline: PASS
 /css/css-anchor-position/try-tactic-basic.html: OK
 	CSS Anchor Positioning: try-tactic: PASS
 	flip-block: PASS
