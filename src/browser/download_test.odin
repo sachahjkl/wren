@@ -4,6 +4,7 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 import "core:unicode/utf8"
+import "wb:base"
 
 // The list of finished downloads is written to the profile and read back: what ended stays (with its size, times, address
 // and path; a tab or a line end in a name is a space), what still runs is not written, and a restored one has no live part.
@@ -143,11 +144,11 @@ file_name_ok :: proc(t: ^testing.T, n: string, max_bytes: int, label: string) {
 	testing.expectf(t, !strings.contains_any(n, "<>:\"|?*/\\"), "%s: reserved character in %q", label, n)
 	for r in n { testing.expectf(t, r >= 32 && r != 0x7f, "%s: control character in %q", label, n) }
 	testing.expectf(t, n[len(n) - 1] != '.' && n[len(n) - 1] != ' ', "%s: ends with a dot or a space: %q", label, n)
-	base := n
-	if i := strings.index_byte(n, '.'); i >= 0 { base = n[:i] }
-	base = strings.to_upper(strings.trim_right(base, " "), context.temp_allocator)
-	testing.expectf(t, !(base == "CON" || base == "PRN" || base == "AUX" || base == "NUL" || base == "CONIN$" || base == "CONOUT$"), "%s: device name %q", label, n)
-	if len(base) == 4 && (base[:3] == "COM" || base[:3] == "LPT") { testing.expectf(t, !(base[3] >= '0' && base[3] <= '9'), "%s: device name %q", label, n) }
+	stem := n
+	if i := strings.index_byte(n, '.'); i >= 0 { stem = n[:i] }
+	stem = base.ascii_upper(strings.trim_right(stem, " "))
+	testing.expectf(t, !(stem == "CON" || stem == "PRN" || stem == "AUX" || stem == "NUL" || stem == "CONIN$" || stem == "CONOUT$"), "%s: device name %q", label, n)
+	if len(stem) == 4 && (stem[:3] == "COM" || stem[:3] == "LPT") { testing.expectf(t, !(stem[3] >= '0' && stem[3] <= '9'), "%s: device name %q", label, n) }
 }
 
 // An extension longer than the name may be (the whole Content-Disposition filename of a server is its to choose): used to

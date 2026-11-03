@@ -51,7 +51,7 @@ web_faces_kept :: proc() -> int {
 
 shared_face_acquire :: proc(pf: ^Page_Fonts, data: []byte, family: string, weight: int, style: font.Font_Style) -> (font.Font_Id, bool) {
 	sh := &pf.shared
-	key := fmt.tprintf("%016x %d %s %d %v", xxhash.XXH3_64_default(data), len(data), strings.to_lower(strings.trim_space(family), context.temp_allocator), weight, style)
+	key := fmt.tprintf("%016x %d %s %d %v", xxhash.XXH3_64_default(data), len(data), base.ascii_lower(strings.trim_space(family)), weight, style)
 	if sf, ok := sh.by_key[key]; ok && font.valid(pf.state, sf.id) {
 		sf.refs += 1
 		sh.hits += 1
@@ -206,7 +206,7 @@ web_text_invisible :: proc(l: ^Layout, cs: ^style.Computed) -> bool {
 	if v, ok := b.memo[key]; ok { return v }
 	invisible := false
 	walk: for fam in cs.font_family {
-		name := strings.to_lower(strings.trim_space(fam), context.temp_allocator)
+		name := base.ascii_lower(strings.trim_space(fam))
 		has_web := false
 		for w in pf.web { if w.family == name && (w.owner == pf.scope || w.owner == nil) { has_web = true; break } }
 		if has_web { break walk }   // a face of the family is there: it (or the system fallback) draws

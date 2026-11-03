@@ -21,7 +21,6 @@ package browser
 
 import "core:fmt"
 import "core:math"
-import "core:strings"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
@@ -446,7 +445,7 @@ devtools_settings_menu :: proc(app: ^App, t: ^Tab) {
 	if ui.menu_submenu("Theme###dt_m_theme") {
 		ui.menu_heading("The panel follows the browser's theme")
 		for np, i in ui.NAMED_PALETTES {
-			if ui.menu_item(fmt.tprintf("%s###dt_m_th%d", np.name, i), checked = strings.equal_fold(app.cfg.ui_theme, np.name)).clicked { dev_set_pref(app, "browser.ui.theme", np.name) }
+			if ui.menu_item(fmt.tprintf("%s###dt_m_th%d", np.name, i), checked = base.ascii_equal_fold(app.cfg.ui_theme, np.name)).clicked { dev_set_pref(app, "browser.ui.theme", np.name) }
 		}
 	}
 	ui.menu_separator()
@@ -624,4 +623,3 @@ set_pref_quiet :: proc(app: ^App, name: string, v: f32) {
 }
 
 _ :: page
-_ :: strings

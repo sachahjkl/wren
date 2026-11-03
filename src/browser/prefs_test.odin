@@ -3,6 +3,7 @@ package browser
 import "core:strings"
 import "core:testing"
 import "toolkit:font"
+import "wb:base"
 import "wb:config"
 import "wb:fetch"
 import "wb:net"
@@ -19,7 +20,7 @@ every_definition_is_valid :: proc(t: ^testing.T) {
 	seen := make(map[string]bool, context.temp_allocator)
 	for e in p.entries {
 		d := e.def
-		testing.expect(t, d.name != "" && strings.to_lower(d.name, context.temp_allocator) == d.name, d.name)
+		testing.expect(t, d.name != "" && base.ascii_lower(d.name) == d.name, d.name)
 		testing.expect(t, strings.contains(d.name, "."), d.name)
 		testing.expect(t, d.description != "", d.name)
 		testing.expect(t, !seen[d.name], d.name)

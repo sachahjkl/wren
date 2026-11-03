@@ -101,6 +101,10 @@ charset_sniffing_and_decoding :: proc(t: ^testing.T) {
 	testing.expect_value(t, canonical_encoding(" \tUCS-2\n"), "UTF-16LE")
 	testing.expect_value(t, canonical_encoding("x-unicode20utf8"), "UTF-8")
 	testing.expect_value(t, canonical_encoding("\vutf-8"), "")
+	// labels are ASCII case-insensitive: the Kelvin sign U+212A is no K, the long s U+017F no s
+	testing.expect_value(t, canonical_encoding("Koi8-R"), "KOI8-R")
+	testing.expect_value(t, canonical_encoding("Koi8-r"), "")
+	testing.expect_value(t, canonical_encoding("ſhift_jis"), "")
 	testing.expect_value(t, canonical_encoding("utf-8 "), "")
 	// a <meta> that says UTF-16 was read as ASCII bytes: UTF-8; x-user-defined: windows-1252 (HTML "get an encoding")
 	check(t, transmute([]byte)string("<meta charset=utf-16><p>h\xC3\xA9"), "", "<meta charset=utf-16><p>hé", "UTF-8", .Meta)

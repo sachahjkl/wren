@@ -8,6 +8,7 @@ package fetch
 import "core:fmt"
 import "core:strings"
 import "core:sys/posix"
+import "wb:base"
 
 // Seconds from 1601-01-01 (FILETIME's epoch) to 1970-01-01.
 @(private)
@@ -82,7 +83,6 @@ read_directory :: proc(path: string, s: ^File_Settings, allocator := context.all
 name_cmp :: proc(a, b: Dir_Entry) -> i32 {
 	x, y := a.name, b.name
 	i, j := 0, 0
-	lower :: proc(c: u8) -> u8 { return c >= 'A' && c <= 'Z' ? c + 32 : c }
 	digit :: proc(c: u8) -> bool { return c >= '0' && c <= '9' }
 	for i < len(x) && j < len(y) {
 		if digit(x[i]) && digit(y[j]) {
@@ -96,7 +96,7 @@ name_cmp :: proc(a, b: Dir_Entry) -> i32 {
 			if c := strings.compare(x[si:i], y[sj:j]); c != 0 { return i32(c) }
 			continue
 		}
-		cx, cy := lower(x[i]), lower(y[j])
+		cx, cy := base.ascii_lower_byte(x[i]), base.ascii_lower_byte(y[j])
 		if cx != cy { return cx < cy ? -1 : 1 }
 		i += 1
 		j += 1

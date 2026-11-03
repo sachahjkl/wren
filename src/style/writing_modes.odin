@@ -1,6 +1,5 @@
 package style
 
-import "core:strings"
 import "core:sync"
 import "wb:base"
 import "wb:css"
@@ -34,7 +33,7 @@ parse_writing_mode :: proc(vs: []css.Value) -> (Writing_Mode, bool) {
 	id, ok := ident_raw(vs)
 	if !ok { return {}, false }
 	// SVG 1.1's names (CSS Writing Modes 4 §3.1)
-	switch strings.to_lower(id, context.temp_allocator) {
+	switch base.ascii_lower(id) {
 	case "lr", "lr-tb", "rl", "rl-tb": return .Horizontal_Tb, true
 	case "tb", "tb-rl": return .Vertical_Rl, true
 	}
@@ -76,7 +75,7 @@ is_line_width_value :: proc(v: css.Value) -> bool {
 		}
 		return false
 	}
-	return v.kind == .Function && (strings.equal_fold(v.tok.text, "calc") || strings.equal_fold(v.tok.text, "min") || strings.equal_fold(v.tok.text, "max") || strings.equal_fold(v.tok.text, "clamp"))
+	return v.kind == .Function && (base.ascii_equal_fold(v.tok.text, "calc") || base.ascii_equal_fold(v.tok.text, "min") || base.ascii_equal_fold(v.tok.text, "max") || base.ascii_equal_fold(v.tok.text, "clamp"))
 }
 
 @(private)

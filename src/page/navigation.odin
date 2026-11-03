@@ -68,7 +68,7 @@ Nav_Pending :: struct {
 // navigation to the action URL).
 navigation_form :: proc(p: ^Page, s: ^forms.Submission, before_loaded: bool) -> bool {
 	if p == nil || p.closed || p.web == nil || s.method == .Dialog || s.mailto { return true }
-	if s.target != "" && !strings.equal_fold(s.target, "_self") { return true }
+	if s.target != "" && !base.ascii_equal_fold(s.target, "_self") { return true }
 	target, ok := url.parse(s.url, nil, context.temp_allocator)
 	if !ok { return true }
 	// HTML: a submission planned before the document completely loaded, or towards its own URL, replaces the entry
@@ -246,7 +246,7 @@ navigation_follow_script_link :: proc(p: ^Page, link: base.Handle) {
 		}
 		return
 	}
-	if target, has := dom.get_attribute(p.doc, link, "target"); has && target != "" && !strings.equal_fold(target, "_self") {
+	if target, has := dom.get_attribute(p.doc, link, "target"); has && target != "" && !base.ascii_equal_fold(target, "_self") {
 		name := strings.trim_space(strings.clone(target, context.temp_allocator))
 		rel, _ := dom.get_attribute(p.doc, link, "rel")
 		feat := link_open_features(rel, name)

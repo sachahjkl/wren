@@ -231,7 +231,7 @@ dashed_list :: proc(cx: ^Cx, vs: []css.Value) -> ([]string, bool) {
 @(private)
 area_keyword :: proc(v: css.Value) -> (Area_Keyword, bool) {
 	if v.kind != .Token || v.tok.kind != .Ident { return .None, false }
-	id := css.lower_temp(v.tok.text)
+	id := base.ascii_lower(v.tok.text)
 	if id == "none" { return .None, false }
 	names := reflect.enum_field_names(Area_Keyword)
 	for n, i in names { if names_equal(id, n) { return Area_Keyword(i), true } }
@@ -310,7 +310,7 @@ parse_try_option :: proc(cx: ^Cx, part: []css.Value) -> (o: Try_Option, ok: bool
 		}
 		if it.kind != .Token || it.tok.kind != .Ident { return {}, false }
 		t: Try_Tactic
-		switch css.lower_temp(it.tok.text) {
+		switch base.ascii_lower(it.tok.text) {
 		case "flip-block": t = .Flip_Block
 		case "flip-inline": t = .Flip_Inline
 		case "flip-start": t = .Flip_Start
@@ -329,7 +329,7 @@ parse_try_option :: proc(cx: ^Cx, part: []css.Value) -> (o: Try_Option, ok: bool
 @(private)
 parse_try_fallbacks :: proc(cx: ^Cx, vs: []css.Value) -> ([]Try_Option, bool) {
 	trimmed := css.trim_values(vs)
-	if id, ok := ident_raw(trimmed); ok && strings.equal_fold(id, "none") { return nil, true }
+	if id, ok := ident_raw(trimmed); ok && base.ascii_equal_fold(id, "none") { return nil, true }
 	parts := css.split_commas(trimmed, context.temp_allocator)
 	if len(parts) == 0 { return nil, false }
 	opts := make([]Try_Option, len(parts), cx.alloc)
@@ -347,7 +347,7 @@ apply_anchor_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	trimmed := css.trim_values(vs)
 	if len(trimmed) == 0 { return false }
 	id, is_id := ident_raw(trimmed)
-	lid := is_id ? css.lower_temp(id) : ""
+	lid := is_id ? base.ascii_lower(id) : ""
 	#partial switch p {
 	case .Anchor_Name:
 		if lid == "none" { c.anchor_name = nil; return true }
@@ -624,7 +624,7 @@ try_tactic_apply :: proc(c: ^Computed, t: Try_Tactic, a := context.allocator) {
 
 @(private)
 area_keyword_text :: proc(k: Area_Keyword, a := context.temp_allocator) -> string {
-	return strings.to_lower(strings.join(strings.split(reflect.enum_string(k), "_", context.temp_allocator), "-", context.temp_allocator), a)
+	return base.ascii_lower_clone(strings.join(strings.split(reflect.enum_string(k), "_", context.temp_allocator), "-", context.temp_allocator), a)
 }
 
 @(private)
@@ -679,7 +679,7 @@ canonical_declared :: proc(p: Prop, vs: []css.Value, alloc := context.temp_alloc
 has_anchor_function :: proc(vs: []css.Value) -> bool {
 	for v in vs {
 		if v.kind == .Token { continue }
-		if v.kind == .Function && (strings.equal_fold(v.tok.text, "anchor") || strings.equal_fold(v.tok.text, "anchor-size")) { return true }
+		if v.kind == .Function && (base.ascii_equal_fold(v.tok.text, "anchor") || base.ascii_equal_fold(v.tok.text, "anchor-size")) { return true }
 		if has_anchor_function(v.children) { return true }
 	}
 	return false
@@ -688,14 +688,14 @@ has_anchor_function :: proc(vs: []css.Value) -> bool {
 @(private)
 write_canonical :: proc(sb: ^strings.Builder, vs: []css.Value) {
 	for v in vs {
-		if v.kind == .Function && strings.equal_fold(v.tok.text, "calc") && has_anchor_function(v.children) {
+		if v.kind == .Function && base.ascii_equal_fold(v.tok.text, "calc") && has_anchor_function(v.children) {
 			// calc() of one function is that function
 			inner := css.trim_values(v.children)
 			if len(inner) == 1 { write_canonical(sb, inner); continue }
 		}
-		if v.kind == .Function && (strings.equal_fold(v.tok.text, "anchor") || strings.equal_fold(v.tok.text, "anchor-size")) {
+		if v.kind == .Function && (base.ascii_equal_fold(v.tok.text, "anchor") || base.ascii_equal_fold(v.tok.text, "anchor-size")) {
 			parts := css.split_commas(v.children, context.temp_allocator)
-			strings.write_string(sb, css.lower_temp(v.tok.text))
+			strings.write_string(sb, base.ascii_lower(v.tok.text))
 			strings.write_byte(sb, '(')
 			if len(parts) > 0 {
 				items := split_items(parts[0])

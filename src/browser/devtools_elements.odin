@@ -1029,7 +1029,6 @@ run_search :: proc(t: ^Tab, e: ^Dev_Elements) {
 	q := dt_filter_text(&e.search)
 	if q == "" || t.page == nil { return }
 	d := t.page.doc
-	lq := strings.to_lower(q, context.temp_allocator)
 	sel := strings.has_prefix(q, "//")
 	path := sel ? strings.split(strings.trim_prefix(q, "//"), "/", context.temp_allocator) : nil
 	stack := make([dynamic]base.Handle, context.temp_allocator)
@@ -1046,11 +1045,11 @@ run_search :: proc(t: ^Tab, e: ^Dev_Elements) {
 			if sel {
 				hit = len(path) > 0 && n.name == path[len(path) - 1]
 			} else {
-				if dt_contains_fold(n.name, lq) { hit = true }
-				for a in n.attrs { if dt_contains_fold(a.name, lq) || dt_contains_fold(a.value, lq) { hit = true; break } }
+				if base.ascii_contains_fold(n.name, q) { hit = true }
+				for a in n.attrs { if base.ascii_contains_fold(a.name, q) || base.ascii_contains_fold(a.value, q) { hit = true; break } }
 			}
 		case .Text, .Comment:
-			hit = !sel && dt_contains_fold(n.text, lq)
+			hit = !sel && base.ascii_contains_fold(n.text, q)
 		case .Document, .Fragment, .Doctype:
 		}
 		if hit { append(&e.found, h) }

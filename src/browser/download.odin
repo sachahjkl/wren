@@ -76,7 +76,7 @@ doc_action :: proc(mime: string, disposition: string, address: string) -> Doc_Ac
 	case mime == "": return .Render   // sniffed as HTML (or a module) once the bytes are there
 	case mime == "text/html" || mime == "application/xhtml+xml": return .Render
 	case mime == "application/wasm": return .Wasm
-	case mime == "application/octet-stream" && strings.has_suffix(strings.to_lower(path, context.temp_allocator), ".wasm"): return .Wasm
+	case mime == "application/octet-stream" && base.ascii_has_suffix_fold(path, ".wasm"): return .Wasm
 	case strings.has_prefix(mime, "text/"), mime == "application/json", mime == "application/javascript", mime == "application/ecmascript",
 	     mime == "application/xml", strings.has_suffix(mime, "+xml") && !strings.has_prefix(mime, "image/"), strings.has_suffix(mime, "+json"):
 		return .Text
@@ -92,14 +92,14 @@ parse_content_disposition :: proc(value: string, allocator := context.temp_alloc
 	if s == "" { return false, "" }
 	kind := s
 	if i := strings.index_byte(s, ';'); i >= 0 { kind = s[:i]; s = s[i + 1:] } else { s = "" }
-	attachment = strings.equal_fold(strings.trim_space(kind), "attachment")
+	attachment = base.ascii_equal_fold(strings.trim_space(kind), "attachment")
 	plain, extended: string
 	has_ext := false
 	for len(s) > 0 {
 		s = strings.trim_left_space(s)
 		eq := strings.index_byte(s, '=')
 		if eq < 0 { break }
-		key := strings.to_lower(strings.trim_space(s[:eq]), context.temp_allocator)
+		key := base.ascii_lower(strings.trim_space(s[:eq]))
 		s = strings.trim_left_space(s[eq + 1:])
 		v: string
 		if len(s) > 0 && s[0] == '"' {
@@ -136,7 +136,7 @@ decode_ext_value :: proc(v: string) -> (string, bool) {
 	rest := v[q1 + 1:]
 	q2 := strings.index_byte(rest, '\'')
 	if q2 < 0 { return "", false }
-	charset := strings.to_lower(v[:q1], context.temp_allocator)
+	charset := base.ascii_lower(v[:q1])
 	enc := rest[q2 + 1:]
 	raw := make([dynamic]u8, 0, len(enc), context.temp_allocator)
 	for i := 0; i < len(enc); i += 1 {
@@ -211,9 +211,9 @@ fit_file_name :: proc(name: string, max_bytes: int) -> string {
 // CON, PRN, AUX, NUL, CONIN$, CONOUT$, COM0-9 and LPT0-9 (also with the superscript digits ¹ ² ³), whatever follows the first dot.
 @(private = "file")
 is_device_name :: proc(name: string) -> bool {
-	base := name
-	if i := strings.index_byte(name, '.'); i >= 0 { base = name[:i] }
-	upper := strings.to_upper(strings.trim_right(base, " "), context.temp_allocator)
+	stem := name
+	if i := strings.index_byte(name, '.'); i >= 0 { stem = name[:i] }
+	upper := base.ascii_upper(strings.trim_right(stem, " "))
 	switch upper {
 	case "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$": return true
 	}

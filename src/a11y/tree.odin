@@ -401,7 +401,7 @@ emit_element :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, role: Role, kids: [
 	if hp, ok := popup_of(&v.src, h, role); ok { platform.a11y_int(w.u, .Has_Popup, u64(hp)) }
 	if cur, ok := attr(&v.src, h, "aria-current"); ok {
 		c: platform.A11y_Current
-		switch strings.to_lower(cur, context.temp_allocator) {
+		switch base.ascii_lower(cur) {
 		case "page": c = .Page
 		case "step": c = .Step
 		case "location": c = .Location
@@ -412,11 +412,11 @@ emit_element :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, role: Role, kids: [
 		}
 		if c != .False { platform.a11y_int(w.u, .Aria_Current, u64(c)) }
 	}
-	if inv, ok := attr(&v.src, h, "aria-invalid"); ok && !strings.equal_fold(inv, "false") {
-		platform.a11y_int(w.u, .Invalid, strings.equal_fold(inv, "grammar") ? 1 : strings.equal_fold(inv, "spelling") ? 2 : 0)
+	if inv, ok := attr(&v.src, h, "aria-invalid"); ok && !base.ascii_equal_fold(inv, "false") {
+		platform.a11y_int(w.u, .Invalid, base.ascii_equal_fold(inv, "grammar") ? 1 : base.ascii_equal_fold(inv, "spelling") ? 2 : 0)
 	}
 	if o, ok := attr(&v.src, h, "aria-orientation"); ok {
-		platform.a11y_int(w.u, .Orientation, strings.equal_fold(o, "vertical") ? 1 : 0)
+		platform.a11y_int(w.u, .Orientation, base.ascii_equal_fold(o, "vertical") ? 1 : 0)
 	}
 	refs(w, h, "aria-controls", .Controls)
 	refs(w, h, "aria-details", .Details)
@@ -482,7 +482,7 @@ has_attr :: proc(src: ^Source, h: base.Handle, name: string) -> bool { _, ok := 
 @(private)
 aria_true :: proc(src: ^Source, h: base.Handle, name: string) -> bool {
 	v, ok := attr(src, h, name)
-	return ok && strings.equal_fold(strings.trim_space(v), "true")
+	return ok && base.ascii_equal_fold(strings.trim_space(v), "true")
 }
 
 // Disabled: the disabled attribute of a control (or of a fieldset around it, its first legend apart), aria-disabled.
@@ -523,7 +523,7 @@ toggled_of :: proc(src: ^Source, h: base.Handle, n: ^dom.Node, role: Role) -> (p
 	case .Button:
 		// a toggle button: aria-pressed
 		if v, ok := attr(src, h, "aria-pressed"); ok {
-			switch strings.to_lower(strings.trim_space(v), context.temp_allocator) {
+			switch base.ascii_lower(strings.trim_space(v)) {
 			case "true": return .True, true
 			case "mixed": return .Mixed, true
 			case "false": return .False, true
@@ -541,7 +541,7 @@ toggled_of :: proc(src: ^Source, h: base.Handle, n: ^dom.Node, role: Role) -> (p
 		return has_attr(src, h, "checked") ? .True : .False, true
 	}
 	if v, ok := attr(src, h, "aria-checked"); ok {
-		switch strings.to_lower(strings.trim_space(v), context.temp_allocator) {
+		switch base.ascii_lower(strings.trim_space(v)) {
 		case "true": return .True, true
 		case "mixed": return .Mixed, true
 		}
@@ -557,7 +557,7 @@ selected_of :: proc(src: ^Source, h: base.Handle, n: ^dom.Node, role: Role) -> (
 	}
 	#partial switch role {
 	case .Tab, .List_Box_Option, .Row, .Grid_Cell, .Tree_Item, .Cell, .Column_Header, .Row_Header:
-		if v, ok := attr(src, h, "aria-selected"); ok { return strings.equal_fold(strings.trim_space(v), "true"), true }
+		if v, ok := attr(src, h, "aria-selected"); ok { return base.ascii_equal_fold(strings.trim_space(v), "true"), true }
 		if role == .Tab || role == .List_Box_Option { return false, true }
 	}
 	return false, false
@@ -566,7 +566,7 @@ selected_of :: proc(src: ^Source, h: base.Handle, n: ^dom.Node, role: Role) -> (
 @(private)
 expanded_of :: proc(src: ^Source, h: base.Handle, n: ^dom.Node, role: Role) -> (bool, bool) {
 	if v, ok := attr(src, h, "aria-expanded"); ok {
-		t := strings.to_lower(strings.trim_space(v), context.temp_allocator)
+		t := base.ascii_lower(strings.trim_space(v))
 		if t == "true" { return true, true }
 		if t == "false" { return false, true }
 	}
@@ -679,7 +679,7 @@ numbers :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, role: Role) {
 @(private)
 live_of :: proc(src: ^Source, h: base.Handle, role: Role) -> platform.A11y_Live {
 	if v, ok := attr(src, h, "aria-live"); ok {
-		switch strings.to_lower(strings.trim_space(v), context.temp_allocator) {
+		switch base.ascii_lower(strings.trim_space(v)) {
 		case "assertive": return .Assertive
 		case "polite": return .Polite
 		case "off": return .Off
@@ -695,7 +695,7 @@ live_of :: proc(src: ^Source, h: base.Handle, role: Role) -> platform.A11y_Live 
 @(private)
 popup_of :: proc(src: ^Source, h: base.Handle, role: Role) -> (platform.A11y_Popup, bool) {
 	if v, ok := attr(src, h, "aria-haspopup"); ok {
-		switch strings.to_lower(strings.trim_space(v), context.temp_allocator) {
+		switch base.ascii_lower(strings.trim_space(v)) {
 		case "true", "menu": return .Menu, true
 		case "listbox": return .Listbox, true
 		case "tree": return .Tree, true

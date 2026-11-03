@@ -230,7 +230,7 @@ node_name_of :: proc(op: ^Dom_Op, text: string) {
 			if op.node_re != nil { return }
 		}
 	}
-	op.node_name = strings.to_lower(text)
+	op.node_name = base.ascii_lower_clone(text)
 }
 
 // Puts back together the pieces of a selector list that a comma inside `[...]`, `(...)` or quotes cut.
@@ -362,7 +362,7 @@ sanitize_href :: proc(p: ^page.Page, op: ^Dom_Op, el: base.Handle) {
 // The text operations on an element whose name matches (or on a text node, for `#text`).
 name_matches :: proc(op: ^Dom_Op, name: string) -> bool {
 	if op.node_re != nil { return jsre_test(op.node_re, name) }
-	return strings.equal_fold(name, op.node_name)
+	return base.ascii_equal_fold(name, op.node_name)
 }
 
 rewrite_text :: proc(op: ^Dom_Op, text: string) -> (out: string, changed: bool) {

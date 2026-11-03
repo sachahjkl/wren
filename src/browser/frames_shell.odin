@@ -146,7 +146,7 @@ frames_prepare :: proc(app: ^App, t: ^Tab, viewport: draw.Vec2, scale: f32) {
 		size := draw.Vec2{math.round(r.content.max.x - r.content.min.x), math.round(r.content.max.y - r.content.min.y)}
 		fv.transformed = r.transformed
 		sc, _ := dom.get_attribute(p.doc, n.element, "scrolling")
-		fv.no_scroll = strings.equal_fold(strings.trim_space(sc), "no")
+		fv.no_scroll = base.ascii_equal_fold(strings.trim_space(sc), "no")
 		lay.set_doc_bars_off(&fv.tab.layout, fv.no_scroll)
 		if fv.no_scroll {
 			fv.tab.scroll = 0
@@ -456,7 +456,7 @@ frames_follow_link :: proc(app: ^App, fv: ^Frame_View, el: base.Handle, href: st
 	if page.follow_fragment_link(p, resolved) { return }
 	if page.follow_javascript_url(p, resolved) { return }
 	target, _ := dom.get_attribute(p.doc, el, "target")
-	if strings.equal_fold(strings.trim_space(target), "_blank") {
+	if base.ascii_equal_fold(strings.trim_space(target), "_blank") {
 		tab_open(app, resolved.href, p)
 		return
 	}

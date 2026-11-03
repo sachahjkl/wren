@@ -5,6 +5,7 @@ import "core:mem"
 import "core:mem/virtual"
 import "core:slice"
 import "core:strings"
+import "wb:base"
 
 // Names that conditions of `!#if` may use. The defaults describe a uBlock-compatible content blocker that evaluates
 // procedural cosmetic filters and scriptlets itself.
@@ -261,7 +262,7 @@ filter_meta :: proc(f: Filter) -> u32 {
 @(private)
 add_run_grams :: proc(run: string, out: ^[dynamic]u32) {
 	for i in 0 ..< max(len(run) - 3, 0) {
-		w := u32(lower_byte(run[i])) | u32(lower_byte(run[i + 1])) << 8 | u32(lower_byte(run[i + 2])) << 16 | u32(lower_byte(run[i + 3])) << 24
+		w := u32(base.ascii_lower_byte(run[i])) | u32(base.ascii_lower_byte(run[i + 1])) << 8 | u32(base.ascii_lower_byte(run[i + 2])) << 16 | u32(base.ascii_lower_byte(run[i + 3])) << 24
 		append(out, w)
 	}
 }
@@ -310,7 +311,7 @@ regex_tokens :: proc(p: string, icase: bool, out: ^[dynamic]Tok_Cand) {
 		if before_ok && after_ok {
 			buf: [64]u8
 			if j - i <= len(buf) {
-				for k in 0 ..< j - i { buf[k] = icase ? lower_byte(p[i + k]) : p[i + k] }
+				for k in 0 ..< j - i { buf[k] = icase ? base.ascii_lower_byte(p[i + k]) : p[i + k] }
 				append(out, Tok_Cand{hash_str(string(buf[:j - i])), u8(j - i)})
 			}
 		}

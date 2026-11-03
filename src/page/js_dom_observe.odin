@@ -171,7 +171,7 @@ MutationObserver_observe :: proc(c: ^Call, observer: u64, target: Api_Node, opti
 	if opts & MO_ATTRIBUTE_FILTER != 0 {
 		parts := strings.split(filter, "\x00", context.temp_allocator)
 		names = make([]string, len(parts))
-		for s, i in parts { names[i] = strings.to_lower(s) }
+		for s, i in parts { names[i] = base.ascii_lower_clone(s) }
 	}
 	h := H(target.handle)
 	obs := &js_dom_state(c.page).observers

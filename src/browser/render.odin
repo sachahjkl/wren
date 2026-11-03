@@ -772,7 +772,7 @@ default_control :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, it: ^la
 	switch n.name {
 	case "input":
 		t, _ := dom.get_attribute(d, it.node, "type")
-		t = strings.to_lower(t, context.temp_allocator)
+		t = base.ascii_lower(t)
 		_, checked := dom.get_attribute(d, it.node, "checked")
 		switch t {
 		case "checkbox":

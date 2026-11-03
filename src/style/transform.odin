@@ -1,7 +1,7 @@
 package style
 
 import "core:math"
-import "core:strings"
+import "wb:base"
 import "wb:css"
 
 // CSS Transforms 1 and 2. The 3D functions (perspective(), rotateX/Y/Z, rotate3d, translateZ/3d, scaleZ/3d, matrix3d) are
@@ -279,7 +279,7 @@ parse_transform_function :: proc(cx: ^Cx, f: css.Value) -> (Transform_Op, bool) 
 		return l, ok && l.kind == .Px
 	}
 	zero := px(0)
-	switch css.lower_temp(f.tok.text) {
+	switch base.ascii_lower(f.tok.text) {
 	case "matrix":
 		if n != 6 { return {}, false }
 		op := Transform_Op{kind = .Matrix}
@@ -330,7 +330,7 @@ parse_transform_function :: proc(cx: ^Cx, f: css.Value) -> (Transform_Op, bool) 
 		op.z = z.v
 		return op, ok1 && ok2 && ok3
 	case "scale", "scalex", "scaley", "scalez", "scale3d":
-		name := css.lower_temp(f.tok.text)
+		name := base.ascii_lower(f.tok.text)
 		want_min, want_max := 1, 1
 		switch name {
 		case "scale": want_max = 2
@@ -359,7 +359,7 @@ parse_transform_function :: proc(cx: ^Cx, f: css.Value) -> (Transform_Op, bool) 
 	case "rotatex", "rotatey":
 		if n != 1 { return {}, false }
 		a, ok := parse_angle(vals[0])
-		is_x := strings.equal_fold(f.tok.text, "rotatex")
+		is_x := base.ascii_equal_fold(f.tok.text, "rotatex")
 		return Transform_Op{kind = .Rotate, v = {a, 0, 0, 0, 0, 0}, axis = is_x ? [3]f32{1, 0, 0} : [3]f32{0, 1, 0}}, ok
 	case "rotate3d":
 		if n != 4 { return {}, false }

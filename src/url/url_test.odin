@@ -20,6 +20,7 @@ href :: proc(input: string, base := "") -> string {
 @(test)
 normalisation :: proc(t: ^testing.T) {
 	testing.expect_value(t, href("HTTP://EXAMPLE.com:80/a/./b/../c?Q=1#F"), "http://example.com/a/c?Q=1#F")
+	testing.expect_value(t, href("HTTP\u017F://example.com/"), "<invalid>")   // a scheme is ASCII: the long s U+017F is no s
 	testing.expect_value(t, href("https://example.com:443/"), "https://example.com/")
 	testing.expect_value(t, href("https://example.com:8443"), "https://example.com:8443/")
 	testing.expect_value(t, href("http://0x7f.1/"), "http://127.0.0.1/")

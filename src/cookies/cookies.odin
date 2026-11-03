@@ -6,6 +6,7 @@ package cookies
 
 import "core:strconv"
 import "core:strings"
+import "wb:base"
 import "wb:url"
 
 Same_Site :: enum u8 { Unspecified, None, Lax, Strict }
@@ -125,7 +126,7 @@ leading_digits :: proc(s: string, min_n, max_n: int) -> (v: int, ok: bool) {
 @(private)
 month_index :: proc(m: string) -> int {
 	names := [?]string{"jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"}
-	for n, i in names { if strings.equal_fold(n, m) { return i + 1 } }
+	for n, i in names { if base.ascii_equal_fold(n, m) { return i + 1 } }
 	return 0
 }
 
@@ -230,25 +231,25 @@ parse_set_cookie :: proc(header: string, lim: Settings) -> (p: Parsed, ok: bool)
 		}
 		if len(avalue) > lim.max_attribute_bytes { continue }
 		switch {
-		case strings.equal_fold(aname, "expires"):
+		case base.ascii_equal_fold(aname, "expires"):
 			if ms, good := parse_cookie_date(avalue); good { p.expires_set, p.expires_ms = true, ms }
-		case strings.equal_fold(aname, "max-age"):
+		case base.ascii_equal_fold(aname, "max-age"):
 			if ms, good := parse_max_age(avalue, lim.max_age_ms); good { p.max_age_set, p.max_age_ms = true, ms }
-		case strings.equal_fold(aname, "domain"):
+		case base.ascii_equal_fold(aname, "domain"):
 			d := avalue
 			if strings.has_prefix(d, ".") { d = d[1:] }
 			if d != "" { p.has_domain, p.domain_attr = true, d } else { p.has_domain, p.domain_attr = false, "" }
-		case strings.equal_fold(aname, "path"):
+		case base.ascii_equal_fold(aname, "path"):
 			if avalue != "" && avalue[0] == '/' { p.has_path, p.path_attr = true, avalue } else { p.has_path, p.path_attr = false, "" }
-		case strings.equal_fold(aname, "secure"):
+		case base.ascii_equal_fold(aname, "secure"):
 			p.cookie.secure = true
-		case strings.equal_fold(aname, "httponly"):
+		case base.ascii_equal_fold(aname, "httponly"):
 			p.cookie.http_only = true
-		case strings.equal_fold(aname, "samesite"):
+		case base.ascii_equal_fold(aname, "samesite"):
 			switch {
-			case strings.equal_fold(avalue, "strict"): p.cookie.same_site = .Strict
-			case strings.equal_fold(avalue, "lax"):    p.cookie.same_site = .Lax
-			case strings.equal_fold(avalue, "none"):   p.cookie.same_site = .None
+			case base.ascii_equal_fold(avalue, "strict"): p.cookie.same_site = .Strict
+			case base.ascii_equal_fold(avalue, "lax"):    p.cookie.same_site = .Lax
+			case base.ascii_equal_fold(avalue, "none"):   p.cookie.same_site = .None
 			case: p.cookie.same_site = .Unspecified
 			}
 		}

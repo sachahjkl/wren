@@ -136,7 +136,7 @@ request_cache_control :: proc(h: http.Headers) -> httpcache.Cache_Control {
 	cc := httpcache.cache_control_of(h)
 	if !http.has_header(h, "cache-control") {
 		// HTTP/1.0's Pragma: no-cache, when there is no Cache-Control (RFC 9111 §5.4)
-		if v, ok := http.get_header(h, "pragma"); ok && strings.contains(strings.to_lower(v, context.temp_allocator), "no-cache") { cc.no_cache = true }
+		if v, ok := http.get_header(h, "pragma"); ok && base.ascii_contains_fold(v, "no-cache") { cc.no_cache = true }
 	}
 	return cc
 }

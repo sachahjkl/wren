@@ -2,6 +2,7 @@ package css
 
 import "core:fmt"
 import "core:strings"
+import "wb:base"
 
 NESTING_SCAN_MAX_DEPTH :: 64   // the selectors within selectors searched for `&`
 
@@ -289,7 +290,7 @@ parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List) -> (s:
 		case .Ident:
 			// `prefix|name`: no namespace prefix is declared (querySelector has none, @namespace is not read)
 			if len(vs) > 2 && is_delim(vs[1], "|") && (vs[2].kind == .Token && vs[2].tok.kind == .Ident || is_delim(vs[2], "*")) { return {}, .None, 0, false }
-			return Simple{kind = .Type, name = strings.to_lower(t.text, a)}, .None, 1, true
+			return Simple{kind = .Type, name = base.ascii_lower_clone(t.text, a)}, .None, 1, true
 		case .Hash:
 			if !t.is_id { return {}, .None, 0, false }
 			return Simple{kind = .Id, name = t.text}, .None, 1, true
@@ -301,7 +302,7 @@ parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List) -> (s:
 				at := t.text == "*" ? 2 : 1
 				if at >= len(vs) || vs[at].kind != .Token { return {}, .None, 0, false }
 				no_ns := t.text == "|"
-				if vs[at].tok.kind == .Ident { return Simple{kind = .Type, name = strings.to_lower(vs[at].tok.text, a), no_namespace = no_ns}, .None, at + 1, true }
+				if vs[at].tok.kind == .Ident { return Simple{kind = .Type, name = base.ascii_lower_clone(vs[at].tok.text, a), no_namespace = no_ns}, .None, at + 1, true }
 				if is_delim(vs[at], "*") { return Simple{kind = .Universal, no_namespace = no_ns}, .None, at + 1, true }
 				return {}, .None, 0, false
 			case "&":
@@ -320,7 +321,7 @@ parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List) -> (s:
 					if elem, good := pseudo_element_of(vs[2].tok.text); good { return {}, elem, 3, true }
 				}
 				if len(vs) > 2 && vs[2].kind == .Function {
-					fname := lower_temp(vs[2].tok.text)
+					fname := base.ascii_lower(vs[2].tok.text)
 					switch fname {
 					case "slotted":
 						// ::slotted(<compound-selector>)
@@ -346,7 +347,7 @@ parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List) -> (s:
 				return {}, .None, 0, false
 			}
 			if len(vs) > 1 && vs[1].kind == .Token && vs[1].tok.kind == .Ident {
-				name := strings.to_lower(vs[1].tok.text, a)
+				name := base.ascii_lower_clone(vs[1].tok.text, a)
 				// legacy single-colon pseudo-elements
 				switch name {
 				case "before", "after", "first-line", "first-letter":
@@ -374,7 +375,7 @@ parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List) -> (s:
 
 @(private)
 pseudo_element_of :: proc(name: string) -> (Pseudo, bool) {
-	switch lower_temp(name) {
+	switch base.ascii_lower(name) {
 	case "before": return .Before, true
 	case "after": return .After, true
 	case "first-line": return .First_Line, true
@@ -390,14 +391,14 @@ pseudo_element_of :: proc(name: string) -> (Pseudo, bool) {
 	}
 	// Blink accepts every -webkit- pseudo-element (its form controls' parts, scroll bars...): a sheet written for it keeps
 	// its selector lists. They style parts this engine does not have.
-	if len(name) > 8 && strings.equal_fold(name[:8], "-webkit-") { return .Other_Element, true }
+	if len(name) > 8 && base.ascii_equal_fold(name[:8], "-webkit-") { return .Other_Element, true }
 	return .None, false
 }
 
 // ::part(), ::slotted(), ::highlight()...: valid functional pseudo-elements that match no box of this engine.
 @(private)
 functional_pseudo_element :: proc(f: Value) -> bool {
-	switch lower_temp(f.tok.text) {
+	switch base.ascii_lower(f.tok.text) {
 	case "part", "slotted", "highlight", "cue", "cue-region", "picker", "view-transition-group", "view-transition-image-pair",
 	     "view-transition-old", "view-transition-new", "scroll-button":
 		return true
@@ -462,7 +463,7 @@ simple_pseudo_class :: proc(name: string) -> (Pseudo, bool) {
 
 @(private)
 parse_functional_pseudo :: proc(f: Value, a: Arena_Alloc, parent: ^Selector_List) -> (s: Simple, ok: bool) {
-	name := strings.to_lower(f.tok.text, a)
+	name := base.ascii_lower_clone(f.tok.text, a)
 	args := trim_values(f.children)
 	s.kind = .Pseudo_Class
 	switch name {
@@ -503,7 +504,7 @@ parse_functional_pseudo :: proc(f: Value, a: Arena_Alloc, parent: ^Selector_List
 	case "nth-child", "nth-last-child", "nth-of-type", "nth-last-of-type":
 		// An+B [of S]
 		of_idx := -1
-		for v, i in args { if v.kind == .Token && v.tok.kind == .Ident && strings.equal_fold(v.tok.text, "of") { of_idx = i; break } }
+		for v, i in args { if v.kind == .Token && v.tok.kind == .Ident && base.ascii_equal_fold(v.tok.text, "of") { of_idx = i; break } }
 		formula := args
 		if of_idx >= 0 {
 			if name == "nth-of-type" || name == "nth-last-of-type" { return {}, false }
@@ -523,11 +524,11 @@ parse_functional_pseudo :: proc(f: Value, a: Arena_Alloc, parent: ^Selector_List
 		}
 	case "lang":
 		s.pseudo = .Lang
-		for v in args { if v.kind == .Token && (v.tok.kind == .Ident || v.tok.kind == .String) { s.name = strings.to_lower(v.tok.text, a); break } }
+		for v in args { if v.kind == .Token && (v.tok.kind == .Ident || v.tok.kind == .String) { s.name = base.ascii_lower_clone(v.tok.text, a); break } }
 		if s.name == "" { return {}, false }
 	case "dir":
 		s.pseudo = .Dir
-		if len(args) == 1 && args[0].kind == .Token && args[0].tok.kind == .Ident { s.name = strings.to_lower(args[0].tok.text, a) } else { return {}, false }
+		if len(args) == 1 && args[0].kind == .Token && args[0].tok.kind == .Ident { s.name = base.ascii_lower_clone(args[0].tok.text, a) } else { return {}, false }
 	case: return {}, false
 	}
 	return s, true
@@ -576,7 +577,7 @@ parse_nth :: proc(vs: []Value) -> (a, b: int, ok: bool) {
 		case: return 0, 0, false
 		}
 	}
-	s := lower_temp(strings.to_string(sb))
+	s := base.ascii_lower(strings.to_string(sb))
 	switch s {
 	case "even": return 2, 0, true
 	case "odd": return 2, 1, true
@@ -612,7 +613,7 @@ parse_attribute :: proc(vs: []Value, a: Arena_Alloc) -> (s: Simple, ok: bool) {
 	if len(items) > 2 && is_delim(items[0], "*") && is_delim(items[1], "|") { items = items[2:] } else if len(items) > 1 && is_delim(items[0], "|") { items = items[1:] }
 	if len(items) == 0 || items[0].kind != .Token || items[0].tok.kind != .Ident { return {}, false }
 	s.kind = .Attribute
-	s.name = strings.to_lower(items[0].tok.text, a)
+	s.name = base.ascii_lower_clone(items[0].tok.text, a)
 	if len(items) == 1 { s.op = .Exists; return s, true }
 
 	// the operator: one delimiter optionally followed by '=', or '=' alone
@@ -640,7 +641,7 @@ parse_attribute :: proc(vs: []Value, a: Arena_Alloc) -> (s: Simple, ok: bool) {
 	i += 1
 	if i < len(items) {
 		if items[i].kind == .Token && items[i].tok.kind == .Ident {
-			switch lower_temp(items[i].tok.text) {
+			switch base.ascii_lower(items[i].tok.text) {
 			case "i": s.ci = true
 			case "s": s.ci = false
 			case: return {}, false

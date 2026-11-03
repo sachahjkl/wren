@@ -2519,7 +2519,7 @@
 /html/dom/elements/global-attributes/the-translate-attribute-012.html: OK
 	If the translate attribute is set to a null string, javascript will detect the translation mode of text as translate-enabled.: FAIL
 /html/dom/elements/global-attributes/translate-enumerated-ascii-case-insensitive.html: OK
-	keyword yes: FAIL
+	keyword yes: PASS
 /html/dom/elements/global-attributes/translate-inherit-no-parent-element.html: OK
 	Document parent node: PASS
 	DocumentFragment parent node: PASS

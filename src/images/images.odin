@@ -26,6 +26,7 @@ package images
 
 import "base:runtime"
 import "core:strings"
+import "wb:base"
 
 Format :: enum u8 { Unknown, Png, Jpeg, Gif, Webp, Bmp, Ico, Tiff, Avif, Heif, Svg }
 
@@ -213,7 +214,7 @@ svg_with_target :: proc(data: []byte, fragment: string, allocator := context.all
 
 // Format of `data`, from its signature. `supplied` is the Content-Type essence (lower case), "" if none.
 sniff :: proc(data: []byte, supplied := "", nosniff := false) -> Format {
-	m := strings.to_lower(strings.trim_space(supplied), context.temp_allocator)
+	m := base.ascii_lower(strings.trim_space(supplied))
 	if is_xml_mime(m) { return m == "image/svg+xml" || looks_like_svg(data) ? .Svg : .Unknown }
 	if nosniff && m != "" && !strings.has_prefix(m, "image/") { return .Unknown }
 	f := sniff_signature(data)

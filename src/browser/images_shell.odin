@@ -413,7 +413,7 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 	if n.name != "img" {
 		if n.name != "input" { return false }
 		t, _ := dom.get_attribute(d, node, "type")
-		if !strings.equal_fold(strings.trim_space(t), "image") { return false }
+		if !base.ascii_equal_fold(strings.trim_space(t), "image") { return false }
 	}
 	v := page.image_view(p, node)
 	switch v.state {

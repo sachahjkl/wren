@@ -592,7 +592,7 @@ image_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		r.opaque = resp.type == .Opaque
 		set_string(&r.mime, resp.has_mime ? http.mime_essence(resp.mime) : "")
 		if v, ok := http.get_header(resp.headers, "x-content-type-options"); ok {
-			r.nosniff = strings.has_prefix(strings.to_lower(strings.trim_space(v), context.temp_allocator), "nosniff")
+			r.nosniff = base.ascii_has_prefix_fold(strings.trim_space(v), "nosniff")
 		}
 	case .Data:
 	case .Failed:
@@ -693,7 +693,7 @@ is_image_element :: proc(d: ^dom.Document, h: base.Handle) -> bool {
 	if n.name == "img" { return true }
 	if n.name == "input" {
 		t, _ := dom.get_attribute(d, h, "type")
-		return strings.equal_fold(strings.trim_space(t), "image")
+		return base.ascii_equal_fold(strings.trim_space(t), "image")
 	}
 	return false
 }
@@ -863,7 +863,7 @@ source_size :: proc(p: ^Page, sizes: string, env: css.Media_Env) -> f32 {
 			}
 		} else if last.kind == .Token && last.tok.kind == .Number && last.tok.num == 0 {
 			px = 0
-		} else if last.kind == .Token && last.tok.kind == .Ident && strings.equal_fold(last.tok.text, "auto") {
+		} else if last.kind == .Token && last.tok.kind == .Ident && base.ascii_equal_fold(last.tok.text, "auto") {
 			px = env.width
 		}
 		if px < 0 { continue }
@@ -932,7 +932,7 @@ select_source :: proc(p: ^Page, el: ^Img_Element, env: css.Media_Env) -> Selecti
 					if !css.media_matches(css.parse_media_query_list(vals, context.temp_allocator), env) { continue }
 				}
 				if t, has_type := dom.get_attribute(d, c, "type"); has_type && strings.trim_space(t) != "" {
-					essence := strings.to_lower(strings.trim_space(strings.split_n(t, ";", 2, context.temp_allocator)[0]), context.temp_allocator)
+					essence := base.ascii_lower(strings.trim_space(strings.split_n(t, ";", 2, context.temp_allocator)[0]))
 					if !images.codec_supported(images.format_of_mime(essence)) { continue }
 				}
 				sizes, _ := dom.get_attribute(d, c, "sizes")
@@ -997,13 +997,13 @@ selection_signature :: proc(p: ^Page, el: ^Img_Element, env: css.Media_Env) -> s
 cors_of :: proc(d: ^dom.Document, h: base.Handle) -> (fetch.Mode, fetch.Credentials) {
 	v, ok := dom.get_attribute(d, h, "crossorigin")
 	if !ok { return .No_Cors, .Include }
-	return .Cors, strings.equal_fold(strings.trim_space(v), "use-credentials") ? .Include : .Same_Origin
+	return .Cors, base.ascii_equal_fold(strings.trim_space(v), "use-credentials") ? .Include : .Same_Origin
 }
 
 @(private)
 is_lazy :: proc(d: ^dom.Document, h: base.Handle) -> bool {
 	v, ok := dom.get_attribute(d, h, "loading")
-	return ok && strings.equal_fold(strings.trim_space(v), "lazy")
+	return ok && base.ascii_equal_fold(strings.trim_space(v), "lazy")
 }
 
 @(private)
@@ -1189,8 +1189,8 @@ css_bases_rebuild :: proc(p: ^Page) {
 			case .Token:
 				if v.tok.kind == .Url { css_base_note(pi, v.tok.text, base_url) }
 			case .Function:
-				if strings.equal_fold(v.tok.text, "url") || strings.equal_fold(v.tok.text, "src") ||
-				   strings.equal_fold(v.tok.text, "image-set") || strings.equal_fold(v.tok.text, "-webkit-image-set") {
+				if base.ascii_equal_fold(v.tok.text, "url") || base.ascii_equal_fold(v.tok.text, "src") ||
+				   base.ascii_equal_fold(v.tok.text, "image-set") || base.ascii_equal_fold(v.tok.text, "-webkit-image-set") {
 					// (image-set() candidates may be bare strings)
 					for a in v.children { if a.kind == .Token && a.tok.kind == .String { css_base_note(pi, a.tok.text, base_url) } }
 				}

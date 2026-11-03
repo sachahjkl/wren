@@ -121,14 +121,14 @@ control_key :: proc(d: ^dom.Document, h: base.Handle) -> string {
 	if n == nil { return "" }
 	t, _ := dom.get_attribute(d, h, "type")
 	name, _ := dom.get_attribute(d, h, "name")
-	return fmt.tprintf("%s %s %s", n.name, strings.to_lower(t, context.temp_allocator), name)
+	return fmt.tprintf("%s %s %s", n.name, base.ascii_lower(t), name)
 }
 
 @(private = "file")
 autocomplete_off :: proc(f: ^forms.Forms, h: base.Handle) -> bool {
-	if v, ok := dom.get_attribute(f.doc, h, "autocomplete"); ok && strings.equal_fold(strings.trim_space(v), "off") { return true }
+	if v, ok := dom.get_attribute(f.doc, h, "autocomplete"); ok && base.ascii_equal_fold(strings.trim_space(v), "off") { return true }
 	if form := forms.form_owner(f, h); form != base.NIL_HANDLE {
-		if v, ok := dom.get_attribute(f.doc, form, "autocomplete"); ok && strings.equal_fold(strings.trim_space(v), "off") { return true }
+		if v, ok := dom.get_attribute(f.doc, form, "autocomplete"); ok && base.ascii_equal_fold(strings.trim_space(v), "off") { return true }
 	}
 	return false
 }

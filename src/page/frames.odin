@@ -498,7 +498,7 @@ frame_process_attributes :: proc(n_in: ^Navigable, initial: bool) {
 		return
 	}
 	if initial && n.kind == .Iframe && the_pages.frame_hooks.attached != nil {
-		if v, has := dom.get_attribute(d, el, "loading"); has && strings.equal_fold(strings.trim_space(v), "lazy") && n.distance > p.settings.frames.lazy_margin_px {
+		if v, has := dom.get_attribute(d, el, "loading"); has && base.ascii_equal_fold(strings.trim_space(v), "lazy") && n.distance > p.settings.frames.lazy_margin_px {
 			n.lazy_wait = true
 			delete(n.lazy_url)
 			n.lazy_url = strings.clone(target.href)
@@ -692,7 +692,7 @@ frame_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			return
 		}
 		// HTML "navigate": no document comes of these, the frame keeps the one it has
-		disposition := strings.to_lower(strings.trim_space(l.disposition), context.temp_allocator)
+		disposition := base.ascii_lower(strings.trim_space(l.disposition))
 		if r.status == HTTP_NO_CONTENT || r.status == HTTP_RESET_CONTENT || strings.has_prefix(disposition, "attachment") {
 			if strings.has_prefix(disposition, "attachment") { log(n.parent, .Warn, fmt.tprintf("frame %s: a download (Content-Disposition: attachment) is not shown in a frame", r.url)) }
 			fetch.cancel(n.parent.loader, l.task)
@@ -768,7 +768,7 @@ frame_embedding_allowed :: proc(n: ^Navigable, final: url.URL, headers: http.Hea
 	if s.x_frame_options && !has_fa {
 		if !xfo_allows(http.get_all(headers, "x-frame-options"), self, ancestors[:]) {
 			v, _ := http.get_header(headers, "x-frame-options")
-			return fmt.tprintf("it set 'X-Frame-Options' to '%s'", strings.to_lower(strings.trim_space(v), context.temp_allocator)), false
+			return fmt.tprintf("it set 'X-Frame-Options' to '%s'", base.ascii_lower(strings.trim_space(v))), false
 		}
 	}
 	return "", true
@@ -1223,7 +1223,7 @@ frames_navigate_from :: proc(src: ^Page, target_in: ^Navigable, href: string, re
 frames_find_target :: proc(src: ^Page, name: string, noopener := false) -> ^Navigable {
 	sn := page_navigable(src)
 	if sn == nil { return nil }
-	switch strings.to_lower(name, context.temp_allocator) {
+	switch base.ascii_lower(name) {
 	case "", "_self": return sn
 	case "_parent": return sn.parent != nil ? page_navigable(sn.parent) : sn
 	case "_top": return page_navigable(page_top(src))

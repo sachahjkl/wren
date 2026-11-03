@@ -1,6 +1,7 @@
 package css
 
 import "core:strings"
+import "wb:base"
 
 // CSS Containment 3 §6: the prelude of @container. Size features reuse the media query feature parser (width, height,
 // inline-size, block-size, aspect-ratio, orientation, with the range syntax); style() queries compare custom
@@ -26,7 +27,7 @@ parse_container_query :: proc(prelude: []Value, a: Arena_Alloc) -> ^Container_Qu
 	vs := trim_values(prelude)
 	q := new(Container_Query, a)
 	if len(vs) > 0 && vs[0].kind == .Token && vs[0].tok.kind == .Ident {
-		switch lower_temp(vs[0].tok.text) {
+		switch base.ascii_lower(vs[0].tok.text) {
 		case "not", "and", "or", "none":
 		case:
 			q.name = strings.clone(vs[0].tok.text, a)
@@ -47,7 +48,7 @@ parse_container_query :: proc(prelude: []Value, a: Arena_Alloc) -> ^Container_Qu
 cq_condition :: proc(input: []Value, a: Arena_Alloc) -> (^Cq_Node, bool) {
 	vs := trim_values(input)
 	if len(vs) == 0 { return nil, false }
-	if vs[0].kind == .Token && vs[0].tok.kind == .Ident && strings.equal_fold(vs[0].tok.text, "not") {
+	if vs[0].kind == .Token && vs[0].tok.kind == .Ident && base.ascii_equal_fold(vs[0].tok.text, "not") {
 		inner, ok := cq_in_parens(trim_values(vs[1:]), a)
 		if !ok { return nil, false }
 		n := new(Cq_Node, a)
@@ -70,7 +71,7 @@ cq_condition :: proc(input: []Value, a: Arena_Alloc) -> (^Cq_Node, bool) {
 		for i < len(vs) && is_ws_value(vs[i]) { i += 1 }
 		if i < len(vs) {
 			if vs[i].kind != .Token || vs[i].tok.kind != .Ident { return nil, false }
-			w := lower_temp(vs[i].tok.text)
+			w := base.ascii_lower(vs[i].tok.text)
 			this: Cq_Kind
 			switch w {
 			case "and": this = .And
@@ -95,7 +96,7 @@ cq_in_parens :: proc(vs: []Value, a: Arena_Alloc) -> (^Cq_Node, bool) {
 	v := vs[0]
 	n := new(Cq_Node, a)
 	if v.kind == .Function {
-		if strings.equal_fold(v.tok.text, "style") {
+		if base.ascii_equal_fold(v.tok.text, "style") {
 			inner := trim_values(v.children)
 			if len(inner) == 0 { return nil, false }
 			if inner[0].kind == .Token && inner[0].tok.kind == .Ident && strings.has_prefix(inner[0].tok.text, "--") {
@@ -114,7 +115,7 @@ cq_in_parens :: proc(vs: []Value, a: Arena_Alloc) -> (^Cq_Node, bool) {
 	inner := trim_values(v.children)
 	if len(inner) == 0 { return nil, false }
 	is_nested := inner[0].kind == .Block || inner[0].kind == .Function ||
-		(inner[0].kind == .Token && inner[0].tok.kind == .Ident && strings.equal_fold(inner[0].tok.text, "not") && !has_colon(inner))
+		(inner[0].kind == .Token && inner[0].tok.kind == .Ident && base.ascii_equal_fold(inner[0].tok.text, "not") && !has_colon(inner))
 	if is_nested {
 		if c, ok := cq_condition(inner, a); ok { return c, true }
 	}

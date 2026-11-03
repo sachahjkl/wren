@@ -125,7 +125,7 @@ in_charset :: proc(s: string, charset: string) -> string {
 direction_of :: proc(f: ^Forms, h: base.Handle) -> string {
 	for cur := h; cur != base.NIL_HANDLE; cur = parent_element(f, cur) {
 		if d, ok := attr(element(f, cur), "dir"); ok {
-			l := strings.to_lower(trim_ascii_ws(d), context.temp_allocator)
+			l := base.ascii_lower(trim_ascii_ws(d))
 			if l == "ltr" || l == "rtl" { return l }
 			if l == "auto" {
 				for r in value(f, h) {
@@ -187,7 +187,7 @@ construct_entry_list :: proc(f: ^Forms, form: base.Handle, submitter: base.Handl
 			} else {
 				for x in fl { append(&list, Entry{name = strings.clone(name), is_file = true, file = file_clone(x)}) }
 			}
-		case k == .Input && t == .Hidden && strings.equal_fold(name, "_charset_"):
+		case k == .Input && t == .Hidden && base.ascii_equal_fold(name, "_charset_"):
 			append_string_entry(&list, name, charset)
 		case:
 			append_string_entry(&list, name, value(f, field))
@@ -468,7 +468,7 @@ submit :: proc(f: ^Forms, form: base.Handle, submitter: base.Handle, from_method
 	sub.target = strings.clone(target)
 	sub.charset = strings.clone(charset)
 	sub.scheme = strings.clone(u.scheme)
-	sub.no_opener = has_attr(element(f, form), "rel") && strings.contains(strings.to_lower(attr_or(element(f, form), "rel"), context.temp_allocator), "noopener")
+	sub.no_opener = has_attr(element(f, form), "rel") && base.ascii_contains_fold(attr_or(element(f, form), "rel"), "noopener")
 
 	switch u.scheme {
 	case "javascript":

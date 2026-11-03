@@ -8,6 +8,7 @@ package page
 //     feature is enabled in a document given its ancestors (Permissions Policy §9).
 
 import "core:strings"
+import "wb:base"
 import "wb:url"
 
 ////////////////////////////////
@@ -53,7 +54,7 @@ sandbox_parse :: proc(value: string) -> Sandbox {
 	rest := value
 	for tok in strings.fields_iterator(&rest) {
 		for name, t in SANDBOX_TOKEN_NAMES {
-			if strings.equal_fold(tok, name) { s.allow += {t} }
+			if base.ascii_equal_fold(tok, name) { s.allow += {t} }
 		}
 	}
 	return s
@@ -61,7 +62,7 @@ sandbox_parse :: proc(value: string) -> Sandbox {
 
 // The supported tokens (DOMTokenList.supports for iframe.sandbox).
 sandbox_token_supported :: proc(tok: string) -> bool {
-	for name in SANDBOX_TOKEN_NAMES { if strings.equal_fold(tok, name) { return true } }
+	for name in SANDBOX_TOKEN_NAMES { if base.ascii_equal_fold(tok, name) { return true } }
 	return false
 }
 
@@ -84,7 +85,7 @@ xfo_allows :: proc(values: []string, self: url.Origin, ancestors: []url.Origin) 
 	opts := make([dynamic]string, context.temp_allocator)
 	for v in values {
 		for part in strings.split(v, ",", context.temp_allocator) {
-			t := strings.to_lower(strings.trim_space(part), context.temp_allocator)
+			t := base.ascii_lower(strings.trim_space(part))
 			if t == "" { continue }
 			dup := false
 			for o in opts { if o == t { dup = true } }
@@ -188,12 +189,12 @@ parse_allow_attribute :: proc(value: string, allowfullscreen := false) -> Permis
 		rest := directive
 		for t in strings.fields_iterator(&rest) { append(&toks, t) }
 		if len(toks) == 0 { continue }
-		f, known := feature_by_name(strings.to_lower(toks[0], context.temp_allocator))
+		f, known := feature_by_name(base.ascii_lower(toks[0]))
 		if !known || policy_has(&pp, f) != nil { continue }
 		e := Policy_Entry{feature = f}
 		if len(toks) == 1 { e.list.src = true }
 		for t in toks[1:] {
-			switch strings.to_lower(t, context.temp_allocator) {
+			switch base.ascii_lower(t) {
 			case "*": e.list.all = true
 			case "'self'": e.list.self = true
 			case "'src'": e.list.src = true
@@ -219,7 +220,7 @@ parse_permissions_policy_header :: proc(values: []string) -> Permissions_Policy 
 			m := strings.trim_space(member)
 			eq := strings.index_byte(m, '=')
 			if eq <= 0 { continue }
-			f, known := feature_by_name(strings.to_lower(strings.trim_space(m[:eq]), context.temp_allocator))
+			f, known := feature_by_name(base.ascii_lower(strings.trim_space(m[:eq])))
 			if !known || policy_has(&pp, f) != nil { continue }
 			val := strings.trim_space(m[eq + 1:])
 			if semi := strings.index_byte(val, ';'); semi >= 0 { val = strings.trim_space(val[:semi]) }   // parameters

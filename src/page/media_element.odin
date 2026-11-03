@@ -502,7 +502,7 @@ media_try :: proc(el: ^Media_Element, raw: string, type: string) {
 	cred: fetch.Credentials = .Include
 	if co, has := dom.get_attribute(p.doc, el.node, "crossorigin"); has {
 		mode = .Cors
-		cred = strings.equal_fold(strings.trim_space(co), "use-credentials") ? .Include : .Same_Origin
+		cred = base.ascii_equal_fold(strings.trim_space(co), "use-credentials") ? .Include : .Same_Origin
 	}
 	el.kind = .Progressive
 	el.task = fetch.start(p.loader, {

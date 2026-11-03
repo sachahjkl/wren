@@ -150,7 +150,7 @@ js_mime_types := [?]string{
 script_kind_of :: proc(d: ^dom.Document, el: base.Handle) -> (Script_Kind, bool) {
 	ty, has_type := dom.get_attribute(d, el, "type")
 	if has_type {
-		t := strings.to_lower(strings.trim_space(ty), context.temp_allocator)
+		t := base.ascii_lower(strings.trim_space(ty))
 		if t == "" { return .Classic, true }
 		if t == "module" { return .Module, true }
 		if t == "importmap" { return .Import_Map, true }
@@ -158,7 +158,7 @@ script_kind_of :: proc(d: ^dom.Document, el: base.Handle) -> (Script_Kind, bool)
 		return .Classic, false
 	}
 	if lang, ok := dom.get_attribute(d, el, "language"); ok && lang != "" {
-		l := strings.to_lower(lang, context.temp_allocator)
+		l := base.ascii_lower(lang)
 		for m in js_mime_types { if strings.concatenate({"text/", l}, context.temp_allocator) == m { return .Classic, true } }
 		return .Classic, false
 	}
@@ -369,7 +369,7 @@ scripts_revealing :: proc(p: ^Page) -> bool {
 cors_setting :: proc(d: ^dom.Document, el: base.Handle) -> Cors_Setting {
 	v, has := dom.get_attribute(d, el, "crossorigin")
 	if !has { return .No_Cors }
-	return strings.equal_fold(strings.trim_space(v), "use-credentials") ? .Use_Credentials : .Anonymous
+	return base.ascii_equal_fold(strings.trim_space(v), "use-credentials") ? .Use_Credentials : .Anonymous
 }
 
 @(private)
@@ -421,8 +421,8 @@ script_prepare :: proc(p: ^Page, el: base.Handle, parser_inserted: bool) {
 		ev, has_ev := dom.get_attribute(d, el, "event")
 		f, has_for := dom.get_attribute(d, el, "for")
 		if has_ev && has_for {
-			fv := strings.to_lower(strings.trim_space(f), context.temp_allocator)
-			e := strings.to_lower(strings.trim_space(ev), context.temp_allocator)
+			fv := base.ascii_lower(strings.trim_space(f))
+			e := base.ascii_lower(strings.trim_space(ev))
 			if fv != "window" || (e != "onload" && e != "onload()") { return }
 		}
 	}
@@ -875,7 +875,7 @@ script_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 // The base64 digest of `data` with a CSP / SRI algorithm name ("sha256", "sha384", "sha512"), "" when unknown.
 digest_base64 :: proc(algo: string, data: []byte) -> string {
 	a: Digest_Algorithm
-	switch strings.to_lower(algo, context.temp_allocator) {
+	switch base.ascii_lower(algo) {
 	case "sha256": a = .SHA256
 	case "sha384": a = .SHA384
 	case "sha512": a = .SHA512
@@ -905,7 +905,7 @@ integrity_ok :: proc(p: ^Page, metadata: string, bytes: []byte, opaque: bool) ->
 	for tok in strings.fields_iterator(&rest) {
 		dash := strings.index_byte(tok, '-')
 		if dash < 0 { continue }
-		best = max(best, strength(strings.to_lower(tok[:dash], context.temp_allocator)))
+		best = max(best, strength(base.ascii_lower(tok[:dash])))
 	}
 	if best == 0 { return true }
 	if opaque { return false }
@@ -913,7 +913,7 @@ integrity_ok :: proc(p: ^Page, metadata: string, bytes: []byte, opaque: bool) ->
 	for tok in strings.fields_iterator(&rest) {
 		dash := strings.index_byte(tok, '-')
 		if dash < 0 { continue }
-		algo := strings.to_lower(tok[:dash], context.temp_allocator)
+		algo := base.ascii_lower(tok[:dash])
 		if strength(algo) != best { continue }
 		value := tok[dash + 1:]
 		if q := strings.index_byte(value, '?'); q >= 0 { value = value[:q] }   // options are ignored

@@ -117,7 +117,7 @@ start_style_fetch :: proc(p: ^Page, l: ^Style_Load, crossorigin: string, has_cro
 	cred := fetch.Credentials.Include
 	if has_crossorigin {
 		mode = .Cors
-		cred = strings.equal_fold(crossorigin, "use-credentials") ? .Include : .Same_Origin
+		cred = base.ascii_equal_fold(crossorigin, "use-credentials") ? .Include : .Same_Origin
 	}
 	p.offthread.next_serial += 1
 	l.serial = p.offthread.next_serial
@@ -206,7 +206,7 @@ style_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			l.bad_status = true
 			l.failed = true
 			log(p, .Warn, fmt.tprintf("stylesheet %s: HTTP %d", l.url, r.status))
-		} else if !(r.has_mime && strings.equal_fold(r.mime.type, "text") && strings.equal_fold(r.mime.subtype, "css")) {
+		} else if !(r.has_mime && base.ascii_equal_fold(r.mime.type, "text") && base.ascii_equal_fold(r.mime.subtype, "css")) {
 			// HTML "process the linked resource" (stylesheet): a Content-Type that is not text/css fails it, except in
 			// a quirks-mode document for a same-origin response
 			if !(p.doc.mode == .Quirks && r.type == .Basic) {

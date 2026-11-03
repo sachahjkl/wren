@@ -165,15 +165,6 @@ filter_regular_expressions :: proc(t: ^testing.T) {
 	testing.expect(t, bad.re_bad, "and is marked")
 }
 
-@(test)
-contains_fold_is_ascii_case_insensitive :: proc(t: ^testing.T) {
-	test_app(t)
-	testing.expect(t, dt_contains_fold("Hello World", "lo wo"), "found")
-	testing.expect(t, !dt_contains_fold("Hello", "world"), "not found")
-	testing.expect(t, dt_contains_fold("x", ""), "empty needle")
-	testing.expect(t, !dt_contains_fold("ab", "abc"), "longer needle")
-}
-
 ////////////////////////////////
 // The Console's helpers
 

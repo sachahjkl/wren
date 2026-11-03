@@ -224,9 +224,9 @@ eventsource_relay_event :: proc(f: ^Fetch, u: Fetch_Update) {
 		pairs := make([dynamic]fetch.Header_Pair, context.temp_allocator)
 		parse_header_lines(u.headers, &pairs)
 		for h in pairs {
-			if !strings.equal_fold(h.name, "content-type") { continue }
+			if !base.ascii_equal_fold(h.name, "content-type") { continue }
 			essence := strings.trim_space(strings.split(h.value, ";", context.temp_allocator)[0])
-			event_stream = strings.equal_fold(essence, "text/event-stream")
+			event_stream = base.ascii_equal_fold(essence, "text/event-stream")
 		}
 	}
 	if u.kind == .Done || u.kind == .Failed {

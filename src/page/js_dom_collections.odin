@@ -283,7 +283,7 @@ Collection_create :: proc(c: ^Call, root: Api_Node, kind: i32, arg: string) -> (
 		toks := split_tokens(arg)
 		col.classes = make([]string, len(toks))
 		quirks := c.page.doc.mode == .Quirks
-		for t, i in toks { col.classes[i] = quirks ? strings.to_lower(t) : strings.clone(t) }
+		for t, i in toks { col.classes[i] = quirks ? base.ascii_lower_clone(t) : strings.clone(t) }
 	case .Tag_Name_NS:
 		if sep := strings.index_byte(arg, 0); sep >= 0 {
 			col.ns, col.arg = strings.clone(arg[:sep]), strings.clone(arg[sep + 1:])
@@ -305,7 +305,7 @@ has_class_token :: proc(v: string, k: string, quirks: bool) -> bool {
 		for j < len(v) && !is_ascii_ws(v[j]) { j += 1 }
 		if j > i {
 			t := v[i:j]
-			if quirks ? strings.equal_fold(t, k) : t == k { return true }
+			if quirks ? base.ascii_equal_fold(t, k) : t == k { return true }
 		}
 		i = j
 	}
@@ -329,7 +329,7 @@ collection_accepts :: proc(p: ^Page, col: ^Dom_Collection, h: base.Handle, n: ^d
 	case .Tag_Name:
 		if col.arg == "*" { return true }
 		// an HTML element of an HTML document: its qualified name against the argument in ASCII lower case
-		if html && n.xml != .Element { return jd_qualified_name(p.doc, h, false) == dom.lower_name(col.arg) }
+		if html && n.xml != .Element { return jd_qualified_name(p.doc, h, false) == base.ascii_lower(col.arg) }
 		return jd_qualified_name(p.doc, h, false) == col.arg
 	case .Tag_Name_NS:
 		if col.ns != "*" && dom.ns_uri(p.doc, h) != col.ns { return false }
@@ -366,7 +366,7 @@ collection_accepts :: proc(p: ^Page, col: ^Dom_Collection, h: base.Handle, n: ^d
 		case "button", "fieldset", "object", "output", "select", "textarea": return true
 		case "input":
 			t, _ := attr_of(n, "type")
-			return !strings.equal_fold(t, "image")
+			return !base.ascii_equal_fold(t, "image")
 		}
 	case .Fieldset_Elements:
 		if !html { return false }
@@ -622,7 +622,7 @@ SUPPORTED_REL :: [?]string{"alternate", "author", "bookmark", "external", "help"
 TokenList_supports :: proc(c: ^Call, element: Api_Element, attr: string, token: string) -> (bool, Api_Error) {
 	if attr == "sandbox" { return sandbox_token_supported(token), .None }   // iframe.sandbox (frames_policy.odin)
 	if attr != "rel" { return false, fail(c, .Type, "DOMTokenList has no supported tokens.") }
-	l := strings.to_lower(token, context.temp_allocator)
+	l := base.ascii_lower(token)
 	for s in SUPPORTED_REL { if s == l { return true, .None } }
 	return false, .None
 }

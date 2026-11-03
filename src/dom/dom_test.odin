@@ -33,6 +33,23 @@ tree_ops_and_cycles :: proc(t: ^testing.T) {
 	testing.expect_value(t, insert_before(d, d.root, x, c), Error.Not_Found)
 }
 
+// Tag and attribute names are lowered and matched in ASCII: the Kelvin sign U+212A is no 'k', the long s U+017F no 's'.
+@(test)
+names_fold_ascii_alone :: proc(t: ^testing.T) {
+	d := document_create()
+	defer document_destroy(d)
+	link := create_element(d, "LINK")
+	testing.expect_value(t, get(d, link).name, "linK")
+	append_child(d, d.root, link)
+	testing.expect_value(t, find_first_by_tag(d, "link"), base.NIL_HANDLE)
+	testing.expect_value(t, find_first_by_tag(d, "LINK"), link)
+	set_attribute(d, link, "SRC", "a")
+	v, ok := get_attribute(d, link, "ſrc")
+	testing.expect(t, !ok && v == "", "ſrc is no src")
+	v, _ = get_attribute(d, link, "Src")
+	testing.expect_value(t, v, "a")
+}
+
 // A node inserted under a document of its own becomes its, shadow tree included; removed, it stays its; a clone keeps
 // its original's; inserted in the page's document, it is the page's again.
 @(test)

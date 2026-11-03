@@ -12,6 +12,7 @@ package xml
 import "core:strconv"
 import "core:strings"
 import "core:unicode/utf8"
+import "wb:base"
 
 NS_XML   :: "http://www.w3.org/XML/1998/namespace"
 NS_XMLNS :: "http://www.w3.org/2000/xmlns/"
@@ -381,7 +382,7 @@ parse :: proc(src: string, sink: ^Sink, max_depth := 4096) -> Result {
 			p.pos += 2
 			target, nok := read_name(&p)
 			if !nok { ok = false; break }
-			if strings.equal_fold(target, "xml") { ok = fail(&p, "an XML declaration that is not at the start"); break }
+			if base.ascii_equal_fold(target, "xml") { ok = fail(&p, "an XML declaration that is not at the start"); break }
 			if strings.index_byte(target, ':') >= 0 { ok = fail(&p, "a processing instruction target with a colon"); break }
 			end := strings.index(p.src[p.pos:], "?>")
 			if end < 0 { ok = fail(&p, "a processing instruction is not closed"); break }

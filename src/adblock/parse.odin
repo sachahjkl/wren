@@ -2,6 +2,7 @@ package adblock
 
 import "core:slice"
 import "core:strings"
+import "wb:base"
 
 // A filter longer than this is skipped: a whole line, its network pattern, the body of a cosmetic rule.
 FILTER_LINE_MAX :: 8192
@@ -109,7 +110,7 @@ parse_line :: proc(line_in: string, list: u8, text_off: u32, allocator := contex
 	}
 	if h := hosts_line_host(line); h != "" {
 		d := Net_Draft{list = list, text_off = text_off, types = DEFAULT_TYPES, class = .Block}
-		d.pattern = has_upper(h) ? strings.to_lower(h) : h
+		d.pattern = base.ascii_lower(h, context.allocator)
 		d.flags = {.Host_Anchor, .Host_Only}
 		finish_net(&d)
 		return Parsed{kind = .Net, net = d}
@@ -283,7 +284,7 @@ parse_network :: proc(line: string, d: ^Net_Draft) -> bool {
 					mm := m
 					isneg := false
 					if strings.has_prefix(mm, "~") { isneg = true; mm = mm[1:] }
-					switch strings.to_lower(mm, context.temp_allocator) {
+					switch base.ascii_lower(mm) {
 					case "get": if isneg { mneg += {.Get} } else { ms += {.Get} }
 					case "post": if isneg { mneg += {.Post} } else { ms += {.Post} }
 					case "put": if isneg { mneg += {.Put} } else { ms += {.Put} }
@@ -348,7 +349,7 @@ parse_network :: proc(line: string, d: ^Net_Draft) -> bool {
 		d.pattern = p
 	} else {
 		if match_case && has_upper(p) { d.flags += {.Needs_Original} }
-		d.pattern = (!match_case && has_upper(p)) ? strings.to_lower(p) : p
+		d.pattern = match_case ? p : base.ascii_lower(p, context.allocator)
 	}
 	if len(d.pattern) == 0 {
 		if opts == "" && !regex { return false }

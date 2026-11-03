@@ -313,7 +313,7 @@ stored_header_block :: proc(h: http.Headers, body_len: int, response_time: i64) 
 	encoded := http.has_header(h, "content-encoding")
 	for e in h.list {
 		if is_hop_by_hop(e.name) || is_never_stored(e.name) { continue }
-		if encoded && (strings.equal_fold(e.name, "content-encoding") || strings.equal_fold(e.name, "content-length")) { continue }
+		if encoded && (base.ascii_equal_fold(e.name, "content-encoding") || base.ascii_equal_fold(e.name, "content-length")) { continue }
 		strings.write_string(&sb, e.name)
 		strings.write_string(&sb, ": ")
 		strings.write_string(&sb, e.value)

@@ -534,7 +534,7 @@ action_button :: proc(text, id: string, width: f32) -> bool {
 
 enum_label :: proc(v: any) -> string {
 	s := fmt.tprintf("%v", v)
-	out, _ := strings.replace_all(strings.to_lower(s, context.temp_allocator), "_", "-", context.temp_allocator)
+	out, _ := strings.replace_all(base.ascii_lower(s), "_", "-", context.temp_allocator)
 	return out
 }
 

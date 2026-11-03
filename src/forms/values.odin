@@ -201,7 +201,7 @@ sanitize :: proc(f: ^Forms, n: ^dom.Node, t: Input_Type, s: string) -> string {
 		if !ok { return "" }
 		return format_datetime_local(ms)   // normalized: 'T', shortest time
 	case .Color:
-		if is_valid_simple_color(s) { return strings.to_lower(s, context.temp_allocator) }
+		if is_valid_simple_color(s) { return base.ascii_lower(s) }
 		return "#000000"
 	}
 	return s
@@ -749,15 +749,15 @@ accept_matches :: proc(accept, name, mime: string) -> bool {
 		switch {
 		case t[0] == '.':
 			any_token = true
-			if len(name) >= len(t) && strings.equal_fold(name[len(name) - len(t):], t) { return true }
+			if len(name) >= len(t) && base.ascii_equal_fold(name[len(name) - len(t):], t) { return true }
 		case strings.has_suffix(t, "/*"):
 			major := t[:len(t) - 1]   // "image/"
-			if !strings.equal_fold(major, "audio/") && !strings.equal_fold(major, "video/") && !strings.equal_fold(major, "image/") { continue }
+			if !base.ascii_equal_fold(major, "audio/") && !base.ascii_equal_fold(major, "video/") && !base.ascii_equal_fold(major, "image/") { continue }
 			any_token = true
-			if len(mime) > len(major) && strings.equal_fold(mime[:len(major)], major) { return true }
+			if len(mime) > len(major) && base.ascii_equal_fold(mime[:len(major)], major) { return true }
 		case strings.contains_rune(t, '/'):
 			any_token = true
-			if strings.equal_fold(t, mime) { return true }
+			if base.ascii_equal_fold(t, mime) { return true }
 		}
 	}
 	return !any_token

@@ -190,10 +190,10 @@ Element_set_outerHTML :: proc(c: ^Call, element: Api_Element, value: string) -> 
 @(private)
 adjacent_position :: proc(position: string) -> (int, bool) {
 	switch {
-	case strings.equal_fold(position, "beforebegin"): return 0, true
-	case strings.equal_fold(position, "afterbegin"): return 1, true
-	case strings.equal_fold(position, "beforeend"): return 2, true
-	case strings.equal_fold(position, "afterend"): return 3, true
+	case base.ascii_equal_fold(position, "beforebegin"): return 0, true
+	case base.ascii_equal_fold(position, "afterbegin"): return 1, true
+	case base.ascii_equal_fold(position, "beforeend"): return 2, true
+	case base.ascii_equal_fold(position, "afterend"): return 3, true
 	}
 	return 0, false
 }

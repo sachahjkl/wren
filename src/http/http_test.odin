@@ -62,6 +62,20 @@ header_block_parsing :: proc(t: ^testing.T) {
 	testing.expect(t, !found)
 }
 
+// Header names and methods are ASCII case-insensitive: the long s U+017F is no 's', the Kelvin sign U+212A no 'k'.
+@(test)
+header_names_and_methods_fold_ascii_alone :: proc(t: ^testing.T) {
+	h := parse_header_block("Hoſt: a\r\nHOST: b\r\nX-Key: c\r\n", context.temp_allocator)
+	v, _ := get_header(h, "host")
+	testing.expect_value(t, v, "b")
+	_, found := get_header(h, "x-key")
+	testing.expect(t, !found, "X-Key is no X-Key")
+	testing.expect(t, !is_forbidden_request_header("CooKie"), "CooKie is no Cookie")
+	testing.expect(t, !is_forbidden_request_header("Hoſt"), "Hoſt is no Host")
+	testing.expect(t, !is_forbidden_method("tracK"), "tracK is no TRACK")
+	testing.expect_value(t, normalize_method("poſt", context.temp_allocator), "poſt")
+}
+
 @(test)
 forbidden_and_safelisted :: proc(t: ^testing.T) {
 	testing.expect(t, is_forbidden_request_header("Cookie"))

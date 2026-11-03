@@ -3,6 +3,7 @@ package browser
 import "core:strings"
 import "toolkit:font"
 import "toolkit:ui"
+import "wb:base"
 import "wb:host"
 import lay "wb:layout"
 import "wb:page"
@@ -110,7 +111,7 @@ register_web_face :: proc(pf: ^Page_Fonts, owner: rawptr, f: ^page.Web_Font) -> 
 	id, ok := shared_face_acquire(pf, f.data, f.family, nominal, fs)
 	if !ok { return false }
 	w := Web_Face{
-		family = strings.to_lower(strings.trim_space(f.family)), weight = f.weight, style = f.font_style, stretch = f.stretch,
+		family = base.ascii_lower_clone(strings.trim_space(f.family)), weight = f.weight, style = f.font_style, stretch = f.stretch,
 		id = id, owner = owner,
 	}
 	if w.weight == {} { w.weight = {400, 400} }
@@ -140,7 +141,7 @@ register_web_face :: proc(pf: ^Page_Fonts, owner: rawptr, f: ^page.Web_Font) -> 
 // Compatibility: a face already loaded, for `family` (every character, the whole weight range of one weight).
 register_face :: proc(pf: ^Page_Fonts, family: string, weight: u16, italic: bool, id: font.Font_Id) {
 	append(&pf.web, Web_Face{
-		family = strings.to_lower(strings.trim_space(family)), weight = {weight, weight}, style = italic ? .Italic : .Normal,
+		family = base.ascii_lower_clone(strings.trim_space(family)), weight = {weight, weight}, style = italic ? .Italic : .Normal,
 		stretch = {100, 100}, id = id, owner = pf.scope,
 	})
 	page_fonts_forget(pf)
@@ -317,12 +318,12 @@ web_entries :: proc(pf: ^Page_Fonts, name: string, req: ^lay.Font_Request, out: 
 @(private = "file")
 generic_name :: proc(pf: ^Page_Fonts, name: string, settings: ^style.Settings) -> string {
 	switch name {
-	case "emoji": return strings.to_lower(pf.emoji, context.temp_allocator)
-	case "math": return strings.to_lower(pf.math, context.temp_allocator)
-	case "fangsong": return strings.to_lower(pf.fangsong, context.temp_allocator)
+	case "emoji": return base.ascii_lower(pf.emoji)
+	case "math": return base.ascii_lower(pf.math)
+	case "fangsong": return base.ascii_lower(pf.fangsong)
 	}
 	if settings != nil {
-		if g := style.generic_family(settings, name); g != "" { return strings.to_lower(g, context.temp_allocator) }
+		if g := style.generic_family(settings, name); g != "" { return base.ascii_lower(g) }
 	}
 	return name
 }
@@ -348,7 +349,7 @@ resolve_request :: proc(pf: ^Page_Fonts, req: ^lay.Font_Request, settings: ^styl
 	entries := make([dynamic]font.Cascade_Entry, 0, 4, context.temp_allocator)
 	web := false
 	for f in req.families {
-		name := generic_name(pf, strings.to_lower(strings.trim_space(f), context.temp_allocator), settings)
+		name := generic_name(pf, base.ascii_lower(strings.trim_space(f)), settings)
 		if web_entries(pf, name, req, &entries) { web = true; continue }
 		if id := system_face(pf, name, req); id != 0 {
 			if len(req.variations) > 0 {
@@ -362,7 +363,7 @@ resolve_request :: proc(pf: ^Page_Fonts, req: ^lay.Font_Request, settings: ^styl
 	}
 	if settings != nil {
 		if g := style.generic_family(settings, settings.default_generic); g != "" {
-			if id := system_face(pf, strings.to_lower(g, context.temp_allocator), req); id != 0 { append(&entries, font.Cascade_Entry{font = id}) }
+			if id := system_face(pf, base.ascii_lower(g), req); id != 0 { append(&entries, font.Cascade_Entry{font = id}) }
 		}
 	}
 	if pf.ui != 0 { append(&entries, font.Cascade_Entry{font = pf.ui}) }
@@ -415,7 +416,7 @@ fonts_preload_start :: proc(app: ^App) -> ^Font_Preload {
 	for g in ([]string{ss.default_generic, "sans-serif", "serif", "monospace"}) {
 		name := style.generic_family(&ss, g)
 		if name == "" { continue }
-		lower := strings.to_lower(name)
+		lower := base.ascii_lower_clone(name)
 		dup := false
 		for x in fp.generics { if x == lower { dup = true } }
 		if dup { delete(lower) } else { append(&fp.generics, lower) }

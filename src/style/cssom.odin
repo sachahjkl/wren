@@ -82,7 +82,7 @@ split_rules :: proc(text: string, allocator := context.temp_allocator) -> [dynam
 	return out
 }
 
-is_import_text :: proc(r: string) -> bool { return len(r) >= 7 && strings.equal_fold(r[:7], "@import") }
+is_import_text :: proc(r: string) -> bool { return len(r) >= 7 && base.ascii_equal_fold(r[:7], "@import") }
 
 // The sheet's list, made on first use. When its text splits into as many rules as were parsed (a sheet without
 // invalid rules: nearly always) the parsed rules are taken as they are; otherwise each piece is parsed alone, so that

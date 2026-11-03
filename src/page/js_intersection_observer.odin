@@ -119,7 +119,7 @@ parse_margin :: proc(text: string) -> (sides: [4]Io_Length, canonical: string, o
 		unit := s[n:]
 		switch {
 		case unit == "%": got[i] = {v, true}
-		case strings.equal_fold(unit, "px"): got[i] = {v, false}
+		case base.ascii_equal_fold(unit, "px"): got[i] = {v, false}
 		case: return
 		}
 	}

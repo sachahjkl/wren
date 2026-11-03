@@ -113,11 +113,11 @@ b_declarative_shadow :: proc "c" (user: rawptr, attrs: [^]Shim_Attr, n_attrs: ui
 		switch view(a.name, a.name_len) {
 		case "shadowrootmode":
 			v := view(a.value, a.value_len)
-			if strings.equal_fold(v, "open") { init.mode = .Open; has_mode = true } else if strings.equal_fold(v, "closed") { init.mode = .Closed; has_mode = true }
+			if base.ascii_equal_fold(v, "open") { init.mode = .Open; has_mode = true } else if base.ascii_equal_fold(v, "closed") { init.mode = .Closed; has_mode = true }
 		case "shadowrootdelegatesfocus": init.delegates_focus = true
 		case "shadowrootclonable": init.clonable = true
 		case "shadowrootserializable": init.serializable = true
-		case "shadowrootslotassignment": if strings.equal_fold(view(a.value, a.value_len), "manual") { init.slot_assignment = .Manual }
+		case "shadowrootslotassignment": if base.ascii_equal_fold(view(a.value, a.value_len), "manual") { init.slot_assignment = .Manual }
 		}
 	}
 	if !has_mode { return false }
@@ -284,7 +284,7 @@ wasm_scripts :: proc(d: ^dom.Document, script_type: string, allocator := context
 		if n == nil { continue }
 		if n.kind == .Element && n.name == "script" {
 			ty, _ := dom.get_attribute(d, cur, "type")
-			if strings.equal_fold(strings.trim_space(ty), script_type) { append(&out, cur) }
+			if base.ascii_equal_fold(strings.trim_space(ty), script_type) { append(&out, cur) }
 		}
 		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).prev { append(&stack, ch) }
 	}

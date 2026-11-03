@@ -1671,7 +1671,7 @@ post_done :: proc(job: ^Post_Job) {
 @(private = "file")
 submit_navigate :: proc(app: ^App, t: ^Tab, from: ^page.Page, s: ^forms.Submission) {
 	dest := t
-	if strings.equal_fold(s.target, "_blank") {
+	if base.ascii_equal_fold(s.target, "_blank") {
 		dest = tab_open(app, "", origin = .User)
 	}
 	if s.method == .Post {
@@ -1689,7 +1689,7 @@ submit_navigate :: proc(app: ^App, t: ^Tab, from: ^page.Page, s: ^forms.Submissi
 frames_take_submission :: proc(app: ^App, p: ^page.Page, s: ^forms.Submission) -> bool {
 	in_frame := frame_view_of(p) != nil
 	target := strings.trim_space(s.target)
-	if !in_frame && (target == "" || strings.equal_fold(target, "_self") || strings.equal_fold(target, "_top") || strings.equal_fold(target, "_blank")) { return false }
+	if !in_frame && (target == "" || base.ascii_equal_fold(target, "_self") || base.ascii_equal_fold(target, "_top") || base.ascii_equal_fold(target, "_blank")) { return false }
 	defer forms.submission_destroy(s)
 	if sb := page.page_sandbox(p); sb.active && .Forms not_in sb.allow {
 		page.log(p, .Error, "Blocked form submission because the form's frame is sandboxed and the 'allow-forms' permission is not set.")
@@ -1802,7 +1802,7 @@ accept_filter :: proc(accept: string) -> string {
 	patterns := make([dynamic]string, context.temp_allocator)
 	rest := accept
 	for tok in strings.split_iterator(&rest, ",") {
-		t := strings.to_lower(strings.trim_space(tok), context.temp_allocator)
+		t := base.ascii_lower(strings.trim_space(tok))
 		switch {
 		case strings.has_prefix(t, "."): append(&patterns, strings.concatenate({"*", t}, context.temp_allocator))
 		case t == "image/*": append(&patterns, "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp;*.svg;*.ico;*.avif")
@@ -1902,5 +1902,5 @@ forms_bare_control :: proc(user: rawptr, doc: ^dom.Document, node: base.Handle) 
 	n := dom.get(doc, node)
 	if n == nil || n.kind != .Element || n.name != "input" { return false }
 	t, _ := dom.get_attribute(doc, node, "type")
-	return strings.equal_fold(t, "checkbox") || strings.equal_fold(t, "radio") || strings.equal_fold(t, "range")
+	return base.ascii_equal_fold(t, "checkbox") || base.ascii_equal_fold(t, "radio") || base.ascii_equal_fold(t, "range")
 }

@@ -68,6 +68,10 @@ parse_attributes :: proc(t: ^testing.T) {
 	testing.expect(t, p.cookie.secure && p.cookie.http_only)
 	testing.expect_value(t, p.cookie.same_site, Same_Site.Strict)
 	testing.expect_value(t, p.max_age_ms, i64(60_000))
+	// attribute names and values are ASCII case-insensitive: the long s U+017F is no s, the Kelvin sign U+212A no k
+	p, ok = parse_default("a=1; ſecure; SameSite=Lax; ſameSite=Strict")
+	testing.expect(t, ok && !p.cookie.secure, "ſecure is no Secure")
+	testing.expect_value(t, p.cookie.same_site, Same_Site.Lax)
 
 	p, ok = parse_default("novalue")
 	testing.expect(t, ok)

@@ -63,7 +63,7 @@ unclosed_script :: proc(d: ^dom.Document, frag: base.Handle, markup: string) -> 
 	if !strings.has_suffix(head, ">") { return base.NIL_HANDLE }
 	lt := strings.last_index_byte(head, '<')
 	if lt < 0 || len(head) - lt < len("<script>") { return base.NIL_HANDLE }
-	if !strings.equal_fold(head[lt:lt + 7], "<script") { return base.NIL_HANDLE }
+	if !base.ascii_equal_fold(head[lt:lt + 7], "<script") { return base.NIL_HANDLE }
 	switch head[lt + 7] {
 	case '\t', '\n', '\f', '\r', ' ', '/', '>': return script
 	}

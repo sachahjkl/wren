@@ -170,7 +170,7 @@ engine_error_text :: proc(e: Engine_Error) -> string {
 engine_validate :: proc(se: ^Search_Engines, self: int, name, keyword, url: string) -> Engine_Error {
 	n, k, u := strings.trim_space(name), strings.trim_space(keyword), strings.trim_space(url)
 	if n == "" { return .No_Name }
-	lu := strings.to_lower(u, context.temp_allocator)
+	lu := base.ascii_lower(u)
 	if (!strings.has_prefix(lu, "https://") && !strings.has_prefix(lu, "http://")) || len(u) <= len("https://") { return .Bad_Url }
 	if !strings.contains(u, "%s") { return .No_Placeholder }
 	if strings.contains_any(k, " \t") { return .Keyword_Space }
@@ -183,7 +183,7 @@ engine_validate :: proc(se: ^Search_Engines, self: int, name, keyword, url: stri
 @(private = "file")
 engine_new_id :: proc(se: ^Search_Engines, name: string) -> string {
 	sb := strings.builder_make(context.temp_allocator)
-	for c in transmute([]u8)strings.to_lower(name, context.temp_allocator) {
+	for c in transmute([]u8)base.ascii_lower(name) {
 		switch {
 		case (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'): strings.write_byte(&sb, c)
 		case strings.builder_len(sb) > 0 && sb.buf[len(sb.buf) - 1] != '-': strings.write_byte(&sb, '-')

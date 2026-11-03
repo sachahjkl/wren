@@ -22,7 +22,7 @@ Link_Preload :: struct {
 // What `as` asks for: false when it is not a value that fetches anything.
 @(private = "file")
 preload_destination :: proc(as: string) -> (fetch.Destination, bool) {
-	switch strings.to_lower(as, context.temp_allocator) {
+	switch base.ascii_lower(as) {
 	case "script": return .Script, true
 	case "style":  return .Style, true
 	case "image":  return .Image, true
@@ -37,7 +37,7 @@ preload_destination :: proc(as: string) -> (fetch.Destination, bool) {
 @(private = "file")
 rel_has :: proc(rel, token: string) -> bool {
 	list := rel
-	for t in strings.fields_iterator(&list) { if strings.equal_fold(t, token) { return true } }
+	for t in strings.fields_iterator(&list) { if base.ascii_equal_fold(t, token) { return true } }
 	return false
 }
 
@@ -73,7 +73,7 @@ link_preload_note :: proc(p: ^Page, el: base.Handle) {
 	co, has_co := dom.get_attribute(p.doc, el, "crossorigin")
 	if has_co || module || destination == .Font {
 		mode = .Cors
-		credentials = strings.equal_fold(co, "use-credentials") ? .Include : .Same_Origin
+		credentials = base.ascii_equal_fold(co, "use-credentials") ? .Include : .Same_Origin
 	}
 	nonce, _ := dom.get_attribute(p.doc, el, "nonce")
 	script := module ? fetch.Script_Type.Module : fetch.Script_Type.Classic

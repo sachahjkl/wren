@@ -1,6 +1,7 @@
 package style
 
 import "base:runtime"
+import "wb:base"
 import "wb:css"
 
 // OpenType features and variations of fonts (CSS Fonts 4 §6, §7): font-feature-settings, font-variation-settings,
@@ -211,7 +212,7 @@ apply_font_feature_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		// CSS / SVG keywords are camelCase (optimizeSpeed...), so match them by hand rather than by the enum name
 		id, ok := ident_raw(vs)
 		if !ok { return false }
-		switch css.lower_temp(id) {
+		switch base.ascii_lower(id) {
 		case "auto":                 c.text_rendering = .Auto
 		case "optimizespeed":        c.text_rendering = .Optimize_Speed
 		case "optimizelegibility":   c.text_rendering = .Optimize_Legibility
@@ -256,7 +257,7 @@ expand_font_variant :: proc(items: []css.Value, a: runtime.Allocator) -> ([]Long
 	}
 	for it in items {
 		if it.kind == .Function {
-			switch css.lower_temp(it.tok.text) {
+			switch base.ascii_lower(it.tok.text) {
 			case "stylistic", "historical-forms", "styleset", "character-variant", "swash", "ornaments", "annotation": continue
 			}
 			return nil, false

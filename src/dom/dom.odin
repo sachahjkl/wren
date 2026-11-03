@@ -291,10 +291,9 @@ touch :: proc(d: ^Document) { d.mutations += 1 }
 // The name in ASCII lower case (DOM createElement, the HTML parser: other letters keep their case): one of
 // STATIC_NAMES is the program's string, any other a copy.
 create_element :: proc(d: ^Document, tag: string) -> base.Handle {
-	lower :: proc "contextless" (c: u8) -> u8 { return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c }
 	if len(tag) <= NAME_STATIC_MAX {
 		buf: [NAME_STATIC_MAX]u8
-		for i in 0 ..< len(tag) { buf[i] = lower(tag[i]) }
+		for i in 0 ..< len(tag) { buf[i] = base.ascii_lower_byte(tag[i]) }
 		if s := static_name(string(buf[:len(tag)])); s != "" {
 			h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Element, name = s, name_static = true})
 			named_add(d, h, s)
@@ -302,7 +301,7 @@ create_element :: proc(d: ^Document, tag: string) -> base.Handle {
 		}
 	}
 	name := make([]u8, len(tag))
-	for i in 0 ..< len(tag) { name[i] = lower(tag[i]) }
+	for i in 0 ..< len(tag) { name[i] = base.ascii_lower_byte(tag[i]) }
 	h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Element, name = string(name)})
 	return h
 }
@@ -524,7 +523,7 @@ set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string, exact :
 	if n == nil { return .Invalid_Handle }
 	if n.kind != .Element || name == "" { return .Invalid_Argument }
 	lname := name
-	if !exact && lowers_attribute_names(n) { lname = lower_name(name) }
+	if !exact && lowers_attribute_names(n) { lname = base.ascii_lower(name) }
 	for a, i in n.attrs {
 		if a.name == lname { attribute_write(d, h, i, a.ns == ATTR_NS_NONE ? lname : attr_local(a), value); return .None }
 	}
@@ -589,18 +588,6 @@ attribute_add :: proc(d: ^Document, h: base.Handle, a: Attr, name: string) {
 	notify_attribute(d, h, name)
 }
 
-// `name` in ASCII lower case (as element names are kept, create_element): itself when it has no upper-case ASCII
-// letter (the common case: no allocation), else a copy in the temp allocator.
-lower_name :: proc(name: string) -> string {
-	for i in 0 ..< len(name) {
-		if name[i] < 'A' || name[i] > 'Z' { continue }
-		b := make([]u8, len(name), context.temp_allocator)
-		for j in 0 ..< len(name) { c := name[j]; b[j] = c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c }
-		return string(b)
-	}
-	return name
-}
-
 // The value of the attribute of no namespace named `name`: what the browser reads (style, src, on*...).
 get_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> (value: string, ok: bool) {
 	n := get(d, h)
@@ -609,7 +596,7 @@ get_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> (value: str
 	// so ASCII case is ignored on both sides after an exact match (scripts: get_attribute_exact)
 	if n.xml == .Element {
 		for a in n.attrs { if a.ns == ATTR_NS_NONE && a.name == name { return a.value, true } }
-		for a in n.attrs { if a.ns == ATTR_NS_NONE && strings.equal_fold(a.name, name) { return a.value, true } }
+		for a in n.attrs { if a.ns == ATTR_NS_NONE && base.ascii_equal_fold(a.name, name) { return a.value, true } }
 		return "", false
 	}
 	// names are stored in lower case: compare folding the query's ASCII letters, without allocating (a hot path of
@@ -648,7 +635,7 @@ attribute_index :: proc(n: ^Node, name: string) -> int {
 		for a, i in n.attrs { if a.name == name { return i } }
 	}
 	if lowers_attribute_names(n) {
-		lname := lower_name(name)
+		lname := base.ascii_lower(name)
 		for a, i in n.attrs { if a.name == lname { return i } }
 	}
 	return -1
@@ -676,7 +663,7 @@ remove_attribute :: proc(d: ^Document, h: base.Handle, name: string, exact := fa
 	if n == nil { return .Invalid_Handle }
 	if n.kind != .Element { return .None }
 	lname := name
-	if !exact && lowers_attribute_names(n) { lname = lower_name(name) }
+	if !exact && lowers_attribute_names(n) { lname = base.ascii_lower(name) }
 	for a, i in n.attrs {
 		if a.name == lname { attribute_remove(d, h, i, a.ns == ATTR_NS_NONE ? lname : attr_local(a)); return .None }
 	}
@@ -783,7 +770,7 @@ text_content :: proc(d: ^Document, h: base.Handle, allocator := context.temp_all
 find_by_id :: proc(d: ^Document, id: string) -> base.Handle { return ids_lookup(d, id) }
 
 find_first_by_tag :: proc(d: ^Document, tag: string) -> base.Handle {
-	ltag := strings.to_lower(tag, context.temp_allocator)
+	ltag := base.ascii_lower(tag)
 	stack: [dynamic]base.Handle
 	defer delete(stack)
 	append(&stack, d.root)

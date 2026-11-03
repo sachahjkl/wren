@@ -209,6 +209,14 @@ selectors_and_specificity :: proc(t: ^testing.T) {
 		_, good := sel(bad, ar)
 		testing.expect(t, !good, bad)
 	}
+	// type and attribute names lowered in ASCII: LINK (the Kelvin sign) is no link
+	lk, okk := sel("LINK[HREF], [ſRC]", ar)
+	testing.expect(t, okk)
+	if okk {
+		testing.expect_value(t, lk[0].compounds[0].simples[0].name, "linK")
+		testing.expect_value(t, lk[0].compounds[0].simples[1].name, "href")
+		testing.expect_value(t, lk[1].compounds[0].simples[0].name, "ſrc")
+	}
 	// namespace prefixes: `*|` any namespace, `|` none
 	ln, okn := sel("*|div, |div, |*, *|*, [*|title]", ar)
 	testing.expect(t, okn)

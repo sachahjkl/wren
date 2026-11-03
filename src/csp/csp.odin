@@ -91,7 +91,7 @@ parse_policy :: proc(text: string, disposition: Disposition) -> Policy {
 	for raw_dir in strings.split(text, ";", context.temp_allocator) {
 		tokens := split_ws(raw_dir)
 		if len(tokens) == 0 { continue }
-		name := strings.to_lower(tokens[0], context.temp_allocator)
+		name := base.ascii_lower(tokens[0])
 		dup := false
 		for d in p.directives { if d.name == name { dup = true; break } }
 		if dup { continue }   // only the first occurrence counts
@@ -120,7 +120,7 @@ parse_header :: proc(l: ^Policy_List, value: string, disposition: Disposition) {
 parse_source :: proc(tok: string) -> (s: Source, ok: bool) {
 	if len(tok) >= 2 && tok[0] == '\'' && tok[len(tok) - 1] == '\'' {
 		inner := tok[1:len(tok) - 1]
-		lower := strings.to_lower(inner, context.temp_allocator)
+		lower := base.ascii_lower(inner)
 		switch lower {
 		case "none":             return Source{kind = .Keyword, keyword = .None}, true
 		case "self":             return Source{kind = .Keyword, keyword = .Self}, true
@@ -143,7 +143,7 @@ parse_source :: proc(tok: string) -> (s: Source, ok: bool) {
 	}
 	// scheme-source: "https:"
 	if len(tok) > 1 && tok[len(tok) - 1] == ':' && is_scheme_name(tok[:len(tok) - 1]) {
-		return Source{kind = .Scheme, scheme = strings.to_lower(tok[:len(tok) - 1])}, true
+		return Source{kind = .Scheme, scheme = base.ascii_lower_clone(tok[:len(tok) - 1])}, true
 	}
 	return parse_host_source(tok)
 }
@@ -175,7 +175,7 @@ parse_host_source :: proc(tok: string) -> (s: Source, ok: bool) {
 	s.kind = .Host
 	if i := strings.index(rest, "://"); i >= 0 {
 		if !is_scheme_name(rest[:i]) { return {}, false }
-		s.scheme = strings.to_lower(rest[:i], context.temp_allocator)   // cloned below with the other parts
+		s.scheme = base.ascii_lower(rest[:i])   // cloned below with the other parts
 		rest = rest[i + 3:]
 	}
 	// path
@@ -203,7 +203,7 @@ parse_host_source :: proc(tok: string) -> (s: Source, ok: bool) {
 	}
 	// clone strings (slices of `tok` so far)
 	s.scheme = strings.clone(s.scheme)
-	s.host = strings.to_lower(host)
+	s.host = base.ascii_lower_clone(host)
 	s.port = strings.clone(s.port)
 	s.path = strings.clone(s.path)
 	return s, true

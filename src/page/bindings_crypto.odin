@@ -8,17 +8,17 @@ package page
 
 import "core:crypto"
 import "core:crypto/hash"
-import "core:strings"
+import "wb:base"
 import "wb:host"
 
 Digest_Algorithm :: enum u8 { Invalid, SHA1, SHA256, SHA384, SHA512 }
 
 digest_algorithm :: proc(name: string) -> Digest_Algorithm {
 	switch {
-	case strings.equal_fold(name, "SHA-1"):   return .SHA1
-	case strings.equal_fold(name, "SHA-256"): return .SHA256
-	case strings.equal_fold(name, "SHA-384"): return .SHA384
-	case strings.equal_fold(name, "SHA-512"): return .SHA512
+	case base.ascii_equal_fold(name, "SHA-1"):   return .SHA1
+	case base.ascii_equal_fold(name, "SHA-256"): return .SHA256
+	case base.ascii_equal_fold(name, "SHA-384"): return .SHA384
+	case base.ascii_equal_fold(name, "SHA-512"): return .SHA512
 	}
 	return .Invalid
 }

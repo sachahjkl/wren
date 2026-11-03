@@ -3,6 +3,7 @@ package css
 import "base:runtime"
 import "core:mem/virtual"
 import "core:strings"
+import "wb:base"
 
 MAX_PARSE_ERRORS_KEPT :: 100          // the parse errors a sheet keeps
 SELECTOR_ERROR_TEXT_MAX_BYTES :: 200  // the text of a rejected selector quoted in a parse error
@@ -406,12 +407,12 @@ parse_declaration :: proc(p: ^Parser, item: []Value) -> (d: Declaration, ok: boo
 	i += 1
 	val := trim_values(item[i:])
 	name := item[0].tok.text
-	if !strings.has_prefix(name, "--") { name = lower_ascii_if_needed(name, p.a) }
+	if !strings.has_prefix(name, "--") { name = base.ascii_lower(name, p.a) }
 	// !important: the last two non-whitespace values
 	n := len(val)
 	if n >= 2 {
 		j := n - 1
-		if val[j].kind == .Token && val[j].tok.kind == .Ident && strings.equal_fold(val[j].tok.text, "important") {
+		if val[j].kind == .Token && val[j].tok.kind == .Ident && base.ascii_equal_fold(val[j].tok.text, "important") {
 			k := j - 1
 			for k >= 0 && is_ws_value(val[k]) { k -= 1 }
 			if k >= 0 && val[k].kind == .Token && val[k].tok.kind == .Delim && val[k].tok.text == "!" {
@@ -425,13 +426,6 @@ parse_declaration :: proc(p: ^Parser, item: []Value) -> (d: Declaration, ok: boo
 	// an empty value is valid only for custom properties
 	if len(val) == 0 && !strings.has_prefix(name, "--") { return {}, false }
 	return d, true
-}
-
-// s itself when it has no ASCII upper case letter (most property names), else a lower-cased copy in .
-@(private)
-lower_ascii_if_needed :: proc(s: string, a: Arena_Alloc) -> string {
-	for i in 0 ..< len(s) { if s[i] >= 'A' && s[i] <= 'Z' { return strings.to_lower(s, a) } }
-	return s
 }
 
 // Component values of a piece of text (a substituted var(), a <style> attribute fragment).
@@ -484,7 +478,7 @@ parse_at_rule :: proc(p: ^Parser, name: string) -> ^Rule {
 // The at-rules whose block is a list of rules (at the top level: build_at_rule reads it with parse_rules_in_block).
 @(private)
 holds_rule_list :: proc(name: string) -> bool {
-	for n in ([]string{"media", "supports", "container", "layer"}) { if strings.equal_fold(name, n) { return true } }
+	for n in ([]string{"media", "supports", "container", "layer"}) { if base.ascii_equal_fold(name, n) { return true } }
 	return false
 }
 
@@ -535,7 +529,7 @@ flatten_into :: proc(out: ^[dynamic]Token, vs: []Value) {
 build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, parent: ^Rule) -> ^Rule {
 	p.rules += 1
 	r := new(Rule, p.a)
-	lname := strings.to_lower(name, p.a)
+	lname := base.ascii_lower_clone(name, p.a)
 	r.name = lname
 	has_block := blk.kind == .Block
 	switch lname {
@@ -566,7 +560,7 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 		for v, i in prelude {
 			if v.kind == .Token && (v.tok.kind == .String || v.tok.kind == .Url) { url = v.tok.text; r.prelude = prelude[i + 1:]; break }
 			// url( "x.css" ): the spaces around the string are whitespace values
-			if v.kind == .Function && strings.equal_fold(v.tok.text, "url") {
+			if v.kind == .Function && base.ascii_equal_fold(v.tok.text, "url") {
 				args := trim_values(v.children)
 				if len(args) == 1 && args[0].kind == .Token && args[0].tok.kind == .String { url = args[0].tok.text; r.prelude = prelude[i + 1:]; break }
 			}
@@ -577,12 +571,12 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 		rest := trim_values(r.prelude)
 		layer_idx := -1
 		for v, i in rest {
-			if v.kind == .Function && strings.equal_fold(v.tok.text, "layer") { r.layer = layer_name_of(v.children, p.a); layer_idx = i }
-			if v.kind == .Token && v.tok.kind == .Ident && strings.equal_fold(v.tok.text, "layer") { r.layer = ""; layer_idx = i }
+			if v.kind == .Function && base.ascii_equal_fold(v.tok.text, "layer") { r.layer = layer_name_of(v.children, p.a); layer_idx = i }
+			if v.kind == .Token && v.tok.kind == .Ident && base.ascii_equal_fold(v.tok.text, "layer") { r.layer = ""; layer_idx = i }
 		}
 		media_vals := rest
 		if layer_idx >= 0 { media_vals = trim_values(rest[layer_idx + 1:]) }
-		for v, i in media_vals { if v.kind == .Function && strings.equal_fold(v.tok.text, "supports") { r.supports = v.children; media_vals = trim_values(media_vals[i + 1:]); break } }
+		for v, i in media_vals { if v.kind == .Function && base.ascii_equal_fold(v.tok.text, "supports") { r.supports = v.children; media_vals = trim_values(media_vals[i + 1:]); break } }
 		r.media = parse_media_query_list(media_vals, p.a)
 		if layer_idx >= 0 && r.layer == "" { r.layer = "\x00anonymous" }
 	case "layer":
@@ -717,8 +711,8 @@ parse_keyframes :: proc(p: ^Parser, body: []Value) -> []Keyframe {
 			switch {
 			case v.kind == .Token && v.tok.kind == .Comma:
 			case v.kind == .Token && v.tok.kind == .Whitespace:
-			case v.kind == .Token && v.tok.kind == .Ident && strings.equal_fold(v.tok.text, "from"): append(&offs, 0)
-			case v.kind == .Token && v.tok.kind == .Ident && strings.equal_fold(v.tok.text, "to"): append(&offs, 1)
+			case v.kind == .Token && v.tok.kind == .Ident && base.ascii_equal_fold(v.tok.text, "from"): append(&offs, 0)
+			case v.kind == .Token && v.tok.kind == .Ident && base.ascii_equal_fold(v.tok.text, "to"): append(&offs, 1)
 			case v.kind == .Token && v.tok.kind == .Percentage && v.tok.num >= 0 && v.tok.num <= 100: append(&offs, f32(v.tok.num / 100))
 			case: valid = false
 			}

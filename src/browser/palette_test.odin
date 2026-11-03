@@ -4,6 +4,7 @@ import "core:strings"
 import "core:testing"
 import "core:time"
 import "toolkit:ui"
+import "wb:base"
 import "wb:config"
 
 @(private = "file")
@@ -68,7 +69,7 @@ registry_well_formed :: proc(t: ^testing.T) {
 	for s in RESERVED_SHORTCUTS { seen[{u16(s.key), u16(transmute(u8)s.mods)}] = "(reserved)" }
 	for c in r.list {
 		testing.expectf(t, c.name != "" && c.title != "" && c.category != "" && c.run != nil, "command %q incomplete", c.name)
-		testing.expectf(t, c.name == strings.to_lower(c.name, context.temp_allocator) && !strings.contains(c.name, " "), "command name %q: dotted, lower case", c.name)
+		testing.expectf(t, c.name == base.ascii_lower(c.name) && !strings.contains(c.name, " "), "command name %q: dotted, lower case", c.name)
 		for s in c.keys {
 			k := [2]u16{u16(s.key), u16(transmute(u8)s.mods)}
 			other, dup := seen[k]

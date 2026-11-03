@@ -2,6 +2,7 @@ package style
 
 import "base:runtime"
 import "core:strings"
+import "wb:base"
 import "wb:css"
 
 // CSS Masking 1 §7 (mask layers) and -webkit-text-fill-color.
@@ -83,7 +84,7 @@ text_fill :: #force_inline proc(c: ^Computed) -> css.Color {
 mask_box_of :: proc(v: []css.Value, allow_no_clip: bool) -> (Mask_Box, bool) {
 	id, ok := ident_raw(v)
 	if !ok { return {}, false }
-	switch css.lower_temp(id) {
+	switch base.ascii_lower(id) {
 	case "border-box", "stroke-box", "view-box", "border": return .Border_Box, true
 	case "padding-box", "padding": return .Padding_Box, true
 	case "content-box", "fill-box", "content": return .Content_Box, true
@@ -96,7 +97,7 @@ mask_box_of :: proc(v: []css.Value, allow_no_clip: bool) -> (Mask_Box, bool) {
 mask_composite_of :: proc(v: []css.Value) -> (Mask_Composite, bool) {
 	id, ok := ident_raw(v)
 	if !ok { return {}, false }
-	switch css.lower_temp(id) {
+	switch base.ascii_lower(id) {
 	case "add", "source-over": return .Add, true
 	case "subtract", "source-out": return .Subtract, true
 	case "intersect", "source-in": return .Intersect, true
@@ -164,7 +165,7 @@ apply_mask_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		}
 		c.mask_composites = list
 	case .Text_Fill_Color:
-		if id, ok := ident_raw(vs); ok && strings.equal_fold(id, "currentcolor") { c.text_fill_color = Auto_Color{auto = true}; return true }
+		if id, ok := ident_raw(vs); ok && base.ascii_equal_fold(id, "currentcolor") { c.text_fill_color = Auto_Color{auto = true}; return true }
 		col, ok := parse_color(cx, vs)
 		if !ok { return false }
 		c.text_fill_color = Auto_Color{color = col}
@@ -217,7 +218,7 @@ expand_mask :: proc(input: []css.Value, a: runtime.Allocator) -> ([]Longhand, bo
 					image = one
 				case .Dimension, .Percentage, .Number: append(in_size ? &size : &pos, it)
 				case .Ident:
-					id := css.lower_temp(it.tok.text)
+					id := base.ascii_lower(it.tok.text)
 					switch id {
 					case "none":
 						if image != nil { return nil, false }

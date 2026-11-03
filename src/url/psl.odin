@@ -47,7 +47,7 @@ to_ascii_host :: proc(s: string) -> string {
 		if c >= 0x80 { ascii = false; break }
 		if c >= 'A' && c <= 'Z' { lower = false }
 	}
-	if ascii { return lower ? s : strings.to_lower(s) }
+	if ascii { return lower ? s : base.ascii_lower_clone(s) }
 	u, ok := parse(strings.concatenate({"https://", s, "/"}, context.temp_allocator), nil, context.temp_allocator)
 	if !ok { return "" }
 	return strings.clone(u.host)

@@ -3,6 +3,7 @@ package blocker
 import "core:encoding/json"
 import "core:strings"
 import "wb:adblock"
+import "wb:base"
 import "wb:fetch"
 import "wb:http"
 
@@ -840,7 +841,7 @@ rewrite_filter :: proc(b: ^Blocker, q: ^fetch.Intercept_Query, host: string, pf:
 					for &r in h.prune { if needle_test(&r.url, q.url) { append(&f.prune, &r) } }
 					for &r in h.replace {
 						if !needle_test(&r.url, q.url) { continue }
-						if r.method != "" && !strings.equal_fold(r.method, q.method) { continue }
+						if r.method != "" && !base.ascii_equal_fold(r.method, q.method) { continue }
 						append(&f.replace, &r)
 					}
 					for &r in h.xml { if needle_test(&r.url, q.url) { append(&f.xml, &r) } }

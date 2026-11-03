@@ -1023,9 +1023,9 @@ Document_set_dir :: proc(c: ^Call, value: string) {
 @(private)
 enumerated_dir :: proc(v: string) -> string {
 	switch {
-	case strings.equal_fold(v, "ltr"): return "ltr"
-	case strings.equal_fold(v, "rtl"): return "rtl"
-	case strings.equal_fold(v, "auto"): return "auto"
+	case base.ascii_equal_fold(v, "ltr"): return "ltr"
+	case base.ascii_equal_fold(v, "rtl"): return "rtl"
+	case base.ascii_equal_fold(v, "auto"): return "auto"
 	}
 	return ""
 }

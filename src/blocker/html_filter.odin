@@ -1,6 +1,7 @@
 package blocker
 
 import "core:strings"
+import "wb:base"
 import "wb:fetch"
 import "wb:html"
 
@@ -64,7 +65,7 @@ html_rule_parse :: proc(selector: string) -> (r: Html_Rule, ok: bool) {
 	}
 	tag := "*"
 	if i > 0 { tag = s[:i] } else if i < len(s) && s[i] == '*' { i += 1 }
-	r.tag = strings.to_lower(tag)
+	r.tag = base.ascii_lower_clone(tag)
 	rest := s[i:]
 	for len(rest) > 0 {
 		switch {
@@ -120,9 +121,9 @@ html_add_attr :: proc(r: ^Html_Rule, test: string, negate: bool) -> bool {
 	o := Html_Op{kind = .Attr, negate = negate, op = op}
 	want := ""   // a slice of `test` until it is cloned into the op
 	if opi < 0 {
-		o.attr = strings.to_lower(strings.trim_space(t))
+		o.attr = base.ascii_lower_clone(strings.trim_space(t))
 	} else {
-		o.attr = strings.to_lower(strings.trim_space(t[:opi]))
+		o.attr = base.ascii_lower_clone(strings.trim_space(t[:opi]))
 		want = strings.trim(strings.trim_space(t[opi + len(op):]), "\"'")
 	}
 	if o.attr == "" { delete(o.attr); return false }
@@ -165,7 +166,7 @@ VOID_ELEMENTS := [?]string{"area", "base", "br", "col", "embed", "hr", "img", "i
 
 @(private = "file")
 is_void_name :: proc(name: string) -> bool {
-	for v in VOID_ELEMENTS { if strings.equal_fold(name, v) { return true } }
+	for v in VOID_ELEMENTS { if base.ascii_equal_fold(name, v) { return true } }
 	return false
 }
 
@@ -173,12 +174,12 @@ is_void_name :: proc(name: string) -> bool {
 // text of <script> / <style> / <textarea> / <title> (their content is never markup). -1 when the stream ends first.
 @(private = "file")
 html_element_end :: proc(text, name: string, from: int) -> int {
-	raw := strings.equal_fold(name, "script") || strings.equal_fold(name, "style") || strings.equal_fold(name, "textarea") || strings.equal_fold(name, "title")
+	raw := base.ascii_equal_fold(name, "script") || base.ascii_equal_fold(name, "style") || base.ascii_equal_fold(name, "textarea") || base.ascii_equal_fold(name, "title")
 	if raw {
 		close := strings.concatenate({"</", name}, context.temp_allocator)
 		i := from
 		for {
-			k := index_fold(text[i:], close)
+			k := base.ascii_index_fold(text[i:], close)
 			if k < 0 { return -1 }
 			j := i + k + len(close)
 			g := strings.index_byte(text[j:], '>')
@@ -222,17 +223,7 @@ name_matches :: proc(a, b: string) -> bool {
 	// compare the element-name prefix (stop at whitespace or `/`)
 	end := 0
 	for end < len(a) && a[end] != ' ' && a[end] != '\t' && a[end] != '\n' && a[end] != '\r' && a[end] != '/' { end += 1 }
-	return strings.equal_fold(a[:end], b)
-}
-
-@(private = "file")
-index_fold :: proc(hay, needle: string) -> int {
-	if needle == "" { return 0 }
-	if len(needle) > len(hay) { return -1 }
-	for i in 0 ..= len(hay) - len(needle) {
-		if strings.equal_fold(hay[i:i + len(needle)], needle) { return i }
-	}
-	return -1
+	return base.ascii_equal_fold(a[:end], b)
 }
 
 // Reads the start tag at `text[i]` (text[i] must be `<`). ok = false for a comment, doctype, processing instruction or an
@@ -267,7 +258,7 @@ is_tag_start :: proc(c: u8) -> bool { return (c >= 'a' && c <= 'z') || (c >= 'A'
 html_attr :: proc(attrs, name: string) -> (value: string, has: bool) {
 	rest := attrs
 	for {
-		k := index_fold(rest, name)
+		k := base.ascii_index_fold(rest, name)
 		if k < 0 { return "", false }
 		before := k == 0 ? u8(' ') : rest[k - 1]
 		after := rest[k + len(name):]
@@ -294,7 +285,7 @@ html_attr :: proc(attrs, name: string) -> (value: string, has: bool) {
 // between the start and end tags (decoded once, only when a :has-text op needs it).
 @(private = "file")
 html_rule_matches :: proc(r: ^Html_Rule, t: ^Html_Tag, content: string) -> bool {
-	if r.tag != "*" && !strings.equal_fold(r.tag, t.name) { return false }
+	if r.tag != "*" && !base.ascii_equal_fold(r.tag, t.name) { return false }
 	for &o in r.ops {
 		hit := false
 		switch o.kind {
@@ -388,7 +379,7 @@ html_apply :: proc(f: ^Html_Doc_Filter, text: string) -> string {
 		if !ok { i += 1; continue }
 		// does any rule's tag match? (cheap gate before computing the element's text)
 		any_tag := false
-		for &r in f.rules { if r.tag == "*" || strings.equal_fold(r.tag, t.name) { any_tag = true; break } }
+		for &r in f.rules { if r.tag == "*" || base.ascii_equal_fold(r.tag, t.name) { any_tag = true; break } }
 		if !any_tag { i = t.content; continue }
 
 		end := t.content

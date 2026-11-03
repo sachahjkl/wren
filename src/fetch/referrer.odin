@@ -1,6 +1,7 @@
 package fetch
 
 import "core:strings"
+import "wb:base"
 import "wb:url"
 
 // Parses a Referrer-Policy header / meta value: a comma separated list; the last recognised token wins.
@@ -9,14 +10,14 @@ parse_referrer_policy :: proc(value: string) -> Referrer_Policy {
 	for tok in strings.split(value, ",", context.temp_allocator) {
 		t := strings.trim_space(tok)
 		switch {
-		case strings.equal_fold(t, "no-referrer"):                       result = .No_Referrer
-		case strings.equal_fold(t, "no-referrer-when-downgrade"):        result = .No_Referrer_When_Downgrade
-		case strings.equal_fold(t, "same-origin"):                       result = .Same_Origin
-		case strings.equal_fold(t, "origin"):                            result = .Origin
-		case strings.equal_fold(t, "strict-origin"):                     result = .Strict_Origin
-		case strings.equal_fold(t, "origin-when-cross-origin"):          result = .Origin_When_Cross_Origin
-		case strings.equal_fold(t, "strict-origin-when-cross-origin"):   result = .Strict_Origin_When_Cross_Origin
-		case strings.equal_fold(t, "unsafe-url"):                        result = .Unsafe_Url
+		case base.ascii_equal_fold(t, "no-referrer"):                       result = .No_Referrer
+		case base.ascii_equal_fold(t, "no-referrer-when-downgrade"):        result = .No_Referrer_When_Downgrade
+		case base.ascii_equal_fold(t, "same-origin"):                       result = .Same_Origin
+		case base.ascii_equal_fold(t, "origin"):                            result = .Origin
+		case base.ascii_equal_fold(t, "strict-origin"):                     result = .Strict_Origin
+		case base.ascii_equal_fold(t, "origin-when-cross-origin"):          result = .Origin_When_Cross_Origin
+		case base.ascii_equal_fold(t, "strict-origin-when-cross-origin"):   result = .Strict_Origin_When_Cross_Origin
+		case base.ascii_equal_fold(t, "unsafe-url"):                        result = .Unsafe_Url
 		}
 	}
 	return result

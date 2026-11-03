@@ -134,7 +134,7 @@ has_class :: proc(n: ^dom.Node, name: string) -> bool {
 is_space :: #force_inline proc(c: u8) -> bool { return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' }
 
 @(private)
-value_equals :: proc(a, b: string, ci: bool) -> bool { return ci ? strings.equal_fold(a, b) : a == b }
+value_equals :: proc(a, b: string, ci: bool) -> bool { return ci ? base.ascii_equal_fold(a, b) : a == b }
 
 @(private)
 attr_matches :: proc(n: ^dom.Node, s: css.Simple) -> bool {
@@ -161,7 +161,7 @@ attr_matches :: proc(n: ^dom.Node, s: css.Simple) -> bool {
 	case .Suffix: return want != "" && len(v) >= len(want) && value_equals(v[len(v) - len(want):], want, s.ci)
 	case .Substring:
 		if want == "" { return false }
-		if s.ci { return strings.contains(css.lower_temp(v), css.lower_temp(want)) }
+		if s.ci { return base.ascii_contains_fold(v, want) }
 		return strings.contains(v, want)
 	}
 	return false
@@ -305,7 +305,7 @@ is_disabled :: proc(m: ^Match_Ctx, h: base.Handle) -> bool {
 @(private)
 text_input_type :: proc(n: ^dom.Node) -> bool {
 	t, _ := attr(n, "type")
-	switch css.lower_temp(t) {
+	switch base.ascii_lower(t) {
 	case "", "text", "search", "url", "tel", "email", "password", "number", "date", "datetime-local", "month", "week", "time": return true
 	}
 	return false
@@ -318,7 +318,7 @@ is_read_write :: proc(m: ^Match_Ctx, h: base.Handle) -> bool {
 	if is_disabled(m, h) { return false }
 	if n.name == "textarea" { return true }
 	if n.name == "input" { return text_input_type(n) }
-	if ce, ok := attr(n, "contenteditable"); ok { return ce == "" || strings.equal_fold(ce, "true") || strings.equal_fold(ce, "plaintext-only") }
+	if ce, ok := attr(n, "contenteditable"); ok { return ce == "" || base.ascii_equal_fold(ce, "true") || base.ascii_equal_fold(ce, "plaintext-only") }
 	return false
 }
 
@@ -337,7 +337,7 @@ dir_of :: proc(m: ^Match_Ctx, h: base.Handle) -> string {
 	for cur := h; cur != base.NIL_HANDLE; cur = parent_element(m, cur) {
 		n := node_of(m, cur)
 		if v, ok := attr(n, "dir"); ok {
-			l := css.lower_temp(v)
+			l := base.ascii_lower(v)
 			if l == "ltr" || l == "rtl" { return l }
 		}
 	}
@@ -567,7 +567,7 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 		if n.name == "option" { _, ok := attr(n, "selected"); return ok }
 		if n.name == "input" {
 			t, _ := attr(n, "type")
-			if strings.equal_fold(t, "checkbox") || strings.equal_fold(t, "radio") { _, ok := attr(n, "checked"); return ok }
+			if base.ascii_equal_fold(t, "checkbox") || base.ascii_equal_fold(t, "radio") { _, ok := attr(n, "checked"); return ok }
 		}
 		return false
 	case .Disabled:
@@ -634,7 +634,7 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 	case .Lang:
 		l := lang_of(m, el)
 		if l == "" { return false }
-		return strings.equal_fold(l, s.name) || (len(l) > len(s.name) && l[len(s.name)] == '-' && strings.equal_fold(l[:len(s.name)], s.name))
+		return base.ascii_equal_fold(l, s.name) || (len(l) > len(s.name) && l[len(s.name)] == '-' && base.ascii_equal_fold(l[:len(s.name)], s.name))
 	case .Dir: return dir_of(m, el) == s.name
 	case .Defined: return dom.element_is_defined(m.doc, el)
 	case .Open:

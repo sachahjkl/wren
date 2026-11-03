@@ -5,6 +5,7 @@ import "core:os"
 import "core:strconv"
 import "core:strings"
 import "wb:adblock"
+import "wb:base"
 
 // The blocker's configuration: which lists, the user's filters, the per-site switches, the dynamic rules and the totals.
 // One text file in the profile (blocker/blocker.conf); the dashboard exports and imports the very same text, so a whole
@@ -282,7 +283,7 @@ conf_parse :: proc(b: ^Blocker, text: string, replace: bool) -> (understood, ign
 
 site_set_flags :: proc(b: ^Blocker, host: string, flags: Site_Flags) {
 	c := &b.conf
-	h := strings.to_lower(host, context.temp_allocator)
+	h := base.ascii_lower(host)
 	if flags == {} {
 		if _, ok := c.sites[h]; ok {
 			for k in c.sites { if k == h { delete(k); break } }

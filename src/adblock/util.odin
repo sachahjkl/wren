@@ -23,6 +23,7 @@
 package adblock
 
 import "core:strings"
+import "wb:base"
 
 FNV_OFFSET :: u32(2166136261)
 FNV_PRIME  :: u32(16777619)
@@ -59,13 +60,10 @@ is_separator :: #force_inline proc "contextless" (c: u8) -> bool {
 	return !(is_alnum(c) || c == '_' || c == '-' || c == '.' || c == '%')
 }
 
-@(private)
-lower_byte :: #force_inline proc "contextless" (c: u8) -> u8 { return c >= 'A' && c <= 'Z' ? c + 32 : c }
-
 // Lower-cases ASCII into `dst` (which must be at least as long as `s`).
 @(private)
 lower_into :: proc "contextless" (dst: []u8, s: string) {
-	for i in 0 ..< len(s) { dst[i] = lower_byte(s[i]) }
+	for i in 0 ..< len(s) { dst[i] = base.ascii_lower_byte(s[i]) }
 }
 
 @(private)

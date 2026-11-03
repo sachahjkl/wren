@@ -93,7 +93,7 @@ svg_attr_length :: proc(d: ^dom.Document, h: base.Handle, name: string) -> (f32,
 	n, nok := strconv.parse_f32(t[:end])
 	if !nok || n < 0 { return 0, false }
 	k: f32
-	switch strings.to_lower(strings.trim_space(t[end:]), context.temp_allocator) {
+	switch base.ascii_lower(strings.trim_space(t[end:])) {
 	case "", "px": k = 1
 	case "pt": k = 4.0 / 3
 	case "pc": k = 16
@@ -431,7 +431,7 @@ svg_style_sets :: proc(style_attr, name: string) -> bool {
 	rest := style_attr
 	for decl in strings.split_iterator(&rest, ";") {
 		n, _, _ := strings.partition(decl, ":")
-		if strings.equal_fold(strings.trim_space(n), name) { return true }
+		if base.ascii_equal_fold(strings.trim_space(n), name) { return true }
 	}
 	return false
 }
@@ -492,7 +492,7 @@ svg_serialize :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32) -> (string
 	if cs != nil {
 		attr, has_attr := dom.get_attribute(d, node, "color")
 		a := strings.trim_space(attr)
-		concrete_attr := has_attr && !strings.equal_fold(a, "currentcolor") && !strings.equal_fold(a, "inherit") && a != ""
+		concrete_attr := has_attr && !base.ascii_equal_fold(a, "currentcolor") && !base.ascii_equal_fold(a, "inherit") && a != ""
 		if !concrete_attr || svg_style_sets_color(own) { fmt.sbprintf(&st, "color:%s;", css_color(cs.color)) }
 	}
 	if strings.builder_len(st) > 0 {

@@ -18,7 +18,7 @@ fs_names_are_checked_and_encoded :: proc(t: ^testing.T) {
 	seen := make(map[string]bool, allocator = context.temp_allocator)
 	for n in cases {
 		e := fs_encode_name(n, context.temp_allocator)
-		lower := strings.to_lower(e, context.temp_allocator)
+		lower := base.ascii_lower(e)
 		testing.expect(t, !seen[lower])
 		seen[lower] = true
 		testing.expect(t, fs_disk_name_valid(e))

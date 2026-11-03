@@ -1,6 +1,7 @@
 package css
 
 import "core:strings"
+import "wb:base"
 
 // Media Queries Level 4: parsing and evaluation. The environment is supplied by the style system (viewport, color
 // scheme and the user's preferences), so nothing here is hard-wired.
@@ -85,15 +86,15 @@ parse_media_query :: proc(vs: []Value, a: Arena_Alloc) -> (q: Media_Query, ok: b
 	q.type = .All
 	// [not|only]? type [and condition]? | condition
 	if vs[0].kind == .Token && vs[0].tok.kind == .Ident {
-		w := lower_temp(vs[0].tok.text)
+		w := base.ascii_lower(vs[0].tok.text)
 		if w == "not" || w == "only" {
 			// `not` before a media type negates the query; before "(" it is a condition (three-valued) and is left to the condition parser
 			j := 1
 			for j < len(vs) && is_ws_value(vs[j]) { j += 1 }
 			if j < len(vs) && vs[j].kind == .Token && vs[j].tok.kind == .Ident { q.negated = w == "not"; i = j }
 		}
-		if i < len(vs) && vs[i].kind == .Token && vs[i].tok.kind == .Ident && !(i == 0 && strings.equal_fold(vs[i].tok.text, "not")) {
-			t := lower_temp(vs[i].tok.text)
+		if i < len(vs) && vs[i].kind == .Token && vs[i].tok.kind == .Ident && !(i == 0 && base.ascii_equal_fold(vs[i].tok.text, "not")) {
+			t := base.ascii_lower(vs[i].tok.text)
 			switch t {
 			case "all": q.type = .All
 			case "screen": q.type = .Screen
@@ -103,7 +104,7 @@ parse_media_query :: proc(vs: []Value, a: Arena_Alloc) -> (q: Media_Query, ok: b
 			i += 1
 			for i < len(vs) && is_ws_value(vs[i]) { i += 1 }
 			if i >= len(vs) { return q, true }
-			if vs[i].kind == .Token && vs[i].tok.kind == .Ident && strings.equal_fold(vs[i].tok.text, "and") {
+			if vs[i].kind == .Token && vs[i].tok.kind == .Ident && base.ascii_equal_fold(vs[i].tok.text, "and") {
 				i += 1
 				for i < len(vs) && is_ws_value(vs[i]) { i += 1 }
 				c, good := parse_media_condition(vs[i:], a)
@@ -125,7 +126,7 @@ parse_media_query :: proc(vs: []Value, a: Arena_Alloc) -> (q: Media_Query, ok: b
 parse_media_condition :: proc(cond: []Value, a: Arena_Alloc) -> (c: Media_Condition, ok: bool) {
 	vs := trim_values(cond)
 	if len(vs) == 0 { return {}, false }
-	if vs[0].kind == .Token && vs[0].tok.kind == .Ident && strings.equal_fold(vs[0].tok.text, "not") {
+	if vs[0].kind == .Token && vs[0].tok.kind == .Ident && base.ascii_equal_fold(vs[0].tok.text, "not") {
 		inner, good := parse_media_in_parens(trim_values(vs[1:]), a)
 		if !good { return {}, false }
 		kids := make([]Media_Condition, 1, a)
@@ -147,7 +148,7 @@ parse_media_condition :: proc(cond: []Value, a: Arena_Alloc) -> (c: Media_Condit
 		for i < len(vs) && is_ws_value(vs[i]) { i += 1 }
 		if i < len(vs) {
 			if vs[i].kind != .Token || vs[i].tok.kind != .Ident { return {}, false }
-			w := lower_temp(vs[i].tok.text)
+			w := base.ascii_lower(vs[i].tok.text)
 			kind := op.kind
 			if w == "and" { kind = .And } else if w == "or" { kind = .Or } else { return {}, false }
 			if saw_op && kind != op.kind { return {}, false }
@@ -171,7 +172,7 @@ parse_media_in_parens :: proc(vs: []Value, a: Arena_Alloc) -> (c: Media_Conditio
 	inner := trim_values(v.children)
 	if len(inner) == 0 { return {}, false }
 	// a nested condition?
-	if inner[0].kind == .Block || (inner[0].kind == .Token && inner[0].tok.kind == .Ident && strings.equal_fold(inner[0].tok.text, "not") && len(inner) > 1 && !has_colon(inner)) {
+	if inner[0].kind == .Block || (inner[0].kind == .Token && inner[0].tok.kind == .Ident && base.ascii_equal_fold(inner[0].tok.text, "not") && len(inner) > 1 && !has_colon(inner)) {
 		if cond, good := parse_media_condition(inner, a); good { return cond, true }
 	}
 	return parse_media_feature(inner, a)
@@ -185,7 +186,7 @@ has_colon :: proc(vs: []Value) -> bool {
 
 @(private)
 feature_of :: proc(name: string) -> (Media_Feature, i8) {
-	n := lower_temp(name)
+	n := base.ascii_lower(name)
 	mm: i8
 	webkit := strings.has_prefix(n, "-webkit-")
 	if webkit { n = n[8:] }
@@ -248,11 +249,11 @@ media_number :: proc(v: Value) -> (f64, bool) {
 	case .Dimension:
 		if px, ok := length_unit_to_px(t.num, t.text, 16); ok { return px, true }
 		// relative units in a media query are relative to the initial font size (16px)
-		switch lower_temp(t.text) {
+		switch base.ascii_lower(t.text) {
 		case "em", "rem": return t.num * 16, true
 		case "ex", "ch": return t.num * 8, true
 		}
-		switch lower_temp(t.text) {
+		switch base.ascii_lower(t.text) {
 		case "dppx", "x": return t.num, true
 		case "dpi": return t.num / 96, true
 		case "dpcm": return t.num * 2.54 / 96, true
@@ -280,7 +281,7 @@ parse_media_feature :: proc(inner: []Value, a: Arena_Alloc) -> (c: Media_Conditi
 		if f == .Unknown { return Media_Condition{unknown = true}, true }
 		c.feature, c.min_max = f, mm
 		val := toks[2]
-		if val.kind == .Token && val.tok.kind == .Ident { c.ident = strings.to_lower(val.tok.text, a); return c, len(toks) == 3 }
+		if val.kind == .Token && val.tok.kind == .Ident { c.ident = base.ascii_lower_clone(val.tok.text, a); return c, len(toks) == 3 }
 		// ratio: 16 / 9
 		if len(toks) == 5 && toks[3].kind == .Token && toks[3].tok.kind == .Delim && toks[3].tok.text == "/" {
 			n1, g1 := media_number(toks[2]); n2, g2 := media_number(toks[4])

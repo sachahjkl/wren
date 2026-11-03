@@ -252,7 +252,7 @@ pick_icon :: proc(links: []Icon_Link, want: int) -> int {
 		score := max(int)
 		sizes := l.sizes
 		for part in strings.fields_iterator(&sizes) {
-			if strings.equal_fold(part, "any") { score = 0; continue }
+			if base.ascii_equal_fold(part, "any") { score = 0; continue }
 			x := strings.index_any(part, "xX")
 			if x <= 0 { continue }
 			w, okw := strconv.parse_int(part[:x])
@@ -271,7 +271,7 @@ pick_icon :: proc(links: []Icon_Link, want: int) -> int {
 // Whether a rel attribute names an icon (its token list contains "icon", ASCII case-insensitive).
 rel_is_icon :: proc(rel: string) -> bool {
 	r := rel
-	for tok in strings.fields_iterator(&r) { if strings.equal_fold(tok, "icon") { return true } }
+	for tok in strings.fields_iterator(&r) { if base.ascii_equal_fold(tok, "icon") { return true } }
 	return false
 }
 

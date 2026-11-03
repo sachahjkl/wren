@@ -59,7 +59,7 @@ first_paint_done :: proc(p: ^Page) {
 render_blocking_candidate :: proc(p: ^Page, owner: base.Handle) -> bool {
 	if v, ok := dom.get_attribute(p.doc, owner, "blocking"); ok {
 		rest := v
-		for tok in strings.fields_iterator(&rest) { if strings.equal_fold(tok, "render") { return true } }
+		for tok in strings.fields_iterator(&rest) { if base.ascii_equal_fold(tok, "render") { return true } }
 	}
 	// one a script inserted does not (a chunk loader's: DuckDuckGo's first paint waited for a feedback dialog's CSS)
 	if p.scripts != nil && owner in p.scripts.inserted_links { return false }
