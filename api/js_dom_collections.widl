@@ -31,7 +31,7 @@ partial module dom {
   /// The token at `index` (Not_Found: null).
   string TokenList_item(Element element, string attr, u32 index) raises;
   bool TokenList_contains(Element element, string attr, string token);
-  /// add(tokens...): `tokens` NUL-separated. Syntax for an empty token, Invalid_Character for one with whitespace.
+  /// add(tokens...): `tokens` each ended by NUL (or NUL-separated; "": none, the attribute serialized again). Syntax for an empty token, Invalid_Character for one with whitespace.
   void TokenList_add(Element element, string attr, string tokens) raises;
   /// remove(tokens...): as add.
   void TokenList_remove(Element element, string attr, string tokens) raises;

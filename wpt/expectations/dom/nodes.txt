@@ -3220,11 +3220,11 @@
 	classList.add("d", "e") with attribute value "a b c " (XHTML node): PASS
 	classList.add("d", "e") with attribute value "a b c " (XML node with null namespace): PASS
 	classList.add("d", "e") with attribute value "a b c " (foo node): PASS
-	classList.add() with attribute value "a b c a " (HTML node): FAIL
-	classList.add() with attribute value "a b c a " (MathML node): FAIL
-	classList.add() with attribute value "a b c a " (XHTML node): FAIL
-	classList.add() with attribute value "a b c a " (XML node with null namespace): FAIL
-	classList.add() with attribute value "a b c a " (foo node): FAIL
+	classList.add() with attribute value "a b c a " (HTML node): PASS
+	classList.add() with attribute value "a b c a " (MathML node): PASS
+	classList.add() with attribute value "a b c a " (XHTML node): PASS
+	classList.add() with attribute value "a b c a " (XML node with null namespace): PASS
+	classList.add() with attribute value "a b c a " (foo node): PASS
 	classList.add(null) with attribute value null (HTML node): PASS
 	classList.add(null) with attribute value null (MathML node): PASS
 	classList.add(null) with attribute value null (XHTML node): PASS
@@ -3730,16 +3730,16 @@
 	classList.remove("d", "e") with attribute value "a b c " (XHTML node): PASS
 	classList.remove("d", "e") with attribute value "a b c " (XML node with null namespace): PASS
 	classList.remove("d", "e") with attribute value "a b c " (foo node): PASS
-	classList.remove() with attribute value "a a" (HTML node): FAIL
-	classList.remove() with attribute value "a a" (MathML node): FAIL
-	classList.remove() with attribute value "a a" (XHTML node): FAIL
-	classList.remove() with attribute value "a a" (XML node with null namespace): FAIL
-	classList.remove() with attribute value "a a" (foo node): FAIL
-	classList.remove() with attribute value "a b c " (HTML node): FAIL
-	classList.remove() with attribute value "a b c " (MathML node): FAIL
-	classList.remove() with attribute value "a b c " (XHTML node): FAIL
-	classList.remove() with attribute value "a b c " (XML node with null namespace): FAIL
-	classList.remove() with attribute value "a b c " (foo node): FAIL
+	classList.remove() with attribute value "a a" (HTML node): PASS
+	classList.remove() with attribute value "a a" (MathML node): PASS
+	classList.remove() with attribute value "a a" (XHTML node): PASS
+	classList.remove() with attribute value "a a" (XML node with null namespace): PASS
+	classList.remove() with attribute value "a a" (foo node): PASS
+	classList.remove() with attribute value "a b c " (HTML node): PASS
+	classList.remove() with attribute value "a b c " (MathML node): PASS
+	classList.remove() with attribute value "a b c " (XHTML node): PASS
+	classList.remove() with attribute value "a b c " (XML node with null namespace): PASS
+	classList.remove() with attribute value "a b c " (foo node): PASS
 	classList.remove(null) with attribute value "null" (HTML node): PASS
 	classList.remove(null) with attribute value "null" (MathML node): PASS
 	classList.remove(null) with attribute value "null" (XHTML node): PASS
@@ -3750,11 +3750,11 @@
 	classList.remove(undefined) with attribute value "undefined" (XHTML node): PASS
 	classList.remove(undefined) with attribute value "undefined" (XML node with null namespace): PASS
 	classList.remove(undefined) with attribute value "undefined" (foo node): PASS
-	classList.replace(" ", "") with attribute value null (HTML node): FAIL
-	classList.replace(" ", "") with attribute value null (MathML node): FAIL
-	classList.replace(" ", "") with attribute value null (XHTML node): FAIL
-	classList.replace(" ", "") with attribute value null (XML node with null namespace): FAIL
-	classList.replace(" ", "") with attribute value null (foo node): FAIL
+	classList.replace(" ", "") with attribute value null (HTML node): PASS
+	classList.replace(" ", "") with attribute value null (MathML node): PASS
+	classList.replace(" ", "") with attribute value null (XHTML node): PASS
+	classList.replace(" ", "") with attribute value null (XML node with null namespace): PASS
+	classList.replace(" ", "") with attribute value null (foo node): PASS
 	classList.replace(" ", "a") with attribute value null (HTML node): PASS
 	classList.replace(" ", "a") with attribute value null (MathML node): PASS
 	classList.replace(" ", "a") with attribute value null (XHTML node): PASS

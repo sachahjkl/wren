@@ -1515,7 +1515,7 @@ foreign _wr_wj_dom {
 	// The token at `index` (Not_Found: null).
 	@(link_name = "TokenList_item") wr_TokenList_item :: proc(element: u64, attr: [^]u8, attr_len: u32, index: u32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "TokenList_contains") wr_TokenList_contains :: proc(element: u64, attr: [^]u8, attr_len: u32, token: [^]u8, token_len: u32) -> i32 ---
-	// add(tokens...): `tokens` NUL-separated. Syntax for an empty token, Invalid_Character for one with whitespace.
+	// add(tokens...): `tokens` each ended by NUL (or NUL-separated; "": none, the attribute serialized again). Syntax for an empty token, Invalid_Character for one with whitespace.
 	@(link_name = "TokenList_add") wr_TokenList_add :: proc(element: u64, attr: [^]u8, attr_len: u32, tokens: [^]u8, tokens_len: u32) -> i32 ---
 	// remove(tokens...): as add.
 	@(link_name = "TokenList_remove") wr_TokenList_remove :: proc(element: u64, attr: [^]u8, attr_len: u32, tokens: [^]u8, tokens_len: u32) -> i32 ---
