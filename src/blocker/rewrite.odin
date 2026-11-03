@@ -446,7 +446,7 @@ xml_compound :: proc(el: ^Xml_El, comp: string) -> bool {
 	return true
 }
 
-@(private = "file")
+@(private)
 contains_word :: proc(s, w: string) -> bool {
 	for part in strings.fields(s, context.temp_allocator) { if part == w { return true } }
 	return false
