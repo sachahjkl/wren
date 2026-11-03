@@ -290,6 +290,11 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	if why := too_much_garbage(l); why != "" { return bail(l, why) }
 	dom_changes, dom_ok := dom.journal_since(input.doc, l.mutations)
 	if !dom_ok { return bail(l, "mutation journal incomplete") }
+	// the boxes of the removed elements are made again in any case: past the limit, the answer of the end of the
+	// attempt, before its search of what to rebuild (on a page that rebuilds a list of 2 500 items every frame, the
+	// search was 6 to 8 % of the page thread, for a full pass after it)
+	limit := set.inc_max_ratio * f32(len(l.boxes) - l.inc.dead_boxes)
+	if f32(removed_boxes(l, input.doc, dom_changes, limit)) > limit { return bail(l, "too much changed") }
 	// the same style records as last time, changed since only as the style journal says: only those are re-pointed
 	same_pass := l.styled == rawptr(st) && l.styled_pass == st.pass_id
 	style_changes: []style.Journal_Entry
@@ -416,7 +421,7 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	rebuilt := 0
 	for r in roots { rebuilt += subtree_size(l, r) }
 	for &pl in plans { rebuilt += pl.old != NONE ? subtree_size(l, pl.old) : 1 }
-	if f32(rebuilt + len(dirty) + len(styled_dirty)) > set.inc_max_ratio * f32(len(l.boxes) - l.inc.dead_boxes) { return bail(l, "too much changed") }
+	if f32(rebuilt + len(dirty) + len(styled_dirty)) > limit { return bail(l, "too much changed") }
 
 	// the display list can be spliced only when nothing but the content of some inline contexts changed
 	vp_changed := l.viewport != input.viewport
@@ -542,6 +547,35 @@ prune_roots :: proc(l: ^Layout, roots: [dynamic]i32) -> [dynamic]i32 {
 		append(&out, r)
 	}
 	return out
+}
+
+// Boxes in the subtrees of the boxes of the elements `changes` removed, each once, counted until past `limit`: a part of
+// what the attempt rebuilds. Each such box goes, with its subtree, as a plan of its own or inside a container made again
+// (add_target); one inside a replaced element is left out (its container is laid out again, not rebuilt). A bit per box
+// says which are the boxes of removed elements.
+@(private)
+removed_boxes :: proc(l: ^Layout, doc: ^dom.Document, changes: []dom.Journal_Entry, limit: f32) -> int {
+	marks: []u64
+	tops := make([dynamic]i32, 0, 16, context.temp_allocator)
+	for &e in changes {
+		if e.kind != .Remove { continue }
+		if n := dom.get(doc, e.node); n != nil && n.kind != .Element { continue }
+		bi := live_box(l, e.node)
+		if bi == NONE { continue }
+		if marks == nil { marks = make([]u64, (len(l.boxes) + 63) / 64, context.temp_allocator) }
+		if marks[bi >> 6] & (u64(1) << u32(bi & 63)) != 0 { continue }
+		marks[bi >> 6] |= u64(1) << u32(bi & 63)
+		append(&tops, bi)
+	}
+	n := 0
+	outer: for bi in tops {
+		for p := l.boxes[bi].parent; p != NONE; p = l.boxes[p].parent {
+			if marks[p >> 6] & (u64(1) << u32(p & 63)) != 0 || l.boxes[p].kind == .Replaced { continue outer }
+		}
+		n += subtree_size(l, bi)
+		if f32(n) > limit { break }
+	}
+	return n
 }
 
 @(private)

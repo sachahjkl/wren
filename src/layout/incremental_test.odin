@@ -268,6 +268,42 @@ inc_insert_remove :: proc(t: ^testing.T) {
 	ix_check(t, f)
 }
 
+// A list rebuilt whole (what a script that rebuilds it every frame does): the boxes of the removed items alone pass the
+// limit, and the attempt gives up before looking for what to rebuild. removed_boxes counts each removed subtree once
+// (a span removed from an item, then the item: with the item).
+@(test)
+inc_removed_boxes_decide_first :: proc(t: ^testing.T) {
+	LIST_ITEMS :: 40
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>body{margin:0;font-size:10px;line-height:12px}</style><body><p>list</p><ul id=list>`)
+	for i in 0 ..< LIST_ITEMS { fmt.sbprintf(&sb, "<li><span>item %d</span><b>b</b></li>", i) }
+	strings.write_string(&sb, "</ul></body>")
+	f := ix_load(strings.to_string(sb))
+	defer ix_unload(f)
+	ul := id(f, "list")
+	items := make([dynamic]base.Handle, context.temp_allocator)
+	want := 0
+	for ch := dom.get(f.doc, ul).first_child; ch != base.NIL_HANDLE; ch = dom.get(f.doc, ch).next {
+		if dom.get(f.doc, ch).kind != .Element { continue }
+		append(&items, ch)
+		want += subtree_size(&f.l, live_box(&f.l, ch))
+	}
+	testing.expect_value(t, len(items), LIST_ITEMS)
+	dom.remove_child(f.doc, items[0], dom.get(f.doc, items[0]).first_child)
+	for h in items { dom.remove_child(f.doc, ul, h) }
+	changes, ok := dom.journal_since(f.doc, f.l.mutations)
+	testing.expect(t, ok)
+	testing.expect_value(t, removed_boxes(&f.l, f.doc, changes, max(f32)), want)
+	testing.expect(t, f32(want) > f.set.inc_max_ratio * f32(len(f.l.boxes) - f.l.inc.dead_boxes), "the removed boxes alone pass the limit")
+	for i in 0 ..< LIST_ITEMS {
+		li := add_el(f, ul, "li")
+		add_el(f, li, "span", "", fmt.tprintf("new %d", i))
+	}
+	ix_frame(f)
+	ix_check(t, f, .Full)
+	testing.expect_value(t, f.l.inc.fallback, "too much changed")
+}
+
 @(private = "file")
 GRID_PAGE :: `<style>
 body{margin:0;font-size:10px;line-height:12px}
