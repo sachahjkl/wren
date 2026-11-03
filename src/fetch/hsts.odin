@@ -6,6 +6,7 @@ import "core:os"
 import "core:strconv"
 import "core:strings"
 import "core:time"
+import "wb:base"
 import "wb:url"
 
 // HTTP Strict Transport Security (RFC 6797): once a host said "https only", plain-http URLs for it (and for its
@@ -126,12 +127,7 @@ hsts_save :: proc(h: ^Hsts, path: string, now: i64) -> bool {
 	strings.write_string(&sb, HSTS_MAGIC)
 	strings.write_byte(&sb, '\n')
 	for k, e in h.hosts { fmt.sbprintf(&sb, "%s\t%d\t%d\n", k, e.expires_ms, e.include_subdomains ? 1 : 0) }
-	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
-	if err := os.write_entire_file(tmp, transmute([]byte)strings.to_string(sb)); err != nil { return false }
-	if err := os.rename(tmp, path); err != nil {
-		_ = os.remove(path)
-		if err2 := os.rename(tmp, path); err2 != nil { return false }
-	}
+	if !base.file_write_atomic(path, transmute([]byte)strings.to_string(sb)) { return false }
 	h.dirty = false
 	return true
 }

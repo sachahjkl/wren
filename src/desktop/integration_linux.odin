@@ -144,10 +144,10 @@ linux_install :: proc(o: ^Options) -> Result {
 	for ic in o.icons {
 		path := icon_path(l, o.identity.slug, ic.size)
 		if !ensure_dir(filepath.dir(path)) { return {.Io, strings.concatenate({"cannot create the directory of ", path}, context.temp_allocator)} }
-		if r := write_atomic(path, ic.png); r.error != .None { return r }
+		if !base.file_write_atomic(path, ic.png) { return {.Io, strings.concatenate({"cannot write ", path}, context.temp_allocator)} }
 	}
 	if o.start_menu {
-		if r := write_atomic(l.entry, transmute([]byte)desktop_entry_text(o)); r.error != .None { return r }
+		if !base.file_write_atomic(l.entry, transmute([]byte)desktop_entry_text(o)) { return {.Io, strings.concatenate({"cannot write ", l.entry}, context.temp_allocator)} }
 	} else if text, rerr := os.read_entire_file(l.entry, context.temp_allocator); rerr == nil {
 		// the option is off: an entry of ours goes (another program's file of that name stays)
 		content := string(text)
@@ -173,18 +173,6 @@ linux_install :: proc(o: ^Options) -> Result {
 
 	// (the icon theme's cache is checked against the directories' times: there is nothing to run for the icons)
 	if o.notify_system { run_tool("update-desktop-database", {l.applications}) }
-	return {}
-}
-
-// A file is written beside its place and renamed over it, so a reader never sees half of it.
-@(private = "file")
-write_atomic :: proc(path: string, data: []byte) -> Result {
-	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
-	if err := os.write_entire_file(tmp, data); err != nil { return {.Io, strings.concatenate({"cannot write ", tmp}, context.temp_allocator)} }
-	if err := os.rename(tmp, path); err != nil {
-		_ = os.remove(tmp)
-		return {.Io, strings.concatenate({"cannot rename onto ", path}, context.temp_allocator)}
-	}
 	return {}
 }
 
