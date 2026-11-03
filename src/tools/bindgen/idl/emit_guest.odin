@@ -2,6 +2,7 @@ package idl
 
 import "core:fmt"
 import "core:strings"
+import "wb:base"
 
 // The Odin guest SDK (freestanding_wasm32, memory 0 32-bit): one file per module. Every function has a private raw
 // import and a wrapper taking Odin values:
@@ -207,7 +208,7 @@ emit_guest_module :: proc(api: ^Api, cfg: Guest_Config, m: ^Module) -> string {
 	has_fn := false
 	for d in api.functions { if d.module == m { has_fn = true } }
 	if !has_fn { return out_text(&o) }
-	wl(&o, "foreign import _m_%s %s", m.name, quote(m.name))
+	wl(&o, "foreign import _m_%s %s", m.name, base.json_quote(m.name))
 	wl(&o, "")
 	wl(&o, "@(private = \"file\", default_calling_convention = \"contextless\")")
 	wl(&o, "foreign _m_%s {{", m.name)
@@ -223,7 +224,7 @@ emit_guest_module :: proc(api: ^Api, cfg: Guest_Config, m: ^Module) -> string {
 		case d.abi.ret_ptr:
 		case d.result.kind != .Void: res = fmt.tprintf(" -> %s", raw_scalar(d.result))
 		}
-		wl(&o, "\t@(link_name = %s) _%s :: proc(%s)%s ---", quote(d.imports[0]), d.host_name, strings.to_string(decl), res)
+		wl(&o, "\t@(link_name = %s) _%s :: proc(%s)%s ---", base.json_quote(d.imports[0]), d.host_name, strings.to_string(decl), res)
 	}
 	wl(&o, "}")
 	wl(&o, "")

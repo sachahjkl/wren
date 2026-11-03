@@ -385,7 +385,7 @@ checkpoint_info :: proc(cp: ^Checkpoint) -> api.Checkpoint { return {cp.name, le
 
 @(private = "file")
 checkpoint_json :: proc(x: api.Checkpoint) -> string {
-	return fmt.tprintf(`{{"name":%s,"tabs":%d,"cookies":%d,"storageOrigins":%d}}`, remote.quote(x.name), x.tabs, x.cookies, x.storage_origins)
+	return fmt.tprintf(`{{"name":%s,"tabs":%d,"cookies":%d,"storageOrigins":%d}}`, base.json_quote(x.name), x.tabs, x.cookies, x.storage_origins)
 }
 
 // The state a checkpoint kept. false: there is none of this name. The tab it leaves current.

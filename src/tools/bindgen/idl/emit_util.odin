@@ -24,22 +24,6 @@ write_doc :: proc(o: ^Out, doc: string, indent: string, prefix := "// ") {
 	}
 }
 
-// Odin string literal of `s` (only printable ASCII is expected in descriptions).
-quote :: proc(s: string) -> string {
-	b := strings.builder_make(context.temp_allocator)
-	strings.write_byte(&b, '"')
-	for c in transmute([]u8)s {
-		switch c {
-		case '"':  strings.write_string(&b, "\\\"")
-		case '\\': strings.write_string(&b, "\\\\")
-		case '\n': strings.write_string(&b, "\\n")
-		case:      strings.write_byte(&b, c)
-		}
-	}
-	strings.write_byte(&b, '"')
-	return strings.to_string(b)
-}
-
 // Qualified name used in messages: "url.URL_parse".
 qname :: proc(d: ^Decl) -> string { return strings.concatenate({d.module.name, ".", d.imports[0] if len(d.imports) > 0 else d.name}, context.temp_allocator) }
 

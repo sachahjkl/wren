@@ -11,6 +11,7 @@ package browser
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "wb:base"
 import "toolkit:render"
 import "wb:host"
 import "wb:images"
@@ -159,7 +160,7 @@ timeline_write :: proc(tl: ^Timeline, dir: string, cols: int, all: bool) -> (doc
 		}
 	}
 	b := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&b, `{{"dir":%s,"frames":[`, remote.quote(dir))
+	fmt.sbprintf(&b, `{{"dir":%s,"frames":[`, base.json_quote(dir))
 	flagged, chrome := 0, 0
 	for f, i in frames {
 		file := fmt.tprintf("%s/%03d.png", dir, i)
@@ -203,7 +204,7 @@ timeline_write :: proc(tl: ^Timeline, dir: string, cols: int, all: bool) -> (doc
 	shown_list := strings.builder_make(context.temp_allocator)
 	for k, slot in shown { if slot > 0 { strings.write_byte(&shown_list, ',') }; fmt.sbprintf(&shown_list, "%d", k) }
 	fmt.sbprintf(&b, `],"count":%d,"chrome":%d,"aba":%d,"sheet":%s,"sheetFrames":[%s],"cols":%d,"width":%d,"height":%d}}`,
-		n, chrome, flagged, remote.quote(sheet_path), strings.to_string(shown_list), cols, w, h)
+		n, chrome, flagged, base.json_quote(sheet_path), strings.to_string(shown_list), cols, w, h)
 	if err := os.write_entire_file(fmt.tprintf("%s/timeline.json", dir), transmute([]byte)strings.to_string(b)); err != nil { return "", "cannot write timeline.json" }
 	page := strings.builder_make(context.temp_allocator)
 	strings.write_string(&page, TIMELINE_VIEWER_HEAD)

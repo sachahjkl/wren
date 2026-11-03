@@ -293,28 +293,10 @@ js_console_eval :: proc(p: ^Page, source: string) -> bool {
 	if !p.settings.js.console_eval { log(p, .Warn, "javascript.console_eval is off"); return false }
 	if js_realm(p) == nil { log(p, .Warn, "JavaScript is off for this page"); return false }
 	if p.worker == nil {
-		call := strings.concatenate({"console[Symbol.for(\"wren.devtools\")].eval(", js_quote(source), ")"}, context.temp_allocator)
+		call := strings.concatenate({"console[Symbol.for(\"wren.devtools\")].eval(", base.json_quote(source), ")"}, context.temp_allocator)
 		return js_run(p, transmute([]byte)call, "console", 1) == .Ok
 	}
 	st := js_run(p, transmute([]byte)source, "console", 1, print_result = true)
 	return st == .Ok
-}
-
-// `s` as a JavaScript string literal.
-js_quote :: proc(s: string, allocator := context.temp_allocator) -> string {
-	b := strings.builder_make(allocator)
-	strings.write_byte(&b, '"')
-	for c in transmute([]u8)s {
-		switch c {
-		case '"': strings.write_string(&b, "\\\"")
-		case '\\': strings.write_string(&b, "\\\\")
-		case '\n': strings.write_string(&b, "\\n")
-		case '\r': strings.write_string(&b, "\\r")
-		case '\t': strings.write_string(&b, "\\t")
-		case: if c < 0x20 { fmt.sbprintf(&b, "\\u%04x", c) } else { strings.write_byte(&b, c) }
-		}
-	}
-	strings.write_byte(&b, '"')
-	return strings.to_string(b)
 }
 _ :: strings

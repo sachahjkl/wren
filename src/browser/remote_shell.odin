@@ -432,7 +432,7 @@ remote_loaded_events :: proc(app: ^App) {
 		was := r.loaded[t.id]
 		if now != was {
 			r.loaded[t.id] = now
-			if now { remote_event("Page.loadEventFired", fmt.tprintf(`{{"tabId":%d,"url":%s}}`, t.id, remote.quote(t.url))) }
+			if now { remote_event("Page.loadEventFired", fmt.tprintf(`{{"tabId":%d,"url":%s}}`, t.id, base.json_quote(t.url))) }
 		}
 	}
 }
@@ -487,21 +487,21 @@ eval_reply :: proc(obj: json.Object) -> Reply {
 		stack, _ := remote.param_string(e, "stack")
 		text := name == "" ? msg : fmt.tprintf("%s: %s", name, msg)
 		return done(fmt.tprintf(`{{"result":{{"type":"object","subtype":"error","className":%s,"description":%s}},"exceptionDetails":{{"text":%s,"exception":{{"className":%s,"description":%s}}}}}}`,
-			remote.quote(name), remote.quote(stack == "" ? text : fmt.tprintf("%s\n%s", text, stack)), remote.quote(text), remote.quote(name), remote.quote(stack == "" ? text : fmt.tprintf("%s\n%s", text, stack))))
+			base.json_quote(name), base.json_quote(stack == "" ? text : fmt.tprintf("%s\n%s", text, stack)), base.json_quote(text), base.json_quote(name), base.json_quote(stack == "" ? text : fmt.tprintf("%s\n%s", text, stack))))
 	}
 	t, _ := remote.param_string(obj, "t")
 	v, has := remote.param_string(obj, "v")
 	if !has || t == "undefined" { return done(fmt.tprintf(`{{"result":{{"type":"undefined"}}}}`)) }
 	// (the value is put in the reply as it is: it must be one JSON value on one line, whatever the page wrote)
 	if !json_value_line(v) { return fail(remote.ERR_FAILED, "the page answered with something that is not a JSON value on one line") }
-	return done(fmt.tprintf(`{{"result":{{"type":%s,"value":%s}}}}`, remote.quote(t), v))
+	return done(fmt.tprintf(`{{"result":{{"type":%s,"value":%s}}}}`, base.json_quote(t), v))
 }
 
 // The JavaScript that runs `expression` (indirect eval, so its completion value is the result) and prints the outcome after
 // REMOTE_ANSWER. With `await`, a promise is waited for.
 eval_source :: proc(id: int, expression: string, await: bool) -> string {
 	return fmt.tprintf(`(function(){{var N=%s,I=%d;function E(e){{var r={{name:"Error",message:"",stack:""}};try{{if(e&&typeof e==="object"){{r.name=String(e.name||"Error");r.message=String(e.message===undefined?"":e.message);r.stack=String(e.stack||"")}}else{{r.message=String(e)}}}}catch(x){{r.message="(unprintable)"}}return r}}function S(v){{var t=typeof v;if(v===undefined)return{{t:"undefined"}};if(t==="function"||t==="symbol"||t==="bigint")return{{t:t,v:JSON.stringify(String(v))}};try{{var j=JSON.stringify(v);if(j===undefined)return{{t:t,v:"null"}};return{{t:v===null?"null":Array.isArray(v)?"array":t,v:j}}}}catch(x){{return{{t:"object",v:JSON.stringify(String(v))}}}}}}function O(o){{o.id=I;console.log(N+JSON.stringify(o))}}try{{var r=(0,eval)(%s);if(%v&&r&&typeof r.then==="function"){{r.then(function(v){{var s=S(v);s.ok=1;O(s)}},function(e){{O({{ok:0,e:E(e)}})}})}}else{{var s=S(r);s.ok=1;O(s)}}}}catch(e){{O({{ok:0,e:E(e)}})}}}})()`,
-		remote.quote(REMOTE_ANSWER), id, remote.quote(expression), await)
+		base.json_quote(REMOTE_ANSWER), id, base.json_quote(expression), await)
 }
 
 // Runs `expression` in the tab's page. The answer is the console line `remote_take_console` takes: at once for a plain value

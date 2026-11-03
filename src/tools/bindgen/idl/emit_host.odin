@@ -2,6 +2,7 @@ package idl
 
 import "core:fmt"
 import "core:strings"
+import "wb:base"
 
 // What the host package provides to the generated code (see src/page/api_host.odin for the browser's):
 //   Call :: struct { ..., message: string }                         the context of one call; `message` details an error
@@ -209,7 +210,7 @@ emit_host :: proc(api: ^Api, cfg: Host_Config) -> string {
 			realms: u32
 			if .Window in d.exposed { realms |= 1 }
 			if .Worker in d.exposed { realms |= 2 }
-			w(&o, "\t{{module = %s, name = %s, fn = %s, realms = %d, params = %s, results = %s", quote(d.module.name), quote(name), tramp_name(d), realms, abi_list(d.abi.params[:], false), abi_list(d.abi.results[:], false))
+			w(&o, "\t{{module = %s, name = %s, fn = %s, realms = %d, params = %s, results = %s", base.json_quote(d.module.name), base.json_quote(name), tramp_name(d), realms, abi_list(d.abi.params[:], false), abi_list(d.abi.results[:], false))
 			if has_p(d.abi) { w(&o, ", wide_params = %s, wide_results = %s", abi_list(d.abi.params[:], true), abi_list(d.abi.results[:], true)) }
 			wl(&o, "},")
 		}
@@ -363,7 +364,7 @@ emit_host_export :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 	cells := max(n, r != "" ? cell_count(d.result) : 0)
 	assign := r != "" ? "res =" : "res :="
 	if cells == 0 {
-		wl(o, "\t%s %s(ctx, inst, %s, nil)", assign, cfg.call_export, quote(d.name))
+		wl(o, "\t%s %s(ctx, inst, %s, nil)", assign, cfg.call_export, base.json_quote(d.name))
 	} else {
 		w(o, "\targv := [%d]u32{{", cells)
 		for p, i in d.params {
@@ -371,7 +372,7 @@ emit_host_export :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 			cells_of(o, p.type, p.name)
 		}
 		wl(o, "}")
-		wl(o, "\t%s %s(ctx, inst, %s, argv[:])", assign, cfg.call_export, quote(d.name))
+		wl(o, "\t%s %s(ctx, inst, %s, argv[:])", assign, cfg.call_export, base.json_quote(d.name))
 	}
 	if r == "" { wl(o, "\treturn res"); wl(o, "}"); wl(o, ""); return }
 	#partial switch d.result.kind {
@@ -444,7 +445,7 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 			el := mem_size(Type{kind = t.kind, decl = t.decl})
 			wl(o, "\t_n%d := wasm.addr(&f, a[%d])", i, slot + 1)
 			wl(o, "\t_s%d, _k%d := wasm.span(&f, wasm.addr(&f, a[%d]), _n%d, %d)", i, i, slot, i, el)
-			wl(o, "\tif !_k%d {{ return wasm.trap_bounds(&f, %s, %s) }}", i, quote(q), quote(p.name))
+			wl(o, "\tif !_k%d {{ return wasm.trap_bounds(&f, %s, %s) }}", i, base.json_quote(q), base.json_quote(p.name))
 			slot += 2
 		case t.kind == .String || t.kind == .Usv_String || t.kind == .Bytes:
 			if p.optional {
@@ -454,7 +455,7 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 				wl(o, "\t_n%d := wasm.addr(&f, a[%d])", i, slot + 1)
 				wl(o, "\t_s%d, _k%d := wasm.span(&f, wasm.addr(&f, a[%d]), _n%d)", i, i, slot, i)
 			}
-			wl(o, "\tif !_k%d {{ return wasm.trap_bounds(&f, %s, %s) }}", i, quote(q), quote(p.name))
+			wl(o, "\tif !_k%d {{ return wasm.trap_bounds(&f, %s, %s) }}", i, base.json_quote(q), base.json_quote(p.name))
 			slot += 2
 		case t.kind == .Struct:
 			slot += len(t.decl.fields)
@@ -465,12 +466,12 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 	if d.abi.out_string {
 		wl(o, "\t_on := wasm.addr(&f, a[%d])", slot + 1)
 		wl(o, "\t_os, _ok := wasm.span(&f, wasm.addr(&f, a[%d]), _on)", slot)
-		wl(o, "\tif !_ok {{ return wasm.trap_bounds(&f, %s, \"result buffer\") }}", quote(q))
+		wl(o, "\tif !_ok {{ return wasm.trap_bounds(&f, %s, \"result buffer\") }}", base.json_quote(q))
 		slot += 2
 	}
 	if d.abi.ret_ptr {
 		wl(o, "\t_rs, _rk := wasm.span(&f, wasm.addr(&f, a[%d]), %d)", slot, mem_size(d.result))
-		wl(o, "\tif !_rk {{ return wasm.trap_bounds(&f, %s, \"result pointer\") }}", quote(q))
+		wl(o, "\tif !_rk {{ return wasm.trap_bounds(&f, %s, \"result pointer\") }}", base.json_quote(q))
 	}
 
 	// 2. strings and memory, 3. handles, enums, structs: an invalid string is reported whatever the handles are
@@ -491,7 +492,7 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 				wl(o, "\t\t_v%d := %s", i, raw)
 				if t.kind == .String {
 					wl(o, "\t\tif !wasm.valid_utf8(_v%d) {{", i)
-					fail(o, mode, "\t\t\t", "Type", quote(fmt.tprintf("%s: argument %s is not valid UTF-8", q, p.name)))
+					fail(o, mode, "\t\t\t", "Type", base.json_quote(fmt.tprintf("%s: argument %s is not valid UTF-8", q, p.name)))
 					wl(o, "\t\t}")
 					wl(o, "\t\t%s = _v%d", name, i)
 				} else {
@@ -501,7 +502,7 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 			} else if t.kind == .String {
 				wl(o, "\t%s := %s", name, raw)
 				wl(o, "\tif !wasm.valid_utf8(%s) {{", name)
-				fail(o, mode, "\t\t", "Type", quote(fmt.tprintf("%s: argument %s is not valid UTF-8", q, p.name)))
+				fail(o, mode, "\t\t", "Type", base.json_quote(fmt.tprintf("%s: argument %s is not valid UTF-8", q, p.name)))
 				wl(o, "\t}")
 			} else {
 				wl(o, "\t%s := %s(%s, context.temp_allocator)", name, cfg.scrub, raw)
@@ -525,18 +526,18 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 			if p.optional { cond = fmt.tprintf("%s.handle != 0 && %s.data == nil", name, name) }
 			if p.optional { wl(o, "\tif %s.handle != 0 {{ %s.data = %s(&c, %s.handle) }}", name, name, h.lookup, name) } else { wl(o, "\t%s.data = %s(&c, %s.handle)", name, h.lookup, name) }
 			wl(o, "\tif %s {{", cond)
-			fail(o, mode, "\t\t", "Invalid_Handle", quote(fmt.tprintf("%s: argument %s is not a live %s", q, p.name, t.decl.name)))
+			fail(o, mode, "\t\t", "Invalid_Handle", base.json_quote(fmt.tprintf("%s: argument %s is not a live %s", q, p.name, t.decl.name)))
 			wl(o, "\t}")
 		case t.kind == .Enum:
 			wl(o, "\t_e%d := %s", i, raw_read(t, s))
 			wl(o, "\tif !_valid_%s(_e%d) {{", t.decl.name, i)
-			fail(o, mode, "\t\t", "Invalid_Argument", quote(fmt.tprintf("%s: argument %s is not a %s", q, p.name, t.decl.name)))
+			fail(o, mode, "\t\t", "Invalid_Argument", base.json_quote(fmt.tprintf("%s: argument %s is not a %s", q, p.name, t.decl.name)))
 			wl(o, "\t}")
 			wl(o, "\t%s := %s%s(_e%d)", name, PREFIX, t.decl.name, i)
 		case t.kind == .Flags:
 			wl(o, "\t_e%d := %s", i, raw_read(t, s))
 			wl(o, "\tif !_valid_%s(%s(_e%d)) {{", t.decl.name, t.decl.base.name, i)
-			fail(o, mode, "\t\t", "Invalid_Argument", quote(fmt.tprintf("%s: argument %s has flags %s does not define", q, p.name, t.decl.name)))
+			fail(o, mode, "\t\t", "Invalid_Argument", base.json_quote(fmt.tprintf("%s: argument %s has flags %s does not define", q, p.name, t.decl.name)))
 			wl(o, "\t}")
 			wl(o, "\t%s := transmute(%s%s)_e%d", name, PREFIX, t.decl.name, i)
 		case t.kind == .U64 && cfg.route != "":
@@ -549,12 +550,12 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 				switch ft.kind {
 				case .Enum:
 					wl(o, "\tif !_valid_%s(%s) {{", ft.decl.name, raw_read(ft, s + k))
-					fail(o, mode, "\t\t", "Invalid_Argument", quote(fmt.tprintf("%s: field %s.%s is not a %s", q, p.name, fl.name, ft.decl.name)))
+					fail(o, mode, "\t\t", "Invalid_Argument", base.json_quote(fmt.tprintf("%s: field %s.%s is not a %s", q, p.name, fl.name, ft.decl.name)))
 					wl(o, "\t}")
 					wl(o, "\t%s.%s = %s%s(%s)", name, fl.name, PREFIX, ft.decl.name, raw_read(ft, s + k))
 				case .Flags:
 					wl(o, "\tif !_valid_%s(%s(%s)) {{", ft.decl.name, ft.decl.base.name, raw_read(ft, s + k))
-					fail(o, mode, "\t\t", "Invalid_Argument", quote(fmt.tprintf("%s: field %s.%s has unknown flags", q, p.name, fl.name)))
+					fail(o, mode, "\t\t", "Invalid_Argument", base.json_quote(fmt.tprintf("%s: field %s.%s has unknown flags", q, p.name, fl.name)))
 					wl(o, "\t}")
 					wl(o, "\t%s.%s = transmute(%s%s)%s", name, fl.name, PREFIX, ft.decl.name, raw_read(ft, s + k))
 				case .Handle:

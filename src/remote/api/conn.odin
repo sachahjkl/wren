@@ -8,6 +8,7 @@ import "core:encoding/json"
 import "core:fmt"
 import "core:strings"
 import "core:time"
+import "wb:base"
 import "wb:remote"
 
 // What a call of this package ended in (why: last_failure). Server: the browser answered with an error; Script: a script threw.
@@ -38,7 +39,7 @@ take_line :: proc(pending: ^[dynamic]byte) -> (string, bool) {
 call :: proc(c: ^Conn, method, params: string, timeout_ms: int) -> (Reply, Error) {
 	c.next_id += 1
 	id := c.next_id
-	req := fmt.tprintf(`{{"id":%d,"method":%s,"params":%s}}`, id, remote.quote(method), params == "" ? "{}" : params)
+	req := fmt.tprintf(`{{"id":%d,"method":%s,"params":%s}}`, id, base.json_quote(method), params == "" ? "{}" : params)
 	if e := write_line(c, req, timeout_ms); e != .None { return {}, e }
 	deadline := time.tick_add(time.tick_now(), time.Duration(timeout_ms) * time.Millisecond)
 	for {

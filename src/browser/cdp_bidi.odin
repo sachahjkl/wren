@@ -7,6 +7,7 @@ package browser
 import "core:fmt"
 import "core:strconv"
 import "core:strings"
+import "wb:base"
 import "wb:remote"
 
 cdp_bidi_dispatch :: proc(app: ^App, cl: ^Cdp_Client, id_text, method: string, params: json_obj) {
@@ -14,7 +15,7 @@ cdp_bidi_dispatch :: proc(app: ^App, cl: ^Cdp_Client, id_text, method: string, p
 	case "session.new":
 		// announce the capabilities a BiDi client expects; the session is flat (one browser, tabs are contexts)
 		cdp_send_result_raw(cl, id_text, fmt.tprintf(`{{"sessionId":"wren","capabilities":{{"browserName":"Wren","browserVersion":"%s","acceptInsecureCerts":false,"userAgent":%s}}}}`,
-			APP_VERSION, remote.quote(fmt.tprintf("Wren/%s", APP_VERSION))), true)
+			APP_VERSION, base.json_quote(fmt.tprintf("Wren/%s", APP_VERSION))), true)
 	case "session.status":
 		cdp_send_result_raw(cl, id_text, `{"ready":true,"message":"ready"}`, true)
 	case "session.subscribe", "session.unsubscribe", "session.end":
@@ -26,7 +27,7 @@ cdp_bidi_dispatch :: proc(app: ^App, cl: ^Cdp_Client, id_text, method: string, p
 	case "browsingContext.navigate":
 		url, _ := remote.param_string(params, "url")
 		tab := cdp_bidi_context(params)
-		cdp_run(app, cl, id_text, method, "Page.navigate", fmt.tprintf(`{{"url":%s,"wait":"load"%s}}`, remote.quote(url), cdp_bidi_tab_param(tab)), .Bidi_Navigate, true)
+		cdp_run(app, cl, id_text, method, "Page.navigate", fmt.tprintf(`{{"url":%s,"wait":"load"%s}}`, base.json_quote(url), cdp_bidi_tab_param(tab)), .Bidi_Navigate, true)
 	case "browsingContext.reload":
 		tab := cdp_bidi_context(params)
 		cdp_run(app, cl, id_text, method, "Page.reload", fmt.tprintf(`{{"wait":"load"%s}}`, cdp_bidi_tab_param(tab)), .Bidi_Empty, true)
@@ -50,7 +51,7 @@ cdp_bidi_dispatch :: proc(app: ^App, cl: ^Cdp_Client, id_text, method: string, p
 		}
 		tab := cdp_bidi_context(params)
 		awaitp, _ := remote.param_bool(params, "awaitPromise", true)
-		cdp_run(app, cl, id_text, method, "Runtime.evaluate", fmt.tprintf(`{{"expression":%s,"awaitPromise":%v%s}}`, remote.quote(expr), awaitp, cdp_bidi_tab_param(tab)), .Bidi_Evaluate, true)
+		cdp_run(app, cl, id_text, method, "Runtime.evaluate", fmt.tprintf(`{{"expression":%s,"awaitPromise":%v%s}}`, base.json_quote(expr), awaitp, cdp_bidi_tab_param(tab)), .Bidi_Evaluate, true)
 	case "input.performActions":
 		// a thin bridge: BiDi action sequences are not decomposed here; acknowledge so a tool proceeds (it may also use CDP Input)
 		cdp_send_result_raw(cl, id_text, "{}", true)
@@ -84,7 +85,7 @@ cdp_bidi_evaluate_result :: proc(wren_result: json_obj) -> string {
 	switch kind {
 	case "string":
 		v, _ := remote.param_string(inner, "value")
-		fmt.sbprintf(&b, `{{"type":"string","value":%s}}`, remote.quote(v))
+		fmt.sbprintf(&b, `{{"type":"string","value":%s}}`, base.json_quote(v))
 	case "number":
 		v, _ := remote.param_float(inner, "value")
 		fmt.sbprintf(&b, `{{"type":"number","value":%v}}`, v)
@@ -109,7 +110,7 @@ cdp_bidi_tree_result :: proc(app: ^App) -> string {
 		if t.frame != nil { continue }
 		if !first { strings.write_byte(&b, ',') }
 		first = false
-		fmt.sbprintf(&b, `{{"context":"%d","url":%s,"children":[],"userContext":"default"}}`, t.id, remote.quote(t.url))
+		fmt.sbprintf(&b, `{{"context":"%d","url":%s,"children":[],"userContext":"default"}}`, t.id, base.json_quote(t.url))
 	}
 	strings.write_string(&b, "]}")
 	return strings.to_string(b)
@@ -119,15 +120,15 @@ cdp_bidi_tree_result :: proc(app: ^App) -> string {
 cdp_bidi_event :: proc(cl: ^Cdp_Client, wren_name: string, tab: u64, url: string) {
 	switch wren_name {
 	case "Page.loadEventFired":
-		cdp_bidi_emit(cl, "browsingContext.load", fmt.tprintf(`{{"context":"%d","url":%s,"navigation":null,"timestamp":0}}`, tab, remote.quote(url)))
+		cdp_bidi_emit(cl, "browsingContext.load", fmt.tprintf(`{{"context":"%d","url":%s,"navigation":null,"timestamp":0}}`, tab, base.json_quote(url)))
 	case "Runtime.consoleAPICalled":
-		cdp_bidi_emit(cl, "log.entryAdded", fmt.tprintf(`{{"type":"console","level":"info","text":%s,"source":{{"context":"%d"}},"timestamp":0}}`, remote.quote(url), tab))
+		cdp_bidi_emit(cl, "log.entryAdded", fmt.tprintf(`{{"type":"console","level":"info","text":%s,"source":{{"context":"%d"}},"timestamp":0}}`, base.json_quote(url), tab))
 	}
 }
 
 @(private = "file")
 cdp_bidi_emit :: proc(cl: ^Cdp_Client, method, params: string) {
 	b := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&b, `{{"type":"event","method":%s,"params":%s}}`, remote.quote(method), params)
+	fmt.sbprintf(&b, `{{"type":"event","method":%s,"params":%s}}`, base.json_quote(method), params)
 	cdp_frame_text(cl, strings.to_string(b))
 }

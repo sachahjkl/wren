@@ -66,7 +66,7 @@ event_json :: proc(b: ^strings.Builder, re: Rec_Event) {
 	case .Mouse_Press, .Mouse_Release: fmt.sbprintf(b, `,"x":%.1f,"y":%.1f,"button":"%v"`, e.pos.x, e.pos.y, e.button)
 	case .Scroll:      fmt.sbprintf(b, `,"x":%.1f,"y":%.1f,"dx":%.3f,"dy":%.3f`, e.pos.x, e.pos.y, e.delta.x, e.delta.y)
 	case .Key_Press, .Key_Release: fmt.sbprintf(b, `,"key":"%v"`, e.key)
-	case .Text:        strings.write_string(b, `,"text":`); remote.write_json_string(b, fmt.tprintf("%c", e.text))
+	case .Text:        strings.write_string(b, `,"text":`); base.write_json_string(b, fmt.tprintf("%c", e.text))
 	case .Pointer_Down, .Pointer_Move, .Pointer_Up, .Pointer_Cancel, .Drop_Enter, .Drop_Over, .Drop: fmt.sbprintf(b, `,"x":%.1f,"y":%.1f`, e.pos.x, e.pos.y)
 	case .None, .Mouse_Leave, .Close, .Activate, .Drop_Leave, .Accessibility:
 	}
@@ -177,7 +177,7 @@ snapshot_files :: proc(app: ^App, t: ^Tab, prefix: string) -> string {
 	if err := os.write_entire_file(strings.concatenate({prefix, ".html"}, context.temp_allocator), transmute([]byte)html); err != nil { return "cannot write the .html" }
 	s := f64(page_scale(app))
 	b := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&b, `{{"url":%s,"title":%s,"width":%d,"height":%d,"scale":%.3f,"scroll":%.1f,"elements":[`, remote.quote(t.url), remote.quote(t.title), int(wnd.page_rect.max.x - wnd.page_rect.min.x), int(wnd.page_rect.max.y - wnd.page_rect.min.y), s, f64(t.scroll) / s)
+	fmt.sbprintf(&b, `{{"url":%s,"title":%s,"width":%d,"height":%d,"scale":%.3f,"scroll":%.1f,"elements":[`, base.json_quote(t.url), base.json_quote(t.title), int(wnd.page_rect.max.x - wnd.page_rect.min.x), int(wnd.page_rect.max.y - wnd.page_rect.min.y), s, f64(t.scroll) / s)
 	hs, _ := page.query_all(t.page, "*", 5000)
 	first := true
 	for h in hs {
@@ -188,7 +188,7 @@ snapshot_files :: proc(app: ^App, t: ^Tab, prefix: string) -> string {
 		id, _ := dom.get_attribute(t.page.doc, h, "id")
 		if !first { strings.write_byte(&b, ',') }
 		first = false
-		fmt.sbprintf(&b, `{{"tag":%s,"id":%s,"x":%.1f,"y":%.1f,"w":%.1f,"h":%.1f}}`, remote.quote(n.name), remote.quote(id), f64(r[0] - wnd.page_rect.min.x + doc_scroll_vec(t).x) / s, f64(r[1] - wnd.page_rect.min.y + t.scroll) / s, f64(r[2]) / s, f64(r[3]) / s)
+		fmt.sbprintf(&b, `{{"tag":%s,"id":%s,"x":%.1f,"y":%.1f,"w":%.1f,"h":%.1f}}`, base.json_quote(n.name), base.json_quote(id), f64(r[0] - wnd.page_rect.min.x + doc_scroll_vec(t).x) / s, f64(r[1] - wnd.page_rect.min.y + t.scroll) / s, f64(r[2]) / s, f64(r[3]) / s)
 	}
 	strings.write_string(&b, "]}\n")
 	if err := os.write_entire_file(strings.concatenate({prefix, ".json"}, context.temp_allocator), transmute([]byte)strings.to_string(b)); err != nil { return "cannot write the .json" }

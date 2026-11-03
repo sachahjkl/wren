@@ -31,7 +31,6 @@ import "wb:http"
 import "wb:net"
 import lay "wb:layout"
 import "wb:page"
-import "wb:remote"
 import "wb:url"
 import "wb:wasm"
 
@@ -394,7 +393,7 @@ console_sink :: proc(user: rawptr, level: page.Log_Level, message: string) {
 	if the_app.remote.active && remote_take_console(message, (^Tab)(user).id) { return }   // (an answer of a remote script, not a message)
 	t := (^Tab)(user)
 	tab_log(t, level, message)
-	if remote_subscribed() { remote_event("Runtime.consoleAPICalled", fmt.tprintf(`{{"tabId":%d,"type":%q,"text":%s}}`, t.id, level == .Error ? "error" : level == .Warn ? "warning" : "log", remote.quote(message))) }
+	if remote_subscribed() { remote_event("Runtime.consoleAPICalled", fmt.tprintf(`{{"tabId":%d,"type":%q,"text":%s}}`, t.id, level == .Error ? "error" : level == .Warn ? "warning" : "log", base.json_quote(message))) }
 }
 
 set_status :: proc(t: ^Tab, s: string) {

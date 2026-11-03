@@ -718,36 +718,22 @@ net_powershell :: proc(e: ^Net_Entry) -> string {
 // The whole log as HAR 1.2 (what other tools import), for "Save all as HAR".
 net_har :: proc(t: ^Tab) -> string {
 	b := strings.builder_make(context.temp_allocator)
-	esc :: proc(s: string) -> string {
-		r := strings.builder_make(context.temp_allocator)
-		for c in transmute([]u8)s {
-			switch c {
-			case '"': strings.write_string(&r, "\\\"")
-			case '\\': strings.write_string(&r, "\\\\")
-			case '\n': strings.write_string(&r, "\\n")
-			case '\r': strings.write_string(&r, "\\r")
-			case '\t': strings.write_string(&r, "\\t")
-			case: if c < 0x20 { fmt.sbprintf(&r, "\\u%04x", c) } else { strings.write_byte(&r, c) }
-			}
-		}
-		return strings.to_string(r)
-	}
 	headers :: proc(b: ^strings.Builder, block: string) {
 		strings.write_string(b, "[")
 		for h, i in net_header_pairs(block) {
-			fmt.sbprintf(b, "%s{{\"name\":\"%s\",\"value\":\"%s\"}}", i > 0 ? "," : "", esc(h[0]), esc(h[1]))
+			fmt.sbprintf(b, "%s{{\"name\":%s,\"value\":%s}}", i > 0 ? "," : "", base.json_quote(h[0]), base.json_quote(h[1]))
 		}
 		strings.write_string(b, "]")
 	}
 	fmt.sbprintf(&b, "{{\"log\":{{\"version\":\"1.2\",\"creator\":{{\"name\":\"%s\",\"version\":\"%s\"}},\"pages\":[],\"entries\":[", APP_NAME, APP_VERSION_SHOWN)
 	for &e, i in t.net.entries {
 		if i > 0 { strings.write_string(&b, ",") }
-		fmt.sbprintf(&b, "{{\"startedDateTime\":\"1970-01-01T00:00:00.000Z\",\"time\":%.2f,\"request\":{{\"method\":\"%s\",\"url\":\"%s\",\"httpVersion\":\"%s\",\"headers\":", max(e.ms, 0), esc(e.method), esc(e.url), esc(e.protocol == "" ? "http/1.1" : e.protocol))
+		fmt.sbprintf(&b, "{{\"startedDateTime\":\"1970-01-01T00:00:00.000Z\",\"time\":%.2f,\"request\":{{\"method\":%s,\"url\":%s,\"httpVersion\":%s,\"headers\":", max(e.ms, 0), base.json_quote(e.method), base.json_quote(e.url), base.json_quote(e.protocol == "" ? "http/1.1" : e.protocol))
 		headers(&b, e.req_headers)
 		fmt.sbprintf(&b, ",\"queryString\":[],\"cookies\":[],\"headersSize\":-1,\"bodySize\":%d}}", len(e.req_body))
-		fmt.sbprintf(&b, ",\"response\":{{\"status\":%d,\"statusText\":\"%s\",\"httpVersion\":\"%s\",\"headers\":", e.status, esc(e.status_text), esc(e.protocol == "" ? "http/1.1" : e.protocol))
+		fmt.sbprintf(&b, ",\"response\":{{\"status\":%d,\"statusText\":%s,\"httpVersion\":%s,\"headers\":", e.status, base.json_quote(e.status_text), base.json_quote(e.protocol == "" ? "http/1.1" : e.protocol))
 		headers(&b, e.res_headers)
-		fmt.sbprintf(&b, ",\"cookies\":[],\"content\":{{\"size\":%d,\"mimeType\":\"%s\"}},\"redirectURL\":\"\",\"headersSize\":-1,\"bodySize\":%d}}", e.bytes, esc(e.mime), e.transfer)
+		fmt.sbprintf(&b, ",\"cookies\":[],\"content\":{{\"size\":%d,\"mimeType\":%s}},\"redirectURL\":\"\",\"headersSize\":-1,\"bodySize\":%d}}", e.bytes, base.json_quote(e.mime), e.transfer)
 		strings.write_string(&b, ",\"cache\":{},\"timings\":{\"send\":0,\"wait\":0,\"receive\":0}}")
 	}
 	strings.write_string(&b, "]}}")

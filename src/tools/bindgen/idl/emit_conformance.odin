@@ -2,6 +2,7 @@ package idl
 
 import "core:fmt"
 import "core:strings"
+import "wb:base"
 
 // Conformance tests of the binding layer, generated for every function: a guest (raw imports, one export per case) and
 // the table of expected outcomes the host runner checks (src/tools/apiconformance). Cases:
@@ -53,12 +54,12 @@ emit_conformance :: proc(api: ^Api, guest_package, host_package: string) -> Conf
 		any_fn := false
 		for d in api.functions { if d.module == m { any_fn = true } }
 		if !any_fn { continue }
-		wl(&g, "foreign import _m_%s %s", m.name, quote(m.name))
+		wl(&g, "foreign import _m_%s %s", m.name, base.json_quote(m.name))
 		wl(&g, "@(default_calling_convention = \"contextless\")")
 		wl(&g, "foreign _m_%s {{", m.name)
 		for d in api.functions {
 			if d.module != m { continue }
-			w(&g, "\t@(link_name = %s) c_%s :: proc(", quote(d.imports[0]), d.host_name)
+			w(&g, "\t@(link_name = %s) c_%s :: proc(", base.json_quote(d.imports[0]), d.host_name)
 			for k, i in d.abi.params { w(&g, "%sa%d: %s", i > 0 ? ", " : "", i, conf_kind(k)) }
 			w(&g, ")")
 			if len(d.abi.results) > 0 { w(&g, " -> %s", conf_kind(d.abi.results[0])) }
@@ -145,7 +146,7 @@ emit_conformance :: proc(api: ^Api, guest_package, host_package: string) -> Conf
 	wl(&t, "FUNCTIONS :: %d", len(api.functions))
 	wl(&t, "")
 	wl(&t, "CASES := [?]Case{{")
-	for c in cases { wl(&t, "\t{{%s, %s, %s, .%s, %d}},", quote(c.export), quote(qname(c.fn)), quote(c.what), c.expect, c.code) }
+	for c in cases { wl(&t, "\t{{%s, %s, %s, .%s, %d}},", base.json_quote(c.export), base.json_quote(qname(c.fn)), base.json_quote(c.what), c.expect, c.code) }
 	wl(&t, "}")
 	return Conf_Output{guest = out_text(&g), table = out_text(&t)}
 }

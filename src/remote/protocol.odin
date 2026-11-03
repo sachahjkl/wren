@@ -21,7 +21,7 @@ package remote
 import "core:encoding/json"
 import "core:fmt"
 import "core:strings"
-import "core:unicode/utf8"
+import "wb:base"
 
 ERR_PARSE     :: -32700
 ERR_REQUEST   :: -32600
@@ -63,7 +63,7 @@ id_text :: proc(v: json.Value, allocator := context.temp_allocator) -> string {
 	case json.Float:   return fmt.aprintf("%v", f64(x), allocator = allocator)
 	case json.String:
 		b := strings.builder_make(allocator)
-		write_json_string(&b, string(x))
+		base.write_json_string(&b, string(x))
 		return strings.to_string(b)
 	}
 	return "null"
@@ -71,37 +71,6 @@ id_text :: proc(v: json.Value, allocator := context.temp_allocator) -> string {
 
 ////////////////////////////////
 // Writing
-
-// A JSON string literal of `s`: invalid UTF-8 becomes U+FFFD (the line must stay valid JSON whatever a page printed).
-write_json_string :: proc(b: ^strings.Builder, s: string) {
-	strings.write_byte(b, '"')
-	rest := s
-	for len(rest) > 0 {
-		r, n := utf8.decode_rune_in_string(rest)
-		if r == utf8.RUNE_ERROR && n <= 1 {
-			strings.write_string(b, "\ufffd")
-			rest = rest[max(n, 1):]
-			continue
-		}
-		rest = rest[n:]
-		switch r {
-		case '"':  strings.write_string(b, "\\\"")
-		case '\\': strings.write_string(b, "\\\\")
-		case '\n': strings.write_string(b, "\\n")
-		case '\r': strings.write_string(b, "\\r")
-		case '\t': strings.write_string(b, "\\t")
-		case 0 ..< 0x20, 0x2028, 0x2029: fmt.sbprintf(b, "\\u%04x", int(r))
-		case: strings.write_rune(b, r)
-		}
-	}
-	strings.write_byte(b, '"')
-}
-
-quote :: proc(s: string, allocator := context.temp_allocator) -> string {
-	b := strings.builder_make(allocator)
-	write_json_string(&b, s)
-	return strings.to_string(b)
-}
 
 // The line (without the final "\n") of a successful response; `result` is JSON text.
 response_ok :: proc(id, result: string, allocator := context.temp_allocator) -> string {
@@ -112,14 +81,14 @@ response_ok :: proc(id, result: string, allocator := context.temp_allocator) -> 
 response_error :: proc(id: string, code: int, message: string, data := "", allocator := context.temp_allocator) -> string {
 	b := strings.builder_make(allocator)
 	fmt.sbprintf(&b, `{{"id":%s,"error":{{"code":%d,"message":`, id, code)
-	write_json_string(&b, message)
+	base.write_json_string(&b, message)
 	if data != "" { strings.write_string(&b, `,"data":`); strings.write_string(&b, data) }
 	strings.write_string(&b, "}}")
 	return strings.to_string(b)
 }
 
 event_line :: proc(name, params: string, allocator := context.temp_allocator) -> string {
-	return strings.concatenate({`{"event":`, quote(name, allocator), `,"params":`, params == "" ? "{}" : params, `}`}, allocator)
+	return strings.concatenate({`{"event":`, base.json_quote(name, allocator), `,"params":`, params == "" ? "{}" : params, `}`}, allocator)
 }
 
 ////////////////////////////////

@@ -119,7 +119,7 @@ cmd_start :: proc(ctx: ^Context, args: []string) -> int {
 	_ = os.make_directory_all(api.state_dir())
 	// (who the process is, now that it is held: `stop` ends nothing it cannot tell again by this)
 	who, _ := api.identity_of(&l.process)
-	state := fmt.tprintf(`{{"name":%s,"pid":%d,"created":%d,"image":%s,"profile":%s,"temp":%v}}`, remote.quote(name), l.pid, who.created, remote.quote(who.image), remote.quote(l.profile), l.temp)
+	state := fmt.tprintf(`{{"name":%s,"pid":%d,"created":%d,"image":%s,"profile":%s,"temp":%v}}`, base.json_quote(name), l.pid, who.created, base.json_quote(who.image), base.json_quote(l.profile), l.temp)
 	_ = os.write_entire_file(state_file(name), transmute([]byte)state)
 	if s := opt(&ctx.o, "size"); s != "" {
 		w, h, good := parse_size(s)
