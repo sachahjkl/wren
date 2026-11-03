@@ -1176,6 +1176,37 @@ addEventListener("message", e => log("nav " + e.data));
 	close_page(pr, min_checks = 6)
 }
 
+// The Window of a frame's initial about:blank is the next document's when that one is of its origin (frames.odin, frame_keep_window):
+// an expando, a listener and navigation.onnavigate set on it stay; the document and history are new. Another origin gets a Window of its own.
+@(test)
+frames_initial_window_kept :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	same := doc(SAME, `<p id=p>next</p><script>document.getElementById("p").dataset.seen = String(window.kept)</script>`)
+	pr := load(t, fill(`<body><iframe id=f src="%s"></iframe><iframe id=o src="%s"></iframe><script>
+const f = document.getElementById("f"), o = document.getElementById("o");
+const w = f.contentWindow, blank = f.contentDocument, hist = w.history;
+w.kept = "yes";
+o.contentWindow.kept = "yes";
+w.addEventListener("custom", () => log("listener kept"));
+w.navigation.onnavigate = e => log("onnavigate kept " + e.destination.url.endsWith("#x"));
+f.onload = () => {
+  const d = f.contentDocument;
+  log("kept " + w.kept + " " + d.getElementById("p").dataset.seen + " " + (d !== blank) + " " + (w.history !== hist));
+  w.dispatchEvent(new w.Event("custom"));
+  w.location.hash = "x";
+};
+o.onload = () => { try { log("other " + o.contentWindow.kept); } catch (e) { log("other " + e.name); } };
+</script></body>`, same, doc(OTHER, "other")))
+	check(pr, wait_note(pr, "kept yes yes true true"), "the frame's next document of the same origin has the blank one's Window: its expando, seen by the new document's own script; a new document and history")
+	check(pr, wait_note(pr, "listener kept"), "a listener added to the blank Window stays")
+	check(pr, wait_note(pr, "onnavigate kept true"), "navigation.onnavigate set on the blank Window fires for the next document's navigations")
+	check(pr, wait_note(pr, "other SecurityError"), "a document of another origin has a Window of its own")
+	close_page(pr, min_checks = 4)
+}
+
 // nesting: frames of frames, top and parent, a frame closed with its parent
 @(test)
 frames_nesting :: proc(t: ^testing.T) {

@@ -117,6 +117,17 @@ wj_document_opening :: proc "c" () {
 	wj_listeners_forget(ctx, &wj.wj_the_realm.global_obj)
 }
 
+// The browser keeps the Window for a new document (a frame's initial about:blank replaced by a document of its origin): what
+// belongs to the document goes, history, the custom element registry, navigation.activation.
+@(export, link_name = "wj_document_replaced")
+wj_document_replaced :: proc "c" () {
+	ctx := wj.wj_the_realm.ctx
+	if ctx == nil { return }
+	wj.web_singleton_drop(ctx, wj.SINGLE_HISTORY)
+	ce_document_replaced(ctx)
+	nav_document_replaced(ctx)
+}
+
 @(export, link_name = "wjr_Document_close")
 wjr_Document_close :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.wj_this(ctx, this_val, if_document()) == nil { return wj.EXCEPTION }

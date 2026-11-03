@@ -54,7 +54,7 @@ frames_may_reach :: proc(from, to: ^Page) -> bool {
 
 @(private = "file")
 find_by_tag :: proc(p: ^Page, tag: u32) -> ^Page {
-	if p.tag == tag { return p }
+	if p.tag == tag || p.prior_tag == tag && tag != 0 { return p }
 	if p.frames == nil { return nil }
 	for n in p.frames.children {
 		if n.page != nil { if r := find_by_tag(n.page, tag); r != nil { return r } }
@@ -113,6 +113,7 @@ call_move_to :: proc(c: ^Call, t: ^Page) {
 
 api_route_cold :: proc "contextless" (c: ^Call, tag: u32) {
 	if c.routed || c.own || c.caller == nil { return }
+	if tag == c.caller.prior_tag && tag != 0 { c.own = true; return }   // (a host object its Window made before its document: frame_keep_window)
 	context = base.process_context()
 	if t := frames_reach_tag(c.caller, tag); t != nil { call_move_to(c, t) }
 }
