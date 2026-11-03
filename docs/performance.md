@@ -145,6 +145,11 @@ per frame 60.6 (53.7-63.5) -> 50.7 (46.7-51.5) ms, private memory 280 -> 265 MB.
 window thread: the top of the tree and the counters' walk in tree order (`compute_styles`, 46 % of the stage's samples),
 the check of what was inserted (`inserted_exceed`, 18 %), the style threads' round (`parallel_for`, 19 %).
 
+After round 5 (5 runs of each build, interleaved, the machine quiet; median, range in brackets): the style stage 2.94
+(2.93-2.95) -> 1.82 (1.82-1.83) ms a frame (a full pass 2.96 -> 1.84 ms), the window thread waiting on layout 4.71
+(4.70-4.74) -> 3.30 (3.30-3.31) ms, 86.2 (85.9-86.9) -> 92.5 (92.2-93.1) frames/s, CPU work per frame 33.2 (33.0-33.4)
+-> 30.9 (30.8-31.0) ms, private memory 259 -> 258 MB.
+
 **Bottleneck:** the script stage (the interpreter and its native calls, making wrappers, the collection), then layout.
 
 ### 3. Scrolling a long page (p10k, 3 wheel notches every 16 ms)
@@ -186,6 +191,11 @@ with every pass full (`mutation_fullstyle`) 5.1 (4.2-15.6) -> 2.1 (1.7-8.2) ms a
 counted in whole milliseconds, 5 to 19 ms over the 290 restyles of a run, before and after). `mutation_class` (5 runs
 of each, interleaved, the order turning): a partial restyle 0.193 (0.187-0.203) -> 0.167 (0.152-0.232) ms, a full pass
 7.5 -> 3 ms, CPU work per frame 1.42 -> 1.29 ms, private memory 236 -> 215 MB.
+
+After round 5 (5 runs of each build, interleaved; median, range in brackets): `mutation_fullstyle` 1.52 (1.50-1.54) ->
+1.17 (1.16-1.20) ms a full pass, the style stage 1.30 -> 0.93 ms a frame (p50), CPU work per frame 4.01 (3.97-4.05) ->
+3.30 (3.28-3.39) ms. `mutation` and `mutation_class` the same before and after: CPU work per frame 0.69 and 0.71 ms,
+1.20 and 1.21 ms; a partial restyle of `mutation_class` 0.152 (0.149-0.152) and 0.153 (0.152-0.160) ms.
 
 ## What changed, round 1
 
@@ -485,6 +495,81 @@ What was measured on the other pages, before the round and after it (medians, ra
 each): 240 (238-280) -> 241 (240-776) ms to load, its full pass 6 (6-7) -> 6 (5.5-13.5) ms, 7.7 -> 2.7 MB of styles.
 The machine ran other agents' builds meanwhile: single runs moved by a factor of 2 to 3, hence the ranges.
 
+## What changed, round 5: matching, the walks in tree order, the incremental attempt
+
+Items 2 and 3 of round 4's list. The base and the new profile build in turn (`wrentool bench perf`), 5 runs each on a
+quiet machine; the shares are the sampler's (`WREN_SAMPLE_STACK=1 WREN_SAMPLE_THREADS=1`), on profile builds of both.
+
+1. **Matching shared between siblings and cousins** (`src/style/sibling_match.odin`). Two sibling elements with the same
+   tag and the same attributes look up the same entries of the index, pass the same ancestor filter, and every part of
+   a selector matched against an ancestor answers the same for both: what can tell them apart is only what a selector
+   asks of the element itself beyond its tag and attributes (its position among its siblings, a sibling combinator to
+   its left, its state, its content, :has(), :scope). Such an entry is `own` (`Entry.own`, from the selector when the
+   index is built, `selector_deps`). Cousins (children of alike parents, up to a common ancestor) differ besides by what
+   a selector asks the same way of an ancestor or of an ancestor's sibling (`Entry.above`). The walk in tree order keeps,
+   for each depth, a family: the children of one parent or of alike parents, and for each kind of element in it (up to
+   `SIB_FAMILY_KINDS`) the first one, matched in full, with the entries it matched and those the others must try again
+   (with its answer). The next element of a kind takes them, matching again only `own` entries, and `above` ones for a
+   cousin; its lists are those a full match gives, in the same order, so the share table (round 4) then finds its style.
+   Full passes, the style threads and the restyle walk use it (an element a partial restyle passes without matching it
+   starts a family of its own below it: `sib_pass_by`); documents with shadow trees do not (the flat tree's siblings may
+   come from different trees). Not a cache: it holds what this pass matched for elements before, is dropped when the
+   walk meets another family at that depth, and nothing in it outlives the pass or is invalidated. Test:
+   `sibling_match_test.odin` (on a page with every kind of selector that tells alike elements apart, each element's
+   lists against a full match, hovered elements and parents included, and how many took their matching from another).
+   On `mutation_fullstyle`, `collect_entries` was 44 to 53 % of the busiest style threads' samples, and is 1.5 %; what
+   matching is left is the entries matched again (`match_chain` 12 to 21 %: the browser's own `:disabled`,
+   `:focus-visible`, `:popover-open` and `:fullscreen` reach every element, and `:disabled` asks the forms model).
+2. **No counter walk when no box shows a counter** (`counters_tally`, `src/style/counters.odin`). After a parallel pass
+   the counters and quotes are resolved by a walk in tree order. It writes only what a box shows (numbered markers,
+   counter() and quotes in content) and says whether a counter is used (`counters_used`, which partial restyles read).
+   The style threads now count, of the boxes shown, those that show a counter or a quote and those that change one: with
+   none of the first, the walk has nothing to write and its answer is whether any of the second exists. nodes10k (bullets,
+   and the `ul` that resets list-item) needs no walk. Test: `parallel_pass_counters_without_the_walk`.
+3. **The check of what was inserted, flat** (`inserted_exceed`, `src/style/restyle_dom.odin`): the inserted nodes are
+   bits by handle index (set for live handles only: the index of a node that went may be another node's), a second set
+   keeps a node inserted twice from counting twice, and one walk up from each node stops at an inserted ancestor or
+   finds the document; it was a hash set, a walk up to find whether the node is connected and another to find an inserted
+   ancestor. With 2 and 3 the window thread's share of the style stage of nodes10k: `compute_styles` itself (with the
+   walk inlined) 112 -> 57 samples, `inserted_exceed` 61 + `connected` 20 -> 35, the stage 1 139 -> 608 samples in runs of
+   the same length.
+4. **The incremental attempt decides from the removed boxes first** (`removed_boxes`, `src/layout/incremental.odin`).
+   Every box of an element the journal says was removed is made again with its subtree, as a plan of its own or inside a
+   container rebuilt whole: their count is a lower bound of what the attempt would find, and past the limit the attempt
+   gives up before looking for what to rebuild (`add_target`, `touched_ancestor`, `plan_children`, quadratic in the
+   children of one container, `subtree_size`). A bit per box marks those of removed elements, so a subtree inside another
+   counts once; one inside a replaced element is left out (its container is laid out again, not rebuilt). nodes10k:
+   what the page thread did besides its full pass (`layout_document` less `run_full`, nearly all of it that search) was
+   23 % of its samples, 0.3 % now.
+   Test: `inc_removed_boxes_decide_first`.
+5. **Measured, not kept.** The display list of a flow (`push_flow_item` copied a `Space` of hundreds of bytes and every
+   fragment for each item; `emit_lines` read visibility and pointer-events from each text's style where the box's flags
+   hold them when the box has the text's style): rewritten without the copies and reads, the display step of nodes10k was
+   0.63 (0.60-1.21) ms before and 0.67 (0.62-0.76) after; the compiler loaded only the fields used, and the styles read
+   are the few shared records, in cache. The page thread's temporary block emptied without zeroing (what is allocated
+   zeroed when handed out instead): the window thread's wait on layout 3.32 (3.24-3.48) against 3.30 (3.28-3.32) ms
+   without it (6 runs each), the same bytes zeroed at another time.
+
+| | before | after |
+|---|---|---|
+| nodes10k: style stage p50, a full pass | 2.94 (2.93-2.95), 2.96 ms | 1.82 (1.82-1.83), 1.84 ms |
+| nodes10k: the window thread waiting on layout, p50 | 4.71 (4.70-4.74) ms | 3.30 (3.30-3.31) ms |
+| nodes10k: frames/s, CPU work per frame (mean) | 86.2 (85.9-86.9), 33.2 ms | 92.5 (92.2-93.1), 30.9 ms |
+| `mutation_fullstyle`: a full pass, style stage p50, CPU work per frame | 1.52 (1.50-1.54), 1.30, 4.01 ms | 1.17 (1.16-1.20), 0.93, 3.30 ms |
+| `mutation`: CPU work per frame, mean | 0.69 (0.69-0.76) ms | 0.71 (0.69-0.72) ms |
+| `mutation_class`: a partial restyle, CPU work per frame | 0.152, 1.20 ms | 0.153, 1.21 ms |
+| p10k_load: load, its full style pass | 241 (237-356) ms, 6 ms | 248 (239-355) ms, 5.5 ms |
+| p10k_scroll: frames/s, CPU work per frame p50 | 175, 0.29 ms | 175, 0.29 ms |
+| `examples/site/modern-css.html` resized: a full pass, CPU work per frame | 0.93, 0.38 ms | 0.95, 0.38 ms |
+| private memory: nodes10k, `mutation_fullstyle` | 259, 237 MB | 258, 237 MB |
+
+The full pass of a page whose elements are each of their own kind (modern-css, p10k's generated sections, a full pass
+of `mutation_class` counted in whole milliseconds) costs what it did: each element is matched in full once, and the
+families cost a comparison of tags and attributes. WPT, css/ (921 testharness tests, 1 605 reference tests), shadow-dom
+and dom/nodes, base and new against the same checkout: the same reference test results (914 pass), the same subtests in
+shadow-dom (9 310 pass) and dom/nodes (7 580); in css/ 20 671 and 20 681 subtests pass, the difference all in the
+interpolation tests of css-transforms and css-multicol, which move by as much between runs of one build.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -495,7 +580,9 @@ saves the network or a compiler's work across navigations and starts, which no f
 the glyph atlas (`font/raster.odin:71`), Slug glyph data (`font/slug_cache.odin:44`), image textures
 (`browser/images_shell.odin:70`), retained pictures (`browser/compositor.odin:129`, with its memory budget). Not a cache
 either: the table of a style pass that gives elements with the same inputs the same computed style (`style/share.odin`,
-round 4): it holds the values that pass made and goes with it, nothing in it is invalidated.
+round 4): it holds the values that pass made and goes with it, nothing in it is invalidated; nor the families of the
+walk that share matching between alike elements (`style/sibling_match.odin`, round 5): what the pass matched for the
+first of a kind, dropped when the walk leaves that family.
 
 To remove:
 
@@ -524,7 +611,8 @@ of every element, plus a concatenation per indexed attribute at `cascade.odin:44
 `ext/gui_toolkit/font/raster.odin:74-79` (per glyph, under the atlas lock); `page/timeline_lcp.odin` `et_seen` (per
 element with `elementtiming` only). Gone in round 1: `page/timeline_lcp.odin` `ls_prev` (per box, per mutated frame).
 Added in round 4, flat: `style/share.odin` (a style pass's shared styles: open addressing, the keys' words in one array,
-one lookup per element); `style/restyle_dom.odin` `inserted_exceed` (the inserted nodes of a restyle, a set by handle).
+one lookup per element). Gone in round 5: `style/restyle_dom.odin` `inserted_exceed` (the inserted nodes of a restyle,
+now bits by handle index).
 
 ### Arrays of bools
 
@@ -576,6 +664,9 @@ replaces them. Round 2's item 1 is done in part: the engine traces, it counts no
 wrapper still waits for a collection, but the collection no longer pays for it.
 After round 4. Round 3's item 2 is done for what it named (styles shared, the inherited group, the arenas, and the
 restyle that gave up too late); what styling an element still costs is item 3 below.
+After round 5. Round 4's item 2 is done (matching shared by alike elements, the counter walk, the check of what was
+inserted); of item 3, the incremental attempt is done, the display list of the flow and the page thread's temporary
+block were measured and left as they were (round 5, item 5); what is left of both is below.
 
 1. **The script stage of DOM-heavy pages** (nodes10k: 25 ms of a 47 ms frame). In order of the samples: the interpreter's
    native calls and the property lookups up the prototype chains (`get_property` is a quarter of the engine's samples;
@@ -583,29 +674,27 @@ restyle that gave up too late); what styling an element still costs is item 3 be
    finalizers, `Node_unpin` one wrapper at a time, the prologue's visit of every wrapper); making wrappers
    (`make_wrapper`, `Node_wrap`); the DOM work of an insertion (its hooks walk the inserted subtree). Not the crossings
    (4 %, section 2).
-2. **Matching, and the walks in tree order** (now most of what an element costs: `collect_entries` 28 to 46 % of the
-   style threads' samples on `mutation_fullstyle`). Matching shared between siblings whose selector inputs are the same
-   (tag, id, classes, attributes, the parent's match context), where no rule in force depends on position among the
-   siblings, on the element's own state or on `:has()`: the share table's key could then be had without matching. On
-   nodes10k's window thread: the counters' walk visits every element in tree order after a parallel pass
-   (`counters_post_pass`; a list item's marker formatted to be compared, 8 % of the stage), the check of what was
-   inserted (`inserted_exceed`, 18 %: a set by handle and two walks up per inserted node).
-3. **Layout of DOM-heavy pages, what round 4 left** (nodes10k: the window thread waits 5.3 ms a frame on a pass
-   of 3.5 ms; the page thread's samples after round 4): the display list of the flow (`emit_lines` and
-   `push_flow_item`, 12 to 15 %: every text item is copied once per column it may lie in, and `emit_lines` reads two
-   fields of each text's style for visibility and pointer-events, which the box's flags already hold); the incremental
-   attempt that ends in "too much changed" (`add_target`, `touched_ancestor`, `subtree_size`, `plan_children` over the
-   5 000 removed and inserted list items: 6 to 8 %, before the full pass starts; a bound from the journal's size would
-   decide it first); building the box tree (place_element, push_children, list markers: 13 to 17 %); the zeroing of
-   the page thread's temporary block at the end of each pass (`memset` in `free_all`, 2 to 5 %).
+2. **Layout of DOM-heavy pages** (nodes10k: the window thread waits 3.3 ms a frame, the page thread's full pass and
+   nothing else now): the paragraphs laid out ahead on the layout threads, the page thread waiting for them (`pre_run`,
+   40 % of its samples, `parallel_for` 30 %); the multi-column layout (28 %); the display list (22 %: its cost is the
+   number of items, about 10 000 texts of 150 bytes each, not copies: round 5, item 5); building the box tree
+   (`build_loop`, `place_element`: 15 to 18 %); the bands (5 %).
+3. **What a full style pass still costs per element** (`mutation_fullstyle`, the busiest style threads): the layout
+   journal of a full pass (`diff_chunk`: `layout_level` of each element's old and new style, 28 to 36 %, now the largest
+   part), the entries every element matches again (`match_chain` 12 to 21 %: the browser's `:disabled` asks the forms
+   model for every element, with `:focus-visible`, `:popover-open`, `:fullscreen`), the families of pages whose elements
+   are each of their own kind (modern-css, p10k: matched in full as before).
 4. **The layout's boxes as arrays of what the scans read** (the LCP scan's remaining cost is `box_border` reading each
    box's struct, 57 % of it; the layout-shift scan reads the same): border rects and flags in flat arrays by box, or
    scans of the boxes the layout journal says changed.
-5. **The atlas lock per glyph and the word cache's 64 locks** (toolkit): a per-thread front, misses to one owner
+5. **The temporary arenas of the window thread and of the thread pool** (`src/host`): emptied by zeroing what they held
+   after each frame or job (`mem_free_all` and its `memset` are 6 to 12 % of some pool threads' samples on nodes10k), and
+   given back past their first block. Allocations that need no zero (`make` of what is overwritten whole) are the gain
+   there, not when the zeroing happens (round 5, item 5).
+6. **The atlas lock per glyph and the word cache's 64 locks** (toolkit): a per-thread front, misses to one owner
    (`word_find` was 4 % of the page thread on nodes10k before round 4 moved its paragraphs to the layout threads).
-6. **The style index's string tables** (`style/engine.odin:66-68`): atoms (interned ids) and flat arrays by atom.
-7. **The job queues of the blocking pool, the image decoders, the script compiler and the caches** (the table above):
+7. **The style index's string tables** (`style/engine.odin:66-68`): atoms (interned ids) and flat arrays by atom (looked
+   up now only for the first element of each kind of a family).
+8. **The job queues of the blocking pool, the image decoders, the script compiler and the caches** (the table above):
    measured first (round 3: a lock-free queue lost to the loop's mutex); a worker's `ordered_remove(0)` is a cost of its own.
-8. **The temporary arenas of the window thread and of the thread pool** (`src/host`): the same as the page thread's (a
-   block kept at the largest size used), where they outgrow their first block every frame or job.
 9. **The profiler**: correct the bias of samples taken in a system call.
