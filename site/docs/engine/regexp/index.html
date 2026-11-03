@@ -236,7 +236,8 @@
 <p>Odin port of QuickJS-ng's <code>libregexp</code>: a full ECMAScript regular-expression parser and bytecode compiler, plus a
 bounded backtracking interpreter. It replaces the C engine and leans on the language — tagged opcodes, interval
 character sets, caller-supplied allocators, an explicit (non-recursive) backtrack stack — so it builds for
-<code>windows_amd64</code>, <code>linux_amd64</code> and <code>freestanding_wasm32</code> with no libc.</p>
+<code>windows_amd64</code>, <code>linux_amd64</code> and <code>freestanding_wasm32</code> with no libc. The browser uses it for URLPattern
+(<code>src/url/pattern_match.odin</code>: a component's regular expression, with the <code>v</code> flag).</p>
 <div class="code"><div class="file">Odin</div><pre><code><span class="k">import</span> rx <span class="s">"wb:engine/regexp"</span></code></pre></div>
 <h2 id="api"><a class="anchor" href="#api" aria-hidden="true">#</a>API</h2>
 <div class="code"><div class="file">Odin</div><pre><code>re, err := rx.<span class="f">compile</span>(pattern, flags, allocator)   <span class="c">// flags: rx.Flags bit_set</span>
@@ -274,15 +275,17 @@ overflow the native stack. Two budgets bound it, exposed as preferences (<code>r
 negative lookahead and lookbehind; back references, numbered <code>\1</code> and named <code>\k&lt;name&gt;</code>; character classes with
 ranges, the class escapes <code>\d \D \w \W \s \S</code>, and <code>\p{…}</code> / <code>\P{…}</code> (general category, binary property, <code>Script</code>,
 <code>Script_Extensions</code>); quantifiers <code>* + ? {n} {n,} {n,m}</code> with an optional lazy <code>?</code>; the escape forms
-<code>\f \n \r \t \v \0 \cX \xHH \uHHHH \u{…}</code>; the <code>v</code>-flag nested set operations <code>&amp;&amp;</code> and <code>--</code>; and the Annex B
+<code>\f \n \r \t \v \0 \cX \xHH \uHHHH \u{…}</code>; the <code>v</code> flag's nested classes, escaped reserved punctuators (<code>\:</code>, <code>\&amp;</code>…)
+and chains of set operations <code>A &amp;&amp; B &amp;&amp; C</code>, <code>A -- B -- C</code>; and the Annex B
 web-reality leniencies when neither <code>u</code> nor <code>v</code> is set (lone <code>{</code>, <code>]</code>, <code>}</code> as literals; invalid back references as
 octal/identity escapes).</p>
 <h2 id="how-it-works"><a class="anchor" href="#how-it-works" aria-hidden="true">#</a>How it works</h2>
 <ul>
 <li><code>parser.odin</code> / <code>parse_*.odin</code> build an AST (two-pass: a prescan counts groups and collects names so forward
 references resolve).</li>
-<li><code>compile*.odin</code> lower the AST to bytecode: quantifiers become split/goto/loop forms with an empty-match guard
-(<code>Push_Char_Pos</code> / <code>Check_Advance</code>) so <code>(a*)*</code> cannot loop forever; classes resolve to <code>ucd.Char_Range</code>
+<li><code>compile*.odin</code> lower the AST to bytecode (the AST lives in an arena of the compilation's own): quantifiers become
+split/goto/loop forms with an empty-match guard (<code>Push_Char_Pos</code> / <code>Check_Advance</code>) on every iteration past the
+minimum, so <code>(a*)*</code> cannot loop forever and <code>(.*)?</code> that matched nothing leaves its group undefined; classes resolve to <code>ucd.Char_Range</code>
 interval sets, case-folded once at compile time when <code>i</code> is set; a lookbehind body is compiled in reverse so a
 dedicated backward interpreter walks it.</li>
 <li><code>vm.odin</code> / <code>vm_behind.odin</code> / <code>vm_read.odin</code> are the interpreter: forward and reverse dispatch, UTF-8/UTF-16

@@ -307,6 +307,11 @@ Not_Supported for a push to a javascript: URL, Data_Clone for a state too big. n
 document this one replaced when it is among navigation.entries()); "" when the document was not reached by a
 navigation the browser measured (activation null).</p>
 <p>Host: <code>Navigation_activation :: proc(c: ^Call) -&gt; string</code></p>
+<h3 id="navigation-scroll"><a class="anchor" href="#navigation-scroll" aria-hidden="true">#</a><code>Navigation_scroll</code></h3>
+<div class="code"><pre><code>void Navigation_scroll(i32 type)</code></pre></div>
+<p>The scroll of an intercepted navigation of <code>type</code> (as Navigation_pending's), once its handlers are done or at
+event.scroll(): a traversal puts the entry's scroll positions back, anything else goes to the fragment or the top.</p>
+<p>Host: <code>Navigation_scroll :: proc(c: ^Call, type: i32)</code></p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/api/mse/"><span>Previous</span><strong>Module mse</strong></a>
 <a class="doc-next" href="../../../docs/api/navigator/"><span>Next</span><strong>Module navigator</strong></a>
@@ -330,6 +335,7 @@ navigation the browser measured (activation null).</p>
 <li class="lvl3"><a href="#navigation-pendingstate">Navigation_pendingState</a></li>
 <li class="lvl3"><a href="#navigation-pendingsource">Navigation_pendingSource</a></li>
 <li class="lvl3"><a href="#navigation-activation">Navigation_activation</a></li>
+<li class="lvl3"><a href="#navigation-scroll">Navigation_scroll</a></li>
 </ul>
 </nav>
 </main>
