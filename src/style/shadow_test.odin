@@ -4,45 +4,16 @@ import "core:testing"
 import "wb:base"
 import "wb:css"
 import "wb:dom"
-import "wb:html"
 
 // Shadow trees: scoped rules, :host, ::slotted(), ::part(), the cascade's encapsulation contexts, inheritance through
 // the flat tree, and partial restyles (each compared with a full pass).
 
 @(private = "file")
-Sx :: struct {
-	doc: ^dom.Document,
-	eng: ^Engine,
-	st:  ^Styled,
-}
-
-@(private = "file")
-sx_load :: proc(src: string) -> ^Sx {
-	f := new(Sx)
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
-	ss := settings_default()
-	f.eng = engine_make(ss)
-	settings_destroy(&ss)
-	engine_set_journal(f.eng, 1 << 16)
-	f.eng.settings.inc_max_ratio = 1
-	sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = compute_styles(f.eng, f.doc, {})
-	dom.journal_enable(f.doc, 1 << 16)
-	return f
-}
-
-@(private = "file")
-sx_unload :: proc(f: ^Sx) {
-	styled_destroy(f.st)
-	engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
-	free(f)
-}
+sx_load :: proc(src: string) -> ^Fixture { return fixture_load(src, {journal = FIXTURE_JOURNAL, partial = true}) }
 
 // An element by id, in the document or in any shadow tree.
 @(private = "file")
-sid :: proc(f: ^Sx, id: string) -> base.Handle {
+sid :: proc(f: ^Fixture, id: string) -> base.Handle {
 	for h := f.doc.root; h != base.NIL_HANDLE; h = dom.next_shadow_including(f.doc, h, f.doc.root) {
 		n := dom.get(f.doc, h)
 		if n.kind != .Element { continue }
@@ -52,7 +23,7 @@ sid :: proc(f: ^Sx, id: string) -> base.Handle {
 }
 
 @(private = "file")
-color_of :: proc(f: ^Sx, id: string) -> css.Color {
+color_of :: proc(f: ^Fixture, id: string) -> css.Color {
 	c := style_of(f.st, sid(f, id))
 	if c == nil { return {} }
 	return c.color
@@ -65,7 +36,7 @@ SGREEN :: css.Color{0, 128.0 / 255, 0, 1}
 
 // Restyles after mutations (sheets synced first, as the page does) and compares with a full pass.
 @(private = "file")
-sx_step :: proc(t: ^testing.T, f: ^Sx, what: string, want_partial := true, loc := #caller_location) {
+sx_step :: proc(t: ^testing.T, f: ^Fixture, what: string, want_partial := true, loc := #caller_location) {
 	sync_document_sheets(f.eng, f.doc, "about:test")
 	_, ok := restyle_dom(f.eng, f.doc, f.st)
 	if !ok {
@@ -85,7 +56,7 @@ shadow_encapsulation_and_inheritance :: proc(t: ^testing.T) {
 		<x-card id=host><template shadowrootmode=open><style>p { color: green } span { color: green }</style>
 		<p id=inner>in</p><div id=wrap><slot id=s></slot></div><i id=plain class=doc-only>i</i></template>
 		<span id=light>slotted</span><p id=lightp>lp</p></x-card><span id=out>out</span>`)
-	defer sx_unload(f)
+	defer fixture_unload(f)
 	testing.expect_value(t, color_of(f, "inner"), SGREEN)   // the document's p rule does not enter
 	testing.expect_value(t, color_of(f, "light"), BLUE)    // the shadow's span rule does not leave; inherits via the slot
 	testing.expect_value(t, color_of(f, "lightp"), RED)
@@ -115,7 +86,7 @@ shadow_host_slotted_part_and_contexts :: proc(t: ^testing.T) {
 			<b id=b1>b</b><span id=lab part=label>l</span>
 			<x-b id=h2 exportparts="deep: out"><template shadowrootmode=open><i id=deep part=deep>d</i></template></x-b>
 			<slot></slot></template><em id=e1>e</em><strong id=st1>s</strong></x-a></div>`)
-	defer sx_unload(f)
+	defer fixture_unload(f)
 	h1 := style_of(f.st, sid(f, "h1"))
 	testing.expect_value(t, h1.color, BLUE)               // outer normal beats :host
 	testing.expect_value(t, h1.padding[.Left].v, 5)          // inner !important beats outer normal
@@ -152,7 +123,7 @@ shadow_restyle_partial :: proc(t: ^testing.T) {
 		<div id=host><template shadowrootmode=open><style>.k { color: green } .k + i { color: red } slot[name=a] { color: red }</style>
 		<p id=p class=k>p</p><i id=after>i</i><slot name=a id=sa></slot><section id=sec><slot id=sd></slot></section></template>
 		<b id=b1 slot=a>b</b><b id=b2>c</b></div>`)
-	defer sx_unload(f)
+	defer fixture_unload(f)
 	testing.expect_value(t, color_of(f, "after"), RED)
 	testing.expect_value(t, color_of(f, "b1"), RED)
 	p := sid(f, "p")
@@ -209,7 +180,7 @@ shadow_restyle_partial :: proc(t: ^testing.T) {
 @(test)
 shadow_adopted_and_constructed :: proc(t: ^testing.T) {
 	f := sx_load(`<!doctype html><div id=host><template shadowrootmode=open><p id=p>p</p></template></div><p id=dp>d</p>`)
-	defer sx_unload(f)
+	defer fixture_unload(f)
 	root := dom.shadow_root_of(f.doc, sid(f, "host"))
 	id := engine_constructed_create(f.eng, "p { color: green }")
 	engine_set_adopted(f.eng, root, {id}, false)
@@ -231,7 +202,7 @@ shadow_adopted_and_constructed :: proc(t: ^testing.T) {
 shadow_state_restyle :: proc(t: ^testing.T) {
 	f := sx_load(`<!doctype html><div id=host><template shadowrootmode=open><style>:host(:hover) b { color: red } :host(:focus) i { color: green }</style>
 		<b id=b>b</b><i id=i>i</i><input id=in></template></div>`)
-	defer sx_unload(f)
+	defer fixture_unload(f)
 	inp := sid(f, "in")
 	_, ok := restyle_state(f.eng, f.doc, f.st, State{hover = inp})
 	testing.expect(t, ok)

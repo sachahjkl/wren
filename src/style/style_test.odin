@@ -7,45 +7,15 @@ import "core:testing"
 import "wb:base"
 import "wb:css"
 import "wb:dom"
-import "wb:html"
 
 @(private = "file")
-Fx :: struct {
-	doc: ^dom.Document,
-	eng: ^Engine,
-	st:  ^Styled,
-}
-
-@(private = "file")
-load :: proc(src: string, settings: Settings = {}, state: State = {}) -> Fx {
-	f: Fx
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
-	s := settings
-	own := false
-	if s.default_font_size == 0 { s = settings_default(); own = true }
-	f.eng = engine_make(s)
-	if own { settings_destroy(&s) }
-	sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = compute_styles(f.eng, f.doc, state)
-	return f
-}
-
-@(private = "file")
-restyle :: proc(f: ^Fx, state: State = {}) {
+restyle :: proc(f: ^Fixture, state: State = {}) {
 	styled_destroy(f.st)
 	f.st = compute_styles(f.eng, f.doc, state)
 }
 
 @(private = "file")
-unload :: proc(f: ^Fx) {
-	styled_destroy(f.st)
-	engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
-}
-
-@(private = "file")
-at :: proc(f: ^Fx, id: string) -> ^Computed {
+at :: proc(f: ^Fixture, id: string) -> ^Computed {
 	h := dom.find_by_id(f.doc, id)
 	return style_of(f.st, h)
 }
@@ -65,7 +35,7 @@ GREEN :: css.Color{0, 0.5, 0, 1}
 
 @(test)
 cascade_specificity_order_important :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		p { color: green }
 		.b { color: blue }
 		#x { color: red }
@@ -78,20 +48,20 @@ cascade_specificity_order_important :: proc(t: ^testing.T) {
 	</style>
 	<p id=a>1</p><p id=b class=b>2</p><p id=x class=b>3</p><p id=y2 class=b2>4</p><p id=z class=c>5</p>
 	<p id=inl style="color: red">6</p><p id=inl2 class=b2 style="color: red">7</p><p id=inl3 style="color: red !important" class=b2>8</p>`)
-	defer unload(&f)
-	testing.expect(t, same_color(at(&f, "a").color, BLUE), "later declaration in the same rule")
-	testing.expect(t, same_color(at(&f, "b").color, BLUE), "class beats type")
-	testing.expect(t, same_color(at(&f, "x").color, RED), "id beats class")
-	testing.expect(t, same_color(at(&f, "y2").color, BLUE), "!important beats id")
-	testing.expect(t, same_color(at(&f, "z").color, RED), "higher specificity wins regardless of order")
-	testing.expect(t, same_color(at(&f, "inl").color, RED), "inline style beats rules")
-	testing.expect(t, same_color(at(&f, "inl2").color, BLUE), "!important rule beats a normal inline declaration")
-	testing.expect(t, same_color(at(&f, "inl3").color, RED), "!important inline beats !important rule")
+	defer fixture_unload(f)
+	testing.expect(t, same_color(at(f, "a").color, BLUE), "later declaration in the same rule")
+	testing.expect(t, same_color(at(f, "b").color, BLUE), "class beats type")
+	testing.expect(t, same_color(at(f, "x").color, RED), "id beats class")
+	testing.expect(t, same_color(at(f, "y2").color, BLUE), "!important beats id")
+	testing.expect(t, same_color(at(f, "z").color, RED), "higher specificity wins regardless of order")
+	testing.expect(t, same_color(at(f, "inl").color, RED), "inline style beats rules")
+	testing.expect(t, same_color(at(f, "inl2").color, BLUE), "!important rule beats a normal inline declaration")
+	testing.expect(t, same_color(at(f, "inl3").color, RED), "!important inline beats !important rule")
 }
 
 @(test)
 cascade_layers :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		@layer base, theme;
 		@layer theme { p { color: blue } }
 		@layer base { p { color: red } #q { color: red } }
@@ -101,42 +71,42 @@ cascade_layers :: proc(t: ^testing.T) {
 		.imp { color: green !important }
 	</style>
 	<p id=a>1</p><p id=q>2</p><p id=u class=u>3</p><p id=imp class=imp>4</p>`)
-	defer unload(&f)
-	testing.expect(t, same_color(at(&f, "a").color, BLUE), "the later layer wins over the earlier one, specificity notwithstanding")
-	testing.expect(t, same_color(at(&f, "q").color, BLUE), "layer order beats the id specificity inside a lower layer")
-	testing.expect(t, same_color(at(&f, "u").color, GREEN), "unlayered beats layered")
-	testing.expect(t, same_color(at(&f, "imp").color, RED), "for !important the order is reversed: the first layer wins, unlayered loses")
+	defer fixture_unload(f)
+	testing.expect(t, same_color(at(f, "a").color, BLUE), "the later layer wins over the earlier one, specificity notwithstanding")
+	testing.expect(t, same_color(at(f, "q").color, BLUE), "layer order beats the id specificity inside a lower layer")
+	testing.expect(t, same_color(at(f, "u").color, GREEN), "unlayered beats layered")
+	testing.expect(t, same_color(at(f, "imp").color, RED), "for !important the order is reversed: the first layer wins, unlayered loses")
 }
 
 @(test)
 browser_defaults :: proc(t: ^testing.T) {
-	f := load(`<h1 id=h>T</h1><p id=p>x<b id=b>y</b></p><ul id=ul><li id=li>i</li></ul><a id=a href="/x">l</a><a id=na>n</a>
+	f := fixture_load(`<h1 id=h>T</h1><p id=p>x<b id=b>y</b></p><ul id=ul><li id=li>i</li></ul><a id=a href="/x">l</a><a id=na>n</a>
 		<span id=s style="display:none">h</span><pre id=pre>code</pre><script id=sc></script>`)
-	defer unload(&f)
-	testing.expect_value(t, at(&f, "h").display, Display.Block)
-	testing.expect(t, near(at(&f, "h").font_size, 32), "h1 is 2em of 16px")
-	testing.expect_value(t, at(&f, "h").font_weight, u16(700))
-	testing.expect(t, near(at(&f, "h").margin[.Top].v, 21.44), "0.67em")
+	defer fixture_unload(f)
+	testing.expect_value(t, at(f, "h").display, Display.Block)
+	testing.expect(t, near(at(f, "h").font_size, 32), "h1 is 2em of 16px")
+	testing.expect_value(t, at(f, "h").font_weight, u16(700))
+	testing.expect(t, near(at(f, "h").margin[.Top].v, 21.44), "0.67em")
 	body := style_of(f.st, dom.find_first_by_tag(f.doc, "body"))
 	testing.expect(t, near(body.margin[.Left].v, 8), "body margin")
-	testing.expect_value(t, at(&f, "li").display, Display.List_Item)
-	testing.expect_value(t, at(&f, "ul").list_style_type, List_Style_Type.Disc)
-	testing.expect(t, near(at(&f, "ul").padding[.Left].v, 40))
-	testing.expect_value(t, at(&f, "b").font_weight, u16(700))
-	testing.expect(t, same_color(at(&f, "a").color, css.Color{0, 0, 0.933, 1}), "links are blue")
-	testing.expect(t, .Underline in at(&f, "a").text_decoration)
-	testing.expect(t, same_color(at(&f, "na").color, at(&f, "p").color), "an anchor without href is not a link")
-	testing.expect_value(t, at(&f, "s").display, Display.None)
-	testing.expect_value(t, at(&f, "sc").display, Display.None)
-	testing.expect_value(t, at(&f, "pre").white_space, White_Space.Pre)
-	testing.expect(t, near(at(&f, "pre").font_size, 13), "monospace size from preferences")
-	testing.expect_value(t, at(&f, "pre").font_family[0], "monospace")
+	testing.expect_value(t, at(f, "li").display, Display.List_Item)
+	testing.expect_value(t, at(f, "ul").list_style_type, List_Style_Type.Disc)
+	testing.expect(t, near(at(f, "ul").padding[.Left].v, 40))
+	testing.expect_value(t, at(f, "b").font_weight, u16(700))
+	testing.expect(t, same_color(at(f, "a").color, css.Color{0, 0, 0.933, 1}), "links are blue")
+	testing.expect(t, .Underline in at(f, "a").text_decoration)
+	testing.expect(t, same_color(at(f, "na").color, at(f, "p").color), "an anchor without href is not a link")
+	testing.expect_value(t, at(f, "s").display, Display.None)
+	testing.expect_value(t, at(f, "sc").display, Display.None)
+	testing.expect_value(t, at(f, "pre").white_space, White_Space.Pre)
+	testing.expect(t, near(at(f, "pre").font_size, 13), "monospace size from preferences")
+	testing.expect_value(t, at(f, "pre").font_family[0], "monospace")
 }
 
 // Font sizes of the generic monospace and of the absolute-size keywords, as Edge computes them (getComputedStyle).
 @(test)
 monospace_and_keyword_sizes :: proc(t: ^testing.T) {
-	f := load(`<code id=c1>a</code>
+	f := fixture_load(`<code id=c1>a</code>
 <p style="font-size:14px"><code id=c2>a</code></p>
 <p style="font-size:1.2em"><code id=c3>a</code></p>
 <code id=c5 style="font-family:Consolas, monospace">a</code>
@@ -155,21 +125,21 @@ monospace_and_keyword_sizes :: proc(t: ^testing.T) {
 <div id=k4 style="font-size:x-large"><code id=k5>a</code></div>
 <div style="font-size:small"><span id=k6 style="font-size:larger">a</span><span id=k7 style="font-size:smaller">a</span><code id=k8 style="font-size:larger">a</code></div>
 <div style="font-size:larger"><code id=k9>a</code></div>`)
-	defer unload(&f)
+	defer fixture_unload(f)
 	want := [?]struct { id: string, px: f32 }{
 		{"c1", 13}, {"c2", 14}, {"c3", 15.6}, {"c5", 16}, {"c7", 12}, {"c8", 16}, {"c9", 13}, {"c10", 16}, {"c12", 16},
 		{"c13", 20}, {"c14", 11.7}, {"c15", 26}, {"c16", 15.84375}, {"c17", 26}, {"c18", 16},
 		{"k1", 9}, {"k2", 13}, {"k3", 18}, {"k4", 24}, {"k5", 20}, {"k6", 15.6}, {"k7", 13 / 1.2}, {"k8", 12.675}, {"k9", 15.6},
 	}
 	for w in want {
-		got := at(&f, w.id).font_size
+		got := at(f, w.id).font_size
 		testing.expectf(t, math.abs(got - w.px) < 0.01, "%s: %v px, want %v", w.id, got, w.px)
 	}
 }
 
 @(test)
 inheritance_and_relative_units :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		#a { font-size: 20px; color: red; border: 1px solid; margin-left: 5px }
 		#b { font-size: 2em; margin-left: 1.5em; padding-top: 2rem; width: 50%; height: calc(100% - 10px); line-height: 1.5 }
 		#c { font-size: 150%; line-height: 2em }
@@ -177,8 +147,8 @@ inheritance_and_relative_units :: proc(t: ^testing.T) {
 		#e { font-size: larger }
 		#f { font-size: x-large }
 	</style><div id=a><div id=b><div id=c>x</div></div><div id=d>y</div><div id=e>z</div></div><div id=f></div>`)
-	defer unload(&f)
-	b := at(&f, "b")
+	defer fixture_unload(f)
+	b := at(f, "b")
 	testing.expect(t, near(b.font_size, 40), "2em of the parent's 20px")
 	testing.expect(t, near(b.margin[.Left].v, 60), "em uses the element's own font-size")
 	testing.expect(t, near(b.padding[.Top].v, 32), "rem is the root's font-size")
@@ -186,22 +156,22 @@ inheritance_and_relative_units :: proc(t: ^testing.T) {
 	testing.expect_value(t, b.height.kind, Length_Kind.Calc)
 	testing.expect(t, near(resolve(b.height, 200), 190))
 	testing.expect_value(t, b.line_height.kind, Line_Height_Kind.Number)
-	c := at(&f, "c")
+	c := at(f, "c")
 	testing.expect(t, near(c.font_size, 60), "150% of 40px")
 	testing.expect(t, c.line_height.kind == .Length && near(c.line_height.v, 120), "an em line-height is fixed in px where it is written, then inherited as px")
 	testing.expect(t, same_color(c.color, RED), "color is inherited")
-	d := at(&f, "d")
+	d := at(f, "d")
 	testing.expect(t, same_color(d.border_color[.Top], RED), "inherit on a non-inherited property")
 	testing.expect(t, near(d.margin[.Left].v, 5), "inherit copies the parent's computed value")
-	testing.expect(t, near(at(&f, "e").font_size, 24), "larger = 1.2 x 20px")
-	testing.expect(t, near(at(&f, "f").font_size, 24), "x-large = 1.5 x 16px")
+	testing.expect(t, near(at(f, "e").font_size, 24), "larger = 1.2 x 20px")
+	testing.expect(t, near(at(f, "f").font_size, 24), "x-large = 1.5 x 16px")
 	// a non-inherited property is not inherited
 	testing.expect(t, near(b.border_width[.Top], 0), "borders are not inherited")
 }
 
 @(test)
 shorthands :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		#a { margin: 1px 2px 3px; padding: 4px 5px; border: 2px dashed #f00; border-bottom-color: blue }
 		#b { border-radius: 4px 8px / 2px 6px; gap: 3px 9px; overflow: hidden auto; inset: 0 auto }
 		#c { background: url(x.png) no-repeat center / cover blue; font: italic bold 12px/1.4 "Fira Sans", serif }
@@ -209,38 +179,38 @@ shorthands :: proc(t: ^testing.T) {
 		#e { flex: none; margin: 0 auto; border-width: thin thick; border-style: solid dotted; border-color: red green blue }
 		#f { margin: 1px 2px 3px 4px 5px; padding: -1px; border: none; }
 	</style><div id=a></div><div id=b></div><div id=c></div><div id=d></div><div id=e></div><div id=f></div>`)
-	defer unload(&f)
-	a := at(&f, "a")
+	defer fixture_unload(f)
+	a := at(f, "a")
 	testing.expect(t, near(a.margin[.Top].v, 1) && near(a.margin[.Right].v, 2) && near(a.margin[.Bottom].v, 3) && near(a.margin[.Left].v, 2), "3-value box shorthand")
 	testing.expect(t, near(a.padding[.Left].v, 5) && near(a.padding[.Bottom].v, 4))
 	testing.expect(t, near(a.border_width[.Left], 2) && a.border_style[.Right] == .Dashed)
 	testing.expect(t, same_color(a.border_color[.Top], RED) && same_color(a.border_color[.Bottom], BLUE), "a later longhand overrides the shorthand")
-	b := at(&f, "b")
+	b := at(f, "b")
 	testing.expect(t, near(b.radius[.Top_Left].h.v, 4) && near(b.radius[.Top_Left].v.v, 2))
 	testing.expect(t, near(b.radius[.Top_Right].h.v, 8) && near(b.radius[.Top_Right].v.v, 6))
 	testing.expect(t, near(b.row_gap.v, 3) && near(b.column_gap.v, 9))
 	testing.expect(t, b.overflow_x == .Hidden && b.overflow_y == .Auto)
 	testing.expect(t, b.inset[.Top].kind == .Px && b.inset[.Left].kind == .Auto && b.inset[.Right].kind == .Auto)
-	c := at(&f, "c")
+	c := at(f, "c")
 	testing.expect(t, c.background_image.kind == .Url && c.background_image.url == "x.png")
 	testing.expect(t, c.background_repeat[0] == .No_Repeat && c.background_size.kind == .Cover)
 	testing.expect(t, same_color(c.background_color, BLUE))
 	testing.expect(t, c.font_style == .Italic && c.font_weight == 700 && near(c.font_size, 12))
 	testing.expect(t, c.line_height.kind == .Number && near(c.line_height.v, 1.4))
 	testing.expect(t, len(c.font_family) == 2 && c.font_family[0] == "Fira Sans" && c.font_family[1] == "serif")
-	d := at(&f, "d")
+	d := at(f, "d")
 	testing.expect(t, near(d.flex_grow, 2) && near(d.flex_shrink, 1) && d.flex_basis.kind == .Percent, "flex: <number> = <number> 1 0%")
 	testing.expect(t, d.list_style_type == .Square && d.list_style_position == .Inside)
 	testing.expect(t, .Underline in d.text_decoration && same_color(d.text_decoration_color, RED))
 	testing.expect(t, d.outline_style == .Dotted && near(d.outline_width, 1))
 	testing.expect(t, d.flex_direction == .Column && d.flex_wrap == .Wrap)
-	e := at(&f, "e")
+	e := at(f, "e")
 	testing.expect(t, near(e.flex_grow, 0) && near(e.flex_shrink, 0) && e.flex_basis.kind == .Auto)
 	testing.expect(t, e.margin[.Left].kind == .Auto && e.margin[.Top].kind == .Px)
 	testing.expect(t, near(e.border_width[.Top], 1) && near(e.border_width[.Left], 5), "thin / thick")
 	testing.expect(t, e.border_style[.Top] == .Solid && e.border_style[.Left] == .Dotted)
 	testing.expect(t, same_color(e.border_color[.Right], GREEN) && same_color(e.border_color[.Bottom], BLUE))
-	ff := at(&f, "f")
+	ff := at(f, "f")
 	testing.expect(t, near(ff.margin[.Top].v, 0), "an invalid shorthand (5 values) is dropped whole")
 	testing.expect(t, near(ff.padding[.Top].v, 0), "negative padding is invalid")
 	testing.expect(t, near(ff.border_width[.Top], 0), "border: none")
@@ -248,7 +218,7 @@ shorthands :: proc(t: ^testing.T) {
 
 @(test)
 custom_properties :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		:root { --brand: #00f; --gap: 8px; --pad: calc(var(--gap) * 2); --loop-a: var(--loop-b); --loop-b: var(--loop-a); --font: "Fira Sans", serif }
 		.a { color: var(--brand); margin: var(--gap) var(--gap) 0; padding-left: var(--pad); border: var(--gap) solid var(--brand) }
 		.b { color: var(--missing, red); margin-top: var(--missing, var(--gap)) }
@@ -260,22 +230,22 @@ custom_properties :: proc(t: ^testing.T) {
 		.g { margin: var(--gap) }
 	</style><div id=a class=a></div><div id=b class=b></div><div id=c class=c></div><div id=d class=d></div>
 	<div id=e class=e><div id=inner class=inner></div></div><div id=f class=f></div><div id=g class=g></div>`)
-	defer unload(&f)
-	a := at(&f, "a")
+	defer fixture_unload(f)
+	a := at(f, "a")
 	testing.expect(t, same_color(a.color, BLUE))
 	testing.expect(t, near(a.margin[.Top].v, 8) && near(a.margin[.Bottom].v, 0), "var() inside a shorthand")
 	testing.expect(t, near(a.padding[.Left].v, 16), "a custom property can use another")
 	testing.expect(t, near(a.border_width[.Top], 8) && same_color(a.border_color[.Top], BLUE))
-	b := at(&f, "b")
+	b := at(f, "b")
 	testing.expect(t, same_color(b.color, RED), "fallback")
 	testing.expect(t, near(b.margin[.Top].v, 8), "fallback that is itself a var()")
-	testing.expect(t, same_color(at(&f, "c").color, css.Color{0, 0, 0, 1}), "a missing variable without fallback: unset, so the inherited color")
-	testing.expect(t, same_color(at(&f, "d").color, GREEN), "a cycle is invalid, so the fallback is used")
-	testing.expect(t, near(at(&f, "e").margin[.Top].v, 1))
-	testing.expect(t, near(at(&f, "inner").margin[.Top].v, 1), "custom properties inherit")
-	testing.expect(t, at(&f, "inner").font_family[0] == "Fira Sans")
-	testing.expect(t, same_color(at(&f, "f").color, RED), "an element's own definition wins over the inherited one")
-	testing.expect(t, near(at(&f, "g").margin[.Left].v, 8))
+	testing.expect(t, same_color(at(f, "c").color, css.Color{0, 0, 0, 1}), "a missing variable without fallback: unset, so the inherited color")
+	testing.expect(t, same_color(at(f, "d").color, GREEN), "a cycle is invalid, so the fallback is used")
+	testing.expect(t, near(at(f, "e").margin[.Top].v, 1))
+	testing.expect(t, near(at(f, "inner").margin[.Top].v, 1), "custom properties inherit")
+	testing.expect(t, at(f, "inner").font_family[0] == "Fira Sans")
+	testing.expect(t, same_color(at(f, "f").color, RED), "an element's own definition wins over the inherited one")
+	testing.expect(t, near(at(f, "g").margin[.Left].v, 8))
 }
 
 @(test)
@@ -285,9 +255,9 @@ var_expansion_is_bounded :: proc(t: ^testing.T) {
 	strings.write_string(&sb, "<style>:root { --v0: aaaaaaaaaaaaaaaa; ")
 	for i in 1 ..= 40 { fmt.sbprintf(&sb, "--v%d: var(--v%d) var(--v%d); ", i, i - 1, i - 1) }
 	strings.write_string(&sb, "} #a { font-family: var(--v40); color: green }</style><div id=a></div>")
-	f := load(strings.to_string(sb))
-	defer unload(&f)
-	testing.expect(t, same_color(at(&f, "a").color, GREEN), "the document is still styled")
+	f := fixture_load(strings.to_string(sb))
+	defer fixture_unload(f)
+	testing.expect(t, same_color(at(f, "a").color, GREEN), "the document is still styled")
 }
 
 // A large custom property substituted by every element: the token trees of substitution are scratch memory of the
@@ -300,15 +270,15 @@ var_substitution_memory_is_per_element :: proc(t: ^testing.T) {
 	strings.write_string(&sb, "; --c: green } * { color: var(--a); margin: var(--a); background-color: var(--c) }</style><body>")
 	for _ in 0 ..< 200 { strings.write_string(&sb, "<div class=d></div>") }
 	strings.write_string(&sb, "<p id=p></p></body>")
-	f := load(strings.to_string(sb))
-	defer unload(&f)
-	testing.expect(t, same_color(at(&f, "p").background_color, GREEN), "the document is styled")
+	f := fixture_load(strings.to_string(sb))
+	defer fixture_unload(f)
+	testing.expect(t, same_color(at(f, "p").background_color, GREEN), "the document is styled")
 	testing.expectf(t, f.st.arena.total_used < 4 << 20, "%d bytes kept by the pass", f.st.arena.total_used)
 }
 
 @(test)
 selector_matching :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		.hit { outline-offset: 1px }
 		ul > li { margin-top: 1px }
 		li + li { margin-top: 2px }
@@ -347,123 +317,123 @@ selector_matching :: proc(t: ^testing.T) {
 	<div id=dv><span id=sp class=in>s</span><span id=sp2>s2</span></div><div id=dv2></div><p id=after>x</p>
 	<i id=i1 data-x=abc data-i=ab></i><i id=i2 data-x=a></i><i id=i3 data-x="w1 w2 w3"></i><i id=i4 lang=en-US></i><i id=i5 lang=fr-CA></i>
 	<a id=lnk href=x>a</a><a id=nolnk>b</a><input id=dis disabled><input id=chk type=checkbox checked><p id=fr lang=fr>bonjour</p>`)
-	defer unload(&f)
-	m := proc(f: ^Fx, id: string) -> ^Computed { return at(f, id) }
-	testing.expect(t, near(m(&f, "l1").margin[.Top].v, 1), "child combinator")
-	testing.expect(t, near(m(&f, "l2").margin[.Top].v, 2), "adjacent sibling combinator")
-	testing.expect(t, near(m(&f, "l3").margin[.Top].v, 29), ":nth-child(2 of .sel): the second .sel child")
-	testing.expect(t, near(m(&f, "p1").margin[.Top].v, 3), "subsequent sibling")
-	testing.expect(t, near(m(&f, "p1").margin[.Bottom].v, 10), ":is() + p")
-	testing.expect(t, near(m(&f, "l1").padding[.Top].v, 5), ":first-child")
-	testing.expect(t, near(m(&f, "l4").padding[.Top].v, 6), ":last-child")
-	testing.expect(t, near(m(&f, "l1").padding[.Bottom].v, 7) && near(m(&f, "l3").padding[.Bottom].v, 7) && near(m(&f, "l2").padding[.Bottom].v, 0), "2n+1")
-	testing.expect(t, near(m(&f, "l1").padding[.Left].v, 8) && near(m(&f, "l2").padding[.Left].v, 8) && near(m(&f, "l3").padding[.Left].v, 0), "-n+2")
-	testing.expect(t, near(m(&f, "l4").padding[.Right].v, 9), ":nth-last-child(1)")
-	testing.expect(t, m(&f, "p1").border_style[.Top] == .Solid && m(&f, "p2").border_style[.Top] == .None, ":not()")
-	testing.expect(t, near(m(&f, "i1").margin[.Left].v, 11) && near(m(&f, "i2").margin[.Right].v, 12))
-	testing.expect(t, near(m(&f, "i1").padding[.Top].v, 13) && near(m(&f, "i1").padding[.Bottom].v, 14) && near(m(&f, "i1").padding[.Left].v, 15))
-	testing.expect(t, near(m(&f, "i3").padding[.Right].v, 16), "~=")
-	testing.expect(t, near(m(&f, "i4").margin[.Top].v, 17) && near(m(&f, "i5").margin[.Top].v, 0), "|=")
-	testing.expect(t, near(m(&f, "i1").margin[.Bottom].v, 18), "case-insensitive flag")
-	testing.expect(t, near(m(&f, "dv").margin[.Left].v, 19), ":has(> child)")
-	testing.expect(t, near(m(&f, "dv2").margin[.Right].v, 20), ":has(+ sibling)")
-	testing.expect(t, near(m(&f, "lnk").margin[.Top].v, 21) && near(m(&f, "nolnk").margin[.Top].v, 0))
-	testing.expect(t, near(m(&f, "dis").margin[.Top].v, 22) && near(m(&f, "chk").margin[.Top].v, 23))
-	testing.expect(t, near(m(&f, "p2").margin[.Top].v, 24), ":empty")
-	testing.expect(t, near(m(&f, "fr").margin[.Top].v, 26), ":lang(fr)")
-	testing.expect(t, near(m(&f, "only").margin[.Top].v, 27) , ":only-child")
-	testing.expect(t, near(m(&f, "sp").margin[.Top].v, 28), ":first-of-type")
-	testing.expect(t, near(m(&f, "sp2").margin[.Top].v, 0))
+	defer fixture_unload(f)
+	m := proc(f: ^Fixture, id: string) -> ^Computed { return at(f, id) }
+	testing.expect(t, near(m(f, "l1").margin[.Top].v, 1), "child combinator")
+	testing.expect(t, near(m(f, "l2").margin[.Top].v, 2), "adjacent sibling combinator")
+	testing.expect(t, near(m(f, "l3").margin[.Top].v, 29), ":nth-child(2 of .sel): the second .sel child")
+	testing.expect(t, near(m(f, "p1").margin[.Top].v, 3), "subsequent sibling")
+	testing.expect(t, near(m(f, "p1").margin[.Bottom].v, 10), ":is() + p")
+	testing.expect(t, near(m(f, "l1").padding[.Top].v, 5), ":first-child")
+	testing.expect(t, near(m(f, "l4").padding[.Top].v, 6), ":last-child")
+	testing.expect(t, near(m(f, "l1").padding[.Bottom].v, 7) && near(m(f, "l3").padding[.Bottom].v, 7) && near(m(f, "l2").padding[.Bottom].v, 0), "2n+1")
+	testing.expect(t, near(m(f, "l1").padding[.Left].v, 8) && near(m(f, "l2").padding[.Left].v, 8) && near(m(f, "l3").padding[.Left].v, 0), "-n+2")
+	testing.expect(t, near(m(f, "l4").padding[.Right].v, 9), ":nth-last-child(1)")
+	testing.expect(t, m(f, "p1").border_style[.Top] == .Solid && m(f, "p2").border_style[.Top] == .None, ":not()")
+	testing.expect(t, near(m(f, "i1").margin[.Left].v, 11) && near(m(f, "i2").margin[.Right].v, 12))
+	testing.expect(t, near(m(f, "i1").padding[.Top].v, 13) && near(m(f, "i1").padding[.Bottom].v, 14) && near(m(f, "i1").padding[.Left].v, 15))
+	testing.expect(t, near(m(f, "i3").padding[.Right].v, 16), "~=")
+	testing.expect(t, near(m(f, "i4").margin[.Top].v, 17) && near(m(f, "i5").margin[.Top].v, 0), "|=")
+	testing.expect(t, near(m(f, "i1").margin[.Bottom].v, 18), "case-insensitive flag")
+	testing.expect(t, near(m(f, "dv").margin[.Left].v, 19), ":has(> child)")
+	testing.expect(t, near(m(f, "dv2").margin[.Right].v, 20), ":has(+ sibling)")
+	testing.expect(t, near(m(f, "lnk").margin[.Top].v, 21) && near(m(f, "nolnk").margin[.Top].v, 0))
+	testing.expect(t, near(m(f, "dis").margin[.Top].v, 22) && near(m(f, "chk").margin[.Top].v, 23))
+	testing.expect(t, near(m(f, "p2").margin[.Top].v, 24), ":empty")
+	testing.expect(t, near(m(f, "fr").margin[.Top].v, 26), ":lang(fr)")
+	testing.expect(t, near(m(f, "only").margin[.Top].v, 27) , ":only-child")
+	testing.expect(t, near(m(f, "sp").margin[.Top].v, 28), ":first-of-type")
+	testing.expect(t, near(m(f, "sp2").margin[.Top].v, 0))
 	root := style_of(f.st, dom.find_first_by_tag(f.doc, "html"))
 	testing.expect(t, near(root.margin[.Top].v, 25), ":root")
 }
 
 @(test)
 dynamic_state :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		a:hover { color: red } div:hover { margin-top: 5px } a:focus { color: blue } input:focus-within, div:focus-within { margin-left: 6px }
 		:target { margin-top: 7px } button:active { margin-top: 8px }
 	</style><div id=d><a id=a href=x>l</a></div><span id=frag>t</span><button id=btn>b</button>`)
-	defer unload(&f)
+	defer fixture_unload(f)
 	a_h := dom.find_by_id(f.doc, "a")
-	testing.expect(t, !same_color(at(&f, "a").color, RED))
-	restyle(&f, State{hover = a_h})
-	testing.expect(t, same_color(at(&f, "a").color, RED), ":hover on the element")
-	testing.expect(t, near(at(&f, "d").margin[.Top].v, 5), ":hover also applies to ancestors")
-	restyle(&f, State{focus = a_h})
-	testing.expect(t, same_color(at(&f, "a").color, BLUE) && near(at(&f, "d").margin[.Left].v, 6), ":focus and :focus-within")
-	restyle(&f, State{target_id = "frag"})
-	testing.expect(t, near(at(&f, "frag").margin[.Top].v, 7), ":target")
-	restyle(&f, State{active = dom.find_by_id(f.doc, "btn")})
-	testing.expect(t, near(at(&f, "btn").margin[.Top].v, 8), ":active")
+	testing.expect(t, !same_color(at(f, "a").color, RED))
+	restyle(f, State{hover = a_h})
+	testing.expect(t, same_color(at(f, "a").color, RED), ":hover on the element")
+	testing.expect(t, near(at(f, "d").margin[.Top].v, 5), ":hover also applies to ancestors")
+	restyle(f, State{focus = a_h})
+	testing.expect(t, same_color(at(f, "a").color, BLUE) && near(at(f, "d").margin[.Left].v, 6), ":focus and :focus-within")
+	restyle(f, State{target_id = "frag"})
+	testing.expect(t, near(at(f, "frag").margin[.Top].v, 7), ":target")
+	restyle(f, State{active = dom.find_by_id(f.doc, "btn")})
+	testing.expect(t, near(at(f, "btn").margin[.Top].v, 8), ":active")
 }
 
 @(test)
 fullscreen_state :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		#v:fullscreen { padding-left: 3px } #v:-webkit-full-screen { padding-right: 4px } div:fullscreen > #in { margin-top: 5px }
 		div:-webkit-full-screen { padding-bottom: 7px }
 		#w:not(:fullscreen) { margin-top: 6px }
 	</style><div id=v><span id=in>x</span></div><div id=w>y</div>`)
-	defer unload(&f)
-	testing.expect(t, near(at(&f, "v").padding[.Left].v, 0) && near(at(&f, "in").margin[.Top].v, 0), "no fullscreen element")
-	testing.expect(t, near(at(&f, "w").margin[.Top].v, 6), ":not(:fullscreen)")
+	defer fixture_unload(f)
+	testing.expect(t, near(at(f, "v").padding[.Left].v, 0) && near(at(f, "in").margin[.Top].v, 0), "no fullscreen element")
+	testing.expect(t, near(at(f, "w").margin[.Top].v, 6), ":not(:fullscreen)")
 	v := dom.find_by_id(f.doc, "v")
-	restyle(&f, State{fullscreen = v})
-	testing.expect(t, near(at(&f, "v").padding[.Left].v, 3), ":fullscreen matches the element")
-	testing.expect(t, near(at(&f, "v").padding[.Bottom].v, 7), ":-webkit-full-screen alone matches the element")
-	testing.expect(t, near(at(&f, "v").padding[.Right].v, 4), ":-webkit-full-screen matches the element")
-	testing.expect(t, at(&f, "v").position == .Fixed && !at(&f, "v").z_auto && near(at(&f, "v").margin[.Left].v, 0), "the UA rule: fixed over the viewport, above all")
-	testing.expect(t, at(&f, "in").position == .Static, "... for the fullscreen element only")
-	testing.expect(t, near(at(&f, "in").margin[.Top].v, 5), "a rule through :fullscreen reaches its child")
-	testing.expect(t, near(at(&f, "w").margin[.Top].v, 6), "the other element is not fullscreen")
-	restyle(&f, State{fullscreen = dom.find_by_id(f.doc, "w")})
-	testing.expect(t, near(at(&f, "v").padding[.Left].v, 0) && near(at(&f, "in").margin[.Top].v, 0) && near(at(&f, "w").margin[.Top].v, 0), "another element: the old one is restyled, :not(:fullscreen) stops")
-	restyle(&f, State{})
-	testing.expect(t, near(at(&f, "v").padding[.Left].v, 0) && near(at(&f, "w").margin[.Top].v, 6), "leaving restores the styles")
+	restyle(f, State{fullscreen = v})
+	testing.expect(t, near(at(f, "v").padding[.Left].v, 3), ":fullscreen matches the element")
+	testing.expect(t, near(at(f, "v").padding[.Bottom].v, 7), ":-webkit-full-screen alone matches the element")
+	testing.expect(t, near(at(f, "v").padding[.Right].v, 4), ":-webkit-full-screen matches the element")
+	testing.expect(t, at(f, "v").position == .Fixed && !at(f, "v").z_auto && near(at(f, "v").margin[.Left].v, 0), "the UA rule: fixed over the viewport, above all")
+	testing.expect(t, at(f, "in").position == .Static, "... for the fullscreen element only")
+	testing.expect(t, near(at(f, "in").margin[.Top].v, 5), "a rule through :fullscreen reaches its child")
+	testing.expect(t, near(at(f, "w").margin[.Top].v, 6), "the other element is not fullscreen")
+	restyle(f, State{fullscreen = dom.find_by_id(f.doc, "w")})
+	testing.expect(t, near(at(f, "v").padding[.Left].v, 0) && near(at(f, "in").margin[.Top].v, 0) && near(at(f, "w").margin[.Top].v, 0), "another element: the old one is restyled, :not(:fullscreen) stops")
+	restyle(f, State{})
+	testing.expect(t, near(at(f, "v").padding[.Left].v, 0) && near(at(f, "w").margin[.Top].v, 6), "leaving restores the styles")
 }
 
 @(test)
 fullscreen_top_layer_frees_the_ancestors :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		#a { transform: translateX(10px); z-index: 3; position: relative; opacity: .5; filter: blur(2px); contain: paint; will-change: transform }
 		#b { perspective: 100px; isolation: isolate; clip-path: circle(10px) }
 		#o { transform: scale(2); opacity: .5 }
 	</style><div id=a><div id=b><div id=v>x</div></div></div><div id=o>y</div>`)
-	defer unload(&f)
-	a, b := at(&f, "a"), at(&f, "b")
+	defer fixture_unload(f)
+	a, b := at(f, "a"), at(f, "b")
 	testing.expect(t, len(a.transform) == 1 && !a.z_auto && near(a.opacity, 0.5) && len(a.filter) == 1, "before: the ancestors make stacking contexts and containing blocks")
-	restyle(&f, State{fullscreen = dom.find_by_id(f.doc, "v")})
-	a, b = at(&f, "a"), at(&f, "b")
+	restyle(f, State{fullscreen = dom.find_by_id(f.doc, "v")})
+	a, b = at(f, "a"), at(f, "b")
 	testing.expect(t, a.transform == nil && a.z_auto && near(a.opacity, 1) && a.filter == nil && a.contain == {} && a.will_change == nil, "in full screen: no transform, stacking context, opacity, filter or containment above it")
 	testing.expect(t, b.perspective == 0 && b.clip_path == nil, "... at any depth")
-	testing.expect(t, len(at(&f, "o").transform) == 1 && near(at(&f, "o").opacity, 0.5), "an element that is not above it keeps its style")
-	restyle(&f, State{})
-	a = at(&f, "a")
+	testing.expect(t, len(at(f, "o").transform) == 1 && near(at(f, "o").opacity, 0.5), "an element that is not above it keeps its style")
+	restyle(f, State{})
+	a = at(f, "a")
 	testing.expect(t, len(a.transform) == 1 && !a.z_auto && near(a.opacity, 0.5), "leaving gives them their style back")
 }
 
 @(test)
 popover_top_layer_frees_the_ancestors :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		#a { transform: translateX(10px); z-index: 3; position: relative; opacity: .5 }
 		#outer { transform: scale(2) }
 	</style><div id=a><div id=outer><div id=inner>x</div></div></div>`)
-	defer unload(&f)
+	defer fixture_unload(f)
 	outer, inner := dom.find_by_id(f.doc, "outer"), dom.find_by_id(f.doc, "inner")
 	engine_set_top_layer(f.eng, {outer, inner})
-	restyle(&f)
-	a := at(&f, "a")
+	restyle(f)
+	a := at(f, "a")
 	testing.expect(t, a.transform == nil && a.z_auto && near(a.opacity, 1), "an ancestor of a top layer element: no transform, stacking context or opacity")
-	testing.expect(t, len(at(&f, "outer").transform) == 1, "a top layer element keeps its own style, an ancestor of another one too")
+	testing.expect(t, len(at(f, "outer").transform) == 1, "a top layer element keeps its own style, an ancestor of another one too")
 	engine_set_top_layer(f.eng, nil)
-	restyle(&f)
-	testing.expect(t, len(at(&f, "a").transform) == 1 && !at(&f, "a").z_auto, "out of the top layer: the style comes back")
+	restyle(f)
+	testing.expect(t, len(at(f, "a").transform) == 1 && !at(f, "a").z_auto, "out of the top layer: the style comes back")
 }
 
 @(test)
 media_and_supports :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		#a { margin-top: 1px }
 		@media (min-width: 900px) { #a { margin-top: 2px } }
 		@media (max-width: 899px) { #a { margin-top: 3px } }
@@ -474,22 +444,22 @@ media_and_supports :: proc(t: ^testing.T) {
 		@media (prefers-color-scheme: dark) { #e { margin-top: 8px } }
 		@media print { #f { margin-top: 9px } }
 	</style><div id=a></div><div id=b></div><div id=c></div><div id=d></div><div id=e></div><div id=f></div>`)
-	defer unload(&f)
-	testing.expect(t, near(at(&f, "a").margin[.Top].v, 2), "viewport 1280 wide")
-	testing.expect(t, near(at(&f, "b").margin[.Top].v, 4), "supported property")
-	testing.expect(t, near(at(&f, "c").margin[.Top].v, 6), "not (unsupported)")
-	testing.expect(t, near(at(&f, "d").margin[.Top].v, 7))
-	testing.expect(t, near(at(&f, "e").margin[.Top].v, 0))
-	testing.expect(t, near(at(&f, "f").margin[.Top].v, 0), "print rules do not apply on screen")
+	defer fixture_unload(f)
+	testing.expect(t, near(at(f, "a").margin[.Top].v, 2), "viewport 1280 wide")
+	testing.expect(t, near(at(f, "b").margin[.Top].v, 4), "supported property")
+	testing.expect(t, near(at(f, "c").margin[.Top].v, 6), "not (unsupported)")
+	testing.expect(t, near(at(f, "d").margin[.Top].v, 7))
+	testing.expect(t, near(at(f, "e").margin[.Top].v, 0))
+	testing.expect(t, near(at(f, "f").margin[.Top].v, 0), "print rules do not apply on screen")
 
 	env := f.eng.env
 	env.width = 600
 	env.prefers_dark = true
 	testing.expect(t, engine_set_environment(f.eng, env))
 	testing.expect(t, f.eng.gates_pending && f.eng.restyle_needed, "a viewport change flips the gates of the media blocks, and the color scheme asks for a full pass")
-	restyle(&f)
-	testing.expect(t, near(at(&f, "a").margin[.Top].v, 3))
-	testing.expect(t, near(at(&f, "e").margin[.Top].v, 8))
+	restyle(f)
+	testing.expect(t, near(at(f, "a").margin[.Top].v, 3))
+	testing.expect(t, near(at(f, "e").margin[.Top].v, 8))
 
 	// a width between the same breakpoints: no media list answers otherwise, the rules and the styles stand
 	f.eng.restyle_needed = false
@@ -500,46 +470,46 @@ media_and_supports :: proc(t: ^testing.T) {
 	env.width = 950
 	engine_set_environment(f.eng, env)
 	testing.expect(t, !f.eng.dirty && f.eng.gates_pending, "resized across a breakpoint")
-	restyle(&f)
-	testing.expect(t, near(at(&f, "a").margin[.Top].v, 2))
+	restyle(f)
+	testing.expect(t, near(at(f, "a").margin[.Top].v, 2))
 }
 
 // A media query that changes value restyles the elements its rules reach, not the document (media_gate.odin): the same styles as
 // a full pass gives, the elements nothing reaches keep their records.
 @(test)
 media_flip_restyles_what_its_rules_reach :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		.w { margin-top: 1px }
 		@media (min-width: 900px) { .w { margin-top: 2px } #p { font-size: 30px } .q { display: none } }
 		@media (min-width: 900px) { @media (min-width: 1200px) { #n { margin-left: 9px } } }
 		@supports (display: grid) { @media (max-width: 899px) { #s { margin-left: 4px } } }
 	</style><div id=a class=w></div><div id=b></div><div id=p><span id=c style="margin-left: 2em"></span></div>
 	<div id=d class=w></div><div id=e class=q></div><div id=n></div><div id=s></div><div id=z><i id=y></i></div>`)
-	defer unload(&f)
+	defer fixture_unload(f)
 	e := f.eng
 	testing.expect(t, len(e.gates) == 5, "four blocks (and the unused first slot)")
-	testing.expect(t, near(at(&f, "a").margin[.Top].v, 2) && at(&f, "e").display == .None && near(at(&f, "c").margin[.Left].v, 60))
-	testing.expect(t, near(at(&f, "n").margin[.Left].v, 9) || near(at(&f, "n").margin[.Left].v, 0))
+	testing.expect(t, near(at(f, "a").margin[.Top].v, 2) && at(f, "e").display == .None && near(at(f, "c").margin[.Left].v, 60))
+	testing.expect(t, near(at(f, "n").margin[.Left].v, 9) || near(at(f, "n").margin[.Left].v, 0))
 	env := e.env
-	before_z, before_y := at(&f, "z"), at(&f, "y")
+	before_z, before_y := at(f, "z"), at(f, "y")
 	env.width = 700
 	testing.expect(t, engine_set_environment(e, env))
 	testing.expect(t, !e.dirty && !e.restyle_needed && e.gates_pending, "a breakpoint is crossed: no rebuild, no full pass")
 	changed, ok := restyle_media(e, f.doc, f.st)
 	testing.expect(t, ok && changed && !e.gates_pending)
 	testing.expect_value(t, e.last_restyle.marked, 7)   // a, d, p and its child (font-size is inherited), e, n, s
-	testing.expect(t, near(at(&f, "a").margin[.Top].v, 1) && near(at(&f, "d").margin[.Top].v, 1), "the elements of .w")
-	testing.expect(t, at(&f, "e").display != .None && near(at(&f, "s").margin[.Left].v, 4), "display and a rule that comes in")
-	testing.expect(t, near(at(&f, "c").margin[.Left].v, 32), "a child whose em follows the font size of its parent")
-	testing.expect(t, at(&f, "z") == before_z && at(&f, "y") == before_y, "what no rule reaches keeps its record")
+	testing.expect(t, near(at(f, "a").margin[.Top].v, 1) && near(at(f, "d").margin[.Top].v, 1), "the elements of .w")
+	testing.expect(t, at(f, "e").display != .None && near(at(f, "s").margin[.Left].v, 4), "display and a rule that comes in")
+	testing.expect(t, near(at(f, "c").margin[.Left].v, 32), "a child whose em follows the font size of its parent")
+	testing.expect(t, at(f, "z") == before_z && at(f, "y") == before_y, "what no rule reaches keeps its record")
 	testing.expect_value(t, verify_styles(e, f.doc, f.st, context.temp_allocator), "")
 	// and back: the wide document again
 	env.width = 1300
 	engine_set_environment(e, env)
 	changed, ok = restyle_media(e, f.doc, f.st)
 	testing.expect(t, ok && changed)
-	testing.expect(t, near(at(&f, "n").margin[.Left].v, 9), "a nested block holds when both do")
-	testing.expect(t, near(at(&f, "a").margin[.Top].v, 2) && at(&f, "e").display == .None)
+	testing.expect(t, near(at(f, "n").margin[.Left].v, 9), "a nested block holds when both do")
+	testing.expect(t, near(at(f, "a").margin[.Top].v, 2) && at(f, "e").display == .None)
 	testing.expect_value(t, verify_styles(e, f.doc, f.st, context.temp_allocator), "")
 	// a width that crosses nothing asks for nothing
 	env.width = 1400
@@ -551,8 +521,8 @@ media_flip_restyles_what_its_rules_reach :: proc(t: ^testing.T) {
 // every page its settings again) leave its rules and the styles alone.
 @(test)
 configure_with_the_same_settings_is_nothing :: proc(t: ^testing.T) {
-	f := load(`<style>#a { margin-top: 2px }</style><div id=a></div>`)
-	defer unload(&f)
+	f := fixture_load(`<style>#a { margin-top: 2px }</style><div id=a></div>`)
+	defer fixture_unload(f)
 	same := settings_default()
 	testing.expect(t, !engine_configure(f.eng, same), "the same settings")
 	testing.expect(t, !f.eng.dirty, "no rebuild")
@@ -566,8 +536,8 @@ configure_with_the_same_settings_is_nothing :: proc(t: ^testing.T) {
 // the preference keep the rebuild.
 @(test)
 media_blocks_that_stay_a_rebuild :: proc(t: ^testing.T) {
-	f := load(`<style>@media (min-width: 900px) { @keyframes k { to { opacity: 0 } } #a { margin-top: 2px } }</style><div id=a></div>`)
-	defer unload(&f)
+	f := fixture_load(`<style>@media (min-width: 900px) { @keyframes k { to { opacity: 0 } } #a { margin-top: 2px } }</style><div id=a></div>`)
+	defer fixture_unload(f)
 	testing.expect(t, len(f.eng.gates) == 0, "a block with @keyframes is not gated")
 	env := f.eng.env
 	env.width = 700
@@ -576,8 +546,8 @@ media_blocks_that_stay_a_rebuild :: proc(t: ^testing.T) {
 
 	s := settings_default()
 	s.media_partial = false
-	g := load(`<style>@media (min-width: 900px) { #a { margin-top: 2px } }</style><div id=a></div>`, s)
-	defer unload(&g)
+	g := fixture_load(`<style>@media (min-width: 900px) { #a { margin-top: 2px } }</style><div id=a></div>`, {set = &s})
+	defer fixture_unload(g)
 	settings_destroy(&s)
 	testing.expect(t, len(g.eng.gates) == 0)
 	env = g.eng.env
@@ -589,9 +559,9 @@ media_blocks_that_stay_a_rebuild :: proc(t: ^testing.T) {
 // A sheet's own media list (<style media>, <link media>) counts like an @media rule.
 @(test)
 media_lists_of_sheets :: proc(t: ^testing.T) {
-	f := load(`<style media="(max-width: 500px)">#a { margin-top: 3px }</style><div id=a></div>`)
-	defer unload(&f)
-	testing.expect(t, near(at(&f, "a").margin[.Top].v, 0))
+	f := fixture_load(`<style media="(max-width: 500px)">#a { margin-top: 3px }</style><div id=a></div>`)
+	defer fixture_unload(f)
+	testing.expect(t, near(at(f, "a").margin[.Top].v, 0))
 	env := f.eng.env
 	env.width = 900
 	engine_set_environment(f.eng, env)
@@ -599,34 +569,34 @@ media_lists_of_sheets :: proc(t: ^testing.T) {
 	env.width = 400
 	engine_set_environment(f.eng, env)
 	testing.expect(t, f.eng.dirty)
-	restyle(&f)
-	testing.expect(t, near(at(&f, "a").margin[.Top].v, 3))
+	restyle(f)
+	testing.expect(t, near(at(f, "a").margin[.Top].v, 3))
 }
 
 // <link media="print" onload="this.media='all'">: a loaded link sheet follows its media attribute.
 @(test)
 link_sheet_media_attribute :: proc(t: ^testing.T) {
-	f := load(`<link id=l rel=stylesheet href="a.css" media="print"><div id=a></div>`)
-	defer unload(&f)
+	f := fixture_load(`<link id=l rel=stylesheet href="a.css" media="print"><div id=a></div>`)
+	defer fixture_unload(f)
 	l := dom.find_by_id(f.doc, "l")
 	engine_add_sheet(f.eng, "#a { margin-top: 3px }", l, "print", "http://x/a.css", from_link = true)
-	restyle(&f)
-	testing.expect(t, near(at(&f, "a").margin[.Top].v, 0), "print only")
+	restyle(f)
+	testing.expect(t, near(at(f, "a").margin[.Top].v, 0), "print only")
 	dom.set_attribute(f.doc, l, "media", "all")
 	sync_document_sheets(f.eng, f.doc, "about:test")
 	testing.expect(t, f.eng.dirty)
-	restyle(&f)
-	testing.expect(t, near(at(&f, "a").margin[.Top].v, 3), "the same sheet, now for all media")
+	restyle(f)
+	testing.expect(t, near(at(f, "a").margin[.Top].v, 3), "the same sheet, now for all media")
 	testing.expect_value(t, len(f.eng.sheets), 2)   // (the UA sheet and the link's: not loaded again)
 	dom.remove_attribute(f.doc, l, "media")
 	sync_document_sheets(f.eng, f.doc, "about:test")
-	restyle(&f)
-	testing.expect(t, near(at(&f, "a").margin[.Top].v, 3), "no media attribute: all")
+	restyle(f)
+	testing.expect(t, near(at(f, "a").margin[.Top].v, 3), "no media attribute: all")
 }
 
 @(test)
 pseudo_elements_and_nesting :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		#a::before { content: "["; color: red }
 		#a::after { content: attr(data-x) "!"; display: block }
 		#b::before { color: red }
@@ -634,36 +604,36 @@ pseudo_elements_and_nesting :: proc(t: ^testing.T) {
 		.card { color: green; & .title { color: blue } .x:hover { color: red } > p { margin-top: 3px } &.big { margin-top: 4px } @media (min-width: 10px) { padding-top: 5px } }
 	</style><p id=a data-x=hi>t</p><p id=b>t</p><p id=c>t</p>
 	<div id=card class="card big"><span id=t class=title>t</span><span id=x class=x>t</span><p id=cp>t</p></div>`)
-	defer unload(&f)
-	a := at(&f, "a")
+	defer fixture_unload(f)
+	a := at(f, "a")
 	testing.expect(t, a.before != nil && a.before.content.kind == .Items && a.before.content.items[0].text == "[")
 	testing.expect(t, same_color(a.before.color, RED))
 	testing.expect(t, a.after != nil && len(a.after.content.items) == 1 && a.after.content.items[0].kind == .Text && a.after.content.items[0].text == "hi!" && a.after.display == .Block, "attr() is resolved into the text")
 	testing.expect(t, len(a.after.content.parts) == 2 && a.after.content.parts[0].kind == .Attr, "the specified parts are kept")
-	testing.expect(t, at(&f, "b").before == nil, "no content, no box")
-	testing.expect(t, at(&f, "c").after == nil)
-	testing.expect(t, same_color(at(&f, "t").color, BLUE), "nested rule with &")
-	testing.expect(t, same_color(at(&f, "x").color, GREEN), "nested .x:hover does not apply without hover")
-	testing.expect(t, near(at(&f, "cp").margin[.Top].v, 3), "nested relative selector `> p`")
-	testing.expect(t, near(at(&f, "card").margin[.Top].v, 4), "&.big")
-	testing.expect(t, near(at(&f, "card").padding[.Top].v, 5), "nested @media with declarations")
+	testing.expect(t, at(f, "b").before == nil, "no content, no box")
+	testing.expect(t, at(f, "c").after == nil)
+	testing.expect(t, same_color(at(f, "t").color, BLUE), "nested rule with &")
+	testing.expect(t, same_color(at(f, "x").color, GREEN), "nested .x:hover does not apply without hover")
+	testing.expect(t, near(at(f, "cp").margin[.Top].v, 3), "nested relative selector `> p`")
+	testing.expect(t, near(at(f, "card").margin[.Top].v, 4), "&.big")
+	testing.expect(t, near(at(f, "card").padding[.Top].v, 5), "nested @media with declarations")
 }
 
 @(test)
 invalid_values_are_ignored :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		#a { color: red; color: notacolor; width: 10px; width: -5px; display: bogus; margin-top: 1px; margin-top: 2 }
 		#b { frobnicate: 1; font-size: 10px; font-size: banana }
 		#c { color: var(--undefined); width: 7px; width: var(--undefined) }
 	</style><div id=a></div><div id=b></div><div id=c></div>`)
-	defer unload(&f)
-	a := at(&f, "a")
+	defer fixture_unload(f)
+	a := at(f, "a")
 	testing.expect(t, same_color(a.color, RED), "the invalid declaration is dropped, the earlier valid one stays")
 	testing.expect(t, a.width.kind == .Px && near(a.width.v, 10), "negative width is invalid")
 	testing.expect(t, a.display == .Block, "unknown display keyword is ignored")
 	testing.expect(t, near(a.margin[.Top].v, 1), "a unitless nonzero number is not a length")
-	testing.expect(t, near(at(&f, "b").font_size, 10))
-	testing.expect(t, at(&f, "c").width.kind == .Auto, "invalid at computed-value time: unset, the earlier 7px does not come back")
+	testing.expect(t, near(at(f, "b").font_size, 10))
+	testing.expect(t, at(f, "c").width.kind == .Auto, "invalid at computed-value time: unset, the earlier 7px does not come back")
 	testing.expect(t, f.eng.ignored_properties >= 1)
 }
 
@@ -673,20 +643,20 @@ settings_change_behaviour :: proc(t: ^testing.T) {
 	s.author_colors = false
 	s.default_font_size = 20
 	s.body_margin = 0
-	f := load(`<style>div { color: red; background: blue; font-size: 2em }</style><div id=a>x</div>`, s)
+	f := fixture_load(`<style>div { color: red; background: blue; font-size: 2em }</style><div id=a>x</div>`, {set = &s})
 	settings_destroy(&s)
-	defer unload(&f)
-	a := at(&f, "a")
+	defer fixture_unload(f)
+	a := at(f, "a")
 	testing.expect(t, !same_color(a.color, RED) && a.background_color.a == 0, "author colors can be switched off")
 	testing.expect(t, near(a.font_size, 40), "default font size is a preference")
 	testing.expect(t, near(style_of(f.st, dom.find_first_by_tag(f.doc, "body")).margin[.Top].v, 0), "body margin is a preference")
 
 	s2 := settings_default()
 	s2.ua_stylesheet = false
-	g := load(`<h1 id=h>x</h1>`, s2)
+	g := fixture_load(`<h1 id=h>x</h1>`, {set = &s2})
 	settings_destroy(&s2)
-	defer unload(&g)
-	testing.expect(t, at(&g, "h").display == .Inline && near(at(&g, "h").font_size, 16), "without the browser stylesheet nothing is styled")
+	defer fixture_unload(g)
+	testing.expect(t, at(g, "h").display == .Inline && near(at(g, "h").font_size, 16), "without the browser stylesheet nothing is styled")
 }
 
 @(test)
@@ -699,29 +669,29 @@ hostile_stylesheets :: proc(t: ^testing.T) {
 	s := settings_default()
 	s.max_rules_total = 1000
 	s.max_selector_compounds = 8
-	f := load(strings.to_string(sb), s)
+	f := fixture_load(strings.to_string(sb), {set = &s})
 	settings_destroy(&s)
-	defer unload(&f)
+	defer fixture_unload(f)
 	testing.expect(t, f.eng.rule_count <= 1000, "the total rule limit is enforced")
-	testing.expect(t, at(&f, "a") != nil)
+	testing.expect(t, at(f, "a") != nil)
 }
 
 // Values that overflow the arithmetic of matching or of computed values: the page is styled, nothing traps.
 @(test)
 hostile_values :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		li:nth-child(-n-9223372036854775807) { color: red }
 		li:nth-last-child(-9223372036854775807n-9223372036854775807) { margin-top: 1px }
 		li:nth-child(99999999999999999999n+2) { color: blue }
 	</style><ul><li id=a>1</li><li id=b>2</li><li>3</li></ul>`)
-	defer unload(&f)
-	testing.expect(t, at(&f, "a") != nil)
-	testing.expect(t, same_color(at(&f, "b").color, {0, 0, 1, 1}), "2^31 n + 2 matches the second child")
+	defer fixture_unload(f)
+	testing.expect(t, at(f, "a") != nil)
+	testing.expect(t, same_color(at(f, "b").color, {0, 0, 1, 1}), "2^31 n + 2 matches the second child")
 }
 
 @(test)
 partial_restyle_matches_a_full_pass :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		a:hover { color: red }
 		.card:hover .title { color: blue }
 		.card:hover + .next { margin-top: 5px }
@@ -741,7 +711,7 @@ partial_restyle_matches_a_full_pass :: proc(t: ^testing.T) {
 	<div class=box id=bx1><p id=p2>p2 <i id=i2>i</i></p></div>
 	<div class=tint id=ti1>tint <u id=u2>u</u></div>
 	<button id=bt1>b</button><span id=frag>f</span>`)
-	defer unload(&f)
+	defer fixture_unload(f)
 	ids := []string{"c1", "t1", "p1", "b1", "n1", "u1", "l1", "l2", "l3", "d1", "i1", "a1", "x1", "bx1", "p2", "i2", "ti1", "u2", "bt1", "frag"}
 	states := make([dynamic]State, context.temp_allocator)
 	append(&states, State{})
@@ -763,14 +733,14 @@ partial_restyle_matches_a_full_pass :: proc(t: ^testing.T) {
 	testing.expect_value(t, reference_failures, 0)
 
 	// a state nobody's rules depend on costs nothing
-	g := load(`<style>p { color: red }</style><p id=a>a</p>`)
-	defer unload(&g)
+	g := fixture_load(`<style>p { color: red }</style><p id=a>a</p>`)
+	defer fixture_unload(g)
 	changed, ok := restyle_state(g.eng, g.doc, g.st, State{hover = dom.find_by_id(g.doc, "a")})
 	testing.expect(t, ok && !changed)
 
 	// a hover that only toggles a rule on one element restyles that element alone
-	h := load(`<style>.k:hover { color: red }</style><p id=a class=k>a</p><p id=b>b</p>`)
-	defer unload(&h)
+	h := fixture_load(`<style>.k:hover { color: red }</style><p id=a class=k>a</p><p id=b>b</p>`)
+	defer fixture_unload(h)
 	before_b := style_of(h.st, dom.find_by_id(h.doc, "b"))
 	changed, ok = restyle_state(h.eng, h.doc, h.st, State{hover = dom.find_by_id(h.doc, "a")})
 	testing.expect(t, ok && changed)
@@ -781,7 +751,7 @@ partial_restyle_matches_a_full_pass :: proc(t: ^testing.T) {
 // element whose state changed are restyled, and the result is that of a full pass.
 @(test)
 restyle_state_has :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		.card:has(a:hover) { margin-top: 3px }
 		.card:has(> a:focus) { margin-left: 4px }
 		li:has(+ li:hover) { margin-top: 5px }
@@ -795,7 +765,7 @@ restyle_state_has :: proc(t: ^testing.T) {
 	<div class=row id=r1><div class=cell id=ce1>c</div><span class=label id=lb1>L</span></div>
 	<div class=wrap id=w1><i id=i1>i</i><span id=s1>s</span></div>
 	<div class=hov id=h1><b id=hb1>x</b></div><div class=other id=o1><b id=ob1>y</b></div>`)
-	defer unload(&f)
+	defer fixture_unload(f)
 	ids := []string{"c1", "p1", "a1", "c2", "a2", "b2", "l1", "l2", "l3", "r1", "ce1", "lb1", "w1", "i1", "s1", "h1", "hb1", "o1", "ob1"}
 	states := make([dynamic]State, context.temp_allocator)
 	append(&states, State{})
@@ -823,27 +793,27 @@ restyle_state_has :: proc(t: ^testing.T) {
 // partial restyle cannot scope: it refuses, the caller does a full pass.
 @(test)
 restyle_state_root_font :: proc(t: ^testing.T) {
-	f := load(`<style>html:hover { font-size: 20px } html:focus-within { line-height: 40px } p { width: 1rem; height: 1rlh }</style><p id=p tabindex=0>x</p>`)
-	defer unload(&f)
+	f := fixture_load(`<style>html:hover { font-size: 20px } html:focus-within { line-height: 40px } p { width: 1rem; height: 1rlh }</style><p id=p tabindex=0>x</p>`)
+	defer fixture_unload(f)
 	html := dom.find_first_by_tag(f.doc, "html")
 	for st in ([]State{{hover = html}, {focus = dom.find_by_id(f.doc, "p")}}) {
 		if _, ok := restyle_state(f.eng, f.doc, f.st, st); ok {
 			testing.expect_value(t, verify_styles(f.eng, f.doc, f.st, context.temp_allocator), "")
 		} else {
-			restyle(&f, st)
+			restyle(f, st)
 		}
-		testing.expect(t, at(&f, "p").width.v == (st.hover != {} ? 20 : 16), "rem follows the root")
+		testing.expect(t, at(f, "p").width.v == (st.hover != {} ? 20 : 16), "rem follows the root")
 	}
 }
 // overflow-x: clip alone does not make a scroll container (CSS Overflow 3 §3.1: visible / clip pair up).
 @(test)
 overflow_clip_pairs :: proc(t: ^testing.T) {
-	f := load(`<div id=a style="overflow-x:clip"></div><div id=b style="overflow:clip scroll"></div><div id=c style="overflow-x:hidden"></div><div id=d style="overflow-y:clip;overflow-x:visible"></div>`)
-	defer unload(&f)
-	testing.expect(t, at(&f, "a").overflow_x == .Clip && at(&f, "a").overflow_y == .Visible)
-	testing.expect(t, at(&f, "b").overflow_x == .Hidden && at(&f, "b").overflow_y == .Scroll)
-	testing.expect(t, at(&f, "c").overflow_x == .Hidden && at(&f, "c").overflow_y == .Auto)
-	testing.expect(t, at(&f, "d").overflow_x == .Visible && at(&f, "d").overflow_y == .Clip)
+	f := fixture_load(`<div id=a style="overflow-x:clip"></div><div id=b style="overflow:clip scroll"></div><div id=c style="overflow-x:hidden"></div><div id=d style="overflow-y:clip;overflow-x:visible"></div>`)
+	defer fixture_unload(f)
+	testing.expect(t, at(f, "a").overflow_x == .Clip && at(f, "a").overflow_y == .Visible)
+	testing.expect(t, at(f, "b").overflow_x == .Hidden && at(f, "b").overflow_y == .Scroll)
+	testing.expect(t, at(f, "c").overflow_x == .Hidden && at(f, "c").overflow_y == .Auto)
+	testing.expect(t, at(f, "d").overflow_x == .Visible && at(f, "d").overflow_y == .Clip)
 }
 // @import of a sheet's own URL is a cycle: refused when it arrives; and loads are bounded per document
 // (style.max_imports) whatever the fan-out.
@@ -884,27 +854,27 @@ counters_are_bounded :: proc(t: ^testing.T) {
 	s := settings_default()
 	s.counters_max_listed = 50
 	s.counters_max_ops = 3
-	f := load(strings.to_string(sb), s)
-	defer unload(&f)
-	b := at(&f, "deep").before
+	f := fixture_load(strings.to_string(sb), {set = &s})
+	defer fixture_unload(f)
+	b := at(f, "deep").before
 	testing.expect(t, b != nil && len(b.content.items) == 1)
 	if b != nil && len(b.content.items) == 1 { testing.expectf(t, len(b.content.items[0].text) == 50 * 2 - 1, "%d bytes", len(b.content.items[0].text)) }
-	g := load(`<style>#a { counter-reset: a b c d } #b { counter-reset: a b c }</style><p id=a></p><p id=b></p>`, s)
+	g := fixture_load(`<style>#a { counter-reset: a b c d } #b { counter-reset: a b c }</style><p id=a></p><p id=b></p>`, {set = &s})
 	settings_destroy(&s)
-	defer unload(&g)
-	testing.expect(t, len(at(&g, "a").counter_reset) == 0 && len(at(&g, "b").counter_reset) == 3)
+	defer fixture_unload(g)
+	testing.expect(t, len(at(g, "a").counter_reset) == 0 && len(at(g, "b").counter_reset) == 3)
 }
 // Nested rules: the implicit `& ` is for the rule's own selectors, not for those inside :not() or :nth-child(of S)
 // (`&:not(:last-child)` matched the last child too); a `&` inside :is() counts as an explicit one.
 @(test)
 nesting_inside_pseudo_classes :: proc(t: ^testing.T) {
-	f := load(`<style>.x { &:not(:last-child) { color: red } &:nth-child(1 of .x) { margin-top: 3px } } .y { .z:is(&) { margin-left: 4px } }</style>
+	f := fixture_load(`<style>.x { &:not(:last-child) { color: red } &:nth-child(1 of .x) { margin-top: 3px } } .y { .z:is(&) { margin-left: 4px } }</style>
 <div><p class=x id=a>1</p><p class=x id=b>2</p></div><div class=y><p class="z" id=c>in</p></div><p class="y z" id=d>self</p>`)
-	defer unload(&f)
-	testing.expect(t, same_color(at(&f, "a").color, {1, 0, 0, 1}), "the first is not the last child")
-	testing.expect(t, !same_color(at(&f, "b").color, {1, 0, 0, 1}), "the last child is the last child")
-	testing.expectf(t, at(&f, "a").margin[.Top].v == 3 && at(&f, "b").margin[.Top].v != 3, "1 of .x: %v %v", at(&f, "a").margin[.Top], at(&f, "b").margin[.Top])
-	testing.expect(t, at(&f, "d").margin[.Left].v == 4 && at(&f, "c").margin[.Left].v == 0, ".z:is(&) is .z.y, not .y .z.y")
+	defer fixture_unload(f)
+	testing.expect(t, same_color(at(f, "a").color, {1, 0, 0, 1}), "the first is not the last child")
+	testing.expect(t, !same_color(at(f, "b").color, {1, 0, 0, 1}), "the last child is the last child")
+	testing.expectf(t, at(f, "a").margin[.Top].v == 3 && at(f, "b").margin[.Top].v != 3, "1 of .x: %v %v", at(f, "a").margin[.Top], at(f, "b").margin[.Top])
+	testing.expect(t, at(f, "d").margin[.Left].v == 4 && at(f, "c").margin[.Left].v == 0, ".z:is(&) is .z.y, not .y .z.y")
 }
 // Colors or fonts from pages off: the page's declarations are reverted to the browser's own (headings keep their size,
 // links their color), not dropped to the inherited value.
@@ -913,26 +883,26 @@ author_colors_and_fonts_off_revert :: proc(t: ^testing.T) {
 	s := settings_default()
 	s.author_fonts = false
 	s.author_colors = false
-	f := load(`<style>h1 { font-size: 40px; color: red } p { color: red; -webkit-text-fill-color: red }</style><h1 id=h>t</h1><p id=p>x</p>`, s)
+	f := fixture_load(`<style>h1 { font-size: 40px; color: red } p { color: red; -webkit-text-fill-color: red }</style><h1 id=h>t</h1><p id=p>x</p>`, {set = &s})
 	settings_destroy(&s)
-	defer unload(&f)
-	ref := load(`<h1 id=h>t</h1><p id=p>x</p>`)
-	defer unload(&ref)
-	testing.expectf(t, near(at(&f, "h").font_size, at(&ref, "h").font_size), "h1 %v, the browser's %v", at(&f, "h").font_size, at(&ref, "h").font_size)
-	testing.expect(t, same_color(at(&f, "h").color, at(&ref, "h").color) && same_color(at(&f, "p").color, at(&ref, "p").color), "no page colors")
-	testing.expect(t, at(&f, "p").text_fill_color == at(&ref, "p").text_fill_color, "-webkit-text-fill-color is a color too")
+	defer fixture_unload(f)
+	ref := fixture_load(`<h1 id=h>t</h1><p id=p>x</p>`)
+	defer fixture_unload(ref)
+	testing.expectf(t, near(at(f, "h").font_size, at(ref, "h").font_size), "h1 %v, the browser's %v", at(f, "h").font_size, at(ref, "h").font_size)
+	testing.expect(t, same_color(at(f, "h").color, at(ref, "h").color) && same_color(at(f, "p").color, at(ref, "p").color), "no page colors")
+	testing.expect(t, at(f, "p").text_fill_color == at(ref, "p").text_fill_color, "-webkit-text-fill-color is a color too")
 }
 @(test)
 forced_visited_state :: proc(t: ^testing.T) {
-	f := load(`<style>
+	f := fixture_load(`<style>
 		a:link { margin-top: 3px } a:visited { margin-top: 9px; color: red }
 	</style><a id=a href=x>l</a><a id=b href=y>m</a><span id=s>t</span>`)
-	defer unload(&f)
+	defer fixture_unload(f)
 	a_h := dom.find_by_id(f.doc, "a")
-	testing.expect(t, near(at(&f, "a").margin[.Top].v, 3) && near(at(&f, "b").margin[.Top].v, 3), ":link matches an unvisited link")
-	restyle(&f, State{visited = a_h})
-	testing.expect(t, near(at(&f, "a").margin[.Top].v, 9) && same_color(at(&f, "a").color, RED), ":visited applies to the forced element")
-	testing.expect(t, near(at(&f, "b").margin[.Top].v, 3), "the other link stays unvisited")
-	restyle(&f, State{})
-	testing.expect(t, near(at(&f, "a").margin[.Top].v, 3), "the forced state is dropped by the next state")
+	testing.expect(t, near(at(f, "a").margin[.Top].v, 3) && near(at(f, "b").margin[.Top].v, 3), ":link matches an unvisited link")
+	restyle(f, State{visited = a_h})
+	testing.expect(t, near(at(f, "a").margin[.Top].v, 9) && same_color(at(f, "a").color, RED), ":visited applies to the forced element")
+	testing.expect(t, near(at(f, "b").margin[.Top].v, 3), "the other link stays unvisited")
+	restyle(f, State{})
+	testing.expect(t, near(at(f, "a").margin[.Top].v, 3), "the forced state is dropped by the next state")
 }

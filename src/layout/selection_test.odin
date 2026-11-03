@@ -4,57 +4,11 @@ import "core:strings"
 import "core:testing"
 import "wb:base"
 import "wb:dom"
-import "wb:html"
-import "wb:style"
 
 // Selection queries on laid-out documents (the fake font: every character is 0.5 em wide).
 
 @(private = "file")
-Sx :: struct {
-	doc: ^dom.Document,
-	eng: ^style.Engine,
-	st:  ^style.Styled,
-	set: Settings,
-	l:   Layout,
-	vp:  Vec2,
-}
-
-@(private = "file")
-sx_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> Font { return Font(1) }
-@(private = "file")
-sx_width :: proc(user: rawptr, f: Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(rune_count(text)) }
-@(private = "file")
-sx_metrics :: proc(user: rawptr, f: Font, size: f32) -> Font_Metrics { return {ascent = 0.8 * size, descent = 0.2 * size, x_height = 0.5 * size} }
-@(private = "file")
-sx_api :: Text_Api{font = sx_font, width = sx_width, metrics = sx_metrics}
-
-@(private = "file")
-sx_load :: proc(src: string) -> ^Sx {
-	f := new(Sx)
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
-	ss := style.settings_default()
-	f.eng = style.engine_make(ss)
-	style.settings_destroy(&ss)
-	style.sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = style.compute_styles(f.eng, f.doc, {})
-	f.set = settings_default()
-	f.vp = {800, 600}
-	run(&f.l, Input{doc = f.doc, styled = f.st, settings = &f.set, text = sx_api, viewport = f.vp, scale = 1, band_h = 256})
-	return f
-}
-
-@(private = "file")
-sx_unload :: proc(f: ^Sx) {
-	destroy(&f.l)
-	style.styled_destroy(f.st)
-	style.engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
-	free(f)
-}
-
-@(private = "file")
-first_text_of :: proc(f: ^Sx, id: string) -> base.Handle {
+first_text_of :: proc(f: ^Fixture, id: string) -> base.Handle {
 	h := dom.find_by_id(f.doc, id)
 	stack := make([dynamic]base.Handle, context.temp_allocator)
 	append(&stack, h)
@@ -69,21 +23,21 @@ first_text_of :: proc(f: ^Sx, id: string) -> base.Handle {
 }
 
 @(private = "file")
-all_of :: proc(f: ^Sx) -> (Text_Pos, Text_Pos) {
+all_of :: proc(f: ^Fixture) -> (Text_Pos, Text_Pos) {
 	body := dom.find_first_by_tag(f.doc, "body")
 	return {body, 0}, {body, child_count(f.doc, body)}
 }
 
 @(private = "file")
-text_of_all :: proc(f: ^Sx) -> string {
+text_of_all :: proc(f: ^Fixture) -> string {
 	a, b := all_of(f)
 	return range_text(f.doc, f.st, a, b).text
 }
 
 @(test)
 boundary_order :: proc(t: ^testing.T) {
-	f := sx_load(`<body><div id=a>one<b id=b>two</b>three</div><p id=c>four</p></body>`)
-	defer sx_unload(f)
+	f := fixture_load(`<body><div id=a>one<b id=b>two</b>three</div><p id=c>four</p></body>`)
+	defer fixture_unload(f)
 	a := dom.find_by_id(f.doc, "a")
 	one := first_text_of(f, "a")
 	two := first_text_of(f, "b")
@@ -100,39 +54,39 @@ boundary_order :: proc(t: ^testing.T) {
 
 @(test)
 point_to_position :: proc(t: ^testing.T) {
-	f := sx_load(`<body style="margin:0;font:10px/20px x"><p id=p style="margin:0">Hello world</p>
+	f := fixture_load(`<body style="margin:0;font:10px/20px x"><p id=p style="margin:0">Hello world</p>
 <div style="display:flex"><div id=l style="width:200px">left side</div><div id=r>right</div></div>
 <div id=moved style="transform:translateX(300px)">abcdef</div>
 <p id=ns style="margin:0;user-select:none">skip me</p><p id=after style="margin:0">tail</p></body>`)
-	defer sx_unload(f)
+	defer fixture_unload(f)
 	p := first_text_of(f, "p")
-	pos, ok := position_at(&f.l, f.doc, f.st, {12, 5}, f.vp, 0, sx_api)
+	pos, ok := position_at(&f.l, f.doc, f.st, {12, 5}, f.vp, 0, FAKE_TEXT)
 	testing.expect(t, ok && pos.node == p, "on the first line")
 	testing.expect_value(t, pos.offset, 2)          // 12 px: nearer to the 2nd boundary (10) than the 3rd (15)
-	pos, ok = position_at(&f.l, f.doc, f.st, {14, 5}, f.vp, 0, sx_api)
+	pos, ok = position_at(&f.l, f.doc, f.st, {14, 5}, f.vp, 0, FAKE_TEXT)
 	testing.expect_value(t, pos.offset, 3)
-	pos, _ = position_at(&f.l, f.doc, f.st, {700, 5}, f.vp, 0, sx_api)
+	pos, _ = position_at(&f.l, f.doc, f.st, {700, 5}, f.vp, 0, FAKE_TEXT)
 	testing.expect_value(t, pos.offset, 11)         // right of the line: its end
 	// in the gutter of the flex item "left side": stays in that item
-	pos, ok = position_at(&f.l, f.doc, f.st, {150, 25}, f.vp, 0, sx_api)
+	pos, ok = position_at(&f.l, f.doc, f.st, {150, 25}, f.vp, 0, FAKE_TEXT)
 	testing.expect(t, ok && pos.node == first_text_of(f, "l"), "the column the point is in")
 	testing.expect_value(t, pos.offset, 9)
 	// transformed: the point goes through the inverse of the transform
-	pos, ok = position_at(&f.l, f.doc, f.st, {311, 45}, f.vp, 0, sx_api)
+	pos, ok = position_at(&f.l, f.doc, f.st, {311, 45}, f.vp, 0, FAKE_TEXT)
 	testing.expect(t, ok && pos.node == first_text_of(f, "moved"), "transformed text")
 	testing.expect_value(t, pos.offset, 2)
 	// user-select: none is skipped: the nearest selectable text wins
-	pos, ok = position_at(&f.l, f.doc, f.st, {10, 65}, f.vp, 0, sx_api)
+	pos, ok = position_at(&f.l, f.doc, f.st, {10, 65}, f.vp, 0, FAKE_TEXT)
 	testing.expect(t, ok && pos.node != first_text_of(f, "ns"), "user-select: none")
 	// scrolled document: the same point is further down
-	pos, ok = position_at(&f.l, f.doc, f.st, {6, 5}, f.vp, 80, sx_api)
+	pos, ok = position_at(&f.l, f.doc, f.st, {6, 5}, f.vp, 80, FAKE_TEXT)
 	testing.expect(t, ok && pos.node == first_text_of(f, "after"), "below everything: the last line")
 }
 
 @(test)
 item_ranges :: proc(t: ^testing.T) {
-	f := sx_load(`<body style="margin:0;font:10px/20px x"><p id=p style="margin:0">Hello <b id=b>bold</b> end</p></body>`)
-	defer sx_unload(f)
+	f := fixture_load(`<body style="margin:0;font:10px/20px x"><p id=p style="margin:0">Hello <b id=b>bold</b> end</p></body>`)
+	defer fixture_unload(f)
 	hello := first_text_of(f, "p")
 	bold := first_text_of(f, "b")
 	n := 0
@@ -168,8 +122,8 @@ words :: proc(t: ^testing.T) {
 
 @(test)
 words_across_elements :: proc(t: ^testing.T) {
-	f := sx_load(`<body><p id=p>say foo<b id=b>bar</b> baz</p><div id=d>first<br>second line</div></body>`)
-	defer sx_unload(f)
+	f := fixture_load(`<body><p id=p>say foo<b id=b>bar</b> baz</p><div id=d>first<br>second line</div></body>`)
+	defer fixture_unload(f)
 	bar := first_text_of(f, "b")
 	s, e, ok := word_range(f.doc, f.st, {bar, 1})
 	testing.expect(t, ok, "found")
@@ -183,35 +137,35 @@ words_across_elements :: proc(t: ^testing.T) {
 @(test)
 inner_text_serialization :: proc(t: ^testing.T) {
 	{
-		f := sx_load(`<body><div>a</div><div>b</div><p>x</p><p>y</p>tail</body>`)
-		defer sx_unload(f)
+		f := fixture_load(`<body><div>a</div><div>b</div><p>x</p><p>y</p>tail</body>`)
+		defer fixture_unload(f)
 		testing.expect_value(t, text_of_all(f), "a\nb\n\nx\n\ny\n\ntail")
 	}
 	{
-		f := sx_load(`<body><table><tr><td>1</td><td>2</td></tr><tr><td>3</td><td>4</td></tr></table></body>`)
-		defer sx_unload(f)
+		f := fixture_load(`<body><table><tr><td>1</td><td>2</td></tr><tr><td>3</td><td>4</td></tr></table></body>`)
+		defer fixture_unload(f)
 		testing.expect_value(t, text_of_all(f), "1\t2\n3\t4")
 	}
 	{
-		f := sx_load(`<body><ul><li>one</li><li>two <i>2</i></li></ul><ol><li>three</ol></body>`)
-		defer sx_unload(f)
+		f := fixture_load(`<body><ul><li>one</li><li>two <i>2</i></li></ul><ol><li>three</ol></body>`)
+		defer fixture_unload(f)
 		testing.expect_value(t, text_of_all(f), "one\ntwo 2\nthree")
 	}
 	{
-		f := sx_load("<body><p>  many   spaces\n and\tlines  </p><pre>keep  \n  this</pre><span style=\"display:none\">hidden</span><span style=\"visibility:hidden\">invisible</span>shown<br>next</body>")
-		defer sx_unload(f)
+		f := fixture_load("<body><p>  many   spaces\n and\tlines  </p><pre>keep  \n  this</pre><span style=\"display:none\">hidden</span><span style=\"visibility:hidden\">invisible</span>shown<br>next</body>")
+		defer fixture_unload(f)
 		testing.expect_value(t, text_of_all(f), "many spaces and lines\n\nkeep  \n  this\nshown\nnext")
 	}
 	{
-		f := sx_load(`<body><p style="text-transform:uppercase">loud</p><p style="white-space:pre-line">a  b
+		f := fixture_load(`<body><p style="text-transform:uppercase">loud</p><p style="white-space:pre-line">a  b
 c</p></body>`)
-		defer sx_unload(f)
+		defer fixture_unload(f)
 		testing.expect_value(t, text_of_all(f), "LOUD\n\na b\nc")
 	}
 	{
 		// a range from the middle of one block to the middle of another
-		f := sx_load(`<body><div id=a>alpha beta</div><div id=b>gamma delta</div></body>`)
-		defer sx_unload(f)
+		f := fixture_load(`<body><div id=a>alpha beta</div><div id=b>gamma delta</div></body>`)
+		defer fixture_unload(f)
 		ft := range_text(f.doc, f.st, {first_text_of(f, "a"), 6}, {first_text_of(f, "b"), 5})
 		testing.expect_value(t, ft.text, "beta\ngamma")
 		// and back to the DOM
@@ -223,8 +177,8 @@ c</p></body>`)
 
 @(test)
 html_of_a_range :: proc(t: ^testing.T) {
-	f := sx_load(`<body><p id=p>one <a href="x?a=1&amp;b=2" onclick="evil()">two</a> three</p></body>`)
-	defer sx_unload(f)
+	f := fixture_load(`<body><p id=p>one <a href="x?a=1&amp;b=2" onclick="evil()">two</a> three</p></body>`)
+	defer fixture_unload(f)
 	one := first_text_of(f, "p")
 	p := dom.find_by_id(f.doc, "p")
 	s := range_html(f.doc, {one, 2}, {p, child_count(f.doc, p)})

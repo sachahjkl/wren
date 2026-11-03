@@ -4,20 +4,6 @@ import "core:fmt"
 import "core:strings"
 import "core:testing"
 import "wb:dom"
-import "wb:html"
-
-@(private = "file")
-styled_page :: proc(src: string, max_layers: int) -> (doc: ^dom.Document, eng: ^Engine, st: ^Styled) {
-	doc = dom.document_create(nil)
-	html.parse_into(doc, doc.root, transmute([]byte)src, 2_000_000)
-	s := settings_default()
-	s.custom_max_layers = max_layers
-	eng = engine_make(s)
-	settings_destroy(&s)
-	sync_document_sheets(eng, doc, "about:test")
-	st = compute_styles(eng, doc, {})
-	return
-}
 
 // Hundreds of variables on :root and a few more set on every level of a deep tree (DuckDuckGo's pages): each element
 // keeps a layer of its own names, not a copy of every inherited one, and reads the same values as with copies.
@@ -39,10 +25,13 @@ custom_properties_layers :: proc(t: ^testing.T) {
 	for _ in 0 ..< DEPTH { strings.write_string(&b, "</div>") }
 
 	for max_layers in ([]int{8, 0}) {
-		doc, eng, st := styled_page(strings.to_string(b), max_layers)
-		defer { styled_destroy(st); engine_destroy(eng); dom.document_destroy(doc) }
+		s := settings_default()
+		s.custom_max_layers = max_layers
+		f := fixture_load(strings.to_string(b), {set = &s})
+		settings_destroy(&s)
+		defer fixture_unload(f)
 		for i in 0 ..< DEPTH {
-			c := style_of(st, dom.find_by_id(doc, fmt.tprintf("d%d", i)))
+			c := style_of(f.st, dom.find_by_id(f.doc, fmt.tprintf("d%d", i)))
 			testing.expect(t, c != nil && c.custom != nil)
 			if c == nil || c.custom == nil { return }
 			p := c.custom

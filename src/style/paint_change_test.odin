@@ -2,43 +2,17 @@ package style
 
 import "core:testing"
 import "wb:dom"
-import "wb:html"
 
 @(private = "file")
-Pc :: struct {
-	doc: ^dom.Document,
-	eng: ^Engine,
-	st:  ^Styled,
-	tl:  ^Timeline,
-}
-
-@(private = "file")
-pc_open :: proc(src: string) -> Pc {
-	f: Pc
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
+pc_open :: proc(src: string) -> ^Fixture {
 	s := settings_default()
+	defer settings_destroy(&s)
 	s.anim_mode = .Normal
-	f.eng = engine_make(s)
-	settings_destroy(&s)
-	sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = compute_styles(f.eng, f.doc, {})
-	f.tl = timeline_make(f.eng)
-	timeline_restyled(f.tl, f.doc, nil, f.st, 0)
-	timeline_tick(f.tl, f.doc, f.st, 0)
-	return f
+	return fixture_load(src, {set = &s, timeline = true})
 }
 
 @(private = "file")
-pc_close :: proc(f: ^Pc) {
-	timeline_destroy(f.tl, f.st)
-	styled_destroy(f.st)
-	engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
-}
-
-@(private = "file")
-el :: proc(f: ^Pc, id: string) -> ^Computed { return style_of(f.st, dom.find_by_id(f.doc, id)) }
+el :: proc(f: ^Fixture, id: string) -> ^Computed { return style_of(f.st, dom.find_by_id(f.doc, id)) }
 
 @(test)
 paint_only_tiers :: proc(t: ^testing.T) {
@@ -47,8 +21,8 @@ paint_only_tiers :: proc(t: ^testing.T) {
 <div id=c style="color:red;width:20px;transform:rotate(10deg);opacity:.5"></div>
 <div id=d style="color:red;background:blue;opacity:.5;width:10px"></div>
 <div id=e style="color:red;background:blue;transform:rotate(10deg);width:10px"></div>`)
-	defer pc_close(&f)
-	a, b, c, d, e := el(&f, "a"), el(&f, "b"), el(&f, "c"), el(&f, "d"), el(&f, "e")
+	defer fixture_unload(f)
+	a, b, c, d, e := el(f, "a"), el(f, "b"), el(f, "c"), el(f, "d"), el(f, "e")
 	testing.expect(t, layout_equal(a, b), "colors, backgrounds, shadows, transform values, opacity values, transitions: paint-only")
 	testing.expect(t, !layout_equal(a, c), "a width is not")
 	testing.expect(t, !layout_equal(a, d), "transform none against some: a new stacking context and containing block")
@@ -65,7 +39,7 @@ animation_serials :: proc(t: ^testing.T) {
 #s { animation: spin 1s linear infinite }
 #m { animation: slide 1s linear infinite }
 </style><div id=s></div><div id=m></div>`)
-	defer pc_close(&f)
+	defer fixture_unload(f)
 	// both run: the margin animation changes layout at every tick
 	ls := f.st.layout_serial
 	timeline_tick(f.tl, f.doc, f.st, 100)
@@ -76,7 +50,7 @@ animation_serials :: proc(t: ^testing.T) {
 @keyframes fade { from { opacity: 0.2 } to { opacity: 0.8 } }
 #s { animation: spin 1s linear infinite } #o { animation: fade 1s linear infinite; color: red }
 </style><div id=s></div><div id=o></div>`)
-	defer pc_close(&g)
+	defer fixture_unload(g)
 	timeline_tick(g.tl, g.doc, g.st, 50)
 	ls2, s2 := g.st.layout_serial, g.st.serial
 	timeline_tick(g.tl, g.doc, g.st, 100)

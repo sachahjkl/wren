@@ -2,8 +2,6 @@ package layout
 
 import "core:testing"
 import "wb:dom"
-import "wb:html"
-import "wb:style"
 
 // The document's horizontal scroll: its range, what views do with it, its scroll bar.
 
@@ -17,50 +15,10 @@ WIDE :: 3000
 THUMB_LENGTH_TOLERANCE :: 0.01
 
 @(private = "file")
-Hx :: struct {
-	doc: ^dom.Document,
-	eng: ^style.Engine,
-	st:  ^style.Styled,
-	set: Settings,
-	l:   Layout,
-	vp:  Vec2,
-}
+hx_load :: proc(src: string) -> ^Fixture { return fixture_load(src, VP_W, VP_H, {band_h = FIXTURE_NARROW_BAND_H, inc_verify = true}) }
 
 @(private = "file")
-hx_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> Font { return Font(1) }
-@(private = "file")
-hx_width :: proc(user: rawptr, f: Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(len(text)) }
-@(private = "file")
-hx_metrics :: proc(user: rawptr, f: Font, size: f32) -> Font_Metrics { return {ascent = 0.8 * size, descent = 0.2 * size, x_height = 0.5 * size} }
-
-@(private = "file")
-hx_load :: proc(src: string) -> ^Hx {
-	f := new(Hx)
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
-	ss := style.settings_default()
-	f.eng = style.engine_make(ss)
-	style.settings_destroy(&ss)
-	style.sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = style.compute_styles(f.eng, f.doc, {})
-	f.set = settings_default()
-	f.set.inc_verify = true
-	f.vp = {VP_W, VP_H}
-	run(&f.l, Input{doc = f.doc, styled = f.st, settings = &f.set, text = Text_Api{font = hx_font, width = hx_width, metrics = hx_metrics}, viewport = f.vp, scale = 1, band_h = 64})
-	return f
-}
-
-@(private = "file")
-hx_unload :: proc(f: ^Hx) {
-	destroy(&f.l)
-	style.styled_destroy(f.st)
-	style.engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
-	free(f)
-}
-
-@(private = "file")
-hx_range :: proc(f: ^Hx) -> [2]f32 {
+hx_range :: proc(f: ^Fixture) -> [2]f32 {
 	lo, hi := doc_scroll_x_range(&f.l, f.vp.x)
 	return {lo, hi}
 }
@@ -68,7 +26,7 @@ hx_range :: proc(f: ^Hx) -> [2]f32 {
 @(test)
 doc_x_range_no_overflow :: proc(t: ^testing.T) {
 	f := hx_load(`<!doctype html><body style="margin:0"><div style="height:3000px">a</div>`)
-	defer hx_unload(f)
+	defer fixture_unload(f)
 	testing.expect_value(t, hx_range(f), [2]f32{0, 0})
 	_, _, ok := doc_scrollbar_x(&f.l, f.vp)
 	testing.expect(t, !ok, "no horizontal bar")
@@ -80,11 +38,11 @@ doc_x_range_no_overflow :: proc(t: ^testing.T) {
 @(test)
 doc_x_range_overflow_right :: proc(t: ^testing.T) {
 	f := hx_load(`<!doctype html><body style="margin:0"><div style="width:3000px;height:10px"></div>`)
-	defer hx_unload(f)
+	defer fixture_unload(f)
 	testing.expect_value(t, hx_range(f), [2]f32{0, WIDE - VP_W})
 	// what goes left of an origin at the start cannot be reached
 	g := hx_load(`<!doctype html><body style="margin:0"><div style="position:absolute;left:-500px;width:100px;height:10px"></div>`)
-	defer hx_unload(g)
+	defer fixture_unload(g)
 	testing.expect_value(t, hx_range(g), [2]f32{0, 0})
 }
 
@@ -95,7 +53,7 @@ doc_x_range_rtl :: proc(t: ^testing.T) {
 		`<!doctype html><body dir=rtl style="margin:0"><div style="width:3000px;height:10px"></div>`,
 	}) {
 		f := hx_load(src)
-		defer hx_unload(f)
+		defer fixture_unload(f)
 		testing.expectf(t, hx_range(f) == [2]f32{VP_W - WIDE, 0}, "%s: %v", src, hx_range(f))
 		// at the origin the bar's thumb is at the far end, as the document's end is what shows
 		_, thumb, ok := doc_scrollbar_x(&f.l, f.vp)
@@ -105,7 +63,7 @@ doc_x_range_rtl :: proc(t: ^testing.T) {
 	}
 	// what goes right of an origin at the end cannot be reached
 	f := hx_load(`<!doctype html><html dir=rtl><body style="margin:0"><div style="position:absolute;left:2000px;width:100px;height:10px"></div>`)
-	defer hx_unload(f)
+	defer fixture_unload(f)
 	testing.expect_value(t, hx_range(f), [2]f32{0, 0})
 }
 
@@ -118,14 +76,14 @@ doc_x_range_forbidden :: proc(t: ^testing.T) {
 		`<!doctype html><html dir=rtl style="overflow-x:hidden"><body style="margin:0"><div style="width:3000px;height:10px"></div>`,
 	}) {
 		f := hx_load(src)
-		defer hx_unload(f)
+		defer fixture_unload(f)
 		testing.expectf(t, hx_range(f) == [2]f32{0, 0}, "%s: %v", src, hx_range(f))
 		_, _, ok := doc_scrollbar_x(&f.l, f.vp)
 		testing.expectf(t, !ok, "%s: no bar", src)
 	}
 	// the other axis stays free
 	f := hx_load(`<!doctype html><body style="margin:0;overflow-y:hidden"><div style="width:3000px;height:3000px"></div>`)
-	defer hx_unload(f)
+	defer fixture_unload(f)
 	testing.expect_value(t, hx_range(f), [2]f32{0, WIDE - VP_W})
 	testing.expect_value(t, f.l.height, VP_H)
 }
@@ -137,7 +95,7 @@ doc_x_view :: proc(t: ^testing.T) {
 		<div id=b style="position:absolute;left:1000px;top:0;width:500px;height:100px"></div>
 		<div id=fix style="position:fixed;left:10px;top:200px;width:50px;height:50px"></div>
 		<div style="width:3000px;height:10px"></div>`)
-	defer hx_unload(f)
+	defer fixture_unload(f)
 	a, b, fix := dom.find_by_id(f.doc, "a"), dom.find_by_id(f.doc, "b"), dom.find_by_id(f.doc, "fix")
 	testing.expect_value(t, hit_test(&f.l, {100, 50}, f.vp, 0).node, a)
 
@@ -174,7 +132,7 @@ item_x_of :: proc(l: ^Layout, v: ^View, bi: i32) -> f32 { return l.boxes[bi].abs
 @(test)
 doc_x_snapped :: proc(t: ^testing.T) {
 	f := hx_load(`<!doctype html><body style="margin:0"><div style="width:3000px;height:10px"></div>`)
-	defer hx_unload(f)
+	defer fixture_unload(f)
 	set_doc_scroll_x(&f.l, 100.4)
 	testing.expect_value(t, f.l.doc_scroll_x, 100.4)
 	v := view_make(&f.l, f.vp, 0, cull = false)
@@ -188,7 +146,7 @@ doc_x_snapped :: proc(t: ^testing.T) {
 doc_x_sticky :: proc(t: ^testing.T) {
 	f := hx_load(`<!doctype html><body style="margin:0"><div style="width:3000px;height:100px">
 		<div id=s style="position:sticky;left:20px;width:50px;height:50px;margin-left:100px"></div></div>`)
-	defer hx_unload(f)
+	defer fixture_unload(f)
 	s := dom.find_by_id(f.doc, "s")
 	set_doc_scroll_x(&f.l, 1000)
 	r, ok := box_of(&f.l, s, f.vp, 0)
@@ -203,7 +161,7 @@ doc_x_sticky :: proc(t: ^testing.T) {
 doc_x_transform_rects :: proc(t: ^testing.T) {
 	f := hx_load(`<!doctype html><body style="margin:0"><div style="width:3000px;height:10px"></div>
 		<div id=m style="position:absolute;left:1000px;top:100px;width:100px;height:100px;transform:translateX(50px)"></div>`)
-	defer hx_unload(f)
+	defer fixture_unload(f)
 	m := dom.find_by_id(f.doc, "m")
 	before, _ := box_of(&f.l, m, f.vp, 0)
 	set_doc_scroll_x(&f.l, 700)
@@ -216,7 +174,7 @@ doc_x_transform_rects :: proc(t: ^testing.T) {
 @(test)
 doc_x_bars_share_the_corner :: proc(t: ^testing.T) {
 	f := hx_load(`<!doctype html><body style="margin:0"><div style="width:3000px;height:3000px"></div>`)
-	defer hx_unload(f)
+	defer fixture_unload(f)
 	vt, _, vok := doc_scrollbar(&f.l, f.vp, 0)
 	ht, ht0, hok := doc_scrollbar_x(&f.l, f.vp)
 	testing.expect(t, vok && hok)
@@ -230,7 +188,7 @@ doc_x_bars_share_the_corner :: proc(t: ^testing.T) {
 	testing.expect(t, abs((ht1.max.x - ht1.min.x) - (ht0.max.x - ht0.min.x)) < THUMB_LENGTH_TOLERANCE, "the thumb keeps its length")
 	// scrollbar-width: none has neither
 	g := hx_load(`<!doctype html><html style="scrollbar-width:none"><body style="margin:0"><div style="width:3000px;height:3000px"></div>`)
-	defer hx_unload(g)
+	defer fixture_unload(g)
 	_, _, hok2 := doc_scrollbar_x(&g.l, g.vp)
 	testing.expect(t, !hok2)
 }
@@ -245,7 +203,7 @@ doc_x_anchor :: proc(t: ^testing.T) {
 		#q { position: fixed; position-anchor: --a; position-visibility: always; left: anchor(right); top: anchor(top); width: 10px; height: 10px }
 		#w { width: 3000px; height: 10px }
 	</style><div id=a></div><div id=w></div><div id=q></div>`)
-	defer hx_unload(f)
+	defer fixture_unload(f)
 	q := box_index(&f.l, dom.find_by_id(f.doc, "q"))
 	v0 := view_make(&f.l, f.vp, 0, cull = false)
 	x0 := item_x_of(&f.l, &v0, q)

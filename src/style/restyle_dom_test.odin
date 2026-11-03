@@ -8,40 +8,22 @@ import "core:testing"
 import "wb:base"
 import "wb:dom"
 import "wb:host"
-import "wb:html"
 
 // restyle_dom against a full pass: after each mutation the partial restyle must give every element the computed style
 // a full pass gives it (verify_styles), and stay partial.
 
 @(private = "file")
 Rx :: struct {
-	doc: ^dom.Document,
-	eng: ^Engine,
-	st:  ^Styled,
+	using fx:      ^Fixture,
 	partial, full: int,
 }
 
 @(private = "file")
-rx_load :: proc(src: string) -> ^Rx {
-	f := new(Rx)
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
-	ss := settings_default()
-	f.eng = engine_make(ss)
-	settings_destroy(&ss)
-	engine_set_journal(f.eng, 1 << 16)
-	f.eng.settings.inc_max_ratio = 1   // documents of a few elements: any change is a large part of them
-	sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = compute_styles(f.eng, f.doc, {})
-	dom.journal_enable(f.doc, 1 << 16)
-	return f
-}
+rx_load :: proc(src: string) -> ^Rx { return new_clone(Rx{fx = fixture_load(src, {journal = FIXTURE_JOURNAL, partial = true})}) }
 
 @(private = "file")
 rx_unload :: proc(f: ^Rx) {
-	styled_destroy(f.st)
-	engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
+	fixture_unload(f.fx)
 	free(f)
 }
 

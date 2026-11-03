@@ -24,6 +24,7 @@ import "wb:base"
 import "wb:fetch"
 import "wb:host"
 import "wb:js"
+import lay "wb:layout"
 import "wb:net"
 import "wb:page"
 import "wb:tools/testenv"
@@ -39,6 +40,10 @@ LOOP_LOOK_MS :: 5                      // the most the loop waits before a test 
 DRAIN_MAX_TURNS :: 1000
 UNCAUGHT :: "Uncaught"
 LAST_LINES_ON_TIMEOUT :: 6
+GLYPH_EM :: 0.5
+ASCENT_EM :: 0.8
+DESCENT_EM :: 0.2
+X_HEIGHT_EM :: 0.5
 
 // How far the world is made.
 Level :: enum {
@@ -175,6 +180,12 @@ enc :: proc(s: string) -> string {
 	}
 	return strings.to_string(sb)
 }
+
+// Fixed text metrics for the layout of a page under test: every character GLYPH_EM wide, whatever the font.
+fake_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> lay.Font { return lay.Font(1) }
+fake_width :: proc(user: rawptr, f: lay.Font, size: f32, text: string) -> f32 { return GLYPH_EM * size * f32(strings.rune_count(text)) }
+fake_metrics :: proc(user: rawptr, f: lay.Font, size: f32) -> lay.Font_Metrics { return {ascent = ASCENT_EM * size, descent = DESCENT_EM * size, x_height = X_HEIGHT_EM * size} }
+FAKE_TEXT :: lay.Text_Api{font = fake_font, width = fake_width, metrics = fake_metrics}
 
 // The loop's time stands still from now on, until the test moves it (host.clock_advance) or ends: for what happens on a timer of the
 // loop, or must not. The network does not wait for it.

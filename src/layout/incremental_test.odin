@@ -6,7 +6,6 @@ import "core:strings"
 import "core:testing"
 import "wb:base"
 import "wb:dom"
-import "wb:html"
 import "wb:style"
 
 // Incremental layout against full passes: after each change, the incremental result is compared with a full pass of
@@ -15,14 +14,8 @@ import "wb:style"
 
 @(private = "file")
 Ix :: struct {
-	doc:   ^dom.Document,
-	eng:   ^style.Engine,
-	st:    ^style.Styled,
-	tl:    ^style.Timeline,
-	set:   Settings,
-	l:     Layout,
-	vp:    Vec2,
-	now:   f64,
+	using fx: Fixture,
+	now:      f64,
 	sizes: map[base.Handle][2]f32,   // natural sizes of images that "decoded"
 	images_gen, fonts_gen: u64,
 	web_font: bool,                  // the face of family "web" arrived (wider glyphs)
@@ -57,26 +50,14 @@ ix_intrinsic :: proc(user: rawptr, node: base.Handle) -> (w, h: f32, ok: bool) {
 @(private = "file")
 ix_input :: proc(f: ^Ix) -> Input {
 	return Input{doc = f.doc, styled = f.st, settings = &f.set, text = Text_Api{user = f, font = ix_font, width = ix_width, metrics = ix_metrics, concurrent = f.threads},
-		replaced = Replaced_Api{user = f, intrinsic = ix_intrinsic}, viewport = f.vp, scale = 1, band_h = 64,
+		replaced = Replaced_Api{user = f, intrinsic = ix_intrinsic}, viewport = f.vp, scale = 1, band_h = FIXTURE_NARROW_BAND_H,
 		images_generation = f.images_gen, fonts_generation = f.fonts_gen}
 }
 
 @(private = "file")
-ix_load :: proc(src: string, vw: f32 = 800, vh: f32 = 600) -> ^Ix {
+ix_load :: proc(src: string, vw: f32 = FIXTURE_VP_W, vh: f32 = FIXTURE_VP_H) -> ^Ix {
 	f := new(Ix)
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
-	ss := style.settings_default()
-	f.eng = style.engine_make(ss)
-	style.settings_destroy(&ss)
-	style.engine_set_journal(f.eng, 1 << 16)
-	style.sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = style.compute_styles(f.eng, f.doc, {})
-	f.tl = style.timeline_make(f.eng)
-	style.timeline_restyled(f.tl, f.doc, nil, f.st, 0)
-	style.timeline_tick(f.tl, f.doc, f.st, 0)
-	f.set = settings_default()
-	f.vp = {vw, vh}
+	fixture_init(f, src, vw, vh, {journal = true, timeline = true})
 	f.sizes = make(map[base.Handle][2]f32)
 	run(&f.l, ix_input(f))
 	return f
@@ -84,11 +65,7 @@ ix_load :: proc(src: string, vw: f32 = 800, vh: f32 = 600) -> ^Ix {
 
 @(private = "file")
 ix_unload :: proc(f: ^Ix) {
-	destroy(&f.l)
-	style.timeline_destroy(f.tl, f.st)
-	style.styled_destroy(f.st)
-	style.engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
+	fixture_destroy(f)
 	delete(f.sizes)
 	free(f)
 }

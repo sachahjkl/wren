@@ -3,86 +3,42 @@ package layout
 import "core:testing"
 import "wb:base"
 import "wb:dom"
-import "wb:html"
 import "wb:style"
 
 // CSS Anchor Positioning: where boxes end up (every character 0.5 em wide), and, after each change, that an incremental pass
 // made what a full pass makes (layout.incremental.verify).
 
 @(private = "file")
-Ax :: struct {
-	doc: ^dom.Document,
-	eng: ^style.Engine,
-	st:  ^style.Styled,
-	set: Settings,
-	l:   Layout,
-	vp:  Vec2,
-}
-
-@(private = "file")
-ax_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> Font { return Font(1) }
-@(private = "file")
-ax_width :: proc(user: rawptr, f: Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(rune_count(text)) }
-@(private = "file")
-ax_metrics :: proc(user: rawptr, f: Font, size: f32) -> Font_Metrics { return {ascent = 0.8 * size, descent = 0.2 * size, x_height = 0.5 * size} }
-
-@(private = "file")
-ax_run :: proc(f: ^Ax) {
-	run(&f.l, Input{doc = f.doc, styled = f.st, settings = &f.set, text = Text_Api{font = ax_font, width = ax_width, metrics = ax_metrics}, viewport = f.vp, scale = 1, band_h = 64})
-}
-
-@(private = "file")
-ax_load :: proc(src: string, vw: f32 = 800, vh: f32 = 600) -> ^Ax {
-	f := new(Ax)
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
-	ss := style.settings_default()
-	f.eng = style.engine_make(ss)
-	style.settings_destroy(&ss)
-	style.engine_set_journal(f.eng, 1 << 16)
-	style.sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = style.compute_styles(f.eng, f.doc, {})
-	f.set = settings_default()
-	f.set.inc_verify = true
-	f.vp = {vw, vh}
-	ax_run(f)
+ax_load :: proc(src: string, vw: f32 = FIXTURE_VP_W, vh: f32 = FIXTURE_VP_H) -> ^Fixture {
+	f := fixture_load(src, vw, vh, {band_h = FIXTURE_NARROW_BAND_H, journal = true, inc_verify = true})
 	anchored_commit(&f.l)
 	return f
 }
 
-@(private = "file")
-ax_unload :: proc(f: ^Ax) {
-	destroy(&f.l)
-	style.styled_destroy(f.st)
-	style.engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
-	free(f)
-}
-
 // After a change of the document: styles again, then a pass.
 @(private = "file")
-ax_frame :: proc(t: ^testing.T, f: ^Ax, loc := #caller_location) {
+ax_frame :: proc(t: ^testing.T, f: ^Fixture, loc := #caller_location) {
 	if f.st.mutations != f.doc.mutations {
 		old := f.st
 		f.st = style.compute_styles(f.eng, f.doc, {})
 		style.journal_diff(old, f.st)
 		style.styled_destroy(old)
 	}
-	ax_run(f)
+	fixture_run(f)
 	testing.expectf(t, f.l.inc.verify_failures == 0, "incremental differs from full: %s", f.l.inc.verify_report, loc = loc)
 	anchored_commit(&f.l)
 }
 
 // Where the box of an element is drawn (no scrolling of the page).
 @(private = "file")
-rect :: proc(f: ^Ax, id: string) -> Rect {
+rect :: proc(f: ^Fixture, id: string) -> Rect {
 	h := dom.find_by_id(f.doc, id)
 	r, ok := box_of(&f.l, h, f.vp, 0)
 	return ok ? r.border : Rect{{-1, -1}, {-1, -1}}
 }
 
 @(private = "file")
-is :: proc(t: ^testing.T, f: ^Ax, id: string, x, y, w, h: f32, loc := #caller_location) {
+is :: proc(t: ^testing.T, f: ^Fixture, id: string, x, y, w, h: f32, loc := #caller_location) {
 	r := rect(f, id)
 	got := [4]f32{r.min.x, r.min.y, r.max.x - r.min.x, r.max.y - r.min.y}
 	testing.expectf(t, got == [4]f32{x, y, w, h}, "#%s at %v, want %v", id, got, [4]f32{x, y, w, h}, loc = loc)
@@ -108,7 +64,7 @@ anchor_function_sides :: proc(t: ^testing.T) {
 		<div class=t id=m style="left: calc(anchor(left) + 5px); top: min(anchor(top), 10px)"></div>
 		<div class=t id=n style="left: anchor(--a right); top: anchor(--a bottom)"></div>
 	</div>`))
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	is(t, f, "l", 140, 50, 10, 10)
 	is(t, f, "r", 90, 60, 10, 10)
 	is(t, f, "c", 120, 60, 10, 10)
@@ -127,7 +83,7 @@ anchor_function_fallback :: proc(t: ^testing.T) {
 		<div class=t id=nested style="left: anchor(--missing left, anchor(right))"></div>
 		<div class=t id=auto style="left: anchor(--missing left); top: 4px"></div>
 	</div>`))
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	is(t, f, "none", 7, 30, 10, 10)
 	testing.expect_value(t, rect(f, "wrong").min.x, 3)
 	testing.expect_value(t, rect(f, "nested").min.x, 140)
@@ -143,7 +99,7 @@ anchor_size_in_sizes :: proc(t: ^testing.T) {
 		<div class=t id=f style="width: anchor-size(--missing width, 33px)"></div>
 		<div id=flow style="width: anchor-size(width, 44px); height: anchor-size(height)"></div>
 	</div>`))
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	r := rect(f, "s")
 	testing.expect_value(t, r.max - r.min, Vec2{40, 20})
 	r = rect(f, "x")
@@ -177,7 +133,7 @@ anchor_acceptability :: proc(t: ^testing.T) {
 	<div class=cb style="anchor-name: --c"><div class=c id=c1></div></div>
 	<div class=cb style="width: 300px"><div class=scope><div class=x style="margin-left: 50px"></div></div><div class=t id=t2></div></div>
 	<div class=cb><div class=scope><div class=x style="margin-left: 60px"></div><div class=t id=t3></div></div></div>`)
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	testing.expect_value(t, rect(f, "t1").min.x, 20)
 	testing.expect_value(t, rect(f, "u1").min.x, 2)    // comes after it, and absolutely positioned
 	testing.expect_value(t, rect(f, "u2").min.x, 77)
@@ -196,7 +152,7 @@ anchor_outside_containing_block :: proc(t: ^testing.T) {
 		#q { position: absolute; left: anchor(--a right); top: anchor(--a bottom); width: 5px; height: 5px }
 	</style><div id=a></div><div class=cb><div id=q></div></div><div id=later style="anchor-name: --b"></div>
 	<div class=cb style="top: 7px"><div id=none style="position: absolute; left: anchor(--b right, 9px); top: 0"></div></div>`)
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	// anchor at (70, 0) to (100, 10) in the page, the containing block starts at x = 20
 	r := rect(f, "q")
 	testing.expect_value(t, r.min, Vec2{100, 10})
@@ -214,7 +170,7 @@ position_area_grid :: proc(t: ^testing.T) {
 		<div class=t id=ins style="position-area: bottom right; left: 3px; top: 4px"></div>
 		<div class=t id=none style="position-area: top left; position-anchor: --missing; left: 1px; top: 1px"></div>
 	</div>`))
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	is(t, f, "tl", 90, 40, 10, 10)
 	is(t, f, "br", 140, 70, 10, 10)
 	is(t, f, "c", 115, 55, 10, 10)
@@ -231,7 +187,7 @@ anchor_center_centers :: proc(t: ^testing.T) {
 		<div class=t id=b style="align-self: anchor-center; left: 0"></div>
 		<div class=t id=no style="position-anchor: --missing; justify-self: anchor-center; left: 0; right: 0; top: 0"></div>
 	</div>`))
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	is(t, f, "j", 115, 0, 10, 10)
 	is(t, f, "b", 0, 55, 10, 10)
 	is(t, f, "no", 195, 0, 10, 10)   // no anchor: as center
@@ -261,7 +217,7 @@ fallbacks_flip_and_rules :: proc(t: ^testing.T) {
 		<div style="anchor-name: --c; position: absolute; left: 0; top: 0; width: 50px; height: 50px"></div>
 		<div id=start style="position: absolute; position-anchor: --c; top: anchor(bottom); left: 0; width: 60px; height: 160px; position-try-fallbacks: flip-start"></div>
 	</div>`)
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	is(t, f, "flipb", 0, 50, 60, 60)
 	is(t, f, "flipi", 50, 0, 60, 60)
 	is(t, f, "rule", 50, 0, 60, 60)
@@ -283,7 +239,7 @@ last_successful_option_stays :: proc(t: ^testing.T) {
 		#a { anchor-name: --a; position: absolute; left: 0; top: 100px; width: 50px; height: 50px }
 		#t { position: absolute; position-anchor: --a; bottom: anchor(top); left: 0; width: 10px; height: 60px; position-try-fallbacks: flip-block }
 	</style><div id=cb><div id=a></div><div id=t></div></div>`)
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	testing.expect_value(t, rect(f, "t").min.y, 40)
 	a := dom.find_by_id(f.doc, "a")
 	dom.set_attribute(f.doc, a, "style", "top: 20px")
@@ -304,7 +260,7 @@ anchors_follow_changes_incrementally :: proc(t: ^testing.T) {
 		<div class=t id=q style="left: anchor(right); top: anchor(bottom)"><div style="height: 100%" id=inner>x</div></div>
 		<div class=t id=sized style="width: anchor-size(width)">text</div>
 	</div>`))
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	is(t, f, "q", 140, 70, 10, 10)
 	a := dom.find_by_id(f.doc, "a")
 	dom.set_attribute(f.doc, a, "style", "left: 10px; width: 70px")
@@ -338,7 +294,7 @@ fixed_anchored_box :: proc(t: ^testing.T) {
 		#q { position: fixed; position-anchor: --a; left: anchor(right); top: anchor(top); width: 5px; height: 5px }
 		#spacer { height: 3000px }
 	</style><div id=a></div><div id=spacer></div><div id=q></div>`)
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	h := dom.find_by_id(f.doc, "q")
 	r, ok := box_of(&f.l, h, f.vp, 0)
 	testing.expect(t, ok)
@@ -359,7 +315,7 @@ fixed_area_on_scrolled_page :: proc(t: ^testing.T) {
 		#q { position: fixed; position-anchor: --a; position-area: bottom; position-visibility: always; width: 10px; height: 40px }
 		#tail { height: 2000px }
 	</style><div id=a></div><div id=tail></div><div id=q></div>`, 800, 300)
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	layout_doc_scroll :: 900
 	note_doc_scroll(&f.l, layout_doc_scroll)
 	ax_frame(t, f)
@@ -382,7 +338,7 @@ box_follows_scrolling_anchor :: proc(t: ^testing.T) {
 		#o { position: absolute; left: anchor(--a right); top: 0; width: 5px; height: 5px }
 		#x { position: absolute; position-anchor: --a; position-visibility: always; left: anchor(right); top: 0; width: 5px; height: 5px }
 	</style><div id=cb><div id=s><div id=a></div><div id=end></div></div><div id=q></div><div id=o></div><div id=x></div></div>`)
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	testing.expect_value(t, rect(f, "q").min, Vec2{30, 100})
 	s := dom.find_by_id(f.doc, "s")
 	passes := f.l.passes
@@ -406,7 +362,7 @@ scrolling_switches_fallback :: proc(t: ^testing.T) {
 		#end { height: 700px }
 		#q { position: absolute; position-anchor: --a; position-visibility: always; bottom: anchor(top); left: 0; width: 5px; height: 100px; position-try-fallbacks: flip-block }
 	</style><div id=cb><div id=s><div id=a></div><div id=end></div></div><div id=q></div></div>`)
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	testing.expect_value(t, rect(f, "q").min.y, 200)
 	testing.expect(t, f.l.anchor_scroll)
 	s := dom.find_by_id(f.doc, "s")
@@ -436,8 +392,8 @@ visibility_hides_painting :: proc(t: ^testing.T) {
 		#keep { position-visibility: anchor-valid; position-anchor: normal; left: anchor(--missing left, 1px) }
 	</style><div id=cb><div id=s><div id=a></div><div id=end></div></div>
 		<div class=q id=v>v</div><div class=q id=al>a</div><div class=q id=no>n</div><div class=q id=inv>i</div><div class=q id=keep>k</div></div>`)
-	defer ax_unload(f)
-	painted :: proc(f: ^Ax, id: string) -> bool {
+	defer fixture_unload(f)
+	painted :: proc(f: ^Fixture, id: string) -> bool {
 		h := dom.find_by_id(f.doc, id)
 		for &it in f.l.items { if it.node == h { return true } }
 		return false
@@ -468,7 +424,7 @@ pseudo_and_attribute_anchors :: proc(t: ^testing.T) {
 		#m { margin-left: 100px; width: 20px; height: 20px }
 		#q { position: absolute; position-anchor: auto; left: anchor(right, 1px); top: 0; width: 3px; height: 3px }
 	</style><div id=cb><div id=a></div><div id=m></div><div id=q anchor=m></div></div>`)
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	testing.expect_value(t, rect(f, "q").min.x, 120)
 	found := false
 	for &e in f.l.anchored {
@@ -490,7 +446,7 @@ grid_area_contains_anchored_box :: proc(t: ^testing.T) {
 		#q { position: absolute; grid-column: 2; grid-row: 2; position-anchor: --a; left: 0; top: anchor(--a bottom, 5px); width: 3px; height: 3px }
 		#r { position: absolute; grid-column: 2; grid-row: 2; position-anchor: --a; position-area: bottom right; width: 3px; height: 3px }
 	</style><div id=g><div id=a></div><div id=q></div><div id=r></div></div>`)
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	testing.expect_value(t, rect(f, "q").min, Vec2{100, 50})
 	testing.expect_value(t, rect(f, "r").min, Vec2{100, 50})
 }
@@ -521,7 +477,7 @@ try_rule_flow_relative :: proc(t: ^testing.T) {
 		<div class=q id=vrr style="writing-mode: vertical-rl; direction: rtl"></div>
 		<div class=q id=rtl style="direction: rtl"></div>
 	</div>`)
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	is(t, f, "h", 20, 10, 10, 10)
 	is(t, f, "vrl", 380, 20, 10, 10)
 	is(t, f, "vlr", 10, 20, 10, 10)
@@ -543,8 +499,8 @@ end_margins_where_axes_end :: proc(t: ^testing.T) {
 		<div class=s id=vup style="writing-mode: vertical-lr; direction: rtl"><div class=c style="margin-top: 500px"></div></div>
 		<div class=s id=rtl style="direction: rtl"><div class=c style="margin-left: 500px"></div></div>
 		<div class=s id=ltr><div class=c style="margin-right: 500px; margin-bottom: 500px"></div></div>`)
-	defer ax_unload(f)
-	range :: proc(f: ^Ax, id: string) -> (lo, hi: Vec2) {
+	defer fixture_unload(f)
+	range :: proc(f: ^Fixture, id: string) -> (lo, hi: Vec2) {
 		h := dom.find_by_id(f.doc, id)
 		hi, _ = scroll_max(&f.l, h)
 		return scroll_min(&f.l, h), hi
@@ -572,7 +528,7 @@ doc_scroll_origin_at_the_bottom :: proc(t: ^testing.T) {
 		#a { anchor-name: --a; width: 100px; height: 100px }
 		#q { position: fixed; position-anchor: --a; width: 10px; height: 10px; top: anchor(start); left: 0 }
 	</style><div id=a></div><div id=q></div>`)
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	lo, hi := doc_scroll_y_range(&f.l, f.vp.y)
 	testing.expect_value(t, lo, f32(-400))
 	testing.expect_value(t, hi, f32(0))
@@ -587,7 +543,7 @@ doc_scroll_origin_at_the_bottom :: proc(t: ^testing.T) {
 		html { writing-mode: vertical-lr }
 		body { margin: 0; width: 1000px; height: 1000px }
 	</style><div></div>`)
-	defer ax_unload(g)
+	defer fixture_unload(g)
 	lo, hi = doc_scroll_y_range(&g.l, g.vp.y)
 	testing.expect_value(t, lo, f32(0))
 	testing.expect_value(t, hi, f32(400))
@@ -613,7 +569,7 @@ anchored_in_a_spanner :: proc(t: ^testing.T) {
 			<div class=t id=none></div>
 		</div>
 	</div>`)
-	defer ax_unload(f)
+	defer fixture_unload(f)
 	is(t, f, "a", 10, 20, 40, 20)
 	is(t, f, "inner", 10, 20, 40, 20)
 	is(t, f, "contained", 10, 20, 40, 20)

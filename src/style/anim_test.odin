@@ -4,47 +4,21 @@ import "core:math"
 import "core:testing"
 import "wb:css"
 import "wb:dom"
-import "wb:html"
 
 @(private = "file")
-Ax :: struct {
-	doc: ^dom.Document,
-	eng: ^Engine,
-	st:  ^Styled,
-	tl:  ^Timeline,
-}
-
-@(private = "file")
-open :: proc(src: string, mode := Anim_Mode.Normal) -> Ax {
-	f: Ax
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
+open :: proc(src: string, mode := Anim_Mode.Normal) -> ^Fixture {
 	s := settings_default()
+	defer settings_destroy(&s)
 	s.anim_mode = mode
-	f.eng = engine_make(s)
-	settings_destroy(&s)
-	sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = compute_styles(f.eng, f.doc, {})
-	f.tl = timeline_make(f.eng)
-	timeline_restyled(f.tl, f.doc, nil, f.st, 0)
-	timeline_tick(f.tl, f.doc, f.st, 0)
-	return f
+	return fixture_load(src, {set = &s, timeline = true})
 }
 
 @(private = "file")
-close :: proc(f: ^Ax) {
-	timeline_destroy(f.tl, f.st)
-	styled_destroy(f.st)
-	engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
-}
-
-@(private = "file")
-node :: proc(f: ^Ax, id: string) -> ^Computed { return style_of(f.st, dom.find_by_id(f.doc, id)) }
+node :: proc(f: ^Fixture, id: string) -> ^Computed { return style_of(f.st, dom.find_by_id(f.doc, id)) }
 
 // A state change at time `ms`, as the page does it: partial restyle, then the timeline.
 @(private = "file")
-set_state :: proc(f: ^Ax, st: State, ms: f64) {
+set_state :: proc(f: ^Fixture, st: State, ms: f64) {
 	changed, ok := restyle_state(f.eng, f.doc, f.st, st)
 	_ = changed
 	if !ok {
@@ -59,13 +33,13 @@ set_state :: proc(f: ^Ax, st: State, ms: f64) {
 }
 
 @(private = "file")
-tick :: proc(f: ^Ax, ms: f64) { timeline_tick(f.tl, f.doc, f.st, ms) }
+tick :: proc(f: ^Fixture, ms: f64) { timeline_tick(f.tl, f.doc, f.st, ms) }
 
 @(private = "file")
 close_to :: proc(a, b: f64, eps := 0.002) -> bool { return math.abs(a - b) <= eps }
 
 @(private = "file")
-count_events :: proc(f: ^Ax, kind: Anim_Event_Kind) -> int {
+count_events :: proc(f: ^Fixture, kind: Anim_Event_Kind) -> int {
 	n := 0
 	for e in timeline_events(f.tl) { if e.kind == kind { n += 1 } }
 	return n
@@ -97,15 +71,15 @@ easing_functions :: proc(t: ^testing.T) {
 		#a { transition-timing-function: linear(0, 0.25 75%, 1), steps(3, jump-both), cubic-bezier(0.1, 0.2, 0.3, 0.4), ease-in }
 		#b { transition-timing-function: cubic-bezier(2, 0, 0, 1) }
 	</style><div id=a></div><div id=b></div>`)
-	defer close(&f)
-	a := node(&f, "a")
+	defer fixture_unload(f)
+	a := node(f, "a")
 	testing.expect_value(t, len(a.transition_timing), 4)
 	lin := a.transition_timing[0]
 	testing.expect(t, lin.kind == .Points && len(lin.points) == 3)
 	testing.expect(t, close_to(easing_eval(lin, 0.5), 0.25 * 0.5 / 0.75))
 	testing.expect(t, close_to(easing_eval(lin, 0.875), 0.625))
 	testing.expect(t, a.transition_timing[1].kind == .Steps && a.transition_timing[1].pos == .Jump_Both)
-	e := node(&f, "b").transition_timing[0]
+	e := node(f, "b").transition_timing[0]
 	testing.expect(t, e.kind == .Cubic_Bezier && e.p == EASE.p, "x outside 0..1 is invalid: the initial value stays")
 }
 
@@ -120,22 +94,22 @@ transition_and_animation_lists :: proc(t: ^testing.T) {
 		#c { transition: none }
 		#d { transition-property: color, width, bogus-prop; transition-duration: 1s, 2s }
 	</style><div id=a></div><div id=b></div><div id=c></div><div id=d></div>`)
-	defer close(&f)
-	a := node(&f, "a")
+	defer fixture_unload(f)
+	a := node(f, "a")
 	testing.expect_value(t, len(a.transition_property), 3)
 	testing.expect(t, a.transition_property[0].kind == .Prop && a.transition_property[0].prop == .Opacity)
 	testing.expect(t, a.transition_property[2].kind == .Short && a.transition_property[2].short == .Margin)
 	s0 := transition_at(a, 0)
 	testing.expect(t, s0.duration == 2000 && s0.delay == 500 && s0.easing.p == [4]f32{0.42, 0, 1, 1})
 	testing.expect(t, transition_at(a, 1).allow_discrete && transition_at(a, 1).duration == 300)
-	b := node(&f, "b")
+	b := node(f, "b")
 	testing.expect_value(t, len(b.animation_name), 2)
 	s := animation_at(b, 0)
 	testing.expect(t, s.name == "spin" && s.duration == 2000 && s.delay == 1000 && math.is_inf(s.iterations))
 	testing.expect(t, s.direction == .Alternate && s.fill == .Both && s.play_state == .Paused)
 	testing.expect(t, animation_at(b, 1).name == "fade" && animation_at(b, 1).iterations == 1)
-	testing.expect(t, node(&f, "c").transition_property[0].kind == .None)
-	d := node(&f, "d")
+	testing.expect(t, node(f, "c").transition_property[0].kind == .None)
+	d := node(f, "d")
 	testing.expect(t, len(d.transition_property) == 3 && d.transition_property[2].kind == .Unknown, "an unknown name keeps its place")
 	testing.expect(t, transition_at(d, 2).duration == 1000, "shorter lists repeat")
 }
@@ -151,29 +125,29 @@ transforms_parse_and_matrix :: proc(t: ^testing.T) {
 		#o { transform-origin: left top; transform: rotate(180deg) }
 		#bad { transform: rotate(10px) }
 	</style><div id=r></div><div id=t></div><div id=s></div><div id=m></div><div id=i></div><div id=o></div><div id=bad></div>`)
-	defer close(&f)
+	defer fixture_unload(f)
 	near_m :: proc(m: Matrix, want: Matrix) -> bool {
 		for i in 0 ..< 6 { if math.abs(m[i] - want[i]) > 1e-3 { return false } }
 		return true
 	}
-	r := transform_matrix(node(&f, "r"), 0, 0, 100, 100)
+	r := transform_matrix(node(f, "r"), 0, 0, 100, 100)
 	p := matrix_apply(r, 0, 0)
 	testing.expectf(t, math.abs(p.x - 100) < 1e-3 && math.abs(p.y) < 1e-3, "rotate(90deg) around the center: top-left goes to top-right, got %v", p)
-	testing.expect(t, near_m(transform_matrix(node(&f, "t"), 0, 0, 100, 40), Matrix{1, 0, 0, 1, 10, 20}), "translate percentages refer to the box")
-	q := matrix_apply(transform_matrix(node(&f, "s"), 0, 0, 100, 100), 0, 0)
+	testing.expect(t, near_m(transform_matrix(node(f, "t"), 0, 0, 100, 40), Matrix{1, 0, 0, 1, 10, 20}), "translate percentages refer to the box")
+	q := matrix_apply(transform_matrix(node(f, "s"), 0, 0, 100, 100), 0, 0)
 	testing.expect(t, math.abs(q.x + 50) < 1e-3 && math.abs(q.y + 50) < 1e-3, "scale(2) around the center")
-	m := node(&f, "m").transform
+	m := node(f, "m").transform
 	testing.expect_value(t, len(m), 4)
 	testing.expect(t, m[1].kind == .Rotate && m[1].axis == {1, 0, 0}, "rotateX turns about the x axis")
 	testing.expect(t, math.abs(op_matrix(m[1], 0, 0)[3] - 0.5) < 1e-4, "its 2D flattening is the orthographic projection")
 	testing.expect(t, m[2].kind == .Translate && m[3].kind == .Skew)
-	i := node(&f, "i")
+	i := node(f, "i")
 	testing.expect(t, i.translate.set && i.rotate.set && i.scale.set && i.scale.s[1] == 3)
 	im := transform_matrix(i, 0, 0, 0, 0)
 	testing.expect(t, near_m(im, Matrix{0, 2, -3, 0, 5, 6}), "translate, then rotate, then scale")
-	o := matrix_apply(transform_matrix(node(&f, "o"), 0, 0, 10, 10), 10, 10)
+	o := matrix_apply(transform_matrix(node(f, "o"), 0, 0, 10, 10), 10, 10)
 	testing.expect(t, math.abs(o.x + 10) < 1e-3 && math.abs(o.y + 10) < 1e-3, "transform-origin: left top")
-	testing.expect(t, node(&f, "bad").transform == nil)
+	testing.expect(t, node(f, "bad").transform == nil)
 	// decomposition round trip
 	src := Matrix{0.8, 0.6, -1.2, 1.6, 7, -3}
 	testing.expect(t, near_m(recompose(decompose(src)), src))
@@ -191,8 +165,8 @@ interpolating_values :: proc(t: ^testing.T) {
 		     transform: translate(10px) rotate(90deg); visibility: visible; z-index: 4; font-weight: 900 }
 		#c { transform: scale(2) } #d { transform: rotate(90deg) translate(10%) }
 	</style><div id=a></div><div id=b></div><div id=c></div><div id=d></div>`)
-	defer close(&f)
-	a, b := node(&f, "a"), node(&f, "b")
+	defer fixture_unload(f)
+	a, b := node(f, "a"), node(f, "b")
 	ctx := Interp_Ctx{alloc = context.temp_allocator}
 	out := new(Computed, context.temp_allocator)
 	out^ = a^
@@ -211,7 +185,7 @@ interpolating_values :: proc(t: ^testing.T) {
 	testing.expect(t, interpolate_prop(out, a, b, .Font_Weight, 0.5, &ctx) && out.font_weight == 500)
 	testing.expect(t, !interpolate_prop(out, a, b, .Display, 0.5, &ctx) || a.display == b.display)
 	// different function lists: matrix interpolation; with box-relative lengths, a deferred mix
-	c, d := node(&f, "c"), node(&f, "d")
+	c, d := node(f, "c"), node(f, "d")
 	testing.expect(t, interpolate_prop(out, c, b, .Transform, 0.5, &ctx) && len(out.transform) == 1 && out.transform[0].kind == .Matrix)
 	testing.expect(t, interpolate_prop(out, c, d, .Transform, 0.5, &ctx) && out.transform[0].kind == .Mix)
 	mm := transform_matrix(out, 0, 0, 100, 100)
@@ -234,50 +208,50 @@ transitions_start_reverse_cancel :: proc(t: ^testing.T) {
 		#b { width: 100px; transition: width 1s linear 500ms }
 		#b:hover { width: 200px }
 	</style><div id=a>a</div><div id=b>b</div>`)
-	defer close(&f)
+	defer fixture_unload(f)
 	a := dom.find_by_id(f.doc, "a")
 	b := dom.find_by_id(f.doc, "b")
-	set_state(&f, State{hover = a}, 1000)
-	testing.expect(t, count_events(&f, .Transition_Run) == 1 && count_events(&f, .Transition_Start) == 1)
-	testing.expect(t, close_to(f64(node(&f, "a").opacity), 1), "at the start the old value shows")
+	set_state(f, State{hover = a}, 1000)
+	testing.expect(t, count_events(f, .Transition_Run) == 1 && count_events(f, .Transition_Start) == 1)
+	testing.expect(t, close_to(f64(node(f, "a").opacity), 1), "at the start the old value shows")
 	testing.expect(t, timeline_active(f.tl), "a running transition wants frames")
 	timeline_clear_events(f.tl)
-	tick(&f, 1250)
-	testing.expect(t, close_to(f64(node(&f, "a").opacity), 0.75))
+	tick(f, 1250)
+	testing.expect(t, close_to(f64(node(f, "a").opacity), 0.75))
 	testing.expect(t, close_to(f64(base_style_of(f.st, a).opacity), 0), "the cascaded value is the end value")
 	// reversal at 25%: the new transition is shortened to 250ms
-	set_state(&f, State{}, 1250)
-	testing.expect(t, count_events(&f, .Transition_Cancel) == 1 && count_events(&f, .Transition_Run) == 1)
-	tick(&f, 1375)
-	testing.expectf(t, close_to(f64(node(&f, "a").opacity), 0.875), "halfway back, got %v", node(&f, "a").opacity)
-	tick(&f, 1500)
-	testing.expect(t, close_to(f64(node(&f, "a").opacity), 1) && count_events(&f, .Transition_End) == 1)
-	tick(&f, 1600)
+	set_state(f, State{}, 1250)
+	testing.expect(t, count_events(f, .Transition_Cancel) == 1 && count_events(f, .Transition_Run) == 1)
+	tick(f, 1375)
+	testing.expectf(t, close_to(f64(node(f, "a").opacity), 0.875), "halfway back, got %v", node(f, "a").opacity)
+	tick(f, 1500)
+	testing.expect(t, close_to(f64(node(f, "a").opacity), 1) && count_events(f, .Transition_End) == 1)
+	tick(f, 1600)
 	testing.expect(t, !timeline_active(f.tl) && timeline_running(f.tl) == 0, "nothing left to run: no frames")
-	testing.expect(t, node(&f, "a") == base_style_of(f.st, a), "the overlay is gone")
+	testing.expect(t, node(f, "a") == base_style_of(f.st, a), "the overlay is gone")
 	timeline_clear_events(f.tl)
 
 	// delay: the start value holds, transitionstart fires when the delay is over
-	set_state(&f, State{hover = b}, 2000)
-	testing.expect(t, count_events(&f, .Transition_Run) == 1 && count_events(&f, .Transition_Start) == 0)
+	set_state(f, State{hover = b}, 2000)
+	testing.expect(t, count_events(f, .Transition_Run) == 1 && count_events(f, .Transition_Start) == 0)
 	testing.expect(t, close_to(timeline_next_ms(f.tl), 500), "the next change is when the delay ends")
-	tick(&f, 2400)
-	testing.expect(t, node(&f, "b").width.v == 100)
-	tick(&f, 3000)
-	testing.expect(t, count_events(&f, .Transition_Start) == 1 && close_to(f64(node(&f, "b").width.v), 150))
+	tick(f, 2400)
+	testing.expect(t, node(f, "b").width.v == 100)
+	tick(f, 3000)
+	testing.expect(t, count_events(f, .Transition_Start) == 1 && close_to(f64(node(f, "b").width.v), 150))
 	// going back while running, not to the reversing start: a plain new transition from the current value
-	set_state(&f, State{hover = a}, 3000)
-	testing.expect(t, count_events(&f, .Transition_Cancel) == 1, "b's transition is replaced")
-	tick(&f, 3500)
-	testing.expectf(t, close_to(f64(node(&f, "b").width.v), 150), "still in the delay of the new one, got %v", node(&f, "b").width.v)
+	set_state(f, State{hover = a}, 3000)
+	testing.expect(t, count_events(f, .Transition_Cancel) == 1, "b's transition is replaced")
+	tick(f, 3500)
+	testing.expectf(t, close_to(f64(node(f, "b").width.v), 150), "still in the delay of the new one, got %v", node(f, "b").width.v)
 }
 
 @(test)
 transitions_follow_preferences :: proc(t: ^testing.T) {
 	f := open(`<style>#a { opacity: 1; transition: opacity 1s } #a:hover { opacity: 0 }</style><div id=a>a</div>`, .Off)
-	defer close(&f)
-	set_state(&f, State{hover = dom.find_by_id(f.doc, "a")}, 100)
-	testing.expect(t, node(&f, "a").opacity == 0 && timeline_running(f.tl) == 0 && len(timeline_events(f.tl)) == 0, "off: the end value at once, no event")
+	defer fixture_unload(f)
+	set_state(f, State{hover = dom.find_by_id(f.doc, "a")}, 100)
+	testing.expect(t, node(f, "a").opacity == 0 && timeline_running(f.tl) == 0 && len(timeline_events(f.tl)) == 0, "off: the end value at once, no event")
 }
 
 @(test)
@@ -287,14 +261,14 @@ inherited_animated_values_reach_descendants :: proc(t: ^testing.T) {
 		#p:hover { color: rgb(200, 0, 0) }
 		#own { color: blue }
 	</style><div id=p><span id=c>text <b id=g>bold</b></span><i id=own>own</i></div>`)
-	defer close(&f)
-	set_state(&f, State{hover = dom.find_by_id(f.doc, "p")}, 0)
-	tick(&f, 500)
-	testing.expectf(t, math.abs(node(&f, "c").color.r - 100.0 / 255) < 0.01, "the child inherits the animated color, got %v", node(&f, "c").color)
-	testing.expect(t, math.abs(node(&f, "g").color.r - 100.0 / 255) < 0.01, "and the grandchild")
-	testing.expect(t, node(&f, "own").color.b > 0.99, "an element with its own color is not touched")
-	tick(&f, 1500)
-	testing.expect(t, math.abs(node(&f, "g").color.r - 200.0 / 255) < 0.01)
+	defer fixture_unload(f)
+	set_state(f, State{hover = dom.find_by_id(f.doc, "p")}, 0)
+	tick(f, 500)
+	testing.expectf(t, math.abs(node(f, "c").color.r - 100.0 / 255) < 0.01, "the child inherits the animated color, got %v", node(f, "c").color)
+	testing.expect(t, math.abs(node(f, "g").color.r - 100.0 / 255) < 0.01, "and the grandchild")
+	testing.expect(t, node(f, "own").color.b > 0.99, "an element with its own color is not touched")
+	tick(f, 1500)
+	testing.expect(t, math.abs(node(f, "g").color.r - 200.0 / 255) < 0.01)
 }
 
 ////////////////////////////////
@@ -313,27 +287,27 @@ keyframe_animations :: proc(t: ^testing.T) {
 		#d { animation: missing 1s }
 		#e { animation: move 1000ms linear 500ms backwards; margin-left: 7px }
 	</style><div id=a></div><div id=b></div><div id=c></div><div id=d></div><div id=e></div>`)
-	defer close(&f)
-	ml :: proc(f: ^Ax, id: string) -> f32 { return node(f, id).margin[.Left].v }
-	testing.expect(t, count_events(&f, .Animation_Start) == 3, "a, b, c start (e is in its delay, d has no keyframes)")
-	testing.expect(t, ml(&f, "a") == 0, "the unlayered @keyframes wins over the layered one")
-	testing.expect(t, ml(&f, "e") == 0, "fill backwards: the first keyframe during the delay")
+	defer fixture_unload(f)
+	ml :: proc(f: ^Fixture, id: string) -> f32 { return node(f, id).margin[.Left].v }
+	testing.expect(t, count_events(f, .Animation_Start) == 3, "a, b, c start (e is in its delay, d has no keyframes)")
+	testing.expect(t, ml(f, "a") == 0, "the unlayered @keyframes wins over the layered one")
+	testing.expect(t, ml(f, "e") == 0, "fill backwards: the first keyframe during the delay")
 	timeline_clear_events(f.tl)
-	tick(&f, 250)
-	testing.expect(t, close_to(f64(ml(&f, "a")), 25))
-	testing.expectf(t, close_to(f64(node(&f, "b").opacity), 0.5), "implicit 0%% keyframe is the underlying value, got %v", node(&f, "b").opacity)
-	testing.expect(t, node(&f, "c").width.v == 0, "steps(2) holds")
-	tick(&f, 600)
-	testing.expect(t, node(&f, "c").width.v == 50)
-	testing.expect(t, close_to(f64(node(&f, "b").opacity), 0.2), "past the middle, toward the implicit 100%%")
-	testing.expect(t, count_events(&f, .Animation_Start) == 1, "e leaves its delay")
-	tick(&f, 1250)
-	testing.expect(t, count_events(&f, .Animation_Iteration) == 1)
-	testing.expectf(t, close_to(f64(ml(&f, "a")), 75), "second iteration runs backwards, got %v", ml(&f, "a"))
-	testing.expect(t, node(&f, "b").opacity == 1 && count_events(&f, .Animation_End) >= 2, "b and c are over; fill none: the cascaded value")
-	tick(&f, 2500)
-	testing.expect(t, ml(&f, "a") == 0, "fill forwards keeps the end of the last (reversed) iteration")
-	testing.expect(t, ml(&f, "e") == 7, "e is over and does not fill forwards")
+	tick(f, 250)
+	testing.expect(t, close_to(f64(ml(f, "a")), 25))
+	testing.expectf(t, close_to(f64(node(f, "b").opacity), 0.5), "implicit 0%% keyframe is the underlying value, got %v", node(f, "b").opacity)
+	testing.expect(t, node(f, "c").width.v == 0, "steps(2) holds")
+	tick(f, 600)
+	testing.expect(t, node(f, "c").width.v == 50)
+	testing.expect(t, close_to(f64(node(f, "b").opacity), 0.2), "past the middle, toward the implicit 100%%")
+	testing.expect(t, count_events(f, .Animation_Start) == 1, "e leaves its delay")
+	tick(f, 1250)
+	testing.expect(t, count_events(f, .Animation_Iteration) == 1)
+	testing.expectf(t, close_to(f64(ml(f, "a")), 75), "second iteration runs backwards, got %v", ml(f, "a"))
+	testing.expect(t, node(f, "b").opacity == 1 && count_events(f, .Animation_End) >= 2, "b and c are over; fill none: the cascaded value")
+	tick(f, 2500)
+	testing.expect(t, ml(f, "a") == 0, "fill forwards keeps the end of the last (reversed) iteration")
+	testing.expect(t, ml(f, "e") == 7, "e is over and does not fill forwards")
 	testing.expect(t, !timeline_active(f.tl) && timeline_next_ms(f.tl) < 0, "all finished: idle")
 }
 
@@ -347,16 +321,16 @@ a_loop_that_rests_sleeps_until_it_moves_again :: proc(t: ^testing.T) {
 		#b { animation: grow 1000ms linear infinite }
 		#c { animation: dim 1000ms linear infinite }
 	</style><div id=a></div>`)
-	defer close(&f)
-	tick(&f, 100)
+	defer fixture_unload(f)
+	tick(f, 100)
 	testing.expect_value(t, timeline_next_ms(f.tl), 0)   // moving: the next frame
-	tick(&f, 500)
-	testing.expectf(t, close_to(f64(node(&f, "a").width.v), 100), "resting at its end value, got %v", node(&f, "a").width.v)
+	tick(f, 500)
+	testing.expectf(t, close_to(f64(node(f, "a").width.v), 100), "resting at its end value, got %v", node(f, "a").width.v)
 	ms := timeline_next_ms(f.tl)
 	testing.expectf(t, ms > 450 && ms <= 502, "asleep until the loop starts again (500 ms), asked for %v", ms)
-	tick(&f, 1010)
+	tick(f, 1010)
 	testing.expect_value(t, timeline_next_ms(f.tl), 0)   // a new iteration: moving again
-	testing.expect(t, node(&f, "a").width.v < 20, "back at the start of the loop")
+	testing.expect(t, node(f, "a").width.v < 20, "back at the start of the loop")
 }
 
 @(test)
@@ -365,9 +339,9 @@ an_animation_that_always_moves_asks_for_every_frame :: proc(t: ^testing.T) {
 		@keyframes grow { from { width: 0px } to { width: 100px } }
 		#b { animation: grow 1000ms linear infinite }
 	</style><div id=b></div>`)
-	defer close(&f)
-	tick(&f, 100)
-	tick(&f, 500)
+	defer fixture_unload(f)
+	tick(f, 100)
+	tick(f, 500)
 	testing.expect_value(t, timeline_next_ms(f.tl), 0)
 }
 
@@ -377,9 +351,9 @@ a_loop_whose_width_rests_but_whose_opacity_moves_asks_for_every_frame :: proc(t:
 		@keyframes dim { 0% { width: 0px; opacity: 1 } 40% { width: 100px; opacity: 1 } 100% { width: 100px; opacity: 0.5 } }
 		#c { animation: dim 1000ms linear infinite }
 	</style><div id=c></div>`)
-	defer close(&f)
-	tick(&f, 100)
-	tick(&f, 700)
+	defer fixture_unload(f)
+	tick(f, 100)
+	tick(f, 700)
 	testing.expect_value(t, timeline_next_ms(f.tl), 0)
 }
 @(test)
@@ -391,22 +365,22 @@ animation_play_state_and_name_changes :: proc(t: ^testing.T) {
 		#b { animation: grow 1000ms linear }
 		#b:hover { animation-name: none }
 	</style><div id=a></div><div id=b></div>`)
-	defer close(&f)
+	defer fixture_unload(f)
 	a := dom.find_by_id(f.doc, "a")
-	tick(&f, 300)
-	testing.expect(t, close_to(f64(node(&f, "a").width.v), 30))
-	set_state(&f, State{hover = a}, 300)
-	tick(&f, 900)
-	testing.expect(t, close_to(f64(node(&f, "a").width.v), 30), "paused: time stands still")
-	testing.expect(t, !timeline_active(f.tl) || node(&f, "b").width.v < 100)
-	set_state(&f, State{}, 900)
-	tick(&f, 1000)
-	testing.expect(t, close_to(f64(node(&f, "a").width.v), 40), "running again from where it stopped")
+	tick(f, 300)
+	testing.expect(t, close_to(f64(node(f, "a").width.v), 30))
+	set_state(f, State{hover = a}, 300)
+	tick(f, 900)
+	testing.expect(t, close_to(f64(node(f, "a").width.v), 30), "paused: time stands still")
+	testing.expect(t, !timeline_active(f.tl) || node(f, "b").width.v < 100)
+	set_state(f, State{}, 900)
+	tick(f, 1000)
+	testing.expect(t, close_to(f64(node(f, "a").width.v), 40), "running again from where it stopped")
 	timeline_clear_events(f.tl)
-	set_state(&f, State{hover = dom.find_by_id(f.doc, "b")}, 1000)
-	testing.expect(t, count_events(&f, .Animation_Cancel) == 0, "b had already ended at 1000ms: nothing to cancel")
-	tick(&f, 1400)
-	testing.expect(t, close_to(f64(node(&f, "a").width.v), 80))
+	set_state(f, State{hover = dom.find_by_id(f.doc, "b")}, 1000)
+	testing.expect(t, count_events(f, .Animation_Cancel) == 0, "b had already ended at 1000ms: nothing to cancel")
+	tick(f, 1400)
+	testing.expect(t, close_to(f64(node(f, "a").width.v), 80))
 }
 
 ////////////////////////////////
@@ -429,34 +403,34 @@ counters_and_quotes :: proc(t: ^testing.T) {
 	<ol start=5 class=lower><li id=s1>e</li><li id=s2 value=10>j</li><li id=s3>k</li></ol>
 	<ul class=arm><li id=m1>i</li></ul>
 	<p><q id=q1>outer <q id=q2>inner</q></q></p>`)
-	defer close(&f)
-	before :: proc(f: ^Ax, id: string) -> string {
+	defer fixture_unload(f)
+	before :: proc(f: ^Fixture, id: string) -> string {
 		c := node(f, id)
 		if c == nil || c.before == nil || len(c.before.content.items) == 0 { return "" }
 		return c.before.content.items[0].text
 	}
-	after :: proc(f: ^Ax, id: string) -> string {
+	after :: proc(f: ^Fixture, id: string) -> string {
 		c := node(f, id)
 		if c == nil || c.after == nil || len(c.after.content.items) == 0 { return "" }
 		return c.after.content.items[0].text
 	}
-	testing.expect_value(t, before(&f, "h1"), "I. ")
-	testing.expect_value(t, before(&f, "h2"), "II. ")
-	testing.expect_value(t, before(&f, "l1"), "1 ")
-	testing.expect_value(t, before(&f, "l21"), "2.1 ")
-	testing.expect_value(t, before(&f, "l22"), "2.2 ")
-	testing.expect_value(t, before(&f, "l3"), "3 ")
-	testing.expect_value(t, node(&f, "l3").marker_text, "3. ")
-	testing.expect_value(t, node(&f, "r1").marker_text, "3. ")
-	testing.expect_value(t, node(&f, "r3").marker_text, "1. ")
-	testing.expect_value(t, node(&f, "s1").marker_text, "e. ")
-	testing.expect_value(t, node(&f, "s2").marker_text, "j. ")
-	testing.expect_value(t, node(&f, "s3").marker_text, "k. ")
-	testing.expect_value(t, node(&f, "m1").marker_text, "Ա. ")
-	testing.expect_value(t, before(&f, "q1"), "<")
-	testing.expect_value(t, before(&f, "q2"), "(")
-	testing.expect_value(t, after(&f, "q2"), ")")
-	testing.expect_value(t, after(&f, "q1"), ">")
+	testing.expect_value(t, before(f, "h1"), "I. ")
+	testing.expect_value(t, before(f, "h2"), "II. ")
+	testing.expect_value(t, before(f, "l1"), "1 ")
+	testing.expect_value(t, before(f, "l21"), "2.1 ")
+	testing.expect_value(t, before(f, "l22"), "2.2 ")
+	testing.expect_value(t, before(f, "l3"), "3 ")
+	testing.expect_value(t, node(f, "l3").marker_text, "3. ")
+	testing.expect_value(t, node(f, "r1").marker_text, "3. ")
+	testing.expect_value(t, node(f, "r3").marker_text, "1. ")
+	testing.expect_value(t, node(f, "s1").marker_text, "e. ")
+	testing.expect_value(t, node(f, "s2").marker_text, "j. ")
+	testing.expect_value(t, node(f, "s3").marker_text, "k. ")
+	testing.expect_value(t, node(f, "m1").marker_text, "Ա. ")
+	testing.expect_value(t, before(f, "q1"), "<")
+	testing.expect_value(t, before(f, "q2"), "(")
+	testing.expect_value(t, after(f, "q2"), ")")
+	testing.expect_value(t, after(f, "q1"), ">")
 	testing.expect(t, f.st.counters_used)
 
 	testing.expect_value(t, format_counter(1994, {style = .Upper_Roman}, context.temp_allocator), "MCMXCIV")
@@ -477,10 +451,10 @@ counters_survive_partial_restyles :: proc(t: ^testing.T) {
 		li::before { content: counter(list-item) ": " }
 		.x:hover { display: none }
 	</style><ol><li id=a>a</li><li id=b>b</li><li id=c>c</li></ol><p class=x id=x>no counters here</p>`)
-	defer close(&f)
+	defer fixture_unload(f)
 	changed, ok := restyle_state(f.eng, f.doc, f.st, State{hover = dom.find_by_id(f.doc, "b")})
 	testing.expect(t, changed && ok, "a color change keeps the counters: the restyle stays partial")
-	testing.expect_value(t, node(&f, "b").before.content.items[0].text, "2: ")
+	testing.expect_value(t, node(f, "b").before.content.items[0].text, "2: ")
 	_, ok = restyle_state(f.eng, f.doc, f.st, State{hover = dom.find_by_id(f.doc, "x")})
 	testing.expect(t, ok, "hiding something that uses no counter stays partial")
 
@@ -489,7 +463,7 @@ counters_survive_partial_restyles :: proc(t: ^testing.T) {
 		nav > ol > li > ol { display: none } nav > ol > li:hover > ol { display: block }
 	</style><nav><ul><li id=m>menu<ul><li>a</li><li>b</li></ul></li></ul>
 	<ol><li id=n>numbered<ol><li id=n1>x</li><li id=n2>y</li></ol></li></ol></nav>`)
-	defer close(&g)
+	defer fixture_unload(g)
 	_, ok = restyle_state(g.eng, g.doc, g.st, State{hover = dom.find_by_id(g.doc, "m")})
 	testing.expect(t, ok, "a bulleted drop-down menu opens with a partial restyle")
 	_, ok = restyle_state(g.eng, g.doc, g.st, State{hover = dom.find_by_id(g.doc, "n")})
@@ -509,8 +483,8 @@ gradients_and_backgrounds :: proc(t: ^testing.T) {
 		#e { background-image: linear-gradient(to top right, red, blue) }
 		#bad { background-image: linear-gradient(red) }
 	</style><div id=a></div><div id=b></div><div id=c></div><div id=d></div><div id=e></div><div id=bad></div>`)
-	defer close(&f)
-	a := node(&f, "a")
+	defer fixture_unload(f)
+	a := node(f, "a")
 	layers := background_layers(a)
 	testing.expect(t, len(layers) == 3 && layers[2].image.kind == .None, "a color alone is the last layer")
 	g := layers[0].image.grad
@@ -521,15 +495,15 @@ gradients_and_backgrounds :: proc(t: ^testing.T) {
 	testing.expect(t, a.background_color.r == 1 && a.background_color.g == 1, "the color of the last layer")
 	stops := gradient_stops(g, 200)
 	testing.expect(t, stops[0].pos == 0 && stops[1].pos == 60 && stops[2].pos == 200, "fixed-up positions")
-	b := node(&f, "b").background_image.grad
+	b := node(f, "b").background_image.grad
 	testing.expect(t, b.kind == .Radial && b.shape == .Circle && b.extent == .Explicit && b.radius[0].v == 20 && b.position[0].v == 10)
-	c := node(&f, "c").background_image.grad
+	c := node(f, "c").background_image.grad
 	testing.expect(t, c.repeating && len(c.stops) == 4)
-	d := node(&f, "d").background_image.grad
+	d := node(f, "d").background_image.grad
 	testing.expect(t, d.kind == .Conic && len(d.stops) == 3 && d.stops[1].hint)
-	e := node(&f, "e").background_image.grad
+	e := node(f, "e").background_image.grad
 	testing.expect(t, e.to_corner && math.abs(gradient_angle(e, 100, 100) - math.PI / 4) < 1e-4)
-	testing.expect(t, node(&f, "bad").background_image.grad != nil, "one stop is a solid color")
+	testing.expect(t, node(f, "bad").background_image.grad != nil, "one stop is a solid color")
 }
 
 @(test)
@@ -540,7 +514,7 @@ font_faces :: proc(t: ^testing.T) {
 		@font-face { font-family: Other Name; src: url(o.otf) format(opentype) }
 		@font-face { src: url(nofamily.ttf) }
 	</style>`)
-	defer close(&f)
+	defer fixture_unload(f)
 	faces := engine_font_faces(f.eng)
 	testing.expect_value(t, len(faces), 2)
 	ff := faces[0]
@@ -569,32 +543,32 @@ more_properties :: proc(t: ^testing.T) {
 	</style>
 	<div id=g><i id=ga></i><i id=gr></i></div><div id=fi></div><div id=cp></div><p id=ws></p><p id=nw></p><p id=tw></p>
 	<p id=tx></p><p id=mi></p><p id=sup></p><p id=sup2></p>`)
-	defer close(&f)
-	g := node(&f, "g")
+	defer fixture_unload(f)
+	g := node(f, "g")
 	testing.expect(t, g.grid_template_rows.kind == .Tracks && len(g.grid_template_rows.tracks) == 2)
 	testing.expect(t, g.grid_template_rows.tracks[0].names_before[0] == "top" && g.grid_template_rows.tracks[1].max.kind == .Fr)
 	testing.expect(t, len(g.grid_template_columns.tracks) == 2 && g.grid_template_columns.tracks[1].kind == .Repeat && g.grid_template_columns.tracks[1].count == 2)
 	testing.expect(t, g.grid_template_areas.rows == 2 && g.grid_template_areas.cols == 3 && len(g.grid_template_areas.areas) == 3)
-	testing.expect(t, node(&f, "ga").grid_row_start.kind == .Name && node(&f, "ga").grid_column_end.name == "b")
-	gr := node(&f, "gr")
+	testing.expect(t, node(f, "ga").grid_row_start.kind == .Name && node(f, "ga").grid_column_end.name == "b")
+	gr := node(f, "gr")
 	testing.expect(t, gr.grid_column_start.kind == .Line && gr.grid_column_start.n == 2 && gr.grid_column_end.kind == .Span && gr.grid_column_end.n == 3)
-	fi := node(&f, "fi")
+	fi := node(f, "fi")
 	testing.expect(t, len(fi.filter) == 3 && fi.filter[0].v == 3 && fi.filter[1].v == 1.5 && fi.filter[2].shadow.blur == 3)
-	cp := node(&f, "cp").clip_path
-	testing.expect(t, cp != nil && node(&f, "fi").clip_path == nil)
+	cp := node(f, "cp").clip_path
+	testing.expect(t, cp != nil && node(f, "fi").clip_path == nil)
 	testing.expect(t, cp.kind == .Inset && cp.inset[.Right].v == 20 && cp.round[.Top_Left].h.v == 5 && cp.box == .Padding_Box)
-	testing.expect(t, node(&f, "ws").white_space == .Pre_Wrap && node(&f, "nw").white_space == .Nowrap && node(&f, "tw").text_wrap_style == .Balance)
-	tx := node(&f, "tx")
+	testing.expect(t, node(f, "ws").white_space == .Pre_Wrap && node(f, "nw").white_space == .Nowrap && node(f, "tw").text_wrap_style == .Balance)
+	tx := node(f, "tx")
 	testing.expect(t, tx.text_decoration_style == .Dotted && tx.text_decoration_thickness.v == 2 && .Underline in tx.text_decoration)
 	testing.expect(t, tx.font_variant_caps == .Small_Caps && tx.font_stretch == 75 && tx.font_weight == 700 && tx.font_size == 20)
 	testing.expect(t, math.abs(tx.text_underline_offset.v - 5) < 1e-3, "a percentage of 1em")
-	mi := node(&f, "mi")
+	mi := node(f, "mi")
 	testing.expect(t, len(mi.will_change) == 2 && mi.contain == {.Size, .Layout, .Style, .Paint} && mi.content_visibility == .Hidden)
 	testing.expect(t, !mi.caret_color.auto && mi.accent_color.auto && mi.appearance == .Auto && mi.resize == .Both)
 	testing.expect(t, mi.column_count == 3 && mi.column_width.v == 200 && mi.overscroll_x == .Contain && mi.overscroll_y == .None)
 	testing.expect(t, mi.isolation == .Isolate && mi.mix_blend_mode == .Multiply && mi.scroll_behavior == .Smooth && mi.hyphens == .Auto)
 	testing.expect(t, mi.object_position[0].kind == .Calc && mi.object_position[1].v == 100)
-	testing.expect(t, node(&f, "sup").color == css.Color{1, 0, 0, 1} && node(&f, "sup2").color != css.Color{1, 0, 0, 1}, "@supports knows the new properties")
+	testing.expect(t, node(f, "sup").color == css.Color{1, 0, 0, 1} && node(f, "sup2").color != css.Color{1, 0, 0, 1}, "@supports knows the new properties")
 }
 
 ////////////////////////////////
@@ -626,41 +600,41 @@ transforms3d_parse_and_matrix :: proc(t: ^testing.T) {
 		#l { transform: rotate3d(0, 0, 0, 40deg) }
 	</style><div id=a></div><div id=b></div><div id=c></div><div id=d></div><div id=e></div><div id=f></div><div id=g></div>
 	<div id=h></div><div id=i></div><div id=j></div><div id=k></div><div id=l></div>`)
-	defer close(&f)
+	defer fixture_unload(f)
 	// rotateY(90deg) takes +x to -z
-	p := m4_apply(ops_matrix4(node(&f, "a").transform, 0, 0), 10, 0, 0)
+	p := m4_apply(ops_matrix4(node(f, "a").transform, 0, 0), 10, 0, 0)
 	testing.expectf(t, near3x4(p, {0, 0, -10, 1}), "rotateY(90deg) of (10,0,0): %v", p)
-	testing.expect(t, ops_are_3d(node(&f, "a").transform) && !ops_are_3d(node(&f, "d").transform))
-	testing.expect(t, near3(ops_matrix4(node(&f, "b").transform, 0, 0)[14], 50), "translateZ")
-	c := ops_matrix4(node(&f, "c").transform, 0, 0)
+	testing.expect(t, ops_are_3d(node(f, "a").transform) && !ops_are_3d(node(f, "d").transform))
+	testing.expect(t, near3(ops_matrix4(node(f, "b").transform, 0, 0)[14], 50), "translateZ")
+	c := ops_matrix4(node(f, "c").transform, 0, 0)
 	testing.expect(t, near3(c[11], -0.01, 1e-6), "perspective(100px) is m34 = -1/100")
 	pc := m4_apply(c, 0, 0, 50)
 	testing.expect(t, near3(pc[3], 0.5), "a point halfway to the viewer has w = 1/2")
-	testing.expect(t, node(&f, "d").transform[0].kind == .Matrix && node(&f, "d").transform[0].v[4] == 5, "a 2D matrix3d is a matrix")
-	testing.expect(t, node(&f, "e").transform[0].kind == .Matrix3D && node(&f, "e").transform[0].m3[11] == 0.001)
-	testing.expect(t, node(&f, "f").transform == nil && node(&f, "g").transform == nil, "translateZ(%) and negative perspective are invalid")
+	testing.expect(t, node(f, "d").transform[0].kind == .Matrix && node(f, "d").transform[0].v[4] == 5, "a 2D matrix3d is a matrix")
+	testing.expect(t, node(f, "e").transform[0].kind == .Matrix3D && node(f, "e").transform[0].m3[11] == 0.001)
+	testing.expect(t, node(f, "f").transform == nil && node(f, "g").transform == nil, "translateZ(%) and negative perspective are invalid")
 	// rotateY(180deg) around the middle of a 100px box: x -> 100 - x, and the back faces the viewer
-	m := transform_matrix4(node(&f, "h"), 0, 0, 100, 100)
+	m := transform_matrix4(node(f, "h"), 0, 0, 100, 100)
 	q := m4_apply(m, 0, 0, 0)
 	testing.expectf(t, near3(q[0], 100) && near3(q[1], 0), "rotateY(180deg) around the middle: (0,0) -> (100,0), got %v", q)
 	testing.expect(t, m4_back_facing(m), "rotateY(180deg) shows its back")
 	testing.expect(t, !m4_back_facing(m4_scale(-1, 1, 1)), "a mirror does not")
 	// product order: scale3d after (outside) translate3d
-	mi := ops_matrix4(node(&f, "i").transform, 0, 0)
+	mi := ops_matrix4(node(f, "i").transform, 0, 0)
 	r := m4_apply(mi, 1, 0, 0)
 	// rotate z 90deg: (1,0,0) -> (0,1,0); translate: (1,3,3); scale: (2,9,12)
 	testing.expectf(t, near3x4(r, {2, 9, 12, 1}), "function order, got %v", r)
-	testing.expect(t, near3(node(&f, "j").transform_origin_z, 30), "transform-origin z")
-	mj := transform_matrix4(node(&f, "j"), 0, 0, 100, 100)
+	testing.expect(t, near3(node(f, "j").transform_origin_z, 30), "transform-origin z")
+	mj := transform_matrix4(node(f, "j"), 0, 0, 100, 100)
 	// the origin (10px, 20px, 30px) stays put
 	pj := m4_apply(mj, 10, 20, 30)
 	testing.expectf(t, near3x4(pj, {10, 20, 30, 1}, 1e-2), "the origin is a fixed point, got %v", pj)
-	k := node(&f, "k")
+	k := node(f, "k")
 	testing.expect(t, has_transform(k) && k.transform_style == .Preserve_3d && k.backface_visibility == .Hidden && k.perspective == 100)
 	pm := perspective_matrix(k, 0, 0, 200, 100)
 	pp := m4_apply(pm, 50, 0, 50)   // origin (50, 50): (0,-50,50) -> w = 0.5
 	testing.expectf(t, near3(pp[0] / pp[3], 50) && near3(pp[1] / pp[3], -50), "perspective-origin 25% 50%: got %v", pp)
-	testing.expect(t, node(&f, "l").transform[0].kind == .Matrix, "a rotation about no axis is the identity")
+	testing.expect(t, node(f, "l").transform[0].kind == .Matrix, "a rotation about no axis is the identity")
 }
 
 @(test)
@@ -691,10 +665,10 @@ transforms3d_interpolate :: proc(t: ^testing.T) {
 		#i { rotate: x 0deg } #j { rotate: y 90deg } #k { rotate: z 0deg } #l { rotate: z 90deg }
 	</style><div id=a></div><div id=b></div><div id=c></div><div id=d></div><div id=e></div><div id=g></div><div id=h></div>
 	<div id=i></div><div id=j></div><div id=k></div><div id=l></div>`)
-	defer close(&f)
+	defer fixture_unload(f)
 	ctx := Interp_Ctx{alloc = context.temp_allocator}
 	out := new(Computed, context.temp_allocator)
-	a, b, c := node(&f, "a"), node(&f, "b"), node(&f, "c")
+	a, b, c := node(f, "a"), node(f, "b"), node(f, "c")
 	out^ = a^
 	testing.expect(t, interpolate_prop(out, a, b, .Transform, 0.5, &ctx) && len(out.transform) == 1 && out.transform[0].kind == .Rotate)
 	testing.expect(t, near3(out.transform[0].v[0], math.PI / 4) && out.transform[0].axis == {0, 1, 0}, "same axis: the angle is interpolated")
@@ -703,15 +677,15 @@ transforms3d_interpolate :: proc(t: ^testing.T) {
 	mm := out.transform[0].m3
 	testing.expectf(t, near3(m4_determinant(mm), 1, 1e-3), "the halfway rotation is a rotation (det %f)", m4_determinant(mm))
 	// 1/d is what is linear for perspective(): 100px to none halfway is 200px
-	d, e := node(&f, "d"), node(&f, "e")
+	d, e := node(f, "d"), node(f, "e")
 	testing.expect(t, interpolate_prop(out, d, e, .Transform, 0.5, &ctx) && out.transform[0].kind == .Perspective)
 	testing.expectf(t, near3(out.transform[0].v[0], 200, 1e-2), "perspective(100px) to none at 1/2: %f", out.transform[0].v[0])
-	g, h := node(&f, "g"), node(&f, "h")
+	g, h := node(f, "g"), node(f, "h")
 	testing.expect(t, interpolate_prop(out, g, h, .Transform, 0.25, &ctx) && near3(out.transform[0].z, 10), "translateZ")
 	// rotate property: other axes by quaternion
-	i, j := node(&f, "i"), node(&f, "j")
+	i, j := node(f, "i"), node(f, "j")
 	testing.expect(t, interpolate_prop(out, i, j, .Rotate, 0.5, &ctx) && out.rotate.axis == {0, 1, 0} && near3(out.rotate.angle, math.PI / 4), "rotate: a zero angle takes the other axis")
-	k, l := node(&f, "k"), node(&f, "l")
+	k, l := node(f, "k"), node(f, "l")
 	testing.expect(t, interpolate_prop(out, k, l, .Rotate, 0.5, &ctx) && near3(out.rotate.angle, math.PI / 4))
 	k.rotate = Rotate_Value{set = true, axis = {1, 0, 0}, angle = 1}
 	l.rotate = Rotate_Value{set = true, axis = {0, 1, 0}, angle = 1}
@@ -725,16 +699,16 @@ touch_action_values :: proc(t: ^testing.T) {
 		#m { touch-action: manipulation } #l { touch-action: pan-left pan-down } #bad { touch-action: none pan-x }
 		#dup { touch-action: pan-x pan-right } #r { touch-action: pan-right pan-up pinch-zoom } #pz { touch-action: pinch-zoom pinch-zoom }
 	</style><p id=n></p><p id=x></p><p id=y></p><p id=m></p><p id=l></p><p id=bad></p><p id=dup></p><p id=a></p><p id=r></p><p id=pz></p>`)
-	defer close(&f)
+	defer fixture_unload(f)
 	ALL :: Touch_Blocked{.Pan_Left, .Pan_Right, .Pan_Up, .Pan_Down, .Pinch_Zoom, .Double_Tap}
-	testing.expect_value(t, node(&f, "a").touch_action, Touch_Blocked{})
-	testing.expect_value(t, node(&f, "n").touch_action, ALL)
-	testing.expect_value(t, node(&f, "x").touch_action, Touch_Blocked{.Pan_Up, .Pan_Down, .Pinch_Zoom, .Double_Tap})
-	testing.expect_value(t, node(&f, "y").touch_action, Touch_Blocked{.Pan_Left, .Pan_Right, .Double_Tap})
-	testing.expect_value(t, node(&f, "m").touch_action, Touch_Blocked{.Double_Tap})
-	testing.expect_value(t, node(&f, "l").touch_action, Touch_Blocked{.Pan_Right, .Pan_Up, .Pinch_Zoom, .Double_Tap})
-	testing.expect_value(t, node(&f, "r").touch_action, Touch_Blocked{.Pan_Left, .Pan_Down, .Double_Tap})
-	testing.expect_value(t, node(&f, "pz").touch_action, Touch_Blocked{})
-	testing.expect_value(t, node(&f, "bad").touch_action, Touch_Blocked{})
-	testing.expect_value(t, node(&f, "dup").touch_action, Touch_Blocked{})
+	testing.expect_value(t, node(f, "a").touch_action, Touch_Blocked{})
+	testing.expect_value(t, node(f, "n").touch_action, ALL)
+	testing.expect_value(t, node(f, "x").touch_action, Touch_Blocked{.Pan_Up, .Pan_Down, .Pinch_Zoom, .Double_Tap})
+	testing.expect_value(t, node(f, "y").touch_action, Touch_Blocked{.Pan_Left, .Pan_Right, .Double_Tap})
+	testing.expect_value(t, node(f, "m").touch_action, Touch_Blocked{.Double_Tap})
+	testing.expect_value(t, node(f, "l").touch_action, Touch_Blocked{.Pan_Right, .Pan_Up, .Pinch_Zoom, .Double_Tap})
+	testing.expect_value(t, node(f, "r").touch_action, Touch_Blocked{.Pan_Left, .Pan_Down, .Double_Tap})
+	testing.expect_value(t, node(f, "pz").touch_action, Touch_Blocked{})
+	testing.expect_value(t, node(f, "bad").touch_action, Touch_Blocked{})
+	testing.expect_value(t, node(f, "dup").touch_action, Touch_Blocked{})
 }

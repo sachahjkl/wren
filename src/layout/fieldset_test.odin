@@ -3,35 +3,14 @@ package layout
 import "core:math"
 import "core:testing"
 import "wb:dom"
-import "wb:html"
-import "wb:style"
 
 // <fieldset> / <legend> (HTML §15.3.13): the rendered legend on the top border, the content below it.
 
 @(private = "file")
-fake_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> Font { return Font(1) }
-@(private = "file")
-fake_width :: proc(user: rawptr, f: Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(rune_count(text)) }
-@(private = "file")
-fake_metrics :: proc(user: rawptr, f: Font, size: f32) -> Font_Metrics { return {ascent = 0.8 * size, descent = 0.2 * size, x_height = 0.5 * size} }
-
-@(private = "file")
 with_layout :: proc(t: ^testing.T, src: string, check: proc(t: ^testing.T, l: ^Layout, doc: ^dom.Document)) {
-	doc := dom.document_create(nil)
-	defer dom.document_destroy(doc)
-	html.parse_into(doc, doc.root, transmute([]byte)src, 2_000_000)
-	ss := style.settings_default()
-	eng := style.engine_make(ss)
-	style.settings_destroy(&ss)
-	defer style.engine_destroy(eng)
-	style.sync_document_sheets(eng, doc, "about:test")
-	st := style.compute_styles(eng, doc, {})
-	defer style.styled_destroy(st)
-	set := settings_default()
-	l: Layout
-	defer destroy(&l)
-	run(&l, Input{doc = doc, styled = st, settings = &set, text = Text_Api{font = fake_font, width = fake_width, metrics = fake_metrics}, viewport = {800, 600}, scale = 1, band_h = 256})
-	check(t, &l, doc)
+	f := fixture_load(src)
+	defer fixture_unload(f)
+	check(t, &f.l, f.doc)
 }
 
 @(private = "file")
