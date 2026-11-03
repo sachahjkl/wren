@@ -19,6 +19,7 @@ import "wb:host"
 import "wb:net"
 import "wb:page"
 import "wb:tools/testenv"
+import "wb:tools/tooling"
 
 GUEST :: "build/netapitest.wasm"
 ORIGIN :: "http://127.0.0.1:8765"   // on the run's block of ports through testenv.url
@@ -105,12 +106,6 @@ scenario :: proc(pr: ^Probe, export: cstring, id: int, args: []u32 = nil) -> str
 	return wait_published(pr, string(export), id)
 }
 
-count_of :: proc(s: string) -> int {
-	n := 0
-	for c in s { if c >= '0' && c <= '9' { n = n * 10 + int(c - '0') } }
-	return n
-}
-
 json_strings :: proc(s: string) -> map[string]string {
 	out := make(map[string]string, allocator = context.temp_allocator)
 	v, err := json.parse(transmute([]byte)s, allocator = context.temp_allocator)
@@ -149,7 +144,7 @@ netapi_eventsource_delivers_and_closes :: proc(t: ^testing.T) {
 	host.clock_advance(&loop, PAST_ANY_RETRY)
 	check(pr, fetch.in_flight(&loader) == 0, "no reconnection started once the time of a retry has passed")
 	after := net_get(t, testenv.url(ORIGIN + "/sse/hits?name=basic"))
-	check(pr, count_of(after) == count_of(hits) + 1, "one connection, no reconnection after close()")
+	check(pr, tooling.parse_digits(after) == tooling.parse_digits(hits) + 1, "one connection, no reconnection after close()")
 	page.call_export(pr.p, pr.p.instances[0], "publish_now", {S_ES_BASIC})
 	again, _ := result(pr.p, S_ES_BASIC)
 	check(pr, again == want, "nothing is delivered after close()")
@@ -178,11 +173,11 @@ netapi_eventsource_wrong_type_never_reconnects :: proc(t: ^testing.T) {
 	virtual_clock(t)
 	pr, ok := open(t, "eventsource wrong type", testenv.url(ORIGIN + "/netapi.html"))
 	if !ok { return }
-	before := count_of(net_get(t, testenv.url(ORIGIN + "/sse/hits?name=wrong-type")))
+	before := tooling.parse_digits(net_get(t, testenv.url(ORIGIN + "/sse/hits?name=wrong-type")))
 	s := scenario(pr, "es_wrong_type", S_ES_WRONG)
 	check(pr, s == ES_FAILED, fmt.tprintf("a response that is not text/event-stream fails the EventSource (got %q)", s))
 	host.clock_advance(&loop, PAST_ANY_RETRY)
-	check(pr, fetch.in_flight(&loader) == 0 && count_of(net_get(t, testenv.url(ORIGIN + "/sse/hits?name=wrong-type"))) == before + 1, "...and it never reconnects")
+	check(pr, fetch.in_flight(&loader) == 0 && tooling.parse_digits(net_get(t, testenv.url(ORIGIN + "/sse/hits?name=wrong-type"))) == before + 1, "...and it never reconnects")
 	close_page(pr, min_checks = 2)
 }
 

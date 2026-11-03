@@ -661,9 +661,9 @@ main :: proc() {
 		case "-c": append(&confs, need(args, &i))
 		case "-a": force_all = true
 		case "-image": image_path = need(args, &i)
-		case "-threads": threads = max(1, parse_int(need(args, &i)))
-		case "-stride": stride = max(1, parse_int(need(args, &i)))
-		case "-timeout": timeout_ms = i64(max(100, parse_int(need(args, &i))))
+		case "-threads": threads = max(1, tooling.parse_digits(need(args, &i)))
+		case "-stride": stride = max(1, tooling.parse_digits(need(args, &i)))
+		case "-timeout": timeout_ms = i64(max(100, tooling.parse_digits(need(args, &i))))
 		case "-errors": errors_out = need(args, &i)
 		case "-known": known_path = need(args, &i)
 		case "-native": native_path = need(args, &i)
@@ -673,10 +673,10 @@ main :: proc() {
 		case "-update": update = true
 		case "-prepare": prepare_only = true
 		case "-jit":jit.enabled = true
-		case "-jit-threshold": jit.call_threshold = max(1, parse_int(need(args, &i)))
+		case "-jit-threshold": jit.call_threshold = max(1, tooling.parse_digits(need(args, &i)))
 		case "-jit-step": jit.step_only = true
 		case "-jit-sync": jit.background_threads = 0
-		case "-jit-loop": jit.loop_threshold = max(1, parse_int(need(args, &i)))
+		case "-jit-loop": jit.loop_threshold = max(1, tooling.parse_digits(need(args, &i)))
 		case "--pref": i += 1
 		case:
 			if strings.has_prefix(a, "-") { usage() }
@@ -861,10 +861,4 @@ write_markdown :: proc(path: string, all: []Failure, runs, skipped, tests: int, 
 		}
 	}
 	if err := os.write_entire_file(path, strings.to_string(b)); err != nil { fmt.eprintfln("test262: cannot write %s", path) }
-}
-
-parse_int :: proc(s: string) -> int {
-	v := 0
-	for ch in s { if ch >= '0' && ch <= '9' { v = v * 10 + int(ch - '0') } }
-	return v
 }

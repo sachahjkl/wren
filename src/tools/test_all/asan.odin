@@ -124,7 +124,7 @@ task_asan_package :: proc(t: ^Task_Run) -> bool {
 	run_it :: proc(command: []string) -> int { return task_exec(current, command) }
 	program := asan_build(run_it, "test", fmt.tprintf("src/%s", t.arg), fmt.tprintf("%s_asan_test", t.arg), {ONE_THREAD, "-define:ODIN_TEST_FANCY=false", "-define:ODIN_TEST_LOG_STATE_CHANGES=true"}, "CONSOLE", tools)
 	if program == "" { return false }
-	offset := file_size(t.log)
+	offset := tooling.file_size(t.log)
 	task_exec(t, {program}, {ASAN_OPTIONS})
 	data, err := os.read_entire_file(t.log, context.temp_allocator)
 	if err != nil { return false }

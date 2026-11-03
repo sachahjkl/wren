@@ -5,6 +5,7 @@ import "core:encoding/hex"
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
+import "core:slice"
 import "core:strings"
 import "core:time"
 
@@ -62,6 +63,27 @@ modified :: proc(path: string) -> (t: time.Time, ok: bool) {
 	fi, err := os.stat(path, context.temp_allocator)
 	if err != nil { return {}, false }
 	return fi.modification_time, true
+}
+
+// The size of a file, 0 when there is none.
+file_size :: proc(path: string) -> i64 {
+	fi, err := os.stat(path, context.temp_allocator)
+	return err == nil ? fi.size : 0
+}
+
+// The middle value (the higher of the two middle ones for an even count), 0 for none. `xs` is left as it is.
+median :: proc(xs: []f64) -> f64 {
+	if len(xs) == 0 { return 0 }
+	c := slice.clone(xs, context.temp_allocator)
+	slice.sort(c)
+	return c[len(c) / 2]
+}
+
+// The number the digits of `s` make, whatever is around and between them ("1,024 ms" is 1024; none is 0).
+parse_digits :: proc(s: string) -> int {
+	n := 0
+	for c in s { if c >= '0' && c <= '9' { n = n * 10 + int(c - '0') } }
+	return n
 }
 
 // Whether a file under `dir` (recursively), that `keep` lets through, is newer than `built`.

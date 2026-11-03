@@ -7,7 +7,6 @@ package blockerpages
 
 import "core:fmt"
 import "core:os"
-import "core:slice"
 import "core:strings"
 import "core:time"
 import win "core:sys/windows"
@@ -19,6 +18,7 @@ import "wb:tools/headless"
 import "wb:host"
 import "wb:page"
 import "wb:tools/testenv"
+import "wb:tools/tooling"
 
 Sample :: struct {
 	interactive_ms, complete_ms: f64,
@@ -98,13 +98,6 @@ measure :: proc(url, profile_dir: string, with_blocker: bool, timeout_s, settle_
 	return
 }
 
-median :: proc(xs: []f64) -> f64 {
-	if len(xs) == 0 { return 0 }
-	c := slice.clone(xs, context.temp_allocator)
-	slice.sort(c)
-	return c[len(c) / 2]
-}
-
 main :: proc() {
 	context = testenv.context_of_process()
 	profile := ""
@@ -144,7 +137,7 @@ main :: proc() {
 			col :: proc(l: []Sample, f: proc(s: Sample) -> f64) -> f64 {
 				v := make([dynamic]f64, context.temp_allocator)
 				for s in l { if s.failed == "" || s.failed == "timeout" { append(&v, f(s)) } }
-				return median(v[:])
+				return tooling.median(v[:])
 			}
 			l := results[m][:]
 			fmt.sbprintfln(&out, "| %s | %s | %.0f | %.0f | %.0f | %.0f | %.2f | %.0f | %.0f | %.0f | %.0f |", url, m == 1 ? "on" : "off",
