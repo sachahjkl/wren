@@ -251,12 +251,17 @@ of <code>Document</code> that name no node (<code>createTextNode</code>, <code>t
 <li>a handle resolves in its own document only. The tag is in the slot's generation, so a handle given to the wrong document fails
 like a dead one, in any implementation, routed or not;</li>
 <li>the document is looked up on each call, among the documents of the caller's tab, and its origin compared with the
-caller's (<code>frames_may_reach</code>, <code>src/page/frames_access.odin</code>). A frame gone, navigated to another origin, or sandboxed without
-<code>allow-same-origin</code> leaves handles that resolve to nothing;</li>
+caller's (<code>frames_may_reach</code>, <code>src/page/frames_access.odin</code>: HTML's "same origin-domain"). A frame gone, navigated to another
+origin, or sandboxed without <code>allow-same-origin</code> leaves handles that resolve to nothing;</li>
 <li>a cross-origin frame's nodes never get a handle in another realm in the first place: <code>contentDocument</code> is null,
 <code>contentWindow.document</code> and <code>parent.document</code> throw a <code>SecurityError</code>.</li>
 </ul>
-<p><code>document.domain</code> has no setter in Wren, so it never widens an origin.</p>
+<p><code>document.domain = value</code> sets the domain of the document's origin (<code>url.Origin.domain</code>) to its host or a registrable domain suffix
+of it (not a public suffix, not for an IP address), for every document that has that origin (an about:blank or srcdoc frame has
+its parent's: <code>Page.origin_owner</code>); a sandboxed document gets a <code>SecurityError</code>. Two documents that set the same domain reach each
+other whatever their ports and subdomains, and a navigation between them is told to the target (its <code>navigate</code> event). In an
+origin-keyed agent cluster (<code>Origin-Agent-Cluster: ?1</code>, or cross-origin isolated) the assignment changes nothing; without the header
+the agent cluster is keyed by site, as HTML says.</p>
 <p>An insertion of a node of another document moves it first (DOM "adopt", <code>Frame_adoptNode</code>): a node has its handle in its
 document's pool, so this makes new nodes, with their listeners, and the wrappers of the realm that asked follow them. A
 custom element keeps its definition: its reactions run in the realm that defined it, <code>adoptedCallback</code> included. A
@@ -348,18 +353,20 @@ sees one line, each entry of the tab followed by its steps.</p>
 <li><code>history.go(delta)</code>, <code>back()</code>, <code>forward()</code> in any document, and the browser's back and forward buttons, move <code>delta</code> positions:
 each frame then shows the entry of its last step at or before the position (before its first step, the entry that step left),
 traversed in its document or loaded again, and the tab its entry there: one of its own document's (popstate), or another
-document, which the shell loads (its frames start from their attributes, unless it comes from the back/forward cache);</li>
+document, which the shell loads (from the back/forward cache its frames move to their entries of that position);</li>
+<li>a frame whose document left without the back/forward cache (navigated away, evicted) is kept with its entries (<code>Kept_Frame</code>:
+the document it was in, its container's element path); when that document is loaded again in its entry (back, forward, a
+reload), the frame at the same place takes them back and loads its entry of the current position instead of its <code>src</code>, and
+so do the frames inside it; a <code>location.replace()</code> puts another document in the entry, whose frames start from their attributes;</li>
 <li><code>navigation.traverseTo()</code> (<code>back()</code>, <code>forward()</code>) in a frame goes to the nearest position where that frame shows the entry;</li>
 <li>a push drops the positions ahead, a frame's push the tab's entries ahead too (another branch of the tree, <code>History_Entry.cut</code>),
 and the documents whose entries went get their <code>dispose</code> events;</li>
 <li>a sandboxed document's traversal moves nothing when it would move a navigable it may not navigate (its <code>navigation.traverseTo()</code>
 rejects with a <code>SecurityError</code>);</li>
-<li>a step of a frame that is gone (removed, or its document left) no longer counts.</li>
+<li>a step of a frame that was removed no longer counts.</li>
 </ul>
 <p>What is not there:</p>
 <ul>
-<li><strong>a frame's entries after its document is loaded again</strong>: going back to a document of the tab that is not in the back/forward cache
-loads its frames from their attributes, where HTML would show each frame's entry of that position;</li>
 <li><strong>a Window kept for a window that <code>window.open</code> made</strong>: only a frame's initial about:blank keeps its <code>Window</code> (above);</li>
 <li><strong><code>precommitHandler</code></strong> of <code>NavigateEvent.intercept()</code>.</li>
 </ul>
