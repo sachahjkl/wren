@@ -598,12 +598,12 @@
 /dom/events/EventTarget-removeEventListener.any.worker.html: OK
 	removing a null event listener should succeed: PASS
 /dom/events/EventTarget-this-of-listener.html: OK
-	addEventListener should not require handleEvent to be defined on object listeners: FAIL
-	dispatchEvent should invoke the current handleEvent method of the object: FAIL
-	handleEvent properties added to a function after addEventListener are not reached: FAIL
-	handleEvent properties added to a function before addEventListener are not reached: FAIL
-	the this value inside the event listener callback should be the node: FAIL
-	the this value inside the event listener object handleEvent should be the object: FAIL
+	addEventListener should not require handleEvent to be defined on object listeners: PASS
+	dispatchEvent should invoke the current handleEvent method of the object: PASS
+	handleEvent properties added to a function after addEventListener are not reached: PASS
+	handleEvent properties added to a function before addEventListener are not reached: PASS
+	the this value inside the event listener callback should be the node: PASS
+	the this value inside the event listener object handleEvent should be the object: PASS
 /dom/events/EventTarget-window-constructor.html: OK
 	Modifying window.constructor does not affect event dispatch: PASS
 /dom/events/KeyEvent-initKeyEvent.html: OK

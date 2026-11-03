@@ -33,6 +33,31 @@ tree_ops_and_cycles :: proc(t: ^testing.T) {
 	testing.expect_value(t, insert_before(d, d.root, x, c), Error.Not_Found)
 }
 
+// A node inserted under a document of its own becomes its, shadow tree included; removed, it stays its; a clone keeps
+// its original's; inserted in the page's document, it is the page's again.
+@(test)
+node_document_follows_insertion :: proc(t: ^testing.T) {
+	d := document_create()
+	defer document_destroy(d)
+	own := create_fragment(d)
+	get(d, own).as_document = true
+	host := create_element(d, "div")
+	inner := create_element(d, "span")
+	append_child(d, host, inner)
+	root, err := attach_shadow(d, host, {mode = .Open})
+	testing.expect_value(t, err, Error.None)
+	in_shadow := create_text(d, "x")
+	append_child(d, root, in_shadow)
+
+	testing.expect_value(t, append_child(d, own, host), Error.None)
+	for h in ([]base.Handle{host, inner, root, in_shadow}) { testing.expect_value(t, get(d, h).doc, own) }
+	remove_child(d, host, inner)
+	testing.expect_value(t, get(d, inner).doc, own)
+	testing.expect_value(t, get(d, clone_node(d, inner, false)).doc, own)
+	append_child(d, d.root, inner)
+	testing.expect_value(t, get(d, inner).doc, base.NIL_HANDLE)
+}
+
 @(test)
 xml_element_attribute_case :: proc(t: ^testing.T) {
 	d := document_create()

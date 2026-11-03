@@ -328,8 +328,9 @@ foreign _m_dom {
 	@(link_name = "Document_createDocumentFragment") _Document_createDocumentFragment :: proc(_ret: ^Node) -> Error ---
 	@(link_name = "Document_createComment") _Document_createComment :: proc(data: [^]u8, data_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "Document_createCDATASection") _Document_createCDATASection :: proc(data: [^]u8, data_len: u32, _ret: ^Node) -> Error ---
-	@(link_name = "Document_adoptNode") _Document_adoptNode :: proc(node: u64, _ret: ^Node) -> Error ---
-	@(link_name = "Document_documentURI") _Document_documentURI :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_createProcessingInstruction") _Document_createProcessingInstruction :: proc(target: [^]u8, target_len: u32, data: [^]u8, data_len: u32, _ret: ^Node) -> Error ---
+	@(link_name = "Document_adoptNode") _Document_adoptNode :: proc(document: u64, node: u64, _ret: ^Node) -> Error ---
+	@(link_name = "Document_documentURI") _Document_documentURI :: proc(document: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Document_compatMode") _Document_compatMode :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Document_characterSet") _Document_characterSet :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Document_charset") _Document_charset :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
@@ -3620,33 +3621,43 @@ Document_createCDATASection :: proc "contextless" (data: string) -> (result: Nod
 	return
 }
 
-// document.adoptNode(node): removed from its parent (one document per page). Not_Supported for the document.
-Document_adoptNode :: proc "contextless" (node: $T_node) -> (result: Node, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
-	err = _Document_adoptNode(u64(node), &result)
+// document.createProcessingInstruction(target, data): Invalid_Character when `target` is not an XML Name or `data`
+// contains "?>".
+Document_createProcessingInstruction :: proc "contextless" (target: string, data: string) -> (result: Node, err: Error) {
+	err = _Document_createProcessingInstruction(raw_data(target), u32(len(target)), raw_data(data), u32(len(data)), &result)
 	return
 }
 
-// document.documentURI
-Document_documentURI :: proc "contextless" (buf: []u8) -> (string, Error) {
-	n := _Document_documentURI(raw_data(buf), u32(len(buf)))
+// document.adoptNode(node) (DOM "adopt"): removed from its parent, it and its shadow-including descendants get
+// `document` (the page's, or a document of its own) as node document. Not_Supported for a document, Hierarchy for a
+// shadow root. What the glue does too to what a document of its own makes (createElement, importNode).
+Document_adoptNode :: proc "contextless" (document: $T_document, node: $T_node) -> (result: Node, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_document)) && size_of(T_document) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	err = _Document_adoptNode(u64(document), u64(node), &result)
+	return
+}
+
+// document.documentURI (and document.URL) of `document`: about:blank for a document of its own createHTMLDocument,
+// createDocument or parseHTMLUnsafe made, else the page's URL (DOMParser's documents have their creator's).
+Document_documentURI :: proc "contextless" (document: $T_document, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_document)) && size_of(T_document) == 8 {
+	n := _Document_documentURI(u64(document), raw_data(buf), u32(len(buf)))
 	if n < 0 { return {}, Error(n) }
 	if int(n) > len(buf) { return string(buf), .Truncated }
 	return string(buf[:n]), .None
 }
 
 // The full length of Document_documentURI's result.
-Document_documentURI_len :: proc "contextless" () -> (int, Error) {
-	n := _Document_documentURI(nil, 0)
+Document_documentURI_len :: proc "contextless" (document: $T_document) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_document)) && size_of(T_document) == 8 {
+	n := _Document_documentURI(u64(document), nil, 0)
 	if n < 0 { return 0, Error(n) }
 	return int(n), .None
 }
 
 // Document_documentURI's result in a buffer allocated to fit.
-Document_documentURI_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+Document_documentURI_alloc :: proc(document: $T_document, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_document)) && size_of(T_document) == 8 {
 	cap := 64
 	for _ in 0 ..< 4 {
 		buf := make([]u8, cap, allocator)
-		n := _Document_documentURI(raw_data(buf), u32(len(buf)))
+		n := _Document_documentURI(u64(document), raw_data(buf), u32(len(buf)))
 		if n < 0 { delete(buf, allocator); return {}, Error(n) }
 		if int(n) <= cap { return string(buf[:n]), .None }
 		delete(buf, allocator)

@@ -4,6 +4,7 @@ package testserver
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"strings"
 	"time"
@@ -58,6 +59,11 @@ var wptPyHandlers = map[string]func(w http.ResponseWriter, r *http.Request){
 	"/workers/support/nosiniff-error-worker.py": func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+	},
+	// a document declaring the encoding `label` names (dom/nodes/Document-characterSet-normalization-*)
+	"/dom/nodes/encoding.py": func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, `<!doctype html><meta charset="%s">`, html.EscapeString(r.URL.Query().Get("label")))
 	},
 }
 

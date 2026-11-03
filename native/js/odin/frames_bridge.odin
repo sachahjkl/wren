@@ -353,6 +353,26 @@ frames_bridge_throw_type_error :: proc "contextless" (ctx: ^wj.Context, realm: u
 	return wj.JS_ThrowTypeError(ctx, message)
 }
 
+// Web IDL's TypeError for an operation on `node` given fewer arguments than it needs (wj_throw_arity): of the realm of the
+// node's document. A node of another document is this realm's wrapper, but in a browser its methods are its own realm's,
+// and what they throw is `instanceof` that realm's TypeError.
+throw_arity_of :: proc "c" (ctx: ^wj.Context, node: u64, what: cstring, required, given: i32) -> wj.JSValue {
+	r := wj.wj_throw_arity(ctx, what, required, given)
+	if !wj.wj_is_foreign(node) { return r }
+	context = jsb.glue_context()
+	id: api_decl.Navigable
+	jsb.host(&id, api_decl.Frame_ofDocument, wj.wr_Frame_ofDocument, api_decl.Node(node))
+	realm := id != 0 ? frames_bridge_realm(id) : 0
+	if realm == 0 { return r }
+	e := wj.JS_GetException(ctx)
+	text := wj.JS_GetPropertyStr(ctx, e, "message")
+	defer wj.JS_FreeValue(ctx, text)
+	thrown := frames_bridge_send(ctx, realm, OP_TYPE_ERROR, GLOBAL_NUMBER, text, wj.UNDEFINED)
+	if wj.is_exception(thrown) { wj.JS_FreeValue(ctx, e); return thrown }
+	wj.JS_FreeValue(ctx, thrown)
+	return wj.JS_Throw(ctx, e)   // (that realm is gone: this realm's)
+}
+
 // report(value), for web_bridge.js: the exception of a callback of this realm that another realm called.
 @(private = "file")
 bridge_native_report :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {

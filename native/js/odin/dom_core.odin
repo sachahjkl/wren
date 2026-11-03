@@ -356,7 +356,7 @@ wjr_ParentNode_querySelectorAll :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 	context = jsb.glue_context()
 	h := node_this(ctx, this_val, ifc("Node"))
 	if h == 0 { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "querySelectorAll", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, u64(h), "querySelectorAll", 1, argc) }
 	s: wj.Str
 	if !to_str(ctx, argv[0], &s) { return wj.EXCEPTION }
 	packed: abi.Bytes
@@ -496,8 +496,16 @@ wjr_Document_createElement :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 			if !wj.wj_doc_target(u64(doc)) { return wj.wj_throw_gone(ctx) }
 			st = jsb.host(&el, api_decl.Document_createElementInert, wj.wr_Document_createElementInert, str_view(name))
 		}
+		if st == .None { made_for(doc, api_decl.Node(el)) }
 	}
 	return node_or_throw(ctx, el, st, "Document.createElement")
+}
+
+// What a document other than the page's makes is its (DOM "node document": ownerDocument, the encoding of its URLs).
+@(private = "file")
+made_for :: proc(doc: api_decl.Document, n: api_decl.Node) {
+	r: api_decl.Node
+	jsb.host(&r, api_decl.Document_adoptNode, wj.wr_Document_adoptNode, doc, n)
 }
 
 // getElementById(id): the page's document by the browser's id index; a document of its own (createHTMLDocument's,
@@ -540,13 +548,15 @@ wjr_Document_createElementNS :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 	el: api_decl.Element
 	doc := api_decl.Document(node_this(ctx, this_val, ifc("Document")))
 	st := abi.Api_Error.Not_Found
-	if doc != 0 && doc != page_document() {
+	own := doc != 0 && doc != page_document()
+	if own {
 		st = jsb.host(&el, api_decl.Document_createXMLElement, wj.wr_Document_createXMLElement, doc, namespace_of(ns), str_view(name), true)
 	}
 	if st == .Not_Found {
 		if !wj.wj_doc_target(u64(doc)) { return wj.wj_throw_gone(ctx) }
 		st = jsb.host(&el, api_decl.Document_createElementNSChecked, wj.wr_Document_createElementNSChecked, namespace_of(ns), str_view(name))
 	}
+	if own && st == .None { made_for(doc, api_decl.Node(el)) }
 	return node_or_throw(ctx, el, st, "Document.createElementNS")
 }
 
@@ -577,6 +587,7 @@ wjr_Document_importNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, arg
 		if !adopt_for(ctx, self.handle, &moved) { return wj.EXCEPTION }
 		h = api_decl.Node(moved)
 	}
+	if st == .None && h != 0 { made_for(api_decl.Document(self.handle), h) }
 	return node_or_throw(ctx, h, st, "Document.importNode")
 }
 
@@ -655,13 +666,15 @@ wjr_DOMImplementation_createHTMLDocument :: proc "c" (ctx: ^wj.Context, this_val
 @(export, link_name = "wjr_DOMImplementation_createDocumentType")
 wjr_DOMImplementation_createDocumentType :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	context = jsb.glue_context()
-	if wj.dom_impl_of(ctx, this_val, ifc("DOMImplementation")) == nil { return wj.EXCEPTION }
+	impl := wj.dom_impl_of(ctx, this_val, ifc("DOMImplementation"))
+	if impl == nil { return wj.EXCEPTION }
 	if argc < 3 { return wj.wj_throw_arity(ctx, "DOMImplementation.createDocumentType", 3, argc) }
 	s: [3]wj.Str
 	defer { for &x in s { wj.wj_str_free(ctx, &x) } }
 	for i in 0 ..< 3 { if !to_str(ctx, argv[i], &s[i]) { return wj.EXCEPTION } }
 	h: api_decl.Node
 	st := jsb.host(&h, api_decl.DOMImplementation_createDocumentType, wj.wr_DOMImplementation_createDocumentType, str_view(s[0]), str_view(s[1]), str_view(s[2]))
+	if st == .None { made_for(api_decl.Document(impl.node), h) }
 	return node_or_throw(ctx, h, st, "DOMImplementation.createDocumentType")
 }
 
@@ -771,6 +784,17 @@ wjr_Document_get_characterSet :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> w
 wjr_Document_get_charset :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return document_encoding(ctx, t) }
 @(export, link_name = "wjr_Document_get_inputEncoding")
 wjr_Document_get_inputEncoding :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return document_encoding(ctx, t) }
+
+// document.URL: documentURI's (about:blank for a document createHTMLDocument, createDocument, new Document() made)
+@(export, link_name = "wjr_Document_get_URL")
+wjr_Document_get_URL :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	h := node_this(ctx, this_val, ifc("Document"))
+	if h == 0 { return wj.EXCEPTION }
+	s: string
+	jsb.host(&s, api_decl.Document_documentURI, wj.wr_Document_documentURI, api_decl.Document(h))
+	return wj.new_string_len(ctx, s)
+}
 
 @(export, link_name = "wjr_XMLSerializer_constructor")
 wjr_XMLSerializer_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {

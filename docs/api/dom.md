@@ -3169,27 +3169,43 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Document_createCDATASection :: proc(c: ^Call, data: string) -> (u64, Api_Error)`
 
-### `Document_adoptNode`
+### `Document_createProcessingInstruction`
 
 ```
-Node Document_adoptNode(Node node) raises
+Node Document_createProcessingInstruction(string target, string data) raises
 ```
 
-document.adoptNode(node): removed from its parent (one document per page). Not_Supported for the document.
+document.createProcessingInstruction(target, data): Invalid_Character when `target` is not an XML Name or `data`
+contains "?>".
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Document_adoptNode :: proc(c: ^Call, node: Api_Node) -> (u64, Api_Error)`
+Host: `Document_createProcessingInstruction :: proc(c: ^Call, target: string, data: string) -> (u64, Api_Error)`
+
+### `Document_adoptNode`
+
+```
+Node Document_adoptNode(Node document, Node node) raises
+```
+
+document.adoptNode(node) (DOM "adopt"): removed from its parent, it and its shadow-including descendants get
+`document` (the page's, or a document of its own) as node document. Not_Supported for a document, Hierarchy for a
+shadow root. What the glue does too to what a document of its own makes (createElement, importNode).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_adoptNode :: proc(c: ^Call, document: Api_Node, node: Api_Node) -> (u64, Api_Error)`
 
 ### `Document_documentURI`
 
 ```
-string Document_documentURI()
+string Document_documentURI(Node document)
 ```
 
-document.documentURI
+document.documentURI (and document.URL) of `document`: about:blank for a document of its own createHTMLDocument,
+createDocument or parseHTMLUnsafe made, else the page's URL (DOMParser's documents have their creator's).
 
-Host: `Document_documentURI :: proc(c: ^Call) -> string`
+Host: `Document_documentURI :: proc(c: ^Call, document: Api_Node) -> string`
 
 ### `Document_compatMode`
 

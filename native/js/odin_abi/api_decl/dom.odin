@@ -65,12 +65,15 @@ Document_createElementNSChecked :: #type proc(namespace: Maybe(string), qualifie
 Document_createXMLElement       :: #type proc(document: Document, namespace: Maybe(string), qualified_name: string, with_namespace: bool) -> (Element, abi.Api_Error)
 Document_getElementById         :: #type proc(id: string) -> Element
 Document_importNodeCopy         :: #type proc(node: Node, deep: bool) -> (Node, abi.Api_Error)
+// DOM "adopt": `node` and its shadow-including descendants get `document` as node document
+Document_adoptNode              :: #type proc(document: Document, node: Node) -> (Node, abi.Api_Error)
 Document_partOf                 :: #type proc(document: Document, which: DocumentPart) -> Node
 Document_set_body               :: #type proc(body: Element) -> abi.Api_Error
 Document_xmlContentType         :: #type proc(document: Document) -> (string, abi.Api_Error)   // Not_Found: the page's
 Document_contentType            :: #type proc() -> string
 Document_characterSet           :: #type proc() -> string
 Document_URL                    :: #type proc() -> string
+Document_documentURI            :: #type proc(document: Document) -> string   // about:blank for createHTMLDocument's...
 Document_createTextNode         :: #type proc(data: string) -> (Node, abi.Api_Error)
 Document_createComment          :: #type proc(data: string) -> (Node, abi.Api_Error)
 Document_createDocumentFragment :: #type proc() -> (Node, abi.Api_Error)

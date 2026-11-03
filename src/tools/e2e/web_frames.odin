@@ -187,6 +187,7 @@ toImport.innerHTML = "<q>x</q>";
 const imported = d.importNode(toImport, true);
 log("importNode " + (imported !== toImport) + " " + (imported.ownerDocument === d) + " " + (toImport.ownerDocument === document) + " " + imported.firstChild.tagName);
 try { document.body.removeChild(d.body); log("no throw"); } catch (e) { log("removeChild across documents " + e.name); }
+try { made.matches(); log("no throw"); } catch (e) { log("arity " + (e instanceof f.contentWindow.TypeError) + " " + (e instanceof TypeError)); }
 d.title = "frame title";
 log("title " + d.title + " | " + document.title + " | " + d.readyState + " " + d.URL + " " + d.compatMode);
 </script></body>`)
@@ -203,6 +204,7 @@ log("title " + d.title + " | " + document.title + " | " + d.readyState + " " + d
 	check(pr, said(pr, "adoptNode true true"), "document.adoptNode of a frame takes a parent's node")
 	check(pr, said(pr, "importNode true true true Q"), "document.importNode of a frame makes a copy there")
 	check(pr, said(pr, "removeChild across documents NotFoundError"), "a node of another document is not a child")
+	check(pr, said(pr, "arity true false"), "a method of a node of the frame given too few arguments throws the frame's TypeError")
 	check(pr, said_part(pr, "title frame title |  | "), "document.title of the frame, not of the parent")
 	c := child_of(pr.p)
 	check(pr, c != nil && strings.contains(page.serialize_html(c.doc, c.body, false), `<span data-a="1"`), "what was written is in the frame's own DOM (seen from the browser's side)")

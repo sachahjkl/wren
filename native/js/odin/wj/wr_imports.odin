@@ -1969,10 +1969,16 @@ foreign _wr_wj_dom {
 	@(link_name = "Document_createComment") wr_Document_createComment :: proc(data: [^]u8, data_len: u32, _ret: ^u64) -> i32 ---
 	// document.createCDATASection(data): Not_Supported (an HTML document).
 	@(link_name = "Document_createCDATASection") wr_Document_createCDATASection :: proc(data: [^]u8, data_len: u32, _ret: ^u64) -> i32 ---
-	// document.adoptNode(node): removed from its parent (one document per page). Not_Supported for the document.
-	@(link_name = "Document_adoptNode") wr_Document_adoptNode :: proc(node: u64, _ret: ^u64) -> i32 ---
-	// document.documentURI
-	@(link_name = "Document_documentURI") wr_Document_documentURI :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	// document.createProcessingInstruction(target, data): Invalid_Character when `target` is not an XML Name or `data`
+	// contains "?>".
+	@(link_name = "Document_createProcessingInstruction") wr_Document_createProcessingInstruction :: proc(target: [^]u8, target_len: u32, data: [^]u8, data_len: u32, _ret: ^u64) -> i32 ---
+	// document.adoptNode(node) (DOM "adopt"): removed from its parent, it and its shadow-including descendants get
+	// `document` (the page's, or a document of its own) as node document. Not_Supported for a document, Hierarchy for a
+	// shadow root. What the glue does too to what a document of its own makes (createElement, importNode).
+	@(link_name = "Document_adoptNode") wr_Document_adoptNode :: proc(document: u64, node: u64, _ret: ^u64) -> i32 ---
+	// document.documentURI (and document.URL) of `document`: about:blank for a document of its own createHTMLDocument,
+	// createDocument or parseHTMLUnsafe made, else the page's URL (DOMParser's documents have their creator's).
+	@(link_name = "Document_documentURI") wr_Document_documentURI :: proc(document: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	// document.compatMode: "CSS1Compat" or "BackCompat".
 	@(link_name = "Document_compatMode") wr_Document_compatMode :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	// document.characterSet
