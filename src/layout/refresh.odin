@@ -70,12 +70,7 @@ note_refresh_inputs :: proc(l: ^Layout, same_boxes := false) {
 refresh :: proc(l: ^Layout, input: Input) -> bool {
 	t0 := time.tick_now()
 	st := input.styled
-	remap := make(map[^style.Computed]^style.Computed, 256, context.temp_allocator)
-	put :: proc(m: ^map[^style.Computed]^style.Computed, old, new: ^style.Computed) -> bool {
-		if x, ok := m[old]; ok { return x == new }   // one record for two elements: cannot tell them apart
-		m[old] = new
-		return true
-	}
+	replaced := false
 	anon := anon_paint_props()
 	// boxes in index order: a parent comes before its children (anonymous boxes copy from their parent)
 	for &b in l.boxes {
@@ -92,19 +87,17 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 		if .Pseudo in b.flags { nc = .Pseudo_After in b.flags ? el.after : el.before }
 		if nc == nil { return false }
 		if nc == b.cs { continue }   // an animation overlay is rewritten in place: same record, new values
-		if !put(&remap, b.cs, nc) { return false }
 		b.cs = nc
+		replaced = true
 	}
 	// nothing was replaced and every text belongs to an element with a box: inline and display items are up to date
-	if len(remap) == 0 && !l.loose_styles { return refresh_rest(l, input, t0) }
+	if !replaced && !l.loose_styles { return refresh_rest(l, input, t0) }
 	l.restyled += 1
 	for &it in l.inline_items {
 		if it.cs == nil { continue }
 		if it.node == base.NIL_HANDLE { continue }   // the initial style: the same record for the whole pass
-		// the element's record now, not the one its old record became for a box: elements with the same style share
-		// one record (style/share.odin), and an element without a box of its own (an inline link beside a block that had
-		// the same style) may have another one now; also text whose owner generates no box (display: contents), and
-		// items of an unchanged element's ::before / ::after: their record is the pseudo-element's, not the element's
+		// the element's record now: also for text whose owner generates no box (display: contents), and for items of an
+		// unchanged element's ::before / ::after (their record is the pseudo-element's, not the element's)
 		el := style.style_of(st, it.node)
 		nc := el
 		if el != nil {
@@ -113,13 +106,12 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 			case .After: nc = el.after
 			}
 		}
-		if nc == it.cs { continue }
-		if nc == nil || !put(&remap, it.cs, nc) { return false }
+		if nc == nil { return false }
 		it.cs = nc
 	}
-	for &it in l.items {
-		if it.cs != nil { if nc, ok := remap[it.cs]; ok { it.cs = nc } }
-	}
+	// each display item from its box or inline item, not from the record it had: alike elements shared that record, and
+	// only some of them have another one now (a hover on one link of a nav)
+	remap_display_items(l)
 	return refresh_rest(l, input, t0)
 }
 

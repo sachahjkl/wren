@@ -170,14 +170,16 @@ overflow_kept :: proc(l: ^Layout, p: i32, before: Rect, had: bool, after: Rect, 
 	return true
 }
 
-// Every display item takes the style its box or inline item now has (a restyle hands out new records).
+// Every display item takes the style its box or inline item now has (a restyle hands out new records). An ellipsis (text
+// of no inline item) has its inline formatting context's style (emit_lines).
 @(private)
 remap_display_items :: proc(l: ^Layout) {
 	for &it in l.items {
 		if it.item >= 0 {
 			it.cs = l.inline_items[it.item].cs
 		} else if it.box >= 0 {
-			it.cs = l.boxes[it.box].cs
+			b := &l.boxes[it.box]
+			it.cs = it.kind == .Text && .Ifc not_in b.flags && b.ifc_root != NONE ? l.boxes[b.ifc_root].cs : b.cs
 		}
 	}
 }
