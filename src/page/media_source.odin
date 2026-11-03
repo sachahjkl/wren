@@ -191,6 +191,12 @@ Mse_Event :: struct {
 mse_fire :: proc(p: ^Page, handle: u64, type: string) {
 	if handle == 0 || p.closed { return }
 	if mse_forward(p, handle, type) { return }   // the page's side of a worker's MediaSource: to the worker (mse_worker.odin)
+	post_object_event(p, handle, type)
+}
+
+// Fires `type` at the object `handle` from a task of its own (the media objects' events: MediaSource, the track lists, the cues).
+@(private)
+post_object_event :: proc(p: ^Page, handle: u64, type: string) {
 	post_page_task(p, proc(pg: ^Page, data: rawptr) {
 		ev := (^Mse_Event)(data)
 		defer { delete(ev.type); free(ev) }
