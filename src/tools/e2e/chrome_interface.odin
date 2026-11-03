@@ -1,6 +1,6 @@
 package e2e_scenarios
 
-// The interface as a whole with no browser around it (chrome_world.odin): its own zoom, the developer tools docked at their size, the main menu over the window's edge, the themes.
+// The interface as a whole with no browser around it (chrome_world.odin): its own zoom, the developer tools docked at their size, the main menu over the window's edge, the themes, a row's menu over the downloads drop-down.
 
 import "core:fmt"
 import "core:strings"
@@ -138,3 +138,51 @@ chrome_themes_paint_from_their_palettes :: proc(t: ^testing.T) {
 }
 @(private = "file") THEME_SETTLES :: 30      // frames: a palette's colours cross-fade
 @(private = "file") STATUS_BAR_INSIDE :: 6   // px from the bottom: in the status bar, away from its text
+
+@(private = "file") ROW_ID :: 1
+@(private = "file") ROW_URL :: "https://files.test/report.pdf"
+@(private = "file") ROW_NAME :: "report.pdf"
+@(private = "file") ROW_BOX :: "dlr_1"   // the row of ROW_ID (dl_row)
+
+// The toolbar's downloads drop-down: a right click on a row opens the row's menu over the drop-down, which stays open behind it (the menu once
+// replaced the drop-down: a right click closed it). A press beside the row's menu, still on the drop-down, closes only the menu; Escape too.
+@(test)
+chrome_downloads_row_menu_over_the_panel :: proc(t: ^testing.T) {
+	w := chrome_start(t)
+	// a download of this session that failed: the button shows, its row has a menu
+	d := new(browser.Download)
+	d^ = {app = w.app, id = ROW_ID, url = strings.clone(ROW_URL), name = strings.clone(ROW_NAME), state = .Failed}
+	append(&w.app.dls.list, d)
+	testing.cleanup(t, proc(p: rawptr) { browser.downloads_shutdown((^browser.App)(p)) }, w.app)   // (before chrome_end)
+	session.frames(w.s, 2)
+
+	session.click(w.s, "downloads_icon")
+	chrome_still(w)
+	testing.expect_value(t, ui.menu_depth(), 1)
+	row := session.get(w.s, ROW_BOX)
+	session.click_at(w.s, session.center(row), .Right)
+	chrome_still(w)
+	testing.expect_value(t, ui.menu_depth(), 2)
+	testing.expect(t, session.find_text(w.s, "Remove from the list") != nil, "the row's menu shows its items")
+
+	// a press on the drop-down's title, beside the row's menu: the menu closes, the drop-down stays
+	session.click_at(w.s, session.center(session.get(w.s, "dlp_title")))
+	chrome_still(w)
+	testing.expect_value(t, ui.menu_depth(), 1)
+
+	// Escape closes the row's menu only
+	session.click_at(w.s, session.center(row), .Right)
+	chrome_still(w)
+	testing.expect_value(t, ui.menu_depth(), 2)
+	session.key(w.s, .Escape)
+	chrome_still(w)
+	testing.expect_value(t, ui.menu_depth(), 1)
+
+	// an item does what it says and closes both
+	session.click_at(w.s, session.center(row), .Right)
+	chrome_still(w)
+	session.click_text(w.s, "Remove from the list")
+	chrome_still(w)
+	testing.expect_value(t, len(w.app.dls.list), 0)
+	testing.expect(t, !ui.ctx_menu_any_open(), "choosing closes the menu and the drop-down")
+}
