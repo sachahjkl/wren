@@ -171,6 +171,10 @@ After round 12 (5 runs of each build, interleaved; median, range in brackets): t
 12.2 (11.9-12.7) ms a frame p50, 137 (108-145) -> 159 (130-167) frames/s, CPU work per frame 20.7 (19.7-26.4) -> 17.8
 (17.0-21.9) ms; in jspage `build()` 11.1 -> 8.6 ms, the collection the DOM asks for 4.2 -> 3.7 ms.
 
+After round 13 (5 runs of each build, interleaved; median, range in brackets): the script stage 12.15 (12.04-12.27) ->
+11.39 (11.31-11.60) ms a frame p50, 164.6 (160.4-167.8) -> 169.0 (166.2-169.4) frames/s, CPU work per frame 17.4
+(16.9-17.7) -> 16.8 (16.7-17.0) ms; in jspage the collection the DOM asks for 3.57 -> 2.89 ms, `build()` the same.
+
 **Bottleneck:** the script stage (the interpreter and the wrappers it makes, the browser's insertions and the trees
 the collection frees), then layout.
 
@@ -1092,6 +1096,82 @@ window thread's script samples): the trampoline's checks 15 % of it, `journal_re
 moves half of it, `memcpy` 5 %), `check_insert` 11 %, `insert_before` 9 %, the insertion steps' walk and hooks 20 %
 (`inserted_kinds`, `hook_inserted`, `dialog_note_attribute`, the forms model).
 
+## What changed, round 13: the script stage of DOM-heavy pages, the collection
+
+Item 1 of round 12's list. Profiled first: the engine's samples (the guest profiler in `jspage`, its ticks at 1 ms with
+`--pref wasm.wasmtime.epoch_tick_ms=1`: 19 306 samples in 3 000 frames, the bias of round 12), the browser's under each
+import (`WREN_SAMPLE_UNDER=page::[api_generated.odin]::_t_dom_Node_preInsert` and the others). The browser's side of
+nodes10k's script stage is small: a frame spends 0.50 ms in `Node_preInsert` (`journal_record` 23 %, its halving's
+`memcpy` 6 %, the insertion hooks 29 %, `check_insert` 9 %), 0.31 ms in `Node_unpinAll` (`destroy_subtree` 69 %, `unpin`
+29 %), 0.29 ms in `createElementWrapped`, 0.15 in `createTextWrapped`, 0.11 in `preRemove`: 1.4 of the 12 ms; the rest is
+the engine. Single calls timed in `jspage` (a loop of a million, the best of 7): the loop alone 25.5 ns an iteration (the
+interpreter, the loop JIT does not take a loop that reads a property), a property of the object itself 34 ns, a method of
+`li` found on the fifth shape of its chain 54 ns (about 4 ns a shape), the glue's `document` getter 77 ns, `nodeType`
+104 ns, `firstChild` 122 ns. Each change was timed in `jspage` on a copy of nodes10k (`build()` a frame, p50 of 400
+frames; the collection by a timer around `js.collect` in a build of jspage that was not kept), the builds in turn, 6 to 7
+rounds; the engine's changes also against `examples/jsbench/micro.js` and `macro.js` (`jsengine run`, the best of 2 to 4
+runs of each case); then the browser (5 runs of each build, interleaved, the order turning).
+
+1. **A wrapper's data asked for its values only once it holds some** (`host_object_set_marked`,
+   `src/engine/jsrt/host_class.odin`; `JS_SetOpaqueMarked`, `src/engine/jscapi`; `wj_obj_marked`,
+   `native/js/odin/wj/qjs_platform.odin`). Every wrapper was in `gc_hooked`, so each collection called its class's
+   `gc_mark` (the bridge, then the glue's `obj_mark`) in the counting pass of the trial deletion, and again when marking
+   the live ones: on nodes10k, 20 000 wrappers a collection that hold nothing. An object made with a payload
+   (`JS_NewObjectProtoClassPayload`) is now unmarked: out of `gc_hooked`, never asked; the glue marks it before its data
+   takes a value (a group, a listener, a [SameObject] value, an impl), and it stays so. One the glue forgot to mark keeps
+   the values its data counts as roots (their counts are not subtracted): a leak, not an early free. The collection 3.49
+   (3.42-3.81) -> 3.03 (2.99-3.88) ms; `build()` the same. A first version that made the wrapper marked and took it
+   out after (`JS_SetOpaqueMarked(.., false)` in `wrap_pinned`) saved as much in the collection and cost it back in
+   `build()` (8.54 -> 8.71 ms). Test: `judge capi` (`gc_mark` not called until marked, the counted values roots until
+   then, a cycle through marked payloads collected).
+2. **A detached tree freed by its own links** (`destroy_subtree`, `src/dom/dom.odin`): a node after its children, the
+   walk going down by `first_child` and on by `next` or back to the parent; the template contents and shadow trees that
+   go with it, rare, in a list of the temporary allocator. It made a heap list for each tree (2 500 a collection on
+   nodes10k, `_reserve_dynamic_array` 13 % of `Node_unpinAll`), and looked a node up in the maps of namespaces and
+   templates when they were empty. The collection 3.08 (2.99-3.17) -> 2.83 (2.79-4.58) ms. Round 6 measured an inline
+   list for the same stack within the noise of its timer; the jspage timer of this round tells them apart. Test:
+   `release_frees_deep_trees_templates_and_shadows` (a chain of 50 000, siblings, a template's contents and a shadow
+   tree all freed; pinned contents kept, then freed with their last pin).
+3. **Measured, not kept: the prototype walk without the host class's hooks** (`hot_get_prop`). A bit of `Object`
+   (`exotic_get`, set when the object is made: a proxy, a module namespace, a String object, a typed array, a host object
+   whose class has exotic hooks) in place of the four class tests and the call to `host_exotic_of` at each shape of the
+   chain: `build()` 8.73 (8.66-9.17) -> 8.51 (8.46-12.68) ms, but every case of `micro.js` slower (the int loop, which
+   reads no property, 34 -> 40 ns; the geometric mean +12 %) and `macro.js` +2.3 %: the code of `interp_run` around the
+   hot loop changed (the bit declared and set but not read: no change). The same test kept out of line (a
+   `#force_no_inline` procedure, or in `host_exotic_of`) slowed `micro.js` as much and gained nothing on nodes10k. A
+   cache of lookups by shape is what the rules rule out; flattening the chain's shapes would need invalidation when a
+   prototype changes.
+4. **Not done, by the samples:** the journal's halving (`memcpy` 0.03 ms a frame: a ring would change the slice
+   `journal_since` gives its four readers for that); texts on the heap one by one (`create_text`, freed in
+   `free_node_data`: about 0.1 ms a frame between the two).
+
+The browser, all of it (5 runs of each build, interleaved, the order turning; median, range in brackets; the base is
+master at the round's start, 92d886d6):
+
+| | before | after |
+|---|---|---|
+| nodes10k: script (Animation, with the collection), p50 | 12.15 (12.04-12.27) ms | 11.39 (11.31-11.60) ms |
+| nodes10k: frames/s | 164.6 (160.4-167.8) | 169.0 (166.2-169.4) |
+| nodes10k: CPU work per frame, mean | 17.42 (16.86-17.70) ms | 16.77 (16.74-17.03) ms |
+| nodes10k: style stage p50 | 1.68 ms | 1.68 ms |
+| nodes10k (jspage): `build()`, the collection the DOM asks for (7 rounds) | 8.67 (8.44-32.2), 3.57 (3.41-28.4) ms | 8.70 (8.60-18.5), 2.89 (2.76-6.52) ms |
+| `mutation`: CPU work per frame, mean | 0.78 (0.73-0.85) ms | 0.81 (0.72-0.87) ms |
+| `mutation_class`: CPU work per frame, mean | 1.43 (1.29-1.55) ms | 1.34 (1.24-1.46) ms |
+| `mutation_fullstyle`: CPU work per frame mean, style stage p50 | 3.13 (2.88-3.34), 0.81 ms | 3.03 (2.96-3.22), 0.82 ms |
+| p10k_load: load | 244 (233-256) ms | 246 (231-265) ms |
+| p10k_scroll: frames/s, CPU work per frame mean | 171.5, 0.40 ms | 170.5, 0.41 ms |
+| `examples/site/modern-css.html` resized: CPU work per frame mean | 0.45 (0.39-1.40) ms | 0.47 (0.41-1.18) ms |
+
+Other agents built and ran tests meanwhile: the jspage rounds with a run at 2 to 4 times the others are theirs, and the
+pages that make few DOM calls are the same within their noise. Measured against the commit the round started from
+(517984c0) instead, `mutation_fullstyle`'s style stage was 0.715 (0.713-0.761) ms: master's own changes of the time
+(`::backdrop`, `::placeholder`) make its full pass 14 % longer, before this round's.
+
+What the engine's samples of the collection are now (2 494 samples under `gc_collect`): `gc_collect`'s own 31 % (the
+roots, the sweep's loop, and the browser's `Node_unpinAll` counted to it), the prologue's walk of every wrapper 18 %
+(`obj_of` and `JS_IsUntouched` for each, to find the plain ones), the finalizers' chain 18 % (the bridge, `obj_finalizer`,
+`node_del`, `libc_free`), the sweep's frees 14 %, `gc_drain` 12 %.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -1222,17 +1302,21 @@ After round 12. Round 11's item 1 is done in part (round 12: one crossing for a 
 document asked once, the root lists appended in place, native getters and string constants in the hot loop, the
 bridge's conversions in place, `JS_GetAnyOpaque`); what is left of it is item 1 below.
 
-1. **The script stage of DOM-heavy pages, what is left** (nodes10k: 12.2 ms of a 17.8 ms frame). In order of the
-   engine's samples: the interpreter itself (`interp_hot` 17 %, `call_native` and the bridge 8 %: the prototype walks for
-   methods, five shapes for `li.appendChild`, each a hash probe and a check of the host class's hooks); the collection
-   the DOM asks for (16 %, 3.7 ms every 2 frames: the browser's `Node_unpinAll` a quarter of it, each unpin walking up its
-   tree and each tree destroyed; the finalizers' chain of calls for every wrapper; the sweep's frees; the counting pass
-   over every hooked object); the browser's insertions (13 %: the trampoline's checks, the journal, which halves itself
-   with a `memmove` when full, `check_insert`, the insertion steps' walk and hooks); the browser's factories (11 %:
-   `create_element`, the pin, the interface); making the wrappers (6 %). Texts are still copied to the heap and freed one
-   by one (`create_text`). Measured and left: an inline list in `destroy_subtree` (round 6); a flag per interface for
-   the unforgeable members of its chain (round 7); the finalizers' skipped calls, the pre-sweep walks in one, the
-   prologue's walk inlined, `temp_reset` in place (round 12).
+After round 13. Round 12's item 1 is done in part (round 13: the counting pass and the marking skip the wrappers that
+hold nothing, a detached tree freed by its links); what is left of it is item 1 below, and what round 13 found of the
+interpreter's code generation is item 9.
+
+1. **The script stage of DOM-heavy pages, what is left** (nodes10k: 11.4 ms of a 16.8 ms frame; the browser's side
+   1.4 ms of it). In order of the engine's samples: the interpreter itself (`interp_hot` 17 %, `call_native` and the
+   bridge 8 %; a DOM call costs 50 to 100 ns over the loop, a method found five shapes up its chain 20 ns more); the
+   collection the DOM asks for (2.9 ms every 2 frames: the browser's `Node_unpinAll`, the prologue's walk of every
+   wrapper with `JS_IsUntouched` for each, the finalizers' chain of calls, the sweep's frees, `gc_drain`); the browser's
+   insertions (0.5 ms a frame by the browser's sampler: the insertion hooks 29 %, the journal 23 %, `check_insert` 9 %);
+   the browser's factories (`create_element`, `pool_insert_tagged` copying a `Node` by value, the pin, the interface);
+   making the wrappers (6 %). Texts are still copied to the heap and freed one by one (`create_text`, about 0.1 ms a
+   frame). Measured and left: a flag per interface for the unforgeable members of its chain (round 7); the finalizers'
+   skipped calls, the pre-sweep walks in one, the prologue's walk inlined, `temp_reset` in place (round 12); the
+   prototype walk without the host class's hooks, a gain on nodes10k lost to the whole interpreter (round 13, item 3).
 2. **Layout of DOM-heavy pages: the steps' own code** (nodes10k: the window thread waits 3.1 ms a frame, the page
    thread's full pass: tree 0.96, layout 1.07, finish 0.32, display 0.37, bands 0.13 ms). Round 10 found the records'
    layout no gain, round 11 took the image search, the cut of the flow and the display item's padding. What the profile
@@ -1259,3 +1343,7 @@ bridge's conversions in place, `JS_GetAnyOpaque`); what is left of it is item 1 
 7. **The job queues of the blocking pool, the image decoders, the script compiler and the caches** (the table above):
    measured first (round 3: a lock-free queue lost to the loop's mutex); a worker's `ordered_remove(0)` is a cost of its own.
 8. **The profiler**: correct the bias of samples taken in a system call.
+9. **The interpreter's speed, by its code generation** (round 13, item 3): a test of one bit in place of a call in
+   `hot_get_prop` made every case of `micro.js` 12 % slower, the int loop that reads no property 34 -> 40 ns. Before the
+   next change to the hot loop: find what moves (Cranelift's registers in `interp_run`, the size of the procedure,
+   where its handlers land) and what keeps the loop's speed from depending on the code around it.
