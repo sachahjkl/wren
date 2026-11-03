@@ -755,14 +755,12 @@ response_charset :: proc(ctx: ^wj.Context, x: ^Xhr) -> string {
 	return ""
 }
 
-// The body decoded as text: the charset of the response when one is given, else UTF-8.
+// The body decoded as text (decode_text): in the charset of the response when one is given, else UTF-8, unless a byte order
+// mark says otherwise.
 @(private = "file")
 response_text :: proc(ctx: ^wj.Context, x: ^Xhr) -> wj.JSValue {
 	cs := response_charset(ctx, x)
 	defer if cs != "" { delete(cs, wj.libc_allocator()) }
-	if cs == "" || wj.ascii_ieq(cs, "utf-8") || wj.ascii_ieq(cs, "utf8") {
-		return wj.web_utf8_string(ctx, len(x.body) > 0 ? raw_data(x.body) : wj.empty_ptr(), uint(len(x.body)), true)
-	}
 	return decode_text(ctx, cs, x.body[:])
 }
 
