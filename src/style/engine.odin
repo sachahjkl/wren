@@ -58,6 +58,8 @@ Entry :: struct {
 	n_anc:   u8,
 	state:   State_Kinds,   // state the complex depends on, anywhere in it
 	has_state: bool,        // some of it is inside a :has() (its anchors are the ancestors and earlier siblings of the element whose state changed)
+	own:     bool,          // its subject asks more of the element than its tag and attributes (sibling_match.odin)...
+	above:   bool,          // ... or it asks that of an ancestor or of an ancestor's sibling
 	ctx:     u16,           // matched entries (cascade.odin): the encapsulation depth of the tree the rule came from
 	gate:    u32,           // the @media block around the rule that is kept in the index on or off (media_gate.odin); 0: none
 }
@@ -687,6 +689,7 @@ bucket_add :: proc(e: ^Engine, ent_in: Entry) {
 	}
 	ent.state = kinds
 	ent.has_state = uses_has && kinds != {}
+	ent.own, ent.above = selector_deps(ent.complex)
 	if ent.state != {} {
 		rs.state_deps += ent.state
 		append(&rs.state_entries, ent)

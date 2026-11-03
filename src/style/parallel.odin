@@ -40,11 +40,14 @@ Par_Job :: struct {
 	arenas: []^virtual.Arena,
 }
 
+// Returns what the passes counted of the boxes shown (counters_tally): those that show a counter or a quote, and those
+// that change counters.
 @(private)
-style_document_parallel :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, state: State, pool: ^host.Thread_Pool) {
+style_document_parallel :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, state: State, pool: ^host.Thread_Pool) -> (counter_shows, counter_ops: int) {
 	styled_size(s, int(doc.nodes.used))
 	main := pass_make(e, s, doc, state)
 	defer pass_destroy(main)
+	defer { counter_shows += main.counter_shows; counter_ops += main.counter_ops }
 
 	threads := host.thread_pool_size(pool)
 	frontier := make([dynamic]Par_Frame, context.temp_allocator)
@@ -108,8 +111,11 @@ style_document_parallel :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, stat
 	}, &job)
 	for i in 0 ..< tasks {
 		append(&s.thread_arenas, job.arenas[i])
+		counter_shows += job.passes[i].counter_shows
+		counter_ops += job.passes[i].counter_ops
 		pass_destroy(job.passes[i])
 	}
+	return
 }
 
 // How many elements each element's subtree holds (itself included), by the index of its handle: the flat tree, as the style

@@ -89,6 +89,52 @@ parallel_pass_shares_a_lopsided_tree :: proc(t: ^testing.T) {
 	testing.expectf(t, differ == 0, "%d elements differ", differ)
 }
 
+// A parallel pass resolves counters in a walk afterwards only when some box shows one; otherwise it says, as the walk
+// would, whether a box changes counters (a list resets list-item). Three pages: bullets only, no list, numbers hidden
+// under display: none (no box: neither shown nor changing).
+@(test)
+parallel_pass_counters_without_the_walk :: proc(t: ^testing.T) {
+	Case :: struct { css: string, list: bool, used: bool }
+	cases := [?]Case{{"", true, true}, {"", false, false}, {"ol { display: none }", true, false}}
+	for cs in cases {
+		settings := settings_default()
+		defer settings_destroy(&settings)
+		e := engine_make(settings)
+		defer engine_destroy(e)
+		doc := dom.document_create()
+		defer dom.document_destroy(doc)
+		html := dom.create_element(doc, "html")
+		dom.append_child(doc, doc.root, html)
+		head := dom.create_element(doc, "head")
+		dom.append_child(doc, html, head)
+		st := dom.create_element(doc, "style")
+		dom.append_child(doc, head, st)
+		dom.set_text_content(doc, st, cs.css)
+		body := dom.create_element(doc, "body")
+		dom.append_child(doc, html, body)
+		for _ in 0 ..< 300 {
+			list := dom.create_element(doc, cs.list ? (cs.css == "" ? "ul" : "ol") : "div")
+			dom.append_child(doc, body, list)
+			for _ in 0 ..< 3 { dom.append_child(doc, list, dom.create_element(doc, cs.list ? "li" : "p")) }
+		}
+		sync_document_sheets(e, doc, "http://x.test/")
+		seq := compute_styles(e, doc, {})
+		defer styled_destroy(seq)
+		pool := host.thread_pool_make(3)
+		defer host.thread_pool_destroy(pool)
+		par := compute_styles(e, doc, {}, pool, 0)
+		defer styled_destroy(par)
+		testing.expect(t, len(par.thread_arenas) > 0, "the pass really ran on several threads")
+		testing.expectf(t, seq.counters_used == cs.used && par.counters_used == cs.used, "%q: counters used %v, %v", cs.css, seq.counters_used, par.counters_used)
+		differ := 0
+		it: u32
+		for h, n in base.pool_next(&doc.nodes, &it) {
+			if n.kind == .Element && !computed_equal(style_of(seq, h), style_of(par, h)) { differ += 1 }
+		}
+		testing.expectf(t, differ == 0, "%q: %d elements differ", cs.css, differ)
+	}
+}
+
 // The same document styled on one thread and on four: every computed style must be equal.
 @(test)
 parallel_pass_gives_the_sequential_result :: proc(t: ^testing.T) {
@@ -149,6 +195,7 @@ parallel_pass_gives_the_sequential_result :: proc(t: ^testing.T) {
 		defer styled_destroy(par)
 		testing.expect(t, len(par.thread_arenas) > 0, "the pass really ran on several threads")
 		testing.expect_value(t, par.root_font_size, seq.root_font_size)
+		testing.expect_value(t, par.counters_used, seq.counters_used)
 		testing.expect_value(t, e.viewport_units, seq_vw)
 		testing.expect_value(t, e.ignored_properties, seq_ignored)
 		elements, differ := 0, 0

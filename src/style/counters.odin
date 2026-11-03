@@ -672,6 +672,16 @@ subtree_feeds_counters :: proc(s: ^Styled, doc: ^dom.Document, h: base.Handle, o
 	return false
 }
 
+// A box that is shown, styled without the counter walk (the threads of a parallel pass): whether the walk after the pass
+// has values to resolve (it shows a counter or a quote), and whether it changes counters (what counters_used says).
+@(private)
+counters_tally :: proc(p: ^Pass, c: ^Computed) {
+	if displays_counters(c) { p.counter_shows += 1 }
+	for x in ([3]^Computed{c, c.before, c.after}) {
+		if x != nil && len(x.counter_reset) + len(x.counter_increment) + len(x.counter_set) > 0 { p.counter_ops += 1; break }
+	}
+}
+
 // The box shows a counter value or a quote (a numbered marker, counter() / quotes in its content or pseudo-elements).
 @(private)
 displays_counters :: proc(c: ^Computed) -> bool {
