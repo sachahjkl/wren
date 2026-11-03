@@ -972,7 +972,7 @@
 /navigation-api/scroll-behavior/after-transition-reload-no-scroll-anchoring.html: OK
 	scroll: after-transition should work on a reload navigation: PASS
 /navigation-api/scroll-behavior/after-transition-reload.html: OK
-	scroll: after-transition should work on a reload navigation: FAIL
+	scroll: after-transition should work on a reload navigation: PASS
 /navigation-api/scroll-behavior/after-transition-replace.html: OK
 	scroll: after-transition should work on a replace navigation: PASS
 /navigation-api/scroll-behavior/after-transition-skips-restore-when-scrolled.html: OK
@@ -1004,7 +1004,7 @@
 /navigation-api/scroll-behavior/manual-scroll-reload-no-scroll-anchoring.html: OK
 	scroll: scroll() should work on a reload navigation: PASS
 /navigation-api/scroll-behavior/manual-scroll-reload.html: OK
-	scroll: scroll() should work on a reload navigation: FAIL
+	scroll: scroll() should work on a reload navigation: PASS
 /navigation-api/scroll-behavior/manual-scroll-repeated.html: OK
 	scroll: scroll() should throw if called a second time: PASS
 /navigation-api/scroll-behavior/manual-scroll-replace.html: OK

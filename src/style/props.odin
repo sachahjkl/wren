@@ -437,6 +437,7 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Touch_Action: return fa(&c.touch_action), NO_FIELD
 	case .Content_Visibility: return fa(&c.content_visibility), NO_FIELD
 	case .Scroll_Behavior: return fa(&c.scroll_behavior), NO_FIELD
+	case .Overflow_Anchor: return fa(&c.overflow_anchor), NO_FIELD
 	case .Overscroll_Behavior_X: return fa(&c.overscroll_x), NO_FIELD
 	case .Overscroll_Behavior_Y: return fa(&c.overscroll_y), NO_FIELD
 	case .Caret_Color: return fa(&c.caret_color), NO_FIELD

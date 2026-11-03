@@ -1141,6 +1141,7 @@ apply_prop_more :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		c.touch_action = ALL - allowed
 	case .Content_Visibility: return set_enum(vs, &c.content_visibility)
 	case .Scroll_Behavior: return set_enum(vs, &c.scroll_behavior)
+	case .Overflow_Anchor: return set_enum(vs, &c.overflow_anchor)
 	case .Overscroll_Behavior_X: return set_enum(vs, &c.overscroll_x)
 	case .Overscroll_Behavior_Y: return set_enum(vs, &c.overscroll_y)
 	case .Caret_Color, .Accent_Color:
