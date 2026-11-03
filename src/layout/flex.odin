@@ -91,12 +91,21 @@ flex_col_width :: proc(c: ^Ctx, it: ^Flex_Item, k: ^Box, cw: f32) -> f32 {
 @(private)
 flex_items :: proc(c: ^Ctx, bi: i32) -> [dynamic]i32 {
 	b := &c.l.boxes[bi]
+	cs := b.cs
+	row := cs.flex_direction == .Row || cs.flex_direction == .Row_Reverse
+	main_rev := cs.flex_direction == .Row_Reverse || cs.flex_direction == .Column_Reverse
+	if row && is_rtl(cs) { main_rev = !main_rev }
+	cross_rev := (cs.flex_wrap == .Wrap_Reverse) != (!row && is_rtl(cs))
 	list := make([dynamic]i32, 0, 8, context.temp_allocator)
 	for ch := b.first; ch != NONE; ch = c.l.boxes[ch].next {
 		k := &c.l.boxes[ch]
 		if .Abs in k.flags {
+			// the static position is where it would be as the sole flex item (§4.1): justify-content, align-self
+			main := align_fraction(cs.justify_content, main_rev)
+			cross := align_fraction(self_align(cs, k.cs), cross_rev)
 			k.static_ref = bi
 			k.static_pos = {content_x(b), content_y(b)}
+			k.static_align = row ? {main, cross} : {cross, main}
 			continue
 		}
 		append(&list, ch)

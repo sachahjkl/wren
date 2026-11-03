@@ -90,7 +90,7 @@ compare_layouts :: proc(a, b: ^Layout, allocator := context.temp_allocator) -> (
 		case !feq(x.baseline, y.baseline) || !feq(x.last_baseline, y.last_baseline) || !feq(x.pre_h, y.pre_h):
 			fail(&m, "%s: baselines %v %v / %v %v", at, x.baseline, x.last_baseline, y.baseline, y.last_baseline)
 		case x.marker != y.marker || !veq(x.marker_pos, y.marker_pos) || !feq(x.marker_w, y.marker_w): fail(&m, "%s: marker", at)
-		case .Abs in x.flags && !veq(x.static_pos, y.static_pos): fail(&m, "%s: static position %v / %v", at, x.static_pos, y.static_pos)
+		case .Abs in x.flags && (!veq(x.static_pos, y.static_pos) || !veq(x.static_align, y.static_align)): fail(&m, "%s: static position %v %v / %v %v", at, x.static_pos, x.static_align, y.static_pos, y.static_align)
 		case x.space != y.space || x.clip != y.clip || x.content_space != y.content_space || x.content_clip != y.content_clip ||
 		     x.group != y.group || x.scroll_space != y.scroll_space || !beq(&m, x.layer, y.layer) || !beq(&m, x.clip_owner, y.clip_owner):
 			fail(&m, "%s: spaces / clips / group", at)

@@ -202,6 +202,7 @@ Box :: struct {
 	abs_first, abs_last, abs_next: i32,   // boxes whose containing block this is, in tree order
 	static_ref: i32,                // absolutely positioned: the block container its static position is relative to
 	static_pos: Vec2,
+	static_align: Vec2,             // ... of a flex or grid container: where in its content box (0 start, 0.5 centre, 1 end)
 	ifc_root:  i32,                 // inline-level boxes: the root of their inline formatting context
 	items, lines: [2]i32,           // Ifc: [start, end) into Layout.inline_items / Layout.lines
 	cur_anon:  i32,                 // building: the anonymous box that collects the current run of children

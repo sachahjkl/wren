@@ -53,6 +53,18 @@ abs_containing_rect :: proc(c: ^Ctx, cbi: i32) -> (ref: i32, cbr: Rect) {
 	return
 }
 
+// Where an alignment puts a box in the room it has: 0 at the start, 0.5 in the middle, 1 at the end (`rev`: the start is
+// the other side). The space distributions put a sole box where they fall back to.
+@(private)
+align_fraction :: proc(a: style.Content_Align, rev: bool) -> f32 {
+	f: f32
+	#partial switch a {
+	case .End, .Flex_End: f = 1
+	case .Center, .Anchor_Center, .Space_Around, .Space_Evenly: f = 0.5
+	}
+	return rev ? 1 - f : f
+}
+
 @(private)
 layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 	cbw := max(cbr.max.x - cbr.min.x, 0)
@@ -72,6 +84,14 @@ layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 	it, it_ok := definite(c, cs.inset[.Top], cbh)
 	ib, ib_ok := definite(c, cs.inset[.Bottom], cbh)
 	rtl := is_rtl(c.l.boxes[k.parent].cs)
+	// a flex or grid container aligns the static position in its content box (flex_items, layout_grid)
+	aligned: bool
+	align, room: Vec2
+	if k.static_ref != NONE {
+		sr := &c.l.boxes[k.static_ref]
+		aligned = sr.kind == .Flex || sr.kind == .Grid
+		if aligned { align, room = k.static_align, sr.size - {pb_w(sr), pb_h(sr)} }
+	}
 	mL := k.auto_l ? 0 : k.margin[3]
 	mR := k.auto_r ? 0 : k.margin[1]
 	mT := k.auto_t ? 0 : k.margin[0]
@@ -106,6 +126,7 @@ layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 			if rtl && !k.auto_l && !k.auto_r { left = cbw - ir - w - mL - mR }
 		case il_ok: left = il
 		case ir_ok: left = cbw - ir - w - mL - mR
+		case aligned: left = static_left + (room.x - w - mL - mR) * align.x
 		case: left = rtl ? static_left - w - mL - mR : static_left
 		}
 	} else {
@@ -119,6 +140,9 @@ layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 		case ir_ok:
 			w = clamp_w(c, k, shrink_to_fit(c, ai, cbw - ir - mL - mR), cbw)
 			left = cbw - ir - w - mL - mR
+		case aligned:
+			w = clamp_w(c, k, shrink_to_fit(c, ai, cbw - static_left - mL - mR), cbw)
+			left = static_left + (room.x - w - mL - mR) * align.x
 		case rtl:
 			// the static position is the end edge: what is left of it
 			w = clamp_w(c, k, shrink_to_fit(c, ai, static_left - mL - mR), cbw)
@@ -152,7 +176,7 @@ layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 			top = it
 		case it_ok: top = it
 		case ib_ok: top = cbh - ib - h - mT - mB
-		case: top = static_top
+		case: top = static_top + (room.y - h - mT - mB) * align.y
 		}
 	} else {
 		switch {
@@ -162,7 +186,7 @@ layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 			top = it
 		case it_ok: top = it
 		case ib_ok: top = cbh - ib - h - mT - mB
-		case: top = static_top
+		case: top = static_top + (room.y - h - mT - mB) * align.y
 		}
 	}
 	k = &c.l.boxes[ai]
