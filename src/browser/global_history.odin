@@ -79,37 +79,6 @@ history_address :: proc(address: string, record_files: bool, max_bytes: int, all
 	return strings.clone(u.href, allocator)
 }
 
-// One field of a line of a profile file: backslash, tab, line breaks and NUL escaped (history.txt, session.txt).
-field_escape :: proc(sb: ^strings.Builder, s: string) {
-	for i in 0 ..< len(s) {
-		switch s[i] {
-		case '\\': strings.write_string(sb, "\\\\")
-		case '\t': strings.write_string(sb, "\\t")
-		case '\n': strings.write_string(sb, "\\n")
-		case '\r': strings.write_string(sb, "\\r")
-		case 0:    strings.write_string(sb, "\\0")
-		case: strings.write_byte(sb, s[i])
-		}
-	}
-}
-
-field_unescape :: proc(s: string, allocator := context.allocator) -> string {
-	if strings.index_byte(s, '\\') < 0 { return strings.clone(s, allocator) }
-	sb := strings.builder_make(allocator)
-	for i := 0; i < len(s); i += 1 {
-		if s[i] != '\\' || i + 1 >= len(s) { strings.write_byte(&sb, s[i]); continue }
-		i += 1
-		switch s[i] {
-		case 't': strings.write_byte(&sb, '\t')
-		case 'n': strings.write_byte(&sb, '\n')
-		case 'r': strings.write_byte(&sb, '\r')
-		case '0': strings.write_byte(&sb, 0)
-		case: strings.write_byte(&sb, s[i])
-		}
-	}
-	return strings.to_string(sb)
-}
-
 history_serialize :: proc(visits: []Visit, allocator := context.temp_allocator) -> string {
 	sb := strings.builder_make(allocator)
 	strings.write_string(&sb, HISTORY_HEADER)
@@ -120,11 +89,11 @@ history_serialize :: proc(visits: []Visit, allocator := context.temp_allocator) 
 		strings.write_byte(&sb, '\t')
 		strings.write_i64(&sb, v.at_ms)
 		strings.write_byte(&sb, '\t')
-		field_escape(&sb, v.url)
+		base.field_escape(&sb, v.url)
 		strings.write_byte(&sb, '\t')
-		field_escape(&sb, v.title)
+		base.field_escape(&sb, v.title)
 		strings.write_byte(&sb, '\t')
-		field_escape(&sb, v.icon)
+		base.field_escape(&sb, v.icon)
 		strings.write_byte(&sb, '\n')
 	}
 	return strings.to_string(sb)
@@ -150,9 +119,9 @@ history_parse :: proc(text: string, max_visits: int, oldest_ms: i64, max_url_byt
 		at, aok := strconv.parse_i64(f[1])
 		if !iok || !aok || id == 0 || len(f[2]) == 0 || len(f[2]) > max_url_bytes * 2 { continue }
 		if oldest_ms > 0 && at < oldest_ms { continue }
-		u := field_unescape(f[2], allocator)
+		u := base.field_unescape(f[2], allocator)
 		if _, pok := url.parse_absolute(u, context.temp_allocator); !pok || len(u) > max_url_bytes { delete(u, allocator); continue }
-		append(&visits, Visit{id = id, at_ms = at, url = u, title = field_unescape(len(f) > 3 ? f[3] : "", allocator), icon = field_unescape(len(f) > 4 ? f[4] : "", allocator)})
+		append(&visits, Visit{id = id, at_ms = at, url = u, title = base.field_unescape(len(f) > 3 ? f[3] : "", allocator), icon = base.field_unescape(len(f) > 4 ? f[4] : "", allocator)})
 		next_id = max(next_id, id)
 	}
 	if first { return visits, 0, false }

@@ -233,49 +233,16 @@ engines_move :: proc(se: ^Search_Engines, i, dir: int) {
 ////////////////////////////////
 // The profile's file
 
-@(private = "file")
-field_escape :: proc(sb: ^strings.Builder, s: string) {
-	for c in transmute([]u8)s {
-		switch c {
-		case '\\': strings.write_string(sb, "\\\\")
-		case '\t': strings.write_string(sb, "\\t")
-		case '\n': strings.write_string(sb, "\\n")
-		case '\r': strings.write_string(sb, "\\r")
-		case: strings.write_byte(sb, c)
-		}
-	}
-}
-
-@(private = "file")
-field_unescape :: proc(s: string) -> string {
-	if !strings.contains_rune(s, '\\') { return s }
-	sb := strings.builder_make(context.temp_allocator)
-	for i := 0; i < len(s); i += 1 {
-		if s[i] == '\\' && i + 1 < len(s) {
-			i += 1
-			switch s[i] {
-			case 't': strings.write_byte(&sb, '\t')
-			case 'n': strings.write_byte(&sb, '\n')
-			case 'r': strings.write_byte(&sb, '\r')
-			case: strings.write_byte(&sb, s[i])
-			}
-			continue
-		}
-		strings.write_byte(&sb, s[i])
-	}
-	return strings.to_string(sb)
-}
-
 // The file's text: the magic line, then "id <TAB> name <TAB> keyword <TAB> address" per engine, in order (temp).
 engines_serialize :: proc(se: ^Search_Engines) -> string {
 	sb := strings.builder_make(context.temp_allocator)
 	strings.write_string(&sb, SEARCH_ENGINES_MAGIC)
 	strings.write_string(&sb, "\n# id\tname\tkeyword\taddress (%s: the words searched)\n")
 	for e in se.list {
-		field_escape(&sb, e.id); strings.write_byte(&sb, '\t')
-		field_escape(&sb, e.name); strings.write_byte(&sb, '\t')
-		field_escape(&sb, e.keyword); strings.write_byte(&sb, '\t')
-		field_escape(&sb, e.url); strings.write_byte(&sb, '\n')
+		base.field_escape(&sb, e.id); strings.write_byte(&sb, '\t')
+		base.field_escape(&sb, e.name); strings.write_byte(&sb, '\t')
+		base.field_escape(&sb, e.keyword); strings.write_byte(&sb, '\t')
+		base.field_escape(&sb, e.url); strings.write_byte(&sb, '\n')
 	}
 	return strings.to_string(sb)
 }
@@ -296,8 +263,8 @@ engines_parse :: proc(se: ^Search_Engines, text: string) -> bool {
 		if strings.trim_space(line) == "" || line[0] == '#' { continue }
 		parts := strings.split(line, "\t", context.temp_allocator)
 		if len(parts) != 4 { continue }
-		id, name := strings.trim_space(field_unescape(parts[0])), strings.trim_space(field_unescape(parts[1]))
-		kw, url := strings.trim_space(field_unescape(parts[2])), strings.trim_space(field_unescape(parts[3]))
+		id, name := strings.trim_space(base.field_unescape(parts[0], context.temp_allocator)), strings.trim_space(base.field_unescape(parts[1], context.temp_allocator))
+		kw, url := strings.trim_space(base.field_unescape(parts[2], context.temp_allocator)), strings.trim_space(base.field_unescape(parts[3], context.temp_allocator))
 		if id == "" || name == "" || url == "" { continue }
 		dup := false
 		for p in parsed { if p.id == id { dup = true; break } }

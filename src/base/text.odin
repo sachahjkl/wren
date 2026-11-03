@@ -1,6 +1,6 @@
 package base
 
-// Small text helpers the packages share: numbers as text, escaping for HTML and XML.
+// Small text helpers the packages share: numbers as text, the fields of the profile's text files, escaping for HTML and XML.
 
 import "core:strconv"
 import "core:strings"
@@ -9,6 +9,46 @@ import "core:strings"
 itoa :: proc(n: int, allocator := context.temp_allocator) -> string {
 	buf: [len("-9223372036854775808")]u8
 	return strings.clone(strconv.write_int(buf[:], i64(n), 10), allocator)
+}
+
+////////////////////////////////
+// Fields of a line of a profile file (history.txt, session.txt, search engines, service workers): backslash, tab, line
+// breaks and NUL escaped
+
+field_escape :: proc(sb: ^strings.Builder, s: string) {
+	for i in 0 ..< len(s) {
+		switch s[i] {
+		case '\\': strings.write_string(sb, "\\\\")
+		case '\t': strings.write_string(sb, "\\t")
+		case '\n': strings.write_string(sb, "\\n")
+		case '\r': strings.write_string(sb, "\\r")
+		case 0:    strings.write_string(sb, "\\0")
+		case: strings.write_byte(sb, s[i])
+		}
+	}
+}
+
+field_escaped :: proc(s: string, allocator := context.temp_allocator) -> string {
+	sb := strings.builder_make(0, len(s), allocator)
+	field_escape(&sb, s)
+	return strings.to_string(sb)
+}
+
+field_unescape :: proc(s: string, allocator := context.allocator) -> string {
+	if strings.index_byte(s, '\\') < 0 { return strings.clone(s, allocator) }
+	sb := strings.builder_make(allocator)
+	for i := 0; i < len(s); i += 1 {
+		if s[i] != '\\' || i + 1 >= len(s) { strings.write_byte(&sb, s[i]); continue }
+		i += 1
+		switch s[i] {
+		case 't': strings.write_byte(&sb, '\t')
+		case 'n': strings.write_byte(&sb, '\n')
+		case 'r': strings.write_byte(&sb, '\r')
+		case '0': strings.write_byte(&sb, 0)
+		case: strings.write_byte(&sb, s[i])
+		}
+	}
+	return strings.to_string(sb)
 }
 
 ////////////////////////////////
