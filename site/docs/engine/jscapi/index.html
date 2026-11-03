@@ -272,7 +272,13 @@ passes them as wasm32 varargs, which the exported versions read (<code>cexport.o
 <li><strong>Entry points</strong> bracket their work with <code>host_enter</code>/<code>host_exit</code>, so the temporaries of an API call made
 outside any JavaScript (a host event) are released when it returns.</li>
 <li><strong>Hooks</strong>: interrupt handler, GC prologue, rejection tracker, compile‑strings hook, dynamic‑import hook,
-module normalize/loader/attribute check, <code>JS_SetCanBlock</code>, <code>JS_SetMemoryLimit</code>, GC threshold (and floor).</li>
+module normalize/loader/attribute check, <code>JS_SetCanBlock</code>, <code>JS_SetMemoryLimit</code>, GC threshold (and floor).
+Wren's own <code>JS_SetGCEpilogue</code> is called at the end of every collection, after its finalizers (the glue unpins the
+nodes of the wrappers they finalized in one call to the browser).</li>
+<li><strong>Strings read in place</strong>: Wren's own <code>JS_ToStringView(ctx, &amp;len, val)</code> gives the bytes of a string value that is
+all ASCII (a rope flattened first), with no copy and nothing to free, nil for anything else: not NUL-terminated,
+valid while the value lives (the glue's <code>STR_VIEW</code>: the generated bindings' string arguments, read by the import
+before the native returns).</li>
 <li><strong>Modules</strong>: <code>JS_NewCModule</code> + <code>JS_AddModuleExport</code> + <code>JS_SetModuleExport</code> (init run before the first
 import), <code>JS_LoadModule(WithFuncs)</code>, <code>JS_ResolveModule</code>, <code>JS_GetModuleRequest*</code>, <code>JS_GetImportMeta</code>,
 <code>EVAL_FLAG_WREN_NO_RESOLVE</code>.</li>
@@ -294,7 +300,7 @@ The build has no such C any more.</p>
 <tr><td>missing</td><td style="text-align:right">0</td></tr>
 </tbody>
 </table></div>
-<p>The API itself is tested natively by <code>judge capi</code> (48 checks); the glue runs on it in every build.</p>
+<p>The API itself is tested natively by <code>judge capi</code> (56 checks); the glue runs on it in every build.</p>
 <h3 id="what-is-approximated-or-absent-by-weight"><a class="anchor" href="#what-is-approximated-or-absent-by-weight" aria-hidden="true">#</a>What is approximated or absent (by weight)</h3>
 <ol>
 <li><strong>Atoms are permanent</strong> (<code>JS_FreeAtom</code> is a no‑op): a page that builds millions of distinct property
@@ -321,7 +327,8 @@ lets a value die early): a debug counter of <code>ext</code> per cell is easy to
 <h2 id="testing"><a class="anchor" href="#testing" aria-hidden="true">#</a>Testing</h2>
 <p><code>judge capi</code> (<code>src/engine/jsrt/judge/capi_test.odin</code>) runs the API natively on a heap below 4 GiB: values,
 strings, properties, native functions with data and magic, formatted exceptions, classes with opaque data,
-cycles through <code>gc_mark</code>, counted references as roots, opaque data in the object's block (zeroed, one per object,
+cycles through <code>gc_mark</code>, counted references as roots, the GC epilogue (once a collection, after its finalizers),
+strings read in place (ASCII and concatenations; none of Latin-1, UTF-16 or other values), opaque data in the object's block (zeroed, one per object,
 cycles through it collected, 10 000 made and dropped without the heap keeping them), exotic objects, promises and jobs, adopted buffers,
 a native module imported by a script module, a compiled function written out and read back, and a soak of
 20 000 temporaries that must be collected.</p>

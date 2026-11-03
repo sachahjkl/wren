@@ -172,7 +172,7 @@ literals and `new RegExp` share one matcher. Unicode properties, case folding an
 
 `engine_new` / `context_new` / `eval_source` / `eval_bytecode` / `call_function` / `run_jobs` /
 `retain` / `release` / `heap_stats`, with the hooks in `Host_Config`: `compile`, `load_module`,
-`import_meta`, `interrupt`, `rejection`, `gc_prologue`, `compile_strings`, `dynamic_import`,
+`import_meta`, `interrupt`, `rejection`, `gc_prologue`, `gc_epilogue`, `compile_strings`, `dynamic_import`,
 `atomics_wait`/`atomics_notify`, `can_block`, `malloc_limit`. Values handed to the host live until the
 next call into the engine unless retained.
 
