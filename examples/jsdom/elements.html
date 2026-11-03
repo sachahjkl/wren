@@ -324,6 +324,33 @@ section("hyperlinks", () => {
   eq("href without attribute", b.href, "");
 });
 
+section("names of createElementNS and setAttributeNS", () => {
+  const foo = document.createElementNS("http://FOO", "a:Abc");
+  eq("an element's names keep their case", foo.prefix + " " + foo.localName + " " + foo.tagName, "a Abc a:Abc");
+  const x = document.createElementNS("http://www.w3.org/1999/xhtml", "x:Ä");
+  eq("tagName of an HTML element: ASCII upper case, the whole qualified name", x.localName + " " + x.tagName, "Ä X:Ä");
+  const lg = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+  eq("an SVG name in its own case", lg.localName, "linearGradient");
+  const f = document.createElementNS("http://example.com/", "f::oo");
+  eq("the local name is all after the first colon", f.prefix + " " + f.localName, "f :oo");
+  const div = document.createElement("div");
+  div.setAttributeNS("http://FOO", "P:Abc", "1");
+  eq("an attribute's names keep their case", div.attributes[0].prefix + " " + div.attributes[0].localName, "P Abc");
+  eq("getAttributeNS takes the case given", div.getAttributeNS("http://FOO", "Abc") + " " + div.getAttributeNS("http://FOO", "abc"), "1 null");
+  const other = document.createElementNS("http://www.example.com", "foo");
+  other.setAttribute("A", "2");
+  eq("setAttribute of an element not of HTML lower-cases nothing", other.attributes[0].name + " " + other.getAttribute("A"), "A 2");
+  const box = document.createElement("div");
+  box.append(document.createElementNS(null, "div"), document.createElement("div"), document.createElementNS("http://FOO", "Div"));
+  eq("getElementsByTagName: lower case for HTML elements, the name as given for others", box.getElementsByTagName("Div").length, 2);
+  eq("|div: no namespace", box.querySelectorAll("|div").length + " " + box.querySelector("|div").namespaceURI, "1 null");
+  eq("*|div: any namespace", box.querySelectorAll("*|div").length, 2);
+  throws("an undeclared namespace prefix", () => box.querySelector("ns|div"), "SyntaxError");
+  eq("createDocumentType takes any name but whitespace, NULL and >", document.implementation.createDocumentType("1foo", "", "").name, "1foo");
+  throws("a doctype name with >", () => document.implementation.createDocumentType("a>", "", ""), "InvalidCharacterError");
+  eq("createDocument's content type follows its namespace", document.implementation.createDocument("http://www.w3.org/2000/svg", "", null).contentType, "image/svg+xml");
+});
+
 done();
 </script>
 </body></html>

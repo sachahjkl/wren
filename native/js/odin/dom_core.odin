@@ -1317,16 +1317,17 @@ wjr_Attr_get_ownerElement :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JS
 @(export, link_name = "wjr_Attr_get_specified")
 wjr_Attr_get_specified :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return attr_this(ctx, t) != nil ? wj.TRUE : wj.EXCEPTION }
 
-// The Attr of `name` on the element of a NamedNodeMap (one object per attribute: cached), or null when absent.
+// The Attr of `name` on the element of a NamedNodeMap (one object per attribute: cached), or null when absent;`stored`:
+// `name` is the stored name itself (by index: one setAttributeNS gave in upper case), not looked up in lower case.
 @(private = "file")
-map_attr :: proc(ctx: ^wj.Context, m: ^wj.Dom_Impl, name: string) -> wj.JSValue {
+map_attr :: proc(ctx: ^wj.Context, m: ^wj.Dom_Impl, name: string, stored := false) -> wj.JSValue {
 	has: bool
 	jsb.host(&has, api_decl.Element_hasAttribute, wj.wr_Element_hasAttribute, api_decl.Element(m.node), name)
 	if !has { return wj.NULL }
-	// the stored name (lower case) is the cache key
+	// the stored name (lower case, but for a stored one) is the cache key
 	key: [ATTR_CACHE_KEY_BYTES]u8
 	kl := min(len(name), len(key) - 1)
-	for i in 0 ..< kl { key[i] = lower_ascii(name[i]) }
+	for i in 0 ..< kl { key[i] = stored ? name[i] : lower_ascii(name[i]) }
 	key[kl] = 0
 	ckey := cstring(&key[0])
 	if !wj.is_object(m.extra) { m.extra = wj.JS_NewObjectProto(ctx, wj.NULL) }
@@ -1370,7 +1371,7 @@ map_item :: proc(ctx: ^wj.Context, m: ^wj.Dom_Impl, i: u32) -> wj.JSValue {
 	name := wj.dom_strndup(raw_data(s), uint(len(s)))
 	if name == nil { return wj.JS_ThrowOutOfMemory(ctx) }
 	defer wj.libc_free(name)
-	return map_attr(ctx, m, string(name[:len(s)]))
+	return map_attr(ctx, m, string(name[:len(s)]), stored = true)
 }
 
 @(export, link_name = "wjr_NamedNodeMap_index_get")

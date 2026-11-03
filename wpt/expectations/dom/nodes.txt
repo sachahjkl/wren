@@ -388,8 +388,8 @@
 	createDocument test: "http://example.com/","a:ெ",null,null: PASS
 	createDocument test: "http://example.com/","aெ:a",null,null: PASS
 	createDocument test: "http://example.com/","f1oo",null,null: PASS
-	createDocument test: "http://example.com/","f::oo",null,null: FAIL
-	createDocument test: "http://example.com/","f:o:o",null,null: FAIL
+	createDocument test: "http://example.com/","f::oo",null,null: PASS
+	createDocument test: "http://example.com/","f:o:o",null,null: PASS
 	createDocument test: "http://example.com/","f:oo",null,null: PASS
 	createDocument test: "http://example.com/","fo<o",null,null: PASS
 	createDocument test: "http://example.com/","foo",null,null: PASS
@@ -426,7 +426,7 @@
 	createDocument test: "http://example.com/","ns0:test",null,null: PASS
 	createDocument test: "http://example.com/","ns:_0",null,null: PASS
 	createDocument test: "http://example.com/","ns:a0",null,null: PASS
-	createDocument test: "http://example.com/","prefix::local",null,null: FAIL
+	createDocument test: "http://example.com/","prefix::local",null,null: PASS
 	createDocument test: "http://example.com/","test:xmlns",null,null: PASS
 	createDocument test: "http://example.com/","xml",null,null: PASS
 	createDocument test: "http://example.com/","xml:foo",null,"NAMESPACE_ERR": PASS
@@ -514,8 +514,8 @@
 	createDocument test: characterSet aliases for "http://example.com/","a:ெ",null: PASS
 	createDocument test: characterSet aliases for "http://example.com/","aெ:a",null: PASS
 	createDocument test: characterSet aliases for "http://example.com/","f1oo",null: PASS
-	createDocument test: characterSet aliases for "http://example.com/","f::oo",null: FAIL
-	createDocument test: characterSet aliases for "http://example.com/","f:o:o",null: FAIL
+	createDocument test: characterSet aliases for "http://example.com/","f::oo",null: PASS
+	createDocument test: characterSet aliases for "http://example.com/","f:o:o",null: PASS
 	createDocument test: characterSet aliases for "http://example.com/","f:oo",null: PASS
 	createDocument test: characterSet aliases for "http://example.com/","fo<o",null: PASS
 	createDocument test: characterSet aliases for "http://example.com/","foo",null: PASS
@@ -524,7 +524,7 @@
 	createDocument test: characterSet aliases for "http://example.com/","ns0:test",null: PASS
 	createDocument test: characterSet aliases for "http://example.com/","ns:_0",null: PASS
 	createDocument test: characterSet aliases for "http://example.com/","ns:a0",null: PASS
-	createDocument test: characterSet aliases for "http://example.com/","prefix::local",null: FAIL
+	createDocument test: characterSet aliases for "http://example.com/","prefix::local",null: PASS
 	createDocument test: characterSet aliases for "http://example.com/","test:xmlns",null: PASS
 	createDocument test: characterSet aliases for "http://example.com/","xml",null: PASS
 	createDocument test: characterSet aliases for "http://example.com/","xmlfoo",null: PASS
@@ -623,8 +623,8 @@
 	createDocument test: metadata for "http://example.com/","a:ெ",null: PASS
 	createDocument test: metadata for "http://example.com/","aெ:a",null: PASS
 	createDocument test: metadata for "http://example.com/","f1oo",null: PASS
-	createDocument test: metadata for "http://example.com/","f::oo",null: FAIL
-	createDocument test: metadata for "http://example.com/","f:o:o",null: FAIL
+	createDocument test: metadata for "http://example.com/","f::oo",null: PASS
+	createDocument test: metadata for "http://example.com/","f:o:o",null: PASS
 	createDocument test: metadata for "http://example.com/","f:oo",null: PASS
 	createDocument test: metadata for "http://example.com/","fo<o",null: PASS
 	createDocument test: metadata for "http://example.com/","foo",null: PASS
@@ -633,7 +633,7 @@
 	createDocument test: metadata for "http://example.com/","ns0:test",null: PASS
 	createDocument test: metadata for "http://example.com/","ns:_0",null: PASS
 	createDocument test: metadata for "http://example.com/","ns:a0",null: PASS
-	createDocument test: metadata for "http://example.com/","prefix::local",null: FAIL
+	createDocument test: metadata for "http://example.com/","prefix::local",null: PASS
 	createDocument test: metadata for "http://example.com/","test:xmlns",null: PASS
 	createDocument test: metadata for "http://example.com/","xml",null: PASS
 	createDocument test: metadata for "http://example.com/","xmlfoo",null: PASS
@@ -643,8 +643,8 @@
 	createDocument test: metadata for "http://example.com/","ெ:a",null: PASS
 	createDocument test: metadata for "http://example.com/",null,null: PASS
 	createDocument test: metadata for "http://www.w3.org/1998/Math/MathML","",null: PASS
-	createDocument test: metadata for "http://www.w3.org/1999/xhtml","",null: FAIL
-	createDocument test: metadata for "http://www.w3.org/2000/svg","",null: FAIL
+	createDocument test: metadata for "http://www.w3.org/1999/xhtml","",null: PASS
+	createDocument test: metadata for "http://www.w3.org/2000/svg","",null: PASS
 	createDocument test: metadata for "http://www.w3.org/2000/xmlns/","",null: PASS
 	createDocument test: metadata for "http://www.w3.org/2000/xmlns/","xmlns",null: PASS
 	createDocument test: metadata for "http://www.w3.org/2000/xmlns/","xmlns:foo",null: PASS
@@ -708,7 +708,7 @@
 	createDocument test: null,"\\ufffffoo",null,null: PASS
 	createDocument test: null,"^^",null,"INVALID_CHARACTER_ERR": PASS
 	createDocument test: null,"f1oo",null,null: PASS
-	createDocument test: null,"f:o:o",null,"NAMESPACE_ERR": FAIL
+	createDocument test: null,"f:o:o",null,"NAMESPACE_ERR": PASS
 	createDocument test: null,"f:oo",null,"NAMESPACE_ERR": PASS
 	createDocument test: null,"f<oo",null,null: PASS
 	createDocument test: null,"f\\uffffoo",null,null: PASS
@@ -746,7 +746,7 @@
 	createDocument test: undefined,"1foo",null,"INVALID_CHARACTER_ERR": PASS
 	createDocument test: undefined,":foo",null,"INVALID_CHARACTER_ERR": PASS
 	createDocument test: undefined,"f1oo",null,null: PASS
-	createDocument test: undefined,"f::oo",null,"NAMESPACE_ERR": FAIL
+	createDocument test: undefined,"f::oo",null,"NAMESPACE_ERR": PASS
 	createDocument test: undefined,"f:oo",null,"NAMESPACE_ERR": PASS
 	createDocument test: undefined,"foo",null,null: PASS
 	createDocument test: undefined,"foo1",null,null: PASS
@@ -764,26 +764,26 @@
 	createDocument with missing arguments: PASS
 /dom/nodes/DOMImplementation-createDocumentType.html: OK
 	DOMImplementation.createDocumentType(qualifiedName, publicId, systemId): PASS
-	createDocumentType("", "", "") should work: FAIL
-	createDocumentType("#", "", "") should work: FAIL
-	createDocumentType("$", "", "") should work: FAIL
-	createDocumentType("%", "", "") should work: FAIL
-	createDocumentType("&", "", "") should work: FAIL
-	createDocumentType("'", "", "") should work: FAIL
-	createDocumentType("(", "", "") should work: FAIL
-	createDocumentType(")", "", "") should work: FAIL
-	createDocumentType("*", "", "") should work: FAIL
-	createDocumentType("1foo", "", "") should work: FAIL
+	createDocumentType("", "", "") should work: PASS
+	createDocumentType("#", "", "") should work: PASS
+	createDocumentType("$", "", "") should work: PASS
+	createDocumentType("%", "", "") should work: PASS
+	createDocumentType("&", "", "") should work: PASS
+	createDocumentType("'", "", "") should work: PASS
+	createDocumentType("(", "", "") should work: PASS
+	createDocumentType(")", "", "") should work: PASS
+	createDocumentType("*", "", "") should work: PASS
+	createDocumentType("1foo", "", "") should work: PASS
 	createDocumentType(":foo", "", "") should work: PASS
-	createDocumentType("@", "", "") should work: FAIL
-	createDocumentType("@foo", "", "") should work: FAIL
-	createDocumentType("^", "", "") should work: FAIL
+	createDocumentType("@", "", "") should work: PASS
+	createDocumentType("@foo", "", "") should work: PASS
+	createDocumentType("^", "", "") should work: PASS
 	createDocumentType("_:_", "", "") should work: PASS
 	createDocumentType("_:_.", "", "") should work: PASS
 	createDocumentType("_:a-", "", "") should work: PASS
 	createDocumentType("_:h0", "", "") should work: PASS
 	createDocumentType("_:test", "", "") should work: PASS
-	createDocumentType("`", "", "") should work: FAIL
+	createDocumentType("`", "", "") should work: PASS
 	createDocumentType("a-b:c", "", "") should work: PASS
 	createDocumentType("a-b:c.j", "", "") should work: PASS
 	createDocumentType("a.b:c", "", "") should work: PASS
@@ -798,7 +798,7 @@
 	createDocumentType("edi:*", "", "") should work: PASS
 	createDocumentType("edi:+", "", "") should work: PASS
 	createDocumentType("edi:,", "", "") should work: PASS
-	createDocumentType("edi:/", "", "") should work: FAIL
+	createDocumentType("edi:/", "", "") should work: PASS
 	createDocumentType("edi:;", "", "") should work: PASS
 	createDocumentType("edi:<", "", "") should work: PASS
 	createDocumentType("edi:=", "", "") should work: PASS
@@ -842,9 +842,9 @@
 	createDocumentType("test:root", "1234", "test") should work: PASS
 	createDocumentType("test:root", "test", "") should work: PASS
 	createDocumentType("test:root", "test", "test") should work: PASS
-	createDocumentType("{", "", "") should work: FAIL
-	createDocumentType("}", "", "") should work: FAIL
-	createDocumentType("~", "", "") should work: FAIL
+	createDocumentType("{", "", "") should work: PASS
+	createDocumentType("}", "", "") should work: PASS
+	createDocumentType("~", "", "") should work: PASS
 /dom/nodes/DOMImplementation-createHTMLDocument-with-saved-implementation.html: OK
 	createHTMLDocument(): from a saved and detached implementation does not return null: PASS
 /dom/nodes/DOMImplementation-createHTMLDocument.html: OK
@@ -1737,7 +1737,7 @@
 /dom/nodes/Document-contentType/contentType/contenttype_txt.html: OK
 	TXT document.contentType === 'text/plain': FAIL
 /dom/nodes/Document-contentType/contentType/contenttype_xml.html: OK
-	XML document.contentType === 'application/xml': FAIL
+	XML document.contentType === 'application/xml': PASS
 /dom/nodes/Document-contentType/contentType/createDocument.html: OK
 	document.implementation.createDocument: document.contentType === 'application/xhtml+xml': PASS
 /dom/nodes/Document-contentType/contentType/createHTMLDocument.html: OK
@@ -1802,15 +1802,15 @@
 	Created element's namespace in bare_mathml.html: PASS
 	Created element's namespace in bare_mathml.svg: FAIL
 	Created element's namespace in bare_mathml.xhtml: PASS
-	Created element's namespace in bare_mathml.xml: FAIL
+	Created element's namespace in bare_mathml.xml: PASS
 	Created element's namespace in bare_svg.html: PASS
 	Created element's namespace in bare_svg.svg: FAIL
 	Created element's namespace in bare_svg.xhtml: PASS
-	Created element's namespace in bare_svg.xml: FAIL
+	Created element's namespace in bare_svg.xml: PASS
 	Created element's namespace in bare_xhtml.html: PASS
 	Created element's namespace in bare_xhtml.svg: FAIL
 	Created element's namespace in bare_xhtml.xhtml: PASS
-	Created element's namespace in bare_xhtml.xml: FAIL
+	Created element's namespace in bare_xhtml.xml: PASS
 	Created element's namespace in created HTML document: PASS
 	Created element's namespace in created HTML document by DOMParser ('text/html'): PASS
 	Created element's namespace in created MathML document: PASS
@@ -1825,188 +1825,188 @@
 	Created element's namespace in empty.html: PASS
 	Created element's namespace in empty.svg: FAIL
 	Created element's namespace in empty.xhtml: PASS
-	Created element's namespace in empty.xml: FAIL
+	Created element's namespace in empty.xml: PASS
 	Created element's namespace in mathml.html: PASS
 	Created element's namespace in mathml.svg: FAIL
 	Created element's namespace in mathml.xhtml: PASS
-	Created element's namespace in mathml.xml: FAIL
+	Created element's namespace in mathml.xml: PASS
 	Created element's namespace in minimal_html.html: PASS
 	Created element's namespace in minimal_html.svg: FAIL
 	Created element's namespace in minimal_html.xhtml: PASS
-	Created element's namespace in minimal_html.xml: FAIL
+	Created element's namespace in minimal_html.xml: PASS
 	Created element's namespace in svg.html: PASS
 	Created element's namespace in svg.svg: FAIL
 	Created element's namespace in svg.xhtml: PASS
-	Created element's namespace in svg.xml: FAIL
+	Created element's namespace in svg.xml: PASS
 	Created element's namespace in xhtml.html: PASS
 	Created element's namespace in xhtml.svg: FAIL
 	Created element's namespace in xhtml.xhtml: PASS
-	Created element's namespace in xhtml.xml: FAIL
+	Created element's namespace in xhtml.xml: PASS
 	Created element's namespace in xhtml_ns_changed.html: PASS
 	Created element's namespace in xhtml_ns_changed.svg: FAIL
 	Created element's namespace in xhtml_ns_changed.xhtml: PASS
-	Created element's namespace in xhtml_ns_changed.xml: FAIL
+	Created element's namespace in xhtml_ns_changed.xml: PASS
 	Created element's namespace in xhtml_ns_removed.html: PASS
 	Created element's namespace in xhtml_ns_removed.svg: FAIL
 	Created element's namespace in xhtml_ns_removed.xhtml: PASS
-	Created element's namespace in xhtml_ns_removed.xml: FAIL
+	Created element's namespace in xhtml_ns_removed.xml: PASS
 /dom/nodes/Document-createElement.html: OK
 	createElement("") in HTML document: PASS
 	createElement("") in XHTML document: PASS
-	createElement("") in XML document: FAIL
+	createElement("") in XML document: PASS
 	createElement("-foo") in HTML document: PASS
 	createElement("-foo") in XHTML document: PASS
-	createElement("-foo") in XML document: FAIL
+	createElement("-foo") in XML document: PASS
 	createElement(".foo") in HTML document: PASS
 	createElement(".foo") in XHTML document: PASS
-	createElement(".foo") in XML document: FAIL
+	createElement(".foo") in XML document: PASS
 	createElement("1:foo") in HTML document: PASS
 	createElement("1:foo") in XHTML document: PASS
-	createElement("1:foo") in XML document: FAIL
+	createElement("1:foo") in XML document: PASS
 	createElement("1foo") in HTML document: PASS
 	createElement("1foo") in XHTML document: PASS
-	createElement("1foo") in XML document: FAIL
+	createElement("1foo") in XML document: PASS
 	createElement(":") in HTML document: PASS
 	createElement(":") in XHTML document: PASS
-	createElement(":") in XML document: FAIL
+	createElement(":") in XML document: PASS
 	createElement(":foo") in HTML document: PASS
 	createElement(":foo") in XHTML document: PASS
-	createElement(":foo") in XML document: FAIL
+	createElement(":foo") in XML document: PASS
 	createElement("<foo") in HTML document: PASS
 	createElement("<foo") in XHTML document: PASS
-	createElement("<foo") in XML document: FAIL
+	createElement("<foo") in XML document: PASS
 	createElement("<foo>") in HTML document: PASS
 	createElement("<foo>") in XHTML document: PASS
-	createElement("<foo>") in XML document: FAIL
+	createElement("<foo>") in XML document: PASS
 	createElement("FOO") in HTML document: PASS
 	createElement("FOO") in XHTML document: PASS
-	createElement("FOO") in XML document: FAIL
+	createElement("FOO") in XML document: PASS
 	createElement("\\ufffffoo") in HTML document: PASS
 	createElement("\\ufffffoo") in XHTML document: PASS
-	createElement("\\ufffffoo") in XML document: FAIL
+	createElement("\\ufffffoo") in XML document: PASS
 	createElement("f1oo") in HTML document: PASS
 	createElement("f1oo") in XHTML document: PASS
-	createElement("f1oo") in XML document: FAIL
+	createElement("f1oo") in XML document: PASS
 	createElement("f::oo") in HTML document: PASS
 	createElement("f::oo") in XHTML document: PASS
-	createElement("f::oo") in XML document: FAIL
+	createElement("f::oo") in XML document: PASS
 	createElement("f::oo:") in HTML document: PASS
 	createElement("f::oo:") in XHTML document: PASS
-	createElement("f::oo:") in XML document: FAIL
+	createElement("f::oo:") in XML document: PASS
 	createElement("f:o:o") in HTML document: PASS
 	createElement("f:o:o") in XHTML document: PASS
-	createElement("f:o:o") in XML document: FAIL
+	createElement("f:o:o") in XML document: PASS
 	createElement("f:oo") in HTML document: PASS
 	createElement("f:oo") in XHTML document: PASS
-	createElement("f:oo") in XML document: FAIL
+	createElement("f:oo") in XML document: PASS
 	createElement("f<oo") in HTML document: PASS
 	createElement("f<oo") in XHTML document: PASS
-	createElement("f<oo") in XML document: FAIL
+	createElement("f<oo") in XML document: PASS
 	createElement("f\\uffffoo") in HTML document: PASS
 	createElement("f\\uffffoo") in XHTML document: PASS
-	createElement("f\\uffffoo") in XML document: FAIL
+	createElement("f\\uffffoo") in XML document: PASS
 	createElement("fo o") in HTML document: PASS
 	createElement("fo o") in XHTML document: PASS
-	createElement("fo o") in XML document: FAIL
+	createElement("fo o") in XML document: PASS
 	createElement("foo") in HTML document: PASS
 	createElement("foo") in XHTML document: PASS
-	createElement("foo") in XML document: FAIL
+	createElement("foo") in XML document: PASS
 	createElement("foo1") in HTML document: PASS
 	createElement("foo1") in XHTML document: PASS
-	createElement("foo1") in XML document: FAIL
+	createElement("foo1") in XML document: PASS
 	createElement("foo:") in HTML document: PASS
 	createElement("foo:") in XHTML document: PASS
-	createElement("foo:") in XML document: FAIL
+	createElement("foo:") in XML document: PASS
 	createElement("foo:0") in HTML document: PASS
 	createElement("foo:0") in XHTML document: PASS
-	createElement("foo:0") in XML document: FAIL
+	createElement("foo:0") in XML document: PASS
 	createElement("foo:_") in HTML document: PASS
 	createElement("foo:_") in XHTML document: PASS
-	createElement("foo:_") in XML document: FAIL
+	createElement("foo:_") in XML document: PASS
 	createElement("foo:fooெ") in HTML document: PASS
 	createElement("foo:fooெ") in XHTML document: PASS
-	createElement("foo:fooெ") in XML document: FAIL
+	createElement("foo:fooெ") in XML document: PASS
 	createElement("foo:ெ") in HTML document: PASS
 	createElement("foo:ெ") in XHTML document: PASS
-	createElement("foo:ெ") in XML document: FAIL
+	createElement("foo:ெ") in XML document: PASS
 	createElement("foo>") in HTML document: PASS
 	createElement("foo>") in XHTML document: PASS
-	createElement("foo>") in XML document: FAIL
+	createElement("foo>") in XML document: PASS
 	createElement("foo\\uffff") in HTML document: PASS
 	createElement("foo\\uffff") in XHTML document: PASS
-	createElement("foo\\uffff") in XML document: FAIL
+	createElement("foo\\uffff") in XML document: PASS
 	createElement("foo}") in HTML document: PASS
 	createElement("foo}") in XHTML document: PASS
-	createElement("foo}") in XML document: FAIL
+	createElement("foo}") in XML document: PASS
 	createElement("fooெ") in HTML document: PASS
 	createElement("fooெ") in XHTML document: PASS
-	createElement("fooெ") in XML document: FAIL
+	createElement("fooெ") in XML document: PASS
 	createElement("fooெ:foo") in HTML document: PASS
 	createElement("fooெ:foo") in XHTML document: PASS
-	createElement("fooெ:foo") in XML document: FAIL
+	createElement("fooெ:foo") in XML document: PASS
 	createElement("f}oo") in HTML document: PASS
 	createElement("f}oo") in XHTML document: PASS
-	createElement("f}oo") in XML document: FAIL
+	createElement("f}oo") in XML document: PASS
 	createElement("fெ") in HTML document: PASS
 	createElement("fெ") in XHTML document: PASS
-	createElement("fெ") in XML document: FAIL
+	createElement("fெ") in XML document: PASS
 	createElement("marK") in HTML document: PASS
 	createElement("marK") in XHTML document: PASS
-	createElement("marK") in XML document: FAIL
+	createElement("marK") in XML document: PASS
 	createElement("math") in HTML document: PASS
 	createElement("math") in XHTML document: PASS
-	createElement("math") in XML document: FAIL
+	createElement("math") in XML document: PASS
 	createElement("svg") in HTML document: PASS
 	createElement("svg") in XHTML document: PASS
-	createElement("svg") in XML document: FAIL
+	createElement("svg") in XML document: PASS
 	createElement("xml") in HTML document: PASS
 	createElement("xml") in XHTML document: PASS
-	createElement("xml") in XML document: FAIL
+	createElement("xml") in XML document: PASS
 	createElement("xml:foo") in HTML document: PASS
 	createElement("xml:foo") in XHTML document: PASS
-	createElement("xml:foo") in XML document: FAIL
+	createElement("xml:foo") in XML document: PASS
 	createElement("xmlfoo") in HTML document: PASS
 	createElement("xmlfoo") in XHTML document: PASS
-	createElement("xmlfoo") in XML document: FAIL
+	createElement("xmlfoo") in XML document: PASS
 	createElement("xmlfoo:bar") in HTML document: PASS
 	createElement("xmlfoo:bar") in XHTML document: PASS
-	createElement("xmlfoo:bar") in XML document: FAIL
+	createElement("xmlfoo:bar") in XML document: PASS
 	createElement("xmlns") in HTML document: PASS
 	createElement("xmlns") in XHTML document: PASS
-	createElement("xmlns") in XML document: FAIL
+	createElement("xmlns") in XML document: PASS
 	createElement("xmlns:foo") in HTML document: PASS
 	createElement("xmlns:foo") in XHTML document: PASS
-	createElement("xmlns:foo") in XML document: FAIL
+	createElement("xmlns:foo") in XML document: PASS
 	createElement("}foo") in HTML document: PASS
 	createElement("}foo") in XHTML document: PASS
-	createElement("}foo") in XML document: FAIL
+	createElement("}foo") in XML document: PASS
 	createElement("İnput") in HTML document: PASS
 	createElement("İnput") in XHTML document: PASS
-	createElement("İnput") in XML document: FAIL
-	createElement("ınput") in HTML document: FAIL
+	createElement("İnput") in XML document: PASS
+	createElement("ınput") in HTML document: PASS
 	createElement("ınput") in XHTML document: PASS
-	createElement("ınput") in XML document: FAIL
+	createElement("ınput") in XML document: PASS
 	createElement("̀") in HTML document: PASS
 	createElement("̀") in XHTML document: PASS
-	createElement("̀") in XML document: FAIL
+	createElement("̀") in XML document: PASS
 	createElement("̀foo") in HTML document: PASS
 	createElement("̀foo") in XHTML document: PASS
-	createElement("̀foo") in XML document: FAIL
+	createElement("̀foo") in XML document: PASS
 	createElement(null) in HTML document: PASS
 	createElement(null) in XHTML document: PASS
-	createElement(null) in XML document: FAIL
+	createElement(null) in XML document: PASS
 	createElement(undefined) in HTML document: PASS
 	createElement(undefined) in XHTML document: PASS
-	createElement(undefined) in XML document: FAIL
+	createElement(undefined) in XML document: PASS
 /dom/nodes/Document-createElementNS.html: OK
-	Lower-case HTML element with a prefix: FAIL
+	Lower-case HTML element with a prefix: PASS
 	Lower-case HTML element without a prefix: PASS
 	Lower-case non-HTML element with a prefix: PASS
 	Lower-case non-HTML element without a prefix: PASS
-	Upper-case HTML element with a prefix: FAIL
-	Upper-case HTML element without a prefix: FAIL
-	Upper-case non-HTML element with a prefix: FAIL
-	Upper-case non-HTML element without a prefix: FAIL
+	Upper-case HTML element with a prefix: PASS
+	Upper-case HTML element without a prefix: PASS
+	Upper-case non-HTML element with a prefix: PASS
+	Upper-case non-HTML element without a prefix: PASS
 	createElementNS test in HTML document: "","","INVALID_CHARACTER_ERR": PASS
 	createElementNS test in HTML document: "",":foo","INVALID_CHARACTER_ERR": PASS
 	createElementNS test in HTML document: "","f:oo","NAMESPACE_ERR": PASS
@@ -2050,7 +2050,7 @@
 	createElementNS test in HTML document: "http://example.com/",":foo","INVALID_CHARACTER_ERR": PASS
 	createElementNS test in HTML document: "http://example.com/","<foo>","INVALID_CHARACTER_ERR": PASS
 	createElementNS test in HTML document: "http://example.com/","XML:foo",null: PASS
-	createElementNS test in HTML document: "http://example.com/","XMLNS",null: FAIL
+	createElementNS test in HTML document: "http://example.com/","XMLNS",null: PASS
 	createElementNS test in HTML document: "http://example.com/","XMLNS:foo",null: PASS
 	createElementNS test in HTML document: "http://example.com/","_:_",null: PASS
 	createElementNS test in HTML document: "http://example.com/","_:h0",null: PASS
@@ -2065,8 +2065,8 @@
 	createElementNS test in HTML document: "http://example.com/","a:ெ",null: PASS
 	createElementNS test in HTML document: "http://example.com/","aெ:a",null: PASS
 	createElementNS test in HTML document: "http://example.com/","f1oo",null: PASS
-	createElementNS test in HTML document: "http://example.com/","f::oo",null: FAIL
-	createElementNS test in HTML document: "http://example.com/","f:o:o",null: FAIL
+	createElementNS test in HTML document: "http://example.com/","f::oo",null: PASS
+	createElementNS test in HTML document: "http://example.com/","f:o:o",null: PASS
 	createElementNS test in HTML document: "http://example.com/","f:oo",null: PASS
 	createElementNS test in HTML document: "http://example.com/","fo<o",null: PASS
 	createElementNS test in HTML document: "http://example.com/","foo",null: PASS
@@ -2103,7 +2103,7 @@
 	createElementNS test in HTML document: "http://example.com/","ns0:test",null: PASS
 	createElementNS test in HTML document: "http://example.com/","ns:_0",null: PASS
 	createElementNS test in HTML document: "http://example.com/","ns:a0",null: PASS
-	createElementNS test in HTML document: "http://example.com/","prefix::local",null: FAIL
+	createElementNS test in HTML document: "http://example.com/","prefix::local",null: PASS
 	createElementNS test in HTML document: "http://example.com/","test:xmlns",null: PASS
 	createElementNS test in HTML document: "http://example.com/","xml",null: PASS
 	createElementNS test in HTML document: "http://example.com/","xml:foo","NAMESPACE_ERR": PASS
@@ -2161,7 +2161,7 @@
 	createElementNS test in HTML document: null,"\\ufffffoo",null: PASS
 	createElementNS test in HTML document: null,"^^","INVALID_CHARACTER_ERR": PASS
 	createElementNS test in HTML document: null,"f1oo",null: PASS
-	createElementNS test in HTML document: null,"f:o:o","NAMESPACE_ERR": FAIL
+	createElementNS test in HTML document: null,"f:o:o","NAMESPACE_ERR": PASS
 	createElementNS test in HTML document: null,"f:oo","NAMESPACE_ERR": PASS
 	createElementNS test in HTML document: null,"f<oo",null: PASS
 	createElementNS test in HTML document: null,"f\\uffffoo",null: PASS
@@ -2189,7 +2189,7 @@
 	createElementNS test in HTML document: undefined,"1foo","INVALID_CHARACTER_ERR": PASS
 	createElementNS test in HTML document: undefined,":foo","INVALID_CHARACTER_ERR": PASS
 	createElementNS test in HTML document: undefined,"f1oo",null: PASS
-	createElementNS test in HTML document: undefined,"f::oo","NAMESPACE_ERR": FAIL
+	createElementNS test in HTML document: undefined,"f::oo","NAMESPACE_ERR": PASS
 	createElementNS test in HTML document: undefined,"f:oo","NAMESPACE_ERR": PASS
 	createElementNS test in HTML document: undefined,"foo",null: PASS
 	createElementNS test in HTML document: undefined,"foo1",null: PASS
@@ -2260,8 +2260,8 @@
 	createElementNS test in XHTML document: "http://example.com/","a:ெ",null: PASS
 	createElementNS test in XHTML document: "http://example.com/","aெ:a",null: PASS
 	createElementNS test in XHTML document: "http://example.com/","f1oo",null: PASS
-	createElementNS test in XHTML document: "http://example.com/","f::oo",null: FAIL
-	createElementNS test in XHTML document: "http://example.com/","f:o:o",null: FAIL
+	createElementNS test in XHTML document: "http://example.com/","f::oo",null: PASS
+	createElementNS test in XHTML document: "http://example.com/","f:o:o",null: PASS
 	createElementNS test in XHTML document: "http://example.com/","f:oo",null: PASS
 	createElementNS test in XHTML document: "http://example.com/","fo<o",null: PASS
 	createElementNS test in XHTML document: "http://example.com/","foo",null: PASS
@@ -2298,7 +2298,7 @@
 	createElementNS test in XHTML document: "http://example.com/","ns0:test",null: PASS
 	createElementNS test in XHTML document: "http://example.com/","ns:_0",null: PASS
 	createElementNS test in XHTML document: "http://example.com/","ns:a0",null: PASS
-	createElementNS test in XHTML document: "http://example.com/","prefix::local",null: FAIL
+	createElementNS test in XHTML document: "http://example.com/","prefix::local",null: PASS
 	createElementNS test in XHTML document: "http://example.com/","test:xmlns",null: PASS
 	createElementNS test in XHTML document: "http://example.com/","xml",null: PASS
 	createElementNS test in XHTML document: "http://example.com/","xml:foo","NAMESPACE_ERR": PASS
@@ -2356,7 +2356,7 @@
 	createElementNS test in XHTML document: null,"\\ufffffoo",null: PASS
 	createElementNS test in XHTML document: null,"^^","INVALID_CHARACTER_ERR": PASS
 	createElementNS test in XHTML document: null,"f1oo",null: PASS
-	createElementNS test in XHTML document: null,"f:o:o","NAMESPACE_ERR": FAIL
+	createElementNS test in XHTML document: null,"f:o:o","NAMESPACE_ERR": PASS
 	createElementNS test in XHTML document: null,"f:oo","NAMESPACE_ERR": PASS
 	createElementNS test in XHTML document: null,"f<oo",null: PASS
 	createElementNS test in XHTML document: null,"f\\uffffoo",null: PASS
@@ -2384,7 +2384,7 @@
 	createElementNS test in XHTML document: undefined,"1foo","INVALID_CHARACTER_ERR": PASS
 	createElementNS test in XHTML document: undefined,":foo","INVALID_CHARACTER_ERR": PASS
 	createElementNS test in XHTML document: undefined,"f1oo",null: PASS
-	createElementNS test in XHTML document: undefined,"f::oo","NAMESPACE_ERR": FAIL
+	createElementNS test in XHTML document: undefined,"f::oo","NAMESPACE_ERR": PASS
 	createElementNS test in XHTML document: undefined,"f:oo","NAMESPACE_ERR": PASS
 	createElementNS test in XHTML document: undefined,"foo",null: PASS
 	createElementNS test in XHTML document: undefined,"foo1",null: PASS
@@ -2397,201 +2397,201 @@
 	createElementNS test in XHTML document: undefined,"xmlns:foo","NAMESPACE_ERR": PASS
 	createElementNS test in XHTML document: undefined,null,null: PASS
 	createElementNS test in XHTML document: undefined,undefined,null: PASS
-	createElementNS test in XML document: "","","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "",":foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "","f:oo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "","foo:","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "",null,null: FAIL
-	createElementNS test in XML document: "/","","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "/","1foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "/",":foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "/","f1oo",null: FAIL
-	createElementNS test in XML document: "/","f:oo",null: FAIL
-	createElementNS test in XML document: "/","foo",null: FAIL
-	createElementNS test in XML document: "/","foo1",null: FAIL
-	createElementNS test in XML document: "/","foo:","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "/","xml",null: FAIL
-	createElementNS test in XML document: "/","xml:foo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "/","xmlfoo",null: FAIL
-	createElementNS test in XML document: "/","xmlfoo:bar",null: FAIL
-	createElementNS test in XML document: "/","xmlns","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "/","xmlns:foo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "/",null,null: FAIL
-	createElementNS test in XML document: "foo:","","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "foo:","1foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "foo:",":foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "foo:","f1oo",null: FAIL
-	createElementNS test in XML document: "foo:","f:oo",null: FAIL
-	createElementNS test in XML document: "foo:","foo",null: FAIL
-	createElementNS test in XML document: "foo:","foo1",null: FAIL
-	createElementNS test in XML document: "foo:","foo:","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "foo:","xml",null: FAIL
-	createElementNS test in XML document: "foo:","xml:foo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "foo:","xmlfoo",null: FAIL
-	createElementNS test in XML document: "foo:","xmlfoo:bar",null: FAIL
-	createElementNS test in XML document: "foo:","xmlns","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "foo:","xmlns:foo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "foo:",null,null: FAIL
-	createElementNS test in XML document: "http://example.com/","","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","-foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/",".foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","0:a",null: FAIL
-	createElementNS test in XML document: "http://example.com/","1foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/",":foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","<foo>","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","XML:foo",null: FAIL
-	createElementNS test in XML document: "http://example.com/","XMLNS",null: FAIL
-	createElementNS test in XML document: "http://example.com/","XMLNS:foo",null: FAIL
-	createElementNS test in XML document: "http://example.com/","_:_",null: FAIL
-	createElementNS test in XML document: "http://example.com/","_:h0",null: FAIL
-	createElementNS test in XML document: "http://example.com/","_:test",null: FAIL
-	createElementNS test in XML document: "http://example.com/","a-b:c",null: FAIL
-	createElementNS test in XML document: "http://example.com/","a.b:c",null: FAIL
-	createElementNS test in XML document: "http://example.com/","a:0","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","a:_",null: FAIL
-	createElementNS test in XML document: "http://example.com/","a:aெ",null: FAIL
-	createElementNS test in XML document: "http://example.com/","a:̀",null: FAIL
-	createElementNS test in XML document: "http://example.com/","a:;",null: FAIL
-	createElementNS test in XML document: "http://example.com/","a:ெ",null: FAIL
-	createElementNS test in XML document: "http://example.com/","aெ:a",null: FAIL
-	createElementNS test in XML document: "http://example.com/","f1oo",null: FAIL
-	createElementNS test in XML document: "http://example.com/","f::oo",null: FAIL
-	createElementNS test in XML document: "http://example.com/","f:o:o",null: FAIL
-	createElementNS test in XML document: "http://example.com/","f:oo",null: FAIL
-	createElementNS test in XML document: "http://example.com/","fo<o",null: FAIL
-	createElementNS test in XML document: "http://example.com/","foo",null: FAIL
-	createElementNS test in XML document: "http://example.com/","foo1",null: FAIL
-	createElementNS test in XML document: "http://example.com/","foo:","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","l_:_",null: FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:!","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:#","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:$","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:%","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:&","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:'","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:(","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:)","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:*","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:+","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:,","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:/","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:;","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:<","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:=","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:>","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:@","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:[","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:\\"","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:\\\\","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:]","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:^","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:`","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:a ","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:{","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:}","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","namespaceURI:~","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","ns0:test",null: FAIL
-	createElementNS test in XML document: "http://example.com/","ns:_0",null: FAIL
-	createElementNS test in XML document: "http://example.com/","ns:a0",null: FAIL
-	createElementNS test in XML document: "http://example.com/","prefix::local",null: FAIL
-	createElementNS test in XML document: "http://example.com/","test:xmlns",null: FAIL
-	createElementNS test in XML document: "http://example.com/","xml",null: FAIL
-	createElementNS test in XML document: "http://example.com/","xml:foo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","xml:test","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","xmlfoo",null: FAIL
-	createElementNS test in XML document: "http://example.com/","xmlfoo:bar",null: FAIL
-	createElementNS test in XML document: "http://example.com/","xmlns","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","xmlns:foo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","xmlns:test","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://example.com/","̀:a",null: FAIL
-	createElementNS test in XML document: "http://example.com/",";:a",null: FAIL
-	createElementNS test in XML document: "http://example.com/","ெ:a",null: FAIL
-	createElementNS test in XML document: "http://example.com/",null,null: FAIL
-	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","1foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/",":foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","f1oo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","f:oo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","foo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","foo1","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","foo:","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","foo:xmlns","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","xml","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","xml:foo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","xmlfoo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","xmlfoo:bar","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","xmlns",null: FAIL
-	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","xmlns:foo",null: FAIL
-	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/",null,"NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","1foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace",":foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","f1oo",null: FAIL
-	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","f:oo",null: FAIL
-	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","foo",null: FAIL
-	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","foo1",null: FAIL
-	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","foo:","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","xml",null: FAIL
-	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","xml:foo",null: FAIL
-	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","xmlfoo",null: FAIL
-	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","xmlfoo:bar",null: FAIL
-	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","xmlns","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","xmlns:foo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace",null,null: FAIL
-	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespaces","xml:foo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: "http://www.w3.org/xml/1998/namespace","xml:foo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: null,"","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: null,"-foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: null,".foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: null,"1foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: null,":","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: null,":foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: null,"<foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: null,"<foo>","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: null,"\\ufffffoo",null: FAIL
-	createElementNS test in XML document: null,"^^","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: null,"f1oo",null: FAIL
-	createElementNS test in XML document: null,"f:o:o","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: null,"f:oo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: null,"f<oo",null: FAIL
-	createElementNS test in XML document: null,"f\\uffffoo",null: FAIL
-	createElementNS test in XML document: null,"fo o","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: null,"foo",null: FAIL
-	createElementNS test in XML document: null,"foo1",null: FAIL
-	createElementNS test in XML document: null,"foo:","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: null,"foo>","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: null,"foo\\uffff",null: FAIL
-	createElementNS test in XML document: null,"foo}",null: FAIL
-	createElementNS test in XML document: null,"f}oo",null: FAIL
-	createElementNS test in XML document: null,"null:xml","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: null,"xml",null: FAIL
-	createElementNS test in XML document: null,"xml:foo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: null,"xmlfoo",null: FAIL
-	createElementNS test in XML document: null,"xmlfoo:bar","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: null,"xmlns","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: null,"xmlns:foo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: null,"}foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: null,";foo",null: FAIL
-	createElementNS test in XML document: null,"ெfoo",null: FAIL
-	createElementNS test in XML document: null,null,null: FAIL
-	createElementNS test in XML document: null,undefined,null: FAIL
-	createElementNS test in XML document: undefined,"","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: undefined,"1foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: undefined,":foo","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: undefined,"f1oo",null: FAIL
-	createElementNS test in XML document: undefined,"f::oo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: undefined,"f:oo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: undefined,"foo",null: FAIL
-	createElementNS test in XML document: undefined,"foo1",null: FAIL
-	createElementNS test in XML document: undefined,"foo:","INVALID_CHARACTER_ERR": FAIL
-	createElementNS test in XML document: undefined,"xml",null: FAIL
-	createElementNS test in XML document: undefined,"xml:foo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: undefined,"xmlfoo",null: FAIL
-	createElementNS test in XML document: undefined,"xmlfoo:bar","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: undefined,"xmlns","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: undefined,"xmlns:foo","NAMESPACE_ERR": FAIL
-	createElementNS test in XML document: undefined,null,null: FAIL
-	createElementNS test in XML document: undefined,undefined,null: FAIL
+	createElementNS test in XML document: "","","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "",":foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "","f:oo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "","foo:","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "",null,null: PASS
+	createElementNS test in XML document: "/","","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "/","1foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "/",":foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "/","f1oo",null: PASS
+	createElementNS test in XML document: "/","f:oo",null: PASS
+	createElementNS test in XML document: "/","foo",null: PASS
+	createElementNS test in XML document: "/","foo1",null: PASS
+	createElementNS test in XML document: "/","foo:","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "/","xml",null: PASS
+	createElementNS test in XML document: "/","xml:foo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "/","xmlfoo",null: PASS
+	createElementNS test in XML document: "/","xmlfoo:bar",null: PASS
+	createElementNS test in XML document: "/","xmlns","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "/","xmlns:foo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "/",null,null: PASS
+	createElementNS test in XML document: "foo:","","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "foo:","1foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "foo:",":foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "foo:","f1oo",null: PASS
+	createElementNS test in XML document: "foo:","f:oo",null: PASS
+	createElementNS test in XML document: "foo:","foo",null: PASS
+	createElementNS test in XML document: "foo:","foo1",null: PASS
+	createElementNS test in XML document: "foo:","foo:","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "foo:","xml",null: PASS
+	createElementNS test in XML document: "foo:","xml:foo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "foo:","xmlfoo",null: PASS
+	createElementNS test in XML document: "foo:","xmlfoo:bar",null: PASS
+	createElementNS test in XML document: "foo:","xmlns","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "foo:","xmlns:foo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "foo:",null,null: PASS
+	createElementNS test in XML document: "http://example.com/","","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","-foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/",".foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","0:a",null: PASS
+	createElementNS test in XML document: "http://example.com/","1foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/",":foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","<foo>","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","XML:foo",null: PASS
+	createElementNS test in XML document: "http://example.com/","XMLNS",null: PASS
+	createElementNS test in XML document: "http://example.com/","XMLNS:foo",null: PASS
+	createElementNS test in XML document: "http://example.com/","_:_",null: PASS
+	createElementNS test in XML document: "http://example.com/","_:h0",null: PASS
+	createElementNS test in XML document: "http://example.com/","_:test",null: PASS
+	createElementNS test in XML document: "http://example.com/","a-b:c",null: PASS
+	createElementNS test in XML document: "http://example.com/","a.b:c",null: PASS
+	createElementNS test in XML document: "http://example.com/","a:0","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","a:_",null: PASS
+	createElementNS test in XML document: "http://example.com/","a:aெ",null: PASS
+	createElementNS test in XML document: "http://example.com/","a:̀",null: PASS
+	createElementNS test in XML document: "http://example.com/","a:;",null: PASS
+	createElementNS test in XML document: "http://example.com/","a:ெ",null: PASS
+	createElementNS test in XML document: "http://example.com/","aெ:a",null: PASS
+	createElementNS test in XML document: "http://example.com/","f1oo",null: PASS
+	createElementNS test in XML document: "http://example.com/","f::oo",null: PASS
+	createElementNS test in XML document: "http://example.com/","f:o:o",null: PASS
+	createElementNS test in XML document: "http://example.com/","f:oo",null: PASS
+	createElementNS test in XML document: "http://example.com/","fo<o",null: PASS
+	createElementNS test in XML document: "http://example.com/","foo",null: PASS
+	createElementNS test in XML document: "http://example.com/","foo1",null: PASS
+	createElementNS test in XML document: "http://example.com/","foo:","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","l_:_",null: PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:!","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:#","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:$","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:%","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:&","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:'","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:(","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:)","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:*","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:+","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:,","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:/","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:;","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:<","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:=","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:>","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:@","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:[","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:\\"","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:\\\\","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:]","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:^","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:`","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:a ","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:{","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:}","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","namespaceURI:~","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","ns0:test",null: PASS
+	createElementNS test in XML document: "http://example.com/","ns:_0",null: PASS
+	createElementNS test in XML document: "http://example.com/","ns:a0",null: PASS
+	createElementNS test in XML document: "http://example.com/","prefix::local",null: PASS
+	createElementNS test in XML document: "http://example.com/","test:xmlns",null: PASS
+	createElementNS test in XML document: "http://example.com/","xml",null: PASS
+	createElementNS test in XML document: "http://example.com/","xml:foo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","xml:test","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","xmlfoo",null: PASS
+	createElementNS test in XML document: "http://example.com/","xmlfoo:bar",null: PASS
+	createElementNS test in XML document: "http://example.com/","xmlns","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","xmlns:foo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","xmlns:test","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://example.com/","̀:a",null: PASS
+	createElementNS test in XML document: "http://example.com/",";:a",null: PASS
+	createElementNS test in XML document: "http://example.com/","ெ:a",null: PASS
+	createElementNS test in XML document: "http://example.com/",null,null: PASS
+	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","1foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/",":foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","f1oo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","f:oo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","foo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","foo1","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","foo:","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","foo:xmlns","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","xml","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","xml:foo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","xmlfoo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","xmlfoo:bar","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","xmlns",null: PASS
+	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/","xmlns:foo",null: PASS
+	createElementNS test in XML document: "http://www.w3.org/2000/xmlns/",null,"NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","1foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace",":foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","f1oo",null: PASS
+	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","f:oo",null: PASS
+	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","foo",null: PASS
+	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","foo1",null: PASS
+	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","foo:","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","xml",null: PASS
+	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","xml:foo",null: PASS
+	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","xmlfoo",null: PASS
+	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","xmlfoo:bar",null: PASS
+	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","xmlns","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace","xmlns:foo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespace",null,null: PASS
+	createElementNS test in XML document: "http://www.w3.org/XML/1998/namespaces","xml:foo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: "http://www.w3.org/xml/1998/namespace","xml:foo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: null,"","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: null,"-foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: null,".foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: null,"1foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: null,":","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: null,":foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: null,"<foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: null,"<foo>","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: null,"\\ufffffoo",null: PASS
+	createElementNS test in XML document: null,"^^","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: null,"f1oo",null: PASS
+	createElementNS test in XML document: null,"f:o:o","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: null,"f:oo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: null,"f<oo",null: PASS
+	createElementNS test in XML document: null,"f\\uffffoo",null: PASS
+	createElementNS test in XML document: null,"fo o","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: null,"foo",null: PASS
+	createElementNS test in XML document: null,"foo1",null: PASS
+	createElementNS test in XML document: null,"foo:","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: null,"foo>","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: null,"foo\\uffff",null: PASS
+	createElementNS test in XML document: null,"foo}",null: PASS
+	createElementNS test in XML document: null,"f}oo",null: PASS
+	createElementNS test in XML document: null,"null:xml","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: null,"xml",null: PASS
+	createElementNS test in XML document: null,"xml:foo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: null,"xmlfoo",null: PASS
+	createElementNS test in XML document: null,"xmlfoo:bar","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: null,"xmlns","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: null,"xmlns:foo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: null,"}foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: null,";foo",null: PASS
+	createElementNS test in XML document: null,"ெfoo",null: PASS
+	createElementNS test in XML document: null,null,null: PASS
+	createElementNS test in XML document: null,undefined,null: PASS
+	createElementNS test in XML document: undefined,"","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: undefined,"1foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: undefined,":foo","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: undefined,"f1oo",null: PASS
+	createElementNS test in XML document: undefined,"f::oo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: undefined,"f:oo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: undefined,"foo",null: PASS
+	createElementNS test in XML document: undefined,"foo1",null: PASS
+	createElementNS test in XML document: undefined,"foo:","INVALID_CHARACTER_ERR": PASS
+	createElementNS test in XML document: undefined,"xml",null: PASS
+	createElementNS test in XML document: undefined,"xml:foo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: undefined,"xmlfoo",null: PASS
+	createElementNS test in XML document: undefined,"xmlfoo:bar","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: undefined,"xmlns","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: undefined,"xmlns:foo","NAMESPACE_ERR": PASS
+	createElementNS test in XML document: undefined,null,null: PASS
+	createElementNS test in XML document: undefined,undefined,null: PASS
 	empty string namespace: PASS
 	null namespace: PASS
 	undefined namespace: PASS
@@ -2943,27 +2943,27 @@
 /dom/nodes/Document-getElementsByClassName.html: OK
 	getElementsByClassName() should be a live collection: PASS
 /dom/nodes/Document-getElementsByTagName-xhtml.xhtml: OK
-	Element in HTML namespace, no prefix, non-ascii characters in name: FAIL
-	Element in HTML namespace, prefix, non-ascii characters in name: FAIL
-	Element in non-HTML namespace, no prefix, lowercase name: FAIL
+	Element in HTML namespace, no prefix, non-ascii characters in name: PASS
+	Element in HTML namespace, prefix, non-ascii characters in name: PASS
+	Element in non-HTML namespace, no prefix, lowercase name: PASS
 	Element in non-HTML namespace, no prefix, uppercase name: PASS
 	Element in non-HTML namespace, non-ascii characters in name: PASS
-	Element in non-HTML namespace, prefix, lowercase name: FAIL
+	Element in non-HTML namespace, prefix, lowercase name: PASS
 	Element in non-HTML namespace, prefix, non-ascii characters in name: PASS
 	Element in non-HTML namespace, prefix, uppercase name: PASS
-	HTML element with uppercase tag name matches in XHTML documents: FAIL
+	HTML element with uppercase tag name matches in XHTML documents: PASS
 	getElementsByTagName('*'): PASS
 /dom/nodes/Document-getElementsByTagName.html: OK
 	Caching is allowed: PASS
 	Element in HTML namespace, no prefix, non-ascii characters in name: PASS
-	Element in HTML namespace, prefix, non-ascii characters in name: FAIL
-	Element in non-HTML namespace, no prefix, lowercase name: FAIL
-	Element in non-HTML namespace, no prefix, uppercase name: FAIL
-	Element in non-HTML namespace, non-ascii characters in name: FAIL
-	Element in non-HTML namespace, prefix, lowercase name: FAIL
-	Element in non-HTML namespace, prefix, non-ascii characters in name: FAIL
-	Element in non-HTML namespace, prefix, uppercase name: FAIL
-	HTML element with uppercase tagName never matches in HTML Documents: FAIL
+	Element in HTML namespace, prefix, non-ascii characters in name: PASS
+	Element in non-HTML namespace, no prefix, lowercase name: PASS
+	Element in non-HTML namespace, no prefix, uppercase name: PASS
+	Element in non-HTML namespace, non-ascii characters in name: PASS
+	Element in non-HTML namespace, prefix, lowercase name: PASS
+	Element in non-HTML namespace, prefix, non-ascii characters in name: PASS
+	Element in non-HTML namespace, prefix, uppercase name: PASS
+	HTML element with uppercase tagName never matches in HTML Documents: PASS
 	Interfaces: PASS
 	Should be able to set expando shadowing a proto prop (item): PASS
 	Should be able to set expando shadowing a proto prop (namedItem): PASS
@@ -2973,10 +2973,10 @@
 	getElementsByTagName() should be a live collection: PASS
 	hasOwnProperty, getOwnPropertyDescriptor, getOwnPropertyNames: FAIL
 /dom/nodes/Document-getElementsByTagNameNS.html: OK
-	ABC element in html namespace: FAIL
-	AÇ, case sensitivity: FAIL
-	BODY element in test namespace, no prefix: FAIL
-	BODY element in test namespace, prefix: FAIL
+	ABC element in html namespace: PASS
+	AÇ, case sensitivity: PASS
+	BODY element in test namespace, no prefix: PASS
+	BODY element in test namespace, prefix: PASS
 	Document.getElementsByTagNameNS: PASS
 	Empty lists: PASS
 	Empty string namespace: PASS
@@ -4512,14 +4512,14 @@
 /dom/nodes/Element-getElementsByTagName.html: OK
 	Caching is allowed: PASS
 	Element in HTML namespace, no prefix, non-ascii characters in name: PASS
-	Element in HTML namespace, prefix, non-ascii characters in name: FAIL
-	Element in non-HTML namespace, no prefix, lowercase name: FAIL
-	Element in non-HTML namespace, no prefix, uppercase name: FAIL
-	Element in non-HTML namespace, non-ascii characters in name: FAIL
-	Element in non-HTML namespace, prefix, lowercase name: FAIL
-	Element in non-HTML namespace, prefix, non-ascii characters in name: FAIL
-	Element in non-HTML namespace, prefix, uppercase name: FAIL
-	HTML element with uppercase tagName never matches in HTML Documents: FAIL
+	Element in HTML namespace, prefix, non-ascii characters in name: PASS
+	Element in non-HTML namespace, no prefix, lowercase name: PASS
+	Element in non-HTML namespace, no prefix, uppercase name: PASS
+	Element in non-HTML namespace, non-ascii characters in name: PASS
+	Element in non-HTML namespace, prefix, lowercase name: PASS
+	Element in non-HTML namespace, prefix, non-ascii characters in name: PASS
+	Element in non-HTML namespace, prefix, uppercase name: PASS
+	HTML element with uppercase tagName never matches in HTML Documents: PASS
 	Interfaces: PASS
 	Matching the context object: PASS
 	Should be able to set expando shadowing a proto prop (item): PASS
@@ -4530,10 +4530,10 @@
 	getElementsByTagName() should be a live collection: PASS
 	hasOwnProperty, getOwnPropertyDescriptor, getOwnPropertyNames: FAIL
 /dom/nodes/Element-getElementsByTagNameNS.html: OK
-	ABC element in html namespace: FAIL
-	AÇ, case sensitivity: FAIL
-	BODY element in test namespace, no prefix: FAIL
-	BODY element in test namespace, prefix: FAIL
+	ABC element in html namespace: PASS
+	AÇ, case sensitivity: PASS
+	BODY element in test namespace, no prefix: PASS
+	BODY element in test namespace, prefix: PASS
 	Element.getElementsByTagNameNS: PASS
 	Empty lists: PASS
 	Empty string namespace: PASS
@@ -4592,8 +4592,8 @@
 /dom/nodes/Element-matches-namespaced-elements.html: OK
 	empty string namespace, matches: PASS
 	empty string namespace, webkitMatchesSelector: PASS
-	has a namespace, *|, matches: FAIL
-	has a namespace, *|, webkitMatchesSelector: FAIL
+	has a namespace, *|, matches: PASS
+	has a namespace, *|, webkitMatchesSelector: PASS
 	has a namespace, matches: PASS
 	has a namespace, webkitMatchesSelector: PASS
 /dom/nodes/Element-matches.html: OK
@@ -4681,7 +4681,7 @@
 	Detached Element.matches: Attribute presence selector, matching custom data-* attribute (with no refNodes): [data-attr-presence]: PASS
 	Detached Element.matches: Attribute presence selector, matching multiple options with selected attributes (with no refNodes): #attr-presence-select3 option[selected]: PASS
 	Detached Element.matches: Attribute presence selector, matching option with selected attribute (with no refNodes): #attr-presence-select2 option[selected]: PASS
-	Detached Element.matches: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [*|TiTlE]: FAIL
+	Detached Element.matches: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [*|TiTlE]: PASS
 	Detached Element.matches: Attribute value selector with double-quoted value, matching multiple inputs with type attributes (with no refNodes): #attr-value input[type="hidden"],#attr-value input[type='radio']: PASS
 	Detached Element.matches: Attribute value selector with single-quoted value, matching multiple inputs with type attributes (with no refNodes): #attr-value input[type='hidden'],#attr-value input[type='radio']: PASS
 	Detached Element.matches: Attribute value selector with unquoted value, matching multiple inputs with type attributes (with no refNodes): #attr-value input[type=hidden],#attr-value input[type=radio]: PASS
@@ -4861,7 +4861,7 @@
 	Fragment Element.matches: Attribute presence selector, matching custom data-* attribute (with no refNodes): [data-attr-presence]: PASS
 	Fragment Element.matches: Attribute presence selector, matching multiple options with selected attributes (with no refNodes): #attr-presence-select3 option[selected]: PASS
 	Fragment Element.matches: Attribute presence selector, matching option with selected attribute (with no refNodes): #attr-presence-select2 option[selected]: PASS
-	Fragment Element.matches: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [*|TiTlE]: FAIL
+	Fragment Element.matches: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [*|TiTlE]: PASS
 	Fragment Element.matches: Attribute value selector with double-quoted value, matching multiple inputs with type attributes (with no refNodes): #attr-value input[type="hidden"],#attr-value input[type='radio']: PASS
 	Fragment Element.matches: Attribute value selector with single-quoted value, matching multiple inputs with type attributes (with no refNodes): #attr-value input[type='hidden'],#attr-value input[type='radio']: PASS
 	Fragment Element.matches: Attribute value selector with unquoted value, matching multiple inputs with type attributes (with no refNodes): #attr-value input[type=hidden],#attr-value input[type=radio]: PASS
@@ -5096,7 +5096,7 @@
 	In-document Element.matches: Attribute presence selector, matching multiple options with selected attributes (with refNode Element): #attr-presence-select3 option[selected]: PASS
 	In-document Element.matches: Attribute presence selector, matching option with selected attribute (with no refNodes): #attr-presence-select2 option[selected]: PASS
 	In-document Element.matches: Attribute presence selector, matching option with selected attribute (with refNode Element): #attr-presence-select2 option[selected]: PASS
-	In-document Element.matches: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [*|TiTlE]: FAIL
+	In-document Element.matches: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [*|TiTlE]: PASS
 	In-document Element.matches: Attribute presence selector, matching title attribute, case insensitivity (with refNode Element): [TiTlE]: PASS
 	In-document Element.matches: Attribute value selector with double-quoted value, matching multiple inputs with type attributes (with no refNodes): #attr-value input[type="hidden"],#attr-value input[type='radio']: PASS
 	In-document Element.matches: Attribute value selector with double-quoted value, matching multiple inputs with type attributes (with refNode Element): input[type="hidden"],#attr-value input[type='radio']: PASS
@@ -5292,7 +5292,7 @@
 	Attributes first seen in mixed ASCII case should not be corrupted.: PASS
 /dom/nodes/Element-setAttribute.html: OK
 	setAttribute should change the first attribute, irrespective of namespace: FAIL
-	setAttribute should lowercase before setting: FAIL
+	setAttribute should lowercase before setting: PASS
 /dom/nodes/Element-setAttributeNodeNS.html: OK
 	Replacing an attribute prefix preserves name lookup order with namespacedFirst=false: FAIL
 	Replacing an attribute prefix preserves name lookup order with namespacedFirst=true: FAIL
@@ -5307,9 +5307,9 @@
 	tagName should be updated when changing ownerDocument: FAIL
 	tagName should be updated when changing ownerDocument (createDocument with prefix): FAIL
 	tagName should be updated when changing ownerDocument (createDocument without prefix): FAIL
-	tagName should not upper-case for SVG elements in HTML documents.: FAIL
-	tagName should not upper-case for other non-HTML namespaces: FAIL
-	tagName should upper-case for HTML elements in HTML documents.: FAIL
+	tagName should not upper-case for SVG elements in HTML documents.: PASS
+	tagName should not upper-case for other non-HTML namespaces: PASS
+	tagName should upper-case for HTML elements in HTML documents.: PASS
 /dom/nodes/Element-webkitMatchesSelector.html: OK
 	DIV Element.webkitMatchesSelector no parameter: PASS
 	DIV Element.webkitMatchesSelector(null): PASS
@@ -5395,7 +5395,7 @@
 	Detached Element.webkitMatchesSelector: Attribute presence selector, matching custom data-* attribute (with no refNodes): [data-attr-presence]: PASS
 	Detached Element.webkitMatchesSelector: Attribute presence selector, matching multiple options with selected attributes (with no refNodes): #attr-presence-select3 option[selected]: PASS
 	Detached Element.webkitMatchesSelector: Attribute presence selector, matching option with selected attribute (with no refNodes): #attr-presence-select2 option[selected]: PASS
-	Detached Element.webkitMatchesSelector: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [*|TiTlE]: FAIL
+	Detached Element.webkitMatchesSelector: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [*|TiTlE]: PASS
 	Detached Element.webkitMatchesSelector: Attribute value selector with double-quoted value, matching multiple inputs with type attributes (with no refNodes): #attr-value input[type="hidden"],#attr-value input[type='radio']: PASS
 	Detached Element.webkitMatchesSelector: Attribute value selector with single-quoted value, matching multiple inputs with type attributes (with no refNodes): #attr-value input[type='hidden'],#attr-value input[type='radio']: PASS
 	Detached Element.webkitMatchesSelector: Attribute value selector with unquoted value, matching multiple inputs with type attributes (with no refNodes): #attr-value input[type=hidden],#attr-value input[type=radio]: PASS
@@ -5575,7 +5575,7 @@
 	Fragment Element.webkitMatchesSelector: Attribute presence selector, matching custom data-* attribute (with no refNodes): [data-attr-presence]: PASS
 	Fragment Element.webkitMatchesSelector: Attribute presence selector, matching multiple options with selected attributes (with no refNodes): #attr-presence-select3 option[selected]: PASS
 	Fragment Element.webkitMatchesSelector: Attribute presence selector, matching option with selected attribute (with no refNodes): #attr-presence-select2 option[selected]: PASS
-	Fragment Element.webkitMatchesSelector: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [*|TiTlE]: FAIL
+	Fragment Element.webkitMatchesSelector: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [*|TiTlE]: PASS
 	Fragment Element.webkitMatchesSelector: Attribute value selector with double-quoted value, matching multiple inputs with type attributes (with no refNodes): #attr-value input[type="hidden"],#attr-value input[type='radio']: PASS
 	Fragment Element.webkitMatchesSelector: Attribute value selector with single-quoted value, matching multiple inputs with type attributes (with no refNodes): #attr-value input[type='hidden'],#attr-value input[type='radio']: PASS
 	Fragment Element.webkitMatchesSelector: Attribute value selector with unquoted value, matching multiple inputs with type attributes (with no refNodes): #attr-value input[type=hidden],#attr-value input[type=radio]: PASS
@@ -5810,7 +5810,7 @@
 	In-document Element.webkitMatchesSelector: Attribute presence selector, matching multiple options with selected attributes (with refNode Element): #attr-presence-select3 option[selected]: PASS
 	In-document Element.webkitMatchesSelector: Attribute presence selector, matching option with selected attribute (with no refNodes): #attr-presence-select2 option[selected]: PASS
 	In-document Element.webkitMatchesSelector: Attribute presence selector, matching option with selected attribute (with refNode Element): #attr-presence-select2 option[selected]: PASS
-	In-document Element.webkitMatchesSelector: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [*|TiTlE]: FAIL
+	In-document Element.webkitMatchesSelector: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [*|TiTlE]: PASS
 	In-document Element.webkitMatchesSelector: Attribute presence selector, matching title attribute, case insensitivity (with refNode Element): [TiTlE]: PASS
 	In-document Element.webkitMatchesSelector: Attribute value selector with double-quoted value, matching multiple inputs with type attributes (with no refNodes): #attr-value input[type="hidden"],#attr-value input[type='radio']: PASS
 	In-document Element.webkitMatchesSelector: Attribute value selector with double-quoted value, matching multiple inputs with type attributes (with refNode Element): input[type="hidden"],#attr-value input[type='radio']: PASS
@@ -6545,7 +6545,7 @@
 	For Document nodes, nodeName should return "#document".: PASS
 	For DocumentFragment nodes, nodeName should return "#document-fragment".: PASS
 	For DocumentType nodes, nodeName should return the name.: PASS
-	For Element nodes, nodeName should return the same as tagName.: FAIL
+	For Element nodes, nodeName should return the same as tagName.: PASS
 	For Text nodes, nodeName should return "#text".: PASS
 /dom/nodes/Node-nodeValue.html: OK
 	Comment.nodeValue: PASS
@@ -6879,7 +6879,7 @@
 	Detached Element.querySelector: :not pseudo-class selector, matching : #not * :not(:first-child): PASS
 	Detached Element.querySelector: :not pseudo-class selector, matching : #not>:not(div): PASS
 	Detached Element.querySelector: :not pseudo-class selector, matching nothing: :not(*): PASS
-	Detached Element.querySelector: :not pseudo-class selector, matching nothing: :not(*|*): FAIL
+	Detached Element.querySelector: :not pseudo-class selector, matching nothing: :not(*|*): PASS
 	Detached Element.querySelector: :nth-child selector, matching every fourth child element, starting from the third: #pseudo-nth-p1 :nth-child(4n-1): PASS
 	Detached Element.querySelector: :nth-child selector, matching every second child element, starting from the fourth: #pseudo-nth li:nth-child(2n+4): PASS
 	Detached Element.querySelector: :nth-child selector, matching every third child element: #pseudo-nth li:nth-child(3n): PASS
@@ -7050,9 +7050,9 @@
 	Detached Element.querySelector: Invalid namespace: ^|div: PASS
 	Detached Element.querySelector: Invalid pseudo-element: :: before: PASS
 	Detached Element.querySelector: Invalid pseudo-element: :::before: PASS
-	Detached Element.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |*: FAIL
-	Detached Element.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div: FAIL
-	Detached Element.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div: FAIL
+	Detached Element.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |*: PASS
+	Detached Element.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div: PASS
+	Detached Element.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div: PASS
 	Detached Element.querySelector: Relative selector: >*: PASS
 	Detached Element.querySelector: Slotted selector (no matching closing paren): ::slotted(foo: PASS
 	Detached Element.querySelector: Slotted selector: ::slotted(foo): PASS
@@ -7116,7 +7116,7 @@
 	Detached Element.querySelectorAll: :not pseudo-class selector, matching : #not * :not(:first-child): PASS
 	Detached Element.querySelectorAll: :not pseudo-class selector, matching : #not>:not(div): PASS
 	Detached Element.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*): PASS
-	Detached Element.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*|*): FAIL
+	Detached Element.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*|*): PASS
 	Detached Element.querySelectorAll: :nth-child selector, matching every fourth child element, starting from the third: #pseudo-nth-p1 :nth-child(4n-1): PASS
 	Detached Element.querySelectorAll: :nth-child selector, matching every second child element, starting from the fourth: #pseudo-nth li:nth-child(2n+4): PASS
 	Detached Element.querySelectorAll: :nth-child selector, matching every third child element: #pseudo-nth li:nth-child(3n): PASS
@@ -7287,9 +7287,9 @@
 	Detached Element.querySelectorAll: Invalid namespace: ^|div: PASS
 	Detached Element.querySelectorAll: Invalid pseudo-element: :: before: PASS
 	Detached Element.querySelectorAll: Invalid pseudo-element: :::before: PASS
-	Detached Element.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |*: FAIL
-	Detached Element.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div: FAIL
-	Detached Element.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div: FAIL
+	Detached Element.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |*: PASS
+	Detached Element.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div: PASS
+	Detached Element.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div: PASS
 	Detached Element.querySelectorAll: Relative selector: >*: PASS
 	Detached Element.querySelectorAll: Slotted selector (no matching closing paren): ::slotted(foo: PASS
 	Detached Element.querySelectorAll: Slotted selector: ::slotted(foo): PASS
@@ -7354,7 +7354,7 @@
 	Document.querySelector: :not pseudo-class selector, matching : #not * :not(:first-child): PASS
 	Document.querySelector: :not pseudo-class selector, matching : #not>:not(div): PASS
 	Document.querySelector: :not pseudo-class selector, matching nothing: :not(*): PASS
-	Document.querySelector: :not pseudo-class selector, matching nothing: :not(*|*): FAIL
+	Document.querySelector: :not pseudo-class selector, matching nothing: :not(*|*): PASS
 	Document.querySelector: :nth-child selector, matching every fourth child element, starting from the third: #pseudo-nth-p1 :nth-child(4n-1): PASS
 	Document.querySelector: :nth-child selector, matching every second child element, starting from the fourth: #pseudo-nth li:nth-child(2n+4): PASS
 	Document.querySelector: :nth-child selector, matching every third child element: #pseudo-nth li:nth-child(3n): PASS
@@ -7526,9 +7526,9 @@
 	Document.querySelector: Invalid namespace: ^|div: PASS
 	Document.querySelector: Invalid pseudo-element: :: before: PASS
 	Document.querySelector: Invalid pseudo-element: :::before: PASS
-	Document.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |*: FAIL
-	Document.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div: FAIL
-	Document.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div: FAIL
+	Document.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |*: PASS
+	Document.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div: PASS
+	Document.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div: PASS
 	Document.querySelector: Relative selector: >*: PASS
 	Document.querySelector: Slotted selector (no matching closing paren): ::slotted(foo: PASS
 	Document.querySelector: Slotted selector: ::slotted(foo): PASS
@@ -7591,7 +7591,7 @@
 	Document.querySelectorAll: :not pseudo-class selector, matching : #not * :not(:first-child): PASS
 	Document.querySelectorAll: :not pseudo-class selector, matching : #not>:not(div): PASS
 	Document.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*): PASS
-	Document.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*|*): FAIL
+	Document.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*|*): PASS
 	Document.querySelectorAll: :nth-child selector, matching every fourth child element, starting from the third: #pseudo-nth-p1 :nth-child(4n-1): PASS
 	Document.querySelectorAll: :nth-child selector, matching every second child element, starting from the fourth: #pseudo-nth li:nth-child(2n+4): PASS
 	Document.querySelectorAll: :nth-child selector, matching every third child element: #pseudo-nth li:nth-child(3n): PASS
@@ -7763,9 +7763,9 @@
 	Document.querySelectorAll: Invalid namespace: ^|div: PASS
 	Document.querySelectorAll: Invalid pseudo-element: :: before: PASS
 	Document.querySelectorAll: Invalid pseudo-element: :::before: PASS
-	Document.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |*: FAIL
-	Document.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div: FAIL
-	Document.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div: FAIL
+	Document.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |*: PASS
+	Document.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div: PASS
+	Document.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div: PASS
 	Document.querySelectorAll: Relative selector: >*: PASS
 	Document.querySelectorAll: Slotted selector (no matching closing paren): ::slotted(foo: PASS
 	Document.querySelectorAll: Slotted selector: ::slotted(foo): PASS
@@ -7899,7 +7899,7 @@
 	Fragment.querySelector: :not pseudo-class selector, matching : #not * :not(:first-child): PASS
 	Fragment.querySelector: :not pseudo-class selector, matching : #not>:not(div): PASS
 	Fragment.querySelector: :not pseudo-class selector, matching nothing: :not(*): PASS
-	Fragment.querySelector: :not pseudo-class selector, matching nothing: :not(*|*): FAIL
+	Fragment.querySelector: :not pseudo-class selector, matching nothing: :not(*|*): PASS
 	Fragment.querySelector: :nth-child selector, matching every fourth child element, starting from the third: #pseudo-nth-p1 :nth-child(4n-1): PASS
 	Fragment.querySelector: :nth-child selector, matching every second child element, starting from the fourth: #pseudo-nth li:nth-child(2n+4): PASS
 	Fragment.querySelector: :nth-child selector, matching every third child element: #pseudo-nth li:nth-child(3n): PASS
@@ -8070,9 +8070,9 @@
 	Fragment.querySelector: Invalid namespace: ^|div: PASS
 	Fragment.querySelector: Invalid pseudo-element: :: before: PASS
 	Fragment.querySelector: Invalid pseudo-element: :::before: PASS
-	Fragment.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |*: FAIL
-	Fragment.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div: FAIL
-	Fragment.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div: FAIL
+	Fragment.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |*: PASS
+	Fragment.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div: PASS
+	Fragment.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div: PASS
 	Fragment.querySelector: Relative selector: >*: PASS
 	Fragment.querySelector: Slotted selector (no matching closing paren): ::slotted(foo: PASS
 	Fragment.querySelector: Slotted selector: ::slotted(foo): PASS
@@ -8136,7 +8136,7 @@
 	Fragment.querySelectorAll: :not pseudo-class selector, matching : #not * :not(:first-child): PASS
 	Fragment.querySelectorAll: :not pseudo-class selector, matching : #not>:not(div): PASS
 	Fragment.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*): PASS
-	Fragment.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*|*): FAIL
+	Fragment.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*|*): PASS
 	Fragment.querySelectorAll: :nth-child selector, matching every fourth child element, starting from the third: #pseudo-nth-p1 :nth-child(4n-1): PASS
 	Fragment.querySelectorAll: :nth-child selector, matching every second child element, starting from the fourth: #pseudo-nth li:nth-child(2n+4): PASS
 	Fragment.querySelectorAll: :nth-child selector, matching every third child element: #pseudo-nth li:nth-child(3n): PASS
@@ -8307,9 +8307,9 @@
 	Fragment.querySelectorAll: Invalid namespace: ^|div: PASS
 	Fragment.querySelectorAll: Invalid pseudo-element: :: before: PASS
 	Fragment.querySelectorAll: Invalid pseudo-element: :::before: PASS
-	Fragment.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |*: FAIL
-	Fragment.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div: FAIL
-	Fragment.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div: FAIL
+	Fragment.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |*: PASS
+	Fragment.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div: PASS
+	Fragment.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div: PASS
 	Fragment.querySelectorAll: Relative selector: >*: PASS
 	Fragment.querySelectorAll: Slotted selector (no matching closing paren): ::slotted(foo: PASS
 	Fragment.querySelectorAll: Slotted selector: ::slotted(foo): PASS
@@ -8375,7 +8375,7 @@
 	In-document Element.querySelector: :not pseudo-class selector, matching : #not * :not(:first-child): PASS
 	In-document Element.querySelector: :not pseudo-class selector, matching : #not>:not(div): PASS
 	In-document Element.querySelector: :not pseudo-class selector, matching nothing: :not(*): PASS
-	In-document Element.querySelector: :not pseudo-class selector, matching nothing: :not(*|*): FAIL
+	In-document Element.querySelector: :not pseudo-class selector, matching nothing: :not(*|*): PASS
 	In-document Element.querySelector: :nth-child selector, matching every fourth child element, starting from the third: #pseudo-nth-p1 :nth-child(4n-1): PASS
 	In-document Element.querySelector: :nth-child selector, matching every second child element, starting from the fourth: #pseudo-nth li:nth-child(2n+4): PASS
 	In-document Element.querySelector: :nth-child selector, matching every third child element: #pseudo-nth li:nth-child(3n): PASS
@@ -8547,9 +8547,9 @@
 	In-document Element.querySelector: Invalid namespace: ^|div: PASS
 	In-document Element.querySelector: Invalid pseudo-element: :: before: PASS
 	In-document Element.querySelector: Invalid pseudo-element: :::before: PASS
-	In-document Element.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |*: FAIL
-	In-document Element.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div: FAIL
-	In-document Element.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div: FAIL
+	In-document Element.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |*: PASS
+	In-document Element.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div: PASS
+	In-document Element.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div: PASS
 	In-document Element.querySelector: Relative selector: >*: PASS
 	In-document Element.querySelector: Slotted selector (no matching closing paren): ::slotted(foo: PASS
 	In-document Element.querySelector: Slotted selector: ::slotted(foo): PASS
@@ -8613,7 +8613,7 @@
 	In-document Element.querySelectorAll: :not pseudo-class selector, matching : #not * :not(:first-child): PASS
 	In-document Element.querySelectorAll: :not pseudo-class selector, matching : #not>:not(div): PASS
 	In-document Element.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*): PASS
-	In-document Element.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*|*): FAIL
+	In-document Element.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*|*): PASS
 	In-document Element.querySelectorAll: :nth-child selector, matching every fourth child element, starting from the third: #pseudo-nth-p1 :nth-child(4n-1): PASS
 	In-document Element.querySelectorAll: :nth-child selector, matching every second child element, starting from the fourth: #pseudo-nth li:nth-child(2n+4): PASS
 	In-document Element.querySelectorAll: :nth-child selector, matching every third child element: #pseudo-nth li:nth-child(3n): PASS
@@ -8785,9 +8785,9 @@
 	In-document Element.querySelectorAll: Invalid namespace: ^|div: PASS
 	In-document Element.querySelectorAll: Invalid pseudo-element: :: before: PASS
 	In-document Element.querySelectorAll: Invalid pseudo-element: :::before: PASS
-	In-document Element.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |*: FAIL
-	In-document Element.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div: FAIL
-	In-document Element.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div: FAIL
+	In-document Element.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |*: PASS
+	In-document Element.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div: PASS
+	In-document Element.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div: PASS
 	In-document Element.querySelectorAll: Relative selector: >*: PASS
 	In-document Element.querySelectorAll: Slotted selector (no matching closing paren): ::slotted(foo: PASS
 	In-document Element.querySelectorAll: Slotted selector: ::slotted(foo): PASS
@@ -8855,7 +8855,7 @@
 	Detached Element.querySelector: :not pseudo-class selector, matching : #not * :not(:first-child): PASS
 	Detached Element.querySelector: :not pseudo-class selector, matching : #not>:not(div): PASS
 	Detached Element.querySelector: :not pseudo-class selector, matching nothing: :not(*): PASS
-	Detached Element.querySelector: :not pseudo-class selector, matching nothing: :not(*|*): FAIL
+	Detached Element.querySelector: :not pseudo-class selector, matching nothing: :not(*|*): PASS
 	Detached Element.querySelector: :nth-child selector, matching every fourth child element, starting from the third: #pseudo-nth-p1 :nth-child(4n-1): PASS
 	Detached Element.querySelector: :nth-child selector, matching every second child element, starting from the fourth: #pseudo-nth li:nth-child(2n+4): PASS
 	Detached Element.querySelector: :nth-child selector, matching every third child element: #pseudo-nth li:nth-child(3n): PASS
@@ -8926,7 +8926,7 @@
 	Detached Element.querySelector: Attribute presence selector, matching custom data-* attribute: [data-attr-presence]: PASS
 	Detached Element.querySelector: Attribute presence selector, matching multiple options with selected attributes: #attr-presence-select3 option[selected]: PASS
 	Detached Element.querySelector: Attribute presence selector, matching option with selected attribute: #attr-presence-select2 option[selected]: PASS
-	Detached Element.querySelector: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE]: FAIL
+	Detached Element.querySelector: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE]: PASS
 	Detached Element.querySelector: Attribute presence selector, not matching attribute with similar name: .attr-presence-div3[align], .attr-presence-div4[align]: PASS
 	Detached Element.querySelector: Attribute presence selector, not matching default option without selected attribute: #attr-presence-select1 option[selected]: PASS
 	Detached Element.querySelector: Attribute value selector with double-quoted value, matching multiple inputs with type attributes: #attr-value input[type="hidden"],#attr-value input[type='radio']: PASS
@@ -9026,9 +9026,9 @@
 	Detached Element.querySelector: Invalid namespace: ^|div: PASS
 	Detached Element.querySelector: Invalid pseudo-element: :: before: PASS
 	Detached Element.querySelector: Invalid pseudo-element: :::before: PASS
-	Detached Element.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |*: FAIL
-	Detached Element.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div: FAIL
-	Detached Element.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div: FAIL
+	Detached Element.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |*: PASS
+	Detached Element.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div: PASS
+	Detached Element.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div: PASS
 	Detached Element.querySelector: Relative selector: >*: PASS
 	Detached Element.querySelector: Slotted selector (no matching closing paren): ::slotted(foo: PASS
 	Detached Element.querySelector: Slotted selector: ::slotted(foo): PASS
@@ -9092,7 +9092,7 @@
 	Detached Element.querySelectorAll: :not pseudo-class selector, matching : #not * :not(:first-child): PASS
 	Detached Element.querySelectorAll: :not pseudo-class selector, matching : #not>:not(div): PASS
 	Detached Element.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*): PASS
-	Detached Element.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*|*): FAIL
+	Detached Element.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*|*): PASS
 	Detached Element.querySelectorAll: :nth-child selector, matching every fourth child element, starting from the third: #pseudo-nth-p1 :nth-child(4n-1): PASS
 	Detached Element.querySelectorAll: :nth-child selector, matching every second child element, starting from the fourth: #pseudo-nth li:nth-child(2n+4): PASS
 	Detached Element.querySelectorAll: :nth-child selector, matching every third child element: #pseudo-nth li:nth-child(3n): PASS
@@ -9163,7 +9163,7 @@
 	Detached Element.querySelectorAll: Attribute presence selector, matching custom data-* attribute: [data-attr-presence]: PASS
 	Detached Element.querySelectorAll: Attribute presence selector, matching multiple options with selected attributes: #attr-presence-select3 option[selected]: PASS
 	Detached Element.querySelectorAll: Attribute presence selector, matching option with selected attribute: #attr-presence-select2 option[selected]: PASS
-	Detached Element.querySelectorAll: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE]: FAIL
+	Detached Element.querySelectorAll: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE]: PASS
 	Detached Element.querySelectorAll: Attribute presence selector, not matching attribute with similar name: .attr-presence-div3[align], .attr-presence-div4[align]: PASS
 	Detached Element.querySelectorAll: Attribute presence selector, not matching default option without selected attribute: #attr-presence-select1 option[selected]: PASS
 	Detached Element.querySelectorAll: Attribute value selector with double-quoted value, matching multiple inputs with type attributes: #attr-value input[type="hidden"],#attr-value input[type='radio']: PASS
@@ -9263,9 +9263,9 @@
 	Detached Element.querySelectorAll: Invalid namespace: ^|div: PASS
 	Detached Element.querySelectorAll: Invalid pseudo-element: :: before: PASS
 	Detached Element.querySelectorAll: Invalid pseudo-element: :::before: PASS
-	Detached Element.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |*: FAIL
-	Detached Element.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div: FAIL
-	Detached Element.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div: FAIL
+	Detached Element.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |*: PASS
+	Detached Element.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div: PASS
+	Detached Element.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div: PASS
 	Detached Element.querySelectorAll: Relative selector: >*: PASS
 	Detached Element.querySelectorAll: Slotted selector (no matching closing paren): ::slotted(foo: PASS
 	Detached Element.querySelectorAll: Slotted selector: ::slotted(foo): PASS
@@ -9330,7 +9330,7 @@
 	Document.querySelector: :not pseudo-class selector, matching : #not * :not(:first-child): PASS
 	Document.querySelector: :not pseudo-class selector, matching : #not>:not(div): PASS
 	Document.querySelector: :not pseudo-class selector, matching nothing: :not(*): PASS
-	Document.querySelector: :not pseudo-class selector, matching nothing: :not(*|*): FAIL
+	Document.querySelector: :not pseudo-class selector, matching nothing: :not(*|*): PASS
 	Document.querySelector: :nth-child selector, matching every fourth child element, starting from the third: #pseudo-nth-p1 :nth-child(4n-1): PASS
 	Document.querySelector: :nth-child selector, matching every second child element, starting from the fourth: #pseudo-nth li:nth-child(2n+4): PASS
 	Document.querySelector: :nth-child selector, matching every third child element: #pseudo-nth li:nth-child(3n): PASS
@@ -9401,7 +9401,7 @@
 	Document.querySelector: Attribute presence selector, matching custom data-* attribute: [data-attr-presence]: PASS
 	Document.querySelector: Attribute presence selector, matching multiple options with selected attributes: #attr-presence-select3 option[selected]: PASS
 	Document.querySelector: Attribute presence selector, matching option with selected attribute: #attr-presence-select2 option[selected]: PASS
-	Document.querySelector: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE]: FAIL
+	Document.querySelector: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE]: PASS
 	Document.querySelector: Attribute presence selector, not matching attribute with similar name: .attr-presence-div3[align], .attr-presence-div4[align]: PASS
 	Document.querySelector: Attribute presence selector, not matching default option without selected attribute: #attr-presence-select1 option[selected]: PASS
 	Document.querySelector: Attribute value selector with double-quoted value, matching multiple inputs with type attributes: #attr-value input[type="hidden"],#attr-value input[type='radio']: PASS
@@ -9502,9 +9502,9 @@
 	Document.querySelector: Invalid namespace: ^|div: PASS
 	Document.querySelector: Invalid pseudo-element: :: before: PASS
 	Document.querySelector: Invalid pseudo-element: :::before: PASS
-	Document.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |*: FAIL
-	Document.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div: FAIL
-	Document.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div: FAIL
+	Document.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |*: PASS
+	Document.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div: PASS
+	Document.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div: PASS
 	Document.querySelector: Relative selector: >*: PASS
 	Document.querySelector: Slotted selector (no matching closing paren): ::slotted(foo: PASS
 	Document.querySelector: Slotted selector: ::slotted(foo): PASS
@@ -9567,7 +9567,7 @@
 	Document.querySelectorAll: :not pseudo-class selector, matching : #not * :not(:first-child): PASS
 	Document.querySelectorAll: :not pseudo-class selector, matching : #not>:not(div): PASS
 	Document.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*): PASS
-	Document.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*|*): FAIL
+	Document.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*|*): PASS
 	Document.querySelectorAll: :nth-child selector, matching every fourth child element, starting from the third: #pseudo-nth-p1 :nth-child(4n-1): PASS
 	Document.querySelectorAll: :nth-child selector, matching every second child element, starting from the fourth: #pseudo-nth li:nth-child(2n+4): PASS
 	Document.querySelectorAll: :nth-child selector, matching every third child element: #pseudo-nth li:nth-child(3n): PASS
@@ -9638,7 +9638,7 @@
 	Document.querySelectorAll: Attribute presence selector, matching custom data-* attribute: [data-attr-presence]: PASS
 	Document.querySelectorAll: Attribute presence selector, matching multiple options with selected attributes: #attr-presence-select3 option[selected]: PASS
 	Document.querySelectorAll: Attribute presence selector, matching option with selected attribute: #attr-presence-select2 option[selected]: PASS
-	Document.querySelectorAll: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE]: FAIL
+	Document.querySelectorAll: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE]: PASS
 	Document.querySelectorAll: Attribute presence selector, not matching attribute with similar name: .attr-presence-div3[align], .attr-presence-div4[align]: PASS
 	Document.querySelectorAll: Attribute presence selector, not matching default option without selected attribute: #attr-presence-select1 option[selected]: PASS
 	Document.querySelectorAll: Attribute value selector with double-quoted value, matching multiple inputs with type attributes: #attr-value input[type="hidden"],#attr-value input[type='radio']: PASS
@@ -9739,9 +9739,9 @@
 	Document.querySelectorAll: Invalid namespace: ^|div: PASS
 	Document.querySelectorAll: Invalid pseudo-element: :: before: PASS
 	Document.querySelectorAll: Invalid pseudo-element: :::before: PASS
-	Document.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |*: FAIL
-	Document.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div: FAIL
-	Document.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div: FAIL
+	Document.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |*: PASS
+	Document.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div: PASS
+	Document.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div: PASS
 	Document.querySelectorAll: Relative selector: >*: PASS
 	Document.querySelectorAll: Slotted selector (no matching closing paren): ::slotted(foo: PASS
 	Document.querySelectorAll: Slotted selector: ::slotted(foo): PASS
@@ -9875,7 +9875,7 @@
 	Fragment.querySelector: :not pseudo-class selector, matching : #not * :not(:first-child): PASS
 	Fragment.querySelector: :not pseudo-class selector, matching : #not>:not(div): PASS
 	Fragment.querySelector: :not pseudo-class selector, matching nothing: :not(*): PASS
-	Fragment.querySelector: :not pseudo-class selector, matching nothing: :not(*|*): FAIL
+	Fragment.querySelector: :not pseudo-class selector, matching nothing: :not(*|*): PASS
 	Fragment.querySelector: :nth-child selector, matching every fourth child element, starting from the third: #pseudo-nth-p1 :nth-child(4n-1): PASS
 	Fragment.querySelector: :nth-child selector, matching every second child element, starting from the fourth: #pseudo-nth li:nth-child(2n+4): PASS
 	Fragment.querySelector: :nth-child selector, matching every third child element: #pseudo-nth li:nth-child(3n): PASS
@@ -9946,7 +9946,7 @@
 	Fragment.querySelector: Attribute presence selector, matching custom data-* attribute: [data-attr-presence]: PASS
 	Fragment.querySelector: Attribute presence selector, matching multiple options with selected attributes: #attr-presence-select3 option[selected]: PASS
 	Fragment.querySelector: Attribute presence selector, matching option with selected attribute: #attr-presence-select2 option[selected]: PASS
-	Fragment.querySelector: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE]: FAIL
+	Fragment.querySelector: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE]: PASS
 	Fragment.querySelector: Attribute presence selector, not matching attribute with similar name: .attr-presence-div3[align], .attr-presence-div4[align]: PASS
 	Fragment.querySelector: Attribute presence selector, not matching default option without selected attribute: #attr-presence-select1 option[selected]: PASS
 	Fragment.querySelector: Attribute value selector with double-quoted value, matching multiple inputs with type attributes: #attr-value input[type="hidden"],#attr-value input[type='radio']: PASS
@@ -10046,9 +10046,9 @@
 	Fragment.querySelector: Invalid namespace: ^|div: PASS
 	Fragment.querySelector: Invalid pseudo-element: :: before: PASS
 	Fragment.querySelector: Invalid pseudo-element: :::before: PASS
-	Fragment.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |*: FAIL
-	Fragment.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div: FAIL
-	Fragment.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div: FAIL
+	Fragment.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |*: PASS
+	Fragment.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div: PASS
+	Fragment.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div: PASS
 	Fragment.querySelector: Relative selector: >*: PASS
 	Fragment.querySelector: Slotted selector (no matching closing paren): ::slotted(foo: PASS
 	Fragment.querySelector: Slotted selector: ::slotted(foo): PASS
@@ -10112,7 +10112,7 @@
 	Fragment.querySelectorAll: :not pseudo-class selector, matching : #not * :not(:first-child): PASS
 	Fragment.querySelectorAll: :not pseudo-class selector, matching : #not>:not(div): PASS
 	Fragment.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*): PASS
-	Fragment.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*|*): FAIL
+	Fragment.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*|*): PASS
 	Fragment.querySelectorAll: :nth-child selector, matching every fourth child element, starting from the third: #pseudo-nth-p1 :nth-child(4n-1): PASS
 	Fragment.querySelectorAll: :nth-child selector, matching every second child element, starting from the fourth: #pseudo-nth li:nth-child(2n+4): PASS
 	Fragment.querySelectorAll: :nth-child selector, matching every third child element: #pseudo-nth li:nth-child(3n): PASS
@@ -10183,7 +10183,7 @@
 	Fragment.querySelectorAll: Attribute presence selector, matching custom data-* attribute: [data-attr-presence]: PASS
 	Fragment.querySelectorAll: Attribute presence selector, matching multiple options with selected attributes: #attr-presence-select3 option[selected]: PASS
 	Fragment.querySelectorAll: Attribute presence selector, matching option with selected attribute: #attr-presence-select2 option[selected]: PASS
-	Fragment.querySelectorAll: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE]: FAIL
+	Fragment.querySelectorAll: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE]: PASS
 	Fragment.querySelectorAll: Attribute presence selector, not matching attribute with similar name: .attr-presence-div3[align], .attr-presence-div4[align]: PASS
 	Fragment.querySelectorAll: Attribute presence selector, not matching default option without selected attribute: #attr-presence-select1 option[selected]: PASS
 	Fragment.querySelectorAll: Attribute value selector with double-quoted value, matching multiple inputs with type attributes: #attr-value input[type="hidden"],#attr-value input[type='radio']: PASS
@@ -10283,9 +10283,9 @@
 	Fragment.querySelectorAll: Invalid namespace: ^|div: PASS
 	Fragment.querySelectorAll: Invalid pseudo-element: :: before: PASS
 	Fragment.querySelectorAll: Invalid pseudo-element: :::before: PASS
-	Fragment.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |*: FAIL
-	Fragment.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div: FAIL
-	Fragment.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div: FAIL
+	Fragment.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |*: PASS
+	Fragment.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div: PASS
+	Fragment.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div: PASS
 	Fragment.querySelectorAll: Relative selector: >*: PASS
 	Fragment.querySelectorAll: Slotted selector (no matching closing paren): ::slotted(foo: PASS
 	Fragment.querySelectorAll: Slotted selector: ::slotted(foo): PASS
@@ -10351,7 +10351,7 @@
 	In-document Element.querySelector: :not pseudo-class selector, matching : #not * :not(:first-child): PASS
 	In-document Element.querySelector: :not pseudo-class selector, matching : #not>:not(div): PASS
 	In-document Element.querySelector: :not pseudo-class selector, matching nothing: :not(*): PASS
-	In-document Element.querySelector: :not pseudo-class selector, matching nothing: :not(*|*): FAIL
+	In-document Element.querySelector: :not pseudo-class selector, matching nothing: :not(*|*): PASS
 	In-document Element.querySelector: :nth-child selector, matching every fourth child element, starting from the third: #pseudo-nth-p1 :nth-child(4n-1): PASS
 	In-document Element.querySelector: :nth-child selector, matching every second child element, starting from the fourth: #pseudo-nth li:nth-child(2n+4): PASS
 	In-document Element.querySelector: :nth-child selector, matching every third child element: #pseudo-nth li:nth-child(3n): PASS
@@ -10422,7 +10422,7 @@
 	In-document Element.querySelector: Attribute presence selector, matching custom data-* attribute: [data-attr-presence]: PASS
 	In-document Element.querySelector: Attribute presence selector, matching multiple options with selected attributes: #attr-presence-select3 option[selected]: PASS
 	In-document Element.querySelector: Attribute presence selector, matching option with selected attribute: #attr-presence-select2 option[selected]: PASS
-	In-document Element.querySelector: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE]: FAIL
+	In-document Element.querySelector: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE]: PASS
 	In-document Element.querySelector: Attribute presence selector, not matching attribute with similar name: .attr-presence-div3[align], .attr-presence-div4[align]: PASS
 	In-document Element.querySelector: Attribute presence selector, not matching default option without selected attribute: #attr-presence-select1 option[selected]: PASS
 	In-document Element.querySelector: Attribute value selector with double-quoted value, matching multiple inputs with type attributes: #attr-value input[type="hidden"],#attr-value input[type='radio']: PASS
@@ -10523,9 +10523,9 @@
 	In-document Element.querySelector: Invalid namespace: ^|div: PASS
 	In-document Element.querySelector: Invalid pseudo-element: :: before: PASS
 	In-document Element.querySelector: Invalid pseudo-element: :::before: PASS
-	In-document Element.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |*: FAIL
-	In-document Element.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div: FAIL
-	In-document Element.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div: FAIL
+	In-document Element.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |*: PASS
+	In-document Element.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div: PASS
+	In-document Element.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div: PASS
 	In-document Element.querySelector: Relative selector: >*: PASS
 	In-document Element.querySelector: Slotted selector (no matching closing paren): ::slotted(foo: PASS
 	In-document Element.querySelector: Slotted selector: ::slotted(foo): PASS
@@ -10589,7 +10589,7 @@
 	In-document Element.querySelectorAll: :not pseudo-class selector, matching : #not * :not(:first-child): PASS
 	In-document Element.querySelectorAll: :not pseudo-class selector, matching : #not>:not(div): PASS
 	In-document Element.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*): PASS
-	In-document Element.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*|*): FAIL
+	In-document Element.querySelectorAll: :not pseudo-class selector, matching nothing: :not(*|*): PASS
 	In-document Element.querySelectorAll: :nth-child selector, matching every fourth child element, starting from the third: #pseudo-nth-p1 :nth-child(4n-1): PASS
 	In-document Element.querySelectorAll: :nth-child selector, matching every second child element, starting from the fourth: #pseudo-nth li:nth-child(2n+4): PASS
 	In-document Element.querySelectorAll: :nth-child selector, matching every third child element: #pseudo-nth li:nth-child(3n): PASS
@@ -10660,7 +10660,7 @@
 	In-document Element.querySelectorAll: Attribute presence selector, matching custom data-* attribute: [data-attr-presence]: PASS
 	In-document Element.querySelectorAll: Attribute presence selector, matching multiple options with selected attributes: #attr-presence-select3 option[selected]: PASS
 	In-document Element.querySelectorAll: Attribute presence selector, matching option with selected attribute: #attr-presence-select2 option[selected]: PASS
-	In-document Element.querySelectorAll: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE]: FAIL
+	In-document Element.querySelectorAll: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE]: PASS
 	In-document Element.querySelectorAll: Attribute presence selector, not matching attribute with similar name: .attr-presence-div3[align], .attr-presence-div4[align]: PASS
 	In-document Element.querySelectorAll: Attribute presence selector, not matching default option without selected attribute: #attr-presence-select1 option[selected]: PASS
 	In-document Element.querySelectorAll: Attribute value selector with double-quoted value, matching multiple inputs with type attributes: #attr-value input[type="hidden"],#attr-value input[type='radio']: PASS
@@ -10761,9 +10761,9 @@
 	In-document Element.querySelectorAll: Invalid namespace: ^|div: PASS
 	In-document Element.querySelectorAll: Invalid pseudo-element: :: before: PASS
 	In-document Element.querySelectorAll: Invalid pseudo-element: :::before: PASS
-	In-document Element.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |*: FAIL
-	In-document Element.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div: FAIL
-	In-document Element.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div: FAIL
+	In-document Element.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |*: PASS
+	In-document Element.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div: PASS
+	In-document Element.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div: PASS
 	In-document Element.querySelectorAll: Relative selector: >*: PASS
 	In-document Element.querySelectorAll: Slotted selector (no matching closing paren): ::slotted(foo: PASS
 	In-document Element.querySelectorAll: Slotted selector: ::slotted(foo): PASS
@@ -11108,9 +11108,9 @@
 	Own property correctness with namespaced attribute before same-name non-namespaced one: FAIL
 	Own property correctness with non-namespaced attribute before same-name namespaced one: FAIL
 	Own property correctness with two namespaced attributes with the same name-with-prefix: FAIL
-	Own property names should include all qualified names for a non-HTML element in an HTML document: FAIL
+	Own property names should include all qualified names for a non-HTML element in an HTML document: PASS
 	Own property names should include all qualified names for an HTML element in a non-HTML document: FAIL
-	Own property names should only include all-lowercase qualified names for an HTML element in an HTML document: FAIL
+	Own property names should only include all-lowercase qualified names for an HTML element in an HTML document: PASS
 	Replacing an attr by itself: FAIL
 	Setting the same attribute with another prefix should not change the prefix: FAIL
 	Specified attributes should be accessible.: PASS
@@ -11128,8 +11128,8 @@
 	XML-namespaced attributes don't need an xml prefix: FAIL
 	getAttributeNames tests: FAIL
 	null and the empty string should result in a null namespace.: PASS
-	setAttribute should lowercase its name argument (mixed case attribute): FAIL
-	setAttribute should lowercase its name argument (upper case attribute): FAIL
+	setAttribute should lowercase its name argument (mixed case attribute): PASS
+	setAttribute should lowercase its name argument (upper case attribute): PASS
 	setAttribute should not change the order of previously set attributes.: PASS
 	setAttribute should not throw even if a load is not allowed: PASS
 	setAttribute should not throw even when qualifiedName starts with 'xmlns': PASS
@@ -11143,8 +11143,8 @@
 	setAttributeNode should distinguish attributes with same local name and different namespaces: FAIL
 	setAttributeNode, if it fires mutation events, should fire one with the new node when resetting an existing attribute: PASS
 	setAttributeNode, if it fires mutation events, should fire one with the new node when resetting an existing attribute (outer shell): FAIL
-	toggleAttribute should lowercase its name argument (mixed case attribute): FAIL
-	toggleAttribute should lowercase its name argument (upper case attribute): FAIL
+	toggleAttribute should lowercase its name argument (mixed case attribute): PASS
+	toggleAttribute should lowercase its name argument (upper case attribute): PASS
 	toggleAttribute should not change the order of previously set attributes.: PASS
 	toggleAttribute should not throw even when qualifiedName starts with 'xmlns': PASS
 	toggleAttribute should set the attribute with the given qualified name: FAIL
@@ -11158,81 +11158,81 @@
 	createElement abc: PASS
 	createElement Ä: PASS
 	createElement ä: PASS
-	createElementNS ABC: FAIL
-	createElementNS Abc: FAIL
+	createElementNS ABC: PASS
+	createElementNS Abc: PASS
 	createElementNS abc: PASS
-	createElementNS http://FOO,ABC,ABC: FAIL
-	createElementNS http://FOO,ABC,Abc: FAIL
+	createElementNS http://FOO,ABC,ABC: PASS
+	createElementNS http://FOO,ABC,Abc: PASS
 	createElementNS http://FOO,ABC,abc: PASS
 	createElementNS http://FOO,ABC,Ä: PASS
 	createElementNS http://FOO,ABC,ä: PASS
-	createElementNS http://FOO,Abc,ABC: FAIL
-	createElementNS http://FOO,Abc,Abc: FAIL
+	createElementNS http://FOO,Abc,ABC: PASS
+	createElementNS http://FOO,Abc,Abc: PASS
 	createElementNS http://FOO,Abc,abc: PASS
 	createElementNS http://FOO,Abc,Ä: PASS
 	createElementNS http://FOO,Abc,ä: PASS
-	createElementNS http://FOO,abc,ABC: FAIL
-	createElementNS http://FOO,abc,Abc: FAIL
+	createElementNS http://FOO,abc,ABC: PASS
+	createElementNS http://FOO,abc,Abc: PASS
 	createElementNS http://FOO,abc,abc: PASS
 	createElementNS http://FOO,abc,Ä: PASS
 	createElementNS http://FOO,abc,ä: PASS
-	createElementNS http://FOO,Ä,ABC: FAIL
-	createElementNS http://FOO,Ä,Abc: FAIL
+	createElementNS http://FOO,Ä,ABC: PASS
+	createElementNS http://FOO,Ä,Abc: PASS
 	createElementNS http://FOO,Ä,abc: PASS
 	createElementNS http://FOO,Ä,Ä: PASS
 	createElementNS http://FOO,Ä,ä: PASS
-	createElementNS http://FOO,ä,ABC: FAIL
-	createElementNS http://FOO,ä,Abc: FAIL
+	createElementNS http://FOO,ä,ABC: PASS
+	createElementNS http://FOO,ä,Abc: PASS
 	createElementNS http://FOO,ä,abc: PASS
 	createElementNS http://FOO,ä,Ä: PASS
 	createElementNS http://FOO,ä,ä: PASS
-	createElementNS http://www.w3.org/1999/xhtml,ABC,ABC: FAIL
-	createElementNS http://www.w3.org/1999/xhtml,ABC,Abc: FAIL
+	createElementNS http://www.w3.org/1999/xhtml,ABC,ABC: PASS
+	createElementNS http://www.w3.org/1999/xhtml,ABC,Abc: PASS
 	createElementNS http://www.w3.org/1999/xhtml,ABC,abc: PASS
 	createElementNS http://www.w3.org/1999/xhtml,ABC,Ä: PASS
 	createElementNS http://www.w3.org/1999/xhtml,ABC,ä: PASS
-	createElementNS http://www.w3.org/1999/xhtml,Abc,ABC: FAIL
-	createElementNS http://www.w3.org/1999/xhtml,Abc,Abc: FAIL
+	createElementNS http://www.w3.org/1999/xhtml,Abc,ABC: PASS
+	createElementNS http://www.w3.org/1999/xhtml,Abc,Abc: PASS
 	createElementNS http://www.w3.org/1999/xhtml,Abc,abc: PASS
 	createElementNS http://www.w3.org/1999/xhtml,Abc,Ä: PASS
 	createElementNS http://www.w3.org/1999/xhtml,Abc,ä: PASS
-	createElementNS http://www.w3.org/1999/xhtml,abc,ABC: FAIL
-	createElementNS http://www.w3.org/1999/xhtml,abc,Abc: FAIL
+	createElementNS http://www.w3.org/1999/xhtml,abc,ABC: PASS
+	createElementNS http://www.w3.org/1999/xhtml,abc,Abc: PASS
 	createElementNS http://www.w3.org/1999/xhtml,abc,abc: PASS
 	createElementNS http://www.w3.org/1999/xhtml,abc,Ä: PASS
 	createElementNS http://www.w3.org/1999/xhtml,abc,ä: PASS
-	createElementNS http://www.w3.org/1999/xhtml,Ä,ABC: FAIL
-	createElementNS http://www.w3.org/1999/xhtml,Ä,Abc: FAIL
+	createElementNS http://www.w3.org/1999/xhtml,Ä,ABC: PASS
+	createElementNS http://www.w3.org/1999/xhtml,Ä,Abc: PASS
 	createElementNS http://www.w3.org/1999/xhtml,Ä,abc: PASS
 	createElementNS http://www.w3.org/1999/xhtml,Ä,Ä: PASS
 	createElementNS http://www.w3.org/1999/xhtml,Ä,ä: PASS
-	createElementNS http://www.w3.org/1999/xhtml,ä,ABC: FAIL
-	createElementNS http://www.w3.org/1999/xhtml,ä,Abc: FAIL
+	createElementNS http://www.w3.org/1999/xhtml,ä,ABC: PASS
+	createElementNS http://www.w3.org/1999/xhtml,ä,Abc: PASS
 	createElementNS http://www.w3.org/1999/xhtml,ä,abc: PASS
 	createElementNS http://www.w3.org/1999/xhtml,ä,Ä: PASS
 	createElementNS http://www.w3.org/1999/xhtml,ä,ä: PASS
-	createElementNS http://www.w3.org/2000/svg,ABC,ABC: FAIL
-	createElementNS http://www.w3.org/2000/svg,ABC,Abc: FAIL
+	createElementNS http://www.w3.org/2000/svg,ABC,ABC: PASS
+	createElementNS http://www.w3.org/2000/svg,ABC,Abc: PASS
 	createElementNS http://www.w3.org/2000/svg,ABC,abc: PASS
 	createElementNS http://www.w3.org/2000/svg,ABC,Ä: PASS
 	createElementNS http://www.w3.org/2000/svg,ABC,ä: PASS
-	createElementNS http://www.w3.org/2000/svg,Abc,ABC: FAIL
-	createElementNS http://www.w3.org/2000/svg,Abc,Abc: FAIL
+	createElementNS http://www.w3.org/2000/svg,Abc,ABC: PASS
+	createElementNS http://www.w3.org/2000/svg,Abc,Abc: PASS
 	createElementNS http://www.w3.org/2000/svg,Abc,abc: PASS
 	createElementNS http://www.w3.org/2000/svg,Abc,Ä: PASS
 	createElementNS http://www.w3.org/2000/svg,Abc,ä: PASS
-	createElementNS http://www.w3.org/2000/svg,abc,ABC: FAIL
-	createElementNS http://www.w3.org/2000/svg,abc,Abc: FAIL
+	createElementNS http://www.w3.org/2000/svg,abc,ABC: PASS
+	createElementNS http://www.w3.org/2000/svg,abc,Abc: PASS
 	createElementNS http://www.w3.org/2000/svg,abc,abc: PASS
 	createElementNS http://www.w3.org/2000/svg,abc,Ä: PASS
 	createElementNS http://www.w3.org/2000/svg,abc,ä: PASS
-	createElementNS http://www.w3.org/2000/svg,Ä,ABC: FAIL
-	createElementNS http://www.w3.org/2000/svg,Ä,Abc: FAIL
+	createElementNS http://www.w3.org/2000/svg,Ä,ABC: PASS
+	createElementNS http://www.w3.org/2000/svg,Ä,Abc: PASS
 	createElementNS http://www.w3.org/2000/svg,Ä,abc: PASS
 	createElementNS http://www.w3.org/2000/svg,Ä,Ä: PASS
 	createElementNS http://www.w3.org/2000/svg,Ä,ä: PASS
-	createElementNS http://www.w3.org/2000/svg,ä,ABC: FAIL
-	createElementNS http://www.w3.org/2000/svg,ä,Abc: FAIL
+	createElementNS http://www.w3.org/2000/svg,ä,ABC: PASS
+	createElementNS http://www.w3.org/2000/svg,ä,Abc: PASS
 	createElementNS http://www.w3.org/2000/svg,ä,abc: PASS
 	createElementNS http://www.w3.org/2000/svg,ä,Ä: PASS
 	createElementNS http://www.w3.org/2000/svg,ä,ä: PASS
@@ -11243,93 +11243,93 @@
 	getAttribute abc: PASS
 	getAttribute Ä: PASS
 	getAttribute ä: PASS
-	getAttributeNS ABC: FAIL
-	getAttributeNS Abc: FAIL
+	getAttributeNS ABC: PASS
+	getAttributeNS Abc: PASS
 	getAttributeNS abc: PASS
-	getAttributeNS http://FOO,ABC,ABC: FAIL
-	getAttributeNS http://FOO,ABC,Abc: FAIL
+	getAttributeNS http://FOO,ABC,ABC: PASS
+	getAttributeNS http://FOO,ABC,Abc: PASS
 	getAttributeNS http://FOO,ABC,abc: PASS
 	getAttributeNS http://FOO,ABC,Ä: PASS
 	getAttributeNS http://FOO,ABC,ä: PASS
-	getAttributeNS http://FOO,Abc,ABC: FAIL
-	getAttributeNS http://FOO,Abc,Abc: FAIL
+	getAttributeNS http://FOO,Abc,ABC: PASS
+	getAttributeNS http://FOO,Abc,Abc: PASS
 	getAttributeNS http://FOO,Abc,abc: PASS
 	getAttributeNS http://FOO,Abc,Ä: PASS
 	getAttributeNS http://FOO,Abc,ä: PASS
-	getAttributeNS http://FOO,abc,ABC: FAIL
-	getAttributeNS http://FOO,abc,Abc: FAIL
+	getAttributeNS http://FOO,abc,ABC: PASS
+	getAttributeNS http://FOO,abc,Abc: PASS
 	getAttributeNS http://FOO,abc,abc: PASS
-	getAttributeNS http://FOO,abc,Ä: FAIL
+	getAttributeNS http://FOO,abc,Ä: PASS
 	getAttributeNS http://FOO,abc,ä: PASS
-	getAttributeNS http://FOO,Ä,ABC: FAIL
-	getAttributeNS http://FOO,Ä,Abc: FAIL
+	getAttributeNS http://FOO,Ä,ABC: PASS
+	getAttributeNS http://FOO,Ä,Abc: PASS
 	getAttributeNS http://FOO,Ä,abc: PASS
-	getAttributeNS http://FOO,Ä,Ä: FAIL
+	getAttributeNS http://FOO,Ä,Ä: PASS
 	getAttributeNS http://FOO,Ä,ä: PASS
-	getAttributeNS http://FOO,ä,ABC: FAIL
-	getAttributeNS http://FOO,ä,Abc: FAIL
+	getAttributeNS http://FOO,ä,ABC: PASS
+	getAttributeNS http://FOO,ä,Abc: PASS
 	getAttributeNS http://FOO,ä,abc: PASS
-	getAttributeNS http://FOO,ä,Ä: FAIL
+	getAttributeNS http://FOO,ä,Ä: PASS
 	getAttributeNS http://FOO,ä,ä: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,ABC,ABC: FAIL
-	getAttributeNS http://www.w3.org/1999/xhtml,ABC,Abc: FAIL
+	getAttributeNS http://www.w3.org/1999/xhtml,ABC,ABC: PASS
+	getAttributeNS http://www.w3.org/1999/xhtml,ABC,Abc: PASS
 	getAttributeNS http://www.w3.org/1999/xhtml,ABC,abc: PASS
 	getAttributeNS http://www.w3.org/1999/xhtml,ABC,Ä: PASS
 	getAttributeNS http://www.w3.org/1999/xhtml,ABC,ä: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,Abc,ABC: FAIL
-	getAttributeNS http://www.w3.org/1999/xhtml,Abc,Abc: FAIL
+	getAttributeNS http://www.w3.org/1999/xhtml,Abc,ABC: PASS
+	getAttributeNS http://www.w3.org/1999/xhtml,Abc,Abc: PASS
 	getAttributeNS http://www.w3.org/1999/xhtml,Abc,abc: PASS
 	getAttributeNS http://www.w3.org/1999/xhtml,Abc,Ä: PASS
 	getAttributeNS http://www.w3.org/1999/xhtml,Abc,ä: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,abc,ABC: FAIL
-	getAttributeNS http://www.w3.org/1999/xhtml,abc,Abc: FAIL
+	getAttributeNS http://www.w3.org/1999/xhtml,abc,ABC: PASS
+	getAttributeNS http://www.w3.org/1999/xhtml,abc,Abc: PASS
 	getAttributeNS http://www.w3.org/1999/xhtml,abc,abc: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,abc,Ä: FAIL
+	getAttributeNS http://www.w3.org/1999/xhtml,abc,Ä: PASS
 	getAttributeNS http://www.w3.org/1999/xhtml,abc,ä: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,Ä,ABC: FAIL
-	getAttributeNS http://www.w3.org/1999/xhtml,Ä,Abc: FAIL
+	getAttributeNS http://www.w3.org/1999/xhtml,Ä,ABC: PASS
+	getAttributeNS http://www.w3.org/1999/xhtml,Ä,Abc: PASS
 	getAttributeNS http://www.w3.org/1999/xhtml,Ä,abc: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,Ä,Ä: FAIL
+	getAttributeNS http://www.w3.org/1999/xhtml,Ä,Ä: PASS
 	getAttributeNS http://www.w3.org/1999/xhtml,Ä,ä: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,ä,ABC: FAIL
-	getAttributeNS http://www.w3.org/1999/xhtml,ä,Abc: FAIL
+	getAttributeNS http://www.w3.org/1999/xhtml,ä,ABC: PASS
+	getAttributeNS http://www.w3.org/1999/xhtml,ä,Abc: PASS
 	getAttributeNS http://www.w3.org/1999/xhtml,ä,abc: PASS
-	getAttributeNS http://www.w3.org/1999/xhtml,ä,Ä: FAIL
+	getAttributeNS http://www.w3.org/1999/xhtml,ä,Ä: PASS
 	getAttributeNS http://www.w3.org/1999/xhtml,ä,ä: PASS
-	getAttributeNS http://www.w3.org/2000/svg,ABC,ABC: FAIL
-	getAttributeNS http://www.w3.org/2000/svg,ABC,Abc: FAIL
+	getAttributeNS http://www.w3.org/2000/svg,ABC,ABC: PASS
+	getAttributeNS http://www.w3.org/2000/svg,ABC,Abc: PASS
 	getAttributeNS http://www.w3.org/2000/svg,ABC,abc: PASS
 	getAttributeNS http://www.w3.org/2000/svg,ABC,Ä: PASS
 	getAttributeNS http://www.w3.org/2000/svg,ABC,ä: PASS
-	getAttributeNS http://www.w3.org/2000/svg,Abc,ABC: FAIL
-	getAttributeNS http://www.w3.org/2000/svg,Abc,Abc: FAIL
+	getAttributeNS http://www.w3.org/2000/svg,Abc,ABC: PASS
+	getAttributeNS http://www.w3.org/2000/svg,Abc,Abc: PASS
 	getAttributeNS http://www.w3.org/2000/svg,Abc,abc: PASS
 	getAttributeNS http://www.w3.org/2000/svg,Abc,Ä: PASS
 	getAttributeNS http://www.w3.org/2000/svg,Abc,ä: PASS
-	getAttributeNS http://www.w3.org/2000/svg,abc,ABC: FAIL
-	getAttributeNS http://www.w3.org/2000/svg,abc,Abc: FAIL
+	getAttributeNS http://www.w3.org/2000/svg,abc,ABC: PASS
+	getAttributeNS http://www.w3.org/2000/svg,abc,Abc: PASS
 	getAttributeNS http://www.w3.org/2000/svg,abc,abc: PASS
-	getAttributeNS http://www.w3.org/2000/svg,abc,Ä: FAIL
+	getAttributeNS http://www.w3.org/2000/svg,abc,Ä: PASS
 	getAttributeNS http://www.w3.org/2000/svg,abc,ä: PASS
-	getAttributeNS http://www.w3.org/2000/svg,Ä,ABC: FAIL
-	getAttributeNS http://www.w3.org/2000/svg,Ä,Abc: FAIL
+	getAttributeNS http://www.w3.org/2000/svg,Ä,ABC: PASS
+	getAttributeNS http://www.w3.org/2000/svg,Ä,Abc: PASS
 	getAttributeNS http://www.w3.org/2000/svg,Ä,abc: PASS
-	getAttributeNS http://www.w3.org/2000/svg,Ä,Ä: FAIL
+	getAttributeNS http://www.w3.org/2000/svg,Ä,Ä: PASS
 	getAttributeNS http://www.w3.org/2000/svg,Ä,ä: PASS
-	getAttributeNS http://www.w3.org/2000/svg,ä,ABC: FAIL
-	getAttributeNS http://www.w3.org/2000/svg,ä,Abc: FAIL
+	getAttributeNS http://www.w3.org/2000/svg,ä,ABC: PASS
+	getAttributeNS http://www.w3.org/2000/svg,ä,Abc: PASS
 	getAttributeNS http://www.w3.org/2000/svg,ä,abc: PASS
-	getAttributeNS http://www.w3.org/2000/svg,ä,Ä: FAIL
+	getAttributeNS http://www.w3.org/2000/svg,ä,Ä: PASS
 	getAttributeNS http://www.w3.org/2000/svg,ä,ä: PASS
-	getAttributeNS Ä: FAIL
+	getAttributeNS Ä: PASS
 	getAttributeNS ä: PASS
-	getElementsByTagName ABC: FAIL
-	getElementsByTagName Abc: FAIL
-	getElementsByTagName a:ABC: FAIL
-	getElementsByTagName a:Abc: FAIL
-	getElementsByTagName a:abc: FAIL
-	getElementsByTagName a:Ä: FAIL
-	getElementsByTagName a:ä: FAIL
+	getElementsByTagName ABC: PASS
+	getElementsByTagName Abc: PASS
+	getElementsByTagName a:ABC: PASS
+	getElementsByTagName a:Abc: PASS
+	getElementsByTagName a:abc: PASS
+	getElementsByTagName a:Ä: PASS
+	getElementsByTagName a:ä: PASS
 	getElementsByTagName abc: PASS
 	getElementsByTagName Ä: PASS
 	getElementsByTagName ä: PASS
@@ -11358,81 +11358,81 @@
 	setAttribute abc: PASS
 	setAttribute Ä: PASS
 	setAttribute ä: PASS
-	setAttributeNS ABC: FAIL
-	setAttributeNS Abc: FAIL
+	setAttributeNS ABC: PASS
+	setAttributeNS Abc: PASS
 	setAttributeNS abc: PASS
-	setAttributeNS http://FOO,ABC,ABC: FAIL
-	setAttributeNS http://FOO,ABC,Abc: FAIL
-	setAttributeNS http://FOO,ABC,abc: FAIL
-	setAttributeNS http://FOO,ABC,Ä: FAIL
-	setAttributeNS http://FOO,ABC,ä: FAIL
-	setAttributeNS http://FOO,Abc,ABC: FAIL
-	setAttributeNS http://FOO,Abc,Abc: FAIL
-	setAttributeNS http://FOO,Abc,abc: FAIL
-	setAttributeNS http://FOO,Abc,Ä: FAIL
-	setAttributeNS http://FOO,Abc,ä: FAIL
-	setAttributeNS http://FOO,abc,ABC: FAIL
-	setAttributeNS http://FOO,abc,Abc: FAIL
+	setAttributeNS http://FOO,ABC,ABC: PASS
+	setAttributeNS http://FOO,ABC,Abc: PASS
+	setAttributeNS http://FOO,ABC,abc: PASS
+	setAttributeNS http://FOO,ABC,Ä: PASS
+	setAttributeNS http://FOO,ABC,ä: PASS
+	setAttributeNS http://FOO,Abc,ABC: PASS
+	setAttributeNS http://FOO,Abc,Abc: PASS
+	setAttributeNS http://FOO,Abc,abc: PASS
+	setAttributeNS http://FOO,Abc,Ä: PASS
+	setAttributeNS http://FOO,Abc,ä: PASS
+	setAttributeNS http://FOO,abc,ABC: PASS
+	setAttributeNS http://FOO,abc,Abc: PASS
 	setAttributeNS http://FOO,abc,abc: PASS
 	setAttributeNS http://FOO,abc,Ä: PASS
 	setAttributeNS http://FOO,abc,ä: PASS
-	setAttributeNS http://FOO,Ä,ABC: FAIL
-	setAttributeNS http://FOO,Ä,Abc: FAIL
+	setAttributeNS http://FOO,Ä,ABC: PASS
+	setAttributeNS http://FOO,Ä,Abc: PASS
 	setAttributeNS http://FOO,Ä,abc: PASS
 	setAttributeNS http://FOO,Ä,Ä: PASS
 	setAttributeNS http://FOO,Ä,ä: PASS
-	setAttributeNS http://FOO,ä,ABC: FAIL
-	setAttributeNS http://FOO,ä,Abc: FAIL
+	setAttributeNS http://FOO,ä,ABC: PASS
+	setAttributeNS http://FOO,ä,Abc: PASS
 	setAttributeNS http://FOO,ä,abc: PASS
 	setAttributeNS http://FOO,ä,Ä: PASS
 	setAttributeNS http://FOO,ä,ä: PASS
-	setAttributeNS http://www.w3.org/1999/xhtml,ABC,ABC: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,ABC,Abc: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,ABC,abc: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,ABC,Ä: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,ABC,ä: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,Abc,ABC: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,Abc,Abc: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,Abc,abc: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,Abc,Ä: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,Abc,ä: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,abc,ABC: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,abc,Abc: FAIL
+	setAttributeNS http://www.w3.org/1999/xhtml,ABC,ABC: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,ABC,Abc: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,ABC,abc: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,ABC,Ä: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,ABC,ä: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,Abc,ABC: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,Abc,Abc: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,Abc,abc: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,Abc,Ä: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,Abc,ä: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,abc,ABC: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,abc,Abc: PASS
 	setAttributeNS http://www.w3.org/1999/xhtml,abc,abc: PASS
 	setAttributeNS http://www.w3.org/1999/xhtml,abc,Ä: PASS
 	setAttributeNS http://www.w3.org/1999/xhtml,abc,ä: PASS
-	setAttributeNS http://www.w3.org/1999/xhtml,Ä,ABC: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,Ä,Abc: FAIL
+	setAttributeNS http://www.w3.org/1999/xhtml,Ä,ABC: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,Ä,Abc: PASS
 	setAttributeNS http://www.w3.org/1999/xhtml,Ä,abc: PASS
 	setAttributeNS http://www.w3.org/1999/xhtml,Ä,Ä: PASS
 	setAttributeNS http://www.w3.org/1999/xhtml,Ä,ä: PASS
-	setAttributeNS http://www.w3.org/1999/xhtml,ä,ABC: FAIL
-	setAttributeNS http://www.w3.org/1999/xhtml,ä,Abc: FAIL
+	setAttributeNS http://www.w3.org/1999/xhtml,ä,ABC: PASS
+	setAttributeNS http://www.w3.org/1999/xhtml,ä,Abc: PASS
 	setAttributeNS http://www.w3.org/1999/xhtml,ä,abc: PASS
 	setAttributeNS http://www.w3.org/1999/xhtml,ä,Ä: PASS
 	setAttributeNS http://www.w3.org/1999/xhtml,ä,ä: PASS
-	setAttributeNS http://www.w3.org/2000/svg,ABC,ABC: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,ABC,Abc: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,ABC,abc: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,ABC,Ä: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,ABC,ä: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,Abc,ABC: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,Abc,Abc: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,Abc,abc: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,Abc,Ä: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,Abc,ä: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,abc,ABC: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,abc,Abc: FAIL
+	setAttributeNS http://www.w3.org/2000/svg,ABC,ABC: PASS
+	setAttributeNS http://www.w3.org/2000/svg,ABC,Abc: PASS
+	setAttributeNS http://www.w3.org/2000/svg,ABC,abc: PASS
+	setAttributeNS http://www.w3.org/2000/svg,ABC,Ä: PASS
+	setAttributeNS http://www.w3.org/2000/svg,ABC,ä: PASS
+	setAttributeNS http://www.w3.org/2000/svg,Abc,ABC: PASS
+	setAttributeNS http://www.w3.org/2000/svg,Abc,Abc: PASS
+	setAttributeNS http://www.w3.org/2000/svg,Abc,abc: PASS
+	setAttributeNS http://www.w3.org/2000/svg,Abc,Ä: PASS
+	setAttributeNS http://www.w3.org/2000/svg,Abc,ä: PASS
+	setAttributeNS http://www.w3.org/2000/svg,abc,ABC: PASS
+	setAttributeNS http://www.w3.org/2000/svg,abc,Abc: PASS
 	setAttributeNS http://www.w3.org/2000/svg,abc,abc: PASS
 	setAttributeNS http://www.w3.org/2000/svg,abc,Ä: PASS
 	setAttributeNS http://www.w3.org/2000/svg,abc,ä: PASS
-	setAttributeNS http://www.w3.org/2000/svg,Ä,ABC: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,Ä,Abc: FAIL
+	setAttributeNS http://www.w3.org/2000/svg,Ä,ABC: PASS
+	setAttributeNS http://www.w3.org/2000/svg,Ä,Abc: PASS
 	setAttributeNS http://www.w3.org/2000/svg,Ä,abc: PASS
 	setAttributeNS http://www.w3.org/2000/svg,Ä,Ä: PASS
 	setAttributeNS http://www.w3.org/2000/svg,Ä,ä: PASS
-	setAttributeNS http://www.w3.org/2000/svg,ä,ABC: FAIL
-	setAttributeNS http://www.w3.org/2000/svg,ä,Abc: FAIL
+	setAttributeNS http://www.w3.org/2000/svg,ä,ABC: PASS
+	setAttributeNS http://www.w3.org/2000/svg,ä,Abc: PASS
 	setAttributeNS http://www.w3.org/2000/svg,ä,abc: PASS
 	setAttributeNS http://www.w3.org/2000/svg,ä,Ä: PASS
 	setAttributeNS http://www.w3.org/2000/svg,ä,ä: PASS
@@ -11599,9 +11599,9 @@
 /dom/nodes/insertion-removing-steps/blur-event.window.html: OK
 	<button> element does not fire blur/focusout events upon DOM removal: PASS
 	<input> element does not fire blur event upon DOM removal: PASS
-/dom/nodes/insertion-removing-steps/change-event.window.html: TIMEOUT
-	<input> element does not fire change event upon DOM removal: TIMEOUT
-	<textarea> element does not fire change event upon DOM removal: NOTRUN
+/dom/nodes/insertion-removing-steps/change-event.window.html: OK
+	<input> element does not fire change event upon DOM removal: FAIL
+	<textarea> element does not fire change event upon DOM removal: FAIL
 /dom/nodes/insertion-removing-steps/frame-post-connection-steps.html: OK
 	A script after frame and iframe elements observes post-connection order: PASS
 	A script before frame and iframe elements observes post-connection order: FAIL
@@ -11729,7 +11729,7 @@
 	moveBefore still causes range startContainer to snap up to parent, when startContainer ancestor is moved: FAIL
 	moveBefore still results in range startContainer snapping up to parent when startContainer is moved: FAIL
 /dom/nodes/moveBefore/modal-dialog.html: OK
-	when reparenting a modal dialog, the dialog should stay modal: PASS
+	when reparenting a modal dialog, the dialog should stay modal: FAIL
 /dom/nodes/moveBefore/moveBefore-child-list-selector-invalidation.html: OK
 	.a + .b on the next siblings in the old and new parents: PASS
 	:empty on the old and new parents when moving a Text node: PASS
@@ -11835,9 +11835,9 @@
 /dom/nodes/moveBefore/throws-exception.html: OK
 	moveBefore() on a cross-document target node: FAIL
 /dom/nodes/name-validation.html: OK
-	Valid and invalid characters in createDocumentType.: FAIL
+	Valid and invalid characters in createDocumentType.: PASS
 	Valid and invalid characters in createElement.: PASS
-	Valid and invalid characters in createElementNS and createDocument.: FAIL
+	Valid and invalid characters in createElementNS and createDocument.: PASS
 	Valid and invalid characters in setAttribute, toggleAttribute, and createAttribute.: PASS
 	Valid and invalid characters in setAttributeNS and createAttributeNS.: FAIL
 /dom/nodes/namespaced-attribute-mutations.html: OK

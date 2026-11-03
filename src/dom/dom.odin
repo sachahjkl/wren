@@ -451,16 +451,14 @@ destroy_subtree :: proc(d: ^Document, h: base.Handle) {
 ////////////////////////////////
 // Attributes and text
 
-set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string) -> Error {
+// `name` is stored in ASCII lower case on an HTML or SVG element of an HTML document (lowers_attribute_names), as given
+// otherwise or when `exact` (setAttributeNS: the DOM lower-cases nothing there).
+set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string, exact := false) -> Error {
 	n := get(d, h)
 	if n == nil { return .Invalid_Handle }
 	if n.kind != .Element || name == "" { return .Invalid_Argument }
 	lname := name
-	if n.xml != .Element {
-		for i in 0 ..< len(name) {
-			if name[i] >= 'A' && name[i] <= 'Z' { lname = strings.to_lower(name, context.temp_allocator); break }
-		}
-	}
+	if !exact && lowers_attribute_names(n) { lname = lower_name(name) }
 	for &a in n.attrs {
 		if a.name == lname {
 			old := a.value
@@ -529,26 +527,28 @@ get_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> (value: str
 	return "", false
 }
 
-// DOM "get an attribute by name" for scripts: in lower case on an element of an HTML document, exactly as given on one
-// of an XML document (is_xml_element).
+// Whether the attribute names given to an element are stored in ASCII lower case: an HTML element's of an HTML document
+// (DOM), an SVG element's too (the browser's form for them, that the bindings give their case back).
+lowers_attribute_names :: #force_inline proc(n: ^Node) -> bool { return n.xml != .Element && (n.ns == .HTML || n.ns == .SVG) }
+
+// DOM "get an attribute by name" for scripts: in lower case on an HTML element of an HTML document, exactly as given on
+// one of an XML document (is_xml_element); on another element as given, else as stored in lower case (an SVG name).
+// A name stored as given (setAttributeNS) is found by itself first (the Attr objects of scripts name it so).
 get_attribute_exact :: proc(d: ^Document, h: base.Handle, name: string) -> (value: string, ok: bool) {
 	n := get(d, h)
 	if n == nil || n.kind != .Element { return "", false }
-	if n.xml != .Element { return get_attribute(d, h, name) }
 	for a in n.attrs { if a.name == name { return a.value, true } }
-	return "", false
+	if n.xml == .Element { return "", false }
+	return get_attribute(d, h, name)
 }
 
-remove_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> Error {
+// `exact`: `name` is the stored name itself (removeAttributeNS), not lower-cased first.
+remove_attribute :: proc(d: ^Document, h: base.Handle, name: string, exact := false) -> Error {
 	n := get(d, h)
 	if n == nil { return .Invalid_Handle }
 	if n.kind != .Element { return .None }
 	lname := name
-	if n.xml != .Element {
-		for i in 0 ..< len(name) {
-			if name[i] >= 'A' && name[i] <= 'Z' { lname = strings.to_lower(name, context.temp_allocator); break }
-		}
-	}
+	if !exact && lowers_attribute_names(n) { lname = lower_name(name) }
 	for a, i in n.attrs {
 		if a.name == lname {
 			old_name, old := a.name, a.value

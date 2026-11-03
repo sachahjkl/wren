@@ -144,7 +144,7 @@ Html_Job :: struct {
 	css_opt:    css.Parse_Options,
 	max_sheet:  int,
 	scripting:  bool,             // parsed with the scripting flag: <noscript> holds text (js_load_write.odin)
-	xhtml:      bool,             // application/xhtml+xml: parsed as XML (js_xml_parse.odin)
+	xml:        dom.Xml_Kind,     // an XML type (xml_document_kind): parsed as XML (js_xml_parse.odin); None: HTML
 	location:   string,           // owned: the document's URL (what an XML parse error says)
 	out:        Parsed_Document,
 	done:       Document_Parsed,
@@ -198,10 +198,10 @@ html_work :: proc(data: rawptr) {
 	j.out.decoded = true
 	doc := dom.document_create(nil, j.tag)
 	j.out.doc = doc
-	if j.xhtml {
+	if j.xml != .None {
 		// HTML "load an XML document": an XML document whose elements of the XHTML namespace are HTML elements; one
 		// that is not well-formed shows the parse error
-		dom.get(doc, doc.root).xml = .Document_XHTML
+		dom.get(doc, doc.root).xml = j.xml
 		_, fits := xml_fill(doc, doc.root, string(text), j.max_nodes, j.location)
 		j.out.result = {ok = true, truncated = !fits}
 	} else {
@@ -258,13 +258,13 @@ html_done :: proc(data: rawptr) {
 // Decodes (BOM, `header_charset`, <meta> prescan, then html.default_encoding) and parses `data` into a new document,
 // on the blocking pool when preferences allow, then calls `done` on the UI thread with the result, which `done` gives to
 // `adopt_document` (or drops). Called synchronously, before returning, on the fallback path. Not called at all if the
-// page closes first. `mime`: the response's type; application/xhtml+xml is parsed as XML.
+// page closes first. `mime`: the response's type; an XML type (xml_document_kind) is parsed as XML.
 parse_document :: proc(p: ^Page, data: []byte, header_charset: string, done: Document_Parsed, user: rawptr, mime := "") {
 	j := html_job_make(p, data, true, header_charset)
 	j.done, j.user = done, user
-	if mime == "application/xhtml+xml" {
+	if kind := xml_document_kind(mime); kind != .None {
 		// XML's default encoding is UTF-8, not the preference's
-		j.xhtml = true
+		j.xml = kind
 		delete(j.default_encoding)
 		j.default_encoding = strings.clone("UTF-8")
 		j.location = strings.clone(p.env.location.href)

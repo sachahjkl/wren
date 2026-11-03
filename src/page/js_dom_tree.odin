@@ -135,6 +135,17 @@ valid_attribute_name :: proc(name: string) -> bool {
 	return true
 }
 
+// DOM "valid namespace prefix".
+@(private)
+valid_namespace_prefix :: proc(prefix: string) -> bool {
+	if prefix == "" { return false }
+	for i in 0 ..< len(prefix) {
+		b := prefix[i]
+		if is_ascii_ws(b) || b == 0 || b == '/' || b == '>' { return false }
+	}
+	return true
+}
+
 ////////////////////////////////
 // Node
 
@@ -845,16 +856,17 @@ Document_createElementInert :: proc(c: ^Call, local_name: string) -> (u64, Api_E
 	return u64(dom.create_element(d, local_name)), .None
 }
 
-// DOM "validate and extract": namespace, prefix and local name of a qualified name.
+// DOM "validate and extract": namespace, prefix and local name of a qualified name (the prefix is what comes before
+// the first colon, the local name all that follows it).
 @(private)
 validate_and_extract :: proc(c: ^Call, namespace: Maybe(string), qualified: string, element: bool) -> (ns: string, prefix: string, local: string, err: Api_Error) {
 	ns, _ = namespace.?
 	local = qualified
+	has_prefix := false
 	if colon := strings.index_byte(qualified, ':'); colon >= 0 {
-		prefix, local = qualified[:colon], qualified[colon + 1:]
-		if prefix == "" || local == "" || strings.index_byte(local, ':') >= 0 { err = fail(c, .Invalid_Character, "The qualified name provided is not a valid name."); return }
+		prefix, local, has_prefix = qualified[:colon], qualified[colon + 1:], true
 	}
-	if !(element ? valid_element_name(local) : valid_attribute_name(local)) || (prefix != "" && !valid_attribute_name(prefix)) {
+	if !(element ? valid_element_name(local) : valid_attribute_name(local)) || (has_prefix && !valid_namespace_prefix(prefix)) {
 		err = fail(c, .Invalid_Character, "The qualified name provided is not a valid name.")
 		return
 	}
@@ -871,7 +883,11 @@ Document_createElementNSChecked :: proc(c: ^Call, namespace: Maybe(string), qual
 	ns, prefix, local, err := validate_and_extract(c, namespace, qualified_name, true)
 	if err != .None { return 0, err }
 	if dom.is_xml_document(dom.get(d, d.root)) { return u64(xml_create_element(d, ns, prefix, local)), .None }
-	return u64(dom.create_element_ns(d, local, dom.namespace_of(ns), ns, prefix)), .None
+	h := dom.create_element_ns(d, local, dom.namespace_of(ns), ns, prefix)
+	// the local name as given (createElementNS lower-cases nothing); an SVG name in its own case stays the browser's
+	// lower-case form, that the bindings give its case back
+	if n := dom.get(d, h); n.name != local && !(n.ns == .SVG && svg_case(SVG_ELEMENTS[:], n.name) == local) { dom.set_name(n, local) }
+	return u64(h), .None
 }
 
 Document_createDocumentFragment :: proc(c: ^Call) -> (u64, Api_Error) {
@@ -926,7 +942,7 @@ node_encoding :: proc(p: ^Page, h: base.Handle) -> string {
 }
 
 Document_contentType :: proc(c: ^Call) -> string {
-	if d := jd_doc(c); d != nil && dom.get(d, d.root).xml == .Document_XHTML { return "application/xhtml+xml" }
+	if d := jd_doc(c); d != nil { if t := xml_content_type(dom.get(d, d.root).xml); t != "" { return t } }
 	return "text/html"
 }
 
@@ -1056,7 +1072,10 @@ DOMImplementation_createHTMLDocument :: proc(c: ^Call, title: Maybe(string)) -> 
 DOMImplementation_createDocumentType :: proc(c: ^Call, name: string, public_id: string, system_id: string) -> (u64, Api_Error) {
 	d := jd_doc(c)
 	if d == nil { return 0, no_document(c) }
-	if !valid_element_name(name) { return 0, fail(c, .Invalid_Character, "The qualified name provided is not a valid name.") }
+	// DOM "valid doctype name": any but ASCII whitespace, NULL and '>' (the empty name too)
+	for i in 0 ..< len(name) {
+		if b := name[i]; is_ascii_ws(b) || b == 0 || b == '>' { return 0, fail(c, .Invalid_Character, "The doctype name provided is not a valid name.") }
+	}
 	return u64(dom.create_doctype(d, name, public_id, system_id)), .None
 }
 

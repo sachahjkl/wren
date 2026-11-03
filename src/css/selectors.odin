@@ -47,6 +47,7 @@ Simple :: struct {
 	op:     Attr_Op,
 	value:  string,
 	ci:     bool,        // attribute value compared case-insensitively
+	no_namespace: bool,  // Type, Universal: of an element in no namespace only (`|div`)
 	nth_a, nth_b: int,   // An+B
 	list:   ^Selector_List,   // :not :is :where :has :host() :host-context(), `of S` of nth-child, the parent list for `&`;
 	                          // a ::slotted() being parsed: its argument
@@ -263,6 +264,9 @@ parse_complex :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relat
 }
 
 @(private)
+is_delim :: proc(v: Value, text: string) -> bool { return v.kind == .Token && v.tok.kind == .Delim && v.tok.text == text }
+
+@(private)
 as_combinator :: proc(v: Value) -> (Combinator, bool) {
 	if v.kind == .Token && v.tok.kind == .Delim {
 		switch v.tok.text {
@@ -282,13 +286,24 @@ parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List) -> (s:
 	case .Token:
 		t := v.tok
 		#partial switch t.kind {
-		case .Ident: return Simple{kind = .Type, name = strings.to_lower(t.text, a)}, .None, 1, true
+		case .Ident:
+			// `prefix|name`: no namespace prefix is declared (querySelector has none, @namespace is not read)
+			if len(vs) > 2 && is_delim(vs[1], "|") && (vs[2].kind == .Token && vs[2].tok.kind == .Ident || is_delim(vs[2], "*")) { return {}, .None, 0, false }
+			return Simple{kind = .Type, name = strings.to_lower(t.text, a)}, .None, 1, true
 		case .Hash:
 			if !t.is_id { return {}, .None, 0, false }
 			return Simple{kind = .Id, name = t.text}, .None, 1, true
 		case .Delim:
 			switch t.text {
-			case "*": return Simple{kind = .Universal}, .None, 1, true
+			case "*", "|":
+				// `*|name` (any namespace: as `name`), `|name` (no namespace), `*` and `*|*`, `|*`; `name` may be `*`.
+				if t.text == "*" && !(len(vs) > 2 && is_delim(vs[1], "|")) { return Simple{kind = .Universal}, .None, 1, true }
+				at := t.text == "*" ? 2 : 1
+				if at >= len(vs) || vs[at].kind != .Token { return {}, .None, 0, false }
+				no_ns := t.text == "|"
+				if vs[at].tok.kind == .Ident { return Simple{kind = .Type, name = strings.to_lower(vs[at].tok.text, a), no_namespace = no_ns}, .None, at + 1, true }
+				if is_delim(vs[at], "*") { return Simple{kind = .Universal, no_namespace = no_ns}, .None, at + 1, true }
+				return {}, .None, 0, false
 			case "&":
 				if parent == nil { return Simple{kind = .Nesting}, .None, 1, true }   // top-level &: matches :scope
 				lst := new(Selector_List, a)
@@ -590,8 +605,11 @@ parse_nth :: proc(vs: []Value) -> (a, b: int, ok: bool) {
 
 @(private)
 parse_attribute :: proc(vs: []Value, a: Arena_Alloc) -> (s: Simple, ok: bool) {
-	items := make([dynamic]Value, context.temp_allocator)
-	for v in vs { if !is_ws_value(v) { append(&items, v) } }
+	all := make([dynamic]Value, context.temp_allocator)
+	for v in vs { if !is_ws_value(v) { append(&all, v) } }
+	// a namespace prefix: `*|` (any namespace) and `|` (none) name the attributes as stored (a prefix in their name)
+	items := all[:]
+	if len(items) > 2 && is_delim(items[0], "*") && is_delim(items[1], "|") { items = items[2:] } else if len(items) > 1 && is_delim(items[0], "|") { items = items[1:] }
 	if len(items) == 0 || items[0].kind != .Token || items[0].tok.kind != .Ident { return {}, false }
 	s.kind = .Attribute
 	s.name = strings.to_lower(items[0].tok.text, a)

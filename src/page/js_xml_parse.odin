@@ -115,19 +115,25 @@ xml_build :: proc(d: ^dom.Document, f: base.Handle, src: string, limit: int) -> 
 	return r, !b.over
 }
 
+// The XML document a response of type `mime` (its essence) makes (HTML "XML MIME type": a +xml type is one); None for
+// another type.
+xml_document_kind :: proc(mime: string) -> dom.Xml_Kind {
+	switch mime {
+	case "application/xml": return .Document
+	case "text/xml": return .Document_Text_XML
+	case "application/xhtml+xml": return .Document_XHTML
+	case "image/svg+xml": return .Document_SVG
+	}
+	return strings.has_suffix(mime, "+xml") ? .Document : .None
+}
+
 // new DOMParser().parseFromString(text, <an XML type>): always a document (a <parsererror> one when the text is not
 // well-formed XML); Quota past dom.max_fragment_nodes.
 DOMParser_parseXMLNode :: proc(c: ^Call, text: string, type: string) -> (u64, Api_Error) {
 	d := jd_doc(c)
 	if d == nil { return 0, no_document(c) }
-	kind: dom.Xml_Kind
-	switch type {
-	case "application/xml": kind = .Document
-	case "text/xml": kind = .Document_Text_XML
-	case "application/xhtml+xml": kind = .Document_XHTML
-	case "image/svg+xml": kind = .Document_SVG
-	case: return 0, fail(c, .Type, "TypeError: not an XML type of DOMParserSupportedType")
-	}
+	kind := xml_document_kind(type)
+	if kind == .None || strings.has_suffix(type, "+xml") && kind == .Document { return 0, fail(c, .Type, "TypeError: not an XML type of DOMParserSupportedType") }
 	f := dom.create_fragment(d)
 	fn := dom.get(d, f)
 	fn.as_document, fn.xml = true, kind
@@ -198,13 +204,19 @@ ProcessingInstruction_target :: proc(c: ^Call, node: Api_Node) -> string {
 
 // document.contentType of an XML document (the type DOMParser was given); Not_Found for the others (HTML ones).
 Document_xmlContentType :: proc(c: ^Call, document: Api_Node) -> (string, Api_Error) {
-	#partial switch document.data.xml {
-	case .Document, .Created: return "application/xml", .None
-	case .Document_Text_XML: return "text/xml", .None
-	case .Document_XHTML, .Created_XHTML: return "application/xhtml+xml", .None
-	case .Document_SVG, .Created_SVG: return "image/svg+xml", .None
-	}
+	if t := xml_content_type(document.data.xml); t != "" { return t, .None }
 	return "", .Not_Found
+}
+
+// The content type of an XML document of that kind; "" for another kind.
+xml_content_type :: proc(kind: dom.Xml_Kind) -> string {
+	#partial switch kind {
+	case .Document, .Created: return "application/xml"
+	case .Document_Text_XML: return "text/xml"
+	case .Document_XHTML, .Created_XHTML: return "application/xhtml+xml"
+	case .Document_SVG, .Created_SVG: return "image/svg+xml"
+	}
+	return ""
 }
 
 // createElement / createElementNS of an XML document (DOM "create an element" with that document as node document).
@@ -226,7 +238,8 @@ Document_createXMLElement :: proc(c: ^Call, document: Api_Node, namespace: Maybe
 DOMImplementation_createDocument :: proc(c: ^Call, namespace: Maybe(string), qualified_name: string, doctype: Api_Node) -> (u64, Api_Error) {
 	d := jd_doc(c)
 	if d == nil { return 0, no_document(c) }
-	ns, prefix, local: string
+	ns, _ := namespace.?   // the content type follows it, with an element or without
+	prefix, local: string
 	if qualified_name != "" {
 		err: Api_Error
 		ns, prefix, local, err = validate_and_extract(c, namespace, qualified_name, true)

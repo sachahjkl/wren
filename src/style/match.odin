@@ -476,8 +476,8 @@ focus_matches :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node) -> bool {
 @(private)
 matches_simple :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simple) -> bool {
 	switch s.kind {
-	case .Type: return n.name == s.name
-	case .Universal: return true
+	case .Type: return n.name == s.name && (!s.no_namespace || n.ns == .None)
+	case .Universal: return !s.no_namespace || n.ns == .None
 	case .Id:
 		v, ok := attr(n, "id")
 		return ok && v == s.name
