@@ -534,7 +534,7 @@ properties shadow its prototype's, [LegacyOverrideBuiltIns], so this answers for
 <p>Host: <code>TokenList_contains :: proc(c: ^Call, element: Api_Element, attr: string, token: string) -&gt; bool</code></p>
 <h3 id="tokenlist-add"><a class="anchor" href="#tokenlist-add" aria-hidden="true">#</a><code>TokenList_add</code></h3>
 <div class="code"><pre><code>void TokenList_add(Element element, string attr, string tokens) raises</code></pre></div>
-<p>add(tokens...): <code>tokens</code> NUL-separated. Syntax for an empty token, Invalid_Character for one with whitespace.</p>
+<p>add(tokens...): <code>tokens</code> each ended by NUL (or NUL-separated; "": none, the attribute serialized again). Syntax for an empty token, Invalid_Character for one with whitespace.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>TokenList_add :: proc(c: ^Call, element: Api_Element, attr: string, tokens: string) -&gt; Api_Error</code></p>
 <h3 id="tokenlist-remove"><a class="anchor" href="#tokenlist-remove" aria-hidden="true">#</a><code>TokenList_remove</code></h3>

@@ -252,6 +252,11 @@ half-open interval runs for every property / category / script, simple and full 
 decomposition / combining-class / composition tables for normalization.</li>
 <li><code>src/engine/unicode/tables_generated.odin</code> is committed so a normal build needs no network. Re-run the script
 to move to another Unicode release; the pinned version shows up as the <code>unicode.version</code> preference.</li>
+<li><code>wrentool gen idna</code> reads the same pinned files (and <code>DerivedJoiningType.txt</code>) for the URL parser:
+<code>src/shim/wb_idna_tables.h</code>, the combining marks, viramas and joining types of the rules of UTS #46 that Lexbor's
+IDNA leaves out (a label beginning with a combining mark, CheckJoiners), which <code>src/shim/wb_idna.c</code> applies. Lexbor's
+<code>url.c</code> calls it in place of <code>lxb_unicode_idna_to_ascii</code> (<code>LEXBOR_RENAMES</code>, <code>src/tools/wrentool/deps/lexbor.odin</code>);
+a domain all of ASCII is only lower-cased there, as the URL Standard's domain to ASCII asks.</li>
 </ul>
 <h2 id="char-range-and-set-operations"><a class="anchor" href="#char-range-and-set-operations" aria-hidden="true">#</a>Char_Range and set operations</h2>
 <p><code>Char_Range</code> is a set of code points stored as a sorted, non-overlapping list of half-open <code>[lo, hi)</code> intervals
