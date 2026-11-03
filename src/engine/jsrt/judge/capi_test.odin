@@ -63,6 +63,7 @@ count_epilogue :: proc "c" (rt: ^capi.Runtime, opaque: rawptr) {
 // payload holds and frees nothing else.
 @(private = "file") cls_pod: capi.Class_ID
 @(private = "file") pods_finalized: int
+@(private = "file") pod_marks: int   // calls of its gc_mark
 @(private = "file") PODS_SOAK :: 10000
 
 @(private = "file")
@@ -74,6 +75,7 @@ pod_finalizer :: proc "c" (rt: ^capi.Runtime, val: capi.JSValue) {
 
 @(private = "file")
 pod_gc_mark :: proc "c" (rt: ^capi.Runtime, val: capi.JSValue, mark: capi.Mark_Func) {
+	pod_marks += 1
 	p := cast(^Point)capi.JS_GetOpaque(val, cls_pod)
 	if p != nil {capi.JS_MarkValue(rt, p.held, mark)}
 }
@@ -369,14 +371,25 @@ capi_main :: proc() -> int {
 	any_id = 1
 	check(capi.JS_GetAnyOpaque(half, &any_id) == nil && any_id == 0, "JS_GetAnyOpaque: no object, no class")
 	capi.JS_FreeValue(ctx, plain)
+	// gc_mark is not called for a payload object until it is marked (JS_SetOpaqueMarked); what its data counts is then a root
 	d1.x, d2.x = 1, 2
-	d1.held, d2.held = capi.JS_DupValue(ctx, q2), capi.JS_DupValue(ctx, q1)   // a cycle through the payloads
 	capi.JS_RunGC(rt)
-	check(pods_finalized == 0 && d1.x == 1 && d2.x == 2, "held by the API: kept, payloads intact")
+	check(pod_marks == 0, fmt.tprintf("payload objects unmarked when made: gc_mark not called (%d)", pod_marks))
+	d1.held, d2.held = capi.JS_DupValue(ctx, q2), capi.JS_DupValue(ctx, q1)   // a cycle through the payloads
 	capi.JS_FreeValue(ctx, q1)
 	capi.JS_FreeValue(ctx, q2)
 	capi.JS_RunGC(rt)
-	check(pods_finalized == 2, fmt.tprintf("a cycle through payloads is collected (%d of 2)", pods_finalized))
+	check(pods_finalized == 0 && pod_marks == 0 && d1.x == 1 && d2.x == 2, "unmarked: the values the payloads count are roots, the cycle kept")
+	capi.JS_SetOpaqueMarked(ctx, q1, true)
+	capi.JS_SetOpaqueMarked(ctx, q1, false)
+	capi.JS_RunGC(rt)
+	check(pods_finalized == 0 && pod_marks == 0, "marked, then unmarked: not asked")
+	capi.JS_SetOpaqueMarked(ctx, q1, true)
+	capi.JS_SetOpaqueMarked(ctx, q1, true)   // (twice: listed once)
+	capi.JS_SetOpaqueMarked(ctx, q2, true)
+	capi.JS_SetOpaqueMarked(ctx, half, true)   // (no object: nothing)
+	capi.JS_RunGC(rt)
+	check(pods_finalized == 2 && pod_marks == 2, fmt.tprintf("marked: a cycle through payloads is collected (%d of 2, gc_mark %d times)", pods_finalized, pod_marks))
 	// made and dropped by the thousand: the payloads go back with their objects (were they kept, the heap would grow by
 	// at least their bytes)
 	usage: capi.Memory_Usage

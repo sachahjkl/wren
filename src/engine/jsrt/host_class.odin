@@ -83,8 +83,9 @@ host_exotic_of :: proc "contextless" (rt: ^Runtime, o: ^Object) -> ^Host_Exotic 
 }
 
 // An object of host class `id` with prototype `proto` (may be nil), and `payload` zeroed bytes of opaque data in the
-// block of its Host_Object (its opaque pointer), freed with it.
-host_object_new :: proc(ctx: ^Context, proto: ^Object, id: u32, payload := 0) -> ^Object {
+// block of its Host_Object (its opaque pointer), freed with it. `marked`: listed for the class's gc_mark at once
+// (host_object_set_marked).
+host_object_new :: proc(ctx: ^Context, proto: ^Object, id: u32, payload := 0, marked := true) -> ^Object {
 	rt := ctx.rt
 	o := object_new_proto(ctx, proto, .host)
 	d := cast(^Host_Object)mem_alloc(rt, HOST_PAYLOAD_OFFSET + payload)
@@ -94,7 +95,7 @@ host_object_new :: proc(ctx: ^Context, proto: ^Object, id: u32, payload := 0) ->
 	if payload > 0 {d.opaque = rawptr(uintptr(d) + HOST_PAYLOAD_OFFSET)}
 	o.data = d
 	if c := host_class(rt, id); c != nil {
-		if c.gc_mark != nil {
+		if c.gc_mark != nil && marked {
 			d.hook_idx = len(rt.gc_hooked)
 			list_push(&rt.gc_hooked, o)
 		}
@@ -103,9 +104,37 @@ host_object_new :: proc(ctx: ^Context, proto: ^Object, id: u32, payload := 0) ->
 	return o
 }
 
+// Whether the collector asks the class's gc_mark about `o` (listed in Runtime.gc_hooked). An object of such a class that
+// is not listed holds no value of its own data, as far as the collector knows (a wrapper with nothing of its own: the
+// collection's counting pass skips it); its host lists it before the data takes one. One it forgot keeps the values
+// its data counts (host references) as roots, their counts not subtracted: a leak, not a value freed too early.
+host_object_set_marked :: proc(rt: ^Runtime, o: ^Object, marked: bool) {
+	d := host_object_of(o)
+	if d == nil || (d.hook_idx >= 0) == marked {return}
+	if c := host_class(rt, d.class_id); c == nil || c.gc_mark == nil {return}
+	if marked {
+		d.hook_idx = len(rt.gc_hooked)
+		list_push(&rt.gc_hooked, o)
+	} else {
+		hooked_remove(rt, d)
+	}
+}
+
+@(private = "file")
+hooked_remove :: proc(rt: ^Runtime, d: ^Host_Object) {
+	last := len(rt.gc_hooked) - 1
+	if d.hook_idx != last {
+		moved := rt.gc_hooked[last]
+		rt.gc_hooked[d.hook_idx] = moved
+		host_object_of(moved).hook_idx = d.hook_idx
+	}
+	pop(&rt.gc_hooked)
+	d.hook_idx = -1
+}
+
 host_object_trace :: proc(rt: ^Runtime, o: ^Object, d: ^Host_Object) {
 	c := host_class(rt, d.class_id)
-	if c != nil && c.gc_mark != nil {
+	if c != nil && c.gc_mark != nil && d.hook_idx >= 0 {
 		st := Host_Mark_State{rt = rt}
 		c.gc_mark(rt, o, &st)
 	}
@@ -136,15 +165,7 @@ host_object_free :: proc(rt: ^Runtime, o: ^Object, d: ^Host_Object) {
 		if c != nil && c.finalizer != nil {c.finalizer(rt, o)}
 	}
 	if c != nil && c.finalizer != nil {rt.host_final_live -= 1}
-	if d.hook_idx >= 0 {
-		last := len(rt.gc_hooked) - 1
-		if d.hook_idx != last {
-			moved := rt.gc_hooked[last]
-			rt.gc_hooked[d.hook_idx] = moved
-			host_object_of(moved).hook_idx = d.hook_idx
-		}
-		pop(&rt.gc_hooked)
-	}
+	if d.hook_idx >= 0 {hooked_remove(rt, d)}
 	mem_free(rt, d, HOST_PAYLOAD_OFFSET + int(d.payload))
 }
 

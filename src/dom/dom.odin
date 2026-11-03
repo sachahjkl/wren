@@ -457,39 +457,60 @@ release :: proc(d: ^Document, h: base.Handle) -> Error {
 	return .None
 }
 
+// Every node is freed after its children, in one walk by the tree's own links (a hostile page can build a very deep
+// tree: nothing recurses); the trees that go with it (a template's contents, a shadow tree) are walked after, from a
+// list only they need.
 @(private)
 destroy_subtree :: proc(d: ^Document, h: base.Handle) {
-	// iterative: a hostile page can build a very deep tree and must not overflow the native stack
-	stack: [dynamic]base.Handle
-	defer delete(stack)
-	append(&stack, h)
-	for len(stack) > 0 {
-		cur := pop(&stack)
-		n := get(d, cur)
-		if n == nil { continue }
-		for c := n.first_child; c != base.NIL_HANDLE; {
-			next := get(d, c).next
-			append(&stack, c)
-			c = next
+	more: [dynamic]base.Handle   // (context.temp_allocator, made by the first one found)
+	for top := h; top != base.NIL_HANDLE; top = len(more) > 0 ? pop(&more) : base.NIL_HANDLE {
+		cur := top
+		for {
+			n := get(d, cur)
+			if n == nil { break }
+			if n.first_child != base.NIL_HANDLE { cur = n.first_child; continue }
+			next, parent := n.next, n.parent
+			destroy_node(d, cur, n, &more)
+			if cur == top { break }
+			if next != base.NIL_HANDLE {
+				cur = next
+			} else {
+				cur = parent
+				get(d, parent).first_child = base.NIL_HANDLE   // its children are gone: it is next
+			}
 		}
-		if n.kind == .Element {
-			ids_forget_node(d, cur, n)
-			if x, had := d.ns_extra[cur]; had { delete(x.uri); delete(x.prefix); delete_key(&d.ns_extra, cur) }
-			// a template's contents go with it, unless a script holds some of them (they are then a tree of their own)
-			if content, had := d.templates[cur]; had {
-				delete_key(&d.templates, cur)
+	}
+}
+
+@(private = "file")
+destroy_node :: proc(d: ^Document, h: base.Handle, n: ^Node, more: ^[dynamic]base.Handle) {
+	if n.kind == .Element {
+		ids_forget_node(d, h, n)
+		if len(d.ns_extra) > 0 {
+			if x, had := d.ns_extra[h]; had { delete(x.uri); delete(x.prefix); delete_key(&d.ns_extra, h) }
+		}
+		// a template's contents go with it, unless a script holds some of them (they are then a tree of their own)
+		if len(d.templates) > 0 {
+			if content, had := d.templates[h]; had {
+				delete_key(&d.templates, h)
 				if c := get(d, content); c != nil {
 					c.held = false
-					if c.pins_below == 0 { append(&stack, content) }
+					if c.pins_below == 0 { more_push(more, content) }
 				}
 			}
-			// its shadow tree goes with it (its pins count in the host's: nothing in it is pinned)
-			if n.shadow != base.NIL_HANDLE { append(&stack, n.shadow); n.shadow = base.NIL_HANDLE }
 		}
-		if len(d.shadow_roots) > 0 || len(d.assigned) > 0 || len(d.manual_slot) > 0 || len(d.custom_states) > 0 || len(d.ce_custom) > 0 { shadow_forget_node(d, cur, n) }
-		free_node_data(n)
-		base.pool_remove_tagged(&d.nodes, cur)
+		// its shadow tree goes with it (its pins count in the host's: nothing in it is pinned)
+		if n.shadow != base.NIL_HANDLE { more_push(more, n.shadow); n.shadow = base.NIL_HANDLE }
 	}
+	if len(d.shadow_roots) > 0 || len(d.assigned) > 0 || len(d.manual_slot) > 0 || len(d.custom_states) > 0 || len(d.ce_custom) > 0 { shadow_forget_node(d, h, n) }
+	free_node_data(n)
+	base.pool_remove_tagged(&d.nodes, h)
+}
+
+@(private = "file")
+more_push :: proc(more: ^[dynamic]base.Handle, h: base.Handle) {
+	if more.allocator.procedure == nil { more^ = make([dynamic]base.Handle, context.temp_allocator) }
+	append(more, h)
 }
 
 ////////////////////////////////

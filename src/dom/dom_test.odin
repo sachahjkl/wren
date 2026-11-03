@@ -115,6 +115,46 @@ release_invalidates_handles :: proc(t: ^testing.T) {
 	testing.expect_value(t, d.nodes.count, 1)   // only the Document node is left
 }
 
+// A detached tree goes whole, walked by its own links: a chain deeper than any native stack, siblings, a template's
+// contents and a shadow tree with it; a template's contents that a script pins stay, a tree of their own.
+@(test)
+release_frees_deep_trees_templates_and_shadows :: proc(t: ^testing.T) {
+	d := document_create()
+	defer document_destroy(d)
+	DEPTH :: 50_000
+	SIBLINGS :: 5
+	top := create_element(d, "div")
+	cur := top
+	for _ in 0 ..< DEPTH {
+		next := create_element(d, "div")
+		append_child(d, cur, next)
+		cur = next
+	}
+	for i in 0 ..< SIBLINGS { append_child(d, top, i % 2 == 0 ? create_text(d, "text") : create_element(d, "span")) }
+	tpl := create_element(d, "template")
+	append_child(d, top, tpl)
+	append_child(d, template_content(d, tpl), create_element(d, "b"))
+	host := create_element(d, "section")
+	append_child(d, top, host)
+	root, err := attach_shadow(d, host, {mode = .Open})
+	testing.expect_value(t, err, Error.None)
+	append_child(d, root, create_element(d, "i"))
+	testing.expect_value(t, release(d, top), Error.None)
+	testing.expect_value(t, d.nodes.count, 1)   // only the Document node is left
+	testing.expect_value(t, len(d.templates), 0)
+
+	kept := create_element(d, "template")
+	content := template_content(d, kept)
+	inner := create_element(d, "b")
+	append_child(d, content, inner)
+	pin(d, inner)
+	testing.expect_value(t, release(d, kept), Error.None)
+	testing.expect(t, get(d, kept) == nil && get(d, content) != nil && get(d, inner) != nil, "pinned contents stay")
+	testing.expect(t, !get(d, content).held, "a tree of their own")
+	unpin(d, inner)
+	testing.expect_value(t, d.nodes.count, 1)
+}
+
 // The document lists the <img> and <input> elements it makes, created in any case or cloned, and no other; a list that
 // fills up drops the freed ones before it grows.
 @(test)

@@ -96,7 +96,9 @@ special pass.
   collection is freed. `gc_mark` is used twice: to **subtract** those references from the host counts (a
   cycle through opaque data does not keep itself alive — QuickJS's trial deletion, restricted to the cells
   with host references) and to trace them when the owner is live. The host part of such an object is a block of the
-  size classes below, which may hold the opaque data itself (`payload`: the glue's wrappers), freed with it.
+  size classes below, which may hold the opaque data itself (`payload`: the glue's wrappers), freed with it. Only the
+  objects listed in `rt.gc_hooked` are asked (`host_object_set_marked`): one made with a payload is listed when its
+  host says its data holds a value.
 - Small blocks (≤ 512 bytes: cells, inline slots, small arrays and string data) come from size‑class free
   lists carved out of 256 KiB chunks of the injected allocator (`mem_alloc` / `mem_free` / `mem_resize` in
   `gc.odin`; callers always pass the size they allocated with). A cell costs a pop and a push, not a host

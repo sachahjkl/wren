@@ -107,6 +107,7 @@ observer_attach :: proc(ctx: ^wj.Context, target, observer: wj.JSValue) -> bool 
 	if o == nil { return true }
 	slot := int(wj.wj_same_object_count)
 	if slot >= int(o.n_same) {
+		wj.wj_obj_marked(o)
 		n := slot + 1
 		s := ([^]wj.JSValue)(wj.libc_realloc(o.same, uint(n) * size_of(wj.JSValue)))
 		if s == nil { wj.JS_ThrowOutOfMemory(ctx); return false }

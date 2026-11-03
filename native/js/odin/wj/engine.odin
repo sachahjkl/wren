@@ -171,6 +171,7 @@ impl_of   :: #force_inline proc "contextless" (o: ^Obj) -> rawptr { return o != 
 web_set_impl :: proc "contextless" (obj: JSValue, impl: rawptr, impl_free: Impl_Free, impl_mark: Impl_Mark) {
 	o := obj_of(obj)
 	if o == nil { return }
+	wj_obj_marked(o)
 	o.impl = impl
 	o.impl_free = impl_free
 	o.impl_mark = impl_mark

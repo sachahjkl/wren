@@ -39,7 +39,11 @@ The API types (`Context`, `Runtime`, `Class_Def`, `Native`, `Property_Descriptor
   replaces the prototype walk after the own shape lookup, as in QuickJS. Wren's own
   `JS_NewObjectProtoClassPayload(ctx, proto, class, size)` makes the opaque data `size` zeroed bytes of the engine's
   heap in the block of the object's host part, freed with the object (the glue's wrappers: one allocation from the
-  engine's size classes instead of two, and nothing for the finalizer to free).
+  engine's size classes instead of two, and nothing for the finalizer to free). Such an object is made unmarked: the
+  collector does not call its class's `gc_mark` for it until Wren's `JS_SetOpaqueMarked(ctx, obj, true)`, which the
+  glue calls before the data takes a value (a group, a listener, a [SameObject] value, an impl); a collection then skips
+  the thousands of node wrappers that carry nothing. One the host forgot to mark keeps what its data counts as roots
+  (a leak, not an early free).
 - **Native functions**: `JS_NewCFunction2/3`, `JS_NewCFunctionData/2`, with prototypes `generic`,
   `generic_magic`, `constructor`, `constructor_or_func` (and `_magic`), `getter`, `setter`.
 - **Errors**: the `JS_Throw*Error` family takes `printf` arguments (`%s %d %u %x %c %.*s %ld`); a C caller
@@ -76,7 +80,7 @@ Distinct `JS_*` / `js_*` names the glue references: **176**.
 | helper names of the glue that are not API (`js_str`, `js_cstr` …) | 5 |
 | missing | 0 |
 
-The API itself is tested natively by `judge capi` (59 checks); the glue runs on it in every build.
+The API itself is tested natively by `judge capi` (61 checks); the glue runs on it in every build.
 
 ### What is approximated or absent (by weight)
 
@@ -107,6 +111,6 @@ The API itself is tested natively by `judge capi` (59 checks); the glue runs on 
 strings, properties, native functions with data and magic, formatted exceptions, classes with opaque data,
 cycles through `gc_mark`, counted references as roots, the GC epilogue (once a collection, after its finalizers),
 strings read in place (ASCII and concatenations; none of Latin-1, UTF-16 or other values), opaque data in the object's block (zeroed, one per object,
-cycles through it collected, 10 000 made and dropped without the heap keeping them; `JS_GetAnyOpaque` of it, of a built-in object, of a number), exotic objects, promises and jobs, adopted buffers,
+cycles through it collected, 10 000 made and dropped without the heap keeping them; `JS_GetAnyOpaque` of it, of a built-in object, of a number; `gc_mark` not called until `JS_SetOpaqueMarked`, the counted values roots until then), exotic objects, promises and jobs, adopted buffers,
 a native module imported by a script module, a compiled function written out and read back, and a soak of
 20 000 temporaries that must be collected.
