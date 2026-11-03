@@ -125,6 +125,7 @@ link_release :: proc(l: ^Worker_Link) {
 	for m in l.to_page { msg_free(m) }
 	delete(l.to_worker)
 	delete(l.to_page)
+	discard_page_tasks(&l.loop)   // a realm's tasks the worker's loop never ran (it stopped first) free their data
 	host.loop_destroy(&l.loop)
 	free(l)
 }
