@@ -4,7 +4,11 @@
 	Serializing a comment containing '--' via innerHTML: PASS
 	Serializing a comment containing '-->' via innerHTML: PASS
 	Serializing a comment containing only '--' via innerHTML: PASS
-/domparsing/DOMParser-parseFromString-encoding.html: ERROR
+/domparsing/DOMParser-parseFromString-encoding.html: OK
+	HTML: empty: PASS
+	HTML: meta charset: PASS
+	XML: XML declaration: PASS
+	XML: empty: PASS
 /domparsing/DOMParser-parseFromString-html.html: OK
 	DOMParser parses HTML tag soup with no problems: PASS
 	DOMParser should handle the content of <noembed> as raw text: PASS
@@ -124,12 +128,22 @@
 	Child window (image/svg+xml): FAIL
 	Child window (text/html): FAIL
 	Child window (text/xml): FAIL
+	Child window after navigation (application/xhtml+xml): FAIL
+	Child window after navigation (application/xml): FAIL
+	Child window after navigation (image/svg+xml): FAIL
+	Child window after navigation (text/html): FAIL
+	Child window after navigation (text/xml): FAIL
+	Child window crossing navigation (application/xhtml+xml): FAIL
+	Child window crossing navigation (application/xml): FAIL
+	Child window crossing navigation (image/svg+xml): FAIL
+	Child window crossing navigation (text/html): FAIL
+	Child window crossing navigation (text/xml): FAIL
 	Child window with parent method (application/xhtml+xml): FAIL
 	Child window with parent method (application/xml): FAIL
 	Child window with parent method (image/svg+xml): FAIL
 	Child window with parent method (text/html): FAIL
 	Child window with parent method (text/xml): FAIL
-	DOMParser: Document's url: FAIL
+	DOMParser: Document's url: PASS
 	Parent window (application/xhtml+xml): PASS
 	Parent window (application/xml): PASS
 	Parent window (image/svg+xml): PASS
@@ -144,93 +158,93 @@
 	application/xhtml+xml invalid XML: created normally: PASS
 	application/xhtml+xml invalid XML: created using a parser from the iframe and the method from this frame: FAIL
 	application/xhtml+xml invalid XML: created using a parser from this frame and the method from the iframe: PASS
-	application/xhtml+xml invalid XML: created using another iframe's DOMParser from that frame: FAIL
+	application/xhtml+xml invalid XML: created using another iframe's DOMParser from that frame: PASS
 	application/xhtml+xml invalid XML: created using another iframe's DOMParser from this frame: FAIL
 	application/xhtml+xml valid: created normally: PASS
 	application/xhtml+xml valid: created using a parser from the iframe and the method from this frame: FAIL
 	application/xhtml+xml valid: created using a parser from this frame and the method from the iframe: PASS
-	application/xhtml+xml valid: created using another iframe's DOMParser from that frame: FAIL
+	application/xhtml+xml valid: created using another iframe's DOMParser from that frame: PASS
 	application/xhtml+xml valid: created using another iframe's DOMParser from this frame: FAIL
 	application/xml invalid XML: created normally: PASS
 	application/xml invalid XML: created using a parser from the iframe and the method from this frame: FAIL
 	application/xml invalid XML: created using a parser from this frame and the method from the iframe: PASS
-	application/xml invalid XML: created using another iframe's DOMParser from that frame: FAIL
+	application/xml invalid XML: created using another iframe's DOMParser from that frame: PASS
 	application/xml invalid XML: created using another iframe's DOMParser from this frame: FAIL
 	application/xml valid: created normally: PASS
 	application/xml valid: created using a parser from the iframe and the method from this frame: FAIL
 	application/xml valid: created using a parser from this frame and the method from the iframe: PASS
-	application/xml valid: created using another iframe's DOMParser from that frame: FAIL
+	application/xml valid: created using another iframe's DOMParser from that frame: PASS
 	application/xml valid: created using another iframe's DOMParser from this frame: FAIL
 	image/svg+xml invalid XML: created normally: PASS
 	image/svg+xml invalid XML: created using a parser from the iframe and the method from this frame: FAIL
 	image/svg+xml invalid XML: created using a parser from this frame and the method from the iframe: PASS
-	image/svg+xml invalid XML: created using another iframe's DOMParser from that frame: FAIL
+	image/svg+xml invalid XML: created using another iframe's DOMParser from that frame: PASS
 	image/svg+xml invalid XML: created using another iframe's DOMParser from this frame: FAIL
 	image/svg+xml valid: created normally: PASS
 	image/svg+xml valid: created using a parser from the iframe and the method from this frame: FAIL
 	image/svg+xml valid: created using a parser from this frame and the method from the iframe: PASS
-	image/svg+xml valid: created using another iframe's DOMParser from that frame: FAIL
+	image/svg+xml valid: created using another iframe's DOMParser from that frame: PASS
 	image/svg+xml valid: created using another iframe's DOMParser from this frame: FAIL
 	text/html valid: created normally: PASS
 	text/html valid: created using a parser from the iframe and the method from this frame: FAIL
 	text/html valid: created using a parser from this frame and the method from the iframe: PASS
-	text/html valid: created using another iframe's DOMParser from that frame: FAIL
+	text/html valid: created using another iframe's DOMParser from that frame: PASS
 	text/html valid: created using another iframe's DOMParser from this frame: FAIL
 	text/xml invalid XML: created normally: PASS
 	text/xml invalid XML: created using a parser from the iframe and the method from this frame: FAIL
 	text/xml invalid XML: created using a parser from this frame and the method from the iframe: PASS
-	text/xml invalid XML: created using another iframe's DOMParser from that frame: FAIL
+	text/xml invalid XML: created using another iframe's DOMParser from that frame: PASS
 	text/xml invalid XML: created using another iframe's DOMParser from this frame: FAIL
 	text/xml valid: created normally: PASS
 	text/xml valid: created using a parser from the iframe and the method from this frame: FAIL
 	text/xml valid: created using a parser from this frame and the method from the iframe: PASS
-	text/xml valid: created using another iframe's DOMParser from that frame: FAIL
+	text/xml valid: created using another iframe's DOMParser from that frame: PASS
 	text/xml valid: created using another iframe's DOMParser from this frame: FAIL
 /domparsing/DOMParser-parseFromString-url.html: OK
 	application/xhtml+xml invalid XML: created normally: PASS
 	application/xhtml+xml invalid XML: created using a parser from the iframe and the method from this frame: FAIL
 	application/xhtml+xml invalid XML: created using a parser from this frame and the method from the iframe: PASS
-	application/xhtml+xml invalid XML: created using another iframe's DOMParser from that frame: FAIL
+	application/xhtml+xml invalid XML: created using another iframe's DOMParser from that frame: PASS
 	application/xhtml+xml invalid XML: created using another iframe's DOMParser from this frame: FAIL
 	application/xhtml+xml valid: created normally: PASS
 	application/xhtml+xml valid: created using a parser from the iframe and the method from this frame: FAIL
 	application/xhtml+xml valid: created using a parser from this frame and the method from the iframe: PASS
-	application/xhtml+xml valid: created using another iframe's DOMParser from that frame: FAIL
+	application/xhtml+xml valid: created using another iframe's DOMParser from that frame: PASS
 	application/xhtml+xml valid: created using another iframe's DOMParser from this frame: FAIL
 	application/xml invalid XML: created normally: PASS
 	application/xml invalid XML: created using a parser from the iframe and the method from this frame: FAIL
 	application/xml invalid XML: created using a parser from this frame and the method from the iframe: PASS
-	application/xml invalid XML: created using another iframe's DOMParser from that frame: FAIL
+	application/xml invalid XML: created using another iframe's DOMParser from that frame: PASS
 	application/xml invalid XML: created using another iframe's DOMParser from this frame: FAIL
 	application/xml valid: created normally: PASS
 	application/xml valid: created using a parser from the iframe and the method from this frame: FAIL
 	application/xml valid: created using a parser from this frame and the method from the iframe: PASS
-	application/xml valid: created using another iframe's DOMParser from that frame: FAIL
+	application/xml valid: created using another iframe's DOMParser from that frame: PASS
 	application/xml valid: created using another iframe's DOMParser from this frame: FAIL
 	image/svg+xml invalid XML: created normally: PASS
 	image/svg+xml invalid XML: created using a parser from the iframe and the method from this frame: FAIL
 	image/svg+xml invalid XML: created using a parser from this frame and the method from the iframe: PASS
-	image/svg+xml invalid XML: created using another iframe's DOMParser from that frame: FAIL
+	image/svg+xml invalid XML: created using another iframe's DOMParser from that frame: PASS
 	image/svg+xml invalid XML: created using another iframe's DOMParser from this frame: FAIL
 	image/svg+xml valid: created normally: PASS
 	image/svg+xml valid: created using a parser from the iframe and the method from this frame: FAIL
 	image/svg+xml valid: created using a parser from this frame and the method from the iframe: PASS
-	image/svg+xml valid: created using another iframe's DOMParser from that frame: FAIL
+	image/svg+xml valid: created using another iframe's DOMParser from that frame: PASS
 	image/svg+xml valid: created using another iframe's DOMParser from this frame: FAIL
 	text/html valid: created normally: PASS
 	text/html valid: created using a parser from the iframe and the method from this frame: FAIL
 	text/html valid: created using a parser from this frame and the method from the iframe: PASS
-	text/html valid: created using another iframe's DOMParser from that frame: FAIL
+	text/html valid: created using another iframe's DOMParser from that frame: PASS
 	text/html valid: created using another iframe's DOMParser from this frame: FAIL
 	text/xml invalid XML: created normally: PASS
 	text/xml invalid XML: created using a parser from the iframe and the method from this frame: FAIL
 	text/xml invalid XML: created using a parser from this frame and the method from the iframe: PASS
-	text/xml invalid XML: created using another iframe's DOMParser from that frame: FAIL
+	text/xml invalid XML: created using another iframe's DOMParser from that frame: PASS
 	text/xml invalid XML: created using another iframe's DOMParser from this frame: FAIL
 	text/xml valid: created normally: PASS
 	text/xml valid: created using a parser from the iframe and the method from this frame: FAIL
 	text/xml valid: created using a parser from this frame and the method from the iframe: PASS
-	text/xml valid: created using another iframe's DOMParser from that frame: FAIL
+	text/xml valid: created using another iframe's DOMParser from that frame: PASS
 	text/xml valid: created using another iframe's DOMParser from this frame: FAIL
 /domparsing/DOMParser-parseFromString-xml-CDATA.html: OK
 	Should parse HTML within a CDATA section in type application/xhtml+xml: PASS
@@ -358,7 +372,11 @@
 	[TENTATIVE] check XMLSerializer.serializeToString escapes attribute values for roundtripping: FAIL
 	check XMLSerializer.serializeToString method could parsing document to string: PASS
 	check XMLSerializer.serializeToString method could parsing xmldoc to string: PASS
-/domparsing/createContextualFragment-xhtml.xhtml: ERROR
+/domparsing/createContextualFragment-xhtml.xhtml: OK
+	<html>, <head> and <body> in a different namespace must not be special: FAIL
+	A <body> element must be stripped, preserving its children: PASS
+	Stripping must recurse through nested <html> elements: PASS
+	The <head> and <body> nested inside a stray <html> element must be stripped too: PASS
 /domparsing/createContextualFragment.html: OK
 	<html> and <body> must work the same, 1: PASS
 	<html> and <body> must work the same, 2: PASS
@@ -424,14 +442,23 @@
 	replaceWithHTMLUnsafe on a child of a detached html element throws HierarchyRequestError: FAIL
 	replaceWithHTMLUnsafe on head/body (parent is the html element) throws HierarchyRequestError: FAIL
 	setHTML on the html element replaces head and body: FAIL
-	setHTMLUnsafe on the html element replaces head and body: FAIL
+	setHTMLUnsafe on the html element replaces head and body: PASS
 /domparsing/innerhtml-01.xhtml: OK
 	innerHTML in XHTML: getting while the document is in an invalid state: FAIL
 	innerHTML in XHTML: getting while the document is in an invalid state 1: FAIL
-/domparsing/innerhtml-03.xhtml: ERROR
+/domparsing/innerhtml-03.xhtml: OK
+	innerHTML in XHTML: FAIL
+	innerHTML in XHTML 1: FAIL
+	innerHTML in XHTML 2: FAIL
+	innerHTML in XHTML 3: FAIL
+	innerHTML in XHTML 4: FAIL
+	innerHTML in XHTML 5: PASS
+	innerHTML in XHTML 6: PASS
+	innerHTML in XHTML 7: FAIL
 /domparsing/innerhtml-04.html: OK
 	innerHTML should leave the removed children alone.: PASS
-/domparsing/innerhtml-05.xhtml: ERROR
+/domparsing/innerhtml-05.xhtml: OK
+	innerHTML in XHTML: FAIL
 /domparsing/innerhtml-06.html: OK
 	innerHTML defined on math.: PASS
 /domparsing/innerhtml-07.html: OK
@@ -527,7 +554,37 @@
 	insertAdjacentHTML(afterend, <h3>afterend</h3> ): PASS
 	insertAdjacentHTML(beforebegin, <h3>beforebegin</h3> ): PASS
 	insertAdjacentHTML(beforeend, <h3>beforeend</h3> ): PASS
-/domparsing/insert_adjacent_html-xhtml.xhtml: ERROR
+/domparsing/insert_adjacent_html-xhtml.xhtml: OK
+	Afterbegin child node not in tree but has parent: PASS
+	Afterbegin content again, with next sibling: PASS
+	Afterbegin content without next sibling: PASS
+	Afterbegin content2 test again, now that there's a next sibling: PASS
+	Afterbegin content2 without next sibling: PASS
+	BeforeEnd child node not in tree but has parent: PASS
+	BeforeEnd content again, with next sibling: PASS
+	BeforeEnd content without next sibling: PASS
+	BeforeEnd content2 test again, now that there's a next sibling: PASS
+	BeforeEnd content2 without next sibling: PASS
+	Inserting after being and before end should order things correctly: PASS
+	Should not run script when appending things which have descendant <script> inserted via insertAdjacentHTML: PASS
+	Should throw when inserting with invalid position string: PASS
+	When the parent node is a document, insertAdjacentHTML should throw for beforebegin and afterend (comments): PASS
+	When the parent node is a document, insertAdjacentHTML should throw for beforebegin and afterend (elements): PASS
+	When the parent node is a document, insertAdjacentHTML should throw for beforebegin and afterend (text): PASS
+	When the parent node is null, insertAdjacentHTML should throw for beforebegin and afterend (comments): PASS
+	When the parent node is null, insertAdjacentHTML should throw for beforebegin and afterend (elements): PASS
+	When the parent node is null, insertAdjacentHTML should throw for beforebegin and afterend (text): PASS
+	afterend child node not in tree but has parent: PASS
+	afterend content again, with next sibling: PASS
+	afterend content without next sibling: PASS
+	afterend content2 test again, now that there's a next sibling: PASS
+	afterend content2 without next sibling: PASS
+	beforeBegin child node not in tree but has parent: PASS
+	beforeBegin content again, with next sibling: PASS
+	beforeBegin content without next sibling: PASS
+	beforeBegin content2 test again, now that there's a next sibling: PASS
+	beforeBegin content2 without next sibling: PASS
+	insertAdjacentHTML in HTML: FAIL
 /domparsing/insert_adjacent_html.html: OK
 	A text node inserted via insertAdjacentHTML should not be merged with a sibling text node.: PASS
 	Afterbegin child node not in tree but has parent: PASS
@@ -569,7 +626,7 @@
 	outerHTML and string conversion: undefined.: PASS
 	outerHTML and string conversion: valueOf.: PASS
 /domparsing/outerhtml-03.html: OK
-	Setting outerHTML on a <body> element should replace it but leave the element unchanged: FAIL
+	Setting outerHTML on a <body> element should replace it but leave the element unchanged: PASS
 	Setting outerHTML on an Element with a DocumentFragment parent should create a temporary <body>: PASS
 	Setting outerHTML on an Element with a parent should replace it but leave the element unchanged: PASS
 	Setting outerHTML on an Element without a parent should have no effect: PASS
@@ -1829,17 +1886,17 @@
 /domparsing/tentative/stream-html-with-trusted-types-error-in-policy.html: ERROR
 /domparsing/tentative/stream-html-with-trusted-types-from-non-tt.html: OK
 	streamAfterHTML called from non-TT document on an element adopted into a TT document returns a WritableStream.: FAIL
-	streamAfterHTMLUnsafe called from non-TT document on an element adopted into a TT document throws TypeError.: FAIL
+	streamAfterHTMLUnsafe called from non-TT document on an element adopted into a TT document throws TypeError.: PASS
 	streamAppendHTML called from non-TT document on an element adopted into a TT document returns a WritableStream.: FAIL
-	streamAppendHTMLUnsafe called from non-TT document on an element adopted into a TT document throws TypeError.: FAIL
+	streamAppendHTMLUnsafe called from non-TT document on an element adopted into a TT document throws TypeError.: PASS
 	streamBeforeHTML called from non-TT document on an element adopted into a TT document returns a WritableStream.: FAIL
-	streamBeforeHTMLUnsafe called from non-TT document on an element adopted into a TT document throws TypeError.: FAIL
+	streamBeforeHTMLUnsafe called from non-TT document on an element adopted into a TT document throws TypeError.: PASS
 	streamHTML called from non-TT document on an element adopted into a TT document returns a WritableStream.: FAIL
-	streamHTMLUnsafe called from non-TT document on an element adopted into a TT document throws TypeError.: FAIL
+	streamHTMLUnsafe called from non-TT document on an element adopted into a TT document throws TypeError.: PASS
 	streamPrependHTML called from non-TT document on an element adopted into a TT document returns a WritableStream.: FAIL
-	streamPrependHTMLUnsafe called from non-TT document on an element adopted into a TT document throws TypeError.: FAIL
+	streamPrependHTMLUnsafe called from non-TT document on an element adopted into a TT document throws TypeError.: PASS
 	streamReplaceWithHTML called from non-TT document on an element adopted into a TT document returns a WritableStream.: FAIL
-	streamReplaceWithHTMLUnsafe called from non-TT document on an element adopted into a TT document throws TypeError.: FAIL
+	streamReplaceWithHTMLUnsafe called from non-TT document on an element adopted into a TT document throws TypeError.: PASS
 /domparsing/tentative/stream-html-with-trusted-types-no-createParserOptions.html: ERROR
 /domparsing/tentative/stream-html-with-trusted-types-no-policy.html: OK
 	Streaming with trusted types and no default policy does not throw for streamAfterHTML.: FAIL
@@ -2186,6 +2243,23 @@
 /domparsing/xml-parse-serialize-roundtrip.html: OK
 	DOMParser and XMLSerializer should round trip with CDATA sections: large CDATA: PASS
 	DOMParser and XMLSerializer should round trip with CDATA sections: multiple CDATAs: PASS
-/domparsing/xml-serialization.xhtml: ERROR
+/domparsing/xml-serialization.xhtml: OK
+	Comment: containing --: PASS
+	Comment: containing -->: PASS
+	Comment: ending with -: PASS
+	Comment: starting with -: PASS
+	DocumentType: 'APOSTROPHE' (U+0027): PASS
+	DocumentType: 'APOSTROPHE' (U+0027) and 'QUOTATION MARK' (U+0022): PASS
+	DocumentType: 'QUOTATION MARK' (U+0022): PASS
+	DocumentType: empty public and system id: PASS
+	DocumentType: empty public id: PASS
+	DocumentType: empty system id: PASS
+	DocumentType: non-empty public and system id: PASS
+	Element: href attributes are not percent-encoded: PASS
+	Element: query parts in href attributes are not percent-encoded: PASS
+	ProcessingInstruction: empty data: FAIL
+	ProcessingInstruction: non-empty data: FAIL
+	ProcessingInstruction: target contains a 'COLON' (U+003A): FAIL
+	ProcessingInstruction: target contains xml: FAIL
 /domparsing/xmldomparser.html: OK
 	XML Dom Parse readyState Test: FAIL

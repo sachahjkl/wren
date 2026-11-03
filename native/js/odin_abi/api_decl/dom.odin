@@ -69,6 +69,7 @@ Document_partOf                 :: #type proc(document: Document, which: Documen
 Document_set_body               :: #type proc(body: Element) -> abi.Api_Error
 Document_xmlContentType         :: #type proc(document: Document) -> (string, abi.Api_Error)   // Not_Found: the page's
 Document_contentType            :: #type proc() -> string
+Document_characterSet           :: #type proc() -> string
 Document_URL                    :: #type proc() -> string
 Document_createTextNode         :: #type proc(data: string) -> (Node, abi.Api_Error)
 Document_createComment          :: #type proc(data: string) -> (Node, abi.Api_Error)

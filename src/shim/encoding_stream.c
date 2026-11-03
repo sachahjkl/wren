@@ -13,6 +13,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "lexbor/encoding/encoding.h"
+#include "wb_shift_jis.h"
 
 #define WB_CP_BUF 1024
 
@@ -136,7 +137,7 @@ int wb_decoder_decode(wb_decoder *d, const uint8_t *data, size_t len, int flush,
     lxb_status_t st;
 
     for (;;) {
-        st = d->enc->decode(&d->dec, &p, end);
+        st = wb_decode_fn(d->enc)(&d->dec, &p, end);
         emit(d, &o);
         if (st == LXB_STATUS_SMALL_BUFFER) { continue; }
         break;

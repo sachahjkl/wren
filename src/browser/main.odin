@@ -1180,7 +1180,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			// forms_pointer_up only reports `clicked` for the left button, so the middle case is handled here
 			if ev.button == .Middle && inside && released != base.NIL_HANDLE {
 				if href, ok := anchor_href(t.page.doc, released); ok {
-					if resolved, rok := url.parse(href, &t.page.env.location, context.temp_allocator); rok {
+					if resolved, rok := page.resolve_link(t.page, href, released); rok {
 						open_in_new_tab(app, resolved.href, t.page, origin = .Page)
 						continue
 					}
@@ -1193,7 +1193,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			// default action: following a link, unless a listener called preventDefault
 			if not_prevented && ev.button == .Left {
 				if href, ok := anchor_href(t.page.doc, target); ok {
-					resolved, rok := url.parse(href, &t.page.env.location, context.temp_allocator)
+					resolved, rok := page.resolve_link(t.page, href, target)
 					if !rok { tab_log(t, .Error, fmt.tprintf("invalid link %q", href)); continue }
 					if page.follow_fragment_link(t.page, resolved) { continue }   // same document: page_draw scrolls to the target
 					if page.follow_javascript_url(t.page, resolved) { continue }  // javascript: runs in the page (js_load_realm.odin)

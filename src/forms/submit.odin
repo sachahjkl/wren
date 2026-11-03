@@ -7,6 +7,7 @@ import "core:strconv"
 import "core:strings"
 import "wb:base"
 import "wb:dom"
+import "wb:html"
 import "wb:url"
 
 // Form submission (§4.10.21): the submission algorithm, the form data set (entry list) and its three encodings.
@@ -82,16 +83,38 @@ action_of :: proc(f: ^Forms, form, submitter: base.Handle) -> (string, bool) {
 	if trim_ascii_ws(a) == "" { return base_url, true }
 	b, ok := url.parse_absolute(base_url, context.temp_allocator)
 	if !ok { return "", false }
-	u, uok := url.parse(trim_ascii_ws(a), &b, context.temp_allocator)
+	enc := f.host.document_encoding != nil ? f.host.document_encoding(f.host.user) : ""
+	u, uok := url.parse(trim_ascii_ws(a), &b, context.temp_allocator, enc)
 	if !uok { return "", false }
 	return u.href, true
 }
 
-// The encoding the form is submitted in. Only UTF-8 is implemented: an accept-charset that names other encodings falls
-// back to UTF-8 (which is also what the specification mandates for new content).
+// The encoding the form is submitted in (§4.10.21.3 "pick an encoding for the form"): the first label of accept-charset
+// that names one (UTF-8 when none does), else the document's; then its output encoding (UTF-16 and replacement are
+// UTF-8). A WHATWG name, static.
 @(private)
 pick_charset :: proc(f: ^Forms, form: base.Handle) -> string {
-	return "UTF-8"
+	enc := "UTF-8"
+	if accept, has := attr(element(f, form), "accept-charset"); has {
+		for label in strings.fields(accept, context.temp_allocator) {
+			if e := html.canonical_encoding(label); e != "" { enc = e; break }
+		}
+	} else if f.host.document_encoding != nil {
+		if e := html.canonical_encoding(f.host.document_encoding(f.host.user)); e != "" { enc = e }
+	}
+	switch enc {
+	case "UTF-16BE", "UTF-16LE", "replacement": enc = "UTF-8"
+	}
+	return enc
+}
+
+// `s` in the submission's encoding (error mode html: "&#N;" for what it cannot represent), what the encodings below
+// percent-encode or send; `s` itself in UTF-8.
+@(private)
+in_charset :: proc(s: string, charset: string) -> string {
+	if charset == "UTF-8" { return s }
+	e, ok := url.encode_text(s, charset, context.temp_allocator)
+	return ok ? e : s
 }
 
 ////////////////////////////////
@@ -224,23 +247,23 @@ urlencode_into :: proc(sb: ^strings.Builder, s: string, space_as_plus := true) {
 @(private)
 pair_value :: proc(e: Entry) -> string { return e.is_file ? e.file.name : crlf(e.value) }
 
-urlencode :: proc(list: []Entry, allocator := context.allocator) -> string {
+urlencode :: proc(list: []Entry, allocator := context.allocator, charset := "UTF-8") -> string {
 	sb := strings.builder_make(allocator)
 	for e, i in list {
 		if i > 0 { strings.write_byte(&sb, '&') }
-		urlencode_into(&sb, crlf(e.name))
+		urlencode_into(&sb, in_charset(crlf(e.name), charset))
 		strings.write_byte(&sb, '=')
-		urlencode_into(&sb, pair_value(e))
+		urlencode_into(&sb, in_charset(pair_value(e), charset))
 	}
 	return strings.to_string(sb)
 }
 
-text_plain :: proc(list: []Entry, allocator := context.allocator) -> string {
+text_plain :: proc(list: []Entry, allocator := context.allocator, charset := "UTF-8") -> string {
 	sb := strings.builder_make(allocator)
 	for e in list {
-		strings.write_string(&sb, crlf(e.name))
+		strings.write_string(&sb, in_charset(crlf(e.name), charset))
 		strings.write_byte(&sb, '=')
-		strings.write_string(&sb, pair_value(e))
+		strings.write_string(&sb, in_charset(pair_value(e), charset))
 		strings.write_string(&sb, "\r\n")
 	}
 	return strings.to_string(sb)
@@ -294,7 +317,7 @@ read_file_default :: proc(path: string, max_bytes: int, user: rawptr) -> (data: 
 
 // multipart/form-data (RFC 7578 with the HTML escaping rules). Files on disk are read with `read` (this may run on a
 // worker thread: it touches nothing but the entries). Limits from `s`.
-multipart :: proc(list: []Entry, boundary: string, s: Settings, read: Read_File_Proc = read_file_default, user: rawptr = nil, allocator := context.allocator) -> (body: []byte, ok: bool, message: string) {
+multipart :: proc(list: []Entry, boundary: string, s: Settings, read: Read_File_Proc = read_file_default, user: rawptr = nil, allocator := context.allocator, charset := "UTF-8") -> (body: []byte, ok: bool, message: string) {
 	out := make([dynamic]byte, allocator)
 	sb := strings.builder_make(context.temp_allocator)
 	total := 0
@@ -303,11 +326,11 @@ multipart :: proc(list: []Entry, boundary: string, s: Settings, read: Read_File_
 		strings.write_string(&sb, "--")
 		strings.write_string(&sb, boundary)
 		strings.write_string(&sb, "\r\nContent-Disposition: form-data; name=\"")
-		multipart_escape(&sb, crlf(e.name))
+		multipart_escape(&sb, in_charset(crlf(e.name), charset))
 		strings.write_byte(&sb, '"')
 		if e.is_file {
 			strings.write_string(&sb, "; filename=\"")
-			multipart_escape(&sb, e.file.name)
+			multipart_escape(&sb, in_charset(e.file.name, charset))
 			strings.write_string(&sb, "\"\r\nContent-Type: ")
 			strings.write_string(&sb, mime_header_value(e.file.mime))
 		}
@@ -331,7 +354,7 @@ multipart :: proc(list: []Entry, boundary: string, s: Settings, read: Read_File_
 				return nil, false, fmt.aprintf("the files of this form exceed forms.upload.max_total_bytes")
 			}
 		} else {
-			append(&out, ..transmute([]byte)crlf(e.value))
+			append(&out, ..transmute([]byte)in_charset(crlf(e.value), charset))
 		}
 		append(&out, '\r', '\n')
 	}
@@ -353,14 +376,14 @@ needs_file_reads :: proc(list: []Entry) -> bool {
 encode_submission :: proc(sub: ^Submission, s: Settings, read: Read_File_Proc = read_file_default, user: rawptr = nil) -> (ok: bool, message: string) {
 	switch sub.enctype {
 	case .Urlencoded:
-		sub.body = transmute([]byte)urlencode(sub.entries[:])
+		sub.body = transmute([]byte)urlencode(sub.entries[:], charset = sub.charset)
 		sub.content_type = strings.clone("application/x-www-form-urlencoded")
 	case .Text_Plain:
-		sub.body = transmute([]byte)text_plain(sub.entries[:])
+		sub.body = transmute([]byte)text_plain(sub.entries[:], charset = sub.charset)
 		sub.content_type = strings.clone("text/plain")
 	case .Multipart:
 		if sub.boundary == "" { sub.boundary = make_boundary() }
-		body, bok, msg := multipart(sub.entries[:], sub.boundary, s, read, user)
+		body, bok, msg := multipart(sub.entries[:], sub.boundary, s, read, user, charset = sub.charset)
 		if !bok { return false, msg }
 		sub.body = body
 		sub.content_type = strings.concatenate({"multipart/form-data; boundary=", sub.boundary})
@@ -475,7 +498,7 @@ submit :: proc(f: ^Forms, form: base.Handle, submitter: base.Handle, from_method
 		sub.mailto = true
 		if method == .Get {
 			// mail with headers: the query is the entry list, spaces as %20
-			q := urlencode(list[:], context.temp_allocator)
+			q := urlencode(list[:], context.temp_allocator, charset)
 			q, _ = strings.replace_all(q, "+", "%20", context.temp_allocator)
 			sub.url = strings.clone(replace_query(action, q))
 		} else {
@@ -483,10 +506,10 @@ submit :: proc(f: ^Forms, form: base.Handle, submitter: base.Handle, from_method
 			body: string
 			if enctype == .Text_Plain {
 				sb := strings.builder_make(context.temp_allocator)
-				urlencode_into(&sb, text_plain(list[:], context.temp_allocator), false)
+				urlencode_into(&sb, text_plain(list[:], context.temp_allocator, charset), false)
 				body = strings.to_string(sb)
 			} else {
-				body = urlencode(list[:], context.temp_allocator)
+				body = urlencode(list[:], context.temp_allocator, charset)
 			}
 			sep := u.has_query ? "&" : "?"
 			head := u.href
@@ -498,7 +521,7 @@ submit :: proc(f: ^Forms, form: base.Handle, submitter: base.Handle, from_method
 	case:
 		if method == .Get || u.scheme == "data" || (u.scheme != "http" && u.scheme != "https") {
 			// mutate action URL: the query becomes the entry list (data: and other schemes always navigate with GET)
-			sub.url = strings.clone(replace_query(action, urlencode(list[:], context.temp_allocator)))
+			sub.url = strings.clone(replace_query(action, urlencode(list[:], context.temp_allocator, charset)))
 			sub.method = .Get
 			entries_destroy(&list)
 		} else {

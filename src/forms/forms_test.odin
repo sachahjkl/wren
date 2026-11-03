@@ -19,6 +19,7 @@ Fixture :: struct {
 	subs:     [dynamic]^Submission,
 	clock:    f64,
 	url:      string,
+	encoding: string,                 // the document's ("" = UTF-8)
 	style_changes: int,
 	edit_on_beforeinput: bool,
 }
@@ -39,6 +40,7 @@ fx_make :: proc(src: string, doc_url := "http://example.test/dir/page.html") -> 
 			return !(ev.cancelable && x.cancel[ev.type])
 		},
 		document_url = proc(user: rawptr) -> string { return (^Fixture)(user).url },
+		document_encoding = proc(user: rawptr) -> string { return (^Fixture)(user).encoding },
 		navigate = proc(user: rawptr, s: ^Submission) { append(&(^Fixture)(user).subs, s) },
 		style_changed = proc(user: rawptr) { (^Fixture)(user).style_changes += 1 },
 		now_ms = proc(user: rawptr) -> f64 { return (^Fixture)(user).clock },
@@ -402,6 +404,33 @@ submission_get_post :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(x.subs), 4)
 	// requestSubmit checks its submitter
 	testing.expect_value(t, request_submit(f, id(x, "g"), id(x, "r")), Error.Not_Supported)
+}
+
+// A form submits in the first encoding its accept-charset names, else in the document's: the query, the body and
+// _charset_ follow, "&#N;" for what the encoding cannot represent; UTF-16 submits UTF-8.
+@(test)
+submission_in_the_document_encoding :: proc(t: ^testing.T) {
+	x := fx_make(`<form id=doc action="/s?日"><input name=q value="日本 한"><input type=hidden name=_charset_></form>
+<form id=ac accept-charset="bogus EUC-KR utf-8" action=/s><input name=q value="한"></form>
+<form id=none accept-charset="bogus" action=/s><input name=q value="日"></form>
+<form id=u16 accept-charset="utf-16" action=/s><input name=q value="é"></form>
+<form id=post method=post action=/p><input name=q value="日"></form>`)
+	defer fx_destroy(x)
+	x.encoding = "Shift_JIS"
+	f := x.f
+	submit(f, id(x, "doc"), base.NIL_HANDLE)
+	submit(f, id(x, "ac"), base.NIL_HANDLE)
+	submit(f, id(x, "none"), base.NIL_HANDLE)
+	submit(f, id(x, "u16"), base.NIL_HANDLE)
+	submit(f, id(x, "post"), base.NIL_HANDLE)
+	testing.expect_value(t, len(x.subs), 5)
+	testing.expect_value(t, x.subs[0].url, "http://example.test/s?q=%93%FA%96%7B+%26%2354620%3B&_charset_=Shift_JIS")
+	testing.expect_value(t, x.subs[1].url, "http://example.test/s?q=%C7%D1")
+	testing.expect_value(t, x.subs[2].url, "http://example.test/s?q=%E6%97%A5")
+	testing.expect_value(t, x.subs[3].url, "http://example.test/s?q=%C3%A9")
+	ok, _ := encode_submission(x.subs[4], x.settings)
+	testing.expect(t, ok)
+	testing.expect_value(t, string(x.subs[4].body), "q=%93%FA")
 }
 
 @(test)

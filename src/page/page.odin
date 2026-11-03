@@ -81,6 +81,7 @@ Page :: struct {
 	settings:  ^Settings,     // shared, owned by the shell; follows preference changes
 	env:       fetch.Environment,
 	doc:       ^dom.Document,
+	encoding:  string,         // what the document was decoded from (WHATWG name, static: html.canonical_encoding); "" = UTF-8
 	dp:        dom.Dispatcher,
 	instances: [dynamic]^wasm.Instance,
 	fetches:   base.Pool(Fetch),

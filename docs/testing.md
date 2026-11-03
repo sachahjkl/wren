@@ -118,6 +118,8 @@ last time, has its whole limit.
 
 The tests wait in one queue, the costliest first (`build\wpt\times.txt`, each test's time in the last run; else its whole limit for a test expected to time out), and a child process takes the next one on its standard input as it ends one (`src/tools/wpt/queue.odin`, at most `-chunk` per child): a folder of slow tests is spread over every child instead of leaving one alone at the end. A child runs its pages on a thread it makes with the stack JavaScript needs (no linker flag to remember); a child whose JavaScript cannot start stops the run at once with its reason. Every 30 s the runner says on its standard output how many tests are done and how many regressed so far.
 
+A test is loaded by its type, as the browser loads it: an `.xhtml` test is an XML document (UTF-8 unless it says otherwise), not HTML.
+
 The pages see wptserve's names: `web-platform.test` (`{{host}}`), `www1.web-platform.test`..., `not-web-platform.test`, all on this machine. The browser resolves them itself (`network.hosts`), never the system or a hosts file, trusts the test server's authority for its https origin (`network.tls.extra_ca_file`, `build\wpt\testca.pem`), loads a `.https.` test over https, and connects to nothing else (`network.loopback_only`).
 
 A test whose expectation is TIMEOUT is not run (`build\wpt\skipped_timeouts.txt`, counted in the report; `-timeouts` runs them, `-update` always does), and a long test (`<meta name=timeout content=long>`) gets 3 times `-timeout` at most (`LONG_TIMEOUT_FACTOR`): the time of a full run went to tests waiting for what never came.

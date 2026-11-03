@@ -2,12 +2,14 @@
  * (release with wb_free) so no Lexbor structure leaks into the caller. Every call builds and destroys its own parser:
  * safe from any thread.
  */
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include "lexbor/url/url.h"
 #include "lexbor/encoding/encoding.h"
 #include "lexbor/html/encoding.h"
+#include "wb_shift_jis.h"
 
 void wb_free(void *p) { free(p); }
 
@@ -40,11 +42,19 @@ static lxb_status_t serialize_cb(const lxb_char_t *data, size_t len, void *ctx)
     return buf_append((wb_buf *) ctx, data, len) == 0 ? LXB_STATUS_OK : LXB_STATUS_ERROR_MEMORY_ALLOCATION;
 }
 
+/* The encoding named by a WHATWG label; UTF-8 for an empty or unknown one. */
+static lxb_encoding_t encoding_of(const char *label, size_t label_len)
+{
+    const lxb_encoding_data_t *d = label_len ? lxb_encoding_data_by_pre_name((const lxb_char_t *) label, label_len) : NULL;
+    return d != NULL ? d->encoding : LXB_ENCODING_UTF_8;
+}
+
 /* Parses `input` (resolving against `base` when base != NULL) per the WHATWG URL Standard and returns the serialized
- * URL (href). Returns 0 on success, non-zero when the input is not a valid URL (or the base is not).
+ * URL (href). The query of a special URL is encoded in `encoding` (a WHATWG label: the document's, "encoding-parse a
+ * URL"; empty = UTF-8). Returns 0 on success, non-zero when the input is not a valid URL (or the base is not).
  */
 int wb_url_parse(const uint8_t *input, size_t len, const uint8_t *base, size_t base_len,
-                 uint8_t **out, size_t *out_len)
+                 const char *encoding, size_t encoding_len, uint8_t **out, size_t *out_len)
 {
     *out = NULL;
     *out_len = 0;
@@ -65,7 +75,9 @@ int wb_url_parse(const uint8_t *input, size_t len, const uint8_t *base, size_t b
         base_url = lxb_url_parse(parser, NULL, (const lxb_char_t *) base, base_len);
         if (base_url == NULL) { goto done; }
     }
-    url = lxb_url_parse(parser, base_url, (const lxb_char_t *) input, len);
+    (void) lxb_url_parse_basic(parser, NULL, base_url, (const lxb_char_t *) input, len, LXB_URL_STATE__UNDEF,
+                               encoding_of(encoding, encoding_len));
+    url = parser->url;
     if (url == NULL) { goto done; }
 
     if (lxb_url_serialize(url, serialize_cb, &buf, false) != LXB_STATUS_OK || buf.failed) { goto done; }
@@ -96,6 +108,7 @@ int wb_decode_to_utf8(const uint8_t *data, size_t len, const char *label, size_t
     if (from == NULL) { return 1; }
     const lxb_encoding_data_t *to = lxb_encoding_data(LXB_ENCODING_UTF_8);
 
+    lxb_encoding_decode_f decode_fn = wb_decode_fn(from);
     lxb_encoding_decode_t decode;
     lxb_encoding_encode_t encode;
     lxb_codepoint_t cp[1024];
@@ -112,7 +125,7 @@ int wb_decode_to_utf8(const uint8_t *data, size_t len, const char *label, size_t
     lxb_status_t ds;
 
     do {
-        ds = from->decode(&decode, &p, end);
+        ds = decode_fn(&decode, &p, end);
         const lxb_codepoint_t *cp_ref = cp;
         const lxb_codepoint_t *cp_end = cp + lxb_encoding_decode_buf_used(&decode);
         lxb_status_t es;
@@ -139,6 +152,60 @@ int wb_decode_to_utf8(const uint8_t *data, size_t len, const char *label, size_t
     *out = buf.data;
     *out_len = buf.len;
     return 0;
+}
+
+/* Encodes UTF-8 `data` in the encoding named `label` (Encoding Standard "encode", error mode html: a code point the
+ * encoding cannot represent becomes "&#N;", itself encoded, which takes ISO-2022-JP back to ASCII). The output encoding
+ * of UTF-16 and replacement is UTF-8. Returns 0 on success; other values on failure.
+ */
+int wb_encode_from_utf8(const uint8_t *data, size_t len, const char *label, size_t label_len,
+                        uint8_t **out, size_t *out_len)
+{
+    *out = NULL;
+    *out_len = 0;
+
+    lxb_encoding_t e = encoding_of(label, label_len);
+    if (e == LXB_ENCODING_UTF_16BE || e == LXB_ENCODING_UTF_16LE || e == LXB_ENCODING_REPLACEMENT) { e = LXB_ENCODING_UTF_8; }
+    const lxb_encoding_data_t *to = lxb_encoding_data(e);
+    if (to == NULL) { return -1; }
+
+    lxb_encoding_encode_t encode;
+    (void) lxb_encoding_encode_init_single(&encode, to);
+    wb_buf buf = {0};
+    lxb_char_t bytes[16];
+    char ref[16];
+    const lxb_char_t *p = data;
+    const lxb_char_t *end = data + len;
+
+    while (p < end) {
+        lxb_codepoint_t cp = lxb_encoding_decode_valid_utf_8_single(&p, end);
+        if (cp > LXB_ENCODING_DECODE_MAX_CODEPOINT) { continue; }
+        lxb_char_t *w = bytes;
+        int8_t n = to->encode_single(&encode, &w, bytes + sizeof(bytes), cp);
+        if (n >= 0) { buf_append(&buf, bytes, (size_t) (w - bytes)); continue; }
+        int rn = snprintf(ref, sizeof(ref), "&#%u;", (unsigned) cp);
+        for (int i = 0; i < rn; i++) {
+            w = bytes;
+            (void) to->encode_single(&encode, &w, bytes + sizeof(bytes), (lxb_codepoint_t) ref[i]);
+            buf_append(&buf, bytes, (size_t) (w - bytes));
+        }
+    }
+    lxb_char_t *w = bytes;
+    (void) lxb_encoding_encode_finish_single(&encode, &w, bytes + sizeof(bytes));
+    buf_append(&buf, bytes, (size_t) (w - bytes));
+
+    if (buf.failed) { free(buf.data); return -1; }
+    if (buf.data == NULL) { buf_append(&buf, (const uint8_t *) "", 0); }
+    *out = buf.data;
+    *out_len = buf.len;
+    return 0;
+}
+
+/* The WHATWG name of a label ("latin1" -> "windows-1252"), in Lexbor's static memory; NULL when unknown. */
+const char *wb_encoding_name(const char *label, size_t label_len)
+{
+    const lxb_encoding_data_t *d = lxb_encoding_data_by_pre_name((const lxb_char_t *) label, label_len);
+    return d != NULL ? (const char *) d->name : NULL;
 }
 
 /* Canonical (WHATWG) name for a label, e.g. "latin1" -> "windows-1252". Returns the length, 0 if unknown. */

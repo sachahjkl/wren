@@ -17,7 +17,7 @@ when ODIN_OS == .Windows {
 @(default_calling_convention = "c")
 foreign lexbor_enc {
 	wb_decode_to_utf8 :: proc(data: [^]u8, len: uint, label: [^]u8, label_len: uint, out: ^[^]u8, out_len: ^uint) -> i32 ---
-	wb_encoding_canonical_name :: proc(label: [^]u8, label_len: uint, out: [^]u8, cap: uint) -> uint ---
+	wb_encoding_name :: proc(label: [^]u8, label_len: uint) -> cstring ---
 	wb_html_prescan_charset :: proc(data: [^]u8, len: uint, out: [^]u8, cap: uint) -> uint ---
 	wb_free :: proc(p: rawptr) ---
 }
@@ -30,14 +30,11 @@ Decoded :: struct {
 
 Encoding_Source :: enum u8 { Bom, Header, Meta, Default }
 
-// The WHATWG name for a label ("latin1" -> "windows-1252"), or "" when unknown.
+// The WHATWG name for a label ("latin1" -> "windows-1252"), or "" when unknown. Static: a document keeps it as is.
 canonical_encoding :: proc(label: string) -> string {
 	l := strings.trim_space(label)
 	if l == "" { return "" }
-	buf: [64]u8
-	n := wb_encoding_canonical_name(raw_data(l), uint(len(l)), raw_data(buf[:]), len(buf))
-	if n == 0 { return "" }
-	return strings.clone(string(buf[:n]), context.temp_allocator)
+	return string(wb_encoding_name(raw_data(l), uint(len(l))))
 }
 
 // The "encoding sniffing algorithm": byte-order mark, then the transport's charset (`header_charset`, from

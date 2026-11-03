@@ -347,13 +347,18 @@ ElementContentEditable_isContentEditable :: proc(c: ^Call, element: Api_Element)
 ////////////////////////////////
 // Hyperlinks (HTMLHyperlinkElementUtils): the href attribute parsed against the document's base URL
 
+// The URL a link `from` names: `href` against the document's base URL, the query in the encoding of its document (HTML
+// "encoding-parse a URL"). What links followed by a script or by the user go to.
+resolve_link :: proc(p: ^Page, href: string, from: base.Handle, allocator := context.temp_allocator) -> (url.URL, bool) {
+	b, ok := url.parse_absolute(document_base_url(p), context.temp_allocator)
+	return url.parse(href, ok ? &b : nil, allocator, node_encoding(p, from))
+}
+
 @(private)
 link_url :: proc(c: ^Call, element: Api_Element) -> (url.URL, bool) {
 	href, has := dom.get_attribute(c.page.doc, H(element.handle), "href")
 	if !has { return {}, false }
-	b, ok := url.parse_absolute(document_base_url(c.page), context.temp_allocator)
-	if !ok { return url.parse_absolute(href, context.temp_allocator) }
-	return url.parse(href, &b, context.temp_allocator)
+	return resolve_link(c.page, href, H(element.handle))
 }
 
 HTMLHyperlinkElementUtils_href :: proc(c: ^Call, element: Api_Element) -> string {

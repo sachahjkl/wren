@@ -8738,6 +8738,7 @@
 /shadow-dom/focus/focus-tabindex-order-shadow-negative.html: TIMEOUT
 	Order when all elements in shadow tree has negative tabindex: TIMEOUT
 /shadow-dom/focus/focus-tabindex-order-shadow-slot-one.html: TIMEOUT
+	Order when all tabindex=0, except for one slot that has tabindex=1: TIMEOUT
 /shadow-dom/focus/focus-tabindex-order-shadow-varying-delegatesFocus.html: TIMEOUT
 	Order when tabindex varies and delegatesFocus = true: TIMEOUT
 /shadow-dom/focus/focus-tabindex-order-shadow-varying-tabindex-2.html: TIMEOUT
@@ -8781,7 +8782,9 @@
 	element.getDestinationInsertionPoints should not exist: PASS
 	event.path should not exist: PASS
 	text.getDestinationInsertionPoints should not exist: PASS
-/shadow-dom/host-with-namespace.xhtml: ERROR
+/shadow-dom/host-with-namespace.xhtml: OK
+	Test attachShadow with a namespaced element: PASS
+	attachShadow with a default-namespaced element: PASS
 /shadow-dom/imperative-slot-api-cross-shadow-root.html: OK
 	HTMLSlotElement.assign cross shadow root layout should not crash: PASS
 	HTMLSlotElement.assign drops DidSlotChange for previous_slot in different shadow root: FAIL
@@ -8824,7 +8827,11 @@
 /shadow-dom/imperative-slot-initial-fallback.html: OK
 	Unassigned imperative slot can render element as the initial fallback: FAIL
 	Unassigned imperative slot can render text node as the initial fallback: FAIL
-/shadow-dom/innerHTML-setter.xhtml: ERROR
+/shadow-dom/innerHTML-setter.xhtml: OK
+	InnerHTML behavior on custom element in default 'foo' namespace: FAIL
+	InnerHTML behavior on custom element in default XHTML namespace: PASS
+	InnerHTML behavior with prefixes on custom element: FAIL
+	Setting up the custom elements: PASS
 /shadow-dom/input-element-list.html: OK
 	Input element's list attribute should point to the datalist element in Shadow DOM.: PASS
 	Input element's list attribute should point to the datalist element.: PASS
@@ -9906,7 +9913,7 @@
 	A_08_02_02_T01: PASS
 	A_08_02_02_T02: PASS
 	A_08_02_02_T03: PASS
-/shadow-dom/untriaged/html-elements-in-shadow-trees/html-forms/test-003.html: OK|TIMEOUT
+/shadow-dom/untriaged/html-elements-in-shadow-trees/html-forms/test-003.html: TIMEOUT
 	A_08_02_03_T01: TIMEOUT
 /shadow-dom/untriaged/html-elements-in-shadow-trees/inert-html-elements/test-001.html: OK
 	A_08_01_01_T01: PASS

@@ -67,6 +67,7 @@ forms_attach :: proc(p: ^Page) {
 			return dispatch_event(p, target, ev)
 		},
 		document_url = proc(user: rawptr) -> string { return (^Page)(user).env.location.href },
+		document_encoding = proc(user: rawptr) -> string { return document_encoding((^Page)(user)) },
 		navigate = forms_plan_navigation,
 		style_changed = proc(user: rawptr) {
 			p := (^Page)(user)

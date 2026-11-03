@@ -225,10 +225,7 @@ navigation_follow_script_link :: proc(p: ^Page, link: base.Handle) {
 	if p == nil || p.closed || p.web == nil { return }
 	href, ok := dom.get_attribute(p.doc, link, "href")
 	if !ok { return }
-	base_href := document_base_url(p)
-	base_url, bok := url.parse(base_href, nil, context.temp_allocator)
-	if !bok { return }
-	u, uok := url.parse(strings.clone(href, context.temp_allocator), &base_url, context.temp_allocator)
+	u, uok := resolve_link(p, strings.clone(href, context.temp_allocator), link)
 	if !uok { return }
 	if dl, is_dl := dom.get_attribute(p.doc, link, "download"); is_dl {
 		if p.web.unloading > 0 { return }

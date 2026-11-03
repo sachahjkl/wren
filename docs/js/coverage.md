@@ -1867,9 +1867,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly URL`: import `document.Document_URL`
 - `readonly documentURI`: import `dom.Document_documentURI`
 - `readonly compatMode`: import `dom.Document_compatMode`
-- `readonly characterSet`: import `dom.Document_characterSet`
-- `readonly charset`: import `dom.Document_charset`
-- `readonly inputEncoding`: import `dom.Document_inputEncoding`
+- `readonly characterSet`: C `wjr_Document_get_characterSet`
+- `readonly charset`: C `wjr_Document_get_charset`
+- `readonly inputEncoding`: C `wjr_Document_get_inputEncoding`
 - `readonly contentType`: C `wjr_Document_get_contentType`
 - `readonly doctype`: C `wjr_Document_get_doctype`
 - `readonly documentElement`: C `wjr_Document_get_documentElement`
