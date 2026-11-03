@@ -440,14 +440,22 @@ ComputedStyle_name :: proc(c: ^Call, index: u32) -> string {
 	return int(index) < len(names) ? names[index] : ""
 }
 
-// A number as CSS serializes it: no exponent, at most 6 decimals, no trailing zeros.
+// A number as CSS serializes it: no exponent, at most CSS_NUM_DECIMALS decimals, no trailing zeros. The shortest decimal
+// that reads back as the same f32 when it is that short: 20.7px is not "20.700001px".
+@(private)
+CSS_NUM_DECIMALS :: 6
+
 @(private)
 css_num :: proc(v: f32) -> string {
 	x := f64(v)
 	if math.is_nan(x) || math.is_inf(x) { return "0" }
 	if x == math.round(x) && abs(x) < 1e15 { return fmt.tprintf("%d", i64(x)) }
 	buf: [64]u8
-	s := strconv.write_float(buf[:], x, 'f', 6, 64)
+	if short := strconv.write_float(buf[:], x, 'f', -1, 32); strings.contains(short, ".") && len(short) - strings.index_byte(short, '.') - 1 <= CSS_NUM_DECIMALS {
+		if short[0] == '+' { short = short[1:] }
+		return strings.clone(short, context.temp_allocator)
+	}
+	s := strconv.write_float(buf[:], x, 'f', CSS_NUM_DECIMALS, 64)
 	if len(s) > 0 && s[0] == '+' { s = s[1:] }
 	for strings.contains(s, ".") && (s[len(s) - 1] == '0' || s[len(s) - 1] == '.') {
 		last := s[len(s) - 1]
@@ -544,7 +552,8 @@ Used_Box :: struct {
 	ok:              bool,
 	width, height:   f32,       // content box, CSS px
 	margin, padding: [4]f32,    // top right bottom left
-	anchored:        bool,      // an anchored box (lay.anchored_used): its insets and size bounds are used values
+	anchored:        bool,      // an anchored box (lay.anchored_used): its size bounds are used values
+	insets:          bool,      // a positioned box (lay.positioned_insets, lay.anchored_used): its insets are resolved values
 	inset:           [4]f32,    // top right bottom left, CSS px
 	inset_auto:      [4]bool,   // ... those that are auto in what was chosen
 	bounds:          [4]style.Length,   // min-width, min-height, max-width, max-height
@@ -575,7 +584,7 @@ computed_value :: proc(cs: ^style.Computed, name_in: string, used: Used_Box) -> 
 		x, y := kw(cs.overflow_x), kw(cs.overflow_y)
 		return x == y ? x : strings.concatenate({x, " ", y}, context.temp_allocator)
 	case "top", "right", "bottom", "left":
-		if used.anchored { return used.inset_auto[side(name)] ? "auto" : css_px(used.inset[side(name)]) }
+		if used.insets { return used.inset_auto[side(name)] ? "auto" : css_px(used.inset[side(name)]) }
 		return css_length(cs.inset[style.Side(side(name))])
 	case "z-index": return cs.z_auto ? "auto" : fmt.tprintf("%d", cs.z_index)
 	case "width": if used.ok && cs.display != .Inline { return css_px(used.width) }; return css_length(cs.width)

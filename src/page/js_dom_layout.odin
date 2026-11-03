@@ -147,7 +147,16 @@ used_box :: proc(p: ^Page, h: base.Handle) -> Used_Box {
 	s := f32(vp.scale)
 	u := Used_Box{ok = true, width = g.content.max.x - g.content.min.x, height = g.content.max.y - g.content.min.y}
 	for i in 0 ..< 4 { u.margin[i] = g.box.margin[i] / s; u.padding[i] = g.box.padding[i] / s }
-	if bi := lay.box_index(l, h); bi != lay.NONE && len(l.anchored) > 0 { u.inset, u.inset_auto, u.bounds, u.anchored = lay.anchored_used(l, bi, s) }
+	if bi := lay.box_index(l, h); bi != lay.NONE {
+		u.inset, u.inset_auto, u.insets = lay.positioned_insets(l, bi, s)
+		if len(l.anchored) > 0 {
+			// an anchored box: the insets of what was chosen; a side auto there is where the box is, as for any other
+			if inset, auto_inset, bounds, ok := lay.anchored_used(l, bi, s); ok {
+				for i in 0 ..< 4 { if !auto_inset[i] || !u.insets { u.inset[i], u.inset_auto[i] = inset[i], auto_inset[i] } }
+				u.bounds, u.anchored, u.insets = bounds, true, true
+			}
+		}
+	}
 	return u
 }
 
@@ -173,6 +182,7 @@ used_box_pseudo :: proc(p: ^Page, h: base.Handle, after: bool) -> Used_Box {
 		u := Used_Box{ok = true, width = (b.size.x - b.padding[1] - b.padding[3] - b.border[1] - b.border[3]) / s, height = (b.size.y - b.padding[0] - b.padding[2] - b.border[0] - b.border[2]) / s}
 		for i in 0 ..< 4 { u.margin[i] = b.margin[i] / s; u.padding[i] = b.padding[i] / s }
 		u.inset, u.inset_auto, u.bounds, u.anchored = lay.anchored_used(l, e.box, s)
+		u.insets = u.anchored
 		return u
 	}
 	return {}

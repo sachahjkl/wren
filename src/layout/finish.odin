@@ -234,6 +234,52 @@ relative_offset :: proc(c: ^Ctx, b: ^Box) -> Vec2 {
 	return off
 }
 
+// For getComputedStyle (CSSOM "resolved value" of top, right, bottom, left): the insets of a positioned box, CSS px, top
+// right bottom left. A side that is not auto is its value against the containing block (percentages of its height for
+// top and bottom, of its width for left and right); an auto side is where the margin box is in it (absolute, fixed), the
+// opposite side negated or 0 (relative), or stays auto (sticky). ok = false for a box that is not positioned, an inline
+// one, or one in an inline containing block: their computed values answer.
+positioned_insets :: proc(l: ^Layout, bi: i32, scale: f32) -> (insets: [4]f32, auto_inset: [4]bool, ok: bool) {
+	b := &l.boxes[bi]
+	cs := b.cs
+	if cs == nil || b.kind == .Inline || cs.position == .Static { return }
+	abs := .Abs in b.flags
+	owner := abs ? b.cb : b.parent
+	if !abs && owner != NONE && l.boxes[owner].kind == .Inline { owner = l.boxes[owner].ifc_root }
+	if owner == NONE || l.boxes[owner].kind == .Inline { return }
+	if .Sticky in b.flags {
+		// a sticky box's percentages are of its scroll container's content box, when it has one
+		for a := b.parent; a != NONE; a = l.boxes[a].parent {
+			if .Clips in l.boxes[a].flags && l.boxes[a].kind != .Inline { owner = a; break }
+		}
+	}
+	cb := abs ? padding_rect(&l.boxes[owner]) : content_rect(&l.boxes[owner])
+	cb = Rect{cb.min / scale, cb.max / scale}
+	basis := [4]f32{cb.max.y - cb.min.y, cb.max.x - cb.min.x, cb.max.y - cb.min.y, cb.max.x - cb.min.x}
+	for s in 0 ..< 4 {
+		// (an anchor() the box could not resolve is auto: one it resolved is the anchored box's, anchored_used)
+		v := cs.inset[style.Side(s)]
+		if v.kind == .Auto || v.kind == .Anchor { auto_inset[s] = true } else { insets[s] = style.resolve(v, basis[s]) }
+	}
+	switch {
+	case abs:
+		box := border_rect(b)
+		m := Rect{(box.min - {b.margin[3], b.margin[0]}) / scale, (box.max + {b.margin[1], b.margin[2]}) / scale}
+		at := [4]f32{m.min.y - cb.min.y, cb.max.x - m.max.x, cb.max.y - m.max.y, m.min.x - cb.min.x}
+		for s in 0 ..< 4 { if auto_inset[s] { insets[s] = at[s] } }
+		auto_inset = {}
+	case cs.position == .Relative:
+		declared := insets
+		for s in 0 ..< 4 {
+			if !auto_inset[s] { continue }
+			opposite := (s + 2) % 4
+			insets[s] = auto_inset[opposite] ? 0 : -declared[opposite]
+		}
+		auto_inset = {}
+	}
+	return insets, auto_inset, true
+}
+
 // The final coordinates of box `x`; those of the box it is positioned against are known.
 @(private)
 place_box :: #force_inline proc(c: ^Ctx, x: i32) {
