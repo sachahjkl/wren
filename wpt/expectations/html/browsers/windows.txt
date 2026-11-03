@@ -68,8 +68,8 @@
 	Removal, no document.domain: FAIL
 /html/browsers/windows/embedded-opener-a-form.html: OK
 	opener and embedded documents; using a and form: PASS
-/html/browsers/windows/embedded-opener-remove-frame.html: TIMEOUT
-	opener of discarded auxiliary browsing context: TIMEOUT
+/html/browsers/windows/embedded-opener-remove-frame.html: OK
+	opener of discarded auxiliary browsing context: FAIL
 	opener of discarded nested browsing context: FAIL
 /html/browsers/windows/embedded-opener.html: OK
 	opener and embedded documents; using window.open(): FAIL

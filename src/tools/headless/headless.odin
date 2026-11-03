@@ -217,10 +217,14 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	#partial switch ev.kind {
 	case .Response:
 		r := ev.response
-		// the new document replaces the one shown
-		d.page = nil
-		if d.shown != nil { base.scope_close(d.shown) }
-		d.shown, d.loading = d.loading, nil
+		// the new document replaces the one shown, in its Window when that is the window's initial about:blank of its origin
+		// (whose scope stays the document's; the request's goes with the next navigation)
+		kept := page.navigable_keep_window(d.top, d.page, r.url, r.headers)
+		if kept == nil {
+			d.page = nil
+			if d.shown != nil { base.scope_close(d.shown) }
+			d.shown, d.loading = d.loading, nil
+		}
 		delete(d.final_url); delete(d.charset); delete(d.mime)
 		d.final_url, d.charset, d.mime = "", "", ""
 		d.parsed = false
@@ -230,7 +234,7 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			if cs, ok := http.mime_param(r.mime, "charset"); ok { d.charset = strings.clone(cs) }
 			d.mime = strings.clone(http.mime_essence(r.mime))
 		}
-		d.page = page.page_create(&e.loop, &e.loader, &e.settings, d.shown, r.url, console_sink, d)
+		d.page = kept != nil ? kept : page.page_create(&e.loop, &e.loader, &e.settings, d.shown, r.url, console_sink, d)
 		connect(d)
 		csp_h := http.get_all(r.headers, "content-security-policy")
 		ro_h := http.get_all(r.headers, "content-security-policy-report-only")

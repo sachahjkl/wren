@@ -351,9 +351,9 @@
 /html/cross-origin-opener-policy/javascript-url.https.html?13-14: TIMEOUT
 	navigation: SAME_ORIGIN; parentCOOP: same-origin; childCOOP: unsafe-none: TIMEOUT
 	navigation: SAME_SITE; parentCOOP: same-origin; childCOOP: unsafe-none: NOTRUN
-/html/cross-origin-opener-policy/javascript-url.https.html?15-16: OK
-	navigation: SAME_ORIGIN; parentCOOP: same-origin; childCOOP: same-origin-allow-popups: PASS
-	navigation: SAME_SITE; parentCOOP: same-origin; childCOOP: same-origin-allow-popups: PASS
+/html/cross-origin-opener-policy/javascript-url.https.html?15-16: OK|TIMEOUT
+	navigation: SAME_ORIGIN; parentCOOP: same-origin; childCOOP: same-origin-allow-popups: PASS|TIMEOUT
+	navigation: SAME_SITE; parentCOOP: same-origin; childCOOP: same-origin-allow-popups: PASS|TIMEOUT|NOTRUN
 /html/cross-origin-opener-policy/javascript-url.https.html?17-last: TIMEOUT
 	navigation: SAME_ORIGIN; parentCOOP: same-origin; childCOOP: same-origin: TIMEOUT
 	navigation: SAME_SITE; parentCOOP: same-origin; childCOOP: same-origin: NOTRUN

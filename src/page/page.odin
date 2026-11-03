@@ -269,11 +269,7 @@ apply_response_headers :: proc(p: ^Page, csp_values, csp_report_only_values: []s
 apply_isolation_headers :: proc(p: ^Page, headers: http.Headers, parent: ^Page = nil) {
 	// a frame of its parent's origin is in its parent's agent cluster, a secure context or not (a WebAssembly.Module goes between them)
 	same := parent != nil && url.same_origin(p.env.origin, parent.env.origin)
-	if same {
-		p.env.agent_cluster = page_cluster(parent)
-		wasm.user_cluster_retain(p.env.agent_cluster)
-		base.on_close(p.scope, proc(data: rawptr) { wasm.user_cluster_release(u64(uintptr(data))) }, rawptr(uintptr(p.env.agent_cluster)))
-	}
+	if same { page_join_cluster(p, parent) }
 	// HTML "obtain a similar-origin window agent": Origin-Agent-Cluster (a structured boolean) asks for an origin-keyed one
 	// (absent: keyed by site); a cross-origin isolated document's is origin-keyed too (below)
 	oac, _ := http.get_header(headers, "origin-agent-cluster")
@@ -301,6 +297,14 @@ parse_embedder_policy :: proc(value: string) -> fetch.Embedder_Policy {
 	case "credentialless": return .Credentialless
 	}
 	return .Unsafe_None
+}
+
+// `p` is in the agent cluster of `of` (a frame of its parent's origin, a window's initial document of its opener's).
+@(private)
+page_join_cluster :: proc(p, of: ^Page) {
+	p.env.agent_cluster = page_cluster(of)
+	wasm.user_cluster_retain(p.env.agent_cluster)
+	base.on_close(p.scope, proc(data: rawptr) { wasm.user_cluster_release(u64(uintptr(data))) }, rawptr(uintptr(p.env.agent_cluster)))
 }
 
 // The page's agent cluster, made the first time it matters.
