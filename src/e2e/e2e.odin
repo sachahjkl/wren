@@ -357,10 +357,10 @@ file_url :: proc(path: string) -> string {
 	return strings.has_prefix(p, "/") ? fmt.tprintf("file://%s", p) : fmt.tprintf("file:///%s", p)
 }
 
-// A file's text ("" when there is none).
+// A file's text ("" when there is none). Shared for deletion: a killed Wren may still hold the file it was renaming (crash_recovery.odin read_bounded).
 read_text :: proc(path: string) -> string {
-	data, err := os.read_entire_file(path, context.temp_allocator)
-	return err != nil ? "" : string(data)
+	data, _ := base.file_read_all(path, context.temp_allocator)
+	return string(data)
 }
 
 write_text :: proc(path, text: string) { _ = os.write_entire_file(path, transmute([]byte)text) }
