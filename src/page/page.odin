@@ -70,6 +70,7 @@ Page :: struct {
 	tag:       u32,            // in the handles of its nodes, events and host objects (base.pool_insert_tagged)
 	route_next:     u32,       // the tag the realm's next import acts on (Frame_target, frames_access.odin)
 	route_busy:     int,       // import calls of other realms acting on this document now
+	dispatching:    int,       // events being dispatched at this document now (a listener of another realm may remove its frame)
 	checkpoint_owed: bool,     // a microtask checkpoint waits for those calls to end (frames_pay_checkpoint)
 	close_pending:  bool,      // closed while in use: closes once nothing runs in it (frames_access.odin)
 	frames_pending_parent: ^Page,   // the document it was a frame of, while it waits
@@ -461,7 +462,9 @@ dispatch_event :: proc(p: ^Page, target: base.Handle, ev: dom.Event) -> bool {
 	if timeline_is_discrete_input(ev.type) { timeline_layout_shift_input(p) }   // stops LCP, marks layout shifts near input
 	if dom.ui_composed(ev.type) { loaf_note_ui_event(p) }   // Long Animation Frames: firstUIEventTimestamp
 	timed := timeline_event_begin(p, &ev)   // Event Timing (timeline.odin)
+	p.dispatching += 1   // (not freed under its own dispatch: frames_close_later)
 	ok := dom.dispatch(p.doc, &p.dp, target, ev)
+	p.dispatching -= 1
 	if timed != 0 { timeline_event_end(p, &ev, timed) }
 	if (ev.type == "pointerdown" || ev.type == "pointerup") && !ev.untrusted && !p.closed { dialog_light_dismiss(p, ev.type == "pointerdown", target, ev.x, ev.y) }
 	return ok

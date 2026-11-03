@@ -337,6 +337,22 @@ window.tick = 0;
 	pr = load(t, fill(`<body><iframe id=m srcdoc="%s"></iframe><script>addEventListener("message", e => log(e.data));</script></body>`, html_attr(`<iframe srcdoc="<script>const t = top; t.document.getElementById('m').remove(); t.postMessage('inner survived', '*');</script>"></iframe>`)))
 	check(pr, wait_note(pr, "inner survived"), "a frame's script removes the frame around it")
 	close_page(pr, min_checks = 1)
+
+	// the browser dispatches an event at a frame's node (an image's error), a parent's listener removes the frame: the
+	// frame's document is closed once the dispatch is over, not under it
+	pr = load(t, `<body><iframe id=f srcdoc="<p>x</p>"></iframe><script>
+const f = document.getElementById("f");
+f.onload = () => {
+  const img = f.contentDocument.createElement("img");
+  img.addEventListener("error", () => { f.remove(); log("removed in its event"); });
+  img.src = "data:image/png;base64,AAAA";
+  f.contentDocument.body.append(img);
+};
+</script></body>`)
+	check(pr, wait_note(pr, "removed in its event"), "a parent's listener removes the frame during an event of its document")
+	run(pr, `log("parent goes on " + frames.length);`)
+	check(pr, wait_note(pr, "parent goes on 0"), "the parent goes on")
+	close_page(pr, min_checks = 2)
 }
 
 // events: listeners of both realms on one node
