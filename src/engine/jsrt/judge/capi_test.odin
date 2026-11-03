@@ -360,6 +360,15 @@ capi_main :: proc() -> int {
 	half := eval(ctx, "-0.5")   // (a float: its high word is no tag, whatever its value)
 	check(capi.JS_GetOpaque(half, cls_pod) == nil && capi.JS_GetClassID(half) == 0 && capi.JS_GetClassID(capi.mkval(capi.TAG_INT, 5)) == 0, "no object, no opaque data, no class")
 	check(capi.JS_DupValue(ctx, half) == half && capi.JS_GetClassID(q1) == cls_pod, "a float is no reference; an object's class")
+	// JS_GetAnyOpaque: JS_GetClassID's answer and the opaque data in one call
+	any_id: capi.Class_ID
+	check(capi.JS_GetAnyOpaque(q1, &any_id) == d1 && any_id == cls_pod, "JS_GetAnyOpaque: a payload and its class")
+	plain := eval(ctx, "({})")
+	any_id = 1
+	check(capi.JS_GetAnyOpaque(plain, &any_id) == nil && any_id == capi.JS_GetClassID(plain), "JS_GetAnyOpaque: a built-in object's class, no data")
+	any_id = 1
+	check(capi.JS_GetAnyOpaque(half, &any_id) == nil && any_id == 0, "JS_GetAnyOpaque: no object, no class")
+	capi.JS_FreeValue(ctx, plain)
 	d1.x, d2.x = 1, 2
 	d1.held, d2.held = capi.JS_DupValue(ctx, q2), capi.JS_DupValue(ctx, q1)   // a cycle through the payloads
 	capi.JS_RunGC(rt)

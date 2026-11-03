@@ -77,6 +77,8 @@ export_JS_NewObjectClass :: proc "c" (c: ^Context, class_id: Class_ID) -> JSValu
 export_JS_GetOpaque :: proc "c" (v: JSValue, class_id: Class_ID) -> rawptr {return JS_GetOpaque(v, class_id)}
 @(export, link_name = "JS_GetOpaque2")
 export_JS_GetOpaque2 :: proc "c" (c: ^Context, v: JSValue, class_id: Class_ID) -> rawptr {return JS_GetOpaque2(c, v, class_id)}
+@(export, link_name = "JS_GetAnyOpaque")
+export_JS_GetAnyOpaque :: proc "c" (v: JSValue, class_id: ^Class_ID) -> rawptr {return JS_GetAnyOpaque(v, class_id)}
 @(export, link_name = "JS_SetOpaque")
 export_JS_SetOpaque :: proc "c" (v: JSValue, p: rawptr) -> i32 {return JS_SetOpaque(v, p)}
 @(export, link_name = "JS_GetClassID")

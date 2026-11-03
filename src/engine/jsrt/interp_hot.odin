@@ -71,22 +71,33 @@ quick_truthy :: #force_inline proc "contextless" (v: Value) -> (t: bool, ok: boo
 	return false, false
 }
 
-// Own data property lookup, then the prototype chain of ordinary objects; ok = false for anything exotic
-// (the full path handles it).
+// Own property lookup, then the prototype chain of ordinary objects: a data property's value, or an accessor's native
+// getter for the caller to call (a DOM attribute); ok = false for anything else (the full path handles it).
 @(private = "file")
-hot_get_prop :: proc "contextless" (rt: ^Runtime, o: ^Object, a: Atom) -> (v: Value, ok: bool) {
+hot_get_prop :: proc "contextless" (rt: ^Runtime, o: ^Object, a: Atom) -> (v: Value, getter: ^Object, ok: bool) {
 	p := o
 	for {
 		i := shape_find(p.shape, a)
 		if i >= 0 {
-			if raw_data(p.shape.props)[i].kind != .data {return}
-			return p.slots[i].value, true
+			#partial switch raw_data(p.shape.props)[i].kind {
+			case .data: return p.slots[i].value, nil, true
+			case .accessor:
+				g := p.slots[i].getset.getter
+				return {}, g, hot_native_getter(g)
+			}
+			return
 		}
 		if p.fast_array || p.class == .proxy || p.class == .module_ns || p.class == .string || is_typed_array_class(p.class) {return}
 		if p.class == .host && host_exotic_of(rt, p) != nil {return}
 		p = p.shape.proto
-		if p == nil {return UNDEFINED, true}
+		if p == nil {return UNDEFINED, nil, true}
 	}
+}
+
+// A getter the hot loop calls itself: a native function called as a function (call_native, as a call instruction does).
+@(private = "file")
+hot_native_getter :: #force_inline proc "contextless" (g: ^Object) -> bool {
+	return g != nil && g.class == .c_function && !g.is_constructor && !g.ctor_only
 }
 
 // The registers of one frame.
@@ -668,6 +679,10 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			}
 			ip = intrinsics.ptr_offset(ip, 1 + d)
 
+		case .push_atom_value:
+			s[0] = atom_to_value(rt, Atom(rd32(ip[1:])))
+			s = s[1:]
+			ip = ip[5:]
 		case .get_array_el:
 			o, k := s[-2], s[-1]
 			if o.tag != .object || k.tag != .int || k.u.i < 0 {break loop}
@@ -698,9 +713,26 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 				s[0] = v
 			} else {
 				g := ctx.global_obj
-				j := global_slot(ctx, g, a)
+				j := global_index(ctx, g, a)
 				if j < 0 {break loop}
-				s[0] = g.slots[j].value
+				#partial switch raw_data(g.shape.props)[j].kind {
+				case .data: s[0] = g.slots[j].value
+				case .accessor:
+					// the global object's own accessor (window.document, [LegacyUnforgeable]): its native getter called here
+					getter := g.slots[j].getset.getter
+					if !hot_native_getter(getter) || rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {break loop}
+					ip = ip[5:]
+					f.pc = int(uintptr(ip) - uintptr(regs.code))
+					v := call_native(ctx, getter, &getter.data.(Native_Data), mk_obj(g), {})
+					if v.tag == .exception {
+						thrown = true
+						break loop
+					}
+					s[0] = v
+					s = s[1:]
+					continue loop
+				case: break loop
+				}
 			}
 			s = s[1:]
 			ip = ip[5:]
@@ -722,8 +754,19 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 		case .get_field, .get_field2:
 			o := s[-1]
 			if o.tag != .object {break loop}
-			v, ok := hot_get_prop(rt, as_obj(o), Atom(rd32(ip[1:])))
+			v, getter, ok := hot_get_prop(rt, as_obj(o), Atom(rd32(ip[1:])))
 			if !ok {break loop}
+			if getter != nil {
+				// a native getter (a DOM attribute) called where it was found, as a call instruction calls a native
+				if rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {break loop}
+				f.pc = int(uintptr(ip) - uintptr(regs.code)) + 5
+				v = call_native(ctx, getter, &getter.data.(Native_Data), o, {})
+				if v.tag == .exception {
+					ip = ip[5:]
+					thrown = true
+					break loop
+				}
+			}
 			if op == .get_field2 {
 				s[0] = v
 				s = s[1:]

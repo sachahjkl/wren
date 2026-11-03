@@ -142,9 +142,10 @@ is_window :: #force_inline proc "contextless" () -> bool { return wj_the_realm.k
 // wj_obj_of: the wj_obj of any platform object (any platform class), or nil.
 obj_of :: proc "contextless" (v: JSValue) -> ^Obj {
 	if !is_object(v) { return nil }
-	id := JS_GetClassID(v)
+	id: Class_ID
+	p := JS_GetAnyOpaque(v, &id)
 	if id != wj_class_plain && id != wj_class_indexed && id != wj_class_named { return nil }
-	return (^Obj)(JS_GetOpaque(v, id))
+	return (^Obj)(p)
 }
 
 // The browser handle / engine-owned data behind a platform object `v` (0 / nil when none).

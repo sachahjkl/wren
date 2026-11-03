@@ -4407,7 +4407,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `showDirectoryPicker()`: C `wjr_Window_showDirectoryPicker`
 - `readonly window`: C `wjr_Window_get_window`
 - `readonly self`: C `wjr_Window_get_self`
-- `readonly document`: import `dom.Window_document`
+- `readonly document`: C `wjr_Window_get_document`
 - `name`: import `frames.Window_get_name`
 - `readonly location`: C `wjr_Window_get_location`
 - `readonly history`: C `wjr_Window_get_history`

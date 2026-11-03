@@ -33,7 +33,8 @@ The API types (`Context`, `Runtime`, `Class_Def`, `Native`, `Property_Descriptor
   (`JS_MarkValue`); the collector subtracts them from the host counts before marking, so an object that holds
   a counted reference to a closure that captures the object dies (checked by `judge capi`: 1000 such
   cycles are all finalized by one `JS_RunGC`). Finalizers run before any cell of the collection is freed.
-- **Classes** (`JS_NewClassID`, `JS_NewClass`, `JS_NewObjectProtoClass`, `JS_GetOpaque`/`SetOpaque`) with
+- **Classes** (`JS_NewClassID`, `JS_NewClass`, `JS_NewObjectProtoClass`, `JS_GetOpaque`/`SetOpaque`, and QuickJS-ng's
+  `JS_GetAnyOpaque`: the class and the opaque data in one call, what the glue reads of every platform object) with
   all seven `JSClassExoticMethods` (get/set/has/delete/define/own‑names/own‑property); an exotic `get_property`
   replaces the prototype walk after the own shape lookup, as in QuickJS. Wren's own
   `JS_NewObjectProtoClassPayload(ctx, proto, class, size)` makes the opaque data `size` zeroed bytes of the engine's
@@ -75,7 +76,7 @@ Distinct `JS_*` / `js_*` names the glue references: **176**.
 | helper names of the glue that are not API (`js_str`, `js_cstr` …) | 5 |
 | missing | 0 |
 
-The API itself is tested natively by `judge capi` (56 checks); the glue runs on it in every build.
+The API itself is tested natively by `judge capi` (59 checks); the glue runs on it in every build.
 
 ### What is approximated or absent (by weight)
 
@@ -106,6 +107,6 @@ The API itself is tested natively by `judge capi` (56 checks); the glue runs on 
 strings, properties, native functions with data and magic, formatted exceptions, classes with opaque data,
 cycles through `gc_mark`, counted references as roots, the GC epilogue (once a collection, after its finalizers),
 strings read in place (ASCII and concatenations; none of Latin-1, UTF-16 or other values), opaque data in the object's block (zeroed, one per object,
-cycles through it collected, 10 000 made and dropped without the heap keeping them), exotic objects, promises and jobs, adopted buffers,
+cycles through it collected, 10 000 made and dropped without the heap keeping them; `JS_GetAnyOpaque` of it, of a built-in object, of a number), exotic objects, promises and jobs, adopted buffers,
 a native module imported by a script module, a compiled function written out and read back, and a soak of
 20 000 temporaries that must be collected.

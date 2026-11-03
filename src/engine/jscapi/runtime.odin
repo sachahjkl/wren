@@ -417,6 +417,18 @@ JS_GetOpaque :: proc "c" (v: JSValue, class_id: Class_ID) -> rawptr {
 	return d.opaque
 }
 
+// The opaque data of an object and its class in one call (JS_GetClassID's answer in `class_id`; nil for an object of a
+// built-in class, 0 and nil for what is no object), as QuickJS-ng's JS_GetAnyOpaque: the glue reads both for every
+// platform object it is handed.
+JS_GetAnyOpaque :: proc "c" (v: JSValue, class_id: ^Class_ID) -> rawptr {
+	o := object_of(v)
+	if o == nil {class_id^ = 0; return nil}
+	d := js.host_object_of(o)
+	if d == nil {class_id^ = u32(o.class); return nil}
+	class_id^ = d.class_id
+	return d.opaque
+}
+
 JS_GetOpaque2 :: proc "c" (c: ^Context, v: JSValue, class_id: Class_ID) -> rawptr {
 	p := JS_GetOpaque(v, class_id)
 	if p == nil {
@@ -606,34 +618,36 @@ bridge_invoke :: proc(ctx: ^js.Context, this: js.Value, args: []js.Value, magic:
 	buf: [12]JSValue
 	argv := buf[:]
 	if len(args) > len(buf) {argv = make([]JSValue, len(args), js.tmp(rt))}
-	for a, i in args {argv[i] = enc(a)}
+	// (every DOM call goes through here: the words made and read in place)
+	for a, i in args {argv[i] = #force_inline enc(a)}
 	c := wctx(ctx)
+	t := #force_inline enc(this)
 	argc := i32(len(args))
 	r: JSValue
 	switch proto {
 	case CFUNC_generic, CFUNC_constructor, CFUNC_constructor_or_func:
-		r = (cast(Native)fn)(c, enc(this), argc, raw_data(argv))
+		r = (cast(Native)fn)(c, t, argc, raw_data(argv))
 	case CFUNC_generic_magic, CFUNC_constructor_magic, CFUNC_constructor_or_func_magic:
-		r = (cast(Native_Magic)fn)(c, enc(this), argc, raw_data(argv), magic)
+		r = (cast(Native_Magic)fn)(c, t, argc, raw_data(argv), magic)
 	case CFUNC_getter:
-		r = (cast(Getter)fn)(c, enc(this))
+		r = (cast(Getter)fn)(c, t)
 	case CFUNC_setter:
-		r = (cast(Setter)fn)(c, enc(this), len(args) > 0 ? argv[0] : UNDEFINED)
+		r = (cast(Setter)fn)(c, t, len(args) > 0 ? argv[0] : UNDEFINED)
 	case CFUNC_getter_magic:
-		r = (cast(proc "c" (ctx: ^Context, this_val: JSValue, magic: i32) -> JSValue)fn)(c, enc(this), magic)
+		r = (cast(proc "c" (ctx: ^Context, this_val: JSValue, magic: i32) -> JSValue)fn)(c, t, magic)
 	case CFUNC_setter_magic:
-		r = (cast(proc "c" (ctx: ^Context, this_val: JSValue, value: JSValue, magic: i32) -> JSValue)fn)(c, enc(this), len(args) > 0 ? argv[0] : UNDEFINED, magic)
+		r = (cast(proc "c" (ctx: ^Context, this_val: JSValue, value: JSValue, magic: i32) -> JSValue)fn)(c, t, len(args) > 0 ? argv[0] : UNDEFINED, magic)
 	case PROTO_DATA:
 		fdata: [8]JSValue
 		fd := fdata[:]
 		n := len(data) - 2
 		if n > len(fdata) {fd = make([]JSValue, n, js.tmp(rt))}
 		for i in 0 ..< n {fd[i] = enc(data[i + 2])}
-		r = (cast(Native_Data)fn)(c, enc(this), argc, raw_data(argv), magic, raw_data(fd))
+		r = (cast(Native_Data)fn)(c, t, argc, raw_data(argv), magic, raw_data(fd))
 	case:
 		return js.throw_internal_error(ctx, "unsupported C function prototype")
 	}
-	res := dec(r)
+	res := #force_inline dec(r)
 	if js.is_heap(res) {js.ext_unref(js.as_cell(res))} // the callee returned a reference it owned
 	return res
 }

@@ -217,17 +217,29 @@ cell_new :: proc(rt: ^Runtime, $T: typeid, kind: Cell_Kind, extra := 0) -> ^T {
 	c.gc_next = rt.cells
 	rt.cells = c
 	rt.cell_count += 1
-	append(&rt.temp_roots, c)
+	list_push(&rt.temp_roots, c)
 	return cast(^T)c
+}
+
+// An append that stays in the caller while the list has room: the root lists take a cell for every cell made, and
+// Odin's append is a call that checks the allocator each time.
+list_push :: #force_inline proc(list: ^[dynamic]$T, v: T) {
+	r := (^runtime.Raw_Dynamic_Array)(list)
+	if r.len < r.cap {
+		([^]T)(r.data)[r.len] = v
+		r.len += 1
+	} else {
+		append(list, v)
+	}
 }
 
 // Keep a value alive until the current native call (or interpreter safe point) completes.
 root :: #force_inline proc(rt: ^Runtime, v: Value) {
-	if is_heap(v) {append(&rt.temp_roots, as_cell(v))}
+	if is_heap(v) {list_push(&rt.temp_roots, as_cell(v))}
 }
 
 root_cell :: #force_inline proc(rt: ^Runtime, c: ^Cell) {
-	if c != nil {append(&rt.temp_roots, c)}
+	if c != nil {list_push(&rt.temp_roots, c)}
 }
 
 temp_mark :: #force_inline proc(rt: ^Runtime) -> int {return len(rt.temp_roots)}
@@ -242,7 +254,7 @@ ext_ref :: #force_inline proc(rt: ^Runtime, c: ^Cell) {
 	c.ext += 1
 	if !c.in_ext {
 		c.in_ext = true
-		append(&rt.ext_cells, c)
+		list_push(&rt.ext_cells, c)
 	}
 }
 
@@ -301,7 +313,7 @@ mark_cell :: #force_inline proc(rt: ^Runtime, c: ^Cell) {
 	poison_check(c)
 	if c != nil && !c.mark {
 		c.mark = true
-		append(&rt.gray, c)
+		list_push(&rt.gray, c)
 	}
 }
 

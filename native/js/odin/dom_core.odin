@@ -494,10 +494,13 @@ wjr_HTMLTableElement_get_tBodies :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -
 // ---- Document ----
 
 @(private = "file")
-page_document :: proc() -> api_decl.Document {
-	d: api_decl.Document
-	jsb.host(&d, api_decl.Window_document, wj.wr_Window_document)
-	return d
+page_document :: #force_inline proc() -> api_decl.Document { return api_decl.Document(wj.wj_document()) }
+
+// window.document: the realm's document node never changes (wj_document)
+@(export, link_name = "wjr_Window_get_document")
+wjr_Window_get_document :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	if wj.wj_this(ctx, this_val, ifc("Window")) == nil { return wj.EXCEPTION }
+	return wj.wj_wrap_node(ctx, wj.wj_document())
 }
 
 // Is `doc` a page's document (the realm's, or one of another document it reaches), not a document of its own (createHTMLDocument's,
@@ -524,6 +527,12 @@ wjr_Document_createElement :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 	defer wj.wj_str_free(ctx, &name)
 	doc := api_decl.Document(node_this(ctx, this_val, ifc("Document")))
 	if doc == 0 { return wj.EXCEPTION }
+	if doc == page_document() {
+		// the element and its wrapper's pin and interface in one call
+		made: wj.wr_WrappedNode
+		if s := wj.wr_Document_createElementWrapped(str_ptr(name), u32(name.len), &made); s < 0 { return wj.wj_throw_status(ctx, s, "Document.createElement") }
+		return wj.wj_wrap_new(ctx, made)
+	}
 	el: api_decl.Element
 	st: abi.Api_Error
 	if is_page_document(doc) {
@@ -547,6 +556,10 @@ made_for :: proc(doc: api_decl.Document, n: api_decl.Node) {
 	jsb.host(&r, api_decl.Document_adoptNode, wj.wr_Document_adoptNode, doc, n)
 }
 
+// The bytes of a string argument as an import takes them (a pointer even for the empty string).
+@(private = "file")
+str_ptr :: #force_inline proc "contextless" (s: wj.Str) -> [^]u8 { return s.ptr != nil ? s.ptr : wj.empty_ptr() }
+
 // The nodes but elements a document makes (the page's factories), its own when it is not the page's (made_for).
 @(private = "file")
 Node_Factory :: enum u8 { Text, Comment, Fragment, Processing_Instruction }
@@ -563,14 +576,19 @@ document_factory :: proc(ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv
 	}
 	defer for i in 0 ..< arity { wj.wj_str_free(ctx, &s[i]) }
 	if !wj.wj_doc_target(u64(doc)) { return wj.wj_throw_gone(ctx) }
-	p :: proc(s: wj.Str) -> [^]u8 { return s.ptr != nil ? s.ptr : wj.empty_ptr() }
+	if f == .Text && doc == page_document() {
+		// the text and its wrapper's pin and interface in one call
+		made: wj.wr_WrappedNode
+		if st := wj.wr_Document_createTextWrapped(str_ptr(s[0]), u32(s[0].len), &made); st < 0 { return wj.wj_throw_status(ctx, st, what) }
+		return wj.wj_wrap_new(ctx, made)
+	}
 	r: u64
 	st: i32
 	switch f {
-	case .Text: st = wj.wr_Document_createTextNode(p(s[0]), u32(s[0].len), &r)
-	case .Comment: st = wj.wr_Document_createComment(p(s[0]), u32(s[0].len), &r)
+	case .Text: st = wj.wr_Document_createTextNode(str_ptr(s[0]), u32(s[0].len), &r)
+	case .Comment: st = wj.wr_Document_createComment(str_ptr(s[0]), u32(s[0].len), &r)
 	case .Fragment: st = wj.wr_Document_createDocumentFragment(&r)
-	case .Processing_Instruction: st = wj.wr_Document_createProcessingInstruction(p(s[0]), u32(s[0].len), p(s[1]), u32(s[1].len), &r)
+	case .Processing_Instruction: st = wj.wr_Document_createProcessingInstruction(str_ptr(s[0]), u32(s[0].len), str_ptr(s[1]), u32(s[1].len), &r)
 	}
 	if st < 0 { return wj.wj_throw_status(ctx, st, what) }
 	if !is_page_document(doc) { made_for(doc, api_decl.Node(r)) }

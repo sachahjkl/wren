@@ -7950,15 +7950,6 @@ wjg_Window_get_devicePixelRatio :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 	return wj.new_float64(ctx, f64(r))
 }
 
-// Window.document -> dom.Window_document
-wjg_Window_get_document :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
-	self := wj.wj_this(ctx, this_val, 390)
-	if self == nil { return wj.EXCEPTION }
-	_ = self
-	r := wj.wr_Window_document()
-	return wj.wj_wrap_node(ctx, r)
-}
-
 // Window.name -> frames.Window_get_name
 wjg_Window_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 390)
@@ -28635,7 +28626,7 @@ wj_install_bindings :: proc "c" () {
 	m_Window[29] = wj.Member{name = "showDirectoryPicker", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_Window_showDirectoryPicker}
 	m_Window[30] = wj.Member{name = "window", kind = wj.M_ATTRIBUTE, flags = wj.F_UNFORGEABLE, length = 0, get = wjr_Window_get_window, set = nil}
 	m_Window[31] = wj.Member{name = "self", kind = wj.M_ATTRIBUTE, flags = wj.F_REPLACEABLE, length = 0, get = wjr_Window_get_self, set = wj.wj_replaceable_setter}
-	m_Window[32] = wj.Member{name = "document", kind = wj.M_ATTRIBUTE, flags = wj.F_UNFORGEABLE, length = 0, get = wjg_Window_get_document, set = nil}
+	m_Window[32] = wj.Member{name = "document", kind = wj.M_ATTRIBUTE, flags = wj.F_UNFORGEABLE, length = 0, get = wjr_Window_get_document, set = nil}
 	m_Window[33] = wj.Member{name = "name", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Window_get_name, set = wjg_Window_set_name}
 	m_Window[34] = wj.Member{name = "location", kind = wj.M_ATTRIBUTE, flags = wj.F_UNFORGEABLE, length = 0, get = wjr_Window_get_location, set = wjg_Window_set_location}
 	m_Window[35] = wj.Member{name = "history", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Window_get_history, set = nil}

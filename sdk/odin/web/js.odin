@@ -17,6 +17,14 @@ ConsoleLevel :: enum i32 {
 	Debug = 4,
 }
 
+// A new node of the realm's own document with what its wrapper needs (Node_wrap's work in the same call).
+WrappedNode :: struct {
+	// The new node, pinned.
+	node: u64,
+	// Its wrapper's interface, as Node_wrap gives it; past the engine's table (not pinned) for another module.
+	iface: u32,
+}
+
 foreign import _m_js "js"
 
 @(private = "file", default_calling_convention = "contextless")
@@ -30,6 +38,8 @@ foreign _m_js {
 	@(link_name = "Engine_jitCompile") _Engine_jitCompile :: proc(module: [^]u8, module_len: u32) -> i32 ---
 	@(link_name = "Engine_jitPoll") _Engine_jitPoll :: proc(ticket: i32) -> i32 ---
 	@(link_name = "Node_wrap") _Node_wrap :: proc(node: u64) -> u32 ---
+	@(link_name = "Document_createElementWrapped") _Document_createElementWrapped :: proc(local_name: [^]u8, local_name_len: u32, _ret: ^WrappedNode) -> Error ---
+	@(link_name = "Document_createTextWrapped") _Document_createTextWrapped :: proc(text: [^]u8, text_len: u32, _ret: ^WrappedNode) -> Error ---
 	@(link_name = "Node_unpin") _Node_unpin :: proc(node: u64) ---
 	@(link_name = "Node_treeRoots") _Node_treeRoots :: proc(nodes: [^]u64, nodes_len: u32, roots: [^]u8, roots_len: u32) ---
 }
@@ -134,6 +144,21 @@ Engine_jitPoll :: proc "contextless" (ticket: i32) -> i32 {
 // node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...). One call per new wrapper.
 Node_wrap :: proc "contextless" (node: $T_node) -> u32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
 	return _Node_wrap(u64(node))
+}
+
+// document.createElement(localName) in the realm's own document (Document_createElementChecked: its checks, its
+// errors, a defined custom element constructed before it returns), then Node_wrap's pin and interface: one call for
+// the element and its wrapper. A custom element's constructor may have made the wrapper already: the engine then
+// drops the extra pin.
+Document_createElementWrapped :: proc "contextless" (local_name: string) -> (result: WrappedNode, err: Error) {
+	err = _Document_createElementWrapped(raw_data(local_name), u32(len(local_name)), &result)
+	return
+}
+
+// document.createTextNode(data) in the realm's own document, then Node_wrap's pin and interface.
+Document_createTextWrapped :: proc "contextless" (text: string) -> (result: WrappedNode, err: Error) {
+	err = _Document_createTextWrapped(raw_data(text), u32(len(text)), &result)
+	return
 }
 
 // That object is gone (called while the engine collects garbage: a handle that died meanwhile is ignored). A

@@ -23,6 +23,15 @@ The level of a console message.
 | `Error` | 3 |  |%!(EXTRA false)
 | `Debug` | 4 |  |%!(EXTRA false)
 
+### struct `WrappedNode`
+
+A new node of the realm's own document with what its wrapper needs (Node_wrap's work in the same call).
+
+| field | type | |
+|---|---|---|
+| `node` | `u64` | The new node, pinned. |%!(EXTRA false)
+| `iface` | `u32` | Its wrapper's interface, as Node_wrap gives it; past the engine's table (not pinned) for another module. |%!(EXTRA false)
+
 ## Functions
 
 ### `Engine_console`
@@ -123,6 +132,33 @@ and returns the wrapper's interface, an index into the engine's interface table 
 node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...). One call per new wrapper.
 
 Host: `Node_wrap :: proc(c: ^Call, node: Api_Node) -> u32`
+
+### `Document_createElementWrapped`
+
+```
+WrappedNode Document_createElementWrapped(string local_name) raises
+```
+
+document.createElement(localName) in the realm's own document (Document_createElementChecked: its checks, its
+errors, a defined custom element constructed before it returns), then Node_wrap's pin and interface: one call for
+the element and its wrapper. A custom element's constructor may have made the wrapper already: the engine then
+drops the extra pin.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_createElementWrapped :: proc(c: ^Call, local_name: string) -> (Api_WrappedNode, Api_Error)`
+
+### `Document_createTextWrapped`
+
+```
+WrappedNode Document_createTextWrapped(string text) raises
+```
+
+document.createTextNode(data) in the realm's own document, then Node_wrap's pin and interface.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_createTextWrapped :: proc(c: ^Call, text: string) -> (Api_WrappedNode, Api_Error)`
 
 ### `Node_unpin`
 

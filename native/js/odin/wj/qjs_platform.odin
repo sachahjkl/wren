@@ -473,8 +473,8 @@ gc_epilogue :: proc "c" (rt: ^Runtime, opaque: rawptr) {
 
 @(private = "file")
 obj_finalizer :: proc "c" (rt: ^Runtime, val: JSValue) {
-	id := JS_GetClassID(val)
-	o := (^Obj)(JS_GetOpaque(val, id))
+	id: Class_ID
+	o := (^Obj)(JS_GetAnyOpaque(val, &id))
 	if o == nil { return }
 	if hooks.listeners_free != nil { hooks.listeners_free(rt, o) }
 	// finalized with its group (a collected cycle): only the reference is dropped, the group may be finalized already
@@ -498,10 +498,10 @@ obj_finalizer :: proc "c" (rt: ^Runtime, val: JSValue) {
 
 @(private = "file")
 obj_mark :: proc "c" (rt: ^Runtime, val: JSValue, mark_func: Mark_Func) {
-	id := JS_GetClassID(val)
-	o := (^Obj)(JS_GetOpaque(val, id))
+	id: Class_ID
+	o := (^Obj)(JS_GetAnyOpaque(val, &id))
 	if o == nil { return }
-	JS_MarkValue(rt, o.group_val, mark_func)
+	if o.group != nil { JS_MarkValue(rt, o.group_val, mark_func) }
 	for l := o.listeners; l != nil; l = l.next {
 		JS_MarkValue(rt, l.callback, mark_func)
 		JS_MarkValue(rt, l.type, mark_func)
@@ -830,16 +830,24 @@ wj_connected_listening_nodes :: proc "c" (ctx: ^Context, count: ^u32) -> [^]JSVa
 
 // ---- nodes of other documents (src/page/frames_access.odin) ----
 
-// A handle names its document: bits 62..48 (src/base/pool.odin). The tag of this realm's own document, once asked.
+// A handle names its document: bits 62..48 (src/base/pool.odin).
 @(private = "file") HANDLE_TAG_SHIFT :: 48
 @(private = "file") HANDLE_TAG_MASK :: u64(0x7FFF)
-@(private = "file") own_tag: u64
+
+// The realm's document node, asked once: it is the same handle for the realm's whole life. Every document of a page is
+// made with the page's tag, and its document node is the first slot of a fresh pool (src/dom/dom.odin, document_create),
+// so a document the page adopts later (a frame's parsed document after its about:blank) has the handle of the one it
+// replaces (src/page test adopted_document_keeps_its_handle). 0 in a worker.
+@(private = "file") own_doc: u64
+@(private = "file") own_doc_asked: bool
+
+wj_document :: #force_inline proc "contextless" () -> u64 {
+	if !own_doc_asked { own_doc, own_doc_asked = wr_Window_document(), true }
+	return own_doc
+}
 
 @(private = "file")
-own_doc_tag :: #force_inline proc "contextless" () -> u64 {
-	if own_tag == 0 { own_tag = (wr_Window_document() >> HANDLE_TAG_SHIFT) & HANDLE_TAG_MASK }
-	return own_tag
-}
+own_doc_tag :: #force_inline proc "contextless" () -> u64 { return (wj_document() >> HANDLE_TAG_SHIFT) & HANDLE_TAG_MASK }
 
 // Whether two handles belong to one document.
 wj_same_doc :: #force_inline proc "contextless" (a, b: u64) -> bool {
@@ -892,6 +900,21 @@ wj_wrap_node :: proc "c" (ctx: ^Context, node: u64) -> JSValue {
 	if !is_undefined(v) { return JS_DupValue(ctx, v) }
 	iface := wr_Node_wrap(node)   // pins the node
 	if iface >= u32(wj_interface_count) { wr_Node_unpin(node); return JS_ThrowTypeError(ctx, "not a live node") }
+	return wrap_pinned(ctx, node, iface)
+}
+
+// The wrapper of a node the browser has just made, pinned and named the interface of (Document_createElementWrapped,
+// Document_createTextWrapped: Node_wrap's answer came with the node). One the browser did not pin is wrapped as any other;
+// one that has a wrapper already (made by a custom element's constructor) keeps that wrapper's pin.
+wj_wrap_new :: proc "contextless" (ctx: ^Context, made: wr_WrappedNode) -> JSValue {
+	if made.iface >= u32(wj_interface_count) { return wj_wrap_node(ctx, made.node) }
+	v := node_get(made.node)
+	if !is_undefined(v) { wr_Node_unpin(made.node); return JS_DupValue(ctx, v) }
+	return wrap_pinned(ctx, made.node, made.iface)
+}
+
+@(private = "file")
+wrap_pinned :: proc "contextless" (ctx: ^Context, node: u64, iface: u32) -> JSValue {
 	obj := make_wrapper(ctx, i32(iface), KIND_NODE, node, UNDEFINED)
 	if is_exception(obj) { wr_Node_unpin(node); return obj }
 	// from here the wrapper's finalizer unpins; it is in no group until a collection's prologue finds it carrying

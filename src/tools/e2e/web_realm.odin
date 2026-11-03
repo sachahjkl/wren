@@ -216,6 +216,39 @@ document.body.lastChild.addEventListener("x", () => wrenTest.check(true, "the wr
 	close_page(pr, min_checks = 3)
 }
 
+// A node a script makes comes with its wrapper's pin and interface in the same call to the browser
+// (Document_createElementWrapped, Document_createTextWrapped): one pin for each wrapper, the custom element whose
+// constructor made its wrapper before createElement returned included, and the browser's errors as before; the realm's
+// document, asked once, is the same object.
+@(test)
+js_new_nodes_wrapped_in_one_call :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	pr := load(t, "new nodes wrapped", HEAD + `<body><script>
+(function () {
+  customElements.define("x-made", class extends HTMLElement { constructor() { super(); window.made = this } });
+  const x = document.body.appendChild(document.createElement("x-made"));
+  x.id = "custom";
+  const d = document.body.appendChild(document.createElement("div"));
+  d.id = "div";
+  const text = d.appendChild(document.createTextNode("text"));
+  let thrown = "";
+  try { document.createElement("1x") } catch (e) { thrown = e.name }
+  is("true HTMLDivElement Text text true true InvalidCharacterError", "the wrappers of new nodes",
+    x === made, d.constructor.name, text.constructor.name, d.textContent, d.ownerDocument === document, document === window.document, thrown)
+  window.kept = d;
+})();
+</script></body>`)
+	pins :: proc(pr: ^Probe, id: string) -> u32 { return dom.get(pr.p.doc, dom.find_by_id(pr.p.doc, id)).pins }
+	check(pr, pins(pr, "custom") == 1 && pins(pr, "div") == 1, fmt.tprintf("one pin for each wrapper (%d, %d)", pins(pr, "custom"), pins(pr, "div")))
+	// the custom element's wrapper has a prototype of its own: it stays with the document; the plain one goes
+	run(pr, `window.made = null; window.kept = null`)
+	js.collect(pr.p.js.inst)
+	check(pr, pins(pr, "custom") == 1 && pins(pr, "div") == 0, fmt.tprintf("the collection unpins the plain one (%d, %d)", pins(pr, "custom"), pins(pr, "div")))
+	close_page(pr, min_checks = 3)
+}
+
 // A wrapper that carries nothing of its own goes with the collection even when its node is connected, and is made again
 // when a script reaches the node; one with a property, a WeakMap or WeakRef holding it, another prototype, a [SameObject]
 // value, or made non-extensible stays, the same object.
