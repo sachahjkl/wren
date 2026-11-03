@@ -403,8 +403,9 @@ grid_hostile :: proc(t: ^testing.T) {
 		f := fixture_load(strings.to_string(sb))
 		defer g_unload(f)
 		ms := time.duration_milliseconds(time.tick_since(t0))
-		// 10000 rows of 2px; the last item ends the last row
-		expect_box(t, f, "last", 720, 19998, 800, 20000)
+		// 10000 rows of 2px; the last item ends the last row (of a page less its classic scroll bar)
+		w := FIXTURE_VP_W - f.l.doc_bars.x
+		expect_box(t, f, "last", w * 9 / 10, 19998, w, 20000)
 		fmt.printfln("grid: 100000 items laid out in %.1f ms (parse and style included), layout %v", ms, f.l.stats)
 	}
 	{

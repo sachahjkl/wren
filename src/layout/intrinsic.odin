@@ -135,6 +135,8 @@ intrinsic_compute :: proc(c: ^Ctx, bi: i32, ignore_width: bool) -> [2]f32 {
 	if !fixed && b.kind != .Replaced && b.kind != .Inline && (.Size in cs.contain || .Inline_Size in cs.contain) {
 		res = {pb, pb}
 	}
+	// the room of its classic scroll bars comes on top of its content (a specified width keeps it inside: to_border_w)
+	if !fixed { g := gutter_of(c, b); res += g[1] + g[3] }
 	if b.kind != .Table {
 		res[0] = intrinsic_clamp(c, b, res[0], pb)
 		res[1] = intrinsic_clamp(c, b, res[1], pb)
@@ -253,7 +255,10 @@ natural_size_of :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
 	case "textarea":
 		cols := attr_int(c, h_node, "cols", c.set.textarea_cols)
 		rows := attr_int(c, h_node, "rows", c.set.textarea_rows)
-		return f32(cols) * char_w + c.set.scrollbar_width * s, f32(rows) * f.line_h, true, true
+		// (with room for its vertical scroll bar unless it can have none, as in Blink)
+		cs := c.l.boxes[bi].cs
+		bar := cs.overflow_y == .Hidden || cs.overflow_y == .Clip ? 0 : bar_thickness(c.set, cs, s)
+		return f32(cols) * char_w + bar, f32(rows) * f.line_h, true, true
 	case "select":
 		widest: f32
 		stack := make([dynamic]base.Handle, 0, 16, context.temp_allocator)

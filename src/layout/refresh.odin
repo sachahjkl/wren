@@ -161,7 +161,7 @@ refresh_paint_values :: proc(l: ^Layout, input: Input) -> bool {
 		}
 	}
 	for &cl in l.clips { if cl.box != NONE { cl.radii = clip_radii(l, &l.boxes[cl.box]) } }   // (NONE: a column's)
-	if transforms && !refresh_overflow(l, input.viewport) { return false }
+	if transforms && !refresh_overflow(l, l.icb) { return false }
 	return true
 }
 
@@ -175,7 +175,7 @@ refresh_overflow :: proc(l: ^Layout, vp: Vec2) -> bool {
 		if .Scroll not_in b.flags || .Propagated in b.flags || b.kind == .Inline || .Dead in b.flags { continue }
 		port := padding_rect(&b)
 		mn, ms := scroll_limits(&b, port)
-		scrolls := ms.x > 0.5 || ms.y > 0.5 || mn.x < -0.5 || mn.y < -0.5
+		scrolls := ms.x > BAR_MIN_OVERFLOW || ms.y > BAR_MIN_OVERFLOW || mn.x < -BAR_MIN_OVERFLOW || mn.y < -BAR_MIN_OVERFLOW
 		if scrolls != (b.scroll_space != NONE) { return false }
 		if !scrolls { continue }
 		l.spaces[b.scroll_space].max_scroll = ms

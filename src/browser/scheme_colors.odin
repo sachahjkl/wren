@@ -67,9 +67,21 @@ control_palette :: proc(cs: ^style.Computed) -> Control_Palette {
 	return p
 }
 
-// Scroll bar colors for a scroller (or the document) whose used color scheme is `scheme`: the layout preferences in
-// the light scheme, page.scrollbar.dark.* in the dark one.
-scrollbar_colors :: proc(scheme: style.Scheme, light_thumb, light_track: css.Color) -> (thumb, track: css.Color) {
-	if scheme == .Dark { return the_app.scheme_ui.dark_thumb, the_app.scheme_ui.dark_track }
-	return light_thumb, light_track
+// The colors of a scroll bar (arrow: of the arrow buttons of classic bars).
+Bar_Colors :: struct { thumb, track, arrow: css.Color }
+
+// Scroll bar colors for a scroller (or the document) whose used color scheme is `scheme` and whose style is `cs` (nil:
+// none): those of overlay or classic bars in that scheme (the layout preferences in the light one,
+// browser.scrollbar.dark.* in the dark one), then the element's scrollbar-color (its arrows take the thumb's).
+scrollbar_colors :: proc(scheme: style.Scheme, cs: ^style.Computed) -> (c: Bar_Colors) {
+	set := &the_app.page_render.settings
+	dark := scheme == .Dark
+	switch {
+	case set.scrollbar_overlay && dark: c = {thumb = the_app.scheme_ui.dark_thumb, track = the_app.scheme_ui.dark_track}
+	case set.scrollbar_overlay: c = {thumb = set.scrollbar_thumb, track = set.scrollbar_track}
+	case dark: c = the_app.scheme_ui.dark_classic
+	case: c = {thumb = set.classic_thumb, track = set.classic_track, arrow = set.classic_arrow}
+	}
+	if cs != nil && !cs.scrollbar_color.auto { c = {thumb = cs.scrollbar_color.thumb, track = cs.scrollbar_color.track, arrow = cs.scrollbar_color.thumb} }
+	return
 }

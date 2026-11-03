@@ -50,7 +50,7 @@ emit_box :: proc(p: ^Paint_Ctx, bi: i32) {
 	if .Root in b.flags { return }
 	if b.kind == .Inline { return }
 	if .Hidden in b.flags {
-		if .Scroll in b.flags && b.scroll_space != NONE { append(p.scrollers, bi) }
+		if .Scroll in b.flags && has_bars(b) { append(p.scrollers, bi) }
 		return
 	}
 	cs := b.cs
@@ -70,8 +70,12 @@ emit_box :: proc(p: ^Paint_Ctx, bi: i32) {
 	}
 	if .Multicol in b.fx { emit_column_rules(c, bi) }
 	if cs.outline_width > 0 { append(p.outlines, bi) }
-	if b.scroll_space != NONE { append(p.scrollers, bi) }
+	if has_bars(b) { append(p.scrollers, bi) }
 }
+
+// A box that scrolls, or has a gutter for its classic bars (overflow: scroll draws its bar with nothing to scroll).
+@(private)
+has_bars :: #force_inline proc(b: ^Box) -> bool { return b.scroll_space != NONE || b.gutter[1] + b.gutter[2] > 0 }
 
 @(private)
 emit_marker :: proc(p: ^Paint_Ctx, bi: i32) {
@@ -296,14 +300,31 @@ paint_stacking :: proc(p: ^Paint_Ctx, bi: i32) {
 @(private)
 emit_scrollbars :: proc(c: ^Ctx, bi: i32) {
 	b := &c.l.boxes[bi]
-	if b.scroll_space == NONE { return }
-	// scrollbar-width: none still scrolls, without a bar; thin is half as wide
-	if b.cs != nil && b.cs.scrollbar_width == .None { return }
-	sp := &c.l.spaces[b.scroll_space]
-	w := c.set.scrollbar_width * c.scale * (b.cs != nil && b.cs.scrollbar_width == .Thin ? 0.5 : 1)
+	// scrollbar-width: none still scrolls, without a bar
+	w := bar_thickness(c.set, b.cs, c.scale)
+	if w <= 0 { return }
+	bar_x, bar_y: bool
+	if b.scroll_space != NONE {
+		sp := &c.l.spaces[b.scroll_space]
+		bar_x, bar_y = sp.max_scroll.x > 0 || sp.min_scroll.x < 0, sp.max_scroll.y > 0 || sp.min_scroll.y < 0
+	}
+	port := padding_rect(b)
+	if b.gutter[1] + b.gutter[2] > 0 {
+		// classic: each bar fills its gutter, the vertical one down to the corner (overflow: scroll draws its bar whether
+		// there is something to scroll or not); a box without one (may_gutter) has them over its content
+		if b.gutter[1] > 0 && (bar_y || b.cs.overflow_y == .Scroll) {
+			it := item_for_box(c, .Scrollbar, bi, Rect{{port.max.x, port.min.y}, {port.max.x + b.gutter[1], port.max.y}})
+			it.flags = {.Vertical}
+			push_item(c, it)
+		}
+		if b.gutter[2] > 0 && (bar_x || b.cs.overflow_x == .Scroll) {
+			it := item_for_box(c, .Scrollbar, bi, Rect{{port.min.x, port.max.y}, {port.max.x, port.max.y + b.gutter[2]}})
+			it.flags = {}
+			push_item(c, it)
+		}
+		return
+	}
 	m := c.set.scrollbar_margin * c.scale
-	port := sp.port
-	bar_x, bar_y := sp.max_scroll.x > 0 || sp.min_scroll.x < 0, sp.max_scroll.y > 0 || sp.min_scroll.y < 0
 	if bar_y {
 		it := item_for_box(c, .Scrollbar, bi, Rect{{port.max.x - w - m, port.min.y + m}, {port.max.x - m, port.max.y - m - (bar_x ? w + m : 0)}})
 		it.flags = {.Vertical}

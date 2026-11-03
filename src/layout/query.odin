@@ -15,9 +15,6 @@ BAND_ENTRIES_PER_ITEM :: 15
 BAND_ENTRIES_FLOOR :: 4096
 // The shortest band, in CSS pixels, whatever the input asks.
 BAND_MIN_H :: 16
-// How far (device px) the document must go past the viewport for its scroll bar on that axis to show.
-@(private)
-DOC_BAR_MIN_OVERFLOW :: 0.5
 
 @(private)
 build_bands :: proc(l: ^Layout, band_h: f32) {
@@ -160,10 +157,10 @@ sticky_offset :: proc(l: ^Layout, sp: ^Space, viewport: Vec2, doc_scroll: f32) -
 		so := scroll_offset_of(l, f)
 		view = Rect{f.port.min + so, f.port.max + so}
 	} else if sp.frame == FIXED_SPACE {
-		view = Rect{{0, 0}, viewport}
+		view = Rect{{0, 0}, doc_port(l, viewport)}
 	} else {
 		sx := doc_scroll_x_snapped(l)
-		view = Rect{{sx, doc_scroll}, {sx + viewport.x, doc_scroll + viewport.y}}
+		view = Rect{{sx, doc_scroll}, Vec2{sx, doc_scroll} + doc_port(l, viewport)}
 	}
 	r, lim := sp.port, sp.limit
 	d: Vec2
@@ -198,14 +195,14 @@ set_doc_scroll_x :: proc(l: ^Layout, x: f32) {
 	if l.anchor_scroll { l.anchor_stale = true }
 }
 
-// The range of the page's horizontal scroll offset in a viewport `width` wide.
+// The range of the page's horizontal scroll offset in a viewport `width` wide (its classic bars aside).
 doc_scroll_x_range :: #force_inline proc(l: ^Layout, width: f32) -> (lo, hi: f32) {
-	return l.doc_min_x, max(l.doc_width - width, 0)
+	return l.doc_min_x, max(l.doc_width - max(width - l.doc_bars.x, 0), 0)
 }
 
-// The range of the page's vertical scroll offset in a viewport `height` high.
+// The range of the page's vertical scroll offset in a viewport `height` high (its classic bars aside).
 doc_scroll_y_range :: #force_inline proc(l: ^Layout, height: f32) -> (lo, hi: f32) {
-	return l.doc_min_y, max(l.height - height, 0)
+	return l.doc_min_y, max(l.height - max(height - l.doc_bars.y, 0), 0)
 }
 
 // `viewport`: device px; `doc_scroll`: the page's vertical scroll offset (device px); the horizontal one is the layout's
@@ -634,80 +631,69 @@ box_client_rects :: proc(l: ^Layout, v: ^View, node: base.Handle, out: ^[dynamic
 	return true
 }
 
-// How thick the page's own scroll bars are, and whether it has any: they follow the root element's scrollbar-width.
-@(private = "file")
-doc_scrollbar_width :: proc(l: ^Layout) -> (w: f32, ok: bool) {
-	if !l.valid || !l.settings.document_scrollbar { return }
-	thin := false
-	if len(l.boxes) > 0 {
-		if r := l.boxes[0].first; r != NONE && l.boxes[r].cs != nil {
-			#partial switch l.boxes[r].cs.scrollbar_width {
-			case .None: return
-			case .Thin: thin = true
-			}
-		}
-	}
-	return l.settings.scrollbar_width * l.scale * (thin ? 0.5 : 1), true
-}
-
-// The page's own vertical scroll bar (viewport coordinates), when the page is taller than the viewport. With the
-// horizontal one too, each stops short of the corner.
+// The page's own vertical scroll bar (viewport coordinates): its track (a classic bar: the whole bar, arrows included:
+// classic_parts) and its thumb, empty when there is nothing to scroll (the classic bar of overflow: scroll). An overlay
+// bar shows when the page is taller than the viewport and stops short of the corner when there is a horizontal one too.
 doc_scrollbar :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32) -> (track, thumb: Rect, ok: bool) {
-	w, shown := doc_scrollbar_width(l)
-	extent := l.height - l.doc_min_y
-	if !shown || extent <= viewport.y + DOC_BAR_MIN_OVERFLOW { return }
-	s := l.scale
-	m := l.settings.scrollbar_margin * s
-	track = Rect{{viewport.x - w - m, m}, {viewport.x - m, viewport.y - m}}
-	if l.doc_width - l.doc_min_x > viewport.x + DOC_BAR_MIN_OVERFLOW { track.max.y -= w + m }
-	th := max((track.max.y - track.min.y) * viewport.y / extent, l.settings.scrollbar_min_thumb * s)
-	th = min(th, track.max.y - track.min.y)
+	if !l.valid { return }
 	lo, hi := doc_scroll_y_range(l, viewport.y)
-	t := hi > lo ? clamp((doc_scroll - lo) / (hi - lo), 0, 1) : 0
-	y := track.min.y + (track.max.y - track.min.y - th) * t
-	thumb = Rect{{track.min.x, y}, {track.max.x, y + th}}
+	if !l.settings.scrollbar_overlay {
+		if l.doc_bars.x <= 0 || (hi <= lo && l.doc_overflow.y != .Scroll) { return }
+		port := doc_port(l, viewport)
+		track = Rect{{viewport.x - l.doc_bars.x, 0}, {viewport.x, port.y}}
+		_, _, rail := classic_parts(track, true)
+		if hi > lo { thumb = bar_thumb(l, rail, true, port.y, hi - lo, (doc_scroll - lo) / (hi - lo)) }
+		return track, thumb, true
+	}
+	w := bar_thickness(&l.settings, root_style(l), l.scale)
+	if !l.settings.document_scrollbar || w <= 0 || l.height - l.doc_min_y <= viewport.y + BAR_MIN_OVERFLOW { return }
+	m := l.settings.scrollbar_margin * l.scale
+	track = Rect{{viewport.x - w - m, m}, {viewport.x - m, viewport.y - m}}
+	if l.doc_width - l.doc_min_x > viewport.x + BAR_MIN_OVERFLOW { track.max.y -= w + m }
+	thumb = bar_thumb(l, track, true, viewport.y, hi - lo, hi > lo ? (doc_scroll - lo) / (hi - lo) : 0)
 	return track, thumb, true
 }
 
-// The page's own horizontal scroll bar (viewport coordinates), when the page is wider than the viewport.
+// The page's own horizontal scroll bar (viewport coordinates), likewise.
 doc_scrollbar_x :: proc(l: ^Layout, viewport: Vec2) -> (track, thumb: Rect, ok: bool) {
-	w, shown := doc_scrollbar_width(l)
-	extent := l.doc_width - l.doc_min_x
-	if !shown || extent <= viewport.x + DOC_BAR_MIN_OVERFLOW { return }
-	s := l.scale
-	m := l.settings.scrollbar_margin * s
-	track = Rect{{m, viewport.y - w - m}, {viewport.x - m, viewport.y - m}}
-	if l.height - l.doc_min_y > viewport.y + DOC_BAR_MIN_OVERFLOW { track.max.x -= w + m }
-	th := max((track.max.x - track.min.x) * viewport.x / extent, l.settings.scrollbar_min_thumb * s)
-	th = min(th, track.max.x - track.min.x)
+	if !l.valid { return }
 	lo, hi := doc_scroll_x_range(l, viewport.x)
-	t := hi > lo ? clamp((doc_scroll_x_snapped(l) - lo) / (hi - lo), 0, 1) : 0
-	x := track.min.x + (track.max.x - track.min.x - th) * t
-	thumb = Rect{{x, track.min.y}, {x + th, track.max.y}}
+	t := hi > lo ? (doc_scroll_x_snapped(l) - lo) / (hi - lo) : 0
+	if !l.settings.scrollbar_overlay {
+		if l.doc_bars.y <= 0 || (hi <= lo && l.doc_overflow.x != .Scroll) { return }
+		port := doc_port(l, viewport)
+		track = Rect{{0, viewport.y - l.doc_bars.y}, {port.x, viewport.y}}
+		_, _, rail := classic_parts(track, false)
+		if hi > lo { thumb = bar_thumb(l, rail, false, port.x, hi - lo, t) }
+		return track, thumb, true
+	}
+	w := bar_thickness(&l.settings, root_style(l), l.scale)
+	if !l.settings.document_scrollbar || w <= 0 || l.doc_width - l.doc_min_x <= viewport.x + BAR_MIN_OVERFLOW { return }
+	m := l.settings.scrollbar_margin * l.scale
+	track = Rect{{m, viewport.y - w - m}, {viewport.x - m, viewport.y - m}}
+	if l.height - l.doc_min_y > viewport.y + BAR_MIN_OVERFLOW { track.max.x -= w + m }
+	thumb = bar_thumb(l, track, false, viewport.x, hi - lo, t)
 	return track, thumb, true
 }
 
-// Thumb of a scroll bar item for this view (viewport coordinates).
+// The corner between the page's two classic bars (viewport coordinates); ok = false: not both.
+doc_scroll_corner :: proc(l: ^Layout, viewport: Vec2) -> (corner: Rect, ok: bool) {
+	if l.settings.scrollbar_overlay || l.doc_bars.x <= 0 || l.doc_bars.y <= 0 { return }
+	return Rect{doc_port(l, viewport), viewport}, true
+}
+
+// Thumb of a scroll bar item for this view (viewport coordinates); empty when the box has nothing to scroll that way.
 scrollbar_thumb :: proc(l: ^Layout, v: ^View, it: ^Display_Item) -> Rect {
 	b := &l.boxes[it.box]
 	if b.scroll_space == NONE { return {} }
 	sp := &l.spaces[b.scroll_space]
-	track := item_rect(l, v, it)
+	vertical := .Vertical in it.flags
+	ax := vertical ? 1 : 0
+	range := sp.max_scroll[ax] - sp.min_scroll[ax]
+	if range <= 0 { return {} }
+	rail := item_rect(l, v, it)
+	if !l.settings.scrollbar_overlay { _, _, rail = classic_parts(rail, vertical) }
 	so := scroll_offset_of(l, sp)
 	port := sp.port.max - sp.port.min
-	min_t := l.settings.scrollbar_min_thumb * l.scale
-	if .Vertical in it.flags {
-		len_ := track.max.y - track.min.y
-		range := sp.max_scroll.y - sp.min_scroll.y
-		th := min(max(len_ * port.y / (port.y + range), min_t), len_)
-		t := range > 0 ? (so.y - sp.min_scroll.y) / range : 0
-		y := track.min.y + (len_ - th) * t
-		return Rect{{track.min.x, y}, {track.max.x, y + th}}
-	}
-	len_ := track.max.x - track.min.x
-	range := sp.max_scroll.x - sp.min_scroll.x
-	th := min(max(len_ * port.x / (port.x + range), min_t), len_)
-	t := range > 0 ? (so.x - sp.min_scroll.x) / range : 0
-	x := track.min.x + (len_ - th) * t
-	return Rect{{x, track.min.y}, {x + th, track.max.y}}
+	return bar_thumb(l, rail, vertical, port[ax], range, (so[ax] - sp.min_scroll[ax]) / range)
 }

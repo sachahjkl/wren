@@ -102,9 +102,7 @@ ix_frame :: proc(f: ^Ix, dt: f64 = 16) {
 ix_check :: proc(t: ^testing.T, f: ^Ix, want := Pass_Kind.Incremental, loc := #caller_location) -> bool {
 	ref: Layout
 	defer destroy(&ref)
-	ref.scroll = make(map[base.Handle]Vec2)
-	for k, v in f.l.scroll { ref.scroll[k] = v }
-	run_full(&ref, ix_input(f))
+	full_pass_from(&ref, &f.l, ix_input(f))
 	ok, report := compare_layouts(&f.l, &ref)
 	testing.expectf(t, ok, "incremental differs from full: %s", report, loc = loc)
 	if want != .None {

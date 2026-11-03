@@ -383,7 +383,7 @@
 /css/css-multicol/multicol-span-float-003.html: FAIL
 /css/css-multicol/multicol-span-float-004.html: FAIL
 /css/css-multicol/multicol-span-none-001.xht: PASS
-/css/css-multicol/multicol-under-vertical-rl-scroll.html: PASS
+/css/css-multicol/multicol-under-vertical-rl-scroll.html: FAIL
 /css/css-multicol/multicol-width-001.xht: PASS
 /css/css-multicol/multicol-width-002.xht: PASS
 /css/css-multicol/multicol-width-003.xht: PASS
@@ -416,7 +416,7 @@
 /css/css-multicol/oof-nested-in-single-column.html: PASS
 /css/css-multicol/orthogonal-writing-mode-shrink-to-fit.html: PASS
 /css/css-multicol/orthogonal-writing-mode-spanner.html: PASS
-/css/css-multicol/overflow-unsplittable-001.html: PASS
+/css/css-multicol/overflow-unsplittable-001.html: FAIL
 /css/css-multicol/overflow-unsplittable-002.html: PASS
 /css/css-multicol/overflow-unsplittable-003.html: FAIL
 /css/css-multicol/page-property-ignored.html: PASS

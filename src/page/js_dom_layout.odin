@@ -145,7 +145,9 @@ used_box :: proc(p: ^Page, h: base.Handle) -> Used_Box {
 	if !g.ok || g.box == nil { return {} }
 	_ = l
 	s := f32(vp.scale)
-	u := Used_Box{ok = true, width = g.content.max.x - g.content.min.x, height = g.content.max.y - g.content.min.y}
+	// (with the room of its classic scroll bars, as in browsers: a specified width round-trips)
+	gut := g.box.gutter
+	u := Used_Box{ok = true, width = g.content.max.x - g.content.min.x + (gut[1] + gut[3]) / s, height = g.content.max.y - g.content.min.y + (gut[0] + gut[2]) / s}
 	for i in 0 ..< 4 { u.margin[i] = g.box.margin[i] / s; u.padding[i] = g.box.padding[i] / s }
 	if bi := lay.box_index(l, h); bi != lay.NONE {
 		u.inset, u.inset_auto, u.insets = lay.positioned_insets(l, bi, s)
@@ -247,12 +249,19 @@ Element_clientLeft :: proc(c: ^Call, element: Api_Element) -> i32 {
 	return i32(math.round(f64(g.box.border[3]) / vp.scale))
 }
 
+// The page's client size (CSS px): the viewport less its classic scroll bars (innerWidth and innerHeight keep them).
+@(private)
+doc_client_size :: proc(l: ^lay.Layout, vp: Viewport) -> [2]f64 {
+	if l == nil { return {vp.width, vp.height} }
+	return {math.round(vp.width - f64(l.doc_bars.x) / vp.scale), math.round(vp.height - f64(l.doc_bars.y) / vp.scale)}
+}
+
 Element_clientWidth :: proc(c: ^Call, element: Api_Element) -> i32 {
 	p := c.page
 	h := H(element.handle)
 	if h == jd_document_element(p.doc) || (p.doc.mode == .Quirks && h == jd_body(p.doc)) {
-		_, vp := js_layout_now(p)
-		return i32(vp.width)
+		l, vp := js_layout_now(p)
+		return i32(doc_client_size(l, vp).x)
 	}
 	g, _, _ := element_geometry(p, h)
 	if !g.ok || is_inline_box(g) { return 0 }
@@ -263,8 +272,8 @@ Element_clientHeight :: proc(c: ^Call, element: Api_Element) -> i32 {
 	p := c.page
 	h := H(element.handle)
 	if h == jd_document_element(p.doc) || (p.doc.mode == .Quirks && h == jd_body(p.doc)) {
-		_, vp := js_layout_now(p)
-		return i32(vp.height)
+		l, vp := js_layout_now(p)
+		return i32(doc_client_size(l, vp).y)
 	}
 	g, _, _ := element_geometry(p, h)
 	if !g.ok || is_inline_box(g) { return 0 }
@@ -328,8 +337,9 @@ Element_scrollWidth :: proc(c: ^Call, element: Api_Element) -> i32 {
 	h := H(element.handle)
 	if is_scrolling_element(p, h) {
 		l, vp := js_layout_now(p)
-		if l == nil { return i32(vp.width) }
-		return i32(math.max(vp.width, f64(l.doc_width - l.doc_min_x) / vp.scale))
+		client := doc_client_size(l, vp)
+		if l == nil { return i32(client.x) }
+		return i32(math.max(client.x, f64(l.doc_width - l.doc_min_x) / vp.scale))
 	}
 	g, l, vp := element_geometry(p, h)
 	if !g.ok || is_inline_box(g) { return 0 }
@@ -344,7 +354,7 @@ Element_scrollHeight :: proc(c: ^Call, element: Api_Element) -> i32 {
 	if is_scrolling_element(p, h) {
 		l, vp := js_layout_now(p)
 		if l == nil { return 0 }
-		return i32(math.max(vp.height, f64(l.height - l.doc_min_y) / vp.scale))
+		return i32(math.max(doc_client_size(l, vp).y, f64(l.height - l.doc_min_y) / vp.scale))
 	}
 	g, l, vp := element_geometry(p, h)
 	if !g.ok || is_inline_box(g) { return 0 }

@@ -349,14 +349,19 @@ canvas_elements :: proc(d: ^dom.Document) -> (root_el, body_el: base.Handle) {
 
 @(private)
 propagate_overflow :: proc(c: ^Ctx) {
+	c.l.doc_overflow = {.Visible, .Visible}
 	pick := base.NIL_HANDLE
-	if rc := style.style_of(c.st, c.root_el); rc != nil && (rc.overflow_x != .Visible || rc.overflow_y != .Visible) {
+	rc, bc := style.style_of(c.st, c.root_el), style.style_of(c.st, c.body_el)
+	if rc != nil && (rc.overflow_x != .Visible || rc.overflow_y != .Visible) {
 		pick = c.root_el
-	} else if bc := style.style_of(c.st, c.body_el); bc != nil && (bc.overflow_x != .Visible || bc.overflow_y != .Visible) {
+	} else if bc != nil && (bc.overflow_x != .Visible || bc.overflow_y != .Visible) && box_index(c.l, c.body_el) != NONE &&
+	   (rc == nil || .Paint not_in rc.contain) && .Paint not_in bc.contain {
+		// (a body with a box, neither it nor the root element with paint containment: CSS Contain 2 §3.4)
 		pick = c.body_el
 	}
 	if pick == base.NIL_HANDLE { return }
 	cs := style.style_of(c.st, pick)
+	c.l.doc_overflow = {cs.overflow_x, cs.overflow_y}
 	c.l.doc_scroll_y = cs.overflow_y != .Hidden && cs.overflow_y != .Clip
 	c.l.doc_scrollable_x = cs.overflow_x != .Hidden && cs.overflow_x != .Clip
 	if bi := box_index(c.l, pick); bi != NONE {

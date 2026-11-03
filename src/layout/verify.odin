@@ -195,17 +195,26 @@ compare_layouts :: proc(a, b: ^Layout, allocator := context.temp_allocator) -> (
 	return false, strings.clone(strings.to_string(m.sb), allocator)
 }
 
-// A full pass of the same input on the side, compared with this layout (layout.incremental.verify).
+// A full pass of `input` into `ref` from what `l` keeps between passes (scroll offsets, the choices of anchored boxes,
+// the classic scroll bars it found): what `l` must equal.
 @(private)
-verify_against_full :: proc(l: ^Layout, input: Input) {
-	ref: Layout
-	defer destroy(&ref)
+full_pass_from :: proc(ref, l: ^Layout, input: Input) {
 	ref.scroll = make(map[base.Handle]Vec2)
 	for k, v in l.scroll { ref.scroll[k] = v }
 	for k, v in l.anchor_last { ref.anchor_last[k] = v }
 	ref.anchor_doc_scroll = l.anchor_doc_scroll
 	ref.doc_scroll_x = l.doc_scroll_x
-	run_full(&ref, input)
+	ref.doc_bars = l.doc_bars
+	for k, v in l.bars { ref.bars[k] = v }
+	run_full(ref, input)
+}
+
+// A full pass of the same input on the side, compared with this layout (layout.incremental.verify).
+@(private)
+verify_against_full :: proc(l: ^Layout, input: Input) {
+	ref: Layout
+	defer destroy(&ref)
+	full_pass_from(&ref, l, input)
 	ok, report := compare_layouts(l, &ref, context.allocator)
 	if ok { return }
 	l.inc.verify_failures += 1

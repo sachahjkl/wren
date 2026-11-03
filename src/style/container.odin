@@ -18,9 +18,9 @@ import "wb:dom"
 
 Container_Type :: enum u8 { Normal, Size, Inline_Size }
 
-// CSS Scrollbars 1 and Overflow 3 (scrollbar-gutter). The bars of this browser are overlays: `none` hides them, `thin`
-// narrows them, the colors are for the painter; a gutter is never reserved (overlay bars take no room), so
-// scrollbar-gutter is kept for completeness only.
+// CSS Scrollbars 1 and Overflow 3 (scrollbar-gutter). `none` hides the bars, `thin` narrows them, the colors are for the
+// painter; classic bars take room in their box, and scrollbar-gutter reserves it before they show (layout
+// scrollbars.odin; overlay bars take none).
 Scrollbar_Width :: enum u8 { Auto, Thin, None }
 Scrollbar_Colors :: struct { auto: bool, thumb, track: css.Color }   // auto: the browser's colors (the initial value)
 Scrollbar_Gutter :: enum u8 { Auto, Stable, Stable_Both_Edges }

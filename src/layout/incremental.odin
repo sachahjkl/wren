@@ -23,7 +23,8 @@ INC_COMPACT_MIN_DEAD_SEGS :: 1024
 //   * the mutation journal of the document (dom.journal_since): inserted / removed nodes, text, attributes;
 //   * the layout journal of the styles (style.journal_since): per element, a change that keeps its box (Layout) or
 //     may change it (Box);
-//   * the viewport (the root is laid out again: what depends on the width or the height misses its cache);
+//   * the viewport, or the room the page's classic scroll bars leave of it (the root is laid out again: what depends on
+//     the width or the height misses its cache), and the boxes whose bars came or went (scrollbars.odin);
 //   * the natural sizes of replaced elements (Input.images_generation), the faces of fonts (Input.fonts_generation).
 //
 // Invalidation is per box: `Dirty` (the box itself must be laid out again) and `Child_Dirty` (something inside must),
@@ -406,6 +407,8 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 			clear(&plans)
 		}
 	}
+	// boxes whose classic scroll bars came or went (bars_settle)
+	for bi in l.bar_dirty { if .Dead not_in l.boxes[bi].flags { append(&dirty, bi) } }
 	roots = prune_roots(l, roots)
 	// a box made again alone (a plan) takes what is inside it with it: a root in there would be rebuilt dead
 	if len(plans) > 0 && len(roots) > 0 {
@@ -424,7 +427,8 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	if f32(rebuilt + len(dirty) + len(styled_dirty)) > limit { return bail(l, "too much changed") }
 
 	// the display list can be spliced only when nothing but the content of some inline contexts changed
-	vp_changed := l.viewport != input.viewport
+	icb := doc_port(l, input.viewport)   // (the page's bars may have come or gone since: bars_settle)
+	vp_changed := l.icb != icb
 	images_changed := input.images_generation != l.inc.images_gen
 	fonts_changed := input.fonts_generation != l.inc.fonts_gen
 	pass.segs_ok = layout_changes == 0 && !fonts_changed
@@ -482,7 +486,7 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 
 	// widths that change everywhere (the viewport's, a font), or many boxes made again or restyled: the paragraphs that
 	// will be laid out again are, ahead, on the layout threads
-	pass.wide = (vp_changed && l.viewport.x != input.viewport.x) || fonts_changed ||
+	pass.wide = (vp_changed && l.icb.x != icb.x) || fonts_changed ||
 		l.inc.last_rebuilt + len(dirty) + len(styled_dirty) >= set.threads_min_contexts
 	note_inputs(l, input)
 	l.passes[.Incremental] += 1

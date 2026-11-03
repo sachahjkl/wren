@@ -731,10 +731,10 @@ grid_sub_copy :: proc(c: ^Ctx, g: ^Grid, axis: int) {
 	span := min(sa.n, pit.area[axis][1] - s)
 	inset_s, inset_e: f32
 	if axis == 0 {
-		inset_s, inset_e = pit.m[3] + k.border[3] + k.padding[3], pit.m[1] + k.border[1] + k.padding[1]
+		inset_s, inset_e = pit.m[3] + content_x(k), pit.m[1] + k.border[1] + k.gutter[1] + k.padding[1]
 		if p.rtl { inset_s, inset_e = inset_e, inset_s }
 	} else {
-		inset_s, inset_e = pit.m[0] + k.pre_h + k.border[0] + k.padding[0], pit.m[2] + k.border[2] + k.padding[2]
+		inset_s, inset_e = pit.m[0] + k.pre_h + content_y(k), pit.m[2] + k.border[2] + k.gutter[2] + k.padding[2]
 	}
 	sa.gap = pa.gap
 	if span <= 0 { return }
@@ -1263,7 +1263,7 @@ grid_abs :: proc(c: ^Ctx, cbi: i32) {
 	g, ok := gp.last[cbi]
 	if !ok { layout_abs_list(c, cbi); return }
 	cb := &c.l.boxes[cbi]
-	pad := Rect{{cb.border[3], cb.border[0]}, cb.size - {cb.border[1], cb.border[2]}}
+	_, pad := abs_containing_rect(c, cbi)
 	cx, cy := content_x(cb), content_y(cb)
 	origin := Vec2{cx, cy}
 	for a := cb.abs_first; a != NONE; a = c.l.boxes[a].abs_next {

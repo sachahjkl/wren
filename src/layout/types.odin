@@ -209,6 +209,7 @@ Box :: struct {
 	mc:        i32,                 // a multi-column container: its record in Layout.mc_records (NONE: none yet)
 	// box model, device px: top, right, bottom, left
 	margin, border, padding: [4]f32,
+	gutter:    [4]f32,              // the room of classic scroll bars, between the border and the padding (scrollbars.odin)
 	auto_l, auto_r, auto_t, auto_b: bool,
 	pos, size: Vec2,                // border box
 	rel:       Vec2,                // relative-position offset
@@ -421,6 +422,7 @@ Layout :: struct {
 	loose_styles: bool,         // some text's style is not the style of a box (its element has none: display: contents...)
 	deco_items:   [dynamic]i32, // decorated Text items (their color follows text-decoration-color)
 	viewport:   Vec2,
+	icb:        Vec2,           // the initial containing block the last pass laid out in: the viewport less doc_bars
 	scale:      f32,
 	valid:      bool,
 	last_pass:  Pass_Kind,      // what the last `run` did
@@ -446,13 +448,19 @@ Layout :: struct {
 	doc_min_y:    f32,                     // top end of the vertical range, <= 0: below 0 only with its origin at the bottom (doc_scroll_origin_bottom)
 	doc_scroll_y: bool,                    // false: the root element's overflow forbids scrolling the page
 	doc_scrollable_x: bool,                // likewise, across
-	doc_origin_end: bool,                  // doc_scroll_origin_end at the last pass
+	doc_overflow: [2]style.Overflow,       // the overflow the viewport took from the root element or the body (x, y)
+	doc_origin_end: bool,                 // doc_scroll_origin_end at the last pass
 	doc_origin_bottom: bool,               // doc_scroll_origin_bottom at the last pass
 	settings:     Settings,
 	stats:        [5]f32,                  // ms of the last run: box tree, layout, finishing, display list, spatial index
 	// persistent across layouts
 	scroll:       map[base.Handle]Vec2,    // scroll offset of each scroll container
 	doc_scroll_x: f32,                     // the page's horizontal scroll offset (device px): set_doc_scroll_x; views read it
+	// classic scroll bars (scrollbars.odin): what the last passes found, the next one lays out with
+	doc_bars:     Vec2,                    // the page's: x the vertical bar's width, y the horizontal bar's height (device px)
+	doc_bars_off: bool,                    // the embedder's: the page has none (a frame of scrolling="no"): set_doc_bars_off
+	bars:         map[base.Handle]Bar_Axes,   // the bars of the overflow: auto boxes that show some
+	bar_dirty:    [dynamic]i32,            // boxes whose bars came or went: laid out again by the next pass
 	arena:        virtual.Arena,           // strings made up by layout (transformed text, markers, generated content)
 	arena_ready:  bool,
 	scratch:      [dynamic]u32,

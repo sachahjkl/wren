@@ -391,7 +391,7 @@ Rare_Group :: struct {
 	// container queries (container.odin)
 	container_type:    Container_Type,
 	container_name:    []string,
-	// scroll bars (container.odin; the bars are overlays: scrollbar-gutter is kept but reserves nothing)
+	// scroll bars (container.odin; the room classic bars take: layout scrollbars.odin)
 	scrollbar_width:   Scrollbar_Width,
 	scrollbar_gutter:  Scrollbar_Gutter,
 	wren_shader:       Shader_Call,        // -wren-shader (wren_shader.odin): built-in pages only

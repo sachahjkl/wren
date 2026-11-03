@@ -9,11 +9,14 @@ import "wb:css"
 Settings :: struct {
 	max_depth:          int,       // boxes nested deeper are flattened into their ancestor at this depth
 	max_stack_bytes:    int,       // native stack a layout pass may use before it stops descending
-	scrollbar_width:    f32,       // CSS px
+	scrollbar_overlay:  bool,      // bars drawn over the content; else classic bars, which take room (scrollbars.odin)
+	scrollbar_width:    f32,       // CSS px: an overlay bar
 	scrollbar_min_thumb: f32,      // CSS px
-	scrollbar_margin:   f32,       // CSS px between the bar and the padding edge
+	scrollbar_margin:   f32,       // CSS px between an overlay bar and the padding edge
 	scrollbar_thumb:    css.Color,
 	scrollbar_track:    css.Color,
+	classic_width, classic_thin: f32,   // CSS px: a classic bar (scrollbar-width: auto, thin)
+	classic_thumb, classic_track, classic_arrow: css.Color,
 	document_scrollbar: bool,
 	placeholder_w, placeholder_h: f32,   // CSS px: a replaced element with no known size (an image not decoded yet)
 	embed_w, embed_h:   f32,       // CSS px: iframe, embed, object, video without a natural size (width: audio too)
@@ -53,14 +56,23 @@ PREFS := [?]config.Def{
 		description = "Deepest nesting of boxes laid out as boxes. Deeper elements are flattened: their text joins the box at this depth (protects the native stack against hostile pages)."},
 	{name = "layout.max_stack_bytes", kind = .Int, default = {i = 512 << 10}, bounded = true, min = 64 << 10, max = 16 << 20, bytes = true, unit = "bytes",
 		description = "Native stack one layout pass may use, on the interface thread and on each layout thread (both have 32 MiB). Past it, deeper boxes get no size instead of crashing the browser."},
+	{name = "layout.scrollbar.overlay", kind = .Bool, default = {b = false},
+		description = "Scroll bars drawn over the content of the page and of its scrollable boxes, taking no room (as on macOS, or GNOME's overlay scroll bars). Off: classic scroll bars, as Chrome and Edge draw them on Windows and Linux: a bar takes its width from the box it scrolls (the page's from the window: document.documentElement.clientWidth is the window's width less the bar), with an arrow button at each end; scrollbar-gutter reserves that room before a bar shows."},
 	{name = "layout.scrollbar.width_px", kind = .Float, default = {f = 6}, bounded = true, min = 1, max = 64, unit = "px",
-		description = "Thickness of the scroll bars drawn over scrollable boxes and the page."},
+		description = "Thickness of the overlay scroll bars (layout.scrollbar.overlay)."},
 	{name = "layout.scrollbar.min_thumb_px", kind = .Float, default = {f = 24}, bounded = true, min = 4, max = 400, unit = "px",
 		description = "Shortest scroll bar thumb."},
 	{name = "layout.scrollbar.margin_px", kind = .Float, default = {f = 2}, bounded = true, min = 0, max = 32, unit = "px",
-		description = "Space between a scroll bar and the edge of its box."},
-	{name = "layout.scrollbar.thumb_color", kind = .String, default = {s = "rgba(110, 110, 120, 0.65)"}, description = "Color of scroll bar thumbs (CSS color)."},
-	{name = "layout.scrollbar.track_color", kind = .String, default = {s = "rgba(0, 0, 0, 0.06)"}, description = "Color of scroll bar tracks (CSS color, transparent = none)."},
+		description = "Space between an overlay scroll bar and the edge of its box."},
+	{name = "layout.scrollbar.thumb_color", kind = .String, default = {s = "rgba(110, 110, 120, 0.65)"}, description = "Color of overlay scroll bar thumbs (CSS color)."},
+	{name = "layout.scrollbar.track_color", kind = .String, default = {s = "rgba(0, 0, 0, 0.06)"}, description = "Color of overlay scroll bar tracks (CSS color, transparent = none)."},
+	{name = "layout.scrollbar.classic.width_px", kind = .Float, default = {f = 15}, bounded = true, min = 1, max = 64, unit = "px",
+		description = "Thickness of classic scroll bars: the room they take in their box, and the length of their arrow buttons (Chrome and Edge on Windows: 15)."},
+	{name = "layout.scrollbar.classic.thin_width_px", kind = .Float, default = {f = 11}, bounded = true, min = 1, max = 64, unit = "px",
+		description = "Thickness of classic scroll bars of scrollbar-width: thin."},
+	{name = "layout.scrollbar.classic.thumb_color", kind = .String, default = {s = "#c1c1c1"}, description = "Color of classic scroll bar thumbs in the light color scheme (CSS color; the dark one: browser.scrollbar.dark.classic_thumb_color)."},
+	{name = "layout.scrollbar.classic.track_color", kind = .String, default = {s = "#f1f1f1"}, description = "Color of classic scroll bar tracks, their arrow buttons and the corner between two bars, in the light color scheme (CSS color)."},
+	{name = "layout.scrollbar.classic.arrow_color", kind = .String, default = {s = "#505050"}, description = "Color of the arrows of classic scroll bars in the light color scheme (CSS color)."},
 	{name = "layout.scrollbar.document", kind = .Bool, default = {b = true}, description = "Draw a scroll bar for the page itself when it is taller than the window."},
 	{name = "layout.replaced.placeholder_width_px", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 4096, unit = "px",
 		description = "Width of an image whose size is not known yet and not given by width/height attributes."},
@@ -146,11 +158,17 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	return Settings{
 		max_depth = int(config.int_of(p, "layout.max_depth")),
 		max_stack_bytes = int(config.int_of(p, "layout.max_stack_bytes")),
+		scrollbar_overlay = config.bool_of(p, "layout.scrollbar.overlay"),
 		scrollbar_width = f32(config.float_of(p, "layout.scrollbar.width_px")),
 		scrollbar_min_thumb = f32(config.float_of(p, "layout.scrollbar.min_thumb_px")),
 		scrollbar_margin = f32(config.float_of(p, "layout.scrollbar.margin_px")),
 		scrollbar_thumb = color_pref(p, "layout.scrollbar.thumb_color", {0.43, 0.43, 0.47, 0.65}),
 		scrollbar_track = color_pref(p, "layout.scrollbar.track_color", {0, 0, 0, 0.06}),
+		classic_width = f32(config.float_of(p, "layout.scrollbar.classic.width_px")),
+		classic_thin = f32(config.float_of(p, "layout.scrollbar.classic.thin_width_px")),
+		classic_thumb = color_pref(p, "layout.scrollbar.classic.thumb_color", CLASSIC_THUMB),
+		classic_track = color_pref(p, "layout.scrollbar.classic.track_color", CLASSIC_TRACK),
+		classic_arrow = color_pref(p, "layout.scrollbar.classic.arrow_color", CLASSIC_ARROW),
 		document_scrollbar = config.bool_of(p, "layout.scrollbar.document"),
 		placeholder_w = f32(config.float_of(p, "layout.replaced.placeholder_width_px")),
 		placeholder_h = f32(config.float_of(p, "layout.replaced.placeholder_height_px")),
