@@ -24,6 +24,19 @@ hex_value :: proc(c: $T) -> int where intrinsics.type_is_integer(T) {
 	return -1
 }
 
+// `key` (an origin, a storage key) as a file name of the profile: every byte outside [a-z0-9.-] as _XX.
+write_file_stem :: proc(b: ^strings.Builder, key: string) {
+	HEX := "0123456789ABCDEF"
+	for i in 0 ..< len(key) {
+		c := key[i]
+		if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '.' || c == '-' {
+			strings.write_byte(b, c)
+		} else {
+			strings.write_byte(b, '_'); strings.write_byte(b, HEX[c >> 4]); strings.write_byte(b, HEX[c & 15])
+		}
+	}
+}
+
 ////////////////////////////////
 // JSON
 
