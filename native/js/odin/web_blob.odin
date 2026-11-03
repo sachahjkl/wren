@@ -750,10 +750,10 @@ decode_text :: proc(ctx: ^wj.Context, label_in: string, bytes: []u8) -> wj.JSVal
 		for len(name) > 0 && ws(name[0]) { name = name[1:] }
 		for len(name) > 0 && ws(name[len(name) - 1]) { name = name[:len(name) - 1] }
 		for r in REPLACEMENT_LABELS {
-			if ascii_ieq(name, r) { return wj.new_string(ctx, len(p) > 0 ? "\uFFFD" : "") }
+			if wj.ascii_ieq(name, r) { return wj.new_string(ctx, len(p) > 0 ? "\uFFFD" : "") }
 		}
 	}
-	if label == "" || ascii_ieq(label, "utf-8") || ascii_ieq(label, "utf8") {   // (most text: no decoder of the host's)
+	if label == "" || wj.ascii_ieq(label, "utf-8") || wj.ascii_ieq(label, "utf8") {   // (most text: no decoder of the host's)
 		return wj.web_utf8_string(ctx, len(p) > 0 ? raw_data(p) : wj.empty_ptr(), uint(len(p)), false)
 	}
 	dec: u64
