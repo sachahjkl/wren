@@ -294,7 +294,7 @@ sitecompat_fragments_and_back :: proc(t: ^testing.T) {
 }
 
 WIDE :: `<!doctype html><body style="margin:0"><script>function log(s) { wrenTest.note(String(s)) }</script>
-<div id=wide style="width:3000px;height:3000px;position:relative"><div id=box style="position:absolute;left:1000px;top:0;width:100px;height:100px"></div></div>
+<div id=wide style="width:3000px;height:3000px;position:relative"><div id=box style="position:absolute;left:1000px;top:0;width:101px;height:100px"></div></div>
 <div id=fix style="position:fixed;left:10px;top:10px;width:50px;height:50px"></div>
 <script>
 window.addEventListener("scroll", () => log("window scroll " + scrollX));
@@ -334,10 +334,12 @@ sitecompat_document_horizontal_scroll :: proc(t: ^testing.T) {
 	run(pr, `box.scrollIntoView({inline: "start", block: "nearest"}); at("siv")`)
 	check(pr, noted(pr, "siv 1000 1000 1000 1000 0 10 0 1000"), "scrollIntoView, inline start")
 	run(pr, `scrollTo(0, 0); box.scrollIntoView({inline: "center", block: "nearest"}); at("sivc")`)
-	check(pr, noted(pr, "sivc 650 650 650 650 350 10 350 1000"), "scrollIntoView, inline center")
+	check(pr, noted(pr, "sivc 658 658 658 658 342 10 342 1000"), "scrollIntoView, inline center (of what the bar leaves)")
 	run(pr, `scrollTo(0, 0); box.scrollIntoView({inline: "nearest", block: "nearest"}); at("sivn")`)
-	check(pr, noted(pr, "sivn 300 300 300 300 700 10 700 1000"), "scrollIntoView, inline nearest")
+	check(pr, noted(pr, "sivn 316 316 316 316 684 10 684 1000"), "scrollIntoView, inline nearest: the box's end at the bar")
 	run(pr, `log("efp " + document.elementFromPoint(box.getBoundingClientRect().left + 5, 5).id)`)
 	check(pr, noted(pr, "efp box"), "elementFromPoint after the scroll")
-	close_page(pr, min_checks = 12)
+	run(pr, `scrollTo(0, 0); wide.scrollIntoView({inline: "end", block: "nearest"}); at("sive")`)
+	check(pr, noted(pr, "sive 2215 2215 2215 2215 -1215 10 -1215 1000"), "scrollIntoView, inline end: the end of what the bar leaves")
+	close_page(pr, min_checks = 13)
 }

@@ -1076,13 +1076,13 @@ write_short_decimal :: proc(sb: ^strings.Builder, v: f64) -> bool {
 	}
 	return false
 }
-// `s` in lowercase, for comparing keywords: `s` itself when it has no uppercase ASCII letter and is all ASCII (the
-// usual case: no allocation), else a copy in the temp allocator (ASCII lowered byte by byte, other text by Unicode).
+// `s` in ASCII lowercase, for comparing keywords (CSS Syntax: ASCII case-insensitive, so the Kelvin sign U+212A stays what it
+// is and "marK" is no "mark"): `s` itself when it has no uppercase ASCII letter (the usual case: no allocation), else a
+// copy in the temp allocator.
 lower_temp :: proc(s: string) -> string {
 	upper := false
 	for i in 0 ..< len(s) {
 		c := s[i]
-		if c >= 0x80 { return strings.to_lower(s, context.temp_allocator) }
 		if c >= 'A' && c <= 'Z' { upper = true }
 	}
 	if !upper { return s }
