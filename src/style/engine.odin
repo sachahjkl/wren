@@ -69,6 +69,7 @@ Index :: struct {
 	by_attr:                 map[string][dynamic]Entry,   // [name=value]: key is name, NUL, value
 	attr_names:              map[string]bool,             // names used by by_attr, so elements skip the other attributes
 	universal:               [dynamic]Entry,
+	backdrop:                [dynamic]Entry,   // ::backdrop, whatever its subject: tried for the elements of the top layer only
 }
 
 Import_Slot :: struct {
@@ -237,7 +238,7 @@ index_free :: proc(ix: ^Index) {
 	for _, v in ix.by_class { delete(v) }
 	for _, v in ix.by_tag { delete(v) }
 	for k, v in ix.by_attr { delete(k); delete(v) }
-	delete(ix.by_id); delete(ix.by_class); delete(ix.by_tag); delete(ix.by_attr); delete(ix.attr_names); delete(ix.universal)
+	delete(ix.by_id); delete(ix.by_class); delete(ix.by_tag); delete(ix.by_attr); delete(ix.attr_names); delete(ix.universal); delete(ix.backdrop)
 	ix^ = {}
 }
 
@@ -731,6 +732,8 @@ bucket_add :: proc(e: ^Engine, ent_in: Entry) {
 	}
 	ix := &rs.index
 	switch {
+	// (the UA's `::backdrop` and Tailwind's `*, ::before, ::after, ::backdrop` would be tried for every element)
+	case c.pseudo_element == .Backdrop: append(&ix.backdrop, ent)
 	case var_id != "": add(&ix.by_id, var_id, ent)
 	case var_class != "": add(&ix.by_class, var_class, ent)
 	case var_attr != nil:

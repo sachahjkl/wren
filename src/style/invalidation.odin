@@ -259,6 +259,7 @@ inv_index_of :: proc(e: ^Engine, rs: ^Rule_Set) -> ^Inv_Index {
 	for _, l in rs.index.by_tag { visit(ix, l) }
 	for _, l in rs.index.by_attr { visit(ix, l) }
 	visit(ix, rs.index.universal)
+	visit(ix, rs.index.backdrop)
 	visit(ix, rs.host_entries)
 	for &ent in rs.slotted_entries {
 		analyze_complex(ix, ent.complex, Reach{desc = true}, false, 0)

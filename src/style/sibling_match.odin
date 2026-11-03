@@ -84,6 +84,13 @@ match_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, ancestors: ^Bloom,
 		collect_entries(p, h, n, ancestors, ctx, nil)
 		return
 	}
+	// (the ::backdrop entries are tried for an element of the top layer alone: it neither takes a family's matching nor
+	// gives its own)
+	if in_top_layer(p, h) {
+		collect_entries(p, h, n, ancestors, ctx, nil)
+		sib_pass_by(p, n, depth)
+		return
+	}
 	lv := sib_family(m, n, depth)
 	if lv != nil {
 		for &k in m.kinds[lv.kinds[0]:lv.kinds[1]] {

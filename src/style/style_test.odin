@@ -949,4 +949,18 @@ backdrop_styles :: proc(t: ^testing.T) {
 	engine_set_top_layer(f.eng, nil)
 	restyle(f)
 	testing.expect(t, at(f, "a").backdrop == nil, "out of it again: none")
+
+	// alike siblings (the walk shares their matching): the one in the top layer alone has a backdrop, first or not
+	g := fixture_load(`<section id=s><p class=k></p><p class=k></p><p class=k></p></section>`)
+	defer fixture_unload(g)
+	ps: [3]base.Handle
+	ps[0] = dom.get(g.doc, dom.find_by_id(g.doc, "s")).first_child
+	for i in 1 ..< len(ps) { ps[i] = dom.get(g.doc, ps[i - 1]).next }
+	for top in 0 ..< len(ps) {
+		engine_set_top_layer(g.eng, {ps[top]})
+		restyle(g)
+		for p, i in ps {
+			testing.expectf(t, (style_of(g.st, p).backdrop != nil) == (i == top), "p %d of 3, the top layer's p %d: a backdrop %v", i, top, style_of(g.st, p).backdrop != nil)
+		}
+	}
 }
