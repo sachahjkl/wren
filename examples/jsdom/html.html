@@ -270,6 +270,26 @@ section("map, dialog, document, element", () => {
   hc.innerHTML = "<span name='n1'></span><b id='i1'></b>";
   eq("HTMLCollection.namedItem by name of any HTML element", hc.children.namedItem("n1"), hc.firstChild);
   t("HTMLCollection named property", hc.children.n1 === hc.firstChild && hc.children.i1 === hc.lastChild);
+  // the dialog focusing steps: a descendant with autofocus that can have the focus (rendered, not disabled), else the
+  // first Tab reaches, else the dialog itself; the focus goes back on close; an inert subtree takes none
+  const fd = document.createElement("dialog");
+  fd.innerHTML = "<button></button><input autofocus disabled><dialog><button autofocus></button></dialog><span><button id=fb autofocus></button></span>";
+  const outer = document.createElement("button"), empty = document.createElement("dialog"), inert = document.createElement("div");
+  empty.textContent = "nothing to focus";
+  inert.setAttribute("inert", "");
+  inert.innerHTML = "<button></button>";
+  document.body.append(fd, outer, empty, inert);
+  outer.focus();
+  fd.showModal();
+  eq("showModal focuses the descendant with autofocus that can have the focus", document.activeElement.id, "fb");
+  fd.close();
+  t("the focus goes back on close", document.activeElement === outer);
+  empty.show();
+  t("a dialog with nothing to focus is focused itself", document.activeElement === empty);
+  empty.close();
+  inert.firstChild.focus();
+  t("an inert subtree takes no focus", document.activeElement === outer);
+  for (const e of [fd, outer, empty, inert]) e.remove();
 });
 
 section("performance.timing (Navigation Timing 1)", () => {

@@ -26,8 +26,9 @@ commit :: proc(f: ^Forms, h: base.Handle) {
 }
 
 // The focusing steps: blur / focusout on the old element, focus / focusin on the new one. Returns false when `h` cannot
-// take the focus.
-focus :: proc(f: ^Forms, h_in: base.Handle, by_keyboard := false) -> bool {
+// take the focus (no focusable area, or inert). `forced`: `h` takes it all the same unless inert (the dialog focusing
+// steps focus a dialog without a focus delegate itself).
+focus :: proc(f: ^Forms, h_in: base.Handle, by_keyboard := false, forced := false) -> bool {
 	h := h_in
 	// a host that delegates focus: its focus delegate (unless the focus is in its shadow tree already)
 	if delegates_focus(f, h) {
@@ -35,7 +36,8 @@ focus :: proc(f: ^Forms, h_in: base.Handle, by_keyboard := false) -> bool {
 		h = focus_delegate(f, h)
 		if h == base.NIL_HANDLE { return false }
 	}
-	if !is_focusable(f, h) { return false }
+	if (!forced && !is_focusable(f, h)) || element(f, h) == nil { return false }
+	if f.host.inert != nil && f.host.inert(f.host.user, h) { return false }
 	if f.focus == h { f.focus_by_key = by_keyboard; return true }
 	old := f.focus
 	if old != base.NIL_HANDLE {
@@ -45,7 +47,7 @@ focus :: proc(f: ^Forms, h_in: base.Handle, by_keyboard := false) -> bool {
 		fire(f, old, "focusout", bubbles = true, object = u64(h), related = u64(h))
 		if f.focus != base.NIL_HANDLE { return f.focus == h }   // a listener moved the focus elsewhere
 	}
-	if !is_focusable(f, h) { notify_focus(f); return false }
+	if (!forced && !is_focusable(f, h)) || element(f, h) == nil { notify_focus(f); return false }
 	f.focus = h
 	f.focus_by_key = by_keyboard
 	if c := control_of(f, h); c != nil {

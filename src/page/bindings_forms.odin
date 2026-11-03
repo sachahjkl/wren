@@ -95,7 +95,7 @@ forms_attach :: proc(p: ^Page) {
 		dialog_closing = proc(user: rawptr, dialog: base.Handle) { dialog_closing((^Page)(user), dialog) },
 		dialog_closed = proc(user: rawptr, dialog: base.Handle) { dialog_closed((^Page)(user), dialog) },
 		queue_close = proc(user: rawptr, dialog: base.Handle) { dialog_queue_close((^Page)(user), dialog) },
-		inert = proc(user: rawptr, h: base.Handle) -> bool { return dialog_makes_inert((^Page)(user), h) },
+		inert = proc(user: rawptr, h: base.Handle) -> bool { return node_inert((^Page)(user), h) },
 		follow_link = proc(user: rawptr, link: base.Handle) { navigation_follow_script_link((^Page)(user), link) },
 	})
 	p.style_state.controls = style.Control_Provider{query = forms_style_query, user = p}
