@@ -508,10 +508,10 @@
 	Tests submitting a dialog on a close event triggered by a previous submission.: PASS
 /html/semantics/interactive-elements/the-dialog-element/synthetic-click-inert.html: OK
 	Test that inert nodes still get programmatic click events: PASS
-/html/semantics/interactive-elements/the-dialog-element/toggle-events.html: ERROR
+/html/semantics/interactive-elements/the-dialog-element/toggle-events.html: OK
 	dialog.show() should coalesce asynchronous toggle events.: PASS
-	dialog.show() should fire beforetoggle and toggle events.: FAIL
-	dialog.show() should fire cancelable beforetoggle which does not open dialog if canceled: FAIL
+	dialog.show() should fire beforetoggle and toggle events.: PASS
+	dialog.show() should fire cancelable beforetoggle which does not open dialog if canceled: PASS
 	dialog.show() should not double-set open/close if beforetoggle re-opens: PASS
 	dialog.show() should not open if beforetoggle calls showPopover: PASS
 	dialog.show() should not open if beforetoggle removes: PASS

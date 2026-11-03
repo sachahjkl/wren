@@ -302,6 +302,9 @@ run_ready :: proc(l: ^Loop) -> int {
 	loop_owned(l, "host.run_ready off the loop's thread")
 	sync.atomic_store(&l.pending, false)   // before draining: a post racing with us re-arms the wake
 	ran := 0
+	// timers set by this turn's callbacks wait for the next turn, even when already due: a timer a posted task sets runs after
+	// what that task posted (HTML: a task queued before the timer's)
+	last_seq := l.timer_seq
 
 	sync.mutex_lock(&l.mu)
 	l.posted, l.scratch = l.scratch, l.posted
@@ -310,7 +313,6 @@ run_ready :: proc(l: ^Loop) -> int {
 	clear(&l.scratch)
 
 	cutoff := now_ns(l)
-	last_seq := l.timer_seq   // timers created by this turn's callbacks wait for the next turn, even when already due
 	timers_ran := 0
 	for priority_queue.len(l.queue) > 0 {
 		e := priority_queue.peek(l.queue)

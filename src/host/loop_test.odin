@@ -125,6 +125,30 @@ timer_scheduling_timer_with_zero_delay_does_not_spin :: proc(t: ^testing.T) {
 	testing.expect_value(t, s.n, 2)
 }
 
+// a posted task that posts another and sets a timer of no delay: the task it posted runs first (HTML: a task queued
+// before the timer's; a dialog's toggle event before the setTimeout(0) of the script that opened it)
+@(test)
+timer_set_by_a_posted_task_runs_after_what_it_posted :: proc(t: ^testing.T) {
+	l: Loop
+	loop_init(&l)
+	defer loop_destroy(&l)
+	clock: Virtual_Clock
+	clock_virtual(&l, &clock)
+	State :: struct { l: ^Loop, order: [dynamic]string }
+	s := State{l = &l, order = make([dynamic]string, context.temp_allocator)}
+	post(&l, proc(data: rawptr) {
+		s := (^State)(data)
+		set_timer(s.l, 0, 0, proc(data: rawptr) { append(&(^State)(data).order, "timer") }, s)
+		post(s.l, proc(data: rawptr) { append(&(^State)(data).order, "posted") }, s)
+	}, &s)
+	for _ in 0 ..< 3 { run_ready(&l) }
+	testing.expect_value(t, len(s.order), 2)
+	if len(s.order) == 2 {
+		testing.expect_value(t, s.order[0], "posted")
+		testing.expect_value(t, s.order[1], "timer")
+	}
+}
+
 @(test)
 blocking_jobs_run_off_thread_and_complete_on_loop :: proc(t: ^testing.T) {
 	l: Loop
