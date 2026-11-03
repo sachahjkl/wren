@@ -1153054,19 +1153054,19 @@
 	x-vps is not supported by the Encoding Standard: PASS
 /encoding/utf-32-from-win1252.html: OK
 	Expect resources/utf-32-big-endian-bom.html to parse as windows-1252: PASS
-	Expect resources/utf-32-big-endian-bom.xml to parse as UTF-8: FAIL
+	Expect resources/utf-32-big-endian-bom.xml to parse as UTF-8: PASS
 	Expect resources/utf-32-big-endian-nobom.html to parse as windows-1252: PASS
-	Expect resources/utf-32-big-endian-nobom.xml to parse as UTF-8: FAIL
+	Expect resources/utf-32-big-endian-nobom.xml to parse as UTF-8: PASS
 	Expect resources/utf-32-little-endian-bom.html to parse as UTF-16LE: PASS
-	Expect resources/utf-32-little-endian-bom.xml to parse as UTF-16LE: FAIL
+	Expect resources/utf-32-little-endian-bom.xml to parse as UTF-16LE: PASS
 	Expect resources/utf-32-little-endian-nobom.html to parse as windows-1252: PASS
-	Expect resources/utf-32-little-endian-nobom.xml to parse as UTF-8: FAIL
+	Expect resources/utf-32-little-endian-nobom.xml to parse as UTF-8: PASS
 /encoding/utf-32.html: OK
 	Expect resources/utf-32-big-endian-bom.html to parse as UTF-8: PASS
-	Expect resources/utf-32-big-endian-bom.xml to parse as UTF-8: FAIL
+	Expect resources/utf-32-big-endian-bom.xml to parse as UTF-8: PASS
 	Expect resources/utf-32-big-endian-nobom.html to parse as UTF-8: PASS
-	Expect resources/utf-32-big-endian-nobom.xml to parse as UTF-8: FAIL
+	Expect resources/utf-32-big-endian-nobom.xml to parse as UTF-8: PASS
 	Expect resources/utf-32-little-endian-bom.html to parse as UTF-16LE: PASS
-	Expect resources/utf-32-little-endian-bom.xml to parse as UTF-16LE: FAIL
+	Expect resources/utf-32-little-endian-bom.xml to parse as UTF-16LE: PASS
 	Expect resources/utf-32-little-endian-nobom.html to parse as UTF-8: PASS
-	Expect resources/utf-32-little-endian-nobom.xml to parse as UTF-8: FAIL
+	Expect resources/utf-32-little-endian-nobom.xml to parse as UTF-8: PASS
