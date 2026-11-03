@@ -6986,15 +6986,15 @@
 	look͏out.net (using URL): PASS
 	look͏out.net (using URL.host): PASS
 	look͏out.net (using URL.hostname): PASS
-	look־out.net (using <a>): FAIL
-	look־out.net (using <a>.host): FAIL
-	look־out.net (using <a>.hostname): FAIL
-	look־out.net (using <area>): FAIL
-	look־out.net (using <area>.host): FAIL
-	look־out.net (using <area>.hostname): FAIL
-	look־out.net (using URL): FAIL
-	look־out.net (using URL.host): FAIL
-	look־out.net (using URL.hostname): FAIL
+	look־out.net (using <a>): PASS
+	look־out.net (using <a>.host): PASS
+	look־out.net (using <a>.hostname): PASS
+	look־out.net (using <area>): PASS
+	look־out.net (using <area>.host): PASS
+	look־out.net (using <area>.hostname): PASS
+	look־out.net (using URL): PASS
+	look־out.net (using URL.host): PASS
+	look־out.net (using URL.hostname): PASS
 	look۝out.net (using <a>): PASS
 	look۝out.net (using <a>.host): PASS
 	look۝out.net (using <a>.hostname): PASS
@@ -7364,15 +7364,15 @@
 	نامه‌ای.com (using URL): PASS
 	نامه‌ای.com (using URL.host): PASS
 	نامه‌ای.com (using URL.hostname): PASS
-	يa (using <a>): FAIL
-	يa (using <a>.host): FAIL
-	يa (using <a>.hostname): FAIL
-	يa (using <area>): FAIL
-	يa (using <area>.host): FAIL
-	يa (using <area>.hostname): FAIL
-	يa (using URL): FAIL
-	يa (using URL.host): FAIL
-	يa (using URL.hostname): FAIL
+	يa (using <a>): PASS
+	يa (using <a>.host): PASS
+	يa (using <a>.hostname): PASS
+	يa (using <area>): PASS
+	يa (using <area>.host): PASS
+	يa (using <area>.hostname): PASS
+	يa (using URL): PASS
+	يa (using URL.host): PASS
+	يa (using URL.hostname): PASS
 	ড়.com (using <a>): PASS
 	ড়.com (using <a>.host): PASS
 	ড়.com (using <a>.hostname): PASS

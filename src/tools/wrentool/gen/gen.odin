@@ -73,6 +73,7 @@ UCD_FILES := []Ucd_File{
 	{"ucd/DerivedNormalizationProps.txt", "DerivedNormalizationProps.txt", "71fd6a206a2c0cdd41feb6b7f656aa31091db45e9cedc926985d718397f9e488"},
 	{"ucd/extracted/DerivedGeneralCategory.txt", "extracted/DerivedGeneralCategory.txt", "d62e5bab70ca74f099343f71224fa051cb1fdd61a1ab45c0488c44cfc0b6102e"},
 	{"ucd/extracted/DerivedJoiningType.txt", "extracted/DerivedJoiningType.txt", "f39ebe974825d6736aee15582250307aa532b2cfab3caf3f86bd23fddc9c5c4d"},
+	{"ucd/extracted/DerivedBidiClass.txt", "extracted/DerivedBidiClass.txt", "4867b4b7f0731ed1bfcd34cc6251211ff1542541fce0734b6fbda139ee80b3a4"},
 	{"ucd/emoji/emoji-data.txt", "emoji/emoji-data.txt", "2cb2bb9455cda83e8481541ecf5b6dfda66a3bb89efa3fa7c5297eccf607b72b"},
 	{"emoji/emoji-sequences.txt", "emoji-seq/emoji-sequences.txt", "12cc8267dc33cbd11ed32bcf6fc5dc2ad9c7a77bae1bdfba2f41b1b9b3ead8dd"},
 	{"emoji/emoji-zwj-sequences.txt", "emoji-seq/emoji-zwj-sequences.txt", "5b25441daed2322b068c5e70cda522946a4f0274df864445a1965a92e5fc5cad"},

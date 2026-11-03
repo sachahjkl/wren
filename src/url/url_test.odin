@@ -240,6 +240,11 @@ domain_to_ascii :: proc(t: ^testing.T) {
 	testing.expect_value(t, href("https://\u0915\u094D\u200D\u0937/x"), "https://xn--11b2ezcw70k/x")  // ZWJ after a virama
 	testing.expect_value(t, href("https://a\u200Db/x"), "<invalid>")                           // ZWJ out of context
 	testing.expect_value(t, href("https://b\u00FCcher.example/x"), "https://xn--bcher-kva.example/x")
+	// CheckBidi, in a domain with a right-to-left label
+	testing.expect_value(t, href("https://\u0646\u0627\u0645\u0647\u200C\u0627\u06CC.com/x"), "https://xn--mgba3gch31f060k.com/x")   // right to left, then left to right
+	testing.expect_value(t, href("https://look\u05BEout.net/x"), "<invalid>")                   // an R in a left-to-right label
+	testing.expect_value(t, href("https://\u064Aa/x"), "<invalid>")                             // an L in a right-to-left label
+	testing.expect_value(t, href("https://\u0627\u0661.1a/x"), "<invalid>")                     // a label that begins with EN
 }
 
 // Where Lexbor 3.0.1 parses otherwise than the URL Standard (LEXBOR_PATCHES of the Lexbor build, wb_url_fix of the shim):
