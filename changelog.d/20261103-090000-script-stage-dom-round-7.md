@@ -1,3 +1,0 @@
-type: Changed
-
-**Scripts that build and drop many DOM nodes run faster again**: the collection that frees dropped nodes unpins them in one call to the browser instead of one per node, finds their script objects in an array by node instead of a hash table, the string arguments of DOM calls are read where the engine keeps them instead of being copied (ASCII text), and the names of the known elements are no longer copied for each element. A page that rebuilds a list of 2 500 items every frame: its script 14.3 ms a frame instead of 18.9, 142 frames/s instead of 119; the collection of the dropped nodes 3.8 ms instead of 5.4. The numbers: `docs/performance.md`.
