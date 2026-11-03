@@ -561,7 +561,10 @@ go_entry :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry) {
 	leave_page(app, t)
 	page.session_goto(&t.session, e)
 	sync_history(app, t)
-	if bfcache_restore(app, t, e) { return }
+	if bfcache_restore(app, t, e) {
+		if t.page != nil { page.joint_show_position(t.page) }   // (back among its frames' steps: they move there)
+		return
+	}
 	navigate(app, t, strings.clone(e.url, context.temp_allocator), record = false, restore = true, cache = history_cache_mode(app), origin = .Replay)
 }
 
@@ -591,7 +594,11 @@ page_navigate :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 			break
 		}
 		leave_page(app, t, keep = false, save = false)
-		if cur := page.session_current(&t.session); cur != nil { page.persisted_clear(&cur.persisted) }   // another document in the entry
+		if cur := page.session_current(&t.session); cur != nil {
+			// another document in the entry: nothing of the old one's comes back
+			page.persisted_clear(&cur.persisted)
+			page.joint_forget_document(&t.session, cur.doc)
+		}
 		page.session_replace(&t.session, v.address)
 		if req.has_nav_state { page.session_set_nav_state(&t.session, req.nav_state, true) }
 		sync_history(app, t)

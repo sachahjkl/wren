@@ -87,6 +87,7 @@ Navigable :: struct {
 	history_calls: int,          // history.go() in the window that began at history_window_ns (history_rate_limited)
 	history_window_ns: i64,
 	session:     Session_History,   // its entries, across its documents (a nested navigable's; a tab's is the shell's)
+	path:        string,         // owned: its container's element path when it was made (a frame kept by the joint history finds its container again)
 	initial:     bool,           // still on its initial about:blank: the next navigation replaces it
 	activated:   bool,           // a navigation brought its document (navigation.activation)
 	activated_by: Nav_Type,
@@ -178,6 +179,7 @@ navigable_free :: proc(n: ^Navigable) {
 	delete_key(&navigables, n.id)
 	navigable_count -= 1
 	delete(n.name)
+	delete(n.path)
 	delete(n.lazy_url)
 	permissions_policy_destroy(&n.allow)
 	url.origin_destroy(&n.src_origin)
@@ -384,6 +386,7 @@ frame_create :: proc(p: ^Page, el: base.Handle) {
 	n.element = el
 	n.kind = kind
 	if v, ok := dom.get_attribute(p.doc, el, "name"); ok { n.name = strings.clone(v) }
+	n.path = strings.clone(element_path(p.doc, el))
 	append(&f.children, n)
 	f.order_version = 0
 	frame_snapshot_container(n)
@@ -392,6 +395,8 @@ frame_create :: proc(p: ^Page, el: base.Handle) {
 	if n.page == nil || p.closed { return }
 	n.initial = true
 	n.activated = false
+	// a document loaded again from the session history: the frame shows its entry of the current position (history_joint.odin)
+	if joint_restore_frame(n) { return }
 	frame_process_attributes(n, initial = true)
 }
 
@@ -401,6 +406,8 @@ frame_destroy :: proc(n: ^Navigable) {
 	if p != nil && p.frames != nil {
 		for c, i in p.frames.children { if c == n { ordered_remove(&p.frames.children, i); break } }
 	}
+	// its document leaves (not its container): the joint history keeps its entries for that document's return
+	if p != nil && p.scope.closing { joint_keep_frame(n) }
 	frame_load_cancel(n)
 	if c := n.page; c != nil {
 		if p != nil && !p.closed { navigation_detached(c) }
@@ -942,6 +949,7 @@ frame_session_commit :: proc(n: ^Navigable, href: string, commit: Frame_Commit, 
 		session_set_nav_state(sh, commit.state, commit.has_state)
 		if from != 0 { joint_note_push(n, sh.current.id, from) }
 	case .Replace:
+		if prev != nil && n.parent != nil { joint_forget_document(joint_session(n.parent), prev.doc) }   // (another document in the entry: none of the old one's frames comes back)
 		session_replace(sh, href)
 		session_set_nav_state(sh, commit.state, commit.has_state)
 	case .Reload:
