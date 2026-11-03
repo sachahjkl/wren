@@ -154,6 +154,44 @@ document_parsed_in_the_background_is_identical_to_the_synchronous_parse :: proc(
 @(private = "file")
 Parse_Info :: struct { ok: bool, nodes: int, utf8: bool }
 
+// The engine asks a realm's document node once (wj_document, native/js/odin/wj/qjs_platform.odin): every document a
+// page adopts, HTML or XML, parsed here or off the thread, has the document node's handle of the blank one it replaced.
+@(test)
+adopted_document_keeps_its_handle :: proc(t: ^testing.T) {
+	test_pages(t)
+	context.allocator = runtime.heap_allocator()   // (the tree builder's heap, as above)
+	loop: host.Loop
+	host.loop_init(&loop)
+	defer host.loop_destroy(&loop)
+	pool: host.Blocking_Pool
+	host.blocking_init(&pool, &loop, 2)
+	defer host.blocking_destroy(&pool)
+	loader := fetch.Loader{loop = &loop, blocking = &pool}
+	settings := settings_default()
+	defer settings_destroy(&settings)
+	settings.threads.parse_html_min_bytes = 0
+	settings.threads.style_threads = 0
+	scope := base.scope_make("test")
+	defer base.scope_close(scope)
+
+	p := page_create(&loop, &loader, &settings, scope, "http://example.test/")
+	blank := p.doc.root
+	testing.expect_value(t, base.handle_tag(u64(blank)), p.tag)
+	load_html(p, transmute([]byte)string("<!doctype html><p>one"))
+	testing.expect_value(t, p.doc.root, blank)
+	load_html(p, transmute([]byte)string(`<html xmlns="http://www.w3.org/1999/xhtml"><body><p>two</p></body></html>`), "application/xhtml+xml")
+	testing.expect_value(t, p.doc.root, blank)
+	done := false
+	parse_document(p, transmute([]byte)string("<!doctype html><p>three"), "utf-8", proc(p: ^Page, user: rawptr, d: ^Parsed_Document) {
+		adopt_document(p, d)
+		(^bool)(user)^ = true
+	}, &done)
+	start := time.tick_now()
+	for !done && time.duration_seconds(time.tick_since(start)) < OFFTHREAD_DEADLINE_S { host.loop_wait(&loop, OFFTHREAD_POLL_MS) }
+	testing.expect(t, done, "parsed and adopted")
+	testing.expect_value(t, p.doc.root, blank)
+}
+
 @(test)
 stylesheet_parsed_in_the_background_is_identical :: proc(t: ^testing.T) {
 	test_pages(t)

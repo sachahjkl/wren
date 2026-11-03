@@ -249,6 +249,12 @@ wr_ConsoleLevel :: enum i32 {
 	Error = 3,
 	Debug = 4,
 }
+// A new node of the realm's own document with what its wrapper needs (Node_wrap's work in the same call).
+// Layout matches the C struct wr_WrappedNode (natural alignment).
+wr_WrappedNode :: struct {
+	node: u64,
+	iface: u32,
+}
 
 // module dom (partial): types
 
@@ -2839,6 +2845,13 @@ foreign _wr_wj_js {
 	// and returns the wrapper's interface, an index into the engine's interface table (gen/bindings.c) chosen from the
 	// node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...). One call per new wrapper.
 	@(link_name = "Node_wrap") wr_Node_wrap :: proc(node: u64) -> u32 ---
+	// document.createElement(localName) in the realm's own document (Document_createElementChecked: its checks, its
+	// errors, a defined custom element constructed before it returns), then Node_wrap's pin and interface: one call for
+	// the element and its wrapper. A custom element's constructor may have made the wrapper already: the engine then
+	// drops the extra pin.
+	@(link_name = "Document_createElementWrapped") wr_Document_createElementWrapped :: proc(local_name: [^]u8, local_name_len: u32, _ret: ^wr_WrappedNode) -> i32 ---
+	// document.createTextNode(data) in the realm's own document, then Node_wrap's pin and interface.
+	@(link_name = "Document_createTextWrapped") wr_Document_createTextWrapped :: proc(text: [^]u8, text_len: u32, _ret: ^wr_WrappedNode) -> i32 ---
 	// That object is gone (called while the engine collects garbage: a handle that died meanwhile is ignored). A
 	// detached tree no longer pinned anywhere is freed.
 	@(link_name = "Node_unpin") wr_Node_unpin :: proc(node: u64) ---

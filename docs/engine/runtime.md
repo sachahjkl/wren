@@ -140,7 +140,8 @@ stack discipline, not type correctness.
 
 A `switch`‑dispatch loop over the QuickJS instruction set. The common instructions (locals, arguments,
 integer / float arithmetic, comparisons, branches, `get_field` / `put_field` with the prototype walk, array
-reads and writes, global variables through a per‑realm slot cache, **calls and returns**) run in
+reads and writes, global variables through a per‑realm slot cache, string constants, **calls and returns**, and the
+native getter of an accessor that `get_field` or a global finds: a DOM attribute, `window.document`) run in
 `interp_hot.odin`, a loop with raw pointers whose few live values stay in registers; everything else, and
 every fast path that does not apply, leaves it with the pc on the instruction for the full dispatch in
 `interp.odin`. The hot loop is inlined into `interp_run` (measured: a separate procedure is 20‑25 % slower).

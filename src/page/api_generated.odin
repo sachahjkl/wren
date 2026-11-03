@@ -344,6 +344,12 @@ Api_ConsoleLevel :: enum i32 {
 	Debug = 4,
 }
 
+// A new node of the realm's own document with what its wrapper needs (Node_wrap's work in the same call).
+Api_WrappedNode :: struct {
+	node: u64,
+	iface: u32,
+}
+
 // A live DataTransfer: its handle and what lookup_DataTransfer found.
 Api_DataTransfer :: struct {
 	handle: u64,
@@ -13924,6 +13930,64 @@ _t_js_Node_wrap :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = i32(_r)
+	return nil
+}
+
+// Document_createElementWrapped :: proc(c: ^Call, local_name: string) -> (Api_WrappedNode, Api_Error)
+@(private = "file")
+_t_js_Document_createElementWrapped :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "js.Document_createElementWrapped", "local_name") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 16)
+	if !_rk { return wasm.trap_bounds(&f, "js.Document_createElementWrapped", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "js.Document_createElementWrapped: argument local_name is not valid UTF-8")
+	}
+	_r, _err := Document_createElementWrapped(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(&_rs[0]), _r.node)
+	intrinsics.unaligned_store((^u32)(&_rs[8]), _r.iface)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Document_createTextWrapped :: proc(c: ^Call, text: string) -> (Api_WrappedNode, Api_Error)
+@(private = "file")
+_t_js_Document_createTextWrapped :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "js.Document_createTextWrapped", "text") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 16)
+	if !_rk { return wasm.trap_bounds(&f, "js.Document_createTextWrapped", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "js.Document_createTextWrapped: argument text is not valid UTF-8")
+	}
+	_r, _err := Document_createTextWrapped(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(&_rs[0]), _r.node)
+	intrinsics.unaligned_store((^u32)(&_rs[8]), _r.iface)
+	a[0] = {}
+	a[0].i32 = 0
 	return nil
 }
 
@@ -38884,6 +38948,8 @@ api_imports := [?]wasm.Import{
 	{module = "js", name = "Engine_jitCompile", fn = _t_js_Engine_jitCompile, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "js", name = "Engine_jitPoll", fn = _t_js_Engine_jitPoll, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}},
 	{module = "js", name = "Node_wrap", fn = _t_js_Node_wrap, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "js", name = "Document_createElementWrapped", fn = _t_js_Document_createElementWrapped, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "js", name = "Document_createTextWrapped", fn = _t_js_Document_createTextWrapped, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "js", name = "Node_unpin", fn = _t_js_Node_unpin, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "js", name = "Node_treeRoots", fn = _t_js_Node_treeRoots, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "dom", name = "LinkStyle_sheetOf", fn = _t_dom_LinkStyle_sheetOf, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},

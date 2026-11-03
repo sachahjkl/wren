@@ -35,6 +35,20 @@ module js {
   /// and returns the wrapper's interface, an index into the engine's interface table (gen/bindings.c) chosen from the
   /// node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...). One call per new wrapper.
   u32 Node_wrap(Node node);
+  /// A new node of the realm's own document with what its wrapper needs (Node_wrap's work in the same call).
+  struct WrappedNode {
+    /// The new node, pinned.
+    u64 node;
+    /// Its wrapper's interface, as Node_wrap gives it; past the engine's table (not pinned) for another module.
+    u32 iface;
+  }
+  /// document.createElement(localName) in the realm's own document (Document_createElementChecked: its checks, its
+  /// errors, a defined custom element constructed before it returns), then Node_wrap's pin and interface: one call for
+  /// the element and its wrapper. A custom element's constructor may have made the wrapper already: the engine then
+  /// drops the extra pin.
+  WrappedNode Document_createElementWrapped(string local_name) raises;
+  /// document.createTextNode(data) in the realm's own document, then Node_wrap's pin and interface.
+  WrappedNode Document_createTextWrapped(string text) raises;
   /// That object is gone (called while the engine collects garbage: a handle that died meanwhile is ignored). A
   /// detached tree no longer pinned anywhere is freed.
   void Node_unpin(u64 node);

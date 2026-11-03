@@ -96,7 +96,7 @@ host_object_new :: proc(ctx: ^Context, proto: ^Object, id: u32, payload := 0) ->
 	if c := host_class(rt, id); c != nil {
 		if c.gc_mark != nil {
 			d.hook_idx = len(rt.gc_hooked)
-			append(&rt.gc_hooked, o)
+			list_push(&rt.gc_hooked, o)
 		}
 		if c.finalizer != nil {rt.host_final_live += 1}
 	}

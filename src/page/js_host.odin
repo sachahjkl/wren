@@ -76,6 +76,28 @@ Node_wrap :: proc(c: ^Call, node: Api_Node) -> u32 {
 	return js_node_interface(c.page, node.data)
 }
 
+// createElement and createTextNode of the realm's own document with Node_wrap's work: a new node and its wrapper in one
+// call. Another module of the page gets the node unpinned, with WRAPPED_NONE.
+WRAPPED_NONE :: max(u32)
+
+Document_createElementWrapped :: proc(c: ^Call, local_name: string) -> (Api_WrappedNode, Api_Error) {
+	h, err := Document_createElementChecked(c, local_name)
+	return err == .None ? wrapped(c, h) : {}, err
+}
+
+Document_createTextWrapped :: proc(c: ^Call, text: string) -> (Api_WrappedNode, Api_Error) {
+	h, err := Document_createTextNode(c, text)
+	return err == .None ? wrapped(c, h) : {}, err
+}
+
+@(private = "file")
+wrapped :: proc(c: ^Call, h: u64) -> Api_WrappedNode {
+	n := dom.get(c.page.doc, H(h))
+	if n == nil || !from_engine(c) { return {node = h, iface = WRAPPED_NONE} }
+	dom.pin(c.page.doc, H(h))
+	return {node = h, iface = js_node_interface(c.page, n)}
+}
+
 Node_unpin :: proc(c: ^Call, node: u64) {
 	c.hold_reactions = true
 	d := call_doc(c)

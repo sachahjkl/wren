@@ -14,15 +14,19 @@ GLOBAL_CACHE_SIZE :: 256
 
 // The slot of data property `a` of the global object, or -1 (the caller falls back to the full lookup).
 global_slot :: #force_inline proc "contextless" (ctx: ^Context, g: ^Object, a: Atom) -> int {
+	j := global_index(ctx, g, a)
+	return j >= 0 && raw_data(g.shape.props)[j].kind == .data ? j : -1
+}
+
+// The global object's property of that name, data or accessor: its index, or -1.
+global_index :: #force_inline proc "contextless" (ctx: ^Context, g: ^Object, a: Atom) -> int {
 	ce := &ctx.global_cache[(a * 0x9E3779B1) >> 24]
 	props := raw_data(g.shape.props)
-	if ce.atom == a && int(ce.idx) < len(g.shape.props) && props[ce.idx].atom == a {
-		return props[ce.idx].kind == .data ? int(ce.idx) : -1
-	}
+	if ce.atom == a && int(ce.idx) < len(g.shape.props) && props[ce.idx].atom == a {return int(ce.idx)}
 	j := shape_find(g.shape, a)
 	if j < 0 {return -1}
 	ce^ = {a, u32(j)}
-	return props[j].kind == .data ? j : -1
+	return j
 }
 
 global_get :: proc(ctx: ^Context, a: Atom, throw_ref: bool) -> Value {
