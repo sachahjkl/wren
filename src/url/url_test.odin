@@ -241,3 +241,22 @@ domain_to_ascii :: proc(t: ^testing.T) {
 	testing.expect_value(t, href("https://a\u200Db/x"), "<invalid>")                           // ZWJ out of context
 	testing.expect_value(t, href("https://b\u00FCcher.example/x"), "https://xn--bcher-kva.example/x")
 }
+
+// Where Lexbor 3.0.1 parses otherwise than the URL Standard (LEXBOR_PATCHES of the Lexbor build, wb_url_fix of the shim):
+// a last label of digits past 2^32 then letters is a domain; a dot segment ended by '?' or '#' keeps what follows; '^' of
+// a path is percent-encoded; the last space of an opaque path before a fragment is "%20"; a path that begins with an empty
+// segment is serialized after "/.", which is not the pathname's.
+@(test)
+parsed_as_the_standard_says :: proc(t: ^testing.T) {
+	testing.expect_value(t, href("http://1.12345678901c/"), "http://1.12345678901c/")
+	testing.expect_value(t, href("http://12345678901/"), "<invalid>")
+	testing.expect_value(t, href("https://example.com/aaa/bbb/%2e%2e?query"), "https://example.com/aaa/?query")
+	testing.expect_value(t, href("https://example.com/aaa/bbb/..#hash"), "https://example.com/aaa/#hash")
+	testing.expect_value(t, href("https://example.com/a^b"), "https://example.com/a%5Eb")
+	testing.expect_value(t, href("non-special:opaque  #hi"), "non-special:opaque %20#hi")
+	testing.expect_value(t, href("non-special:opaque  "), "non-special:opaque")
+	u, ok := parse("non-spec:/..//p", nil, context.temp_allocator)
+	testing.expect(t, ok)
+	testing.expect_value(t, u.href, "non-spec:/.//p")
+	testing.expect_value(t, u.path, "//p")
+}

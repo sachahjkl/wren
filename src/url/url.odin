@@ -183,6 +183,8 @@ split :: proc(href: string, allocator := context.allocator) -> (u: URL, ok: bool
 	} else {
 		u.path = rest
 		u.opaque_path = len(rest) == 0 || rest[0] != '/'
+		// a path that begins with an empty segment is serialized after "/." (it would read as a host): not the path's
+		if strings.has_prefix(rest, "/.//") { u.path = rest[2:] }
 	}
 	return u, true
 }
