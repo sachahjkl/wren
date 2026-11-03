@@ -154,6 +154,37 @@ eq("a browser keydown reaches the window: key, code, keyCode", window.seen.key, 
 `, "browser events")
 }
 
+// The dialogs' light dismiss and close requests as the browser's input brings them (dialog_modal.odin): a trusted press
+// and release outside an open dialog whose closedby is any close it, in it they do not, closedby none keeps it open; a
+// dialog opened by its open attribute is an open dialog too; Escape asks the dialog on top to close.
+dialog_dismiss_checks :: proc(pr: ^Probe) {
+	p := pr.p
+	click_on :: proc(p: ^page.Page, h: base.Handle) {
+		page.dispatch_event(p, h, dom.Event{type = "pointerdown", bubbles = true, cancelable = true, composed = true})
+		page.dispatch_event(p, h, dom.Event{type = "pointerup", bubbles = true, cancelable = true, composed = true})
+	}
+	state :: proc(pr: ^Probe, step: string) -> bool {
+		run(pr, fmt.tprintf(`wrenTest.note("%s " + document.getElementById("dlg").open)`, step))
+		return said(pr, fmt.tprintf("%s true", step))
+	}
+	dlg := dom.find_by_id(p.doc, "dlg")
+	inside := dom.get(p.doc, dlg).first_child
+	outside := dom.find_by_id(p.doc, "tbl")
+	run(pr, `{ const d = document.getElementById("dlg"); d.setAttribute("closedby", "any"); d.show(); }`)
+	click_on(p, inside)
+	check(pr, state(pr, "IN"), "a press and release in an open dialog leave it open")
+	click_on(p, outside)
+	check(pr, !state(pr, "OUT"), "a press and release outside a dialog of closedby any close it")
+	run(pr, `document.getElementById("dlg").setAttribute("closedby", "none"); document.getElementById("dlg").show();`)
+	click_on(p, outside)
+	check(pr, state(pr, "NONE"), "closedby none: it stays open")
+	run(pr, `{ const d = document.getElementById("dlg"); d.close(); d.setAttribute("closedby", "any"); d.open = true; }`)
+	click_on(p, outside)
+	check(pr, !state(pr, "ATTR"), "a dialog its open attribute opened is light dismissed too")
+	run(pr, `{ const d = document.getElementById("dlg"); d.setAttribute("closedby", "closerequest"); d.show(); }`)
+	forms.key_down(page.page_forms(p), .Escape, {})
+	check(pr, !state(pr, "ESC"), "Escape closes the dialog on top")
+}
 // Repeated readings of layout without mutations in between must not lay the page out again.
 layout_cost_checks :: proc(pr: ^Probe) {
 	p := pr.p
@@ -660,7 +691,7 @@ jsdom_every_page_has_a_test :: proc(t: ^testing.T) {
 @(test) jsdom_custom :: proc(t: ^testing.T) { page_test(t, "custom.html", checks = 34) }
 @(test) jsdom_domparser_xml :: proc(t: ^testing.T) { page_test(t, "domparser-xml.html", checks = 42) }
 @(test) jsdom_elements :: proc(t: ^testing.T) { page_test(t, "elements.html", checks = 193) }
-@(test) jsdom_html :: proc(t: ^testing.T) { page_test(t, "html.html", checks = 152) }
+@(test) jsdom_html :: proc(t: ^testing.T) { page_test(t, "html.html", checks = 157, after = proc(pr: ^Probe, _: ^Layout_Host) { dialog_dismiss_checks(pr) }) }
 @(test) jsdom_intersection :: proc(t: ^testing.T) { page_test(t, "intersection.html", checks = 35) }
 @(test) jsdom_navigation :: proc(t: ^testing.T) { page_test(t, "navigation.html", checks = 85) }
 @(test) jsdom_observer :: proc(t: ^testing.T) { page_test(t, "observer.html", checks = 25) }

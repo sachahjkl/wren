@@ -31,6 +31,8 @@ Popover_State :: struct {
 	focus_back: map[base.Handle]base.Handle,    // what had the focus before each was shown
 	toggles:    [dynamic]Popover_Toggle,        // queued toggle events
 	modals:     [dynamic]base.Handle,           // the dialogs shown by showModal(), bottom to top (dialog_modal.odin)
+	open_dialogs: [dynamic]base.Handle,         // the dialogs shown by show() or showModal(), in that order (HTML's open dialogs list)
+	dialog_pointerdown: base.Handle,            // the open dialog the last trusted pointerdown was in (dialog_light_dismiss)
 	timer:      base.Handle,
 	busy:       int,                            // nesting of show / hide (listeners may call them again)
 	cancelling: base.Handle,                    // the dialog whose "cancel" is being fired (dialog_cancel)
@@ -50,6 +52,7 @@ popover_state_destroy :: proc(p: ^Page, s: ^Popover_State) {
 	delete(s.dialog_toggles)
 	delete(s.toggles)
 	delete(s.modals)
+	delete(s.open_dialogs)
 }
 
 @(private)

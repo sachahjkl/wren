@@ -463,6 +463,7 @@ dispatch_event :: proc(p: ^Page, target: base.Handle, ev: dom.Event) -> bool {
 	timed := timeline_event_begin(p, &ev)   // Event Timing (timeline.odin)
 	ok := dom.dispatch(p.doc, &p.dp, target, ev)
 	if timed != 0 { timeline_event_end(p, &ev, timed) }
+	if (ev.type == "pointerdown" || ev.type == "pointerup") && !ev.untrusted && !p.closed { dialog_light_dismiss(p, ev.type == "pointerdown", target, ev.x, ev.y) }
 	return ok
 }
 
