@@ -85,7 +85,7 @@ a_release_crash_is_named_from_its_map :: proc(t: ^testing.T) {
 	named := strings.builder_make(context.temp_allocator)
 	testing.expect(t, crash_symbolize(&named, report, nil))
 	said := strings.to_string(named)
-	trap, under := strings.index(said, "runtime.bounds_trap"), strings.index(said, "crashmodes.index_out_of_range+0x")
+	trap, under := strings.index(said, "runtime.bounds_check_error"), strings.index(said, "crashmodes.index_out_of_range+0x")
 	testing.expectf(t, trap >= 0 && under > trap && strings.index(said[under:], "main+0x") > 0, "the frames are named from the map, the function under the trap, main under it: %s", said)
 
 	// a report from before the "build" line: through the minidump beside it
