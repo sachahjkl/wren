@@ -14,29 +14,29 @@
 /html/semantics/interactive-elements/the-dialog-element/backdrop-receives-element-events.html: TIMEOUT
 	Test that ::backdrop receives events for the associated element: NOTRUN
 /html/semantics/interactive-elements/the-dialog-element/centering.html: OK
-	horizontal-tb (container vertical-rl) (dialog horizontal-tb): tall viewport, default-sizes: false: FAIL
-	horizontal-tb (container vertical-rl) (dialog horizontal-tb): tall viewport, default-sizes: true: FAIL
-	horizontal-tb (container vertical-rl): tall viewport, default-sizes: false: FAIL
-	horizontal-tb (container vertical-rl): tall viewport, default-sizes: true: FAIL
-	horizontal-tb: dialog and viewport match, default-sizes: false: FAIL
-	horizontal-tb: square viewport, default-sizes: false: FAIL
-	horizontal-tb: square viewport, default-sizes: true: FAIL
-	horizontal-tb: tall viewport, default-sizes: false: FAIL
-	horizontal-tb: tall viewport, default-sizes: true: FAIL
-	horizontal-tb: wide viewport, default-sizes: false: FAIL
-	horizontal-tb: wide viewport, default-sizes: true: FAIL
-	vertical-lr (dialog horizontal-tb): tall viewport, default-sizes: false: FAIL
-	vertical-lr (dialog horizontal-tb): tall viewport, default-sizes: true: FAIL
-	vertical-lr: tall viewport, default-sizes: false: FAIL
-	vertical-lr: tall viewport, default-sizes: true: FAIL
-	vertical-rl (container horizontal-tb) (dialog vertical-rl): tall viewport, default-sizes: false: FAIL
-	vertical-rl (container horizontal-tb) (dialog vertical-rl): tall viewport, default-sizes: true: FAIL
-	vertical-rl (container horizontal-tb): tall viewport, default-sizes: false: FAIL
-	vertical-rl (container horizontal-tb): tall viewport, default-sizes: true: FAIL
-	vertical-rl (dialog horizontal-tb): tall viewport, default-sizes: false: FAIL
-	vertical-rl (dialog horizontal-tb): tall viewport, default-sizes: true: FAIL
-	vertical-rl: tall viewport, default-sizes: false: FAIL
-	vertical-rl: tall viewport, default-sizes: true: FAIL
+	horizontal-tb (container vertical-rl) (dialog horizontal-tb): tall viewport, default-sizes: false: PASS
+	horizontal-tb (container vertical-rl) (dialog horizontal-tb): tall viewport, default-sizes: true: PASS
+	horizontal-tb (container vertical-rl): tall viewport, default-sizes: false: PASS
+	horizontal-tb (container vertical-rl): tall viewport, default-sizes: true: PASS
+	horizontal-tb: dialog and viewport match, default-sizes: false: PASS
+	horizontal-tb: square viewport, default-sizes: false: PASS
+	horizontal-tb: square viewport, default-sizes: true: PASS
+	horizontal-tb: tall viewport, default-sizes: false: PASS
+	horizontal-tb: tall viewport, default-sizes: true: PASS
+	horizontal-tb: wide viewport, default-sizes: false: PASS
+	horizontal-tb: wide viewport, default-sizes: true: PASS
+	vertical-lr (dialog horizontal-tb): tall viewport, default-sizes: false: PASS
+	vertical-lr (dialog horizontal-tb): tall viewport, default-sizes: true: PASS
+	vertical-lr: tall viewport, default-sizes: false: PASS
+	vertical-lr: tall viewport, default-sizes: true: PASS
+	vertical-rl (container horizontal-tb) (dialog vertical-rl): tall viewport, default-sizes: false: PASS
+	vertical-rl (container horizontal-tb) (dialog vertical-rl): tall viewport, default-sizes: true: PASS
+	vertical-rl (container horizontal-tb): tall viewport, default-sizes: false: PASS
+	vertical-rl (container horizontal-tb): tall viewport, default-sizes: true: PASS
+	vertical-rl (dialog horizontal-tb): tall viewport, default-sizes: false: PASS
+	vertical-rl (dialog horizontal-tb): tall viewport, default-sizes: true: PASS
+	vertical-rl: tall viewport, default-sizes: false: PASS
+	vertical-rl: tall viewport, default-sizes: true: PASS
 /html/semantics/interactive-elements/the-dialog-element/child-sequential-focus.html: OK
 	Autofocus takes precedence over keyboard-focusable requirement.: PASS
 	Only keyboard-focusable elements should get dialog initial focus including in nested buttons.: PASS

@@ -38,7 +38,8 @@ hand, so it cannot drift from the recorded results.
 
 Most folders run without layout: what their tests read of geometry is 0, and their expectations say so. The folders that
 test geometry (`LAYOUT_FOLDERS` in `src/tools/wpt/layout_host.odin`: `css/css-anchor-position`, `css/css-multicol`,
-`css/css-writing-modes`, `css/cssom`, `html/semantics/interactive-elements/the-dialog-element`) get a layout of an 800 x 600 with fixed text metrics, so that `getComputedStyle`, `offsetTop` or `getBoundingClientRect` answer there as a page's.
+`css/css-writing-modes`, `css/cssom`, `html/semantics/interactive-elements/the-dialog-element`) get a layout of an 800 x 600 with fixed text metrics, so that `getComputedStyle`, `offsetTop` or `getBoundingClientRect` answer there as a page's;
+the documents of their frames are laid out too, each in its container's content box.
 A test that loads `testdriver.js` gets the same layout, and its input: `wpt/testdriver-vendor.js` (served in place of WPT's own)
 hands `test_driver`'s `click`, `send_keys`, `action_sequence` (and `bless`, which clicks) to the runner, which performs them
 through the browser's own input path, in process (`src/tools/wpt/testdriver.odin`: a hit test of the layout, pointer and mouse

@@ -401,7 +401,12 @@
 	mediaText setter trims and normalizes whitespace: FAIL
 /css/cssom/MediaList.html: OK
 	CSSOM - MediaList interface: FAIL
-/css/cssom/MediaList2.xhtml: TIMEOUT
+/css/cssom/MediaList2.xhtml: OK
+	MediaList: PASS
+	MediaList getter: FAIL
+	MediaList.item: FAIL
+	MediaList.length: FAIL
+	MediaList.mediaText: FAIL
 /css/cssom/MutationObserver-style.html: OK
 	Updating cssText triggers an observation callback even if the value is the same: PASS
 	Updating style property with the same value does not trigger an observation callback: PASS
@@ -540,12 +545,12 @@
 	read_only: PASS
 	relative_property_values: PASS
 /css/cssom/computed-style-002.html: OK
-	Check that a percent width in an iframe is resolved against iframe width for getComputedStyle.: FAIL
+	Check that a percent width in an iframe is resolved against iframe width for getComputedStyle.: PASS
 /css/cssom/computed-style-003.html: OK
-	Check that a percent width in an iframe is the resolved width when the iframe is displayed.: FAIL
+	Check that a percent width in an iframe is the resolved width when the iframe is displayed.: PASS
 /css/cssom/computed-style-004.html: OK
-	Check that the initial width is 100px.: FAIL
-	Check that the resolved width of the inner div is affected by changing the width of outer iframe.: FAIL
+	Check that the initial width is 100px.: PASS
+	Check that the resolved width of the inner div is affected by changing the width of outer iframe.: PASS
 /css/cssom/computed-style-005.html: OK
 	absolute_computed_left_and_right: PASS
 	absolute_computed_margins: PASS
@@ -905,7 +910,7 @@
 	getComputedStyle gets invalidated for slotted content of a display: none shadow host: PASS
 	getComputedStyle gets invalidated in nested shadow trees of a display: none shadow host: PASS
 /css/cssom/getComputedStyle-dynamic-subdoc.html: OK
-	getComputedStyle cross-doc properly reflects media query changes: FAIL
+	getComputedStyle cross-doc properly reflects media query changes: PASS
 /css/cssom/getComputedStyle-getter-v-properties.tentative.html: OK
 	border: PASS
 	border-bottom: PASS
@@ -3629,12 +3634,12 @@
 	escaped character (*) in element prefix: FAIL
 	escaped character (@) in attribute name: PASS
 	escaped character (\\) in element name: PASS
-	escaped character (\\) in element name with any namespace with default: FAIL
+	escaped character (\\) in element name with any namespace with default: PASS
 	escaped character (\\) in element name with any namespace without default: FAIL
-	escaped character (\\) in element name with no namespace: FAIL
+	escaped character (\\) in element name with no namespace: PASS
 	escaped character as code point in attribute name: FAIL
 	escaped character in attribute name: PASS
-	escaped character in attribute name with any namespace: FAIL
+	escaped character in attribute name with any namespace: PASS
 	escaped character in attribute prefix: FAIL
 	escaped character in both attribute prefix and name: FAIL
 	single class (simple) selector in the sequence of simple selectors that is not a universal selector: PASS
@@ -3718,12 +3723,12 @@
 	Type selector with namespace followed by id: FAIL
 	Type selector with namespace followed by pseudo class: FAIL
 	Type selector with namespace followed by pseudo element: FAIL
-	Type selector without a namespace: FAIL
-	Type selector without a namespace followed by attribute selector: FAIL
-	Type selector without a namespace followed by class: FAIL
-	Type selector without a namespace followed by id: FAIL
-	Type selector without a namespace followed by pseudo class: FAIL
-	Type selector without a namespace followed by pseudo element: FAIL
+	Type selector without a namespace: PASS
+	Type selector without a namespace followed by attribute selector: PASS
+	Type selector without a namespace followed by class: PASS
+	Type selector without a namespace followed by id: PASS
+	Type selector without a namespace followed by pseudo class: PASS
+	Type selector without a namespace followed by pseudo element: PASS
 	Universal selector: PASS
 	Universal selector followed by attribute selector: FAIL
 	Universal selector followed by class: FAIL
@@ -3748,12 +3753,12 @@
 	Universal selector with namespace followed by id: FAIL
 	Universal selector with namespace followed by pseudo class: FAIL
 	Universal selector with namespace followed by pseudo element: FAIL
-	Universal selector without a namespace: FAIL
-	Universal selector without a namespace followed by attribute selector: FAIL
-	Universal selector without a namespace followed by class: FAIL
-	Universal selector without a namespace followed by id: FAIL
-	Universal selector without a namespace followed by pseudo class: FAIL
-	Universal selector without a namespace followed by pseudo element: FAIL
+	Universal selector without a namespace: PASS
+	Universal selector without a namespace followed by attribute selector: PASS
+	Universal selector without a namespace followed by class: PASS
+	Universal selector without a namespace followed by id: PASS
+	Universal selector without a namespace followed by pseudo class: PASS
+	Universal selector without a namespace followed by pseudo element: PASS
 /css/cssom/serialize-values.html: OK
 	alignment-baseline: alphabetic: FAIL
 	alignment-baseline: baseline: FAIL

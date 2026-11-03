@@ -1066,6 +1066,9 @@ child_main :: proc(out_path: string) -> int {
 		driver := len(parts) > 4 && parts[4] == "1"
 		if wants_layout(path) || driver { cs.layout = host_make() }
 		defer host_destroy(cs.layout)
+		// its frames' documents are laid out too
+		page.the_pages.frame_hooks = cs.layout != nil ? page.Frame_Hooks{attached = host_frame_attached} : {}
+		defer page.the_pages.frame_hooks = {}
 		defer driver_destroy(&cs.driver)
 		d := headless.open(&env, test_url(path), child_on_console, &cs)
 		d.by_type = true   // an .xhtml test is an XML document, as the browser loads it (UTF-8 by default, not windows-1252)

@@ -9349,7 +9349,7 @@
 /css/css-anchor-position/last-successful-iframe.html: OK
 	Base position without fallback now successful: PASS
 	No successful position, keep flip-block: FAIL
-	Starts rendering with flip-block: FAIL
+	Starts rendering with flip-block: PASS
 /css/css-anchor-position/last-successful-intermediate-ignored.html: OK
 	No successful position (with intermediate successful), keep flip-block: PASS
 	Starts rendering with flip-block: PASS
@@ -9605,7 +9605,7 @@
 /css/css-anchor-position/popover-anchor-backdrop-transition.html: OK
 	Anchored popover ::backdrop transitioning opacity with @starting-style: FAIL
 /css/css-anchor-position/popover-implicit-anchor.html: OK
-	Popover invokers form an implicit anchor reference: FAIL
+	Popover invokers form an implicit anchor reference: PASS
 /css/css-anchor-position/position-anchor-003.html: OK
 	Layout is updated on `position-anchor` changes: PASS
 /css/css-anchor-position/position-anchor-basics.html: OK
