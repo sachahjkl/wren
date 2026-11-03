@@ -164,22 +164,26 @@ resolve_box_model :: proc(c: ^Ctx, b: ^Box, cb_w: f32) {
 		// collapsed borders: the cells draw the grid; the table keeps its outer border
 		for i in 0 ..< 4 { b.padding[i] = 0 }
 	}
+	b.gutter = gutter_of(c, b)
 }
 
-@(private) pb_w :: proc(b: ^Box) -> f32 { return b.padding[1] + b.padding[3] + b.border[1] + b.border[3] }
-@(private) pb_h :: proc(b: ^Box) -> f32 { return b.padding[0] + b.padding[2] + b.border[0] + b.border[2] }
+// Border, scroll bar gutter and padding: what lies between the border box and the content box.
+@(private) pb_w :: proc(b: ^Box) -> f32 { return b.padding[1] + b.padding[3] + b.border[1] + b.border[3] + b.gutter[1] + b.gutter[3] }
+@(private) pb_h :: proc(b: ^Box) -> f32 { return b.padding[0] + b.padding[2] + b.border[0] + b.border[2] + b.gutter[0] + b.gutter[2] }
 @(private) mg_w :: proc(b: ^Box) -> f32 { return b.margin[1] + b.margin[3] }
 @(private) mg_h :: proc(b: ^Box) -> f32 { return b.margin[0] + b.margin[2] }
-@(private) content_x :: proc(b: ^Box) -> f32 { return b.border[3] + b.padding[3] }
-@(private) content_y :: proc(b: ^Box) -> f32 { return b.border[0] + b.padding[0] }
+@(private) content_x :: proc(b: ^Box) -> f32 { return b.border[3] + b.gutter[3] + b.padding[3] }
+@(private) content_y :: proc(b: ^Box) -> f32 { return b.border[0] + b.gutter[0] + b.padding[0] }
 
-// A specified size converted to a border-box size. ok = false: auto, or a percentage of an indefinite base.
+// A specified size converted to a border-box size. ok = false: auto, or a percentage of an indefinite base. The gutter
+// of classic scroll bars comes out of a specified content-box size, as in browsers (a `width: 300px` box that scrolls is
+// 300 px less its bar inside).
 @(private)
 to_border_w :: proc(c: ^Ctx, b: ^Box, l: style.Length, base: f32) -> (f32, bool) {
 	v, ok := definite(c, l, base)
 	if !ok { return 0, false }
 	if b.cs.box_sizing == .Border_Box && b.kind != .Inline { return max(v, pb_w(b)), true }
-	return max(v, 0) + pb_w(b), true
+	return max(max(v, 0) + pb_w(b) - b.gutter[1] - b.gutter[3], pb_w(b)), true
 }
 
 @(private)
@@ -187,7 +191,7 @@ to_border_h :: proc(c: ^Ctx, b: ^Box, l: style.Length, base: f32) -> (f32, bool)
 	v, ok := definite(c, l, base)
 	if !ok { return 0, false }
 	if b.cs.box_sizing == .Border_Box { return max(v, pb_h(b)), true }
-	return max(v, 0) + pb_h(b), true
+	return max(max(v, 0) + pb_h(b) - b.gutter[0] - b.gutter[2], pb_h(b)), true
 }
 
 // min-width / max-width applied to a border-box width.

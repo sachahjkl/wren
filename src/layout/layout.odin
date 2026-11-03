@@ -18,17 +18,24 @@ FONTS_RESERVE :: 32
 
 // Lays out the document. The result stays valid until the next call (strings of the document are referenced, not copied).
 run :: proc(l: ^Layout, input: Input) {
-	if can_refresh(l, input) && refresh(l, input) { return }
-	if run_incremental(l, input) { return }
-	run_full(l, input)
-	if input.settings.incremental { inc_after_full(l, input) }
+	if !(can_refresh(l, input) && refresh(l, input)) && !run_incremental(l, input) {
+		run_full(l, input)
+		if input.settings.incremental { inc_after_full(l, input) }
+	}
+	// classic scroll bars that came or went: what they hold is laid out again (scrollbars.odin); a page with vertical
+	// writing modes or columns from scratch (its partial passes do not follow a viewport that changes height alone)
+	for pass in 0 ..< BAR_PASSES_MAX {
+		if !bars_settle(l, pass == 0) { break }
+		if l.frames_on || !run_incremental(l, input) { run_full(l, input) }
+	}
+	clear(&l.bar_dirty)
 }
 
 @(private)
 ctx_make :: proc(l: ^Layout, input: Input, marker: ^u8) -> Ctx {
 	c := Ctx{
 		l = l, d = input.doc, st = input.styled, set = &l.settings, text = input.text, replaced = input.replaced,
-		scale = input.scale, vp = input.viewport, sa = virtual.arena_allocator(&l.arena),
+		scale = input.scale, vp = doc_port(l, input.viewport), sa = virtual.arena_allocator(&l.arena),
 		stack_base = uintptr(marker), stack_limit = l.settings.max_stack_bytes, rebuilding = NONE,
 	}
 	c.flat = dom.has_shadow_trees(input.doc)
@@ -49,6 +56,7 @@ note_inputs :: proc(l: ^Layout, input: Input) {
 	l.styled = input.styled
 	l.styled_pass = input.styled.pass_id
 	l.viewport = input.viewport
+	l.icb = doc_port(l, input.viewport)
 	l.scale = input.scale
 	l.settings = input.settings^
 	l.valid = true
@@ -152,6 +160,7 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 	clear(&l.boxes); clear(&l.inline_items); clear(&l.lines); clear(&l.frags); clear(&l.fonts); clear(&l.items); clear(&l.font_lookup)
 	clear(&l.spaces); clear(&l.clips); clear(&l.groups); clear(&l.band_start); clear(&l.band_items); clear(&l.node_box)
 	if !keep_scroll { clear(&l.scroll); l.doc_scroll_x = 0 }
+	clear(&l.bars)
 	clear(&l.deco_items)
 	inc_reset(l)
 	anchor_reset(l)
@@ -173,6 +182,8 @@ destroy :: proc(l: ^Layout) {
 	delete(l.boxes); delete(l.inline_items); delete(l.lines); delete(l.frags); delete(l.fonts); delete(l.items); delete(l.font_lookup)
 	delete(l.spaces); delete(l.clips); delete(l.groups); delete(l.band_start); delete(l.band_items); delete(l.node_box)
 	delete(l.scroll)
+	delete(l.bars)
+	delete(l.bar_dirty)
 	delete(l.scratch)
 	delete(l.deco_items)
 	delete(l.anchored)

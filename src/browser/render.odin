@@ -168,32 +168,51 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size
 	if doc_scrollbar { paint_doc_scrollbar(l, dc, page_origin, size, page_scroll) }
 }
 
-// The colors of the document's scroll bar: the scheme's, then the root element's scrollbar-color.
-doc_scrollbar_colors :: proc(l: ^Layout) -> (thumb_c, track_c: css.Color) {
+// The colors of the document's scroll bars: the scheme's, then the root element's scrollbar-color.
+doc_scrollbar_colors :: proc(l: ^Layout) -> Bar_Colors {
 	root := l.styled != nil ? (^style.Styled)(l.styled).root_scheme : style.Scheme.Light   // alive while the layout is painted
-	thumb_c, track_c = scrollbar_colors(root, the_app.page_render.settings.scrollbar_thumb, the_app.page_render.settings.scrollbar_track)
-	// the viewport's bar follows the root element's scrollbar-color
-	if ri := l.canvas_items[0]; ri >= 0 && int(ri) < len(l.items) { thumb_c, track_c = scrollbar_colors_of(l.items[ri].cs, thumb_c, track_c) }
-	return
+	cs: ^style.Computed
+	if ri := l.canvas_items[0]; ri >= 0 && int(ri) < len(l.items) { cs = l.items[ri].cs }
+	return scrollbar_colors(root, cs)
 }
 
-// The document's own scroll bar over the page (drawn apart from the page when its last frame is kept for chrome frames:
-// shell_frames.odin draws it again at the position the wheel gives it, not shifted with the page's pixels).
+// The document's own scroll bars over the page (drawn apart from the page when its last frame is kept for chrome frames:
+// shell_frames.odin draws them again at the position the wheel gives them, not shifted with the page's pixels).
 paint_doc_scrollbar :: proc(l: ^Layout, dc: ^draw.Context, page_origin, size: draw.Vec2, page_scroll: f32) {
 	if !l.valid { return }
+	paint_doc_bars(l, dc, page_origin, size, page_scroll, doc_scrollbar_colors(l))
+}
+
+// The document's bars at `page_origin` for a page area `size`, scrolled to `page_scroll`, in `col`.
+paint_doc_bars :: proc(l: ^Layout, dc: ^draw.Context, page_origin, size: draw.Vec2, page_scroll: f32, col: Bar_Colors) {
 	origin := draw.Vec2{math.round(page_origin.x), math.round(page_origin.y)}
-	track, thumb, ok := lay.doc_scrollbar(l, size, math.round(page_scroll))
-	track_x, thumb_x, ok_x := lay.doc_scrollbar_x(l, size)
-	if !ok && !ok_x { return }
-	thumb_c, track_c := doc_scrollbar_colors(l)
-	if ok {
-		if track_c.a > 0 { draw.rect(dc, draw.rect_shift(dr(track), origin), to_draw(track_c), (track.max.x - track.min.x) * 0.5) }
-		draw.rect(dc, draw.rect_shift(dr(thumb), origin), to_draw(thumb_c), (thumb.max.x - thumb.min.x) * 0.5)
+	if track, thumb, ok := lay.doc_scrollbar(l, size, math.round(page_scroll)); ok {
+		paint_bar(dc, draw.rect_shift(dr(track), origin), draw.rect_shift(dr(thumb), origin), true, col)
 	}
-	if ok_x {
-		if track_c.a > 0 { draw.rect(dc, draw.rect_shift(dr(track_x), origin), to_draw(track_c), (track_x.max.y - track_x.min.y) * 0.5) }
-		draw.rect(dc, draw.rect_shift(dr(thumb_x), origin), to_draw(thumb_c), (thumb_x.max.y - thumb_x.min.y) * 0.5)
+	if track, thumb, ok := lay.doc_scrollbar_x(l, size); ok {
+		paint_bar(dc, draw.rect_shift(dr(track), origin), draw.rect_shift(dr(thumb), origin), false, col)
 	}
+	if corner, ok := lay.doc_scroll_corner(l, size); ok { draw.rect(dc, draw.rect_shift(dr(corner), origin), to_draw(col.track)) }
+}
+
+// One scroll bar (window pixels): an overlay bar is a rounded track and thumb; a classic bar fills its track, with its
+// arrow buttons at the ends and a square thumb (none when there is nothing to scroll).
+paint_bar :: proc(dc: ^draw.Context, track, thumb: draw.Rect, vertical: bool, col: Bar_Colors) {
+	ax := vertical ? 0 : 1   // across the bar
+	if the_app.page_render.settings.scrollbar_overlay {
+		rad := (track.max[ax] - track.min[ax]) * 0.5
+		if col.track.a > 0 { draw.rect(dc, track, to_draw(col.track), rad) }
+		draw.rect(dc, thumb, to_draw(col.thumb), (thumb.max[ax] - thumb.min[ax]) * 0.5)
+		return
+	}
+	if col.track.a > 0 { draw.rect(dc, track, to_draw(col.track)) }
+	start, end, _ := lay.classic_parts(lay.Rect{track.min, track.max}, vertical)
+	for button, i in ([2]lay.Rect{start, end}) {
+		if button.max == button.min { continue }
+		p := lay.classic_arrow(button, vertical, i == 1)
+		draw.triangle(dc, p[0], p[1], p[2], to_draw(col.arrow))
+	}
+	if thumb.max != thumb.min { draw.rect(dc, thumb, to_draw(col.thumb)) }
 }
 
 // The box whose background is the canvas's (CSS Backgrounds §2.11.2): the root element's, or the body's when the root
@@ -259,20 +278,13 @@ paint_item :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, v: ^lay.View
 	case .Outline: paint_outline(l, dc, it, r)
 	case .Column_Rule: paint_column_rule(dc, it, r)
 	case .Scrollbar:
-		track := r
-		thumb_c, track_c := scrollbar_colors(it.cs != nil ? it.cs.used_scheme : .Light, the_app.page_render.settings.scrollbar_thumb, the_app.page_render.settings.scrollbar_track)
-		thumb_c, track_c = scrollbar_colors_of(it.cs, thumb_c, track_c)
-		if track_c.a > 0 { draw.rect(dc, track, to_draw(track_c), min(track.max.x - track.min.x, track.max.y - track.min.y) * 0.5) }
-		th := draw.rect_shift(dr(lay.scrollbar_thumb(l, v, it)), origin)
-		draw.rect(dc, th, to_draw(thumb_c), min(th.max.x - th.min.x, th.max.y - th.min.y) * 0.5)
+		col := scrollbar_colors(it.cs != nil ? it.cs.used_scheme : .Light, it.cs)
+		vertical := .Vertical in it.flags
+		th := lay.scrollbar_thumb(l, v, it)
+		paint_bar(dc, r, th == {} ? {} : draw.rect_shift(dr(th), origin), vertical, col)
+		// the corner between a box's two classic bars goes with its vertical one
+		if g := l.boxes[it.box].gutter; vertical && g[2] > 0 { draw.rect(dc, {{r.min.x, r.max.y}, {r.max.x, r.max.y + g[2]}}, to_draw(col.track)) }
 	}
-}
-
-// scrollbar-color (CSS Scrollbars 1): the element's thumb and track colors, else the defaults given.
-@(private = "file")
-scrollbar_colors_of :: proc(cs: ^style.Computed, thumb, track: css.Color) -> (css.Color, css.Color) {
-	if cs == nil || cs.scrollbar_color.auto { return thumb, track }
-	return cs.scrollbar_color.thumb, cs.scrollbar_color.track
 }
 
 // Corner radii (draw order: top-left, bottom-left, top-right, bottom-right), reduced so adjacent ones fit (CSS

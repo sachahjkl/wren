@@ -529,11 +529,13 @@ doc_scroll_origin_at_the_bottom :: proc(t: ^testing.T) {
 		#q { position: fixed; position-anchor: --a; width: 10px; height: 10px; top: anchor(start); left: 0 }
 	</style><div id=a></div><div id=q></div>`)
 	defer fixture_unload(f)
+	// (the page shows less its two classic scroll bars: `port`)
+	port := doc_port(&f.l, f.vp)
 	lo, hi := doc_scroll_y_range(&f.l, f.vp.y)
-	testing.expect_value(t, lo, f32(-400))
+	testing.expect_value(t, lo, port.y - 1000)
 	testing.expect_value(t, hi, f32(0))
-	is(t, f, "a", 700, 500, 100, 100)
-	testing.expect_value(t, rect(f, "q").min.y, 600)   // the start of the anchor, the low side being its end
+	is(t, f, "a", port.x - 100, port.y - 100, 100, 100)
+	testing.expect_value(t, rect(f, "q").min.y, port.y)   // the start of the anchor, the low side being its end
 	_, thumb, shown := doc_scrollbar(&f.l, f.vp, 0)
 	testing.expect(t, shown)
 	_, top, _ := doc_scrollbar(&f.l, f.vp, -400)
@@ -546,7 +548,7 @@ doc_scroll_origin_at_the_bottom :: proc(t: ^testing.T) {
 	defer fixture_unload(g)
 	lo, hi = doc_scroll_y_range(&g.l, g.vp.y)
 	testing.expect_value(t, lo, f32(0))
-	testing.expect_value(t, hi, f32(400))
+	testing.expect_value(t, hi, 1000 - doc_port(&g.l, g.vp).y)
 }
 
 // In a spanner: a box positioned there shows with its anchor; what lies between the spanner and its container contains neither.

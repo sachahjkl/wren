@@ -156,7 +156,8 @@ compare_edge_shot :: proc(c: ^Compare_Run, url, dest: string) -> bool {
 	append(&cmd, bench.edge_exe())
 	append(&cmd, ..bench.EDGE_ARGS)
 	language, _, _ := strings.partition(c.language, ",")
-	append(&cmd, "--hide-scrollbars", fmt.tprintf("--user-data-dir=%s", profile), "--force-device-scale-factor=1", fmt.tprintf("--window-size=%d,%d", c.width, c.height),
+	// (with its scroll bars: classic ones, which take room, as Wren's do by default: layout.scrollbar.overlay)
+	append(&cmd, fmt.tprintf("--user-data-dir=%s", profile), "--force-device-scale-factor=1", fmt.tprintf("--window-size=%d,%d", c.width, c.height),
 		fmt.tprintf("--lang=%s", language), fmt.tprintf("--accept-lang=%s", c.language))
 	// (observed with this Edge: no option follows Windows' dark theme, preferredColorScheme=1 gives the light one)
 	if !c.dark { append(&cmd, "--blink-settings=preferredColorScheme=1") }

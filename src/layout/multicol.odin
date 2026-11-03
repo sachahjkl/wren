@@ -257,11 +257,12 @@ gather_child :: proc(g: ^Gather, ch, bi: i32, top: f32) {
 	} else {
 		g.trunc_next = max(g.trunc_next, ktop - g.last_end)
 		// border and padding do not leave their first line: at the head of a column they go with it
-		if k.border[0] + k.padding[0] > 0 { g.top_ext = min(g.top_ext, ktop) }
-		g.last_end = max(g.last_end, ktop + k.border[0] + k.padding[0])
+		if content_y(k) > 0 { g.top_ext = min(g.top_ext, ktop) }
+		g.last_end = max(g.last_end, ktop + content_y(k))
 		gather_box(g, ch, ktop)
 		g.top_ext = math.F32_MAX
-		if k.border[2] + k.padding[2] > 0 && len(g.units) > 0 {
+		// (and a horizontal scroll bar its last)
+		if k.border[2] + k.gutter[2] + k.padding[2] > 0 && len(g.units) > 0 {
 			last := &g.units[len(g.units) - 1]
 			if last.spanner == NONE { last.y1 = max(last.y1, ktop + k.size.y) }
 		}

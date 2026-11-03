@@ -200,7 +200,7 @@ note_doc_extent_x :: proc(l: ^Layout, doc: Rect, vp: Vec2) {
 
 @(private)
 padding_rect :: proc(b: ^Box) -> Rect {
-	return Rect{b.abs + {b.border[3], b.border[0]}, b.abs + b.size - {b.border[1], b.border[2]}}
+	return Rect{b.abs + {b.border[3] + b.gutter[3], b.border[0] + b.gutter[0]}, b.abs + b.size - {b.border[1] + b.gutter[1], b.border[2] + b.gutter[2]}}
 }
 
 @(private)
@@ -211,7 +211,7 @@ border_rect :: proc(b: ^Box) -> Rect {
 
 @(private)
 content_rect :: proc(b: ^Box) -> Rect {
-	return Rect{b.abs + {content_x(b), content_y(b)}, b.abs + b.size - {b.border[1] + b.padding[1], b.border[2] + b.padding[2]}}
+	return Rect{b.abs + {content_x(b), content_y(b)}, b.abs + b.size - {b.border[1] + b.gutter[1] + b.padding[1], b.border[2] + b.gutter[2] + b.padding[2]}}
 }
 
 // Relative offsets (CSS 2.1 §9.4.3): percentages of the containing block, a percentage of an auto height is ignored.
@@ -403,7 +403,7 @@ finish :: proc(c: ^Ctx) {
 		if .Scroll in b.flags && .Propagated not_in b.flags && b.kind != .Inline {
 			port := padding_rect(b)
 			mn, ms := scroll_limits(b, port)
-			if ms.x > 0.5 || ms.y > 0.5 || mn.x < -0.5 || mn.y < -0.5 {
+			if ms.x > BAR_MIN_OVERFLOW || ms.y > BAR_MIN_OVERFLOW || mn.x < -BAR_MIN_OVERFLOW || mn.y < -BAR_MIN_OVERFLOW {
 				append(&l.spaces, Space{kind = .Scroll, parent = b.space, box = x, frame = NONE, clip = b.content_clip, xform = l.spaces[b.space].xform, plane = l.spaces[b.space].plane, persp_from = NONE, ctx = NONE, dest = NONE, port = port, max_scroll = ms, min_scroll = mn})
 				b.content_space = i32(len(l.spaces) - 1)
 				b.scroll_space = b.content_space

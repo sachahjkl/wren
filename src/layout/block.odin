@@ -222,6 +222,20 @@ collapses_bottom :: proc(c: ^Ctx, b: ^Box) -> bool {
 	return b.cs.height.kind == .Auto && (b.cs.min_height.kind == .Auto || px_of(c, b.cs.min_height, -1) <= 0)
 }
 
+// The top margin of block `bi` with those of its first in-flow children that collapse through its top, down the chain.
+@(private)
+top_strut_through :: proc(l: ^Layout, bi: i32) -> (s: Strut) {
+	strut_add(&s, l.boxes[bi].margin[0])
+	for x := bi; collapses_top(&l.boxes[x]); {
+		ch := l.boxes[x].first
+		for ch != NONE && l.boxes[ch].flags & {.Abs, .Float} != {} { ch = l.boxes[ch].next }
+		if ch == NONE || l.boxes[ch].kind != .Block { return }
+		strut_add(&s, l.boxes[ch].margin[0])
+		x = ch
+	}
+	return
+}
+
 // Height a box would use from its `height` property, as a border-box height; ok = false: auto (content-based).
 @(private)
 specified_height :: proc(c: ^Ctx, b: ^Box, cb_h: f32) -> (f32, bool) {
@@ -400,7 +414,8 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flo
 	// quirks mode: the body fills the window (Quirks Mode §3.6 "the body element fills the html element")
 	if !has_h && c.st != nil && c.st.quirks && b.kind == .Block && is_quirks_body(c, bi) {
 		root := &c.l.boxes[b.parent]
-		h = max(h, c.vp.y - root.margin[0] - root.margin[2] - pb_h(root) - b.margin[0] - b.margin[2])
+		// its top margin as it collapses with its first children's (Blink: a first child's top margin through it counts)
+		h = max(h, c.vp.y - root.margin[0] - root.margin[2] - pb_h(root) - strut_value(top_strut_through(c.l, bi)) - b.margin[2])
 	}
 	b.size = {w, h}
 	// a table cell's content height, for vertical-align in its row (layout_table): its specified height is not content
@@ -685,7 +700,7 @@ place_marker :: proc(c: ^Ctx, bi: i32) {
 	}
 	b.marker_w = mw
 	if is_rtl(b.cs) {
-		b.marker_pos = {b.size.x - b.border[1] - b.padding[1] + gap, base}
+		b.marker_pos = {b.size.x - b.border[1] - b.gutter[1] - b.padding[1] + gap, base}
 	} else {
 		b.marker_pos = {content_x(b) - gap - mw, base}
 	}

@@ -48,7 +48,7 @@ abs_containing_rect :: proc(c: ^Ctx, cbi: i32) -> (ref: i32, cbr: Rect) {
 		ref = cb.ifc_root
 		cbr = Rect{cb.pos + {cb.border[3], cb.border[0]}, cb.pos + cb.size - {cb.border[1], cb.border[2]}}
 	case:
-		cbr = Rect{{cb.border[3], cb.border[0]}, cb.size - {cb.border[1], cb.border[2]}}
+		cbr = Rect{{cb.border[3] + cb.gutter[3], cb.border[0] + cb.gutter[0]}, cb.size - {cb.border[1] + cb.gutter[1], cb.border[2] + cb.gutter[2]}}
 	}
 	return
 }

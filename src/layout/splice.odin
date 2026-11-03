@@ -141,7 +141,7 @@ finish_inline :: proc(l: ^Layout, p: i32) {
 // the owner defines by itself.
 @(private)
 overflow_of :: proc(l: ^Layout, owner: i32) -> (all, base: Rect) {
-	if owner == NONE { return l.inc.doc_extent, Rect{{0, 0}, l.viewport} }
+	if owner == NONE { return l.inc.doc_extent, Rect{{0, 0}, l.icb} }
 	o := &l.boxes[owner]
 	return o.overflow, padding_rect(o)
 }

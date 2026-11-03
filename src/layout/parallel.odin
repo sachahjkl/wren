@@ -239,6 +239,8 @@ pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box 
 			fixed :: proc(l: style.Length) -> bool { return l.kind != .Percent && l.kind != .Calc }
 			model_fixed := true
 			for s in style.Side { if !fixed(cs.margin[s]) || !fixed(cs.padding[s]) { model_fixed = false } }
+			// (the room of a box's scroll bars follows from what the passes find: not predicted)
+			if may_gutter(l, b) { continue }
 			if model_fixed && b.kind != .Inline && b.flags & {.Abs, .Float, .Dead} == {} {
 				// what flow_blocks resolves for this child: independent of the width here
 				tmp: Box

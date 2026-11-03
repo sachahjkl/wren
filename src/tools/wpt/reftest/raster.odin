@@ -407,21 +407,47 @@ space_state :: proc(rc: ^Raster, space, clip: i32) -> bool {
 	return rc.scissor[0] < rc.scissor[2] && rc.scissor[1] < rc.scissor[3]
 }
 
+// A scroll bar as the browser draws it (render.odin paint_bar): an overlay bar rounded, a classic one square with its
+// arrows (in one-pixel rows) and the corner of a box with two bars, in the light scheme's colors or scrollbar-color.
 @(private = "file")
 paint_scrollbar :: proc(rc: ^Raster, it: ^lay.Display_Item) {
 	l := rc.l
-	thumb_c, track_c := l.settings.scrollbar_thumb, l.settings.scrollbar_track
-	if it.cs != nil && !it.cs.scrollbar_color.auto { thumb_c, track_c = it.cs.scrollbar_color.thumb, it.cs.scrollbar_color.track }
-	rounded :: proc(rc: ^Raster, r: lay.Rect, c: css_.Color) {
-		rad := min(r.max.x - r.min.x, r.max.y - r.min.y) * SCROLLBAR_RADIUS_FACTOR
+	overlay := l.settings.scrollbar_overlay
+	thumb_c, track_c, arrow_c := l.settings.scrollbar_thumb, l.settings.scrollbar_track, l.settings.classic_arrow
+	if !overlay { thumb_c, track_c = l.settings.classic_thumb, l.settings.classic_track }
+	if it.cs != nil && !it.cs.scrollbar_color.auto { thumb_c, track_c, arrow_c = it.cs.scrollbar_color.thumb, it.cs.scrollbar_color.track, it.cs.scrollbar_color.thumb }
+	box :: proc(rc: ^Raster, r: lay.Rect, c: css_.Color, rounded: bool) {
+		if r.max.x <= r.min.x || r.max.y <= r.min.y { return }
+		rad := rounded ? min(r.max.x - r.min.x, r.max.y - r.min.y) * SCROLLBAR_RADIUS_FACTOR : 0
 		s := Shape{rect = r, radii = {{rad, rad}, {rad, rad}, {rad, rad}, {rad, rad}}}
 		p := solid(c)
 		fill(rc, &s, &p)
 	}
-	rounded(rc, snap_rect(it.rect), track_c)
+	vertical := .Vertical in it.flags
+	track := snap_rect(it.rect)
+	box(rc, track, track_c, overlay)
+	if !overlay {
+		start, end, _ := lay.classic_parts(track, vertical)
+		for button, i in ([2]lay.Rect{start, end}) {
+			if button.max == button.min { continue }
+			p := lay.classic_arrow(button, vertical, i == 1)
+			lo_y, hi_y := min(p[0].y, p[1].y, p[2].y), max(p[0].y, p[1].y, p[2].y)
+			for y := math.floor(lo_y); y < hi_y; y += 1 {
+				lo, hi := max(f32), min(f32)
+				for k in 0 ..< 3 {
+					a, b := p[k], p[(k + 1) % 3]
+					mid := y + HALF
+					if (a.y <= mid) == (b.y <= mid) { continue }
+					x := a.x + (mid - a.y) / (b.y - a.y) * (b.x - a.x)
+					lo, hi = min(lo, x), max(hi, x)
+				}
+				if hi > lo { box(rc, lay.Rect{{lo, y}, {hi, y + 1}}, arrow_c, false) }
+			}
+		}
+		if g := l.boxes[it.box].gutter; vertical && g[2] > 0 { box(rc, lay.Rect{{track.min.x, track.max.y}, {track.max.x, track.max.y + g[2]}}, track_c, false) }
+	}
 	// (the thumb comes in viewport coordinates of the item's space: back to layout coordinates)
-	th := lay.rect_shift(lay.scrollbar_thumb(l, rc.v, it), -rc.offs)
-	rounded(rc, snap_rect(th), thumb_c)
+	if th := lay.scrollbar_thumb(l, rc.v, it); th != {} { box(rc, snap_rect(lay.rect_shift(th, -rc.offs)), thumb_c, overlay) }
 }
 
 @(private = "file")

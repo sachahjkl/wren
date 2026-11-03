@@ -10,6 +10,7 @@ import "wb:base"
 import "wb:config"
 import "wb:css"
 import "wb:host"
+import lay "wb:layout"
 import "wb:page"
 import "wb:style"
 import "wb:url"
@@ -46,11 +47,17 @@ Paint_Hold :: struct {
 	web_fonts: int,
 }
 
+// Fallback colors of classic scroll bars in the dark scheme (the preferences' defaults: Chrome's).
+DARK_CLASSIC_THUMB :: css.Color{0.408, 0.408, 0.408, 1}
+DARK_CLASSIC_TRACK :: css.Color{0.259, 0.259, 0.259, 1}
+DARK_CLASSIC_ARROW :: css.Color{0.639, 0.639, 0.639, 1}
+
 First_Paint_Settings :: struct {
 	enabled:      bool,
 	timeout_ms:   f64,
 	cross_origin: bool,
 	dark_thumb, dark_track: css.Color,
+	dark_classic: Bar_Colors,
 }
 
 FIRST_PAINT_PREFS := [?]config.Def{
@@ -64,6 +71,12 @@ FIRST_PAINT_PREFS := [?]config.Def{
 		description = "Scroll bar thumbs of pages and elements whose color scheme is dark (CSS color). The light ones: layout.scrollbar.thumb_color."},
 	{name = "browser.scrollbar.dark.track_color", kind = .String, default = {s = "rgba(255, 255, 255, 0.06)"},
 		description = "Scroll bar tracks in the dark color scheme (CSS color, transparent = none). The light ones: layout.scrollbar.track_color."},
+	{name = "browser.scrollbar.dark.classic_thumb_color", kind = .String, default = {s = "#686868"},
+		description = "Classic scroll bar thumbs in the dark color scheme (CSS color). The light ones: layout.scrollbar.classic.thumb_color."},
+	{name = "browser.scrollbar.dark.classic_track_color", kind = .String, default = {s = "#424242"},
+		description = "Classic scroll bar tracks, arrow buttons and corners in the dark color scheme (CSS color)."},
+	{name = "browser.scrollbar.dark.classic_arrow_color", kind = .String, default = {s = "#a3a3a3"},
+		description = "Arrows of classic scroll bars in the dark color scheme (CSS color)."},
 }
 
 register_first_paint_prefs :: proc(p: ^config.Prefs) { config.register(p, FIRST_PAINT_PREFS[:]) }
@@ -84,6 +97,11 @@ first_paint_settings_from :: proc(p: ^config.Prefs) -> First_Paint_Settings {
 		cross_origin = config.bool_of(p, "browser.paint_holding.cross_origin"),
 		dark_thumb = pref_color(p, "browser.scrollbar.dark.thumb_color", {0.67, 0.67, 0.7, 0.6}),
 		dark_track = pref_color(p, "browser.scrollbar.dark.track_color", {1, 1, 1, 0.06}),
+		dark_classic = {
+			thumb = pref_color(p, "browser.scrollbar.dark.classic_thumb_color", DARK_CLASSIC_THUMB),
+			track = pref_color(p, "browser.scrollbar.dark.classic_track_color", DARK_CLASSIC_TRACK),
+			arrow = pref_color(p, "browser.scrollbar.dark.classic_arrow_color", DARK_CLASSIC_ARROW),
+		},
 	}
 }
 
@@ -182,7 +200,8 @@ hold_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect, fallback
 	images_before_layout(&held_tab)
 	draw.push_clip(dc, r)
 	images_paint_begin_frame(app)
-	paint(&h.layout, dc, h.page.doc, r.min, size, clamp(h.scroll, h.layout.doc_min_y, max(0, h.layout.height - size.y)), r)
+	lo_y, hi_y := lay.doc_scroll_y_range(&h.layout, size.y)
+	paint(&h.layout, dc, h.page.doc, r.min, size, clamp(h.scroll, lo_y, hi_y), r)
 	images_after_paint(app)
 	draw.pop_clip(dc)
 	return true

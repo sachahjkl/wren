@@ -32,7 +32,8 @@ doc_x_range_no_overflow :: proc(t: ^testing.T) {
 	testing.expect(t, !ok, "no horizontal bar")
 	track, _, vok := doc_scrollbar(&f.l, f.vp, 0)
 	testing.expect(t, vok, "the vertical bar")
-	testing.expect_value(t, track.max.y, VP_H - f.l.settings.scrollbar_margin)
+	// a classic bar: at the window's right edge, from top to bottom
+	testing.expect_value(t, track, Rect{{VP_W - f.l.doc_bars.x, 0}, {VP_W, VP_H}})
 }
 
 @(test)
@@ -56,10 +57,10 @@ doc_x_range_rtl :: proc(t: ^testing.T) {
 		defer fixture_unload(f)
 		testing.expectf(t, hx_range(f) == [2]f32{VP_W - WIDE, 0}, "%s: %v", src, hx_range(f))
 		// at the origin the bar's thumb is at the far end, as the document's end is what shows
-		_, thumb, ok := doc_scrollbar_x(&f.l, f.vp)
+		track, thumb, ok := doc_scrollbar_x(&f.l, f.vp)
 		testing.expect(t, ok)
-		track, _, _ := doc_scrollbar_x(&f.l, f.vp)
-		testing.expect_value(t, thumb.max.x, track.max.x)
+		_, _, rail := classic_parts(track, false)
+		testing.expect_value(t, thumb.max.x, rail.max.x)
 	}
 	// what goes right of an origin at the end cannot be reached
 	f := hx_load(`<!doctype html><html dir=rtl><body style="margin:0"><div style="position:absolute;left:2000px;width:100px;height:10px"></div>`)
@@ -85,7 +86,9 @@ doc_x_range_forbidden :: proc(t: ^testing.T) {
 	f := hx_load(`<!doctype html><body style="margin:0;overflow-y:hidden"><div style="width:3000px;height:3000px"></div>`)
 	defer fixture_unload(f)
 	testing.expect_value(t, hx_range(f), [2]f32{0, WIDE - VP_W})
-	testing.expect_value(t, f.l.height, VP_H)
+	// the horizontal bar alone: the page is the window less its height
+	testing.expect(t, f.l.doc_bars.x == 0 && f.l.doc_bars.y > 0, "a horizontal bar only")
+	testing.expect_value(t, f.l.height, VP_H - f.l.doc_bars.y)
 }
 
 @(test)
@@ -180,11 +183,12 @@ doc_x_bars_share_the_corner :: proc(t: ^testing.T) {
 	testing.expect(t, vok && hok)
 	testing.expect(t, vt.max.y <= ht.min.y, "the vertical bar stops above the horizontal one")
 	testing.expect(t, ht.max.x <= vt.min.x, "the horizontal bar stops left of the vertical one")
-	testing.expect_value(t, ht0.min.x, ht.min.x)
-	// the thumb follows the offset, to the track's end at the range's end
-	set_doc_scroll_x(&f.l, WIDE - VP_W)
+	_, _, rail := classic_parts(ht, false)
+	testing.expect_value(t, ht0.min.x, rail.min.x)
+	// the thumb follows the offset, to the end of its rail (between the arrows) at the range's end
+	set_doc_scroll_x(&f.l, WIDE - VP_W + f.l.doc_bars.x)
 	_, ht1, _ := doc_scrollbar_x(&f.l, f.vp)
-	testing.expect_value(t, ht1.max.x, ht.max.x)
+	testing.expect_value(t, ht1.max.x, rail.max.x)
 	testing.expect(t, abs((ht1.max.x - ht1.min.x) - (ht0.max.x - ht0.min.x)) < THUMB_LENGTH_TOLERANCE, "the thumb keeps its length")
 	// scrollbar-width: none has neither
 	g := hx_load(`<!doctype html><html style="scrollbar-width:none"><body style="margin:0"><div style="width:3000px;height:3000px"></div>`)

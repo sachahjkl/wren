@@ -64,6 +64,8 @@ pt_input :: proc(f: ^Pt, set: ^Settings, vp: Vec2) -> Input {
 pt_check :: proc(t: ^testing.T, f: ^Pt, l: ^Layout, vp: Vec2, what: string, want_taken := true, want_shares := false, loc := #caller_location) {
 	par := settings_default()
 	par.threads, par.threads_min_contexts, par.threads_min_boxes = 3, 0, 0
+	// the page's scroll bars at this size known, as after its first frame: the full pass is the run's only one
+	run(l, pt_input(f, &par, vp))
 	for tries in 0 ..< PT_TAKE_TRIES {
 		l.valid = false
 		run(l, pt_input(f, &par, vp))
@@ -160,7 +162,7 @@ parallel_full_passes :: proc(t: ^testing.T) {
 		defer destroy(&ref)
 		one := settings_default()
 		one.threads = 0
-		run_full(&ref, pt_input(f, &one, vp))
+		full_pass_from(&ref, l, pt_input(f, &one, vp))
 		ok, report := compare_layouts(l, &ref)
 		testing.expectf(t, ok, "%s (%v pass): differs from a full pass: %s", what, l.last_pass, report)
 	}
@@ -222,7 +224,7 @@ parallel_incremental_passes :: proc(t: ^testing.T) {
 		testing.expectf(t, ok, "%s: threaded incremental pass differs from the one on one thread: %s", what, report)
 		ref: Layout
 		defer destroy(&ref)
-		run_full(&ref, pt_input(f, one, vp))
+		full_pass_from(&ref, lp, pt_input(f, one, vp))
 		ok, report = compare_layouts(lp, &ref)
 		testing.expectf(t, ok, "%s: threaded incremental pass differs from a full pass: %s", what, report)
 	}

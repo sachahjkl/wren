@@ -12,6 +12,7 @@ import "core:fmt"
 import "toolkit:draw"
 import "wb:config"
 import "wb:css"
+import lay "wb:layout"
 import "wb:page"
 
 Page_Prep_State :: enum u8 { None, Hold, Ready }
@@ -102,7 +103,8 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	restore_tick(app, t, size)   // history_restore.odin: an entry shown again comes back where it was
 	scroll_to_fragment(app, t)
 	layout_commit_anchors(&t.layout)
-	t.scroll = clamp(t.scroll, t.layout.doc_min_y, max(0, t.layout.height - size.y))
+	lo_y, hi_y := lay.doc_scroll_y_range(&t.layout, size.y)
+	t.scroll = clamp(t.scroll, lo_y, hi_y)
 	doc_scroll_x_set(t, t.layout.doc_scroll_x, size.x)
 	// Performance Timeline entries that depend on the paint (page/timeline_lcp.odin): the largest contentful paint and the
 	// element-timing entries from the layout just settled, and the layout shifts against the previous frame

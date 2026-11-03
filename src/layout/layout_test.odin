@@ -209,12 +209,13 @@ positioning :: proc(t: ^testing.T) {
 <div id=stat style="position:absolute;width:10px;height:10px"></div>
 </body>`)
 	defer fixture_unload(f)
-	expect_rect(t, f, "rel", 10, 5, 810, 25)
-	expect_rect(t, f, "abs", 780, 15, 810, 25)
-	expect_rect(t, f, "fill", 15, 5, 805, 25)
+	w := FIXTURE_VP_W - f.l.doc_bars.x   // the page scrolls: its classic bar takes room
+	expect_rect(t, f, "rel", 10, 5, w + 10, 25)
+	expect_rect(t, f, "abs", w - 20, 15, w + 10, 25)
+	expect_rect(t, f, "fill", 15, 5, w + 5, 25)
 	expect_rect(t, f, "fix", 0, 0, 50, 50)
-	expect_rect(t, f, "ctr", 350, 100, 450, 110)
-	expect_rect(t, f, "stk", 0, 120, 800, 130)
+	expect_rect(t, f, "ctr", (w - 100) / 2, 100, (w + 100) / 2, 110)
+	expect_rect(t, f, "stk", 0, 120, w, 130)
 	expect_rect(t, f, "stat", 0, 2020, 10, 2030)   // static position: where it would have been
 	fr, _ := box_of(&f.l, node(f, "fix"), f.vp, 300)
 	testing.expect(t, fr.fixed && near(fr.border.min.y, 300), "fixed follows the viewport")

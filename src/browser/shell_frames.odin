@@ -95,12 +95,11 @@ Page_Snapshot :: struct {
 	scroll: draw.Vec2,       // the document's scroll then (device px)
 	lo, limit: draw.Vec2,    // the document's scroll range then
 	bar:    bool,            // the document had a vertical scroll bar: not in the pixels (it would move with them), drawn again by shell_paint_page
-	bar_track: draw.Rect,    // its track (relative to the page area's corner) and the thumb's length, colors
-	bar_thumb: f32,
+	bar_track, bar_thumb: draw.Rect,       // its track and thumb (relative to the page area's corner)
 	bar_x:  bool,            // likewise, the horizontal one
-	bar_x_track: draw.Rect,
-	bar_x_thumb: f32,
-	bar_thumb_c, bar_track_c: draw.Color,
+	bar_x_track, bar_x_thumb: draw.Rect,
+	bar_corner: draw.Rect,   // between two classic bars (empty: none)
+	bar_colors: Bar_Colors,
 	stuck:  [SNAPSHOT_STUCK_MAX]draw.Rect,   // the fixed and sticky boxes (window pixels): they stay where they were drawn when the rest scrolls
 	n_stuck: int,
 	canvas: draw.Color,
@@ -557,15 +556,29 @@ shell_capture :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect, ca
 			last^ = {{min(last.min.x, r.min.x), min(last.min.y, r.min.y)}, {max(last.max.x, r.max.x), max(last.max.y, r.max.y)}}
 		}
 	}
-	track, thumb, ok := lay.doc_scrollbar(&t.layout, draw.rect_size(rect), math.round(t.scroll))
-	track_x, thumb_x, ok_x := lay.doc_scrollbar_x(&t.layout, draw.rect_size(rect))
+	size := draw.rect_size(rect)
+	track, thumb, ok := lay.doc_scrollbar(&t.layout, size, math.round(t.scroll))
+	track_x, thumb_x, ok_x := lay.doc_scrollbar_x(&t.layout, size)
+	corner, _ := lay.doc_scroll_corner(&t.layout, size)
 	s.bar, s.bar_x = ok, ok_x
-	if ok || ok_x {
-		tc, kc := doc_scrollbar_colors(&t.layout)
-		s.bar_thumb_c, s.bar_track_c = to_draw(tc), to_draw(kc)
-		s.bar_track, s.bar_thumb = draw.Rect{track.min, track.max}, thumb.max.y - thumb.min.y
-		s.bar_x_track, s.bar_x_thumb = draw.Rect{track_x.min, track_x.max}, thumb_x.max.x - thumb_x.min.x
-	}
+	s.bar_track, s.bar_thumb = draw.Rect{track.min, track.max}, draw.Rect{thumb.min, thumb.max}
+	s.bar_x_track, s.bar_x_thumb = draw.Rect{track_x.min, track_x.max}, draw.Rect{thumb_x.min, thumb_x.max}
+	s.bar_corner = draw.Rect{corner.min, corner.max}
+	if ok || ok_x { s.bar_colors = doc_scrollbar_colors(&t.layout) }
+}
+
+// A captured thumb moved along its bar to `t` (0..1) of its travel.
+@(private = "file")
+thumb_along :: proc(track, thumb: draw.Rect, vertical: bool, t: f32) -> draw.Rect {
+	if thumb.max == thumb.min { return thumb }
+	ax := vertical ? 1 : 0
+	rail := track
+	if !the_app.page_render.settings.scrollbar_overlay { _, _, r := lay.classic_parts(lay.Rect{track.min, track.max}, vertical); rail = draw.Rect{r.min, r.max} }
+	length := thumb.max[ax] - thumb.min[ax]
+	moved := thumb
+	moved.min[ax] = rail.min[ax] + (rail.max[ax] - rail.min[ax] - length) * t
+	moved.max[ax] = moved.min[ax] + length
+	return moved
 }
 
 // Draws a tab's last page frame in the page area, moved by the wheel taken meanwhile and anchored at the top left.
@@ -608,21 +621,14 @@ shell_paint_page :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect)
 		}
 	}
 	if s.bar {
-		tr := draw.rect_shift(s.bar_track, rect.min)
-		room := (tr.max.y - tr.min.y) - s.bar_thumb
-		y := tr.min.y + room * (s.limit.y > 0 ? clamp(scroll.y / s.limit.y, 0, 1) : 0)
-		w := tr.max.x - tr.min.x
-		if s.bar_track_c.a > 0 { draw.rect(dc, tr, s.bar_track_c, w * 0.5) }
-		draw.rect(dc, draw.Rect{{tr.min.x, y}, {tr.max.x, y + s.bar_thumb}}, s.bar_thumb_c, w * 0.5)
+		t := s.limit.y > s.lo.y ? clamp((scroll.y - s.lo.y) / (s.limit.y - s.lo.y), 0, 1) : 0
+		paint_bar(dc, draw.rect_shift(s.bar_track, rect.min), draw.rect_shift(thumb_along(s.bar_track, s.bar_thumb, true, t), rect.min), true, s.bar_colors)
 	}
 	if s.bar_x {
-		tr := draw.rect_shift(s.bar_x_track, rect.min)
-		room := (tr.max.x - tr.min.x) - s.bar_x_thumb
-		x := tr.min.x + room * (s.limit.x > s.lo.x ? clamp((scroll.x - s.lo.x) / (s.limit.x - s.lo.x), 0, 1) : 0)
-		h := tr.max.y - tr.min.y
-		if s.bar_track_c.a > 0 { draw.rect(dc, tr, s.bar_track_c, h * 0.5) }
-		draw.rect(dc, draw.Rect{{x, tr.min.y}, {x + s.bar_x_thumb, tr.max.y}}, s.bar_thumb_c, h * 0.5)
+		t := s.limit.x > s.lo.x ? clamp((scroll.x - s.lo.x) / (s.limit.x - s.lo.x), 0, 1) : 0
+		paint_bar(dc, draw.rect_shift(s.bar_x_track, rect.min), draw.rect_shift(thumb_along(s.bar_x_track, s.bar_x_thumb, false, t), rect.min), false, s.bar_colors)
 	}
+	if s.bar_corner.max != s.bar_corner.min { draw.rect(dc, draw.rect_shift(s.bar_corner, rect.min), to_draw(s.bar_colors.track)) }
 	draw.pop_clip(dc)
 	return true
 }
