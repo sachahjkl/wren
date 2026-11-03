@@ -1,9 +1,7 @@
 package fetch
 
 import "core:os"
-import "core:strconv"
 import "core:strings"
-import "wb:base"
 import "wb:http"
 import "wb:url"
 
@@ -19,19 +17,6 @@ data_url_destroy :: proc(d: ^Data_URL) {
 	delete(d.mime)
 	delete(d.body)
 	d^ = {}
-}
-
-percent_decode :: proc(s: string, allocator := context.allocator) -> []byte {
-	out := make([dynamic]byte, 0, len(s), allocator)
-	i := 0
-	for i < len(s) {
-		if s[i] == '%' && i + 2 < len(s) && base.hex_value(s[i + 1]) >= 0 && base.hex_value(s[i + 2]) >= 0 {
-			if v, ok := strconv.parse_int(s[i + 1:i + 3], 16); ok { append(&out, u8(v)); i += 3; continue }
-		}
-		append(&out, s[i])
-		i += 1
-	}
-	return out[:]
 }
 
 // "forgiving-base64 decode" (WHATWG Infra): ASCII whitespace is removed, padding is optional.
@@ -77,7 +62,7 @@ process_data_url :: proc(u: url.URL, allocator := context.allocator) -> (d: Data
 	comma := strings.index_byte(input, ',')
 	if comma < 0 { return {}, false }
 	header := strings.trim(input[:comma], "\t\n\r\f ")
-	body := percent_decode(input[comma + 1:], context.temp_allocator)
+	body := transmute([]byte)url.percent_decode(input[comma + 1:])
 
 	is_base64 := false
 	lower := strings.to_lower(header, context.temp_allocator)
@@ -115,8 +100,7 @@ FILE_SEP_STR :: "\\" when ODIN_OS == .Windows else "/"
 // file's ("/home/a b.txt"), and a host other than localhost names no local file.
 file_path_from_url :: proc(u: url.URL, allocator := context.allocator) -> (path: string, ok: bool) {
 	if u.scheme != "file" { return "", false }
-	raw := percent_decode(u.path, context.temp_allocator)
-	p := string(raw)
+	p := url.percent_decode(u.path)
 	if strings.contains(p, "\x00") { return "", false }
 	when ODIN_OS != .Windows {
 		if u.host != "" && u.host != "localhost" { return "", false }

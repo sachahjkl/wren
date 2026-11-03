@@ -20,6 +20,7 @@ import "core:unicode/utf8"
 import "wb:base"
 import "wb:blocker"
 import "wb:config"
+import "wb:url"
 
 Search_Engine :: struct {
 	id:      string,   // stable (what browser.search.engine names); owned
@@ -120,7 +121,7 @@ engine_at :: proc(se: ^Search_Engines, i: int) -> Search_Engine {
 
 // The address that searches `words` with engine `e` (temp). An address without %s gets the words at its end.
 engine_url :: proc(e: Search_Engine, words: string) -> string {
-	q := percent_encode_query(words)
+	q := url.percent_encoded(words, url.UNRESERVED, space_plus = true)
 	if !strings.contains(e.url, "%s") { return strings.concatenate({e.url, q}, context.temp_allocator) }
 	out, _ := strings.replace_all(e.url, "%s", q, context.temp_allocator)
 	return out
@@ -348,23 +349,4 @@ search_url :: proc(app: ^App, words: string, engine := -1) -> string {
 
 search_engine_name :: proc(app: ^App, engine := -1) -> string {
 	return engine_at(&app.sengines, engine >= 0 ? engine : search_default_index(app)).name
-}
-
-@(private = "file")
-percent_encode_query :: proc(s: string) -> string {
-	HEX := "0123456789ABCDEF"
-	sb := strings.builder_make(context.temp_allocator)
-	for i in 0 ..< len(s) {
-		c := s[i]
-		switch {
-		case (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~':
-			strings.write_byte(&sb, c)
-		case c == ' ': strings.write_byte(&sb, '+')
-		case:
-			strings.write_byte(&sb, '%')
-			strings.write_byte(&sb, HEX[c >> 4])
-			strings.write_byte(&sb, HEX[c & 15])
-		}
-	}
-	return strings.to_string(sb)
 }

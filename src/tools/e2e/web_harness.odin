@@ -29,6 +29,7 @@ import "wb:net"
 import "wb:page"
 import "wb:tools/testenv"
 import "wb:tools/testhost"
+import "wb:url"
 import "wb:wasm"
 
 BLOCKING_THREADS :: 2
@@ -165,21 +166,7 @@ net_get :: proc(t: ^testing.T, u: string) -> string {
 }
 
 // Percent-encodes `s` for a query value.
-enc :: proc(s: string) -> string {
-	sb := strings.builder_make(context.temp_allocator)
-	hex := "0123456789ABCDEF"
-	for c in transmute([]u8)s {
-		switch {
-		case (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~':
-			strings.write_byte(&sb, c)
-		case:
-			strings.write_byte(&sb, '%')
-			strings.write_byte(&sb, hex[c >> 4])
-			strings.write_byte(&sb, hex[c & 15])
-		}
-	}
-	return strings.to_string(sb)
-}
+enc :: proc(s: string) -> string { return url.percent_encoded(s, url.UNRESERVED) }
 
 // Fixed text metrics for the layout of a page under test: every character GLYPH_EM wide, whatever the font.
 fake_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> lay.Font { return lay.Font(1) }

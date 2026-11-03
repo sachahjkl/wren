@@ -7,6 +7,7 @@ import "wb:base"
 import "wb:dom"
 import "wb:host"
 import "wb:page"
+import "wb:url"
 
 // The scriptlets that change the document, done on the document (route .Dom, scriptlet_route.odin): remove-attr, remove-class, set-attr,
 // remove-node-text, replace-node-text, click-element, href-sanitizer, disable-newtab-links, and the one-shot writes of cookies and storage.
@@ -349,31 +350,13 @@ sanitize_href :: proc(p: ^page.Page, op: ^Dom_Op, el: base.Handle) {
 				eq := strings.index_byte(pair, '=')
 				if eq < 0 { continue }
 				for nm in names {
-					if pair[:eq] == nm { target = percent_decode(pair[eq + 1:]); break }
+					if pair[:eq] == nm { target = url.percent_decode(pair[eq + 1:], plus_as_space = true); break }
 				}
 				if target != "" { break }
 			}
 		}
 	}
 	if (strings.has_prefix(target, "https://") || strings.has_prefix(target, "http://")) && target != href { dom.set_attribute(doc, el, "href", target) }
-}
-
-@(private = "file")
-percent_decode :: proc(s: string) -> string {
-	if !strings.contains_any(s, "%+") { return s }
-	out := make([dynamic]u8, context.temp_allocator)
-	i := 0
-	for i < len(s) {
-		c := s[i]
-		if c == '+' { append(&out, ' '); i += 1; continue }
-		if c == '%' && i + 2 < len(s) {
-			a, b := base.hex_value(s[i + 1]), base.hex_value(s[i + 2])
-			if a >= 0 && b >= 0 { append(&out, u8(a * 16 + b)); i += 3; continue }
-		}
-		append(&out, c)
-		i += 1
-	}
-	return string(out[:])
 }
 
 // The text operations on an element whose name matches (or on a text node, for `#text`).

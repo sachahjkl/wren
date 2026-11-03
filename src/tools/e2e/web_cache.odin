@@ -107,16 +107,7 @@ last_request :: proc(w: World, key: string) -> string {
 	return run_fetch(w.t, {url = testenv.url(fmt.tprintf("%s/cache/last?name=%s", A, url_escape(key))), mode = .Navigate}).body
 }
 
-url_escape :: proc(s: string) -> string {
-	sb := strings.builder_make(context.temp_allocator)
-	for c in transmute([]u8)s {
-		switch c {
-		case 'a' ..= 'z', 'A' ..= 'Z', '0' ..= '9', '-', '_', '.', '/': strings.write_byte(&sb, c)
-		case: fmt.sbprintf(&sb, "%%%02X", c)
-		}
-	}
-	return strings.to_string(sb)
-}
+url_escape :: proc(s: string) -> string { return url.percent_encoded(s, "-_./") }
 
 wipe_dir :: proc(dir: string) {
 	fd: win.WIN32_FIND_DATAW

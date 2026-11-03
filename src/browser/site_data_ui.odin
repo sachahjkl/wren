@@ -135,20 +135,9 @@ sd_param :: proc(query, name: string) -> string {
 	return v
 }
 
+// What a host keeps as it is in the address of its clear link.
 @(private = "file")
-sd_enc :: proc(s: string) -> string {
-	b := strings.builder_make(context.temp_allocator)
-	HEX := "0123456789ABCDEF"
-	for i in 0 ..< len(s) {
-		c := s[i]
-		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '.' || c == '_' || c == '~' || c == '*' {
-			strings.write_byte(&b, c)
-		} else {
-			strings.write_byte(&b, '%'); strings.write_byte(&b, HEX[c >> 4]); strings.write_byte(&b, HEX[c & 15])
-		}
-	}
-	return strings.to_string(b)
-}
+SD_KEEP :: url.UNRESERVED + "*"
 
 @(private = "file")
 sd_cell :: proc(sb: ^strings.Builder, bytes: i64, detail: string, host, type: string) {
@@ -158,7 +147,7 @@ sd_cell :: proc(sb: ^strings.Builder, bytes: i64, detail: string, host, type: st
 	}
 	fmt.sbprintf(sb, "<td class=\"num\">%s%s<a class=\"rm\" href=\"%s?clear=%s&amp;type=%s\" title=\"%s\">&times;</a></td>",
 		bytes > 0 ? sd_size(bytes) : "", detail != "" ? fmt.tprintf(" <span class=\"none\">%s</span>", escape_html(detail)) : "",
-		SITES_URL, sd_enc(host), type, escape_html(i18n.tr("Clear")))
+		SITES_URL, url.percent_encoded(host, SD_KEEP), type, escape_html(i18n.tr("Clear")))
 }
 
 // The rows: one per host, from the storage, the cookies and the HTTP cache.
@@ -236,7 +225,7 @@ sites_page_html :: proc(app: ^App, filter, notice: string) -> string {
 		sd_cell(&sb, r.idb, "", r.host, "idb")
 		sd_cell(&sb, 0, r.cookies > 0 ? fmt.tprintf("%d", r.cookies) : "", r.host, "cookies")
 		sd_cell(&sb, r.cache, "", r.host, "cache")
-		fmt.sbprintf(&sb, "<td><a class=\"clear\" href=\"%s?clear=%s&amp;type=all\">%s</a></td></tr>\n", SITES_URL, sd_enc(r.host), escape_html(i18n.tr("Clear all")))
+		fmt.sbprintf(&sb, "<td><a class=\"clear\" href=\"%s?clear=%s&amp;type=all\">%s</a></td></tr>\n", SITES_URL, url.percent_encoded(r.host, SD_KEEP), escape_html(i18n.tr("Clear all")))
 	}
 	strings.write_string(&sb, "</table>\n")
 	if shown == 0 { fmt.sbprintf(&sb, "<p class=\"note\">%s</p>\n", escape_html(i18n.tr("No site matches."))) }

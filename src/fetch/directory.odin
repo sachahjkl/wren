@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:slice"
 import "core:strings"
 import "wb:config"
+import "wb:url"
 
 ////////////////////////////////
 // file: folders, as browsers show them. A folder URL without its final '/' is redirected to the one with it (so that
@@ -133,35 +134,16 @@ file_url_from_path :: proc(path: string, directory := false, allocator := contex
 		strings.write_string(&sb, "file:///")
 		s = strings.trim_left(s, "/")
 	}
-	for i in 0 ..< len(s) {
-		c := s[i]
-		switch c {
-		case 'a' ..= 'z', 'A' ..= 'Z', '0' ..= '9', '-', '.', '_', '~', '/', ':': strings.write_byte(&sb, c)
-		case: fmt.sbprintf(&sb, "%%%02X", c)
-		}
-	}
+	url.percent_encode(&sb, s, url.UNRESERVED + "/:")
 	drive_only := len(s) == 2 && s[1] == ':'
 	if (directory || drive_only) && !strings.has_suffix(strings.to_string(sb), "/") { strings.write_byte(&sb, '/') }
 	return strings.to_string(sb)
 }
 
-// One path segment of a relative link: everything but unreserved characters is percent-encoded, so that a name with
-// '#', '?', '%', ':' or spaces stays one segment of the folder.
-@(private)
-write_segment :: proc(sb: ^strings.Builder, name: string) {
-	for i in 0 ..< len(name) {
-		c := name[i]
-		switch c {
-		case 'a' ..= 'z', 'A' ..= 'Z', '0' ..= '9', '-', '.', '_', '~': strings.write_byte(sb, c)
-		case: fmt.sbprintf(sb, "%%%02X", c)
-		}
-	}
-}
-
 // The href of an entry of a listing, relative to the folder's URL ("my file%231.txt", "sub/").
 listing_href :: proc(name: string, folder: bool, allocator := context.temp_allocator) -> string {
 	sb := strings.builder_make(allocator)
-	write_segment(&sb, name)
+	url.percent_encode(&sb, name, url.UNRESERVED)   // one segment: a name with '#', '?', '%', ':' or spaces stays in the folder
 	if folder { strings.write_byte(&sb, '/') }
 	return strings.to_string(sb)
 }

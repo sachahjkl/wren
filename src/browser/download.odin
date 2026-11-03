@@ -30,6 +30,7 @@ import "wb:host"
 import "wb:http"
 import "wb:images"
 import "wb:page"
+import "wb:url"
 
 // The longest file name made for a download, in bytes (the extension kept).
 DOWNLOAD_NAME_MAX_BYTES :: 200
@@ -166,7 +167,7 @@ download_file_name :: proc(suggested, address, mime: string, max_bytes := DOWNLO
 		p := address
 		if i := strings.index_any(p, "?#"); i >= 0 { p = p[:i] }
 		if i := strings.last_index_byte(p, '/'); i >= 0 { p = p[i + 1:] }
-		name = percent_decode_name(p)
+		name = url.percent_decode(p)
 	}
 	// only the last component: a name never chooses the folder
 	if i := strings.last_index_any(name, "/\\"); i >= 0 { name = name[i + 1:] }
@@ -221,18 +222,6 @@ is_device_name :: proc(name: string) -> bool {
 		return (len(digit) == 1 && digit[0] >= '0' && digit[0] <= '9') || digit == "\u00b9" || digit == "\u00b2" || digit == "\u00b3"
 	}
 	return false
-}
-
-@(private = "file")
-percent_decode_name :: proc(s: string) -> string {
-	out := make([dynamic]u8, 0, len(s), context.temp_allocator)
-	for i := 0; i < len(s); i += 1 {
-		if s[i] == '%' && i + 2 < len(s) {
-			if v, ok := strconv.parse_int(s[i + 1:i + 3], 16); ok { append(&out, u8(v)); i += 2; continue }
-		}
-		append(&out, s[i])
-	}
-	return string(out[:])
 }
 
 @(private = "file")

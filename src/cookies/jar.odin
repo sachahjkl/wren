@@ -367,18 +367,6 @@ escape :: proc(s: string, allocator := context.temp_allocator) -> string {
 	return strings.to_string(sb)
 }
 
-@(private)
-unescape :: proc(s: string, allocator := context.temp_allocator) -> string {
-	sb := strings.builder_make(allocator)
-	for i := 0; i < len(s); i += 1 {
-		if s[i] == '%' && i + 2 < len(s) {
-			if v, ok := strconv.parse_int(s[i + 1:i + 3], 16); ok { strings.write_byte(&sb, u8(v)); i += 2; continue }
-		}
-		strings.write_byte(&sb, s[i])
-	}
-	return strings.to_string(sb)
-}
-
 save :: proc(j: ^Jar, path: string, now: i64 = 0) -> bool {
 	nowv := now == 0 ? now_ms() : now
 	sb := strings.builder_make(context.temp_allocator)
@@ -426,14 +414,14 @@ load :: proc(j: ^Jar, path: string, now: i64 = 0) -> (loaded: int, ok: bool) {
 		flags, ok4 := strconv.parse_int(f[7], 10)
 		ss, ok5 := strconv.parse_int(f[8], 10)
 		if !(ok1 && ok2 && ok3 && ok4 && ok5) || exp <= nowv || ss < 0 || ss > int(Same_Site.Strict) { continue }
-		c.name = strings.clone(unescape(f[0]), a)
-		c.value = strings.clone(unescape(f[1]), a)
-		c.domain = strings.clone(unescape(f[2]), a)
-		c.path = strings.clone(unescape(f[3]), a)
+		c.name = strings.clone(url.percent_decode(f[0]), a)
+		c.value = strings.clone(url.percent_decode(f[1]), a)
+		c.domain = strings.clone(url.percent_decode(f[2]), a)
+		c.path = strings.clone(url.percent_decode(f[3]), a)
 		c.expires_ms, c.created_ms, c.accessed_ms = exp, cre, acc
 		c.host_only, c.secure, c.http_only = flags & 1 != 0, flags & 2 != 0, flags & 4 != 0
 		c.same_site = Same_Site(ss)
-		if fields == 10 { c.partition = strings.clone(unescape(f[9]), a) }
+		if fields == 10 { c.partition = strings.clone(url.percent_decode(f[9]), a) }
 		if idx := find(j, c.name, c.domain, c.path, c.partition); idx >= 0 { free_cookie(j, &j.cookies[idx]); j.cookies[idx] = c } else { append(&j.cookies, c) }
 		loaded += 1
 	}

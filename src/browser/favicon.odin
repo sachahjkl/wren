@@ -230,27 +230,14 @@ default_tab_title :: proc(address: string, allocator := context.temp_allocator) 
 		if name == "" { name = p }
 		if name == "" { return strings.clone(address, allocator) }
 		// a folder keeps its trailing slash (file:///C:/dir/ -> "dir/"), a drive its colon
-		if len(trimmed) < len(p) { return strings.concatenate({percent_decode_title(name), "/"}, allocator) }
-		return strings.clone(percent_decode_title(name), allocator)
+		if len(trimmed) < len(p) { return strings.concatenate({url.percent_decode(name), "/"}, allocator) }
+		return strings.clone(url.percent_decode(name), allocator)
 	case strings.has_prefix(s, "http://"), strings.has_prefix(s, "https://"):
 		rest := s[strings.index(s, "://") + 3:]
 		if strings.has_suffix(rest, "/") && strings.count(rest, "/") == 1 { rest = rest[:len(rest) - 1] }
 		return strings.clone(rest, allocator)
 	}
 	return strings.clone(address, allocator)
-}
-
-@(private = "file")
-percent_decode_title :: proc(s: string) -> string {
-	if strings.index_byte(s, '%') < 0 { return s }
-	out := make([dynamic]u8, 0, len(s), context.temp_allocator)
-	for i := 0; i < len(s); i += 1 {
-		if s[i] == '%' && i + 2 < len(s) {
-			if v, ok := strconv.parse_int(s[i + 1:i + 3], 16); ok { append(&out, u8(v)); i += 2; continue }
-		}
-		append(&out, s[i])
-	}
-	return string(out[:])
 }
 
 Icon_Link :: struct { href: string, sizes: string, type: string }

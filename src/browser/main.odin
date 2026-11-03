@@ -917,7 +917,7 @@ scroll_to_fragment :: proc(app: ^App, t: ^Tab, viewport: draw.Vec2) {
 	loc := t.page.env.location
 	if !loc.has_fragment { return }
 	frag := loc.fragment
-	frag = percent_decode_bytes(frag)   // HTML: the decoded fragment is tried as an id
+	frag = url.percent_decode(frag)   // HTML: the decoded fragment is tried as an id
 	if frag == "" || strings.equal_fold(frag, "top") { scroll_document_to(app, t, {t.layout.doc_scroll_x, 0}, smooth); return }
 	target := dom.find_by_id(t.page.doc, frag)
 	if target == base.NIL_HANDLE { target = find_named_anchor(t.page.doc, frag) }
@@ -927,19 +927,6 @@ scroll_to_fragment :: proc(app: ^App, t: ^Tab, viewport: draw.Vec2) {
 		x := clamp(scroll_nearest(r.border.min.x, r.border.max.x, viewport.x, t.layout.doc_scroll_x), lo, hi)
 		scroll_document_to(app, t, {x, max(r.border.min.y, 0)}, smooth)
 	}
-}
-
-@(private = "file")
-percent_decode_bytes :: proc(s: string) -> string {
-	if strings.index_byte(s, '%') < 0 { return s }
-	out := make([dynamic]u8, 0, len(s), context.temp_allocator)
-	for i := 0; i < len(s); i += 1 {
-		if s[i] == '%' && i + 2 < len(s) && base.hex_value(s[i + 1]) >= 0 && base.hex_value(s[i + 2]) >= 0 {
-			append(&out, u8(base.hex_value(s[i + 1]) * 16 + base.hex_value(s[i + 2])))
-			i += 2
-		} else { append(&out, s[i]) }
-	}
-	return string(out[:])
 }
 
 @(private = "file")

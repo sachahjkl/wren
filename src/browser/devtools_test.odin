@@ -255,12 +255,9 @@ glob_patterns_of_blocked_requests :: proc(t: ^testing.T) {
 @(test)
 url_decoding :: proc(t: ^testing.T) {
 	test_app(t)
-	testing.expect_value(t, url_decode("a%20b+c%2Fd"), "a b c/d")
-	testing.expect_value(t, url_decode("100%"), "100%")
-	testing.expect_value(t, url_decode("plain"), "plain")
-	q := net_query_pairs("http://x/?a=1&b=x%20y&c")
+	q := net_query_pairs("http://x/?a=1&b=x%20y+z&c")
 	testing.expect_value(t, len(q), 3)
-	testing.expect_value(t, q[1][1], "x y")
+	testing.expect_value(t, q[1][1], "x y z")
 }
 
 @(test)

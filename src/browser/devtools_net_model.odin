@@ -19,6 +19,7 @@ import "wb:config"
 import "wb:fetch"
 import "wb:host"
 import "wb:net"
+import "wb:url"
 
 // The Network log always keeps at least this many entries (the lower bound of browser.devtools.network.max_entries).
 NET_LOG_MIN_ENTRIES :: 100
@@ -741,35 +742,18 @@ net_har :: proc(t: ^Tab) -> string {
 }
 
 // "/path?a=1&b=2" -> the pairs of the query (decoded), for the Headers view.
-net_query_pairs :: proc(url: string) -> [][2]string {
+net_query_pairs :: proc(href: string) -> [][2]string {
 	out := make([dynamic][2]string, 0, 8, context.temp_allocator)
-	q := strings.index_byte(url, '?')
+	q := strings.index_byte(href, '?')
 	if q < 0 { return out[:] }
-	s := url[q + 1:]
+	s := href[q + 1:]
 	if h := strings.index_byte(s, '#'); h >= 0 { s = s[:h] }
 	for part in strings.split(s, "&", context.temp_allocator) {
 		if part == "" { continue }
 		eq := strings.index_byte(part, '=')
 		k, v := part, ""
 		if eq >= 0 { k, v = part[:eq], part[eq + 1:] }
-		append(&out, [2]string{url_decode(k), url_decode(v)})
+		append(&out, [2]string{url.percent_decode(k, plus_as_space = true), url.percent_decode(v, plus_as_space = true)})
 	}
 	return out[:]
-}
-
-url_decode :: proc(s: string) -> string {
-	if !strings.contains_any(s, "%+") { return s }
-	b := strings.builder_make(context.temp_allocator)
-	i := 0
-	for i < len(s) {
-		c := s[i]
-		if c == '+' { strings.write_byte(&b, ' '); i += 1; continue }
-		if c == '%' && i + 2 < len(s) {
-			h, l := base.hex_value(s[i + 1]), base.hex_value(s[i + 2])
-			if h >= 0 && l >= 0 { strings.write_byte(&b, u8(h * 16 + l)); i += 3; continue }
-		}
-		strings.write_byte(&b, c)
-		i += 1
-	}
-	return strings.to_string(b)
 }
