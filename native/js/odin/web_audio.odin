@@ -476,22 +476,12 @@ wj_worklet_boot :: proc "c" () {
 	ctx := wj.realm_ctx()
 	wj.wj_stack_enter(ctx)
 	if worklet_ops_ready { return }
-	fn := eval_prelude(ctx, "web_audio_worklet.js", #load("web_audio_worklet.js"))
-	if wj.is_exception(fn) { return }
-	defer wj.JS_FreeValue(ctx, fn)
-	native := wj.JS_NewObject(ctx)
-	defer wj.JS_FreeValue(ctx, native)
-	Entry :: struct { name: cstring, fn: wj.Native, length: i32 }
-	entries := [?]Entry{
+	entries := [?]Prelude_Native{
 		{"layout", native_realm_layout, 1}, {"frame", native_realm_frame, 0}, {"read", native_realm_read, 2}, {"write", native_realm_write, 2},
 		{"finish", native_realm_finish, 1}, {"dropped", native_realm_dropped, 0},
 	}
-	for &e in entries {
-		wj.JS_DefinePropertyValueStr(ctx, native, e.name, wj.new_cfunction(ctx, e.fn, e.name, e.length), wj.PROP_C_W_E)
-	}
-	args := [3]wj.JSValue{native, wj.wj_the_realm.global, wj.new_float64(ctx, wj.wr_AudioWorkletRealm_sampleRate())}
-	ops := wj.JS_Call(ctx, fn, wj.UNDEFINED, 3, &args[0])
-	if wj.is_exception(ops) { wj.wj_report_pending(ctx); return }
+	ops := prelude_call(ctx, "web_audio_worklet.js", #load("web_audio_worklet.js"), entries[:], wj.wj_the_realm.global, wj.new_float64(ctx, wj.wr_AudioWorkletRealm_sampleRate()))
+	if wj.is_exception(ops) { if wj.JS_HasException(ctx) { wj.wj_report_pending(ctx) }; return }   // (a prelude that did not compile is reported already)
 	worklet_ops, worklet_ops_ready = ops, true
 }
 
@@ -519,13 +509,7 @@ audio_ops_get :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
 		def2 := wj.Class_Def{class_name = "AudioNodeRef", finalizer = node_finalizer}
 		if wj.JS_NewClass(rt, node_class, &def2) < 0 { node_class = 0; return wj.JS_ThrowOutOfMemory(ctx) }
 	}
-	fn := eval_prelude(ctx, "web_audio.js", #load("web_audio.js"))
-	if wj.is_exception(fn) { return fn }
-	defer wj.JS_FreeValue(ctx, fn)
-	native := wj.JS_NewObject(ctx)
-	defer wj.JS_FreeValue(ctx, native)
-	Entry :: struct { name: cstring, fn: wj.Native, length: i32 }
-	entries := [?]Entry{
+	entries := [?]Prelude_Native{
 		{"defaultRate", native_default_rate, 0}, {"maxBuffer", native_max_buffer, 0}, {"dom", native_dom, 2},
 		{"fullyActive", native_fully_active, 0},
 		{"create", native_create, 5}, {"resume", native_resume, 1}, {"suspend", native_suspend, 1}, {"close", native_close, 1},
@@ -545,11 +529,7 @@ audio_ops_get :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
 		{"decode", native_decode, 2},
 		{"workletStart", native_worklet_start, 1}, {"workletStop", native_worklet_stop, 1}, {"workletNode", native_worklet_node, 6}, {"workletParam", native_worklet_param, 7},
 	}
-	for &e in entries {
-		wj.JS_DefinePropertyValueStr(ctx, native, e.name, wj.new_cfunction(ctx, e.fn, e.name, e.length), wj.PROP_C_W_E)
-	}
-	args := [2]wj.JSValue{native, wj.wj_the_realm.global}
-	ops := wj.JS_Call(ctx, fn, wj.UNDEFINED, 2, &args[0])
+	ops := prelude_call(ctx, "web_audio.js", #load("web_audio.js"), entries[:], wj.wj_the_realm.global)
 	if wj.is_exception(ops) { return ops }
 	audio_ops, audio_ops_ready = ops, true
 	return ops

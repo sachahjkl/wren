@@ -865,13 +865,7 @@ wasm_autoinit :: proc "c" (ctx: ^wj.Context, atom: wj.Atom) -> wj.JSValue {
 		def := wj.Class_Def{class_name = "WebAssemblyHandle", finalizer = wasm_handle_finalizer}
 		if wj.JS_NewClass(rt, wasm_handle_class, &def) < 0 { wasm_handle_class = 0; return wj.JS_ThrowOutOfMemory(ctx) }
 	}
-	fn := eval_prelude(ctx, "web_wasm.js", #load("web_wasm.js"))
-	if wj.is_exception(fn) { return fn }
-	defer wj.JS_FreeValue(ctx, fn)
-	native := wj.JS_NewObject(ctx)
-	defer wj.JS_FreeValue(ctx, native)
-	Entry :: struct { name: cstring, fn: wj.Native, length: i32 }
-	entries := [?]Entry{
+	entries := [?]Prelude_Native{
 		{"setup", wasm_setup, 1},
 		{"validate", wasm_validate, 1},
 		{"compile", wasm_compile, 1},
@@ -903,11 +897,7 @@ wasm_autoinit :: proc "c" (ctx: ^wj.Context, atom: wj.Atom) -> wj.JSValue {
 		{"instanceCreate", wasm_instance_create, 2},
 		{"instanceExports", wasm_instance_exports, 2},
 	}
-	for &e in entries {
-		wj.JS_DefinePropertyValueStr(ctx, native, e.name, wj.new_cfunction(ctx, e.fn, e.name, e.length), wj.PROP_C_W_E)
-	}
-	args := [2]wj.JSValue{native, wj.wj_the_realm.global}
-	return wj.JS_Call(ctx, fn, wj.UNDEFINED, 2, &args[0])
+	return prelude_call(ctx, "web_wasm.js", #load("web_wasm.js"), entries[:], wj.wj_the_realm.global)
 }
 
 @(private = "file")

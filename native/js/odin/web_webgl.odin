@@ -230,23 +230,13 @@ gl_ops_get :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
 		def := wj.Class_Def{class_name = "WebGLHostRef", finalizer = ref_finalizer}
 		if wj.JS_NewClass(rt, ref_class, &def) < 0 { ref_class = 0; return wj.JS_ThrowOutOfMemory(ctx) }
 	}
-	fn := eval_prelude(ctx, "web_webgl.js", #load("web_webgl.js"))
-	if wj.is_exception(fn) { return fn }
-	defer wj.JS_FreeValue(ctx, fn)
-	native := wj.JS_NewObject(ctx)
-	defer wj.JS_FreeValue(ctx, native)
-	Entry :: struct { name: cstring, fn: wj.Native, length: i32 }
-	entries := [?]Entry{
+	entries := [?]Prelude_Native{
 		{"create", native_create, 12}, {"createError", native_create_error, 0}, {"submit", native_submit, 4}, {"submitData", native_submit_data, 4},
 		{"submitText", native_submit_text, 4}, {"query", native_query, 4}, {"queryText", native_query_text, 5}, {"queryInto", native_query_into, 4},
 		{"upload", native_upload, 4}, {"width", native_width, 1}, {"height", native_height, 1}, {"snapshot", native_snapshot, 1}, {"commit", native_commit, 1},
 		{"isLost", native_is_lost, 1}, {"lose", native_lose, 1}, {"restore", native_restore, 1},
 	}
-	for &e in entries {
-		wj.JS_DefinePropertyValueStr(ctx, native, e.name, wj.new_cfunction(ctx, e.fn, e.name, e.length), wj.PROP_C_W_E)
-	}
-	args := [2]wj.JSValue{native, wj.wj_the_realm.global}
-	ops := wj.JS_Call(ctx, fn, wj.UNDEFINED, 2, &args[0])
+	ops := prelude_call(ctx, "web_webgl.js", #load("web_webgl.js"), entries[:], wj.wj_the_realm.global)
 	if wj.is_exception(ops) { return ops }
 	gl_ops, gl_ops_ready = ops, true
 	return ops
