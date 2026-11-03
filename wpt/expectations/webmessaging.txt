@@ -230,7 +230,7 @@
 	self: PASS
 	string: PASS
 	true: PASS
-	undefined: FAIL
+	undefined: PASS
 	unreached: PASS
 /webmessaging/with-ports/011.html: OK
 	posting an imagedata (from a cloned canvas) in an array: PASS
@@ -295,7 +295,7 @@
 	self: PASS
 	string: PASS
 	true: PASS
-	undefined: FAIL
+	undefined: PASS
 	unreached: PASS
 /webmessaging/without-ports/011.html: OK
 	posting an imagedata (from a cloned canvas) in an array: PASS

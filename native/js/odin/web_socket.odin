@@ -580,10 +580,10 @@ port_add :: proc "c" (ctx: ^wj.Context, item: wj.JSValue, opaque: rawptr) -> boo
 	return true
 }
 
-// MessageEventInit / initMessageEvent's fields.
+// MessageEventInit / initMessageEvent's fields; their data defaults to null (data_or_null), a message's undefined stays undefined.
 @(private = "file")
 message_init :: proc(ctx: ^wj.Context, ev, data, origin, last_id, source, ports: wj.JSValue) -> bool {
-	wj.web_extra_set(ctx, ev, "data", wj.is_undefined(data) ? wj.NULL : wj.JS_DupValue(ctx, data))
+	wj.web_extra_set(ctx, ev, "data", wj.JS_DupValue(ctx, data))
 	o := wj.is_undefined(origin) ? wj.new_string(ctx, "") : wj.JS_ToString(ctx, origin)
 	if wj.is_exception(o) { return false }
 	wj.web_extra_set(ctx, ev, "origin", o)
@@ -606,6 +606,9 @@ message_init :: proc(ctx: ^wj.Context, ev, data, origin, last_id, source, ports:
 	return true
 }
 
+@(private = "file")
+data_or_null :: proc "contextless" (data: wj.JSValue) -> wj.JSValue { return wj.is_undefined(data) ? wj.NULL : data }
+
 @(export, link_name = "wjr_MessageEvent_constructor")
 wjr_MessageEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	context = wj.heap_context()
@@ -618,7 +621,7 @@ wjr_MessageEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSVal
 	for i in 0 ..< 5 {
 		if ok = wj.web_dict_get(ctx, init, names[i], &v[i]); !ok { break }
 	}
-	if ok { ok = message_init(ctx, ev, v[0], v[1], v[2], v[3], v[4]) }
+	if ok { ok = message_init(ctx, ev, data_or_null(v[0]), v[1], v[2], v[3], v[4]) }
 	for x in v { wj.JS_FreeValue(ctx, x) }
 	if !ok { wj.JS_FreeValue(ctx, ev); return wj.EXCEPTION }
 	return ev
@@ -634,7 +637,7 @@ wjr_MessageEvent_initMessageEvent :: proc "c" (ctx: ^wj.Context, this_val: wj.JS
 	wj.JS_FreeValue(ctx, init_event)
 	if wj.is_exception(r) { return r }
 	wj.JS_FreeValue(ctx, r)
-	if !message_init(ctx, this_val, wj.arg(argc, argv, 3), wj.arg(argc, argv, 4), wj.arg(argc, argv, 5), wj.arg(argc, argv, 6), wj.arg(argc, argv, 7)) {
+	if !message_init(ctx, this_val, data_or_null(wj.arg(argc, argv, 3)), wj.arg(argc, argv, 4), wj.arg(argc, argv, 5), wj.arg(argc, argv, 6), wj.arg(argc, argv, 7)) {
 		return wj.EXCEPTION
 	}
 	return wj.UNDEFINED
