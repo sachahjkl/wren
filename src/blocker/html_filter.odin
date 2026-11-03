@@ -75,12 +75,12 @@ html_rule_parse :: proc(selector: string) -> (r: Html_Rule, ok: bool) {
 			rest = rest[end + 1:]
 		case strings.has_prefix(rest, ":has-text(") || strings.has_prefix(rest, ":contains("):
 			open := strings.index_byte(rest, '(')
-			end := html_close_paren(rest, open)
+			end := close_paren(rest, open)
 			if end < 0 { html_rule_destroy(&r); return {}, false }
 			html_add_text(&r, strings.trim_space(rest[open + 1:end]), false)
 			rest = rest[end + 1:]
 		case strings.has_prefix(rest, ":not("):
-			end := html_close_paren(rest, 4)
+			end := close_paren(rest, 4)
 			if end < 0 { html_rule_destroy(&r); return {}, false }
 			inner := strings.trim_space(rest[5:end])
 			if !html_add_not(&r, inner) { html_rule_destroy(&r); return {}, false }
@@ -90,23 +90,6 @@ html_rule_parse :: proc(selector: string) -> (r: Html_Rule, ok: bool) {
 		}
 	}
 	return r, true
-}
-
-@(private = "file")
-html_close_paren :: proc(s: string, open: int) -> int {
-	depth := 0
-	quote: u8 = 0
-	for i := open; i < len(s); i += 1 {
-		c := s[i]
-		if quote != 0 { if c == '\\' { i += 1 } else if c == quote { quote = 0 }; continue }
-		switch c {
-		case '"', '\'': quote = c
-		case '\\': i += 1
-		case '(': depth += 1
-		case ')': depth -= 1; if depth == 0 { return i }
-		}
-	}
-	return -1
 }
 
 @(private = "file")
@@ -153,7 +136,7 @@ html_add_not :: proc(r: ^Html_Rule, inner: string) -> bool {
 	switch {
 	case strings.has_prefix(inner, ":has-text(") || strings.has_prefix(inner, ":contains("):
 		open := strings.index_byte(inner, '(')
-		end := html_close_paren(inner, open)
+		end := close_paren(inner, open)
 		if end < 0 { return false }
 		html_add_text(r, strings.trim_space(inner[open + 1:end]), true)
 		return true
@@ -307,27 +290,6 @@ html_attr :: proc(attrs, name: string) -> (value: string, has: bool) {
 	}
 }
 
-@(private = "file")
-html_glob :: proc(pat, v: string) -> bool {
-	if !strings.contains_rune(pat, '*') { return strings.contains(v, pat) }
-	parts := strings.split(pat, "*", context.temp_allocator)
-	pos := 0
-	for part, i in parts {
-		if part == "" { continue }
-		at := strings.index(v[pos:], part)
-		if at < 0 { return false }
-		if i == 0 && at != 0 && pat[0] != '*' { return false }
-		pos += at + len(part)
-	}
-	return true
-}
-
-@(private = "file")
-contains_word :: proc(s, w: string) -> bool {
-	for part in strings.fields(s, context.temp_allocator) { if part == w { return true } }
-	return false
-}
-
 // Does the element (start tag `t`, element text `content`) satisfy every operator of the rule? `content` is the UTF-8 text
 // between the start and end tags (decoded once, only when a :has-text op needs it).
 @(private = "file")
@@ -337,7 +299,7 @@ html_rule_matches :: proc(r: ^Html_Rule, t: ^Html_Tag, content: string) -> bool 
 		hit := false
 		switch o.kind {
 		case .Has_Text:
-			if o.re != nil { hit = jsre_test(o.re, content) } else { hit = html_glob(o.text, content) }
+			if o.re != nil { hit = jsre_test(o.re, content) } else { hit = glob_match(o.text, content) }
 		case .Attr:
 			got, has := html_attr(t.attrs, o.attr)
 			if !has { hit = false } else if o.op == "" { hit = true } else {
