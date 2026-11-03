@@ -11,6 +11,7 @@ import "core:testing"
 import "core:time"
 import "wb:base"
 import "wb:tools/testenv"
+import "wb:wasm"
 
 @(test)
 cache_memory_and_disk :: proc(t: ^testing.T) {
@@ -37,7 +38,7 @@ cache_memory_and_disk :: proc(t: ^testing.T) {
 	testing.expect(t, st.disk_hits >= 1)
 	testing.expect(t, st.disk_writes >= 2)
 	// a corrupted file is refused and deleted
-	path := disk_path(k2)
+	path := wasm.disk_path(&cache.files, k2)
 	defer delete(path, runtime.default_allocator())   // the cache's own allocator (it outlives every caller's)
 	data, _ := os.read_entire_file(path, context.temp_allocator)
 	data[len(data) - 1] ~= 0xff
