@@ -3,13 +3,15 @@
  * this one: src/tools/wrentool/deps/lexbor.odin, LEXBOR_RENAMES):
  *   - a domain all of ASCII is lower-cased, nothing more (beStrict is false: an xn-- label is not decoded to be checked);
  *   - another one is Lexbor's, then refused when a label of it (mapped, normalized, its xn-- labels decoded: Lexbor's
- *     ToUnicode) begins with a combining mark, or has a joiner out of the context CheckJoiners allows (RFC 5892 A.1, A.2),
- *     which Lexbor 3.0.1 does not check (LXB_UNICODE_IDNA_FLAG_CHECK_JOINERS: "not implemented").
+ *     ToUnicode) begins with a combining mark, has a joiner out of the context CheckJoiners allows (RFC 5892 A.1, A.2),
+ *     or breaks the Bidi rule of CheckBidi in a domain with a right-to-left label (RFC 5893 §2), none of which Lexbor
+ *     3.0.1 checks (LXB_UNICODE_IDNA_FLAG_CHECK_JOINERS, _CHECK_BIDI: "not implemented").
  * The code points of those rules are generated (wb_idna_tables.h: `wrentool gen idna`).
  */
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include "lexbor/encoding/encoding.h"
 #include "lexbor/unicode/idna.h"
 #include "wb_idna_tables.h"
@@ -59,15 +61,57 @@ static bool zwnj_allowed(const lxb_codepoint_t *label, size_t len, size_t at)
     return i < len && (t == 'R' || t == 'D');
 }
 
-/* UTS #46 §4.1 step 7 (no combining mark first) and CheckJoiners on one label. */
-static bool label_valid(const lxb_codepoint_t *label, size_t len)
+/* The Bidi class of `cp` as the tables name it: 'L' (no range holds it), 'R', 'A' (AL), 'N' (AN), 'E' (EN), 'S' (ES),
+ * 'C' (CS), 'T' (ET), 'O' (ON), 'B' (BN), 'M' (NSM), 'X' (one the rule never allows). */
+static uint8_t bidi_class(lxb_codepoint_t cp)
+{
+    int i = range_of(wb_idna_bidi_first, wb_idna_bidi_last, WB_IDNA_BIDI_COUNT, cp);
+    return i >= 0 ? wb_idna_bidi_class[i] : 'L';
+}
+
+/* RFC 5893 §2 on one label of a domain with a right-to-left label: it begins with L (a left-to-right label) or R / AL (a
+ * right-to-left one), holds only the classes its direction allows, ends (NSM aside) with L or EN, or with R, AL, EN or
+ * AN, and a right-to-left label has not both EN and AN. */
+static bool bidi_valid(const lxb_codepoint_t *label, size_t len)
+{
+    if (len == 0) { return true; }
+    uint8_t first = bidi_class(label[0]);
+    if (first != 'L' && first != 'R' && first != 'A') { return false; }
+    bool rtl = first != 'L';
+    const char *allowed = rtl ? "RANESCTOBM" : "LESCTOBM";
+    bool en = false, an = false;
+    for (size_t i = 0; i < len; i++) {
+        uint8_t c = bidi_class(label[i]);
+        if (strchr(allowed, c) == NULL) { return false; }
+        en = en || c == 'E';
+        an = an || c == 'N';
+    }
+    size_t end = len;
+    while (end > 0 && bidi_class(label[end - 1]) == 'M') { end--; }
+    uint8_t last = end > 0 ? bidi_class(label[end - 1]) : 'M';
+    if (rtl) { return (last == 'R' || last == 'A' || last == 'E' || last == 'N') && !(en && an); }
+    return last == 'L' || last == 'E';
+}
+
+/* RFC 5893 §1.4: a domain with a label that holds R, AL or AN. */
+static bool bidi_domain(const lxb_codepoint_t *cps, size_t n)
+{
+    for (size_t i = 0; i < n; i++) {
+        uint8_t c = bidi_class(cps[i]);
+        if (c == 'R' || c == 'A' || c == 'N') { return true; }
+    }
+    return false;
+}
+
+/* UTS #46 §4.1 step 7 (no combining mark first), CheckJoiners and, in a Bidi domain, CheckBidi on one label. */
+static bool label_valid(const lxb_codepoint_t *label, size_t len, bool bidi)
 {
     if (len > 0 && is_mark(label[0])) { return false; }
     for (size_t i = 0; i < len; i++) {
         if (label[i] == IDNA_ZWJ && !(i > 0 && is_virama(label[i - 1]))) { return false; }
         if (label[i] == IDNA_ZWNJ && !zwnj_allowed(label, len, i)) { return false; }
     }
-    return true;
+    return !bidi || bidi_valid(label, len);
 }
 
 /* ToUnicode's output (UTF-8, the labels joined by '.'): each label checked. */
@@ -83,10 +127,11 @@ static lxb_status_t check_labels(const lxb_char_t *data, size_t len, void *ctx)
         if (cp > LXB_ENCODING_DECODE_MAX_CODEPOINT) { *valid = false; break; }
         cps[n++] = cp;
     }
+    bool bidi = *valid && bidi_domain(cps, n);
     size_t start = 0;
     for (size_t i = 0; *valid && i <= n; i++) {
         if (i < n && cps[i] != IDNA_DOT) { continue; }
-        *valid = label_valid(cps + start, i - start);
+        *valid = label_valid(cps + start, i - start, bidi);
         start = i + 1;
     }
     if (cps != inline_cps) { free(cps); }
