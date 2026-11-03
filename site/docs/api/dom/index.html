@@ -621,6 +621,25 @@ that does not make a valid attribute name.</p>
 <p>The name of the attribute at <code>index</code> (Not_Found past the end).</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Element_attributeNameAt :: proc(c: ^Call, element: Api_Element, index: u32) -&gt; (string, Api_Error)</code></p>
+<h3 id="element-attributenamespaceat"><a class="anchor" href="#element-attributenamespaceat" aria-hidden="true">#</a><code>Element_attributeNamespaceAt</code></h3>
+<div class="code"><pre><code>string Element_attributeNamespaceAt(Element element, u32 index) raises</code></pre></div>
+<p>The namespace URI of the attribute at <code>index</code> (Not_Found: null, or past the end).</p>
+<p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
+<p>Host: <code>Element_attributeNamespaceAt :: proc(c: ^Call, element: Api_Element, index: u32) -&gt; (string, Api_Error)</code></p>
+<h3 id="element-attributeindex"><a class="anchor" href="#element-attributeindex" aria-hidden="true">#</a><code>Element_attributeIndex</code></h3>
+<div class="code"><pre><code>i32 Element_attributeIndex(Element element, string name)</code></pre></div>
+<p>The index of the attribute element.getAttribute(name) reads, -1 when none.</p>
+<p>Host: <code>Element_attributeIndex :: proc(c: ^Call, element: Api_Element, name: string) -&gt; i32</code></p>
+<h3 id="element-attributeindexns"><a class="anchor" href="#element-attributeindexns" aria-hidden="true">#</a><code>Element_attributeIndexNS</code></h3>
+<div class="code"><pre><code>i32 Element_attributeIndexNS(Element element, optional string namespace, string local_name)</code></pre></div>
+<p>The index of the attribute element.getAttributeNS(namespace, localName) reads, -1 when none.</p>
+<p>Host: <code>Element_attributeIndexNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), local_name: string) -&gt; i32</code></p>
+<h3 id="element-setattributeofattr"><a class="anchor" href="#element-setattributeofattr" aria-hidden="true">#</a><code>Element_setAttributeOfAttr</code></h3>
+<div class="code"><pre><code>void Element_setAttributeOfAttr(Element element, optional string namespace, string qualified_name, string value) raises</code></pre></div>
+<p>The value of an Attr object's attribute (setAttributeNode, attr.value): its namespace and qualified name as the Attr
+has them, not validated again.</p>
+<p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
+<p>Host: <code>Element_setAttributeOfAttr :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), qualified_name: string, value: string) -&gt; Api_Error</code></p>
 <h3 id="element-getattributens"><a class="anchor" href="#element-getattributens" aria-hidden="true">#</a><code>Element_getAttributeNS</code></h3>
 <div class="code"><pre><code>string Element_getAttributeNS(Element element, optional string namespace, string local_name) raises</code></pre></div>
 <p>element.getAttributeNS(namespace, localName) (Not_Found: null).</p>
@@ -2047,6 +2066,10 @@ well-formed-checked). Range past page.max_fetch_bytes.</p>
 <li class="lvl3"><a href="#element-attributenames">Element_attributeNames</a></li>
 <li class="lvl3"><a href="#element-attributecount">Element_attributeCount</a></li>
 <li class="lvl3"><a href="#element-attributenameat">Element_attributeNameAt</a></li>
+<li class="lvl3"><a href="#element-attributenamespaceat">Element_attributeNamespaceAt</a></li>
+<li class="lvl3"><a href="#element-attributeindex">Element_attributeIndex</a></li>
+<li class="lvl3"><a href="#element-attributeindexns">Element_attributeIndexNS</a></li>
+<li class="lvl3"><a href="#element-setattributeofattr">Element_setAttributeOfAttr</a></li>
 <li class="lvl3"><a href="#element-getattributens">Element_getAttributeNS</a></li>
 <li class="lvl3"><a href="#element-setattributechecked">Element_setAttributeChecked</a></li>
 <li class="lvl3"><a href="#element-setattributens">Element_setAttributeNS</a></li>
