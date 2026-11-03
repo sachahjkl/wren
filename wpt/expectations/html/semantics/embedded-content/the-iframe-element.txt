@@ -240,17 +240,17 @@
 	Navigation resulted download in sandbox from <object> is blocked.: FAIL
 	Navigation resulted download in sandbox is blocked.: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_escaping-1.html: OK
-	Check that popups from a sandboxed iframe escape the sandbox if\n       allow-popups-to-escape-sandbox is used: FAIL
+	Check that popups from a sandboxed iframe escape the sandbox if\n       allow-popups-to-escape-sandbox is used: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_escaping-2.html: OK
-	Check that popups from a sandboxed iframe escape the sandbox if\n       allow-popups-to-escape-sandbox is used: FAIL
+	Check that popups from a sandboxed iframe escape the sandbox if\n       allow-popups-to-escape-sandbox is used: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_escaping-3.html: OK
-	Check that popups from a sandboxed iframe escape the sandbox if\n       allow-popups-to-escape-sandbox is used: FAIL
+	Check that popups from a sandboxed iframe escape the sandbox if\n       allow-popups-to-escape-sandbox is used: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_nonescaping-1.html: OK
-	Check that popups from a sandboxed iframe do not escape the sandbox: FAIL
+	Check that popups from a sandboxed iframe do not escape the sandbox: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_nonescaping-2.html: OK
-	Check that popups from a sandboxed iframe do not escape the sandbox: FAIL
+	Check that popups from a sandboxed iframe do not escape the sandbox: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_nonescaping-3.html: OK
-	Check that popups from a sandboxed iframe do not escape the sandbox: FAIL
+	Check that popups from a sandboxed iframe do not escape the sandbox: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_window_open_download_allow_downloads.tentative.html: TIMEOUT
 	window.open(download, "_blank") triggering download in sandbox is allowed by allow-downloads.: TIMEOUT
 	window.open(download, "_blank", "noopener") triggering download in sandbox is allowed by allow-downloads.: TIMEOUT
