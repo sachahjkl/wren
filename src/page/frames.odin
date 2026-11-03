@@ -42,6 +42,7 @@ import "wb:csp"
 import "wb:dom"
 import "wb:fetch"
 import "wb:host"
+import "wb:html"
 import "wb:http"
 import "wb:style"
 import "wb:url"
@@ -769,7 +770,13 @@ frame_document_body :: proc(n: ^Navigable, l: ^Frame_Load, data: []byte) {
 	case mime == "" || mime == "text/html" || mime == "application/xhtml+xml":
 		parse_document(c, data, l.charset, frame_parsed, n, mime)
 	case strings.has_prefix(mime, "text/") || mime == "application/json" || mime == "application/javascript" || strings.has_suffix(mime, "+json") || strings.has_suffix(mime, "+xml") || mime == "application/xml":
-		dec := strings.clone(string(data[:min(len(data), FRAME_TEXT_DOCUMENT_MAX_BYTES)]), context.temp_allocator)
+		// in the response's charset (or after its byte order mark); without one, JSON and XML are UTF-8, other text as a
+		// document that declares none (a frame's parent's encoding)
+		bytes := data[:min(len(data), FRAME_TEXT_DOCUMENT_MAX_BYTES)]
+		json_or_xml := mime == "application/json" || mime == "text/json" || strings.has_suffix(mime, "+json") || strings.has_suffix(mime, "+xml") || mime == "application/xml" || mime == "text/xml"
+		decoded, decoded_ok := html.decode_document(bytes, l.charset, json_or_xml ? "UTF-8" : default_encoding_of(c), allocator = context.temp_allocator, prescan_meta = false)
+		dec := decoded_ok ? string(decoded.text) : string(bytes)
+		if decoded_ok { c.encoding = html.canonical_encoding(decoded.encoding) }
 		pre := dom.create_element(c.doc, "pre")
 		dom.set_attribute(c.doc, pre, "style", "word-wrap: break-word; white-space: pre-wrap;")
 		dom.set_text_content(c.doc, pre, dec)

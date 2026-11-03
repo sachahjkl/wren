@@ -22,6 +22,7 @@ import "wb:dom"
 import "wb:host"
 import "wb:html"
 import "wb:style"
+import "wb:url"
 
 Thread_Settings :: struct {
 	parse_html:             bool,
@@ -158,7 +159,7 @@ html_job_make :: proc(p: ^Page, data: []byte, decode: bool, header_charset: stri
 	copy(j.data, data)
 	j.decode = decode
 	j.charset = strings.clone(header_charset)
-	j.default_encoding = strings.clone(p.settings.html.default_encoding)
+	j.default_encoding = strings.clone(default_encoding_of(p))
 	j.max_nodes = p.settings.html.max_nodes
 	j.tag = p.tag
 	j.style_min = p.settings.threads.inline_style_min_bytes
@@ -168,6 +169,18 @@ html_job_make :: proc(p: ^Page, data: []byte, decode: bool, header_charset: stri
 		j.max_sheet = p.engine.settings.author_stylesheets ? p.engine.settings.max_sheet_bytes : -1
 	}
 	return j
+}
+
+// The encoding of a document that declares none (HTML "encoding sniffing algorithm"): a frame's is its parent's when
+// that one is of the same origin and not in UTF-16, else the preference html.default_encoding.
+@(private)
+default_encoding_of :: proc(p: ^Page) -> string {
+	if p.frames != nil && p.frames.nav != nil {
+		if parent := p.frames.nav.parent; parent != nil && url.same_origin(parent.env.origin, p.env.origin) && !strings.has_prefix(parent.encoding, "UTF-16") {
+			return document_encoding(parent)
+		}
+	}
+	return p.settings.html.default_encoding
 }
 
 // Any thread: decoding, the tree, the larger style sheets. Reads nothing but the job.
