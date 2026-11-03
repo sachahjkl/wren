@@ -1277,7 +1277,7 @@ css_images_sync :: proc(p: ^Page) {
 	css_images_request(p, used)
 }
 
-// The CSS image URLs of an element's styles (its ::before and ::after boxes too: an icon after every external link) into
+// The CSS image URLs of an element's styles (its ::before, ::after and ::backdrop boxes too: an icon after every external link) into
 // `used`; whether it has some. `seen`: lists already read (they are shared by inheritance and between records).
 @(private)
 css_note_element :: proc(c: ^style.Computed, used: ^map[string]bool, seen: ^map[rawptr]bool, dppx: f32) -> bool {
@@ -1305,7 +1305,8 @@ css_note_element :: proc(c: ^style.Computed, used: ^map[string]bool, seen: ^map[
 	a := note(c, used, seen, dppx)
 	b := note(c.before, used, seen, dppx)
 	d := note(c.after, used, seen, dppx)
-	return a || b || d
+	e := note(c.backdrop, used, seen, dppx)
+	return a || b || d || e
 }
 
 // Records whether `h`'s styles use CSS images; returns whether they did before.
