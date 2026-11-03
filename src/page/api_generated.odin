@@ -29549,6 +29549,20 @@ _t_navigation_Navigation_activation :: proc "c" (env: rawptr, caller: wasm.Calle
 	return nil
 }
 
+// Navigation_scroll :: proc(c: ^Call, type: i32)
+@(private = "file")
+_t_navigation_Navigation_scroll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_p0 := a[0].i32
+	Navigation_scroll(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
 // Fetch_start :: proc(c: ^Call, url: string, callback: u32, user: i32, method: string, headers: string, body: Maybe([]u8), options: Api_FetchOptions) -> u64
 @(private = "file")
 _t_net_Fetch_start :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -39443,6 +39457,7 @@ api_imports := [?]wasm.Import{
 	{module = "navigation", name = "Navigation_pendingState", fn = _t_navigation_Navigation_pendingState, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "navigation", name = "Navigation_pendingSource", fn = _t_navigation_Navigation_pendingSource, realms = 1, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "navigation", name = "Navigation_activation", fn = _t_navigation_Navigation_activation, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "navigation", name = "Navigation_scroll", fn = _t_navigation_Navigation_scroll, realms = 1, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},
 	{module = "net", name = "Fetch_start", fn = _t_net_Fetch_start, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "net", name = "Fetch_state", fn = _t_net_Fetch_state, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "net", name = "Fetch_status", fn = _t_net_Fetch_status, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},

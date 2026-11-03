@@ -29,6 +29,7 @@ foreign _m_navigation {
 	@(link_name = "Navigation_pendingState") _Navigation_pendingState :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Navigation_pendingSource") _Navigation_pendingSource :: proc(_ret: ^NavigationSource) ---
 	@(link_name = "Navigation_activation") _Navigation_activation :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Navigation_scroll") _Navigation_scroll :: proc(type: i32) ---
 }
 
 // navigation.entries(): "<current index>\n" then "<key> <id> <same document 0|1> <url>\n" per entry (the same-origin
@@ -216,5 +217,11 @@ Navigation_activation_alloc :: proc(allocator: runtime.Allocator) -> (string, Er
 		cap = int(n)
 	}
 	return {}, .Truncated
+}
+
+// The scroll of an intercepted navigation of `type` (as Navigation_pending's), once its handlers are done or at
+// event.scroll(): a traversal puts the entry's scroll positions back, anything else goes to the fragment or the top.
+Navigation_scroll :: proc "contextless" (type: i32) {
+	_Navigation_scroll(type)
 }
 

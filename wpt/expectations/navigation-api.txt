@@ -536,8 +536,8 @@
 /navigation-api/navigation-methods/navigate-replace-same-document.html: OK
 	navigate() with history: 'replace' option: PASS
 /navigation-api/navigation-methods/navigate-same-document.html: OK
-	navigate() navigates same-document and fires onnavigate (async): FAIL
-	navigate() navigates same-document and fires onnavigate (sync): FAIL
+	navigate() navigates same-document and fires onnavigate (async): PASS
+	navigate() navigates same-document and fires onnavigate (sync): PASS
 /navigation-api/navigation-methods/navigate-state-repeated-await.html: OK
 	navigate() with state should work correctly when called repeatedly - with awaits: PASS
 /navigation-api/navigation-methods/navigate-state-repeated.html: OK
@@ -954,63 +954,63 @@
 	 precommitHandler with window.stop() before navigation commit: FAIL
 	Setup: PASS
 /navigation-api/scroll-behavior/after-transition-basic.html: OK
-	scroll: after-transition should scroll when back completes: FAIL
+	scroll: after-transition should scroll when back completes: PASS
 /navigation-api/scroll-behavior/after-transition-change-history-scroll-restoration-during-promise.html: OK
-	scroll: after-transition should ignore history.scrollRestoration even if it changes in the middle of the navigation: FAIL
+	scroll: after-transition should ignore history.scrollRestoration even if it changes in the middle of the navigation: PASS
 /navigation-api/scroll-behavior/after-transition-explicit-scroll.html: OK
-	scroll: scroll() should preempt after-transition: FAIL
+	scroll: scroll() should preempt after-transition: PASS
 /navigation-api/scroll-behavior/after-transition-intercept-handler-modifies.html: OK
-	scroll: state should be saved before intercept handlers run: FAIL
+	scroll: state should be saved before intercept handlers run: PASS
 /navigation-api/scroll-behavior/after-transition-push.html: OK
-	scroll: after-transition should work on a push navigation: FAIL
+	scroll: after-transition should work on a push navigation: PASS
 /navigation-api/scroll-behavior/after-transition-reject.html: OK
-	scroll: after-transition should not scroll when the intercept() handler rejects: FAIL
+	scroll: after-transition should not scroll when the intercept() handler rejects: PASS
 /navigation-api/scroll-behavior/after-transition-reload-after-traverse.html: OK
-	scroll: after-transition on a reload of a traversed-to fragment entry scrolls to the fragment: FAIL
+	scroll: after-transition on a reload of a traversed-to fragment entry scrolls to the fragment: PASS
 /navigation-api/scroll-behavior/after-transition-reload-no-fragment.html: OK
-	scroll: after-transition on a reload without a fragment scrolls to the beginning of the document: FAIL
+	scroll: after-transition on a reload without a fragment scrolls to the beginning of the document: PASS
 /navigation-api/scroll-behavior/after-transition-reload-no-scroll-anchoring.html: OK
-	scroll: after-transition should work on a reload navigation: FAIL
+	scroll: after-transition should work on a reload navigation: PASS
 /navigation-api/scroll-behavior/after-transition-reload.html: OK
 	scroll: after-transition should work on a reload navigation: FAIL
 /navigation-api/scroll-behavior/after-transition-replace.html: OK
-	scroll: after-transition should work on a replace navigation: FAIL
+	scroll: after-transition should work on a replace navigation: PASS
 /navigation-api/scroll-behavior/after-transition-skips-restore-when-scrolled.html: OK
-	scroll: after-transition should not restore scroll if the document was scrolled during the navigation: FAIL
+	scroll: after-transition should not restore scroll if the document was scrolled during the navigation: PASS
 /navigation-api/scroll-behavior/after-transition-timing.html: OK
-	scroll: after-transition should scroll when back completes, just before navigatesuccess: FAIL
+	scroll: after-transition should scroll when back completes, just before navigatesuccess: PASS
 /navigation-api/scroll-behavior/after-transition-traverse-no-fragment.html: OK
-	scroll: after-transition on a traverse to an entry without a fragment restores the scroll position: FAIL
+	scroll: after-transition on a traverse to an entry without a fragment restores the scroll position: PASS
 /navigation-api/scroll-behavior/after-transition-traverse-to-fragment.html: OK
-	scroll: after-transition on a traverse to an entry with a fragment restores the scroll position: FAIL
+	scroll: after-transition on a traverse to an entry with a fragment restores the scroll position: PASS
 /navigation-api/scroll-behavior/manual-basic.html: OK
-	scroll: manual should prevent auto scroll on back.: FAIL
+	scroll: manual should prevent auto scroll on back.: PASS
 /navigation-api/scroll-behavior/manual-immediate-scroll.html: OK
-	scroll: scroll() should not work inside a navigate event handler: FAIL
+	scroll: scroll() should not work inside a navigate event handler: PASS
 /navigation-api/scroll-behavior/manual-scroll-after-dispatch.html: OK
-	scroll: scroll() should work after a navigate event dispatch: FAIL
+	scroll: scroll() should work after a navigate event dispatch: PASS
 /navigation-api/scroll-behavior/manual-scroll-after-resolve.html: OK
-	scroll: scroll() should throw after a navigation finished promise fulfills: FAIL
+	scroll: scroll() should throw after a navigation finished promise fulfills: PASS
 /navigation-api/scroll-behavior/manual-scroll-clears-target-when-fragment-does-not-exist.html: OK
-	scroll: scroll() should clear the CSS :target element when the fragment does not exist: FAIL
+	scroll: scroll() should clear the CSS :target element when the fragment does not exist: PASS
 /navigation-api/scroll-behavior/manual-scroll-clears-target-when-no-fragment.html: OK
-	scroll: scroll() should clear the CSS :target element when the destination url contains no fragment: FAIL
+	scroll: scroll() should clear the CSS :target element when the destination url contains no fragment: PASS
 /navigation-api/scroll-behavior/manual-scroll-fragment-does-not-exist.html: OK
-	scroll: scroll() should scroll to beginning of document when the fragment does not exist: FAIL
+	scroll: scroll() should scroll to beginning of document when the fragment does not exist: PASS
 /navigation-api/scroll-behavior/manual-scroll-in-precommit-handler.html: OK
-	scroll: scroll() in precommitHandler throws: FAIL
+	scroll: scroll() in precommitHandler throws: PASS
 /navigation-api/scroll-behavior/manual-scroll-push.html: OK
-	scroll: scroll() should work on a push navigation: FAIL
+	scroll: scroll() should work on a push navigation: PASS
 /navigation-api/scroll-behavior/manual-scroll-reload-no-scroll-anchoring.html: OK
-	scroll: scroll() should work on a reload navigation: FAIL
+	scroll: scroll() should work on a reload navigation: PASS
 /navigation-api/scroll-behavior/manual-scroll-reload.html: OK
 	scroll: scroll() should work on a reload navigation: FAIL
 /navigation-api/scroll-behavior/manual-scroll-repeated.html: OK
-	scroll: scroll() should throw if called a second time: FAIL
+	scroll: scroll() should throw if called a second time: PASS
 /navigation-api/scroll-behavior/manual-scroll-replace.html: OK
-	scroll: scroll() should work on a replace navigation: FAIL
+	scroll: scroll() should work on a replace navigation: PASS
 /navigation-api/scroll-behavior/manual-scroll-resets-when-no-fragment.html: OK
-	scroll: scroll() should reset scroll position when the destination url contains no fragment: FAIL
+	scroll: scroll() should reset scroll position when the destination url contains no fragment: PASS
 /navigation-api/scroll-behavior/scroll-after-preventDefault.html: OK
 	scroll: scroll() should throw after preventDefault: PASS
 /navigation-api/scroll-behavior/scroll-on-synthetic-event.html: OK

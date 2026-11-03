@@ -3,7 +3,7 @@
 /html/browsers/history/joint-session-history/joint-session-history-iframe-state.html: OK
 	Joint session history should not override parent's state.: PASS
 /html/browsers/history/joint-session-history/joint-session-history-only-fully-active.html: OK
-	Do only fully active documents count for session history?: TIMEOUT
+	Do only fully active documents count for session history?: FAIL
 /html/browsers/history/joint-session-history/joint-session-history-remove-iframe.html: OK
 	Joint session history length does not include entries from a removed iframe.: PASS
 /html/browsers/history/the-history-interface/001.html: TIMEOUT
@@ -45,9 +45,19 @@
 	popstate event should fire before onload fires: FAIL
 	popstate event should not fire after onload fires: FAIL
 	the correct state should be restored when navigating during initial load: FAIL
-/html/browsers/history/the-history-interface/008.html: TIMEOUT
+/html/browsers/history/the-history-interface/008.html: OK
+	history.pushState URL resolving should be done relative to the document, not the script: PASS
+	history.replaceState URL resolving should be done relative to the document, not the script: PASS
 /html/browsers/history/the-history-interface/009.html: OK
+	HTTP Referer should use the pushed state: FAIL
+	HTTP Referer should use the replaced state: FAIL
+	document.referrer should use the pushed state: FAIL
+	document.referrer should use the replaced state: FAIL
 /html/browsers/history/the-history-interface/010.html: OK
+	HTTP Referer should use the pushed state (before onload): FAIL
+	HTTP Referer should use the replaced state (before onload): FAIL
+	document.referrer should use the pushed state (before onload): FAIL
+	document.referrer should use the replaced state (before onload): FAIL
 /html/browsers/history/the-history-interface/011.html: OK
 	pushState should be able to set the location state: PASS
 	pushed location should be reflected immediately: PASS
@@ -131,37 +141,37 @@
 	about:blank to about:blank#newhash should  work: PASS
 	about:blank to about:blank?newsearch should not work: FAIL
 	about:blank to about:srcdoc should not work: PASS
-	about:blank to http://127.0.0.1:8778/blank should not work: PASS
+	about:blank to http://web-platform.test:8778/blank should not work: PASS
 	about:srcdoc to about:srcdoc should  work: PASS
 	about:srcdoc to about:srcdoc#newhash should  work: PASS
 	about:srcdoc to about:srcdoc?newsearch should not work: FAIL
-	about:srcdoc to http://127.0.0.1:8778/srcdoc should not work: PASS
+	about:srcdoc to http://web-platform.test:8778/srcdoc should not work: PASS
 	blob:(a blob URL for this origin) to blob:(a blob URL for this origin) should  work: PASS
 	blob:(a blob URL for this origin) to blob:(a blob URL for this origin)#newhash should  work: PASS
 	blob:(a blob URL for this origin) to blob:(a blob URL for this origin)?newsearch should not work: FAIL
 	blob:(a blob URL for this origin) to blob:(another blob URL for this origin) should not work: PASS
-	blob:(a blob URL for this origin) to blob:http://127.0.0.1:8778/syntheticblob should not work: PASS
+	blob:(a blob URL for this origin) to blob:http://web-platform.test:8778/syntheticblob should not work: PASS
 	blob:(a blob URL for this origin) to blob:newpath should not work: PASS
 	data:(script to run this test) to data:(script to run this test) should  work: PASS
 	data:(script to run this test) to data:(script to run this test)#newhash should  work: PASS
 	data:(script to run this test) to data:(script to run this test)?newsearch should not work: FAIL
 	data:(script to run this test) to data:newpath should not work: PASS
-	http://127.0.0.1:8778/common/blank.html to about:blank should not work: PASS
-	http://127.0.0.1:8778/common/blank.html to about:srcdoc should not work: PASS
-	http://127.0.0.1:8778/common/blank.html to blob:(a blob URL for this origin) should not work: PASS
-	http://127.0.0.1:8778/common/blank.html to http://127.0.0.1:8778/common/blank.html#newhash should  work: PASS
-	http://127.0.0.1:8778/common/blank.html to http://127.0.0.1:8778/common/blank.html?newsearch should  work: PASS
-	http://127.0.0.1:8778/common/blank.html to http://127.0.0.1:8778/newpath should  work: PASS
-	http://127.0.0.1:8778/common/blank.html to http://username:password@127.0.0.1:8778/common/blank.html should not work: PASS
-	http://127.0.0.1:8778/common/blank.html to javascript:'foo' should not work: PASS
+	http://web-platform.test:8778/common/blank.html to about:blank should not work: PASS
+	http://web-platform.test:8778/common/blank.html to about:srcdoc should not work: PASS
+	http://web-platform.test:8778/common/blank.html to blob:(a blob URL for this origin) should not work: PASS
+	http://web-platform.test:8778/common/blank.html to http://username:password@web-platform.test:8778/common/blank.html should not work: PASS
+	http://web-platform.test:8778/common/blank.html to http://web-platform.test:8778/common/blank.html#newhash should  work: PASS
+	http://web-platform.test:8778/common/blank.html to http://web-platform.test:8778/common/blank.html?newsearch should  work: PASS
+	http://web-platform.test:8778/common/blank.html to http://web-platform.test:8778/newpath should  work: PASS
+	http://web-platform.test:8778/common/blank.html to javascript:'foo' should not work: PASS
 	javascript:'foo' to javascript:'foo' should not work: PASS
 	javascript:'foo' to javascript:'foo'#newhash should not work: PASS
 	javascript:'foo' to javascript:'foo'?newsearch should not work: PASS
-	sandboxed http://127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html to http://127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html should  work: PASS
-	sandboxed http://127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html to http://127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html#newhash should  work: PASS
-	sandboxed http://127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html to http://127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html?newsearch should  work: PASS
-	sandboxed http://127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html to http://127.0.0.1:8778/newpath should  work: PASS
-	sandboxed http://127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html to http://username:password@127.0.0.1:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html should not work: PASS
+	sandboxed http://web-platform.test:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html to http://username:password@web-platform.test:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html should not work: PASS
+	sandboxed http://web-platform.test:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html to http://web-platform.test:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html should  work: PASS
+	sandboxed http://web-platform.test:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html to http://web-platform.test:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html#newhash should  work: PASS
+	sandboxed http://web-platform.test:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html to http://web-platform.test:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html?newsearch should  work: PASS
+	sandboxed http://web-platform.test:8778/html/browsers/history/the-history-interface/resources/url-rewriting-helper.html to http://web-platform.test:8778/newpath should  work: PASS
 /html/browsers/history/the-history-interface/history_replacestate.html: OK
 	history replaceState: PASS
 /html/browsers/history/the-history-interface/history_replacestate_err.html: OK
@@ -181,16 +191,16 @@
 	iframe's history.go(0) performs a location.reload(): PASS
 /html/browsers/history/the-history-interface/joint_session_history/001.html: TIMEOUT
 	Navigating first iframe: NOTRUN
-	Navigating second iframe: NOTRUN
-	Session history length on adding new iframe: NOTRUN
-	Session history length on initial load: NOTRUN
+	Navigating second iframe: FAIL
+	Session history length on adding new iframe: PASS
+	Session history length on initial load: PASS
 	Traversing history back (1): NOTRUN
 	Traversing history back (2): NOTRUN
 	Traversing history forward: NOTRUN
-/html/browsers/history/the-history-interface/joint_session_history/002.html: TIMEOUT
-	Navigating second iframe: NOTRUN
-	Session history length on adding new iframe: NOTRUN
-	Session history length on initial load: NOTRUN
+/html/browsers/history/the-history-interface/joint_session_history/002.html: OK
+	Navigating second iframe: FAIL
+	Session history length on adding new iframe: PASS
+	Session history length on initial load: PASS
 /html/browsers/history/the-history-interface/pushstate-replacestate-empty-string/pushstate-base.html: OK
 	history.pushState() with an empty string URL and base URL different from document's URL: PASS
 /html/browsers/history/the-history-interface/pushstate-replacestate-empty-string/pushstate-whitespace.html: OK

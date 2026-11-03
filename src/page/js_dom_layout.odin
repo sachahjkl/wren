@@ -364,19 +364,27 @@ Element_scrollToXY :: proc(c: ^Call, element: Api_Element, x: f64, y: f64, relat
 	scroll_element_to(p, h, nx, ny)
 }
 
+// Where scrollIntoView puts an element on an axis (ScrollLogicalPosition, in the engine's order).
+Scroll_Align :: enum i32 { Start, Center, End, Nearest }
+
 // scrollIntoView (CSSOM View §7.1): each scroll container the element is in, innermost first, then the document,
 // scrolls so that the element's border box is at the start / center / end / nearest edge of what it shows, on each axis.
 Element_scrollIntoViewAt :: proc(c: ^Call, element: Api_Element, block: i32, inline_pos: i32) {
-	p := c.page
-	h := H(element.handle)
-	pick :: proc(start, end, view, cur: f64, how: i32) -> f64 {
+	scroll_into_view(c.page, H(element.handle), Scroll_Align(block), Scroll_Align(inline_pos))
+}
+
+// `smooth`: the document's part is animated (the containers' jumps).
+@(private)
+scroll_into_view :: proc(p: ^Page, h: base.Handle, block, inline_pos: Scroll_Align, smooth := false) {
+	pick :: proc(start, end, view, cur: f64, how: Scroll_Align) -> f64 {
 		switch how {
-		case 1: return start + (end - start) / 2 - view / 2
-		case 2: return end - view
-		case 3:
+		case .Center: return start + (end - start) / 2 - view / 2
+		case .End: return end - view
+		case .Nearest:
 			if start >= cur && end <= cur + view { return cur }
 			if end - start > view || start < cur { return start }
 			return end - view
+		case .Start:
 		}
 		return start
 	}
@@ -405,7 +413,7 @@ Element_scrollIntoViewAt :: proc(c: ^Call, element: Api_Element, block: i32, inl
 	if !g.ok || g.fixed { return }
 	y := pick(f64(g.border.min.y), f64(g.border.max.y), vp.height, vp.scroll_y, block)
 	x := pick(f64(g.border.min.x), f64(g.border.max.x), vp.width, vp.scroll_x, inline_pos)
-	scroll_document_to(p, x, math.max(y, 0))
+	scroll_document_to(p, x, math.max(y, 0), smooth)
 }
 
 // offsetParent: the nearest ancestor that is positioned, or a td / th / table when the element is not positioned,

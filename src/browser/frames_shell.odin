@@ -107,7 +107,6 @@ frame_view_closed :: proc(data: rawptr) {
 	page_fonts_drop(&the_app.page_render.fonts, &fv.tab)
 	layout_destroy(&fv.tab.layout)
 	smooth_destroy(&fv.tab.smooth)
-	delete(fv.tab.fragment_seen)
 	free(fv)
 }
 

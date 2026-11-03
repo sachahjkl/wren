@@ -29,7 +29,6 @@ import "wb:host"
 import "wb:html"
 import "wb:http"
 import "wb:net"
-import lay "wb:layout"
 import "wb:page"
 import "wb:url"
 import "wb:wasm"
@@ -111,7 +110,7 @@ Tab :: struct {
 	layout_ms: f64,             // page_thread.odin: how long its last layout pass took (whether the next goes to the page thread)
 	layout_ms_known: bool,
 	scroll_target: base.Handle, // what keyboard scrolling moves: the last element pressed in the page (its scroll container)
-	fragment_seen: string,       // the document URL whose fragment the view last scrolled to (owned)
+	fragment_done: bool,         // the document scrolled to its fragment (page.scroll_to_fragment), or its entry is being restored
 	web_fonts: int,              // faces of the page's @font-face already handed to the font registry
 	web_font_page: rawptr,       // the page those faces came from (a new page starts over)
 	image_sizes: u64,            // the page's image sizes generation the layout was made with (images_shell.odin)
@@ -374,7 +373,6 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 	page_fonts_drop(&app.page_render.fonts, t)   // its web fonts (fonts.odin)
 	page.session_destroy(&t.session)
 	delete(t.url); delete(t.title); delete(t.status)
-	delete(t.fragment_seen)
 	tab_icon_destroy(&t.icon)
 	for h in t.history { delete(h) }
 	delete(t.history)
@@ -453,7 +451,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	restore_stop(app, t)
 	if restore && entry != nil && app.hcfg.restore_zoom && entry.persisted.zoom > 0 { t.zoom = entry.persisted.zoom }
 	if restore { timing_begin(t, false) }
-	defer if restore { restore_begin(app, t, entry, .New_Document) }
+	defer if restore { restore_begin(app, t, entry) }
 	license_file := is_license_file_address(target) && verdict.acts   // license_shell.odin
 	if is_builtin_address(target) || license_file { hold_release(app, t); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
 	if target == "about:config" { show_config(app, t); return }
@@ -491,8 +489,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	t.load = load
 	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0
-	delete(t.fragment_seen)
-	t.fragment_seen = ""   // a new document scrolls to its fragment again
+	t.fragment_done = false   // a new document scrolls to its fragment
 	console_reset(t)
 	delete(t.url)
 	t.url = strings.clone(shown)
@@ -631,7 +628,7 @@ page_close_window :: proc(user: rawptr, p: ^page.Page) {
 // Connects a document to its tab: its window (the tab's navigable), navigation hook, session history, storage, new windows.
 attach_page :: proc(app: ^App, t: ^Tab, p: ^page.Page) {
 	page.navigable_attach(t.top, p)
-	page.set_embedder(p, {navigate = page_navigate, user = t, session = &t.session, tab_key = tab_key(t), storage = &app.storage, print = page_print, leaving = page_entry_leaving, entered = page_entry_entered,
+	page.set_embedder(p, {navigate = page_navigate, user = t, session = &t.session, tab_key = tab_key(t), storage = &app.storage, print = page_print, leaving = page_entry_leaving,
 		open = page_open_window, close = page_close_window})
 	if cur := page.session_current(&t.session); cur != nil { bfcache_forget(app, t, cur.id) }   // a new document for the entry: an older one cached for it is stale
 	attach_js_layout(app, t, p)   // geometry for scripts (js_layout_shell.odin)
@@ -905,44 +902,12 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	page_paint(app, t, dc, b.rect)   // page_frame.odin
 }
 
-// HTML "scroll to the fragment": when the document URL changes (load, link to #id, location.hash, history), the view
-// goes to the element whose id (or <a name>) is the fragment; "top" or an empty fragment goes to the top.
-scroll_to_fragment :: proc(app: ^App, t: ^Tab, viewport: draw.Vec2) {
-	href := t.page.env.location.href
-	if href == t.fragment_seen || !t.layout.valid { return }
-	// within the same document the page's scroll-behavior: smooth animates it (smooth_scroll.odin); a new one jumps
-	smooth := t.fragment_seen != "" && css_smooth(app, t)
-	delete(t.fragment_seen)
-	t.fragment_seen = strings.clone(href)
-	loc := t.page.env.location
-	if !loc.has_fragment { return }
-	frag := loc.fragment
-	frag = url.percent_decode(frag)   // HTML: the decoded fragment is tried as an id
-	if frag == "" || strings.equal_fold(frag, "top") { scroll_document_to(app, t, {t.layout.doc_scroll_x, 0}, smooth); return }
-	target := dom.find_by_id(t.page.doc, frag)
-	if target == base.NIL_HANDLE { target = find_named_anchor(t.page.doc, frag) }
-	if target == base.NIL_HANDLE { return }
-	if r, ok := lay.box_of(&t.layout, target, viewport, t.scroll); ok && !r.fixed {
-		lo, hi := lay.doc_scroll_x_range(&t.layout, viewport.x)
-		x := clamp(scroll_nearest(r.border.min.x, r.border.max.x, viewport.x, t.layout.doc_scroll_x), lo, hi)
-		scroll_document_to(app, t, {x, max(r.border.min.y, 0)}, smooth)
-	}
-}
-
-@(private = "file")
-find_named_anchor :: proc(d: ^dom.Document, name: string) -> base.Handle {
-	stack := make([dynamic]base.Handle, context.temp_allocator)
-	append(&stack, d.root)
-	for len(stack) > 0 {
-		h := pop(&stack)
-		n := dom.get(d, h)
-		if n == nil { continue }
-		if n.kind == .Element && n.name == "a" {
-			if v, ok := dom.get_attribute(d, h, "name"); ok && v == name { return h }
-		}
-		for c := n.last_child; c != base.NIL_HANDLE; c = dom.get(d, c).prev { append(&stack, c) }
-	}
-	return base.NIL_HANDLE
+// HTML "try to scroll to the fragment" of a new document, at its first layout (page.scroll_to_fragment: the indicated
+// part, the target element; the page does it itself when the URL changes within the document). It jumps.
+scroll_to_fragment :: proc(app: ^App, t: ^Tab) {
+	if t.fragment_done || !t.layout.valid { return }
+	t.fragment_done = true
+	page.scroll_to_fragment(t.page, animate = false)
 }
 
 // The page's own box (or the view of a built-in page): what fills the room the developer tools leave.

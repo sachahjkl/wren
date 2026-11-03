@@ -62,3 +62,8 @@ Navigation_pendingSource :: proc() -> NavigationSource
 //@wb fn
 Navigation_activation :: proc() -> string
 
+/// The scroll of an intercepted navigation of `type` (as Navigation_pending's), once its handlers are done or at
+/// event.scroll(): a traversal puts the entry's scroll positions back, anything else goes to the fragment or the top.
+//@wb fn
+Navigation_scroll :: proc(type: i32)
+

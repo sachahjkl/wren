@@ -19,13 +19,13 @@ THAWED_FOR :: 50 * time.Millisecond
 CONTROLS_CAPTURED :: 7                   // text, checkbox, the 3 options of the select, textarea, nested
 TREE_ENTRIES :: 4
 
-Hooks :: struct { left, entered: int }
+Hooks :: struct { left: int }
 
 Tab :: struct {
 	pr:      ^Probe,
 	session: page.Session_History,
 	hooks:   Hooks,
-	entered_before: int,
+	left_before: int,
 }
 
 open :: proc(t: ^testing.T, tab: ^Tab, source: string) {
@@ -33,7 +33,6 @@ open :: proc(t: ^testing.T, tab: ^Tab, source: string) {
 	page.session_push(&tab.session, ADDRESS, 0)
 	page.set_embedder(tab.pr.p, {session = &tab.session, user = &tab.hooks,
 		leaving = proc(user: rawptr, p: ^page.Page, e: ^page.History_Entry) { (^Hooks)(user).left += 1 },
-		entered = proc(user: rawptr, p: ^page.Page, e: ^page.History_Entry) { (^Hooks)(user).entered += 1 },
 	})
 	page_load(tab.pr, source)
 	wait_note(tab.pr, "loaded")
@@ -67,12 +66,11 @@ history_the_web_sees_the_active_path_of_the_tree :: proc(t: ^testing.T) {
 	check(tab.pr, tab.hooks.left == 2, "the embedder saves the entry left by each pushState")
 	run(tab.pr, `history.back(); history.back();`)
 	check(tab.pr, wait_note(tab.pr, `popstate {"n":1}`) && wait_note(tab.pr, "popstate null"), "back twice: popstate with each entry's state")
-	check(tab.pr, tab.hooks.entered >= 2, "the embedder restores the entry entered by a same-document traversal")
 	run(tab.pr, `history.pushState({n:9}, '', '#9'); wrenTest.check(history.length === 2 && location.hash === '#9', 'a push after going back: the web sees 2 entries (the old ones are a branch)')`)
 	check(tab.pr, tab.session.count == TREE_ENTRIES, "... and the tree keeps all 4")
-	tab.entered_before = tab.hooks.entered
+	tab.left_before = tab.hooks.left
 	run(tab.pr, `history.back()`)
-	check(tab.pr, wait_until(t, "the traversal back from the branch", &tab, proc(tab: ^Tab) -> bool { return tab.hooks.entered > tab.entered_before }), "the traversal back from the branch ran")
+	check(tab.pr, wait_until(t, "the traversal back from the branch", &tab, proc(tab: ^Tab) -> bool { return tab.hooks.left > tab.left_before }), "the traversal back from the branch ran")
 	run(tab.pr, `wrenTest.check(history.length === 2, 'back from the branch: forward goes to the branch visited last')`)
 	shut(&tab, min_checks = 6)
 }
