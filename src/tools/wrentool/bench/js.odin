@@ -122,6 +122,7 @@ bench_js :: proc(o: ^Options) -> int {
 
 // A program run to its end, what it printed (both streams): ok false when it could not start or passed `limit` (the tree is killed). Waits on the process.
 run_text :: proc(command: []string, limit := time.Duration(RUN_LIMIT)) -> (text: string, ok: bool) {
+	_ = os.make_directory_all(OUT_DIR)   // (a fresh checkout has no build/bench)
 	log := fmt.tprintf("%s/run-%s.log", OUT_DIR, base.unique_name(context.temp_allocator))
 	p, why := tooling.spawn({command = command, log = log})
 	if why != "" { fmt.eprintfln("%s cannot start: %s", command[0], why); return "", false }
