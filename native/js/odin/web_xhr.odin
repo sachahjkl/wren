@@ -14,6 +14,7 @@
 // Every call into the browser is a declaration of api_decl/fetch.odin (and abort.odin) through jsb.host.
 package odin_glue
 
+import "core:strings"
 import "../odin_abi/abi"
 import "../odin_abi/api_decl"
 import "../odin/jsb"
@@ -728,12 +729,12 @@ response_charset :: proc(ctx: ^wj.Context, x: ^Xhr) -> string {
 	ct: string
 	if !wj.is_undefined(x.mime_override) {
 		c, s := to_text(ctx, x.mime_override)
-		if c != nil { defer wj.JS_FreeCString(ctx, c); ct = clone_string(s) }
+		if c != nil { defer wj.JS_FreeCString(ctx, c); ct = strings.clone(s, wj.libc_allocator()) }
 	} else if !wj.is_undefined(x.response_headers) {
 		n: uint
 		if v := web_headers_get(x.response_headers, "content-type", &n); v != nil {
 			defer wj.libc_free(v)
-			ct = clone_string(string(v[:n]))
+			ct = strings.clone(string(v[:n]), wj.libc_allocator())
 		}
 	}
 	if ct == "" { return "" }
@@ -749,18 +750,9 @@ response_charset :: proc(ctx: ^wj.Context, x: ^Xhr) -> string {
 		} else {
 			for e < len(ct) && ct[e] != ';' && ct[e] != ' ' { e += 1 }
 		}
-		return clone_string(ct[s:e])
+		return strings.clone(ct[s:e], wj.libc_allocator())
 	}
 	return ""
-}
-
-// A copy on the libc heap ("" for an empty string).
-@(private = "file")
-clone_string :: proc(s: string) -> string {
-	if len(s) == 0 { return "" }
-	b := make([]u8, len(s), wj.libc_allocator())
-	copy(b, s)
-	return string(b)
 }
 
 // The body decoded as text: the charset of the response when one is given, else UTF-8.
@@ -805,10 +797,10 @@ wjr_XMLHttpRequest_get_response :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 	case .Blob:
 		ct: string
 		if !wj.is_undefined(x.mime_override) {
-			if c, s := to_text(ctx, x.mime_override); c != nil { ct = clone_string(s); wj.JS_FreeCString(ctx, c) }
+			if c, s := to_text(ctx, x.mime_override); c != nil { ct = strings.clone(s, wj.libc_allocator()); wj.JS_FreeCString(ctx, c) }
 		} else {
 			n: uint
-			if v := web_headers_get(x.response_headers, "content-type", &n); v != nil { ct = clone_string(string(v[:n])); wj.libc_free(v) }
+			if v := web_headers_get(x.response_headers, "content-type", &n); v != nil { ct = strings.clone(string(v[:n]), wj.libc_allocator()); wj.libc_free(v) }
 		}
 		defer if ct != "" { delete(ct, wj.libc_allocator()) }
 		label := make([]u8, len(ct) + 1, wj.libc_allocator())

@@ -490,7 +490,7 @@ compaction_remap :: proc(m: ^Manager, o: ^Origin) {
 					budget -= 1
 					if budget <= 0 {
 						delete(c.cursor)
-						c.cursor = clone_bytes(r.key, m.allocator)
+						c.cursor = slice.clone(r.key, m.allocator)
 						c.has_cursor = true
 						remap_next_slice(m, o)
 						return

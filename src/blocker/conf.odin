@@ -77,13 +77,11 @@ CATALOG := [?]Catalog_Entry{
 	{"ukr", "Ukraine: AdGuard Ukrainian", "Regions", "https://filters.adtidy.org/extension/ublock/filters/23.txt", "Ukrainian-language advertising.", false},
 }
 
-clone_str :: proc(s: string) -> string { return s == "" ? "" : strings.clone(s) }
-
 make_dirs :: proc(path: string) { _ = os.make_directory_all(path) }
 
 @(private)
 entry_from_catalog :: proc(c: Catalog_Entry) -> List_Entry {
-	return List_Entry{id = clone_str(c.id), title = clone_str(c.title), group = clone_str(c.group), url = clone_str(c.url), description = clone_str(c.description), enabled = c.default_on}
+	return List_Entry{id = strings.clone(c.id), title = strings.clone(c.title), group = strings.clone(c.group), url = strings.clone(c.url), description = strings.clone(c.description), enabled = c.default_on}
 }
 
 @(private)
@@ -231,8 +229,8 @@ conf_parse :: proc(b: ^Blocker, text: string, replace: bool) -> (understood, ign
 			}
 			seen_lists[l.id] = true
 			if len(f) >= 13 {
-				delete(l.etag); l.etag = clone_str(f[6])
-				delete(l.last_modified); l.last_modified = clone_str(f[7])
+				delete(l.etag); l.etag = strings.clone(f[6])
+				delete(l.last_modified); l.last_modified = strings.clone(f[7])
 				l.updated, _ = strconv.parse_i64(f[8])
 				l.checked, _ = strconv.parse_i64(f[9])
 				l.rules, _ = strconv.parse_int(f[10])

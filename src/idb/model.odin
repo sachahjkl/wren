@@ -2,6 +2,8 @@ package idb
 
 import "base:runtime"
 import "core:bytes"
+import "core:slice"
+import "core:strings"
 
 // The data of one origin: its databases, object stores, records and indexes, in memory. Every change is an Op: the
 // same value is applied to the data (apply), written to the journal (op_encode) and read back when the journal is
@@ -107,17 +109,6 @@ data_destroy :: proc(d: ^Data) {
 	delete(d.dbs)
 	d^ = {}
 }
-
-@(private)
-clone_bytes :: proc(b: []byte, allocator: runtime.Allocator) -> []byte {
-	if len(b) == 0 { return nil }
-	out := make([]byte, len(b), allocator)
-	copy(out, b)
-	return out
-}
-
-@(private)
-clone_str :: proc(s: string, allocator: runtime.Allocator) -> string { return string(clone_bytes(transmute([]byte)s, allocator)) }
 
 record_cost :: proc(r: ^Record) -> i64 {
 	n := i64(len(r.key) + int(r.vlen) + RECORD_OVERHEAD)
@@ -465,7 +456,7 @@ undo_rollback :: proc(d: ^Data, u: ^Undo_Log, to := 0) {
 				k, val := pos_entry(&v.index.entries, it)
 				rec := (^Record)(val)
 				ik := k[:len(k) - len(rec.key)]
-				append(&rec.ikeys, Index_Key{v.index.id, clone_bytes(ik, d.allocator)})
+				append(&rec.ikeys, Index_Key{v.index.id, slice.clone(ik, d.allocator)})
 				d.bytes += i64(len(ik) + KEY_OVERHEAD)
 				v.store.bytes += i64(len(ik) + KEY_OVERHEAD)
 				pos_next(&v.index.entries, &it)
@@ -569,7 +560,7 @@ apply :: proc(d: ^Data, op: Op, undo: ^Undo_Log) -> Error {
 		db = find_db(d, op.db)
 		if db == nil {
 			db = new(Database)
-			db.name = clone_str(op.db, d.allocator)
+			db.name = strings.clone(op.db, d.allocator)
 			db.stores = make([dynamic]^Store)
 			db.next_store_id = 1
 			db.next_index_id = 1
@@ -594,8 +585,8 @@ apply :: proc(d: ^Data, op: Op, undo: ^Undo_Log) -> Error {
 		if find_store(db, op.store) != nil { return .Constraint }
 		s := new(Store)
 		s.id = op.store
-		s.name = clone_str(op.name, d.allocator)
-		s.key_path = clone_bytes(op.key_path, d.allocator)
+		s.name = strings.clone(op.name, d.allocator)
+		s.key_path = slice.clone(op.key_path, d.allocator)
 		s.auto_increment = op.flags & 1 != 0
 		s.gen = 1
 		s.resident = true
@@ -619,7 +610,7 @@ apply :: proc(d: ^Data, op: Op, undo: ^Undo_Log) -> Error {
 		s := find_store(db, op.store)
 		if s == nil { return .Not_Found }
 		old := s.name
-		s.name = clone_str(op.name, d.allocator)
+		s.name = strings.clone(op.name, d.allocator)
 		if undo != nil { push(undo, Undo_Store_Renamed{s, old}) } else { delete(old, d.allocator) }
 	case .Store_Clear:
 		s := find_store(db, op.store)
@@ -645,8 +636,8 @@ apply :: proc(d: ^Data, op: Op, undo: ^Undo_Log) -> Error {
 		if find_index(s, op.index) != nil { return .Constraint }
 		ix := new(Index)
 		ix.id = op.index
-		ix.name = clone_str(op.name, d.allocator)
-		ix.key_path = clone_bytes(op.key_path, d.allocator)
+		ix.name = strings.clone(op.name, d.allocator)
+		ix.key_path = slice.clone(op.key_path, d.allocator)
 		ix.unique = op.flags & 1 != 0
 		ix.multi = op.flags & 2 != 0
 		ordered_init(&ix.entries, d.allocator)
@@ -688,24 +679,24 @@ apply :: proc(d: ^Data, op: Op, undo: ^Undo_Log) -> Error {
 		ix := find_index(s, op.index)
 		if ix == nil { return .Not_Found }
 		old := ix.name
-		ix.name = clone_str(op.name, d.allocator)
+		ix.name = strings.clone(op.name, d.allocator)
 		if undo != nil { push(undo, Undo_Index_Renamed{ix, old}) } else { delete(old, d.allocator) }
 	case .Put:
 		s := find_store(db, op.store)
 		if s == nil { return .Not_Found }
 		r := new(Record)
-		r.key = clone_bytes(op.key, d.allocator)
+		r.key = slice.clone(op.key, d.allocator)
 		if d.replay_base >= 0 {
 			// replaying a journal that stays on the disk: the value is where it was read, not kept
 			r.voff, r.gen = d.replay_base + i64(op.value_pos), d.replay_gen
 		} else {
-			r.value = clone_bytes(op.value, d.allocator)
+			r.value = slice.clone(op.value, d.allocator)
 			r.voff = -1
 		}
 		r.vlen = u32(len(op.value))
 		r.ikeys = make([dynamic]Index_Key, 0, len(op.ikeys))
 		// (the keys of an index that is gone are dropped: a record read back sees the schema as it ended)
-		for k in op.ikeys { if find_index(s, k.index) != nil { append(&r.ikeys, Index_Key{k.index, clone_bytes(k.key, d.allocator)}) } }
+		for k in op.ikeys { if find_index(s, k.index) != nil { append(&r.ikeys, Index_Key{k.index, slice.clone(k.key, d.allocator)}) } }
 		var_old: ^Record
 		if cur, found := ordered_get(&s.records, op.key); found {
 			var_old = (^Record)(cur)
@@ -713,7 +704,7 @@ apply :: proc(d: ^Data, op: Op, undo: ^Undo_Log) -> Error {
 		}
 		insert_record(d, s, r)
 		if undo != nil {
-			push(undo, Undo_Record{db, s, clone_bytes(op.key, d.allocator), var_old})
+			push(undo, Undo_Record{db, s, slice.clone(op.key, d.allocator), var_old})
 		} else if var_old != nil {
 			record_free(d, var_old)
 		}
@@ -724,7 +715,7 @@ apply :: proc(d: ^Data, op: Op, undo: ^Undo_Log) -> Error {
 		if !found { return .None }
 		rec := (^Record)(cur)
 		drop_record(d, s, rec)
-		if undo != nil { push(undo, Undo_Record{db, s, clone_bytes(op.key, d.allocator), rec}) } else { record_free(d, rec) }
+		if undo != nil { push(undo, Undo_Record{db, s, slice.clone(op.key, d.allocator), rec}) } else { record_free(d, rec) }
 	case .Index_Put:
 		s := find_store(db, op.store)
 		if s == nil { return .Not_Found }
@@ -737,13 +728,13 @@ apply :: proc(d: ^Data, op: Op, undo: ^Undo_Log) -> Error {
 			dup := false
 			for e in rec.ikeys { if e.index == k.index && bytes.equal(e.key, k.key) { dup = true; break } }
 			if dup { continue }
-			kc := clone_bytes(k.key, d.allocator)
+			kc := slice.clone(k.key, d.allocator)
 			append(&rec.ikeys, Index_Key{k.index, kc})
 			ordered_put(&ix.entries, composite_key(k.key, rec.key, context.temp_allocator), rec)
 			c := i64(len(k.key) + KEY_OVERHEAD)
 			s.bytes += c
 			d.bytes += c
-			if undo != nil { push(undo, Undo_Index_Put{s, rec, k.index, clone_bytes(k.key, d.allocator)}) }
+			if undo != nil { push(undo, Undo_Index_Put{s, rec, k.index, slice.clone(k.key, d.allocator)}) }
 		}
 	case .Key_Gen:
 		s := find_store(db, op.store)

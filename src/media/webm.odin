@@ -5,6 +5,7 @@ package media
 // BlockGroup are entered (their sizes may be unknown: live streams, Media Source Extensions segments, which carry
 // clusters with no Segment around them); everything else is skipped without being kept.
 
+import "core:slice"
 import "wb:base"
 import "core:strings"
 
@@ -258,7 +259,7 @@ webm_collected :: proc(d: ^Webm_Demuxer) {
 	case .Block:
 		// the rest of the group (duration, references) follows: emitted when the group ends
 		delete(d.group.data, base.process_allocator())
-		d.group = Block_Pending{active = true, data = clone_bytes(b, base.process_allocator()), cluster_tc = d.cluster_tc, duration = -1}
+		d.group = Block_Pending{active = true, data = slice.clone(b, base.process_allocator()), cluster_tc = d.cluster_tc, duration = -1}
 	case .Block_Duration: if d.group.active { d.group.duration = i64(read_uint(b)) }
 	case .Reference_Block: if d.group.active { d.group.has_ref = true }
 	case .Discard_Padding: if d.group.active { d.group.discard = read_sint(b) }
@@ -350,7 +351,7 @@ webm_track_entry :: proc(d: ^Webm_Demuxer, b: []u8, t: ^Webm_Track) -> bool {
 		case .Track_Number: t.number = read_uint(p)
 		case .Track_Type: ttype = read_uint(p)
 		case .Codec_Id: codec_id = strings.clone(string(p), context.temp_allocator)
-		case .Codec_Private: info.config = clone_bytes(p, heap)
+		case .Codec_Private: info.config = slice.clone(p, heap)
 		case .Codec_Delay: info.codec_delay = Time(read_uint(p))
 		case .Seek_Pre_Roll: info.seek_preroll = Time(read_uint(p))
 		case .Default_Duration: info.default_duration = Time(read_uint(p))

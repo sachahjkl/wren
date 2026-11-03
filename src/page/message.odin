@@ -6,7 +6,7 @@ package page
 // belongs to no page; delivering it makes new buffer objects in the target page. The payload lives on the process heap,
 // so it may be created on one thread and delivered or destroyed on another.
 
-import "base:runtime"
+import "core:strings"
 import "wb:dom"
 import "wb:base"
 
@@ -57,7 +57,7 @@ message_capture :: proc(p: ^Page, text: string, buffers: []u64) -> (Message_Payl
 // then left intact.
 message_deliver :: proc(p: ^Page, m: ^Message_Payload, owner: u32, allocator := context.allocator) -> (msg: Message, ok: bool) {
 	if p.held + m.bytes > p.settings.max_fetch_bytes { return {}, false }
-	msg.text = clone_string(m.text, allocator)
+	msg.text = strings.clone(m.text, allocator)
 	msg.buffers = make([]u64, len(m.buffers), allocator)
 	for b, i in m.buffers {
 		buf := new(Buffer)
@@ -76,12 +76,4 @@ message_destroy :: proc(m: ^Message_Payload) {
 	for b in m.buffers { delete(b, a) }
 	delete(m.buffers, a)
 	m^ = {}
-}
-
-@(private)
-clone_string :: proc(s: string, allocator: runtime.Allocator) -> string {
-	if s == "" { return "" }
-	b := make([]byte, len(s), allocator)
-	copy(b, s)
-	return string(b)
 }

@@ -1,5 +1,6 @@
 package blocker
 
+import "core:strings"
 import "wb:adblock"
 
 // The request log of the dashboard: a ring of the last requests with what became of them. It records only while a
@@ -60,7 +61,7 @@ journal_get :: proc(j: ^Journal, i: int) -> ^Log_Entry {
 
 journal_add :: proc(j: ^Journal, e: Log_Entry) {
 	c := e
-	c.url, c.doc, c.rule = clone_str(e.url), clone_str(e.doc), clone_str(e.rule)
+	c.url, c.doc, c.rule = strings.clone(e.url), strings.clone(e.doc), strings.clone(e.rule)
 	if len(j.entries) < j.cap {
 		append(&j.entries, c)
 	} else {

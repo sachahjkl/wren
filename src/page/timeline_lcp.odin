@@ -207,13 +207,13 @@ lcp_add_entry :: proc(p: ^Page, t: ^Page_Timeline, c: Lcp_Candidate, now_ms: f64
 	// startTime is renderTime (the paint); loadTime is when an image candidate finished loading. Wren does not gate
 	// renderTime behind Timing-Allow-Origin yet, so renderTime is always the real paint time.
 	e := Tl_Entry{
-		name = clone_str(""),   // LargestContentfulPaint.name is the empty string
+		name = strings.clone(""),   // LargestContentfulPaint.name is the empty string
 		start = now_ms,
 		render_time = now_ms,
 		load_time = c.is_image ? c.load_ms : 0,
 		size = f64(i64(c.area + 0.5)),
-		id = clone_str(id_attr),
-		url = clone_str(c.url),
+		id = strings.clone(id_attr),
+		url = strings.clone(c.url),
 		natural_w = c.natural_w,
 		natural_h = c.natural_h,
 		node = c.node,
@@ -233,14 +233,14 @@ element_timing_consider :: proc(p: ^Page, t: ^Page_Timeline, node: base.Handle, 
 	if v, ok := dom.get_attribute(p.doc, node, "id"); ok { id_attr = v }
 	name := c.is_image ? c.url : "text"
 	e := Tl_Entry{
-		name = clone_str(name),
+		name = strings.clone(name),
 		start = now_ms,   // Element Timing startTime is renderTime
 		render_time = now_ms,
 		load_time = c.is_image ? c.load_ms : 0,
 		size = f64(i64(c.area + 0.5)),
-		id = clone_str(id_attr),
-		identifier = clone_str(identifier),
-		url = clone_str(c.url),
+		id = strings.clone(id_attr),
+		identifier = strings.clone(identifier),
+		url = strings.clone(c.url),
 		natural_w = c.natural_w,
 		natural_h = c.natural_h,
 		intersect_rect = c.rect,
@@ -399,7 +399,7 @@ timeline_layout_shift_check :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 	owned_sources := make([]Tl_Source, len(sources))
 	copy(owned_sources, sources[:])
 	e := Tl_Entry{
-		name = clone_str(""),
+		name = strings.clone(""),
 		start = now_ms,
 		value = value,
 		had_input = had_input,
@@ -448,11 +448,5 @@ timeline_visibility_state :: proc(p: ^Page, hidden: bool) {
 	if t.vis_known && t.vis_hidden == hidden { return }
 	t.vis_known = true
 	t.vis_hidden = hidden
-	timeline_add(p, .Visibility_State, Tl_Entry{name = clone_str(hidden ? "hidden" : "visible"), start = page_now_ms(p)})
-}
-
-@(private)
-clone_str :: proc(s: string) -> string {
-	if s == "" { return "" }
-	return strings.clone(s)
+	timeline_add(p, .Visibility_State, Tl_Entry{name = strings.clone(hidden ? "hidden" : "visible"), start = page_now_ms(p)})
 }

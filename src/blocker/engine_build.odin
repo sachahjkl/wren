@@ -178,7 +178,7 @@ boot_hold_end :: proc(b: ^Blocker) {
 make_ref :: proc(b: ^Blocker, e: ^adblock.Engine, src_path: string) -> ^Engine_Ref {
 	r := new(Engine_Ref)
 	r.engine = e
-	r.src_path = clone_str(src_path)
+	r.src_path = strings.clone(src_path)
 	r.sources = adblock.engine_sources(e)
 	r.texts = make(map[u32]string)
 	for s in r.sources { r.rules += int(s.net + s.cosmetic) }
@@ -383,8 +383,8 @@ compile_done :: proc(data: rawptr) {
 		if l == nil { continue }
 		l.state = .Idle
 		if jl.accepted {
-			delete(l.etag); l.etag = clone_str(jl.etag)
-			delete(l.last_modified); l.last_modified = clone_str(jl.last_modified)
+			delete(l.etag); l.etag = strings.clone(jl.etag)
+			delete(l.last_modified); l.last_modified = strings.clone(jl.last_modified)
 			l.updated, l.checked = now_s, now_s
 			delete(l.error); l.error = ""
 		} else if jl.error != "" {
