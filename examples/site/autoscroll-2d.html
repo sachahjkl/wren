@@ -1,0 +1,11 @@
+<!doctype html>
+<meta charset=utf-8>
+<title>autoscroll in two axes</title>
+<style>
+  body { margin: 0; font: 16px sans-serif }
+  #page { width: 3000px; height: 3000px; background: linear-gradient(90deg, #eee, #cde) }
+  #panel { position: absolute; top: 100px; left: 0; width: 600px; height: 200px; overflow-x: hidden; overflow-y: auto; background: #fff }
+  #panel div { height: 20000px; background: linear-gradient(#fec, #cef) }
+</style>
+<div id=page></div>
+<div id=panel><div>a panel that scrolls down only, on a page that scrolls both ways</div></div>

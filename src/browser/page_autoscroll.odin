@@ -6,8 +6,8 @@ package browser
 //
 // The mechanism is the toolkit's (ui.Autoscroll, ui/autoscroll.odin): a pure, frame-rate-independent curve and state
 // machine. Here Wren drives one session per window against the page's scrollers (smooth_scroll.odin): the scroller
-// under the pointer that can move takes the velocity each frame, chained to its parents and the document as the wheel
-// is. It starts only when the page did not cancel the middle-button mousedown (like Chrome: a script that handles the
+// under the pointer that can move takes the velocity each frame, chained to its parents and the document axis by axis,
+// and the session offers the axes any of them can move. It starts only when the page did not cancel the middle-button mousedown (like Chrome: a script that handles the
 // auxiliary button keeps it), never on a link (that opens a new tab) nor while a drag, a selection, a context menu or a
 // text field is active. about: pages drawn by the toolkit get their own autoscroll from the toolkit; the history tree
 // keeps its own middle-button panning (history_tree.odin runs before this).
@@ -188,9 +188,10 @@ autoscroll_tick :: proc(app: ^App, t: ^Tab) -> bool {
 	dt := pacer_of(app).period_ms / 1000.0
 	if vel != {} {
 		node := ps.is_doc ? base.NIL_HANDLE : ps.node
-		// CSS px/s -> device px this frame; smooth_scroll takes device px (+y toward the end)
+		// CSS px/s -> device px this frame; smooth_scroll takes device px (+y toward the end). Instant: the curve here
+		// is the smoothing; what the scroller has no room for goes to those around it
 		delta := draw.Vec2{f32(f64(vel.x) * dt) * scale, f32(f64(vel.y) * dt) * scale}
-		smooth_scroll_by(app, t, node, delta, 0)   // instant: the curve here is the smoothing
+		scroll_chain_by(app, t, node, delta)
 	}
 	request_frames(app, 2)
 	return true
