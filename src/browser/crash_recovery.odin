@@ -196,13 +196,12 @@ recovery_mark :: proc(dir: string, m: Run_Marker) -> bool {
 @(private = "file")
 profile_file :: proc(dir, name: string) -> string { return strings.concatenate({dir, "/", name}, context.temp_allocator) }
 
-// A file read whole when it exists and is no larger than `max_bytes` (the text is the temporary allocator's).
+// A file read whole when it exists and is no larger than `max_bytes` (the text is the temporary allocator's). Shared for deletion
+// too: a Wren killed while it renamed its snapshot into place keeps that file open, with the right to delete it, until the system
+// has finished ending the process (seconds with a graphics device), and a read that does not share deletion is refused meanwhile.
 read_bounded :: proc(path: string, max_bytes: int) -> (text: string, ok: bool) {
-	fi, err := os.stat(path, context.temp_allocator)
-	if err != nil || fi.type == .Directory || fi.size > i64(max_bytes) { return }
-	data, rerr := os.read_entire_file(path, context.temp_allocator)
-	if rerr != nil { return }
-	return string(data), true
+	data, read := base.file_read_all(path, context.temp_allocator, i64(max_bytes))
+	return string(data), read
 }
 
 // A local-time stamp for a backup's name, "2026-10-28 14-30-07". local_time (history_ui.odin) is neutral (the system's
