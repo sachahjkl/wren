@@ -52,22 +52,6 @@ console_says :: proc(pr: ^Probe, part: string) -> bool {
 	return false
 }
 
-enc :: proc(s: string) -> string {
-	sb := strings.builder_make(context.temp_allocator)
-	hex := "0123456789ABCDEF"
-	for c in transmute([]u8)s {
-	switch {
-	case (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~':
-		strings.write_byte(&sb, c)
-	case:
-		strings.write_byte(&sb, '%')
-		strings.write_byte(&sb, hex[c >> 4])
-		strings.write_byte(&sb, hex[c & 15])
-	}
-	}
-	return strings.to_string(sb)
-}
-
 // A document served by the test server: `body` as HTML, `headers` as "Name: value".
 doc :: proc(origin: string, body: string, headers: ..string) -> string {
 	sb := strings.builder_make(context.temp_allocator)

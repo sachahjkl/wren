@@ -56,23 +56,6 @@ PRELUDE :: `<script>function log(s) { wrenTest.note(String(s)) }</script>`
 
 concat :: proc(parts: ..string) -> string { return strings.concatenate(parts, context.temp_allocator) }
 
-// Percent-encodes `s` for a query value.
-enc :: proc(s: string) -> string {
-	sb := strings.builder_make(context.temp_allocator)
-	hex := "0123456789ABCDEF"
-	for c in transmute([]u8)s {
-		switch {
-		case (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~':
-			strings.write_byte(&sb, c)
-		case:
-			strings.write_byte(&sb, '%')
-			strings.write_byte(&sb, hex[c >> 4])
-			strings.write_byte(&sb, hex[c & 15])
-		}
-	}
-	return strings.to_string(sb)
-}
-
 // The URL of a script with this code (served after `ms`).
 gen :: proc(code: string, ms := 0, extra := "") -> string {
 	return fmt.tprintf("/jsload/gen?ms=%d%s&code=%s", ms, extra, enc(code))

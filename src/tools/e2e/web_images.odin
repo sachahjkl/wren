@@ -152,28 +152,6 @@ current_src :: proc(s: ^Site, id: string) -> string {
 	return attr(s.pr, "data-src")
 }
 
-Get :: struct { done: bool, body: string }
-
-// A plain GET from the browser itself (no document): the test server's counters.
-http_get :: proc(t: ^testing.T, u: string) -> string {
-	g := new(Get, context.temp_allocator)
-	fetch.start(&loader, {
-		request = {url = u, mode = .Cors, credentials = .Omit},
-		on_event = proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
-			g := (^Get)(user)
-			#partial switch ev.kind {
-			case .Done:
-				g.body = strings.clone(string(ev.data), base.process_context().temp_allocator)
-				g.done = true
-			case .Failed:
-				g.done = true
-			}
-		}, user = g, collect = true,
-	})
-	wait_until(t, u, g, proc(g: ^Get) -> bool { return g.done })
-	return g.body
-}
-
 count :: proc(t: ^testing.T, path: string) -> int {
 	n, _ := strconv.parse_int(http_get(t, fmt.tprintf("%s/images/count?path=%s", testenv.url(ORIGIN), path)))
 	return n

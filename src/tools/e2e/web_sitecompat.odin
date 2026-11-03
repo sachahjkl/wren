@@ -25,7 +25,6 @@ DESKTOP_H :: 720
 BAND_H :: 256
 SHEET_MS :: 30                // a stylesheet that takes some time
 IMPORT_MS :: 300              // an @import that takes more than what it is compared with
-HEX := "0123456789ABCDEF"
 
 noted :: proc(pr: ^Probe, text: string) -> bool { return testhost.noted(&pr.section, text) }
 
@@ -43,21 +42,6 @@ index_noted :: proc(pr: ^Probe, text: string) -> int {
 last_noted_with :: proc(pr: ^Probe, prefix: string) -> string {
 	#reverse for l in pr.section.notes { if strings.has_prefix(l, prefix) { return l } }
 	return ""
-}
-
-enc :: proc(s: string) -> string {
-	sb := strings.builder_make(context.temp_allocator)
-	for c in transmute([]u8)s {
-		switch {
-		case (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~':
-			strings.write_byte(&sb, c)
-		case:
-			strings.write_byte(&sb, '%')
-			strings.write_byte(&sb, HEX[c >> 4])
-			strings.write_byte(&sb, HEX[c & 15])
-		}
-	}
-	return strings.to_string(sb)
 }
 
 // A stylesheet served by the test server (after `ms`), with this text.
