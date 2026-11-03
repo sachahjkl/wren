@@ -322,3 +322,28 @@ deep_clone_is_iterative :: proc(t: ^testing.T) {
 	}
 	testing.expect_value(t, levels, N / 5)
 }
+
+// A known element name is the program's string (no copy to make or free), any other a copy of the element's own; the
+// test runner's allocator reports a static name freed or a copied one leaked.
+@(test)
+element_names_static_or_copied :: proc(t: ^testing.T) {
+	d := document_create()
+	defer document_destroy(d)
+	li := create_element(d, "LI")
+	odd := create_element(d, "x-Item")
+	long := create_element(d, "blockquotes")
+	testing.expect_value(t, get(d, li).name, "li")
+	testing.expect(t, get(d, li).name_static && raw_data(get(d, li).name) == raw_data(static_name("li")), "li is the program's string")
+	testing.expect_value(t, get(d, odd).name, "x-item")
+	testing.expect(t, !get(d, odd).name_static && !get(d, long).name_static, "other names are copies")
+	append_child(d, li, odd)
+	copy := clone_node(d, li, true)
+	testing.expect(t, raw_data(get(d, copy).name) == raw_data(get(d, li).name), "a clone shares the static name")
+	set_name(get(d, li), "Svg")   // (an XML element keeps its case: a copy)
+	testing.expect(t, get(d, li).name == "Svg" && !get(d, li).name_static, "renamed to a copy")
+	set_name(get(d, odd), "span")
+	testing.expect(t, get(d, odd).name_static, "renamed to a static name")
+	append_child(d, d.root, li)
+	append_child(d, d.root, copy)
+	append_child(d, d.root, long)
+}

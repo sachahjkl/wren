@@ -50,7 +50,7 @@ xml_create_element :: proc(d: ^dom.Document, uri, prefix, local: string) -> base
 	n.xml = .Element
 	// names keep their case (XML is case-sensitive: an XHTML <DIV> is no div); SVG's and MathML's stay lower case, the
 	// browser's form for them (the bindings give SVG names their case back)
-	if ns != .SVG && ns != .MathML && n.name != local { delete(n.name); n.name = strings.clone(local) }
+	if ns != .SVG && ns != .MathML && n.name != local { dom.set_name(n, local) }
 	return h
 }
 

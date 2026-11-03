@@ -82,6 +82,9 @@ Host_Config :: struct {
 	// Called at the start of every collection, before anything is marked.
 	gc_prologue:      proc(rt: ^Runtime, user: rawptr),
 	gc_prologue_user: rawptr,
+	// Called at the end of every collection, after the finalizers ran and the dead cells were freed, and at the
+	// runtime's teardown after its finalizers (with gc_prologue_user).
+	gc_epilogue:      proc(rt: ^Runtime, user: rawptr),
 	// Host hooks that run script-adjacent policy (the C API's JS_SetCompileStringsHook / dynamic import).
 	// compile_strings: called before eval() / Function() compile a string; false with an exception pending refuses.
 	compile_strings:      proc(ctx: ^Context, source: Value, direct: bool, user: rawptr) -> bool,

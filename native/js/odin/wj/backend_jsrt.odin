@@ -198,6 +198,7 @@ js_string_codePointRange :: proc "c" (ctx: ^Context, this_val: JSValue, argc: i3
 	JS_SetConstructor :: jscapi.JS_SetConstructor
 	JS_SetDynamicImportHook :: jscapi.JS_SetDynamicImportHook
 	JS_SetGCPrologue :: jscapi.JS_SetGCPrologue
+	JS_SetGCEpilogue :: jscapi.JS_SetGCEpilogue
 	JS_SetGCThreshold :: jscapi.JS_SetGCThreshold
 	JS_SetGCThresholdFloor :: jscapi.JS_SetGCThresholdFloor
 	JS_SetHostPromiseRejectionTracker :: jscapi.JS_SetHostPromiseRejectionTracker
@@ -226,6 +227,7 @@ js_string_codePointRange :: proc "c" (ctx: ^Context, this_val: JSValue, argc: i3
 	JS_ThrowTypeError :: jscapi.JS_ThrowTypeError
 	JS_ToBool :: jscapi.JS_ToBool
 	JS_ToCStringLen2 :: jscapi.JS_ToCStringLen2
+	JS_ToStringView :: jscapi.JS_ToStringView
 	JS_ToCStringLenUTF16 :: jscapi.JS_ToCStringLenUTF16
 	JS_ToFloat64 :: jscapi.JS_ToFloat64
 	JS_ToInt32 :: jscapi.JS_ToInt32

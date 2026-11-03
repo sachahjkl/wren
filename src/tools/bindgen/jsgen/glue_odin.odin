@@ -224,7 +224,9 @@ emit_import_glue_odin :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member
 			wl(b, "\tif %s!wj.wj_to_double(ctx, %s, &%s, %v) %s", cond, src, v, restricted, bail)
 			append(&call, fmt.tprintf("auto_cast %s", v))
 		case .String, .Usv:
+			// an argument (held by the caller) read by the import before the call returns
 			flags := make([dynamic]string, context.temp_allocator)
+			append(&flags, "wj.STR_VIEW")
 			if rt.nullable { append(&flags, "wj.STR_NULLABLE") }
 			if webidl.attr_has(rt.attrs, "LegacyNullToEmptyString") || (a.a != nil && webidl.attr_has(a.a.attrs, "LegacyNullToEmptyString")) { append(&flags, "wj.STR_NULL_EMPTY") }
 			if optional && def.kind == .None { append(&flags, "wj.STR_OPTIONAL") }

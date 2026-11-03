@@ -35,6 +35,8 @@ export_JS_GetGCThreshold :: proc "c" (r: ^Runtime) -> uint {return JS_GetGCThres
 export_JS_SetGCThresholdFloor :: proc "c" (r: ^Runtime, floor: uint) {JS_SetGCThresholdFloor(r, floor)}
 @(export, link_name = "JS_SetGCPrologue")
 export_JS_SetGCPrologue :: proc "c" (r: ^Runtime, cb: GC_Prologue, opaque: rawptr) {JS_SetGCPrologue(r, cb, opaque)}
+@(export, link_name = "JS_SetGCEpilogue")
+export_JS_SetGCEpilogue :: proc "c" (r: ^Runtime, cb: GC_Prologue, opaque: rawptr) {JS_SetGCEpilogue(r, cb, opaque)}
 @(export, link_name = "JS_SetInterruptHandler")
 export_JS_SetInterruptHandler :: proc "c" (r: ^Runtime, cb: Interrupt_Handler, opaque: rawptr) {JS_SetInterruptHandler(r, cb, opaque)}
 @(export, link_name = "JS_SetCanBlock")
@@ -113,6 +115,8 @@ export_JS_FreeValueRT :: proc "c" (r: ^Runtime, v: JSValue) {JS_FreeValueRT(r, v
 export_JS_ToCStringLen2 :: proc "c" (c: ^Context, plen: ^uint, val: JSValue, cesu8: bool) -> cstring {return JS_ToCStringLen2(c, plen, val, cesu8)}
 @(export, link_name = "JS_ToCString")
 export_JS_ToCString :: proc "c" (c: ^Context, v: JSValue) -> cstring {return JS_ToCString(c, v)}
+@(export, link_name = "JS_ToStringView")
+export_JS_ToStringView :: proc "c" (c: ^Context, plen: ^uint, val: JSValue) -> [^]u8 {return JS_ToStringView(c, plen, val)}
 @(export, link_name = "JS_FreeCString")
 export_JS_FreeCString :: proc "c" (c: ^Context, ptr: cstring) {JS_FreeCString(c, ptr)}
 @(export, link_name = "JS_ToCStringLenUTF16")
