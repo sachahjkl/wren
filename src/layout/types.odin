@@ -206,6 +206,7 @@ Box :: struct {
 	items, lines: [2]i32,           // Ifc: [start, end) into Layout.inline_items / Layout.lines
 	cur_anon:  i32,                 // building: the anonymous box that collects the current run of children
 	fi:        i32,                 // font of the box's own text (index into Layout.fonts)
+	mc:        i32,                 // a multi-column container: its record in Layout.mc_records (NONE: none yet)
 	// box model, device px: top, right, bottom, left
 	margin, border, padding: [4]f32,
 	auto_l, auto_r, auto_t, auto_b: bool,
@@ -479,7 +480,7 @@ Layout :: struct {
 	frame_ifcs:   [dynamic]Frame_Saved_Ifc,
 	frame_lines:  [dynamic]f32,
 	frame_frags:  [dynamic]Frame_Saved_Frag,
-	mc_records:   map[i32]Mc_Record,       // what each multi-column container found at its last layout
+	mc_records:   [dynamic]Mc_Record,      // what each multi-column container found at its last layout (Box.mc)
 	flow_frags:   [dynamic]Flow_Frag,      // the columns of them all, in layout coordinates
 }
 

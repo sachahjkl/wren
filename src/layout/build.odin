@@ -93,7 +93,7 @@ new_box :: proc(c: ^Ctx, kind: Box_Kind, cs: ^style.Computed, node: base.Handle,
 	append(&c.l.boxes, Box{
 		node = node, cs = cs, kind = kind, parent = parent, first = NONE, last = NONE, next = NONE, pos_ref = parent,
 		cb = NONE, abs_first = NONE, abs_last = NONE, abs_next = NONE, static_ref = NONE, ifc_root = NONE,
-		cur_anon = NONE, fi = -1, baseline = -1, last_baseline = -1, clip_owner = NONE, space = 0, clip = NONE,
+		cur_anon = NONE, fi = -1, mc = NONE, baseline = -1, last_baseline = -1, clip_owner = NONE, space = 0, clip = NONE,
 		content_space = 0, content_clip = NONE, group = NONE, scroll_space = NONE, depth = depth,
 		colspan = 1, rowspan = 1, layer = NONE,
 	})
