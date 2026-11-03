@@ -201,6 +201,34 @@ wjr_Node_get_textContent :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSV
 @(export, link_name = "wjr_Node_set_textContent")
 wjr_Node_set_textContent :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return node_text_set(ctx, t, v, true) }
 
+// ownerDocument: an Attr's node document (attr_document), else the browser's
+@(export, link_name = "wjr_Node_get_ownerDocument")
+wjr_Node_get_ownerDocument :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	o := wj.wj_this(ctx, this_val, ifc("Node"))
+	if o == nil { return wj.EXCEPTION }
+	if is_attr(this_val) { return attr_document(ctx, (^wj.Dom_Impl)(o.impl)) }
+	return wj.wj_wrap_node(ctx, wj.wr_Node_ownerDocument(o.handle))
+}
+
+// cloneNode(deep): an Attr is copied here (attr_clone), any other node by the browser
+@(export, link_name = "wjr_Node_cloneNode")
+wjr_Node_cloneNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	o := wj.wj_this(ctx, this_val, ifc("Node"))
+	if o == nil { return wj.EXCEPTION }
+	if is_attr(this_val) {
+		a := (^wj.Dom_Impl)(o.impl)
+		doc := attr_document(ctx, a)
+		defer wj.JS_FreeValue(ctx, doc)
+		return attr_clone(ctx, a, doc)
+	}
+	deep := wj.JS_ToBool(ctx, wj.arg(argc, argv, 0)) != 0
+	r: u64
+	if st := wj.wr_Node_cloneNode(o.handle, deep ? 1 : 0, &r); st < 0 { return wj.wj_throw_status(ctx, i32(st), "Node.cloneNode") }
+	return wj.wj_wrap_node(ctx, r)
+}
+
 @(export, link_name = "wjr_Node_get_childNodes")
 wjr_Node_get_childNodes :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	if is_attr(this_val) { return wj.dom_static_list_of(ctx, nil, 0) }
@@ -234,6 +262,17 @@ adopt_for :: proc "contextless" (ctx: ^wj.Context, into: u64, node: ^u64) -> boo
 	return true
 }
 
+// A node an insertion is given (`v`, its wrapper): of another document, it moves here first (adopt_for), but a document is
+// never inserted: the insertion's checks refuse it (HierarchyRequestError) before anything would move.
+@(private = "file")
+adopt_to_insert :: proc "contextless" (ctx: ^wj.Context, into: u64, v: wj.JSValue, node: ^u64) -> bool {
+	if !wj.wj_same_doc(into, node^) && wj.wj_unwrap(v, ifc("Document")) != nil {
+		wj.wj_throw_dom(ctx, "HierarchyRequestError", "A document cannot be inserted into another node.")
+		return false
+	}
+	return adopt_for(ctx, into, node)
+}
+
 // A reference child of another document is not a child of this node.
 @(private = "file")
 not_a_child :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
@@ -257,7 +296,7 @@ mutate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]
 		if argc < 1 { return wj.wj_throw_arity(ctx, "Node.appendChild", 1, argc) }
 		if parent == 0 { return wj.wj_throw_dom(ctx, "HierarchyRequestError", "This node type does not support this method.") }
 		if !wj.dom_node_arg(ctx, argv[0], &node, false, "appendChild") { return wj.EXCEPTION }
-		if !adopt_for(ctx, u64(parent), &node) { return wj.EXCEPTION }
+		if !adopt_to_insert(ctx, u64(parent), argv[0], &node) { return wj.EXCEPTION }
 		st = jsb.host(&nothing, api_decl.Node_preInsert, wj.wr_Node_preInsert, parent, api_decl.Node(node), api_decl.Node(0))
 		if st != .None { return wj.wj_throw_status(ctx, i32(st), "Node.appendChild") }
 	case .Insert_Before:
@@ -265,7 +304,7 @@ mutate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]
 		if !wj.dom_node_arg(ctx, argv[0], &node, false, "insertBefore") { return wj.EXCEPTION }
 		if !wj.dom_node_arg(ctx, argv[1], &child, true, "insertBefore") { return wj.EXCEPTION }
 		if child != 0 && !wj.wj_same_doc(u64(parent), child) { return not_a_child(ctx) }
-		if !adopt_for(ctx, u64(parent), &node) { return wj.EXCEPTION }
+		if !adopt_to_insert(ctx, u64(parent), argv[0], &node) { return wj.EXCEPTION }
 		st = jsb.host(&nothing, api_decl.Node_preInsert, wj.wr_Node_preInsert, parent, api_decl.Node(node), api_decl.Node(child))
 		if st != .None { return wj.wj_throw_status(ctx, i32(st), "Node.insertBefore") }
 	case .Replace:
@@ -273,7 +312,7 @@ mutate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]
 		if !wj.dom_node_arg(ctx, argv[0], &node, false, "replaceChild") { return wj.EXCEPTION }
 		if !wj.dom_node_arg(ctx, argv[1], &child, false, "replaceChild") { return wj.EXCEPTION }
 		if !wj.wj_same_doc(u64(parent), child) { return not_a_child(ctx) }
-		if !adopt_for(ctx, u64(parent), &node) { return wj.EXCEPTION }
+		if !adopt_to_insert(ctx, u64(parent), argv[0], &node) { return wj.EXCEPTION }
 		st = jsb.host(&nothing, api_decl.Node_replaceChildChecked, wj.wr_Node_replaceChildChecked, parent, api_decl.Node(node), api_decl.Node(child))
 		if st != .None { return wj.wj_throw_status(ctx, i32(st), "Node.replaceChild") }
 		return wj.JS_DupValue(ctx, argv[1])
@@ -308,7 +347,7 @@ insert_items :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, arg
 	for i in 0 ..< argc {
 		if n := wj.wj_unwrap(argv[i], ifc("Node")); n != nil && n.handle != 0 {
 			h := n.handle
-			if !adopt_for(ctx, o.handle, &h) { return wj.EXCEPTION }
+			if !adopt_to_insert(ctx, o.handle, argv[i], &h) { return wj.EXCEPTION }
 			if !pack_u8(&b, 0) || !pack_le(&b, h, 8) { return wj.JS_ThrowOutOfMemory(ctx) }
 			continue
 		}
@@ -620,6 +659,7 @@ wjr_Document_importNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, arg
 	self := wj.wj_this(ctx, this_val, ifc("Document"))
 	if self == nil { return wj.EXCEPTION }
 	if argc < 1 { return wj.wj_throw_arity(ctx, "Document.importNode", 1, argc) }
+	if is_attr(argv[0]) { return attr_clone(ctx, (^wj.Dom_Impl)(wj.obj_impl(argv[0])), this_val) }
 	node: u64
 	if !wj.dom_node_arg(ctx, argv[0], &node, false, "importNode") { return wj.EXCEPTION }
 	// (Node node, optional (boolean or ImportNodeOptions) options): {selfOnly} or the legacy `deep`
@@ -1263,8 +1303,9 @@ wjr_DOMStringMap_named_keys :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, arra
 // ---- Attr and NamedNodeMap ----
 //
 // An Attr is a Dom_Impl of kind DOM_ATTR: `name` its qualified name followed by its namespace URI (`n`: the URI's length
-// + 1, 0 for the null namespace), `node` its element (0: detached, its value in `extra`), `owner` the element's wrapper.
-// Its namespace and local name designate its attribute (DOM: an element has one attribute of each). One removed by
+// + 1, 0 for the null namespace), `node` its element (0: detached, its value in `extra`), `owner` the wrapper of the element
+// it is or was last on, else of the document that made it: its node document follows (attr_document), an element adopted
+// with it. Its namespace and local name designate its attribute (DOM: an element has one attribute of each). One removed by
 // another way than the Attr (removeAttribute...) is found gone when next used (attr_element), with the value it had
 // when it was last read. A NamedNodeMap (DOM_ATTRS) keeps one Attr per attribute in `extra`, a null-prototype object
 // keyed by the namespace and the local name (attr_key).
@@ -1317,6 +1358,27 @@ attr_index_on :: proc(a: ^wj.Dom_Impl, el: u64) -> i32 {
 attr_element :: proc(a: ^wj.Dom_Impl) -> u64 {
 	if a.node != 0 && attr_index_on(a, a.node) < 0 { a.node = 0 }
 	return a.node
+}
+
+// The node document of an Attr (a wrapper, or null): its element's, else the document's that made it (`owner`).
+@(private = "file")
+attr_document :: proc(ctx: ^wj.Context, a: ^wj.Dom_Impl) -> wj.JSValue {
+	o := wj.wj_unwrap(a.owner, ifc("Node"))
+	if o == nil { return wj.NULL }
+	if inherits(i32(o.iface), ifc("Document")) { return wj.JS_DupValue(ctx, a.owner) }
+	return wj.wj_wrap_node(ctx, wj.wr_Node_ownerDocument(o.handle))
+}
+
+// A copy of an Attr (cloneNode, importNode): its namespace, qualified name and value, detached, of document `doc`.
+@(private = "file")
+attr_clone :: proc(ctx: ^wj.Context, a: ^wj.Dom_Impl, doc: wj.JSValue) -> wj.JSValue {
+	v := attr_value(ctx, a)
+	c := attr_new(ctx, doc, 0, wj.dom_name(a), attr_namespace(a))
+	if wj.is_exception(c) { wj.JS_FreeValue(ctx, v); return c }
+	cd := (^wj.Dom_Impl)(wj.obj_impl(c))
+	wj.JS_FreeValue(ctx, cd.extra)
+	cd.extra = v
+	return c
 }
 
 // The value of an Attr: its attribute's (kept in `extra` for when it goes), else the one it keeps.
@@ -1723,10 +1785,11 @@ wjr_Document_createAttribute :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 		if html { name[i] = lower_ascii(name[i]) }
 	}
 	if !ok { return wj.wj_throw_dom(ctx, "InvalidCharacterError", "The localName provided is not a valid name.") }
-	return attr_new(ctx, wj.UNDEFINED, 0, string(name[:s.len]), nil)
+	return attr_new(ctx, this_val, 0, string(name[:s.len]), nil)
 }
 
-// createAttributeNS(namespace, qualifiedName): an Attr of that namespace (the empty string: the null namespace).
+// createAttributeNS(namespace, qualifiedName): an Attr of that namespace (the empty string: the null namespace), the
+// qualified name checked as DOM "validate and extract" does (Document_validateAttributeNS).
 @(export, link_name = "wjr_Document_createAttributeNS")
 wjr_Document_createAttributeNS :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	context = jsb.glue_context()
@@ -1737,8 +1800,9 @@ wjr_Document_createAttributeNS :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 	defer wj.wj_str_free(ctx, &ns)
 	if !to_str(ctx, argv[1], &name) { return wj.EXCEPTION }
 	defer wj.wj_str_free(ctx, &name)
-	if name.len == 0 { return wj.wj_throw_dom(ctx, "InvalidCharacterError", "The qualified name provided is not a valid name.") }
-	return attr_new(ctx, wj.UNDEFINED, 0, str_view(name), namespace_of(ns))
+	st := jsb.host(&nothing, api_decl.Document_validateAttributeNS, wj.wr_Document_validateAttributeNS, namespace_of(ns), str_view(name))
+	if st != .None { return wj.wj_throw_status(ctx, i32(st), "Document.createAttributeNS") }
+	return attr_new(ctx, this_val, 0, str_view(name), namespace_of(ns))
 }
 
 // ---- innerHTML / outerHTML setters: (TrustedHTML or [LegacyNullToEmptyString] DOMString) ----

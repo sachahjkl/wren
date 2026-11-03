@@ -3199,6 +3199,19 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Document_createElementNSChecked :: proc(c: ^Call, namespace: Maybe(string), qualified_name: string) -> (u64, Api_Error)`
 
+### `Document_validateAttributeNS`
+
+```
+void Document_validateAttributeNS(optional string namespace, string qualified_name) raises
+```
+
+document.createAttributeNS(namespace, qualifiedName)'s checks: Invalid_Character, Namespace as DOM "validate and
+extract" (the engine makes the Attr).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_validateAttributeNS :: proc(c: ^Call, namespace: Maybe(string), qualified_name: string) -> Api_Error`
+
 ### `Document_createDocumentFragment`
 
 ```

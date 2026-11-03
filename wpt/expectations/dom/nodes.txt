@@ -1013,10 +1013,10 @@
 	Adopting a Document should throw.: PASS
 	Adopting an Element called ':good:times:' should work.: PASS
 	Adopting an Element called 'x<' should work.: PASS
-	Adopting an Element should adopt its Attr nodes.: FAIL
-	Adopting an Element should adopt its namespaced attributes.: FAIL
+	Adopting an Element should adopt its Attr nodes.: PASS
+	Adopting an Element should adopt its namespaced attributes.: PASS
 	Explicitly adopting a DocumentType should work.: PASS
-	Inserting an Element into another document should adopt its Attr nodes.: FAIL
+	Inserting an Element into another document should adopt its Attr nodes.: PASS
 /dom/nodes/Document-base-url-not-live.window.html: OK
 	about:blank base URL is not live: PASS
 	about:srcdoc base URL is not live: PASS
@@ -2992,7 +2992,7 @@
 	Getting implementation off the same document: PASS
 /dom/nodes/Document-importNode.html: OK
 	False 'deep' argument.: PASS
-	Import an Attr node with namespace/prefix correctly.: FAIL
+	Import an Attr node with namespace/prefix correctly.: PASS
 	No 'deep' argument.: PASS
 	True 'deep' argument.: PASS
 	Undefined 'deep' argument.: PASS
@@ -6164,7 +6164,7 @@
 /dom/nodes/Node-appendChild.html: OK
 	Adopting a non-orphan: PASS
 	Adopting an orphan: PASS
-	Appending a document: FAIL
+	Appending a document: PASS
 	Appending null to a comment: PASS
 	Appending null to a doctype: PASS
 	Appending null to a text node: PASS
@@ -6214,8 +6214,8 @@
 	cloned <use>'s xlink:href attribute should have the right properties: PASS
 /dom/nodes/Node-cloneNode.html: OK
 	Node with custom prototype: PASS
-	createAttribute: FAIL
-	createAttributeNS: FAIL
+	createAttribute: PASS
+	createAttributeNS: PASS
 	createComment: PASS
 	createDocumentFragment: PASS
 	createElement with attributes: PASS
@@ -6530,7 +6530,7 @@
 	Node.lookupPrefix 8: PASS
 	Node.lookupPrefix 9: PASS
 /dom/nodes/Node-mutation-adoptNode.html: OK
-	Adopting an element into a different document update's the element's owner doc as well as the owner docs of it's attributes: FAIL
+	Adopting an element into a different document update's the element's owner doc as well as the owner docs of it's attributes: PASS
 	simple append of foreign div with text: PASS
 /dom/nodes/Node-nodeName-xhtml.xhtml: OK
 	For Comment nodes, nodeName should return "#comment".: PASS
@@ -11073,8 +11073,8 @@
 	attachShadow() on an adopted built-in host: shadow root uses the node document realm: PASS
 	attachShadow() on an adopted custom element host: shadow root uses the node document realm: PASS
 /dom/nodes/attributes-namednodemap-cross-document.window.html: OK
-	Moving an attribute between documents: FAIL
-	Replacing an attribute across documents: FAIL
+	Moving an attribute between documents: PASS
+	Replacing an attribute across documents: PASS
 /dom/nodes/attributes-namednodemap.html: OK
 	an attribute set by setAttribute should be accessible as a field on the `attributes` field of an Element: PASS
 	an attribute with a null namespace should be accessible as a field on the `attributes` field of an Element: PASS
@@ -11839,7 +11839,7 @@
 	Valid and invalid characters in createElement.: PASS
 	Valid and invalid characters in createElementNS and createDocument.: PASS
 	Valid and invalid characters in setAttribute, toggleAttribute, and createAttribute.: PASS
-	Valid and invalid characters in setAttributeNS and createAttributeNS.: FAIL
+	Valid and invalid characters in setAttributeNS and createAttributeNS.: PASS
 /dom/nodes/namespaced-attribute-mutations.html: OK
 	A namespaced multiple attribute does not reset a select: PASS
 	A namespaced open attribute does not fire a toggle event: PASS

@@ -1570,14 +1570,6 @@ wjg_Node_get_isConnected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) ->
 	return wj.JS_NewBool(ctx, r != 0)
 }
 
-// Node.ownerDocument -> dom.Node_ownerDocument
-wjg_Node_get_ownerDocument :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
-	self := wj.wj_this(ctx, this_val, 245)
-	if self == nil { return wj.EXCEPTION }
-	r := wj.wr_Node_ownerDocument(self.handle)
-	return wj.wj_wrap_node(ctx, r)
-}
-
 // Node.parentNode -> dom.Node_parentNode
 wjg_Node_get_parentNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 245)
@@ -1640,18 +1632,6 @@ wjg_Node_normalize :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i3
 	if self == nil { return wj.EXCEPTION }
 	wj.wr_Node_normalize(self.handle)
 	return wj.UNDEFINED
-}
-
-// Node.cloneNode() -> dom.Node_cloneNode
-wjg_Node_cloneNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	self := wj.wj_this(ctx, this_val, 245)
-	if self == nil { return wj.EXCEPTION }
-	a0 := false
-	if false || !wj.is_undefined(wj.arg(argc, argv, 0)) { a0 = wj.JS_ToBool(ctx, wj.arg(argc, argv, 0)) != 0 }
-	r: u64
-	st := wj.wr_Node_cloneNode(self.handle, (1 if a0 else 0), &r)
-	if st < 0 { return wj.wj_throw_status(ctx, i32(st), "Node.cloneNode") }
-	return wj.wj_wrap_node(ctx, r)
 }
 
 // Node.isEqualNode() -> dom.Node_isEqualNode
@@ -26688,7 +26668,7 @@ wj_install_bindings :: proc "c" () {
 	m_Node[13] = wj.Member{name = "nodeName", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Node_get_nodeName, set = nil}
 	m_Node[14] = wj.Member{name = "baseURI", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Node_get_baseURI, set = nil}
 	m_Node[15] = wj.Member{name = "isConnected", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Node_get_isConnected, set = nil}
-	m_Node[16] = wj.Member{name = "ownerDocument", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Node_get_ownerDocument, set = nil}
+	m_Node[16] = wj.Member{name = "ownerDocument", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Node_get_ownerDocument, set = nil}
 	m_Node[17] = wj.Member{name = "getRootNode", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_Node_getRootNode}
 	m_Node[18] = wj.Member{name = "parentNode", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Node_get_parentNode, set = nil}
 	m_Node[19] = wj.Member{name = "parentElement", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Node_get_parentElement, set = nil}
@@ -26701,7 +26681,7 @@ wj_install_bindings :: proc "c" () {
 	m_Node[26] = wj.Member{name = "nodeValue", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Node_get_nodeValue, set = wjr_Node_set_nodeValue}
 	m_Node[27] = wj.Member{name = "textContent", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Node_get_textContent, set = wjr_Node_set_textContent}
 	m_Node[28] = wj.Member{name = "normalize", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjg_Node_normalize}
-	m_Node[29] = wj.Member{name = "cloneNode", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjg_Node_cloneNode}
+	m_Node[29] = wj.Member{name = "cloneNode", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_Node_cloneNode}
 	m_Node[30] = wj.Member{name = "isEqualNode", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjg_Node_isEqualNode}
 	m_Node[31] = wj.Member{name = "isSameNode", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjg_Node_isSameNode}
 	m_Node[32] = wj.Member{name = "DOCUMENT_POSITION_DISCONNECTED", kind = wj.M_CONSTANT, value = 1}
