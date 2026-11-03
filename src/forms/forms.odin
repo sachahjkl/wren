@@ -72,6 +72,7 @@ Control :: struct {
 	dirty_selected:  bool,
 	selected_attr:   bool,
 	selected_init:   bool,
+	select_settled:  bool,        // a select: its selectedness setting algorithm ran since what asks for it last happened (values.odin)
 	// files
 	files:           [dynamic]File,
 	// validation

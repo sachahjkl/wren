@@ -639,6 +639,40 @@ select_options_and_selectedness :: proc(t: ^testing.T) {
 	testing.expect_value(t, selected_index(f, s), 1)   // the disabled first option is skipped
 }
 
+// The selectedness setting algorithm runs on what asks for it (an option in or out, the selected, multiple and size
+// attributes, option.selected, a reset), not at every look: selectedIndex = -1 stays until then.
+@(test)
+select_selectedness_on_its_events :: proc(t: ^testing.T) {
+	x := fx_make(`<form id=fm><select id=s><option id=a selected>A</option><option id=b>B</option></select></form>`)
+	defer fx_destroy(x)
+	f := x.f
+	s := id(x, "s")
+	b := id(x, "b")
+	testing.expect_value(t, selected_index(f, s), 0)
+	dom.set_attribute(x.doc, b, "selected", "")
+	testing.expect_value(t, selected_index(f, s), 1)   // the attribute selects B (not dirty), and A is deselected
+	dom.remove_attribute(x.doc, b, "selected")
+	testing.expect_value(t, selected_index(f, s), 0)   // and its removal leaves none: the first again
+	set_selected_index(f, s, -1)
+	testing.expect_value(t, selected_index(f, s), -1)
+	testing.expect_value(t, selected_index(f, s), -1)   // reading it again resets nothing
+	dom.set_attribute_ns(x.doc, b, dom.attr_ns_of(x.doc, "urn:x"), "x:selected", "")   // another namespace's selected is no selected attribute
+	dom.set_attribute_ns(x.doc, s, dom.attr_ns_of(x.doc, "urn:x"), "x:size", "1")
+	testing.expect_value(t, selected_index(f, s), -1)
+	dom.set_attribute(x.doc, s, "size", "1")
+	note_attribute(f, s, "size")
+	testing.expect_value(t, selected_index(f, s), 0)   // the size attribute asks for it
+	set_selected_index(f, s, -1)
+	dom.remove_child(x.doc, s, b)
+	note_tree_change(f, b, s)
+	testing.expect_value(t, selected_index(f, s), 0)   // an option out of the select asks for it
+	set_option_selected(f, id(x, "a"), false)
+	testing.expect_value(t, selected_index(f, s), 0)   // option.selected asks for it: a drop-down selects its first again
+	set_selected_index(f, s, -1)
+	reset(f, id(x, "fm"))
+	testing.expect_value(t, selected_index(f, s), 0)   // so does a reset
+}
+
 @(test)
 pseudo_class_state :: proc(t: ^testing.T) {
 	x := fx_make(`<form id=f><input id=p placeholder=hint><input id=r type=number min=1 max=5 value=9><input id=cb type=checkbox checked>

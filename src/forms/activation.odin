@@ -540,6 +540,7 @@ reset_control :: proc(f: ^Forms, h: base.Handle) {
 			oc.selected_init = true
 			oc.dirty_selected = false
 		}
+		select_unsettle(f, h)
 		select_run_selectedness(f, h)
 	case .Output:
 	case .None, .Button, .Option, .Optgroup, .Fieldset, .Legend, .Form, .Label, .Object, .Datalist, .Dialog:

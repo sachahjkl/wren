@@ -364,7 +364,6 @@ set_value :: proc(f: ^Forms, h: base.Handle, v: string, by_user := false) -> Err
 			oc.dirty_selected = true
 			if oc.selected { found = true }
 		}
-		select_run_selectedness(f, h, false)
 		changed_widely(f)
 	case .Option, .Button:
 		dom.set_attribute(f.doc, h, "value", v)
@@ -565,19 +564,26 @@ option_label :: proc(f: ^Forms, o: base.Handle) -> string {
 	return option_text(f, o)
 }
 
+// An option's selectedness from its selected attribute (§4.10.10: added or removed, it sets a selectedness that is not
+// dirty): `asks` when that changed it, or when the option is seen for the first time (one the parser inserted).
 @(private)
-sync_option :: proc(f: ^Forms, o: base.Handle) -> ^Control {
-	c := control_of(f, o)
+sync_option :: proc(f: ^Forms, o: base.Handle) -> (c: ^Control, asks: bool) {
+	c = control_of(f, o)
 	present := has_attr(element(f, o), "selected")
 	if !c.selected_init {
 		c.selected_init = true
 		c.selected = present
 		c.selected_attr = present
-	} else if present != c.selected_attr {
-		c.selected_attr = present
-		if !c.dirty_selected { c.selected = present }
+		return c, true
 	}
-	return c
+	if present != c.selected_attr {
+		c.selected_attr = present
+		if !c.dirty_selected && c.selected != present {
+			c.selected = present
+			return c, true
+		}
+	}
+	return c, false
 }
 
 @(private)
@@ -601,17 +607,32 @@ display_size :: proc(f: ^Forms, sel: base.Handle) -> int {
 
 is_dropdown :: proc(f: ^Forms, sel: base.Handle) -> bool { return !has_attr(element(f, sel), "multiple") && display_size(f, sel) == 1 }
 
-// The selectedness setting algorithm (§4.10.7): a single-selection drop-down always has exactly one option selected
-// (the first enabled one by default); two or more selected options in a single select keep only the last.
+// The selectedness setting algorithm (§4.10.7), run when something asked for it since it last ran: an option inserted or
+// removed (note_tree_change; one the parser inserted is seen here first), an option's selectedness set by its selected
+// attribute or by option.selected, the multiple or size attribute (note_attribute), a reset. Not otherwise: a script's
+// selectedIndex = -1 leaves no option selected until then. A single-selection drop-down gets exactly one option
+// selected (the first enabled one by default); of two or more selected options in a single select, the one its
+// attribute just selected stays, else the last.
 @(private)
-select_run_selectedness :: proc(f: ^Forms, sel: base.Handle, keep_first := false) {
+select_run_selectedness :: proc(f: ^Forms, sel: base.Handle) {
+	sc := control_of(f, sel)
 	opts := select_options(f, sel)
-	if has_attr(element(f, sel), "multiple") {
-		for o in opts { sync_option(f, o) }
-		return
+	chosen := base.NIL_HANDLE   // what its selected attribute just selected
+	for o in opts {
+		c, asks := sync_option(f, o)
+		if !asks { continue }
+		sc.select_settled = false
+		if c.selected { chosen = o }
 	}
+	if sc.select_settled { return }
+	sc.select_settled = true
+	if has_attr(element(f, sel), "multiple") { return }
 	selected := 0
-	for o in opts { if sync_option(f, o).selected { selected += 1 } }
+	for o in opts {
+		c := control_of(f, o)
+		if chosen != base.NIL_HANDLE && o != chosen { c.selected = false }
+		if c.selected { selected += 1 }
+	}
 	if selected == 0 && display_size(f, sel) == 1 {
 		for o in opts {
 			if !is_disabled(f, o) { control_of(f, o).selected = true; return }
@@ -620,9 +641,30 @@ select_run_selectedness :: proc(f: ^Forms, sel: base.Handle, keep_first := false
 		// keep the last selected (tree order)
 		last := -1
 		for o, i in opts { if control_of(f, o).selected { last = i } }
-		if keep_first { for o, i in opts { if control_of(f, o).selected { last = i; break } } }
 		for o, i in opts { if i != last { control_of(f, o).selected = false } }
 	}
+}
+
+// Something that asks `sel` for its selectedness setting algorithm happened: it runs at the next look at its options.
+@(private)
+select_unsettle :: proc(f: ^Forms, sel: base.Handle) {
+	if c := control_peek(f, sel); c != nil { c.select_settled = false }
+}
+
+// `node` was inserted into `parent` or removed from it: an option (or an optgroup of options) going into or out of a
+// select's list of options asks it for its selectedness setting algorithm.
+note_tree_change :: proc(f: ^Forms, node, parent: base.Handle) {
+	n := dom.get(f.doc, node)
+	if n == nil || n.kind != .Element || (n.name != "option" && n.name != "optgroup") { return }
+	sel := parent
+	if p := dom.get(f.doc, parent); p != nil && p.kind == .Element && p.name == "optgroup" { sel = p.parent }
+	if s := dom.get(f.doc, sel); s != nil && s.kind == .Element && s.name == "select" { select_unsettle(f, sel) }
+}
+
+// An attribute (no namespace) changed: a select's multiple or size asks it for its selectedness setting algorithm.
+note_attribute :: proc(f: ^Forms, el: base.Handle, name: string) {
+	if name != "multiple" && name != "size" { return }
+	if n := dom.get(f.doc, el); n != nil && n.kind == .Element && n.name == "select" { select_unsettle(f, el) }
 }
 
 // The select's options with their selectedness up to date.
@@ -633,20 +675,25 @@ select_options_synced :: proc(f: ^Forms, sel: base.Handle) -> []base.Handle {
 
 option_selected :: proc(f: ^Forms, o: base.Handle) -> bool {
 	if sel := option_select(f, o); sel != base.NIL_HANDLE { select_run_selectedness(f, sel) }
-	return sync_option(f, o).selected
+	c, _ := sync_option(f, o)
+	return c.selected
 }
 
-// option.selected setter (and user choice): dirtiness set; in a single select the others are deselected.
+// option.selected setter (and user choice): dirtiness set; in a single select the others are deselected; the option asks
+// its select for a reset (a single drop-down left without a selected option selects its first again).
 set_option_selected :: proc(f: ^Forms, o: base.Handle, v: bool) {
 	sel := option_select(f, o)
 	if sel != base.NIL_HANDLE { select_run_selectedness(f, sel) }
-	c := sync_option(f, o)
+	c, _ := sync_option(f, o)
 	c.selected = v
 	c.dirty_selected = true
 	if sel != base.NIL_HANDLE && v && !has_attr(element(f, sel), "multiple") {
-		for other in select_options(f, sel) { if other != o { sync_option(f, other).selected = false } }
+		for other in select_options(f, sel) { if other != o { oc, _ := sync_option(f, other); oc.selected = false } }
 	}
-	if sel != base.NIL_HANDLE { select_run_selectedness(f, sel) }
+	if sel != base.NIL_HANDLE {
+		select_unsettle(f, sel)
+		select_run_selectedness(f, sel)
+	}
 	changed_widely(f)
 }
 

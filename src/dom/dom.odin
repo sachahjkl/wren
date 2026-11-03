@@ -363,7 +363,7 @@ detach :: proc(d: ^Document, h: base.Handle) {
 	d.tree_version += 1
 	journal_record(d, .Remove, h, old_parent, prev = old_prev, next = old_next, watch = watch)
 	if len(d.shadow_roots) > 0 { shadow_removed(d, h, old_parent) }
-	if d.hooks.removed != nil { d.hooks.removed(d.hooks.user, d) }
+	if d.hooks.removed != nil { d.hooks.removed(d.hooks.user, d, h, old_parent) }
 }
 
 // DOM "adopt": `h` and its shadow-including descendants get `doc` as node document (a document of its own, NIL: the
