@@ -1,7 +1,7 @@
 # web-platform-tests expectations of Wren for html/infrastructure/safe-passing-of-structured-data/shared-array-buffers, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/blob-data.https.html: TIMEOUT
-	blob worker: postMessaging to a dedicated HTTP sub-worker allows them to see each others' modifications: FAIL
+	blob worker: postMessaging to a dedicated HTTP sub-worker allows them to see each others' modifications: PASS
 	blob worker: postMessaging to a dedicated blob sub-worker allows them to see each others' modifications: PASS
 	blob worker: self.crossOriginIsolated: PASS
 	blob worker: self.isSecureContext: PASS
@@ -23,7 +23,7 @@
 	postMessaging to a dedicated sub-worker allows them to see each others' modifications: FAIL
 /html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/nested-worker-success.https.html: OK
 	Bonus: self.crossOriginIsolated: PASS
-	postMessaging to a dedicated sub-worker allows them to see each others' modifications: FAIL
+	postMessaging to a dedicated sub-worker allows them to see each others' modifications: PASS
 /html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/no-coop-coep.https.any.html: OK
 	Bonus: self.crossOriginIsolated: PASS
 	SharedArrayBuffer constructor does not exist without COOP+COEP: PASS
@@ -61,30 +61,30 @@
 /html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-failure.https.html: TIMEOUT
 	SharedArrayBuffer and a cross-site <iframe>: TIMEOUT
 /html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-iframe-messagechannel.https.html: TIMEOUT
-	postMessaging to a cross-site iframe via MessageChannel should fail: NOTRUN
-	postMessaging to a same-origin iframe via MessageChannel allows them to see each others' modifications: FAIL
-	postMessaging to a same-site iframe via MessageChannel should fail: TIMEOUT
-	postMessaging with a MessageChannel that's been cross-site should succeed: NOTRUN
+	postMessaging to a cross-site iframe via MessageChannel should fail: PASS
+	postMessaging to a same-origin iframe via MessageChannel allows them to see each others' modifications: PASS
+	postMessaging to a same-site iframe via MessageChannel should fail: PASS
+	postMessaging with a MessageChannel that's been cross-site should succeed: TIMEOUT
 /html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-messagechannel-success.https.html: OK
-	postMessaging to a dedicated worker via MessageChannel allows them to see each others' modifications: FAIL
+	postMessaging to a dedicated worker via MessageChannel allows them to see each others' modifications: PASS
 /html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-serviceworker-failure.https.html: OK
 	SharedArrayBuffer cannot cross agent clusters, service worker edition: FAIL
 /html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-sharedworker-failure.https.html: TIMEOUT
 	SharedArrayBuffer cannot cross agent clusters, shared worker edition: TIMEOUT
-/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-simple-success.https.html: OK
-	postMessaging to a dedicated worker allows them to see each others' modifications with BigInt64Array: FAIL
-	postMessaging to a dedicated worker allows them to see each others' modifications with BigUint64Array: FAIL
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-simple-success.https.html: TIMEOUT
+	postMessaging to a dedicated worker allows them to see each others' modifications with BigInt64Array: PASS
+	postMessaging to a dedicated worker allows them to see each others' modifications with BigUint64Array: PASS
 	postMessaging to a dedicated worker allows them to see each others' modifications with DataView: PASS
-	postMessaging to a dedicated worker allows them to see each others' modifications with Float16Array: FAIL
-	postMessaging to a dedicated worker allows them to see each others' modifications with Float32Array: FAIL
-	postMessaging to a dedicated worker allows them to see each others' modifications with Float64Array: FAIL
-	postMessaging to a dedicated worker allows them to see each others' modifications with Int16Array: FAIL
-	postMessaging to a dedicated worker allows them to see each others' modifications with Int32Array: FAIL
-	postMessaging to a dedicated worker allows them to see each others' modifications with Int8Array: FAIL
-	postMessaging to a dedicated worker allows them to see each others' modifications with Uint16Array: FAIL
-	postMessaging to a dedicated worker allows them to see each others' modifications with Uint32Array: FAIL
-	postMessaging to a dedicated worker allows them to see each others' modifications with Uint8Array: FAIL
-	postMessaging to a dedicated worker allows them to see each others' modifications with Uint8ClampedArray: FAIL
-	postMessaging to a same-origin deeply-nested iframe allows them to see each others' modifications: FAIL
-	postMessaging to a same-origin iframe allows them to see each others' modifications: FAIL
-	postMessaging to a same-origin opened window allows them to see each others' modifications: FAIL
+	postMessaging to a dedicated worker allows them to see each others' modifications with Float16Array: PASS
+	postMessaging to a dedicated worker allows them to see each others' modifications with Float32Array: PASS
+	postMessaging to a dedicated worker allows them to see each others' modifications with Float64Array: PASS
+	postMessaging to a dedicated worker allows them to see each others' modifications with Int16Array: PASS
+	postMessaging to a dedicated worker allows them to see each others' modifications with Int32Array: PASS
+	postMessaging to a dedicated worker allows them to see each others' modifications with Int8Array: PASS
+	postMessaging to a dedicated worker allows them to see each others' modifications with Uint16Array: PASS
+	postMessaging to a dedicated worker allows them to see each others' modifications with Uint32Array: PASS
+	postMessaging to a dedicated worker allows them to see each others' modifications with Uint8Array: PASS
+	postMessaging to a dedicated worker allows them to see each others' modifications with Uint8ClampedArray: PASS
+	postMessaging to a same-origin deeply-nested iframe allows them to see each others' modifications: PASS
+	postMessaging to a same-origin iframe allows them to see each others' modifications: PASS
+	postMessaging to a same-origin opened window allows them to see each others' modifications: TIMEOUT
