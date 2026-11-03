@@ -17,7 +17,11 @@ Host_Object :: struct {
 	opaque:    rawptr,
 	hook_idx:  int, // index in Runtime.gc_hooked, -1 when not listed
 	finalized: bool,
+	payload:   u32, // bytes of opaque data in the same block, from HOST_PAYLOAD_OFFSET (0: the host's own pointer, if any)
 }
+
+// Where a host object's own opaque data starts in its block (8-aligned: it holds 64-bit values).
+HOST_PAYLOAD_OFFSET :: (size_of(Host_Object) + 7) &~ 7
 
 // A pass over the references of the hooked objects: counting (subtracting from the host counts of the cells in
 // Runtime.ext_cells, which gc_mark_ext puts back after) when `counting`, marking otherwise.
@@ -78,13 +82,16 @@ host_exotic_of :: proc "contextless" (rt: ^Runtime, o: ^Object) -> ^Host_Exotic 
 	return c != nil ? c.exotic : nil
 }
 
-// An object of host class `id` with prototype `proto` (may be nil).
-host_object_new :: proc(ctx: ^Context, proto: ^Object, id: u32) -> ^Object {
+// An object of host class `id` with prototype `proto` (may be nil), and `payload` zeroed bytes of opaque data in the
+// block of its Host_Object (its opaque pointer), freed with it.
+host_object_new :: proc(ctx: ^Context, proto: ^Object, id: u32, payload := 0) -> ^Object {
 	rt := ctx.rt
 	o := object_new_proto(ctx, proto, .host)
-	d := new(Host_Object, rt_allocator(rt))
+	d := cast(^Host_Object)mem_alloc(rt, HOST_PAYLOAD_OFFSET + payload)
 	d.class_id = id
 	d.hook_idx = -1
+	d.payload = u32(payload)
+	if payload > 0 {d.opaque = rawptr(uintptr(d) + HOST_PAYLOAD_OFFSET)}
 	o.data = d
 	if c := host_class(rt, id); c != nil {
 		if c.gc_mark != nil {
@@ -138,7 +145,7 @@ host_object_free :: proc(rt: ^Runtime, o: ^Object, d: ^Host_Object) {
 		}
 		pop(&rt.gc_hooked)
 	}
-	free(d, rt_allocator(rt))
+	mem_free(rt, d, HOST_PAYLOAD_OFFSET + int(d.payload))
 }
 
 // Run the finalizers of the host objects the collection is about to free, while every cell is still

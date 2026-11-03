@@ -36,6 +36,12 @@ global_get :: proc(ctx: ^Context, a: Atom, throw_ref: bool) -> Value {
 	g := ctx.global_obj
 	j := global_slot(ctx, g, a)
 	if j >= 0 {return g.slots[j].value}
+	// an own accessor (window.document, [LegacyUnforgeable]): its getter, without the walks of [[HasProperty]] and
+	// [[Get]] that would find it first
+	if k := shape_find(g.shape, a); k >= 0 && g.shape.props[k].kind == .accessor {
+		getter := g.slots[k].getset.getter
+		return getter != nil ? call(ctx, mk_obj(getter), mk_obj(g), {}) : UNDEFINED
+	}
 	h := has_property(ctx, g, a)
 	if h < 0 {return EXCEPTION}
 	if h == 0 {

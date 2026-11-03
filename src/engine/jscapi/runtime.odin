@@ -379,13 +379,23 @@ JS_NewObjectProtoClass :: proc "c" (c: ^Context, proto: JSValue, class_id: Class
 	return own(ctx.rt, js.mk_obj(js.host_object_new(ctx, p, class_id)))
 }
 
+// (Wren) An object of a host class whose opaque data is `size` zeroed bytes of the engine's heap, in one block with the
+// object's host part and freed with it (JS_GetOpaque finds it): no allocation of the host's own, and no free in its
+// finalizer.
+JS_NewObjectProtoClassPayload :: proc "c" (c: ^Context, proto: JSValue, class_id: Class_ID, size: i32) -> JSValue {
+	context = api_ctx()
+	ctx := jctx(c)
+	m := js.host_enter(ctx.rt)
+	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
+	return own(ctx.rt, js.mk_obj(js.host_object_new(ctx, object_of(proto), class_id, int(size))))
+}
+
 JS_NewObjectClass :: proc "c" (c: ^Context, class_id: Class_ID) -> JSValue {
 	return JS_NewObjectProtoClass(c, NULL, class_id)
 }
 
 JS_GetOpaque :: proc "c" (v: JSValue, class_id: Class_ID) -> rawptr {
-	if tag_of(v) != TAG_OBJECT {return nil}
-	d := js.host_object_of(js.as_obj(dec(v)))
+	d := js.host_object_of(object_of(v))
 	if d == nil || d.class_id != class_id {return nil}
 	return d.opaque
 }
@@ -400,16 +410,15 @@ JS_GetOpaque2 :: proc "c" (c: ^Context, v: JSValue, class_id: Class_ID) -> rawpt
 }
 
 JS_SetOpaque :: proc "c" (v: JSValue, p: rawptr) -> i32 {
-	if tag_of(v) != TAG_OBJECT {return -1}
-	d := js.host_object_of(js.as_obj(dec(v)))
+	d := js.host_object_of(object_of(v))
 	if d == nil {return -1}
 	d.opaque = p
 	return 0
 }
 
 JS_GetClassID :: proc "c" (v: JSValue) -> Class_ID {
-	if tag_of(v) != TAG_OBJECT {return 0}
-	o := js.as_obj(dec(v))
+	o := object_of(v)
+	if o == nil {return 0}
 	d := js.host_object_of(o)
 	if d != nil {return d.class_id}
 	// a built-in class (ArrayBuffer, SharedArrayBuffer, DataView...): its own number, below FIRST_HOST_CLASS, so the

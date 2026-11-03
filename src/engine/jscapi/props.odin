@@ -7,8 +7,8 @@ import js "wb:engine/jsrt"
 
 @(private)
 obj_arg :: #force_inline proc "contextless" (v: JSValue) -> (^js.Object, bool) {
-	if tag_of(v) != TAG_OBJECT {return nil, false}
-	return js.as_obj(dec(v)), true
+	o := object_of(v)
+	return o, o != nil
 }
 
 // ---- reading ----

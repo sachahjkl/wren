@@ -138,6 +138,24 @@ dec :: proc "contextless" (v: JSValue) -> js.Value {
 	return js.mk_number(transmute(f64)(v + (FLOAT64_TAG_ADDEND << 32)))
 }
 
+// The cell a value points at (dec's cases that make a heap value), nil for the others: what the calls that only count
+// references or read an object need, without decoding the whole value.
+cell_of :: #force_inline proc "contextless" (v: JSValue) -> ^js.Cell {
+	switch tag_of(v) {
+	case TAG_OBJECT, TAG_STRING, TAG_STRING_ROPE, TAG_SYMBOL, TAG_BIG_INT, TAG_MODULE, TAG_FUNCTION_BYTECODE:
+		js.poison_check(ptr_of(v))
+		return cast(^js.Cell)ptr_of(v)
+	}
+	return nil
+}
+
+// The object a value points at, nil when it is not one.
+object_of :: #force_inline proc "contextless" (v: JSValue) -> ^js.Object {
+	if tag_of(v) != TAG_OBJECT {return nil}
+	js.poison_check(ptr_of(v))
+	return cast(^js.Object)ptr_of(v)
+}
+
 // ---- reference counting emulation ----
 
 // A reference the caller now owns: a host root on the cell.
@@ -148,8 +166,7 @@ own :: #force_inline proc(rt: ^js.Runtime, v: js.Value) -> JSValue {
 
 // A reference the callee consumed.
 disown :: #force_inline proc "contextless" (v: JSValue) {
-	dv := dec(v)
-	if js.is_heap(dv) {js.ext_unref(js.as_cell(dv))}
+	if c := cell_of(v); c != nil {js.ext_unref(c)}
 }
 
 @(private)

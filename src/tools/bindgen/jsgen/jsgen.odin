@@ -288,6 +288,22 @@ has_named_getter :: proc(it: ^webidl.Interface) -> bool {
 	return false
 }
 
+// The class of an interface's objects: indexed, named when the glue implements a named getter on it or on one it
+// inherits from (wjr_<name>_named_get: a named class asks it on every property read the object itself does not hold,
+// so a getter the glue lacks makes it plain), else plain.
+@(private)
+class_kind_of :: proc(g: ^Gen, it: ^webidl.Interface) -> Class_Kind {
+	if has_indexed_getter(it) { return .Indexed }
+	if !has_named_getter(it) { return .Plain }
+	for cur := it; cur != nil; cur = cur.parent_ref {
+		if g.raw[fmt.tprintf("wjr_%s_named_get", cur.name)] { return .Named }
+	}
+	return .Plain
+}
+
+@(private)
+Class_Kind :: enum { Plain, Indexed, Named }
+
 ////////////////////////////////
 // Generic members
 
@@ -1002,8 +1018,8 @@ emit_c :: proc(g: ^Gen, impls: [][]Member_Impl) {
 			for mb in it.members { if mb.kind == .Operation && mb.special == .Getter && len(mb.args) == 1 { own = true; break } }
 			if own { append(&flags, "WJ_I_INDEXED_ITERATOR") }
 		}
-		class_kind := "WJ_CLASS_PLAIN"
-		if indexed { class_kind = "WJ_CLASS_INDEXED" } else if has_named_getter(it) { class_kind = "WJ_CLASS_NAMED" }
+		kinds := [Class_Kind]string{.Plain = "WJ_CLASS_PLAIN", .Indexed = "WJ_CLASS_INDEXED", .Named = "WJ_CLASS_NAMED"}
+		class_kind := kinds[class_kind_of(g, it)]
 		ctor := "NULL"
 		ctor_len := 0
 		has_ctor := false
