@@ -588,13 +588,7 @@ parse_hex_color :: proc(s: string) -> draw.Color {
 	if len(s) != 7 { return {0, 0, 0, 1} }
 	v: u32
 	for c in transmute([]u8)s[1:] {
-		d: u32
-		switch c {
-		case '0' ..= '9': d = u32(c - '0')
-		case 'a' ..= 'f': d = u32(c - 'a') + 10
-		case 'A' ..= 'F': d = u32(c - 'A') + 10
-		}
-		v = v * 16 + d
+		v = v * 16 + u32(max(base.hex_value(c), 0))   // (not a digit: 0)
 	}
 	return draw.hex(v << 8 | 0xff)
 }
@@ -1740,15 +1734,7 @@ shell_pick_color :: proc(user: rawptr, p: ^page.Page, input: base.Handle) { star
 parse_hex_bytes :: proc(s: string) -> [3]u8 {
 	out: [3]u8
 	if len(s) != 7 { return out }
-	hexv :: proc(c: u8) -> u8 {
-		switch c {
-		case '0' ..= '9': return c - '0'
-		case 'a' ..= 'f': return c - 'a' + 10
-		case 'A' ..= 'F': return c - 'A' + 10
-		}
-		return 0
-	}
-	for i in 0 ..< 3 { out[i] = hexv(s[1 + 2 * i]) * 16 + hexv(s[2 + 2 * i]) }
+	for i in 0 ..< 3 { out[i] = u8(max(base.hex_value(s[1 + 2 * i]), 0) * 16 + max(base.hex_value(s[2 + 2 * i]), 0)) }
 	return out
 }
 

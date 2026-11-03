@@ -2,6 +2,7 @@ package base
 
 // Small text helpers the packages share: numbers as text, the fields of the profile's text files, escaping for HTML and XML.
 
+import "base:intrinsics"
 import "core:strconv"
 import "core:strings"
 
@@ -9,6 +10,16 @@ import "core:strings"
 itoa :: proc(n: int, allocator := context.temp_allocator) -> string {
 	buf: [len("-9223372036854775808")]u8
 	return strings.clone(strconv.write_int(buf[:], i64(n), 10), allocator)
+}
+
+// The value of a hexadecimal digit (a byte or a rune), or -1.
+hex_value :: proc(c: $T) -> int where intrinsics.type_is_integer(T) {
+	switch c {
+	case '0' ..= '9': return int(c - '0')
+	case 'a' ..= 'f': return int(c - 'a') + 10
+	case 'A' ..= 'F': return int(c - 'A') + 10
+	}
+	return -1
 }
 
 ////////////////////////////////

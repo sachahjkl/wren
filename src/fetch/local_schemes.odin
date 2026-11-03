@@ -3,6 +3,7 @@ package fetch
 import "core:os"
 import "core:strconv"
 import "core:strings"
+import "wb:base"
 import "wb:http"
 import "wb:url"
 
@@ -24,7 +25,7 @@ percent_decode :: proc(s: string, allocator := context.allocator) -> []byte {
 	out := make([dynamic]byte, 0, len(s), allocator)
 	i := 0
 	for i < len(s) {
-		if s[i] == '%' && i + 2 < len(s) && is_hex(s[i + 1]) && is_hex(s[i + 2]) {
+		if s[i] == '%' && i + 2 < len(s) && base.hex_value(s[i + 1]) >= 0 && base.hex_value(s[i + 2]) >= 0 {
 			if v, ok := strconv.parse_int(s[i + 1:i + 3], 16); ok { append(&out, u8(v)); i += 3; continue }
 		}
 		append(&out, s[i])
@@ -32,9 +33,6 @@ percent_decode :: proc(s: string, allocator := context.allocator) -> []byte {
 	}
 	return out[:]
 }
-
-@(private)
-is_hex :: proc(c: u8) -> bool { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') }
 
 // "forgiving-base64 decode" (WHATWG Infra): ASCII whitespace is removed, padding is optional.
 forgiving_base64_decode :: proc(input: []byte, allocator := context.allocator) -> (out: []byte, ok: bool) {

@@ -1,6 +1,7 @@
 package blocker
 
 import "core:strings"
+import "wb:base"
 import "core:unicode"
 import "core:unicode/utf8"
 
@@ -185,16 +186,6 @@ class_add_negated :: proc(c: ^Re_Class, e: u8) {
 	class_add(c, next, 0x10ffff)
 }
 
-@(private = "file")
-hex_val :: proc(c: u8) -> int {
-	switch {
-	case c >= '0' && c <= '9': return int(c - '0')
-	case c >= 'a' && c <= 'f': return int(c - 'a') + 10
-	case c >= 'A' && c <= 'F': return int(c - 'A') + 10
-	}
-	return -1
-}
-
 // After a backslash (already consumed) that is not a class escape or a back-reference: the character it stands for.
 @(private = "file")
 rp_escape_char :: proc(p: ^Rp) -> rune {
@@ -209,7 +200,7 @@ rp_escape_char :: proc(p: ^Rp) -> rune {
 	case '0': return 0
 	case 'x':
 		if p.pos + 2 <= len(p.src) {
-			a, b := hex_val(p.src[p.pos]), hex_val(p.src[p.pos + 1])
+			a, b := base.hex_value(p.src[p.pos]), base.hex_value(p.src[p.pos + 1])
 			if a >= 0 && b >= 0 { p.pos += 2; return rune(a * 16 + b) }
 		}
 		return 'x'
@@ -217,7 +208,7 @@ rp_escape_char :: proc(p: ^Rp) -> rune {
 		if p.pos + 4 <= len(p.src) {
 			v := 0
 			ok := true
-			for i in 0 ..< 4 { h := hex_val(p.src[p.pos + i]); if h < 0 { ok = false; break }; v = v * 16 + h }
+			for i in 0 ..< 4 { h := base.hex_value(p.src[p.pos + i]); if h < 0 { ok = false; break }; v = v * 16 + h }
 			if ok { p.pos += 4; return rune(v) }
 		}
 		return 'u'

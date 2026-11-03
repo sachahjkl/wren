@@ -3,6 +3,7 @@ package css
 import "core:fmt"
 import "core:math"
 import "core:strings"
+import "wb:base"
 
 // CSS Values and Units, Color Level 4 (the commonly used parts, complete for what pages use): numbers, lengths,
 // percentages, calc() and friends, and every color syntax: named, hex, rgb(), hsl(), hwb(), lab(), lch(), oklab(),
@@ -71,25 +72,15 @@ color_from_u32 :: proc(rgb: u32) -> Color {
 @(private)
 clamp01 :: proc(x: f32) -> f32 { return clamp(x, 0, 1) }
 
-@(private)
-hex_digit :: proc(c: u8) -> int {
-	switch {
-	case c >= '0' && c <= '9': return int(c - '0')
-	case c >= 'a' && c <= 'f': return int(c - 'a') + 10
-	case c >= 'A' && c <= 'F': return int(c - 'A') + 10
-	}
-	return -1
-}
-
 parse_hex_color :: proc(s: string) -> (c: Color, ok: bool) {
-	for ch in transmute([]u8)s { if hex_digit(ch) < 0 { return {}, false } }
+	for ch in transmute([]u8)s { if base.hex_value(ch) < 0 { return {}, false } }
 	switch len(s) {
 	case 3, 4:
-		c = {f32(hex_digit(s[0]) * 17) / 255, f32(hex_digit(s[1]) * 17) / 255, f32(hex_digit(s[2]) * 17) / 255, 1}
-		if len(s) == 4 { c.a = f32(hex_digit(s[3]) * 17) / 255 }
+		c = {f32(base.hex_value(s[0]) * 17) / 255, f32(base.hex_value(s[1]) * 17) / 255, f32(base.hex_value(s[2]) * 17) / 255, 1}
+		if len(s) == 4 { c.a = f32(base.hex_value(s[3]) * 17) / 255 }
 		return c, true
 	case 6, 8:
-		b :: proc(s: string, i: int) -> f32 { return f32(hex_digit(s[i]) * 16 + hex_digit(s[i + 1])) / 255 }
+		b :: proc(s: string, i: int) -> f32 { return f32(base.hex_value(s[i]) * 16 + base.hex_value(s[i + 1])) / 255 }
 		c = {b(s, 0), b(s, 2), b(s, 4), 1}
 		if len(s) == 8 { c.a = b(s, 6) }
 		return c, true

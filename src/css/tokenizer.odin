@@ -8,6 +8,7 @@ package css
 
 import "core:strconv"
 import "core:strings"
+import "wb:base"
 import "core:unicode/utf8"
 
 Token_Kind :: enum u8 {
@@ -114,24 +115,15 @@ consume_escape :: proc(l: ^Lexer) -> rune {
 	r := peek(l)
 	l.pos += 1
 	if is_hex(r) {
-		v := rune_hex(r)
+		v := rune(base.hex_value(r))
 		n := 1
-		for n < 6 && is_hex(peek(l)) { v = v * 16 + rune_hex(peek(l)); l.pos += 1; n += 1 }
+		for n < 6 && is_hex(peek(l)) { v = v * 16 + rune(base.hex_value(peek(l))); l.pos += 1; n += 1 }
 		if is_ws(peek(l)) { l.pos += 1 }
 		if v == 0 || v > 0x10FFFF || (v >= 0xD800 && v <= 0xDFFF) { return '\uFFFD' }
 		return v
 	}
 	if r == -1 { return '\uFFFD' }
 	return r
-}
-
-@(private)
-rune_hex :: proc(r: rune) -> rune {
-	switch {
-	case r >= '0' && r <= '9': return r - '0'
-	case r >= 'a' && r <= 'f': return r - 'a' + 10
-	}
-	return r - 'A' + 10
 }
 
 @(private)

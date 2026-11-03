@@ -1,6 +1,7 @@
 package forms
 
 import "core:strings"
+import "wb:base"
 import "core:unicode"
 import "core:unicode/utf8"
 
@@ -256,20 +257,10 @@ parse_atom :: proc(p: ^Parser, depth: int) -> ^Node {
 }
 
 @(private)
-hex_val :: proc(c: rune) -> int {
-	switch c {
-	case '0' ..= '9': return int(c - '0')
-	case 'a' ..= 'f': return int(c - 'a') + 10
-	case 'A' ..= 'F': return int(c - 'A') + 10
-	}
-	return -1
-}
-
-@(private)
 read_hex :: proc(p: ^Parser, n: int) -> (rune, bool) {
 	v: rune
 	for _ in 0 ..< n {
-		h := hex_val(peek(p))
+		h := base.hex_value(peek(p))
 		if h < 0 { return 0, false }
 		v = v * 16 + rune(h)
 		p.i += 1
@@ -285,7 +276,7 @@ read_unicode_escape :: proc(p: ^Parser) -> (rune, bool) {
 		v: rune
 		count := 0
 		for peek(p) != '}' {
-			h := hex_val(peek(p))
+			h := base.hex_value(peek(p))
 			if h < 0 { return 0, false }
 			v = v * 16 + rune(h)
 			if v > 0x10FFFF { return 0, false }
