@@ -1036,9 +1036,18 @@ textContent).</p>
 <div class="code"><pre><code>Element HTMLInputElement_list(Element input)</code></pre></div>
 <p>input.list: the datalist of the id its <code>list</code> attribute gives.</p>
 <p>Host: <code>HTMLInputElement_list :: proc(c: ^Call, input: Api_Element) -&gt; u64</code></p>
+<h3 id="htmldialogelement-closedby"><a class="anchor" href="#htmldialogelement-closedby" aria-hidden="true">#</a><code>HTMLDialogElement_closedBy</code></h3>
+<div class="code"><pre><code>string HTMLDialogElement_closedBy(Element dialog)</code></pre></div>
+<p>dialog.closedBy: the closedby attribute's state ("any", "closerequest", "none"); without a valid one, "closerequest"
+for a modal dialog, else "none".</p>
+<p>Host: <code>HTMLDialogElement_closedBy :: proc(c: ^Call, dialog: Api_Element) -&gt; string</code></p>
+<h3 id="htmldialogelement-set-closedby"><a class="anchor" href="#htmldialogelement-set-closedby" aria-hidden="true">#</a><code>HTMLDialogElement_set_closedBy</code></h3>
+<div class="code"><pre><code>void HTMLDialogElement_set_closedBy(Element dialog, string value)</code></pre></div>
+<p>dialog.closedBy = value: sets the closedby attribute.</p>
+<p>Host: <code>HTMLDialogElement_set_closedBy :: proc(c: ^Call, dialog: Api_Element, value: string)</code></p>
 <h3 id="htmldialogelement-show"><a class="anchor" href="#htmldialogelement-show" aria-hidden="true">#</a><code>HTMLDialogElement_show</code></h3>
 <div class="code"><pre><code>void HTMLDialogElement_show(Element dialog) raises</code></pre></div>
-<p>dialog.show()</p>
+<p>dialog.show(): Invalid_State when it is open as a modal dialog.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>HTMLDialogElement_show :: proc(c: ^Call, dialog: Api_Element) -&gt; Api_Error</code></p>
 <h3 id="htmldialogelement-showmodal"><a class="anchor" href="#htmldialogelement-showmodal" aria-hidden="true">#</a><code>HTMLDialogElement_showModal</code></h3>
@@ -1550,15 +1559,24 @@ contents belong to): no custom element registry, so the element is made as is an
 <p>document.createCDATASection(data): Not_Supported (an HTML document).</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Document_createCDATASection :: proc(c: ^Call, data: string) -&gt; (u64, Api_Error)</code></p>
-<h3 id="document-adoptnode"><a class="anchor" href="#document-adoptnode" aria-hidden="true">#</a><code>Document_adoptNode</code></h3>
-<div class="code"><pre><code>Node Document_adoptNode(Node node) raises</code></pre></div>
-<p>document.adoptNode(node): removed from its parent (one document per page). Not_Supported for the document.</p>
+<h3 id="document-createprocessinginstruction"><a class="anchor" href="#document-createprocessinginstruction" aria-hidden="true">#</a><code>Document_createProcessingInstruction</code></h3>
+<div class="code"><pre><code>Node Document_createProcessingInstruction(string target, string data) raises</code></pre></div>
+<p>document.createProcessingInstruction(target, data): Invalid_Character when <code>target</code> is not an XML Name or <code>data</code>
+contains "?&gt;".</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
-<p>Host: <code>Document_adoptNode :: proc(c: ^Call, node: Api_Node) -&gt; (u64, Api_Error)</code></p>
+<p>Host: <code>Document_createProcessingInstruction :: proc(c: ^Call, target: string, data: string) -&gt; (u64, Api_Error)</code></p>
+<h3 id="document-adoptnode"><a class="anchor" href="#document-adoptnode" aria-hidden="true">#</a><code>Document_adoptNode</code></h3>
+<div class="code"><pre><code>Node Document_adoptNode(Node document, Node node) raises</code></pre></div>
+<p>document.adoptNode(node) (DOM "adopt"): removed from its parent, it and its shadow-including descendants get
+<code>document</code> (the page's, or a document of its own) as node document. Not_Supported for a document, Hierarchy for a
+shadow root. What the glue does too to what a document of its own makes (createElement, importNode).</p>
+<p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
+<p>Host: <code>Document_adoptNode :: proc(c: ^Call, document: Api_Node, node: Api_Node) -&gt; (u64, Api_Error)</code></p>
 <h3 id="document-documenturi"><a class="anchor" href="#document-documenturi" aria-hidden="true">#</a><code>Document_documentURI</code></h3>
-<div class="code"><pre><code>string Document_documentURI()</code></pre></div>
-<p>document.documentURI</p>
-<p>Host: <code>Document_documentURI :: proc(c: ^Call) -&gt; string</code></p>
+<div class="code"><pre><code>string Document_documentURI(Node document)</code></pre></div>
+<p>document.documentURI (and document.URL) of <code>document</code>: about:blank for a document of its own createHTMLDocument,
+createDocument or parseHTMLUnsafe made, else the page's URL (DOMParser's documents have their creator's).</p>
+<p>Host: <code>Document_documentURI :: proc(c: ^Call, document: Api_Node) -&gt; string</code></p>
 <h3 id="document-compatmode"><a class="anchor" href="#document-compatmode" aria-hidden="true">#</a><code>Document_compatMode</code></h3>
 <div class="code"><pre><code>string Document_compatMode()</code></pre></div>
 <p>document.compatMode: "CSS1Compat" or "BackCompat".</p>
@@ -2123,6 +2141,8 @@ well-formed-checked). Range past page.max_fetch_bytes.</p>
 <li class="lvl3"><a href="#htmlscriptelement-text">HTMLScriptElement_text</a></li>
 <li class="lvl3"><a href="#htmlscriptelement-set-text">HTMLScriptElement_set_text</a></li>
 <li class="lvl3"><a href="#htmlinputelement-list">HTMLInputElement_list</a></li>
+<li class="lvl3"><a href="#htmldialogelement-closedby">HTMLDialogElement_closedBy</a></li>
+<li class="lvl3"><a href="#htmldialogelement-set-closedby">HTMLDialogElement_set_closedBy</a></li>
 <li class="lvl3"><a href="#htmldialogelement-show">HTMLDialogElement_show</a></li>
 <li class="lvl3"><a href="#htmldialogelement-showmodal">HTMLDialogElement_showModal</a></li>
 <li class="lvl3"><a href="#htmldialogelement-close">HTMLDialogElement_close</a></li>
@@ -2244,6 +2264,7 @@ well-formed-checked). Range past page.max_fetch_bytes.</p>
 <li class="lvl3"><a href="#document-createdocumentfragment">Document_createDocumentFragment</a></li>
 <li class="lvl3"><a href="#document-createcomment">Document_createComment</a></li>
 <li class="lvl3"><a href="#document-createcdatasection">Document_createCDATASection</a></li>
+<li class="lvl3"><a href="#document-createprocessinginstruction">Document_createProcessingInstruction</a></li>
 <li class="lvl3"><a href="#document-adoptnode">Document_adoptNode</a></li>
 <li class="lvl3"><a href="#document-documenturi">Document_documentURI</a></li>
 <li class="lvl3"><a href="#document-compatmode">Document_compatMode</a></li>
