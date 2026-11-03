@@ -122,8 +122,9 @@ partial module dom {
   Node Document_createDocumentFragment() raises;
   /// document.createComment(data)
   Node Document_createComment(string data) raises;
-  /// document.createCDATASection(data): Not_Supported (an HTML document).
-  Node Document_createCDATASection(string data) raises;
+  /// document.createCDATASection(data) of `document` (the page's, or a document of its own, whose node it is): Not_Supported
+  /// for an HTML document, Invalid_Character when `data` contains "]]>".
+  Node Document_createCDATASection(Node document, string data) raises;
   /// document.createProcessingInstruction(target, data): Invalid_Character when `target` is not an XML Name or `data`
   /// contains "?>".
   Node Document_createProcessingInstruction(string target, string data) raises;

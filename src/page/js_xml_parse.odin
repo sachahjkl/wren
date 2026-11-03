@@ -183,6 +183,18 @@ Document_createProcessingInstruction :: proc(c: ^Call, target: string, data: str
 	return u64(h), .None
 }
 
+// A CDATA section of an XML document: a Text node of the CDATA kind (DOM: its data is text everywhere), of `document`.
+Document_createCDATASection :: proc(c: ^Call, document: Api_Node, data: string) -> (u64, Api_Error) {
+	d := jd_doc(c)
+	if d == nil { return 0, no_document(c) }
+	if !dom.is_xml_document(document.data) { return 0, fail(c, .Not_Supported, "This operation is not supported for HTML documents.") }
+	if strings.contains(data, "]]>") { return 0, fail(c, .Invalid_Character, "The data contains ']]>'.") }
+	h := dom.create_text(d, data)
+	dom.get(d, h).xml = .CDATA
+	if document.data.as_document { dom.set_node_document(d, h, H(document.handle)) }
+	return u64(h), .None
+}
+
 // XML's Name production: a letter, ':', '_' or a non-ASCII character first, then those, digits, '-' and '.' (non-ASCII
 // characters are taken whole: the ranges XML excludes are not looked at).
 @(private = "file")

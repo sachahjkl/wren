@@ -909,10 +909,6 @@ Document_createComment :: proc(c: ^Call, data: string) -> (u64, Api_Error) {
 	return u64(dom.create_comment(d, data)), .None
 }
 
-Document_createCDATASection :: proc(c: ^Call, data: string) -> (u64, Api_Error) {
-	return 0, fail(c, .Not_Supported, "This operation is not supported for HTML documents.")
-}
-
 Document_adoptNode :: proc(c: ^Call, document: Api_Node, node: Api_Node) -> (u64, Api_Error) {
 	if node.data.kind == .Document || node.data.as_document { return 0, fail(c, .Not_Supported, "The node provided is a document, which may not be adopted.") }
 	if node.data.is_shadow { return 0, fail(c, .Hierarchy, "The node provided is a shadow root, which may not be adopted.") }
