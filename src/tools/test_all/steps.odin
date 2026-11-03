@@ -235,6 +235,8 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 		// (media: av1_software_player_seeks_and_ends_on_a_machine_short_of_processors spins on every core for half a minute, on purpose: what runs beside it has none left)
 		unit(&t, fmt.aprintf("unit tests: %s", pkg), fmt.aprintf("src/%s", pkg), exe(fmt.aprintf("build/%s_test", pkg)), flags, marks = pkg == "media" ? {.Alone} : {})
 	}
+	append(&t, Step{name = "the engine's C API natively (src\\engine\\jsrt\\judge\\capi_test.odin: judge capi, the calls the glue makes: references, classes, opaque data in the object's block, cycles, promises, modules)",
+		actions = slice_of(tool_build("src/engine/jsrt/judge", exe("build/judge")), Command{argv = strs(exe("build/judge"), "capi")}), needs = COMMON_NEEDS})
 	// (the pipe server is one per process, so its tests run one at a time; the client's tests link the image encoder)
 	unit(&t, "unit tests: remote (protocol, pipe server: requests, answers, limits, vanishing clients, stopping with clients connected)", "src/remote", exe("build/remote_test"), {ONE_THREAD, WB})
 	unit(&t, "unit tests: remote api (the channel and the processes of wb:remote/api: a call through the channel and back, a process told again by its creation time)", "src/remote/api", exe("build/remote_api_test"), {ONE_THREAD, WB})
