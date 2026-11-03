@@ -1,5 +1,7 @@
 package adblock
 
+import "base:runtime"
+import "core:slice"
 import "core:strings"
 
 // Filters that change a request instead of blocking it: `$removeparam` (rewrites the URL), `$csp` (adds a policy to the
@@ -9,6 +11,42 @@ import "core:strings"
 collect_matches :: proc(e: ^Engine, class: Class, c: ^Ctx, out: ^[dynamic]u32) {
 	if class_empty(e, class) { return }
 	scan(e, class, c, Scan_Opts{collect = out})
+}
+
+// The filters of `class` that match the request and, when there are any, the exceptions of `allow` that do (temp).
+@(private)
+request_matches :: proc(e: ^Engine, req: ^Request, class, allow: Class) -> (found, allowed: [dynamic]u32) {
+	buf: [MAX_URL]u8
+	c: Ctx
+	ctx_init(&c, req, buf[:])
+	if c.he <= c.hs { return }
+	found = make([dynamic]u32, 0, 4, context.temp_allocator)
+	collect_matches(e, class, &c, &found)
+	if len(found) == 0 { return }
+	allowed = make([dynamic]u32, 0, 4, context.temp_allocator)
+	collect_matches(e, allow, &c, &allowed)
+	return
+}
+
+// The `=` arguments of the filters of `class` that match the request, minus those an exception of `allow` cancels (one without
+// an argument cancels them all); `unique`: each once.
+@(private)
+request_args :: proc(e: ^Engine, req: ^Request, class, allow: Class, unique: bool, allocator: runtime.Allocator) -> []string {
+	if e == nil || class_empty(e, class) { return nil }
+	found, allowed := request_matches(e, req, class, allow)
+	if len(found) == 0 { return nil }
+	out := make([dynamic]string, 0, len(found), allocator)
+	for fid in found {
+		arg := cstr_at(e, e.filters[fid].arg_off)
+		cancelled := false
+		for a in allowed {
+			aa := cstr_at(e, e.filters[a].arg_off)
+			if aa == "" || aa == arg { cancelled = true; break }
+		}
+		if cancelled || (unique && slice.contains(out[:], arg)) { continue }
+		append(&out, arg)
+	}
+	return out[:]
 }
 
 // Applies the `$removeparam` filters that match the request. Returns the new URL (allocated with `allocator`) and
@@ -21,15 +59,8 @@ rewrite_url :: proc(e: ^Engine, req: ^Request, allocator := context.allocator) -
 	frag := len(url)
 	if h := strings.index_byte(url[q:], '#'); h >= 0 { frag = q + h }
 
-	buf: [MAX_URL]u8
-	c: Ctx
-	ctx_init(&c, req, buf[:])
-	if c.he <= c.hs { return url, false }
-	found := make([dynamic]u32, 0, 4, context.temp_allocator)
-	collect_matches(e, .Removeparam, &c, &found)
+	found, allow := request_matches(e, req, .Removeparam, .Removeparam_Allow)
 	if len(found) == 0 { return url, false }
-	allow := make([dynamic]u32, 0, 4, context.temp_allocator)
-	collect_matches(e, .Removeparam_Allow, &c, &allow)
 	for a in allow { if cstr_at(e, e.filters[a].arg_off) == "" { return url, false } }
 
 	query := url[q + 1:frag]
@@ -85,56 +116,13 @@ removal_applies :: proc(e: ^Engine, fid: u32, arg, name, param: string) -> bool 
 
 // The policies to add to the answer of a document request (`$csp=`), minus the cancelled ones.
 csp_directives :: proc(e: ^Engine, req: ^Request, allocator := context.allocator) -> []string {
-	if e == nil || class_empty(e, .Csp) { return nil }
-	buf: [MAX_URL]u8
-	c: Ctx
-	ctx_init(&c, req, buf[:])
-	if c.he <= c.hs { return nil }
-	found := make([dynamic]u32, 0, 4, context.temp_allocator)
-	collect_matches(e, .Csp, &c, &found)
-	if len(found) == 0 { return nil }
-	allow := make([dynamic]u32, 0, 4, context.temp_allocator)
-	collect_matches(e, .Csp_Allow, &c, &allow)
-	out := make([dynamic]string, 0, len(found), allocator)
-	for fid in found {
-		arg := cstr_at(e, e.filters[fid].arg_off)
-		cancelled := false
-		for a in allow {
-			aa := cstr_at(e, e.filters[a].arg_off)
-			if aa == "" || aa == arg { cancelled = true; break }
-		}
-		if cancelled { continue }
-		dup := false
-		for s in out { if s == arg { dup = true; break } }
-		if !dup { append(&out, arg) }
-	}
-	return out[:]
+	return request_args(e, req, .Csp, .Csp_Allow, true, allocator)
 }
 
 // The `=` arguments (`/search/replacement/flags`) of the filters that match the request, minus the cancelled ones: how the text of
 // its response is to be rewritten.
 replace_args :: proc(e: ^Engine, req: ^Request, allocator := context.allocator) -> []string {
-	if e == nil || class_empty(e, .Replace) { return nil }
-	buf: [MAX_URL]u8
-	c: Ctx
-	ctx_init(&c, req, buf[:])
-	if c.he <= c.hs { return nil }
-	found := make([dynamic]u32, 0, 4, context.temp_allocator)
-	collect_matches(e, .Replace, &c, &found)
-	if len(found) == 0 { return nil }
-	allow := make([dynamic]u32, 0, 4, context.temp_allocator)
-	collect_matches(e, .Replace_Allow, &c, &allow)
-	out := make([dynamic]string, 0, len(found), allocator)
-	for fid in found {
-		arg := cstr_at(e, e.filters[fid].arg_off)
-		cancelled := false
-		for a in allow {
-			aa := cstr_at(e, e.filters[a].arg_off)
-			if aa == "" || aa == arg { cancelled = true; break }
-		}
-		if !cancelled { append(&out, arg) }
-	}
-	return out[:]
+	return request_args(e, req, .Replace, .Replace_Allow, false, allocator)
 }
 
 has_replace_filters :: proc(e: ^Engine) -> bool { return e != nil && !class_empty(e, .Replace) }
