@@ -14,6 +14,10 @@ import "wb:e2e"
 @(private = "file") WHITE := e2e.Color{255, 255, 255, 255}
 @(private = "file") POPOVER_OPEN := e2e.Color{255, 236, 153, 255}
 @(private = "file") GREEN := e2e.Color{0, 128, 0, 255}
+// examples/site/dialog.html's backdrops over its white page: the UA's black at 10 %, the page's rgb(0 0 128 / 50 %); a place of the page with nothing on it.
+@(private = "file") DEFAULT_BACKDROP := e2e.Color{230, 230, 230, 255}
+@(private = "file") TINTED_BACKDROP := e2e.Color{128, 128, 191, 255}
+@(private = "file") PAGE_CORNER := [2]int{4, 4}
 // Windows of these pages.
 @(private = "file") LAYOUT_WINDOW := [2]int{800, 500}
 @(private = "file") DEMO_WINDOW := [2]int{900, 700}
@@ -115,6 +119,32 @@ popovers_are_in_the_top_layer :: proc(t: ^testing.T) {
 	page := e2e.capture(s, {target = .Page})
 	centre := e2e.pixel(page, page.width / 2, page.height / 2)
 	testing.expectf(t, near(centre, GREEN, TOLERANCE), "above a z-index 1000 cover, not clipped by its 10 px ancestor: %v", centre)
+}
+
+// examples/site/dialog.html: a modal dialog's ::backdrop covers the viewport under it, the UA's rgba(0, 0, 0, 0.1) or the page's blue at 50 %, and a real click on
+// it is its dialog's (the page closes the tinted one); closed, the page shows again.
+@(test)
+a_modal_dialog_has_a_backdrop :: proc(t: ^testing.T) {
+	server := e2e.test_server(t)
+	s := e2e.start(t, {size = DEMO_WINDOW, dpi = e2e.DPI_ONE, url = e2e.url(server, "/site/dialog.html")})
+	e2e.wait_idle(s)
+	corner := e2e.Point{f64(PAGE_CORNER.x), f64(PAGE_CORNER.y)}
+	e2e.click(s, "#open-plain")
+	e2e.wait_js(s, `document.getElementById("plain").matches(":modal")`)
+	e2e.wait_stable(s)
+	px := e2e.pixel(e2e.capture(s, {target = .Page}), PAGE_CORNER.x, PAGE_CORNER.y)
+	testing.expectf(t, near(px, DEFAULT_BACKDROP, FLAT_TOLERANCE), "the default backdrop over the white page: %v", px)
+	e2e.click(s, "#close-plain")
+	e2e.click(s, "#open-tinted")
+	e2e.wait_js(s, `document.getElementById("tinted").matches(":modal")`)
+	e2e.wait_stable(s)
+	px = e2e.pixel(e2e.capture(s, {target = .Page}), PAGE_CORNER.x, PAGE_CORNER.y)
+	testing.expectf(t, near(px, TINTED_BACKDROP, FLAT_TOLERANCE), "the page's backdrop: %v", px)
+	e2e.click_at(s, corner)
+	e2e.wait_js(s, `window.backdropClicks === 1 && !document.getElementById("tinted").open`)
+	e2e.wait_stable(s)
+	px = e2e.pixel(e2e.capture(s, {target = .Page}), PAGE_CORNER.x, PAGE_CORNER.y)
+	testing.expectf(t, near(px, WHITE, FLAT_TOLERANCE), "closed: no backdrop: %v", px)
 }
 
 // examples/site/navigation.html: a real click on a link is intercepted by the page's navigate listener (the document stays: its marker too), a navigation to another page carries its

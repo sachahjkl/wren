@@ -160,6 +160,8 @@ DEMOS := [?]Demo{
 		"<code>element.animate()</code> with keyframes in both forms, easing, iterations, direction and fill; an <code>Animation</code> paused, played, reversed, sped up, finished and cancelled from buttons, its <code>ready</code> / <code>finished</code> promises and <code>finish</code> / <code>cancel</code> events logged.", false, "", false},
 	{.JavaScript, "Popover API", "popover.html",
 		"A menu opened by <code>popovertarget</code> that closes on a click outside or Esc, a nested popover that keeps it open, a manual popover shown and hidden by its buttons, above a card with its own <code>z-index</code>; <code>toggle</code> events logged.", false, "", false},
+	{.JavaScript, "Modal dialogs and ::backdrop", "dialog.html",
+		"Dialogs opened with <code>showModal()</code> in the top layer, above a card with its own <code>z-index</code>, over their <code>::backdrop</code>: the default faint grey, and a blue one whose clicks go to its dialog and close it.", false, "", false},
 	{.JavaScript, "Navigation API", "navigation.html",
 		"A single-page application on <code>window.navigation</code>: its links intercepted by a <code>navigate</code> listener (<code>intercept()</code>), the browser's back and forward buttons traversing its entries, a state per entry (<code>updateCurrentEntry</code>), <code>navigation.entries()</code> listed, and a link to another page that comes back from the back/forward cache; <code>navigatesuccess</code> and <code>currententrychange</code> logged.", true, "", false},
 	{.JavaScript, "Script loading", "/jsload/files/demo.html",

@@ -12818,7 +12818,7 @@
 	.target 1: PASS
 	.target 2: PASS
 /css/css-anchor-position/position-try-backdrop.html: OK
-	::backdrop can use position-try-fallbacks: FAIL
+	::backdrop can use position-try-fallbacks: PASS
 /css/css-anchor-position/position-try-cascade-layer-reorder.html: OK
 	When in different layers, the rule of each name in the highest layer wins: PASS
 	When in the same layer, the last rule of each name wins: PASS

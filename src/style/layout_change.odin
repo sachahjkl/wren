@@ -73,7 +73,7 @@ change_init :: proc() {
 
 @(private)
 is_pseudo_field :: #force_inline proc(f: Field_Info) -> bool {
-	return f.group == .Main && (f.offset == offset_of(Computed, before) || f.offset == offset_of(Computed, after))
+	return f.group == .Main && (f.offset == offset_of(Computed, before) || f.offset == offset_of(Computed, after) || f.offset == offset_of(Computed, backdrop))
 }
 
 // Properties a change of which keeps the box (see Change_Level).
@@ -128,7 +128,7 @@ layout_level :: proc(old, new: ^Computed) -> Change_Level {
 	change_init()
 	if layout_equal_fast(old, new) { return .None }
 	if structure_sig(old) != structure_sig(new) { return .Box }
-	if !pseudo_equal(old.before, new.before) || !pseudo_equal(old.after, new.after) { return .Box }
+	if !pseudo_equal(old.before, new.before) || !pseudo_equal(old.after, new.after) || !pseudo_equal(old.backdrop, new.backdrop) { return .Box }
 	// fields that are not properties (resolved values such as the marker text) are read when building boxes
 	for &f in extra_fields {
 		fa, fb := rawptr(group_base(old, f.group) + f.offset), rawptr(group_base(new, f.group) + f.offset)

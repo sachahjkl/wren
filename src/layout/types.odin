@@ -158,12 +158,11 @@ Box_Flag :: enum u8 {
 	No_Pointer,    // pointer-events: none
 	List_Item,
 	Control,       // form control: painted through the shell's control hook
-	Pseudo,        // ::before / ::after
+	Pseudo,        // a generated box of its node: ::before, ::after, ::backdrop (Box.pseudo)
 	Ifc,           // the box is the root of an inline formatting context (items/lines are valid)
 	Propagated,    // the root element / body whose overflow went to the viewport
 	Flattened,     // children past the depth limit were flattened into this box
 	Transformed,   // a transform applies (CSS Transforms: transformable boxes only, never a non-replaced inline box)
-	Pseudo_After,  // Pseudo: ::after (else ::before)
 	Bfc_Floats,    // some float inside takes part in the block formatting context this box is in (incremental.odin)
 	Neg_Margins,   // some box inside, in the same block formatting context, may have a negative vertical margin
 	Dead,          // left over by a partial rebuild of the box tree: in no tree, read by nothing
@@ -189,12 +188,31 @@ Box_Fx :: bit_set[Box_Fx_Flag; u8]
 
 NONE :: i32(-1)
 
+// The generated boxes of an element. A ::backdrop box (a top layer element's) is built just before the element's own,
+// beside it: it is painted under it, in the same layer.
+Pseudo_Kind :: enum u8 { Before, After, Backdrop }
+
+// The style of an element's generated box of kind `k` (nil: it has none now).
+pseudo_style :: proc(el: ^style.Computed, k: Pseudo_Kind) -> ^style.Computed {
+	switch k {
+	case .Before: return el.before
+	case .After: return el.after
+	case .Backdrop: return el.backdrop
+	}
+	return nil
+}
+
+// Which box of its node a box is, in the keys that find it again in the next pass: 0 the node's own, then 1 + its
+// Pseudo_Kind.
+pseudo_key :: proc(b: ^Box) -> u8 { return .Pseudo in b.flags ? u8(b.pseudo) + 1 : 0 }
+
 Box :: struct {
-	node:      base.Handle,         // element (or the document for the root); NIL for anonymous boxes
+	node:      base.Handle,        // element (or the document for the root); NIL for anonymous boxes
 	cs:        ^style.Computed,
 	kind:      Box_Kind,
 	wm:        style.Writing_Mode,  // the writing mode of its content (only when Layout.frames_on)
 	fx:        Box_Fx,
+	pseudo:    Pseudo_Kind,         // a Pseudo box: which of its node's
 	flags:     Box_Flags,
 	parent, first, last, next: i32,
 	pos_ref:   i32,                 // `pos` is relative to this box's border-box origin

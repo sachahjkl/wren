@@ -129,7 +129,7 @@ group_anchor :: proc(e: ^Effects, g: i32) -> draw.Vec2 {
 @(private = "file")
 group_id :: proc(x: ^Fx_Cache, l: ^Layout, g: i32, salt: u64) -> u64 {
 	b := &l.boxes[l.groups[g].box]
-	pseudo: u64 = .Pseudo in b.flags ? (.Pseudo_After in b.flags ? 2 : 1) : 0
+	pseudo := u64(lay.pseudo_key(b))
 	id := fx_mix(fx_mix(fx_mix(x.lid, u64(b.node)), pseudo), salt)
 	return id == 0 ? 1 : id
 }

@@ -555,6 +555,8 @@ visit :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame) {
 	if n.name == "input" {
 		if t, ok := dom.get_attribute(c.d, f.node, "type"); ok && strings.equal_fold(t, "hidden") { return }
 	}
+	// a top layer element's ::backdrop: its box just before the element's, in the same layer, painted under it
+	if cs.backdrop != nil { place_element(c, stack, f, f.node, n, cs.backdrop, false, true) }
 	place_element(c, stack, f, f.node, n, cs, replaced, false, sm)
 }
 
@@ -651,7 +653,9 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 	b := &c.l.boxes[bi]
 	if pseudo {
 		b.flags += {.Pseudo}
-		if ecs := style.style_of(c.st, h); ecs != nil && ecs.after == cs { b.flags += {.Pseudo_After} }
+		if ecs := style.style_of(c.st, h); ecs != nil {
+			if ecs.after == cs { b.pseudo = .After } else if ecs.backdrop == cs { b.pseudo = .Backdrop }
+		}
 	}
 	if !pseudo && is_control_element(n) { b.flags += {.Control} }
 	box_flags_from_style(c, bi, g.cb, g.fcb, sum)
@@ -702,7 +706,7 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 	if .List_Item in c.l.boxes[bi].flags { make_marker(c, bi, h, cf) }
 	if kind == .Inline { append(stack, Frame{kind = .Close, parent = bi, ifc = g.ifc}) }
 	if pseudo {
-		emit_generated(c, h, cs, cf, box_src(&c.l.boxes[bi]))
+		if c.l.boxes[bi].pseudo != .Backdrop { emit_generated(c, h, cs, cf, box_src(&c.l.boxes[bi])) }
 		return
 	}
 	push_children(c, stack, h, cs, cf)
@@ -711,7 +715,7 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 @(private)
 box_src :: proc(b: ^Box) -> Item_Src {
 	if .Pseudo not_in b.flags { return .Element }
-	return .Pseudo_After in b.flags ? .After : .Before
+	return b.pseudo == .After ? .After : .Before   // (a ::backdrop has no content: out of flow, no text)
 }
 
 @(private)

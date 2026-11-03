@@ -67,6 +67,7 @@ share_eligible :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Computed
 	if hinted { return false }
 	if len(p.e.forced_hidden) > 0 && h in p.e.forced_hidden { return false }
 	if len(p.fs_chain) > 0 && h in p.fs_chain { return false }
+	if in_top_layer(p, h) { return false }   // (its ::backdrop is its own)
 	lv, has := attr(n, "lang")
 	if !has { lv, has = attr(n, "xml:lang") }
 	if has && strings.trim_space(lv) != (parent != nil ? parent.content_language : "") { return false }

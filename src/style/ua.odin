@@ -119,8 +119,9 @@ details:not([open]) > :not(summary:first-of-type) { display: none !important; }
 [dir], bdi, output { unicode-bidi: isolate; }
 [dir=auto i] { unicode-bidi: plaintext; }
 bdo, bdo[dir] { unicode-bidi: isolate-override; }
-/* Fullscreen API §5: the element covers the viewport above everything. There is no top layer, so the highest z-index stands for it; ::backdrop is not generated, so the black behind a transparent element is the element's own background (author rules replace it). */
-:fullscreen:not(:root) { position: fixed !important; top: 0 !important; right: 0 !important; bottom: 0 !important; left: 0 !important; margin: 0 !important; box-sizing: border-box !important; min-width: 0 !important; max-width: none !important; min-height: 0 !important; max-height: none !important; width: 100% !important; height: 100% !important; transform: none !important; z-index: 2147483647 !important; background-color: black; object-fit: contain; }
+/* Fullscreen API §5: the element covers the viewport above everything. The top layer is the highest z-index; its ::backdrop is black. */
+:fullscreen:not(:root) { position: fixed !important; top: 0 !important; right: 0 !important; bottom: 0 !important; left: 0 !important; margin: 0 !important; box-sizing: border-box !important; min-width: 0 !important; max-width: none !important; min-height: 0 !important; max-height: none !important; width: 100% !important; height: 100% !important; transform: none !important; z-index: 2147483647 !important; object-fit: contain; }
+:fullscreen:not(:root)::backdrop { background: black; }
 iframe:fullscreen { border: none !important; padding: 0 !important; }
 /* HTML §15.3.x popovers. A showing popover is in the top layer: fixed to the viewport, above the page's z-indices (under a fullscreen element), its ancestors freed of their stacking contexts and transforms (engine_set_top_layer). */
 /* HTML §15.3.9 dialog: out of flow, centred horizontally (a closed one that an author sheet makes display: flex, Bootstrap's, no longer pushes the page down). There is no top layer for showModal: it stays where it is laid out. */
@@ -129,7 +130,11 @@ dialog { position: absolute; inset-inline: 0; width: fit-content; height: fit-co
 dialog:popover-open { display: block; }
 [popover] { position: fixed; inset: 0; width: fit-content; height: fit-content; margin: auto; border: solid; padding: 0.25em; overflow: auto; color: CanvasText; background-color: Canvas; }
 :popover-open { z-index: 2147483646 !important; }
-/* HTML §15.3.9 a modal dialog: in the top layer, and the rest of the document inert (a click outside reaches nothing). ::backdrop is not generated. */
+/* HTML §15.3.9 a modal dialog: in the top layer, and the rest of the document inert (a click outside reaches nothing). */
 dialog:modal { position: fixed; overflow: auto; inset-block: 0; max-width: calc(100% - 6px - 2em); max-height: calc(100% - 6px - 2em); z-index: 2147483646 !important; pointer-events: auto !important; }
+/* CSS Position 4 §4.1: the ::backdrop of a top layer element (style's compute_element), under it, the size of the viewport; a click on it goes to the element; a popover's lets clicks through (its light dismiss) */
+::backdrop { position: fixed; inset: 0; }
+dialog:modal::backdrop { background: rgba(0, 0, 0, 0.1); }
+:popover-open::backdrop { pointer-events: none !important; }
 :-wren-modal-active { pointer-events: none !important; }
 `

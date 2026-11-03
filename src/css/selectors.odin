@@ -224,7 +224,7 @@ parse_complex :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relat
 						i += n2
 						if pe2 != .None {
 							#partial switch pe2 {
-							case .Before, .After, .Marker, .Placeholder, .Selection, .First_Line, .First_Letter:
+							case .Before, .After, .Marker, .Placeholder, .Selection, .First_Line, .First_Letter, .Backdrop:
 							case: return {}, false
 							}
 							if c.then_pseudo != .None { return {}, false }

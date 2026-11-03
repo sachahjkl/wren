@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Modal dialogs and ::backdrop</title>
+<style>
+  body { max-width: 780px; margin: 24px auto; font-family: sans-serif; font-size: 17px; }
+  h1 { color: #1c7ed6; }
+  button { margin: 4px; padding: 6px 12px; }
+  .card { position: relative; z-index: 5; height: 60px; background: #f1f3f5; border-radius: 8px; padding: 8px; }
+  #tinted::backdrop { background: rgb(0 0 128 / 50%); }
+  #plain { border-radius: 8px; }
+  #log { font-family: monospace; font-size: 13px; color: #495057; white-space: pre; min-height: 3em; }
+</style>
+</head>
+<body>
+<h1>Modal dialogs and <code>::backdrop</code></h1>
+<p>A modal dialog (<code>showModal()</code>) is in the top layer, above the page and a card with its own
+<code>z-index</code>, over its <code>::backdrop</code>: the UA's faint grey, or one the page styles. The backdrop
+covers the viewport and takes the clicks for its dialog: a click on it closes the tinted one.</p>
+<button id="open-plain">Plain dialog</button>
+<button id="open-tinted">Tinted backdrop</button>
+<div class="card">A card with its own z-index: the dialogs and their backdrops stay above it.</div>
+<div id="log"></div>
+<dialog id="plain"><p>The default backdrop: <code>rgba(0, 0, 0, 0.1)</code>.</p><button id="close-plain">Close</button></dialog>
+<dialog id="tinted"><p>A blue backdrop. Click it to close this dialog.</p></dialog>
+<script>
+  const log = (s) => { document.getElementById("log").textContent += s + "\n"; };
+  const plain = document.getElementById("plain"), tinted = document.getElementById("tinted");
+  document.getElementById("open-plain").onclick = () => plain.showModal();
+  document.getElementById("open-tinted").onclick = () => tinted.showModal();
+  document.getElementById("close-plain").onclick = () => plain.close();
+  // a click on the backdrop is a click on its dialog, outside the dialog's box
+  tinted.addEventListener("click", (e) => {
+    const r = tinted.getBoundingClientRect();
+    if (e.target !== tinted || (e.clientX >= r.left && e.clientX < r.right && e.clientY >= r.top && e.clientY < r.bottom)) { return; }
+    window.backdropClicks = (window.backdropClicks || 0) + 1;
+    log("a click on the backdrop");
+    tinted.close();
+  });
+</script>
+</body>
+</html>

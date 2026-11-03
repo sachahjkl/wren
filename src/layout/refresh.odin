@@ -84,7 +84,7 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 		el := style.style_of(st, b.node)
 		if el == nil { return false }
 		nc := el
-		if .Pseudo in b.flags { nc = .Pseudo_After in b.flags ? el.after : el.before }
+		if .Pseudo in b.flags { nc = pseudo_style(el, b.pseudo) }
 		if nc == nil { return false }
 		if nc == b.cs { continue }   // an animation overlay is rewritten in place: same record, new values
 		b.cs = nc

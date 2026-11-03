@@ -61,6 +61,9 @@ tiers_init :: proc() {
 		}
 		skip[{.Main, offset_of(Computed, inherits)}] = true
 		skip[{.Main, offset_of(Computed, custom)}] = true
+		// (painted only: their colors, the placeholder's font)
+		skip[{.Main, offset_of(Computed, selection)}] = true
+		skip[{.Main, offset_of(Computed, placeholder)}] = true
 		layout_fields = make([dynamic]Field_Info, 0, len(computed_fields), base.permanent_allocator())
 		for f in computed_fields { if !skip[{f.group, f.offset}] { append(&layout_fields, f) } }
 	})
