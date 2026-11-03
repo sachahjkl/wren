@@ -44,6 +44,8 @@ browser/devtools.odin DEV_PANEL_ICONS const  # a table
 browser/devtools.odin DEV_DOCK_TITLES const  # a table
 browser/devtools.odin DEV_DOCK_COMMANDS const  # a table
 browser/devtools.odin DEV_DOCK_ICONS const  # a table
+browser/devtools_elements.odin DEV_SIDE_NAMES const  # a table
+browser/devtools_elements.odin DEV_SIDE_TITLES const  # a table
 browser/devtools.odin DEVTOOLS_PREFS const  # a table
 browser/devtools.odin dev_none test  # the developer tools of an App that is not the_app (a unit test's); a window's are Window_Own.devtools
 browser/devtools_console_log.odin CONSOLE_PREFS const  # a table
@@ -64,8 +66,6 @@ browser/devtools_net_preview.odin HEADING_SCALE const  # a table
 browser/devtools_net_throttle.odin NET_BUILTIN const  # a table
 browser/devtools_performance.odin perf_names const  # a table
 browser/devtools_styles.odin ELEMENTS_PREFS const  # a table
-browser/devtools_styles.odin SIDE_TABS const  # a table
-browser/devtools_styles.odin SIDE_PREFS const  # a table
 browser/devtools_syntax.odin JS_KEYWORDS const  # a table
 browser/devtools_syntax.odin JS_ATOMS const  # a table
 browser/dnd_image.odin DND_IMAGE_PREFS const  # a table

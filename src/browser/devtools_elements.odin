@@ -2,7 +2,8 @@ package browser
 
 // The Elements tab: the document of the tab as a tree of colored markup (tag names, attributes, values, text, comments) with
 // guides for the indentation, the node's closing tag, a one-line form for an element whose only child is a short text; the
-// chosen node's details at its side (devtools_styles.odin: Styles, Computed, Layout, Event Listeners, Accessibility); a
+// chosen node's details beside it (devtools_styles.odin: Styles, Computed, Layout, Event Listeners, Accessibility), panels of
+// the Elements panel's own dock (the toolkit's ui.Dock: dragged below the tree, split, floated; browser.devtools.elements.layout); a
 // breadcrumb of its ancestors under the tree; a search (Ctrl+F: text, tag, attribute, selector, XPath); and the node's box
 // drawn over the page (the hovered row's, else the chosen one's), or the element under the pointer while picking
 // (Ctrl+Shift+C). "Inspect" in the page's context menu selects the element under the pointer.
@@ -21,6 +22,7 @@ import "core:strings"
 import "toolkit:draw"
 import "toolkit:ui"
 import "wb:base"
+import "wb:config"
 import "wb:dom"
 import lay "wb:layout"
 import "wb:page"
@@ -30,12 +32,13 @@ DEV_ELEMENTS_TOGGLE_BUDGET :: 5000
 // A search of the Elements panel visits at most this many nodes, and stops at this many matches.
 DEV_ELEMENTS_SEARCH_VISITS :: 400000
 DEV_ELEMENTS_SEARCH_MATCHES :: 5000
-// The side pane (Styles...) goes at the side of the tree from this width of the panel on, when its place is auto (px at
-// the panel's text size); its width by default is this share of the room.
-DEV_ELEMENTS_SIDE_MIN_PX :: 700
-DEV_ELEMENTS_SIDE_SHARE :: 0.45
-// Under this width the side pane's tabs take short names (px at the panel's text size).
-DEV_ELEMENTS_SIDE_SHORT_PX :: 420
+// The panels of the Elements panel's dock: the tree and the views of the chosen node.
+Dev_Side :: enum u32 { Tree, Styles, Computed, Layout, Listeners, Accessibility }
+DEV_SIDE_NAMES := [Dev_Side]string{.Tree = "tree", .Styles = "styles", .Computed = "computed", .Layout = "layout", .Listeners = "listeners", .Accessibility = "accessibility"}
+DEV_SIDE_TITLES := [Dev_Side]string{.Tree = "DOM tree", .Styles = "Styles", .Computed = "Computed", .Layout = "Layout", .Listeners = "Event Listeners", .Accessibility = "Accessibility"}
+DEV_ELEMENTS_LAYOUT_PREF :: "browser.devtools.elements.layout"
+// The tree, and at its right the views in one stack, Styles shown: the panel as it came.
+DEV_ELEMENTS_LAYOUT_DEFAULT :: "dock1 x0.550([*tree] [*styles,computed,layout,listeners,accessibility])"
 
 El_Kind :: enum u8 { Open, Close, Inline, Text, Comment, Doctype }
 
@@ -88,12 +91,9 @@ Dev_Elements :: struct {
 	drop_pos:  int,            // 0 before, 1 inside, 2 after
 	// the ancestors of the selected node
 	crumbs:    [dynamic]El_Crumb,
-	// the right-hand pane
+	// the views of the chosen node, and where they are with the tree
 	side:      Dev_Styles,
-	side_pane: ui.Pane,       // the side pane: its sizes, folded, its place (browser.devtools.elements.sidebar)
-	side_axis: ui.Axis,       // where it is this frame: at the side (.X) or below
-	side_opts: ui.Pane_Options,
-	side_w:    f32,           // its width this frame (px; 0: folded)
+	layout:    ui.Dock,       // browser.devtools.elements.layout
 	menu_row:  int,
 	menu_span: El_Span,
 	menu_has_span: bool,
@@ -116,6 +116,7 @@ elements_destroy :: proc() {
 	delete(e.crumbs)
 	styles_destroy(&e.side)
 	dt_list_destroy(&e.list)
+	ui.dock_destroy(&e.layout)
 	e^ = {}
 }
 
@@ -138,9 +139,37 @@ elements_reset :: proc(e: ^Dev_Elements, p: rawptr) {
 	dt_list_destroy(&e.list)
 }
 
-elements_reset_layout :: proc(app: ^App) {
-	dev_set_pref(app, "browser.devtools.elements.sidebar", "0 0 0 auto")
-	dev_set_pref(app, "browser.devtools.elements.side_tab", "styles")
+elements_reset_layout :: proc(app: ^App) { dev_set_pref(app, DEV_ELEMENTS_LAYOUT_PREF, DEV_ELEMENTS_LAYOUT_DEFAULT) }
+
+side_name :: proc(user: rawptr, id: u32) -> string { return id < u32(len(Dev_Side)) ? DEV_SIDE_NAMES[Dev_Side(id)] : "" }
+
+side_of :: proc(user: rawptr, name: string) -> (u32, bool) {
+	for n, x in DEV_SIDE_NAMES { if n == name { return u32(x), true } }
+	return 0, false
+}
+
+// The layout of the preference (not when it is the dock's own: its save); a view it does not name joins Styles. `first`: the
+// window's first read, where an old profile's side pane (browser.devtools.elements.sidebar, side_tab) is migrated.
+elements_layout_load :: proc(e: ^Dev_Elements, p: ^config.Prefs, first: bool) {
+	text := config.string_of(p, DEV_ELEMENTS_LAYOUT_PREF)
+	if len(e.layout.nodes) > 0 && ui.dock_format(&e.layout, side_name, nil) == text { return }
+	migrated := first && config.is_default(p, config.ref_of(p, DEV_ELEMENTS_LAYOUT_PREF)) && elements_layout_migrate(e, p)
+	if !migrated && !ui.dock_parse(&e.layout, text, side_of, nil) { ui.dock_parse(&e.layout, DEV_ELEMENTS_LAYOUT_DEFAULT, side_of, nil) }
+	for x in Dev_Side { ui.dock_add(&e.layout, u32(x), ui.dock_with(&e.layout, u32(Dev_Side.Styles))) }
+	if migrated { _ = config.set_from_string(p, DEV_ELEMENTS_LAYOUT_PREF, ui.dock_format(&e.layout, side_name, nil), .User) }
+}
+
+// The side pane of old ("width height folded place", the view shown): below the tree when its place was, folded when it was.
+@(private = "file")
+elements_layout_migrate :: proc(e: ^Dev_Elements, p: ^config.Prefs) -> bool {
+	pane_text, had := config.user_text(p, "browser.devtools.elements.sidebar")
+	tab, had_tab := config.user_text(p, "browser.devtools.elements.side_tab")
+	if !had && !had_tab { return false }
+	pane, _ := ui.pane_parse(pane_text)
+	ui.dock_parse(&e.layout, pane.place == .Below ? strings.concatenate({"dock1 y", DEV_ELEMENTS_LAYOUT_DEFAULT[len("dock1 x"):]}, context.temp_allocator) : DEV_ELEMENTS_LAYOUT_DEFAULT, side_of, nil)
+	if id, known := side_of(nil, strings.trim_space(tab)); had_tab && known { ui.dock_activate(&e.layout, id) }
+	if pane.collapsed { ui.dock_set_split(&e.layout, e.layout.main, e.layout.nodes[e.layout.main].ratio, true) }
+	return true
 }
 
 ////////////////////////////////
@@ -439,26 +468,25 @@ elements_panel :: proc(app: ^App, t: ^Tab) {
 	e.hover = base.NIL_HANDLE
 	elements_picker(app, t, e)
 
-	sc := ui.scale()
-	room := draw.Vec2{dev_width(), dev_height() - app.dtm.tab}   // (the header's row is not the tab's)
-	e.side_axis = room.x > 0 ? ui.pane_axis(e.side_pane.place, room.x, dt_px(DEV_ELEMENTS_SIDE_MIN_PX)) : (e.side_pane.place == .Below ? .Y : .X)
-	total := (e.side_axis == .X ? room.x : room.y) / sc
-	e.side_opts = {side = .After, collapsible = true, title = "Elements sidebar", total = max(total, 0), default_size = max(total, 0) * DEV_ELEMENTS_SIDE_SHARE,
-		thickness = dt_px(5), user = app, on_save = proc(user: rawptr, p: ^ui.Pane) { set_pref_string((^App)(user), "browser.devtools.elements.sidebar", ui.pane_format(p^)) }}
-	ui.next({width = ui.fill(), height = ui.fill(), axis = e.side_axis})
-	if ui.parent(ui.build_box({}, "###dt_el")) {
-		ui.next({width = ui.fill(), height = ui.fill()})
-		if ui.column(.Start, {.Clip}, "###dt_el_tree_box") { tree_view(app, t, e) }
-		r := ui.pane_split("###dt_el_split", e.side_axis, &e.side_pane, e.side_opts)
-		if r.changed { request_frames(app, 2) }
-		e.side_w = 0
-		if r.size > 0 {
-			ext := math.round(r.size * sc)
-			e.side_w = e.side_axis == .X ? ext : room.x
-			ui.next({width = e.side_axis == .X ? ui.px(ext) : ui.fill(), height = e.side_axis == .X ? ui.fill() : ui.px(ext)})
-			if ui.column(.Start, {.Clip}, "###dt_el_side_box") { styles_panel(app, t, e) }
+	// the tree and the views in the panel's own dock, in the Elements panel's room
+	room := dev().room
+	ui.dock_begin(&e.layout, "###dt_el_dock", {
+		title = proc(user: rawptr, id: u32) -> string { return DEV_SIDE_TITLES[Dev_Side(id)] },
+		closable = proc(user: rawptr, id: u32) -> bool { return false },
+		on_save = proc(user: rawptr, dk: ^ui.Dock) { set_pref_string((^App)(user), DEV_ELEMENTS_LAYOUT_PREF, ui.dock_format(dk, side_name, nil)) },
+		user = app, size = room, tab_height = app.dtm.bar - dt_px(2), handle = dt_px(5),
+	})
+	for s in Dev_Side {
+		if ui.dock_panel(&e.layout, u32(s)) {
+			dev().room = ui.dock_panel_size(&e.layout, u32(s))
+			ui.next({width = ui.fill(), height = ui.fill()})
+			if ui.column(.Start, {.Clip}, "###dt_el_view") {
+				if s == .Tree { tree_view(app, t, e) } else { styles_view_of(app, t, e, s) }
+			}
 		}
 	}
+	dev().room = room
+	if ui.dock_end(&e.layout).changed { request_frames(app, 2) }
 }
 
 @(private = "file")

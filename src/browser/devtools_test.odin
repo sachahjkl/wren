@@ -4,6 +4,7 @@ import "core:encoding/json"
 import "core:strings"
 import "core:testing"
 import "wb:base"
+import "wb:config"
 import "toolkit:ui"
 import "wb:fetch"
 
@@ -343,17 +344,45 @@ har_export_is_json :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(entries), 1)
 }
 
-// The drawer: the tab at the top is never one of the drawer's, the drawer shows one of its own, and what each shows is what
-// "showing" means for the panels that work only while shown (the console's arguments, the network's and memory's timers).
+// What is shown is the top of each stack of the layout, not folded away: what "showing" means for the panels that work only
+// while shown (the console's arguments, the network's and memory's timers).
 @(test)
-devtools_drawer_tabs_and_what_is_shown :: proc(t: ^testing.T) {
-	d := Devtools{visible = true, panel = .Console, in_drawer = {.Console}, drawer_tab = .Network}
-	dev_normalize(&d)
-	testing.expect_value(t, d.panel, Dev_Panel.Elements)
-	testing.expect_value(t, d.drawer_tab, Dev_Panel.Console)
-	testing.expect(t, dev_shows(&d, .Console) && dev_shows(&d, .Elements) && !dev_shows(&d, .Network), "the top's tab and the drawer's")
-	d.drawer.collapsed = true
-	testing.expect(t, !dev_shows(&d, .Console), "a folded drawer shows nothing")
+devtools_shown_panels_are_the_tops_of_their_stacks :: proc(t: ^testing.T) {
+	d := Devtools{visible = true}
+	defer ui.dock_destroy(&d.layout)
+	testing.expect(t, ui.dock_parse(&d.layout, "dock1 y0.700([*elements,network] [console,*memory])", dev_panel_of, nil))
+	testing.expect(t, dev_shows(&d, .Elements) && dev_shows(&d, .Memory) && !dev_shows(&d, .Network) && !dev_shows(&d, .Console), "each stack's top")
+	ui.dock_set_split(&d.layout, d.layout.main, 0.7, true)
+	testing.expect(t, !dev_shows(&d, .Memory), "a folded stack shows nothing")
 	d.visible = false
 	testing.expect(t, !dev_shows(&d, .Elements), "closed, nothing")
+}
+
+// A profile from before the layouts: its drawer becomes a stack under the others (at its height in the panel, the tab it
+// showed), its side pane below the tree folded as it was; both become the new preferences.
+@(test)
+devtools_old_drawer_and_side_pane_become_layouts :: proc(t: ^testing.T) {
+	p := config.prefs_make()
+	defer config.prefs_destroy(&p)
+	_ = config.set_from_string(&p, "browser.devtools.drawer_tabs", "console,network", .User)   // (no longer registered: kept as the user's text)
+	_ = config.set_from_string(&p, "browser.devtools.drawer", "0 100 0 auto", .User)
+	_ = config.set_from_string(&p, "browser.devtools.drawer_tab", "console", .User)
+	_ = config.set_from_string(&p, "browser.devtools.elements.sidebar", "0 0 1 below", .User)
+	_ = config.set_from_string(&p, "browser.devtools.elements.side_tab", "computed", .User)
+	register_devtools_prefs(&p)
+	d: Devtools
+	defer { ui.dock_destroy(&d.layout); ui.dock_destroy(&d.els.layout) }
+	dev_layout_load(&d, &p, true)
+	elements_layout_load(&d.els, &p, true)
+	testing.expect_value(t, config.string_of(&p, DEV_LAYOUT_PREF), "dock1 y0.667([*elements,application,performance,memory] [*console,network])")
+	testing.expect_value(t, config.string_of(&p, DEV_ELEMENTS_LAYOUT_PREF), "dock1 y0.550f([*tree] [styles,*computed,layout,listeners,accessibility])")
+	// a profile with none: the panel as it came, every panel in it
+	q := config.prefs_make()
+	defer config.prefs_destroy(&q)
+	register_devtools_prefs(&q)
+	e: Devtools
+	defer ui.dock_destroy(&e.layout)
+	dev_layout_load(&e, &q, true)
+	testing.expect_value(t, ui.dock_format(&e.layout, dev_panel_name, nil), DEV_LAYOUT_DEFAULT)
+	testing.expect(t, config.is_default(&q, config.ref_of(&q, DEV_LAYOUT_PREF)), "nothing saved")
 }

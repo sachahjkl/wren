@@ -1,6 +1,6 @@
 package browser
 
-// The pane at the side of the Elements tree: Styles (the rules that apply to the chosen element, strongest first, each
+// The views of the chosen node, panels of the Elements panel's dock: Styles (the rules that apply to the chosen element, strongest first, each
 // with its selector, where it is written, and its declarations: a box switches one off, a click on a name or a value edits it
 // and the page follows as you type, a click under the last one adds one; what an element inherits is listed under it, what
 // is overridden is struck through), Computed (every resolved property), Layout (the box model as nested rectangles), Event
@@ -23,10 +23,8 @@ import "wb:page"
 import "wb:style"
 
 ELEMENTS_PREFS := [?]config.Def{
-	{name = "browser.devtools.elements.sidebar", kind = .String, default = {s = "0 0 0 auto"},
-		description = "The pane at the side of the Elements tree (Styles, Computed, Layout...): its width at the side and its height below in CSS pixels (0: the default), whether it is folded (1), and where it goes (auto: at the side when there is room, side, below), as \"width height folded place\"."},
-	{name = "browser.devtools.elements.side_tab", kind = .String, default = {s = "styles"}, choices = {"styles", "computed", "layout", "listeners", "accessibility"},
-		description = "The view at the side of the Elements tree that is shown."},
+	{name = "browser.devtools.elements.layout", kind = .String, default = {s = DEV_ELEMENTS_LAYOUT_DEFAULT},
+		description = "Where the Elements panel's tree and its views of the chosen node (Styles, Computed, Layout, Event Listeners, Accessibility) are: their stacks of tabs (* before the one shown), the splits between them (x: side by side, y: one above the other, the first's share, f: the second folded) and the floating ones, as one line. Drag a tab to change it; its stack's menu does it from the keyboard."},
 	{name = "browser.devtools.elements.show_ua", kind = .Bool, default = {b = false},
 		description = "List the browser's own style rules in the Styles pane."},
 	{name = "browser.devtools.elements.computed_all", kind = .Bool, default = {b = false},
@@ -58,7 +56,6 @@ Sty_Block :: struct {
 }
 
 Dev_Styles :: struct {
-	tab:       int,
 	list:      Dt_List,
 	filter:    Dt_Filter,
 	blocks:    [dynamic]Sty_Block,
@@ -97,6 +94,7 @@ styles_destroy :: proc(s: ^Dev_Styles) {
 	delete(s.blocks)
 	for _, v in s.shadow { free_decls(v[:]); delete(v) }
 	delete(s.shadow)
+	free_views(s)
 	delete(s.computed)
 	delete(s.listeners)
 	for c in s.off_classes { delete(c) }
@@ -117,10 +115,19 @@ free_blocks :: proc(s: ^Dev_Styles) {
 styles_reset :: proc(s: ^Dev_Styles) {
 	free_blocks(s)
 	for k, v in s.shadow { free_decls(v[:]); delete(v); delete_key(&s.shadow, k) }
-	for c in s.computed { _ = c }
-	clear(&s.computed)
-	clear(&s.listeners)
+	free_views(s)
 	s.key_h, s.key_page, s.editing = base.NIL_HANDLE, nil, false
+}
+
+// What the Computed, Event Listeners and Accessibility views list (their strings are theirs), emptied.
+@(private = "file")
+free_views :: proc(s: ^Dev_Styles) {
+	for c in s.computed { delete(c[0]); delete(c[1]) }
+	clear(&s.computed)
+	for l in s.listeners { delete(l.type); delete(l.flags); delete(l.node) }
+	clear(&s.listeners)
+	for a in s.acc { delete(a[0]); delete(a[1]) }
+	clear(&s.acc)
 }
 
 @(private = "file")
@@ -165,7 +172,7 @@ styles_refresh :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	p := t.page
 	if p == nil || p.closed || e.selected == base.NIL_HANDLE {
 		free_blocks(s)
-		clear(&s.computed); clear(&s.listeners)
+		free_views(s)
 		s.key_h = base.NIL_HANDLE
 		return
 	}
@@ -176,7 +183,7 @@ styles_refresh :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	n := dom.get(p.doc, e.selected)
 	if n == nil || n.kind != .Element {
 		free_blocks(s)
-		clear(&s.computed); clear(&s.listeners)
+		free_views(s)
 		return
 	}
 	free_blocks(s)
@@ -675,39 +682,11 @@ finish_decl :: proc(s: ^Dev_Styles, bi, di: int) {
 ////////////////////////////////
 // The pane
 
-SIDE_TABS := [?]string{"Styles", "Computed", "Layout", "Event Listeners", "Accessibility"}
-SIDE_PREFS := [?]string{"styles", "computed", "layout", "listeners", "accessibility"}
-
-styles_panel :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
+// A view of the chosen node (a panel of the Elements panel's dock).
+styles_view_of :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, view: Dev_Side) {
 	s := &e.side
-	if s.tab == 0 && config_string(app, "browser.devtools.elements.side_tab") != "styles" {
-		pref := config_string(app, "browser.devtools.elements.side_tab")
-		for p, i in SIDE_PREFS { if p == pref { s.tab = i } }
-	}
-	if dt_bar("###dt_sty_tabs", app.dtm.bar - dt_px(2)) {
-		// first (it stays in view however narrow the pane is): a chevron that folds the pane (its bar brings it back), where it goes
-		dt_gap(2)
-		if dt_btn("###dt_stt_fold", e.side_axis == .X ? .Chevron_Right : .Chevron_Down, tooltip = "Hide this pane (its bar brings it back)").clicked {
-			e.side_pane.collapsed = true
-			e.side_opts.on_save(app, &e.side_pane)
-		}
-		place := dt_menu_btn("###dt_stt_place", e.side_axis == .X ? .Dock_Right : .Dock_Bottom, tooltip = "Where this pane goes", caret = false)
-		if ui.ctx_menu(place, dt_px(160)) {
-			if ui.pane_place_menu(&e.side_pane) { e.side_opts.on_save(app, &e.side_pane) }
-		}
-		dt_vsep("###dt_stt_sep")
-		narrow := e.side_w < dt_px(DEV_ELEMENTS_SIDE_SHORT_PX)
-		for name, i in SIDE_TABS {
-			label := name
-			if narrow { switch i { case 3: label = "Events"; case 4: label = "A11y" } }
-			if sub_tab_btn(fmt.tprintf("###dt_stt_%d", i), label, s.tab == i).clicked {
-				s.tab = i
-				dev_set_pref(app, "browser.devtools.elements.side_tab", SIDE_PREFS[i])
-			}
-		}
-	}
-	switch s.tab {
-	case 0:
+	#partial switch view {
+	case .Styles:
 		if dt_bar("###dt_sty_bar", app.dtm.bar - dt_px(4)) {
 			dt_gap(3)
 			dt_search("###dt_sty_filter", &s.filter, "Filter styles", 0, false)
@@ -731,33 +710,12 @@ styles_panel :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		}
 		ui.next({width = ui.fill(), height = ui.fill(), axis = .Y})
 		if ui.column(.Start, {}, "###dt_sty_body") { styles_view(app, t, e) }
-	case 1: computed_view(app, t, e)
-	case 2: layout_view(app, t, e)
-	case 3: listeners_view(app, t, e)
-	case 4: accessibility_view(app, t, e)
+	case .Computed:      computed_view(app, t, e)
+	case .Layout:        layout_view(app, t, e)
+	case .Listeners:     listeners_view(app, t, e)
+	case .Accessibility: accessibility_view(app, t, e)
 	}
 }
-
-@(private = "file")
-sub_tab_btn :: proc(id, label: string, on: bool) -> ui.Signal {
-	w := dt_w(the_app.dtm.ui_font, the_app.dtm.fs, label) + dt_px(16)
-	ui.next({width = ui.px(math.round(w)), height = ui.pct(1), cursor = .Arrow})
-	b := ui.build_box({.Clickable, .Focusable}, id)
-	sig := ui.signal(b)
-	st := ui.frame_new(Dt_Chip_Draw)
-	st.label, st.on, st.hot = dt_frame_str(label), on, sig.hovering
-	b.custom, b.custom_user = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-		d := (^Dt_Chip_Draw)(user)
-		r := b.rect
-		if d.hot && !d.on { draw.rect(dc, {{r.min.x, r.min.y + dt_px(3)}, {r.max.x, r.max.y - dt_px(3)}}, the_app.dtc.hover, the_app.dtm.radius) }
-		cy := (r.min.y + r.max.y) * 0.5
-		tw := dt_w(the_app.dtm.ui_font, the_app.dtm.fs, d.label)
-		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, (r.min.x + r.max.x) * 0.5 - tw * 0.5, cy, d.on ? the_app.dtc.text : (d.hot ? the_app.dtc.text : the_app.dtc.weak), d.label)
-		if d.on { draw.rect(dc, {{r.min.x + dt_px(3), r.max.y - dt_px(2)}, {r.max.x - dt_px(3), r.max.y}}, the_app.dtc.accent) }
-	}, st
-	return sig
-}
-
 // The :hov panel of the Styles pane (Chrome's): checkboxes that force the element's interactive states. The rules those
 // states select then appear in the list, because styles_refresh reads the engine with the forced state. Forcing :hover,
 // :active or :focus-within applies to the element and its ancestors (the matcher walks the flat ancestor chain), so a rule
