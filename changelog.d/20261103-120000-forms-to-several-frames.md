@@ -1,3 +1,0 @@
-type: Fixed
-
-**Forms submitted to several frames at once**: a page that submits two forms in a row, each to a frame of its own, navigates both frames (the second submission replaced the first, whatever its target: a frame was left waiting forever). A newer submission still replaces one planned for the same target. WPT `encoding`: the first part of each of the 45 form-encoding tests no longer times out, 18000 more subtests pass.
