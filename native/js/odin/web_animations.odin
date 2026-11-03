@@ -47,9 +47,6 @@ import "../odin/wj"
 @(private = "file") PLAY_STATE_NAMES          := [4]string{"idle", "running", "paused", "finished"}
 @(private = "file") REPLACE_STATE_NAMES       := [3]string{"active", "removed", "persisted"}
 
-@(private = "file") is_nan :: #force_inline proc "contextless" (x: f64) -> bool { return x != x }
-@(private = "file") is_finite :: #force_inline proc "contextless" (x: f64) -> bool { return x == x && x - x == 0 }
-
 @(private = "file")
 index_of :: proc "contextless" (names: []string, s: []u8) -> i32 {
 	for n, i in names { if n == string(s) { return i32(i) } }
@@ -157,7 +154,7 @@ timing_read :: proc(ctx: ^wj.Context, dict: wj.JSValue, t: ^Timing) -> bool {
 			ok := wj.wj_to_double(ctx, dur, &d, false)
 			wj.JS_FreeValue(ctx, dur)
 			if !ok { return false }
-			if is_nan(d) || d < 0 { wj.JS_ThrowTypeError(ctx, "duration must be a non-negative number or the string 'auto'"); return false }
+			if wj.is_nan(d) || d < 0 { wj.JS_ThrowTypeError(ctx, "duration must be a non-negative number or the string 'auto'"); return false }
 			n.duration = d
 		}
 	}
@@ -184,7 +181,7 @@ timing_read :: proc(ctx: ^wj.Context, dict: wj.JSValue, t: ^Timing) -> bool {
 	}
 	if !read_double(ctx, dict, "iterations", false, &has, &d) { return fail(easing) }
 	if has {
-		if is_nan(d) || d < 0 { wj.JS_ThrowTypeError(ctx, "iterations must be non-negative"); return fail(easing) }
+		if wj.is_nan(d) || d < 0 { wj.JS_ThrowTypeError(ctx, "iterations must be non-negative"); return fail(easing) }
 		n.iterations = d
 	}
 	if easing != nil {
@@ -203,14 +200,14 @@ timing_from_options :: proc(ctx: ^wj.Context, opt: wj.JSValue, t: ^Timing) -> bo
 	if wj.is_nullish(opt) || wj.is_object(opt) { return timing_read(ctx, opt, t) }
 	d: f64
 	if !wj.wj_to_double(ctx, opt, &d, false) { return false }
-	if is_nan(d) || d < 0 { wj.JS_ThrowTypeError(ctx, "duration must be a non-negative number"); return false }
+	if wj.is_nan(d) || d < 0 { wj.JS_ThrowTypeError(ctx, "duration must be a non-negative number"); return false }
 	t.duration = d
 	return true
 }
 
 @(private = "file")
 active_duration :: proc "contextless" (t: ^Timing) -> f64 {
-	dur := is_nan(t.duration) ? 0 : t.duration
+	dur := wj.is_nan(t.duration) ? 0 : t.duration
 	if dur == 0 || t.iterations == 0 { return 0 }
 	return dur * t.iterations
 }
@@ -906,8 +903,8 @@ wjr_KeyframeEffect_setKeyframes :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 timing_put :: proc "contextless" (ctx: ^wj.Context, obj: wj.JSValue, t: ^Timing, computed: bool) {
 	wj.JS_SetPropertyStr(ctx, obj, "delay", wj.new_float64(ctx, t.delay))
 	wj.JS_SetPropertyStr(ctx, obj, "direction", name_value(ctx, DIRECTION_NAMES[:], t.direction))
-	if computed || !is_nan(t.duration) {
-		wj.JS_SetPropertyStr(ctx, obj, "duration", wj.new_float64(ctx, is_nan(t.duration) ? 0 : t.duration))
+	if computed || !wj.is_nan(t.duration) {
+		wj.JS_SetPropertyStr(ctx, obj, "duration", wj.new_float64(ctx, wj.is_nan(t.duration) ? 0 : t.duration))
 	} else {
 		wj.JS_SetPropertyStr(ctx, obj, "duration", wj.new_string(ctx, "auto"))
 	}
@@ -928,7 +925,7 @@ wjr_AnimationEffect_getTiming :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 }
 
 @(private = "file")
-nullable :: proc "contextless" (ctx: ^wj.Context, v: f64) -> wj.JSValue { return is_nan(v) ? wj.NULL : wj.new_float64(ctx, v) }
+nullable :: proc "contextless" (ctx: ^wj.Context, v: f64) -> wj.JSValue { return wj.is_nan(v) ? wj.NULL : wj.new_float64(ctx, v) }
 
 @(private = "file")
 computed_timing :: proc(ctx: ^wj.Context, e: ^Effect, which: i32) -> wj.JSValue {
@@ -1340,7 +1337,7 @@ wjr_Animation_get_finished :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) 
 numberish :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue, out: ^f64) -> bool {
 	if wj.is_null(v) { out^ = NAN; return true }
 	if !wj.wj_to_double(ctx, v, out, false) { return false }
-	if !is_finite(out^) { wj.JS_ThrowTypeError(ctx, "The provided double value is non-finite."); return false }
+	if !wj.is_finite(out^) { wj.JS_ThrowTypeError(ctx, "The provided double value is non-finite."); return false }
 	return true
 }
 
@@ -1392,7 +1389,7 @@ wjr_Animation_get_overallProgress :: proc "c" (ctx: ^wj.Context, this_val: wj.JS
 	e := fx_of(a.effect)
 	cur: f64
 	jsb.host(&cur, api_decl.Animation_currentTime, wj.wr_Animation_currentTime, a.host)
-	if e == nil || is_nan(cur) { return wj.NULL }
+	if e == nil || wj.is_nan(cur) { return wj.NULL }
 	end := e.t.delay + active_duration(&e.t) + e.t.end_delay
 	if end <= 0 { return wj.new_float64(ctx, cur < 0 ? 0 : 1) }
 	if end == end && end - end != 0 { return wj.new_float64(ctx, 0) }   // infinite

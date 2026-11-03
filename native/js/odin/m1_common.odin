@@ -105,13 +105,6 @@ pack_free  :: #force_inline proc "contextless" (b: ^Pack) { wj.libc_free(b.p); b
 // ASCII lower-case of a byte.
 lower_ascii :: #force_inline proc "contextless" (c: u8) -> u8 { return c >= 'A' && c <= 'Z' ? c + 32 : c }
 
-// ASCII case-insensitive equality.
-ascii_ieq :: proc "contextless" (a, b: string) -> bool {
-	if len(a) != len(b) { return false }
-	for i in 0 ..< len(a) { if lower_ascii(a[i]) != lower_ascii(b[i]) { return false } }
-	return true
-}
-
 // A JS string's UTF-8, compared to a literal (false when it does not convert: the exception stays pending).
 js_str_is :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue, lit: string) -> bool {
 	n: uint

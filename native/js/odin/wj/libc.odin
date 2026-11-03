@@ -303,7 +303,7 @@ nearbyint :: proc "contextless" (x: f64) -> f64 {
 	return r
 }
 
-// isnan / isinf as the bit checks they are (quickjs builds them inline too).
+// isnan / isinf / isfinite as the bit checks they are (quickjs builds them inline too).
 is_nan :: #force_inline proc "contextless" (x: f64) -> bool {
 	b := transmute(u64)x
 	return (b & 0x7ff0_0000_0000_0000) == 0x7ff0_0000_0000_0000 && (b & 0x000f_ffff_ffff_ffff) != 0
@@ -311,4 +311,7 @@ is_nan :: #force_inline proc "contextless" (x: f64) -> bool {
 is_inf :: #force_inline proc "contextless" (x: f64) -> bool {
 	b := transmute(u64)x
 	return (b & 0x7fff_ffff_ffff_ffff) == 0x7ff0_0000_0000_0000
+}
+is_finite :: #force_inline proc "contextless" (x: f64) -> bool {
+	return (transmute(u64)x) & 0x7ff0_0000_0000_0000 != 0x7ff0_0000_0000_0000
 }

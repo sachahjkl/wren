@@ -27,8 +27,6 @@ import "../odin/wj"
 @(private = "file") DISPLAY_CODE_MAX :: 63         // the part of a code looked up in a table of display names
 
 @(private = "file") NAN :: f64(0h7FF8_0000_0000_0000)
-@(private = "file") is_nan :: #force_inline proc "contextless" (x: f64) -> bool { return x != x }
-@(private = "file") is_finite :: #force_inline proc "contextless" (x: f64) -> bool { return x == x && x - x == 0 }
 @(private = "file") sign_bit :: #force_inline proc "contextless" (x: f64) -> bool { return transmute(u64)x >> 63 != 0 }
 
 // ---- small strings and text ----
@@ -498,7 +496,7 @@ group_digits :: proc "contextless" (digits: string, out: []u8) -> string {
 @(private = "file")
 round_to :: proc "contextless" (x, min_frac, max_frac, min_sig, max_sig: f64, out: ^[80]u8) -> string {
 	tmp: [64]u8
-	if !is_nan(min_sig) || !is_nan(max_sig) {
+	if !wj.is_nan(min_sig) || !wj.is_nan(max_sig) {
 		// significant digits
 		if x == 0 {
 			if min_sig > 1 {
@@ -516,7 +514,7 @@ round_to :: proc "contextless" (x, min_frac, max_frac, min_sig, max_sig: f64, ou
 		}
 		// %g trims; pad to minSig if needed
 		parsed := wj.strtod(&tmp[0], nil)
-		mns := i32(is_nan(min_sig) ? 1 : min_sig)
+		mns := i32(wj.is_nan(min_sig) ? 1 : min_sig)
 		if sig < int(mns) { wj.snprintf(&tmp[0], len(tmp), "%.*g", mns, parsed) }
 		wj.snprintf(&out[0], len(out), "%s", &tmp[0])
 		return cbuf(out[:])
@@ -713,8 +711,8 @@ nf_format_double :: proc "contextless" (n: ^Nf_Opts, value: f64, b: ^Text) {
 		cb: [16]u8
 		if sym := currency_prefix(n, &cb); sym != "" { tput(b, sym) }
 	}
-	if !is_finite(x) {
-		tput(b, is_nan(x) ? "NaN" : "\u221e")
+	if !wj.is_finite(x) {
+		tput(b, wj.is_nan(x) ? "NaN" : "\u221e")
 	} else {
 		exp := 0
 		if notation != "standard" && x != 0 {
@@ -1086,8 +1084,8 @@ nf_parts :: proc "contextless" (ctx: ^wj.Context, state: wj.JSValue, value: wj.J
 		cb: [16]u8
 		if sym := currency_prefix(&n, &cb); sym != "" { part(ctx, arr, &k, "currency", sym) }
 	}
-	if !is_finite(x) {
-		part(ctx, arr, &k, is_nan(x) ? "nan" : "infinity", is_nan(x) ? "NaN" : "\u221e")
+	if !wj.is_finite(x) {
+		part(ctx, arr, &k, wj.is_nan(x) ? "nan" : "infinity", wj.is_nan(x) ? "NaN" : "\u221e")
 	} else {
 		digits_buf: [80]u8
 		min_sig, max_sig := nf_sig_args(&n)
@@ -1275,7 +1273,7 @@ dtf_build_parts :: proc(ctx: ^wj.Context, state: wj.JSValue, date: wj.JSValue, n
 		wj.JS_FreeValue(ctx, wj.JS_GetException(ctx))
 		ms = NAN
 	}
-	if is_nan(ms) { return wj.JS_ThrowRangeError(ctx, "Invalid time value") }
+	if wj.is_nan(ms) { return wj.JS_ThrowRangeError(ctx, "Invalid time value") }
 	// the calendar fields through a Date, in the realm's clock or UTC
 	dc := global_get(ctx, "Date")
 	arg := wj.new_float64(ctx, ms)
@@ -1287,7 +1285,7 @@ dtf_build_parts :: proc(ctx: ^wj.Context, state: wj.JSValue, date: wj.JSValue, n
 	g: [8]i32
 	for i in 0 ..< 8 {
 		v := call_number(ctx, d, utc ? UTC_GETTERS[i] : LOCAL_GETTERS[i])
-		g[i] = is_finite(v) ? i32(v) : 0   // (an invalid Date: the C read garbage there)
+		g[i] = wj.is_finite(v) ? i32(v) : 0   // (an invalid Date: the C read garbage there)
 	}
 	gy, gm, gd, gw, gh, gmi, gs, gms := g[0], clamp(g[1], 0, 11), g[2], clamp(g[3], 0, 6), g[4], g[5], g[6], g[7]
 	// the time zone offset, for the GMT names
@@ -1781,7 +1779,7 @@ rtf_ctor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [
 rtf_build_parts :: proc "contextless" (ctx: ^wj.Context, state: wj.JSValue, valuev: wj.JSValue, unitv: wj.JSValue) -> wj.JSValue {
 	value: f64
 	if wj.JS_ToFloat64(ctx, &value, valuev) < 0 { return wj.EXCEPTION }
-	if !is_finite(value) { return wj.JS_ThrowRangeError(ctx, "Invalid value") }
+	if !wj.is_finite(value) { return wj.JS_ThrowRangeError(ctx, "Invalid value") }
 	uc, us := cstr_of(ctx, unitv)
 	unit: Fixed(32)
 	fset(&unit, us)

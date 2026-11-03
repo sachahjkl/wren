@@ -312,7 +312,7 @@ wjr_XMLHttpRequest_open :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, arg
 	defer wj.wj_str_free(ctx, &m)
 	method := str_view(m)
 	if !valid_token(method) { return wj.wj_throw_dom(ctx, "SyntaxError", "Failed to execute 'open' on 'XMLHttpRequest': Invalid method.") }
-	if ascii_ieq(method, "connect") || ascii_ieq(method, "trace") || ascii_ieq(method, "track") {
+	if wj.ascii_ieq(method, "connect") || wj.ascii_ieq(method, "trace") || wj.ascii_ieq(method, "track") {
 		return wj.wj_throw_dom(ctx, "SecurityError", "Failed to execute 'open' on 'XMLHttpRequest': the method is forbidden.")
 	}
 	if !wj.web_to_usv(ctx, argv[1], &u) { return wj.EXCEPTION }
@@ -334,7 +334,7 @@ wjr_XMLHttpRequest_open :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, arg
 	wj.JS_FreeValue(ctx, x.method)
 	x.method = wj.UNDEFINED
 	for norm in ([?]cstring{"DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT"}) {
-		if ascii_ieq(method, string(norm)) { x.method = wj.new_string(ctx, norm); break }
+		if wj.ascii_ieq(method, string(norm)) { x.method = wj.new_string(ctx, norm); break }
 	}
 	if wj.is_undefined(x.method) { x.method = wj.new_string_len(ctx, method) }
 	wj.JS_FreeValue(ctx, x.url)
@@ -740,7 +740,7 @@ response_charset :: proc(ctx: ^wj.Context, x: ^Xhr) -> string {
 	if ct == "" { return "" }
 	defer delete(ct, wj.libc_allocator())
 	for i in 0 ..= len(ct) - 8 {
-		if !ascii_ieq(ct[i:i + 8], "charset=") { continue }
+		if !wj.ascii_ieq(ct[i:i + 8], "charset=") { continue }
 		s := i + 8
 		e := s
 		if s < len(ct) && ct[s] == '"' {
@@ -760,7 +760,7 @@ response_charset :: proc(ctx: ^wj.Context, x: ^Xhr) -> string {
 response_text :: proc(ctx: ^wj.Context, x: ^Xhr) -> wj.JSValue {
 	cs := response_charset(ctx, x)
 	defer if cs != "" { delete(cs, wj.libc_allocator()) }
-	if cs == "" || ascii_ieq(cs, "utf-8") || ascii_ieq(cs, "utf8") {
+	if cs == "" || wj.ascii_ieq(cs, "utf-8") || wj.ascii_ieq(cs, "utf8") {
 		return wj.web_utf8_string(ctx, len(x.body) > 0 ? raw_data(x.body) : wj.empty_ptr(), uint(len(x.body)), true)
 	}
 	return decode_text(ctx, cs, x.body[:])

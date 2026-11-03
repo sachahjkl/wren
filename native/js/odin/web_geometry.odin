@@ -44,9 +44,6 @@ is_2d_slot :: #force_inline proc "contextless" (i: int) -> bool {
 	return i == 0 || i == 1 || i == 4 || i == 5 || i == 12 || i == 13
 }
 
-@(private = "file") is_nan :: #force_inline proc "contextless" (x: f64) -> bool { return x != x }
-@(private = "file") is_finite :: #force_inline proc "contextless" (x: f64) -> bool { return x == x && x - x == 0 }
-
 @(private = "file")
 matrix_free :: proc "c" (p: rawptr) { wj.libc_free(p) }
 
@@ -99,7 +96,7 @@ invert4 :: proc "contextless" (m: M16) -> (out: M16, ok: bool) {
 	inv[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] - m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5]
 	inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5]
 	det := m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12]
-	if det == 0 || !is_finite(det) { return {}, false }
+	if det == 0 || !wj.is_finite(det) { return {}, false }
 	for i in 0 ..< 16 { out[i] = inv[i] / det }
 	return out, true
 }
@@ -187,7 +184,7 @@ matrix_from_init :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue, out: ^M
 	ok := true
 	out.m = IDENT
 	pair :: proc "contextless" (ok: ^bool, slot: ^f64, a: f64, ha: bool, c: f64, hc: bool) {
-		if ha && hc && !(a == c || (is_nan(a) && is_nan(c))) { ok^ = false }
+		if ha && hc && !(a == c || (wj.is_nan(a) && wj.is_nan(c))) { ok^ = false }
 		if ha { slot^ = a } else if hc { slot^ = c }
 	}
 	pair(&ok, &out.m[0], b.a, b.has_a, b.m11, b.has_m11)
@@ -227,7 +224,6 @@ matrix_arg :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue, out: ^Matrix)
 
 // ---- parsing a transform list ("translate(10px, 5px) rotate(45deg)") ----
 
-@(private = "file") is_ws :: #force_inline proc "contextless" (c: u8) -> bool { return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' }
 @(private = "file") is_digit :: #force_inline proc "contextless" (c: u8) -> bool { return c >= '0' && c <= '9' }
 @(private = "file") is_alpha :: #force_inline proc "contextless" (c: u8) -> bool { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') }
 
@@ -237,18 +233,6 @@ trim_ws :: proc "contextless" (s: []u8) -> []u8 {
 	for len(s) > 0 && is_ws(s[0]) { s = s[1:] }
 	for len(s) > 0 && is_ws(s[len(s) - 1]) { s = s[:len(s) - 1] }
 	return s
-}
-
-@(private = "file")
-ascii_ieq :: proc "contextless" (a: []u8, b: string) -> bool {
-	if len(a) != len(b) { return false }
-	for i in 0 ..< len(a) {
-		x := a[i]; y := b[i]
-		if x >= 'A' && x <= 'Z' { x += 32 }
-		if y >= 'A' && y <= 'Z' { y += 32 }
-		if x != y { return false }
-	}
-	return true
 }
 
 // a CSS <number> at the start of s: sign, digits, fraction, exponent (an infinity is clamped to the largest double);
@@ -306,22 +290,22 @@ parse_arg :: proc "contextless" (s: []u8, kind: u8) -> (out: f64, ok: bool) {
 	case .Length:
 		if un == 0 { return 0, v == 0 }
 		switch {
-		case ascii_ieq(unit_raw, "px"): return v, true
-		case ascii_ieq(unit_raw, "cm"): return v * 96 / 2.54, true
-		case ascii_ieq(unit_raw, "mm"): return v * 96 / 25.4, true
-		case ascii_ieq(unit_raw, "q"):  return v * 96 / 101.6, true
-		case ascii_ieq(unit_raw, "in"): return v * 96, true
-		case ascii_ieq(unit_raw, "pt"): return v * 96 / 72, true
-		case ascii_ieq(unit_raw, "pc"): return v * 16, true
+		case wj.ascii_ieq(string(unit_raw), "px"): return v, true
+		case wj.ascii_ieq(string(unit_raw), "cm"): return v * 96 / 2.54, true
+		case wj.ascii_ieq(string(unit_raw), "mm"): return v * 96 / 25.4, true
+		case wj.ascii_ieq(string(unit_raw), "q"):  return v * 96 / 101.6, true
+		case wj.ascii_ieq(string(unit_raw), "in"): return v * 96, true
+		case wj.ascii_ieq(string(unit_raw), "pt"): return v * 96 / 72, true
+		case wj.ascii_ieq(string(unit_raw), "pc"): return v * 16, true
 		}
 		return 0, false
 	case .Angle:
 		if un == 0 { return 0, v == 0 }
 		switch {
-		case ascii_ieq(unit_raw, "deg"):  return v, true
-		case ascii_ieq(unit_raw, "rad"):  return v * 180 / PI, true
-		case ascii_ieq(unit_raw, "grad"): return v * 0.9, true
-		case ascii_ieq(unit_raw, "turn"): return v * 360, true
+		case wj.ascii_ieq(string(unit_raw), "deg"):  return v, true
+		case wj.ascii_ieq(string(unit_raw), "rad"):  return v * 180 / PI, true
+		case wj.ascii_ieq(string(unit_raw), "grad"): return v * 0.9, true
+		case wj.ascii_ieq(string(unit_raw), "turn"): return v * 360, true
 		}
 		return 0, false
 	}
@@ -409,7 +393,7 @@ parse_transform :: proc "contextless" (s: []u8) -> (out: Matrix, ok: bool) {
 	out = {IDENT, true}
 	c := trim_ws(s)
 	if len(c) == 0 { return out, true }
-	if ascii_ieq(c, "none") { return out, true }
+	if wj.ascii_ieq(string(c), "none") { return out, true }
 	for len(c) > 0 {
 		nl := 0
 		for nl < len(c) && (is_alpha(c[nl]) || is_digit(c[nl])) { nl += 1 }
@@ -420,7 +404,7 @@ parse_transform :: proc "contextless" (s: []u8) -> (out: Matrix, ok: bool) {
 		if close < 0 { return out, false }
 		id: TF
 		found := false
-		for d, k in TF_DEFS { if ascii_ieq(name, d.name) { id = k; found = true; break } }
+		for d, k in TF_DEFS { if wj.ascii_ieq(string(name), d.name) { id = k; found = true; break } }
 		if !found { return out, false }
 		def := TF_DEFS[id]
 		a: [16]f64
@@ -431,7 +415,7 @@ parse_transform :: proc "contextless" (s: []u8) -> (out: Matrix, ok: bool) {
 			one := comma >= 0 ? args[:comma] : args
 			if na >= def.max { return out, false }
 			// perspective(none) is perspective(0): the identity
-			if id == .Perspective && ascii_ieq(trim_ws(one), "none") {
+			if id == .Perspective && wj.ascii_ieq(string(trim_ws(one)), "none") {
 				a[na] = 0
 			} else {
 				v, aok := parse_arg(one, def.kinds[na])
@@ -893,7 +877,7 @@ wjr_DOMMatrixReadOnly_toString :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 	s := matrix_of(ctx, this_val, ro())
 	if s == nil { return wj.EXCEPTION }
 	for x in s.m {
-		if !is_finite(x) { return wj.wj_throw_dom(ctx, "InvalidStateError", "Failed to execute 'toString' on 'DOMMatrixReadOnly': Cannot be serialized with NaN or Infinity values.") }
+		if !wj.is_finite(x) { return wj.wj_throw_dom(ctx, "InvalidStateError", "Failed to execute 'toString' on 'DOMMatrixReadOnly': Cannot be serialized with NaN or Infinity values.") }
 	}
 	t: Text
 	put(&t, s.is2d ? "matrix(" : "matrix3d(")
@@ -1129,13 +1113,13 @@ quad_point :: proc "contextless" (ctx: ^wj.Context, this_val: wj.JSValue, i: u32
 @(private = "file")
 nan_min :: proc "contextless" (v: [4]f64) -> f64 {
 	r := v[0]
-	for i in 1 ..< 4 { if is_nan(v[i]) || is_nan(r) { return NAN }; if v[i] < r { r = v[i] } }
+	for i in 1 ..< 4 { if wj.is_nan(v[i]) || wj.is_nan(r) { return NAN }; if v[i] < r { r = v[i] } }
 	return r
 }
 @(private = "file")
 nan_max :: proc "contextless" (v: [4]f64) -> f64 {
 	r := v[0]
-	for i in 1 ..< 4 { if is_nan(v[i]) || is_nan(r) { return NAN }; if v[i] > r { r = v[i] } }
+	for i in 1 ..< 4 { if wj.is_nan(v[i]) || wj.is_nan(r) { return NAN }; if v[i] > r { r = v[i] } }
 	return r
 }
 
