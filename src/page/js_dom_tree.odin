@@ -1038,11 +1038,6 @@ Document_referrer :: proc(c: ^Call) -> string { return "" }
 
 Document_lastModified :: proc(c: ^Call) -> string { return document_last_modified(c.page) }
 
-Document_domain :: proc(c: ^Call) -> string {
-	if c.page.env.origin.opaque { return "" }
-	return c.page.env.location.host
-}
-
 Document_scrollingElement :: proc(c: ^Call) -> u64 {
 	d := jd_doc(c)
 	if d == nil { return 0 }

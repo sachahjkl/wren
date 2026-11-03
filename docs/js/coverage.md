@@ -1899,7 +1899,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `static parseHTMLUnsafe()`: C `wjr_Document_static_parseHTMLUnsafe`
 - `static parseHTML()`: not supported
 - `readonly location`: C `wjr_Document_get_location`
-- `domain`: import `dom.Document_domain (setter not supported)`
+- `domain`: import `dom.Document_domain`
 - `readonly referrer`: import `dom.Document_referrer`
 - `cookie`: import `document.Document_cookie_get`
 - `readonly lastModified`: import `dom.Document_lastModified`

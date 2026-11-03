@@ -1,7 +1,7 @@
 # web-platform-tests expectations of Wren for html/browsers/sandboxing, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/html/browsers/sandboxing/popup-from-initial-empty-sandboxed-document.window.html: TIMEOUT
-	popup-from-initial-empty-sandboxed-document: TIMEOUT
+/html/browsers/sandboxing/popup-from-initial-empty-sandboxed-document.window.html: OK
+	popup-from-initial-empty-sandboxed-document: FAIL
 /html/browsers/sandboxing/sandbox-allow-same-origin.html: OK
 	DOM access in sandbox='allow-same-origin' iframe is allowed: PASS
 /html/browsers/sandboxing/sandbox-allow-scripts.html: OK
@@ -14,12 +14,12 @@
 	window.open in sandbox iframe: FAIL
 /html/browsers/sandboxing/sandbox-disallow-same-origin.html: OK
 	Access to sandbox iframe is disallowed: PASS
-/html/browsers/sandboxing/sandbox-disallow-scripts-via-unsandboxed-popup.tentative.html: TIMEOUT
-	Sandboxed => unsandboxed popup: TIMEOUT
+/html/browsers/sandboxing/sandbox-disallow-scripts-via-unsandboxed-popup.tentative.html: OK
+	Sandboxed => unsandboxed popup: PASS
 /html/browsers/sandboxing/sandbox-disallow-scripts.html: OK
 	Running script from sandbox iframe is disallowed: PASS
 /html/browsers/sandboxing/sandbox-document-open-mutation.window.html: OK
-	Using document.open() against a document from a different window must not mutate the other window's sandbox flags: FAIL
+	Using document.open() against a document from a different window must not mutate the other window's sandbox flags: PASS
 /html/browsers/sandboxing/sandbox-document-open.html: OK
 	document.open(): PASS
 	other_document.open(): PASS
@@ -27,16 +27,16 @@
 	Inherit sandbox flags from the initiator's frame: PASS
 /html/browsers/sandboxing/sandbox-inherited-from-initiator-response.html: OK
 	Inherit sandbox flags from the initiator's response: PASS
-/html/browsers/sandboxing/sandbox-inherited-from-required-csp.html: TIMEOUT
-	about:blank: PASS
-	blob URL: PASS
-	cross-origin: TIMEOUT
+/html/browsers/sandboxing/sandbox-inherited-from-required-csp.html: OK
+	about:blank: FAIL
+	blob URL: FAIL
+	cross-origin: FAIL
 	data-url: PASS
-	initial empty document: PASS
-	same-origin: PASS
-	srcdoc: PASS
+	initial empty document: FAIL
+	same-origin: FAIL
+	srcdoc: FAIL
 /html/browsers/sandboxing/sandbox-initial-empty-document-toward-same-origin.html: OK
-	\n  Check sandbox-flags inheritance in case of javascript window reuse.\n: FAIL
+	\n  Check sandbox-flags inheritance in case of javascript window reuse.\n: PASS
 /html/browsers/sandboxing/sandbox-javascript-window-open.html: TIMEOUT
 	window.open in sandbox iframe: TIMEOUT
 /html/browsers/sandboxing/sandbox-navigation-timing.tentative.html: OK

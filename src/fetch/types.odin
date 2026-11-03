@@ -115,6 +115,7 @@ Environment :: struct {
 	storage_access:  Storage_Access,    // a cross-site frame's unpartitioned storage and cookies (Storage Access API)
 	embedder_policy: Embedder_Policy,   // Cross-Origin-Embedder-Policy of the document, or what a worker has of its creator
 	cross_origin_isolated: bool,        // HTML's capability (apply_isolation_headers in src/page/page.odin)
+	origin_keyed:    bool,              // its agent cluster is keyed by origin (Origin-Agent-Cluster: ?1, or isolated): document.domain sets nothing
 	agent_cluster:   u64,               // the wasm package's number of its agent cluster: 0 until something needs one
 }
 

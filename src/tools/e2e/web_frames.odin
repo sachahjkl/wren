@@ -805,6 +805,55 @@ f.src = "%s";
 	close_page(pr, min_checks = 3)
 }
 
+// document.domain (HTML "same origin-domain"): a frame of another port of the same host is out of reach until both documents set
+// document.domain to the host; then each reaches the other's document. What the setter refuses (another domain, a public suffix, a
+// sandboxed document), and an origin-keyed agent cluster (Origin-Agent-Cluster: ?1), where it changes nothing.
+@(test)
+frames_document_domain :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	setter :: `const set = v => { try { document.domain = v; return "set " + document.domain; } catch (e) { return e.name; } };`
+	child := doc(OTHER, fill(`<p id=secret>secret</p><script>%s
+addEventListener("message", e => {
+  if (e.data === "join") parent.postMessage("child " + set(document.domain), "*");
+  if (e.data === "reach") { let r; try { r = parent.document.getElementById("mine").textContent; } catch (e) { r = e.name; } parent.postMessage("child reads " + r, "*"); }
+});
+</script>`, setter))
+	keyed := doc(OTHER, fill(`<script>%s addEventListener("message", () => parent.postMessage("keyed " + set(document.domain), "*"));</script>`, setter), "Origin-Agent-Cluster: ?1")
+	sandboxed := doc(SAME, fill(`<script>%s parent.postMessage("sandboxed " + set(document.domain), "*");</script>`, setter))
+	pr := load(t, fill(`<body><p id=mine>mine</p><iframe id=f src="%s"></iframe><iframe id=k src="%s"></iframe><iframe sandbox=allow-scripts src="%s"></iframe><script>%s
+const f = document.getElementById("f"), k = document.getElementById("k");
+const read = w => { try { return w.document.getElementById("secret") ? "secret" : "none"; } catch (e) { return e.name; } };
+addEventListener("message", e => {
+  log(e.data);
+  if (e.data.startsWith("child set")) {
+    log("before " + read(f.contentWindow));
+    log("parent " + set("127.0.0.1"));
+    log("after " + read(f.contentWindow) + " " + (f.contentDocument !== null));
+    f.contentWindow.postMessage("reach", "*");
+    k.contentWindow.postMessage("ask", "*");
+  }
+  if (e.data.startsWith("keyed")) log("keyed reach " + read(k.contentWindow));
+});
+addEventListener("load", () => {
+  log("refused " + set("example.com") + " " + set("0.1") + " " + set("") + " " + document.domain);
+  f.contentWindow.postMessage("join", "*");
+});
+</script></body>`, child, keyed, sandboxed, setter))
+	check(pr, wait_note(pr, "refused SecurityError SecurityError SecurityError 127.0.0.1"), "another domain, a suffix of an address, nothing: SecurityError, the domain unchanged")
+	check(pr, wait_note(pr, "child set 127.0.0.1"), "the frame sets its domain to its host")
+	check(pr, wait_note(pr, "before SecurityError"), "the frame alone set it: still another origin-domain")
+	check(pr, wait_note(pr, "parent set 127.0.0.1"), "the parent sets the same")
+	check(pr, wait_note(pr, "after secret true"), "now the parent reaches the frame's document (contentDocument too)")
+	check(pr, wait_note(pr, "child reads mine"), "and the frame the parent's")
+	check(pr, wait_note(pr, "keyed set 127.0.0.1"), "an origin-keyed agent cluster: the assignment is no error...")
+	check(pr, wait_note(pr, "keyed reach SecurityError"), "... and sets nothing: that frame stays out of reach")
+	check(pr, wait_note(pr, "sandboxed SecurityError"), "a sandboxed document may not set it")
+	close_page(pr, min_checks = 9)
+}
+
 // the boundary: sandbox
 @(test)
 frames_boundary_sandbox :: proc(t: ^testing.T) {

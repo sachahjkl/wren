@@ -2029,8 +2029,11 @@ foreign _wr_wj_dom {
 	@(link_name = "Document_referrer") wr_Document_referrer :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	// document.lastModified ("MM/DD/YYYY hh:mm:ss")
 	@(link_name = "Document_lastModified") wr_Document_lastModified :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
-	// document.domain (getter)
+	// document.domain: the effective domain of the document's origin (its domain once set, else its host; "" for an opaque origin)
 	@(link_name = "Document_domain") wr_Document_domain :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	// document.domain = value: the origin's domain becomes `value`, a registrable domain suffix of the effective domain or that
+	// domain itself (HTML); Security when sandboxed, opaque or not such a suffix; nothing in an origin-keyed agent cluster.
+	@(link_name = "Document_set_domain") wr_Document_set_domain :: proc(value: [^]u8, value_len: u32) -> i32 ---
 	// document.scrollingElement
 	@(link_name = "Document_scrollingElement") wr_Document_scrollingElement :: proc() -> u64 ---
 	// document.body = element: Hierarchy when not a <body> or <frameset>, or without a document element.
