@@ -911,7 +911,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	     .Animation_Name, .Animation_Duration, .Animation_Timing_Function, .Animation_Delay, .Animation_Iteration_Count,
 	     .Animation_Direction, .Animation_Fill_Mode, .Animation_Play_State, .Animation_Composition,
 	     .Counter_Reset, .Counter_Increment, .Counter_Set, .Quotes,
-	     .Object_Position, .Filter, .Backdrop_Filter, .Clip_Path, .Isolation, .Mix_Blend_Mode,
+	     .Object_Position, .Filter, .Backdrop_Filter, .Clip_Path, .Clip, .Isolation, .Mix_Blend_Mode,
 	     .Will_Change, .Contain, .Content_Visibility, .Scroll_Behavior, .Overflow_Anchor, .Overscroll_Behavior_X, .Overscroll_Behavior_Y, .Touch_Action,
 	     .Caret_Color, .Accent_Color, .Appearance, .Resize, .Table_Layout, .Column_Count, .Column_Width,
 	     .Column_Span, .Column_Fill, .Column_Rule_Width, .Column_Rule_Style, .Column_Rule_Color, .Break_Before, .Break_After,

@@ -25,7 +25,7 @@ import "wb:style"
 used_preserve_3d :: proc(cs: ^style.Computed) -> bool {
 	if cs == nil || cs.transform_style != .Preserve_3d { return false }
 	// grouping properties flatten (CSS Transforms 2 §transform-style)
-	return cs.opacity >= 1 && len(cs.filter) == 0 && len(cs.backdrop_filter) == 0 && cs.clip_path == nil && !style.has_mask(cs) &&
+	return cs.opacity >= 1 && len(cs.filter) == 0 && len(cs.backdrop_filter) == 0 && cs.clip_path == nil && !style.has_clip_rect(cs) && !style.has_mask(cs) &&
 		cs.mix_blend_mode == .Normal && cs.isolation != .Isolate && cs.overflow_x == .Visible && cs.overflow_y == .Visible
 }
 

@@ -167,6 +167,31 @@ clip_path_geometry :: proc(t: ^testing.T) {
 	testing.expect(t, clip_shape_contains(s, b.abs + {50, 50}) && !clip_shape_contains(s, b.abs + {1, 11}) && !clip_shape_contains(s, b.abs + {50, 5}), "rounded inset")
 }
 
+// The clip property: rect() of an absolutely positioned box, its edges from the top-left border corner (the skip
+// links of Google's search pages: clip: rect(1px, 1px, 1px, 1px) hides them until they are focused).
+@(test)
+clip_rect_geometry :: proc(t: ^testing.T) {
+	f := fx_load(`<body style="margin:0">
+<a id=sk style="position:absolute;left:10px;top:20px;width:100px;height:30px;clip:rect(1px, 1px, 1px, 1px)">skip</a>
+<div id=ra style="position:absolute;left:0;top:100px;width:100px;height:50px;border:5px solid;clip:rect(2px auto auto 30px)"></div>
+<div id=both style="position:absolute;left:0;top:200px;width:100px;height:50px;clip:rect(0 50px 40px 0);clip-path:inset(10px)"></div>
+<div id=st style="width:100px;height:10px;clip:rect(1px, 1px, 1px, 1px)"></div>
+</body>`)
+	defer fixture_unload(f)
+	sk := clip_path_shape(&f.l, bi_of(f, "sk"))
+	kb := &f.l.boxes[bi_of(f, "sk")]
+	testing.expectf(t, sk.kind == .Rect && sk.rect.min == kb.abs + 1 && sk.rect.max == kb.abs + 1, "rect(1px, 1px, 1px, 1px): nothing left %v", sk.rect)
+	testing.expect(t, group_of(f, "sk") != nil && group_of(f, "sk").effects == {.Clip_Path}, "clipped through a clip group")
+	testing.expect(t, hit(f, 50, 30) != el(f, "sk"), "a clipped-away link is not hit")
+	ra := clip_path_shape(&f.l, bi_of(f, "ra"))
+	rb := &f.l.boxes[bi_of(f, "ra")]
+	testing.expectf(t, ra.rect.min == rb.abs + {30, 2} && ra.rect.max == rb.abs + rb.size, "auto: the border box edge %v", ra.rect)
+	bo := clip_path_shape(&f.l, bi_of(f, "both"))
+	bb := &f.l.boxes[bi_of(f, "both")]
+	testing.expectf(t, bo.rect.min == bb.abs + 10 && bo.rect.max == bb.abs + {50, 40}, "with an inset clip-path: their intersection %v", bo.rect)
+	testing.expect(t, group_of(f, "st") == nil && clip_path_shape(&f.l, bi_of(f, "st")).kind == .None, "not positioned: no clip")
+}
+
 @(test)
 hit_test_follows_clip_path :: proc(t: ^testing.T) {
 	f := fx_load(`<body style="margin:0">

@@ -33,7 +33,7 @@ PAINT_PROPS :: [?]Prop{
 	.Transition_Property, .Transition_Duration, .Transition_Timing_Function, .Transition_Delay, .Transition_Behavior,
 	.Animation_Name, .Animation_Duration, .Animation_Timing_Function, .Animation_Delay, .Animation_Iteration_Count,
 	.Animation_Direction, .Animation_Fill_Mode, .Animation_Play_State, .Animation_Composition,
-	.Object_Position, .Filter, .Backdrop_Filter, .Clip_Path,
+	.Object_Position, .Filter, .Backdrop_Filter, .Clip_Path, .Clip,
 	.Scroll_Behavior, .Overflow_Anchor, .Overscroll_Behavior_X, .Overscroll_Behavior_Y, .Caret_Color, .Accent_Color,
 	.Mask_Image, .Mask_Mode, .Mask_Repeat, .Mask_Position, .Mask_Size, .Mask_Origin, .Mask_Clip, .Mask_Composite,
 	.Text_Fill_Color, .Wren_Shader,
@@ -98,7 +98,7 @@ structure_sig :: proc(c: ^Computed) -> u8 {
 	if c.opacity < 1 { sig |= 2 }
 	if len(c.filter) > 0 { sig |= 4 }
 	if len(c.backdrop_filter) > 0 { sig |= 8 }
-	if c.clip_path != nil { sig |= 16 }
+	if c.clip_path != nil || has_clip_rect(c) { sig |= 16 }
 	if has_mask(c) { sig |= 32 }
 	if transform_is_3d(c) || c.transform_style == .Preserve_3d { sig |= 64 }   // a plane (layout/plane.odin)
 	if c.backface_visibility == .Hidden { sig |= 128 }

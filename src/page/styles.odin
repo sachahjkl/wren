@@ -134,7 +134,7 @@ sync_styles :: proc(p: ^Page) {
 	revealing := scripts_revealing(p)
 	// a sheet stays when its owner is in the part not revealed yet (not one a script removed)
 	pending :: proc(user: rawptr, owner: base.Handle) -> bool { return held_by_reveal((^Page)(user), owner) }
-	links := style.sync_document_sheets(p.engine, p.doc, p.env.location.href, keep_missing = revealing ? pending : nil, keep_user = p)
+	links := style.sync_document_sheets(p.engine, p.doc, document_base_url(p), keep_missing = revealing ? pending : nil, keep_user = p)
 
 	// links that disappeared (while the parser reveals the document, those of the part not revealed yet stay; one a
 	// script changed, no longer a stylesheet, goes: scripts that wait for stylesheets would wait for it for ever)
@@ -155,7 +155,7 @@ sync_styles :: proc(p: ^Page) {
 			free_load(p, old)
 			delete_key(&p.link_loads, k.owner)
 		}
-		abs, ok := resolve_against(k.href, p.env.location.href)
+		abs, ok := resolve_against(k.href, document_base_url(p))
 		l := new(Style_Load)
 		l.page, l.owner, l.url = p, k.owner, abs
 		l.href, l.media = strings.clone(k.href), strings.clone(k.media)
@@ -179,7 +179,7 @@ sync_styles :: proc(p: ^Page) {
 @(private)
 start_pending_imports :: proc(p: ^Page) {
 	for pi in style.engine_take_pending_imports(p.engine) {
-		base_url := pi.base_url != "" ? pi.base_url : p.env.location.href
+		base_url := pi.base_url != "" ? pi.base_url : document_base_url(p)
 		abs, ok := resolve_against(pi.url, base_url)
 		if !ok {
 			log(p, .Warn, fmt.tprintf("@import: invalid URL %q", pi.url))

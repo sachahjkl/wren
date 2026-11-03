@@ -184,11 +184,12 @@ Filter_Op :: struct {
 }
 
 Geometry_Box :: enum u8 { Border_Box, Padding_Box, Content_Box, Margin_Box, Fill_Box, Stroke_Box, View_Box }
-Clip_Path_Kind :: enum u8 { None, Url, Box, Inset, Circle, Ellipse, Polygon }
+// Rect: the `clip` property's rect() (CSS Masking 1 §6.1), not a clip-path shape.
+Clip_Path_Kind :: enum u8 { None, Url, Box, Inset, Circle, Ellipse, Polygon, Rect }
 Clip_Path :: struct {
 	kind:    Clip_Path_Kind,
 	box:     Geometry_Box,
-	inset:   [Side]Length,           // Inset
+	inset:   [Side]Length,           // Inset; Rect: the edges from the border box's top-left corner, .Auto at its edge
 	round:   [Corner]Corner_Radius,  // Inset `round`
 	radius:  [2]Length,              // Circle (radius[0]) and Ellipse, when explicit
 	extent:  [2]Radial_Extent,       // Closest_Side / Farthest_Side, or Explicit

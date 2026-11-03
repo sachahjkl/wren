@@ -142,7 +142,7 @@ fonts_sync :: proc(p: ^Page) {
 		f.unicode_range = make([][2]u32, len(ff.unicode_range))
 		copy(f.unicode_range, ff.unicode_range)
 		srcs := make([dynamic]Web_Font_Source)
-		base_url := ff.base_url != "" ? ff.base_url : p.env.location.href
+		base_url := ff.base_url != "" ? ff.base_url : document_base_url(p)
 		for src in ff.sources {
 			if src.kind != .Url { continue }   // local(): the shell's font engine knows the installed fonts
 			abs, ok := resolve_against(src.url, base_url)

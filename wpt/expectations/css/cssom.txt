@@ -4090,9 +4090,9 @@
 	clear: left: PASS
 	clear: none: PASS
 	clear: right: PASS
-	clip: auto: FAIL
-	clip: inherit: FAIL
-	clip: rect(1em, auto, 0.5px, 2000em): FAIL
+	clip: auto: PASS
+	clip: inherit: PASS
+	clip: rect(1em, auto, 0.5px, 2000em): PASS
 	color: black: PASS
 	color: inherit: PASS
 	color: red: PASS

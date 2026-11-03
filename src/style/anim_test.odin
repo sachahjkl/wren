@@ -526,6 +526,22 @@ font_faces :: proc(t: ^testing.T) {
 	testing.expect(t, faces[1].family == "Other Name" && faces[1].sources[0].format == .Opentype)
 }
 
+// The clip property: rect() with commas or (the legacy form) spaces, auto edges; anything else is invalid.
+@(test)
+clip_rect_values :: proc(t: ^testing.T) {
+	f := open(`<style>
+		#c { clip: rect(1px, 2px, 3px, 4px) } #s { clip: rect(1px auto 3em -4px) } #a { clip: rect(1px, 1px, 1px, 1px); clip: auto }
+		#m { clip: rect(1px, 2px 3px, 4px) } #p { clip: rect(10%, 1px, 1px, 1px) } #n { clip: rect(1px, 2px, 3px) }
+	</style><div id=c></div><div id=s style="font-size:10px"></div><div id=a></div><div id=m></div><div id=p></div><div id=n></div>`)
+	defer fixture_unload(f)
+	c := node(f, "c").clip
+	testing.expect(t, c != nil && c.kind == .Rect && c.inset[.Top].v == 1 && c.inset[.Right].v == 2 && c.inset[.Bottom].v == 3 && c.inset[.Left].v == 4)
+	s := node(f, "s").clip
+	testing.expect(t, s != nil && s.inset[.Right].kind == .Auto && s.inset[.Bottom].v == 30 && s.inset[.Left].v == -4, "spaces, auto, em, negative")
+	testing.expect(t, node(f, "a").clip == nil, "auto")
+	for id in ([]string{"m", "p", "n"}) { testing.expectf(t, node(f, id).clip == nil, "%s: invalid", id) }
+}
+
 @(test)
 more_properties :: proc(t: ^testing.T) {
 	f := open(`<style>

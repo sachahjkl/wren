@@ -194,6 +194,22 @@ hints_map_html_attributes :: proc(t: ^testing.T) {
 	testing.expect(t, el(d2, "t").border_spacing == {2, 2} && el(d2, "c").background_color[3] == 0, "style.presentational_hints.enabled off")
 }
 
+// Form controls take the font of -webkit-small-control whole (its weight, its normal line height) and reset the text
+// properties HTML's rendering section names, whatever the text around them sets (a 24px line height around Google's
+// chips made their 20 px buttons stand out of the line).
+@(test)
+form_control_text_reset :: proc(t: ^testing.T) {
+	f := fixture_load(`<!doctype html><body style="font:bold 16px/24px serif;letter-spacing:2px;word-spacing:3px;text-transform:uppercase;text-indent:5px">
+<button id=b>b</button><input id=i><select id=s></select><textarea id=ta></textarea><span id=sp>s</span></body>`)
+	defer fixture_unload(f)
+	for id in ([]string{"b", "i", "s", "ta"}) {
+		c := el(f, id)
+		testing.expectf(t, c.line_height.kind == .Normal && c.font_weight == 400 && c.font_size > 13.3 && c.font_size < 13.4, "%s: font %v %v %v", id, c.line_height, c.font_weight, c.font_size)
+		testing.expectf(t, c.letter_spacing == 0 && c.word_spacing == 0 && c.text_transform == .None && c.text_indent.v == 0, "%s: text properties reset", id)
+	}
+	testing.expect(t, el(f, "sp").line_height.kind == .Length && el(f, "sp").letter_spacing == 2, "other elements inherit")
+}
+
 @(test)
 quirks_mode_rules :: proc(t: ^testing.T) {
 	SRC :: `<body style="font-size: 10px; white-space: nowrap"><table id=t><tr><td id=c>x</td></tr></table><form id=f><input id=i><button id=bt>b</button></form></body>`

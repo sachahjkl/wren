@@ -905,7 +905,7 @@ fullscreen_ancestor_reset :: proc(cx: ^Cx) {
 	c.z_auto = true
 	c.transform, c.translate, c.rotate, c.scale = nil, {}, {}, {}
 	c.perspective = 0
-	c.filter, c.backdrop_filter, c.clip_path = nil, nil, nil
+	c.filter, c.backdrop_filter, c.clip_path, c.clip = nil, nil, nil, nil
 	c.opacity = 1
 	c.isolation, c.mix_blend_mode = {}, {}
 	c.will_change = nil

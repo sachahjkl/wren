@@ -1,5 +1,6 @@
 package layout
 
+import "base:runtime"
 import "core:math"
 import "wb:style"
 
@@ -18,7 +19,7 @@ Group_Effect :: enum u8 {
 	Backdrop,     // backdrop-filter
 	Blend,        // mix-blend-mode other than normal
 	Isolate,      // an isolated group for blending descendants
-	Clip_Path,    // clip-path other than none
+	Clip_Path,    // clip-path other than none, or the clip property's rect()
 	Mask,         // a mask-image layer with an image
 	Plane,        // a 3D plane: the box and its content drawn offscreen, projected (plane.odin)
 }
@@ -33,7 +34,7 @@ box_effects :: proc(cs: ^style.Computed) -> Group_Effects {
 	if len(cs.filter) > 0 { fx += {.Filter} }
 	if len(cs.backdrop_filter) > 0 { fx += {.Backdrop} }
 	if cs.mix_blend_mode != .Normal { fx += {.Blend} }
-	if cs.clip_path != nil { fx += {.Clip_Path} }
+	if cs.clip_path != nil || style.has_clip_rect(cs) { fx += {.Clip_Path} }
 	if style.has_mask(cs) { fx += {.Mask} }
 	return fx
 }
@@ -132,21 +133,49 @@ reference_box :: proc(l: ^Layout, b: ^Box, gb: style.Geometry_Box) -> (r: Rect, 
 	return border, outer
 }
 
-// The clip-path of box `bi` resolved against its reference box. None: no clip (none, or url(), which needs SVG).
-// Polygon points are allocated with `allocator`.
+// The clip of box `bi`: its clip-path resolved against its reference box, within the rect() of its clip property. None:
+// no clip (none, or url(), which needs SVG). Polygon points are allocated with `allocator`.
 clip_path_shape :: proc(l: ^Layout, bi: i32, allocator := context.temp_allocator) -> Clip_Shape {
 	if bi < 0 || int(bi) >= len(l.boxes) { return {} }
 	b := &l.boxes[bi]
-	cs := b.cs
-	if cs == nil || cs.clip_path == nil { return {} }
-	cp := cs.clip_path
+	if b.cs == nil { return {} }
+	sh := b.cs.clip_path != nil ? path_shape(l, b, b.cs.clip_path, allocator) : Clip_Shape{}
+	if !style.has_clip_rect(b.cs) { return sh }
+	r := clip_rect(l, b, b.cs.clip)
+	switch sh.kind {
+	case .None: return Clip_Shape{kind = .Rect, rect = r}
+	case .Rect:
+		sh.rect = rect_intersect(sh.rect, r)
+		sh.rect.max = {max(sh.rect.max.x, sh.rect.min.x), max(sh.rect.max.y, sh.rect.min.y)}
+	case .Ellipse, .Polygon:   // (the rect does not cut other shapes)
+	}
+	return sh
+}
+
+// The rect() of the clip property (CSS Masking 1 §6.1): its edges are offsets from the top-left corner of the border
+// box, auto its edge; a right or bottom edge before the left or top one leaves nothing.
+@(private)
+clip_rect :: proc(l: ^Layout, b: ^Box, cp: ^style.Clip_Path) -> Rect {
+	border := border_rect(b)
+	s := l.scale > 0 ? l.scale : 1
+	edge :: proc(v: style.Length, origin, auto_at, s: f32) -> f32 { return v.kind == .Auto ? auto_at : origin + style.resolve(v, 0) * s }
+	r := Rect{
+		{edge(cp.inset[.Left], border.min.x, border.min.x, s), edge(cp.inset[.Top], border.min.y, border.min.y, s)},
+		{edge(cp.inset[.Right], border.min.x, border.max.x, s), edge(cp.inset[.Bottom], border.min.y, border.max.y, s)},
+	}
+	r.max = {max(r.max.x, r.min.x), max(r.max.y, r.min.y)}
+	return r
+}
+
+@(private)
+path_shape :: proc(l: ^Layout, b: ^Box, cp: ^style.Clip_Path, allocator: runtime.Allocator) -> Clip_Shape {
 	s := l.scale > 0 ? l.scale : 1
 	ref, ref_radii := reference_box(l, b, cp.box)
 	w, h := max(ref.max.x - ref.min.x, 0), max(ref.max.y - ref.min.y, 0)
 	// lengths are CSS px, percentages of a reference size in device px
 	res :: proc(v: style.Length, base, s: f32) -> f32 { return style.resolve(v, base / s) * s }
 	switch cp.kind {
-	case .None, .Url: return {}
+	case .None, .Url, .Rect: return {}
 	case .Box:
 		return Clip_Shape{kind = .Rect, rect = ref, radii = ref_radii}
 	case .Inset:

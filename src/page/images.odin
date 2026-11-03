@@ -1325,7 +1325,7 @@ css_images_request :: proc(p: ^Page, used: map[string]bool) {
 	pi := &p.images
 	for written in used {
 		if written in pi.css_urls { continue }
-		base_url := pi.css_bases[written] or_else p.env.location.href
+		base_url := pi.css_bases[written] or_else document_base_url(p)
 		abs, ok := resolve_against(written, base_url)
 		if !ok { continue }
 		r := page_request(p, abs, .No_Cors, .Include, true)
