@@ -124,29 +124,34 @@ style_document_parallel :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, stat
 flat_sizes :: proc(doc: ^dom.Document) -> []i32 {
 	n := int(doc.nodes.used)
 	size := make([]i32, n, context.temp_allocator)
-	parent := make([]i32, n, context.temp_allocator)   // the parent's index + 1; 0: none
-	order := make([dynamic]base.Handle, 0, 256, context.temp_allocator)
-	stack := make([dynamic]base.Handle, 0, 64, context.temp_allocator)
-	root := dom.get(doc, doc.root)
-	for c := root.first_child; c != base.NIL_HANDLE; c = dom.get(doc, c).next { append(&stack, c) }
-	for len(stack) > 0 {
-		h := pop(&stack)
+	shadows := dom.has_shadow_trees(doc)
+	// one walk in tree order: an element is closed, its size added to its parent's, when the walk leaves it
+	Open :: struct { h: base.Handle, i: i32 }
+	open := make([dynamic]Open, 0, 64, context.temp_allocator)
+	h := dom.get(doc, doc.root).first_child
+	for h != base.NIL_HANDLE {
 		nd := dom.get(doc, h)
-		if nd == nil || nd.kind != .Element { continue }
 		i := int(base.handle_index(h))
-		if i >= n { continue }
-		size[i] = 1
-		append(&order, h)
-		for ch := dom.flat_first_child(doc, h); ch != base.NIL_HANDLE; ch = dom.flat_next(doc, ch) {
-			if cn := dom.get(doc, ch); cn != nil && cn.kind == .Element && int(base.handle_index(ch)) < n {
-				parent[base.handle_index(ch)] = i32(i + 1)
-				append(&stack, ch)
+		if nd != nil && nd.kind == .Element && i < n {
+			size[i] = 1
+			first := shadows ? dom.flat_first_child(doc, h) : nd.first_child
+			if first != base.NIL_HANDLE {
+				append(&open, Open{h, i32(i)})
+				h = first
+				continue
 			}
+			if len(open) > 0 { size[open[len(open) - 1].i] += 1 }
 		}
-	}
-	#reverse for h in order {
-		i := int(base.handle_index(h))
-		if p := parent[i]; p > 0 { size[p - 1] += size[i] }
+		// to the next sibling, closing the elements whose last child this was
+		for {
+			next := shadows ? dom.flat_next(doc, h) : (nd != nil ? nd.next : base.NIL_HANDLE)
+			if next != base.NIL_HANDLE { h = next; break }
+			if len(open) == 0 { h = base.NIL_HANDLE; break }
+			o := pop(&open)
+			if len(open) > 0 { size[open[len(open) - 1].i] += size[o.i] }
+			h = o.h
+			nd = dom.get(doc, h)
+		}
 	}
 	return size
 }

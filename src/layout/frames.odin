@@ -59,7 +59,7 @@ frames_reset :: proc(l: ^Layout) {
 	clear(&l.frame_ifcs)
 	clear(&l.frame_lines)
 	clear(&l.frame_frags)
-	for _, &r in l.mc_records { delete(r.frags); delete(r.rules) }
+	for &r in l.mc_records { delete(r.frags); delete(r.rules) }
 	clear(&l.mc_records)
 	clear(&l.flow_frags)
 }

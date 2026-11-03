@@ -199,10 +199,18 @@ record_new :: #force_inline proc(a: runtime.Allocator) -> ^Computed {
 // (style.recycle_bytes): a new pass then writes into pages already mapped instead of faulting fresh ones in.
 styled_recycle :: proc(e: ^Engine, s: ^Styled) {
 	if s == nil { return }
-	// the threads' arenas go back to the engine in every case
+	// the threads' arenas go back to the engine in every case, and the slots unless they are larger than the memory kept
 	if e != nil {
 		for a in s.thread_arenas { thread_arena_give(e, a) }
 		clear(&s.thread_arenas)
+		if cap(s.by_node) * (size_of(^Computed) + size_of(base.Handle)) <= e.settings.recycle_bytes {
+			delete(e.spare_by_node)
+			delete(e.spare_nodes)
+			e.spare_by_node, e.spare_nodes = s.by_node, s.nodes
+			clear(&e.spare_by_node)
+			clear(&e.spare_nodes)
+			s.by_node, s.nodes = nil, nil
+		}
 	}
 	if e == nil || e.has_spare || int(s.arena.total_used) > e.settings.recycle_bytes || s.arena.curr_block == nil || s.arena.curr_block.prev != nil {
 		styled_destroy(s)
@@ -1149,6 +1157,9 @@ styled_make :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 	} else {
 		_ = virtual.arena_init_growing(&s.arena, STYLED_RESERVE)
 	}
+	// the slots of a recycled pass: their pages mapped already (styled_size zeroes what it hands out)
+	s.by_node, s.nodes = e.spare_by_node, e.spare_nodes
+	e.spare_by_node, e.spare_nodes = nil, nil
 	s.alloc = style_arena_allocator(&s.arena)
 	s.initial = new(Computed, s.alloc)
 	s.initial^ = initial_computed(&e.settings, new(Inherited_Group, s.alloc))

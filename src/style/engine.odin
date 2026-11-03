@@ -136,6 +136,8 @@ Engine :: struct {
 	kf_order:  u32,
 	spare:     virtual.Arena,             // the memory of a recycled style pass (see styled_recycle)
 	has_spare: bool,
+	spare_by_node: [dynamic]^Computed,    // the slots of a recycled pass, empty, their room kept (see styled_recycle)
+	spare_nodes:   [dynamic]base.Handle,
 	spare_arenas: [dynamic]^virtual.Arena,   // style threads' arenas given back by recycled passes, emptied, for the next ones (parallel.odin)
 	spare_arena_bytes: int,                  // what they held (bounded by recycle_bytes)
 	ignored_properties: int,           // declarations naming a property this engine does not implement
@@ -209,6 +211,8 @@ engine_destroy :: proc(e: ^Engine) {
 	delete(e.media_seen)
 	delete(e.gates); delete(e.gate_on); delete(e.gate_touched)
 	if e.has_spare { virtual.arena_destroy(&e.spare) }
+	delete(e.spare_by_node)
+	delete(e.spare_nodes)
 	for a in e.spare_arenas { thread_arena_free(a) }
 	delete(e.spare_arenas)
 	settings_destroy(&e.settings)

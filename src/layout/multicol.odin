@@ -58,6 +58,13 @@ Mc_Record :: struct {
 	outer_space, outer_clip: i32,    // the space and clip of the container's own content: for what is not in the flow
 }
 
+// The record of multi-column container `bi` (nil: none yet).
+@(private)
+mc_record :: #force_inline proc(l: ^Layout, bi: i32) -> ^Mc_Record {
+	r := l.boxes[bi].mc
+	return r == NONE ? nil : &l.mc_records[r]
+}
+
 // A fragment in layout coordinates, for the frame's pass over the display list and the queries.
 Flow_Frag :: struct {
 	region: Rect,   // of the flow: what is shown of it there
@@ -588,8 +595,8 @@ layout_multicol :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx) -> f32
 	if fc.bfc != nil && len(fc.bfc.floats) > 0 { strip_h = max(strip_h, bfc_bottom(fc.bfc)) }
 	c.mc_full_w = saved_full
 	// (after the content: a container inside adds to the table)
-	if bi not_in l.mc_records { l.mc_records[bi] = {} }
-	rec := &l.mc_records[bi]
+	if l.boxes[bi].mc == NONE { l.boxes[bi].mc = i32(len(l.mc_records)); append(&l.mc_records, Mc_Record{}) }
+	rec := mc_record(l, bi)
 	clear(&rec.frags)
 	clear(&rec.rules)
 	b = &l.boxes[bi]
@@ -736,7 +743,7 @@ layout_multicol :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx) -> f32
 				if f.flow_max == FLOW_UNBOUNDED || bottom <= f.flow_max + 0.5 { break }
 				ib := &l.boxes[u.nested]
 				room := f.flow_max - top - content_y(ib)
-				if nr, ok := l.mc_records[u.nested]; ok && nr.first_chain > room {
+				if nr := mc_record(l, u.nested); nr != nil && nr.first_chain > room {
 					// no room for what must start it: whole, in the next column
 					if c.mc_whole == nil { c.mc_whole = make(map[i32]bool, 8, context.temp_allocator) }
 					c.mc_whole[u.nested] = true
@@ -782,8 +789,8 @@ multicol_strip_x :: proc(l: ^Layout, x, container: i32) -> f32 {
 // something that is not (a static position).
 @(private)
 multicol_flow_to_visual :: proc(l: ^Layout, container: i32, p: Vec2) -> Vec2 {
-	rec, ok := &l.mc_records[container]
-	if !ok { return p }
+	rec := mc_record(l, container)
+	if rec == nil { return p }
 	for &f in rec.frags {
 		if p.y >= f.flow_min && p.y < f.flow_max { return p + {f.dx, f.dy} }
 	}
@@ -800,8 +807,8 @@ flows_finish :: proc(l: ^Layout, order: []i32) {
 	for x in order {
 		b := &l.boxes[x]
 		if .Multicol not_in b.fx { continue }
-		rec, ok := &l.mc_records[x]
-		if !ok { continue }
+		rec := mc_record(l, x)
+		if rec == nil { continue }
 		first := i32(len(l.flow_frags))
 		wm := b.wm
 		for &f in rec.frags {
@@ -852,8 +859,8 @@ flow_cut :: #force_inline proc(fr: ^Flow_Frag, r: Rect, shown: bool) -> (cut: Re
 
 // The part of a rect of the flow shown in each fragment, in layout coordinates, through the containers around it.
 flow_rects :: proc(l: ^Layout, container: i32, r: Rect, out: ^[dynamic]Rect) {
-	rec, ok := &l.mc_records[container]
-	if !ok { append(out, r); return }
+	rec := mc_record(l, container)
+	if rec == nil { append(out, r); return }
 	n0 := len(out)
 	for fi in rec.phys[0] ..< rec.phys[1] {
 		fr := &l.flow_frags[fi]
@@ -892,8 +899,8 @@ flow_bounds_add :: proc(l: ^Layout, container: i32, r: Rect, u: ^Rect, n: ^int) 
 		}
 		n^ += 1
 	}
-	rec, ok := &l.mc_records[container]
-	if !ok { unite(u, n, r); return }
+	rec := mc_record(l, container)
+	if rec == nil { unite(u, n, r); return }
 	outer := .In_Flow in l.boxes[container].fx ? flow_container(l, container) : NONE
 	shown := false
 	for fi in rec.phys[0] ..< rec.phys[1] {
@@ -910,8 +917,8 @@ flow_bounds_add :: proc(l: ^Layout, container: i32, r: Rect, u: ^Rect, n: ^int) 
 @(private)
 flow_spaces :: proc(l: ^Layout, x: i32) {
 	b := &l.boxes[x]
-	rec, ok := &l.mc_records[x]
-	if !ok { return }
+	rec := mc_record(l, x)
+	if rec == nil { return }
 	rec.outer_space, rec.outer_clip = b.content_space, b.content_clip
 	ps := l.spaces[b.content_space]
 	parent := b.content_space
@@ -947,7 +954,7 @@ flow_spaces :: proc(l: ^Layout, x: i32) {
 flow_fix_box :: proc(l: ^Layout, x: i32) {
 	b := &l.boxes[x]
 	if .Abs in b.flags && b.cb != NONE && .Multicol in l.boxes[b.cb].fx {
-		if rec, ok := &l.mc_records[b.cb]; ok { b.space, b.clip = rec.outer_space, rec.outer_clip }
+		if rec := mc_record(l, b.cb); rec != nil { b.space, b.clip = rec.outer_space, rec.outer_clip }
 		return
 	}
 	if l.spaces[b.space].kind != .Flow { return }
@@ -1018,8 +1025,8 @@ flow_clip :: proc(c: ^Ctx, ci, outer, flow_space: i32, fr: Flow_Frag) -> i32 {
 emit_column_rules :: proc(c: ^Ctx, bi: i32) {
 	l := c.l
 	b := &l.boxes[bi]
-	rec, ok := &l.mc_records[bi]
-	if !ok { return }
+	rec := mc_record(l, bi)
+	if rec == nil { return }
 	for r in rec.rules {
 		phys := logical_to_physical_rect(r, b.size.x, b.size.y, b.wm)
 		it := item_for_box(c, .Column_Rule, bi, rect_shift(phys, b.abs))
