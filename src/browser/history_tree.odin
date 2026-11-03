@@ -461,7 +461,6 @@ node_pos :: proc(d: ^Tree_Draw, n: Tree_Node) -> [2]f32 {
 snap :: proc(r: draw.Rect) -> draw.Rect { return {{math.round(r.min.x), math.round(r.min.y)}, {math.round(r.max.x), math.round(r.max.y)}} }
 
 // `s` shortened with an ellipsis to fit `avail` pixels.
-@(private = "file")
 fit_text :: proc(fonts: ^font.State, id: font.Font_Id, size: f32, s: string, avail: f32) -> string {
 	if avail <= 0 { return "" }
 	if font.text_width(fonts, id, size, s) <= avail { return s }
