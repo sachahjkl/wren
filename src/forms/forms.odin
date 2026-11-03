@@ -130,6 +130,8 @@ Host :: struct {
 	// Fires an event at a node and runs the listeners. Returns false when a listener cancelled it.
 	dispatch:      proc(user: rawptr, target: base.Handle, ev: dom.Event) -> bool,
 	document_url:  proc(user: rawptr) -> string,
+	// Optional: the document's encoding (WHATWG name), what forms submit in without an accept-charset (UTF-8 without it).
+	document_encoding: proc(user: rawptr) -> string,
 	// A form submission wants to navigate. Ownership of `s` passes to the callee. Called synchronously; the embedder must
 	// run the navigation later (it may be inside a guest call).
 	navigate:      proc(user: rawptr, s: ^Submission),

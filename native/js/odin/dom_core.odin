@@ -752,6 +752,26 @@ wjr_Document_get_contentType :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 	return wj.new_string_len(ctx, s)
 }
 
+// document.characterSet (charset, inputEncoding): the encoding the page was decoded from; a document of its own
+// (createHTMLDocument's, DOMParser's, createDocument's) is UTF-8
+@(private = "file")
+document_encoding :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	h := node_this(ctx, this_val, ifc("Document"))
+	if h == 0 { return wj.EXCEPTION }
+	if !is_page_document(api_decl.Document(h)) { return wj.new_string_len(ctx, "UTF-8") }
+	s: string
+	jsb.host(&s, api_decl.Document_characterSet, wj.wr_Document_characterSet)
+	return wj.new_string_len(ctx, s)
+}
+
+@(export, link_name = "wjr_Document_get_characterSet")
+wjr_Document_get_characterSet :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return document_encoding(ctx, t) }
+@(export, link_name = "wjr_Document_get_charset")
+wjr_Document_get_charset :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return document_encoding(ctx, t) }
+@(export, link_name = "wjr_Document_get_inputEncoding")
+wjr_Document_get_inputEncoding :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return document_encoding(ctx, t) }
+
 @(export, link_name = "wjr_XMLSerializer_constructor")
 wjr_XMLSerializer_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.is_undefined(new_target) { return wj.wj_throw_type(ctx, "Constructor XMLSerializer requires 'new'") }

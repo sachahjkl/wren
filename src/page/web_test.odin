@@ -80,6 +80,10 @@ streaming_decoder :: proc(t: ^testing.T) {
 	testing.expect_value(t, s, "A😀")
 	s, _ = decode_all("shift_jis", {{0x82}, {0xA0}})
 	testing.expect_value(t, s, "あ")
+	s, _ = decode_all("shift_jis", {{'a', 0xE1}, {0x51}, {0xFC}})   // a lead of 0xE0..0xFC across chunks; one pending at the end
+	testing.expect_value(t, s, "a甓\uFFFD")
+	_, ok = decode_all("shift_jis", {{0xE1, 0x20}}, fatal = true)
+	testing.expect(t, !ok, "fatal mode rejects a lead without its trail")
 	_, ok = decode_all("no-such-encoding", {{}})
 	testing.expect(t, !ok, "unknown label")
 	_, ok = decode_all("iso-2022-kr", {{}})

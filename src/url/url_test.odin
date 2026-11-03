@@ -30,6 +30,39 @@ normalisation :: proc(t: ^testing.T) {
 	testing.expect_value(t, href("  https://example.com/\t\n"), "https://example.com/")
 }
 
+// The query of a special URL in the document's encoding: bytes of the encoding percent-encoded, "&#N;" for what it
+// cannot represent; the path, a non-special URL and ws: stay in UTF-8.
+@(test)
+query_in_a_legacy_encoding :: proc(t: ^testing.T) {
+	enc :: proc(input, encoding: string) -> string {
+		u, ok := parse(input, nil, context.temp_allocator, encoding)
+		return ok ? u.href : "<invalid>"
+	}
+	testing.expect_value(t, enc("https://example.com/?日本", "Shift_JIS"), "https://example.com/?%93%FA%96{")
+	testing.expect_value(t, enc("https://example.com/?日本", "shift-jis"), "https://example.com/?%93%FA%96{")
+	testing.expect_value(t, enc("https://example.com/?한", "Shift_JIS"), "https://example.com/?%26%2354620%3B")
+	testing.expect_value(t, enc("https://example.com/?한", "EUC-KR"), "https://example.com/?%C7%D1")
+	testing.expect_value(t, enc("https://example.com/é?é#é", "windows-1252"), "https://example.com/%C3%A9?%E9#%C3%A9")
+	testing.expect_value(t, enc("https://example.com/?é", "UTF-16LE"), "https://example.com/?%C3%A9")
+	testing.expect_value(t, enc("https://example.com/?é", ""), "https://example.com/?%C3%A9")
+	testing.expect_value(t, enc("wss://example.com/?é", "windows-1252"), "wss://example.com/?%C3%A9")
+	testing.expect_value(t, enc("x-custom:a?é", "windows-1252"), "x-custom:a?%C3%A9")
+}
+
+// Form submission's encoder: what an encoding cannot represent becomes "&#N;", which takes ISO-2022-JP back to ASCII.
+@(test)
+encode_text_in_legacy_encodings :: proc(t: ^testing.T) {
+	enc :: proc(s, encoding: string) -> string {
+		r, ok := encode_text(s, encoding, context.temp_allocator)
+		return ok ? r : "<failed>"
+	}
+	testing.expect_value(t, enc("a日b", "Shift_JIS"), "a\x93\xfab")
+	testing.expect_value(t, enc("€한", "windows-1252"), "\x80&#54620;")
+	testing.expect_value(t, enc("日한", "ISO-2022-JP"), "\x1b$BF|\x1b(B&#54620;")
+	testing.expect_value(t, enc("é", "UTF-16BE"), "é")
+	testing.expect_value(t, enc("", "Big5"), "")
+}
+
 @(test)
 invalid_urls :: proc(t: ^testing.T) {
 	testing.expect_value(t, href("https://"), "<invalid>")

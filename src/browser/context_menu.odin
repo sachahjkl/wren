@@ -433,10 +433,10 @@ reopen_closed_tab :: proc(app: ^App) {
 }
 
 // A link of the page followed (a click, Enter on it): a fragment of the same document scrolls, anything else navigates.
-follow_link :: proc(app: ^App, t: ^Tab, href: string) {
+follow_link :: proc(app: ^App, t: ^Tab, href: string, link: base.Handle) {
 	p := t.page
 	if p == nil { return }
-	resolved, ok := url.parse(href, &p.env.location, context.temp_allocator)
+	resolved, ok := page.resolve_link(p, href, link)
 	if !ok { tab_log(t, .Error, fmt.tprintf("invalid link %q", href)); return }
 	if page.follow_fragment_link(p, resolved) { return }
 	if page.navigation_link(p, resolved) { return }   // the document's navigate listener took it (Navigation API)

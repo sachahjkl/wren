@@ -1058,6 +1058,7 @@ child_main :: proc(out_path: string) -> int {
 		if wants_layout(path) { cs.layout = host_make() }
 		defer host_destroy(cs.layout)
 		d := headless.open(&env, test_url(path), child_on_console, &cs)
+		d.by_type = true   // an .xhtml test is an XML document, as the browser loads it (UTF-8 by default, not windows-1252)
 		d.on_parsed = host_attach
 		// until the report, the time limit, or a page that can no longer do anything
 		idle_since: time.Tick

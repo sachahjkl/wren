@@ -89,6 +89,9 @@ charset_sniffing_and_decoding :: proc(t: ^testing.T) {
 	check(t, {'c', 'a', 'f', 0xE9}, "latin1", "café", "windows-1252", .Header)                      // label alias, Latin-1 decoded
 	check(t, {'c', 'a', 'f', 0xE9}, "ISO-8859-2", "café", "ISO-8859-2", .Header)
 	check(t, {0x82, 0xA0}, "shift_jis", "あ", "Shift_JIS", .Header)
+	// every lead byte of 0xE0..0xFC (Lexbor's own decoder took only 0xE0 and 0xFC): level 2 kanji, IBM extensions,
+	// the private use area; an ASCII byte after a lead is decoded on its own
+	check(t, {0xE1, 0x51, 0xE6, 0xF5, 0xFA, 0x40, 0xF0, 0x40, 0xE1, ' '}, "shift_jis", "甓踞ⅰ\uE000\uFFFD ", "Shift_JIS", .Header)
 	check(t, transmute([]byte)string(`<meta charset="windows-1251"><p>`), "", "<meta charset=\"windows-1251\"><p>", "windows-1251", .Meta)
 	check(t, {'a', 0xE9}, "not-an-encoding", "aé", "windows-1252", .Default)                          // unknown label: sniff, then default
 	check(t, {'a', 0xFF, 'b'}, "utf-8", "a\uFFFDb", "UTF-8", .Header)                                 // invalid UTF-8 becomes U+FFFD

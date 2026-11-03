@@ -1199,7 +1199,7 @@ route_key :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, ev: platfo
 	if ev.key == .Return && !ctrl && !alt && !shift && h != base.NIL_HANDLE && !forms.is_text_field(f, h) {
 		if href, ok := anchor_href(p.doc, h); ok && forms.kind(f, h) == .None {
 			if forms.click(f, h, forms.Click_Info{trusted = true}) && t.page == p {
-				follow_link(app, t, href)
+				follow_link(app, t, href, h)
 			}
 			return true
 		}

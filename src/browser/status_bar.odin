@@ -45,7 +45,7 @@ hovered_link :: proc(t: ^Tab) -> string {
 	if h == base.NIL_HANDLE { return "" }
 	href, ok := anchor_href(t.page.doc, h)
 	if !ok { return "" }
-	r, rok := url.parse(href, &t.page.env.location, context.temp_allocator)
+	r, rok := page.resolve_link(t.page, href, h)
 	return rok ? r.href : href
 }
 

@@ -897,13 +897,23 @@ Document_compatMode :: proc(c: ^Call) -> string {
 }
 
 // The document's encoding (WHATWG name); the page decodes every document to UTF-8 (html.decode_document) and keeps
-// the label it decoded from when it knows it.
+// the encoding it decoded from (adopt_document).
 Document_characterSet :: proc(c: ^Call) -> string { return document_encoding(c.page) }
 Document_charset :: proc(c: ^Call) -> string { return document_encoding(c.page) }
 Document_inputEncoding :: proc(c: ^Call) -> string { return document_encoding(c.page) }
 
 @(private)
-document_encoding :: proc(p: ^Page) -> string { return "UTF-8" }
+document_encoding :: proc(p: ^Page) -> string { return p.encoding != "" ? p.encoding : "UTF-8" }
+
+// The encoding of the document node `h` belongs to ("" = UTF-8): the page's for its own nodes; a document of its own
+// (createHTMLDocument's, DOMParser's) and the inert document of the templates are UTF-8.
+node_encoding :: proc(p: ^Page, h: base.Handle) -> string {
+	d := p.doc
+	if r := dom.shadow_including_root(d, h); r != d.root {
+		if n := dom.get(d, r); n != nil && (n.as_document || (n.kind == .Fragment && n.held)) { return "" }
+	}
+	return p.encoding
+}
 
 Document_contentType :: proc(c: ^Call) -> string {
 	if d := jd_doc(c); d != nil && dom.get(d, d.root).xml == .Document_XHTML { return "application/xhtml+xml" }

@@ -1,6 +1,48 @@
 package page
 
+import "base:runtime"
 import "core:testing"
+import "wb:base"
+import "wb:dom"
+import "wb:fetch"
+import "wb:host"
+
+// A document keeps the encoding it was decoded from: characterSet says it, and the links of the document resolve
+// against its base URL with their query in it (HTML "encoding-parse a URL"); a UTF-8 document's stay UTF-8.
+@(test)
+links_of_a_document_in_a_legacy_encoding :: proc(t: ^testing.T) {
+	test_pages(t)
+	context.allocator = runtime.heap_allocator()   // the tree builder's Lexbor callbacks use the process heap (offthread_test.odin)
+	loop: host.Loop
+	host.loop_init(&loop)
+	defer host.loop_destroy(&loop)
+	loader := fetch.Loader{loop = &loop}
+	settings := settings_default()
+	defer settings_destroy(&settings)
+	settings.threads.parse_html = false
+	scope := base.scope_make("test")
+	defer base.scope_close(scope)
+
+	p := page_create(&loop, &loader, &settings, scope, "http://example.test/dir/page.html")
+	sjis := []byte{'<', 'b', 'a', 's', 'e', ' ', 'h', 'r', 'e', 'f', '=', '/', 'b', '/', '>', '<', 'p', '>', 0x93, 0xFA}
+	parse_document(p, sjis, "shift_jis", proc(p: ^Page, user: rawptr, d: ^Parsed_Document) { adopt_document(p, d) }, nil)
+	testing.expect_value(t, document_encoding(p), "Shift_JIS")
+	u, ok := resolve_link(p, "x?q=日本&k=한#日", p.body)
+	testing.expect(t, ok)
+	testing.expect_value(t, u.href, "http://example.test/b/x?q=%93%FA%96{&k=%26%2354620%3B#%E6%97%A5")
+	// a link of a document of its own (createHTMLDocument's): UTF-8
+	own := dom.create_fragment(p.doc)
+	dom.get(p.doc, own).as_document = true
+	a := dom.create_element(p.doc, "a")
+	dom.append_child(p.doc, own, a)
+	u, ok = resolve_link(p, "x?q=日", a)
+	testing.expect_value(t, u.href, "http://example.test/b/x?q=%E6%97%A5")
+
+	load_html(p, transmute([]byte)string("<p>utf-8"))
+	testing.expect_value(t, document_encoding(p), "UTF-8")
+	u, ok = resolve_link(p, "x?q=日", p.body)
+	testing.expect_value(t, u.href, "http://example.test/dir/x?q=%E6%97%A5")
+}
 
 // Navigation API keys and ids: a key per entry (its place), an id per entry made; replacing keeps the key, makes a new
 // id and drops the Navigation API state; the state of other entries stays.

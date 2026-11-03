@@ -28,7 +28,8 @@ when ODIN_OS == .Windows {
 
 @(default_calling_convention = "c")
 foreign lexbor {
-	wb_url_parse :: proc(input: [^]u8, len: uint, base: [^]u8, base_len: uint, out: ^[^]u8, out_len: ^uint) -> i32 ---
+	wb_url_parse :: proc(input: [^]u8, len: uint, base: [^]u8, base_len: uint, encoding: [^]u8, encoding_len: uint, out: ^[^]u8, out_len: ^uint) -> i32 ---
+	wb_encode_from_utf8 :: proc(data: [^]u8, len: uint, label: [^]u8, label_len: uint, out: ^[^]u8, out_len: ^uint) -> i32 ---
 	wb_free :: proc(p: rawptr) ---
 }
 
@@ -61,8 +62,10 @@ URL :: struct {
 @(private)
 empty_byte: u8
 
-// Resolves `input` against `base` (nil = absolute only). ok = false when it is not a valid URL.
-parse :: proc(input: string, base: ^URL = nil, allocator := context.allocator) -> (u: URL, ok: bool) {
+// Resolves `input` against `base` (nil = absolute only). ok = false when it is not a valid URL. `encoding` (a WHATWG
+// label, "" = UTF-8) is what the query of a special URL is encoded in: the document's, for the URLs of its elements
+// ("encoding-parse a URL"); fetch, workers and the URL API stay in UTF-8.
+parse :: proc(input: string, base: ^URL = nil, allocator := context.allocator, encoding := "") -> (u: URL, ok: bool) {
 	out: [^]u8
 	n: uint
 	b_ptr: [^]u8
@@ -74,9 +77,21 @@ parse :: proc(input: string, base: ^URL = nil, allocator := context.allocator) -
 	// the standard strips leading/trailing C0 control and space itself; pass the input through untouched
 	in_ptr := raw_data(input)
 	if len(input) == 0 { in_ptr = &empty_byte }   // the parser wants a non-nil pointer
-	if wb_url_parse(in_ptr, uint(len(input)), b_ptr, b_len, &out, &n) != 0 { return {}, false }
+	if wb_url_parse(in_ptr, uint(len(input)), b_ptr, b_len, raw_data(encoding), uint(len(encoding)), &out, &n) != 0 { return {}, false }
 	defer wb_free(out)
 	return split(string(out[:n]), allocator)
+}
+
+// `text` (UTF-8) in the encoding named by `encoding` (Encoding Standard "encode", error mode html: what it cannot
+// represent becomes "&#N;"); UTF-16 and replacement give UTF-8. What form submission percent-encodes.
+encode_text :: proc(text: string, encoding: string, allocator := context.allocator) -> (string, bool) {
+	out: [^]u8
+	n: uint
+	in_ptr := raw_data(text)
+	if len(text) == 0 { in_ptr = &empty_byte }
+	if wb_encode_from_utf8(in_ptr, uint(len(text)), raw_data(encoding), uint(len(encoding)), &out, &n) != 0 { return "", false }
+	defer wb_free(out)
+	return strings.clone(string(out[:n]), allocator), true
 }
 
 // Absolute URL only.

@@ -1986,48 +1986,6 @@ wjg_Document_get_compatMode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue)
 	return wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n))
 }
 
-// Document.characterSet -> dom.Document_characterSet
-wjg_Document_get_characterSet :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
-	self := wj.wj_this(ctx, this_val, 252)
-	if self == nil { return wj.EXCEPTION }
-	_ = self
-	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
-	n := i32(wj.wr_Document_characterSet(wj.wj_scratch.data, wj.wj_scratch.cap))
-	if n > 0 && u32(n) > wj.wj_scratch.cap {
-		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_characterSet(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
-	}
-	if n < 0 { return wj.wj_throw_status(ctx, n, "Document.characterSet") }
-	return wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n))
-}
-
-// Document.charset -> dom.Document_charset
-wjg_Document_get_charset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
-	self := wj.wj_this(ctx, this_val, 252)
-	if self == nil { return wj.EXCEPTION }
-	_ = self
-	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
-	n := i32(wj.wr_Document_charset(wj.wj_scratch.data, wj.wj_scratch.cap))
-	if n > 0 && u32(n) > wj.wj_scratch.cap {
-		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_charset(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
-	}
-	if n < 0 { return wj.wj_throw_status(ctx, n, "Document.charset") }
-	return wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n))
-}
-
-// Document.inputEncoding -> dom.Document_inputEncoding
-wjg_Document_get_inputEncoding :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
-	self := wj.wj_this(ctx, this_val, 252)
-	if self == nil { return wj.EXCEPTION }
-	_ = self
-	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
-	n := i32(wj.wr_Document_inputEncoding(wj.wj_scratch.data, wj.wj_scratch.cap))
-	if n > 0 && u32(n) > wj.wj_scratch.cap {
-		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_inputEncoding(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
-	}
-	if n < 0 { return wj.wj_throw_status(ctx, n, "Document.inputEncoding") }
-	return wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n))
-}
-
 // Document.createDocumentFragment() -> dom.Document_createDocumentFragment
 wjg_Document_createDocumentFragment :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 252)
@@ -26863,9 +26821,9 @@ wj_install_bindings :: proc "c" () {
 	m_Document[8] = wj.Member{name = "URL", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Document_get_URL, set = nil}
 	m_Document[9] = wj.Member{name = "documentURI", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Document_get_documentURI, set = nil}
 	m_Document[10] = wj.Member{name = "compatMode", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Document_get_compatMode, set = nil}
-	m_Document[11] = wj.Member{name = "characterSet", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Document_get_characterSet, set = nil}
-	m_Document[12] = wj.Member{name = "charset", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Document_get_charset, set = nil}
-	m_Document[13] = wj.Member{name = "inputEncoding", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Document_get_inputEncoding, set = nil}
+	m_Document[11] = wj.Member{name = "characterSet", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Document_get_characterSet, set = nil}
+	m_Document[12] = wj.Member{name = "charset", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Document_get_charset, set = nil}
+	m_Document[13] = wj.Member{name = "inputEncoding", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Document_get_inputEncoding, set = nil}
 	m_Document[14] = wj.Member{name = "contentType", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Document_get_contentType, set = nil}
 	m_Document[15] = wj.Member{name = "doctype", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Document_get_doctype, set = nil}
 	m_Document[16] = wj.Member{name = "documentElement", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Document_get_documentElement, set = nil}

@@ -250,7 +250,10 @@ parse_document :: proc(p: ^Page, data: []byte, header_charset: string, done: Doc
 	j := html_job_make(p, data, true, header_charset)
 	j.done, j.user = done, user
 	if mime == "application/xhtml+xml" {
+		// XML's default encoding is UTF-8, not the preference's
 		j.xhtml = true
+		delete(j.default_encoding)
+		j.default_encoding = strings.clone("UTF-8")
 		j.location = strings.clone(p.env.location.href)
 	}
 	ts := &p.settings.threads
@@ -277,7 +280,8 @@ adopt_document :: proc(p: ^Page, d: ^Parsed_Document) -> html.Parse_Result {
 	if old != nil { dom.document_take_place(old, d.doc) } else { dom.document_attach(d.doc, p.scope) }
 	p.doc = d.doc
 	d.doc = nil
-	p.image_document = {}   // (an image document says so after its load: image_document.odin)
+	p.encoding = html.canonical_encoding(d.encoding)
+	p.image_document = {}  // (an image document says so after its load: image_document.odin)
 	shadow_doc_attached(p)
 	// everything that holds the document pointer follows it: the form-control model is rebuilt on the new tree
 	if p.formctl != nil { forms_detach(p); forms_attach(p) }
