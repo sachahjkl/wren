@@ -217,9 +217,17 @@ collapses_top :: proc(b: ^Box) -> bool {
 
 @(private)
 collapses_bottom :: proc(c: ^Ctx, b: ^Box) -> bool {
-	if b.kind != .Block || .Bfc in b.flags || b.border[2] != 0 || b.padding[2] != 0 { return false }
+	if !collapses_bottom_edge(c, b) { return false }
 	if is_plain(c, b_index(c, b)) { return true }   // height and min-height auto
-	return b.cs.height.kind == .Auto && (b.cs.min_height.kind == .Auto || px_of(c, b.cs.min_height, -1) <= 0)
+	return b.cs.height.kind == .Auto
+}
+
+// Nothing at the bottom edge of block `b` (border, padding, a min-height) keeps margins apart, whatever its height.
+@(private)
+collapses_bottom_edge :: proc(c: ^Ctx, b: ^Box) -> bool {
+	if b.kind != .Block || .Bfc in b.flags || b.border[2] != 0 || b.padding[2] != 0 { return false }
+	if is_plain(c, b_index(c, b)) { return true }
+	return b.cs.min_height.kind == .Auto || px_of(c, b.cs.min_height, -1) <= 0
 }
 
 // The top margin of block `bi` with those of its first in-flow children that collapse through its top, down the chain.
@@ -382,7 +390,8 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flo
 			// a formatting context root grows to contain its floats (§10.6.7)
 			if len(own.floats) > 0 { content_h = max(content_h, bfc_bottom(&own)) }
 		}
-		res.through = through && ct && cbm && !has_h
+		// a zero height lets margins through as auto does (CSS 2 §8.3.1), though a last child's do not collapse with its own
+		res.through = through && ct && (has_h ? spec_h <= 0 && collapses_bottom_edge(c, b) : cbm)
 		if .Ifc not_in b.flags { block_baselines(c, bi) }
 	case .Flex:
 		content_h = layout_flex(c, bi, cw, ch_def, cb_h)

@@ -52,7 +52,9 @@ style_sum_of :: proc(cs: ^style.Computed) -> (s: Style_Sum) {
 	if cs.visibility != .Visible { s.flags += {.Hidden} }
 	if !cs.pointer_events { s.flags += {.No_Pointer} }
 	if cs.overflow_x != .Visible || cs.overflow_y != .Visible {
-		s.flags += {.Clips, .Bfc}
+		s.flags += {.Clips}
+		// clip, unlike the other values, makes no formatting context (CSS Overflow 3 §3.1)
+		if cs.overflow_x != .Visible && cs.overflow_x != .Clip || cs.overflow_y != .Visible && cs.overflow_y != .Clip { s.flags += {.Bfc} }
 		if cs.overflow_x == .Scroll || cs.overflow_x == .Auto || cs.overflow_y == .Scroll || cs.overflow_y == .Auto { s.flags += {.Scroll} }
 	}
 	if cs.display == .Flow_Root || cs.display == .Inline_Block { s.flags += {.Bfc} }

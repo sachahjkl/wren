@@ -271,10 +271,13 @@ buttons_cells_controls :: proc(t: ^testing.T) {
 <div id=c>x<input id=c_s value=abc style="font:16px main;padding:0;border:0;height:40px"><i id=c_b style="display:inline-block"></i></div>
 <div id=d>x<input type=checkbox id=d_s><i id=d_b style="display:inline-block"></i></div>
 <div id=e><table id=e_t><tr><td id=e_d style="padding:0">x</td></tr></table></div>
+<div id=h>x<button id=h_s style="height:40px;font:16px main;padding:0;border:0;overflow:hidden">Go</button><i id=h_b style="display:inline-block"></i></div>
 </body>`)
 	defer vx_unload(f)
 	// the button's 32 px line centered in 70: 19 above; its baseline 19 + 25 is the line's
 	expect_y(t, f, "a", "a_b", 19 + 25, 19 + 25)
+	// ... also when it hides its overflow (Google's chips), not on its bottom margin edge as an inline-block would be
+	expect_y(t, f, "h", "h_b", 19 + 25, 19 + 25)
 	// the cell's content (a 32 px line) centered in its specified 70; the span is the 31 px of text in it
 	expect_y(t, f, "b_d", "b_s", 19, 50)
 	// a text field: its line of text centered in the content box, the baseline on the line's

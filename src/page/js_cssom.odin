@@ -96,7 +96,7 @@ LinkStyle_sheetOf :: proc(c: ^Call, node: Api_Node) -> u64 {
 	s: ^style.Sheet
 	switch n.name {
 	case "style":
-		s = style.engine_style_element_sheet(p.engine, d, h, p.env.location.href)
+		s = style.engine_style_element_sheet(p.engine, d, h, document_base_url(p))
 		if s != nil {
 			start_pending_imports(p)   // (a new sheet's @import rules load as the document's sync would start them)
 			p.style_stale = true
@@ -123,7 +123,7 @@ tree_sheet_list :: proc(c: ^Call, root: Api_Node) -> []u64 {
 		for h in st.list { if object_data(p, h, &css_sheet_vt) == nil { live = false; break } }
 		if live { return st.list[:] }
 	}
-	ids := style.engine_tree_sheets(p.engine, d, r, p.env.location.href)
+	ids := style.engine_tree_sheets(p.engine, d, r, document_base_url(p))
 	start_pending_imports(p)
 	clear(&st.list)
 	for id in ids {
@@ -192,7 +192,7 @@ CSSStyleSheet_create :: proc(c: ^Call, media: string, disabled: bool, base_url: 
 	if p.engine == nil { return 0 }
 	s := new(Css_Sheet)
 	s.media = strings.clone(media)
-	s.id = style.engine_constructed_create(p.engine, "", media, base_url != "" ? base_url : p.env.location.href)
+	s.id = style.engine_constructed_create(p.engine, "", media, base_url != "" ? base_url : document_base_url(p))
 	if disabled { style.engine_constructed_set_disabled(p.engine, s.id, true) }
 	return object_create(p, &css_sheet_vt, s, c.owner)
 }

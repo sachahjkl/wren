@@ -378,6 +378,7 @@ Rare_Group :: struct {
 	filter:            []Filter_Op,
 	backdrop_filter:   []Filter_Op,
 	clip_path:         ^Clip_Path,         // nil = none
+	clip:              ^Clip_Path,         // kind Rect; nil = auto (applies to absolutely positioned boxes: has_clip_rect)
 	isolation:         Isolation,
 	mix_blend_mode:    Blend_Mode,
 	will_change:       []string,
@@ -446,7 +447,7 @@ Prop :: enum u8 {
 	Animation_Name, Animation_Duration, Animation_Timing_Function, Animation_Delay, Animation_Iteration_Count,
 	Animation_Direction, Animation_Fill_Mode, Animation_Play_State, Animation_Composition,
 	Counter_Reset, Counter_Increment, Counter_Set, Quotes,
-	Object_Position, Filter, Backdrop_Filter, Clip_Path, Isolation, Mix_Blend_Mode,
+	Object_Position, Filter, Backdrop_Filter, Clip_Path, Clip, Isolation, Mix_Blend_Mode,
 	Will_Change, Contain, Content_Visibility, Scroll_Behavior, Overflow_Anchor, Overscroll_Behavior_X, Overscroll_Behavior_Y, Touch_Action,
 	Caret_Color, Accent_Color, Appearance, Resize, Column_Count, Column_Width,
 	Column_Span, Column_Fill, Column_Rule_Width, Column_Rule_Style, Column_Rule_Color, Break_Before, Break_After, Break_Inside,

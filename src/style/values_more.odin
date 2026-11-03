@@ -808,6 +808,40 @@ parse_filters :: proc(cx: ^Cx, vs: []css.Value) -> ([]Filter_Op, bool) {
 	return out[:], true
 }
 
+// clip: auto | rect(<top>, <right>, <bottom>, <left>) (CSS Masking 1 §6.1): lengths or auto, separated by commas or,
+// in the legacy form, by spaces.
+@(private)
+parse_clip_rect :: proc(cx: ^Cx, vs: []css.Value) -> (Clip_Path, bool) {
+	items := split_items(css.trim_values(vs))
+	if len(items) != 1 { return {}, false }
+	if ident_lower(items[0]) == "auto" { return {}, true }
+	if items[0].kind != .Function || !strings.equal_fold(items[0].tok.text, "rect") { return {}, false }
+	parts := css.split_commas(items[0].children, context.temp_allocator)
+	args := split_items(items[0].children)
+	if len(parts) == len(Side) {
+		args = make([]css.Value, len(Side), context.temp_allocator)
+		for part, k in parts {
+			one := split_items(part)
+			if len(one) != 1 { return {}, false }
+			args[k] = one[0]
+		}
+	}
+	if len(args) != len(Side) { return {}, false }
+	cp := Clip_Path{kind = .Rect}
+	for a, k in args {
+		if ident_lower(a) == "auto" { cp.inset[Side(k)] = Length{kind = .Auto}; continue }
+		l, ok := length_of(cx, a, {.Negative})
+		if !ok { return {}, false }
+		cp.inset[Side(k)] = l
+	}
+	return cp, true
+}
+
+// The clip property applies: rect() on an absolutely positioned box.
+has_clip_rect :: proc(c: ^Computed) -> bool {
+	return c != nil && c.clip != nil && (c.position == .Absolute || c.position == .Fixed)
+}
+
 @(private)
 parse_clip_path :: proc(cx: ^Cx, vs: []css.Value) -> (Clip_Path, bool) {
 	items := split_items(css.trim_values(vs))
@@ -1078,6 +1112,10 @@ apply_prop_more :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		if !ok { return false }
 		if cp.kind == .None { c.clip_path = nil; return true }
 		c.clip_path = new_clone(cp, cx.alloc)
+	case .Clip:
+		cp, ok := parse_clip_rect(cx, vs)
+		if !ok { return false }
+		c.clip = cp.kind == .None ? nil : new_clone(cp, cx.alloc)
 	case .Isolation: return set_enum(vs, &c.isolation)
 	case .Mix_Blend_Mode: return set_enum(vs, &c.mix_blend_mode)
 	case .Will_Change:

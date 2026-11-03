@@ -96,7 +96,7 @@ Writing modes:
 - The toolkit's text backend (`ext/gui_toolkit`, a separate repository) has no vertical shaping. It lacks: vertical metrics (`vhea`, `vmtx`, `VORG`: the advance and origin of each glyph), a `TTB` direction for HarfRust; so upright glyphs advance by an em or the face's height and are centered by their horizontal width. Fonts with proportional vertical metrics (`palt`, `vpal`) are not honoured. The rest is reached through rotated runs.
 - `text-orientation: mixed` follows a table of ranges, not the whole of UTR #50's classes (Tr and Tu: upright, with what `vert` gives).
 - `text-combine-upright: digits <n>` is kept as a value and combines nothing (as Blink); `all` applies to a text of an element as one unit, and scales horizontally only.
-- `clip` (the CSS 2 property) does not exist in this engine, in any writing mode: about 16 reference tests.
+- `clip` (the CSS 2 property) clips an absolutely positioned box by its physical rect(), from the top-left corner of its border box in every writing mode (`layout/effects.odin` `clip_rect`), through the group of a clip-path: such a box is a stacking context, which in Blink it is not.
 - `ruby` has no layout in this engine. `text-emphasis`, `text-underline-position` are not there (underlines are on the left of a vertical line).
 - `caret` in vertical editable text: `<input>` and `<textarea>` stay horizontal controls. `<meter>` and `<progress>` follow their own writing mode and direction; the rasteriser of the reference tests draws no control, so `forms/meter-*` and `forms/progress-*` cannot tell.
 - Baselines across frames: an orthogonal box has none (it is aligned by its margin edge); `dominant-baseline` is not there.

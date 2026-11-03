@@ -315,7 +315,7 @@ adopt_document :: proc(p: ^Page, d: ^Parsed_Document) -> html.Parse_Result {
 	p.body = dom.find_first_by_tag(p.doc, "body")
 	if p.body == base.NIL_HANDLE { blank_document(p) }   // parse failure: keep the page usable
 	for &s in d.sheets {
-		if p.engine != nil { style.engine_add_parsed_sheet(p.engine, s.sheet, s.owner, s.media, p.env.location.href) } else { css.stylesheet_destroy(s.sheet); free(s.sheet) }
+		if p.engine != nil { style.engine_add_parsed_sheet(p.engine, s.sheet, s.owner, s.media, document_base_url(p)) } else { css.stylesheet_destroy(s.sheet); free(s.sheet) }
 		s.sheet = nil
 	}
 	apply_meta(p)

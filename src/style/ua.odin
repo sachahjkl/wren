@@ -81,8 +81,10 @@ img, video, canvas, iframe, embed, object { display: inline-block; }
 img { overflow: clip; }
 iframe { border: 2px inset; }
 button, input, select, textarea, meter, progress { display: inline-block; }
-/* (Chromium's -webkit-small-control on Windows: 13.333px Arial; textarea and select: its 1px borders) */
-input, select, textarea, button { font-family: Arial; font-size: 13.333px; text-align: start; margin: 0; }
+/* (Chromium's -webkit-small-control on Windows: 13.333px Arial, the rest of the font shorthand reset; textarea and
+   select: its 1px borders. The text properties as the HTML rendering section "Form controls" sets them.) */
+input, select, textarea, button { font: 13.333px Arial; text-align: start; margin: 0;
+  letter-spacing: normal; word-spacing: normal; text-transform: none; text-indent: 0; text-shadow: none; }
 /* text fields keep content-box sizing, as in other browsers (quirks mode makes them border-box: hints.odin) */
 select, button, input[type=button i], input[type=submit i], input[type=reset i], input[type=checkbox i], input[type=radio i], input[type=color i], input[type=file i] { box-sizing: border-box; }
 input, textarea, select { background-color: Field; color: FieldText; border: 2px inset light-dark(#767676, #858585); padding: 1px 2px; }

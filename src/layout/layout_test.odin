@@ -51,8 +51,16 @@ margin_collapsing :: proc(t: ^testing.T) {
 <div id=g style="padding-top:1px"><div id=h style="margin-top:12px;height:1px"></div></div>
 <div id=i style="overflow:hidden"><div id=j style="margin-top:7px;height:1px"></div></div>
 <div id=k style="margin-top:-5px;height:4px"></div>
+<div id=z0 style="margin-bottom:16px;height:1px"></div><div style="height:0"><div style="clear:both"></div></div><div id=z1 style="margin-top:24px;height:1px"></div>
+<div id=hc style="height:0;margin-bottom:9px"><div id=hci style="margin-bottom:30px"></div></div><div id=z2 style="height:1px"></div>
+<div style="overflow:clip;margin-top:6px"><div id=oc style="margin-top:11px;height:1px"></div></div>
 </body>`)
 	defer fixture_unload(f)
+	// a zero height lets margins through as auto does (Google's clearfix: .yhAwj{height:0} between a paragraph and a heading)
+	expect_rect(t, f, "z0", 0, 162, 800, 163)
+	expect_rect(t, f, "z1", 0, 187, 800, 188)      // max(16, 24), not 16 + 24
+	expect_rect(t, f, "z2", 0, 218, 800, 219)      // max(24, 9, 30): an empty last child's margin passes through with its parent's
+	expect_rect(t, f, "oc", 0, 230, 800, 231)      // overflow: clip makes no formatting context: max(6, 11)
 	expect_rect(t, f, "a", 0, 20, 800, 30)
 	expect_rect(t, f, "b", 0, 60, 800, 70)         // max(30, 20)
 	expect_rect(t, f, "p", 0, 95, 800, 100)        // parent and child margins collapse: max(10, 25)

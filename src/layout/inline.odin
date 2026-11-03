@@ -554,12 +554,14 @@ va_atomic :: proc(c: ^Ctx, va: style.Vertical_Align, ps: f32, pf: ^Font_Info, mh
 }
 
 // Baseline of an atomic inline from its top margin edge (CSS 2.1 §10.8.1: the last line box of an inline-block whose
-// overflow is visible, else the bottom margin edge).
+// overflow is visible, else the bottom margin edge). A <button> has the first baseline of its content whatever its
+// overflow, as its anonymous button content box is a flex item in Blink.
 @(private)
 atomic_baseline :: proc(c: ^Ctx, k: ^Box) -> f32 {
 	mh := k.size.y + k.pre_h + mg_h(k)
 	#partial switch k.kind {
 	case .Block:
+		if .Control in k.flags && k.baseline >= 0 { return k.margin[0] + k.baseline }
 		if k.cs.overflow_x == .Visible && k.cs.overflow_y == .Visible && k.last_baseline >= 0 { return k.margin[0] + k.last_baseline }
 	case .Flex, .Grid, .Table:
 		if k.baseline >= 0 { return k.margin[0] + k.pre_h + k.baseline }

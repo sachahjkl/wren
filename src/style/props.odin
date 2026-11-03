@@ -427,6 +427,7 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Filter: return fa(&c.filter), nil
 	case .Backdrop_Filter: return fa(&c.backdrop_filter), nil
 	case .Clip_Path: return fa(&c.clip_path), nil
+	case .Clip: return fa(&c.clip), nil
 	case .Isolation: return fa(&c.isolation), nil
 	case .Mix_Blend_Mode: return fa(&c.mix_blend_mode), nil
 	case .Will_Change: return fa(&c.will_change), nil
