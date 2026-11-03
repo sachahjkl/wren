@@ -58,7 +58,12 @@ partial module dom {
   /// input.list: the datalist of the id its `list` attribute gives.
   Element HTMLInputElement_list(Element input);
 
-  /// dialog.show()
+  /// dialog.closedBy: the closedby attribute's state ("any", "closerequest", "none"); without a valid one, "closerequest"
+  /// for a modal dialog, else "none".
+  string HTMLDialogElement_closedBy(Element dialog);
+  /// dialog.closedBy = value: sets the closedby attribute.
+  void HTMLDialogElement_set_closedBy(Element dialog, string value);
+  /// dialog.show(): Invalid_State when it is open as a modal dialog.
   void HTMLDialogElement_show(Element dialog) raises;
   /// dialog.showModal(): Invalid_State when it is open without being modal, not connected, or a showing popover.
   void HTMLDialogElement_showModal(Element dialog) raises;

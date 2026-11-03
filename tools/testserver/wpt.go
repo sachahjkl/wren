@@ -11,7 +11,7 @@
 //   - x.headers and __dir__.headers files: extra response headers.
 //   - /resources/WebIDLParser.js is resources/webidl2/lib/webidl2.js, as wptserve routes it.
 //   - /resources/testharnessreport.js is Wren's (wpt/testharnessreport.js of the repository): it hands the results to
-//     the runner.
+//     the runner. /resources/testdriver-vendor.js too (wpt/testdriver-vendor.js): test_driver's actions fail at once.
 //   - Python handlers (*.py) do not run: 501, but for a few ported to Go (wpt_httpcache.go, wpt_handlers.go). The tests
 //     that need the others fail, and are counted as failing.
 //
@@ -133,6 +133,7 @@ func findWPTFile(env string, rel ...string) string {
 var (
 	wptRoot   = findWPTFile("WREN_WPT_ROOT", "build", "wpt", "wpt")
 	wptReport = findWPTFile("WREN_WPT_REPORT", "wpt", "testharnessreport.js")
+	wptVendor = findWPTFile("WREN_WPT_VENDOR", "wpt", "testdriver-vendor.js")
 )
 
 // The WPT origin on its two listeners (the TLS one already wrapped), each served from its own goroutine.
@@ -431,10 +432,10 @@ func serveWPT(w http.ResponseWriter, r *http.Request) {
 	if rel == "/resources/WebIDLParser.js" {
 		rel = "/resources/webidl2/lib/webidl2.js"
 	}
-	if rel == "/resources/testharnessreport.js" {
-		data, err := os.ReadFile(wptReport)
+	if own, ok := map[string]string{"/resources/testharnessreport.js": wptReport, "/resources/testdriver-vendor.js": wptVendor}[rel]; ok {
+		data, err := os.ReadFile(own)
 		if err != nil {
-			http.Error(w, "wpt/testharnessreport.js not found", http.StatusInternalServerError)
+			http.Error(w, "wpt"+rel[len("/resources"):]+" not found", http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")

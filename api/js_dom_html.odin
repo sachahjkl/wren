@@ -112,7 +112,16 @@ HTMLScriptElement_set_text :: proc(element: Element, value: string)
 //@wb fn
 HTMLInputElement_list :: proc(input: Element) -> Element
 
-/// dialog.show()
+/// dialog.closedBy: the closedby attribute's state ("any", "closerequest", "none"); without a valid one, "closerequest"
+/// for a modal dialog, else "none".
+//@wb fn
+HTMLDialogElement_closedBy :: proc(dialog: Element) -> string
+
+/// dialog.closedBy = value: sets the closedby attribute.
+//@wb fn
+HTMLDialogElement_set_closedBy :: proc(dialog: Element, value: string)
+
+/// dialog.show(): Invalid_State when it is open as a modal dialog.
 //@wb fn raises
 HTMLDialogElement_show :: proc(dialog: Element)
 

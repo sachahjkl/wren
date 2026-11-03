@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 605 |
 | exposed by default | 375 |
 | members | 5310 |
-| members implemented | 3822 (72.0 %) |
+| members implemented | 3823 (72.0 %) |
 
 ## By specification
 
@@ -52,7 +52,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (8) | 126 / 126 |
 | `hr-time.idl` | 1 (1) | 15 / 17 |
-| `html.idl` | 161 (136) | 1576 / 1829 |
+| `html.idl` | 161 (136) | 1577 / 1829 |
 | `intersection-observer.idl` | 2 (2) | 20 / 20 |
 | `is-input-pending.idl` | 1 (1) | 1 / 1 |
 | `largest-contentful-paint.idl` | 1 (1) | 9 / 9 |
@@ -2628,12 +2628,12 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLDialogElement : HTMLElement
 
-6 / 8 members.
+7 / 8 members.
 
 - `constructor()`: not supported
 - `open`: generic (reflects a content attribute)
 - `returnValue`: import `forms.HTMLDialogElement_returnValue`
-- `closedBy`: not supported
+- `closedBy`: generic (reflects a content attribute)
 - `show()`: import `dom.HTMLDialogElement_show`
 - `showModal()`: import `dom.HTMLDialogElement_showModal`
 - `close()`: import `dom.HTMLDialogElement_close`

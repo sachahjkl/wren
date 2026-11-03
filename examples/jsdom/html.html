@@ -238,6 +238,22 @@ section("map, dialog, document, element", () => {
   d.requestClose("r2");
   t("requestClose closes", !d.open && d.returnValue === "r2" && cancels === 2);
   throws("showModal on a detached dialog", () => document.createElement("dialog").showModal(), "InvalidStateError");
+  // closedBy, beforetoggle (cancelable when opening), show() of a modal dialog, a requestClose from its cancel listener
+  eq("closedBy of a closed dialog", d.closedBy, "none");
+  const states = [];
+  d.addEventListener("beforetoggle", e => { states.push(e.oldState + ">" + e.newState); if (states.length === 1) e.preventDefault(); });
+  d.showModal();
+  t("a canceled beforetoggle keeps it closed", !d.open);
+  d.showModal();
+  eq("closedBy of a modal dialog", d.closedBy, "closerequest");
+  d.closedBy = "ANY";
+  eq("closedBy keeps the attribute's state", d.closedBy + " " + d.getAttribute("closedby"), "any ANY");
+  throws("show() of a modal dialog", () => d.show(), "InvalidStateError");
+  let nested = 0;
+  d.addEventListener("cancel", () => { nested++; d.requestClose(); }, { once: true });
+  d.requestClose();
+  t("a requestClose in its cancel listener does nothing", nested === 1 && !d.open && cancels === 3);
+  eq("beforetoggle states", states.join(), "closed>open,closed>open,open>closed");
   eq("document.hidden", typeof document.hidden, "boolean");
   t("document.visibilityState", document.visibilityState === "visible" || document.visibilityState === "hidden");
   const el = document.createElement("div");

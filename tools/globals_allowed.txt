@@ -201,7 +201,6 @@ page/canvas_offscreen.odin offscreen_tokens process  # locked: OffscreenCanvas t
 page/canvas_offscreen.odin offscreen_tokens_mu process  # ... their lock
 page/compression.odin zip_vt const  # a host object's table of procedures
 page/devtools_api.odin computed_names const  # a table
-page/dialog_modal.odin dialog_opening_modal thread
 page/dnd.odin local_file_vt const  # a host object's table of procedures
 page/dnd.odin EFFECT_ALLOWED const  # a table
 page/dnd.odin DROP_EFFECT_NAMES const  # a table
