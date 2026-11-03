@@ -200,7 +200,7 @@ dev_console_arm :: proc(p: ^Page, max_bytes: int) {
 // Asks the realm for the names an expression offers (they come back as a console line the shell recognizes).
 dev_console_complete :: proc(p: ^Page, path: string) {
 	if p == nil || p.closed || p.js == nil || p.js.failed || p.worker != nil { return }
-	src := strings.concatenate({"{ const s = console[Symbol.for(\"wren.devtools\")]; if (s) s.complete(", js_quote(path), "); }"}, context.temp_allocator)
+	src := strings.concatenate({"{ const s = console[Symbol.for(\"wren.devtools\")]; if (s) s.complete(", base.json_quote(path), "); }"}, context.temp_allocator)
 	js_run(p, transmute([]byte)src, "devtools", 1)
 }
 ////////////////////////////////

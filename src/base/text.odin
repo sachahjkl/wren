@@ -3,8 +3,10 @@ package base
 // Small text helpers the packages share: numbers as text, the fields of the profile's text files, escaping for HTML and XML.
 
 import "base:intrinsics"
+import "core:fmt"
 import "core:strconv"
 import "core:strings"
+import "core:unicode/utf8"
 
 // The decimal text of `n` (a negative one with its '-').
 itoa :: proc(n: int, allocator := context.temp_allocator) -> string {
@@ -20,6 +22,41 @@ hex_value :: proc(c: $T) -> int where intrinsics.type_is_integer(T) {
 	case 'A' ..= 'F': return int(c - 'A') + 10
 	}
 	return -1
+}
+
+////////////////////////////////
+// JSON
+
+// A JSON string literal of `s`: invalid UTF-8 becomes U+FFFD (the text must stay valid JSON whatever a page gave), and
+// U+2028 and U+2029 are escaped (it is a JavaScript string literal too).
+write_json_string :: proc(b: ^strings.Builder, s: string) {
+	strings.write_byte(b, '"')
+	rest := s
+	for len(rest) > 0 {
+		r, n := utf8.decode_rune_in_string(rest)
+		if r == utf8.RUNE_ERROR && n <= 1 {
+			strings.write_string(b, "�")
+			rest = rest[max(n, 1):]
+			continue
+		}
+		rest = rest[n:]
+		switch r {
+		case '"':  strings.write_string(b, "\\\"")
+		case '\\': strings.write_string(b, "\\\\")
+		case '\n': strings.write_string(b, "\\n")
+		case '\r': strings.write_string(b, "\\r")
+		case '\t': strings.write_string(b, "\\t")
+		case 0 ..< 0x20, 0x2028, 0x2029: fmt.sbprintf(b, "\\u%04x", int(r))
+		case: strings.write_rune(b, r)
+		}
+	}
+	strings.write_byte(b, '"')
+}
+
+json_quote :: proc(s: string, allocator := context.temp_allocator) -> string {
+	b := strings.builder_make(allocator)
+	write_json_string(&b, s)
+	return strings.to_string(b)
 }
 
 ////////////////////////////////

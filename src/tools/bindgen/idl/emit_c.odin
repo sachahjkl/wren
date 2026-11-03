@@ -2,6 +2,7 @@ package idl
 
 import "core:fmt"
 import "core:strings"
+import "wb:base"
 
 // A C header of the imports, for guests written in C (wasm32, memory 0 32-bit): the JavaScript engine (native/js) and
 // anything else built with clang or zig cc. Raw ABI only, one declaration per import, named wr_<import> so nothing
@@ -149,7 +150,7 @@ emit_c_header :: proc(api: ^Api, guard: string) -> string {
 			ps := strings.join(list[:], ", ", context.temp_allocator)
 			if ps == "" { ps = "void" }
 			for imp in d.imports {
-				wl(&o, "WR_IMPORT(%s, %s) %s wr_%s(%s);", quote(m.name), quote(imp), res, imp, ps)
+				wl(&o, "WR_IMPORT(%s, %s) %s wr_%s(%s);", base.json_quote(m.name), base.json_quote(imp), res, imp, ps)
 			}
 		}
 		wl(&o, "")

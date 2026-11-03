@@ -651,11 +651,11 @@ control_computed_style :: proc(t: ^Tab, selector: string, properties: []string =
 	if properties != nil {
 		b := strings.builder_make(context.temp_allocator)
 		strings.write_byte(&b, '[')
-		for name, i in properties { if i > 0 { strings.write_byte(&b, ',') }; remote.write_json_string(&b, name) }
+		for name, i in properties { if i > 0 { strings.write_byte(&b, ',') }; base.write_json_string(&b, name) }
 		strings.write_byte(&b, ']')
 		names = strings.to_string(b)
 	}
-	expr := fmt.tprintf(`(function(S,P){{var e=document.querySelector(S);if(!e)return null;var c=getComputedStyle(e),o=[];if(!P){{P=[];for(var i=0;i<c.length;i++)P.push(c[i])}}for(var i=0;i<P.length;i++)o.push([P[i],c.getPropertyValue(P[i])]);return o}})(%s,%s)`, remote.quote(selector), names)
+	expr := fmt.tprintf(`(function(S,P){{var e=document.querySelector(S);if(!e)return null;var c=getComputedStyle(e),o=[];if(!P){{P=[];for(var i=0;i<c.length;i++)P.push(c[i])}}for(var i=0;i<P.length;i++)o.push([P[i],c.getPropertyValue(P[i])]);return o}})(%s,%s)`, base.json_quote(selector), names)
 	text, _, err := eval_sync(t, expr)
 	if err != "" { return nil, err }
 	v, perr := json.parse(transmute([]byte)text, json.Specification.JSON, true, context.temp_allocator)

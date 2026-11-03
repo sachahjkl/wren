@@ -144,9 +144,9 @@ j_end :: proc(b: ^strings.Builder, close: byte = '}') { strings.write_byte(b, cl
 j_key :: proc(b: ^strings.Builder, key: string) {
 	s := strings.to_string(b^)
 	if len(s) > 0 && s[len(s) - 1] != '{' && s[len(s) - 1] != '[' { strings.write_byte(b, ',') }
-	if key != "" { remote.write_json_string(b, key); strings.write_byte(b, ':') }
+	if key != "" { base.write_json_string(b, key); strings.write_byte(b, ':') }
 }
-j_str :: proc(b: ^strings.Builder, key, v: string) { j_key(b, key); remote.write_json_string(b, v) }
+j_str :: proc(b: ^strings.Builder, key, v: string) { j_key(b, key); base.write_json_string(b, v) }
 j_int :: proc(b: ^strings.Builder, key: string, v: i64) { j_key(b, key); fmt.sbprintf(b, "%d", v) }
 j_num :: proc(b: ^strings.Builder, key: string, v: f64) { j_key(b, key); fmt.sbprintf(b, "%.3f", v) }
 j_bool :: proc(b: ^strings.Builder, key: string, v: bool) { j_key(b, key); strings.write_string(b, v ? "true" : "false") }
@@ -213,13 +213,13 @@ timeout_of :: proc(c: ^Call) -> int {
 @(private = "file")
 m_ping :: proc() -> Reply {
 	x := control_ping()
-	return done(fmt.tprintf(`{{"protocol":%d,"version":%s,"pid":%d}}`, x.protocol, remote.quote(x.version), x.pid))
+	return done(fmt.tprintf(`{{"protocol":%d,"version":%s,"pid":%d}}`, x.protocol, base.json_quote(x.version), x.pid))
 }
 
 @(private = "file")
 m_version :: proc() -> Reply {
 	x := control_version()
-	return done(fmt.tprintf(`{{"product":%s,"revision":%s,"toolkit":%s,"protocol":%d,"build":%s}}`, remote.quote(x.product), remote.quote(x.revision), remote.quote(x.toolkit), x.protocol, remote.quote(x.build)))
+	return done(fmt.tprintf(`{{"product":%s,"revision":%s,"toolkit":%s,"protocol":%d,"build":%s}}`, base.json_quote(x.product), base.json_quote(x.revision), base.json_quote(x.toolkit), x.protocol, base.json_quote(x.build)))
 }
 
 @(private = "file")
@@ -227,7 +227,7 @@ m_setup_state :: proc(app: ^App) -> Reply {
 	x := control_setup_state(app)
 	box :: proc(r: api.Rect) -> string { return fmt.tprintf("[%v,%v,%v,%v]", r.x, r.y, r.w, r.h) }
 	return done(fmt.tprintf(`{{"open":%v,"known":%v,"confirmUninstall":%v,"busy":%d,"note":%s,"primary":%s,"uninstall":%s,"secondary":%s}}`,
-		x.open, x.known, x.confirm_uninstall, x.busy, remote.quote(x.note), box(x.primary), box(x.uninstall), box(x.secondary)))
+		x.open, x.known, x.confirm_uninstall, x.busy, base.json_quote(x.note), box(x.primary), box(x.uninstall), box(x.secondary)))
 }
 
 @(private = "file")
@@ -504,7 +504,7 @@ m_navigate :: proc(app: ^App, c: ^Call) -> Reply {
 	if t == nil { return e }
 	control_navigate(app, t, address)
 	what, _ := remote.param_string(c.params, "wait")
-	return start_wait(app, c, t, what, fmt.tprintf(`{{"tabId":%d,"url":%s}}`, t.id, remote.quote(t.url)))
+	return start_wait(app, c, t, what, fmt.tprintf(`{{"tabId":%d,"url":%s}}`, t.id, base.json_quote(t.url)))
 }
 
 @(private = "file")
@@ -577,7 +577,7 @@ m_outer_html :: proc(app: ^App, c: ^Call) -> Reply {
 	sel, _ := remote.param_string(c.params, "selector")
 	html, code, why := control_outer_html(t, sel)
 	if code != 0 { return fail(code, why) }
-	return done(fmt.tprintf(`{{"outerHTML":%s}}`, remote.quote(html)))
+	return done(fmt.tprintf(`{{"outerHTML":%s}}`, base.json_quote(html)))
 }
 
 @(private = "file")

@@ -8,6 +8,7 @@ import "core:encoding/json"
 import "core:fmt"
 import "core:strconv"
 import "core:strings"
+import "wb:base"
 import "wb:remote"
 
 ////////////////////////////////
@@ -45,7 +46,7 @@ cdp_id_text :: proc(obj: json.Object) -> string {
 	#partial switch v in obj["id"] {
 	case json.Integer: return fmt.aprintf("%d", i64(v), allocator = context.temp_allocator)
 	case json.Float:   return fmt.aprintf("%d", i64(v), allocator = context.temp_allocator)
-	case json.String:  return remote.quote(string(v))
+	case json.String:  return base.json_quote(string(v))
 	}
 	return "null"
 }
@@ -89,7 +90,7 @@ cdp_to_wren :: proc(app: ^App, method: string, params: json.Object) -> (wmethod,
 	switch method {
 	case "Page.navigate":
 		url, _ := remote.param_string(params, "url")
-		fmt.sbprintf(&b, `{{"url":%s,"wait":"load"%s}}`, remote.quote(url), cdp_tab_param(tab))
+		fmt.sbprintf(&b, `{{"url":%s,"wait":"load"%s}}`, base.json_quote(url), cdp_tab_param(tab))
 		return "Page.navigate", strings.to_string(b), .Passthrough, true
 	case "Page.reload":
 		ignore, _ := remote.param_bool(params, "ignoreCache")
@@ -112,29 +113,29 @@ cdp_to_wren :: proc(app: ^App, method: string, params: json.Object) -> (wmethod,
 			expr = fmt.tprintf("(%s).call(globalThis)", decl)
 		}
 		awaitp, _ := remote.param_bool(params, "awaitPromise")
-		fmt.sbprintf(&b, `{{"expression":%s,"awaitPromise":%v%s}}`, remote.quote(expr), awaitp, cdp_tab_param(tab))
+		fmt.sbprintf(&b, `{{"expression":%s,"awaitPromise":%v%s}}`, base.json_quote(expr), awaitp, cdp_tab_param(tab))
 		return "Runtime.evaluate", strings.to_string(b), .Passthrough, true
 	case "DOM.getDocument":
 		return "DOM.getOuterHTML", fmt.tprintf(`{{"selector":"html"%s}}`, cdp_tab_param(tab)), .Passthrough, true
 	case "DOM.getOuterHTML":
 		sel, _ := remote.param_string(params, "selector", "html")
-		return "DOM.getOuterHTML", fmt.tprintf(`{{"selector":%s%s}}`, remote.quote(sel), cdp_tab_param(tab)), .Passthrough, true
+		return "DOM.getOuterHTML", fmt.tprintf(`{{"selector":%s%s}}`, base.json_quote(sel), cdp_tab_param(tab)), .Passthrough, true
 	case "DOM.querySelectorAll":
 		sel, _ := remote.param_string(params, "selector")
-		return "DOM.querySelectorAll", fmt.tprintf(`{{"selector":%s%s}}`, remote.quote(sel), cdp_tab_param(tab)), .Passthrough, true
+		return "DOM.querySelectorAll", fmt.tprintf(`{{"selector":%s%s}}`, base.json_quote(sel), cdp_tab_param(tab)), .Passthrough, true
 	case "DOM.getBoxModel":
 		sel, _ := remote.param_string(params, "selector")
-		return "DOM.getBoxModel", fmt.tprintf(`{{"selector":%s%s}}`, remote.quote(sel), cdp_tab_param(tab)), .Passthrough, true
+		return "DOM.getBoxModel", fmt.tprintf(`{{"selector":%s%s}}`, base.json_quote(sel), cdp_tab_param(tab)), .Passthrough, true
 	case "CSS.getComputedStyleForNode":
 		sel, _ := remote.param_string(params, "selector")
-		return "CSS.getComputedStyleForNode", fmt.tprintf(`{{"selector":%s%s}}`, remote.quote(sel), cdp_tab_param(tab)), .Passthrough, true
+		return "CSS.getComputedStyleForNode", fmt.tprintf(`{{"selector":%s%s}}`, base.json_quote(sel), cdp_tab_param(tab)), .Passthrough, true
 	case "Input.dispatchMouseEvent":
 		return "Input.dispatchMouseEvent", cdp_reencode(params), .Passthrough, true
 	case "Input.dispatchKeyEvent":
 		return "Input.dispatchKeyEvent", cdp_reencode(params), .Passthrough, true
 	case "Input.insertText":
 		text, _ := remote.param_string(params, "text")
-		return "Input.insertText", fmt.tprintf(`{{"text":%s%s}}`, remote.quote(text), cdp_tab_param(tab)), .Passthrough, true
+		return "Input.insertText", fmt.tprintf(`{{"text":%s%s}}`, base.json_quote(text), cdp_tab_param(tab)), .Passthrough, true
 	case "Emulation.setDeviceMetricsOverride":
 		w, _ := remote.param_int(params, "width")
 		h, _ := remote.param_int(params, "height")
@@ -146,7 +147,7 @@ cdp_to_wren :: proc(app: ^App, method: string, params: json.Object) -> (wmethod,
 		return "Browser.setWindowBounds", strings.to_string(bb), .Empty, true
 	case "Emulation.setUserAgentOverride":
 		ua, _ := remote.param_string(params, "userAgent")
-		return "Wren.setPref", fmt.tprintf(`{{"name":"net.user_agent.override","value":%s}}`, remote.quote(ua)), .Empty, true
+		return "Wren.setPref", fmt.tprintf(`{{"name":"net.user_agent.override","value":%s}}`, base.json_quote(ua)), .Empty, true
 	case "Security.setIgnoreCertificateErrors":
 		ignore, _ := remote.param_bool(params, "ignore")
 		return "Wren.setPref", fmt.tprintf(`{{"name":"net.tls.ignore_cert_errors","value":%v,"override":true}}`, ignore), .Empty, true
@@ -227,19 +228,19 @@ cdp_shape_result :: proc(app: ^App, cl: ^Cdp_Client, p: Cdp_Pending, result: jso
 		return "{}"
 	case .Screenshot:
 		data, _ := remote.param_string(result, "data")
-		return fmt.tprintf(`{{"data":%s}}`, remote.quote(data))
+		return fmt.tprintf(`{{"data":%s}}`, base.json_quote(data))
 	case .Targets:
 		return cdp_targets_result(app, result)
 	case .Bidi_Navigate:
 		url, _ := remote.param_string(result, "url")
-		return fmt.tprintf(`{{"navigation":null,"url":%s}}`, remote.quote(url))
+		return fmt.tprintf(`{{"navigation":null,"url":%s}}`, base.json_quote(url))
 	case .Bidi_Evaluate:
 		return cdp_bidi_evaluate_result(result)
 	case .Bidi_Tree:
 		return cdp_bidi_tree_result(app)
 	case .Bidi_Screenshot:
 		data, _ := remote.param_string(result, "data")
-		return fmt.tprintf(`{{"data":%s}}`, remote.quote(data))
+		return fmt.tprintf(`{{"data":%s}}`, base.json_quote(data))
 	case .Bidi_Empty:
 		return "{}"
 	}
@@ -267,11 +268,11 @@ cdp_send_error :: proc(cl: ^Cdp_Client, id_text: string, code: int, message: str
 	b := strings.builder_make(context.temp_allocator)
 	if bidi {
 		fmt.sbprintf(&b, `{{"type":"error","id":%s,"error":"unknown error","message":`, id_text)
-		remote.write_json_string(&b, message)
+		base.write_json_string(&b, message)
 		strings.write_string(&b, "}")
 	} else {
 		fmt.sbprintf(&b, `{{"id":%s,"error":{{"code":%d,"message":`, id_text, code)
-		remote.write_json_string(&b, message)
+		base.write_json_string(&b, message)
 		strings.write_string(&b, "}}")
 	}
 	cdp_frame_text(cl, strings.to_string(b))

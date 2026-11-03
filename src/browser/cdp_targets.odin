@@ -9,6 +9,7 @@ import "core:fmt"
 import "core:os"
 import "core:strconv"
 import "core:strings"
+import "wb:base"
 import "wb:remote"
 
 ////////////////////////////////
@@ -21,14 +22,14 @@ cdp_ws_base :: proc() -> string { return fmt.tprintf("ws://127.0.0.1:%d", the_cd
 cdp_version_json :: proc(app: ^App) -> string {
 	b := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&b, `{{"Browser":"Wren/%s","Protocol-Version":"1.3","User-Agent":%s,"V8-Version":"0","WebKit-Version":"0","webSocketDebuggerUrl":"%s/devtools/browser"}}`,
-		APP_VERSION, remote.quote(fmt.tprintf("Wren/%s", APP_VERSION)), cdp_ws_base())
+		APP_VERSION, base.json_quote(fmt.tprintf("Wren/%s", APP_VERSION)), cdp_ws_base())
 	return strings.to_string(b)
 }
 
 @(private)
 cdp_version_result :: proc(app: ^App) -> string {
 	return fmt.tprintf(`{{"protocolVersion":"1.3","product":"Wren/%s","revision":%s,"userAgent":%s,"jsVersion":"0"}}`,
-		APP_VERSION, remote.quote(app_commit()), remote.quote(fmt.tprintf("Wren/%s", APP_VERSION)))
+		APP_VERSION, base.json_quote(app_commit()), base.json_quote(fmt.tprintf("Wren/%s", APP_VERSION)))
 }
 
 @(private)
@@ -50,7 +51,7 @@ cdp_list_json :: proc(app: ^App) -> string {
 cdp_target_entry :: proc(b: ^strings.Builder, app: ^App, t: ^Tab) {
 	id := fmt.tprintf("%d", t.id)
 	fmt.sbprintf(b, `{{"id":"%s","type":"page","title":%s,"url":%s,"webSocketDebuggerUrl":"%s/devtools/page/%s","devtoolsFrontendUrl":""}}`,
-		id, remote.quote(t.title), remote.quote(t.url), cdp_ws_base(), id)
+		id, base.json_quote(t.title), base.json_quote(t.url), cdp_ws_base(), id)
 }
 
 @(private)
@@ -80,7 +81,7 @@ cdp_attach :: proc(app: ^App, cl: ^Cdp_Client, id_text: string, params: json_obj
 	// a flat session id: the target's id (CDP's sessionId is opaque; we reuse the target id)
 	delete(cl.session)
 	cl.session = strings.clone(target)
-	cdp_send_result(cl, id_text, fmt.tprintf(`{{"sessionId":%s}}`, remote.quote(target)))
+	cdp_send_result(cl, id_text, fmt.tprintf(`{{"sessionId":%s}}`, base.json_quote(target)))
 }
 
 @(private)
@@ -96,7 +97,7 @@ cdp_target_info :: proc(app: ^App, cl: ^Cdp_Client, id_text: string, params: jso
 @(private)
 cdp_target_info_object :: proc(t: ^Tab) -> string {
 	return fmt.tprintf(`{{"targetId":"%d","type":"page","title":%s,"url":%s,"attached":true,"browserContextId":"default"}}`,
-		t.id, remote.quote(t.title), remote.quote(t.url))
+		t.id, base.json_quote(t.title), base.json_quote(t.url))
 }
 
 // Target.getTargets: reshape Wren's {targetInfos:[{targetId:<int>,...}]} into CDP's string-id form.
@@ -135,13 +136,13 @@ cdp_on_wren_event :: proc(conn: u64, name, params_json: string) {
 	switch name {
 	case "Page.loadEventFired":
 		cdp_emit(cl, "Page.loadEventFired", fmt.tprintf(`{{"timestamp":0}}`))
-		cdp_emit(cl, "Page.frameNavigated", fmt.tprintf(`{{"frame":{{"id":"%d","url":%s,"loaderId":"0","securityOrigin":"","mimeType":"text/html"}}}}`, tab, remote.quote(url)))
+		cdp_emit(cl, "Page.frameNavigated", fmt.tprintf(`{{"frame":{{"id":"%d","url":%s,"loaderId":"0","securityOrigin":"","mimeType":"text/html"}}}}`, tab, base.json_quote(url)))
 		cdp_emit(cl, "Page.lifecycleEvent", fmt.tprintf(`{{"frameId":"%d","loaderId":"0","name":"load","timestamp":0}}`, tab))
 	case "Runtime.consoleAPICalled":
 		kind, _ := remote.param_string(params, "type")
 		text, _ := remote.param_string(params, "text")
 		cdp_emit(cl, "Runtime.consoleAPICalled", fmt.tprintf(`{{"type":%s,"args":[{{"type":"string","value":%s}}],"executionContextId":1,"timestamp":0}}`,
-			remote.quote(kind == "" ? "log" : kind), remote.quote(text)))
+			base.json_quote(kind == "" ? "log" : kind), base.json_quote(text)))
 	}
 }
 
@@ -149,7 +150,7 @@ cdp_on_wren_event :: proc(conn: u64, name, params_json: string) {
 @(private)
 cdp_emit :: proc(cl: ^Cdp_Client, method, params: string) {
 	b := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&b, `{{"method":%s,"params":%s}}`, remote.quote(method), params == "" ? "{}" : params)
+	fmt.sbprintf(&b, `{{"method":%s,"params":%s}}`, base.json_quote(method), params == "" ? "{}" : params)
 	cdp_frame_text(cl, strings.to_string(b))
 }
 

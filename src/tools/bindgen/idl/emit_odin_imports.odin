@@ -2,6 +2,7 @@ package idl
 
 import "core:fmt"
 import "core:strings"
+import "wb:base"
 
 // The browser's imports for an Odin guest (freestanding_wasm32, memory 0 32-bit): the exact Odin counterpart of
 // wren_api.h (emit_c.odin), for the day the JavaScript engine itself is Odin and links against the host over the same
@@ -117,7 +118,7 @@ emit_odin_imports :: proc(api: ^Api, pkg: string) -> string {
 		for d in api.functions { if d.module == m { has = true; break } }
 		if !has { continue }
 		wl(&o, "// module %s%s", m.name, m.partial ? " (partial)" : "")
-		wl(&o, "foreign import _wr_%s_%s %s", pkg, m.name, quote(m.name))
+		wl(&o, "foreign import _wr_%s_%s %s", pkg, m.name, base.json_quote(m.name))
 		wl(&o, "@(default_calling_convention = \"contextless\")")
 		wl(&o, "foreign _wr_%s_%s {{", pkg, m.name)
 		for d in api.functions {
@@ -152,7 +153,7 @@ emit_odin_imports :: proc(api: ^Api, pkg: string) -> string {
 			ps := strings.join(list[:], ", ", context.temp_allocator)
 			// one foreign proc per import (an [On=(...)] function has one per interface)
 			for imp in d.imports {
-				wl(&o, "\t@(link_name = %s) wr_%s :: proc(%s)%s ---", quote(imp), imp, ps, res)
+				wl(&o, "\t@(link_name = %s) wr_%s :: proc(%s)%s ---", base.json_quote(imp), imp, ps, res)
 			}
 		}
 		wl(&o, "}")

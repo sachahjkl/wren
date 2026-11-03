@@ -2,6 +2,7 @@ package remote
 
 import "core:strings"
 import "core:testing"
+import "wb:base"
 
 @(test)
 parses_a_request :: proc(t: ^testing.T) {
@@ -40,11 +41,11 @@ refuses_what_is_not_a_request :: proc(t: ^testing.T) {
 
 @(test)
 strings_are_escaped_and_stay_valid_json :: proc(t: ^testing.T) {
-	testing.expect_value(t, quote("a\"b\\c\n\t\x01é"), "\"a\\\"b\\\\c\\n\\t\\u0001é\"")
+	testing.expect_value(t, base.json_quote("a\"b\\c\n\t\x01é"), "\"a\\\"b\\\\c\\n\\t\\u0001é\"")
 	bad := strings.clone_from_bytes([]byte{'x', 0xff, 'y'}, context.temp_allocator)
-	testing.expect_value(t, quote(bad), "\"x\ufffdy\"")
+	testing.expect_value(t, base.json_quote(bad), "\"x\ufffdy\"")
 	// what was written parses back
-	req, code, _ := parse_request(transmute([]byte)strings.concatenate({`{"method":`, quote("é\u2028\"\x00"), `}`}, context.temp_allocator))
+	req, code, _ := parse_request(transmute([]byte)strings.concatenate({`{"method":`, base.json_quote("é\u2028\"\x00"), `}`}, context.temp_allocator))
 	testing.expect_value(t, code, 0)
 	testing.expect_value(t, req.method, "é\u2028\"\x00")
 }

@@ -9,6 +9,7 @@ import "core:fmt"
 import "core:strconv"
 import "core:strings"
 import "core:time"
+import "wb:base"
 import "wb:remote"
 
 ////////////////////////////////
@@ -53,10 +54,10 @@ params :: proc(loc: runtime.Source_Code_Location) -> Params {
 @(private)
 p_key :: proc(p: ^Params, name: string) {
 	if strings.builder_len(p.b) > 1 { strings.write_byte(&p.b, ',') }
-	remote.write_json_string(&p.b, name)
+	base.write_json_string(&p.b, name)
 	strings.write_byte(&p.b, ':')
 }
-@(private) p_str :: proc(p: ^Params, name, v: string) { p_key(p, name); remote.write_json_string(&p.b, v) }
+@(private) p_str :: proc(p: ^Params, name, v: string) { p_key(p, name); base.write_json_string(&p.b, v) }
 @(private) p_int :: proc(p: ^Params, name: string, v: int) { p_key(p, name); fmt.sbprintf(&p.b, "%d", v) }
 @(private) p_num :: proc(p: ^Params, name: string, v: f64) { p_key(p, name); fmt.sbprintf(&p.b, "%v", v) }
 @(private) p_bool :: proc(p: ^Params, name: string, v: bool) { p_key(p, name); strings.write_string(&p.b, v ? "true" : "false") }
@@ -413,7 +414,7 @@ computed_style :: proc(s: ^Session, selector: string, properties: []string = nil
 	} else {
 		p_key(&p, "properties")
 		strings.write_byte(&p.b, '[')
-		for name, i in properties { if i > 0 { strings.write_byte(&p.b, ',') }; remote.write_json_string(&p.b, name) }
+		for name, i in properties { if i > 0 { strings.write_byte(&p.b, ',') }; base.write_json_string(&p.b, name) }
 		strings.write_byte(&p.b, ']')
 	}
 	o := request(s, "CSS.getComputedStyleForNode", &p) or_return
@@ -533,7 +534,7 @@ drop :: proc(s: ^Session, at: Point, data: Drop_Data, space := Space.Page, leave
 	p_str(&p, "space", SPACE_NAMES[space])
 	p_key(&p, "files")
 	strings.write_byte(&p.b, '[')
-	for f, i in data.files { if i > 0 { strings.write_byte(&p.b, ',') }; remote.write_json_string(&p.b, f) }
+	for f, i in data.files { if i > 0 { strings.write_byte(&p.b, ',') }; base.write_json_string(&p.b, f) }
 	strings.write_byte(&p.b, ']')
 	p_str(&p, "text", data.text)
 	p_str(&p, "url", data.url)

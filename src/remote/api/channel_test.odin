@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:sync"
 import "core:testing"
 import "core:time"
+import "wb:base"
 import "wb:host"
 import "wb:remote"
 
@@ -42,7 +43,7 @@ a_call_goes_through_the_channel_and_back :: proc(t: ^testing.T) {
 		req, _, _ := remote.parse_request(line)
 		if req.method == "Echo" {
 			v, _ := remote.param_string(req.params, "text")
-			remote.send(conn, remote.response_ok(req.id, fmt.tprintf(`{{"text":%s}}`, remote.quote(v))))
+			remote.send(conn, remote.response_ok(req.id, fmt.tprintf(`{{"text":%s}}`, base.json_quote(v))))
 		} else {
 			remote.send(conn, remote.response_error(req.id, remote.ERR_METHOD, "unknown method"))
 		}
