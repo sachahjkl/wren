@@ -871,7 +871,11 @@ layout_grid :: proc(c: ^Ctx, bi: i32, cw, ch_def, cb_h: f32) -> f32 {
 	cx, cy := content_x(b), content_y(b)
 	for ch := b.first; ch != NONE; ch = c.l.boxes[ch].next {
 		k := &c.l.boxes[ch]
-		if .Abs in k.flags { k.static_ref = bi; k.static_pos = {cx, cy} }
+		if .Abs not_in k.flags { continue }
+		// as the sole grid item of an area that is the whole grid (§9.1): justify-self, align-self
+		k.static_ref = bi
+		k.static_pos = {cx, cy}
+		k.static_align = {align_fraction(grid_self(c, cs, k, 0), is_rtl(cs)), align_fraction(grid_self(c, cs, k, 1), false)}
 	}
 	g.ax[0].gap = gap_px(c, cs.column_gap, cw)
 	g.ax[1].gap = gap_px(c, cs.row_gap, ch_def)
