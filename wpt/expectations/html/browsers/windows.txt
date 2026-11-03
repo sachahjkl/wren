@@ -115,7 +115,9 @@
 	`window.parent` for multiple nested browsing contexts: PASS
 	`window.parent` for top-level browsing context: PASS
 	`window.parent` on single nested browsing context: PASS
-/html/browsers/windows/nested-browsing-contexts/window-top-null.html: CRASH
+/html/browsers/windows/nested-browsing-contexts/window-top-null.html: OK
+	`window.top` is null when browsing context container element removed: PASS
+	`window.top`null when any ancestor browsing context container removed: PASS
 /html/browsers/windows/nested-browsing-contexts/window-top.html: OK
 	One nested iframe: PASS
 	Top level browsing context: PASS

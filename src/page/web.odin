@@ -208,6 +208,8 @@ set_embedder :: proc(p: ^Page, e: Embedder) {
 	if e.session != nil {
 		w.session = e.session
 		if cur := session_current(w.session); cur != nil {
+			// (the document of this entry again: the frames kept from the one before are this one's, history_joint.odin)
+			joint_reclaim(joint_session(p), cur.doc, w.id)
 			cur.doc = w.id
 			if cur.has_state { set_history_state(p, cur.state, true) }
 		}

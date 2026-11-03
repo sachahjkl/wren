@@ -85,6 +85,33 @@ back_in_a_frame :: proc(t: ^testing.T) {
 	e2e.expect_eval(s, `frames[0].document.title`, "frame b", "forward takes the frame on again")
 }
 
+// Without the back/forward cache: the frame's link followed, the page left for another, back loads the page again and its frame shows its
+// second page (its entry at that position, not its src); the line keeps its length; back again takes the frame to its first page, the page staying.
+@(private = "file") FRAME_SECOND_AGAIN :: `document.readyState === "complete" && frames.length === 1 && frames[0].location.pathname.endsWith("frame_b.html") && frames[0].document.readyState === "complete"`
+
+@(test)
+back_to_a_page_loaded_again_shows_its_frames_entries :: proc(t: ^testing.T) {
+	server := e2e.test_server(t)
+	s := e2e.start(t, {size = HISTORY_SIZE, prefs = {"history.bfcache.enabled=false"}, url = e2e.url(server, FRAMED_PAGE)})
+	e2e.wait_load(s)
+	e2e.wait_js(s, FRAME_FIRST)
+	start := e2e.eval(s, "String(history.length)")
+	e2e.eval(s, `frames[0].document.getElementById("next").click(); 1`)
+	e2e.wait_js(s, FRAME_SECOND)
+	e2e.eval(s, `location.href = "next.html"; 1`)
+	e2e.wait_until(s, string(NEXT_PAGE), at_address, "the next page")
+	e2e.wait_load(s)
+
+	e2e.key(s, "Alt+Left")
+	e2e.wait_until(s, string(FRAMED_PAGE), at_address, "the framed page again")
+	e2e.wait_js(s, FRAME_SECOND_AGAIN)
+	e2e.expect_eval(s, strings.concatenate({"String(history.length - ", start, ")"}, context.temp_allocator), "2", "loaded again (no cache), the frame on its second page, the line as long (the frame's step and the next page)")
+
+	e2e.key(s, "Alt+Left")
+	e2e.wait_js(s, `frames[0].location.pathname.endsWith("frame_a.html")`)
+	e2e.expect_eval(s, `String(location.pathname.endsWith("framed.html"))`, "true", "back again takes the frame to its first page, the page stays")
+}
+
 @(test)
 back_from_the_back_forward_cache :: proc(t: ^testing.T) {
 	back_restores(t, nil, "true", "back from the back/forward cache (pageshow persisted)")

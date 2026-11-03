@@ -61,6 +61,8 @@ Session_History :: struct {
 	// were made, each after the entry that was current then; `frame_at` of the current entry's are applied.
 	steps:     #soa[dynamic]Joint_Step,
 	frame_at:  int,
+	arrive:    Joint_Arrive,                // a traversal to another document: how many of its entry's steps apply there (visit takes it)
+	kept:      [dynamic]Kept_Frame,         // frames of documents that left, for their steps and their documents' return
 }
 
 @(private = "file")
@@ -76,6 +78,8 @@ session_destroy :: proc(sh: ^Session_History) {
 	if sh.root != nil { entry_free(sh.root) }
 	delete(sh.entries)
 	delete(sh.steps)
+	for &k in sh.kept { kept_frame_destroy(&k) }
+	delete(sh.kept)
 	sh^ = {}
 }
 
@@ -137,7 +141,10 @@ visit :: proc(sh: ^Session_History, e: ^History_Entry) {
 	}
 	e.visited_ms = now_unix_ms()
 	sh.current = e
-	sh.frame_at = joint_steps_of(sh, e.id)   // (its frames as they were left)
+	// (its frames as they were left, or as at the position a traversal goes to)
+	sh.frame_at = joint_steps_of(sh, e.id)
+	if sh.arrive.entry == e.id { sh.frame_at = min(sh.arrive.steps, sh.frame_at) }
+	sh.arrive = {}
 }
 
 // The most entries of the path the web sees (history.max_entries).
