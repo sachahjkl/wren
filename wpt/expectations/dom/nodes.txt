@@ -6594,13 +6594,13 @@
 	Calling removeChild on a text from a synthetic document with no children should throw NOT_FOUND_ERR.: PASS
 	Calling removeChild on a text from the main document with no children should throw NOT_FOUND_ERR.: PASS
 	Passing a detached comment from a frame document to removeChild should not affect it.: PASS
-	Passing a detached comment from a synthetic document to removeChild should not affect it.: FAIL
+	Passing a detached comment from a synthetic document to removeChild should not affect it.: PASS
 	Passing a detached comment from the main document to removeChild should not affect it.: PASS
 	Passing a detached element from a frame document to removeChild should not affect it.: PASS
 	Passing a detached element from a synthetic document to removeChild should not affect it.: PASS
 	Passing a detached element from the main document to removeChild should not affect it.: PASS
 	Passing a detached text from a frame document to removeChild should not affect it.: PASS
-	Passing a detached text from a synthetic document to removeChild should not affect it.: FAIL
+	Passing a detached text from a synthetic document to removeChild should not affect it.: PASS
 	Passing a detached text from the main document to removeChild should not affect it.: PASS
 	Passing a non-detached comment from a frame document to removeChild should not affect it.: PASS
 	Passing a non-detached comment from a synthetic document to removeChild should not affect it.: PASS
@@ -11057,7 +11057,7 @@
 	adoptNode() and DocumentFragment: PASS
 	adoptNode() and DocumentFragment with host: FAIL
 	adoptNode() and ShadowRoot: PASS
-	appendChild() and DocumentFragment: FAIL
+	appendChild() and DocumentFragment: PASS
 	appendChild() and DocumentFragment with host: PASS
 	appendChild() and ShadowRoot: PASS
 /dom/nodes/append-on-Document.html: OK

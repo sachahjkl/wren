@@ -508,6 +508,60 @@ made_for :: proc(doc: api_decl.Document, n: api_decl.Node) {
 	jsb.host(&r, api_decl.Document_adoptNode, wj.wr_Document_adoptNode, doc, n)
 }
 
+// The nodes but elements a document makes (the page's factories), its own when it is not the page's (made_for).
+@(private = "file")
+Node_Factory :: enum u8 { Text, Comment, Fragment, Processing_Instruction }
+
+@(private = "file")
+document_factory :: proc(ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, f: Node_Factory, what: cstring) -> wj.JSValue {
+	doc := api_decl.Document(node_this(ctx, this_val, ifc("Document")))
+	if doc == 0 { return wj.EXCEPTION }
+	arity := i32(f == .Fragment ? 0 : f == .Processing_Instruction ? 2 : 1)
+	if argc < arity { return throw_arity_of(ctx, u64(doc), what, arity, argc) }
+	s: [2]wj.Str
+	for i in 0 ..< arity {
+		if !to_str(ctx, argv[i], &s[i], wj.STR_VIEW) { for j in 0 ..< i { wj.wj_str_free(ctx, &s[j]) }; return wj.EXCEPTION }
+	}
+	defer for i in 0 ..< arity { wj.wj_str_free(ctx, &s[i]) }
+	if !wj.wj_doc_target(u64(doc)) { return wj.wj_throw_gone(ctx) }
+	p :: proc(s: wj.Str) -> [^]u8 { return s.ptr != nil ? s.ptr : wj.empty_ptr() }
+	r: u64
+	st: i32
+	switch f {
+	case .Text: st = wj.wr_Document_createTextNode(p(s[0]), u32(s[0].len), &r)
+	case .Comment: st = wj.wr_Document_createComment(p(s[0]), u32(s[0].len), &r)
+	case .Fragment: st = wj.wr_Document_createDocumentFragment(&r)
+	case .Processing_Instruction: st = wj.wr_Document_createProcessingInstruction(p(s[0]), u32(s[0].len), p(s[1]), u32(s[1].len), &r)
+	}
+	if st < 0 { return wj.wj_throw_status(ctx, st, what) }
+	if !is_page_document(doc) { made_for(doc, api_decl.Node(r)) }
+	return wj.wj_wrap_node(ctx, r)
+}
+
+@(export, link_name = "wjr_Document_createTextNode")
+wjr_Document_createTextNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	return document_factory(ctx, this_val, argc, argv, .Text, "Document.createTextNode")
+}
+
+@(export, link_name = "wjr_Document_createComment")
+wjr_Document_createComment :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	return document_factory(ctx, this_val, argc, argv, .Comment, "Document.createComment")
+}
+
+@(export, link_name = "wjr_Document_createDocumentFragment")
+wjr_Document_createDocumentFragment :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	return document_factory(ctx, this_val, argc, argv, .Fragment, "Document.createDocumentFragment")
+}
+
+@(export, link_name = "wjr_Document_createProcessingInstruction")
+wjr_Document_createProcessingInstruction :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	return document_factory(ctx, this_val, argc, argv, .Processing_Instruction, "Document.createProcessingInstruction")
+}
+
 // getElementById(id): the page's document by the browser's id index; a document of its own (createHTMLDocument's,
 // DOMParser's, createDocument's) in its own tree
 @(export, link_name = "wjr_Document_getElementById")
