@@ -1970,34 +1970,6 @@ wjg_Document_get_compatMode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue)
 	return wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n))
 }
 
-// Document.createDocumentFragment() -> dom.Document_createDocumentFragment
-wjg_Document_createDocumentFragment :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	self := wj.wj_this(ctx, this_val, 252)
-	if self == nil { return wj.EXCEPTION }
-	_ = self
-	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
-	r: u64
-	st := wj.wr_Document_createDocumentFragment(&r)
-	if st < 0 { return wj.wj_throw_status(ctx, i32(st), "Document.createDocumentFragment") }
-	return wj.wj_wrap_node(ctx, r)
-}
-
-// Document.createTextNode() -> dom.Document_createTextNode
-wjg_Document_createTextNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	self := wj.wj_this(ctx, this_val, 252)
-	if self == nil { return wj.EXCEPTION }
-	_ = self
-	if argc < 1 { return throw_arity_of(ctx, self.handle, "Document.createTextNode", 1, argc) }
-	a0: wj.Str
-	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
-	if !wj.wj_doc_target(self.handle) { wj.wj_str_free(ctx, &a0); return wj.wj_throw_gone(ctx) }
-	r: u64
-	st := wj.wr_Document_createTextNode((a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len), &r)
-	wj.wj_str_free(ctx, &a0)
-	if st < 0 { return wj.wj_throw_status(ctx, i32(st), "Document.createTextNode") }
-	return wj.wj_wrap_node(ctx, r)
-}
-
 // Document.createCDATASection() -> dom.Document_createCDATASection
 wjg_Document_createCDATASection :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 252)
@@ -2011,41 +1983,6 @@ wjg_Document_createCDATASection :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 	st := wj.wr_Document_createCDATASection((a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len), &r)
 	wj.wj_str_free(ctx, &a0)
 	if st < 0 { return wj.wj_throw_status(ctx, i32(st), "Document.createCDATASection") }
-	return wj.wj_wrap_node(ctx, r)
-}
-
-// Document.createComment() -> dom.Document_createComment
-wjg_Document_createComment :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	self := wj.wj_this(ctx, this_val, 252)
-	if self == nil { return wj.EXCEPTION }
-	_ = self
-	if argc < 1 { return throw_arity_of(ctx, self.handle, "Document.createComment", 1, argc) }
-	a0: wj.Str
-	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
-	if !wj.wj_doc_target(self.handle) { wj.wj_str_free(ctx, &a0); return wj.wj_throw_gone(ctx) }
-	r: u64
-	st := wj.wr_Document_createComment((a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len), &r)
-	wj.wj_str_free(ctx, &a0)
-	if st < 0 { return wj.wj_throw_status(ctx, i32(st), "Document.createComment") }
-	return wj.wj_wrap_node(ctx, r)
-}
-
-// Document.createProcessingInstruction() -> dom.Document_createProcessingInstruction
-wjg_Document_createProcessingInstruction :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	self := wj.wj_this(ctx, this_val, 252)
-	if self == nil { return wj.EXCEPTION }
-	_ = self
-	if argc < 2 { return throw_arity_of(ctx, self.handle, "Document.createProcessingInstruction", 2, argc) }
-	a0: wj.Str
-	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
-	a1: wj.Str
-	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 1), &a1, wj.STR_VIEW, "") { wj.wj_str_free(ctx, &a0); return wj.EXCEPTION }
-	if !wj.wj_doc_target(self.handle) { wj.wj_str_free(ctx, &a0); wj.wj_str_free(ctx, &a1); return wj.wj_throw_gone(ctx) }
-	r: u64
-	st := wj.wr_Document_createProcessingInstruction((a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len), (a1.ptr if a1.ptr != nil else wj.empty_ptr()), u32(a1.len), &r)
-	wj.wj_str_free(ctx, &a0)
-	wj.wj_str_free(ctx, &a1)
-	if st < 0 { return wj.wj_throw_status(ctx, i32(st), "Document.createProcessingInstruction") }
 	return wj.wj_wrap_node(ctx, r)
 }
 
@@ -26846,11 +26783,11 @@ wj_install_bindings :: proc "c" () {
 	m_Document[19] = wj.Member{name = "getElementsByClassName", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_Document_getElementsByClassName}
 	m_Document[20] = wj.Member{name = "createElement", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_Document_createElement}
 	m_Document[21] = wj.Member{name = "createElementNS", kind = wj.M_METHOD, flags = 0, length = 2, fn = wjr_Document_createElementNS}
-	m_Document[22] = wj.Member{name = "createDocumentFragment", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjg_Document_createDocumentFragment}
-	m_Document[23] = wj.Member{name = "createTextNode", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjg_Document_createTextNode}
+	m_Document[22] = wj.Member{name = "createDocumentFragment", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_Document_createDocumentFragment}
+	m_Document[23] = wj.Member{name = "createTextNode", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_Document_createTextNode}
 	m_Document[24] = wj.Member{name = "createCDATASection", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjg_Document_createCDATASection}
-	m_Document[25] = wj.Member{name = "createComment", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjg_Document_createComment}
-	m_Document[26] = wj.Member{name = "createProcessingInstruction", kind = wj.M_METHOD, flags = 0, length = 2, fn = wjg_Document_createProcessingInstruction}
+	m_Document[25] = wj.Member{name = "createComment", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_Document_createComment}
+	m_Document[26] = wj.Member{name = "createProcessingInstruction", kind = wj.M_METHOD, flags = 0, length = 2, fn = wjr_Document_createProcessingInstruction}
 	m_Document[27] = wj.Member{name = "importNode", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_Document_importNode}
 	m_Document[28] = wj.Member{name = "adoptNode", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjg_Document_adoptNode}
 	m_Document[29] = wj.Member{name = "createAttribute", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_Document_createAttribute}

@@ -73,6 +73,7 @@ section("documents of their own", () => {
   t("inserted in the page, the page's", a.ownerDocument === document);
   t("adopted, its new document's", html.adoptNode(a) === a && a.ownerDocument === html);
   t("importNode's copy is the importer's", html.importNode(document.createElement("p")).ownerDocument === html);
+  t("its text, comments and fragments are its", html.createTextNode("x").ownerDocument === html && html.createComment("x").ownerDocument === html && html.createDocumentFragment().ownerDocument === html && xml.createProcessingInstruction("a", "b").ownerDocument === xml);
   const pi = document.createProcessingInstruction("app", "some data");
   eq("createProcessingInstruction", pi.nodeType + " " + pi.target + " " + pi.data, "7 app some data");
   throws("a target that is not a name", () => document.createProcessingInstruction("1a", "x"), "InvalidCharacterError");

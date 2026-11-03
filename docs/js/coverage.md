@@ -1878,11 +1878,11 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `getElementsByClassName()`: C `wjr_Document_getElementsByClassName`
 - `createElement()`: C `wjr_Document_createElement`
 - `createElementNS()`: C `wjr_Document_createElementNS`
-- `createDocumentFragment()`: import `dom.Document_createDocumentFragment`
-- `createTextNode()`: import `dom.Document_createTextNode`
+- `createDocumentFragment()`: C `wjr_Document_createDocumentFragment`
+- `createTextNode()`: C `wjr_Document_createTextNode`
 - `createCDATASection()`: import `dom.Document_createCDATASection`
-- `createComment()`: import `dom.Document_createComment`
-- `createProcessingInstruction()`: import `dom.Document_createProcessingInstruction`
+- `createComment()`: C `wjr_Document_createComment`
+- `createProcessingInstruction()`: C `wjr_Document_createProcessingInstruction`
 - `importNode()`: C `wjr_Document_importNode`
 - `adoptNode()`: import `dom.Document_adoptNode`
 - `createAttribute()`: C `wjr_Document_createAttribute`
