@@ -11600,8 +11600,8 @@
 	<button> element does not fire blur/focusout events upon DOM removal: PASS
 	<input> element does not fire blur event upon DOM removal: PASS
 /dom/nodes/insertion-removing-steps/change-event.window.html: OK
-	<input> element does not fire change event upon DOM removal: FAIL
-	<textarea> element does not fire change event upon DOM removal: FAIL
+	<input> element does not fire change event upon DOM removal: PASS
+	<textarea> element does not fire change event upon DOM removal: PASS
 /dom/nodes/insertion-removing-steps/frame-post-connection-steps.html: OK
 	A script after frame and iframe elements observes post-connection order: PASS
 	A script before frame and iframe elements observes post-connection order: FAIL
@@ -11841,10 +11841,10 @@
 	Valid and invalid characters in setAttribute, toggleAttribute, and createAttribute.: PASS
 	Valid and invalid characters in setAttributeNS and createAttributeNS.: FAIL
 /dom/nodes/namespaced-attribute-mutations.html: OK
-	A namespaced multiple attribute does not reset a select: FAIL
+	A namespaced multiple attribute does not reset a select: PASS
 	A namespaced open attribute does not fire a toggle event: PASS
-	A namespaced selected attribute does not change an option's selectedness: FAIL
-	A namespaced size attribute does not reset a select: FAIL
+	A namespaced selected attribute does not change an option's selectedness: PASS
+	A namespaced size attribute does not reset a select: PASS
 	A namespaced slot attribute does not assign a slot: PASS
 	A namespaced src attribute does not navigate an iframe: PASS
 	A namespaced src attribute does not prepare a script: PASS

@@ -28,6 +28,7 @@ import "wb:base"
 import "wb:csp"
 import "wb:dom"
 import "wb:fetch"
+import "wb:forms"
 import "wb:host"
 import "wb:url"
 
@@ -948,9 +949,10 @@ scripts_install_hooks :: proc(p: ^Page) {
 
 // A node left the tree: frames whose container went with it are destroyed (frames.odin).
 @(private)
-hook_removed :: proc(user: rawptr, d: ^dom.Document) {
+hook_removed :: proc(user: rawptr, d: ^dom.Document, node, parent: base.Handle) {
 	p := (^Page)(user)
 	if p.closed || d != p.doc { return }
+	if p.formctl != nil { forms.note_tree_change(p.formctl.model, node, parent) }   // an option out of a select (values.odin)
 	frames_note_removed(p)
 	media_note_removed(p)
 	dialog_note_removed(p)       // a modal dialog that left the document is not modal any more (dialog_modal.odin)
@@ -985,6 +987,7 @@ hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 	if s == nil || p.closed || d != p.doc || s.parser.revealing > 0 { return }
 	n := dom.get(d, node)
 	if n == nil { return }
+	if p.formctl != nil { forms.note_tree_change(p.formctl.model, node, n.parent) }   // an option into a select (values.odin)
 	if n.kind != .Element {
 		frames_note_inserted(p, node)   // frame elements get their nested document (frames.odin)
 		if p.closed || dom.get(d, node) == nil { return }
@@ -1050,6 +1053,7 @@ hook_attribute :: proc(user: rawptr, d: ^dom.Document, el: base.Handle, name: st
 	}
 	styles_note_attribute(p, el, name)
 	media_note_attribute(p, el, name)
+	if p.formctl != nil { forms.note_attribute(p.formctl.model, el, name) }   // a select's multiple or size (values.odin)
 	if name == "open" { dialog_note_attribute(p, el) }
 	// HTML "update the image data" runs for an <img> whether or not it is in the tree: `new Image()` with src and onload
 	// (the canvas idiom) never gets a walk of the document, so the image's record is made now (images.odin)
