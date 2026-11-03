@@ -27,6 +27,15 @@ import "wb:e2e"
 @(private = "file") ESCAPE_FRAMES :: 3
 @(private = "file") WATCHED_FRAMES :: 10           // how long a pointer far away is given to scroll a page it should not
 
+// A page that scrolls both ways, a panel on it that scrolls down only: the press below the panel, then in it.
+@(private = "file") AUTOSCROLL_2D_PAGE :: "/site/autoscroll-2d.html"
+@(private = "file") ON_THE_PAGE :: e2e.Point{300, 500}
+@(private = "file") RIGHT_OF_THE_PAGE_ANCHOR :: e2e.Point{600, 500}
+@(private = "file") IN_THE_PANEL :: e2e.Point{300, 200}
+@(private = "file") BELOW_THE_PANEL_ANCHOR :: e2e.Point{300, 300}   // slow: the panel is far from its end when looked at
+@(private = "file") RIGHT_OF_THE_PANEL_ANCHOR :: e2e.Point{600, 200}
+@(private = "file") UNMOVED_WITHIN :: 1.0          // px: an axis the pointer did not ask for
+
 @(private = "file")
 scroll_y :: proc(s: ^e2e.Session, loc := #caller_location) -> f64 { return e2e.eval_f64(s, "window.scrollY", loc) }
 
@@ -80,4 +89,32 @@ autoscroll_end_to_end :: proc(t: ^testing.T) {
 	e2e.press(s, link, button = .Middle)
 	e2e.release(s, link, button = .Middle)
 	e2e.wait_until(s, before, proc(s: ^e2e.Session, before: int) -> bool { return len(e2e.targets(s).tabs) > before }, "a middle click on a link to open a new tab")
+}
+
+// Both axes: the pointer to the right of the anchor scrolls sideways, on the page and in a panel that scrolls down only
+// (its page takes the sideways part, as Chrome chains it).
+@(test)
+autoscroll_both_axes :: proc(t: ^testing.T) {
+	url := e2e.url(e2e.test_server(t), AUTOSCROLL_2D_PAGE)
+	s := e2e.start(t, {size = AUTOSCROLL_SIZE, prefs = {AUTOSCROLL_PREF}, url = url})
+
+	// on the page: right scrolls it sideways, not down
+	e2e.press(s, ON_THE_PAGE, button = .Middle)
+	e2e.hover(s, RIGHT_OF_THE_PAGE_ANCHOR)
+	e2e.wait_js(s, fmt.tprintf("window.scrollX > %v", MOVED_AT_LEAST))
+	testing.expectf(t, scroll_y(s) < UNMOVED_WITHIN, "the page scrolled sideways only: scrollY %v", scroll_y(s))
+	e2e.key(s, "Escape")
+	e2e.release(s, RIGHT_OF_THE_PAGE_ANCHOR, button = .Middle)
+	e2e.eval(s, "window.scrollTo(0, 0); 'ok'")
+	e2e.wait_js(s, "window.scrollX == 0 && window.scrollY == 0")
+
+	// in the panel: down scrolls the panel and not the page, right scrolls the page
+	e2e.press(s, IN_THE_PANEL, button = .Middle)
+	e2e.hover(s, BELOW_THE_PANEL_ANCHOR)
+	e2e.wait_js(s, fmt.tprintf("document.getElementById('panel').scrollTop > %v", MOVED_AT_LEAST))
+	testing.expectf(t, scroll_y(s) < UNMOVED_WITHIN, "the panel took the downward scroll: page scrollY %v", scroll_y(s))
+	e2e.hover(s, RIGHT_OF_THE_PANEL_ANCHOR)
+	e2e.wait_js(s, fmt.tprintf("window.scrollX > %v", MOVED_AT_LEAST))
+	e2e.key(s, "Escape")
+	e2e.release(s, RIGHT_OF_THE_PANEL_ANCHOR, button = .Middle)
 }
