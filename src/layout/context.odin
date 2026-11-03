@@ -182,16 +182,16 @@ resolve_box_model :: proc(c: ^Ctx, b: ^Box, cb_w: f32) {
 to_border_w :: proc(c: ^Ctx, b: ^Box, l: style.Length, base: f32) -> (f32, bool) {
 	v, ok := definite(c, l, base)
 	if !ok { return 0, false }
-	if b.cs.box_sizing == .Border_Box && b.kind != .Inline { return max(v, pb_w(b)), true }
-	return max(max(v, 0) + pb_w(b) - b.gutter[1] - b.gutter[3], pb_w(b)), true
+	if b.cs.box_sizing == .Border_Box && b.kind != .Inline { return max(v, pb_w(b) - b.gutter[1] - b.gutter[3]), true }
+	return max(v, 0) + pb_w(b) - b.gutter[1] - b.gutter[3], true
 }
 
 @(private)
 to_border_h :: proc(c: ^Ctx, b: ^Box, l: style.Length, base: f32) -> (f32, bool) {
 	v, ok := definite(c, l, base)
 	if !ok { return 0, false }
-	if b.cs.box_sizing == .Border_Box { return max(v, pb_h(b)), true }
-	return max(max(v, 0) + pb_h(b) - b.gutter[0] - b.gutter[2], pb_h(b)), true
+	if b.cs.box_sizing == .Border_Box { return max(v, pb_h(b) - b.gutter[0] - b.gutter[2]), true }
+	return max(v, 0) + pb_h(b) - b.gutter[0] - b.gutter[2], true
 }
 
 // min-width / max-width applied to a border-box width.
@@ -204,7 +204,7 @@ clamp_w :: proc(c: ^Ctx, b: ^Box, w: f32, cb_w: f32) -> f32 {
 	case .Min_Content, .Fit_Content: r = max(r, intrinsic(c, b_index(c, b))[0])
 	case .Max_Content: r = max(r, intrinsic(c, b_index(c, b))[1])
 	}
-	return max(r, pb_w(b))
+	return max(r, pb_w(b) - b.gutter[1] - b.gutter[3])
 }
 
 @(private)
@@ -214,7 +214,7 @@ clamp_h :: proc(c: ^Ctx, b: ^Box, h: f32, cb_h: f32) -> f32 {
 		if mx, ok := to_border_h(c, b, b.cs.max_height, cb_h); ok { r = min(r, mx) }
 	}
 	if mn, ok := to_border_h(c, b, b.cs.min_height, cb_h); ok { r = max(r, mn) }
-	return max(r, pb_h(b))
+	return max(r, pb_h(b) - b.gutter[0] - b.gutter[2])
 }
 
 @(private)

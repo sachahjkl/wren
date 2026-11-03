@@ -57,7 +57,8 @@ section("scrolling", () => {
   document.getElementById("box").scrollIntoView();
   eq("scrollIntoView", scrollY, 30);
   window.scroll({top: 0});
-  eq("documentElement.clientWidth is the viewport", document.documentElement.clientWidth, 800);
+  eq("documentElement.clientWidth is the viewport less its classic scroll bar", document.documentElement.clientWidth, innerWidth - 15);
+  eq("innerWidth is the whole viewport", innerWidth, 800);
   t("document scrollHeight", document.documentElement.scrollHeight >= 2000);
 });
 

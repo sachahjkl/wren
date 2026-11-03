@@ -104,6 +104,11 @@ page_bar_scroll_none_overlay :: proc(t: ^testing.T) {
 	testing.expect_value(t, rects(n, "w").border.max.x, SB_W)
 	_, hi := doc_scroll_y_range(&n.l, n.vp.y)
 	testing.expect(t, hi > 0, "it still scrolls")
+	// a viewport too small for a bar's arrows (a tiny frame): none
+	tiny_w, tiny_h := f.set.classic_width, f.set.classic_width   // (less than two arrows long either way)
+	tiny := fixture_load(`<!doctype html><body style="margin:0">` + TALL, tiny_w, tiny_h, {set = &f.set})
+	defer fixture_unload(tiny)
+	testing.expect_value(t, tiny.l.doc_bars, Vec2{})
 	// a frame of scrolling="no" (the embedder says): none
 	set_doc_bars_off(&f.l, true)
 	fixture_run(f)
