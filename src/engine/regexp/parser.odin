@@ -55,8 +55,9 @@ Node :: struct {
 Class_Spec :: struct {
 	items:    [dynamic]Class_Item,
 	negated:  bool,
-	// `v`-flag set operations: nested classes combined by && or -- . For simplicity the parser stores a flat
-	// list plus an operator; full nested set arithmetic is represented by `op` and `operands`.
+	// `v`-flag nested classes ([a[b]]): more members of the union of `items`.
+	nested:   [dynamic]^Class_Spec,
+	// `v`-flag set operations: that union (the left operand) && or -- each of `operands` in turn.
 	op:       Set_Operator,
 	operands: [dynamic]^Class_Spec,
 }

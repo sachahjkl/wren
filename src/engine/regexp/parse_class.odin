@@ -1,9 +1,10 @@
 package regexp
 
 // Character class parser: [ ... ]. Handles single characters, ranges (a-z), the class escapes (\d \w \s and
-// negations, \p{} in u/v mode), escaped characters, a leading ^ negation, and -- for the `v` flag's nested set
-// difference / intersection (&&). In Annex B (no u/v), a `-` in a position where it cannot form a range is a
-// literal, and class escapes inside ranges degrade gracefully as browsers do.
+// negations, \p{} in u/v mode), escaped characters, a leading ^ negation, and for the `v` flag nested classes, the
+// escaped reserved punctuators, and chains of set difference (--) or intersection (&&). In Annex B (no u/v), a `-`
+// in a position where it cannot form a range is a literal, and class escapes inside ranges degrade gracefully as
+// browsers do.
 
 import "core:unicode/utf8"
 import uni "wb:engine/unicode"
@@ -24,46 +25,57 @@ parse_class_body :: proc(p: ^Parser) -> ^Class_Spec {
 	if p_eat(p, '^') { spec.negated = true }
 
 	for !p_eof(p) && p_peek_byte(p) != ']' {
-		// `v`-flag set operators between class elements.
-		if .Unicode_Sets in p.flags {
-			if p.pos + 1 < len(p.src) && p.src[p.pos] == '&' && p.src[p.pos + 1] == '&' {
-				p.pos += 2
-				right := parse_class_body_until_op(p)
-				if p.err != "" { return nil }
-				spec.op = .Intersection
-				append(&spec.operands, right)
-				break
-			}
-			if p.pos + 1 < len(p.src) && p.src[p.pos] == '-' && p.src[p.pos + 1] == '-' {
-				p.pos += 2
-				right := parse_class_body_until_op(p)
-				if p.err != "" { return nil }
-				spec.op = .Subtraction
-				append(&spec.operands, right)
-				break
-			}
+		// `v`-flag set operators: what came before is the left operand, each one after a right operand of the same
+		// operator (A && B && C, A -- B -- C; mixing them is an error)
+		if op := class_set_operator(p); op != .None {
+			if spec.op != .None && spec.op != op { p_fail(p, "mixed set operators in a class"); return nil }
+			spec.op = op
+			p.pos += 2
+			right := parse_class_body_until_op(p)
+			if p.err != "" { return nil }
+			append(&spec.operands, right)
+			continue
 		}
-		parse_class_atom_into(p, spec)
+		if spec.op != .None { p_fail(p, "a set operator expected in the class"); return nil }
+		parse_class_member_into(p, spec)
 		if p.err != "" { return nil }
 	}
 	if !p_eat(p, ']') { p_fail(p, "unterminated character class"); return nil }
 	return spec
 }
 
+// The `v`-flag set operator at the parser's position: && or --, else none.
+@(private)
+class_set_operator :: proc(p: ^Parser) -> Set_Operator {
+	if .Unicode_Sets not_in p.flags || p.pos + 1 >= len(p.src) || p.src[p.pos] != p.src[p.pos + 1] { return .None }
+	switch p.src[p.pos] {
+	case '&': return .Intersection
+	case '-': return .Subtraction
+	}
+	return .None
+}
+
 // For the v-flag nested operand, parse a sub-class body that stops at the next operator or the closing ].
 @(private)
 parse_class_body_until_op :: proc(p: ^Parser) -> ^Class_Spec {
 	sub := new(Class_Spec, p.allocator)
-	for !p_eof(p) && p_peek_byte(p) != ']' {
-		if p.pos + 1 < len(p.src) &&
-		   ((p.src[p.pos] == '&' && p.src[p.pos + 1] == '&') ||
-		    (p.src[p.pos] == '-' && p.src[p.pos + 1] == '-')) {
-			break
-		}
-		parse_class_atom_into(p, sub)
+	for !p_eof(p) && p_peek_byte(p) != ']' && class_set_operator(p) == .None {
+		parse_class_member_into(p, sub)
 		if p.err != "" { return nil }
 	}
 	return sub
+}
+
+// One member of a class: in `v` mode a nested class ([...], a member of the union), else an element.
+@(private)
+parse_class_member_into :: proc(p: ^Parser, spec: ^Class_Spec) {
+	if .Unicode_Sets in p.flags && p_peek_byte(p) == '[' {
+		p.pos += 1
+		sub := parse_class_body(p)
+		if p.err == "" { append(&spec.nested, sub) }
+		return
+	}
+	parse_class_atom_into(p, spec)
 }
 
 // Parse one class element (char, range, or class escape) and append it to `spec`.
@@ -76,7 +88,7 @@ parse_class_atom_into :: proc(p: ^Parser, spec: ^Class_Spec) {
 		return
 	}
 	// Possible range: lo '-' hi, but not if '-' is the last char before ']'.
-	if p_peek_byte(p) == '-' && p.pos + 1 < len(p.src) && p.src[p.pos + 1] != ']' {
+	if p_peek_byte(p) == '-' && p.pos + 1 < len(p.src) && p.src[p.pos + 1] != ']' && class_set_operator(p) == .None {
 		// Peek: a '-' followed by a class escape is not a range in unicode mode (error) / literal in Annex B.
 		p.pos += 1 // consume '-'
 		hi, hi_is_set := parse_class_single(p, spec)
@@ -126,12 +138,26 @@ parse_class_single :: proc(p: ^Parser, spec: ^Class_Spec) -> (rune, bool) {
 			p.pos += 1
 			return e == 'p' ? 'p' : 'P', false
 		}
+		// `v` mode: a reserved punctuator of class set syntax stands for itself escaped (\: \- \&...)
+		if .Unicode_Sets in p.flags && is_class_set_reserved_punctuator(e) {
+			p.pos += 1
+			return rune(e), false
+		}
 		r, ok := parse_char_escape(p, true)
 		if !ok { return 0, false }
 		return r, false
 	}
 	r := p_next(p)
 	return r, false
+}
+
+// ClassSetReservedPunctuator of the `v` flag's grammar.
+@(private)
+is_class_set_reserved_punctuator :: proc(b: u8) -> bool {
+	switch b {
+	case '&', '-', '!', '#', '%', ',', ':', ';', '<', '=', '>', '@', '`', '~': return true
+	}
+	return false
 }
 
 @(private)

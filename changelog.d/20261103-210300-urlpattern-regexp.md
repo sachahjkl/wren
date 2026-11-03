@@ -1,0 +1,3 @@
+type: Fixed
+
+**URLPattern matches as the standard says**: a component's pattern is compiled to its ECMAScript regular expression (the `v` flag), so `:name` segments are lazy, a repeated group captures all its repetitions (`/:path+`), custom groups take named groups and class set operations, and invalid escapes throw; a relative `pathname` resolves against `baseURL`'s path; `exec()` and `test()` of a dictionary honour its `baseURL`; ports are canonicalized with their protocol (`http` and `80` is the default port); a hostname with a forbidden character throws; group names may be any JavaScript identifier; `URLPattern(string, {ignoreCase})` honours the option.

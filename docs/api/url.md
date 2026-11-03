@@ -313,12 +313,12 @@ Host: `URLPattern_execString :: proc(c: ^Call, pattern: Api_URLPattern, input: s
 ### `URLPattern_execInit`
 
 ```
-i32 URLPattern_execInit(URLPattern pattern, string protocol, bool has_protocol, string username, bool has_username, string password, bool has_password, string hostname, bool has_hostname, string port, bool has_port, string pathname, bool has_pathname, string search, bool has_search, string hash, bool has_hash)
+i32 URLPattern_execInit(URLPattern pattern, string protocol, bool has_protocol, string username, bool has_username, string password, bool has_password, string hostname, bool has_hostname, string port, bool has_port, string pathname, bool has_pathname, string search, bool has_search, string hash, bool has_hash, string base, bool has_base)
 ```
 
-Run exec()/test() against a per-component init. Returns 1/0 as execString.
+Run exec()/test() against a per-component init and its baseURL. Returns 1/0 as execString.
 
-Host: `URLPattern_execInit :: proc(c: ^Call, pattern: Api_URLPattern, protocol: string, has_protocol: bool, username: string, has_username: bool, password: string, has_password: bool, hostname: string, has_hostname: bool, port: string, has_port: bool, pathname: string, has_pathname: bool, search: string, has_search: bool, hash: string, has_hash: bool) -> i32`
+Host: `URLPattern_execInit :: proc(c: ^Call, pattern: Api_URLPattern, protocol: string, has_protocol: bool, username: string, has_username: bool, password: string, has_password: bool, hostname: string, has_hostname: bool, port: string, has_port: bool, pathname: string, has_pathname: bool, search: string, has_search: bool, hash: string, has_hash: bool, base: string, has_base: bool) -> i32`
 
 ### `URLPattern_resultInputCount`
 

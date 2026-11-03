@@ -7,6 +7,7 @@ package regexp
 //
 // Public entry: compile(pattern, flags, allocator).
 
+import "base:runtime"
 import "core:strings"
 import "core:unicode/utf8"
 import uni "wb:engine/unicode"
@@ -25,8 +26,18 @@ Compiler :: struct {
 }
 
 compile :: proc(pattern: string, flags: Flags, allocator := context.allocator) -> (re: Regexp, err: Error) {
-	p := Parser{src = pattern, flags = flags, allocator = allocator}
-	root := parse_pattern(&p)
+	// The syntax tree lives as long as the compilation, in an arena of its own; the program and the group names are
+	// `allocator`'s.
+	tree: runtime.Arena
+	if runtime.arena_init(&tree, 0, allocator) != nil { return {}, Error{message = "out of memory"} }
+	defer runtime.arena_destroy(&tree)
+	tree_allocator := runtime.arena_allocator(&tree)
+	p := Parser{src = pattern, flags = flags, allocator = tree_allocator}
+	root: ^Node
+	{
+		context.allocator = tree_allocator   // (the tree's dynamic arrays)
+		root = parse_pattern(&p)
+	}
 	if p.err != "" {
 		return {}, Error{message = p.err, pos = p.err_pos}
 	}
@@ -57,9 +68,11 @@ compile :: proc(pattern: string, flags: Flags, allocator := context.allocator) -
 	re.capture_count = p.total_captures + 1
 	re.allocator = allocator
 	re.ranges = c.ranges
-	// Take ownership of the parser's cloned named-group tables.
-	re.group_names = p.group_names
-	re.group_indices = p.group_indices
+	// The named-group tables, out of the tree's arena.
+	re.group_names = make([dynamic]string, 0, len(p.group_names), allocator)
+	re.group_indices = make([dynamic]int, 0, len(p.group_indices), allocator)
+	for name in p.group_names { append(&re.group_names, strings.clone(name, allocator)) }
+	append(&re.group_indices, ..p.group_indices[:])
 	return
 }
 

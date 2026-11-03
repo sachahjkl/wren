@@ -228,7 +228,7 @@ generate_pattern_string :: proc(parts: []Part, delimiter, prefix_cp: string, all
 				if np.kind == .Fixed_Text {
 					if len(np.value) > 0 {
 						first := utf8.rune_at_pos(np.value, 0)
-						if is_pattern_name_cp(first, false) { needs_grouping = true }
+						if is_valid_name_code_point(first, false) { needs_grouping = true }
 					}
 				} else {
 					if len(np.name) > 0 && np.name[0] >= '0' && np.name[0] <= '9' { needs_grouping = true }
@@ -255,7 +255,7 @@ generate_pattern_string :: proc(parts: []Part, delimiter, prefix_cp: string, all
 		case .Segment_Wildcard:
 			if !custom_name {
 				strings.write_byte(&b, '(')
-				strings.write_string(&b, segment_wildcard_regexp_str(delimiter))
+				strings.write_string(&b, segment_wildcard_regexp(delimiter))
 				strings.write_byte(&b, ')')
 			}
 		case .Full_Wildcard:
@@ -274,7 +274,7 @@ generate_pattern_string :: proc(parts: []Part, delimiter, prefix_cp: string, all
 		}
 		if part.kind == .Segment_Wildcard && custom_name && part.suffix != "" {
 			first := utf8.rune_at_pos(part.suffix, 0)
-			if is_pattern_name_cp(first, false) { strings.write_byte(&b, '\\') }
+			if is_valid_name_code_point(first, false) { strings.write_byte(&b, '\\') }
 		}
 		escape_pattern_string(&b, part.suffix)
 		if needs_grouping { strings.write_byte(&b, '}') }
@@ -283,16 +283,7 @@ generate_pattern_string :: proc(parts: []Part, delimiter, prefix_cp: string, all
 	return strings.to_string(b)
 }
 
-@(private = "file")
-segment_wildcard_regexp_str :: proc(delimiter: string) -> string {
-	b := strings.builder_make(context.temp_allocator)
-	strings.write_string(&b, "[^")
-	escape_regexp_string(&b, delimiter)
-	strings.write_string(&b, "]+?")
-	return strings.to_string(b)
-}
-
-@(private = "file")
+@(private)
 write_modifier :: proc(b: ^strings.Builder, m: Part_Modifier) {
 	switch m {
 	case .Zero_Or_More: strings.write_byte(b, '*')
@@ -302,7 +293,7 @@ write_modifier :: proc(b: ^strings.Builder, m: Part_Modifier) {
 	}
 }
 
-@(private = "file")
+@(private)
 escape_pattern_string :: proc(b: ^strings.Builder, input: string) {
 	for i in 0 ..< len(input) {
 		c := input[i]
@@ -311,14 +302,6 @@ escape_pattern_string :: proc(b: ^strings.Builder, input: string) {
 		}
 		strings.write_byte(b, c)
 	}
-}
-
-@(private = "file")
-is_pattern_name_cp :: proc(c: rune, first: bool) -> bool {
-	if c == '$' || c == '_' { return true }
-	if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' { return true }
-	if !first && c >= '0' && c <= '9' { return true }
-	return false
 }
 
 @(private = "file")

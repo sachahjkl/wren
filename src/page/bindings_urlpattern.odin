@@ -122,7 +122,7 @@ URLPattern_execString :: proc(c: ^Call, pattern: Api_URLPattern, input: string, 
 URLPattern_execInit :: proc(c: ^Call, pattern: Api_URLPattern,
 	protocol: string, has_protocol: bool, username: string, has_username: bool, password: string, has_password: bool,
 	hostname: string, has_hostname: bool, port: string, has_port: bool, pathname: string, has_pathname: bool,
-	search: string, has_search: bool, hash: string, has_hash: bool) -> i32 {
+	search: string, has_search: bool, hash: string, has_hash: bool, base: string, has_base: bool) -> i32 {
 	o := pattern.data
 	if o == nil { return 0 }
 	init: url.Pattern_Init
@@ -134,6 +134,7 @@ URLPattern_execInit :: proc(c: ^Call, pattern: Api_URLPattern,
 	if has_pathname { init.pathname = pathname }
 	if has_search   { init.search = search }
 	if has_hash     { init.hash = hash }
+	if has_base     { init.base_url = base }
 	r, matched := url.pattern_match_init(&o.pat, init)
 	return pattern_store_result(o, r, matched)
 }
