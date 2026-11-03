@@ -95,9 +95,10 @@ set_layout_journal :: proc(p: ^Page, max_entries: int) {
 // (a partial restyle, or nothing when no rule depends on what changed) happens once, in the next `styles` call.
 set_style_state :: proc(p: ^Page, state: style.State) {
 	if !style.state_equal(state, p.style_state) {
-		delete(p.style_state.target_id)
+		old := p.style_state.target_id   // (freed after the copy: `state` is often the page's own with a field changed)
 		p.style_state = state
 		p.style_state.target_id = strings.clone(state.target_id)
+		delete(old)
 	}
 }
 

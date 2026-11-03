@@ -1306,6 +1306,7 @@ foreign _m_navigation {
 	@(link_name = "Navigation_pendingState") c_Navigation_pendingState :: proc(a0: i32, a1: i32) -> i32 ---
 	@(link_name = "Navigation_pendingSource") c_Navigation_pendingSource :: proc(a0: i32) ---
 	@(link_name = "Navigation_activation") c_Navigation_activation :: proc(a0: i32, a1: i32) -> i32 ---
+	@(link_name = "Navigation_scroll") c_Navigation_scroll :: proc(a0: i32) ---
 }
 
 foreign import _m_net "net"

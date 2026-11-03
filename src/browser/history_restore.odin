@@ -10,23 +10,20 @@ package browser
 //     them: the page grows while it loads, so this is tried at each layout until the load event plus
 //     history.restore.after_load_ms, or history.restore.max_wait_ms, then the scroller goes as far as it can. The user
 //     (or a script) scrolling first wins: the restoration stops. No smooth scrolling: it jumps;
-//   * a same-document traversal (popstate) restores the positions of the entry at once;
+//   * a same-document traversal (popstate) is the page's: it puts the positions of the entry back at once
+//     (page/history_scroll.odin);
 //   * history.scrollRestoration = "manual" (the entry's) leaves the scroll positions to the page;
 //   * a page from the back/forward cache needs none of it (bfcache.odin): it is as it was.
 
 import "core:fmt"
-import "core:strings"
 import "core:time"
 import "wb:base"
 import "wb:host"
 import lay "wb:layout"
 import "wb:page"
 
-Restore_Kind :: enum u8 { New_Document, Same_Document }
-
 Restore :: struct {
 	active:    bool,
-	kind:      Restore_Kind,
 	entry:     u64,             // the entry being restored (its id in the tab's tree)
 	page:      rawptr,          // the document it is restored into
 	started:   i64,   // (the loop's clock, ns)
@@ -107,27 +104,20 @@ page_entry_leaving :: proc(user: rawptr, p: ^page.Page, e: ^page.History_Entry) 
 	entry_capture(the_app, t, e)
 }
 
-// Embedder.entered: a same-document traversal reached `e`: its positions come back now.
-page_entry_entered :: proc(user: rawptr, p: ^page.Page, e: ^page.History_Entry) {
-	t := (^Tab)(user)
-	if t.page != p { return }
-	restore_begin(the_app, t, e, .Same_Document)
-}
-
 ////////////////////////////////
 // Restoring
 
-// Starts restoring `e` into the tab's document (the current one, or the one about to load: `page` is then set when it
-// arrives, restore_tick takes the first page it sees).
-restore_begin :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry, kind: Restore_Kind) {
+// Starts restoring `e` into the document about to load (`page` is set when it arrives: restore_tick takes the first page
+// it sees).
+restore_begin :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry) {
 	restore_stop(app, t)
 	if e == nil || !app.hcfg.restore || !e.persisted.saved { return }
 	r := &t.nav_state.restore
-	r.active, r.kind, r.entry, r.started = true, kind, e.id, host.now_ns(&app.loop)
-	r.page = kind == .Same_Document ? rawptr(t.page) : nil
+	r.active, r.entry, r.started = true, e.id, host.now_ns(&app.loop)
+	r.page = nil
 	r.applied, r.applied_x = t.scroll, t.layout.doc_scroll_x
 	r.doc_done = e.scroll_manual
-	r.controls_done = kind == .Same_Document || !app.hcfg.restore_forms
+	r.controls_done = !app.hcfg.restore_forms
 	r.load_seen = false
 	r.fragment = !e.scroll_manual
 	clear(&r.done)
@@ -182,9 +172,9 @@ restore_tick :: proc(app: ^App, t: ^Tab, viewport: [2]f32) {
 	if abs(t.scroll - r.applied) > 0.5 || abs(t.layout.doc_scroll_x - r.applied_x) > 0.5 { restore_stop(app, t); return }   // scrolled by the user or a script: theirs
 	p := t.page
 	ps := &e.persisted
-	if r.fragment {
-		delete(t.fragment_seen)
-		t.fragment_seen = strings.clone(p.env.location.href)
+	if r.fragment && !t.fragment_done {   // (the target element still is the fragment's)
+		t.fragment_done = true
+		page.target_from_url(p)
 	}
 	if !r.controls_done && p.render.adopted {
 		r.controls_done = true

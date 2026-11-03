@@ -31,7 +31,6 @@ Bf_Entry :: struct {
 	zoom:     f32,
 	url:      string,           // owned (the tab's address while it was shown)
 	title:    string,           // owned
-	fragment_seen: string,      // owned
 	image_sizes: u64,
 	web_fonts: int,
 	no_store: bool,
@@ -71,7 +70,7 @@ bf_entry_free :: proc(e: ^Bf_Entry, close: bool) {
 	if close { base.scope_close(e.nav) }
 	layout_destroy(&e.layout)
 	page_fonts_drop(&the_app.page_render.fonts, e)
-	delete(e.url); delete(e.title); delete(e.fragment_seen)
+	delete(e.url); delete(e.title)
 	free(e)
 }
 
@@ -126,7 +125,7 @@ bfcache_take :: proc(app: ^App, t: ^Tab) -> bool {
 	if id == 0 || t.page == nil || t.nav_state.left != rawptr(t.page) || t.page.closed { return false }
 	e := new(Bf_Entry)
 	e^ = Bf_Entry{tab = t.id, entry = id, nav = t.nav, page = t.page, layout = t.layout, scroll = t.scroll, zoom = t.zoom,
-		url = strings.clone(t.url), title = strings.clone(t.title), fragment_seen = strings.clone(t.fragment_seen),
+		url = strings.clone(t.url), title = strings.clone(t.title),
 		image_sizes = t.image_sizes, web_fonts = t.web_fonts, no_store = t.nav_state.no_store, stored = host.now_ns(&app.loop)}
 	page_fonts_transfer(&app.page_render.fonts, t, e)   // its web faces stay with its layout
 	t.layout = {}
@@ -146,7 +145,7 @@ bfcache_take_held :: proc(app: ^App, t: ^Tab) -> bool {
 	if id == 0 || h.page == nil || h.page.closed { return false }
 	e := new(Bf_Entry)
 	e^ = Bf_Entry{tab = t.id, entry = id, nav = h.nav, page = h.page, layout = h.layout, scroll = h.scroll, zoom = h.zoom,
-		url = strings.clone(h.page.env.location.href), title = default_tab_title(h.page.env.location.href, context.allocator), fragment_seen = strings.clone(h.page.env.location.href),
+		url = strings.clone(h.page.env.location.href), title = default_tab_title(h.page.env.location.href, context.allocator),
 		image_sizes = h.image_sizes, web_fonts = h.web_fonts, stored = host.now_ns(&app.loop)}
 	page_fonts_transfer(&app.page_render.fonts, h, e)
 	if t.web_font_page == rawptr(h.page) {   // the next page has not taken the tab's faces over yet: they are this one's
@@ -276,10 +275,10 @@ bfcache_restore :: proc(app: ^App, t: ^Tab, entry: ^page.History_Entry) -> bool 
 	if app.hcfg.restore_zoom && e.zoom > 0 { t.zoom = e.zoom }
 	t.nav_state.no_store = e.no_store
 	t.nav_state.left = nil
-	delete(t.fragment_seen); t.fragment_seen = e.fragment_seen
+	t.fragment_done = true   // (it is where it was)
 	delete(t.url); t.url = e.url
 	delete(t.title); t.title = e.title
-	e.fragment_seen, e.url, e.title = "", "", ""
+	e.url, e.title = "", ""
 	e.layout = {}
 	tab_icon_destroy(&t.icon)
 	console_reset(t)

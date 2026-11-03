@@ -345,46 +345,12 @@ nav_abort :: proc(ctx: ^wj.Context, n: ^Ongoing, error: wj.JSValue) {
 @(private = "file")
 abort_error :: proc "contextless" (ctx: ^wj.Context, message: cstring) -> wj.JSValue { return wj.web_dom_exception(ctx, "AbortError", message) }
 
-// The after-transition scroll: push and replace go to the fragment of the new URL, or to the top.
+// The after-transition scroll (or event.scroll()): the browser's (Navigation_scroll: a traversal restores, anything else
+// goes to the fragment or the top).
 @(private = "file")
 nav_scroll :: proc(ctx: ^wj.Context, n: ^Ongoing) {
 	n.scrolled = true
-	if n.type != .Push && n.type != .Replace { return }
-	loc := global_prop(ctx, "location")
-	hash := wj.is_object(loc) ? wj.JS_GetPropertyStr(ctx, loc, "hash") : wj.UNDEFINED
-	wj.JS_FreeValue(ctx, loc)
-	hc: cstring
-	h: string
-	if wj.is_string(hash) { hc, h = to_text(ctx, hash) }
-	wj.JS_FreeValue(ctx, hash)
-	done := false
-	if hc != nil && len(h) > 1 {
-		doc := global_prop(ctx, "document")
-		by_id := wj.is_object(doc) ? wj.JS_GetPropertyStr(ctx, doc, "getElementById") : wj.UNDEFINED
-		if wj.JS_IsFunction(ctx, by_id) {
-			id := wj.new_string_len(ctx, h[1:])
-			el := wj.JS_Call(ctx, by_id, doc, 1, &id)
-			wj.JS_FreeValue(ctx, id)
-			if wj.is_object(el) {
-				siv := wj.JS_GetPropertyStr(ctx, el, "scrollIntoView")
-				if wj.JS_IsFunction(ctx, siv) { wj.JS_FreeValue(ctx, wj.JS_Call(ctx, siv, el, 0, nil)); done = true }
-				wj.JS_FreeValue(ctx, siv)
-			}
-			if wj.is_exception(el) { wj.drop_exception(ctx) }
-			wj.JS_FreeValue(ctx, el)
-		}
-		wj.free_values(ctx, by_id, doc)
-	}
-	if hc != nil { wj.JS_FreeCString(ctx, hc) }
-	if !done {
-		st := global_prop(ctx, "scrollTo")
-		if wj.JS_IsFunction(ctx, st) {
-			a := [2]wj.JSValue{wj.new_int32(0), wj.new_int32(0)}
-			wj.JS_FreeValue(ctx, wj.JS_Call(ctx, st, wj.realm_global(), 2, &a[0]))
-		}
-		wj.JS_FreeValue(ctx, st)
-	}
-	if wj.JS_HasException(ctx) { wj.drop_exception(ctx) }
+	wj.wr_Navigation_scroll(i32(n.type))
 }
 
 // The after-transition focus reset: when the focus did not move during the navigation, it goes back to the document.

@@ -22,9 +22,7 @@ _ :: fmt   // PACING_DEBUG only
 import "toolkit:platform"
 import "wb:base"
 import "wb:config"
-import "wb:dom"
 import lay "wb:layout"
-import "wb:style"
 
 SCROLL_PREFS := [?]config.Def{
 	{name = "browser.scroll.smooth.enabled", kind = .Bool, default = {b = true},
@@ -43,8 +41,6 @@ SCROLL_PREFS := [?]config.Def{
 		description = "Animate high-resolution wheels and touchpads too (deltas that are not whole notches). Off: they move at once, as their own stream of small steps is already smooth."},
 	{name = "browser.scroll.smooth.reduced_motion", kind = .Bool, default = {b = true},
 		description = "No smooth scrolling when the system asks for less motion (Windows: Settings > Accessibility > Visual effects > Animation effects off) or style.prefers_reduced_motion is on."},
-	{name = "browser.scroll.css_smooth", kind = .Bool, default = {b = true},
-		description = "The page's scroll-behavior: smooth (on the root element) makes scrolling to a fragment (a link to #id, location.hash) smooth."},
 }
 
 register_scroll_prefs :: proc(p: ^config.Prefs) { config.register(p, SCROLL_PREFS[:]) }
@@ -58,7 +54,6 @@ Smooth_Settings :: struct {
 	wheel_ms, key_ms, page_ms: f64,
 	precise_wheel:  bool,
 	reduced_motion: bool,
-	css_smooth:     bool,
 }
 
 smooth_settings_from_prefs :: proc(p: ^config.Prefs) -> Smooth_Settings {
@@ -71,7 +66,6 @@ smooth_settings_from_prefs :: proc(p: ^config.Prefs) -> Smooth_Settings {
 		page_ms = config.float_of(p, "browser.scroll.smooth.page_ms"),
 		precise_wheel = config.bool_of(p, "browser.scroll.smooth.precise_wheel"),
 		reduced_motion = config.bool_of(p, "browser.scroll.smooth.reduced_motion"),
-		css_smooth = config.bool_of(p, "browser.scroll.css_smooth"),
 	}
 }
 
@@ -431,19 +425,7 @@ wheel_is_precise :: proc(delta: draw.Vec2) -> bool {
 }
 
 ////////////////////////////////
-// Fragments: scroll-behavior
-
-// The root element asks for smooth scrolling (scroll-behavior: smooth), and the preferences let it.
-css_smooth :: proc(app: ^App, t: ^Tab) -> bool {
-	if !app.smooth_cfg.css_smooth || t.page == nil || t.page.styled == nil { return false }
-	d := t.page.doc
-	r := dom.get(d, d.root)
-	if r == nil { return false }
-	for ch := r.first_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).next {
-		if cs := style.style_of(t.page.styled, ch); cs != nil { return cs.scroll_behavior == .Smooth }
-	}
-	return false
-}
+// The document's own scrolling
 
 // The document to `to` for a fragment or a script: animated when the page asks for it, else at once (stopping any animation).
 scroll_document_to :: proc(app: ^App, t: ^Tab, to: [2]f32, smooth: bool) {

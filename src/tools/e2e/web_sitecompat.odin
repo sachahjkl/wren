@@ -262,6 +262,37 @@ sitecompat_scroll_events :: proc(t: ^testing.T) {
 	close_page(pr, min_checks = 15)
 }
 
+FRAGMENTS :: `<!doctype html><body style="margin:0"><script>function log(s) { wrenTest.note(String(s)) }</script>
+<div style="height:1000px"></div><div id=t style="height:10px"></div><div style="height:1000px"></div><a name=a style="display:block;height:10px"></a><div style="height:3000px"></div>
+<script>
+function at(what) { const tg = document.querySelector(":target"); log(what + " " + Math.round(scrollY) + " " + (tg ? tg.id : "none")) }
+addEventListener("hashchange", () => at("hashchange " + location.hash));
+log("ready");
+</script></body>`
+
+// Anchor links and back on a page (src/page/history_scroll.odin): a fragment scrolls to its element at once and makes it :target,
+// back puts the position the entry was left at back, pushState scrolls nothing.
+@(test)
+sitecompat_fragments_and_back :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	lh := new(Layout_Host)
+	defer { lay.destroy(&lh.l); free(lh) }
+	pr := open_laid_out(t, lh, "fragments", FRAGMENTS)
+	run(pr, `location.hash = "t"; at("id")`)
+	check(pr, noted(pr, "id 1000 t"), "a fragment naming an id: its element at the top, :target")
+	run(pr, `scrollBy(0, 37); location.hash = "a"; at("name")`)
+	check(pr, noted(pr, "name 2010 none"), "an <a name>: at the top too (no id: nothing is :target by id)")
+	run(pr, `history.back()`)
+	check(pr, wait_note(pr, "hashchange #t 1037 t"), "back: where the entry was left (not its fragment), :target follows the URL")
+	run(pr, `location.hash = "top"; at("top")`)
+	check(pr, noted(pr, "top 0 none"), "#top: the beginning of the document")
+	run(pr, `scrollTo(0, 500); history.pushState(null, "", "#t"); at("push")`)
+	check(pr, noted(pr, "push 500 none"), "pushState neither scrolls nor changes the target")
+	close_page(pr, min_checks = 5)
+}
+
 WIDE :: `<!doctype html><body style="margin:0"><script>function log(s) { wrenTest.note(String(s)) }</script>
 <div id=wide style="width:3000px;height:3000px;position:relative"><div id=box style="position:absolute;left:1000px;top:0;width:100px;height:100px"></div></div>
 <div id=fix style="position:fixed;left:10px;top:10px;width:50px;height:50px"></div>

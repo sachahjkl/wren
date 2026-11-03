@@ -100,7 +100,7 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 		prof_first_paint(t)
 	}
 	restore_tick(app, t, size)   // history_restore.odin: an entry shown again comes back where it was
-	scroll_to_fragment(app, t, size)
+	scroll_to_fragment(app, t)
 	layout_commit_anchors(&t.layout)
 	t.scroll = clamp(t.scroll, t.layout.doc_min_y, max(0, t.layout.height - size.y))
 	doc_scroll_x_set(t, t.layout.doc_scroll_x, size.x)

@@ -113,6 +113,7 @@ navigate_fragment :: proc(p: ^Page, target: url.URL, replace: bool) {
 	if replace { session_replace(sh, target.href) } else { session_push(sh, target.href, p.web.id, dedupe = false, max_entries = p.settings.web.history_max_entries) }
 	set_document_url(p, target.href)
 	set_history_state(p, "", false)
+	scroll_to_fragment(p)   // (history_scroll.odin)
 	queue_hashchange(p, old, target.href)
 	notify_url_changed(p)
 }
@@ -192,11 +193,14 @@ navigation_begin :: proc(p: ^Page, target: url.URL, replace: bool, user := false
 // Canceled: a listener of navigate cancelled the traversal (nothing changed).
 Traverse_Result :: enum u8 { None, Same_Document, Other_Document, Canceled }
 
-// The embedder saves what the current entry shows before the document moves to another of its entries.
+// What the current entry shows is saved in it before the document moves to another of its entries: by the embedder that
+// has a view of its own, else its scroll positions here.
 @(private)
 entry_leaving :: proc(p: ^Page) {
 	emb := p.web.embedder
-	if cur := session_current(p.web.session); cur != nil && emb.leaving != nil { emb.leaving(emb.user, p, cur) }
+	cur := session_current(p.web.session)
+	if cur == nil { return }
+	if emb.leaving != nil { emb.leaving(emb.user, p, cur) } else { persisted_capture_scroll(p, cur) }
 }
 
 // history.go(delta) / back / forward. An entry of this document is reached here (popstate, and hashchange when only the
@@ -224,6 +228,7 @@ history_traverse_to :: proc(p: ^Page, target: ^History_Entry, user := true) -> T
 	}
 	old := strings.clone(p.env.location.href, context.temp_allocator)
 	target := target
+	intercepted := false
 	{
 		ou, _ := url.parse(old, nil, context.temp_allocator)
 		tu, _ := url.parse(target.url, nil, context.temp_allocator)
@@ -237,11 +242,13 @@ history_traverse_to :: proc(p: ^Page, target: ^History_Entry, user := true) -> T
 		if verdict == .Canceled { return .Canceled }
 		// (a listener may have changed the history: the entry is looked up again)
 		if target = session_find(sh, id); target == nil || target == session_current(sh) || target.doc != p.web.id { return .None }
+		intercepted = verdict == .Intercepted
 		entry_leaving(p)
+		if intercepted { p.web.nav_scrolled_from = document_scroll(p) }   // (a scroll from now on means no restoring: history_scroll.odin)
 		session_goto(sh, target)
 		set_document_url(p, target.url)
 		set_history_state(p, target.state, target.has_state)
-		navigation_committed(p, .Traverse, verdict == .Intercepted)   // currententrychange before popstate (HTML)
+		navigation_committed(p, .Traverse, intercepted)   // currententrychange before popstate (HTML)
 		if p.closed || session_current(sh) != target { return .Same_Document }
 	}
 	href := strings.clone(target.url, context.temp_allocator)
@@ -251,7 +258,7 @@ history_traverse_to :: proc(p: ^Page, target: ^History_Entry, user := true) -> T
 	fire_window_event(p, dom.Event{type = "popstate", data = state, code = has_state ? 1 : 0})
 	if p.closed { return .Same_Document }
 	pop_event_detail(p)
-	if emb := p.web.embedder; emb.entered != nil && session_current(sh) == target { emb.entered(emb.user, p, target) }
+	if session_current(sh) == target { traversal_scroll(p, target, intercepted) }   // (history_scroll.odin)
 	ou, _ := url.parse(old, nil, context.temp_allocator)
 	nu, _ := url.parse(href, nil, context.temp_allocator)
 	if url.without_fragment(ou) == url.without_fragment(nu) { queue_hashchange(p, old, href) }

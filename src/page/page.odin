@@ -207,6 +207,7 @@ page_cleanup :: proc(data: rawptr) {
 	delete(p.instances)
 	delete(p.foreign_owners)
 	delete(p.bridge_reply)
+	delete(p.style_state.target_id)
 	fetch.document_end(p.loader, &p.env)
 	fetch.environment_destroy(&p.env)
 	free(p)

@@ -151,3 +151,14 @@ navigation the browser measured (activation null).
 
 Host: `Navigation_activation :: proc(c: ^Call) -> string`
 
+### `Navigation_scroll`
+
+```
+void Navigation_scroll(i32 type)
+```
+
+The scroll of an intercepted navigation of `type` (as Navigation_pending's), once its handlers are done or at
+event.scroll(): a traversal puts the entry's scroll positions back, anything else goes to the fragment or the top.
+
+Host: `Navigation_scroll :: proc(c: ^Call, type: i32)`
+

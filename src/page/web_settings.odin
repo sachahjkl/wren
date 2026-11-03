@@ -29,6 +29,7 @@ Web_Settings :: struct {
 	history_max_nodes:       int,
 	url_max_length:          int,
 	max_signal_sources:      int,
+	fragment_smooth:         bool,
 }
 
 WEB_PREFS := [?]config.Def{
@@ -76,6 +77,8 @@ WEB_PREFS := [?]config.Def{
 		description = "Longest URL a script may build with URL, URLSearchParams, location or history; longer input fails with TypeError."},
 	{name = "dom.abort_signal.max_sources", kind = .Int, default = {i = 10_000}, bounded = true, min = 1, max = 10_000_000,
 		description = "Most signals one AbortSignal.any() may follow; more is a RangeError."},
+	{name = "browser.scroll.css_smooth", kind = .Bool, default = {b = true},
+		description = "The page's scroll-behavior: smooth (on the root element) makes scrolling to a fragment (a link to #id, location.hash) smooth."},
 }
 
 web_settings_from_prefs :: proc(p: ^config.Prefs) -> Web_Settings {
@@ -102,5 +105,6 @@ web_settings_from_prefs :: proc(p: ^config.Prefs) -> Web_Settings {
 		history_max_nodes       = int(config.int_of(p, "history.tree.max_nodes")),
 		url_max_length          = int(config.int_of(p, "url.max_length")),
 		max_signal_sources      = int(config.int_of(p, "dom.abort_signal.max_sources")),
+		fragment_smooth         = config.bool_of(p, "browser.scroll.css_smooth"),
 	}
 }

@@ -3338,6 +3338,9 @@ foreign _wr_wj_navigation {
 	// document this one replaced when it is among navigation.entries()); "" when the document was not reached by a
 	// navigation the browser measured (activation null).
 	@(link_name = "Navigation_activation") wr_Navigation_activation :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	// The scroll of an intercepted navigation of `type` (as Navigation_pending's), once its handlers are done or at
+	// event.scroll(): a traversal puts the entry's scroll positions back, anything else goes to the fragment or the top.
+	@(link_name = "Navigation_scroll") wr_Navigation_scroll :: proc(type: i32) ---
 }
 
 // module net

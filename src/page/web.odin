@@ -56,10 +56,10 @@ Embedder :: struct {
 	tab_key:  string,             // sessionStorage partition (copied); stable for the tab's lifetime
 	storage:  ^Storage_Manager,   // the profile's Web Storage; nil = no Web Storage for this page
 	print:    proc(user: rawptr, p: ^Page),   // window.print() (js_print.odin); nil = nothing to tell
-	// The document leaves `entry` for another of its own entries (pushState, a fragment, a traversal): its persisted
-	// state is saved now. Then `entered` after a same-document traversal: restore it. nil = nothing.
+	// The document leaves `entry` for another of its own entries (pushState, a fragment, a traversal): the embedder saves
+	// its persisted state now, what its view shows (history_scroll.odin puts the scroll positions back). nil = the page
+	// saves its scroll positions itself.
 	leaving:  proc(user: rawptr, p: ^Page, entry: ^History_Entry),
-	entered:  proc(user: rawptr, p: ^Page, entry: ^History_Entry),
 	// window.open() to a new window, a link to one, from document `p` (it may be a frame of this tab; auxiliary.odin): the
 	// embedder makes a window for it (a tab; a window without a shell) with a top-level navigable of its own (navigable_top_new),
 	// whose first document is the one auxiliary_document makes, connected as its other documents are; then it navigates it to
@@ -96,6 +96,7 @@ Web_State :: struct {
 	history_state:   string,    // history.state of the current entry (owned)
 	has_state:       bool,
 	nav_pending:     ^Nav_Pending,   // the navigation whose navigate event is being fired (navigation.odin)
+	nav_scrolled_from: [2]f64,       // CSS px: the document's scroll position when an intercepted traversal fired (history_scroll.odin)
 	unloading:       int,            // beforeunload, pagehide or unload is running (HTML "unload counter")
 	perf:            [dynamic]Perf_Entry,
 	perf_warned:     bool,
