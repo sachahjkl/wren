@@ -33,6 +33,7 @@ import lay "wb:layout"
 import "wb:page"
 import "wb:tools/headless"
 import "wb:tools/testenv"
+import "wb:tools/tooling"
 import "wb:url"
 import "wb:wasm"
 
@@ -83,10 +84,10 @@ main :: proc() {
 	for i := 0; i < len(args); i += 1 {
 		need :: proc(args: []string, i: ^int) -> string { i^ += 1; if i^ >= len(args) { usage() }; return args[i^] }
 		switch args[i] {
-		case "-wait": wait_ms = parse_int(need(args, &i))
+		case "-wait": wait_ms = tooling.parse_digits(need(args, &i))
 		case "-until": until_text = need(args, &i)
 		case "-stats": stats = true
-		case "-pages": pages = max(1, parse_int(need(args, &i)))
+		case "-pages": pages = max(1, tooling.parse_digits(need(args, &i)))
 		case "--pref": append(&pref_args, "--pref", need(args, &i))
 		case "-image":
 			data, err := os.read_entire_file(need(args, &i), context.allocator)
@@ -102,7 +103,7 @@ main :: proc() {
 			v := need(args, &i)
 			x := strings.index_byte(v, 'x')
 			if x < 0 { usage() }
-			viewport = {f64(parse_int(v[:x])), f64(parse_int(v[x + 1:]))}
+			viewport = {f64(tooling.parse_digits(v[:x])), f64(tooling.parse_digits(v[x + 1:]))}
 		case:
 			if strings.has_prefix(args[i], "-") || url != "" { usage() }
 			url = args[i]
@@ -154,7 +155,7 @@ main :: proc() {
 	}
 	// WREN_HANG_DUMP_MS=n: the interface thread's stack after n ms, and every n ms after (finding where a page hangs)
 	if v := os.get_env("WREN_HANG_DUMP_MS", context.temp_allocator); v != "" {
-		hang_ms = parse_int(v)
+		hang_ms = tooling.parse_digits(v)
 		hang_thread = win.OpenThread(win.THREAD_SUSPEND_RESUME | win.THREAD_GET_CONTEXT, false, win.GetCurrentThreadId())
 		win.CreateThread(nil, 0, proc "system" (data: rawptr) -> win.DWORD {
 			context = testenv.context_of_process()
@@ -227,12 +228,6 @@ main :: proc() {
 
 url_parse :: proc(s: string) -> (url.URL, bool) {
 	return url.parse_absolute(s, context.temp_allocator)
-}
-
-parse_int :: proc(s: string) -> int {
-	v := 0
-	for c in s { if c >= '0' && c <= '9' { v = v * 10 + int(c - '0') } }
-	return v
 }
 
 alloc_report :: proc(t: ^mem.Tracking_Allocator) {

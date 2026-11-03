@@ -12,6 +12,7 @@ import "core:strings"
 import "core:time"
 import "wb:adblock"
 import "wb:base"
+import "wb:tools/tooling"
 
 now_ns :: proc() -> i64 { return time.now()._nsec }
 
@@ -47,7 +48,7 @@ main :: proc() {
 	args := os.args[1:]
 	for i := 0; i < len(args); i += 1 {
 		switch args[i] {
-		case "-n": i += 1; count = parse_int(args[i])
+		case "-n": i += 1; count = tooling.parse_digits(args[i])
 		case "-save": i += 1; save = args[i]
 		case "-requests": i += 1; reqfile = args[i]
 		case "-lists": i += 1; dir = args[i]
@@ -181,10 +182,4 @@ main :: proc() {
 		worst := make([]struct { ns: i64, i: int }, 0)
 		_ = worst
 	}
-}
-
-parse_int :: proc(s: string) -> int {
-	n := 0
-	for c in s { if c >= '0' && c <= '9' { n = n * 10 + int(c - '0') } }
-	return n
 }

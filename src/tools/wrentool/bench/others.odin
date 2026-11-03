@@ -180,12 +180,12 @@ bench_blocker :: proc(o: ^Options) -> int {
 				on := (way + run_index) % 2 == 1
 				base.remove_tree(work)
 				if os.copy_directory_all(work, from) != nil { fmt.eprintfln("%s cannot be copied", from); return 1 }
-				before := file_size(report)
+				before := tooling.file_size(report)
 				w: Wren
 				env := []string{fmt.tprintf("WREN_LOAD_REPORT=%s", report), fmt.tprintf("WREN_LOAD_REPORT_MS=%d", BLOCKER_SETTLE_MS)}
 				if !start(&w, {exe = exe, profile = work, env = env, url = url, prefs = {"blocker.update.enabled=false", fmt.tprintf("blocker.enabled=%v", on)}}) { return 1 }
 				end := time.tick_add(time.tick_now(), BLOCKER_LIMIT_MS * time.Millisecond)
-				for file_size(report) == before && time.tick_diff(time.tick_now(), end) > 0 {
+				for tooling.file_size(report) == before && time.tick_diff(time.tick_now(), end) > 0 {
 					if api.process_wait(&w.launched.process, BLOCKER_LOOK_MS) { break }
 				}
 				stop(&w)
@@ -196,12 +196,6 @@ bench_blocker :: proc(o: ^Options) -> int {
 	base.remove_tree(work)
 	fmt.printfln("\n%s", report)
 	return 0
-}
-
-@(private)
-file_size :: proc(path: string) -> i64 {
-	fi, err := os.stat(path, context.temp_allocator)
-	return err == nil ? fi.size : 0
 }
 
 ////////////////////////////////

@@ -25,6 +25,7 @@ import "core:time"
 import "wb:js"
 import "wb:wasm"
 import "wb:base"
+import "wb:tools/tooling"
 
 uncaught: int
 quiet: bool
@@ -312,16 +313,16 @@ parse_common :: proc(args: []string) -> (c: Common) {
 		case "-image": i += 1; c.image = args[i]
 		case "-raw": c.raw = true
 		case "-e": i += 1; append(&c.evals, args[i])
-		case "-iterations": i += 1; c.iterations = max(1, int(parse_int(args[i])))
-		case "-n": i += 1; c.count = max(1, int(parse_int(args[i])))
+		case "-iterations": i += 1; c.iterations = max(1, tooling.parse_digits(args[i]))
+		case "-n": i += 1; c.count = max(1, tooling.parse_digits(args[i]))
 		case "-q": quiet = true
 		case "-profile": i += 1; c.profile = args[i]
 		case "-jit": jit.enabled = true
-		case "-jit-threshold": i += 1; jit.call_threshold = max(1, int(parse_int(args[i])))
+		case "-jit-threshold": i += 1; jit.call_threshold = max(1, tooling.parse_digits(args[i]))
 		case "-jit-step": jit.step_only = true
 		case "-jit-sync": jit.background_threads = 0
-		case "-jit-loop": i += 1; jit.loop_threshold = max(1, int(parse_int(args[i])))
-		case "-jit-off": i += 1; jit.off_paths = int(parse_int(args[i]))
+		case "-jit-loop": i += 1; jit.loop_threshold = max(1, tooling.parse_digits(args[i]))
+		case "-jit-off": i += 1; jit.off_paths = tooling.parse_digits(args[i])
 		case "-jit-stats": jit_stats_wanted = true
 		case "--pref": i += 1
 		case: append(&c.rest, a)
@@ -329,12 +330,6 @@ parse_common :: proc(args: []string) -> (c: Common) {
 	}
 	if c.raw && strings.has_suffix(c.image, "wren_js.wasm") { c.image = filepath.join({filepath.dir(c.image), "wren_js_raw.wasm"}) or_else "" }
 	return
-}
-
-parse_int :: proc(s: string) -> i64 {
-	v: i64
-	for ch in s { if ch >= '0' && ch <= '9' { v = v * 10 + i64(ch - '0') } }
-	return v
 }
 
 // jsengine verify [-jit-threshold n] [-jit-step] file.js...: each script runs interpreted, then with the JIT on (every

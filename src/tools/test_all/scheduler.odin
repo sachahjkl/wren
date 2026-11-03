@@ -406,7 +406,7 @@ start_action :: proc(s: ^Scheduler, r: ^Step_Run) {
 			if a.also != "" { append(&names, a.also) }
 			argv = join(a.argv, {fmt.aprintf("-tests:%s", strings.join(names[:], ",", context.temp_allocator))})
 		}
-		r.offset = file_size(r.log)
+		r.offset = tooling.file_size(r.log)
 		spawn_argv := slice.clone(argv, context.temp_allocator)
 		if spawn_argv[0] == "odin" { spawn_argv[0] = tooling.odin_program() }
 		spawning := s.profile != nil ? profile_spawn(s.profile, r, spawn_argv, a) : tooling.Spawn{command = spawn_argv, env = a.env, dir = a.dir, log = r.log}
@@ -558,11 +558,6 @@ log_says_successful :: proc(log: string, offset: i64) -> bool {
 	text := string(data[offset:])
 	if strings.contains(text, NOT_FOUND) { return false }
 	return strings.contains(text, SUCCESS_MANY) || strings.contains(text, SUCCESS_ONE)
-}
-
-file_size :: proc(path: string) -> i64 {
-	fi, err := os.stat(path, context.temp_allocator)
-	return err == nil ? fi.size : 0
 }
 
 finish :: proc(s: ^Scheduler, r: ^Step_Run, status: Status) {

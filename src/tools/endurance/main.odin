@@ -156,8 +156,7 @@ value :: proc(r: Row, column: string) -> f64 {
 median :: proc(rows: []Row, column: string) -> f64 {
 	v := make([]f64, len(rows), context.temp_allocator)
 	for r, i in rows { v[i] = value(r, column) }
-	slice.sort(v)
-	return len(v) > 0 ? v[len(v) / 2] : 0
+	return tooling.median(v)
 }
 
 highest :: proc(rows: []Row, column: string) -> f64 {

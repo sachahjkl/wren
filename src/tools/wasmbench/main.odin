@@ -9,11 +9,11 @@ import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
-import "core:slice"
 import "core:strings"
 import "core:time"
 import "wb:base"
 import "wb:page"
+import "wb:tools/tooling"
 import "wb:wasm"
 
 // The context the generated bindings (bench_generated.odin) expect, and the implementations of bench.widl.
@@ -65,11 +65,6 @@ create :: proc(image: []byte) -> (^wasm.Instance, f64) {
 	return inst, ms
 }
 
-median :: proc(xs: []f64) -> f64 {
-	slice.sort(xs)
-	return xs[len(xs) / 2]
-}
-
 timed :: proc(inst: ^wasm.Instance, name: cstring, arg: i32) -> f64 {
 	runs: [3]f64
 	for i in 0 ..< len(runs) {
@@ -79,7 +74,7 @@ timed :: proc(inst: ^wasm.Instance, name: cstring, arg: i32) -> f64 {
 		runs[i] = time.duration_milliseconds(time.tick_since(t0))
 		if res != .Ok { fmt.eprintln(name, res, inst.last_error); os.exit(1) }
 	}
-	return median(runs[:])
+	return tooling.median(runs[:])
 }
 
 Row :: struct { label: string, values: [len(CONFIGS)]string }
@@ -130,7 +125,7 @@ main :: proc() {
 			start(cfg)
 			starts[k] = time.duration_milliseconds(time.tick_since(t0))
 		}
-		set(&rows, "engine start + every import registered (ms)", ci, fmt.tprintf("%.2f", median(starts[:])))
+		set(&rows, "engine start + every import registered (ms)", ci, fmt.tprintf("%.2f", tooling.median(starts[:])))
 		for image, mi in images {
 			// first load: nothing cached (median of 3, caches emptied in between)
 			firsts: [3]f64
@@ -140,14 +135,14 @@ main :: proc() {
 				firsts[k] = ms
 				wasm.destroy(inst)
 			}
-			set(&rows, fmt.tprintf("instantiate %s: first load (ms)", names[mi]), ci, fmt.tprintf("%.2f", median(firsts[:])))
+			set(&rows, fmt.tprintf("instantiate %s: first load (ms)", names[mi]), ci, fmt.tprintf("%.2f", tooling.median(firsts[:])))
 			again: [5]f64
 			for k in 0 ..< len(again) { inst, ms := create(image); again[k] = ms; wasm.destroy(inst) }
-			set(&rows, fmt.tprintf("instantiate %s: compiled module in memory (ms)", names[mi]), ci, fmt.tprintf("%.3f", median(again[:])))
+			set(&rows, fmt.tprintf("instantiate %s: compiled module in memory (ms)", names[mi]), ci, fmt.tprintf("%.3f", tooling.median(again[:])))
 			wasm.cache_flush()
 			disk: [3]f64
 			for k in 0 ..< len(disk) { start(cfg); inst, ms := create(image); disk[k] = ms; wasm.destroy(inst) }
-			set(&rows, fmt.tprintf("instantiate %s: next start, disk cache (ms)", names[mi]), ci, fmt.tprintf("%.2f", median(disk[:])))
+			set(&rows, fmt.tprintf("instantiate %s: next start, disk cache (ms)", names[mi]), ci, fmt.tprintf("%.2f", tooling.median(disk[:])))
 		}
 
 		inst, _ := create(images[0])
