@@ -61,6 +61,21 @@ multicol_balanced :: proc(t: ^testing.T) {
 	testing.expect(t, f.l.height <= 600, "the flow's strip adds nothing to the document")
 }
 
+// The scans of every box (the largest paint, the layout shifts) read box_border: in a flow, the union of the box's fragments,
+// as box_of gives it.
+@(test)
+multicol_box_border :: proc(t: ^testing.T) {
+	f := mf_load(`<!doctype html><style>body{margin:0;font:20px/20px x} #m{column-count:2;column-gap:0;width:200px}</style><div id=m><div id=a>a</div><div id=k>1<br>2<br>3</div></div>`)
+	defer fixture_unload(f)
+	v := view_make(&f.l, f.vp, 0, cull = false)
+	for id in ([]string{"a", "k", "m"}) {
+		border, transformed := box_border(&f.l, &v, box_index(&f.l, dom.find_by_id(f.doc, id)))
+		testing.expectf(t, !transformed && border == mf_rect(f, id), "#%s: %v, box_of %v", id, border, mf_rect(f, id))
+	}
+	mf_expect(t, f, "a", 0, 0, 100, 20)
+	mf_expect(t, f, "k", 0, 0, 200, 40)
+}
+
 @(test)
 multicol_width_and_rtl :: proc(t: ^testing.T) {
 	// column-width: as many as fit
