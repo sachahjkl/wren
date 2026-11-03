@@ -13,7 +13,6 @@ import "core:math"
 import "core:strings"
 import "core:testing"
 import "core:time"
-import win "core:sys/windows"
 import "wb:base"
 import "wb:page"
 import "wb:style"
@@ -123,24 +122,6 @@ fill :: proc(t: string, args: ..string) -> string {
 	rest = rest[i + 2:]
 	}
 	return strings.to_string(sb)
-}
-
-foreign import psapi "system:Psapi.lib"
-PROCESS_MEMORY_COUNTERS_EX :: struct {
-	cb: u32, PageFaultCount: u32,
-	PeakWorkingSetSize, WorkingSetSize, QuotaPeakPagedPoolUsage, QuotaPagedPoolUsage: uint,
-	QuotaPeakNonPagedPoolUsage, QuotaNonPagedPoolUsage, PagefileUsage, PeakPagefileUsage, PrivateUsage: uint,
-}
-@(default_calling_convention = "system")
-foreign psapi {
-	GetProcessMemoryInfo :: proc(process: win.HANDLE, counters: ^PROCESS_MEMORY_COUNTERS_EX, cb: u32) -> win.BOOL ---
-}
-
-private_bytes :: proc() -> int {
-	c: PROCESS_MEMORY_COUNTERS_EX
-	c.cb = size_of(c)
-	GetProcessMemoryInfo(win.GetCurrentProcess(), &c, c.cb)
-	return int(c.PrivateUsage)
 }
 
 // the DOM of a same-origin frame: contentDocument, contentWindow.document, parent.document
@@ -1213,7 +1194,7 @@ frames_measurements :: proc(t: ^testing.T) {
 	wait_note(pr, "warm")
 	close_page(pr)
 	drain()
-	before := private_bytes()
+	before := int(base.process_memory().private)
 	t0 := time.tick_now()
 	pr = load(t, fill(`<body><script>
 let n = 0;
@@ -1228,7 +1209,7 @@ log("inserted in " + (performance.now() - t).toFixed(2) + " ms");
 </script></body>`, fmt.tprint(MEASURED_FRAMES), fmt.tprint(MEASURED_FRAMES)))
 	ok := wait_note(pr, "all frames ran")
 	ms := time.duration_milliseconds(time.tick_since(t0))
-	after := private_bytes()
+	after := int(base.process_memory().private)
 	for l in pr.section.notes { if strings.has_prefix(l, "inserted in") { fmt.printfln("measure: %d srcdoc frames %s (synchronous part: navigables, realms)", MEASURED_FRAMES, l) } }
 	fmt.printfln("measure: %d srcdoc frames with a script each, until all ran: %.1f ms (%.2f ms per frame)%s", MEASURED_FRAMES, ms, ms / MEASURED_FRAMES, ok ? "" : " (not all ran)")
 	fmt.printfln("measure: private bytes +%.1f MiB for %d frames (%.2f MiB per frame, document and JavaScript realm)", f64(after - before) / (1 << 20), MEASURED_FRAMES, f64(after - before) / (1 << 20) / MEASURED_FRAMES)

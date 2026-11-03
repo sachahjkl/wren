@@ -25,6 +25,7 @@ import "core:os"
 import "core:strings"
 import "core:time"
 import win "core:sys/windows"
+import "wb:base"
 import "wb:config"
 import "wb:cookies"
 import "wb:js"
@@ -64,24 +65,6 @@ on_console :: proc(d: ^headless.Doc, level: page.Log_Level, text: string) {
 done :: proc(d: ^headless.Doc) -> bool {
 	if d.failed != "" { return true }
 	return until_text != "" ? seen_until : false
-}
-
-foreign import psapi "system:Psapi.lib"
-PROCESS_MEMORY_COUNTERS_EX :: struct {
-	cb: u32, PageFaultCount: u32,
-	PeakWorkingSetSize, WorkingSetSize, QuotaPeakPagedPoolUsage, QuotaPagedPoolUsage: uint,
-	QuotaPeakNonPagedPoolUsage, QuotaNonPagedPoolUsage, PagefileUsage, PeakPagefileUsage, PrivateUsage: uint,
-}
-@(default_calling_convention = "system")
-foreign psapi {
-	GetProcessMemoryInfo :: proc(process: win.HANDLE, counters: ^PROCESS_MEMORY_COUNTERS_EX, cb: u32) -> win.BOOL ---
-}
-
-private_bytes :: proc() -> int {
-	c: PROCESS_MEMORY_COUNTERS_EX
-	c.cb = size_of(c)
-	GetProcessMemoryInfo(win.GetCurrentProcess(), &c, c.cb)
-	return int(c.PrivateUsage)
 }
 
 usage :: proc() -> ! {
@@ -220,7 +203,7 @@ main :: proc() {
 		// many pages at once: what one more page with a realm costs; the first of them is a page of a process whose
 		// engine code is compiled already (the usual case)
 		quiet = true
-		before := private_bytes()
+		before := int(base.process_memory().private)
 		more := make([dynamic]^headless.Doc)
 		for i in 0 ..< pages {
 			seen_until = false
@@ -231,7 +214,7 @@ main :: proc() {
 			if i == 0 { fmt.printfln("STAT\tnext_page_first_script_ms\t%.2f", first_message_ms) }
 			append(&more, m)
 		}
-		after := private_bytes()
+		after := int(base.process_memory().private)
 		fmt.printfln("STAT\tprivate_per_page_kib\t%.0f", f64(after - before) / f64(pages) / 1024)
 		if allocs { alloc_report(&tracker) }
 		for m in more { headless.close(m) }

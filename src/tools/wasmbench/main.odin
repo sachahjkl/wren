@@ -12,36 +12,9 @@ import "core:path/filepath"
 import "core:slice"
 import "core:strings"
 import "core:time"
+import "wb:base"
 import "wb:page"
 import "wb:wasm"
-
-foreign import kernel32 "system:Kernel32.lib"
-
-PROCESS_MEMORY_COUNTERS_EX :: struct {
-	cb:                         u32,
-	PageFaultCount:             u32,
-	PeakWorkingSetSize:         uint,
-	WorkingSetSize:             uint,
-	QuotaPeakPagedPoolUsage:    uint,
-	QuotaPagedPoolUsage:        uint,
-	QuotaPeakNonPagedPoolUsage: uint,
-	QuotaNonPagedPoolUsage:     uint,
-	PagefileUsage:              uint,
-	PeakPagefileUsage:          uint,
-	PrivateUsage:               uint,
-}
-
-@(default_calling_convention = "system")
-foreign kernel32 {
-	GetCurrentProcess :: proc() -> rawptr ---
-	K32GetProcessMemoryInfo :: proc(process: rawptr, counters: ^PROCESS_MEMORY_COUNTERS_EX, cb: u32) -> b32 ---
-}
-
-memory_now :: proc() -> (working_set, private: int) {
-	c := PROCESS_MEMORY_COUNTERS_EX{cb = size_of(PROCESS_MEMORY_COUNTERS_EX)}
-	K32GetProcessMemoryInfo(GetCurrentProcess(), &c, c.cb)
-	return int(c.WorkingSetSize), int(c.PrivateUsage)
-}
 
 // The context the generated bindings (bench_generated.odin) expect, and the implementations of bench.widl.
 Call :: struct { inst: ^wasm.Instance, message: string }
@@ -189,13 +162,13 @@ main :: proc() {
 
 		// memory per instance: 32 instances of the second module (a page module) when given, else the bench module
 		img := len(os.args) > 2 ? images[1] : images[0]
-		ws0, pv0 := memory_now()
+		m0 := base.process_memory()
 		list: [32]^wasm.Instance
 		for &x in list { x, _ = create(img) }
-		ws1, pv1 := memory_now()
+		m1 := base.process_memory()
 		for x in list { wasm.destroy(x) }
 		set(&rows, fmt.tprintf("memory per instance of %s: working set / private (KiB)", len(os.args) > 2 ? names[1] : names[0]), ci,
-			fmt.tprintf("%d / %d", (ws1 - ws0) / len(list) / 1024, (pv1 - pv0) / len(list) / 1024))
+			fmt.tprintf("%d / %d", (m1.resident - m0.resident) / len(list) / 1024, (m1.private - m0.private) / len(list) / 1024))
 		fmt.eprintfln("done: %s", cfg.name)
 	}
 	wasm.runtime_destroy()

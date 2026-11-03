@@ -22,7 +22,6 @@ import "core:path/filepath"
 import "core:slice"
 import "core:strings"
 import "core:time"
-import win "core:sys/windows"
 import "wb:js"
 import "wb:wasm"
 import "wb:base"
@@ -501,24 +500,6 @@ parse_float :: proc(s: string) -> f64 {
 	return v
 }
 
-foreign import psapi "system:Psapi.lib"
-PROCESS_MEMORY_COUNTERS_EX :: struct {
-	cb: u32, PageFaultCount: u32,
-	PeakWorkingSetSize, WorkingSetSize, QuotaPeakPagedPoolUsage, QuotaPagedPoolUsage: uint,
-	QuotaPeakNonPagedPoolUsage, QuotaNonPagedPoolUsage, PagefileUsage, PeakPagefileUsage, PrivateUsage: uint,
-}
-@(default_calling_convention = "system")
-foreign psapi {
-	GetProcessMemoryInfo :: proc(process: win.HANDLE, counters: ^PROCESS_MEMORY_COUNTERS_EX, cb: u32) -> win.BOOL ---
-}
-
-private_bytes :: proc() -> int {
-	c: PROCESS_MEMORY_COUNTERS_EX
-	c.cb = size_of(c)
-	GetProcessMemoryInfo(win.GetCurrentProcess(), &c, c.cb)
-	return int(c.PrivateUsage)
-}
-
 // jsengine mem [-image m.wasm] [-e code] [file.js ...]: runs the scripts in a fresh realm and reports what the module's
 // linear memory costs (it only grows: the peak), the JS heap and, for the Odin engine, its census by kind of cell.
 cmd_mem :: proc(args: []string) {
@@ -568,7 +549,7 @@ cmd_startup :: proc(args: []string) {
 	append(&realms, r0)
 	times := make([dynamic]f64, context.temp_allocator)
 	inst_times := make([dynamic]f64, context.temp_allocator)
-	before := private_bytes()
+	before := int(base.process_memory().private)
 	for _ in 0 ..< c.count {
 		t0 := time.tick_now()
 		// the instantiation alone, for comparison
@@ -583,7 +564,7 @@ cmd_startup :: proc(args: []string) {
 		js.eval_script(r.inst, transmute([]byte)string("var x = [1,2,3].map(v => v * 2); x.length"), "probe.js")
 		append(&realms, r)
 	}
-	after := private_bytes()
+	after := int(base.process_memory().private)
 	heap := js.heap_bytes(r0.inst)
 	slice.sort(times[:])
 	slice.sort(inst_times[:])
