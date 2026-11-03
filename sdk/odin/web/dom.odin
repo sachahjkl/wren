@@ -1065,7 +1065,7 @@ TokenList_contains :: proc "contextless" (element: $T_element, attr: string, tok
 	return _TokenList_contains(u64(element), raw_data(attr), u32(len(attr)), raw_data(token), u32(len(token))) != 0
 }
 
-// add(tokens...): `tokens` NUL-separated. Syntax for an empty token, Invalid_Character for one with whitespace.
+// add(tokens...): `tokens` each ended by NUL (or NUL-separated; "": none, the attribute serialized again). Syntax for an empty token, Invalid_Character for one with whitespace.
 TokenList_add :: proc "contextless" (element: $T_element, attr: string, tokens: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
 	return _TokenList_add(u64(element), raw_data(attr), u32(len(attr)), raw_data(tokens), u32(len(tokens)))
 }

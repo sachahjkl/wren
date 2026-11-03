@@ -548,22 +548,29 @@ TokenList_contains :: proc(c: ^Call, element: Api_Element, attr: string, token: 
 	return has_class_token(v, token, false)
 }
 
-TokenList_add :: proc(c: ^Call, element: Api_Element, attr: string, tokens: string) -> Api_Error {
+// The tokens of add() and remove(): each ended by NUL (or NUL-separated), none for "" (add() without one still runs the
+// update steps: the attribute's value serialized again).
+@(private)
+token_args :: proc(tokens: string) -> []string {
+	if tokens == "" { return nil }
 	list := strings.split(tokens, "\x00", context.temp_allocator)
+	return strings.has_suffix(tokens, "\x00") ? list[:len(list) - 1] : list
+}
+
+TokenList_add :: proc(c: ^Call, element: Api_Element, attr: string, tokens: string) -> Api_Error {
+	list := token_args(tokens)
 	for t in list { if err := check_token(c, t); err != .None { return err } }
 	set := token_set(c, element, attr)
-	changed := false
 	for t in list {
 		found := false
 		for x in set { if x == t { found = true; break } }
-		if !found { append(&set, t); changed = true }
+		if !found { append(&set, t) }
 	}
-	_ = changed
 	return token_update(c, element, attr, set[:])
 }
 
 TokenList_remove :: proc(c: ^Call, element: Api_Element, attr: string, tokens: string) -> Api_Error {
-	list := strings.split(tokens, "\x00", context.temp_allocator)
+	list := token_args(tokens)
 	for t in list { if err := check_token(c, t); err != .None { return err } }
 	set := token_set(c, element, attr)
 	for t in list {
@@ -587,6 +594,8 @@ TokenList_toggle :: proc(c: ^Call, element: Api_Element, attr: string, token: st
 }
 
 TokenList_replace :: proc(c: ^Call, element: Api_Element, attr: string, token: string, new_token: string) -> (bool, Api_Error) {
+	// (an empty one of the two first, then whitespace in either)
+	if token == "" || new_token == "" { return false, check_token(c, "") }
 	if err := check_token(c, token); err != .None { return false, err }
 	if err := check_token(c, new_token); err != .None { return false, err }
 	set := token_set(c, element, attr)

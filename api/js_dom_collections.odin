@@ -55,7 +55,7 @@ TokenList_item :: proc(element: Element, attr: string, index: u32) -> string
 //@wb fn
 TokenList_contains :: proc(element: Element, attr: string, token: string) -> bool
 
-/// add(tokens...): `tokens` NUL-separated. Syntax for an empty token, Invalid_Character for one with whitespace.
+/// add(tokens...): `tokens` each ended by NUL (or NUL-separated; "": none, the attribute serialized again). Syntax for an empty token, Invalid_Character for one with whitespace.
 //@wb fn raises
 TokenList_add :: proc(element: Element, attr: string, tokens: string)
 

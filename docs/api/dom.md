@@ -683,7 +683,7 @@ Host: `TokenList_contains :: proc(c: ^Call, element: Api_Element, attr: string, 
 void TokenList_add(Element element, string attr, string tokens) raises
 ```
 
-add(tokens...): `tokens` NUL-separated. Syntax for an empty token, Invalid_Character for one with whitespace.
+add(tokens...): `tokens` each ended by NUL (or NUL-separated; "": none, the attribute serialized again). Syntax for an empty token, Invalid_Character for one with whitespace.
 
 Raises: returns an `Error` (see [web](web.md)).
 

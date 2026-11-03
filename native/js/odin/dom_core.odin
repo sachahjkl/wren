@@ -1107,19 +1107,18 @@ wjr_DOMTokenList_contains :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, a
 	return wj.new_bool(r)
 }
 
-// add / remove: the tokens NUL-separated
+// add / remove: each token ended by NUL (none: the update steps alone)
 @(private = "file")
 tokens_change :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, add: bool) -> wj.JSValue {
 	context = jsb.glue_context()
 	d := tokens_this(ctx, this_val)
 	if d == nil { return wj.EXCEPTION }
-	if argc == 0 { return wj.UNDEFINED }
 	b: Pack
 	defer pack_free(&b)
 	for i in 0 ..< argc {
 		s: wj.Str
 		if !to_str(ctx, argv[i], &s) { return wj.EXCEPTION }
-		ok := (i == 0 || pack_u8(&b, 0)) && pack_bytes(&b, wj.str_slice(s))
+		ok := pack_bytes(&b, wj.str_slice(s)) && pack_u8(&b, 0)
 		wj.wj_str_free(ctx, &s)
 		if !ok { return wj.JS_ThrowOutOfMemory(ctx) }
 	}
