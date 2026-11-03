@@ -343,34 +343,45 @@ scheme_sensitive :: proc(vs: []css.Value) -> bool {
 
 // HTML: the first <meta name="color-scheme" content> of the document, in tree order, whose content is a valid
 // color-scheme value. `metas` gets every candidate element (whatever its content), so that a later change of the DOM
-// can tell whether it concerns them.
+// can tell whether it concerns them. The document lists its <meta> elements (dom.Document.metas): those in its tree
+// are the candidates, not every node.
 page_color_scheme :: proc(doc: ^dom.Document, metas: ^[dynamic]base.Handle = nil) -> (v: Color_Scheme_Value, found: bool) {
 	if metas != nil { clear(metas) }
-	root := dom.get(doc, doc.root)
-	if root == nil { return }
-	stack := make([dynamic]base.Handle, 0, 64, context.temp_allocator)
-	for ch := root.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev { append(&stack, ch) }
-	for len(stack) > 0 {
-		h := pop(&stack)
+	in_tree := make([dynamic]base.Handle, 0, len(doc.metas), context.temp_allocator)
+	for h in doc.metas {
 		n := dom.get(doc, h)
-		if n == nil || n.kind != .Element { continue }
-		if n.name == "meta" {
-			name, has_name := attr(n, "name")
-			if has_name && strings.equal_fold(strings.trim(name, " \t\n\r\f"), "color-scheme") {
-				if content, has := attr(n, "content"); has {
-					if metas != nil { append(metas, h) }
-					if !found {
-						vals := css.parse_component_values(content, {max_nesting_depth = 32, max_rules = 1}, context.temp_allocator)
-						if pv, ok := parse_color_scheme(vals); ok { v, found = pv, true }
-					}
-				}
-			}
-			continue
+		if n == nil || n.kind != .Element || n.name != dom.META_NAME || !meta_in_tree(doc, n) { continue }
+		// in tree order (a page has one or two)
+		i := len(in_tree)
+		append(&in_tree, h)
+		for ; i > 0 && dom.tree_order_compare(doc, in_tree[i], in_tree[i - 1]) < 0; i -= 1 { in_tree[i], in_tree[i - 1] = in_tree[i - 1], in_tree[i] }
+	}
+	for h in in_tree {
+		n := dom.get(doc, h)
+		name, has_name := attr(n, "name")
+		if !has_name || !strings.equal_fold(strings.trim(name, " \t\n\r\f"), "color-scheme") { continue }
+		content, has := attr(n, "content")
+		if !has { continue }
+		if metas != nil { append(metas, h) }
+		if !found {
+			vals := css.parse_component_values(content, {max_nesting_depth = 32, max_rules = 1}, context.temp_allocator)
+			if pv, ok := parse_color_scheme(vals); ok { v, found = pv, true }
 		}
 		if metas == nil && found { break }
-		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev { append(&stack, ch) }
 	}
 	return
+}
+
+// A <meta> in the document's tree, not inside another <meta> (whose content is not looked into).
+@(private = "file")
+meta_in_tree :: proc(doc: ^dom.Document, n: ^dom.Node) -> bool {
+	for cur := n.parent; cur != base.NIL_HANDLE; {
+		if cur == doc.root { return true }
+		p := dom.get(doc, cur)
+		if p == nil || p.kind != .Element || p.name == dom.META_NAME { return false }
+		cur = p.parent
+	}
+	return false
 }
 
 // Whether the mutations `entries` may have changed the page's color scheme of `s` (a <meta> inserted, removed or

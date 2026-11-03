@@ -332,7 +332,9 @@ dl_walks_destroy :: proc(w: ^Dl_Walks) {
 build_display_list :: proc(c: ^Ctx) {
 	clear(&c.l.items)
 	c.l.inc.dl_gen += 1
-	c.dl_par = !c.l.frames_on && par_threads(c.l.settings.threads) > 0 && len(c.l.boxes) >= max(c.l.settings.threads_min_boxes, 1)
+	c.l.dl_shares = 0
+	// (columns: a clip inside a flow is made again for each column an item shows in, flow_clip: then on this thread only)
+	c.dl_par = (!c.l.frames_on || flows_clip_free(c.l)) && par_threads(c.l.settings.threads) > 0 && len(c.l.boxes) >= max(c.l.settings.threads_min_boxes, 1)
 	defer c.dl_par = false
 	p := Paint_Ctx{c = c}
 	paint_stacking(&p, 0)

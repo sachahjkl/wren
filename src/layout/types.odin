@@ -459,6 +459,7 @@ Layout :: struct {
 	inc:          Inc_State,               // what incremental passes need between runs (incremental.odin)
 	pre_chunks:   [dynamic]Pre_Chunk,      // storage of the lines laid out ahead on the layout threads (parallel.odin)
 	pre_counts:   [2]int,                  // last full pass: contexts laid out ahead, and taken (diagnostics, tests)
+	dl_shares:    int,                     // last display list: the shares made on the layout threads, 0: none (diagnostics, tests)
 	tree_order:   bool,                    // last full pass: the boxes are in tree order (finishing walks them as they are)
 	tree_gen:     u64,                     // bumped whenever boxes are made (full pass, partial rebuild)
 	dl_walks:     Dl_Walks,                // the page's own stacking context: its walks, kept while the boxes and styles stay

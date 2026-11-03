@@ -127,6 +127,24 @@ Document :: struct {
 	// elements that were given an `elementtiming` attribute (Element Timing: the only ones its scan visits). Stale entries
 	// (a node freed, the attribute removed) are dropped by the reader, and here when the list would grow.
 	timed:         [dynamic]base.Handle,
+	// the <meta> elements made in this document (the page's color scheme is looked for among them, not in every node:
+	// style/color_scheme.odin). Stale entries (a node freed) are dropped by the reader, and here when the list would grow.
+	metas:         [dynamic]base.Handle,
+}
+
+// The element name of `Document.metas`.
+META_NAME :: "meta"
+
+@(private)
+metas_add :: proc(d: ^Document, h: base.Handle) {
+	if len(d.metas) == cap(d.metas) {
+		kept := 0
+		for m in d.metas {
+			if n := get(d, m); n != nil && n.name == META_NAME { d.metas[kept] = m; kept += 1 }
+		}
+		resize(&d.metas, kept)
+	}
+	append(&d.metas, h)
 }
 
 // The attribute Element Timing looks for (page/timeline_lcp.odin).
@@ -224,6 +242,7 @@ free_document :: proc(d: ^Document) {
 	delete(d.ns_extra)
 	delete(d.templates)
 	delete(d.timed)
+	delete(d.metas)
 	shadow_free_all(d)
 	free(d)
 }
@@ -254,6 +273,7 @@ create_element :: proc(d: ^Document, tag: string) -> base.Handle {
 		for i in 0 ..< len(tag) { buf[i] = lower(tag[i]) }
 		if s := static_name(string(buf[:len(tag)])); s != "" {
 			h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Element, name = s, name_static = true})
+			if s == META_NAME { metas_add(d, h) }
 			return h
 		}
 	}

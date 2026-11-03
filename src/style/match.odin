@@ -571,6 +571,8 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 		}
 		return false
 	case .Disabled:
+		// (the UA's :disabled reaches every element: only a form control can be disabled, the forms model need not be asked)
+		if !is_form_control(n) { return false }
 		if a, known := control_query(m, el, .Disabled); known { return a }
 		return is_disabled(m, el)
 	case .Enabled:

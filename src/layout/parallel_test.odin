@@ -59,14 +59,15 @@ pt_input :: proc(f: ^Pt, set: ^Settings, vp: Vec2) -> Input {
 }
 
 // A threaded full pass of `l` (retried while another layout holds the threads), compared with a pass on one thread.
+// `want_shares`: its display list made on the threads too.
 @(private = "file")
-pt_check :: proc(t: ^testing.T, f: ^Pt, l: ^Layout, vp: Vec2, what: string, want_taken := true, loc := #caller_location) {
+pt_check :: proc(t: ^testing.T, f: ^Pt, l: ^Layout, vp: Vec2, what: string, want_taken := true, want_shares := false, loc := #caller_location) {
 	par := settings_default()
 	par.threads, par.threads_min_contexts, par.threads_min_boxes = 3, 0, 0
 	for tries in 0 ..< PT_TAKE_TRIES {
 		l.valid = false
 		run(l, pt_input(f, &par, vp))
-		if l.pre_counts[0] > 0 || tries == PT_TAKE_TRIES - 1 || !want_taken { break }
+		if (l.pre_counts[0] > 0 && (!want_shares || l.dl_shares > 0)) || tries == PT_TAKE_TRIES - 1 || !want_taken { break }
 		// another layout has the threads: until it lets go
 		sync.mutex_lock(&par_mu)
 		sync.mutex_unlock(&par_mu)
@@ -74,6 +75,7 @@ pt_check :: proc(t: ^testing.T, f: ^Pt, l: ^Layout, vp: Vec2, what: string, want
 	if want_taken {
 		testing.expectf(t, l.pre_counts[1] > 0, "%s: no context laid out ahead was taken (%v)", what, l.pre_counts, loc = loc)
 	}
+	if want_shares { testing.expectf(t, l.dl_shares > 0, "%s: the display list was made on one thread", what, loc = loc) }
 	one := settings_default()
 	one.threads = 0
 	ref: Layout
@@ -280,23 +282,29 @@ parallel_incremental_untouched :: proc(t: ^testing.T) {
 
 // Multi-column containers on the layout threads: the paragraphs in the columns are laid out ahead at the width of a
 // column (a spanner at the container's) and taken, columns balanced, a forced break and a spanner where they are on one
-// thread (pt_check compares every box). A vertical writing mode keeps the threads out.
+// thread (pt_check compares every box), and the display list made on the threads (a box across columns: an item in
+// each). A clip inside the columns keeps the display list on one thread; a vertical writing mode keeps the paragraphs.
 @(test)
 parallel_multicol :: proc(t: ^testing.T) {
 	defer shutdown_threads()
 	sb := strings.builder_make(context.temp_allocator)
 	strings.write_string(&sb, `<style>body{margin:0;font-size:10px;line-height:10px} p{margin:0} h2{margin:0;font-size:10px;column-span:all}
-.mc{columns:3;column-gap:0} .brk{break-before:column}</style><body><div class=mc>`)
+.mc{columns:3;column-gap:0} .brk{break-before:column} .bd{border:1px solid;background:#eee}</style><body><div class=mc>`)
 	for i in 0 ..< 9 { fmt.sbprintf(&sb, "<p id=b%d>balanced %d</p>", i, i) }
 	strings.write_string(&sb, `</div><div class=mc><p id=f0>one</p><p id=f1 class=brk>forced</p><p id=f2>after</p></div><div class=mc>`)
 	for i in 0 ..< 6 { fmt.sbprintf(&sb, "<p id=s%d>above %d</p>", i, i) }
-	strings.write_string(&sb, `<h2 id=sh>the spanner</h2><p id=s6>below</p></div></body>`)
+	strings.write_string(&sb, `<h2 id=sh>the spanner</h2><p id=s6>below</p></div><div class=mc><div class=bd>`)
+	for i in 0 ..< 12 { fmt.sbprintf(&sb, "<p>across %d</p>", i) }
+	strings.write_string(&sb, `</div></div></body>`)
 	f := pt_load(strings.to_string(sb))
 	defer pt_unload(&f)
 	l: Layout
 	defer destroy(&l)
 	vp := Vec2{300, 600}   // (scale 1.25: a column is 100 device px wide, a line 12.5 high)
-	pt_check(t, &f, &l, vp, "columns")
+	pt_check(t, &f, &l, vp, "columns", want_shares = true)
+	bd := 0
+	for &it in l.items { if it.kind == .Box && it.box >= 0 && l.boxes[it.box].border[0] > 0 { bd += 1 } }
+	testing.expect_value(t, bd, 3)   // (the bordered box in each of its three columns)
 	testing.expectf(t, l.pre_counts[0] > 0 && l.pre_counts[1] == l.pre_counts[0], "contexts laid out ahead and taken: %v", l.pre_counts)
 	at :: proc(f: ^Pt, l: ^Layout, vp: Vec2, id: string) -> Vec2 {
 		r, _ := box_of(l, dom.find_by_id(f.doc, id), vp, 0)
@@ -323,6 +331,17 @@ parallel_multicol :: proc(t: ^testing.T) {
 	defer destroy(&lv)
 	pt_check(t, &v, &lv, vp, "vertical", want_taken = false)
 	testing.expect_value(t, lv.pre_counts, [2]int{})
+
+	sb2 := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb2, `<style>body{margin:0;font-size:10px;line-height:10px} p{margin:0}</style><body><div style="columns:3"><div style="overflow:hidden">`)
+	for i in 0 ..< 12 { fmt.sbprintf(&sb2, "<p>clipped %d</p>", i) }
+	strings.write_string(&sb2, `</div></div></body>`)
+	k := pt_load(strings.to_string(sb2))
+	defer pt_unload(&k)
+	lk: Layout
+	defer destroy(&lk)
+	pt_check(t, &k, &lk, vp, "a clip in the columns")
+	testing.expect_value(t, lk.dl_shares, 0)
 }
 
 // The fonts of a page made once each, whichever element asks first, the elements that inherit their parent's font told

@@ -2,6 +2,7 @@ package style
 
 import "core:math"
 import "core:testing"
+import "wb:base"
 import "wb:config"
 import "wb:css"
 import "wb:dom"
@@ -219,6 +220,35 @@ page_color_scheme_meta :: proc(t: ^testing.T) {
 		defer sx_unload(f)
 		testing.expect_value(t, sx(f, "p").used_scheme, Scheme.Dark)
 	}
+}
+
+// The candidates of the document's list in tree order whatever order they were made in; a <meta> out of the tree (made
+// and not inserted, in a template's content, inside another <meta>) is none.
+@(test)
+page_color_scheme_metas_in_tree_order :: proc(t: ^testing.T) {
+	d := dom.document_create(nil)
+	defer dom.document_destroy(d)
+	html.parse_into(d, d.root, transmute([]byte)string(`<head><meta id=late name=color-scheme content=light></head><body><template><meta name=color-scheme content=dark></template><p id=p>x</p></body>`), 100_000)
+	v, found := page_color_scheme(d)
+	testing.expect(t, found && .Light in v && .Dark not_in v)
+	mk :: proc(d: ^dom.Document, content: string) -> base.Handle {
+		m := dom.create_element(d, "meta")
+		_ = dom.set_attribute(d, m, "name", "color-scheme")
+		_ = dom.set_attribute(d, m, "content", content)
+		return m
+	}
+	// made after the head's, inserted before it: first in tree order
+	head := dom.get(d, dom.find_by_id(d, "late")).parent
+	first := mk(d, "dark")
+	_ = dom.insert_before(d, head, first, dom.get(d, head).first_child)
+	_ = mk(d, "light dark")   // never inserted
+	nested := mk(d, "light dark")
+	_ = dom.append_child(d, first, nested)
+	metas := make([dynamic]base.Handle, context.temp_allocator)
+	v, found = page_color_scheme(d, &metas)
+	testing.expect(t, found && .Dark in v && .Light not_in v)
+	testing.expect_value(t, len(metas), 2)
+	testing.expect(t, len(metas) == 2 && metas[0] == first && metas[1] == dom.find_by_id(d, "late"))
 }
 
 // webassembly.org: light and dark sheets chosen by media in <noscript>; the media of a sheet's owner must survive the

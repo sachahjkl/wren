@@ -5,6 +5,10 @@ import "wb:host"
 
 // The comparison of two passes is shared out by chunks of this many nodes.
 JOURNAL_DIFF_CHUNK_NODES :: 1024
+// A chunk keeps the comparison of 1 << this many pairs of records; the multiplier that spreads them.
+JOURNAL_DIFF_PAIR_BITS :: 6
+JOURNAL_DIFF_PAIRS :: 1 << JOURNAL_DIFF_PAIR_BITS
+JOURNAL_DIFF_PAIR_MIX :: 0x9e3779b97f4a7c15
 
 // The layout journal of a style pass: which elements changed style since an earlier pass, and how much layout work
 // each change invalidates (Change_Level). An incremental layout reads it to lay out again only what changed.
@@ -102,19 +106,27 @@ Diff_Job :: struct {
 	out:      [][dynamic]Journal_Entry,
 }
 
+// Elements of a chunk that had one record in the old pass and share one in the new (alike elements share their
+// records: share.odin) get the same answer: the pairs compared are kept by slot while the chunk is compared.
+@(private = "file")
+Diff_Pair :: struct { old, new: ^Computed, level: Change_Level }
+
 @(private = "file")
 diff_chunk :: proc(data: rawptr, index: int) {
 	job := (^Diff_Job)(data)
 	lo := index * job.chunk
 	hi := min(lo + job.chunk, job.n)
 	out := &job.out[index]
+	pairs: [JOURNAL_DIFF_PAIRS]Diff_Pair
 	for i in lo ..< hi {
 		c := job.new.by_node[i]
 		if c == nil { continue }
 		h := job.new.nodes[i]
 		old := style_of(job.old, h)
 		if old != nil && len(job.old.overlaid) > 0 { if b, ok := job.old.overlaid[h]; ok { old = b } }
-		level := layout_level(old, c)
+		p := &pairs[(u64(uintptr(old) ~ (uintptr(c) << 1)) * JOURNAL_DIFF_PAIR_MIX) >> (64 - JOURNAL_DIFF_PAIR_BITS)]
+		if p.new != c || p.old != old { p^ = {old, c, layout_level(old, c)} }
+		level := p.level
 		if level >= .Layout {
 			if out^ == nil { out^ = make([dynamic]Journal_Entry, 0, 16) }   // heap: the workers' temp memory is freed per round
 			append(out, Journal_Entry{node = h, level = level})
