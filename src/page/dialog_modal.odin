@@ -131,6 +131,21 @@ dialog_focus :: proc(p: ^Page, dialog: base.Handle) {
 	if !forms.focus(f.model, dialog) { forms.blur(f.model) }
 }
 
+// HTML's dialog removing steps: a modal dialog out of the document leaves the top layer, and is not modal when it comes
+// back (it keeps its open attribute).
+@(private)
+dialog_note_removed :: proc(p: ^Page) {
+	s := popover_state(p)
+	if s == nil || len(s.modals) == 0 { return }
+	kept := 0
+	for m in s.modals {
+		if dom.is_connected(p.doc, m) { s.modals[kept] = m; kept += 1 }
+	}
+	if kept == len(s.modals) { return }
+	resize(&s.modals, kept)
+	popover_restyle(p)
+}
+
 @(private)
 dialog_closed :: proc(p: ^Page, h: base.Handle) {
 	s := popover_state(p)
