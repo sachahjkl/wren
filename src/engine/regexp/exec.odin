@@ -79,7 +79,10 @@ exec :: proc(re: ^Regexp, input: Input, start: int, out: ^Captures,
 	for i in 0 ..< len(vm.caps) { vm.caps[i] = -1 }
 	vm.stack = make([dynamic]Backtrack, allocator)
 	vm.guards = make([dynamic]int, allocator)
-	defer delete(vm.stack)
+	defer {
+		for bt in vm.stack { delete(bt.caps, allocator) }   // (the choices a match left untried)
+		delete(vm.stack)
+	}
 	defer delete(vm.guards)
 	defer delete(vm.caps, allocator)
 

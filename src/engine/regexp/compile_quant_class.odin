@@ -59,7 +59,9 @@ compile_star :: proc(c: ^Compiler, body: ^Node, greedy: bool) {
 	patch_jump_to_here(c, split_at)
 }
 
-// A chain of `count` optional copies of body (for a bounded {min,max}). Each is a Split; greedy prefers the body.
+// A chain of `count` optional copies of body (for a bounded {min,max}). Each is a Split; greedy prefers the body. An
+// optional copy that matched empty fails, as ECMAScript's RepeatMatcher has it past `min`: (.*)? at the end leaves its
+// group undefined.
 @(private)
 compile_optional_chain :: proc(c: ^Compiler, body: ^Node, count: int, greedy: bool) {
 	if count <= 0 { return }
@@ -72,7 +74,9 @@ compile_optional_chain :: proc(c: ^Compiler, body: ^Node, count: int, greedy: bo
 			emit_op(c, .Split_Goto)
 		}
 		split_at := emit_jump_placeholder(c)
+		emit_op(c, .Push_Char_Pos)
 		compile_node(c, body)
+		emit_op(c, .Check_Advance)
 		append(&ends, split_at)
 	}
 	for at in ends {
@@ -108,15 +112,23 @@ build_class_range :: proc(c: ^Compiler, spec: ^Class_Spec, cr: ^uni.Char_Range, 
 	if c.err != "" { return }
 	uni.cr_normalize(cr)
 
-	// v-flag set arithmetic with the (single) right-hand operand.
-	if spec.op != .None && len(spec.operands) > 0 {
+	// v-flag nested classes join the union; then the set operation with each right-hand operand, left to right.
+	operand :: proc(c: ^Compiler, cr: ^uni.Char_Range, sub: ^Class_Spec, op: uni.Set_Op) {
 		rhs: uni.Char_Range
 		uni.cr_init(&rhs, c.allocator)
 		defer uni.cr_destroy(&rhs)
-		build_class_range(c, spec.operands[0], &rhs, spec.operands[0].negated)
+		build_class_range(c, sub, &rhs, sub.negated)
+		if c.err == "" { uni.cr_op_inplace(cr, &rhs, op) }
+	}
+	for sub in spec.nested {
+		operand(c, cr, sub, .Union)
 		if c.err != "" { return }
-		op: uni.Set_Op = spec.op == .Intersection ? .Inter : .Sub
-		uni.cr_op_inplace(cr, &rhs, op)
+	}
+	if spec.op != .None {
+		for sub in spec.operands {
+			operand(c, cr, sub, spec.op == .Intersection ? .Inter : .Sub)
+			if c.err != "" { return }
+		}
 	}
 
 	if negated {

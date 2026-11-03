@@ -32648,7 +32648,7 @@ _t_url_URLPattern_execString :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	return nil
 }
 
-// URLPattern_execInit :: proc(c: ^Call, pattern: Api_URLPattern, protocol: string, has_protocol: bool, username: string, has_username: bool, password: string, has_password: bool, hostname: string, has_hostname: bool, port: string, has_port: bool, pathname: string, has_pathname: bool, search: string, has_search: bool, hash: string, has_hash: bool) -> i32
+// URLPattern_execInit :: proc(c: ^Call, pattern: Api_URLPattern, protocol: string, has_protocol: bool, username: string, has_username: bool, password: string, has_password: bool, hostname: string, has_hostname: bool, port: string, has_port: bool, pathname: string, has_pathname: bool, search: string, has_search: bool, hash: string, has_hash: bool, base: string, has_base: bool) -> i32
 @(private = "file")
 _t_url_URLPattern_execInit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -32679,6 +32679,9 @@ _t_url_URLPattern_execInit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_n15 := wasm.addr(&f, a[23])
 	_s15, _k15 := wasm.span(&f, wasm.addr(&f, a[22]), _n15)
 	if !_k15 { return wasm.trap_bounds(&f, "url.URLPattern_execInit", "hash") }
+	_n17 := wasm.addr(&f, a[26])
+	_s17, _k17 := wasm.span(&f, wasm.addr(&f, a[25]), _n17)
+	if !_k17 { return wasm.trap_bounds(&f, "url.URLPattern_execInit", "base") }
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "url.URLPattern_execInit: argument protocol is not valid UTF-8") }
@@ -32719,6 +32722,11 @@ _t_url_URLPattern_execInit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "url.URLPattern_execInit: argument hash is not valid UTF-8") }
 		return wasm.trap_new("url.URLPattern_execInit: argument hash is not valid UTF-8")
 	}
+	_p17 := string(_s17[:_n17])
+	if !wasm.valid_utf8(_p17) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "url.URLPattern_execInit: argument base is not valid UTF-8") }
+		return wasm.trap_new("url.URLPattern_execInit: argument base is not valid UTF-8")
+	}
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLPattern(&c, _p0.handle)
@@ -32734,7 +32742,8 @@ _t_url_URLPattern_execInit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_p12 := a[18].i32 != 0
 	_p14 := a[21].i32 != 0
 	_p16 := a[24].i32 != 0
-	_r := URLPattern_execInit(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p10, _p11, _p12, _p13, _p14, _p15, _p16)
+	_p18 := a[27].i32 != 0
+	_r := URLPattern_execInit(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p10, _p11, _p12, _p13, _p14, _p15, _p16, _p17, _p18)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
@@ -39617,7 +39626,7 @@ api_imports := [?]wasm.Import{
 	{module = "url", name = "URLPattern_component", fn = _t_url_URLPattern_component, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "url", name = "URLPattern_hasRegExpGroups", fn = _t_url_URLPattern_hasRegExpGroups, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "url", name = "URLPattern_execString", fn = _t_url_URLPattern_execString, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "url", name = "URLPattern_execInit", fn = _t_url_URLPattern_execInit, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "url", name = "URLPattern_execInit", fn = _t_url_URLPattern_execInit, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "url", name = "URLPattern_resultInputCount", fn = _t_url_URLPattern_resultInputCount, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "url", name = "URLPattern_resultInput", fn = _t_url_URLPattern_resultInput, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "url", name = "URLPattern_componentInput", fn = _t_url_URLPattern_componentInput, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},

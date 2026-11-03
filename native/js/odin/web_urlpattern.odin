@@ -73,8 +73,8 @@ wjr_URLPattern_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue
 	a2 := wj.arg(argc, argv, 2)
 
 	input_is_string := wj.is_string(input) || (!wj.is_object(input) && !wj.is_undefined(input))
-	// options is a1 when input is an init object, else a2 (a1 is then the baseURL string)
-	options := input_is_string ? a2 : a1
+	// options is a2 after a baseURL string, else a1 (URLPattern(input, baseURL, options), URLPattern(input, options))
+	options := wj.is_string(a1) ? a2 : a1
 	ignore_case := false
 	if wj.is_object(options) {
 		ic: wj.JSValue
@@ -96,6 +96,7 @@ wjr_URLPattern_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue
 		wj.wj_str_free(ctx, &in_s)
 		wj.wj_str_free(ctx, &base)
 	} else {
+		if wj.is_string(a1) { return wj.wj_throw_type(ctx, "URLPattern: a baseURL goes with a pattern string, not a URLPatternInit (its baseURL member).") }
 		p: Pattern_Init
 		is_obj := wj.is_object(input)
 		if is_obj {
@@ -153,16 +154,16 @@ pattern_component :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, component
 @(export, link_name = "wjr_URLPattern_get_search")   wjr_URLPattern_get_search   :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return pattern_component(ctx, t, 6) }
 @(export, link_name = "wjr_URLPattern_get_hash")     wjr_URLPattern_get_hash     :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return pattern_component(ctx, t, 7) }
 
-// Runs a match (exec/test). 1 matched, 0 no match, -1 with an exception pending.
+// Runs a match (exec/test): a string (and a baseURL), else a URLPatternInit ({} when absent). 1 matched, 0 no match, -1
+// with an exception pending.
 @(private = "file")
 pattern_run :: proc "c" (ctx: ^wj.Context, h: u64, argc: i32, argv: [^]wj.JSValue) -> i32 {
 	input := wj.arg(argc, argv, 0)
 	a1 := wj.arg(argc, argv, 1)
 	input_is_string := wj.is_string(input) || (!wj.is_object(input) && !wj.is_undefined(input))
-	if input_is_string || wj.is_undefined(input) {
+	if input_is_string {
 		in_s, base: wj.Str
-		in_s = {}
-		if !wj.is_undefined(input) && !wj.web_to_usv(ctx, input, &in_s) { return -1 }
+		if !wj.web_to_usv(ctx, input, &in_s) { return -1 }
 		has_base := wj.is_string(a1)
 		base = {}
 		if has_base && !wj.web_to_usv(ctx, a1, &base) { wj.wj_str_free(ctx, &in_s); return -1 }
@@ -173,8 +174,9 @@ pattern_run :: proc "c" (ctx: ^wj.Context, h: u64, argc: i32, argv: [^]wj.JSValu
 		wj.wj_str_free(ctx, &base)
 		return r > 0 ? 1 : 0
 	}
+	if wj.is_string(a1) { wj.wj_throw_type(ctx, "URLPattern: a baseURL goes with a URL string, not a URLPatternInit (its baseURL member)."); return -1 }
 	p: Pattern_Init
-	if !pattern_read_init(ctx, input, &p) { return -1 }
+	if wj.is_object(input) && !pattern_read_init(ctx, input, &p) { return -1 }
 	r := wj.wr_URLPattern_execInit(h,
 		arg_ptr(&p, 0), arg_len(&p, 0), arg_has(&p, 0),
 		arg_ptr(&p, 1), arg_len(&p, 1), arg_has(&p, 1),
@@ -183,8 +185,9 @@ pattern_run :: proc "c" (ctx: ^wj.Context, h: u64, argc: i32, argv: [^]wj.JSValu
 		arg_ptr(&p, 4), arg_len(&p, 4), arg_has(&p, 4),
 		arg_ptr(&p, 5), arg_len(&p, 5), arg_has(&p, 5),
 		arg_ptr(&p, 6), arg_len(&p, 6), arg_has(&p, 6),
-		arg_ptr(&p, 7), arg_len(&p, 7), arg_has(&p, 7))
-	pattern_init_free(ctx, &p)
+		arg_ptr(&p, 7), arg_len(&p, 7), arg_has(&p, 7),
+		arg_ptr(&p, 8), arg_len(&p, 8), arg_has(&p, 8))
+	if wj.is_object(input) { pattern_init_free(ctx, &p) }
 	return r > 0 ? 1 : 0
 }
 

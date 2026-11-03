@@ -3,7 +3,8 @@
 Odin port of QuickJS-ng's `libregexp`: a full ECMAScript regular-expression parser and bytecode compiler, plus a
 bounded backtracking interpreter. It replaces the C engine and leans on the language — tagged opcodes, interval
 character sets, caller-supplied allocators, an explicit (non-recursive) backtrack stack — so it builds for
-`windows_amd64`, `linux_amd64` and `freestanding_wasm32` with no libc.
+`windows_amd64`, `linux_amd64` and `freestanding_wasm32` with no libc. The browser uses it for URLPattern
+(`src/url/pattern_match.odin`: a component's regular expression, with the `v` flag).
 
 ```odin
 import rx "wb:engine/regexp"
@@ -51,7 +52,8 @@ Alternation; capturing, non-capturing and named groups `(?<name>…)`; the asser
 negative lookahead and lookbehind; back references, numbered `\1` and named `\k<name>`; character classes with
 ranges, the class escapes `\d \D \w \W \s \S`, and `\p{…}` / `\P{…}` (general category, binary property, `Script`,
 `Script_Extensions`); quantifiers `* + ? {n} {n,} {n,m}` with an optional lazy `?`; the escape forms
-`\f \n \r \t \v \0 \cX \xHH \uHHHH \u{…}`; the `v`-flag nested set operations `&&` and `--`; and the Annex B
+`\f \n \r \t \v \0 \cX \xHH \uHHHH \u{…}`; the `v` flag's nested classes, escaped reserved punctuators (`\:`, `\&`…)
+and chains of set operations `A && B && C`, `A -- B -- C`; and the Annex B
 web-reality leniencies when neither `u` nor `v` is set (lone `{`, `]`, `}` as literals; invalid back references as
 octal/identity escapes).
 
@@ -59,8 +61,9 @@ octal/identity escapes).
 
 - `parser.odin` / `parse_*.odin` build an AST (two-pass: a prescan counts groups and collects names so forward
   references resolve).
-- `compile*.odin` lower the AST to bytecode: quantifiers become split/goto/loop forms with an empty-match guard
-  (`Push_Char_Pos` / `Check_Advance`) so `(a*)*` cannot loop forever; classes resolve to `ucd.Char_Range`
+- `compile*.odin` lower the AST to bytecode (the AST lives in an arena of the compilation's own): quantifiers become
+  split/goto/loop forms with an empty-match guard (`Push_Char_Pos` / `Check_Advance`) on every iteration past the
+  minimum, so `(a*)*` cannot loop forever and `(.*)?` that matched nothing leaves its group undefined; classes resolve to `ucd.Char_Range`
   interval sets, case-folded once at compile time when `i` is set; a lookbehind body is compiled in reverse so a
   dedicated backward interpreter walks it.
 - `vm.odin` / `vm_behind.odin` / `vm_read.odin` are the interpreter: forward and reverse dispatch, UTF-8/UTF-16

@@ -2,15 +2,19 @@ package url
 
 // URLPattern — the tokenizer and pattern-string parser of the URL Pattern Standard
 // (https://urlpattern.spec.whatwg.org/, §2.1). Pure code, no Lexbor: this turns a component pattern string
-// (e.g. "/:category/*") into a part list, the ordered description of what a component must contain to match. The
-// matcher (pattern_match.odin) compiles the part list directly rather than through an ECMAScript regular
-// expression — Wren has no JavaScript regexp in the host — but produces the same captures and group names the
-// specification's RegExpBuiltinExec would. Code points are handled as UTF-8 runes; indices below are code-point
-// indices into the input (the spec's "code point substring").
+// (e.g. "/:category/*") into a part list, the ordered description of what a component must contain to match, which
+// pattern_match.odin makes the specification's regular expression. Code points are handled as UTF-8 runes; indices
+// below are code-point indices into the input (the spec's "code point substring").
 
 import "core:strings"
-import "core:unicode"
 import "core:unicode/utf8"
+import uni "wb:engine/unicode"
+
+// The joiners an identifier may hold past its first code point.
+@(private = "file")
+ZWNJ :: 0x200C
+@(private = "file")
+ZWJ :: 0x200D
 
 // §2.1.1 Tokens.
 Token_Kind :: enum u8 {
@@ -109,16 +113,14 @@ tokenizing_error :: proc(t: ^Tokenizer, next_pos, value_pos: int) {
 	add_token_default_len(t, .Invalid_Char, next_pos, value_pos)
 }
 
-// IdentifierStart / IdentifierPart for a `:name`. We allow ASCII letters, `_`, `$`, and (continue) ASCII digits,
-// plus non-ASCII letters/number marks — the common subset JS identifiers use in patterns.
-@(private = "file")
+// §2.1.2 "is a valid name code point": ECMAScript's IdentifierStart (ID_Start, $, _) for the first code point of a
+// `:name`, IdentifierPart (ID_Continue, $, ZWNJ, ZWJ) for the others.
+@(private)
 is_valid_name_code_point :: proc(c: rune, first: bool) -> bool {
-	if c == '$' || c == '_' { return true }
-	if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' { return true }
-	if !first && c >= '0' && c <= '9' { return true }
-	if c < 0x80 { return false }
-	if first { return unicode.is_letter(c) }
-	return unicode.is_letter(c) || unicode.is_digit(c) || unicode.is_combining(c)
+	if c == '$' { return true }
+	if c < 0 { return false }
+	if first { return c == '_' || uni.is_id_start(u32(c)) }
+	return c == ZWNJ || c == ZWJ || uni.is_id_continue(u32(c))
 }
 
 // §2.1.2 "tokenize": returns the token list and whether it was well formed (strict). The token values are slices of
@@ -281,7 +283,7 @@ Pattern_Parser :: struct {
 FULL_WILDCARD_REGEXP :: ".*"
 
 // §2.1.5 "generate a segment wildcard regexp".
-@(private = "file")
+@(private)
 segment_wildcard_regexp :: proc(delimiter: string, allocator := context.temp_allocator) -> string {
 	b := strings.builder_make(allocator)
 	strings.write_string(&b, "[^")

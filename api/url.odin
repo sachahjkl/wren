@@ -138,9 +138,9 @@ URLPattern_hasRegExpGroups :: proc(pattern: URLPattern) -> bool
 //@wb fn
 URLPattern_execString :: proc(pattern: URLPattern, input: string, base: string, has_base: bool) -> i32
 
-/// Run exec()/test() against a per-component init. Returns 1/0 as execString.
+/// Run exec()/test() against a per-component init and its baseURL. Returns 1/0 as execString.
 //@wb fn
-URLPattern_execInit :: proc(pattern: URLPattern, protocol: string, has_protocol: bool, username: string, has_username: bool, password: string, has_password: bool, hostname: string, has_hostname: bool, port: string, has_port: bool, pathname: string, has_pathname: bool, search: string, has_search: bool, hash: string, has_hash: bool) -> i32
+URLPattern_execInit :: proc(pattern: URLPattern, protocol: string, has_protocol: bool, username: string, has_username: bool, password: string, has_password: bool, hostname: string, has_hostname: bool, port: string, has_port: bool, pathname: string, has_pathname: bool, search: string, has_search: bool, hash: string, has_hash: bool, base: string, has_base: bool) -> i32
 
 /// After a successful exec: the number of `inputs` entries, and the i-th input string.
 //@wb fn

@@ -130,3 +130,33 @@ test_smoke_lazy :: proc(t: ^testing.T) {
 	testing.expect(t, st == .Match)
 	testing.expect_value(t, caps.groups[0].end, 3) // lazy stops at first b
 }
+
+// The v flag's classes: nested classes, chains of difference and intersection, escaped reserved punctuators.
+@(test)
+test_smoke_class_sets :: proc(t: ^testing.T) {
+	matches :: proc(src, input: string) -> bool {
+		re, err := compile(src, {.Unicode_Sets}, context.allocator)
+		if err.message != "" { return false }
+		defer destroy(&re)
+		caps: Captures
+		defer captures_destroy(&caps)
+		return exec(&re, input_utf8_string(input), 0, &caps) == .Match
+	}
+	testing.expect(t, matches(`^[\d&&[0-1]]$`, "1") && !matches(`^[\d&&[0-1]]$`, "3"), "intersection")
+	testing.expect(t, matches(`^[[a-z]--a]$`, "z") && !matches(`^[[a-z]--a]$`, "a"), "difference with a nested class")
+	testing.expect(t, matches(`^[\w--\d--_]$`, "q") && !matches(`^[\w--\d--_]$`, "_"), "a chain of differences")
+	testing.expect(t, matches(`^[^\:]+$`, "80") && !matches(`^[^\:]+$`, "8:0"), "an escaped reserved punctuator")
+}
+
+// An optional group that matched empty fails its iteration (RepeatMatcher past min): it does not take part.
+@(test)
+test_smoke_optional_empty :: proc(t: ^testing.T) {
+	re, err := compile(`^(.*)(.*)?$`, {}, context.allocator)
+	testing.expect(t, err.message == "")
+	defer destroy(&re)
+	caps: Captures
+	defer captures_destroy(&caps)
+	testing.expect(t, exec(&re, input_utf8_string("ab"), 0, &caps) == .Match)
+	testing.expect_value(t, caps.groups[1].end, 2)
+	testing.expect_value(t, caps.groups[2].start, -1)
+}

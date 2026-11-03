@@ -74,11 +74,12 @@ module url {
   /// Run exec()/test() against a URL string (resolved against base when has_base). Stores the result in the object.
   /// Returns 1 when it matched, 0 when it did not (exec returns null, test returns false).
   i32 URLPattern_execString(URLPattern pattern, string input, string base, bool has_base);
-  /// Run exec()/test() against a per-component init. Returns 1/0 as execString.
+  /// Run exec()/test() against a per-component init and its baseURL. Returns 1/0 as execString.
   i32 URLPattern_execInit(
     URLPattern pattern, string protocol, bool has_protocol, string username, bool has_username,
     string password, bool has_password, string hostname, bool has_hostname, string port, bool has_port,
-    string pathname, bool has_pathname, string search, bool has_search, string hash, bool has_hash);
+    string pathname, bool has_pathname, string search, bool has_search, string hash, bool has_hash,
+    string base, bool has_base);
 
   /// After a successful exec: the number of `inputs` entries, and the i-th input string.
   i32 URLPattern_resultInputCount(URLPattern pattern);

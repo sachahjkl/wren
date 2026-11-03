@@ -3673,8 +3673,8 @@ foreign _wr_wj_url {
 	// Run exec()/test() against a URL string (resolved against base when has_base). Stores the result in the object.
 	// Returns 1 when it matched, 0 when it did not (exec returns null, test returns false).
 	@(link_name = "URLPattern_execString") wr_URLPattern_execString :: proc(pattern: u64, input: [^]u8, input_len: u32, base: [^]u8, base_len: u32, has_base: i32) -> i32 ---
-	// Run exec()/test() against a per-component init. Returns 1/0 as execString.
-	@(link_name = "URLPattern_execInit") wr_URLPattern_execInit :: proc(pattern: u64, protocol: [^]u8, protocol_len: u32, has_protocol: i32, username: [^]u8, username_len: u32, has_username: i32, password: [^]u8, password_len: u32, has_password: i32, hostname: [^]u8, hostname_len: u32, has_hostname: i32, port: [^]u8, port_len: u32, has_port: i32, pathname: [^]u8, pathname_len: u32, has_pathname: i32, search: [^]u8, search_len: u32, has_search: i32, hash: [^]u8, hash_len: u32, has_hash: i32) -> i32 ---
+	// Run exec()/test() against a per-component init and its baseURL. Returns 1/0 as execString.
+	@(link_name = "URLPattern_execInit") wr_URLPattern_execInit :: proc(pattern: u64, protocol: [^]u8, protocol_len: u32, has_protocol: i32, username: [^]u8, username_len: u32, has_username: i32, password: [^]u8, password_len: u32, has_password: i32, hostname: [^]u8, hostname_len: u32, has_hostname: i32, port: [^]u8, port_len: u32, has_port: i32, pathname: [^]u8, pathname_len: u32, has_pathname: i32, search: [^]u8, search_len: u32, has_search: i32, hash: [^]u8, hash_len: u32, has_hash: i32, base: [^]u8, base_len: u32, has_base: i32) -> i32 ---
 	// After a successful exec: the number of `inputs` entries, and the i-th input string.
 	@(link_name = "URLPattern_resultInputCount") wr_URLPattern_resultInputCount :: proc(pattern: u64) -> i32 ---
 	@(link_name = "URLPattern_resultInput") wr_URLPattern_resultInput :: proc(pattern: u64, index: i32, _buf: [^]u8, _cap: u32) -> i32 ---
