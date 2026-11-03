@@ -897,10 +897,15 @@ ComputedStyle_get :: proc(c: ^Call, element: Api_Element, pseudo: string, name: 
 	switch pseudo {
 	case "::before", ":before":
 		cs = cs.before
-		used = used_box_pseudo(p, h, false)
+		used = used_box_pseudo(p, h, .Before)
 	case "::after", ":after":
 		cs = cs.after
-		used = used_box_pseudo(p, h, true)
+		used = used_box_pseudo(p, h, .After)
+	case "::backdrop":
+		cs = cs.backdrop
+		used = used_box_pseudo(p, h, .Backdrop)
+	case "::placeholder":
+		cs = cs.placeholder
 	case "":
 		used = used_box(p, h)
 	}

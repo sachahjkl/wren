@@ -926,3 +926,27 @@ placeholder_styles :: proc(t: ^testing.T) {
 	testing.expect(t, at(f, "d").placeholder != nil && same_color(at(f, "d").placeholder.color, at(f, "d").color), "color: inherit: the field's")
 	testing.expect(t, at(f, "e").placeholder == nil, "no placeholder style for a div")
 }
+
+// ::backdrop: a style for the elements of the top layer only (a showing popover, a modal dialog, the fullscreen element),
+// the UA's (fixed, the viewport's size) under the page's, out of flow whatever it says, at its element's z-index.
+@(test)
+backdrop_styles :: proc(t: ^testing.T) {
+	f := fixture_load(`<style>
+		#a { position: fixed; z-index: 7 } #a::backdrop { background-color: red; position: static }
+		#b::backdrop { display: none }
+		div::backdrop { color: red }
+	</style><div id=a></div><div id=b></div><div id=c></div>`)
+	defer fixture_unload(f)
+	testing.expect(t, at(f, "a").backdrop == nil && at(f, "c").backdrop == nil, "out of the top layer: no backdrop")
+	engine_set_top_layer(f.eng, {dom.find_by_id(f.doc, "a"), dom.find_by_id(f.doc, "b")})
+	restyle(f)
+	a := at(f, "a").backdrop
+	testing.expect(t, a != nil && same_color(a.background_color, RED), "the page's backdrop")
+	testing.expect(t, a != nil && a.position == .Absolute, "position: static is used as absolute")
+	testing.expect(t, a != nil && !a.z_auto && a.z_index == 7, "the z-index of its element (the top layer's)")
+	testing.expect(t, at(f, "b").backdrop == nil, "display: none: none")
+	testing.expect(t, at(f, "c").backdrop == nil, "not in the top layer: none")
+	engine_set_top_layer(f.eng, nil)
+	restyle(f)
+	testing.expect(t, at(f, "a").backdrop == nil, "out of it again: none")
+}

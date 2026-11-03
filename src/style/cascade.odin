@@ -419,7 +419,7 @@ substitute :: proc(env: ^Var_Env, vs: []css.Value, depth: int) -> ([]css.Value, 
 
 // The lists of entries an element matched (Pass.lists): its own, then those of the pseudo-elements that get a style.
 @(private)
-Entry_List :: enum u8 { Element, Before, After, Selection, Placeholder }
+Entry_List :: enum u8 { Element, Before, After, Selection, Placeholder, Backdrop }
 
 // The list of a pseudo-element's entries; false: a pseudo-element that gets no style of its own.
 @(private)
@@ -430,6 +430,7 @@ entry_list_of :: proc(pe: css.Pseudo) -> (Entry_List, bool) {
 	case .After: return .After, true
 	case .Selection: return .Selection, true
 	case .Placeholder: return .Placeholder, true
+	case .Backdrop: return .Backdrop, true
 	}
 	return {}, false
 }
@@ -953,6 +954,8 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 		if k == .Element || len(l) == 0 { continue }
 		// (::placeholder: a text field's only)
 		if k == .Placeholder && n.name != "input" && n.name != "textarea" { continue }
+		// (::backdrop: a top layer element's only)
+		if k == .Backdrop && !in_top_layer(p, h) { continue }
 		kept[k] = make([dynamic]Entry, context.temp_allocator)
 		append(&kept[k], ..l[:])
 	}
@@ -974,12 +977,29 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 	if len(kept[.Selection]) > 0 { c.selection = build_style(p, h, c, kept[.Selection][:], nil) }
 	// ::placeholder: what the forms painter reads of it (its color, opacity, font and alignment)
 	if len(kept[.Placeholder]) > 0 { c.placeholder = build_style(p, h, c, kept[.Placeholder][:], nil) }
+	// ::backdrop: a box under the element, in the top layer with it (layout's visit), so out of flow (CSS Position 4
+	// §3.3: a position other than fixed is used as absolute), and at the z-index that stands for the top layer (ua.odin)
+	if len(kept[.Backdrop]) > 0 && c.display != .None {
+		if bc := build_style(p, h, c, kept[.Backdrop][:], nil); bc.display != .None {
+			if bc.position != .Fixed { bc.position = .Absolute }
+			bc.z_auto, bc.z_index = c.z_auto, c.z_index
+			c.backdrop = bc
+		}
+	}
 	if has_image_layers(c) || has_image_layers(c.before) || has_image_layers(c.after) { p.image_records += 1 }
 	if shareable && share_value_ok(c) {
 		resolve_static(p.mc.doc, h, c, p.alloc)   // (what the counter walks would resolve: the same for every element sharing it)
 		share_put(&p.share, inline_text, c)
 	}
 	return c, false
+}
+
+// Element `h` is in the top layer: the fullscreen element, a showing popover, a modal dialog (engine_set_top_layer).
+@(private)
+in_top_layer :: proc(p: ^Pass, h: base.Handle) -> bool {
+	if h == p.mc.state.fullscreen { return true }
+	for el in p.e.top_layer { if el == h { return true } }
+	return false
 }
 
 // The style has background, mask or cursor images of a URL (what the page's image loader looks for: Styled.image_records).

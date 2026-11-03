@@ -95,7 +95,7 @@ window.phase2 = async () => {
   // another element replaces it
   events.length = 0;
   await b.requestFullscreen();
-  eq("... a ground of its own: the black of the backdrop", getComputedStyle(b).backgroundColor, "rgb(0, 0, 0)");
+  eq("... over its ::backdrop, black", [getComputedStyle(b).backgroundColor, getComputedStyle(b, "::backdrop").backgroundColor, getComputedStyle(b, "::backdrop").position].join(";"), "rgba(0, 0, 0, 0);rgb(0, 0, 0);fixed");
   eq("another element replaces it", [document.fullscreenElement === b, a.matches(":fullscreen"), b.matches(":fullscreen")].join(), "true,false,true");
   eq("... and fullscreenchange is fired for the one that left too", events.filter((e) => e.startsWith("fullscreenchange")).join(" "), "fullscreenchange:a:true:true fullscreenchange:b:true:true");
   eq("the old element is back to normal", getComputedStyle(a).position, "static");

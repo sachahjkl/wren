@@ -619,7 +619,7 @@ remap_styles :: proc(c: ^Ctx) -> bool {
 			el := style.style_of(st, b.node)
 			if el == nil { return false }
 			nc := el
-			if .Pseudo in b.flags { nc = .Pseudo_After in b.flags ? el.after : el.before }
+			if .Pseudo in b.flags { nc = pseudo_style(el, b.pseudo) }
 			if nc == nil { return false }
 			b.cs = nc
 		}
@@ -674,6 +674,7 @@ remap_journaled :: proc(c: ^Ctx, changes: []style.Journal_Entry) -> bool {
 			return false
 		}
 		if el == nil { return false }
+		if el.backdrop != nil { return false }   // (its ::backdrop box is beside its own, not inside)
 		clear(&ifcs)
 		b := &l.boxes[bi]
 		b.cs = el
@@ -691,7 +692,7 @@ remap_journaled :: proc(c: ^Ctx, changes: []style.Journal_Entry) -> bool {
 				if .Dead in k.flags { continue }
 				if .Anonymous in k.flags { append(&pseudos, ch); continue }
 				if .Pseudo not_in k.flags || k.node != h { continue }
-				nc := .Pseudo_After in k.flags ? el.after : el.before
+				nc := pseudo_style(el, k.pseudo)
 				if nc == nil { return false }
 				k.cs = nc
 				if .Ifc in k.flags { append(&ifcs, ch) }

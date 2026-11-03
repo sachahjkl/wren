@@ -172,15 +172,15 @@ anchored_frame_done :: proc(p: ^Page) {
 	if jl.result != nil { lay.anchored_commit(jl.result) }
 }
 
-// used_box of an element's anchored ::before or ::after (other generated boxes answer with their computed values).
+// used_box of an element's anchored generated box of kind `kind` (other generated boxes answer with their computed values).
 @(private)
-used_box_pseudo :: proc(p: ^Page, h: base.Handle, after: bool) -> Used_Box {
+used_box_pseudo :: proc(p: ^Page, h: base.Handle, kind: lay.Pseudo_Kind) -> Used_Box {
 	l, vp := js_layout_now(p)
 	if l == nil || !l.valid || len(l.anchored) == 0 { return {} }
 	s := f32(vp.scale)
 	for &e in l.anchored {
 		b := &l.boxes[e.box]
-		if b.node != h || .Pseudo not_in b.flags || (.Pseudo_After in b.flags) != after { continue }
+		if b.node != h || .Pseudo not_in b.flags || b.pseudo != kind { continue }
 		u := Used_Box{ok = true, width = (b.size.x - b.padding[1] - b.padding[3] - b.border[1] - b.border[3]) / s, height = (b.size.y - b.padding[0] - b.padding[2] - b.border[0] - b.border[2]) / s}
 		for i in 0 ..< 4 { u.margin[i] = b.margin[i] / s; u.padding[i] = b.padding[i] / s }
 		u.inset, u.inset_auto, u.bounds, u.anchored = lay.anchored_used(l, e.box, s)

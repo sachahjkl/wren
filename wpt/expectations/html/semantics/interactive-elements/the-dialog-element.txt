@@ -11,8 +11,8 @@
 	Dialog's specified position should survive after close() and showModal().: PASS
 	The dialog should be centered regardless of the presence of a horizontal scrollbar.: PASS
 	showModal() should center in the viewport: PASS
-/html/semantics/interactive-elements/the-dialog-element/backdrop-receives-element-events.html: TIMEOUT
-	Test that ::backdrop receives events for the associated element: NOTRUN
+/html/semantics/interactive-elements/the-dialog-element/backdrop-receives-element-events.html: OK
+	Test that ::backdrop receives events for the associated element: PASS
 /html/semantics/interactive-elements/the-dialog-element/centering.html: OK
 	horizontal-tb (container vertical-rl) (dialog horizontal-tb): tall viewport, default-sizes: false: PASS
 	horizontal-tb (container vertical-rl) (dialog horizontal-tb): tall viewport, default-sizes: true: PASS
@@ -253,7 +253,7 @@
 /html/semantics/interactive-elements/the-dialog-element/dialog-light-dismiss-drag.html: OK
 	Dialog should not light dismiss when clicking inside the dialog and dragging outside of it.: PASS
 /html/semantics/interactive-elements/the-dialog-element/dialog-light-dismiss-pointer-capture.html: OK
-	Light dismiss on dialog with mouse input with pointer capture.: FAIL
+	Light dismiss on dialog with mouse input with pointer capture.: PASS
 	Light dismiss on dialog with touch input with pointer capture.: FAIL
 /html/semantics/interactive-elements/the-dialog-element/dialog-light-dismiss-touch.html: OK
 	Dialog light dismiss should work with touch and not trigger a click event.: FAIL
@@ -271,11 +271,11 @@
 	Opening and closing a modal dialog changes computed overlay to 'auto' and back to 'none': FAIL
 	dialog computed overlay initially 'none': FAIL
 /html/semantics/interactive-elements/the-dialog-element/dialog-popover-closedby-complex.html: OK
-	clicking dialogA with modal dialogA and modal dialogB, normal DOM nesting: FAIL
+	clicking dialogA with modal dialogA and modal dialogB, normal DOM nesting: PASS
 	clicking dialogA with modal dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
 	clicking dialogA with modal dialogA and modeless dialogB, normal DOM nesting: PASS
 	clicking dialogA with modal dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
-	clicking dialogA with modeless dialogA and modal dialogB, normal DOM nesting: FAIL
+	clicking dialogA with modeless dialogA and modal dialogB, normal DOM nesting: PASS
 	clicking dialogA with modeless dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
 	clicking dialogA with modeless dialogA and modeless dialogB, normal DOM nesting: PASS
 	clicking dialogA with modeless dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
@@ -287,11 +287,11 @@
 	clicking dialogB with modeless dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
 	clicking dialogB with modeless dialogA and modeless dialogB, normal DOM nesting: PASS
 	clicking dialogB with modeless dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
-	clicking outside all with modal dialogA and modal dialogB, normal DOM nesting: FAIL
+	clicking outside all with modal dialogA and modal dialogB, normal DOM nesting: PASS
 	clicking outside all with modal dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
 	clicking outside all with modal dialogA and modeless dialogB, normal DOM nesting: PASS
 	clicking outside all with modal dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
-	clicking outside all with modeless dialogA and modal dialogB, normal DOM nesting: FAIL
+	clicking outside all with modeless dialogA and modal dialogB, normal DOM nesting: PASS
 	clicking outside all with modeless dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
 	clicking outside all with modeless dialogA and modeless dialogB, normal DOM nesting: PASS
 	clicking outside all with modeless dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
@@ -299,7 +299,7 @@
 	clicking popoverA with modal dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
 	clicking popoverA with modal dialogA and modeless dialogB, normal DOM nesting: PASS
 	clicking popoverA with modal dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
-	clicking popoverA with modeless dialogA and modal dialogB, normal DOM nesting: FAIL
+	clicking popoverA with modeless dialogA and modal dialogB, normal DOM nesting: PASS
 	clicking popoverA with modeless dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
 	clicking popoverA with modeless dialogA and modeless dialogB, normal DOM nesting: PASS
 	clicking popoverA with modeless dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
@@ -435,8 +435,8 @@
 	<form method=dialog> should not submit across shadow boundaries.: PASS
 /html/semantics/interactive-elements/the-dialog-element/inert-does-not-match-disabled-selector.html: OK
 	Tests inert elements do not match the :disabled selector.: PASS
-/html/semantics/interactive-elements/the-dialog-element/inert-focus-in-frames.html: TIMEOUT
-	Tests inert node focusing across frames and iframes.: TIMEOUT
+/html/semantics/interactive-elements/the-dialog-element/inert-focus-in-frames.html: OK
+	Tests inert node focusing across frames and iframes.: PASS
 /html/semantics/interactive-elements/the-dialog-element/inert-inlines.html: OK
 	Tests that inert inlines do not receive mouse events.: PASS
 /html/semantics/interactive-elements/the-dialog-element/inert-label-focus.html: OK

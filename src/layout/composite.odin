@@ -46,7 +46,7 @@ space_world :: proc(v: ^View, s: i32) -> Matrix {
 Space_Key :: struct {
 	kind:   Space_Kind,
 	node:   base.Handle,   // the element of its box (NIL: document, fixed)
-	pseudo: u8,            // 1: ::before, 2: ::after
+	pseudo: u8,            // pseudo_key
 	column: i32,           // Column: which of its container's
 }
 
@@ -55,7 +55,7 @@ space_key :: proc(l: ^Layout, s: i32) -> Space_Key {
 	if sp.kind == .Document || sp.kind == .Fixed { return {kind = sp.kind} }
 	b := &l.boxes[sp.box]
 	k := Space_Key{kind = sp.kind, node = b.node}
-	if .Pseudo in b.flags { k.pseudo = .Pseudo_After in b.flags ? 2 : 1 }
+	k.pseudo = pseudo_key(b)
 	if sp.kind == .Column { k.column = sp.flow[0] }
 	return k
 }

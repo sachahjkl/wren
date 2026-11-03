@@ -153,7 +153,7 @@
 	::before in selected host is styled: PASS
 	::first-letter in selected host is styled: FAIL
 	::first-line in selected host is styled: FAIL
-	::placeholder in selected host is styled: FAIL
+	::placeholder in selected host is styled: PASS
 	::selection in selected host is styled: FAIL
 /css/css-shadow/part/invalidation-change-exportparts-forward.html: OK
 	Part in selected host changed color: PASS
@@ -169,8 +169,8 @@
 	Part in selected host changed color: PASS
 /css/css-shadow/part/invalidation-complex-selector.html: OK
 	Part in selected host changed color: PASS
-/css/css-shadow/part/invalidation-part-pseudo.html: ERROR
-	Invalidation of nested part on hover: NOTRUN
+/css/css-shadow/part/invalidation-part-pseudo.html: OK
+	Invalidation of nested part on hover: FAIL
 /css/css-shadow/part/multiple-parts.html: OK
 	Double-part in selected host is styled: PASS
 	Single-part-1 in selected host is not styled: PASS
@@ -265,7 +265,7 @@
 	"::part(mypart):xr-overlay" should be a valid selector: PASS
 /css/css-shadow/part/pseudo-elements-after-part.html: OK
 	"::part(mypart)::after" should be a valid selector: PASS
-	"::part(mypart)::backdrop" should be a valid selector: FAIL
+	"::part(mypart)::backdrop" should be a valid selector: PASS
 	"::part(mypart)::before" should be a valid selector: PASS
 	"::part(mypart)::cue" should be a valid selector: FAIL
 	"::part(mypart)::details-content" should be a valid selector: FAIL
@@ -303,7 +303,7 @@
 	computed style for ::part()::first-line: FAIL
 	computed style for ::part()::grammar-error: FAIL
 	computed style for ::part()::highlight(myhighlight): FAIL
-	computed style for ::part()::placeholder: FAIL
+	computed style for ::part()::placeholder: PASS
 	computed style for ::part()::search-text: FAIL
 	computed style for ::part()::selection: FAIL
 	computed style for ::part()::spelling-error: FAIL

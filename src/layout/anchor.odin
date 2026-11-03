@@ -658,7 +658,7 @@ record_of :: proc(c: ^Ctx, b: ^Box) -> ^style.Computed {
 	el := style.style_of(c.st, b.node)
 	if el == nil { return b.cs }
 	if .Pseudo in b.flags {
-		nc := .Pseudo_After in b.flags ? el.after : el.before
+		nc := pseudo_style(el, b.pseudo)
 		return nc != nil ? nc : b.cs
 	}
 	return el
@@ -919,6 +919,6 @@ anchored_commit :: proc(l: ^Layout) {
 @(private = "file")
 anchored_key :: proc(b: ^Box) -> Anchor_Key {
 	k := Anchor_Key{node = b.node}
-	if .Pseudo in b.flags { k.pseudo = .Pseudo_After in b.flags ? 2 : 1 }
+	k.pseudo = pseudo_key(b)
 	return k
 }

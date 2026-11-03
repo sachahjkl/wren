@@ -51,7 +51,7 @@ inline_only :: proc(l: ^Layout, st: ^style.Styled, p: i32) -> bool {
 			ib := &l.boxes[it.box]
 			if .Positioned in ib.flags || .Stacking in ib.flags { return false }
 			cs := style.style_of(st, ib.node)
-			if cs != nil && .Pseudo in ib.flags { cs = .Pseudo_After in ib.flags ? cs.after : cs.before }
+			if cs != nil && .Pseudo in ib.flags { cs = pseudo_style(cs, ib.pseudo) }
 			if cs == nil || cs.outline_width > 0 { return false }
 		}
 	}
