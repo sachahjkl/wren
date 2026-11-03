@@ -96,6 +96,12 @@ section("pre-insertion validity", () => {
   throws("a text node into the document", () => document.appendChild(document.createTextNode("x")), "HierarchyRequestError");
   throws("a second element into the document", () => document.appendChild(document.createElement("html")), "HierarchyRequestError");
   throws("a second doctype", () => document.insertBefore(document.doctype.cloneNode(), document.documentElement), "HierarchyRequestError");
+  // a document of its own (createHTMLDocument's) has a document's rules: one element, no text
+  const own = document.implementation.createHTMLDocument("own");
+  throws("a text node into a document of its own", () => own.insertBefore(own.createTextNode("x"), null), "HierarchyRequestError");
+  throws("a second element into a document of its own", () => own.append(own.createElement("p")), "HierarchyRequestError");
+  own.replaceChildren(own.createElement("html"));
+  eq("replaceChildren of a document of its own replaces its element", own.childNodes.length + " " + own.documentElement.localName, "1 html");
   throws("a document into an element", () => root.appendChild(document), "HierarchyRequestError");
   throws("a child of a text node", () => document.createTextNode("x").appendChild(document.createElement("b")), "HierarchyRequestError");
   throws("not a node", () => root.appendChild({}), "TypeError");

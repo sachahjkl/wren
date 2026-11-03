@@ -424,9 +424,10 @@ element_preceding :: proc(d: ^dom.Document, child: base.Handle) -> bool {
 }
 
 // DOM "ensure pre-insertion validity" (replacing = false) and the checks of "replace a child" (replacing = true, `child`
-// the node replaced). Records the message of the failure in the call.
+// the node replaced); `replacing_all`: replaceChildren's, the parent's children all going (none of them counts). Records the
+// message of the failure in the call.
 @(private)
-check_insert :: proc(c: ^Call, parent, node, child: base.Handle, replacing: bool) -> Api_Error {
+check_insert :: proc(c: ^Call, parent, node, child: base.Handle, replacing: bool, replacing_all := false) -> Api_Error {
 	d := c.page.doc
 	p, n := dom.get(d, parent), dom.get(d, node)
 	if p == nil || n == nil { return fail(c, .Invalid_Handle, "the node is gone") }
@@ -439,13 +440,14 @@ check_insert :: proc(c: ^Call, parent, node, child: base.Handle, replacing: bool
 			return fail(c, .Not_Found, replacing ? "The node to be replaced is not a child of this node." : "The node before which the new node is to be inserted is not a child of this node.")
 		}
 	}
-	#partial switch n.kind {
-	case .Document: return fail(c, .Hierarchy, "Nodes of type '#document' may not be inserted inside nodes of type '#document-fragment' or elsewhere.")
-	}
-	if n.kind == .Text && p.kind == .Document { return fail(c, .Hierarchy, "Nodes of type '#text' may not be inserted inside nodes of type '#document'.") }
-	if n.kind == .Doctype && p.kind != .Document { return fail(c, .Hierarchy, "A doctype may only be a child of the document.") }
-	if p.kind != .Document { return .None }
+	// (a document of its own, createHTMLDocument's, is a fragment that stands for one: as_document)
+	p_doc := p.kind == .Document || p.as_document
+	if n.kind == .Document || n.as_document { return fail(c, .Hierarchy, "Nodes of type '#document' may not be inserted inside nodes of type '#document-fragment' or elsewhere.") }
+	if n.kind == .Text && p_doc { return fail(c, .Hierarchy, "Nodes of type '#text' may not be inserted inside nodes of type '#document'.") }
+	if n.kind == .Doctype && !p_doc { return fail(c, .Hierarchy, "A doctype may only be a child of the document.") }
+	if !p_doc { return .None }
 	except := replacing ? child : base.NIL_HANDLE
+	if replacing_all && n.kind != .Fragment { return .None }
 	#partial switch n.kind {
 	case .Fragment:
 		elements := 0
@@ -455,7 +457,7 @@ check_insert :: proc(c: ^Call, parent, node, child: base.Handle, replacing: bool
 			if k == .Text { return fail(c, .Hierarchy, "Nodes of type '#text' may not be inserted inside nodes of type '#document'.") }
 		}
 		if elements > 1 { return fail(c, .Hierarchy, "The document may have only one element child.") }
-		if elements == 1 {
+		if elements == 1 && !replacing_all {
 			if has_element_child(d, parent, except) { return fail(c, .Hierarchy, "Only one element on document allowed.") }
 			if child != base.NIL_HANDLE && ((!replacing && dom.get(d, child).kind == .Doctype) || doctype_following(d, child)) {
 				return fail(c, .Hierarchy, "The element would come before the doctype.")
@@ -645,7 +647,7 @@ Node_insertItems :: proc(c: ^Call, node: Api_Node, mode: i32, items: []u8) -> Ap
 		case 0: err = pre_insert(c, this, one, dom.get(d, this).first_child)
 		case 1: err = pre_insert(c, this, one, base.NIL_HANDLE)
 		case 2:
-			err = check_insert(c, this, one, base.NIL_HANDLE, false)
+			err = check_insert(c, this, one, base.NIL_HANDLE, false, replacing_all = true)
 			if err == .None { replace_all(d, this, one) }
 		}
 		if err != .None { discard_unused(d, one); return err }

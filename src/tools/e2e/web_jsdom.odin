@@ -701,7 +701,7 @@ jsdom_every_page_has_a_test :: proc(t: ^testing.T) {
 @(test) jsdom_styles :: proc(t: ^testing.T) { page_test(t, "style.html", checks = 62) }
 @(test) jsdom_template_stamp :: proc(t: ^testing.T) { page_test(t, "template_stamp.html", checks = 30) }
 @(test) jsdom_traversal :: proc(t: ^testing.T) { page_test(t, "traversal.html", checks = 50) }
-@(test) jsdom_tree :: proc(t: ^testing.T) { page_test(t, "tree.html", checks = 161) }
+@(test) jsdom_tree :: proc(t: ^testing.T) { page_test(t, "tree.html", checks = 164) }
 @(test) jsdom_videoquality :: proc(t: ^testing.T) { page_test(t, "videoquality.html", checks = 9) }
 @(test) jsdom_xhtml :: proc(t: ^testing.T) { page_test(t, "xhtml.xhtml", checks = 10) }
 @(test) jsdom_xml :: proc(t: ^testing.T) { page_test(t, "xml.html", checks = 38) }
