@@ -706,10 +706,10 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 					}
 				}
 			}
-			paint_text_field(app, dc, fonts, fid, f, node, n, pt, fg, focused, &pal)
+			paint_text_field(app, dc, fonts, fid, f, node, n, pt, fg, focused, &pal, cs.text_ellipsis)
 		}
 	case .Textarea:
-		paint_text_field(app, dc, fonts, fid, f, node, n, pt, fg, focused, &pal)
+		paint_text_field(app, dc, fonts, fid, f, node, n, pt, fg, focused, &pal, false)
 	case .Select:
 		if forms.is_dropdown(f, node) {
 			label := ""
@@ -738,8 +738,10 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 	}
 }
 
+// `ellipsis` (text-overflow: ellipsis): text wider than the field ends with an ellipsis, the placeholder always, the
+// value while the field is not focused (as Chromium).
 @(private = "file")
-paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, f: ^forms.Forms, node: base.Handle, n: ^dom.Node, pt: Painted, fg: draw.Color, focused: bool, pal: ^Control_Palette) {
+paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, f: ^forms.Forms, node: base.Handle, n: ^dom.Node, pt: Painted, fg: draw.Color, focused: bool, pal: ^Control_Palette, ellipsis: bool) {
 	fv := forms_view(app)
 	content := pt.content
 	size := pt.size
@@ -766,7 +768,7 @@ paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: 
 	}
 	sc.x = max(sc.x, 0)
 	sc.y = max(sc.y, 0)
-	if multiline { sc.x = 0 }
+	if multiline || (ellipsis && !focused) { sc.x = 0 }   // (an ellipsis shows the start)
 	fv.scroll[node] = sc
 	origin = multiline ? {content.min.x, content.min.y - sc.y} : {content.min.x - sc.x, origin.y}
 
@@ -781,7 +783,8 @@ paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: 
 			y := origin.y
 			rest := text
 			for line in strings.split_lines_iterator(&rest) {
-				draw.text(dc, fid, size, {origin.x, y + (ft.line_h - (m.ascent + m.descent)) * 0.5 + m.ascent}, pc, line)
+				shown := ellipsis ? fit_text(fonts, fid, size, line, w) : line
+				draw.text(dc, fid, size, {origin.x, y + (ft.line_h - (m.ascent + m.descent)) * 0.5 + m.ascent}, pc, shown)
 				y += ft.line_h
 			}
 		}
@@ -803,7 +806,9 @@ paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: 
 	for l, i in ft.lines {
 		y := origin.y + f32(i) * ft.line_h
 		if y > content.max.y || y + ft.line_h < content.min.y { continue }
-		draw.text(dc, fid, size, {origin.x, y + (ft.line_h - (m.ascent + m.descent)) * 0.5 + m.ascent}, fg, ft.display[l.start:l.end])
+		shown := ft.display[l.start:l.end]
+		if ellipsis && !focused { shown = fit_text(fonts, fid, size, shown, w) }
+		draw.text(dc, fid, size, {origin.x, y + (ft.line_h - (m.ascent + m.descent)) * 0.5 + m.ascent}, fg, shown)
 	}
 	if focused && a == b && forms.is_mutable(f, node) {
 		x := math.round(origin.x + cxy.x)
