@@ -30,6 +30,12 @@ DEV_ELEMENTS_TOGGLE_BUDGET :: 5000
 // A search of the Elements panel visits at most this many nodes, and stops at this many matches.
 DEV_ELEMENTS_SEARCH_VISITS :: 400000
 DEV_ELEMENTS_SEARCH_MATCHES :: 5000
+// The side pane (Styles...) goes at the side of the tree from this width of the panel on, when its place is auto (px at
+// the panel's text size); its width by default is this share of the room.
+DEV_ELEMENTS_SIDE_MIN_PX :: 700
+DEV_ELEMENTS_SIDE_SHARE :: 0.45
+// Under this width the side pane's tabs take short names (px at the panel's text size).
+DEV_ELEMENTS_SIDE_SHORT_PX :: 420
 
 El_Kind :: enum u8 { Open, Close, Inline, Text, Comment, Doctype }
 
@@ -84,6 +90,10 @@ Dev_Elements :: struct {
 	crumbs:    [dynamic]El_Crumb,
 	// the right-hand pane
 	side:      Dev_Styles,
+	side_pane: ui.Pane,       // the side pane: its sizes, folded, its place (browser.devtools.elements.sidebar)
+	side_axis: ui.Axis,       // where it is this frame: at the side (.X) or below
+	side_opts: ui.Pane_Options,
+	side_w:    f32,           // its width this frame (px; 0: folded)
 	menu_row:  int,
 	menu_span: El_Span,
 	menu_has_span: bool,
@@ -129,7 +139,7 @@ elements_reset :: proc(e: ^Dev_Elements, p: rawptr) {
 }
 
 elements_reset_layout :: proc(app: ^App) {
-	dev_set_pref(app, "browser.devtools.elements.split", "0.55")
+	dev_set_pref(app, "browser.devtools.elements.sidebar", "0 0 0 auto")
 	dev_set_pref(app, "browser.devtools.elements.side_tab", "styles")
 }
 
@@ -429,35 +439,26 @@ elements_panel :: proc(app: ^App, t: ^Tab) {
 	e.hover = base.NIL_HANDLE
 	elements_picker(app, t, e)
 
-	room := dev_width()
-	wide := room == 0 || room >= dt_px(700)
-	split := f32(config_float(app, "browser.devtools.elements.split"))
-	ui.next({width = ui.fill(), height = ui.fill()})
-	if wide {
-		if ui.row(.Start, {}, "###dt_el") { elements_body(app, t, e, wide, split, room) }
-	} else {
-		if ui.column(.Start, {}, "###dt_el") { elements_body(app, t, e, wide, split, room) }
-	}
-}
-
-@(private = "file")
-elements_body :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, wide: bool, split, room: f32) {
-	if wide { ui.next({width = ui.pct(split), height = ui.fill()}) } else { ui.next({width = ui.fill(), height = ui.pct(0.5)}) }
-	if ui.column(.Start, {.Clip}, "###dt_el_tree_box") { tree_view(app, t, e) }
-	if wide {
-		dx, _, dragging := dt_vsplit("###dt_el_vs")
-		if dragging && room > 0 {
-			nv := clamp(split + dx / room, 0.2, 0.8)
-			set_pref_quiet(app, "browser.devtools.elements.split", nv)
-			request_frames(app, 2)
+	sc := ui.scale()
+	room := draw.Vec2{dev_width(), dev_height() - app.dtm.tab}   // (the header's row is not the tab's)
+	e.side_axis = room.x > 0 ? ui.pane_axis(e.side_pane.place, room.x, dt_px(DEV_ELEMENTS_SIDE_MIN_PX)) : (e.side_pane.place == .Below ? .Y : .X)
+	total := (e.side_axis == .X ? room.x : room.y) / sc
+	e.side_opts = {side = .After, collapsible = true, title = "Elements sidebar", total = max(total, 0), default_size = max(total, 0) * DEV_ELEMENTS_SIDE_SHARE,
+		thickness = dt_px(5), user = app, on_save = proc(user: rawptr, p: ^ui.Pane) { set_pref_string((^App)(user), "browser.devtools.elements.sidebar", ui.pane_format(p^)) }}
+	ui.next({width = ui.fill(), height = ui.fill(), axis = e.side_axis})
+	if ui.parent(ui.build_box({}, "###dt_el")) {
+		ui.next({width = ui.fill(), height = ui.fill()})
+		if ui.column(.Start, {.Clip}, "###dt_el_tree_box") { tree_view(app, t, e) }
+		r := ui.pane_split("###dt_el_split", e.side_axis, &e.side_pane, e.side_opts)
+		if r.changed { request_frames(app, 2) }
+		e.side_w = 0
+		if r.size > 0 {
+			ext := math.round(r.size * sc)
+			e.side_w = e.side_axis == .X ? ext : room.x
+			ui.next({width = e.side_axis == .X ? ui.px(ext) : ui.fill(), height = e.side_axis == .X ? ui.fill() : ui.px(ext)})
+			if ui.column(.Start, {.Clip}, "###dt_el_side_box") { styles_panel(app, t, e) }
 		}
-	} else {
-		dy, _, dragging := dt_hsplit("###dt_el_hs")
-		_ = dy
-		_ = dragging
 	}
-	ui.next({width = ui.fill(), height = ui.fill()})
-	if ui.column(.Start, {.Clip}, "###dt_el_side_box") { styles_panel(app, t, e) }
 }
 
 @(private = "file")

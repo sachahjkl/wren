@@ -342,3 +342,18 @@ har_export_is_json :: proc(t: ^testing.T) {
 	entries, _ := log["entries"].(json.Array)
 	testing.expect_value(t, len(entries), 1)
 }
+
+// The drawer: the tab at the top is never one of the drawer's, the drawer shows one of its own, and what each shows is what
+// "showing" means for the panels that work only while shown (the console's arguments, the network's and memory's timers).
+@(test)
+devtools_drawer_tabs_and_what_is_shown :: proc(t: ^testing.T) {
+	d := Devtools{visible = true, panel = .Console, in_drawer = {.Console}, drawer_tab = .Network}
+	dev_normalize(&d)
+	testing.expect_value(t, d.panel, Dev_Panel.Elements)
+	testing.expect_value(t, d.drawer_tab, Dev_Panel.Console)
+	testing.expect(t, dev_shows(&d, .Console) && dev_shows(&d, .Elements) && !dev_shows(&d, .Network), "the top's tab and the drawer's")
+	d.drawer.collapsed = true
+	testing.expect(t, !dev_shows(&d, .Console), "a folded drawer shows nothing")
+	d.visible = false
+	testing.expect(t, !dev_shows(&d, .Elements), "closed, nothing")
+}

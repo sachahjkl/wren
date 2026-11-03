@@ -21,6 +21,8 @@ import "wb:host"
 
 // While requests are pending the Network panel is redrawn this often (their timings grow).
 DEV_NETWORK_TICK_MS :: 250
+// The table's share of the room when a request is open beside or under it, by default (and after a double click on the bar).
+DEV_NET_SPLIT_DEFAULT :: 0.5
 
 Net_Col_Cfg :: struct { col: Net_Col, w: f32 }   // w: logical px, 0 = the room that is left
 
@@ -56,7 +58,6 @@ Dev_Network :: struct {
 	resize_from: f32,
 	detail:    Net_Detail,
 	blocked:   [dynamic]string,       // URL patterns the user blocked (`*` is any run of characters)
-	split_drag: f32,
 	prof:      Net_Prof_Edit,   // the editor of a custom speed (devtools_net_throttle.odin)
 }
 
@@ -154,7 +155,7 @@ network_reset_layout :: proc(app: ^App) {
 	dev_set_pref(app, "browser.devtools.network.columns", "name:260,status:64,type:70,initiator:130,size:76,time:70,waterfall:0")
 	dev_set_pref(app, "browser.devtools.network.sort", "")
 	dev_set_pref(app, "browser.devtools.network.types", "0")
-	dev_set_pref(app, "browser.devtools.network.split", "0.5")
+	dev_set_pref(app, "browser.devtools.network.split", fmt.tprintf("%g", DEV_NET_SPLIT_DEFAULT))
 	dev().net.cols_ok = false
 }
 
@@ -423,25 +424,21 @@ net_split_body :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, sel: ^Net_Entry, sid
 	}
 	if ui.column(.Start, {.Clip}, "###dt_net_main") { net_table(app, t, v, menu_key) }
 	if sel != nil {
-		if side {
-			dx, _, dragging := dt_vsplit("###dt_net_vs")
-			if dragging { net_split_apply(app, v, dx, room_w, split) }
-		} else {
-			dy, _, dragging := dt_hsplit("###dt_net_hs")
-			if dragging { net_split_apply(app, v, dy, dev_height(), split) }
+		// the toolkit's splitter, its size a share of the room: from a few em to all but a few em of the table
+		pr := ui.parent_box().rect
+		room := side ? room_w : pr.max.y - pr.min.y
+		if room > 0 {
+			lo := min(ui.PANE_MIN_EM * ui.font_size() / room, DEV_NET_SPLIT_DEFAULT)
+			share := split
+			r := ui.splitter(side ? "###dt_net_vs" : "###dt_net_hs", side ? .X : .Y, &share, lo, 1 - lo, {unit = room, thickness = dt_px(5), default_size = DEV_NET_SPLIT_DEFAULT})
+			if r.changed {
+				set_pref_quiet(app, "browser.devtools.network.split", share)
+				request_frames(app, 2)
+			}
 		}
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.column(.Start, {.Clip}, "###dt_net_detail_box") { net_detail_panel(app, t, v, sel) }
 	}
-}
-
-@(private = "file")
-net_split_apply :: proc(app: ^App, v: ^Dev_Network, delta, total, from: f32) {
-	if total <= 0 { return }
-	nv := clamp(from + delta / total, 0.15, 0.85)
-	// (the preference is set at the end of the drag: during it, only the value in memory moves, through the pref's own watcher)
-	set_pref_quiet(app, "browser.devtools.network.split", nv)
-	request_frames(app, 2)
 }
 
 @(private = "file")
@@ -460,7 +457,7 @@ net_tick :: proc(app: ^App, v: ^Dev_Network) {
 			w, d := devtools_of_window_id(the_app, int(uintptr(data)))
 			if d == nil { return }
 			d.net.tick = base.NIL_HANDLE
-			if d.visible && d.panel == .Network && d.net.pending > 0 { window_request(the_app, w, 2) }
+			if dev_shows(d, .Network) && d.net.pending > 0 { window_request(the_app, w, 2) }
 		}, rawptr(uintptr(active_window(app).id)), nil)
 	}
 }

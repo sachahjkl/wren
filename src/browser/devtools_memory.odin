@@ -87,7 +87,7 @@ memory_panel :: proc(app: ^App, t: ^Tab) {
 			w, d := devtools_of_window_id(the_app, int(uintptr(data)))
 			if d == nil { return }
 			d.mem.tick = base.NIL_HANDLE
-			if d.visible && d.panel == .Memory && d.mem.live { window_request(the_app, w, 2) }
+			if dev_shows(d, .Memory) && d.mem.live { window_request(the_app, w, 2) }
 		}, rawptr(uintptr(active_window(app).id)), nil)
 	}
 	tiles := [?]struct { title: string, value: f64, get: proc(s: Mem_Sample) -> f64, bytes: bool, tip: string }{
