@@ -170,8 +170,8 @@ browser :: proc(o: Options) -> bool {
 	if !version_h(o.label) { return say_fail(o, fmt.tprintf("%s cannot be written (%s in %s)", VERSION_H, VERSION_MARK, ABOUT_FILE)) }
 	flags := common_flags(o)
 	// wgpu links wgpu-native as a DLL (wgpu_native.dll beside the program: Wren already links one Rust static library, and two cannot coexist), with the DXC DLLs next to it so that Direct3D 12
-	// compiles the shaders in 0.3 s instead of 2.8 s: the toolkit's own script fetches them
-	if o.wgpu && tooling.run({command = {"powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "ext\\gui_toolkit\\tools\\fetch_wgpu.ps1", "-Dest", "build"}, log = o.log}) != 0 {
+	// compiles the shaders in 0.3 s instead of 2.8 s: the toolkit's own tool fetches them
+	if o.wgpu && tooling.run({command = {tooling.odin_program(), "run", "ext/gui_toolkit/tools/tk", "-out:build/tk.exe", "--", "fetch_wgpu", "-dest:build", fmt.tprintf("-odin:%s", tooling.odin_program())}, log = o.log}) != 0 {
 		return say_fail(o, "fetching the wgpu dependencies failed")
 	}
 

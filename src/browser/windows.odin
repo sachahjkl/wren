@@ -409,6 +409,7 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 	bw.opened = time.tick_now()
 	nw.user = bw
 	ui.init(bw.ui, &app.fonts, &app.theme)
+	chrome_a11y_init()   // (the caption buttons' names are each interface state's)
 	bw.ui.icon_font = app.icons
 	bw.ui.mono_font = active_window(app).ui.mono_font
 	autoscroll_toolkit_setup(app, bw.ui)   // page_autoscroll.odin: middle-click autoscroll for this window's toolkit regions
