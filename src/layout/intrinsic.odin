@@ -302,10 +302,11 @@ natural_size_of :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
 		case "file":
 			return measure(c, fi, "Choose File") + 8 * s + measure(c, fi, "No file chosen"), f.line_h, true, true
 		case "date", "time", "datetime-local", "month", "week":
-			return 12 * char_w, f.line_h, true, true
+			return 12 * char_w, max(f.line_h, f.normal_h), true, true
 		}
+		// (a line-height smaller than normal leaves a text field as tall as normal: Blink's inner editor keeps its line)
 		size := attr_int(c, h_node, "size", c.set.input_size)
-		return f32(size) * char_w, f.line_h, true, true
+		return f32(size) * char_w, max(f.line_h, f.normal_h), true, true
 	}
 	return 0, 0, true, true
 }

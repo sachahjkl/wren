@@ -53,11 +53,11 @@ sib_walk :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> (elements, dif
 		if n == nil || n.kind != .Element { continue }
 		elements += 1
 		match_element(p, f.h, n, &f.bloom, {}, f.depth)
-		shared: [4][dynamic]Entry
-		for i in 0 ..< 4 { shared[i] = make([dynamic]Entry, context.temp_allocator); append(&shared[i], ..p.lists[i][:]) }
+		shared: [Entry_List][dynamic]Entry
+		for i in Entry_List { shared[i] = make([dynamic]Entry, context.temp_allocator); append(&shared[i], ..p.lists[i][:]) }
 		collect_entries(p, f.h, n, &f.bloom, {}, nil)
 		same := true
-		for i in 0 ..< 4 {
+		for i in Entry_List {
 			if len(shared[i]) != len(p.lists[i]) { same = false; break }
 			for x, k in shared[i] { if x.rule != p.lists[i][k].rule || x.complex != p.lists[i][k].complex { same = false } }
 		}

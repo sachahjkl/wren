@@ -39,6 +39,7 @@ Painted :: struct {
 	size:    f32,           // font size, physical pixels
 	font:    font.Font_Id,
 	line_h:  f32,           // the control's line-height, physical pixels (0: normal)
+	align:   f32,           // text-align of a single-line field: where a line narrower than the field sits in it (0 left, 1 right)
 	frame:   u64,
 	proj_ok:  bool,         // painted in a 3D plane: `proj` is exact where `xform` / `inv` know nothing of the projection
 	proj:     [9]f32,       // 3x3 (x, y, 1; then the divide by w): that space -> screen
@@ -428,9 +429,71 @@ layout_field :: proc(app: ^App, f: ^forms.Forms, h: base.Handle, pt: Painted) ->
 		// the line's own box (ft.line_h) is placed so that the text lands on the baseline the layout gave the field
 		m := font.metrics(&app.fonts, pt.font, pt.size)
 		base := control_text_baseline(m, pt.line_h, pt.content.min.y, pt.content.max.y - pt.content.min.y)
-		origin = {pt.content.min.x - sc.x, base - m.ascent - (ft.line_h - (m.ascent + m.descent)) * 0.5}
+		origin = {pt.content.min.x - sc.x + line_shift(app, ft, pt), base - m.ascent - (ft.line_h - (m.ascent + m.descent)) * 0.5}
 	}
 	return
+}
+
+// How far text-align moves a single-line field's text: the room its line leaves, by the field's alignment (none when
+// it overflows: the caret scrolls it).
+@(private = "file")
+line_shift :: proc(app: ^App, ft: Field_Text, pt: Painted) -> f32 {
+	room := pt.content.max.x - pt.content.min.x - font.text_width(&app.fonts, pt.font, pt.size, ft.display)
+	return max(room, 0) * pt.align
+}
+
+// A style's line-height in physical pixels for font size `size` (physical); 0: normal.
+@(private = "file")
+line_height_px :: proc(cs: ^style.Computed, size, scale: f32) -> f32 {
+	switch cs.line_height.kind {
+	case .Normal:
+	case .Number: return size * cs.line_height.v
+	case .Length: return cs.line_height.v * scale
+	}
+	return 0
+}
+
+// The field's placeholder as its ::placeholder style says (style/ua.odin: grey unless the page says otherwise): its
+// color and opacity, its font, its alignment; a single line centered in the field as the value's.
+@(private = "file")
+paint_placeholder :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, pt: Painted, cs: ^style.Computed, ph: string, multiline, ellipsis: bool) {
+	pcs := cs.placeholder != nil ? cs.placeholder : cs
+	color := to_draw(pcs.color)
+	color.a *= pcs.opacity
+	scale := page_scale(app)
+	size := max(pcs.font_size * scale, 1)
+	pfid := fid
+	if pcs.font_weight != cs.font_weight || pcs.font_style != cs.font_style || raw_data(pcs.font_family) != raw_data(cs.font_family) {
+		req := lay.Font_Request{families = pcs.font_family, weight = pcs.font_weight, italic = pcs.font_style != .Normal, style = pcs.font_style, stretch = pcs.font_stretch > 0 ? pcs.font_stretch : 100}
+		pfid = resolve_request(&app.page_render.fonts, &req, &app.page_settings.style)
+	}
+	m := font.metrics(fonts, pfid, size)
+	lh := line_height_px(pcs, size, scale)
+	line_h := lh > 0 ? lh : m.line_height
+	w := pt.content.max.x - pt.content.min.x
+	align := align_fraction(pcs)
+	text := multiline ? ph : forms.collapse_ws(ph)
+	// (a single line: on the baseline the field's own text would have, centered for its own font)
+	y := multiline ? pt.content.min.y + (line_h - (m.ascent + m.descent)) * 0.5 + m.ascent : control_text_baseline(m, lh, pt.content.min.y, pt.content.max.y - pt.content.min.y)
+	for line in strings.split_lines_iterator(&text) {
+		shown := ellipsis ? fit_text(fonts, pfid, size, line, w) : line
+		x := pt.content.min.x + max(w - font.text_width(fonts, pfid, size, shown), 0) * align
+		draw.text(dc, pfid, size, {x, y}, color, shown)
+		y += line_h
+	}
+}
+
+// text-align as where a line sits in the room it leaves (0 left, 1 right), the direction resolving start and end.
+@(private = "file")
+align_fraction :: proc(cs: ^style.Computed) -> f32 {
+	rtl := cs.direction == .Rtl
+	#partial switch cs.text_align {
+	case .Center, .Legacy_Center: return 0.5
+	case .Right, .Legacy_Right: return 1
+	case .Left, .Legacy_Left: return 0
+	case .End: return rtl ? 0 : 1
+	}
+	return rtl ? 1 : 0   // (start, justify)
 }
 
 ////////////////////////////////
@@ -610,13 +673,8 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 	pal := control_palette(cs)
 	xf := draw.current_transform(dc)
 	inv, _ := draw.affine_inverse(xf)
-	lh: f32
-	switch cs.line_height.kind {
-	case .Normal:
-	case .Number: lh = size * cs.line_height.v
-	case .Length: lh = cs.line_height.v * scale
-	}
-	pt := Painted{content = content, xform = xf, inv = inv, size = size, font = fid, line_h = lh, frame = fv.frame}
+	lh := line_height_px(cs, size, scale)
+	pt := Painted{content = content, xform = xf, inv = inv, size = size, font = fid, line_h = lh, align = align_fraction(cs), frame = fv.frame}
 	pt.proj, pt.proj_inv, pt.proj_ok = painted_projection(dc, xf)
 	if fv.page_id != f.id { clear(&fv.painted); clear(&fv.scroll); fv.page_id = f.id }
 	// (a picture of the page painted off the screen, a drag image: not where the pointer finds the control)
@@ -706,10 +764,10 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 					}
 				}
 			}
-			paint_text_field(app, dc, fonts, fid, f, node, n, pt, fg, focused, &pal, cs.text_ellipsis)
+			paint_text_field(app, dc, fonts, fid, f, node, n, pt, fg, focused, &pal, cs, border)
 		}
 	case .Textarea:
-		paint_text_field(app, dc, fonts, fid, f, node, n, pt, fg, focused, &pal, false)
+		paint_text_field(app, dc, fonts, fid, f, node, n, pt, fg, focused, &pal, cs, border)
 	case .Select:
 		if forms.is_dropdown(f, node) {
 			label := ""
@@ -738,14 +796,20 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 	}
 }
 
-// `ellipsis` (text-overflow: ellipsis): text wider than the field ends with an ellipsis, the placeholder always, the
-// value while the field is not focused (as Chromium).
+// text-overflow: ellipsis on a single-line field: text wider than the field ends with an ellipsis, the placeholder
+// always, the value while the field is not focused (as Chromium). The text shows in the padding above and below the
+// content box (a line taller than it), clipped at the padding box as Chromium clips its inner editor. `border`: the
+// border box.
 @(private = "file")
-paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, f: ^forms.Forms, node: base.Handle, n: ^dom.Node, pt: Painted, fg: draw.Color, focused: bool, pal: ^Control_Palette, ellipsis: bool) {
+paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, f: ^forms.Forms, node: base.Handle, n: ^dom.Node, pt: Painted, fg: draw.Color, focused: bool, pal: ^Control_Palette, cs: ^style.Computed, border: draw.Rect) {
 	fv := forms_view(app)
 	content := pt.content
 	size := pt.size
 	multiline := forms.kind_of(n) == .Textarea
+	ellipsis := cs.text_ellipsis && !multiline
+	scale := page_scale(app)
+	clip := draw.Rect{{content.min.x, border.min.y + cs.border_width[.Top] * scale}, {content.max.x, border.max.y - cs.border_width[.Bottom] * scale}}
+	clip.max.y = max(clip.max.y, clip.min.y)
 	ft, origin := layout_field(app, f, node, pt)
 	m := font.metrics(fonts, fid, size)
 	// keep the caret visible (scroll is adjusted here, with the geometry of this frame)
@@ -770,24 +834,13 @@ paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: 
 	sc.y = max(sc.y, 0)
 	if multiline || (ellipsis && !focused) { sc.x = 0 }   // (an ellipsis shows the start)
 	fv.scroll[node] = sc
-	origin = multiline ? {content.min.x, content.min.y - sc.y} : {content.min.x - sc.x, origin.y}
+	origin = multiline ? {content.min.x, content.min.y - sc.y} : {content.min.x - sc.x + line_shift(app, ft, pt), origin.y}
 
-	draw.push_clip(dc, content)
+	draw.push_clip(dc, clip)
 	defer draw.pop_clip(dc)
 	edit := forms.edit_text(f, node)
 	if edit == "" {
-		if ph, ok := forms.attr(n, "placeholder"); ok && ph != "" {
-			pc := fg
-			pc.a *= 0.45
-			text := multiline ? ph : forms.collapse_ws(ph)
-			y := origin.y
-			rest := text
-			for line in strings.split_lines_iterator(&rest) {
-				shown := ellipsis ? fit_text(fonts, fid, size, line, w) : line
-				draw.text(dc, fid, size, {origin.x, y + (ft.line_h - (m.ascent + m.descent)) * 0.5 + m.ascent}, pc, shown)
-				y += ft.line_h
-			}
-		}
+		if ph, ok := forms.attr(n, "placeholder"); ok && ph != "" { paint_placeholder(app, dc, fonts, fid, pt, cs, ph, multiline, ellipsis) }
 	}
 	// selection
 	if a != b {

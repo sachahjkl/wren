@@ -34,7 +34,7 @@ SIB_FAMILY_KINDS :: 8
 @(private)
 Sib_Hit :: struct {
 	ent:     ^Entry,
-	slot:    u8,     // which of Pass.lists (the element, ::before, ::after, ::selection)
+	slot:    Entry_List,   // which of Pass.lists
 	matched: bool,
 }
 
@@ -90,7 +90,7 @@ match_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, ancestors: ^Bloom,
 			if !same_match_inputs(k.node, n) { continue }
 			// (the levels below stay: this element's children are cousins of those met there)
 			cousin := k.parent != n.parent
-			for i in 0 ..< 4 { clear(&p.lists[i]) }
+			for &l in p.lists { clear(&l) }
 			p.own_depth = ctx.depth
 			for hit in m.hits[k.hits[0]:k.hits[1]] {
 				again := hit.ent.own || (cousin && hit.ent.above)

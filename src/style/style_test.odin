@@ -906,3 +906,23 @@ forced_visited_state :: proc(t: ^testing.T) {
 	restyle(f, State{})
 	testing.expect(t, near(at(f, "a").margin[.Top].v, 3), "the forced state is dropped by the next state")
 }
+
+// ::placeholder of a text field: the UA's grey, an author's rule (color, opacity, font, alignment) over it, inherited
+// from the field; no style for an element that has no placeholder.
+@(test)
+placeholder_styles :: proc(t: ^testing.T) {
+	f := fixture_load(`<style>
+		#a::placeholder { font-size: 11px; color: red; opacity: .5; text-align: right; font-weight: bold }
+		#b { color: blue; font-size: 20px } #d::placeholder { color: inherit } div::placeholder { color: red }
+	</style><input id=a placeholder=x><input id=b placeholder=y><textarea id=c placeholder=z></textarea><input id=d><div id=e></div>`)
+	defer fixture_unload(f)
+	a := at(f, "a").placeholder
+	testing.expect(t, a != nil && near(a.font_size, 11) && same_color(a.color, RED) && near(a.opacity, 0.5), "the author's size, color and opacity")
+	testing.expect(t, a != nil && a.text_align == .Right && a.font_weight == 700, "the author's alignment and weight")
+	GREY :: css.Color{0x75 / 255.0, 0x75 / 255.0, 0x75 / 255.0, 1}
+	b := at(f, "b").placeholder
+	testing.expect(t, b != nil && same_color(b.color, GREY) && near(b.font_size, 20), "the UA's grey, the field's font size")
+	testing.expect(t, at(f, "c").placeholder != nil && same_color(at(f, "c").placeholder.color, GREY), "a textarea's too")
+	testing.expect(t, at(f, "d").placeholder != nil && same_color(at(f, "d").placeholder.color, at(f, "d").color), "color: inherit: the field's")
+	testing.expect(t, at(f, "e").placeholder == nil, "no placeholder style for a div")
+}
