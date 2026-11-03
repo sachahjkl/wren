@@ -368,13 +368,15 @@ write_text :: proc(path, text: string) { _ = os.write_entire_file(path, transmut
 ////////////////////////////////
 // How a call is made
 
-// What each call begins with: the browser's context, the window it is about. The caller's temporary memory is `s.test`'s.
-@(private)
-enter :: proc(s: ^Session, loc: runtime.Source_Code_Location) -> ^browser.Browser_Window {
+// What each call begins with (after its context = s.ctx): the window it is about, given back at the end of the caller's scope. The
+// caller's temporary memory is `s.test`'s.
+@(private, deferred_out = leave)
+enter :: proc(s: ^Session, loc: runtime.Source_Code_Location) -> (^Session, ^browser.Browser_Window) {
 	if s.app == nil { failed(s, "the browser has stopped", loc) }
 	if s.trace { fmt.eprintf("e2e %8.1f ms  %s:%d %s\n", time.duration_milliseconds(time.tick_since(s.began)), filepath.base(loc.file_path), loc.line, loc.procedure) }
-	return browser.control_enter(s.app, s.window)
+	return s, browser.control_enter(s.app, s.window)
 }
+@(private) leave :: proc(s: ^Session, prev: ^browser.Browser_Window) { browser.control_leave(s.app, prev) }
 
 // The tab of a call.
 @(private)
@@ -414,8 +416,7 @@ in_window :: proc(s: ^Session, id: int) -> (^Session, int) {
 @(private)
 wait_kind :: proc(s: ^Session, kind: api.Wait, what: string, l: browser.Wait_Limits, loc: runtime.Source_Code_Location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	t := tab_of(s, loc)
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
@@ -430,8 +431,7 @@ wait_stable :: proc(s: ^Session, deadline: time.Duration = DEFAULT_DEADLINE, loc
 // `n` more frames have been made (they are, as soon as they are asked for).
 wait_frames :: proc(s: ^Session, n := 2, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
 	c := browser.control_call(&o)
@@ -440,8 +440,7 @@ wait_frames :: proc(s: ^Session, n := 2, loc := #caller_location) {
 
 wait_selector :: proc(s: ^Session, selector: string, visible := false, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	t := tab_of(s, loc)
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
@@ -453,8 +452,7 @@ wait_selector :: proc(s: ^Session, selector: string, visible := false, deadline:
 wait_js :: proc(s: ^Session, condition: string, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) {
 	_ = eval_result(s, condition, loc = loc)   // (the wait asks a page's script engine and starts none: a page with no script of its own has none yet)
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	t := tab_of(s, loc)
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
@@ -543,8 +541,7 @@ navigate :: proc(s: ^Session, url: string, deadline: time.Duration = DEFAULT_DEA
 reload :: proc(s: ^Session, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) {
 	{
 		context = s.ctx
-		prev := enter(s, loc)
-		defer browser.control_leave(s.app, prev)
+		enter(s, loc)
 		browser.control_reload(s.app, tab_of(s, loc))
 	}
 	wait_load(s, deadline, loc)
@@ -558,8 +555,7 @@ go_forward :: proc(s: ^Session, deadline: time.Duration = DEFAULT_DEADLINE, loc 
 go_history :: proc(s: ^Session, delta: int, deadline: time.Duration, loc: runtime.Source_Code_Location) {
 	{
 		context = s.ctx
-		prev := enter(s, loc)
-		defer browser.control_leave(s.app, prev)
+		enter(s, loc)
 		browser.control_history(s.app, tab_of(s, loc), delta)
 	}
 	wait_load(s, deadline, loc)
@@ -568,8 +564,7 @@ go_history :: proc(s: ^Session, delta: int, deadline: time.Duration, loc: runtim
 // Goes there; returns at once (what it leads to may be no page at all: a download).
 navigate_begin :: proc(s: ^Session, url: string, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	browser.control_navigate(s.app, tab_of(s, loc), url)
 }
 
@@ -577,8 +572,7 @@ navigate_begin :: proc(s: ^Session, url: string, loc := #caller_location) {
 location :: proc(s: ^Session, loc := #caller_location) -> string {
 	back := s.test.temp_allocator
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	return strings.clone(tab_of(s, loc).url, back)
 }
 
@@ -605,8 +599,7 @@ Script_Result :: struct { kind, value, thrown: string }
 eval_result :: proc(s: ^Session, expression: string, await := false, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) -> Script_Result {
 	back := s.test.temp_allocator
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	t := tab_of(s, loc)
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
@@ -645,8 +638,7 @@ eval_f64 :: proc(s: ^Session, expression: string, loc := #caller_location) -> f6
 // Keys: "Ctrl+L", "Enter", "Shift+Tab", several separated by spaces.
 key :: proc(s: ^Session, keys: string, repeat := 1, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
 	c := browser.control_call(&o)
@@ -656,8 +648,7 @@ key :: proc(s: ^Session, keys: string, repeat := 1, loc := #caller_location) {
 // Text, as the keyboard's text input.
 type_text :: proc(s: ^Session, text: string, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
 	c := browser.control_call(&o)
@@ -667,8 +658,7 @@ type_text :: proc(s: ^Session, text: string, loc := #caller_location) {
 // A click on an element (scrolled into view; the middle of its box).
 click :: proc(s: ^Session, selector: string, button := Button.Left, count := 1, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	t := tab_of(s, loc)
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
@@ -679,8 +669,7 @@ click :: proc(s: ^Session, selector: string, button := Button.Left, count := 1, 
 // A click at a point.
 click_at :: proc(s: ^Session, at: Point, space := Space.Page, button := Button.Left, count := 1, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	t := tab_of(s, loc)
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
@@ -691,15 +680,13 @@ click_at :: proc(s: ^Session, at: Point, space := Space.Page, button := Button.L
 // The next press is a click of its own, however soon it comes after the last.
 forget_clicks :: proc(s: ^Session, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	browser.control_forget_clicks(s.app)
 }
 
 hover :: proc(s: ^Session, at: Point, space := Space.Page, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
 	c := browser.control_call(&o)
@@ -709,8 +696,7 @@ hover :: proc(s: ^Session, at: Point, space := Space.Page, loc := #caller_locati
 // A button goes down at a point and stays down until `release`; `hover` moves it meanwhile.
 press :: proc(s: ^Session, at: Point, space := Space.Page, button := Button.Left, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
 	c := browser.control_call(&o)
@@ -719,8 +705,7 @@ press :: proc(s: ^Session, at: Point, space := Space.Page, button := Button.Left
 
 release :: proc(s: ^Session, at: Point, space := Space.Page, button := Button.Left, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
 	c := browser.control_call(&o)
@@ -730,8 +715,7 @@ release :: proc(s: ^Session, at: Point, space := Space.Page, button := Button.Le
 // The wheel at a point: `notches` positive goes down (one is WHEEL_NOTCH px); `ctrl`: with Ctrl held.
 scroll :: proc(s: ^Session, notches: f64, at := Point{api.SCROLL_X, api.SCROLL_Y}, space := Space.Page, ctrl := false, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
 	c := browser.control_call(&o)
@@ -744,8 +728,7 @@ WHEEL_NOTCH :: 100
 // A press, moves (one per frame), a release. Window points may be outside the window: the drag leaves it and comes back, through the window's own drop target.
 drag :: proc(s: ^Session, from, to: Point, d := Drag_Options{}, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	via := make([][2]f32, len(d.via), context.temp_allocator)
 	for v, i in d.via { via[i] = browser.control_point(s.app, v, d.space) }
 	o: browser.Control_Outcome
@@ -760,8 +743,7 @@ drag :: proc(s: ^Session, from, to: Point, d := Drag_Options{}, deadline: time.D
 // Another application's drag dropped on the window, through its drop target (with `leave`, it leaves instead).
 drop :: proc(s: ^Session, at: Point, data: Drop_Data, space := Space.Page, leave := false, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	dd := browser.control_drop_data(data)
 	defer delete(dd.files)
 	o: browser.Control_Outcome
@@ -777,8 +759,7 @@ drop :: proc(s: ^Session, at: Point, data: Drop_Data, space := Space.Page, leave
 capture :: proc(s: ^Session, shot := Shot_Options{}, loc := #caller_location) -> Image {
 	back := s.test.temp_allocator
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	t := tab_of(s, loc)
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
@@ -792,8 +773,7 @@ capture :: proc(s: ^Session, shot := Shot_Options{}, loc := #caller_location) ->
 // The next frame to a PNG of this test's folder (what is left there stays when the test fails).
 shot :: proc(s: ^Session, name: string, shot_options := Shot_Options{}, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	t := tab_of(s, loc)
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
@@ -808,16 +788,14 @@ shot :: proc(s: ^Session, name: string, shot_options := Shot_Options{}, loc := #
 
 pref_set :: proc(s: ^Session, name, value: string, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	if why := browser.control_pref_set(s.app, name, value); why != "" { failed(s, why, loc) }
 }
 
 pref_get :: proc(s: ^Session, name: string, loc := #caller_location) -> string {
 	back := s.test.temp_allocator
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	v, ok := browser.control_pref_get(s.app, name)
 	if !ok { failed(s, fmt.tprintf("no preference %q", name), loc) }
 	return strings.clone(v, back)
@@ -826,8 +804,7 @@ pref_get :: proc(s: ^Session, name: string, loc := #caller_location) -> string {
 // Back to what it was when the browser started.
 pref_reset :: proc(s: ^Session, name: string, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	if why := browser.control_pref_reset(s.app, name); why != "" { failed(s, why, loc) }
 }
 
@@ -838,8 +815,7 @@ pref_reset :: proc(s: ^Session, name: string, loc := #caller_location) {
 targets :: proc(s: ^Session, loc := #caller_location) -> Targets {
 	back := s.test.temp_allocator
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	return browser.control_tabs(s.app, back)
 }
 
@@ -852,30 +828,26 @@ tab_titled :: proc(s: ^Session, title: string, loc := #caller_location) -> Tab {
 // A new tab: its id. It becomes the window's current tab. Barrier: wait_load (with s.tab on it, or as the current one).
 new_tab :: proc(s: ^Session, url := "", background := false, loc := #caller_location) -> int {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	return int(browser.control_new_tab(s.app, url, background).id)
 }
 
 activate_tab :: proc(s: ^Session, id: int, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	if !browser.control_activate_tab(s.app, id) { failed(s, fmt.tprintf("no tab %d", id), loc) }
 }
 
 close_tab :: proc(s: ^Session, id: int, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	if !browser.control_close_tab(s.app, id) { failed(s, fmt.tprintf("no tab %d", id), loc) }
 }
 
 // The tab goes to a new window of its own: that window's id.
 move_tab_to_new_window :: proc(s: ^Session, id: int, loc := #caller_location) -> int {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	dest, why := browser.control_move_tab(s.app, id, -1, -1)
 	if dest == nil { failed(s, why, loc) }
 	return dest.id
@@ -884,8 +856,7 @@ move_tab_to_new_window :: proc(s: ^Session, id: int, loc := #caller_location) ->
 // The tab goes to window `to`, at `index` (-1: its end), with its page as it is.
 move_tab :: proc(s: ^Session, id, to: int, index := -1, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	dest, why := browser.control_move_tab(s.app, id, to, index)
 	if dest == nil { failed(s, why, loc) }
 }
@@ -894,39 +865,34 @@ move_tab :: proc(s: ^Session, id, to: int, index := -1, loc := #caller_location)
 urlbar :: proc(s: ^Session, loc := #caller_location) -> Urlbar {
 	back := s.test.temp_allocator
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	return browser.control_urlbar(s.app, back)
 }
 
 windows :: proc(s: ^Session, loc := #caller_location) -> []Window {
 	back := s.test.temp_allocator
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	return browser.control_windows(s.app, back)
 }
 
 window_bounds :: proc(s: ^Session, loc := #caller_location) -> Bounds {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	return browser.control_bounds(s.app)
 }
 
 // The size, place, state and scale of the window: what is left out stays.
 set_window :: proc(s: ^Session, c: Window_Change, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	if why := browser.control_set_window(s.app, c); why != "" { failed(s, why, loc) }
 }
 
 // The window becomes the one the user is in (never the system's focus).
 bring_to_front :: proc(s: ^Session, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	browser.control_bring_to_front(s.app)
 }
 
@@ -934,8 +900,7 @@ bring_to_front :: proc(s: ^Session, loc := #caller_location) {
 run_command :: proc(s: ^Session, name: string, loc := #caller_location) {
 	{
 		context = s.ctx
-		prev := enter(s, loc)
-		defer browser.control_leave(s.app, prev)
+		enter(s, loc)
 		if why := browser.control_command(s.app, browser.current_tab(s.app), name); why != "" { failed(s, why, loc) }
 	}
 	wait_frames(s, loc = loc)
@@ -945,8 +910,7 @@ run_command :: proc(s: ^Session, name: string, loc := #caller_location) {
 open_devtools :: proc(s: ^Session, panel := "console", dock := "", loc := #caller_location) {
 	{
 		context = s.ctx
-		prev := enter(s, loc)
-		defer browser.control_leave(s.app, prev)
+		enter(s, loc)
 		if why := browser.control_devtools(s.app, panel, dock); why != "" { failed(s, why, loc) }
 	}
 	wait_frames(s, loc = loc)
@@ -959,8 +923,7 @@ open_devtools :: proc(s: ^Session, panel := "console", dock := "", loc := #calle
 stats :: proc(s: ^Session, loc := #caller_location) -> Stats {
 	back := s.test.temp_allocator
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	return browser.control_stats(s.app, back)
 }
 
@@ -968,16 +931,14 @@ stats :: proc(s: ^Session, loc := #caller_location) -> Stats {
 stats_all :: proc(s: ^Session, loc := #caller_location) -> Stats {
 	back := s.test.temp_allocator
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	return browser.control_stats_all(s.app, back)
 }
 
 // What the frames' numbers count from now on.
 stats_reset :: proc(s: ^Session, frames := true, latency := true, loc := #caller_location) {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	browser.control_stats_reset(s.app, frames, latency)
 }
 
@@ -985,8 +946,7 @@ stats_reset :: proc(s: ^Session, frames := true, latency := true, loc := #caller
 query_all :: proc(s: ^Session, selector: string, limit := browser.QUERY_ALL_DEFAULT_LIMIT, loc := #caller_location) -> Query_Result {
 	back := s.test.temp_allocator
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	r, code, why := browser.control_query_all(s.app, tab_of(s, loc), selector, limit, back)
 	if code != 0 { failed(s, why, loc) }
 	return r
@@ -995,8 +955,7 @@ query_all :: proc(s: ^Session, selector: string, limit := browser.QUERY_ALL_DEFA
 // An element's box, in CSS pixels and in window pixels.
 box_model :: proc(s: ^Session, selector: string, loc := #caller_location) -> Box_Model {
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	r, code, why := browser.control_box_model(s.app, tab_of(s, loc), selector)
 	if code != 0 { failed(s, why, loc) }
 	return r
@@ -1006,8 +965,7 @@ box_model :: proc(s: ^Session, selector: string, loc := #caller_location) -> Box
 computed_style :: proc(s: ^Session, selector: string, properties: []string = nil, loc := #caller_location) -> []Style_Property {
 	back := s.test.temp_allocator
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	r, why := browser.control_computed_style(tab_of(s, loc), selector, properties, back)
 	if why != "" { failed(s, why, loc) }
 	return r
@@ -1017,8 +975,7 @@ computed_style :: proc(s: ^Session, selector: string, properties: []string = nil
 network :: proc(s: ^Session, clear := false, loc := #caller_location) -> Network {
 	back := s.test.temp_allocator
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	return browser.control_network(tab_of(s, loc), clear, back)
 }
 
@@ -1026,8 +983,7 @@ network :: proc(s: ^Session, clear := false, loc := #caller_location) -> Network
 prefs :: proc(s: ^Session, prefix := "", loc := #caller_location) -> []Pref {
 	back := s.test.temp_allocator
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	return browser.control_prefs(s.app, prefix, back)
 }
 
@@ -1035,24 +991,21 @@ prefs :: proc(s: ^Session, prefix := "", loc := #caller_location) -> []Pref {
 commands :: proc(s: ^Session, loc := #caller_location) -> []Command {
 	back := s.test.temp_allocator
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	return browser.control_commands(s.app, back)
 }
 
 downloads :: proc(s: ^Session, loc := #caller_location) -> []Download {
 	back := s.test.temp_allocator
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	return browser.control_downloads(s.app, back)
 }
 
 console :: proc(s: ^Session, since := 0, clear := false, loc := #caller_location) -> []Console_Line {
 	back := s.test.temp_allocator
 	context = s.ctx
-	prev := enter(s, loc)
-	defer browser.control_leave(s.app, prev)
+	enter(s, loc)
 	return browser.control_console(tab_of(s, loc), since, clear, back)
 }
 
