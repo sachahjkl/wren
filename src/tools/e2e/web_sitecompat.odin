@@ -200,10 +200,12 @@ frame :: proc(pr: ^Probe) {
 }
 
 SCROLLING :: `<!doctype html><body style="margin:0"><script>function log(s) { wrenTest.note(String(s)) }</script>
-<div id=vp style="height:100px;overflow:auto"><div style="height:5000px">x</div></div><div style="height:3000px"></div>
+<div id=vp style="height:100px;overflow:auto"><div style="height:5000px">x</div><div id=deep style="height:10px"></div></div><div style="height:3000px"></div>
 <script>
 const vp = document.getElementById("vp");
 vp.addEventListener("scroll", e => log("vp scroll " + vp.scrollTop + " " + e.bubbles + " " + e.cancelable));
+vp.addEventListener("scrollend", e => log("vp scrollend " + vp.scrollTop + " " + e.bubbles));
+document.addEventListener("scrollend", e => log("document scrollend " + e.bubbles + " " + Math.round(scrollY)));
 document.body.addEventListener("scroll", () => log("body saw it"));
 document.addEventListener("scroll", e => log("document scroll " + e.bubbles + " " + (e.target === document)));
 window.addEventListener("scroll", () => log("window scroll " + Math.round(scrollY)));
@@ -227,8 +229,17 @@ sitecompat_scroll_events :: proc(t: ^testing.T) {
 	frame(pr)
 	check(pr, count_noted(pr, "vp scroll 300 false false") == 1, "the next frame fires one scroll event at the element (not bubbling, not cancelable)")
 	check(pr, !noted(pr, "body saw it"), "an element's scroll event does not bubble")
+	check(pr, !noted(pr, "vp scrollend 300 false"), "no scrollend in the frame it moved")
 	frame(pr)
 	check(pr, count_noted(pr, "vp scroll 300 false false") == 1, "nothing more while it stays put")
+	check(pr, count_noted(pr, "vp scrollend 300 false") == 1, "scrollend at the first frame it did not move, not bubbling")
+	frame(pr)
+	check(pr, count_noted(pr, "vp scrollend 300 false") == 1, "one scrollend")
+
+	run(pr, `vp.scrollTop = 0; vp.scrollTop = 300`)
+	frame(pr)
+	frame(pr)
+	check(pr, count_noted(pr, "vp scroll 300 false false") == 2 && count_noted(pr, "vp scrollend 300 false") == 2, "moved and put back before the frame: scroll and scrollend all the same")
 
 	// the user scrolls the container (the shell moves the layout's offset: wheel, keys, scroll bar)
 	lay.set_scroll(&lh.l, dom.find_by_id(pr.p.doc, "vp"), {0, 1200})
@@ -239,10 +250,16 @@ sitecompat_scroll_events :: proc(t: ^testing.T) {
 	run(pr, `window.scrollTo(0, 500)`)
 	frame(pr)
 	check(pr, noted(pr, "document scroll true true") && noted(pr, "window scroll 500"), "the document's scroll event bubbles to the window")
+	frame(pr)
+	check(pr, noted(pr, "document scrollend true 500"), "the document's scrollend bubbles too")
 	lh.scroll = {0, 900}
 	frame(pr)
 	check(pr, noted(pr, "window scroll 900"), "the user scrolling the page fires it")
-	close_page(pr, min_checks = 9)
+
+	// scrollIntoView scrolls the containers it is in, then the document
+	run(pr, `document.getElementById("deep").scrollIntoView(); log("deep " + vp.scrollTop + " " + scrollY)`)
+	check(pr, noted(pr, "deep 4910 90"), "scrollIntoView: the container to its end, the document to the element")
+	close_page(pr, min_checks = 15)
 }
 
 WIDE :: `<!doctype html><body style="margin:0"><script>function log(s) { wrenTest.note(String(s)) }</script>

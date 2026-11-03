@@ -298,11 +298,7 @@ scroll_element_to :: proc(p: ^Page, h: base.Handle, x, y: f64, smooth := false) 
 	jl := &js_dom_state(p).layout
 	scroll_events_mark(p)
 	if is_scrolling_element(p, h) {
-		if jl.has && jl.embedder.scroll_to != nil {
-			nx := math.is_nan(x) ? vp.scroll_x : x
-			ny := math.is_nan(y) ? vp.scroll_y : y
-			jl.embedder.scroll_to(jl.embedder.user, p, nx, ny, smooth)
-		}
+		scroll_document_to(p, math.is_nan(x) ? vp.scroll_x : x, math.is_nan(y) ? vp.scroll_y : y, smooth)
 		return
 	}
 	if l == nil { return }
@@ -313,7 +309,10 @@ scroll_element_to :: proc(p: ^Page, h: base.Handle, x, y: f64, smooth := false) 
 	if !math.is_nan(x) { target.x = f32(x) * s }
 	if !math.is_nan(y) { target.y = f32(y) * s }
 	// (its scroll event comes with the next frame, as for any other scrolling: scroll_events.odin)
-	if _, set := lay.set_scroll(l, h, target); set && jl.embedder.repaint != nil { jl.embedder.repaint(jl.embedder.user, p) }
+	got, set := lay.set_scroll(l, h, target)
+	if !set || got == cur { return }
+	scroll_events_moved(p, h)
+	if jl.embedder.repaint != nil { jl.embedder.repaint(jl.embedder.user, p) }
 }
 
 Element_set_scrollTop :: proc(c: ^Call, element: Api_Element, value: f64) {
@@ -365,12 +364,11 @@ Element_scrollToXY :: proc(c: ^Call, element: Api_Element, x: f64, y: f64, relat
 	scroll_element_to(p, h, nx, ny)
 }
 
-// scrollIntoView: the document scrolls so that the element's border box is at the start / center / end / nearest
-// edge of the viewport, on each axis (scroll containers between them are not scrolled).
+// scrollIntoView (CSSOM View §7.1): each scroll container the element is in, innermost first, then the document,
+// scrolls so that the element's border box is at the start / center / end / nearest edge of what it shows, on each axis.
 Element_scrollIntoViewAt :: proc(c: ^Call, element: Api_Element, block: i32, inline_pos: i32) {
 	p := c.page
-	g, _, vp := element_geometry(p, H(element.handle))
-	if !g.ok || g.fixed { return }
+	h := H(element.handle)
 	pick :: proc(start, end, view, cur: f64, how: i32) -> f64 {
 		switch how {
 		case 1: return start + (end - start) / 2 - view / 2
@@ -382,10 +380,32 @@ Element_scrollIntoViewAt :: proc(c: ^Call, element: Api_Element, block: i32, inl
 		}
 		return start
 	}
+	if l, vp := js_layout_now(p); l != nil && l.valid {
+		s := f32(vp.scale)
+		view := [2]f32{f32(vp.width), f32(vp.height)} * s
+		e := &js_dom_state(p).layout.embedder
+		for sc := dom.flat_parent(p.doc, h); sc != base.NIL_HANDLE && !is_scrolling_element(p, sc); sc = dom.flat_parent(p.doc, sc) {
+			cur, ok := lay.scroll_of(l, sc)
+			if !ok { continue }
+			el, eok := lay.box_of(l, h, view, f32(vp.scroll_y) * s)
+			port, pok := lay.box_of(l, sc, view, f32(vp.scroll_y) * s)
+			if !eok || !pok { break }
+			// where the element is in the container's scrolled content, device px
+			x0, x1 := f64(el.border.min.x - port.padding.min.x + cur.x), f64(el.border.max.x - port.padding.min.x + cur.x)
+			y0, y1 := f64(el.border.min.y - port.padding.min.y + cur.y), f64(el.border.max.y - port.padding.min.y + cur.y)
+			pw, ph := f64(port.padding.max.x - port.padding.min.x), f64(port.padding.max.y - port.padding.min.y)
+			want := [2]f32{f32(pick(x0, x1, pw, f64(cur.x), inline_pos)), f32(pick(y0, y1, ph, f64(cur.y), block))}
+			if got, set := lay.set_scroll(l, sc, want); set && got != cur {
+				scroll_events_moved(p, sc)
+				if e.repaint != nil { e.repaint(e.user, p) }
+			}
+		}
+	}
+	g, _, vp := element_geometry(p, h)
+	if !g.ok || g.fixed { return }
 	y := pick(f64(g.border.min.y), f64(g.border.max.y), vp.height, vp.scroll_y, block)
 	x := pick(f64(g.border.min.x), f64(g.border.max.x), vp.width, vp.scroll_x, inline_pos)
-	jl := &js_dom_state(p).layout
-	if jl.has && jl.embedder.scroll_to != nil { scroll_events_mark(p); jl.embedder.scroll_to(jl.embedder.user, p, x, math.max(y, 0), false) }
+	scroll_document_to(p, x, math.max(y, 0))
 }
 
 // offsetParent: the nearest ancestor that is positioned, or a td / th / table when the element is not positioned,
@@ -538,8 +558,19 @@ Window_scrollToXY :: proc(c: ^Call, x: f64, y: f64, relative: bool, smooth: bool
 	_, vp := js_layout_now(p)   // (what the script changed counts: the range it scrolls in is that of the document as it is now)
 	nx := math.is_nan(x) ? vp.scroll_x : (relative ? vp.scroll_x + x : x)
 	ny := math.is_nan(y) ? vp.scroll_y : (relative ? vp.scroll_y + y : y)
+	scroll_document_to(p, nx, ny, smooth)
+}
+
+// Scrolls the document to (x, y), CSS px (the embedder clamps): a script's, or the wheel and keys of an embedder
+// without scrolling of its own (a headless host). Its scroll event comes with the next frame.
+scroll_document_to :: proc(p: ^Page, x, y: f64, smooth := false) {
+	s := js_dom_state(p)
+	if p.worker != nil || !s.layout.has || s.layout.embedder.scroll_to == nil { return }
 	scroll_events_mark(p)
-	s.layout.embedder.scroll_to(s.layout.embedder.user, p, nx, ny, smooth)
+	e := &s.layout.embedder
+	before := e.viewport(e.user, p)
+	e.scroll_to(e.user, p, x, y, smooth)
+	if after := e.viewport(e.user, p); after.scroll_x != before.scroll_x || after.scroll_y != before.scroll_y { scroll_events_moved(p, base.NIL_HANDLE) }
 }
 
 ////////////////////////////////

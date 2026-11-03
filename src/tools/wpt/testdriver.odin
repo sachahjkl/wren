@@ -28,6 +28,11 @@ DRIVER_DONE :: "__wrenTestdriverDone(null);"
 @(private = "file") WD_KEY_FIRST :: 0xE000
 @(private = "file") WD_KEY_LAST :: 0xE05D
 
+// Keyboard scrolling as the shell's defaults have it (browser.scroll.key_line_px, browser.scroll.key_page_fraction):
+// an arrow moves a line, a page key this much of what shows.
+@(private = "file") KEY_LINE_PX :: 40
+@(private = "file") KEY_PAGE_FRACTION :: 0.875
+
 // MouseEvent.buttons of a MouseEvent.button: primary 1, auxiliary 4, secondary 2.
 @(private = "file") BUTTON_BITS :: [3]u16{1, 4, 2}
 
@@ -38,6 +43,7 @@ Driver :: struct {
 	pointer:  [2]f64,
 	over:     base.Handle,
 	press:    base.Handle,
+	scroll_from: base.Handle,   // the last element pressed: what the keys scroll when nothing has the focus
 	buttons:  u16,
 	mods:     u32,
 }
@@ -211,7 +217,7 @@ pointer_button :: proc(p: ^page.Page, dr: ^Driver, button: i32, down: bool) {
 	f := page.page_forms(p)
 	if down {
 		if button != 0 { return }
-		dr.press = target
+		dr.press, dr.scroll_from = target, target
 		if !mouse_ok { return }
 		focus := base.NIL_HANDLE
 		for cur := target; cur != base.NIL_HANDLE; cur = forms.parent_element(f, cur) {
@@ -235,14 +241,74 @@ pointer_button :: proc(p: ^page.Page, dr: ^Driver, button: i32, down: bool) {
 	}
 }
 
+// A turn of the wheel: the wheel event where the mouse is, then, unless it was cancelled, the scrolling (page_wheel and
+// smooth_wheel of the shell, at once): the deepest scroll container under the mouse that can still move that way, else
+// the document.
 @(private = "file")
 wheel :: proc(p: ^page.Page, dr: ^Driver, x, y, dx, dy: f64) {
 	dr.pointer = {x, y}
-	if target := hit(p, x, y); target != base.NIL_HANDLE {
-		ev := mouse_event(dr, "wheel")
-		ev.delta = {dx, dy, 0}
-		page.dispatch_event(p, target, ev)
+	target := hit(p, x, y)
+	if target == base.NIL_HANDLE { return }
+	ev := mouse_event(dr, "wheel")
+	ev.delta = {dx, dy, 0}
+	if !page.dispatch_event(p, target, ev) || p.closed { return }
+	l, vp := page.js_layout_now(p)
+	if l == nil || !l.valid { return }
+	s := f32(vp.scale)
+	if lay.scroll_wheel(l, {f32(x), f32(y)} * s, {f32(dx), f32(dy)} * s, {f32(vp.width), f32(vp.height)} * s, f32(vp.scroll_y) * s) {
+		page.scroll_events_mark(p)
+		return
 	}
+	page.scroll_document_to(p, vp.scroll_x + dx, vp.scroll_y + dy)
+}
+
+// Keyboard scrolling (keyscroll.odin of the shell, at once): the nearest scroll container of `start` that can still move
+// that way, else the document.
+@(private = "file")
+key_scroll :: proc(p: ^page.Page, start: base.Handle, k: forms.Key, shift: bool) {
+	l, vp := page.js_layout_now(p)
+	if l == nil || !l.valid { return }
+	s := f32(vp.scale)
+	vertical := k != .Left && k != .Right
+	amount :: proc(k: forms.Key, shift: bool, port, cur, limit: f32) -> f32 {
+		line := f32(KEY_LINE_PX)
+		#partial switch k {
+		case .Up, .Left:    return -line
+		case .Down, .Right: return line
+		case .Page_Up:      return -max(port * KEY_PAGE_FRACTION, line)
+		case .Page_Down:    return max(port * KEY_PAGE_FRACTION, line)
+		case .Space:        return (shift ? -1 : 1) * max(port * KEY_PAGE_FRACTION, line)
+		case .Home:         return -cur
+		case .End:          return limit - cur
+		}
+		return 0
+	}
+	view := [2]f32{f32(vp.width), f32(vp.height)} * s
+	for n := start; n != base.NIL_HANDLE; n = dom.parent_or_host(p.doc, n) {
+		if dom.get(p.doc, n) == nil { break }
+		limit, ok := lay.scroll_max(l, n)
+		if !ok { continue }
+		cur, _ := lay.scroll_of(l, n)
+		low := lay.scroll_min(l, n)
+		port: f32
+		if r, rok := lay.box_of(l, n, view, f32(vp.scroll_y) * s); rok { port = vertical ? r.padding.max.y - r.padding.min.y : r.padding.max.x - r.padding.min.x }
+		next := cur
+		if vertical { next.y = clamp(cur.y + amount(k, shift, port / s, cur.y / s, limit.y / s) * s, low.y, limit.y) } else { next.x = clamp(cur.x + amount(k, shift, port / s, cur.x / s, limit.x / s) * s, low.x, limit.x) }
+		if abs(next.x - cur.x) >= 0.5 || abs(next.y - cur.y) >= 0.5 {
+			lay.set_scroll(l, n, next)
+			page.scroll_events_mark(p)
+			return
+		}
+	}
+	x, y := vp.scroll_x, vp.scroll_y
+	if vertical {
+		_, hi := lay.doc_scroll_y_range(l, view.y)
+		y += f64(amount(k, shift, f32(vp.height), f32(y), hi / s))
+	} else {
+		_, hi := lay.doc_scroll_x_range(l, view.x)
+		x += f64(amount(k, shift, f32(vp.width), f32(x), hi / s))
+	}
+	page.scroll_document_to(p, x, y)
 }
 
 // A key of WebDriver: KeyboardEvent.keyCode and .key, the forms' key, the modifier it is, the text it types.
@@ -302,6 +368,16 @@ key :: proc(p: ^page.Page, dr: ^Driver, value: string, down: bool) {
 		return
 	}
 	if k.forms_key != .None && forms.key_down(f, k.forms_key, mods) { return }
+	// keyboard scrolling, never while typing in a text field (route_key of the shell)
+	text_field := f.focus != base.NIL_HANDLE && forms.is_text_field(f, f.focus)
+	#partial switch k.forms_key {
+	case .Up, .Down, .Left, .Right, .Page_Up, .Page_Down, .Space, .Home, .End:
+		ctrl_ok := k.forms_key == .Home || k.forms_key == .End
+		if !text_field && .Alt not_in mods && (ctrl_ok || .Ctrl not_in mods) {
+			key_scroll(p, f.focus != base.NIL_HANDLE ? f.focus : dr.scroll_from, k.forms_key, .Shift in mods)
+			return
+		}
+	}
 	if k.text != "" && .Ctrl not_in mods { forms.type_text(f, k.text) }
 }
 
