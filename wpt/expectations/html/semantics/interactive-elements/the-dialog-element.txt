@@ -42,7 +42,7 @@
 	Only keyboard-focusable elements should get dialog initial focus including in nested buttons.: PASS
 	Only keyboard-focusable elements should get dialog initial focus including in subtrees.: PASS
 	Only keyboard-focusable elements should get dialog initial focus.: PASS
-	dialog element with autofocus should get initial focus.: FAIL
+	dialog element with autofocus should get initial focus.: PASS
 /html/semantics/interactive-elements/the-dialog-element/closed-dialog-does-not-block-mouse-events.html: OK
 	Ensure that closed dialogs do not block mouse events. To test manually, click the red box. The test succeeds if the red box turns green.: PASS
 /html/semantics/interactive-elements/the-dialog-element/default-color.html: OK
@@ -52,10 +52,10 @@
 	showModal should throw when the document isn't active: PASS
 /html/semantics/interactive-elements/the-dialog-element/dialog-autofocus-just-once.html: OK
 	An autofocus element in a dialog element should not try to get focus twice.: FAIL
-/html/semantics/interactive-elements/the-dialog-element/dialog-autofocus-multiple-times.html: TIMEOUT
-	autofocus is run every time a dialog is opened: TIMEOUT
-/html/semantics/interactive-elements/the-dialog-element/dialog-autofocus.html: TIMEOUT
-	autofocus when a modal dialog is opened: TIMEOUT
+/html/semantics/interactive-elements/the-dialog-element/dialog-autofocus-multiple-times.html: OK
+	autofocus is run every time a dialog is opened: PASS
+/html/semantics/interactive-elements/the-dialog-element/dialog-autofocus.html: OK
+	autofocus when a modal dialog is opened: PASS
 /html/semantics/interactive-elements/the-dialog-element/dialog-cancel-events.html: OK
 	Test cancel event is fired when the dialog is closed by user close requests: FAIL
 /html/semantics/interactive-elements/the-dialog-element/dialog-cancel-preventDefault.html: OK
@@ -168,70 +168,70 @@
 	Focus restore should not occur when the focused element is in a shadowroot outside of the dialog.: FAIL
 	Focus restore should occur when the focused element is in a shadowroot inside the dialog.: PASS
 	Focus restore should occur when the focused element is slotted into a dialog.: PASS
-	Focus restore should work when the dialog itself is focused.: FAIL
-	Focus should not be restored if the currently focused element is not inside the dialog.: FAIL
+	Focus restore should work when the dialog itself is focused.: PASS
+	Focus should not be restored if the currently focused element is not inside the dialog.: PASS
 /html/semantics/interactive-elements/the-dialog-element/dialog-focus-shadow-double-nested.html: OK
-	show(): FAIL
-	showModal(): FAIL
+	show(): PASS
+	showModal(): PASS
 /html/semantics/interactive-elements/the-dialog-element/dialog-focus-shadow.html: OK
 	show: Autofocus after, no delegatesFocus: PASS
 	show: Autofocus after, yes delegatesFocus: PASS
 	show: Autofocus before, no delegatesFocus: PASS
 	show: Autofocus before, yes delegatesFocus: PASS
-	show: Autofocus inside shadow tree, no delegatesFocus, no siblings: FAIL
+	show: Autofocus inside shadow tree, no delegatesFocus, no siblings: PASS
 	show: Autofocus inside shadow tree, no delegatesFocus, sibling after: PASS
 	show: Autofocus inside shadow tree, no delegatesFocus, sibling before: PASS
-	show: Autofocus inside shadow tree, yes delegatesFocus, no siblings: FAIL
-	show: Autofocus inside shadow tree, yes delegatesFocus, sibling after: FAIL
+	show: Autofocus inside shadow tree, yes delegatesFocus, no siblings: PASS
+	show: Autofocus inside shadow tree, yes delegatesFocus, sibling after: PASS
 	show: Autofocus inside shadow tree, yes delegatesFocus, sibling before: PASS
-	show: Autofocus on shadow host, no delegatesFocus, no siblings: FAIL
+	show: Autofocus on shadow host, no delegatesFocus, no siblings: PASS
 	show: Autofocus on shadow host, no delegatesFocus, sibling after: PASS
 	show: Autofocus on shadow host, no delegatesFocus, sibling before: PASS
 	show: Autofocus on shadow host, yes delegatesFocus, no siblings: PASS
 	show: Autofocus on shadow host, yes delegatesFocus, sibling after: PASS
 	show: Autofocus on shadow host, yes delegatesFocus, sibling before: PASS
-	show: No autofocus, no delegatesFocus, no siblings: FAIL
+	show: No autofocus, no delegatesFocus, no siblings: PASS
 	show: No autofocus, no delegatesFocus, sibling after: PASS
 	show: No autofocus, no delegatesFocus, sibling before: PASS
 	show: No autofocus, no delegatesFocus, slotted target: PASS
-	show: No autofocus, yes delegatesFocus, no siblings: FAIL
-	show: No autofocus, yes delegatesFocus, sibling after: FAIL
+	show: No autofocus, yes delegatesFocus, no siblings: PASS
+	show: No autofocus, yes delegatesFocus, sibling after: PASS
 	show: No autofocus, yes delegatesFocus, sibling before: PASS
 	show: Shadowroot on child, no autofocus, no delegatesFocus: PASS
-	show: Two shadow trees, both delegatesFocus, first tree doesn't have autofocus element, second does: FAIL
+	show: Two shadow trees, both delegatesFocus, first tree doesn't have autofocus element, second does: PASS
 	showModal: Autofocus after, no delegatesFocus: PASS
 	showModal: Autofocus after, yes delegatesFocus: PASS
 	showModal: Autofocus before, no delegatesFocus: PASS
 	showModal: Autofocus before, yes delegatesFocus: PASS
-	showModal: Autofocus inside shadow tree, no delegatesFocus, no siblings: FAIL
+	showModal: Autofocus inside shadow tree, no delegatesFocus, no siblings: PASS
 	showModal: Autofocus inside shadow tree, no delegatesFocus, sibling after: PASS
 	showModal: Autofocus inside shadow tree, no delegatesFocus, sibling before: PASS
-	showModal: Autofocus inside shadow tree, yes delegatesFocus, no siblings: FAIL
-	showModal: Autofocus inside shadow tree, yes delegatesFocus, sibling after: FAIL
+	showModal: Autofocus inside shadow tree, yes delegatesFocus, no siblings: PASS
+	showModal: Autofocus inside shadow tree, yes delegatesFocus, sibling after: PASS
 	showModal: Autofocus inside shadow tree, yes delegatesFocus, sibling before: PASS
-	showModal: Autofocus on shadow host, no delegatesFocus, no siblings: FAIL
+	showModal: Autofocus on shadow host, no delegatesFocus, no siblings: PASS
 	showModal: Autofocus on shadow host, no delegatesFocus, sibling after: PASS
 	showModal: Autofocus on shadow host, no delegatesFocus, sibling before: PASS
 	showModal: Autofocus on shadow host, yes delegatesFocus, no siblings: PASS
 	showModal: Autofocus on shadow host, yes delegatesFocus, sibling after: PASS
 	showModal: Autofocus on shadow host, yes delegatesFocus, sibling before: PASS
-	showModal: No autofocus, no delegatesFocus, no siblings: FAIL
+	showModal: No autofocus, no delegatesFocus, no siblings: PASS
 	showModal: No autofocus, no delegatesFocus, sibling after: PASS
 	showModal: No autofocus, no delegatesFocus, sibling before: PASS
 	showModal: No autofocus, no delegatesFocus, slotted target: PASS
-	showModal: No autofocus, yes delegatesFocus, no siblings: FAIL
-	showModal: No autofocus, yes delegatesFocus, sibling after: FAIL
+	showModal: No autofocus, yes delegatesFocus, no siblings: PASS
+	showModal: No autofocus, yes delegatesFocus, sibling after: PASS
 	showModal: No autofocus, yes delegatesFocus, sibling before: PASS
 	showModal: Shadowroot on child, no autofocus, no delegatesFocus: PASS
-	showModal: Two shadow trees, both delegatesFocus, first tree doesn't have autofocus element, second does: FAIL
+	showModal: Two shadow trees, both delegatesFocus, first tree doesn't have autofocus element, second does: PASS
 /html/semantics/interactive-elements/the-dialog-element/dialog-focusability.html: OK
 	The dialog element itself should not be keyboard focusable.: PASS
 /html/semantics/interactive-elements/the-dialog-element/dialog-focusing-steps-disconnected.html: OK
-	dialog.show(): focusing steps should not change focus on disconnected <dialog>: FAIL
+	dialog.show(): focusing steps should not change focus on disconnected <dialog>: PASS
 	dialog.showModal() should throw on disconnected <dialog>: PASS
 /html/semantics/interactive-elements/the-dialog-element/dialog-focusing-steps-inert.html: OK
-	dialog.show(): focusing steps should not change focus when dialog is inert: FAIL
-	dialog.showModal(): focusing steps should apply focus fixup rule when dialog is inert: FAIL
+	dialog.show(): focusing steps should not change focus when dialog is inert: PASS
+	dialog.showModal(): focusing steps should apply focus fixup rule when dialog is inert: PASS
 /html/semantics/interactive-elements/the-dialog-element/dialog-focusing-steps-prevent-autofocus.html: OK
 	After showing a dialog, non-dialog autofocus processing won't work.: FAIL
 /html/semantics/interactive-elements/the-dialog-element/dialog-form-submission-unusual.html: OK
@@ -411,7 +411,7 @@
 	dialog element: showModal(): PASS
 	opening dialog with multiple focusable children: PASS
 	opening dialog with multiple focusable children, one having the autofocus attribute: PASS
-	opening dialog without focusable children: FAIL
+	opening dialog without focusable children: PASS
 	showModal() on a <dialog> after initial showModal() and removing the open attribute: PASS
 	showModal() on a <dialog> not in a Document throws an InvalidStateError exception: PASS
 	showModal() on a <dialog> that already has an open attribute throws an InvalidStateError exception: PASS
@@ -444,20 +444,20 @@
 /html/semantics/interactive-elements/the-dialog-element/inert-node-is-uneditable.html: OK
 	Test that inert nodes cannot be edited. The test passes if the only text you can edit is in the dialog.: FAIL
 /html/semantics/interactive-elements/the-dialog-element/inert-node-is-unfocusable.html: OK
-	#anchor is not  focusable: FAIL
-	#body is not  focusable: FAIL
-	#bottom-dialog is not  focusable: FAIL
-	#bottom-dialog-button is not  focusable: FAIL
-	#color is not  focusable: FAIL
+	#anchor is not  focusable: PASS
+	#body is not  focusable: PASS
+	#bottom-dialog is not  focusable: PASS
+	#bottom-dialog-button is not  focusable: PASS
+	#color is not  focusable: PASS
 	#container is not  focusable: PASS
-	#contenteditable-div is not  focusable: FAIL
-	#datetime is not  focusable: FAIL
-	#html is not  focusable: FAIL
+	#contenteditable-div is not  focusable: PASS
+	#datetime is not  focusable: PASS
+	#html is not  focusable: PASS
 	#optgroup is not  focusable: PASS
 	#option is not  focusable: PASS
-	#select is not  focusable: FAIL
-	#tabindex-span is not  focusable: FAIL
-	#text is not  focusable: FAIL
+	#select is not  focusable: PASS
+	#tabindex-span is not  focusable: PASS
+	#text is not  focusable: PASS
 	#top-dialog is  focusable: PASS
 	#top-dialog-button is  focusable: PASS
 /html/semantics/interactive-elements/the-dialog-element/inert-node-is-unselectable.html: OK
@@ -499,9 +499,9 @@
 /html/semantics/interactive-elements/the-dialog-element/popover-dialog-does-not-block-mouse-events.html: OK
 	Ensure that popover dialogs do not block mouse events. To test manually, click the red box. The test succeeds if the red box turns green.: PASS
 /html/semantics/interactive-elements/the-dialog-element/remove-dialog-should-unblock-document.html: OK
-	Test that removing dialog unblocks the document.: FAIL
-/html/semantics/interactive-elements/the-dialog-element/show-modal-focusing-steps.html: TIMEOUT
-	focus when a modal dialog is opened: TIMEOUT
+	Test that removing dialog unblocks the document.: PASS
+/html/semantics/interactive-elements/the-dialog-element/show-modal-focusing-steps.html: OK
+	focus when a modal dialog is opened: PASS
 /html/semantics/interactive-elements/the-dialog-element/simulated-click-inert.html: OK
 	Ensure that simulated click is still dispatched to an inert node.: PASS
 /html/semantics/interactive-elements/the-dialog-element/submit-dialog-close-event.html: OK

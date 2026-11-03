@@ -50,6 +50,7 @@ import "core:time"
 import "wb:config"
 import "wb:desktop"
 import "wb:fetch"
+import "wb:forms"
 import "wb:host"
 import "wb:js"
 import "wb:page"
@@ -901,6 +902,7 @@ Child_State :: struct {
 	first_error: string,   // owned: the first error the console showed (the reason when there is no result)
 	layout:      ^Layout_Host,   // tests that read geometry (layout_host.odin) or use test_driver, nil: no layout
 	driver:      Driver,         // test_driver's input (testdriver.odin)
+	autofocused: bool,           // the document's autofocus ran
 }
 
 child_on_console :: proc(d: ^headless.Doc, level: page.Log_Level, text: string) {
@@ -1080,6 +1082,11 @@ child_main :: proc(out_path: string) -> int {
 			slice_start := time.tick_now()
 			headless.pump(d, PUMP_SLICE_MS, got_result_or_request)
 			if cs.got || d.failed != "" { break }
+			// autofocus once the document's scripts had their turn, as the shell does (forms_shell_frame)
+			if !cs.autofocused && d.page != nil && !d.page.closed && d.page.scripts != nil && d.page.scripts.ready_state != .Loading && d.page.formctl != nil {
+				cs.autofocused = true
+				forms.run_autofocus(page.page_forms(d.page))
+			}
 			ms := time.duration_milliseconds(time.tick_since(t0))
 			if ms >= limit { break }
 			if len(cs.driver.requests) > 0 { driver_run(d, &cs.driver); idle = false; continue }

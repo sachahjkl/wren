@@ -11,6 +11,7 @@ import "core:strings"
 import "wb:base"
 import "wb:dom"
 import "wb:forms"
+import "wb:style"
 
 @(private)
 dialog_is_modal :: proc(p: ^Page, h: base.Handle) -> bool {
@@ -80,7 +81,7 @@ dialog_open :: proc(p: ^Page, h: base.Handle, modal: bool) {
 		forms_repaint(p)
 	}
 	if p.formctl.model.focus != base.NIL_HANDLE { s.focus_back[h] = p.formctl.model.focus }
-	dialog_focus(p, h)
+	dialog_focus(p, h, modal)
 }
 
 // "Close the dialog", before its open attribute goes: a "beforetoggle" (not cancelable), and, unless a listener closed
@@ -105,31 +106,78 @@ dialog_cancel :: proc(p: ^Page, h: base.Handle) -> bool {
 	return go_on
 }
 
-// The dialog focusing steps: what has autofocus, else the first thing that can have the focus, else the dialog.
+// The dialog focusing steps (HTML §4.11.4): the dialog itself when it has autofocus, else its focus delegate, else the
+// dialog itself, a focusable area or not. Nothing for a dialog out of the document or inert; then a modal one leaves
+// the focus nowhere when what had it became inert (the focus fixup rule).
 @(private = "file")
-dialog_focus :: proc(p: ^Page, dialog: base.Handle) {
-	f := p.formctl
-	first_auto, first_any := base.NIL_HANDLE, base.NIL_HANDLE
-	if _, auto := node_attr(dom.get(p.doc, dialog), "autofocus"); auto { first_auto = dialog }
-	stack := make([dynamic]base.Handle, 0, 16, context.temp_allocator)
-	append(&stack, dialog)
-	for len(stack) > 0 {
-		h := pop(&stack)
-		n := dom.get(p.doc, h)
-		if n == nil || n.kind != .Element { continue }
-		if h != dialog {
-			if _, auto := node_attr(n, "autofocus"); auto && first_auto == base.NIL_HANDLE { first_auto = h }
-			// (what Tab reaches: not a negative tabindex)
-			if first_any == base.NIL_HANDLE {
-				t, has := node_attr(n, "tabindex")
-				if has ? !strings.has_prefix(strings.trim_space(t), "-") : focusable_by_default(p.doc, h, n) { first_any = h }
-			}
-		}
-		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(p.doc, ch).prev { append(&stack, ch) }
+dialog_focus :: proc(p: ^Page, dialog: base.Handle, modal: bool) {
+	f := p.formctl.model
+	if !dom.is_connected(p.doc, dialog) { return }
+	if node_inert(p, dialog) {
+		if modal && f.focus != base.NIL_HANDLE && node_inert(p, f.focus) { forms.blur(f) }
+		return
 	}
-	if first_auto != base.NIL_HANDLE && forms.focus(f.model, first_auto) { return }
-	if first_any != base.NIL_HANDLE && forms.focus(f.model, first_any) { return }
-	if !forms.focus(f.model, dialog) { forms.blur(f.model) }
+	control := base.NIL_HANDLE
+	if _, auto := node_attr(dom.get(p.doc, dialog), "autofocus"); auto { control = dialog }
+	if control == base.NIL_HANDLE { control = dialog_focus_delegate(p, dialog) }
+	if control == base.NIL_HANDLE { control = dialog }
+	forms.focus(f, control, forced = control == dialog)
+}
+
+// A dialog's focus delegate (HTML "focus delegate"): its first descendant with autofocus that can have the focus, else its
+// first descendant Tab can reach (a shadow host that delegates focus for its own delegate); in the dialog's own tree,
+// tree order, what is not rendered left out. NIL: none.
+@(private = "file")
+dialog_focus_delegate :: proc(p: ^Page, dialog: base.Handle) -> base.Handle {
+	f := p.formctl.model
+	st := js_dom_styled(p)
+	area :: proc(p: ^Page, f: ^forms.Forms, st: ^style.Styled, h: base.Handle, sequential: bool) -> base.Handle {
+		if !being_rendered(p, st, h) { return base.NIL_HANDLE }
+		if forms.delegates_focus(f, h) { return forms.focus_delegate(f, h) }
+		if !forms.is_focusable_element(f, h) || node_inert(p, h) { return base.NIL_HANDLE }
+		if sequential {
+			if ti, has := forms.tabindex(dom.get(p.doc, h)); has && ti < 0 { return base.NIL_HANDLE }
+		}
+		return h
+	}
+	for pass in 0 ..< 2 {   // the autofocus delegate, then any
+		for cur := dom.next_in_tree(p.doc, dialog, dialog); cur != base.NIL_HANDLE; cur = dom.next_in_tree(p.doc, cur, dialog) {
+			n := dom.get(p.doc, cur)
+			if n.kind != .Element { continue }
+			if pass == 0 {
+				if _, auto := node_attr(n, "autofocus"); !auto { continue }
+			}
+			if got := area(p, f, st, cur, pass == 1); got != base.NIL_HANDLE { return got }
+		}
+	}
+	return base.NIL_HANDLE
+}
+
+// HTML "being rendered", as styles say: no flat-tree ancestor (or the element) is display: none, nor the element
+// visibility hidden.
+@(private = "file")
+being_rendered :: proc(p: ^Page, st: ^style.Styled, h: base.Handle) -> bool {
+	if st == nil { return true }
+	for cur := h; cur != base.NIL_HANDLE; cur = dom.flat_parent(p.doc, cur) {
+		n := dom.get(p.doc, cur)
+		if n == nil || n.kind != .Element { break }
+		cs := style.style_of(st, cur)
+		if cs == nil || cs.display == .None { return false }
+		if cur == h && cs.visibility != .Visible { return false }
+	}
+	return true
+}
+
+// Inert (HTML §6.3): outside the modal dialog on top, or in a subtree with the inert attribute (flat tree).
+@(private)
+node_inert :: proc(p: ^Page, h: base.Handle) -> bool {
+	if dialog_makes_inert(p, h) { return true }
+	for cur := h; cur != base.NIL_HANDLE; cur = dom.flat_parent(p.doc, cur) {
+		n := dom.get(p.doc, cur)
+		if n == nil { break }
+		if _, inert := node_attr(n, "inert"); inert && n.kind == .Element { return true }
+	}
+	return false
 }
 
 // HTML's dialog removing steps: a dialog out of the document leaves the open dialogs, a modal one the top layer too, and is
@@ -156,15 +204,24 @@ dialog_closed :: proc(p: ^Page, h: base.Handle) {
 	for d, i in s.open_dialogs {
 		if d == h { ordered_remove(&s.open_dialogs, i); break }
 	}
+	modal := false
 	for m, i in s.modals {
 		if m != h { continue }
 		ordered_remove(&s.modals, i)
 		popover_restyle(p)
+		modal = true
 		break
 	}
+	// the focus goes back where it was before (HTML's close the dialog): from a modal dialog always, from another only
+	// when it is still in the dialog (flat tree: what moved it out meanwhile decided)
 	back := s.focus_back[h] or_else base.NIL_HANDLE
 	delete_key(&s.focus_back, h)
-	if back != base.NIL_HANDLE && dom.is_connected(p.doc, back) { forms.focus(p.formctl.model, back) }
+	f := p.formctl.model
+	in_dialog := false
+	for cur := f.focus; cur != base.NIL_HANDLE && !in_dialog; cur = dom.flat_parent(p.doc, cur) { in_dialog = cur == h }
+	if !modal && !in_dialog { return }
+	if back != base.NIL_HANDLE && dom.is_connected(p.doc, back) && forms.focus(f, back) { return }
+	if in_dialog { forms.blur(f) }   // what has it is not rendered any more: the focus fixup rule
 }
 
 @(private = "file")
