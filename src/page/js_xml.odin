@@ -14,19 +14,6 @@ import "wb:dom"
 @(private = "file")
 VOID_ELEMENTS :: [?]string{"area", "base", "basefont", "bgsound", "br", "col", "embed", "frame", "hr", "img", "input", "keygen", "link", "meta", "param", "source", "track", "wbr"}
 
-@(private = "file")
-xml_escape :: proc(b: ^strings.Builder, s: string, attribute: bool) {
-	for i in 0 ..< len(s) {
-		switch s[i] {
-		case '&': strings.write_string(b, "&amp;")
-		case '<': strings.write_string(b, "&lt;")
-		case '>': strings.write_string(b, "&gt;")
-		case '"': if attribute { strings.write_string(b, "&quot;") } else { strings.write_byte(b, '"') }
-		case: strings.write_byte(b, s[i])
-		}
-	}
-}
-
 // Known prefixes of attributes the HTML parser keeps with their prefix (SVG's xlink:href, xml:lang...).
 @(private = "file")
 prefix_uri :: proc(prefix: string) -> string {
@@ -80,7 +67,7 @@ xml_serialize :: proc(p: ^Page, root: base.Handle, limit: int) -> (out: string, 
 				strings.write_string(&b, n.text)
 				strings.write_string(&b, "]]>")
 			} else {
-				xml_escape(&b, n.text, false)
+				base.write_escaped(&b, n.text)
 			}
 			continue
 		case .Comment:
@@ -138,14 +125,14 @@ xml_serialize :: proc(p: ^Page, root: base.Handle, limit: int) -> (out: string, 
 				strings.write_string(&b, " xmlns:")
 				strings.write_string(&b, prefix)
 				strings.write_string(&b, "=\"")
-				xml_escape(&b, uri, true)
+				base.write_escaped(&b, uri, {.Quote})
 				strings.write_byte(&b, '"')
 				append(&prefixes, [2]string{prefix, uri})
 			}
 		} else if uri != it.ns {
 			if !has_xmlns {
 				strings.write_string(&b, " xmlns=\"")
-				xml_escape(&b, uri, true)
+				base.write_escaped(&b, uri, {.Quote})
 				strings.write_byte(&b, '"')
 			}
 			child_ns = uri
@@ -175,7 +162,7 @@ xml_serialize :: proc(p: ^Page, root: base.Handle, limit: int) -> (out: string, 
 			strings.write_byte(&b, ' ')
 			strings.write_string(&b, jd_attr_name(n, a.name))
 			strings.write_string(&b, "=\"")
-			xml_escape(&b, a.value, true)
+			base.write_escaped(&b, a.value, {.Quote})
 			strings.write_byte(&b, '"')
 		}
 		// children: a template's are its contents

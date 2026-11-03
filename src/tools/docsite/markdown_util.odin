@@ -274,52 +274,6 @@ is_escapable :: proc(c: byte) -> bool {
 	return false
 }
 
-write_escaped_byte :: proc(b: ^strings.Builder, c: byte) {
-	switch c {
-	case '<': strings.write_string(b, "&lt;")
-	case '>': strings.write_string(b, "&gt;")
-	case '&': strings.write_string(b, "&amp;")
-	case:     strings.write_byte(b, c)
-	}
-}
-
-// Escape text for an HTML text node.
-write_html_escaped :: proc(b: ^strings.Builder, s: string) {
-	for i in 0 ..< len(s) {
-		switch s[i] {
-		case '<': strings.write_string(b, "&lt;")
-		case '>': strings.write_string(b, "&gt;")
-		case '&': strings.write_string(b, "&amp;")
-		case:     strings.write_byte(b, s[i])
-		}
-	}
-}
-
-html_escape :: proc(s: string, allocator := context.allocator) -> string {
-	b := strings.builder_make(allocator)
-	write_html_escaped(&b, s)
-	return strings.to_string(b)
-}
-
-// Escape text for a double-quoted attribute value.
-write_attr_escaped :: proc(b: ^strings.Builder, s: string) {
-	for i in 0 ..< len(s) {
-		switch s[i] {
-		case '<':  strings.write_string(b, "&lt;")
-		case '>':  strings.write_string(b, "&gt;")
-		case '&':  strings.write_string(b, "&amp;")
-		case '"':  strings.write_string(b, "&quot;")
-		case:      strings.write_byte(b, s[i])
-		}
-	}
-}
-
-attr_escape :: proc(s: string, allocator := context.allocator) -> string {
-	b := strings.builder_make(allocator)
-	write_attr_escaped(&b, s)
-	return strings.to_string(b)
-}
-
 write_int :: proc(b: ^strings.Builder, n: int) {
 	buf: [20]u8
 	strings.write_string(b, strconv.write_int(buf[:], i64(n), 10))

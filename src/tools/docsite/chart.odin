@@ -13,6 +13,7 @@ import "core:fmt"
 import "core:os"
 import "core:strconv"
 import "core:strings"
+import "wb:base"
 
 Commit :: struct {
 	hash:         string,
@@ -304,7 +305,7 @@ build_wpt_table :: proc(repo: string, report_path: string) -> string {
 	for s in stats {
 		pct := s.total > 0 ? f64(s.pass) * 100.0 / f64(s.total) : 0
 		fmt.sbprintf(&b, "<tr><td><code>%s</code></td><td style=\"text-align:right\">%s</td><td style=\"text-align:right\">%s</td><td style=\"text-align:right\">%.0f%%</td></tr>\n",
-			html_escape(s.name, context.temp_allocator), group_num(s.pass), group_num(s.total), pct)
+			base.escaped(s.name), group_num(s.pass), group_num(s.total), pct)
 	}
 	gp := grand_total > 0 ? f64(grand_pass) * 100.0 / f64(grand_total) : 0
 	fmt.sbprintf(&b, "<tr><td><strong>All measured folders</strong></td><td style=\"text-align:right\"><strong>%s</strong></td><td style=\"text-align:right\"><strong>%s</strong></td><td style=\"text-align:right\"><strong>%.0f%%</strong></td></tr>\n",

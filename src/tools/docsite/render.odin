@@ -7,6 +7,7 @@ package docsite
 
 import "core:os"
 import "core:strings"
+import "wb:base"
 
 render_page :: proc(p: ^Page, nav: ^Nav, pages: []Page, by_rel: map[string]^Page, search: ^[dynamic]Search_Doc) -> string {
 	data, err := os.read_entire_file(p.src_path, context.allocator)
@@ -35,10 +36,10 @@ render_page :: proc(p: ^Page, nav: ^Nav, pages: []Page, by_rel: map[string]^Page
 	ws(&b, "\n<!doctype html>\n<html lang=\"en\">\n<head>\n")
 	ws(&b, "<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n")
 	ws(&b, "<title>")
-	write_html_escaped(&b, p.title)
+	base.write_escaped(&b, p.title)
 	ws(&b, " · Wren docs</title>\n")
 	ws(&b, "<meta name=\"description\" content=\"")
-	write_attr_escaped(&b, meta_description(body.plain, p.title))
+	base.write_escaped(&b, meta_description(body.plain, p.title), {.Quote})
 	ws(&b, "\">\n")
 	// icons and CSS live at the site root; from /docs/... that is ../img and ../style.css
 	ws(&b, "<link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/img/logo-32.png\">\n")
@@ -101,7 +102,7 @@ write_header :: proc(b: ^strings.Builder, current: string) {
 		ws(b, "\"")
 		if it[1] == current { ws(b, " aria-current=\"page\"") }
 		ws(b, ">")
-		write_html_escaped(b, it[1])
+		base.write_escaped(b, it[1])
 		ws(b, "</a></li>\n")
 	}
 	ws(b, "<li><a class=\"btn primary nav-dl\" href=\"")
@@ -136,7 +137,7 @@ write_sidebar :: proc(b: ^strings.Builder, nav: ^Nav, current: string) {
 	ws(b, "</form>\n")
 	for sec in nav.roots {
 		ws(b, "<div class=\"doc-sec\">\n<p class=\"doc-sec-title\">")
-		write_html_escaped(b, sec.title)
+		base.write_escaped(b, sec.title)
 		ws(b, "</p>\n")
 		write_nav_children(b, sec.children[:], current)
 		ws(b, "</div>\n")
@@ -153,7 +154,7 @@ write_nav_children :: proc(b: ^strings.Builder, items: []^Nav_Item, current: str
 			ws(b, "<li class=\"doc-group\"><details")
 			if open { ws(b, " open") }
 			ws(b, "><summary>")
-			write_html_escaped(b, it.title)
+			base.write_escaped(b, it.title)
 			ws(b, "</summary>\n")
 			write_nav_children(b, it.children[:], current)
 			ws(b, "</details></li>\n")
@@ -164,7 +165,7 @@ write_nav_children :: proc(b: ^strings.Builder, items: []^Nav_Item, current: str
 		ws(b, "\"")
 		if it.rel == current { ws(b, " aria-current=\"page\" class=\"active\"") }
 		ws(b, ">")
-		write_html_escaped(b, it.title)
+		base.write_escaped(b, it.title)
 		ws(b, "</a></li>\n")
 	}
 	ws(b, "</ul>\n")
@@ -182,11 +183,11 @@ write_breadcrumb :: proc(b: ^strings.Builder, p: ^Page) {
 	ws(b, "<li><a href=\"/docs/\">Docs</a></li>\n")
 	if p.section != "" && p.rel != "index.md" {
 		ws(b, "<li>")
-		write_html_escaped(b, p.section)
+		base.write_escaped(b, p.section)
 		ws(b, "</li>\n")
 	}
 	ws(b, "<li aria-current=\"page\">")
-	write_html_escaped(b, p.title)
+	base.write_escaped(b, p.title)
 	ws(b, "</li>\n")
 	ws(b, "</ol></nav>\n")
 }
@@ -203,7 +204,7 @@ write_toc :: proc(b: ^strings.Builder, headings: []Heading) {
 		ws(b, h.level == 3 ? "<li class=\"lvl3\"><a href=\"#" : "<li><a href=\"#")
 		ws(b, h.id)
 		ws(b, "\">")
-		write_html_escaped(b, h.text)
+		base.write_escaped(b, h.text)
 		ws(b, "</a></li>\n")
 	}
 	ws(b, "</ul>\n</nav>\n")
@@ -221,7 +222,7 @@ write_prev_next :: proc(b: ^strings.Builder, nav: ^Nav, p: ^Page, by_rel: map[st
 			ws(b, "<a class=\"doc-prev\" href=\"")
 			ws(b, url_of(prev.out_rel))
 			ws(b, "\"><span>Previous</span><strong>")
-			write_html_escaped(b, prev.title)
+			base.write_escaped(b, prev.title)
 			ws(b, "</strong></a>\n")
 		}
 	}
@@ -231,7 +232,7 @@ write_prev_next :: proc(b: ^strings.Builder, nav: ^Nav, p: ^Page, by_rel: map[st
 			ws(b, "<a class=\"doc-next\" href=\"")
 			ws(b, url_of(next.out_rel))
 			ws(b, "\"><span>Next</span><strong>")
-			write_html_escaped(b, next.title)
+			base.write_escaped(b, next.title)
 			ws(b, "</strong></a>\n")
 		}
 	}

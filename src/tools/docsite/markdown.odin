@@ -11,6 +11,7 @@
 package docsite
 
 import "core:strings"
+import "wb:base"
 
 // One rendered document: its HTML body and the headings collected for a table of contents.
 Rendered :: struct {
@@ -288,7 +289,7 @@ render_inline :: proc(s: string, ctx: ^Md_Context, plain: ^strings.Builder) -> s
 		switch c {
 		case '\\':
 			if i + 1 < n && is_escapable(s[i + 1]) {
-				write_escaped_byte(&b, s[i + 1])
+				base.write_escaped(&b, s[i + 1:i + 2])
 				strings.write_byte(plain, s[i + 1])
 				i += 2
 				continue
@@ -302,7 +303,7 @@ render_inline :: proc(s: string, ctx: ^Md_Context, plain: ^strings.Builder) -> s
 			if end >= 0 {
 				code := strings.trim_space(s[i + run:end])
 				strings.write_string(&b, "<code>")
-				write_html_escaped(&b, code)
+				base.write_escaped(&b, code)
 				strings.write_string(&b, "</code>")
 				strings.write_string(plain, code)
 				i = end + run
@@ -332,16 +333,16 @@ render_inline :: proc(s: string, ctx: ^Md_Context, plain: ^strings.Builder) -> s
 					continue
 				}
 			}
-			write_escaped_byte(&b, c)
+			base.write_escaped(&b, s[i:i + 1])
 			strings.write_byte(plain, c)
 			i += 1
 		case '!':
 			if i + 1 < n && s[i + 1] == '[' {
 				if alt, dest, _, next, ok := parse_link(s, i + 1); ok {
 					strings.write_string(&b, "<img src=\"")
-					write_attr_escaped(&b, resolve_href(ctx, dest))
+					base.write_escaped(&b, resolve_href(ctx, dest), {.Quote})
 					strings.write_string(&b, "\" alt=\"")
-					write_attr_escaped(&b, alt)
+					base.write_escaped(&b, alt, {.Quote})
 					strings.write_string(&b, "\" loading=\"lazy\">")
 					strings.write_string(plain, alt)
 					i = next
@@ -353,11 +354,11 @@ render_inline :: proc(s: string, ctx: ^Md_Context, plain: ^strings.Builder) -> s
 		case '[':
 			if text, dest, title, next, ok := parse_link(s, i); ok {
 				strings.write_string(&b, "<a href=\"")
-				write_attr_escaped(&b, resolve_href(ctx, dest))
+				base.write_escaped(&b, resolve_href(ctx, dest), {.Quote})
 				strings.write_string(&b, "\"")
 				if title != "" {
 					strings.write_string(&b, " title=\"")
-					write_attr_escaped(&b, title)
+					base.write_escaped(&b, title, {.Quote})
 					strings.write_string(&b, "\"")
 				}
 				if is_external(dest) {
@@ -379,9 +380,9 @@ render_inline :: proc(s: string, ctx: ^Md_Context, plain: ^strings.Builder) -> s
 					href := inside
 					if strings.contains(inside, "@") && !strings.contains(inside, ":") { href = strings.concatenate({"mailto:", inside}, context.temp_allocator) }
 					strings.write_string(&b, "<a href=\"")
-					write_attr_escaped(&b, href)
+					base.write_escaped(&b, href, {.Quote})
 					strings.write_string(&b, "\" rel=\"noopener\">")
-					write_html_escaped(&b, inside)
+					base.write_escaped(&b, inside)
 					strings.write_string(&b, "</a>")
 					strings.write_string(plain, inside)
 					i = i + end + 1

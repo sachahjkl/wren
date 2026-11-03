@@ -6,6 +6,7 @@
 package docsite
 
 import "core:strings"
+import "wb:base"
 
 Tok_Class :: enum {
 	Plain,
@@ -35,7 +36,7 @@ emit_code_block :: proc(b: ^strings.Builder, code: string, lang: string) {
 	strings.write_string(b, "<div class=\"code\">")
 	if lang != "" {
 		strings.write_string(b, "<div class=\"file\">")
-		write_html_escaped(b, lang_label(lang))
+		base.write_escaped(b, lang_label(lang))
 		strings.write_string(b, "</div>")
 	}
 	strings.write_string(b, "<pre><code>")
@@ -43,7 +44,7 @@ emit_code_block :: proc(b: ^strings.Builder, code: string, lang: string) {
 	if has_highlighter(lang) {
 		highlight_into(b, src, lang)
 	} else {
-		write_html_escaped(b, src)
+		base.write_escaped(b, src)
 	}
 	strings.write_string(b, "</code></pre></div>\n")
 }
@@ -157,22 +158,22 @@ highlight_into :: proc(b: ^strings.Builder, src: string, lang: string) {
 			case is_call(src, j):       cls = .Func
 			case looks_like_type(word): cls = .Type
 			}
-			if cls == .Plain { write_html_escaped(b, word) } else { span(b, cls, word) }
+			if cls == .Plain { base.write_escaped(b, word) } else { span(b, cls, word) }
 			i = j
 			continue
 		}
-		write_escaped_byte(b, c)
+		base.write_escaped(b, src[i:i + 1])
 		i += 1
 	}
 }
 
 span :: proc(b: ^strings.Builder, cls: Tok_Class, text: string) {
 	name := class_name(cls)
-	if name == "" { write_html_escaped(b, text); return }
+	if name == "" { base.write_escaped(b, text); return }
 	strings.write_string(b, "<span class=\"")
 	strings.write_string(b, name)
 	strings.write_string(b, "\">")
-	write_html_escaped(b, text)
+	base.write_escaped(b, text)
 	strings.write_string(b, "</span>")
 }
 
