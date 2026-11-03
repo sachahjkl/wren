@@ -261,6 +261,32 @@ addEventListener("load", () => {
 	close_page(pr, min_checks = 3)
 }
 
+// Two forms submitted at once to two frames: each frame goes where its form sends it (a planned navigation per target)
+@(test)
+frames_forms_submitted_to_two_frames_at_once :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	action := testenv.url(SAME + "/frames/text")
+	pr := load(t, fill(`<body><iframe name=a></iframe><iframe name=b></iframe>
+<form id=fa target=a action="%s"><input name=q value=one></form><form id=fb target=b action="%s"><input name=q value=two></form><script>
+addEventListener("load", () => {
+  const seen = [];
+  for (const name of ["a", "b"]) {
+    document.querySelector("iframe[name=" + name + "]").onload = (e) => {
+      seen.push(name + e.target.contentWindow.location.search);
+      if (seen.length === 2) log("loaded " + seen.sort().join(" "));
+    };
+  }
+  document.getElementById("fa").submit();
+  document.getElementById("fb").submit();
+});
+</script></body>`, action, action))
+	check(pr, wait_note(pr, "loaded a?q=one b?q=two"), "both frames navigated, each with its form's data")
+	close_page(pr, min_checks = 1)
+}
+
 // a frame gone, or navigated: its wrappers do no harm
 @(test)
 frames_wrappers_of_a_frame_gone :: proc(t: ^testing.T) {
