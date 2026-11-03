@@ -688,17 +688,17 @@
 	handleEvent is not looked up for an EventTarget in a removed iframe: FAIL
 /dom/events/event-src-element-nullable.html: OK
 	Event srcElement should be nullable: PASS
-/dom/events/focus-event-document-move.html: TIMEOUT
-	Moving a node during mousedown should not crash: TIMEOUT
-/dom/events/handler-count.html?document: ERROR
-	Test addEventListener/removeEventListener on the document.: TIMEOUT
-	Test setting onanimationstart handler on the document.: NOTRUN
-/dom/events/handler-count.html?element: ERROR
-	Test addEventListener/removeEventListener on the element.: TIMEOUT
-	Test setting onanimationstart handler on the element.: NOTRUN
-/dom/events/handler-count.html?window: ERROR
-	Test addEventListener/removeEventListener on the window.: TIMEOUT
-	Test setting onanimationstart handler on the window.: NOTRUN
+/dom/events/focus-event-document-move.html: OK
+	Moving a node during mousedown should not crash: PASS
+/dom/events/handler-count.html?document: OK
+	Test addEventListener/removeEventListener on the document.: PASS
+	Test setting onanimationstart handler on the document.: PASS
+/dom/events/handler-count.html?element: OK
+	Test addEventListener/removeEventListener on the element.: PASS
+	Test setting onanimationstart handler on the element.: PASS
+/dom/events/handler-count.html?window: OK
+	Test addEventListener/removeEventListener on the window.: PASS
+	Test setting onanimationstart handler on the window.: PASS
 /dom/events/label-default-action.html: OK
 	Label default action should not trigger when clicked button removes itself: PASS
 /dom/events/legacy-pre-activation-behavior.window.html: OK
@@ -706,8 +706,8 @@
 /dom/events/mouse-event-retarget.html: OK
 	offsetX is correctly adjusted: FAIL
 /dom/events/no-focus-events-at-clicking-editable-content-in-link.html: OK
-	Click editable element in link: FAIL
-	Click editable link: FAIL
+	Click editable element in link: PASS
+	Click editable link: PASS
 /dom/events/non-cancelable-when-passive/generic-events-stay-cancelable.html: OK
 	A generic event with only passive listeners remains cancelable: PASS
 /dom/events/non-cancelable-when-passive/non-passive-mousewheel-event-listener-on-body.html: OK
@@ -741,15 +741,15 @@
 /dom/events/non-cancelable-when-passive/non-passive-touchstart-event-listener-on-window.html: OK
 	non-passive touchstart event listener on window: FAIL
 /dom/events/non-cancelable-when-passive/non-passive-wheel-event-listener-on-body.html: OK
-	non-passive wheel event listener on body: FAIL
+	non-passive wheel event listener on body: PASS
 /dom/events/non-cancelable-when-passive/non-passive-wheel-event-listener-on-div.html: OK
-	non-passive wheel event listener on div: FAIL
+	non-passive wheel event listener on div: PASS
 /dom/events/non-cancelable-when-passive/non-passive-wheel-event-listener-on-document.html: OK
-	non-passive wheel event listener on document: FAIL
+	non-passive wheel event listener on document: PASS
 /dom/events/non-cancelable-when-passive/non-passive-wheel-event-listener-on-root.html: OK
-	non-passive wheel event listener on root: FAIL
+	non-passive wheel event listener on root: PASS
 /dom/events/non-cancelable-when-passive/non-passive-wheel-event-listener-on-window.html: OK
-	non-passive wheel event listener on window: FAIL
+	non-passive wheel event listener on window: PASS
 /dom/events/non-cancelable-when-passive/passive-mousewheel-event-listener-on-body.html: OK
 	passive mousewheel event listener on body: FAIL
 /dom/events/non-cancelable-when-passive/passive-mousewheel-event-listener-on-div.html: OK
@@ -908,7 +908,7 @@
 	wheel listener is passive with {passive:undefined} for HTMLHtmlElement: FAIL
 	wheel listener is passive with {passive:undefined} for Window: FAIL
 /dom/events/pointer-event-document-move.html: OK
-	Moving a node to new document should move the registered event listeners together: FAIL
+	Moving a node to new document should move the registered event listeners together: PASS
 /dom/events/preventDefault-during-activation-behavior.html: OK
 	behavior of preventDefault during activation behavior: PASS
 /dom/events/relatedTarget.window.html: OK
@@ -929,8 +929,8 @@
 /dom/events/scrolling/save-iframe-scroll-offset-when-display-none.html: TIMEOUT
 	Ensure that the scroll position is not lost when the local iframe is set to display:none and shown again.: TIMEOUT
 	Ensure that the scroll position is not lost when the remote iframe is set to display:none and shown again.: NOTRUN
-/dom/events/scrolling/scroll-cross-origin-iframes.html: OK
-	Verify sibling cross-origin iframes can wheel-scroll.: FAIL
+/dom/events/scrolling/scroll-cross-origin-iframes.html: TIMEOUT
+	Verify sibling cross-origin iframes can wheel-scroll.: TIMEOUT
 /dom/events/scrolling/scroll-event-fired-to-element.html: OK
 	scrollTop and scrollLeft being set with invalid scroll offset.: PASS
 	scrollTop and scrollLeft being set with the same value.: PASS
@@ -947,7 +947,7 @@
 	Only one scroll event fires when scrolling, toggling display: none, and scrolling again in the same frame: FAIL
 	Only one scrollend event fires when scrolling, toggling display: none, and scrolling again in the same frame: FAIL
 /dom/events/scrolling/scrollIntoView-in-onscroll-to-sticky.html: OK
-	scrollIntoView-in-onscroll-to-sticky: FAIL
+	scrollIntoView-in-onscroll-to-sticky: PASS
 /dom/events/scrolling/scrollend-event-fired-after-instant-scroll-in-microtask.html: TIMEOUT
 	scrolling state is false at the end of the test: TIMEOUT
 /dom/events/scrolling/scrollend-event-fired-after-layout-clamping.html: OK
@@ -1002,24 +1002,28 @@
 	Tests scrollend event for scrollIntoView with behavior 'auto' on subframe.: FAIL
 /dom/events/scrolling/scrollend-event-fired-for-scrollIntoView.html?include=subframe-inline-start-block-start-behavior-smooth: OK
 	Tests scrollend event for scrollIntoView with behavior 'smooth' on subframe.: FAIL
-/dom/events/scrolling/scrollend-event-fired-to-document.html: OK
-	testing, horizontal: FAIL
+/dom/events/scrolling/scrollend-event-fired-to-document.html: TIMEOUT
+	testing, horizontal: TIMEOUT
 	testing, vertical: FAIL
 /dom/events/scrolling/scrollend-event-fired-to-element-with-overscroll-behavior.html: OK
 	Tests that the scroll is not propagated beyond div with non-auto overscroll-behavior.: FAIL
 /dom/events/scrolling/scrollend-event-fired-to-window.html: TIMEOUT
 	testing, vertical: TIMEOUT
-/dom/events/scrolling/scrollend-event-fires-for-repeat-key-ending-after-scroll-container-end-is-reached.html: OK
-	scrollend event is fired after repeated Page Down key presses reach the end of the scroll region.: FAIL
+/dom/events/scrolling/scrollend-event-fires-for-repeat-key-ending-after-scroll-container-end-is-reached.html: TIMEOUT
+	scrollend event is fired after repeated Page Down key presses reach the end of the scroll region.: TIMEOUT
 /dom/events/scrolling/scrollend-event-fires-on-visual-viewport.html: ERROR
-/dom/events/scrolling/scrollend-event-fires-to-iframe-window.html: ERROR
+/dom/events/scrolling/scrollend-event-fires-to-iframe-window.html: TIMEOUT
 	Tests that the target_div within iframe gets scrollend event when clicking scrollbar.: PASS
 	Tests that the target_div within iframe gets scrollend event when dragging the scrollbar thumb.: PASS
+	Tests that the target_div within iframe gets scrollend event when mouse wheel scrolling.: TIMEOUT
+	Tests that the target_div within iframe gets scrollend event when sending DOWN key to the target.: NOTRUN
+	Tests that the target_div within iframe gets scrollend event when touch dragging.: FAIL
+	scrollend fires to iframe window on mousewheelscroll: NOTRUN
 /dom/events/scrolling/scrollend-event-for-user-scroll.html: TIMEOUT
 	Tests that the target_div gets scrollend event when clicking scrollbar.: PASS
 	Tests that the target_div gets scrollend event when dragging the scrollbar thumb.: PASS
-	Tests that the target_div gets scrollend event when mouse wheel scrolling.: FAIL
-	Tests that the target_div gets scrollend event when sending DOWN key to the target.: TIMEOUT
+	Tests that the target_div gets scrollend event when mouse wheel scrolling.: TIMEOUT
+	Tests that the target_div gets scrollend event when sending DOWN key to the target.: NOTRUN
 	Tests that the target_div gets scrollend event when touch dragging.: FAIL
 /dom/events/scrolling/scrollend-event-handler-content-attributes.html: TIMEOUT
 	Tests scrollend event is fired to document event handler property: NOTRUN
@@ -1027,14 +1031,14 @@
 	Tests scrollend event is handled by event handler content attribute.: TIMEOUT
 	Tests scrollend event is not fired to document body event handler content attribute.: NOTRUN
 /dom/events/scrolling/scrollend-event-not-fired-after-removing-scroller.tentative.html: TIMEOUT
-	No scrollend is received after removing parent div: TIMEOUT
-	No scrollend is received after removing scrolling element: NOTRUN
-	scrollend is received after removing descendant div: NOTRUN
+	No scrollend is received after removing parent div: PASS
+	No scrollend is received after removing scrolling element: PASS
+	scrollend is received after removing descendant div: TIMEOUT
 /dom/events/scrolling/scrollend-event-not-fired-on-no-scroll.html: OK
-	No scroll via keys on div shouldn't fire scrollend.: FAIL
-	No scroll via keys on document shouldn't fire scrollend.: FAIL
-	No scroll via wheel on div shouldn't fire scrollend.: FAIL
-	No scroll via wheel on document shouldn't fire scrollend.: FAIL
+	No scroll via keys on div shouldn't fire scrollend.: PASS
+	No scroll via keys on document shouldn't fire scrollend.: PASS
+	No scroll via wheel on div shouldn't fire scrollend.: PASS
+	No scroll via wheel on document shouldn't fire scrollend.: PASS
 /dom/events/scrolling/scrollend-fires-to-text-input.html: TIMEOUT
 	scrolled input field should receive scrollend when setting scrollLeft.: TIMEOUT
 	scrolled input field should receive scrollend with scrollBy({ behavior: 'instant' }).: NOTRUN
@@ -1043,13 +1047,13 @@
 	scrolled input field should receive scrollend with scrollTo({ behavior: 'smooth' }).: NOTRUN
 /dom/events/scrolling/scrollend-with-snap-on-fractional-offset.html: OK
 	snap to fractional offset fires scrollend exactly once.: FAIL
-/dom/events/scrolling/visibility-hidden-scrolls.html: OK
-	Scrolling over a visibility: visible child should scroll a visibility: hidden scroller.: FAIL
-	Scrolling should chain to a visibility: hidden element.: FAIL
-/dom/events/scrolling/wheel-event-composed.html: ERROR
-	wheel event must be composed: TIMEOUT
+/dom/events/scrolling/visibility-hidden-scrolls.html: TIMEOUT
+	Scrolling over a visibility: visible child should scroll a visibility: hidden scroller.: NOTRUN
+	Scrolling should chain to a visibility: hidden element.: TIMEOUT
+/dom/events/scrolling/wheel-event-composed.html: OK
+	wheel event must be composed: PASS
 /dom/events/scrolling/wheel-event-no-scroll-after-prevent-default.html: OK
-	When `preventDefault` is called on a WheelEvent, scrolling should be prevented.: FAIL
+	When `preventDefault` is called on a WheelEvent, scrolling should be prevented.: PASS
 /dom/events/scrolling/wheel-event-transactions-basic.html?include=scroll-over-scrollable-child: OK
 	Wheel events should be captured to one target #2: FAIL
 /dom/events/scrolling/wheel-event-transactions-basic.html?include=target-basic: OK
@@ -1057,7 +1061,7 @@
 /dom/events/scrolling/wheel-event-transactions-basic.html?include=transaction-not-bound-to-scroll-frame: OK
 	The wheel event transactions target may not be a scroll frame: FAIL
 /dom/events/scrolling/wheel-event-transactions-multiple-action-chains.html: OK
-	Two separate webdriver action chains should have different wheel event transactions: FAIL
+	Two separate webdriver action chains should have different wheel event transactions: PASS
 /dom/events/scrolling/wheel-event-transactions-target-display-change.html?include=contents: OK
 	Modify the initial wheel event target to display:contents: FAIL
 /dom/events/scrolling/wheel-event-transactions-target-display-change.html?include=none: OK

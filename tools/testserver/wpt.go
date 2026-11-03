@@ -11,7 +11,7 @@
 //   - x.headers and __dir__.headers files: extra response headers.
 //   - /resources/WebIDLParser.js is resources/webidl2/lib/webidl2.js, as wptserve routes it.
 //   - /resources/testharnessreport.js is Wren's (wpt/testharnessreport.js of the repository): it hands the results to
-//     the runner. /resources/testdriver-vendor.js too (wpt/testdriver-vendor.js): test_driver's actions fail at once.
+//     the runner. /resources/testdriver-vendor.js too (wpt/testdriver-vendor.js): test_driver's input goes to the runner.
 //   - Python handlers (*.py) do not run: 501, but for a few ported to Go (wpt_httpcache.go, wpt_handlers.go). The tests
 //     that need the others fail, and are counted as failing.
 //

@@ -993,6 +993,7 @@ hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 	kinds := inserted_kinds(d, node)
 	if kinds & {.Link, .Style} != {} { styles_note_inserted(p, node) }   // a <link> a script inserts loads now, not at the next styling (styles.odin)
 	if .Media in kinds { media_note_inserted(p, node) }   // a <video> / <audio> / <source> (media_element.odin)
+	if n.kind == .Element { dialog_note_attribute(p, node) }   // an open <dialog> inserted is an open dialog again (dialog_modal.odin)
 	fragment := d.parser_inserting > 0
 	// a node inserted into a connected script element that has not started: its text changed ("children changed")
 	if parent := dom.get(d, n.parent); is_script_element(parent) && !fragment {
@@ -1049,6 +1050,7 @@ hook_attribute :: proc(user: rawptr, d: ^dom.Document, el: base.Handle, name: st
 	}
 	styles_note_attribute(p, el, name)
 	media_note_attribute(p, el, name)
+	if name == "open" { dialog_note_attribute(p, el) }
 	// HTML "update the image data" runs for an <img> whether or not it is in the tree: `new Image()` with src and onload
 	// (the canvas idiom) never gets a walk of the document, so the image's record is made now (images.odin)
 	if name == "src" || name == "srcset" || name == "sizes" {

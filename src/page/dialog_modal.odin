@@ -73,6 +73,7 @@ dialog_open :: proc(p: ^Page, h: base.Handle, modal: bool) {
 	dialog_queue_toggle(p, h, false, true)
 	dom.set_attribute(p.doc, h, "open", "")
 	forms.changed(page_forms(p), h)
+	open_dialogs_add(s, h)
 	if modal {
 		append(&s.modals, h)
 		popover_restyle(p)
@@ -131,12 +132,14 @@ dialog_focus :: proc(p: ^Page, dialog: base.Handle) {
 	if !forms.focus(f.model, dialog) { forms.blur(f.model) }
 }
 
-// HTML's dialog removing steps: a modal dialog out of the document leaves the top layer, and is not modal when it comes
-// back (it keeps its open attribute).
+// HTML's dialog removing steps: a dialog out of the document leaves the open dialogs, a modal one the top layer too, and is
+// not modal when it comes back (it keeps its open attribute).
 @(private)
 dialog_note_removed :: proc(p: ^Page) {
 	s := popover_state(p)
-	if s == nil || len(s.modals) == 0 { return }
+	if s == nil { return }
+	open_dialogs_prune(p, s)
+	if len(s.modals) == 0 { return }
 	kept := 0
 	for m in s.modals {
 		if dom.is_connected(p.doc, m) { s.modals[kept] = m; kept += 1 }
@@ -150,6 +153,9 @@ dialog_note_removed :: proc(p: ^Page) {
 dialog_closed :: proc(p: ^Page, h: base.Handle) {
 	s := popover_state(p)
 	if s == nil { return }
+	for d, i in s.open_dialogs {
+		if d == h { ordered_remove(&s.open_dialogs, i); break }
+	}
 	for m, i in s.modals {
 		if m != h { continue }
 		ordered_remove(&s.modals, i)
@@ -176,14 +182,18 @@ dialog_queue_close :: proc(p: ^Page, h: base.Handle) {
 	}, t)
 }
 
-// Escape: a cancelable "cancel" at the modal dialog on top, closed unless a listener cancels it. True when there was one
-// a close request reaches (closedby none: none does).
+// Escape: a cancelable "cancel" at the open dialog on top, closed unless a listener cancels it. True when there was one
+// a close request reaches (closedby none: its close watcher is disabled, and the dialogs below are of other groups).
 @(private)
 dialog_close_request :: proc(p: ^Page) -> bool {
-	top := dialog_top_modal(p)
-	if top == base.NIL_HANDLE || dialog_closed_by(p, top) == .None { return false }
+	s := popover_state(p)
+	if s == nil { return false }
+	open_dialogs_prune(p, s)
+	if len(s.open_dialogs) == 0 { return false }
+	top := s.open_dialogs[len(s.open_dialogs) - 1]
+	if dialog_closed_by(p, top) == .None { return false }
 	if !dialog_cancel(p, top) { return true }
-	if dom.get(p.doc, top) != nil && dialog_is_modal(p, top) {
+	if _, open := node_attr(dom.get(p.doc, top), "open"); open {
 		forms.close_dialog(page_forms(p), top, "", false)
 		forms_repaint(p)
 	}
@@ -223,4 +233,70 @@ dialog_queue_toggle :: proc(p: ^Page, h: base.Handle, old_open, new_open: bool) 
 			return
 		}
 	}, t)
+}
+
+// HTML "light dismiss open dialogs", run by a trusted pointerdown or pointerup (dispatch_event): the press records the
+// open dialog it is in; a release in that same dialog (or, after a press outside them all, outside them all) asks the
+// open dialog on top to close, unless it is that dialog or its closedby is not any.
+@(private)
+dialog_light_dismiss :: proc(p: ^Page, down: bool, target: base.Handle, x, y: f64) {
+	s := popover_state(p)
+	if s == nil { return }
+	open_dialogs_prune(p, s)
+	if len(s.open_dialogs) == 0 { return }
+	clicked := dialog_clicked(p, target, x, y)
+	if down { s.dialog_pointerdown = clicked; return }
+	same := clicked == s.dialog_pointerdown
+	s.dialog_pointerdown = base.NIL_HANDLE
+	top := s.open_dialogs[len(s.open_dialogs) - 1]
+	if !same || clicked == top || dialog_closed_by(p, top) != .Any { return }
+	if !dialog_cancel(p, top) || dom.get(p.doc, top) == nil { return }
+	forms.close_dialog(page_forms(p), top, "", false)
+	forms_repaint(p)
+}
+
+// HTML "nearest clicked dialog": the open dialog `target` is in (flat tree), none for a modal dialog itself clicked outside
+// its border box (its ::backdrop).
+@(private = "file")
+dialog_clicked :: proc(p: ^Page, target: base.Handle, x, y: f64) -> base.Handle {
+	if dialog_is_modal(p, target) {
+		g, _, _ := element_geometry(p, target)
+		r := g.client
+		if g.ok && (x < r.x || y < r.y || x >= r.x + r.width || y >= r.y + r.height) { return base.NIL_HANDLE }
+	}
+	for cur := target; cur != base.NIL_HANDLE; cur = dom.flat_parent(p.doc, cur) {
+		n := dom.get(p.doc, cur)
+		if n == nil { break }
+		if n.kind != .Element || n.name != "dialog" || n.ns != .HTML { continue }
+		if _, open := node_attr(n, "open"); open { return cur }
+	}
+	return base.NIL_HANDLE
+}
+
+// The open dialogs list without what left it another way than close(): a dialog out of the document (HTML's removing
+// steps), or whose open attribute a script removed.
+@(private = "file")
+open_dialogs_prune :: proc(p: ^Page, s: ^Popover_State) {
+	kept := 0
+	for d in s.open_dialogs {
+		_, open := node_attr(dom.get(p.doc, d), "open")
+		if open && dom.is_connected(p.doc, d) { s.open_dialogs[kept] = d; kept += 1 }
+	}
+	resize(&s.open_dialogs, kept)
+}
+
+@(private = "file")
+open_dialogs_add :: proc(s: ^Popover_State, h: base.Handle) {
+	for d in s.open_dialogs { if d == h { return } }
+	append(&s.open_dialogs, h)
+}
+
+// HTML's dialog attribute change and insertion steps: a dialog in the document given its open attribute another way than
+// show() or showModal() (dialog.open = true), or inserted with it, is an open dialog too.
+@(private)
+dialog_note_attribute :: proc(p: ^Page, el: base.Handle) {
+	n := dom.get(p.doc, el)
+	s := popover_state(p)
+	if n == nil || s == nil || n.name != "dialog" || n.ns != .HTML || !dom.is_connected(p.doc, el) { return }
+	if _, open := node_attr(n, "open"); open { open_dialogs_add(s, el) }
 }

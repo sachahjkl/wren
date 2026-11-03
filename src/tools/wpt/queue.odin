@@ -224,7 +224,7 @@ child_ended :: proc(q: ^Run_Queue, c: ^Child, exit_code: int) -> (why: string) {
 child_feed :: proc(q: ^Run_Queue, c: ^Child) {
 	for c.phase == .Taking && len(c.handed) < CHILD_AHEAD && c.given < opts.chunk && len(q.waiting) > 0 {
 		t := pop(&q.waiting)
-		line := fmt.tprintf("%s\t%d\t%d\t%d\n", t.path, t.long ? 1 : 0, t.is_reftest ? 1 : 0, test_cap(t))
+		line := fmt.tprintf("%s\t%d\t%d\t%d\t%d\n", t.path, t.long ? 1 : 0, t.is_reftest ? 1 : 0, test_cap(t), t.driver ? 1 : 0)
 		if len(c.handed) == 0 { c.last_grow = time.tick_now() }
 		if _, err := os.write_string(c.feed, line); err != nil {
 			append(&q.waiting, t)   // (it has ended: its exit says why)
