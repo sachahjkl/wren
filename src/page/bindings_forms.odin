@@ -31,12 +31,18 @@ Forms_Embedder :: struct {
 	changed:    proc(user: rawptr, p: ^Page),                          // something to repaint
 }
 
+// A form submission planned as a navigation (HTML "plan to navigate"): each target has its own, a newer submission to
+// it replacing it (two forms submitted to two frames at once both go).
+Planned_Navigation :: struct {
+	s:         ^forms.Submission,
+	replace:   bool,   // planned before the document completely loaded: it replaces the entry (HTML)
+	announced: bool,   // its navigate event fired: it only waits for the embedder
+}
+
 Page_Forms :: struct {
 	model:     ^forms.Forms,
 	embedder:  Forms_Embedder,
-	pending:   ^forms.Submission,   // the planned navigation (a newer submission replaces it)
-	pending_replace: bool,          // planned before the document completely loaded: it replaces the entry (HTML)
-	pending_announced: bool,        // its navigate event fired: it only waits for the embedder
+	pending:   [dynamic]Planned_Navigation,   // the planned navigations, one per target (a newer submission replaces it)
 	timer:     base.Handle,
 	picker:    base.Handle,         // input waiting for its picker
 	picker_color: bool,
@@ -52,7 +58,7 @@ page_forms :: proc(p: ^Page) -> ^forms.Forms {
 
 set_forms_embedder :: proc(p: ^Page, e: Forms_Embedder) {
 	p.formctl.embedder = e
-	if e.navigate != nil && p.formctl.pending != nil { forms_navigation_soon(p) }
+	if e.navigate != nil && len(p.formctl.pending) > 0 { forms_navigation_soon(p) }
 }
 
 @(private)
@@ -99,7 +105,8 @@ forms_attach :: proc(p: ^Page) {
 forms_detach :: proc(p: ^Page) {
 	pf := p.formctl
 	if pf == nil { return }
-	forms.submission_destroy(pf.pending)
+	for e in pf.pending { forms.submission_destroy(e.s) }
+	delete(pf.pending)
 	forms.forms_destroy(pf.model)
 	popover_state_destroy(p, &pf.popover)
 	free(pf)
@@ -112,14 +119,24 @@ forms_detach :: proc(p: ^Page) {
 forms_plan_navigation :: proc(user: rawptr, s: ^forms.Submission) {
 	p := (^Page)(user)
 	pf := p.formctl
-	forms.submission_destroy(pf.pending)
-	pf.pending = s
-	pf.pending_replace = p.scripts != nil && p.scripts.timing.load_end_ms == 0
-	pf.pending_announced = false
+	if i := planned_for(pf, s.target); i >= 0 {
+		forms.submission_destroy(pf.pending[i].s)
+		ordered_remove(&pf.pending, i)
+	}
+	append(&pf.pending, Planned_Navigation{s = s, replace = p.scripts != nil && p.scripts.timing.load_end_ms == 0})
 	forms_navigation_soon(p)
 }
 
-// The planned navigation goes as soon as there is an embedder. The shell attaches itself to new pages between two of its frames: a
+// The planned navigation to `target` (a form's target: "" and _self are one), -1 when there is none.
+@(private = "file")
+planned_for :: proc(pf: ^Page_Forms, target: string) -> int {
+	key :: proc(target: string) -> string { t := strings.trim_space(target); return strings.equal_fold(t, "_self") ? "" : t }
+	k := key(target)
+	for e, i in pf.pending { if key(e.s.target) == k { return i } }
+	return -1
+}
+
+// The planned navigations go as soon as there is an embedder. The shell attaches itself to new pages between two of its frames: a
 // page that submits a form while it loads (a login's automatic POST, a challenge page) gets there first, and its navigation waits
 // (set_forms_embedder) instead of being lost, which left such a page standing.
 @(private)
@@ -128,43 +145,48 @@ forms_navigation_soon :: proc(p: ^Page) {
 	if pf.timer != base.NIL_HANDLE { host.clear_timer(p.loop, pf.timer) }
 	pf.timer = host.set_timer(p.loop, 0, 0, proc(data: rawptr) {
 		p := (^Page)(data)
-		pf := p.formctl
-		pf.timer = base.NIL_HANDLE
-		s := pf.pending
-		if s == nil { return }
-		if !pf.pending_announced {
-			pf.pending = nil
-			if !navigation_form(p, s, pf.pending_replace) { forms.submission_destroy(s); return }   // the navigate event took it (navigation.odin)
-			if p.closed || p.formctl == nil { forms.submission_destroy(s); return }
-			pf = p.formctl
-			if pf.pending != nil { forms.submission_destroy(s); return }   // the event's listener submitted again: that one goes
-			pf.pending, pf.pending_announced = s, true
+		p.formctl.timer = base.NIL_HANDLE
+		waiting := 0   // the planned navigations of the tab first in the list, waiting for an embedder
+		for p.formctl != nil && waiting < len(p.formctl.pending) {
+			pf := p.formctl
+			e := pf.pending[waiting]
+			if !e.announced {
+				ordered_remove(&pf.pending, waiting)
+				if !navigation_form(p, e.s, e.replace) { forms.submission_destroy(e.s); continue }   // the navigate event took it (navigation.odin)
+				if p.closed || p.formctl == nil { forms.submission_destroy(e.s); return }
+				pf = p.formctl
+				if planned_for(pf, e.s.target) >= 0 { forms.submission_destroy(e.s); continue }   // the event's listener submitted again there: that one goes
+				e.announced = true
+				inject_at(&pf.pending, waiting, e)
+			}
+			// (a frame of the tab: neither the tab's concern nor its embedder's)
+			s := e.s
+			target := strings.trim_space(s.target)
+			rel, _ := dom.get_attribute(p.doc, s.form, "rel")
+			feat := link_open_features(rel, target)
+			n := frames_find_target(p, target, feat.noopener)
+			// a GET to a new window (_blank, a name nothing has) opens it as a link would (auxiliary.odin); a POST is the shell's
+			if n == nil && s.method != .Post && !s.mailto {
+				ordered_remove(&pf.pending, waiting)
+				auxiliary_open(p, s.url, target, feat)
+				forms.submission_destroy(s)
+				if p.closed { return }
+				continue
+			}
+			if n != nil && n.parent != nil && !s.mailto {
+				ordered_remove(&pf.pending, waiting)
+				forms_navigate_frame(p, n, s, e.replace)
+				forms.submission_destroy(s)
+				if p.closed { return }
+				continue
+			}
+			if pf.embedder.navigate == nil { waiting += 1; continue }
+			ordered_remove(&pf.pending, waiting)
+			pf.embedder.navigate(pf.embedder.user, p, s)
+			return   // (the tab goes elsewhere)
 		}
-		// (a frame of the tab: neither the tab's concern nor its embedder's)
-		target := strings.trim_space(s.target)
-		rel, _ := dom.get_attribute(p.doc, s.form, "rel")
-		feat := link_open_features(rel, target)
-		n := frames_find_target(p, target, feat.noopener)
-		// a GET to a new window (_blank, a name nothing has) opens it as a link would (auxiliary.odin); a POST is the shell's
-		if n == nil && s.method != .Post && !s.mailto {
-			pf.pending, pf.pending_announced = nil, false
-			auxiliary_open(p, s.url, target, feat)
-			forms.submission_destroy(s)
-			return
-		}
-		if n != nil && n.parent != nil && !s.mailto {
-			replace := pf.pending_replace
-			pf.pending, pf.pending_announced = nil, false
-			forms_navigate_frame(p, n, s, replace)
-			forms.submission_destroy(s)
-			return
-		}
-		if pf.embedder.navigate == nil { return }
-		pf.pending, pf.pending_announced = nil, false
-		pf.embedder.navigate(pf.embedder.user, p, s)
 	}, p, p.scope)
 }
-
 @(private = "file")
 forms_navigate_frame :: proc(p: ^Page, n: ^Navigable, s: ^forms.Submission, replace: bool) {
 	if sb := page_sandbox(p); sb.active && .Forms not_in sb.allow {
