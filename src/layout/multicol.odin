@@ -54,6 +54,7 @@ Mc_Record :: struct {
 	frags: [dynamic]Mc_Frag,
 	rules: [dynamic]Rect,            // between columns with content, in the container's frame
 	phys:  [2]i32,                   // its range of Layout.flow_frags (finish)
+	apart: bool,                     // no two of those regions overlap (flow_bounds_add: a rect inside one is shown there alone)
 	first_chain: f32,                // how high what must start it together is: less room than that and it starts in the next outer column
 	outer_space, outer_clip: i32,    // the space and clip of the container's own content: for what is not in the flow
 }
@@ -826,6 +827,9 @@ flows_finish :: proc(l: ^Layout, order: []i32) {
 			append(&l.flow_frags, fr)
 		}
 		rec.phys = {first, i32(len(l.flow_frags))}
+		// (the regions are bands across the flow: apart when each ends before the next begins)
+		rec.apart = true
+		for k in 1 ..< len(rec.frags) { if rec.frags[k - 1].flow_max > rec.frags[k].flow_min { rec.apart = false } }
 	}
 }
 
@@ -878,19 +882,31 @@ flow_rects :: proc(l: ^Layout, container: i32, r: Rect, out: ^[dynamic]Rect) {
 	}
 }
 
-// The union of what flow_rects gives, without making the list (called for every box and line of a flow).
-flow_bounds :: proc(l: ^Layout, container: i32, r: Rect) -> Rect {
+// The union of what flow_rects gives, without making the list (called for every box and line of a flow). `near`: a
+// fragment to try first (see flow_bounds_add).
+flow_bounds :: proc(l: ^Layout, container: i32, r: Rect, near: ^i32 = nil) -> Rect {
 	u: Rect
 	n := 0
-	flow_bounds_add(l, container, r, &u, &n)
+	flow_bounds_add(l, container, r, &u, &n, near)
 	return u
 }
 
-// The parts of `r` united into `u` in the order flow_rects lists them (`n`: how many so far): an empty one adds nothing to
-// a union that is not empty, and is replaced by the first that is not.
+// Whether `r` lies inside the region of `fr`, short of its end edges: where the regions are apart, no other fragment
+// reaches it (frag_overlaps), and the fragment shows it whole.
 @(private)
-flow_bounds_add :: proc(l: ^Layout, container: i32, r: Rect, u: ^Rect, n: ^int) {
-	unite :: proc(u: ^Rect, n: ^int, q: Rect) {
+flow_inside :: #force_inline proc(fr: ^Flow_Frag, r: Rect) -> bool {
+	g := fr.region
+	return r.min.x >= g.min.x && r.min.x <= r.max.x && r.max.x < g.max.x && r.min.y >= g.min.y && r.min.y <= r.max.y && r.max.y < g.max.y
+}
+
+// The parts of `r` united into `u` in the order flow_rects lists them (`n`: how many so far): an empty one adds nothing to
+// a union that is not empty, and is replaced by the first that is not. `near`, a fragment of any container or none: where
+// the container's regions are apart and `r` lies inside that fragment's, that fragment alone shows it; else every
+// fragment is tried, and `near` becomes the one `r` lies inside, if any (the boxes and lines a caller walks in tree order
+// are mostly in the column of the one before).
+@(private)
+flow_bounds_add :: proc(l: ^Layout, container: i32, r: Rect, u: ^Rect, n: ^int, near: ^i32 = nil) {
+	unite :: #force_inline proc(u: ^Rect, n: ^int, q: Rect) {
 		switch {
 		case n^ == 0: u^ = q
 		case rect_empty(q) && !rect_empty(u^):
@@ -902,12 +918,19 @@ flow_bounds_add :: proc(l: ^Layout, container: i32, r: Rect, u: ^Rect, n: ^int) 
 	rec := mc_record(l, container)
 	if rec == nil { unite(u, n, r); return }
 	outer := .In_Flow in l.boxes[container].fx ? flow_container(l, container) : NONE
+	apart := near != nil && rec.apart
+	if apart && near^ >= rec.phys[0] && near^ < rec.phys[1] && flow_inside(&l.flow_frags[near^], r) {
+		fr := &l.flow_frags[near^]
+		if q := rect_shift(r, fr.shift); outer != NONE { flow_bounds_add(l, outer, q, u, n) } else { unite(u, n, q) }
+		return
+	}
 	shown := false
 	for fi in rec.phys[0] ..< rec.phys[1] {
 		fr := &l.flow_frags[fi]
 		cut, shows := flow_cut(fr, r, shown)
 		if !shows { continue }
 		shown = true
+		if apart && flow_inside(fr, r) { near^ = fi }
 		if q := rect_shift(cut, fr.shift); outer != NONE { flow_bounds_add(l, outer, q, u, n) } else { unite(u, n, q) }
 	}
 	if !shown { if outer != NONE { flow_bounds_add(l, outer, r, u, n) } else { unite(u, n, r) } }

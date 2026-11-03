@@ -115,6 +115,27 @@ release_invalidates_handles :: proc(t: ^testing.T) {
 	testing.expect_value(t, d.nodes.count, 1)   // only the Document node is left
 }
 
+// The document lists the <img> and <input> elements it makes, created in any case or cloned, and no other; a list that
+// fills up drops the freed ones before it grows.
+@(test)
+document_lists_its_image_elements :: proc(t: ^testing.T) {
+	d := document_create()
+	defer document_destroy(d)
+	div := create_element(d, "div")
+	img := create_element(d, "IMG")
+	input := create_element(d, "input")
+	append_child(d, div, img)
+	copy := clone_node(d, div, true)
+	testing.expect_value(t, len(d.images), 3)
+	testing.expect(t, len(d.images) == 3 && d.images[0] == img && d.images[1] == input && get(d, d.images[2]).parent == copy)
+	testing.expect_value(t, release(d, copy), Error.None)
+	for len(d.images) < cap(d.images) { create_element(d, "img") }
+	full := len(d.images)
+	create_element(d, "input")
+	testing.expect_value(t, len(d.images), full)   // (the freed clone's dropped, the new one appended)
+	for h in d.images { testing.expect(t, get(d, h) != nil, "only live elements") }
+}
+
 @(test)
 deep_tree_does_not_overflow_the_stack :: proc(t: ^testing.T) {
 	d := document_create()

@@ -135,21 +135,37 @@ Document :: struct {
 	// the <meta> elements made in this document (the page's color scheme is looked for among them, not in every node:
 	// style/color_scheme.odin). Stale entries (a node freed) are dropped by the reader, and here when the list would grow.
 	metas:         [dynamic]base.Handle,
+	// the <img> and <input> elements made in this document (page/images.odin looks for image elements among them, not
+	// in the subtrees inserted). Stale entries as in `metas`.
+	images:        [dynamic]base.Handle,
 }
 
 // The element name of `Document.metas`.
 META_NAME :: "meta"
+// The element names of `Document.images` (an <input> is an image element when its type says so: the reader checks).
+IMG_NAME :: "img"
+INPUT_NAME :: "input"
 
+// Lists a new element in the document's list of the elements of its name, if it keeps one.
 @(private)
-metas_add :: proc(d: ^Document, h: base.Handle) {
-	if len(d.metas) == cap(d.metas) {
-		kept := 0
-		for m in d.metas {
-			if n := get(d, m); n != nil && n.name == META_NAME { d.metas[kept] = m; kept += 1 }
-		}
-		resize(&d.metas, kept)
+named_add :: proc(d: ^Document, h: base.Handle, name: string) {
+	switch name {
+	case META_NAME: named_append(d, &d.metas, h, META_NAME, META_NAME)
+	case IMG_NAME, INPUT_NAME: named_append(d, &d.images, h, IMG_NAME, INPUT_NAME)
 	}
-	append(&d.metas, h)
+}
+
+// Appends `h` to `list`; a full list first drops its entries that are no longer an element of either name (freed).
+@(private = "file")
+named_append :: proc(d: ^Document, list: ^[dynamic]base.Handle, h: base.Handle, a, b: string) {
+	if len(list) == cap(list) {
+		kept := 0
+		for m in list {
+			if n := get(d, m); n != nil && (n.name == a || n.name == b) { list[kept] = m; kept += 1 }
+		}
+		resize(list, kept)
+	}
+	append(list, h)
 }
 
 // The attribute Element Timing looks for (page/timeline_lcp.odin).
@@ -250,6 +266,7 @@ free_document :: proc(d: ^Document) {
 	delete(d.templates)
 	delete(d.timed)
 	delete(d.metas)
+	delete(d.images)
 	shadow_free_all(d)
 	free(d)
 }
@@ -280,7 +297,7 @@ create_element :: proc(d: ^Document, tag: string) -> base.Handle {
 		for i in 0 ..< len(tag) { buf[i] = lower(tag[i]) }
 		if s := static_name(string(buf[:len(tag)])); s != "" {
 			h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Element, name = s, name_static = true})
-			if s == META_NAME { metas_add(d, h) }
+			named_add(d, h, s)
 			return h
 		}
 	}

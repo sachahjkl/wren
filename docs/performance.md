@@ -163,6 +163,10 @@ After round 8 (5 runs of each build, interleaved; median, range in brackets): th
 3.62 (3.53-3.95) -> 3.16 (3.14-3.19) ms a frame p50 (the display list 0.63 -> 0.39 ms, the block layout 1.24 -> 1.03),
 the style stage 1.85 (1.82-1.98) -> 1.73 (1.73-1.74) ms, CPU work per frame 22.7 (21.3-26.8) -> 20.7 (20.6-21.4) ms.
 
+After round 11 (the sampler and the in-process copy; the browser's runs were too noisy to tell frames apart): the search
+for images on the window thread 0.07 ms a frame -> nothing, a full pass's finishing 0.32 -> 0.27 ms, the reads of every
+box's border by the scans 0.13 -> 0.07 ms.
+
 **Bottleneck:** the script stage (the interpreter and the wrappers it makes, the browser's insertions and the trees
 the collection frees), then layout.
 
@@ -920,6 +924,81 @@ the styles on the layout threads), the bands 6 %, `note_refresh_inputs` 3.4 %. O
 and `box_border` for the two scans, and `images_sync` (the inserted subtrees walked for images every frame, a quarter of
 `UI_Draw`'s samples).
 
+## What changed, round 11: the image search, the cut of a flow, the display items
+
+Item 2 of round 10's list, in its order. Measured three ways: the sampler on the browser (`WREN_SAMPLE=1
+WREN_SAMPLE_STACK=1 WREN_SAMPLE_THREADS=1`, `WREN_SAMPLE_UNDER=<function>`, 2 runs of each build: a share of the samples
+moves little with the machine's load); in process (a test not kept that lays out a copy of nodes10k 600 times with the
+default layout threads and reads every box's `box_border` after each pass, as the scans do; the p50 of each step, 3 to 4
+runs of each build in turn, and a hash of the boxes, lines, display items and bands); then the browser, all of it
+(`wrentool bench perf`, 5 runs of each build, interleaved, the order turning). Other agents built and ran tests on the
+machine all along: single runs of the browser moved by a factor of 2 (a run of nodes10k at 20 or at 46 ms of CPU work a
+frame), so the browser's table below says only that nothing got worse; the samples and the in-process steps carry the
+measurements.
+
+1. **The image elements found among those the document made** (`Document.images`, `named_add`, `src/dom/dom.odin`;
+   `images_sync`, `src/page/images.odin`). After each change of the document the window thread walked every subtree the
+   journal said was inserted, looking for `<img>` and `<input>`: on nodes10k, 7 500 elements a frame for none. The
+   document now lists the `<img>` and `<input>` elements it makes (created, cloned; a freed one dropped by the reader or
+   when the list would grow), as it lists its `<meta>` ones (round 8), and the search reads that list, keeping those in
+   its tree (shadow trees included) that are image elements; it runs only when the journal has an insertion, a removal
+   or an attribute of an `<img>` or `<input>` (anything when the journal does not cover the change), not for a text that
+   changed. nodes10k: `images_sync` 68 to 72 samples in about 1 000 frames (0.07 ms a frame, a quarter of `UI_Draw`'s
+   samples) -> 1 to 2. Tests: `document_lists_its_image_elements` (dom), `images_found_among_the_documents_images` (page:
+   one inserted, one never inserted, a subtree removed, a type changed to image, an image in a shadow tree, a text
+   changed).
+2. **A box or line of a flow tried first against the column of the one before** (`flow_bounds_add`, `flow_inside`,
+   `Mc_Record.apart`, `src/layout/multicol.odin`; `compute_overflow`, `box_border`, the two scans). Finishing and the scans
+   cut every box and line of a flow against each of the six columns. The columns of a container are bands across the
+   flow, one after the other (`apart`, checked when they are made); a rect inside one band, short of its end edges, is
+   reached by no other column and shown whole by that one. A caller walking boxes in order keeps the column the last
+   one lay inside (`near`) and tries it first: one test instead of six where it holds, the full cut otherwise, which
+   finds the column for the next. Not a cache: the index is checked against the record's range and the rect each time,
+   and nothing is kept across passes. In process: finishing 0.318 (0.317-0.320) -> 0.267 (0.264-0.268) ms, the reads of
+   every box's border 0.129 (0.129-0.134) -> 0.070 (0.070-0.071) ms; on the page thread, `flow_bounds_add` 8.8 to 9.1 % ->
+   6.5 to 6.6 % of the samples while running. `unite` inlined: without it the fast path's call cost 0.01 ms of the
+   finishing and of the reads. Test: `multicol_flow_bounds_near` (every box and line of containers with a box across
+   columns, a spanner, columns inside columns and a vertical writing mode, against the full cut).
+3. **A display item of 104 bytes instead of 128** (`Display_Item`, `src/layout/types.odin`): `thumb` was set by nothing
+   (a scrollbar's thumb is computed when it is drawn, `scrollbar_thumb`), and the decorations and the font index fill the
+   padding. In process, the display step 0.28 -> 0.27 ms (each of 4 runs lower, by 0.005 to 0.024 ms): kept with the
+   field that went.
+4. **Measured, not kept: the block layout of the columns.** Timed by part in process (timers not kept, each adding
+   about 30 ns): of the layout step (0.72 to 0.85 ms with the layout threads' paragraphs coming in), laying out the 2 500
+   items 0.33 to 0.43 ms (about 150 ns an item, spread over `layout_contents`, the paragraph taken from the threads,
+   `block_width`, the marker; none above 0.05 ms), gathering the units 0.06, balancing 0.06, moving the boxes to their
+   columns (`apply_shifts`) 0.11; the rest is the threads' paragraphs. No part stands out to take. `flow_children`
+   without its prefetch of the children's styles (one shared record on this page): the step within its noise (0.72 to
+   0.85 ms both ways, 4 runs each).
+5. Not done: item 1 of round 10's list (one crossing to create a node, pin it and name its interface): it changes the
+   bindings' generator and the engine's glue, and the round's time went to the items above.
+
+| | before | after |
+|---|---|---|
+| nodes10k: `images_sync` on the window thread (samples in ~1 000 frames) | 68-72 | 1-2 |
+| nodes10k: `UI_Draw`'s samples (both runs) | 278-289 | 189-210 |
+| nodes10k, in process: finish, display, the reads of every box's border (p50) | 0.318, 0.276, 0.129 ms | 0.267, 0.268, 0.070 ms |
+| nodes10k: a full pass, finish + display (p50 of each, browser) | 0.352 + 0.401 ms | 0.320 + 0.371 ms |
+| nodes10k: the window thread waiting on layout, p50 | 3.14 (3.12-3.61) ms | 3.09 (3.06-4.44) ms |
+| nodes10k: CPU work per frame, mean | 20.6 (20.2-25.8) ms | 20.7 (20.3-35.3) ms |
+| `mutation`: CPU work per frame, mean | 0.91 (0.82-1.25) ms | 0.87 (0.80-1.54) ms |
+| `mutation_class`: CPU work per frame, mean | 1.77 (1.35-2.02) ms | 1.51 (1.37-6.72) ms |
+| `mutation_fullstyle`: CPU work per frame, mean | 3.16 (2.90-12.3) ms | 3.28 (2.88-13.7) ms |
+| p10k_load: navigation to the first paint of the page | 171 (164-438) ms | 172 (155-599) ms |
+| p10k_scroll: CPU work per frame, mean | 0.42 (0.39-1.44) ms | 0.49 (0.38-0.96) ms |
+| `examples/site/modern-css.html` resized: CPU work per frame, mean | 0.43 (0.42-1.17) ms | 0.57 (0.41-1.10) ms |
+
+Layout's output is the same: the in-process copy of nodes10k gives the same hash in every build above, the layout unit
+tests pass, and the WPT reference tests of css/css-multicol (464) and css/css-writing-modes (1 141), base and new against
+the same checkout, give the same result for every test (303 and 619 pass; `wm-propagation-svg-root-scrollbar.svg` fails
+in both, as in round 9).
+
+What nodes10k's page thread does now (the browser, 686 samples while running): the block layout of the columns 34 %
+inclusive (`layout_contents` 7 % of its own, `layout_ifc` 3.8, `gather_box` and `gather_child` 4.4, `apply_shifts` 4.4),
+building the box tree 19 % (`place_element` 4.2 % of its own), finishing 14 % (`finish` 6.3 % of its own,
+`flow_bounds_add` 3.6), the display list 9 %, `note_refresh_inputs` 4.5 %, the bands 4.4 %, waiting for the threads'
+paragraphs 3.8 %.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -1041,6 +1120,11 @@ After round 10. Round 9's item 2 was measured before anything was split: the ste
 records (round 10, item 1); the scans of every box no longer take the long way for a box in a flow (item 2). Item 2 below
 is now the steps' own code.
 
+After round 11. Round 10's item 2 is done in part (round 11: the image search from the document's list, a flow's boxes
+and lines cut against the column of the one before, a smaller display item); the block layout of the columns was timed
+by part and has nothing that stands out (round 11, item 4). Item 1 is unchanged and now first by far; item 2 below is
+what is left of layout.
+
 1. **The script stage of DOM-heavy pages, what is left** (nodes10k: 14.3 ms of a 20 ms frame). In order of the
    engine's samples: the interpreter itself (`interp_hot`, `interp_run`, `call_native` and the C API's bridge: about a
    third, with the prototype walks for methods, five shapes for `li.appendChild`); making the wrappers (`make_wrapper`,
@@ -1053,18 +1137,15 @@ is now the steps' own code.
    shown first). Texts are still copied to the heap and freed one by one (`create_text`; an arena of the document needs
    texts that change to give their bytes back). Not the crossings themselves (section 2). Measured and left: an inline
    list in `destroy_subtree` (round 6); a flag per interface for the unforgeable members of its chain (round 7).
-2. **Layout of DOM-heavy pages: the steps' own code** (nodes10k: the window thread waits 3.2 ms a frame, the page
-   thread's full pass: tree 0.92, layout 1.04, finish 0.36, display 0.39, bands 0.13 ms). Round 10 measured the layout
-   of the records against the steps and found nothing there (`Box` twice as large or reordered, display items twice as
-   large: within 0.06 ms of a 2.6 ms pass; the boxes fit the last cache): arrays of their own by box are not the gain.
-   What the profile shows, by cost: the block layout of the columns (`layout_contents`, `layout_ifc`, `flow_children`,
-   `gather_child` and `gather_box`: 41 % of the page thread); `flow_bounds_add` (8.5 % of the page thread for finishing,
-   and with `box_border` most of what is left of the window thread's scans: each box and line of a flow cut against every
-   column, where a rect inside one column needs one test; round 9's binary search did not shorten it, the cut of a box's
-   lines against the column its box lies in is the next thing to measure); the display list (9 %; it writes 12 506 items
-   of 128 bytes, and their size shows: a smaller item, not a split one); the bands and `note_refresh_inputs`. On the
-   window thread, `images_sync` walks the inserted subtrees for images every frame (a quarter of `UI_Draw`'s samples on
-   nodes10k): the DOM could list the image elements as it lists the `<meta>` ones (round 8).
+2. **Layout of DOM-heavy pages: the steps' own code** (nodes10k: the window thread waits 3.1 ms a frame, the page
+   thread's full pass: tree 0.96, layout 1.07, finish 0.32, display 0.37, bands 0.13 ms). Round 10 found the records'
+   layout no gain, round 11 took the image search, the cut of the flow and the display item's padding. What the profile
+   shows now, by cost: building the box tree (19 % of the page thread; `place_element`, and the layout threads'
+   summaries of the styles); the block layout of the columns (34 %, no part above 0.11 ms in process: `apply_shifts`
+   moving every box to its column, then the 2 500 items' own layout at about 150 ns each: a shorter path for an item
+   whose paragraph came from the threads and whose style is its siblings' is what is left to try); finishing (`finish`
+   itself 6 %); `note_refresh_inputs` (4.5 %: every display item and inline item read again after the list is made,
+   which the shares making the list could note as they go); the bands (4.4 %).
 3. **What a full style pass still costs per page** (`mutation_fullstyle`, a pass 0.95 ms in the browser, 0.48 ms in
    process with seven threads, four fifths of that on the threads since round 9): on the style threads, matching
    (`match_chain`, the families of pages whose elements are each of their own kind: modern-css, p10k, matched in full

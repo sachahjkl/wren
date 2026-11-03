@@ -97,6 +97,7 @@ compute_overflow :: proc(l: ^Layout, order: []i32, in_fixed: []bool, vp: Vec2) -
 		o := &l.boxes[owner]
 		if .Scroll in o.flags { o.overflow = rect_union(o.overflow, r) }
 	}
+	near := NONE   // (the fragment of a flow the last box or line lay in: flow_bounds)
 	for x in order {
 		b := &l.boxes[x]
 		if .Root in b.flags { continue }
@@ -118,7 +119,7 @@ compute_overflow :: proc(l: ^Layout, order: []i32, in_fixed: []bool, vp: Vec2) -
 			owner := &l.boxes[b.clip_owner]
 			box_r = with_end_margins(l, b, box_r, padding_rect(owner), owner.cs)
 		}
-		if mc != NONE { box_r = flow_bounds(l, mc, box_r) }
+		if mc != NONE { box_r = flow_bounds(l, mc, box_r, &near) }
 		add(l, b.clip_owner, hm ? mat_bounds(m, box_r) : box_r, in_fixed[x], &doc)
 		if .Ifc in b.flags && b.lines[1] > b.lines[0] {
 			clips := .Clips in b.flags && .Propagated not_in b.flags
@@ -131,7 +132,7 @@ compute_overflow :: proc(l: ^Layout, order: []i32, in_fixed: []bool, vp: Vec2) -
 					if f.kind != .Text && f.kind != .Ellipsis { continue }
 					base := f.box != NONE ? l.boxes[f.box].abs : b.abs
 					r := Rect{base + {f.x, f.y}, base + {f.x + f.w, f.y + f.h}}
-					if mc != NONE && !clips { r = flow_bounds(l, mc, r) }
+					if mc != NONE && !clips { r = flow_bounds(l, mc, r, &near) }
 					add(l, owner, lhm ? mat_bounds(lm, r) : r, in_fixed[x], &doc)
 				}
 			}

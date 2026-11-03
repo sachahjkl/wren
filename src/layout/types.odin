@@ -324,7 +324,7 @@ Item_Kind :: enum u8 {
 	Replaced,     // content area of a replaced element (image placeholder...)
 	Control,      // content area of a form control: painted by the control hook
 	Outline,
-	Scrollbar,    // rect = track, thumb = the thumb
+	Scrollbar,    // rect = track (its thumb: scrollbar_thumb)
 	Column_Rule,  // a rule between columns of a multi-column container: rect = the rule, in its style (Vertical: it lies across)
 }
 
@@ -335,17 +335,16 @@ Display_Item :: struct {
 	kind:     Item_Kind,
 	flags:    Item_Flags,
 	level:    u8,                   // Text: bidi embedding level of its text (odd: right to left)
+	deco:     style.Decorations,    // Text: underline / overline / line-through to draw
 	space, clip, group: i32,
 	box:      i32,
+	fi:       i32,
 	node:     base.Handle,          // hit-test target: an element
 	cs:       ^style.Computed,
 	rect:     Rect,                 // layout coordinates
 	text:     string,
-	fi:       i32,
 	baseline: f32,                  // Text, Marker: y of the baseline (Vertical: x)
 	extra:    f32,
-	thumb:    Rect,
-	deco:     style.Decorations,    // Text: underline / overline / line-through to draw
 	deco_color: css.Color,
 	deco_box: i32,                  // Text: the box the decoration color comes from (NONE: none)
 	item:     i32,                  // Text from a fragment: its inline item (whose style it shows), else NONE

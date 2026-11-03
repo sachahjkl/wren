@@ -89,12 +89,13 @@ timeline_present :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 	if !want_lcp { return }
 
 	best: Lcp_Candidate
+	near := lay.NONE
 	for &b, bi in l.boxes {
 		node := b.node
 		if node == base.NIL_HANDLE || .Anonymous in b.flags || .Dead in b.flags { continue }
 		// a box whose visible part is no larger than the largest candidate so far cannot be the next one: its border box
 		// clamped to the viewport, from the layout's arrays, settles most boxes before the candidate's checks
-		if border, transformed := lay.box_border(l, &view, i32(bi)); !transformed {
+		if border, transformed := lay.box_border(l, &view, i32(bi), &near); !transformed {
 			x0 := max(f64(border.min.x / scale) - vp.scroll_x, 0)
 			y0 := max(f64(border.min.y / scale) - vp.scroll_y, 0)
 			x1 := min(f64(border.max.x / scale) - vp.scroll_x, vp.width)
@@ -337,6 +338,7 @@ timeline_layout_shift_check :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 	scan := lb.scans
 	prev, cur := &lb.prev, &lb.cur
 	prev_scroll := lb.prev_scroll
+	near := lay.NONE
 	for &b in l.boxes {
 		node := b.node
 		if node == base.NIL_HANDLE || .Anonymous in b.flags || .Dead in b.flags { continue }
@@ -345,7 +347,7 @@ timeline_layout_shift_check :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 		if cs.position == .Fixed { continue }   // fixed boxes do not shift the page
 		bi := lay.box_index(l, node)   // (the node's box: a box of the same node, a ::before, reads it)
 		if bi == lay.NONE || .Hidden in l.boxes[bi].flags { continue }
-		border, transformed := lay.box_border(l, &view, bi)
+		border, transformed := lay.box_border(l, &view, bi, &near)
 		if transformed { continue }   // a transform move is not a layout shift
 		doc := lay.Rect{border.min / scale, border.max / scale}
 		i := int(base.handle_index(node))

@@ -76,6 +76,42 @@ multicol_box_border :: proc(t: ^testing.T) {
 	mf_expect(t, f, "k", 0, 0, 200, 40)
 }
 
+// flow_bounds from the fragment the box or line before lay in gives what trying every fragment gives: boxes in one column,
+// across three, around a spanner, in columns inside columns, in a vertical writing mode, and from one container to the next;
+// a third and more take the fragment of the one before (not the first of a column, nor one across columns).
+@(test)
+multicol_flow_bounds_near :: proc(t: ^testing.T) {
+	f := mf_load(`<!doctype html><style>body{margin:0;font:20px/20px x} .m{column-count:3;column-gap:10px;width:320px} h2{column-span:all;margin:0;font:inherit}</style>
+<div class=m>` + SIX + `<div id=k>1<br>2<br>3<br>4<br>5<br>6</div><h2>spanner</h2>` + SIX + `</div>
+<div class=m><div class=m style="width:auto">` + SIX + `</div><p>after the inner columns</p></div>
+<div class=m style="writing-mode:vertical-rl;height:320px">` + SIX + `</div>`)
+	defer fixture_unload(f)
+	l := &f.l
+	near := NONE
+	took, all := 0, 0
+	check :: proc(t: ^testing.T, l: ^Layout, mc: i32, r: Rect, near: ^i32, took, all: ^int) {
+		rec := mc_record(l, mc)
+		if rec.apart && near^ >= rec.phys[0] && near^ < rec.phys[1] && flow_inside(&l.flow_frags[near^], r) { took^ += 1 }
+		all^ += 1
+		want := flow_bounds(l, mc, r)
+		got := flow_bounds(l, mc, r, near)
+		testing.expectf(t, got == want, "%v: %v from the fragment before, %v from all", r, got, want)
+	}
+	for &b, bi in l.boxes {
+		if .In_Flow not_in b.fx { continue }
+		mc := flow_container(l, i32(bi))
+		check(t, l, mc, border_rect(&b), &near, &took, &all)
+		for li in b.lines[0] ..< b.lines[1] {
+			ln := &l.lines[li]
+			for fi in ln.frags[0] ..< ln.frags[1] {
+				fr := &l.frags[fi]
+				check(t, l, mc, Rect{b.abs + {fr.x, fr.y}, b.abs + {fr.x + fr.w, fr.y + fr.h}}, &near, &took, &all)
+			}
+		}
+	}
+	testing.expectf(t, took * 3 > all, "%d of %d from the fragment before", took, all)
+}
+
 @(test)
 multicol_width_and_rtl :: proc(t: ^testing.T) {
 	// column-width: as many as fit
