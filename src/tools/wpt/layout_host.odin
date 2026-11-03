@@ -146,7 +146,13 @@ host_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 		input.replaced = lay.Replaced_Api{user = h, intrinsic = host_intrinsic, ratio = host_ratio}
 		input.images_generation = page.images_sizes_generation(p)
 	}
+	// CSS Scroll Anchoring, as the shell does it (src/browser/page_thread.odin page_layout)
+	anchor := lay.scroll_anchor_select(&h.l, st, 1, f32(h.scroll[1]), vh)
 	lay.run(&h.l, input)
+	if shift := lay.scroll_anchor_shift(&h.l, anchor); shift != 0 {
+		lo, hi := lay.doc_scroll_y_range(&h.l, vh)
+		h.scroll[1] = clamp(h.scroll[1] + f64(shift), f64(lo), f64(hi))
+	}
 	return &h.l
 }
 

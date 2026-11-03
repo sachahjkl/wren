@@ -17,6 +17,7 @@ import "core:time"
 import "toolkit:draw"
 import "wb:config"
 import "wb:host"
+import lay "wb:layout"
 import "wb:page"
 import "wb:style"
 import "wb:base"
@@ -65,6 +66,12 @@ Page_Thread :: struct {
 page_layout :: proc(app: ^App, t: ^Tab, styled: ^style.Styled, size: draw.Vec2, scale: f32, fonts_gen: u64) {
 	t0 := time.tick_now()
 	defer t.layout_ms, t.layout_ms_known = time.duration_milliseconds(time.tick_since(t0)), true
+	// CSS Scroll Anchoring (wb:layout scroll_anchor.odin): what the reader looks at stays put when content above it changes size
+	anchor := lay.scroll_anchor_select(&t.layout, styled, scale, t.scroll, size.y)
+	defer if shift := lay.scroll_anchor_shift(&t.layout, anchor); shift != 0 {
+		lo, hi := lay.doc_scroll_y_range(&t.layout, size.y)
+		t.scroll = clamp(t.scroll + shift, lo, hi)
+	}
 	job := Layout_Job{app, &t.layout, t, styled, size, scale, fonts_gen}
 	if !page_thread_wanted(app) || (t.layout_ms_known && t.layout_ms < config.float_of(&app.prefs, "browser.shell.page_thread_min_ms")) {
 		layout_job_run(&job)

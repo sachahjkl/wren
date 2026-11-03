@@ -211,6 +211,7 @@ Containment :: enum u8 { Size, Inline_Size, Layout, Style, Paint }
 Contain :: bit_set[Containment; u8]
 Content_Visibility :: enum u8 { Visible, Auto, Hidden }
 Scroll_Behavior :: enum u8 { Auto, Smooth }
+Overflow_Anchor :: enum u8 { Auto, None }   // CSS Scroll Anchoring: none keeps a box (and its scroller) out of scroll anchoring
 Overscroll :: enum u8 { Auto, Contain, None }
 Auto_Color :: struct { auto: bool, color: css.Color }
 

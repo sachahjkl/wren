@@ -548,10 +548,19 @@ Window_innerWidth :: proc(c: ^Call) -> i32 { return i32(viewport_now(c).width) }
 Window_innerHeight :: proc(c: ^Call) -> i32 { return i32(viewport_now(c).height) }
 Window_outerWidth :: proc(c: ^Call) -> i32 { return i32(viewport_now(c).width) }
 Window_outerHeight :: proc(c: ^Call) -> i32 { return i32(viewport_now(c).height) }
-Window_scrollX :: proc(c: ^Call) -> f64 { return viewport_now(c).scroll_x }
-Window_scrollY :: proc(c: ^Call) -> f64 { return viewport_now(c).scroll_y }
-Window_pageXOffset :: proc(c: ^Call) -> f64 { return viewport_now(c).scroll_x }
-Window_pageYOffset :: proc(c: ^Call) -> f64 { return viewport_now(c).scroll_y }
+Window_scrollX :: proc(c: ^Call) -> f64 { return scroll_now(c).scroll_x }
+Window_scrollY :: proc(c: ^Call) -> f64 { return scroll_now(c).scroll_y }
+Window_pageXOffset :: proc(c: ^Call) -> f64 { return scroll_now(c).scroll_x }
+Window_pageYOffset :: proc(c: ^Call) -> f64 { return scroll_now(c).scroll_y }
+
+// The document's scroll offsets as they are after what the script changed: the layout brought up to date moves them (its
+// scroll range, scroll anchoring: wb:layout scroll_anchor.odin), as browsers do when a script reads them.
+@(private = "file")
+scroll_now :: proc(c: ^Call) -> Viewport {
+	if c.page.worker != nil { return {} }
+	js_layout_now(c.page)
+	return viewport_now(c)
+}
 Window_devicePixelRatio :: proc(c: ^Call) -> f64 { return viewport_now(c).scale }
 Window_screenX :: proc(c: ^Call) -> i32 { return 0 }
 Window_screenY :: proc(c: ^Call) -> i32 { return 0 }
