@@ -15,6 +15,9 @@ STR_NULLABLE   :: 1 << 0
 STR_NULL_EMPTY :: 1 << 1
 STR_OPTIONAL   :: 1 << 2
 STR_USV        :: 1 << 3
+// the caller holds the value and reads ptr[:len] (not NUL-terminated) before it returns: an ASCII string is read in
+// place (JS_ToStringView), not copied
+STR_VIEW       :: 1 << 4
 
 ENFORCE_RANGE :: 1
 CLAMP         :: 2

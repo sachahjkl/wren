@@ -51,6 +51,14 @@ point_gc_mark :: proc "c" (rt: ^capi.Runtime, val: capi.JSValue, mark: capi.Mark
 	if p != nil {capi.JS_MarkValue(rt, p.held, mark)}
 }
 
+@(private = "file") epilogues, finalized_at_epilogue: int
+
+@(private = "file")
+count_epilogue :: proc "c" (rt: ^capi.Runtime, opaque: rawptr) {
+	epilogues += 1
+	finalized_at_epilogue = finalized
+}
+
 // A class whose Point is the object's payload (JS_NewObjectProtoClassPayload): its finalizer drops the reference the
 // payload holds and frees nothing else.
 @(private = "file") cls_pod: capi.Class_ID
@@ -301,6 +309,30 @@ capi_main :: proc() -> int {
 	eval(ctx, "keep = null; 0")
 	capi.JS_RunGC(rt)
 	check(finalized == base + 1, "dropped, then collected")
+
+	// the epilogue: once a collection, after its finalizers (the glue unpins the nodes they released in one call)
+	capi.JS_SetGCEpilogue(rt, count_epilogue, nil)
+	base = finalized
+	eval(ctx, "mk(3); 0")
+	capi.JS_RunGC(rt)
+	check(epilogues == 1 && finalized > base && finalized_at_epilogue == finalized, "the epilogue runs once, after the finalizers")
+	capi.JS_SetGCEpilogue(rt, nil, nil)
+	capi.JS_RunGC(rt)
+	check(epilogues == 1, "no epilogue once unset")
+
+	// a string's bytes read in place: ASCII only (its UTF-8), a rope flattened first, nothing for anything else
+	ascii := capi.JS_DupValue(ctx, eval(ctx, "'li'"))
+	rope := capi.JS_DupValue(ctx, eval(ctx, "var s = 'item '; for (var i = 0; i < 3; i++) s += i; s"))
+	vn, rn: uint
+	vp := capi.JS_ToStringView(ctx, &vn, ascii)
+	check(vp != nil && string(vp[:vn]) == "li" && capi.JS_ToStringView(ctx, &vn, ascii) == vp, "an ASCII string read in place")
+	rp := capi.JS_ToStringView(ctx, &rn, rope)
+	check(rp != nil && string(rp[:rn]) == "item 012", "a concatenation read in place")
+	for src in ([]string{"'caf\\u00e9'", "'\\ud83d\\ude00'", "12", "({})"}) {
+		check(capi.JS_ToStringView(ctx, &vn, eval(ctx, src)) == nil, fmt.tprintf("no view of %s", src))
+	}
+	capi.JS_FreeValue(ctx, ascii)
+	capi.JS_FreeValue(ctx, rope)
 
 	// a counted reference keeps an object alive; freeing it releases it
 	base = finalized

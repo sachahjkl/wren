@@ -22,6 +22,8 @@ State :: struct {
 	interrupt_opaque:   rawptr,
 	gc_prologue:        GC_Prologue,
 	gc_prologue_opaque: rawptr,
+	gc_epilogue:        GC_Prologue,
+	gc_epilogue_opaque: rawptr,
 	rejection:          Rejection_Tracker,
 	rejection_opaque:   rawptr,
 	compile_hook:       Compile_Strings_Hook,
@@ -66,6 +68,7 @@ JS_NewRuntime :: proc "c" () -> ^Runtime {
 	rt.host_data = st
 	rt.config.interrupt = interrupt_bridge
 	rt.config.gc_prologue = gc_prologue_bridge
+	rt.config.gc_epilogue = gc_epilogue_bridge
 	rt.config.rejection = rejection_bridge
 	rt.config.compile_strings = compile_strings_bridge
 	rt.config.dynamic_import = dynamic_import_bridge
@@ -147,6 +150,14 @@ JS_SetGCPrologue :: proc "c" (r: ^Runtime, cb: GC_Prologue, opaque: rawptr) {
 	st.gc_prologue_opaque = opaque
 }
 
+// Not part of the quickjs.h API: called at the end of every collection, after the finalizers (what they left to do
+// at once, done once: the glue unpins the nodes of the wrappers it finalized in one call to the browser).
+JS_SetGCEpilogue :: proc "c" (r: ^Runtime, cb: GC_Prologue, opaque: rawptr) {
+	st := state_of(jrt(r))
+	st.gc_epilogue = cb
+	st.gc_epilogue_opaque = opaque
+}
+
 JS_SetInterruptHandler :: proc "c" (r: ^Runtime, cb: Interrupt_Handler, opaque: rawptr) {
 	st := state_of(jrt(r))
 	st.interrupt = cb
@@ -207,6 +218,12 @@ interrupt_bridge :: proc(rt: ^js.Runtime, user: rawptr) -> bool {
 gc_prologue_bridge :: proc(rt: ^js.Runtime, user: rawptr) {
 	st := state_of(rt)
 	if st.gc_prologue != nil {st.gc_prologue(wrt(rt), st.gc_prologue_opaque)}
+}
+
+@(private)
+gc_epilogue_bridge :: proc(rt: ^js.Runtime, user: rawptr) {
+	st := state_of(rt)
+	if st.gc_epilogue != nil {st.gc_epilogue(wrt(rt), st.gc_epilogue_opaque)}
 }
 
 @(private)

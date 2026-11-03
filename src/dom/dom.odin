@@ -62,6 +62,7 @@ Node :: struct {
 	as_document: bool,       // a Fragment that stands for a document of its own (DOMImplementation.createHTMLDocument)
 	is_shadow:   bool,       // a Fragment that is a shadow root (shadow.odin)
 	xml:         Xml_Kind,   // what XML adds to a kind (DOMParser's XML documents)
+	name_static: bool,       // `name` is the program's own string, never freed (names.odin)
 	parent:      base.Handle,
 	first_child: base.Handle,
 	last_child:  base.Handle,
@@ -225,7 +226,7 @@ free_document :: proc(d: ^Document) {
 
 @(private)
 free_node_data :: proc(n: ^Node) {
-	delete(n.name)
+	if !n.name_static { delete(n.name) }
 	delete(n.text)
 	for a in n.attrs { delete(a.name); delete(a.value) }
 	delete(n.attrs)
@@ -240,13 +241,20 @@ touch :: proc(d: ^Document) { d.mutations += 1 }
 ////////////////////////////////
 // Creation
 
-// The name in ASCII lower case (DOM createElement, the HTML parser: other letters keep their case).
+// The name in ASCII lower case (DOM createElement, the HTML parser: other letters keep their case): one of
+// STATIC_NAMES is the program's string, any other a copy.
 create_element :: proc(d: ^Document, tag: string) -> base.Handle {
-	name := make([]u8, len(tag))
-	for i in 0 ..< len(tag) {
-		c := tag[i]
-		name[i] = c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c
+	lower :: proc "contextless" (c: u8) -> u8 { return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c }
+	if len(tag) <= NAME_STATIC_MAX {
+		buf: [NAME_STATIC_MAX]u8
+		for i in 0 ..< len(tag) { buf[i] = lower(tag[i]) }
+		if s := static_name(string(buf[:len(tag)])); s != "" {
+			h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Element, name = s, name_static = true})
+			return h
+		}
 	}
+	name := make([]u8, len(tag))
+	for i in 0 ..< len(tag) { name[i] = lower(tag[i]) }
 	h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Element, name = string(name)})
 	return h
 }

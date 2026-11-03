@@ -16,7 +16,8 @@
 //     by its node's current tree (Node_treeRoots: one call for the others, one for the plain ones when some detached
 //     tree has a group). New wrappers start in no group: nothing is freed but by a collection, and its prologue
 //     places them.
-//   * A finalized node wrapper unpins its node; the browser frees a detached tree nothing pins.
+//   * A finalized node wrapper unpins its node, all of a collection's in one call when it ends (gc_epilogue); the
+//     browser frees a detached tree nothing pins.
 package wj
 
 // The platform classes: every platform object is of one of the first three, with an Obj as opaque.
@@ -108,7 +109,7 @@ members_of :: #force_inline proc "contextless" (it: ^Interface) -> [^]Member { r
 @(private = "file") Slot :: struct { key: u64, obj: JSValue }
 @(private = "file") Map  :: struct { slots: [^]Slot, cap, count: u32 }
 
-@(private = "file") nodes, hosts: Map
+@(private = "file") hosts: Map
 
 @(private = "file")
 map_hash :: #force_inline proc "contextless" (key: u64, cap: u32) -> u32 {
@@ -175,6 +176,71 @@ map_del :: proc "contextless" (m: ^Map, key: u64) {
 	}
 	m.slots[i].key = 0
 	m.slots[i].obj = UNDEFINED
+}
+
+// ---- node handle -> wrapper: a flat array by the handle's slot index ----
+//
+// A node's handle is its pool slot's index (bits 31..0) and generation: the wrappers of a document's nodes sit at their
+// index, and the full handle in the entry tells a node from the one that had the slot before it. A handle whose entry
+// is taken (a node of another document, a slot reused while the old wrapper waits for a collection) goes to `others`.
+
+@(private = "file") NODES_MIN :: 1024
+@(private = "file") Node_Table :: struct { by_index: [^]Slot, cap, count: u32, others: Map }   // count: of by_index
+@(private = "file") nodes: Node_Table
+
+@(private = "file")
+node_index :: #force_inline proc "contextless" (h: u64) -> u32 { return u32(h) }
+
+@(private = "file")
+node_get :: #force_inline proc "contextless" (h: u64) -> JSValue {
+	if i := node_index(h); i < nodes.cap && nodes.by_index[i].key == h { return nodes.by_index[i].obj }
+	return nodes.others.count != 0 ? map_get(&nodes.others, h) : UNDEFINED
+}
+
+@(private = "file")
+node_put :: proc "contextless" (h: u64, obj: JSValue) -> bool {
+	i := node_index(h)
+	if i >= nodes.cap {
+		cap := max(nodes.cap, NODES_MIN)
+		for cap <= i { cap *= 2 }
+		s := ([^]Slot)(libc_realloc(nodes.by_index, uint(cap) * size_of(Slot)))
+		if s == nil { return false }
+		memset(&s[nodes.cap], 0, uint(cap - nodes.cap) * size_of(Slot))
+		nodes.by_index = s
+		nodes.cap = cap
+	}
+	e := &nodes.by_index[i]
+	if e.key == 0 || e.key == h {
+		if e.key == 0 { nodes.count += 1 }
+		e^ = Slot{h, obj}
+		return true
+	}
+	return map_put(&nodes.others, h, obj)
+}
+
+@(private = "file")
+node_count :: #force_inline proc "contextless" () -> u32 { return nodes.count + nodes.others.count }
+
+@(private = "file")
+node_del :: proc "contextless" (h: u64) {
+	if i := node_index(h); i < nodes.cap && nodes.by_index[i].key == h {
+		nodes.by_index[i] = Slot{0, UNDEFINED}
+		nodes.count -= 1
+		return
+	}
+	map_del(&nodes.others, h)
+}
+
+// The next entry from `i` on (nil after the last): the array, then the others.
+@(private = "file")
+node_next :: proc "contextless" (i: ^u32) -> ^Slot {
+	for ; i^ < nodes.cap; i^ += 1 {
+		if nodes.by_index[i^].key != 0 { i^ += 1; return &nodes.by_index[i^ - 1] }
+	}
+	for ; i^ < nodes.cap + nodes.others.cap; i^ += 1 {
+		if s := &nodes.others.slots[i^ - nodes.cap]; s.key != 0 { i^ += 1; return s }
+	}
+	return nil
 }
 
 // ---- groups ----
@@ -297,13 +363,13 @@ detached_group_held :: proc "contextless" () -> bool {
 @(private = "file")
 gc_prologue :: proc "c" (rt: ^Runtime, opaque: rawptr) {
 	r := &wj_the_realm
-	if r.in_gc_prologue || r.ctx == nil || nodes.count == 0 { return }
+	if r.in_gc_prologue || r.ctx == nil || node_count() == 0 { return }
 	r.in_gc_prologue = true
 	ctx := r.ctx
 	threshold := JS_GetGCThreshold(rt)
 	JS_SetGCThreshold(rt, max(uint))   // no collection from inside this one
 
-	n := nodes.count
+	n := node_count()
 	handles := ([^]u64)(libc_malloc(uint(n) * 8))
 	roots := ([^]u64)(libc_malloc(uint(n) * 8))
 	objs := ([^]JSValue)(libc_malloc(uint(n) * size_of(JSValue)))
@@ -311,19 +377,19 @@ gc_prologue :: proc "c" (rt: ^Runtime, opaque: rawptr) {
 		// the wrappers that carry something from the start of the arrays, the plain ones (out of their groups) from the
 		// end: `k` of the first, from `p` on the others
 		k, p: u32 = 0, n
-		for i: u32 = 0; i < nodes.cap; i += 1 {
-			if nodes.slots[i].key == 0 { continue }
-			o := obj_of(nodes.slots[i].obj)
+		it: u32
+		for s := node_next(&it); s != nil; s = node_next(&it) {
+			o := obj_of(s.obj)
 			if o == nil { continue }
 			if wrapper_plain(o) {
 				if o.group != nil { group_remove(ctx, o) }   // (not freed here: only a collection frees, and its finalizer clears the slot)
 				p -= 1
-				handles[p] = nodes.slots[i].key
-				objs[p] = nodes.slots[i].obj
+				handles[p] = s.key
+				objs[p] = s.obj
 				continue
 			}
-			handles[k] = nodes.slots[i].key
-			objs[k] = JS_DupValue(ctx, nodes.slots[i].obj)   // nothing is freed while they move
+			handles[k] = s.key
+			objs[k] = JS_DupValue(ctx, s.obj)   // nothing is freed while they move
 			k += 1
 		}
 		if k > 0 { wr_Node_treeRoots(handles, k, ([^]u8)(roots), k * 8) }
@@ -375,6 +441,34 @@ gc_prologue :: proc "c" (rt: ^Runtime, opaque: rawptr) {
 @(export, link_name = "wj_mark")
 wj_mark :: proc "c" (rt: rawptr, v: JSValue, mark_func: rawptr) { JS_MarkValue((^Runtime)(rt), v, mark_func) }
 
+// ---- the nodes a collection unpins ----
+
+// The finalized node wrappers' handles, unpinned in one call to the browser when the collection ends (gc_epilogue):
+// a collection frees thousands of wrappers, which called the browser once each.
+@(private = "file") UNPINS_MIN :: 1024
+@(private = "file") unpins: [^]u64
+@(private = "file") unpins_count, unpins_cap: u32
+
+@(private = "file")
+unpin_later :: proc "contextless" (handle: u64) {
+	if unpins_count == unpins_cap {
+		cap := max(unpins_cap * 2, UNPINS_MIN)
+		grown := ([^]u64)(libc_realloc(unpins, uint(cap) * 8))
+		if grown == nil { wr_Node_unpin(handle); return }
+		unpins = grown
+		unpins_cap = cap
+	}
+	unpins[unpins_count] = handle
+	unpins_count += 1
+}
+
+@(private = "file")
+gc_epilogue :: proc "c" (rt: ^Runtime, opaque: rawptr) {
+	if unpins_count == 0 { return }
+	wr_Node_unpinAll(unpins, unpins_count)
+	unpins_count = 0
+}
+
 // ---- platform classes ----
 
 @(private = "file")
@@ -390,9 +484,9 @@ obj_finalizer :: proc "c" (rt: ^Runtime, val: JSValue) {
 	if o.impl != nil && o.impl_free != nil { o.impl_free(o.impl) }
 	o.impl = nil
 	if o.kind == KIND_NODE {
-		cur := map_get(&nodes, o.handle)
-		if same_ptr(cur, val) { map_del(&nodes, o.handle) }
-		wr_Node_unpin(o.handle)
+		cur := node_get(o.handle)
+		if same_ptr(cur, val) { node_del(o.handle) }
+		unpin_later(o.handle)
 	} else if o.kind == KIND_HOST {
 		cur := map_get(&hosts, o.handle)
 		if same_ptr(cur, val) { map_del(&hosts, o.handle) }
@@ -706,7 +800,7 @@ make_wrapper :: proc "contextless" (ctx: ^Context, iface: i32, kind: u8, handle:
 // The cached wrapper of a handle, or undefined (no reference taken; does not create one).
 @(export, link_name = "wj_cached")
 wj_cached :: proc "c" (ctx: ^Context, handle: u64) -> JSValue {
-	v := map_get(&nodes, handle)
+	v := node_get(handle)
 	return is_undefined(v) ? map_get(&hosts, handle) : v
 }
 
@@ -717,9 +811,8 @@ wj_connected_listening_nodes :: proc "c" (ctx: ^Context, count: ^u32) -> [^]JSVa
 	count^ = 0
 	out: [^]JSValue
 	cap: u32
-	for i: u32 = 0; i < nodes.cap; i += 1 {
-		s := &nodes.slots[i]
-		if s.key == 0 { continue }
+	it: u32
+	for s := node_next(&it); s != nil; s = node_next(&it) {
 		o := obj_of(s.obj)
 		if o == nil || o.listeners == nil || wj_is_foreign(o.handle) || wr_Node_isConnected(o.handle) == 0 { continue }
 		if count^ == cap {
@@ -773,20 +866,20 @@ wj_throw_gone :: proc "c" (ctx: ^Context) -> JSValue {
 // objects it keeps (classList, attributes...). Two steps: the wrappers of a whole subtree first, without a call to the
 // browser (a call may run a custom element reaction, which must find them moved), then the pins.
 wj_node_rekey :: proc "contextless" (old, new: u64) {
-	v := map_get(&nodes, old)
+	v := node_get(old)
 	if is_undefined(v) { return }
 	o := obj_of(v)
 	if o == nil { return }
-	map_del(&nodes, old)
+	node_del(old)
 	o.handle = new
-	map_put(&nodes, new, v)
+	node_put(new, v)
 	for i: u16 = 0; i < o.n_same; i += 1 {
 		if d := dom_impl_any(o.same[i]); d != nil && d.node == old { d.node = new }
 	}
 }
 
 wj_node_rekey_pins :: proc "contextless" (old, new: u64) {
-	if is_undefined(map_get(&nodes, new)) { return }
+	if is_undefined(node_get(new)) { return }
 	wr_Node_wrap(new)   // pins the new node
 	wr_Node_unpin(old)
 }
@@ -795,7 +888,7 @@ wj_node_rekey_pins :: proc "contextless" (old, new: u64) {
 @(export, link_name = "wj_wrap_node")
 wj_wrap_node :: proc "c" (ctx: ^Context, node: u64) -> JSValue {
 	if node == 0 { return NULL }
-	v := map_get(&nodes, node)
+	v := node_get(node)
 	if !is_undefined(v) { return JS_DupValue(ctx, v) }
 	iface := wr_Node_wrap(node)   // pins the node
 	if iface >= u32(wj_interface_count) { wr_Node_unpin(node); return JS_ThrowTypeError(ctx, "not a live node") }
@@ -803,7 +896,7 @@ wj_wrap_node :: proc "c" (ctx: ^Context, node: u64) -> JSValue {
 	if is_exception(obj) { wr_Node_unpin(node); return obj }
 	// from here the wrapper's finalizer unpins; it is in no group until a collection's prologue finds it carrying
 	// something of its own (wrapper_plain)
-	if !map_put(&nodes, node, obj) { JS_FreeValue(ctx, obj); return JS_ThrowOutOfMemory(ctx) }
+	if !node_put(node, obj) { JS_FreeValue(ctx, obj); return JS_ThrowOutOfMemory(ctx) }
 	return obj
 }
 
@@ -1155,6 +1248,7 @@ wj_platform_preinit :: proc "c" (ctx: ^Context) -> i32 {
 		return -1
 	}
 	JS_SetGCPrologue(rt, gc_prologue, nil)
+	JS_SetGCEpilogue(rt, gc_epilogue, nil)
 	doc_group = UNDEFINED
 
 	n := wj_interface_count

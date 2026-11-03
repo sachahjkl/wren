@@ -1,10 +1,30 @@
 package jscapi
 
-// Promises, array buffers and typed arrays, modules and the module loader hooks.
+// Promises, array buffers and typed arrays, modules and the module loader hooks; the bytes of a string read in place.
 
 import "core:mem"
 import "core:strings"
 import js "wb:engine/jsrt"
+
+// ---- strings ----
+
+// Not part of the quickjs.h API: the bytes of a string value that is all ASCII (its UTF-8 too), read in place, with no
+// copy and nothing to free; nil for any other value (a rope is flattened first). Valid while the string lives and not
+// NUL-terminated: for a caller that holds the value (a native's argument) and reads ptr[:len] before it returns.
+JS_ToStringView :: proc "c" (c: ^Context, plen: ^uint, val: JSValue) -> [^]u8 {
+	t := tag_of(val)
+	if t != TAG_STRING && t != TAG_STRING_ROPE {return nil}
+	s := cast(^js.JS_String)ptr_of(val)
+	if s.is_rope {
+		context = api_ctx()
+		js.str_flatten(jctx(c).rt, s)
+	}
+	if s.is_wide {return nil}
+	p := js.str_u8(s)
+	for i in 0 ..< int(s.len) {if p[i] >= 0x80 {return nil}}
+	plen^ = uint(s.len)
+	return p
+}
 
 // ---- promises ----
 

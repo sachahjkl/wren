@@ -336,6 +336,7 @@ gc_collect :: proc(rt: ^Runtime) {
 	} else {
 		rt.gc_threshold = max(rt.heap_bytes * GC_HEAP_GROWTH, rt.heap_bytes + GC_MIN_ALLOCATION)
 	}
+	if rt.config.gc_epilogue != nil {rt.config.gc_epilogue(rt, rt.config.gc_prologue_user)}
 	dt := now_ns(rt) - t0
 	rt.gc_last_pause_ns = dt
 	if dt > rt.gc_max_pause_ns {rt.gc_max_pause_ns = dt}
@@ -670,6 +671,7 @@ cell_finalize :: proc(rt: ^Runtime, c: ^Cell) {
 // Free every cell (runtime teardown).
 gc_free_all :: proc(rt: ^Runtime) {
 	host_finalize_all(rt)
+	if rt.config.gc_epilogue != nil {rt.config.gc_epilogue(rt, rt.config.gc_prologue_user)}
 	c := rt.cells
 	for c != nil {
 		next := c.gc_next

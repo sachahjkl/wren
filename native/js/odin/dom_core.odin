@@ -481,7 +481,7 @@ wjr_Document_createElement :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 	if wj.wj_this(ctx, this_val, ifc("Document")) == nil { return wj.EXCEPTION }
 	if argc < 1 { return wj.wj_throw_arity(ctx, "Document.createElement", 1, argc) }
 	name: wj.Str
-	if !to_str(ctx, argv[0], &name) { return wj.EXCEPTION }
+	if !to_str(ctx, argv[0], &name, wj.STR_VIEW) { return wj.EXCEPTION }
 	defer wj.wj_str_free(ctx, &name)
 	doc := api_decl.Document(node_this(ctx, this_val, ifc("Document")))
 	if doc == 0 { return wj.EXCEPTION }

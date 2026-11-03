@@ -359,7 +359,9 @@ Node_pinAll :: proc(c: ^Call, nodes: []u64) {
 	for h in nodes { dom.pin(d, H(h)) }
 }
 
+// From the engine's collection (the wrappers and node lists it finalized): nothing runs when the call ends.
 Node_unpinAll :: proc(c: ^Call, nodes: []u64) {
+	c.hold_reactions = true
 	d := jd_doc(c)
 	if d == nil { return }
 	for h in nodes { dom.unpin(d, H(h)) }
