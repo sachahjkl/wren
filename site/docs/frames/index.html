@@ -278,6 +278,15 @@ the call has returned (<code>frames_close_later</code>). The script goes on, in 
 <p>A frame with no address (<code>about:blank</code>, the initial document) is a real document with a realm of its own, like any other,
 made on first need. Reached by another realm, it becomes a document that finished loading, shown in its frame
 (<code>frames_make_live</code>).</p>
+<p>The first document that replaces it keeps its <code>Window</code> when it is of the same origin, as HTML says: what a script put on the
+blank frame's window (<code>frame.contentWindow.navigation.onnavigate = ...</code>, <code>window[0].foo = ...</code>, its listeners and timers) is the
+next document's. The blank document's <code>Page</code> takes the new document (<code>frame_keep_window</code>, <code>src/page/frames.odin</code>) instead of a
+<code>Page</code> of its own, but only when its realm was started: a blank frame no script touched has nothing to keep. The realm, its
+instance and the <code>Window</code>'s objects stay; the new tree gets a tag of its own when it is parsed, so that a wrapper of the blank
+document is dead in every realm, while the objects the <code>Window</code> made keep the old tag (<code>Page.prior_tag</code>, which the routing of
+<code>frames_access.odin</code> takes for the page's own). The URL, the policies, the frames and the scripts are the new document's, and the
+realm forgets what belongs to the document (<code>wj_document_replaced</code>): <code>history</code>, the custom element registry with its definitions,
+<code>navigation.activation</code>. A document of another origin, or one a sandbox makes opaque, gets a <code>Window</code> of its own.</p>
 <h2 id="globals-a-value-bridge"><a class="anchor" href="#globals-a-value-bridge" aria-hidden="true">#</a>Globals: a value bridge</h2>
 <p><code>frame.contentWindow.foo</code> and <code>parent.foo()</code> go through <code>native/js/odin/frames_bridge.odin</code> and <code>web_bridge.js</code>. A request is
 bytes the browser carries from an instance to another (<code>Frame_bridge</code>, which checks the origin each time):</p>
@@ -329,17 +338,29 @@ that limit is not about frames.</p>
 another window, <code>window.open</code> or a link or a form with a target, the <code>src</code> and <code>srcdoc</code> attributes), but for a navigation to another
 document started from another origin. The document that leaves gets <code>beforeunload</code>, then <code>pagehide</code> and <code>unload</code>, and starts no
 navigation while they run. A 204, a 205 or an attachment leaves the document as it is.</p>
+<p>The tab's history is one for its frames and itself, HTML's joint session history (<code>src/page/history_joint.odin</code>). The tab's session
+(its tree, <code>history.odin</code>) keeps, beside its entries, the steps of its frames: a push in a frame (another document, a fragment,
+<code>pushState</code>, an intercepted navigation) is a step, filed after the entry of the tab that was current then, with the entry it made
+current in the frame's session and the one it left. Flat arrays (<code>Session_History.steps</code>, <code>#soa</code>), navigables named by id: the web
+sees one line, each entry of the tab followed by its steps.</p>
+<ul>
+<li><code>history.length</code> in any document of the tab counts that line;</li>
+<li><code>history.go(delta)</code>, <code>back()</code>, <code>forward()</code> in any document, and the browser's back and forward buttons, move <code>delta</code> positions:
+each frame then shows the entry of its last step at or before the position (before its first step, the entry that step left),
+traversed in its document or loaded again, and the tab its entry there: one of its own document's (popstate), or another
+document, which the shell loads (its frames start from their attributes, unless it comes from the back/forward cache);</li>
+<li><code>navigation.traverseTo()</code> (<code>back()</code>, <code>forward()</code>) in a frame goes to the nearest position where that frame shows the entry;</li>
+<li>a push drops the positions ahead, a frame's push the tab's entries ahead too (another branch of the tree, <code>History_Entry.cut</code>),
+and the documents whose entries went get their <code>dispose</code> events;</li>
+<li>a sandboxed document's traversal moves nothing when it would move a navigable it may not navigate (its <code>navigation.traverseTo()</code>
+rejects with a <code>SecurityError</code>);</li>
+<li>a step of a frame that is gone (removed, or its document left) no longer counts.</li>
+</ul>
 <p>What is not there:</p>
 <ul>
-<li><strong>joint session history.</strong> Each frame has its own: <code>history.back()</code> in the tab does not go back in a frame, a traversal moves one
-frame, and a push in a frame does not prune another's forward entries. The browser's back button leaves the tab's document;</li>
-<li><strong>a Window kept from the initial about:blank.</strong> HTML keeps the <code>Window</code> when a frame goes from its initial about:blank to a document
-of the same origin. Here every document has an instance of its own, so what a script put on a blank frame's window
-(<code>frame.contentWindow.navigation.onnavigate = ...</code>, <code>window[0].foo = ...</code>) goes with that document. Keeping it means one of two
-things, both larger than a fix: handing the blank document's realm to the next <code>Page</code> (the realm is numbered by its page, its
-instance calls the browser as that page, and what the window holds, <code>navigation</code> and its handlers, the window's listeners, timers,
-are objects of that page's pools), or loading the fetched document into the blank <code>Page</code> itself, a second way to load a
-response beside <code>page_create</code> (headers, CSP, encoding, documents that are not HTML), with a new <code>Document</code> in an old page;</li>
+<li><strong>a frame's entries after its document is loaded again</strong>: going back to a document of the tab that is not in the back/forward cache
+loads its frames from their attributes, where HTML would show each frame's entry of that position;</li>
+<li><strong>a Window kept for a window that <code>window.open</code> made</strong>: only a frame's initial about:blank keeps its <code>Window</code> (above);</li>
 <li><strong><code>precommitHandler</code></strong> of <code>NavigateEvent.intercept()</code>.</li>
 </ul>
 <h2 id="windows-that-scripts-open"><a class="anchor" href="#windows-that-scripts-open" aria-hidden="true">#</a>Windows that scripts open</h2>

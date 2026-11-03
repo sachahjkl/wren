@@ -1582,10 +1582,11 @@ extract" (the engine makes the Attr).</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Document_createComment :: proc(c: ^Call, data: string) -&gt; (u64, Api_Error)</code></p>
 <h3 id="document-createcdatasection"><a class="anchor" href="#document-createcdatasection" aria-hidden="true">#</a><code>Document_createCDATASection</code></h3>
-<div class="code"><pre><code>Node Document_createCDATASection(string data) raises</code></pre></div>
-<p>document.createCDATASection(data): Not_Supported (an HTML document).</p>
+<div class="code"><pre><code>Node Document_createCDATASection(Node document, string data) raises</code></pre></div>
+<p>document.createCDATASection(data) of <code>document</code> (the page's, or a document of its own, whose node it is): Not_Supported
+for an HTML document, Invalid_Character when <code>data</code> contains "]]&gt;".</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
-<p>Host: <code>Document_createCDATASection :: proc(c: ^Call, data: string) -&gt; (u64, Api_Error)</code></p>
+<p>Host: <code>Document_createCDATASection :: proc(c: ^Call, document: Api_Node, data: string) -&gt; (u64, Api_Error)</code></p>
 <h3 id="document-createprocessinginstruction"><a class="anchor" href="#document-createprocessinginstruction" aria-hidden="true">#</a><code>Document_createProcessingInstruction</code></h3>
 <div class="code"><pre><code>Node Document_createProcessingInstruction(string target, string data) raises</code></pre></div>
 <p>document.createProcessingInstruction(target, data): Invalid_Character when <code>target</code> is not an XML Name or <code>data</code>
