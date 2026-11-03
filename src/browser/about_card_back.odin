@@ -51,7 +51,7 @@ logo_mask :: proc(allocator := context.allocator) -> (mask: []f32, size: int, ok
 	if err != nil || img == nil { return nil, 0, false }
 	defer image.destroy(img)
 	if img.depth != 8 || img.channels != 4 || img.width != img.height { return nil, 0, false }
-	px := img.pixels.buf[:]
+	px := img.pixels[:]
 	n := img.width * img.height
 	if len(px) < n * 4 { return nil, 0, false }
 	mask = make([]f32, n, allocator)

@@ -9,8 +9,8 @@ import "core:strings"
 when ODIN_OS == .Windows {
 	foreign import lexbor_api {
 		"../../build/lexbor/lexbor.lib",
-		"system:msvcrt.lib",
-		"system:ucrt.lib",
+		"system:libcmt.lib",
+		"system:libucrt.lib",
 		"system:libvcruntime.lib",
 		"system:legacy_stdio_definitions.lib",
 	}

@@ -35,9 +35,6 @@ LAUNCHER_SOURCES :: "src/tools/wrencom"
 STACK_BYTES :: 32 << 20
 // every thread's temporary allocator commits its first block at once: 1 MiB instead of Odin's 4 MiB (with the three dozen threads of the pools, 4 MiB each was over 100 MB of private bytes, mostly never touched)
 TEMP_ALLOCATOR_BACKING_BYTES :: 1 << 20
-// the Visual C++ runtime (vcruntime) linked in, not loaded from vcruntime140.dll: the Windows 10/11 C runtime (ucrt) is part of the system, so wren.exe then needs no file beside it and no Visual C++
-// redistributable installed (wren.com: the same)
-STATIC_VCRUNTIME :: "/NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib"
 SEPARATE_MODULES :: "-use-separate-modules"
 
 Variant :: enum { Dev, Debug, Profile, Check, Release }
@@ -211,7 +208,7 @@ common_flags :: proc(o: Options) -> []string {
 	append(&f, fmt.tprintf("-collection:toolkit=%s", o.toolkit != "" ? o.toolkit : TOOLKIT_DEFAULT), "-collection:wb=src")
 	append(&f, fmt.tprintf("-resource:%s", release ? "src/browser/wren.rc" : "src/browser/wren_dev.rc"), fmt.tprintf("-define:WREN_CHANNEL=%s", channel_of(o)))
 	// /MAP: the linker's map (every function's address) next to the exe, the symbols of a release, which has no PDB (it changes nothing in the exe)
-	append(&f, fmt.tprintf("-extra-linker-flags:/STACK:%d %s /MAP", STACK_BYTES, STATIC_VCRUNTIME))
+	append(&f, fmt.tprintf("-extra-linker-flags:/STACK:%d /MAP", STACK_BYTES))
 	append(&f, fmt.tprintf("-define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=%d", TEMP_ALLOCATOR_BACKING_BYTES))
 	commit, date := source_commit()
 	append(&f, fmt.tprintf("-define:WREN_COMMIT=%s", commit))
@@ -264,7 +261,7 @@ bindgen :: proc(o: Options) -> bool {
 launcher :: proc(log: string) -> bool {
 	odin_source :: proc(path: string) -> bool { return strings.has_suffix(path, ".odin") }
 	if built, ok := tooling.modified(LAUNCHER); ok && !tooling.any_newer(LAUNCHER_SOURCES, built, odin_source) { return true }
-	return tooling.run({command = {tooling.odin_program(), "build", LAUNCHER_SOURCES, "-vet", "-subsystem:console", "-o:size", fmt.tprintf("-out:%s", LAUNCHER), fmt.tprintf("-extra-linker-flags:%s", STATIC_VCRUNTIME)}, log = log}) == 0
+	return tooling.run({command = {tooling.odin_program(), "build", LAUNCHER_SOURCES, "-vet", "-subsystem:console", "-o:size", fmt.tprintf("-out:%s", LAUNCHER)}, log = log}) == 0
 }
 
 // The version the sources say.

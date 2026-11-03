@@ -209,8 +209,8 @@ write_frame :: proc(b: ^strings.Builder, process: win.HANDLE, symbols: bool, mod
 		if pc >= m.base && pc < m.base + m.size { fmt.sbprintf(b, "  [%s+0x%X]", m.name, pc - m.base); break }
 	}
 	if symbols {
-		line: win.IMAGEHLP_LINE64
-		line.SizeOfStruct = size_of(win.IMAGEHLP_LINE64)
+		line: win.IMAGEHLP_LINEW64
+		line.SizeOfStruct = size_of(win.IMAGEHLP_LINEW64)
 		ldisp: win.DWORD
 		if win.SymGetLineFromAddrW64(process, pc, &ldisp, &line) && line.FileName != nil {
 			w := ([^]u16)(rawptr(line.FileName))

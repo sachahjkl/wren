@@ -658,6 +658,7 @@ windows_watcher_wakes_on_every_place_it_watches :: proc(t: ^testing.T) {
 	}
 	@(static) sc: ^Scratch
 	sc = &s
+	defer sc = nil
 	step(t, "a file in the Start menu folder", proc() -> bool { return os.write_entire_file(fmt.tprintf("%s\\a.lnk", sc.menu), "x") == nil })
 	step(t, "a file in the Desktop folder", proc() -> bool { return os.write_entire_file(fmt.tprintf("%s\\a.lnk", sc.desk), "x") == nil })
 	step(t, "a value in the environment key", proc() -> bool { return reg_set(sc.env, "Path", "C:\\scratch;C:\\more") })

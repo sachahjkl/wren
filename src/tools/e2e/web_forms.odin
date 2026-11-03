@@ -119,7 +119,7 @@ perform :: proc(fm: ^Form, s: ^forms.Submission) -> string {
 	fetch.start(&loader, {
 		request = {url = s.url, method = s.method == .Post ? "POST" : "GET", headers = headers[:], body = s.body,
 			mode = .Navigate, credentials = .Include, destination = .Document, initiator = &fm.pr.p.env},
-		on_event = on_echo, user = &fm.echo, scope = fm.pr.p.scope, collect = true,
+		on_event = on_echo, user = rawptr(&fm.echo), scope = fm.pr.p.scope, collect = true,
 	})
 	wait_until(fm.t, "the echo", &fm.echo, proc(e: ^Echo) -> bool { return e.done })
 	return fm.echo.body

@@ -340,17 +340,19 @@ canvas_gpu_patterns_and_images :: proc(t: ^testing.T) {
 		canvas2d.style_set_pattern(&c.state.fill, pat2)
 		canvas2d.pattern_release(pat2)
 		canvas2d.ctx_fill_rect(c, 0, 64, 64, 64)
-		// drawImage: scaled up, smoothing off, shrunk, a source rectangle, rotated
+		// drawImage: scaled up, smoothing off, shrunk, a source rectangle, rotated (the GPU list keeps the picture's address to
+		// find it again in the list: its texture is made at the first draw)
+		src := (^canvas2d.Bitmap)(rawptr(&pic))
 		c.state.smoothing = true
-		canvas2d.ctx_draw_image(c, &pic, 0, 0, 32, 32, 70, 4, 56, 56)
+		canvas2d.ctx_draw_image(c, src, 0, 0, 32, 32, 70, 4, 56, 56)
 		c.state.smoothing = false
-		canvas2d.ctx_draw_image(c, &pic, 0, 0, 32, 32, 130, 4, 56, 56)
+		canvas2d.ctx_draw_image(c, src, 0, 0, 32, 32, 130, 4, 56, 56)
 		c.state.smoothing = true
-		canvas2d.ctx_draw_image(c, &pic, 0, 0, 32, 32, 70, 68, 12, 12)
-		canvas2d.ctx_draw_image(c, &pic, 8, 8, 16, 16, 90, 68, 32, 32)
+		canvas2d.ctx_draw_image(c, src, 0, 0, 32, 32, 70, 68, 12, 12)
+		canvas2d.ctx_draw_image(c, src, 8, 8, 16, 16, 90, 68, 32, 32)
 		canvas2d.ctx_translate(c, 160, 100)
 		canvas2d.ctx_rotate(c, 0.6)
-		canvas2d.ctx_draw_image(c, &pic, 0, 0, 32, 32, -20, -20, 40, 40)
+		canvas2d.ctx_draw_image(c, src, 0, 0, 32, 32, -20, -20, 40, 40)
 	}, tol = 48, bad_frac = 0.04, mean = 2.5)
 }
 

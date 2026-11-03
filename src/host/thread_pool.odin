@@ -72,6 +72,8 @@ parallel_for :: proc(p: ^Thread_Pool, count: int, fn: Parallel_Proc, data: rawpt
 	sync.atomic_store(&p.next, (gen & 0xffff_ffff) << 32)
 	sync.cond_broadcast(&p.cond)
 	sync.mutex_unlock(&p.mu)
+	// the round's procedure and data are the caller's: forgotten when it ends (a helper waking late takes no item)
+	defer { sync.mutex_lock(&p.mu); p.fn, p.data = nil, nil; sync.mutex_unlock(&p.mu) }
 	if wait_hook.fn != nil {
 		pool_take(p, gen, fn, data, count, hooked = true)
 		for !sync.sema_wait_with_timeout(&p.done, time.Duration(max(wait_hook.every_ns, 100_000))) { wait_hook.fn(wait_hook.user) }

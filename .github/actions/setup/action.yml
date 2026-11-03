@@ -17,12 +17,12 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Odin dev-2026-10
+    - name: Odin dev-2026-11
       shell: pwsh
       env:
-        # odin version: dev-2026-10-nightly:84bc3fc (the tag dev-2026-10 is that commit)
-        ODIN_TAG: dev-2026-10
-        ODIN_SHA256: b6b2e426a8b6f147b74ec7e18bef8df27cf40fe16193159df7ca09a0cc0c2011
+        # odin version: dev-2026-11-nightly:9a69916 (the tag dev-2026-11 is that commit)
+        ODIN_TAG: dev-2026-11
+        ODIN_SHA256: 259effedf2997293c8fa4a5e497496f8ebce9f826652d9dd353a9dd2113c31fd
       run: |
         $zip = Join-Path $env:RUNNER_TEMP "odin-$env:ODIN_TAG.zip"
         $ProgressPreference = 'SilentlyContinue'
@@ -98,7 +98,7 @@ runs:
           !build/native/target/${{ inputs.native-profile }}/deps/*.lib
           build/tools/nasm-*
           !build/tools/nasm-*.zip
-        key: native-${{ inputs.native-profile }}-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-${{ hashFiles('native/Cargo.toml', 'native/media/src/**', 'native/media/Cargo.toml', 'native/wren_native/**', 'ext/gui_toolkit/native/text/src/**', 'ext/gui_toolkit/native/text/Cargo.toml', 'ext/gui_toolkit/native/a11y/src/**', 'ext/gui_toolkit/native/a11y/Cargo.toml', 'src/tools/wrentool/deps/native.odin') }}
+        key: native-${{ inputs.native-profile }}-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-${{ hashFiles('native/Cargo.toml', 'native/media/src/**', 'native/media/Cargo.toml', 'native/wren_native/**', 'ext/gui_toolkit/native/text/src/**', 'ext/gui_toolkit/native/text/Cargo.toml', 'ext/gui_toolkit/native/a11y/src/**', 'ext/gui_toolkit/native/a11y/Cargo.toml', '.cargo/config.toml', 'src/tools/wrentool/deps/native.odin') }}
         restore-keys: native-${{ inputs.native-profile }}-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-
 
     # the QuickJS-ng release source (test262's configuration), pinned in src\tools\tooling\js_engine.odin; the engine itself links with Odin's wasm-ld

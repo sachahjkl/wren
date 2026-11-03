@@ -60,7 +60,7 @@ a_request_gets_its_answer_through_the_loop :: proc(t: ^testing.T) {
 	seen := Seen{reply = true}
 	defer seen_destroy(&seen)
 	name := unique_name("rt")
-	testing.expect_value(t, start(&loop, name, 4096, 4, on_line, on_gone, &seen), "")
+	testing.expect_value(t, start(&loop, name, 4096, 4, on_line, on_gone, rawptr(&seen)), "")
 	c := open_client(name)
 	testing.expect(t, c != NO_CLIENT)
 	testing.expect(t, write_text(c, "{\"id\":1,\"method\":\"x\"}\r\n\n{\"id\":2}\n"))
@@ -82,7 +82,7 @@ a_line_over_the_limit_ends_the_connection :: proc(t: ^testing.T) {
 	seen: Seen
 	defer seen_destroy(&seen)
 	name := unique_name("big")
-	testing.expect_value(t, start(&loop, name, 1024, 4, on_line, on_gone, &seen), "")
+	testing.expect_value(t, start(&loop, name, 1024, 4, on_line, on_gone, rawptr(&seen)), "")
 	c := open_client(name)
 	big, _ := strings.repeat("a", 3000, context.temp_allocator)
 	write_text(c, big)
@@ -103,8 +103,8 @@ a_name_taken_is_an_error_and_the_first_server_goes_on :: proc(t: ^testing.T) {
 	seen: Seen
 	defer seen_destroy(&seen)
 	name := unique_name("taken")
-	testing.expect_value(t, start(&loop, name, 4096, 4, on_line, on_gone, &seen), "")
-	testing.expect_value(t, start(&loop, name, 4096, 4, on_line, on_gone, &seen), "the remote channel is already running")   // (this process)
+	testing.expect_value(t, start(&loop, name, 4096, 4, on_line, on_gone, rawptr(&seen)), "")
+	testing.expect_value(t, start(&loop, name, 4096, 4, on_line, on_gone, rawptr(&seen)), "the remote channel is already running")   // (this process)
 	testing.expect(t, !valid_name("a/b") && !valid_name("") && !valid_name("..x") && valid_name("run-1_a.b"))
 	stop()
 	host.loop_drain(&loop)
@@ -118,7 +118,7 @@ stopping_with_clients_connected_ends_their_threads :: proc(t: ^testing.T) {
 	seen: Seen
 	defer seen_destroy(&seen)
 	name := unique_name("stop")
-	testing.expect_value(t, start(&loop, name, 4096, 4, on_line, on_gone, &seen), "")
+	testing.expect_value(t, start(&loop, name, 4096, 4, on_line, on_gone, rawptr(&seen)), "")
 	c1 := open_client(name)
 	c2 := open_client(name)
 	testing.expect(t, pump(&loop, proc(s: ^Seen) -> bool { return client_count() == 2 }, &seen))
@@ -136,7 +136,7 @@ clients_over_the_limit_are_turned_away :: proc(t: ^testing.T) {
 	seen: Seen
 	defer seen_destroy(&seen)
 	name := unique_name("max")
-	testing.expect_value(t, start(&loop, name, 4096, 1, on_line, on_gone, &seen), "")
+	testing.expect_value(t, start(&loop, name, 4096, 1, on_line, on_gone, rawptr(&seen)), "")
 	c1 := open_client(name)
 	testing.expect(t, pump(&loop, proc(s: ^Seen) -> bool { return client_count() == 1 }, &seen))
 	c2 := open_client(name)   // connects (the next pipe instance, the listening socket), and is closed at once

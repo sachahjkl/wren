@@ -11,6 +11,8 @@ import "wb:tools/tooling"
 // change in one crate rebuilds that crate only. Pinned: every crate in native/Cargo.lock (--locked), NASM (rav1d's assembly kernels) below, fetched once into build/tools.
 
 NATIVE_THIS :: "src/tools/wrentool/deps/native.odin"
+// the static C runtime on Windows (crt-static), for the Rust code and the C it compiles
+CARGO_CONFIG :: ".cargo/config.toml"
 NASM_VERSION :: "2.16.03"
 NASM_SHA256 :: "3ee4782247bcb874378d02f7eab4e294a84d3d15f3f6ee2de2f47a46aa7226e6"
 NASM_RELEASES :: "https://www.nasm.us/pub/nasm/releasebuilds"
@@ -35,7 +37,7 @@ build_native :: proc(o: Options) -> bool {
 	inputs := make([dynamic]string, context.temp_allocator)
 	for c in crates { files_under(fmt.tprintf("%s/src", c), &inputs) }
 	for c in crates { append(&inputs, fmt.tprintf("%s/Cargo.toml", c)) }
-	append(&inputs, "native/Cargo.toml", "native/Cargo.lock", NATIVE_THIS)
+	append(&inputs, "native/Cargo.toml", "native/Cargo.lock", CARGO_CONFIG, NATIVE_THIS)
 	stamp := stamp_of(fmt.tprintf("profile=%s features=%s\n", o.profile, features), inputs[:])
 	if !o.force && os.exists(lib) && read_stamp(stamp_file) == stamp {
 		tooling.say(o.log, fmt.tprintfln("wren_native (%s) up to date in %s", o.profile, out))

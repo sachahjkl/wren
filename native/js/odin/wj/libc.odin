@@ -63,6 +63,8 @@ libc_strdup :: proc "contextless" (s: [^]u8) -> [^]u8 {
 
 // ---- string.h ----
 
+// Also the C symbol: LLVM turns a loop that counts up to a NUL into a call to strlen (and leaves the function of that name alone).
+@(export, link_name = "strlen")
 strlen :: proc "contextless" (s: cstring) -> uint {
 	p := ([^]u8)(s)
 	n := uint(0)

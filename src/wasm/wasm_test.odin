@@ -347,7 +347,7 @@ preemption :: proc(t: ^testing.T) {
 		// Stays a real sleep: what is checked is that the deadline of a guest call, on the real clock of the engine's ticker, is
 		// moved by the real time the hook took. No other clock runs there.
 		if p.calls <= PREEMPT_SLEEPING_CALLS { time.sleep(PREEMPT_HOOK_SLEEP_MS * time.Millisecond); p.slept_ms += PREEMPT_HOOK_SLEEP_MS }   // the hook's time is not the call's
-	}, &probe, tick_ms = PREEMPT_TICK_MS)
+	}, rawptr(&probe), tick_ms = PREEMPT_TICK_MS)   // (until the deferred reset)
 	defer set_preempt_hook(nil, nil)
 	t0 := time.tick_now()
 	_, res := call_i32(inst, "spin")

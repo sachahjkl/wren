@@ -125,7 +125,7 @@ load_sync :: proc(t: ^testing.T, l: ^host.Loop, c: ^Cache, key: string) -> bool 
 	e := find(c, key)
 	if e == nil { return false }
 	st: Load_State
-	_, pending := load(c, e, proc(user: rawptr, ok: bool) { s := (^Load_State)(user); s.done, s.ok = true, ok }, &st)
+	_, pending := load(c, e, proc(user: rawptr, ok: bool) { s := (^Load_State)(user); s.done, s.ok = true, ok }, rawptr(&st))   // (until done, waited for below)
 	if !pending { return true }
 	testing.expect(t, pump_until(l, proc(d: rawptr) -> bool { return (^Load_State)(d).done }, &st))
 	return st.ok

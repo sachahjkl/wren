@@ -3,7 +3,7 @@
 Where Wren depends on Windows, what is portable already, and the order of the work left. Measured with
 `wrentool portability` (`odin check <package> -target:linux_amd64 -no-entry-point` for every package of `src\` and of
 the toolkit, the errors counted in the package's own files), and with the unit tests run on Linux (NixOS in WSL, Odin
-dev-2026-10, the same flags as `src\tools\test_all`).
+dev-2026-11, the same flags as `src\tools\test_all`).
 
 The counts are lower bounds: Odin stops checking a procedure body once its declarations fail, so a package can show
 more errors once the first ones are fixed.

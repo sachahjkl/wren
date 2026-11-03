@@ -62,7 +62,8 @@ Server_Sys :: struct {
 start :: proc(loop: ^host.Loop, name: string, max_message, max_clients: int, handler: Handler, on_close: On_Close, user: rawptr) -> (err: string) {
 	if srv.running { return "the remote channel is already running" }
 	if !valid_name(name) { return "invalid name: use letters, digits, '-', '_' and '.'" }
-	srv = {loop = loop, handler = handler, on_close = on_close, user = user, max_message = max_message, max_clients = max_clients}
+	// the loop is the caller's, kept until stop (rawptr: on purpose)
+	srv = {loop = (^host.Loop)(rawptr(loop)), handler = handler, on_close = on_close, user = user, max_message = max_message, max_clients = max_clients}
 	srv.pipe_name = win.utf8_to_wstring(pipe_path(name), base.process_allocator())
 	sddl := strings.concatenate({"D:P(A;;GA;;;", current_user_sid(), ")"}, context.temp_allocator)
 	if sddl == "D:P(A;;GA;;;)" || !ConvertStringSecurityDescriptorToSecurityDescriptorW(win.utf8_to_wstring(sddl, context.temp_allocator), 1, &srv.sd, nil) {

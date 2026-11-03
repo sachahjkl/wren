@@ -452,7 +452,7 @@ workers_page_thread_stays_responsive_under_16 :: proc(t: ^testing.T) {
 		g.worst = max(g.worst, time.duration_milliseconds(time.tick_diff(g.last, now)))
 		g.last = now
 		g.ticks += 1
-	}, &probe)
+	}, rawptr(&probe))   // (until the timer is cleared below)
 	idle_since := time.tick_now()
 	for time.tick_since(idle_since) < IDLE_REFERENCE { host.loop_wait(&loop, UI_TICK_MS) }
 	idle := probe

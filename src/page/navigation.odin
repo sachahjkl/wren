@@ -154,7 +154,7 @@ navigation_fire :: proc(p: ^Page, pend: ^Nav_Pending) -> Nav_Verdict {
 	if inst == nil { return .Proceed }
 	w := p.web
 	prev := w.nav_pending
-	w.nav_pending = pend
+	w.nav_pending = (^Nav_Pending)(rawptr(pend))   // (the caller's, for the call: put back after it, or gone with the web)
 	argv := [1]u32{0}
 	res := call_export(p, inst, "wj_nav_fire", argv[:])
 	if !p.closed { w.nav_pending = prev }

@@ -435,7 +435,7 @@ run_reftest :: proc(path: string, limit_ms: f64) -> (status, message: string) {
 }
 
 reftests_child_begin :: proc(env: ^headless.Env) {
-	ref_run.env = env
+	ref_run.env = (^headless.Env)(rawptr(env))   // (the child's, for as long as it reads tests)
 	ref_run.infos = make(map[string]^reftest.Page_Info)
 	ref_run.cache = make([dynamic]^Cached)
 }

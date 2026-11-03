@@ -27,13 +27,13 @@
       ];
 
       # The compiler this tree is written for (odin.version; the same release and SHA-256 as .github/workflows/ci.yml).
-      odinTag = "dev-2026-10";
+      odinTag = "dev-2026-11";
       odin = pkgs.stdenv.mkDerivation {
         pname = "odin";
         version = odinTag;
         src = pkgs.fetchurl {
           url = "https://github.com/odin-lang/Odin/releases/download/${odinTag}/odin-linux-amd64-${odinTag}.tar.gz";
-          sha256 = "c3c8b095621fd0c75f7f73e3a0829f1b4d45324225f20ba11ed8dc4da310a8ab";
+          sha256 = "65c9f6e97d6f8a30930e151f270ce5aeaa98fe8b2ba49fe067394e2af04f7618";
         };
         nativeBuildInputs = [ pkgs.autoPatchelfHook pkgs.makeWrapper ];
         buildInputs = [ pkgs.stdenv.cc.cc.lib pkgs.zlib pkgs.libxml2 pkgs.zstd pkgs.ncurses ];

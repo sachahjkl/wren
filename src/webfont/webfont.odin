@@ -7,9 +7,7 @@
 package webfont
 
 import "base:runtime"
-import "core:bytes"
-import "core:compress"
-import "core:compress/zlib"
+import "core:compress/deflate"
 import "core:slice"
 
 when ODIN_OS == .Windows {
@@ -21,8 +19,8 @@ when ODIN_OS == .Windows {
 		"system:ntdll.lib",
 		"system:kernel32.lib",
 		"system:bcrypt.lib",
-		"system:msvcrt.lib",
-		"system:ucrt.lib",
+		"system:libcmt.lib",
+		"system:libucrt.lib",
 		"system:libvcruntime.lib",
 	}
 } else {
@@ -46,9 +44,6 @@ foreign wren_native {
 
 SFNT_MAX_TABLES :: 4096     // a font that says it has more tables is refused
 TTC_MAX_FACES :: 65536      // a collection that says it has more faces is refused
-// What the decompressor may allocate for a table: this many times the output (it may double its buffer), and this much more.
-INFLATE_BUDGET_FACTOR :: 3
-INFLATE_BUDGET_SLACK_BYTES :: 256 * 1024
 
 Format :: enum u8 { Unknown, Truetype, Opentype, Collection, Woff, Woff2, Eot }
 
@@ -311,45 +306,13 @@ collection_face :: proc(ttc: []byte, index: int, max_bytes: int, allocator := co
 	return out, .None
 }
 
-// Inflates a zlib stream that must expand to exactly len(dst) bytes. The decompressor's memory is bounded: a stream
-// that would expand past that (a "zip bomb") fails instead of exhausting memory.
+// Inflates a zlib stream that must expand to exactly len(dst) bytes. The decompressor's output is bounded by that size: a
+// stream that would expand past it (a "zip bomb") fails instead of exhausting memory.
 @(private)
 inflate_into :: proc(src, dst: []byte) -> bool {
-	// the decompressor starts with an output buffer of at least COMPRESS_OUTPUT_ALLOCATE_MIN and may double it once
-	budget := Budget{parent = context.allocator, left = max(len(dst), compress.COMPRESS_OUTPUT_ALLOCATE_MIN) * INFLATE_BUDGET_FACTOR + INFLATE_BUDGET_SLACK_BYTES}
-	context.allocator = budget_allocator(&budget)
-	buf: bytes.Buffer
-	defer bytes.buffer_destroy(&buf)
-	if err := zlib.inflate(src, &buf, false, len(dst)); err != nil { return false }
-	out := bytes.buffer_to_bytes(&buf)
-	if len(out) != len(dst) { return false }
-	copy(dst, out)
+	out: [dynamic]byte
+	defer delete(out)
+	if err := deflate.inflate_zlib(&out, src, len(dst), len(dst)); err != nil || len(out) != len(dst) { return false }
+	copy(dst, out[:])
 	return true
 }
-
-@(private)
-Budget :: struct {
-	parent: runtime.Allocator,
-	left:   int,
-}
-
-@(private)
-budget_allocator :: proc(b: ^Budget) -> runtime.Allocator {
-	return runtime.Allocator{procedure = budget_proc, data = b}
-}
-
-@(private)
-budget_proc :: proc(data: rawptr, mode: runtime.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, loc := #caller_location) -> ([]byte, runtime.Allocator_Error) {
-	b := (^Budget)(data)
-	#partial switch mode {
-	case .Alloc, .Alloc_Non_Zeroed:
-		if size > b.left { return nil, .Out_Of_Memory }
-		b.left -= size
-	case .Resize, .Resize_Non_Zeroed:
-		grow := size - old_size
-		if grow > b.left { return nil, .Out_Of_Memory }
-		b.left -= max(grow, 0)
-	}
-	return b.parent.procedure(b.parent.data, mode, size, alignment, old_memory, old_size, loc)
-}
-

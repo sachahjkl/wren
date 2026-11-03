@@ -32,8 +32,8 @@ when ODIN_OS == .Windows {
 		"system:ole32.lib",
 		"system:oleaut32.lib",
 		"system:iphlpapi.lib",
-		"system:msvcrt.lib",
-		"system:ucrt.lib",
+		"system:libcmt.lib",
+		"system:libucrt.lib",
 		"system:libvcruntime.lib",
 	}
 } else {

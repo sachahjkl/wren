@@ -294,8 +294,8 @@ frame_line :: proc(buf: []u8, process: win.HANDLE, i: int, pc: u64) -> string {
 		for c in w { if n < len(name_buf) - 1 { name_buf[n] = c < 128 ? u8(c) : '?'; n += 1 } }
 		name = string(name_buf[:n])
 	}
-	line: win.IMAGEHLP_LINE64
-	line.SizeOfStruct = size_of(win.IMAGEHLP_LINE64)
+	line: win.IMAGEHLP_LINEW64
+	line.SizeOfStruct = size_of(win.IMAGEHLP_LINEW64)
 	ldisp: win.DWORD
 	file_buf: [512]u8
 	file := ""

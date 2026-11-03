@@ -1,0 +1,4 @@
+# Windows: the Rust libraries (native/) and the C they compile take the C runtime that is linked in (libcmt, libucrt), as
+# every Wren program does: Odin's core:c/libc is the static UCRT, which a test runner links (src/tools/wrentool/deps/native.odin).
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
