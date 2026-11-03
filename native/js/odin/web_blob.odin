@@ -732,13 +732,34 @@ binary_string :: proc(ctx: ^wj.Context, p: []u8) -> wj.JSValue {
 	return wj.new_string_len(ctx, q[:w])
 }
 
-// text in the encoding asked for (or UTF-8) through the browser's decoder (one call: a decoder's output is read back
-// with TextDecoder_output, not decoded twice)
-decode_text :: proc(ctx: ^wj.Context, label: string, p: []u8) -> wj.JSValue {
+// The labels of the replacement encoding (Encoding Standard §4.2): what is decoded with it is one U+FFFD.
+REPLACEMENT_LABELS :: [?]string{"csiso2022kr", "hz-gb-2312", "iso-2022-cn", "iso-2022-cn-ext", "iso-2022-kr", "replacement"}
+
+// Encoding "decode" (XMLHttpRequest's text, FileReader's): a byte order mark chooses the encoding and is left out, else
+// the encoding asked for (UTF-8 for a label that names none), through the browser's decoder (one call: a decoder's output
+// is read back with TextDecoder_output, not decoded twice).
+decode_text :: proc(ctx: ^wj.Context, label_in: string, bytes: []u8) -> wj.JSValue {
+	label, p, flags := label_in, bytes, u32(0)
+	switch {
+	case len(p) >= 3 && p[0] == 0xEF && p[1] == 0xBB && p[2] == 0xBF: label, p, flags = "utf-8", p[3:], TDO_IGNORE_BOM
+	case len(p) >= 2 && p[0] == 0xFE && p[1] == 0xFF: label, p, flags = "utf-16be", p[2:], TDO_IGNORE_BOM
+	case len(p) >= 2 && p[0] == 0xFF && p[1] == 0xFE: label, p, flags = "utf-16le", p[2:], TDO_IGNORE_BOM
+	case:
+		ws :: proc(c: u8) -> bool { return c == '\t' || c == '\n' || c == '\f' || c == '\r' || c == ' ' }
+		name := label   // (a label is matched without its ASCII whitespace)
+		for len(name) > 0 && ws(name[0]) { name = name[1:] }
+		for len(name) > 0 && ws(name[len(name) - 1]) { name = name[:len(name) - 1] }
+		for r in REPLACEMENT_LABELS {
+			if ascii_ieq(name, r) { return wj.new_string(ctx, len(p) > 0 ? "\uFFFD" : "") }
+		}
+	}
+	if label == "" || ascii_ieq(label, "utf-8") || ascii_ieq(label, "utf8") {   // (most text: no decoder of the host's)
+		return wj.web_utf8_string(ctx, len(p) > 0 ? raw_data(p) : wj.empty_ptr(), uint(len(p)), false)
+	}
 	dec: u64
-	if wj.wr_TextDecoder_create(wj.raw_bytes(label), u32(len(label)), 0, &dec) < 0 &&
-	   wj.wr_TextDecoder_create(wj.raw_bytes("utf-8"), 5, 0, &dec) < 0 {
-		return wj.web_utf8_string(ctx, raw_data(p), uint(len(p)), true)
+	if wj.wr_TextDecoder_create(wj.raw_bytes(label), u32(len(label)), flags, &dec) < 0 &&
+	   wj.wr_TextDecoder_create(wj.raw_bytes("utf-8"), 5, flags, &dec) < 0 {
+		return wj.web_utf8_string(ctx, raw_data(p), uint(len(p)), flags == 0)
 	}
 	defer wj.wr_Object_release(dec)
 	if wj.wj_scratch.data == nil && !wj.wj_scratch_grow(256) { return wj.JS_ThrowOutOfMemory(ctx) }
