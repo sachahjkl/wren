@@ -40,7 +40,10 @@ Most folders run without layout: what their tests read of geometry is 0, and the
 test geometry (`LAYOUT_FOLDERS` in `src/tools/wpt/layout_host.odin`: `dom/events/scrolling`, `css/css-anchor-position`, `css/css-multicol`,
 `css/css-writing-modes`, `css/cssom`, `html/semantics/interactive-elements/the-dialog-element`, `navigation-api/scroll-behavior`) get a layout of an 800 x 600 with fixed text metrics, so that `getComputedStyle`, `offsetTop` or `getBoundingClientRect` answer there as a page's;
 the documents of their frames are laid out too, each in its container's content box.
-A page's `autofocus` runs once its scripts had their turn, as the shell runs it. A test that loads `testdriver.js` gets the same layout, and its input: `wpt/testdriver-vendor.js` (served in place of WPT's own)
+A page's `autofocus` runs once its scripts had their turn, as the shell runs it. The windows a test opens (`window.open`, a link to
+`_blank`) are windows without a shell (`src/tools/headless`): their first document keeps the initial about:blank's `Window`, they keep a
+session history across their documents and follow its traversals (`history.back()`, `navigation.traverseTo()`). The test server answers
+wptserve's second http port (`{{ports[http][1]}}`: another origin of the same names) on the block's second http origin. A test that loads `testdriver.js` gets the same layout, and its input: `wpt/testdriver-vendor.js` (served in place of WPT's own)
 hands `test_driver`'s `click`, `send_keys`, `action_sequence` (and `bless`, which clicks) to the runner, which performs them
 through the browser's own input path, in process (`src/tools/wpt/testdriver.odin`: a hit test of the layout, pointer and mouse
 events, the focus, the click and its activation behaviour, keys and their default actions, keyboard scrolling, wheel events and

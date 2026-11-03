@@ -470,14 +470,14 @@ reftest_results_file :: proc(path: string) -> string {
 // runs on per-worktree ports and on the shared server match the same expectations.
 WPT_RECORDED_PORT :: 8778
 
-// A clone of `name` with the server's http and https ports (":N", ":N+1", not part of a longer number) written as the
-// recorded ones.
+// A clone of `name` with the server's http, https and second http ports (":N", ":N+1", ":N-1": tools/testserver/wpt.go, not part
+// of a longer number) written as the recorded ones.
 canonical_ports :: proc(name: string) -> string {
 	server_port := 0
 	if i := strings.last_index_byte(opts.server, ':'); i >= 0 { server_port = atoi(opts.server[i + 1:]) }
 	if server_port <= 0 || server_port == WPT_RECORDED_PORT || !strings.contains_rune(name, ':') { return strings.clone(name) }
-	from := [2]string{fmt.tprintf(":%d", server_port), fmt.tprintf(":%d", server_port + 1)}
-	to := [2]string{fmt.tprintf(":%d", WPT_RECORDED_PORT), fmt.tprintf(":%d", WPT_RECORDED_PORT + 1)}
+	from := [3]string{fmt.tprintf(":%d", server_port), fmt.tprintf(":%d", server_port + 1), fmt.tprintf(":%d", server_port - 1)}
+	to := [3]string{fmt.tprintf(":%d", WPT_RECORDED_PORT), fmt.tprintf(":%d", WPT_RECORDED_PORT + 1), fmt.tprintf(":%d", WPT_RECORDED_PORT - 1)}
 	b := strings.builder_make()
 	outer: for i := 0; i < len(name); {
 		for f, k in from {

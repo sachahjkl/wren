@@ -7,7 +7,8 @@
 //
 // Windows its scripts open (window.open, links to _blank) are windows as the browser makes them, without the shell: each a
 // Doc of its own with a top-level navigable (src/page/auxiliary.odin), its initial about:blank document, then the documents
-// it navigates to; they follow their navigations, close on window.close(), and close with the document that opened the
+// it navigates to (keeping the initial one's Window when it may: page.navigable_keep_window); they follow their navigations, with a
+// session history across their documents (Doc.session) whose traversals they follow, close on window.close(), and close with the document that opened the
 // first of them (Doc.popups of the root). Their console messages go to the root's on_console with their own Doc (root set).
 package headless
 
@@ -23,6 +24,7 @@ import "wb:http"
 import "wb:httpcache"
 import "wb:net"
 import "wb:page"
+import "wb:url"
 
 Env :: struct {
 	loop:     host.Loop,
@@ -38,6 +40,7 @@ Env :: struct {
 }
 
 Navigable :: page.Navigable   // (a field named `page` hides the package in Doc)
+Session_History :: page.Session_History
 
 Message :: struct {
 	level: page.Log_Level,
@@ -71,6 +74,7 @@ Doc :: struct {
 	top:       ^Navigable,      // its window's top-level navigable (window.open, opener, name, Cross-Origin-Opener-Policy)
 	root:      ^Doc,            // a window a script opened: the document `open` loaded, whose windows it is; nil for that one
 	popups:    [dynamic]^Doc,   // (the root) every window its documents and theirs opened, still open
+	session:   Session_History,   // a window a script opened: its history across its documents, which it traverses
 }
 
 // The preferences `init` reads: the page's and the network's.
@@ -129,9 +133,30 @@ navigate_hook :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 	d := (^Doc)(user)
 	append(&d.navigations, fmt.aprintf("%v %s", req.kind, req.url))
 	if d.root == nil || d.page != p { return }
+	sh := &d.session
 	#partial switch req.kind {
-	case .Assign, .Replace: navigation_start(d, req.url, &p.env)
-	case .Reload: navigation_start(d, strings.clone(p.env.location.href, context.temp_allocator), &p.env)
+	case .Assign, .Replace:
+		// (a navigation from the initial about:blank replaces its entry, HTML "navigate")
+		if req.kind == .Replace || page.navigable_blank_window(d.top, p) {
+			page.session_replace(sh, req.url)
+		} else {
+			page.session_push(sh, req.url, 0, max_entries = d.env.settings.web.history_max_entries)
+		}
+		if req.has_nav_state { page.session_set_nav_state(sh, req.nav_state, true) }
+		navigation_start(d, req.url, &p.env)
+	case .Reload:
+		if req.has_nav_state { page.session_set_nav_state(sh, req.nav_state, true) }
+		navigation_start(d, strings.clone(p.env.location.href, context.temp_allocator), &p.env)
+	case .Traverse:
+		// an entry of the document: popstate there; another document's: the window loads it again (no back/forward cache here)
+		e := page.session_peek(sh, req.delta)
+		if e == nil { return }
+		#partial switch page.history_traverse_to(p, e) {
+		case .Same_Document, .Canceled: return
+		}
+		if d.page != p || p.closed { return }
+		page.session_goto(sh, e)
+		navigation_start(d, strings.clone(e.url, context.temp_allocator), &p.env)
 	}
 }
 
@@ -151,6 +176,7 @@ open_hook :: proc(user: rawptr, p: ^page.Page, req: page.Open_Request) -> ^page.
 	d.top = page.navigable_top_new()
 	d.shown = base.scope_make("navigation", d.scope)
 	d.page = page.auxiliary_document(d.top, req, d.shown, console_sink, d)
+	page.session_push(&d.session, req.url, 0, max_entries = e.settings.web.history_max_entries)
 	connect(d)
 	d.parsed = true
 	append(&root.popups, d)
@@ -175,7 +201,7 @@ close_hook :: proc(user: rawptr, p: ^page.Page) {
 connect :: proc(d: ^Doc) {
 	e := d.env
 	page.navigable_attach(d.top, d.page)
-	page.set_embedder(d.page, {navigate = navigate_hook, user = d, tab_key = fmt.tprintf("window-%p", d), storage = e.has_storage ? &e.storage : nil, open = open_hook, close = close_hook})
+	page.set_embedder(d.page, {navigate = navigate_hook, user = d, session = d.root != nil ? &d.session : nil, tab_key = fmt.tprintf("window-%p", d), storage = e.has_storage ? &e.storage : nil, open = open_hook, close = close_hook})
 }
 
 // Navigates a new document to `url`. Follow it with `pump`; `close` frees it.
@@ -234,6 +260,8 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			if cs, ok := http.mime_param(r.mime, "charset"); ok { d.charset = strings.clone(cs) }
 			d.mime = strings.clone(http.mime_essence(r.mime))
 		}
+		// a redirect: the window's entry is the final address (a response has no fragment: the entry's stays)
+		if cur := page.session_current(&d.session); d.root != nil && cur != nil && !same_but_fragment(cur.url, r.url) { page.session_replace(&d.session, r.url, set_state = false) }
 		d.page = kept != nil ? kept : page.page_create(&e.loop, &e.loader, &e.settings, d.shown, r.url, console_sink, d)
 		connect(d)
 		csp_h := http.get_all(r.headers, "content-security-policy")
@@ -250,6 +278,13 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		if d.page != nil && d.root != nil { return }   // (a window's next document did not come: it keeps the one it shows)
 		d.failed = strings.clone(ev.detail != "" ? ev.detail : "the request failed")
 	}
+}
+
+@(private)
+same_but_fragment :: proc(a, b: string) -> bool {
+	ua, oka := url.parse(a, nil, context.temp_allocator)
+	ub, okb := url.parse(b, nil, context.temp_allocator)
+	return oka && okb && url.without_fragment(ua) == url.without_fragment(ub)
 }
 
 @(private)
@@ -313,6 +348,7 @@ close :: proc(d: ^Doc) {
 doc_free :: proc(d: ^Doc) {
 	base.scope_close(d.scope)
 	page.navigable_top_free(d.top)
+	page.session_destroy(&d.session)
 	if d.has_initiator { fetch.environment_destroy(&d.initiator) }
 	for m in d.console { delete(m.text) }
 	delete(d.console)

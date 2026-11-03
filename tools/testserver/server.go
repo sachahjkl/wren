@@ -154,7 +154,8 @@ func Start(o Options) (int, error) {
 	}
 	serveWPTOn(l.wpt, l.wptTLS)
 	serveTransport(l, mux)
-	serve(l.other, mux)
+	wptHTTPPort2 = basePort + 2
+	serve(l.other, wptOrSite(mux))
 	serve(l.https, mux)
 	serve(l.http, mux)
 	log.Printf("http://127.0.0.1:%d  https://127.0.0.1:%d (self-signed)  http://127.0.0.1:%d  web-platform-tests http://127.0.0.1:%d, checkout %s",

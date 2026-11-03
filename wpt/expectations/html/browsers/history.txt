@@ -156,33 +156,33 @@
 	Navigating back to a bfcached page does not reset history.state: FAIL
 /html/browsers/history/the-history-interface/history_back.html: OK
 	history back: PASS
-/html/browsers/history/the-history-interface/history_back_1.html: TIMEOUT
-	history.back() with session history: TIMEOUT
+/html/browsers/history/the-history-interface/history_back_1.html: OK
+	history.back() with session history: PASS
 /html/browsers/history/the-history-interface/history_back_cross_realm_method.html: OK
 	history.back() uses this's associated document's browsing context to determine if navigation is allowed: PASS
 /html/browsers/history/the-history-interface/history_forward.html: OK
 	history forward: PASS
-/html/browsers/history/the-history-interface/history_forward_1.html: TIMEOUT
-	history.forward() with session history: TIMEOUT
+/html/browsers/history/the-history-interface/history_forward_1.html: OK
+	history.forward() with session history: PASS
 /html/browsers/history/the-history-interface/history_forward_cross_realm_method.html: OK
 	history.forward() uses this's associated document's browsing context to determine if navigation is allowed: PASS
 /html/browsers/history/the-history-interface/history_go_cross_realm_method.html: OK
 	history.go() uses this's associated document's browsing context to determine if navigation is allowed: PASS
 /html/browsers/history/the-history-interface/history_go_minus.html: OK
 	history go minus: PASS
-/html/browsers/history/the-history-interface/history_go_no_argument.html: TIMEOUT
-	history.go(): TIMEOUT
+/html/browsers/history/the-history-interface/history_go_no_argument.html: OK
+	history.go(): PASS
 /html/browsers/history/the-history-interface/history_go_plus.html: OK
 	history go plus: PASS
-/html/browsers/history/the-history-interface/history_go_to_uri.html: TIMEOUT
-	history.go() negative tests: TIMEOUT
+/html/browsers/history/the-history-interface/history_go_to_uri.html: OK
+	history.go() negative tests: PASS
 /html/browsers/history/the-history-interface/history_go_too_many_calls.optional.html: OK
 	fully active check should be before rate limit check: FAIL
 	history go too many calls: PASS
-/html/browsers/history/the-history-interface/history_go_undefined.html: TIMEOUT
-	history.forward() with session history: TIMEOUT
-/html/browsers/history/the-history-interface/history_go_zero.html: TIMEOUT
-	history.go(0): TIMEOUT
+/html/browsers/history/the-history-interface/history_go_undefined.html: OK
+	history.forward() with session history: FAIL
+/html/browsers/history/the-history-interface/history_go_zero.html: OK
+	history.go(0): PASS
 /html/browsers/history/the-history-interface/history_go_zero_which_document.window.html: OK
 	history.go(0) on an iframe must reload the iframe's document, not the parent document: FAIL
 /html/browsers/history/the-history-interface/history_properties_only_fully_active.html: OK
@@ -285,21 +285,21 @@
 	Traversing the history during unload: TIMEOUT
 /html/browsers/history/the-history-interface/traverse_the_history_1.html: TIMEOUT
 	Multiple history traversals from the same task: TIMEOUT
-/html/browsers/history/the-history-interface/traverse_the_history_2.html: TIMEOUT
-	Multiple history traversals, last would be aborted: TIMEOUT
-/html/browsers/history/the-history-interface/traverse_the_history_3.html: TIMEOUT
-	Multiple history traversals, last would be aborted: TIMEOUT
-/html/browsers/history/the-history-interface/traverse_the_history_4.html: TIMEOUT
-	Multiple history traversals, last would be aborted: TIMEOUT
-/html/browsers/history/the-history-interface/traverse_the_history_5.html: TIMEOUT
-	Multiple history traversals, last would be aborted: TIMEOUT
+/html/browsers/history/the-history-interface/traverse_the_history_2.html: OK
+	Multiple history traversals, last would be aborted: FAIL
+/html/browsers/history/the-history-interface/traverse_the_history_3.html: OK
+	Multiple history traversals, last would be aborted: FAIL
+/html/browsers/history/the-history-interface/traverse_the_history_4.html: OK
+	Multiple history traversals, last would be aborted: FAIL
+/html/browsers/history/the-history-interface/traverse_the_history_5.html: OK
+	Multiple history traversals, last would be aborted: FAIL
 /html/browsers/history/the-history-interface/traverse_the_history_unload_1.html: TIMEOUT
 	Traversing the history, unload event is fired on doucment: TIMEOUT
 /html/browsers/history/the-history-interface/traverse_the_history_write_after_load_1.html: TIMEOUT
 	Traverse the history after document.write after the load event: TIMEOUT
-/html/browsers/history/the-history-interface/traverse_the_history_write_after_load_2.html: TIMEOUT
-	Traverse the history back and forward when a history entry is written after the load event: TIMEOUT
-/html/browsers/history/the-history-interface/traverse_the_history_write_onload_1.html: TIMEOUT
-	Traverse the history when a history entry is written in the load event: TIMEOUT
-/html/browsers/history/the-history-interface/traverse_the_history_write_onload_2.html: TIMEOUT
-	Traverse the history back and forward when a history entry is written in the load event: TIMEOUT
+/html/browsers/history/the-history-interface/traverse_the_history_write_after_load_2.html: OK
+	Traverse the history back and forward when a history entry is written after the load event: PASS
+/html/browsers/history/the-history-interface/traverse_the_history_write_onload_1.html: OK
+	Traverse the history when a history entry is written in the load event: PASS
+/html/browsers/history/the-history-interface/traverse_the_history_write_onload_2.html: OK
+	Traverse the history back and forward when a history entry is written in the load event: PASS

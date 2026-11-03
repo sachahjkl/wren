@@ -94,14 +94,14 @@
 	CORS empty integrity: PASS
 	CORS invalid integrity: FAIL
 	Empty string integrity: PASS
-	Empty string integrity for opaque response: FAIL
+	Empty string integrity for opaque response: PASS
 	Invalid integrity: FAIL
 	Multiple integrities: both are invalid: FAIL
 	Multiple integrities: both are valid: PASS
 	Multiple integrities: invalid as strong as valid: PASS
 	Multiple integrities: invalid stronger than valid: FAIL
 	Multiple integrities: valid stronger than invalid: PASS
-	SHA-* integrity for opaque response: PASS
+	SHA-* integrity for opaque response: FAIL
 	SHA-256 integrity: PASS
 	SHA-384 integrity: PASS
 	SHA-512 integrity: PASS
@@ -113,14 +113,14 @@
 	CORS empty integrity: PASS
 	CORS invalid integrity: FAIL
 	Empty string integrity: PASS
-	Empty string integrity for opaque response: FAIL
+	Empty string integrity for opaque response: PASS
 	Invalid integrity: FAIL
 	Multiple integrities: both are invalid: FAIL
 	Multiple integrities: both are valid: PASS
 	Multiple integrities: invalid as strong as valid: PASS
 	Multiple integrities: invalid stronger than valid: FAIL
 	Multiple integrities: valid stronger than invalid: PASS
-	SHA-* integrity for opaque response: PASS
+	SHA-* integrity for opaque response: FAIL
 	SHA-256 integrity: PASS
 	SHA-384 integrity: PASS
 	SHA-512 integrity: PASS
@@ -144,32 +144,34 @@
 	simple keepalive test for web workers;: PASS
 /fetch/api/basic/mediasource.window.html: OK
 	Cannot fetch blob: URL from a MediaSource: PASS
-/fetch/api/basic/mode-no-cors.sub.any.html: ERROR
+/fetch/api/basic/mode-no-cors.sub.any.html: OK
 	Fetch ../resources/top.txt with no-cors mode: PASS
-	Fetch http://127.0.0.1:8778/fetch/api/resources/top.txt with no-cors mode: PASS
-	Fetch https://127.0.0.1:8779/fetch/api/resources/top.txt with no-cors mode: FAIL
-/fetch/api/basic/mode-no-cors.sub.any.worker.html: ERROR
+	Fetch http://web-platform.test:8777/fetch/api/resources/top.txt with no-cors mode: PASS
+	Fetch http://web-platform.test:8778/fetch/api/resources/top.txt with no-cors mode: PASS
+	Fetch https://web-platform.test:8779/fetch/api/resources/top.txt with no-cors mode: PASS
+/fetch/api/basic/mode-no-cors.sub.any.worker.html: OK
 	Fetch ../resources/top.txt with no-cors mode: PASS
-	Fetch http://127.0.0.1:8778/fetch/api/resources/top.txt with no-cors mode: PASS
-	Fetch https://127.0.0.1:8779/fetch/api/resources/top.txt with no-cors mode: FAIL
+	Fetch http://web-platform.test:8777/fetch/api/resources/top.txt with no-cors mode: PASS
+	Fetch http://web-platform.test:8778/fetch/api/resources/top.txt with no-cors mode: PASS
+	Fetch https://web-platform.test:8779/fetch/api/resources/top.txt with no-cors mode: PASS
 /fetch/api/basic/mode-same-origin.any.html: OK
 	Fetch ../resources/top.txt with same-origin mode: PASS
 	Fetch /fetch/api/basic/../resources/redirect.py?location=../resources/top.txt with same-origin mode: FAIL
-	Fetch /fetch/api/basic/../resources/redirect.py?location=http://127.0.0.1:8778/fetch/api/resources/top.txt with same-origin mode: FAIL
-	Fetch /fetch/api/basic/../resources/redirect.py?location=http://www1.127.0.0.1:8778/fetch/api/resources/top.txt with same-origin mode: FAIL
-	Fetch /fetch/api/basic/../resources/redirect.py?location=https://127.0.0.1:8779/fetch/api/resources/top.txt with same-origin mode: FAIL
-	Fetch http://127.0.0.1:8778/fetch/api/resources/top.txt with same-origin mode: PASS
-	Fetch http://www1.127.0.0.1:8778/fetch/api/resources/top.txt with same-origin mode: PASS
-	Fetch https://127.0.0.1:8779/fetch/api/resources/top.txt with same-origin mode: PASS
+	Fetch /fetch/api/basic/../resources/redirect.py?location=http://web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: FAIL
+	Fetch /fetch/api/basic/../resources/redirect.py?location=http://www1.web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: FAIL
+	Fetch /fetch/api/basic/../resources/redirect.py?location=https://web-platform.test:8779/fetch/api/resources/top.txt with same-origin mode: FAIL
+	Fetch http://web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: PASS
+	Fetch http://www1.web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: PASS
+	Fetch https://web-platform.test:8779/fetch/api/resources/top.txt with same-origin mode: PASS
 /fetch/api/basic/mode-same-origin.any.worker.html: OK
 	Fetch ../resources/top.txt with same-origin mode: PASS
 	Fetch /fetch/api/basic/../resources/redirect.py?location=../resources/top.txt with same-origin mode: FAIL
-	Fetch /fetch/api/basic/../resources/redirect.py?location=http://127.0.0.1:8778/fetch/api/resources/top.txt with same-origin mode: FAIL
-	Fetch /fetch/api/basic/../resources/redirect.py?location=http://www1.127.0.0.1:8778/fetch/api/resources/top.txt with same-origin mode: FAIL
-	Fetch /fetch/api/basic/../resources/redirect.py?location=https://127.0.0.1:8779/fetch/api/resources/top.txt with same-origin mode: FAIL
-	Fetch http://127.0.0.1:8778/fetch/api/resources/top.txt with same-origin mode: PASS
-	Fetch http://www1.127.0.0.1:8778/fetch/api/resources/top.txt with same-origin mode: PASS
-	Fetch https://127.0.0.1:8779/fetch/api/resources/top.txt with same-origin mode: PASS
+	Fetch /fetch/api/basic/../resources/redirect.py?location=http://web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: FAIL
+	Fetch /fetch/api/basic/../resources/redirect.py?location=http://www1.web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: FAIL
+	Fetch /fetch/api/basic/../resources/redirect.py?location=https://web-platform.test:8779/fetch/api/resources/top.txt with same-origin mode: FAIL
+	Fetch http://web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: PASS
+	Fetch http://www1.web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: PASS
+	Fetch https://web-platform.test:8779/fetch/api/resources/top.txt with same-origin mode: PASS
 /fetch/api/basic/referrer.any.html: OK
 	Referrer with credentials should be stripped: FAIL
 	Referrer with fragment ID should be stripped: FAIL
@@ -544,15 +546,15 @@
 	Response.body is null for responses with status=304 (method=OPTIONS): FAIL
 	Response.body is null for responses with status=304 (method=POST): FAIL
 /fetch/api/basic/response-url.sub.any.html: OK
-	Testing response url getter with http://127.0.0.1:8778#ada: FAIL
-	Testing response url getter with http://127.0.0.1:8778/#: FAIL
-	Testing response url getter with http://127.0.0.1:8778/#ada: FAIL
-	Testing response url getter with http://127.0.0.1:8778/ada: PASS
+	Testing response url getter with http://web-platform.test:8778#ada: FAIL
+	Testing response url getter with http://web-platform.test:8778/#: FAIL
+	Testing response url getter with http://web-platform.test:8778/#ada: FAIL
+	Testing response url getter with http://web-platform.test:8778/ada: PASS
 /fetch/api/basic/response-url.sub.any.worker.html: OK
-	Testing response url getter with http://127.0.0.1:8778#ada: FAIL
-	Testing response url getter with http://127.0.0.1:8778/#: FAIL
-	Testing response url getter with http://127.0.0.1:8778/#ada: FAIL
-	Testing response url getter with http://127.0.0.1:8778/ada: PASS
+	Testing response url getter with http://web-platform.test:8778#ada: FAIL
+	Testing response url getter with http://web-platform.test:8778/#: FAIL
+	Testing response url getter with http://web-platform.test:8778/#ada: FAIL
+	Testing response url getter with http://web-platform.test:8778/ada: PASS
 /fetch/api/basic/scheme-about.any.html: OK
 	Fetching about:blank with method GET is KO: FAIL
 	Fetching about:blank with method POST is KO: FAIL
@@ -579,7 +581,7 @@
 	Fetching URL.createObjectURL(invalid_type_blob) is OK: FAIL
 	Fetching [DELETE] URL.createObjectURL(blob) is KO: PASS
 	Fetching [GET] URL.createObjectURL(blob) is OK: PASS
-	Fetching [GET] blob:http://localhost:8778/ is KO: PASS
+	Fetching [GET] blob:http://www.web-platform.test:8778/ is KO: PASS
 	Fetching [GET] blob:not-backed-by-a-blob/ is KO: PASS
 	Fetching [HEAD] URL.createObjectURL(blob) is KO: PASS
 	Fetching [INVALID] URL.createObjectURL(blob) is KO: PASS
@@ -598,7 +600,7 @@
 	Fetching URL.createObjectURL(invalid_type_blob) is OK: FAIL
 	Fetching [DELETE] URL.createObjectURL(blob) is KO: PASS
 	Fetching [GET] URL.createObjectURL(blob) is OK: PASS
-	Fetching [GET] blob:http://localhost:8778/ is KO: PASS
+	Fetching [GET] blob:http://www.web-platform.test:8778/ is KO: PASS
 	Fetching [GET] blob:not-backed-by-a-blob/ is KO: PASS
 	Fetching [HEAD] URL.createObjectURL(blob) is KO: PASS
 	Fetching [INVALID] URL.createObjectURL(blob) is KO: PASS
@@ -626,39 +628,39 @@
 	Fetching data:image/png;base64,cmVzcG9uc2UncyBib2[...] is OK: PASS
 	Fetching data:text/plain;base64,cmVzcG9uc2UncyBib[...] is OK: PASS
 /fetch/api/basic/scheme-others.sub.any.html: OK
-	Fetching aaa://127.0.0.1:8778/ is KO: PASS
-	Fetching cap://127.0.0.1:8778/ is KO: PASS
-	Fetching cid://127.0.0.1:8778/ is KO: PASS
-	Fetching dav://127.0.0.1:8778/ is KO: PASS
-	Fetching dict://127.0.0.1:8778/ is KO: PASS
-	Fetching dns://127.0.0.1:8778/ is KO: PASS
-	Fetching geo://127.0.0.1:8778/ is KO: PASS
-	Fetching im://127.0.0.1:8778/ is KO: PASS
-	Fetching imap://127.0.0.1:8778/ is KO: PASS
-	Fetching ipp://127.0.0.1:8778/ is KO: PASS
-	Fetching ldap://127.0.0.1:8778/ is KO: PASS
-	Fetching mailto://127.0.0.1:8778/ is KO: PASS
-	Fetching nfs://127.0.0.1:8778/ is KO: PASS
-	Fetching pop://127.0.0.1:8778/ is KO: PASS
-	Fetching rtsp://127.0.0.1:8778/ is KO: PASS
-	Fetching snmp://127.0.0.1:8778/ is KO: PASS
+	Fetching aaa://web-platform.test:8778/ is KO: PASS
+	Fetching cap://web-platform.test:8778/ is KO: PASS
+	Fetching cid://web-platform.test:8778/ is KO: PASS
+	Fetching dav://web-platform.test:8778/ is KO: PASS
+	Fetching dict://web-platform.test:8778/ is KO: PASS
+	Fetching dns://web-platform.test:8778/ is KO: PASS
+	Fetching geo://web-platform.test:8778/ is KO: PASS
+	Fetching im://web-platform.test:8778/ is KO: PASS
+	Fetching imap://web-platform.test:8778/ is KO: PASS
+	Fetching ipp://web-platform.test:8778/ is KO: PASS
+	Fetching ldap://web-platform.test:8778/ is KO: PASS
+	Fetching mailto://web-platform.test:8778/ is KO: PASS
+	Fetching nfs://web-platform.test:8778/ is KO: PASS
+	Fetching pop://web-platform.test:8778/ is KO: PASS
+	Fetching rtsp://web-platform.test:8778/ is KO: PASS
+	Fetching snmp://web-platform.test:8778/ is KO: PASS
 /fetch/api/basic/scheme-others.sub.any.worker.html: OK
-	Fetching aaa://127.0.0.1:8778/ is KO: PASS
-	Fetching cap://127.0.0.1:8778/ is KO: PASS
-	Fetching cid://127.0.0.1:8778/ is KO: PASS
-	Fetching dav://127.0.0.1:8778/ is KO: PASS
-	Fetching dict://127.0.0.1:8778/ is KO: PASS
-	Fetching dns://127.0.0.1:8778/ is KO: PASS
-	Fetching geo://127.0.0.1:8778/ is KO: PASS
-	Fetching im://127.0.0.1:8778/ is KO: PASS
-	Fetching imap://127.0.0.1:8778/ is KO: PASS
-	Fetching ipp://127.0.0.1:8778/ is KO: PASS
-	Fetching ldap://127.0.0.1:8778/ is KO: PASS
-	Fetching mailto://127.0.0.1:8778/ is KO: PASS
-	Fetching nfs://127.0.0.1:8778/ is KO: PASS
-	Fetching pop://127.0.0.1:8778/ is KO: PASS
-	Fetching rtsp://127.0.0.1:8778/ is KO: PASS
-	Fetching snmp://127.0.0.1:8778/ is KO: PASS
+	Fetching aaa://web-platform.test:8778/ is KO: PASS
+	Fetching cap://web-platform.test:8778/ is KO: PASS
+	Fetching cid://web-platform.test:8778/ is KO: PASS
+	Fetching dav://web-platform.test:8778/ is KO: PASS
+	Fetching dict://web-platform.test:8778/ is KO: PASS
+	Fetching dns://web-platform.test:8778/ is KO: PASS
+	Fetching geo://web-platform.test:8778/ is KO: PASS
+	Fetching im://web-platform.test:8778/ is KO: PASS
+	Fetching imap://web-platform.test:8778/ is KO: PASS
+	Fetching ipp://web-platform.test:8778/ is KO: PASS
+	Fetching ldap://web-platform.test:8778/ is KO: PASS
+	Fetching mailto://web-platform.test:8778/ is KO: PASS
+	Fetching nfs://web-platform.test:8778/ is KO: PASS
+	Fetching pop://web-platform.test:8778/ is KO: PASS
+	Fetching rtsp://web-platform.test:8778/ is KO: PASS
+	Fetching snmp://web-platform.test:8778/ is KO: PASS
 /fetch/api/basic/status.h2.any.html: OK
 	statusText over H2 for status 200 should be the empty string: FAIL
 	statusText over H2 for status 210 should be the empty string: FAIL
