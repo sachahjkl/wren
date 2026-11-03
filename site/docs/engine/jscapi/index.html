@@ -261,7 +261,10 @@ a counted reference to a closure that captures the object dies (checked by <code
 cycles are all finalized by one <code>JS_RunGC</code>). Finalizers run before any cell of the collection is freed.</li>
 <li><strong>Classes</strong> (<code>JS_NewClassID</code>, <code>JS_NewClass</code>, <code>JS_NewObjectProtoClass</code>, <code>JS_GetOpaque</code>/<code>SetOpaque</code>) with
 all seven <code>JSClassExoticMethods</code> (get/set/has/delete/define/own‑names/own‑property); an exotic <code>get_property</code>
-replaces the prototype walk after the own shape lookup, as in QuickJS.</li>
+replaces the prototype walk after the own shape lookup, as in QuickJS. Wren's own
+<code>JS_NewObjectProtoClassPayload(ctx, proto, class, size)</code> makes the opaque data <code>size</code> zeroed bytes of the engine's
+heap in the block of the object's host part, freed with the object (the glue's wrappers: one allocation from the
+engine's size classes instead of two, and nothing for the finalizer to free).</li>
 <li><strong>Native functions</strong>: <code>JS_NewCFunction2/3</code>, <code>JS_NewCFunctionData/2</code>, with prototypes <code>generic</code>,
 <code>generic_magic</code>, <code>constructor</code>, <code>constructor_or_func</code> (and <code>_magic</code>), <code>getter</code>, <code>setter</code>.</li>
 <li><strong>Errors</strong>: the <code>JS_Throw*Error</code> family takes <code>printf</code> arguments (<code>%s %d %u %x %c %.*s %ld</code>); a C caller
@@ -291,7 +294,7 @@ The build has no such C any more.</p>
 <tr><td>missing</td><td style="text-align:right">0</td></tr>
 </tbody>
 </table></div>
-<p>The API itself is tested natively by <code>judge capi</code> (40 checks); the glue runs on it in every build.</p>
+<p>The API itself is tested natively by <code>judge capi</code> (48 checks); the glue runs on it in every build.</p>
 <h3 id="what-is-approximated-or-absent-by-weight"><a class="anchor" href="#what-is-approximated-or-absent-by-weight" aria-hidden="true">#</a>What is approximated or absent (by weight)</h3>
 <ol>
 <li><strong>Atoms are permanent</strong> (<code>JS_FreeAtom</code> is a no‑op): a page that builds millions of distinct property
@@ -318,7 +321,8 @@ lets a value die early): a debug counter of <code>ext</code> per cell is easy to
 <h2 id="testing"><a class="anchor" href="#testing" aria-hidden="true">#</a>Testing</h2>
 <p><code>judge capi</code> (<code>src/engine/jsrt/judge/capi_test.odin</code>) runs the API natively on a heap below 4 GiB: values,
 strings, properties, native functions with data and magic, formatted exceptions, classes with opaque data,
-cycles through <code>gc_mark</code>, counted references as roots, exotic objects, promises and jobs, adopted buffers,
+cycles through <code>gc_mark</code>, counted references as roots, opaque data in the object's block (zeroed, one per object,
+cycles through it collected, 10 000 made and dropped without the heap keeping them), exotic objects, promises and jobs, adopted buffers,
 a native module imported by a script module, a compiled function written out and read back, and a soak of
 20 000 temporaries that must be collected.</p>
 <nav class="doc-seq" aria-label="Previous and next page">

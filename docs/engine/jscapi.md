@@ -35,7 +35,10 @@ The API types (`Context`, `Runtime`, `Class_Def`, `Native`, `Property_Descriptor
   cycles are all finalized by one `JS_RunGC`). Finalizers run before any cell of the collection is freed.
 - **Classes** (`JS_NewClassID`, `JS_NewClass`, `JS_NewObjectProtoClass`, `JS_GetOpaque`/`SetOpaque`) with
   all seven `JSClassExoticMethods` (get/set/has/delete/define/own‑names/own‑property); an exotic `get_property`
-  replaces the prototype walk after the own shape lookup, as in QuickJS.
+  replaces the prototype walk after the own shape lookup, as in QuickJS. Wren's own
+  `JS_NewObjectProtoClassPayload(ctx, proto, class, size)` makes the opaque data `size` zeroed bytes of the engine's
+  heap in the block of the object's host part, freed with the object (the glue's wrappers: one allocation from the
+  engine's size classes instead of two, and nothing for the finalizer to free).
 - **Native functions**: `JS_NewCFunction2/3`, `JS_NewCFunctionData/2`, with prototypes `generic`,
   `generic_magic`, `constructor`, `constructor_or_func` (and `_magic`), `getter`, `setter`.
 - **Errors**: the `JS_Throw*Error` family takes `printf` arguments (`%s %d %u %x %c %.*s %ld`); a C caller
@@ -66,7 +69,7 @@ Distinct `JS_*` / `js_*` names the glue references: **176**.
 | helper names of the glue that are not API (`js_str`, `js_cstr` …) | 5 |
 | missing | 0 |
 
-The API itself is tested natively by `judge capi` (40 checks); the glue runs on it in every build.
+The API itself is tested natively by `judge capi` (48 checks); the glue runs on it in every build.
 
 ### What is approximated or absent (by weight)
 
@@ -95,6 +98,7 @@ The API itself is tested natively by `judge capi` (40 checks); the glue runs on 
 
 `judge capi` (`src/engine/jsrt/judge/capi_test.odin`) runs the API natively on a heap below 4 GiB: values,
 strings, properties, native functions with data and magic, formatted exceptions, classes with opaque data,
-cycles through `gc_mark`, counted references as roots, exotic objects, promises and jobs, adopted buffers,
+cycles through `gc_mark`, counted references as roots, opaque data in the object's block (zeroed, one per object,
+cycles through it collected, 10 000 made and dropped without the heap keeping them), exotic objects, promises and jobs, adopted buffers,
 a native module imported by a script module, a compiled function written out and read back, and a soak of
 20 000 temporaries that must be collected.

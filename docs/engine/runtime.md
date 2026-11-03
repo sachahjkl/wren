@@ -95,7 +95,8 @@ special pass.
   properties the object does not store. Finalizers of dead host objects run before any cell of the
   collection is freed. `gc_mark` is used twice: to **subtract** those references from the host counts (a
   cycle through opaque data does not keep itself alive — QuickJS's trial deletion, restricted to the cells
-  with host references) and to trace them when the owner is live.
+  with host references) and to trace them when the owner is live. The host part of such an object is a block of the
+  size classes below, which may hold the opaque data itself (`payload`: the glue's wrappers), freed with it.
 - Small blocks (≤ 512 bytes: cells, inline slots, small arrays and string data) come from size‑class free
   lists carved out of 256 KiB chunks of the injected allocator (`mem_alloc` / `mem_free` / `mem_resize` in
   `gc.odin`; callers always pass the size they allocated with). A cell costs a pop and a push, not a host
