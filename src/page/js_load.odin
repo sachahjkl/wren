@@ -953,6 +953,7 @@ hook_removed :: proc(user: rawptr, d: ^dom.Document) {
 	if p.closed || d != p.doc { return }
 	frames_note_removed(p)
 	media_note_removed(p)
+	dialog_note_removed(p)       // a modal dialog that left the document is not modal any more (dialog_modal.odin)
 	fullscreen_note_removed(p)   // the fullscreen element left the document (fullscreen.odin)
 }
 
