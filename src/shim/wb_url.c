@@ -103,6 +103,39 @@ static uint8_t *query_fixed(const lxb_encoding_data_t *enc, const uint8_t *input
     *out_len = buf.len;
     return buf.data;
 }
+/* What the URL Standard asks of the parser's result that Lexbor 3.0.1 does not do: '^' is in the path percent-encode set
+ * (a path that is not opaque has it as "%5E"), and the last space of an opaque path that a query or a fragment follows is
+ * "%20" (so that setting them later strips nothing). The new path is taken from the URL's memory. 0 on success.
+ */
+int wb_url_fix(lxb_url_t *url)
+{
+    lexbor_str_t *path = &url->path.str;
+    size_t extra = 0;
+    if (!url->path.opaque) {
+        for (size_t i = 0; i < path->length; i++) { if (path->data[i] == '^') { extra += 2; } }
+    }
+    int space = url->path.opaque && path->length > 0 && path->data[path->length - 1] == ' '
+                && (url->query.data != NULL || url->fragment.data != NULL);
+    if (space) { extra += 2; }
+    if (extra == 0) { return 0; }
+    lxb_char_t *data = lexbor_mraw_alloc(url->mraw, path->length + extra + 1);
+    if (data == NULL) { return -1; }
+    size_t n = 0;
+    for (size_t i = 0; i < path->length; i++) {
+        lxb_char_t c = path->data[i];
+        if ((c == '^' && !url->path.opaque) || (space && i == path->length - 1)) {
+            data[n++] = '%';
+            data[n++] = c == '^' ? '5' : '2';
+            data[n++] = c == '^' ? 'E' : '0';
+            continue;
+        }
+        data[n++] = c;
+    }
+    data[n] = 0;
+    path->data = data;
+    path->length = n;
+    return 0;
+}
 /* Parses `input` (resolving against `base` when base != NULL) per the WHATWG URL Standard and returns the serialized
  * URL (href). The query of a special URL is encoded in `encoding` (a WHATWG label: the document's, "encoding-parse a
  * URL"; empty = UTF-8). Returns 0 on success, non-zero when the input is not a valid URL (or the base is not).
@@ -149,6 +182,7 @@ int wb_url_parse(const uint8_t *input, size_t len, const uint8_t *base, size_t b
         }
     }
 
+    if (wb_url_fix(url) != 0) { goto done; }
     if (lxb_url_serialize(url, serialize_cb, &buf, false) != LXB_STATUS_OK || buf.failed) { goto done; }
     if (buf.data == NULL) { buf_append(&buf, (const uint8_t *) "", 0); }
     *out = buf.data;

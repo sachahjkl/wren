@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include "lexbor/url/url.h"
 
+int wb_url_fix(lxb_url_t *url);   /* (wb_url.c) */
+
 typedef struct {
     uint8_t *data;
     size_t   len;
@@ -80,7 +82,7 @@ int wb_url_set(const uint8_t *href, size_t href_len, int component, const uint8_
         *out_len = href_len;
         return 0;
     }
-    if (lxb_url_serialize(url, sbuf_cb, &buf, false) != LXB_STATUS_OK || buf.failed) { goto done; }
+    if (wb_url_fix(url) != 0 || lxb_url_serialize(url, sbuf_cb, &buf, false) != LXB_STATUS_OK || buf.failed) { goto done; }
     if (buf.data == NULL) { sbuf_cb((const lxb_char_t *) "", 0, &buf); }
     if (buf.failed) { goto done; }
     *out = buf.data;
