@@ -161,8 +161,11 @@ partial module dom {
   string Document_referrer();
   /// document.lastModified ("MM/DD/YYYY hh:mm:ss")
   string Document_lastModified();
-  /// document.domain (getter)
+  /// document.domain: the effective domain of the document's origin (its domain once set, else its host; "" for an opaque origin)
   string Document_domain();
+  /// document.domain = value: the origin's domain becomes `value`, a registrable domain suffix of the effective domain or that
+  /// domain itself (HTML); Security when sandboxed, opaque or not such a suffix; nothing in an origin-keyed agent cluster.
+  void Document_set_domain(string value) raises;
   /// document.scrollingElement
   Element Document_scrollingElement();
   /// document.body = element: Hierarchy when not a <body> or <frameset>, or without a document element.

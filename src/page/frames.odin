@@ -449,7 +449,7 @@ frame_process_attributes :: proc(n_in: ^Navigable, initial: bool) {
 		u, ok := url.parse(href, nil, context.temp_allocator)
 		if !ok || n.page == nil { return n, true }
 		id := n.id
-		proceed = navigation_begin(n.page, u, false, opts = Nav_Options{cross_origin = !url.same_origin(n.parent.env.origin, n.page.env.origin)})
+		proceed = navigation_begin(n.page, u, false, opts = Nav_Options{cross_origin = !url.same_origin_domain(n.parent.env.origin, n.page.env.origin)})
 		still = navigable_by_id(id)
 		return still, proceed && still != nil
 	}
@@ -989,10 +989,12 @@ frame_install_page :: proc(n_in: ^Navigable, href_in: string, mode: Origin_Mode,
 	cf.sandbox = sandbox_combine(page_sandbox(p), n.sandbox)
 	switch mode {
 	case .Own:
-	case .Inherit: env_set_origin(&c.env, url.origin_clone(p.env.origin))
+	case .Inherit:
+		env_set_origin(&c.env, url.origin_clone(p.env.origin))
+		c.origin_owner = origin_owner_of(p)   // (HTML: the same origin, which document.domain changes for both)
 	case .Opaque: env_set_origin(&c.env, url.new_opaque_origin())
 	}
-	if cf.sandbox.active && .Same_Origin not_in cf.sandbox.allow { env_set_origin(&c.env, url.new_opaque_origin()) }
+	if cf.sandbox.active && .Same_Origin not_in cf.sandbox.allow { env_set_origin(&c.env, url.new_opaque_origin()); c.origin_owner = 0 }
 	top := page_top(p)
 	url.site_destroy(&c.env.top_level_site)
 	c.env.top_level_site = url.site_of(top.env.origin)
@@ -1056,6 +1058,7 @@ frame_keep_window :: proc(n: ^Navigable, href: string, mode: Origin_Mode, commit
 	}
 	delete(cf.fallback_base)
 	cf.fallback_base = mode == .Inherit ? strings.clone(document_base_url(p)) : ""
+	c.origin_owner = mode == .Inherit ? origin_owner_of(p) : 0
 	cf.inherited_off = inherited_disabled(frames_of(p).features, p.env.origin, &n.allow, c.env.origin, n.src_origin)
 	cf.features = enabled_features(cf.inherited_off, nil, c.env.origin)
 	set_document_url(c, href)
@@ -1161,7 +1164,7 @@ frames_navigate_from :: proc(src: ^Page, target_in: ^Navigable, href: string, re
 	u, ok := url.parse(href, &src.env.location, context.temp_allocator)
 	if !ok { return "invalid URL" }
 	opts := Nav_Options{source = source, form = form, submitter = submitter}
-	opts.cross_origin = target.page != nil && !url.same_origin(src.env.origin, target.page.env.origin)
+	opts.cross_origin = target.page != nil && !url.same_origin_domain(src.env.origin, target.page.env.origin)
 	if target.parent == nil {
 		// a tab's document: its embedder navigates the tab (a POST to the top level is the shell's: forms_shell.odin)
 		if tp := target.page; tp != nil { location_navigate(tp, u, replace, opts = opts) }

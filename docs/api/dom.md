@@ -3423,9 +3423,22 @@ Host: `Document_lastModified :: proc(c: ^Call) -> string`
 string Document_domain()
 ```
 
-document.domain (getter)
+document.domain: the effective domain of the document's origin (its domain once set, else its host; "" for an opaque origin)
 
 Host: `Document_domain :: proc(c: ^Call) -> string`
+
+### `Document_set_domain`
+
+```
+void Document_set_domain(string value) raises
+```
+
+document.domain = value: the origin's domain becomes `value`, a registrable domain suffix of the effective domain or that
+domain itself (HTML); Security when sandboxed, opaque or not such a suffix; nothing in an origin-keyed agent cluster.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_set_domain :: proc(c: ^Call, value: string) -> Api_Error`
 
 ### `Document_scrollingElement`
 

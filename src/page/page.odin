@@ -71,6 +71,7 @@ Page :: struct {
 	prior_tag: u32,            // the tag of what its Window made before its document was replaced in it (frame_keep_window); 0: none
 	route_next:     u32,       // the tag the realm's next import acts on (Frame_target, frames_access.odin)
 	route_busy:     int,       // import calls of other realms acting on this document now
+	origin_owner:   u64,       // the page whose origin this document has (an about:blank or srcdoc frame's: its parent's; 0: its own): document.domain sets it for all of them
 	dispatching:    int,       // events being dispatched at this document now (a listener of another realm may remove its frame)
 	checkpoint_owed: bool,     // a microtask checkpoint waits for those calls to end (frames_pay_checkpoint)
 	close_pending:  bool,      // closed while in use: closes once nothing runs in it (frames_access.odin)
@@ -273,6 +274,11 @@ apply_isolation_headers :: proc(p: ^Page, headers: http.Headers, parent: ^Page =
 		wasm.user_cluster_retain(p.env.agent_cluster)
 		base.on_close(p.scope, proc(data: rawptr) { wasm.user_cluster_release(u64(uintptr(data))) }, rawptr(uintptr(p.env.agent_cluster)))
 	}
+	// HTML "obtain a similar-origin window agent": Origin-Agent-Cluster (a structured boolean) asks for an origin-keyed one
+	// (absent: keyed by site); a cross-origin isolated document's is origin-keyed too (below)
+	oac, _ := http.get_header(headers, "origin-agent-cluster")
+	p.env.origin_keyed = strings.trim_space(oac) == "?1"
+	defer if p.env.cross_origin_isolated { p.env.origin_keyed = true }
 	if !p.env.secure_context {
 		if parent == nil { navigable_commit_policy(page_navigable(p), p, .Unsafe_None) }
 		return

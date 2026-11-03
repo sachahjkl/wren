@@ -2034,6 +2034,20 @@ wjg_Document_get_domain :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> 
 	return wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n))
 }
 
+// Document.domain = v -> dom.Document_set_domain
+wjg_Document_set_domain :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
+	self := wj.wj_this(ctx, this_val, 252)
+	if self == nil { return wj.EXCEPTION }
+	_ = self
+	a0: wj.Str
+	if !wj.wj_to_str(ctx, v, &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
+	if !wj.wj_doc_target(self.handle) { wj.wj_str_free(ctx, &a0); return wj.wj_throw_gone(ctx) }
+	st := wj.wr_Document_set_domain((a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len))
+	wj.wj_str_free(ctx, &a0)
+	if st < 0 { return wj.wj_throw_status(ctx, i32(st), "Document.domain") }
+	return wj.UNDEFINED
+}
+
 // Document.referrer -> dom.Document_referrer
 wjg_Document_get_referrer :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 252)
@@ -26773,7 +26787,7 @@ wj_install_bindings :: proc "c" () {
 	m_Document[40] = wj.Member{name = "parseHTMLUnsafe", kind = wj.M_STATIC_METHOD, flags = 0, length = 1, fn = wjr_Document_static_parseHTMLUnsafe}
 	m_Document[41] = wj.Member{name = "parseHTML", kind = wj.M_STATIC_METHOD, flags = 0, length = 1, fn = nil}
 	m_Document[42] = wj.Member{name = "location", kind = wj.M_ATTRIBUTE, flags = wj.F_UNFORGEABLE, length = 0, get = wjr_Document_get_location, set = wjr_Document_set_location}
-	m_Document[43] = wj.Member{name = "domain", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = wjg_Document_get_domain, set = nil}
+	m_Document[43] = wj.Member{name = "domain", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Document_get_domain, set = wjg_Document_set_domain}
 	m_Document[44] = wj.Member{name = "referrer", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Document_get_referrer, set = nil}
 	m_Document[45] = wj.Member{name = "cookie", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Document_get_cookie, set = wjg_Document_set_cookie}
 	m_Document[46] = wj.Member{name = "lastModified", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Document_get_lastModified, set = nil}

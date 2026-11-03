@@ -96,42 +96,50 @@
 	A cross-origin traversal does not fire the navigate event: TIMEOUT
 /navigation-api/navigate-event/cross-origin-traversal-redirect.html: OK
 	A traversal that redirects from same-origin to cross-origin fires the navigate event: PASS
-/navigation-api/navigate-event/cross-window/click-crossdocument-crossorigin-sameorigindomain.sub.html: ERROR
+/navigation-api/navigate-event/cross-window/click-crossdocument-crossorigin-sameorigindomain.sub.html: OK
+	clicking on an <a> element that navigates cross-document targeting a same-origin-domain (but cross-origin) window: PASS
 /navigation-api/navigate-event/cross-window/click-crossdocument-crossorigin.html: OK
 	clicking on an <a> element that navigates cross-document targeting a cross-origin window: PASS
 /navigation-api/navigate-event/cross-window/click-crossdocument-sameorigin.html: OK
 	clicking on an <a> element that navigates cross-document targeting a same-origin window: PASS
-/navigation-api/navigate-event/cross-window/click-samedocument-crossorigin-sameorigindomain.sub.html: ERROR
+/navigation-api/navigate-event/cross-window/click-samedocument-crossorigin-sameorigindomain.sub.html: OK
+	clicking on an <a> element that navigates same-document targeting a same-origin-domain (but cross-origin) window: PASS
 /navigation-api/navigate-event/cross-window/click-samedocument-crossorigin.html: OK
 	clicking on an <a> element that navigates same-document targeting a cross-origin window: PASS
 /navigation-api/navigate-event/cross-window/click-samedocument-sameorigin.html: OK
 	clicking on an <a> element that navigates same-document targeting a same-origin window: PASS
-/navigation-api/navigate-event/cross-window/location-crossdocument-crossorigin-sameorigindomain.sub.html: ERROR
+/navigation-api/navigate-event/cross-window/location-crossdocument-crossorigin-sameorigindomain.sub.html: OK
+	using location.href to navigate cross-document targeting a same-origin-domain (but cross-origin) window: PASS
 /navigation-api/navigate-event/cross-window/location-crossdocument-crossorigin.html: OK
 	using location.href to navigate cross-document targeting a cross-origin window: PASS
 /navigation-api/navigate-event/cross-window/location-crossdocument-sameorigin.html: OK
 	using location.href to navigate cross-document targeting a same-origin window: PASS
-/navigation-api/navigate-event/cross-window/location-samedocument-crossorigin-sameorigindomain.sub.html: ERROR
+/navigation-api/navigate-event/cross-window/location-samedocument-crossorigin-sameorigindomain.sub.html: OK
+	using location.href to navigate same-document targeting a same-origin-domain (but cross-origin) window: PASS
 /navigation-api/navigate-event/cross-window/location-samedocument-crossorigin.html: OK
 	using location.href to navigate same-document targeting a cross-origin window: PASS
 /navigation-api/navigate-event/cross-window/location-samedocument-sameorigin.html: OK
 	using location.href to navigate same-document targeting a same-origin window: PASS
-/navigation-api/navigate-event/cross-window/open-crossdocument-crossorigin-sameorigindomain.sub.html: ERROR
+/navigation-api/navigate-event/cross-window/open-crossdocument-crossorigin-sameorigindomain.sub.html: OK
+	using window.open() to navigate cross-document targeting a same-origin-domain (but cross-origin) window: PASS
 /navigation-api/navigate-event/cross-window/open-crossdocument-crossorigin.html: OK
 	using window.open() to navigate cross-document targeting a cross-origin window: PASS
 /navigation-api/navigate-event/cross-window/open-crossdocument-sameorigin.html: OK
 	using window.open() to navigate cross-document targeting a same-origin window: PASS
-/navigation-api/navigate-event/cross-window/open-samedocument-crossorigin-sameorigindomain.sub.html: ERROR
+/navigation-api/navigate-event/cross-window/open-samedocument-crossorigin-sameorigindomain.sub.html: OK
+	using window.open() to navigate same-document targeting a same-origin-domain (but cross-origin) window: PASS
 /navigation-api/navigate-event/cross-window/open-samedocument-crossorigin.html: OK
 	using window.open() to navigate same-document targeting a cross-origin window: PASS
 /navigation-api/navigate-event/cross-window/open-samedocument-sameorigin.html: OK
 	using window.open() to navigate same-document targeting a same-origin window: PASS
-/navigation-api/navigate-event/cross-window/submit-crossdocument-crossorigin-sameorigindomain.sub.html: ERROR
+/navigation-api/navigate-event/cross-window/submit-crossdocument-crossorigin-sameorigindomain.sub.html: OK
+	submitting a <form> element that navigates cross-document targeting a same-origin-domain (but cross-origin) window: PASS
 /navigation-api/navigate-event/cross-window/submit-crossdocument-crossorigin.html: OK
 	submitting a <form> element that navigates cross-document targeting a cross-origin window: PASS
 /navigation-api/navigate-event/cross-window/submit-crossdocument-sameorigin.html: OK
 	submitting a <form> element that navigates cross-document targeting a same-origin window: PASS
-/navigation-api/navigate-event/cross-window/submit-samedocument-crossorigin-sameorigindomain.sub.html: ERROR
+/navigation-api/navigate-event/cross-window/submit-samedocument-crossorigin-sameorigindomain.sub.html: OK
+	submitting a <form> element that navigates cross-document targeting a same-origin-domain (but cross-origin) window: PASS
 /navigation-api/navigate-event/cross-window/submit-samedocument-crossorigin.html: OK
 	submitting a <form> element that navigates same-document targeting a cross-origin window: PASS
 /navigation-api/navigate-event/cross-window/submit-samedocument-sameorigin.html: OK

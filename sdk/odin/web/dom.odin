@@ -352,6 +352,7 @@ foreign _m_dom {
 	@(link_name = "Document_referrer") _Document_referrer :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Document_lastModified") _Document_lastModified :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Document_domain") _Document_domain :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_set_domain") _Document_set_domain :: proc(value: [^]u8, value_len: u32) -> Error ---
 	@(link_name = "Document_scrollingElement") _Document_scrollingElement :: proc() -> Element ---
 	@(link_name = "Document_set_body") _Document_set_body :: proc(body: u64) -> Error ---
 	@(link_name = "DOMImplementation_createHTMLDocument") _DOMImplementation_createHTMLDocument :: proc(title: [^]u8, title_len: u32, _ret: ^Node) -> Error ---
@@ -4050,7 +4051,7 @@ Document_lastModified_alloc :: proc(allocator: runtime.Allocator) -> (string, Er
 	return {}, .Truncated
 }
 
-// document.domain (getter)
+// document.domain: the effective domain of the document's origin (its domain once set, else its host; "" for an opaque origin)
 Document_domain :: proc "contextless" (buf: []u8) -> (string, Error) {
 	n := _Document_domain(raw_data(buf), u32(len(buf)))
 	if n < 0 { return {}, Error(n) }
@@ -4077,6 +4078,12 @@ Document_domain_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
 		cap = int(n)
 	}
 	return {}, .Truncated
+}
+
+// document.domain = value: the origin's domain becomes `value`, a registrable domain suffix of the effective domain or that
+// domain itself (HTML); Security when sandboxed, opaque or not such a suffix; nothing in an origin-keyed agent cluster.
+Document_set_domain :: proc "contextless" (value: string) -> Error {
+	return _Document_set_domain(raw_data(value), u32(len(value)))
 }
 
 // document.scrollingElement

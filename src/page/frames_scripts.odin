@@ -77,7 +77,7 @@ Frame_closed :: proc(c: ^Call, navigable: u64) -> bool {
 Frame_sameOrigin :: proc(c: ^Call, navigable: u64) -> bool {
 	n := navigable_by_id(navigable)
 	if n == nil || n.page == nil { return false }
-	return url.same_origin(c.page.env.origin, n.page.env.origin)
+	return url.same_origin_domain(c.page.env.origin, n.page.env.origin)
 }
 
 Frame_documentOf :: proc(c: ^Call, navigable: u64) -> u64 {

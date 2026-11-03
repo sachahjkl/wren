@@ -56,11 +56,11 @@
 	Dangling Markup with "\\r" in target is reset when set by <a> tag: FAIL
 	Dangling Markup with "\\t" in target is reset when set by <a> tag: FAIL
 /html/browsers/windows/document-domain-nested-navigate.window.html: OK
-	Navigated frame to about:blank and document.domain: FAIL
+	Navigated frame to about:blank and document.domain: PASS
 /html/browsers/windows/document-domain-nested-set.window.html: OK
 	Initial about:blank frame and document.domain in the frame: PASS
 /html/browsers/windows/document-domain-nested.window.html: OK
-	Initial about:blank frame and document.domain: FAIL
+	Initial about:blank frame and document.domain: PASS
 /html/browsers/windows/document-domain-removed-iframe.html: OK
 	No removal, document.domain: FAIL
 	No removal, no document.domain: FAIL
@@ -75,7 +75,7 @@
 	opener and embedded documents; using window.open(): FAIL
 /html/browsers/windows/nested-browsing-contexts/frameElement-siblings.sub.html: OK
 	it must give a "SecurityError" DOMException if the pages are different-origin domain: PASS
-	it must return the iframe element if the pages are same-origin domain: FAIL
+	it must return the iframe element if the pages are same-origin domain: PASS
 /html/browsers/windows/nested-browsing-contexts/frameElement.sub.html: OK
 	The SecurityError must be thrown if the window accesses to frameElement attribute of a Window which does not have the same effective script origin: PASS
 	The window's frameElement attribute must return its container element if it is a nested browsing context: FAIL

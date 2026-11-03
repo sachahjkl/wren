@@ -56,7 +56,8 @@
 /html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/serialization-via-notifications-api.any.worker.html: OK
 	SharedArrayBuffer cloning via the Notifications API's data member: basic case: FAIL
 	SharedArrayBuffer cloning via the Notifications API's data member: is interleaved correctly: FAIL
-/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-domain-failure.https.sub.html: ERROR
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-domain-failure.https.sub.html: OK
+	SharedArrayBuffer and a same-origin-domain (but not same-origin) iframe: FAIL
 /html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-failure.https.html: TIMEOUT
 	SharedArrayBuffer and a cross-site <iframe>: TIMEOUT
 /html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-iframe-messagechannel.https.html: TIMEOUT

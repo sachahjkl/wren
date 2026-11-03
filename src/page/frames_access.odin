@@ -25,6 +25,7 @@ package page
 // A page in use cannot be freed under a running call: page_close leaves one with a call in it to be closed later
 // (frames_close_later).
 
+import "core:strings"
 import "wb:base"
 import "wb:dom"
 import "wb:host"
@@ -44,12 +45,63 @@ Foreign_Owner :: struct {
 }
 
 // May a realm of `from` touch the document of `to`? On every crossing: origins can change under a kept reference (a
-// frame's next document), and an opaque origin (a sandbox without allow-same-origin, data:) equals only itself.
+// frame's next document, document.domain), and an opaque origin (a sandbox without allow-same-origin, data:) equals only
+// itself. HTML's test is "same origin-domain": two documents of one site that both set document.domain to the same
+// domain reach each other.
 frames_may_reach :: proc(from, to: ^Page) -> bool {
 	if from == to { return true }
 	if from == nil || to == nil || from.closed || to.closed || from.worker != nil || to.worker != nil { return false }
 	if to.close_pending { return false }
-	return url.same_origin(from.env.origin, to.env.origin)
+	return url.same_origin_domain(from.env.origin, to.env.origin)
+}
+
+// document.domain: the effective domain of the document's origin.
+Document_domain :: proc(c: ^Call) -> string { return url.effective_domain(c.page.env.origin) }
+
+// document.domain = value (HTML "document.domain setter steps"): the origin's domain becomes `value` when it is the
+// effective domain or a registrable domain suffix of it, unless the document is sandboxed or its agent cluster is
+// origin-keyed (Origin-Agent-Cluster: ?1, cross-origin isolation), where the assignment changes nothing.
+Document_set_domain :: proc(c: ^Call, value: string) -> Api_Error {
+	p := c.page
+	if page_sandbox(p).active { return fail(c, .Security, "SecurityError: Failed to set the 'domain' property on 'Document': Assignment is forbidden for sandboxed iframes.") }
+	current := url.effective_domain(p.env.origin)
+	if current == "" { return fail(c, .Security, "SecurityError: Failed to set the 'domain' property on 'Document': Assignment is forbidden for an opaque origin.") }
+	host, ok := domain_suffix_of(value, current)
+	if !ok { return fail(c, .Security, strings.concatenate({"SecurityError: Failed to set the 'domain' property on 'Document': '", value, "' is not a suffix of '", current, "'."}, context.temp_allocator)) }
+	if p.env.origin_keyed { return .None }
+	// (one origin, several documents: an about:blank or srcdoc frame has its parent's)
+	owner := origin_owner_of(p)
+	for top in group_tops(p) { set_domain_of_owner(top, owner, host) }
+	return .None
+}
+
+// The page whose origin `p` has (itself, or the one an about:blank or srcdoc frame inherited it from).
+origin_owner_of :: proc(p: ^Page) -> u64 { return p.origin_owner != 0 ? p.origin_owner : page_id(p) }
+
+@(private = "file")
+set_domain_of_owner :: proc(p: ^Page, owner: u64, host: string) {
+	if p.closed { return }
+	if origin_owner_of(p) == owner && !p.env.origin.opaque {
+		delete(p.env.origin.domain)
+		p.env.origin.domain = strings.clone(host)
+	}
+	if p.frames == nil { return }
+	for n in p.frames.children { if n.page != nil { set_domain_of_owner(n.page, owner, host) } }
+}
+
+// HTML "is a registrable domain suffix of or is equal to": `value` parsed as a host, `original` itself, or a domain that
+// `original` (a domain) ends with after a dot and that is not a public suffix. The host (temp).
+@(private = "file")
+domain_suffix_of :: proc(value, original: string) -> (string, bool) {
+	if value == "" || strings.contains_any(value, "/?#@\\:") { return "", false }
+	u, ok := url.parse(strings.concatenate({"http://", value, "/"}, context.temp_allocator), nil, context.temp_allocator)
+	if !ok || u.host == "" { return "", false }
+	if u.host == original { return u.host, true }
+	o, ook := url.parse(strings.concatenate({"http://", original, "/"}, context.temp_allocator), nil, context.temp_allocator)
+	if !ook || url.is_ip_host(u) || url.is_ip_host(o) { return "", false }   // (an address has no suffix but itself)
+	if !strings.has_suffix(original, strings.concatenate({".", u.host}, context.temp_allocator)) { return "", false }
+	if url.is_public_suffix(u.host) { return "", false }
+	return u.host, true
 }
 
 @(private = "file")

@@ -233,6 +233,7 @@ Origin :: struct {
 	scheme: string,    // owned
 	host:   string,    // owned
 	port:   int,       // effective port, -1 for hosts without one (file)
+	domain: string,    // owned: HTML's domain of a tuple origin, set by document.domain ("": null)
 }
 
 @(private)
@@ -245,6 +246,7 @@ new_opaque_origin :: proc() -> Origin {
 origin_destroy :: proc(o: ^Origin) {
 	delete(o.scheme)
 	delete(o.host)
+	delete(o.domain)
 	o^ = {}
 }
 
@@ -252,7 +254,22 @@ origin_clone :: proc(o: Origin, allocator := context.allocator) -> Origin {
 	r := o
 	r.scheme = strings.clone(o.scheme, allocator)
 	r.host = strings.clone(o.host, allocator)
+	r.domain = o.domain != "" ? strings.clone(o.domain, allocator) : ""
 	return r
+}
+
+// HTML "same origin-domain": what decides whether a document's script reaches another's objects. Two tuple origins are
+// when they have the same scheme and either both a domain (document.domain), the same, or neither and are the same origin.
+same_origin_domain :: proc(a, b: Origin) -> bool {
+	if a.opaque || b.opaque { return same_origin(a, b) }
+	if a.domain != "" || b.domain != "" { return a.scheme == b.scheme && a.domain == b.domain }
+	return same_origin(a, b)
+}
+
+// HTML "effective domain" of an origin: its domain when document.domain set one, else its host ("" for an opaque one).
+effective_domain :: proc(o: Origin) -> string {
+	if o.opaque { return "" }
+	return o.domain != "" ? o.domain : o.host
 }
 
 // The origin of a URL (URL Standard, "origin" getter). `file:` and unknown schemes give a fresh opaque origin.

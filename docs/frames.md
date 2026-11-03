@@ -22,12 +22,17 @@ What keeps a frame of another origin out:
 - a handle resolves in its own document only. The tag is in the slot's generation, so a handle given to the wrong document fails
   like a dead one, in any implementation, routed or not;
 - the document is looked up on each call, among the documents of the caller's tab, and its origin compared with the
-  caller's (`frames_may_reach`, `src/page/frames_access.odin`). A frame gone, navigated to another origin, or sandboxed without
-  `allow-same-origin` leaves handles that resolve to nothing;
+  caller's (`frames_may_reach`, `src/page/frames_access.odin`: HTML's "same origin-domain"). A frame gone, navigated to another
+  origin, or sandboxed without `allow-same-origin` leaves handles that resolve to nothing;
 - a cross-origin frame's nodes never get a handle in another realm in the first place: `contentDocument` is null,
   `contentWindow.document` and `parent.document` throw a `SecurityError`.
 
-`document.domain` has no setter in Wren, so it never widens an origin.
+`document.domain = value` sets the domain of the document's origin (`url.Origin.domain`) to its host or a registrable domain suffix
+of it (not a public suffix, not for an IP address), for every document that has that origin (an about:blank or srcdoc frame has
+its parent's: `Page.origin_owner`); a sandboxed document gets a `SecurityError`. Two documents that set the same domain reach each
+other whatever their ports and subdomains, and a navigation between them is told to the target (its `navigate` event). In an
+origin-keyed agent cluster (`Origin-Agent-Cluster: ?1`, or cross-origin isolated) the assignment changes nothing; without the header
+the agent cluster is keyed by site, as HTML says.
 
 An insertion of a node of another document moves it first (DOM "adopt", `Frame_adoptNode`): a node has its handle in its
 document's pool, so this makes new nodes, with their listeners, and the wrappers of the realm that asked follow them. A
