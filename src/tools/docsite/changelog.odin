@@ -13,6 +13,7 @@ import "wb:base"
 CHANGELOG_PAGE :: "site/changelog/index.html"
 MARK_BEGIN     :: "<!-- releases:begin -->"
 MARK_END       :: "<!-- releases:end -->"
+RELEASE_BULLETS_MAX :: 6   // the highlights a release shows in the timeline
 
 Release :: struct {
 	version: string,   // "0.6.1"
@@ -87,7 +88,8 @@ version_less :: proc(a, b: string) -> bool {
 	return false
 }
 
-// The "### Highlights" bullets of a release note, else its first paragraph under the title.
+// The "### Highlights" bullets of a release note (the first RELEASE_BULLETS_MAX, each whole), else the first sentence of its
+// first paragraph under the title.
 release_bullets :: proc(md: string, r: ^Release) {
 	text := md
 	in_highlights := false
@@ -107,7 +109,13 @@ release_bullets :: proc(md: string, r: ^Release) {
 			} else if strings.builder_len(lead) > 0 { lead_done = true }
 		}
 		if in_highlights {
-			if strings.has_prefix(t, "- ") && len(r.bullets) < 6 { append(&r.bullets, short_sentence(t[2:])) }
+			// a bullet is whole: its first line and the indented lines that go on with it, joined
+			if strings.has_prefix(t, "- ") {
+				if len(r.bullets) < RELEASE_BULLETS_MAX { append(&r.bullets, strings.clone(t[2:])) } else { in_highlights = false }
+			} else if t != "" && line[0] == ' ' && len(r.bullets) > 0 {
+				last := &r.bullets[len(r.bullets) - 1]
+				last^ = strings.concatenate({last^, " ", t})
+			}
 		} else if first_para == "" && t != "" {
 			first_para = t
 		}
