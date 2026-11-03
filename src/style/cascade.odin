@@ -441,6 +441,9 @@ Pass :: struct {
 	made_with: runtime.Allocator,          // what allocated the Pass: a style thread's (the process heap), freed by the caller
 	image_records: int,                    // records made with background, mask or cursor images (added to Styled.image_records)
 	share:     Share_Table,                // the styles this pass made that elements with the same inputs share (share.odin)
+	sib:       Sib_Match,                  // the families of the walk, what their elements matched (sibling_match.odin)
+	counter_shows: int,                    // without a counter walk: boxes that show a counter or a quote (counters_tally)
+	counter_ops:   int,                    // ... boxes with counter-reset, -increment or -set
 }
 
 @(private)
@@ -472,9 +475,11 @@ consider :: proc(p: ^Pass, cust: ^map[string]Custom_Cand, rule: ^Rule, spec: css
 	}
 }
 
+// The entries that match element `el` into p.lists. `rec`: also what the element's siblings and cousins can take from
+// it (the entries it matched, and those they try again: sibling_match.odin).
 @(private)
-collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Bloom, ctx: Elem_Ctx) {
-	check :: proc(p: ^Pass, el: base.Handle, list: []Entry, ancestors: ^Bloom) {
+collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Bloom, ctx: Elem_Ctx, rec: ^[dynamic]Sib_Hit) {
+	check :: proc(p: ^Pass, el: base.Handle, list: []Entry, ancestors: ^Bloom, rec: ^[dynamic]Sib_Hit) {
 		for &ent in list {
 			if !entry_live(p, &ent) { continue }
 			slot: int
@@ -488,11 +493,13 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 			rejected := false
 			for k in 0 ..< int(ent.n_anc) { if !bloom_has(ancestors, ent.anc[k]) { rejected = true; break } }
 			if rejected { continue }
-			if matches_complex(&p.mc, el, ent.complex) {
+			matched := matches_complex(&p.mc, el, ent.complex)
+			if matched {
 				x := ent
 				x.ctx = p.own_depth
 				append(&p.lists[slot], x)
 			}
+			if rec != nil && (matched || ent.own || ent.above) { append(rec, Sib_Hit{ent = &ent, slot = u8(slot), matched = matched}) }
 		}
 	}
 	for i in 0 ..< 4 { clear(&p.lists[i]) }
@@ -503,7 +510,7 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 	if dom.has_shadow_trees(p.mc.doc) { shadow_entries(p, el, n, ctx) }
 	ix := &rs.index
 	if id, ok := attr(n, "id"); ok && id != "" {
-		if l, found := ix.by_id[id]; found { check(p, el, l[:], ancestors) }
+		if l, found := ix.by_id[id]; found { check(p, el, l[:], ancestors, rec) }
 	}
 	if cls, ok := attr(n, "class"); ok {
 		rest := cls
@@ -512,7 +519,7 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 			end := 0
 			for end < len(rest) && !is_space(rest[end]) { end += 1 }
 			if end > 0 {
-				if l, found := ix.by_class[rest[:end]]; found { check(p, el, l[:], ancestors) }
+				if l, found := ix.by_class[rest[:end]]; found { check(p, el, l[:], ancestors, rec) }
 			}
 			rest = rest[end:]
 		}
@@ -521,11 +528,11 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 		for a in n.attrs {
 			if a.name not_in ix.attr_names { continue }
 			key := strings.concatenate({a.name, "\x00", a.value}, context.temp_allocator)
-			if l, found := ix.by_attr[key]; found { check(p, el, l[:], ancestors) }
+			if l, found := ix.by_attr[key]; found { check(p, el, l[:], ancestors, rec) }
 		}
 	}
-	if l, found := ix.by_tag[n.name]; found { check(p, el, l[:], ancestors) }
-	check(p, el, ix.universal[:], ancestors)
+	if l, found := ix.by_tag[n.name]; found { check(p, el, l[:], ancestors, rec) }
+	check(p, el, ix.universal[:], ancestors, rec)
 }
 
 @(private)
@@ -902,8 +909,10 @@ may_have_content :: proc(entries: []Entry) -> bool {
 }
 
 @(private)
-compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Computed, ancestors: ^Bloom, ctx: Elem_Ctx = {}) -> (c: ^Computed, shared: bool) {
-	collect_entries(p, h, n, ancestors, ctx)
+// `depth`: the element's depth below where the walk started, for the matching its family shares (sibling_match.odin);
+// < 0: none.
+compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Computed, ancestors: ^Bloom, ctx: Elem_Ctx = {}, depth := -1) -> (c: ^Computed, shared: bool) {
+	match_element(p, h, n, ancestors, ctx, depth)
 	hinted := add_hint_entry(p, h, n)
 
 	inline_text: string
@@ -994,6 +1003,7 @@ pass_destroy :: proc(p: ^Pass) {
 	delete(p.cust_map); delete(p.res_map); delete(p.state_map)
 	for i in 0 ..< 4 { delete(p.lists[i]) }
 	share_destroy(&p.share)
+	sib_match_destroy(&p.sib)
 	virtual.arena_destroy(&p.scratch)
 	free(p, p.made_with)
 }
@@ -1007,11 +1017,12 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 	shadows := dom.has_shadow_trees(doc)
 	// `exit` frames close an element after its subtree (counter scopes and ::after are resolved there). The walk is
 	// that of the flat tree; `ctx` is the tree each element is matched in (scope.odin).
-	Frame :: struct { h: base.Handle, parent: ^Computed, bloom: Bloom, hidden: bool, exit: bool, c: ^Computed, ctx: Elem_Ctx }
+	// `depth`: below `root`, for the matching families share (none in the flat tree of shadow trees)
+	Frame :: struct { h: base.Handle, parent: ^Computed, bloom: Bloom, hidden: bool, exit: bool, c: ^Computed, ctx: Elem_Ctx, depth: i32 }
 	stack := make([dynamic]Frame, context.temp_allocator)
 	rc, has_rc := root_ctx.?
 	if !has_rc && shadows { rc = node_ctx(p, root) }
-	append(&stack, Frame{h = root, parent = parent, bloom = ancestors, hidden = parent != nil && hidden_above(p, root), ctx = rc})
+	append(&stack, Frame{h = root, parent = parent, bloom = ancestors, hidden = parent != nil && hidden_above(p, root), ctx = rc, depth = shadows ? -1 : 0})
 	for len(stack) > 0 {
 		f := pop(&stack)
 		if f.exit {
@@ -1020,7 +1031,7 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 		}
 		n := dom.get(doc, f.h)
 		if n == nil || n.kind != .Element { continue }
-		c, shared := compute_element(p, f.h, n, f.parent, &f.bloom, f.ctx)
+		c, shared := compute_element(p, f.h, n, f.parent, &f.bloom, f.ctx, int(f.depth))
 		hidden := f.hidden || c.display == .None
 		if p.compare {
 			old := style_of(s, f.h)
@@ -1042,6 +1053,7 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 			styled_put(s, f.h, c)   // (a parallel pass sized the arrays beforehand)
 			// (a shared record has what resolve_static finds: compute_element)
 			if p.counters != nil { counters_enter(p.counters, doc, f.h, n, c, hidden, p.alloc) } else if !shared { resolve_static(doc, f.h, c, p.alloc) }
+			if p.counters == nil && !hidden { counters_tally(p, c) }
 		}
 		if f.parent == nil && s.root_font_size == 0 {
 			s.root_font_size = c.font_size
@@ -1054,12 +1066,12 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 		bloom_add_element(&child_bloom, n)
 		if !shadows {
 			for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev {
-				append(&stack, Frame{h = ch, parent = c, bloom = child_bloom, hidden = hidden})
+				append(&stack, Frame{h = ch, parent = c, bloom = child_bloom, hidden = hidden, depth = f.depth + 1})
 			}
 			continue
 		}
 		for ch := dom.flat_last_child(doc, f.h); ch != base.NIL_HANDLE; ch = dom.flat_prev(doc, ch) {
-			append(&stack, Frame{h = ch, parent = c, bloom = child_bloom, hidden = hidden, ctx = child_ctx(p, f.h, f.ctx, ch)})
+			append(&stack, Frame{h = ch, parent = c, bloom = child_bloom, hidden = hidden, ctx = child_ctx(p, f.h, f.ctx, ch), depth = -1})
 		}
 	}
 }
@@ -1083,9 +1095,11 @@ compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State, pool: ^host
 	clear_gates_pending(e)   // (the gates hold what the environment says now: this pass reads them so)
 	s := styled_make(e, doc, state)
 	if pool != nil && host.thread_pool_size(pool) > 1 && doc.nodes.count >= min_nodes {
-		// counters and quotes need tree order: the threads compute everything else, then one ordered walk resolves them
-		style_document_parallel(e, s, doc, state, pool)
-		s.counters_used = counters_post_pass(s, doc, e.settings.counters_max_listed)
+		// counters and quotes need tree order: the threads compute everything else, then one ordered walk resolves them.
+		// When no box shows one, nothing reads their values: no walk (what it would say of counters_used, the threads
+		// counted: a box shown that changes a counter)
+		shows, ops := style_document_parallel(e, s, doc, state, pool)
+		s.counters_used = shows > 0 ? counters_post_pass(s, doc, e.settings.counters_max_listed) : ops > 0
 	} else {
 		p := pass_make(e, s, doc, state)
 		defer pass_destroy(p)

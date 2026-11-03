@@ -114,7 +114,7 @@ restyle_media :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Th
 		f := pop(&stack)
 		n := dom.get(doc, f.h)
 		if n == nil || n.kind != .Element { continue }
-		collect_entries(p, f.h, n, &f.bloom, f.ctx)
+		collect_entries(p, f.h, n, &f.bloom, f.ctx, nil)
 		hit := false
 		for i in 0 ..< 4 { if len(p.lists[i]) > 0 { hit = true; break } }
 		if hit { append(&hits, f.h) }

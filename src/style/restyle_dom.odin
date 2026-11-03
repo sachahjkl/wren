@@ -52,6 +52,8 @@ Frame :: struct {
 	force:  bool,   // restyle this element (its parent changed what it may take from it)
 	sub:    bool,   // inside a subtree restyled whole
 	ctx:    Elem_Ctx,   // the tree it is matched in (scope.odin)
+	depth:  i32,    // below the top of the walk (sibling_match.odin: a walk in tree order; the tops of a walk, and the
+	                // breadth-first expansion of run_deferred, are at 0, where only siblings share)
 }
 
 // A changed element seen by a thread of a parallel restyle, applied on the calling thread afterwards.
@@ -954,23 +956,36 @@ trace_marks :: proc(m: ^Marker, work: int, entries: []dom.Journal_Entry) {
 }
 // The elements of the inserted subtrees of `entries` that are in the document are more than `limit`. Each is marked
 // whole (mark_mutations), so `estimate` finds at least as many: the answer is the one the marking would give. (The
-// tree, not the flat tree: documents without shadow trees.)
+// tree, not the flat tree: documents without shadow trees.) The inserted nodes are bits by handle index, set for live
+// handles only (the index of a node that went may be another node's now); a second set keeps a node inserted twice from
+// being counted twice. One walk up from each: it stops at an inserted ancestor (counted with it) or finds the document.
 @(private = "file")
 inserted_exceed :: proc(doc: ^dom.Document, entries: []dom.Journal_Entry, limit: f64) -> bool {
-	fresh: map[base.Handle]struct{}
+	words := (int(doc.nodes.used) + 63) / 64
+	fresh, done: []u64
 	for &en in entries {
-		if en.kind != .Insert { continue }
-		if fresh == nil { fresh = make(map[base.Handle]struct{}, 16, context.temp_allocator) }
-		fresh[en.node] = {}
+		if en.kind != .Insert || dom.get(doc, en.node) == nil { continue }
+		if fresh == nil {
+			bits := make([]u64, 2 * words, context.temp_allocator)
+			fresh, done = bits[:words], bits[words:]
+		}
+		bit_set_at(fresh, en.node)
 	}
 	if fresh == nil { return false }
 	n := 0
 	stack := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
-	for h in fresh {
-		if !is_element_node(doc, h) || !connected(doc, h) { continue }
-		covered := false   // inside another inserted subtree: counted with it
-		for p := dom.get(doc, h).parent; p != base.NIL_HANDLE; p = dom.get(doc, p).parent { if p in fresh { covered = true; break } }
-		if covered { continue }
+	for &en in entries {
+		h := en.node
+		if en.kind != .Insert || !is_element_node(doc, h) || bit_at(done, h) { continue }
+		bit_set_at(done, h)
+		top := h   // inside another inserted subtree (counted with it): none; else the top of its tree
+		for p := dom.get(doc, h).parent; p != base.NIL_HANDLE; {
+			pn := dom.get(doc, p)
+			if pn == nil || bit_at(fresh, p) { top = base.NIL_HANDLE; break }
+			top = p
+			p = pn.parent
+		}
+		if top != doc.root { continue }
 		append(&stack, h)
 		for len(stack) > 0 {
 			x := pop(&stack)
@@ -980,6 +995,18 @@ inserted_exceed :: proc(doc: ^dom.Document, entries: []dom.Journal_Entry, limit:
 		}
 	}
 	return false
+}
+
+@(private = "file")
+bit_at :: #force_inline proc(bits: []u64, h: base.Handle) -> bool {
+	i := base.handle_index(h)
+	return bits[i >> 6] & (u64(1) << (i & 63)) != 0
+}
+
+@(private = "file")
+bit_set_at :: #force_inline proc(bits: []u64, h: base.Handle) {
+	i := base.handle_index(h)
+	bits[i >> 6] |= u64(1) << (i & 63)
 }
 
 // Elements marked, counting whole subtrees (the work a restyle will do at least).
@@ -1047,7 +1074,7 @@ restyle_one :: proc(w: ^Walker, f: ^Frame, n: ^dom.Node) -> (cur: ^Computed, cha
 	w.marked += 1
 	tmp := virtual.arena_temp_begin(w.arena)
 	made := w.p.share.count
-	c, _ := compute_element(w.p, f.h, n, f.parent, &f.bloom, f.ctx)
+	c, _ := compute_element(w.p, f.h, n, f.parent, &f.bloom, f.ctx, int(f.depth))
 	cur, changed, old_base = settle(w, f.h, c)
 	if changed { virtual.arena_temp_ignore(tmp); return }
 	if w.p.share.count != made { share_replace_last(&w.p.share, cur) }
@@ -1088,6 +1115,8 @@ walk :: proc(w: ^Walker, start: []Frame) {
 				if f.parent == nil && (nc.font_size != s.root_font_size || used_line_height(nc, s.line_height_normal) != s.root_line_height) { w.root_font = true }
 			}
 			cur = nc
+		} else {
+			sib_pass_by(w.p, n, int(f.depth))
 		}
 		if !sub && !inh_changed && !other_changed && bits & M_CHILD == 0 { continue }
 		if cur == nil { continue }
@@ -1103,7 +1132,7 @@ walk :: proc(w: ^Walker, start: []Frame) {
 				co := base_style_of(s, ch)
 				force = co == nil || !ps_empty(ps_intersect(co.inherits, noninh))
 			}
-			if force || cb != 0 { append(&stack, Frame{h = ch, parent = cur, bloom = child_bloom, force = force, sub = sub, ctx = child_ctx(w.p, f.h, f.ctx, ch)}) }
+			if force || cb != 0 { append(&stack, Frame{h = ch, parent = cur, bloom = child_bloom, force = force, sub = sub, ctx = child_ctx(w.p, f.h, f.ctx, ch), depth = f.depth + 1}) }
 		}
 	}
 }
