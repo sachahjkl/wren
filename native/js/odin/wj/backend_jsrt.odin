@@ -105,6 +105,7 @@ js_string_codePointRange :: proc "c" (ctx: ^Context, this_val: JSValue, argc: i3
 	JS_GetModuleRequestCount :: jscapi.JS_GetModuleRequestCount
 	JS_GetOpaque :: jscapi.JS_GetOpaque
 	JS_GetAnyOpaque :: jscapi.JS_GetAnyOpaque
+	JS_SetOpaqueMarked :: jscapi.JS_SetOpaqueMarked
 	JS_GetOwnProperty :: jscapi.JS_GetOwnProperty
 	JS_GetOwnPropertyNames :: jscapi.JS_GetOwnPropertyNames
 	JS_GetProperty :: jscapi.JS_GetProperty

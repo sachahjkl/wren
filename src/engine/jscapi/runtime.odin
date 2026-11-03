@@ -398,13 +398,24 @@ JS_NewObjectProtoClass :: proc "c" (c: ^Context, proto: JSValue, class_id: Class
 
 // (Wren) An object of a host class whose opaque data is `size` zeroed bytes of the engine's heap, in one block with the
 // object's host part and freed with it (JS_GetOpaque finds it): no allocation of the host's own, and no free in its
-// finalizer.
+// finalizer. The class's gc_mark is not called for it until JS_SetOpaqueMarked: zeroed data holds no value.
 JS_NewObjectProtoClassPayload :: proc "c" (c: ^Context, proto: JSValue, class_id: Class_ID, size: i32) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
 	m := js.host_enter(ctx.rt)
 	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
-	return own(ctx.rt, js.mk_obj(js.host_object_new(ctx, object_of(proto), class_id, int(size))))
+	return own(ctx.rt, js.mk_obj(js.host_object_new(ctx, object_of(proto), class_id, int(size), marked = false)))
+}
+
+// (Wren) Whether the collector calls the class's gc_mark for `obj` (an object of a class that has one: yes when made by
+// JS_NewObjectProtoClass, no by JS_NewObjectProtoClassPayload). Off while its opaque data holds no value, which spares a
+// collection the call for each such object (the glue's node wrappers with nothing of their own); on before the data
+// takes one.
+JS_SetOpaqueMarked :: proc "c" (c: ^Context, obj: JSValue, marked: bool) {
+	o := object_of(obj)
+	if o == nil {return}
+	context = api_ctx()
+	js.host_object_set_marked(jctx(c).rt, o, marked)
 }
 
 JS_NewObjectClass :: proc "c" (c: ^Context, class_id: Class_ID) -> JSValue {

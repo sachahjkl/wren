@@ -304,6 +304,7 @@ group_add :: proc "contextless" (ctx: ^Context, gobj: JSValue, o: ^Obj) -> bool 
 		g.members = m
 		g.cap = cap
 	}
+	wj_obj_marked(o)
 	o.group_slot = g.count
 	g.members[g.count] = JS_DupValue(ctx, o.self)
 	g.count += 1
@@ -346,6 +347,13 @@ group_remove :: proc "contextless" (ctx: ^Context, o: ^Obj) {
 @(private = "file")
 wrapper_plain :: #force_inline proc "contextless" (o: ^Obj) -> bool {
 	return o.listeners == nil && o.n_same == 0 && o.impl == nil && JS_IsUntouched(o.self, wj_the_realm.protos[o.iface])
+}
+
+// A wrapper is made unmarked (make_wrapper: its class's gc_mark, obj_mark, has nothing to report yet, and a collection
+// frees thousands of node wrappers a frame); what gives it a value obj_mark reports (a group, a listener, a [SameObject]
+// value, an impl) calls this first. Once marked it stays so.
+wj_obj_marked :: #force_inline proc "contextless" (o: ^Obj) {
+	JS_SetOpaqueMarked(realm_ctx(), o.self, true)
 }
 
 // Whether some detached tree's group has members.
@@ -984,6 +992,7 @@ wj_new_object_for :: proc "c" (ctx: ^Context, iface: i32, new_target: JSValue, i
 		return obj
 	}
 	o := obj_of(obj)
+	wj_obj_marked(o)
 	o.impl = impl
 	o.impl_free = impl_free
 	return obj
@@ -1031,6 +1040,7 @@ same_object_getter :: proc "c" (ctx: ^Context, this_val: JSValue, argc: i32, arg
 	v := JS_Call(ctx, data[1], this_val, 0, nil)
 	if is_exception(v) || o == nil { return v }
 	if slot >= i32(o.n_same) {
+		wj_obj_marked(o)
 		n := u16(slot + 1)
 		s := ([^]JSValue)(libc_realloc(o.same, uint(n) * size_of(JSValue)))
 		if s == nil { return v }

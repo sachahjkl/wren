@@ -140,6 +140,7 @@ listener_add :: proc(ctx: ^wj.Context, o: ^wj.Obj, callback, type: wj.JSValue, c
 		listener_free(wj.JS_GetRuntime(ctx), l)
 		return nil
 	}
+	wj.wj_obj_marked(o)
 	l.next = o.listeners
 	o.listeners = l
 	return l
