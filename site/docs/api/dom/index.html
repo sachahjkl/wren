@@ -1565,6 +1565,12 @@ contents belong to): no custom element registry, so the element is made as is an
 <p>document.createElementNS(namespace, qualifiedName): Invalid_Character, Namespace as DOM "validate and extract".</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Document_createElementNSChecked :: proc(c: ^Call, namespace: Maybe(string), qualified_name: string) -&gt; (u64, Api_Error)</code></p>
+<h3 id="document-validateattributens"><a class="anchor" href="#document-validateattributens" aria-hidden="true">#</a><code>Document_validateAttributeNS</code></h3>
+<div class="code"><pre><code>void Document_validateAttributeNS(optional string namespace, string qualified_name) raises</code></pre></div>
+<p>document.createAttributeNS(namespace, qualifiedName)'s checks: Invalid_Character, Namespace as DOM "validate and
+extract" (the engine makes the Attr).</p>
+<p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
+<p>Host: <code>Document_validateAttributeNS :: proc(c: ^Call, namespace: Maybe(string), qualified_name: string) -&gt; Api_Error</code></p>
 <h3 id="document-createdocumentfragment"><a class="anchor" href="#document-createdocumentfragment" aria-hidden="true">#</a><code>Document_createDocumentFragment</code></h3>
 <div class="code"><pre><code>Node Document_createDocumentFragment() raises</code></pre></div>
 <p>document.createDocumentFragment()</p>
@@ -2286,6 +2292,7 @@ well-formed-checked). Range past page.max_fetch_bytes.</p>
 <li class="lvl3"><a href="#document-createelementchecked">Document_createElementChecked</a></li>
 <li class="lvl3"><a href="#document-createelementinert">Document_createElementInert</a></li>
 <li class="lvl3"><a href="#document-createelementnschecked">Document_createElementNSChecked</a></li>
+<li class="lvl3"><a href="#document-validateattributens">Document_validateAttributeNS</a></li>
 <li class="lvl3"><a href="#document-createdocumentfragment">Document_createDocumentFragment</a></li>
 <li class="lvl3"><a href="#document-createcomment">Document_createComment</a></li>
 <li class="lvl3"><a href="#document-createcdatasection">Document_createCDATASection</a></li>

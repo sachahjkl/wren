@@ -386,9 +386,9 @@ base. <code>has_base</code> and <code>has_options</code> distinguish an absent a
 Returns 1 when it matched, 0 when it did not (exec returns null, test returns false).</p>
 <p>Host: <code>URLPattern_execString :: proc(c: ^Call, pattern: Api_URLPattern, input: string, base: string, has_base: bool) -&gt; i32</code></p>
 <h3 id="urlpattern-execinit"><a class="anchor" href="#urlpattern-execinit" aria-hidden="true">#</a><code>URLPattern_execInit</code></h3>
-<div class="code"><pre><code>i32 URLPattern_execInit(URLPattern pattern, string protocol, bool has_protocol, string username, bool has_username, string password, bool has_password, string hostname, bool has_hostname, string port, bool has_port, string pathname, bool has_pathname, string search, bool has_search, string hash, bool has_hash)</code></pre></div>
-<p>Run exec()/test() against a per-component init. Returns 1/0 as execString.</p>
-<p>Host: <code>URLPattern_execInit :: proc(c: ^Call, pattern: Api_URLPattern, protocol: string, has_protocol: bool, username: string, has_username: bool, password: string, has_password: bool, hostname: string, has_hostname: bool, port: string, has_port: bool, pathname: string, has_pathname: bool, search: string, has_search: bool, hash: string, has_hash: bool) -&gt; i32</code></p>
+<div class="code"><pre><code>i32 URLPattern_execInit(URLPattern pattern, string protocol, bool has_protocol, string username, bool has_username, string password, bool has_password, string hostname, bool has_hostname, string port, bool has_port, string pathname, bool has_pathname, string search, bool has_search, string hash, bool has_hash, string base, bool has_base)</code></pre></div>
+<p>Run exec()/test() against a per-component init and its baseURL. Returns 1/0 as execString.</p>
+<p>Host: <code>URLPattern_execInit :: proc(c: ^Call, pattern: Api_URLPattern, protocol: string, has_protocol: bool, username: string, has_username: bool, password: string, has_password: bool, hostname: string, has_hostname: bool, port: string, has_port: bool, pathname: string, has_pathname: bool, search: string, has_search: bool, hash: string, has_hash: bool, base: string, has_base: bool) -&gt; i32</code></p>
 <h3 id="urlpattern-resultinputcount"><a class="anchor" href="#urlpattern-resultinputcount" aria-hidden="true">#</a><code>URLPattern_resultInputCount</code></h3>
 <div class="code"><pre><code>i32 URLPattern_resultInputCount(URLPattern pattern)</code></pre></div>
 <p>After a successful exec: the number of <code>inputs</code> entries, and the i-th input string.</p>
