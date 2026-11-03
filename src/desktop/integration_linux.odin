@@ -17,6 +17,7 @@ import "base:runtime"
 import "core:os"
 import "core:path/filepath"
 import "core:strings"
+import "wb:base"
 
 @(private = "file")
 LINUX_BACKEND := Backend{
@@ -73,17 +74,7 @@ layout_of :: proc(o: ^Options) -> (l: Layout, ok: bool) {
 
 @(private = "file")
 icon_path :: proc(l: Layout, slug: string, size: int) -> string {
-	return strings.concatenate({l.icons, "/", itoa(size), "x", itoa(size), "/apps/", slug, ".png"}, context.temp_allocator)
-}
-
-@(private = "file")
-itoa :: proc(n: int) -> string {
-	buf: [20]u8
-	i := len(buf)
-	v := n
-	if v == 0 { return "0" }
-	for v > 0 { i -= 1; buf[i] = u8('0' + v % 10); v /= 10 }
-	return strings.clone(string(buf[i:]), context.temp_allocator)
+	return strings.concatenate({l.icons, "/", base.itoa(size), "x", base.itoa(size), "/apps/", slug, ".png"}, context.temp_allocator)
 }
 
 ////////////////////////////////

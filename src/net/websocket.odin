@@ -276,7 +276,7 @@ websocket_open :: proc(c: ^Client, d: Ws_Desc) -> base.Handle {
 	job.high_water, job.low_water = sp.limits.high_water, sp.limits.low_water
 	sync.atomic_add(&m.live_jobs, 1)
 	sp.job = job
-	sp.host_key = strings.concatenate({u.host, ":", itoa_tmp(url.effective_port(u))}, heap())
+	sp.host_key = strings.concatenate({u.host, ":", base.itoa(url.effective_port(u))}, heap())
 	append(&m.waiting, h)
 	ws_pump(m)
 	return h
@@ -350,13 +350,6 @@ websocket_abort :: proc(c: ^Client, h: base.Handle) -> bool {
 
 ////////////////////////////////
 // Loop thread: internals
-
-@(private)
-itoa_tmp :: proc(n: int) -> string {
-	sb := strings.builder_make(context.temp_allocator)
-	strings.write_int(&sb, n)
-	return strings.to_string(sb)
-}
 
 @(private)
 ws_scope_closed :: proc(data: rawptr) {

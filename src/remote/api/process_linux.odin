@@ -9,6 +9,7 @@ import "core:strconv"
 import "core:strings"
 import "core:sys/posix"
 import "core:time"
+import "wb:base"
 
 Process :: struct {
 	pid:    posix.pid_t,
@@ -22,7 +23,7 @@ this_pid :: proc() -> int { return int(posix.getpid()) }
 // The start of process `pid` after boot (clock ticks, /proc/<pid>/stat field 22) and its program (/proc/<pid>/exe).
 identity_of_pid :: proc(pid: int, allocator := context.temp_allocator) -> (id: Identity, ok: bool) {
 	if pid <= 0 { return {}, false }
-	stat, err := os.read_entire_file(strings.concatenate({"/proc/", itoa(pid), "/stat"}, context.temp_allocator), context.temp_allocator)
+	stat, err := os.read_entire_file(strings.concatenate({"/proc/", base.itoa(pid), "/stat"}, context.temp_allocator), context.temp_allocator)
 	if err != nil { return {}, false }
 	// the name (field 2) is in parentheses and may hold anything: the fields after its last ')' start at field 3
 	s := string(stat)
@@ -33,7 +34,7 @@ identity_of_pid :: proc(pid: int, allocator := context.temp_allocator) -> (id: I
 	start, good := strconv.parse_u64(fields[19])
 	if !good || start == 0 { return {}, false }
 	buf: [4096]u8
-	n := posix.readlink(strings.clone_to_cstring(strings.concatenate({"/proc/", itoa(pid), "/exe"}, context.temp_allocator), context.temp_allocator), &buf[0], len(buf))
+	n := posix.readlink(strings.clone_to_cstring(strings.concatenate({"/proc/", base.itoa(pid), "/exe"}, context.temp_allocator), context.temp_allocator), &buf[0], len(buf))
 	if n <= 0 || int(n) >= len(buf) { return {}, false }
 	return {created = start, image = strings.clone(string(buf[:n]), allocator)}, true
 }
@@ -47,16 +48,10 @@ same_process :: proc(recorded, now: Identity) -> bool {
 }
 
 @(private = "file")
-itoa :: proc(n: int) -> string {
-	buf: [24]u8
-	return strings.clone(strconv.write_int(buf[:], i64(n), 10), context.temp_allocator)
-}
-
-@(private = "file")
 gone :: proc(pid: posix.pid_t) -> bool {
 	// (a zombie is still there for kill: its state says it ended)
 	if posix.kill(pid, .NONE) != .OK { return true }
-	stat, err := os.read_entire_file(strings.concatenate({"/proc/", itoa(int(pid)), "/stat"}, context.temp_allocator), context.temp_allocator)
+	stat, err := os.read_entire_file(strings.concatenate({"/proc/", base.itoa(int(pid)), "/stat"}, context.temp_allocator), context.temp_allocator)
 	if err != nil { return true }
 	s := string(stat)
 	close := strings.last_index_byte(s, ')')

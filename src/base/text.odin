@@ -1,9 +1,21 @@
 package base
 
+// Small text helpers the packages share: numbers as text, escaping for HTML and XML.
+
+import "core:strconv"
+import "core:strings"
+
+// The decimal text of `n` (a negative one with its '-').
+itoa :: proc(n: int, allocator := context.temp_allocator) -> string {
+	buf: [len("-9223372036854775808")]u8
+	return strings.clone(strconv.write_int(buf[:], i64(n), 10), allocator)
+}
+
+////////////////////////////////
+// HTML and XML
+
 // Text written into HTML or XML: & < > always as references, and what `also` adds. Byte by byte (UTF-8 is copied as it
 // is), the runs between references in one write.
-
-import "core:strings"
 
 Escape :: enum u8 {
 	Quote,   // " as &quot; (a double-quoted attribute value)

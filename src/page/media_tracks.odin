@@ -17,6 +17,7 @@ import "core:strings"
 import "wb:base"
 import "wb:dom"
 import "wb:media"
+import "wb:url"
 
 Track_Entry :: struct {
 	self:     u64,          // this track's host object handle
@@ -154,19 +155,10 @@ media_tracks_owner :: proc(p: ^Page) -> u32 {
 track_id_string :: proc(t: media.Track, index: int) -> string {
 	if t.id != 0 {
 		buf: [24]u8
-		return strings.clone(uint_to_string(u64(t.id), buf[:]))
+		return strings.clone(url.uint_to_string(u64(t.id), buf[:]))
 	}
 	buf: [24]u8
-	return strings.clone(uint_to_string(u64(index + 1), buf[:]))
-}
-
-@(private)
-uint_to_string :: proc(v: u64, buf: []u8) -> string {
-	if v == 0 { buf[0] = '0'; return string(buf[:1]) }
-	i := len(buf)
-	x := v
-	for x > 0 { i -= 1; buf[i] = u8('0' + x % 10); x /= 10 }
-	return string(buf[i:])
+	return strings.clone(url.uint_to_string(u64(index + 1), buf[:]))
 }
 
 // Fires an event at a track list from a task of its own (same shape as mse_fire).

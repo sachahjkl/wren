@@ -17,6 +17,7 @@ package browser
 import "core:os"
 import "core:strings"
 import "core:unicode/utf8"
+import "wb:base"
 import "wb:blocker"
 import "wb:config"
 
@@ -187,22 +188,13 @@ engine_new_id :: proc(se: ^Search_Engines, name: string) -> string {
 		case strings.builder_len(sb) > 0 && sb.buf[len(sb.buf) - 1] != '-': strings.write_byte(&sb, '-')
 		}
 	}
-	base := strings.trim(strings.to_string(sb), "-")
-	if base == "" { base = "engine" }
-	id := base
+	stem := strings.trim(strings.to_string(sb), "-")
+	if stem == "" { stem = "engine" }
+	id := stem
 	for n := 2; engines_find(se, id) >= 0; n += 1 {
-		id = strings.concatenate({base, "-", itoa_tmp(n)}, context.temp_allocator)
+		id = strings.concatenate({stem, "-", base.itoa(n)}, context.temp_allocator)
 	}
 	return id
-}
-
-@(private = "file")
-itoa_tmp :: proc(n: int) -> string {
-	buf: [24]u8
-	i := len(buf)
-	v := n
-	for { i -= 1; buf[i] = u8('0' + v % 10); v /= 10; if v == 0 { break } }
-	return strings.clone(string(buf[i:]), context.temp_allocator)
 }
 
 // Adds an engine (checked with engine_validate first); returns its index.
