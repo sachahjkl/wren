@@ -3,43 +3,17 @@ package style
 import "core:math"
 import "core:testing"
 import "wb:dom"
-import "wb:html"
 
 @(private = "file")
-Sx :: struct {
-	doc: ^dom.Document,
-	eng: ^Engine,
-	st:  ^Styled,
-	tl:  ^Timeline,
-}
-
-@(private = "file")
-open :: proc(src: string) -> Sx {
-	f: Sx
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
+open :: proc(src: string) -> ^Fixture {
 	s := settings_default()
+	defer settings_destroy(&s)
 	s.anim_mode = .Normal
-	f.eng = engine_make(s)
-	settings_destroy(&s)
-	sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = compute_styles(f.eng, f.doc, {})
-	f.tl = timeline_make(f.eng)
-	timeline_restyled(f.tl, f.doc, nil, f.st, 0)
-	timeline_tick(f.tl, f.doc, f.st, 0)
-	return f
+	return fixture_load(src, {set = &s, timeline = true})
 }
 
 @(private = "file")
-close :: proc(f: ^Sx) {
-	timeline_destroy(f.tl, f.st)
-	styled_destroy(f.st)
-	engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
-}
-
-@(private = "file")
-node :: proc(f: ^Sx, id: string) -> ^Computed { return style_of(f.st, dom.find_by_id(f.doc, id)) }
+node :: proc(f: ^Fixture, id: string) -> ^Computed { return style_of(f.st, dom.find_by_id(f.doc, id)) }
 
 @(private = "file")
 near :: proc(a, b: f64, eps := 0.002) -> bool { return math.abs(a - b) <= eps }
@@ -83,23 +57,23 @@ effect_timing_model :: proc(t: ^testing.T) {
 @(test)
 script_effects_write_values :: proc(t: ^testing.T) {
 	f := open(`<style>#a { opacity: 0.2 } #b { width: 10px }</style><div id=a></div><div id=b></div>`)
-	defer close(&f)
+	defer fixture_unload(f)
 	a := dom.find_by_id(f.doc, "a")
 	testing.expect(t, !timeline_script_put(f.tl, 1, a, "0\x1f\x1fopacity\x1f0", timing(1000), "bogus(", .Replace), "an easing that does not parse is refused")
 	ok := timeline_script_put(f.tl, 1, a, "0\x1f\x1fopacity\x1f0\x1e1\x1f\x1fopacity\x1f1", timing(1000), "", .Replace)
 	testing.expect(t, ok, "keyframes compile")
 	timeline_script_clock(f.tl, 1, {start = 0, has_start = true, rate = 1, timeline = true})
 	timeline_tick(f.tl, f.doc, f.st, 250)
-	testing.expectf(t, near(f64(node(&f, "a").opacity), 0.25, 0.01), "a quarter of the way: %v", node(&f, "a").opacity)
+	testing.expectf(t, near(f64(node(f, "a").opacity), 0.25, 0.01), "a quarter of the way: %v", node(f, "a").opacity)
 	testing.expect(t, timeline_active(f.tl), "a running effect asks for every frame")
 	timeline_script_clock(f.tl, 1, {hold = 500, has_hold = true, rate = 1, timeline = true})
 	timeline_tick(f.tl, f.doc, f.st, 900)
-	testing.expectf(t, near(f64(node(&f, "a").opacity), 0.5, 0.01), "paused at its hold time: %v", node(&f, "a").opacity)
+	testing.expectf(t, near(f64(node(f, "a").opacity), 0.5, 0.01), "paused at its hold time: %v", node(f, "a").opacity)
 	testing.expect(t, !timeline_active(f.tl), "paused: no frames")
 	timeline_tick(f.tl, f.doc, f.st, 1000)
 	timeline_script_clock(f.tl, 1, {hold = 1000, has_hold = true, rate = 1, timeline = true})
 	timeline_tick(f.tl, f.doc, f.st, 1001)
-	testing.expect(t, near(f64(node(&f, "a").opacity), 0.2, 0.01), "finished with fill none: the cascaded value again")
+	testing.expect(t, near(f64(node(f, "a").opacity), 0.2, 0.01), "finished with fill none: the cascaded value again")
 
 	// a value holding another declaration is refused; an implicit end keyframe takes the underlying value
 	b := dom.find_by_id(f.doc, "b")
@@ -107,20 +81,20 @@ script_effects_write_values :: proc(t: ^testing.T) {
 	testing.expect(t, ok)
 	timeline_script_clock(f.tl, 2, {hold = 50, has_hold = true, rate = 1, timeline = true})
 	timeline_tick(f.tl, f.doc, f.st, 1002)
-	bw := node(&f, "b").width
+	bw := node(f, "b").width
 	testing.expectf(t, near(f64(bw.v), 60, 0.5), "halfway from 110px to the cascaded 10px: %v", bw)
-	testing.expect(t, node(&f, "b").color == node(&f, "a").color, "an injected declaration does nothing")
+	testing.expect(t, node(f, "b").color == node(f, "a").color, "an injected declaration does nothing")
 
 	// composite order: a later effect on the same property wins
 	ok = timeline_script_put(f.tl, 3, b, "0\x1f\x1fwidth\x1f300px\x1e1\x1f\x1fwidth\x1f300px", timing(100, .Both), "", .Replace)
 	timeline_script_clock(f.tl, 3, {hold = 50, has_hold = true, rate = 1, timeline = true})
 	timeline_tick(f.tl, f.doc, f.st, 1003)
-	testing.expectf(t, near(f64(node(&f, "b").width.v), 300, 0.5), "the later animation is above: %v", node(&f, "b").width)
+	testing.expectf(t, near(f64(node(f, "b").width.v), 300, 0.5), "the later animation is above: %v", node(f, "b").width)
 	testing.expect(t, timeline_script_covered(f.tl, 2, {3}), "every property of 2 is animated by 3")
 	timeline_script_remove(f.tl, 3)
 	timeline_script_remove(f.tl, 2)
 	timeline_tick(f.tl, f.doc, f.st, 1004)
-	testing.expect(t, near(f64(node(&f, "b").width.v), 10, 0.5), "removed effects leave the cascaded value")
+	testing.expect(t, near(f64(node(f, "b").width.v), 10, 0.5), "removed effects leave the cascaded value")
 	timeline_script_remove(f.tl, 1)
 	testing.expect_value(t, len(f.tl.elements), 0)
 }
@@ -128,17 +102,17 @@ script_effects_write_values :: proc(t: ^testing.T) {
 @(test)
 keyframe_composite_and_css_animations_for_scripts :: proc(t: ^testing.T) {
 	f := open(`<style>#b { width: 10px } #c { animation: grow 1000ms linear } @keyframes grow { from { height: 0 } to { height: 100px } }</style><div id=b></div><div id=c></div>`)
-	defer close(&f)
+	defer fixture_unload(f)
 	// a keyframe's own composite operation: `add` at 0% over the effect's `replace`
 	b := dom.find_by_id(f.doc, "b")
 	ok := timeline_script_put(f.tl, 1, b, "0\x1f\x1fcomposite\x1fadd\x1fwidth\x1f100px\x1e1\x1f\x1fwidth\x1f100px", timing(100, .Both), "", .Replace)
 	testing.expect(t, ok)
 	timeline_script_clock(f.tl, 1, {hold = 0, has_hold = true, rate = 1, timeline = true})
 	timeline_tick(f.tl, f.doc, f.st, 1)
-	testing.expectf(t, near(f64(node(&f, "b").width.v), 110, 0.5), "0%% adds to the underlying 10px: %v", node(&f, "b").width)
+	testing.expectf(t, near(f64(node(f, "b").width.v), 110, 0.5), "0%% adds to the underlying 10px: %v", node(f, "b").width)
 	timeline_script_clock(f.tl, 1, {hold = 100, has_hold = true, rate = 1, timeline = true})
 	timeline_tick(f.tl, f.doc, f.st, 2)
-	testing.expectf(t, near(f64(node(&f, "b").width.v), 100, 0.5), "100%% replaces: %v", node(&f, "b").width)
+	testing.expectf(t, near(f64(node(f, "b").width.v), 100, 0.5), "100%% replaces: %v", node(f, "b").width)
 
 	// the CSS animation as scripts see it: listed, paused and played, sought, canceled
 	c := dom.find_by_id(f.doc, "c")
@@ -152,11 +126,11 @@ keyframe_composite_and_css_animations_for_scripts :: proc(t: ^testing.T) {
 	testing.expectf(t, found && !info.running && near(info.current, 200, 1), "paused by a script: its time holds (%v)", info.current)
 	testing.expect(t, timeline_css_seek(f.tl, serial, 500))
 	timeline_tick(f.tl, f.doc, f.st, 601)
-	testing.expectf(t, near(f64(node(&f, "c").height.v), 50, 0.5), "sought to the middle: %v", node(&f, "c").height)
+	testing.expectf(t, near(f64(node(f, "c").height.v), 50, 0.5), "sought to the middle: %v", node(f, "c").height)
 	testing.expect(t, timeline_css_cancel(f.tl, serial))
 	timeline_tick(f.tl, f.doc, f.st, 602)
 	info, found = timeline_css_info(f.tl, serial)
 	testing.expect(t, found && info.canceled, "canceled: idle")
-	testing.expectf(t, near(f64(node(&f, "c").height.v), 0, 0.5), "and no effect: %v", node(&f, "c").height)
+	testing.expectf(t, near(f64(node(f, "c").height.v), 0, 0.5), "and no effect: %v", node(f, "c").height)
 	timeline_script_remove(f.tl, 1)
 }

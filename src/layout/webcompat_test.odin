@@ -5,23 +5,14 @@ import "core:strconv"
 import "core:testing"
 import "wb:base"
 import "wb:dom"
-import "wb:html"
-import "wb:style"
 
 // Layout behaviour real sites depend on: replaced elements that keep their ratio under max-width (Tailwind's
 // `img { max-width: 100%; height: auto }`), size containment of query containers.
 
-@(private = "file")
-fake_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> Font { return Font(1) }
-@(private = "file")
-fake_width :: proc(user: rawptr, f: Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(rune_count(text)) }
-@(private = "file")
-fake_metrics :: proc(user: rawptr, f: Font, size: f32) -> Font_Metrics { return {ascent = 0.8 * size, descent = 0.2 * size, x_height = 0.5 * size} }
-
 // A decoded image's natural size, given by the test as data-nw / data-nh attributes (none: not loaded yet).
 @(private = "file")
 fake_natural :: proc(user: rawptr, node: base.Handle) -> (w, h: f32, ok: bool) {
-	doc := (^dom.Document)(user)
+	doc := (^Fixture)(user).doc
 	nw, okw := dom.get_attribute(doc, node, "data-nw")
 	nh, okh := dom.get_attribute(doc, node, "data-nh")
 	if !okw || !okh { return 0, 0, false }
@@ -32,22 +23,11 @@ fake_natural :: proc(user: rawptr, node: base.Handle) -> (w, h: f32, ok: bool) {
 
 @(private = "file")
 with_layout :: proc(t: ^testing.T, src: string, check: proc(t: ^testing.T, l: ^Layout, doc: ^dom.Document), natural := false) {
-	doc := dom.document_create(nil)
-	defer dom.document_destroy(doc)
-	html.parse_into(doc, doc.root, transmute([]byte)src, 2_000_000)
-	ss := style.settings_default()
-	eng := style.engine_make(ss)
-	style.settings_destroy(&ss)
-	defer style.engine_destroy(eng)
-	style.sync_document_sheets(eng, doc, "about:test")
-	st := style.compute_styles(eng, doc, {})
-	defer style.styled_destroy(st)
-	set := settings_default()
-	l: Layout
-	defer destroy(&l)
-	replaced := natural ? Replaced_Api{user = doc, intrinsic = fake_natural} : Replaced_Api{}
-	run(&l, Input{doc = doc, styled = st, settings = &set, text = Text_Api{font = fake_font, width = fake_width, metrics = fake_metrics}, viewport = {800, 600}, scale = 1, band_h = 256, replaced = replaced})
-	check(t, &l, doc)
+	o: Fixture_Options
+	if natural { o.natural = fake_natural }
+	f := fixture_load(src, o = o)
+	defer fixture_unload(f)
+	check(t, &f.l, f.doc)
 }
 
 @(private = "file")

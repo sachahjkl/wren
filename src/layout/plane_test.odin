@@ -5,73 +5,26 @@ import "core:math"
 import "core:testing"
 import "wb:base"
 import "wb:dom"
-import "wb:html"
 import "wb:style"
 
 // 3D transforms in layout: which boxes are planes, how planes chain into 3D rendering contexts, the projection a view
 // computes for them, and hit testing and box queries through it.
 
 @(private = "file")
-Px :: struct {
-	doc: ^dom.Document,
-	eng: ^style.Engine,
-	st:  ^style.Styled,
-	tl:  ^style.Timeline,
-	set: Settings,
-	l:   Layout,
-	vp:  Vec2,
+pt_load :: proc(src: string, three_d := true) -> ^Fixture {
+	set := settings_default()
+	set.transforms_3d = three_d
+	return fixture_load(src, o = {set = &set, timeline = true})
 }
 
 @(private = "file")
-pt_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> Font { return Font(1) }
-@(private = "file")
-pt_width :: proc(user: rawptr, f: Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(len(text)) }
-@(private = "file")
-pt_metrics :: proc(user: rawptr, f: Font, size: f32) -> Font_Metrics { return {ascent = 0.8 * size, descent = 0.2 * size, x_height = 0.5 * size} }
-
-@(private = "file")
-pt_load :: proc(src: string, three_d := true) -> ^Px {
-	f := new(Px)
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
-	ss := style.settings_default()
-	f.eng = style.engine_make(ss)
-	style.settings_destroy(&ss)
-	style.sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = style.compute_styles(f.eng, f.doc, {})
-	f.tl = style.timeline_make(f.eng)
-	style.timeline_restyled(f.tl, f.doc, nil, f.st, 0)
-	style.timeline_tick(f.tl, f.doc, f.st, 0)
-	f.set = settings_default()
-	f.set.transforms_3d = three_d
-	f.vp = {800, 600}
-	pt_run(f)
-	return f
-}
-
-@(private = "file")
-pt_run :: proc(f: ^Px) {
-	run(&f.l, Input{doc = f.doc, styled = f.st, settings = &f.set, text = Text_Api{font = pt_font, width = pt_width, metrics = pt_metrics}, viewport = f.vp, scale = 1, band_h = 256})
-}
-
-@(private = "file")
-pt_unload :: proc(f: ^Px) {
-	destroy(&f.l)
-	style.timeline_destroy(f.tl, f.st)
-	style.styled_destroy(f.st)
-	style.engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
-	free(f)
-}
-
-@(private = "file")
-pbx :: proc(f: ^Px, id: string) -> ^Box {
+pbx :: proc(f: ^Fixture, id: string) -> ^Box {
 	bi := box_index(&f.l, dom.find_by_id(f.doc, id))
 	return bi == NONE ? nil : &f.l.boxes[bi]
 }
 
 @(private = "file")
-phit :: proc(f: ^Px, x, y: f32) -> base.Handle { return hit_test(&f.l, {x, y}, f.vp, 0).node }
+phit :: proc(f: ^Fixture, x, y: f32) -> base.Handle { return hit_test(&f.l, {x, y}, f.vp, 0).node }
 
 @(private = "file")
 pnear :: proc(a, b: f32, eps: f32 = 0.5) -> bool { return math.abs(a - b) <= eps }
@@ -90,8 +43,8 @@ planes_are_the_boxes_with_a_3d_transform :: proc(t: ^testing.T) {
 		<div id=g style="rotate:x 20deg;width:50px;height:50px"></div>
 		<div id=h style="transform:matrix3d(1,0,0,0, 0,1,0,0, 0,0,1,0.001, 0,0,0,1);width:50px;height:50px"></div>
 	</body>`)
-	defer pt_unload(f)
-	is_plane :: proc(f: ^Px, id: string) -> bool { b := pbx(f, id); return .Plane in b.flags && .Transformed in b.flags }
+	defer fixture_unload(f)
+	is_plane :: proc(f: ^Fixture, id: string) -> bool { b := pbx(f, id); return .Plane in b.flags && .Transformed in b.flags }
 	testing.expect(t, is_plane(f, "a") && is_plane(f, "e") && is_plane(f, "g") && is_plane(f, "h"), "3D transforms and preserve-3d are planes")
 	testing.expect(t, !is_plane(f, "b") && !is_plane(f, "c"), "translateZ(0) and 2D transforms are not")
 	d := pbx(f, "d")
@@ -99,14 +52,14 @@ planes_are_the_boxes_with_a_3d_transform :: proc(t: ^testing.T) {
 	testing.expect(t, f.l.spaces[pbx(f, "a").space].proj && f.l.spaces[pbx(f, "a").space].plane == pbx(f, "a").space)
 	// with 3D off: nothing is a plane
 	g := pt_load(`<body style="margin:0"><div id=a style="transform:rotateY(30deg);width:50px;height:50px"></div></body>`, false)
-	defer pt_unload(g)
+	defer fixture_unload(g)
 	testing.expect(t, .Plane not_in pbx(g, "a").flags && .Transformed in pbx(g, "a").flags, "3D off: an ordinary (flattened) transform")
 }
 
 @(test)
 plane_projection_and_hit_test :: proc(t: ^testing.T) {
 	f := pt_load(CARD)
-	defer pt_unload(f)
+	defer fixture_unload(f)
 	card := pbx(f, "card")
 	sp := &f.l.spaces[card.space]
 	testing.expect(t, sp.proj && sp.persp_from == pbx(f, "wrap").space, "the card sits in the perspective of wrap")
@@ -145,7 +98,7 @@ plane_projection_and_hit_test :: proc(t: ^testing.T) {
 @(test)
 box_point_to_local_is_exact_in_a_plane :: proc(t: ^testing.T) {
 	f := pt_load(CARD)
-	defer pt_unload(f)
+	defer fixture_unload(f)
 	card := pbx(f, "card")
 	v := view_make(&f.l, f.vp, 0, cull = false)
 	r, ok := box_of(&f.l, dom.find_by_id(f.doc, "card"), f.vp, 0)
@@ -171,8 +124,8 @@ preserve_3d_contexts :: proc(t: ^testing.T) {
 			<div id=flat style="transform:rotateY(10deg);position:absolute;left:0;top:0;width:10px;height:10px">
 				<div id=inner style="transform:rotateX(10deg);width:5px;height:5px"></div></div>
 		</div></div></body>`)
-	defer pt_unload(f)
-	sp :: proc(f: ^Px, id: string) -> ^Space { return &f.l.spaces[pbx(f, id).space] }
+	defer fixture_unload(f)
+	sp :: proc(f: ^Fixture, id: string) -> ^Space { return &f.l.spaces[pbx(f, id).space] }
 	scene, back, front, flat, inner := sp(f, "scene"), sp(f, "back"), sp(f, "front"), sp(f, "flat"), sp(f, "inner")
 	root_space := pbx(f, "scene").space
 	testing.expect(t, scene.proj && scene.preserve && scene.ctx == root_space && scene.dest == NONE, "scene roots a context drawn on the page")
@@ -199,7 +152,7 @@ backface_hidden_boxes_in_a_3d_context_are_planes :: proc(t: ^testing.T) {
 			<div id=face style="backface-visibility:hidden;position:absolute;width:200px;height:200px"></div>
 			<div id=lone style="width:50px;height:50px"></div></div></div>
 		<div id=plain style="backface-visibility:hidden;width:50px;height:50px"></div></body>`)
-	defer pt_unload(f)
+	defer fixture_unload(f)
 	face := pbx(f, "face")
 	testing.expect(t, .Plane in face.flags && f.l.spaces[face.space].back_hidden, "a hidden backface under preserve-3d is a plane of its own")
 	testing.expect(t, .Transformed not_in pbx(f, "plain").flags && .Plane not_in pbx(f, "lone").flags, "elsewhere backface-visibility changes nothing")
@@ -219,7 +172,7 @@ hit_inside_a_box_with_a_tilted_card :: proc(t: ^testing.T) {
 			<div id=face style="position:absolute;inset:0;transform:translate3d(0,0,18px) scale(0.98)">Face text</div>
 			<div id=seal style="position:absolute;right:16px;bottom:14px;width:88px;height:88px;border-radius:50%;background:#2a2;transform:translate3d(0,0,30px) scale(0.9667)"></div></div></div></body>`, tilt)
 		f := pt_load(src)
-		defer pt_unload(f)
+		defer fixture_unload(f)
 		box := dom.find_by_id(f.doc, "box")
 		bb := pbx(f, "box")
 		bad := 0

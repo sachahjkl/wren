@@ -28,10 +28,6 @@ ADDRESS :: "http://127.0.0.1:8765/jsdom/"
 VIEW_W :: 800
 VIEW_H :: 600
 BAND_H :: 256
-GLYPH_EM :: 0.5
-ASCENT_EM :: 0.8
-DESCENT_EM :: 0.2
-X_HEIGHT_EM :: 0.5
 PAGE_LIMIT_MS :: 120_000
 BENCH_LIMIT_MS :: 600_000
 TOUCH_POINTS :: 5
@@ -61,14 +57,10 @@ Layout_Host :: struct {
 	view:     [2]f64,   // the viewport the embedder reports (0: VIEW_W x VIEW_H): the resize steps' check changes it
 }
 
-fake_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> lay.Font { return lay.Font(1) }
-fake_width :: proc(user: rawptr, f: lay.Font, size: f32, text: string) -> f32 { return GLYPH_EM * size * f32(strings.rune_count(text)) }
-fake_metrics :: proc(user: rawptr, f: lay.Font, size: f32) -> lay.Font_Metrics { return {ascent = ASCENT_EM * size, descent = DESCENT_EM * size, x_height = X_HEIGHT_EM * size} }
-
 layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 	lh := (^Layout_Host)(user)
 	st := page.styles(p, VIEW_W, VIEW_H, 1)
-	lay.run(&lh.l, lay.Input{doc = p.doc, styled = st, settings = &lh.set, text = {font = fake_font, width = fake_width, metrics = fake_metrics}, viewport = {VIEW_W, VIEW_H}, scale = 1, band_h = BAND_H})
+	lay.run(&lh.l, lay.Input{doc = p.doc, styled = st, settings = &lh.set, text = FAKE_TEXT, viewport = {VIEW_W, VIEW_H}, scale = 1, band_h = BAND_H})
 	return &lh.l
 }
 

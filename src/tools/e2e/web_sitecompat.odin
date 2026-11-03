@@ -161,14 +161,10 @@ Layout_Host :: struct {
 	scroll: [2]f64,
 }
 
-fake_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> lay.Font { return lay.Font(1) }
-fake_width :: proc(user: rawptr, f: lay.Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(strings.rune_count(text)) }
-fake_metrics :: proc(user: rawptr, f: lay.Font, size: f32) -> lay.Font_Metrics { return {ascent = 0.8 * size, descent = 0.2 * size, x_height = 0.5 * size} }
-
 layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 	lh := (^Layout_Host)(user)
 	st := page.styles(p, VIEW_W, VIEW_H, 1)
-	lay.run(&lh.l, lay.Input{doc = p.doc, styled = st, settings = &lh.set, text = {font = fake_font, width = fake_width, metrics = fake_metrics}, viewport = {VIEW_W, VIEW_H}, scale = 1, band_h = BAND_H})
+	lay.run(&lh.l, lay.Input{doc = p.doc, styled = st, settings = &lh.set, text = FAKE_TEXT, viewport = {VIEW_W, VIEW_H}, scale = 1, band_h = BAND_H})
 	return &lh.l
 }
 

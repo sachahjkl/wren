@@ -4,21 +4,10 @@ import "core:strings"
 import "core:testing"
 import "core:unicode/utf8"
 import "wb:dom"
-import "wb:html"
-import "wb:style"
 
 // Bidi in inline layout with a stand-in for UAX #9 (Hebrew letters are strong right to left, Latin letters strong left
 // to right, spaces and digits take the level of the run around them): fragments split at level changes, lines
 // reordered (L2), atomic inlines follow, `direction: rtl` paragraphs, dictionary line breaks. Characters are 0.5 em.
-
-@(private = "file")
-Bfx :: struct {
-	doc: ^dom.Document,
-	eng: ^style.Engine,
-	st:  ^style.Styled,
-	set: Settings,
-	l:   Layout,
-}
 
 @(private = "file")
 is_hebrew :: proc(r: rune) -> bool { return r >= 0x05D0 && r <= 0x05EA }
@@ -57,12 +46,6 @@ fake_bidi :: proc(user: rawptr, text: string, rtl: bool, levels: []u8) {
 	}
 }
 
-@(private = "file")
-b_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> Font { return Font(1) }
-@(private = "file")
-b_width :: proc(user: rawptr, f: Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(rune_count(text)) }
-@(private = "file")
-b_metrics :: proc(user: rawptr, f: Font, size: f32) -> Font_Metrics { return {ascent = 0.8 * size, descent = 0.2 * size, x_height = 0.5 * size} }
 // Thai stand-in dictionary: a break every 3 characters
 @(private = "file")
 b_break :: proc(user: rawptr, text: string) -> int {
@@ -75,32 +58,12 @@ b_break :: proc(user: rawptr, text: string) -> int {
 }
 
 @(private = "file")
-bload :: proc(src: string, vw: f32 = 800) -> ^Bfx {
-	f := new(Bfx)
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
-	ss := style.settings_default()
-	f.eng = style.engine_make(ss)
-	style.settings_destroy(&ss)
-	style.sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = style.compute_styles(f.eng, f.doc, {})
-	f.set = settings_default()
-	api := Text_Api{font = b_font, width = b_width, metrics = b_metrics, bidi = fake_bidi, line_break = b_break}
-	run(&f.l, Input{doc = f.doc, styled = f.st, settings = &f.set, text = api, viewport = {vw, 600}, scale = 1, band_h = 256})
-	return f
+bload :: proc(src: string, vw: f32 = FIXTURE_VP_W) -> ^Fixture {
+	return fixture_load(src, vw, o = {text = {font = fake_font, width = fake_width, metrics = fake_metrics, bidi = fake_bidi, line_break = b_break}})
 }
 
 @(private = "file")
-bunload :: proc(f: ^Bfx) {
-	destroy(&f.l)
-	style.styled_destroy(f.st)
-	style.engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
-	free(f)
-}
-
-@(private = "file")
-lines_of :: proc(f: ^Bfx, id: string) -> []Line {
+lines_of :: proc(f: ^Fixture, id: string) -> []Line {
 	bi := box_index(&f.l, dom.find_by_id(f.doc, id))
 	if bi == NONE { return nil }
 	b := &f.l.boxes[bi]
@@ -109,7 +72,7 @@ lines_of :: proc(f: ^Bfx, id: string) -> []Line {
 
 // The text fragments of a line, left to right on screen.
 @(private = "file")
-visual :: proc(f: ^Bfx, ln: Line) -> []Frag {
+visual :: proc(f: ^Fixture, ln: Line) -> []Frag {
 	out := make([dynamic]Frag, context.temp_allocator)
 	for i in ln.frags[0] ..< ln.frags[1] { if f.l.frags[i].kind == .Text || f.l.frags[i].kind == .Atomic { append(&out, f.l.frags[i]) } }
 	for i in 1 ..< len(out) {
@@ -125,7 +88,7 @@ visual :: proc(f: ^Bfx, ln: Line) -> []Frag {
 bidi_mixed_line :: proc(t: ^testing.T) {
 	// abc אבג דהו def: the Hebrew words go right to left between the Latin ones
 	f := bload(`<body style="margin:0;font-size:10px"><p id=p style="margin:0">abc &#x5D0;&#x5D1;&#x5D2; &#x5D3;&#x5D4;&#x5D5; def</p></body>`)
-	defer bunload(f)
+	defer fixture_unload(f)
 	ls := lines_of(f, "p")
 	testing.expect_value(t, len(ls), 1)
 	v := visual(f, ls[0])
@@ -145,7 +108,7 @@ bidi_mixed_line :: proc(t: ^testing.T) {
 bidi_rtl_paragraph :: proc(t: ^testing.T) {
 	// direction: rtl: the paragraph's runs go right to left, the line is aligned right (text-align: start)
 	f := bload(`<body style="margin:0;font-size:10px"><p id=p dir=rtl style="margin:0;width:200px">&#x5D0;&#x5D1; abc &#x5D2;&#x5D3;</p></body>`)
-	defer bunload(f)
+	defer fixture_unload(f)
 	ls := lines_of(f, "p")
 	testing.expect_value(t, len(ls), 1)
 	v := visual(f, ls[0])
@@ -163,7 +126,7 @@ bidi_rtl_paragraph :: proc(t: ^testing.T) {
 bidi_atomic_follows :: proc(t: ^testing.T) {
 	// an inline-block between two Hebrew words stays between them (in the reversed run)
 	f := bload(`<body style="margin:0;font-size:10px"><p id=p style="margin:0">ab &#x5D0;&#x5D1; <span id=k style="display:inline-block;width:30px;height:5px"></span> &#x5D2;&#x5D3;</p></body>`)
-	defer bunload(f)
+	defer fixture_unload(f)
 	ls := lines_of(f, "p")
 	v := visual(f, ls[0])
 	ki := -1
@@ -178,7 +141,7 @@ bidi_atomic_follows :: proc(t: ^testing.T) {
 dictionary_breaks :: proc(t: ^testing.T) {
 	// a run without spaces in a script that needs a dictionary breaks where Text_Api.line_break says (every 3 here)
 	f := bload(`<body style="margin:0;font-size:10px"><p id=p style="margin:0;width:20px">&#xE20;&#xE32;&#xE29;&#xE32;&#xE44;&#xE17;&#xE22;&#xE07;&#xE32;</p></body>`)
-	defer bunload(f)
+	defer fixture_unload(f)
 	ls := lines_of(f, "p")
 	testing.expectf(t, len(ls) == 3, "%d lines", len(ls))
 }

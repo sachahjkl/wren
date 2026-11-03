@@ -3,27 +3,12 @@ package style
 import "core:testing"
 import "wb:base"
 import "wb:dom"
-import "wb:html"
 
 @(private = "file")
-Jx :: struct { doc: ^dom.Document, eng: ^Engine, st: ^Styled }
+JOURNAL_ENTRIES :: 1024
 
 @(private = "file")
-jx_load :: proc(src: string) -> ^Jx {
-	f := new(Jx)
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 100_000)
-	ss := settings_default()
-	f.eng = engine_make(ss)
-	settings_destroy(&ss)
-	engine_set_journal(f.eng, 1024)
-	sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = compute_styles(f.eng, f.doc, {})
-	return f
-}
-
-@(private = "file")
-jx_restyle :: proc(f: ^Jx) {
+jx_restyle :: proc(f: ^Fixture) {
 	sync_document_sheets(f.eng, f.doc, "about:test")
 	old := f.st
 	f.st = compute_styles(f.eng, f.doc, {})
@@ -31,20 +16,12 @@ jx_restyle :: proc(f: ^Jx) {
 	styled_destroy(old)
 }
 
-@(private = "file")
-jx_unload :: proc(f: ^Jx) {
-	styled_destroy(f.st)
-	engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
-	free(f)
-}
-
 @(test)
 change_levels :: proc(t: ^testing.T) {
-	f := jx_load(`<style>.w{width:10px} .d{display:flex} .c{color:red} .fs{font-size:30px} .m{margin-top:4px}</style><div id=a>x</div>`)
-	defer jx_unload(f)
+	f := fixture_load(`<style>.w{width:10px} .d{display:flex} .c{color:red} .fs{font-size:30px} .m{margin-top:4px}</style><div id=a>x</div>`, {journal = JOURNAL_ENTRIES})
+	defer fixture_unload(f)
 	a := dom.find_by_id(f.doc, "a")
-	level_after :: proc(f: ^Jx, a: base.Handle, class: string) -> Change_Level {
+	level_after :: proc(f: ^Fixture, a: base.Handle, class: string) -> Change_Level {
 		before := f.st.serial
 		dom.set_attribute(f.doc, a, "class", class)
 		jx_restyle(f)
@@ -77,8 +54,8 @@ change_levels :: proc(t: ^testing.T) {
 
 @(test)
 journal_serials :: proc(t: ^testing.T) {
-	f := jx_load(`<style>a:hover{padding:3px}</style><a id=l>x</a><p>y</p>`)
-	defer jx_unload(f)
+	f := fixture_load(`<style>a:hover{padding:3px}</style><a id=l>x</a><p>y</p>`, {journal = JOURNAL_ENTRIES})
+	defer fixture_unload(f)
 	s0 := f.st.serial
 	_, ok := journal_since(f.st, s0)
 	testing.expect(t, ok, "covers what comes after the current styles")

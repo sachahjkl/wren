@@ -11,45 +11,12 @@ import "wb:html"
 // color-scheme, the page's scheme (<meta name="color-scheme">), used schemes, system colors and light-dark() per element.
 
 @(private = "file")
-Sx :: struct {
-	doc: ^dom.Document,
-	eng: ^Engine,
-	st:  ^Styled,
+sx_load :: proc(src: string, prefer_dark: bool, settings: ^Settings = nil) -> ^Fixture {
+	return fixture_load(src, {set = settings, journal = FIXTURE_JOURNAL, partial = true, dark = prefer_dark})
 }
 
 @(private = "file")
-sx_load :: proc(src: string, prefer_dark: bool, settings: ^Settings = nil) -> ^Sx {
-	f := new(Sx)
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 100_000)
-	if settings != nil {
-		f.eng = engine_make(settings^)
-	} else {
-		ss := settings_default()
-		f.eng = engine_make(ss)
-		settings_destroy(&ss)
-	}
-	engine_set_journal(f.eng, 1 << 16)
-	f.eng.settings.inc_max_ratio = 1
-	env := f.eng.env
-	env.prefers_dark = prefer_dark
-	engine_set_environment(f.eng, env)
-	sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = compute_styles(f.eng, f.doc, {})
-	dom.journal_enable(f.doc, 1 << 16)
-	return f
-}
-
-@(private = "file")
-sx_unload :: proc(f: ^Sx) {
-	styled_destroy(f.st)
-	engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
-	free(f)
-}
-
-@(private = "file")
-sx :: proc(f: ^Sx, id: string) -> ^Computed { return style_of(f.st, dom.find_by_id(f.doc, id)) }
+sx :: proc(f: ^Fixture, id: string) -> ^Computed { return style_of(f.st, dom.find_by_id(f.doc, id)) }
 
 @(private = "file")
 hexc :: proc(rgb: u32) -> css.Color { return css.color_from_u32(rgb) }
@@ -62,7 +29,7 @@ same :: proc(a, b: css.Color) -> bool {
 
 // Restyles after mutations: partial when possible, else full; the result must be what a full pass gives.
 @(private = "file")
-sx_step :: proc(t: ^testing.T, f: ^Sx, what: string, loc := #caller_location) -> (partial: bool) {
+sx_step :: proc(t: ^testing.T, f: ^Fixture, what: string, loc := #caller_location) -> (partial: bool) {
 	_, ok := restyle_dom(f.eng, f.doc, f.st)
 	if !ok {
 		old := f.st
@@ -79,7 +46,7 @@ sx_step :: proc(t: ^testing.T, f: ^Sx, what: string, loc := #caller_location) ->
 @(test)
 color_currentcolor_everywhere :: proc(t: ^testing.T) {
 	f := sx_load(`<style>:root{color:currentColor} p{color:currentcolor} @supports (color: currentColor) { b{color:red} }</style><body style="color:#123456"><p id=p>x <b id=b>y</b></p></body>`, false)
-	defer sx_unload(f)
+	defer fixture_unload(f)
 	testing.expect(t, same(sx(f, "p").color, hexc(0x123456)), "currentcolor inherits")
 	testing.expect(t, same(sx(f, "b").color, hexc(0xff0000)), "@supports (color: currentColor) holds")
 	root := style_of(f.st, f.doc.root)
@@ -121,7 +88,7 @@ used_schemes_and_inheritance :: proc(t: ^testing.T) {
 	<div id=b>b</div><div id=o>o</div><div id=c>c</div><p id=plain>p</p>`
 	for dark in ([2]bool{false, true}) {
 		f := sx_load(SRC, dark)
-		defer sx_unload(f)
+		defer fixture_unload(f)
 		testing.expect_value(t, sx(f, "d").used_scheme, Scheme.Dark)
 		testing.expect_value(t, sx(f, "d_in").used_scheme, Scheme.Dark)                  // inherited
 		testing.expect_value(t, sx(f, "l_in").used_scheme, Scheme.Light)                 // overridden below a dark one
@@ -147,7 +114,7 @@ system_colors_follow_the_element :: proc(t: ^testing.T) {
 		<mark id=dmark>m</mark><div id=mix></div>
 		<div id=l><a id=la href=x>link</a><div id=lbg class=bg></div><div id=lld class=ld></div><input id=linput></div></div>
 	<div id=ct><span id=ct_in>t</span><div id=ct_light style="color-scheme: light">t</div></div>`, true)
-	defer sx_unload(f)
+	defer fixture_unload(f)
 	testing.expect(t, same(sx(f, "da").color, hexc(0x9e9eff)), "LinkText of the dark scheme")
 	testing.expect(t, same(sx(f, "la").color, hexc(0x0000ee)), "LinkText of the light scheme")
 	testing.expect(t, same(sx(f, "dbg").background_color, hexc(0x121212)), "Canvas of the dark scheme")
@@ -173,7 +140,7 @@ system_colors_follow_the_element :: proc(t: ^testing.T) {
 dark_text_inherited_into_light :: proc(t: ^testing.T) {
 	f := sx_load(`<div id=d style="color-scheme: dark; color: CanvasText"><p id=p>x</p><p id=l style="color-scheme: light">y<b id=b>z</b></p>
 		<p id=fixed style="color-scheme: light; color: inherit">w</p><p id=red style="color: red; color-scheme: light">r</p></div>`, false)
-	defer sx_unload(f)
+	defer fixture_unload(f)
 	testing.expect(t, same(sx(f, "d").color, hexc(0xffffff)))
 	testing.expect(t, same(sx(f, "p").color, hexc(0xffffff)))
 	testing.expect(t, same(sx(f, "l").color, hexc(0x000000)), "the child re-resolves an inherited system color in its own scheme")
@@ -186,7 +153,7 @@ dark_text_inherited_into_light :: proc(t: ^testing.T) {
 page_color_scheme_meta :: proc(t: ^testing.T) {
 	{
 		f := sx_load(`<head><meta name=color-scheme content="bogus 12px"><meta name="Color-Scheme" content="dark"><meta name=color-scheme content=light></head><p id=p>x</p><a id=a href=y>l</a>`, false)
-		defer sx_unload(f)
+		defer fixture_unload(f)
 		testing.expect_value(t, sx(f, "p").used_scheme, Scheme.Dark)   // the first valid meta wins
 		testing.expect(t, same(sx(f, "a").color, hexc(0x9e9eff)))
 		testing.expect_value(t, f.st.root_scheme, Scheme.Dark)
@@ -195,29 +162,29 @@ page_color_scheme_meta :: proc(t: ^testing.T) {
 	}
 	{
 		f := sx_load(`<head><meta name=color-scheme content="light dark"></head><p id=p>x</p>`, true)
-		defer sx_unload(f)
+		defer fixture_unload(f)
 		testing.expect_value(t, sx(f, "p").used_scheme, Scheme.Dark)
 	}
 	{
 		f := sx_load(`<head><meta name=color-scheme content="light dark"></head><p id=p>x</p>`, false)
-		defer sx_unload(f)
+		defer fixture_unload(f)
 		testing.expect_value(t, sx(f, "p").used_scheme, Scheme.Light)
 	}
 	{
 		// the root's own value wins over the meta; a descendant declaring normal goes back to light
 		f := sx_load(`<head><meta name=color-scheme content="dark"><style>:root { color-scheme: light } #n { color-scheme: normal }</style></head><p id=p>x</p>`, true)
-		defer sx_unload(f)
+		defer fixture_unload(f)
 		testing.expect_value(t, sx(f, "p").used_scheme, Scheme.Light)
 	}
 	{
 		f := sx_load(`<head><meta name=color-scheme content="dark"><style>#n { color-scheme: normal }</style></head><div id=n><p id=p>x</p></div>`, true)
-		defer sx_unload(f)
+		defer fixture_unload(f)
 		testing.expect_value(t, sx(f, "p").used_scheme, Scheme.Light)
 	}
 	{
 		// in <noscript>: this browser runs no script, the meta counts (webassembly.org)
 		f := sx_load(`<head><noscript><meta name="color-scheme" content="light dark"></noscript></head><p id=p>x</p>`, true)
-		defer sx_unload(f)
+		defer fixture_unload(f)
 		testing.expect_value(t, sx(f, "p").used_scheme, Scheme.Dark)
 	}
 }
@@ -261,7 +228,7 @@ sheets_chosen_by_prefers_color_scheme :: proc(t: ^testing.T) {
 		<meta name="color-scheme" content="light dark"></noscript></head><p id=p>x</p><a id=a href=y>l</a>`
 	for dark in ([2]bool{false, true}) {
 		f := sx_load(SRC, dark)
-		defer sx_unload(f)
+		defer fixture_unload(f)
 		for _ in 0 ..< 2 {
 			testing.expect_value(t, sx(f, "p").used_scheme, dark ? Scheme.Dark : Scheme.Light)
 			testing.expect(t, same(f.st.canvas, hexc(dark ? 0x1e1e1e : 0xfefefe)))
@@ -283,7 +250,7 @@ sheets_chosen_by_prefers_color_scheme :: proc(t: ^testing.T) {
 @(test)
 meta_changes_restyle :: proc(t: ^testing.T) {
 	f := sx_load(`<head><title>t</title></head><body><p id=p>x</p><a id=a href=y>l</a></body>`, false)
-	defer sx_unload(f)
+	defer fixture_unload(f)
 	testing.expect_value(t, sx(f, "p").used_scheme, Scheme.Light)
 	head := dom.find_first_by_tag(f.doc, "head")
 	m := dom.create_element(f.doc, "meta")
@@ -346,6 +313,6 @@ system_color_preferences :: proc(t: ^testing.T) {
 	testing.expect(t, same(s2.colors[.Light][.Highlight], hexc(0x1967d2)))
 
 	f := sx_load(`<style>p { color-scheme: dark }</style><p><a id=a href=x>l</a></p>`, false, &s)
-	defer sx_unload(f)
+	defer fixture_unload(f)
 	testing.expect(t, same(sx(f, "a").color, hexc(0x00ff00)), "the stylesheet follows the preference")
 }

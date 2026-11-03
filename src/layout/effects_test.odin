@@ -4,72 +4,22 @@ import "core:math"
 import "core:testing"
 import "wb:base"
 import "wb:dom"
-import "wb:html"
 import "wb:style"
 
 // Effect groups in layout: which boxes get one, isolation of blending descendants, how far filters spread (layer
 // zones, culling), clip-path geometry and hit testing under it, and the refresh path of animated effects.
 
 @(private = "file")
-Fx :: struct {
-	doc: ^dom.Document,
-	eng: ^style.Engine,
-	st:  ^style.Styled,
-	tl:  ^style.Timeline,
-	set: Settings,
-	l:   Layout,
-	vp:  Vec2,
-}
+fx_load :: proc(src: string, vw: f32 = FIXTURE_VP_W, vh: f32 = FIXTURE_VP_H) -> ^Fixture { return fixture_load(src, vw, vh, {timeline = true}) }
 
 @(private = "file")
-fx_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> Font { return Font(1) }
-@(private = "file")
-fx_width :: proc(user: rawptr, f: Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(len(text)) }
-@(private = "file")
-fx_metrics :: proc(user: rawptr, f: Font, size: f32) -> Font_Metrics { return {ascent = 0.8 * size, descent = 0.2 * size, x_height = 0.5 * size} }
+el :: proc(f: ^Fixture, id: string) -> base.Handle { return dom.find_by_id(f.doc, id) }
 
 @(private = "file")
-fx_run :: proc(f: ^Fx) {
-	run(&f.l, Input{doc = f.doc, styled = f.st, settings = &f.set, text = Text_Api{font = fx_font, width = fx_width, metrics = fx_metrics}, viewport = f.vp, scale = 1, band_h = 256})
-}
+bi_of :: proc(f: ^Fixture, id: string) -> i32 { return box_index(&f.l, el(f, id)) }
 
 @(private = "file")
-fx_load :: proc(src: string, vw: f32 = 800, vh: f32 = 600) -> ^Fx {
-	f := new(Fx)
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
-	ss := style.settings_default()
-	f.eng = style.engine_make(ss)
-	style.settings_destroy(&ss)
-	style.sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = style.compute_styles(f.eng, f.doc, {})
-	f.tl = style.timeline_make(f.eng)
-	style.timeline_restyled(f.tl, f.doc, nil, f.st, 0)
-	style.timeline_tick(f.tl, f.doc, f.st, 0)
-	f.set = settings_default()
-	f.vp = {vw, vh}
-	fx_run(f)
-	return f
-}
-
-@(private = "file")
-fx_unload :: proc(f: ^Fx) {
-	destroy(&f.l)
-	style.timeline_destroy(f.tl, f.st)
-	style.styled_destroy(f.st)
-	style.engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
-	free(f)
-}
-
-@(private = "file")
-el :: proc(f: ^Fx, id: string) -> base.Handle { return dom.find_by_id(f.doc, id) }
-
-@(private = "file")
-bi_of :: proc(f: ^Fx, id: string) -> i32 { return box_index(&f.l, el(f, id)) }
-
-@(private = "file")
-group_of :: proc(f: ^Fx, id: string) -> ^Group {
+group_of :: proc(f: ^Fixture, id: string) -> ^Group {
 	bi := bi_of(f, id)
 	if bi == NONE { return nil }
 	for &g in f.l.groups { if g.box == bi { return &g } }
@@ -77,7 +27,7 @@ group_of :: proc(f: ^Fx, id: string) -> ^Group {
 }
 
 @(private = "file")
-hit :: proc(f: ^Fx, x, y: f32) -> base.Handle { return hit_test(&f.l, {x, y}, f.vp, 0).node }
+hit :: proc(f: ^Fixture, x, y: f32) -> base.Handle { return hit_test(&f.l, {x, y}, f.vp, 0).node }
 
 @(test)
 effect_groups_and_stacking :: proc(t: ^testing.T) {
@@ -89,7 +39,7 @@ effect_groups_and_stacking :: proc(t: ^testing.T) {
 <div id=ctx style="position:relative;z-index:0"><p id=mid><span id=bl style="mix-blend-mode:multiply">x</span></p></div>
 <div id=top style="mix-blend-mode:screen;width:10px;height:10px"></div>
 </body>`)
-	defer fx_unload(f)
+	defer fixture_unload(f)
 	g := group_of(f, "fl")
 	testing.expect(t, g != nil && g.effects == {.Filter}, "filter: a group")
 	testing.expect(t, .Stacking in f.l.boxes[bi_of(f, "fl")].flags)
@@ -130,7 +80,7 @@ filter_outsets_and_reach :: proc(t: ^testing.T) {
 	f := fx_load(`<body style="margin:0">
 <div id=o style="filter:blur(5px);margin-top:600px"><div id=i style="filter:drop-shadow(0 0 4px black)"><div id=c style="height:10px;background:red"></div></div></div>
 </body>`, 800, 590)
-	defer fx_unload(f)
+	defer fixture_unload(f)
 	go, gi := group_of(f, "o"), group_of(f, "i")
 	testing.expect(t, go != nil && gi != nil)
 	testing.expectf(t, go.reach == 15, "outer reach %v", go.reach)
@@ -153,7 +103,7 @@ transformed_rows_in_scrolled_container :: proc(t: ^testing.T) {
 <div id=vp style="height:200px;overflow:auto;position:relative;contain:strict">
 <div id=wrap style="position:absolute;top:0;left:0;width:100%;transform:translateY(1000px)"><div id=row style="height:20px">row</div></div>
 <div style="height:100000px;width:1px"></div></div></body>`)
-	defer fx_unload(f)
+	defer fixture_unload(f)
 	f.l.scroll[el(f, "vp")] = {0, 1000}
 	for pass in 0 ..< 2 {
 		v := view_make(&f.l, f.vp, 0)
@@ -162,7 +112,7 @@ transformed_rows_in_scrolled_container :: proc(t: ^testing.T) {
 		testing.expectf(t, found, "pass %d: the row moved into view by its transform is painted", pass)
 		r, ok := box_of(&f.l, el(f, "row"), f.vp, 0)
 		testing.expectf(t, ok && near(r.bounds.min.y, 0), "pass %d: at the top of the viewport: %v", pass, r.bounds)
-		fx_run(f)   // (and the same after a layout pass)
+		fixture_run(f)   // (and the same after a layout pass)
 	}
 }
 
@@ -181,7 +131,7 @@ clip_path_geometry :: proc(t: ^testing.T) {
 <div id=ma style="width:100px;height:50px;margin:5px 7px;clip-path:margin-box"></div>
 <div id=ur style="width:10px;height:10px;clip-path:url(#c)"></div>
 </body>`)
-	defer fx_unload(f)
+	defer fixture_unload(f)
 	b := &f.l.boxes[bi_of(f, "in")]
 	s := clip_path_shape(&f.l, bi_of(f, "in"))
 	// border box 130 x 110 at y = 0; insets 10 / 26 / 5 / 0
@@ -228,7 +178,7 @@ hit_test_follows_clip_path :: proc(t: ^testing.T) {
 <div id=under style="position:absolute;left:0;top:400px;width:100px;height:100px"></div>
 <div id=over style="position:absolute;left:0;top:400px;width:100px;height:100px;background:red;clip-path:inset(50px 0 0 0)"></div>
 </body>`)
-	defer fx_unload(f)
+	defer fixture_unload(f)
 	c, k := el(f, "c"), el(f, "k")
 	testing.expect(t, hit(f, 50, 50) == c, "inside the circle")
 	testing.expect(t, hit(f, 5, 5) != c, "corner of the box, outside the circle: not hit")
@@ -251,12 +201,12 @@ hit_test_follows_clip_path :: proc(t: ^testing.T) {
 animated_clip_path_refreshes :: proc(t: ^testing.T) {
 	f := fx_load(`<style>@keyframes iris { from { clip-path: circle(10px at 50% 50%) } to { clip-path: circle(50px at 50% 50%) } }</style>
 <body style="margin:0"><div id=a style="position:absolute;left:0;top:0;width:100px;height:100px;background:red;animation:iris 1s linear infinite"></div></body>`)
-	defer fx_unload(f)
+	defer fixture_unload(f)
 	a := el(f, "a")
 	testing.expect(t, hit(f, 50, 50) == a && hit(f, 50, 25) != a, "radius 10 at the start")
 	fulls := f.l.passes[.Full]
 	style.timeline_tick(f.tl, f.doc, f.st, 750)
-	fx_run(f)
+	fixture_run(f)
 	testing.expectf(t, f.l.passes[.Full] == fulls && f.l.last_pass == .Refresh, "an animated clip-path refreshes the layout: %v", f.l.last_pass)
 	testing.expect(t, hit(f, 50, 25) == a && hit(f, 50, 5) != a, "radius 40 at 3/4: the hit test follows")
 }

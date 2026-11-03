@@ -7,57 +7,18 @@ import "core:testing"
 import "core:time"
 import "wb:base"
 import "wb:dom"
-import "wb:html"
-import "wb:style"
 
-// Grid layout tests, with the measurements of layout_test.odin: every character is 0.5 em wide (5px at font-size 10px).
+// Grid layout tests, with the fake font of fixture_test.odin: every character is 0.5 em wide (5px at font-size 10px).
 // Expected values are computed by hand in the comments.
 
 @(private = "file")
-Gx :: struct {
-	doc: ^dom.Document,
-	eng: ^style.Engine,
-	st:  ^style.Styled,
-	set: Settings,
-	l:   Layout,
-	vp:  Vec2,
-}
-
-@(private = "file")
-g_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> Font { return Font(1) }
-@(private = "file")
-g_width :: proc(user: rawptr, f: Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(rune_count(text)) }
-@(private = "file")
-g_metrics :: proc(user: rawptr, f: Font, size: f32) -> Font_Metrics { return {ascent = 0.8 * size, descent = 0.2 * size, x_height = 0.5 * size} }
-
-@(private = "file")
-g_load :: proc(src: string, vw: f32 = 800, vh: f32 = 600, set: ^Settings = nil) -> ^Gx {
-	f := new(Gx)
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
-	ss := style.settings_default()
-	f.eng = style.engine_make(ss)
-	style.settings_destroy(&ss)
-	style.sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = style.compute_styles(f.eng, f.doc, {})
-	f.set = set != nil ? set^ : settings_default()
-	f.vp = {vw, vh}
-	run(&f.l, Input{doc = f.doc, styled = f.st, settings = &f.set, text = {font = g_font, width = g_width, metrics = g_metrics}, viewport = f.vp, scale = 1, band_h = 256})
-	return f
-}
-
-@(private = "file")
-g_unload :: proc(f: ^Gx) {
-	destroy(&f.l)
-	style.styled_destroy(f.st)
-	style.engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
-	free(f)
+g_unload :: proc(f: ^Fixture) {
+	fixture_unload(f)
 	free_all(context.temp_allocator)
 }
 
 @(private = "file")
-g_rect :: proc(f: ^Gx, id: string) -> Rect {
+g_rect :: proc(f: ^Fixture, id: string) -> Rect {
 	r, ok := box_of(&f.l, dom.find_by_id(f.doc, id), f.vp, 0)
 	if !ok { return Rect{{-1, -1}, {-1, -1}} }
 	return r.border
@@ -67,7 +28,7 @@ g_rect :: proc(f: ^Gx, id: string) -> Rect {
 g_near :: proc(a, b: f32) -> bool { return math.abs(a - b) <= 0.02 }
 
 @(private = "file")
-expect_box :: proc(t: ^testing.T, f: ^Gx, id: string, x0, y0, x1, y1: f32, loc := #caller_location) {
+expect_box :: proc(t: ^testing.T, f: ^Fixture, id: string, x0, y0, x1, y1: f32, loc := #caller_location) {
 	r := g_rect(f, id)
 	ok := g_near(r.min.x, x0) && g_near(r.min.y, y0) && g_near(r.max.x, x1) && g_near(r.max.y, y1)
 	testing.expectf(t, ok, "%s: got (%v, %v)-(%v, %v), want (%v, %v)-(%v, %v)", id, r.min.x, r.min.y, r.max.x, r.max.y, x0, y0, x1, y1, loc = loc)
@@ -77,7 +38,7 @@ expect_box :: proc(t: ^testing.T, f: ^Gx, id: string, x0, y0, x1, y1: f32, loc :
 // follows it (not the row's); with a specified height, the width comes from the ratio instead (Edge measured the same).
 @(test)
 grid_aspect_ratio_items :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0;font-size:10px;line-height:10px">
+	f := fixture_load(`<body style="margin:0;font-size:10px;line-height:10px">
 <div style="display:grid;grid-template-columns:repeat(4,100px);grid-template-rows:150px;width:400px">
 <div id=a style="aspect-ratio:1/1">1</div><div id=b style="aspect-ratio:2/1"></div><div id=c style="aspect-ratio:1/2;height:40px"></div>
 <div id=d style="aspect-ratio:1/1;align-self:stretch"></div></div></body>`)
@@ -93,7 +54,7 @@ grid_aspect_ratio_items :: proc(t: ^testing.T) {
 // button, textarea and slider fill a 300 x 100 area, less their margins); an image stays at its size.
 @(test)
 grid_controls_stretch :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0;font-size:10px;line-height:10px">
+	f := fixture_load(`<body style="margin:0;font-size:10px;line-height:10px">
 <div style="display:grid;grid-template-columns:300px 300px 300px;grid-template-rows:100px 100px">
 <input id=a><select id=c><option>x</option></select><button id=d>x</button><textarea id=f></textarea>
 <input type=range id=h style="margin:2px"><img id=g width=20 height=10></div></body>`, 1000)
@@ -106,7 +67,7 @@ grid_controls_stretch :: proc(t: ^testing.T) {
 	expect_box(t, f, "g", 600, 100, 620, 110)
 
 	// and in a flex line (Edge: the text field is 100 px high in a 100 px row)
-	f2 := g_load(`<body style="margin:0;font-size:10px;line-height:10px"><div style="display:flex;height:100px;width:300px"><input id=b><select id=s><option>x</option></select></div></body>`)
+	f2 := fixture_load(`<body style="margin:0;font-size:10px;line-height:10px"><div style="display:flex;height:100px;width:300px"><input id=b><select id=s><option>x</option></select></div></body>`)
 	defer g_unload(f2)
 	for id in ([]string{"b", "s"}) {
 		r := g_rect(f2, id)
@@ -116,7 +77,7 @@ grid_controls_stretch :: proc(t: ^testing.T) {
 
 @(test)
 grid_fixed_fr_gaps :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0;font-size:10px;line-height:10px">
+	f := fixture_load(`<body style="margin:0;font-size:10px;line-height:10px">
 <div id=g style="display:grid;grid-template-columns:100px 1fr 2fr;grid-template-rows:50px auto;width:400px;column-gap:10px;row-gap:5px">
 <div id=a></div><div id=b></div><div id=c></div><div id=d>xx</div></div>
 <div id=after style="height:1px"></div></body>`)
@@ -132,7 +93,7 @@ grid_fixed_fr_gaps :: proc(t: ^testing.T) {
 
 @(test)
 grid_fr_with_min_content :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0;font-size:10px;line-height:10px">
+	f := fixture_load(`<body style="margin:0;font-size:10px;line-height:10px">
 <div style="display:grid;grid-template-columns:1fr 1fr;width:100px"><div id=a>xxxxxxxxxxxx</div><div id=b></div></div>
 <div style="display:grid;grid-template-columns:minmax(0,1fr) 1fr;width:100px"><div id=c>xxxxxxxxxxxx</div><div id=d></div></div>
 <div style="display:grid;grid-template-columns:1fr 3fr;width:100px"><div id=e style="min-width:0">xxxxxxxxxxxx</div><div id=h></div></div>
@@ -151,7 +112,7 @@ grid_fr_with_min_content :: proc(t: ^testing.T) {
 
 @(test)
 grid_auto_tracks_stretch :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0;font-size:10px;line-height:10px">
+	f := fixture_load(`<body style="margin:0;font-size:10px;line-height:10px">
 <div style="display:grid;grid-template-columns:auto auto;width:300px"><div id=a>xx</div><div id=b>xxxx</div></div>
 <div style="display:grid;grid-template-columns:auto auto;width:300px;justify-content:start"><div id=c>xx</div><div id=d>xxxx</div></div>
 <div style="display:grid;grid-template-columns:auto auto;width:30px"><div id=e>xx xx xx</div><div id=h>xx xx</div></div>
@@ -172,7 +133,7 @@ grid_auto_tracks_stretch :: proc(t: ^testing.T) {
 
 @(test)
 grid_auto_placement_sparse_dense :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0">
+	f := fixture_load(`<body style="margin:0">
 <div style="display:grid;grid-template-columns:repeat(3,10px);grid-auto-rows:10px">
 <div id=a style="grid-column:span 2"></div><div id=b style="grid-column:span 2"></div><div id=c></div><div id=d></div></div>
 <div style="display:grid;grid-template-columns:repeat(3,10px);grid-auto-rows:10px;grid-auto-flow:dense">
@@ -199,7 +160,7 @@ grid_auto_placement_sparse_dense :: proc(t: ^testing.T) {
 
 @(test)
 grid_definite_and_locked :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0">
+	f := fixture_load(`<body style="margin:0">
 <div style="display:grid;grid-template-columns:repeat(3,10px);grid-auto-rows:10px;justify-content:start">
 <div id=x style="grid-row:2;grid-column:2"></div>
 <div id=y style="grid-row:1"></div>
@@ -225,7 +186,7 @@ grid_definite_and_locked :: proc(t: ^testing.T) {
 
 @(test)
 grid_areas_and_names :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0;font-size:10px;line-height:10px">
+	f := fixture_load(`<body style="margin:0;font-size:10px;line-height:10px">
 <div style="display:grid;grid-template-areas:'h h' 's m' 'f f';grid-template-columns:100px 1fr;grid-template-rows:20px 50px 30px;width:400px">
 <div id=hd style="grid-area:h"></div><div id=sd style="grid-area:s"></div><div id=mn style="grid-area:m"></div><div id=ft style="grid-area:f"></div>
 <div id=over style="grid-column:m-start / m-end;grid-row:h"></div>
@@ -249,7 +210,7 @@ grid_areas_and_names :: proc(t: ^testing.T) {
 
 @(test)
 grid_auto_fill_fit :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0">
+	f := fixture_load(`<body style="margin:0">
 <div style="display:grid;grid-template-columns:repeat(auto-fill,100px);column-gap:10px;width:330px"><div id=a></div><div id=b></div></div>
 <div style="display:grid;grid-template-columns:repeat(auto-fit,100px);column-gap:10px;width:330px;justify-content:center"><div id=c></div><div id=d></div></div>
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));column-gap:10px;width:330px"><div id=e></div><div id=h></div></div>
@@ -277,7 +238,7 @@ grid_auto_fill_fit :: proc(t: ^testing.T) {
 
 @(test)
 grid_minmax_fit_content :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0;font-size:10px;line-height:10px">
+	f := fixture_load(`<body style="margin:0;font-size:10px;line-height:10px">
 <div style="display:grid;grid-template-columns:fit-content(40px) fit-content(100px) minmax(30px,50px);width:400px">
 <div id=a>xxxx xxxx xxxx</div><div id=b>xxxx xxxx xxxx</div><div id=c></div></div>
 <div style="display:grid;grid-template-columns:min-content max-content;justify-content:start">
@@ -294,7 +255,7 @@ grid_minmax_fit_content :: proc(t: ^testing.T) {
 
 @(test)
 grid_spanning_items :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0;font-size:10px;line-height:10px">
+	f := fixture_load(`<body style="margin:0;font-size:10px;line-height:10px">
 <div style="display:grid;grid-template-columns:auto auto 30px;justify-content:start">
 <div id=a style="grid-column:1/4">xxxxxxxxxxxxxxxxxxxx</div><div id=b>xx</div><div id=c>xxxx</div></div>
 </body>`)
@@ -308,7 +269,7 @@ grid_spanning_items :: proc(t: ^testing.T) {
 
 @(test)
 grid_alignment :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0;font-size:10px;line-height:10px">
+	f := fixture_load(`<body style="margin:0;font-size:10px;line-height:10px">
 <div style="display:grid;grid-template-columns:50px 50px;grid-template-rows:30px;width:200px;height:100px;justify-content:space-between;align-content:end">
 <div id=a></div><div id=b></div></div>
 <div style="display:grid;grid-template-columns:100px 100px;grid-template-rows:30px;justify-items:center;align-items:end">
@@ -336,7 +297,7 @@ grid_alignment :: proc(t: ^testing.T) {
 
 @(test)
 grid_absolute_items :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0">
+	f := fixture_load(`<body style="margin:0">
 <div style="display:grid;position:relative;grid-template-columns:100px 100px;grid-template-rows:50px 50px;width:300px;height:200px;padding:10px">
 <div id=ab style="position:absolute;grid-column:2/3;grid-row:2/3;left:0;top:0;right:0;bottom:0"></div>
 <div id=ab4 style="position:absolute;grid-column:2;grid-row:2;inset:0"></div>
@@ -356,7 +317,7 @@ grid_absolute_items :: proc(t: ^testing.T) {
 
 @(test)
 grid_with_flex :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0;font-size:10px;line-height:10px">
+	f := fixture_load(`<body style="margin:0;font-size:10px;line-height:10px">
 <div style="display:flex"><div id=gi style="display:grid;grid-template-columns:30px 40px;column-gap:5px"><div style="height:10px"></div></div><div id=f2 style="flex:1 1 0"></div></div>
 <div style="display:grid;grid-template-columns:200px"><div id=fl style="display:flex"><div id=f3 style="width:30px;height:5px"></div><div id=f4 style="flex:1"></div></div></div>
 <div style="display:flex;width:100px"><div id=f5 style="flex:1 1 0;min-width:0">xxxxxxxxxxxxxxxxxxxxxxxxxxxx</div><div id=f6 style="flex:1 1 0"></div></div>
@@ -374,7 +335,7 @@ grid_with_flex :: proc(t: ^testing.T) {
 
 @(test)
 grid_intrinsic_contribution :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0;font-size:10px;line-height:10px">
+	f := fixture_load(`<body style="margin:0;font-size:10px;line-height:10px">
 <div><span id=ig style="display:inline-grid;grid-template-columns:auto auto"><span>xxxx</span><span>xx</span></span></div>
 <div><div id=fr style="display:inline-grid;grid-template-columns:1fr 1fr"><div>xxxx xxxx</div><div>xx</div></div></div>
 <div style="width:min-content"><div id=mn style="display:grid;grid-template-columns:1fr 1fr"><div>xxxx xxxx</div><div>xx</div></div></div>
@@ -393,7 +354,7 @@ grid_intrinsic_contribution :: proc(t: ^testing.T) {
 
 @(test)
 grid_order_and_paint :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0">
+	f := fixture_load(`<body style="margin:0">
 <div style="display:grid;grid-template-columns:repeat(3,10px);grid-auto-rows:10px">
 <div id=o1 style="order:2"></div><div id=o2></div><div id=o3 style="order:-1;z-index:1;background:red"></div></div>
 </body>`)
@@ -408,7 +369,7 @@ grid_order_and_paint :: proc(t: ^testing.T) {
 
 @(test)
 grid_rtl_and_overflow :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0">
+	f := fixture_load(`<body style="margin:0">
 <div style="display:grid;grid-template-columns:50px 100px;width:300px;direction:rtl;grid-auto-rows:10px"><div id=r1></div><div id=r2></div></div>
 <div style="display:grid;grid-template-columns:200px 200px;width:300px;overflow:auto;grid-auto-rows:10px"><div id=o1></div><div id=o2></div></div>
 </body>`)
@@ -421,7 +382,7 @@ grid_rtl_and_overflow :: proc(t: ^testing.T) {
 @(test)
 grid_hostile :: proc(t: ^testing.T) {
 	{
-		f := g_load(`<body style="margin:0"><div style="display:grid;grid-template-columns:repeat(100000,1fr);width:800px">
+		f := fixture_load(`<body style="margin:0"><div style="display:grid;grid-template-columns:repeat(100000,1fr);width:800px">
 <div id=a></div><div id=b style="grid-column:-1"></div><div id=c style="grid-row:10000000;grid-column:span 100000"></div></div></body>`)
 		defer g_unload(f)
 		// the parser keeps 10000 repetitions: 0.08px tracks
@@ -439,7 +400,7 @@ grid_hostile :: proc(t: ^testing.T) {
 		}
 		strings.write_string(&sb, "</div></body>")
 		t0 := time.tick_now()
-		f := g_load(strings.to_string(sb))
+		f := fixture_load(strings.to_string(sb))
 		defer g_unload(f)
 		ms := time.duration_milliseconds(time.tick_since(t0))
 		// 10000 rows of 2px; the last item ends the last row
@@ -453,7 +414,7 @@ grid_hostile :: proc(t: ^testing.T) {
 		strings.write_string(&sb, `<body style="margin:0"><div style="display:grid;grid-auto-rows:1px">`)
 		for _ in 0 ..< 1500 { strings.write_string(&sb, "<i></i>") }
 		strings.write_string(&sb, `<i id=over></i></div></body>`)
-		f := g_load(strings.to_string(sb), set = &set)
+		f := fixture_load(strings.to_string(sb), o = {set = &set})
 		defer g_unload(f)
 		expect_box(t, f, "over", 0, 0, 0, 0)               // past layout.grid.max_items: no box
 	}
@@ -461,7 +422,7 @@ grid_hostile :: proc(t: ^testing.T) {
 
 @(test)
 grid_subgrid :: proc(t: ^testing.T) {
-	f := g_load(`<body style="margin:0;font-size:10px;line-height:10px">
+	f := fixture_load(`<body style="margin:0;font-size:10px;line-height:10px">
 <div style="display:grid;grid-template-columns:auto 1fr auto;width:300px">
 <div id=s1 style="display:grid;grid-column:1/4;grid-template-columns:subgrid;padding-left:5px"><div id=a>xxxx</div><div id=b></div><div id=c>xx</div></div>
 <div id=s2 style="display:grid;grid-column:1/4;grid-template-columns:subgrid [x] [y] [z]"><div id=d>xxxxxx</div><div id=e style="grid-column:y"></div><div id=f>xxxx</div></div>
@@ -500,10 +461,10 @@ grid_vs_flex_timing :: proc(t: ^testing.T) {
 		strings.write_string(&sb, "</div></body>")
 		return strings.to_string(sb)
 	}
-	grid := g_load(make_page("display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:4px"))
+	grid := fixture_load(make_page("display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:4px"))
 	gl := grid.l.stats[1]
 	g_unload(grid)
-	flex := g_load(make_page("display:flex;flex-wrap:wrap;gap:4px"))
+	flex := fixture_load(make_page("display:flex;flex-wrap:wrap;gap:4px"))
 	fl := flex.l.stats[1]
 	g_unload(flex)
 	fmt.printfln("10000 items: grid layout %.2f ms, flex layout %.2f ms", gl, fl)

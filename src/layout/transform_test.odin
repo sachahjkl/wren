@@ -5,62 +5,22 @@ import "core:math"
 import "core:testing"
 import "wb:base"
 import "wb:dom"
-import "wb:html"
 import "wb:style"
 
 // Transforms in layout: stacking contexts and containing blocks, composed matrices, hit testing through inverses,
 // box queries, transformed overflow, rounded clips, and the refresh path for paint-only changes.
 
 @(private = "file")
-Tx :: struct {
-	doc: ^dom.Document,
-	eng: ^style.Engine,
-	st:  ^style.Styled,
-	tl:  ^style.Timeline,
-	set: Settings,
-	l:   Layout,
-	vp:  Vec2,
-}
+tx_load :: proc(src: string, vw: f32 = FIXTURE_VP_W, vh: f32 = FIXTURE_VP_H) -> ^Fixture { return fixture_load(src, vw, vh, {timeline = true}) }
 
 @(private = "file")
-tx_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -> Font { return Font(1) }
-@(private = "file")
-tx_width :: proc(user: rawptr, f: Font, size: f32, text: string) -> f32 { return 0.5 * size * f32(len(text)) }
-@(private = "file")
-tx_metrics :: proc(user: rawptr, f: Font, size: f32) -> Font_Metrics { return {ascent = 0.8 * size, descent = 0.2 * size, x_height = 0.5 * size} }
-
-@(private = "file")
-tx_load :: proc(src: string, vw: f32 = 800, vh: f32 = 600) -> ^Tx {
-	f := new(Tx)
-	f.doc = dom.document_create(nil)
-	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
-	ss := style.settings_default()
-	f.eng = style.engine_make(ss)
-	style.settings_destroy(&ss)
-	style.sync_document_sheets(f.eng, f.doc, "about:test")
-	f.st = style.compute_styles(f.eng, f.doc, {})
-	f.tl = style.timeline_make(f.eng)
-	style.timeline_restyled(f.tl, f.doc, nil, f.st, 0)
-	style.timeline_tick(f.tl, f.doc, f.st, 0)
-	f.set = settings_default()
-	f.vp = {vw, vh}
-	tx_run(f)
-	return f
-}
-
-@(private = "file")
-tx_run :: proc(f: ^Tx) {
-	run(&f.l, Input{doc = f.doc, styled = f.st, settings = &f.set, text = Text_Api{font = tx_font, width = tx_width, metrics = tx_metrics}, viewport = f.vp, scale = 1, band_h = 256})
-}
-
-@(private = "file")
-tx_tick :: proc(f: ^Tx, ms: f64) {
+tx_tick :: proc(f: ^Fixture, ms: f64) {
 	style.timeline_tick(f.tl, f.doc, f.st, ms)
-	tx_run(f)
+	fixture_run(f)
 }
 
 @(private = "file")
-tx_state :: proc(f: ^Tx, st: style.State, ms: f64) {
+tx_state :: proc(f: ^Fixture, st: style.State, ms: f64) {
 	_, ok := style.restyle_state(f.eng, f.doc, f.st, st)
 	if !ok {
 		old := f.st
@@ -74,26 +34,16 @@ tx_state :: proc(f: ^Tx, st: style.State, ms: f64) {
 }
 
 @(private = "file")
-tx_unload :: proc(f: ^Tx) {
-	destroy(&f.l)
-	style.timeline_destroy(f.tl, f.st)
-	style.styled_destroy(f.st)
-	style.engine_destroy(f.eng)
-	dom.document_destroy(f.doc)
-	free(f)
-}
+el :: proc(f: ^Fixture, id: string) -> base.Handle { return dom.find_by_id(f.doc, id) }
 
 @(private = "file")
-el :: proc(f: ^Tx, id: string) -> base.Handle { return dom.find_by_id(f.doc, id) }
-
-@(private = "file")
-bx :: proc(f: ^Tx, id: string) -> ^Box {
+bx :: proc(f: ^Fixture, id: string) -> ^Box {
 	bi := box_index(&f.l, el(f, id))
 	return bi == NONE ? nil : &f.l.boxes[bi]
 }
 
 @(private = "file")
-hit :: proc(f: ^Tx, x, y: f32) -> base.Handle { return hit_test(&f.l, {x, y}, f.vp, 0).node }
+hit :: proc(f: ^Fixture, x, y: f32) -> base.Handle { return hit_test(&f.l, {x, y}, f.vp, 0).node }
 
 @(private = "file")
 close :: proc(a, b: Vec2, eps: f32 = 0.05) -> bool { return math.abs(a.x - b.x) <= eps && math.abs(a.y - b.y) <= eps }
@@ -107,7 +57,7 @@ transform_stacking_and_containing_block :: proc(t: ^testing.T) {
 </div>
 <div id=y style="position:fixed;left:0;top:0;width:10px;height:10px"></div>
 </body>`)
-	defer tx_unload(f)
+	defer fixture_unload(f)
 	tb, ab, xb, yb := bx(f, "t"), bx(f, "a"), bx(f, "x"), bx(f, "y")
 	testing.expect(t, tb != nil && ab != nil && xb != nil && yb != nil)
 	testing.expect(t, .Transformed in tb.flags && .Stacking in tb.flags, "a transform makes a stacking context")
@@ -135,7 +85,7 @@ transform_nested_matrices :: proc(t: ^testing.T) {
 <div id=o style="width:100px;height:100px;transform:rotate(90deg);transform-origin:50% 50%">
   <div id=i style="width:20px;height:20px;transform:translateX(50%);transform-origin:0 0"></div>
 </div></body>`)
-	defer tx_unload(f)
+	defer fixture_unload(f)
 	r, ok := box_of(&f.l, el(f, "i"), f.vp, 0)
 	testing.expect(t, ok && r.transformed)
 	testing.expectf(t, close(r.quad[0], {100, 10}), "inner top-left: %v", r.quad[0])
@@ -150,7 +100,7 @@ transform_nested_matrices :: proc(t: ^testing.T) {
 @(test)
 transform_hit_rotated_45 :: proc(t: ^testing.T) {
 	f := tx_load(`<body style="margin:0"><div id=r style="position:absolute;left:100px;top:100px;width:100px;height:100px;transform:rotate(45deg);background:red"></div></body>`)
-	defer tx_unload(f)
+	defer fixture_unload(f)
 	r := el(f, "r")
 	testing.expect(t, hit(f, 150, 150) == r, "center")
 	testing.expect(t, hit(f, 105, 105) != r, "inside the bounding box and the untransformed square, outside the diamond")
@@ -173,7 +123,7 @@ transform_overflow_and_rounded_clip :: proc(t: ^testing.T) {
 <div id=sc style="overflow:auto;width:100px;height:100px"><div style="width:50px;height:50px;transform:translateY(200px)"></div></div>
 <div id=rc style="overflow:hidden;width:100px;height:100px;border-radius:50px"><div id=fill style="width:100px;height:100px"></div></div>
 </body>`)
-	defer tx_unload(f)
+	defer fixture_unload(f)
 	m, ok := scroll_max(&f.l, el(f, "sc"))
 	testing.expectf(t, ok && math.abs(m.y - 150) < 0.5, "transformed overflow scrolls: %v %v", ok, m)
 	testing.expect(t, hit(f, 50, 150) == el(f, "fill"), "inside the rounded clip")
@@ -186,7 +136,7 @@ transform_overflow_and_rounded_clip :: proc(t: ^testing.T) {
 transform_wheel_on_rotated_scroller :: proc(t: ^testing.T) {
 	f := tx_load(`<body style="margin:0"><div id=rs style="position:absolute;left:200px;top:0;width:100px;height:100px;overflow:auto;transform:rotate(90deg)">
 <div style="height:400px"></div><div id=end style="height:10px"></div></div></body>`)
-	defer tx_unload(f)
+	defer fixture_unload(f)
 	// rotated around its center (250, 50): the box still covers 200..300 x 0..100
 	testing.expect(t, scroll_wheel(&f.l, {250, 50}, {0, 40}, f.vp, 0), "the wheel over the rotated scroller scrolls it")
 	off, _ := scroll_of(&f.l, el(f, "rs"))
@@ -201,7 +151,7 @@ transform_wheel_direction :: proc(t: ^testing.T) {
 		src := fmt.tprintf(`<body style="margin:0"><div id=sc style="margin:40px;width:220px;height:150px;overflow:auto;transform:%s">
 <div style="height:60px"></div><div id=a style="height:60px"></div><div style="height:400px"></div></div></body>`, xf)
 		f := tx_load(src)
-		defer tx_unload(f)
+		defer fixture_unload(f)
 		before, _ := box_of(&f.l, el(f, "a"), f.vp, 0)
 		testing.expect(t, scroll_wheel(&f.l, {150, 120}, {0, 40}, f.vp, 0), "the wheel scrolls it")
 		f.l.valid = true
@@ -220,7 +170,7 @@ transform_refresh_path :: proc(t: ^testing.T) {
 #w:hover { width: 300px }
 #u { text-decoration: underline; color: red } #u:hover { color: blue }
 </style><body style="margin:0"><div id=s></div><div id=h style="height:10px">h</div><div id=w style="height:10px"></div><div id=g></div><p><span id=u>link</span></p></body>`)
-	defer tx_unload(f)
+	defer fixture_unload(f)
 	full := f.l.passes[.Full]
 	tx_tick(f, 250)
 	testing.expectf(t, f.l.last_pass == .Refresh && f.l.passes[.Full] == full, "a transform animation does not lay out: %v", f.l.last_pass)
@@ -273,7 +223,7 @@ transform_refresh_path :: proc(t: ^testing.T) {
 extreme_matrices_hit_nothing :: proc(t: ^testing.T) {
 	for tr in ([]string{"matrix(1e20,0,0,1e-20,0,0)", "matrix(1e39,0,0,1,0,0)", "matrix(1e15,0,0,1e15,0,0) matrix(1e15,0,0,1e15,0,0) matrix(1e15,1,1,1e15,0,0)", "scale(1e-30)"}) {
 		f := tx_load(fmt.tprintf(`<body style="margin:0"><div style="transform:%s;height:300px">text <b>bold</b></div><p>below</p></body>`, tr))
-		defer tx_unload(f)
+		defer fixture_unload(f)
 		for y in ([]f32{0, 5, 150, 299, 400, 599}) {
 			for x in ([]f32{0, 10, 400, 799}) {
 				_ = hit_test(&f.l, {x, y}, f.vp, 0)

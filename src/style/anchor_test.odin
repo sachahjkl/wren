@@ -3,33 +3,9 @@ package style
 import "core:testing"
 import "wb:css"
 import "wb:dom"
-import "wb:html"
 
 @(private = "file")
-Dx :: struct { doc: ^dom.Document, eng: ^Engine, st: ^Styled }
-
-@(private = "file")
-open :: proc(src: string) -> Dx {
-	d: Dx
-	d.doc = dom.document_create(nil)
-	html.parse_into(d.doc, d.doc.root, transmute([]byte)src, 2_000_000)
-	s := settings_default()
-	d.eng = engine_make(s)
-	settings_destroy(&s)
-	sync_document_sheets(d.eng, d.doc, "about:test")
-	d.st = compute_styles(d.eng, d.doc, {})
-	return d
-}
-
-@(private = "file")
-close :: proc(d: Dx) {
-	styled_destroy(d.st)
-	engine_destroy(d.eng)
-	dom.document_destroy(d.doc)
-}
-
-@(private = "file")
-at :: proc(d: Dx, id: string) -> ^Computed { return style_of(d.st, dom.find_by_id(d.doc, id)) }
+at :: proc(d: ^Fixture, id: string) -> ^Computed { return style_of(d.st, dom.find_by_id(d.doc, id)) }
 
 @(test)
 anchor_properties_supported :: proc(t: ^testing.T) {
@@ -62,7 +38,7 @@ anchor_properties_supported :: proc(t: ^testing.T) {
 
 @(test)
 anchored_lengths_wait_for_layout :: proc(t: ^testing.T) {
-	d := open(`<!doctype html><style>
+	d := fixture_load(`<!doctype html><style>
 		.a { position: absolute }
 		#x { top: anchor(--a bottom); width: anchor-size(width); position-anchor: --a; anchor-name: --n, --m; anchor-scope: all }
 		#plain { top: 1px; left: 2px; position: absolute }
@@ -74,7 +50,7 @@ anchored_lengths_wait_for_layout :: proc(t: ^testing.T) {
 		@position-try --v { left: var(--n) }
 		#miss { position: absolute; position-try-fallbacks: --absent }
 	</style><div id=x class=a></div><div id=plain></div><div id=st></div><div id=fall></div><div id=none></div><div id=var></div><div id=miss></div>`)
-	defer close(d)
+	defer fixture_unload(d)
 	x := at(d, "x")
 	testing.expect_value(t, x.inset[.Top].kind, Length_Kind.Anchor)
 	testing.expect_value(t, x.width.kind, Length_Kind.Anchor)
@@ -114,8 +90,8 @@ anchored_lengths_wait_for_layout :: proc(t: ^testing.T) {
 // A change of these values lays the box out again, and keeps it.
 @(test)
 anchor_changes_are_layout_changes :: proc(t: ^testing.T) {
-	d := open(`<!doctype html><style>#a { position: absolute; anchor-name: --a } #b { position: absolute; anchor-name: --b; position-area: top left; }</style><div id=a></div><div id=b></div>`)
-	defer close(d)
+	d := fixture_load(`<!doctype html><style>#a { position: absolute; anchor-name: --a } #b { position: absolute; anchor-name: --b; position-area: top left; }</style><div id=a></div><div id=b></div>`)
+	defer fixture_unload(d)
 	a, b := new(Computed), new(Computed)
 	defer { free(a); free(b) }
 	a^, b^ = at(d, "a")^, at(d, "a")^
@@ -153,12 +129,12 @@ position_area_tracks :: proc(t: ^testing.T) {
 
 @(test)
 anchor_values_serialize :: proc(t: ^testing.T) {
-	d := open(`<!doctype html><style>
+	d := fixture_load(`<!doctype html><style>
 		#x { position: absolute; anchor-name: --a, --b; anchor-scope: --c; position-anchor: --d; position-area: bottom center;
 		     position-try-fallbacks: flip-inline --e, top left; position-try-order: most-block-size; position-visibility: no-overflow anchor-valid }
 		#y { position-area: block-end inline-start }
 	</style><div id=x></div><div id=y></div>`)
-	defer close(d)
+	defer fixture_unload(d)
 	x := at(d, "x")
 	testing.expect_value(t, anchor_prop_text(x, "anchor-name"), "--a, --b")
 	testing.expect_value(t, anchor_prop_text(x, "anchor-scope"), "--c")
@@ -177,10 +153,10 @@ anchor_values_serialize :: proc(t: ^testing.T) {
 // Tactics move the sides and what the functions name.
 @(test)
 try_tactics_mirror :: proc(t: ^testing.T) {
-	d := open(`<!doctype html><style>
+	d := fixture_load(`<!doctype html><style>
 		#x { position: absolute; top: anchor(bottom); left: anchor(left, 1px); width: 10px; height: anchor-size(width); margin-top: 3px; align-self: start; justify-self: end }
 	</style><div id=x></div>`)
-	defer close(d)
+	defer fixture_unload(d)
 	c := at(d, "x")^
 	try_tactic_apply(&c, .Flip_Block, context.temp_allocator)
 	testing.expect_value(t, c.inset[.Top].kind, Length_Kind.Auto)
