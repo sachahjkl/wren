@@ -236,15 +236,22 @@
 <p>Every page of the documentation site is a Markdown file under <code>docs/</code>. The generator <code>src/tools/docsite</code> turns them
 into the static site under <code>site/docs/</code>. There is no framework and nothing is fetched at runtime; the pages render in
 Wren itself.</p>
+<p>The site has a second, classic presentation under <code>site/classic/</code> (plain links, one column of text, light and dark;
+<code>site/classic/classic.css</code>), reached by "Classic version" in every footer and back by "Modern version". The same tool
+makes it from the same sources: each doc is rendered a second time in the classic frame, and each hand-written page of
+the site (<code>site/&lt;page&gt;/index.html</code>) gives its <code>&lt;main&gt;</code> and its scripts, its links moved into the classic tree. Only the
+classic home, <code>site/classic/index.html</code>, is written by hand; its top, footer, version and release news are stamped
+between markers. So edit the modern page or the <code>.md</code>, never a generated classic page, and run <code>wrentool docs</code>.</p>
 <h2 id="the-workflow"><a class="anchor" href="#the-workflow" aria-hidden="true">#</a>The workflow</h2>
 <ol>
 <li>Write or edit a <code>.md</code> file under <code>docs/</code>.</li>
 <li>If the page is new, add it to <code>docs/_nav.txt</code> so it appears in the sidebar where you want it. A page you forget is
 still generated and linked (it lands in a "More" section), so nothing is lost, but the order and the section are up
 to you.</li>
-<li>Run <code>wrentool docs</code>. It regenerates <code>site/docs/</code> and checks that every internal link and anchor resolves.</li>
-<li>Commit the <code>.md</code> <strong>and</strong> the regenerated <code>site/docs/</code>. The generation is deterministic (same input, same bytes), and
-CI fails if <code>site/docs/</code> is out of date — the same rule as <code>wrentool changelog -Check</code>.</li>
+<li>Run <code>wrentool docs</code>. It regenerates <code>site/docs/</code> and <code>site/classic/</code> and checks that every internal link and anchor
+resolves.</li>
+<li>Commit the <code>.md</code> <strong>and</strong> the regenerated <code>site/docs/</code> and <code>site/classic/</code>. The generation is deterministic (same
+input, same bytes), and CI fails if either is out of date — the same rule as <code>wrentool changelog -Check</code>.</li>
 </ol>
 <h2 id="the-sidebar-docs-navtxt"><a class="anchor" href="#the-sidebar-docs-navtxt" aria-hidden="true">#</a>The sidebar: <code>docs/_nav.txt</code></h2>
 <p>The file lists the sections and the pages in each, in the order they appear. Its own header documents the format. In
@@ -410,6 +417,7 @@ inline HTML you add.</li>
 <a href="../../privacy/">Privacy</a>
 <a href="../../terms/">Terms</a>
 <a href="https://github.com/sachahjkl/wren">GitHub</a>
+<a href="../../classic/docs/README/">Classic version</a>
 </nav>
 </div>
 </footer>

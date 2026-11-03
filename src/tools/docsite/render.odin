@@ -2,16 +2,17 @@
 // sidebar, the breadcrumb, the article, its table of contents, the previous/next links and the "Edit on GitHub"
 // link. Every href is a root-absolute path under /docs/ so a page at any depth links correctly, and so the search
 // index can use the same paths. The conformance page's two directives (<!-- docsite:chart -->, <!-- docsite:wpt-table -->)
-// are substituted before the Markdown is parsed.
+// are substituted before the Markdown is parsed. The same body is also put in the classic frame (classic.odin).
 package docsite
 
 import "core:os"
 import "core:strings"
 import "wb:base"
 
-render_page :: proc(p: ^Page, nav: ^Nav, pages: []Page, by_rel: map[string]^Page, search: ^[dynamic]Search_Doc) -> string {
+// The page in the site's presentation, then in the classic one (classic.odin).
+render_page :: proc(p: ^Page, nav: ^Nav, pages: []Page, by_rel: map[string]^Page, search: ^[dynamic]Search_Doc) -> (modern, classic: string) {
 	data, err := os.read_entire_file(p.src_path, context.allocator)
-	if err != nil { return "" }
+	if err != nil { return }
 	source := string(data)
 
 	// per-page directive substitution (the conformance page)
@@ -72,11 +73,11 @@ render_page :: proc(p: ^Page, nav: ^Nav, pages: []Page, by_rel: map[string]^Page
 
 	ws(&b, "</main>\n</div>\n")
 
-	write_footer(&b)
+	write_footer(&b, strings.concatenate({"/classic", url_of(p.out_rel)}, context.temp_allocator))
 
 	ws(&b, "<script src=\"/docs/search.js\" defer></script>\n")
 	ws(&b, "</body>\n</html>\n")
-	return strings.to_string(b)
+	return strings.to_string(b), classic_doc_page(p, nav, by_rel, body)
 }
 
 // The site's top bar, with "Docs" marked current here. Kept in step with site/*.html by hand (the brief owns those).
@@ -111,7 +112,8 @@ write_header :: proc(b: ^strings.Builder, current: string) {
 	ws(b, "</ul>\n</div>\n</header>\n")
 }
 
-write_footer :: proc(b: ^strings.Builder) {
+// `classic` is the address of the page's classic presentation.
+write_footer :: proc(b: ^strings.Builder, classic: string) {
 	ws := strings.write_string
 	ws(b, "<footer class=\"site-foot\">\n<div class=\"wrap\">\n")
 	ws(b, "<p class=\"foot-line\">Wren · a browser where WebAssembly runs everything · by ")
@@ -125,6 +127,9 @@ write_footer :: proc(b: ^strings.Builder) {
 	ws(b, "<a href=\"")
 	ws(b, REPO_URL)
 	ws(b, "\">GitHub</a>\n")
+	ws(b, "<a href=\"")
+	ws(b, classic)
+	ws(b, "\">Classic version</a>\n")
 	ws(b, "</nav>\n</div>\n</footer>\n")
 }
 

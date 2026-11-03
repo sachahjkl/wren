@@ -4,15 +4,23 @@ Every page of the documentation site is a Markdown file under `docs/`. The gener
 into the static site under `site/docs/`. There is no framework and nothing is fetched at runtime; the pages render in
 Wren itself.
 
+The site has a second, classic presentation under `site/classic/` (plain links, one column of text, light and dark;
+`site/classic/classic.css`), reached by "Classic version" in every footer and back by "Modern version". The same tool
+makes it from the same sources: each doc is rendered a second time in the classic frame, and each hand-written page of
+the site (`site/<page>/index.html`) gives its `<main>` and its scripts, its links moved into the classic tree. Only the
+classic home, `site/classic/index.html`, is written by hand; its top, footer, version and release news are stamped
+between markers. So edit the modern page or the `.md`, never a generated classic page, and run `wrentool docs`.
+
 ## The workflow
 
 1. Write or edit a `.md` file under `docs/`.
 2. If the page is new, add it to `docs/_nav.txt` so it appears in the sidebar where you want it. A page you forget is
    still generated and linked (it lands in a "More" section), so nothing is lost, but the order and the section are up
    to you.
-3. Run `wrentool docs`. It regenerates `site/docs/` and checks that every internal link and anchor resolves.
-4. Commit the `.md` **and** the regenerated `site/docs/`. The generation is deterministic (same input, same bytes), and
-   CI fails if `site/docs/` is out of date — the same rule as `wrentool changelog -Check`.
+3. Run `wrentool docs`. It regenerates `site/docs/` and `site/classic/` and checks that every internal link and anchor
+   resolves.
+4. Commit the `.md` **and** the regenerated `site/docs/` and `site/classic/`. The generation is deterministic (same
+   input, same bytes), and CI fails if either is out of date — the same rule as `wrentool changelog -Check`.
 
 ## The sidebar: `docs/_nav.txt`
 

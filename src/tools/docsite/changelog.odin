@@ -18,19 +18,14 @@ Release :: struct {
 	version: string,   // "0.6.1"
 	date:    string,   // "2026-10-29"
 	bullets: [dynamic]string,
+	lead:    string,   // the note's first paragraph, its bold marks dropped (the classic home's news)
 }
 
-build_changelog_page :: proc() {
-	page_bytes, perr := os.read_entire_file(CHANGELOG_PAGE, context.allocator)
-	if perr != nil { return }   // a checkout without the site
-	page := string(page_bytes)
-	b0 := strings.index(page, MARK_BEGIN)
-	b1 := strings.index(page, MARK_END)
-	if b0 < 0 || b1 < b0 { return }
-
+// Every release note, newest first.
+read_releases :: proc() -> []Release {
 	dates := changelog_dates()
 	infos, derr := os.read_all_directory_by_path("docs/releases", context.allocator)
-	if derr != nil { return }
+	if derr != nil { return nil }
 	releases := make([dynamic]Release, context.allocator)
 	for fi in infos {
 		if fi.type == .Directory || !strings.has_prefix(fi.name, "v") || !strings.has_suffix(fi.name, ".md") { continue }
@@ -42,12 +37,22 @@ build_changelog_page :: proc() {
 		append(&releases, r)
 	}
 	slice.sort_by(releases[:], proc(a, b: Release) -> bool { return version_less(b.version, a.version) })
+	return releases[:]
+}
+
+build_changelog_page :: proc(releases: []Release) {
+	page_bytes, perr := os.read_entire_file(CHANGELOG_PAGE, context.allocator)
+	if perr != nil { return }   // a checkout without the site
+	page := string(page_bytes)
+	b0 := strings.index(page, MARK_BEGIN)
+	b1 := strings.index(page, MARK_END)
+	if b0 < 0 || b1 < b0 { return }
 
 	out := strings.builder_make(context.allocator)
 	strings.write_string(&out, page[:b0 + len(MARK_BEGIN)])
 	strings.write_string(&out, "\n")
 	for r, i in releases { write_release(&out, r, i == 0) }
-	if len(releases) > 0 { stamp_latest_version(releases[0].version) }
+	if len(releases) > 0 { stamp_latest_version("site/index.html", releases[0].version) }
 	strings.write_string(&out, "    ")
 	strings.write_string(&out, page[b1:])
 	emit(CHANGELOG_PAGE, strings.to_string(out))
@@ -87,11 +92,19 @@ release_bullets :: proc(md: string, r: ^Release) {
 	text := md
 	in_highlights := false
 	first_para := ""
+	lead := strings.builder_make(context.temp_allocator)
+	lead_done := false
 	for line in strings.split_lines_iterator(&text) {
 		t := strings.trim_space(line)
 		if strings.has_prefix(t, "#") {
 			if strings.has_prefix(t, "### Highlights") { in_highlights = true } else if in_highlights { break }
 			continue
+		}
+		if !lead_done {
+			if t != "" {
+				if strings.builder_len(lead) > 0 { strings.write_byte(&lead, ' ') }
+				strings.write_string(&lead, t)
+			} else if strings.builder_len(lead) > 0 { lead_done = true }
 		}
 		if in_highlights {
 			if strings.has_prefix(t, "- ") && len(r.bullets) < 6 { append(&r.bullets, short_sentence(t[2:])) }
@@ -100,6 +113,9 @@ release_bullets :: proc(md: string, r: ^Release) {
 		}
 	}
 	if len(r.bullets) == 0 && first_para != "" { append(&r.bullets, short_sentence(first_para)) }
+	whole := strings.to_string(lead)
+	if strings.has_prefix(whole, "**") && strings.has_suffix(whole, "**") && strings.count(whole, "**") == 2 { whole = whole[2:len(whole) - 2] }
+	r.lead = strings.clone(whole)
 }
 
 // The bold lead and the sentence after it, at most 200 characters (cut at a space, with an ellipsis).
@@ -200,14 +216,19 @@ write_inline :: proc(b: ^strings.Builder, s: string) {
 	if bold { strings.write_string(b, "</strong>") }
 }
 
-// The home page names the latest version between <!-- latest --> and <!-- /latest -->.
-stamp_latest_version :: proc(version: string) {
-	data, err := os.read_entire_file("site/index.html", context.allocator)
+// A home page names the latest version between <!-- latest --> and <!-- /latest -->.
+stamp_latest_version :: proc(path, version: string) {
+	data, err := os.read_entire_file(path, context.allocator)
 	if err != nil { return }
-	page := string(data)
-	a := strings.index(page, "<!-- latest -->")
-	b := strings.index(page, "<!-- /latest -->")
-	if a < 0 || b < a { return }
-	a += len("<!-- latest -->")
-	emit("site/index.html", strings.concatenate({page[:a], version, page[b:]}, context.allocator))
+	emit(path, stamp(string(data), "<!-- latest -->", "<!-- /latest -->", version))
+}
+
+// `page` with what is between the markers `begin` and `end` replaced by `content` (unchanged without them).
+stamp :: proc(page, begin, end, content: string) -> string {
+	a := strings.index(page, begin)
+	if a < 0 { return page }
+	a += len(begin)
+	b := strings.index(page[a:], end)
+	if b < 0 { return page }
+	return strings.concatenate({page[:a], content, page[a + b:]}, context.allocator)
 }

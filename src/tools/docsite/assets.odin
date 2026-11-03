@@ -3,18 +3,28 @@
 // generator means the whole site is one tool's output; there is nothing to install and nothing fetched at runtime.
 package docsite
 
-// Client-side full-text search over docs/search-index.json (next to this script: the site may live under a path). Vanilla JS, no framework. Keeps under 3 KB.
+import "core:strings"
+
+// Client-side full-text search over docs/search-index.json (`index`, relative to this script: the site may live under a
+// path; the classic docs share the modern one's). The hits link the pages under this script's site. Vanilla JS, no framework. Keeps under 3 KB.
 //   - "/" focuses the search box (unless already typing in a field)
 //   - results score title, section and body; Enter opens the first hit; Escape clears
-search_js :: proc() -> string {
-	return `(function(){
+search_js :: proc(index: string) -> string {
+	return strings.concatenate({SEARCH_JS_HEAD, index, SEARCH_JS_TAIL}, context.allocator)
+}
+
+@(private = "file")
+SEARCH_JS_HEAD :: `(function(){
 var box=document.getElementById('doc-search-input');
 var out=document.getElementById('doc-search-results');
 if(!box||!out)return;
 var here=(document.currentScript&&document.currentScript.src)||'';var base=here.slice(0,here.lastIndexOf('/')+1);var site=base.replace(/docs\/$/,'');
 var idx=null,loading=false;
 function load(cb){if(idx){cb();return;}if(loading)return;loading=true;
-fetch(base+'search-index.json').then(function(r){return r.json();}).then(function(d){idx=d;cb();});}
+fetch(base+'`
+
+@(private = "file")
+SEARCH_JS_TAIL :: `').then(function(r){return r.json();}).then(function(d){idx=d;cb();});}
 function norm(s){return (s||'').toLowerCase();}
 function score(d,terms){var t=norm(d.t),s=norm(d.s),b=norm(d.b),sc=0;
 for(var i=0;i<terms.length;i++){var w=terms[i];if(!w)continue;var hit=0;
@@ -44,4 +54,3 @@ e.preventDefault();box.focus();}});
 document.addEventListener('click',function(e){if(!out.contains(e.target)&&e.target!==box)out.hidden=true;});
 })();
 `
-}
