@@ -51,6 +51,25 @@ point_gc_mark :: proc "c" (rt: ^capi.Runtime, val: capi.JSValue, mark: capi.Mark
 	if p != nil {capi.JS_MarkValue(rt, p.held, mark)}
 }
 
+// A class whose Point is the object's payload (JS_NewObjectProtoClassPayload): its finalizer drops the reference the
+// payload holds and frees nothing else.
+@(private = "file") cls_pod: capi.Class_ID
+@(private = "file") pods_finalized: int
+@(private = "file") PODS_SOAK :: 10000
+
+@(private = "file")
+pod_finalizer :: proc "c" (rt: ^capi.Runtime, val: capi.JSValue) {
+	p := cast(^Point)capi.JS_GetOpaque(val, cls_pod)
+	pods_finalized += 1
+	if p != nil {capi.JS_FreeValueRT(rt, p.held)}
+}
+
+@(private = "file")
+pod_gc_mark :: proc "c" (rt: ^capi.Runtime, val: capi.JSValue, mark: capi.Mark_Func) {
+	p := cast(^Point)capi.JS_GetOpaque(val, cls_pod)
+	if p != nil {capi.JS_MarkValue(rt, p.held, mark)}
+}
+
 // mk(x): a Point.
 @(private = "file")
 mk_point :: proc "c" (ctx: ^capi.Context, this: capi.JSValue, argc: i32, argv: [^]capi.JSValue) -> capi.JSValue {
@@ -295,6 +314,37 @@ capi_main :: proc() -> int {
 	capi.JS_FreeValue(ctx, extra)
 	capi.JS_RunGC(rt)
 	check(finalized == base + 1, "freed reference, collected")
+
+	// opaque data in the object's own block (JS_NewObjectProtoClassPayload, the glue's wrappers): zeroed, one block per
+	// object, what it holds traced through gc_mark, freed with the object (the finalizer frees nothing of its own)
+	capi.JS_NewClassID(rt, &cls_pod)
+	pdef := capi.Class_Def{class_name = "Pod", finalizer = pod_finalizer, gc_mark = pod_gc_mark}
+	check(capi.JS_NewClass(rt, cls_pod, &pdef) == 0, "JS_NewClass (payload)")
+	q1 := capi.JS_NewObjectProtoClassPayload(ctx, capi.NULL, cls_pod, size_of(Point))
+	q2 := capi.JS_NewObjectProtoClassPayload(ctx, capi.NULL, cls_pod, size_of(Point))
+	d1, d2 := cast(^Point)capi.JS_GetOpaque(q1, cls_pod), cast(^Point)capi.JS_GetOpaque(q2, cls_pod)
+	check(d1 != nil && d2 != nil && d1 != d2 && d1.x == 0 && d1.held == 0 && d2.held == 0, "payloads: one each, zeroed")
+	check(uintptr(d1) % 8 == 0 && capi.JS_GetOpaque(q1, cls_point) == nil, "a payload is 8-aligned, and its class's only")
+	half := eval(ctx, "-0.5")   // (a float: its high word is no tag, whatever its value)
+	check(capi.JS_GetOpaque(half, cls_pod) == nil && capi.JS_GetClassID(half) == 0 && capi.JS_GetClassID(capi.mkval(capi.TAG_INT, 5)) == 0, "no object, no opaque data, no class")
+	check(capi.JS_DupValue(ctx, half) == half && capi.JS_GetClassID(q1) == cls_pod, "a float is no reference; an object's class")
+	d1.x, d2.x = 1, 2
+	d1.held, d2.held = capi.JS_DupValue(ctx, q2), capi.JS_DupValue(ctx, q1)   // a cycle through the payloads
+	capi.JS_RunGC(rt)
+	check(pods_finalized == 0 && d1.x == 1 && d2.x == 2, "held by the API: kept, payloads intact")
+	capi.JS_FreeValue(ctx, q1)
+	capi.JS_FreeValue(ctx, q2)
+	capi.JS_RunGC(rt)
+	check(pods_finalized == 2, fmt.tprintf("a cycle through payloads is collected (%d of 2)", pods_finalized))
+	// made and dropped by the thousand: the payloads go back with their objects (were they kept, the heap would grow by
+	// at least their bytes)
+	usage: capi.Memory_Usage
+	capi.JS_ComputeMemoryUsage(rt, &usage)
+	before := usage.malloc_size
+	for _ in 0 ..< PODS_SOAK {capi.JS_FreeValue(ctx, capi.JS_NewObjectProtoClassPayload(ctx, capi.NULL, cls_pod, size_of(Point)))}
+	capi.JS_RunGC(rt)
+	capi.JS_ComputeMemoryUsage(rt, &usage)
+	check(pods_finalized == 2 + PODS_SOAK && usage.malloc_size < before + PODS_SOAK * size_of(Point), fmt.tprintf("payloads freed with their objects (%d finalized, heap %d -> %d bytes)", pods_finalized, before, usage.malloc_size))
 
 	// --- exotic objects ---
 	capi.JS_NewClassID(rt, &cls_virt)

@@ -956,6 +956,27 @@ hook_removed :: proc(user: rawptr, d: ^dom.Document) {
 	fullscreen_note_removed(p)   // the fullscreen element left the document (fullscreen.odin)
 }
 
+// What the insertion steps below act on, by the element names an inserted subtree holds (shadow trees included): one
+// walk, and the steps that look further run only for what it found.
+@(private)
+Inserted_Kind :: enum u8 { Script, Frame, Link, Style, Media }
+
+@(private)
+inserted_kinds :: proc(d: ^dom.Document, node: base.Handle) -> (kinds: bit_set[Inserted_Kind]) {
+	for cur := node; cur != base.NIL_HANDLE; cur = dom.next_shadow_including(d, cur, node) {
+		c := dom.get(d, cur)
+		if c == nil || c.kind != .Element { continue }
+		switch c.name {
+		case "script": kinds += {.Script}
+		case "iframe", "frame": kinds += {.Frame}
+		case "link": kinds += {.Link}
+		case "style": kinds += {.Style}
+		case "video", "audio", "source", "track": kinds += {.Media}
+		}
+	}
+	return
+}
+
 @(private)
 hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 	p := (^Page)(user)
@@ -968,8 +989,9 @@ hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 		if p.closed || dom.get(d, node) == nil { return }
 		n = dom.get(d, node)
 	}
-	styles_note_inserted(p, node)   // a <link> a script inserts loads now, not at the next styling (styles.odin)
-	media_note_inserted(p, node)    // a <video> / <audio> / <source> (media_element.odin)
+	kinds := inserted_kinds(d, node)
+	if kinds & {.Link, .Style} != {} { styles_note_inserted(p, node) }   // a <link> a script inserts loads now, not at the next styling (styles.odin)
+	if .Media in kinds { media_note_inserted(p, node) }   // a <video> / <audio> / <source> (media_element.odin)
 	fragment := d.parser_inserting > 0
 	// a node inserted into a connected script element that has not started: its text changed ("children changed")
 	if parent := dom.get(d, n.parent); is_script_element(parent) && !fragment {
@@ -980,7 +1002,7 @@ hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 	}
 	// the script and frame elements of the inserted subtree, in tree order (HTML's post-connection steps: a script
 	// before an iframe runs before that iframe has its document); frames in its shadow trees too
-	if n.kind != .Element { return }
+	if n.kind != .Element || kinds & {.Script, .Frame, .Link} == {} { return }
 	connected := dom.is_connected(d, node)
 	found := make([dynamic]base.Handle, context.temp_allocator)
 	own_tree := dom.containing_shadow_root(d, node)

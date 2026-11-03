@@ -49,22 +49,35 @@ emit_odin :: proc(g: ^Gen, pkg: string) -> string {
 	wl(&b, "")
 	wl(&b, "// The interface of an HTML element by its (lower-case) local name: HTMLUnknownElement for unknown names,")
 	wl(&b, "// HTMLElement for valid custom element names.")
+	wl(&b, "// (by the first byte, then the name: a switch on strings compares them one after the other)")
 	wl(&b, "js_html_interface :: proc(name: string) -> u32 {")
-	wl(&b, "\tswitch name {")
-	for e in HTML_ELEMENTS { wl(&b, "\tcase %q: return JS_IFACE_%s", e[0], e[1]) }
-	wl(&b, "\t}")
+	emit_name_switch(&b, HTML_ELEMENTS[:], "HTMLUnknownElement")
 	wl(&b, "\tfor c in name { if c == '-' { return JS_IFACE_HTMLElement } }")
 	wl(&b, "\treturn JS_IFACE_HTMLUnknownElement")
 	wl(&b, "}")
 	wl(&b, "")
 	wl(&b, "// The interface of an SVG element by its lower-case local name (SVGElement for the others).")
 	wl(&b, "js_svg_interface :: proc(name: string) -> u32 {")
-	wl(&b, "\tswitch name {")
-	for e in SVG_ELEMENTS { wl(&b, "\tcase %q: return JS_IFACE_%s", e[0], e[1]) }
-	wl(&b, "\t}")
+	emit_name_switch(&b, SVG_ELEMENTS[:], "SVGElement")
 	wl(&b, "\treturn JS_IFACE_SVGElement")
 	wl(&b, "}")
 	return strings.to_string(b)
+}
+
+// The cases of a lookup of an element's interface by name ({name, interface} pairs), grouped by the name's first byte.
+@(private)
+emit_name_switch :: proc(b: ^strings.Builder, elements: [][2]string, none: string) {
+	firsts := make([dynamic]u8, context.temp_allocator)
+	for e in elements { if !slice.contains(firsts[:], e[0][0]) { append(&firsts, e[0][0]) } }
+	wl(b, "\tif len(name) == 0 {{ return JS_IFACE_%s }}", none)
+	wl(b, "\tswitch name[0] {")
+	for c in firsts {
+		wl(b, "\tcase '%c':", rune(c))
+		wl(b, "\t\tswitch name {")
+		for e in elements { if e[0][0] == c { wl(b, "\t\tcase %q: return JS_IFACE_%s", e[0], e[1]) } }
+		wl(b, "\t\t}")
+	}
+	wl(b, "\t}")
 }
 
 // An interface missing from the IDL falls back to the nearest one that exists (HTMLElement, SVGElement, Element).

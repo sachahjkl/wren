@@ -574,8 +574,8 @@ emit_tables_odin :: proc(g: ^Gen, impls: [][]Member_Impl, o: ^strings.Builder) {
 			for mb in it.members { if mb.kind == .Operation && mb.special == .Getter && len(mb.args) == 1 { own = true; break } }
 			if own { append(&flags, "wj.I_INDEXED_ITERATOR") }
 		}
-		class_kind := "wj.CLASS_PLAIN"
-		if indexed { class_kind = "wj.CLASS_INDEXED" } else if has_named_getter(it) { class_kind = "wj.CLASS_NAMED" }
+		kinds := [Class_Kind]string{.Plain = "wj.CLASS_PLAIN", .Indexed = "wj.CLASS_INDEXED", .Named = "wj.CLASS_NAMED"}
+		class_kind := kinds[class_kind_of(g, it)]
 		ctor := "nil"
 		ctor_len := 0
 		has_ctor := false

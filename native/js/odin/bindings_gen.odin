@@ -31062,7 +31062,7 @@ wj_install_bindings :: proc "c" () {
 		members = rawptr(&m_TextEvent[0]), n_members = 2, subtree_end = 187,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
-	the_interfaces[187] = wj.Interface{name = "TouchEvent", parent = 177, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(0), class_kind = u8(wj.CLASS_NAMED), ctor_length = 1, ctor = rawptr(wjr_TouchEvent_constructor),
+	the_interfaces[187] = wj.Interface{name = "TouchEvent", parent = 177, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(0), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 1, ctor = rawptr(wjr_TouchEvent_constructor),
 		members = rawptr(&m_TouchEvent[0]), n_members = 8, subtree_end = 188,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
@@ -31322,11 +31322,11 @@ wj_install_bindings :: proc "c" () {
 		members = nil, n_members = 0, subtree_end = 252,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
-	the_interfaces[252] = wj.Interface{name = "Document", parent = 245, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_HAS_UNFORGEABLE), class_kind = u8(wj.CLASS_NAMED), ctor_length = 0, ctor = rawptr(wjr_Document_constructor),
+	the_interfaces[252] = wj.Interface{name = "Document", parent = 245, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_HAS_UNFORGEABLE), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = rawptr(wjr_Document_constructor),
 		members = rawptr(&m_Document[0]), n_members = 223, subtree_end = 254,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
-	the_interfaces[253] = wj.Interface{name = "XMLDocument", parent = 252, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(0), class_kind = u8(wj.CLASS_NAMED), ctor_length = 0, ctor = nil,
+	the_interfaces[253] = wj.Interface{name = "XMLDocument", parent = 252, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(0), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
 		members = nil, n_members = 0, subtree_end = 254,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
@@ -31874,7 +31874,7 @@ wj_install_bindings :: proc "c" () {
 		members = rawptr(&m_WebSocket[0]), n_members = 16, subtree_end = 390,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
-	the_interfaces[390] = wj.Interface{name = "Window", parent = 189, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_GLOBAL | wj.I_UNENUMERABLE_NAMED | wj.I_HAS_UNFORGEABLE), class_kind = u8(wj.CLASS_NAMED), ctor_length = 0, ctor = nil,
+	the_interfaces[390] = wj.Interface{name = "Window", parent = 189, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_GLOBAL | wj.I_UNENUMERABLE_NAMED | wj.I_HAS_UNFORGEABLE), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
 		members = rawptr(&m_Window[0]), n_members = 217, subtree_end = 391,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}

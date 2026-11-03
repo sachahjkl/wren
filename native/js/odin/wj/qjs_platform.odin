@@ -399,8 +399,7 @@ obj_finalizer :: proc "c" (rt: ^Runtime, val: JSValue) {
 		if o.flags & OBJ_OWNED != 0 { wr_Object_release(o.handle) }
 	}
 	for i: u16 = 0; i < o.n_same; i += 1 { JS_FreeValueRT(rt, o.same[i]) }
-	libc_free(o.same)
-	libc_free(o)
+	libc_free(o.same)   // (o itself is the wrapper's opaque data: it goes with the wrapper)
 }
 
 @(private = "file")
@@ -689,16 +688,16 @@ wj_this :: proc "c" (ctx: ^Context, this_val: JSValue, iface: i32) -> ^Obj {
 make_wrapper :: proc "contextless" (ctx: ^Context, iface: i32, kind: u8, handle: u64, proto_override: JSValue) -> JSValue {
 	r := &wj_the_realm
 	proto := is_object(proto_override) ? proto_override : r.protos[iface]
-	obj := JS_NewObjectProtoClass(ctx, proto, class_for(iface))
+	// the platform object in the engine's block of the wrapper (its opaque data, freed with it)
+	cls := class_for(iface)
+	obj := JS_NewObjectProtoClassPayload(ctx, proto, cls, size_of(Obj))
 	if is_exception(obj) { return obj }
-	o := (^Obj)(libc_calloc(1, size_of(Obj)))
-	if o == nil { JS_FreeValue(ctx, obj); return JS_ThrowOutOfMemory(ctx) }
+	o := (^Obj)(JS_GetOpaque(obj, cls))
 	o.handle = handle
 	o.iface = u16(iface)
 	o.kind = KIND_NONE   // the handle is the wrapper's (unpinned, released by its finalizer) only once it is made
 	o.self = obj
 	o.group_val = UNDEFINED
-	JS_SetOpaque(obj, o)
 	if wj_define_unforgeables(ctx, obj, iface) < 0 { JS_FreeValue(ctx, obj); return EXCEPTION }
 	o.kind = kind
 	return obj

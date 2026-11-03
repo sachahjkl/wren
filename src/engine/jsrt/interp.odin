@@ -660,12 +660,17 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				o := stack[sp - 1]
 				v: Value
 				fast := false
+				getter: ^Object   // an accessor found on the way (a DOM attribute): called here, not looked up again
+				accessor := false
 				if o.tag == .object {
 					p := as_obj(o)
 					for {
 						i := shape_find(p.shape, a)
 						if i >= 0 {
-							if p.shape.props[i].kind == .data {v = p.slots[i].value; fast = true}
+							#partial switch p.shape.props[i].kind {
+							case .data: v = p.slots[i].value; fast = true
+							case .accessor: getter = p.slots[i].getset.getter; accessor = true
+							}
 							break
 						}
 						if p.fast_array || p.class == .proxy || p.class == .module_ns || p.class == .string || is_typed_array_class(p.class) {break}
@@ -674,7 +679,11 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 						if p == nil {v = UNDEFINED; fast = true; break}
 					}
 				}
-				if !fast {
+				if accessor {
+					f.pc = pc
+					v = getter != nil ? call(ctx, mk_obj(getter), o, {}) : UNDEFINED
+					if is_exception(v) {exc = true; break}
+				} else if !fast {
 					f.pc = pc
 					v = get_property(ctx, o, a, o)
 					if is_exception(v) {exc = true; break}

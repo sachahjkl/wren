@@ -173,6 +173,7 @@ js_string_codePointRange :: proc "c" (ctx: ^Context, this_val: JSValue, argc: i3
 	JS_NewObjectClass :: jscapi.JS_NewObjectClass
 	JS_NewObjectProto :: jscapi.JS_NewObjectProto
 	JS_NewObjectProtoClass :: jscapi.JS_NewObjectProtoClass
+	JS_NewObjectProtoClassPayload :: jscapi.JS_NewObjectProtoClassPayload
 	JS_NewPromiseCapability :: jscapi.JS_NewPromiseCapability
 	JS_NewRuntime2 :: jscapi.JS_NewRuntime2
 	JS_NewSettledPromise :: jscapi.JS_NewSettledPromise

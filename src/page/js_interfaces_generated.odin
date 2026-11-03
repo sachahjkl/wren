@@ -646,148 +646,216 @@ JS_IFACE_COUNT :: u32(605)
 
 // The interface of an HTML element by its (lower-case) local name: HTMLUnknownElement for unknown names,
 // HTMLElement for valid custom element names.
+// (by the first byte, then the name: a switch on strings compares them one after the other)
 js_html_interface :: proc(name: string) -> u32 {
-	switch name {
-	case "a": return JS_IFACE_HTMLAnchorElement
-	case "abbr": return JS_IFACE_HTMLElement
-	case "address": return JS_IFACE_HTMLElement
-	case "area": return JS_IFACE_HTMLAreaElement
-	case "article": return JS_IFACE_HTMLElement
-	case "aside": return JS_IFACE_HTMLElement
-	case "audio": return JS_IFACE_HTMLAudioElement
-	case "b": return JS_IFACE_HTMLElement
-	case "base": return JS_IFACE_HTMLBaseElement
-	case "bdi": return JS_IFACE_HTMLElement
-	case "bdo": return JS_IFACE_HTMLElement
-	case "blockquote": return JS_IFACE_HTMLQuoteElement
-	case "body": return JS_IFACE_HTMLBodyElement
-	case "br": return JS_IFACE_HTMLBRElement
-	case "button": return JS_IFACE_HTMLButtonElement
-	case "canvas": return JS_IFACE_HTMLCanvasElement
-	case "caption": return JS_IFACE_HTMLTableCaptionElement
-	case "cite": return JS_IFACE_HTMLElement
-	case "code": return JS_IFACE_HTMLElement
-	case "col": return JS_IFACE_HTMLTableColElement
-	case "colgroup": return JS_IFACE_HTMLTableColElement
-	case "data": return JS_IFACE_HTMLDataElement
-	case "datalist": return JS_IFACE_HTMLDataListElement
-	case "dd": return JS_IFACE_HTMLElement
-	case "del": return JS_IFACE_HTMLModElement
-	case "details": return JS_IFACE_HTMLDetailsElement
-	case "dfn": return JS_IFACE_HTMLElement
-	case "dialog": return JS_IFACE_HTMLDialogElement
-	case "div": return JS_IFACE_HTMLDivElement
-	case "dl": return JS_IFACE_HTMLDListElement
-	case "dt": return JS_IFACE_HTMLElement
-	case "em": return JS_IFACE_HTMLElement
-	case "embed": return JS_IFACE_HTMLEmbedElement
-	case "fieldset": return JS_IFACE_HTMLFieldSetElement
-	case "figcaption": return JS_IFACE_HTMLElement
-	case "figure": return JS_IFACE_HTMLElement
-	case "footer": return JS_IFACE_HTMLElement
-	case "form": return JS_IFACE_HTMLFormElement
-	case "h1": return JS_IFACE_HTMLHeadingElement
-	case "h2": return JS_IFACE_HTMLHeadingElement
-	case "h3": return JS_IFACE_HTMLHeadingElement
-	case "h4": return JS_IFACE_HTMLHeadingElement
-	case "h5": return JS_IFACE_HTMLHeadingElement
-	case "h6": return JS_IFACE_HTMLHeadingElement
-	case "head": return JS_IFACE_HTMLHeadElement
-	case "header": return JS_IFACE_HTMLElement
-	case "hgroup": return JS_IFACE_HTMLElement
-	case "hr": return JS_IFACE_HTMLHRElement
-	case "html": return JS_IFACE_HTMLHtmlElement
-	case "i": return JS_IFACE_HTMLElement
-	case "iframe": return JS_IFACE_HTMLIFrameElement
-	case "img": return JS_IFACE_HTMLImageElement
-	case "input": return JS_IFACE_HTMLInputElement
-	case "ins": return JS_IFACE_HTMLModElement
-	case "kbd": return JS_IFACE_HTMLElement
-	case "label": return JS_IFACE_HTMLLabelElement
-	case "legend": return JS_IFACE_HTMLLegendElement
-	case "li": return JS_IFACE_HTMLLIElement
-	case "link": return JS_IFACE_HTMLLinkElement
-	case "main": return JS_IFACE_HTMLElement
-	case "map": return JS_IFACE_HTMLMapElement
-	case "mark": return JS_IFACE_HTMLElement
-	case "menu": return JS_IFACE_HTMLMenuElement
-	case "meta": return JS_IFACE_HTMLMetaElement
-	case "meter": return JS_IFACE_HTMLMeterElement
-	case "nav": return JS_IFACE_HTMLElement
-	case "noscript": return JS_IFACE_HTMLElement
-	case "object": return JS_IFACE_HTMLObjectElement
-	case "ol": return JS_IFACE_HTMLOListElement
-	case "optgroup": return JS_IFACE_HTMLOptGroupElement
-	case "option": return JS_IFACE_HTMLOptionElement
-	case "output": return JS_IFACE_HTMLOutputElement
-	case "p": return JS_IFACE_HTMLParagraphElement
-	case "picture": return JS_IFACE_HTMLPictureElement
-	case "pre": return JS_IFACE_HTMLPreElement
-	case "progress": return JS_IFACE_HTMLProgressElement
-	case "q": return JS_IFACE_HTMLQuoteElement
-	case "rp": return JS_IFACE_HTMLElement
-	case "rt": return JS_IFACE_HTMLElement
-	case "ruby": return JS_IFACE_HTMLElement
-	case "s": return JS_IFACE_HTMLElement
-	case "samp": return JS_IFACE_HTMLElement
-	case "search": return JS_IFACE_HTMLElement
-	case "section": return JS_IFACE_HTMLElement
-	case "script": return JS_IFACE_HTMLScriptElement
-	case "select": return JS_IFACE_HTMLSelectElement
-	case "slot": return JS_IFACE_HTMLSlotElement
-	case "small": return JS_IFACE_HTMLElement
-	case "source": return JS_IFACE_HTMLSourceElement
-	case "span": return JS_IFACE_HTMLSpanElement
-	case "strong": return JS_IFACE_HTMLElement
-	case "style": return JS_IFACE_HTMLStyleElement
-	case "sub": return JS_IFACE_HTMLElement
-	case "summary": return JS_IFACE_HTMLElement
-	case "sup": return JS_IFACE_HTMLElement
-	case "table": return JS_IFACE_HTMLTableElement
-	case "tbody": return JS_IFACE_HTMLTableSectionElement
-	case "td": return JS_IFACE_HTMLTableCellElement
-	case "template": return JS_IFACE_HTMLTemplateElement
-	case "textarea": return JS_IFACE_HTMLTextAreaElement
-	case "tfoot": return JS_IFACE_HTMLTableSectionElement
-	case "th": return JS_IFACE_HTMLTableCellElement
-	case "thead": return JS_IFACE_HTMLTableSectionElement
-	case "time": return JS_IFACE_HTMLTimeElement
-	case "title": return JS_IFACE_HTMLTitleElement
-	case "tr": return JS_IFACE_HTMLTableRowElement
-	case "track": return JS_IFACE_HTMLTrackElement
-	case "u": return JS_IFACE_HTMLElement
-	case "ul": return JS_IFACE_HTMLUListElement
-	case "var": return JS_IFACE_HTMLElement
-	case "video": return JS_IFACE_HTMLVideoElement
-	case "wbr": return JS_IFACE_HTMLElement
-	case "acronym": return JS_IFACE_HTMLElement
-	case "basefont": return JS_IFACE_HTMLElement
-	case "big": return JS_IFACE_HTMLElement
-	case "center": return JS_IFACE_HTMLElement
-	case "nobr": return JS_IFACE_HTMLElement
-	case "noembed": return JS_IFACE_HTMLElement
-	case "noframes": return JS_IFACE_HTMLElement
-	case "plaintext": return JS_IFACE_HTMLElement
-	case "rb": return JS_IFACE_HTMLElement
-	case "rtc": return JS_IFACE_HTMLElement
-	case "strike": return JS_IFACE_HTMLElement
-	case "tt": return JS_IFACE_HTMLElement
-	case "listing": return JS_IFACE_HTMLPreElement
-	case "xmp": return JS_IFACE_HTMLPreElement
-	case "dir": return JS_IFACE_HTMLDirectoryElement
-	case "font": return JS_IFACE_HTMLFontElement
-	case "frame": return JS_IFACE_HTMLFrameElement
-	case "frameset": return JS_IFACE_HTMLFrameSetElement
-	case "marquee": return JS_IFACE_HTMLMarqueeElement
-	case "param": return JS_IFACE_HTMLParamElement
-	case "applet": return JS_IFACE_HTMLUnknownElement
-	case "bgsound": return JS_IFACE_HTMLUnknownElement
-	case "blink": return JS_IFACE_HTMLUnknownElement
-	case "isindex": return JS_IFACE_HTMLUnknownElement
-	case "keygen": return JS_IFACE_HTMLUnknownElement
-	case "multicol": return JS_IFACE_HTMLUnknownElement
-	case "nextid": return JS_IFACE_HTMLUnknownElement
-	case "spacer": return JS_IFACE_HTMLUnknownElement
+	if len(name) == 0 { return JS_IFACE_HTMLUnknownElement }
+	switch name[0] {
+	case 'a':
+		switch name {
+		case "a": return JS_IFACE_HTMLAnchorElement
+		case "abbr": return JS_IFACE_HTMLElement
+		case "address": return JS_IFACE_HTMLElement
+		case "area": return JS_IFACE_HTMLAreaElement
+		case "article": return JS_IFACE_HTMLElement
+		case "aside": return JS_IFACE_HTMLElement
+		case "audio": return JS_IFACE_HTMLAudioElement
+		case "acronym": return JS_IFACE_HTMLElement
+		case "applet": return JS_IFACE_HTMLUnknownElement
+		}
+	case 'b':
+		switch name {
+		case "b": return JS_IFACE_HTMLElement
+		case "base": return JS_IFACE_HTMLBaseElement
+		case "bdi": return JS_IFACE_HTMLElement
+		case "bdo": return JS_IFACE_HTMLElement
+		case "blockquote": return JS_IFACE_HTMLQuoteElement
+		case "body": return JS_IFACE_HTMLBodyElement
+		case "br": return JS_IFACE_HTMLBRElement
+		case "button": return JS_IFACE_HTMLButtonElement
+		case "basefont": return JS_IFACE_HTMLElement
+		case "big": return JS_IFACE_HTMLElement
+		case "bgsound": return JS_IFACE_HTMLUnknownElement
+		case "blink": return JS_IFACE_HTMLUnknownElement
+		}
+	case 'c':
+		switch name {
+		case "canvas": return JS_IFACE_HTMLCanvasElement
+		case "caption": return JS_IFACE_HTMLTableCaptionElement
+		case "cite": return JS_IFACE_HTMLElement
+		case "code": return JS_IFACE_HTMLElement
+		case "col": return JS_IFACE_HTMLTableColElement
+		case "colgroup": return JS_IFACE_HTMLTableColElement
+		case "center": return JS_IFACE_HTMLElement
+		}
+	case 'd':
+		switch name {
+		case "data": return JS_IFACE_HTMLDataElement
+		case "datalist": return JS_IFACE_HTMLDataListElement
+		case "dd": return JS_IFACE_HTMLElement
+		case "del": return JS_IFACE_HTMLModElement
+		case "details": return JS_IFACE_HTMLDetailsElement
+		case "dfn": return JS_IFACE_HTMLElement
+		case "dialog": return JS_IFACE_HTMLDialogElement
+		case "div": return JS_IFACE_HTMLDivElement
+		case "dl": return JS_IFACE_HTMLDListElement
+		case "dt": return JS_IFACE_HTMLElement
+		case "dir": return JS_IFACE_HTMLDirectoryElement
+		}
+	case 'e':
+		switch name {
+		case "em": return JS_IFACE_HTMLElement
+		case "embed": return JS_IFACE_HTMLEmbedElement
+		}
+	case 'f':
+		switch name {
+		case "fieldset": return JS_IFACE_HTMLFieldSetElement
+		case "figcaption": return JS_IFACE_HTMLElement
+		case "figure": return JS_IFACE_HTMLElement
+		case "footer": return JS_IFACE_HTMLElement
+		case "form": return JS_IFACE_HTMLFormElement
+		case "font": return JS_IFACE_HTMLFontElement
+		case "frame": return JS_IFACE_HTMLFrameElement
+		case "frameset": return JS_IFACE_HTMLFrameSetElement
+		}
+	case 'h':
+		switch name {
+		case "h1": return JS_IFACE_HTMLHeadingElement
+		case "h2": return JS_IFACE_HTMLHeadingElement
+		case "h3": return JS_IFACE_HTMLHeadingElement
+		case "h4": return JS_IFACE_HTMLHeadingElement
+		case "h5": return JS_IFACE_HTMLHeadingElement
+		case "h6": return JS_IFACE_HTMLHeadingElement
+		case "head": return JS_IFACE_HTMLHeadElement
+		case "header": return JS_IFACE_HTMLElement
+		case "hgroup": return JS_IFACE_HTMLElement
+		case "hr": return JS_IFACE_HTMLHRElement
+		case "html": return JS_IFACE_HTMLHtmlElement
+		}
+	case 'i':
+		switch name {
+		case "i": return JS_IFACE_HTMLElement
+		case "iframe": return JS_IFACE_HTMLIFrameElement
+		case "img": return JS_IFACE_HTMLImageElement
+		case "input": return JS_IFACE_HTMLInputElement
+		case "ins": return JS_IFACE_HTMLModElement
+		case "isindex": return JS_IFACE_HTMLUnknownElement
+		}
+	case 'k':
+		switch name {
+		case "kbd": return JS_IFACE_HTMLElement
+		case "keygen": return JS_IFACE_HTMLUnknownElement
+		}
+	case 'l':
+		switch name {
+		case "label": return JS_IFACE_HTMLLabelElement
+		case "legend": return JS_IFACE_HTMLLegendElement
+		case "li": return JS_IFACE_HTMLLIElement
+		case "link": return JS_IFACE_HTMLLinkElement
+		case "listing": return JS_IFACE_HTMLPreElement
+		}
+	case 'm':
+		switch name {
+		case "main": return JS_IFACE_HTMLElement
+		case "map": return JS_IFACE_HTMLMapElement
+		case "mark": return JS_IFACE_HTMLElement
+		case "menu": return JS_IFACE_HTMLMenuElement
+		case "meta": return JS_IFACE_HTMLMetaElement
+		case "meter": return JS_IFACE_HTMLMeterElement
+		case "marquee": return JS_IFACE_HTMLMarqueeElement
+		case "multicol": return JS_IFACE_HTMLUnknownElement
+		}
+	case 'n':
+		switch name {
+		case "nav": return JS_IFACE_HTMLElement
+		case "noscript": return JS_IFACE_HTMLElement
+		case "nobr": return JS_IFACE_HTMLElement
+		case "noembed": return JS_IFACE_HTMLElement
+		case "noframes": return JS_IFACE_HTMLElement
+		case "nextid": return JS_IFACE_HTMLUnknownElement
+		}
+	case 'o':
+		switch name {
+		case "object": return JS_IFACE_HTMLObjectElement
+		case "ol": return JS_IFACE_HTMLOListElement
+		case "optgroup": return JS_IFACE_HTMLOptGroupElement
+		case "option": return JS_IFACE_HTMLOptionElement
+		case "output": return JS_IFACE_HTMLOutputElement
+		}
+	case 'p':
+		switch name {
+		case "p": return JS_IFACE_HTMLParagraphElement
+		case "picture": return JS_IFACE_HTMLPictureElement
+		case "pre": return JS_IFACE_HTMLPreElement
+		case "progress": return JS_IFACE_HTMLProgressElement
+		case "plaintext": return JS_IFACE_HTMLElement
+		case "param": return JS_IFACE_HTMLParamElement
+		}
+	case 'q':
+		switch name {
+		case "q": return JS_IFACE_HTMLQuoteElement
+		}
+	case 'r':
+		switch name {
+		case "rp": return JS_IFACE_HTMLElement
+		case "rt": return JS_IFACE_HTMLElement
+		case "ruby": return JS_IFACE_HTMLElement
+		case "rb": return JS_IFACE_HTMLElement
+		case "rtc": return JS_IFACE_HTMLElement
+		}
+	case 's':
+		switch name {
+		case "s": return JS_IFACE_HTMLElement
+		case "samp": return JS_IFACE_HTMLElement
+		case "search": return JS_IFACE_HTMLElement
+		case "section": return JS_IFACE_HTMLElement
+		case "script": return JS_IFACE_HTMLScriptElement
+		case "select": return JS_IFACE_HTMLSelectElement
+		case "slot": return JS_IFACE_HTMLSlotElement
+		case "small": return JS_IFACE_HTMLElement
+		case "source": return JS_IFACE_HTMLSourceElement
+		case "span": return JS_IFACE_HTMLSpanElement
+		case "strong": return JS_IFACE_HTMLElement
+		case "style": return JS_IFACE_HTMLStyleElement
+		case "sub": return JS_IFACE_HTMLElement
+		case "summary": return JS_IFACE_HTMLElement
+		case "sup": return JS_IFACE_HTMLElement
+		case "strike": return JS_IFACE_HTMLElement
+		case "spacer": return JS_IFACE_HTMLUnknownElement
+		}
+	case 't':
+		switch name {
+		case "table": return JS_IFACE_HTMLTableElement
+		case "tbody": return JS_IFACE_HTMLTableSectionElement
+		case "td": return JS_IFACE_HTMLTableCellElement
+		case "template": return JS_IFACE_HTMLTemplateElement
+		case "textarea": return JS_IFACE_HTMLTextAreaElement
+		case "tfoot": return JS_IFACE_HTMLTableSectionElement
+		case "th": return JS_IFACE_HTMLTableCellElement
+		case "thead": return JS_IFACE_HTMLTableSectionElement
+		case "time": return JS_IFACE_HTMLTimeElement
+		case "title": return JS_IFACE_HTMLTitleElement
+		case "tr": return JS_IFACE_HTMLTableRowElement
+		case "track": return JS_IFACE_HTMLTrackElement
+		case "tt": return JS_IFACE_HTMLElement
+		}
+	case 'u':
+		switch name {
+		case "u": return JS_IFACE_HTMLElement
+		case "ul": return JS_IFACE_HTMLUListElement
+		}
+	case 'v':
+		switch name {
+		case "var": return JS_IFACE_HTMLElement
+		case "video": return JS_IFACE_HTMLVideoElement
+		}
+	case 'w':
+		switch name {
+		case "wbr": return JS_IFACE_HTMLElement
+		}
+	case 'x':
+		switch name {
+		case "xmp": return JS_IFACE_HTMLPreElement
+		}
 	}
 	for c in name { if c == '-' { return JS_IFACE_HTMLElement } }
 	return JS_IFACE_HTMLUnknownElement
@@ -795,70 +863,116 @@ js_html_interface :: proc(name: string) -> u32 {
 
 // The interface of an SVG element by its lower-case local name (SVGElement for the others).
 js_svg_interface :: proc(name: string) -> u32 {
-	switch name {
-	case "svg": return JS_IFACE_SVGSVGElement
-	case "g": return JS_IFACE_SVGGElement
-	case "defs": return JS_IFACE_SVGDefsElement
-	case "desc": return JS_IFACE_SVGDescElement
-	case "title": return JS_IFACE_SVGTitleElement
-	case "metadata": return JS_IFACE_SVGMetadataElement
-	case "symbol": return JS_IFACE_SVGSymbolElement
-	case "use": return JS_IFACE_SVGUseElement
-	case "switch": return JS_IFACE_SVGSwitchElement
-	case "path": return JS_IFACE_SVGPathElement
-	case "rect": return JS_IFACE_SVGRectElement
-	case "circle": return JS_IFACE_SVGCircleElement
-	case "ellipse": return JS_IFACE_SVGEllipseElement
-	case "line": return JS_IFACE_SVGLineElement
-	case "polyline": return JS_IFACE_SVGPolylineElement
-	case "polygon": return JS_IFACE_SVGPolygonElement
-	case "text": return JS_IFACE_SVGTextElement
-	case "tspan": return JS_IFACE_SVGTSpanElement
-	case "textpath": return JS_IFACE_SVGTextPathElement
-	case "image": return JS_IFACE_SVGImageElement
-	case "foreignobject": return JS_IFACE_SVGForeignObjectElement
-	case "marker": return JS_IFACE_SVGMarkerElement
-	case "lineargradient": return JS_IFACE_SVGLinearGradientElement
-	case "radialgradient": return JS_IFACE_SVGRadialGradientElement
-	case "stop": return JS_IFACE_SVGStopElement
-	case "pattern": return JS_IFACE_SVGPatternElement
-	case "clippath": return JS_IFACE_SVGClipPathElement
-	case "mask": return JS_IFACE_SVGMaskElement
-	case "filter": return JS_IFACE_SVGFilterElement
-	case "a": return JS_IFACE_SVGAElement
-	case "view": return JS_IFACE_SVGViewElement
-	case "script": return JS_IFACE_SVGScriptElement
-	case "style": return JS_IFACE_SVGStyleElement
-	case "animate": return JS_IFACE_SVGAnimateElement
-	case "set": return JS_IFACE_SVGSetElement
-	case "animatemotion": return JS_IFACE_SVGAnimateMotionElement
-	case "animatetransform": return JS_IFACE_SVGAnimateTransformElement
-	case "mpath": return JS_IFACE_SVGMPathElement
-	case "feblend": return JS_IFACE_SVGFEBlendElement
-	case "fecolormatrix": return JS_IFACE_SVGFEColorMatrixElement
-	case "fecomposite": return JS_IFACE_SVGFECompositeElement
-	case "feflood": return JS_IFACE_SVGFEFloodElement
-	case "fegaussianblur": return JS_IFACE_SVGFEGaussianBlurElement
-	case "feimage": return JS_IFACE_SVGFEImageElement
-	case "femerge": return JS_IFACE_SVGFEMergeElement
-	case "femergenode": return JS_IFACE_SVGFEMergeNodeElement
-	case "feoffset": return JS_IFACE_SVGFEOffsetElement
-	case "fedropshadow": return JS_IFACE_SVGFEDropShadowElement
-	case "feturbulence": return JS_IFACE_SVGFETurbulenceElement
-	case "femorphology": return JS_IFACE_SVGFEMorphologyElement
-	case "fetile": return JS_IFACE_SVGFETileElement
-	case "fecomponenttransfer": return JS_IFACE_SVGFEComponentTransferElement
-	case "fefunca": return JS_IFACE_SVGFEFuncAElement
-	case "fefuncr": return JS_IFACE_SVGFEFuncRElement
-	case "fefuncg": return JS_IFACE_SVGFEFuncGElement
-	case "fefuncb": return JS_IFACE_SVGFEFuncBElement
-	case "fediffuselighting": return JS_IFACE_SVGFEDiffuseLightingElement
-	case "fespecularlighting": return JS_IFACE_SVGFESpecularLightingElement
-	case "fedistantlight": return JS_IFACE_SVGFEDistantLightElement
-	case "fepointlight": return JS_IFACE_SVGFEPointLightElement
-	case "fespotlight": return JS_IFACE_SVGFESpotLightElement
-	case "feconvolvematrix": return JS_IFACE_SVGFEConvolveMatrixElement
-	case "fedisplacementmap": return JS_IFACE_SVGFEDisplacementMapElement
+	if len(name) == 0 { return JS_IFACE_SVGElement }
+	switch name[0] {
+	case 's':
+		switch name {
+		case "svg": return JS_IFACE_SVGSVGElement
+		case "symbol": return JS_IFACE_SVGSymbolElement
+		case "switch": return JS_IFACE_SVGSwitchElement
+		case "stop": return JS_IFACE_SVGStopElement
+		case "script": return JS_IFACE_SVGScriptElement
+		case "style": return JS_IFACE_SVGStyleElement
+		case "set": return JS_IFACE_SVGSetElement
+		}
+	case 'g':
+		switch name {
+		case "g": return JS_IFACE_SVGGElement
+		}
+	case 'd':
+		switch name {
+		case "defs": return JS_IFACE_SVGDefsElement
+		case "desc": return JS_IFACE_SVGDescElement
+		}
+	case 't':
+		switch name {
+		case "title": return JS_IFACE_SVGTitleElement
+		case "text": return JS_IFACE_SVGTextElement
+		case "tspan": return JS_IFACE_SVGTSpanElement
+		case "textpath": return JS_IFACE_SVGTextPathElement
+		}
+	case 'm':
+		switch name {
+		case "metadata": return JS_IFACE_SVGMetadataElement
+		case "marker": return JS_IFACE_SVGMarkerElement
+		case "mask": return JS_IFACE_SVGMaskElement
+		case "mpath": return JS_IFACE_SVGMPathElement
+		}
+	case 'u':
+		switch name {
+		case "use": return JS_IFACE_SVGUseElement
+		}
+	case 'p':
+		switch name {
+		case "path": return JS_IFACE_SVGPathElement
+		case "polyline": return JS_IFACE_SVGPolylineElement
+		case "polygon": return JS_IFACE_SVGPolygonElement
+		case "pattern": return JS_IFACE_SVGPatternElement
+		}
+	case 'r':
+		switch name {
+		case "rect": return JS_IFACE_SVGRectElement
+		case "radialgradient": return JS_IFACE_SVGRadialGradientElement
+		}
+	case 'c':
+		switch name {
+		case "circle": return JS_IFACE_SVGCircleElement
+		case "clippath": return JS_IFACE_SVGClipPathElement
+		}
+	case 'e':
+		switch name {
+		case "ellipse": return JS_IFACE_SVGEllipseElement
+		}
+	case 'l':
+		switch name {
+		case "line": return JS_IFACE_SVGLineElement
+		case "lineargradient": return JS_IFACE_SVGLinearGradientElement
+		}
+	case 'i':
+		switch name {
+		case "image": return JS_IFACE_SVGImageElement
+		}
+	case 'f':
+		switch name {
+		case "foreignobject": return JS_IFACE_SVGForeignObjectElement
+		case "filter": return JS_IFACE_SVGFilterElement
+		case "feblend": return JS_IFACE_SVGFEBlendElement
+		case "fecolormatrix": return JS_IFACE_SVGFEColorMatrixElement
+		case "fecomposite": return JS_IFACE_SVGFECompositeElement
+		case "feflood": return JS_IFACE_SVGFEFloodElement
+		case "fegaussianblur": return JS_IFACE_SVGFEGaussianBlurElement
+		case "feimage": return JS_IFACE_SVGFEImageElement
+		case "femerge": return JS_IFACE_SVGFEMergeElement
+		case "femergenode": return JS_IFACE_SVGFEMergeNodeElement
+		case "feoffset": return JS_IFACE_SVGFEOffsetElement
+		case "fedropshadow": return JS_IFACE_SVGFEDropShadowElement
+		case "feturbulence": return JS_IFACE_SVGFETurbulenceElement
+		case "femorphology": return JS_IFACE_SVGFEMorphologyElement
+		case "fetile": return JS_IFACE_SVGFETileElement
+		case "fecomponenttransfer": return JS_IFACE_SVGFEComponentTransferElement
+		case "fefunca": return JS_IFACE_SVGFEFuncAElement
+		case "fefuncr": return JS_IFACE_SVGFEFuncRElement
+		case "fefuncg": return JS_IFACE_SVGFEFuncGElement
+		case "fefuncb": return JS_IFACE_SVGFEFuncBElement
+		case "fediffuselighting": return JS_IFACE_SVGFEDiffuseLightingElement
+		case "fespecularlighting": return JS_IFACE_SVGFESpecularLightingElement
+		case "fedistantlight": return JS_IFACE_SVGFEDistantLightElement
+		case "fepointlight": return JS_IFACE_SVGFEPointLightElement
+		case "fespotlight": return JS_IFACE_SVGFESpotLightElement
+		case "feconvolvematrix": return JS_IFACE_SVGFEConvolveMatrixElement
+		case "fedisplacementmap": return JS_IFACE_SVGFEDisplacementMapElement
+		}
+	case 'a':
+		switch name {
+		case "a": return JS_IFACE_SVGAElement
+		case "animate": return JS_IFACE_SVGAnimateElement
+		case "animatemotion": return JS_IFACE_SVGAnimateMotionElement
+		case "animatetransform": return JS_IFACE_SVGAnimateTransformElement
+		}
+	case 'v':
+		switch name {
+		case "view": return JS_IFACE_SVGViewElement
+		}
 	}
 	return JS_IFACE_SVGElement
 }

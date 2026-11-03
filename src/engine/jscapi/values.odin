@@ -65,9 +65,10 @@ js_malloc_usable_size :: proc "c" (ptr: rawptr) -> uint {return 0}
 // ---- reference counting ----
 
 JS_DupValue :: proc "c" (c: ^Context, v: JSValue) -> JSValue {
-	context = api_ctx()
-	dv := dec(v)
-	if js.is_heap(dv) {js.ext_ref(jctx(c).rt, js.as_cell(dv))}
+	if cell := cell_of(v); cell != nil {
+		context = api_ctx()
+		js.ext_ref(jctx(c).rt, cell)
+	}
 	return v
 }
 
