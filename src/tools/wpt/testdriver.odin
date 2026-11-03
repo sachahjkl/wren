@@ -28,11 +28,6 @@ DRIVER_DONE :: "__wrenTestdriverDone(null);"
 @(private = "file") WD_KEY_FIRST :: 0xE000
 @(private = "file") WD_KEY_LAST :: 0xE05D
 
-// dom.Event.mods: the shell's bits (forms_shell.odin dom_mods).
-@(private = "file") MOD_CTRL :: 1
-@(private = "file") MOD_SHIFT :: 2
-@(private = "file") MOD_ALT :: 4
-
 // MouseEvent.buttons of a MouseEvent.button: primary 1, auxiliary 4, secondary 2.
 @(private = "file") BUTTON_BITS :: [3]u16{1, 4, 2}
 
@@ -261,9 +256,10 @@ key_info :: proc(value: string) -> Key_Info {
 	case 0xE003: return {code = 8, name = "Backspace", forms_key = .Backspace}
 	case 0xE004: return {code = 9, name = "Tab", forms_key = .Tab}
 	case 0xE006, 0xE007: return {code = 13, name = "Enter", forms_key = .Enter}
-	case 0xE008, 0xE050: return {code = 16, name = "Shift", mod = MOD_SHIFT}
-	case 0xE009, 0xE051: return {code = 17, name = "Control", mod = MOD_CTRL}
-	case 0xE00A, 0xE052: return {code = 18, name = "Alt", mod = MOD_ALT}
+	case 0xE008, 0xE050: return {code = 16, name = "Shift", mod = dom.MOD_SHIFT}
+	case 0xE009, 0xE051: return {code = 17, name = "Control", mod = dom.MOD_CTRL}
+	case 0xE03D, 0xE053: return {code = 91, name = "Meta", mod = dom.MOD_META}
+	case 0xE00A, 0xE052: return {code = 18, name = "Alt", mod = dom.MOD_ALT}
 	case 0xE00C: return {code = 27, name = "Escape", forms_key = .Escape}
 	case 0xE00D: return {code = 32, name = " ", forms_key = .Space, text = " "}
 	case 0xE00E: return {code = 33, name = "PageUp", forms_key = .Page_Up}
@@ -298,9 +294,9 @@ key :: proc(p: ^page.Page, dr: ^Driver, value: string, down: bool) {
 	ev := dom.Event{type = down ? "keydown" : "keyup", bubbles = true, cancelable = true, composed = true, key = k.code, text = k.name, mods = dr.mods}
 	if !page.dispatch_event(p, target, ev) || !down || p.closed || f == nil { return }
 	mods: forms.Mods
-	if dr.mods & MOD_CTRL != 0 { mods += {.Ctrl} }
-	if dr.mods & MOD_SHIFT != 0 { mods += {.Shift} }
-	if dr.mods & MOD_ALT != 0 { mods += {.Alt} }
+	if dr.mods & dom.MOD_CTRL != 0 { mods += {.Ctrl} }
+	if dr.mods & dom.MOD_SHIFT != 0 { mods += {.Shift} }
+	if dr.mods & dom.MOD_ALT != 0 { mods += {.Alt} }
 	if k.forms_key == .Tab && .Ctrl not_in mods && .Alt not_in mods {
 		forms.focus_next(f, .Shift in mods ? -1 : 1, rendered, p)
 		return
