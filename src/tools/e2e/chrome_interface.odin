@@ -1,15 +1,18 @@
 package e2e_scenarios
 
-// The interface as a whole with no browser around it (chrome_world.odin): its own zoom, the developer tools docked at their size, the main menu over the window's edge, the themes, a row's menu over the downloads drop-down.
+// The interface as a whole with no browser around it (chrome_world.odin): its own zoom, the developer tools docked at their size, the main menu over the window's edge, the themes, the history tree's text through a zoom, a row's menu over the downloads drop-down.
 
 import "core:fmt"
 import "core:strings"
 import "core:testing"
+import "toolkit:draw"
 import session "toolkit:testkit/session"
 import "toolkit:platform"
+import "toolkit:render"
 import "toolkit:ui"
 import "wb:browser"
 import "wb:config"
+import "wb:page"
 
 @(private = "file") ZOOM_SIZE :: [2]int{1000, 600}
 @(private = "file") ZOOM_PREF :: "browser.ui.zoom"
@@ -138,6 +141,59 @@ chrome_themes_paint_from_their_palettes :: proc(t: ^testing.T) {
 }
 @(private = "file") THEME_SETTLES :: 30      // frames: a palette's colours cross-fade
 @(private = "file") STATUS_BAR_INSIDE :: 6   // px from the bottom: in the status bar, away from its text
+
+// about:history's tree zoomed by its + key: frame by frame through the animation, the nodes' titles are drawn at the size the zoom gives them
+// (the interface's em times the camera's zoom), growing with the nodes. They once kept a size of the 8 % steps text is laid out at, then jumped.
+@(test)
+chrome_history_tree_text_follows_the_zoom :: proc(t: ^testing.T) {
+	ENTRIES :: 3
+	SIZE_WITHIN :: 0.01   // of the size the zoom gives
+	w := chrome_start(t, {pixels = true, prefs = {"browser.ui.animations=on"}, tabs = {"history"}})
+	app := w.app
+	app.tcfg = browser.tree_settings_from_prefs(&app.prefs)
+	tab := w.wnd.tabs[0]
+	tab.kind = .History
+	for i in 0 ..< ENTRIES { page.session_push(&tab.session, fmt.tprintf("https://site%d.test/", i), 0) }
+	app.hview.mode, app.hview.tree_tab = 1, tab.id
+	defer browser.history_tree_destroy()
+	defer page.session_destroy(&tab.session)
+	chrome_still(w)
+	testing.expect(t, app.tview.cam_ok && !app.tview.going, "the tree has its camera")
+	z0 := app.tview.cam.zoom
+	em := title_px(w) / z0
+	testing.expect(t, em > 0, "the titles are drawn")
+
+	session.event(w.s, {kind = .Key_Press, key = .Equal})
+	session.event(w.s, {kind = .Key_Release, key = .Equal})
+	session.frame(w.s)
+	testing.expect(t, app.tview.going, "+ zooms in, animated")
+	prev := em * z0
+	moving := 0
+	for app.tview.going {
+		session.frame(w.s)
+		want := em * app.tview.cam.zoom
+		got := title_px(w)
+		testing.expectf(t, abs(got - want) <= want * SIZE_WITHIN, "frame %d: the titles at %v px, the zoom gives %v", w.s.frames, got, want)
+		testing.expectf(t, got >= prev, "frame %d: the titles grow with the zoom: %v after %v", w.s.frames, got, prev)
+		if got > prev { moving += 1 }
+		prev = got
+	}
+	testing.expectf(t, app.tview.cam.zoom > z0 && moving > 1, "the zoom went from %v to %v, the titles grew in %d frames", z0, app.tview.cam.zoom, moving)
+}
+
+// The largest text the last frame drew in the history tree's canvas (Slug glyphs: their em in pixels), out of its controls' bar: the nodes' titles.
+@(private = "file")
+title_px :: proc(w: ^Chrome_World) -> (px: f32) {
+	view := w.app.tview.view_rect
+	bar := draw.Rect{view.min + w.app.tview.controls.min, view.min + w.app.tview.controls.max}
+	for inst in w.app.dc.insts {
+		if inst.use_tex != render.KIND_SLUG || inst.src[3] <= inst.src[1] { continue }
+		at := [2]f32{inst.dst[0], inst.dst[1]}
+		if !draw.rect_contains(view, at) || draw.rect_contains(bar, at) { continue }
+		px = max(px, (inst.dst[3] - inst.dst[1]) / (inst.src[3] - inst.src[1]))
+	}
+	return
+}
 
 @(private = "file") ROW_ID :: 1
 @(private = "file") ROW_URL :: "https://files.test/report.pdf"

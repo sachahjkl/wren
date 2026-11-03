@@ -7,8 +7,8 @@ package browser
 //     moving glides on a little (browser.history.tree_inertia);
 //   * zoom: Ctrl+wheel (and a touchpad's pinch, which Windows sends as one) around the pointer, Ctrl+Plus / Minus / 0
 //     and + / - / 0 while the canvas has the keyboard, the "−  100 %  +" buttons; "Fit" shows the whole tree, "Current"
-//     centers the tab's current entry. Text is laid out again at each zoom (sharp, never a stretched bitmap) and nodes
-//     simplify as they get small: icon and title, then the icon alone, then a plain block;
+//     centers the tab's current entry. Text follows the zoom, frame by frame (text_size_step), and nodes simplify as
+//     they get small: icon and title, then the icon alone, then a plain block;
 //   * two layouts: horizontal (the root on the left, time going right, branches below) and vertical (the root at the
 //     top, time going down, branches to the right), switched by the toolbar's control or L, remembered in
 //     browser.history.tree_layout; the nodes slide to their new places (not when Windows' animations are off);
@@ -264,7 +264,8 @@ tree_cull :: proc(nodes: []Tree_Node, l: Tree_Layout, lo, hi: [2]f32, out: ^[dyn
 
 // The font size text is laid out at for an ideal size `px`: steps of about 8 % from `base` (the size at a zoom of 1,
 // which is thus exact), never above the ideal, in whole pixels. Each size is rasterized once; during a zoom the steps
-// keep that to a few dozen sizes instead of one per pixel.
+// keep that to a few dozen sizes instead of one per pixel. tree_draw scales the text from its step to the ideal size: Slug
+// outlines stay sharp, bitmaps stretch (within draw.TEXT_RASTER_TOLERANCE, past it the toolkit rasterizes the screen's size).
 text_size_step :: proc(px, base: f32) -> f32 {
 	if px <= 0 || base <= 0 { return 1 }
 	k := math.floor(math.ln(px / base) / math.ln(f32(1.08)) + 0.001)
@@ -477,6 +478,14 @@ fit_text :: proc(fonts: ^font.State, id: font.Font_Id, size: f32, s: string, ava
 	return strings.concatenate({s[:end], ell}, context.temp_allocator)
 }
 
+// Text laid out at `size` with its pen at `pos`, drawn `k` times larger around it.
+@(private = "file")
+scaled_text :: proc(dc: ^draw.Context, face: font.Font_Id, size, k: f32, pos: [2]f32, color: draw.Color, s: string) {
+	draw.push_scale(dc, pos, k)
+	draw.text(dc, face, size, pos, color, s)
+	draw.pop_xform(dc)
+}
+
 @(private = "file")
 tree_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Tree_Draw)(user)
@@ -531,11 +540,14 @@ tree_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		}
 	}
 
-	// nodes
+	// nodes: text laid out at a step (fs), drawn scaled by k to the zoom's size (a zoom's text grows with its nodes)
 	fs := text_size_step(s, d.em)
 	fs2 := text_size_step(s * 0.8, d.em * 0.8)
+	k1, k2 := s / fs, s * 0.8 / fs2
 	m1 := font.metrics(d.fonts, d.face, fs)
 	m2 := font.metrics(d.fonts, d.face, fs2)
+	m1.ascent, m1.descent, m1.line_height = m1.ascent * k1, m1.descent * k1, m1.line_height * k1
+	m2.ascent, m2.line_height = m2.ascent * k2, m2.line_height * k2
 	radius := detail == .Block ? min(0.35 * s, 2 * d.scale) : 0.35 * s * d.rounding
 	bw := max(1, math.round(d.scale))
 	for n in m.nodes {
@@ -570,15 +582,15 @@ tree_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		if detail == .Icon { if fade { draw.pop_alpha(dc) }; continue }
 		tx := x + icon + 0.4 * s
 		avail := r.max.x - 0.45 * s - tx
-		title := fit_text(d.fonts, d.face, fs, entry_label(e), avail)
+		title := fit_text(d.fonts, d.face, fs, entry_label(e), avail / k1)
 		if detail == .Title {
-			draw.text(dc, d.face, fs, {math.round(tx), math.round(cy + (m1.ascent - m1.descent) * 0.5)}, col.text, title)
+			scaled_text(dc, d.face, fs, k1, {math.round(tx), math.round(cy + (m1.ascent - m1.descent) * 0.5)}, col.text, title)
 		} else {
 			top := r.min.y + (h - (m1.line_height + m2.line_height)) * 0.5
-			draw.text(dc, d.face, fs, {math.round(tx), math.round(top + m1.ascent)}, col.text, title)
+			scaled_text(dc, d.face, fs, k1, {math.round(tx), math.round(top + m1.ascent)}, col.text, title)
 			lt := local_time(e.visited_ms != 0 ? e.visited_ms : e.created_ms)
-			sub := fit_text(d.fonts, d.face, fs2, fmt.tprintf("%02d:%02d  \u00b7  %s", lt.hour, lt.minute, address_host(e.url)), avail)
-			draw.text(dc, d.face, fs2, {math.round(tx), math.round(top + m1.line_height + m2.ascent)}, col.sub, sub)
+			sub := fit_text(d.fonts, d.face, fs2, fmt.tprintf("%02d:%02d  \u00b7  %s", lt.hour, lt.minute, address_host(e.url)), avail / k2)
+			scaled_text(dc, d.face, fs2, k2, {math.round(tx), math.round(top + m1.line_height + m2.ascent)}, col.sub, sub)
 		}
 		if fade { draw.pop_alpha(dc) }
 	}
