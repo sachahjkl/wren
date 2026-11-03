@@ -2257,9 +2257,9 @@
 	DocumentType: non-empty public and system id: PASS
 	Element: href attributes are not percent-encoded: PASS
 	Element: query parts in href attributes are not percent-encoded: PASS
-	ProcessingInstruction: empty data: FAIL
-	ProcessingInstruction: non-empty data: FAIL
-	ProcessingInstruction: target contains a 'COLON' (U+003A): FAIL
-	ProcessingInstruction: target contains xml: FAIL
+	ProcessingInstruction: empty data: PASS
+	ProcessingInstruction: non-empty data: PASS
+	ProcessingInstruction: target contains a 'COLON' (U+003A): PASS
+	ProcessingInstruction: target contains xml: PASS
 /domparsing/xmldomparser.html: OK
 	XML Dom Parse readyState Test: FAIL

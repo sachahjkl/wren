@@ -37,6 +37,16 @@ links_of_a_document_in_a_legacy_encoding :: proc(t: ^testing.T) {
 	dom.append_child(p.doc, own, a)
 	u, ok = resolve_link(p, "x?q=日", a)
 	testing.expect_value(t, u.href, "http://example.test/b/x?q=%E6%97%A5")
+	// taken out of it, it stays that document's (DOM "node document"): still UTF-8; inserted in the page, the page's
+	dom.remove_child(p.doc, own, a)
+	testing.expect_value(t, node_document(p, a), own)
+	u, ok = resolve_link(p, "x?q=日", a)
+	testing.expect_value(t, u.href, "http://example.test/b/x?q=%E6%97%A5")
+	dom.append_child(p.doc, p.body, a)
+	dom.remove_child(p.doc, p.body, a)
+	testing.expect_value(t, node_document(p, a), p.doc.root)
+	u, ok = resolve_link(p, "x?q=日", a)
+	testing.expect_value(t, u.href, "http://example.test/b/x?q=%93%FA")
 
 	load_html(p, transmute([]byte)string("<p>utf-8"))
 	testing.expect_value(t, document_encoding(p), "UTF-8")

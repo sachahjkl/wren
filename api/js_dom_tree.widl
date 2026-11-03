@@ -121,10 +121,16 @@ partial module dom {
   Node Document_createComment(string data) raises;
   /// document.createCDATASection(data): Not_Supported (an HTML document).
   Node Document_createCDATASection(string data) raises;
-  /// document.adoptNode(node): removed from its parent (one document per page). Not_Supported for the document.
-  Node Document_adoptNode(Node node) raises;
-  /// document.documentURI
-  string Document_documentURI();
+  /// document.createProcessingInstruction(target, data): Invalid_Character when `target` is not an XML Name or `data`
+  /// contains "?>".
+  Node Document_createProcessingInstruction(string target, string data) raises;
+  /// document.adoptNode(node) (DOM "adopt"): removed from its parent, it and its shadow-including descendants get
+  /// `document` (the page's, or a document of its own) as node document. Not_Supported for a document, Hierarchy for a
+  /// shadow root. What the glue does too to what a document of its own makes (createElement, importNode).
+  Node Document_adoptNode(Node document, Node node) raises;
+  /// document.documentURI (and document.URL) of `document`: about:blank for a document of its own createHTMLDocument,
+  /// createDocument or parseHTMLUnsafe made, else the page's URL (DOMParser's documents have their creator's).
+  string Document_documentURI(Node document);
   /// document.compatMode: "CSS1Compat" or "BackCompat".
   string Document_compatMode();
   /// document.characterSet

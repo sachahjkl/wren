@@ -1658,7 +1658,7 @@ wjg_Node_cloneNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i3
 wjg_Node_isEqualNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 245)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Node.isEqualNode", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Node.isEqualNode", 1, argc) }
 	a0: u64
 	if !wj.wj_to_handle(ctx, wj.arg(argc, argv, 0), 245, true, &a0, "Node.isEqualNode: argument 1 is not of type 'Node'") { return wj.EXCEPTION }
 	r := wj.wr_Node_isEqualNode(self.handle, a0)
@@ -1669,7 +1669,7 @@ wjg_Node_isEqualNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: 
 wjg_Node_isSameNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 245)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Node.isSameNode", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Node.isSameNode", 1, argc) }
 	a0: u64
 	if !wj.wj_to_handle(ctx, wj.arg(argc, argv, 0), 245, true, &a0, "Node.isSameNode: argument 1 is not of type 'Node'") { return wj.EXCEPTION }
 	r := wj.wr_Node_isSameNode(self.handle, a0)
@@ -1680,7 +1680,7 @@ wjg_Node_isSameNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 wjg_Node_compareDocumentPosition :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 245)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Node.compareDocumentPosition", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Node.compareDocumentPosition", 1, argc) }
 	a0: u64
 	if !wj.wj_to_handle(ctx, wj.arg(argc, argv, 0), 245, false, &a0, "Node.compareDocumentPosition: argument 1 is not of type 'Node'") { return wj.EXCEPTION }
 	r := wj.wr_Node_compareDocumentPosition(self.handle, a0)
@@ -1691,7 +1691,7 @@ wjg_Node_compareDocumentPosition :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 wjg_Node_contains :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 245)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Node.contains", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Node.contains", 1, argc) }
 	a0: u64
 	if !wj.wj_to_handle(ctx, wj.arg(argc, argv, 0), 245, true, &a0, "Node.contains: argument 1 is not of type 'Node'") { return wj.EXCEPTION }
 	r := wj.wr_Node_contains(self.handle, a0)
@@ -1702,7 +1702,7 @@ wjg_Node_contains :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32
 wjg_Node_lookupPrefix :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 245)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Node.lookupPrefix", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Node.lookupPrefix", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW | wj.STR_NULLABLE, "") { return wj.EXCEPTION }
 	n := i32(wj.wr_Node_lookupPrefix(self.handle, a0.ptr, (u32(a0.len) if a0.ptr != nil else wj.WR_ABSENT), wj.wj_scratch.data, wj.wj_scratch.cap))
@@ -1719,7 +1719,7 @@ wjg_Node_lookupPrefix :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc:
 wjg_Node_lookupNamespaceURI :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 245)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Node.lookupNamespaceURI", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Node.lookupNamespaceURI", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW | wj.STR_NULLABLE, "") { return wj.EXCEPTION }
 	n := i32(wj.wr_Node_lookupNamespaceURI(self.handle, a0.ptr, (u32(a0.len) if a0.ptr != nil else wj.WR_ABSENT), wj.wj_scratch.data, wj.wj_scratch.cap))
@@ -1736,7 +1736,7 @@ wjg_Node_lookupNamespaceURI :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue,
 wjg_Node_isDefaultNamespace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 245)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Node.isDefaultNamespace", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Node.isDefaultNamespace", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW | wj.STR_NULLABLE, "") { return wj.EXCEPTION }
 	r := wj.wr_Node_isDefaultNamespace(self.handle, a0.ptr, (u32(a0.len) if a0.ptr != nil else wj.WR_ABSENT))
@@ -1779,7 +1779,7 @@ wjg_CharacterData_get_length :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 wjg_CharacterData_substringData :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 247)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 2 { return wj.wj_throw_arity(ctx, "CharacterData.substringData", 2, argc) }
+	if argc < 2 { return throw_arity_of(ctx, self.handle, "CharacterData.substringData", 2, argc) }
 	a0: u32 = 0
 	if !wj.wj_to_uint32(ctx, wj.arg(argc, argv, 0), &a0, 32, 0) { return wj.EXCEPTION }
 	a1: u32 = 0
@@ -1796,7 +1796,7 @@ wjg_CharacterData_substringData :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 wjg_CharacterData_appendData :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 247)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "CharacterData.appendData", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "CharacterData.appendData", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	wj.wr_CharacterData_appendData(self.handle, (a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len))
@@ -1808,7 +1808,7 @@ wjg_CharacterData_appendData :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 wjg_CharacterData_insertData :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 247)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 2 { return wj.wj_throw_arity(ctx, "CharacterData.insertData", 2, argc) }
+	if argc < 2 { return throw_arity_of(ctx, self.handle, "CharacterData.insertData", 2, argc) }
 	a0: u32 = 0
 	if !wj.wj_to_uint32(ctx, wj.arg(argc, argv, 0), &a0, 32, 0) { return wj.EXCEPTION }
 	a1: wj.Str
@@ -1823,7 +1823,7 @@ wjg_CharacterData_insertData :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 wjg_CharacterData_deleteData :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 247)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 2 { return wj.wj_throw_arity(ctx, "CharacterData.deleteData", 2, argc) }
+	if argc < 2 { return throw_arity_of(ctx, self.handle, "CharacterData.deleteData", 2, argc) }
 	a0: u32 = 0
 	if !wj.wj_to_uint32(ctx, wj.arg(argc, argv, 0), &a0, 32, 0) { return wj.EXCEPTION }
 	a1: u32 = 0
@@ -1837,7 +1837,7 @@ wjg_CharacterData_deleteData :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 wjg_CharacterData_replaceData :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 247)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 3 { return wj.wj_throw_arity(ctx, "CharacterData.replaceData", 3, argc) }
+	if argc < 3 { return throw_arity_of(ctx, self.handle, "CharacterData.replaceData", 3, argc) }
 	a0: u32 = 0
 	if !wj.wj_to_uint32(ctx, wj.arg(argc, argv, 0), &a0, 32, 0) { return wj.EXCEPTION }
 	a1: u32 = 0
@@ -1890,7 +1890,7 @@ wjg_ProcessingInstruction_get_target :: proc "c" (ctx: ^wj.Context, this_val: wj
 wjg_Text_splitText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 250)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Text.splitText", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Text.splitText", 1, argc) }
 	a0: u32 = 0
 	if !wj.wj_to_uint32(ctx, wj.arg(argc, argv, 0), &a0, 32, 0) { return wj.EXCEPTION }
 	r: u64
@@ -1924,7 +1924,7 @@ wjg_Document_elementFromPoint :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
-	if argc < 2 { return wj.wj_throw_arity(ctx, "Document.elementFromPoint", 2, argc) }
+	if argc < 2 { return throw_arity_of(ctx, self.handle, "Document.elementFromPoint", 2, argc) }
 	a0: f64 = 0
 	if !wj.wj_to_double(ctx, wj.arg(argc, argv, 0), &a0, true) { return wj.EXCEPTION }
 	a1: f64 = 0
@@ -1944,29 +1944,13 @@ wjg_Document_get_scrollingElement :: proc "c" (ctx: ^wj.Context, this_val: wj.JS
 	return wj.wj_wrap_node(ctx, r)
 }
 
-// Document.URL -> document.Document_URL
-wjg_Document_get_URL :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
-	self := wj.wj_this(ctx, this_val, 252)
-	if self == nil { return wj.EXCEPTION }
-	_ = self
-	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
-	n := i32(wj.wr_Document_URL(wj.wj_scratch.data, wj.wj_scratch.cap))
-	if n > 0 && u32(n) > wj.wj_scratch.cap {
-		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_URL(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
-	}
-	if n < 0 { return wj.wj_throw_status(ctx, n, "Document.URL") }
-	return wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n))
-}
-
 // Document.documentURI -> dom.Document_documentURI
 wjg_Document_get_documentURI :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
-	_ = self
-	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
-	n := i32(wj.wr_Document_documentURI(wj.wj_scratch.data, wj.wj_scratch.cap))
+	n := i32(wj.wr_Document_documentURI(self.handle, wj.wj_scratch.data, wj.wj_scratch.cap))
 	if n > 0 && u32(n) > wj.wj_scratch.cap {
-		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_documentURI(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
+		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_documentURI(self.handle, wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
 	}
 	if n < 0 { return wj.wj_throw_status(ctx, n, "Document.documentURI") }
 	return wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n))
@@ -2003,7 +1987,7 @@ wjg_Document_createTextNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue,
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Document.createTextNode", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Document.createTextNode", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	if !wj.wj_doc_target(self.handle) { wj.wj_str_free(ctx, &a0); return wj.wj_throw_gone(ctx) }
@@ -2019,7 +2003,7 @@ wjg_Document_createCDATASection :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Document.createCDATASection", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Document.createCDATASection", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	if !wj.wj_doc_target(self.handle) { wj.wj_str_free(ctx, &a0); return wj.wj_throw_gone(ctx) }
@@ -2035,7 +2019,7 @@ wjg_Document_createComment :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Document.createComment", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Document.createComment", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	if !wj.wj_doc_target(self.handle) { wj.wj_str_free(ctx, &a0); return wj.wj_throw_gone(ctx) }
@@ -2046,12 +2030,30 @@ wjg_Document_createComment :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 	return wj.wj_wrap_node(ctx, r)
 }
 
+// Document.createProcessingInstruction() -> dom.Document_createProcessingInstruction
+wjg_Document_createProcessingInstruction :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	self := wj.wj_this(ctx, this_val, 252)
+	if self == nil { return wj.EXCEPTION }
+	_ = self
+	if argc < 2 { return throw_arity_of(ctx, self.handle, "Document.createProcessingInstruction", 2, argc) }
+	a0: wj.Str
+	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, 0, "") { return wj.EXCEPTION }
+	a1: wj.Str
+	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 1), &a1, 0, "") { wj.wj_str_free(ctx, &a0); return wj.EXCEPTION }
+	if !wj.wj_doc_target(self.handle) { wj.wj_str_free(ctx, &a0); wj.wj_str_free(ctx, &a1); return wj.wj_throw_gone(ctx) }
+	r: u64
+	st := wj.wr_Document_createProcessingInstruction((a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len), (a1.ptr if a1.ptr != nil else wj.empty_ptr()), u32(a1.len), &r)
+	wj.wj_str_free(ctx, &a0)
+	wj.wj_str_free(ctx, &a1)
+	if st < 0 { return wj.wj_throw_status(ctx, i32(st), "Document.createProcessingInstruction") }
+	return wj.wj_wrap_node(ctx, r)
+}
+
 // Document.adoptNode() -> dom.Document_adoptNode
 wjg_Document_adoptNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
-	_ = self
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Document.adoptNode", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Document.adoptNode", 1, argc) }
 	a0: u64
 	if !wj.wj_to_handle(ctx, wj.arg(argc, argv, 0), 245, false, &a0, "Document.adoptNode: argument 1 is not of type 'Node'") { return wj.EXCEPTION }
 	if !wj.wj_same_doc(self.handle, a0) {
@@ -2059,7 +2061,7 @@ wjg_Document_adoptNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc
 		return wj.wj_wrap_node(ctx, a0)
 	}
 	r: u64
-	st := wj.wr_Document_adoptNode(a0, &r)
+	st := wj.wr_Document_adoptNode(self.handle, a0, &r)
 	if st < 0 { return wj.wj_throw_status(ctx, i32(st), "Document.adoptNode") }
 	return wj.wj_wrap_node(ctx, r)
 }
@@ -2348,7 +2350,7 @@ wjg_Document_get_childElementCount :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 wjg_Document_querySelector :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Document.querySelector", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Document.querySelector", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	r: u64
@@ -2553,7 +2555,7 @@ wjg_Document_set_ontouchcancel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 wjg_DocumentFragment_getElementById :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 254)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "DocumentFragment.getElementById", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "DocumentFragment.getElementById", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	r := wj.wr_NonElementParentNode_getElementById(self.handle, (a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len))
@@ -2589,7 +2591,7 @@ wjg_DocumentFragment_get_childElementCount :: proc "c" (ctx: ^wj.Context, this_v
 wjg_DocumentFragment_querySelector :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 254)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "DocumentFragment.querySelector", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "DocumentFragment.querySelector", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	r: u64
@@ -2949,7 +2951,7 @@ wjg_Element_hasAttributes :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, a
 wjg_Element_getAttribute :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 258)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Element.getAttribute", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Element.getAttribute", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	n := i32(wj.wr_Element_getAttribute(self.handle, (a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len), wj.wj_scratch.data, wj.wj_scratch.cap))
@@ -2966,7 +2968,7 @@ wjg_Element_getAttribute :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, ar
 wjg_Element_getAttributeNS :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 258)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 2 { return wj.wj_throw_arity(ctx, "Element.getAttributeNS", 2, argc) }
+	if argc < 2 { return throw_arity_of(ctx, self.handle, "Element.getAttributeNS", 2, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW | wj.STR_NULLABLE, "") { return wj.EXCEPTION }
 	a1: wj.Str
@@ -2986,7 +2988,7 @@ wjg_Element_getAttributeNS :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 wjg_Element_setAttributeNS :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 258)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 3 { return wj.wj_throw_arity(ctx, "Element.setAttributeNS", 3, argc) }
+	if argc < 3 { return throw_arity_of(ctx, self.handle, "Element.setAttributeNS", 3, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW | wj.STR_NULLABLE, "") { return wj.EXCEPTION }
 	a1: wj.Str
@@ -3005,7 +3007,7 @@ wjg_Element_setAttributeNS :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 wjg_Element_removeAttribute :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 258)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Element.removeAttribute", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Element.removeAttribute", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	st := wj.wr_Element_removeAttribute(self.handle, (a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len))
@@ -3018,7 +3020,7 @@ wjg_Element_removeAttribute :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue,
 wjg_Element_removeAttributeNS :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 258)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 2 { return wj.wj_throw_arity(ctx, "Element.removeAttributeNS", 2, argc) }
+	if argc < 2 { return throw_arity_of(ctx, self.handle, "Element.removeAttributeNS", 2, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW | wj.STR_NULLABLE, "") { return wj.EXCEPTION }
 	a1: wj.Str
@@ -3033,7 +3035,7 @@ wjg_Element_removeAttributeNS :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 wjg_Element_hasAttribute :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 258)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Element.hasAttribute", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Element.hasAttribute", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	r := wj.wr_Element_hasAttribute(self.handle, (a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len))
@@ -3045,7 +3047,7 @@ wjg_Element_hasAttribute :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, ar
 wjg_Element_hasAttributeNS :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 258)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 2 { return wj.wj_throw_arity(ctx, "Element.hasAttributeNS", 2, argc) }
+	if argc < 2 { return throw_arity_of(ctx, self.handle, "Element.hasAttributeNS", 2, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW | wj.STR_NULLABLE, "") { return wj.EXCEPTION }
 	a1: wj.Str
@@ -3068,7 +3070,7 @@ wjg_Element_get_shadowRoot :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) 
 wjg_Element_closest :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 258)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Element.closest", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Element.closest", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	r: u64
@@ -3083,7 +3085,7 @@ wjg_Element_closest :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 wjg_Element_matches :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 258)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Element.matches", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Element.matches", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	r: u8
@@ -3097,7 +3099,7 @@ wjg_Element_matches :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 wjg_Element_webkitMatchesSelector :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 258)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Element.webkitMatchesSelector", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Element.webkitMatchesSelector", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	r: u8
@@ -3111,7 +3113,7 @@ wjg_Element_webkitMatchesSelector :: proc "c" (ctx: ^wj.Context, this_val: wj.JS
 wjg_Element_insertAdjacentElement :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 258)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 2 { return wj.wj_throw_arity(ctx, "Element.insertAdjacentElement", 2, argc) }
+	if argc < 2 { return throw_arity_of(ctx, self.handle, "Element.insertAdjacentElement", 2, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	a1: u64
@@ -3128,7 +3130,7 @@ wjg_Element_insertAdjacentElement :: proc "c" (ctx: ^wj.Context, this_val: wj.JS
 wjg_Element_insertAdjacentText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 258)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 2 { return wj.wj_throw_arity(ctx, "Element.insertAdjacentText", 2, argc) }
+	if argc < 2 { return throw_arity_of(ctx, self.handle, "Element.insertAdjacentText", 2, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	a1: wj.Str
@@ -3174,7 +3176,7 @@ wjg_Element_get_outerHTML :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -
 wjg_Element_insertAdjacentHTML :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 258)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 2 { return wj.wj_throw_arity(ctx, "Element.insertAdjacentHTML", 2, argc) }
+	if argc < 2 { return throw_arity_of(ctx, self.handle, "Element.insertAdjacentHTML", 2, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	a1: wj.Str
@@ -3214,7 +3216,7 @@ wjg_Element_get_childElementCount :: proc "c" (ctx: ^wj.Context, this_val: wj.JS
 wjg_Element_querySelector :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 258)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Element.querySelector", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "Element.querySelector", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	r: u64
@@ -4456,7 +4458,7 @@ wjg_HTMLButtonElement_reportValidity :: proc "c" (ctx: ^wj.Context, this_val: wj
 wjg_HTMLButtonElement_setCustomValidity :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 265)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "HTMLButtonElement.setCustomValidity", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "HTMLButtonElement.setCustomValidity", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	wj.wr_HTMLButtonElement_setCustomValidity(self.handle, (a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len))
@@ -4654,7 +4656,7 @@ wjg_HTMLFieldSetElement_reportValidity :: proc "c" (ctx: ^wj.Context, this_val: 
 wjg_HTMLFieldSetElement_setCustomValidity :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 275)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "HTMLFieldSetElement.setCustomValidity", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "HTMLFieldSetElement.setCustomValidity", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	wj.wr_HTMLFieldSetElement_setCustomValidity(self.handle, (a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len))
@@ -5156,7 +5158,7 @@ wjg_HTMLInputElement_reportValidity :: proc "c" (ctx: ^wj.Context, this_val: wj.
 wjg_HTMLInputElement_setCustomValidity :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 286)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "HTMLInputElement.setCustomValidity", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "HTMLInputElement.setCustomValidity", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	wj.wr_HTMLInputElement_setCustomValidity(self.handle, (a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len))
@@ -5321,7 +5323,7 @@ wjg_HTMLMediaElement_load :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, a
 wjg_HTMLMediaElement_canPlayType :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 293)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "HTMLMediaElement.canPlayType", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "HTMLMediaElement.canPlayType", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	n := i32(wj.wr_HTMLMediaElement_canPlayType(self.handle, (a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len), wj.wj_scratch.data, wj.wj_scratch.cap))
@@ -5617,7 +5619,7 @@ wjg_HTMLObjectElement_reportValidity :: proc "c" (ctx: ^wj.Context, this_val: wj
 wjg_HTMLObjectElement_setCustomValidity :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 301)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "HTMLObjectElement.setCustomValidity", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "HTMLObjectElement.setCustomValidity", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	wj.wr_HTMLObjectElement_setCustomValidity(self.handle, (a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len))
@@ -5851,7 +5853,7 @@ wjg_HTMLOutputElement_reportValidity :: proc "c" (ctx: ^wj.Context, this_val: wj
 wjg_HTMLOutputElement_setCustomValidity :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 304)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "HTMLOutputElement.setCustomValidity", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "HTMLOutputElement.setCustomValidity", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	wj.wr_HTMLOutputElement_setCustomValidity(self.handle, (a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len))
@@ -5930,7 +5932,7 @@ wjg_HTMLSelectElement_get_length :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 wjg_HTMLSelectElement_item :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 312)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "HTMLSelectElement.item", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "HTMLSelectElement.item", 1, argc) }
 	a0: u32 = 0
 	if !wj.wj_to_uint32(ctx, wj.arg(argc, argv, 0), &a0, 32, 0) { return wj.EXCEPTION }
 	r := wj.wr_HTMLSelectElement_item(self.handle, auto_cast a0)
@@ -6020,7 +6022,7 @@ wjg_HTMLSelectElement_reportValidity :: proc "c" (ctx: ^wj.Context, this_val: wj
 wjg_HTMLSelectElement_setCustomValidity :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 312)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "HTMLSelectElement.setCustomValidity", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "HTMLSelectElement.setCustomValidity", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	wj.wr_HTMLSelectElement_setCustomValidity(self.handle, (a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len))
@@ -6226,7 +6228,7 @@ wjg_HTMLTableElement_insertRow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 wjg_HTMLTableElement_deleteRow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 321)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "HTMLTableElement.deleteRow", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "HTMLTableElement.deleteRow", 1, argc) }
 	a0: i32 = 0
 	if !wj.wj_to_int32(ctx, wj.arg(argc, argv, 0), &a0, 32, 0) { return wj.EXCEPTION }
 	st := wj.wr_HTMLTableElement_deleteRow(self.handle, auto_cast a0)
@@ -6284,7 +6286,7 @@ wjg_HTMLTableRowElement_insertCell :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 wjg_HTMLTableRowElement_deleteCell :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 322)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "HTMLTableRowElement.deleteCell", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "HTMLTableRowElement.deleteCell", 1, argc) }
 	a0: i32 = 0
 	if !wj.wj_to_int32(ctx, wj.arg(argc, argv, 0), &a0, 32, 0) { return wj.EXCEPTION }
 	st := wj.wr_HTMLTableRowElement_deleteCell(self.handle, auto_cast a0)
@@ -6318,7 +6320,7 @@ wjg_HTMLTableSectionElement_insertRow :: proc "c" (ctx: ^wj.Context, this_val: w
 wjg_HTMLTableSectionElement_deleteRow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 323)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "HTMLTableSectionElement.deleteRow", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "HTMLTableSectionElement.deleteRow", 1, argc) }
 	a0: i32 = 0
 	if !wj.wj_to_int32(ctx, wj.arg(argc, argv, 0), &a0, 32, 0) { return wj.EXCEPTION }
 	st := wj.wr_HTMLTableSectionElement_deleteRow(self.handle, auto_cast a0)
@@ -6512,7 +6514,7 @@ wjg_HTMLTextAreaElement_reportValidity :: proc "c" (ctx: ^wj.Context, this_val: 
 wjg_HTMLTextAreaElement_setCustomValidity :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 325)
 	if self == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "HTMLTextAreaElement.setCustomValidity", 1, argc) }
+	if argc < 1 { return throw_arity_of(ctx, self.handle, "HTMLTextAreaElement.setCustomValidity", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, wj.STR_VIEW, "") { return wj.EXCEPTION }
 	wj.wr_HTMLTextAreaElement_setCustomValidity(self.handle, (a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len))
@@ -26818,7 +26820,7 @@ wj_install_bindings :: proc "c" () {
 	m_Document[5] = wj.Member{name = "caretPositionFromPoint", kind = wj.M_METHOD, flags = 0, length = 2, fn = nil}
 	m_Document[6] = wj.Member{name = "scrollingElement", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Document_get_scrollingElement, set = nil}
 	m_Document[7] = wj.Member{name = "implementation", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 48, get = wjr_Document_get_implementation, set = nil}
-	m_Document[8] = wj.Member{name = "URL", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Document_get_URL, set = nil}
+	m_Document[8] = wj.Member{name = "URL", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Document_get_URL, set = nil}
 	m_Document[9] = wj.Member{name = "documentURI", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Document_get_documentURI, set = nil}
 	m_Document[10] = wj.Member{name = "compatMode", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Document_get_compatMode, set = nil}
 	m_Document[11] = wj.Member{name = "characterSet", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Document_get_characterSet, set = nil}
@@ -26836,7 +26838,7 @@ wj_install_bindings :: proc "c" () {
 	m_Document[23] = wj.Member{name = "createTextNode", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjg_Document_createTextNode}
 	m_Document[24] = wj.Member{name = "createCDATASection", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjg_Document_createCDATASection}
 	m_Document[25] = wj.Member{name = "createComment", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjg_Document_createComment}
-	m_Document[26] = wj.Member{name = "createProcessingInstruction", kind = wj.M_METHOD, flags = 0, length = 2, fn = nil}
+	m_Document[26] = wj.Member{name = "createProcessingInstruction", kind = wj.M_METHOD, flags = 0, length = 2, fn = wjg_Document_createProcessingInstruction}
 	m_Document[27] = wj.Member{name = "importNode", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_Document_importNode}
 	m_Document[28] = wj.Member{name = "adoptNode", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjg_Document_adoptNode}
 	m_Document[29] = wj.Member{name = "createAttribute", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_Document_createAttribute}

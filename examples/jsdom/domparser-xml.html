@@ -56,5 +56,27 @@ section("parse errors", () => {
   t("an internal entity is defined", parse(`<!DOCTYPE a [<!ENTITY e "E">]><a>&e;</a>`).documentElement.textContent === "E");
   throws("another type", () => new DOMParser().parseFromString("<a/>", "text/plain"), "TypeError");
 });
+
+section("documents of their own", () => {
+  const html = document.implementation.createHTMLDocument("t");
+  const xml = new Document();
+  eq("createHTMLDocument's URL", html.URL + " " + html.documentURI, "about:blank about:blank");
+  eq("new Document()'s URL", xml.URL, "about:blank");
+  eq("DOMParser's: its creator's", parse("<a/>").URL, document.URL);
+  const a = html.createElement("a");
+  t("a detached element is its document's", a.ownerDocument === html && xml.createElementNS("urn:x", "y").ownerDocument === xml);
+  html.body.append(a);
+  a.remove();
+  t("taken out, it stays its", a.ownerDocument === html);
+  document.documentElement.append(a);
+  a.remove();
+  t("inserted in the page, the page's", a.ownerDocument === document);
+  t("adopted, its new document's", html.adoptNode(a) === a && a.ownerDocument === html);
+  t("importNode's copy is the importer's", html.importNode(document.createElement("p")).ownerDocument === html);
+  const pi = document.createProcessingInstruction("app", "some data");
+  eq("createProcessingInstruction", pi.nodeType + " " + pi.target + " " + pi.data, "7 app some data");
+  throws("a target that is not a name", () => document.createProcessingInstruction("1a", "x"), "InvalidCharacterError");
+  throws("data with ?>", () => document.createProcessingInstruction("a", "x?>"), "InvalidCharacterError");
+});
 done();
 </script>

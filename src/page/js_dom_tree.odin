@@ -191,23 +191,29 @@ template_owner_document :: proc(p: ^Page) -> base.Handle {
 	if p.template_doc.doc == d && dom.get(d, p.template_doc.handle) != nil { return p.template_doc.handle }
 	f := dom.create_fragment(d)
 	n := dom.get(d, f)
-	n.as_document, n.held = true, true
+	n.as_document, n.held, n.blank_url = true, true, true
 	p.template_doc = {d, f}
 	return f
 }
 
 Node_ownerDocument :: proc(c: ^Call, node: Api_Node) -> u64 {
 	if node.data.kind == .Document || node.data.as_document { return 0 }
-	// a node of a document createHTMLDocument made, shadow trees included: that document; the contents of a template
-	// (and what was made in them): the inert document of the templates
-	d := c.page.doc
-	if r := dom.shadow_including_root(d, H(node.handle)); r != d.root {
-		if n := dom.get(d, r); n != nil {
-			if n.as_document { return u64(r) }
-			if n.kind == .Fragment && n.held { return u64(template_owner_document(c.page)) }
-		}
-	}
-	return u64(d.root)
+	return u64(node_document(c.page, H(node.handle)))
+}
+
+// DOM "node document" of `h`: in a document createHTMLDocument (DOMParser...) made, shadow trees included, that document;
+// in the contents of a template (and what was made in them), the inert document of the templates; in a detached tree,
+// the document its root was made for or last inserted under (dom.Node.doc); else the page's.
+node_document :: proc(p: ^Page, h: base.Handle) -> base.Handle {
+	d := p.doc
+	r := dom.shadow_including_root(d, h)
+	if r == d.root { return r }
+	n := dom.get(d, r)
+	if n == nil { return d.root }
+	if n.as_document { return r }
+	if n.kind == .Fragment && n.held { return template_owner_document(p) }
+	if n.doc != base.NIL_HANDLE && dom.get(d, n.doc) != nil { return n.doc }
+	return d.root
 }
 
 Node_parentElement :: proc(c: ^Call, node: Api_Node) -> u64 {
@@ -884,14 +890,19 @@ Document_createCDATASection :: proc(c: ^Call, data: string) -> (u64, Api_Error) 
 	return 0, fail(c, .Not_Supported, "This operation is not supported for HTML documents.")
 }
 
-Document_adoptNode :: proc(c: ^Call, node: Api_Node) -> (u64, Api_Error) {
-	if node.data.kind == .Document { return 0, fail(c, .Not_Supported, "The node provided is a document, which may not be adopted.") }
+Document_adoptNode :: proc(c: ^Call, document: Api_Node, node: Api_Node) -> (u64, Api_Error) {
+	if node.data.kind == .Document || node.data.as_document { return 0, fail(c, .Not_Supported, "The node provided is a document, which may not be adopted.") }
 	if node.data.is_shadow { return 0, fail(c, .Hierarchy, "The node provided is a shadow root, which may not be adopted.") }
-	if node.data.parent != base.NIL_HANDLE { dom.detach(c.page.doc, H(node.handle)) }
+	d := c.page.doc
+	if node.data.parent != base.NIL_HANDLE { dom.detach(d, H(node.handle)) }
+	to := document.data.as_document ? H(document.handle) : base.NIL_HANDLE
+	if dom.get(d, H(node.handle)).doc != to { dom.set_node_document(d, H(node.handle), to) }
 	return node.handle, .None
 }
 
-Document_documentURI :: proc(c: ^Call) -> string { return c.page.env.location.href }
+Document_documentURI :: proc(c: ^Call, document: Api_Node) -> string {
+	return document.data.blank_url ? "about:blank" : c.page.env.location.href
+}
 
 Document_compatMode :: proc(c: ^Call) -> string {
 	d := jd_doc(c)
@@ -910,10 +921,7 @@ document_encoding :: proc(p: ^Page) -> string { return p.encoding != "" ? p.enco
 // The encoding of the document node `h` belongs to ("" = UTF-8): the page's for its own nodes; a document of its own
 // (createHTMLDocument's, DOMParser's) and the inert document of the templates are UTF-8.
 node_encoding :: proc(p: ^Page, h: base.Handle) -> string {
-	d := p.doc
-	if r := dom.shadow_including_root(d, h); r != d.root {
-		if n := dom.get(d, r); n != nil && (n.as_document || (n.kind == .Fragment && n.held)) { return "" }
-	}
+	if p.encoding == "" || node_document(p, h) != p.doc.root { return "" }
 	return p.encoding
 }
 
@@ -1030,7 +1038,7 @@ DOMImplementation_createHTMLDocument :: proc(c: ^Call, title: Maybe(string)) -> 
 	d := jd_doc(c)
 	if d == nil { return 0, no_document(c) }
 	f := dom.create_fragment(d)
-	dom.get(d, f).as_document = true
+	dom.get(d, f).as_document, dom.get(d, f).blank_url = true, true
 	dom.append_child(d, f, dom.create_doctype(d, "html", "", ""))
 	html := dom.create_element(d, "html")
 	head := dom.create_element(d, "head")

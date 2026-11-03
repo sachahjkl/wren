@@ -38,7 +38,9 @@ it is until it is inserted, so `ownerDocument` tells the old document until then
 
 A wrapper belongs to a realm: the same element has one wrapper per realm that reached it, and a property set on one is
 not on the other. A method of a custom element of the frame's registry is not visible on the parent's wrapper of it. A
-`MutationObserver` follows other documents with a browser object in each.
+`MutationObserver` follows other documents with a browser object in each. The methods of a wrapper are its realm's, but
+one given too few arguments throws the `TypeError` of the node's realm (`throw_arity_of`, `frames_bridge.odin`), as the
+node's own method would in a browser: `frame.contentWindow.TypeError`.
 
 Listeners may come from both realms. A listener added from another realm records a `Foreign_Owner` (its page, its instance), and
 runs in the realm that added it, a nested instance call. A script inserted in a frame runs in the frame's realm, wherever its

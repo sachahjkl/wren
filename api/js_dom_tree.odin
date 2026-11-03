@@ -229,13 +229,21 @@ Document_createComment :: proc(data: string) -> Node
 //@wb fn raises
 Document_createCDATASection :: proc(data: string) -> Node
 
-/// document.adoptNode(node): removed from its parent (one document per page). Not_Supported for the document.
+/// document.createProcessingInstruction(target, data): Invalid_Character when `target` is not an XML Name or `data`
+/// contains "?>".
 //@wb fn raises
-Document_adoptNode :: proc(node: Node) -> Node
+Document_createProcessingInstruction :: proc(target: string, data: string) -> Node
 
-/// document.documentURI
+/// document.adoptNode(node) (DOM "adopt"): removed from its parent, it and its shadow-including descendants get
+/// `document` (the page's, or a document of its own) as node document. Not_Supported for a document, Hierarchy for a
+/// shadow root. What the glue does too to what a document of its own makes (createElement, importNode).
+//@wb fn raises
+Document_adoptNode :: proc(document: Node, node: Node) -> Node
+
+/// document.documentURI (and document.URL) of `document`: about:blank for a document of its own createHTMLDocument,
+/// createDocument or parseHTMLUnsafe made, else the page's URL (DOMParser's documents have their creator's).
 //@wb fn
-Document_documentURI :: proc() -> string
+Document_documentURI :: proc(document: Node) -> string
 
 /// document.compatMode: "CSS1Compat" or "BackCompat".
 //@wb fn

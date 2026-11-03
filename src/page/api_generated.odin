@@ -22208,22 +22208,30 @@ _t_dom_Document_createCDATASection :: proc "c" (env: rawptr, caller: wasm.Caller
 	return nil
 }
 
-// Document_adoptNode :: proc(c: ^Call, node: Api_Node) -> (u64, Api_Error)
+// Document_createProcessingInstruction :: proc(c: ^Call, target: string, data: string) -> (u64, Api_Error)
 @(private = "file")
-_t_dom_Document_adoptNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+_t_dom_Document_createProcessingInstruction :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
 	defer if c.routed { api_unroute(&c) }
-	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
-	if !_rk { return wasm.trap_bounds(&f, "dom.Document_adoptNode", "result pointer") }
-	api_route(&c, u64(a[0].i64))
-	_p0 := Api_Node{handle = u64(a[0].i64)}
-	_p0.data = lookup_Node(&c, _p0.handle)
-	if _p0.data == nil {
-		return _fail_status(&c, a, .Invalid_Handle, "dom.Document_adoptNode: argument node is not a live Node")
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_createProcessingInstruction", "target") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Document_createProcessingInstruction", "data") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Document_createProcessingInstruction", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "dom.Document_createProcessingInstruction: argument target is not valid UTF-8")
 	}
-	_r, _err := Document_adoptNode(&c, _p0)
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Document_createProcessingInstruction: argument data is not valid UTF-8")
+	}
+	_r, _err := Document_createProcessingInstruction(&c, _p0, _p1)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -22235,17 +22243,57 @@ _t_dom_Document_adoptNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	return nil
 }
 
-// Document_documentURI :: proc(c: ^Call) -> string
+// Document_adoptNode :: proc(c: ^Call, document: Api_Node, node: Api_Node) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Document_adoptNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Document_adoptNode", "result pointer") }
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Document_adoptNode: argument document is not a live Node")
+	}
+	api_route(&c, u64(a[1].i64))
+	_p1 := Api_Node{handle = u64(a[1].i64)}
+	_p1.data = lookup_Node(&c, _p1.handle)
+	if _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Document_adoptNode: argument node is not a live Node")
+	}
+	_r, _err := Document_adoptNode(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Document_documentURI :: proc(c: ^Call, document: Api_Node) -> string
 @(private = "file")
 _t_dom_Document_documentURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
 	defer if c.routed { api_unroute(&c) }
-	_on := wasm.addr(&f, a[1])
-	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_documentURI", "result buffer") }
-	_r := Document_documentURI(&c)
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Document_documentURI: argument document is not a live Node") }
+		return wasm.trap_new("dom.Document_documentURI: argument document is not a live Node")
+	}
+	_r := Document_documentURI(&c, _p0)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
@@ -38885,8 +38933,9 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "Document_createDocumentFragment", fn = _t_dom_Document_createDocumentFragment, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Document_createComment", fn = _t_dom_Document_createComment, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Document_createCDATASection", fn = _t_dom_Document_createCDATASection, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "dom", name = "Document_adoptNode", fn = _t_dom_Document_adoptNode, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "dom", name = "Document_documentURI", fn = _t_dom_Document_documentURI, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Document_createProcessingInstruction", fn = _t_dom_Document_createProcessingInstruction, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_adoptNode", fn = _t_dom_Document_adoptNode, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_documentURI", fn = _t_dom_Document_documentURI, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Document_compatMode", fn = _t_dom_Document_compatMode, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Document_characterSet", fn = _t_dom_Document_characterSet, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Document_charset", fn = _t_dom_Document_charset, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},

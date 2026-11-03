@@ -164,6 +164,32 @@ xml_fill :: proc(d: ^dom.Document, parent: base.Handle, text: string, limit: int
 	return false, true
 }
 
+// document.createProcessingInstruction(target, data): a Comment node that is a processing instruction (as the XML parser
+// makes them). Invalid_Character when `target` is not an XML Name or `data` holds "?>".
+Document_createProcessingInstruction :: proc(c: ^Call, target: string, data: string) -> (u64, Api_Error) {
+	d := jd_doc(c)
+	if d == nil { return 0, no_document(c) }
+	if !valid_xml_name(target) || strings.contains(data, "?>") { return 0, fail(c, .Invalid_Character, "The target is not a valid name, or the data contains '?>'.") }
+	h := dom.create_comment(d, data)
+	n := dom.get(d, h)
+	n.xml = .Processing_Instruction
+	n.name = strings.clone(target)
+	return u64(h), .None
+}
+
+// XML's Name production: a letter, ':', '_' or a non-ASCII character first, then those, digits, '-' and '.' (non-ASCII
+// characters are taken whole: the ranges XML excludes are not looked at).
+@(private = "file")
+valid_xml_name :: proc(name: string) -> bool {
+	if name == "" { return false }
+	for i in 0 ..< len(name) {
+		b := name[i]
+		start := (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == ':' || b == '_' || b >= 0x80
+		if !start && (i == 0 || !((b >= '0' && b <= '9') || b == '-' || b == '.')) { return false }
+	}
+	return true
+}
+
 // processingInstruction.target
 ProcessingInstruction_target :: proc(c: ^Call, node: Api_Node) -> string {
 	n := node.data
@@ -213,7 +239,7 @@ DOMImplementation_createDocument :: proc(c: ^Call, namespace: Maybe(string), qua
 	}
 	f := dom.create_fragment(d)
 	fn := dom.get(d, f)
-	fn.as_document = true
+	fn.as_document, fn.blank_url = true, true
 	switch ns {
 	case dom.NS_HTML: fn.xml = .Created_XHTML
 	case dom.NS_SVG: fn.xml = .Created_SVG

@@ -249,7 +249,7 @@ Document_parseHTMLUnsafeNode :: proc(c: ^Call, markup: string) -> (u64, Api_Erro
 	d := call_doc(c)
 	if d == nil { return 0, fail(c, .Invalid_State, "no document") }
 	f := dom.create_fragment(d)
-	dom.get(d, f).as_document = true
+	dom.get(d, f).as_document, dom.get(d, f).blank_url = true, true
 	res := html.parse_into(d, f, transmute([]byte)markup, c.page.settings.dom.max_fragment_nodes)
 	if !res.ok {
 		dom.destroy_unpinned(d, f)

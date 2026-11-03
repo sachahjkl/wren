@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 605 |
 | exposed by default | 375 |
 | members | 5310 |
-| members implemented | 3821 (72.0 %) |
+| members implemented | 3822 (72.0 %) |
 
 ## By specification
 
@@ -42,7 +42,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `css-view-transitions.idl` | 3 (0) | 0 / 10 |
 | `cssom-view.idl` | 5 (4) | 24 / 28 |
 | `cssom.idl` | 16 (10) | 48 / 149 |
-| `dom.idl` | 35 (31) | 590 / 700 |
+| `dom.idl` | 35 (31) | 591 / 700 |
 | `element-timing.idl` | 1 (1) | 12 / 12 |
 | `encoding.idl` | 4 (4) | 19 / 19 |
 | `entries-api.idl` | 5 (5) | 13 / 13 |
@@ -1853,7 +1853,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Document : Node
 
-192 / 225 members.
+193 / 225 members.
 
 - `readonly rootElement`: not supported
 - `startViewTransition()`: not supported
@@ -1864,7 +1864,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly scrollingElement`: import `dom.Document_scrollingElement`
 - `constructor()`: C `wjr_Document_constructor`
 - `readonly implementation`: C `wjr_Document_get_implementation`
-- `readonly URL`: import `document.Document_URL`
+- `readonly URL`: C `wjr_Document_get_URL`
 - `readonly documentURI`: import `dom.Document_documentURI`
 - `readonly compatMode`: import `dom.Document_compatMode`
 - `readonly characterSet`: C `wjr_Document_get_characterSet`
@@ -1882,7 +1882,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `createTextNode()`: import `dom.Document_createTextNode`
 - `createCDATASection()`: import `dom.Document_createCDATASection`
 - `createComment()`: import `dom.Document_createComment`
-- `createProcessingInstruction()`: not supported
+- `createProcessingInstruction()`: import `dom.Document_createProcessingInstruction`
 - `importNode()`: C `wjr_Document_importNode`
 - `adoptNode()`: import `dom.Document_adoptNode`
 - `createAttribute()`: C `wjr_Document_createAttribute`

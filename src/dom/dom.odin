@@ -60,6 +60,7 @@ Node :: struct {
 	ns:          Namespace,  // elements
 	held:        bool,       // a detached tree its owner keeps (a template's contents): not freed when nothing pins it
 	as_document: bool,       // a Fragment that stands for a document of its own (DOMImplementation.createHTMLDocument)
+	blank_url:   bool,       // such a document whose URL is about:blank (createHTMLDocument's, createDocument's, parseHTMLUnsafe's, the templates'; DOMParser's has its creator's)
 	is_shadow:   bool,       // a Fragment that is a shadow root (shadow.odin)
 	xml:         Xml_Kind,   // what XML adds to a kind (DOMParser's XML documents)
 	name_static: bool,       // `name` is the program's own string, never freed (names.odin)
@@ -81,6 +82,9 @@ Node :: struct {
 	slot_pos:    u32,
 	shadow:      base.Handle,
 	slot:        base.Handle,
+	// DOM "node document": the document of its own (an as_document Fragment) it was made for or inserted under, NIL for
+	// the page's; what a detached tree's ownerDocument is (set_node_document)
+	doc:         base.Handle,
 }
 
 Document :: struct {
@@ -335,6 +339,19 @@ detach :: proc(d: ^Document, h: base.Handle) {
 	if d.hooks.removed != nil { d.hooks.removed(d.hooks.user, d) }
 }
 
+// DOM "adopt": `h` and its shadow-including descendants get `doc` as node document (a document of its own, NIL: the
+// page's).
+set_node_document :: proc(d: ^Document, h, doc: base.Handle) {
+	shadows := make([dynamic]base.Handle, context.temp_allocator)   // shadow trees still to walk (rare: nothing allocated without)
+	for top := h; top != base.NIL_HANDLE; top = len(shadows) > 0 ? pop(&shadows) : base.NIL_HANDLE {
+		for cur := top; cur != base.NIL_HANDLE; cur = next_in_tree(d, cur, top) {
+			n := get(d, cur)
+			n.doc = doc
+			if n.kind == .Element && n.shadow != base.NIL_HANDLE { append(&shadows, n.shadow) }
+		}
+	}
+}
+
 // Inserts `child` before `ref` (NIL_HANDLE = at the end), moving it if it is already in a tree.
 insert_before :: proc(d: ^Document, parent, child, ref: base.Handle) -> Error {
 	p, c := get(d, parent), get(d, child)
@@ -366,6 +383,7 @@ insert_before :: proc(d: ^Document, parent, child, ref: base.Handle) -> Error {
 		r.prev = child
 	}
 	if c.pins_below > 0 { pins_adjust(d, parent, i64(c.pins_below)) }
+	if to := p.as_document ? parent : p.doc; c.doc != to { set_node_document(d, child, to) }   // DOM "adopt"
 	touch(d)
 	d.tree_version += 1
 	journal_record(d, .Insert, child, parent, prev = c.prev, next = c.next)
