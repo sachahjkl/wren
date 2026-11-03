@@ -54,13 +54,13 @@
       };
 
       # The latest Linux release, as published (wrentool package). The tag and hash come from its SHA256SUMS-linux.txt.
-      wrenVersion = "0.6.24";
+      wrenVersion = "0.6.25";
       wren = pkgs.stdenv.mkDerivation {
         pname = "wren";
         version = wrenVersion;
         src = pkgs.fetchurl {
           url = "https://github.com/sachahjkl/wren/releases/download/v${wrenVersion}/wren-${wrenVersion}-linux-x64.tar.gz";
-          sha256 = "feea108bda7088959e2f0db3595766874b9d9bbf3a5c00cb1f7203a45bf064a1";
+          sha256 = "ff2d602da3a607f48f2461b86de85b14ca2eb29092d83a7bb99139d1b3d2011d";
         };
         nativeBuildInputs = [ pkgs.autoPatchelfHook pkgs.makeWrapper ];
         buildInputs = runtimeLibs ++ [ pkgs.stdenv.cc.cc.lib ];
