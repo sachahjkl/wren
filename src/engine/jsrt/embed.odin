@@ -21,6 +21,8 @@ host_enter :: proc(rt: ^Runtime) -> int {
 		base := uintptr(&marker)
 		lim := uintptr(rt.config.max_stack_bytes)
 		rt.stack_limit = base > lim ? base - lim : 0
+		// (another agent may have written a SharedArrayBuffer since the last call: a message telling so is a host call)
+		host_cache_sync(rt)
 	}
 	rt.host_depth += 1
 	return temp_mark(rt)

@@ -173,6 +173,19 @@ buffer_free :: proc "c" (rt: ^capi.Runtime, opaque: rawptr, ptr: rawptr, size: u
 	return nil
 }
 
+// The bytes of a SharedArrayBuffer the embedder holds, which another agent writes too.
+@(private = "file") shared_bytes: [8]u8
+
+@(private = "file")
+shared_read :: proc "contextless" (user: u64, offset: int, dst: [^]u8, n: int) {
+	for i in 0 ..< n {dst[i] = shared_bytes[offset + i]}
+}
+
+@(private = "file")
+shared_write :: proc "contextless" (user: u64, offset: int, src: [^]u8, n: int) {
+	for i in 0 ..< n {shared_bytes[offset + i] = src[i]}
+}
+
 @(private = "file")
 module_init :: proc "c" (ctx: ^capi.Context, m: ^capi.Module_Def) -> i32 {
 	return capi.JS_SetModuleExport(ctx, m, "x", capi.mkval(capi.TAG_INT, 42))
@@ -442,6 +455,13 @@ capi_main :: proc() -> int {
 	ta := capi.JS_NewUint8ArrayCopy(ctx, raw_data([]u8{1, 2, 3}), 3)
 	capi.JS_SetPropertyStr(ctx, global, "ta", ta)
 	check(is_int(eval(ctx, "ta.length + ta[2]"), 6), "Uint8Array copy")
+	shared_ops := capi.Host_Shared{read = shared_read, write = shared_write}
+	sab := capi.JS_NewArrayBufferShared(ctx, len(shared_bytes), &shared_ops, 0, false, -1)
+	capi.JS_SetPropertyStr(ctx, global, "sab", sab)
+	check(is_int(eval(ctx, "globalThis.sv = new Int32Array(sab); sv[0] = 2; sv[0]"), 2), "a shared host buffer written and read")
+	shared_bytes[0] = 3   // (another agent, between two calls: a message says so)
+	check(is_int(eval(ctx, "sv[0]"), 3), "the next call reads what another agent wrote")
+	check(shared_bytes[0] == 3 && eval(ctx, "sv[1] = 7; 0") == capi.mkval(capi.TAG_INT, 0) && shared_bytes[4] == 7, "a write reaches the host at once")
 
 	// --- a native module imported by a script module ---
 	capi.JS_SetModuleLoaderFunc2(rt, nil, module_loader, nil, nil)
