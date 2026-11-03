@@ -15,7 +15,6 @@ package page
 
 import "core:strings"
 import "wb:base"
-import "wb:dom"
 import "wb:media"
 import "wb:url"
 
@@ -161,16 +160,11 @@ track_id_string :: proc(t: media.Track, index: int) -> string {
 	return strings.clone(url.uint_to_string(u64(index + 1), buf[:]))
 }
 
-// Fires an event at a track list from a task of its own (same shape as mse_fire).
+// Fires an event at a track list from a task of its own.
 @(private)
 track_fire :: proc(p: ^Page, handle: u64, type: string) {
 	if handle == 0 || p.closed { return }
-	post_page_task(p, proc(pg: ^Page, data: rawptr) {
-		ev := (^Mse_Event)(data)
-		defer { delete(ev.type); free(ev) }
-		if pg == nil || pg.closed { return }
-		object_dispatch(pg, ev.handle, dom.Event{type = ev.type})
-	}, new_clone(Mse_Event{handle, strings.clone(type)}))
+	post_object_event(p, handle, type)
 }
 
 ////////////////////////////////

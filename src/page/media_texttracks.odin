@@ -511,12 +511,7 @@ media_text_cues_update :: proc(el: ^Media_Element, t: f64) -> (showing_changed: 
 @(private)
 text_cue_fire :: proc(p: ^Page, handle: u64, type: string) {
 	if handle == 0 || p.closed || !object_has_listener(p, handle, type) { return }
-	post_page_task(p, proc(pg: ^Page, data: rawptr) {
-		ev := (^Mse_Event)(data)
-		defer { delete(ev.type); free(ev) }
-		if pg == nil || pg.closed { return }
-		object_dispatch(pg, ev.handle, dom.Event{type = ev.type})
-	}, new_clone(Mse_Event{handle, strings.clone(type)}))
+	post_object_event(p, handle, type)
 }
 
 ////////////////////////////////
