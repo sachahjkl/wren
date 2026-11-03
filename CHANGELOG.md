@@ -10,6 +10,24 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.6.27] - 2026-11-03
+
+### Changed
+- **Pages that restyle everything style faster**: before the style threads share a full pass, the browser weighs the document's subtrees in one walk instead of three, and a pass takes the slots of the pass recycled before it instead of faulting fresh memory in. A page of 10 000 elements restyled whole every frame: its styles 0.74 ms a frame instead of 0.90, its frames' CPU work 3.25 ms instead of 3.77. The numbers: `docs/performance.md`.
+- **Pages with columns and pages that restyle everything lay out and style faster**: the display list of a page with columns is made on the layout threads as on any other page, a layout with columns and no vertical writing mode no longer turns every box to physical coordinates for nothing, a full style pass no longer walks the whole document for a `<meta name="color-scheme">` nor asks the forms model whether every element is disabled, and the comparison of a full style pass with the one before compares each pair of shared styles once. A page that rebuilds a list of 2 500 items in six columns every frame: its layout 3.2 ms a frame instead of 3.6, its styles 1.7 ms instead of 1.85; a page restyled whole every frame: its styles about a third faster. The numbers: `docs/performance.md`.
+
+### Fixed
+- **`wrentool compare` and the benchmarks run in a fresh checkout**: the folder of their programs' logs (`build\bench`) is made when missing, where Edge failed to start ("its log cannot be opened") and no comparison was made.
+- **Hovering one link of a nav no longer paints every link of it in its hover style** (the new tab page's links, a site's menu): alike elements share one style record, and the paint-only refresh of the display list re-pointed items by their old record, so every link that shared it took the hovered one's new style. Each display item now takes its own box's or inline item's style.
+- **`classList.add()` and `remove()` without a token, `replace()` with an empty one**: `add()` and `remove()` with no argument still write the attribute back in its serialized form (`"a b c a "` becomes `"a b c"`), as the DOM's update steps say, and `replace()` with an empty token throws a `SyntaxError` before looking for whitespace in the other.
+- **Text, comments, fragments and processing instructions of a document of its own are its**: what `createTextNode`, `createComment`, `createDocumentFragment` and `createProcessingInstruction` of a document of its own (`createHTMLDocument`'s, `new Document()`, `DOMParser`'s) make has that document as `ownerDocument`, as its elements already had.
+- **XMLHttpRequest and FileReader decode text as the Encoding Standard says**: a byte order mark chooses the encoding (a UTF-16 response without a charset, or with one it contradicts, is read as UTF-16), and a label of the replacement encoding (`iso-2022-kr`, `hz-gb-2312`...) gives one U+FFFD instead of the text read as UTF-8.
+- **Forms submitted to several frames at once**: a page that submits two forms in a row, each to a frame of its own, navigates both frames (the second submission replaced the first, whatever its target: a frame was left waiting forever). A newer submission still replaces one planned for the same target. WPT `encoding`: the first part of each of the 45 form-encoding tests no longer times out, 18000 more subtests pass.
+- **A timer runs after the tasks queued before it**: a `setTimeout(0)` set from a task of the page (a script the parser runs while the page loads) ran before the tasks that script had queued, so a dialog's `toggle` event came after it; it runs after them now, as it did from a timer's script. WPT `toggle-events.html` passes whole.
+- **International domain names as the URL Standard has them**: a host all of ASCII is only lower-cased (an `xn--` label that does not decode, or decodes to what UTS #46 would refuse, no longer makes the URL invalid: `xn--a`, `xn--unicode-.org`); no length of a domain or of its labels is verified; a label beginning with a combining mark, or with a zero width joiner or non-joiner out of the context CheckJoiners allows, is refused (Lexbor 3.0.1 does not check them: `src/shim/wb_idna.c`, its tables generated from the Unicode Character Database by `wrentool gen idna`). WPT `url` 10946 -> 12056 passing.
+- **XML documents in frames**: a frame's response of an XML type (`application/xml`, `text/xml`, `+xml`) is an XML document (it was shown as text), with its `contentType`; `document.open()`, `write()` and `close()` of an XML document throw an `InvalidStateError` as HTML says. WPT `dom/nodes` +170 (the XML frames of `createElement` and `createElementNS`), `custom-elements` +22.
+- **Names as scripts give them**: `createElementNS` and `setAttributeNS` keep the case of the names they are given (`localName`, `prefix`, `attributes`), an element's `tagName` upper-cases its whole qualified name in ASCII only, `setAttribute` on an element of another namespace than HTML or SVG keeps its case, and `getElementsByTagName` compares names as the DOM says; the local name of a qualified name is all after its first colon (`f::oo`), any doctype name without whitespace, NULL or `>` is valid, and `createDocument`'s content type follows its namespace argument. Selectors take the namespace prefixes `*|` (any namespace) and `|` (none: `|div`), in type selectors and attribute selectors. WPT `dom/nodes` 10518 -> 11073 passing.
+
 ## [0.6.26] - 2026-11-03
 
 ### Added
@@ -898,7 +916,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.6.26...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.6.27...HEAD
+[0.6.27]: https://github.com/sachahjkl/wren/compare/v0.6.26...v0.6.27
 [0.6.26]: https://github.com/sachahjkl/wren/compare/v0.6.25...v0.6.26
 [0.6.25]: https://github.com/sachahjkl/wren/compare/v0.6.24...v0.6.25
 [0.6.24]: https://github.com/sachahjkl/wren/compare/v0.6.23...v0.6.24
