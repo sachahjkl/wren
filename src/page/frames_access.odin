@@ -334,7 +334,7 @@ frames_bridge_call :: proc(from: ^Page, realm: u64, request: []u8) -> []u8 {
 
 @(private = "file")
 page_in_use :: proc(p: ^Page) -> bool {
-	if p.route_busy > 0 || p.objects.depth > 0 { return true }
+	if p.route_busy > 0 || p.objects.depth > 0 || p.dispatching > 0 { return true }
 	if p.js != nil && p.js.inst != nil && p.js.inst.depth > 0 { return true }
 	if p.frames != nil {
 		for n in p.frames.children { if n.page != nil && page_in_use(n.page) { return true } }
