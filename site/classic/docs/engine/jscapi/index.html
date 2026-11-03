@@ -82,7 +82,11 @@ all seven <code>JSClassExoticMethods</code> (get/set/has/delete/define/own‑nam
 replaces the prototype walk after the own shape lookup, as in QuickJS. Wren's own
 <code>JS_NewObjectProtoClassPayload(ctx, proto, class, size)</code> makes the opaque data <code>size</code> zeroed bytes of the engine's
 heap in the block of the object's host part, freed with the object (the glue's wrappers: one allocation from the
-engine's size classes instead of two, and nothing for the finalizer to free).</li>
+engine's size classes instead of two, and nothing for the finalizer to free). Such an object is made unmarked: the
+collector does not call its class's <code>gc_mark</code> for it until Wren's <code>JS_SetOpaqueMarked(ctx, obj, true)</code>, which the
+glue calls before the data takes a value (a group, a listener, a [SameObject] value, an impl); a collection then skips
+the thousands of node wrappers that carry nothing. One the host forgot to mark keeps what its data counts as roots
+(a leak, not an early free).</li>
 <li><strong>Native functions</strong>: <code>JS_NewCFunction2/3</code>, <code>JS_NewCFunctionData/2</code>, with prototypes <code>generic</code>,
 <code>generic_magic</code>, <code>constructor</code>, <code>constructor_or_func</code> (and <code>_magic</code>), <code>getter</code>, <code>setter</code>.</li>
 <li><strong>Errors</strong>: the <code>JS_Throw*Error</code> family takes <code>printf</code> arguments (<code>%s %d %u %x %c %.*s %ld</code>); a C caller
@@ -118,7 +122,7 @@ The build has no such C any more.</p>
 <tr><td>missing</td><td style="text-align:right">0</td></tr>
 </tbody>
 </table></div>
-<p>The API itself is tested natively by <code>judge capi</code> (59 checks); the glue runs on it in every build.</p>
+<p>The API itself is tested natively by <code>judge capi</code> (61 checks); the glue runs on it in every build.</p>
 <h3 id="what-is-approximated-or-absent-by-weight"><a class="anchor" href="#what-is-approximated-or-absent-by-weight" aria-hidden="true">#</a>What is approximated or absent (by weight)</h3>
 <ol>
 <li><strong>Atoms are permanent</strong> (<code>JS_FreeAtom</code> is a no‑op): a page that builds millions of distinct property
@@ -147,7 +151,7 @@ lets a value die early): a debug counter of <code>ext</code> per cell is easy to
 strings, properties, native functions with data and magic, formatted exceptions, classes with opaque data,
 cycles through <code>gc_mark</code>, counted references as roots, the GC epilogue (once a collection, after its finalizers),
 strings read in place (ASCII and concatenations; none of Latin-1, UTF-16 or other values), opaque data in the object's block (zeroed, one per object,
-cycles through it collected, 10 000 made and dropped without the heap keeping them; <code>JS_GetAnyOpaque</code> of it, of a built-in object, of a number), exotic objects, promises and jobs, adopted buffers,
+cycles through it collected, 10 000 made and dropped without the heap keeping them; <code>JS_GetAnyOpaque</code> of it, of a built-in object, of a number; <code>gc_mark</code> not called until <code>JS_SetOpaqueMarked</code>, the counted values roots until then), exotic objects, promises and jobs, adopted buffers,
 a native module imported by a script module, a compiled function written out and read back, and a soak of
 20 000 temporaries that must be collected.</p>
 <nav class="doc-seq" aria-label="Previous and next page">
