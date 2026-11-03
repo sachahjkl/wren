@@ -29,7 +29,7 @@ kind_of :: proc(n: ^dom.Node) -> Kind {
 
 attr :: proc(n: ^dom.Node, name: string) -> (string, bool) {
 	if n == nil { return "", false }
-	for a in n.attrs { if a.name == name { return a.value, true } }
+	for a in n.attrs { if a.name == name && a.ns == dom.ATTR_NS_NONE { return a.value, true } }
 	return "", false
 }
 

@@ -332,10 +332,13 @@ take_records_of :: proc(ctx: ^wj.Context, host: api_decl.MutationObserver, arr: 
 		d.values[int(Record_Field.Previous)] = wj.wj_wrap_node(ctx, prev)
 		d.values[int(Record_Field.Next)] = wj.wj_wrap_node(ctx, next)
 		name_len := int(reader_u32(&r))
-		if len(data) - r.at < name_len + 5 { wj.JS_FreeValue(ctx, rec); break }
+		if len(data) - r.at < name_len + 4 { wj.JS_FreeValue(ctx, rec); break }
 		name := reader_take(&r, name_len)
 		d.values[int(Record_Field.Name)] = kind == 0 ? wj.new_string_len(ctx, name) : wj.NULL
-		d.values[int(Record_Field.Namespace)] = wj.NULL
+		ns_len := int(reader_u32(&r))
+		if len(data) - r.at < ns_len + 5 { wj.JS_FreeValue(ctx, rec); break }
+		ns := reader_take(&r, ns_len)
+		d.values[int(Record_Field.Namespace)] = ns_len > 0 ? wj.new_string_len(ctx, ns) : wj.NULL
 		has_old := reader_take(&r, 1)[0] != 0
 		old_len := int(reader_u32(&r))
 		if len(data) - r.at < old_len { wj.JS_FreeValue(ctx, rec); break }

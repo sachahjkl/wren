@@ -16260,6 +16260,156 @@ _t_dom_Element_attributeNameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	return nil
 }
 
+// Element_attributeNamespaceAt :: proc(c: ^Call, element: Api_Element, index: u32) -> (string, Api_Error)
+@(private = "file")
+_t_dom_Element_attributeNamespaceAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.Element_attributeNamespaceAt", "result buffer") }
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dom.Element_attributeNamespaceAt: argument element is not a live Element")
+	}
+	_p1 := u32(a[1].i32)
+	_r, _err := Element_attributeNamespaceAt(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Element_attributeIndex :: proc(c: ^Call, element: Api_Element, name: string) -> i32
+@(private = "file")
+_t_dom_Element_attributeIndex :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_attributeIndex", "name") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Element_attributeIndex: argument name is not valid UTF-8") }
+		return wasm.trap_new("dom.Element_attributeIndex: argument name is not valid UTF-8")
+	}
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_attributeIndex: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_attributeIndex: argument element is not a live Element")
+	}
+	_r := Element_attributeIndex(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Element_attributeIndexNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), local_name: string) -> i32
+@(private = "file")
+_t_dom_Element_attributeIndexNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_absent1 := wasm.is_absent(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_attributeIndexNS", "namespace") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.Element_attributeIndexNS", "local_name") }
+	_p1: Maybe(string)
+	if !_absent1 {
+		_v1 := string(_s1[:wasm.addr(&f, a[2])])
+		if !wasm.valid_utf8(_v1) {
+			if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Element_attributeIndexNS: argument namespace is not valid UTF-8") }
+			return wasm.trap_new("dom.Element_attributeIndexNS: argument namespace is not valid UTF-8")
+		}
+		_p1 = _v1
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Element_attributeIndexNS: argument local_name is not valid UTF-8") }
+		return wasm.trap_new("dom.Element_attributeIndexNS: argument local_name is not valid UTF-8")
+	}
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_attributeIndexNS: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_attributeIndexNS: argument element is not a live Element")
+	}
+	_r := Element_attributeIndexNS(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Element_setAttributeOfAttr :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), qualified_name: string, value: string) -> Api_Error
+@(private = "file")
+_t_dom_Element_setAttributeOfAttr :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_absent1 := wasm.is_absent(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_setAttributeOfAttr", "namespace") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.Element_setAttributeOfAttr", "qualified_name") }
+	_n3 := wasm.addr(&f, a[6])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[5]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "dom.Element_setAttributeOfAttr", "value") }
+	_p1: Maybe(string)
+	if !_absent1 {
+		_v1 := string(_s1[:wasm.addr(&f, a[2])])
+		if !wasm.valid_utf8(_v1) {
+			return _fail_status(&c, a, .Type, "dom.Element_setAttributeOfAttr: argument namespace is not valid UTF-8")
+		}
+		_p1 = _v1
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.Element_setAttributeOfAttr: argument qualified_name is not valid UTF-8")
+	}
+	_p3 := string(_s3[:_n3])
+	if !wasm.valid_utf8(_p3) {
+		return _fail_status(&c, a, .Type, "dom.Element_setAttributeOfAttr: argument value is not valid UTF-8")
+	}
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_setAttributeOfAttr: argument element is not a live Element")
+	}
+	_err := Element_setAttributeOfAttr(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // Element_getAttributeNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), local_name: string) -> (string, Api_Error)
 @(private = "file")
 _t_dom_Element_getAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -38762,6 +38912,10 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "Element_attributeNames", fn = _t_dom_Element_attributeNames, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Element_attributeCount", fn = _t_dom_Element_attributeCount, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Element_attributeNameAt", fn = _t_dom_Element_attributeNameAt, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Element_attributeNamespaceAt", fn = _t_dom_Element_attributeNamespaceAt, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Element_attributeIndex", fn = _t_dom_Element_attributeIndex, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_attributeIndexNS", fn = _t_dom_Element_attributeIndexNS, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_setAttributeOfAttr", fn = _t_dom_Element_setAttributeOfAttr, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Element_getAttributeNS", fn = _t_dom_Element_getAttributeNS, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Element_setAttributeChecked", fn = _t_dom_Element_setAttributeChecked, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Element_setAttributeNS", fn = _t_dom_Element_setAttributeNS, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},

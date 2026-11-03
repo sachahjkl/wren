@@ -314,7 +314,7 @@ has_class_token :: proc(v: string, k: string, quirks: bool) -> bool {
 
 @(private)
 attr_of :: #force_inline proc(n: ^dom.Node, name: string) -> (string, bool) {
-	for a in n.attrs { if a.name == name { return a.value, true } }
+	for a in n.attrs { if a.name == name && a.ns == dom.ATTR_NS_NONE { return a.value, true } }
 	return "", false
 }
 
@@ -669,7 +669,7 @@ Dataset_delete :: proc(c: ^Call, element: Api_Element, name: string) -> bool {
 Dataset_names :: proc(c: ^Call, element: Api_Element) -> string {
 	b := strings.builder_make(context.temp_allocator)
 	outer: for a in element.data.attrs {
-		if !strings.has_prefix(a.name, "data-") { continue }
+		if !strings.has_prefix(a.name, "data-") || a.ns != dom.ATTR_NS_NONE { continue }
 		rest := a.name[5:]
 		for i in 0 ..< len(rest) { if rest[i] >= 'A' && rest[i] <= 'Z' { continue outer } }
 		for i := 0; i < len(rest); i += 1 {

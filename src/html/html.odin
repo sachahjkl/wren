@@ -82,6 +82,7 @@ b_open2 :: proc "c" (user: rawptr, tag: [^]u8, tag_len: uint, attrs: [^]Shim_Att
 		case 2: n.ns = .MathML
 		case 3: n.ns = .Other
 		}
+		if n.ns == .SVG || n.ns == .MathML { dom.adjust_foreign_attributes(bd.doc, top) }
 	}
 }
 

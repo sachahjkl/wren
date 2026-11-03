@@ -201,14 +201,14 @@ is_slot :: #force_inline proc(n: ^Node) -> bool { return n.kind == .Element && n
 
 // A slot's name (its `name` attribute, "" when absent).
 slot_name :: proc(n: ^Node) -> string {
-	for a in n.attrs { if a.name == "name" { return a.value } }
+	for a in n.attrs { if a.name == "name" && a.ns == ATTR_NS_NONE { return a.value } }
 	return ""
 }
 
 // A slottable's name: an element's `slot` attribute, "" otherwise.
 slottable_name :: proc(n: ^Node) -> string {
 	if n.kind != .Element { return "" }
-	for a in n.attrs { if a.name == "slot" { return a.value } }
+	for a in n.attrs { if a.name == "slot" && a.ns == ATTR_NS_NONE { return a.value } }
 	return ""
 }
 
@@ -641,7 +641,7 @@ find_by_id_in_shadow :: proc(d: ^Document, root: base.Handle, id: string) -> bas
 	for cur := next_in_tree(d, root, root); cur != base.NIL_HANDLE; cur = next_in_tree(d, cur, root) {
 		n := get(d, cur)
 		if n.kind != .Element { continue }
-		for a in n.attrs { if a.name == "id" { if a.value == id { return cur }; break } }
+		for a in n.attrs { if a.name == "id" && a.ns == ATTR_NS_NONE { if a.value == id { return cur }; break } }
 	}
 	return base.NIL_HANDLE
 }
@@ -649,7 +649,7 @@ find_by_id_in_shadow :: proc(d: ^Document, root: base.Handle, id: string) -> bas
 // The `part` names of an element (its `part` attribute's tokens), in temp memory.
 part_names :: proc(n: ^Node) -> []string {
 	for a in n.attrs {
-		if a.name != "part" { continue }
+		if a.name != "part" || a.ns != ATTR_NS_NONE { continue }
 		return strings.fields(a.value, context.temp_allocator)
 	}
 	return nil

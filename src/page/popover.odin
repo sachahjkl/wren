@@ -58,7 +58,7 @@ popover_state :: proc(p: ^Page) -> ^Popover_State { return p.formctl != nil ? &p
 @(private)
 node_attr :: proc(n: ^dom.Node, name: string) -> (string, bool) {
 	if n == nil || n.kind != .Element { return "", false }
-	for a in n.attrs { if a.name == name { return a.value, true } }   // (names are stored in lower case)
+	for a in n.attrs { if a.name == name && a.ns == dom.ATTR_NS_NONE { return a.value, true } }   // (names are stored in lower case)
 	return "", false
 }
 

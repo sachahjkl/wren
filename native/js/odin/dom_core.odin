@@ -16,8 +16,8 @@ import "../odin_abi/api_decl"
 import "../odin/jsb"
 import "../odin/wj"
 
-@(private = "file") ATTR_CACHE_KEY_BYTES :: 256       // the name of an attribute, as the cache key of a map (cut if longer)
-@(private = "file") PREFIXED_ATTR_NAME_BYTES :: 300   // "xlink:" or "xml:" and a local name
+@(private = "file") ATTR_CACHE_KEY_BYTES :: 256       // the namespace and local name of an attribute, as the cache key of a map (cut if longer)
+@(private = "file") ATTR_KEY_SEPARATOR :: 1           // between the namespace and the local name of a cache key (no URI has it)
 
 @(private = "file") nothing: abi.Nothing
 
@@ -1262,27 +1262,74 @@ wjr_DOMStringMap_named_keys :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, arra
 
 // ---- Attr and NamedNodeMap ----
 //
-// An Attr is a Dom_Impl of kind DOM_ATTR: `name` its qualified name, `node` its element (0: detached, its value in
-// `extra`), `owner` the element's wrapper. A NamedNodeMap (DOM_ATTRS) keeps one Attr per attribute in `extra`, a
-// null-prototype object keyed by the lower-case name.
+// An Attr is a Dom_Impl of kind DOM_ATTR: `name` its qualified name followed by its namespace URI (`n`: the URI's length
+// + 1, 0 for the null namespace), `node` its element (0: detached, its value in `extra`), `owner` the element's wrapper.
+// Its namespace and local name designate its attribute (DOM: an element has one attribute of each). One removed by
+// another way than the Attr (removeAttribute...) is found gone when next used (attr_element), with the value it had
+// when it was last read. A NamedNodeMap (DOM_ATTRS) keeps one Attr per attribute in `extra`, a null-prototype object
+// keyed by the namespace and the local name (attr_key).
 
 @(private = "file")
-attr_new :: proc "c" (ctx: ^wj.Context, owner: wj.JSValue, el: u64, name: string) -> wj.JSValue {
+attr_new :: proc "c" (ctx: ^wj.Context, owner: wj.JSValue, el: u64, name: string, namespace: Maybe(string)) -> wj.JSValue {
 	d: ^wj.Dom_Impl
 	obj := wj.dom_new(ctx, ifc("Attr"), wj.DOM_ATTR, owner, el, &d)
 	if wj.is_exception(obj) { return obj }
-	d.name = wj.dom_strndup(raw_data(name), uint(len(name)))
+	uri, _ := namespace.?
+	buf := ([^]u8)(wj.libc_malloc(uint(len(name) + len(uri) + 1)))
+	if buf == nil { wj.JS_FreeValue(ctx, obj); return wj.JS_ThrowOutOfMemory(ctx) }
+	copy(buf[:len(name)], name)
+	copy(buf[len(name):len(name) + len(uri)], uri)
+	buf[len(name) + len(uri)] = 0
+	d.name = buf
 	d.name_len = uint(len(name))
+	d.n = uri != "" ? u32(len(uri)) + 1 : 0
 	d.extra = wj.new_string(ctx, "")
 	return obj
 }
 
 @(private = "file")
+attr_namespace :: proc "contextless" (a: ^wj.Dom_Impl) -> Maybe(string) {
+	if a.n == 0 { return nil }
+	return string(a.name[a.name_len:a.name_len + uint(a.n) - 1])
+}
+
+// The qualified name's prefix and local name: none and all of it in the null namespace (setAttribute("pre:fix")), else
+// split at the first colon.
+@(private = "file")
+attr_split :: proc "contextless" (a: ^wj.Dom_Impl) -> (prefix: string, local: string, has_prefix: bool) {
+	name := wj.dom_name(a)
+	if a.n == 0 { return "", name, false }
+	for i in 0 ..< len(name) { if name[i] == ':' { return name[:i], name[i + 1:], true } }
+	return "", name, false
+}
+
+// The index of an Attr's attribute on element `el`, -1 when it has none.
+@(private = "file")
+attr_index_on :: proc(a: ^wj.Dom_Impl, el: u64) -> i32 {
+	_, local, _ := attr_split(a)
+	i: i32 = -1
+	jsb.host(&i, api_decl.Element_attributeIndexNS, wj.wr_Element_attributeIndexNS, api_decl.Element(el), attr_namespace(a), local)
+	return i
+}
+
+// The element of an Attr, 0 when detached; one whose attribute is gone is detached now.
+@(private = "file")
+attr_element :: proc(a: ^wj.Dom_Impl) -> u64 {
+	if a.node != 0 && attr_index_on(a, a.node) < 0 { a.node = 0 }
+	return a.node
+}
+
+// The value of an Attr: its attribute's (kept in `extra` for when it goes), else the one it keeps.
+@(private = "file")
 attr_value :: proc(ctx: ^wj.Context, a: ^wj.Dom_Impl) -> wj.JSValue {
-	if a.node != 0 {
+	if attr_element(a) != 0 {
+		_, local, _ := attr_split(a)
 		s: string
-		if jsb.host(&s, api_decl.Element_getAttribute, wj.wr_Element_getAttribute, api_decl.Element(a.node), wj.dom_name(a)) == .None {
-			return wj.new_string_len(ctx, s)
+		if jsb.host(&s, api_decl.Element_getAttributeNS, wj.wr_Element_getAttributeNS, api_decl.Element(a.node), attr_namespace(a), local) == .None {
+			v := wj.new_string_len(ctx, s)
+			wj.JS_FreeValue(ctx, a.extra)
+			a.extra = wj.JS_DupValue(ctx, v)
+			return v
 		}
 	}
 	return wj.JS_DupValue(ctx, a.extra)
@@ -1296,21 +1343,19 @@ attr_set_value :: proc(ctx: ^wj.Context, a: ^wj.Dom_Impl, v: wj.JSValue) -> wj.J
 	str := wj.new_string_len(ctx, str_view(s))
 	wj.JS_FreeValue(ctx, a.extra)
 	a.extra = str
-	if a.node == 0 { return wj.UNDEFINED }
-	st := jsb.host(&nothing, api_decl.Element_setAttribute, wj.wr_Element_setAttribute, api_decl.Element(a.node), wj.dom_name(a), str_view(s))
+	if attr_element(a) == 0 { return wj.UNDEFINED }
+	return attr_write(ctx, a, str_view(s))
+}
+
+// The attribute of an Attr on its element takes `value` (added when it has none).
+@(private = "file")
+attr_write :: proc(ctx: ^wj.Context, a: ^wj.Dom_Impl, value: string) -> wj.JSValue {
+	st := jsb.host(&nothing, api_decl.Element_setAttributeOfAttr, wj.wr_Element_setAttributeOfAttr, api_decl.Element(a.node), attr_namespace(a), wj.dom_name(a), value)
 	return st != .None ? wj.wj_throw_status(ctx, i32(st), "Attr.value") : wj.UNDEFINED
 }
 
 @(private = "file")
 attr_this :: #force_inline proc "contextless" (ctx: ^wj.Context, this_val: wj.JSValue) -> ^wj.Dom_Impl { return wj.dom_impl_of(ctx, this_val, ifc("Attr")) }
-
-// The qualified name's prefix and local name (split at the first colon).
-@(private = "file")
-attr_split :: proc "contextless" (a: ^wj.Dom_Impl) -> (prefix: string, local: string, has_prefix: bool) {
-	name := wj.dom_name(a)
-	for i in 0 ..< len(name) { if name[i] == ':' { return name[:i], name[i + 1:], true } }
-	return "", name, false
-}
 
 @(export, link_name = "wjr_Attr_get_name")
 wjr_Attr_get_name :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
@@ -1338,12 +1383,8 @@ wjr_Attr_get_prefix :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue 
 wjr_Attr_get_namespaceURI :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
 	a := attr_this(ctx, t)
 	if a == nil { return wj.EXCEPTION }
-	name := wj.dom_name(a)
-	has :: proc "contextless" (s, p: string) -> bool { return len(s) > len(p) && s[:len(p)] == p }
-	if has(name, "xlink:") { return wj.new_string(ctx, "http://www.w3.org/1999/xlink") }
-	if has(name, "xml:") { return wj.new_string(ctx, "http://www.w3.org/XML/1998/namespace") }
-	if name == "xmlns" || has(name, "xmlns:") { return wj.new_string(ctx, "http://www.w3.org/2000/xmlns/") }
-	return wj.NULL
+	uri, ok := attr_namespace(a).?
+	return ok ? wj.new_string_len(ctx, uri) : wj.NULL
 }
 
 @(export, link_name = "wjr_Attr_get_value")
@@ -1362,37 +1403,69 @@ wjr_Attr_set_value :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, v: wj.JSValue) 
 
 @(export, link_name = "wjr_Attr_get_ownerElement")
 wjr_Attr_get_ownerElement :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
 	a := attr_this(ctx, t)
 	if a == nil { return wj.EXCEPTION }
-	return a.node != 0 ? wj.JS_DupValue(ctx, a.owner) : wj.NULL
+	return attr_element(a) != 0 ? wj.JS_DupValue(ctx, a.owner) : wj.NULL
 }
 
 @(export, link_name = "wjr_Attr_get_specified")
 wjr_Attr_get_specified :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return attr_this(ctx, t) != nil ? wj.TRUE : wj.EXCEPTION }
 
-// The Attr of `name` on the element of a NamedNodeMap (one object per attribute: cached), or null when absent;`stored`:
-// `name` is the stored name itself (by index: one setAttributeNS gave in upper case), not looked up in lower case.
+// The cache key of an attribute in a NamedNodeMap: its namespace, then a byte no URI has, then its local name (cut if
+// longer than the buffer).
 @(private = "file")
-map_attr :: proc(ctx: ^wj.Context, m: ^wj.Dom_Impl, name: string, stored := false) -> wj.JSValue {
-	has: bool
-	jsb.host(&has, api_decl.Element_hasAttribute, wj.wr_Element_hasAttribute, api_decl.Element(m.node), name)
-	if !has { return wj.NULL }
-	// the stored name (lower case, but for a stored one) is the cache key
+attr_key :: proc "contextless" (key: ^[ATTR_CACHE_KEY_BYTES]u8, namespace: Maybe(string), local: string) -> cstring {
+	uri, _ := namespace.?
+	n := copy(key[:len(key) - 1], uri)
+	if n < len(key) - 1 { key[n] = ATTR_KEY_SEPARATOR; n += 1 }
+	n += copy(key[n:len(key) - 1], local)
+	key[n] = 0
+	return cstring(&key[0])
+}
+
+// The Attr of the attribute at `i` of the element of a NamedNodeMap (one object per attribute: cached), null past the
+// end.
+@(private = "file")
+map_item :: proc(ctx: ^wj.Context, m: ^wj.Dom_Impl, i: u32) -> wj.JSValue {
+	el := api_decl.Element(m.node)
+	s: string
+	if jsb.host(&s, api_decl.Element_attributeNameAt, wj.wr_Element_attributeNameAt, el, i) != .None { return wj.NULL }
+	// (the name and the namespace are in the scratch buffer, which every host call reuses: copied first)
+	name := wj.dom_strndup(raw_data(s), uint(len(s)))
+	if name == nil { return wj.JS_ThrowOutOfMemory(ctx) }
+	defer wj.libc_free(name)
+	qualified := string(name[:len(s)])
+	namespace: Maybe(string)
+	if jsb.host(&s, api_decl.Element_attributeNamespaceAt, wj.wr_Element_attributeNamespaceAt, el, i) == .None {
+		uri := wj.dom_strndup(raw_data(s), uint(len(s)))
+		if uri == nil { return wj.JS_ThrowOutOfMemory(ctx) }
+		namespace = string(uri[:len(s)])
+	}
+	defer if uri, ok := namespace.?; ok { wj.libc_free(raw_data(uri)) }
+	local := qualified
+	if namespace != nil { for k in 0 ..< len(qualified) { if qualified[k] == ':' { local = qualified[k + 1:]; break } } }
 	key: [ATTR_CACHE_KEY_BYTES]u8
-	kl := min(len(name), len(key) - 1)
-	for i in 0 ..< kl { key[i] = stored ? name[i] : lower_ascii(name[i]) }
-	key[kl] = 0
-	ckey := cstring(&key[0])
+	ckey := attr_key(&key, namespace, local)
 	if !wj.is_object(m.extra) { m.extra = wj.JS_NewObjectProto(ctx, wj.NULL) }
 	a := wj.JS_GetPropertyStr(ctx, m.extra, ckey)
 	if wj.is_object(a) {
 		if ad := (^wj.Dom_Impl)(wj.obj_impl(a)); ad != nil && ad.node == m.node { return a }   // still this element's
 	}
 	wj.JS_FreeValue(ctx, a)
-	a = attr_new(ctx, m.owner, m.node, string(key[:kl]))
+	a = attr_new(ctx, m.owner, m.node, qualified, namespace)
 	if wj.is_exception(a) { return a }
+	wj.JS_FreeValue(ctx, attr_value(ctx, (^wj.Dom_Impl)(wj.obj_impl(a))))   // its value kept, for when the attribute goes
 	wj.JS_SetPropertyStr(ctx, m.extra, ckey, wj.JS_DupValue(ctx, a))
 	return a
+}
+
+// The Attr getAttribute(name) would read the value of, or null.
+@(private = "file")
+map_attr :: proc(ctx: ^wj.Context, m: ^wj.Dom_Impl, name: string) -> wj.JSValue {
+	i: i32 = -1
+	jsb.host(&i, api_decl.Element_attributeIndex, wj.wr_Element_attributeIndex, api_decl.Element(m.node), name)
+	return i >= 0 ? map_item(ctx, m, u32(i)) : wj.NULL
 }
 
 @(export, link_name = "wjr_Element_get_attributes")
@@ -1414,17 +1487,6 @@ wjr_NamedNodeMap_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue) -> 
 	context = jsb.glue_context()
 	m := wj.dom_impl_any(obj, wj.DOM_ATTRS)
 	return m != nil ? attribute_count(m.node) : 0
-}
-
-@(private = "file")
-map_item :: proc(ctx: ^wj.Context, m: ^wj.Dom_Impl, i: u32) -> wj.JSValue {
-	s: string
-	if jsb.host(&s, api_decl.Element_attributeNameAt, wj.wr_Element_attributeNameAt, api_decl.Element(m.node), i) != .None { return wj.NULL }
-	// (the name is in the scratch buffer, which map_attr's host calls reuse: copied first)
-	name := wj.dom_strndup(raw_data(s), uint(len(s)))
-	if name == nil { return wj.JS_ThrowOutOfMemory(ctx) }
-	defer wj.libc_free(name)
-	return map_attr(ctx, m, string(name[:len(s)]), stored = true)
 }
 
 @(export, link_name = "wjr_NamedNodeMap_index_get")
@@ -1453,27 +1515,23 @@ wjr_NamedNodeMap_named_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, name:
 	return a
 }
 
-// the supported property names: the attributes' qualified names in order (an HTML element's without the ones with
-// upper case letters: a lookup lower-cases the name and could not find them)
+// the supported property names: the attributes' qualified names in order, each once, those a lookup finds (not one with
+// upper-case letters on an HTML element of an HTML document: the lookup lower-cases the name)
 @(export, link_name = "wjr_NamedNodeMap_named_keys")
 wjr_NamedNodeMap_named_keys :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, array: wj.JSValue) -> i32 {
 	context = jsb.glue_context()
 	m := wj.dom_impl_any(obj, wj.DOM_ATTRS)
 	if m == nil { return 0 }
 	el := api_decl.Element(m.node)
-	ns: string
-	jsb.host(&ns, api_decl.Element_namespaceURI, wj.wr_Element_namespaceURI, el)
-	html := ns == "http://www.w3.org/1999/xhtml"
 	k: u32
 	for i in 0 ..< attribute_count(m.node) {
 		s: string
 		if jsb.host(&s, api_decl.Element_attributeNameAt, wj.wr_Element_attributeNameAt, el, i) != .None { continue }
-		if html {
-			upper := false
-			for c in transmute([]u8)s { if c >= 'A' && c <= 'Z' { upper = true; break } }
-			if upper { continue }
-		}
-		wj.array_set(ctx, array, k, wj.new_string_len(ctx, s))
+		name := wj.new_string_len(ctx, s)   // (before the next host call reuses the scratch buffer)
+		found: i32 = -1
+		jsb.host(&found, api_decl.Element_attributeIndex, wj.wr_Element_attributeIndex, el, s)
+		if found != i32(i) { wj.JS_FreeValue(ctx, name); continue }
+		wj.array_set(ctx, array, k, name)
 		k += 1
 	}
 	return 0
@@ -1518,31 +1576,25 @@ wjr_NamedNodeMap_getNamedItemNS :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 	m := map_this(ctx, this_val)
 	if m == nil { return wj.EXCEPTION }
 	if argc < 2 { return wj.wj_throw_arity(ctx, "NamedNodeMap.getNamedItemNS", 2, argc) }
-	// the attributes keep their qualified names: the local name with the namespace's usual prefix
 	ns, local: wj.Str
 	if !to_str(ctx, argv[0], &ns, wj.STR_NULLABLE) { return wj.EXCEPTION }
 	defer wj.wj_str_free(ctx, &ns)
 	if !to_str(ctx, argv[1], &local) { return wj.EXCEPTION }
 	defer wj.wj_str_free(ctx, &local)
-	prefix := ""
-	switch str_view(ns) {
-	case "http://www.w3.org/1999/xlink":         prefix = "xlink:"
-	case "http://www.w3.org/XML/1998/namespace": prefix = "xml:"
-	}
-	name: [PREFIXED_ATTR_NAME_BYTES]u8
-	n := copy(name[:len(name) - 1], prefix)
-	n += copy(name[n:len(name) - 1], wj.str_slice(local))
-	return map_attr(ctx, m, string(name[:n]))
+	i: i32 = -1
+	jsb.host(&i, api_decl.Element_attributeIndexNS, wj.wr_Element_attributeIndexNS, api_decl.Element(m.node), namespace_of(ns), str_view(local))
+	return i >= 0 ? map_item(ctx, m, u32(i)) : wj.NULL
 }
 
-// setNamedItem(attr) / setAttributeNode: the attribute takes the Attr's value; the Attr belongs to the element now.
-// InUseAttributeError when it belongs to another element. Returns the Attr it replaces (null when none).
+// setNamedItem(attr) / setAttributeNode: the attribute of the Attr's namespace and local name takes its value; the Attr
+// belongs to the element now, the one it replaces (returned; null when none) is detached with the value it had.
+// InUseAttributeError when it belongs to another element.
 @(private = "file")
 set_attr_node :: proc(ctx: ^wj.Context, element: wj.JSValue, el: u64, attr: wj.JSValue) -> wj.JSValue {
 	ao := wj.wj_unwrap(attr, ifc("Attr"))
 	if ao == nil || ao.impl == nil { return wj.wj_throw_type(ctx, "parameter 1 is not of type 'Attr'.") }
 	a := (^wj.Dom_Impl)(ao.impl)
-	if a.node != 0 && a.node != el {
+	if owner := attr_element(a); owner != 0 && owner != el {
 		return wj.wj_throw_dom(ctx, "InUseAttributeError", "The node provided is an attribute node that is already an attribute of another Element; attribute nodes must be explicitly cloned.")
 	}
 	if a.node == el { return wj.JS_DupValue(ctx, attr) }
@@ -1550,34 +1602,38 @@ set_attr_node :: proc(ctx: ^wj.Context, element: wj.JSValue, el: u64, attr: wj.J
 	if wj.is_exception(mapv) { return mapv }
 	defer wj.JS_FreeValue(ctx, mapv)
 	m := wj.dom_impl_any(mapv, wj.DOM_ATTRS)
-	old := m != nil ? map_attr(ctx, m, wj.dom_name(a)) : wj.NULL
+	old := wj.NULL
+	if i := attr_index_on(a, el); m != nil && i >= 0 { old = map_item(ctx, m, u32(i)) }
+	if wj.is_exception(old) { return old }
 	if wj.is_object(old) {
-		// the replaced Attr keeps its value, detached
 		od := (^wj.Dom_Impl)(wj.obj_impl(old))
-		v := attr_value(ctx, od)
-		wj.JS_FreeValue(ctx, od.extra)
-		od.extra = v
+		wj.JS_FreeValue(ctx, attr_value(ctx, od))   // (kept in its `extra`)
 		od.node = 0
 	}
-	v := wj.JS_DupValue(ctx, a.extra)
 	a.node = el
 	wj.JS_FreeValue(ctx, a.owner)
 	a.owner = wj.JS_DupValue(ctx, element)
-	r := attr_set_value(ctx, a, v)
-	wj.JS_FreeValue(ctx, v)
-	if m != nil && wj.is_object(m.extra) { wj.JS_SetPropertyStr(ctx, m.extra, wj.cstr(a.name), wj.JS_DupValue(ctx, attr)) }
+	s: wj.Str
+	if !to_str(ctx, a.extra, &s) { wj.JS_FreeValue(ctx, old); return wj.EXCEPTION }
+	r := attr_write(ctx, a, str_view(s))
+	wj.wj_str_free(ctx, &s)
 	if wj.is_exception(r) { wj.JS_FreeValue(ctx, old); return r }
+	if m != nil {
+		if !wj.is_object(m.extra) { m.extra = wj.JS_NewObjectProto(ctx, wj.NULL) }
+		_, local, _ := attr_split(a)
+		key: [ATTR_CACHE_KEY_BYTES]u8
+		wj.JS_SetPropertyStr(ctx, m.extra, attr_key(&key, attr_namespace(a), local), wj.JS_DupValue(ctx, attr))
+	}
 	return old
 }
 
 // removeNamedItem / removeAttributeNode: the attribute goes, its Attr keeps the value, detached.
 @(private = "file")
 remove_attr_node :: proc(ctx: ^wj.Context, el: u64, a: ^wj.Dom_Impl, attr: wj.JSValue) -> wj.JSValue {
-	if a.node != el { return wj.wj_throw_dom(ctx, "NotFoundError", "The attribute is not owned by this element.") }
-	v := attr_value(ctx, a)
-	wj.JS_FreeValue(ctx, a.extra)
-	a.extra = v
-	jsb.host(&nothing, api_decl.Element_removeAttribute, wj.wr_Element_removeAttribute, api_decl.Element(el), wj.dom_name(a))
+	if attr_element(a) != el { return wj.wj_throw_dom(ctx, "NotFoundError", "The attribute is not owned by this element.") }
+	wj.JS_FreeValue(ctx, attr_value(ctx, a))   // (kept in its `extra`)
+	_, local, _ := attr_split(a)
+	jsb.host(&nothing, api_decl.Element_removeAttributeNS, wj.wr_Element_removeAttributeNS, api_decl.Element(el), attr_namespace(a), local)
 	a.node = 0
 	return wj.JS_DupValue(ctx, attr)
 }
@@ -1643,9 +1699,13 @@ wjr_Element_removeAttributeNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 	return remove_attr_node(ctx, h, (^wj.Dom_Impl)(ao.impl), argv[0])
 }
 
+// createAttribute(localName): an Attr of the null namespace, its name in ASCII lower case in an HTML document;
+// InvalidCharacterError for a name that is not a valid attribute local name.
 @(export, link_name = "wjr_Document_createAttribute")
 wjr_Document_createAttribute :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	if wj.wj_this(ctx, this_val, ifc("Document")) == nil { return wj.EXCEPTION }
+	context = jsb.glue_context()
+	doc := api_decl.Document(node_this(ctx, this_val, ifc("Document")))
+	if doc == 0 { return wj.EXCEPTION }
 	if argc < 1 { return wj.wj_throw_arity(ctx, "Document.createAttribute", 1, argc) }
 	s: wj.Str
 	if !to_str(ctx, argv[0], &s) { return wj.EXCEPTION }
@@ -1653,21 +1713,32 @@ wjr_Document_createAttribute :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 	name := wj.dom_strndup(wj.cstr_bytes(s.ptr), s.len)
 	if name == nil { return wj.JS_ThrowOutOfMemory(ctx) }
 	defer wj.libc_free(name)
+	xml_type: string
+	html := jsb.host(&xml_type, api_decl.Document_xmlContentType, wj.wr_Document_xmlContentType, doc) != .None
 	ok := s.len > 0
 	for i in 0 ..< s.len {
 		switch name[i] {
 		case ' ', '\t', '\n', '\r', '\f', '/', '>', '=', 0: ok = false
 		}
-		name[i] = lower_ascii(name[i])
+		if html { name[i] = lower_ascii(name[i]) }
 	}
 	if !ok { return wj.wj_throw_dom(ctx, "InvalidCharacterError", "The localName provided is not a valid name.") }
-	return attr_new(ctx, wj.UNDEFINED, 0, string(name[:s.len]))
+	return attr_new(ctx, wj.UNDEFINED, 0, string(name[:s.len]), nil)
 }
 
+// createAttributeNS(namespace, qualifiedName): an Attr of that namespace (the empty string: the null namespace).
 @(export, link_name = "wjr_Document_createAttributeNS")
 wjr_Document_createAttributeNS :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	if wj.wj_this(ctx, this_val, ifc("Document")) == nil { return wj.EXCEPTION }
 	if argc < 2 { return wj.wj_throw_arity(ctx, "Document.createAttributeNS", 2, argc) }
-	return wjr_Document_createAttribute(ctx, this_val, 1, argv[1:])
+	ns, name: wj.Str
+	if !to_str(ctx, argv[0], &ns, wj.STR_NULLABLE) { return wj.EXCEPTION }
+	defer wj.wj_str_free(ctx, &ns)
+	if !to_str(ctx, argv[1], &name) { return wj.EXCEPTION }
+	defer wj.wj_str_free(ctx, &name)
+	if name.len == 0 { return wj.wj_throw_dom(ctx, "InvalidCharacterError", "The qualified name provided is not a valid name.") }
+	return attr_new(ctx, wj.UNDEFINED, 0, str_view(name), namespace_of(ns))
 }
 
 // ---- innerHTML / outerHTML setters: (TrustedHTML or [LegacyNullToEmptyString] DOMString) ----

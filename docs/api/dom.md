@@ -890,6 +890,51 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Element_attributeNameAt :: proc(c: ^Call, element: Api_Element, index: u32) -> (string, Api_Error)`
 
+### `Element_attributeNamespaceAt`
+
+```
+string Element_attributeNamespaceAt(Element element, u32 index) raises
+```
+
+The namespace URI of the attribute at `index` (Not_Found: null, or past the end).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_attributeNamespaceAt :: proc(c: ^Call, element: Api_Element, index: u32) -> (string, Api_Error)`
+
+### `Element_attributeIndex`
+
+```
+i32 Element_attributeIndex(Element element, string name)
+```
+
+The index of the attribute element.getAttribute(name) reads, -1 when none.
+
+Host: `Element_attributeIndex :: proc(c: ^Call, element: Api_Element, name: string) -> i32`
+
+### `Element_attributeIndexNS`
+
+```
+i32 Element_attributeIndexNS(Element element, optional string namespace, string local_name)
+```
+
+The index of the attribute element.getAttributeNS(namespace, localName) reads, -1 when none.
+
+Host: `Element_attributeIndexNS :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), local_name: string) -> i32`
+
+### `Element_setAttributeOfAttr`
+
+```
+void Element_setAttributeOfAttr(Element element, optional string namespace, string qualified_name, string value) raises
+```
+
+The value of an Attr object's attribute (setAttributeNode, attr.value): its namespace and qualified name as the Attr
+has them, not validated again.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Element_setAttributeOfAttr :: proc(c: ^Call, element: Api_Element, namespace: Maybe(string), qualified_name: string, value: string) -> Api_Error`
+
 ### `Element_getAttributeNS`
 
 ```

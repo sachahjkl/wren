@@ -143,13 +143,13 @@ fetch_string_user :: proc "contextless" (fill: Fetch_Fill, user: rawptr) -> i32 
 }
 fetch_string :: proc{fetch_string_plain, fetch_string_user}
 
-// The two WJ_FETCH_STRING calls reflect.odin makes most (getAttribute, resolveURL): the length or a negative Error,
-// the bytes in wj_scratch.data.
+// The two WJ_FETCH_STRING calls reflect.odin makes most (the attribute of no namespace a reflected IDL attribute reads:
+// getAttributeNS("", name); resolveURL): the length or a negative Error, the bytes in wj_scratch.data.
 fetch_string_el :: proc "contextless" (el: u64, name: [^]u8, name_len: u32) -> i32 {
-	n := wr_Element_getAttribute(el, name, name_len, wj_scratch.data, wj_scratch.cap)
+	n := wr_Element_getAttributeNS(el, empty_ptr(), 0, name, name_len, wj_scratch.data, wj_scratch.cap)
 	if n > 0 && u32(n) > wj_scratch.cap {
 		if !wj_scratch_grow(u32(n)) { return -13 }
-		n = wr_Element_getAttribute(el, name, name_len, wj_scratch.data, wj_scratch.cap)
+		n = wr_Element_getAttributeNS(el, empty_ptr(), 0, name, name_len, wj_scratch.data, wj_scratch.cap)
 	}
 	return n
 }

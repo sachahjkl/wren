@@ -36,9 +36,13 @@ is_xml_document :: proc(n: ^Node) -> bool { return n != nil && (n.kind == .Fragm
 // An element made for an XML document: names as given (DOM: no ASCII lower-casing of HTML documents).
 is_xml_element :: #force_inline proc(n: ^Node) -> bool { return n != nil && n.kind == .Element && n.xml == .Element }
 
+// An attribute: `name` its qualified name (prefix:local when it has a namespace and a prefix), `ns` its namespace
+// (attr_ns.odin). What the browser itself reads of an attribute (style, src, on*, id, slot...) is the one of no
+// namespace: get_attribute.
 Attr :: struct {
 	name:  string,
 	value: string,
+	ns:    Attr_Ns,
 }
 
 Listener_Id :: distinct u32
@@ -107,6 +111,7 @@ Document :: struct {
 	attr_version: u64,
 	ids:        Id_Index,          // elements by id, built on first use (ids.odin)
 	ns_extra:   map[base.Handle]Ns_Extra,   // namespace URI of Other elements, prefixes (createElementNS)
+	attr_namespaces: [dynamic]string,       // the namespace URIs of attributes past the fixed ones, each once (attr_ns.odin)
 	templates:  map[base.Handle]base.Handle,   // <template> element -> its contents (a Fragment), made on first need
 	// called for each mutation as it happens (journal.odin): MutationObserver. Entries of one DOM operation (replace
 	// all children, insert a fragment...) carry the same `batch`.
@@ -240,6 +245,8 @@ free_document :: proc(d: ^Document) {
 	ids_destroy(d)
 	for _, x in d.ns_extra { delete(x.uri); delete(x.prefix) }
 	delete(d.ns_extra)
+	for uri in d.attr_namespaces { delete(uri) }
+	delete(d.attr_namespaces)
 	delete(d.templates)
 	delete(d.timed)
 	delete(d.metas)
@@ -307,8 +314,8 @@ create_element_ns :: proc(d: ^Document, tag: string, ns: Namespace, uri := "", p
 
 create_doctype :: proc(d: ^Document, name, public_id, system_id: string) -> base.Handle {
 	h, n := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Doctype, name = heap_str(name)})
-	if public_id != "" { append(&n.attrs, Attr{heap_str("publicId"), heap_str(public_id)}) }
-	if system_id != "" { append(&n.attrs, Attr{heap_str("systemId"), heap_str(system_id)}) }
+	if public_id != "" { append(&n.attrs, Attr{name = heap_str("publicId"), value = heap_str(public_id)}) }
+	if system_id != "" { append(&n.attrs, Attr{name = heap_str("systemId"), value = heap_str(system_id)}) }
 	return h
 }
 
@@ -471,44 +478,77 @@ destroy_subtree :: proc(d: ^Document, h: base.Handle) {
 ////////////////////////////////
 // Attributes and text
 
-// `name` is stored in ASCII lower case on an HTML or SVG element of an HTML document (lowers_attribute_names), as given
-// otherwise or when `exact` (setAttributeNS: the DOM lower-cases nothing there).
+// DOM setAttribute: the first attribute whose qualified name is `name`, whatever its namespace, takes the value; else
+// one of no namespace is added. `name` is stored in ASCII lower case on an HTML or SVG element of an HTML document
+// (lowers_attribute_names), as given otherwise or when `exact` (the DOM lower-cases nothing there).
 set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string, exact := false) -> Error {
 	n := get(d, h)
 	if n == nil { return .Invalid_Handle }
 	if n.kind != .Element || name == "" { return .Invalid_Argument }
 	lname := name
 	if !exact && lowers_attribute_names(n) { lname = lower_name(name) }
-	for &a in n.attrs {
-		if a.name == lname {
-			old := a.value
-			if old == value {
-				// the same value (a script that writes it again at every scroll event): observers and callbacks still see the write,
-				// as the DOM says, but the document did not change: no new version, so no restyle and no layout
-				journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, old, true)
-				notify_attribute(d, h, lname)
-				return .None
-			}
-			a.value = heap_str(value)
-			touch(d)
-			d.attr_version += 1
-			if lname == "id" { ids_changed(d, h, old, true, value, true) }
-			journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, old, true)
-			delete(old)
-			if len(d.shadow_roots) > 0 { shadow_attribute(d, h, lname) }
-			notify_attribute(d, h, lname)
-			return .None
-		}
+	for a, i in n.attrs {
+		if a.name == lname { attribute_write(d, h, i, a.ns == ATTR_NS_NONE ? lname : attr_local(a), value); return .None }
 	}
-	append(&n.attrs, Attr{heap_str(lname), heap_str(value)})
+	attribute_add(d, h, Attr{heap_str(lname), heap_str(value), ATTR_NS_NONE}, lname)
+	return .None
+}
+
+// DOM setAttributeNS once validated: the attribute of namespace `ns` and the local name of `qualified` takes the value,
+// keeping its own prefix (setAttributeNode's takes `qualified`'s: `replace_prefix`), else `qualified` is added.
+set_attribute_ns :: proc(d: ^Document, h: base.Handle, ns: Attr_Ns, qualified, value: string, replace_prefix := false) -> Error {
+	n := get(d, h)
+	if n == nil { return .Invalid_Handle }
+	if n.kind != .Element || qualified == "" { return .Invalid_Argument }
+	local := attr_local_of(ns, qualified)
+	if i := attribute_index_ns(n, ns, local); i >= 0 {
+		if a := &n.attrs[i]; replace_prefix && a.name != qualified { delete(a.name); a.name = heap_str(qualified) }
+		attribute_write(d, h, i, local, value)
+		return .None
+	}
+	attribute_add(d, h, Attr{heap_str(qualified), heap_str(value), ns}, local)
+	return .None
+}
+
+// The change of the value of attribute `i` of element `h`; `name` names it to the hooks (the caller's string: a hook may
+// remove the attribute). What the browser does on a change (ids, slots, the hooks: style, src, on*) is for an attribute
+// of no namespace only; the journal (mutation observers, restyles) sees them all.
+@(private = "file")
+attribute_write :: proc(d: ^Document, h: base.Handle, i: int, name, value: string) {
+	a := &get(d, h).attrs[i]
+	plain := a.ns == ATTR_NS_NONE
+	old := a.value
+	if old == value {
+		// the same value (a script that writes it again at every scroll event): observers and callbacks still see the write,
+		// as the DOM says, but the document did not change: no new version, so no restyle and no layout
+		journal_record(d, .Attribute, h, base.NIL_HANDLE, name, old, true, ns = a.ns)
+		if plain { notify_attribute(d, h, name) }
+		return
+	}
+	a.value = heap_str(value)
 	touch(d)
 	d.attr_version += 1
-	if lname == "id" { ids_changed(d, h, "", false, value, true) }
-	if lname == TIMED_ATTRIBUTE { timed_add(d, h) }
-	journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, "", false)
-	if len(d.shadow_roots) > 0 { shadow_attribute(d, h, lname) }
-	notify_attribute(d, h, lname)
-	return .None
+	if plain && name == "id" { ids_changed(d, h, old, true, value, true) }
+	journal_record(d, .Attribute, h, base.NIL_HANDLE, name, old, true, ns = a.ns)
+	delete(old)
+	if !plain { return }
+	if len(d.shadow_roots) > 0 { shadow_attribute(d, h, name) }
+	notify_attribute(d, h, name)
+}
+
+// A new attribute `a` of element `h`, named `name` to the hooks (its local name).
+@(private = "file")
+attribute_add :: proc(d: ^Document, h: base.Handle, a: Attr, name: string) {
+	append(&get(d, h).attrs, a)
+	touch(d)
+	d.attr_version += 1
+	plain := a.ns == ATTR_NS_NONE
+	if plain && name == "id" { ids_changed(d, h, "", false, a.value, true) }
+	if plain && name == TIMED_ATTRIBUTE { timed_add(d, h) }
+	journal_record(d, .Attribute, h, base.NIL_HANDLE, name, "", false, ns = a.ns)
+	if !plain { return }
+	if len(d.shadow_roots) > 0 { shadow_attribute(d, h, name) }
+	notify_attribute(d, h, name)
 }
 
 // `name` in ASCII lower case (as element names are kept, create_element): itself when it has no upper-case ASCII
@@ -523,20 +563,21 @@ lower_name :: proc(name: string) -> string {
 	return name
 }
 
+// The value of the attribute of no namespace named `name`: what the browser reads (style, src, on*...).
 get_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> (value: string, ok: bool) {
 	n := get(d, h)
 	if n == nil || n.kind != .Element { return "", false }
 	// an element of an XML document: names as given; the browser's own readers ask in lower case (an SVG viewBox),
 	// so ASCII case is ignored on both sides after an exact match (scripts: get_attribute_exact)
 	if n.xml == .Element {
-		for a in n.attrs { if a.name == name { return a.value, true } }
-		for a in n.attrs { if strings.equal_fold(a.name, name) { return a.value, true } }
+		for a in n.attrs { if a.ns == ATTR_NS_NONE && a.name == name { return a.value, true } }
+		for a in n.attrs { if a.ns == ATTR_NS_NONE && strings.equal_fold(a.name, name) { return a.value, true } }
 		return "", false
 	}
 	// names are stored in lower case: compare folding the query's ASCII letters, without allocating (a hot path of
-	// scripts: getAttribute, reflected IDL attributes)
+	// scripts: reflected IDL attributes)
 	outer: for a in n.attrs {
-		if len(a.name) != len(name) { continue }
+		if len(a.name) != len(name) || a.ns != ATTR_NS_NONE { continue }
 		for i in 0 ..< len(name) {
 			c := name[i]
 			if c >= 'A' && c <= 'Z' { c += 32 }
@@ -547,22 +588,51 @@ get_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> (value: str
 	return "", false
 }
 
+// The value of the attribute of namespace `ns` and local name `local` (an SVG <use>'s xlink:href).
+get_attribute_ns :: proc(d: ^Document, h: base.Handle, ns: Attr_Ns, local: string) -> (value: string, ok: bool) {
+	n := get(d, h)
+	if n == nil || n.kind != .Element { return "", false }
+	if i := attribute_index_ns(n, ns, local); i >= 0 { return n.attrs[i].value, true }
+	return "", false
+}
+
 // Whether the attribute names given to an element are stored in ASCII lower case: an HTML element's of an HTML document
 // (DOM), an SVG element's too (the browser's form for them, that the bindings give their case back).
 lowers_attribute_names :: #force_inline proc(n: ^Node) -> bool { return n.xml != .Element && (n.ns == .HTML || n.ns == .SVG) }
 
-// DOM "get an attribute by name" for scripts: in lower case on an HTML element of an HTML document, exactly as given on
-// one of an XML document (is_xml_element); on another element as given, else as stored in lower case (an SVG name).
-// A name stored as given (setAttributeNS) is found by itself first (the Attr objects of scripts name it so).
-get_attribute_exact :: proc(d: ^Document, h: base.Handle, name: string) -> (value: string, ok: bool) {
-	n := get(d, h)
-	if n == nil || n.kind != .Element { return "", false }
-	for a in n.attrs { if a.name == name { return a.value, true } }
-	if n.xml == .Element { return "", false }
-	return get_attribute(d, h, name)
+// DOM "get an attribute by name" for scripts: the first attribute of that qualified name, whatever its namespace; the
+// name in lower case on an HTML element of an HTML document, exactly as given on one of an XML document
+// (is_xml_element) or of another namespace, as given then in lower case on an SVG one (the browser's form of its names).
+// The attribute's index, -1 when none.
+attribute_index :: proc(n: ^Node, name: string) -> int {
+	if n == nil || n.kind != .Element { return -1 }
+	if n.ns != .HTML || n.xml == .Element {
+		for a, i in n.attrs { if a.name == name { return i } }
+	}
+	if lowers_attribute_names(n) {
+		lname := lower_name(name)
+		for a, i in n.attrs { if a.name == lname { return i } }
+	}
+	return -1
 }
 
-// `exact`: `name` is the stored name itself (removeAttributeNS), not lower-cased first.
+// DOM "get an attribute by namespace and local name": the index of the attribute of namespace `ns` whose local name is
+// `local`, -1 when none.
+attribute_index_ns :: proc(n: ^Node, ns: Attr_Ns, local: string) -> int {
+	if n == nil || n.kind != .Element { return -1 }
+	for a, i in n.attrs { if a.ns == ns && attr_local(a) == local { return i } }
+	return -1
+}
+
+// getAttribute, hasAttribute (attribute_index).
+get_attribute_exact :: proc(d: ^Document, h: base.Handle, name: string) -> (value: string, ok: bool) {
+	n := get(d, h)
+	if i := attribute_index(n, name); i >= 0 { return n.attrs[i].value, true }
+	return "", false
+}
+
+// DOM removeAttribute: the first attribute of that qualified name, whatever its namespace (attribute_index's names);
+// `exact`: `name` is the stored name itself, not lower-cased first.
 remove_attribute :: proc(d: ^Document, h: base.Handle, name: string, exact := false) -> Error {
 	n := get(d, h)
 	if n == nil { return .Invalid_Handle }
@@ -570,20 +640,31 @@ remove_attribute :: proc(d: ^Document, h: base.Handle, name: string, exact := fa
 	lname := name
 	if !exact && lowers_attribute_names(n) { lname = lower_name(name) }
 	for a, i in n.attrs {
-		if a.name == lname {
-			old_name, old := a.name, a.value
-			ordered_remove(&n.attrs, i)
-			touch(d)
-			d.attr_version += 1
-			if lname == "id" { ids_changed(d, h, old, true, "", false) }
-			journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, old, true)
-			delete(old_name); delete(old)
-			if len(d.shadow_roots) > 0 { shadow_attribute(d, h, lname) }
-			notify_attribute(d, h, lname)
-			return .None
-		}
+		if a.name == lname { attribute_remove(d, h, i, a.ns == ATTR_NS_NONE ? lname : attr_local(a)); return .None }
 	}
 	return .None
+}
+
+// DOM removeAttributeNS.
+remove_attribute_ns :: proc(d: ^Document, h: base.Handle, ns: Attr_Ns, local: string) {
+	if i := attribute_index_ns(get(d, h), ns, local); i >= 0 { attribute_remove(d, h, i, local) }
+}
+
+// Removes attribute `i` of element `h`, named `name` to the hooks (the caller's string; attribute_write says which see it).
+@(private = "file")
+attribute_remove :: proc(d: ^Document, h: base.Handle, i: int, name: string) {
+	n := get(d, h)
+	a := n.attrs[i]
+	ordered_remove(&n.attrs, i)
+	touch(d)
+	d.attr_version += 1
+	plain := a.ns == ATTR_NS_NONE
+	if plain && name == "id" { ids_changed(d, h, a.value, true, "", false) }
+	journal_record(d, .Attribute, h, base.NIL_HANDLE, name, a.value, true, ns = a.ns)
+	delete(a.name); delete(a.value)
+	if !plain { return }
+	if len(d.shadow_roots) > 0 { shadow_attribute(d, h, name) }
+	notify_attribute(d, h, name)
 }
 
 // Replaces all children by one text node (or none for ""), like Node.textContent = ...

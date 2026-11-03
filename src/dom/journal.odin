@@ -34,6 +34,7 @@ Journal_Entry :: struct {
 	old:      string,        // Attribute: the value before the change (owned by the journal), when `had_old`; Text:
 	                         // the data before, given to the Mutation_Hook only (not kept in the journal)
 	had_old:  bool,          // Attribute: the attribute existed before the change; Text: always
+	ns:       Attr_Ns,       // Attribute: its namespace (`name` is then its local name)
 	batch:    u32,           // entries of one DOM operation share it (Document.batch), 0 = an operation of its own
 	mutation: u64,
 	watch:    u64,           // Remove of an element that was in the document: which of the watched features (Watch) its subtree held, WATCH_KNOWN set; 0: not known
@@ -96,9 +97,9 @@ journal_since :: proc(d: ^Document, since: u64) -> ([]Journal_Entry, bool) {
 }
 
 @(private)
-journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Handle, name := "", old := "", had_old := false, prev := base.NIL_HANDLE, next := base.NIL_HANDLE, watch := u64(0)) {
+journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Handle, name := "", old := "", had_old := false, prev := base.NIL_HANDLE, next := base.NIL_HANDLE, watch := u64(0), ns := ATTR_NS_NONE) {
 	if d.observer != nil && kind != .Reslot && !(kind == .Attribute && name == CUSTOM_STATE_ATTRIBUTE) {
-		e := Journal_Entry{kind = kind, node = node, parent = parent, prev = prev, next = next, name = name, old = old, had_old = had_old, batch = d.batch, mutation = d.mutations}
+		e := Journal_Entry{kind = kind, node = node, parent = parent, prev = prev, next = next, name = name, old = old, had_old = had_old, ns = ns, batch = d.batch, mutation = d.mutations}
 		d.observer(d.observer_user, d, &e)
 	}
 	j := &d.journal
@@ -137,7 +138,7 @@ journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Hand
 	ov := ""
 	if old != "" && kind == .Attribute { ov = strings.clone(old, virtual.arena_allocator(&j.names)) }
 	j.live_bytes += len(nm) + len(ov)
-	append(&j.entries, Journal_Entry{kind = kind, node = node, parent = parent, prev = prev, next = next, name = nm, old = ov, had_old = had_old, batch = d.batch, mutation = d.mutations, watch = watch, watch_gen = d.journal.watch.gen})
+	append(&j.entries, Journal_Entry{kind = kind, node = node, parent = parent, prev = prev, next = next, name = nm, old = ov, had_old = had_old, ns = ns, batch = d.batch, mutation = d.mutations, watch = watch, watch_gen = d.journal.watch.gen})
 }
 
 ////////////////////////////////
