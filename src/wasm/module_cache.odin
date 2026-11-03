@@ -16,18 +16,14 @@ package wasm
 // never reads stale code; the folder is trimmed to wasm.cache.disk_max_bytes, least recently used first.
 
 import "core:fmt"
-import "core:os"
-import "core:path/filepath"
-import "core:slice"
 import "core:strings"
 import "core:sync"
-import "core:thread"
 import "core:time"
 import "wb:base"
 
 @(private) DISK_MAGIC :: "WRENWTC1"
 @(private) DISK_EXT :: ".wtc"
-@(private) KEY_FILE :: "cache-key.dpapi"
+@(private) DISK_STOP_BUDGET :: 1500 * time.Millisecond
 
 Cache_Stats :: struct {
 	memory_hits:  int,
@@ -65,30 +61,15 @@ Cached_Import :: struct {
 }
 
 @(private)
-Disk_Job :: struct {
-	path:    string,
-	filekey: Digest,
-	payload: []byte,
-}
-
-@(private)
 Cache :: struct {
 	lock:      sync.Mutex,
 	entries:   map[Digest]^Cached,
 	total:     int,
 	clock:     u64,
 	max_bytes: i64,
-	dir:       string,
-	key:       [32]u8,
 	disk:      bool,
-	disk_max:  i64,
+	files:     Disk_Cache,
 	stats:     Cache_Stats,
-	qlock:     sync.Mutex,
-	qcond:     sync.Cond,
-	queue:     [dynamic]Disk_Job,
-	busy:      bool,
-	stop:      bool,
-	writer:    ^thread.Thread,
 }
 
 @(private)
@@ -99,31 +80,16 @@ cache_start :: proc(rs: Runtime_Settings) {
 	context.allocator = base.process_allocator()
 	cache.entries = make(map[Digest]^Cached)
 	cache.max_bytes = rs.cache_memory_bytes
-	cache.disk_max = rs.cache_disk_max_bytes
-	if rs.cache_dir != "" && disk_key_load(rs.cache_dir) {
-		cache.dir = strings.clone(rs.cache_dir)
-		cache.disk = true
-		cache.stop = false
-		cache.writer = thread.create_and_start_with_data(nil, disk_writer_main)
-	}
+	cache.files = {magic = DISK_MAGIC, ext = DISK_EXT, max_bytes = rs.cache_disk_max_bytes, stop_budget = DISK_STOP_BUDGET, warn = "wasm: compiled-code disk cache"}
+	cache.disk = rs.cache_dir != "" && disk_start(&cache.files, rs.cache_dir)
 }
 
 @(private)
 cache_stop :: proc() {
 	context.allocator = base.process_allocator()
-	if cache.writer != nil {
-		sync.mutex_lock(&cache.qlock)
-		cache.stop = true
-		sync.cond_broadcast(&cache.qcond)
-		sync.mutex_unlock(&cache.qlock)
-		thread.join(cache.writer)
-		thread.destroy(cache.writer)
-	}
-	for j in cache.queue { delete(j.path); delete(j.payload) }
-	delete(cache.queue)
+	disk_stop(&cache.files)
 	for _, c in cache.entries { cached_free(c) }
 	delete(cache.entries)
-	delete(cache.dir)
 	cache = {}
 }
 
@@ -132,6 +98,7 @@ cache_stats :: proc() -> Cache_Stats {
 	defer sync.mutex_unlock(&cache.lock)
 	s := cache.stats
 	s.entries, s.code_bytes = len(cache.entries), cache.total
+	s.disk_writes, s.disk_rejects, s.disk_evictions = sync.atomic_load(&cache.files.writes), sync.atomic_load(&cache.files.rejects), sync.atomic_load(&cache.files.evictions)
 	return s
 }
 
@@ -152,15 +119,7 @@ cache_clear_memory :: proc() {
 }
 
 // Waits until every queued disk write is done. For measurements and tests.
-cache_flush :: proc() {
-	for {
-		sync.mutex_lock(&cache.qlock)
-		idle := len(cache.queue) == 0 && !cache.busy
-		sync.mutex_unlock(&cache.qlock)
-		if idle { return }
-		time.sleep(time.Millisecond)
-	}
-}
+cache_flush :: proc() { disk_flush(&cache.files) }
 
 @(private)
 cached_free :: proc(c: ^Cached) {
@@ -211,7 +170,7 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil) -> (c: ^Cached, err: 
 	from_disk := false
 	if cache.disk {
 		filekey, _ = sha256(key[:], wt.fingerprint[:])
-		path = disk_path(filekey)
+		path = disk_path(&cache.files, filekey)
 		module = disk_load(path, filekey)
 		from_disk = module != nil
 	}
@@ -224,7 +183,7 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil) -> (c: ^Cached, err: 
 			wasmtime_error_delete(e)
 			return nil, fmt.aprintf("compile failed: %s", text, allocator = caller)
 		}
-		if cache.disk { disk_queue(path, filekey, module) }
+		if cache.disk { disk_queue_module(path, filekey, module) }
 	}
 
 	c = new(Cached)
@@ -378,177 +337,29 @@ ensure_pre :: proc(c: ^Cached) {
 }
 
 ////////////////////////////////
-// Disk
-
-@(private)
-disk_path :: proc(filekey: Digest) -> string {
-	hex := strings.builder_make(context.temp_allocator)
-	for b in filekey { fmt.sbprintf(&hex, "%02x", b) }
-	strings.write_string(&hex, DISK_EXT)
-	p, _ := filepath.join({cache.dir, strings.to_string(hex)}, base.process_allocator())
-	return p
-}
-
-// The profile's MAC key, created on first use. False (no disk cache) when it can be neither read nor created.
-@(private)
-disk_key_load :: proc(dir: string) -> bool {
-	_ = os.make_directory_all(dir)
-	path, perr := filepath.join({dir, KEY_FILE}, context.temp_allocator)
-	if perr != nil { return false }
-	if blob, err := os.read_entire_file(path, context.temp_allocator); err == nil {
-		if key, ok := unprotect(blob, context.temp_allocator); ok && len(key) == 32 {
-			copy(cache.key[:], key)
-			return true
-		}
-	}
-	// none, or unreadable (another user, another machine, damaged): a new key, so every old entry stops matching
-	fail :: proc(path, why: string, err: os.Error = nil) -> bool {
-		fmt.eprintfln("wasm: compiled-code disk cache disabled: %s %s (%v)", why, path, err)
-		return false
-	}
-	if !random_fill(cache.key[:]) { return fail(path, "no random key for") }
-	blob, ok := protect(cache.key[:], context.temp_allocator)
-	if !ok { return fail(path, "the system cannot protect") }
-	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
-	if err := os.write_entire_file(tmp, blob, {.Read_User, .Write_User}); err != nil { return fail(tmp, "cannot write", err) }
-	if err := os.rename(tmp, path); err != nil { _ = os.remove(tmp); return fail(path, "cannot create", err) }
-	return true
-}
-
-@(private)
-disk_mac :: proc(filekey: Digest, payload: []byte) -> (Digest, bool) {
-	filekey := filekey
-	return sha256(transmute([]byte)string(DISK_MAGIC), filekey[:], payload, key = cache.key[:])
-}
+// Disk (disk_cache.odin)
 
 // A module from the disk cache, or nil (missing, refused: then the file is deleted).
 @(private)
 disk_load :: proc(path: string, filekey: Digest) -> wt_module {
-	data, err := os.read_entire_file(path, base.process_allocator())
-	if err != nil { return nil }
+	data, payload := disk_read(&cache.files, path, filekey)
+	if data == nil { return nil }
 	defer delete(data, base.process_allocator())
-	head := len(DISK_MAGIC) + 32
-	reject := proc(path: string) -> wt_module {
-		_ = os.remove(path)
-		sync.mutex_lock(&cache.lock)
-		cache.stats.disk_rejects += 1
-		sync.mutex_unlock(&cache.lock)
-		return nil
-	}
-	if len(data) <= head || string(data[:len(DISK_MAGIC)]) != DISK_MAGIC { return reject(path) }
-	payload := data[head:]
-	mac, ok := disk_mac(filekey, payload)
-	if !ok || !digest_equal(mac[:], data[len(DISK_MAGIC):head]) { return reject(path) }
 	m: wt_module
 	if e := wasmtime_module_deserialize(wt.engine, raw_data(payload), len(payload), &m); e != nil {
 		wasmtime_error_delete(e)
-		return reject(path)
+		disk_reject(&cache.files, path)
+		return nil
 	}
-	now := time.now()
-	_ = os.change_times(path, now, now)   // least recently used order
 	return m
 }
 
 @(private)
-disk_queue :: proc(path: string, filekey: Digest, m: wt_module) {
+disk_queue_module :: proc(path: string, filekey: Digest, m: wt_module) {
 	v: wt_byte_vec
 	if e := wasmtime_module_serialize(m, &v); e != nil { wasmtime_error_delete(e); return }
 	payload := make([]byte, int(v.size), base.process_allocator())
 	copy(payload, v.data[:v.size])
 	wasm_byte_vec_delete(&v)
-	sync.mutex_lock(&cache.qlock)
-	append(&cache.queue, Disk_Job{path = strings.clone(path, base.process_allocator()), filekey = filekey, payload = payload})
-	sync.cond_signal(&cache.qcond)
-	sync.mutex_unlock(&cache.qlock)
-}
-
-@(private)
-DISK_STOP_BUDGET :: 1500 * time.Millisecond
-
-@(private)
-disk_writer_main :: proc(_: rawptr) {
-	context.allocator = base.process_allocator()
-	stopped_at: time.Tick   // when the writer first saw the stop request
-	for {
-		sync.mutex_lock(&cache.qlock)
-		for len(cache.queue) == 0 && !cache.stop { sync.cond_wait(&cache.qcond, &cache.qlock) }
-		if len(cache.queue) == 0 {
-			sync.mutex_unlock(&cache.qlock)
-			return
-		}
-		if cache.stop {
-			// Closing the program: a page that compiled many modules leaves many writes queued, and each one scans the
-			// folder (disk_trim); waiting for all of them keeps a closed window on screen for seconds. The cache is only
-			// an optimisation: after DISK_STOP_BUDGET the writes still queued are dropped.
-			if stopped_at == {} { stopped_at = time.tick_now() }
-			if time.tick_since(stopped_at) > DISK_STOP_BUDGET {
-				for j in cache.queue { delete(j.path); delete(j.payload) }
-				clear(&cache.queue)
-				sync.mutex_unlock(&cache.qlock)
-				return
-			}
-		}
-		job := pop_front(&cache.queue)
-		cache.busy = true
-		last := len(cache.queue) == 0
-		sync.mutex_unlock(&cache.qlock)
-
-		if disk_write(job) {
-			sync.mutex_lock(&cache.lock)
-			cache.stats.disk_writes += 1
-			sync.mutex_unlock(&cache.lock)
-			if last || !cache.stop { disk_trim() }
-		}
-		delete(job.path)
-		delete(job.payload)
-		free_all(context.temp_allocator)
-		sync.mutex_lock(&cache.qlock)
-		cache.busy = false
-		sync.mutex_unlock(&cache.qlock)
-	}
-}
-
-@(private)
-disk_write :: proc(job: Disk_Job) -> bool {
-	mac, ok := disk_mac(job.filekey, job.payload)
-	if !ok { return false }
-	head := len(DISK_MAGIC) + 32
-	buf := make([]byte, head + len(job.payload))
-	defer delete(buf)
-	copy(buf, DISK_MAGIC)
-	copy(buf[len(DISK_MAGIC):], mac[:])
-	copy(buf[head:], job.payload)
-	nonce: [8]u8
-	random_fill(nonce[:])
-	tmp := fmt.tprintf("%s.%x.tmp", job.path, transmute(u64)nonce)
-	if we := os.write_entire_file(tmp, buf); we != nil { _ = os.remove(tmp); return false }
-	if re := os.rename(tmp, job.path); re != nil { _ = os.remove(tmp); return false }
-	return true
-}
-
-// Keeps the folder under wasm.cache.disk_max_bytes: least recently used entries go first. Stray temporary files of
-// an interrupted write are removed too.
-@(private)
-disk_trim :: proc() {
-	infos, err := os.read_all_directory_by_path(cache.dir, context.temp_allocator)
-	if err != nil { return }
-	entries := make([dynamic]os.File_Info, context.temp_allocator)
-	total: i64
-	for fi in infos {
-		if strings.has_suffix(fi.name, ".tmp") && time.diff(fi.modification_time, time.now()) > time.Hour { _ = os.remove(fi.fullpath); continue }
-		if !strings.has_suffix(fi.name, DISK_EXT) { continue }
-		append(&entries, fi)
-		total += fi.size
-	}
-	if total <= cache.disk_max { return }
-	slice.sort_by(entries[:], proc(a, b: os.File_Info) -> bool { return time.diff(a.modification_time, b.modification_time) > 0 })
-	for fi in entries {
-		if total <= cache.disk_max { break }
-		if os.remove(fi.fullpath) == nil {
-			total -= fi.size
-			sync.mutex_lock(&cache.lock)
-			cache.stats.disk_evictions += 1
-			sync.mutex_unlock(&cache.lock)
-		}
-	}
+	disk_queue(&cache.files, path, filekey, payload)
 }

@@ -505,7 +505,7 @@ disk_cache :: proc(t: ^testing.T) {
 	testing.expectf(t, s.disk_rejects == 1 && s.compiles == 1 && s.disk_writes == 1, "corrupted entry rejected and rewritten: %v", s)
 
 	// an entry forged with another key (a new profile key: the old MAC no longer matches)
-	key_path, _ := filepath.join({dir, KEY_FILE}, context.temp_allocator)
+	key_path, _ := filepath.join({dir, DISK_KEY_FILE}, context.temp_allocator)
 	_ = os.remove(key_path)
 	setup(t, dir)
 	inst = make_instance(t, image)

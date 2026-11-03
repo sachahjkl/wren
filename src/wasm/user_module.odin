@@ -144,14 +144,14 @@ user_module_compile :: proc(image: []byte, partition: string = "") -> (c: User_C
 	if cache.disk {
 		// (a module's compiled form depends on the settings: the fingerprint)
 		filekey, _ = sha256(transmute([]byte)string("page module"), transmute([]byte)partition, image, wt.fingerprint[:])
-		path = disk_path(filekey)
+		path = disk_path(&cache.files, filekey)
 		if c.module = disk_load(path, filekey); c.module != nil {
 			sync.mutex_guard(&cache.lock)
 			cache.stats.disk_hits += 1
 			return
 		}
 	}
-	defer if cache.disk && c.error == nil && c.module != nil { disk_queue(path, filekey, c.module) }
+	defer if cache.disk && c.error == nil && c.module != nil { disk_queue_module(path, filekey, c.module) }
 	// (a module with a shared memory: its waits can be stopped; the module as it came if that does not compile)
 	if waits := translate_shared_waits(image, base.process_allocator()); waits != nil {
 		defer delete(waits, base.process_allocator())
