@@ -25,6 +25,11 @@ LAYOUT_VIEW_W :: 800
 LAYOUT_VIEW_H :: 600
 @(private)
 LAYOUT_BAND_H :: 256
+// An iframe's size without CSS (HTML's 300 x 150), a frame's viewport until its container is laid out.
+@(private)
+FRAME_VIEW_W :: 300
+@(private)
+FRAME_VIEW_H :: 150
 @(private)
 AHEM_FONT :: reftest.AHEM_FONT
 @(private)
@@ -49,6 +54,7 @@ Layout_Host :: struct {
 	view:   [2]int,       // the viewport
 	images: bool,         // reference tests: natural sizes of images count
 	page:   ^page.Page,
+	framed: bool,         // a frame's document: its viewport is its container's content box (host_frame_attached)
 }
 
 @(private)
@@ -147,7 +153,33 @@ host_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 @(private)
 host_viewport :: proc(user: rawptr, p: ^page.Page) -> page.Viewport {
 	h := (^Layout_Host)(user)
+	if h.framed { frame_view_size(h, p) }
 	return page.Viewport{width = f64(h.view[0]), height = f64(h.view[1]), scale = 1, scroll_x = h.scroll[0], scroll_y = h.scroll[1]}
+}
+
+// A frame's viewport: the content box of its container in its parent's layout, as the shell lays it out (frames_prepare);
+// what it was when the container has none (display: none, or a parent without a layout).
+@(private)
+frame_view_size :: proc(h: ^Layout_Host, p: ^page.Page) {
+	nav := p.frames != nil ? p.frames.nav : nil
+	if nav == nil || nav.parent == nil { return }
+	l, vp := page.js_layout_now(nav.parent)
+	if l == nil || !l.valid { return }
+	s := f32(vp.scale)
+	r, ok := lay.box_of(l, nav.element, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s)
+	if !ok || !r.visible { return }
+	size := (r.content.max - r.content.min) / s
+	if size.x > 0 && size.y > 0 { h.view = {int(size.x), int(size.y)} }
+}
+
+// A document a frame of a test with a layout gets (page.Frame_Hooks.attached, child_main): laid out too, until it closes.
+@(private)
+host_frame_attached :: proc(user: rawptr, child: ^page.Page) {
+	h := host_make(view = {FRAME_VIEW_W, FRAME_VIEW_H})
+	h.page = child
+	h.framed = true
+	base.on_close(child.scope, proc(data: rawptr) { host_destroy((^Layout_Host)(data)) }, h)
+	page.set_layout_embedder(child, {user = h, update = host_update, viewport = host_viewport, scroll_to = host_scroll})
 }
 
 @(private)
