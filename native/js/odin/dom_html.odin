@@ -79,7 +79,7 @@ enum_get :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, attr: 
 	v, present := attr_read(o.handle, attr)
 	if !present { return e.missing_null ? wj.NULL : wj.new_string_len(ctx, e.missing) }
 	for k in e.keywords {
-		if ascii_ieq(v, k.kw) { return wj.new_string_len(ctx, k.canon != "" ? k.canon : k.kw) }
+		if wj.ascii_ieq(v, k.kw) { return wj.new_string_len(ctx, k.canon != "" ? k.canon : k.kw) }
 	}
 	return wj.new_string_len(ctx, e.invalid)
 }
@@ -555,7 +555,7 @@ labels_of :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, iface: i32) -> wj.JSValu
 	o := wj.wj_this(ctx, t, iface)
 	if o == nil { return wj.EXCEPTION }
 	if iface == ifc("HTMLInputElement") {
-		if type, present := attr_read(o.handle, "type"); present && ascii_ieq(type, "hidden") { return wj.NULL }
+		if type, present := attr_read(o.handle, "type"); present && wj.ascii_ieq(type, "hidden") { return wj.NULL }
 	}
 	return wj.dom_live_list(ctx, t, o.handle, i32(Form_Collection.Labels), nil, 0, ifc("NodeList"))
 }

@@ -235,8 +235,8 @@ scroll_args :: proc "c" (ctx: ^wj.Context, argc: i32, argv: [^]wj.JSValue, x: ^f
 	x^ = NAN; y^ = NAN; smooth^ = false
 	if argc >= 2 {
 		if !wj.wj_to_double(ctx, argv[0], x, false) || !wj.wj_to_double(ctx, argv[1], y, false) { return false }
-		if !is_finite(x^) { x^ = 0 }
-		if !is_finite(y^) { y^ = 0 }
+		if !wj.is_finite(x^) { x^ = 0 }
+		if !wj.is_finite(y^) { y^ = 0 }
 		return true
 	}
 	opt := wj.arg(argc, argv, 0)
@@ -253,13 +253,10 @@ scroll_args :: proc "c" (ctx: ^wj.Context, argc: i32, argv: [^]wj.JSValue, x: ^f
 		if b != nil { smooth^ = wj.str_eq(b, "smooth"); wj.JS_FreeCString(ctx, b) }
 	}
 	wj.JS_FreeValue(ctx, left); wj.JS_FreeValue(ctx, top); wj.JS_FreeValue(ctx, beh)
-	if ok && !is_nan(x^) && !is_finite(x^) { x^ = 0 }
-	if ok && !is_nan(y^) && !is_finite(y^) { y^ = 0 }
+	if ok && !wj.is_nan(x^) && !wj.is_finite(x^) { x^ = 0 }
+	if ok && !wj.is_nan(y^) && !wj.is_finite(y^) { y^ = 0 }
 	return ok
 }
-
-@(private = "file") is_nan :: proc "c" (x: f64) -> bool { return x != x }
-@(private = "file") is_finite :: proc "c" (x: f64) -> bool { return x == x && x - x == 0 }
 
 @(private = "file")
 element_scroll :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, relative: bool) -> wj.JSValue {

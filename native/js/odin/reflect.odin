@@ -28,7 +28,6 @@ internals_iface :: proc "contextless" () -> i32 {
 	return iface_internals
 }
 
-@(private = "file")
 is_ws :: #force_inline proc "contextless" (c: u8) -> bool {
 	return c == ' ' || c == '\t' || c == '\n' || c == '\f' || c == '\r'
 }
@@ -57,14 +56,8 @@ parse_double :: proc "contextless" (s: [^]u8, n: uint) -> (out: f64, ok: bool) {
 	buf[l] = 0
 	end: [^]u8
 	v := wj.strtod(&buf[0], &end)
-	if end == &buf[0] || !is_finite(v) { return 0, false }
+	if end == &buf[0] || !wj.is_finite(v) { return 0, false }
 	return v, true
-}
-
-// finite: exponent bits not all ones (so neither inf nor NaN), without math/context.
-@(private = "file")
-is_finite :: #force_inline proc "contextless" (d: f64) -> bool {
-	return (transmute(u64)d) & 0x7FF0000000000000 != 0x7FF0000000000000
 }
 
 // The content attribute's value in wj_scratch: its length, or -1 when absent.

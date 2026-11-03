@@ -33,9 +33,6 @@ nums :: proc "contextless" (ctx: ^wj.Context, what: cstring, argc: i32, argv: [^
 	return true
 }
 
-@(private = "file")
-is_finite :: #force_inline proc "contextless" (x: f64) -> bool { return x == x && x - x == 0 }
-
 // `this` of a member shared by CanvasRenderingContext2D and OffscreenCanvasRenderingContext2D (both are the host's
 // context kind)
 @(private = "file")
@@ -730,8 +727,8 @@ wjr_CanvasPath_roundRect :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, ar
 		radii[2 * i] = list[corner_map[count - 1][i]][0]
 		radii[2 * i + 1] = list[corner_map[count - 1][i]][1]
 	}
-	for x in radii { if !is_finite(x) { return wj.UNDEFINED } }   // non-finite: the call is ignored
-	for x in r { if !is_finite(x) { return wj.UNDEFINED } }
+	for x in radii { if !wj.is_finite(x) { return wj.UNDEFINED } }   // non-finite: the call is ignored
+	for x in r { if !wj.is_finite(x) { return wj.UNDEFINED } }
 	if st := jsb.host_n(&none, api_decl.CanvasPath_roundRect, wj.wr_CanvasPath_roundRect, o.handle, r[0], r[1], r[2], r[3], radii[:]); st != .None {
 		return wj.wj_throw_status(ctx, i32(st), "CanvasRenderingContext2D.roundRect")
 	}

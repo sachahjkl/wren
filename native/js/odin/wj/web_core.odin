@@ -80,15 +80,7 @@ web_ascii_lower :: proc "c" (p: [^]u8, n: uint) {
 
 @(export, link_name = "web_ascii_ieq")
 web_ascii_ieq :: proc "c" (a: [^]u8, an: uint, b: cstring) -> bool {
-	bp := ([^]u8)(rawptr(b))
-	if an != strlen(b) { return false }
-	for i in 0 ..< an {
-		x, y := a[i], bp[i]
-		if x >= 'A' && x <= 'Z' { x += 32 }
-		if y >= 'A' && y <= 'Z' { y += 32 }
-		if x != y { return false }
-	}
-	return true
+	return ascii_ieq(string(a[:an]), string(b))
 }
 
 // web_buf: a growable byte buffer (libc heap).
