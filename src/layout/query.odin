@@ -594,14 +594,15 @@ box_of_view :: proc(l: ^Layout, v: ^View, node: base.Handle) -> (Box_Rects, bool
 }
 
 // The border rect of box `bi` in document coordinates, as box_of_view gives it, without the rest of box_of_view's work: for
-// a reader of every box of a frame (the layout shifts). `transformed`: a transform or a 3D plane applies, the box is drawn
-// elsewhere; `fragmented`: it is in a multi-column flow, where box_of_view gives the union of its fragments instead.
-box_border :: proc(l: ^Layout, v: ^View, bi: i32) -> (border: Rect, transformed, fragmented: bool) {
+// a reader of every box of a frame (the largest paint, the layout shifts). In a multi-column flow, the union of its
+// fragments. `transformed`: a transform or a 3D plane applies, the box is drawn elsewhere.
+box_border :: proc(l: ^Layout, v: ^View, bi: i32) -> (border: Rect, transformed: bool) {
 	b := &l.boxes[bi]
 	sp := &l.spaces[b.space]
-	if sp.plane != NONE || sp.xform != NONE { return {}, true, false }
-	if l.frames_on && sp.kind == .Flow { return {}, false, true }
-	return rect_shift(border_rect(b), v.offsets[b.space] + Vec2{v.doc_scroll_x, v.doc_scroll}), false, false
+	if sp.plane != NONE || sp.xform != NONE { return {}, true }
+	r := border_rect(b)
+	if l.frames_on && sp.kind == .Flow { r = flow_bounds(l, sp.box, r) }
+	return rect_shift(r, v.offsets[b.space] + Vec2{v.doc_scroll_x, v.doc_scroll}), false
 }
 
 // What getClientRects returns of an element, in document coordinates like box_of: a border box per fragment: a line for an
