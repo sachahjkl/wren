@@ -362,7 +362,8 @@ stack discipline, not type correctness.</p>
 <h2 id="interpreter-interpodin-opsodin-coroodin"><a class="anchor" href="#interpreter-interpodin-opsodin-coroodin" aria-hidden="true">#</a>Interpreter (<code>interp.odin</code>, <code>ops.odin</code>, <code>coro.odin</code>)</h2>
 <p>A <code>switch</code>‑dispatch loop over the QuickJS instruction set. The common instructions (locals, arguments,
 integer / float arithmetic, comparisons, branches, <code>get_field</code> / <code>put_field</code> with the prototype walk, array
-reads and writes, global variables through a per‑realm slot cache, <strong>calls and returns</strong>) run in
+reads and writes, global variables through a per‑realm slot cache, string constants, <strong>calls and returns</strong>, and the
+native getter of an accessor that <code>get_field</code> or a global finds: a DOM attribute, <code>window.document</code>) run in
 <code>interp_hot.odin</code>, a loop with raw pointers whose few live values stay in registers; everything else, and
 every fast path that does not apply, leaves it with the pc on the instruction for the full dispatch in
 <code>interp.odin</code>. The hot loop is inlined into <code>interp_run</code> (measured: a separate procedure is 20‑25 % slower).
