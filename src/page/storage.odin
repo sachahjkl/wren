@@ -127,15 +127,7 @@ area_path :: proc(m: ^Storage_Manager, origin: string) -> string {
 	b := strings.builder_make(context.temp_allocator)
 	strings.write_string(&b, storage_dir(m))
 	strings.write_byte(&b, '/')
-	HEX := "0123456789ABCDEF"
-	for i in 0 ..< len(origin) {
-		c := origin[i]
-		if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '.' || c == '-' {
-			strings.write_byte(&b, c)
-		} else {
-			strings.write_byte(&b, '_'); strings.write_byte(&b, HEX[c >> 4]); strings.write_byte(&b, HEX[c & 15])
-		}
-	}
+	base.write_file_stem(&b, origin)
 	strings.write_string(&b, ".wls")
 	return strings.to_string(b)
 }
