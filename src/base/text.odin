@@ -14,6 +14,17 @@ itoa :: proc(n: int, allocator := context.temp_allocator) -> string {
 	return strings.clone(strconv.write_int(buf[:], i64(n), 10), allocator)
 }
 
+// `s` with its ASCII letters lowered and nothing else changed (HTML's and CSS's "ASCII lowercase": strings.to_lower lowers
+// by Unicode, the Kelvin sign U+212A to 'k' with). `s` itself when it has no uppercase ASCII letter.
+ascii_lower :: proc(s: string, allocator := context.temp_allocator) -> string {
+	i := 0
+	for i < len(s) && !(s[i] >= 'A' && s[i] <= 'Z') { i += 1 }
+	if i == len(s) { return s }
+	out := make([]u8, len(s), allocator)
+	for c, k in transmute([]u8)s { out[k] = c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c }
+	return string(out)
+}
+
 // The value of a hexadecimal digit (a byte or a rune), or -1.
 hex_value :: proc(c: $T) -> int where intrinsics.type_is_integer(T) {
 	switch c {

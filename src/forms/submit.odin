@@ -17,7 +17,7 @@ import "wb:url"
 
 @(private)
 parse_method :: proc(s: string) -> Submit_Method {
-	switch strings.to_lower(trim_ascii_ws(s), context.temp_allocator) {
+	switch base.ascii_lower(trim_ascii_ws(s)) {
 	case "post": return .Post
 	case "dialog": return .Dialog
 	}
@@ -26,7 +26,7 @@ parse_method :: proc(s: string) -> Submit_Method {
 
 @(private)
 parse_enctype :: proc(s: string) -> Enctype {
-	switch strings.to_lower(trim_ascii_ws(s), context.temp_allocator) {
+	switch base.ascii_lower(trim_ascii_ws(s)) {
 	case "multipart/form-data": return .Multipart
 	case "text/plain": return .Text_Plain
 	}
