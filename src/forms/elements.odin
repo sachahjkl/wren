@@ -50,7 +50,7 @@ kind :: proc(f: ^Forms, h: base.Handle) -> Kind { return kind_of(element(f, h)) 
 input_type_of :: proc(n: ^dom.Node) -> Input_Type {
 	t, ok := attr(n, "type")
 	if !ok { return .Text }
-	switch strings.to_lower(strings.trim_space(t), context.temp_allocator) {
+	switch base.ascii_lower(strings.trim_space(t)) {
 	case "text": return .Text
 	case "search": return .Search
 	case "tel": return .Tel
@@ -105,7 +105,7 @@ Button_Type :: enum u8 { Submit, Reset, Button }
 
 button_type_of :: proc(n: ^dom.Node) -> Button_Type {
 	t, _ := attr(n, "type")
-	switch strings.to_lower(strings.trim_space(t), context.temp_allocator) {
+	switch base.ascii_lower(strings.trim_space(t)) {
 	case "reset": return .Reset
 	case "button": return .Button
 	}
