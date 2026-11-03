@@ -26,7 +26,7 @@ Scroll_Anchor :: struct {
 scroll_anchor_select :: proc(l: ^Layout, styled: ^style.Styled, scale, scroll_y, view_h: f32) -> Scroll_Anchor {
 	if !l.valid || len(l.boxes) == 0 || scroll_y <= 0 || l.scale != scale { return {} }
 	if root := l.boxes[0].first; root != NONE && !anchor_candidate(l, &l.boxes[root], styled) { return {} }   // (the scroller's own overflow-anchor)
-	top, bottom := scroll_y, scroll_y + view_h
+	top, bottom := scroll_y, scroll_y + doc_port(l, {0, view_h}).y   // (what the page's classic bars leave of it)
 	found := NONE
 	parent := i32(0)
 	descend: for {

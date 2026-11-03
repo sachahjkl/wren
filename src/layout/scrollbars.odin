@@ -91,7 +91,8 @@ doc_bars_wanted :: proc(l: ^Layout) -> (bars: Vec2) {
 	if l.settings.scrollbar_overlay || !l.settings.document_scrollbar || l.doc_bars_off { return }
 	cs := root_style(l)
 	w := bar_thickness(&l.settings, cs, l.scale)
-	if w <= 0 { return }
+	// (a viewport too small for a bar's two arrows has none, as in Blink: a tiny frame)
+	if w <= 0 || min(l.viewport.x, l.viewport.y) < 2 * w { return }
 	stable := cs != nil && cs.scrollbar_gutter != .Auto
 	if stable || (l.doc_scroll_y && (l.doc_overflow.y == .Scroll || l.height - l.doc_min_y > l.icb.y + BAR_MIN_OVERFLOW)) { bars.x = w }
 	if l.doc_scrollable_x && (l.doc_overflow.x == .Scroll || l.doc_width - l.doc_min_x > l.icb.x + BAR_MIN_OVERFLOW) { bars.y = w }

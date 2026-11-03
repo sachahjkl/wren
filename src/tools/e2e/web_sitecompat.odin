@@ -313,7 +313,7 @@ sitecompat_document_horizontal_scroll :: proc(t: ^testing.T) {
 	lh := new(Layout_Host)
 	defer { lay.destroy(&lh.l); free(lh) }
 	pr := open_laid_out(t, lh, "horizontal scroll", WIDE)
-	check(pr, noted(pr, "sw 3000 800"), "scrollWidth is the document's, clientWidth the viewport's")
+	check(pr, noted(pr, "sw 3000 785"), "scrollWidth is the document's, clientWidth the viewport's less its classic scroll bar")
 
 	run(pr, `scrollTo(300, 0); at("to")`)
 	check(pr, noted(pr, "to 300 300 300 300 700 10 700 1000"), "window.scrollTo moves across: offsets, rectangles (a fixed box stays), offsetLeft does not")
@@ -327,7 +327,7 @@ sitecompat_document_horizontal_scroll :: proc(t: ^testing.T) {
 	run(pr, `se.scrollLeft = 123; at("sl")`)
 	check(pr, noted(pr, "sl 123 123 123 123 877 10 877 1000"), "scrollingElement.scrollLeft")
 	run(pr, `scrollTo(100000, 0); at("end")`)
-	check(pr, noted(pr, "end 2200 2200 2200 2200 -1200 10 -1200 1000"), "clamped at the right end")
+	check(pr, noted(pr, "end 2215 2215 2215 2215 -1215 10 -1215 1000"), "clamped at the right end (of what the bar leaves)")
 	run(pr, `scrollTo(-5, 0); at("start")`)
 	check(pr, noted(pr, "start 0 0 0 0 1000 10 1000 1000"), "clamped at 0")
 
