@@ -52,13 +52,6 @@ proc_cpu_ms :: proc() -> f64 {
 	return f64(t) / 10000
 }
 
-working_set_mb :: proc() -> f64 {
-	c: win.PROCESS_MEMORY_COUNTERS
-	c.cb = size_of(c)
-	win.GetProcessMemoryInfo(win.GetCurrentProcess(), &c, size_of(c))
-	return f64(c.WorkingSetSize) / 1e6
-}
-
 measure :: proc(url, profile_dir: string, with_blocker: bool, timeout_s, settle_ms: f64) -> (s: Sample) {
 	e: headless.Env
 	if !headless.init(&e) { s.failed = "init"; return }
@@ -73,7 +66,7 @@ measure :: proc(url, profile_dir: string, with_blocker: bool, timeout_s, settle_
 		blocker.start(&b, &e.loop, &e.client, &e.loader, &prefs, profile_dir)
 		blocker.tab_register(&b, 1, e.process)
 	}
-	mem0 := working_set_mb()
+	mem0 := f64(base.process_memory().resident) / 1e6
 	cpu0 := proc_cpu_ms()
 	t0 := time.tick_now()
 	d := headless.open(&e, url)
@@ -95,7 +88,7 @@ measure :: proc(url, profile_dir: string, with_blocker: bool, timeout_s, settle_
 	// let late requests settle a moment (images, beacons), counting them too
 	headless.pump(d, settle_ms)
 	s.cpu_ms = proc_cpu_ms() - cpu0
-	s.mem_mb = working_set_mb() - mem0
+	s.mem_mb = f64(base.process_memory().resident) / 1e6 - mem0
 	if d.failed != "" { s.failed = d.failed }
 	if d.page != nil && d.page.doc != nil { s.nodes = d.page.doc.nodes.count }
 	if s.interactive_ms == 0 { s.interactive_ms = s.complete_ms }

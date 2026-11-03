@@ -10,15 +10,8 @@ import "core:os"
 import "core:slice"
 import "core:strings"
 import "core:time"
-import win "core:sys/windows"
 import "wb:adblock"
-
-working_set :: proc() -> int {
-	c: win.PROCESS_MEMORY_COUNTERS
-	c.cb = size_of(c)
-	win.GetProcessMemoryInfo(win.GetCurrentProcess(), &c, size_of(c))
-	return int(c.WorkingSetSize)
-}
+import "wb:base"
 
 now_ns :: proc() -> i64 { return time.now()._nsec }
 
@@ -63,7 +56,7 @@ main :: proc() {
 	}
 	if dir == "" { fmt.eprintln("usage: adblockbench lists-dir [-n count] [-requests file] [-save blob]"); os.exit(2) }
 
-	ws0 := working_set()
+	ws0 := int(base.process_memory().resident)
 	infos, _ := os.read_all_directory_by_path(dir, context.allocator)
 	lists := make([dynamic]adblock.List_Text)
 	total_bytes := 0
@@ -88,7 +81,7 @@ main :: proc() {
 	path := save != "" ? save : "build/adblock_bench.bin"
 	_ = os.write_entire_file(path, blob)
 	delete(blob)
-	ws1 := working_set()
+	ws1 := int(base.process_memory().resident)
 	t2 := now_ns()
 	disk, _ := os.read_entire_file(path, context.allocator)
 	words := make([]u64, (len(disk) + 7) / 8)
@@ -99,7 +92,7 @@ main :: proc() {
 	t3 := now_ns()
 	if err != .None { fmt.eprintln("load failed:", err); os.exit(1) }
 	fmt.printfln("cold load (read + verify + bloom): %.1f ms", f64(t3 - t2) / 1e6)
-	ws2 := working_set()
+	ws2 := int(base.process_memory().resident)
 	fmt.printfln("engine: %d network filters, %d cosmetic filters, %d keyed generic; memory delta after load %.1f MB (blob %.1f MB)",
 		adblock.engine_filter_count(e), adblock.engine_cosmetic_count(e), adblock.cosmetic_keyed_count(e), f64(ws2 - ws1) / 1e6, f64(len(b2)) / 1e6)
 	_ = ws0

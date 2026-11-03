@@ -9,7 +9,6 @@ import "core:encoding/json"
 import "core:fmt"
 import "core:os"
 import "core:strings"
-import win "core:sys/windows"
 import "core:testing"
 import "core:time"
 import "wb:base"
@@ -142,12 +141,6 @@ i32_of :: proc(pr: ^Probe, export: cstring) -> i32 {
 	cells := [1]u32{}
 	page.call_export(pr.p, pr.p.instances[0], export, cells[:])
 	return i32(cells[0])
-}
-
-private_bytes :: proc() -> int {
-	pmc: win.PROCESS_MEMORY_COUNTERS
-	win.GetProcessMemoryInfo(win.GetCurrentProcess(), &pmc, size_of(pmc))
-	return int(pmc.PagefileUsage)
 }
 
 no_socket_left :: proc(pr: ^Probe) {
@@ -406,12 +399,12 @@ stress :: proc(t: ^testing.T, parallel: int) {
 	pr, ok := open(t, "stress", testenv.url(ORIGIN + "/stress.html"))
 	if !ok { return }
 	if parallel > 0 { settings.websocket.limits.max_connecting_per_host = parallel }
-	mem_before := private_bytes()
+	mem_before := int(base.process_memory().private)
 	page.call_export(pr.p, pr.p.instances[0], "stress", {STRESS_SOCKETS})
 	watch := Stress_Watch{p = pr.p}
 	wait_until(t, "the 50 sockets", &watch, proc(w: ^Stress_Watch) -> bool {
 		w.peak_held = max(w.peak_held, w.p.held)
-		w.peak_mem = max(w.peak_mem, private_bytes())
+		w.peak_mem = max(w.peak_mem, int(base.process_memory().private))
 		_, over := result(w.p, S_STRESS)
 		return over
 	}, STRESS_WAIT)
