@@ -1,4 +1,5 @@
-/* The decode function of an encoding: Lexbor's, but for Shift_JIS (wb_shift_jis.c). */
+/* The Shift_JIS decoder and encoder of the Encoding Standard where Lexbor's differ (wb_shift_jis.c). */
 #include "lexbor/encoding/encoding.h"
 
-lxb_encoding_decode_f wb_decode_fn(const lxb_encoding_data_t *enc);
+lxb_status_t wb_decode_shift_jis(lxb_encoding_decode_t *ctx, const lxb_char_t **data, const lxb_char_t *end);
+int8_t wb_encode_shift_jis_single(lxb_encoding_encode_t *ctx, lxb_char_t **data, const lxb_char_t *end, lxb_codepoint_t cp);

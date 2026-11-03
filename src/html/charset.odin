@@ -30,9 +30,13 @@ Decoded :: struct {
 
 Encoding_Source :: enum u8 { Bom, Header, Meta, Default }
 
+// What the Encoding Standard's "get an encoding" strips around a label: ASCII whitespace only (a label padded with a
+// vertical tab or a no-break space is no label).
+LABEL_WHITESPACE :: "\t\n\f\r "
+
 // The WHATWG name for a label ("latin1" -> "windows-1252"), or "" when unknown. Static: a document keeps it as is.
 canonical_encoding :: proc(label: string) -> string {
-	l := strings.trim_space(label)
+	l := strings.trim(label, LABEL_WHITESPACE)
 	if l == "" { return "" }
 	return string(wb_encoding_name(raw_data(l), uint(len(l))))
 }

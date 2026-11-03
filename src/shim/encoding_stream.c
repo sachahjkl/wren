@@ -13,7 +13,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "lexbor/encoding/encoding.h"
-#include "wb_shift_jis.h"
+#include "wb_encodings.h"
 
 #define WB_CP_BUF 1024
 
@@ -78,7 +78,7 @@ static int decoder_init(wb_decoder *d)
 /* NULL when the label is unknown or names the "replacement" encoding (TextDecoder throws RangeError for both). */
 wb_decoder *wb_decoder_create(const char *label, size_t label_len, int fatal, int ignore_bom)
 {
-    const lxb_encoding_data_t *enc = lxb_encoding_data_by_pre_name((const lxb_char_t *) label, label_len);
+    const lxb_encoding_data_t *enc = wb_encoding_by_label(label, label_len);
     if (enc == NULL || enc->encoding == LXB_ENCODING_REPLACEMENT || enc->encoding == LXB_ENCODING_DEFAULT
         || enc->encoding == LXB_ENCODING_AUTO || enc->encoding == LXB_ENCODING_UNDEFINED) {
         return NULL;

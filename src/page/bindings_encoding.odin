@@ -12,6 +12,7 @@ package page
 
 import "core:strings"
 import "core:unicode/utf8"
+import "wb:html"
 
 when ODIN_OS == .Windows {
 	foreign import lexbor_enc {
@@ -58,7 +59,7 @@ text_decoder_vt := Object_VTable{
 
 // A stand-alone streaming decoder (host code and tests). `label` is any WHATWG label.
 decoder_make :: proc(label: string, fatal := false, ignore_bom := false) -> (Lexbor_Decoder, bool) {
-	l := strings.trim_space(label)
+	l := strings.trim(label, html.LABEL_WHITESPACE)
 	empty := u8(0)
 	ptr := raw_data(l)
 	if len(l) == 0 { ptr = &empty }

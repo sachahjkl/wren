@@ -270,6 +270,28 @@ addEventListener("load", () => {
 	close_page(pr, min_checks = 3)
 }
 
+// The encoding of a frame's document: one that declares none takes its same-origin parent's (not the default
+// windows-1252), a text document its response's charset.
+@(test)
+frames_encoding_of_nested_documents :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	undeclared := strings.concatenate({doc(SAME, "<p id=e>é</p>"), "&type=", enc("text/html")}, context.temp_allocator)
+	text := strings.concatenate({testenv.url(SAME + "/frames/text?body="), enc("é"), "&type=", enc("text/plain; charset=windows-1251")}, context.temp_allocator)
+	pr := load(t, fill(`<body><iframe id=h src="%s"></iframe><iframe id=t src="%s"></iframe><script>
+addEventListener("load", () => {
+  const h = document.getElementById("h").contentDocument, x = document.getElementById("t").contentDocument;
+  log("undeclared " + h.characterSet + " " + h.getElementById("e").textContent);
+  log("text " + x.characterSet + " " + x.body.textContent);
+});
+</script></body>`, undeclared, text))
+	check(pr, wait_note(pr, "undeclared UTF-8 é"), "a frame's document without a declaration is in its same-origin parent's encoding")
+	check(pr, said(pr, "text windows-1251 Г©"), "a text document is decoded in its response's charset")
+	close_page(pr, min_checks = 2)
+}
+
 // a frame gone, or navigated: its wrappers do no harm
 @(test)
 frames_wrappers_of_a_frame_gone :: proc(t: ^testing.T) {

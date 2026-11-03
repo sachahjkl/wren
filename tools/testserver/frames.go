@@ -5,6 +5,7 @@ package testserver
 //	/frames/doc?body=HTML&h=Name:%20value&h=...   an HTML page made of `body`, with each `h` as a response header
 //	                                              (X-Frame-Options, Content-Security-Policy, Permissions-Policy...)
 //	/frames/text?body=TEXT                        the same as text/plain
+//	...&type=TYPE                                 either with that Content-Type (its charset, or none)
 //
 // Every origin of the block serves them (base+0 and base+2 are two origins of one site, 127.0.0.1 and localhost two
 // sites), so a page of one origin can frame another.
@@ -22,6 +23,9 @@ func registerFrameHandlers(mux *http.ServeMux) {
 			if i := strings.IndexByte(h, ':'); i > 0 {
 				w.Header().Add(strings.TrimSpace(h[:i]), strings.TrimSpace(h[i+1:]))
 			}
+		}
+		if t := q.Get("type"); t != "" {
+			ctype = t
 		}
 		w.Header().Set("Content-Type", ctype)
 		w.Header().Set("Cache-Control", "no-store")

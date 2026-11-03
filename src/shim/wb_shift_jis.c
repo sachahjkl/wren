@@ -1,7 +1,8 @@
-/* The Shift_JIS decoder of the Encoding Standard, on Lexbor's decoder state and JIS X 0208 index. Lexbor 3.0.1's own
- * takes only 0xE0 and 0xFC of the lead bytes 0xE0..0xFC: the level 2 kanji and the IBM extensions of every Shift_JIS
- * page and TextDecoder came out as U+FFFD. wb_decode_fn gives this one in its place; the protocol is Lexbor's (state in
- * ctx->u.lead, LXB_STATUS_SMALL_BUFFER when the output is full, LXB_STATUS_CONTINUE with a lead pending at the end,
+/* The Shift_JIS decoder of the Encoding Standard, and what its encoder does of the IBM extensions (sjis_ibm, below), on
+ * Lexbor's decoder state and JIS X 0208 index. Lexbor 3.0.1's own decoder takes only 0xE0 and 0xFC of the lead bytes
+ * 0xE0..0xFC: the level 2 kanji and the IBM extensions of every Shift_JIS page and TextDecoder came out as U+FFFD.
+ * wb_decode_fn and wb_encode_single_fn (wb_encodings.c) give these in place of Lexbor's; the protocol is Lexbor's (state
+ * in ctx->u.lead, LXB_STATUS_SMALL_BUFFER when the output is full, LXB_STATUS_CONTINUE with a lead pending at the end,
  * LXB_STATUS_ERROR on an error in fatal mode).
  */
 #include "lexbor/encoding/encoding.h"
@@ -13,6 +14,11 @@
 #define SJIS_EUDC_LAST    10715
 #define SJIS_EUDC_BASE    0xE000
 #define SJIS_KATAKANA     0xFF61  /* half-width katakana, from byte 0xA1 */
+#define SJIS_NEC_IBM_FIRST 8272   /* pointers of the NEC selected IBM extensions, which the encoder leaves out */
+#define SJIS_NEC_IBM_LAST  8835
+#define SJIS_IBM_FIRST    10716   /* pointers of the IBM extensions, which it takes instead */
+#define SJIS_LEAD_SPLIT   0x1F    /* a pointer's lead below it is a byte from 0x81, else from 0xC1 */
+#define SJIS_TRAIL_SPLIT  0x3F    /* a pointer's trail below it is a byte from 0x40, else from 0x41 */
 
 static void sjis_emit(lxb_encoding_decode_t *ctx, lxb_codepoint_t cp) { ctx->buffer_out[ctx->buffer_used++] = cp; }
 
@@ -61,8 +67,46 @@ lxb_status_t wb_decode_shift_jis(lxb_encoding_decode_t *ctx, const lxb_char_t **
     return LXB_STATUS_OK;
 }
 
-/* The decode function of an encoding: Lexbor's, but for Shift_JIS. */
-lxb_encoding_decode_f wb_decode_fn(const lxb_encoding_data_t *enc)
+static unsigned sjis_pointer_of(const lxb_char_t bytes[2])
 {
-    return enc->encoding == LXB_ENCODING_SHIFT_JIS ? wb_decode_shift_jis : enc->decode;
+    return (bytes[0] - (bytes[0] < 0xA0 ? 0x81 : 0xC1)) * SJIS_TRAIL_STRIDE + bytes[1] - (bytes[1] < 0x7F ? 0x40 : 0x41);
+}
+
+/* The encoder's side. The standard's "index Shift_JIS pointer" leaves out the NEC selected IBM extensions (pointers 8272
+ * to 8835): a character there and among the IBM extensions (from pointer 10716, lead bytes 0xFA..0xFC) is encoded as
+ * the latter. Lexbor 3.0.1 does the opposite: it takes the NEC pointer, and fails a character whose first pointer is
+ * past them. The two bytes the standard gives `cp` when Lexbor's differ: 1 when written to `out`, else 0. */
+static int sjis_ibm(lxb_codepoint_t cp, lxb_char_t out[2])
+{
+    lxb_encoding_encode_t encode;
+    lxb_char_t lexbor[2];
+    lxb_char_t *w = lexbor;
+    (void) lxb_encoding_encode_init_single(&encode, lxb_encoding_data(LXB_ENCODING_SHIFT_JIS));
+    int8_t n = lxb_encoding_encode_shift_jis_single(&encode, &w, lexbor + sizeof(lexbor), cp);
+    if (n == 2) {
+        unsigned pointer = sjis_pointer_of(lexbor);
+        if (pointer < SJIS_NEC_IBM_FIRST || pointer > SJIS_NEC_IBM_LAST) { return 0; }
+    } else if (n != LXB_ENCODING_ENCODE_ERROR) {
+        return 0;
+    }
+    size_t count = sizeof(lxb_encoding_multi_jis0208_map) / sizeof(lxb_encoding_multi_jis0208_map[0]);
+    for (size_t pointer = SJIS_IBM_FIRST; pointer < count; pointer++) {
+        if (lxb_encoding_multi_jis0208_map[pointer] != cp) { continue; }
+        unsigned lead = (unsigned) pointer / SJIS_TRAIL_STRIDE, trail = (unsigned) pointer % SJIS_TRAIL_STRIDE;
+        out[0] = (lxb_char_t) (lead + (lead < SJIS_LEAD_SPLIT ? 0x81 : 0xC1));
+        out[1] = (lxb_char_t) (trail + (trail < SJIS_TRAIL_SPLIT ? 0x40 : 0x41));
+        return 1;
+    }
+    return 0;
+}
+
+/* Lexbor's encode_single for Shift_JIS, with the IBM extensions of the standard (sjis_ibm). */
+int8_t wb_encode_shift_jis_single(lxb_encoding_encode_t *ctx, lxb_char_t **data, const lxb_char_t *end, lxb_codepoint_t cp)
+{
+    lxb_char_t ibm[2];
+    if (!sjis_ibm(cp, ibm)) { return lxb_encoding_encode_shift_jis_single(ctx, data, end, cp); }
+    if (*data + sizeof(ibm) > end) { return LXB_ENCODING_ENCODE_SMALL_BUFFER; }
+    *(*data)++ = ibm[0];
+    *(*data)++ = ibm[1];
+    return 2;
 }

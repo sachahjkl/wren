@@ -47,6 +47,10 @@ query_in_a_legacy_encoding :: proc(t: ^testing.T) {
 	testing.expect_value(t, enc("https://example.com/?é", ""), "https://example.com/?%C3%A9")
 	testing.expect_value(t, enc("wss://example.com/?é", "windows-1252"), "wss://example.com/?%C3%A9")
 	testing.expect_value(t, enc("x-custom:a?é", "windows-1252"), "x-custom:a?%C3%A9")
+	// the IBM extensions of Shift_JIS (not the NEC selected ones Lexbor takes), GB18030-2005's private use code points that
+	// GB18030-2022 moved (a byte of the query outside its percent-encode set stays as it is)
+	testing.expect_value(t, enc("https://example.com/?aⅰ#ⅰ", "Shift_JIS"), "https://example.com/?a%FA@#%E2%85%B0")
+	testing.expect_value(t, enc("https://example.com/?", "GBK"), "https://example.com/?%A6%D9%FEY")
 }
 
 // Form submission's encoder: what an encoding cannot represent becomes "&#N;", which takes ISO-2022-JP back to ASCII.
@@ -57,6 +61,8 @@ encode_text_in_legacy_encodings :: proc(t: ^testing.T) {
 		return ok ? r : "<failed>"
 	}
 	testing.expect_value(t, enc("a日b", "Shift_JIS"), "a\x93\xfab")
+	testing.expect_value(t, enc("ⅰ", "Shift_JIS"), "\xfa\x40")
+	testing.expect_value(t, enc("", "gb18030"), "\xa6\xd9")
 	testing.expect_value(t, enc("€한", "windows-1252"), "\x80&#54620;")
 	testing.expect_value(t, enc("日한", "ISO-2022-JP"), "\x1b$BF|\x1b(B&#54620;")
 	testing.expect_value(t, enc("é", "UTF-16BE"), "é")

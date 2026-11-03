@@ -65,7 +65,40 @@ var wptPyHandlers = map[string]func(w http.ResponseWriter, r *http.Request){
 		w.Header().Set("Content-Type", "text/html")
 		fmt.Fprintf(w, `<!doctype html><meta charset="%s">`, html.EscapeString(r.URL.Query().Get("label")))
 	},
+	// encoding/resources: a text in the charset `label` names, the bytes 0..254 in it, a document declaring it, JSON
+	"/encoding/resources/text-plain-charset.py": func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain;charset="+r.URL.Query().Get("label"))
+		fmt.Fprint(w, "hello encoding")
+	},
+	"/encoding/resources/single-byte-raw.py": func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain;charset="+r.URL.Query().Get("label"))
+		raw := make([]byte, singleByteRawLength)
+		for i := range raw {
+			raw[i] = byte(i)
+		}
+		w.Write(raw)
+	},
+	"/encoding/resources/text-html-meta-charset.py": func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, `<meta charset="%s">hello encoding`, r.URL.Query().Get("label"))
+	},
+	"/encoding/resources/json-charset.py": func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		contentType := "application/json"
+		if t := q.Get("type"); t != "" {
+			contentType = t
+		}
+		if q.Has("charset") {
+			contentType += ";charset=" + q.Get("charset")
+		}
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		fmt.Fprint(w, `{"text":"☃é"}`)
+	},
 }
+
+// single-byte-raw.py's body: Python's bytes(range(255)).
+const singleByteRawLength = 255
 
 // common/redirect.py: status (302 by default) to `location`, CORS when enable-cors is present.
 func wptRedirect(w http.ResponseWriter, r *http.Request) {
