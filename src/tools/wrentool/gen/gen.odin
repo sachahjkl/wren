@@ -1,5 +1,5 @@
 // Package gen: what is made from something else and committed, or read by a person: tables, fixtures, the documentation site, lists.
-//   wrentool gen psl | unicode [-Force] | media-fixtures | video-fixtures | perf-media [-Force] | rust-crates [-Check]
+//   wrentool gen psl | unicode [-Force] | idna | media-fixtures | video-fixtures | perf-media [-Force] | rust-crates [-Check]
 //   wrentool docs [-Check] [-NoBuild] [-ChartUpdate]
 //   wrentool license keygen|pubkey|issue|verify ...         (src/tools/license)
 //   wrentool i18n [-Missing] [-Json out.json]
@@ -21,11 +21,12 @@ import "wb:tools/tooling"
 EXIT_USAGE :: 2
 
 run_gen :: proc(args: []string) -> int {
-	if len(args) == 0 { fmt.eprintln("wrentool gen psl | unicode | media-fixtures | video-fixtures | perf-media | rust-crates"); return EXIT_USAGE }
+	if len(args) == 0 { fmt.eprintln("wrentool gen psl | unicode | idna | media-fixtures | video-fixtures | perf-media | rust-crates"); return EXIT_USAGE }
 	rest := args[1:]
 	switch args[0] {
 	case "psl": return gen_psl()
 	case "unicode": return gen_unicode(rest)
+	case "idna": return gen_idna(rest)
 	case "media-fixtures": return gen_media_fixtures()
 	case "video-fixtures": return gen_video_fixtures()
 	case "perf-media": return gen_perf_media(rest)
@@ -71,6 +72,7 @@ UCD_FILES := []Ucd_File{
 	{"ucd/SpecialCasing.txt", "SpecialCasing.txt", "efc25faf19de21b92c1194c111c932e03d2a5eaf18194e33f1156e96de4c9588"},
 	{"ucd/DerivedNormalizationProps.txt", "DerivedNormalizationProps.txt", "71fd6a206a2c0cdd41feb6b7f656aa31091db45e9cedc926985d718397f9e488"},
 	{"ucd/extracted/DerivedGeneralCategory.txt", "extracted/DerivedGeneralCategory.txt", "d62e5bab70ca74f099343f71224fa051cb1fdd61a1ab45c0488c44cfc0b6102e"},
+	{"ucd/extracted/DerivedJoiningType.txt", "extracted/DerivedJoiningType.txt", "f39ebe974825d6736aee15582250307aa532b2cfab3caf3f86bd23fddc9c5c4d"},
 	{"ucd/emoji/emoji-data.txt", "emoji/emoji-data.txt", "2cb2bb9455cda83e8481541ecf5b6dfda66a3bb89efa3fa7c5297eccf607b72b"},
 	{"emoji/emoji-sequences.txt", "emoji-seq/emoji-sequences.txt", "12cc8267dc33cbd11ed32bcf6fc5dc2ad9c7a77bae1bdfba2f41b1b9b3ead8dd"},
 	{"emoji/emoji-zwj-sequences.txt", "emoji-seq/emoji-zwj-sequences.txt", "5b25441daed2322b068c5e70cda522946a4f0274df864445a1965a92e5fc5cad"},

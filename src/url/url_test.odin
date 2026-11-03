@@ -225,3 +225,19 @@ test_public_suffix_fast_agrees :: proc(t: ^testing.T) {
 		testing.expectf(t, public_suffix_labels(h) == public_suffix_labels_fast(h), "%s: %d vs %d", h, public_suffix_labels(h), public_suffix_labels_fast(h))
 	}
 }
+// The URL Standard's domain to ASCII (src/shim/wb_idna.c): an ASCII domain is lower-cased only (its xn-- labels are not
+// decoded to be checked), no length is verified, a label may not begin with a combining mark, a joiner needs its context.
+@(test)
+domain_to_ascii :: proc(t: ^testing.T) {
+	testing.expect_value(t, href("https://XN--ZN7C.com/x"), "https://xn--zn7c.com/x")
+	testing.expect_value(t, href("https://xn--a/x"), "https://xn--a/x")
+	testing.expect_value(t, href("https://xn--unicode-.org/x"), "https://xn--unicode-.org/x")
+	testing.expect_value(t, href("https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/x"), "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/x")
+	testing.expect_value(t, href("https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.\u00E4aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/x"), "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.xn--aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-4hf/x")
+	testing.expect_value(t, href("https://a.b.\u0308c.d/x"), "<invalid>")                       // a combining mark first
+	testing.expect_value(t, href("https://a\u200Cb/x"), "<invalid>")                           // ZWNJ out of context
+	testing.expect_value(t, href("https://\u0628\u200C\u0628/x"), "https://xn--ngba799q/x")         // ZWNJ between two dual-joining letters
+	testing.expect_value(t, href("https://\u0915\u094D\u200D\u0937/x"), "https://xn--11b2ezcw70k/x")  // ZWJ after a virama
+	testing.expect_value(t, href("https://a\u200Db/x"), "<invalid>")                           // ZWJ out of context
+	testing.expect_value(t, href("https://b\u00FCcher.example/x"), "https://xn--bcher-kva.example/x")
+}

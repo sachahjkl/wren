@@ -14,6 +14,22 @@ LEXBOR_SHIMS :: "src/shim"
 LEXBOR_THIS :: "src/tools/wrentool/deps/lexbor.odin"
 // Compilers at once on Linux (MSVC's /MP chooses for itself).
 LEXBOR_JOBS :: 16
+// Lexbor functions that the sources of a folder (under ext/lexbor/source/lexbor) call by another name: ours, of the shims,
+// which do what the standards ask where Lexbor does not (src/shim/wb_idna.c: the URL Standard's domain to ASCII).
+LEXBOR_RENAMES :: [?]Lexbor_Rename{{"url", "lxb_unicode_idna_to_ascii=wb_idna_to_ascii"}}
+
+Lexbor_Rename :: struct { folder, define: string }
+
+// The defines of LEXBOR_RENAMES for the folder of `source`.
+@(private)
+lexbor_renames :: proc(source: string) -> []string {
+	p, _ := strings.replace_all(source, "\\", "/", context.temp_allocator)
+	out := make([dynamic]string, context.temp_allocator)
+	for r in LEXBOR_RENAMES {
+		if strings.contains(p, fmt.tprintf("%s/lexbor/%s/", LEXBOR_SOURCE, r.folder)) { append(&out, r.define) }
+	}
+	return out[:]
+}
 
 when ODIN_OS == .Windows {
 	@(private) LEXBOR_OUT :: "build/lexbor"
@@ -88,6 +104,7 @@ lexbor_compile :: proc(o: Options, objects: string) -> bool {
 		cmd := make([dynamic]string, context.temp_allocator)
 		append(&cmd, msvc_tool(env, "cl.exe"))
 		append(&cmd, ..flags)
+		for d in lexbor_renames(list[0]) { append(&cmd, fmt.tprintf("/D%s", d)) }
 		append(&cmd, fmt.tprintf("/Fo%s/", dir))
 		append(&cmd, ..list[:])
 		if tooling.run({command = cmd[:], env = env, log = log}) != 0 { return fail(o, fmt.tprintf("the compile failed: read %s", log)) }
@@ -128,6 +145,7 @@ lexbor_compile :: proc(o: Options, objects: string) -> bool {
 		cmd := make([dynamic]string, context.temp_allocator)
 		append(&cmd, cc)
 		append(&cmd, ..flags)
+		for d in lexbor_renames(f) { append(&cmd, fmt.tprintf("-D%s", d)) }
 		append(&cmd, f, "-o", obj)
 		p, why := tooling.spawn({command = cmd[:], log = o.log})
 		if why != "" { return fail(o, fmt.tprintf("%s cannot start: %s", cc, why)) }
