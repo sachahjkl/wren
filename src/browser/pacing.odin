@@ -26,12 +26,14 @@ import "core:math"
 import "core:os"
 import "core:strconv"
 import "core:strings"
+import "core:sync"
 import "core:time"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
 import "wb:config"
+import "wb:host"
 
 // How often the compositor's live rate is read during a run of frames.
 PACER_LIVE_HZ_PERIOD_NS :: 100_000_000
@@ -129,7 +131,11 @@ Pacer :: struct {
 	live_hz:    f64,          // the highest rate the compositor reported during the current run of frames (display_live_hz; 0: none)
 	live_ns:    i64,          // tick of the last such measure
 	continuous: bool,         // this frame follows the previous one without idling
-	waited_ms:  f64,          // time spent waiting for the screen (or the timer) at the start of this frame
+	waited_ms:  f64,          // time spent waiting for the screen (or the timer) at the start of this frame (not the tasks run meanwhile)
+	tasks_run:  bool,         // this frame ran the loop's tasks while it waited for its slot (pacer_slot_wait): its page phase does not
+	ran:        int,          // ... of which those that drew something
+	first_paint: bool,        // the current tab's first paint was due: the frame started at once (pacer_slot_wait)
+	first_paint_laid: u64,    // ... and the mutation count of the document's last layout then (first_paint_due)
 	missed_timeouts: int,     // waits that ran into wait_timeout_ms
 	slot_held:  bool,         // the latency object was waited for and no frame was presented since (pacer_wait)
 	size:       [2]int,       // the window's size at the last frame (another one: the window is being resized)
@@ -145,6 +151,12 @@ Pacing :: struct {
 	cfg:   Pacer_Settings,
 	watch: int,
 	timer: rawptr,   // the timing of timed frames (a high-resolution waitable timer on Windows; none elsewhere)
+	waiting: bool,   // atomic: a frame waits for its slot on the timer and runs the loop's tasks as they come (pacer_slot_wait)
+}
+
+// The loop's wake-up (windows.odin wake_window, any thread): a frame waiting for its slot is woken to run what came.
+pacer_wake :: proc(app: ^App) {
+	if sync.atomic_load(&app.pacing.waiting) { pacer_timer_fire(app.pacing.timer) }
 }
 
 // The pacing of the window being framed (the active one; an App with no window: its bare window's).
@@ -271,15 +283,19 @@ pacer_latency :: proc(app: ^App, latency: ^int, two: bool) {
 }
 
 // At the start of a frame: the model's decision (platform.frame_decision), executed: the wait for the frame's slot (a
-// high-resolution timer), then for the swap chain to take a frame, taking input meanwhile. `idled`: the loop slept before
-// this frame (nothing moved): it starts a new run of frames.
+// high-resolution timer), then for the swap chain to take a frame, taking input meanwhile. The loop's tasks run during the
+// first (pacer_slot_wait); a document's first paint due waits for neither. `idled`: the loop slept before this frame
+// (nothing moved): it starts a new run of frames.
 pacer_wait :: proc(app: ^App, idled: bool) {
 	wnd := active_window(app)
 	pacer := &wnd.pacer
 	timer := app.pacing.timer
 	t0 := time.tick_now()
-	defer pacer.waited_ms = time.duration_milliseconds(time.tick_since(t0))
+	tasks_ns: time.Duration
+	defer pacer.waited_ms = time.duration_milliseconds(time.tick_since(t0) - tasks_ns)
 	pacer.continuous = !idled
+	held := pacer.first_paint   // (the last frame started at once for a first paint)
+	pacer.tasks_run, pacer.ran, pacer.first_paint = false, 0, false
 	resized := wnd.win.size != pacer.size
 	pacer.size = wnd.win.size
 	d := platform.frame_decision(&pacer.cadence, {
@@ -300,10 +316,14 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	unpaced := platform.is_offscreen(wnd.win) && (app.frames_at_once || remote_driving(app, pacer.period_ms))
 	if unpaced {
 		pacer.cadence.slots.next_ns = 0
-	} else if d.wait_ns > 0 && timer != nil {
-		// arm the timer for d.wait_ns from now and wait on it while the window keeps taking input; on Linux there is no
-		// such timer, so pacer_timer_wait sleeps the thread instead (the FIFO vblank does the fine pacing there).
-		pacer_timer_wait(wnd.win, timer, d.wait_ns)
+	} else {
+		// the timer armed for the slot and waited on while the window keeps taking input; on Linux there is no such timer,
+		// so pacer_timer_wait sleeps the thread instead (the FIFO vblank does the fine pacing there)
+		tasks_ns = pacer_slot_wait(app, d.wait_ns > 0 && timer != nil ? d.wait_until_ns : 0, held)
+	}
+	if pacer.first_paint {   // (the frame is shown at the next refresh, a second one queued behind the last)
+		pacer_latency(app, &pacer.latency, true)
+		return
 	}
 	// The latency object is a semaphore released once per frame the screen takes: a wake that ends without a frame
 	// (frame's early return) keeps the slot it took, or the next frame would wait for a present that never came, until
@@ -312,6 +332,47 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 		ok := platform.wait_handle(wnd.win, render.frame_waitable(&app.r), app.pacing.cfg.timeout_ms)
 		if ok { pacer.slot_held = true } else { pacer.missed_timeouts += 1 }
 		when PACING_DEBUG { fmt.eprintln("wait", ok, idled, time.duration_milliseconds(time.tick_since(t0)), wnd.frames_requested) }
+	}
+}
+
+// The wait for the frame's slot (`until_ns`, a tick; 0: none) with the loop's tasks and timers run as they come, by the first
+// frame of a pass (they are the process's: main.odin frame_tasks): a post during the wait fires the timer (pacer_wake), a
+// timer of the loop due before the slot ends it as early (the swap chain's wait after it cannot be woken: what comes then
+// waits for the next frame). A task that arrived during the wait used to wait with it, once per hop of a load (a document,
+// then its sheet, then the sheet's import). When the current tab's first paint can be made (a task made it so, or the last
+// frame's page phase), there is no wait: that frame starts at once (`first_paint`). Returns the time the tasks took.
+// `held`: the last frame started at once for a first paint; when it laid the document out without painting it (paint
+// holding: first_paint.odin), this one waits for its slot (a held page that a script changes is not drawn as fast as the
+// thread goes).
+pacer_slot_wait :: proc(app: ^App, until_ns: i64, held := false) -> (tasks_ns: time.Duration) {
+	wnd := active_window(app)
+	pacer := &wnd.pacer
+	timer := app.pacing.timer
+	for {
+		if app.pass_first && host.next_timeout_ms(&app.loop) == 0 {
+			t0 := time.tick_now()
+			prof_end(.Wait); prof_begin(.Loop)
+			ran := shell_wait_tasks(app)   // shell_frames.odin: a page phase of their own
+			prof_end(.Loop); prof_begin(.Wait)
+			tasks_ns += time.tick_since(t0)
+			pacer.tasks_run = true
+			pacer.ran += ran
+		}
+		if due, laid := first_paint_due(app); due && !(held && laid != pacer.first_paint_laid) {
+			pacer.first_paint, pacer.first_paint_laid = true, laid
+			return
+		}
+		left := until_ns - time.tick_now()._nsec
+		if left <= 0 { return }
+		if app.pass_first {
+			if ms := host.next_timeout_ms(&app.loop); ms >= 0 { left = min(left, i64(ms) * NS_PER_MS) }
+		}
+		// armed before the loop is looked at: a post after that look fires the timer armed (pacer_wake)
+		sync.atomic_store(&app.pacing.waiting, app.pass_first)
+		armed := left > 0 && pacer_timer_arm(timer, left)
+		if armed && (!app.pass_first || host.next_timeout_ms(&app.loop) != 0) { pacer_timer_wait(wnd.win, timer, left) }
+		sync.atomic_store(&app.pacing.waiting, false)
+		if !armed && left > 0 { return }
 	}
 }
 

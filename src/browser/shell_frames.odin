@@ -200,6 +200,15 @@ shell_frame_begin :: proc(app: ^App, events: []platform.Event) -> []platform.Eve
 	return evs
 }
 
+// The loop's tasks run while the frame waits for its slot (pacing.odin pacer_slot_wait), before it polls: a page phase of
+// their own, where a long script is preempted as in the frame's (chrome frames take the input that came meanwhile).
+shell_wait_tasks :: proc(app: ^App) -> int {
+	app.chrome_frames.phase = .Loop
+	app.chrome_frames.phase_start = time.tick_now()
+	defer app.chrome_frames.phase = .None
+	return frame_tasks(app)   // main.odin
+}
+
 // A copy of the full frame's input for chrome frames (they poll again: the window's own list is overwritten).
 @(private = "file")
 shell_keep_outer :: proc(events: []platform.Event) {
@@ -267,10 +276,11 @@ shell_page_phase_end :: proc(app: ^App, events: []platform.Event) -> []platform.
 // After a present (any frame).
 shell_presented :: proc() { the_app.chrome_frames.last_present = time.tick_now() }
 
-// Before the full frame draws: a chrome frame used the screen's slot; wait for the next one as a frame does.
+// Before the full frame draws: a chrome frame used the screen's slot; wait for the next one as a frame does (a document's
+// first paint waits for none: pacing.odin pacer_slot_wait).
 shell_before_draw :: proc(app: ^App) {
 	wnd := active_window(app)
-	if wnd.presented && !wnd.pacer.slot_held {
+	if wnd.presented && !wnd.pacer.slot_held && !wnd.pacer.first_paint {
 		if platform.wait_handle(wnd.win, render.frame_waitable(&app.r), app.pacing.cfg.timeout_ms) { wnd.pacer.slot_held = true }
 	}
 }

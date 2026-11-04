@@ -7,6 +7,9 @@ package browser
 import win "core:sys/windows"
 import "toolkit:platform"
 
+// How much longer than the timer's own delay its wait may take before it gives up (a timer that never fired).
+PACER_TIMER_SLACK_MS :: 50
+
 pacer_timer_create :: proc() -> rawptr {
 	CREATE_WAITABLE_TIMER_HIGH_RESOLUTION :: 0x2
 	h := win.CreateWaitableTimerExW(nil, nil, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, win.TIMER_ALL_ACCESS)
@@ -18,10 +21,19 @@ pacer_timer_destroy :: proc(timer: rawptr) {
 	if timer != nil { win.CloseHandle(win.HANDLE(timer)) }
 }
 
-// Arms the timer for `wait_ns` from now and waits on it while the window takes its input, time-stamped as it arrives.
-pacer_timer_wait :: proc(w: ^platform.Window, timer: rawptr, wait_ns: i64) {
+// Arms the timer for `wait_ns` from now.
+pacer_timer_arm :: proc(timer: rawptr, wait_ns: i64) -> bool {
 	due := win.LARGE_INTEGER(-(wait_ns / 100))   // relative, in 100 ns units
-	if win.SetWaitableTimerEx(win.HANDLE(timer), &due, 0, nil, nil, nil, 0) {
-		platform.wait_handle(w, timer, int(wait_ns / NS_PER_MS) + 50)
-	}
+	return bool(win.SetWaitableTimerEx(win.HANDLE(timer), &due, 0, nil, nil, nil, 0))
+}
+
+// Waits on the timer armed for `wait_ns` while the window takes its input, time-stamped as it arrives.
+pacer_timer_wait :: proc(w: ^platform.Window, timer: rawptr, wait_ns: i64) {
+	platform.wait_handle(w, timer, int(wait_ns / NS_PER_MS) + PACER_TIMER_SLACK_MS)
+}
+
+// The armed timer goes off now (any thread): its wait ends.
+pacer_timer_fire :: proc(timer: rawptr) {
+	now := win.LARGE_INTEGER(-1)   // relative: 100 ns
+	win.SetWaitableTimerEx(win.HANDLE(timer), &now, 0, nil, nil, nil, 0)
 }
