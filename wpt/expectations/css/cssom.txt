@@ -810,7 +810,7 @@
 /css/cssom/cssstyledeclaration-mutationrecord-005.html: OK
 	CSSStyleDeclaration.setPropertyValue doesn't queue a mutation record when setting invalid values: PASS
 /css/cssom/cssstyledeclaration-nested.html: OK
-	CSSNestedDeclarationBlock cssom interactions: FAIL
+	CSSNestedDeclarationBlock cssom interactions: PASS
 /css/cssom/cssstyledeclaration-properties.html: OK
 	CSS Test: CSSStyleDeclaration properties are defined as WebIDL attributes, not using getOwnPropertyNames(): PASS
 /css/cssom/cssstyledeclaration-registered-custom-properties.html: OK
@@ -2975,7 +2975,7 @@
 	Bare declaration inside top-level @media produces no child rules: PASS
 	Bare declaration inside top-level @supports produces no child rules: PASS
 	Declaration after style rule inside top-level @media is dropped, not wrapped: PASS
-	Declaration inside @media in nesting context is correctly wrapped as CSSNestedDeclarations: FAIL
+	Declaration inside @media in nesting context is correctly wrapped as CSSNestedDeclarations: PASS
 	Multiple bare declarations inside top-level @media produce no child rules: PASS
 /css/cssom/historical.html: OK
 	Historical CSSStyleDeclaration member: getPropertyCSSValue: PASS

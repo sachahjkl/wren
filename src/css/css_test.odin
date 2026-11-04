@@ -164,6 +164,28 @@ nesting :: proc(t: ^testing.T) {
 	testing.expect_value(t, sp, Specificity{0, 2, 0})
 }
 
+// Declarations after a nested rule are a nested declarations rule in its place, one for each run; in a group rule inside
+// a style rule those before its first rule are one too (CSS Nesting §3.2).
+@(test)
+nested_declarations_rules :: proc(t: ^testing.T) {
+	s := parse_stylesheet(".a { --a: 1; & { --b: 1; } --c: 1; --d: 1; & { } --e: 1; @media all { --f: 1; .x { } } }", OPT)
+	defer { stylesheet_destroy(s); free(s) }
+	testing.expect_value(t, len(s.rules), 1)
+	if len(s.rules) != 1 { return }
+	a := s.rules[0]
+	testing.expect_value(t, len(a.declarations), 1)
+	testing.expect_value(t, len(a.nested), 5)
+	if len(a.nested) != 5 { return }
+	testing.expect(t, !is_nested_declarations(a.nested[0]) && is_nested_declarations(a.nested[1]) && !is_nested_declarations(a.nested[2]) && is_nested_declarations(a.nested[3]))
+	testing.expect_value(t, len(a.nested[1].declarations), 2)
+	testing.expect_value(t, a.nested[1].declarations[1].name, "--d")
+	testing.expect_value(t, a.nested[3].declarations[0].name, "--e")
+	testing.expect_value(t, len(a.nested[3].selectors), len(a.selectors))
+	media := a.nested[4]
+	testing.expect_value(t, len(media.rules), 2)
+	if len(media.rules) == 2 { testing.expect(t, is_nested_declarations(media.rules[0]) && !is_nested_declarations(media.rules[1])) }
+}
+
 @(private = "file")
 sel :: proc(src: string, ar: ^Arena) -> (Selector_List, bool) {
 	toks := tokenize(src, ar.alloc)

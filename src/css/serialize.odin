@@ -76,19 +76,33 @@ write_css_url :: proc(sb: ^strings.Builder, s: string) {
 // Selectors
 
 // The selector list of a rule's prelude, serialized (a nested rule's may start with a combinator); `ns`: the sheet's
-// namespaces, which decide what is written of a type selector's prefix.
-serialize_selector_list :: proc(vs: []Value, allocator := context.allocator, ns: ^Namespaces = nil) -> string {
+// namespaces, which decide what is written of a type selector's prefix. `nested`: the rule is in a style rule, where a
+// selector that starts with a combinator or has no & is relative to it and is written with its implied "& " (CSS
+// Nesting §2.1: ".b" is "& .b", "> .b" is "& > .b", "+ .b &" is "& + .b &").
+serialize_selector_list :: proc(vs: []Value, allocator := context.allocator, ns: ^Namespaces = nil, nested := false) -> string {
 	sb := strings.builder_make(allocator)
-	write_selector_list(&sb, vs, true, ns)
+	write_selector_list(&sb, vs, true, ns, nested)
 	return strings.to_string(sb)
 }
 
 @(private = "file")
-write_selector_list :: proc(sb: ^strings.Builder, vs: []Value, relative: bool, ns: ^Namespaces) {
+write_selector_list :: proc(sb: ^strings.Builder, vs: []Value, relative: bool, ns: ^Namespaces, nested := false) {
 	for item, i in split_commas(trim_values(vs), context.temp_allocator) {
 		if i > 0 { strings.write_string(sb, ", ") }
-		write_complex(sb, trim_values(item), relative, ns)
+		complex := trim_values(item)
+		if nested && (len(complex) > 0 && is_combinator_value(complex[0]) || !has_nesting_selector(complex)) { strings.write_string(sb, "& ") }
+		write_complex(sb, complex, relative, ns)
 	}
+}
+
+// Whether a selector holds & anywhere, inside functional pseudo-classes too.
+@(private = "file")
+has_nesting_selector :: proc(vs: []Value) -> bool {
+	for v in vs {
+		if is_delim(v, "&") { return true }
+		if v.kind != .Token && has_nesting_selector(v.children) { return true }
+	}
+	return false
 }
 
 @(private = "file")

@@ -33,6 +33,9 @@ KEYFRAMES_RULE :: 7
 KEYFRAME_SHAPE :: Rule_Shape{"CSSKeyframeRule", 8, ""}
 @(private = "file")
 MARGIN_SHAPE :: Rule_Shape{"CSSMarginRule", 9, ""}
+// Declarations in a style rule after a nested rule (CSS Nesting): their text is a declaration list, no block, and has no type.
+@(private = "file")
+NESTED_DECLARATIONS_SHAPE :: Rule_Shape{"CSSNestedDeclarations", 0, ""}
 
 @(private = "file")
 is_space :: #force_inline proc "contextless" (c: u8) -> bool { return c == ' ' || c == '\n' || c == '\t' || c == '\r' }
@@ -61,6 +64,7 @@ set_text :: proc "contextless" (ctx: ^wj.Context, o: wj.JSValue, name: cstring, 
 css_rule_make :: proc "contextless" (ctx: ^wj.Context, source: string, sheet, parent: wj.JSValue, known := Rule_Shape{}) -> wj.JSValue {
 	text := trimmed(source)
 	shape := Rule_Shape{"CSSStyleRule", 1, ""}
+	declarations := false
 	if known.iface != nil {
 		shape = known   // (a margin rule's head is its at-keyword: CSSMarginRule.name)
 	} else if len(text) > 0 && text[0] == '@' {
@@ -68,6 +72,8 @@ css_rule_make :: proc "contextless" (ctx: ^wj.Context, source: string, sheet, pa
 		for s in RULE_SHAPES {
 			if len(text) > len(s.at) && text[:len(s.at)] == s.at && (is_space(text[len(s.at)]) || text[len(s.at)] == '{' || text[len(s.at)] == ';') { shape = s; break }
 		}
+	} else if len(text) == 0 || text[len(text) - 1] == ';' {
+		shape, declarations = NESTED_DECLARATIONS_SHAPE, true   // (every other rule's text ends with its block)
 	}
 	brace := index_of(text, '{')
 	head := brace >= 0 ? trimmed(text[:brace]) : text
@@ -78,6 +84,7 @@ css_rule_make :: proc "contextless" (ctx: ^wj.Context, source: string, sheet, pa
 	wj.web_extra_set(ctx, r, "type", wj.new_int32(shape.type))
 	wj.web_extra_set(ctx, r, "parentStyleSheet", wj.JS_DupValue(ctx, sheet))
 	wj.web_extra_set(ctx, r, "parentRule", wj.JS_DupValue(ctx, parent))
+	if declarations { set_text(ctx, r, "body", text); return r }
 	if shape.at != "" { head = trimmed(head[len(shape.at):]) }
 	if len(head) > 0 && head[len(head) - 1] == ';' { head = trimmed(head[:len(head) - 1]) }
 	set_text(ctx, r, "head", head)
@@ -146,7 +153,8 @@ wjr_CSSRule_get_cssText :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSVa
 	if sheet, id, ok := rule_ref(ctx, t); ok && !wj.is_bool(own) {
 		text: string
 		jsb.host(&text, api_decl.CSSStyleSheet_ruleTextOf, wj.wr_CSSStyleSheet_ruleTextOf, sheet, id)
-		if text != "" { return wj.new_string_len(ctx, transmute([]u8)text) }
+		// (an empty nested declarations rule's text is empty)
+		if text != "" || wj.wj_unwrap(t, wj.iface(NESTED_DECLARATIONS_SHAPE.iface)) != nil { return wj.new_string_len(ctx, transmute([]u8)text) }
 	}
 	return extra_or_null(ctx, t, "CSSRule", "cssText", empty_string(ctx))
 }
@@ -235,6 +243,8 @@ rule_style_written :: proc "contextless" (ctx: ^wj.Context, style: wj.JSValue) {
 
 @(export, link_name = "wjr_CSSStyleRule_get_style")
 wjr_CSSStyleRule_get_style :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return rule_style(ctx, t, "CSSStyleRule") }
+@(export, link_name = "wjr_CSSNestedDeclarations_get_style")
+wjr_CSSNestedDeclarations_get_style :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return rule_style(ctx, t, "CSSNestedDeclarations") }
 @(export, link_name = "wjr_CSSFontFaceRule_get_style")
 wjr_CSSFontFaceRule_get_style :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return rule_style(ctx, t, "CSSFontFaceRule") }
 

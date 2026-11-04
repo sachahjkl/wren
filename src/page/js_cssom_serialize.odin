@@ -29,7 +29,7 @@ write_rule :: proc(p: ^Page, sb: ^strings.Builder, r: ^css.Rule) {
 	switch r.kind {
 	case .Style:
 		decls := rule_declarations_text(p, r.declarations)
-		if r.selector_text == "" { strings.write_string(sb, decls); return }   // the declarations of a nested group (CSSNestedDeclarations)
+		if css.is_nested_declarations(r) { strings.write_string(sb, decls); return }   // (CSSNestedDeclarations)
 		strings.write_string(sb, r.selector_text)
 		if len(r.nested) == 0 {
 			write_declarations_block(sb, decls)
@@ -37,7 +37,7 @@ write_rule :: proc(p: ^Page, sb: ^strings.Builder, r: ^css.Rule) {
 		}
 		strings.write_string(sb, " {")
 		if decls != "" { write_inner_line(sb, decls) }
-		for n in r.nested { write_inner_line(sb, rule_css_text(p, n)) }
+		write_inner_rules(p, sb, r.nested)
 		strings.write_string(sb, "\n}")
 	case .Media:
 		strings.write_string(sb, "@media ")
@@ -117,8 +117,18 @@ write_rule :: proc(p: ^Page, sb: ^strings.Builder, r: ^css.Rule) {
 @(private = "file")
 write_rule_block :: proc(p: ^Page, sb: ^strings.Builder, rules: []^css.Rule) {
 	strings.write_string(sb, " {")
-	for n in rules { write_inner_line(sb, rule_css_text(p, n)) }
+	write_inner_rules(p, sb, rules)
 	strings.write_string(sb, "\n}")
+}
+
+// The rules inside a block, a line each; an empty nested declarations rule has none (CSSOM §6.4 "serialize a CSS rule").
+@(private = "file")
+write_inner_rules :: proc(p: ^Page, sb: ^strings.Builder, rules: []^css.Rule) {
+	for n in rules {
+		text := rule_css_text(p, n)
+		if text == "" && css.is_nested_declarations(n) { continue }
+		write_inner_line(sb, text)
+	}
 }
 
 // " { declarations }", " { }" without any.

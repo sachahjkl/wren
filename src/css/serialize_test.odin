@@ -41,9 +41,18 @@ selectors_serialize :: proc(t: ^testing.T) {
 	testing.expect_value(t, selector_of("p:before, p::After {}"), "p::before, p::after")
 	testing.expect_value(t, selector_of(":has( > img) {}"), ":has(> img)")
 	testing.expect_value(t, selector_of(".a { > .b { } }"), ".a")
-	s := parse_stylesheet(".a { > .b { } }", OPT)
+	// a nested selector without & has its implied "& " written, one with & anywhere is as it is
+	// (one starting with a combinator always: "+ .f &"; a type selector after & is invalid)
+	s := parse_stylesheet(".a { > .b { } .c, .d & { } :is(&.e) { } + .f & { } &div { } }", OPT)
 	defer { stylesheet_destroy(s); free(s) }
-	testing.expect(t, len(s.rules) == 1 && len(s.rules[0].nested) == 1 && s.rules[0].nested[0].selector_text == "> .b")
+	testing.expect(t, len(s.rules) == 1 && len(s.rules[0].nested) == 4)
+	if len(s.rules) == 1 && len(s.rules[0].nested) == 4 {
+		testing.expect_value(t, s.rules[0].nested[0].selector_text, "& > .b")
+		testing.expect_value(t, s.rules[0].nested[1].selector_text, "& .c, .d &")
+		testing.expect_value(t, s.rules[0].nested[2].selector_text, ":is(&.e)")
+		testing.expect_value(t, s.rules[0].nested[3].selector_text, "& + .f &")
+		testing.expect_value(t, len(s.rules[0].nested[3].selectors[0].compounds), 3)   // &, .f and & again
+	}
 }
 
 // The sheet's last rule's selector, and whether it parsed.
