@@ -12,9 +12,10 @@ import "wb:tools/tooling"
 // The windows scripts open: a document such a window leaves stays in its back/forward cache, and going back shows it again
 // (pageshow persisted, its script not run again) instead of loading it.
 
-// How long the opener's script and its window may take, ms.
+// How long the opener's script and its window may take, ms (a deadline: the test ends when A is shown again; among a full
+// run's steps the first load took more than 10 s).
 @(private = "file")
-BFCACHE_TEST_MS :: 10_000
+BFCACHE_TEST_MS :: 30_000
 
 @(private = "file")
 Seen :: struct { lines: [dynamic]string }
