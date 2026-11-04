@@ -196,6 +196,38 @@ section("a rule's style written reaches the sheet", () => {
   s.remove();
 });
 
+// The rules inside rules: a @media's and a nested style rule's lists, live, edited, their styles written.
+section("rules inside rules", () => {
+  const s = document.createElement("style");
+  s.textContent = "@media all { #pa { margin-left: 1px } } #pb { & { margin-left: 1px } }";
+  document.head.appendChild(s);
+  const media = s.sheet.cssRules[0], nest = s.sheet.cssRules[1];
+  const list = media.cssRules;
+  media.insertRule("#pa { margin-left: 5px }", 1);
+  eq("a @media's insertRule applies", px(document.getElementById("pa"), "marginLeft") + "|" + list.length, "5px|2");
+  media.deleteRule(1);
+  eq("and its deleteRule", px(document.getElementById("pa"), "marginLeft"), "1px");
+  nest.cssRules[0].style.marginLeft = "6px";
+  eq("a nested rule's style written", px(document.getElementById("pb"), "marginLeft"), "6px");
+  nest.insertRule("margin-right: 7px;", 1);
+  eq("declarations inserted", px(document.getElementById("pb"), "marginRight") + "|" + nest.cssRules.length, "7px|2");
+  let threw = "";
+  try { nest.insertRule("@font-face { font-family: f }"); } catch (e) { threw = e.name; }
+  eq("what cannot be there", threw, "HierarchyRequestError");
+  const gone = list[0];
+  s.sheet.deleteRule(0);
+  eq("a rule removed leaves its sheet", String(gone.parentStyleSheet), "null");
+  s.remove();
+});
+
+section("@namespace", () => {
+  const s = document.createElement("style");
+  s.textContent = "@namespace svg url(http://www.w3.org/2000/svg); *|p, svg|p, |p { }";
+  document.head.appendChild(s);
+  eq("selectorText", s.sheet.cssRules[1].selectorText, "p, svg|p, |p");
+  s.remove();
+});
+
 // A computed url() is absolute, against the base of the sheet that wrote it (CSS Values 4 §4.5.1.1): a CSS module's
 // images, a constructed sheet's baseURL.
 section("url() against the sheet's base", () => {

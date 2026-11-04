@@ -38,7 +38,7 @@ hand, so it cannot drift from the recorded results.
 
 Most folders run without layout: what their tests read of geometry is 0, and their expectations say so. The folders that
 test geometry (`LAYOUT_FOLDERS` in `src/tools/wpt/layout_host.odin`: `dom/events/scrolling`, `css/css-anchor-position`, `css/css-multicol`,
-`css/css-writing-modes`, `css/cssom`, `html/semantics/interactive-elements/the-dialog-element`, `navigation-api/scroll-behavior`) get a layout of an 800 x 600 with fixed text metrics, so that `getComputedStyle`, `offsetTop` or `getBoundingClientRect` answer there as a page's;
+`css/css-nesting`, `css/css-writing-modes`, `css/cssom`, `html/semantics/interactive-elements/the-dialog-element`, `navigation-api/scroll-behavior`) get a layout of an 800 x 600 with fixed text metrics, so that `getComputedStyle`, `offsetTop` or `getBoundingClientRect` answer there as a page's;
 the documents of their frames are laid out too, each in its container's content box.
 A page's `autofocus` runs once its scripts had their turn, as the shell runs it. The windows a test opens (`window.open`, a link to
 `_blank`) are windows without a shell (`src/tools/headless`): their first document keeps the initial about:blank's `Window`, they keep a

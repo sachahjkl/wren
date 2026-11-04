@@ -72,14 +72,68 @@ cssom_rule_selector_set :: proc(t: ^testing.T) {
 	sync_document_sheets(e, doc, "about:test")
 	sh := engine_style_element_sheet(e, doc, dom.find_by_id(doc, "s"), "about:test")
 	id := engine_sheet_rule_id(e, sh.id, 0)
-	testing.expect(t, engine_sheet_set_selector(e, sh.id, id, "P#b , q"))
+	testing.expect_value(t, engine_sheet_set_selector(e, sh.id, id, "P#b , q"), 0)
 	testing.expect_value(t, engine_sheet_rule(e, sh.id, 0).selector_text, "P#b, q")
 	testing.expect_value(t, color_of(e, doc, "a"), [4]f32{0, 0, 0, 1})
 	testing.expect_value(t, color_of(e, doc, "b"), [4]f32{1, 0, 0, 1})
-	testing.expect(t, !engine_sheet_set_selector(e, sh.id, id, "p..b"))
-	testing.expect(t, !engine_sheet_set_selector(e, sh.id, id + 1, "p"))
+	testing.expect_value(t, engine_sheet_set_selector(e, sh.id, id, "p..b"), -1)
+	testing.expect_value(t, engine_sheet_set_selector(e, sh.id, id + 1, "p"), -1)
 	testing.expect_value(t, color_of(e, doc, "b"), [4]f32{1, 0, 0, 1})
 	// its style written (CSSStyleRule.style): the rule's declarations are those now
-	testing.expect(t, engine_sheet_set_declarations(e, sh.id, id, "color: blue;"))
+	testing.expect_value(t, engine_sheet_set_declarations(e, sh.id, id, "color: blue;"), 0)
 	testing.expect_value(t, color_of(e, doc, "b"), [4]f32{0, 0, 1, 1})
+}
+
+// The rules inside rules (CSSGroupingRule): numbered when listed, inserted into and deleted from a @media and a style
+// rule (CSS Nesting: & against the parent, declarations alone a nested declarations rule), what cannot be there refused,
+// and every change reaching the cascade; an outer selector set takes its nested rules along.
+@(test)
+cssom_nested_rule_edits :: proc(t: ^testing.T) {
+	doc := dom.document_create(nil)
+	defer dom.document_destroy(doc)
+	html.parse_into(doc, doc.root, transmute([]byte)string(`<style id=s>@media all { #a { color: red } } .x { color: red; & p { color: red } }</style><p id=a>a</p><div class=x><p id=b>b</p></div><div class=y><p id=c>c</p></div>`), 1 << 20)
+	s := settings_default()
+	e := engine_make(s)
+	settings_destroy(&s)
+	defer engine_destroy(e)
+	sync_document_sheets(e, doc, "about:test")
+	sh := engine_style_element_sheet(e, doc, dom.find_by_id(doc, "s"), "about:test")
+	media, style_rule := engine_sheet_rule_id(e, sh.id, 0), engine_sheet_rule_id(e, sh.id, 1)
+	testing.expect_value(t, engine_rule_child_count(e, sh.id, media), 1)
+
+	// a @media's list
+	top, err := engine_rule_insert(e, sh.id, media, "#a { color: lime }", 1)
+	testing.expect_value(t, err, Rule_Edit_Error.None)
+	testing.expect_value(t, top, 0)
+	testing.expect_value(t, color_of(e, doc, "a"), [4]f32{0, 1, 0, 1})
+	_, err = engine_rule_insert(e, sh.id, media, "#a {}", 3)
+	testing.expect_value(t, err, Rule_Edit_Error.Index)
+	_, err = engine_rule_insert(e, sh.id, media, "@import url(x.css);", 0)
+	testing.expect_value(t, err, Rule_Edit_Error.Hierarchy)
+	_, err = engine_rule_delete(e, sh.id, media, 1)
+	testing.expect_value(t, err, Rule_Edit_Error.None)
+	testing.expect_value(t, color_of(e, doc, "a"), [4]f32{1, 0, 0, 1})
+
+	// a style rule's: & against .x, declarations alone, a @font-face refused
+	nested := engine_rule_child_id(e, sh.id, style_rule, 0)
+	testing.expect(t, nested != 0)
+	_, err = engine_rule_insert(e, sh.id, style_rule, "& > p { color: lime }", 1)
+	testing.expect_value(t, err, Rule_Edit_Error.None)
+	testing.expect_value(t, color_of(e, doc, "b"), [4]f32{0, 1, 0, 1})
+	_, err = engine_rule_insert(e, sh.id, style_rule, "color: blue;", 0)
+	testing.expect_value(t, err, Rule_Edit_Error.None)
+	testing.expect_value(t, engine_rule_child_count(e, sh.id, style_rule), 3)
+	_, err = engine_rule_insert(e, sh.id, style_rule, "@font-face { font-family: f }", 0)
+	testing.expect_value(t, err, Rule_Edit_Error.Hierarchy)
+	_, err = engine_rule_insert(e, sh.id, style_rule, "nonsense: 1;", 0)
+	testing.expect_value(t, err, Rule_Edit_Error.Syntax)
+
+	// the nested rule keeps its number, its style and its selector written; the outer selector set moves it along
+	testing.expect_value(t, engine_rule_child_id(e, sh.id, style_rule, 1), nested)
+	testing.expect_value(t, engine_sheet_set_declarations(e, sh.id, nested, "color: blue;"), 1)
+	_, err = engine_rule_delete(e, sh.id, style_rule, 2)
+	testing.expect_value(t, color_of(e, doc, "b"), [4]f32{0, 0, 1, 1})
+	testing.expect_value(t, engine_sheet_set_selector(e, sh.id, style_rule, ".y"), 1)
+	testing.expect_value(t, color_of(e, doc, "b"), [4]f32{0, 0, 0, 1})
+	testing.expect_value(t, color_of(e, doc, "c"), [4]f32{0, 0, 1, 1})
 }

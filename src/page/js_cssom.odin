@@ -229,39 +229,80 @@ CSSStyleSheet_ruleText :: proc(c: ^Call, sheet: u64, index: u32) -> (string, Api
 	return "", fail(c, .Index_Size, "The index is past the end of the rule list.")
 }
 
-// selectorText = selector on the top-level rule numbered `rule_id`: its new cssText, "" when nothing changed (an
-// invalid selector leaves the rule as it is, CSSOM §6.4.3).
+// A rule inside the top-level rule at `top` changed: that rule's text is made again from it (what the sheet's text is
+// made of), and the script's lists of rules are made again when read.
+@(private)
+rule_retext :: proc(c: ^Call, s: ^Css_Sheet, top: int) {
+	if top < 0 { return }
+	if r := style.engine_sheet_rule(c.page.engine, s.id, top); r != nil { style.engine_sheet_set_rule_text(c.page.engine, s.id, top, rule_css_text(c.page, r)) }
+	s.version += 1
+}
+
+// selectorText = selector on the rule numbered `rule_id`: its new cssText, "" when nothing changed (an invalid selector
+// leaves the rule as it is, CSSOM §6.4.3).
 CSSStyleSheet_setRuleSelector :: proc(c: ^Call, sheet: u64, rule_id: u32, selector: string) -> string {
 	s := css_sheet_of(c, sheet)
-	if s == nil || !style.engine_sheet_set_selector(c.page.engine, s.id, rule_id, selector) { return "" }
+	if s == nil { return "" }
+	top := style.engine_sheet_set_selector(c.page.engine, s.id, rule_id, selector)
+	if top < 0 { return "" }
+	rule_retext(c, s, top)
 	return CSSStyleSheet_ruleTextOf(c, sheet, rule_id)
 }
 
-// The cssText of the top-level rule numbered `rule_id` now ("" when it is gone).
+// The cssText of the rule numbered `rule_id` now ("" when it is gone).
 CSSStyleSheet_ruleTextOf :: proc(c: ^Call, sheet: u64, rule_id: u32) -> string {
 	s := css_sheet_of(c, sheet)
-	if s == nil { return "" }
-	for i in 0 ..< style.engine_sheet_rule_count(c.page.engine, s.id) {
-		if style.engine_sheet_rule_id(c.page.engine, s.id, i) == rule_id { return rule_css_text(c.page, style.engine_sheet_rule(c.page.engine, s.id, i)) }
-	}
-	return ""
+	r := s != nil ? style.engine_rule_by_id(c.page.engine, s.id, rule_id) : nil
+	return r != nil ? rule_css_text(c.page, r) : ""
 }
 
-// CSSStyleRule.style written: the top-level rule numbered `rule_id` takes the declarations of `text`.
+// CSSStyleRule.style written: the rule numbered `rule_id` takes the declarations of `text`.
 CSSStyleSheet_setRuleStyle :: proc(c: ^Call, sheet: u64, rule_id: u32, text: string) {
-	if s := css_sheet_of(c, sheet); s != nil { style.engine_sheet_set_declarations(c.page.engine, s.id, rule_id, text) }
+	if s := css_sheet_of(c, sheet); s != nil { rule_retext(c, s, style.engine_sheet_set_declarations(c.page.engine, s.id, rule_id, text)) }
+}
+
+CSSStyleSheet_childCount :: proc(c: ^Call, sheet: u64, rule_id: u32) -> u32 {
+	s := css_sheet_of(c, sheet)
+	return s != nil ? u32(style.engine_rule_child_count(c.page.engine, s.id, rule_id)) : 0
+}
+
+CSSStyleSheet_childId :: proc(c: ^Call, sheet: u64, rule_id: u32, index: u32) -> u32 {
+	s := css_sheet_of(c, sheet)
+	return s != nil ? style.engine_rule_child_id(c.page.engine, s.id, rule_id, int(index)) : 0
+}
+
+CSSStyleSheet_insertChildAt :: proc(c: ^Call, sheet: u64, rule_id: u32, rule: string, index: u32) -> (u32, Api_Error) {
+	s := css_sheet_of(c, sheet)
+	if s == nil { return 0, fail(c, .Invalid_Handle, "not a stylesheet") }
+	top, err := style.engine_rule_insert(c.page.engine, s.id, rule_id, rule, int(index))
+	if err != .None { return 0, rule_edit_fail(c, err, "insertRule", "CSSGroupingRule") }
+	rule_retext(c, s, top)
+	return index, .None
+}
+
+CSSStyleSheet_deleteChildAt :: proc(c: ^Call, sheet: u64, rule_id: u32, index: u32) -> Api_Error {
+	s := css_sheet_of(c, sheet)
+	if s == nil { return fail(c, .Invalid_Handle, "not a stylesheet") }
+	top, err := style.engine_rule_delete(c.page.engine, s.id, rule_id, int(index))
+	if err != .None { return rule_edit_fail(c, err, "deleteRule", "CSSGroupingRule") }
+	rule_retext(c, s, top)
+	return .None
 }
 
 @(private)
-rule_edit_fail :: proc(c: ^Call, err: style.Rule_Edit_Error, op: string) -> Api_Error {
+rule_edit_fail :: proc(c: ^Call, err: style.Rule_Edit_Error, op: string, iface := "CSSStyleSheet") -> Api_Error {
 	switch err {
 	case .None:      return .None
-	case .No_Sheet:  return fail(c, .Invalid_State, fmt.tprintf("Failed to execute '%s' on 'CSSStyleSheet': the stylesheet is no longer in the document.", op))
-	case .Index:     return fail(c, .Index_Size, fmt.tprintf("Failed to execute '%s' on 'CSSStyleSheet': The index provided is larger than the maximum index.", op))
-	case .Syntax:    return fail(c, .Syntax, fmt.tprintf("Failed to execute '%s' on 'CSSStyleSheet': Failed to parse the rule.", op))
-	case .Hierarchy: return fail(c, .Hierarchy, fmt.tprintf("Failed to execute '%s' on 'CSSStyleSheet': @import rules must come before every other rule.", op))
-	case .Import:    return fail(c, .Not_Supported, fmt.tprintf("Failed to execute '%s' on 'CSSStyleSheet': inserting or removing an @import rule of an element's stylesheet is not supported.", op))
-	case .Too_Many:  return fail(c, .Quota, fmt.tprintf("Failed to execute '%s' on 'CSSStyleSheet': the stylesheet has style.max_rules rules already.", op))
+	case .No_Sheet:  return fail(c, .Invalid_State, fmt.tprintf("Failed to execute '%s' on '%s': the stylesheet is no longer in the document.", op, iface))
+	case .No_Rule:   return fail(c, .Invalid_State, fmt.tprintf("Failed to execute '%s' on '%s': the rule is no longer in its stylesheet.", op, iface))
+	case .Invalid_State: return fail(c, .Invalid_State, fmt.tprintf("Failed to execute '%s' on '%s': @namespace rules can only be beside @import and @namespace rules.", op, iface))
+	case .Index:     return fail(c, .Index_Size, fmt.tprintf("Failed to execute '%s' on '%s': The index provided is larger than the maximum index.", op, iface))
+	case .Syntax:    return fail(c, .Syntax, fmt.tprintf("Failed to execute '%s' on '%s': Failed to parse the rule.", op, iface))
+	case .Hierarchy:
+		if iface != "CSSStyleSheet" { return fail(c, .Hierarchy, fmt.tprintf("Failed to execute '%s' on '%s': the rule cannot be inside this rule.", op, iface)) }
+		return fail(c, .Hierarchy, fmt.tprintf("Failed to execute '%s' on '%s': @import rules must come before every other rule.", op, iface))
+	case .Import:    return fail(c, .Not_Supported, fmt.tprintf("Failed to execute '%s' on '%s': inserting or removing an @import rule of an element's stylesheet is not supported.", op, iface))
+	case .Too_Many:  return fail(c, .Quota, fmt.tprintf("Failed to execute '%s' on '%s': the stylesheet has style.max_rules rules already.", op, iface))
 	}
 	return .None
 }

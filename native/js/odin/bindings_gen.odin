@@ -25503,8 +25503,8 @@ wj_install_bindings :: proc "c" () {
 	m_CSSRule[13] = wj.Member{name = "MARGIN_RULE", kind = wj.M_CONSTANT, value = 9}
 	m_CSSRule[14] = wj.Member{name = "NAMESPACE_RULE", kind = wj.M_CONSTANT, value = 10}
 	m_CSSGroupingRule[0] = wj.Member{name = "cssRules", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 6, get = wjr_CSSGroupingRule_get_cssRules, set = nil}
-	m_CSSGroupingRule[1] = wj.Member{name = "insertRule", kind = wj.M_METHOD, flags = 0, length = 1, fn = nil}
-	m_CSSGroupingRule[2] = wj.Member{name = "deleteRule", kind = wj.M_METHOD, flags = 0, length = 1, fn = nil}
+	m_CSSGroupingRule[1] = wj.Member{name = "insertRule", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_CSSGroupingRule_insertRule}
+	m_CSSGroupingRule[2] = wj.Member{name = "deleteRule", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_CSSGroupingRule_deleteRule}
 	m_CSSConditionRule[0] = wj.Member{name = "conditionText", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_CSSConditionRule_get_conditionText, set = nil}
 	m_CSSMediaRule[0] = wj.Member{name = "media", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 7, get = wjr_CSSMediaRule_get_media, set = wjg_CSSMediaRule_set_media}
 	m_CSSMediaRule[1] = wj.Member{name = "matches", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_CSSMediaRule_get_matches, set = nil}
@@ -29933,8 +29933,8 @@ wj_install_bindings :: proc "c" () {
 	m_CSSStyleSheet[4] = wj.Member{name = "replace", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_CSSStyleSheet_replace}
 	m_CSSStyleSheet[5] = wj.Member{name = "replaceSync", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_CSSStyleSheet_replaceSync}
 	m_CSSStyleSheet[6] = wj.Member{name = "rules", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 268, get = wjr_CSSStyleSheet_get_rules, set = nil}
-	m_CSSStyleSheet[7] = wj.Member{name = "addRule", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
-	m_CSSStyleSheet[8] = wj.Member{name = "removeRule", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
+	m_CSSStyleSheet[7] = wj.Member{name = "addRule", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_CSSStyleSheet_addRule}
+	m_CSSStyleSheet[8] = wj.Member{name = "removeRule", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_CSSStyleSheet_removeRule}
 	m_StyleSheetList[0] = wj.Member{name = "item", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_StyleSheetList_item}
 	m_StyleSheetList[1] = wj.Member{name = "length", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_StyleSheetList_get_length, set = nil}
 	m_SubtleCrypto[0] = wj.Member{name = "encrypt", kind = wj.M_METHOD, flags = wj.F_SECURE, length = 3, fn = wjr_SubtleCrypto_encrypt}

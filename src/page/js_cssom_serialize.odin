@@ -129,13 +129,12 @@ write_declarations_block :: proc(sb: ^strings.Builder, decls: string) {
 	strings.write_string(sb, " }")
 }
 
-// A new line, indented, with `text`: its own lines indented as well.
+// A new line, indented, with `text`: its own lines as they are (CSSOM §6.4: the rule's cssText after two spaces).
 @(private = "file")
 write_inner_line :: proc(sb: ^strings.Builder, text: string) {
 	strings.write_byte(sb, '\n')
 	strings.write_string(sb, CSSOM_RULE_INDENT)
-	indented, _ := strings.replace_all(text, "\n", "\n" + CSSOM_RULE_INDENT, context.temp_allocator)
-	strings.write_string(sb, indented)
+	strings.write_string(sb, text)
 }
 
 // CSSOM "serialize a CSS declaration block" of a rule: validated and expanded as the cascade reads them.

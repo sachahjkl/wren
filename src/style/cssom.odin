@@ -15,10 +15,19 @@ import "wb:base"
 import "wb:css"
 import "wb:dom"
 
+// Every rule a script's list names has a number (css.Rule.id), never reused in the engine: a script's CSSRule object
+// stays that rule's. Top-level rules get theirs with the list, the rules inside one when a script lists them.
 Cssom_List :: struct {
 	rules: [dynamic]^css.Rule,   // the sheet's top-level rules, in order (Sheet.sheet.rules is a view of it)
-	texts: [dynamic]string,      // the text of each (owned): what cssRules[i].cssText gives
-	ids:   [dynamic]u32,         // a number per rule, never reused in the engine: a script's CSSRule object stays that rule's
+	texts: [dynamic]string,      // the text of each (owned): what the sheet's text is made of once a script changed it
+}
+
+// Where a rule numbered by the CSSOM is: the rule, the top-level rule it is in (its index in the list), and the style
+// rule its selectors nest in (CSS Nesting: nil at the top level, or in groups outside any style rule).
+Rule_Place :: struct {
+	rule: ^css.Rule,
+	top:  int,
+	nest: ^css.Rule,
 }
 
 Rule_Edit_Error :: enum u8 {
@@ -29,6 +38,8 @@ Rule_Edit_Error :: enum u8 {
 	Hierarchy,    // HierarchyRequestError: a rule placed before an @import
 	Import,       // inserting or deleting an @import of an element's sheet: not supported (its load is the page's)
 	Too_Many,     // past style.max_rules
+	No_Rule,      // the rule a script named is gone
+	Invalid_State, // InvalidStateError: an @namespace rule inserted or removed beside other rules than @import and @namespace
 }
 
 @(private)
@@ -38,7 +49,6 @@ cssom_list_free :: proc(s: ^Sheet) {
 	for t in l.texts { delete(t) }
 	delete(l.texts)
 	delete(l.rules)
-	delete(l.ids)
 	free(l)
 	s.cssom = nil
 }
@@ -114,7 +124,7 @@ cssom_list :: proc(e: ^Engine, s: ^Sheet) -> ^Cssom_List {
 			append(&l.texts, strings.clone(t))
 		}
 	}
-	for _ in l.rules { e.next_rule_id += 1; append(&l.ids, e.next_rule_id) }
+	for r in l.rules { rule_number(e, r) }
 	s.sheet.rules = l.rules[:]
 	s.cssom = l
 	return l
@@ -150,13 +160,76 @@ engine_sheet_rule :: proc(e: ^Engine, id: u64, index: int) -> ^css.Rule {
 
 // The identity of cssRules[index] (0 past the end).
 engine_sheet_rule_id :: proc(e: ^Engine, id: u64, index: int) -> u32 {
-	s := cssom_sheet(e, id)
-	if s == nil { return 0 }
-	l := cssom_list(e, s)
-	return index >= 0 && index < len(l.ids) ? l.ids[index] : 0
+	r := engine_sheet_rule(e, id, index)
+	return r != nil ? r.id : 0
 }
 
-// CSSOM "insert a CSS rule" at `index`.
+@(private)
+rule_number :: proc(e: ^Engine, r: ^css.Rule) {
+	if r.id != 0 { return }
+	e.next_rule_id += 1
+	r.id = e.next_rule_id
+}
+
+// The place of the rule numbered `rule_id` in the sheet's list, through the rules a list shows (css.rule_children):
+// only through numbered ones, a rule being numbered when the list of the rule it is in is read.
+@(private)
+rule_place :: proc(l: ^Cssom_List, rule_id: u32) -> (Rule_Place, bool) {
+	if rule_id == 0 { return {}, false }
+	stack := make([dynamic]Rule_Place, context.temp_allocator)
+	for r, i in l.rules { append(&stack, Rule_Place{r, i, nil}) }
+	for len(stack) > 0 {
+		at := pop(&stack)
+		if at.rule.id == rule_id { return at, true }
+		nest := at.rule.kind == .Style ? at.rule : at.nest
+		for k in css.rule_children(at.rule) { if k.id != 0 { append(&stack, Rule_Place{k, at.top, nest}) } }
+	}
+	return {}, false
+}
+
+@(private)
+rule_of :: proc(e: ^Engine, id: u64, rule_id: u32) -> (s: ^Sheet, l: ^Cssom_List, at: Rule_Place, ok: bool) {
+	s = cssom_sheet(e, id)
+	if s == nil { return }
+	l = cssom_list(e, s)
+	at, ok = rule_place(l, rule_id)
+	return
+}
+
+@(private)
+rules_changed :: proc(e: ^Engine, s: ^Sheet) {
+	s.version += 1
+	sheet_changed(e, s)
+}
+
+// The rule numbered `rule_id` (nil when it is gone).
+engine_rule_by_id :: proc(e: ^Engine, id: u64, rule_id: u32) -> ^css.Rule {
+	_, _, at, ok := rule_of(e, id, rule_id)
+	return ok ? at.rule : nil
+}
+
+// The top-level rule the rule numbered `rule_id` is in, as an index of the list (-1 when it is gone).
+engine_rule_top :: proc(e: ^Engine, id: u64, rule_id: u32) -> int {
+	_, _, at, ok := rule_of(e, id, rule_id)
+	return ok ? at.top : -1
+}
+
+// CSSGroupingRule.cssRules.length of the rule numbered `rule_id`.
+engine_rule_child_count :: proc(e: ^Engine, id: u64, rule_id: u32) -> int {
+	_, _, at, ok := rule_of(e, id, rule_id)
+	return ok ? len(css.rule_children(at.rule)) : 0
+}
+
+// The identity of cssRules[index] of the rule numbered `rule_id` (0 past the end), given when first asked.
+engine_rule_child_id :: proc(e: ^Engine, id: u64, rule_id: u32, index: int) -> u32 {
+	_, _, at, ok := rule_of(e, id, rule_id)
+	kids := ok ? css.rule_children(at.rule) : nil
+	if index < 0 || index >= len(kids) { return 0 }
+	rule_number(e, kids[index])
+	return kids[index].id
+}
+
+// CSSOM "insert a CSS rule" at `index` of the sheet's own list.
 engine_sheet_insert_rule :: proc(e: ^Engine, id: u64, text: string, index: int) -> Rule_Edit_Error {
 	s := cssom_sheet(e, id)
 	if s == nil { return .No_Sheet }
@@ -168,65 +241,146 @@ engine_sheet_insert_rule :: proc(e: ^Engine, id: u64, text: string, index: int) 
 	if len(l.rules) >= opt.max_rules { return .Too_Many }
 	r := css.parse_rule_into(s.sheet, t, opt)
 	if r == nil { return .Syntax }
-	if r.kind == .Import { return s.constructed ? .Syntax : .Import }
-	// @import rules come before every other rule
-	if index < len(l.rules) && l.rules[index].kind == .Import { return .Hierarchy }
+	if r.kind == .Import && s.constructed { return .Syntax }
+	if err := placement_error(l.rules[:], r.kind, index); err != .None { return err }
+	if r.kind == .Import { return .Import }
 	inject_at(&l.rules, index, r)
 	inject_at(&l.texts, index, strings.clone(t))
-	e.next_rule_id += 1
-	inject_at(&l.ids, index, e.next_rule_id)
+	rule_number(e, r)
 	s.sheet.rules = l.rules[:]
-	s.version += 1
-	sheet_changed(e, s)
+	rules_changed(e, s)
 	return .None
 }
 
-// CSSStyleRule.selectorText = text, for the top-level style rule numbered `rule_id`: false (nothing changed) when the
-// rule is gone or `text` is not a valid selector list.
-engine_sheet_set_selector :: proc(e: ^Engine, id: u64, rule_id: u32, text: string) -> bool {
-	s := cssom_sheet(e, id)
-	if s == nil { return false }
-	l := cssom_list(e, s)
-	for rid, i in l.ids {
-		if rid != rule_id { continue }
-		r := l.rules[i]
-		if r.kind != .Style { return false }
-		vals := css.trim_values(css.parse_component_values(text, parse_options(&e.settings), s.sheet.alloc))
-		sel, ok := css.parse_selector_list(vals, s.sheet.alloc, nil)
-		if !ok || len(vals) == 0 { return false }
-		r.selectors = sel
-		r.selector_text = css.serialize_selector_list(vals, s.sheet.alloc)
-		// the rule's text: the new selector before its block
-		old := l.texts[i]
-		l.texts[i] = strings.concatenate({r.selector_text, " ", old[max(strings.index_byte(old, '{'), 0):]})
-		delete(old)
-		s.version += 1
-		sheet_changed(e, s)
-		return true
+// Whether a rule of `kind` may go at `index` of a sheet's top-level rules (CSSOM "insert a CSS rule" steps 5 and 6): @import
+// rules before any other but layer statements, @namespace rules after them and before the rest (Hierarchy), and an
+// @namespace rule only into a list of @import and @namespace rules (Invalid_State).
+@(private)
+placement_error :: proc(rules: []^css.Rule, kind: css.Rule_Kind, index: int) -> Rule_Edit_Error {
+	is_head :: proc(k: css.Rule_Kind) -> bool { return k == .Import || k == .Namespace || k == .Layer_Statement }
+	#partial switch kind {
+	case .Import:
+		for r in rules[:index] { if r.kind != .Import && r.kind != .Layer_Statement { return .Hierarchy } }
+	case .Namespace:
+		for r in rules { if !is_head(r.kind) { return .Invalid_State } }
+		for r in rules[index:] { if r.kind == .Import { return .Hierarchy } }
+	case:
+		for r in rules[index:] { if r.kind == .Import || r.kind == .Namespace { return .Hierarchy } }
+	}
+	return .None
+}
+
+// CSSGroupingRule.insertRule(text, index) on the rule numbered `rule_id` (a group, or a style rule: CSS Nesting). Inside
+// a style rule the text is read as its block's (declarations alone are a nested declarations rule); a rule that parses
+// but cannot be there (@import, @namespace, @font-face in a style rule...) is Hierarchy. `top`: the top-level rule
+// changed, whose text the caller makes again (engine_sheet_set_rule_text).
+engine_rule_insert :: proc(e: ^Engine, id: u64, rule_id: u32, text: string, index: int) -> (top: int, err: Rule_Edit_Error) {
+	s, l, at, ok := rule_of(e, id, rule_id)
+	if s == nil { return -1, .No_Sheet }
+	if !ok || !css.rule_is_group(at.rule) { return -1, .No_Rule }
+	kids := css.rule_children(at.rule)
+	if index < 0 || index > len(kids) { return -1, .Index }
+	opt := parse_options(&e.settings)
+	if len(l.rules) >= opt.max_rules { return -1, .Too_Many }
+	nest := at.rule.kind == .Style ? at.rule : at.nest
+	t := strings.trim_space(text)
+	r: ^css.Rule
+	if nest != nil { r = css.parse_nested_rule_into(s.sheet, t, opt, nest) } else if len(split_rules(t)) == 1 { r = css.parse_rule_into(s.sheet, t, opt) }
+	if r == nil {
+		// a valid rule that cannot be there, or no rule
+		return -1, nest != nil && len(split_rules(t)) == 1 && css.parse_rule_into(s.sheet, t, opt) != nil ? .Hierarchy : .Syntax
+	}
+	if r.kind == .Import || r.kind == .Namespace { return -1, .Hierarchy }
+	if r.selector_text == "" && r.kind == .Style && !any_known_property(r.declarations) { return -1, .Syntax }   // (csswg-drafts#10520)
+	grown := make([]^css.Rule, len(kids) + 1, s.sheet.alloc)
+	copy(grown, kids[:index])
+	grown[index] = r
+	copy(grown[index + 1:], kids[index:])
+	css.rule_children_set(at.rule, grown)
+	rule_number(e, r)
+	rules_changed(e, s)
+	return at.top, .None
+}
+
+// Whether a declaration names a property (custom ones included): declarations alone make a nested declarations rule
+// only then.
+@(private)
+any_known_property :: proc(decls: []css.Declaration) -> bool {
+	for d in decls {
+		if strings.has_prefix(d.name, "--") { return true }
+		if _, _, known := lookup_property(d.name); known { return true }
 	}
 	return false
 }
 
-// CSSStyleRule.style changed: the declarations of the top-level style rule numbered `rule_id` are now those of `text`
-// (the block a script wrote, serialized); false when the rule is gone, is no style rule or holds rules (CSS Nesting:
-// its text would have to be made again whole).
-engine_sheet_set_declarations :: proc(e: ^Engine, id: u64, rule_id: u32, text: string) -> bool {
-	s := cssom_sheet(e, id)
-	if s == nil { return false }
-	l := cssom_list(e, s)
-	for rid, i in l.ids {
-		if rid != rule_id { continue }
-		r := l.rules[i]
-		if r.kind != .Style || len(r.nested) > 0 { return false }
-		r.declarations = css.parse_declarations(text, parse_options(&e.settings), s.sheet.alloc)
-		old := l.texts[i]
-		l.texts[i] = strings.concatenate({r.selector_text, " { ", text, " }"})
-		delete(old)
-		s.version += 1
-		sheet_changed(e, s)
-		return true
+// CSSGroupingRule.deleteRule(index) on the rule numbered `rule_id`.
+engine_rule_delete :: proc(e: ^Engine, id: u64, rule_id: u32, index: int) -> (top: int, err: Rule_Edit_Error) {
+	s, _, at, ok := rule_of(e, id, rule_id)
+	if s == nil { return -1, .No_Sheet }
+	if !ok || !css.rule_is_group(at.rule) { return -1, .No_Rule }
+	kids := css.rule_children(at.rule)
+	if index < 0 || index >= len(kids) { return -1, .Index }
+	kept := make([]^css.Rule, len(kids) - 1, s.sheet.alloc)
+	copy(kept, kids[:index])
+	copy(kept[index:], kids[index + 1:])
+	css.rule_children_set(at.rule, kept)
+	rules_changed(e, s)
+	return at.top, .None
+}
+
+// CSSStyleRule.selectorText = text, for the style rule numbered `rule_id`: -1 (nothing changed) when the rule is gone,
+// is a nested declarations rule, or `text` is not a valid selector list; else the top-level rule changed. A rule nested
+// in a style rule reads `&` against it; the rules nested in this one follow its new selectors (nest_again).
+engine_sheet_set_selector :: proc(e: ^Engine, id: u64, rule_id: u32, text: string) -> (top: int) {
+	s, _, at, ok := rule_of(e, id, rule_id)
+	if !ok || at.rule.kind != .Style || at.rule.selector_text == "" { return -1 }
+	vals := css.trim_values(css.parse_component_values(text, parse_options(&e.settings), s.sheet.alloc))
+	sel, good := css.parse_selector_list(vals, s.sheet.alloc, at.nest != nil ? &at.nest.selectors : nil, &s.sheet.namespaces)
+	if !good || len(vals) == 0 { return -1 }
+	at.rule.selectors = sel
+	at.rule.selector_text = css.serialize_selector_list(vals, s.sheet.alloc, &s.sheet.namespaces)
+	nest_again(e, s, at.rule, at.rule)
+	rules_changed(e, s)
+	return at.top
+}
+
+// The selectors of the rules inside `r` (a style rule, or a group in style rule `nest`) taken again against `nest`'s:
+// CSS Nesting's & is resolved when a rule is parsed.
+@(private)
+nest_again :: proc(e: ^Engine, s: ^Sheet, r, nest: ^css.Rule) {
+	for k in css.rule_children(r) {
+		inner := nest
+		if k.kind == .Style {
+			if k.selector_text == "" {
+				k.selectors = nest.selectors   // a nested declarations rule
+			} else {
+				vals := css.trim_values(css.parse_component_values(k.selector_text, parse_options(&e.settings), s.sheet.alloc))
+				if sel, good := css.parse_selector_list(vals, s.sheet.alloc, &nest.selectors, &s.sheet.namespaces); good { k.selectors = sel }
+			}
+			inner = k
+		}
+		nest_again(e, s, k, inner)
 	}
-	return false
+}
+
+// CSSStyleRule.style (or a nested declarations rule's) written: the declarations of the style rule numbered `rule_id`
+// are now those of `text` (the block a script wrote, serialized). -1 when the rule is gone or is no style rule, else the
+// top-level rule changed.
+engine_sheet_set_declarations :: proc(e: ^Engine, id: u64, rule_id: u32, text: string) -> (top: int) {
+	s, _, at, ok := rule_of(e, id, rule_id)
+	if !ok || at.rule.kind != .Style { return -1 }
+	at.rule.declarations = css.parse_declarations(text, parse_options(&e.settings), s.sheet.alloc)
+	rules_changed(e, s)
+	return at.top
+}
+
+// The text of the top-level rule at `top` is now `text` (its serialization after a change: what the sheet's text is
+// made of, sheet_rules_text).
+engine_sheet_set_rule_text :: proc(e: ^Engine, id: u64, top: int, text: string) {
+	s := cssom_sheet(e, id)
+	if s == nil || s.cssom == nil || top < 0 || top >= len(s.cssom.texts) { return }
+	delete(s.cssom.texts[top])
+	s.cssom.texts[top] = strings.clone(text)
 }
 
 // sheet.disabled = v, for any sheet a script holds (an element's sheet stops applying while its element stays).
@@ -234,24 +388,24 @@ engine_sheet_set_disabled :: proc(e: ^Engine, id: u64, disabled: bool) {
 	s := cssom_sheet(e, id)
 	if s == nil || s.disabled == disabled { return }
 	s.disabled = disabled
-	s.version += 1
-	sheet_changed(e, s)
+	rules_changed(e, s)
 }
 
-// CSSOM "remove a CSS rule" at `index`.
+// CSSOM "remove a CSS rule" at `index` of the sheet's own list.
 engine_sheet_delete_rule :: proc(e: ^Engine, id: u64, index: int) -> Rule_Edit_Error {
 	s := cssom_sheet(e, id)
 	if s == nil { return .No_Sheet }
 	l := cssom_list(e, s)
 	if index < 0 || index >= len(l.rules) { return .Index }
 	if l.rules[index].kind == .Import && len(s.imports) > 0 { return .Import }
+	if l.rules[index].kind == .Namespace {
+		for r in l.rules { if r.kind != .Import && r.kind != .Namespace { return .Invalid_State } }
+	}
 	delete(l.texts[index])
 	ordered_remove(&l.texts, index)
 	ordered_remove(&l.rules, index)
-	ordered_remove(&l.ids, index)
 	s.sheet.rules = l.rules[:]
-	s.version += 1
-	sheet_changed(e, s)
+	rules_changed(e, s)
 	return .None
 }
 

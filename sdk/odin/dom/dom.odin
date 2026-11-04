@@ -419,6 +419,10 @@ foreign _m_dom {
 	@(link_name = "CSSStyleSheet_setRuleSelector") _CSSStyleSheet_setRuleSelector :: proc(sheet: u64, rule_id: u32, selector: [^]u8, selector_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "CSSStyleSheet_ruleTextOf") _CSSStyleSheet_ruleTextOf :: proc(sheet: u64, rule_id: u32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "CSSStyleSheet_setRuleStyle") _CSSStyleSheet_setRuleStyle :: proc(sheet: u64, rule_id: u32, text: [^]u8, text_len: u32) ---
+	@(link_name = "CSSStyleSheet_childCount") _CSSStyleSheet_childCount :: proc(sheet: u64, rule_id: u32) -> u32 ---
+	@(link_name = "CSSStyleSheet_childId") _CSSStyleSheet_childId :: proc(sheet: u64, rule_id: u32, index: u32) -> u32 ---
+	@(link_name = "CSSStyleSheet_insertChildAt") _CSSStyleSheet_insertChildAt :: proc(sheet: u64, rule_id: u32, rule: [^]u8, rule_len: u32, index: u32, _ret: ^u32) -> core.Error ---
+	@(link_name = "CSSStyleSheet_deleteChildAt") _CSSStyleSheet_deleteChildAt :: proc(sheet: u64, rule_id: u32, index: u32) -> core.Error ---
 	@(link_name = "CSSStyleSheet_insertRuleAt") _CSSStyleSheet_insertRuleAt :: proc(sheet: u64, rule: [^]u8, rule_len: u32, index: u32, _ret: ^u32) -> core.Error ---
 	@(link_name = "CSSStyleSheet_deleteRuleAt") _CSSStyleSheet_deleteRuleAt :: proc(sheet: u64, index: u32) -> core.Error ---
 	@(link_name = "CSSStyleSheet_isDisabled") _CSSStyleSheet_isDisabled :: proc(sheet: u64) -> i32 ---
@@ -4817,8 +4821,8 @@ CSSStyleSheet_ruleText_alloc :: proc(sheet: u64, index: u32, allocator: runtime.
 	return {}, .Truncated
 }
 
-// CSSStyleRule.selectorText = selector, on the top-level rule numbered `rule_id` (CSSStyleSheet_ruleId): the
-// rule's new cssText, "" when nothing changed (the rule is gone, not a style rule, or the selector is invalid).
+// CSSStyleRule.selectorText = selector, on the rule numbered `rule_id` (CSSStyleSheet_ruleId, CSSStyleSheet_childId):
+// the rule's new cssText, "" when nothing changed (the rule is gone, not a style rule, or the selector is invalid).
 CSSStyleSheet_setRuleSelector :: proc "contextless" (sheet: u64, rule_id: u32, selector: string, buf: []u8) -> (string, core.Error) {
 	n := _CSSStyleSheet_setRuleSelector(sheet, rule_id, raw_data(selector), u32(len(selector)), raw_data(buf), u32(len(buf)))
 	if n < 0 { return {}, core.Error(n) }
@@ -4847,7 +4851,7 @@ CSSStyleSheet_setRuleSelector_alloc :: proc(sheet: u64, rule_id: u32, selector: 
 	return {}, .Truncated
 }
 
-// The cssText of the top-level rule numbered `rule_id` as it is now ("" when it is gone).
+// The cssText of the rule numbered `rule_id` as it is now ("" when it is gone).
 CSSStyleSheet_ruleTextOf :: proc "contextless" (sheet: u64, rule_id: u32, buf: []u8) -> (string, core.Error) {
 	n := _CSSStyleSheet_ruleTextOf(sheet, rule_id, raw_data(buf), u32(len(buf)))
 	if n < 0 { return {}, core.Error(n) }
@@ -4876,10 +4880,32 @@ CSSStyleSheet_ruleTextOf_alloc :: proc(sheet: u64, rule_id: u32, allocator: runt
 	return {}, .Truncated
 }
 
-// CSSStyleRule.style written: the top-level style rule numbered `rule_id` takes the declarations of `text` (nothing
-// changes for a rule that is gone, is no style rule or holds nested rules).
+// CSSStyleRule.style written: the style rule numbered `rule_id` takes the declarations of `text` (nothing changes
+// for a rule that is gone or is no style rule).
 CSSStyleSheet_setRuleStyle :: proc "contextless" (sheet: u64, rule_id: u32, text: string) {
 	_CSSStyleSheet_setRuleStyle(sheet, rule_id, raw_data(text), u32(len(text)))
+}
+
+// CSSGroupingRule.cssRules of the rule numbered `rule_id` (a group, or a style rule's nested rules): their number,
+// and the number of one (0 past the end), which names it as CSSStyleSheet_ruleId names a top-level rule.
+CSSStyleSheet_childCount :: proc "contextless" (sheet: u64, rule_id: u32) -> u32 {
+	return _CSSStyleSheet_childCount(sheet, rule_id)
+}
+
+CSSStyleSheet_childId :: proc "contextless" (sheet: u64, rule_id: u32, index: u32) -> u32 {
+	return _CSSStyleSheet_childId(sheet, rule_id, index)
+}
+
+// CSSGroupingRule.insertRule(rule, index) on the rule numbered `rule_id`: Index_Size past the end, Syntax when
+// `rule` is not one rule (inside a style rule: nor declarations), Hierarchy when it cannot be there; the index.
+CSSStyleSheet_insertChildAt :: proc "contextless" (sheet: u64, rule_id: u32, rule: string, index: u32) -> (result: u32, err: core.Error) {
+	err = _CSSStyleSheet_insertChildAt(sheet, rule_id, raw_data(rule), u32(len(rule)), index, &result)
+	return
+}
+
+// CSSGroupingRule.deleteRule(index) on the rule numbered `rule_id`: Index_Size past the end.
+CSSStyleSheet_deleteChildAt :: proc "contextless" (sheet: u64, rule_id: u32, index: u32) -> core.Error {
+	return _CSSStyleSheet_deleteChildAt(sheet, rule_id, index)
 }
 
 // insertRule(rule, index): Index_Size past the end, Syntax when `rule` is not one rule; the index.

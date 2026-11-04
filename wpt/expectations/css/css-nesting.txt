@@ -1,0 +1,152 @@
+# web-platform-tests expectations of Wren for css/css-nesting, written by build/wpt -update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/css/css-nesting/block-skipping.html: OK
+	CSS Nesting bug: Block ignored after lack of whitespace: PASS
+/css/css-nesting/cssom.html: OK
+	CSSStyleRule is a CSSGroupingRule: PASS
+	Manipulation of nested declarations through CSSOM: PASS
+	Mutating the selectorText of outer rule invalidates inner rules: PASS
+	Simple CSSOM manipulation of subrules: PASS
+	Simple CSSOM manipulation of subrules 1: PASS
+	Simple CSSOM manipulation of subrules 10: PASS
+	Simple CSSOM manipulation of subrules 2: PASS
+	Simple CSSOM manipulation of subrules 3: PASS
+	Simple CSSOM manipulation of subrules 4: PASS
+	Simple CSSOM manipulation of subrules 5: PASS
+	Simple CSSOM manipulation of subrules 6: PASS
+	Simple CSSOM manipulation of subrules 7: PASS
+	Simple CSSOM manipulation of subrules 8: PASS
+	Simple CSSOM manipulation of subrules 9: FAIL
+/css/css-nesting/implicit-nesting-ident-recovery.html: OK
+	Unknown declaration does not consume subsequent declaration: PASS
+	Unknown declaration with blocks does not consume subsequent declaration: PASS
+/css/css-nesting/implicit-nesting-ident.html: OK
+	Nested rule starting with tag: PASS
+/css/css-nesting/invalid-inner-rules.html: OK
+	Simple CSSOM manipulation of subrules: PASS
+	Simple CSSOM manipulation of subrules 1: PASS
+/css/css-nesting/invalidation-001.html: OK
+	CSS Selectors nested invalidation on changed parent: PASS
+/css/css-nesting/invalidation-002.html: OK
+	CSS Selectors nested invalidation on changed child: PASS
+/css/css-nesting/invalidation-003.html: OK
+	CSS Selectors nested invalidation with :has(): PASS
+/css/css-nesting/invalidation-004.html: OK
+	CSS Selectors nested invalidation through @media by selectorText: PASS
+/css/css-nesting/mixed-declarations-rules.html: OK
+	Nested declarations and rules should be handled correctly: FAIL
+/css/css-nesting/nested-declarations-cssom-whitespace.html: OK
+	Empty CSSNestedDeclarations do not affect outer serialization: FAIL
+	Empty CSSNestedDeclarations do not affect outer serialization (nested grouping rule): FAIL
+/css/css-nesting/nested-declarations-cssom.html: OK
+	Attempting to insert a CSSNestedDeclaration rule into a stylesheet: PASS
+	Attempting to insert a CSSNestedDeclaration rule into top-level @media rule: PASS
+	Attempting to insert a CSSNestedDeclaration rule, all invalid declarations: PASS
+	Attempting to insert a CSSNestedDeclaration rule, empty block: PASS
+	CSSNestedDeclarations.style: FAIL
+	Inner rule starting with an ident: FAIL
+	Inserting a CSSNestedDeclaration rule into nested group rule: FAIL
+	Inserting a CSSNestedDeclaration rule into style rule: FAIL
+	Mixed declarations: FAIL
+	Nested @scope rule: PASS
+	Nested group rule: FAIL
+	Trailing declarations: FAIL
+/css/css-nesting/nested-declarations-matching.html: OK
+	Bare declartaion in nested grouping rule can match pseudo-element: FAIL
+	Nested @scope rules behave like :where(:scope): PASS
+	Nested @scope rules behave like :where(:scope) (trailing): PASS
+	Nested declarations rule has same specificity as outer selector: PASS
+	Nested declarations rule has top-level specificity behavior: PASS
+	Nested declarations rule has top-level specificity behavior (max matching): FAIL
+	Nested declarations rule responds to parent selector text change: FAIL
+	Nested group rules have top-level specificity behavior: FAIL
+	Trailing declarations apply after any preceding rules: FAIL
+	Trailing declarations apply after any preceding rules (multiple): FAIL
+	Trailing declarations apply after any preceding rules (no leading): FAIL
+/css/css-nesting/nested-error-recovery.html: OK
+	CSS Nesting: Error recovery: PASS
+	CSS Nesting: Error recovery 1: PASS
+	CSS Nesting: Error recovery 2: PASS
+	CSS Nesting: Error recovery 3: FAIL
+/css/css-nesting/nested-media-in-layer.html: OK
+	Nested @media in @layer with CSS Nesting parses correctly: PASS
+/css/css-nesting/nested-rule-cssom-invalidation.html: OK
+	Nested rule responds to parent selector text change: FAIL
+/css/css-nesting/nesting-braces-in-strings.html: OK
+	Multiple declarations after string containing } are all preserved: PASS
+	Nested rule with { in string followed by more declarations in parent: PASS
+	Nested rule with { in string value preserves declarations: PASS
+	Nested rule with {} pair in string value preserves declarations: PASS
+	Nested rule with } in string as only child of parent rule: PASS
+	Nested rule with } in string followed by more declarations in parent: PASS
+	Nested rule with } in string value preserves declarations: PASS
+	Nested rule with } in string: trailing custom properties do not corrupt the rule: PASS
+/css/css-nesting/nesting-layer.html: OK
+	@layer can be nested: PASS
+/css/css-nesting/nesting-revert-rule.html: OK
+	The revert-rule keyword can revert from a CSSNestedDeclarationsRule: FAIL
+	The revert-rule keyword can revert to a CSSNestedDeclarationsRule: FAIL
+	The revert-rule keyword can revert to a nested rule: FAIL
+	The revert-rule keyword can revert to scoped declarations: FAIL
+/css/css-nesting/parsing.html: OK
+	.foo { #id& { color: green; }}: PASS
+	.foo { & .bar & .baz & .qux { color: green; }}: PASS
+	.foo { & .bar { color: green; }}: PASS
+	.foo { & > .bar { color: green; }}: PASS
+	.foo { & > section, & > article { color: green; }}: PASS
+	.foo { & { color: green; }}: PASS
+	.foo { &#id { color: green; }}: PASS
+	.foo { && { color: green; }}: PASS
+	.foo { &.bar { color: green; }}: PASS
+	.foo { &.class { color: green; }}: PASS
+	.foo { &:hover { color: green; }}: PASS
+	.foo { &:is(.bar, &.baz) { color: green; }}: PASS
+	.foo { &:is(.bar, .baz) { color: green; }}: PASS
+	.foo { &:is(div) { color: green; }}: PASS
+	.foo { &[attr] { color: green; }}: PASS
+	.foo { + .bar & { color: green; }}: FAIL
+	.foo { + .bar, .foo, > .baz { color: green; }}: FAIL
+	.foo { .class& { color: green; }}: PASS
+	.foo { .foo { color: green; }}: FAIL
+	.foo { .foo, .bar { color: green; }}: FAIL
+	.foo { .foo, .foo & { color: green; }}: FAIL
+	.foo { .test > & .bar { color: green; }}: PASS
+	.foo { :hover& { color: green; }}: PASS
+	.foo { :is(.bar, &.baz) { color: green; }}: PASS
+	.foo { :is(.bar, .baz) { color: green; }}: FAIL
+	.foo { :is(div)& { color: green; }}: PASS
+	.foo { > & .bar { color: green; }}: FAIL
+	.foo { > .bar { color: green; }}: FAIL
+	.foo { [attr]& { color: green; }}: PASS
+	.foo { div& { color: green; }}: PASS
+	.foo, .bar { & + .baz, &.qux { color: green; }}: PASS
+	INVALID: .foo { &div { color: green; }}: FAIL
+/css/css-nesting/serialize-group-rules-with-decls.html: OK
+	Declarations are serialized on one line, rules on two.: PASS
+	Empty conditional inside style rule: PASS
+	Empty conditional rule: PASS
+	Empty style inside conditional: PASS
+	Empty style rule: PASS
+	Implicit + empty hover rule: PASS
+	Implicit like rule after decls: PASS
+	Implicit like rule after decls, missing closing braces: PASS
+	Implicit like rule not in first position: PASS
+	Implicit like rule with other selectors: PASS
+	Implicit rule is serialized: PASS
+	Implicit rule not removed: PASS
+	Implicit-like rule in style rule: PASS
+	Mixed declarations/rules are on two lines.: PASS
+	Two implicit-like rules: PASS
+/css/css-nesting/set-selector-text.html: OK
+	Outer selectorText text mutation with inner @container rule: FAIL
+	Outer selectorText text mutation with inner @layer rule: PASS
+	Outer selectorText text mutation with inner @media rule: PASS
+	Outer selectorText text mutation with inner @scope rule: FAIL
+	Outer selectorText text mutation with inner @supports rule: PASS
+	Outer selectorText text mutation with inner nested decl. rule: PASS
+	Outer selectorText text mutation with inner style rule: PASS
+/css/css-nesting/top-level-is-scope.html: OK
+	& as direct ancestor: PASS
+	& matches scoped element only, not everything: PASS
+/css/css-nesting/top-level-parent-pseudo-specificity.html: OK
+	CSS Nesting: Specificity of top-level '&': PASS
