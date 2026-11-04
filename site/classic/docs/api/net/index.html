@@ -58,6 +58,8 @@
 <li class="lvl3"><a href="#fetch-start">Fetch_start</a></li>
 <li class="lvl3"><a href="#fetch-state">Fetch_state</a></li>
 <li class="lvl3"><a href="#fetch-status">Fetch_status</a></li>
+<li class="lvl3"><a href="#fetch-statustext">Fetch_statusText</a></li>
+<li class="lvl3"><a href="#fetch-hasbody">Fetch_hasBody</a></li>
 <li class="lvl3"><a href="#fetch-type">Fetch_type</a></li>
 <li class="lvl3"><a href="#fetch-redirected">Fetch_redirected</a></li>
 <li class="lvl3"><a href="#fetch-headers">Fetch_headers</a></li>
@@ -191,6 +193,14 @@ relative URL resolves against the document (or the worker's script).</p>
 <div class="code"><pre><code>i32 Fetch_status(Fetch request)</code></pre></div>
 <p>The HTTP status (0 for an opaque response).</p>
 <p>Host: <code>Fetch_status :: proc(c: ^Call, request: Api_Fetch) -&gt; i32</code></p>
+<h3 id="fetch-statustext"><a class="anchor" href="#fetch-statustext" aria-hidden="true">#</a><code>Fetch_statusText</code></h3>
+<div class="code"><pre><code>string Fetch_statusText(Fetch request)</code></pre></div>
+<p>The status message of the response ("" over HTTP/2 and HTTP/3, which have none).</p>
+<p>Host: <code>Fetch_statusText :: proc(c: ^Call, request: Api_Fetch) -&gt; string</code></p>
+<h3 id="fetch-hasbody"><a class="anchor" href="#fetch-hasbody" aria-hidden="true">#</a><code>Fetch_hasBody</code></h3>
+<div class="code"><pre><code>bool Fetch_hasBody(Fetch request)</code></pre></div>
+<p>False for a response that has no body whatever the server sent: to a HEAD, or of a null body status (204, 205, 304...).</p>
+<p>Host: <code>Fetch_hasBody :: proc(c: ^Call, request: Api_Fetch) -&gt; bool</code></p>
 <h3 id="fetch-type"><a class="anchor" href="#fetch-type" aria-hidden="true">#</a><code>Fetch_type</code></h3>
 <div class="code"><pre><code>ResponseType Fetch_type(Fetch request)</code></pre></div>
 <p>Host: <code>Fetch_type :: proc(c: ^Call, request: Api_Fetch) -&gt; Api_ResponseType</code></p>
