@@ -531,6 +531,32 @@
   p("bitwise: a double", bits([1, undefined, 2.75, true, false, 7, -3.5, 1e10], RUN));
   p("bitwise: a string, an object", bits([1, "12", null, true, { valueOf: function () { return 3; } }, 7, -3, 0], RUN));
 
+  // calls of several functions at one site, each inlined: methods of four classes returning an int, a double, a string,
+  // an object; a fifth class met later (called), a method replaced while the loop runs, one that leaves on a value it
+  // was not inlined for, functions called as plain calls
+  class A1 { constructor(v) { this.v = v; } m() { return this.v + 1; } }
+  class A2 { constructor(v) { this.v = v; } m() { return this.v * 0.5; } }
+  class A3 { constructor(v) { this.v = v; } m() { return "s" + this.v; } }
+  class A4 { constructor(v) { this.v = v; } m() { return { w: this.v }; } }
+  class A5 { constructor(v) { this.v = v; } m() { return -this.v; } }
+  function polyM(os, n) {
+    var s = 0, t = "";
+    for (var i = 0; i < n; i++) {
+      var r = os[i & 3].m();
+      if (typeof r === "number") { s += r; } else if (typeof r === "string") { t = r; } else { s += r.w; }
+      if (i === (n >> 1)) { A2.prototype.m = function () { return this.v * 3; }; }
+    }
+    return show(s) + " " + t;
+  }
+  p("polymorphic calls: four classes", polyM([new A1(1), new A2(3), new A3(5), new A4(7)], RUN));
+  p("polymorphic calls: two, then a fifth", polyM([new A1(2), new A5(4), new A1(6), new A5(8)], RUN), polyM([new A1(2), new A5(4), new A2(1), new A3(8)], RUN));
+  p("polymorphic calls: an int that overflows", polyM([new A1(0x7fffffff), new A5(1), new A1(1), new A5(-0x80000000)], RUN));
+  function f1(x) { return x + 1; }
+  function f2(x) { return x * 2; }
+  function f3(x) { return x - 3; }
+  function polyF(fs, n) { var s = 0; for (var i = 0; i < n; i++) { s = (s + fs[i % fs.length](i & 15)) | 0; } return s; }
+  p("polymorphic calls: plain functions", polyF([f1, f2], RUN), polyF([f1, f2, f3], RUN), polyF([f3, Math.abs, f1], RUN));
+
   // switch, strings, generators (not compiled) next to compiled code
   function sw(x) { switch (x) { case 1: return "one"; case "1": return "string"; default: return "other"; } }
   p("switch", sw(1), sw("1"), sw(2));

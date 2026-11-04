@@ -848,6 +848,7 @@ jit_mark :: proc(rt: ^Runtime, info: ^Jit_Info) {
 			site := &jl.sites[s]
 			for k in 0 ..< site.n {mark_cell(rt, site.shapes[k])}
 			if site.callee != nil {mark_cell(rt, site.callee)}
+			for k in 0 ..< site.n_callees {mark_cell(rt, site.callees[k])}
 		}
 	}
 	for i in 0 ..< info.n {mark(rt, &info.loops[i])}
@@ -890,6 +891,16 @@ jit_site_see :: proc(site: ^Jit_Site, v: Value) -> (changed: bool) {
 	changed = w != site.ty
 	site.ty = w
 	return
+}
+
+// A function the call site inlines (changed: one it did not know, and there was room).
+@(private = "file")
+jit_site_add_callee :: proc(site: ^Jit_Site, fo: ^Object) -> (changed: bool) {
+	for k in 0 ..< site.n_callees {if site.callees[k] == fo {return false}}
+	if site.n_callees >= JIT_SITE_SHAPES {return false}
+	site.callees[site.n_callees] = fo
+	site.n_callees += 1
+	return true
 }
 
 // The shape of o for the site (sh: o's, or the one the translation knows o takes by then): a shape it can guard (not
@@ -1034,8 +1045,13 @@ jit_learn :: proc(f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, xpc: int, xsp
 	case .get_array_el, .get_array_el2:
 		if v, ok := jit_peek_elem(st[xsp - 2], st[xsp - 1]); ok {changed = jit_site_see(site, v)}
 	case .call0, .call1, .call2, .call3, .call, .call_method:
-		// the callee inlined there is another function (inlined in its turn, once: a second change means the site calls
-		// more than one), or met what it was not compiled for (it is called instead)
+		// the callee inlined there is another function (the site inlines each function it meets, JIT_SITE_SHAPES of them:
+		// j_inline_poly; another kind of callee is inlined in its turn, once), or met what it was not compiled for (it is
+		// called instead)
+		if !no_inline {
+			argc := op >= .call0 && op <= .call3 ? int(op) - int(Opcode.call0) : jr_u16(b.code, xpc + 1)
+			if cv := st[xsp - argc - 1]; cv.tag == .object && as_obj(cv).class == .bytecode_function && jit_site_add_callee(site, as_obj(cv)) {return true}
+		}
 		if !no_inline && site.n == 0 {
 			site.n = 1
 			return true
@@ -3026,6 +3042,8 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 		}
 		fv = mk_obj(site.callee)
 	}
+	// (block $join, around the callees inlined at a polymorphic site and the call made for the others)
+	joined := false
 	if fv.tag == .object && kind != .construct && !tail {
 		fo := as_obj(fv)
 		if mi := math_intrinsic_of(fo); mi != .none && j_math(c, fo, mi, argc, low, pc) {return true}
@@ -3033,7 +3051,23 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 		if c.fail {return false}
 		if fo.class == .bytecode_function {
 			site := jit_site_of(c.jl, c.site_base + pc, true)
-			if site != nil && !(site.typed && site.ty == .V) && j_inline(c, f, fo, op, argc, kind, low, pc, site.typed) {return true}
+			if site != nil && !(site.typed && site.ty == .V) {
+				jit_site_add_callee(site, fo)
+				if site.n_callees > 1 && c.inl_depth == 0 {
+					poly, learn := j_inline_poly(c, f, site, op, argc, kind, low, pc)
+					if c.fail || c.restart {return false}
+					if learn {
+						// (every callee the site met inlined, room for more: another is a learn exit)
+						j_stub(c, pc, .deopt, JIT_AUX_LEARN)
+						j_op(c, W_END)
+						c.nest -= 1
+						c.st.n = low
+						j_push(c, .V)
+						return true
+					}
+					joined = poly
+				} else if j_inline(c, f, fo, op, argc, kind, low, pc, site.typed) {return true}
+			}
 			if c.fail || c.restart {return false}
 		}
 	}
@@ -3111,6 +3145,10 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 		return false
 	}
 	j_retake_arrays(c, next)
+	if joined {
+		j_op(c, W_END)
+		c.nest -= 1
+	}
 	return true
 }
 
@@ -3630,9 +3668,10 @@ jit_inlinable :: proc(c: ^Jc, b: ^Function_Bytecode, kind: Jit_Call_Kind) -> boo
 
 // The call at pc of the function object fo (argc arguments, the callee's entry under them) inlined: its code
 // translated in place, its arguments and locals entries of the stack, its result taking the place of the callee (and
-// of `this`). False: not inlined, nothing emitted (the translation as it was before).
+// of `this`). False: not inlined, nothing emitted (the translation as it was before). guarded: the caller checked the
+// callee (j_inline_poly), else a guard here leaves through a learn exit.
 @(private = "file")
-j_inline :: proc(c: ^Jc, f: ^Frame, fo: ^Object, op: Opcode, argc: int, kind: Jit_Call_Kind, low: int, pc: int, wide: bool) -> bool {
+j_inline :: proc(c: ^Jc, f: ^Frame, fo: ^Object, op: Opcode, argc: int, kind: Jit_Call_Kind, low: int, pc: int, wide: bool, guarded := false) -> bool {
 	b := fo.data.(Func_Data).bc
 	n := c.st.n
 	nargs := int(b.arg_count)
@@ -3641,7 +3680,7 @@ j_inline :: proc(c: ^Jc, f: ^Frame, fo: ^Object, op: Opcode, argc: int, kind: Ji
 	if !jit_inlinable(c, b, kind) || locals + int(b.var_count) + int(b.stack_size) > c.ss {return false}
 	saved := c^
 	saved_out := len(c.out)
-	ok := j_guard_callee(c, n - argc - 1, fo, pc, JIT_AUX_LEARN)
+	ok := guarded || j_guard_callee(c, n - argc - 1, fo, pc, JIT_AUX_LEARN)
 	if ok {
 		if c.inl_depth == 0 {
 			c.inl_n = n
@@ -3701,6 +3740,64 @@ j_inline :: proc(c: ^Jc, f: ^Frame, fo: ^Object, op: Opcode, argc: int, kind: Ji
 	}
 	c.st = st
 	return true
+}
+
+// A call site that met several callees (site.callees): block $join opened, in it a block per callee inlined, entered when
+// the callee entry is that function, its result a V at `low` (a value, whatever each returns), then out of $join; the
+// translation's state after it as before the call. poly: some were inlined (the caller makes the call for the others,
+// then closes $join); learn: all of them, and the site takes more (the caller's is then a learn exit); neither: nothing
+// emitted.
+@(private = "file")
+j_inline_poly :: proc(c: ^Jc, f: ^Frame, site: ^Jit_Site, op: Opcode, argc: int, kind: Jit_Call_Kind, low: int, pc: int) -> (poly: bool, learn: bool) {
+	d := c.st.n - argc - 1
+	if c.st.t[d] != .P && c.st.t[d] != .V {return}
+	st := c.st
+	start := len(c.out)
+	j_op(c, W_BLOCK)
+	j_op(c, W_VOID)
+	c.nest += 1
+	arms := 0
+	for k in 0 ..< site.n_callees {
+		fo := site.callees[k]
+		if !j_keep(c, fo) {return}
+		at := len(c.out)
+		j_op(c, W_BLOCK)
+		j_op(c, W_VOID)
+		c.nest += 1
+		// (not this callee: the next block)
+		if c.st.t[d] == .V {
+			j_lget(c, j_si(c, d))
+			j_i32(c, i32(Tag.object))
+			j_op(c, W_I32_NE)
+			j_lget(c, c.sl0 + u32(d))
+			j_op(c, W_I32_WRAP_I64)
+		} else {
+			j_i32(c, 0)
+			j_lget(c, j_si(c, d))
+		}
+		j_i32(c, i32(uintptr(fo)))
+		j_op(c, W_I32_NE)
+		j_op(c, W_I32_OR)
+		j_op(c, W_BR_IF)
+		w_uleb(&c.out, 0)
+		if j_inline(c, f, fo, op, argc, kind, low, pc, site.typed, true) && j_to_v(c, low) {
+			j_op(c, W_BR)
+			w_uleb(&c.out, 1)
+			j_op(c, W_END)
+			arms += 1
+		} else {
+			if c.fail || c.restart {return}
+			resize(&c.out, at)
+		}
+		c.nest -= 1
+		c.st = st
+	}
+	if arms == 0 {
+		resize(&c.out, start)
+		c.nest -= 1
+		return
+	}
+	return true, arms == site.n_callees && site.n_callees < JIT_SITE_SHAPES
 }
 
 // A V entry undefined, pushed.
