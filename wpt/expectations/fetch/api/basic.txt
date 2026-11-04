@@ -92,14 +92,14 @@
 /fetch/api/basic/integrity.sub.any.html: OK
 	CORS SHA-512 integrity: PASS
 	CORS empty integrity: PASS
-	CORS invalid integrity: FAIL
+	CORS invalid integrity: PASS
 	Empty string integrity: PASS
 	Empty string integrity for opaque response: PASS
-	Invalid integrity: FAIL
-	Multiple integrities: both are invalid: FAIL
+	Invalid integrity: PASS
+	Multiple integrities: both are invalid: PASS
 	Multiple integrities: both are valid: PASS
 	Multiple integrities: invalid as strong as valid: PASS
-	Multiple integrities: invalid stronger than valid: FAIL
+	Multiple integrities: invalid stronger than valid: PASS
 	Multiple integrities: valid stronger than invalid: PASS
 	SHA-* integrity for opaque response: PASS
 	SHA-256 integrity: PASS
@@ -111,14 +111,14 @@
 /fetch/api/basic/integrity.sub.any.worker.html: OK
 	CORS SHA-512 integrity: PASS
 	CORS empty integrity: PASS
-	CORS invalid integrity: FAIL
+	CORS invalid integrity: PASS
 	Empty string integrity: PASS
 	Empty string integrity for opaque response: PASS
-	Invalid integrity: FAIL
-	Multiple integrities: both are invalid: FAIL
+	Invalid integrity: PASS
+	Multiple integrities: both are invalid: PASS
 	Multiple integrities: both are valid: PASS
 	Multiple integrities: invalid as strong as valid: PASS
-	Multiple integrities: invalid stronger than valid: FAIL
+	Multiple integrities: invalid stronger than valid: PASS
 	Multiple integrities: valid stronger than invalid: PASS
 	SHA-* integrity for opaque response: PASS
 	SHA-256 integrity: PASS

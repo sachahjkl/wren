@@ -67,7 +67,7 @@
 	Load a CSS module with dynamic import(): FAIL
 /html/semantics/scripting-1/the-script-element/css-module/integrity.html: OK
 	The integrity attribute must be verified on the top-level of a module loading a CSS module and allow it to execute when it matches: FAIL
-	The integrity attribute must be verified on the top-level of a module loading a CSS module and not allow it to execute when there's a mismatch: FAIL
+	The integrity attribute must be verified on the top-level of a module loading a CSS module and not allow it to execute when there's a mismatch: PASS
 /html/semantics/scripting-1/the-script-element/css-module/load-error-events.html: OK
 	inline, 200, not parser-inserted: PASS
 	inline, 200, parser-inserted: PASS
@@ -485,7 +485,7 @@
 	Dynamic import of a JSON module should send a valid HTTP Accept header.: FAIL
 /html/semantics/scripting-1/the-script-element/json-module/integrity.html: OK
 	The integrity attribute must be verified on the top-level of a module loading a JSON module and allow it to execute when it matches: PASS
-	The integrity attribute must be verified on the top-level of a module loading a JSON module and not allow it to execute when there's a mismatch: FAIL
+	The integrity attribute must be verified on the top-level of a module loading a JSON module and not allow it to execute when there's a mismatch: PASS
 /html/semantics/scripting-1/the-script-element/json-module/invalid-content-type.any.html: OK
 	Try importing JSON module with MIME type application/vnd.api+json: PASS
 	Try importing JSON module with MIME type "application"/"vnd.api"+json: PASS
@@ -1138,7 +1138,7 @@
 	Instantiate attempt on a tree w/ previously instantiate-failed tree as a sub-tree shouldn't crash.: PASS
 /html/semantics/scripting-1/the-script-element/module/integrity.html: OK
 	The integrity attribute must be verified on the top-level of a module and allow it to execute when it matches: PASS
-	The integrity attribute must be verified on the top-level of a module and not allow it to execute when there's a mismatch: FAIL
+	The integrity attribute must be verified on the top-level of a module and not allow it to execute when there's a mismatch: PASS
 	The integrity attribute must have no affect on inline module scripts: PASS
 /html/semantics/scripting-1/the-script-element/module/late-namespace-request.html: OK
 	Test the situation where a module is instantiated without the need for a namespace object, but later on a different module requests the namespace.: PASS

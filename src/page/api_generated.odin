@@ -9326,7 +9326,7 @@ _t_eventsource_MessageEvent_lastEventId :: proc "c" (env: rawptr, caller: wasm.C
 	return nil
 }
 
-// Fetch_promise :: proc(c: ^Call, url: string, method: string, headers: string, body: Maybe([]u8), body_buffer: Api_Buffer, signal: Api_AbortSignal, options: Api_FetchOptions) -> (u64, Api_Error)
+// Fetch_promise :: proc(c: ^Call, url: string, method: string, headers: string, body: Maybe([]u8), body_buffer: Api_Buffer, signal: Api_AbortSignal, options: Api_FetchOptions, integrity: string) -> (u64, Api_Error)
 @(private = "file")
 _t_fetch_Fetch_promise :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -9345,7 +9345,10 @@ _t_fetch_Fetch_promise :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	_absent3 := wasm.is_absent(&f, a[7])
 	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[6]), 0 if _absent3 else wasm.addr(&f, a[7]))
 	if !_k3 { return wasm.trap_bounds(&f, "fetch.Fetch_promise", "body") }
-	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[16]), 8)
+	_n7 := wasm.addr(&f, a[17])
+	_s7, _k7 := wasm.span(&f, wasm.addr(&f, a[16]), _n7)
+	if !_k7 { return wasm.trap_bounds(&f, "fetch.Fetch_promise", "integrity") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[18]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "fetch.Fetch_promise", "result pointer") }
 	_p0 := string(_s0[:_n0])
 	if !wasm.valid_utf8(_p0) {
@@ -9361,6 +9364,10 @@ _t_fetch_Fetch_promise :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	}
 	_p3: Maybe([]u8)
 	if !_absent3 { _p3 = _s3[:wasm.addr(&f, a[7])] }
+	_p7 := string(_s7[:_n7])
+	if !wasm.valid_utf8(_p7) {
+		return _fail_status(&c, a, .Type, "fetch.Fetch_promise: argument integrity is not valid UTF-8")
+	}
 	api_route(&c, u64(a[8].i64))
 	_p4 := Api_Buffer{handle = u64(a[8].i64)}
 	if _p4.handle != 0 { _p4.data = lookup_Buffer(&c, _p4.handle) }
@@ -9395,7 +9402,7 @@ _t_fetch_Fetch_promise :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return _fail_status(&c, a, .Invalid_Argument, "fetch.Fetch_promise: field options.cache is not a RequestCache")
 	}
 	_p6.cache = Api_RequestCache(u32(a[15].i32))
-	_r, _err := Fetch_promise(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	_r, _err := Fetch_promise(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -38697,7 +38704,7 @@ api_imports := [?]wasm.Import{
 	{module = "eventsource", name = "EventSource_close", fn = _t_eventsource_EventSource_close, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "eventsource", name = "MessageEvent_origin", fn = _t_eventsource_MessageEvent_origin, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "eventsource", name = "MessageEvent_lastEventId", fn = _t_eventsource_MessageEvent_lastEventId, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "fetch", name = "Fetch_promise", fn = _t_fetch_Fetch_promise, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fetch", name = "Fetch_promise", fn = _t_fetch_Fetch_promise, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "fetch", name = "Fetch_startWithSignal", fn = _t_fetch_Fetch_startWithSignal, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "fetch", name = "Fetch_sync", fn = _t_fetch_Fetch_sync, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "fetch", name = "Response_text", fn = _t_fetch_Response_text, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},

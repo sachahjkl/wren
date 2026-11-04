@@ -2,8 +2,8 @@ package page
 
 // The promise side of the Fetch API (import module "fetch"), on the same fetch records as the callback API of module
 // "net" (a response handle is a fetch handle: Fetch_status, Fetch_headers, Fetch_release... apply to it):
-//   * Fetch_promise: a promise fulfilled with the response handle when the headers arrive, rejected on a network error
-//     (TypeError) or an abort (the signal's reason);
+//   * Fetch_promise: a promise fulfilled with the response handle when the headers arrive (with integrity metadata, when
+//     the whole body is there and matches it), rejected on a network error (TypeError) or an abort (the signal's reason);
 //   * Response_text / Response_arrayBuffer: promises fulfilled when the whole body is there (text in the promise's
 //     text, length in its value; or a buffer handle). A body is consumed once (bodyUsed);
 //   * Response_body: a minimal ReadableStream. Stream_read gives a promise fulfilled with a buffer of what arrived since
@@ -29,6 +29,7 @@ Fetch_Ext :: struct {
 	body_owner:   u32,
 	stream:       u64,          // Response_body
 	received:     bool,         // Data events came (Done then carries no body)
+	integrity:    string,       // owned: SRI metadata the body must match before `response` settles ("" none)
 }
 
 Body_Stream :: struct {
@@ -181,7 +182,8 @@ fetch_ext_event :: proc(fp: ^Fetch, ev: Fetch_Update) {
 		f.final_url = strings.clone(ev.url)
 		f.headers = strings.clone(ev.headers)
 		if e.promise_mode {
-			promise_resolve(p, e.response, i64(u64(self)))
+			// (with integrity metadata, once the body is there and matches: Done)
+			if e.integrity == "" { promise_resolve(p, e.response, i64(u64(self))) }
 			return
 		}
 	case .Data, .Done:
@@ -212,6 +214,17 @@ fetch_ext_event :: proc(fp: ^Fetch, ev: Fetch_Update) {
 		if ev.kind == .Data { return }
 		if f = base.pool_get(&p.fetches, self); f == nil { return }
 		fetch_ext_finished(p, f)
+		if e.promise_mode && e.integrity != "" {
+			// Fetch "main fetch" step 22: a body that does not match its integrity metadata is a network error
+			if !integrity_ok(p, e.integrity, f.body[:], !f.usable) {
+				delete(f.error)
+				f.state, f.error, f.error_kind = 3, strings.clone("TypeError: Failed to fetch: the response does not match its integrity metadata"), .Transport
+				fetch_settle_failure(p, f, WEB_ERR_NETWORK)
+				return
+			}
+			promise_resolve(p, e.response, i64(u64(self)))
+			return
+		}
 		if e.promise_mode {
 			fetch_settle_body(p, f)
 			if f = base.pool_get(&p.fetches, self); f == nil { return }
@@ -272,6 +285,7 @@ fetch_ext_free :: proc(f: ^Fetch) {
 			if !s.ended && !s.failed { stream_fail(p, s, WEB_ERR_ABORT, "AbortError: the response was released") }
 		}
 	}
+	delete(e.integrity)
 	free(e)
 }
 
@@ -327,11 +341,11 @@ request_body :: proc(body: Maybe([]u8), body_buffer: Api_Buffer) -> []byte {
 	return body.? or_else nil
 }
 
-Fetch_promise :: proc(c: ^Call, url: string, method: string, headers: string, body: Maybe([]u8), body_buffer: Api_Buffer, signal: Api_AbortSignal, options: Api_FetchOptions) -> (u64, Api_Error) {
+Fetch_promise :: proc(c: ^Call, url: string, method: string, headers: string, body: Maybe([]u8), body_buffer: Api_Buffer, signal: Api_AbortSignal, options: Api_FetchOptions, integrity: string) -> (u64, Api_Error) {
 	p := c.page
 	pr := promise_create(p, c.owner)
 	e := new(Fetch_Ext)
-	e^ = Fetch_Ext{promise_mode = true, response = pr, signal = signal.handle}
+	e^ = Fetch_Ext{promise_mode = true, response = pr, signal = signal.handle, integrity = strings.clone(integrity)}
 	fetch_begin(p, c.owner, url, method, headers, request_body(body, body_buffer), fetch_options_pack(options), 0, 0, e)
 	return pr, .None
 }

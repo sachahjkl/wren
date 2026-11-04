@@ -2339,8 +2339,9 @@ foreign import _wr_wj_fetch "fetch"
 @(default_calling_convention = "contextless")
 foreign _wr_wj_fetch {
 	// fetch(url, init): the body is `body`, or the bytes of `body_buffer` when given. Type when the signal is not an
-	// AbortSignal or the buffer not a buffer.
-	@(link_name = "Fetch_promise") wr_Fetch_promise :: proc(url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, body_buffer: u64, signal: u64, options_mode: u32, options_credentials: u32, options_redirect: u32, options_referrer_policy: u32, options_no_referrer: i32, options_cache: u32, _ret: ^u64) -> i32 ---
+	// AbortSignal or the buffer not a buffer. With `integrity` metadata (SRI: sha256-, sha384-, sha512- hashes), the
+	// promise settles once the whole body is there: with the Response when it matches, rejected (Network) when not.
+	@(link_name = "Fetch_promise") wr_Fetch_promise :: proc(url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, body_buffer: u64, signal: u64, options_mode: u32, options_credentials: u32, options_redirect: u32, options_referrer_policy: u32, options_no_referrer: i32, options_cache: u32, integrity: [^]u8, integrity_len: u32, _ret: ^u64) -> i32 ---
 	// The callback API (Fetch_start) with an abort signal and an optional buffer body.
 	@(link_name = "Fetch_startWithSignal") wr_Fetch_startWithSignal :: proc(url: [^]u8, url_len: u32, callback: i32, user: i32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, body_buffer: u64, signal: u64, options_mode: u32, options_credentials: u32, options_redirect: u32, options_referrer_policy: u32, options_no_referrer: i32, options_cache: u32, _ret: ^u64) -> i32 ---
 	// A synchronous XMLHttpRequest of a worker: the request Fetch_startWithSignal would make, waited for on the worker's

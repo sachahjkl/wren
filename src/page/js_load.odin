@@ -643,6 +643,11 @@ script_execute :: proc(p: ^Page, sc: ^Page_Script) {
 	if sc.graph != nil && sc.state == .Fetching {
 		// a graph with an error to rethrow runs (to report it); one that could not be fetched is an error event
 		sc.state = module_graph_failed(sc.graph) && !sc.graph.rethrow ? .Failed : .Ready
+		// the integrity attribute is the root's fetch's (HTML "fetch a module script graph"): a mismatch is a fetch error
+		if root := modules_of(p).entries[sc.graph.root]; sc.state == .Ready && sc.external && sc.integrity != "" && root != nil && !integrity_ok(p, sc.integrity, root.source[:], false) {
+			log(p, .Error, fmt.tprintf("module script %s: its integrity does not match %q (Subresource Integrity): not run", sc.url, sc.integrity))
+			sc.state = .Failed
+		}
 	}
 	failed := sc.state == .Failed
 	sc.state = .Done
@@ -980,7 +985,18 @@ integrity_ok :: proc(p: ^Page, metadata: string, bytes: []byte, opaque: bool) ->
 		value := tok[dash + 1:]
 		if q := strings.index_byte(value, '?'); q >= 0 { value = value[:q] }   // options are ignored
 		got := digest_base64(algo, bytes)
-		if got != "" && strings.trim_right(got, "=") == strings.trim_right(value, "=") { return true }
+		if got == "" { continue }
+		// (base64 or base64url, the padding optional)
+		want := strings.trim_right(value, "=")
+		got = strings.trim_right(got, "=")
+		if len(got) != len(want) { continue }
+		same := true
+		for i in 0 ..< len(got) {
+			w := want[i]
+			if w == '-' { w = '+' } else if w == '_' { w = '/' }
+			if got[i] != w { same = false; break }
+		}
+		if same { return true }
 	}
 	return false
 }
