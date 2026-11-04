@@ -13,6 +13,7 @@ const settings = {
 		PADDLE_API_BASE: "https://api.paddle.com",
 		ALLOWED_ORIGIN: "https://wren.froment.software,https://sachahjkl.github.io",
 		LICENSE_PUBLIC_KEY: "6vZ2PkrA6JVQvH9T9O9wffaz_SmFcChOaHcMW61LoqI",   // the production pair's public key (src/license/public_key.odin); the private half is in secrets/production.yaml
+		MAIL_FROM: "Wren <license@mail.froment.software>",   // a domain onboarded in Email Sending (mail.froment.software)
 		PRICE_SUPPORTER: "pri_01m6kfkhzrwvx28tr378f8ztr3",   // live: product "Wren User Licence" pro_01m6kfkhr4b032d7r1wz4sk62y, 29 EUR once
 	},
 	sandbox: {
@@ -20,6 +21,7 @@ const settings = {
 		PADDLE_API_BASE: "https://sandbox-api.paddle.com",
 		ALLOWED_ORIGIN: "https://wren.froment.software,https://sachahjkl.github.io,http://localhost:8765",
 		LICENSE_PUBLIC_KEY: "NLbdwv2jpoDIMu5pVxyjYBUMEu2Lvfd8StzxR0PGqs8",   // the development pair (src/license/dev_keys.odin): public on purpose, signs nothing real
+		MAIL_FROM: "Wren <license-sandbox@mail.froment.software>",
 		PRICE_SUPPORTER: "pri_01m6kd3nvpkemxgwamft6z2fjw",   // sandbox: product "Wren User Licence" pro_01m6kd3nk27p1jhyjcd913ny45, 29 EUR once
 	},
 };
@@ -50,7 +52,7 @@ export default defineConfig(({ mode }) => {
 				// the public key of src/license/public_key.odin (the line printed by wrentool license pubkey)
 				LICENSE_PUBLIC_KEY: bindings.text(s.LICENSE_PUBLIC_KEY),
 				// "Wren <licences@your-domain>", an address of a domain onboarded in Email Service > Email Sending
-				MAIL_FROM: bindings.text("Wren <licences@mail.froment.software>"),
+				MAIL_FROM: bindings.text(s.MAIL_FROM),
 				MAIL_REPLY_TO: bindings.text("contact@froment.software"),
 				WEBHOOK_TOLERANCE_SECONDS: bindings.text("300"),
 				RESEND_ENABLED: bindings.text("false"),
