@@ -1,19 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="A golden key whose bow is the head of a bird">
-  <!-- flat, one gold, drawn like a real modern key: a round bow, a flared collar, a long narrow blade with a groove and four cuts on one edge, a pointed tip.
-       The bow is a bird's head (a small beak) and the key's hole is its eye. -->
+  <!-- Drawn like a real modern key: a round bow, a flared collar, a narrow blade with a groove and four cuts on one edge, a pointed tip.
+       The bow is a bird's head (a small beak) and the key's hole is its eye.
+       Painted twice from the same shape: a flat dark-gold outline behind, the gold gradient (light at the bow, deeper at the tip) on top.
+       The PNGs are rendered from this file (see the commit message); the paint block is what the renderer swaps. -->
   <defs>
-    <!-- along the key, from the bow to the tip: a light gold, the usual gold, a deeper gold -->
-    <linearGradient id="gold" gradientUnits="userSpaceOnUse" x1="256" y1="58" x2="256" y2="422">
+    <linearGradient id="gold" gradientUnits="userSpaceOnUse" x1="256" y1="50" x2="256" y2="378">
       <stop offset="0" stop-color="#f4d98a"/>
       <stop offset="0.35" stop-color="#e8bd4c"/>
       <stop offset="0.7" stop-color="#d09a2a"/>
-      <stop offset="1" stop-color="#a97716"/>
+      <stop offset="1" stop-color="#b8861e"/>
     </linearGradient>
+    <g id="key-shape">
+      <path fill-rule="evenodd" d="M180 126a76 76 0 1 0 152 0a76 76 0 1 0-152 0zM215 108a19 19 0 1 0 38 0a19 19 0 1 0-38 0z"/>
+      <path d="M186 110 132 126 188 142z"/>
+      <path d="M232 196H280L298 212L290 222H222L214 212Z"/>
+      <path fill-rule="evenodd" d="M230 214 V232 L237 239 V243 L230 250 V254 L242 266 V270 L230 282 V286 L239 295 V299 L230 308 V312 L236 318 V322 L230 328 V332 L256 378 L282 326 V214 Z M252 238 h8 v76 h-6 z"/>
+    </g>
   </defs>
-  <g fill="url(#gold)" stroke="url(#gold)" stroke-width="2" stroke-linejoin="round" transform="translate(256 256) scale(1.1) translate(-256 -256) translate(-10 16) rotate(40 256 256)">
-    <path fill-rule="evenodd" d="M186 128a70 70 0 1 0 140 0a70 70 0 1 0-140 0zM224 112a12 12 0 1 0 24 0a12 12 0 1 0-24 0z"/>
-    <path d="M192 114 140 128 194 142z"/>
-    <path d="M228 190H284L306 212L296 224H216L206 212Z"/>
-    <path fill-rule="evenodd" d="M218 224 V232 L226 240 V245 L218 253 V258 L233 273 V278 L218 293 V298 L229 309 V314 L218 325 V330 L225 337 V342 L218 349 V354 L256 416 L294 348 V224 Z M257 238 h10 v96 h-10 z"/>
+  <g transform="translate(256 256) scale(1.2) translate(-256 -256) translate(-27 32) rotate(40 256 256)" stroke-linejoin="round">
+    <!--paint-->
+    <use href="#key-shape" fill="#85580c" stroke="#85580c" stroke-width="5"/>
+    <use href="#key-shape" fill="url(#gold)" stroke="none"/>
+    <!--/paint-->
   </g>
 </svg>
