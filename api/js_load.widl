@@ -8,8 +8,8 @@ module scripts {
   /// What a Content-Security-Policy check of inline code is about: a script element's text, an event handler
   /// attribute (script-src-attr), a javascript: URL.
   enum InlineScriptKind : i32 { Element, Attribute, Navigation }
-  /// The type of a module (import attributes: `with {type: "json"}`).
-  enum ModuleType : i32 { JavaScript, Json }
+  /// The type of a module (import attributes: `with {type: "json"}`, `with {type: "css"}`).
+  enum ModuleType : i32 { JavaScript, Json, Css }
   /// The type of a worker's script (`new Worker(url, {type})`).
   enum WorkerType : i32 { Classic, Module }
 

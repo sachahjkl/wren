@@ -29,16 +29,19 @@
 	Mutating `src` attribute from an already-valid value does 'prepare' the script: PASS
 /html/semantics/scripting-1/the-script-element/changing-src.html: OK
 	adding a src attribute after inserting the script into the document causes the script to load and execute: PASS
-/html/semantics/scripting-1/the-script-element/css-module/charset-2.html: ERROR
-/html/semantics/scripting-1/the-script-element/css-module/charset-bom.html: ERROR
+/html/semantics/scripting-1/the-script-element/css-module/charset-2.html: TIMEOUT
+/html/semantics/scripting-1/the-script-element/css-module/charset-bom.html: OK
+	UTF-16BE BOM should be ignored, so CSS module should be UTF-8 decoded: FAIL
+	UTF-16LE BOM should be ignored, so CSS module should be UTF-8 decoded: FAIL
+	UTF-8 BOM should be stripped when decoding CSS module script: PASS
 /html/semantics/scripting-1/the-script-element/css-module/charset.html: ERROR
-/html/semantics/scripting-1/the-script-element/css-module/content-type-checking.html: ERROR
-	application/css: NOTRUN
-	application/javascript: NOTRUN
-	text/css: NOTRUN
-	text/css;boundary=something: NOTRUN
-	text/css;foo=bar: NOTRUN
-	text/html+css: NOTRUN
+/html/semantics/scripting-1/the-script-element/css-module/content-type-checking.html: OK
+	application/css: PASS
+	application/javascript: PASS
+	text/css: FAIL
+	text/css;boundary=something: FAIL
+	text/css;foo=bar: FAIL
+	text/html+css: PASS
 /html/semantics/scripting-1/the-script-element/css-module/cors-crossorigin-requests.html: OK
 	Imported CSS module with parse error, cross-origin, with CORS: FAIL
 	Imported CSS module, cross-origin with CORS: FAIL
@@ -46,34 +49,44 @@
 /html/semantics/scripting-1/the-script-element/css-module/credentials.sub.html: OK
 	CSS Modules should be loaded with or without the credentials based on the same-origin-ness and the crossOrigin attribute: FAIL
 /html/semantics/scripting-1/the-script-element/css-module/css-module-parse-error.html: OK
-	CSS module with parse errors imports successfully with empty rules.: FAIL
-	CSS module with partially malformed CSS imports with valid rules.: FAIL
-	Repeated import of parse-error CSS module returns same sheet.: FAIL
+	CSS module with parse errors imports successfully with empty rules.: PASS
+	CSS module with partially malformed CSS imports with valid rules.: PASS
+	Repeated import of parse-error CSS module returns same sheet.: PASS
 /html/semantics/scripting-1/the-script-element/css-module/css-module-worker-test.html: OK
 	A dynamic import CSS Module within a web worker should not load and should not attempt to fetch the module.: FAIL
 	A static import CSS Module within a web worker should not load and should not attempt to fetch the module.: FAIL
 	An attempt to load a CSS module as a worker should fail.: PASS
-/html/semantics/scripting-1/the-script-element/css-module/import-css-module-basic.html: ERROR
+/html/semantics/scripting-1/the-script-element/css-module/import-css-module-basic.html: OK
+	A CSS Module should load: PASS
+	A large CSS Module should load: PASS
+	A parse error should not prevent subsequent rules from being included in a CSS module: PASS
+	An @import CSS Module should not load, but should not throw an exception: PASS
+	CSS module without type attribute should result in a fetch error: FAIL
 /html/semantics/scripting-1/the-script-element/css-module/import-css-module-dynamic.html: OK
 	Ensure that loading a CSS module with dymnamic import() fails without a type attribute: PASS
 	Load a CSS module with dynamic import(): FAIL
-/html/semantics/scripting-1/the-script-element/css-module/integrity.html: ERROR
-/html/semantics/scripting-1/the-script-element/css-module/load-error-events.html: ERROR
-	inline, 200, not parser-inserted: NOTRUN
-	inline, 200, parser-inserted: NOTRUN
-	inline, 404, not parser-inserted: NOTRUN
-	inline, 404, parser-inserted: NOTRUN
+/html/semantics/scripting-1/the-script-element/css-module/integrity.html: OK
+	The integrity attribute must be verified on the top-level of a module loading a CSS module and allow it to execute when it matches: FAIL
+	The integrity attribute must be verified on the top-level of a module loading a CSS module and not allow it to execute when there's a mismatch: FAIL
+/html/semantics/scripting-1/the-script-element/css-module/load-error-events.html: OK
+	inline, 200, not parser-inserted: PASS
+	inline, 200, parser-inserted: PASS
+	inline, 404, not parser-inserted: PASS
+	inline, 404, parser-inserted: PASS
 	src, 200, not parser-inserted: FAIL
 	src, 200, parser-inserted: FAIL
 	src, 404, not parser-inserted: PASS
 	src, 404, parser-inserted: PASS
-/html/semantics/scripting-1/the-script-element/css-module/redirect-relative-urls.html: ERROR
+/html/semantics/scripting-1/the-script-element/css-module/redirect-relative-urls.html: OK
+	A relative URL in a dynamically imported CSS module resolves against the URL the request was redirected to: FAIL
+	A relative URL in a statically imported CSS module resolves against the URL the request was redirected to: FAIL
 /html/semantics/scripting-1/the-script-element/css-module/redirect.html: OK
-	A CSS module fetched through a redirect loads and applies: FAIL
-	A redirecting URL and its target are distinct module map entries: FAIL
-	Repeated import of a redirecting URL returns the same CSSStyleSheet: FAIL
-/html/semantics/scripting-1/the-script-element/css-module/referrer-policies.sub.html: ERROR
-/html/semantics/scripting-1/the-script-element/css-module/relative-urls.html: ERROR
+	A CSS module fetched through a redirect loads and applies: PASS
+	A redirecting URL and its target are distinct module map entries: PASS
+	Repeated import of a redirecting URL returns the same CSSStyleSheet: PASS
+/html/semantics/scripting-1/the-script-element/css-module/referrer-policies.sub.html: TIMEOUT
+/html/semantics/scripting-1/the-script-element/css-module/relative-urls.html: OK
+	A relative URL in a CSS module should be resolved relative to the CSS file's URL, not the importing document's URL: FAIL
 /html/semantics/scripting-1/the-script-element/css-module/repeated-import.html: OK
 	CSS Module repeated imports: FAIL
 	CSS Module repeated parallel imports: FAIL
@@ -713,7 +726,7 @@
 	An import should succeed even if the same specifier/module type pair previously failed due to a network error: FAIL
 	If an import previously succeeded for a given specifier/module type attribute pair, future uses of that pair should yield the same result: FAIL
 	Importing a specifier that previously failed due to an incorrect type attribute can succeed if the correct attribute is later given: FAIL
-	Importing a specifier that previously succeeded with the correct type attribute should fail if the incorrect attribute is later given: FAIL
+	Importing a specifier that previously succeeded with the correct type attribute should fail if the incorrect attribute is later given: PASS
 	Multiple import calls with the same specifier should be joined into a single fetch: FAIL
 	Two modules of different type with the same specifier can load if the server changes its responses: FAIL
 /html/semantics/scripting-1/the-script-element/json-module/repeated-imports.any.worker.html: OK
@@ -722,7 +735,7 @@
 	An import should succeed even if the same specifier/module type pair previously failed due to a network error: FAIL
 	If an import previously succeeded for a given specifier/module type attribute pair, future uses of that pair should yield the same result: FAIL
 	Importing a specifier that previously failed due to an incorrect type attribute can succeed if the correct attribute is later given: FAIL
-	Importing a specifier that previously succeeded with the correct type attribute should fail if the incorrect attribute is later given: FAIL
+	Importing a specifier that previously succeeded with the correct type attribute should fail if the incorrect attribute is later given: PASS
 	Multiple import calls with the same specifier should be joined into a single fetch: FAIL
 	Two modules of different type with the same specifier can load if the server changes its responses: FAIL
 /html/semantics/scripting-1/the-script-element/json-module/script-element-json-src.html: OK
@@ -2937,11 +2950,11 @@
 	The template contents must be a DocumentFragment (empty template): PASS
 	The template contents must be a DocumentFragment (nested template containing a text node): PASS
 	The template contents must be a DocumentFragment (non empty template containing div which is an Element instance): PASS
-	The template contents must be a DocumentFragment (non empty template tag inside HTML file loaded in iframe): PASS|FAIL
+	The template contents must be a DocumentFragment (non empty template tag inside HTML file loaded in iframe): PASS
 	The template contents must be a DocumentFragment (non empty template): PASS
 	The template contents must be a DocumentFragment (not empty template containing text node): PASS
-	The template contents must be a DocumentFragment (the empty template tag inside HTML file loaded in iframe): PASS|FAIL
-	The template contents must be a DocumentFragment (the template tag with nested template tag inside HTML file loaded in iframe): PASS|FAIL
+	The template contents must be a DocumentFragment (the empty template tag inside HTML file loaded in iframe): PASS
+	The template contents must be a DocumentFragment (the template tag with nested template tag inside HTML file loaded in iframe): PASS
 	The template contents must be a DocumentFragment (the template tag with some text inside HTML file loaded in iframe): PASS
 /html/semantics/scripting-1/the-template-element/innerhtml-on-templates/innerhtml.html: OK
 	innerHTML of template element replaces all referenced by the content attribute: PASS

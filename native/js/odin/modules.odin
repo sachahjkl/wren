@@ -14,13 +14,16 @@
 //
 // Module names are absolute URLs; an inline <script type=module> is named after its document with a
 // "#inline-module-<n>" fragment (relative specifiers resolve against the document, import.meta.url is the document's
-// URL). JSON modules (import ... with {type: "json"}) are synthetic modules whose default export is the parsed value.
+// URL). JSON modules (import ... with {type: "json"}) are synthetic modules whose default export is the parsed value,
+// CSS modules (with {type: "css"}) those whose default export is a constructed CSSStyleSheet of their text.
 package odin_glue
 
 import "../odin/wj"
 
+// (the values of the browser's ModuleType)
 @(private = "file") MODULE_JS   :: 0
 @(private = "file") MODULE_JSON :: 1
+@(private = "file") MODULE_CSS  :: 2
 
 @(private = "file") INLINE_MARK :: "#inline-module-"
 @(private = "file") RESOLVE_ERROR_BYTES :: 512   // the browser's message when a specifier does not resolve
@@ -101,8 +104,9 @@ set_meta :: proc "contextless" (ctx: ^wj.Context, m: ^wj.Module_Def, name: cstri
 
 // ---- compiling ----
 
+// A synthetic module's evaluation: its default export is the value it was made with.
 @(private = "file")
-json_module_init :: proc "c" (ctx: ^wj.Context, m: ^wj.Module_Def) -> i32 {
+synthetic_module_init :: proc "c" (ctx: ^wj.Context, m: ^wj.Module_Def) -> i32 {
 	v := wj.JS_GetModulePrivateValue(ctx, m)
 	return wj.JS_SetModuleExport(ctx, m, "default", v)
 }
@@ -111,16 +115,21 @@ json_module_init :: proc "c" (ctx: ^wj.Context, m: ^wj.Module_Def) -> i32 {
 // `want_bytecode`: the compiled module goes to the browser's bytecode cache (Engine_storeBytecode) before anything else is done to it.
 @(private = "file")
 compile_module :: proc "contextless" (ctx: ^wj.Context, src: [^]u8, n: uint, name: cstring, type: i32, want_bytecode := false) -> ^wj.Module_Def {
-	if type == MODULE_JSON {
-		// JS_ParseJSON reads a NUL-terminated buffer: the host's source is not one
-		buf := ([^]u8)(wj.malloc(n + 1))
-		if buf == nil { return nil }
-		defer wj.free(buf)
-		wj.memcpy(buf, src, n)
-		buf[n] = 0
-		v := wj.JS_ParseJSON(ctx, buf, n, name)
+	if type == MODULE_JSON || type == MODULE_CSS {
+		v: wj.JSValue
+		if type == MODULE_CSS {
+			v = css_module_sheet(ctx, src, n, name)   // (shadow.odin)
+		} else {
+			// JS_ParseJSON reads a NUL-terminated buffer: the host's source is not one
+			buf := ([^]u8)(wj.malloc(n + 1))
+			if buf == nil { return nil }
+			defer wj.free(buf)
+			wj.memcpy(buf, src, n)
+			buf[n] = 0
+			v = wj.JS_ParseJSON(ctx, buf, n, name)
+		}
 		if wj.is_exception(v) { return nil }
-		m := wj.JS_NewCModule(ctx, name, json_module_init)
+		m := wj.JS_NewCModule(ctx, name, synthetic_module_init)
 		if m == nil { wj.JS_FreeValue(ctx, v); return nil }
 		if wj.JS_AddModuleExport(ctx, m, "default") < 0 { wj.JS_FreeValue(ctx, v); return nil }
 		wj.JS_SetModulePrivateValue(ctx, m, v)
@@ -181,7 +190,7 @@ report_requests :: proc "contextless" (ctx: ^wj.Context, m: ^wj.Module_Def, name
 	return status
 }
 
-// The type of an import from its attributes: MODULE_JS, MODULE_JSON, -1 (TypeError pending) for another.
+// The type of an import from its attributes: MODULE_JS, MODULE_JSON, MODULE_CSS, -1 (TypeError pending) for another.
 @(private = "file")
 import_type :: proc "contextless" (ctx: ^wj.Context, attributes: wj.JSValue) -> i32 {
 	if !wj.is_object(attributes) { return MODULE_JS }
@@ -191,7 +200,8 @@ import_type :: proc "contextless" (ctx: ^wj.Context, attributes: wj.JSValue) -> 
 	s := wj.JS_ToCStringLen2(ctx, nil, t, false)
 	wj.JS_FreeValue(ctx, t)
 	if s == nil { return -1 }
-	r: i32 = wj.str_eq(s, "json") ? MODULE_JSON : -1
+	// (CSS modules in a window alone: a worker has no stylesheets, HTML "fetch a single module script")
+	r: i32 = wj.str_eq(s, "json") ? MODULE_JSON : wj.str_eq(s, "css") && wj.wj_the_realm.kind == wj.EXPOSE_WINDOW ? MODULE_CSS : -1
 	if r < 0 { wj.JS_ThrowTypeError(ctx, "unsupported module type \"%s\"", s) }
 	wj.JS_FreeCString(ctx, s)
 	return r

@@ -171,7 +171,7 @@ guest_request :: proc(abs, method, headers: string, body: []byte, o: u32, initia
 	module := o & FETCH_OPTION_MODULE_SCRIPT != 0
 	script := fetch.Script_Type.Wasm
 	if classic { script = .Classic }
-	if module { script = o & FETCH_OPTION_JSON_MODULE != 0 ? .Json_Module : .Module }
+	if module { script = o & FETCH_OPTION_JSON_MODULE != 0 ? .Json_Module : o & FETCH_OPTION_CSS_MODULE != 0 ? .Css_Module : .Module }
 	return fetch.Request_Desc{
 		url = abs, method = method, headers = pairs[:], body = body,
 		mode = mode, credentials = creds, redirect = redirect, destination = classic || module ? .Script : .Empty,

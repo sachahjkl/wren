@@ -553,9 +553,15 @@ request_header_list :: proc(t: ^Task) -> http.Headers {
 	l := t.loader
 	h := http.headers_clone(t.headers, context.temp_allocator)
 	if !http.has_header(h, "accept") {
-		// JavaScript scripts: HTML's "*/*"; JSON modules: "application/json,*/*;q=0.5"
+		// JavaScript scripts: HTML's "*/*"; JSON modules: "application/json,*/*;q=0.5"; CSS modules a stylesheet's
 		accept := default_accept(t.destination)
-		if (t.destination == .Script || t.destination == .Worker) && t.script != .Wasm { accept = t.script == .Json_Module ? "application/json,*/*;q=0.5" : "*/*" }
+		if (t.destination == .Script || t.destination == .Worker) && t.script != .Wasm {
+			#partial switch t.script {
+			case .Json_Module: accept = "application/json,*/*;q=0.5"
+			case .Css_Module: accept = default_accept(.Style)
+			case: accept = "*/*"
+			}
+		}
 		http.append_header(&h, "Accept", accept)
 	}
 	if !http.has_header(h, "accept-language") && l.profile.settings.accept_language != "" { http.append_header(&h, "Accept-Language", l.profile.settings.accept_language) }

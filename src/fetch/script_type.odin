@@ -4,9 +4,9 @@ package fetch
 // application/wasm only), or JavaScript, whose MIME rules are HTML's and the Fetch Standard's:
 //   * a classic script (and a classic worker's script) may have any type but audio/*, image/*, video/* and text/csv
 //     ("should response to request be blocked due to its MIME type"), and must be JavaScript with nosniff;
-//   * a module script must be a JavaScript MIME type (or JSON for a JSON module).
+//   * a module script must be a JavaScript MIME type (JSON for a JSON module, text/css for a CSS module).
 // `parser_inserted` is the request's parser metadata (CSP 'strict-dynamic' trusts scripts that scripts inserted).
-Script_Type :: enum u8 { Wasm, Classic, Module, Json_Module }
+Script_Type :: enum u8 { Wasm, Classic, Module, Json_Module, Css_Module }
 
 @(private)
 JS_MIME_ESSENCES := [?]string{
@@ -42,6 +42,8 @@ check_script_mime :: proc(st: Script_Type, type, subtype: string, has, nosniff: 
 		if !js { return "a module script must be served with a JavaScript MIME type", false }
 	case .Json_Module:
 		if !json { return "a JSON module must be served with a JSON MIME type", false }
+	case .Css_Module:
+		if !has || type != "text" || subtype != "css" { return "a CSS module must be served as text/css", false }
 	}
 	return "", true
 }
