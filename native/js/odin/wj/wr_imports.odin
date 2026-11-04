@@ -2169,9 +2169,13 @@ foreign _wr_wj_dom {
 	@(link_name = "CSSStyleSheet_create") wr_CSSStyleSheet_create :: proc(media: [^]u8, media_len: u32, disabled: i32, base_url: [^]u8, base_url_len: u32) -> u64 ---
 	// replaceSync(text) / replace(text): the rules of `text`, @import rules dropped.
 	@(link_name = "CSSStyleSheet_replaceText") wr_CSSStyleSheet_replaceText :: proc(sheet: u64, text: [^]u8, text_len: u32) -> i32 ---
-	// The number of top-level rules, and the text of one (Index_Size past the end).
+	// The number of top-level rules, and the cssText of one, CSSOM's serialization of the rule as parsed (Index_Size
+	// past the end).
 	@(link_name = "CSSStyleSheet_ruleCount") wr_CSSStyleSheet_ruleCount :: proc(sheet: u64) -> u32 ---
 	@(link_name = "CSSStyleSheet_ruleText") wr_CSSStyleSheet_ruleText :: proc(sheet: u64, index: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	// CSSStyleRule.selectorText = selector, on the top-level rule numbered `rule_id` (CSSStyleSheet_ruleId): the
+	// rule's new cssText, "" when nothing changed (the rule is gone, not a style rule, or the selector is invalid).
+	@(link_name = "CSSStyleSheet_setRuleSelector") wr_CSSStyleSheet_setRuleSelector :: proc(sheet: u64, rule_id: u32, selector: [^]u8, selector_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
 	// insertRule(rule, index): Index_Size past the end, Syntax when `rule` is not one rule; the index.
 	@(link_name = "CSSStyleSheet_insertRuleAt") wr_CSSStyleSheet_insertRuleAt :: proc(sheet: u64, rule: [^]u8, rule_len: u32, index: u32, _ret: ^u32) -> i32 ---
 	// deleteRule(index): Index_Size past the end.

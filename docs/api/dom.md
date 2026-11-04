@@ -4087,7 +4087,8 @@ Host: `CSSStyleSheet_replaceText :: proc(c: ^Call, sheet: u64, text: string) -> 
 u32 CSSStyleSheet_ruleCount(u64 sheet)
 ```
 
-The number of top-level rules, and the text of one (Index_Size past the end).
+The number of top-level rules, and the cssText of one, CSSOM's serialization of the rule as parsed (Index_Size
+past the end).
 
 Host: `CSSStyleSheet_ruleCount :: proc(c: ^Call, sheet: u64) -> u32`
 
@@ -4100,6 +4101,17 @@ string CSSStyleSheet_ruleText(u64 sheet, u32 index) raises
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `CSSStyleSheet_ruleText :: proc(c: ^Call, sheet: u64, index: u32) -> (string, Api_Error)`
+
+### `CSSStyleSheet_setRuleSelector`
+
+```
+string CSSStyleSheet_setRuleSelector(u64 sheet, u32 rule_id, string selector)
+```
+
+CSSStyleRule.selectorText = selector, on the top-level rule numbered `rule_id` (CSSStyleSheet_ruleId): the
+rule's new cssText, "" when nothing changed (the rule is gone, not a style rule, or the selector is invalid).
+
+Host: `CSSStyleSheet_setRuleSelector :: proc(c: ^Call, sheet: u64, rule_id: u32, selector: string) -> string`
 
 ### `CSSStyleSheet_insertRuleAt`
 

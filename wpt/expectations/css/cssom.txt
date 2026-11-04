@@ -74,32 +74,32 @@
 /css/cssom/CSSImportRule-media-identity.html: OK
 	CSSImportRule's media returns the associated stylesheet's media: FAIL
 /css/cssom/CSSKeyframeRule-keyText-edge-cases.html: OK
-	getter normalizes .5% from parsed stylesheet: FAIL
-	getter normalizes 100.0% from parsed stylesheet: FAIL
-	getter normalizes 1e1% from parsed stylesheet: FAIL
-	setter accepts and normalizes .5%: FAIL
-	setter accepts and normalizes 0.0%: FAIL
-	setter accepts and normalizes 100.0%: FAIL
-	setter accepts and normalizes 1e1%: FAIL
-	setter accepts and normalizes FROM: FAIL
-	setter accepts and normalizes To: FAIL
-	setter accepts and normalizes mixed-case From, TO: FAIL
-	setter rejects -5%: FAIL
-	setter rejects 150%: FAIL
-	setter trims whitespace: FAIL
-	setter trims whitespace in comma-separated selectors: FAIL
+	getter normalizes .5% from parsed stylesheet: PASS
+	getter normalizes 100.0% from parsed stylesheet: PASS
+	getter normalizes 1e1% from parsed stylesheet: PASS
+	setter accepts and normalizes .5%: PASS
+	setter accepts and normalizes 0.0%: PASS
+	setter accepts and normalizes 100.0%: PASS
+	setter accepts and normalizes 1e1%: PASS
+	setter accepts and normalizes FROM: PASS
+	setter accepts and normalizes To: PASS
+	setter accepts and normalizes mixed-case From, TO: PASS
+	setter rejects -5%: PASS
+	setter rejects 150%: PASS
+	setter trims whitespace: PASS
+	setter trims whitespace in comma-separated selectors: PASS
 /css/cssom/CSSKeyframeRule-keyText.html: OK
-	getter normalizes 'from' to '0%': FAIL
-	getter normalizes 'to' to '100%': FAIL
-	getter normalizes comma-separated selectors: FAIL
-	getter preserves percentage values: FAIL
+	getter normalizes 'from' to '0%': PASS
+	getter normalizes 'to' to '100%': PASS
+	getter normalizes comma-separated selectors: PASS
+	getter preserves percentage values: PASS
 	setter accepts a valid percentage: PASS
 	setter accepts comma-separated percentages: PASS
-	setter normalizes 'from' to '0%': FAIL
-	setter normalizes 'to' to '100%': FAIL
-	setter normalizes comma-separated from/to: FAIL
-	setter throws SyntaxError for empty string: FAIL
-	setter throws SyntaxError for invalid selector: FAIL
+	setter normalizes 'from' to '0%': PASS
+	setter normalizes 'to' to '100%': PASS
+	setter normalizes comma-separated from/to: PASS
+	setter throws SyntaxError for empty string: PASS
+	setter throws SyntaxError for invalid selector: PASS
 /css/cssom/CSSKeyframeRule.html: OK
 	CSSKeyframeRule: style property: PASS
 	CSSKeyframeRule: style property has [PutForwards]: PASS
@@ -115,32 +115,32 @@
 	deleteRule() does not detach rules that were not removed: FAIL
 	deleteRule() nullifies parentRule and parentStyleSheet on the removed keyframe rule: FAIL
 /css/cssom/CSSKeyframesRule-indexed-getter.html: OK
-	indexed getter returns the last rule: FAIL
-	indexed getter returns the rule at the given index: FAIL
+	indexed getter returns the last rule: PASS
+	indexed getter returns the rule at the given index: PASS
 	indexed getter returns undefined for large out-of-bounds index: PASS
 	indexed getter returns undefined for negative index: PASS
 	indexed getter returns undefined for out-of-bounds index: PASS
-	length reflects number of keyframe rules: FAIL
+	length reflects number of keyframe rules: PASS
 /css/cssom/CSSKeyframesRule.html: OK
-	indexed getter, length: FAIL
+	indexed getter, length: PASS
 	name, cssRules, appendRule, findRule, deleteRule: FAIL
 /css/cssom/CSSNamespaceRule.html: OK
-	CSSOM - CSSNamespaceRule interface: FAIL
+	CSSOM - CSSNamespaceRule interface: PASS
 /css/cssom/CSSRule-type.html: OK
 	CSSContainerRule.type is 0 (no constant defined): FAIL
 	CSSCounterStyleRule.type is COUNTER_STYLE_RULE (11): FAIL
 	CSSFontFaceRule.type is FONT_FACE_RULE (5): FAIL
-	CSSImportRule.type is IMPORT_RULE (3): FAIL
-	CSSKeyframeRule.type is KEYFRAME_RULE (8): FAIL
+	CSSImportRule.type is IMPORT_RULE (3): PASS
+	CSSKeyframeRule.type is KEYFRAME_RULE (8): PASS
 	CSSKeyframesRule.type is KEYFRAMES_RULE (7): PASS
 	CSSLayerBlockRule.type is 0 (no constant defined): PASS
-	CSSLayerStatementRule.type is 0 (no constant defined): FAIL
-	CSSMediaRule.type is MEDIA_RULE (4): FAIL
-	CSSNamespaceRule.type is NAMESPACE_RULE (10): FAIL
-	CSSPageRule.type is PAGE_RULE (6): FAIL
+	CSSLayerStatementRule.type is 0 (no constant defined): PASS
+	CSSMediaRule.type is MEDIA_RULE (4): PASS
+	CSSNamespaceRule.type is NAMESPACE_RULE (10): PASS
+	CSSPageRule.type is PAGE_RULE (6): PASS
 	CSSScopeRule.type is 0 (no constant defined): FAIL
 	CSSStyleRule.type is STYLE_RULE (1): PASS
-	CSSSupportsRule.type is SUPPORTS_RULE (12): FAIL
+	CSSSupportsRule.type is SUPPORTS_RULE (12): PASS
 /css/cssom/CSSRuleList.html: OK
 	CSSOM - CSSRuleList interface: PASS
 /css/cssom/CSSStyleDeclaration-indexed-properties.html: OK
@@ -153,12 +153,12 @@
 /css/cssom/CSSStyleDeclaration-iterator.html: OK
 	CSSStyleDeclaration should expose Symbol.iterator: PASS
 /css/cssom/CSSStyleRule-selectorText-setter.html: OK
-	Setting a valid selector list updates selectorText: FAIL
-	Setting a valid selector updates selectorText: FAIL
-	Setting an empty string does not change selectorText: FAIL
-	Setting an invalid selector does not change selectorText: FAIL
-	Setting an unclosed bracket does not change selectorText: FAIL
-	cssText reflects the updated selectorText: FAIL
+	Setting a valid selector list updates selectorText: PASS
+	Setting a valid selector updates selectorText: PASS
+	Setting an empty string does not change selectorText: PASS
+	Setting an invalid selector does not change selectorText: PASS
+	Setting an unclosed bracket does not change selectorText: PASS
+	cssText reflects the updated selectorText: PASS
 	selectorText getter returns the initial selector: PASS
 /css/cssom/CSSStyleRule-set-selectorText-namespace.html: OK
 	CSSStyleRule: selectorText value: | *.style1  | isMatch: false: FAIL
@@ -187,68 +187,68 @@
 	CSSStyleRule: Invalid CSS selector: []: PASS
 	CSSStyleRule: Invalid CSS selector: {: PASS
 	CSSStyleRule: Invalid CSS selector: {}: PASS
-	CSSStyleRule: selectorText value: |  #container | isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |#container  | isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |#container| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |#no-match| isMatch: false: FAIL
+	CSSStyleRule: selectorText value: |  #container | isMatch: true: PASS
+	CSSStyleRule: selectorText value: |#container  | isMatch: true: PASS
+	CSSStyleRule: selectorText value: |#container| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |#no-match| isMatch: false: PASS
 	CSSStyleRule: selectorText value: |*:not(:active)| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |*| isMatch: true: FAIL
+	CSSStyleRule: selectorText value: |*| isMatch: true: PASS
 	CSSStyleRule: selectorText value: |*|*| isMatch: true: FAIL
 	CSSStyleRule: selectorText value: |*|a| isMatch: false: FAIL
 	CSSStyleRule: selectorText value: |*|div| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |.style1| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |::after| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |::before| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |::first-letter| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |::first-line| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |:active| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |:after| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |:before| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |:first-letter| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |:first-line| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |:lang(tr-AZ)| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |:lang(zh)| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |:lang(zh-CN)| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |:not(:active)| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |[*|lang]| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |[lang*="-"]| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |[lang*="ab"]| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |[lang*="h-"]| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |[lang="ab-CD"]| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |[lang="zh-CN"]| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |[lang^="ab"]| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |[lang^="z"]| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |[language-no]| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |[language]| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |[lang|="ab"]| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |[lang|="z"]| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |[lang|="zh"]| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |[lang|="zh-CN"]| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |[segment$="3"]| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |[segment$="42"]| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |[segment$="43"]| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |[segment~="42"]| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |[segment~="43"]| isMatch: true: FAIL
+	CSSStyleRule: selectorText value: |.style1| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |::after| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |::before| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |::first-letter| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |::first-line| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |:active| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |:after| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |:before| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |:first-letter| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |:first-line| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |:lang(tr-AZ)| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |:lang(zh)| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |:lang(zh-CN)| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |:not(:active)| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |[*|lang]| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |[lang*="-"]| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |[lang*="ab"]| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |[lang*="h-"]| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |[lang="ab-CD"]| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |[lang="zh-CN"]| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |[lang^="ab"]| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |[lang^="z"]| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |[language-no]| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |[language]| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |[lang|="ab"]| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |[lang|="z"]| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |[lang|="zh"]| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |[lang|="zh-CN"]| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |[segment$="3"]| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |[segment$="42"]| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |[segment$="43"]| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |[segment~="42"]| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |[segment~="43"]| isMatch: true: PASS
 	CSSStyleRule: selectorText value: |[|lang]| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |div > div| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |div div| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |div.style1| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |div:active| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |div:focus:not([lang="zh-CN"])| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |div:not(#non-existing-id)| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |div:not(:active)| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |div[lang="zh-CN"]:not(:focus)| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |div| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |p + div| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |p ~ div| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |span  div  | isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |span + div| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |span > div| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |span div| isMatch: true: FAIL
-	CSSStyleRule: selectorText value: |span ~ div| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: ||div| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |ÇĞıİ| isMatch: false: FAIL
-	CSSStyleRule: selectorText value: |🤓| isMatch: false: FAIL
+	CSSStyleRule: selectorText value: |div > div| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |div div| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |div.style1| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |div:active| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |div:focus:not([lang="zh-CN"])| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |div:not(#non-existing-id)| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |div:not(:active)| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |div[lang="zh-CN"]:not(:focus)| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |div| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |p + div| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |p ~ div| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |span  div  | isMatch: true: PASS
+	CSSStyleRule: selectorText value: |span + div| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |span > div| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |span div| isMatch: true: PASS
+	CSSStyleRule: selectorText value: |span ~ div| isMatch: false: PASS
+	CSSStyleRule: selectorText value: ||div| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |ÇĞıİ| isMatch: false: PASS
+	CSSStyleRule: selectorText value: |🤓| isMatch: false: PASS
 /css/cssom/CSSStyleRule.html: OK
 	Assigning to CSSStyleRule.style assigns to cssText; CSSStyleRule.style returns the same object: PASS
 	CSSRule and CSSStyleRule types: PASS
@@ -261,7 +261,7 @@
 	Values of CSSStyleRule attributes: PASS
 	Writability of CSSRule attributes: PASS
 /css/cssom/CSSStyleSheet-constructable-baseURL.html: OK
-	Constructing sheet with custom base URL ueses that URL for CSS rules: FAIL
+	Constructing sheet with custom base URL ueses that URL for CSS rules: PASS
 	Constructing sheet with invalid base URL throws a NotAllowedError: FAIL
 	Constructing sheet with relative URL adds to the constructor document's base URL: FAIL
 /css/cssom/CSSStyleSheet-constructable-cssRules.html: OK
@@ -312,7 +312,7 @@
 	Constructed style sheets can be applied on document: PASS
 	Constructed style sheets can be applied on shadow root: PASS
 	Constructed stylesheet can be used and modified in multiple TreeScopes: FAIL
-	Constructing a sheet with the default base URL uses the constructor document's base URL for CSS rules: FAIL
+	Constructing a sheet with the default base URL uses the constructor document's base URL for CSS rules: PASS
 	Forcing a style update after adding an adopted stylesheet on a disconnected shadow root should not crash.: PASS
 	Importing a shadow host will not copy shadow root, and also adoptedStyleSheets: PASS
 	Inserting an @import rule through insertRule on a constructed stylesheet throws an exception: PASS
@@ -387,7 +387,7 @@
 	style elements fire load events properly: FAIL
 /css/cssom/MediaList-parsing.html: OK
 	A single invalid query becomes "not all": FAIL
-	Initial media from stylesheet is normalized: FAIL
+	Initial media from stylesheet is normalized: PASS
 	Invalid queries in a list become "not all": FAIL
 	Setting mediaText to empty string empties the list: FAIL
 	appendMedium adds a new medium: FAIL
@@ -496,9 +496,9 @@
 /css/cssom/at-namespace.html: OK
 	CSS Test: @namespace in CSSOM is not severely broken: FAIL
 /css/cssom/base-uri.html: OK
-	KeyframeEffect constructor: FAIL
-	KeyframeEffect.setKeyframes: FAIL
-	setProperty: FAIL
+	KeyframeEffect constructor: PASS
+	KeyframeEffect.setKeyframes: PASS
+	setProperty: PASS
 /css/cssom/border-shorthand-serialization.html: OK
 	Border shorthand is serialized correctly if all border-image-* are set to their initial specified values.: FAIL
 	Declaration with border longhands and border-image is not serialized to a border shorthand declaration.: FAIL
@@ -589,16 +589,16 @@
 	CSSImportRule has different sheets even if referencing the same URL: FAIL
 /css/cssom/cssimportrule.html: OK
 	CSSImportRule : MediaList mediaText attribute should be updated due to [PutForwards]: FAIL
-	CSSRule and CSSImportRule types: FAIL
-	CSSStyleDeclaration cssText attribute should be updated due to [PutForwards]: FAIL
+	CSSRule and CSSImportRule types: PASS
+	CSSStyleDeclaration cssText attribute should be updated due to [PutForwards]: PASS
 	Existence and writability of CSSImportRule attributes: FAIL
-	Existence and writability of CSSImportRule supportsText attribute: FAIL
+	Existence and writability of CSSImportRule supportsText attribute: PASS
 	Existence and writability of CSSRule attributes: PASS
 	StyleSheet : MediaList mediaText attribute should be updated due to [PutForwards]: FAIL
 	Type of CSSRule#type and constant values: PASS
-	Value of CSSImportRule supportsText attribute: FAIL
+	Value of CSSImportRule supportsText attribute: PASS
 	Values of CSSImportRule attributes: FAIL
-	Values of CSSRule attributes: FAIL
+	Values of CSSRule attributes: PASS
 /css/cssom/cssom-cssText-serialize.html: OK
 	CSSStyleDeclaration cssText serializes declaration blocks.: PASS
 /css/cssom/cssom-cssstyledeclaration-set.html: OK
@@ -621,26 +621,26 @@
 	Can't serialize shorthand when longhands are set to different css-wide keywords: FAIL
 	Can't serialize shorthand when longhands have different priority: PASS
 /css/cssom/cssom-pagerule.html: OK
-	Cannot set cssText to invalid pseudo page - return default @page { }: FAIL
-	Cannot set cssText to named page with pseudo, whitespace between - return default @page { }: FAIL
-	Cannot set cssText to two pseudos, whitespace between - return default @page { }: FAIL
-	Cannot set selectorText to invalid pseudo page: FAIL
-	Cannot set selectorText to named page with pseudo, whitespace between: FAIL
-	Cannot set selectorText to two pseudos, whitespace between: FAIL
-	Page selector 'cssText' is initially the @page { }: FAIL
-	Page selector is initially the empty string: FAIL
+	Cannot set cssText to invalid pseudo page - return default @page { }: PASS
+	Cannot set cssText to named page with pseudo, whitespace between - return default @page { }: PASS
+	Cannot set cssText to two pseudos, whitespace between - return default @page { }: PASS
+	Cannot set selectorText to invalid pseudo page: PASS
+	Cannot set selectorText to named page with pseudo, whitespace between: PASS
+	Cannot set selectorText to two pseudos, whitespace between: PASS
+	Page selector 'cssText' is initially the @page { }: PASS
+	Page selector is initially the empty string: PASS
 	Sanity checks: PASS
-	Set cssText to :left pseudo page: FAIL
-	Set cssText to named page: FAIL
-	Set cssText to named page with :first pseudo page: FAIL
-	Set cssText to named page with case insensitive :first pseudo page: FAIL
-	Set cssText to named page with pseudo pages of :first, :left, :right, :first in order.: FAIL
-	Set cssText to named page with two :first pseudo page: FAIL
+	Set cssText to :left pseudo page: PASS
+	Set cssText to named page: PASS
+	Set cssText to named page with :first pseudo page: PASS
+	Set cssText to named page with case insensitive :first pseudo page: PASS
+	Set cssText to named page with pseudo pages of :first, :left, :right, :first in order.: PASS
+	Set cssText to named page with two :first pseudo page: PASS
 	Set selectorText to :left pseudo page: PASS
 	Set selectorText to named page: PASS
 	Set selectorText to named page after rule was removed: FAIL
 	Set selectorText to named page with :first pseudo page: PASS
-	Set selectorText to named page with case insensitive :first pseudo page: FAIL
+	Set selectorText to named page with case insensitive :first pseudo page: PASS
 	Set selectorText to named page with pseudo pages of :first, :left, :right, :first in order.: PASS
 	Set selectorText to named page with two :first pseudo page: PASS
 /css/cssom/cssom-ruleTypeAndOrder.html: OK
@@ -2972,11 +2972,11 @@
 /css/cssom/getComputedStyle-width-scroll.tentative.html: OK
 	getComputedStyle() round-trips in presence of scrollbars: PASS
 /css/cssom/grouping-rule-no-nested-declarations.html: OK
-	Bare declaration inside top-level @media produces no child rules: FAIL
-	Bare declaration inside top-level @supports produces no child rules: FAIL
-	Declaration after style rule inside top-level @media is dropped, not wrapped: FAIL
+	Bare declaration inside top-level @media produces no child rules: PASS
+	Bare declaration inside top-level @supports produces no child rules: PASS
+	Declaration after style rule inside top-level @media is dropped, not wrapped: PASS
 	Declaration inside @media in nesting context is correctly wrapped as CSSNestedDeclarations: FAIL
-	Multiple bare declarations inside top-level @media produce no child rules: FAIL
+	Multiple bare declarations inside top-level @media produce no child rules: PASS
 /css/cssom/historical.html: OK
 	Historical CSSStyleDeclaration member: getPropertyCSSValue: PASS
 	Historical CSSStyleDeclaration member: setPropertyPriority: PASS
@@ -3026,45 +3026,45 @@
 	CSSGroupingRule interface: sheet.cssRules[4] must inherit property "cssRules" with the proper type: FAIL
 	CSSGroupingRule interface: sheet.cssRules[4] must inherit property "deleteRule(unsigned long)" with the proper type: FAIL
 	CSSGroupingRule interface: sheet.cssRules[4] must inherit property "insertRule(CSSOMString, optional unsigned long)" with the proper type: FAIL
-	CSSImportRule interface object length: FAIL
-	CSSImportRule interface object name: FAIL
-	CSSImportRule interface: attribute href: FAIL
-	CSSImportRule interface: attribute layerName: FAIL
-	CSSImportRule interface: attribute media: FAIL
+	CSSImportRule interface object length: PASS
+	CSSImportRule interface object name: PASS
+	CSSImportRule interface: attribute href: PASS
+	CSSImportRule interface: attribute layerName: PASS
+	CSSImportRule interface: attribute media: PASS
 	CSSImportRule interface: attribute styleSheet: FAIL
-	CSSImportRule interface: attribute supportsText: FAIL
-	CSSImportRule interface: existence and properties of interface object: FAIL
-	CSSImportRule interface: existence and properties of interface prototype object: FAIL
-	CSSImportRule interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	CSSImportRule interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	CSSImportRule interface: sheet.cssRules[0] must inherit property "href" with the proper type: FAIL
-	CSSImportRule interface: sheet.cssRules[0] must inherit property "layerName" with the proper type: FAIL
-	CSSImportRule interface: sheet.cssRules[0] must inherit property "media" with the proper type: FAIL
+	CSSImportRule interface: attribute supportsText: PASS
+	CSSImportRule interface: existence and properties of interface object: PASS
+	CSSImportRule interface: existence and properties of interface prototype object: PASS
+	CSSImportRule interface: existence and properties of interface prototype object's "constructor" property: PASS
+	CSSImportRule interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	CSSImportRule interface: sheet.cssRules[0] must inherit property "href" with the proper type: PASS
+	CSSImportRule interface: sheet.cssRules[0] must inherit property "layerName" with the proper type: PASS
+	CSSImportRule interface: sheet.cssRules[0] must inherit property "media" with the proper type: PASS
 	CSSImportRule interface: sheet.cssRules[0] must inherit property "styleSheet" with the proper type: FAIL
-	CSSImportRule interface: sheet.cssRules[0] must inherit property "supportsText" with the proper type: FAIL
-	CSSImportRule must be primary interface of sheet.cssRules[0]: FAIL
-	CSSMarginRule interface object length: FAIL
-	CSSMarginRule interface object name: FAIL
-	CSSMarginRule interface: attribute name: FAIL
-	CSSMarginRule interface: attribute style: FAIL
-	CSSMarginRule interface: existence and properties of interface object: FAIL
-	CSSMarginRule interface: existence and properties of interface prototype object: FAIL
-	CSSMarginRule interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	CSSMarginRule interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	CSSMarginRule interface: sheet.cssRules[2].cssRules[0] must inherit property "name" with the proper type: FAIL
-	CSSMarginRule interface: sheet.cssRules[2].cssRules[0] must inherit property "style" with the proper type: FAIL
-	CSSMarginRule must be primary interface of sheet.cssRules[2].cssRules[0]: FAIL
-	CSSNamespaceRule interface object length: FAIL
-	CSSNamespaceRule interface object name: FAIL
-	CSSNamespaceRule interface: attribute namespaceURI: FAIL
-	CSSNamespaceRule interface: attribute prefix: FAIL
-	CSSNamespaceRule interface: existence and properties of interface object: FAIL
-	CSSNamespaceRule interface: existence and properties of interface prototype object: FAIL
-	CSSNamespaceRule interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	CSSNamespaceRule interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	CSSNamespaceRule interface: sheet.cssRules[1] must inherit property "namespaceURI" with the proper type: FAIL
-	CSSNamespaceRule interface: sheet.cssRules[1] must inherit property "prefix" with the proper type: FAIL
-	CSSNamespaceRule must be primary interface of sheet.cssRules[1]: FAIL
+	CSSImportRule interface: sheet.cssRules[0] must inherit property "supportsText" with the proper type: PASS
+	CSSImportRule must be primary interface of sheet.cssRules[0]: PASS
+	CSSMarginRule interface object length: PASS
+	CSSMarginRule interface object name: PASS
+	CSSMarginRule interface: attribute name: PASS
+	CSSMarginRule interface: attribute style: PASS
+	CSSMarginRule interface: existence and properties of interface object: PASS
+	CSSMarginRule interface: existence and properties of interface prototype object: PASS
+	CSSMarginRule interface: existence and properties of interface prototype object's "constructor" property: PASS
+	CSSMarginRule interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	CSSMarginRule interface: sheet.cssRules[2].cssRules[0] must inherit property "name" with the proper type: PASS
+	CSSMarginRule interface: sheet.cssRules[2].cssRules[0] must inherit property "style" with the proper type: PASS
+	CSSMarginRule must be primary interface of sheet.cssRules[2].cssRules[0]: PASS
+	CSSNamespaceRule interface object length: PASS
+	CSSNamespaceRule interface object name: PASS
+	CSSNamespaceRule interface: attribute namespaceURI: PASS
+	CSSNamespaceRule interface: attribute prefix: PASS
+	CSSNamespaceRule interface: existence and properties of interface object: PASS
+	CSSNamespaceRule interface: existence and properties of interface prototype object: PASS
+	CSSNamespaceRule interface: existence and properties of interface prototype object's "constructor" property: PASS
+	CSSNamespaceRule interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	CSSNamespaceRule interface: sheet.cssRules[1] must inherit property "namespaceURI" with the proper type: PASS
+	CSSNamespaceRule interface: sheet.cssRules[1] must inherit property "prefix" with the proper type: PASS
+	CSSNamespaceRule must be primary interface of sheet.cssRules[1]: PASS
 	CSSPageDescriptors interface object length: FAIL
 	CSSPageDescriptors interface object name: FAIL
 	CSSPageDescriptors interface: attribute bleed: FAIL
@@ -3086,31 +3086,31 @@
 	CSSPageDescriptors interface: existence and properties of interface prototype object's "constructor" property: FAIL
 	CSSPageDescriptors interface: existence and properties of interface prototype object's @@unscopables property: FAIL
 	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "bleed" with the proper type: FAIL
-	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "margin" with the proper type: FAIL
-	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "margin-bottom" with the proper type: FAIL
-	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "margin-left" with the proper type: FAIL
-	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "margin-right" with the proper type: FAIL
-	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "margin-top" with the proper type: FAIL
-	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "marginBottom" with the proper type: FAIL
-	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "marginLeft" with the proper type: FAIL
-	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "marginRight" with the proper type: FAIL
-	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "marginTop" with the proper type: FAIL
+	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "margin" with the proper type: PASS
+	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "margin-bottom" with the proper type: PASS
+	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "margin-left" with the proper type: PASS
+	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "margin-right" with the proper type: PASS
+	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "margin-top" with the proper type: PASS
+	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "marginBottom" with the proper type: PASS
+	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "marginLeft" with the proper type: PASS
+	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "marginRight" with the proper type: PASS
+	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "marginTop" with the proper type: PASS
 	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "marks" with the proper type: FAIL
 	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "page-orientation" with the proper type: FAIL
 	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "pageOrientation" with the proper type: FAIL
 	CSSPageDescriptors interface: sheet.cssRules[2].style must inherit property "size" with the proper type: FAIL
 	CSSPageDescriptors must be primary interface of sheet.cssRules[2].style: FAIL
-	CSSPageRule interface object length: FAIL
-	CSSPageRule interface object name: FAIL
-	CSSPageRule interface: attribute selectorText: FAIL
-	CSSPageRule interface: attribute style: FAIL
-	CSSPageRule interface: existence and properties of interface object: FAIL
-	CSSPageRule interface: existence and properties of interface prototype object: FAIL
-	CSSPageRule interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	CSSPageRule interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	CSSPageRule interface: sheet.cssRules[2] must inherit property "selectorText" with the proper type: FAIL
-	CSSPageRule interface: sheet.cssRules[2] must inherit property "style" with the proper type: FAIL
-	CSSPageRule must be primary interface of sheet.cssRules[2]: FAIL
+	CSSPageRule interface object length: PASS
+	CSSPageRule interface object name: PASS
+	CSSPageRule interface: attribute selectorText: PASS
+	CSSPageRule interface: attribute style: PASS
+	CSSPageRule interface: existence and properties of interface object: PASS
+	CSSPageRule interface: existence and properties of interface prototype object: PASS
+	CSSPageRule interface: existence and properties of interface prototype object's "constructor" property: PASS
+	CSSPageRule interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	CSSPageRule interface: sheet.cssRules[2] must inherit property "selectorText" with the proper type: PASS
+	CSSPageRule interface: sheet.cssRules[2] must inherit property "style" with the proper type: PASS
+	CSSPageRule must be primary interface of sheet.cssRules[2]: PASS
 	CSSRule interface object length: PASS
 	CSSRule interface object name: PASS
 	CSSRule interface: attribute cssText: FAIL
@@ -3215,32 +3215,32 @@
 	CSSStyleDeclaration interface: attribute length: PASS
 	CSSStyleDeclaration interface: attribute parentRule: PASS
 	CSSStyleDeclaration interface: calling getPropertyPriority(CSSOMString) on getComputedStyle(svg_element) with too few arguments must throw TypeError: PASS
-	CSSStyleDeclaration interface: calling getPropertyPriority(CSSOMString) on sheet.cssRules[2].cssRules[0].style with too few arguments must throw TypeError: FAIL
-	CSSStyleDeclaration interface: calling getPropertyPriority(CSSOMString) on sheet.cssRules[2].style with too few arguments must throw TypeError: FAIL
+	CSSStyleDeclaration interface: calling getPropertyPriority(CSSOMString) on sheet.cssRules[2].cssRules[0].style with too few arguments must throw TypeError: PASS
+	CSSStyleDeclaration interface: calling getPropertyPriority(CSSOMString) on sheet.cssRules[2].style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling getPropertyPriority(CSSOMString) on sheet.cssRules[4].style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling getPropertyPriority(CSSOMString) on style_element.style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling getPropertyPriority(CSSOMString) on svg_element.style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling getPropertyValue(CSSOMString) on getComputedStyle(svg_element) with too few arguments must throw TypeError: PASS
-	CSSStyleDeclaration interface: calling getPropertyValue(CSSOMString) on sheet.cssRules[2].cssRules[0].style with too few arguments must throw TypeError: FAIL
-	CSSStyleDeclaration interface: calling getPropertyValue(CSSOMString) on sheet.cssRules[2].style with too few arguments must throw TypeError: FAIL
+	CSSStyleDeclaration interface: calling getPropertyValue(CSSOMString) on sheet.cssRules[2].cssRules[0].style with too few arguments must throw TypeError: PASS
+	CSSStyleDeclaration interface: calling getPropertyValue(CSSOMString) on sheet.cssRules[2].style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling getPropertyValue(CSSOMString) on sheet.cssRules[4].style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling getPropertyValue(CSSOMString) on style_element.style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling getPropertyValue(CSSOMString) on svg_element.style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling item(unsigned long) on getComputedStyle(svg_element) with too few arguments must throw TypeError: PASS
-	CSSStyleDeclaration interface: calling item(unsigned long) on sheet.cssRules[2].cssRules[0].style with too few arguments must throw TypeError: FAIL
-	CSSStyleDeclaration interface: calling item(unsigned long) on sheet.cssRules[2].style with too few arguments must throw TypeError: FAIL
+	CSSStyleDeclaration interface: calling item(unsigned long) on sheet.cssRules[2].cssRules[0].style with too few arguments must throw TypeError: PASS
+	CSSStyleDeclaration interface: calling item(unsigned long) on sheet.cssRules[2].style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling item(unsigned long) on sheet.cssRules[4].style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling item(unsigned long) on style_element.style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling item(unsigned long) on svg_element.style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling removeProperty(CSSOMString) on getComputedStyle(svg_element) with too few arguments must throw TypeError: PASS
-	CSSStyleDeclaration interface: calling removeProperty(CSSOMString) on sheet.cssRules[2].cssRules[0].style with too few arguments must throw TypeError: FAIL
-	CSSStyleDeclaration interface: calling removeProperty(CSSOMString) on sheet.cssRules[2].style with too few arguments must throw TypeError: FAIL
+	CSSStyleDeclaration interface: calling removeProperty(CSSOMString) on sheet.cssRules[2].cssRules[0].style with too few arguments must throw TypeError: PASS
+	CSSStyleDeclaration interface: calling removeProperty(CSSOMString) on sheet.cssRules[2].style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling removeProperty(CSSOMString) on sheet.cssRules[4].style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling removeProperty(CSSOMString) on style_element.style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling removeProperty(CSSOMString) on svg_element.style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling setProperty(CSSOMString, CSSOMString, optional CSSOMString) on getComputedStyle(svg_element) with too few arguments must throw TypeError: PASS
-	CSSStyleDeclaration interface: calling setProperty(CSSOMString, CSSOMString, optional CSSOMString) on sheet.cssRules[2].cssRules[0].style with too few arguments must throw TypeError: FAIL
-	CSSStyleDeclaration interface: calling setProperty(CSSOMString, CSSOMString, optional CSSOMString) on sheet.cssRules[2].style with too few arguments must throw TypeError: FAIL
+	CSSStyleDeclaration interface: calling setProperty(CSSOMString, CSSOMString, optional CSSOMString) on sheet.cssRules[2].cssRules[0].style with too few arguments must throw TypeError: PASS
+	CSSStyleDeclaration interface: calling setProperty(CSSOMString, CSSOMString, optional CSSOMString) on sheet.cssRules[2].style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling setProperty(CSSOMString, CSSOMString, optional CSSOMString) on sheet.cssRules[4].style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling setProperty(CSSOMString, CSSOMString, optional CSSOMString) on style_element.style with too few arguments must throw TypeError: PASS
 	CSSStyleDeclaration interface: calling setProperty(CSSOMString, CSSOMString, optional CSSOMString) on svg_element.style with too few arguments must throw TypeError: PASS
@@ -3261,22 +3261,22 @@
 	CSSStyleDeclaration interface: operation item(unsigned long): PASS
 	CSSStyleDeclaration interface: operation removeProperty(CSSOMString): PASS
 	CSSStyleDeclaration interface: operation setProperty(CSSOMString, CSSOMString, optional CSSOMString): PASS
-	CSSStyleDeclaration interface: sheet.cssRules[2].cssRules[0].style must inherit property "cssText" with the proper type: FAIL
-	CSSStyleDeclaration interface: sheet.cssRules[2].cssRules[0].style must inherit property "getPropertyPriority(CSSOMString)" with the proper type: FAIL
-	CSSStyleDeclaration interface: sheet.cssRules[2].cssRules[0].style must inherit property "getPropertyValue(CSSOMString)" with the proper type: FAIL
-	CSSStyleDeclaration interface: sheet.cssRules[2].cssRules[0].style must inherit property "item(unsigned long)" with the proper type: FAIL
-	CSSStyleDeclaration interface: sheet.cssRules[2].cssRules[0].style must inherit property "length" with the proper type: FAIL
-	CSSStyleDeclaration interface: sheet.cssRules[2].cssRules[0].style must inherit property "parentRule" with the proper type: FAIL
-	CSSStyleDeclaration interface: sheet.cssRules[2].cssRules[0].style must inherit property "removeProperty(CSSOMString)" with the proper type: FAIL
-	CSSStyleDeclaration interface: sheet.cssRules[2].cssRules[0].style must inherit property "setProperty(CSSOMString, CSSOMString, optional CSSOMString)" with the proper type: FAIL
-	CSSStyleDeclaration interface: sheet.cssRules[2].style must inherit property "cssText" with the proper type: FAIL
-	CSSStyleDeclaration interface: sheet.cssRules[2].style must inherit property "getPropertyPriority(CSSOMString)" with the proper type: FAIL
-	CSSStyleDeclaration interface: sheet.cssRules[2].style must inherit property "getPropertyValue(CSSOMString)" with the proper type: FAIL
-	CSSStyleDeclaration interface: sheet.cssRules[2].style must inherit property "item(unsigned long)" with the proper type: FAIL
-	CSSStyleDeclaration interface: sheet.cssRules[2].style must inherit property "length" with the proper type: FAIL
-	CSSStyleDeclaration interface: sheet.cssRules[2].style must inherit property "parentRule" with the proper type: FAIL
-	CSSStyleDeclaration interface: sheet.cssRules[2].style must inherit property "removeProperty(CSSOMString)" with the proper type: FAIL
-	CSSStyleDeclaration interface: sheet.cssRules[2].style must inherit property "setProperty(CSSOMString, CSSOMString, optional CSSOMString)" with the proper type: FAIL
+	CSSStyleDeclaration interface: sheet.cssRules[2].cssRules[0].style must inherit property "cssText" with the proper type: PASS
+	CSSStyleDeclaration interface: sheet.cssRules[2].cssRules[0].style must inherit property "getPropertyPriority(CSSOMString)" with the proper type: PASS
+	CSSStyleDeclaration interface: sheet.cssRules[2].cssRules[0].style must inherit property "getPropertyValue(CSSOMString)" with the proper type: PASS
+	CSSStyleDeclaration interface: sheet.cssRules[2].cssRules[0].style must inherit property "item(unsigned long)" with the proper type: PASS
+	CSSStyleDeclaration interface: sheet.cssRules[2].cssRules[0].style must inherit property "length" with the proper type: PASS
+	CSSStyleDeclaration interface: sheet.cssRules[2].cssRules[0].style must inherit property "parentRule" with the proper type: PASS
+	CSSStyleDeclaration interface: sheet.cssRules[2].cssRules[0].style must inherit property "removeProperty(CSSOMString)" with the proper type: PASS
+	CSSStyleDeclaration interface: sheet.cssRules[2].cssRules[0].style must inherit property "setProperty(CSSOMString, CSSOMString, optional CSSOMString)" with the proper type: PASS
+	CSSStyleDeclaration interface: sheet.cssRules[2].style must inherit property "cssText" with the proper type: PASS
+	CSSStyleDeclaration interface: sheet.cssRules[2].style must inherit property "getPropertyPriority(CSSOMString)" with the proper type: PASS
+	CSSStyleDeclaration interface: sheet.cssRules[2].style must inherit property "getPropertyValue(CSSOMString)" with the proper type: PASS
+	CSSStyleDeclaration interface: sheet.cssRules[2].style must inherit property "item(unsigned long)" with the proper type: PASS
+	CSSStyleDeclaration interface: sheet.cssRules[2].style must inherit property "length" with the proper type: PASS
+	CSSStyleDeclaration interface: sheet.cssRules[2].style must inherit property "parentRule" with the proper type: PASS
+	CSSStyleDeclaration interface: sheet.cssRules[2].style must inherit property "removeProperty(CSSOMString)" with the proper type: PASS
+	CSSStyleDeclaration interface: sheet.cssRules[2].style must inherit property "setProperty(CSSOMString, CSSOMString, optional CSSOMString)" with the proper type: PASS
 	CSSStyleDeclaration interface: sheet.cssRules[4].style must inherit property "cssText" with the proper type: PASS
 	CSSStyleDeclaration interface: sheet.cssRules[4].style must inherit property "getPropertyPriority(CSSOMString)" with the proper type: PASS
 	CSSStyleDeclaration interface: sheet.cssRules[4].style must inherit property "getPropertyValue(CSSOMString)" with the proper type: PASS
@@ -3309,12 +3309,12 @@
 	CSSStyleProperties interface: existence and properties of interface prototype object's "constructor" property: PASS
 	CSSStyleProperties interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	CSSStyleProperties interface: getComputedStyle(svg_element) must inherit property "cssFloat" with the proper type: PASS
-	CSSStyleProperties interface: sheet.cssRules[2].cssRules[0].style must inherit property "cssFloat" with the proper type: FAIL
+	CSSStyleProperties interface: sheet.cssRules[2].cssRules[0].style must inherit property "cssFloat" with the proper type: PASS
 	CSSStyleProperties interface: sheet.cssRules[4].style must inherit property "cssFloat" with the proper type: PASS
 	CSSStyleProperties interface: style_element.style must inherit property "cssFloat" with the proper type: PASS
 	CSSStyleProperties interface: svg_element.style must inherit property "cssFloat" with the proper type: PASS
 	CSSStyleProperties must be primary interface of getComputedStyle(svg_element): PASS
-	CSSStyleProperties must be primary interface of sheet.cssRules[2].cssRules[0].style: FAIL
+	CSSStyleProperties must be primary interface of sheet.cssRules[2].cssRules[0].style: PASS
 	CSSStyleProperties must be primary interface of sheet.cssRules[4].style: PASS
 	CSSStyleProperties must be primary interface of style_element.style: PASS
 	CSSStyleProperties must be primary interface of svg_element.style: PASS
@@ -3393,26 +3393,26 @@
 	MathMLElement includes GlobalEventHandlers: member names are unique: PASS
 	MathMLElement includes HTMLOrSVGOrMathMLElement: member names are unique: PASS
 	MathMLElement interface: attribute style: PASS
-	MediaList interface object length: FAIL
-	MediaList interface object name: FAIL
-	MediaList interface: attribute length: FAIL
+	MediaList interface object length: PASS
+	MediaList interface object name: PASS
+	MediaList interface: attribute length: PASS
 	MediaList interface: attribute mediaText: FAIL
 	MediaList interface: calling appendMedium(CSSOMString) on sheet.media with too few arguments must throw TypeError: FAIL
 	MediaList interface: calling deleteMedium(CSSOMString) on sheet.media with too few arguments must throw TypeError: FAIL
 	MediaList interface: calling item(unsigned long) on sheet.media with too few arguments must throw TypeError: FAIL
-	MediaList interface: existence and properties of interface object: FAIL
-	MediaList interface: existence and properties of interface prototype object: FAIL
-	MediaList interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	MediaList interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	MediaList interface: existence and properties of interface object: PASS
+	MediaList interface: existence and properties of interface prototype object: PASS
+	MediaList interface: existence and properties of interface prototype object's "constructor" property: PASS
+	MediaList interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	MediaList interface: operation appendMedium(CSSOMString): FAIL
 	MediaList interface: operation deleteMedium(CSSOMString): FAIL
-	MediaList interface: operation item(unsigned long): FAIL
+	MediaList interface: operation item(unsigned long): PASS
 	MediaList interface: sheet.media must inherit property "appendMedium(CSSOMString)" with the proper type: FAIL
 	MediaList interface: sheet.media must inherit property "deleteMedium(CSSOMString)" with the proper type: FAIL
 	MediaList interface: sheet.media must inherit property "item(unsigned long)" with the proper type: FAIL
 	MediaList interface: sheet.media must inherit property "length" with the proper type: FAIL
 	MediaList interface: sheet.media must inherit property "mediaText" with the proper type: FAIL
-	MediaList interface: stringifier: FAIL
+	MediaList interface: stringifier: PASS
 	MediaList must be primary interface of sheet.media: FAIL
 	Partial interface CSSStyleSheet: member names are unique: PASS
 	Partial interface CSSStyleSheet: original interface defined: PASS
@@ -3445,8 +3445,8 @@
 	Stringification of sheet.cssRules[0]: PASS
 	Stringification of sheet.cssRules[1]: PASS
 	Stringification of sheet.cssRules[2]: PASS
-	Stringification of sheet.cssRules[2].cssRules[0]: FAIL
-	Stringification of sheet.cssRules[2].cssRules[0].style: FAIL
+	Stringification of sheet.cssRules[2].cssRules[0]: PASS
+	Stringification of sheet.cssRules[2].cssRules[0].style: PASS
 	Stringification of sheet.cssRules[2].style: FAIL
 	Stringification of sheet.cssRules[4]: PASS
 	Stringification of sheet.cssRules[4].style: PASS
@@ -3523,8 +3523,8 @@
 	insertRule with import and omitted index argument: PASS
 	insertRule with import and undefined index argument: PASS
 /css/cssom/insertRule-namespace-after-import.html: OK
-	insertRule places an @namespace rule after a single @import rule: FAIL
-	insertRule places an @namespace rule after two @import rules: FAIL
+	insertRule places an @namespace rule after a single @import rule: PASS
+	insertRule places an @namespace rule after two @import rules: PASS
 /css/cssom/insertRule-namespace-no-index.html: OK
 	insertRule with namespace and omitted index argument: FAIL
 	insertRule with namespace and omitted index argument should insert import: FAIL
@@ -3588,25 +3588,25 @@
 	Single value overflow with CSS-wide keyword should serialize correctly.: FAIL
 	Single value overflow with non-CSS-wide keyword should serialize correctly.: FAIL
 /css/cssom/page-descriptors.html: OK
-	@page margin descriptor expands to its longhands: FAIL
-	@page margin-bottom and marginBottom are aliases: FAIL
-	@page margin-left and marginLeft are aliases: FAIL
-	@page margin-right and marginRight are aliases: FAIL
-	@page margin-top and marginTop are aliases: FAIL
+	@page margin descriptor expands to its longhands: PASS
+	@page margin-bottom and marginBottom are aliases: PASS
+	@page margin-left and marginLeft are aliases: PASS
+	@page margin-right and marginRight are aliases: PASS
+	@page margin-top and marginTop are aliases: PASS
 	@page page-orientation descriptor can be set from script: FAIL
 	@page page-orientation descriptor is parsed and serialized from CSS: FAIL
 	@page size descriptor can be set from script: FAIL
 	@page size descriptor is parsed and serialized from CSS: FAIL
 	CSSPageDescriptors does not expose properties that are not @page descriptors: FAIL
-	CSSPageDescriptors exposes "margin": FAIL
-	CSSPageDescriptors exposes "margin-bottom": FAIL
-	CSSPageDescriptors exposes "margin-left": FAIL
-	CSSPageDescriptors exposes "margin-right": FAIL
-	CSSPageDescriptors exposes "margin-top": FAIL
-	CSSPageDescriptors exposes "marginBottom": FAIL
-	CSSPageDescriptors exposes "marginLeft": FAIL
-	CSSPageDescriptors exposes "marginRight": FAIL
-	CSSPageDescriptors exposes "marginTop": FAIL
+	CSSPageDescriptors exposes "margin": PASS
+	CSSPageDescriptors exposes "margin-bottom": PASS
+	CSSPageDescriptors exposes "margin-left": PASS
+	CSSPageDescriptors exposes "margin-right": PASS
+	CSSPageDescriptors exposes "margin-top": PASS
+	CSSPageDescriptors exposes "marginBottom": PASS
+	CSSPageDescriptors exposes "marginLeft": PASS
+	CSSPageDescriptors exposes "marginRight": PASS
+	CSSPageDescriptors exposes "marginTop": PASS
 	CSSPageDescriptors exposes "page-orientation": FAIL
 	CSSPageDescriptors exposes "size": FAIL
 /css/cssom/preferred-stylesheet-order.html: OK
@@ -3630,32 +3630,32 @@
 	@keyframe: FAIL
 	@page: FAIL
 /css/cssom/selectorSerialize.html: OK
-	:nth-child serialization produces canonical form: FAIL
+	:nth-child serialization produces canonical form: PASS
 	escaped character (*) in element prefix: FAIL
 	escaped character (@) in attribute name: PASS
 	escaped character (\\) in element name: PASS
 	escaped character (\\) in element name with any namespace with default: PASS
 	escaped character (\\) in element name with any namespace without default: FAIL
 	escaped character (\\) in element name with no namespace: PASS
-	escaped character as code point in attribute name: FAIL
+	escaped character as code point in attribute name: PASS
 	escaped character in attribute name: PASS
 	escaped character in attribute name with any namespace: PASS
 	escaped character in attribute prefix: FAIL
 	escaped character in both attribute prefix and name: FAIL
 	single class (simple) selector in the sequence of simple selectors that is not a universal selector: PASS
 	single id (simple) selector in the sequence of simple selectors that is not a universal selector: PASS
-	single pseudo (simple) selector ":not" which accepts arguments in the sequence of simple selectors that is not a universal selector: FAIL
-	single pseudo (simple) selector ":nth-last-of-type" which accepts arguments in the sequence of simple selectors that is not a universal selector: FAIL
-	single pseudo (simple) selector "lang" which accepts arguments in the sequence of simple selectors that is not a universal selector: FAIL
-	single pseudo (simple) selector "nth-child" which accepts arguments in the sequence of simple selectors that is not a universal selector: FAIL
-	single pseudo (simple) selector "nth-last-child" which accepts arguments in the sequence of simple selectors that is not a universal selector: FAIL
-	single pseudo (simple) selector "nth-of-child" which accepts arguments in the sequence of simple selectors that is not a universal selector: FAIL
+	single pseudo (simple) selector ":not" which accepts arguments in the sequence of simple selectors that is not a universal selector: PASS
+	single pseudo (simple) selector ":nth-last-of-type" which accepts arguments in the sequence of simple selectors that is not a universal selector: PASS
+	single pseudo (simple) selector "lang" which accepts arguments in the sequence of simple selectors that is not a universal selector: PASS
+	single pseudo (simple) selector "nth-child" which accepts arguments in the sequence of simple selectors that is not a universal selector: PASS
+	single pseudo (simple) selector "nth-last-child" which accepts arguments in the sequence of simple selectors that is not a universal selector: PASS
+	single pseudo (simple) selector "nth-of-child" which accepts arguments in the sequence of simple selectors that is not a universal selector: PASS
 	single pseudo (simple) selector which does not accept arguments in the sequence of simple selectors that is not a universal selector: PASS
 	single type (simple) selector in the sequence of simple selectors that is not a universal selector: PASS
 	single universal selector shows '*' when serialized.: PASS
 /css/cssom/selectorText-modification-restyle-002.html: OK
 	Check initial color.: PASS
-	Check that color changes correctly after shadow stylesheet selector and #container class is changed.: FAIL
+	Check that color changes correctly after shadow stylesheet selector and #container class is changed.: PASS
 /css/cssom/serialization-CSSDeclaration-with-important.html: OK
 	Inline style declaration with whitespace between '!' and 'important'.: PASS
 	Inline style declaration without whitespace between '!' and 'important'.: PASS
@@ -3686,18 +3686,18 @@
 	z-index can take a custom property set to a 6-digit integer: PASS
 	z-index can take a custom property set to a 8-digit integer: PASS
 /css/cssom/serialize-media-rule.html: OK
-	empty media query list: FAIL
-	features - character case normalization: FAIL
-	features - no lexicographical sorting: FAIL
-	features - preservation of overspecified features: FAIL
+	empty media query list: PASS
+	features - character case normalization: PASS
+	features - no lexicographical sorting: PASS
+	features - preservation of overspecified features: PASS
 	many rules: FAIL
-	media query list: FAIL
+	media query list: PASS
 	one rule: FAIL
-	type - inclusion of negated all: FAIL
-	type - no features: FAIL
-	type - no features - character case normalization: FAIL
-	type - no features - negation: FAIL
-	type - omission of all: FAIL
+	type - inclusion of negated all: PASS
+	type - no features: PASS
+	type - no features - character case normalization: PASS
+	type - no features - negation: PASS
+	type - omission of all: PASS
 /css/cssom/serialize-namespaced-type-selectors.html: OK
 	Simple type selector: PASS
 	Simple type selector followed by atttribute selector: PASS

@@ -93,9 +93,13 @@ partial module dom {
   u64 CSSStyleSheet_create(string media, bool disabled, string base_url);
   /// replaceSync(text) / replace(text): the rules of `text`, @import rules dropped.
   void CSSStyleSheet_replaceText(u64 sheet, string text) raises;
-  /// The number of top-level rules, and the text of one (Index_Size past the end).
+  /// The number of top-level rules, and the cssText of one, CSSOM's serialization of the rule as parsed (Index_Size
+  /// past the end).
   u32 CSSStyleSheet_ruleCount(u64 sheet);
   string CSSStyleSheet_ruleText(u64 sheet, u32 index) raises;
+  /// CSSStyleRule.selectorText = selector, on the top-level rule numbered `rule_id` (CSSStyleSheet_ruleId): the
+  /// rule's new cssText, "" when nothing changed (the rule is gone, not a style rule, or the selector is invalid).
+  string CSSStyleSheet_setRuleSelector(u64 sheet, u32 rule_id, string selector);
   /// insertRule(rule, index): Index_Size past the end, Syntax when `rule` is not one rule; the index.
   u32 CSSStyleSheet_insertRuleAt(u64 sheet, string rule, u32 index) raises;
   /// deleteRule(index): Index_Size past the end.

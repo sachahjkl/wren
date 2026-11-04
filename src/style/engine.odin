@@ -806,7 +806,7 @@ flatten_rule :: proc(e: ^Engine, r: ^css.Rule, origin: Origin, lc: LayerCtx) {
 		append(e.cur == &e.rules ? &e.keyframes : &e.cur.kf_refs, Keyframes_Ref{rule = r, layer = lc.rank, order = e.kf_order, origin = origin})
 	case .Property: if e.cur == &e.rules { register_property(e, r) }
 	case .Position_Try: try_rule_add(e, r, lc.rank)
-	case .Import, .Namespace, .Page, .Unknown:
+	case .Import, .Namespace, .Page, .Margin, .Unknown:
 	}
 }
 
