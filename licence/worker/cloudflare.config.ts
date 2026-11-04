@@ -11,13 +11,13 @@ const settings = {
 	production: {
 		name: "wren-licence",
 		PADDLE_API_BASE: "https://api.paddle.com",
-		ALLOWED_ORIGIN: "https://sachahjkl.github.io",
-		PRICE_SUPPORTER: "",   // the live price id (pri_...), once the live catalog exists
+		ALLOWED_ORIGIN: "https://wren.froment.software,https://sachahjkl.github.io",
+		PRICE_SUPPORTER: "pri_01m6kfkhzrwvx28tr378f8ztr3",   // live: product "Wren licence" pro_01m6kfkhr4b032d7r1wz4sk62y, 29 EUR once
 	},
 	sandbox: {
 		name: "wren-licence-sandbox",
 		PADDLE_API_BASE: "https://sandbox-api.paddle.com",
-		ALLOWED_ORIGIN: "https://sachahjkl.github.io,http://localhost:8765",
+		ALLOWED_ORIGIN: "https://wren.froment.software,https://sachahjkl.github.io,http://localhost:8765",
 		PRICE_SUPPORTER: "pri_01m6kd3nvpkemxgwamft6z2fjw",   // sandbox: product "Wren licence" pro_01m6kd3nk27p1jhyjcd913ny45, 29 EUR once
 	},
 };

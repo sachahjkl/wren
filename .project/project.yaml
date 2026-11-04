@@ -7,7 +7,7 @@ topics:
   - "windows"
   - "wasmtime"
   - "direct3d"
-homepage: "https://sachahjkl.github.io/wren/"
+homepage: "https://wren.froment.software/"
 source:
   provider: github
   namespace: "sachahjkl"
