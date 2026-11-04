@@ -110,6 +110,28 @@ new_client :: proc(h: ^Harness, origin := "http://a.test") -> ^Client {
 	return client_create(&h.m, origin, proc(c: ^Client) {}, nil)
 }
 
+// The first words of what is freed are overwritten, as glibc's heap does and Windows' mostly does not: what reads a block it just freed reads this.
+@(private = "file") SCRIBBLE_WORDS :: 2
+
+@(private = "file")
+scribble_proc :: proc(data: rawptr, mode: runtime.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, loc := #caller_location) -> ([]byte, runtime.Allocator_Error) {
+	if mode == .Free && old_memory != nil { for &w in ([^]u64)(old_memory)[:SCRIBBLE_WORDS] { w = max(u64) } }
+	inner := (^runtime.Allocator)(data)
+	return inner.procedure(inner.data, mode, size, alignment, old_memory, old_size, loc)
+}
+
+// The deferred unlock of client_destroy read the manager from the client it had just freed: a segmentation fault on Linux when a page with a database closed (github.com, npr.org).
+@(test)
+a_client_is_not_read_once_it_is_freed :: proc(t: ^testing.T) {
+	inner := context.allocator
+	context.allocator = {scribble_proc, &inner}
+	h: Harness
+	harness_init(&h, "scribble")
+	defer harness_destroy(&h)
+	client_destroy(new_client(&h))
+	testing.expect_value(t, len(h.m.clients), 0)
+}
+
 // Everything that arrived for the client since the last call, as "kind req/conn/tx" strings.
 @(private)
 drain :: proc(h: ^Harness, c: ^Client) -> [dynamic]Event {
