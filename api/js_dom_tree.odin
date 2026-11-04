@@ -330,6 +330,11 @@ DOMParser_parseHTMLNode :: proc(html: string) -> Node
 //@wb fn raises
 DOMParser_parseXMLNode :: proc(text: string, type: string) -> Node
 
+/// The response document of an XMLHttpRequest (XHR "set a document response"): `type` text/html, or an XML type. Nothing loads
+/// or runs in it. 0 for XML that is not well-formed; Quota past dom.max_fragment_nodes.
+//@wb fn raises
+Document_parseResponse :: proc(text: string, type: string) -> Node
+
 /// processingInstruction.target
 //@wb fn
 ProcessingInstruction_target :: proc(node: Node) -> string

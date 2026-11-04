@@ -144,6 +144,22 @@ DOMParser_parseXMLNode :: proc(c: ^Call, text: string, type: string) -> (u64, Ap
 	return u64(f), .None
 }
 
+// XHR "set a document response": as DOMParser's, but XML that is not well-formed has no document, not a <parsererror> one.
+Document_parseResponse :: proc(c: ^Call, text: string, type: string) -> (u64, Api_Error) {
+	if type == "text/html" { return DOMParser_parseHTMLNode(c, text) }
+	d := jd_doc(c)
+	if d == nil { return 0, no_document(c) }
+	kind := xml_document_kind(type)
+	if kind == .None { return 0, fail(c, .Type, "TypeError: not an XML type") }
+	f := dom.create_fragment(d)
+	fn := dom.get(d, f)
+	fn.as_document, fn.xml = true, kind
+	well_formed, fits := xml_fill(d, f, text, c.page.settings.dom.max_fragment_nodes, c.page.env.location.href)
+	if !fits || !well_formed { dom.destroy_unpinned(d, f) }
+	if !fits { return 0, fail(c, .Quota, "the document has more nodes than dom.max_fragment_nodes") }
+	return well_formed ? u64(f) : 0, .None
+}
+
 // `text` parsed as XML under `parent` (a document node): its nodes, or, when it is not well-formed, a <parsererror>
 // element saying what and where (`location`: the document's URL), as browsers show. fits = false past `limit` nodes
 // (what was built stays for the caller to drop). Any thread: touches nothing but `d`.

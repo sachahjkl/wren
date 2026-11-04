@@ -133,7 +133,6 @@ test("errors, abort, timeout", async () => {
   eq(timedOut, true, "timeout event");
   const s = new XMLHttpRequest();
   s.open("GET", "/jsweb/json", false);
-  throws(() => s.send(), "NetworkError", "synchronous requests are refused");
   throws(() => { s.timeout = 5; }, "InvalidAccessError", "timeout of a synchronous request");
   const w = new XMLHttpRequest();
   w.open("GET", OTHER + "/cors/creds");
@@ -151,6 +150,41 @@ test("blob: URL", async () => {
   await send(x);
   eq(x.responseText, "xhr blob", "XMLHttpRequest of a blob: URL");
   eq(x.getResponseHeader("content-type"), "text/plain", "its type");
+});
+
+test("a document's synchronous request", async () => {
+  let ranMeanwhile = false;
+  const timer = setTimeout(() => { ranMeanwhile = true; }, 0);
+  const s = new XMLHttpRequest();
+  const log = [];
+  s.onreadystatechange = () => log.push("rs" + s.readyState);
+  s.onload = () => log.push("load");
+  s.open("GET", "/webapi/slow?ms=50", false);
+  s.send();
+  eq(s.readyState, XMLHttpRequest.DONE, "done when send() returns");
+  eq(s.status, 200, "its status");
+  eq(log.join(" "), "rs1 rs4 load", "only the last events");
+  eq(ranMeanwhile, false, "the page's timer waits for the script");
+  clearTimeout(timer);
+  const denied = new XMLHttpRequest();
+  denied.open("GET", OTHER + "/jsweb/json", false);
+  throws(() => denied.send(), "NetworkError", "a failure throws");
+  await new Promise(resolve => setTimeout(resolve, 0));
+  const after = new XMLHttpRequest();
+  after.open("GET", "/jsweb/json");
+  await send(after);
+  eq(after.status, 200, "an asynchronous request after them");
+});
+
+test("the document base URL resolves a request's URL", async () => {
+  const base = document.createElement("base");
+  base.href = "/jsweb/";
+  document.head.append(base);
+  const x = new XMLHttpRequest();
+  x.open("GET", "json");
+  base.remove();
+  await send(x);
+  eq(x.responseURL, "http://127.0.0.1:8765/jsweb/json", "against <base href>");
 });
 
 __run();

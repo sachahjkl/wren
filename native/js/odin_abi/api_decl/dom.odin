@@ -87,6 +87,7 @@ DOMImplementation_createDocumentType :: #type proc(name: string, public_id: stri
 DOMImplementation_createDocument     :: #type proc(namespace: Maybe(string), qualified_name: string, doctype: Node) -> (Document, abi.Api_Error)
 DOMParser_parseHTMLNode              :: #type proc(html: string) -> (Document, abi.Api_Error)
 DOMParser_parseXMLNode               :: #type proc(text: string, type: string) -> (Document, abi.Api_Error)
+Document_parseResponse               :: #type proc(text: string, type: string) -> (Document, abi.Api_Error)
 XMLSerializer_serialize              :: #type proc(node: Node) -> (string, abi.Api_Error)
 
 // ---- Element and its attributes ----

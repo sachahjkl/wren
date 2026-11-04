@@ -60,7 +60,7 @@ fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 @(private)
 fetch_abort :: proc(p: ^Page, f: ^Fetch) {
 	if f.task == base.NIL_HANDLE { return }
-	if p.worker != nil { worker_fetch_cancel(p, f) } else { fetch.cancel(p.loader, f.task) }
+	if p.worker != nil { worker_fetch_cancel(p, f) } else { fetch.cancel(f.sync_loader != nil ? f.sync_loader : p.loader, f.task) }
 	f.task = base.NIL_HANDLE
 }
 

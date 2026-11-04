@@ -30,6 +30,7 @@ Loader :: struct {
 	ws_ctx:   map[base.Handle]^Ws_Ctx,   // the open sockets, by handle (websocket.odin)
 	hold:     bool,                 // the interceptor is not ready: http(s) requests wait in `held` (hold_requests)
 	held:     [dynamic]base.Handle, // the tasks waiting for hold to end, in the order they were made
+	sync:     ^Sync_Stack,          // what a document's synchronous requests run on, once one was made (sync.odin)
 }
 
 // While `on`, requests to the network are parked before the interceptor sees them; when it ends they start, in order. The content
@@ -48,6 +49,7 @@ loader_init :: proc(l: ^Loader, loop: ^host.Loop, client: ^net.Client, blocking:
 }
 
 loader_destroy :: proc(l: ^Loader) {
+	sync_destroy(l)
 	it: u32
 	handles := make([dynamic]base.Handle, context.temp_allocator)
 	for h, _ in base.pool_next(&l.tasks, &it) { append(&handles, h) }

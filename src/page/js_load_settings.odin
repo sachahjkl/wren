@@ -16,6 +16,7 @@ Js_Load_Settings :: struct {
 	javascript_urls:      bool,   // <a href="javascript:..."> and location = "javascript:..."
 	compile_threads:      int,    // off-thread compilation of large scripts (-1 = automatic, 0 = none)
 	import_scripts_ms:    i64,    // importScripts: longest wait for one script (-1 = no limit)
+	sync_xhr_ms:          i64,    // a document's synchronous XMLHttpRequest: longest wait (-1 = no limit)
 }
 
 JS_LOAD_PREFS := [?]config.Def{
@@ -43,6 +44,8 @@ JS_LOAD_PREFS := [?]config.Def{
 		description = "Threads that compile large scripts (javascript.compile.offthread_min_bytes) to bytecode while the page does other work. -1 = one per two logical processors, at most 4; 0 = compile on the interface thread. Raising it takes effect at once; lowering it (other than to 0) at the next start."},
 	{name = "javascript.workers.import_scripts_timeout_ms", kind = .Int, default = {i = 60_000}, bounded = true, min = -1, max = 3_600_000, unit = "ms",
 		description = "Longest wait of a worker's importScripts() for one script (it blocks the worker until the script arrives). -1 = no limit."},
+	{name = "javascript.xhr.sync_timeout_ms", kind = .Int, default = {i = 60_000}, bounded = true, min = -1, max = 3_600_000, unit = "ms",
+		description = "Longest wait of a document's synchronous XMLHttpRequest: no page of the window runs meanwhile (the interface does). It then fails as a network error would. -1 = no limit."},
 }
 
 js_load_settings_from_prefs :: proc(p: ^config.Prefs) -> Js_Load_Settings {
@@ -59,5 +62,6 @@ js_load_settings_from_prefs :: proc(p: ^config.Prefs) -> Js_Load_Settings {
 		javascript_urls = config.bool_of(p, "javascript.urls.enabled"),
 		compile_threads = int(config.int_of(p, "javascript.compile.offthread_threads")),
 		import_scripts_ms = config.int_of(p, "javascript.workers.import_scripts_timeout_ms"),
+		sync_xhr_ms = config.int_of(p, "javascript.xhr.sync_timeout_ms"),
 	}
 }

@@ -2053,6 +2053,9 @@ foreign _wr_wj_dom {
 	// a new inert XML document; one whose element is <parsererror> when the text is not well-formed. Type for another
 	// type, Quota past dom.max_fragment_nodes.
 	@(link_name = "DOMParser_parseXMLNode") wr_DOMParser_parseXMLNode :: proc(text: [^]u8, text_len: u32, type: [^]u8, type_len: u32, _ret: ^u64) -> i32 ---
+	// The response document of an XMLHttpRequest (XHR "set a document response"): `type` text/html, or an XML type. Nothing loads
+	// or runs in it. 0 for XML that is not well-formed; Quota past dom.max_fragment_nodes.
+	@(link_name = "Document_parseResponse") wr_Document_parseResponse :: proc(text: [^]u8, text_len: u32, type: [^]u8, type_len: u32, _ret: ^u64) -> i32 ---
 	// processingInstruction.target
 	@(link_name = "ProcessingInstruction_target") wr_ProcessingInstruction_target :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	// document.contentType of an XML document (DOMParser's type); Not_Found for an HTML one.

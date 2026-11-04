@@ -13,13 +13,18 @@ import "core:strings"
 import "core:sync"
 import "core:time"
 import "wb:base"
+import "wb:fetch"
 import "wb:host"
 import "wb:http"
 import "wb:url"
+import "wb:wasm"
 import "wb:webaudio"
 
 // A worker blocked on a synchronous fetch looks at its messages and its stop flag at least this often.
 WORKER_SYNC_WAIT_POLL :: 50 * time.Millisecond
+
+// A document waiting for a synchronous request gives the shell its turn at least this often: as a frame.
+DOCUMENT_SYNC_TURN_MS :: 16
 
 Worker_createScript :: proc(c: ^Call, u: string, name: string, type: Api_WorkerType) -> (u64, Api_Error) {
 	p := c.page
@@ -215,18 +220,47 @@ worker_fetch_wait :: proc(p: ^Page, h: base.Handle, limit_ms: i64) -> (res: Sync
 	}
 }
 
-// A synchronous XMLHttpRequest of a worker (HTML lets a worker's thread block on one): the request is made as an
-// asynchronous one would be (relayed to the UI thread: the page's policy applies), then waited for here. The record
-// is the guest's (it reads it with Fetch_status, Fetch_readBody... and releases it).
+// A document's synchronous request (XHR "send" step 12): made on the stack of fetch.sync_loader, whose turns run this request
+// alone; the shell keeps its turns (wasm.host_wait_tick). No page of the window runs meanwhile, hence the limit.
+@(private)
+document_fetch_wait :: proc(c: ^Call, f: ^Fetch, abs, method, headers: string, body: []byte, options: u32) -> Sync_Wait {
+	p := c.page
+	loader := fetch.sync_loader(p.loader)
+	if loader == nil { return .Stopping }
+	f.sync_loader = loader
+	f.task = fetch.start(loader, {
+		request = guest_request(abs, method, headers, body, options, &p.env),
+		on_event = fetch_event, user = f, scope = p.scope, collect = false,
+	})
+	limit := p.settings.js_load.sync_xhr_ms
+	start := time.tick_now()
+	last := start
+	for f.state < 2 {
+		if limit >= 0 && i64(time.duration_milliseconds(time.tick_since(start))) > limit { return .Timed_Out }
+		fetch.sync_turn(loader, DOCUMENT_SYNC_TURN_MS)
+		now := time.tick_now()
+		wasm.host_wait_tick(c.inst, time.tick_diff(last, now))
+		last = now
+	}
+	return .Done
+}
+
+// A synchronous XMLHttpRequest. In a worker (HTML lets its thread block on one) the request is made as an asynchronous
+// one would be (relayed to the UI thread: the page's policy applies), then waited for here; a document's is
+// document_fetch_wait's. The record is the guest's (it reads it with Fetch_status, Fetch_readBody... and releases it).
 Fetch_sync :: proc(c: ^Call, u: string, method: string, headers: string, body: Maybe([]u8), options: Api_FetchOptions, timeout_ms: u32) -> (u64, Api_Error) {
 	p := c.page
-	if p.worker == nil { return 0, fail(c, .Not_Supported, "NotSupportedError: a document's thread does not wait for a request") }
 	abs := u
 	if pu, ok := url.parse(u, &p.env.location, context.temp_allocator); ok { abs = pu.href }
 	h, f := base.pool_insert(&p.fetches, Fetch{page = p, instance = c.owner})
 	f.self = h
-	worker_fetch_start(p, f, abs, method, headers, body.? or_else nil, fetch_options_pack(options))
-	res := worker_fetch_wait(p, h, timeout_ms > 0 ? i64(timeout_ms) : -1)
+	res: Sync_Wait
+	if p.worker != nil {
+		worker_fetch_start(p, f, abs, method, headers, body.? or_else nil, fetch_options_pack(options))
+		res = worker_fetch_wait(p, h, timeout_ms > 0 ? i64(timeout_ms) : -1)
+	} else {
+		res = document_fetch_wait(c, f, abs, method, headers, body.? or_else nil, fetch_options_pack(options))
+	}
 	rec := base.pool_get(&p.fetches, h)
 	if res != .Done || rec == nil || rec.state == 3 {
 		why := res == .Timed_Out ? "the request timed out" : res == .Stopping ? "the worker is stopping" : rec != nil ? strings.clone(rec.error, context.temp_allocator) : "the request was lost"

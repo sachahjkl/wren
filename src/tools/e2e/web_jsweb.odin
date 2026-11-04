@@ -165,7 +165,7 @@ adapter_probe :: proc() -> (testhost.Skip_Verdict, string) {
 @(test) jsweb_streams :: proc(t: ^testing.T) { section(t, "streams", tests = 11) }
 @(test) jsweb_fetch_objects :: proc(t: ^testing.T) { section(t, "fetch_objects", tests = 4) }
 @(test) jsweb_fetch_api :: proc(t: ^testing.T) { section(t, "fetch", tests = 8, seconds = LONG_SECTION_SECONDS) }
-@(test) jsweb_xhr :: proc(t: ^testing.T) { section(t, "xhr", tests = 6) }
+@(test) jsweb_xhr :: proc(t: ^testing.T) { section(t, "xhr", tests = 8) }
 @(test) jsweb_perf_crypto :: proc(t: ^testing.T) { section(t, "perf_crypto", tests = 2) }
 @(test) jsweb_webcrypto :: proc(t: ^testing.T) { section(t, "webcrypto", tests = 15, seconds = LONG_SECTION_SECONDS) }
 @(test) jsweb_message :: proc(t: ^testing.T) { section(t, "message", tests = 5) }
@@ -328,7 +328,7 @@ sections_cut_short :: proc(t: ^testing.T, ms: f64) {
 		abandon(open(t, name), ms)
 		free_all(context.temp_allocator)
 	}
-	script(t, "xhr", tests = 6)
+	script(t, "xhr", tests = 8)
 }
 
 // Test programs run side by side, and each starts by emptying its profile: what one has on disk is not another's to empty. With one
