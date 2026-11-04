@@ -302,7 +302,7 @@
 	CSSStyleSheet.replace allows, but ignores, import rule inside: PASS
 	CSSStyleSheet.replace does not reject on failed imports: PASS
 	CSSStyleSheet.replace ignores @import rule but still loads other rules: PASS
-	CSSStyleSheet.replace produces Promise<CSSStyleSheet>: FAIL
+	CSSStyleSheet.replace produces Promise<CSSStyleSheet>: PASS
 	CSSStyleSheet.replaceSync allows, but ignores, import rule inside: PASS
 	CSSStyleSheet.replaceSync correctly updates the style of its adopters synchronously: PASS
 	CSSStyleSheet.replaceSync replaces stylesheet text synchronously: PASS
@@ -322,7 +322,7 @@
 	Stylesheet constructed on iframe cannot be used in the main Document: FAIL
 	Stylesheets constructed on the main Document cannot be used in iframes: PASS
 	document.adoptedStyleSheets should initially have length 0.: PASS
-	new CSSStyleSheet produces empty CSSStyleSheet: FAIL
+	new CSSStyleSheet produces empty CSSStyleSheet: PASS
 	title can be set in the CSSStyleSheet constructor: PASS
 /css/cssom/CSSStyleSheet-insertRule-computed.html: OK
 	Styles should be recomputed correctly after insertRule even if the style cache was warmed up.: PASS
@@ -397,16 +397,16 @@
 	deleteMedium throws NotFoundError for non-existent medium: FAIL
 	deleteMedium throws NotFoundError when no "not all" entry exists: FAIL
 	mediaText setter collapses internal whitespace and lowercases: FAIL
-	mediaText setter lowercases media types: FAIL
+	mediaText setter lowercases media types: PASS
 	mediaText setter trims and normalizes whitespace: FAIL
 /css/cssom/MediaList.html: OK
 	CSSOM - MediaList interface: FAIL
 /css/cssom/MediaList2.xhtml: OK
 	MediaList: PASS
-	MediaList getter: FAIL
-	MediaList.item: FAIL
-	MediaList.length: FAIL
-	MediaList.mediaText: FAIL
+	MediaList getter: PASS
+	MediaList.item: PASS
+	MediaList.length: PASS
+	MediaList.mediaText: PASS
 /css/cssom/MutationObserver-style.html: OK
 	Updating cssText triggers an observation callback even if the value is the same: PASS
 	Updating style property with the same value does not trigger an observation callback: PASS
@@ -425,8 +425,8 @@
 	<style>: cssRules is a CSSRuleList with rules: PASS
 	<style>: disabled is false initially: PASS
 	<style>: href is null for inline sheets: PASS
-	<style>: media is empty when the style element has no media attribute: FAIL
-	<style>: media reflects the style element's media attribute: FAIL
+	<style>: media is empty when the style element has no media attribute: PASS
+	<style>: media reflects the style element's media attribute: PASS
 	<style>: ownerNode is the style element: PASS
 	<style>: ownerRule is null for non-imported sheets: PASS
 	<style>: parentStyleSheet is null for top-level sheets: PASS
@@ -3396,10 +3396,10 @@
 	MediaList interface object length: PASS
 	MediaList interface object name: PASS
 	MediaList interface: attribute length: PASS
-	MediaList interface: attribute mediaText: FAIL
+	MediaList interface: attribute mediaText: PASS
 	MediaList interface: calling appendMedium(CSSOMString) on sheet.media with too few arguments must throw TypeError: FAIL
 	MediaList interface: calling deleteMedium(CSSOMString) on sheet.media with too few arguments must throw TypeError: FAIL
-	MediaList interface: calling item(unsigned long) on sheet.media with too few arguments must throw TypeError: FAIL
+	MediaList interface: calling item(unsigned long) on sheet.media with too few arguments must throw TypeError: PASS
 	MediaList interface: existence and properties of interface object: PASS
 	MediaList interface: existence and properties of interface prototype object: PASS
 	MediaList interface: existence and properties of interface prototype object's "constructor" property: PASS
@@ -3409,11 +3409,11 @@
 	MediaList interface: operation item(unsigned long): PASS
 	MediaList interface: sheet.media must inherit property "appendMedium(CSSOMString)" with the proper type: FAIL
 	MediaList interface: sheet.media must inherit property "deleteMedium(CSSOMString)" with the proper type: FAIL
-	MediaList interface: sheet.media must inherit property "item(unsigned long)" with the proper type: FAIL
-	MediaList interface: sheet.media must inherit property "length" with the proper type: FAIL
-	MediaList interface: sheet.media must inherit property "mediaText" with the proper type: FAIL
+	MediaList interface: sheet.media must inherit property "item(unsigned long)" with the proper type: PASS
+	MediaList interface: sheet.media must inherit property "length" with the proper type: PASS
+	MediaList interface: sheet.media must inherit property "mediaText" with the proper type: PASS
 	MediaList interface: stringifier: PASS
-	MediaList must be primary interface of sheet.media: FAIL
+	MediaList must be primary interface of sheet.media: PASS
 	Partial interface CSSStyleSheet: member names are unique: PASS
 	Partial interface CSSStyleSheet: original interface defined: PASS
 	Partial interface Element: member names are unique: PASS
@@ -3450,14 +3450,14 @@
 	Stringification of sheet.cssRules[2].style: FAIL
 	Stringification of sheet.cssRules[4]: PASS
 	Stringification of sheet.cssRules[4].style: PASS
-	Stringification of sheet.media: FAIL
+	Stringification of sheet.media: PASS
 	Stringification of style_element.style: PASS
 	Stringification of svg_element.style: PASS
 	StyleSheet interface object length: PASS
 	StyleSheet interface object name: PASS
 	StyleSheet interface: attribute disabled: PASS
 	StyleSheet interface: attribute href: PASS
-	StyleSheet interface: attribute media: FAIL
+	StyleSheet interface: attribute media: PASS
 	StyleSheet interface: attribute ownerNode: PASS
 	StyleSheet interface: attribute parentStyleSheet: PASS
 	StyleSheet interface: attribute title: PASS
@@ -3468,7 +3468,7 @@
 	StyleSheet interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	StyleSheet interface: sheet must inherit property "disabled" with the proper type: PASS
 	StyleSheet interface: sheet must inherit property "href" with the proper type: PASS
-	StyleSheet interface: sheet must inherit property "media" with the proper type: FAIL
+	StyleSheet interface: sheet must inherit property "media" with the proper type: PASS
 	StyleSheet interface: sheet must inherit property "ownerNode" with the proper type: PASS
 	StyleSheet interface: sheet must inherit property "parentStyleSheet" with the proper type: PASS
 	StyleSheet interface: sheet must inherit property "title" with the proper type: PASS
@@ -3548,7 +3548,7 @@
 	deleteMedium removes every matching query, not only the first: FAIL
 /css/cssom/medialist-interfaces-001.html: OK
 	mediatest_medialist_serialize_comma: FAIL
-	mediatest_medialist_serialize_element: FAIL
+	mediatest_medialist_serialize_element: PASS
 	mediatest_medialist_serialize_empty: FAIL
 	mediatest_medialist_serialize_order: FAIL
 /css/cssom/medialist-interfaces-002.html: OK

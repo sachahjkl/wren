@@ -13,6 +13,7 @@ package page
 import "core:fmt"
 import "core:strings"
 import "wb:base"
+import "wb:css"
 import "wb:dom"
 import "wb:style"
 
@@ -296,12 +297,16 @@ CSSStyleSheet_setDisabled :: proc(c: ^Call, sheet: u64, disabled: bool) {
 	if s := css_sheet_of(c, sheet); s != nil { style.engine_sheet_set_disabled(c.page.engine, s.id, disabled) }
 }
 
+// sheet.media.mediaText: the media list serialized (Media Queries' "serialize a media query list").
 CSSStyleSheet_mediaText :: proc(c: ^Call, sheet: u64) -> string {
 	s := css_sheet_of(c, sheet)
 	if s == nil { return "" }
-	if s.owner == base.NIL_HANDLE { return s.media }
-	sh := style.engine_find_sheet(c.page.engine, s.id)
-	return sh != nil ? sh.media_text : ""
+	text := s.media
+	if s.owner != base.NIL_HANDLE {
+		sh := style.engine_find_sheet(c.page.engine, s.id)
+		text = sh != nil ? sh.media_text : ""
+	}
+	return css.serialize_media_list(css.parse_component_values(text, style.parse_options(&c.page.settings.style), context.temp_allocator), context.temp_allocator)
 }
 
 CSSStyleSheet_setMediaText :: proc(c: ^Call, sheet: u64, media: string) {

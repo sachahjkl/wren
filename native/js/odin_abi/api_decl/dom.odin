@@ -288,6 +288,8 @@ CSSStyleSheet_rulesVersion   :: #type proc(sheet: CSSStyleSheet) -> u32
 CSSStyleSheet_ruleText       :: #type proc(sheet: CSSStyleSheet, index: u32) -> (string, abi.Api_Error)
 CSSStyleSheet_setRuleSelector :: #type proc(sheet: CSSStyleSheet, rule_id: u32, selector: string) -> (string, abi.Api_Error)   // empty: unchanged
 CSSStyleSheet_ruleTextOf     :: #type proc(sheet: CSSStyleSheet, rule_id: u32) -> (string, abi.Api_Error)   // empty: gone
+CSSStyleSheet_mediaText      :: #type proc(sheet: CSSStyleSheet) -> (string, abi.Api_Error)
+CSSStyleSheet_setMediaText   :: #type proc(sheet: CSSStyleSheet, media: string)
 CSSStyleSheet_setRuleStyle   :: #type proc(sheet: CSSStyleSheet, rule_id: u32, text: string)
 CSSStyleSheet_hrefOf         :: #type proc(sheet: CSSStyleSheet) -> (string, abi.Api_Error)   // empty: null
 CSSStyleSheet_titleOf        :: #type proc(sheet: CSSStyleSheet) -> (string, abi.Api_Error)   // empty: null
