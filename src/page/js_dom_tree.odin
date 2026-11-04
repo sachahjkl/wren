@@ -162,7 +162,13 @@ Node_nodeName :: proc(c: ^Call, node: Api_Node) -> string {
 	return ""
 }
 
-Node_baseURI :: proc(c: ^Call, node: Api_Node) -> string { return document_base_url(c.page) }
+// A document of its own (DOMParser's, createHTMLDocument's) has the URL of the page but not its <base>.
+Node_baseURI :: proc(c: ^Call, node: Api_Node) -> string {
+	p := c.page
+	h := node.data.as_document ? H(node.handle) : node_document(p, H(node.handle))
+	if n := dom.get(p.doc, h); n != nil && n.as_document { return p.env.location.href }
+	return document_base_url(p)
+}
 
 // The document's base URL: the first <base href> resolved against the document's URL, else the document's URL.
 document_base_url :: proc(p: ^Page) -> string {
