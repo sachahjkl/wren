@@ -254,6 +254,20 @@ prof_first_paint :: proc(t: ^Tab) {
 _ :: fmt   // used by the profile build only
 _ :: os
 
+// The current tab's document has not painted, has changed since its last layout or was held by render-blocking resources
+// in the last page phase, and waits for nothing that blocks its rendering: the frame that paints it may start now
+// (pacing.odin pacer_slot_wait). `laid`: the mutation count of that last layout (0: no document).
+first_paint_due :: proc(app: ^App) -> (due: bool, laid: u64) {
+	t := current_tab(app)
+	if t == nil || t.kind != .Web || t.page == nil || t.page.doc == nil { return }
+	laid = t.layout.mutations
+	pp := &window_own(app).page_prep
+	blocked := pp.tab == t && pp.page == t.page && pp.blocked
+	if t.page.render.painted || (laid == t.page.doc.mutations && !blocked) { return }
+	state, _ := page.first_paint_state(t.page)
+	return state == .Ready, laid
+}
+
 // A blocked first paint or a hold ends at a known time even if nothing else happens: a frame is requested then.
 first_paint_wake :: proc(app: ^App, t: ^Tab) {
 	wait := hold_wait_ms(t)

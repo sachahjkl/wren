@@ -14,6 +14,11 @@ pacer_timer_create :: proc() -> rawptr { return rawptr(uintptr(1)) }   // a non-
 
 pacer_timer_destroy :: proc(timer: rawptr) {}
 
+pacer_timer_arm :: proc(timer: rawptr, wait_ns: i64) -> bool { return true }
+
 pacer_timer_wait :: proc(w: ^platform.Window, timer: rawptr, wait_ns: i64) {
 	if wait_ns > 0 { time.sleep(time.Duration(wait_ns)) }
 }
+
+// (a sleep is not woken: the loop's tasks wait for its end)
+pacer_timer_fire :: proc(timer: rawptr) {}

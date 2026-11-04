@@ -1286,6 +1286,20 @@ chrome_frame_style :: proc(app: ^App) -> ui.Style {
 	}
 }
 
+// The loop's network completions, timers and posted tasks that are ready, run by the first frame of a pass (in its wait for
+// its slot, else in its page phase): they belong to the process, not to a window, and what they ask of the frames goes to
+// every window (windows.odin windows_spill). Returns how many ran that draw something.
+frame_tasks :: proc(app: ^App) -> int {
+	wnd := active_window(app)
+	asked := wnd.frames_requested
+	ran := host.run_ready(&app.loop)
+	ran -= host.quiet_take(&app.loop)   // (a media player's notices draw nothing: its pictures come on their own timer)
+	if ran > 0 { request_frames(app, 2) }
+	images_shell_frame(app)
+	if wnd.frames_requested > asked { windows_spill(app, wnd.frames_requested) }
+	return ran
+}
+
 // `causes`: what the loop knew of when it decided on this frame (windows_pass; the system's loop: its repaint); `idled`: it slept before
 // it, or this window had no cause. What the turn's tasks and events add is looked at here: nothing at all, and no frame is made.
 frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
@@ -1321,19 +1335,12 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	if len(events) > 0 { request_frames(app, 4) }
 	prof_end(.Events)
 
-	// network completions, timers and posted tasks run here, on the UI thread
+	// network completions, timers and posted tasks run here, on the UI thread, unless the frame ran them as it waited for its slot
 	prof_begin(.Loop)
-	// (the tasks belong to the process, not to a window: the first frame of a pass of the loop runs them, and what they ask of
-	// the frames goes to every window: windows.odin windows_spill)
-	ran := 0
+	ran := wnd.pacer.ran
 	if app.pass_first {
 		app.pass_first = false
-		asked := wnd.frames_requested
-		ran = host.run_ready(&app.loop)
-		ran -= host.quiet_take(&app.loop)   // (a media player's notices draw nothing: its pictures come on their own timer)
-		if ran > 0 { request_frames(app, 2) }
-		images_shell_frame(app)
-		if wnd.frames_requested > asked { windows_spill(app, wnd.frames_requested) }
+		if !wnd.pacer.tasks_run { ran += frame_tasks(app) }   // (what came after the wait's own run: the next frame's wait)
 	}
 	events = shell_after_loop(app, events)   // (chrome frames made under the loop's scripts took the chrome's input)
 	// a window whose last tab just left (a move: the window closes at the end of the pass) has nothing to build

@@ -281,10 +281,12 @@ windows_spill :: proc(app: ^App, n: int) {
 // The window's own wake-up for the loop: platform.wake posts to a real window that still exists, or signals the
 // auto-reset event / eventfd an offscreen (headless) window waits on (it has no message queue). Both forms are
 // thread-safe, so the loop is woken from any thread (host.post from a worker). App.wake_target is the front window the
-// loop waits on now, read atomically as a pointer (retarget runs on the UI thread; the window outlives the target).
+// loop waits on now, read atomically as a pointer (retarget runs on the UI thread; the window outlives the target). A frame
+// waiting for its slot is woken too (pacing.odin pacer_wake).
 wake_window :: proc(user: rawptr) {
 	app := (^App)(user)
 	if w := (^platform.Window)(sync.atomic_load(&app.wake_target)); w != nil { platform.wake(w) }
+	pacer_wake(app)
 }
 
 @(private = "file")

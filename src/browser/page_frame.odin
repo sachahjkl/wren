@@ -25,6 +25,7 @@ Page_Prep :: struct {
 	size:   draw.Vec2,
 	scale:  f32,
 	state:  Page_Prep_State,   // Hold: the first paint waits (render-blocking resources, nothing contentful yet)
+	blocked: bool,             // Hold for render-blocking resources, before any layout (first_paint.odin first_paint_due)
 	canvas: css.Color,
 }
 
@@ -65,7 +66,7 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	if first {
 		// render-blocking stylesheets and fonts first (page/render_blocking.odin): meanwhile the old frame, or the canvas
 		if state, _ := page.first_paint_state(t.page); state != .Ready {
-			page_prep.state = .Hold
+			page_prep.state, page_prep.blocked = .Hold, true
 			first_paint_wake(app, t)
 			return
 		}

@@ -1473,6 +1473,63 @@ left of its `Paint_Items` by the sampler (3 loads): the color glyph probe of the
 outlines; then the GPU textures made for the page (`NtGdiDdDDICreateAllocation`). `legacy-html.html`'s range is its
 frames: one run in five had its import in before a slot (24.7 ms).
 
+## What changed, round 18: the frame's wait for its slot runs the loop's tasks
+
+Item 10 of round 17's list, its first part. The browser: `wrentool bench perf`, profile builds, 7 runs of each build
+(5 in the first series, thrown away: another agent built on the machine meanwhile, ranges of 30 to 90 ms), interleaved,
+the order turning; median, range in brackets; times in ms from the navigation's start. The start: `wrentool bench
+startup`, 4 rounds of 3, interleaved. The base is master at 96183c0e.
+
+1. **The loop's tasks run while the frame waits for its slot** (`pacer_slot_wait`, `src/browser/pacing.odin`). A frame
+   began with the wait for its time slot (the pacing timer, then the swap chain) and only then ran what had arrived
+   (`host.run_ready` in its page phase): what came during the wait waited with it, a slot per hop of a load. Now the first
+   frame of a pass runs the ready tasks and timers in its wait (`main.odin` `frame_tasks`, in a page phase of their own,
+   `shell_wait_tasks`: a long script there is preempted by chrome frames as in the frame's), then waits on the timer armed
+   for the slot or for the loop's next timer, whichever is first; a post from another thread during the wait fires the
+   timer at once (the loop's wake-up, `wake_window` -> `pacer_wake`: an atomic flag says a frame waits on it; the timer is
+   armed before the loop is looked at, so a post after that look is never lost). The tasks run once a frame, in its wait or
+   else in its page phase: run in both, the first frame of the browser took what the second one ran before its first
+   present (`home_idle`'s first frame to the first present 22 to 30 -> 41 to 54 ms): not kept. Off Windows the wait stays
+   a sleep (no timer to fire). The frame gate does not change: the tasks run in the frame's Polling stage, where the
+   chrome frames they may make are Light frames the gate admits there (the e2e suite's gate counts no violation). Test:
+   `the_loop_tasks_run_while_a_frame_waits_for_its_slot` (browser: a post from another thread 20 ms into a wait of
+   200 ms and a timer of the loop due at 40 ms both run before the slot, and the wait ends at its slot).
+2. **A first paint does not wait for the slot** (`first_paint_due`, `src/browser/first_paint.odin`). When the current
+   tab's document has not painted, waits for no render-blocking sheet or font, and has changed since its last layout or
+   was held by render-blocking resources in the last page phase (`Page_Prep.blocked`), its frame starts at once: neither
+   the timer nor the swap chain is waited for, and the swap chain may queue two frames for it (it is shown at the next
+   refresh, not torn). The document's own changes alone were not enough: `legacy-html.html` was laid out before its
+   `@import` was found, and the import's arrival changes the styles, not the document (its first paint 40.7 ms, as before).
+   A frame started at once that laid the document out and held it (paint holding: nothing contentful yet) lets the next
+   one wait for its slot (`Pacer.first_paint_laid`): a held page that a script changes is not drawn as fast as the
+   thread goes.
+
+| | before | after |
+|---|---|---|
+| p10k: DOM interactive, first contentful paint, load | 33.4 (33.0-35.5), 57.0 (56.4-72.7), 33.4 (33.1-35.6) | 20.7 (20.0-21.4), 44.0 (42.0-46.0), 20.8 (20.1-21.5) |
+| `legacy-html.html`: first contentful paint, load | 42.4 (40.7-56.8), 41.7 (40.1-71.0) | 25.9 (25.2-27.7), 29.2 (25.1-32.2) |
+| `shadow-dom.html`: DOM interactive, first contentful paint, load | 12.1 (11.8-12.4), 13.5 (13.2-14.0), 18.5 (18.1-19.9) | 12.2 (11.6-15.3), 13.7 (13.0-17.0), 18.8 (17.9-22.4) |
+| `index.html`: first contentful paint | 9.7 (9.4-10.3) | 9.6 (9.3-11.1) |
+| `js-dom.html`: first contentful paint | 8.0 (7.7-8.6) | 7.9 (7.5-13.0) |
+| `style.html`: load | 9.3 (9.0-9.5) | 9.4 (9.1-10.0) |
+| `text.html`: first contentful paint | 15.0 (14.0-33.6) | 14.9 (14.7-25.8) |
+| `wrentool bench startup`, first present, single instance off / on | 247.5 (240-270) / 243.5 (240-253) | 240 (238-243) / 240.5 (237-247) |
+| `wrentool bench cadence`: presented, gap p50, p95 (2 runs) | 184-185, 16.6, 17.1-17.7 | 184, 16.6-16.7, 17.1-17.3 |
+| `wrentool bench idle`, at rest (blank, static, video; headless and hidden): wakes/s, the window thread's, frames | 68-73, 1.0-2.8, 1-4 | 70-75, 1.0-3.1, 1-4 |
+| p10k_scroll, a hidden window (60 Hz): frames/s (2 runs) | 60.1, 60.7 | 60.7, 60.1 |
+
+p10k's first contentful paint is now its first passes (round 17's 23 ms: styles, layout and paint, the frame of its
+first paint 34 ms, of which the wait 3.8 ms for the parser's last post); the page's frames before it are the parser's
+posts, each run as it comes. In a headless window p10k_scroll makes fewer frames (1 365 -> 1 099 in 8 s): as many
+answer input (260 and 258), fewer are the back-to-back frames a remote call's task asked for, now run in the wait of the
+frame that takes its input. `legacy-html.html`'s frame before its first paint still has a task of 18 to 21 ms: its samples
+are in waits (`ZwWaitForAlertByThreadId`), not identified.
+
+3. **Measured, not changed: p10k's first passes** (item 10): by the window thread's samples (3 loads, 1 ms) no function
+   above 1 sample in the frame of the first paint: `compute_styles`, `expand_shorthand`, the layout's steps, `paint_stacking`;
+   most of the work is on the style and layout threads, which this sampler does not see. A profile of the threads
+   (`WREN_SAMPLE_THREADS=1`) is the next measure. **Not done this round**: the script stage of DOM-heavy pages (item 1).
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -1622,6 +1679,9 @@ After round 17. Round 16's item 10 is done in part (round 17: Slug's bands from 
 start that waits for nothing; Slug's data made while shaping measured and not kept); what its measures found, the frame
 that waits for its slot before the tasks, leads item 10 below. Item 1 is unchanged.
 
+After round 18. Round 17's item 10 is done for its first part (round 18: the loop's tasks run in the frame's wait for its
+slot, a first paint waits for no slot); p10k's first passes lead item 10 below. Item 1 is unchanged.
+
 1. **The script stage of DOM-heavy pages, what is left** (nodes10k: 11.8 ms of a 17.7 ms frame; the browser's side
    1.4 ms of it). In order of the engine's samples: the interpreter itself (`interp_hot` 17 % before round 15's 15 to 25 %
    on the loop's own instructions, `call_native` and the bridge 8 %; a DOM call costs 50 to 100 ns over the loop); the
@@ -1664,10 +1724,12 @@ that waits for its slot before the tasks, leads item 10 below. Item 1 is unchang
    leaves (closures made, `arguments`, spreads, destructuring of iterables: the two cases of `macro.js` that did not gain
    are there), and native callbacks (`sort`, `forEach`: an `interp_run` activation each). A handler added to the loop
    must call nothing itself (`interp_hot.odin`'s header says how).
-10. **Pages loaded from the navigation** (rounds 15 to 17; `wrentool bench perf -Only p10k_nav,nav_...`), by cost: the
-   frame's wait for its time slot before the loop's tasks run (round 17, item 4: 15 ms of p10k's first paint, a slot
-   per hop of `legacy-html.html`'s sheet and import, 40 ms); p10k's first style, layout and paint passes (23 ms in the
-   frame of its first paint); what is left of `text.html`'s first paint (`Paint_Items` 15.6 ms: the color glyph probe
-   of color faces, the half-float conversions' calls, the outlines; Slug's data made while shaping only moved it onto
-   the layout the paint waits for, round 17 item 3); the first realm (5 ms from response to script, instantiation
-   included: the instance made on the read-ahead thread would take a part).
+10. **Pages loaded from the navigation** (rounds 15 to 18; `wrentool bench perf -Only p10k_nav,nav_...`), by cost:
+   p10k's first style, layout and paint passes (23 ms of the 34 ms frame of its first paint, its first contentful paint
+   at 44 ms: most of it on the style and layout threads, to be profiled with `WREN_SAMPLE_THREADS=1`, round 18 item 3);
+   `legacy-html.html`'s task of 18 to 21 ms in the frame before its first paint (its samples in waits: not identified);
+   what is left of `text.html`'s first paint (`Paint_Items` 15.6 ms: the color glyph probe of color faces, the
+   half-float conversions' calls, the outlines; Slug's data made while shaping only moved it onto the layout the paint
+   waits for, round 17 item 3); the first realm (5 ms from response to script, instantiation included: the instance
+   made on the read-ahead thread would take a part). A task that arrives during the swap chain's wait (a fixed refresh
+   screen's whole wait, at most a refresh) still waits for its end: the latency object cannot be woken by the loop.
