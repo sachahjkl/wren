@@ -145,6 +145,8 @@ DEMOS := [?]Demo{
 		"A note through a filter, a delay with feedback and an analyser that draws the wave: <code>AudioContext</code> waits for the click on Play (<code>media.autoplay.policy</code>), the tab shows its speaker.", false, "", false},
 	{.Wasm, "A page with no JavaScript", "counter.html",
 		"Real HTML whose behaviour is a WebAssembly module (<code>counter.wasm</code>, written in Odin): buttons, a ticking timer, DOM updates, and a relative link.", false, "", false},
+	{.Wasm, "Fetch from WebAssembly", "fetchpage.html",
+		"The site's <i>Write a page</i> example: a module (<code>fetchpage.wasm</code>, written in Odin with <code>import \"wren:fetch\"</code>) fetches <code>message.txt</code> and shows its text. Served by the test server: a <code>file:</code> page cannot fetch.", true, "", false},
 	{.Wasm, "Page lifetime", "about.html",
 		"Reached from the counter page: navigating closed the previous page, and freed its Wasm instance, its timer and its DOM with it.", false, "", false},
 	{.Wasm, "Form controls", "forms.html",
