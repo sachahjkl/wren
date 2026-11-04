@@ -9,4 +9,4 @@ package license
 //
 // browser.license.public_key (about:config) replaces it at run time, for trying a licence made with another pair
 // (the tests, a fork that sells its own licences).
-PRODUCTION_PUBLIC_KEY :: ""
+PRODUCTION_PUBLIC_KEY :: "6vZ2PkrA6JVQvH9T9O9wffaz_SmFcChOaHcMW61LoqI"
