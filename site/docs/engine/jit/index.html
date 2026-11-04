@@ -194,6 +194,7 @@
 <li><a href="../../../docs/releases/v0.6.26/">Wren 0.6.26</a></li>
 <li><a href="../../../docs/releases/v0.6.27/">Wren 0.6.27</a></li>
 <li><a href="../../../docs/releases/v0.6.28/">Wren 0.6.28</a></li>
+<li><a href="../../../docs/releases/v0.6.29/">Wren 0.6.29</a></li>
 <li><a href="../../../docs/releases/v0.6.3/">Wren 0.6.3</a></li>
 <li><a href="../../../docs/releases/v0.6.4/">Wren 0.6.4</a></li>
 <li><a href="../../../docs/releases/v0.6.5/">Wren 0.6.5</a></li>
@@ -287,15 +288,27 @@ variable is read and written where its cell points. A string's <code>length</cod
 from <code>String.prototype</code> (the value's tag checked, then the prototype's shape) once the site has met a string.</p>
 <p>A read whose site's first shape finds an accessor reads through getters (<code>j_call_getter</code>): the shapes guarded as for a
 data property, the getter read from its <code>Getset</code> and checked to be a native function called as a function (as the hot
-loop's <code>hot_native_getter</code>: a DOM attribute's, Map's <code>size</code>), else the interpreter reads it; the helper <code>wj_jit_get</code>
-(<code>jit_getter</code>) calls it, the operand stack and the objects held written to the frame first, the held arrays taken
-again after. An exception is exact: the helper puts the context's thrower in the object's place (<code>Context.jit_thrower</code>,
-an object whose property of that name is an accessor with <code>jit_rethrow</code> as its getter), the code leaves through a throw
-exit, and the interpreter makes the read again, which throws the exception pending. Host objects without exotic hooks
+loop's <code>hot_native_getter</code>: a DOM attribute's, Map's <code>size</code>) or a function of the script's, else the interpreter reads
+it; the helper <code>wj_jit_get</code> (<code>jit_getter</code>) calls it (a native through <code>call_native</code>, a script's as compiled code calls
+bytecode: its frame pushed, its compiled code run when it has some), the operand stack and the objects held written to
+the frame first, the held arrays taken again after. A write whose site's first shape finds an accessor writes through
+setters the same way (<code>j_call_setter</code>, <code>wj_jit_set</code>). An exception is exact: the helper puts the context's thrower in
+the object's place (<code>Context.jit_thrower</code>, an object whose property of that name is an accessor with <code>jit_rethrow</code> as
+its getter and its setter), the code leaves through a throw exit, and the interpreter makes the read or the write
+again, which throws the exception pending. Host objects without exotic hooks
 are ordinary objects there (<code>Object.host_exotic</code> checked where the code reads past one), so a DOM node's attributes and
-methods are read through its prototypes. A global's accessor (<code>window.document</code>) is not called: a read of a global has
-no object on the stack to put the thrower in, and an exception would have no exact way back into the interpreter but a
-throw exit in its back edges (round 20: 4 % of nodes10k with the JIT off).</p>
+methods are read through its prototypes.</p>
+<p>A global's own accessor (<code>window.document</code>) is read the same way when the instruction after the read reads a named
+property of its value (<code>get_field</code>, <code>get_field2</code>, <code>get_length</code>: <code>document.createElement(...)</code>): a read of a global has
+no object on the stack to put the thrower in, so the helper puts it in the result's place, with that next property as
+its accessor, and the throw exit resumes at the next instruction, which throws the exception pending. The interpreter's
+code is unchanged (a throw exit of its own in its back edges cost 4 % of nodes10k with the JIT off, round 20). A global
+accessor whose value is used otherwise keeps the loop interpreted.</p>
+<p>A call whose callee the translation cannot tell (a method of an object a getter returned, unknown when the loop is
+translated) leaves through a learn exit (<code>JIT_AUX_CALLEE</code>) the first time: the site keeps the callee it met
+(<code>Jit_Site.callee</code>, a hint marked by the collector, never relied on), and the loop is translated again. A read of an
+object the translation cannot tell, at a site that learned its shape, takes what the prototype holds for its hint (the
+method <code>document.createElement</code> is, from <code>Document.prototype</code>).</p>
 <p>What a site was compiled for is per site and bounded (<code>Jit_Site</code>: <code>JIT_SITE_SHAPES</code> shapes with their objects' class,
 the type of the value read): taken from the frame's values when the loop is translated (the translation follows what
 each entry held, as far as it can tell, for these hints), and learned when the site misses. A learn exit
@@ -312,14 +325,20 @@ shapes the object it sees takes (<code>Jc.shadows</code>: a constructor's <code>
 <p>The shapes and objects the code compares against are kept alive by the loop (<code>Jit_Loop.keep</code> and the sites' shapes,
 marked by the collector through <code>Function_Bytecode.jit</code>): an address the code holds is never another shape's.</p>
 <h2 id="objects-made-by-compiled-code"><a class="anchor" href="#objects-made-by-compiled-code" aria-hidden="true">#</a>Objects made by compiled code</h2>
-<p>Compiled code makes objects through the helper <code>wj_jit_new</code> (<code>jit_new</code>): a plain object (<code>object</code>, the start of an
-object literal), an Array of entries (<code>array_from</code>, an array literal), the object a construction makes
-(<code>create_from_ctor</code>). The allocator and the collector's contract are the engine's own: allocation never collects, a
-collection runs only at a safe point, and the compiled code reaches one only through a call (whose helper writes the
+<p>Compiled code allocates a plain object itself (<code>j_alloc</code>): the start of an object literal (<code>object</code>), and the object a
+construction makes when the constructor's own <code>prototype</code> is the object the translation saw (<code>j_ctor_proto</code>: the
+callee's shape and the slot's value guarded; the root shape of that prototype is a constant). It does what <code>cell_new</code>
+and <code>object_new_shape</code> do: a block of the object's pool class popped from the free list (zeroed) or cut from the bump
+chunk, linked first in the runtime's cells, counted and charged to the heap, the object's class, bits, shape and inline
+slots written. An empty free list at the chunk's end, or a guard that fails, makes the object through the helper
+<code>wj_jit_new</code> (<code>jit_new</code>), which also makes an Array of entries (<code>array_from</code>, an array literal) and the other
+constructions (<code>create_from_ctor</code>). The collector's contract is the engine's own either way: allocation never collects,
+a collection runs only at a safe point, and the compiled code reaches one only through a call (whose helper writes the
 operand stack and the objects held in locals to the frame first) or an exit; the helper drops the temporary roots of
-the allocation (<code>temp_roots</code> back to the frame's height), the object being in the code's hands until then. An object
-literal's fields (<code>define_field</code>) need no guard: the translation knows the shape of the object it made until the next
-join (<code>Jit_State.k</code>), and appends each field through the transition, its slots grown when full.</p>
+the allocation (<code>temp_roots</code> back to the frame's height) and the code's own allocation pushes none, the object being in
+the code's hands until then. An object literal's fields (<code>define_field</code>) need no guard: the translation knows the shape
+of the object it made until the next join (<code>Jit_State.k</code>), and appends each field through the transition, its slots
+grown when full.</p>
 <p>A construction <code>new F(...)</code> of a constructor that can be compiled whole (not a derived class's) is a direct call
 (below): the object made by the helper is the callee's <code>this</code>, new.target the constructor, the result the callee's
 when it returns an object, else the object.</p>

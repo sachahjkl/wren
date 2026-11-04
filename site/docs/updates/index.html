@@ -194,6 +194,7 @@
 <li><a href="../../docs/releases/v0.6.26/">Wren 0.6.26</a></li>
 <li><a href="../../docs/releases/v0.6.27/">Wren 0.6.27</a></li>
 <li><a href="../../docs/releases/v0.6.28/">Wren 0.6.28</a></li>
+<li><a href="../../docs/releases/v0.6.29/">Wren 0.6.29</a></li>
 <li><a href="../../docs/releases/v0.6.3/">Wren 0.6.3</a></li>
 <li><a href="../../docs/releases/v0.6.4/">Wren 0.6.4</a></li>
 <li><a href="../../docs/releases/v0.6.5/">Wren 0.6.5</a></li>
@@ -250,6 +251,18 @@
 <li>Development and labelled builds are not releases: they are updated by hand.</li>
 <li>The update key is not the licence key. A leaked licence key cannot sign an update.</li>
 </ul>
+<h2 id="your-own-channel"><a class="anchor" href="#your-own-channel" aria-hidden="true">#</a>Your own channel</h2>
+<p>A channel is four settings in <code>about:config</code>:</p>
+<div class="table-box"><table>
+<thead><tr><th>Setting</th><th>Meaning</th><th>Default</th></tr></thead>
+<tbody>
+<tr><td><code>browser.update.url</code></td><td>What announces a release (a JSON document with <code>tag_name</code> and <code>html_url</code>, as GitHub's "latest release" answers)</td><td>the GitHub API of this repository</td></tr>
+<tr><td><code>browser.update.base_url</code></td><td>Where the files are: <code>&lt;base&gt;v&lt;version&gt;/update-windows-x64.json</code>, its <code>.sig</code> and the program. <code>https://</code> (or <code>http://127.0.0.1</code>/<code>localhost</code>), ending in <code>/</code></td><td>the GitHub releases of this repository</td></tr>
+<tr><td><code>browser.update.public_key</code></td><td>The key (base64url, 32 bytes) the manifest must be signed with</td><td>empty: the key built into Wren</td></tr>
+<tr><td><code>browser.update.require_signature</code></td><td>Refuse a manifest that is not validly signed</td><td>on</td></tr>
+</tbody>
+</table></div>
+<p>Sign your manifests with <code>wrentool update keygen</code> / <code>manifest</code> / <code>sign</code>. Turning <code>require_signature</code> off makes Wren take an unsigned manifest: only the length and SHA-256 are then checked, which proves nothing about who made the file, and About Wren says "UNSIGNED". The version rules (for this platform, the announced version, strictly newer) apply either way.</p>
 <h2 id="for-maintainers"><a class="anchor" href="#for-maintainers" aria-hidden="true">#</a>For maintainers</h2>
 <ul>
 <li>The private key is <code>UPDATE_SIGNING_KEY</code> in <code>secrets/production.yaml</code> and the GitHub secret <code>WREN_UPDATE_SIGNING_KEY</code>. The public key is <code>src/update/public_key.odin</code>.</li>
@@ -266,6 +279,7 @@
 <ul>
 <li><a href="#how-it-works">How it works</a></li>
 <li><a href="#limits">Limits</a></li>
+<li><a href="#your-own-channel">Your own channel</a></li>
 <li><a href="#for-maintainers">For maintainers</a></li>
 </ul>
 </nav>
