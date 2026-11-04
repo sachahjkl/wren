@@ -1,9 +1,10 @@
-# The loop JIT (`src/engine/jsrt/jit.odin`)
+# The JIT (`src/engine/jsrt/jit.odin`)
 
-A hot loop of a function is translated from its bytecode to a WebAssembly function, which the host compiles with
-Cranelift and attaches to the engine's table (`src/js/jit.odin`, `wasm.attach_function`); the interpreter then calls it
-like a C function pointer. WebAssembly stays the only execution engine: the code made at run time lives in the engine's
-sandbox and reaches only the engine's memory and the helpers the engine exports to it.
+A hot loop of a function, or a hot function without loops of its own, is translated from its bytecode to a WebAssembly
+function, which the host compiles with Cranelift and attaches to the engine's table (`src/js/jit.odin`,
+`wasm.attach_function`); the interpreter then calls it like a C function pointer. WebAssembly stays the only execution
+engine: the code made at run time lives in the engine's sandbox and reaches only the engine's memory, its table and the
+helpers the engine exports to it.
 
 ## When a loop is compiled
 
@@ -15,6 +16,14 @@ the function's other loops stay in it.
 
 A loop that runs few iterations per entry costs more to enter than the code saves: after `JIT_PROBE` entries with fewer
 than `JIT_MIN_ITERS` iterations each on average it is left to the interpreter.
+
+## When a function is compiled whole
+
+A call of a plain function counts toward `javascript.jit.call_threshold` (`Function_Bytecode.jit_calls`, counted where
+the interpreter pushes the callee's frame: `jit_pushed`, `jit_entered`, and in the helper of compiled code). Once it is
+reached, a function whose backward jumps (if any) go to its start is translated as the region `[0, end)` and entered
+at its call (`jit_fn_enter`): its arguments' types guarded at entry, its locals in the frame's memory. A function with
+loops of its own is left to the loop JIT; a function that is refused counts no more (`JIT_CALLS_NEVER`).
 
 ## What the code holds
 
@@ -76,11 +85,27 @@ marked by the collector through `Function_Bytecode.jit`): an address the code ho
   pending, and unwinds from there. After the call the arrays the loop holds are taken again (`wj_jit_array`: a
   call may have grown, moved or detached them). Locals a closure may reach (captured ones, the arguments of a function
   with a mapped `arguments`) stay in the frame's memory in a loop that calls.
-- A call of bytecode that is not inlined keeps the loop interpreted: through the helper it is a nested `interp_run`,
-  slower than the interpreter's own call (measured: 84 -> 130 ns for a small function).
+- **Compiled functions, directly** (`j_direct_call`): a call of a function that can be compiled whole, with no closure
+  cells of its own, is made by the compiled code itself when the callee is a function of that bytecode (any of its
+  closures) and its code is compiled: the callee's frame is pushed on the value stack exactly as `frame_push` pushes it
+  (so the collector, a deopt and an exception see an interpreter's frame), its code is called through the engine's
+  table (imported by the module, `"e" "table"`), the frame is popped as `frame_pop` pops it. Nothing of the caller
+  lives across the call but in its frame (its operand stack materialized, its objects written back), so no register
+  state is saved. When the callee's code leaves other than by its return, the helper `wj_jit_finish`
+  (`jit_call_finish`) interprets the rest of the call on its frame; an exception comes back as a throw exit of the
+  caller. Any check that fails (another callee, not compiled, no room in the value stack's segment, too deep) makes
+  the call through the helper instead, which pushes the frame the same way and enters the callee's code if it has
+  some, else interprets it.
+- A call of bytecode that cannot be compiled whole (a function with loops, a generator...) keeps the loop interpreted:
+  through the helper it is a nested `interp_run`, slower than the interpreter's own call (measured in round 20: 84 ->
+  130 ns for a small function). A callee refused after the caller was compiled makes the helper hand the call back to
+  the interpreter (a deopt), until the caller is left to the interpreter.
 
-Compiled code may run the same loop again in a nested frame (a call that recurses): the exit of the outer one checks
-that the loop is still the code it ran (`jl.index`) before it changes the loop's state.
+Compiled code nested on the host stack (a compiled call of compiled code, a helper's call of a native that calls
+compiled code) is bounded by `JIT_MAX_NEST` (`Runtime.jit_depth`): deeper calls are interpreted, with the interpreter's
+own depth limit, so a recursion goes as deep as it does interpreted. Compiled code may run the same region again in a
+nested frame (a call that recurses): the exit of the outer one checks that the region is still the code it ran
+(`jl.index`) before it changes the region's state.
 
 ## Exits
 
@@ -89,7 +114,7 @@ The code returns an exit word (kind, pc, sp, aux) and the interpreter carries on
 | exit | when |
 |---|---|
 | leave | a jump out of the region (aux: the iterations this entry ran) |
-| ret | a return (the value in the frame's `stack[0]`) |
+| ret | a return (the value in the frame's `stack[0]`; an exact integer is an int when it fits, as the interpreter has it) |
 | guard | an entry guard failed (aux: the slot): the slot is widened or left in memory, translated again |
 | deopt | a speculation failed in the loop (int overflow, -0, a bound, a type): aux a slot to widen, `JIT_AUX_LEARN`, `JIT_AUX_NO_INLINE` or none |
 | budget | every `JIT_BUDGET` iterations: the interpreter's safe point (interrupts, collection) runs |

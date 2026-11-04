@@ -265,6 +265,47 @@
   function strOrObj(vs, n) { var c = 0; for (var i = 0; i < n; i++) { c += vs[i & 1].length; } return c; }
   p("strings: a string or an array", strOrObj(["abc", [1, 2]], RUN));
 
+  // whole functions, compiled at their calls and called directly by compiled code: recursion deeper than compiled code
+  // nests (and than the engine's limit), a callee given other types (its entry guards, deopts in it), exceptions thrown
+  // in it (by itself, by a native it calls) and caught by its caller, closures made again, `this` in methods and in a
+  // sloppy function, arguments missing and extra, a callee replaced, mutual recursion, collections during calls
+  function nest(n) { return n === 0 ? 0 : 1 + nest(n - 1); }
+  p("whole: recursion", nest(50), nest(400), nest(1000), nest(5000));
+  try { p("whole: too deep", nest(1e6)); } catch (e) { p("whole: too deep", e.name); }
+  function clampAdd(x) { return x > 100 ? x - 100 : x + 1; }
+  function callsMixed(vals, n) { var s = 0; for (var i = 0; i < n; i++) { s += clampAdd(vals[i & 3]); } return show(s); }
+  p("whole: a callee given other types", callsMixed([1, 2, 3, 4], RUN), callsMixed([1, 2.5, true, 4], RUN), callsMixed([1, null, 2147483647, 7], RUN), callsMixed([1, undefined, 2, 3], RUN));
+  function mayThrow(x) { if (x === 13) { throw new Error("thirteen"); } return x * 2; }
+  function throwsThrough(n) { var s = 0; try { for (var i = 0; i < n; i++) { s += mayThrow(i < n - 3 ? i & 7 : 13); } } catch (e) { return s + " " + e.message; } return s; }
+  p("whole: an exception in the callee", throwsThrough(RUN));
+  function parseIt(s) { return s.length > 1 ? JSON.parse(s)[0] : -1; }
+  function parses(n) { var s = 0; try { for (var i = 0; i < n; i++) { s += parseIt(i < n - 5 ? "[" + (i & 7) + "]" : "[oops"); } } catch (e) { return s + " " + e.name; } return s; }
+  p("whole: an exception in a native the callee calls", parses(RUN));
+  function counterOf(k) { var c = k; return function (d) { c += d; return c > 1e9 ? 0 : c; }; }
+  function useCounters(n) { var s = 0; for (var i = 0; i < n; i++) { var f = counterOf(i & 3); s += f(1) + f(2); } return s; }
+  p("whole: closures made again", useCounters(RUN));
+  function Acc(v) { this.v = v; }
+  Acc.prototype.addTo = function (x) { return x > 0 ? this.v + x : this.v - x; };
+  function useAcc(n) { var a = new Acc(3), b = new Acc(0.5), s = 0; for (var i = 0; i < n; i++) { s += a.addTo((i & 7) - 3) + b.addTo(i & 1); } return show(s); }
+  p("whole: methods", useAcc(RUN));
+  var sloppy = new Function("x", "return typeof this + (x > 0 ? 'p' : 'n')");
+  function callSloppy(n) { var s = ""; for (var i = 0; i < n; i++) { s = sloppy(i & 1) + sloppy.call(5, -1) + sloppy.call({}, 1); } return s; }
+  p("whole: this of a sloppy function", callSloppy(RUN));
+  function opt(a, b) { return b === undefined ? a : a + b; }
+  function optArgs(n) { var s = 0; for (var i = 0; i < n; i++) { s += opt(i) + opt(i, 1) + opt(i, 1, 2); } return s; }
+  p("whole: missing and extra arguments", optArgs(RUN));
+  var swapped = function (x) { return x > 2 ? x : -x; };
+  function callSwapped(n) { var s = 0; for (var i = 0; i < n; i++) { s += swapped(i & 7); if (i === n >> 1) { swapped = function (x) { return x > 3 ? 2 * x : 0; }; } } return s; }
+  p("whole: a callee replaced", callSwapped(RUN));
+  function isEven(n) { return n === 0 ? true : isOdd(n - 1); }
+  function isOdd(n) { return n === 0 ? false : isEven(n - 1); }
+  p("whole: mutual recursion", isEven(200), isOdd(301), isEven(3000));
+  function arrTruth(a, n) { var s = 0; for (var i = 0; i < n; i++) { if (a) { s += a.length; } if (!a) { s -= 1; } } return s; }
+  function arrGiven(a) { return !a ? "none" : a.length; }
+  p("whole: the truth of an array held", arrTruth([1, 2], RUN), arrTruth(new Int8Array(3), RUN), arrGiven([1, 2, 3]), arrGiven(null));
+  function grow(n) { return n === 0 ? [] : JSON.parse("[" + n + "]").concat(grow(n - 1)); }
+  p("whole: collections during calls", grow(300).length, grow(300)[299]);
+
   // switch, strings, generators (not compiled) next to compiled code
   function sw(x) { switch (x) { case 1: return "one"; case "1": return "string"; default: return "other"; } }
   p("switch", sw(1), sw("1"), sw(2));

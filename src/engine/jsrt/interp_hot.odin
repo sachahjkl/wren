@@ -223,12 +223,13 @@ hot_call :: #force_no_inline proc(h: ^Hot, op: Opcode) -> bool {
 	}
 	f.pc = int(uintptr(ip) - uintptr(h.regs.code)) + isz
 	f.sp = int(uintptr(slot) - uintptr(h.regs.stack)) / size_of(Value)
+	// (the frame to carry on in: the callee's, or this one when the callee's compiled code returned already)
 	nf := frame_push(ctx, fo, this, first[:argc])
 	h.f = nf
 	h.moved = true
 	h.regs = hot_regs(nf)
-	h.ip = h.regs.code
-	h.s = h.regs.stack
+	h.ip = h.regs.code[nf.pc:]
+	h.s = h.regs.stack[nf.sp:]
 	// the entry safepoint (a collection due) is for interp_run: it sees pc == 0
 	return !gc_should_run(rt)
 }

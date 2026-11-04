@@ -76,8 +76,9 @@ Function_Bytecode :: struct {
 	source_string:             ^JS_String, // cached Function.prototype.toString text
 	catch_levels:              []Catch_Level, // verified operand stack height at each catch handler
 	image:                     []u8, // the serialized form this function was read from, kept on request (Compile_Request.keep_image)
-	jit:                       ^Jit_Info, // loops of this function the loop JIT looked at (jit.odin), allocated on first use
+	jit:                       ^Jit_Info, // the loops of this function and the function itself as the JIT looked at them (jit.odin), allocated on first use
 	jit_active:                int,       // how many of them are compiled or being compiled (the interpreter then offers each back edge)
+	jit_calls:                 int,       // calls counted toward compiling the whole function (jit.odin, jit_fn_enter)
 }
 
 Catch_Level :: struct {
