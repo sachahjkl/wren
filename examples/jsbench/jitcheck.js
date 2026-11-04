@@ -201,6 +201,70 @@
   let lateLet = 5;
   p("closure cell after its declaration", tdzCell(RUN));
 
+  // calls in compiled loops: small functions inlined (the callee guarded, a deopt in it leaves the call to the
+  // interpreter), Math functions computed inline, natives called through the helper (exceptions, arrays that grow,
+  // collections while compiled code holds objects)
+  function add2(a, b) { return a + b; }
+  function callAdd(n) { var s = 0; for (var i = 0; i < n; i++) { s = add2(s, i & 7); } return show(s); }
+  p("inlined", callAdd(RUN));
+  var realAdd = add2; add2 = function (a, b) { return a - b; }; p("inlined: the global replaced", callAdd(RUN)); add2 = realAdd;
+  function V2(x, y) { this.x = x; this.y = y; }
+  V2.prototype.dot = function (o) { return this.x * o.x + this.y * o.y; };
+  V2.prototype.len2 = function () { return this.dot(this); };
+  function sumLen(vs, n) { var s = 0; for (var i = 0; i < n; i++) { s = s + vs[i & 3].len2(); } return show(s); }
+  var vs4 = [new V2(1, 2), new V2(3, 4), new V2(0.5, 1), new V2(-0, 0)];
+  p("inlined methods", sumLen(vs4, RUN));
+  vs4[2] = { x: 1, y: 1, len2: function () { return 1000; } }; p("inlined methods: another method", sumLen(vs4, RUN));
+  V2.prototype.dot = function (o) { return 7; }; p("inlined methods: the prototype's replaced", sumLen(vs4, RUN));
+  vs4[0] = new V2(2147483647, 2147483647); p("inlined methods: overflow in the callee", sumLen(vs4, RUN));
+  vs4[1] = { len2: function () { return this.missing.x; } };
+  try { p("inlined methods: a TypeError in the callee", sumLen(vs4, RUN)); } catch (e) { p("inlined methods: a TypeError in the callee", e.name); }
+  function missingArgs(n) { var s = 0; for (var i = 0; i < n; i++) { s += add2(i) === add2(i) ? 1 : 0; s += add2(i, 1, 2); } return show(s); }
+  p("inlined: missing and extra arguments", missingArgs(RUN));
+  function fibLoop(n) { var s = 0; for (var i = 0; i < n; i++) { s += fib(i & 7); } return s; }
+  p("recursion from a compiled loop", fibLoop(RUN));
+  function mathLoop(n) {
+    var s = 0, t = 0;
+    for (var i = 0; i < n; i++) {
+      var x = (i & 15) - 7.5;
+      s += Math.floor(x) + Math.ceil(x) + Math.trunc(x) + Math.abs(x) + Math.sqrt(i & 31) + Math.max(x, -x) + Math.min(i & 3, 2);
+      t = (t + Math.abs(i - 3) + Math.imul(i, 0x7fffffff) + Math.floor(i)) | 0;
+    }
+    return show(s) + " " + t + " " + show(Math.max(-0, 0)) + " " + show(Math.min(-0, 0)) + " " + show(Math.floor(-0.5));
+  }
+  p("Math inline", mathLoop(RUN));
+  function mathEdges(vals, n) { var s = 0, m = 0; for (var i = 0; i < n; i++) { var v = vals[i & 7]; s += Math.abs(v); m = Math.max(m, Math.floor(v)); } return show(s) + " " + show(m); }
+  p("Math inline: edges", mathEdges([-2147483648, 1, -1, 0, NaN, -0, 1e300, -Infinity], RUN));
+  var realFloor = Math.floor; Math.floor = function (x) { return 42; }; p("Math inline: replaced", mathLoop(RUN)); Math.floor = realFloor;
+  function pushes(n) { var a = [], s = 0; for (var i = 0; i < n; i++) { a.push(i & 15); s += a[a.length - 1] + a.length; if (a.length > 64) { a.length = 0; } } return s + " " + a.length; }
+  p("native calls: an array that grows", pushes(RUN));
+  function heldArray(n) { var a = [1, 2, 3], s = 0; for (var i = 0; i < n; i++) { s += a[i % 3]; if ((i & 255) === 0) { a.push(i); a.pop(); } } return s; }
+  p("native calls: a held array", heldArray(RUN));
+  function natThrows(n) { var s = 0, m = new Map(); try { for (var i = 0; i < n; i++) { m.set(i & 7, i); s += m.get(i & 7); if (i === n - 7) { m.set.call(null, 1, 1); } } } catch (e) { return s + " " + e.name; } return s; }
+  p("native calls: an exception", natThrows(RUN));
+  function collects(n) {
+    var keep = { v: 1 }, s = 0;
+    for (var i = 0; i < n; i++) {
+      var t = JSON.parse("[1,2,3]");
+      s += t[1] + keep.v;
+      if ((i & 1023) === 0) { keep = JSON.parse("{\"v\":" + (i & 3) + "}"); }
+    }
+    return s;
+  }
+  p("native calls: collections while objects are held", collects(RUN));
+
+  // strings in compiled loops: length, charCodeAt read inline (a rope, an index out of the string, a wide string, the
+  // method replaced), String.prototype's other methods called
+  function codes(s, n) { var h = 0; for (var i = 0; i < n; i++) { var k = i % (s.length + 2); h = (h * 31 + s.charCodeAt(k)) | 0; } return h; }
+  var rope = ""; for (var w = 0; w < 40; w++) { rope += "ab" + w; }
+  p("strings", codes("hello, world", RUN), codes(rope, RUN), codes("é€\u{1F600}x", RUN), codes("", RUN));
+  var realCode = String.prototype.charCodeAt; String.prototype.charCodeAt = function (i) { return i; };
+  p("strings: charCodeAt replaced", codes("abc", RUN)); String.prototype.charCodeAt = realCode;
+  function strMethods(s, n) { var c = 0; for (var i = 0; i < n; i++) { c += s.indexOf("o", i & 7) + s.length; } return c; }
+  p("strings: a native method", strMethods("hello world", RUN));
+  function strOrObj(vs, n) { var c = 0; for (var i = 0; i < n; i++) { c += vs[i & 1].length; } return c; }
+  p("strings: a string or an array", strOrObj(["abc", [1, 2]], RUN));
+
   // switch, strings, generators (not compiled) next to compiled code
   function sw(x) { switch (x) { case 1: return "one"; case "1": return "string"; default: return "other"; } }
   p("switch", sw(1), sw("1"), sw(2));

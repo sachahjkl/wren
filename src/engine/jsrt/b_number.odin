@@ -457,6 +457,32 @@ two_sum :: #force_inline proc(x, y: f64) -> (f64, f64) {
 	return hi, y - (hi - x)
 }
 
+// The Math functions the loop JIT computes inline (jit.odin), and which one a function object is (none: another one).
+Math_Intrinsic :: enum u8 {none, abs, floor, ceil, trunc, sqrt, min, max, imul}
+
+math_intrinsic_of :: proc(o: ^Object) -> Math_Intrinsic {
+	if o.class != .c_function {return .none}
+	nd, ok := o.data.(Native_Data)
+	if !ok {return .none}
+	if nd.fn == math_unary {
+		#partial switch Math_Fn(nd.magic) {
+		case .abs: return .abs
+		case .floor: return .floor
+		case .ceil: return .ceil
+		case .trunc: return .trunc
+		case .sqrt: return .sqrt
+		}
+	} else if nd.fn == math_nary {
+		switch nd.magic {
+		case 0: return .max
+		case 1: return .min
+		}
+	} else if nd.fn == math_binary && nd.magic == 2 {
+		return .imul
+	}
+	return .none
+}
+
 init_math_builtins :: proc(ctx: ^Context) {
 	m := new_plain_object(ctx)
 	def_value(ctx, ctx.global_obj, "Math", mk_obj(m))

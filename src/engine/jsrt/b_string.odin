@@ -87,6 +87,13 @@ string_raw :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 	return sb_finish_value(ctx, &sb)
 }
 
+// Is the function object String.prototype.charCodeAt (the loop JIT reads a code unit inline, jit.odin)?
+string_is_char_code_at :: proc(o: ^Object) -> bool {
+	if o.class != .c_function {return false}
+	nd, ok := o.data.(Native_Data)
+	return ok && nd.fn == sp_char && nd.magic == 2
+}
+
 // at(0) charAt(1) charCodeAt(2) codePointAt(3)
 @(private = "file")
 sp_char :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {

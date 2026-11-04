@@ -764,7 +764,7 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			if !ok {break loop}
 			d := int(i8(ip[1]))
 			if t == (op == .if_true8) {
-				if d < 0 && !hot_back_edge(&h, regs.root_base) {break loop}
+				if d < 0 && !hot_back_edge(&h, regs.root_base, int(uintptr(ip) - uintptr(regs.code)) + 1 + d) {break loop}
 				ip = intrinsics.ptr_offset(ip, 1 + d)
 			} else {
 				ip = ip[2:]
@@ -775,7 +775,7 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			if !ok {break loop}
 			d := int(i32(rd32(ip[1:])))
 			if t == (op == .if_true) {
-				if d < 0 && !hot_back_edge(&h, regs.root_base) {break loop}
+				if d < 0 && !hot_back_edge(&h, regs.root_base, int(uintptr(ip) - uintptr(regs.code)) + 1 + d) {break loop}
 				ip = intrinsics.ptr_offset(ip, 1 + d)
 			} else {
 				ip = ip[5:]
@@ -783,15 +783,15 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			s = intrinsics.ptr_offset(s, -1)
 		case .goto8:
 			d := int(i8(ip[1]))
-			if d < 0 && !hot_back_edge(&h, regs.root_base) {break loop}
+			if d < 0 && !hot_back_edge(&h, regs.root_base, int(uintptr(ip) - uintptr(regs.code)) + 1 + d) {break loop}
 			ip = intrinsics.ptr_offset(ip, 1 + d)
 		case .goto16:
 			d := int(i16(u16(rd16(ip[1:]))))
-			if d < 0 && !hot_back_edge(&h, regs.root_base) {break loop}
+			if d < 0 && !hot_back_edge(&h, regs.root_base, int(uintptr(ip) - uintptr(regs.code)) + 1 + d) {break loop}
 			ip = intrinsics.ptr_offset(ip, 1 + d)
 		case .goto:
 			d := int(i32(rd32(ip[1:])))
-			if d < 0 && !hot_back_edge(&h, regs.root_base) {break loop}
+			if d < 0 && !hot_back_edge(&h, regs.root_base, int(uintptr(ip) - uintptr(regs.code)) + 1 + d) {break loop}
 			ip = intrinsics.ptr_offset(ip, 1 + d)
 
 		case .push_atom_value:
@@ -924,11 +924,11 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 	return h.f, int(uintptr(ip) - uintptr(regs.code)), int(uintptr(s) - uintptr(regs.stack)) / size_of(Value), h.moved, h.thrown
 }
 
-// A back edge: false when the loop must leave (a compiled loop of this function, whose back edges go through the full
-// dispatch, which offers them to the JIT; an interrupt to poll or a collection due). Calls nothing.
+// A back edge to `target`: false when the loop must leave (a loop the JIT compiled or is compiling, whose back edges go
+// through the full dispatch, which offers them to the JIT; an interrupt to poll or a collection due). Calls nothing.
 @(private = "file")
-hot_back_edge :: #force_inline proc "contextless" (h: ^Hot, root_base: int) -> bool {
-	if h.f.bc.jit_active != 0 {return false}
+hot_back_edge :: #force_inline proc "contextless" (h: ^Hot, root_base: int, target: int) -> bool {
+	if b := h.f.bc; b.jit_active != 0 && jit_loop_taken(b.jit, target) {return false}
 	rt := h.rt
 	temp := cast(^runtime.Raw_Dynamic_Array)&rt.temp_roots
 	if temp.len > root_base {temp.len = root_base}

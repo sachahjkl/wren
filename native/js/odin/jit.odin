@@ -26,4 +26,17 @@ when wj.WJ_JSRT {
 		return jsrt.jit_stat(int(which))
 	}
 
+	// The helpers compiled loops call (jsrt.JIT_HELPERS): 1 when the call threw, when the array changed kind.
+	@(export, link_name = "wj_jit_call")
+	wj_jit_call :: proc "c" (f: ^jsrt.Frame, sp: i32, argc: i32, kind: i32, pc: i32) -> i32 {
+		context = wj.heap_context()
+		return jsrt.jit_call(f, int(sp), int(argc), jsrt.Jit_Call_Kind(kind), int(pc)) ? 1 : 0
+	}
+
+	@(export, link_name = "wj_jit_array")
+	wj_jit_array :: proc "c" (f: ^jsrt.Frame, slot: i32, kind: i32, out: ^jsrt.Jit_Arr) -> i32 {
+		context = wj.heap_context()
+		return jsrt.jit_array_again(f, int(slot), jsrt.Jit_Arr_Kind(kind), out) ? 0 : 1
+	}
+
 }
