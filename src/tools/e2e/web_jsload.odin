@@ -188,7 +188,7 @@ jsload_document_write :: proc(t: ^testing.T) {
 	serve(t)
 	pr := load(t, "write", concat(`<!doctype html><body>`, PRELUDE, `
 <script>document.write("<p id=w1>written</p><script>log('written inline ' + !!document.getElementById('w1'))<\/script>"); log("after write " + !!document.getElementById("w1") + " " + window.writtenFlag);</script>
-<script>document.write("<script src='`, gen(`window.extRan = true; log("written external")`, ARRIVES_LATE_MS), `'><\/script>"); log("after external write " + window.extRan)</script>
+<script>document.write("<script src='`, gen(`window.extRan = true; log("written external"); document.write("<script>log('from external')<\/script>")`, ARRIVES_LATE_MS), `'><\/script>"); log("after external write " + window.extRan); document.write("<script>log('written after external ' + window.extRan)<\/script>"); document.write("<script>log('written last')<\/script>")</script>
 <script>log("next script " + window.extRan); document.writeln("<i id=w2>x</i>"); log("w2 " + (document.getElementById("w2").nextSibling !== null))</script>
 <p id=tail>tail</p>
 <script>log("order " + document.body.textContent.indexOf("written") + " < " + document.body.textContent.indexOf("tail"))</script>
@@ -199,10 +199,11 @@ jsload_document_write :: proc(t: ^testing.T) {
 	check(pr, noted(pr, "after write true undefined"), "written nodes are in the document when write returns")
 	check(pr, noted(pr, "after external write undefined"), "a written external script does not run inside write")
 	check(pr, in_order(pr, "after external write undefined", "written external", "next script true"), "a written external script blocks the parser until it ran")
+	check(pr, in_order(pr, "written external", "from external", "written after external true", "written last", "next script true"), "what a script writes after a written external script waits behind it, in the order written; what that one writes comes right after it")
 	check(pr, noted(pr, "w2 true"), "writeln: the newline is written too")
 	check(pr, noted_prefix(pr, "order ") && !noted_prefix(pr, "order -1"), "written content comes before the rest of the document")
 	check(pr, ok, "document.write after the load opens the document again (replaced), document.close finishes it")
-	close_page(pr, min_checks = 7)
+	close_page(pr, min_checks = 8)
 }
 
 @(test)

@@ -102,6 +102,7 @@ Doc_Parser :: struct {
 	queue:           [dynamic]Reveal_Item,  // nodes not attached yet, in document order
 	next:            int,
 	stop:            int,                   // a nested reveal (document.write) ends here; -1 none
+	insert:          int,                   // where document.write puts its nodes: after what the running script wrote (HTML's insertion point); -1: at `next`
 	pending:         ^Page_Script,          // the pending parsing-blocking script
 	nesting:         int,                   // script nesting level
 	revealing:       int,                   // attaching nodes: the DOM hooks ignore them
@@ -387,6 +388,7 @@ parser_finish :: proc(p: ^Page) {
 	ps.script_created = false
 	clear(&ps.queue)
 	ps.next = 0
+	ps.insert = -1
 	s.parse_done = true
 	s.timing.parsed_ms = now_ms(p)
 	if the_pages.embedder.parsed != nil { the_pages.embedder.parsed(the_pages.embedder.user, p) }
@@ -688,10 +690,13 @@ script_execute :: proc(p: ^Page, sc: ^Page_Script) {
 		prev := s.current
 		s.current = sc.element
 		parser := sc.parser_inserted
-		if parser { s.parser.executing += 1; s.parser.nesting += 1 }
+		// a parser-inserted script writes right after itself; the insertion point it interrupted moves past what it wrote
+		ps := &s.parser
+		outer, queued := ps.insert, len(ps.queue)
+		if parser { ps.executing += 1; ps.nesting += 1; ps.insert = -1 }
 		js_run(p, sc.source[:], sc.url, sc.line)
-		if parser { s.parser.executing -= 1; s.parser.nesting -= 1 }
 		if p.closed { return }
+		if parser { ps.executing -= 1; ps.nesting -= 1; ps.insert = outer >= 0 ? outer + len(ps.queue) - queued : -1 }
 		s.current = prev
 	case .Module:
 		prev := s.current

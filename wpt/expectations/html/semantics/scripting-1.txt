@@ -122,13 +122,13 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/008.html: OK
 	 scheduler: document.write external - multiple: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/009.html: OK
-	 scheduler: document.write external - multiple with doc.write: FAIL
+	 scheduler: document.write external - multiple with doc.write: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/010.html: OK
-	 scheduler: document.write external + inline - multiple with doc.write: FAIL
+	 scheduler: document.write external + inline - multiple with doc.write: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/011.html: OK
-	 scheduler: document.write external + inline - multiple with doc.write + subsequent markup: FAIL
+	 scheduler: document.write external + inline - multiple with doc.write + subsequent markup: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/012.html: OK
-	 scheduler: document.write external and onload events : FAIL
+	 scheduler: document.write external and onload events : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/013.html: OK
 	 scheduler: DOM added inline script earlier in document: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/014.html: OK
