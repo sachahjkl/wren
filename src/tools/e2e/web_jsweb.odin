@@ -179,6 +179,17 @@ adapter_probe :: proc() -> (testhost.Skip_Verdict, string) {
 @(test) jsweb_htmlmedia :: proc(t: ^testing.T) { section(t, "htmlmedia", tests = 12, seconds = LONG_SECTION_SECONDS) }
 @(test) jsweb_mse :: proc(t: ^testing.T) { section(t, "mse", tests = 13, seconds = LONG_SECTION_SECONDS) }
 
+// The JIT on DOM objects (examples/jsweb/jit_dom.js): every function compiled at its first call, on the page's thread.
+@(test)
+jsweb_jit_dom :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	section_begin(t)
+	defer section_end()
+	settings.js.jit.call_threshold = 1
+	settings.js.jit.background_threads = 0
+	script(t, "jit_dom", tests = 4)
+}
+
 // The section again with the decoders of a machine that has no system AV1 decoder (a CI runner), on a machine that has one.
 @(test)
 jsweb_mse_builtin_decoders :: proc(t: ^testing.T) {

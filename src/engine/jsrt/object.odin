@@ -44,6 +44,8 @@ Shape :: struct {
 	hash:        []u32, // index+1 into props, built when len(props) > SHAPE_LINEAR_MAX
 	transitions: [dynamic]Transition,
 	lazy:        ^Lazy_Members, // the members of the object that are not defined yet (see object_set_lazy)
+	version:     u32,  // a dictionary shape's changes in place (its keys, their attributes, its prototype): compiled code
+	                   // guards it with the shape (jit.odin)
 	is_dict:     bool,
 }
 
@@ -507,6 +509,7 @@ add_property :: proc(rt: ^Runtime, o: ^Object, a: Atom, flags: Prop_Flags, kind:
 	sh := o.shape
 	if sh.is_dict {
 		append(&sh.props, Shape_Prop{a, flags, kind})
+		sh.version += 1
 		n := len(sh.props)
 		if n > SHAPE_LINEAR_MAX {
 			if sh.hash == nil || n * 2 > len(sh.hash) {
@@ -554,6 +557,7 @@ remove_property_at :: proc(rt: ^Runtime, o: ^Object, idx: int) {
 	sh := o.shape
 	n := len(sh.props)
 	ordered_remove(&sh.props, idx)
+	sh.version += 1
 	for i in idx ..< n - 1 {o.slots[i] = o.slots[i + 1]}
 	o.slots[n - 1] = {}
 	shape_build_hash(rt, sh)
@@ -566,6 +570,7 @@ set_property_flags :: proc(rt: ^Runtime, o: ^Object, idx: int, flags: Prop_Flags
 	object_make_dict(rt, o)
 	o.shape.props[idx].flags = flags
 	o.shape.props[idx].kind = kind
+	o.shape.version += 1
 }
 
 set_object_proto :: proc(rt: ^Runtime, o: ^Object, proto: ^Object) {
@@ -577,6 +582,7 @@ set_object_proto :: proc(rt: ^Runtime, o: ^Object, proto: ^Object) {
 	}
 	object_make_dict(rt, o)
 	o.shape.proto = proto
+	o.shape.version += 1
 }
 
 object_proto :: #force_inline proc "contextless" (o: ^Object) -> ^Object {return o.shape.proto}

@@ -93,7 +93,7 @@ jit_cfg: Jit_Cfg
 
 // The engine's procedures compiled code calls: exported by the glue (native/js/odin/jit.odin) under these names,
 // imported by a module whose loop calls (function index = the helper's), each (i32...) -> i32.
-Jit_Helper :: enum u8 {call, array, finish, new, reserve, add, streq}
+Jit_Helper :: enum u8 {call, array, finish, new, reserve, add, streq, get}
 
 Jit_Helper_Def :: struct {
 	name:   string,
@@ -108,6 +108,7 @@ JIT_HELPERS :: [Jit_Helper]Jit_Helper_Def {
 	.reserve = {"wj_jit_reserve", 3},
 	.add     = {"wj_jit_add", 3},
 	.streq   = {"wj_jit_streq", 3},
+	.get     = {"wj_jit_get", 6},
 }
 
 // The engine's table, which a module whose code calls compiled code directly imports ("e" "table": the host gives it
@@ -299,6 +300,27 @@ jit_add :: proc(f: ^Frame, sp: int, slot: int) -> bool {
 	// (the result is in the frame: the temporaries of the conversions go)
 	if len(rt.temp_roots) > f.root_base {resize(&rt.temp_roots, f.root_base)}
 	return true
+}
+
+// Jit_Helper.get: a read of `a` that found a native getter (a DOM attribute's): the getter called on o (the entry `at`),
+// the value at `dest`. True: it threw; the object at `at` is then the context's thrower, whose `a` is an accessor that
+// throws the exception pending: the interpreter makes the read again, and unwinds from it as if it had called the getter.
+jit_getter :: proc(f: ^Frame, getter: ^Object, o: ^Object, dest: int, at: int, a: Atom) -> bool {
+	ctx := f.ctx
+	rt := ctx.rt
+	// (as the hot loop calls it: hot_getter)
+	v := rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) ? stack_overflow(ctx) : call_native(ctx, getter, &getter.data.(Native_Data), mk_obj(o), nil)
+	if is_exception(v) {
+		if ctx.jit_rethrow == nil {ctx.jit_rethrow = new_native_function(ctx, jit_rethrow, "", 0, 0, .constructor)}
+		if ctx.jit_thrower == nil {ctx.jit_thrower = object_new_proto(ctx, nil)}
+		th := ctx.jit_thrower
+		if shape_lookup(th.shape, a) < 0 {define_own_property(ctx, th, a, accessor_desc(mk_obj(ctx.jit_rethrow), UNDEFINED, {.configurable}), false)}
+		f.stack[at] = mk_obj(th)
+		return true
+	}
+	f.stack[dest] = v
+	if len(rt.temp_roots) > f.root_base {resize(&rt.temp_roots, f.root_base)}
+	return false
 }
 
 // Jit_Helper.streq: two strings equal by value.
@@ -672,7 +694,8 @@ jit_exit :: proc(f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, index: u32, r:
 	case .deopt:
 		jit_stats.exits_deopt += 1
 		if jit_cfg.trace {
-			jit_trace(cat(f.ctx, "jit: deopt in ", atom_utf8(f.ctx.rt, b.func_name), jl.whole ? " (whole)" : "", " at ", int_str(xpc), " aux ", int_str(aux)))
+			op := xpc < len(b.code) ? reflect.enum_string(Opcode(b.code[xpc])) : "end"
+			jit_trace(cat(f.ctx, "jit: deopt in ", atom_utf8(f.ctx.rt, b.func_name), jl.whole ? " (whole)" : "", " at ", int_str(xpc), " (", op, ") aux ", int_str(aux)))
 		}
 		if aux == JIT_AUX_LEARN || aux == JIT_AUX_NO_INLINE {
 			// a site met an object or a value it was not compiled for: it learns them, the region is translated again
@@ -830,37 +853,40 @@ jit_site_add_shape :: proc(site: ^Jit_Site, o: ^Object, sh: ^Shape) -> (changed:
 	return true
 }
 
-// Classes whose objects, for a key that is not an index, have no say in a [[Get]] that goes on to their prototype.
+// Classes whose objects, for a key that is not an index, have no say in a [[Get]] that goes on to their prototype (a host
+// object: one without exotic hooks, Object.host_exotic checked where the code reads past it).
 @(private = "file")
 jit_ordinary_class :: proc(c: Class_ID) -> bool {
 	#partial switch c {
 	case .object, .array, .arguments, .error, .number, .boolean, .symbol, .bigint, .date, .regexp, .c_function,
-	     .bytecode_function, .bound_function, .jsmap, .set, .weakmap, .weakset, .promise:
+	     .bytecode_function, .bound_function, .jsmap, .set, .weakmap, .weakset, .promise, .host:
 		return true
 	}
 	return false
 }
 
-// Where a read of `a` from an object of shape `sh` finds a data property, as the hot loop's lookup does (calling
-// nothing): in the object itself (depth 0) or in the prototype objs[depth - 1], whose shape is shapes[depth - 1], the
-// objects before it walked without finding it. ok = false: an accessor, a lazy shape, an exotic object on the way,
-// absent, or too deep.
+// Where a read of `a` from an object of shape `sh` finds a data property (an accessor too when `accessors`: its getter is
+// called), as the hot loop's lookup does (calling nothing): in the object itself (depth 0) or in the prototype
+// objs[depth - 1], whose shape is shapes[depth - 1], the objects before it walked without finding it (a dictionary shape,
+// the object's or a prototype's, guarded by its version too: a key added in place would shadow what is found further).
+// ok = false: an accessor not asked for, a lazy shape, an exotic object on the way, absent, or too deep.
 Jit_Lookup :: struct {
-	depth:  int,
-	idx:    int,
-	objs:   [JIT_MAX_CHAIN]^Object,
-	shapes: [JIT_MAX_CHAIN]^Shape,
+	depth:    int,
+	idx:      int,
+	accessor: bool,
+	objs:     [JIT_MAX_CHAIN]^Object,
+	shapes:   [JIT_MAX_CHAIN]^Shape,
 }
 
 @(private = "file")
-jit_lookup :: proc(sh: ^Shape, a: Atom) -> (l: Jit_Lookup, ok: bool) {
+jit_lookup :: proc(sh: ^Shape, a: Atom, accessors := false) -> (l: Jit_Lookup, ok: bool) {
 	if sh.lazy != nil {return}
 	if i := shape_lookup(sh, a); i >= 0 {
-		if sh.props[i].kind != .data {return}
+		l.accessor = sh.props[i].kind == .accessor
+		if sh.props[i].kind != .data && !(accessors && l.accessor) {return}
 		l.idx = i
 		return l, true
 	}
-	if sh.is_dict {return}   // (a property added in place would shadow the prototype's)
 	p := sh.proto
 	for p != nil {
 		if l.depth >= JIT_MAX_CHAIN {return}
@@ -870,11 +896,12 @@ jit_lookup :: proc(sh: ^Shape, a: Atom) -> (l: Jit_Lookup, ok: bool) {
 		l.shapes[l.depth] = ps
 		l.depth += 1
 		if i := shape_lookup(ps, a); i >= 0 {
-			if ps.props[i].kind != .data {return}
+			l.accessor = ps.props[i].kind == .accessor
+			if ps.props[i].kind != .data && !(accessors && l.accessor) {return}
 			l.idx = i
 			return l, true
 		}
-		if ps.is_dict || p.fast_array || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return}
+		if p.fast_array || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return}
 		p = ps.proto
 	}
 	return
@@ -1007,6 +1034,8 @@ Jc :: struct {
 	fast_bit:    u8,   // Object.bits: fast_array, is_htmldda, extensible
 	htmldda_bit: u8,
 	extensible_bit: u8,
+	host_exotic_bit: u8,
+	ctor_bits:   u8,   // Object.bits: is_constructor, ctor_only (a getter called as a native function has neither)
 	calls:       bool, // the region calls (locals a closure may reach stay in memory)
 	helpers:     bool, // the code calls the engine's helpers (they are imported)
 	table:       bool, // the code calls compiled code through the engine's table (it is imported)
@@ -1039,6 +1068,7 @@ OBJ_SLOT_CAP :: u32(offset_of(Object, slot_cap))
 ARR_VALUES :: u32(offset_of(Array_Data, values))
 ARR_COUNT :: u32(offset_of(Array_Data, count))
 SHAPE_PROPS :: u32(offset_of(Shape, props))
+SHAPE_VERSION :: u32(offset_of(Shape, version))
 SHAPE_PROPS_LEN :: SHAPE_PROPS + u32(offset_of(runtime.Raw_Dynamic_Array, len))
 PROP_SIZE :: u32(size_of(Shape_Prop))
 PROP_ATOM :: u32(offset_of(Shape_Prop, atom))
@@ -1103,7 +1133,7 @@ when ODIN_ARCH == .wasm32 {
 
 // The bit of Object.bits that a field of it is.
 @(private = "file")
-Jit_Object_Bit :: enum u8 {fast_array, is_htmldda, extensible}
+Jit_Object_Bit :: enum u8 {fast_array, is_htmldda, extensible, host_exotic, is_constructor, ctor_only}
 
 @(private = "file")
 jit_object_bit :: proc(which: Jit_Object_Bit) -> u8 {
@@ -1111,6 +1141,9 @@ jit_object_bit :: proc(which: Jit_Object_Bit) -> u8 {
 	switch which {
 	case .fast_array: o.fast_array = true
 	case .extensible: o.extensible = true
+	case .host_exotic: o.host_exotic = true
+	case .is_constructor: o.is_constructor = true
+	case .ctor_only: o.ctor_only = true
 	case .is_htmldda: o.is_htmldda = true
 	}
 	return (cast(^u8)(uintptr(&o) + uintptr(OBJ_BITS)))^
@@ -1346,14 +1379,15 @@ j_parr_addr :: proc(c: ^Jc, o: int, idx: int, pc: int) -> bool {
 	return true
 }
 
-// The V entry d is an object (or the instruction at pc is left to the interpreter): it becomes a P.
+// The V entry d is an object (or the instruction at pc is left to the interpreter, aux: for its site to learn what it is
+// instead): it becomes a P.
 @(private = "file")
-j_as_obj :: proc(c: ^Jc, d: int, pc: int) {
+j_as_obj :: proc(c: ^Jc, d: int, pc: int, aux: u32 = JIT_AUX_NONE) {
 	if c.st.t[d] != .V {return}
 	j_lget(c, j_si(c, d))
 	j_i32(c, i32(Tag.object))
 	j_op(c, W_I32_NE)
-	j_deopt_if(c, pc)
+	j_deopt_if(c, pc, aux)
 	j_lget(c, c.sl0 + u32(d))
 	j_op(c, W_I32_WRAP_I64)
 	j_lset(c, j_si(c, d))
@@ -1585,9 +1619,20 @@ j_guard_shape :: proc(c: ^Jc, holder: ^Object, obj: u32, sh: ^Shape, pc: int) {
 	j_deopt_if(c, pc, JIT_AUX_LEARN)
 }
 
-// A dictionary shape changes in place: the property at idx is still `a`, a data property (writable for a write).
+// A dictionary shape walked past (it does not have the key): unchanged since the translation, or the site learns.
 @(private = "file")
-j_dict_check :: proc(c: ^Jc, sh: ^Shape, idx: int, a: Atom, write: bool, pc: int) {
+j_guard_version :: proc(c: ^Jc, sh: ^Shape, pc: int) {
+	j_i32(c, i32(uintptr(sh)))
+	j_mem(c, W_I32_LOAD, 2, SHAPE_VERSION)
+	j_i32(c, i32(sh.version))
+	j_op(c, W_I32_NE)
+	j_deopt_if(c, pc, JIT_AUX_LEARN)
+}
+
+// A dictionary shape changes in place: the property at idx is still `a`, a data property (writable for a write; an
+// accessor for a getter's read).
+@(private = "file")
+j_dict_check :: proc(c: ^Jc, sh: ^Shape, idx: int, a: Atom, write: bool, pc: int, accessor := false) {
 	j_i32(c, i32(uintptr(sh)))
 	j_mem(c, W_I32_LOAD, 2, SHAPE_PROPS_LEN)
 	j_i32(c, i32(idx))
@@ -1603,7 +1648,7 @@ j_dict_check :: proc(c: ^Jc, sh: ^Shape, idx: int, a: Atom, write: bool, pc: int
 	j_op(c, W_I32_NE)
 	j_lget(c, I_T0)
 	j_mem(c, W_I32_LOAD8_U, 0, off + PROP_KIND)
-	j_i32(c, i32(Prop_Kind.data))
+	j_i32(c, i32(accessor ? Prop_Kind.accessor : Prop_Kind.data))
 	j_op(c, W_I32_NE)
 	j_op(c, W_I32_OR)
 	if write {
@@ -1631,9 +1676,10 @@ j_slot_of :: proc(c: ^Jc, holder: ^Object, obj: u32, idx: int) {
 }
 
 // The address of the property `a` of the object in local `obj`, in I_T0: a guard for each shape the site knows, the
-// first that matches taken; none matching is a learn exit. write: an own writable data property.
+// first that matches taken; none matching is a learn exit. write: an own writable data property; getter: an accessor
+// (its Getset), where the site reads through getters (jit_get_field).
 @(private = "file")
-j_prop_addr :: proc(c: ^Jc, obj: u32, site: ^Jit_Site, a: Atom, write: bool, pc: int) -> bool {
+j_prop_addr :: proc(c: ^Jc, obj: u32, site: ^Jit_Site, a: Atom, write: bool, pc: int, getter := false) -> bool {
 	j_op(c, W_BLOCK)
 	j_op(c, W_VOID)
 	c.nest += 1
@@ -1642,7 +1688,8 @@ j_prop_addr :: proc(c: ^Jc, obj: u32, site: ^Jit_Site, a: Atom, write: bool, pc:
 		sh := site.shapes[k]
 		// objects of a shape whose property is not a plain data property (an accessor, an exotic object, absent; for a
 		// write, an own writable one) take the exit
-		l, ok := jit_lookup(sh, a)
+		l, ok := jit_lookup(sh, a, getter)
+		if ok && l.accessor != getter {continue}
 		if !ok {
 			// (a write of a property the object does not have: appended, when objects of this shape take it as such)
 			if write && j_prop_add(c, obj, sh, site.classes[k], a, pc) {site.inline += {k}}
@@ -1665,16 +1712,26 @@ j_prop_addr :: proc(c: ^Jc, obj: u32, site: ^Jit_Site, a: Atom, write: bool, pc:
 			j_mem(c, W_I32_LOAD8_U, 0, OBJ_CLASS)
 			j_i32(c, i32(site.classes[k]))
 			j_op(c, W_I32_NE)
+			if site.classes[k] == .host {
+				// (a host object with exotic hooks has its say)
+				j_lget(c, obj)
+				j_mem(c, W_I32_LOAD8_U, 0, OBJ_BITS)
+				j_i32(c, i32(c.host_exotic_bit))
+				j_op(c, W_I32_AND)
+				j_op(c, W_I32_OR)
+			}
 			j_deopt_if(c, pc, JIT_AUX_LEARN)
+			if sh.is_dict {j_guard_version(c, sh, pc)}
 			for j in 0 ..< l.depth {
 				if !j_keep(c, l.shapes[j]) {return false}
 				j_guard_shape(c, l.objs[j], 0, l.shapes[j], pc)
+				if j < l.depth - 1 && l.shapes[j].is_dict {j_guard_version(c, l.shapes[j], pc)}
 			}
 			hs := l.shapes[l.depth - 1]
-			if hs.is_dict {j_dict_check(c, hs, l.idx, a, write, pc)}
+			if hs.is_dict {j_dict_check(c, hs, l.idx, a, write, pc, getter)}
 			j_slot_of(c, l.objs[l.depth - 1], 0, l.idx)
 		} else {
-			if sh.is_dict {j_dict_check(c, sh, l.idx, a, write, pc)}
+			if sh.is_dict {j_dict_check(c, sh, l.idx, a, write, pc, getter)}
 			j_slot_of(c, nil, obj, l.idx)
 		}
 		j_op(c, W_BR)
@@ -1690,7 +1747,7 @@ j_prop_addr :: proc(c: ^Jc, obj: u32, site: ^Jit_Site, a: Atom, write: bool, pc:
 
 // A write of the property `a` an object of shape sh does not have, as a case of j_prop_addr (the slot's address in I_T0,
 // out of its block): the property appended as [[Set]] appends it, when the object is an ordinary extensible one and `a`
-// is nowhere on its prototype chain (each prototype's shape guarded), the shape's transition taken. False: objects of
+// is nowhere on its prototype chain (each prototype's shape guarded, a dictionary's version), the shape's transition taken. False: objects of
 // this shape take the exit.
 @(private = "file")
 j_prop_add :: proc(c: ^Jc, obj: u32, sh: ^Shape, class: Class_ID, a: Atom, pc: int) -> bool {
@@ -1699,7 +1756,7 @@ j_prop_add :: proc(c: ^Jc, obj: u32, sh: ^Shape, class: Class_ID, a: Atom, pc: i
 	np := 0
 	for p := sh.proto; p != nil; p = p.shape.proto {
 		ps := p.shape
-		if np >= JIT_MAX_CHAIN || ps.lazy != nil || ps.is_dict || shape_lookup(ps, a) >= 0 || p.fast_array || p.class == .proxy ||
+		if np >= JIT_MAX_CHAIN || ps.lazy != nil || shape_lookup(ps, a) >= 0 || p.fast_array || p.class == .proxy ||
 		   p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {
 			return false
 		}
@@ -1728,7 +1785,10 @@ j_prop_add :: proc(c: ^Jc, obj: u32, sh: ^Shape, class: Class_ID, a: Atom, pc: i
 	j_op(c, W_I32_EQZ)
 	j_op(c, W_I32_OR)
 	j_deopt_if(c, pc)
-	for j in 0 ..< np {j_guard_shape(c, protos[j], 0, protos[j].shape, pc)}
+	for j in 0 ..< np {
+		j_guard_shape(c, protos[j], 0, protos[j].shape, pc)
+		if protos[j].shape.is_dict {j_guard_version(c, protos[j].shape, pc)}
+	}
 	j_add_slot(c, obj, next, len(next.props) - 1)
 	j_op(c, W_BR)
 	w_uleb(&c.out, 1)
@@ -1877,9 +1937,20 @@ jit_get_field :: proc(c: ^Jc, op: Opcode, a: Atom, pc: int) -> bool {
 	if recv.tag == .object {
 		if v, ok := jit_peek_field(as_obj(recv), a); ok {shadow = v}
 	}
-	j_as_obj(c, n - 1, pc)
+	// (a string there: the site learns it, the read is compiled for strings too)
+	j_as_obj(c, n - 1, pc, JIT_AUX_LEARN)
 	obj, ok := j_obj_local(c, n - 1)
-	if !ok || !j_prop_addr(c, obj, site, a, false, pc) {return false}
+	if !ok {return false}
+	// (a site whose first shape it can read finds an accessor reads through getters)
+	getter := false
+	for k in 0 ..< site.n {
+		if l, found := jit_lookup(site.shapes[k], a, true); found {
+			getter = l.accessor
+			break
+		}
+	}
+	if !j_prop_addr(c, obj, site, a, false, pc, getter) {return false}
+	if getter {return j_call_getter(c, op, a, obj, pc)}
 	t := j_read_ty(c, site, shadow)
 	if t == .O || t == .L {t = .V}
 	j_check_value(c, I_T0, t, pc)
@@ -1888,6 +1959,69 @@ jit_get_field :: proc(c: ^Jc, op: Opcode, a: Atom, pc: int) -> bool {
 	j_take_value(c, I_T0, t, d)
 	c.st.v[d] = shadow
 	return true
+}
+
+// The getter of the accessor whose Getset is at I_T0, called on the object in local `obj` (the top entry) by the helper,
+// when it is a native function called as a function (hot_native_getter), else the interpreter reads the property: the
+// result a V in the place of the object (above it for get_field2). An exception leaves through a throw exit, the object
+// replaced by the thrower (jit_getter); the held arrays are taken again after it.
+@(private = "file")
+j_call_getter :: proc(c: ^Jc, op: Opcode, a: Atom, obj: u32, pc: int) -> bool {
+	n := c.st.n
+	if c.inl_depth > 0 {
+		j_fail(c, "a getter in a callee being inlined")
+		return false
+	}
+	j_lget(c, I_T0)
+	j_mem(c, W_I32_LOAD, 2, 0)
+	j_lset(c, I_T2)
+	j_lget(c, I_T2)
+	j_op(c, W_I32_EQZ)
+	j_op(c, W_IF)
+	j_op(c, W_I32)
+	j_i32(c, 1)
+	j_op(c, W_ELSE)
+	j_lget(c, I_T2)
+	j_mem(c, W_I32_LOAD8_U, 0, OBJ_CLASS)
+	j_i32(c, i32(Class_ID.c_function))
+	j_op(c, W_I32_NE)
+	j_lget(c, I_T2)
+	j_mem(c, W_I32_LOAD8_U, 0, OBJ_BITS)
+	j_i32(c, i32(c.ctor_bits))
+	j_op(c, W_I32_AND)
+	j_op(c, W_I32_OR)
+	j_op(c, W_END)
+	j_deopt_if(c, pc)
+	j_flush_objs(c)
+	j_materialize(c, true)
+	dest := op == .get_field2 ? n : n - 1
+	j_lget(c, P_FRAME)
+	j_lget(c, I_T2)
+	j_lget(c, obj)
+	j_i32(c, i32(dest))
+	j_i32(c, i32(n - 1))
+	j_i32(c, i32(a))
+	j_helper(c, .get)
+	j_op(c, W_IF)
+	j_op(c, W_VOID)
+	c.nest += 1
+	// (the object's place is the thrower's: it stays in the frame)
+	c.st.n = n - 1
+	j_stub(c, pc, .throw, 0, n)
+	c.st.n = n
+	j_op(c, W_END)
+	c.nest -= 1
+	if op != .get_field2 {c.st.n -= 1}
+	d := j_push(c, .V)
+	off := u32(d * size_of(Value))
+	j_lget(c, P_STACK)
+	j_mem(c, W_I32_LOAD8_U, 0, off)
+	j_lset(c, j_si(c, d))
+	j_lget(c, P_STACK)
+	j_mem(c, W_I64_LOAD, 3, off + 8)
+	j_lset(c, c.sl0 + u32(d))
+	j_retake_arrays(c, pc + int(opcode_info[op].size))
+	return !c.fail
 }
 
 // put_field: the top entry stored into `a` of the object under it.
@@ -2269,6 +2403,7 @@ jit_get_field_str :: proc(c: ^Jc, op: Opcode, a: Atom, pc: int) -> bool {
 	for j in 0 ..= l.depth {
 		if !j_keep(c, shapes[j]) {return false}
 		j_guard_shape(c, objs[j], 0, shapes[j], pc)
+		if j < l.depth && shapes[j].is_dict {j_guard_version(c, shapes[j], pc)}
 	}
 	if shapes[l.depth].is_dict {j_dict_check(c, shapes[l.depth], l.idx, a, false, pc)}
 	j_slot_of(c, objs[l.depth], 0, l.idx)
@@ -2542,6 +2677,14 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 		j_return(c, d)
 		return false
 	}
+	j_retake_arrays(c, next)
+	return true
+}
+
+// After a call (a native may grow, shrink or detach them), the arrays the code holds taken again; one that is not of the
+// kind the code was made for leaves at `next` (the instruction after the call).
+@(private = "file")
+j_retake_arrays :: proc(c: ^Jc, next: int) {
 	for k in 0 ..< c.jl.n_arr {
 		at := u32(k * size_of(Jit_Arr))
 		j_lget(c, P_FRAME)
@@ -2558,7 +2701,6 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 			j_lset(c, c.a0 + 3 * u32(k) + w)
 		}
 	}
-	return true
 }
 
 // Direct calls -------------------------------------------------------------------------------------------------------
@@ -3713,6 +3855,8 @@ jit_translate :: proc(c: ^Jc, f: ^Frame) -> Jit_Outcome {
 	}
 	c.fast_bit = jit_object_bit(.fast_array)
 	c.extensible_bit = jit_object_bit(.extensible)
+	c.host_exotic_bit = jit_object_bit(.host_exotic)
+	c.ctor_bits = jit_object_bit(.is_constructor) | jit_object_bit(.ctor_only)
 	c.htmldda_bit = jit_object_bit(.is_htmldda)
 	// entry stack types from the frame
 	c.st.n = c.entry_sp

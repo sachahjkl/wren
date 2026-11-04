@@ -376,6 +376,39 @@
   function swStr(ks, n) { var c = 0; for (var i = 0; i < n; i++) { switch (ks[i & 3]) { case "a": c += 1; break; case "bb": c += 2; break; case "é": c += 3; break; default: c += 4; } } return c; }
   p("strings: switch", swStr(["a", "b" + "b", "é", "dddd"], RUN), swStr(["a", 1, null, "bb"], RUN));
 
+  // native getters called by compiled code (the engine's own: Map's size, ArrayBuffer's byteLength, RegExp's source):
+  // one that throws (its object not of its kind: the exception unwinds once), a getter replaced by a function of the
+  // script, an accessor without a getter, getters reached through the prototype of a class
+  function sizes(ms, n) { var s = 0; for (var i = 0; i < n; i++) { var m = ms[i & 3]; s += m.size + (m.size > 1 ? 1 : 0); } return s; }
+  var maps = [new Map([[1, 1]]), new Map(), new Map([[1, 1], [2, 2]]), new Map([[3, 3]])];
+  p("getters: Map size", sizes(maps, RUN));
+  maps[3] = Object.create(Map.prototype);
+  try { p("getters: a getter that throws", sizes(maps, RUN)); } catch (e) { p("getters: a getter that throws", e.name); }
+  function byteLengths(bs, n) { var s = 0; for (var i = 0; i < n; i++) { s += bs[i & 1].byteLength; } return s; }
+  p("getters: ArrayBuffer byteLength", byteLengths([new ArrayBuffer(8), new ArrayBuffer(3)], RUN));
+  function sources(rs, n) { var s = 0; for (var i = 0; i < n; i++) { s += rs[i & 1].source.length; } return s; }
+  p("getters: RegExp source", sources([/ab+c/, /x/g], RUN));
+  class Sized extends Map { get twice() { return this.size * 2; } }
+  function sizedLoop(o, n) { var s = 0; for (var i = 0; i < n; i++) { s += o.size + o.twice; } return s; }
+  p("getters: through a class", sizedLoop(new Sized([[1, 2]]), RUN));
+  var realSize = Object.getOwnPropertyDescriptor(Map.prototype, "size");
+  Object.defineProperty(Map.prototype, "size", { get: function () { return 100; }, configurable: true });
+  p("getters: replaced by a script's", sizes([new Map(), new Map(), new Map(), new Map()], RUN));
+  Object.defineProperty(Map.prototype, "size", { get: undefined, set: function (v) {}, configurable: true });
+  p("getters: an accessor without a getter", sizes([new Map(), new Map(), new Map(), new Map()], RUN));
+  Object.defineProperty(Map.prototype, "size", realSize);
+
+  // reads through prototypes whose shapes are dictionaries (a property deleted from them): one that gets the key in
+  // place later (it shadows what was read further), one whose own prototype is changed, an attribute changed in place
+  function Base2() {} Base2.prototype.k = 1; Base2.prototype.tmp = 0; delete Base2.prototype.tmp;
+  function Mid2() {} Mid2.prototype = Object.create(Base2.prototype); Mid2.prototype.tmp = 0; delete Mid2.prototype.tmp;
+  function readK(o, n) { var s = 0; for (var i = 0; i < n; i++) { s += o.k; } return s; }
+  var m2 = new Mid2();
+  p("dictionaries: through two", readK(m2, RUN));
+  Mid2.prototype.k = 5; p("dictionaries: the key added in place", readK(m2, RUN));
+  delete Mid2.prototype.k; Object.setPrototypeOf(Mid2.prototype, { k: 7 }); p("dictionaries: a prototype changed", readK(m2, RUN));
+  Object.defineProperty(Mid2.prototype, "k", { get: function () { return 9; }, configurable: true }); p("dictionaries: an accessor in place", readK(m2, RUN));
+
   // switch, strings, generators (not compiled) next to compiled code
   function sw(x) { switch (x) { case 1: return "one"; case "1": return "string"; default: return "other"; } }
   p("switch", sw(1), sw("1"), sw(2));
