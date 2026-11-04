@@ -533,6 +533,21 @@ disk_cache :: proc(t: ^testing.T) {
 	runtime_destroy()
 }
 
+// A folder of thousands of files takes seconds to read: once a run, not once a write (a closing window waited for it, and for the watchdog that ended it: the unclean exits of 0.6.24).
+@(test)
+disk_cache_reads_its_folder_once_a_run :: proc(t: ^testing.T) {
+	dir := temp_dir(t, "scans")
+	defer testenv.remove_tree(dir)
+	setup(t, dir)
+	destroy(make_instance(t, wat(t, MODULE)))
+	cache_flush()
+	destroy(make_instance(t, wat(t, NO_MEMORY_MODULE)))
+	cache_flush()
+	testing.expect_value(t, cache_stats().disk_writes, 2)
+	testing.expect_value(t, sync.atomic_load(&cache.files.scans), 1)
+	runtime_destroy()
+}
+
 // The read-ahead of a process's start (page.js_startup): on another thread, the module from the disk into memory; the
 // instance made after it reads nothing from the disk. Nothing is compiled ahead when the disk has no entry.
 @(test)
