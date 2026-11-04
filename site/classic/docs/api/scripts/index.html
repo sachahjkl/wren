@@ -202,8 +202,9 @@ an invalid URL, Not_Allowed when the browser refuses (the console says why).</p>
 <p>Host: <code>DedicatedWorkerGlobalScope_postSerialized :: proc(c: ^Call, data: []u8) -&gt; Api_Error</code></p>
 <h3 id="workerglobalscope-importscript"><a class="anchor" href="#workerglobalscope-importscript" aria-hidden="true">#</a><code>WorkerGlobalScope_importScript</code></h3>
 <div class="code"><pre><code>string WorkerGlobalScope_importScript(usvstring url) raises</code></pre></div>
-<p>importScripts(url), one URL: fetched synchronously (same rules as the worker's script). The result is the
-response's URL, a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript; Type in a
+<p>importScripts(url), one URL: fetched synchronously (same rules as the worker's script). The result is '1' when
+the script's errors are muted (an opaque response: another origin without CORS) else '0', the response's URL,
+a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript; Type in a
 module worker (importScripts is a classic worker's).</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>WorkerGlobalScope_importScript :: proc(c: ^Call, url: string) -&gt; (string, Api_Error)</code></p>

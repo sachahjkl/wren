@@ -148,7 +148,9 @@ another throws a <code>TypeError</code>. An <code>Event</code> to <code>otherWin
 <li>a cycle between two realms (a listener of one kept by the other) lives until one of them goes;</li>
 <li><code>navigator</code>, <code>screen</code>, <code>crypto</code> and <code>console</code> of another window are the caller's (a page takes a clean <code>crypto</code> from a blank frame
 and hands it typed arrays of its own, which the frame's would refuse);</li>
-<li>a frame without a realm (sandboxed without <code>allow-scripts</code>) gives the caller's native constructors for its upper-case names;</li>
+<li>a frame without a realm (sandboxed without <code>allow-scripts</code>) gives the caller's native constructors for its upper-case names;
+what the caller's scripts set on its window is kept in the caller's realm (another realm sets and reads its own), and its
+<code>open()</code> opens a window as the frame (its sandbox, the frame its opener);</li>
 <li><code>w.Function.prototype.toString.call(f)</code> on a function of the caller says <code>[native code]</code>: the frame sees a <code>Proxy</code>.</li>
 </ul>
 <p>A custom element class of one realm defined in the registry of another (<code>frame.contentWindow.customElements.define(name, class extends
@@ -190,7 +192,7 @@ rejects with a <code>SecurityError</code>);</li>
 <h2 id="windows-that-scripts-open"><a class="anchor" href="#windows-that-scripts-open" aria-hidden="true">#</a>Windows that scripts open</h2>
 <p><code>window.open()</code> to <code>_blank</code> or to a name nothing has, and a script's click on a link to one, open a window: a top-level navigable
 of the same kind (<code>src/page/auxiliary.odin</code>), whose embedder makes the window around it (the browser a tab, the WPT runner's
-headless host a window without a shell) and whose first document is the initial about:blank the page package makes (the
+headless host a window without a shell, with a back/forward cache of its own: <code>src/tools/headless</code>) and whose first document is the initial about:blank the page package makes (the
 opener's origin, or an opaque one under <code>noopener</code>; the opener's agent cluster, cross-origin isolated as the opener is). The
 window keeps its id across its documents, so the <code>WindowProxy</code> that <code>window.open</code> returned still names it after it navigated.</p>
 <p>Its first document keeps the initial about:blank's <code>Window</code>, as a frame's does (above): <code>w = window.open(url); w.onload = ...</code>
@@ -219,8 +221,10 @@ and the windows it opened lose theirs. <code>same-origin-allow-popups</code> kee
 <h2 id="policies-a-frame-requires"><a class="anchor" href="#policies-a-frame-requires" aria-hidden="true">#</a>Policies a frame requires</h2>
 <p><code>&lt;iframe csp="..."&gt;</code> (CSP Embedded Enforcement, <code>src/page/frames_csp.odin</code>) is a policy the frame's documents must take; a frame
 without one takes its parent's own. Its requests send it (<code>Sec-Required-CSP</code>). A response with <code>Allow-CSP-From: *</code> or the parent's
-origin takes it, enforced on the document; one whose own enforced policies are as strict (a policy with each of its directives and
-the same sources: the part of the standard's subsumption that does not compare source lists) takes it as it is; about:blank, srcdoc,
+origin takes it, enforced on the document; one whose own enforced policies are as strict (the standard's subsumption,
+<code>src/csp/subsume.odin</code>: each required directive matched in one of them, through the fetch directives' fallbacks, by a source list that
+allows nothing more: hosts within its wildcards, ports and paths, no keyword or nonce it lacks; a sandbox with no more tokens) takes it as
+it is; a <code>csp</code> attribute less strict than the parent's own requirement gives way to that one; about:blank, srcdoc,
 <code>data:</code> and <code>blob:</code> documents take it enforced. Any other is refused, as <code>X-Frame-Options</code> refuses: the frame shows an error
 document. The <code>sandbox</code> directive of any enforced policy, a response's header or a required one, sandboxes the document on top of
 what its container asks.</p>
