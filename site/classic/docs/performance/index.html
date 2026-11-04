@@ -80,11 +80,12 @@
 <li><a href="#what-changed-round-22-what-the-user-does-while-the-pages-script-is-busy">What changed, round 22: what the user does while the page's script is busy</a></li>
 <li><a href="#what-changed-round-23-document-read-by-compiled-code-objects-allocated-inline-accessors-of-the-scripts">What changed, round 23: document read by compiled code, objects allocated inline, accessors of the script's</a></li>
 <li><a href="#what-changed-round-24-what-still-froze-under-a-busy-page">What changed, round 24: what still froze under a busy page</a></li>
+<li><a href="#what-changed-round-25-what-a-first-load-waited-for-found-by-loading-it-again-and-again">What changed, round 25: what a first load waited for, found by loading it again and again</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
 <li class="lvl3"><a href="#arrays-of-bools">Arrays of bools</a></li>
-<li class="lvl3"><a href="#mutexes-51-in-wren-17-in-the-toolkit-outside-tests">Mutexes (51 in Wren, 17 in the toolkit, outside tests)</a></li>
+<li class="lvl3"><a href="#mutexes-57-in-wren-20-in-the-toolkit-outside-tests">Mutexes (57 in Wren, 20 in the toolkit, outside tests)</a></li>
 <li class="lvl3"><a href="#heap-lists-per-call-on-hot-paths">Heap lists per call on hot paths</a></li>
 <li><a href="#next-ranked-by-measured-cost-on-a-bottleneck">Next, ranked by measured cost on a bottleneck</a></li>
 </ul>
@@ -111,9 +112,9 @@ profile build (<code>build.bat profile</code>, <code>-define:PROFILE=true</code>
 <code>domInteractive - responseEnd</code>), then the scenario's input, then <code>api.stats</code> (CPU, frames, the loop's meter:
 <code>loop.turns</code>, <code>sleeps</code>, <code>causes</code>).</li>
 <li><code>WREN_SAMPLE=1</code> (1 ms samples of the window's thread, by phase), <code>WREN_SAMPLE_STACK=1</code> (callers),
-<code>WREN_SAMPLE_THREADS=1</code> (the other threads, in proportion to the CPU cycles each ran: every millisecond the one that
-ran the most since its last sample; per thread, its hottest call chains and the functions on its stack). Before round
-3 it visited the ninety threads in turn, about 13 samples a second each. Samples that land in a system call are biased: on the
+<code>WREN_SAMPLE_THREADS=1</code> (the other threads: every millisecond each one that ran in the last second; per thread, its
+name, hottest call chains and the functions on its stack; round 25). Before round 3 it visited the ninety threads in
+turn, about 13 samples a second each; from round 3 to 24 it took the one whose cycles moved most. Samples that land in a system call are biased: on the
 script-heavy page <code>NtUserGetQueueStatus</code> (the chrome's preemption checking for input) took 13 % of the samples, and turning
 preemption off (<code>browser.shell.preempt=false</code>) changed neither the frame rate nor the CPU.</li>
 </ul>
@@ -2052,6 +2053,113 @@ task, <code>scrollTop</code> 0 then, the offset, the document's <code>scrollY</c
 frame the box as it then shows); its thumb (the same, and no <code>mousedown</code> for the page); the caret's blink (6 captures
 90 ms apart at a 200 ms blink: one differs from the first). Each fails without its change (the tests built against the
 shell without it: the values above).</p>
+<h2 id="what-changed-round-25-what-a-first-load-waited-for-found-by-loading-it-again-and-again"><a class="anchor" href="#what-changed-round-25-what-a-first-load-waited-for-found-by-loading-it-again-and-again" aria-hidden="true">#</a>What changed, round 25: what a first load waited for, found by loading it again and again</h2>
+<p>Item 10 of the list, as it stood after round 18 (and the list brought up to date: rounds 19 to 24 had not been added to
+it). The browser: <code>wrentool bench perf</code>, profile builds, the base (4e78b4fa: 0.6.30 and the Inventory's commit) and the
+round's binary in turn, the order turning, 7 runs of each, median, range in brackets; times in ms from the navigation's
+start. Conditions: other agents built and ran WPT for most of the round (6.7 of the 16 logical processors busy besides the
+bench at one reading; p10k's first paint then 72 against 62 ms, ranges overlapping: those series are not below). The
+table below is the last series, taken when the machine had gone quiet (0.5 processors busy just after it). A sheet's
+parsing and index were measured alone, outside the browser (a program of <code>wb:css</code> and <code>wb:style</code> over p10k's sheet, 87 KB
+and 2 000 rules, 41 passes a run, the thread's cycles by <code>QueryThreadCycleTime</code>, 11 interleaved runs, and on the loaded
+machine 15): the same code gave 11 to 19 ms from one run to the next while the others ran, cycles moved with it, so the
+figures are the quiet series.</p>
+<p><strong>The measure.</strong> One load is about 30 samples of the window's thread, and nothing above one sample: why round 18 saw no
+function stand out. <code>p10k_renav</code> and <code>legacy_renav</code> load a page again and again from itself, for as long as <code>-Seconds</code>
+says. And timers put for the round around the stages (not kept) gave what the samples could not, for one load of p10k,
+in ms: the parser's thread 20.2 (<code>html.parse_into</code> 10.1, the walk for <code>&lt;style&gt;</code> and <code>css.parse_stylesheet</code> 7.3, decoding
+and the rest 2.8); the window's thread <code>compute_styles</code> 13.9 (the engine's rebuild 7.2, half of it compiling declarations;
+the style threads 3.9; the rest 2.8), the layout 15.6, then a second layout of 1.6.</p>
+<ol>
+<li><strong><code>legacy-html.html</code>'s task of 18 to 21 ms: the codecs' probe, under the pool's lock</strong> (<code>decoder_thread</code>,
+<code>src/images/pool.odin</code>). Unidentified since round 18, its samples in waits. With callers (<code>WREN_SLOW_MS=10
+WREN_SAMPLE_STACK=1</code>) 18 to 25 of the frame's samples read <code>ZwWaitForAlertByThreadId &lt;- images::submit &lt;-
+page::entry_start</code>: the page's first image waits for <code>Decoder.mu</code>, which the pool's first thread held while it probed
+the optional codecs (<code>CoCreateInstance</code> of WIC's HEIF decoder). Round 17 took the wait out of <code>decoder_start</code>; the lock
+stayed. The first thread to claim the probe (<code>codecs.claimed</code>, an atomic) now runs it holding nothing, and a second
+thread decodes meanwhile. Test: <code>a_submit_does_not_wait_for_the_codecs_probe</code> (images: the pool's lock is free while a
+gate holds the probe; fails with the lock around it, checked).</li>
+<li><strong>A sheet's selectors held 3.3 KB a rule</strong> (<code>css/selectors.odin</code>). Each list of a selector was a dynamic array in the
+sheet's arena, where the default first capacity of eight stays for good, for each compound and each selector, in
+pages touched once. The lists start at what selectors use (<code>COMPOUNDS_RESERVE</code>, <code>SIMPLES_RESERVE</code>) and <code>split_commas</code>
+counts first. p10k's sheet 6 711 -&gt; 2 782 KB (a count, the same in every run), and what reads the rules after it
+gains too: the rebuild below moved without being touched.</li>
+<li><strong>A rule's scratch memory goes with it</strong> (<code>parse_outer_rule</code>, <code>css/parser.odin</code>). What a rule gathers while it is read
+(prelude, values, declarations, lists that start at eight) stayed in the sheet's scratch arena until the end: fresh
+memory for every rule, faulted in and given back. An arena of its own, emptied after each rule outside any other,
+reads and writes the same memory. Beside it: names and preprocessing have an ASCII path (a name was appended byte by byte through
+<code>utf8.encode_rune</code>), an An+B no longer goes through the formatter (<code>fmt</code> was 4 % of p10k's parsing).</li>
+<li><strong>The rebuild mapped every node of the document to order its sheets</strong> (<code>order_sheets</code>, <code>style/engine.odin</code>): a hash
+table of every node at each rebuild, on the window thread, for the places of a few owners. Now an array by handle
+index and a walk that ends at the last owner (usually in the head). The program alone has no document: the rebuild
+cost 1.5 ms more in the browser than alone before (5.7 against 4.17, two series), 0.1 after (3.3 against 3.16). Beside it: one walk of a
+declaration's values for viewport and container units, an index key starts with two entries, not eight. Test:
+<code>sheets_follow_their_owners_in_tree_order</code> (style).</li>
+<li><strong>The first read of a layout was laid out twice</strong> (<code>js_layout_update</code>, <code>src/browser/js_layout_shell.odin</code>). A page's first
+pass is forced during <code>run_animation_frames</code> (the Animation phase, which is why the report showed no full pass for it),
+and the frame's own layout then ran an incremental pass over a document nothing had changed: finish, display list and
+bands, 0.8 to 1.6 ms. <code>layout_stale</code> said why (printed for the round): the images' generation, 2 against 5 on a page with
+no image, the tab's being that of its last frame. The forced pass now notes the page's generation. Frames of a first
+paint with a second pass 1.00 -&gt; 0.00 a load (7 runs of 14 loads, no exception).</li>
+<li><p><strong>The profiler.</strong> Each of these found the one above it:</p>
+<ul>
+<li>A name was the nearest public symbol before the address, however far: everything the PDB has no procedure for read as
+<code>_extendhfsf2</code> (<code>host::pool_take</code> "calling" it; 7 % of the forced layout's samples). Round 17's "half-float
+conversions' calls" in <code>text.html</code> are not established: its samples of this round do not show the name. Such
+addresses are named by their source line now (<code>sort.odin:43</code>).</li>
+<li>The layout pass a read forced was not recorded (<code>prof_layout</code> was called by the frame's own only), and a frame's last
+pass replaced the one before: the report said "Incremental" for p10k's only real pass. The longer pass of a frame is
+kept. The steps of a pass that does not run them keep their last values (<code>Layout.stats</code>), which is what made that
+row read as a pass of 7 ms.</li>
+<li><code>Sleep(1)</code> lasted 5 to 16 ms in a process without a window to show: the samplers wait on a high-resolution timer
+(2 651 samples in 15 s of <code>p10k_renav</code>, 16 383 in 20 s).</li>
+<li><strong>Not solved: <code>WREN_SAMPLE_THREADS=1</code> does not see p10k's threads.</strong> 0 of 408, 1 873 and, after what follows, 44 807
+samples running, though the parser alone runs 10 to 20 ms a load. Choosing the thread whose cycles moved most found
+each just after its burst (the counter moves when a thread leaves the processor) and each sample moved the counter of
+the thread it stopped, sleeping or not: the sampler now takes every thread that ran over a million cycles in the last
+second, and shows the threads' names. On sustained work it reads well (nodes10k: 799 of 41 217 running, the page
+thread 226 of 1 839, <code>place_element</code>, <code>finish</code>...); on bursts of a few ms still nothing, and I do not know why. So
+the brief's profile of the threads was not obtained, the timers above stand for it, and ETW (<code>wrentool trace</code>, an
+elevated prompt) is what is left to ask.</li>
+</ul></li>
+</ol>
+<div class="table-box"><table>
+<thead><tr><th></th><th>before</th><th>after</th></tr></thead>
+<tbody>
+<tr><td><code>legacy-html.html</code>: first contentful paint, load</td><td>29.7 (28.6-51.3), 29.2 (28.1-50.8)</td><td>7.4 (7.1-8.2), 7.2 (6.5-12.8)</td></tr>
+<tr><td>p10k: DOM interactive, first contentful paint</td><td>22.0 (19.8-22.9), 48.9 (43.5-52.6)</td><td>18.2 (17.8-20.0), 39.7 (38.3-42.8)</td></tr>
+<tr><td>p10k, per load (<code>p10k_renav</code>, 6 s, 7 runs): the engine's rebuild</td><td>5.7 (5.1-6.6)</td><td>3.3 (3.1-4.5)</td></tr>
+<tr><td>... the full style pass, rebuild included</td><td>11.3 (10.1-13.6)</td><td>8.2 (7.9-11.1)</td></tr>
+<tr><td>... the forced style and layout</td><td>22.9 (20.9-28.4)</td><td>19.5 (18.6-25.3)</td></tr>
+<tr><td>... the frame of its first paint, without its wait</td><td>27.2 (26.4-37.0)</td><td>24.0 (23.1-33.8)</td></tr>
+<tr><td>p10k's sheet alone, parsed: Mcycles, ms (11 runs)</td><td>23.4, 6.18</td><td>15.2, 4.02</td></tr>
+<tr><td>... indexed (<code>engine_rebuild</code>, no document)</td><td>15.7, 4.17</td><td>11.9, 3.16</td></tr>
+<tr><td>... its memory</td><td>6 711 KB</td><td>2 782 KB</td></tr>
+<tr><td><code>shadow-dom.html</code>: first contentful paint, load</td><td>14.2 (12.9-21.0), 19.3 (17.6-29.5)</td><td>13.5 (13.1-14.8), 18.6 (17.9-20.0)</td></tr>
+<tr><td><code>index.html</code>: first contentful paint</td><td>10.8 (10.0-19.4)</td><td>10.0 (9.4-15.9)</td></tr>
+<tr><td><code>modern-css.html</code>: first contentful paint</td><td>8.6 (8.2-12.4)</td><td>7.9 (7.8-15.2)</td></tr>
+<tr><td><code>js-dom.html</code>: first contentful paint</td><td>8.0 (7.2-16.0)</td><td>8.0 (7.2-13.8)</td></tr>
+<tr><td><code>text.html</code>: first contentful paint</td><td>15.8 (15.1-39.0)</td><td>16.3 (14.7-25.7)</td></tr>
+<tr><td><code>style.html</code>: first contentful paint, load</td><td>6.7 (6.1-11.7), 9.4 (8.8-15.3)</td><td>7.4 (6.2-22.5), 10.5 (8.8-27.1)</td></tr>
+</tbody>
+</table></div>
+<p>The first two rows and the rebuild are the gains; their ranges do not meet. The rows from <code>shadow-dom.html</code> down are inside
+their ranges, no gain to claim and none lost: <code>style.html</code>'s medians are higher, with runs of 22.5 and 27.1 ms in its
+range, and the series was not repeated. <code>text.html</code>'s first paint has two modes (15 and 50 to 80
+ms) in both builds, on the loaded series too: a frame's slot, not looked into.</p>
+<ol>
+<li><strong>Measured, not changed.</strong> <code>probe_context</code> copies two <code>Computed</code> of 1 056 bytes for each rule (3 % of a rebuild, under
+the noise of any series here). <code>selector_text</code> serialized at parse time, 12 % of parsing: reading it from the source
+when asked would take it, against the six places that read the field. Compiling declarations on the style threads:
+what is left of the rebuild is half that, about 1.5 ms of p10k's load, for arenas per thread that live as long as the
+engine's: not tried. No change was tried and dropped this round; items 2 to 4 were built in two steps, and the program
+alone took them apart (15 runs, loaded: parsing 41.3 -&gt; 30.6 -&gt; 25.0 Mcycles, indexing 29.7 -&gt; 22.1 -&gt; 21.0).</li>
+</ol>
+<p>Tests: <code>test_all -Quick -Only</code> each of the unit tests of css, style, images, layout, page and browser, "style run-time
+test", "images end-to-end test" and "DOM for JavaScript end-to-end test": all pass. New: <code>sheet_memory_test.odin</code> (css:
+a name's ASCII path and what it leaves to the long way, what a rule keeps once its memory is emptied, lists past their
+reserve and a plain rule under 2 KB, An+B written without the formatter), the two named above. Not run: the full suite,
+WPT, the unit tests under AddressSanitizer.</p>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
@@ -2068,27 +2176,27 @@ comparison has compared (<code>style/journal.odin</code>, round 8), which live w
 <div class="table-box"><table>
 <thead><tr><th>where</th><th>what</th><th>hot on</th></tr></thead>
 <tbody>
-<tr><td><code>ext/gui_toolkit/font/shape.odin:383-611</code></td><td><code>Word_Cache</code>: 64 shards of shaped words, a mutex each, plus <code>l1_words</code> per thread</td><td>every word measured or painted</td></tr>
-<tr><td><code>style/inline_cache.odin:37</code>, <code>cascade.odin:114</code></td><td>compiled <code>style</code> attributes by text</td><td>every element with a style attribute</td></tr>
-<tr><td><code>style/match.odin:55-64</code></td><td><code>sibs</code>, <code>filled</code>, <code>has_memo</code>: maps by handle per pass (and <code>seen</code> at <code>:191</code> written, never read)</td><td>nth-child and <code>:has()</code></td></tr>
-<tr><td><code>layout/types.odin:435</code></td><td><code>font_lookup</code>: fonts by content across partial passes (the per-pass map and its one-entry memo went in round 4)</td><td>a font a pass has not found yet</td></tr>
-<tr><td><code>layout/types.odin:220</code>, <code>block.odin:268-311</code></td><td><code>Box.cache_*</code>: a block's result for the same inputs</td><td>block layout</td></tr>
-<tr><td><code>browser/fonts.odin:343-379</code></td><td><code>Page_Fonts.resolved</code>: request string (built per lookup) -&gt; font</td><td>font resolution</td></tr>
-<tr><td><code>browser/paint_masks.odin:126-156</code></td><td>text items per box for <code>background-clip: text</code>, wiped every pass</td><td>that property</td></tr>
-<tr><td><code>browser/compositor.odin:252-293</code></td><td><code>raster_hash</code> memo per call</td><td>compositor rebuild</td></tr>
+<tr><td><code>ext/gui_toolkit/font/shape.odin:400-460</code></td><td><code>Word_Cache</code>: 64 shards of shaped words, a mutex each, plus <code>l1_words</code> per thread</td><td>every word measured or painted</td></tr>
+<tr><td><code>style/inline_cache.odin:47-129</code>, <code>cascade.odin:124-125</code></td><td>compiled <code>style</code> attributes by text</td><td>every element with a style attribute</td></tr>
+<tr><td><code>style/match.odin:58-67</code></td><td><code>sibs</code>, <code>filled</code>, <code>has_memo</code>: maps by handle per pass</td><td>nth-child and <code>:has()</code></td></tr>
+<tr><td><code>layout/types.odin:459</code></td><td><code>font_lookup</code>: fonts by content across partial passes (the per-pass map and its one-entry memo went in round 4)</td><td>a font a pass has not found yet</td></tr>
+<tr><td><code>layout/types.odin:242-247</code>, <code>block.odin:320-333</code></td><td><code>Box.cache_*</code>: a block's result for the same inputs</td><td>block layout</td></tr>
+<tr><td><code>browser/fonts.odin:347-380</code></td><td><code>Page_Fonts.resolved</code>: request string (built per lookup) -&gt; font</td><td>font resolution</td></tr>
+<tr><td><code>browser/paint_masks.odin:128-156</code></td><td>text items per box for <code>background-clip: text</code>, wiped every pass</td><td>that property</td></tr>
+<tr><td><code>browser/compositor.odin:251-293</code></td><td><code>raster_hash</code> memo per call</td><td>compositor rebuild</td></tr>
 <tr><td><code>browser/effects_cache.odin:51</code></td><td>content keys per group for the GPU layer cache</td><td>filters</td></tr>
 <tr><td><code>browser/web_font_faces.odin:166</code></td><td>family list -&gt; invisible while loading</td><td>paint</td></tr>
-<tr><td><code>ui/text_wrap.odin:61</code>, <code>ui/rich_text.odin:370</code></td><td>wrapped and rich text of the chrome</td><td>chrome frames</td></tr>
+<tr><td><code>ext/gui_toolkit/ui/text_wrap.odin:61</code>, <code>ext/gui_toolkit/ui/rich_text.odin:370</code></td><td>wrapped and rich text of the chrome</td><td>chrome frames</td></tr>
 </tbody>
 </table></div>
 <h3 id="hash-tables-on-hot-paths"><a class="anchor" href="#hash-tables-on-hot-paths" aria-hidden="true">#</a>Hash tables on hot paths</h3>
-<p><code>style/engine.odin:66-68</code> (<code>by_id</code>, <code>by_class</code>, <code>by_tag</code>, <code>by_attr</code>: string keys looked up per class, id, tag and attribute
-of every element, plus a concatenation per indexed attribute at <code>cascade.odin:443</code>); <code>style/match.odin:55-64</code>;
-<code>style/cascade.odin:345-361</code> (custom properties, contexts, <code>fs_chain</code> per element); <code>layout/context.odin:26-60</code>
-(<code>anon_cs</code>, <code>frame_cs</code>; <code>font_cache</code> gone in round 4); <code>layout/types.odin:454</code> (<code>scroll</code>, read per space); <code>browser/compositor.odin:115</code>
-(<code>node_items</code>, a heap list per node) and <code>:421-556</code> (per rebuild); <code>page/images.odin</code> <code>css_images_sync</code> and
+<p><code>style/engine.odin:68-69</code> (<code>by_id</code>, <code>by_class</code>, <code>by_tag</code>, <code>by_attr</code>: string keys looked up per class, id, tag and attribute
+of every element, plus a concatenation per indexed attribute at <code>cascade.odin:577</code>); <code>style/match.odin:58-67</code>;
+<code>style/cascade.odin:476-493</code> (custom properties, contexts, <code>fs_chain</code> per element); <code>layout/context.odin:28-58</code>
+(<code>anon_cs</code>, <code>frame_cs</code>; <code>font_cache</code> gone in round 4); <code>layout/types.odin:479</code> (<code>scroll</code>, read per space); <code>browser/compositor.odin:114</code>
+(<code>node_items</code>, a heap list per node) and <code>:419-554</code> (per rebuild); <code>page/images.odin</code> <code>css_images_sync</code> and
 <code>page/fonts.odin</code> <code>fonts_sync</code> (a <code>seen</code> table of shared lists, now only when something new may be used);
-<code>ext/gui_toolkit/font/raster.odin:74-79</code> (per glyph, under the atlas lock); <code>page/timeline_lcp.odin</code> <code>et_seen</code> (per
+<code>ext/gui_toolkit/font/raster.odin:77-82</code> (per glyph, under the atlas lock); <code>page/timeline.odin</code> <code>et_seen</code> (per
 element with <code>elementtiming</code> only). Gone in round 1: <code>page/timeline_lcp.odin</code> <code>ls_prev</code> (per box, per mutated frame).
 Added in round 4, flat: <code>style/share.odin</code> (a style pass's shared styles: open addressing, the keys' words in one array,
 one lookup per element). Gone in round 5: <code>style/restyle_dom.odin</code> <code>inserted_exceed</code> (the inserted nodes of a restyle,
@@ -2097,36 +2205,36 @@ now an array by handle index; the hash table holds only the handles whose entry 
 round 9: <code>layout/multicol.odin</code> <code>mc_records</code> (a container's columns, looked up for each box and line of its flow; now
 an array, <code>Box.mc</code> the index).</p>
 <h3 id="arrays-of-bools"><a class="anchor" href="#arrays-of-bools" aria-hidden="true">#</a>Arrays of bools</h3>
-<p>Per box or element, per pass: <code>layout/context.odin:53</code> (<code>plain</code>), <code>layout/finish.odin:37,81</code>, <code>layout/effects.odin:45</code>,
-<code>layout/incremental.odin:563</code>, <code>layout/query.odin:91</code> (<code>View.singular</code>, per frame), <code>style/cascade.odin:349</code>
-(<code>gate_probe</code>), <code>style/engine.odin:119-120</code>, <code>browser/compositor.odin:450,763</code>, <code>browser/effects_cache.odin:54,65</code>;
-<code>map[...]bool</code> used as sets: <code>style/match.odin:56,64</code>, <code>style/engine.odin:68</code>, <code>style/restyle_dom.odin:144-147</code>,
-<code>font/raster.odin:76-77</code> (per glyph); <code>draw/bsp.odin:241</code> (n x n per 3D sort).</p>
-<h3 id="mutexes-51-in-wren-17-in-the-toolkit-outside-tests"><a class="anchor" href="#mutexes-51-in-wren-17-in-the-toolkit-outside-tests" aria-hidden="true">#</a>Mutexes (51 in Wren, 17 in the toolkit, outside tests)</h3>
+<p>Per box or element, per pass: <code>layout/context.odin:51</code> (<code>plain</code>), <code>layout/finish.odin:37,81</code>, <code>layout/effects.odin:46</code>,
+<code>layout/incremental.odin:485,610</code>, <code>layout/query.odin:88</code> (<code>View.singular</code>, per frame), <code>style/cascade.odin:480</code>
+(<code>gate_probe</code>), <code>browser/compositor.odin:448,761</code>, <code>browser/effects_cache.odin:54,65</code>;
+<code>map[...]bool</code> used as sets: <code>style/match.odin:59,67</code>, <code>style/engine.odin:70</code>, <code>style/restyle_dom.odin:145-148</code>,
+<code>font/raster.odin:79-80</code> (per glyph); <code>draw/bsp.odin:241</code> (n x n per 3D sort).</p>
+<h3 id="mutexes-57-in-wren-20-in-the-toolkit-outside-tests"><a class="anchor" href="#mutexes-57-in-wren-20-in-the-toolkit-outside-tests" aria-hidden="true">#</a>Mutexes (57 in Wren, 20 in the toolkit, outside tests)</h3>
 <p>The ones on a per-frame or per-item path, and what fits instead (the loop's, the network's and <code>parallel_for</code>'s were
 measured against lock-free designs in round 3 and stay):</p>
 <div class="table-box"><table>
 <thead><tr><th>where</th><th>guards</th><th>threads</th><th>instead</th></tr></thead>
 <tbody>
-<tr><td><code>font/raster.odin:72</code> <code>Atlas.mu</code></td><td>glyph maps, atlas pages, Slug store; rasterizes under it</td><td>every drawing thread, the color-glyph thread</td><td>per-thread lookup front, misses to a raster owner over an MPSC queue</td></tr>
-<tr><td><code>font/shape.odin:398</code> <code>Word_Shard.mu</code> x 64</td><td>shaped words; glyphs copied out under it</td><td>layout threads, page, chrome paint</td><td>goes with the word cache</td></tr>
+<tr><td><code>font/raster.odin:75</code> <code>Atlas.mu</code> (shared for a hit since toolkit 0.64.0)</td><td>glyph maps, atlas pages, Slug store; rasterizes under it</td><td>every drawing thread, the color-glyph thread</td><td>per-thread lookup front, misses to a raster owner over an MPSC queue</td></tr>
+<tr><td><code>font/shape.odin:401</code> <code>Word_Shard.mu</code> x 64 (shared for a hit)</td><td>shaped words; glyphs copied out under it</td><td>layout threads, page, chrome paint</td><td>goes with the word cache</td></tr>
 <tr><td><code>style/invalidation.odin:454</code> <code>Key_Sets.mu</code></td><td>interned selector keys, process-wide</td><td>every page's style engine</td><td>per-engine tables</td></tr>
 <tr><td><code>webaudio/graph.odin:79</code></td><td>the audio graph</td><td>page vs the real-time render thread</td><td>SPSC command ring</td></tr>
 <tr><td><code>media/store.odin:57</code></td><td>coded frames</td><td>demux vs decoder</td><td>SPSC ring</td></tr>
 <tr><td><code>page/worker.odin:95</code></td><td>page &lt;-&gt; worker queues</td><td>two threads</td><td>two SPSC rings</td></tr>
 <tr><td><code>page/canvas_offscreen.odin:19</code></td><td>the latest picture</td><td>worker -&gt; window</td><td>a latest-value mailbox</td></tr>
 <tr><td><code>page/canvas_offscreen.odin:146</code>, <code>page/mse_worker.odin:185</code>, <code>page/bindings_webcodecs.odin:383</code></td><td>transfer tokens</td><td>one thread to another</td><td>ownership hand-off</td></tr>
-<tr><td><code>host/blocking.odin:19</code>, <code>images/pool.odin:106</code>, <code>page/js_load_compile.odin:33</code>, <code>httpcache/disk.odin:72,78</code>, <code>js/cache.odin:73</code>, <code>wasm/module_cache.odin:86</code></td><td>job queues in, results out</td><td>loop &lt;-&gt; workers</td><td>MPMC in, MPSC out</td></tr>
+<tr><td><code>host/blocking.odin:19</code>, <code>images/pool.odin:107</code>, <code>page/js_load_compile.odin:33</code>, <code>httpcache/disk.odin:72,78</code>, <code>js/cache.odin:49</code>, <code>wasm/module_cache.odin:65</code></td><td>job queues in, results out</td><td>loop &lt;-&gt; workers</td><td>MPMC in, MPSC out</td></tr>
 <tr><td><code>idb/manager.odin:192</code> (recursive)</td><td>the whole IndexedDB manager</td><td>pages and workers</td><td>an owner thread fed by an MPSC queue</td></tr>
-<tr><td><code>wasm/instance.odin:67</code>, <code>images/pool.odin:43</code>, <code>page/storage.odin:53</code>, <code>font/emoji.odin:23</code>, <code>media/h264_linux.odin:32</code></td><td>something made once</td><td></td><td><code>sync.Once</code></td></tr>
-<tr><td><code>wasm/attach.odin:25</code>, <code>webauthn/webauthn.odin:229</code></td><td>counters, a cancel flag</td><td></td><td>atomics</td></tr>
+<tr><td><code>wasm/instance.odin:67</code>, <code>images/pool.odin:44</code>, <code>page/storage.odin:53</code>, <code>font/emoji.odin:23</code>, <code>media/h264_linux.odin:32</code></td><td>something made once</td><td></td><td><code>sync.Once</code></td></tr>
+<tr><td><code>wasm/attach.odin:30</code>, <code>webauthn/webauthn.odin:229</code></td><td>counters, a cancel flag</td><td></td><td>atomics</td></tr>
 </tbody>
 </table></div>
 <p>The others guard real shared registries (live threads, blob URLs, Web Locks, OPFS, the Cache API, storage buckets,
 shutdown, the clipboard, the shader compiler) and stay.</p>
 <h3 id="heap-lists-per-call-on-hot-paths"><a class="anchor" href="#heap-lists-per-call-on-hot-paths" aria-hidden="true">#</a>Heap lists per call on hot paths</h3>
 <p><code>style/timeline.odin:429-432,468</code> (an <code>Element_Anim</code> and three dynamic arrays for each element that declares a transition,
-on every full pass); <code>browser/compositor.odin:322</code> (<code>compute_floors</code>: one heap array per group per rebuild) and <code>:532</code>
+on every full pass); <code>browser/compositor.odin:321</code> (<code>compute_floors</code>: one heap array per group per rebuild) and <code>:530</code>
 (<code>node_items_make</code>: one per node); the window thread's and the thread pool's temporary arenas, which give back what
 outgrew their first block after each frame or job (<code>NtFreeVirtualMemory</code>, 1 % of the window thread on nodes10k; the
 pool's are <code>src/host</code>'s). Gone in round 2: the style threads' arenas mapped and freed with every pass. Gone in round 3:
@@ -2180,9 +2288,24 @@ start that waits for nothing; Slug's data made while shaping measured and not ke
 that waits for its slot before the tasks, leads item 10 below. Item 1 is unchanged.</p>
 <p>After round 18. Round 17's item 10 is done for its first part (round 18: the loop's tasks run in the frame's wait for its
 slot, a first paint waits for no slot); p10k's first passes lead item 10 below. Item 1 is unchanged.</p>
+<p>After round 19. Off this list: the licence card of about:wren under the pointer (a document changed only in style
+attributes is refreshed, not laid out; planes keep their raster scale; the development build lost the Direct3D debug
+layer).</p>
+<p>After rounds 20, 21 and 23. Item 1's interpreter gave way to a JIT for hot loops and hot functions (round 20: loops,
+properties, calls; 21: whole functions, direct calls, objects, strings, DOM getters, natives; 23: <code>document</code>, objects
+allocated inline, the script's accessors): nodes10k's <code>build()</code> p50 8.63 -&gt; 7.44 ms in round 23's series. What is left of
+item 9 now counts only for code the JIT does not take; <a href="../../docs/engine/jit/">engine/jit.md</a> has the JIT's own list.</p>
+<p>After rounds 22 and 24. Off this list too: what the user does while a script is busy (input, selection, the scroll bars,
+keys, then animations of <code>transform</code> and <code>opacity</code>, scroll boxes and the caret, drawn by chrome frames from the last
+layout). Hover stays the page's, by design (round 24, item 4).</p>
+<p>After round 25. The list is in the order of its measures again: item 10 is item 2, done for two of what it named
+(<code>legacy-html.html</code>'s task, identified and gone; p10k's first passes in part), and the profiler's bursts are in item 9.
+Item 1's figures were old: measured again they are higher, and nothing here says why.</p>
 <ol>
-<li><strong>The script stage of DOM-heavy pages, what is left</strong> (nodes10k: 11.8 ms of a 17.7 ms frame; the browser's side
-1.4 ms of it). In order of the engine's samples: the interpreter itself (<code>interp_hot</code> 17 % before round 15's 15 to 25 %
+<li><strong>The script stage of DOM-heavy pages, what is left</strong> (<code>js_nodes10k</code> on the day of round 25: the Animation phase 18.6 ms of a
+frame of 20.6 to 29.5 ms, 3 runs, where this list kept 17.7 ms; the base 25.2 to 32.2 ms, 3 runs, so not this round's; the
+JIT off 28.9 to 30.7 ms and one run of 83 under load, 3 runs interleaved. To bisect by build first: nothing here says
+what moved it, and the machine was not quiet for all of it). In order of the engine's samples: the interpreter itself (<code>interp_hot</code> 17 % before round 15's 15 to 25 %
 on the loop's own instructions, <code>call_native</code> and the bridge 8 %; a DOM call costs 50 to 100 ns over the loop); the
 collection the DOM asks for (2.9 ms every 2 frames: the browser's <code>Node_unpinAll</code>, the prologue's walk of every
 wrapper with <code>JS_IsUntouched</code> for each, the finalizers' chain of calls, the sweep's frees, <code>gc_drain</code>); the browser's
@@ -2192,8 +2315,18 @@ making the wrappers (6 %). Texts are still copied to the heap and freed one by o
 frame). Measured and left: a flag per interface for the unforgeable members of its chain (round 7); the finalizers'
 skipped calls, the pre-sweep walks in one, the prologue's walk inlined, <code>temp_reset</code> in place (round 12); the hot
 loop as a procedure of its own (round 15: 8 % slower than inlined).</li>
-<li><strong>Layout of DOM-heavy pages: the steps' own code</strong> (nodes10k: the window thread waits 3.1 ms a frame, the page
-thread's full pass: tree 0.96, layout 1.07, finish 0.32, display 0.37, bands 0.13 ms). Round 10 found the records'
+<li><strong>Pages loaded from the navigation</strong> (rounds 15 to 18 and 25; <code>wrentool bench perf -Only p10k_nav,nav_...</code>,
+<code>p10k_renav</code> for the samples), by cost: p10k's first contentful paint is 39.7 ms: its parser's thread about 16 (<code>html.parse_into</code>
+10, then the sheet 4 to 5: the sheet waits for the whole document, on the same thread, when it could start with the
+<code>&lt;/style&gt;</code>), then the window's thread 24: the layout about 11 (flat in the samples; <code>place_element</code>, the threads'
+paragraphs, growing lists: <code>new_box</code> still reallocates), the style pass 8 (the rebuild 3.3, the style threads 3.9). Then
+<code>text.html</code>'s first paint (<code>Paint_Items</code>, DirectWrite's <code>glyph_formats</code> under <code>platform_color_glyph</code>, the bands, the
+outlines; <code>_extendhfsf2</code> was a misnamed sample, round 25) and its two modes; the first realm (5 ms from response to
+script, instantiation included: the instance made on the read-ahead thread would take a part). A task that arrives
+during the swap chain's wait (a fixed refresh screen's whole wait, at most a refresh) still waits for its end: the
+latency object cannot be woken by the loop.</li>
+<li><strong>Layout of DOM-heavy pages: the steps' own code</strong> (nodes10k: the Layout phase 5.3 ms a frame on the day of round 25,
+3.1 ms when this was written; the page thread's full pass then: tree 0.96, layout 1.07, finish 0.32, display 0.37, bands 0.13 ms). Round 10 found the records'
 layout no gain, round 11 took the image search, the cut of the flow and the display item's padding. What the profile
 shows now, by cost: building the box tree (19 % of the page thread; <code>place_element</code>, and the layout threads'
 summaries of the styles); the block layout of the columns (34 %, no part above 0.11 ms in process: <code>apply_shifts</code>
@@ -2201,7 +2334,7 @@ moving every box to its column, then the 2 500 items' own layout at about 150 ns
 whose paragraph came from the threads and whose style is its siblings' is what is left to try); finishing (<code>finish</code>
 itself 6 %); <code>note_refresh_inputs</code> (4.5 %: every display item and inline item read again after the list is made,
 which the shares making the list could note as they go); the bands (4.4 %).</li>
-<li><strong>What a full style pass still costs per page</strong> (<code>mutation_fullstyle</code>, the style stage 0.75 ms in the browser, a pass
+<li><strong>What a full style pass still costs per page</strong> (<code>mutation_fullstyle</code>, 3.34 ms of CPU a frame in all, 5 runs, round 25; the style stage 0.75 ms in the browser, a pass
 0.57 ms in process with seven threads since round 14, four fifths of that on the threads since round 9): on the
 style threads, matching
 (<code>match_chain</code>, the families of pages whose elements are each of their own kind: modern-css, p10k, matched in full
@@ -2214,24 +2347,16 @@ there, not when the zeroing happens (round 5, item 5).</li>
 <li><strong>The atlas lock and the word cache's 64 locks</strong> (toolkit): toolkit 0.64.0 took the atlas lock once per run of glyphs
 and a word cache hit under a shared lock (its <code>docs/locks.md</code>: 8 threads, a word's shape 442 -&gt; 194 ns, a glyph's bitmap
 120 -&gt; 17 ns); what is left is measuring the page's text again before any per-thread front.</li>
-<li><strong>The style index's string tables</strong> (<code>style/engine.odin:66-68</code>): atoms (interned ids) and flat arrays by atom (looked
+<li><strong>The style index's string tables</strong> (<code>style/engine.odin:68-69</code>): atoms (interned ids) and flat arrays by atom (looked
 up now only for the first element of each kind of a family).</li>
 <li><strong>The job queues of the blocking pool, the image decoders, the script compiler and the caches</strong> (the table above):
 measured first (round 3: a lock-free queue lost to the loop's mutex); a worker's <code>ordered_remove(0)</code> is a cost of its own.</li>
-<li><strong>The profiler</strong>: correct the bias of samples taken in a system call.</li>
+<li><strong>The profiler</strong>: the threads' bursts of a few ms (round 25: 0 running of 44 807 samples on p10k, not explained; ETW's context
+switches would say); correct the bias of samples taken in a system call.</li>
 <li><strong>The interpreter, what is left after its loop</strong> (round 15): the full dispatch of <code>interp_run</code> for what the loop
 leaves (closures made, <code>arguments</code>, spreads, destructuring of iterables: the two cases of <code>macro.js</code> that did not gain
 are there), and native callbacks (<code>sort</code>, <code>forEach</code>: an <code>interp_run</code> activation each). A handler added to the loop
 must call nothing itself (<code>interp_hot.odin</code>'s header says how).</li>
-<li><strong>Pages loaded from the navigation</strong> (rounds 15 to 18; <code>wrentool bench perf -Only p10k_nav,nav_...</code>), by cost:
-p10k's first style, layout and paint passes (23 ms of the 34 ms frame of its first paint, its first contentful paint
-at 44 ms: most of it on the style and layout threads, to be profiled with <code>WREN_SAMPLE_THREADS=1</code>, round 18 item 3);
-<code>legacy-html.html</code>'s task of 18 to 21 ms in the frame before its first paint (its samples in waits: not identified);
-what is left of <code>text.html</code>'s first paint (<code>Paint_Items</code> 15.6 ms: the color glyph probe of color faces, the
-half-float conversions' calls, the outlines; Slug's data made while shaping only moved it onto the layout the paint
-waits for, round 17 item 3); the first realm (5 ms from response to script, instantiation included: the instance
-made on the read-ahead thread would take a part). A task that arrives during the swap chain's wait (a fixed refresh
-screen's whole wait, at most a refresh) still waits for its end: the latency object cannot be woken by the loop.</li>
 </ol>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/testing/"><span>Previous</span><strong>How the tests run, and how to go fast</strong></a>
