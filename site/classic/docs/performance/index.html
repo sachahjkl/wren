@@ -68,6 +68,7 @@
 <li><a href="#what-changed-round-15-the-interpreters-hot-loop-calls-nothing-real-pages-loaded-from-the-navigation">What changed, round 15: the interpreter's hot loop calls nothing; real pages loaded from the navigation</a></li>
 <li><a href="#what-changed-round-16-first-page-loads">What changed, round 16: first page loads</a></li>
 <li><a href="#what-changed-round-17-first-page-loads-what-they-wait-for">What changed, round 17: first page loads, what they wait for</a></li>
+<li><a href="#what-changed-round-18-the-frames-wait-for-its-slot-runs-the-loops-tasks">What changed, round 18: the frame's wait for its slot runs the loop's tasks</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
@@ -1499,6 +1500,64 @@ left of its <code>Paint_Items</code> by the sampler (3 loads): the color glyph p
 (<code>platform_color_glyph</code>, DirectWrite's glyph formats), the half-float conversions' calls (<code>_extendhfsf2</code>) and the
 outlines; then the GPU textures made for the page (<code>NtGdiDdDDICreateAllocation</code>). <code>legacy-html.html</code>'s range is its
 frames: one run in five had its import in before a slot (24.7 ms).</p>
+<h2 id="what-changed-round-18-the-frames-wait-for-its-slot-runs-the-loops-tasks"><a class="anchor" href="#what-changed-round-18-the-frames-wait-for-its-slot-runs-the-loops-tasks" aria-hidden="true">#</a>What changed, round 18: the frame's wait for its slot runs the loop's tasks</h2>
+<p>Item 10 of round 17's list, its first part. The browser: <code>wrentool bench perf</code>, profile builds, 7 runs of each build
+(5 in the first series, thrown away: another agent built on the machine meanwhile, ranges of 30 to 90 ms), interleaved,
+the order turning; median, range in brackets; times in ms from the navigation's start. The start: <code>wrentool bench
+startup</code>, 4 rounds of 3, interleaved. The base is master at 96183c0e.</p>
+<ol>
+<li><strong>The loop's tasks run while the frame waits for its slot</strong> (<code>pacer_slot_wait</code>, <code>src/browser/pacing.odin</code>). A frame
+began with the wait for its time slot (the pacing timer, then the swap chain) and only then ran what had arrived
+(<code>host.run_ready</code> in its page phase): what came during the wait waited with it, a slot per hop of a load. Now the first
+frame of a pass runs the ready tasks and timers in its wait (<code>main.odin</code> <code>frame_tasks</code>, in a page phase of their own,
+<code>shell_wait_tasks</code>: a long script there is preempted by chrome frames as in the frame's), then waits on the timer armed
+for the slot or for the loop's next timer, whichever is first; a post from another thread during the wait fires the
+timer at once (the loop's wake-up, <code>wake_window</code> -&gt; <code>pacer_wake</code>: an atomic flag says a frame waits on it; the timer is
+armed before the loop is looked at, so a post after that look is never lost). The tasks run once a frame, in its wait or
+else in its page phase: run in both, the first frame of the browser took what the second one ran before its first
+present (<code>home_idle</code>'s first frame to the first present 22 to 30 -&gt; 41 to 54 ms): not kept. Off Windows the wait stays
+a sleep (no timer to fire). The frame gate does not change: the tasks run in the frame's Polling stage, where the
+chrome frames they may make are Light frames the gate admits there (the e2e suite's gate counts no violation). Test:
+<code>the_loop_tasks_run_while_a_frame_waits_for_its_slot</code> (browser: a post from another thread 20 ms into a wait of
+200 ms and a timer of the loop due at 40 ms both run before the slot, and the wait ends at its slot).</li>
+<li><strong>A first paint does not wait for the slot</strong> (<code>first_paint_due</code>, <code>src/browser/first_paint.odin</code>). When the current
+tab's document has not painted, waits for no render-blocking sheet or font, and has changed since its last layout or
+was held by render-blocking resources in the last page phase (<code>Page_Prep.blocked</code>), its frame starts at once: neither
+the timer nor the swap chain is waited for, and the swap chain may queue two frames for it (it is shown at the next
+refresh, not torn). The document's own changes alone were not enough: <code>legacy-html.html</code> was laid out before its
+<code>@import</code> was found, and the import's arrival changes the styles, not the document (its first paint 40.7 ms, as before).
+A frame started at once that laid the document out and held it (paint holding: nothing contentful yet) lets the next
+one wait for its slot (<code>Pacer.first_paint_laid</code>): a held page that a script changes is not drawn as fast as the
+thread goes.</li>
+</ol>
+<div class="table-box"><table>
+<thead><tr><th></th><th>before</th><th>after</th></tr></thead>
+<tbody>
+<tr><td>p10k: DOM interactive, first contentful paint, load</td><td>33.4 (33.0-35.5), 57.0 (56.4-72.7), 33.4 (33.1-35.6)</td><td>20.7 (20.0-21.4), 44.0 (42.0-46.0), 20.8 (20.1-21.5)</td></tr>
+<tr><td><code>legacy-html.html</code>: first contentful paint, load</td><td>42.4 (40.7-56.8), 41.7 (40.1-71.0)</td><td>25.9 (25.2-27.7), 29.2 (25.1-32.2)</td></tr>
+<tr><td><code>shadow-dom.html</code>: DOM interactive, first contentful paint, load</td><td>12.1 (11.8-12.4), 13.5 (13.2-14.0), 18.5 (18.1-19.9)</td><td>12.2 (11.6-15.3), 13.7 (13.0-17.0), 18.8 (17.9-22.4)</td></tr>
+<tr><td><code>index.html</code>: first contentful paint</td><td>9.7 (9.4-10.3)</td><td>9.6 (9.3-11.1)</td></tr>
+<tr><td><code>js-dom.html</code>: first contentful paint</td><td>8.0 (7.7-8.6)</td><td>7.9 (7.5-13.0)</td></tr>
+<tr><td><code>style.html</code>: load</td><td>9.3 (9.0-9.5)</td><td>9.4 (9.1-10.0)</td></tr>
+<tr><td><code>text.html</code>: first contentful paint</td><td>15.0 (14.0-33.6)</td><td>14.9 (14.7-25.8)</td></tr>
+<tr><td><code>wrentool bench startup</code>, first present, single instance off / on</td><td>247.5 (240-270) / 243.5 (240-253)</td><td>240 (238-243) / 240.5 (237-247)</td></tr>
+<tr><td><code>wrentool bench cadence</code>: presented, gap p50, p95 (2 runs)</td><td>184-185, 16.6, 17.1-17.7</td><td>184, 16.6-16.7, 17.1-17.3</td></tr>
+<tr><td><code>wrentool bench idle</code>, at rest (blank, static, video; headless and hidden): wakes/s, the window thread's, frames</td><td>68-73, 1.0-2.8, 1-4</td><td>70-75, 1.0-3.1, 1-4</td></tr>
+<tr><td>p10k_scroll, a hidden window (60 Hz): frames/s (2 runs)</td><td>60.1, 60.7</td><td>60.7, 60.1</td></tr>
+</tbody>
+</table></div>
+<p>p10k's first contentful paint is now its first passes (round 17's 23 ms: styles, layout and paint, the frame of its
+first paint 34 ms, of which the wait 3.8 ms for the parser's last post); the page's frames before it are the parser's
+posts, each run as it comes. In a headless window p10k_scroll makes fewer frames (1 365 -&gt; 1 099 in 8 s): as many
+answer input (260 and 258), fewer are the back-to-back frames a remote call's task asked for, now run in the wait of the
+frame that takes its input. <code>legacy-html.html</code>'s frame before its first paint still has a task of 18 to 21 ms: its samples
+are in waits (<code>ZwWaitForAlertByThreadId</code>), not identified.</p>
+<ol>
+<li><strong>Measured, not changed: p10k's first passes</strong> (item 10): by the window thread's samples (3 loads, 1 ms) no function
+above 1 sample in the frame of the first paint: <code>compute_styles</code>, <code>expand_shorthand</code>, the layout's steps, <code>paint_stacking</code>;
+most of the work is on the style and layout threads, which this sampler does not see. A profile of the threads
+(<code>WREN_SAMPLE_THREADS=1</code>) is the next measure. <strong>Not done this round</strong>: the script stage of DOM-heavy pages (item 1).</li>
+</ol>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
@@ -1625,6 +1684,8 @@ stylesheet goes on when it arrives); what the loads still spend is item 10 below
 <p>After round 17. Round 16's item 10 is done in part (round 17: Slug's bands from one sort per axis, the image decoder's
 start that waits for nothing; Slug's data made while shaping measured and not kept); what its measures found, the frame
 that waits for its slot before the tasks, leads item 10 below. Item 1 is unchanged.</p>
+<p>After round 18. Round 17's item 10 is done for its first part (round 18: the loop's tasks run in the frame's wait for its
+slot, a first paint waits for no slot); p10k's first passes lead item 10 below. Item 1 is unchanged.</p>
 <ol>
 <li><strong>The script stage of DOM-heavy pages, what is left</strong> (nodes10k: 11.8 ms of a 17.7 ms frame; the browser's side
 1.4 ms of it). In order of the engine's samples: the interpreter itself (<code>interp_hot</code> 17 % before round 15's 15 to 25 %
@@ -1668,13 +1729,15 @@ measured first (round 3: a lock-free queue lost to the loop's mutex); a worker's
 leaves (closures made, <code>arguments</code>, spreads, destructuring of iterables: the two cases of <code>macro.js</code> that did not gain
 are there), and native callbacks (<code>sort</code>, <code>forEach</code>: an <code>interp_run</code> activation each). A handler added to the loop
 must call nothing itself (<code>interp_hot.odin</code>'s header says how).</li>
-<li><strong>Pages loaded from the navigation</strong> (rounds 15 to 17; <code>wrentool bench perf -Only p10k_nav,nav_...</code>), by cost: the
-frame's wait for its time slot before the loop's tasks run (round 17, item 4: 15 ms of p10k's first paint, a slot
-per hop of <code>legacy-html.html</code>'s sheet and import, 40 ms); p10k's first style, layout and paint passes (23 ms in the
-frame of its first paint); what is left of <code>text.html</code>'s first paint (<code>Paint_Items</code> 15.6 ms: the color glyph probe
-of color faces, the half-float conversions' calls, the outlines; Slug's data made while shaping only moved it onto
-the layout the paint waits for, round 17 item 3); the first realm (5 ms from response to script, instantiation
-included: the instance made on the read-ahead thread would take a part).</li>
+<li><strong>Pages loaded from the navigation</strong> (rounds 15 to 18; <code>wrentool bench perf -Only p10k_nav,nav_...</code>), by cost:
+p10k's first style, layout and paint passes (23 ms of the 34 ms frame of its first paint, its first contentful paint
+at 44 ms: most of it on the style and layout threads, to be profiled with <code>WREN_SAMPLE_THREADS=1</code>, round 18 item 3);
+<code>legacy-html.html</code>'s task of 18 to 21 ms in the frame before its first paint (its samples in waits: not identified);
+what is left of <code>text.html</code>'s first paint (<code>Paint_Items</code> 15.6 ms: the color glyph probe of color faces, the
+half-float conversions' calls, the outlines; Slug's data made while shaping only moved it onto the layout the paint
+waits for, round 17 item 3); the first realm (5 ms from response to script, instantiation included: the instance
+made on the read-ahead thread would take a part). A task that arrives during the swap chain's wait (a fixed refresh
+screen's whole wait, at most a refresh) still waits for its end: the latency object cannot be woken by the loop.</li>
 </ol>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/testing/"><span>Previous</span><strong>How the tests run, and how to go fast</strong></a>
