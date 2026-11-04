@@ -10,8 +10,8 @@ package browser
 // beside it (devtools_elements.odin).
 //
 // The buttons of the panel as a whole (the element picker; settings, where the panel goes, close) are at the ends of the
-// top strips: the picker in the top left stack's, the others in the top right stack's, whose empty part moves the panel
-// when it floats over the page. `panel` (browser.devtools.tab) is the panel shown last.
+// top strips: the picker in the top left stack's, the others in the top right stack's (the close button last, after the
+// stack's own fold and menu buttons), whose empty part moves the panel when it floats over the page. `panel` (browser.devtools.tab) is the panel shown last.
 
 import "core:fmt"
 import "core:math"
@@ -90,6 +90,37 @@ dev_layout_migrate :: proc(d: ^Devtools, p: ^config.Prefs) -> bool {
 
 devtools_save_layout :: proc(app: ^App) { set_pref_string(app, DEV_LAYOUT_PREF, ui.dock_format(&dev().layout, dev_panel_name, nil)) }
 
+// The Console's stack when it is the drawer: alone, docked, the second side of a split one above the other (its split, which
+// folds it). DOCK_NONE: it is not.
+devtools_drawer_split :: proc(d: ^Devtools) -> i32 {
+	dk := &d.layout
+	con := ui.dock_leaf_of(dk, u32(Dev_Panel.Console))
+	if con == ui.DOCK_NONE || ui.dock_is_floating(dk, con) || ui.dock_tab_count(dk, con) != 1 { return ui.DOCK_NONE }
+	split := ui.dock_fold_split(dk, con)
+	if split == ui.DOCK_NONE || dk.nodes[split].axis != .Y || dk.nodes[split].b != con { return ui.DOCK_NONE }
+	return split
+}
+
+// Escape in the developer tools (devtools_panel), and "Show the Console under the other panels": the Console in a stack of its
+// own under the others, Chrome's drawer, or that stack folded away and opened again.
+devtools_drawer_toggle :: proc(app: ^App) {
+	d := dev()
+	dk := &d.layout
+	split := devtools_drawer_split(d)
+	if split == ui.DOCK_NONE {
+		ui.dock_move(dk, u32(Dev_Panel.Console), {place = .Edge_Bottom})
+		devtools_open(app, .Console)
+	} else {
+		fold := !dk.nodes[split].fold
+		ui.dock_set_split(dk, split, dk.nodes[split].ratio, fold)
+		if !fold { ui.dock_activate(dk, u32(Dev_Panel.Console)) }
+	}
+	devtools_save_layout(app)
+	network_sync_observer(app)
+	console_arm_all(app)
+	request_frames(app, 3)
+}
+
 // Ctrl+Tab / Ctrl+Shift+Tab with the keyboard focus in the developer tools: the next or previous panel of the stack it is in
 // (the Elements panel's own dock first), before the chrome's shortcuts take them for the browser's tabs.
 devtools_take_ctrl_tab :: proc(app: ^App) -> bool {
@@ -111,7 +142,7 @@ dev_dock :: proc(app: ^App, t: ^Tab) {
 		title = proc(user: rawptr, id: u32) -> string { return DEV_PANEL_TITLES[Dev_Panel(id)] },
 		tab = dev_tab_face,
 		closable = proc(user: rawptr, id: u32) -> bool { return false },   // (a panel goes elsewhere, not away)
-		strip_begin = dev_strip_begin, strip_end = dev_strip_end, strip_space = dev_strip_space,
+		strip_begin = dev_strip_begin, strip_end = dev_strip_end, strip_last = dev_strip_last, strip_space = dev_strip_space,
 		on_save = proc(user: rawptr, dk: ^ui.Dock) { devtools_save_layout((^App)(user)) },
 		user = app, size = room, tab_height = app.dtm.tab, handle = dt_px(5),
 	})
@@ -281,6 +312,14 @@ dev_strip_end :: proc(user: rawptr, dk: ^ui.Dock, leaf: i32) {
 			if ui.menu_item("Open in a separate window###dt_dock_win", cmd_key(app, "view.devtools_detach")).clicked { devtools_detach(app) }
 		}
 	}
+	dt_gap(2)
+}
+
+// The close button: after the dock's fold and menu buttons, the strip's last control.
+@(private = "file")
+dev_strip_last :: proc(user: rawptr, dk: ^ui.Dock, leaf: i32) {
+	if leaf != dev_corner_leaf(dk, true) { return }
+	app := (^App)(user)
 	dt_gap(2)
 	dt_vsep("###dt_hs1")
 	dt_gap(2)

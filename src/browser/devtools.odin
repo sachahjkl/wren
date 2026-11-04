@@ -5,9 +5,10 @@ package browser
 // (ui.Dock, docs/docking.md of the toolkit): stacks of tabs the user drags to split, join, float and dock back, every target
 // also in a stack's menu; browser.devtools.layout keeps it (devtools_layout.odin). F12 / Ctrl+Shift+I open and
 // close it, Ctrl+Shift+J opens the Console, Ctrl+Shift+C picks an element of the page; "Inspect" in the page's context menu
-// opens Elements on the element under the pointer. The tabs are in devtools_console.odin, devtools_elements.odin,
-// devtools_network.odin, devtools_application.odin, devtools_performance.odin and devtools_memory.odin; the interface
-// parts they share (icons, buttons, lists, the filter field) are in devtools_kit.odin and devtools_icons.odin.
+// opens Elements on the element under the pointer. With the keyboard in them, Ctrl+F finds in the panel (devtools_take_keys)
+// and Escape shows the Console under the panel and hides it again (devtools_drawer_toggle). The tabs are in
+// devtools_console.odin, devtools_elements.odin, devtools_network.odin, devtools_application.odin, devtools_performance.odin
+// and devtools_memory.odin; the interface parts they share (icons, buttons, lists, the filter field) are in devtools_kit.odin and devtools_icons.odin.
 //
 // State and preferences: browser.devtools.* (visible, dock, tab, size, layout, font size, density, and what each panel keeps:
 // its filters, its columns, its panes). The panel takes room from the page (build_ui puts it next to the page's box, so
@@ -114,6 +115,8 @@ Devtools :: struct {
 	win:       ^Dev_Window,        // detached: their own window (devtools_window.odin)
 	want_win:  bool,               // ... asked for, made after the frame that asked
 	picking:   bool,               // the element picker (Ctrl+Shift+C) is on: the page shows the element under the pointer
+	find:      Dev_Panel,          // Ctrl+F asked this panel to find (`find_asked`): its search field takes the keyboard (dt_find_here)
+	find_asked: bool,
 	hover_tab: int,
 	layout:    ui.Dock,            // where the panels are (browser.devtools.layout); `panel`: the one shown last
 	shown:     bit_set[Dev_Panel], // the panels the last frame showed
@@ -317,6 +320,38 @@ devtools_open :: proc(app: ^App, panel: Dev_Panel) {
 	request_frames(app, 3)
 }
 
+// The panels that find from Ctrl+F: their search or filter field takes the keyboard.
+DEV_FIND_PANELS :: bit_set[Dev_Panel]{.Console, .Elements, .Network, .Application}
+
+// The panel the keyboard is in: the one shown in the stack that has the focus (or, nothing focused, the one shown last while
+// the pointer is over the developer tools). ok false: the keyboard is elsewhere.
+devtools_keyboard_panel :: proc() -> (Dev_Panel, bool) {
+	d := dev()
+	if !d.visible { return {}, false }
+	if leaf, _ := ui.dock_focus_leaf(&d.layout); leaf != ui.DOCK_NONE {
+		if a := d.layout.nodes[leaf].active; a < u32(len(Dev_Panel)) { return Dev_Panel(a), true }
+	}
+	if ui.focus_key() == 0 && draw.rect_contains(d.rect, ui.mouse_pos()) { return d.panel, true }
+	return {}, false
+}
+
+// The keys the developer tools take before the chrome's shortcuts (Ctrl+F is the page's find, F3 its next match) while they
+// have the keyboard: Ctrl+F finds in the panel the keyboard is in, F3 / Shift+F3 go to the Elements search's next and
+// previous match. Called by chrome_shortcuts, and by the panel itself (a window of its own has no chrome's shortcuts).
+devtools_take_keys :: proc(app: ^App) -> bool {
+	d := dev()
+	p, mine := devtools_keyboard_panel()
+	if !mine { return false }
+	switch {
+	case p in DEV_FIND_PANELS && ui.key_press(.F, {.Ctrl}): d.find, d.find_asked = p, true
+	case p == .Elements && d.els.search_on && ui.key_press(.F3): d.els.find_step = 1
+	case p == .Elements && d.els.search_on && ui.key_press(.F3, {.Shift}): d.els.find_step = -1
+	case: return false
+	}
+	request_frames(app, 2)
+	return true
+}
+
 // The panel closes if it shows `panel`, else opens on it (Ctrl+Shift+J).
 devtools_toggle_panel :: proc(app: ^App, panel: Dev_Panel) {
 	if dev_shows(dev(), panel) { devtools_toggle(app) } else { devtools_open(app, panel) }
@@ -392,7 +427,14 @@ devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_
 		ui.next(mod)
 		panel := ui.build_box(flags, "###dt_panel")
 		dev().rect = panel.rect
-		if ui.parent(panel) { dev_dock(app, t) }
+		if ui.parent(panel) {
+			devtools_take_keys(app)
+			dev_dock(app, t)
+			dev().find_asked = false   // (Ctrl+F is for the panel's field of this build)
+			// Escape that nothing of theirs took: the Console under the panel shown, or away again (Chrome's drawer; in the Console's own
+			// stack when it is not the drawer, nothing)
+			if p, mine := devtools_keyboard_panel(); mine && (p != .Console || devtools_drawer_split(dev()) != ui.DOCK_NONE) && ui.key_press(.Escape) { devtools_drawer_toggle(app) }
+		}
 		net_media_frame_end(app)   // a media that was not previewed this frame is closed
 	}
 }
@@ -456,13 +498,9 @@ devtools_settings_menu :: proc(app: ^App, t: ^Tab) {
 	ui.menu_separator()
 	if ui.menu_item("Select an element in the page###dt_m_pick", cmd_key(app, "view.devtools_pick")).clicked { devtools_pick(app) }
 	if ui.menu_item("Open the command palette###dt_m_palette", "Ctrl+Shift+P").clicked { palette_toggle(app) }
-	// (the drawer of old: the Console in a stack of its own under the others)
-	con := ui.dock_leaf_of(&dev().layout, u32(Dev_Panel.Console))
-	if con == ui.DOCK_NONE || ui.dock_tab_count(&dev().layout, con) > 1 || ui.dock_is_floating(&dev().layout, con) {
-		if ui.menu_item("Show the Console under the other panels###dt_m_con_drawer").clicked {
-			ui.dock_move(&dev().layout, u32(Dev_Panel.Console), {place = .Edge_Bottom})
-			devtools_open(app, .Console)
-		}
+	// the drawer: the Console in a stack of its own under the others (Escape shows and hides it)
+	if devtools_drawer_split(dev()) == ui.DOCK_NONE {
+		if ui.menu_item("Show the Console under the other panels###dt_m_con_drawer", "Esc").clicked { devtools_drawer_toggle(app) }
 	}
 	if ui.menu_item("Reset the layout of the panels###dt_m_layout").clicked { devtools_reset_layout(app) }
 	if ui.menu_item("Open about:config for the developer tools###dt_m_cfg").clicked { open_in_new_tab(app, "about:config?q=browser.devtools", origin = .User) }

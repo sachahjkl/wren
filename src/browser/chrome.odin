@@ -713,6 +713,7 @@ chrome_shortcuts :: proc(app: ^App) {
 	ctrl := platform.Modifiers{.Ctrl}
 	switch {
 	case devtools_take_ctrl_tab(app):   // Ctrl+Tab in the developer tools: their stack's next panel, not the next tab (devtools_layout.odin)
+	case !devtools_detached() && devtools_take_keys(app):   // Ctrl+F and F3 in the developer tools: their find, not the page's (devtools.odin)
 	case commands_dispatch(app):   // the registry's shortcuts (commands.odin)
 	case t != nil && t.load != nil && t.load.task != base.NIL_HANDLE && ui.focus_key() == 0 && ui.key_press(.Escape):
 		// stops a load in progress (the document's request, and the modules still downloading)

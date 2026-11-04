@@ -39,6 +39,12 @@ computed_property :: proc(p: ^Page, h: base.Handle, name: string) -> string {
 ////////////////////////////////
 // Styles
 
+// Whether the style engine takes `value` for `property` (CSS.supports): the keywords the Styles pane suggests for it.
+dev_supports :: proc(p: ^Page, property, value: string) -> bool {
+	if p == nil || p.closed || p.engine == nil { return false }
+	return style.supports_declaration(p.engine, property, value, style.parse_options(&p.settings.style))
+}
+
 // The style rules that match `h`, strongest first (`ua`: the browser's own included). Memory of the temporary allocator.
 dev_matched_rules :: proc(p: ^Page, h: base.Handle, ua := false) -> []style.Dev_Rule {
 	if p == nil || p.closed || p.engine == nil { return nil }

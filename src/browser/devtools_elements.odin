@@ -4,9 +4,10 @@ package browser
 // guides for the indentation, the node's closing tag, a one-line form for an element whose only child is a short text; the
 // chosen node's details beside it (devtools_styles.odin: Styles, Computed, Layout, Event Listeners, Accessibility), panels of
 // the Elements panel's own dock (the toolkit's ui.Dock: dragged below the tree, split, floated; browser.devtools.elements.layout); a
-// breadcrumb of its ancestors under the tree; a search (Ctrl+F: text, tag, attribute, selector, XPath); and the node's box
-// drawn over the page (the hovered row's, else the chosen one's), or the element under the pointer while picking
-// (Ctrl+Shift+C). "Inspect" in the page's context menu selects the element under the pointer.
+// breadcrumb of its ancestors under the tree; a search (Ctrl+F: text, tag, attribute, a CSS selector, an XPath; Enter and F3 the
+// next match, with Shift the previous; Escape closes it); and the node's box drawn over the page (the hovered row's, else the
+// chosen one's), or the element under the pointer while picking (Ctrl+Shift+C). "Inspect" in the page's context menu selects
+// the element under the pointer.
 //
 // Edits: double click an attribute's name or value (or a text) to change it, F2 or the menu to edit a node as HTML,
 // Delete removes it, the menu duplicates, copies (outer HTML, selector, XPath), adds an attribute or hides the element; a
@@ -32,6 +33,10 @@ DEV_ELEMENTS_TOGGLE_BUDGET :: 5000
 // A search of the Elements panel visits at most this many nodes, and stops at this many matches.
 DEV_ELEMENTS_SEARCH_VISITS :: 400000
 DEV_ELEMENTS_SEARCH_MATCHES :: 5000
+// The text of an element shown on its row with it, at most this long (inline_text).
+EL_INLINE_TEXT_MAX :: 90
+// The search's "n of m" (logical px).
+EL_SEARCH_COUNT_W :: 76
 // The panels of the Elements panel's dock: the tree and the views of the chosen node.
 Dev_Side :: enum u32 { Tree, Styles, Computed, Layout, Listeners, Accessibility }
 DEV_SIDE_NAMES := [Dev_Side]string{.Tree = "tree", .Styles = "styles", .Computed = "computed", .Layout = "layout", .Listeners = "listeners", .Accessibility = "accessibility"}
@@ -79,12 +84,14 @@ Dev_Elements :: struct {
 	area:      ui.Text_Area,   // the markup of "edit as HTML"
 	focus_edit: bool,
 	edit_age:  int,
-	// search
+	// search (Ctrl+F): what the text, a selector and an XPath find, in document order; found_at the current one
 	search:    Dt_Filter,
 	search_on: bool,
 	found:     [dynamic]base.Handle,
 	found_at:  int,
-	found_key: u64,
+	found_key: u64,            // the query the matches are of
+	found_mut: u64,            // ... and the document's mutations
+	find_step: int,            // F3 / Shift+F3 (devtools_take_keys): the next or previous match at the next build
 	// drag and drop of rows
 	drag_h:    base.Handle,
 	drop_row:  int,
@@ -229,6 +236,17 @@ shown_children :: proc(d: ^dom.Document, n: ^dom.Node) -> (count: int, only: bas
 	return
 }
 
+// An element whose only shown child is a short line of text is one row with it (`<p>text</p>`): that text.
+@(private = "file")
+inline_text :: proc(d: ^dom.Document, n: ^dom.Node) -> (string, bool) {
+	count, only := shown_children(d, n)
+	if count != 1 { return "", false }
+	cn := dom.get(d, only)
+	if cn == nil || cn.kind != .Text { return "", false }
+	text := strings.trim_space(cn.text)
+	return text, len(text) <= EL_INLINE_TEXT_MAX && !strings.contains_rune(text, '\n')
+}
+
 @(private = "file")
 add_row :: proc(e: ^Dev_Elements, r: El_Row) {
 	append(&e.rows, r)
@@ -264,7 +282,7 @@ flatten :: proc(e: ^Dev_Elements, d: ^dom.Document, h: base.Handle, depth: int) 
 	if n.kind != .Element { return }
 	spans := make([dynamic]El_Span, context.temp_allocator)
 	tag := open_tag(n, &spans)
-	count, only := shown_children(d, n)
+	count, _ := shown_children(d, n)
 	row := El_Row{h = h, depth = depth, children = count}
 	if is_void(n.name) {
 		row.kind, row.label = .Open, strings.clone(dev_line(tag, 600))
@@ -279,17 +297,11 @@ flatten :: proc(e: ^Dev_Elements, d: ^dom.Document, h: base.Handle, depth: int) 
 		add_row(e, row)
 		return
 	}
-	if count == 1 {
-		cn := dom.get(d, only)
-		if cn != nil && cn.kind == .Text {
-			text := strings.trim_space(cn.text)
-			if len(text) <= 90 && !strings.contains_rune(text, '\n') {
-				row.kind, row.label = .Inline, strings.clone(dev_line(strings.concatenate({tag, text, close_tag}, context.temp_allocator), 700))
-				row.attrs = clone_spans(spans[:])
-				add_row(e, row)
-				return
-			}
-		}
+	if text, inline := inline_text(d, n); inline {
+		row.kind, row.label = .Inline, strings.clone(dev_line(strings.concatenate({tag, text, close_tag}, context.temp_allocator), 700))
+		row.attrs = clone_spans(spans[:])
+		add_row(e, row)
+		return
 	}
 	open := e.expanded[h]
 	row.kind, row.label, row.expandable, row.expanded = .Open, strings.clone(dev_line(tag, 600)), true, open
@@ -493,7 +505,7 @@ elements_panel :: proc(app: ^App, t: ^Tab) {
 tree_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	if dt_bar("###dt_el_bar", app.dtm.bar - dt_px(4)) {
 		dt_gap(3)
-		if dt_btn("###dt_el_search", .Search, tooltip = "Find in the tree (text, tag, attribute, selector, XPath)", shortcut = "Ctrl+F", on = e.search_on).clicked { e.search_on = !e.search_on }
+		if dt_btn("###dt_el_search", .Search, tooltip = "Find in the tree (text, tag, attribute, selector, XPath)", shortcut = "Ctrl+F", on = e.search_on).clicked { if e.search_on { close_search(e) } else { e.search_on = true } }
 		dt_vsep("###dt_eb0")
 		if dt_btn("###dt_el_expand", .Chevron_Down, tooltip = "Expand the selected node and all that is in it", enabled = e.selected != base.NIL_HANDLE).clicked {
 			if t.page != nil { budget := DEV_ELEMENTS_TOGGLE_BUDGET; toggle_all(e, t.page.doc, e.selected, true, &budget) }
@@ -507,6 +519,7 @@ tree_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 			dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.92, b.rect.max.x - dt_px(8), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.weak, s)
 		}, new_clone(dt_frame_str(fmt.tprintf("%d rows", len(e.rows))), ui.frame_allocator()))
 	}
+	if dev().find_asked && dev().find == .Elements { e.search_on = true }   // (Ctrl+F: the bar's field takes the keyboard)
 	if e.search_on { search_bar(app, t, e) }
 
 	n := len(e.rows)
@@ -761,7 +774,6 @@ apply_html :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 
 @(private = "file")
 tree_keys :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, n: int) {
-	if ui.key_press(.F, {.Ctrl}) && dev().panel == .Elements { e.search_on = true }
 	if !e.list.focused || n == 0 || e.edit != .None { return }
 	old := e.list.sel
 	if dt_list_keys(&e.list, n, max(int(e.list.view / app.dtm.row) - 1, 1)) {
@@ -1004,33 +1016,53 @@ xpath_of :: proc(p: ^page.Page, h: base.Handle, full: bool) -> string {
 search_bar :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	if dt_bar("###dt_el_sbar", app.dtm.bar - dt_px(4)) {
 		dt_gap(3)
-		res := dt_search("###dt_el_sfield", &e.search, "Find by string, selector or XPath", 0, false)
+		res := dt_search("###dt_el_sfield", &e.search, "Find by string, selector, or XPath", 0, false)
+		dt_find_here(.Elements, res, &e.search)
+		// again when the query or the document changed (the document only while the page is not running)
 		ser := dt_filter_serial(&e.search)
-		if ser != e.found_key || res.changed { run_search(t, e); e.found_key = ser }
-		if res.committed && ui.key_press(.Return, {.Shift}) { step_search(app, t, e, -1) } else if res.committed { step_search(app, t, e, 1) }
-		if res.cancelled { e.search_on = false; clear(&e.found) }
+		if ser != e.found_key || (!shell_nested() && t.page != nil && t.page.doc.mutations != e.found_mut) {
+			run_search(t, e, ser != e.found_key)
+			e.found_key = ser
+		}
+		if res.focused && ui.key_press(.Return, {.Shift}) { step_search(app, t, e, -1) } else if res.committed { step_search(app, t, e, 1) }
+		if e.find_step != 0 { step_search(app, t, e, e.find_step); e.find_step = 0 }
+		if res.cancelled { close_search(e) }
 		count := len(e.found)
-		ui.next({width = ui.px(dt_px(70)), height = ui.pct(1)})
-		ui.custom("###dt_el_scount", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+		label := count == 0 ? (dt_filter_active(&e.search) ? "No matches" : "") : fmt.tprintf("%d of %d", e.found_at + 1, count)
+		ui.next({width = ui.px(dt_px(EL_SEARCH_COUNT_W)), height = ui.pct(1)})
+		cb := ui.custom("###dt_el_scount", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 			s := (^string)(user)^
 			dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.92, b.rect.max.x - dt_px(4), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.weak, s)
-		}, new_clone(dt_frame_str(count == 0 ? (dt_filter_active(&e.search) ? "0 results" : "") : fmt.tprintf("%d / %d", e.found_at + 1, count)), ui.frame_allocator()))
-		if dt_btn("###dt_el_sprev", .Chevron_Up, tooltip = "Previous result", shortcut = "Shift+Enter", enabled = count > 0).clicked { step_search(app, t, e, -1) }
-		if dt_btn("###dt_el_snext", .Chevron_Down, tooltip = "Next result", shortcut = "Enter", enabled = count > 0).clicked { step_search(app, t, e, 1) }
-		if dt_btn("###dt_el_sclose", .Close, tooltip = "Close the search", shortcut = "Esc").clicked { e.search_on = false; clear(&e.found) }
+		}, new_clone(dt_frame_str(label), ui.frame_allocator()))
+		ui.a11y_set(cb, {role = .Status, name = dt_frame_str(label)})
+		if dt_btn("###dt_el_sprev", .Chevron_Up, tooltip = "Previous match", shortcut = "Shift+Enter", enabled = count > 0).clicked { step_search(app, t, e, -1) }
+		if dt_btn("###dt_el_snext", .Chevron_Down, tooltip = "Next match", shortcut = "Enter", enabled = count > 0).clicked { step_search(app, t, e, 1) }
+		if dt_btn("###dt_el_sclose", .Close, tooltip = "Close the search", shortcut = "Esc").clicked { close_search(e) }
 	}
 }
 
-// Every node whose tag, an attribute (name or value) or text holds the query, or that a selector or an XPath of tags finds.
 @(private = "file")
-run_search :: proc(t: ^Tab, e: ^Dev_Elements) {
+close_search :: proc(e: ^Dev_Elements) {
+	e.search_on = false
+	clear(&e.found)
+	e.found_key = 0
+}
+
+// Every node whose tag, an attribute (name or value) or text holds the query, or that the query finds as a CSS selector or as
+// an XPath, in document order (a text shown on its element's row: that element). `jump`: the query is new, its first match is
+// chosen; else (the document changed) the current match stays current where it still is one.
+@(private = "file")
+run_search :: proc(t: ^Tab, e: ^Dev_Elements, jump: bool) {
+	was := e.found_at < len(e.found) ? e.found[e.found_at] : base.NIL_HANDLE
 	clear(&e.found)
 	e.found_at = 0
 	q := dt_filter_text(&e.search)
 	if q == "" || t.page == nil { return }
 	d := t.page.doc
-	sel := strings.has_prefix(q, "//")
-	path := sel ? strings.split(strings.trim_prefix(q, "//"), "/", context.temp_allocator) : nil
+	e.found_mut = d.mutations
+	picked := make(map[base.Handle]bool, 64, context.temp_allocator)
+	if sel, ok := page.select_all(t.page, q); ok { for h in sel { picked[h] = true } }
+	if items, ok := dom.xpath_select(d, base.NIL_HANDLE, q); ok { for it in items { picked[it.node] = true } }
 	stack := make([dynamic]base.Handle, context.temp_allocator)
 	append(&stack, d.root)
 	budget := DEV_ELEMENTS_SEARCH_VISITS
@@ -1039,26 +1071,32 @@ run_search :: proc(t: ^Tab, e: ^Dev_Elements) {
 		budget -= 1
 		n := dom.get(d, h)
 		if n == nil { continue }
-		hit := false
+		hit := picked[h]
 		switch n.kind {
 		case .Element:
-			if sel {
-				hit = len(path) > 0 && n.name == path[len(path) - 1]
-			} else {
-				if base.ascii_contains_fold(n.name, q) { hit = true }
-				for a in n.attrs { if base.ascii_contains_fold(a.name, q) || base.ascii_contains_fold(a.value, q) { hit = true; break } }
-			}
+			if base.ascii_contains_fold(n.name, q) { hit = true }
+			for a in n.attrs { if base.ascii_contains_fold(a.name, q) || base.ascii_contains_fold(a.value, q) { hit = true; break } }
 		case .Text, .Comment:
-			hit = !sel && base.ascii_contains_fold(n.text, q)
+			hit = hit || base.ascii_contains_fold(n.text, q)
 		case .Document, .Fragment, .Doctype:
+			hit = false
 		}
-		if hit { append(&e.found, h) }
-		// children pushed in reverse so that the results come in document order
+		row := h
+		if pn := dom.get(d, n.parent); n.kind == .Text && pn != nil && pn.kind == .Element {
+			if _, inline := inline_text(d, pn); inline { row = n.parent }
+		}
+		if hit && (len(e.found) == 0 || e.found[len(e.found) - 1] != row) { append(&e.found, row) }
+		// children pushed in reverse so that the matches come in document order
 		last := base.NIL_HANDLE
 		for c := n.first_child; c != base.NIL_HANDLE; { last = c; cn := dom.get(d, c); if cn == nil { break }; c = cn.next }
 		for c := last; c != base.NIL_HANDLE; { append(&stack, c); cn := dom.get(d, c); if cn == nil { break }; c = cn.prev }
 	}
-	if len(e.found) > 0 { elements_select(t, e.found[0]) }
+	if len(e.found) == 0 { return }
+	if !jump {
+		for h, i in e.found { if h == was { e.found_at = i; return } }
+		return
+	}
+	elements_select(t, e.found[0])
 }
 
 @(private = "file")
@@ -1068,7 +1106,6 @@ step_search :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, dir: int) {
 	elements_select(t, e.found[e.found_at])
 	request_frames(app, 2)
 }
-
 ////////////////////////////////
 // The breadcrumb
 

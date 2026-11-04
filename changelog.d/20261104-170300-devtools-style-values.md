@@ -1,0 +1,3 @@
+type: Added
+
+**Values edited as in Chrome's Styles pane** (`src/browser/devtools_styles.odin`): the number at the caret of a value steps with Up / Down (1), Shift (10), Alt (0.1), Ctrl (100), Page Up / Page Down (10) and the wheel over the focused field, in any value (`margin: 10px 5px`, `rgba(...)`, `calc()`), and the page follows; a typed name is suggested the engine's properties, a typed value the keywords the engine takes for the property (Up / Down choose, Enter / Tab / a click take one); Tab and Shift+Tab go between name, value and the declarations around, Escape puts the declaration back as it was (one it added goes), and an `!important` declaration keeps it when edited.
