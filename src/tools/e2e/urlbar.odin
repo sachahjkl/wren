@@ -97,3 +97,25 @@ urlbar_suggestions :: proc(t: ^testing.T) {
 	testing.expect(t, !strings.contains(history, GITLAB), "Shift+Delete removed every visit of gitlab.com from the profile")
 	testing.expect(t, strings.contains(history, ODIN_REPOSITORY), "the other addresses stay")
 }
+
+// A new tab puts the keyboard in the address bar with no list (browser.newtab.focus_address, on by default); a letter typed goes to the field and
+// lists, a click on the field lists the pages visited (browser.urlbar.top_sites).
+@(test)
+urlbar_new_tab_focus_without_the_list :: proc(t: ^testing.T) {
+	server := e2e.test_server(t)
+	profile := e2e.temp_profile(t)
+	write_history(profile, server.origin)
+	s := e2e.start(t, {size = URLBAR_SIZE, profile = profile, url = "about:history"})
+
+	e2e.run_command(s, "tab.new")
+	e2e.wait_chrome_still(s)
+	testing.expect(t, !e2e.urlbar(s).open, "a new tab shows no list")
+	type_until_completed(s, "gitl", GITLAB)   // the letters went to the field: it had the keyboard
+
+	e2e.key(s, "Escape")
+	e2e.run_command(s, "tab.new")
+	e2e.wait_chrome_still(s)
+	testing.expect(t, !e2e.urlbar(s).open, "the second new tab shows no list either")
+	click_field(s)
+	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool { bar := e2e.urlbar(s); return bar.open && len(bar.rows) > 0 }, "the list of a click")
+}

@@ -313,7 +313,7 @@ tab_open :: proc(app: ^App, address := "", from: ^page.Page = nil, origin := Nav
 }
 
 // A new tab the user asked for (Ctrl+T, the + of the strip, the menus): the homepage. The address field is focused only
-// when browser.newtab.focus_address says so (as Chromium does): by default the new tab keeps the page.
+// when browser.newtab.focus_address says so (on by default, as Chromium does).
 tab_open_new :: proc(app: ^App) -> ^Tab {
 	t := tab_open(app)
 	if config.bool_of(&app.prefs, "browser.newtab.focus_address") { active_window(app).focus_address = true }
