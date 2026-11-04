@@ -345,6 +345,37 @@
   function arrs(n) { var s = 0, a; for (var i = 0; i < n; i++) { a = [i, i * 0.5, "s", null, [i]]; s += a.length + a[0] + a[4][0]; } return show(s) + " " + a[1]; }
   p("objects: array literals", arrs(RUN));
 
+  // strings made and compared by compiled code: + and += of strings with numbers, bools, null, undefined, BigInts,
+  // objects whose conversion has an effect (made once) or throws, symbols (a TypeError); === of strings equal by value
+  // (made apart, narrow and wide, ropes), of a string and a number; switch on strings
+  var conv = 0;
+  var noisy = { toString: function () { conv++; return "N"; } };
+  function cats(vals, n) {
+    var s = "", t = "", u = 0;
+    for (var i = 0; i < n; i++) {
+      if ((i & 63) === 0) { s = ""; t = "x"; }
+      s += vals[i & 7];
+      t = t + "-" + vals[(i + 3) & 7];
+      u = (u + s.length + t.charCodeAt(t.length - 1)) | 0;
+    }
+    return u + " " + s.slice(0, 40) + " " + conv;
+  }
+  p("strings: concatenations", cats(["a", 1, 2.5, true, null, undefined, "é", -0], RUN));
+  p("strings: an object converted", cats(["a", 1, noisy, "b", 2, "c", 3, "d"], RUN), conv);
+  p("strings: a BigInt", cats(["a", 1n, "b", 2, "c", 3, "d", 4], RUN));
+  try { p("strings: a symbol", cats(["a", "b", "c", Symbol("s"), "d", "e", "f", "g"], RUN)); } catch (e) { p("strings: a symbol", e.name); }
+  var throwing = { toString: function () { throw new RangeError("no"); } };
+  try { p("strings: a conversion that throws", cats(["a", "b", "c", "d", "e", throwing, "f", "g"], RUN)); } catch (e) { p("strings: a conversion that throws", e.name, e.message); }
+  function addObj(o) { return 0 + o; }
+  var prim = {}; prim[Symbol.toPrimitive] = function () { return Symbol.iterator; };
+  p("strings: an object added", addObj({ valueOf: function () { return 41; } }) + 1, addObj([1]));
+  try { p("strings: an object added", addObj(prim)); } catch (e) { p("strings: an object added", e.name); }
+  function streqs(as, bs, n) { var c = 0; for (var i = 0; i < n; i++) { if (as[i & 3] === bs[i & 3]) { c++; } if (as[i & 3] !== bs[(i + 1) & 3]) { c += 2; } } return c; }
+  var wideA = "été", wideB = String.fromCharCode(0xe9, 0x74, 0xe9), ropeA = "abc".repeat(30) + "d", ropeB = "abcabc".repeat(15) + "d";
+  p("strings: === by value", streqs(["ab", wideA, ropeA, "x"], ["a" + "b".repeat(1), wideB, ropeB, 1], RUN), streqs(["1", "2", "3", "4"], [1, 2, 3, 4], RUN));
+  function swStr(ks, n) { var c = 0; for (var i = 0; i < n; i++) { switch (ks[i & 3]) { case "a": c += 1; break; case "bb": c += 2; break; case "é": c += 3; break; default: c += 4; } } return c; }
+  p("strings: switch", swStr(["a", "b" + "b", "é", "dddd"], RUN), swStr(["a", 1, null, "bb"], RUN));
+
   // switch, strings, generators (not compiled) next to compiled code
   function sw(x) { switch (x) { case 1: return "one"; case "1": return "string"; default: return "other"; } }
   p("switch", sw(1), sw("1"), sw(2));

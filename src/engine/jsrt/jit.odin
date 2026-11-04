@@ -68,6 +68,7 @@ JIT_ELEM_PEEK :: 16    // the first elements of an array looked at for the type 
 JIT_INLINE_MAX_CODE :: 96   // the bytecode of a function inlined at a call, at most
 JIT_INLINE_DEPTH :: 2       // calls inlined in an inlined callee, at most one level down
 JIT_INLINE_SITE_SHIFT :: 20 // an inlined callee's sites: (the call's site + 1) << this, plus the callee's pc
+JIT_PRIMITIVE_STR_MAX :: 32   // the longest string a number, a bool, null or undefined converts to, at most
 JIT_MAX_SHADOWS :: 4        // the objects seen whose properties a translation appended (a constructor's this), followed
 
 // The aux word of a deopt exit: a slot to widen (< 64), none, a site that missed, a callee not to inline
@@ -92,7 +93,7 @@ jit_cfg: Jit_Cfg
 
 // The engine's procedures compiled code calls: exported by the glue (native/js/odin/jit.odin) under these names,
 // imported by a module whose loop calls (function index = the helper's), each (i32...) -> i32.
-Jit_Helper :: enum u8 {call, array, finish, new, reserve}
+Jit_Helper :: enum u8 {call, array, finish, new, reserve, add, streq}
 
 Jit_Helper_Def :: struct {
 	name:   string,
@@ -105,6 +106,8 @@ JIT_HELPERS :: [Jit_Helper]Jit_Helper_Def {
 	.finish  = {"wj_jit_finish", 5},
 	.new     = {"wj_jit_new", 4},
 	.reserve = {"wj_jit_reserve", 3},
+	.add     = {"wj_jit_add", 3},
+	.streq   = {"wj_jit_streq", 3},
 }
 
 // The engine's table, which a module whose code calls compiled code directly imports ("e" "table": the host gives it
@@ -269,6 +272,38 @@ jit_new :: proc(f: ^Frame, kind: Jit_New_Kind, a: int, argc: int) -> ^Object {
 // Jit_Helper.reserve: room for n slots in o, which the compiled code appends a property to.
 jit_reserve :: proc(f: ^Frame, o: ^Object, n: int) {
 	object_slots_reserve(f.ctx.rt, o, n)
+}
+
+// Jit_Helper.add: `+` of the two values under sp in the frame (a site that saw a string), the result at sp - 2; with
+// slot >= 0 (add_loc), of the argument or local `slot` and the value under sp, the result in the slot. False: not made,
+// the interpreter makes it (an operand whose conversion may run code or throw: an object, a symbol, a BigInt; a result
+// too long for a string), nothing done.
+jit_add :: proc(f: ^Frame, sp: int, slot: int) -> bool {
+	ctx := f.ctx
+	rt := ctx.rt
+	na := int(f.bc.arg_count)
+	to := slot < 0 ? &f.stack[sp - 2] : slot < na ? &f.args[slot] : &f.locals[slot - na]
+	x, y := to^, f.stack[sp - 1]
+	n := 0
+	for v in ([]Value{x, y}) {
+		#partial switch v.tag {
+		case .string: n += int(as_str(v).len)
+		case .int, .float, .bool, .null, .undefined: n += JIT_PRIMITIVE_STR_MAX
+		case: return false
+		}
+	}
+	if n > STRING_LEN_MAX {return false}
+	r := op_add(ctx, x, y)
+	if is_exception(r) {return false}
+	to^ = r
+	// (the result is in the frame: the temporaries of the conversions go)
+	if len(rt.temp_roots) > f.root_base {resize(&rt.temp_roots, f.root_base)}
+	return true
+}
+
+// Jit_Helper.streq: two strings equal by value.
+jit_streq :: proc(f: ^Frame, a: ^JS_String, b: ^JS_String) -> bool {
+	return str_eq(f.ctx.rt, a, b)
 }
 
 // Jit_Helper.array: after a call, the array in a held local again (the call may have grown, shrunk or detached it).
@@ -921,9 +956,10 @@ jit_learn :: proc(f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, xpc: int, xsp
 		site.ty = site.typed ? .V : .F
 		site.typed = true
 	case:
-		// an instruction that takes numbers from values: the numbers it found
+		// an instruction that takes numbers from values: the numbers it found (an add the strings too: it adds values then)
 		for i in max(0, xsp - int(opcode_info[op].n_pop)) ..< xsp {
-			if st[i].tag == .int || st[i].tag == .float {changed = jit_site_see(site, st[i]) || changed}
+			v := st[i]
+			if v.tag == .int || v.tag == .float || (op == .add && v.tag == .string) {changed = jit_site_see(site, v) || changed}
 		}
 	}
 	return
@@ -972,7 +1008,8 @@ Jc :: struct {
 	htmldda_bit: u8,
 	extensible_bit: u8,
 	calls:       bool, // the region calls (locals a closure may reach stay in memory)
-	helpers:     bool, // the region calls or makes objects (the helpers and the table are imported)
+	helpers:     bool, // the code calls the engine's helpers (they are imported)
+	table:       bool, // the code calls compiled code through the engine's table (it is imported)
 	shadows:     [JIT_MAX_SHADOWS]Jit_Shadow,   // the objects seen whose properties the translation appended, and their shapes then
 	n_shadows:   int,
 	// a callee being inlined (jit_inline): its code replaces the loop's, its slots are stack entries
@@ -1124,6 +1161,14 @@ j_fail :: proc(c: ^Jc, why: string) {
 
 @(private = "file")
 j_op :: #force_inline proc(c: ^Jc, op: u8) {append(&c.out, op)}
+
+// a call of the engine's helper h (which the module then imports)
+@(private = "file")
+j_helper :: proc(c: ^Jc, h: Jit_Helper) {
+	c.helpers = true
+	j_op(c, W_CALL)
+	w_uleb(&c.out, u64(h))
+}
 
 @(private = "file")
 j_lget :: proc(c: ^Jc, i: u32) {
@@ -1705,8 +1750,7 @@ j_add_slot :: proc(c: ^Jc, obj: u32, next: ^Shape, idx: int) {
 	j_lget(c, P_FRAME)
 	j_lget(c, obj)
 	j_i32(c, i32(idx + 1))
-	j_op(c, W_CALL)
-	w_uleb(&c.out, u64(Jit_Helper.reserve))
+	j_helper(c, .reserve)
 	j_op(c, W_DROP)
 	j_op(c, W_END)
 	j_lget(c, obj)
@@ -1724,8 +1768,7 @@ j_new :: proc(c: ^Jc, kind: Jit_New_Kind, a: int, argc: int) {
 	j_i32(c, i32(kind))
 	j_i32(c, i32(a))
 	j_i32(c, i32(argc))
-	j_op(c, W_CALL)
-	w_uleb(&c.out, u64(Jit_Helper.new))
+	j_helper(c, .new)
 }
 
 // `object`: a plain object, whose shape (the root one of Object.prototype) the code knows until the next join.
@@ -2055,19 +2098,45 @@ j_ref_sides :: proc(c: ^Jc) -> bool {
 @(private = "file")
 jit_strict_eq_ref :: proc(c: ^Jc, op: Opcode, pc: int) -> bool {
 	if !j_ref_sides(c) {return false}
-	// a float, a string or a BigInt on either side: by value
+	// a float or a BigInt on either side: by value, the interpreter's
 	for tl in ([]u32{I_T0, I_T1}) {
-		for tag in ([]Tag{.float, .string, .bigint}) {
+		for tag in ([]Tag{.float, .bigint}) {
 			j_lget(c, tl)
 			j_i32(c, i32(tag))
 			j_op(c, W_I32_EQ)
 		}
 		j_op(c, W_I32_OR)
-		j_op(c, W_I32_OR)
 	}
 	j_op(c, W_I32_OR)
 	j_deopt_if(c, pc)
-	// same tag, and undefined or null or the same low word (an int's, a bool's, a pointer's)
+	// two strings: the same one, or equal by value (the helper)
+	for tl in ([]u32{I_T0, I_T1}) {
+		j_lget(c, tl)
+		j_i32(c, i32(Tag.string))
+		j_op(c, W_I32_EQ)
+	}
+	j_op(c, W_I32_AND)
+	j_op(c, W_IF)
+	j_op(c, W_I32)
+	j_lget(c, c.r64)
+	j_op(c, W_I32_WRAP_I64)
+	j_lget(c, c.r64 + 1)
+	j_op(c, W_I32_WRAP_I64)
+	j_op(c, W_I32_EQ)
+	j_op(c, W_IF)
+	j_op(c, W_I32)
+	j_i32(c, 1)
+	j_op(c, W_ELSE)
+	j_lget(c, P_FRAME)
+	j_lget(c, c.r64)
+	j_op(c, W_I32_WRAP_I64)
+	j_lget(c, c.r64 + 1)
+	j_op(c, W_I32_WRAP_I64)
+	j_helper(c, .streq)
+	j_op(c, W_END)
+	j_op(c, W_ELSE)
+	// same tag, and undefined or null or the same low word (an int's, a bool's, a pointer's; a string's: by value is the
+	// other case)
 	j_lget(c, I_T0)
 	j_lget(c, I_T1)
 	j_op(c, W_I32_EQ)
@@ -2083,6 +2152,7 @@ jit_strict_eq_ref :: proc(c: ^Jc, op: Opcode, pc: int) -> bool {
 	j_op(c, W_I32_EQZ)
 	j_op(c, W_I32_OR)
 	j_op(c, W_I32_AND)
+	j_op(c, W_END)
 	if op == .strict_neq {j_op(c, W_I32_EQZ)}
 	c.st.n -= 2
 	d := j_push(c, .B)
@@ -2426,8 +2496,7 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 	j_i32(c, i32(argc))
 	j_i32(c, i32(kind))
 	j_i32(c, i32(next))
-	j_op(c, W_CALL)
-	w_uleb(&c.out, u64(Jit_Helper.call))
+	j_helper(c, .call)
 	// (only a call of bytecode may come back not made: a native's has no stub for it, which keeps its code small)
 	bytecode := as_obj(fv).class == .bytecode_function
 	if bytecode {j_lset(c, I_T0); j_lget(c, I_T0)}
@@ -2481,8 +2550,7 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 		j_lget(c, P_ARRAYS)
 		j_i32(c, i32(at))
 		j_op(c, W_I32_ADD)
-		j_op(c, W_CALL)
-		w_uleb(&c.out, u64(Jit_Helper.array))
+		j_helper(c, .array)
 		j_deopt_if(c, next)
 		for w in 0 ..< u32(3) {
 			j_lget(c, P_ARRAYS)
@@ -2778,8 +2846,9 @@ j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: 
 	j_mem(c, W_I32_LOAD, 2, FRAME_CLOSURE_REFS)
 	j_lget(c, I_T0)
 	j_lget(c, I_T3)
+	c.table = true
 	j_op(c, W_CALL_INDIRECT)
-	w_uleb(&c.out, 0)
+	w_uleb(&c.out, 0)   // (type 0: the compiled functions')
 	w_uleb(&c.out, 0)
 	j_lset(c, c.r64)
 	j_i32(c, i32(rtp))
@@ -2811,8 +2880,7 @@ j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: 
 	j_op(c, W_I32_WRAP_I64)
 	j_lget(c, I_T3)
 	j_i32(c, i32(slot))
-	j_op(c, W_CALL)
-	w_uleb(&c.out, u64(Jit_Helper.finish))
+	j_helper(c, .finish)
 	j_lset(c, I_T2)
 	j_op(c, W_END)
 	// the frame popped (frame_pop): the caller's again, one call less deep, the temporary roots of the call gone, the
@@ -2990,9 +3058,10 @@ j_inline :: proc(c: ^Jc, f: ^Frame, fo: ^Object, op: Opcode, argc: int, kind: Ji
 			c.st.n = low + 1
 		}
 	}
-	restart, out, st := c.restart, c.out, c.st
+	restart, out, st, helpers, table := c.restart, c.out, c.st, c.helpers, c.table
 	c^ = saved
 	c.out = out
+	c.helpers, c.table = helpers, table   // (what the module imports: what any code emitted calls)
 	if !ok {
 		// back to the translation of before the call
 		resize(&c.out, saved_out)
@@ -3576,9 +3645,6 @@ jit_translate :: proc(c: ^Jc, f: ^Frame) -> Jit_Outcome {
 		#partial switch op {
 		case .call0, .call1, .call2, .call3, .call, .call_method, .call_constructor, .tail_call, .tail_call_method:
 			c.calls = true
-			c.helpers = true
-		case .object, .array_from, .define_field, .put_field:
-			c.helpers = true
 		}
 		pc += size
 	}
@@ -3687,60 +3753,6 @@ jit_translate :: proc(c: ^Jc, f: ^Frame) -> Jit_Outcome {
 @(private = "file")
 jit_emit :: proc(c: ^Jc, f: ^Frame) {
 	code := c.code
-	// -- the module around the function
-	m: Wbuf
-	sec: Wbuf
-	append(&m, 0, 'a', 's', 'm', 1, 0, 0, 0)
-	// types: 0 = (args, locals, stack, arrays, refs, frame: i32) -> i64, then the helpers' (Jit_Helper)
-	w_uleb(&sec, 1 + len(Jit_Helper))
-	w_u8(&sec, 0x60)
-	w_uleb(&sec, JIT_PARAMS)
-	for _ in 0 ..< JIT_PARAMS {w_u8(&sec, W_I32)}
-	w_uleb(&sec, 1)
-	w_u8(&sec, W_I64)
-	helpers := JIT_HELPERS
-	for h in Jit_Helper {
-		w_u8(&sec, 0x60)
-		w_uleb(&sec, u64(helpers[h].params))
-		for _ in 0 ..< helpers[h].params {w_u8(&sec, W_I32)}
-		w_uleb(&sec, 1)
-		w_u8(&sec, W_I32)
-	}
-	w_section(&m, 1, &sec)
-	// imports: the engine's memory, and when the region calls or makes objects its helpers (function indices from 0) and
-	// its table
-	n_imports := c.helpers ? len(Jit_Helper) : 0
-	w_uleb(&sec, u64(1 + n_imports + (c.helpers ? 1 : 0)))
-	w_name(&sec, "e")
-	w_name(&sec, "memory")
-	w_u8(&sec, 0x02)
-	w_u8(&sec, 0x00)
-	w_uleb(&sec, 0)
-	if c.helpers {
-		for h in Jit_Helper {
-			w_name(&sec, "e")
-			w_name(&sec, helpers[h].name)
-			w_u8(&sec, 0x00)
-			w_uleb(&sec, u64(1 + int(h)))
-		}
-		w_name(&sec, "e")
-		w_name(&sec, JIT_TABLE_IMPORT)
-		w_u8(&sec, 0x01)
-		w_u8(&sec, W_FUNCREF)
-		w_u8(&sec, 0x00)
-		w_uleb(&sec, 0)
-	}
-	w_section(&m, 2, &sec)
-	// one function, exported as "f"
-	w_uleb(&sec, 1)
-	w_uleb(&sec, 0)
-	w_section(&m, 3, &sec)
-	w_uleb(&sec, 1)
-	w_name(&sec, "f")
-	w_u8(&sec, 0x00)
-	w_uleb(&sec, u64(n_imports))
-	w_section(&m, 7, &sec)
-
 	// -- the entry: guards and loads
 	for s in 0 ..< c.nslots {
 		kind := c.skind[s]
@@ -3900,6 +3912,62 @@ jit_emit :: proc(c: ^Jc, f: ^Frame) {
 	j_op(c, W_I64_EXTEND_I32_U)
 	j_op(c, W_I64_OR)
 	j_op(c, W_END)   // function
+
+	// -- the module around the function (after its code: what the code calls is known then)
+	m: Wbuf
+	sec: Wbuf
+	append(&m, 0, 'a', 's', 'm', 1, 0, 0, 0)
+	// types: 0 = (args, locals, stack, arrays, refs, frame: i32) -> i64, then the helpers' (Jit_Helper)
+	w_uleb(&sec, 1 + len(Jit_Helper))
+	w_u8(&sec, 0x60)
+	w_uleb(&sec, JIT_PARAMS)
+	for _ in 0 ..< JIT_PARAMS {w_u8(&sec, W_I32)}
+	w_uleb(&sec, 1)
+	w_u8(&sec, W_I64)
+	helpers := JIT_HELPERS
+	for h in Jit_Helper {
+		w_u8(&sec, 0x60)
+		w_uleb(&sec, u64(helpers[h].params))
+		for _ in 0 ..< helpers[h].params {w_u8(&sec, W_I32)}
+		w_uleb(&sec, 1)
+		w_u8(&sec, W_I32)
+	}
+	w_section(&m, 1, &sec)
+	// imports: the engine's memory, the helpers when the code calls one (function indices from 0), the table when it
+	// calls compiled code
+	n_imports := c.helpers ? len(Jit_Helper) : 0
+	w_uleb(&sec, u64(1 + n_imports + (c.table ? 1 : 0)))
+	w_name(&sec, "e")
+	w_name(&sec, "memory")
+	w_u8(&sec, 0x02)
+	w_u8(&sec, 0x00)
+	w_uleb(&sec, 0)
+	if n_imports > 0 {
+		for h in Jit_Helper {
+			w_name(&sec, "e")
+			w_name(&sec, helpers[h].name)
+			w_u8(&sec, 0x00)
+			w_uleb(&sec, u64(1 + int(h)))
+		}
+	}
+	if c.table {
+		w_name(&sec, "e")
+		w_name(&sec, JIT_TABLE_IMPORT)
+		w_u8(&sec, 0x01)
+		w_u8(&sec, W_FUNCREF)
+		w_u8(&sec, 0x00)
+		w_uleb(&sec, 0)
+	}
+	w_section(&m, 2, &sec)
+	// one function, exported as "f"
+	w_uleb(&sec, 1)
+	w_uleb(&sec, 0)
+	w_section(&m, 3, &sec)
+	w_uleb(&sec, 1)
+	w_name(&sec, "f")
+	w_u8(&sec, 0x00)
+	w_uleb(&sec, u64(n_imports))
+	w_section(&m, 7, &sec)
 
 	// -- code section
 	body: Wbuf
@@ -4119,7 +4187,8 @@ jit_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
 	     .typeof_is_undefined, .typeof_is_function, .get_field, .get_field2, .put_field, .put_var, .strict_eq, .strict_neq,
 	     .eq, .neq, .lnot, .if_true, .if_false, .if_true8, .if_false8, .op_return, .put_var_ref, .put_var_ref0, .put_var_ref1, .put_var_ref2,
 	     .put_var_ref3, .put_var_ref_check, .set_var_ref, .set_var_ref0, .set_var_ref1, .set_var_ref2, .set_var_ref3, .call0,
-	     .call1, .call2, .call3, .call, .tail_call, .call_method, .tail_call_method, .call_constructor, .define_field, .array_from:
+	     .call1, .call2, .call3, .call, .tail_call, .call_method, .tail_call_method, .call_constructor, .define_field, .array_from,
+	     .add:
 	case:
 		for i in max(0, n - int(opcode_info[op].n_pop)) ..< n {
 			t := c.st.t[i]
@@ -4296,6 +4365,9 @@ jit_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
 			return false
 		}
 	case .add, .sub, .mul, .div, .mod, .shl, .sar, .shr, .op_and, .op_or, .xor:
+		// (an add of values or of objects: j_add_values, which refuses objects; the other operations take numbers only)
+		ta, tb := c.st.t[n - 2], c.st.t[n - 1]
+		if op == .add && ((!j_is_num(ta) && ta != .B) || (!j_is_num(tb) && tb != .B)) {return j_add_values(c, pc)}
 		sa, sb := c.st.v[n - 2], c.st.v[n - 1]
 		arith := op == .add || op == .sub || op == .mul || op == .div || op == .mod
 		ok := arith ? jit_arith(c, op, pc) : jit_bitwise(c, op, pc)
@@ -4524,12 +4596,19 @@ j_unbox_operands :: proc(c: ^Jc, op: Opcode, pc: int) -> bool {
 	#partial switch op {
 	case .add, .sub, .mul, .div, .mod, .shl, .sar, .shr, .op_and, .op_or, .xor, .lt, .lte, .gt, .gte:
 		lo, hi = 2, 0
+		if op == .add {
+			// (a site that saw a string adds values: j_add_values)
+			if site := jit_site_of(c.jl, c.site_base + pc, false); site != nil && site.typed && site.ty == .V {return true}
+		}
 	case .eq, .neq, .strict_eq, .strict_neq:
 		// a value compared with a number (two values are compared as values)
 		ta, tb := c.st.t[n - 2], c.st.t[n - 1]
 		if ta == .V && j_is_num(tb) {lo, hi = 2, 1} else if tb == .V && j_is_num(ta) {lo, hi = 1, 0}
-	case .neg, .plus, .inc, .dec, .post_inc, .post_dec, .op_not, .add_loc, .get_array_el, .get_array_el2, .to_propkey, .to_propkey2:
+	case .neg, .plus, .inc, .dec, .post_inc, .post_dec, .op_not, .get_array_el, .get_array_el2, .to_propkey, .to_propkey2:
 		lo, hi = 1, 0
+	case .add_loc:
+		// (a local in the frame's memory adds values: j_slot_insn)
+		if s := c.nargs + int(c.code[pc + 1]); c.inl_depth > 0 || s >= c.nslots || c.skind[s] != .box {lo, hi = 1, 0}
 	case .put_array_el:
 		lo, hi = 2, 1
 	}
@@ -4662,7 +4741,7 @@ jit_slot_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int, s: int, write: boo
 		return true
 	case .add_loc:
 		tv := c.st.t[n - 1]
-		if !j_is_num(tv) {
+		if !j_is_num(tv) && kind != .box {
 			j_fail(c, "add_loc of something that is not a number")
 			return false
 		}
@@ -4691,6 +4770,19 @@ jit_slot_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int, s: int, write: boo
 			j_get_f(c, n - 1)
 			j_op(c, W_F64_ADD)
 			j_lset(c, c.wl[s])
+		case .box:
+			// (a value, in the frame's memory: added there by the helper, `s += x` of a string)
+			if c.inl_depth > 0 {
+				j_fail(c, "add_loc in a callee being inlined")
+				return false
+			}
+			j_store_entry(c, n - 1, P_STACK, u32((n - 1) * size_of(Value)), true, true)
+			j_lget(c, P_FRAME)
+			j_i32(c, i32(n))
+			j_i32(c, i32(s))
+			j_helper(c, .add)
+			j_op(c, W_I32_EQZ)
+			j_deopt_if(c, pc)
 		case:
 			j_fail(c, "add_loc to a local the loop does not hold")
 			return false
@@ -4807,6 +4899,41 @@ jit_shadow_op :: proc(op: Opcode, a: Value, b: Value) -> Value {
 	}
 	return EXCEPTION
 }
+// add of values (a site that saw a string): the two entries written to the frame and added by the helper (jit_add),
+// the result a V; when it does not make it, the interpreter does (a deopt: nothing was done).
+@(private = "file")
+j_add_values :: proc(c: ^Jc, pc: int) -> bool {
+	n := c.st.n
+	if c.inl_depth > 0 {
+		// (a callee's entries are beyond the frame's operand stack: none of them goes to its memory)
+		j_fail(c, "values added in a callee being inlined")
+		return false
+	}
+	for d in n - 2 ..< n {
+		if t := c.st.t[d]; t == .O || t == .P || t == .M {
+			j_fail(c, "an object added")
+			return false
+		}
+		j_store_entry(c, d, P_STACK, u32(d * size_of(Value)), true, true)
+	}
+	j_lget(c, P_FRAME)
+	j_i32(c, i32(n))
+	j_i32(c, -1)
+	j_helper(c, .add)
+	j_op(c, W_I32_EQZ)
+	j_deopt_if(c, pc)
+	c.st.n -= 2
+	d := j_push(c, .V)
+	off := u32(d * size_of(Value))
+	j_lget(c, P_STACK)
+	j_mem(c, W_I32_LOAD8_U, 0, off)
+	j_lset(c, j_si(c, d))
+	j_lget(c, P_STACK)
+	j_mem(c, W_I64_LOAD, 3, off + 8)
+	j_lset(c, c.sl0 + u32(d))
+	return true
+}
+
 @(private = "file")
 jit_arith :: proc(c: ^Jc, op: Opcode, pc: int) -> bool {
 	n := c.st.n
