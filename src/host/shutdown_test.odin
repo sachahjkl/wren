@@ -9,6 +9,8 @@ import "wb:base"
 
 @(private = "file") WATCHDOG_WARN_MS :: 1
 @(private = "file") WATCHDOG_TICK :: time.Millisecond
+// Rounds of two teardowns ending at the same moment.
+@(private = "file") TEARDOWNS_AT_ONCE :: 50
 
 @(test)
 shutdown_watchdog_names_what_waits :: proc(t: ^testing.T) {
@@ -35,4 +37,21 @@ shutdown_watchdog_names_what_waits :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(text, "test-stuck-thread"), text)
 	testing.expect(t, strings.contains(text, "finished after"), text)
 	_ = os.remove(path)
+
+	// Apps of the process that tear down at once share one watchdog, stopped and freed by the last of them: both ending
+	// together joined it twice (the tracking allocator of the test says a second free)
+	together: sync.Barrier
+	for _ in 0 ..< TEARDOWNS_AT_ONCE {
+		sync.barrier_init(&together, 2)
+		other := thread_start(proc(data: rawptr) {
+			shutdown_begin("", force_ms = 0, tick = WATCHDOG_TICK)
+			sync.barrier_wait((^sync.Barrier)(data))
+			shutdown_end()
+		}, &together, name = "test-second-app")
+		shutdown_begin("", force_ms = 0, tick = WATCHDOG_TICK)
+		sync.barrier_wait(&together)
+		shutdown_end()
+		thread_join(other)
+	}
+	shutdown_end()   // (none under way: nothing happens)
 }

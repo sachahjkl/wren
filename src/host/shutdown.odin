@@ -72,6 +72,9 @@ SLOW_SUMMARY_MS :: 1000
 
 @(private = "file")
 sd: Shutdown
+// The teardowns under way (several Apps of a process end at once): the first starts the watchdog, the last stops it and frees `sd`.
+@(private = "file")
+sd_users: int
 
 @(private = "file")
 fixed_copy :: proc(dst: []u8, s: string) -> int {
@@ -82,7 +85,7 @@ fixed_copy :: proc(dst: []u8, s: string) -> int {
 
 // `log_path` "" = stderr only. force_ms 0 = never force the exit. Call from the thread that tears down.
 shutdown_begin :: proc(log_path: string, warn_ms := SHUTDOWN_WARN_MS, force_ms := SHUTDOWN_FORCE_MS, tick := SHUTDOWN_WATCHDOG_TICK) {
-	if sd.active { return }
+	if sync.atomic_add(&sd_users, 1) > 0 { return }
 	sd.active, sd.stop = true, false
 	sd.start = time.tick_now()
 	sd.step_start = sd.start
@@ -120,7 +123,9 @@ step_finished :: proc() {
 
 // Stops the watchdog. Anything the teardown waited for beyond `warn_ms` has been reported by then.
 shutdown_end :: proc() {
-	if !sd.active { return }
+	users := sync.atomic_sub(&sd_users, 1)
+	if users <= 0 { sync.atomic_add(&sd_users, 1); return }   // (no teardown began)
+	if users > 1 || !sd.active { return }
 	sync.atomic_store(&sd.stop, true)
 	sync.sema_post(&sd.wake)   // (it sleeps until its next look otherwise: every browser that closed waited up to 200 ms for this, 100 on average)
 	thread_join(sd.watchdog)
