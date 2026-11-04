@@ -9,7 +9,9 @@
 // Doc of its own with a top-level navigable (src/page/auxiliary.odin), its initial about:blank document, then the documents
 // it navigates to (keeping the initial one's Window when it may: page.navigable_keep_window); they follow their navigations, with a
 // session history across their documents (Doc.session) whose traversals they follow, close on window.close(), and close with the document that opened the
-// first of them (Doc.popups of the root). Their console messages go to the root's on_console with their own Doc (root set).
+// first of them (Doc.popups of the root). A document such a window leaves may stay, frozen, in its back/forward cache (Doc.cached, as the
+// browser's tab keeps one: page.bfcache_blockers, page_freeze, page_thaw): a traversal back to its entry shows it again instead of
+// loading it. Their console messages go to the root's on_console with their own Doc (root set).
 package headless
 
 import "core:fmt"
@@ -41,6 +43,16 @@ Env :: struct {
 
 Navigable :: page.Navigable   // (a field named `page` hides the package in Doc)
 Session_History :: page.Session_History
+
+// Most documents a window keeps in its back/forward cache (the browser's history.bfcache.max_entries).
+BFCACHE_MAX_PAGES :: 6
+
+// A document a window left, frozen, for its entry of the window's session history.
+Cached_Page :: struct {
+	entry: u64,
+	scope: ^base.Scope,   // its navigation's (the window's scope holds it)
+	page:  ^page.Page,
+}
 
 Message :: struct {
 	level: page.Log_Level,
@@ -75,6 +87,8 @@ Doc :: struct {
 	root:      ^Doc,            // a window a script opened: the document `open` loaded, whose windows it is; nil for that one
 	popups:    [dynamic]^Doc,   // (the root) every window its documents and theirs opened, still open
 	session:   Session_History,   // a window a script opened: its history across its documents, which it traverses
+	cached:    [dynamic]Cached_Page,   // a window a script opened: its back/forward cache, oldest first
+	restoring: u64,             // the entry whose cached document comes back in the task of the navigation in flight (0: none)
 }
 
 // The preferences `init` reads: the page's and the network's.
@@ -156,6 +170,7 @@ navigate_hook :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 		}
 		if d.page != p || p.closed { return }
 		page.session_goto(sh, e)
+		if bfcache_start(d, e.id) { return }
 		navigation_start(d, strings.clone(e.url, context.temp_allocator), &p.env)
 	}
 }
@@ -222,6 +237,7 @@ open :: proc(e: ^Env, url: string, on_console: proc(d: ^Doc, level: page.Log_Lev
 navigation_start :: proc(d: ^Doc, url: string, initiator: ^fetch.Environment, no_referrer := false) {
 	e := d.env
 	if d.loading != nil { base.scope_close(d.loading) }
+	d.restoring = 0
 	if d.has_initiator { fetch.environment_destroy(&d.initiator); d.has_initiator = false }
 	if initiator != nil { d.initiator, d.has_initiator = fetch.environment_clone(initiator^), true }
 	if d.url != url {
@@ -247,8 +263,7 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		// (whose scope stays the document's; the request's goes with the next navigation)
 		kept := page.navigable_keep_window(d.top, d.page, r.url, r.headers)
 		if kept == nil {
-			d.page = nil
-			if d.shown != nil { base.scope_close(d.shown) }
+			leave(d)
 			d.shown, d.loading = d.loading, nil
 		}
 		delete(d.final_url); delete(d.charset); delete(d.mime)
@@ -278,6 +293,65 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		if d.page != nil && d.root != nil { return }   // (a window's next document did not come: it keeps the one it shows)
 		d.failed = strings.clone(ev.detail != "" ? ev.detail : "the request failed")
 	}
+}
+
+// The window leaves the document it shows (another one is coming, or one of its cache): a window a script opened keeps it frozen
+// when it may (its entry still in the session, not the current one: a reload and location.replace give the entry another document),
+// else it goes with its navigation.
+@(private)
+leave :: proc(d: ^Doc) {
+	p := d.page
+	d.page = nil
+	if d.shown == nil { return }
+	defer d.shown = nil
+	if d.root == nil || p == nil || p.closed || page.bfcache_blockers(p) != {} { base.scope_close(d.shown); return }
+	entry: u64
+	for x in d.session.entries { if x.doc == page.page_id(p) { entry = x.id } }
+	if entry == 0 || entry == page.session_current_id(&d.session) { base.scope_close(d.shown); return }
+	page.page_freeze(p)
+	if p.closed { base.scope_close(d.shown); return }
+	// one page per entry; entries gone from the session (a push after going back) and the oldest past the count go
+	for i := len(d.cached) - 1; i >= 0; i -= 1 {
+		c := d.cached[i]
+		if c.entry == entry || page.session_find(&d.session, c.entry) == nil || c.page.closed {
+			ordered_remove(&d.cached, i)
+			base.scope_close(c.scope)
+		}
+	}
+	append(&d.cached, Cached_Page{entry = entry, scope = d.shown, page = p})
+	for len(d.cached) > BFCACHE_MAX_PAGES { base.scope_close(pop_front(&d.cached).scope) }
+}
+
+// A traversal to `entry` (now the session's current one) whose document is in the cache: it comes back in a task of the window's
+// next navigation, as a response would (a navigation that starts before it cancels it). False: not cached, the window loads the entry.
+@(private)
+bfcache_start :: proc(d: ^Doc, entry: u64) -> bool {
+	found := false
+	for c in d.cached { if c.entry == entry && !c.page.closed { found = true } }
+	if !found { return false }
+	if d.loading != nil { base.scope_close(d.loading) }
+	d.loading, d.task, d.restoring = base.scope_make("navigation", d.scope), base.NIL_HANDLE, entry
+	host.set_timer(&d.env.loop, 0, 0, proc(data: rawptr) { bfcache_restore((^Doc)(data)) }, d, d.loading)
+	return true
+}
+
+// The document of the entry the window traverses to from the cache, thawed (pageshow persisted), in place of the one shown, which
+// leaves as for any navigation.
+@(private)
+bfcache_restore :: proc(d: ^Doc) {
+	at := -1
+	for c, i in d.cached { if c.entry == d.restoring && !c.page.closed { at = i; break } }
+	d.restoring = 0
+	if at < 0 { return }
+	c := d.cached[at]
+	ordered_remove(&d.cached, at)
+	leave(d)
+	d.page, d.shown = c.page, c.scope
+	delete(d.final_url)
+	d.final_url = strings.clone(c.page.env.location.href)
+	d.parsed = true
+	page.navigable_attach(d.top, d.page)   // (its embedder and its entry are still its own)
+	page.page_thaw(d.page)
 }
 
 @(private)
@@ -349,6 +423,7 @@ doc_free :: proc(d: ^Doc) {
 	base.scope_close(d.scope)
 	page.navigable_top_free(d.top)
 	page.session_destroy(&d.session)
+	delete(d.cached)   // (their scopes are the window's)
 	if d.has_initiator { fetch.environment_destroy(&d.initiator) }
 	for m in d.console { delete(m.text) }
 	delete(d.console)
