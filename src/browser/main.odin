@@ -929,8 +929,14 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	wnd.page_rect = b.rect
 	t := current_tab(app)
 	if shell_nested() {
-		// a chrome frame (shell_frames.odin): the page holds the thread; its last frame, nothing of it runs
-		if t == nil || t.kind != .Web || !shell_paint_page(app, t, dc, b.rect) { draw.rect(dc, b.rect, to_draw(expected_canvas(app))) }
+		// a chrome frame (shell_frames.odin): the page holds the thread; its last frame, nothing of it runs (painted again from
+		// its last layout where the shell scrolled it or a drag selects: shell_paint_layout)
+		web := t != nil && t.kind == .Web
+		if web && shell_layout_wanted(app, t) {
+			shell_paint_layout(app, t, dc, b.rect)
+		} else if !web || !shell_paint_page(app, t, dc, b.rect) {
+			draw.rect(dc, b.rect, to_draw(expected_canvas(app)))
+		}
 		// the video fast path: keep a video playing over the frozen page (video_fast_path.odin)
 		if t != nil && t.kind == .Web { video_fast_path_overlay(app, t, dc, b.rect) }
 		if t != nil { loading_bar(app, t, dc, b.rect) }   // (the full frames draw it: it would blink between the two kinds)
@@ -1100,6 +1106,8 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 	defer if have_move && t.page != nil { page_move_flush(app, t, last_move) }
 	for ev, index in events {
 		inside := draw.rect_contains(wnd.page_rect, ev.pos)
+		// a press on the page: its moves and its release are the page's in chrome frames too, wherever the pointer is then (shell_frames.odin)
+		if ev.kind == .Mouse_Press || ev.kind == .Mouse_Release { app.chrome_frames.press_to_page[int(ev.button) % len(app.chrome_frames.press_to_page)] = ev.kind == .Mouse_Press && inside }
 		// the pointer got where it is before the button went down or up: the move's events (mouseover of a handle a script reads
 		// on the press, mousemove) come first, in the order they happened
 		if (ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && have_move && t.page != nil {

@@ -194,7 +194,8 @@ smooth_allowed :: proc(app: ^App) -> bool {
 	return true
 }
 
-@(private = "file")
+// The tab's scrolling state (its page's: another page's is forgotten). The chrome frames' scroll bar drag is this one too
+// (shell_frames.odin shell_bar_event).
 smooth_of :: proc(t: ^Tab) -> ^Smooth_Scroll {
 	s := &t.smooth
 	if s.page != rawptr(t.page) {

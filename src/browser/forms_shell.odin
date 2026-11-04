@@ -1215,6 +1215,12 @@ forms_focus_from_chrome :: proc(app: ^App, t: ^Tab, dir: int) {
 // The page gives up the keyboard (a chrome widget took it).
 forms_page_blur :: proc(app: ^App) { forms_view(app).page_focus = false }
 
+// A key whose default action is the browser's, never the page's (after its keydown, which the page may cancel).
+browser_shortcut :: proc(ev: platform.Event) -> bool {
+	ctrl, alt := .Ctrl in ev.mods, .Alt in ev.mods
+	return (ctrl && (ev.key == .T || ev.key == .W || ev.key == .L || ev.key == .R)) || ev.key == .F5 || (alt && (ev.key == .Left || ev.key == .Right))
+}
+
 @(private = "file")
 route_key :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, ev: platform.Event) -> bool {
 	fv := forms_view(app)
@@ -1228,9 +1234,7 @@ route_key :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, ev: platfo
 	}
 	if t.page != p { return true }   // a listener navigated
 	h := f.focus
-	// browser shortcuts are never the page's
-	if ctrl && (ev.key == .T || ev.key == .W || ev.key == .L || ev.key == .R) { return false }
-	if ev.key == .F5 || (alt && (ev.key == .Left || ev.key == .Right)) { return false }
+	if browser_shortcut(ev) { return false }
 
 	if ev.key == .Tab && !ctrl && !alt {
 		visible :: proc(user: rawptr, h: base.Handle) -> bool { return is_rendered((^page.Page)(user), h) }

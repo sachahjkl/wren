@@ -32,57 +32,72 @@ key_scroll_of :: proc(ev: platform.Event) -> Key_Scroll {
 // Scrolls for `k` starting from `start` (NIL: the document). True when the key is the page's (even at an end).
 keyboard_scroll :: proc(app: ^App, t: ^Tab, start: base.Handle, k: Key_Scroll) -> bool {
 	if k == .None || t.page == nil || !t.layout.valid { return false }
-	scale := t.layout.scale > 0 ? t.layout.scale : 1
-	line := app.cfg.key_line_px * scale
-	vertical := k != .Line_Left && k != .Line_Right
-	// distance along the axis for a scroller showing `port` px of it, at offset `cur` of `limit`
-	amount :: proc(k: Key_Scroll, line, port, cur, limit, fraction: f32) -> f32 {
-		switch k {
-		case .Line_Up, .Line_Left:    return -line
-		case .Line_Down, .Line_Right: return line
-		case .Page_Up:                return -max(port * fraction, line)
-		case .Page_Down:              return max(port * fraction, line)
-		case .Top:                    return -cur
-		case .Bottom:                 return limit - cur
-		case .None:
-		}
-		return 0
-	}
 	// smooth_scroll.odin: animated, from where the scroller is already going (held keys add up)
 	dur := k == .Line_Up || k == .Line_Down || k == .Line_Left || k == .Line_Right ? app.smooth_cfg.key_ms : app.smooth_cfg.page_ms
+	if n, next, ok := key_scroll_container(app, t, start, k); ok {
+		smooth_scroll_to(app, t, n, next, dur)
+		return true
+	}
+	// the document (page_draw clamps the offsets)
+	smooth_scroll_to(app, t, base.NIL_HANDLE, key_scroll_document(app, t, k, smooth_pending(app, t, base.NIL_HANDLE)), dur)
+	return true
+}
+
+// The nearest scroll container from `start` up that can still move the way of `k`, and where it goes (ok = false: none, the
+// document scrolls).
+key_scroll_container :: proc(app: ^App, t: ^Tab, start: base.Handle, k: Key_Scroll) -> (node: base.Handle, next: [2]f32, ok: bool) {
+	vertical := key_scroll_vertical(k)
 	d := t.page.doc
 	viewport := draw_size(app)
 	for n := start; n != base.NIL_HANDLE; {
-		node := dom.get(d, n)
-		if node == nil { break }
-		if limit, ok := lay.scroll_max(&t.layout, n); ok {
+		dn := dom.get(d, n)
+		if dn == nil { break }
+		if limit, lok := lay.scroll_max(&t.layout, n); lok {
 			cur := smooth_pending(app, t, n)
 			port: f32
 			if r, rok := lay.box_of(&t.layout, n, viewport, t.scroll); rok {
 				port = vertical ? r.padding.max.y - r.padding.min.y : r.padding.max.x - r.padding.min.x
 			}
-			next := cur
+			to := cur
 			low := lay.scroll_min(&t.layout, n)
-			if vertical { next.y = clamp(cur.y + amount(k, line, port, cur.y, limit.y, app.cfg.key_page_fraction), low.y, limit.y) } else { next.x = clamp(cur.x + amount(k, line, port, cur.x, limit.x, app.cfg.key_page_fraction), low.x, limit.x) }
-			if abs(next.x - cur.x) >= 0.5 || abs(next.y - cur.y) >= 0.5 {
-				smooth_scroll_to(app, t, n, next, dur)
-				return true
-			}
+			if vertical { to.y = clamp(cur.y + key_amount(app, t, k, port, cur.y, limit.y), low.y, limit.y) } else { to.x = clamp(cur.x + key_amount(app, t, k, port, cur.x, limit.x), low.x, limit.x) }
+			if abs(to.x - cur.x) >= 0.5 || abs(to.y - cur.y) >= 0.5 { return n, to, true }
 		}
-		n = node.parent
+		n = dn.parent
 	}
-	// the document (page_draw clamps the offsets)
-	cur := smooth_pending(app, t, base.NIL_HANDLE)
+	return
+}
+
+// Where `k` takes the document's offsets from `cur`.
+key_scroll_document :: proc(app: ^App, t: ^Tab, k: Key_Scroll, cur: [2]f32) -> [2]f32 {
+	viewport := draw_size(app)
 	next := cur
-	if vertical {
+	if key_scroll_vertical(k) {
 		lo, hi := lay.doc_scroll_y_range(&t.layout, viewport.y)
-		next.y = clamp(cur.y + amount(k, line, viewport.y, cur.y, hi, app.cfg.key_page_fraction), lo, hi)
+		next.y = clamp(cur.y + key_amount(app, t, k, viewport.y, cur.y, hi), lo, hi)
 	} else {
 		lo, hi := lay.doc_scroll_x_range(&t.layout, viewport.x)
-		next.x = clamp(cur.x + amount(k, line, viewport.x, cur.x, hi, app.cfg.key_page_fraction), lo, hi)
+		next.x = clamp(cur.x + key_amount(app, t, k, viewport.x, cur.x, hi), lo, hi)
 	}
-	smooth_scroll_to(app, t, base.NIL_HANDLE, next, dur)
-	return true
+	return next
+}
+
+key_scroll_vertical :: proc(k: Key_Scroll) -> bool { return k != .Line_Left && k != .Line_Right }
+
+// The distance along the axis for a scroller showing `port` px of it, at offset `cur` of `limit`.
+@(private = "file")
+key_amount :: proc(app: ^App, t: ^Tab, k: Key_Scroll, port, cur, limit: f32) -> f32 {
+	line := app.cfg.key_line_px * (t.layout.scale > 0 ? t.layout.scale : 1)
+	switch k {
+	case .Line_Up, .Line_Left:    return -line
+	case .Line_Down, .Line_Right: return line
+	case .Page_Up:                return -max(port * app.cfg.key_page_fraction, line)
+	case .Page_Down:              return max(port * app.cfg.key_page_fraction, line)
+	case .Top:                    return -cur
+	case .Bottom:                 return limit - cur
+	case .None:
+	}
+	return 0
 }
 
 @(private = "file")

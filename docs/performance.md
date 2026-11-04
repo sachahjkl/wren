@@ -1829,6 +1829,101 @@ Not done: a global's accessor (`document`: nodes10k's building loop); callees wi
 inlining (step 5 of the round's list: not reached); objects allocated inline by the code (the helper's
 `create_from_ctor` is most of `new Point`'s 113 ns); a JavaScript getter or setter called by compiled code.
 
+## What changed, round 22: what the user does while the page's script is busy
+
+A page's script, its events, timers, styles, layout and paint run on the window's thread; only a long layout pass goes to
+the page thread (`page_thread.odin`). While a script runs, the Wasm engine's epoch hands the thread to the chrome
+(`shell_preempt`), which makes *chrome frames* between two instructions of the guest (`shell_frames.odin`): the chrome is
+built with the input that came, the page area shows the page's last frame (its pixels, kept on the GPU), and input meant
+for the page waits, in order, for the page's turn. What follows the user then is what a chrome frame can do without the
+page. Ladybird's text-selection drags off its main thread are the model: the press goes through the page (a listener may
+cancel it), then the drag follows at once and the page sees the selection when it next gets a turn.
+
+**The audit.** `examples/site/busy.html` (a slider for the length of a task, 100 to 400 ms, a loop of them or one; text to
+select, a link with a `:hover` style, a field, a scroll box, boxes with CSS animations of `transform` and `opacity`, a
+tall page), and its `hold()`: one task that keeps the thread until the window's height changes. Measured headless in the
+e2e harness's process: `e2e.while_busy` (`src/e2e/busy.odin`, `src/browser/busy_input.odin`) gives the chrome frames made
+under that task one step each (an event, a capture of that frame, the new height that ends the task), so what is checked
+does not depend on when the script runs; a step is a chrome frame, 12 to 30 ms apart there. "Follows" below: the frame
+after the input shows it; "waits": nothing moves until the task ends (the rest of it, up to its whole length).
+
+| while the page is busy | before | after |
+|---|---|---|
+| the wheel | follows: the page's last pixels move, what was below the fold is blank | follows, painted from the page's last layout: what comes into view is there |
+| Page Down, Space, the arrows, Home, End (the page has the keyboard) | waits | follows when no `keydown` / `keyup` / `keypress` listener could see the key, no form control has the focus and the document is what the key scrolls; else waits |
+| the thumb of the document's scroll bar | waits | follows (the press, its moves and its release are the shell's, as in a full frame) |
+| a container's scroll bar | waits | waits |
+| a text selection's drag | waits (the DOM's selection right once the task ended) | follows: the highlight from the last layout; the DOM's selection, `selectionchange`, the moves the page sees: when the task ends, as before. Not with a `mousemove` / `pointermove` listener anywhere, nor before a first selection with a `selectstart` one |
+| hover (`:hover` restyle) | waits | waits (a restyle is the page's) |
+| the caret's blink | frozen | frozen (60 captures over 1.8 s: no change) |
+| CSS animations of `transform` and `opacity` | frozen | frozen (the same captures) |
+| resizing the window | the chrome at the new size every frame, the page's last frame anchored at the top left | the same |
+| switching tabs (a click on the tab strip) | follows: the other tab's last frame | the same |
+| the menus, the address bar with the mouse | follow | the same |
+| Ctrl+L, Ctrl+Tab, Ctrl+Page Up / Down with the page's keyboard | wait (the keys are the page's first; the commands were queued for after the task) | follow when no key listener could see them (the commands that act on the chrome alone run in the chrome frame: the address bar, the next or previous tab) |
+| the release of a press made before the task | lost: it went to the chrome, the page never had its `mouseup` (a drag left selecting) | the page's, after the task, with the drag's moves even outside the page area |
+
+1. **A drag's selection under a busy page** (`selection_shell.odin` `Sel_Preview`). The press is the page's turn's, as
+   before: `pointerdown`, `mousedown` and the gesture begin there. A move under a long task waits for the page in
+   `deferred` as any input; the chrome frame also works out what it will select (`gesture_range`, the anchor and focus of
+   the gesture's unit from the last layout, `selection_preview_move`) and paints the page again from its last layout with
+   that range (`shell_paint_layout`). Nothing of the page changes: the DOM's `Selection` is the one the task began with
+   (the test reads `getSelection()` at the task's end: empty), no `selectionchange` fires under it. When the page has its
+   turn, the moves are given to it in order and each extends the selection as it would have then (`extend_to`), and the
+   selection's change is one `selectionchange` (HTML's "schedule a selectionchange event" is a flag: the moves of one turn
+   coalesce). The preview goes then; it stays only where the task changed the document (the layout older than it:
+   `Selection_Shell.stale`, the gesture extends to the pointer once laid out again, which it did not before: a move made
+   while the layout was stale was dropped). What I chose from the specs: UI Events makes `mousemove` cancelable but
+   cancelling it does not stop a selection in browsers (Chromium, Firefox); a drag is stopped by `mousedown` or
+   `selectstart` being cancelled (Selection API, "selectstart": cancelable, fired before a selection begins). So the preview
+   is shown only when no move can run the page's code: no `mousemove` or `pointermove` listener on any node or the Window
+   (`page.page_listens`), and no `selectstart` listener before the gesture has started a selection. A listener that the
+   page adds during the task is not seen (the preview is what the eye sees; what the page observes is always its turn's).
+2. **Painting a busy page from its last layout** (`shell_frames.odin` `shell_layout_paintable`, `shell_paint_layout`). What
+   a page's frame was painted from besides its layout is noted (`Paint_Source`: the document's mutations, its images' and
+   canvases' pixels, its form controls' serial, its style rules), and while none of it has moved, the layout is not on the
+   page thread, the page has no frames (their documents are laid out when painted) and the window has its size, a chrome
+   frame paints the page again from that layout through the compositor's pictures: the same pixels but where the shell
+   changed something (the scroll, a drag's selection). A script that changed any of it (`textContent`, a canvas, a field's
+   value) keeps the last pixels, as before: the screen never shows a script's work half done. The wheel used to move the
+   pixels only (blank below them); the document's scroll is now also taken before the input that waited (it was aimed at
+   what the screen showed), not after it.
+3. **The scroll bar's thumb** (`shell_bar_event`): a press on the thumb of the document's bar as the last frame drew it
+   (the snapshot's bar, at the scroll shown) starts the tab's `Scrollbar_Drag`, the moves scroll the document as the wheel
+   does, the release ends it; a drag begun in one kind of frame goes on in the other. Not while presses or keys the page
+   has not had wait (they must not be overtaken), not a container's bar (its offsets are the layout's).
+4. **Keys** (`shell_page_key`): with the page's keyboard and no key listener anywhere, a key does what the page's turn
+   would do with it: the browser's shortcuts (`browser_shortcut`, now one procedure for both) and the tab keys go to the
+   chrome, the modifiers too, and the keys that scroll the document scroll it (`keyscroll.odin`, its container search and
+   the document's step split out: `key_scroll_container`, `key_scroll_document`). Commands that act on the chrome alone are
+   no longer queued for after the task (`Command.chrome_only`: `nav.focus_address`, `tab.next`, `tab.previous`).
+5. **The moves and the release of a press the page had** (`main.odin` `route_page_input`, `shell_route`): a press on the page
+   in a full frame is noted (`press_to_page`, which chrome frames only set for their own presses), so a release under a
+   long task waits for the page instead of going to the chrome (the gesture used to stay down, selecting under a button
+   that was up), and the drag's moves outside the page area wait for it too, as a full frame gives them.
+
+Before and after, on `busy.html` under `hold()` (headless, `e2e.while_busy`): a drag, the thumb, Page Down and Ctrl+L
+showed in no chrome frame (the first frame that showed them was the one after the task: the rest of the task, 100 to 400
+ms on the page's slider); they show in the chrome frame after the input (one frame at the display's rate; 12 to 30 ms
+between two steps headless). A chrome frame that paints from the layout replays the compositor's pictures (a selection
+change records the chunks it touches again), as a full frame's paint does.
+
+Tests: `src/tools/e2e/busy_page.odin` (step "input under a busy page"): a drag's highlight in the frames under the task,
+the task's empty selection and unchanged `selectionchange` count, the selection and its `selectionchange` once it ran,
+the release under the task the page's (a move after it selects nothing more), and with a `mousemove` listener no
+highlight and the same selection; the thumb's and Page Down's scroll under the task (the
+task's `scrollY` 0, the busy frame the same pixels as the page once it ran, the bar's presses no `mousedown`), the address
+field changed by Ctrl+L under the task. Each fails without its change (checked by building the tests against the shell
+without it).
+
+Not done: hover, the caret's blink and CSS animations under a long task. The three are the page's: `:hover` is a restyle;
+the caret is painted inside the control's picture from a timer of the loop, which a running script does not let fire, and
+the snapshot has it on or off; animations are sampled by the style pass and their matrices set by the layout's paint-only
+refresh. Making `transform` / `opacity` animations tick without the page needs the compositor to own their timelines (the
+keyframes resolved to matrices and alphas per frame, the chunks of the animated spaces drawn with them): the next step of
+this list, as is a container's scroll bar and the wheel over a scroll container (both need the layout's offsets of the
+container, written only by the page's turn).
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)

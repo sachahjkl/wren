@@ -40,6 +40,7 @@ Command :: struct {
 	run:      Command_Proc,
 	hidden:   bool,             // not offered by the palette (its own shortcut, for instance)
 	guarded:  bool,             // its shortcuts act (and take the key) only while it is enabled
+	chrome_only: bool,          // acts on the chrome alone (the address bar, which tab is shown): done at once in a chrome frame too, under a busy page
 }
 
 Command_Registry :: struct {
@@ -74,8 +75,8 @@ command_enabled :: proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return c.enab
 // Runs `c` when it is enabled; true when it ran.
 command_run :: proc(app: ^App, t: ^Tab, c: ^Command) -> bool {
 	if c == nil || c.run == nil || !command_enabled(app, t, c) { return false }
-	// during a chrome frame (shell_frames.odin) once the page holding the thread is done
-	if shell_nested() { shell_defer({kind = .Command, tab = t != nil ? t.id : 0, text = strings.clone(c.name)}); return true }
+	// during a chrome frame (shell_frames.odin) once the page holding the thread is done, but what acts on the chrome alone
+	if shell_nested() && !c.chrome_only { shell_defer({kind = .Command, tab = t != nil ? t.id : 0, text = strings.clone(c.name)}); return true }
 	c.run(app, t, c)
 	request_frames(app, 2)
 	return true
@@ -204,10 +205,10 @@ commands_build :: proc(r: ^Command_Registry) {
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_in_new_tab(app, t.url, origin = .Replay) }})
 	add(r, {name = "tab.next", title = "Next tab", category = "Tabs", keywords = "switch", keys = keys(&r.arena, {key = .Tab, mods = ctrl}, {key = .Page_Down, mods = ctrl}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(active_window(app).tabs) > 1 },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { n := len(active_window(app).tabs); if n > 0 { tab_select(app, (active_window(app).current + 1) % n) } }})
+		chrome_only = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { n := len(active_window(app).tabs); if n > 0 { tab_select(app, (active_window(app).current + 1) % n) } }})
 	add(r, {name = "tab.previous", title = "Previous tab", category = "Tabs", keywords = "switch", keys = keys(&r.arena, {key = .Tab, mods = cs}, {key = .Page_Up, mods = ctrl}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(active_window(app).tabs) > 1 },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { n := len(active_window(app).tabs); if n > 0 { tab_select(app, (active_window(app).current + n - 1) % n) } }})
+		chrome_only = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { n := len(active_window(app).tabs); if n > 0 { tab_select(app, (active_window(app).current + n - 1) % n) } }})
 	add(r, {name = "tab.move_right", title = "Move tab right", category = "Tabs", keys = keys(&r.arena, {key = .Page_Down, mods = cs}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return active_window(app).current + 1 < len(active_window(app).tabs) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_move_current(app, +1) }})
@@ -281,7 +282,7 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "nav.home", title = "Home", category = "Navigation", glyph = GLYPH_HOME, keywords = "start page homepage", keys = keys(&r.arena, {key = .Home, mods = alt}),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, app.cfg.homepage, origin = .User) }})
 	add(r, {name = "nav.focus_address", title = "Focus the address bar", category = "Navigation", keywords = "location url edit", keys = keys(&r.arena, {key = .L, mods = ctrl}, {key = .D, mods = alt}),
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { active_window(app).focus_address = true }})
+		chrome_only = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { active_window(app).focus_address = true }})
 	add(r, {name = "nav.focus_toggle", title = "Address bar or page", category = "Navigation", keywords = "focus switch keyboard", keys = keys(&r.arena, {key = .F6}, {key = .F6, mods = shift}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) {
 			if ui.focus_key() != 0 && ui.focus_key() == address_key(app) { ui.set_focus(0); forms_focus_from_chrome(app, t, 1) } else { active_window(app).focus_address = true }
