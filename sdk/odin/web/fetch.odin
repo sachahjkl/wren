@@ -16,7 +16,7 @@ foreign import _m_fetch "fetch"
 
 @(private = "file", default_calling_convention = "contextless")
 foreign _m_fetch {
-	@(link_name = "Fetch_promise") _Fetch_promise :: proc(url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, body_buffer: Buffer, signal: AbortSignal, options_mode: FetchMode, options_credentials: Credentials, options_redirect: RedirectMode, options_referrer_policy: ReferrerPolicy, options_no_referrer: i32, options_cache: RequestCache, _ret: ^Promise) -> Error ---
+	@(link_name = "Fetch_promise") _Fetch_promise :: proc(url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, body_buffer: Buffer, signal: AbortSignal, options_mode: FetchMode, options_credentials: Credentials, options_redirect: RedirectMode, options_referrer_policy: ReferrerPolicy, options_no_referrer: i32, options_cache: RequestCache, integrity: [^]u8, integrity_len: u32, _ret: ^Promise) -> Error ---
 	@(link_name = "Fetch_startWithSignal") _Fetch_startWithSignal :: proc(url: [^]u8, url_len: u32, callback: FetchCallback, user: i32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, body_buffer: Buffer, signal: AbortSignal, options_mode: FetchMode, options_credentials: Credentials, options_redirect: RedirectMode, options_referrer_policy: ReferrerPolicy, options_no_referrer: i32, options_cache: RequestCache, _ret: ^Fetch) -> Error ---
 	@(link_name = "Fetch_sync") _Fetch_sync :: proc(url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, options_mode: FetchMode, options_credentials: Credentials, options_redirect: RedirectMode, options_referrer_policy: ReferrerPolicy, options_no_referrer: i32, options_cache: RequestCache, timeout_ms: u32, _ret: ^Fetch) -> Error ---
 	@(link_name = "Response_text") _Response_text :: proc(response: Response) -> Promise ---
@@ -30,12 +30,13 @@ foreign _m_fetch {
 }
 
 // fetch(url, init): the body is `body`, or the bytes of `body_buffer` when given. Type when the signal is not an
-// AbortSignal or the buffer not a buffer.
-Fetch_promise :: proc "contextless" (url: string, method: string = "GET", headers: string = "", body: Maybe([]u8) = nil, body_buffer: Buffer = 0, signal: AbortSignal = 0, options: FetchOptions = {}) -> (result: Promise, err: Error) {
+// AbortSignal or the buffer not a buffer. With `integrity` metadata (SRI: sha256-, sha384-, sha512- hashes), the
+// promise settles once the whole body is there: with the Response when it matches, rejected (Network) when not.
+Fetch_promise :: proc "contextless" (url: string, method: string = "GET", headers: string = "", body: Maybe([]u8) = nil, body_buffer: Buffer = 0, signal: AbortSignal = 0, options: FetchOptions = {}, integrity: string = "") -> (result: Promise, err: Error) {
 	_body_p: [^]u8
 	_body_n := max(u32)
 	if v, ok := body.?; ok { _body_p, _body_n = raw_data(v), u32(len(v)) }
-	err = _Fetch_promise(raw_data(url), u32(len(url)), raw_data(method), u32(len(method)), raw_data(headers), u32(len(headers)), _body_p, _body_n, body_buffer, signal, options.mode, options.credentials, options.redirect, options.referrer_policy, i32(1 if options.no_referrer else 0), options.cache, &result)
+	err = _Fetch_promise(raw_data(url), u32(len(url)), raw_data(method), u32(len(method)), raw_data(headers), u32(len(headers)), _body_p, _body_n, body_buffer, signal, options.mode, options.credentials, options.redirect, options.referrer_policy, i32(1 if options.no_referrer else 0), options.cache, raw_data(integrity), u32(len(integrity)), &result)
 	return
 }
 

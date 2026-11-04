@@ -26,15 +26,16 @@ Checked by the browser on every call (`lookup_ReadableStream`).
 ### `Fetch_promise`
 
 ```
-Promise<Response> Fetch_promise(string url, string method = "GET", string headers = "", optional bytes body, optional Buffer body_buffer, optional AbortSignal signal, FetchOptions options = none) raises
+Promise<Response> Fetch_promise(string url, string method = "GET", string headers = "", optional bytes body, optional Buffer body_buffer, optional AbortSignal signal, FetchOptions options = none, string integrity = "") raises
 ```
 
 fetch(url, init): the body is `body`, or the bytes of `body_buffer` when given. Type when the signal is not an
-AbortSignal or the buffer not a buffer.
+AbortSignal or the buffer not a buffer. With `integrity` metadata (SRI: sha256-, sha384-, sha512- hashes), the
+promise settles once the whole body is there: with the Response when it matches, rejected (Network) when not.
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Fetch_promise :: proc(c: ^Call, url: string, method: string, headers: string, body: Maybe([]u8), body_buffer: Api_Buffer, signal: Api_AbortSignal, options: Api_FetchOptions) -> (u64, Api_Error)`
+Host: `Fetch_promise :: proc(c: ^Call, url: string, method: string, headers: string, body: Maybe([]u8), body_buffer: Api_Buffer, signal: Api_AbortSignal, options: Api_FetchOptions, integrity: string) -> (u64, Api_Error)`
 
 ### `Fetch_startWithSignal`
 

@@ -2099,12 +2099,17 @@ fetch_start :: proc(ctx: ^wj.Context, r: ^Fetch_Request, body: Maybe([]u8)) -> w
 	no_referrer := js_string_in(ctx, r.referrer, "")
 	b: Maybe(string)
 	if bytes, has := body.?; has { b = span(bytes) }
+	// (metadata with a hash: the browser settles the promise once the body matched it)
+	hashed := integrity_has_hash(ctx, r.integrity)
+	integ, ic, iok := wj.to_string_view(ctx, r.integrity)
+	if !iok || !hashed { integ = "" }
+	defer if iok { wj.free_cstring(ctx, ic) }
 	pr: api_decl.Promise
-	st := jsb.host12(&pr, api_decl.Fetch_promise, wj.wr_Fetch_promise, u, m, span(hb[:]), b, api_decl.Buffer(0),
+	st := jsb.host13(&pr, api_decl.Fetch_promise, wj.wr_Fetch_promise, u, m, span(hb[:]), b, api_decl.Buffer(0),
 		api_decl.AbortSignal(web_signal_handle(r.signal)), fetch_mode(r.mode), r.credentials, r.redirect, r.referrer_policy,
-		no_referrer, r.cache)
+		no_referrer, r.cache, span(transmute([]u8)integ))
 	if st != .None { wj.wj_throw_status(ctx, i32(st), "fetch"); return wj.web_promise_reject_pending(ctx) }
-	settled := integrity_has_hash(ctx, r.integrity) ? on_fetch_settled_hashed : on_fetch_settled
+	settled := hashed ? on_fetch_settled_hashed : on_fetch_settled
 	return wj.wj_promise_from_host(ctx, u64(pr), wj.HOST_UNDEFINED, settled, r.signal)
 }
 

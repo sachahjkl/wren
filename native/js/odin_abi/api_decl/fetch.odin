@@ -26,11 +26,11 @@ ReferrerPolicy :: enum i32 {
 RequestCache :: enum i32 { Default, No_Store, Reload, No_Cache, Force_Cache, Only_If_Cached }
 
 // fetch(url, init): `headers` are "Name: value" lines; the body is `body` (absent: none) or the bytes of
-// `body_buffer` when given. A promise settled with the Fetch record when the headers arrive. Type when the signal is not
-// an AbortSignal or the buffer not a buffer.
+// `body_buffer` when given. A promise settled with the Fetch record when the headers arrive (with `integrity` metadata,
+// when the whole body is there and matches it). Type when the signal is not an AbortSignal or the buffer not a buffer.
 Fetch_promise :: #type proc(url: string, method: string, headers: string, body: Maybe(string), body_buffer: Buffer,
 	signal: AbortSignal, mode: FetchMode, credentials: Credentials, redirect: RedirectMode, referrer_policy: ReferrerPolicy,
-	no_referrer: bool, cache: RequestCache) -> (Promise, abi.Api_Error)
+	no_referrer: bool, cache: RequestCache, integrity: string) -> (Promise, abi.Api_Error)
 // The same with a callback (a function-table index and its `user` word) told of the headers, the end and failures.
 Fetch_startWithSignal :: #type proc(url: string, callback: i32, user: i32, method: string, headers: string, body: Maybe(string),
 	body_buffer: Buffer, signal: AbortSignal, mode: FetchMode, credentials: Credentials, redirect: RedirectMode,

@@ -33,6 +33,8 @@ Style_Load :: struct {
 	serial:       u64,           // tells a background parse whether this load is still the one it parses for
 	parser:       bool,          // part of the document as parsed (or blocking="render"): may block its first paint
 	failed:       bool,          // nothing will come of it (network error, HTTP error, refused)
+	integrity:    string,        // owned: links: the integrity attribute (SRI), "" none
+	opaque:       bool,          // a no-cors response from another origin (it matches no integrity)
 	scope:        base.Handle,   // links: the shadow root the <link> is in (NIL: the document)
 	held_event:   enum u8 { None, Load, Error, Imports },   // settled before the parser revealed the <link>, or waiting for its imports (link_sheet_settled)
 }
@@ -50,7 +52,7 @@ styles_init :: proc(p: ^Page) {
 @(private)
 free_load :: proc(p: ^Page, l: ^Style_Load) {
 	if l.task != base.NIL_HANDLE { fetch.cancel(p.loader, l.task) }
-	delete(l.href); delete(l.url); delete(l.media)
+	delete(l.href); delete(l.url); delete(l.media); delete(l.integrity)
 	free(l)
 }
 
@@ -171,6 +173,7 @@ sync_styles :: proc(p: ^Page) {
 		l.parser = render_blocking_candidate(p, k.owner)
 		co, has_co := dom.get_attribute(p.doc, k.owner, "crossorigin")
 		nonce, _ := dom.get_attribute(p.doc, k.owner, "nonce")
+		if integ, has := dom.get_attribute(p.doc, k.owner, "integrity"); has { l.integrity = strings.clone(integ) }
 		start_style_fetch(p, l, co, has_co, nonce)
 	}
 	start_pending_imports(p)
@@ -202,6 +205,7 @@ style_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	switch ev.kind {
 	case .Response:
 		r := ev.response
+		l.opaque = r.type == .Opaque
 		if r.type != .Opaque && (r.status < 200 || r.status >= 300) {
 			l.bad_status = true
 			l.failed = true
@@ -228,6 +232,13 @@ style_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			return
 		}
 		if !l.is_import { if _, still := p.link_loads[l.owner]; !still { return } }
+		if l.integrity != "" && !integrity_ok(p, l.integrity, ev.data, l.opaque) {
+			// (HTML "fetch and process the linked resource": the request's integrity metadata, a network error)
+			l.failed = true
+			log(p, .Warn, fmt.tprintf("stylesheet %s: its integrity does not match %q (Subresource Integrity): not applied", l.url, l.integrity))
+			link_sheet_settled(p, l, false)
+			return
+		}
 		if parse_sheet_offthread(p, l, ev.data) { return }   // registered when parsed (offthread.odin)
 		text := decode_css(ev.data, p.settings.style.max_sheet_bytes)
 		defer delete(text)

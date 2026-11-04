@@ -36,3 +36,18 @@ classic_script_decoding :: proc(t: ^testing.T) {
 	testing.expect_value(t, text(p, "\xef\xbb\xbfs='ś'", "windows-1250", ""), "s='ś'")
 	testing.expect_value(t, text(p, "s=1", "", "windows-1250"), "s=1")
 }
+
+// Subresource Integrity: base64 or base64url, the padding optional; the strongest algorithm decides; unknown
+// algorithms allow anything; an opaque response matches nothing.
+@(test)
+integrity_metadata :: proc(t: ^testing.T) {
+	ABC_SHA256 :: "ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa0="
+	ABC_SHA256_URL :: "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0"
+	abc := transmute([]byte)string("abc")
+	testing.expect(t, integrity_ok(nil, "sha256-" + ABC_SHA256, abc, false), "base64")
+	testing.expect(t, integrity_ok(nil, "sha256-" + ABC_SHA256_URL, abc, false), "base64url without padding")
+	testing.expect(t, !integrity_ok(nil, "sha256-" + ABC_SHA256, transmute([]byte)string("abd"), false), "another body")
+	testing.expect(t, !integrity_ok(nil, "sha256-" + ABC_SHA256 + " sha512-AAAA", abc, false), "a stronger hash that does not match decides")
+	testing.expect(t, integrity_ok(nil, "md5-AAAA", abc, false), "no algorithm known: anything")
+	testing.expect(t, !integrity_ok(nil, "sha256-" + ABC_SHA256, abc, true), "an opaque response")
+}
