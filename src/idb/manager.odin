@@ -303,8 +303,8 @@ client_create :: proc(m: ^Manager, origin: string, wake: proc(c: ^Client), user:
 
 // The realm is gone: its connections close, its transactions that had not committed roll back, its requests are dropped.
 client_destroy :: proc(c: ^Client) {
-	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
-	m := c.m
+	m := c.m   // (the lock outlives c: the deferred unlock must not read it)
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
 	context.allocator = m.allocator
 	c.dead = true
 	o := m.origins[c.origin]
