@@ -76,11 +76,12 @@ or with 0 (text "done") at the end; Stream_cancel stops the download.</li>
 <p>Checked by the browser on every call (<code>lookup_ReadableStream</code>).</p>
 <h2 id="functions"><a class="anchor" href="#functions" aria-hidden="true">#</a>Functions</h2>
 <h3 id="fetch-promise"><a class="anchor" href="#fetch-promise" aria-hidden="true">#</a><code>Fetch_promise</code></h3>
-<div class="code"><pre><code>Promise&lt;Response&gt; Fetch_promise(string url, string method = "GET", string headers = "", optional bytes body, optional Buffer body_buffer, optional AbortSignal signal, FetchOptions options = none) raises</code></pre></div>
+<div class="code"><pre><code>Promise&lt;Response&gt; Fetch_promise(string url, string method = "GET", string headers = "", optional bytes body, optional Buffer body_buffer, optional AbortSignal signal, FetchOptions options = none, string integrity = "") raises</code></pre></div>
 <p>fetch(url, init): the body is <code>body</code>, or the bytes of <code>body_buffer</code> when given. Type when the signal is not an
-AbortSignal or the buffer not a buffer.</p>
+AbortSignal or the buffer not a buffer. With <code>integrity</code> metadata (SRI: sha256-, sha384-, sha512- hashes), the
+promise settles once the whole body is there: with the Response when it matches, rejected (Network) when not.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
-<p>Host: <code>Fetch_promise :: proc(c: ^Call, url: string, method: string, headers: string, body: Maybe([]u8), body_buffer: Api_Buffer, signal: Api_AbortSignal, options: Api_FetchOptions) -&gt; (u64, Api_Error)</code></p>
+<p>Host: <code>Fetch_promise :: proc(c: ^Call, url: string, method: string, headers: string, body: Maybe([]u8), body_buffer: Api_Buffer, signal: Api_AbortSignal, options: Api_FetchOptions, integrity: string) -&gt; (u64, Api_Error)</code></p>
 <h3 id="fetch-startwithsignal"><a class="anchor" href="#fetch-startwithsignal" aria-hidden="true">#</a><code>Fetch_startWithSignal</code></h3>
 <div class="code"><pre><code>Fetch Fetch_startWithSignal(string url, FetchCallback callback, i32 user = 0, string method = "GET", string headers = "", optional bytes body, optional Buffer body_buffer, optional AbortSignal signal, FetchOptions options = none) raises</code></pre></div>
 <p>The callback API (Fetch_start) with an abort signal and an optional buffer body.</p>
