@@ -14,6 +14,8 @@ import "wb:url"
 // The body of a preflight's answer is collected up to this (only its headers count).
 PREFLIGHT_MAX_BODY_BYTES :: 1 << 20
 
+STATUS_OK :: 200
+
 Loader :: struct {
 	loop:     ^host.Loop,
 	net:      ^net.Client,
@@ -877,6 +879,7 @@ check_and_send_response :: proc(t: ^Task) -> bool {
 @(private)
 send_response :: proc(t: ^Task, status: int, raw: http.Headers, m: http.Mime, has_mime: bool) {
 	resp := Response{url = t.target.href, redirected = t.redirected, mime = m, has_mime = has_mime, cache = t.cache.outcome}
+	if t.obs_net && t.obs_proto == 0 { resp.status_text = string(t.obs_status[:t.obs_status_len]) } else if !t.obs_net && status == STATUS_OK { resp.status_text = "OK" }
 	if t.initiator != nil && t.destination != .Document {
 		switch t.cache.outcome {
 		case .Network:           t.initiator.counts.network += 1
@@ -893,6 +896,7 @@ send_response :: proc(t: ^Task, status: int, raw: http.Headers, m: http.Mime, ha
 		resp.headers = filter_cors_response_headers(raw, credentials_include(t), context.temp_allocator)
 	case .Opaque, .Opaque_Redirect:
 		resp.type, resp.status, resp.body_usable = .Opaque, 0, false
+		resp.status_text = ""
 		resp.headers = http.headers_make(context.temp_allocator)
 	}
 	ev := Event{kind = .Response, response = &resp}

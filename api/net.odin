@@ -101,6 +101,14 @@ Fetch_state :: proc(request: Fetch) -> FetchState
 //@wb fn
 Fetch_status :: proc(request: Fetch) -> i32
 
+/// The status message of the response ("" over HTTP/2 and HTTP/3, which have none).
+//@wb fn
+Fetch_statusText :: proc(request: Fetch) -> string
+
+/// False for a response that has no body whatever the server sent: to a HEAD, or of a null body status (204, 205, 304...).
+//@wb fn
+Fetch_hasBody :: proc(request: Fetch) -> bool
+
 //@wb fn
 Fetch_type :: proc(request: Fetch) -> ResponseType
 

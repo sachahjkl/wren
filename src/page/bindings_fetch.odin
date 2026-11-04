@@ -180,6 +180,7 @@ fetch_ext_event :: proc(fp: ^Fetch, ev: Fetch_Update) {
 	case .Response:
 		f.state, f.status, f.type, f.redirected, f.usable = 1, ev.status, ev.type, ev.redirected, ev.usable
 		f.final_url = strings.clone(ev.url)
+		f.status_text = strings.clone(ev.status_text)
 		f.headers = strings.clone(ev.headers)
 		if e.promise_mode {
 			// (with integrity metadata, once the body is there and matches: Done)

@@ -42,6 +42,8 @@ Fetch :: struct {
 	usable:     bool,
 	headers:    string,
 	final_url:  string,
+	status_text: string,
+	head:       bool,           // to a HEAD: no body
 	body:       [dynamic]byte,
 	error:      string,
 	error_kind: fetch.Error_Kind,
@@ -217,7 +219,7 @@ page_cleanup :: proc(data: rawptr) {
 
 @(private)
 free_fetch :: proc(f: ^Fetch) {
-	delete(f.headers); delete(f.final_url); delete(f.error); delete(f.body)
+	delete(f.headers); delete(f.final_url); delete(f.status_text); delete(f.error); delete(f.body)
 	fetch_ext_free(f)
 }
 

@@ -30023,6 +30023,54 @@ _t_net_Fetch_status :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	return nil
 }
 
+// Fetch_statusText :: proc(c: ^Call, request: Api_Fetch) -> string
+@(private = "file")
+_t_net_Fetch_statusText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "net.Fetch_statusText", "result buffer") }
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Fetch{handle = u64(a[0].i64)}
+	_p0.data = lookup_Fetch(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "net.Fetch_statusText: argument request is not a live Fetch") }
+		return wasm.trap_new("net.Fetch_statusText: argument request is not a live Fetch")
+	}
+	_r := Fetch_statusText(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Fetch_hasBody :: proc(c: ^Call, request: Api_Fetch) -> bool
+@(private = "file")
+_t_net_Fetch_hasBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Fetch{handle = u64(a[0].i64)}
+	_p0.data = lookup_Fetch(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "net.Fetch_hasBody: argument request is not a live Fetch") }
+		return wasm.trap_new("net.Fetch_hasBody: argument request is not a live Fetch")
+	}
+	_r := Fetch_hasBody(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
 // Fetch_type :: proc(c: ^Call, request: Api_Fetch) -> Api_ResponseType
 @(private = "file")
 _t_net_Fetch_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -39825,6 +39873,8 @@ api_imports := [?]wasm.Import{
 	{module = "net", name = "Fetch_start", fn = _t_net_Fetch_start, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "net", name = "Fetch_state", fn = _t_net_Fetch_state, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "net", name = "Fetch_status", fn = _t_net_Fetch_status, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "net", name = "Fetch_statusText", fn = _t_net_Fetch_statusText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "net", name = "Fetch_hasBody", fn = _t_net_Fetch_hasBody, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "net", name = "Fetch_type", fn = _t_net_Fetch_type, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "net", name = "Fetch_redirected", fn = _t_net_Fetch_redirected, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "net", name = "Fetch_headers", fn = _t_net_Fetch_headers, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},

@@ -88,7 +88,7 @@ xhr_free :: proc "c" (p: rawptr) {
 	rt := wj.web_rt()
 	release_request(x)
 	if x.slot != 0 && int(x.slot) < len(xhr_slots) { xhr_slots[x.slot] = nil }
-	for v in ([?]wj.JSValue{x.method, x.url, x.headers, x.upload, x.mime_override, x.status_text, x.response_url, x.response_headers, x.response}) {
+	for v in ([?]wj.JSValue{x.method, x.url, x.headers, x.upload, x.mime_override, x.status_text, x.response_url, x.response_headers, x.response, x.document}) {
 		wj.JS_FreeValueRT(rt, v)
 	}
 	delete(x.body)
@@ -98,7 +98,7 @@ xhr_free :: proc "c" (p: rawptr) {
 @(private = "file")
 xhr_mark :: proc "c" (rt: rawptr, p: rawptr, mark_func: rawptr) {
 	x := (^Xhr)(p)
-	for v in ([?]wj.JSValue{x.method, x.url, x.headers, x.upload, x.mime_override, x.status_text, x.response_url, x.response_headers, x.response}) {
+	for v in ([?]wj.JSValue{x.method, x.url, x.headers, x.upload, x.mime_override, x.status_text, x.response_url, x.response_headers, x.response, x.document}) {
 		wj.wj_mark(rt, v, mark_func)
 	}
 }
@@ -191,11 +191,13 @@ take_head :: proc(ctx: ^wj.Context, x: ^Xhr, f: api_decl.Fetch) {
 	x.status = 0
 	if !opaque { jsb.host(&x.status, api_decl.Fetch_status, wj.wr_Fetch_status, f) }
 	wj.JS_FreeValue(ctx, x.status_text)
-	x.status_text = wj.new_string(ctx, opaque ? "" : web_status_text(x.status))
+	text: string
+	if !opaque { jsb.host(&text, api_decl.Fetch_statusText, wj.wr_Fetch_statusText, f) }
+	x.status_text = wj.new_string_len(ctx, text)
 	url: string
 	jsb.host(&url, api_decl.Fetch_url, wj.wr_Fetch_url, f)
 	wj.JS_FreeValue(ctx, x.response_url)
-	x.response_url = wj.new_string_len(ctx, url)
+	x.response_url = wj.new_string_len(ctx, web_url_no_fragment(url))
 	wj.JS_FreeValue(ctx, x.response_headers)
 	x.response_headers = web_headers_new(ctx, .Immutable)
 	if !opaque {
@@ -441,16 +443,19 @@ answer_blob :: proc(ctx: ^wj.Context, x: ^Xhr, blob: wj.JSValue) {
 	bytes: [^]u8
 	n: uint
 	web_blob_bytes(blob, &bytes, &n)
-	x.status = 200
-	wj.JS_FreeValue(ctx, x.status_text); x.status_text = wj.new_string(ctx, "OK")
-	wj.JS_FreeValue(ctx, x.response_url); x.response_url = wj.JS_DupValue(ctx, x.url)
-	x.response_headers = web_headers_new(ctx, .Immutable)
-	t := web_blob_type(ctx, blob)
-	if c, text := to_text(ctx, t); c != nil {
-		web_headers_append_raw(x.response_headers, wj.raw_bytes("content-type"), 12, raw_data(text), uint(len(text)))
-		wj.JS_FreeCString(ctx, c)
+	size := int(n)
+	start, end := 0, size
+	length: uint
+	range := web_headers_get(x.headers, "range", &length)
+	if range != nil {
+		ok: bool
+		if start, end, ok = web_blob_range(string(range[:length]), size); !ok { return false }
 	}
-	wj.JS_FreeValue(ctx, t)
+	x.status = range != nil ? HTTP_PARTIAL_CONTENT : HTTP_OK
+	wj.JS_FreeValue(ctx, x.status_text); x.status_text = wj.new_string(ctx, web_status_text(x.status))
+	wj.JS_FreeValue(ctx, x.response_url); x.response_url = wj.JS_DupValue(ctx, x.url)
+	wj.JS_FreeValue(ctx, x.response_headers); x.response_headers = web_headers_new(ctx, .Immutable)
+	web_blob_answer_headers(ctx, x.response_headers, blob, start, end, size, range != nil)
 	clear(&x.body)
 	append(&x.body, ..bytes[:n])
 	x.body_done = true

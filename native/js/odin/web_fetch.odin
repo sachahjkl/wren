@@ -88,6 +88,35 @@ normalize_value :: proc "contextless" (s: string) -> (string, bool) {
 	return v, true
 }
 
+// Infra "isomorphic decode": a header's bytes as the code points of the same values, in UTF-8 as every string here is. `s` itself
+// when it is ASCII, else a copy of the heap.
+@(private = "file")
+isomorphic_decode :: proc(s: string) -> string {
+	high := 0
+	for i in 0 ..< len(s) { if s[i] >= 0x80 { high += 1 } }
+	if high == 0 { return s }
+	out, err := make([]u8, len(s) + high)
+	if err != nil { return s }
+	n := 0
+	for i in 0 ..< len(s) {
+		c := s[i]
+		if c < 0x80 {
+			out[n] = c
+			n += 1
+		} else {
+			out[n], out[n + 1] = 0xC0 | c >> 6, 0x80 | c & 0x3F
+			n += 2
+		}
+	}
+	return string(out)
+}
+
+// A URL without its fragment (a response's URL has none).
+web_url_no_fragment :: proc "contextless" (u: string) -> string {
+	for i in 0 ..< len(u) { if u[i] == '#' { return u[:i] } }
+	return u
+}
+
 @(private = "file")
 is_method_override :: proc "contextless" (name: string) -> bool {
 	return wj.ascii_ieq(name, "x-http-method") || wj.ascii_ieq(name, "x-http-method-override") || wj.ascii_ieq(name, "x-method-override")
@@ -261,7 +290,9 @@ headers_fill_lines :: proc(h: ^Header_List, text: string) {
 			if c != ':' { continue }
 			if k > 0 {
 				v, _ := normalize_value(line[k + 1:])
-				headers_push(h, line[:k], v)
+				decoded := isomorphic_decode(v)
+				headers_push(h, line[:k], decoded)
+				if raw_data(decoded) != raw_data(v) { delete(decoded) }
 			}
 			break
 		}
@@ -1952,7 +1983,9 @@ response_from_host :: proc(ctx: ^wj.Context, record: api_decl.Fetch, signal: wj.
 	jsb.host(&r.redirected, api_decl.Fetch_redirected, wj.wr_Fetch_redirected, record)
 	r.signal = wj.JS_DupValue(ctx, signal)
 	wj.JS_FreeValue(ctx, r.status_text)
-	r.status_text = wj.new_string(ctx, opaque ? "" : status_text(r.status))
+	message: string
+	if !opaque { jsb.host(&message, api_decl.Fetch_statusText, wj.wr_Fetch_statusText, record) }
+	r.status_text = wj.new_string_len(ctx, message)
 	r.headers = web_headers_new(ctx, .Immutable)
 	if wj.is_exception(r.headers) { r.headers = wj.UNDEFINED; response_free(r); return wj.EXCEPTION }
 	if !opaque {
@@ -1962,8 +1995,10 @@ response_from_host :: proc(ctx: ^wj.Context, record: api_decl.Fetch, signal: wj.
 		url: string
 		jsb.host(&url, api_decl.Fetch_url, wj.wr_Fetch_url, record)
 		wj.JS_FreeValue(ctx, r.url)
-		r.url = wj.new_string_len(ctx, url)
-		r.body = Body_Host{record = record}
+		r.url = wj.new_string_len(ctx, web_url_no_fragment(url))
+		has_body: bool
+		jsb.host(&has_body, api_decl.Fetch_hasBody, wj.wr_Fetch_hasBody, record)
+		if has_body { r.body = Body_Host{record = record} }
 	} else {
 		url: string
 		jsb.host(&url, api_decl.Fetch_url, wj.wr_Fetch_url, record)
