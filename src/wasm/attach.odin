@@ -12,6 +12,7 @@ import "core:sync"
 import "core:thread"
 import "core:time"
 import "wb:base"
+import "wb:host"
 
 Attach_Stats :: struct {
 	attached:   int,   // functions put in a table
@@ -262,6 +263,7 @@ attach_job_free :: proc(job: ^Attach_Job) {
 @(private)
 attach_worker :: proc() {
 	context.allocator = base.process_allocator()
+	host.thread_name_self("wren-wasm-compile")
 	for {
 		sync.mutex_lock(&attach_pool.lock)
 		for len(attach_pool.queue) == 0 && !attach_pool.stopping { sync.cond_wait(&attach_pool.cond, &attach_pool.lock) }

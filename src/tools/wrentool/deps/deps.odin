@@ -1,8 +1,8 @@
 // Package deps: what a build of Wren needs before the compiler runs. Each does nothing when its output is up to date (a stamp says what it was made from), so wrentool build (package builder) and build.sh call it every time.
 //   wrentool deps [-Profile quick|release] [-Force]     all of them, for this system
-//   wrentool fetch wasmtime|wgpu|openh264|emoji [-Force] [-Unicode] [-Dest dir]
-//   wrentool build lexbor|native [-Force] [-Profile quick|release] [-Features a,b]
-// The pins (version, SHA-256) are the constants of fetch.odin and native.odin. A failing step says what to read.
+//   wrentool fetch wasmtime|wgpu|openh264|emoji|tracy [-Force] [-Unicode] [-Dest dir]
+//   wrentool build lexbor|native|tracy [-Force] [-Profile quick|release] [-Features a,b]
+// The pins (version, SHA-256) are the constants of fetch.odin, native.odin and tracy.odin. A failing step says what to read.
 package deps
 
 import "core:fmt"
@@ -25,6 +25,7 @@ Options :: struct {
 	dest:     string,
 	profile:  string,
 	features: string,   // Linux: of the Rust library
+	tracy:    bool,     // the Tracy client too (a build with WREN_TRACY=1)
 	log:      string,   // where what the compilers say goes ("": here)
 }
 
@@ -46,11 +47,13 @@ all :: proc(options: Options) -> bool {
 	o := options
 	_ = os.make_directory_all(LOG_DIR)
 	Named :: struct { name: string, step: Step }
+	steps := make([dynamic]Named, context.temp_allocator)
 	when ODIN_OS == .Windows {
-		steps := []Named{{"wasmtime", fetch_wasmtime}, {"lexbor", build_lexbor}, {"native", build_native}, {"emoji", fetch_emoji}}
+		append(&steps, Named{"wasmtime", fetch_wasmtime}, Named{"lexbor", build_lexbor}, Named{"native", build_native}, Named{"emoji", fetch_emoji})
 	} else {
-		steps := []Named{{"wasmtime", fetch_wasmtime}, {"wgpu", fetch_wgpu}, {"lexbor", build_lexbor}, {"native", build_native}}
+		append(&steps, Named{"wasmtime", fetch_wasmtime}, Named{"wgpu", fetch_wgpu}, Named{"lexbor", build_lexbor}, Named{"native", build_native})
 	}
+	if o.tracy { append(&steps, Named{"tracy", build_tracy}) }
 	for s in steps {
 		o.log = fmt.tprintf("%s/deps_%s.log", LOG_DIR, s.name)
 		_ = os.remove(o.log)
@@ -63,7 +66,7 @@ all :: proc(options: Options) -> bool {
 }
 
 run_fetch :: proc(args: []string) -> int {
-	if len(args) == 0 { fmt.eprintln("wrentool fetch wasmtime|wgpu|openh264|emoji"); return 2 }
+	if len(args) == 0 { fmt.eprintln("wrentool fetch wasmtime|wgpu|openh264|emoji|tracy"); return 2 }
 	o, ok := options_of(args[1:])
 	if !ok { return 2 }
 	done: bool
@@ -72,19 +75,21 @@ run_fetch :: proc(args: []string) -> int {
 	case "wgpu":     done = fetch_wgpu(o)
 	case "openh264": done = fetch_openh264(o)
 	case "emoji":    done = fetch_emoji(o)
+	case "tracy":    done = fetch_tracy(o)
 	case: fmt.eprintfln("nothing to fetch called %s", args[0]); return 2
 	}
 	return done ? 0 : 1
 }
 
 run_build :: proc(args: []string) -> int {
-	if len(args) == 0 { fmt.eprintln("wrentool build lexbor|native"); return 2 }
+	if len(args) == 0 { fmt.eprintln("wrentool build lexbor|native|tracy"); return 2 }
 	o, ok := options_of(args[1:])
 	if !ok { return 2 }
 	done: bool
 	switch args[0] {
 	case "lexbor": done = build_lexbor(o)
 	case "native": done = build_native(o)
+	case "tracy":  done = build_tracy(o)
 	case: fmt.eprintfln("nothing to build called %s", args[0]); return 2
 	}
 	return done ? 0 : 1

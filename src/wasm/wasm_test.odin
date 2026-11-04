@@ -15,6 +15,7 @@ import "core:testing"
 import "core:thread"
 import "core:time"
 import "wb:base"
+import "wb:config"
 import "wb:tools/testenv"
 
 // preemption: the call's deadline, the tick of the hook, what the hook takes in its first calls.
@@ -628,4 +629,27 @@ user_module_description :: proc(t: ^testing.T) {
 	testing.expect(t, none == nil && why != "", "not a module: nil and a reason")
 	testing.expect(t, !validate({1, 2, 3}), "validate: not a module")
 	testing.expect(t, validate(image), "validate: a module")
+}
+
+// wasm.wasmtime.profiler: the preference gives the strategy, and Wasmtime's engine starts with it and runs code (VTune's agent
+// with no VTune attached tells nobody).
+@(test)
+profiler_preference_reaches_wasmtime :: proc(t: ^testing.T) {
+	p := config.prefs_make(context.temp_allocator)
+	register_prefs(&p)
+	rs := runtime_settings_from_prefs(&p, "")
+	testing.expect_value(t, rs.profiler, Profiler.None)
+	when ODIN_ARCH != .amd64 { return }
+	_, errs := config.apply_args(&p, {"--pref", "wasm.wasmtime.profiler=vtune"}, context.temp_allocator)
+	testing.expect_value(t, len(errs), 0)
+	rs = runtime_settings_from_prefs(&p, "")
+	testing.expect_value(t, rs.profiler, Profiler.Vtune)
+	setup(t, tweak = proc(rs: ^Runtime_Settings) { rs.profiler = .Vtune })
+	defer runtime_destroy()
+	testing.expect_value(t, wt.rs.profiler, Profiler.Vtune)
+	inst := make_instance(t, wat(t, MODULE))
+	if inst == nil { return }
+	defer destroy(inst)
+	r, res := call_i32(inst, "add", 40, 2)
+	testing.expectf(t, res == .Ok && r == 42, "a call under the VTune strategy -> %v %v", r, res)
 }

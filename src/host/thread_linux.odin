@@ -21,6 +21,13 @@ Native_Thread :: struct {
 // (the scheduler here does not starve a higher nice value: nothing to raise the interface thread above)
 thread_raise_interface :: proc() {}
 
+// The calling thread's name, as debuggers and profilers show it (the kernel keeps 15 bytes).
+thread_name_self :: proc(name: string) {
+	buf: [16]u8
+	copy(buf[:15], name)
+	pthread_setname_np(posix.pthread_self(), cstring(raw_data(buf[:])))
+}
+
 @(private)
 nice_of :: proc(p: Thread_Priority) -> i32 {
 	switch p {

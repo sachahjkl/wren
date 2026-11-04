@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes'?>
+<!-- Wren's phases as WPA's regions of interest: each a zone of the provider Wren.Browser (src/trace), its Start and Stop
+     events on one thread. In WPA: Trace > Trace Properties > Regions of Interest > this file, then the Regions of Interest graph.
+     A phase of src/browser/prof.odin's Phase is a region here (src/browser/trace_test.odin checks it). -->
+<InstrumentationManifest>
+  <Instrumentation>
+    <Regions>
+      <RegionRoot Guid="{d0e5a1b0-0000-4000-8000-000000000000}" Name="Wren" FriendlyName="Wren">
+        <Region Guid="{d0e5a1b0-0000-4000-8000-000000000001}" Name="Frame" FriendlyName="Frame">
+          <Start><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Frame" Opcode="1"/></Start>
+          <Stop><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Frame" Opcode="2"/></Stop>
+          <Match><Event TID="true"/></Match>
+        </Region>
+        <Region Guid="{d0e5a1b0-0000-4000-8000-000000000002}" Name="Wait" FriendlyName="Wait">
+          <Start><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Wait" Opcode="1"/></Start>
+          <Stop><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Wait" Opcode="2"/></Stop>
+          <Match><Event TID="true"/></Match>
+        </Region>
+        <Region Guid="{d0e5a1b0-0000-4000-8000-000000000003}" Name="Events" FriendlyName="Events">
+          <Start><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Events" Opcode="1"/></Start>
+          <Stop><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Events" Opcode="2"/></Stop>
+          <Match><Event TID="true"/></Match>
+        </Region>
+        <Region Guid="{d0e5a1b0-0000-4000-8000-000000000004}" Name="Loop" FriendlyName="Loop">
+          <Start><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Loop" Opcode="1"/></Start>
+          <Stop><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Loop" Opcode="2"/></Stop>
+          <Match><Event TID="true"/></Match>
+        </Region>
+        <Region Guid="{d0e5a1b0-0000-4000-8000-000000000005}" Name="Input" FriendlyName="Input">
+          <Start><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Input" Opcode="1"/></Start>
+          <Stop><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Input" Opcode="2"/></Stop>
+          <Match><Event TID="true"/></Match>
+        </Region>
+        <Region Guid="{d0e5a1b0-0000-4000-8000-000000000006}" Name="Animation" FriendlyName="Animation">
+          <Start><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Animation" Opcode="1"/></Start>
+          <Stop><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Animation" Opcode="2"/></Stop>
+          <Match><Event TID="true"/></Match>
+        </Region>
+        <Region Guid="{d0e5a1b0-0000-4000-8000-000000000007}" Name="Build_UI" FriendlyName="Build_UI">
+          <Start><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Build_UI" Opcode="1"/></Start>
+          <Stop><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Build_UI" Opcode="2"/></Stop>
+          <Match><Event TID="true"/></Match>
+        </Region>
+        <Region Guid="{d0e5a1b0-0000-4000-8000-000000000008}" Name="UI_Draw" FriendlyName="UI_Draw">
+          <Start><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="UI_Draw" Opcode="1"/></Start>
+          <Stop><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="UI_Draw" Opcode="2"/></Stop>
+          <Match><Event TID="true"/></Match>
+        </Region>
+        <Region Guid="{d0e5a1b0-0000-4000-8000-000000000009}" Name="Styles" FriendlyName="Styles">
+          <Start><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Styles" Opcode="1"/></Start>
+          <Stop><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Styles" Opcode="2"/></Stop>
+          <Match><Event TID="true"/></Match>
+        </Region>
+        <Region Guid="{d0e5a1b0-0000-4000-8000-00000000000a}" Name="Layout" FriendlyName="Layout">
+          <Start><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Layout" Opcode="1"/></Start>
+          <Stop><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Layout" Opcode="2"/></Stop>
+          <Match><Event TID="true"/></Match>
+        </Region>
+        <Region Guid="{d0e5a1b0-0000-4000-8000-00000000000b}" Name="Paint_Items" FriendlyName="Paint_Items">
+          <Start><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Paint_Items" Opcode="1"/></Start>
+          <Stop><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Paint_Items" Opcode="2"/></Stop>
+          <Match><Event TID="true"/></Match>
+        </Region>
+        <Region Guid="{d0e5a1b0-0000-4000-8000-00000000000c}" Name="Tex_Create" FriendlyName="Tex_Create">
+          <Start><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Tex_Create" Opcode="1"/></Start>
+          <Stop><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Tex_Create" Opcode="2"/></Stop>
+          <Match><Event TID="true"/></Match>
+        </Region>
+        <Region Guid="{d0e5a1b0-0000-4000-8000-00000000000d}" Name="Tex_Upload" FriendlyName="Tex_Upload">
+          <Start><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Tex_Upload" Opcode="1"/></Start>
+          <Stop><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Tex_Upload" Opcode="2"/></Stop>
+          <Match><Event TID="true"/></Match>
+        </Region>
+        <Region Guid="{d0e5a1b0-0000-4000-8000-00000000000e}" Name="Submit" FriendlyName="Submit">
+          <Start><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Submit" Opcode="1"/></Start>
+          <Stop><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Submit" Opcode="2"/></Stop>
+          <Match><Event TID="true"/></Match>
+        </Region>
+        <Region Guid="{d0e5a1b0-0000-4000-8000-00000000000f}" Name="Present" FriendlyName="Present">
+          <Start><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Present" Opcode="1"/></Start>
+          <Stop><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Present" Opcode="2"/></Stop>
+          <Match><Event TID="true"/></Match>
+        </Region>
+        <Region Guid="{d0e5a1b0-0000-4000-8000-000000000010}" Name="Idle" FriendlyName="Idle">
+          <Start><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Idle" Opcode="1"/></Start>
+          <Stop><Event Provider="{10e6f595-25dd-53c9-a97c-bdec823560e6}" Name="Idle" Opcode="2"/></Stop>
+          <Match><Event TID="true"/></Match>
+        </Region>
+      </RegionRoot>
+    </Regions>
+  </Instrumentation>
+</InstrumentationManifest>

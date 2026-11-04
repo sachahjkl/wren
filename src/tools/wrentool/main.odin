@@ -25,8 +25,8 @@ Command :: struct {
 
 COMMANDS := []Command{
 	{name = "deps", about = "what a build needs, each up to date: [-Profile quick|release] [-Force]", run = deps.run_all},
-	{name = "fetch", about = "wasmtime | wgpu | openh264 | emoji [-Force] [-Unicode] [-Dest dir]", run = deps.run_fetch},
-	{name = "build", about = "[dev|debug|profile|check|release]: the browser (build help) | lexbor | native [-Force] [-Profile quick|release] [-Features a,b]", run = builder.run},
+	{name = "fetch", about = "wasmtime | wgpu | openh264 | emoji | tracy (the viewer) [-Force] [-Unicode] [-Dest dir]", run = deps.run_fetch},
+	{name = "build", about = "[dev|debug|profile|check|release]: the browser (build help) | lexbor | native | tracy [-Force] [-Profile quick|release] [-Features a,b]", run = builder.run},
 	{name = "symbols", about = "-Publish exe [-Store] | -Fingerprint exe", run = deps.run_symbols},
 	{name = "crash-symbolize", about = "<report> [-Symbols folder or .map] [-Exe exe]: names the frames of a crash report", run = deps.run_crash_symbolize},
 	{name = "symbolize", about = "-Exe exe <offset>...: the function and line at an offset of a module", run = deps.run_symbolize},
@@ -40,6 +40,7 @@ COMMANDS := []Command{
 	{name = "i18n", about = "[-Missing] [-Json f]: the texts passed to tr, the interface's that are not", run = gen.run_i18n},
 	{name = "portability", about = "[-Target t] [-Only a,b] [-Csv f] [-Expect f]: every package checked for another target", run = gen.run_portability},
 	{name = "engine", about = "test262 [-Filter d] [-Stride n] [-Jobs n] [-NoBuild] | rx-diff [-Seed n] [-Fuzz n] [-NoC]", run = gen.run_engine},
+	{name = "trace", about = "start | stop [-Out file.etl] | cancel: a WPR recording with tools\\wren.wprp (an elevated prompt)", run = gen.run_trace},
 	{name = "desktop", about = "<program> [arguments]: a command on a Windows desktop of its own", run = gen.run_desktop},
 	{name = "changelog", about = "-New | -Check [-Release v] | -Assemble [-Version v] | -Section -Version v | -Migrate", run = changelog.run},
 	{name = "package", about = "[-Version v] [-Dev] [-Extras] [-AllowUnreleased]: the release file from a finished build", run = release.run_package},

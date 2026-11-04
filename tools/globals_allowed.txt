@@ -117,6 +117,7 @@ browser/paint_srgb_test.odin png_tex thread  # a test's texture
 browser/palette.odin PALETTE_PREFS const  # a table
 browser/print.odin PRINT_PREFS const  # a table
 browser/process_share.odin process_share process  # what the Apps of the process share, counted: one atomic word (the Apps that use it, or busy)
+browser/prof.odin phase_sites const  # the phases as zones of Tracy and ETW: made once by main (trace_start) before any frame, empty without them
 browser/prof.odin qpc_freq_cached process  # the performance counter's frequency, read once
 browser/prof.odin prof process  # WREN_PROF's profiler: the first App's thread (prof_init; a profiled process runs one App)
 browser/prof.odin startup_marks process  # the process's start-up moments (from main's first line)

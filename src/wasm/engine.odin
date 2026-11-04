@@ -123,6 +123,7 @@ wt_start :: proc(rs: Runtime_Settings) -> bool {
 	case .Speed_And_Size: wasmtime_config_cranelift_opt_level_set(c, WT_OPT_SPEED_AND_SIZE)
 	}
 	wasmtime_config_parallel_compilation_set(c, rs.parallel_compilation)
+	wasmtime_config_profiler_set(c, u8(rs.profiler))   // (wasm.wasmtime.profiler: its choices are what the library has)
 	wasmtime_config_cranelift_nan_canonicalization_set(c, rs.nan_canonicalization)
 	wasmtime_config_epoch_interruption_set(c, true)
 	wasmtime_config_consume_fuel_set(c, rs.fuel)
@@ -204,6 +205,7 @@ wt_stop :: proc() {
 
 @(private)
 wt_ticker_main :: proc(_: rawptr) {
+	host.thread_name_self("wren-wasm-epoch")
 	for !sync.atomic_load(&wt.ticker_stop) {
 		n := u32(sync.atomic_load(&wt.running))
 		if n == 0 {

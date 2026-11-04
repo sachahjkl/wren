@@ -28,9 +28,11 @@ import "core:time"
 import win "core:sys/windows"
 import "toolkit:render"
 import "toolkit:ui"
+import "wb:base"
 import "wb:images"
 import lay "wb:layout"
 import "wb:page"
+import "wb:trace"
 
 when ODIN_OS == .Windows {
 foreign import dbghelp "system:dbghelp.lib"
@@ -66,6 +68,17 @@ Phase_Clock :: struct {
 }
 
 
+// The phases as zones of the external profilers (package trace: Tracy, ETW), made once at the process's start (trace_start).
+phase_sites: [Phase]trace.Site
+
+// The external profilers (package trace), from main before any frame: nothing without their switches.
+trace_start :: proc() {
+	when trace.ON {
+		trace.start()
+		for p in Phase { trace.site_init(&phase_sites[p], fmt.tprint(p), base.permanent_allocator()) }
+	}
+}
+
 // A monotonic counter for the profiler's phase timing. On Windows it is QueryPerformanceCounter (its own frequency,
 // read where the samples are turned into milliseconds); elsewhere it is core:time's nanosecond tick, so the "ticks" are
 // nanoseconds there (the millisecond conversion divides by the frequency the sampler records, 1e9 off Windows).
@@ -99,12 +112,14 @@ qpc_ms_since :: proc "contextless" (t0: i64) -> f64 {
 }
 
 prof_begin :: proc "contextless" (p: Phase) {
+	trace.begin(&phase_sites[p])
 	if !the_app.phase_clock.on { return }
 	the_app.phase_clock.started[p] = qpc()
 	the_app.phase_clock.cur = p
 }
 
 prof_end :: proc "contextless" (p: Phase) {
+	trace.end(&phase_sites[p])
 	if !the_app.phase_clock.on { return }
 	the_app.phase_clock.acc[p] += f64(qpc() - the_app.phase_clock.started[p]) * 1000 / the_app.phase_clock.freq
 	// the phase that was running underneath (if any) resumes
@@ -118,6 +133,7 @@ prof_end :: proc "contextless" (p: Phase) {
 
 prof_frame_begin :: proc() {
 	prof_mark(.First_Frame)
+	trace.end_all()   // (what an early return of the last frame left open)
 	the_app.phase_clock.on = hud_wants_clock() || prof_on()
 	if !the_app.phase_clock.on { return }
 	if the_app.phase_clock.freq == 0 {
@@ -136,6 +152,8 @@ prof_frame_begin :: proc() {
 // After the frame's present: the profiler records it, the status bar and the title take their sample.
 prof_frame_end :: proc(app: ^App, items, elements: int) {
 	prof_mark(.First_Present)
+	trace.frame()
+	trace.plot("layout items", f64(items))
 	latency_probe_presented(app)   // shell_latency.odin
 	if items > 0 { prof_mark(.First_Page_Paint) }
 	if app.phase_clock.on {
@@ -247,7 +265,9 @@ prof_on :: proc() -> bool { return prof.on }
 startup_marks: [Startup_Mark]i64
 
 prof_mark :: proc(m: Startup_Mark) {
-	if startup_marks[m] == 0 { startup_marks[m] = qpc() }
+	if startup_marks[m] != 0 { return }
+	startup_marks[m] = qpc()
+	when trace.ON { trace.mark(fmt.tprint(m)) }
 }
 
 // The layout pass just run (after layout_document).
