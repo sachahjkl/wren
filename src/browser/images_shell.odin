@@ -506,17 +506,15 @@ canvas_texture_for :: proc(v: page.Canvas_View) -> (Image_Texture, bool) {
 	return st.tex, true
 }
 
-// An inline <svg>: its markup rendered at the content box's device size (nothing while it is being rendered, nothing
-// when it cannot be: an inline SVG has no broken-image icon).
+// An inline <svg>: its markup rendered at the content box's device size (while new markup is being rendered, the
+// picture of the old one; nothing before the first, nothing when it cannot be: an inline SVG has no broken-image icon).
 @(private = "file")
 paint_inline_svg :: proc(dc: ^draw.Context, node: base.Handle, content: draw.Rect, scale: f32, parts: lay.Svg_Parts) {
 	s := max(scale, 0.01)
 	cw, ch := content.max.x - content.min.x, content.max.y - content.min.y
 	if cw < 0.5 || ch < 0.5 { return }
-	v := page.inline_svg_view(the_app.images_shell.page, node, cw / s, ch / s, parts)
-	if v.state != .Ready { return }
 	ww, wh := want_size(content)
-	fp := page.frame_pixels(v.id, the_app.images_shell.now_ms, ww, wh, IMAGE_PIXELS_PRIORITY_ON_SCREEN)
+	fp := page.inline_svg_pixels(the_app.images_shell.page, node, cw / s, ch / s, parts, ww, wh, the_app.images_shell.now_ms, IMAGE_PIXELS_PRIORITY_ON_SCREEN)
 	if !fp.ok { return }
 	tex, ok := texture_for(fp.texture, fp)
 	if !ok { return }

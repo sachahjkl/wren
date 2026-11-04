@@ -16,7 +16,8 @@ package page
 // Scripts and event handler attributes are left out, and so are <foreignObject> elements: the layout makes boxes of
 // their HTML, drawn in the SVG's coordinate space (layout/foreign_object.odin) between parts of the picture, each its own
 // markup without the shapes of the others (Svg_Key), so that what follows a foreign object covers it. The
-// markup is made again when the document mutates or styles change, and a new entry is used when it differs.
+// markup is made again when the document mutates or styles change, and a new entry is used when it differs (the old
+// one's picture drawn until the new one's is made: inline_svg_pixels).
 // Limits: images.svg.inline_max_bytes on the markup, then the images.svg.* limits of every SVG document.
 
 import "core:fmt"
@@ -40,6 +41,7 @@ Svg_Key :: struct {
 Inline_Svg :: struct {
 	node:         base.Handle,
 	request:      ^Img_Request,   // holds the cache entry of the markup
+	shown:        ^Img_Request,   // a reference of its own to the markup last drawn: drawn while `request` has no pixels yet
 	hash:         u64,
 	mutations:    u64,            // document mutation count the markup was made at
 	style_serial: u64,
@@ -50,7 +52,7 @@ Inline_Svg :: struct {
 
 @(private)
 inline_svg_free :: proc(s: ^Inline_Svg, live: bool) {
-	if live { request_release(s.request) }
+	if live { request_release(s.request); request_release(s.shown) }
 	delete(s.error)
 	free(s)
 }
@@ -182,7 +184,8 @@ inline_svg_view :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32, parts :=
 		markup, ok := svg_serialize(p, node, css_w, css_h, parts)
 		if !ok {
 			request_release(rec.request)
-			rec.request, rec.hash = nil, 0
+			request_release(rec.shown)
+			rec.request, rec.shown, rec.hash = nil, nil, 0
 			set_string(&rec.error, "inline <svg> too large or too deep (images.svg.inline_max_bytes, images.svg.max_depth)")
 		} else {
 			hv := hash.fnv64a(transmute([]byte)markup)
@@ -197,6 +200,29 @@ inline_svg_view :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32, parts :=
 	}
 	if rec.request == nil { return Image_View{state = .Broken, error = rec.error} }
 	return view_of(rec.request, 1)
+}
+
+// The pixels of inline_svg_view's picture drawn `want_w` x `want_h` device px large (frame_pixels). New markup (a style
+// change: currentColor on :hover, a mutation) is parsed and rasterised on the decoding threads: until its pixels are
+// there, those of the markup drawn last stand for them, so that no frame shows the <svg> empty meanwhile.
+inline_svg_pixels :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32, parts: lay.Svg_Parts, want_w, want_h: int, now_ms: f64, priority: i32) -> Frame_Pixels {
+	v := inline_svg_view(p, node, css_w, css_h, parts)
+	if v.state != .Ready && v.state != .Loading { return {} }
+	rec := p.images.svgs[Svg_Key{node, parts}]
+	if v.state == .Ready {
+		if fp := frame_pixels(v.id, now_ms, want_w, want_h, priority); fp.ok {
+			if rec.shown != rec.request {
+				rec.request.refs += 1
+				request_release(rec.shown)
+				rec.shown = rec.request
+			}
+			return fp
+		}
+	}
+	if rec.shown == nil || rec.shown == rec.request { return {} }
+	sv := view_of(rec.shown, 1)
+	if sv.state != .Ready { return {} }
+	return frame_pixels(sv.id, now_ms, want_w, want_h, priority)
 }
 
 // The page's request for an inline document, by the hash of its markup: shared with every element of the same markup,
