@@ -96,7 +96,7 @@ export async function deliverMail(env: Env, s: Stored): Promise<MailOutcome> {
 	const message: OutgoingMail = {
 		to: s.email,
 		from: parseSender(env.MAIL_FROM),
-		subject: `Your Wren licence (order ${s.order})`,
+		subject: `Your Wren User Licence (order ${s.order})`,
 		text: mailText(s),
 		attachments: [{ content: b64Encode(utf8(s.file)), filename: licenceFileName(s.order), type: "application/octet-stream", disposition: "attachment" }],
 	};

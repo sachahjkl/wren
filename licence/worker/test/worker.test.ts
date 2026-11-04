@@ -65,7 +65,7 @@ test("transaction.completed issues a licence, keeps it and mails it", async () =
 	const sent = env.EMAIL.sent[0];
 	assert.equal(sent.to, "jeanne@example.org");
 	assert.deepEqual(sent.from, { email: "licences@example.org", name: "Wren" });
-	assert.equal(sent.subject, "Your Wren licence (order WREN-EEP4-4CYR-EWP9)");
+	assert.equal(sent.subject, "Your Wren User Licence (order WREN-EEP4-4CYR-EWP9)");
 	assert.equal(sent.replyTo, undefined, "no MAIL_REPLY_TO, no reply-to");
 	assert.ok(sent.text.includes("about:wren"));
 	assert.ok(sent.text.replace(/\s/g, "").includes(stored.licence));

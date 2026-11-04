@@ -1,4 +1,4 @@
-# Creates Wren's Paddle catalog: one product, "Wren licence", with one one-time price of 29 EUR, taxes included.
+# Creates Wren's Paddle catalog: one product, "Wren User Licence", with one one-time price of 29 EUR, taxes included.
 # See docs/licence.md ("Paddle sandbox"). Dry run by default: it prints what it would send and sends nothing.
 #   $env:PADDLE_API_KEY = '<a server-side key with product.read/write and price.read/write>'   # not saved anywhere
 #   powershell -File tools\paddle_catalog.ps1                          # dry run
@@ -10,7 +10,7 @@
 param(
     [switch]$Apply,
     [ValidateSet('sandbox', 'live')][string]$Environment = 'sandbox',
-    [string]$ProductName = 'Wren licence',
+    [string]$ProductName = 'Wren User Licence',
     [string]$Amount = '2900',        # lowest denomination, as a string: 29.00 EUR is "2900"
     [string]$Currency = 'EUR'
 )
@@ -23,7 +23,7 @@ $product = [ordered]@{
     description  = 'Personal, perpetual licence for Wren, with two years of updates from the 1.0 release. Wren is free during the beta.'
 }
 $price = [ordered]@{
-    description  = 'Wren licence, one payment, taxes included'
+    description  = 'Wren User Licence, one payment, taxes included'
     name         = 'One payment'
     unit_price   = [ordered]@{ amount = $Amount; currency_code = $Currency }
     tax_mode     = 'internal'                     # the buyer pays the displayed price: tax is included in it

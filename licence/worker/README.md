@@ -1,4 +1,4 @@
-# Wren licence Worker
+# Wren User Licence Worker
 
 A Cloudflare Worker (TypeScript, no runtime dependency) that turns a paid Paddle transaction into a Wren supporter
 licence: it verifies the `Paddle-Signature` of the webhook, reads the customer from the Paddle API, signs the licence
