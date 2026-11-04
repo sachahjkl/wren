@@ -1,0 +1,36 @@
+name: Licence help
+description: No key, a key that is refused, a wrong name or e-mail, a refund.
+title: "Licence: "
+labels: ["licence"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for supporting Wren. This issue is public: **never paste your licence key or the .wrenlicense file**, and do not write your e-mail address here. We reply on this issue.
+  - type: input
+    id: order
+    attributes:
+      label: Order number
+      description: "Starts with txn_ (on the thank-you page and in the Paddle receipt)."
+      placeholder: txn_01...
+    validations:
+      required: true
+  - type: dropdown
+    id: problem
+    attributes:
+      label: What is wrong?
+      options:
+        - I received no key or no e-mail
+        - Wren refuses my key
+        - The name on the licence is wrong
+        - I want a refund
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What you did, what Wren or the page said (the exact message helps), your Wren version (About Wren).
+    validations:
+      required: true
