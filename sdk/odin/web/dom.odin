@@ -416,6 +416,8 @@ foreign _m_dom {
 	@(link_name = "CSSStyleSheet_ruleCount") _CSSStyleSheet_ruleCount :: proc(sheet: u64) -> u32 ---
 	@(link_name = "CSSStyleSheet_ruleText") _CSSStyleSheet_ruleText :: proc(sheet: u64, index: u32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "CSSStyleSheet_setRuleSelector") _CSSStyleSheet_setRuleSelector :: proc(sheet: u64, rule_id: u32, selector: [^]u8, selector_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "CSSStyleSheet_ruleTextOf") _CSSStyleSheet_ruleTextOf :: proc(sheet: u64, rule_id: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "CSSStyleSheet_setRuleStyle") _CSSStyleSheet_setRuleStyle :: proc(sheet: u64, rule_id: u32, text: [^]u8, text_len: u32) ---
 	@(link_name = "CSSStyleSheet_insertRuleAt") _CSSStyleSheet_insertRuleAt :: proc(sheet: u64, rule: [^]u8, rule_len: u32, index: u32, _ret: ^u32) -> Error ---
 	@(link_name = "CSSStyleSheet_deleteRuleAt") _CSSStyleSheet_deleteRuleAt :: proc(sheet: u64, index: u32) -> Error ---
 	@(link_name = "CSSStyleSheet_isDisabled") _CSSStyleSheet_isDisabled :: proc(sheet: u64) -> i32 ---
@@ -4842,6 +4844,41 @@ CSSStyleSheet_setRuleSelector_alloc :: proc(sheet: u64, rule_id: u32, selector: 
 		cap = int(n)
 	}
 	return {}, .Truncated
+}
+
+// The cssText of the top-level rule numbered `rule_id` as it is now ("" when it is gone).
+CSSStyleSheet_ruleTextOf :: proc "contextless" (sheet: u64, rule_id: u32, buf: []u8) -> (string, Error) {
+	n := _CSSStyleSheet_ruleTextOf(sheet, rule_id, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of CSSStyleSheet_ruleTextOf's result.
+CSSStyleSheet_ruleTextOf_len :: proc "contextless" (sheet: u64, rule_id: u32) -> (int, Error) {
+	n := _CSSStyleSheet_ruleTextOf(sheet, rule_id, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// CSSStyleSheet_ruleTextOf's result in a buffer allocated to fit.
+CSSStyleSheet_ruleTextOf_alloc :: proc(sheet: u64, rule_id: u32, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _CSSStyleSheet_ruleTextOf(sheet, rule_id, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// CSSStyleRule.style written: the top-level style rule numbered `rule_id` takes the declarations of `text` (nothing
+// changes for a rule that is gone, is no style rule or holds nested rules).
+CSSStyleSheet_setRuleStyle :: proc "contextless" (sheet: u64, rule_id: u32, text: string) {
+	_CSSStyleSheet_setRuleStyle(sheet, rule_id, raw_data(text), u32(len(text)))
 }
 
 // insertRule(rule, index): Index_Size past the end, Syntax when `rule` is not one rule; the index.

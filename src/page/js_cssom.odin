@@ -233,10 +233,22 @@ CSSStyleSheet_ruleText :: proc(c: ^Call, sheet: u64, index: u32) -> (string, Api
 CSSStyleSheet_setRuleSelector :: proc(c: ^Call, sheet: u64, rule_id: u32, selector: string) -> string {
 	s := css_sheet_of(c, sheet)
 	if s == nil || !style.engine_sheet_set_selector(c.page.engine, s.id, rule_id, selector) { return "" }
+	return CSSStyleSheet_ruleTextOf(c, sheet, rule_id)
+}
+
+// The cssText of the top-level rule numbered `rule_id` now ("" when it is gone).
+CSSStyleSheet_ruleTextOf :: proc(c: ^Call, sheet: u64, rule_id: u32) -> string {
+	s := css_sheet_of(c, sheet)
+	if s == nil { return "" }
 	for i in 0 ..< style.engine_sheet_rule_count(c.page.engine, s.id) {
 		if style.engine_sheet_rule_id(c.page.engine, s.id, i) == rule_id { return rule_css_text(c.page, style.engine_sheet_rule(c.page.engine, s.id, i)) }
 	}
 	return ""
+}
+
+// CSSStyleRule.style written: the top-level rule numbered `rule_id` takes the declarations of `text`.
+CSSStyleSheet_setRuleStyle :: proc(c: ^Call, sheet: u64, rule_id: u32, text: string) {
+	if s := css_sheet_of(c, sheet); s != nil { style.engine_sheet_set_declarations(c.page.engine, s.id, rule_id, text) }
 }
 
 @(private)

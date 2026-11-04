@@ -4113,6 +4113,27 @@ rule's new cssText, "" when nothing changed (the rule is gone, not a style rule,
 
 Host: `CSSStyleSheet_setRuleSelector :: proc(c: ^Call, sheet: u64, rule_id: u32, selector: string) -> string`
 
+### `CSSStyleSheet_ruleTextOf`
+
+```
+string CSSStyleSheet_ruleTextOf(u64 sheet, u32 rule_id)
+```
+
+The cssText of the top-level rule numbered `rule_id` as it is now ("" when it is gone).
+
+Host: `CSSStyleSheet_ruleTextOf :: proc(c: ^Call, sheet: u64, rule_id: u32) -> string`
+
+### `CSSStyleSheet_setRuleStyle`
+
+```
+void CSSStyleSheet_setRuleStyle(u64 sheet, u32 rule_id, string text)
+```
+
+CSSStyleRule.style written: the top-level style rule numbered `rule_id` takes the declarations of `text` (nothing
+changes for a rule that is gone, is no style rule or holds nested rules).
+
+Host: `CSSStyleSheet_setRuleStyle :: proc(c: ^Call, sheet: u64, rule_id: u32, text: string)`
+
 ### `CSSStyleSheet_insertRuleAt`
 
 ```

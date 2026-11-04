@@ -100,7 +100,7 @@ read_only_err :: proc "c" (ctx: ^wj.Context) -> wj.JSValue {
 }
 
 @(private = "file")
-style_set :: proc "c" (ctx: ^wj.Context, d: ^wj.Dom_Impl, name: [^]u8, length: uint, value: wj.JSValue, priority: wj.JSValue) -> wj.JSValue {
+style_set :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, d: ^wj.Dom_Impl, name: [^]u8, length: uint, value: wj.JSValue, priority: wj.JSValue) -> wj.JSValue {
 	if d.kind == wj.DOM_STYLE_COMPUTED { return read_only_err(ctx) }
 	v, p: wj.Str
 	if !wj.wj_to_str(ctx, value, &v, wj.STR_NULL_EMPTY, "") { return wj.EXCEPTION }
@@ -108,7 +108,9 @@ style_set :: proc "c" (ctx: ^wj.Context, d: ^wj.Dom_Impl, name: [^]u8, length: u
 	st := wj.wr_InlineStyle_setProperty(d.node, name, u32(length), wj.cstr_bytes(v.ptr), u32(v.len), wj.cstr_bytes(p.ptr), u32(p.len))
 	wj.wj_str_free(ctx, &v)
 	wj.wj_str_free(ctx, &p)
-	return st < 0 ? wj.wj_throw_status(ctx, st, "CSSStyleDeclaration.setProperty") : wj.UNDEFINED
+	if st < 0 { return wj.wj_throw_status(ctx, st, "CSSStyleDeclaration.setProperty") }
+	rule_style_written(ctx, this_val)   // (dom_css_rules.odin: a sheet rule's style)
+	return wj.UNDEFINED
 }
 
 // the attributes of the properties: data = the CSS name
@@ -131,7 +133,7 @@ prop_setter :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv
 	length: uint
 	name := wj.JS_ToCStringLen(ctx, &length, data[0])
 	if name == nil { return wj.EXCEPTION }
-	r := style_set(ctx, d, wj.cstr_bytes(name), length, argc > 0 ? argv[0] : wj.UNDEFINED, wj.UNDEFINED)
+	r := style_set(ctx, this_val, d, wj.cstr_bytes(name), length, argc > 0 ? argv[0] : wj.UNDEFINED, wj.UNDEFINED)
 	wj.JS_FreeCString(ctx, name)
 	return r
 }
@@ -322,7 +324,7 @@ wjr_CSSStyleDeclaration_setProperty :: proc "c" (ctx: ^wj.Context, this_val: wj.
 	if argc < 2 { return wj.wj_throw_arity(ctx, "CSSStyleDeclaration.setProperty", 2, argc) }
 	s: wj.Str
 	if !wj.wj_to_str(ctx, argv[0], &s, 0, "") { return wj.EXCEPTION }
-	r := style_set(ctx, d, wj.cstr_bytes(s.ptr), s.len, argv[1], wj.arg(argc, argv, 2))
+	r := style_set(ctx, this_val, d, wj.cstr_bytes(s.ptr), s.len, argv[1], wj.arg(argc, argv, 2))
 	wj.wj_str_free(ctx, &s)
 	return r
 }
@@ -339,6 +341,7 @@ wjr_CSSStyleDeclaration_removeProperty :: proc "c" (ctx: ^wj.Context, this_val: 
 	n := wj.wr_InlineStyle_removeProperty(d.node, wj.cstr_bytes(s.ptr), u32(s.len), wj.wj_scratch.data, wj.wj_scratch.cap)
 	wj.wj_str_free(ctx, &s)
 	if n < 0 { return wj.wj_throw_status(ctx, n, "CSSStyleDeclaration.removeProperty") }
+	rule_style_written(ctx, this_val)
 	if u32(n) > wj.wj_scratch.cap { n = i32(wj.wj_scratch.cap) }
 	return wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n))
 }
@@ -362,7 +365,9 @@ wjr_CSSStyleDeclaration_set_cssText :: proc "c" (ctx: ^wj.Context, this_val: wj.
 	if !wj.wj_to_str(ctx, v, &s, wj.STR_NULL_EMPTY, "") { return wj.EXCEPTION }
 	st := wj.wr_InlineStyle_setCssText(d.node, wj.cstr_bytes(s.ptr), u32(s.len))
 	wj.wj_str_free(ctx, &s)
-	return st < 0 ? wj.wj_throw_status(ctx, st, "CSSStyleDeclaration.cssText") : wj.UNDEFINED
+	if st < 0 { return wj.wj_throw_status(ctx, st, "CSSStyleDeclaration.cssText") }
+	rule_style_written(ctx, this_val)
+	return wj.UNDEFINED
 }
 
 @(export, link_name = "wjr_CSSStyleDeclaration_get_parentRule")
@@ -377,7 +382,7 @@ wjr_CSSStyleProperties_get_cssFloat :: proc "c" (ctx: ^wj.Context, this_val: wj.
 @(export, link_name = "wjr_CSSStyleProperties_set_cssFloat")
 wjr_CSSStyleProperties_set_cssFloat :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
 	d := style_of_this(ctx, this_val)
-	return d != nil ? style_set(ctx, d, wj.raw_bytes("float"), 5, v, wj.UNDEFINED) : wj.EXCEPTION
+	return d != nil ? style_set(ctx, this_val, d, wj.raw_bytes("float"), 5, v, wj.UNDEFINED) : wj.EXCEPTION
 }
 
 // ---- the CSS namespace ----
