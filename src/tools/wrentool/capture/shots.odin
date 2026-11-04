@@ -55,6 +55,10 @@ SHOTS := []Shot{
 	{name = "find", url = "https://sacha.house/cv", actions = "key:Ctrl+F; type:Angular"},
 	{name = "context-menu", url = "https://sacha.house/cv", actions = "dclick:600,695; rclick:600,695"},
 	{name = "tabs", url = "https://webassembly.org", actions = "key:Ctrl+T; key:Ctrl+L; type:https://sacha.house; key:Enter; key:Ctrl+T; key:Ctrl+L; type:about:demos; key:Enter; click:1500,560"},
+	{name = "devtools", url = "site:grid.html", actions = "key:F12; click:221,527"},
+	{name = "command-palette", url = "site:grid.html", actions = "key:Ctrl+Shift+P; type:dev"},
+	{name = "about-wren", url = "about:wren"},
+	{name = "content-blocker", url = "https://sacha.house/cv", actions = "key:Ctrl+Shift+P; type:blocker: open; key:Enter"},
 	{name = "daylight", url = "https://sacha.house/cv", prefs = {"browser.ui.theme=daylight"}},
 }
 

@@ -70,8 +70,12 @@ Media Foundation, WASAPI, UI Automation and BCrypt.
 | **Tabs in the title bar** with favicons and loading indicators, next to the window buttons (Snap Layouts kept) | **Text** on DirectWrite: per-character fallback, color emoji, ligatures and OpenType features, bidi |
 | ![Find in page](docs/screenshots/find.png) | ![Selection and its context menu](docs/screenshots/context-menu.png) |
 | **Find in page** (Ctrl+F) with a match count | **Text selection** and context menus |
-| ![The Daylight palette](docs/screenshots/daylight.png) | |
-| The **Daylight** palette of the interface (`browser.ui.theme`) | |
+| ![The Daylight palette](docs/screenshots/daylight.png) | ![The developer tools](docs/screenshots/devtools.png) |
+| The **Daylight** palette of the interface (`browser.ui.theme`) | **Developer tools** (F12): document tree and styles, console, requests, storage |
+| ![The command palette](docs/screenshots/command-palette.png) | ![about:wren](docs/screenshots/about-wren.png) |
+| The **command palette** (Ctrl+Shift+P) | **about:wren**: version, licence, signed updates |
+| ![The content blocker panel](docs/screenshots/content-blocker.png) | |
+| The **content blocker**'s panel: switches and per-site matrix | |
 
 The demo pages are in [`examples/site`](examples/site); `about:demos` lists them all (see [Try it](#try-it)).
 Screenshots show the whole window and are all taken in one pass by `wrentool shots` (README and site), each the browser's
