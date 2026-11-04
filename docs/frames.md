@@ -161,7 +161,7 @@ What is not there:
 
 `window.open()` to `_blank` or to a name nothing has, and a script's click on a link to one, open a window: a top-level navigable
 of the same kind (`src/page/auxiliary.odin`), whose embedder makes the window around it (the browser a tab, the WPT runner's
-headless host a window without a shell) and whose first document is the initial about:blank the page package makes (the
+headless host a window without a shell, with a back/forward cache of its own: `src/tools/headless`) and whose first document is the initial about:blank the page package makes (the
 opener's origin, or an opaque one under `noopener`; the opener's agent cluster, cross-origin isolated as the opener is). The
 window keeps its id across its documents, so the `WindowProxy` that `window.open` returned still names it after it navigated.
 
