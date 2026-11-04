@@ -193,9 +193,7 @@ sp_includes :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Va
 	case 0:
 		end, ok := relative_index_clamp(ctx, arg(args, 1), n, n)
 		if !ok {return EXCEPTION}
-		start := int(end) - m
-		if start < 0 {return FALSE}
-		return mk_bool(str_index_of(rt, s, pat, start) == start)
+		return mk_bool(str_matches_at(rt, s, pat, int(end) - m))
 	case 1:
 		pos, ok := relative_index_clamp(ctx, arg(args, 1), n, 0)
 		if !ok {return EXCEPTION}
@@ -203,8 +201,21 @@ sp_includes :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Va
 	}
 	pos, ok := relative_index_clamp(ctx, arg(args, 1), n, 0)
 	if !ok {return EXCEPTION}
-	if int(pos) + m > int(n) {return FALSE}
-	return mk_bool(str_index_of(rt, s, pat, int(pos)) == int(pos))
+	return mk_bool(str_matches_at(rt, s, pat, int(pos)))
+}
+
+// Does pat occur in s at pos (startsWith, endsWith): the code units compared there, nothing searched (a search from pos
+// went through the whole string when it was not there).
+@(private = "file")
+str_matches_at :: proc(rt: ^Runtime, s, pat: ^JS_String, pos: int) -> bool {
+	fs := str_flat(rt, s)
+	fp := str_flat(rt, pat)
+	m := int(fp.len)
+	if pos < 0 || pos + m > int(fs.len) {return false}
+	for j in 0 ..< m {
+		if str_at(fs, pos + j) != str_at(fp, j) {return false}
+	}
+	return true
 }
 
 // clamp(ToIntegerOrInfinity(v), 0, len) with a default for undefined
