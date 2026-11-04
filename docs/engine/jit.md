@@ -50,10 +50,25 @@ A named property read or written (`get_field`, `get_field2`, `put_field`, `get_l
 constant index: in the object, or in the prototype that holds it, whose shape (and those of the prototypes before it)
 is guarded too. A shape that is not a dictionary never changes, so the guard is a check of data in the object: there is
 nothing to invalidate when a prototype or an object changes. A dictionary shape changes in place: a holder's (or an
-object's own) is checked by the key, kind and flags at the index. A global is read from the realm's lexical
+object's own) is checked by the key, kind and flags at the index; one the read walks past (a Web IDL prototype, made a
+dictionary for its lazy members) by its version (`Shape.version`, bumped by every change in place: a key added or
+removed, an attribute, the prototype), so that a key added to it later, which would shadow what was found further, is
+seen. A global is read from the realm's lexical
 declarations or from the global object, the declarations' shape guarded (none of them shadows it). A closure's
 variable is read and written where its cell points. A string's `length` is read from the string, its other properties
 from `String.prototype` (the value's tag checked, then the prototype's shape) once the site has met a string.
+
+A read whose site's first shape finds an accessor reads through getters (`j_call_getter`): the shapes guarded as for a
+data property, the getter read from its `Getset` and checked to be a native function called as a function (as the hot
+loop's `hot_native_getter`: a DOM attribute's, Map's `size`), else the interpreter reads it; the helper `wj_jit_get`
+(`jit_getter`) calls it, the operand stack and the objects held written to the frame first, the held arrays taken
+again after. An exception is exact: the helper puts the context's thrower in the object's place (`Context.jit_thrower`,
+an object whose property of that name is an accessor with `jit_rethrow` as its getter), the code leaves through a throw
+exit, and the interpreter makes the read again, which throws the exception pending. Host objects without exotic hooks
+are ordinary objects there (`Object.host_exotic` checked where the code reads past one), so a DOM node's attributes and
+methods are read through its prototypes. A global's accessor (`window.document`) is not called: a read of a global has
+no object on the stack to put the thrower in, and an exception would have no exact way back into the interpreter but a
+throw exit in its back edges (round 20: 4 % of nodes10k with the JIT off).
 
 What a site was compiled for is per site and bounded (`Jit_Site`: `JIT_SITE_SHAPES` shapes with their objects' class,
 the type of the value read): taken from the frame's values when the loop is translated (the translation follows what

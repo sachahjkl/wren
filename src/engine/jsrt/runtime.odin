@@ -353,6 +353,7 @@ Context :: struct {
 	array_proto_values: ^Object,
 	array_proto_push: ^Object,
 	jit_rethrow:     ^Object, // the callee a call the JIT made leaves when it threw (jit.odin, jit_call)
+	jit_thrower:     ^Object, // the object a read through a getter the JIT called leaves when it threw (jit.odin, jit_getter)
 	promise_then:    ^Object,
 	promise_resolve_fn: ^Object,
 	regexp_exec:     ^Object, // the original RegExp.prototype.exec (fast paths)

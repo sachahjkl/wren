@@ -71,6 +71,12 @@ when wj.WJ_JSRT {
 		return jsrt.jit_streq(f, a, b) ? 1 : 0
 	}
 
+	@(export, link_name = "wj_jit_get")
+	wj_jit_get :: proc "c" (f: ^jsrt.Frame, getter: ^jsrt.Object, o: ^jsrt.Object, dest: i32, at: i32, a: u32) -> i32 {
+		context = jit_context
+		return jsrt.jit_getter(f, getter, o, int(dest), int(at), jsrt.Atom(a)) ? 1 : 0
+	}
+
 	@(export, link_name = "wj_jit_array")
 	wj_jit_array :: proc "c" (f: ^jsrt.Frame, slot: i32, kind: i32, out: ^jsrt.Jit_Arr) -> i32 {
 		context = jit_context
