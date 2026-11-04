@@ -100,7 +100,7 @@ build_classic_page :: proc(cp: Classic_Page, page: string) -> bool {
 	dir := posix_dir(from)
 	b := strings.builder_make(context.allocator)
 	ws := strings.write_string
-	write_classic_head(&b, title, between(src, "<meta name=\"description\" content=\"", "\""))
+	write_classic_head(&b, title, between(src, "<meta name=\"description\" content=\"", "\""), between(src, "<meta name=\"robots\" content=\"", "\""), between(src, "<meta name=\"referrer\" content=\"", "\""))
 	write_classic_top(&b, cp.nav)
 	ws(&b, main_open)
 	ws(&b, classic_paths(rooted(content, dir)))
@@ -191,8 +191,9 @@ write_news :: proc(b: ^strings.Builder, releases: []Release) {
 	ws(b, "      <p><a class=\"all\" href=\"/changelog/\">- all news -</a></p>\n    ")
 }
 
-// `title` and `description` are HTML already.
-write_classic_head :: proc(b: ^strings.Builder, title, description: string) {
+// `title` and `description` are HTML already. `robots`, `referrer`: what the modern page says of itself ("": nothing), kept here: a
+// page whose address gives a licence stays out of the indexes and of the Referer.
+write_classic_head :: proc(b: ^strings.Builder, title, description: string, robots := "", referrer := "") {
 	ws := strings.write_string
 	ws(b, CLASSIC_NOTE)
 	ws(b, "\n<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n")
@@ -200,7 +201,10 @@ write_classic_head :: proc(b: ^strings.Builder, title, description: string) {
 	ws(b, title)
 	ws(b, "</title>\n<meta name=\"description\" content=\"")
 	ws(b, description)
-	ws(b, "\">\n<link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/../img/logo-32.png\">\n")
+	ws(b, "\">\n")
+	if robots != "" { ws(b, "<meta name=\"robots\" content=\""); ws(b, robots); ws(b, "\">\n") }
+	if referrer != "" { ws(b, "<meta name=\"referrer\" content=\""); ws(b, referrer); ws(b, "\">\n") }
+	ws(b, "<link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/../img/logo-32.png\">\n")
 	ws(b, "<link rel=\"stylesheet\" href=\"/classic.css\">\n</head>\n<body>\n")
 }
 
