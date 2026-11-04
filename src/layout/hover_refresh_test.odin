@@ -17,6 +17,30 @@ nav a { display: inline-block; color: rgb(0, 0, 255); background-color: rgb(255,
 nav a:hover { color: rgb(255, 0, 0); background-color: rgb(0, 0, 0) }
 </style><nav><a id=a1 href=/1>one</a> <a id=a2 href=/2>two</a> <a id=a3 href=/3>three</a> <a id=a4 href=/4>four</a></nav>`
 
+// An anonymous box shares the inherited group of its parent (anon_style). A refresh that left it the old one wrote the parent's new paint
+// values into a group of the arena of an earlier pass: an access violation in copy_prop where that arena was gone, and where it was
+// recycled, a write into another element's style (getbootstrap.com: the block in a paragraph of text, restyled by a scroll spy).
+@(test)
+anonymous_boxes_follow_the_inherited_group_of_their_parent :: proc(t: ^testing.T) {
+	f := fixture_load(`<style>body { margin: 0 } #p { color: rgb(0, 0, 255) } #p:hover { color: rgb(255, 0, 0) }</style><div id=p>text<div>block</div>more</div>`, o = {journal = true})
+	defer fixture_unload(f)
+	p := dom.find_by_id(f.doc, "p")
+	anonymous := 0
+	for state in ([]style.State{{hover = p}, {}, {hover = p}}) {
+		_, ok := style.restyle_state(f.eng, f.doc, f.st, state)
+		testing.expect(t, ok)
+		fixture_run(f)
+		testing.expectf(t, f.l.last_pass == .Refresh, "a paint-only hover refreshes: %v", f.l.last_pass)
+		anonymous = 0
+		for &b in f.l.boxes {
+			if b.node != base.NIL_HANDLE || b.parent == NONE || b.cs == nil || .Root in b.flags || .Dead in b.flags { continue }
+			anonymous += 1
+			testing.expect(t, b.cs.inherited_group == f.l.boxes[b.parent].cs.inherited_group, "the group of the parent's record of this pass")
+		}
+	}
+	testing.expect(t, anonymous >= 2, "the text around the block is in anonymous boxes")
+}
+
 // A script that turns an element by its inline style at every frame (the licence card of about:wren, tilted by the pointer) makes
 // refresh passes, not layouts: the transform and a custom property are paint-only, and the document changed in nothing but a style
 // attribute. The plane's matrix follows. A style attribute that changes a size is laid out again, and so is another attribute.

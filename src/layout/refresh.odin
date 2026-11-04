@@ -93,10 +93,16 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 	anon := anon_paint_props()
 	// boxes in index order: a parent comes before its children (anonymous boxes copy from their parent)
 	for &b, i in l.boxes {
-		if .Root in b.flags || .Dead in b.flags { continue }
+		if .Dead in b.flags { continue }
+		if .Root in b.flags {
+			if b.cs != nil { b.cs.inherited_group = st.initial.inherited_group }   // (anon_style of the initial values: of this pass's)
+			continue
+		}
 		if b.node == base.NIL_HANDLE {
 			if b.parent == NONE || b.cs == nil { continue }
 			pc := l.boxes[b.parent].cs
+			// its inherited group is the parent's (anon_style): the one of a restyled parent, the old one being in an arena that may be gone
+			b.cs.inherited_group = pc.inherited_group
 			for p in anon { style.copy_prop(b.cs, pc, p) }
 			continue
 		}
