@@ -304,6 +304,7 @@ foreign _m_dom {
 	@(link_name = "Node_rootNode") _Node_rootNode :: proc(node: u64) -> Node ---
 	@(link_name = "Node_length") _Node_length :: proc(node: u64) -> u32 ---
 	@(link_name = "Node_preInsert") _Node_preInsert :: proc(parent: u64, node: u64, child: u64) -> core.Error ---
+	@(link_name = "Node_moveBefore") _Node_moveBefore :: proc(parent: u64, node: u64, child: u64) -> core.Error ---
 	@(link_name = "Node_replaceChildChecked") _Node_replaceChildChecked :: proc(parent: u64, node: u64, child: u64) -> core.Error ---
 	@(link_name = "Node_preRemove") _Node_preRemove :: proc(parent: u64, child: u64) -> core.Error ---
 	@(link_name = "Node_insertItems") _Node_insertItems :: proc(node: u64, mode: i32, items: [^]u8, items_len: u32) -> core.Error ---
@@ -3409,6 +3410,12 @@ Node_length :: proc "contextless" (node: $T_node) -> u32 where intrinsics.type_i
 // Not_Found), a DocumentFragment's children inserted as one mutation.
 Node_preInsert :: proc "contextless" (parent: $T_parent, node: $T_node, child: $T_child) -> core.Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_parent)) && size_of(T_parent) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_child)) && size_of(T_child) == 8 {
 	return _Node_preInsert(u64(parent), u64(node), u64(child))
+}
+
+// parent.moveBefore(node, child): Node_preInsert's insertion without the insertion steps of script elements (HTML: a
+// script moved, or text moved into one, does not run).
+Node_moveBefore :: proc "contextless" (parent: $T_parent, node: $T_node, child: $T_child) -> core.Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_parent)) && size_of(T_parent) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_child)) && size_of(T_child) == 8 {
+	return _Node_moveBefore(u64(parent), u64(node), u64(child))
 }
 
 // parent.replaceChild(node, child): DOM "replace a child".

@@ -21666,6 +21666,42 @@ _t_dom_Node_preInsert :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	return nil
 }
 
+// Node_moveBefore :: proc(c: ^Call, parent: Api_Node, node: Api_Node, child: Api_Node) -> Api_Error
+@(private = "file")
+_t_dom_Node_moveBefore :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_moveBefore: argument parent is not a live Node")
+	}
+	api_route(&c, u64(a[1].i64))
+	_p1 := Api_Node{handle = u64(a[1].i64)}
+	_p1.data = lookup_Node(&c, _p1.handle)
+	if _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_moveBefore: argument node is not a live Node")
+	}
+	api_route(&c, u64(a[2].i64))
+	_p2 := Api_Node{handle = u64(a[2].i64)}
+	if _p2.handle != 0 { _p2.data = lookup_Node(&c, _p2.handle) }
+	if _p2.handle != 0 && _p2.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_moveBefore: argument child is not a live Node")
+	}
+	_err := Node_moveBefore(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // Node_replaceChildChecked :: proc(c: ^Call, parent: Api_Node, node: Api_Node, child: Api_Node) -> Api_Error
 @(private = "file")
 _t_dom_Node_replaceChildChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -39443,6 +39479,7 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "Node_rootNode", fn = _t_dom_Node_rootNode, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Node_length", fn = _t_dom_Node_length, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Node_preInsert", fn = _t_dom_Node_preInsert, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Node_moveBefore", fn = _t_dom_Node_moveBefore, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Node_replaceChildChecked", fn = _t_dom_Node_replaceChildChecked, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Node_preRemove", fn = _t_dom_Node_preRemove, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Node_insertItems", fn = _t_dom_Node_insertItems, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},

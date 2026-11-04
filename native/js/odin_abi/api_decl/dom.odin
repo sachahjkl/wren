@@ -47,6 +47,7 @@ Node_set_textContent     :: #type proc(node: Node, value: string) -> abi.Api_Err
 Node_parentNode          :: #type proc(node: Node) -> Node
 // pre-insert `node` before `child` (0: at the end) / replace / pre-remove, with the DOM Standard's exceptions
 Node_preInsert           :: #type proc(parent: Node, node: Node, child: Node) -> abi.Api_Error
+Node_moveBefore          :: #type proc(parent: Node, node: Node, child: Node) -> abi.Api_Error
 Node_replaceChildChecked :: #type proc(parent: Node, node: Node, child: Node) -> abi.Api_Error
 Node_preRemove           :: #type proc(parent: Node, child: Node) -> abi.Api_Error
 // (Node or DOMString)... packed: 0 + an 8-byte node, or 1 + a 4-byte length + UTF-8

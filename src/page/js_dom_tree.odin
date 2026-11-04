@@ -488,9 +488,14 @@ insert_node :: proc(d: ^dom.Document, parent, node, child: base.Handle) {
 	} else if n.kind != .Fragment && n.parent == parent && node != child {
 		dom.detach(d, node)   // moved within its parent: removed, then inserted (two records, as DOM queues them)
 	}
+	// a fragment's children are inserted, then their insertion steps run, after the batch (DOM "insert" step 7.7: a script
+	// among them, or a script element they go into, sees them all)
+	fragment := n.kind == .Fragment
+	if fragment { dom.hooks_mute(d) }
+	defer if fragment { dom.hooks_unmute(d) }
 	batch := dom.batch_begin(d)
 	defer dom.batch_end(d, batch)
-	if n.kind == .Fragment {
+	if fragment {
 		for {
 			f := dom.get(d, node)
 			first := f.first_child
@@ -551,6 +556,13 @@ replace_all :: proc(d: ^dom.Document, parent, node: base.Handle) {
 }
 
 Node_preInsert :: proc(c: ^Call, parent: Api_Node, node: Api_Node, child: Api_Node) -> Api_Error {
+	return pre_insert(c, H(parent.handle), H(node.handle), H(child.handle))
+}
+
+Node_moveBefore :: proc(c: ^Call, parent: Api_Node, node: Api_Node, child: Api_Node) -> Api_Error {
+	s := scripts_of(c.page)
+	s.moving += 1
+	defer s.moving -= 1
 	return pre_insert(c, H(parent.handle), H(node.handle), H(child.handle))
 }
 

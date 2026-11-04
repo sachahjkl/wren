@@ -53,6 +53,9 @@ partial module dom {
   /// parent.insertBefore(node, child) / appendChild (child absent): DOM "pre-insert", every check (Hierarchy,
   /// Not_Found), a DocumentFragment's children inserted as one mutation.
   void Node_preInsert(Node parent, Node node, optional Node child) raises;
+  /// parent.moveBefore(node, child): Node_preInsert's insertion without the insertion steps of script elements (HTML: a
+  /// script moved, or text moved into one, does not run).
+  void Node_moveBefore(Node parent, Node node, optional Node child) raises;
   /// parent.replaceChild(node, child): DOM "replace a child".
   void Node_replaceChildChecked(Node parent, Node node, Node child) raises;
   /// parent.removeChild(child): Not_Found when child is not a child of parent.

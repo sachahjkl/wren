@@ -280,7 +280,7 @@ not_a_child :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
 }
 
 @(private = "file")
-Mutation :: enum { Append, Insert_Before, Replace, Remove }
+Mutation :: enum { Append, Insert_Before, Move_Before, Replace, Remove }
 
 // appendChild / insertBefore / replaceChild / removeChild: the DOM Standard's checks are the browser's.
 @(private = "file")
@@ -307,6 +307,14 @@ mutate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]
 		if !adopt_to_insert(ctx, u64(parent), argv[0], &node) { return wj.EXCEPTION }
 		st = jsb.host(&nothing, api_decl.Node_preInsert, wj.wr_Node_preInsert, parent, api_decl.Node(node), api_decl.Node(child))
 		if st != .None { return wj.wj_throw_status(ctx, i32(st), "Node.insertBefore") }
+	case .Move_Before:
+		if argc < 2 { return wj.wj_throw_arity(ctx, "moveBefore", 2, argc) }
+		if !wj.dom_node_arg(ctx, argv[0], &node, false, "moveBefore") { return wj.EXCEPTION }
+		if !wj.dom_node_arg(ctx, argv[1], &child, true, "moveBefore") { return wj.EXCEPTION }
+		if child != 0 && !wj.wj_same_doc(u64(parent), child) { return not_a_child(ctx) }
+		if !adopt_to_insert(ctx, u64(parent), argv[0], &node) { return wj.EXCEPTION }
+		st = jsb.host(&nothing, api_decl.Node_moveBefore, wj.wr_Node_moveBefore, parent, api_decl.Node(node), api_decl.Node(child))
+		if st != .None { return wj.wj_throw_status(ctx, i32(st), "moveBefore") }
 	case .Replace:
 		if argc < 2 { return wj.wj_throw_arity(ctx, "Node.replaceChild", 2, argc) }
 		if !wj.dom_node_arg(ctx, argv[0], &node, false, "replaceChild") { return wj.EXCEPTION }
@@ -374,10 +382,10 @@ wjr_ChildNode_after :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, arg
 @(export, link_name = "wjr_ChildNode_replaceWith")
 wjr_ChildNode_replaceWith :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return insert_items(ctx, t, argc, argv, .Replace_With, "replaceWith") }
 
-// moveBefore(node, child): as insertBefore (the browser keeps no state that a move would preserve)
+// moveBefore(node, child): as insertBefore, without the insertion steps of scripts (the browser keeps no other state that a move would preserve)
 @(export, link_name = "wjr_ParentNode_moveBefore")
 wjr_ParentNode_moveBefore :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	r := mutate(ctx, this_val, argc, argv, .Insert_Before)
+	r := mutate(ctx, this_val, argc, argv, .Move_Before)
 	if wj.is_exception(r) { return r }
 	wj.JS_FreeValue(ctx, r)
 	return wj.UNDEFINED
