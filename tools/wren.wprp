@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A WPR profile for Wren (wrentool trace start|stop, docs/performance.md, Profilers): CPU samples with their stacks,
+     context switches and the thread that readied each, the GPU's scheduler (DxgKrnl), and Wren's own provider
+     Wren.Browser (src/trace: its GUID is the TraceLogging hash of the name), whose zones WPA shows as regions
+     (tools/wren_regions.xml). Recording needs an elevated prompt. -->
+<WindowsPerformanceRecorder Version="1.0" Author="Wren" Comments="Wren: CPU, waits, GPU, its phases and frames">
+  <Profiles>
+    <SystemCollector Id="SC_Wren" Name="NT Kernel Logger">
+      <BufferSize Value="1024"/>
+      <Buffers Value="256"/>
+    </SystemCollector>
+    <EventCollector Id="EC_Wren" Name="Wren events">
+      <BufferSize Value="1024"/>
+      <Buffers Value="64"/>
+    </EventCollector>
+    <SystemProvider Id="SP_Wren">
+      <Keywords>
+        <Keyword Value="ProcessThread"/>
+        <Keyword Value="Loader"/>
+        <Keyword Value="SampledProfile"/>
+        <Keyword Value="CSwitch"/>
+        <Keyword Value="ReadyThread"/>
+      </Keywords>
+      <Stacks>
+        <Stack Value="SampledProfile"/>
+        <Stack Value="CSwitch"/>
+        <Stack Value="ReadyThread"/>
+      </Stacks>
+    </SystemProvider>
+    <EventProvider Id="EP_Wren" Name="10e6f595-25dd-53c9-a97c-bdec823560e6" NonPagedMemory="true" Level="5"/>
+    <!-- Microsoft-Windows-DxgKrnl as WPR's own GPU profile asks for it (wpr -exportprofile GPU) -->
+    <EventProvider Id="EP_DxgKrnl" Name="802ec45a-1e99-4b83-9920-87c98277ba9d" NonPagedMemory="true" Stack="true" Level="5">
+      <Keywords>
+        <Keyword Value="0x277"/>
+      </Keywords>
+      <CaptureStateOnStart>
+        <Keyword Value="0x277"/>
+      </CaptureStateOnStart>
+    </EventProvider>
+    <Profile Id="Wren.Verbose.File" Name="Wren" Description="Wren: CPU with stacks, waits, GPU, its phases and frames" LoggingMode="File" DetailLevel="Verbose">
+      <Collectors>
+        <SystemCollectorId Value="SC_Wren">
+          <SystemProviderId Value="SP_Wren"/>
+        </SystemCollectorId>
+        <EventCollectorId Value="EC_Wren">
+          <EventProviders>
+            <EventProviderId Value="EP_Wren"/>
+            <EventProviderId Value="EP_DxgKrnl"/>
+          </EventProviders>
+        </EventCollectorId>
+      </Collectors>
+    </Profile>
+  </Profiles>
+</WindowsPerformanceRecorder>

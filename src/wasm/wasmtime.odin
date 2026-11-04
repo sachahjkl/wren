@@ -242,6 +242,7 @@ foreign wasmtime_lib {
 	wasmtime_config_wasm_wide_arithmetic_set :: proc(c: wt_config, v: bool) ---
 	wasmtime_config_wasm_exceptions_set :: proc(c: wt_config, v: bool) ---
 	wasmtime_config_strategy_set :: proc(c: wt_config, v: u8) ---
+	wasmtime_config_profiler_set :: proc(c: wt_config, v: u8) ---
 	wasmtime_config_parallel_compilation_set :: proc(c: wt_config, v: bool) ---
 	wasmtime_config_cranelift_opt_level_set :: proc(c: wt_config, v: u8) ---
 	wasmtime_config_cranelift_nan_canonicalization_set :: proc(c: wt_config, v: bool) ---

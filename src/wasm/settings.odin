@@ -38,6 +38,8 @@ PREFS := [?]config.Def{
 		description = "Native stack kept for the browser on top of wasm.wasmtime.max_stack_bytes. A call is refused (with an error) when the thread has less than the sum left, instead of overflowing the thread's stack."},
 	{name = "wasm.wasmtime.epoch_tick_ms", kind = .Int, default = {i = 5}, bounded = true, min = 1, max = 1000, unit = "ms", restart = true,
 		description = "How often running code checks its deadline (wasm.max_call_ms) and whether it must stop (a worker being terminated). The ticking thread only runs while a module is running."},
+	{name = "wasm.wasmtime.profiler", kind = .String, default = {s = "none"}, choices = PROFILER_CHOICES, restart = true,
+		description = "Tells a profiler outside the browser about the compiled code (Wasmtime's profiling strategy), so that it names the functions of the modules, the JavaScript engine's among them: vtune for Intel VTune (Windows and Linux on x86-64), perfmap and jitdump for Linux's perf. The JavaScript engine's image keeps its functions' names (its name section) (docs/performance.md, Profilers)."},
 	{name = "wasm.wasmtime.fuel", kind = .Bool, default = {b = false}, restart = true,
 		description = "Also count instructions with wasmtime (fuel) and stop a call after wasm.instruction_budget of them, deterministically. Costs some speed."},
 	{name = "wasm.wasmtime.nan_canonicalization", kind = .Bool, default = {b = false}, restart = true,
@@ -90,6 +92,10 @@ options_default :: proc() -> Options {
 
 Compiler :: enum u8 { Cranelift, Winch }
 Opt_Level :: enum u8 { None, Speed, Speed_And_Size }
+// Wasmtime's wasmtime_profiling_strategy_enum, in its order. Its prebuilt library has VTune's on x86-64; perf's two are Linux's.
+Profiler :: enum u8 { None, Jitdump, Vtune, Perfmap }
+
+@(private) PROFILER_CHOICES :: []string{"none", "vtune"} when ODIN_OS == .Windows else []string{"none", "vtune", "perfmap", "jitdump"} when ODIN_ARCH == .amd64 else []string{"none", "perfmap", "jitdump"}
 
 Features :: struct {
 	simd, relaxed_simd, relaxed_simd_deterministic, bulk_memory, reference_types, multi_value, tail_call: bool,
@@ -100,6 +106,7 @@ Runtime_Settings :: struct {
 	max_instances:        int,
 	compiler:             Compiler,
 	opt_level:            Opt_Level,
+	profiler:             Profiler,
 	parallel_compilation: bool,
 	max_stack_bytes:      int,
 	host_stack_reserve:   int,
@@ -151,6 +158,11 @@ runtime_settings_from_prefs :: proc(p: ^config.Prefs, profile_dir: string) -> Ru
 	case "none":           rs.opt_level = .None
 	case "speed_and_size": rs.opt_level = .Speed_And_Size
 	case:                  rs.opt_level = .Speed
+	}
+	switch config.string_of(p, "wasm.wasmtime.profiler") {
+	case "vtune":   rs.profiler = .Vtune
+	case "perfmap": rs.profiler = .Perfmap
+	case "jitdump": rs.profiler = .Jitdump
 	}
 	if profile_dir != "" && config.bool_of(p, "wasm.cache.disk") {
 		dir, err := filepath.join({profile_dir, "wasm-cache"})

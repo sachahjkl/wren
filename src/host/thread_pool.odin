@@ -33,11 +33,11 @@ Thread_Pool :: struct {
 // allocator, from several threads at once. A test's allocator (a rollback stack per test, not thread-safe) shared that
 // way corrupted the style tests' memory now and then (a rule pointer holding a node handle, a bounds trap on a pool
 // thread). The pool itself is in the process's memory too (thread_pool_destroy frees it there).
-thread_pool_make :: proc(threads: int, stack_bytes := 0) -> ^Thread_Pool {
+thread_pool_make :: proc(threads: int, stack_bytes := 0, name := "wren-pool") -> ^Thread_Pool {
 	context = base.process_context()
 	p := new(Thread_Pool)
 	for _ in 0 ..< max(threads, 0) {
-		t := thread_start(pool_thread, p, stack_bytes, name = "wren-pool")
+		t := thread_start(pool_thread, p, stack_bytes, name = name)
 		if t == nil { break }
 		append(&p.threads, t)
 	}

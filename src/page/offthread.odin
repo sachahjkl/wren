@@ -59,7 +59,7 @@ style_threads :: proc(p: ^Page) -> ^host.Thread_Pool {
 	if n < 0 { n = min(host.processor_count() - 1, 7) }
 	if n != the_pages.style_pool_size || (n > 0 && the_pages.style_pool == nil) {
 		host.thread_pool_destroy(the_pages.style_pool)
-		the_pages.style_pool = n > 0 ? host.thread_pool_make(n) : nil
+		the_pages.style_pool = n > 0 ? host.thread_pool_make(n, name = "wren-style") : nil
 		the_pages.style_pool_size = n
 	}
 	return the_pages.style_pool

@@ -15,6 +15,7 @@ import "core:sync"
 import "core:thread"
 import "core:time"
 import "wb:base"
+import "wb:host"
 
 @(private) DISK_KEY_FILE :: "cache-key.dpapi"
 @(private) DISK_FLUSH_POLL :: time.Millisecond   // disk_flush looks at the writer this often
@@ -162,6 +163,7 @@ disk_queue :: proc(d: ^Disk_Cache, path: string, key: Digest, payload: []byte) {
 disk_writer_main :: proc(data: rawptr) {
 	d := (^Disk_Cache)(data)
 	context.allocator = base.process_allocator()
+	host.thread_name_self("wren-wasm-cache")
 	stopped_at: time.Tick   // when the writer first saw the stop request
 	for {
 		sync.mutex_lock(&d.qlock)

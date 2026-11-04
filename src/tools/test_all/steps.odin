@@ -235,6 +235,11 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 		// (media: av1_software_player_seeks_and_ends_on_a_machine_short_of_processors spins on every core for half a minute, on purpose: what runs beside it has none left)
 		unit(&t, fmt.aprintf("unit tests: %s", pkg), fmt.aprintf("src/%s", pkg), exe(fmt.aprintf("build/%s_test", pkg)), flags, marks = pkg == "media" ? {.Alone} : {})
 	}
+	// (the Tracy and ETW variants type-checked, not linked: their library is fetched only for the builds that ask for it)
+	append(&t, Step{name = "the external profilers (src\\trace: zones paired on every path, TraceLogging's bytes, the provider's GUID in tools\\wren.wprp and tools\\wren_regions.xml; the Tracy and ETW builds of src\\trace and src\\wasm type-check)",
+		actions = slice_of(odin_test("src/trace", exe("build/trace_test"), strs(WB)), Command{argv = strs("odin", "check", "src/trace", WB, "-vet", "-no-entry-point", "-define:WREN_TRACY=true", "-define:WREN_ETW=true"), pkg = "src/trace"},
+			Command{argv = strs("odin", "check", "src/wasm", WB, "-vet", "-no-entry-point", "-define:WREN_TRACY=true"), pkg = "src/wasm"}), marks = {.Light}})
+	append(&t, Step{name = "the default build links no external profiler (src\\tools\\test_all\\profilers_absent.odin: build\\wren.exe imports none of ETW's writing functions and holds no Tracy client)", actions = slice_of(Task{"the profilers' absence", task_profilers_absent, ""}), needs = {.Browser}, marks = {.Light}, inputs = .Tree})
 	unit(&t, "unit tests: regexp (src\\engine\\regexp, the ECMAScript regular expressions of URLPattern)", "src/engine/regexp", exe("build/regexp_test"), {TOOLKIT, WB})
 	append(&t, Step{name = "unit tests: the headless host (src\\tools\\headless: the windows of the WPT runner's pages, their back/forward cache; against the test server)",
 		actions = slice_of(odin_test("src/tools/headless", exe("build/headless_test"), {TOOLKIT, WB})), needs = COMMON_NEEDS + {.Test_Server}})

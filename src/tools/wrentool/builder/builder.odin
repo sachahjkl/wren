@@ -1,6 +1,6 @@
 // Package builder: Wren's build on Windows, from the sources to build\wren.exe (what build.bat did; build.bat now only hands its arguments to `wrentool build`).
 //   wrentool build [dev|debug|profile|check|release]     the browser (dev by default; `wrentool build help` lists the variants and the environment)
-//   wrentool build lexbor|native [-Force] [-Profile p]     one dependency (package deps)
+//   wrentool build lexbor|native|tracy [-Force] [-Profile p]  one dependency (package deps)
 //
 // Channel: every build is a *development* build (blueprint icon, "development build" in about:home and the menu) but `release` (amber icon). It goes in as -define:WREN_CHANNEL (about.odin:
 // APP_CHANNEL) with its icon, and in build\wren.channel, which wrentool package checks before packaging.
@@ -70,6 +70,7 @@ Options :: struct {
 	toolkit:          string,   // WREN_TOOLKIT: another gui_toolkit checkout (S:/gt_wt/other), to compare two toolkits with the same browser sources
 	wgpu:             bool,     // WREN_RENDER=wgpu: the WebGPU render backend (default d3d11)
 	dwrite:           bool,     // WREN_TEXT=dwrite: DirectWrite's shaper and analyzers instead of the toolkit's native text backend
+	tracy:            bool,     // WREN_TRACY=1: the Tracy client linked (package trace; -> wren_prof_tracy.exe...)
 	odin_extra:       string,   // WREN_ODIN_EXTRA: more Odin flags, space-separated ("-define:TOOLKIT_WGPU_BACKEND=vulkan")
 	tag:              string,   // WREN_TAG: a suffix for the output name, to keep several builds side by side
 	label:            string,   // WREN_VERSION_LABEL: shown after the version number (about:wren, the menu, the file's Details)
@@ -85,6 +86,7 @@ options_from_env :: proc(variant: Variant) -> Options {
 	o.toolkit = env("WREN_TOOLKIT")
 	o.wgpu = env("WREN_RENDER") == "wgpu"
 	o.dwrite = env("WREN_TEXT") == "dwrite"
+	o.tracy = env("WREN_TRACY") == "1"
 	o.odin_extra = env("WREN_ODIN_EXTRA")
 	o.tag = env("WREN_TAG")
 	o.label = env("WREN_VERSION_LABEL")
@@ -99,7 +101,7 @@ options_from_env :: proc(variant: Variant) -> Options {
 run :: proc(args: []string) -> int {
 	what := len(args) > 0 ? args[0] : VARIANTS[.Dev].name
 	switch what {
-	case "lexbor", "native": return deps.run_build(args)
+	case "lexbor", "native", "tracy": return deps.run_build(args)
 	case "help", "-h", "--help", "/?": usage(); return 0
 	}
 	for spec, v in VARIANTS {
@@ -115,11 +117,12 @@ run :: proc(args: []string) -> int {
 usage :: proc() {
 	fmt.println("usage: wrentool build [variant]   (or build.bat [variant])\n")
 	for spec in VARIANTS { fmt.printfln("  %-9s %s", spec.name, spec.about) }
-	fmt.println("  lexbor | native [-Force] [-Profile quick|release]: one dependency")
+	fmt.println("  lexbor | native | tracy [-Force] [-Profile quick|release]: one dependency")
 	fmt.println("  help      this text\n")
 	fmt.println("environment:")
 	fmt.println("  WREN_RENDER=wgpu      the WebGPU render backend (-> wren_wgpu.exe, wren_prof_wgpu.exe...)")
 	fmt.println("  WREN_TEXT=dwrite      DirectWrite's shaper instead of the native text backend (-> wren_dwrite.exe...)")
+	fmt.println("  WREN_TRACY=1          the Tracy profiler's client, on demand (-> wren_prof_tracy.exe...; docs\\performance.md, Profilers)")
 	fmt.println("  WREN_TAG=_x           a suffix for the output name, to keep several builds side by side")
 	fmt.println("  WREN_ODIN_EXTRA=...   more Odin flags")
 	fmt.println("  WREN_TOOLKIT=path     another gui_toolkit checkout instead of ext\\gui_toolkit")
@@ -130,7 +133,7 @@ usage :: proc() {
 
 // The program of a variant (build/wren.exe, build/wren_prof_wgpu.exe...).
 program_of :: proc(o: Options) -> string {
-	return fmt.tprintf("build/%s%s%s%s%s", VARIANTS[o.variant].program, o.wgpu ? "_wgpu" : "", o.tag, o.dwrite ? "_dwrite" : "", tooling.EXE_SUFFIX)
+	return fmt.tprintf("build/%s%s%s%s%s%s", VARIANTS[o.variant].program, o.wgpu ? "_wgpu" : "", o.tracy ? "_tracy" : "", o.tag, o.dwrite ? "_dwrite" : "", tooling.EXE_SUFFIX)
 }
 
 // The whole build of one variant: each step does nothing when its output is up to date, but the Odin compile (Odin has no incremental build).
@@ -138,7 +141,7 @@ program_of :: proc(o: Options) -> string {
 // makes them a step of their own, which every step that links build\native waits for: no program links the library while it is
 // being replaced (a dev and a release build use different profiles of it).
 dependencies :: proc(o: Options) -> bool {
-	return deps.all({profile = VARIANTS[o.variant].native_release ? "release" : "quick", log = o.log})
+	return deps.all({profile = VARIANTS[o.variant].native_release ? "release" : "quick", tracy = o.tracy, log = o.log})
 }
 
 browser :: proc(o: Options) -> bool {
@@ -218,6 +221,7 @@ common_flags :: proc(o: Options) -> []string {
 	if o.embedded_license != "" { append(&f, fmt.tprintf("-define:WREN_EMBEDDED_LICENSE=%s", o.embedded_license)) }
 	append(&f, "-vet", "-subsystem:windows")
 	if o.wgpu { append(&f, "-define:TOOLKIT_RENDER=wgpu", "-define:WGPU_SHARED=true") }
+	if o.tracy { append(&f, "-define:WREN_TRACY=true") }
 	append(&f, ..strings.fields(o.odin_extra, context.temp_allocator))
 	// text: the toolkit's native text backend (Fontations, HarfRust and ICU4X, built into Wren's Rust library by deps: a program links one Rust static library at most) shapes, breaks and reads the
 	// fonts (the system's fonts and their fallback come from DirectWrite in both)

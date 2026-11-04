@@ -6,6 +6,7 @@
 //   wrentool portability [-Target t] [-Only a,b] [-Csv f] [-Expect file]
 //   wrentool engine test262 [-Filter d] [-Stride n] [-Jobs n] [-NoBuild] | rx-diff [-Seed n] [-Fuzz n] [-NoC]
 //   wrentool desktop <program> [arguments]                  a command on a Windows desktop of its own
+//   wrentool trace start | stop [-Out file.etl] | cancel   a WPR recording with Wren's profile (trace.odin)
 package gen
 
 import "core:encoding/json"

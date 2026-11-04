@@ -1505,6 +1505,8 @@ main :: proc() {
 	context = base.process_context()   // the tracker of the check build (memcheck.odin)
 	host.main_stack_ensure()   // (Linux: main_stack_linux.odin)
 	host.thread_raise_interface()   // above the browser's background threads (host.Thread_Priority)
+	host.thread_name_self("wren-window")   // (what profilers and debuggers show)
+	trace_start()   // prof.odin: Tracy, ETW, when built in
 	prof_mark(.Main)
 	// (UTF-8 from the UTF-16 command line: os.args is the C runtime's ANSI)
 	app := app_start(desktop.command_line_args(base.permanent_allocator()))

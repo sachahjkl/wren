@@ -1,0 +1,3 @@
+type: Added
+
+**External profilers** (`docs/performance.md`, Profilers): a build with `WREN_TRACY=1` links Tracy's client (0.14.1, pinned; `wrentool fetch tracy` fetches its viewer), on demand, which shows the phases of each frame, the frames and each call of the JavaScript engine into the browser; the profile build is an ETW provider (`Wren.Browser`, TraceLogging) whose phases WPA shows as regions (`tools/wren.wprp`, `tools/wren_regions.xml`, `wrentool trace start|stop`); `wasm.wasmtime.profiler=vtune` names the compiled Wasm functions in VTune, the JavaScript engine's among them; threads are named for profilers and debuggers (`wren-window`, `wren-style`, `wren-layout`, the Wasm engine's). The default build links none of it.

@@ -24,6 +24,9 @@ native_thread_start :: proc(t: ^Thread, stack_bytes: int) -> bool {
 	return true
 }
 
+// The calling thread's name, as debuggers and profilers show it (a thread this package started has its own already).
+thread_name_self :: proc(name: string) { win.SetThreadDescription(win.GetCurrentThread(), win.utf8_to_wstring(name, context.temp_allocator)) }
+
 // The calling thread is the interface's: above every background thread of the process.
 thread_raise_interface :: proc() { win.SetThreadPriority(win.GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL) }
 

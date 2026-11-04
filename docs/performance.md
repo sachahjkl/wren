@@ -33,6 +33,86 @@ profile build (`build.bat profile`, `-define:PROFILE=true`) with the native libr
 Numbers are medians of 5 runs unless a range is given; the machine runs other programs, so CPU per second moves by a
 factor of 2 from run to run, frame times much less.
 
+## Profilers
+
+Beside the built-in profiler, Wren speaks to four external ones. What they see of Wren comes from one place, package
+`trace` (`src/trace`): the phases of a frame (`Phase`, `src/browser/prof.odin`) are its zones, named as above, on the
+window's thread; a frame mark at each present; the start-up's marks (the profile build). Without its switches every call
+of it is empty and nothing is linked: `build\wren.exe` imports none of ETW's writing functions and holds no Tracy client
+(test_all checks it). The zones of a thread pair on every path: an end closes what an early return left open, and each
+frame begins by closing whatever the last one left.
+
+Threads have names (`SetThreadDescription`, which Tracy, WPA, VTune and the debuggers read): `wren-window`,
+`wren-page-layout`, `wren-style` and `wren-layout` (the style and layout pools; the compositor's work runs on the
+latter), `wren-js-compile`, `wren-js-worker`, `wren-wasm-compile`, `wren-wasm-epoch`, `wren-wasm-cache`,
+`wren-image-decode`, `wren-blocking-<n>`, the media's.
+
+Symbols: every variant but the release has its PDB beside it (`build\wren_prof.pdb`...). For WPA and VTune, the
+system's from Microsoft's server:
+
+```
+set _NT_SYMBOL_PATH=S:\wren\build;srv*C:\symbols*https://msdl.microsoft.com/download/symbols
+```
+
+### Tracy
+
+[Tracy](https://github.com/wolfpld/tracy) 0.14.1, pinned by SHA-256 (`src/tools/wrentool/deps/tracy.odin`): its client
+built from the source release into `build\tracy\tracy.lib` by the builds that ask for it, its viewer from the release's
+Windows build. The client records only while a viewer is connected (`TRACY_ON_DEMAND`) and answers on this machine only
+(`TRACY_ONLY_LOCALHOST`, port 8086).
+
+```
+set WREN_TRACY=1
+build.bat profile                         (-> build\wren_prof_tracy.exe; any variant: build\wren_tracy.exe...)
+build\wrentool fetch tracy                (-> build\tracy\tracy-profiler.exe, tracy-capture.exe)
+build\wren_prof_tracy.exe examples\jsbench\nodes10k.html
+build\tracy\tracy-profiler.exe            the client is listed: Connect
+build\tracy\tracy-capture.exe -o build\perf\nodes10k.tracy -s 10      (no window: 10 s into a file the viewer opens)
+```
+
+It shows the phases, the frames, a plot of the layout items per frame, and in a Tracy build every call of a module into
+the browser (each import of the JavaScript engine: a DOM call, a style or layout read) as a zone `module.name` on the
+thread that made it (`src/wasm/host_trace.odin`). Run elevated, Tracy also samples the CPU and shows context switches
+(its own ETW session). Not there: GPU zones (the toolkit keeps its Direct3D 11 device and context to itself, its
+timestamp queries are the renderer's: `gpu_steps.odin` reads their results), lock annotations (Odin's `sync.Mutex`
+has no hook).
+
+### VTune (and perf)
+
+Wasmtime tells a profiler about the code it compiles when `wasm.wasmtime.profiler` says which (a restart preference;
+`none` by default): `vtune` (Windows and Linux on x86-64: the prebuilt library has Intel's ITT API), `perfmap` and
+`jitdump` (Linux's perf). The code read from the compiled-code cache is told too. The JavaScript engine's image keeps
+its functions' names (its `name` section: `wasm-ld --strip-debug` drops only DWARF, which `buildjs -names` keeps):
+
+```
+vtune -collect hotspots -result-dir build\vtune\nodes10k -- build\wren_prof.exe --pref wasm.wasmtime.profiler=vtune examples\jsbench\nodes10k.html
+vtune -report hotspots -result-dir build\vtune\nodes10k -format csv
+```
+
+(`jspage --pref wasm.wasmtime.profiler=vtune` is the engine alone.)
+
+### WPR and WPA
+
+The profile build (`-define:WREN_ETW=true` in any other) is an ETW provider, `Wren.Browser`, a TraceLogging one (each
+event describes itself: no manifest to install), GUID `10e6f595-25dd-53c9-a97c-bdec823560e6` (TraceLogging's hash of
+the name). Each zone is a Start and a Stop event named after its phase; `Presented` at each present; `Mark` with the
+start-up's steps. While no session listens an event costs the test of a flag. `tools\wren.wprp` records CPU samples
+with stacks, context switches with the thread that readied each, the GPU's scheduler (DxgKrnl) and the provider;
+`tools\wren_regions.xml` makes the phases WPA's regions of interest.
+
+```
+build\wrentool trace start                (an elevated prompt: WPR asks for one, wrentool does not)
+build\wren_prof.exe examples\jsbench\nodes10k.html
+build\wrentool trace stop                 (-> build\trace\wren.etl)
+wpa build\trace\wren.etl                  Trace > Load Symbols; Trace > Trace Properties > Regions of Interest: tools\wren_regions.xml
+```
+
+### PIX
+
+PIX's GPU captures are of Direct3D 12 programs: Wren's Direct3D 11 renderer is not one, the wgpu backend
+(`WREN_RENDER=wgpu`, Direct3D 12 on Windows) is. Its timing captures read their own markers (WinPixEventRuntime), not
+another provider: nothing of Wren's is added for it; WPA shows the same phases.
+
 ## The map
 
 Times are per load or per frame on the window's thread unless said; "items/s" is what the stage gets through.

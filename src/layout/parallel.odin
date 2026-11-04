@@ -109,7 +109,7 @@ par_acquire :: proc(setting: int) -> ^host.Thread_Pool {
 		// the threads outlive the caller: they get the process heap, not the caller's allocators (a test's tracker)
 		context = base.process_context()
 		host.thread_pool_destroy(par_pool)
-		par_pool = host.thread_pool_make(n)
+		par_pool = host.thread_pool_make(n, name = "wren-layout")
 		par_pool_size = n
 	}
 	if host.thread_pool_size(par_pool) < 2 { sync.mutex_unlock(&par_mu); return nil }

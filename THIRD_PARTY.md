@@ -13,6 +13,7 @@ components below; their license texts are in the executable (bout:licenses) and
 | [Unicode Character Database](https://www.unicode.org/Public/17.0.0/ucd/) (`UnicodeData.txt`, `DerivedGeneralCategory.txt`, `DerivedJoiningType.txt`, `DerivedBidiClass.txt`) | 17.0.0 | Unicode License v3 | the code points of the IDNA rules Lexbor leaves out (generated `src/shim/wb_idna_tables.h`: `wrentool gen idna`) |
 | [Unicode emoji data](https://www.unicode.org/Public/18.0.0/ucd/emoji/emoji-data.txt) (`emoji-data.txt`) | 18.0.0 | Unicode License v3 | which characters are emoji (generated `font/emoji_data.odin` of gui_toolkit) |
 | [Wasmtime](https://github.com/bytecodealliance/wasmtime) C API | 49.0.3 | Apache-2.0 WITH LLVM-exception | `build\wasmtime` (`wrentool fetch wasmtime`) |
+| [Tracy](https://github.com/wolfpld/tracy) client | 0.14.1 | BSD-3-Clause | only the builds made with `WREN_TRACY=1` (`build\tracy`, `wrentool build tracy`), never shipped |
 | [QuickJS-ng](https://github.com/quickjs-ng/quickjs) | 0.17.0, patched (`native/js/patches`) | MIT | the JavaScript engine, compiled to WebAssembly (`src\tools\buildjs`) and embedded |
 | [emmalloc](https://github.com/emscripten-core/emscripten), through Odin's `base:runtime` (`wasm_allocator`) | | MIT / NCSA (Emscripten) | the heap of the JavaScript module |
 | [webref](https://github.com/w3c/webref) `@webref/idl` | 3.85.2 (`native/js/webref/VERSION`) | MIT | the Web IDL the JavaScript bindings are generated from (`native/js/gen`) |
