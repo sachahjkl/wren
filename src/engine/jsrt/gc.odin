@@ -455,6 +455,7 @@ mark_context :: proc(rt: ^Runtime, ctx: ^Context) {
 	mark_cell(rt, ctx.throw_type_error)
 	mark_cell(rt, ctx.array_proto_values)
 	mark_cell(rt, ctx.array_proto_push)
+	mark_cell(rt, ctx.jit_rethrow)
 	mark_cell(rt, ctx.promise_then)
 	mark_cell(rt, ctx.promise_resolve_fn)
 	mark_cell(rt, ctx.regexp_exec)
