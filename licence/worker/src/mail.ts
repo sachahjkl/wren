@@ -23,18 +23,21 @@ const RETRY_CODES = new Set(["E_RATE_LIMIT_EXCEEDED", "E_DAILY_LIMIT_EXCEEDED", 
 
 export function mailText(s: Stored): string {
 	const key = s.licence.match(/.{1,76}/g)!.join("\n");
-	return `Hello ${s.name},
+	// Paddle may know the buyer by their address only (no name): then say it once, not "name <name>"
+	const bare = s.name.trim().toLowerCase() === s.email.trim().toLowerCase();
+	const hello = bare ? "Hello," : `Hello ${s.name},`;
+	const licensedTo = bare ? s.email : `${s.name} <${s.email}>`;
+	// one line per paragraph: the mail client wraps them to its own width (hard line breaks made odd cuts in a narrow one)
+	return `${hello}
 
-Thank you for supporting Wren! Your ${editionTitle(s.edition)} licence is below, and attached as a file.
+Thank you for supporting Wren! Your Wren User Licence is below, and attached as a file.
 
-Wren is a beta under development and every version is free; a licence only supports its development. It unlocks
-nothing, and nothing in Wren will ever ask you for it. It makes the "About Wren" page say who the supporter is.
+Wren is a beta under development and every version is free; a licence only supports its development. It unlocks nothing, and nothing in Wren will ever ask you for it. It makes the "About Wren" page say who the supporter is.
 
 To register it:
 
   1. Open Wren and go to about:wren (menu, "About Wren").
-  2. Paste the whole key below into the box and press "Register",
-     or drop the attached ${licenceFileName(s.order)} file onto the Wren window.
+  2. Paste the whole key below into the box and press "Register", or drop the attached ${licenceFileName(s.order)} file onto the Wren window.
 
 Your key (the line breaks do not matter):
 
@@ -42,15 +45,13 @@ ${key}
 
 Order: ${s.order}
 Date: ${s.date}
-Licensed to: ${s.name} <${s.email}>
+Licensed to: ${licensedTo}
 
-Keep this message: the key works for every version of Wren, on every computer you use. It is checked on your computer,
-without any network access.
+Keep this message: the key works for every version of Wren, on every computer you use. It is checked on your computer, without any network access.
 
 Wren is developed by Froment Software.
 `;
 }
-
 export function mailConfigured(env: Env): boolean {
 	return Boolean(env.EMAIL && env.MAIL_FROM);
 }
