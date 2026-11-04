@@ -20,7 +20,6 @@ probe_codecs :: proc() {
 		codecs.heif = true
 		com_release(unk)
 	}
-	codecs.probed = true
 }
 
 Codec_Context :: struct {

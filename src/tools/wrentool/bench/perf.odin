@@ -46,7 +46,8 @@ HOVER_X_RATE, HOVER_Y_RATE :: 3.0, 1.7
 MEASURE :: 8 * time.Second
 // Navigate: the page loaded from about:blank (the process started already), timed from the navigation by the page's own
 // Navigation and Paint Timing; the CPU and frames are those of the load until the page is quiet.
-Action :: enum u8 { Load, Navigate, Idle, Hover, Scroll, Wheel, Touchpad, Keys, Typing, Resize, Fullscreen }
+// Renavigate: the page loaded again and again from itself for the measured time: what a sampler needs of a load (one load is 30 samples of 1 ms).
+Action :: enum u8 { Load, Navigate, Renavigate, Idle, Hover, Scroll, Wheel, Touchpad, Keys, Typing, Resize, Fullscreen }
 
 Scenario :: struct {
 	name:   string,
@@ -71,7 +72,7 @@ SCENARIOS := []Scenario{
 	{"config_scroll", "about:config", .Scroll, nil}, {"config_hover", "about:config", .Hover, nil},
 	{"p1k_load", "gen:p1k", .Load, nil}, {"p1k_hover", "gen:p1k", .Hover, nil}, {"p1k_scroll", "gen:p1k", .Scroll, nil},
 	{"p10k_load", "gen:p10k", .Load, nil}, {"p10k_idle", "gen:p10k", .Idle, nil}, {"p10k_hover", "gen:p10k", .Hover, nil}, {"p10k_scroll", "gen:p10k", .Scroll, nil}, {"p10k_resize", "gen:p10k", .Resize, nil},
-	{"p10k_nav", "gen:p10k", .Navigate, nil},
+	{"p10k_nav", "gen:p10k", .Navigate, nil}, {"p10k_renav", "gen:p10k", .Renavigate, nil}, {"legacy_renav", "site:legacy-html.html", .Renavigate, nil},
 	// the site's pages loaded from about:blank
 	{"nav_index", "site:index.html", .Navigate, nil}, {"nav_about", "site:about.html", .Navigate, nil}, {"nav_layout", "site:layout.html", .Navigate, nil},
 	{"nav_style", "site:style.html", .Navigate, nil}, {"nav_text", "site:text.html", .Navigate, nil}, {"nav_modern_css", "site:modern-css.html", .Navigate, nil},
@@ -230,7 +231,7 @@ perf_scenario :: proc(o: ^Options, r: ^Report, exe: string, s: Scenario, measure
 		if !ok { return }
 		ok = false
 	} else {
-		perf_action(&w, s, measure)
+		perf_action(&w, s, url, measure)
 	}
 	took := time.duration_seconds(time.tick_since(before))
 	st, e := api.stats(ses)
@@ -264,7 +265,7 @@ perf_navigate :: proc(w: ^Wren, name, url: string) -> (load_ms: f64, ok: bool) {
 
 // `measure` of input of this kind, or of nothing. Each call waits for the browser's answer: the rate of the input is the rate it takes it at.
 @(private)
-perf_action :: proc(w: ^Wren, s: Scenario, measure: time.Duration) {
+perf_action :: proc(w: ^Wren, s: Scenario, url: string, measure: time.Duration) {
 	ses := &w.session
 	action := s.action
 	bounds, _ := api.window_bounds(ses)
@@ -282,6 +283,8 @@ perf_action :: proc(w: ^Wren, s: Scenario, measure: time.Duration) {
 	left :: proc(begin: time.Tick, measure: time.Duration) -> bool { return time.tick_since(begin) < measure }
 	switch action {
 	case .Load, .Navigate:
+	case .Renavigate:
+		for left(begin, measure) { if api.navigate(ses, url) != .None { return }; settle(w) }
 	case .Idle: hold(w, measure)
 	case .Hover:
 		for left(begin, measure) {

@@ -64,6 +64,9 @@ Entry :: struct {
 	gate:    u32,           // the @media block around the rule that is kept in the index on or off (media_gate.odin); 0: none
 }
 
+// Most keys of the index hold one or two entries.
+KEY_ENTRIES_RESERVE :: 2
+
 Index :: struct {
 	by_id, by_class, by_tag: map[string][dynamic]Entry,
 	by_attr:                 map[string][dynamic]Entry,   // [name=value]: key is name, NUL, value
@@ -574,21 +577,6 @@ contains_var :: proc(vs: []css.Value) -> bool {
 }
 
 @(private)
-uses_viewport_units :: proc(vs: []css.Value) -> bool {
-	for v in vs {
-		switch v.kind {
-		case .Token:
-			if v.tok.kind == .Dimension {
-				if u, ok := css.relative_unit(v.tok.text); ok && (u == .Vw || u == .Vh || u == .Vi || u == .Vb || u == .Vmin || u == .Vmax) { return true }
-			}
-		case .Function, .Block:
-			if uses_viewport_units(v.children) { return true }
-		}
-	}
-	return false
-}
-
-@(private)
 css_wide_keyword :: proc(vs: []css.Value) -> string {
 	id := css.ident_of(vs)
 	switch id {
@@ -613,19 +601,22 @@ stats_merge :: proc(e: ^Engine, s: Compile_Stats) {
 	e.ignored_properties += s.ignored
 }
 
+// Viewport and container units in `vs`.
 @(private)
-uses_container_units :: proc(vs: []css.Value) -> bool {
+note_relative_units :: proc(vs: []css.Value, st: ^Compile_Stats) {
 	for v in vs {
 		switch v.kind {
 		case .Token:
-			if v.tok.kind == .Dimension {
-				if u, ok := css.relative_unit(v.tok.text); ok && (u == .Cqw || u == .Cqh || u == .Cqmin || u == .Cqmax) { return true }
+			if v.tok.kind != .Dimension { continue }
+			u, ok := css.relative_unit(v.tok.text)
+			if !ok { continue }
+			#partial switch u {
+			case .Vw, .Vh, .Vi, .Vb, .Vmin, .Vmax: st.viewport_units = true
+			case .Cqw, .Cqh, .Cqmin, .Cqmax: st.container_units = true
 			}
-		case .Function, .Block:
-			if uses_container_units(v.children) { return true }
+		case .Function, .Block: note_relative_units(v.children, st)
 		}
 	}
-	return false
 }
 
 // The declarations the engine takes, in `a`. Validating them needs a style to apply them to and makes values that are
@@ -648,8 +639,7 @@ compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Al
 		return apply_prop(cx, p, vs)
 	}
 	for d in decls {
-		if !st.viewport_units && !e.viewport_units && uses_viewport_units(d.value) { st.viewport_units = true }
-		if !st.container_units && !e.container_dependent && uses_container_units(d.value) { st.container_units = true }
+		if !(st.viewport_units || e.viewport_units) || !(st.container_units || e.container_dependent) { note_relative_units(d.value, st) }
 		if strings.has_prefix(d.name, "--") {
 			append(&cus, Custom_Decl{name = d.name, value = d.value, important = d.important})
 			continue
@@ -727,7 +717,7 @@ bucket_add :: proc(e: ^Engine, ent_in: Entry) {
 	add :: proc(m: ^map[string][dynamic]Entry, key: string, ent: Entry, own_key := false) {
 		list, ok := m[key]
 		if !ok && own_key { m[strings.clone(key)] = {} }   // the key is a temporary: the map keeps its own copy
-		if !ok { list = make([dynamic]Entry) }
+		if !ok { list = make([dynamic]Entry, 0, KEY_ENTRIES_RESERVE) }
 		append(&list, ent)
 		m[key] = list
 	}
@@ -884,6 +874,30 @@ flatten_sheet :: proc(e: ^Engine, s: ^Sheet, lc_in: LayerCtx) {
 	}
 }
 
+// The author sheets' places in shadow-including tree order: the sheets of a shadow tree in its own order. The walk ends at the
+// last owner (usually in the head). A sheet whose owner is not in the document comes first.
+@(private)
+order_sheets :: proc(e: ^Engine, doc: ^dom.Document) {
+	OWNER :: -1
+	place := make([]i32, doc.nodes.used, context.temp_allocator)   // by handle index: 0 not asked, OWNER to find, else the place + 1
+	left := 0
+	for s in e.sheets {
+		if s.origin != .Author { continue }
+		s.order = 0
+		if dom.get(doc, s.owner) == nil { continue }
+		if i := base.handle_index(s.owner); place[i] == 0 { place[i] = OWNER; left += 1 }
+	}
+	n: i32 = 1
+	for h := doc.root; h != base.NIL_HANDLE && left > 0; h = dom.next_shadow_including(doc, h, doc.root) {
+		if i := base.handle_index(h); place[i] == OWNER { place[i] = n; left -= 1 }
+		n += 1
+	}
+	for s in e.sheets {
+		if s.origin != .Author || dom.get(doc, s.owner) == nil { continue }
+		s.order = max(int(place[base.handle_index(s.owner)]) - 1, 0)
+	}
+}
+
 // What the rebuilds cost, for the profile report (prof.odin): the thread's (an App's engines rebuild on the thread of its loop).
 Rebuild_Total :: struct { n: int, ns: i64, sheets: int }
 @(thread_local)
@@ -908,13 +922,7 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 	gates_reset(e)
 	clear(&e.media_seen)
 
-	if doc != nil {
-		// shadow-including tree order: the sheets of a shadow tree in its own order
-		ordinal := make(map[base.Handle]int, context.temp_allocator)
-		n := 0
-		for h := doc.root; h != base.NIL_HANDLE; h = dom.next_shadow_including(doc, h, doc.root) { ordinal[h] = n; n += 1 }
-		for s in e.sheets { if s.origin == .Author { s.order = ordinal[s.owner] or_else 0 } }
-	}
+	if doc != nil { order_sheets(e, doc) }
 	slice.stable_sort_by(e.sheets[:], proc(a, b: ^Sheet) -> bool {
 		if a.origin != b.origin { return int(a.origin) < int(b.origin) }
 		return a.order < b.order

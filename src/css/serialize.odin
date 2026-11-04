@@ -243,13 +243,14 @@ write_pseudo_argument :: proc(sb: ^strings.Builder, name: string, args: []Value,
 // CSSOM "serialize an <an+b> value".
 @(private = "file")
 write_nth :: proc(sb: ^strings.Builder, a, b: int) {
-	if a == 0 { fmt.sbprintf(sb, "%d", b); return }
+	if a == 0 { strings.write_int(sb, b); return }
 	switch a {
 	case 1: strings.write_byte(sb, 'n')
 	case -1: strings.write_string(sb, "-n")
-	case: fmt.sbprintf(sb, "%dn", a)
+	case: strings.write_int(sb, a); strings.write_byte(sb, 'n')
 	}
-	if b > 0 { fmt.sbprintf(sb, "+%d", b) } else if b < 0 { fmt.sbprintf(sb, "%d", b) }
+	if b > 0 { strings.write_byte(sb, '+') }
+	if b != 0 { strings.write_int(sb, b) }
 }
 
 // [ns|name op "value" flag]
