@@ -15,6 +15,15 @@ import "wb:host"
 // The steps of a chain of revert-layer and revert (each one leaves a layer or an origin behind).
 REVERT_CHAIN_MAX_STEPS :: 64
 
+// The environment variables env() knows (CSS Environment Variables): a window with no notch, no title bar overlay and no
+// virtual keyboard, as Chromium's on a desktop: every one is ENV_INSET_NONE and takes no indices.
+ENV_INSETS :: [?]string{
+	"safe-area-inset-top", "safe-area-inset-right", "safe-area-inset-bottom", "safe-area-inset-left",
+	"safe-area-max-inset-top", "safe-area-max-inset-right", "safe-area-max-inset-bottom", "safe-area-max-inset-left",
+	"keyboard-inset-top", "keyboard-inset-right", "keyboard-inset-bottom", "keyboard-inset-left", "keyboard-inset-width", "keyboard-inset-height",
+}
+ENV_INSET_NONE :: "0px"
+
 // The cascade (CSS Cascading Level 5, without transitions and animations): origins, !important, layers, specificity, source
 // order, inheritance, var() substitution, and the final computed values.
 
@@ -358,6 +367,14 @@ var_lookup :: proc(env: ^Var_Env, name: string, depth: int) -> (string, bool) {
 	return custom_inherited(env, name)
 }
 
+// The value of the environment variable `name` given `indices` integers; false: none (env() takes its fallback).
+@(private)
+env_lookup :: proc(name: string, indices: int) -> (string, bool) {
+	if indices > 0 { return "", false }
+	for n in ENV_INSETS { if n == name { return ENV_INSET_NONE, true } }
+	return "", false
+}
+
 @(private)
 substitute :: proc(env: ^Var_Env, vs: []css.Value, depth: int) -> ([]css.Value, bool) {
 	s := &env.engine.settings
@@ -374,7 +391,8 @@ substitute :: proc(env: ^Var_Env, vs: []css.Value, depth: int) -> ([]css.Value, 
 			nv.children = kids
 			append(&out, nv)
 		case .Function:
-			if !base.ascii_equal_fold(v.tok.text, "var") {
+			is_var := base.ascii_equal_fold(v.tok.text, "var")
+			if !is_var && !base.ascii_equal_fold(v.tok.text, "env") {
 				nv := v
 				kids, ok := substitute(env, v.children, depth)
 				if !ok { return nil, false }
@@ -382,14 +400,21 @@ substitute :: proc(env: ^Var_Env, vs: []css.Value, depth: int) -> ([]css.Value, 
 				append(&out, nv)
 				continue
 			}
-			// var(--name [, fallback])
+			// var(--name [, fallback]), env(name integer* [, fallback])
 			args := v.children
 			i := 0
 			for i < len(args) && css.is_ws_value(args[i]) { i += 1 }
-			if i >= len(args) || args[i].kind != .Token || args[i].tok.kind != .Ident || !strings.has_prefix(args[i].tok.text, "--") { return nil, false }
+			if i >= len(args) || args[i].kind != .Token || args[i].tok.kind != .Ident || is_var && !strings.has_prefix(args[i].tok.text, "--") { return nil, false }
 			name := args[i].tok.text
 			i += 1
-			for i < len(args) && css.is_ws_value(args[i]) { i += 1 }
+			indices := 0
+			for i < len(args) {
+				if args[i].kind == .Token && args[i].tok.kind == .Number && !is_var {
+					if !args[i].tok.is_int { return nil, false }
+					indices += 1
+				} else if !css.is_ws_value(args[i]) { break }
+				i += 1
+			}
 			has_fallback := false
 			fallback: []css.Value
 			if i < len(args) {
@@ -397,7 +422,9 @@ substitute :: proc(env: ^Var_Env, vs: []css.Value, depth: int) -> ([]css.Value, 
 				has_fallback = true
 				fallback = args[i + 1:]
 			}
-			if text, found := var_lookup(env, name, depth); found {
+			text, found := "", false
+			if is_var { text, found = var_lookup(env, name, depth) } else { text, found = env_lookup(name, indices) }
+			if found {
 				env.budget -= len(text)
 				if env.budget < 0 { return nil, false }
 				parsed := css.parse_component_values(text, parse_options(s), sa)
