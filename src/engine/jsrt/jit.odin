@@ -94,7 +94,7 @@ jit_cfg: Jit_Cfg
 
 // The engine's procedures compiled code calls: exported by the glue (native/js/odin/jit.odin) under these names,
 // imported by a module whose loop calls (function index = the helper's), each (i32...) -> i32.
-Jit_Helper :: enum u8 {call, array, finish, new, reserve, add, streq, get}
+Jit_Helper :: enum u8 {call, array, finish, new, reserve, add, streq, get, set}
 
 Jit_Helper_Def :: struct {
 	name:   string,
@@ -109,7 +109,8 @@ JIT_HELPERS :: [Jit_Helper]Jit_Helper_Def {
 	.reserve = {"wj_jit_reserve", 3},
 	.add     = {"wj_jit_add", 3},
 	.streq   = {"wj_jit_streq", 3},
-	.get     = {"wj_jit_get", 6},
+	.get     = {"wj_jit_get", 7},
+	.set     = {"wj_jit_set", 6},
 }
 
 // The engine's table, which a module whose code calls compiled code directly imports ("e" "table": the host gives it
@@ -308,25 +309,55 @@ jit_add :: proc(f: ^Frame, sp: int, slot: int) -> bool {
 	return true
 }
 
-// Jit_Helper.get: a read of `a` that found a native getter (a DOM attribute's): the getter called on o (the entry `at`),
-// the value at `dest`. True: it threw; the object at `at` is then the context's thrower, whose `a` is an accessor that
-// throws the exception pending: the interpreter makes the read again, and unwinds from it as if it had called the getter.
-jit_getter :: proc(f: ^Frame, getter: ^Object, o: ^Object, dest: int, at: int, a: Atom) -> bool {
-	ctx := f.ctx
-	rt := ctx.rt
-	// (as the hot loop calls it: hot_getter)
-	v := rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) ? stack_overflow(ctx) : call_native(ctx, getter, &getter.data.(Native_Data), mk_obj(o), nil)
+// Jit_Helper.get: a read of `a` that found a native getter (a DOM attribute's) or a script's: the getter called on o
+// (the entry `at`), the value at `dest`. True: it threw; the object at `at` is then the context's thrower, whose `a` is an
+// accessor that throws the exception pending: the interpreter makes the read again, and unwinds from it as if it had
+// called the getter. pc: the instruction after the read (the frame's, as the hot loop leaves it during the call).
+jit_getter :: proc(f: ^Frame, getter: ^Object, o: ^Object, dest: int, at: int, a: Atom, pc: int) -> bool {
+	f.pc = pc
+	v := jit_accessor_call(f.ctx, getter, o, nil)
 	if is_exception(v) {
-		if ctx.jit_rethrow == nil {ctx.jit_rethrow = new_native_function(ctx, jit_rethrow, "", 0, 0, .constructor)}
-		if ctx.jit_thrower == nil {ctx.jit_thrower = object_new_proto(ctx, nil)}
-		th := ctx.jit_thrower
-		if shape_lookup(th.shape, a) < 0 {define_own_property(ctx, th, a, accessor_desc(mk_obj(ctx.jit_rethrow), UNDEFINED, {.configurable}), false)}
-		f.stack[at] = mk_obj(th)
+		jit_thrower_at(f, at, a)
 		return true
 	}
 	f.stack[dest] = v
-	if len(rt.temp_roots) > f.root_base {resize(&rt.temp_roots, f.root_base)}
+	if len(f.ctx.rt.temp_roots) > f.root_base {resize(&f.ctx.rt.temp_roots, f.root_base)}
 	return false
+}
+
+// Jit_Helper.set: a write of `a` that found a setter, a native or a script's: called on o (the entry `at`) with the
+// value above it. True: it threw; the object at `at` is the thrower, the interpreter makes the write again and unwinds
+// from it. pc: the instruction after the write.
+jit_setter :: proc(f: ^Frame, setter: ^Object, o: ^Object, at: int, a: Atom, pc: int) -> bool {
+	f.pc = pc
+	if is_exception(jit_accessor_call(f.ctx, setter, o, f.stack[at + 1:at + 2])) {
+		jit_thrower_at(f, at, a)
+		return true
+	}
+	if len(f.ctx.rt.temp_roots) > f.root_base {resize(&f.ctx.rt.temp_roots, f.root_base)}
+	return false
+}
+
+// A getter or a setter called on o: a native as the hot loop calls it (hot_getter), a script's as compiled code calls
+// one (jit_call_bytecode).
+@(private = "file")
+jit_accessor_call :: #force_inline proc(ctx: ^Context, fn: ^Object, o: ^Object, args: []Value) -> Value {
+	rt := ctx.rt
+	if fn.class == .bytecode_function {return jit_call_bytecode(ctx, fn, mk_obj(o), args)}
+	if rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {return stack_overflow(ctx)}
+	return call_native(ctx, fn, &fn.data.(Native_Data), mk_obj(o), args)
+}
+
+// The context's thrower in the place of the object at `at`: its `a` is an accessor whose getter and setter throw the
+// exception pending.
+@(private = "file")
+jit_thrower_at :: proc(f: ^Frame, at: int, a: Atom) {
+	ctx := f.ctx
+	if ctx.jit_rethrow == nil {ctx.jit_rethrow = new_native_function(ctx, jit_rethrow, "", 0, 0, .constructor)}
+	if ctx.jit_thrower == nil {ctx.jit_thrower = object_new_proto(ctx, nil)}
+	th := ctx.jit_thrower
+	if shape_lookup(th.shape, a) < 0 {define_own_property(ctx, th, a, accessor_desc(mk_obj(ctx.jit_rethrow), mk_obj(ctx.jit_rethrow), {.configurable}), false)}
+	f.stack[at] = mk_obj(th)
 }
 
 // Jit_Helper.streq: two strings equal by value.
@@ -1092,6 +1123,8 @@ PROP_ATOM :: u32(offset_of(Shape_Prop, atom))
 PROP_FLAGS :: u32(offset_of(Shape_Prop, flags))
 PROP_KIND :: u32(offset_of(Shape_Prop, kind))
 VARREF_PVALUE :: u32(offset_of(Var_Ref, pvalue))
+GETSET_GETTER :: u32(offset_of(Prop_Slot, getset) + offset_of(Getset, getter))
+GETSET_SETTER :: u32(offset_of(Prop_Slot, getset) + offset_of(Getset, setter))
 STR_LEN :: u32(offset_of(JS_String, len))
 STR_WIDE :: u32(offset_of(JS_String, is_wide))
 STR_ROPE :: u32(offset_of(JS_String, is_rope))
@@ -2127,9 +2160,10 @@ jit_get_field :: proc(c: ^Jc, op: Opcode, a: Atom, pc: int) -> bool {
 }
 
 // The getter of the accessor whose Getset is at I_T0, called on the object in local `obj` (the top entry) by the helper,
-// when it is a native function called as a function (hot_native_getter), else the interpreter reads the property: the
-// result a V in the place of the object (above it for get_field2). An exception leaves through a throw exit, the object
-// replaced by the thrower (jit_getter); the held arrays are taken again after it.
+// when it is a native function called as a function (hot_native_getter) or a function of the script's (compiled whole
+// or interpreted, as compiled code calls one), else the interpreter reads the property: the result a V in the place of
+// the object (above it for get_field2). An exception leaves through a throw exit, the object replaced by the thrower
+// (jit_getter); the held arrays are taken again after it.
 // A global's (get_var: `global`, the global object, its `this`): the result pushed. There is no object on the stack to
 // put the thrower in, so the instruction after the read must be a read of a named property of its result (get_field,
 // get_field2, get_length: window.document.createElement): the thrower is put in the result's place, whose property
@@ -2154,26 +2188,7 @@ j_call_getter :: proc(c: ^Jc, op: Opcode, a: Atom, obj: u32, global: ^Object, pc
 		}
 		dest, at, xpc = n, n, next
 	}
-	j_lget(c, I_T0)
-	j_mem(c, W_I32_LOAD, 2, 0)
-	j_lset(c, I_T2)
-	j_lget(c, I_T2)
-	j_op(c, W_I32_EQZ)
-	j_op(c, W_IF)
-	j_op(c, W_I32)
-	j_i32(c, 1)
-	j_op(c, W_ELSE)
-	j_lget(c, I_T2)
-	j_mem(c, W_I32_LOAD8_U, 0, OBJ_CLASS)
-	j_i32(c, i32(Class_ID.c_function))
-	j_op(c, W_I32_NE)
-	j_lget(c, I_T2)
-	j_mem(c, W_I32_LOAD8_U, 0, OBJ_BITS)
-	j_i32(c, i32(c.ctor_bits))
-	j_op(c, W_I32_AND)
-	j_op(c, W_I32_OR)
-	j_op(c, W_END)
-	j_deopt_if(c, pc)
+	j_accessor_fn(c, GETSET_GETTER, pc)
 	j_flush_objs(c)
 	j_materialize(c, true)
 	j_lget(c, P_FRAME)
@@ -2182,6 +2197,7 @@ j_call_getter :: proc(c: ^Jc, op: Opcode, a: Atom, obj: u32, global: ^Object, pc
 	j_i32(c, i32(dest))
 	j_i32(c, i32(at))
 	j_i32(c, i32(ta))
+	j_i32(c, i32(pc + int(opcode_info[op].size)))
 	j_helper(c, .get)
 	j_op(c, W_IF)
 	j_op(c, W_VOID)
@@ -2205,6 +2221,72 @@ j_call_getter :: proc(c: ^Jc, op: Opcode, a: Atom, obj: u32, global: ^Object, pc
 	return !c.fail
 }
 
+// The getter or the setter (at `off` of the Getset at I_T0) into I_T2 when the helper calls it: a native function called
+// as a function (hot_native_getter) or a function of the script's; else a deopt at pc.
+@(private = "file")
+j_accessor_fn :: proc(c: ^Jc, off: u32, pc: int) {
+	j_lget(c, I_T0)
+	j_mem(c, W_I32_LOAD, 2, off)
+	j_lset(c, I_T2)
+	j_lget(c, I_T2)
+	j_op(c, W_I32_EQZ)
+	j_op(c, W_IF)
+	j_op(c, W_I32)
+	j_i32(c, 1)
+	j_op(c, W_ELSE)
+	j_lget(c, I_T2)
+	j_mem(c, W_I32_LOAD8_U, 0, OBJ_CLASS)
+	j_i32(c, i32(Class_ID.c_function))
+	j_op(c, W_I32_NE)
+	j_lget(c, I_T2)
+	j_mem(c, W_I32_LOAD8_U, 0, OBJ_BITS)
+	j_i32(c, i32(c.ctor_bits))
+	j_op(c, W_I32_AND)
+	j_op(c, W_I32_OR)
+	j_lget(c, I_T2)
+	j_mem(c, W_I32_LOAD8_U, 0, OBJ_CLASS)
+	j_i32(c, i32(Class_ID.bytecode_function))
+	j_op(c, W_I32_NE)
+	j_op(c, W_I32_AND)
+	j_op(c, W_END)
+	j_deopt_if(c, pc)
+}
+
+// A write that found a setter (the Getset at I_T0) of the object in local `obj` (under the value, the top entry): the
+// setter called by the helper with the value; an exception leaves through a throw exit with the object replaced by
+// the thrower (jit_setter), the held arrays taken again after it.
+@(private = "file")
+j_call_setter :: proc(c: ^Jc, a: Atom, obj: u32, pc: int) -> bool {
+	n := c.st.n
+	if c.inl_depth > 0 {
+		j_fail(c, "a setter in a callee being inlined")
+		return false
+	}
+	j_accessor_fn(c, GETSET_SETTER, pc)
+	j_flush_objs(c)
+	j_materialize(c, true)
+	next := pc + int(opcode_info[Opcode.put_field].size)
+	j_lget(c, P_FRAME)
+	j_lget(c, I_T2)
+	j_lget(c, obj)
+	j_i32(c, i32(n - 2))
+	j_i32(c, i32(a))
+	j_i32(c, i32(next))
+	j_helper(c, .set)
+	j_op(c, W_IF)
+	j_op(c, W_VOID)
+	c.nest += 1
+	// (the object's place is the thrower's, the value above it: the write is made again)
+	c.st.n = n - 2
+	j_stub(c, pc, .throw, 0, n)
+	c.st.n = n
+	j_op(c, W_END)
+	c.nest -= 1
+	c.st.n -= 2
+	j_retake_arrays(c, next)
+	return !c.fail
+}
+
 // put_field: the top entry stored into `a` of the object under it.
 @(private = "file")
 jit_put_field :: proc(c: ^Jc, a: Atom, pc: int) -> bool {
@@ -2218,7 +2300,15 @@ jit_put_field :: proc(c: ^Jc, a: Atom, pc: int) -> bool {
 	j_as_obj(c, n - 2, pc)
 	j_fits_value(c, n - 1, pc)
 	obj, ok := j_obj_local(c, n - 2)
-	if !ok || !j_prop_addr(c, obj, site, a, true, pc) {return false}
+	if !ok {return false}
+	// (a site whose first shape finds an accessor, own or on a prototype, writes through setters)
+	if site.n > 0 {
+		if l, found := jit_lookup(site.shapes[0], a, true); found && l.accessor {
+			if !j_prop_addr(c, obj, site, a, false, pc, true) {return false}
+			return j_call_setter(c, a, obj, pc)
+		}
+	}
+	if !j_prop_addr(c, obj, site, a, true, pc) {return false}
 	j_store_entry(c, n - 1, I_T0, 0)
 	if shadow := c.st.v[n - 2]; shadow.tag == .object {
 		// (the object the translation sees takes the property: a write that follows is compiled for its next shape)

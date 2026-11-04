@@ -72,9 +72,15 @@ when wj.WJ_JSRT {
 	}
 
 	@(export, link_name = "wj_jit_get")
-	wj_jit_get :: proc "c" (f: ^jsrt.Frame, getter: ^jsrt.Object, o: ^jsrt.Object, dest: i32, at: i32, a: u32) -> i32 {
+	wj_jit_get :: proc "c" (f: ^jsrt.Frame, getter: ^jsrt.Object, o: ^jsrt.Object, dest: i32, at: i32, a: u32, pc: i32) -> i32 {
 		context = jit_context
-		return jsrt.jit_getter(f, getter, o, int(dest), int(at), jsrt.Atom(a)) ? 1 : 0
+		return jsrt.jit_getter(f, getter, o, int(dest), int(at), jsrt.Atom(a), int(pc)) ? 1 : 0
+	}
+
+	@(export, link_name = "wj_jit_set")
+	wj_jit_set :: proc "c" (f: ^jsrt.Frame, setter: ^jsrt.Object, o: ^jsrt.Object, at: i32, a: u32, pc: i32) -> i32 {
+		context = jit_context
+		return jsrt.jit_setter(f, setter, o, int(at), jsrt.Atom(a), int(pc)) ? 1 : 0
 	}
 
 	@(export, link_name = "wj_jit_array")

@@ -406,6 +406,37 @@
   p("getters: an accessor without a getter", sizes([new Map(), new Map(), new Map(), new Map()], RUN));
   Object.defineProperty(Map.prototype, "size", realSize);
 
+  // getters of the script's called by compiled code: one counting its calls that throws once asked to, one that changes
+  // its object's shape and the array the loop reads, one that is a class's, one that recurses into the loop's function
+  var getCalls = 0, getThrows = -1;
+  var counted = { get v() { getCalls++; if (getCalls === getThrows) { throw new SyntaxError("get " + getCalls); } return getCalls & 7; } };
+  function readV(o, n) { var s = 0; for (var i = 0; i < n; i++) { s += o.v; } return s; }
+  p("script getters: counted", readV(counted, RUN), getCalls);
+  getThrows = getCalls + 9;
+  try { p("script getters: a getter that throws", readV(counted, RUN)); } catch (e) { p("script getters: a getter that throws", e.name, e.message, getCalls); }
+  var held = [1, 2, 3, 4];
+  var shaper = { k: 0, get v() { this["p" + (this.k++ & 15)] = 1; held.length = (this.k & 3) + 1; return held.length; } };
+  function readHeld(o, n) { var s = 0; for (var i = 0; i < n; i++) { s += o.v + held[0] + (held[3] === undefined ? 0 : 1); } return s; }
+  p("script getters: shapes and arrays changed", readHeld(shaper, RUN), Object.keys(shaper).length);
+  class Temp { constructor(c) { this.c = c; } get f() { return this.c * 9 / 5 + 32; } }
+  function temps(ts, n) { var s = 0; for (var i = 0; i < n; i++) { s += ts[i & 1].f; } return s; }
+  p("script getters: a class's", temps([new Temp(10), new Temp(-40)], RUN));
+  var deep = { d: 0, get v() { return this.d > 0 ? (this.d--, readV(this, 2)) : 1; } };
+  deep.d = 50; p("script getters: recursion", readV(deep, 3), deep.d);
+  // setters called by compiled code: a script's counting its calls that throws once asked to, one on a prototype, an
+  // accessor without a setter (a TypeError in strict code), a native one (__proto__)
+  var setCalls = 0, setThrows = -1;
+  var sink = { set w(v) { setCalls++; if (setCalls === setThrows) { throw new EvalError("set " + v); } this.last = v; } };
+  function writeW(o, n) { for (var i = 0; i < n; i++) { o.w = i; } return o.last; }
+  p("setters: counted", writeW(sink, RUN), setCalls);
+  setThrows = setCalls + 5;
+  try { p("setters: a setter that throws", writeW(sink, RUN)); } catch (e) { p("setters: a setter that throws", e.name, e.message, setCalls, sink.last); }
+  p("setters: on a prototype", writeW(Object.create(sink), RUN), setCalls);
+  var noSetter = {}; Object.defineProperty(noSetter, "w", { get: function () { return 1; } });
+  try { p("setters: no setter", writeW(noSetter, RUN)); } catch (e) { p("setters: no setter", e.name); }
+  function protoW(o, ps, n) { for (var i = 0; i < n; i++) { o.__proto__ = ps[i & 1]; } return Object.getPrototypeOf(o) === ps[(n - 1) & 1]; }
+  p("setters: a native one", protoW({}, [{ a: 1 }, { b: 2 }], RUN));
+
   // a global's own accessor whose native getter compiled code calls (as window.document): Array.prototype.join on the
   // global object, whose element 0 counts its conversions (each read calls the getter once) and throws once asked to
   // (the exception unwinds once, from the read); the value used other than by a property read (the loop interpreted);
