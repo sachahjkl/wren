@@ -264,9 +264,13 @@ one in Settings &gt; Apps &gt; Default apps (the box has a button that opens tha
 <code>https</code> and the file associations of <code>browser.desktop_integration.file_types</code>)</li>
 <li><code>Software\RegisteredApplications</code>, value <code>Wren</code></li>
 <li><code>Software\Classes\WrenHTML</code>, the ProgID, whose <code>shell\open\command</code> is <code>"&lt;exe&gt;" "%1"</code></li>
+<li><code>Software\Classes\wren-http</code>, <code>wren-https</code>, <code>wren-about</code>, the schemes of <a href="#links-that-open-in-wren">links that open in Wren</a>:
+default value <code>URL:Wren</code>, an empty <code>URL Protocol</code>, the <code>WrenIntegration</code> mark, and <code>shell\open\command</code>
+<code>"&lt;exe&gt;" --open-url "%1"</code></li>
 <li>then <code>SHChangeNotify(SHCNE_ASSOCCHANGED)</code>.</li>
 </ul></li>
-<li>Development builds use <code>Wren Dev</code>, <code>WrenDev</code>, <code>FromentSoftware.Wren.Dev</code>: they never touch the release's entries.</li>
+<li>Development builds use <code>Wren Dev</code>, <code>WrenDev</code>, <code>FromentSoftware.Wren.Dev</code> and the link schemes <code>wren-dev-http</code>,
+<code>wren-dev-https</code>, <code>wren-dev-about</code>: they never touch the release's entries.</li>
 </ul>
 <p>Removal deletes the shortcut when it carries the AppUserModelID or runs the executable, the keys that hold the
 <code>WrenIntegration</code> mark or run the executable, and the <code>RegisteredApplications</code> value that names Wren's Capabilities key.
@@ -275,7 +279,9 @@ Nothing else: the user's choices (<code>UserChoice</code>), other programs' keys
 <ul>
 <li><code>$XDG_DATA_HOME/applications/wren.desktop</code> (<code>~/.local/share/applications</code> by default): <code>Type</code>, <code>Name</code>, <code>Exec</code> (quoted as
 the Desktop Entry Specification says, <code>%U</code>), <code>TryExec</code>, <code>Icon</code>, <code>Categories=Network;WebBrowser;</code>, <code>MimeType=</code> for
-<code>x-scheme-handler/http</code>, <code>x-scheme-handler/https</code> and the file types, and the marker <code>X-Wren-Integration=wren</code>.
+<code>x-scheme-handler/http</code>, <code>x-scheme-handler/https</code>, the link schemes (<code>x-scheme-handler/wren-http</code>, <code>wren-https</code>,
+<code>wren-about</code>) and the file types, and the marker <code>X-Wren-Integration=wren</code>. An entry without the link schemes is "to
+repair".
 <code>update-desktop-database</code> runs afterwards when installed. The entry passes <code>desktop-file-validate</code>.</li>
 <li><code>$XDG_DATA_HOME/icons/hicolor/&lt;n&gt;x&lt;n&gt;/apps/wren.png</code> for the sizes Wren embeds (16, 32, 64, 256, 512).</li>
 </ul>
@@ -290,7 +296,7 @@ the Desktop Entry Specification says, <code>%U</code>), <code>TryExec</code>, <c
 <tbody>
 <tr><td>Launcher</td><td>Add to Start menu</td><td><code>Wren.lnk</code> in the Start menu</td><td>the <code>.desktop</code> file</td></tr>
 <tr><td>Desktop shortcut</td><td>Create desktop shortcut</td><td>a second <code>.lnk</code> (same AppUserModelID) in the Desktop folder</td><td>not provided</td></tr>
-<tr><td>Registration</td><td>Register as a web browser</td><td>the <code>StartMenuInternet</code> / ProgID keys above</td><td><code>MimeType=</code> in the <code>.desktop</code> file</td></tr>
+<tr><td>Registration</td><td>Register as a web browser</td><td>the <code>StartMenuInternet</code> / ProgID / link scheme keys above</td><td><code>MimeType=</code> in the <code>.desktop</code> file</td></tr>
 <tr><td>Path</td><td>Add Wren to PATH</td><td>the program's folder in <code>HKCU\Environment\Path</code></td><td>not provided</td></tr>
 <tr><td>Icons</td><td>-</td><td>-</td><td>the hicolor icons</td></tr>
 </tbody>
@@ -367,6 +373,29 @@ files Setup placed — and keeps the user's profile unless <code>--purge</code> 
 history, cookies, session, crash reports, licence). Exit codes: 0 done, 1 failed, 5 done but some files are in use and are
 removed when the running copy closes (the one being uninstalled is the one running). <code>remove</code> takes away only the
 integration; <code>uninstall</code> takes away the installed copy. <code>--install</code> is the shorthand for <code>--desktop-integration=install</code>.</p>
+<h2 id="links-that-open-in-wren"><a class="anchor" href="#links-that-open-in-wren" aria-hidden="true">#</a>Links that open in Wren</h2>
+<p>A web page cannot link to <code>about:wren</code> (browsers block <code>about:</code> links), and an <code>https:</code> link opens in the user's default
+browser. A link whose scheme is one of Wren's opens in Wren: the address is the link without its <code>wren-</code> prefix.</p>
+<div class="table-box"><table>
+<thead><tr><th>Link</th><th>Opens</th></tr></thead>
+<tbody>
+<tr><td><code>wren-https://example.org/a?b#c</code></td><td><code>https://example.org/a?b#c</code></td></tr>
+<tr><td><code>wren-http://...</code></td><td>the same in <code>http:</code></td></tr>
+<tr><td><code>wren-about:wren</code></td><td><code>about:wren</code></td></tr>
+</tbody>
+</table></div>
+<p>The system runs <code>wren.exe --open-url &lt;link&gt;</code> (Linux: the desktop entry's <code>%U</code>, a link among the addresses); the address
+opens as a new tab of the Wren that runs on the profile (<a href="#one-wren-per-profile">one Wren per profile</a>), else Wren starts
+with it. The browser that had the link asks "Open Wren?" first; Wren asks nothing more.</p>
+<p>A link comes from any page, so <code>src/desktop/links.odin</code> lets out only what it is meant for: the prefix taken away, the
+rest is parsed by Wren's URL parser and must be an <code>http</code> or <code>https</code> address with a host, or exactly <code>about:wren</code>.
+Refused, and nothing opens (exit code 2, the reason on the console): any other scheme (<code>wren-file:</code>, <code>wren-javascript:</code>,
+<code>wren-data:</code>, <code>wren-blob:</code>), a control character, a link longer than 8 KiB (<code>LINK_MAX_BYTES</code>), and <code>--open-url</code>
+anywhere but as the one but last argument or more than once (a quote in a link the system did not encode could only add
+arguments after it). The tab has no referrer and nothing of the page that had the link; the link never goes through a
+shell. A development build opens its own <code>wren-dev-</code> links and the release's <code>wren-</code> ones.</p>
+<p>Where Wren is not installed the link does nothing (the browser says it cannot open it): a page shows the address beside
+it ("or open <code>about:wren</code> in Wren") and never tries to find out with a script.</p>
 <h2 id="preferences"><a class="anchor" href="#preferences" aria-hidden="true">#</a>Preferences</h2>
 <p><code>browser.desktop_integration.on_first_run</code>, <code>.status_refresh_ms</code>, <code>.start_menu</code>, <code>.desktop_shortcut</code>, <code>.add_to_path</code>,
 <code>.register_browser</code> (also register as a browser, or only the menu entry), <code>.file_types</code>, <code>browser.update.check_daily</code>,
@@ -386,7 +415,7 @@ uses an identity of its own.</p>
 <p><code>src/instance</code>, <code>src/browser/instance_shell.odin</code>. The first Wren of a channel and a profile owns it (a named mutex
 <code>Local\WrenInstance.Wren.&lt;channel&gt;.&lt;hash of the profile folder&gt;</code> and a message-only window titled with that key); a second
 start hands its addresses (<code>wren.exe &lt;address or path&gt;...</code>: paths become <code>file:</code> addresses by the command line's rules),
-<code>--setup</code> and the request to come forward to it with <code>WM_COPYDATA</code>, after <code>AllowSetForegroundWindow</code>, and ends with exit code
+<code>--setup</code> and the request to come forward to it with <code>WM_COPYDATA</code> (a link, <code>--open-url wren-https://...</code>, is its address by then), after <code>AllowSetForegroundWindow</code>, and ends with exit code
 0 before it has a window (about 30 ms). The first opens a tab per address, restores its window if minimized and takes the
 foreground. Nothing is done per frame.</p>
 <div class="table-box"><table>
@@ -423,6 +452,7 @@ to the user's Wren and end. <code>src\tools\e2e\instance.odin</code> checks the 
 <li class="lvl3"><a href="#updates">Updates</a></li>
 <li class="lvl3"><a href="#following-the-disk">Following the disk</a></li>
 <li><a href="#command-line">Command line</a></li>
+<li><a href="#links-that-open-in-wren">Links that open in Wren</a></li>
 <li><a href="#preferences">Preferences</a></li>
 <li><a href="#tests">Tests</a></li>
 </ul>
