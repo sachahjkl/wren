@@ -17,11 +17,11 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Odin dev-2026-11
+    - name: Odin dev-2026-11a
       shell: pwsh
       env:
-        # odin version: dev-2026-11-nightly:9a69916 (the tag dev-2026-11 is that commit)
-        ODIN_TAG: dev-2026-11
+        # odin version: dev-2026-11-nightly:9a69916 (the tag dev-2026-11a is that commit; the archives of dev-2026-11 are the same files)
+        ODIN_TAG: dev-2026-11a
         ODIN_SHA256: 259effedf2997293c8fa4a5e497496f8ebce9f826652d9dd353a9dd2113c31fd
       run: |
         $zip = Join-Path $env:RUNNER_TEMP "odin-$env:ODIN_TAG.zip"
