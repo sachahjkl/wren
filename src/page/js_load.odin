@@ -23,13 +23,17 @@ package page
 
 import "core:encoding/base64"
 import "core:fmt"
+import "core:slice"
 import "core:strings"
+import "core:unicode/utf8"
 import "wb:base"
 import "wb:csp"
 import "wb:dom"
 import "wb:fetch"
 import "wb:forms"
 import "wb:host"
+import "wb:html"
+import "wb:http"
 import "wb:url"
 
 Script_Kind :: enum u8 { Classic, Module, Import_Map }
@@ -40,7 +44,10 @@ Ready_State :: enum u8 { Loading, Interactive, Complete }
 
 // The per-element state HTML keeps on a script element. "Force async" is true for a script element made by a script
 // until its async attribute is touched: here it is the absence of Parser_Inserted, From_Fragment and Async_Touched.
-Script_Flag :: enum u8 { Already_Started, Parser_Inserted, Async_Touched, From_Fragment }
+// Moved_Out: the element went to another document of the tab (frames_adopt) after it was prepared here: it does not run
+// ("execute the script element": its preparation-time document is not its node document), and still holds its place
+// in this document's lists until it has loaded.
+Script_Flag :: enum u8 { Already_Started, Parser_Inserted, Async_Touched, From_Fragment, Moved_Out }
 Script_Flags :: bit_set[Script_Flag; u8]
 
 @(private)
@@ -63,6 +70,7 @@ Page_Script :: struct {
 	download:        ^Script_Fetch,     // external classic scripts
 	graph:           ^Module_Graph,     // module scripts (js_load_modules.odin)
 	integrity:       string,            // owned: the integrity attribute (SRI)
+	charset:         string,            // owned: the encoding its charset attribute names when it was prepared ("" none)
 	error:           string,            // owned: why it cannot run
 	nonce:           string,            // owned
 	cors:            Cors_Setting,
@@ -79,6 +87,7 @@ Script_Fetch :: struct {
 	state:      Script_State,
 	bytes:      [dynamic]byte,
 	error:      string,                 // owned
+	charset:    string,                 // owned: the charset of the response's Content-Type ("" none)
 	opaque:     bool,                   // no-cors cross-origin: integrity cannot be checked
 	claimed:    bool,                   // an element uses it (a preload nobody claimed is dropped with the page)
 	compiling:  bool,                   // its bytecode is being made on another thread
@@ -202,14 +211,14 @@ scripts_free :: proc(data: rawptr) {
 
 @(private)
 script_free :: proc(sc: ^Page_Script) {
-	delete(sc.url); delete(sc.source); delete(sc.integrity); delete(sc.error); delete(sc.nonce)
+	delete(sc.url); delete(sc.source); delete(sc.integrity); delete(sc.charset); delete(sc.error); delete(sc.nonce)
 	free(sc)
 }
 
 @(private)
 script_fetch_free :: proc(p: ^Page, f: ^Script_Fetch) {
 	if f.task != base.NIL_HANDLE && !p.closed { fetch.cancel(p.loader, f.task) }
-	delete(f.url); delete(f.final_url); delete(f.bytes); delete(f.error)
+	delete(f.url); delete(f.final_url); delete(f.bytes); delete(f.charset); delete(f.error)
 	free(f)
 }
 
@@ -285,15 +294,35 @@ reveal_run :: proc(p: ^Page) {
 		if !reveal_node(p, it) { continue }
 		n := dom.get(d, it.node)
 		if !is_script_element(n) { continue }
-		// the script's text comes with it: the end tag is after its children
-		for ps.next < end && ps.queue[ps.next].parent == it.node {
+		// the script's text comes with it: the end tag is after its descendants (an SVG script's markup may hold other
+		// SVG scripts, prepared at their own end tags: before it, innermost first)
+		inside := make([dynamic]base.Handle, 0, 4, context.temp_allocator)
+		append(&inside, it.node)
+		for ps.next < end && slice.contains(inside[:], ps.queue[ps.next].parent) {
 			reveal_node(p, ps.queue[ps.next])
+			append(&inside, ps.queue[ps.next].node)
 			ps.next += 1
 		}
 		// the custom elements parsed before the script are upgraded (and connected) before it runs
 		custom_elements_flush(p)
-		s.flags[it.node] += {.Parser_Inserted}
-		script_prepare(p, it.node, parser_inserted = true)
+		// (in the order of their end tags: the subtree after its children, children in order)
+		Visit :: struct { node: base.Handle, done: bool }
+		order := make([dynamic]Visit, 0, len(inside), context.temp_allocator)
+		append(&order, Visit{node = it.node})
+		for len(order) > 0 {
+			v := pop(&order)
+			x := dom.get(d, v.node)
+			if x == nil || x.kind != .Element { continue }
+			if v.done {
+				if !is_script_element(x) { continue }
+				s.flags[v.node] += {.Parser_Inserted}
+				script_prepare(p, v.node, parser_inserted = true)
+				if p.closed { return }
+				continue
+			}
+			append(&order, Visit{node = v.node, done = true})
+			for c := x.last_child; c != base.NIL_HANDLE; c = dom.get(d, c).prev { append(&order, Visit{node = c}) }
+		}
 	}
 	if p.closed { return }
 	custom_elements_flush(p)
@@ -437,6 +466,7 @@ script_prepare :: proc(p: ^Page, el: base.Handle, parser_inserted: bool) {
 	sc.cors = cors_setting(d, el)
 	if rp, has := dom.get_attribute(d, el, "referrerpolicy"); has { sc.referrer = fetch.parse_referrer_policy(rp) }
 	if integ, has := dom.get_attribute(d, el, "integrity"); has { sc.integrity = strings.clone(integ) }
+	if cs, has := dom.get_attribute(d, el, "charset"); has { sc.charset = strings.clone(html.canonical_encoding(cs)) }
 	_, sc.async_ = dom.get_attribute(d, el, "async")
 	_, sc.defer_ = dom.get_attribute(d, el, "defer")
 	is_force_async := !parser_inserted && force_async(flags)
@@ -559,10 +589,41 @@ script_ready :: proc(sc: ^Page_Script) -> bool {
 	return false
 }
 
+// The text of a fetched classic script (HTML "fetch a classic script"): in the encoding of its byte order mark, else of
+// its Content-Type's charset, else of its charset attribute, else the document's; decoded to UTF-8 (what does not
+// decode is U+FFFD). The bytes as they came in the usual cases: UTF-8 without a mark, ASCII in any encoding but UTF-16.
+@(private)
+script_decode :: proc(p: ^Page, sc: ^Page_Script, f: ^Script_Fetch) {
+	b := f.bytes[:]
+	fallback := sc.charset != "" ? sc.charset : document_encoding(p)
+	marked := (len(b) >= 2 && ((b[0] == 0xFF && b[1] == 0xFE) || (b[0] == 0xFE && b[1] == 0xFF))) || (len(b) >= 3 && b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF)
+	enc := html.canonical_encoding(f.charset)
+	if enc == "" { enc = html.canonical_encoding(fallback) }
+	as_is: bool
+	if enc == "" || enc == "UTF-8" {
+		as_is = utf8.valid_string(string(b))
+	} else if enc != "UTF-16LE" && enc != "UTF-16BE" {
+		as_is = true
+		for c in b { if c >= utf8.RUNE_SELF { as_is = false; break } }
+	}
+	if !marked && as_is {
+		append(&sc.source, ..b)
+		return
+	}
+	d, ok := html.decode_document(b, f.charset, fallback, context.temp_allocator, prescan_meta = false)
+	append(&sc.source, ..(ok ? d.text : b))
+}
+
 @(private)
 script_execute :: proc(p: ^Page, sc: ^Page_Script) {
 	if sc.state == .Done { return }
 	s := p.scripts
+	if .Moved_Out in s.flags[sc.element] {
+		// (in another document now: neither run nor an error event, HTML "execute the script element" step 2)
+		sc.state = .Done
+		script_retire(p, sc)
+		return
+	}
 	// the result: a fetched classic script (checked), a module graph
 	if sc.download != nil && sc.state == .Fetching {
 		f := sc.download
@@ -574,7 +635,7 @@ script_execute :: proc(p: ^Page, sc: ^Page_Script) {
 				log(p, .Error, fmt.tprintf("script %s: its integrity does not match %q (Subresource Integrity): not run", sc.url, sc.integrity))
 				sc.state = .Failed
 			} else {
-				append(&sc.source, ..f.bytes[:])
+				script_decode(p, sc, f)
 				sc.state = .Ready
 			}
 		}
@@ -844,6 +905,7 @@ script_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		r := ev.response
 		f.opaque = r.type == .Opaque
 		if r.url != "" { delete(f.final_url); f.final_url = strings.clone(r.url) }
+		if cs, has := http.mime_param(r.mime, "charset"); r.has_mime && has { delete(f.charset); f.charset = strings.clone(cs) }
 		if r.type != .Opaque && (r.status < 200 || r.status >= 300) {
 			delete(f.error)
 			f.error = fmt.aprintf("HTTP %d", r.status)

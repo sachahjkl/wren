@@ -268,6 +268,7 @@ frames_adopt :: proc(c: ^Call, node: base.Handle, into_tag: u32) -> (out: []u8, 
 		if ss := src.scripts; ss != nil && is_script_element(s) && .Already_Started in ss.flags[cur.from] {
 			ds := scripts_of(dst)
 			ds.flags[h] += {.Already_Started}
+			ss.flags[cur.from] += {.Moved_Out}
 		}
 		if cur.parent != base.NIL_HANDLE { dom.append_child(dd, cur.parent, h) }
 		kids := make([dynamic]base.Handle, context.temp_allocator)
