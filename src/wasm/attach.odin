@@ -14,6 +14,10 @@ import "core:time"
 import "wb:base"
 import "wb:host"
 
+// The import ("e", this) through which a module made at run time gets its maker's table (the JIT's calls of compiled
+// code: src/engine/jsrt/jit.odin, JIT_TABLE_IMPORT)
+ATTACH_TABLE_IMPORT :: "table"
+
 Attach_Stats :: struct {
 	attached:   int,   // functions put in a table
 	failed:     int,
@@ -66,6 +70,12 @@ attach_module :: proc(inst: ^Instance, module: wt_module, nbytes: int, compile: 
 		nv := wasm_importtype_name(it)
 		mod := string(mv.data[:mv.size])
 		name := string(nv.data[:nv.size])
+		if mod == "e" && name == ATTACH_TABLE_IMPORT {
+			// the maker's table, whatever its export is called: code that calls the functions attached to it
+			imports[i] = wt_extern{kind = WT_EXTERN_TABLE}
+			imports[i].of.table = s.table
+			continue
+		}
 		if mod != "e" || !wasmtime_instance_export_get(s.ctx, &s.instance, raw_data(name), len(name), &imports[i]) {
 			attach_count(false, nbytes, compile, time.tick_since(t1))
 			return 0, fmt.tprintf("import %s.%s is not an export of the module", mod, name)

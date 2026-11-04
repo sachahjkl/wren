@@ -498,7 +498,15 @@ interp_call :: proc(ctx: ^Context, fo: ^Object, this: Value, new_target: Value, 
 	f.prev = rt.cur_frame
 	rt.cur_frame = &f
 	rt.stack_depth += 1
-	r, _ := interp_run(realm, &f, fd.var_refs)
+	r: Value
+	if jit_cfg.enabled && jit_entered(&f, fd.var_refs) {
+		// the whole function's compiled code returned (jit.odin)
+		r = f.stack[0]
+		temp_reset(rt, f.root_base)
+		root(rt, r)
+	} else {
+		r, _ = interp_run(realm, &f, fd.var_refs)
+	}
 	rt.stack_depth -= 1
 	rt.cur_frame = f.prev
 	if b.var_ref_count > 0 {close_var_refs(&f)}
@@ -507,8 +515,10 @@ interp_call :: proc(ctx: ^Context, fo: ^Object, this: Value, new_target: Value, 
 }
 
 // A frame for a plain call made from inside interp_run: it lives at the end of its own value-stack block and
-// is run by the same interp_run activation (no native recursion); frame_pop undoes it.
-frame_push :: proc(ctx: ^Context, fo: ^Object, this: Value, args: []Value) -> ^Frame {
+// is run by the same interp_run activation (no native recursion); frame_pop undoes it. With the JIT (jit_pushed), the
+// function's compiled code may run on it at once: the frame returned is then where it left (f.pc, f.sp), or the
+// caller's when the callee returned (its result pushed at the caller's sp).
+frame_push :: proc(ctx: ^Context, fo: ^Object, this: Value, args: []Value, jit := true) -> ^Frame {
 	rt := ctx.rt
 	fd := &fo.data.(Func_Data)
 	b := fd.bc
@@ -536,6 +546,7 @@ frame_push :: proc(ctx: ^Context, fo: ^Object, this: Value, args: []Value) -> ^F
 	f.prev = rt.cur_frame
 	rt.cur_frame = f
 	rt.stack_depth += 1
+	if jit && jit_cfg.enabled {return jit_pushed(f)}
 	return f
 }
 

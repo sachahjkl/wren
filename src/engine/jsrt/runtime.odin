@@ -213,6 +213,7 @@ Runtime :: struct {
 	join_stack:     [dynamic]^Object, // arrays being joined (cycle detection)
 	random_state:   [2]u64,           // Math.random (xorshift128+)
 	stack_depth:    int,
+	jit_depth:      int,   // compiled code running, one inside another on the host stack (jit.odin, JIT_MAX_NEST)
 	exception:      Value, // the pending exception; UNINITIALIZED when none
 	uncatchable:    bool,  // the pending exception cannot be caught (interrupt / OOM)
 	std_protos_touched: bool, // an index key or a new prototype on some realm's Array/Object.prototype

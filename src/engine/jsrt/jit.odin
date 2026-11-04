@@ -12,12 +12,12 @@ package jsrt
 // the types are speculated from the values the frame holds when the loop gets hot, widened int -> double when the region
 // itself needs it), read once at entry (guarded by their tags) and written back when the code leaves; other locals stay
 // in the frame's memory. It never allocates and calls nothing but the engine's helpers (JIT_HELPERS: a call of a native
-// function): an operation it cannot do inline keeps the loop from being compiled at all, a small function it calls is
-// inlined (jit_inline), and a speculation that fails at run time (int overflow, -0, a modulo of a negative number...)
-// leaves through a deopt exit that stores the operand stack back in the frame and hands the interpreter the pc and sp of
-// the instruction that was about to run. Exits: leaving the region, return, deopt, a helper's call that threw, and every
-// JIT_BUDGET iterations (so that the interpreter's safe point, interrupt poll and collection, still runs in a loop that
-// does not end).
+// function) and compiled code: an operation it cannot do inline keeps the loop from being compiled at all, a small
+// function it calls is inlined (jit_inline), and a speculation that fails at run time (int overflow, -0, a modulo of a
+// negative number...) leaves through a deopt exit that stores the operand stack back in the frame and hands the
+// interpreter the pc and sp of the instruction that was about to run. Exits: leaving the region, return, deopt, a
+// helper's call that threw, and every JIT_BUDGET iterations (so that the interpreter's safe point, interrupt poll and
+// collection, still runs in a loop that does not end).
 //
 // Properties: a read or a write of a named property (get_field, put_field, get_length, a global's get_var / put_var) is
 // a guard of the object's own shape against the shapes the site was compiled for, then the slot at a constant index (in
@@ -29,10 +29,18 @@ package jsrt
 // again, a bounded number of times). The shapes and objects the code compares against are kept alive by the loop (the
 // collector marks them through Function_Bytecode.jit), so an address the code holds is never another shape's.
 //
+// Whole functions: a function without loops of its own (its backward jumps, if any, go to its start) is compiled whole
+// once its calls reach jit_cfg.call_threshold, as the region [0, end) entered at its call (jit_fn_enter: from the
+// interpreter's calls, or from compiled code). Compiled code calls such a function directly (j_direct_call): it pushes
+// the callee's frame on the value stack as frame_push does, calls the callee's code through the engine's table, pops
+// the frame; no state of the caller lives across the call but in its frame. The callee's code leaving other than by its
+// return is finished by the interpreter (jit_call_finish). Compiled code nested this way is bounded (JIT_MAX_NEST): a
+// recursion deeper than that goes on interpreted.
+//
 // Contract with the host: native/js/odin/jit.odin (the exports wj_jit_configure, wj_jit_stat, the helpers) and the host's
 // Engine_jitCompile / Engine_jitPoll (src/js/jit.odin: attach_function); the module imports the engine's memory
-// ("e" "memory") and, when the loop calls, the helpers of JIT_HELPERS (exported by the glue), and exports "f" (args,
-// locals, stack, arrays, closure cells, frame) -> i64.
+// ("e" "memory") and, when the region calls, the helpers of JIT_HELPERS (exported by the glue) and the engine's table
+// ("e" "table", src/wasm/attach.odin), and exports "f" (args, locals, stack, arrays, closure cells, frame) -> i64.
 
 import "base:runtime"
 import "core:reflect"
@@ -47,6 +55,9 @@ JIT_MAX_REJITS :: 4
 JIT_MAX_DEOPTS :: 16   // deopt exits after which a loop is not compiled again
 JIT_MAX_LEARNS :: 12   // learn exits (a site that missed) after which a loop is not compiled again
 JIT_DEFAULT_MAX_CODE_BYTES :: 64 << 10   // the largest function compiled when the host does not choose
+JIT_DEFAULT_CALL_THRESHOLD :: 500        // the calls after which a function is compiled whole, when the host does not choose
+JIT_CALLS_NEVER :: min(int) / 2          // where a function that is not compiled whole counts its calls from
+JIT_MAX_NEST :: 128    // compiled code running one inside another (a call made by compiled code to compiled code): past it, interpreted
 JIT_PROBE :: 64        // entries after which a loop that runs too few iterations per entry is dropped
 JIT_MIN_ITERS :: 6
 JIT_MAX_SITES :: 32    // the property, global, element and call sites of a loop (an inlined callee's too)
@@ -70,6 +81,7 @@ Jit_Cfg :: struct {
 	enabled:        bool,
 	trace:          bool,
 	max_code_bytes: int,
+	call_threshold: int,
 	compile:        proc "contextless" (module: [^]u8, n: u32) -> i32,   // Engine_jitCompile: a table index, 0 refused, < 0 a ticket
 	poll:           proc "contextless" (ticket: i32) -> i32,             // Engine_jitPoll
 	log:            proc(msg: string),
@@ -79,7 +91,7 @@ jit_cfg: Jit_Cfg
 
 // The engine's procedures compiled code calls: exported by the glue (native/js/odin/jit.odin) under these names,
 // imported by a module whose loop calls (function index = the helper's), each (i32...) -> i32.
-Jit_Helper :: enum u8 {call, array}
+Jit_Helper :: enum u8 {call, array, finish}
 
 Jit_Helper_Def :: struct {
 	name:   string,
@@ -87,30 +99,46 @@ Jit_Helper_Def :: struct {
 }
 
 JIT_HELPERS :: [Jit_Helper]Jit_Helper_Def {
-	.call  = {"wj_jit_call", 5},
-	.array = {"wj_jit_array", 4},
+	.call   = {"wj_jit_call", 5},
+	.array  = {"wj_jit_array", 4},
+	.finish = {"wj_jit_finish", 5},
 }
+
+// The engine's table, which a module whose code calls compiled code directly imports ("e" "table": the host gives it
+// the table the compiled functions are attached to)
+JIT_TABLE_IMPORT :: "table"
 
 // Jit_Helper.call: a call instruction of a compiled loop. The operand stack is in the frame's memory below sp: the
 // callee and its argc arguments on top, `this` under the callee for a method call (kind .method), new.target after
 // the constructor for a construction (kind .construct). The result takes the place of the callee (and of `this` or
-// new.target); pc is the instruction after the call. True: it threw (the exception is pending, the stack as it was).
+// new.target); pc is the instruction after the call. Threw: the exception is pending, the stack as it was; interpret:
+// not made, the call is the interpreter's (a function that will not be compiled whole, which costs more called from
+// here than from the interpreter).
 Jit_Call_Kind :: enum i32 {call, method, construct}
 
-jit_call :: proc(f: ^Frame, sp: int, argc: int, kind: Jit_Call_Kind, pc: int) -> bool {
+Jit_Call_Result :: enum i32 {made, threw, interpret}
+
+jit_call :: proc(f: ^Frame, sp: int, argc: int, kind: Jit_Call_Kind, pc: int) -> Jit_Call_Result {
 	ctx := f.ctx
 	rt := ctx.rt
 	base := sp - argc
 	f.pc = pc
 	r: Value
 	switch kind {
-	case .call: r = call_internal(ctx, f.stack[base - 1], UNDEFINED, UNDEFINED, f.stack[base:sp], false)
-	case .method: r = call_internal(ctx, f.stack[base - 1], f.stack[base - 2], UNDEFINED, f.stack[base:sp], false)
+	case .call, .method:
+		fv := f.stack[base - 1]
+		this := kind == .method ? f.stack[base - 2] : UNDEFINED
+		if fv.tag == .object && as_obj(fv).class == .bytecode_function {
+			if nb := as_obj(fv).data.(Func_Data).bc; nb.jit != nil && nb.jit.fn.state == .never {return .interpret}
+			r = jit_call_bytecode(ctx, as_obj(fv), this, f.stack[base:sp])
+		} else {
+			r = call_internal(ctx, fv, this, UNDEFINED, f.stack[base:sp], false)
+		}
 	case .construct:
 		fn := f.stack[base - 2]
 		if !is_constructor(fn) {
 			throw_type_error(ctx, "not a constructor")
-			return true
+			return .threw
 		}
 		r = call_internal(ctx, fn, UNDEFINED, f.stack[base - 1], f.stack[base:sp], true)
 	}
@@ -119,12 +147,85 @@ jit_call :: proc(f: ^Frame, sp: int, argc: int, kind: Jit_Call_Kind, pc: int) ->
 		// unwinds from the call as if it had made it (and the interpreter's code needs no exit of its own for this)
 		if ctx.jit_rethrow == nil {ctx.jit_rethrow = new_native_function(ctx, jit_rethrow, "", 0, 0, .constructor)}
 		f.stack[kind == .method ? base - 1 : kind == .construct ? base - 2 : base - 1] = mk_obj(ctx.jit_rethrow)
-		return true
+		return .threw
 	}
 	f.stack[kind == .call ? base - 1 : base - 2] = r
 	// (what the frame needs is on its stack: the temporaries of the call go, as at a back edge)
 	if len(rt.temp_roots) > f.root_base {resize(&rt.temp_roots, f.root_base)}
+	return .made
+}
+
+// Jit_Helper.finish: the compiled code of a function called directly by compiled code (j_direct_call) left other than
+// by its return, with the exit word (lo, hi) of the code made at `index`: the rest of the call interpreted on its
+// frame, which the caller pops. Its result in f.stack[0]; true: it threw (the caller's callee, at `slot` of its stack,
+// is then jit_rethrow, as jit_call leaves it).
+jit_call_finish :: proc(f: ^Frame, lo: u32, hi: u32, index: u32, slot: int) -> bool {
+	b := f.bc
+	res, pc, sp := jit_exit(f, b, &b.jit.fn, index, u64(lo) | u64(hi) << 32)
+	v := f.stack[0]
+	if res != .ret {
+		f.pc = pc
+		f.sp = sp
+		v, _ = interp_run(f.ctx, f, f.closure_refs)
+	}
+	if is_exception(v) {
+		ctx := f.prev.ctx
+		if ctx.jit_rethrow == nil {ctx.jit_rethrow = new_native_function(ctx, jit_rethrow, "", 0, 0, .constructor)}
+		f.prev.stack[slot] = mk_obj(ctx.jit_rethrow)
+		return true
+	}
+	f.stack[0] = v
 	return false
+}
+
+// A function the JIT may compile whole: a plain one within the size limit, with an operand stack (its result is
+// returned in stack[0]; a function without one, which only returns undefined, has its frame there)
+@(private = "file")
+jit_fn_kind_ok :: proc(b: ^Function_Bytecode) -> bool {
+	return b.func_kind == .normal && len(b.code) <= jit_cfg.max_code_bytes && b.stack_size > 0
+}
+
+// Can the function be compiled whole, and so be called from compiled code without the cost of an interpreted call
+// through the helper: a plain function within the size limit whose backward jumps (if any) go to its start, not
+// refused before.
+@(private = "file")
+jit_fn_compilable :: proc(b: ^Function_Bytecode) -> bool {
+	if !jit_fn_kind_ok(b) || (b.jit != nil && b.jit.fn.state == .never) {return false}
+	code := b.code
+	for pc := 0; pc < len(code); {
+		if int(code[pc]) >= OPCODE_COUNT {return false}
+		op := Opcode(code[pc])
+		if t, _, ok := jit_jump(op, code, pc); ok && t <= pc && t != 0 {return false}
+		pc += int(opcode_info[op].size)
+	}
+	return true
+}
+
+// A call of a bytecode function made by compiled code: a plain function's frame pushed as the interpreter pushes it and
+// its compiled code run on it at once when it has some (the compiled caller's state is in its frame: nothing else to
+// keep), the rest of it interpreted when that code leaves; another kind of function called as the interpreter calls it.
+@(private = "file")
+jit_call_bytecode :: proc(ctx: ^Context, fo: ^Object, this: Value, args: []Value) -> Value {
+	rt := ctx.rt
+	nb := fo.data.(Func_Data).bc
+	if nb.func_kind != .normal || rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {
+		return call_internal(ctx, mk_obj(fo), this, UNDEFINED, args, false)
+	}
+	nf := frame_push(ctx, fo, this, args, false)
+	res, pc, sp := Jit_Resume.none, 0, 0
+	nb.jit_calls += 1
+	if nb.jit_calls >= jit_cfg.call_threshold {res, pc, sp = jit_fn_enter(nf.ctx, nf)}
+	r: Value
+	if res == .ret {
+		r = nf.stack[0]
+	} else {
+		nf.pc = pc
+		nf.sp = sp
+		r, _ = interp_run(nf.ctx, nf, nf.closure_refs)
+	}
+	// (the result is stored in the caller's frame before anything allocates)
+	frame_pop(rt, nf)
+	return r
 }
 
 // The callee jit_call leaves in the place of one that threw: the exception is still pending.
@@ -157,6 +258,7 @@ Jit_Loop :: struct {
 	region_end: int,
 	entry_sp:   int,
 	state:      Jit_Loop_State,
+	whole:      bool,  // the whole function (header 0, entered at its call), not one of its loops
 	index:      u32,
 	ticket:     i32,
 	compiles:   int,
@@ -202,6 +304,7 @@ Jit_Site :: struct {
 Jit_Info :: struct {
 	loops: [JIT_MAX_LOOPS]Jit_Loop,
 	n:     int,
+	fn:    Jit_Loop,   // the whole function (jit_fn_enter)
 }
 
 Jit_Resume :: enum u8 {none, resume, ret}
@@ -259,12 +362,13 @@ jr_u32 :: #force_inline proc "contextless" (c: []u8, p: int) -> u32 {
 	return u32(c[p]) | u32(c[p + 1]) << 8 | u32(c[p + 2]) << 16 | u32(c[p + 3]) << 24
 }
 
-jit_configure :: proc(enabled: bool, compile: proc "contextless" (module: [^]u8, n: u32) -> i32, poll: proc "contextless" (ticket: i32) -> i32, log: proc(msg: string)) {
+jit_configure :: proc(enabled: bool, compile: proc "contextless" (module: [^]u8, n: u32) -> i32, poll: proc "contextless" (ticket: i32) -> i32, log: proc(msg: string), call_threshold := 0) {
 	jit_cfg.enabled = enabled && compile != nil && ODIN_ARCH == .wasm32
 	jit_cfg.compile = compile
 	jit_cfg.poll = poll
 	jit_cfg.log = log
 	jit_cfg.trace = log != nil
+	jit_cfg.call_threshold = call_threshold > 0 ? call_threshold : JIT_DEFAULT_CALL_THRESHOLD
 	if jit_cfg.max_code_bytes == 0 {jit_cfg.max_code_bytes = JIT_DEFAULT_MAX_CODE_BYTES}
 }
 
@@ -319,99 +423,201 @@ jit_back_edge :: proc(ctx: ^Context, f: ^Frame, b: ^Function_Bytecode, target, r
 			jl = &info.loops[info.n]
 			info.n += 1
 		}
-		switch jl.state {
-		case .never:
-			return .none, 0, 0
-		case .fresh:
-			jit_build(ctx, f, b, jl, sp)
-			if jl.state != .compiled {return .none, 0, 0}
-		case .pending:
-			idx := jit_cfg.poll(jl.ticket)
-			if idx < 0 {return .none, 0, 0}
-			if idx == 0 {
-				jl.state = .never
-				jit_stats.failed += 1
-				return .none, 0, 0
-			}
-			jl.index = u32(idx)
-			jl.state = .compiled
-			b.jit_active += 1
-			jit_stats.pending -= 1
-		case .compiled:
-		}
-		if sp != jl.entry_sp {return .none, 0, 0}
-
-		Jit_Fn :: #type proc "c" (args: [^]Value, locals: [^]Value, stack: [^]Value, arrays: [^]Jit_Arr, refs: [^]^Var_Ref, frame: ^Frame) -> u64
-		fn := transmute(Jit_Fn)uintptr(jl.index)
-		jit_stats.entries += 1
-		arrays: [JIT_MAX_ARRS]Jit_Arr
-		for i in 0 ..< jl.n_arr {arrays[i] = jit_array_of(jit_slot_value(f, jl.arr_slots[i]))}
-		index := jl.index
-		r := fn(f.args, f.locals, f.stack, raw_data(arrays[:]), f.closure_refs, f)
-		kind := Jit_Exit((r >> 24) & 0xff)
-		xpc := int(r & 0xffffff)
-		xsp := int((r >> 32) & 0xffff)
-		aux := int(r >> 48)
-		if kind == .throw {
-			// (the call is made again by the interpreter: its callee is now jit_rethrow, see jit_call)
-			jit_stats.exits_throw += 1
-			return .resume, xpc, xsp
-		}
-		if jl.state != .compiled || jl.index != index {
-			// a call of the loop's code ran this loop again in another frame, which changed what it is: this exit has
-			// nothing more to say about it
-			#partial switch kind {
-			case .ret: return .ret, 0, 0
-			case .guard: return .none, 0, 0
-			}
-			return .resume, xpc, xsp
-		}
-		switch kind {
-		case .leave, .ret:
-			// aux: the iterations this entry ran. A loop that runs a few iterations per entry costs more to enter than
-			// the compiled code saves: after JIT_PROBE entries it is left to the interpreter
-			jl.entries += 1
-			jl.iters += aux
-			if jl.entries == JIT_PROBE && jl.iters < JIT_PROBE * JIT_MIN_ITERS {
-				jl.state = .never
-				b.jit_active -= 1
-			}
-			if kind == .ret {
-				jit_stats.exits_return += 1
-				return .ret, 0, 0
-			}
-			jit_stats.exits_leave += 1
-			return .resume, xpc, xsp
-		case .budget:
-			rt.interrupt_counter = INTERRUPT_POLL_EVERY
-			return .resume, xpc, xsp
-		case .guard:
-			jit_stats.exits_deopt += 1
-			jit_invalidate(f, b, jl, aux, true)
-			return .none, 0, 0
-		case .throw:
-			return .resume, xpc, xsp
-		case .deopt:
-			jit_stats.exits_deopt += 1
-			if aux == JIT_AUX_LEARN || aux == JIT_AUX_NO_INLINE {
-				// a site met an object or a value it was not compiled for: it learns them, the loop is translated again
-				if jit_learn(f, b, jl, xpc, xsp, aux == JIT_AUX_NO_INLINE) {
-					jl.learns += 1
-					jl.state = jl.learns > JIT_MAX_LEARNS ? .never : .fresh
-					b.jit_active -= 1
-				} else {
-					// nothing to learn (a shape the site does not take, more shapes than it takes): a deopt
-					jl.deopts += 1
-					jit_invalidate(f, b, jl, JIT_AUX_NONE, false)
-				}
-			} else {
-				jl.deopts += 1
-				jit_invalidate(f, b, jl, aux, false)
-			}
-			return .resume, xpc, xsp
-		}
-		return .none, 0, 0
+		if !jit_region_ready(ctx, f, b, jl, sp) || sp != jl.entry_sp || ctx.rt.jit_depth >= JIT_MAX_NEST {return .none, 0, 0}
+		return jit_run(ctx, f, b, jl)
 	}
+}
+
+// Called with the frame of a call of a plain function before its first instruction (the interpreter's call, or a
+// call compiled code makes through the helper): counts the call, compiles the whole function once it is hot, and runs
+// the compiled code. None: interpret the function from its start (a collection is due, too deep in compiled code, not
+// compiled); resume: carry on at (pc, sp); ret: the function returns the value in f.stack[0].
+jit_fn_enter :: proc(ctx: ^Context, f: ^Frame) -> (res: Jit_Resume, pc: int, sp: int) {
+	when ODIN_ARCH != .wasm32 {
+		return .none, 0, 0
+	} else {
+		b := f.bc
+		rt := ctx.rt
+		if b.jit != nil && b.jit.fn.state == .compiled && rt.jit_depth < JIT_MAX_NEST && !gc_should_run(rt) {return jit_run(ctx, f, b, &b.jit.fn)}
+		if !jit_fn_kind_ok(b) {
+			b.jit_calls = JIT_CALLS_NEVER
+			return .none, 0, 0
+		}
+		if rt.jit_depth >= JIT_MAX_NEST || gc_should_run(rt) {return .none, 0, 0}
+		if b.jit == nil {b.jit = new(Jit_Info, rt_allocator(rt))}
+		jl := &b.jit.fn
+		if jl.region_end == 0 {jl^ = Jit_Loop{region_end = len(b.code), whole = true}}
+		if !jit_region_ready(ctx, f, b, jl, 0) {
+			if jl.state == .never {b.jit_calls = JIT_CALLS_NEVER}
+			return .none, 0, 0
+		}
+		return jit_run(ctx, f, b, jl)
+	}
+}
+
+// A frame the interpreter pushed for a call (frame_push): its call counted, and once they reach the threshold the
+// function's compiled code run on it. The frame to carry on in: the callee's (at the f.pc, f.sp the code left it at),
+// or the caller's when the callee returned (its result pushed). Out of line: the interpreter's code around its calls
+// stays as it was.
+jit_pushed :: #force_no_inline proc(f: ^Frame) -> ^Frame {
+	b := f.bc
+	b.jit_calls += 1
+	if b.jit_calls < jit_cfg.call_threshold {return f}
+	res, pc, sp := jit_fn_enter(f.ctx, f)
+	switch res {
+	case .none:
+	case .resume:
+		f.pc = pc
+		f.sp = sp
+	case .ret:
+		v := f.stack[0]
+		c := frame_pop(f.ctx.rt, f)
+		c.stack[c.sp] = v
+		c.sp += 1
+		return c
+	}
+	return f
+}
+
+// The frame of a call interp_call makes (var_refs: the function's closure cells), before interp_run runs it: its call
+// counted, the function's compiled code run on it once they reach the threshold. True: it returned (the value in
+// f.stack[0]); else interp_run runs it from f.pc, f.sp.
+jit_entered :: #force_no_inline proc(f: ^Frame, var_refs: [^]^Var_Ref) -> bool {
+	b := f.bc
+	f.closure_refs = var_refs
+	f.stackless = false
+	f.root_base = temp_mark(f.ctx.rt)
+	b.jit_calls += 1
+	if b.jit_calls < jit_cfg.call_threshold {return false}
+	res, pc, sp := jit_fn_enter(f.ctx, f)
+	if res == .resume {
+		f.pc = pc
+		f.sp = sp
+	}
+	return res == .ret
+}
+
+// The region compiled, or being compiled (its translation started when it is first seen hot): true when its code can
+// run.
+@(private = "file")
+jit_region_ready :: proc(ctx: ^Context, f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, sp: int) -> bool {
+	switch jl.state {
+	case .never:
+		return false
+	case .fresh:
+		jit_build(ctx, f, b, jl, sp)
+		return jl.state == .compiled
+	case .pending:
+		idx := jit_cfg.poll(jl.ticket)
+		if idx < 0 {return false}
+		jit_stats.pending -= 1
+		if idx == 0 {
+			jl.state = .never
+			jit_stats.failed += 1
+			return false
+		}
+		jl.index = u32(idx)
+		jl.state = .compiled
+		b.jit_active += 1
+	case .compiled:
+	}
+	return true
+}
+
+// Runs the compiled code of the region on the frame (at its header, the operand stack at its entry height) and says
+// where the interpreter carries on.
+@(private = "file")
+jit_run :: proc(ctx: ^Context, f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop) -> (res: Jit_Resume, pc: int, nsp: int) {
+	rt := ctx.rt
+	Jit_Fn :: #type proc "c" (args: [^]Value, locals: [^]Value, stack: [^]Value, arrays: [^]Jit_Arr, refs: [^]^Var_Ref, frame: ^Frame) -> u64
+	fn := transmute(Jit_Fn)uintptr(jl.index)
+	jit_stats.entries += 1
+	arrays: [JIT_MAX_ARRS]Jit_Arr = ---
+	for i in 0 ..< jl.n_arr {arrays[i] = jit_array_of(jit_slot_value(f, jl.arr_slots[i]))}
+	index := jl.index
+	rt.jit_depth += 1
+	r := fn(f.args, f.locals, f.stack, raw_data(arrays[:]), f.closure_refs, f)
+	rt.jit_depth -= 1
+	if jl.whole && Jit_Exit((r >> 24) & 0xff) == .ret {
+		// (the commonest exit of a function: nothing to count but the return)
+		jit_stats.exits_return += 1
+		return .ret, 0, 0
+	}
+	return jit_exit(f, b, jl, index, r)
+}
+
+// What an exit of the compiled code of the region (made at `index`) says, with the exit word r.
+@(private = "file")
+jit_exit :: proc(f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, index: u32, r: u64) -> (res: Jit_Resume, pc: int, nsp: int) {
+	kind := Jit_Exit((r >> 24) & 0xff)
+	xpc := int(r & 0xffffff)
+	xsp := int((r >> 32) & 0xffff)
+	aux := int(r >> 48)
+	if kind == .throw {
+		// (the call is made again by the interpreter: its callee is now jit_rethrow, see jit_call)
+		jit_stats.exits_throw += 1
+		return .resume, xpc, xsp
+	}
+	if jl.state != .compiled || jl.index != index {
+		// a call of the region's code ran it again in another frame, which changed what it is: this exit has nothing
+		// more to say about it
+		#partial switch kind {
+		case .ret: return .ret, 0, 0
+		case .guard: return .none, 0, 0
+		}
+		return .resume, xpc, xsp
+	}
+	switch kind {
+	case .leave, .ret:
+		// aux: the iterations this entry ran. A loop that runs a few iterations per entry costs more to enter than
+		// the compiled code saves: after JIT_PROBE entries it is left to the interpreter
+		jl.entries += 1
+		jl.iters += aux
+		if !jl.whole && jl.entries == JIT_PROBE && jl.iters < JIT_PROBE * JIT_MIN_ITERS {
+			jl.state = .never
+			b.jit_active -= 1
+		}
+		if kind == .ret {
+			jit_stats.exits_return += 1
+			return .ret, 0, 0
+		}
+		jit_stats.exits_leave += 1
+		return .resume, xpc, xsp
+	case .budget:
+		f.ctx.rt.interrupt_counter = INTERRUPT_POLL_EVERY
+		return .resume, xpc, xsp
+	case .guard:
+		jit_stats.exits_deopt += 1
+		if jit_cfg.trace {
+			jit_trace(cat(f.ctx, "jit: guard in ", atom_utf8(f.ctx.rt, b.func_name), jl.whole ? " (whole)" : "", " slot ", int_str(aux)))
+		}
+		jit_invalidate(f, b, jl, aux, true)
+		return .none, 0, 0
+	case .throw:
+		return .resume, xpc, xsp
+	case .deopt:
+		jit_stats.exits_deopt += 1
+		if jit_cfg.trace {
+			jit_trace(cat(f.ctx, "jit: deopt in ", atom_utf8(f.ctx.rt, b.func_name), jl.whole ? " (whole)" : "", " at ", int_str(xpc), " aux ", int_str(aux)))
+		}
+		if aux == JIT_AUX_LEARN || aux == JIT_AUX_NO_INLINE {
+			// a site met an object or a value it was not compiled for: it learns them, the region is translated again
+			if jit_learn(f, b, jl, xpc, xsp, aux == JIT_AUX_NO_INLINE) {
+				jl.learns += 1
+				jl.state = jl.learns > JIT_MAX_LEARNS ? .never : .fresh
+				b.jit_active -= 1
+			} else {
+				// nothing to learn (a shape the site does not take, more shapes than it takes): a deopt
+				jl.deopts += 1
+				jit_invalidate(f, b, jl, JIT_AUX_NONE, false)
+			}
+		} else {
+			jl.deopts += 1
+			jit_invalidate(f, b, jl, aux, false)
+		}
+		return .resume, xpc, xsp
+	}
+	return .none, 0, 0
 }
 
 // Is the loop at `header` one the JIT took (compiled, being compiled, to compile again)? The interpreter's hot loop
@@ -487,14 +693,15 @@ jit_slot_value :: proc(f: ^Frame, slot: int) -> Value {
 
 // The collector's part: the shapes the sites learned and what the compiled code compares against stay alive.
 jit_mark :: proc(rt: ^Runtime, info: ^Jit_Info) {
-	for i in 0 ..< info.n {
-		jl := &info.loops[i]
+	mark :: proc(rt: ^Runtime, jl: ^Jit_Loop) {
 		for k in 0 ..< jl.n_keep {mark_cell(rt, jl.keep[k])}
 		for s in 0 ..< jl.n_sites {
 			site := &jl.sites[s]
 			for k in 0 ..< site.n {mark_cell(rt, site.shapes[k])}
 		}
 	}
+	for i in 0 ..< info.n {mark(rt, &info.loops[i])}
+	mark(rt, &info.fn)
 }
 
 // The site of the instruction at pc (nil: none, and no room for one when add).
@@ -756,7 +963,51 @@ STR_LEN :: u32(offset_of(JS_String, len))
 STR_WIDE :: u32(offset_of(JS_String, is_wide))
 STR_ROPE :: u32(offset_of(JS_String, is_rope))
 STR_DATA :: u32(offset_of(JS_String, data))
+FRAME_THIS :: u32(offset_of(Frame, this_val))
 VALUE_SHIFT :: 4   // log2 of size_of(Value)
+// what a direct call writes of the frame it pushes (as frame_push does) and of the runtime
+FRAME_PREV :: u32(offset_of(Frame, prev))
+FRAME_CTX :: u32(offset_of(Frame, ctx))
+FRAME_CALLER_CTX :: u32(offset_of(Frame, caller_ctx))
+FRAME_FUNC :: u32(offset_of(Frame, func))
+FRAME_BC :: u32(offset_of(Frame, bc))
+FRAME_NEW_TARGET :: u32(offset_of(Frame, new_target))
+FRAME_ARGS :: u32(offset_of(Frame, args))
+FRAME_ARG_BUF_LEN :: u32(offset_of(Frame, arg_buf_len))
+FRAME_ARGC :: u32(offset_of(Frame, argc))
+FRAME_LOCALS :: u32(offset_of(Frame, locals))
+FRAME_STACK :: u32(offset_of(Frame, stack))
+FRAME_SP :: u32(offset_of(Frame, sp))
+FRAME_VAR_REFS :: u32(offset_of(Frame, var_refs))
+FRAME_PC :: u32(offset_of(Frame, pc))
+FRAME_EXTRA_ARGS :: u32(offset_of(Frame, extra_args))
+FRAME_CORO :: u32(offset_of(Frame, coro))
+FRAME_SEG_INDEX :: u32(offset_of(Frame, seg_index))
+FRAME_SEG_TOP :: u32(offset_of(Frame, seg_top))
+FRAME_STORAGE :: u32(offset_of(Frame, storage))
+FRAME_STORAGE_LEN :: u32(offset_of(Frame, storage_len))
+FRAME_PENDING_THROW :: u32(offset_of(Frame, pending_throw))
+FRAME_CLOSURE_REFS :: u32(offset_of(Frame, closure_refs))
+FRAME_ROOT_BASE :: u32(offset_of(Frame, root_base))
+FRAME_STACKLESS :: u32(offset_of(Frame, stackless))
+RT_CUR_FRAME :: u32(offset_of(Runtime, cur_frame))
+RT_STACK_DEPTH :: u32(offset_of(Runtime, stack_depth))
+RT_JIT_DEPTH :: u32(offset_of(Runtime, jit_depth))
+RT_MAX_STACK_DEPTH :: u32(offset_of(Runtime, config) + offset_of(Host_Config, max_stack_depth))
+RT_TEMP_ROOTS_LEN :: u32(offset_of(Runtime, temp_roots) + offset_of(runtime.Raw_Dynamic_Array, len))
+RT_VSTACK_DATA :: u32(offset_of(Runtime, vstack) + offset_of(runtime.Raw_Dynamic_Array, data))
+RT_VSTACK_LEN :: u32(offset_of(Runtime, vstack) + offset_of(runtime.Raw_Dynamic_Array, len))
+RT_VSTACK_CUR :: u32(offset_of(Runtime, vstack_cur))
+SEG_SIZE :: u32(size_of(Value_Segment))
+SEG_DATA :: u32(offset_of(Value_Segment, data) + offset_of(runtime.Raw_Slice, data))
+SEG_LEN :: u32(offset_of(Value_Segment, data) + offset_of(runtime.Raw_Slice, len))
+SEG_TOP :: u32(offset_of(Value_Segment, top))
+// a function's compiled code as a direct call reads it (Function_Bytecode.jit, its fn)
+INFO_FN_STATE :: u32(offset_of(Jit_Info, fn) + offset_of(Jit_Loop, state))
+INFO_FN_INDEX :: u32(offset_of(Jit_Info, fn) + offset_of(Jit_Loop, index))
+INFO_FN_N_ARR :: u32(offset_of(Jit_Info, fn) + offset_of(Jit_Loop, n_arr))
+FUNC_BC :: OBJ_DATA + u32(offset_of(Func_Data, bc))   // (a bytecode function's data is its Func_Data)
+FUNC_VAR_REFS :: OBJ_DATA + u32(offset_of(Func_Data, var_refs))
 
 #assert(size_of(Value) == 1 << VALUE_SHIFT && size_of(Prop_Slot) == size_of(Value))
 #assert(size_of(Atom) == 4 && size_of(Prop_Flags) == 1 && size_of(Prop_Kind) == 1 && size_of(Class_ID) == 1)
@@ -807,7 +1058,11 @@ I_AUX :: 9
 I_BUDGET :: 10
 I_T0 :: 11
 I_T1 :: 12
-I_FIRST :: 13
+I_T2 :: 13   // (I_T2 .. I_T5: a direct call's own, j_direct_call)
+I_T3 :: 14
+I_T4 :: 15
+I_T5 :: 16
+I_FIRST :: 17
 
 Jit_Outcome :: enum u8 {ok, refuse, restart}
 
@@ -1897,14 +2152,27 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 			if c.fail || c.restart {return false}
 		}
 	}
-	// the helper: a call of a native function (a call of bytecode through it costs more than the interpreter's own,
-	// and a callee being inlined calls nothing that has effects)
-	if c.inl_depth > 0 || fv.tag != .object || as_obj(fv).class == .bytecode_function {
-		j_fail(c, "a call the JIT does not make (a function it does not inline, or not known)")
+	// the helper: a call of a native function, or of a function compiled whole (through the helper, a call of bytecode
+	// that is interpreted costs more than the interpreter's own); a callee being inlined calls nothing that has effects
+	if c.inl_depth > 0 || fv.tag != .object || (as_obj(fv).class == .bytecode_function && (kind == .construct || !jit_fn_compilable(as_obj(fv).data.(Func_Data).bc))) {
+		j_fail(c, "a call the JIT does not make (a function it does not inline or compile, or not known)")
 		return false
 	}
 	j_flush_objs(c)
-	j_materialize(c)
+	j_materialize(c, true)
+	direct := !tail && kind != .construct && j_direct_ok(c, as_obj(fv))
+	if direct {
+		// block $result: the direct call, which leaves through its end with the result in the frame; else block $slow
+		// (one of its checks failed): the helper's call
+		for _ in 0 ..< 2 {
+			j_op(c, W_BLOCK)
+			j_op(c, W_VOID)
+			c.nest += 1
+		}
+		j_direct_call(c, as_obj(fv), argc, kind, low, pc, next)
+		j_op(c, W_END)
+		c.nest -= 1
+	}
 	j_lget(c, P_FRAME)
 	j_i32(c, i32(n))
 	j_i32(c, i32(argc))
@@ -1912,15 +2180,37 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 	j_i32(c, i32(next))
 	j_op(c, W_CALL)
 	w_uleb(&c.out, u64(Jit_Helper.call))
+	// (only a call of bytecode may come back not made: a native's has no stub for it, which keeps its code small)
+	bytecode := as_obj(fv).class == .bytecode_function
+	if bytecode {j_lset(c, I_T0); j_lget(c, I_T0)}
 	j_op(c, W_IF)
 	j_op(c, W_VOID)
 	c.nest += 1
+	if bytecode {
+		j_lget(c, I_T0)
+		j_i32(c, i32(Jit_Call_Result.threw))
+		j_op(c, W_I32_EQ)
+		j_op(c, W_IF)
+		j_op(c, W_VOID)
+		c.nest += 1
+	}
 	// (the entries from low up are in the frame as the call left them: the call is made again)
 	c.st.n = low
 	j_stub(c, pc, .throw, 0, n)
 	c.st.n = n
+	if bytecode {
+		j_op(c, W_ELSE)
+		// not made: the interpreter makes it
+		j_stub(c, pc, .deopt, JIT_AUX_NONE)
+		j_op(c, W_END)
+		c.nest -= 1
+	}
 	j_op(c, W_END)
 	c.nest -= 1
+	if direct {
+		j_op(c, W_END)
+		c.nest -= 1
+	}
 	c.st.n = low
 	d := j_push(c, .V)
 	off := u32(d * size_of(Value))
@@ -1930,6 +2220,11 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 	j_lget(c, P_STACK)
 	j_mem(c, W_I64_LOAD, 3, off + 8)
 	j_lset(c, c.sl0 + u32(d))
+	if tail {
+		// (the function returns the call's result: nothing of it runs after the call, where there may be no instruction)
+		j_return(c, d)
+		return false
+	}
 	for k in 0 ..< c.jl.n_arr {
 		at := u32(k * size_of(Jit_Arr))
 		j_lget(c, P_FRAME)
@@ -1947,11 +2242,329 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 			j_lset(c, c.a0 + 3 * u32(k) + w)
 		}
 	}
-	if tail {
-		j_return(c, d)
-		return false
-	}
 	return true
+}
+
+// Direct calls -------------------------------------------------------------------------------------------------------
+
+// Can a call of fo be made directly (j_direct_call): a plain function of the realm that may be compiled whole, with no
+// closure cells of its own (its frame then needs nothing done when it ends).
+@(private = "file")
+j_direct_ok :: proc(c: ^Jc, fo: ^Object) -> bool {
+	if fo.class != .bytecode_function {return false}
+	nb := fo.data.(Func_Data).bc
+	if (nb.realm != nil && nb.realm != c.ctx) || nb.var_ref_count != 0 || !jit_fn_compilable(nb) {return false}
+	if nb.jit == nil {nb.jit = new(Jit_Info, rt_allocator(c.rt))}
+	return j_keep(c, nb)
+}
+
+// i32 stores at the address in local `base`: a constant, or a local's value
+@(private = "file")
+j_st32 :: proc(c: ^Jc, base: u32, off: u32, v: i32) {
+	j_lget(c, base)
+	j_i32(c, v)
+	j_mem(c, W_I32_STORE, 2, off)
+}
+
+@(private = "file")
+j_st32l :: proc(c: ^Jc, base: u32, off: u32, src: u32) {
+	j_lget(c, base)
+	j_lget(c, src)
+	j_mem(c, W_I32_STORE, 2, off)
+}
+
+// a Value at the address in local `base`: its two words
+@(private = "file")
+j_st_value :: proc(c: ^Jc, base: u32, off: u32, tag: Tag, payload: i64) {
+	j_lget(c, base)
+	j_op(c, W_I64_CONST)
+	w_sleb(&c.out, i64(tag))
+	j_mem(c, W_I64_STORE, 3, off)
+	j_lget(c, base)
+	j_op(c, W_I64_CONST)
+	w_sleb(&c.out, payload)
+	j_mem(c, W_I64_STORE, 3, off + 8)
+}
+
+// a Value copied from (local `from` + off_from) to (local `to` + off_to)
+@(private = "file")
+j_copy_value :: proc(c: ^Jc, from: u32, off_from: u32, to: u32, off_to: u32) {
+	for half in 0 ..< u32(2) {
+		j_lget(c, to)
+		j_lget(c, from)
+		j_mem(c, W_I64_LOAD, 3, off_from + 8 * half)
+		j_mem(c, W_I64_STORE, 3, off_to + 8 * half)
+	}
+}
+
+// the i32 at a constant address
+@(private = "file")
+j_ld32 :: proc(c: ^Jc, addr: uintptr, off: u32) {
+	j_i32(c, i32(addr))
+	j_mem(c, W_I32_LOAD, 2, off)
+}
+
+// The call at pc of fo (argc arguments materialized on the frame's stack, its result to go at `low`) made directly
+// when the callee is a function of fo's bytecode (any of its closures: T5), compiled and holding no arrays, and there
+// is room: its frame pushed on the value stack as frame_push pushes it (so that the collector, a deopt, an exception
+// see an interpreter's frame), its code called through the engine's table, its frame popped as frame_pop pops it. Emitted inside block $slow, which any check that
+// fails leaves (the helper then makes the call), itself in block $result, which the call leaves with the result in the
+// frame at `low`. The callee's code leaving other than by its return: the helper finishes the call (jit_call_finish).
+@(private = "file")
+j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: int, pc: int, next: int) {
+	nb := fo.data.(Func_Data).bc
+	info := uintptr(nb.jit)
+	rtp := uintptr(c.rt)
+	n := c.st.n
+	abl := max(argc, int(nb.arg_count))
+	stack0 := u32(abl + int(nb.var_count)) * size_of(Value)
+	total := abl + int(nb.var_count) + int(nb.stack_size)   // (no closure cells: no room for their pointers)
+	callee := u32((n - argc - 1) * size_of(Value))
+	// the callee is a function of nb, its code compiled and holding no arrays
+	j_lget(c, P_STACK)
+	j_mem(c, W_I32_LOAD8_U, 0, callee)
+	j_i32(c, i32(Tag.object))
+	j_op(c, W_I32_NE)
+	j_op(c, W_BR_IF)
+	w_uleb(&c.out, 0)
+	j_lget(c, P_STACK)
+	j_mem(c, W_I32_LOAD, 2, callee + 8)
+	j_op(c, W_LOCAL_TEE)
+	w_uleb(&c.out, I_T5)
+	j_mem(c, W_I32_LOAD8_U, 0, OBJ_CLASS)
+	j_i32(c, i32(Class_ID.bytecode_function))
+	j_op(c, W_I32_NE)
+	j_op(c, W_BR_IF)
+	w_uleb(&c.out, 0)
+	j_lget(c, I_T5)
+	j_mem(c, W_I32_LOAD, 2, FUNC_BC)
+	j_i32(c, i32(uintptr(nb)))
+	j_op(c, W_I32_NE)
+	j_i32(c, i32(info))
+	j_mem(c, W_I32_LOAD8_U, 0, INFO_FN_STATE)
+	j_i32(c, i32(Jit_Loop_State.compiled))
+	j_op(c, W_I32_NE)
+	j_op(c, W_I32_OR)
+	j_ld32(c, info, INFO_FN_N_ARR)
+	j_op(c, W_I32_OR)
+	// room: on the host stack, in the call depth, in the value stack's segment (T3 its index, T2 its address, T4 its
+	// top)
+	j_ld32(c, rtp, RT_JIT_DEPTH)
+	j_i32(c, JIT_MAX_NEST)
+	j_op(c, W_I32_GE_S)
+	j_op(c, W_I32_OR)
+	j_ld32(c, rtp, RT_STACK_DEPTH)
+	j_ld32(c, rtp, RT_MAX_STACK_DEPTH)
+	j_op(c, W_I32_GE_S)
+	j_op(c, W_I32_OR)
+	j_ld32(c, rtp, RT_VSTACK_CUR)
+	j_op(c, W_LOCAL_TEE)
+	w_uleb(&c.out, I_T3)
+	j_ld32(c, rtp, RT_VSTACK_LEN)
+	j_op(c, W_I32_GE_U)
+	j_op(c, W_I32_OR)
+	j_op(c, W_BR_IF)
+	w_uleb(&c.out, 0)
+	j_ld32(c, rtp, RT_VSTACK_DATA)
+	j_lget(c, I_T3)
+	j_i32(c, i32(SEG_SIZE))
+	j_op(c, W_I32_MUL)
+	j_op(c, W_I32_ADD)
+	j_lset(c, I_T2)
+	j_lget(c, I_T2)
+	j_mem(c, W_I32_LOAD, 2, SEG_TOP)
+	j_lset(c, I_T4)
+	j_lget(c, I_T4)
+	j_i32(c, i32(total + FRAME_VALUES))
+	j_op(c, W_I32_ADD)
+	j_lget(c, I_T2)
+	j_mem(c, W_I32_LOAD, 2, SEG_LEN)
+	j_op(c, W_I32_GT_U)
+	j_op(c, W_BR_IF)
+	w_uleb(&c.out, 0)
+	// the block: T1 its values, T0 the frame after them; the segment's top moves past it
+	j_lget(c, I_T2)
+	j_mem(c, W_I32_LOAD, 2, SEG_DATA)
+	j_lget(c, I_T4)
+	j_i32(c, VALUE_SHIFT)
+	j_op(c, W_I32_SHL)
+	j_op(c, W_I32_ADD)
+	j_op(c, W_LOCAL_TEE)
+	w_uleb(&c.out, I_T1)
+	j_i32(c, i32(total * size_of(Value)))
+	j_op(c, W_I32_ADD)
+	j_lset(c, I_T0)
+	j_lget(c, I_T2)
+	j_lget(c, I_T4)
+	j_i32(c, i32(total + FRAME_VALUES))
+	j_op(c, W_I32_ADD)
+	j_mem(c, W_I32_STORE, 2, SEG_TOP)
+	// the arguments, then undefined in the other arguments, the locals and the operand stack (frame_layout)
+	for k in 0 ..< argc {j_copy_value(c, P_STACK, u32((n - argc + k) * size_of(Value)), I_T1, u32(k * size_of(Value)))}
+	for i in argc ..< total {j_st_value(c, I_T1, u32(i * size_of(Value)), .undefined, 0)}
+	// the frame (frame_push)
+	j_st32l(c, I_T0, FRAME_PREV, P_FRAME)
+	j_st32(c, I_T0, FRAME_CTX, i32(uintptr(c.ctx)))
+	j_st32(c, I_T0, FRAME_CALLER_CTX, i32(uintptr(c.ctx)))
+	j_lget(c, I_T0)
+	j_op(c, W_I64_CONST)
+	w_sleb(&c.out, i64(Tag.object))
+	j_mem(c, W_I64_STORE, 3, FRAME_FUNC)
+	j_lget(c, I_T0)
+	j_lget(c, I_T5)
+	j_op(c, W_I64_EXTEND_I32_U)
+	j_mem(c, W_I64_STORE, 3, FRAME_FUNC + 8)
+	j_st32(c, I_T0, FRAME_BC, i32(uintptr(nb)))
+	if kind == .method {
+		j_copy_value(c, P_STACK, u32(low * size_of(Value)), I_T0, FRAME_THIS)
+	} else {
+		j_st_value(c, I_T0, FRAME_THIS, .undefined, 0)
+	}
+	j_st_value(c, I_T0, FRAME_NEW_TARGET, .undefined, 0)
+	j_st32l(c, I_T0, FRAME_ARGS, I_T1)
+	j_st32(c, I_T0, FRAME_ARG_BUF_LEN, i32(abl))
+	j_st32(c, I_T0, FRAME_ARGC, i32(argc))
+	for slot in ([]struct {off: u32, at: u32}{{FRAME_LOCALS, u32(abl * size_of(Value))}, {FRAME_STACK, stack0}}) {
+		j_lget(c, I_T0)
+		j_lget(c, I_T1)
+		j_i32(c, i32(slot.at))
+		j_op(c, W_I32_ADD)
+		j_mem(c, W_I32_STORE, 2, slot.off)
+	}
+	j_st32l(c, I_T0, FRAME_VAR_REFS, I_T0)
+	for off in ([]u32{FRAME_SP, FRAME_PC, FRAME_EXTRA_ARGS, FRAME_EXTRA_ARGS + size_of(rawptr), FRAME_CORO, FRAME_STORAGE, FRAME_STORAGE_LEN}) {
+		j_st32(c, I_T0, off, 0)
+	}
+	j_st32l(c, I_T0, FRAME_SEG_INDEX, I_T3)
+	j_st32l(c, I_T0, FRAME_SEG_TOP, I_T4)
+	j_lget(c, I_T0)
+	j_i32(c, 0)
+	j_mem(c, W_I32_STORE8, 0, FRAME_PENDING_THROW)
+	j_lget(c, I_T0)
+	j_i32(c, 1)
+	j_mem(c, W_I32_STORE8, 0, FRAME_STACKLESS)
+	j_lget(c, I_T0)
+	j_lget(c, I_T5)
+	j_mem(c, W_I32_LOAD, 2, FUNC_VAR_REFS)
+	j_mem(c, W_I32_STORE, 2, FRAME_CLOSURE_REFS)
+	j_lget(c, I_T0)
+	j_ld32(c, rtp, RT_TEMP_ROOTS_LEN)
+	j_mem(c, W_I32_STORE, 2, FRAME_ROOT_BASE)
+	// the runtime: the frame is the current one, one call deeper; the caller's pc after its call
+	j_i32(c, i32(rtp))
+	j_lget(c, I_T0)
+	j_mem(c, W_I32_STORE, 2, RT_CUR_FRAME)
+	for off in ([]u32{RT_STACK_DEPTH, RT_JIT_DEPTH}) {
+		j_i32(c, i32(rtp))
+		j_ld32(c, rtp, off)
+		j_i32(c, 1)
+		j_op(c, W_I32_ADD)
+		j_mem(c, W_I32_STORE, 2, off)
+	}
+	j_st32(c, P_FRAME, FRAME_PC, i32(next))
+	// the call (T3: the index of the code called)
+	j_ld32(c, info, INFO_FN_INDEX)
+	j_lset(c, I_T3)
+	j_lget(c, I_T1)
+	j_lget(c, I_T1)
+	j_i32(c, i32(abl * size_of(Value)))
+	j_op(c, W_I32_ADD)
+	j_lget(c, I_T1)
+	j_i32(c, i32(stack0))
+	j_op(c, W_I32_ADD)
+	j_i32(c, 0)
+	j_lget(c, I_T0)
+	j_mem(c, W_I32_LOAD, 2, FRAME_CLOSURE_REFS)
+	j_lget(c, I_T0)
+	j_lget(c, I_T3)
+	j_op(c, W_CALL_INDIRECT)
+	w_uleb(&c.out, 0)
+	w_uleb(&c.out, 0)
+	j_lset(c, c.r64)
+	j_i32(c, i32(rtp))
+	j_ld32(c, rtp, RT_JIT_DEPTH)
+	j_i32(c, 1)
+	j_op(c, W_I32_SUB)
+	j_mem(c, W_I32_STORE, 2, RT_JIT_DEPTH)
+	// not its return: the rest of the call is the helper's (T2: it threw)
+	j_i32(c, 0)
+	j_lset(c, I_T2)
+	j_lget(c, c.r64)
+	j_op(c, W_I64_CONST)
+	w_sleb(&c.out, 24)
+	j_op(c, W_I64_SHR_U)
+	j_op(c, W_I32_WRAP_I64)
+	j_i32(c, 0xff)
+	j_op(c, W_I32_AND)
+	j_i32(c, i32(Jit_Exit.ret))
+	j_op(c, W_I32_NE)
+	j_op(c, W_IF)
+	j_op(c, W_VOID)
+	j_lget(c, I_T0)
+	j_lget(c, c.r64)
+	j_op(c, W_I32_WRAP_I64)
+	j_lget(c, c.r64)
+	j_op(c, W_I64_CONST)
+	w_sleb(&c.out, 32)
+	j_op(c, W_I64_SHR_U)
+	j_op(c, W_I32_WRAP_I64)
+	j_lget(c, I_T3)
+	j_i32(c, i32(n - argc - 1))
+	j_op(c, W_CALL)
+	w_uleb(&c.out, u64(Jit_Helper.finish))
+	j_lset(c, I_T2)
+	j_op(c, W_END)
+	// the frame popped (frame_pop): the caller's again, one call less deep, the temporary roots of the call gone, the
+	// value stack's top back where it was (its segments may have moved: their array is read again)
+	j_i32(c, i32(rtp))
+	j_lget(c, P_FRAME)
+	j_mem(c, W_I32_STORE, 2, RT_CUR_FRAME)
+	j_i32(c, i32(rtp))
+	j_ld32(c, rtp, RT_STACK_DEPTH)
+	j_i32(c, 1)
+	j_op(c, W_I32_SUB)
+	j_mem(c, W_I32_STORE, 2, RT_STACK_DEPTH)
+	j_i32(c, i32(rtp))
+	j_lget(c, I_T0)
+	j_mem(c, W_I32_LOAD, 2, FRAME_ROOT_BASE)
+	j_ld32(c, rtp, RT_TEMP_ROOTS_LEN)
+	j_lget(c, I_T0)
+	j_mem(c, W_I32_LOAD, 2, FRAME_ROOT_BASE)
+	j_ld32(c, rtp, RT_TEMP_ROOTS_LEN)
+	j_op(c, W_I32_LT_U)
+	j_op(c, W_SELECT)
+	j_mem(c, W_I32_STORE, 2, RT_TEMP_ROOTS_LEN)
+	j_i32(c, i32(rtp))
+	j_lget(c, I_T0)
+	j_mem(c, W_I32_LOAD, 2, FRAME_SEG_INDEX)
+	j_mem(c, W_I32_STORE, 2, RT_VSTACK_CUR)
+	j_ld32(c, rtp, RT_VSTACK_DATA)
+	j_lget(c, I_T0)
+	j_mem(c, W_I32_LOAD, 2, FRAME_SEG_INDEX)
+	j_i32(c, i32(SEG_SIZE))
+	j_op(c, W_I32_MUL)
+	j_op(c, W_I32_ADD)
+	j_lget(c, I_T0)
+	j_mem(c, W_I32_LOAD, 2, FRAME_SEG_TOP)
+	j_mem(c, W_I32_STORE, 2, SEG_TOP)
+	// it threw: the interpreter makes the call again, whose callee jit_call_finish made one that throws
+	j_lget(c, I_T2)
+	j_op(c, W_IF)
+	j_op(c, W_VOID)
+	c.nest += 1
+	c.st.n = low
+	j_stub(c, pc, .throw, 0, n)
+	c.st.n = n
+	j_op(c, W_END)
+	c.nest -= 1
+	// the result where the helper's call leaves it
+	j_lget(c, I_T1)
+	j_i32(c, i32(stack0))
+	j_op(c, W_I32_ADD)
+	j_lset(c, I_T1)
+	j_copy_value(c, I_T1, 0, P_STACK, u32(low * size_of(Value)))
+	j_op(c, W_BR)
+	w_uleb(&c.out, 1)
 }
 
 // Inlining ------------------------------------------------------------------------------------------------------------
@@ -2182,11 +2795,12 @@ j_store_tag :: proc(c: ^Jc, base: u32, off: u32, tag: Tag) {
 	j_mem(c, W_I32_STORE8, 0, off)
 }
 
-// the stack entries back into the frame's operand stack (in a callee being inlined, the caller's at the call)
+// the stack entries back into the frame's operand stack (in a callee being inlined, the caller's at the call); exact:
+// for a call (j_store_entry)
 @(private = "file")
-j_materialize :: proc(c: ^Jc) {
+j_materialize :: proc(c: ^Jc, exact := false) {
 	for d in 0 ..< (c.inl_depth > 0 ? c.inl_n : c.st.n) {
-		j_store_entry(c, d, P_STACK, u32(d * 16), true)
+		j_store_entry(c, d, P_STACK, u32(d * 16), true, exact)
 	}
 }
 
@@ -2397,6 +3011,11 @@ j_obj_truthy :: proc(c: ^Jc, p: u32) {
 j_get_bool :: proc(c: ^Jc, d: int, pc: int) {
 	if c.st.t[d] == .P {
 		j_obj_truthy(c, j_si(c, d))
+		return
+	}
+	if c.st.t[d] == .O {
+		// (an array or a typed array: never document.all; an O has no Wasm local)
+		j_i32(c, 1)
 		return
 	}
 	if c.st.t[d] == .V {
@@ -2767,9 +3386,9 @@ jit_emit :: proc(c: ^Jc, f: ^Frame) {
 		w_u8(&sec, W_I32)
 	}
 	w_section(&m, 1, &sec)
-	// imports: the engine's memory, and its helpers when the loop calls (function indices from 0)
+	// imports: the engine's memory, and when the region calls its helpers (function indices from 0) and its table
 	n_imports := c.calls ? len(Jit_Helper) : 0
-	w_uleb(&sec, u64(1 + n_imports))
+	w_uleb(&sec, u64(1 + n_imports + (c.calls ? 1 : 0)))
 	w_name(&sec, "e")
 	w_name(&sec, "memory")
 	w_u8(&sec, 0x02)
@@ -2782,6 +3401,12 @@ jit_emit :: proc(c: ^Jc, f: ^Frame) {
 			w_u8(&sec, 0x00)
 			w_uleb(&sec, u64(1 + int(h)))
 		}
+		w_name(&sec, "e")
+		w_name(&sec, JIT_TABLE_IMPORT)
+		w_u8(&sec, 0x01)
+		w_u8(&sec, W_FUNCREF)
+		w_u8(&sec, 0x00)
+		w_uleb(&sec, 0)
 	}
 	w_section(&m, 2, &sec)
 	// one function, exported as "f"
@@ -2924,7 +3549,7 @@ jit_emit :: proc(c: ^Jc, f: ^Frame) {
 	// leaving or returning: the aux word is the number of iterations this entry ran
 	j_lget(c, I_KIND)
 	j_i32(c, 2)
-	j_op(c, 0x49)   // i32.lt_u
+	j_op(c, W_I32_LT_U)
 	j_op(c, W_IF)
 	j_op(c, W_VOID)
 	j_i32(c, JIT_BUDGET)
@@ -2985,7 +3610,7 @@ j_ret_if :: proc(c: ^Jc, pc: int, kind: Jit_Exit, aux: u32) {
 
 // a store of the stack entry d into frame memory (a slot the loop leaves to the interpreter)
 @(private = "file")
-j_store_entry :: proc(c: ^Jc, d: int, base: u32, off: u32, exiting := false) {
+j_store_entry :: proc(c: ^Jc, d: int, base: u32, off: u32, exiting := false, exact := false) {
 	t := c.st.t[d]
 	switch t {
 	case .I:
@@ -3022,14 +3647,32 @@ j_store_entry :: proc(c: ^Jc, d: int, base: u32, off: u32, exiting := false) {
 			j_mem(c, W_I64_STORE, 3, off + 8 * half)
 		}
 	case .L:
-		// leaving: a double (what the interpreter would hold); into a local the loop leaves to the interpreter: it
-		// must fit an int32, or the instruction is left to the interpreter
-		if exiting {
+		// leaving: a double (a value the interpreter may hold; a deopt stub stays small); exact: what the interpreter
+		// would hold, an int when it fits (what a callee or a caller is given: its type speculated from it); into a
+		// local the loop leaves to the interpreter: it must fit an int32, or the instruction is left to the interpreter
+		if exiting && !exact {
 			j_store_tag(c, base, off, .float)
 			j_lget(c, base)
 			j_lget(c, c.sl0 + u32(d))
 			j_op(c, W_F64_CONVERT_I64_S)
 			j_mem(c, W_F64_STORE, 3, off + 8)
+		} else if exiting {
+			j_lget(c, base)
+			j_i32(c, i32(Tag.float))
+			j_i32(c, i32(Tag.int))
+			j_l_not_i32(c, d)
+			j_op(c, W_SELECT)
+			j_mem(c, W_I32_STORE8, 0, off)
+			j_lget(c, base)
+			j_lget(c, c.sl0 + u32(d))
+			j_op(c, W_F64_CONVERT_I64_S)
+			j_op(c, W_I64_REINTERPRET_F64)
+			j_lget(c, c.sl0 + u32(d))
+			j_op(c, W_I32_WRAP_I64)
+			j_op(c, W_I64_EXTEND_I32_U)
+			j_l_not_i32(c, d)
+			j_op(c, W_SELECT)
+			j_mem(c, W_I64_STORE, 3, off + 8)
 		} else {
 			j_store_tag(c, base, off, .int)
 			j_lget(c, base)
@@ -3204,6 +3847,24 @@ jit_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
 		j_i32(c, i32(op == .null ? Tag.null : Tag.undefined))
 		j_lset(c, j_si(c, d))
 		c.st.v[d] = op == .null ? NULL : UNDEFINED
+	case .push_this:
+		// the frame's `this` (a sloppy function's, when it is not an object, is the interpreter's to make one)
+		d := j_push(c, .V)
+		j_lget(c, P_FRAME)
+		j_mem(c, W_I32_LOAD8_U, 0, FRAME_THIS)
+		j_lset(c, j_si(c, d))
+		if !c.b.is_strict_mode {
+			j_lget(c, j_si(c, d))
+			j_i32(c, i32(Tag.object))
+			j_op(c, W_I32_NE)
+			c.st.n -= 1
+			j_deopt_if(c, pc)
+			c.st.n += 1
+		}
+		j_lget(c, P_FRAME)
+		j_mem(c, W_I64_LOAD, 3, FRAME_THIS + 8)
+		j_lset(c, c.sl0 + u32(d))
+		c.st.v[d] = f.this_val
 	case .get_length:
 		if c.st.t[n - 1] != .O {
 			return jit_get_field(c, op, pa(.A_length), pc)
@@ -3550,7 +4211,7 @@ j_unbox_operands :: proc(c: ^Jc, op: Opcode, pc: int) -> bool {
 // The function returns the entry d (its value in the frame's stack[0]).
 @(private = "file")
 j_return :: proc(c: ^Jc, d: int) {
-	j_store_entry(c, d, P_STACK, 0, true)
+	j_store_entry(c, d, P_STACK, 0, true, true)
 	c.st.n = 0
 	j_i32(c, 0)
 	j_lset(c, I_PC)
