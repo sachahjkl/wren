@@ -8,8 +8,8 @@
 	Test SharedWorker creation without arguments results in exception.: PASS
 	Test recursive worker creation results in exception.: PASS
 	Test toString exception propagated correctly.: PASS
-/workers/SharedWorker-detach-frame-in-error-event.html: OK|TIMEOUT
-	Test frame detach in shared worker's error handler: FAIL|TIMEOUT
+/workers/SharedWorker-detach-frame-in-error-event.html: TIMEOUT
+	Test frame detach in shared worker's error handler: TIMEOUT
 /workers/SharedWorker-exception-propagation.html: OK
 	Uncaught error in shared worker should not propagate to window: PASS
 /workers/SharedWorker-exception.html: OK
@@ -28,8 +28,8 @@
 	Test script error unhandled.: PASS
 /workers/SharedWorker-simple.html: OK
 	Test simple shared worker construction case.: PASS
-/workers/SharedWorkerPerformanceNow.html: OK|TIMEOUT
-	performance.now() exists in shared workers and reports reasonable times: FAIL|TIMEOUT
+/workers/SharedWorkerPerformanceNow.html: TIMEOUT
+	performance.now() exists in shared workers and reports reasonable times: TIMEOUT
 /workers/SharedWorker_blobUrl.html: TIMEOUT
 	Blob URL shared by document on SharedWorker: TIMEOUT
 /workers/SharedWorker_dataUrl.html: OK
@@ -41,7 +41,7 @@
 	Test calling functions from WorkerContext.: PASS
 /workers/Worker-constructor-proto.any.worker.html: OK
 	Tests that setting the proto of a built in constructor is not reset.: FAIL
-/workers/Worker-creation-happens-in-parallel.https.html: OK|TIMEOUT
+/workers/Worker-creation-happens-in-parallel.https.html: TIMEOUT
 	Tests that creation of a "new Worker()" will occur in parallel: FAIL
 /workers/Worker-custom-event.any.worker.html: OK
 	Test CustomEvents on workers.: PASS
@@ -1159,7 +1159,7 @@
 	The WritableStream interface object should be exposed.: PASS
 	The XMLHttpRequest interface object should be exposed.: PASS
 	The XMLHttpRequestEventTarget interface object should be exposed.: PASS
-	The XMLHttpRequestUpload interface object should be exposed.: FAIL
+	The XMLHttpRequestUpload interface object should be exposed.: PASS
 /workers/semantics/interface-objects/002.worker.html: OK
 	The AbstractView interface object should not be exposed.: PASS
 	The AbstractWorker interface object should not be exposed.: PASS
@@ -1200,8 +1200,8 @@
 	creating 3 nested dedicated workers: PASS
 /workers/semantics/multiple-workers/004.html: OK
 	shared worker with multiple documents: PASS
-/workers/semantics/multiple-workers/008.html: TIMEOUT
-	messagechannel in shared worker: TIMEOUT
+/workers/semantics/multiple-workers/008.html: OK
+	messagechannel in shared worker: PASS
 /workers/semantics/multiple-workers/exposure.any.html: OK
 	SharedWorker exposure: PASS
 	Worker exposure: PASS

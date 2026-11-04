@@ -107,10 +107,10 @@
 	history.state should initially be null: PASS
 	history.state should reflect pushed state: PASS
 	history.state should reflect the navigated state after onload: PASS
-	history.state should reflect the navigated state onload: FAIL
-	popstate event should fire before onload fires: FAIL
-	popstate event should not fire after onload fires: FAIL
-	the correct state should be restored when navigating during initial load: FAIL
+	history.state should reflect the navigated state onload: PASS
+	popstate event should fire before onload fires: PASS
+	popstate event should not fire after onload fires: PASS
+	the correct state should be restored when navigating during initial load: PASS
 /html/browsers/history/the-history-interface/008.html: OK
 	history.pushState URL resolving should be done relative to the document, not the script: PASS
 	history.replaceState URL resolving should be done relative to the document, not the script: PASS

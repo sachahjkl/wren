@@ -217,11 +217,11 @@
 /fetch/http-cache/pragma-no-cache-with-cache-control.html: OK
 	Response with Cache-Control: max-age=2592000, immutable and Pragma: no-cache should be cached: FAIL
 	Response with Cache-Control: max-age=2592000, public and Pragma: no-cache should not be cached: FAIL
-/fetch/http-cache/split-cache.html: ERROR
-	HTTP cache is not shared between cross-site top-level frames: NOTRUN
-	HTTP cache is not shared between same-site frames with cross-site top-level frames: NOTRUN
-	HTTP cache is shared between same-site frames with same-site top-level frames: NOTRUN
-	HTTP cache is shared between same-site top-level frames: TIMEOUT
+/fetch/http-cache/split-cache.html: OK
+	HTTP cache is not shared between cross-site top-level frames: PASS
+	HTTP cache is not shared between same-site frames with cross-site top-level frames: PASS
+	HTTP cache is shared between same-site frames with same-site top-level frames: PASS
+	HTTP cache is shared between same-site top-level frames: PASS
 /fetch/http-cache/status.any.html: OK
 	HTTP cache avoids going to the network if it has a fresh 200 response: PASS
 	HTTP cache avoids going to the network if it has a fresh 203 response: PASS

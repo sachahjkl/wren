@@ -25,6 +25,58 @@ func init() {
 	for name, main := range fetchHandlers {
 		wptPyHandlers[fetchResources+name] = wptPy(main)
 	}
+	wptPyHandlers["/fetch/api/request/resources/cache.py"] = wptPy(fetchRequestCache)
+}
+
+// fetch/api/request/resources/cache.py: remembers the validators of each request of a token, answers as a cache's server does.
+func fetchRequestCache(q *pyRequest, p *pyResponse) {
+	const script = "fetch-request-cache"
+	token := q.q.Get("token")
+	if q.has("querystate") {
+		p.set("Content-Type", "text/plain")
+		value, _ := stashTake(script, token)
+		p.body, _ = json.Marshal(value)
+		return
+	}
+	tag := q.q.Get("tag")
+	if tag != "" {
+		tag = `"` + tag + `"`
+	}
+	date := q.q.Get("date")
+	seen := []map[string]string{}
+	if v, ok := stashTake(script, token); ok {
+		seen = v.([]map[string]string)
+	}
+	state := map[string]string{}
+	if !q.has("ignore") {
+		for _, name := range []string{"If-None-Match", "If-Modified-Since", "Pragma", "Cache-Control"} {
+			if value := q.header(name, ""); value != "" {
+				state[name] = value
+			}
+		}
+	}
+	stashPut(script, token, append(seen, state))
+	if tag != "" {
+		p.set("ETag", tag)
+	} else if date != "" {
+		p.set("Last-Modified", date)
+	}
+	for _, a := range [][2]string{{"expires", "Expires"}, {"vary", "Vary"}, {"cache_control", "Cache-Control"}} {
+		if value := q.q.Get(a[0]); value != "" {
+			p.set(a[1], value)
+		}
+	}
+	p.set("Access-Control-Allow-Origin", "*")
+	switch {
+	case q.q.Get("redirect") != "":
+		p.set("Location", q.q.Get("redirect"))
+		p.code, p.text = http.StatusFound, "Redirect"
+	case q.hasHeader("If-None-Match") && q.header("If-None-Match", "") == tag, q.hasHeader("If-Modified-Since") && q.header("If-Modified-Since", "") == date:
+		p.status(http.StatusNotModified)
+	default:
+		p.set("Content-Type", "text/plain")
+		p.body = []byte(q.q.Get("content"))
+	}
 }
 
 // What redirect.py remembers between the requests of a token.

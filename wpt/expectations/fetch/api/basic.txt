@@ -37,14 +37,14 @@
 	Testing conditional GET with ETags: PASS
 /fetch/api/basic/conditional-get.any.worker.html: OK
 	Testing conditional GET with ETags: PASS
-/fetch/api/basic/error-after-response.any.html: TIMEOUT
-	Response reader closed promise should reject after a network error happening after resolving fetch promise: TIMEOUT
+/fetch/api/basic/error-after-response.any.html: OK
+	Response reader closed promise should reject after a network error happening after resolving fetch promise: PASS
 	Response reader read() promise should reject after a network error happening after resolving fetch promise: PASS
-/fetch/api/basic/error-after-response.any.worker.html: TIMEOUT
-	Response reader closed promise should reject after a network error happening after resolving fetch promise: TIMEOUT
+/fetch/api/basic/error-after-response.any.worker.html: OK
+	Response reader closed promise should reject after a network error happening after resolving fetch promise: PASS
 	Response reader read() promise should reject after a network error happening after resolving fetch promise: PASS
 /fetch/api/basic/fetch-in-popup-from-iframe.html: OK
-	Fetch from initial empty document in popup opened from iframe: FAIL
+	Fetch from initial empty document in popup opened from iframe: PASS
 /fetch/api/basic/gc.any.html: OK
 	GC/CC should not abruptly close the stream while being consumed by Response: PASS
 	GC/CC should not discard a FormData body's Blob before its stream is read: PASS
@@ -279,7 +279,7 @@
 	header x-method-override is forbidden to use value GET,track : PASS
 	header x-method-override is forbidden to use value TRACE: PASS
 	header x-method-override is forbidden to use value TRACK: PASS
-	header x-method-override is forbidden to use value connect: FAIL
+	header x-method-override is forbidden to use value connect: PASS
 	header x-method-override is forbidden to use value trace: PASS
 	header x-method-override is forbidden to use value trace,: PASS
 	header x-method-override is forbidden to use value track: PASS
@@ -414,10 +414,10 @@
 	Fetch with POST with URLSearchParams body: PASS
 	Fetch with POST with Uint8Array body: PASS
 	Fetch with POST with text body: PASS
-	Fetch with POST without body: FAIL
+	Fetch with POST without body: PASS
 	Fetch with PUT and mode "same-origin" needs an Origin header: PASS
 	Fetch with PUT with body: PASS
-	Fetch with PUT without body: FAIL
+	Fetch with PUT without body: PASS
 	Fetch with TacO and mode "cors" needs an Origin header: PASS
 	Fetch with TacO and mode "same-origin" needs an Origin header: PASS
 /fetch/api/basic/request-headers.any.worker.html: OK
@@ -440,10 +440,10 @@
 	Fetch with POST with URLSearchParams body: PASS
 	Fetch with POST with Uint8Array body: PASS
 	Fetch with POST with text body: PASS
-	Fetch with POST without body: FAIL
+	Fetch with POST without body: PASS
 	Fetch with PUT and mode "same-origin" needs an Origin header: PASS
 	Fetch with PUT with body: PASS
-	Fetch with PUT without body: FAIL
+	Fetch with PUT without body: PASS
 	Fetch with TacO and mode "cors" needs an Origin header: PASS
 	Fetch with TacO and mode "same-origin" needs an Origin header: PASS
 /fetch/api/basic/request-referrer-redirected-worker.html: OK
@@ -525,51 +525,51 @@
 	Synchronous feature detect fails if feature unsupported: NOTRUN
 /fetch/api/basic/response-null-body.any.html: OK
 	Null body status with subresource integrity should abort: PASS
-	Response.body is null for responses with method=HEAD: FAIL
-	Response.body is null for responses with status=204 (method=GET): FAIL
-	Response.body is null for responses with status=204 (method=OPTIONS): FAIL
-	Response.body is null for responses with status=204 (method=POST): FAIL
-	Response.body is null for responses with status=205 (method=GET): FAIL
-	Response.body is null for responses with status=205 (method=OPTIONS): FAIL
-	Response.body is null for responses with status=205 (method=POST): FAIL
-	Response.body is null for responses with status=304 (method=GET): FAIL
-	Response.body is null for responses with status=304 (method=OPTIONS): FAIL
-	Response.body is null for responses with status=304 (method=POST): FAIL
+	Response.body is null for responses with method=HEAD: PASS
+	Response.body is null for responses with status=204 (method=GET): PASS
+	Response.body is null for responses with status=204 (method=OPTIONS): PASS
+	Response.body is null for responses with status=204 (method=POST): PASS
+	Response.body is null for responses with status=205 (method=GET): PASS
+	Response.body is null for responses with status=205 (method=OPTIONS): PASS
+	Response.body is null for responses with status=205 (method=POST): PASS
+	Response.body is null for responses with status=304 (method=GET): PASS
+	Response.body is null for responses with status=304 (method=OPTIONS): PASS
+	Response.body is null for responses with status=304 (method=POST): PASS
 /fetch/api/basic/response-null-body.any.worker.html: OK
 	Null body status with subresource integrity should abort: PASS
-	Response.body is null for responses with method=HEAD: FAIL
-	Response.body is null for responses with status=204 (method=GET): FAIL
-	Response.body is null for responses with status=204 (method=OPTIONS): FAIL
-	Response.body is null for responses with status=204 (method=POST): FAIL
-	Response.body is null for responses with status=205 (method=GET): FAIL
-	Response.body is null for responses with status=205 (method=OPTIONS): FAIL
-	Response.body is null for responses with status=205 (method=POST): FAIL
-	Response.body is null for responses with status=304 (method=GET): FAIL
-	Response.body is null for responses with status=304 (method=OPTIONS): FAIL
-	Response.body is null for responses with status=304 (method=POST): FAIL
+	Response.body is null for responses with method=HEAD: PASS
+	Response.body is null for responses with status=204 (method=GET): PASS
+	Response.body is null for responses with status=204 (method=OPTIONS): PASS
+	Response.body is null for responses with status=204 (method=POST): PASS
+	Response.body is null for responses with status=205 (method=GET): PASS
+	Response.body is null for responses with status=205 (method=OPTIONS): PASS
+	Response.body is null for responses with status=205 (method=POST): PASS
+	Response.body is null for responses with status=304 (method=GET): PASS
+	Response.body is null for responses with status=304 (method=OPTIONS): PASS
+	Response.body is null for responses with status=304 (method=POST): PASS
 /fetch/api/basic/response-url.sub.any.html: OK
-	Testing response url getter with http://web-platform.test:8778#ada: FAIL
-	Testing response url getter with http://web-platform.test:8778/#: FAIL
-	Testing response url getter with http://web-platform.test:8778/#ada: FAIL
+	Testing response url getter with http://web-platform.test:8778#ada: PASS
+	Testing response url getter with http://web-platform.test:8778/#: PASS
+	Testing response url getter with http://web-platform.test:8778/#ada: PASS
 	Testing response url getter with http://web-platform.test:8778/ada: PASS
 /fetch/api/basic/response-url.sub.any.worker.html: OK
-	Testing response url getter with http://web-platform.test:8778#ada: FAIL
-	Testing response url getter with http://web-platform.test:8778/#: FAIL
-	Testing response url getter with http://web-platform.test:8778/#ada: FAIL
+	Testing response url getter with http://web-platform.test:8778#ada: PASS
+	Testing response url getter with http://web-platform.test:8778/#: PASS
+	Testing response url getter with http://web-platform.test:8778/#ada: PASS
 	Testing response url getter with http://web-platform.test:8778/ada: PASS
 /fetch/api/basic/scheme-about.any.html: OK
-	Fetching about:blank with method GET is KO: FAIL
-	Fetching about:blank with method POST is KO: FAIL
-	Fetching about:blank with method PUT is KO: FAIL
-	Fetching about:blank with range header does not affect behavior: FAIL
+	Fetching about:blank with method GET is KO: PASS
+	Fetching about:blank with method POST is KO: PASS
+	Fetching about:blank with method PUT is KO: PASS
+	Fetching about:blank with range header does not affect behavior: PASS
 	Fetching about:config with method GET is KO: PASS
 	Fetching about:invalid.com with method GET is KO: PASS
 	Fetching about:unicorn with method GET is KO: PASS
 /fetch/api/basic/scheme-about.any.worker.html: OK
-	Fetching about:blank with method GET is KO: FAIL
-	Fetching about:blank with method POST is KO: FAIL
-	Fetching about:blank with method PUT is KO: FAIL
-	Fetching about:blank with range header does not affect behavior: FAIL
+	Fetching about:blank with method GET is KO: PASS
+	Fetching about:blank with method POST is KO: PASS
+	Fetching about:blank with method PUT is KO: PASS
+	Fetching about:blank with range header does not affect behavior: PASS
 	Fetching about:config with method GET is KO: PASS
 	Fetching about:invalid.com with method GET is KO: PASS
 	Fetching about:unicorn with method GET is KO: PASS
@@ -613,20 +613,20 @@
 	Set content type to the empty string for slice with no content type : PASS
 /fetch/api/basic/scheme-data.any.html: OK
 	Fetching [GET] data:notAdataUrl.com is KO: PASS
-	Fetching [HEAD] data:,response%27s%20body is OK: FAIL
-	Fetching [POST] data:,response%27s%20body is OK: FAIL
-	Fetching data:,response%27s%20body is OK: FAIL
-	Fetching data:,response%27s%20body is OK (cors): FAIL
-	Fetching data:,response%27s%20body is OK (same-origin): FAIL
+	Fetching [HEAD] data:,response%27s%20body is OK: PASS
+	Fetching [POST] data:,response%27s%20body is OK: PASS
+	Fetching data:,response%27s%20body is OK: PASS
+	Fetching data:,response%27s%20body is OK (cors): PASS
+	Fetching data:,response%27s%20body is OK (same-origin): PASS
 	Fetching data:image/png;base64,cmVzcG9uc2UncyBib2[...] is OK: PASS
 	Fetching data:text/plain;base64,cmVzcG9uc2UncyBib[...] is OK: PASS
 /fetch/api/basic/scheme-data.any.worker.html: OK
 	Fetching [GET] data:notAdataUrl.com is KO: PASS
-	Fetching [HEAD] data:,response%27s%20body is OK: FAIL
-	Fetching [POST] data:,response%27s%20body is OK: FAIL
-	Fetching data:,response%27s%20body is OK: FAIL
-	Fetching data:,response%27s%20body is OK (cors): FAIL
-	Fetching data:,response%27s%20body is OK (same-origin): FAIL
+	Fetching [HEAD] data:,response%27s%20body is OK: PASS
+	Fetching [POST] data:,response%27s%20body is OK: PASS
+	Fetching data:,response%27s%20body is OK: PASS
+	Fetching data:,response%27s%20body is OK (cors): PASS
+	Fetching data:,response%27s%20body is OK (same-origin): PASS
 	Fetching data:image/png;base64,cmVzcG9uc2UncyBib2[...] is OK: PASS
 	Fetching data:text/plain;base64,cmVzcG9uc2UncyBib[...] is OK: PASS
 /fetch/api/basic/scheme-others.sub.any.html: OK
@@ -665,7 +665,7 @@
 	Fetching snmp://web-platform.test:8778/ is KO: PASS
 /fetch/api/basic/status.h2.any.html: OK
 	statusText over H2 for status 200 should be the empty string: FAIL
-	statusText over H2 for status 210 should be the empty string: PASS
+	statusText over H2 for status 210 should be the empty string: FAIL
 	statusText over H2 for status 400 should be the empty string: FAIL
 	statusText over H2 for status 404 should be the empty string: FAIL
 	statusText over H2 for status 410 should be the empty string: FAIL
@@ -673,7 +673,7 @@
 	statusText over H2 for status 502 should be the empty string: FAIL
 /fetch/api/basic/status.h2.any.worker.html: OK
 	statusText over H2 for status 200 should be the empty string: FAIL
-	statusText over H2 for status 210 should be the empty string: PASS
+	statusText over H2 for status 210 should be the empty string: FAIL
 	statusText over H2 for status 400 should be the empty string: FAIL
 	statusText over H2 for status 404 should be the empty string: FAIL
 	statusText over H2 for status 410 should be the empty string: FAIL
