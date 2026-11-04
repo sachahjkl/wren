@@ -13,7 +13,8 @@ package page
 //   * the elements outside the subtree it references by id (`<use href="#icon">` into a sprite sheet elsewhere in the
 //     page, `fill="url(#gradient)"`), copied into a <defs>, transitively;
 //   * without a viewBox, the size of its box (the document's coordinates are then CSS px, not scaled).
-// Scripts and event handler attributes are left out; <foreignObject> content is not drawn (as in SVG images). The
+// Scripts and event handler attributes are left out, and so are <foreignObject> elements: the layout makes boxes of
+// their HTML, drawn over the picture in the SVG's coordinate space (layout/foreign_object.odin). The
 // markup is made again when the document mutates or styles change, and a new entry is used when it differs.
 // Limits: images.svg.inline_max_bytes on the markup, then the images.svg.* limits of every SVG document.
 

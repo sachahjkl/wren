@@ -173,6 +173,7 @@ Box_Flag :: enum u8 {
 	Fieldset,      // a <fieldset> block (fieldset.odin)
 	Legend,        // the rendered legend of the fieldset that is its parent: drawn on its top border
 	Plane,         // with Transformed: a 3D plane (a 3D transform, preserve-3d, or backface-visibility: hidden in a 3D context): drawn offscreen, projected (plane.odin)
+	Foreign,       // a <foreignObject> of an inline <svg>: its style and matrix are made by layout (foreign_object.odin)
 }
 Box_Flags :: bit_set[Box_Flag; u32]
 
@@ -509,6 +510,8 @@ Layout :: struct {
 	frame_frags:  [dynamic]Frame_Saved_Frag,
 	mc_records:   [dynamic]Mc_Record,      // what each multi-column container found at its last layout (Box.mc)
 	flow_frags:   [dynamic]Flow_Frag,      // the columns of them all, in layout coordinates
+	// foreign objects of inline <svg> elements (foreign_object.odin), until the next full pass
+	foreign_objects: [dynamic]Foreign_Object,
 }
 
 // What building the display list of the page's stacking context finds by walking the whole box tree: its layers, and

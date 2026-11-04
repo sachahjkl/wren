@@ -20,7 +20,7 @@ import "wb:style"
 Mode :: enum u8 { Block, Inline, Flex, Table, Row_Group, Row, None }
 
 @(private)
-Frame_Kind :: enum u8 { Visit, Pseudo, Close }
+Frame_Kind :: enum u8 { Visit, Pseudo, Close, Foreign }   // Foreign: a <foreignObject> of an inline <svg> (foreign_object.odin)
 
 @(private)
 Frame :: struct {
@@ -329,6 +329,7 @@ build_loop :: proc(c: ^Ctx, stack: ^[dynamic]Frame) {
 		case .Close: add_item(c, Inline_Item{kind = .Close, box = f.parent, ifc = f.ifc})
 		case .Pseudo: visit_pseudo(c, stack, f)
 		case .Visit: visit(c, stack, f)
+		case .Foreign: visit_foreign(c, stack, f)
 		}
 	}
 }
@@ -694,8 +695,11 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 	if display == .List_Item && !pseudo { b.flags += {.List_Item} }
 	if !pseudo { fieldset_flags(c, bi, n, g.parent) }
 
-	// content
-	if kind == .Replaced { return }
+	// content: a replaced box has none, but the foreign objects of an inline <svg>
+	if kind == .Replaced {
+		if !pseudo && n.name == "svg" { foreign_frames(c, stack, bi, g) }
+		return
+	}
 	has_block := false
 	if kind == .Block || kind == .Cell || kind == .Caption {
 		has_block = pseudo ? false : has_block_child(c, h, cs, b.depth)

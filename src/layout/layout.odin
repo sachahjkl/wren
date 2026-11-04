@@ -78,6 +78,7 @@ run_full :: proc(l: ^Layout, input: Input) {
 	clear(&l.boxes); clear(&l.inline_items); clear(&l.lines); clear(&l.frags); clear(&l.fonts); clear(&l.items)
 	clear(&l.font_lookup)
 	clear(&l.node_box)
+	clear(&l.foreign_objects)
 	inc_reset(l)
 	anchor_reset(l)
 	frames_reset(l)
@@ -162,6 +163,7 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 	if !keep_scroll { clear(&l.scroll); l.doc_scroll_x = 0 }
 	clear(&l.bars)
 	clear(&l.deco_items)
+	clear(&l.foreign_objects)
 	inc_reset(l)
 	anchor_reset(l)
 	frames_reset(l)
@@ -190,6 +192,7 @@ destroy :: proc(l: ^Layout) {
 	delete(l.anchor_grid_areas)
 	delete(l.anchor_last)
 	delete(l.anchor_chosen)
+	delete(l.foreign_objects)
 	frames_destroy(l)
 	inc_destroy(l)
 	pre_destroy(l)

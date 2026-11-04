@@ -391,6 +391,30 @@ inc_styles :: proc(t: ^testing.T) {
 	}
 }
 
+// The foreignObject of an inline <svg> (foreign_object.odin): changes in its content are incremental, its style stays the
+// one layout made after a restyle, a change of the SVG around it takes a full pass.
+@(test)
+inc_foreign_object :: proc(t: ^testing.T) {
+	f := ix_load(`<body style="margin:0;font-size:10px"><div id=box><svg id=svg width="200" height="100" viewBox="0 0 100 50"><g id=g transform="translate(5,5)"><foreignObject id=fo width="80" height="40"><p id=p style="margin:0">some text</p></foreignObject></g></svg></div><p>after</p></body>`)
+	defer ix_unload(f)
+	fo := id(f, "fo")
+	cs_of :: proc(f: ^Ix, h: base.Handle) -> ^style.Computed { return f.l.boxes[box_index(&f.l, h)].cs }
+	dom.set_text_content(f.doc, first_text_node(f, id(f, "p")), "other text, longer than it was")
+	ix_frame(f)
+	ix_check(t, f)
+	dom.set_attribute(f.doc, id(f, "box"), "style", "color:red")   // inherited by the foreignObject: a new record
+	ix_frame(f)
+	ix_check(t, f)
+	testing.expect(t, cs_of(f, fo).position == .Absolute && cs_of(f, fo).color == style.style_of(f.st, fo).color, "its own style, made again")
+	dom.set_attribute(f.doc, id(f, "g"), "transform", "translate(10,5)")
+	ix_frame(f)
+	ix_check(t, f, .Full)
+	dom.set_attribute(f.doc, fo, "width", "60")
+	ix_frame(f)
+	ix_check(t, f, .Full)
+	testing.expect(t, f.l.boxes[box_index(&f.l, fo)].size.x == 60, "its new width")
+}
+
 @(test)
 inc_animation :: proc(t: ^testing.T) {
 	f := ix_load(`<style>
