@@ -146,6 +146,11 @@ ART_STYLE :: `
   .art-btn:hover { color: #ffffff; background-color: rgba(255,255,255,0.16); }
   .art-sep { width: 1px; height: 12px; background-color: rgba(255,255,255,0.22); margin: 0 4px; }
   .art-empty { position: fixed; inset: 0; background-image: linear-gradient(135deg, #10213f, #1a1030 60%, #0d1017); }
+  .art-loading { position: fixed; left: 0; right: 0; top: 50%; margin-top: -48px; display: flex; flex-direction: column; align-items: center;
+                 gap: 14px; color: rgba(241,244,251,0.88); font-size: 15px; text-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+  .art-spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(241,244,251,0.16); border-top-color: rgba(255,214,153,0.95); }
+  @media (prefers-reduced-motion: no-preference) { .art-spin { animation: art-spin 0.9s linear infinite; } }
+  @keyframes art-spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: no-preference) { .art-bg { transition: opacity 240ms ease; } }
   @media (prefers-color-scheme: light) {
     .art-top { background-image: linear-gradient(to bottom, rgba(245,246,250,0.6), rgba(245,246,250,0)); }
@@ -166,6 +171,8 @@ art_page_html :: proc(app: ^App, it: ^Art_Item, landscape: bool) -> string {
 
 	if it == nil {
 		strings.write_string(&sb, "<div class=\"art-empty\"></div>\n")
+		// nothing fetched yet and nothing failed: say it is on its way (the page is replaced when the painting is ready: art_fill_waiting)
+		if app.art.fails == 0 { fmt.sbprintf(&sb, "<div class=\"art-loading\"><div class=\"art-spin\"></div><div>%s</div></div>\n", i18n.tr("Fetching a painting…")) }
 	} else {
 		data := art_data_url(it)
 		// a blurred fill behind a "contain" image so a portrait on a wide window (or the reverse) has no black bars
