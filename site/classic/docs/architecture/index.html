@@ -191,9 +191,11 @@ shown at (device pixels), in the secure static mode of SVG images (no external r
 hostile documents are bounded by <code>images.svg.*</code> (nodes, depth, entity and <code>&lt;use&gt;</code> expansion, rendering cost). Inline
 <code>&lt;svg&gt;</code> elements of HTML documents are drawn by the same renderer (<code>src/page/inline_svg.odin</code>); the HTML of their
 <code>&lt;foreignObject&gt;</code> elements is laid out and painted by Wren's own layout, in the SVG's coordinate space: the viewBox
-mapping and the transforms around it, a <code>&lt;clipPath&gt;</code> as a polygon clip, <code>feGaussianBlur</code> filters as <code>blur()</code>
-(<code>src/layout/foreign_object.odin</code>). Not yet: shapes drawn after a foreignObject covering it (it paints over the whole
-picture), objectBoundingBox clips, other filters, a foreignObject inside a nested <code>&lt;svg&gt;</code>.</li>
+mapping, nested <code>&lt;svg&gt;</code> viewports and the transforms around it, its <code>&lt;clipPath&gt;</code>s (user space or bounding box units,
+intersected) as a polygon clip, <code>feGaussianBlur</code> filters as <code>blur()</code> (<code>src/layout/foreign_object.odin</code>). The picture
+is drawn in parts split at the foreign objects, so that shapes drawn after one cover it (<code>Svg_Parts</code>). An inline
+<code>&lt;svg&gt;</code> clips to its viewport (<code>svg:not(:root) { overflow: hidden }</code>). Not yet: other filters, the clip of a nested
+viewport.</li>
 <li><strong>WebP</strong>: image-webp 0.2.4 (pure safe Rust: lossy, lossless, alpha, animation).</li>
 <li><strong>AVIF</strong>: zenavif-parse 0.6.2 (container: alpha, grids, sequences, colr / irot / imir / clap) + rav1d 1.1.0 (the
 Rust port of dav1d, with dav1d's assembly: NASM 2.16.03 is fetched and checked by SHA-256 by the script).</li>
