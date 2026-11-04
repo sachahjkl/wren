@@ -12,12 +12,14 @@ const settings = {
 		name: "wren-licence",
 		PADDLE_API_BASE: "https://api.paddle.com",
 		ALLOWED_ORIGIN: "https://wren.froment.software,https://sachahjkl.github.io",
+		LICENSE_PUBLIC_KEY: "",   // the line of `wrentool license pubkey`, once the production pair is made (src/license/public_key.odin)
 		PRICE_SUPPORTER: "pri_01m6kfkhzrwvx28tr378f8ztr3",   // live: product "Wren licence" pro_01m6kfkhr4b032d7r1wz4sk62y, 29 EUR once
 	},
 	sandbox: {
 		name: "wren-licence-sandbox",
 		PADDLE_API_BASE: "https://sandbox-api.paddle.com",
 		ALLOWED_ORIGIN: "https://wren.froment.software,https://sachahjkl.github.io,http://localhost:8765",
+		LICENSE_PUBLIC_KEY: "NLbdwv2jpoDIMu5pVxyjYBUMEu2Lvfd8StzxR0PGqs8",   // the development pair (src/license/dev_keys.odin): public on purpose, signs nothing real
 		PRICE_SUPPORTER: "pri_01m6kd3nvpkemxgwamft6z2fjw",   // sandbox: product "Wren licence" pro_01m6kd3nk27p1jhyjcd913ny45, 29 EUR once
 	},
 };
@@ -46,7 +48,7 @@ export default defineConfig(({ mode }) => {
 				PRICE_SUPPORTER: bindings.text(s.PRICE_SUPPORTER),
 				PRICE_PATRON: bindings.text(""),
 				// the public key of src/license/public_key.odin (the line printed by wrentool license pubkey)
-				LICENSE_PUBLIC_KEY: bindings.text(""),
+				LICENSE_PUBLIC_KEY: bindings.text(s.LICENSE_PUBLIC_KEY),
 				// "Wren <licences@your-domain>", an address of a domain onboarded in Email Service > Email Sending
 				MAIL_FROM: bindings.text("Wren <licences@froment.software>"),
 				MAIL_REPLY_TO: bindings.text("contact@froment.software"),
