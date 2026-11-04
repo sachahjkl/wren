@@ -25,12 +25,13 @@ attribute (script-src-attr), a javascript: URL.
 
 ### enum `ModuleType` : i32
 
-The type of a module (import attributes: `with {type: "json"}`).
+The type of a module (import attributes: `with {type: "json"}`, `with {type: "css"}`).
 
 | member | value | |
 |---|---:|---|
 | `JavaScript` | 0 |  |%!(EXTRA false)
 | `Json` | 1 |  |%!(EXTRA false)
+| `Css` | 2 |  |%!(EXTRA false)
 
 ### enum `WorkerType` : i32
 

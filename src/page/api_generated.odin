@@ -473,10 +473,11 @@ Api_InlineScriptKind :: enum i32 {
 	Navigation = 2,
 }
 
-// The type of a module (import attributes: `with {type: "json"}`).
+// The type of a module (import attributes: `with {type: "json"}`, `with {type: "css"}`).
 Api_ModuleType :: enum i32 {
 	JavaScript = 0,
 	Json = 1,
+	Css = 2,
 }
 
 // The type of a worker's script (`new Worker(url, {type})`).
@@ -1018,7 +1019,7 @@ _valid_TouchListKind :: #force_inline proc "contextless" (v: i32) -> bool { swit
 _valid_InlineScriptKind :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
 
 @(private = "file")
-_valid_ModuleType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
+_valid_ModuleType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
 
 @(private = "file")
 _valid_WorkerType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }

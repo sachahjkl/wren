@@ -7,6 +7,7 @@
 // element.part.
 package odin_glue
 
+import "core:unicode/utf8"
 import "../odin_abi/abi"
 import "../odin_abi/api_decl"
 import "../odin/jsb"
@@ -561,6 +562,41 @@ wjr_CSSStyleSheet_replaceSync :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc
 	if !ok { return wj.EXCEPTION }
 	return st != .None ? wj.wj_throw_status(ctx, i32(st), "CSSStyleSheet.replaceSync") : wj.UNDEFINED
 }
+
+// The default export of a CSS module (HTML "create a CSS module script"): a constructed sheet whose base URL is the
+// module's, of its text decoded as UTF-8 (a byte order mark dropped, a byte that starts no character U+FFFD) as
+// replaceSync parses it (@import rules dropped).
+// An exception (pending) where there are no stylesheets (a worker).
+css_module_sheet :: proc "contextless" (ctx: ^wj.Context, src: [^]u8, n: uint, url: cstring) -> wj.JSValue {
+	context = jsb.glue_context()
+	buf := ([^]u8)(wj.malloc(n * len(REPLACEMENT) + 1))   // (at worst every byte replaced)
+	if buf == nil { return wj.JS_ThrowOutOfMemory(ctx) }
+	defer wj.free(buf)
+	size := 0
+	for rest := string(src[:n]); len(rest) > 0; {
+		r, w := utf8.decode_rune(rest)
+		bad := r == utf8.RUNE_ERROR && w <= 1
+		piece := bad ? REPLACEMENT : rest[:w]
+		wj.memcpy(&buf[size], raw_data(piece), uint(len(piece)))
+		size += len(piece)
+		rest = rest[bad ? 1 : w:]
+	}
+	text := string(buf[:size])
+	if len(text) >= len(UTF8_BOM) && text[:len(UTF8_BOM)] == UTF8_BOM { text = text[len(UTF8_BOM):] }
+	h: api_decl.CSSStyleSheet
+	jsb.host(&h, api_decl.CSSStyleSheet_create, wj.wr_CSSStyleSheet_create, "", false, string(url))
+	if h == 0 { return wj.wj_throw_dom(ctx, "NotSupportedError", "CSS modules need a document's stylesheets.") }
+	sheet := wj.wj_wrap_owned(ctx, u64(h), ifc("CSSStyleSheet"), wj.UNDEFINED)
+	if wj.is_exception(sheet) { return sheet }
+	if st := jsb.host(&nothing, api_decl.CSSStyleSheet_replaceText, wj.wr_CSSStyleSheet_replaceText, h, text); st != .None {
+		wj.JS_FreeValue(ctx, sheet)
+		return wj.wj_throw_status(ctx, i32(st), "CSS module")
+	}
+	return sheet
+}
+
+@(private = "file") UTF8_BOM :: "\xef\xbb\xbf"
+@(private = "file") REPLACEMENT :: "�"
 
 // replace(text): the rules are parsed at once (no @import to wait for: they are dropped); a promise of the sheet
 @(export, link_name = "wjr_CSSStyleSheet_replace")

@@ -10,8 +10,9 @@ package page
 // fails to arrive or to compile fails every graph that needs it: the script element gets an error event, the
 // import() promise a TypeError.
 //
-// Module scripts are fetched with CORS (their crossorigin attribute: "anonymous" by default), as JavaScript (or JSON
-// for `with {type: "json"}`); an inline module is named after its document with a "#inline-module-<n>" fragment.
+// Module scripts are fetched with CORS (their crossorigin attribute: "anonymous" by default), as JavaScript (JSON for
+// `with {type: "json"}`, CSS for `with {type: "css"}`: a CSSStyleSheet); an inline module is named after its document
+// with a "#inline-module-<n>" fragment.
 
 import "core:encoding/json"
 import "core:fmt"
@@ -111,6 +112,17 @@ import_map_entries_free :: proc(l: ^[dynamic]Import_Map_Entry) {
 ////////////////////////////////
 // Fetching and compiling modules
 
+// HTML's module map is keyed by URL and type, the engine's modules by URL alone: a module of `key` of another type than
+// the one asked for. The response of one cannot be of the other's MIME type (a JavaScript, JSON or CSS type): the
+// request would fail, so it does at once.
+@(private)
+module_type_clash :: proc(p: ^Page, key: string, type: Api_ModuleType) -> bool {
+	e := modules_of(p).entries[key]
+	return e != nil && e.type != type
+}
+
+MODULE_TYPE_CLASH :: "a module of this URL was loaded with another type"
+
 // The entry of `key`, fetched if new. nil when the page has too many modules.
 @(private)
 module_fetch :: proc(p: ^Page, key: string, type: Api_ModuleType, cors: Cors_Setting) -> ^Module_Entry {
@@ -132,14 +144,14 @@ module_fetch :: proc(p: ^Page, key: string, type: Api_ModuleType, cors: Cors_Set
 		// a worker's requests run on the interface thread (worker.odin): a record of the realm, relayed
 		h, f := base.pool_insert(&p.fetches, Fetch{page = p, instance = max(u32), module = e})
 		f.self = h
-		options := FETCH_OPTION_MODULE_SCRIPT | (type == .Json ? FETCH_OPTION_JSON_MODULE : 0) | (cors == .Use_Credentials ? 2 << 2 : 0)
+		options := FETCH_OPTION_MODULE_SCRIPT | (type == .Json ? FETCH_OPTION_JSON_MODULE : 0) | (type == .Css ? FETCH_OPTION_CSS_MODULE : 0) | (cors == .Use_Credentials ? 2 << 2 : 0)
 		worker_fetch_start(p, f, e.key, "GET", "", nil, options)
 		e.task = h
 		return e
 	}
 	e.task = fetch.start(p.loader, {
 		request = {url = e.key, mode = .Cors, credentials = cred, destination = .Script, initiator = &p.env,
-			script = type == .Json ? .Json_Module : .Module},
+			script = module_script_type(type)},
 		on_event = module_fetch_event, user = e, scope = p.scope, collect = true,
 	})
 	return e
@@ -178,9 +190,21 @@ module_arrived :: proc(p: ^Page, e: ^Module_Entry, source: []byte, failure: stri
 }
 
 // Option bits of a worker's relayed request: a module script (destination script, a JavaScript MIME type required),
-// and a JSON module.
+// a JSON module, a CSS module.
 FETCH_OPTION_MODULE_SCRIPT :: u32(1) << 15
 FETCH_OPTION_JSON_MODULE :: u32(1) << 16
+FETCH_OPTION_CSS_MODULE :: u32(1) << 17
+
+// What the request of a module of each type fetches (its MIME check).
+@(private)
+module_script_type :: proc(t: Api_ModuleType) -> fetch.Script_Type {
+	switch t {
+	case .JavaScript: return .Module
+	case .Json: return .Json_Module
+	case .Css: return .Css_Module
+	}
+	return .Module
+}
 
 // A worker realm: the request of a module of its graph finished (worker.odin's worker_fetch_event).
 module_worker_fetched :: proc(p: ^Page, f: ^Fetch) {
@@ -302,6 +326,7 @@ Module_request :: proc(c: ^Call, module_url: string, specifier: string, type: Ap
 	}
 	resolved, msg, ok := module_resolve(p, specifier, module_url)
 	if !ok { return fail(c, .Type, msg) }
+	if module_type_clash(p, resolved, type) { return fail(c, .Type, MODULE_TYPE_CLASH) }
 	append(&e.deps, strings.clone(resolved))
 	if module_fetch(p, resolved, type, e.cors) == nil { return fail(c, .Quota, "too many modules (javascript.modules.max_count)") }
 	return .None
@@ -332,7 +357,7 @@ module_graph_for_script :: proc(p: ^Page, sc: ^Page_Script, src: string, source:
 	cors := sc.cors == .No_Cors ? Cors_Setting.Anonymous : sc.cors
 	if src != "" {
 		g.root = strings.clone(src)
-		if module_fetch(p, src, .JavaScript, cors) == nil { g.state = .Failed }
+		if module_type_clash(p, src, .JavaScript) || module_fetch(p, src, .JavaScript, cors) == nil { g.state = .Failed }
 	} else {
 		ms.inline_n += 1
 		g.root = fmt.aprintf("%s#inline-module-%d", url_without_fragment(p.env.location.href), ms.inline_n)
@@ -458,7 +483,11 @@ Module_import :: proc(c: ^Call, id: i32, specifier: string, base_url: string, ty
 	g.root = strings.clone(resolved)
 	g.is_import = true
 	g.import_id = id
-	if module_fetch(p, resolved, type, .Anonymous) == nil { g.state = .Failed; delete(g.error); g.error = strings.clone("too many modules") }
+	if module_type_clash(p, resolved, type) {
+		g.state, g.error = .Failed, strings.clone(MODULE_TYPE_CLASH)
+	} else if module_fetch(p, resolved, type, .Anonymous) == nil {
+		g.state, g.error = .Failed, strings.clone("too many modules")
+	}
 	append(&ms.graphs, g)
 	// settled from a task of its own: the engine is in the middle of import()
 	post_page_task(p, proc(pg: ^Page, data: rawptr) { if pg != nil && !pg.closed { modules_check(pg) } }, nil)

@@ -278,6 +278,10 @@ const d = await import("/jsload/files/mod/dyn.js");
 log("dynamic import " + d.default + " " + d.url.endsWith("/mod/dyn.js"));
 try { await import("/jsload/files/mod/broken.js"); } catch (e) { log("broken import rejects " + e.constructor.name); }
 try { await import("nowhere"); } catch (e) { log("unmapped bare specifier " + (e instanceof TypeError)); }
+const sheet = (await import("/jsload/files/mod/sheet.css", { with: { type: "css" } })).default;
+document.adoptedStyleSheets = [sheet];
+log("css module " + (sheet instanceof CSSStyleSheet) + " " + sheet.cssRules.length + " " + getComputedStyle(document.documentElement).color);
+try { await import("/jsload/files/mod/sheet.css"); } catch (e) { log("css module as javascript " + (e instanceof TypeError)); }
 log("modules done");
 </script>
 <script type=module src="/jsload/files/mod/imports_missing.js" onerror="log('missing import: error event')"></script>
@@ -299,7 +303,9 @@ addEventListener("load", () => log("window load"))</script>
 	check(pr, noted(pr, "top-level await done"), "top-level await")
 	check(pr, console_says(pr, "Uncaught SyntaxError") && !noted(pr, "no error event for a parse error"), "a module that does not compile is reported when its script runs (no error event)")
 	check(pr, noted(pr, "import() from a classic script dynamic"), "import() from a classic script")
-	close_page(pr, min_checks = 11)
+	check(pr, noted(pr, "css module true 1 rgb(1, 2, 3)"), "a CSS module: a CSSStyleSheet of its rules, adopted")
+	check(pr, noted(pr, "css module as javascript true"), "the same URL imported as JavaScript fails (module map by URL and type)")
+	close_page(pr, min_checks = 13)
 }
 
 @(test)
