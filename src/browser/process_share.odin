@@ -1,6 +1,7 @@
 package browser
 
 import "core:sync"
+import "wb:host"
 import "wb:page"
 import "wb:wasm"
 import "wb:tools/crashtrace"
@@ -69,6 +70,7 @@ process_share_users :: proc() -> int {
 @(private = "file")
 process_setup :: proc(app: ^App) -> bool {
 	crashtrace.begin_session()   // (a session that ended without a report: crashes\unclean exit <date>.txt at this start)
+	host.shutdown_on_force = crashtrace.end_session   // (shutdown.log says what a watchdog ended, and the profile was saved first: no crash)
 	rs := wasm.runtime_settings_from_prefs(&app.prefs, app.cfg.persist_profile ? app.profile_dir : "")   // nothing on disk without a kept profile
 	wasm.configure(rs)
 	wasm.runtime_settings_destroy(&rs)
@@ -80,5 +82,5 @@ process_setup :: proc(app: ^App) -> bool {
 @(private = "file")
 process_teardown :: proc() {
 	page.process_shutdown()   // the layout threads, the image decoders, the decoded web fonts, the bytecode cache, the Wasm engine
-	crashtrace.end_session()   // a clean end (a watchdog's exit or a kill leaves the file: the next start reports it)
+	crashtrace.end_session()   // a clean end (a kill leaves the file: the next start reports it)
 }

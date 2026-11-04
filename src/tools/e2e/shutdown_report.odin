@@ -10,6 +10,7 @@ import "core:sync"
 import "core:testing"
 import "wb:e2e"
 import "wb:host"
+import "wb:tools/crashtrace"
 
 // Set: this process is the one that hangs, and it writes in this folder.
 @(private = "file") HANG_FOLDER_VAR :: "WREN_TEST_TEARDOWN_HANG_FOLDER"
@@ -21,6 +22,9 @@ import "wb:host"
 @(private = "file")
 teardown_that_hangs :: proc(folder: string) {
 	never: sync.Sema
+	crashtrace.set_report_dir(folder, "a test")
+	crashtrace.begin_session()
+	host.shutdown_on_force = crashtrace.end_session
 	host.shutdown_begin(fmt.tprintf("%s/shutdown.log", folder), warn_ms = HANG_MS, force_ms = HANG_MS)
 	host.shutdown_step(HANG_STEP)
 	host.thread_join(host.thread_start(proc(data: rawptr) { sync.sema_wait((^sync.Sema)(data)) }, &never, name = HANG_THREAD))
@@ -34,8 +38,10 @@ a_teardown_that_hangs_says_where_on_its_standard_error :: proc(t: ^testing.T) {
 	}
 	program, err := os.get_executable_path(context.temp_allocator)
 	testing.expect(t, err == nil)
-	r := e2e.run(t, {program, "-tests:a_teardown_that_hangs_says_where_on_its_standard_error"}, {env = {fmt.tprintf("%s=%s", HANG_FOLDER_VAR, e2e.temp_folder(t))}})
+	folder := e2e.temp_folder(t)
+	r := e2e.run(t, {program, "-tests:a_teardown_that_hangs_says_where_on_its_standard_error"}, {env = {fmt.tprintf("%s=%s", HANG_FOLDER_VAR, folder)}})
 	for said in ([]string{HANG_STEP, HANG_THREAD, "ending the process", "teardown_that_hangs", "thread_join"}) {
 		testing.expectf(t, strings.contains(r.err, said), "it says %q: %s", said, r.err)
 	}
+	testing.expect(t, !os.exists(fmt.tprintf("%s/session.txt", folder)), "the watchdog ended it on purpose: the next start has no unclean exit to report")
 }

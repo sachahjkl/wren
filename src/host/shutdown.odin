@@ -32,6 +32,8 @@ SHUTDOWN_STACKS_SUFFIX :: ".stacks.txt"
 // The program whose `ctl stacks` reads this process's threads from outside (it cannot be done from inside: a suspended thread may hold the
 // lock the reader needs). "": none (the tests' programs, which have no such command).
 shutdown_stacks_program: string
+// What is to be done before the watchdog ends the process ("nil": nothing). A shell that saved what it keeps ended on purpose: its next start has no unclean exit to report.
+shutdown_on_force: proc()
 
 @(private = "file")
 Shutdown :: struct {
@@ -206,6 +208,7 @@ shutdown_watchdog :: proc(_: rawptr) {
 				if data, err := os.read_entire_file(stacks_path, context.temp_allocator); err == nil { fmt.eprintln(string(data)) } else { shutdown_line("shutdown: the stacks were not read in time") }
 			}
 			shutdown_line(fmt.tprintf("shutdown: still in step %q after %d ms: ending the process (the profile was saved before the teardown)", step, sd.force_ms))
+			if shutdown_on_force != nil { shutdown_on_force() }
 			shutdown_force_exit()
 		}
 		free_all(context.temp_allocator)
