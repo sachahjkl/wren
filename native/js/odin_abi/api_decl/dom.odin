@@ -291,6 +291,10 @@ CSSStyleSheet_ruleTextOf     :: #type proc(sheet: CSSStyleSheet, rule_id: u32) -
 CSSStyleSheet_mediaText      :: #type proc(sheet: CSSStyleSheet) -> (string, abi.Api_Error)
 CSSStyleSheet_setMediaText   :: #type proc(sheet: CSSStyleSheet, media: string)
 CSSStyleSheet_setRuleStyle   :: #type proc(sheet: CSSStyleSheet, rule_id: u32, text: string)
+CSSStyleSheet_childCount     :: #type proc(sheet: CSSStyleSheet, rule_id: u32) -> u32
+CSSStyleSheet_childId        :: #type proc(sheet: CSSStyleSheet, rule_id: u32, index: u32) -> u32   // 0: past the end
+CSSStyleSheet_insertChildAt  :: #type proc(sheet: CSSStyleSheet, rule_id: u32, rule: string, index: u32) -> (u32, abi.Api_Error)
+CSSStyleSheet_deleteChildAt  :: #type proc(sheet: CSSStyleSheet, rule_id: u32, index: u32) -> abi.Api_Error
 CSSStyleSheet_hrefOf         :: #type proc(sheet: CSSStyleSheet) -> (string, abi.Api_Error)   // empty: null
 CSSStyleSheet_titleOf        :: #type proc(sheet: CSSStyleSheet) -> (string, abi.Api_Error)   // empty: null
 CSSStyleSheet_ownerNodeOf    :: #type proc(sheet: CSSStyleSheet) -> Node

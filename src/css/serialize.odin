@@ -75,32 +75,39 @@ write_css_url :: proc(sb: ^strings.Builder, s: string) {
 ////////////////////////////////
 // Selectors
 
-// The selector list of a rule's prelude, serialized (a nested rule's may start with a combinator).
-serialize_selector_list :: proc(vs: []Value, allocator := context.allocator) -> string {
+// The selector list of a rule's prelude, serialized (a nested rule's may start with a combinator); `ns`: the sheet's
+// namespaces, which decide what is written of a type selector's prefix.
+serialize_selector_list :: proc(vs: []Value, allocator := context.allocator, ns: ^Namespaces = nil) -> string {
 	sb := strings.builder_make(allocator)
-	write_selector_list(&sb, vs, true)
+	write_selector_list(&sb, vs, true, ns)
 	return strings.to_string(sb)
 }
 
 @(private = "file")
-write_selector_list :: proc(sb: ^strings.Builder, vs: []Value, relative: bool) {
+write_selector_list :: proc(sb: ^strings.Builder, vs: []Value, relative: bool, ns: ^Namespaces) {
 	for item, i in split_commas(trim_values(vs), context.temp_allocator) {
 		if i > 0 { strings.write_string(sb, ", ") }
-		write_complex(sb, trim_values(item), relative)
+		write_complex(sb, trim_values(item), relative, ns)
 	}
 }
 
 @(private = "file")
-write_complex :: proc(sb: ^strings.Builder, vs: []Value, relative: bool) {
+is_combinator_value :: proc(v: Value) -> bool {
+	return v.kind == .Token && v.tok.kind == .Delim && (v.tok.text == ">" || v.tok.text == "+" || v.tok.text == "~")
+}
+
+@(private = "file")
+write_complex :: proc(sb: ^strings.Builder, vs: []Value, relative: bool, ns: ^Namespaces) {
 	comb: string    // a combinator read since the last compound
 	space := false  // whitespace since the last compound: a descendant combinator unless another follows
 	wrote := false
+	start := true   // at the start of a compound
 	i := 0
 	for i < len(vs) {
 		v := vs[i]
-		if is_ws_value(v) { space = true; i += 1; continue }
-		if v.kind == .Token && v.tok.kind == .Delim && (v.tok.text == ">" || v.tok.text == "+" || v.tok.text == "~") {
-			comb = v.tok.text
+		if is_ws_value(v) { space, start = true, true; i += 1; continue }
+		if is_combinator_value(v) {
+			comb, start = v.tok.text, true
 			i += 1
 			continue
 		}
@@ -110,13 +117,59 @@ write_complex :: proc(sb: ^strings.Builder, vs: []Value, relative: bool) {
 		case space && wrote: strings.write_byte(sb, ' ')
 		}
 		comb, space, wrote = "", false, true
-		i += write_simple(sb, vs[i:])
+		if start {
+			start = false
+			if n := write_type_selector(sb, vs[i:], ns); n > 0 { i += n; continue }
+		}
+		i += write_simple(sb, vs[i:], ns)
 	}
+}
+
+// A type or universal selector at the start of a compound (CSSOM §6.7.2 "serialize a simple selector"): a prefix naming
+// the default namespace is left out, `*|` written only when there is a default namespace, `*` only when nothing else of
+// the compound follows or a prefix was written. How many values it took (0: no type selector there).
+@(private = "file")
+write_type_selector :: proc(sb: ^strings.Builder, vs: []Value, ns: ^Namespaces) -> int {
+	is_name :: proc(v: Value) -> bool { return v.kind == .Token && v.tok.kind == .Ident || is_delim(v, "*") }
+	Prefix :: enum u8 { Unwritten, Any, None, Named }
+	prefix := Prefix.Unwritten
+	at := 0
+	switch {
+	case len(vs) >= 3 && is_delim(vs[0], "*") && is_delim(vs[1], "|") && is_name(vs[2]): prefix, at = .Any, 2
+	case len(vs) >= 2 && is_delim(vs[0], "|") && is_name(vs[1]): prefix, at = .None, 1
+	case len(vs) >= 3 && vs[0].kind == .Token && vs[0].tok.kind == .Ident && is_delim(vs[1], "|") && is_name(vs[2]): prefix, at = .Named, 2
+	case is_name(vs[0]):
+	case: return 0
+	}
+	wrote_prefix := false
+	switch prefix {
+	case .Unwritten:
+	case .Any:
+		if ns != nil && ns.has_default { strings.write_string(sb, "*|"); wrote_prefix = true }
+	case .None:
+		strings.write_byte(sb, '|')
+		wrote_prefix = true
+	case .Named:
+		url, _ := namespace_url(ns, vs[0].tok.text)
+		if ns == nil || !ns.has_default || url != ns.default_url {
+			write_ident(sb, vs[0].tok.text)
+			strings.write_byte(sb, '|')
+			wrote_prefix = true
+		}
+	}
+	name := vs[at]
+	more := at + 1 < len(vs) && !is_ws_value(vs[at + 1]) && !is_combinator_value(vs[at + 1])
+	if name.kind == .Token && name.tok.kind == .Ident {
+		write_ident(sb, name.tok.text)
+	} else if wrote_prefix || !more {
+		strings.write_byte(sb, '*')
+	}
+	return at + 1
 }
 
 // One piece of a compound selector at the start of `vs`; how many values it took.
 @(private = "file")
-write_simple :: proc(sb: ^strings.Builder, vs: []Value) -> int {
+write_simple :: proc(sb: ^strings.Builder, vs: []Value, ns: ^Namespaces) -> int {
 	v := vs[0]
 	switch v.kind {
 	case .Block:
@@ -144,7 +197,7 @@ write_simple :: proc(sb: ^strings.Builder, vs: []Value) -> int {
 		write_ident(sb, lname)
 		if name.kind == .Function {
 			strings.write_byte(sb, '(')
-			write_pseudo_argument(sb, lname, name.children)
+			write_pseudo_argument(sb, lname, name.children, ns)
 			strings.write_byte(sb, ')')
 		}
 		return colons + 1
@@ -154,9 +207,9 @@ write_simple :: proc(sb: ^strings.Builder, vs: []Value) -> int {
 }
 
 @(private = "file")
-write_pseudo_argument :: proc(sb: ^strings.Builder, name: string, args: []Value) {
+write_pseudo_argument :: proc(sb: ^strings.Builder, name: string, args: []Value, ns: ^Namespaces) {
 	switch {
-	case in_list(name, SELECTOR_ARGUMENT_PSEUDOS): write_selector_list(sb, args, name == "has")
+	case in_list(name, SELECTOR_ARGUMENT_PSEUDOS): write_selector_list(sb, args, name == "has", ns)
 	case in_list(name, NTH_PSEUDOS):
 		formula := trim_values(args)
 		of := -1   // where `of S` starts
@@ -167,7 +220,7 @@ write_pseudo_argument :: proc(sb: ^strings.Builder, name: string, args: []Value)
 		if a, b, ok := parse_nth(an_b); ok { write_nth(sb, a, b) } else { write_compact(sb, an_b) }
 		if of >= 0 {
 			strings.write_string(sb, " of ")
-			write_selector_list(sb, formula[of + 1:], false)
+			write_selector_list(sb, formula[of + 1:], false, ns)
 		}
 	case: write_compact(sb, args)
 	}
@@ -192,6 +245,7 @@ write_attribute :: proc(sb: ^strings.Builder, children: []Value) {
 	items := make([dynamic]Value, context.temp_allocator)
 	for v in children { if !is_ws_value(v) { append(&items, v) } }
 	i := 0
+	if len(items) > 1 && is_delim(items[0], "|") && !is_delim(items[1], "=") { i = 1 }   // (no namespace: an attribute's own, written without)
 	op_at :: proc(items: []Value, i: int) -> bool {
 		if is_delim(items[i], "=") { return true }
 		return i + 1 < len(items) && is_delim(items[i + 1], "=") && items[i].kind == .Token && items[i].tok.kind == .Delim && strings.contains("~|^$*", items[i].tok.text)

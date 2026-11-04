@@ -473,11 +473,25 @@ focus_matches :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node) -> bool {
 	return n.shadow != base.NIL_HANDLE && dom.shadow_including_ancestor(m.doc, n.shadow, f)
 }
 
+// A type or universal selector's namespace against the element's (css.Ns_Match.Other: one the DOM does not keep).
+@(private)
+ns_matches :: #force_inline proc(want: css.Ns_Match, ns: dom.Namespace) -> bool {
+	switch want {
+	case .Any: return true
+	case .None: return ns == .None
+	case .HTML: return ns == .HTML
+	case .SVG: return ns == .SVG
+	case .MathML: return ns == .MathML
+	case .Other:
+	}
+	return false
+}
+
 @(private)
 matches_simple :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simple) -> bool {
 	switch s.kind {
-	case .Type: return n.name == s.name && (!s.no_namespace || n.ns == .None)
-	case .Universal: return !s.no_namespace || n.ns == .None
+	case .Type: return n.name == s.name && ns_matches(s.ns, n.ns)
+	case .Universal: return ns_matches(s.ns, n.ns)
 	case .Id:
 		v, ok := attr(n, "id")
 		return ok && v == s.name

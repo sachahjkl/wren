@@ -58,6 +58,7 @@ Rule :: struct {
 	name:         string,
 	keyframes:    []Keyframe,
 	prelude:      []Value,      // anything not understood, kept raw
+	id:           u32,          // its identity in the CSSOM (style/cssom.odin), 0 until a script's list names it
 }
 
 Keyframe :: struct {
@@ -72,6 +73,7 @@ Stylesheet :: struct {
 	newlines: []u32,           // the code point offsets of its line feeds (line_of: the code points themselves are not kept)
 	rules:  []^Rule,
 	errors: [dynamic]string,   // parse problems, for the console
+	namespaces: Namespaces,    // its @namespace rules, which its selectors read
 }
 
 // Limits for hostile input. The style system fills them from preferences (`style.*`).
@@ -96,6 +98,8 @@ Parser :: struct {
 	rules: int,
 	errors: ^[dynamic]string,
 	runes: []rune,
+	ns:      ^Namespaces,   // the sheet's namespaces, which selectors read (nil: no prefix is declared)
+	ns_open: bool,          // an @namespace rule may come here: the sheet's start, before any rule but @import
 	// what parsing needs only while it runs (the token array, values that are read and dropped) goes to `scratch`;
 	// component values go to `va` (`a`, or `scratch` while reading a rule list's block or a selector). Both nil: `a`.
 	scratch: Arena_Alloc,
@@ -141,7 +145,8 @@ parse_stylesheet :: proc(source: string, opt: Parse_Options) -> ^Stylesheet {
 		for r, i in runes { if r == '\n' { append(&nls, u32(i)) } }
 		s.newlines = nls[:]
 	}
-	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &s.errors, runes = runes, scratch = sa}
+	s.namespaces.prefixes = make([dynamic]Ns_Prefix, s.alloc)
+	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &s.errors, runes = runes, scratch = sa, ns = &s.namespaces, ns_open = true}
 	s.rules = parse_rule_list(&p, true)
 	return s
 }
@@ -156,9 +161,58 @@ parse_rule_into :: proc(s: ^Stylesheet, text: string, opt: Parse_Options) -> ^Ru
 	sa := virtual.arena_allocator(&scratch)
 	toks, runes := tokenize_with_source(text, s.alloc, sa)
 	errors := make([dynamic]string, sa)
-	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &errors, runes = runes, scratch = sa}
+	// its selectors read the sheet's namespaces; an @namespace rule inserted declares nothing (a copy takes it)
+	ns := s.namespaces
+	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &errors, runes = runes, scratch = sa, ns = &ns, ns_open = true}
 	rules := parse_rule_list(&p, true)
 	return len(rules) == 1 ? rules[0] : nil
+}
+
+// CSSOM "parse a CSS rule" with nested set (CSSGroupingRule.insertRule inside a style rule `parent`, CSS Nesting): one
+// rule as the block of `parent` reads it (& and relative selectors against its selectors, group rules holding
+// declarations), or declarations alone, which make a nested declarations rule (selector_text "", the selectors of
+// `parent`). nil when `text` is neither.
+parse_nested_rule_into :: proc(s: ^Stylesheet, text: string, opt: Parse_Options, parent: ^Rule) -> ^Rule {
+	scratch: virtual.Arena
+	_ = virtual.arena_init_growing(&scratch)
+	defer virtual.arena_destroy(&scratch)
+	sa := virtual.arena_allocator(&scratch)
+	toks, runes := tokenize_with_source(text, s.alloc, sa)
+	errors := make([dynamic]string, sa)
+	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &errors, runes = runes, scratch = sa, ns = &s.namespaces}
+	decls, nested := parse_block_contents(&p, parse_values(&p, .EOF, 0), parent)
+	switch {
+	case len(nested) == 1 && len(decls) == 0: return nested[0]
+	case len(nested) == 0 && len(decls) > 0:
+		r := new(Rule, s.alloc)
+		r.kind = .Style
+		r.selectors = parent.selectors
+		r.declarations = decls
+		return r
+	}
+	return nil
+}
+
+// The rules a rule holds that a script's list shows (CSSGroupingRule.cssRules): a group's rules, a style rule's nested
+// rules (CSS Nesting).
+rule_children :: proc(r: ^Rule) -> []^Rule {
+	#partial switch r.kind {
+	case .Style: return r.nested
+	case .Media, .Supports, .Container, .Layer_Block: return r.rules
+	}
+	return nil
+}
+
+// Whether `r` holds a list of rules (rule_children).
+rule_is_group :: proc(r: ^Rule) -> bool {
+	#partial switch r.kind {
+	case .Style, .Media, .Supports, .Container, .Layer_Block: return true
+	}
+	return false
+}
+
+rule_children_set :: proc(r: ^Rule, kids: []^Rule) {
+	if r.kind == .Style { r.nested = kids } else { r.rules = kids }
 }
 
 ////////////////////////////////
@@ -256,9 +310,13 @@ parse_rule_list :: proc(p: ^Parser, top_level: bool) -> []^Rule {
 		if p.rules >= p.opt.max_rules { perr(p, "too many rules: the rest of the sheet is ignored"); p.pos = len(p.toks); break }
 		if t.kind == .At_Keyword {
 			p.pos += 1
-			if r := parse_at_rule(p, t.text); r != nil { append(&rules, r) }
+			if r := parse_at_rule(p, t.text); r != nil {
+				append(&rules, r)
+				if r.kind != .Import && r.kind != .Namespace && r.kind != .Layer_Statement { p.ns_open = false }
+			}
 		} else if r := parse_qualified_rule(p, nil); r != nil {
 			append(&rules, r)
+			p.ns_open = false
 		}
 	}
 	return keep(p, rules)
@@ -317,7 +375,7 @@ finish_style_rule :: proc(p: ^Parser, prelude, body: []Value, parent: ^Rule) -> 
 	p.rules += 1
 	r := new(Rule, p.a)
 	r.kind = .Style
-	sel, ok := parse_selector_list(trim_values(prelude), p.a, parent != nil ? &parent.selectors : nil)
+	sel, ok := parse_selector_list(trim_values(prelude), p.a, parent != nil ? &parent.selectors : nil, p.ns)
 	if !ok {
 		text := serialize_values(trim_values(prelude), context.temp_allocator)
 		if len(text) > SELECTOR_ERROR_TEXT_MAX_BYTES {
@@ -330,7 +388,7 @@ finish_style_rule :: proc(p: ^Parser, prelude, body: []Value, parent: ^Rule) -> 
 	}
 	r.selectors = sel
 	if pre := trim_values(prelude); len(pre) > 0 {
-		r.selector_text = serialize_selector_list(pre, p.a)
+		r.selector_text = serialize_selector_list(pre, p.a, p.ns)
 		r.pos = first_pos(pre)
 	}
 	decls, nested := parse_block_contents(p, body, r)
@@ -402,6 +460,11 @@ parse_nested_item :: proc(p: ^Parser, item: []Value, owner: ^Rule) -> ^Rule {
 	prelude := trim_values(item[:len(item) - 1])
 	if p.rules >= p.opt.max_rules { return nil }
 	if item[0].kind == .Token && item[0].tok.kind == .At_Keyword {
+		// in a style rule, only group rules nest (CSS Nesting §2.2: @font-face, @keyframes... are invalid there)
+		if owner != nil && owner.kind == .Style && !holds_rule_list(item[0].tok.text) {
+			perr(p, strings.concatenate({"@", item[0].tok.text, " inside a style rule: rule dropped"}, context.temp_allocator))
+			return nil
+		}
 		return build_at_rule(p, item[0].tok.text, prelude[1:], blk, owner)
 	}
 	return finish_style_rule(p, prelude, blk.children, owner)
@@ -493,7 +556,7 @@ holds_rule_list :: proc(name: string) -> bool {
 
 @(private)
 parse_rules_in_block :: proc(p: ^Parser, blk: Value) -> []^Rule {
-	sub := Parser{toks = flatten(blk.children, p_scratch(p)), a = p.a, opt = p.opt, errors = p.errors, rules = p.rules, runes = p.runes, scratch = p.scratch}
+	sub := Parser{toks = flatten(blk.children, p_scratch(p)), a = p.a, opt = p.opt, errors = p.errors, rules = p.rules, runes = p.runes, scratch = p.scratch, ns = p.ns}
 	rules := parse_rule_list(&sub, false)
 	p.rules = sub.rules
 	return rules
@@ -636,8 +699,28 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 		if len(prelude) > 0 && prelude[0].kind == .Token { r.name = prelude[0].tok.text }
 		r.keyframes = parse_keyframes(p, blk.children)
 	case "namespace":
+		// @namespace <prefix>? [<string> | <url>]; (CSS Namespaces §2), before every rule but @charset and @import
+		items := make([dynamic]Value, context.temp_allocator)
+		for v in prelude { if !is_ws_value(v) { append(&items, v) } }
+		url: string
+		has_url := false
+		if len(items) > 0 { url, has_url = namespace_url_of(items[len(items) - 1]) }
+		prefix_ok := len(items) == 1 || len(items) == 2 && items[0].kind == .Token && items[0].tok.kind == .Ident
+		if has_block || !has_url || !prefix_ok || !p.ns_open {
+			perr(p, "invalid or misplaced @namespace: rule dropped")
+			return nil
+		}
 		r.kind = .Namespace
 		r.prelude = prelude
+		r.url = strings.clone(url, p.a)
+		if len(items) == 2 { r.name = strings.clone(items[0].tok.text, p.a) } else { r.name = "" }
+		if p.ns != nil {
+			if len(items) == 2 {
+				append(&p.ns.prefixes, Ns_Prefix{r.name, r.url})
+			} else {
+				p.ns.has_default, p.ns.default_url = true, r.url
+			}
+		}
 	case "charset":
 		return nil   // meaningful only to the byte-level decoder
 	case:
@@ -681,6 +764,17 @@ raw_value :: proc(p: ^Parser, vs: []Value) -> string {
 	sb := strings.builder_make(p.a)
 	for r in p.runes[start:end] { strings.write_rune(&sb, r) }
 	return strings.to_string(sb)
+}
+
+// The URL of an @namespace rule: a string, url(...) as a token, or url("...").
+@(private)
+namespace_url_of :: proc(v: Value) -> (string, bool) {
+	if v.kind == .Token && (v.tok.kind == .String || v.tok.kind == .Url) { return v.tok.text, true }
+	if v.kind == .Function && base.ascii_equal_fold(v.tok.text, "url") {
+		args := trim_values(v.children)
+		if len(args) == 1 && args[0].kind == .Token && args[0].tok.kind == .String { return args[0].tok.text, true }
+	}
+	return "", false
 }
 
 @(private)

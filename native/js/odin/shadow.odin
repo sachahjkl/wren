@@ -560,7 +560,9 @@ wjr_CSSStyleSheet_replaceSync :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc
 	if argc < 1 { return wj.wj_throw_arity(ctx, "CSSStyleSheet.replaceSync", 1, argc) }
 	st, ok := sheet_replace(ctx, h, argv[0])
 	if !ok { return wj.EXCEPTION }
-	return st != .None ? wj.wj_throw_status(ctx, i32(st), "CSSStyleSheet.replaceSync") : wj.UNDEFINED
+	if st != .None { return wj.wj_throw_status(ctx, i32(st), "CSSStyleSheet.replaceSync") }
+	rules_refresh(ctx, t)
+	return wj.UNDEFINED
 }
 
 // The default export of a CSS module (HTML "create a CSS module script"): a constructed sheet whose base URL is the
@@ -607,6 +609,7 @@ wjr_CSSStyleSheet_replace :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i3
 	st, ok := sheet_replace(ctx, h, wj.arg(argc, argv, 0))
 	if !ok { return wj.web_promise_reject_pending(ctx) }
 	if st != .None { wj.wj_throw_status(ctx, i32(st), "CSSStyleSheet.replace"); return wj.web_promise_reject_pending(ctx) }
+	rules_refresh(ctx, t)
 	return wj.web_promise_resolved(ctx, t)
 }
 
@@ -635,15 +638,56 @@ wjr_CSSStyleSheet_deleteRule :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc:
 	index: u32
 	if wj.JS_ToUint32(ctx, &index, argv[0]) < 0 { return wj.EXCEPTION }
 	st := jsb.host(&nothing, api_decl.CSSStyleSheet_deleteRuleAt, wj.wr_CSSStyleSheet_deleteRuleAt, h, index)
-	return st != .None ? wj.wj_throw_status(ctx, i32(st), "CSSStyleSheet.deleteRule") : wj.UNDEFINED
+	if st != .None { return wj.wj_throw_status(ctx, i32(st), "CSSStyleSheet.deleteRule") }
+	rules_refresh(ctx, t)
+	return wj.UNDEFINED
+}
+
+// removeRule(index = 0) (CSSOM's legacy alias of deleteRule).
+@(export, link_name = "wjr_CSSStyleSheet_removeRule")
+wjr_CSSStyleSheet_removeRule :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	index := [1]wj.JSValue{argc > 0 ? argv[0] : wj.new_int32(0)}
+	return wjr_CSSStyleSheet_deleteRule(ctx, t, 1, raw_data(index[:]))
+}
+
+// addRule(selector = "undefined", style = "undefined", index = length): insertRule("selector { style }", index), -1
+// (CSSOM's legacy method).
+@(export, link_name = "wjr_CSSStyleSheet_addRule")
+wjr_CSSStyleSheet_addRule :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	h := sheet_this(ctx, t)
+	if h == 0 { return wj.EXCEPTION }
+	sel, style: wj.Str
+	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &sel, 0, "") { return wj.EXCEPTION }
+	defer wj.wj_str_free(ctx, &sel)
+	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 1), &style, 0, "") { return wj.EXCEPTION }
+	defer wj.wj_str_free(ctx, &style)
+	index := rule_count(h, 0)
+	if argc > 2 && !wj.is_undefined(argv[2]) && wj.JS_ToUint32(ctx, &index, argv[2]) < 0 { return wj.EXCEPTION }
+	parts := [?]string{str_view(sel), " { ", str_view(style), " }"}
+	n := 0
+	for p in parts { n += len(p) }
+	buf := ([^]u8)(wj.malloc(uint(n)))
+	if buf == nil { return wj.JS_ThrowOutOfMemory(ctx) }
+	defer wj.free(buf)
+	at := 0
+	for p in parts { copy(buf[at:at + len(p)], p); at += len(p) }
+	r: u32
+	if st := jsb.host(&r, api_decl.CSSStyleSheet_insertRuleAt, wj.wr_CSSStyleSheet_insertRuleAt, h, string(buf[:n]), index); st != .None {
+		return wj.wj_throw_status(ctx, i32(st), "CSSStyleSheet.addRule")
+	}
+	return wj.new_int32(-1)
 }
 
 // cssRules ([SameObject]): a CSSRuleList whose length is the browser's; its items (dom_css_rules.odin) are made when one is read, again only after
 // the sheet's rules changed (CSSStyleSheet_rulesVersion). insertRule(rule, sheet.cssRules.length) in a loop, as
-// CSS-in-JS libraries do, makes no rule object at all.
+// CSS-in-JS libraries do, makes no rule object at all. A grouping rule's cssRules is such a list of the rules inside it
+// (CSSStyleSheet_childId), the rule their parentRule.
 @(private = "file")
 Rules :: struct {
 	sheet:   wj.JSValue,   // the CSSStyleSheet (counted)
+	owner:   wj.JSValue,   // the CSSRule whose rules these are (counted), null for the sheet's own list
+	rule_id: u32,          // its number (CSSStyleSheet_ruleId), 0 for the sheet's own list
 	items:   wj.JSValue,   // an array of the rule objects (counted), undefined until read
 	by_id:   wj.JSValue,   // the same objects by rule identity (CSSStyleSheet_ruleId; counted): kept across changes
 	version: u32,
@@ -654,6 +698,7 @@ rules_free :: proc "c" (p: rawptr) {
 	r := (^Rules)(p)
 	rt := wj.web_rt()
 	wj.JS_FreeValueRT(rt, r.sheet)
+	wj.JS_FreeValueRT(rt, r.owner)
 	wj.JS_FreeValueRT(rt, r.items)
 	wj.JS_FreeValueRT(rt, r.by_id)
 	wj.libc_free(r)
@@ -663,6 +708,7 @@ rules_free :: proc "c" (p: rawptr) {
 rules_mark :: proc "c" (rt: rawptr, p: rawptr, mark_func: rawptr) {
 	r := (^Rules)(p)
 	wj.wj_mark(rt, r.sheet, mark_func)
+	wj.wj_mark(rt, r.owner, mark_func)
 	wj.wj_mark(rt, r.items, mark_func)
 	wj.wj_mark(rt, r.by_id, mark_func)
 }
@@ -680,13 +726,15 @@ rules_sheet :: proc(r: ^Rules) -> api_decl.CSSStyleSheet {
 }
 
 @(private = "file")
-rule_count :: proc(h: api_decl.CSSStyleSheet) -> u32 {
+rule_count :: proc(h: api_decl.CSSStyleSheet, rule_id: u32) -> u32 {
 	n: u32
-	if h != 0 { jsb.host(&n, api_decl.CSSStyleSheet_ruleCount, wj.wr_CSSStyleSheet_ruleCount, h) }
+	if h == 0 { return 0 }
+	if rule_id != 0 { jsb.host(&n, api_decl.CSSStyleSheet_childCount, wj.wr_CSSStyleSheet_childCount, h, rule_id) } else { jsb.host(&n, api_decl.CSSStyleSheet_ruleCount, wj.wr_CSSStyleSheet_ruleCount, h) }
 	return n
 }
 
-// the rule objects (not counted), made again when the sheet's rules changed since
+// the rule objects (not counted), made again when the sheet's rules changed since; the objects of rules no longer
+// there leave the sheet (css_rule_detach)
 @(private = "file")
 rules_items :: proc(ctx: ^wj.Context, r: ^Rules) -> wj.JSValue {
 	h := rules_sheet(r)
@@ -697,10 +745,10 @@ rules_items :: proc(ctx: ^wj.Context, r: ^Rules) -> wj.JSValue {
 	if wj.is_exception(arr) { return arr }
 	by_id := wj.JS_NewObject(ctx)
 	if wj.is_exception(by_id) { wj.JS_FreeValue(ctx, arr); return by_id }
-	n := rule_count(h)
+	n := rule_count(h, r.rule_id)
 	for i in 0 ..< n {
 		id: u32
-		jsb.host(&id, api_decl.CSSStyleSheet_ruleId, wj.wr_CSSStyleSheet_ruleId, h, i)
+		if r.rule_id != 0 { jsb.host(&id, api_decl.CSSStyleSheet_childId, wj.wr_CSSStyleSheet_childId, h, r.rule_id, i) } else { jsb.host(&id, api_decl.CSSStyleSheet_ruleId, wj.wr_CSSStyleSheet_ruleId, h, i) }
 		kept := wj.is_object(r.by_id) && id != 0 ? wj.JS_GetPropertyUint32(ctx, r.by_id, id) : wj.UNDEFINED
 		if wj.is_object(kept) {
 			wj.JS_SetPropertyUint32(ctx, by_id, id, wj.JS_DupValue(ctx, kept))
@@ -709,13 +757,34 @@ rules_items :: proc(ctx: ^wj.Context, r: ^Rules) -> wj.JSValue {
 		}
 		wj.JS_FreeValue(ctx, kept)
 		text: string
-		if jsb.host(&text, api_decl.CSSStyleSheet_ruleText, wj.wr_CSSStyleSheet_ruleText, h, i) != .None { break }
-		rule := css_rule_make(ctx, text, r.sheet, wj.NULL)   // dom_css_rules.odin
+		if r.rule_id != 0 {
+			jsb.host(&text, api_decl.CSSStyleSheet_ruleTextOf, wj.wr_CSSStyleSheet_ruleTextOf, h, id)
+		} else if jsb.host(&text, api_decl.CSSStyleSheet_ruleText, wj.wr_CSSStyleSheet_ruleText, h, i) != .None {
+			break
+		}
+		rule := css_rule_make(ctx, text, r.sheet, r.owner)   // dom_css_rules.odin
 		if id != 0 {
 			wj.web_extra_set(ctx, rule, "id", wj.new_uint32(ctx, id))   // (what its setters name it by)
 			wj.JS_SetPropertyUint32(ctx, by_id, id, wj.JS_DupValue(ctx, rule))
 		}
 		wj.array_set(ctx, arr, i, rule)
+	}
+	if wj.JS_IsArray(r.items) {
+		len_v := wj.JS_GetPropertyStr(ctx, r.items, "length")
+		was: u32
+		wj.JS_ToUint32(ctx, &was, len_v)
+		for i in 0 ..< was {
+			old := wj.JS_GetPropertyUint32(ctx, r.items, i)
+			idv := wj.web_extra_get(ctx, old, "id")
+			id: u32
+			if !wj.is_undefined(idv) && wj.JS_ToUint32(ctx, &id, idv) >= 0 {
+				still := wj.JS_GetPropertyUint32(ctx, by_id, id)
+				if !wj.is_object(still) { css_rule_detach(ctx, old) }
+				wj.JS_FreeValue(ctx, still)
+			}
+			wj.JS_FreeValue(ctx, idv)
+			wj.JS_FreeValue(ctx, old)
+		}
 	}
 	wj.JS_FreeValue(ctx, r.items)
 	wj.JS_FreeValue(ctx, r.by_id)
@@ -725,17 +794,36 @@ rules_items :: proc(ctx: ^wj.Context, r: ^Rules) -> wj.JSValue {
 	return arr
 }
 
-@(export, link_name = "wjr_CSSStyleSheet_get_cssRules")
-wjr_CSSStyleSheet_get_cssRules :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
-	context = jsb.glue_context()
-	if sheet_this(ctx, t) == 0 { return wj.EXCEPTION }
+// A CSSRuleList of the rules inside the rule numbered `rule_id` (CSSGroupingRule.cssRules), `owner` the rule's object.
+css_rule_list_make :: proc "contextless" (ctx: ^wj.Context, sheet, owner: wj.JSValue, rule_id: u32) -> wj.JSValue {
 	r := (^Rules)(wj.libc_calloc(1, size_of(Rules)))
 	if r == nil { return wj.JS_ThrowOutOfMemory(ctx) }
-	r^ = {sheet = wj.JS_DupValue(ctx, t), items = wj.UNDEFINED, by_id = wj.UNDEFINED}
+	r^ = {sheet = wj.JS_DupValue(ctx, sheet), owner = wj.JS_DupValue(ctx, owner), rule_id = rule_id, items = wj.UNDEFINED, by_id = wj.UNDEFINED}
 	obj := wj.wj_new_object(ctx, ifc("CSSRuleList"), r, rules_free)
 	if wj.is_exception(obj) { return obj }
 	wj.obj_of(obj).impl_mark = rules_mark
 	return obj
+}
+
+@(export, link_name = "wjr_CSSStyleSheet_get_cssRules")
+wjr_CSSStyleSheet_get_cssRules :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	if sheet_this(ctx, t) == 0 { return wj.EXCEPTION }
+	return css_rule_list_make(ctx, t, wj.NULL, 0)
+}
+
+// The rule objects a CSSRuleList made (not counted; undefined when none were read, or not such a list).
+css_rule_list_built :: proc "contextless" (list: wj.JSValue) -> wj.JSValue {
+	r := rules_of(list)
+	return r != nil ? r.items : wj.UNDEFINED
+}
+
+// After a rule was removed (deleteRule, replace): the list `owner` keeps (its cssRules: a sheet's or a rule's) made
+// again, so that the objects of the rules gone leave their parents at once.
+rules_refresh :: proc(ctx: ^wj.Context, owner: wj.JSValue) {
+	list := wj.JS_GetPropertyStr(ctx, owner, "cssRules")
+	defer wj.JS_FreeValue(ctx, list)
+	if r := rules_of(list); r != nil && wj.JS_IsArray(r.items) { rules_items(ctx, r) }
 }
 
 @(export, link_name = "wjr_CSSStyleSheet_get_rules")
@@ -744,7 +832,8 @@ wjr_CSSStyleSheet_get_rules :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.
 @(export, link_name = "wjr_CSSRuleList_length_hook")
 wjr_CSSRuleList_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue) -> u32 {
 	context = jsb.glue_context()
-	return rule_count(rules_sheet(rules_of(obj)))
+	r := rules_of(obj)
+	return r != nil ? rule_count(rules_sheet(r), r.rule_id) : 0
 }
 
 @(export, link_name = "wjr_CSSRuleList_index_get")

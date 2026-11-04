@@ -6,9 +6,47 @@ import "wb:base"
 
 NESTING_SCAN_MAX_DEPTH :: 64   // the selectors within selectors searched for `&`
 
-// Selectors Level 4 (the parts that make sense for a document without namespaces) and CSS Nesting's `&`.
+// Selectors Level 4, CSS Nesting's `&` and CSS Namespaces' prefixes (a sheet's @namespace rules).
 
 Combinator :: enum u8 { Descendant, Child, Next_Sibling, Subsequent_Sibling }
+
+// The namespace a type or universal selector asks for: any (no prefix without a default namespace, or `*|`), none
+// (`|`), one the DOM tells apart, or another (Other: it matches no element, the DOM keeping no other namespace's URL).
+Ns_Match :: enum u8 { Any, None, HTML, SVG, MathML, Other }
+
+NS_HTML   :: "http://www.w3.org/1999/xhtml"
+NS_SVG    :: "http://www.w3.org/2000/svg"
+NS_MATHML :: "http://www.w3.org/1998/Math/MathML"
+
+Ns_Prefix :: struct { prefix, url: string }
+
+// A sheet's @namespace rules (CSS Namespaces 3 §3): the default namespace of its type selectors, and its prefixes.
+Namespaces :: struct {
+	has_default: bool,
+	default_url: string,
+	prefixes:    [dynamic]Ns_Prefix,   // (in the sheet's memory)
+}
+
+ns_match_of :: proc(url: string) -> Ns_Match {
+	switch url {
+	case "": return .None
+	case NS_HTML: return .HTML
+	case NS_SVG: return .SVG
+	case NS_MATHML: return .MathML
+	}
+	return .Other
+}
+
+// The URL a prefix names (prefixes are case-sensitive); false when the sheet declares no such prefix.
+namespace_url :: proc(ns: ^Namespaces, prefix: string) -> (string, bool) {
+	if ns == nil { return "", false }
+	#reverse for p in ns.prefixes { if p.prefix == prefix { return p.url, true } }   // (the last declaration wins)
+	return "", false
+}
+
+// What an unprefixed type or universal selector asks for.
+@(private)
+default_ns :: proc(ns: ^Namespaces) -> Ns_Match { return ns != nil && ns.has_default ? ns_match_of(ns.default_url) : .Any }
 
 Simple_Kind :: enum u8 { Type, Universal, Id, Class, Attribute, Pseudo_Class, Nesting }
 
@@ -48,7 +86,7 @@ Simple :: struct {
 	op:     Attr_Op,
 	value:  string,
 	ci:     bool,        // attribute value compared case-insensitively
-	no_namespace: bool,  // Type, Universal: of an element in no namespace only (`|div`)
+	ns:     Ns_Match,    // Type, Universal: the element's namespace
 	nth_a, nth_b: int,   // An+B
 	list:   ^Selector_List,   // :not :is :where :has :host() :host-context(), `of S` of nth-child, the parent list for `&`;
 	                          // a ::slotted() being parsed: its argument
@@ -88,12 +126,12 @@ specificity_add :: proc(x, y: Specificity) -> Specificity { return {x.a + y.a, x
 // Parsing
 
 // Parses a selector list (invalid anywhere = invalid as a whole). `parent` is the enclosing rule's selectors for `&`.
-parse_selector_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List) -> (list: Selector_List, ok: bool) {
+parse_selector_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, ns: ^Namespaces = nil) -> (list: Selector_List, ok: bool) {
 	items := split_commas(vs, a)
 	out := make([dynamic]Complex, a)
 	for item in items {
 		// inside a style rule a selector may start with a combinator, and means `& <selector>` unless it uses & itself
-		c, good := parse_complex(trim_values(item), a, parent, parent != nil)
+		c, good := parse_complex(trim_values(item), a, parent, parent != nil, ns)
 		if !good { return nil, false }
 		if parent != nil { c = with_implicit_nesting(c, a, parent) }
 		append(&out, c)
@@ -105,11 +143,11 @@ parse_selector_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List)
 // A selector list inside a pseudo-class (:not(), :nth-child(... of S)): `&` resolves to the enclosing rule's selectors, but
 // nothing is prepended (the implicit `& ` belongs to the rule's own selectors: `.x { &:not(.a) }` is `.x:not(.a)`).
 @(private)
-parse_inner_selector_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List) -> (list: Selector_List, ok: bool) {
+parse_inner_selector_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, ns: ^Namespaces) -> (list: Selector_List, ok: bool) {
 	items := split_commas(vs, a)
 	out := make([dynamic]Complex, a)
 	for item in items {
-		c, good := parse_complex(trim_values(item), a, parent, false)
+		c, good := parse_complex(trim_values(item), a, parent, false, ns)
 		if !good { return nil, false }
 		append(&out, c)
 	}
@@ -151,11 +189,11 @@ with_implicit_nesting :: proc(c: Complex, a: Arena_Alloc, parent: ^Selector_List
 
 // Forgiving list (:is, :where): invalid items are dropped, an empty list is valid and matches nothing.
 @(private)
-parse_forgiving_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relative: bool) -> Selector_List {
+parse_forgiving_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relative: bool, ns: ^Namespaces) -> Selector_List {
 	items := split_commas(vs, a)
 	out := make([dynamic]Complex, a)
 	for item in items {
-		if c, good := parse_complex(trim_values(item), a, parent, relative); good { append(&out, c) }
+		if c, good := parse_complex(trim_values(item), a, parent, relative, ns); good { append(&out, c) }
 	}
 	return out[:]
 }
@@ -171,7 +209,7 @@ split_commas :: proc(vs: []Value, a: Arena_Alloc) -> [][]Value {
 }
 
 @(private)
-parse_complex :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relative: bool) -> (c: Complex, ok: bool) {
+parse_complex :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relative: bool, ns: ^Namespaces) -> (c: Complex, ok: bool) {
 	if len(vs) == 0 { return {}, false }
 	compounds := make([dynamic]Compound, a)
 	combs := make([dynamic]Combinator, a)
@@ -204,7 +242,7 @@ parse_complex :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relat
 		simples := make([dynamic]Simple, a)
 		for i < len(vs) && !is_ws_value(vs[i]) {
 			if _, is_comb := as_combinator(vs[i]); is_comb { break }
-			s, pe, consumed, good := parse_simple(vs[i:], a, parent)
+			s, pe, consumed, good := parse_simple(vs[i:], a, parent, ns)
 			if !good { return {}, false }
 			i += consumed
 			if pe != .None {
@@ -220,7 +258,7 @@ parse_complex :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relat
 					// then pseudo-classes (of the part) and one tree-abiding pseudo-element
 					state := make([dynamic]Simple, a)
 					for i < len(vs) && !is_ws_value(vs[i]) {
-						s2, pe2, n2, g2 := parse_simple(vs[i:], a, parent)
+						s2, pe2, n2, g2 := parse_simple(vs[i:], a, parent, ns)
 						if !g2 { return {}, false }
 						i += n2
 						if pe2 != .None {
@@ -239,7 +277,7 @@ parse_complex :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relat
 					break
 				}
 				for i < len(vs) && !is_ws_value(vs[i]) { // only user-action pseudo-classes may follow
-					s2, _, n2, g2 := parse_simple(vs[i:], a, parent)
+					s2, _, n2, g2 := parse_simple(vs[i:], a, parent, ns)
 					if !g2 || s2.kind != .Pseudo_Class { return {}, false }
 					append(&simples, s2)
 					i += n2
@@ -249,6 +287,10 @@ parse_complex :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relat
 			append(&simples, s)
 		}
 		if len(simples) == 0 && c.pseudo_element == .None { return {}, false }
+		// a default namespace holds for a compound without a type selector too (CSS Namespaces §3: `.c` is `*.c`)
+		if m := default_ns(ns); m != .Any && (len(simples) == 0 || simples[0].kind != .Type && simples[0].kind != .Universal) {
+			inject_at(&simples, 0, Simple{kind = .Universal, ns = m})
+		}
 		if len(compounds) > 0 {
 			append(&combs, pending.? if pending != nil else .Descendant)
 		}
@@ -281,29 +323,34 @@ as_combinator :: proc(v: Value) -> (Combinator, bool) {
 
 // One simple selector at the start of `vs`. Returns the pseudo-element when it is one (and `s` is then unused).
 @(private)
-parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List) -> (s: Simple, pe: Pseudo, consumed: int, ok: bool) {
+parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, ns: ^Namespaces) -> (s: Simple, pe: Pseudo, consumed: int, ok: bool) {
 	v := vs[0]
 	switch v.kind {
 	case .Token:
 		t := v.tok
 		#partial switch t.kind {
 		case .Ident:
-			// `prefix|name`: no namespace prefix is declared (querySelector has none, @namespace is not read)
-			if len(vs) > 2 && is_delim(vs[1], "|") && (vs[2].kind == .Token && vs[2].tok.kind == .Ident || is_delim(vs[2], "*")) { return {}, .None, 0, false }
-			return Simple{kind = .Type, name = base.ascii_lower_clone(t.text, a)}, .None, 1, true
+			// `prefix|name`, `prefix|*`: a prefix the sheet declares (querySelector has none: invalid there)
+			if len(vs) > 2 && is_delim(vs[1], "|") && (vs[2].kind == .Token && vs[2].tok.kind == .Ident || is_delim(vs[2], "*")) {
+				url, declared := namespace_url(ns, t.text)
+				if !declared { return {}, .None, 0, false }
+				if is_delim(vs[2], "*") { return Simple{kind = .Universal, ns = ns_match_of(url)}, .None, 3, true }
+				return Simple{kind = .Type, name = base.ascii_lower_clone(vs[2].tok.text, a), ns = ns_match_of(url)}, .None, 3, true
+			}
+			return Simple{kind = .Type, name = base.ascii_lower_clone(t.text, a), ns = default_ns(ns)}, .None, 1, true
 		case .Hash:
 			if !t.is_id { return {}, .None, 0, false }
 			return Simple{kind = .Id, name = t.text}, .None, 1, true
 		case .Delim:
 			switch t.text {
 			case "*", "|":
-				// `*|name` (any namespace: as `name`), `|name` (no namespace), `*` and `*|*`, `|*`; `name` may be `*`.
-				if t.text == "*" && !(len(vs) > 2 && is_delim(vs[1], "|")) { return Simple{kind = .Universal}, .None, 1, true }
+				// `*|name` (any namespace), `|name` (no namespace), `*` (the default namespace) and `*|*`, `|*`; `name` may be `*`.
+				if t.text == "*" && !(len(vs) > 2 && is_delim(vs[1], "|")) { return Simple{kind = .Universal, ns = default_ns(ns)}, .None, 1, true }
 				at := t.text == "*" ? 2 : 1
 				if at >= len(vs) || vs[at].kind != .Token { return {}, .None, 0, false }
-				no_ns := t.text == "|"
-				if vs[at].tok.kind == .Ident { return Simple{kind = .Type, name = base.ascii_lower_clone(vs[at].tok.text, a), no_namespace = no_ns}, .None, at + 1, true }
-				if is_delim(vs[at], "*") { return Simple{kind = .Universal, no_namespace = no_ns}, .None, at + 1, true }
+				m: Ns_Match = t.text == "|" ? .None : .Any
+				if vs[at].tok.kind == .Ident { return Simple{kind = .Type, name = base.ascii_lower_clone(vs[at].tok.text, a), ns = m}, .None, at + 1, true }
+				if is_delim(vs[at], "*") { return Simple{kind = .Universal, ns = m}, .None, at + 1, true }
 				return {}, .None, 0, false
 			case "&":
 				if parent == nil { return Simple{kind = .Nesting}, .None, 1, true }   // top-level &: matches :scope
@@ -325,7 +372,7 @@ parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List) -> (s:
 					switch fname {
 					case "slotted":
 						// ::slotted(<compound-selector>)
-						arg, good := parse_complex(trim_values(vs[2].children), a, nil, false)
+						arg, good := parse_complex(trim_values(vs[2].children), a, nil, false, ns)
 						if !good || len(arg.compounds) != 1 || arg.pseudo_element != .None { return {}, .None, 0, false }
 						lst := new(Selector_List, a)
 						lst^ = make([]Complex, 1, a)
@@ -358,7 +405,7 @@ parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List) -> (s:
 				return {}, .None, 0, false
 			}
 			if len(vs) > 1 && vs[1].kind == .Function {
-				simple, good := parse_functional_pseudo(vs[1], a, parent)
+				simple, good := parse_functional_pseudo(vs[1], a, parent, ns)
 				return simple, .None, 2, good
 			}
 			return {}, .None, 0, false
@@ -462,22 +509,22 @@ simple_pseudo_class :: proc(name: string) -> (Pseudo, bool) {
 }
 
 @(private)
-parse_functional_pseudo :: proc(f: Value, a: Arena_Alloc, parent: ^Selector_List) -> (s: Simple, ok: bool) {
+parse_functional_pseudo :: proc(f: Value, a: Arena_Alloc, parent: ^Selector_List, ns: ^Namespaces) -> (s: Simple, ok: bool) {
 	name := base.ascii_lower_clone(f.tok.text, a)
 	args := trim_values(f.children)
 	s.kind = .Pseudo_Class
 	switch name {
 	case "not":
-		lst, good := parse_inner_selector_list(args, a, parent)
+		lst, good := parse_inner_selector_list(args, a, parent, ns)
 		if !good { return {}, false }
 		s.pseudo = .Not
 		s.list = new(Selector_List, a); s.list^ = lst
 	case "is", "where", "-webkit-any", "matches", "-webkit-matches":
 		s.pseudo = name == "where" ? .Where : .Is
-		s.list = new(Selector_List, a); s.list^ = parse_forgiving_list(args, a, parent, false)
+		s.list = new(Selector_List, a); s.list^ = parse_forgiving_list(args, a, parent, false, ns)
 	case "host", "host-context":
 		// :host(<compound-selector>), :host-context(<compound-selector>)
-		arg, good := parse_complex(args, a, nil, false)
+		arg, good := parse_complex(args, a, nil, false, ns)
 		if !good || len(arg.compounds) != 1 || arg.pseudo_element != .None { return {}, false }
 		s.pseudo = name == "host" ? .Host : .Host_Context
 		s.list = new(Selector_List, a)
@@ -495,7 +542,7 @@ parse_functional_pseudo :: proc(f: Value, a: Arena_Alloc, parent: ^Selector_List
 		items := split_commas(args, a)
 		out := make([dynamic]Complex, a)
 		for item in items {
-			c, good := parse_complex(trim_values(item), a, parent, true)
+			c, good := parse_complex(trim_values(item), a, parent, true, ns)
 			if !good { return {}, false }
 			append(&out, c)
 		}
@@ -509,7 +556,7 @@ parse_functional_pseudo :: proc(f: Value, a: Arena_Alloc, parent: ^Selector_List
 		if of_idx >= 0 {
 			if name == "nth-of-type" || name == "nth-last-of-type" { return {}, false }
 			formula = trim_values(args[:of_idx])
-			lst, good := parse_inner_selector_list(trim_values(args[of_idx + 1:]), a, parent)
+			lst, good := parse_inner_selector_list(trim_values(args[of_idx + 1:]), a, parent, ns)
 			if !good { return {}, false }
 			s.list = new(Selector_List, a); s.list^ = lst
 		}

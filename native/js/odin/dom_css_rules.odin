@@ -1,7 +1,8 @@
 // dom_css_rules.odin: the objects of CSSRule's family, made from a rule's serialized text (CSSStyleSheet_ruleText) when
 // `sheet.cssRules` is read: the right interface for `instanceof`, and what a script reads of a rule. They are views: a rule's `style` is
-// parsed from its text in a detached element; what is written there, or to `selectorText`, reaches the sheet for a top-level style rule
-// (JSS's dynamic values, MUI's makeStyles with props), not for a rule inside another one.
+// parsed from its text in a detached element; what is written there, or to `selectorText`, reaches the sheet (JSS's dynamic values, MUI's
+// makeStyles with props), as insertRule and deleteRule of a grouping rule do, for every rule the browser numbers (all of a sheet's
+// lists: CSSStyleSheet_ruleId, CSSStyleSheet_childId).
 package odin_glue
 
 import "core:strconv"
@@ -98,19 +99,53 @@ extra_or_null :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, iface: cst
 @(private = "file")
 empty_string :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue { return wj.new_string_len(ctx, nil) }
 
-// A top-level rule whose style a script may have written gives the browser's text of it now; another, the text it was made with.
+// The sheet and the number of a rule the browser numbers (CSSStyleSheet_ruleId, CSSStyleSheet_childId) while it is in
+// a sheet: what its setters and its list name it by.
+@(private = "file")
+rule_ref :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue) -> (sheet: api_decl.CSSStyleSheet, id: u32, ok: bool) {
+	idv := wj.web_extra_get(ctx, t, "id")
+	sv := wj.web_extra_get(ctx, t, "parentStyleSheet")
+	defer { wj.JS_FreeValue(ctx, idv); wj.JS_FreeValue(ctx, sv) }
+	o := wj.wj_unwrap(sv, wj.iface("CSSStyleSheet"))
+	if o == nil || o.handle == 0 || wj.is_undefined(idv) || wj.JS_ToUint32(ctx, &id, idv) < 0 { return }
+	return api_decl.CSSStyleSheet(o.handle), id, true
+}
+
+// CSSOM "remove a CSS rule": the object of a rule no longer in its list has no parent rule nor sheet, nor have the
+// rules inside it a sheet.
+css_rule_detach :: proc "contextless" (ctx: ^wj.Context, rule: wj.JSValue) {
+	wj.web_extra_set(ctx, rule, "parentRule", wj.NULL)
+	rule_leave_sheet(ctx, rule)
+}
+
+@(private = "file")
+rule_leave_sheet :: proc "contextless" (ctx: ^wj.Context, rule: wj.JSValue) {
+	wj.web_extra_set(ctx, rule, "parentStyleSheet", wj.NULL)
+	list := wj.web_extra_get(ctx, rule, "rules")
+	defer wj.JS_FreeValue(ctx, list)
+	kids := css_rule_list_built(list)   // (shadow.odin: a live list's objects made so far)
+	if !wj.is_object(kids) { kids = list }
+	if !wj.JS_IsArray(kids) { return }
+	n_v := wj.JS_GetPropertyStr(ctx, kids, "length")
+	n: u32
+	wj.JS_ToUint32(ctx, &n, n_v)
+	for i in 0 ..< n {
+		k := wj.JS_GetPropertyUint32(ctx, kids, i)
+		if wj.is_object(k) { rule_leave_sheet(ctx, k) }
+		wj.JS_FreeValue(ctx, k)
+	}
+}
+
+// A rule in a sheet gives the browser's text of it now; another, or one whose view holds its own text (set_head), the
+// text of the view.
 @(export, link_name = "wjr_CSSRule_get_cssText")
 wjr_CSSRule_get_cssText :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
 	context = jsb.glue_context()
 	if wj.wj_this(ctx, t, wj.iface("CSSRule")) == nil { return wj.EXCEPTION }
-	idv := wj.web_extra_get(ctx, t, "id")
-	style := wj.web_extra_get(ctx, t, "style")
-	sheet := wj.web_extra_get(ctx, t, "parentStyleSheet")
-	defer { wj.JS_FreeValue(ctx, idv); wj.JS_FreeValue(ctx, style); wj.JS_FreeValue(ctx, sheet) }
-	id: u32
-	if o := wj.wj_unwrap(sheet, wj.iface("CSSStyleSheet")); o != nil && o.handle != 0 && !wj.is_undefined(style) && !wj.is_undefined(idv) && wj.JS_ToUint32(ctx, &id, idv) >= 0 {
+	own := wj.web_extra_get(ctx, t, "own")
+	if sheet, id, ok := rule_ref(ctx, t); ok && !wj.is_bool(own) {
 		text: string
-		jsb.host(&text, api_decl.CSSStyleSheet_ruleTextOf, wj.wr_CSSStyleSheet_ruleTextOf, api_decl.CSSStyleSheet(o.handle), id)
+		jsb.host(&text, api_decl.CSSStyleSheet_ruleTextOf, wj.wr_CSSStyleSheet_ruleTextOf, sheet, id)
 		if text != "" { return wj.new_string_len(ctx, transmute([]u8)text) }
 	}
 	return extra_or_null(ctx, t, "CSSRule", "cssText", empty_string(ctx))
@@ -124,25 +159,19 @@ wjr_CSSRule_get_parentStyleSheet :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -
 
 @(export, link_name = "wjr_CSSStyleRule_get_selectorText")
 wjr_CSSStyleRule_get_selectorText :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return extra_or_null(ctx, t, "CSSStyleRule", "head", empty_string(ctx)) }
-// The browser changes a top-level rule's selector and gives its new text back; an invalid selector leaves the rule as it
-// is (and a script's assignment does not throw). A rule inside another one is not changed.
+// The browser changes the rule's selector and gives its new text back; an invalid selector leaves the rule as it is (and
+// a script's assignment does not throw).
 @(export, link_name = "wjr_CSSStyleRule_set_selectorText")
 wjr_CSSStyleRule_set_selectorText :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
 	context = jsb.glue_context()
 	if wj.wj_this(ctx, t, wj.iface("CSSStyleRule")) == nil { return wj.EXCEPTION }
-	id: u32
-	idv := wj.web_extra_get(ctx, t, "id")
-	defer wj.JS_FreeValue(ctx, idv)
-	if wj.is_undefined(idv) || wj.JS_ToUint32(ctx, &id, idv) < 0 { return wj.UNDEFINED }
-	sheet := wj.web_extra_get(ctx, t, "parentStyleSheet")
-	defer wj.JS_FreeValue(ctx, sheet)
-	o := wj.wj_unwrap(sheet, wj.iface("CSSStyleSheet"))
-	if o == nil || o.handle == 0 { return wj.UNDEFINED }
+	sheet, id, in_sheet := rule_ref(ctx, t)
+	if !in_sheet { return wj.UNDEFINED }
 	sel, c, ok := wj.to_string_view(ctx, v)
 	if !ok { return wj.EXCEPTION }
 	defer wj.free_cstring(ctx, c)
 	text: string
-	jsb.host(&text, api_decl.CSSStyleSheet_setRuleSelector, wj.wr_CSSStyleSheet_setRuleSelector, api_decl.CSSStyleSheet(o.handle), id, sel)
+	jsb.host(&text, api_decl.CSSStyleSheet_setRuleSelector, wj.wr_CSSStyleSheet_setRuleSelector, sheet, id, sel)
 	if text == "" { return wj.UNDEFINED }
 	set_text(ctx, t, "cssText", text)
 	brace := index_of(text, '{')
@@ -175,7 +204,7 @@ rule_style :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, iface: cstrin
 	body := wj.web_extra_get(ctx, t, "body")
 	if wj.is_string(body) { wj.JS_SetPropertyStr(ctx, style, "cssText", wj.JS_DupValue(ctx, body)) }
 	wj.JS_FreeValue(ctx, body)
-	// a top-level rule's: what is written to it reaches the sheet (rule_style_written)
+	// a numbered rule's: what is written to it reaches the sheet (rule_style_written)
 	if id := wj.web_extra_get(ctx, t, "id"); !wj.is_undefined(id) {
 		wj.web_extra_set(ctx, style, "ruleId", id)
 		wj.web_extra_set(ctx, style, "sheet", wj.web_extra_get(ctx, t, "parentStyleSheet"))
@@ -184,7 +213,7 @@ rule_style :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, iface: cstrin
 	return style
 }
 
-// A CSSStyleDeclaration was written (dom_style.odin): when it is a top-level style rule's, the rule takes its declarations.
+// A CSSStyleDeclaration was written (dom_style.odin): when it is a numbered style rule's, the rule takes its declarations.
 rule_style_written :: proc "contextless" (ctx: ^wj.Context, style: wj.JSValue) {
 	context = jsb.glue_context()
 	idv := wj.web_extra_get(ctx, style, "ruleId")
@@ -209,7 +238,8 @@ wjr_CSSStyleRule_get_style :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.J
 @(export, link_name = "wjr_CSSFontFaceRule_get_style")
 wjr_CSSFontFaceRule_get_style :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return rule_style(ctx, t, "CSSFontFaceRule") }
 
-// The rules of a block: split at the top level of its braces. An array with `item`, as a list made once.
+// The rules of a block the browser does not list (keyframes, a page's margin rules, a rule in no sheet): split at the top
+// level of its braces. An array with `item`, as a list made once.
 @(private = "file")
 nested_rules :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, iface: cstring) -> wj.JSValue {
 	if wj.wj_this(ctx, t, wj.iface(iface)) == nil { return wj.EXCEPTION }
@@ -249,8 +279,58 @@ nested_rules :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, iface: cstr
 	return list
 }
 
+// A rule in a sheet: a live list of the rules inside it, the browser's (shadow.odin css_rule_list_make), made once; a rule
+// of no sheet, its text's.
 @(export, link_name = "wjr_CSSGroupingRule_get_cssRules")
-wjr_CSSGroupingRule_get_cssRules :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return nested_rules(ctx, t, "CSSGroupingRule") }
+wjr_CSSGroupingRule_get_cssRules :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
+	if wj.wj_this(ctx, t, wj.iface("CSSGroupingRule")) == nil { return wj.EXCEPTION }
+	kept := wj.web_extra_get(ctx, t, "rules")
+	if !wj.is_undefined(kept) { return kept }
+	_, id, ok := rule_ref(ctx, t)
+	kind := wj.web_extra_get(ctx, t, "type")
+	if !ok || kind == wj.new_int32(PAGE_RULE) { return nested_rules(ctx, t, "CSSGroupingRule") }   // (a page's margin rules: the shape of each its text's)
+	sheet := wj.web_extra_get(ctx, t, "parentStyleSheet")
+	defer wj.JS_FreeValue(ctx, sheet)
+	list := css_rule_list_make(ctx, sheet, t, id)
+	if wj.is_exception(list) { return list }
+	wj.web_extra_set(ctx, t, "rules", wj.JS_DupValue(ctx, list))
+	return list
+}
+
+// insertRule(rule, index = 0) on a rule in a sheet: what its parent's insertRule throws, InvalidStateError for one in no sheet.
+@(export, link_name = "wjr_CSSGroupingRule_insertRule")
+wjr_CSSGroupingRule_insertRule :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	if wj.wj_this(ctx, t, wj.iface("CSSGroupingRule")) == nil { return wj.EXCEPTION }
+	if argc < 1 { return wj.wj_throw_arity(ctx, "CSSGroupingRule.insertRule", 1, argc) }
+	text, c, ok := wj.to_string_view(ctx, argv[0])
+	if !ok { return wj.EXCEPTION }
+	defer wj.free_cstring(ctx, c)
+	index: u32
+	if argc > 1 && !wj.is_undefined(argv[1]) && wj.JS_ToUint32(ctx, &index, argv[1]) < 0 { return wj.EXCEPTION }
+	sheet, id, in_sheet := rule_ref(ctx, t)
+	if !in_sheet { return wj.wj_throw_dom(ctx, "InvalidStateError", "The rule is in no stylesheet.") }
+	r: u32
+	st := jsb.host(&r, api_decl.CSSStyleSheet_insertChildAt, wj.wr_CSSStyleSheet_insertChildAt, sheet, id, text, index)
+	return st != .None ? wj.wj_throw_status(ctx, i32(st), "CSSGroupingRule.insertRule") : wj.new_uint32(ctx, r)
+}
+
+@(export, link_name = "wjr_CSSGroupingRule_deleteRule")
+wjr_CSSGroupingRule_deleteRule :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	if wj.wj_this(ctx, t, wj.iface("CSSGroupingRule")) == nil { return wj.EXCEPTION }
+	if argc < 1 { return wj.wj_throw_arity(ctx, "CSSGroupingRule.deleteRule", 1, argc) }
+	index: u32
+	if wj.JS_ToUint32(ctx, &index, argv[0]) < 0 { return wj.EXCEPTION }
+	sheet, id, in_sheet := rule_ref(ctx, t)
+	if !in_sheet { return wj.wj_throw_dom(ctx, "InvalidStateError", "The rule is in no stylesheet.") }
+	nothing: abi.Nothing
+	if st := jsb.host(&nothing, api_decl.CSSStyleSheet_deleteChildAt, wj.wr_CSSStyleSheet_deleteChildAt, sheet, id, index); st != .None {
+		return wj.wj_throw_status(ctx, i32(st), "CSSGroupingRule.deleteRule")
+	}
+	rules_refresh(ctx, t)
+	return wj.UNDEFINED
+}
 @(export, link_name = "wjr_CSSKeyframesRule_get_cssRules")
 wjr_CSSKeyframesRule_get_cssRules :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return nested_rules(ctx, t, "CSSKeyframesRule") }
 
@@ -492,11 +572,13 @@ put :: proc "contextless" (t: ^Text_Buf, s: string) {
 text_of :: #force_inline proc "contextless" (t: ^Text_Buf) -> string { return string(t.b[:t.n]) }
 
 // A new head for the rule's view: its cssText becomes `prefix`, the head (after a space when there is one), then its block.
+// The view's text is the rule's from then on (`own`: the browser keeps no page selector nor keyframe keys).
 @(private = "file")
 set_head :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, prefix, head: string) {
 	text, c := extra_view(ctx, t, "cssText")
 	defer if c != nil { wj.free_cstring(ctx, c) }
 	set_text(ctx, t, "head", head)
+	wj.web_extra_set(ctx, t, "own", wj.TRUE)
 	block := text[max(index_of(text, '{'), 0):]
 	sep := prefix != "" && head != "" ? " " : ""
 	n := len(prefix) + len(sep) + len(head) + 1 + len(block)

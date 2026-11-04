@@ -4110,8 +4110,8 @@ Host: `CSSStyleSheet_ruleText :: proc(c: ^Call, sheet: u64, index: u32) -> (stri
 string CSSStyleSheet_setRuleSelector(u64 sheet, u32 rule_id, string selector)
 ```
 
-CSSStyleRule.selectorText = selector, on the top-level rule numbered `rule_id` (CSSStyleSheet_ruleId): the
-rule's new cssText, "" when nothing changed (the rule is gone, not a style rule, or the selector is invalid).
+CSSStyleRule.selectorText = selector, on the rule numbered `rule_id` (CSSStyleSheet_ruleId, CSSStyleSheet_childId):
+the rule's new cssText, "" when nothing changed (the rule is gone, not a style rule, or the selector is invalid).
 
 Host: `CSSStyleSheet_setRuleSelector :: proc(c: ^Call, sheet: u64, rule_id: u32, selector: string) -> string`
 
@@ -4121,7 +4121,7 @@ Host: `CSSStyleSheet_setRuleSelector :: proc(c: ^Call, sheet: u64, rule_id: u32,
 string CSSStyleSheet_ruleTextOf(u64 sheet, u32 rule_id)
 ```
 
-The cssText of the top-level rule numbered `rule_id` as it is now ("" when it is gone).
+The cssText of the rule numbered `rule_id` as it is now ("" when it is gone).
 
 Host: `CSSStyleSheet_ruleTextOf :: proc(c: ^Call, sheet: u64, rule_id: u32) -> string`
 
@@ -4131,10 +4131,54 @@ Host: `CSSStyleSheet_ruleTextOf :: proc(c: ^Call, sheet: u64, rule_id: u32) -> s
 void CSSStyleSheet_setRuleStyle(u64 sheet, u32 rule_id, string text)
 ```
 
-CSSStyleRule.style written: the top-level style rule numbered `rule_id` takes the declarations of `text` (nothing
-changes for a rule that is gone, is no style rule or holds nested rules).
+CSSStyleRule.style written: the style rule numbered `rule_id` takes the declarations of `text` (nothing changes
+for a rule that is gone or is no style rule).
 
 Host: `CSSStyleSheet_setRuleStyle :: proc(c: ^Call, sheet: u64, rule_id: u32, text: string)`
+
+### `CSSStyleSheet_childCount`
+
+```
+u32 CSSStyleSheet_childCount(u64 sheet, u32 rule_id)
+```
+
+CSSGroupingRule.cssRules of the rule numbered `rule_id` (a group, or a style rule's nested rules): their number,
+and the number of one (0 past the end), which names it as CSSStyleSheet_ruleId names a top-level rule.
+
+Host: `CSSStyleSheet_childCount :: proc(c: ^Call, sheet: u64, rule_id: u32) -> u32`
+
+### `CSSStyleSheet_childId`
+
+```
+u32 CSSStyleSheet_childId(u64 sheet, u32 rule_id, u32 index)
+```
+
+Host: `CSSStyleSheet_childId :: proc(c: ^Call, sheet: u64, rule_id: u32, index: u32) -> u32`
+
+### `CSSStyleSheet_insertChildAt`
+
+```
+u32 CSSStyleSheet_insertChildAt(u64 sheet, u32 rule_id, string rule, u32 index) raises
+```
+
+CSSGroupingRule.insertRule(rule, index) on the rule numbered `rule_id`: Index_Size past the end, Syntax when
+`rule` is not one rule (inside a style rule: nor declarations), Hierarchy when it cannot be there; the index.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `CSSStyleSheet_insertChildAt :: proc(c: ^Call, sheet: u64, rule_id: u32, rule: string, index: u32) -> (u32, Api_Error)`
+
+### `CSSStyleSheet_deleteChildAt`
+
+```
+void CSSStyleSheet_deleteChildAt(u64 sheet, u32 rule_id, u32 index) raises
+```
+
+CSSGroupingRule.deleteRule(index) on the rule numbered `rule_id`: Index_Size past the end.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `CSSStyleSheet_deleteChildAt :: proc(c: ^Call, sheet: u64, rule_id: u32, index: u32) -> Api_Error`
 
 ### `CSSStyleSheet_insertRuleAt`
 

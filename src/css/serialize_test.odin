@@ -46,6 +46,36 @@ selectors_serialize :: proc(t: ^testing.T) {
 	testing.expect(t, len(s.rules) == 1 && len(s.rules[0].nested) == 1 && s.rules[0].nested[0].selector_text == "> .b")
 }
 
+// The sheet's last rule's selector, and whether it parsed.
+@(private = "file")
+last_selector_of :: proc(src: string) -> string {
+	s := parse_stylesheet(src, OPT)
+	defer { stylesheet_destroy(s); free(s) }
+	if len(s.rules) == 0 || s.rules[len(s.rules) - 1].kind != .Style { return "(none)" }
+	return clone_temp(s.rules[len(s.rules) - 1].selector_text)
+}
+
+// Type selectors and @namespace (CSSOM §6.7.2): `*|` kept only with a default namespace, a prefix naming the default
+// namespace left out, `*` left out before the rest of its compound; an undeclared prefix, or @namespace after a style
+// rule or without a URL, invalid. The default namespace selects in compounds without a type selector too.
+@(test)
+selectors_serialize_namespaces :: proc(t: ^testing.T) {
+	NS :: "@namespace ns url(ns);"
+	DEFAULT :: "@namespace url(d); @namespace nsd url(d);" + NS
+	testing.expect_value(t, last_selector_of(NS + "*|e, *|*, *|*.c, *.c, |e, |*.c, ns|*.c {}"), "e, *, .c, .c, |e, |*.c, ns|*.c")
+	testing.expect_value(t, last_selector_of(DEFAULT + "*|e, *|*, *|*.c, *.c, nsd|e, nsd|*.c, ns|e {}"), "*|e, *|*, *|*.c, .c, e, .c, ns|e")
+	testing.expect_value(t, last_selector_of("*:not(:active), [|lang], [*|lang] {}"), ":not(:active), [lang], [*|lang]")
+	testing.expect_value(t, last_selector_of("x|e {}"), "(none)")
+	testing.expect_value(t, last_selector_of("p {} @namespace x url(x); x|e {}"), "p")
+	testing.expect_value(t, last_selector_of("@namespace x; x|e {}"), "(none)")
+
+	s := parse_stylesheet("@namespace url(" + NS_HTML + "); @namespace svg url(" + NS_SVG + "); .c, svg|* {}", OPT)
+	defer { stylesheet_destroy(s); free(s) }
+	sel := s.rules[len(s.rules) - 1].selectors
+	testing.expect(t, len(sel) == 2 && sel[0].compounds[0].simples[0].kind == .Universal && sel[0].compounds[0].simples[0].ns == .HTML)
+	testing.expect(t, len(sel) == 2 && sel[1].compounds[0].simples[0].ns == .SVG)
+}
+
 // Media query lists: "all and" left out, keywords and features lower-cased, "name: value", invalid queries "not all".
 @(test)
 media_lists_serialize :: proc(t: ^testing.T) {

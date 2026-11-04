@@ -221,10 +221,10 @@ selectors_and_specificity :: proc(t: ^testing.T) {
 	ln, okn := sel("*|div, |div, |*, *|*, [*|title]", ar)
 	testing.expect(t, okn)
 	if okn {
-		testing.expect(t, ln[0].compounds[0].simples[0].kind == .Type && ln[0].compounds[0].simples[0].name == "div" && !ln[0].compounds[0].simples[0].no_namespace)
-		testing.expect(t, ln[1].compounds[0].simples[0].kind == .Type && ln[1].compounds[0].simples[0].no_namespace)
-		testing.expect(t, ln[2].compounds[0].simples[0].kind == .Universal && ln[2].compounds[0].simples[0].no_namespace)
-		testing.expect(t, ln[3].compounds[0].simples[0].kind == .Universal && !ln[3].compounds[0].simples[0].no_namespace)
+		testing.expect(t, ln[0].compounds[0].simples[0].kind == .Type && ln[0].compounds[0].simples[0].name == "div" && ln[0].compounds[0].simples[0].ns == .Any)
+		testing.expect(t, ln[1].compounds[0].simples[0].kind == .Type && ln[1].compounds[0].simples[0].ns == .None)
+		testing.expect(t, ln[2].compounds[0].simples[0].kind == .Universal && ln[2].compounds[0].simples[0].ns == .None)
+		testing.expect(t, ln[3].compounds[0].simples[0].kind == .Universal && ln[3].compounds[0].simples[0].ns == .Any)
 		testing.expect(t, ln[4].compounds[0].simples[0].kind == .Attribute && ln[4].compounds[0].simples[0].name == "title")
 	}
 	// forgiving lists keep the valid items

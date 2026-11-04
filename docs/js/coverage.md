@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 605 |
 | exposed by default | 385 |
 | members | 5311 |
-| members implemented | 3850 (72.5 %) |
+| members implemented | 3854 (72.6 %) |
 
 ## By specification
 
@@ -41,7 +41,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `css-typed-om.idl` | 37 (0) | 3 / 126 |
 | `css-view-transitions.idl` | 3 (0) | 0 / 10 |
 | `cssom-view.idl` | 5 (4) | 24 / 28 |
-| `cssom.idl` | 16 (15) | 62 / 149 |
+| `cssom.idl` | 16 (15) | 66 / 149 |
 | `dom.idl` | 35 (31) | 591 / 700 |
 | `element-timing.idl` | 1 (1) | 12 / 12 |
 | `encoding.idl` | 4 (4) | 19 / 19 |
@@ -421,11 +421,11 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### CSSGroupingRule : CSSRule
 
-1 / 3 members.
+3 / 3 members.
 
 - `readonly cssRules`: C `wjr_CSSGroupingRule_get_cssRules`
-- `insertRule()`: not supported
-- `deleteRule()`: not supported
+- `insertRule()`: C `wjr_CSSGroupingRule_insertRule`
+- `deleteRule()`: C `wjr_CSSGroupingRule_deleteRule`
 
 ### CSSConditionRule : CSSGroupingRule
 
@@ -5858,7 +5858,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### CSSStyleSheet : StyleSheet
 
-8 / 10 members.
+10 / 10 members.
 
 - `constructor()`: C `wjr_CSSStyleSheet_constructor`
 - `readonly ownerRule`: C `wjr_CSSStyleSheet_get_ownerRule`
@@ -5868,8 +5868,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `replace()`: C `wjr_CSSStyleSheet_replace`
 - `replaceSync()`: C `wjr_CSSStyleSheet_replaceSync`
 - `readonly rules`: C `wjr_CSSStyleSheet_get_rules`
-- `addRule()`: not supported
-- `removeRule()`: not supported
+- `addRule()`: C `wjr_CSSStyleSheet_addRule`
+- `removeRule()`: C `wjr_CSSStyleSheet_removeRule`
 
 ### StyleSheetList
 
