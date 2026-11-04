@@ -64,8 +64,8 @@
 	XMLHttpRequest with value %06: FAIL
 	XMLHttpRequest with value %07: FAIL
 	XMLHttpRequest with value %08: FAIL
-	XMLHttpRequest with value %09: FAIL
-	XMLHttpRequest with value %0A: FAIL
+	XMLHttpRequest with value %09: PASS
+	XMLHttpRequest with value %0A: PASS
 	XMLHttpRequest with value %0D: FAIL
 	XMLHttpRequest with value %0E: FAIL
 	XMLHttpRequest with value %0F: FAIL
@@ -85,7 +85,7 @@
 	XMLHttpRequest with value %1D: FAIL
 	XMLHttpRequest with value %1E: FAIL
 	XMLHttpRequest with value %1F: FAIL
-	XMLHttpRequest with value %20: FAIL
+	XMLHttpRequest with value %20: PASS
 	fetch() with value %00: PASS
 	fetch() with value %01: FAIL
 	fetch() with value %02: FAIL
@@ -95,9 +95,9 @@
 	fetch() with value %06: FAIL
 	fetch() with value %07: FAIL
 	fetch() with value %08: FAIL
-	fetch() with value %09: FAIL
-	fetch() with value %0A: FAIL
-	fetch() with value %0D: FAIL
+	fetch() with value %09: PASS
+	fetch() with value %0A: PASS
+	fetch() with value %0D: PASS
 	fetch() with value %0E: FAIL
 	fetch() with value %0F: FAIL
 	fetch() with value %10: FAIL
@@ -116,7 +116,7 @@
 	fetch() with value %1D: FAIL
 	fetch() with value %1E: FAIL
 	fetch() with value %1F: FAIL
-	fetch() with value %20: FAIL
+	fetch() with value %20: PASS
 /fetch/api/headers/header-values-normalize.any.worker.html: OK
 	fetch() with value %00: PASS
 	fetch() with value %01: FAIL
@@ -127,9 +127,9 @@
 	fetch() with value %06: FAIL
 	fetch() with value %07: FAIL
 	fetch() with value %08: FAIL
-	fetch() with value %09: FAIL
-	fetch() with value %0A: FAIL
-	fetch() with value %0D: FAIL
+	fetch() with value %09: PASS
+	fetch() with value %0A: PASS
+	fetch() with value %0D: PASS
 	fetch() with value %0E: FAIL
 	fetch() with value %0F: FAIL
 	fetch() with value %10: FAIL
@@ -148,7 +148,7 @@
 	fetch() with value %1D: FAIL
 	fetch() with value %1E: FAIL
 	fetch() with value %1F: FAIL
-	fetch() with value %20: FAIL
+	fetch() with value %20: PASS
 /fetch/api/headers/header-values.any.html: OK
 	XMLHttpRequest with all valid values: FAIL
 	XMLHttpRequest with value x%00x needs to throw: PASS

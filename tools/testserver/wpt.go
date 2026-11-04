@@ -12,7 +12,8 @@
 //   - /resources/WebIDLParser.js is resources/webidl2/lib/webidl2.js, as wptserve routes it.
 //   - /resources/testharnessreport.js is Wren's (wpt/testharnessreport.js of the repository): it hands the results to
 //     the runner. /resources/testdriver-vendor.js too (wpt/testdriver-vendor.js): test_driver's input goes to the runner.
-//   - Python handlers (*.py) do not run: 501, but for a few ported to Go (wpt_httpcache.go, wpt_handlers.go). The tests
+//   - x.asis files are whole responses, and Python handlers (*.py) do not run: 501, but for those ported to Go (wpt_python.go,
+//     wpt_xhr.go, wpt_fetch.go, wpt_httpcache.go, wpt_handlers.go). The tests
 //     that need the others fail, and are counted as failing.
 //
 // Cross-origin tests: the names of wptserve's configuration, all on this listener: web-platform.test ({{host}}), its subdomains
@@ -156,7 +157,7 @@ func startWPTOnly(o Options) (int, error) {
 	}
 	log.Printf("web-platform-tests: http://127.0.0.1:%d  https://127.0.0.1:%d (self-signed)  http://127.0.0.1:%d  https://127.0.0.1:%d, checkout %s", wptHTTPPort, wptHTTPSPort, wptHTTPPort2, wptHTTPSPort2, wptRoot)
 	serveWPTOn(plain, tls.NewListener(secure, &tls.Config{Certificates: []tls.Certificate{wptCert()}}))
-	serve(second, http.HandlerFunc(serveWPT))
+	serveRaw(second, http.HandlerFunc(serveWPT))
 	serve(tls.NewListener(secure2, &tls.Config{Certificates: []tls.Certificate{wptCert()}}), http.HandlerFunc(serveWPT))
 	return wptHTTPPort, nil
 }
@@ -187,7 +188,7 @@ var (
 // The WPT origin on its two listeners (the TLS one already wrapped), each served from its own goroutine.
 func serveWPTOn(plain, secure net.Listener) {
 	h := http.HandlerFunc(serveWPT)
-	serve(plain, h)
+	serveRaw(plain, h)
 	serve(secure, h)
 }
 
@@ -535,6 +536,10 @@ func serveWPT(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.HasSuffix(rel, ".py") {
 		http.Error(w, "wptserve Python handlers do not run on Wren's test server", http.StatusNotImplemented)
+		return
+	}
+	if strings.HasSuffix(rel, ".asis") {
+		serveAsIs(w, full)
 		return
 	}
 	st, err := os.Stat(full)

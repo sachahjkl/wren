@@ -1,15 +1,15 @@
 # web-platform-tests expectations of Wren for fetch/api/basic, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /fetch/api/basic/accept-header.any.html: OK
-	Request through fetch should have 'accept' header with value '*/*': FAIL
-	Request through fetch should have 'accept' header with value 'custom/*': FAIL
-	Request through fetch should have 'accept-language' header with value 'bzh': FAIL
-	Request through fetch should have a 'accept-language' header: FAIL
+	Request through fetch should have 'accept' header with value '*/*': PASS
+	Request through fetch should have 'accept' header with value 'custom/*': PASS
+	Request through fetch should have 'accept-language' header with value 'bzh': PASS
+	Request through fetch should have a 'accept-language' header: PASS
 /fetch/api/basic/accept-header.any.worker.html: OK
-	Request through fetch should have 'accept' header with value '*/*': FAIL
-	Request through fetch should have 'accept' header with value 'custom/*': FAIL
-	Request through fetch should have 'accept-language' header with value 'bzh': FAIL
-	Request through fetch should have a 'accept-language' header: FAIL
+	Request through fetch should have 'accept' header with value '*/*': PASS
+	Request through fetch should have 'accept' header with value 'custom/*': PASS
+	Request through fetch should have 'accept-language' header with value 'bzh': PASS
+	Request through fetch should have a 'accept-language' header: PASS
 /fetch/api/basic/block-mime-as-script.html: OK
 	Should fail loading empty script with audio/aiff MIME type: PASS
 	Should fail loading empty script with audio/midi MIME type: PASS
@@ -31,18 +31,18 @@
 	Should fail loading non-empty script with video/avi MIME type: PASS
 	Should fail loading non-empty script with video/fli MIME type: PASS
 	Should fail loading non-empty script with video/whatever MIME type: PASS
-	Should load script with text/html MIME type: FAIL
-	Should load script with text/plain MIME type: FAIL
+	Should load script with text/html MIME type: PASS
+	Should load script with text/plain MIME type: PASS
 /fetch/api/basic/conditional-get.any.html: OK
-	Testing conditional GET with ETags: FAIL
+	Testing conditional GET with ETags: PASS
 /fetch/api/basic/conditional-get.any.worker.html: OK
-	Testing conditional GET with ETags: FAIL
-/fetch/api/basic/error-after-response.any.html: OK
-	Response reader closed promise should reject after a network error happening after resolving fetch promise: FAIL
-	Response reader read() promise should reject after a network error happening after resolving fetch promise: FAIL
-/fetch/api/basic/error-after-response.any.worker.html: OK
-	Response reader closed promise should reject after a network error happening after resolving fetch promise: FAIL
-	Response reader read() promise should reject after a network error happening after resolving fetch promise: FAIL
+	Testing conditional GET with ETags: PASS
+/fetch/api/basic/error-after-response.any.html: TIMEOUT
+	Response reader closed promise should reject after a network error happening after resolving fetch promise: TIMEOUT
+	Response reader read() promise should reject after a network error happening after resolving fetch promise: PASS
+/fetch/api/basic/error-after-response.any.worker.html: TIMEOUT
+	Response reader closed promise should reject after a network error happening after resolving fetch promise: TIMEOUT
+	Response reader read() promise should reject after a network error happening after resolving fetch promise: PASS
 /fetch/api/basic/fetch-in-popup-from-iframe.html: OK
 	Fetch from initial empty document in popup opened from iframe: FAIL
 /fetch/api/basic/gc.any.html: OK
@@ -60,23 +60,23 @@
 	GC/CC should not discard a cloned FormData body's Blob before it is read: PASS
 	GC/CC should not discard a moved FormData body's Blob before it is read: PASS
 /fetch/api/basic/header-value-combining.any.html: OK
-	response.headers.get('content-length') expects 0: FAIL
-	response.headers.get('content-length') expects 0, 0: FAIL
-	response.headers.get('double-trouble') expects , : FAIL
-	response.headers.get('foo-test') expects 1, 2, 3: FAIL
+	response.headers.get('content-length') expects 0: PASS
+	response.headers.get('content-length') expects 0, 0: PASS
+	response.headers.get('double-trouble') expects , : PASS
+	response.headers.get('foo-test') expects 1, 2, 3: PASS
 	response.headers.get('heya') expects , , 1, , , 2: FAIL
-	response.headers.get('www-authenticate') expects 1, 2, 3, 4: FAIL
+	response.headers.get('www-authenticate') expects 1, 2, 3, 4: PASS
 /fetch/api/basic/header-value-combining.any.worker.html: OK
-	response.headers.get('content-length') expects 0: FAIL
-	response.headers.get('content-length') expects 0, 0: FAIL
-	response.headers.get('double-trouble') expects , : FAIL
-	response.headers.get('foo-test') expects 1, 2, 3: FAIL
+	response.headers.get('content-length') expects 0: PASS
+	response.headers.get('content-length') expects 0, 0: PASS
+	response.headers.get('double-trouble') expects , : PASS
+	response.headers.get('foo-test') expects 1, 2, 3: PASS
 	response.headers.get('heya') expects , , 1, , , 2: FAIL
-	response.headers.get('www-authenticate') expects 1, 2, 3, 4: FAIL
+	response.headers.get('www-authenticate') expects 1, 2, 3, 4: PASS
 /fetch/api/basic/header-value-null-byte.any.html: OK
-	Ensure fetch() rejects null bytes in headers: FAIL
+	Ensure fetch() rejects null bytes in headers: PASS
 /fetch/api/basic/header-value-null-byte.any.worker.html: OK
-	Ensure fetch() rejects null bytes in headers: FAIL
+	Ensure fetch() rejects null bytes in headers: PASS
 /fetch/api/basic/historical.any.html: OK
 	'type' getter should not exist on Request objects: PASS
 	Headers object no longer has a getAll() method: PASS
@@ -127,20 +127,20 @@
 	SHA-512 integrity base64url encoded: PASS
 	SHA-512 integrity base64url encoded with missing padding: PASS
 	SHA-512 integrity with missing padding: PASS
-/fetch/api/basic/keepalive.any.html: TIMEOUT
-	[keepalive] simple GET request on 'load' [no payload]: TIMEOUT
+/fetch/api/basic/keepalive.any.html: OK
+	[keepalive] simple GET request on 'load' [no payload]: PASS
 	[keepalive] simple GET request on 'load' [no payload]; setting up: PASS
-	[keepalive] simple GET request on 'pagehide' [no payload]: TIMEOUT
+	[keepalive] simple GET request on 'pagehide' [no payload]: FAIL
 	[keepalive] simple GET request on 'pagehide' [no payload]; setting up: PASS
-	[keepalive] simple GET request on 'unload' [no payload]: TIMEOUT
+	[keepalive] simple GET request on 'unload' [no payload]: FAIL
 	[keepalive] simple GET request on 'unload' [no payload]; setting up: PASS
-	[keepalive] simple POST request on 'load' [no payload]: TIMEOUT
+	[keepalive] simple POST request on 'load' [no payload]: PASS
 	[keepalive] simple POST request on 'load' [no payload]; setting up: PASS
-	[keepalive] simple POST request on 'pagehide' [no payload]: TIMEOUT
+	[keepalive] simple POST request on 'pagehide' [no payload]: FAIL
 	[keepalive] simple POST request on 'pagehide' [no payload]; setting up: PASS
-	[keepalive] simple POST request on 'unload' [no payload]: TIMEOUT
+	[keepalive] simple POST request on 'unload' [no payload]: FAIL
 	[keepalive] simple POST request on 'unload' [no payload]; setting up: PASS
-	simple keepalive test for web workers: TIMEOUT
+	simple keepalive test for web workers: PASS
 	simple keepalive test for web workers;: PASS
 /fetch/api/basic/mediasource.window.html: OK
 	Cannot fetch blob: URL from a MediaSource: PASS
@@ -156,230 +156,230 @@
 	Fetch https://web-platform.test:8779/fetch/api/resources/top.txt with no-cors mode: PASS
 /fetch/api/basic/mode-same-origin.any.html: OK
 	Fetch ../resources/top.txt with same-origin mode: PASS
-	Fetch /fetch/api/basic/../resources/redirect.py?location=../resources/top.txt with same-origin mode: FAIL
-	Fetch /fetch/api/basic/../resources/redirect.py?location=http://web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: FAIL
-	Fetch /fetch/api/basic/../resources/redirect.py?location=http://www1.web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: FAIL
-	Fetch /fetch/api/basic/../resources/redirect.py?location=https://web-platform.test:8779/fetch/api/resources/top.txt with same-origin mode: FAIL
+	Fetch /fetch/api/basic/../resources/redirect.py?location=../resources/top.txt with same-origin mode: PASS
+	Fetch /fetch/api/basic/../resources/redirect.py?location=http://web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: PASS
+	Fetch /fetch/api/basic/../resources/redirect.py?location=http://www1.web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: PASS
+	Fetch /fetch/api/basic/../resources/redirect.py?location=https://web-platform.test:8779/fetch/api/resources/top.txt with same-origin mode: PASS
 	Fetch http://web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: PASS
 	Fetch http://www1.web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: PASS
 	Fetch https://web-platform.test:8779/fetch/api/resources/top.txt with same-origin mode: PASS
 /fetch/api/basic/mode-same-origin.any.worker.html: OK
 	Fetch ../resources/top.txt with same-origin mode: PASS
-	Fetch /fetch/api/basic/../resources/redirect.py?location=../resources/top.txt with same-origin mode: FAIL
-	Fetch /fetch/api/basic/../resources/redirect.py?location=http://web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: FAIL
-	Fetch /fetch/api/basic/../resources/redirect.py?location=http://www1.web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: FAIL
-	Fetch /fetch/api/basic/../resources/redirect.py?location=https://web-platform.test:8779/fetch/api/resources/top.txt with same-origin mode: FAIL
+	Fetch /fetch/api/basic/../resources/redirect.py?location=../resources/top.txt with same-origin mode: PASS
+	Fetch /fetch/api/basic/../resources/redirect.py?location=http://web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: PASS
+	Fetch /fetch/api/basic/../resources/redirect.py?location=http://www1.web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: PASS
+	Fetch /fetch/api/basic/../resources/redirect.py?location=https://web-platform.test:8779/fetch/api/resources/top.txt with same-origin mode: PASS
 	Fetch http://web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: PASS
 	Fetch http://www1.web-platform.test:8778/fetch/api/resources/top.txt with same-origin mode: PASS
 	Fetch https://web-platform.test:8779/fetch/api/resources/top.txt with same-origin mode: PASS
 /fetch/api/basic/referrer.any.html: OK
 	Referrer with credentials should be stripped: FAIL
 	Referrer with fragment ID should be stripped: FAIL
-	origin-when-cross-origin policy on a cross-origin URL: FAIL
-	origin-when-cross-origin policy on a cross-origin URL after same-origin redirection: FAIL
-	origin-when-cross-origin policy on a same-origin URL: FAIL
-	origin-when-cross-origin policy on a same-origin URL after cross-origin redirection: FAIL
+	origin-when-cross-origin policy on a cross-origin URL: PASS
+	origin-when-cross-origin policy on a cross-origin URL after same-origin redirection: PASS
+	origin-when-cross-origin policy on a same-origin URL: PASS
+	origin-when-cross-origin policy on a same-origin URL after cross-origin redirection: PASS
 /fetch/api/basic/referrer.any.worker.html: OK
 	Referrer with credentials should be stripped: FAIL
 	Referrer with fragment ID should be stripped: FAIL
-	origin-when-cross-origin policy on a cross-origin URL: FAIL
-	origin-when-cross-origin policy on a cross-origin URL after same-origin redirection: FAIL
-	origin-when-cross-origin policy on a same-origin URL: FAIL
-	origin-when-cross-origin policy on a same-origin URL after cross-origin redirection: FAIL
+	origin-when-cross-origin policy on a cross-origin URL: PASS
+	origin-when-cross-origin policy on a cross-origin URL after same-origin redirection: PASS
+	origin-when-cross-origin policy on a same-origin URL: PASS
+	origin-when-cross-origin policy on a same-origin URL after cross-origin redirection: PASS
 /fetch/api/basic/request-forbidden-headers.any.html: OK
-	Accept-Charset is a forbidden request header: FAIL
-	Accept-Encoding is a forbidden request header: FAIL
-	Access-Control-Request-Headers is a forbidden request header: FAIL
-	Access-Control-Request-Method is a forbidden request header: FAIL
-	Connection is a forbidden request header: FAIL
-	Content-Length is a forbidden request header: FAIL
-	Cookie is a forbidden request header: FAIL
-	Cookie2 is a forbidden request header: FAIL
-	DNT is a forbidden request header: FAIL
-	Date is a forbidden request header: FAIL
-	Expect is a forbidden request header: FAIL
-	Host is a forbidden request header: FAIL
-	Keep-Alive is a forbidden request header: FAIL
-	Origin is a forbidden request header: FAIL
-	Proxy- is a forbidden request header: FAIL
-	Proxy-Test is a forbidden request header: FAIL
-	Referer is a forbidden request header: FAIL
-	Sec- is a forbidden request header: FAIL
-	Sec-Test is a forbidden request header: FAIL
-	TE is a forbidden request header: FAIL
-	Trailer is a forbidden request header: FAIL
-	Transfer-Encoding is a forbidden request header: FAIL
-	Upgrade is a forbidden request header: FAIL
-	Via is a forbidden request header: FAIL
-	header X-HTTP-METHOD is allowed to use value ",TRACE",: FAIL
-	header X-HTTP-METHOD is allowed to use value GET: FAIL
-	header X-HTTP-METHOD is allowed to use value GETTRACE: FAIL
-	header X-HTTP-METHOD is forbidden to use value  connect: FAIL
-	header X-HTTP-METHOD is forbidden to use value CONNECT: FAIL
-	header X-HTTP-METHOD is forbidden to use value GET,track : FAIL
-	header X-HTTP-METHOD is forbidden to use value TRACE: FAIL
-	header X-HTTP-METHOD is forbidden to use value TRACK: FAIL
-	header X-HTTP-METHOD is forbidden to use value connect: FAIL
-	header X-HTTP-METHOD is forbidden to use value trace: FAIL
-	header X-HTTP-METHOD is forbidden to use value trace,: FAIL
-	header X-HTTP-METHOD is forbidden to use value track: FAIL
-	header X-HTTP-METHOD-OVERRIDE is allowed to use value ",TRACE",: FAIL
-	header X-HTTP-METHOD-OVERRIDE is allowed to use value GET: FAIL
-	header X-HTTP-METHOD-OVERRIDE is allowed to use value GETTRACE: FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value  connect: FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value CONNECT: FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value GET,track : FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value TRACE: FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value TRACK: FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value connect: FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value trace: FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value trace,: FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value track: FAIL
-	header X-METHOD-OVERRIDE is allowed to use value ",TRACE",: FAIL
-	header X-METHOD-OVERRIDE is allowed to use value GET: FAIL
-	header X-METHOD-OVERRIDE is allowed to use value GETTRACE: FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value  connect: FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value CONNECT: FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value GET,track : FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value TRACE: FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value TRACK: FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value connect: FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value trace: FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value trace,: FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value track: FAIL
-	header x-http-method is allowed to use value ",TRACE",: FAIL
-	header x-http-method is allowed to use value GET: FAIL
-	header x-http-method is allowed to use value GETTRACE: FAIL
-	header x-http-method is forbidden to use value  connect: FAIL
-	header x-http-method is forbidden to use value CONNECT: FAIL
-	header x-http-method is forbidden to use value GET,track : FAIL
-	header x-http-method is forbidden to use value TRACE: FAIL
-	header x-http-method is forbidden to use value TRACK: FAIL
-	header x-http-method is forbidden to use value connect: FAIL
-	header x-http-method is forbidden to use value trace: FAIL
-	header x-http-method is forbidden to use value trace,: FAIL
-	header x-http-method is forbidden to use value track: FAIL
-	header x-http-method-override is allowed to use value ",TRACE",: FAIL
-	header x-http-method-override is allowed to use value GET: FAIL
-	header x-http-method-override is allowed to use value GETTRACE: FAIL
-	header x-http-method-override is forbidden to use value  connect: FAIL
-	header x-http-method-override is forbidden to use value CONNECT: FAIL
-	header x-http-method-override is forbidden to use value GET,track : FAIL
-	header x-http-method-override is forbidden to use value TRACE: FAIL
-	header x-http-method-override is forbidden to use value TRACK: FAIL
-	header x-http-method-override is forbidden to use value connect: FAIL
-	header x-http-method-override is forbidden to use value trace: FAIL
-	header x-http-method-override is forbidden to use value trace,: FAIL
-	header x-http-method-override is forbidden to use value track: FAIL
-	header x-method-override is allowed to use value ",TRACE",: FAIL
-	header x-method-override is allowed to use value GET: FAIL
-	header x-method-override is allowed to use value GETTRACE: FAIL
-	header x-method-override is forbidden to use value  connect: FAIL
-	header x-method-override is forbidden to use value CONNECT: FAIL
-	header x-method-override is forbidden to use value GET,track : FAIL
-	header x-method-override is forbidden to use value TRACE: FAIL
-	header x-method-override is forbidden to use value TRACK: FAIL
+	Accept-Charset is a forbidden request header: PASS
+	Accept-Encoding is a forbidden request header: PASS
+	Access-Control-Request-Headers is a forbidden request header: PASS
+	Access-Control-Request-Method is a forbidden request header: PASS
+	Connection is a forbidden request header: PASS
+	Content-Length is a forbidden request header: PASS
+	Cookie is a forbidden request header: PASS
+	Cookie2 is a forbidden request header: PASS
+	DNT is a forbidden request header: PASS
+	Date is a forbidden request header: PASS
+	Expect is a forbidden request header: PASS
+	Host is a forbidden request header: PASS
+	Keep-Alive is a forbidden request header: PASS
+	Origin is a forbidden request header: PASS
+	Proxy- is a forbidden request header: PASS
+	Proxy-Test is a forbidden request header: PASS
+	Referer is a forbidden request header: PASS
+	Sec- is a forbidden request header: PASS
+	Sec-Test is a forbidden request header: PASS
+	TE is a forbidden request header: PASS
+	Trailer is a forbidden request header: PASS
+	Transfer-Encoding is a forbidden request header: PASS
+	Upgrade is a forbidden request header: PASS
+	Via is a forbidden request header: PASS
+	header X-HTTP-METHOD is allowed to use value ",TRACE",: PASS
+	header X-HTTP-METHOD is allowed to use value GET: PASS
+	header X-HTTP-METHOD is allowed to use value GETTRACE: PASS
+	header X-HTTP-METHOD is forbidden to use value  connect: PASS
+	header X-HTTP-METHOD is forbidden to use value CONNECT: PASS
+	header X-HTTP-METHOD is forbidden to use value GET,track : PASS
+	header X-HTTP-METHOD is forbidden to use value TRACE: PASS
+	header X-HTTP-METHOD is forbidden to use value TRACK: PASS
+	header X-HTTP-METHOD is forbidden to use value connect: PASS
+	header X-HTTP-METHOD is forbidden to use value trace: PASS
+	header X-HTTP-METHOD is forbidden to use value trace,: PASS
+	header X-HTTP-METHOD is forbidden to use value track: PASS
+	header X-HTTP-METHOD-OVERRIDE is allowed to use value ",TRACE",: PASS
+	header X-HTTP-METHOD-OVERRIDE is allowed to use value GET: PASS
+	header X-HTTP-METHOD-OVERRIDE is allowed to use value GETTRACE: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value  connect: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value CONNECT: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value GET,track : PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value TRACE: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value TRACK: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value connect: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value trace: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value trace,: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value track: PASS
+	header X-METHOD-OVERRIDE is allowed to use value ",TRACE",: PASS
+	header X-METHOD-OVERRIDE is allowed to use value GET: PASS
+	header X-METHOD-OVERRIDE is allowed to use value GETTRACE: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value  connect: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value CONNECT: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value GET,track : PASS
+	header X-METHOD-OVERRIDE is forbidden to use value TRACE: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value TRACK: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value connect: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value trace: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value trace,: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value track: PASS
+	header x-http-method is allowed to use value ",TRACE",: PASS
+	header x-http-method is allowed to use value GET: PASS
+	header x-http-method is allowed to use value GETTRACE: PASS
+	header x-http-method is forbidden to use value  connect: PASS
+	header x-http-method is forbidden to use value CONNECT: PASS
+	header x-http-method is forbidden to use value GET,track : PASS
+	header x-http-method is forbidden to use value TRACE: PASS
+	header x-http-method is forbidden to use value TRACK: PASS
+	header x-http-method is forbidden to use value connect: PASS
+	header x-http-method is forbidden to use value trace: PASS
+	header x-http-method is forbidden to use value trace,: PASS
+	header x-http-method is forbidden to use value track: PASS
+	header x-http-method-override is allowed to use value ",TRACE",: PASS
+	header x-http-method-override is allowed to use value GET: PASS
+	header x-http-method-override is allowed to use value GETTRACE: PASS
+	header x-http-method-override is forbidden to use value  connect: PASS
+	header x-http-method-override is forbidden to use value CONNECT: PASS
+	header x-http-method-override is forbidden to use value GET,track : PASS
+	header x-http-method-override is forbidden to use value TRACE: PASS
+	header x-http-method-override is forbidden to use value TRACK: PASS
+	header x-http-method-override is forbidden to use value connect: PASS
+	header x-http-method-override is forbidden to use value trace: PASS
+	header x-http-method-override is forbidden to use value trace,: PASS
+	header x-http-method-override is forbidden to use value track: PASS
+	header x-method-override is allowed to use value ",TRACE",: PASS
+	header x-method-override is allowed to use value GET: PASS
+	header x-method-override is allowed to use value GETTRACE: PASS
+	header x-method-override is forbidden to use value  connect: PASS
+	header x-method-override is forbidden to use value CONNECT: PASS
+	header x-method-override is forbidden to use value GET,track : PASS
+	header x-method-override is forbidden to use value TRACE: PASS
+	header x-method-override is forbidden to use value TRACK: PASS
 	header x-method-override is forbidden to use value connect: FAIL
-	header x-method-override is forbidden to use value trace: FAIL
-	header x-method-override is forbidden to use value trace,: FAIL
-	header x-method-override is forbidden to use value track: FAIL
+	header x-method-override is forbidden to use value trace: PASS
+	header x-method-override is forbidden to use value trace,: PASS
+	header x-method-override is forbidden to use value track: PASS
 /fetch/api/basic/request-forbidden-headers.any.worker.html: OK
-	Accept-Charset is a forbidden request header: FAIL
-	Accept-Encoding is a forbidden request header: FAIL
-	Access-Control-Request-Headers is a forbidden request header: FAIL
-	Access-Control-Request-Method is a forbidden request header: FAIL
-	Connection is a forbidden request header: FAIL
-	Content-Length is a forbidden request header: FAIL
-	Cookie is a forbidden request header: FAIL
-	Cookie2 is a forbidden request header: FAIL
-	DNT is a forbidden request header: FAIL
-	Date is a forbidden request header: FAIL
-	Expect is a forbidden request header: FAIL
-	Host is a forbidden request header: FAIL
-	Keep-Alive is a forbidden request header: FAIL
-	Origin is a forbidden request header: FAIL
-	Proxy- is a forbidden request header: FAIL
-	Proxy-Test is a forbidden request header: FAIL
-	Referer is a forbidden request header: FAIL
-	Sec- is a forbidden request header: FAIL
-	Sec-Test is a forbidden request header: FAIL
-	TE is a forbidden request header: FAIL
-	Trailer is a forbidden request header: FAIL
-	Transfer-Encoding is a forbidden request header: FAIL
-	Upgrade is a forbidden request header: FAIL
-	Via is a forbidden request header: FAIL
-	header X-HTTP-METHOD is allowed to use value ",TRACE",: FAIL
-	header X-HTTP-METHOD is allowed to use value GET: FAIL
-	header X-HTTP-METHOD is allowed to use value GETTRACE: FAIL
-	header X-HTTP-METHOD is forbidden to use value  connect: FAIL
-	header X-HTTP-METHOD is forbidden to use value CONNECT: FAIL
-	header X-HTTP-METHOD is forbidden to use value GET,track : FAIL
-	header X-HTTP-METHOD is forbidden to use value TRACE: FAIL
-	header X-HTTP-METHOD is forbidden to use value TRACK: FAIL
-	header X-HTTP-METHOD is forbidden to use value connect: FAIL
-	header X-HTTP-METHOD is forbidden to use value trace: FAIL
-	header X-HTTP-METHOD is forbidden to use value trace,: FAIL
-	header X-HTTP-METHOD is forbidden to use value track: FAIL
-	header X-HTTP-METHOD-OVERRIDE is allowed to use value ",TRACE",: FAIL
-	header X-HTTP-METHOD-OVERRIDE is allowed to use value GET: FAIL
-	header X-HTTP-METHOD-OVERRIDE is allowed to use value GETTRACE: FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value  connect: FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value CONNECT: FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value GET,track : FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value TRACE: FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value TRACK: FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value connect: FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value trace: FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value trace,: FAIL
-	header X-HTTP-METHOD-OVERRIDE is forbidden to use value track: FAIL
-	header X-METHOD-OVERRIDE is allowed to use value ",TRACE",: FAIL
-	header X-METHOD-OVERRIDE is allowed to use value GET: FAIL
-	header X-METHOD-OVERRIDE is allowed to use value GETTRACE: FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value  connect: FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value CONNECT: FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value GET,track : FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value TRACE: FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value TRACK: FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value connect: FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value trace: FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value trace,: FAIL
-	header X-METHOD-OVERRIDE is forbidden to use value track: FAIL
-	header x-http-method is allowed to use value ",TRACE",: FAIL
-	header x-http-method is allowed to use value GET: FAIL
-	header x-http-method is allowed to use value GETTRACE: FAIL
-	header x-http-method is forbidden to use value  connect: FAIL
-	header x-http-method is forbidden to use value CONNECT: FAIL
-	header x-http-method is forbidden to use value GET,track : FAIL
-	header x-http-method is forbidden to use value TRACE: FAIL
-	header x-http-method is forbidden to use value TRACK: FAIL
-	header x-http-method is forbidden to use value connect: FAIL
-	header x-http-method is forbidden to use value trace: FAIL
-	header x-http-method is forbidden to use value trace,: FAIL
-	header x-http-method is forbidden to use value track: FAIL
-	header x-http-method-override is allowed to use value ",TRACE",: FAIL
-	header x-http-method-override is allowed to use value GET: FAIL
-	header x-http-method-override is allowed to use value GETTRACE: FAIL
-	header x-http-method-override is forbidden to use value  connect: FAIL
-	header x-http-method-override is forbidden to use value CONNECT: FAIL
-	header x-http-method-override is forbidden to use value GET,track : FAIL
-	header x-http-method-override is forbidden to use value TRACE: FAIL
-	header x-http-method-override is forbidden to use value TRACK: FAIL
-	header x-http-method-override is forbidden to use value connect: FAIL
-	header x-http-method-override is forbidden to use value trace: FAIL
-	header x-http-method-override is forbidden to use value trace,: FAIL
-	header x-http-method-override is forbidden to use value track: FAIL
-	header x-method-override is allowed to use value ",TRACE",: FAIL
-	header x-method-override is allowed to use value GET: FAIL
-	header x-method-override is allowed to use value GETTRACE: FAIL
-	header x-method-override is forbidden to use value  connect: FAIL
-	header x-method-override is forbidden to use value CONNECT: FAIL
-	header x-method-override is forbidden to use value GET,track : FAIL
-	header x-method-override is forbidden to use value TRACE: FAIL
-	header x-method-override is forbidden to use value TRACK: FAIL
-	header x-method-override is forbidden to use value connect: FAIL
-	header x-method-override is forbidden to use value trace: FAIL
-	header x-method-override is forbidden to use value trace,: FAIL
-	header x-method-override is forbidden to use value track: FAIL
+	Accept-Charset is a forbidden request header: PASS
+	Accept-Encoding is a forbidden request header: PASS
+	Access-Control-Request-Headers is a forbidden request header: PASS
+	Access-Control-Request-Method is a forbidden request header: PASS
+	Connection is a forbidden request header: PASS
+	Content-Length is a forbidden request header: PASS
+	Cookie is a forbidden request header: PASS
+	Cookie2 is a forbidden request header: PASS
+	DNT is a forbidden request header: PASS
+	Date is a forbidden request header: PASS
+	Expect is a forbidden request header: PASS
+	Host is a forbidden request header: PASS
+	Keep-Alive is a forbidden request header: PASS
+	Origin is a forbidden request header: PASS
+	Proxy- is a forbidden request header: PASS
+	Proxy-Test is a forbidden request header: PASS
+	Referer is a forbidden request header: PASS
+	Sec- is a forbidden request header: PASS
+	Sec-Test is a forbidden request header: PASS
+	TE is a forbidden request header: PASS
+	Trailer is a forbidden request header: PASS
+	Transfer-Encoding is a forbidden request header: PASS
+	Upgrade is a forbidden request header: PASS
+	Via is a forbidden request header: PASS
+	header X-HTTP-METHOD is allowed to use value ",TRACE",: PASS
+	header X-HTTP-METHOD is allowed to use value GET: PASS
+	header X-HTTP-METHOD is allowed to use value GETTRACE: PASS
+	header X-HTTP-METHOD is forbidden to use value  connect: PASS
+	header X-HTTP-METHOD is forbidden to use value CONNECT: PASS
+	header X-HTTP-METHOD is forbidden to use value GET,track : PASS
+	header X-HTTP-METHOD is forbidden to use value TRACE: PASS
+	header X-HTTP-METHOD is forbidden to use value TRACK: PASS
+	header X-HTTP-METHOD is forbidden to use value connect: PASS
+	header X-HTTP-METHOD is forbidden to use value trace: PASS
+	header X-HTTP-METHOD is forbidden to use value trace,: PASS
+	header X-HTTP-METHOD is forbidden to use value track: PASS
+	header X-HTTP-METHOD-OVERRIDE is allowed to use value ",TRACE",: PASS
+	header X-HTTP-METHOD-OVERRIDE is allowed to use value GET: PASS
+	header X-HTTP-METHOD-OVERRIDE is allowed to use value GETTRACE: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value  connect: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value CONNECT: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value GET,track : PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value TRACE: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value TRACK: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value connect: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value trace: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value trace,: PASS
+	header X-HTTP-METHOD-OVERRIDE is forbidden to use value track: PASS
+	header X-METHOD-OVERRIDE is allowed to use value ",TRACE",: PASS
+	header X-METHOD-OVERRIDE is allowed to use value GET: PASS
+	header X-METHOD-OVERRIDE is allowed to use value GETTRACE: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value  connect: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value CONNECT: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value GET,track : PASS
+	header X-METHOD-OVERRIDE is forbidden to use value TRACE: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value TRACK: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value connect: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value trace: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value trace,: PASS
+	header X-METHOD-OVERRIDE is forbidden to use value track: PASS
+	header x-http-method is allowed to use value ",TRACE",: PASS
+	header x-http-method is allowed to use value GET: PASS
+	header x-http-method is allowed to use value GETTRACE: PASS
+	header x-http-method is forbidden to use value  connect: PASS
+	header x-http-method is forbidden to use value CONNECT: PASS
+	header x-http-method is forbidden to use value GET,track : PASS
+	header x-http-method is forbidden to use value TRACE: PASS
+	header x-http-method is forbidden to use value TRACK: PASS
+	header x-http-method is forbidden to use value connect: PASS
+	header x-http-method is forbidden to use value trace: PASS
+	header x-http-method is forbidden to use value trace,: PASS
+	header x-http-method is forbidden to use value track: PASS
+	header x-http-method-override is allowed to use value ",TRACE",: PASS
+	header x-http-method-override is allowed to use value GET: PASS
+	header x-http-method-override is allowed to use value GETTRACE: PASS
+	header x-http-method-override is forbidden to use value  connect: PASS
+	header x-http-method-override is forbidden to use value CONNECT: PASS
+	header x-http-method-override is forbidden to use value GET,track : PASS
+	header x-http-method-override is forbidden to use value TRACE: PASS
+	header x-http-method-override is forbidden to use value TRACK: PASS
+	header x-http-method-override is forbidden to use value connect: PASS
+	header x-http-method-override is forbidden to use value trace: PASS
+	header x-http-method-override is forbidden to use value trace,: PASS
+	header x-http-method-override is forbidden to use value track: PASS
+	header x-method-override is allowed to use value ",TRACE",: PASS
+	header x-method-override is allowed to use value GET: PASS
+	header x-method-override is allowed to use value GETTRACE: PASS
+	header x-method-override is forbidden to use value  connect: PASS
+	header x-method-override is forbidden to use value CONNECT: PASS
+	header x-method-override is forbidden to use value GET,track : PASS
+	header x-method-override is forbidden to use value TRACE: PASS
+	header x-method-override is forbidden to use value TRACK: PASS
+	header x-method-override is forbidden to use value connect: PASS
+	header x-method-override is forbidden to use value trace: PASS
+	header x-method-override is forbidden to use value trace,: PASS
+	header x-method-override is forbidden to use value track: PASS
 /fetch/api/basic/request-head.any.html: OK
 	Fetch with HEAD with body: PASS
 /fetch/api/basic/request-head.any.worker.html: OK
@@ -391,109 +391,111 @@
 	Multiple headers with the same name, different case (THIS-IS-A-TEST first): FAIL
 	Multiple headers with the same name, different case (THIS-is-A-test first): FAIL
 /fetch/api/basic/request-headers-nonascii.any.html: OK
-	Non-ascii bytes in request headers: FAIL
+	Non-ascii bytes in request headers: PASS
 /fetch/api/basic/request-headers-nonascii.any.worker.html: OK
-	Non-ascii bytes in request headers: FAIL
+	Non-ascii bytes in request headers: PASS
 /fetch/api/basic/request-headers.any.html: OK
-	Fetch with Chicken: FAIL
-	Fetch with Chicken with body: FAIL
-	Fetch with GET: FAIL
-	Fetch with GET and mode "cors" does not need an Origin header: FAIL
-	Fetch with HEAD: FAIL
-	Fetch with POST and mode "no-cors" needs an Origin header: FAIL
-	Fetch with POST and mode "same-origin" needs an Origin header: FAIL
-	Fetch with POST with ArrayBuffer body: FAIL
-	Fetch with POST with Blob body: FAIL
-	Fetch with POST with Blob body with mime type: FAIL
-	Fetch with POST with DataView body: FAIL
-	Fetch with POST with Float16Array body: FAIL
-	Fetch with POST with Float32Array body: FAIL
-	Fetch with POST with Float64Array body: FAIL
-	Fetch with POST with FormData body: FAIL
-	Fetch with POST with Int8Array body: FAIL
-	Fetch with POST with URLSearchParams body: FAIL
-	Fetch with POST with Uint8Array body: FAIL
-	Fetch with POST with text body: FAIL
+	Fetch with Chicken: PASS
+	Fetch with Chicken with body: PASS
+	Fetch with GET: PASS
+	Fetch with GET and mode "cors" does not need an Origin header: PASS
+	Fetch with HEAD: PASS
+	Fetch with POST and mode "no-cors" needs an Origin header: PASS
+	Fetch with POST and mode "same-origin" needs an Origin header: PASS
+	Fetch with POST with ArrayBuffer body: PASS
+	Fetch with POST with Blob body: PASS
+	Fetch with POST with Blob body with mime type: PASS
+	Fetch with POST with DataView body: PASS
+	Fetch with POST with Float16Array body: PASS
+	Fetch with POST with Float32Array body: PASS
+	Fetch with POST with Float64Array body: PASS
+	Fetch with POST with FormData body: PASS
+	Fetch with POST with Int8Array body: PASS
+	Fetch with POST with URLSearchParams body: PASS
+	Fetch with POST with Uint8Array body: PASS
+	Fetch with POST with text body: PASS
 	Fetch with POST without body: FAIL
-	Fetch with PUT and mode "same-origin" needs an Origin header: FAIL
-	Fetch with PUT with body: FAIL
+	Fetch with PUT and mode "same-origin" needs an Origin header: PASS
+	Fetch with PUT with body: PASS
 	Fetch with PUT without body: FAIL
-	Fetch with TacO and mode "cors" needs an Origin header: FAIL
-	Fetch with TacO and mode "same-origin" needs an Origin header: FAIL
+	Fetch with TacO and mode "cors" needs an Origin header: PASS
+	Fetch with TacO and mode "same-origin" needs an Origin header: PASS
 /fetch/api/basic/request-headers.any.worker.html: OK
-	Fetch with Chicken: FAIL
-	Fetch with Chicken with body: FAIL
-	Fetch with GET: FAIL
-	Fetch with GET and mode "cors" does not need an Origin header: FAIL
-	Fetch with HEAD: FAIL
-	Fetch with POST and mode "no-cors" needs an Origin header: FAIL
-	Fetch with POST and mode "same-origin" needs an Origin header: FAIL
-	Fetch with POST with ArrayBuffer body: FAIL
-	Fetch with POST with Blob body: FAIL
-	Fetch with POST with Blob body with mime type: FAIL
-	Fetch with POST with DataView body: FAIL
-	Fetch with POST with Float16Array body: FAIL
-	Fetch with POST with Float32Array body: FAIL
-	Fetch with POST with Float64Array body: FAIL
-	Fetch with POST with FormData body: FAIL
-	Fetch with POST with Int8Array body: FAIL
-	Fetch with POST with URLSearchParams body: FAIL
-	Fetch with POST with Uint8Array body: FAIL
-	Fetch with POST with text body: FAIL
+	Fetch with Chicken: PASS
+	Fetch with Chicken with body: PASS
+	Fetch with GET: PASS
+	Fetch with GET and mode "cors" does not need an Origin header: PASS
+	Fetch with HEAD: PASS
+	Fetch with POST and mode "no-cors" needs an Origin header: PASS
+	Fetch with POST and mode "same-origin" needs an Origin header: PASS
+	Fetch with POST with ArrayBuffer body: PASS
+	Fetch with POST with Blob body: PASS
+	Fetch with POST with Blob body with mime type: PASS
+	Fetch with POST with DataView body: PASS
+	Fetch with POST with Float16Array body: PASS
+	Fetch with POST with Float32Array body: PASS
+	Fetch with POST with Float64Array body: PASS
+	Fetch with POST with FormData body: PASS
+	Fetch with POST with Int8Array body: PASS
+	Fetch with POST with URLSearchParams body: PASS
+	Fetch with POST with Uint8Array body: PASS
+	Fetch with POST with text body: PASS
 	Fetch with POST without body: FAIL
-	Fetch with PUT and mode "same-origin" needs an Origin header: FAIL
-	Fetch with PUT with body: FAIL
+	Fetch with PUT and mode "same-origin" needs an Origin header: PASS
+	Fetch with PUT with body: PASS
 	Fetch with PUT without body: FAIL
-	Fetch with TacO and mode "cors" needs an Origin header: FAIL
-	Fetch with TacO and mode "same-origin" needs an Origin header: FAIL
-/fetch/api/basic/request-referrer-redirected-worker.html: TIMEOUT
-/fetch/api/basic/request-referrer.any.html: OK
+	Fetch with TacO and mode "cors" needs an Origin header: PASS
+	Fetch with TacO and mode "same-origin" needs an Origin header: PASS
+/fetch/api/basic/request-referrer-redirected-worker.html: OK
 	about:client referrer: FAIL
 	url referrer: FAIL
+/fetch/api/basic/request-referrer.any.html: OK
+	about:client referrer: PASS
+	url referrer: FAIL
 /fetch/api/basic/request-referrer.any.worker.html: OK
-	about:client referrer: FAIL
+	about:client referrer: PASS
 	url referrer: FAIL
 /fetch/api/basic/request-upload-421.any.html: OK
 	Fetch with POST with text body on 421 response should be retried once on new connection.: FAIL
 /fetch/api/basic/request-upload-421.any.worker.html: OK
 	Fetch with POST with text body on 421 response should be retried once on new connection.: FAIL
 /fetch/api/basic/request-upload.any.html: OK
-	Fetch with POST with ArrayBuffer body: FAIL
-	Fetch with POST with Blob body: FAIL
-	Fetch with POST with Blob body with mime type: FAIL
-	Fetch with POST with DataView body: FAIL
-	Fetch with POST with Float16Array body: FAIL
-	Fetch with POST with Float32Array body: FAIL
-	Fetch with POST with Float64Array body: FAIL
-	Fetch with POST with Int8Array body: FAIL
+	Fetch with POST with ArrayBuffer body: PASS
+	Fetch with POST with Blob body: PASS
+	Fetch with POST with Blob body with mime type: PASS
+	Fetch with POST with DataView body: PASS
+	Fetch with POST with Float16Array body: PASS
+	Fetch with POST with Float32Array body: PASS
+	Fetch with POST with Float64Array body: PASS
+	Fetch with POST with Int8Array body: PASS
 	Fetch with POST with ReadableStream containing ArrayBuffer: PASS
 	Fetch with POST with ReadableStream containing Blob: PASS
 	Fetch with POST with ReadableStream containing String: PASS
 	Fetch with POST with ReadableStream containing null: PASS
 	Fetch with POST with ReadableStream containing number: PASS
-	Fetch with POST with URLSearchParams body: FAIL
-	Fetch with POST with Uint8Array body: FAIL
-	Fetch with POST with text body: FAIL
-	Fetch with PUT with body: FAIL
+	Fetch with POST with URLSearchParams body: PASS
+	Fetch with POST with Uint8Array body: PASS
+	Fetch with POST with text body: PASS
+	Fetch with PUT with body: PASS
 	Streaming upload shouldn't work on Http/1.1.: PASS
 /fetch/api/basic/request-upload.any.worker.html: OK
-	Fetch with POST with ArrayBuffer body: FAIL
-	Fetch with POST with Blob body: FAIL
-	Fetch with POST with Blob body with mime type: FAIL
-	Fetch with POST with DataView body: FAIL
-	Fetch with POST with Float16Array body: FAIL
-	Fetch with POST with Float32Array body: FAIL
-	Fetch with POST with Float64Array body: FAIL
-	Fetch with POST with Int8Array body: FAIL
+	Fetch with POST with ArrayBuffer body: PASS
+	Fetch with POST with Blob body: PASS
+	Fetch with POST with Blob body with mime type: PASS
+	Fetch with POST with DataView body: PASS
+	Fetch with POST with Float16Array body: PASS
+	Fetch with POST with Float32Array body: PASS
+	Fetch with POST with Float64Array body: PASS
+	Fetch with POST with Int8Array body: PASS
 	Fetch with POST with ReadableStream containing ArrayBuffer: PASS
 	Fetch with POST with ReadableStream containing Blob: PASS
 	Fetch with POST with ReadableStream containing String: PASS
 	Fetch with POST with ReadableStream containing null: PASS
 	Fetch with POST with ReadableStream containing number: PASS
-	Fetch with POST with URLSearchParams body: FAIL
-	Fetch with POST with Uint8Array body: FAIL
-	Fetch with POST with text body: FAIL
-	Fetch with PUT with body: FAIL
+	Fetch with POST with URLSearchParams body: PASS
+	Fetch with POST with Uint8Array body: PASS
+	Fetch with POST with text body: PASS
+	Fetch with PUT with body: PASS
 	Streaming upload shouldn't work on Http/1.1.: PASS
 /fetch/api/basic/request-upload.h2.any.html: TIMEOUT
 	Feature detect for POST with ReadableStream: TIMEOUT
@@ -663,7 +665,7 @@
 	Fetching snmp://web-platform.test:8778/ is KO: PASS
 /fetch/api/basic/status.h2.any.html: OK
 	statusText over H2 for status 200 should be the empty string: FAIL
-	statusText over H2 for status 210 should be the empty string: FAIL
+	statusText over H2 for status 210 should be the empty string: PASS
 	statusText over H2 for status 400 should be the empty string: FAIL
 	statusText over H2 for status 404 should be the empty string: FAIL
 	statusText over H2 for status 410 should be the empty string: FAIL
@@ -671,18 +673,18 @@
 	statusText over H2 for status 502 should be the empty string: FAIL
 /fetch/api/basic/status.h2.any.worker.html: OK
 	statusText over H2 for status 200 should be the empty string: FAIL
-	statusText over H2 for status 210 should be the empty string: FAIL
+	statusText over H2 for status 210 should be the empty string: PASS
 	statusText over H2 for status 400 should be the empty string: FAIL
 	statusText over H2 for status 404 should be the empty string: FAIL
 	statusText over H2 for status 410 should be the empty string: FAIL
 	statusText over H2 for status 500 should be the empty string: FAIL
 	statusText over H2 for status 502 should be the empty string: FAIL
 /fetch/api/basic/stream-response.any.html: OK
-	Stream response's body when content-type is not present: FAIL
-	Stream response's body when content-type is present: FAIL
+	Stream response's body when content-type is not present: PASS
+	Stream response's body when content-type is present: PASS
 /fetch/api/basic/stream-response.any.worker.html: OK
-	Stream response's body when content-type is not present: FAIL
-	Stream response's body when content-type is present: FAIL
+	Stream response's body when content-type is not present: PASS
+	Stream response's body when content-type is present: PASS
 /fetch/api/basic/stream-safe-creation.any.html: OK
 	Object.prototype.highWaterMark accessor returning invalid value should not affect stream creation by 'consumeEmptyRequest': PASS
 	Object.prototype.highWaterMark accessor returning invalid value should not affect stream creation by 'consumeEmptyResponse': PASS
@@ -816,63 +818,63 @@
 	UTF-16 without BOM decoded as UTF-8 (Response object): PASS
 	UTF-16 without BOM decoded as UTF-8 with Request.text(): PASS
 	UTF-16 without BOM decoded as UTF-8 with Response.text(): PASS
-	UTF-16 without BOM decoded as UTF-8 with fetched data (UTF-16 charset): FAIL
-	UTF-16 without BOM decoded as UTF-8 with fetched data (UTF-8 charset): FAIL
+	UTF-16 without BOM decoded as UTF-8 with fetched data (UTF-16 charset): PASS
+	UTF-16 without BOM decoded as UTF-8 with fetched data (UTF-8 charset): PASS
 	UTF-16BE with BOM decoded as UTF-8 (Request object): PASS
 	UTF-16BE with BOM decoded as UTF-8 (Response object): PASS
 	UTF-16BE with BOM decoded as UTF-8 with Request.text(): PASS
 	UTF-16BE with BOM decoded as UTF-8 with Response.text(): PASS
-	UTF-16BE with BOM decoded as UTF-8 with fetched data (UTF-16 charset): FAIL
-	UTF-16BE with BOM decoded as UTF-8 with fetched data (UTF-8 charset): FAIL
+	UTF-16BE with BOM decoded as UTF-8 with fetched data (UTF-16 charset): PASS
+	UTF-16BE with BOM decoded as UTF-8 with fetched data (UTF-8 charset): PASS
 	UTF-16LE with BOM decoded as UTF-8 (Request object): PASS
 	UTF-16LE with BOM decoded as UTF-8 (Response object): PASS
 	UTF-16LE with BOM decoded as UTF-8 with Request.text(): PASS
 	UTF-16LE with BOM decoded as UTF-8 with Response.text(): PASS
-	UTF-16LE with BOM decoded as UTF-8 with fetched data (UTF-16 charset): FAIL
-	UTF-16LE with BOM decoded as UTF-8 with fetched data (UTF-8 charset): FAIL
+	UTF-16LE with BOM decoded as UTF-8 with fetched data (UTF-16 charset): PASS
+	UTF-16LE with BOM decoded as UTF-8 with fetched data (UTF-8 charset): PASS
 	UTF-8 with BOM (Request object): PASS
 	UTF-8 with BOM (Response object): PASS
 	UTF-8 with BOM with Request.text(): PASS
 	UTF-8 with BOM with Response.text(): PASS
-	UTF-8 with BOM with fetched data (UTF-16 charset): FAIL
-	UTF-8 with BOM with fetched data (UTF-8 charset): FAIL
+	UTF-8 with BOM with fetched data (UTF-16 charset): PASS
+	UTF-8 with BOM with fetched data (UTF-8 charset): PASS
 	UTF-8 without BOM (Request object): PASS
 	UTF-8 without BOM (Response object): PASS
 	UTF-8 without BOM with Request.text(): PASS
 	UTF-8 without BOM with Response.text(): PASS
-	UTF-8 without BOM with fetched data (UTF-16 charset): FAIL
-	UTF-8 without BOM with fetched data (UTF-8 charset): FAIL
+	UTF-8 without BOM with fetched data (UTF-16 charset): PASS
+	UTF-8 without BOM with fetched data (UTF-8 charset): PASS
 /fetch/api/basic/text-utf8.any.worker.html: OK
 	UTF-16 without BOM decoded as UTF-8 (Request object): PASS
 	UTF-16 without BOM decoded as UTF-8 (Response object): PASS
 	UTF-16 without BOM decoded as UTF-8 with Request.text(): PASS
 	UTF-16 without BOM decoded as UTF-8 with Response.text(): PASS
-	UTF-16 without BOM decoded as UTF-8 with fetched data (UTF-16 charset): FAIL
-	UTF-16 without BOM decoded as UTF-8 with fetched data (UTF-8 charset): FAIL
+	UTF-16 without BOM decoded as UTF-8 with fetched data (UTF-16 charset): PASS
+	UTF-16 without BOM decoded as UTF-8 with fetched data (UTF-8 charset): PASS
 	UTF-16BE with BOM decoded as UTF-8 (Request object): PASS
 	UTF-16BE with BOM decoded as UTF-8 (Response object): PASS
 	UTF-16BE with BOM decoded as UTF-8 with Request.text(): PASS
 	UTF-16BE with BOM decoded as UTF-8 with Response.text(): PASS
-	UTF-16BE with BOM decoded as UTF-8 with fetched data (UTF-16 charset): FAIL
-	UTF-16BE with BOM decoded as UTF-8 with fetched data (UTF-8 charset): FAIL
+	UTF-16BE with BOM decoded as UTF-8 with fetched data (UTF-16 charset): PASS
+	UTF-16BE with BOM decoded as UTF-8 with fetched data (UTF-8 charset): PASS
 	UTF-16LE with BOM decoded as UTF-8 (Request object): PASS
 	UTF-16LE with BOM decoded as UTF-8 (Response object): PASS
 	UTF-16LE with BOM decoded as UTF-8 with Request.text(): PASS
 	UTF-16LE with BOM decoded as UTF-8 with Response.text(): PASS
-	UTF-16LE with BOM decoded as UTF-8 with fetched data (UTF-16 charset): FAIL
-	UTF-16LE with BOM decoded as UTF-8 with fetched data (UTF-8 charset): FAIL
+	UTF-16LE with BOM decoded as UTF-8 with fetched data (UTF-16 charset): PASS
+	UTF-16LE with BOM decoded as UTF-8 with fetched data (UTF-8 charset): PASS
 	UTF-8 with BOM (Request object): PASS
 	UTF-8 with BOM (Response object): PASS
 	UTF-8 with BOM with Request.text(): PASS
 	UTF-8 with BOM with Response.text(): PASS
-	UTF-8 with BOM with fetched data (UTF-16 charset): FAIL
-	UTF-8 with BOM with fetched data (UTF-8 charset): FAIL
+	UTF-8 with BOM with fetched data (UTF-16 charset): PASS
+	UTF-8 with BOM with fetched data (UTF-8 charset): PASS
 	UTF-8 without BOM (Request object): PASS
 	UTF-8 without BOM (Response object): PASS
 	UTF-8 without BOM with Request.text(): PASS
 	UTF-8 without BOM with Response.text(): PASS
-	UTF-8 without BOM with fetched data (UTF-16 charset): FAIL
-	UTF-8 without BOM with fetched data (UTF-8 charset): FAIL
+	UTF-8 without BOM with fetched data (UTF-16 charset): PASS
+	UTF-8 without BOM with fetched data (UTF-8 charset): PASS
 /fetch/api/basic/url-parsing.sub.html?encoding=utf8: OK
 	Request uses the UTF-8 URL parser: PASS
 	Request's referrer uses the UTF-8 URL parser: PASS

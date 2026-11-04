@@ -35,7 +35,7 @@
 /xhr/abort-during-loading.window.html: OK
 	XMLHttpRequest: abort() during LOADING: PASS
 /xhr/abort-during-navigation.window.html: OK
-	XHR should not fire abort or error events when cancelled by navigation: FAIL
+	XHR should not fire abort or error events when cancelled by navigation: PASS
 /xhr/abort-during-open.any.html: OK
 	XMLHttpRequest: abort() during OPEN: PASS
 /xhr/abort-during-open.any.worker.html: OK
@@ -85,111 +85,111 @@
 /xhr/abort-with-error.any.worker.html: OK
 	abort-with-error: PASS
 /xhr/access-control-and-redirects-async-same-origin.any.html: OK
-	Request with credentials is redirected to a cross-origin response with Access-Control-Allow-Origin=* (with star): FAIL
-	Request with credentials is redirected to a cross-origin response with a specific Access-Control-Allow-Origin: FAIL
-	Request with credentials is redirected to a cross-origin response with a specific Access-Control-Allow-Origin (no credentials): FAIL
-	Request without credentials is redirected to a cross-origin response with Access-Control-Allow-Origin=* (with star): FAIL
-	Request without credentials is redirected to a cross-origin response with a specific Access-Control-Allow-Origin: FAIL
-	Request without credentials is redirected to a cross-origin response with a specific Access-Control-Allow-Origin (no credentials): FAIL
+	Request with credentials is redirected to a cross-origin response with Access-Control-Allow-Origin=* (with star): PASS
+	Request with credentials is redirected to a cross-origin response with a specific Access-Control-Allow-Origin: PASS
+	Request with credentials is redirected to a cross-origin response with a specific Access-Control-Allow-Origin (no credentials): PASS
+	Request without credentials is redirected to a cross-origin response with Access-Control-Allow-Origin=* (with star): PASS
+	Request without credentials is redirected to a cross-origin response with a specific Access-Control-Allow-Origin: PASS
+	Request without credentials is redirected to a cross-origin response with a specific Access-Control-Allow-Origin (no credentials): PASS
 /xhr/access-control-and-redirects-async-same-origin.any.worker.html: OK
-	Request with credentials is redirected to a cross-origin response with Access-Control-Allow-Origin=* (with star): FAIL
-	Request with credentials is redirected to a cross-origin response with a specific Access-Control-Allow-Origin: FAIL
-	Request with credentials is redirected to a cross-origin response with a specific Access-Control-Allow-Origin (no credentials): FAIL
-	Request without credentials is redirected to a cross-origin response with Access-Control-Allow-Origin=* (with star): FAIL
-	Request without credentials is redirected to a cross-origin response with a specific Access-Control-Allow-Origin: FAIL
-	Request without credentials is redirected to a cross-origin response with a specific Access-Control-Allow-Origin (no credentials): FAIL
+	Request with credentials is redirected to a cross-origin response with Access-Control-Allow-Origin=* (with star): PASS
+	Request with credentials is redirected to a cross-origin response with a specific Access-Control-Allow-Origin: PASS
+	Request with credentials is redirected to a cross-origin response with a specific Access-Control-Allow-Origin (no credentials): PASS
+	Request without credentials is redirected to a cross-origin response with Access-Control-Allow-Origin=* (with star): PASS
+	Request without credentials is redirected to a cross-origin response with a specific Access-Control-Allow-Origin: PASS
+	Request without credentials is redirected to a cross-origin response with a specific Access-Control-Allow-Origin (no credentials): PASS
 /xhr/access-control-and-redirects-async.any.html: OK
-	Preflighted request is redirected to a response with Access-Control-Allow-Origin=*: FAIL
-	Preflighted request is redirected to a response with Access-Control-Allow-Origin=* and header allowed: FAIL
-	Request is redirect to a bad URL: FAIL
-	Request is redirected to a response with Access-Control-Allow-Origin=*: FAIL
-	Request is redirected to a same-origin resource file: FAIL
-	Request is redirected without CORS headers to a response with Access-Control-Allow-Origin=*: FAIL
-	Request with user info is redirected to a response with Access-Control-Allow-Origin=*: FAIL
+	Preflighted request is redirected to a response with Access-Control-Allow-Origin=*: PASS
+	Preflighted request is redirected to a response with Access-Control-Allow-Origin=* and header allowed: PASS
+	Request is redirect to a bad URL: PASS
+	Request is redirected to a response with Access-Control-Allow-Origin=*: PASS
+	Request is redirected to a same-origin resource file: PASS
+	Request is redirected without CORS headers to a response with Access-Control-Allow-Origin=*: PASS
+	Request with user info is redirected to a response with Access-Control-Allow-Origin=*: PASS
 /xhr/access-control-and-redirects-async.any.worker.html: OK
-	Preflighted request is redirected to a response with Access-Control-Allow-Origin=*: FAIL
-	Preflighted request is redirected to a response with Access-Control-Allow-Origin=* and header allowed: FAIL
-	Request is redirect to a bad URL: FAIL
-	Request is redirected to a response with Access-Control-Allow-Origin=*: FAIL
-	Request is redirected to a same-origin resource file: FAIL
-	Request is redirected without CORS headers to a response with Access-Control-Allow-Origin=*: FAIL
-	Request with user info is redirected to a response with Access-Control-Allow-Origin=*: FAIL
+	Preflighted request is redirected to a response with Access-Control-Allow-Origin=*: PASS
+	Preflighted request is redirected to a response with Access-Control-Allow-Origin=* and header allowed: PASS
+	Request is redirect to a bad URL: PASS
+	Request is redirected to a response with Access-Control-Allow-Origin=*: PASS
+	Request is redirected to a same-origin resource file: PASS
+	Request is redirected without CORS headers to a response with Access-Control-Allow-Origin=*: PASS
+	Request with user info is redirected to a response with Access-Control-Allow-Origin=*: PASS
 /xhr/access-control-and-redirects.any.html: OK
 	Local async redirect to remote origin: PASS
 	Local sync redirect to remote origin: FAIL
-	Remote async redirect to local origin: FAIL
-	Remote async redirect to same remote origin: FAIL
+	Remote async redirect to local origin: PASS
+	Remote async redirect to same remote origin: PASS
 	Remote sync redirect to local origin: FAIL
 	Remote sync redirect to same remote origin: FAIL
 /xhr/access-control-and-redirects.any.worker.html: OK
 	Local async redirect to remote origin: PASS
-	Local sync redirect to remote origin: FAIL
-	Remote async redirect to local origin: FAIL
-	Remote async redirect to same remote origin: FAIL
-	Remote sync redirect to local origin: FAIL
-	Remote sync redirect to same remote origin: FAIL
+	Local sync redirect to remote origin: PASS
+	Remote async redirect to local origin: PASS
+	Remote async redirect to same remote origin: PASS
+	Remote sync redirect to local origin: PASS
+	Remote sync redirect to same remote origin: PASS
 /xhr/access-control-basic-allow-access-control-origin-header-data-url.htm: OK
 	Access granted to null-origin iframe: FAIL
 /xhr/access-control-basic-allow-access-control-origin-header.any.html: OK
 	Access control test with origin header: FAIL
 /xhr/access-control-basic-allow-access-control-origin-header.any.worker.html: OK
-	Access control test with origin header: FAIL
+	Access control test with origin header: PASS
 /xhr/access-control-basic-allow-async.any.html: OK
-	Basic async cross-origin XHR request: FAIL
+	Basic async cross-origin XHR request: PASS
 /xhr/access-control-basic-allow-async.any.worker.html: OK
-	Basic async cross-origin XHR request: FAIL
+	Basic async cross-origin XHR request: PASS
 /xhr/access-control-basic-allow-non-cors-safelisted-method-async.any.html: OK
-	Allow async PUT request: FAIL
+	Allow async PUT request: PASS
 /xhr/access-control-basic-allow-non-cors-safelisted-method-async.any.worker.html: OK
-	Allow async PUT request: FAIL
+	Allow async PUT request: PASS
 /xhr/access-control-basic-allow-non-cors-safelisted-method.any.html: OK
 	Allow PUT request: FAIL
 /xhr/access-control-basic-allow-non-cors-safelisted-method.any.worker.html: OK
-	Allow PUT request: FAIL
+	Allow PUT request: PASS
 /xhr/access-control-basic-allow-preflight-cache-invalidation-by-header.any.html: OK
-	Preflight cache should be invalidated in presence of custom header: FAIL
+	Preflight cache should be invalidated in presence of custom header: PASS
 /xhr/access-control-basic-allow-preflight-cache-invalidation-by-header.any.worker.html: OK
-	Preflight cache should be invalidated in presence of custom header: FAIL
+	Preflight cache should be invalidated in presence of custom header: PASS
 /xhr/access-control-basic-allow-preflight-cache-invalidation-by-method.any.html: OK
-	Preflight cache should be invalidated by changed method: FAIL
+	Preflight cache should be invalidated by changed method: PASS
 /xhr/access-control-basic-allow-preflight-cache-invalidation-by-method.any.worker.html: OK
-	Preflight cache should be invalidated by changed method: FAIL
+	Preflight cache should be invalidated by changed method: PASS
 /xhr/access-control-basic-allow-preflight-cache-timeout.any.html: OK
-	Preflight cache should be invalidated on timeout: FAIL
+	Preflight cache should be invalidated on timeout: PASS
 /xhr/access-control-basic-allow-preflight-cache-timeout.any.worker.html: OK
-	Preflight cache should be invalidated on timeout: FAIL
+	Preflight cache should be invalidated on timeout: PASS
 /xhr/access-control-basic-allow-preflight-cache.any.html: OK
-	Preflight cache should allow second request: FAIL
+	Preflight cache should allow second request: PASS
 /xhr/access-control-basic-allow-preflight-cache.any.worker.html: OK
-	Preflight cache should allow second request: FAIL
+	Preflight cache should allow second request: PASS
 /xhr/access-control-basic-allow-star.any.html: OK
 	Allow star: FAIL
 /xhr/access-control-basic-allow-star.any.worker.html: OK
-	Allow star: FAIL
+	Allow star: PASS
 /xhr/access-control-basic-allow.any.html: OK
 	Allow basic: FAIL
 /xhr/access-control-basic-allow.any.worker.html: OK
-	Allow basic: FAIL
+	Allow basic: PASS
 /xhr/access-control-basic-cors-safelisted-request-headers.htm: OK
 	Request with CORS-safelisted headers: FAIL
 /xhr/access-control-basic-cors-safelisted-response-headers.htm: OK
 	Response with CORS-safelisted headers: FAIL
 /xhr/access-control-basic-denied.htm: OK
-	Cross-origin request denied: FAIL
+	Cross-origin request denied: PASS
 	Same-origin request accepted: FAIL
 /xhr/access-control-basic-get-fail-non-simple.htm: OK
-	Preflighted cross-origin request denied: FAIL
+	Preflighted cross-origin request denied: PASS
 /xhr/access-control-basic-non-cors-safelisted-content-type.htm: OK
 	Deny cross-origin request with non-CORS-safelisted content type: FAIL
 /xhr/access-control-basic-post-success-no-content-type.htm: OK
-	POST request with text content and no Content-Type header: FAIL
+	POST request with text content and no Content-Type header: PASS
 /xhr/access-control-basic-post-with-non-cors-safelisted-content-type.htm: OK
-	CORS request with non-safelisted content type sends preflight and fails: FAIL
+	CORS request with non-safelisted content type sends preflight and fails: PASS
 	Same-origin request with non-safelisted content type succeeds: FAIL
 /xhr/access-control-basic-preflight-denied.htm: OK
-	Tests async XHR preflight denial due to lack of CORS headers: FAIL
+	Tests async XHR preflight denial due to lack of CORS headers: PASS
 /xhr/access-control-expose-headers-on-redirect.html: OK
-	XHR should respect access-control-expose-headers header on redirect: FAIL
+	XHR should respect access-control-expose-headers header on redirect: PASS
 /xhr/access-control-preflight-async-header-denied.htm: OK
 	Async request denied at preflight: FAIL
 /xhr/access-control-preflight-async-method-denied.htm: OK
@@ -197,7 +197,7 @@
 /xhr/access-control-preflight-async-not-supported.htm: OK
 	Async PUT request denied at preflight: FAIL
 /xhr/access-control-preflight-credential-async.htm: OK
-	CORS async request with URL credentials: FAIL
+	CORS async request with URL credentials: PASS
 /xhr/access-control-preflight-credential-sync.htm: OK
 	CORS sync request with URL credentials: FAIL
 /xhr/access-control-preflight-headers-async.htm: OK
@@ -205,27 +205,27 @@
 /xhr/access-control-preflight-headers-sync.htm: OK
 	Preflighted sync request with custom header: FAIL
 /xhr/access-control-preflight-request-allow-headers-returns-star.any.html: OK
-	Access-Control-Allow-Headers supports *: FAIL
+	Access-Control-Allow-Headers supports *: PASS
 /xhr/access-control-preflight-request-allow-headers-returns-star.any.worker.html: OK
-	access-control-preflight-request-allow-headers-returns-star: FAIL
+	access-control-preflight-request-allow-headers-returns-star: PASS
 /xhr/access-control-preflight-request-header-lowercase.htm: OK
-	Request with uppercase header set: FAIL
+	Request with uppercase header set: PASS
 /xhr/access-control-preflight-request-header-returns-origin.any.html: OK
-	Access-Control-Request-Origin accept different origin between preflight and actual request: FAIL
+	Access-Control-Request-Origin accept different origin between preflight and actual request: PASS
 /xhr/access-control-preflight-request-header-returns-origin.any.worker.html: OK
-	access-control-preflight-request-header-returns-origin: FAIL
+	access-control-preflight-request-header-returns-origin: PASS
 /xhr/access-control-preflight-request-header-sorted.htm: OK
-	Tests that Access-Control-Request-Headers are sorted.: FAIL
+	Tests that Access-Control-Request-Headers are sorted.: PASS
 /xhr/access-control-preflight-request-headers-origin.htm: OK
-	'Origin' should not be included in CORS Request-Headers: FAIL
+	'Origin' should not be included in CORS Request-Headers: PASS
 /xhr/access-control-preflight-request-invalid-status-301.htm: OK
-	Request with 301 preflight response: FAIL
+	Request with 301 preflight response: PASS
 /xhr/access-control-preflight-request-invalid-status-400.htm: OK
-	Request with 400 preflight response: FAIL
+	Request with 400 preflight response: PASS
 /xhr/access-control-preflight-request-invalid-status-501.htm: OK
-	Request with 501 preflight response: FAIL
+	Request with 501 preflight response: PASS
 /xhr/access-control-preflight-request-must-not-contain-cookie.htm: OK
-	Preflight request must not contain any cookie header: FAIL
+	Preflight request must not contain any cookie header: PASS
 /xhr/access-control-preflight-sync-header-denied.htm: OK
 	Sync request denied at preflight: FAIL
 /xhr/access-control-preflight-sync-method-denied.htm: OK
@@ -233,20 +233,20 @@
 /xhr/access-control-preflight-sync-not-supported.htm: OK
 	Sync PUT request denied at preflight: FAIL
 /xhr/access-control-recursive-failed-request.htm: OK
-	Recursively repeated CORS requests with failed preflights should never result in unexpected behavior: FAIL
+	Recursively repeated CORS requests with failed preflights should never result in unexpected behavior: PASS
 /xhr/access-control-response-with-body-sync.htm: OK
 	Tests body from CORS preflight response and actual response with sync request: FAIL
 /xhr/access-control-response-with-body.htm: OK
-	Tests that XHR doesn't prepend the body from CORS preflight response to the actual response: FAIL
+	Tests that XHR doesn't prepend the body from CORS preflight response to the actual response: PASS
 /xhr/access-control-response-with-exposed-headers.htm: OK
-	Test CORS response with 'Access-Control-Expose-Headers' header: FAIL
+	Test CORS response with 'Access-Control-Expose-Headers' header: PASS
 /xhr/access-control-sandboxed-iframe-allow-origin-null.htm: OK
 	Tests that sandboxed iframe has CORS XHR access to a server that accepts null domain: FAIL
 /xhr/access-control-sandboxed-iframe-allow.htm: OK
 	Tests that sandboxed iframe has CORS XHR access to a server that accepts all domains: FAIL
-/xhr/access-control-sandboxed-iframe-denied-without-wildcard.htm: TIMEOUT
-	Check that path exists and is accessible via CORS XHR request: FAIL
-	Sandboxed iframe is denied CORS access to server that allows parent origin: TIMEOUT
+/xhr/access-control-sandboxed-iframe-denied-without-wildcard.htm: OK
+	Check that path exists and is accessible via CORS XHR request: PASS
+	Sandboxed iframe is denied CORS access to server that allows parent origin: PASS
 /xhr/access-control-sandboxed-iframe-denied.htm: OK
 	Check that path exists and is accessible via local XHR request: PASS
 	Sandboxed iframe is denied access to path: PASS
@@ -313,25 +313,25 @@
 /xhr/close-worker-with-xhr-in-progress.html: OK
 	Terminating a worker with a XHR in progress doesn't crash: PASS
 /xhr/content-type-unmodified.any.html: OK
-	content-type-unmodified: FAIL
+	content-type-unmodified: PASS
 /xhr/content-type-unmodified.any.worker.html: OK
-	content-type-unmodified: FAIL
+	content-type-unmodified: PASS
 /xhr/cookies.http.html: OK
-	Basic non-cross-site cookie handling in XHR: FAIL
+	Basic non-cross-site cookie handling in XHR: PASS
 /xhr/cors-expose-star.sub.any.html: OK
 	* can be one of several values: PASS
-	* for credentialed fetches only matches literally: FAIL
+	* for credentialed fetches only matches literally: PASS
 	Basic Access-Control-Expose-Headers: * support: PASS
 /xhr/cors-expose-star.sub.any.worker.html: OK
 	* can be one of several values: PASS
-	* for credentialed fetches only matches literally: FAIL
+	* for credentialed fetches only matches literally: PASS
 	Basic Access-Control-Expose-Headers: * support: PASS
 /xhr/cors-upload.any.html: OK
-	Cross-Origin POST FormData body but no preflight: FAIL
-	Cross-Origin POST with preflight and FormData body: FAIL
+	Cross-Origin POST FormData body but no preflight: PASS
+	Cross-Origin POST with preflight and FormData body: PASS
 /xhr/cors-upload.any.worker.html: OK
-	Cross-Origin POST FormData body but no preflight: FAIL
-	Cross-Origin POST with preflight and FormData body: FAIL
+	Cross-Origin POST FormData body but no preflight: PASS
+	Cross-Origin POST with preflight and FormData body: PASS
 /xhr/data-uri.htm: OK
 	XHR method DELETE with MIME type text/plain: FAIL
 	XHR method GET with MIME type image/png: FAIL
@@ -347,14 +347,14 @@
 	XMLHttpRequest: abort event: PASS
 /xhr/event-abort.any.worker.html: OK
 	event-abort: PASS
-/xhr/event-error-order.sub.html: OK
+/xhr/event-error-order.sub.html: ERROR
 	XMLHttpRequest: event - error (order of events): FAIL
 /xhr/event-error.sub.any.html: OK
-	error while reading body should report zeros for loaded and total: FAIL
-	onerror should be called: FAIL
+	error while reading body should report zeros for loaded and total: PASS
+	onerror should be called: PASS
 /xhr/event-error.sub.any.worker.html: OK
-	error while reading body should report zeros for loaded and total: FAIL
-	onerror should be called: FAIL
+	error while reading body should report zeros for loaded and total: PASS
+	onerror should be called: PASS
 /xhr/event-load.any.html: OK
 	XMLHttpRequest: The send() method: Fire an event named load (synchronous flag is unset): PASS
 /xhr/event-load.any.worker.html: OK
@@ -390,41 +390,41 @@
 /xhr/event-timeout-order.any.worker.html: ERROR
 	event-timeout-order: FAIL
 /xhr/event-timeout.any.html: OK
-	XMLHttpRequest: timeout event: FAIL
+	XMLHttpRequest: timeout event: PASS
 /xhr/event-timeout.any.worker.html: OK
-	event-timeout: FAIL
+	event-timeout: PASS
 /xhr/event-upload-progress-crossorigin.any.html: OK
-	Upload events registered on time (http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): FAIL
-	Upload events registered on time (resources/redirect.py?code=307&location=http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): PASS
-	Upload events registered too late (http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): FAIL
-	Upload events registered too late (resources/redirect.py?code=307&location=http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): PASS
+	Upload events registered on time (http://www1.web-platform.test:8778/xhr/resources/corsenabled.py): PASS
+	Upload events registered on time (resources/redirect.py?code=307&location=http://www1.web-platform.test:8778/xhr/resources/corsenabled.py): PASS
+	Upload events registered too late (http://www1.web-platform.test:8778/xhr/resources/corsenabled.py): PASS
+	Upload events registered too late (resources/redirect.py?code=307&location=http://www1.web-platform.test:8778/xhr/resources/corsenabled.py): PASS
 /xhr/event-upload-progress-crossorigin.any.worker.html: OK
-	Upload events registered on time (http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): FAIL
-	Upload events registered on time (resources/redirect.py?code=307&location=http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): PASS
-	Upload events registered too late (http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): FAIL
-	Upload events registered too late (resources/redirect.py?code=307&location=http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): PASS
+	Upload events registered on time (http://www1.web-platform.test:8778/xhr/resources/corsenabled.py): PASS
+	Upload events registered on time (resources/redirect.py?code=307&location=http://www1.web-platform.test:8778/xhr/resources/corsenabled.py): PASS
+	Upload events registered too late (http://www1.web-platform.test:8778/xhr/resources/corsenabled.py): PASS
+	Upload events registered too late (resources/redirect.py?code=307&location=http://www1.web-platform.test:8778/xhr/resources/corsenabled.py): PASS
 /xhr/event-upload-progress.any.html: OK
-	Upload events registered on time (http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): FAIL
-	Upload events registered on time (resources/redirect.py?code=307&location=http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): FAIL
-	Upload events registered too late (http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): FAIL
-	Upload events registered too late (resources/redirect.py?code=307&location=http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): PASS
+	Upload events registered on time (http://www1.web-platform.test:8778/xhr/resources/corsenabled.py): FAIL
+	Upload events registered on time (resources/redirect.py?code=307&location=http://www1.web-platform.test:8778/xhr/resources/corsenabled.py): FAIL
+	Upload events registered too late (http://www1.web-platform.test:8778/xhr/resources/corsenabled.py): PASS
+	Upload events registered too late (resources/redirect.py?code=307&location=http://www1.web-platform.test:8778/xhr/resources/corsenabled.py): PASS
 /xhr/event-upload-progress.any.worker.html: OK
-	Upload events registered on time (http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): FAIL
-	Upload events registered on time (resources/redirect.py?code=307&location=http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): FAIL
-	Upload events registered too late (http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): FAIL
-	Upload events registered too late (resources/redirect.py?code=307&location=http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): PASS
+	Upload events registered on time (http://www1.web-platform.test:8778/xhr/resources/corsenabled.py): FAIL
+	Upload events registered on time (resources/redirect.py?code=307&location=http://www1.web-platform.test:8778/xhr/resources/corsenabled.py): FAIL
+	Upload events registered too late (http://www1.web-platform.test:8778/xhr/resources/corsenabled.py): PASS
+	Upload events registered too late (resources/redirect.py?code=307&location=http://www1.web-platform.test:8778/xhr/resources/corsenabled.py): PASS
 /xhr/firing-events-http-content-length.html: OK
-	ProgressEvent: firing events for HTTP with Content-Length: FAIL
+	ProgressEvent: firing events for HTTP with Content-Length: PASS
 /xhr/firing-events-http-no-content-length.html: OK
-	ProgressEvent: firing events for HTTP with no Content-Length: FAIL
+	ProgressEvent: firing events for HTTP with no Content-Length: PASS
 /xhr/formdata.html: OK
 	Newly created FormData contains entries added to "formData" IDL attribute of FormDataEvent.: FAIL
-	empty formdata: FAIL
-	formdata from form: FAIL
-	formdata with blob: FAIL
-	formdata with named blob: FAIL
-	formdata with named string: FAIL
-	formdata with string: FAIL
+	empty formdata: PASS
+	formdata from form: PASS
+	formdata with blob: PASS
+	formdata with named blob: PASS
+	formdata with named string: PASS
+	formdata with string: PASS
 	formdata.append() should throw if value is string and file name is given: PASS
 	|new FormData()| in formdata event handler should throw: FAIL
 /xhr/formdata/append-formelement.html: OK
@@ -574,51 +574,51 @@
 	testFormDataSetUndefined1: PASS
 	testFormDataSetUndefined2: PASS
 /xhr/formdata/submitter-coordinate-value.html: OK
-	dispatched event coordinates should match user intention coordinates: FAIL
+	dispatched event coordinates should match user intention coordinates: PASS
 /xhr/getallresponseheaders-after-reuse.html: OK
-	getAllResponseHeaders() must not return the previous response's headers: FAIL
+	getAllResponseHeaders() must not return the previous response's headers: PASS
 /xhr/getallresponseheaders-cookies.htm: OK
-	XMLHttpRequest: getAllResponseHeaders() excludes cookies: FAIL
+	XMLHttpRequest: getAllResponseHeaders() excludes cookies: PASS
 /xhr/getallresponseheaders-status.htm: OK
 	XMLHttpRequest: getAllResponseHeaders() excludes status: PASS
 /xhr/getallresponseheaders.htm: OK
 	XMLHttpRequest: getAllResponseHeaders(): FAIL
-	XMLHttpRequest: getAllResponseHeaders() 1: FAIL
-	XMLHttpRequest: getAllResponseHeaders() 2: FAIL
-	XMLHttpRequest: getAllResponseHeaders() 3: FAIL
-	XMLHttpRequest: getAllResponseHeaders() 4: FAIL
+	XMLHttpRequest: getAllResponseHeaders() 1: PASS
+	XMLHttpRequest: getAllResponseHeaders() 2: PASS
+	XMLHttpRequest: getAllResponseHeaders() 3: PASS
+	XMLHttpRequest: getAllResponseHeaders() 4: PASS
 	XMLHttpRequest: getAllResponseHeaders() 5: FAIL
-	XMLHttpRequest: getAllResponseHeaders() 6: FAIL
+	XMLHttpRequest: getAllResponseHeaders() 6: PASS
 /xhr/getresponseheader-case-insensitive.htm: OK
-	XMLHttpRequest: getResponseHeader() case-insensitive matching: FAIL
+	XMLHttpRequest: getResponseHeader() case-insensitive matching: PASS
 /xhr/getresponseheader-chunked-trailer.htm: OK
-	XMLHttpRequest: getResponseHeader() and HTTP trailer: FAIL
+	XMLHttpRequest: getResponseHeader() and HTTP trailer: PASS
 /xhr/getresponseheader-cookies-and-more.htm: OK
-	XMLHttpRequest: getResponseHeader() custom/non-existent headers and cookies: FAIL
+	XMLHttpRequest: getResponseHeader() custom/non-existent headers and cookies: PASS
 /xhr/getresponseheader-error-state.htm: OK
-	XMLHttpRequest: getResponseHeader() in error state (failing cross-origin test): FAIL
+	XMLHttpRequest: getResponseHeader() in error state (failing cross-origin test): PASS
 /xhr/getresponseheader-server-date.htm: OK
-	XMLHttpRequest: getResponseHeader() server and date: FAIL
+	XMLHttpRequest: getResponseHeader() server and date: PASS
 /xhr/getresponseheader-special-characters.htm: OK
 	XMLHttpRequest: getResponseHeader() funny characters: FAIL
 /xhr/getresponseheader-unsent-opened-state.htm: OK
 	XMLHttpRequest: getResponseHeader() in unsent, opened states: PASS
 /xhr/getresponseheader.any.html: OK
-	getResponseHeader('content-length') expects 0: FAIL
-	getResponseHeader('content-length') expects 0, 0: FAIL
-	getResponseHeader('double-trouble') expects , : FAIL
-	getResponseHeader('foo-test') expects 1, 2, 3: FAIL
+	getResponseHeader('content-length') expects 0: PASS
+	getResponseHeader('content-length') expects 0, 0: PASS
+	getResponseHeader('double-trouble') expects , : PASS
+	getResponseHeader('foo-test') expects 1, 2, 3: PASS
 	getResponseHeader('heya') expects , , 1, , , 2: FAIL
-	getResponseHeader('www-authenticate') expects 1, 2, 3, 4: FAIL
+	getResponseHeader('www-authenticate') expects 1, 2, 3, 4: PASS
 /xhr/getresponseheader.any.worker.html: OK
-	getResponseHeader('content-length') expects 0: FAIL
-	getResponseHeader('content-length') expects 0, 0: FAIL
-	getResponseHeader('double-trouble') expects , : FAIL
-	getResponseHeader('foo-test') expects 1, 2, 3: FAIL
+	getResponseHeader('content-length') expects 0: PASS
+	getResponseHeader('content-length') expects 0, 0: PASS
+	getResponseHeader('double-trouble') expects , : PASS
+	getResponseHeader('foo-test') expects 1, 2, 3: PASS
 	getResponseHeader('heya') expects , , 1, , , 2: FAIL
-	getResponseHeader('www-authenticate') expects 1, 2, 3, 4: FAIL
+	getResponseHeader('www-authenticate') expects 1, 2, 3, 4: PASS
 /xhr/header-user-agent-async.htm: OK
-	Async request has User-Agent header: FAIL
+	Async request has User-Agent header: PASS
 /xhr/header-user-agent-sync.htm: OK
 	Sync request has User-Agent header: FAIL
 /xhr/headers-normalize-response.htm: OK
@@ -1011,7 +1011,7 @@
 /xhr/open-after-abort.htm: OK
 	XMLHttpRequest: open() after abort(): PASS
 /xhr/open-after-setrequestheader.htm: OK
-	XMLHttpRequest: open() after setRequestHeader(): FAIL
+	XMLHttpRequest: open() after setRequestHeader(): PASS
 /xhr/open-after-stop.window.html: OK
 	open() after window.stop(): FAIL
 /xhr/open-during-abort-event.htm: OK
@@ -1092,26 +1092,34 @@
 	make sure escaped # is not removed: FAIL
 	make sure fragment is removed from URL before request: FAIL
 	make sure fragment is removed from URL before request (with query string): FAIL
-/xhr/open-url-javascript-window-2.htm: TIMEOUT
-	XMLHttpRequest: open() - resolving URLs (javascript: <iframe>; 2): TIMEOUT
-/xhr/open-url-javascript-window.htm: TIMEOUT
-	XMLHttpRequest: open() - resolving URLs (javascript: <iframe>; 1): TIMEOUT
-/xhr/open-url-multi-window-2.htm: TIMEOUT
-/xhr/open-url-multi-window-3.htm: TIMEOUT
-/xhr/open-url-multi-window-4.htm: TIMEOUT
-	XMLHttpRequest: open() resolving URLs (multi-Window; 4; evil): NOTRUN
-/xhr/open-url-multi-window-5.htm: TIMEOUT
-	XMLHttpRequest: open() resolving URLs (multi-Window; 5): NOTRUN
+/xhr/open-url-javascript-window-2.htm: OK
+	XMLHttpRequest: open() - resolving URLs (javascript: <iframe>; 2): FAIL
+/xhr/open-url-javascript-window.htm: OK
+	XMLHttpRequest: open() - resolving URLs (javascript: <iframe>; 1): FAIL
+/xhr/open-url-multi-window-2.htm: OK
+	XMLHttpRequest: open() resolving URLs (multi-Window; 2; evil): FAIL
+/xhr/open-url-multi-window-3.htm: OK
+	XMLHttpRequest: open() resolving URLs (multi-Window; 3; evil): FAIL
+/xhr/open-url-multi-window-4.htm: OK
+	XMLHttpRequest: open() resolving URLs (multi-Window; 4; evil): FAIL
+/xhr/open-url-multi-window-5.htm: OK
+	XMLHttpRequest: open() resolving URLs (multi-Window; 5): FAIL
 /xhr/open-url-multi-window-6.htm: TIMEOUT
-	XMLHttpRequest: open() in document that is not fully active (but may be active) should throw: NOTRUN
-/xhr/open-url-multi-window.htm: TIMEOUT
-	XMLHttpRequest: open() resolving URLs (multi-Window; 1): NOTRUN
-/xhr/open-url-redirected-sharedworker-origin.htm: TIMEOUT
-/xhr/open-url-redirected-worker-origin.htm: TIMEOUT
+	XMLHttpRequest: open() in document that is not fully active (but may be active) should throw: TIMEOUT
+/xhr/open-url-multi-window.htm: OK
+	XMLHttpRequest: open() resolving URLs (multi-Window; 1): FAIL
+/xhr/open-url-redirected-sharedworker-origin.htm: OK
+	Origin header: FAIL
+	Referer header: FAIL
+	Request URL test: PASS
+/xhr/open-url-redirected-worker-origin.htm: OK
+	Origin header: FAIL
+	Referer header: FAIL
+	Request URL test: PASS
 /xhr/open-url-worker-origin.htm: OK
 	Origin header: FAIL
 	Referer header: FAIL
-	Request URL test: FAIL
+	Request URL test: PASS
 /xhr/open-url-worker-simple.htm: OK
 	XMLHttpRequest: relative URLs in worker scripts resolved by script URL: PASS
 /xhr/open-user-password-non-same-origin.htm: OK
@@ -1129,26 +1137,26 @@
 /xhr/overridemimetype-done-state.any.worker.html: OK
 	overridemimetype-done-state: PASS
 /xhr/overridemimetype-edge-cases.window.html: OK
-	Charset can be overridden by overrideMimeType() with a bogus charset: FAIL
+	Charset can be overridden by overrideMimeType() with a bogus charset: PASS
 	If charset is not overridden by overrideMimeType() the original continues to be used: FAIL
-	overrideMimeType() is not reset by open(): FAIL
-	overrideMimeType() is not reset by open(), basic: FAIL
+	overrideMimeType() is not reset by open(): PASS
+	overrideMimeType() is not reset by open(), basic: PASS
 /xhr/overridemimetype-headers-received-state-force-shiftjis.htm: OK
-	XMLHttpRequest: overrideMimeType() in HEADERS RECEIVED state, enforcing Shift-JIS encoding: FAIL
+	XMLHttpRequest: overrideMimeType() in HEADERS RECEIVED state, enforcing Shift-JIS encoding: PASS
 /xhr/overridemimetype-invalid-mime-type.htm: OK
 	Bogus MIME type does not override encoding: FAIL
 	Bogus MIME type does not override encoding, 2: FAIL
-	Bogus MIME type does override MIME type: FAIL
+	Bogus MIME type does override MIME type: PASS
 /xhr/overridemimetype-loading-state.htm: OK
 	XMLHttpRequest: overrideMimeType() in LOADING state: PASS
-/xhr/overridemimetype-open-state-force-utf-8.htm: ERROR
-	XMLHttpRequest: overrideMimeType() in open state, enforcing UTF-8 encoding: TIMEOUT
+/xhr/overridemimetype-open-state-force-utf-8.htm: OK
+	XMLHttpRequest: overrideMimeType() in open state, enforcing UTF-8 encoding: PASS
 /xhr/overridemimetype-open-state-force-xml.htm: ERROR
 	XMLHttpRequest: overrideMimeType() in open state, XML MIME type with UTF-8 charset: TIMEOUT
 /xhr/overridemimetype-unsent-state-force-shiftjis.any.html: OK
-	XMLHttpRequest: overrideMimeType() in unsent state, enforcing Shift-JIS encoding: FAIL
+	XMLHttpRequest: overrideMimeType() in unsent state, enforcing Shift-JIS encoding: PASS
 /xhr/overridemimetype-unsent-state-force-shiftjis.any.worker.html: OK
-	XMLHttpRequest: overrideMimeType() in unsent state, enforcing Shift-JIS encoding: FAIL
+	XMLHttpRequest: overrideMimeType() in unsent state, enforcing Shift-JIS encoding: PASS
 /xhr/preserve-ua-header-on-redirect.htm: OK
 	XMLHttpRequest: User-Agent header is preserved on redirect: FAIL
 	XMLHttpRequest: User-Agent header is preserved on redirect 1: FAIL
@@ -1191,15 +1199,15 @@
 	Fetched blob: URLs set the Content-Length header: TIMEOUT
 	Uploads need to set the Content-Length header: FAIL
 /xhr/response-body-errors.any.html: OK
-	Asynchronous XMLHttpRequest should clear response on bad chunk: FAIL
+	Asynchronous XMLHttpRequest should clear response on bad chunk: PASS
 	Synchronous XMLHttpRequest should throw on bad chunk: PASS
 /xhr/response-body-errors.any.worker.html: OK
-	Asynchronous XMLHttpRequest should clear response on bad chunk: FAIL
-	Synchronous XMLHttpRequest should throw on bad chunk: FAIL
+	Asynchronous XMLHttpRequest should clear response on bad chunk: PASS
+	Synchronous XMLHttpRequest should throw on bad chunk: PASS
 /xhr/response-data-arraybuffer.htm: OK
-	XMLHttpRequest: The response attribute: ArrayBuffer data: FAIL
+	XMLHttpRequest: The response attribute: ArrayBuffer data: PASS
 /xhr/response-data-blob.htm: OK
-	XMLHttpRequest: The response attribute: Blob data: FAIL
+	XMLHttpRequest: The response attribute: Blob data: PASS
 /xhr/response-data-deflate.htm: OK
 	XMLHttpRequest: content-encoding:deflate response was correctly inflated: FAIL
 /xhr/response-data-gzip.htm: OK
@@ -1214,16 +1222,16 @@
 	XMLHttpRequest: response is plain text if responseType is set to an invalid string (text/html): PASS
 	XMLHttpRequest: response is plain text if responseType is set to an invalid string (txt): PASS
 /xhr/response-invalid-utf8.html: OK
-	JSON response with invalid UTF-8 should parse with replacement characters: FAIL
+	JSON response with invalid UTF-8 should parse with replacement characters: PASS
 /xhr/response-json-bom.html: OK
-	JSON response with UTF-8 BOM should be parsed correctly: FAIL
+	JSON response with UTF-8 BOM should be parsed correctly: PASS
 /xhr/response-json-during-loading.html: OK
-	xhr.response must be null during LOADING state for responseType json: FAIL
+	xhr.response must be null during LOADING state for responseType json: PASS
 /xhr/response-json.htm: OK
-	JSON object roundtrip: FAIL
-	JSON roundtrip with Japanese text: FAIL
-	json response with malformed data: response property is null: FAIL
-	json response with no data: response property is null: FAIL
+	JSON object roundtrip: PASS
+	JSON roundtrip with Japanese text: PASS
+	json response with malformed data: response property is null: PASS
+	json response with no data: response property is null: PASS
 /xhr/response-method.htm: OK
 	GET: FAIL
 	HEAD: FAIL
@@ -1247,44 +1255,44 @@
 	XMLHttpRequest: response document decoding (text/html %3C!doctype%20html%3E%3Cmeta%20charset%3Dwindows-1252%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E): FAIL
 	XMLHttpRequest: response document decoding (text/html;charset=utf-8 %3C!doctype%20html%3E%3Cmeta%20charset%3Dwindows-1252%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E): FAIL
 	XMLHttpRequest: response document decoding (text/html;charset=windows-1252 %3C!doctype%20html%3E%3Cmeta%20charset%3Dwindows-1252%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E): FAIL
-/xhr/responsetext-decoding.htm: OK
-	XMLHttpRequest: responseText decoding (application/xml %3C%3Fxml%20version%3D'1.0'%20encoding%3D'windows-1252'%3F%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E  text): FAIL
+/xhr/responsetext-decoding.htm: TIMEOUT
+	XMLHttpRequest: responseText decoding (application/xml %3C%3Fxml%20version%3D'1.0'%20encoding%3D'windows-1252'%3F%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E  text): PASS
 	XMLHttpRequest: responseText decoding (application/xml %3C%3Fxml%20version%3D'1.0'%20encoding%3D'windows-1252'%3F%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E empty): FAIL
-	XMLHttpRequest: responseText decoding (application/xml;charset=utf-8 %3C%3Fxml%20version%3D'1.0'%20encoding%3D'windows-1252'%3F%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E  text): FAIL
-	XMLHttpRequest: responseText decoding (application/xml;charset=utf-8 %3C%3Fxml%20version%3D'1.0'%20encoding%3D'windows-1252'%3F%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E empty): FAIL
-	XMLHttpRequest: responseText decoding (application/xml;charset=windows-1252 %3C%3Fxml%20version%3D'1.0'%20encoding%3D'windows-1252'%3F%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E  text): FAIL
-	XMLHttpRequest: responseText decoding (application/xml;charset=windows-1252 %3C%3Fxml%20version%3D'1.0'%20encoding%3D'windows-1252'%3F%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E empty): FAIL
-	XMLHttpRequest: responseText decoding (text/html %3C!doctype%20html%3E%3Cmeta%20charset%3Dwindows-1252%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E  text): FAIL
-	XMLHttpRequest: responseText decoding (text/html %3C!doctype%20html%3E%3Cmeta%20charset%3Dwindows-1252%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E empty): FAIL
-	XMLHttpRequest: responseText decoding (text/html;charset=utf-8 %3C!doctype%20html%3E%3Cmeta%20charset%3Dwindows-1252%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E  text): FAIL
-	XMLHttpRequest: responseText decoding (text/html;charset=utf-8 %3C!doctype%20html%3E%3Cmeta%20charset%3Dwindows-1252%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E empty): FAIL
-	XMLHttpRequest: responseText decoding (text/html;charset=windows-1252 %3C!doctype%20html%3E%3Cmeta%20charset%3Dwindows-1252%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E  text): FAIL
-	XMLHttpRequest: responseText decoding (text/html;charset=windows-1252 %3C!doctype%20html%3E%3Cmeta%20charset%3Dwindows-1252%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E empty): FAIL
-	XMLHttpRequest: responseText decoding (text/plain %C2  text): FAIL
-	XMLHttpRequest: responseText decoding (text/plain %C2 empty): FAIL
-	XMLHttpRequest: responseText decoding (text/plain %E3%81%B2  text): FAIL
-	XMLHttpRequest: responseText decoding (text/plain %E3%81%B2 empty): FAIL
-	XMLHttpRequest: responseText decoding (text/plain %EF%BB%BF  text): FAIL
-	XMLHttpRequest: responseText decoding (text/plain %EF%BB%BF empty): FAIL
-	XMLHttpRequest: responseText decoding (text/plain %EF%BB%BF%EF%BB%BF  text): FAIL
-	XMLHttpRequest: responseText decoding (text/plain %EF%BB%BF%EF%BB%BF empty): FAIL
-	XMLHttpRequest: responseText decoding (text/plain %FE%FF  text): FAIL
-	XMLHttpRequest: responseText decoding (text/plain %FE%FF empty): FAIL
-	XMLHttpRequest: responseText decoding (text/plain %FE%FF%FE%FF  text): FAIL
-	XMLHttpRequest: responseText decoding (text/plain %FE%FF%FE%FF empty): FAIL
-	XMLHttpRequest: responseText decoding (text/plain %FF  text): FAIL
-	XMLHttpRequest: responseText decoding (text/plain %FF empty): FAIL
-	XMLHttpRequest: responseText decoding (text/plain;charset=bogus %C2  text): FAIL
-	XMLHttpRequest: responseText decoding (text/plain;charset=windows-1252 %FF  text): FAIL
-	XMLHttpRequest: responseText decoding (text/plain;charset=windows-1252 %FF empty): FAIL
-	XMLHttpRequest: responseText decoding (text/xml %EF%BB%BF  text): FAIL
-	XMLHttpRequest: responseText decoding (text/xml %EF%BB%BF empty): FAIL
-	XMLHttpRequest: responseText decoding (text/xml %EF%BB%BF%EF%BB%BF  text): FAIL
-	XMLHttpRequest: responseText decoding (text/xml %EF%BB%BF%EF%BB%BF empty): FAIL
-	XMLHttpRequest: responseText decoding (text/xml %FE%FF  text): FAIL
-	XMLHttpRequest: responseText decoding (text/xml %FE%FF empty): FAIL
-	XMLHttpRequest: responseText decoding (text/xml %FE%FF%FE%FF  text): FAIL
-	XMLHttpRequest: responseText decoding (text/xml %FE%FF%FE%FF empty): FAIL
+	XMLHttpRequest: responseText decoding (application/xml;charset=utf-8 %3C%3Fxml%20version%3D'1.0'%20encoding%3D'windows-1252'%3F%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E  text): PASS
+	XMLHttpRequest: responseText decoding (application/xml;charset=utf-8 %3C%3Fxml%20version%3D'1.0'%20encoding%3D'windows-1252'%3F%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E empty): PASS
+	XMLHttpRequest: responseText decoding (application/xml;charset=windows-1252 %3C%3Fxml%20version%3D'1.0'%20encoding%3D'windows-1252'%3F%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E  text): PASS
+	XMLHttpRequest: responseText decoding (application/xml;charset=windows-1252 %3C%3Fxml%20version%3D'1.0'%20encoding%3D'windows-1252'%3F%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E empty): PASS
+	XMLHttpRequest: responseText decoding (text/html %3C!doctype%20html%3E%3Cmeta%20charset%3Dwindows-1252%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E  text): PASS
+	XMLHttpRequest: responseText decoding (text/html %3C!doctype%20html%3E%3Cmeta%20charset%3Dwindows-1252%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E empty): PASS
+	XMLHttpRequest: responseText decoding (text/html;charset=utf-8 %3C!doctype%20html%3E%3Cmeta%20charset%3Dwindows-1252%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E  text): PASS
+	XMLHttpRequest: responseText decoding (text/html;charset=utf-8 %3C!doctype%20html%3E%3Cmeta%20charset%3Dwindows-1252%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E empty): PASS
+	XMLHttpRequest: responseText decoding (text/html;charset=windows-1252 %3C!doctype%20html%3E%3Cmeta%20charset%3Dwindows-1252%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E  text): PASS
+	XMLHttpRequest: responseText decoding (text/html;charset=windows-1252 %3C!doctype%20html%3E%3Cmeta%20charset%3Dwindows-1252%3E%3Cx%3E%e6%a9%9f%3C%2Fx%3E empty): PASS
+	XMLHttpRequest: responseText decoding (text/plain %C2  text): PASS
+	XMLHttpRequest: responseText decoding (text/plain %C2 empty): PASS
+	XMLHttpRequest: responseText decoding (text/plain %E3%81%B2  text): PASS
+	XMLHttpRequest: responseText decoding (text/plain %E3%81%B2 empty): PASS
+	XMLHttpRequest: responseText decoding (text/plain %EF%BB%BF  text): PASS
+	XMLHttpRequest: responseText decoding (text/plain %EF%BB%BF empty): PASS
+	XMLHttpRequest: responseText decoding (text/plain %EF%BB%BF%EF%BB%BF  text): PASS
+	XMLHttpRequest: responseText decoding (text/plain %EF%BB%BF%EF%BB%BF empty): PASS
+	XMLHttpRequest: responseText decoding (text/plain %FE%FF  text): PASS
+	XMLHttpRequest: responseText decoding (text/plain %FE%FF empty): PASS
+	XMLHttpRequest: responseText decoding (text/plain %FE%FF%FE%FF  text): PASS
+	XMLHttpRequest: responseText decoding (text/plain %FE%FF%FE%FF empty): PASS
+	XMLHttpRequest: responseText decoding (text/plain %FF  text): TIMEOUT
+	XMLHttpRequest: responseText decoding (text/plain %FF empty): PASS
+	XMLHttpRequest: responseText decoding (text/plain;charset=bogus %C2  text): PASS
+	XMLHttpRequest: responseText decoding (text/plain;charset=windows-1252 %FF  text): PASS
+	XMLHttpRequest: responseText decoding (text/plain;charset=windows-1252 %FF empty): PASS
+	XMLHttpRequest: responseText decoding (text/xml %EF%BB%BF  text): PASS
+	XMLHttpRequest: responseText decoding (text/xml %EF%BB%BF empty): PASS
+	XMLHttpRequest: responseText decoding (text/xml %EF%BB%BF%EF%BB%BF  text): PASS
+	XMLHttpRequest: responseText decoding (text/xml %EF%BB%BF%EF%BB%BF empty): PASS
+	XMLHttpRequest: responseText decoding (text/xml %FE%FF  text): PASS
+	XMLHttpRequest: responseText decoding (text/xml %FE%FF empty): PASS
+	XMLHttpRequest: responseText decoding (text/xml %FE%FF%FE%FF  text): PASS
+	XMLHttpRequest: responseText decoding (text/xml %FE%FF%FE%FF empty): PASS
 /xhr/responsetype.any.html: OK
 	Initial value of responseType: PASS
 	Set responseType to "" when readyState is DONE and the sync flag is set.: FAIL
@@ -1444,17 +1452,20 @@
 	XMLHttpRequest: responseXML non well-formed tests 5: FAIL
 	XMLHttpRequest: responseXML non well-formed tests 6: FAIL
 /xhr/security-consideration.sub.html: OK
-	ProgressEvent: security consideration: FAIL
+	ProgressEvent: security consideration: PASS
 /xhr/send-accept-language.htm: OK
 	Send "sensible" default value, whatever that means: FAIL
 	XMLHttpRequest: send() - Accept-Language: FAIL
 /xhr/send-accept.htm: OK
 	XMLHttpRequest: send() - Accept: FAIL
-/xhr/send-after-setting-document-domain.htm: ERROR
+/xhr/send-after-setting-document-domain.htm: OK
+	All tests ran: PASS
+	loading documents from original origin after setting document.domain: FAIL
+	loading documents from the origin document.domain was set to should throw: PASS
 /xhr/send-authentication-basic-cors-not-enabled.htm: OK
-	XMLHttpRequest: send() - "Basic" authenticated CORS requests with user name and password passed to open() (asserts failure): FAIL
+	XMLHttpRequest: send() - "Basic" authenticated CORS requests with user name and password passed to open() (asserts failure): PASS
 /xhr/send-authentication-basic-cors.htm: OK
-	XMLHttpRequest: send() - "Basic" authenticated CORS requests with user name and password passed to open() (asserts failure): FAIL
+	XMLHttpRequest: send() - "Basic" authenticated CORS requests with user name and password passed to open() (asserts failure): PASS
 /xhr/send-authentication-basic-repeat-no-args.htm: OK
 	XMLHttpRequest: send() - "Basic" authenticated requests with user name and password passed to open() in first request, without in second: FAIL
 /xhr/send-authentication-basic-setrequestheader-and-arguments.htm: OK
@@ -1485,10 +1496,10 @@
 	CORS request with setRequestHeader auth to URL NOT accepting Authorization header: FAIL
 	CORS request with setRequestHeader auth to URL accepting Authorization header: FAIL
 /xhr/send-blob-with-no-mime-type.html: OK
-	Asynchronous blob loading with invalid mime type [POST]: FAIL
-	Asynchronous blob loading with invalid mime type [PUT]: FAIL
-	Asynchronous blob loading with no mime type [POST]: FAIL
-	Asynchronous blob loading with no mime type [PUT]: FAIL
+	Asynchronous blob loading with invalid mime type [POST]: PASS
+	Asynchronous blob loading with invalid mime type [PUT]: PASS
+	Asynchronous blob loading with no mime type [POST]: PASS
+	Asynchronous blob loading with no mime type [PUT]: PASS
 	Synchronous blob loading with invalid mime type [POST]: FAIL
 	Synchronous blob loading with invalid mime type [PUT]: FAIL
 	Synchronous blob loading with no mime type [POST]: FAIL
@@ -1524,47 +1535,47 @@
 	XMLHttpRequest: send() - Content-Type 1: FAIL
 	XMLHttpRequest: send() - Content-Type 2: FAIL
 /xhr/send-data-arraybuffer.any.html: OK
-	XMLHttpRequest.send(arraybuffer): FAIL
+	XMLHttpRequest.send(arraybuffer): PASS
 /xhr/send-data-arraybuffer.any.worker.html: OK
-	send-data-arraybuffer: FAIL
+	send-data-arraybuffer: PASS
 /xhr/send-data-arraybufferview.any.html: OK
-	XMLHttpRequest.send(arraybufferview): FAIL
+	XMLHttpRequest.send(arraybufferview): PASS
 /xhr/send-data-arraybufferview.any.worker.html: OK
-	send-data-arraybufferview: FAIL
+	send-data-arraybufferview: PASS
 /xhr/send-data-blob.htm: OK
-	XMLHttpRequest: The send() method: Blob data: FAIL
-/xhr/send-data-es-object.any.html: OK
-	object that stringifies to JSON string: FAIL
-	object that stringifies to query string: FAIL
+	XMLHttpRequest: The send() method: Blob data: PASS
+/xhr/send-data-es-object.any.html: TIMEOUT
+	object that stringifies to JSON string: PASS
+	object that stringifies to query string: PASS
 	object whose toString() returns a document, expected to throw: PASS
 	object whose toString() throws, expected to throw: PASS
-	object whose valueOf() returns a document - ignore valueOf(), stringify: FAIL
+	object whose valueOf() returns a document - ignore valueOf(), stringify: TIMEOUT
 	sending a new ReadableStream instance: FAIL
-	sending a new XHR instance: FAIL
-	sending a plain empty object: FAIL
-	sending object that stringifies to null: FAIL
-	sending object that stringifies to undefined: FAIL
-	sending the ES Math object: FAIL
+	sending a new XHR instance: PASS
+	sending a plain empty object: PASS
+	sending object that stringifies to null: PASS
+	sending object that stringifies to undefined: PASS
+	sending the ES Math object: PASS
 /xhr/send-data-es-object.any.worker.html: OK
-	object that stringifies to JSON string: FAIL
-	object that stringifies to query string: FAIL
+	object that stringifies to JSON string: PASS
+	object that stringifies to query string: PASS
 	object whose toString() returns a document, expected to throw: PASS
 	object whose toString() throws, expected to throw: PASS
-	object whose valueOf() returns a document - ignore valueOf(), stringify: FAIL
+	object whose valueOf() returns a document - ignore valueOf(), stringify: PASS
 	sending a new ReadableStream instance: FAIL
-	sending a new XHR instance: FAIL
-	sending a plain empty object: FAIL
-	sending object that stringifies to null: FAIL
-	sending object that stringifies to undefined: FAIL
-	sending the ES Math object: FAIL
+	sending a new XHR instance: PASS
+	sending a plain empty object: PASS
+	sending object that stringifies to null: PASS
+	sending object that stringifies to undefined: PASS
+	sending the ES Math object: PASS
 /xhr/send-data-formdata.any.html: OK
-	XMLHttpRequest.send(formdata): FAIL
+	XMLHttpRequest.send(formdata): PASS
 /xhr/send-data-formdata.any.worker.html: OK
-	send-data-formdata: FAIL
+	send-data-formdata: PASS
 /xhr/send-data-isolation.html: OK
-	Modifying a Uint8Array after send() does not affect the sent data: FAIL
-	Modifying a typed array view after send() does not affect the sent data: FAIL
-	Modifying an ArrayBuffer after send() does not affect the sent data: FAIL
+	Modifying a Uint8Array after send() does not affect the sent data: PASS
+	Modifying a typed array view after send() does not affect the sent data: PASS
+	Modifying an ArrayBuffer after send() does not affect the sent data: PASS
 /xhr/send-data-sharedarraybuffer.any.html: OK
 	sending a BigInt64Array backed by a SharedArrayBuffer: PASS
 	sending a BigUint64Array backed by a SharedArrayBuffer: PASS
@@ -1596,25 +1607,25 @@
 	sending a Uint8Array backed by a SharedArrayBuffer: PASS
 	sending a Uint8ClampedArray backed by a SharedArrayBuffer: PASS
 /xhr/send-data-string-invalid-unicode.any.html: OK
-	invalid unicode '\\u{d83d}' should be fixed with replacement character: FAIL
-	invalid unicode '\\u{d83d}ab' should be fixed with replacement character: FAIL
-	invalid unicode '\\u{dc94}' should be fixed with replacement character: FAIL
-	invalid unicode '\\u{dc94}ab' should be fixed with replacement character: FAIL
-	invalid unicode 'a\\u{d83d}b' should be fixed with replacement character: FAIL
-	invalid unicode 'a\\u{dc94}b' should be fixed with replacement character: FAIL
-	invalid unicode 'ab\\u{d83d}' should be fixed with replacement character: FAIL
-	invalid unicode 'ab\\u{dc94}' should be fixed with replacement character: FAIL
-	valid unicode should be sent correctly: FAIL
+	invalid unicode '\\u{d83d}' should be fixed with replacement character: PASS
+	invalid unicode '\\u{d83d}ab' should be fixed with replacement character: PASS
+	invalid unicode '\\u{dc94}' should be fixed with replacement character: PASS
+	invalid unicode '\\u{dc94}ab' should be fixed with replacement character: PASS
+	invalid unicode 'a\\u{d83d}b' should be fixed with replacement character: PASS
+	invalid unicode 'a\\u{dc94}b' should be fixed with replacement character: PASS
+	invalid unicode 'ab\\u{d83d}' should be fixed with replacement character: PASS
+	invalid unicode 'ab\\u{dc94}' should be fixed with replacement character: PASS
+	valid unicode should be sent correctly: PASS
 /xhr/send-data-string-invalid-unicode.any.worker.html: OK
-	invalid unicode '\\u{d83d}' should be fixed with replacement character: FAIL
-	invalid unicode '\\u{d83d}ab' should be fixed with replacement character: FAIL
-	invalid unicode '\\u{dc94}' should be fixed with replacement character: FAIL
-	invalid unicode '\\u{dc94}ab' should be fixed with replacement character: FAIL
-	invalid unicode 'a\\u{d83d}b' should be fixed with replacement character: FAIL
-	invalid unicode 'a\\u{dc94}b' should be fixed with replacement character: FAIL
-	invalid unicode 'ab\\u{d83d}' should be fixed with replacement character: FAIL
-	invalid unicode 'ab\\u{dc94}' should be fixed with replacement character: FAIL
-	valid unicode should be sent correctly: FAIL
+	invalid unicode '\\u{d83d}' should be fixed with replacement character: PASS
+	invalid unicode '\\u{d83d}ab' should be fixed with replacement character: PASS
+	invalid unicode '\\u{dc94}' should be fixed with replacement character: PASS
+	invalid unicode '\\u{dc94}ab' should be fixed with replacement character: PASS
+	invalid unicode 'a\\u{d83d}b' should be fixed with replacement character: PASS
+	invalid unicode 'a\\u{dc94}b' should be fixed with replacement character: PASS
+	invalid unicode 'ab\\u{d83d}' should be fixed with replacement character: PASS
+	invalid unicode 'ab\\u{dc94}' should be fixed with replacement character: PASS
+	valid unicode should be sent correctly: PASS
 /xhr/send-data-unexpected-tostring.htm: OK
 	abort() called from data stringification: PASS
 	open() called from data stringification: FAIL
@@ -1646,8 +1657,8 @@
 	XMLHttpRequest: send("") - empty entity body (POST): FAIL
 	XMLHttpRequest: send("") - empty entity body (PUT): FAIL
 /xhr/send-entity-body-get-head-async.htm: OK
-	XMLHttpRequest: send() - non-empty data argument and GET/HEAD - async, no upload events should fire (GET): FAIL
-	XMLHttpRequest: send() - non-empty data argument and GET/HEAD - async, no upload events should fire (HEAD): FAIL
+	XMLHttpRequest: send() - non-empty data argument and GET/HEAD - async, no upload events should fire (GET): PASS
+	XMLHttpRequest: send() - non-empty data argument and GET/HEAD - async, no upload events should fire (HEAD): PASS
 /xhr/send-entity-body-get-head.htm: OK
 	XMLHttpRequest: send() - non-empty data argument and GET/HEAD (GET): FAIL
 	XMLHttpRequest: send() - non-empty data argument and GET/HEAD (HEAD): FAIL
@@ -1659,12 +1670,12 @@
 	No content type (POST): FAIL
 	No content type (PUT): FAIL
 /xhr/send-network-error-async-events.sub.htm: OK
-	XMLHttpRequest: The send() method: Fire a progress event named error when Network error happens (synchronous flag is unset): FAIL
+	XMLHttpRequest: The send() method: Fire a progress event named error when Network error happens (synchronous flag is unset): PASS
 /xhr/send-network-error-sync-events.sub.htm: OK
 	data URL: PASS
 	http URL: PASS
 /xhr/send-no-response-event-loadend.htm: OK
-	XMLHttpRequest: The send() method: Fire a progress event named loadend (no response entity body): FAIL
+	XMLHttpRequest: The send() method: Fire a progress event named loadend (no response entity body): PASS
 /xhr/send-no-response-event-loadstart.htm: OK
 	XMLHttpRequest: The send() method: Fire a progress event named loadstart (no response entity body and the state is LOADING): PASS
 /xhr/send-no-response-event-order.htm: ERROR
@@ -1673,29 +1684,29 @@
 	XMLHttpRequest: send() - non same-origin (about:blank): PASS
 	XMLHttpRequest: send() - non same-origin (blob:bogusidentifier): PASS
 	XMLHttpRequest: send() - non same-origin (folder.txt): PASS
-	XMLHttpRequest: send() - non same-origin (http://www1.127.0.0.1:8778): FAIL
+	XMLHttpRequest: send() - non same-origin (http://www1.web-platform.test:8778): PASS
 	XMLHttpRequest: send() - non same-origin (javascript:alert('FAIL')): PASS
 	XMLHttpRequest: send() - non same-origin (mailto:test@example.org): PASS
 	XMLHttpRequest: send() - non same-origin (tel:+31600000000): PASS
 /xhr/send-receive-utf16.htm: OK
 	UTF-16 with BOM, no encoding in content-type: PASS
-	UTF-16 without BOM, mislabelled as UTF-8 in content-type: FAIL
-	UTF-16 without BOM, with charset label in content-type: FAIL
+	UTF-16 without BOM, mislabelled as UTF-8 in content-type: PASS
+	UTF-16 without BOM, with charset label in content-type: PASS
 /xhr/send-redirect-bogus-sync.sub.htm: OK
 	XMLHttpRequest: send() - Redirects (bogus Location header; sync) (301: foobar://abcd): PASS
-	XMLHttpRequest: send() - Redirects (bogus Location header; sync) (302: http://127.0.0.1): PASS
+	XMLHttpRequest: send() - Redirects (bogus Location header; sync) (302: http://nonexistent.web-platform.test): PASS
 	XMLHttpRequest: send() - Redirects (bogus Location header; sync) (302: mailto:someone@example.org): PASS
-	XMLHttpRequest: send() - Redirects (bogus Location header; sync) (303: http://127.0.0.1): PASS
+	XMLHttpRequest: send() - Redirects (bogus Location header; sync) (303: http://nonexistent.web-platform.test): PASS
 	XMLHttpRequest: send() - Redirects (bogus Location header; sync) (303: tel:1234567890): PASS
 /xhr/send-redirect-bogus.sub.htm: OK
-	XMLHttpRequest: send() - Redirects (bogus Location header) (302: http://127.0.0.1): FAIL
-	XMLHttpRequest: send() - Redirects (bogus Location header) (302: mailto:someone@example.org): FAIL
-	XMLHttpRequest: send() - Redirects (bogus Location header) (303: foobar:someone@example.org): FAIL
-	XMLHttpRequest: send() - Redirects (bogus Location header) (303: http://127.0.0.1): FAIL
+	XMLHttpRequest: send() - Redirects (bogus Location header) (302: http://nonexistent.web-platform.test): PASS
+	XMLHttpRequest: send() - Redirects (bogus Location header) (302: mailto:someone@example.org): PASS
+	XMLHttpRequest: send() - Redirects (bogus Location header) (303: foobar:someone@example.org): PASS
+	XMLHttpRequest: send() - Redirects (bogus Location header) (303: http://nonexistent.web-platform.test): PASS
 /xhr/send-redirect-infinite-sync.htm: OK
 	XMLHttpRequest: send() - Redirects (infinite loop; sync) (301): PASS
 /xhr/send-redirect-infinite.htm: OK
-	XMLHttpRequest: send() - Redirects (infinite loop): FAIL
+	XMLHttpRequest: send() - Redirects (infinite loop): PASS
 /xhr/send-redirect-no-location.htm: OK
 	XMLHttpRequest: send() - Redirects (no Location header) (301): FAIL
 	XMLHttpRequest: send() - Redirects (no Location header) (302): FAIL
@@ -1705,72 +1716,72 @@
 	XMLHttpRequest: The send() method: POSTing to URL that redirects (301): FAIL
 	XMLHttpRequest: The send() method: POSTing to URL that redirects (302): FAIL
 	XMLHttpRequest: The send() method: POSTing to URL that redirects (303): FAIL
-	XMLHttpRequest: The send() method: POSTing to URL that redirects (307 (blob)): FAIL
-	XMLHttpRequest: The send() method: POSTing to URL that redirects (307 (string)): FAIL
+	XMLHttpRequest: The send() method: POSTing to URL that redirects (307 (blob)): PASS
+	XMLHttpRequest: The send() method: POSTing to URL that redirects (307 (string)): PASS
 /xhr/send-redirect-to-cors.htm: OK
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (301 GET with explicit Content-Type safelisted): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (301 GET with explicit Content-Type): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (301 POST with string and explicit Content-Type safelisted): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (301 POST with string and explicit Content-Type): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (301): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (302 FOO with string and explicit Content-Type safelisted): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (302 POST with string and explicit Content-Type): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (302): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (303 FOO with string and explicit Content-Type safelisted): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (303 GET with explicit Content-Type safelisted): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (303): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (307 FOO with string and explicit Content-Type): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (307 POST with string and explicit Content-Type safelisted): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (307 POST with string and explicit Content-Type): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (307 post with null): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (307 post with string): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (307 post with typed array): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (307): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (308 FOO with string and explicit Content-Type multipart/form-data): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (308 FOO with string and explicit Content-Type safelisted): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (308 FOO with string and explicit Content-Type text/plain): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (308 FOO with string and explicit Content-Type): FAIL
-	XMLHttpRequest: send() - Redirect to CORS-enabled resource (308 POST with string and explicit Content-Type): FAIL
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (301 GET with explicit Content-Type safelisted): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (301 GET with explicit Content-Type): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (301 POST with string and explicit Content-Type safelisted): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (301 POST with string and explicit Content-Type): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (301): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (302 FOO with string and explicit Content-Type safelisted): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (302 POST with string and explicit Content-Type): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (302): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (303 FOO with string and explicit Content-Type safelisted): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (303 GET with explicit Content-Type safelisted): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (303): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (307 FOO with string and explicit Content-Type): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (307 POST with string and explicit Content-Type safelisted): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (307 POST with string and explicit Content-Type): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (307 post with null): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (307 post with string): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (307 post with typed array): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (307): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (308 FOO with string and explicit Content-Type multipart/form-data): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (308 FOO with string and explicit Content-Type safelisted): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (308 FOO with string and explicit Content-Type text/plain): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (308 FOO with string and explicit Content-Type): PASS
+	XMLHttpRequest: send() - Redirect to CORS-enabled resource (308 POST with string and explicit Content-Type): PASS
 /xhr/send-redirect-to-non-cors.htm: OK
-	XMLHttpRequest: send() - Redirect to cross-origin resource, not CORS-enabled (301): FAIL
-	XMLHttpRequest: send() - Redirect to cross-origin resource, not CORS-enabled (302): FAIL
-	XMLHttpRequest: send() - Redirect to cross-origin resource, not CORS-enabled (303): FAIL
-	XMLHttpRequest: send() - Redirect to cross-origin resource, not CORS-enabled (307): FAIL
+	XMLHttpRequest: send() - Redirect to cross-origin resource, not CORS-enabled (301): PASS
+	XMLHttpRequest: send() - Redirect to cross-origin resource, not CORS-enabled (302): PASS
+	XMLHttpRequest: send() - Redirect to cross-origin resource, not CORS-enabled (303): PASS
+	XMLHttpRequest: send() - Redirect to cross-origin resource, not CORS-enabled (307): PASS
 /xhr/send-redirect.htm: OK
-	XMLHttpRequest: send() - Redirects (basics) (300, GET, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (301, GET, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (301, GET, redirect.py%3Flocation%3Dcontent.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (301, HEAD, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (301, HEAD, redirect.py%3Flocation%3Dcontent.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (301, POST, content.py): FAIL
+	XMLHttpRequest: send() - Redirects (basics) (300, GET, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (301, GET, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (301, GET, redirect.py%3Flocation%3Dcontent.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (301, HEAD, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (301, HEAD, redirect.py%3Flocation%3Dcontent.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (301, POST, content.py): PASS
 	XMLHttpRequest: send() - Redirects (basics) (301, POST, redirect.py%3Flocation%3Dcontent.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (302, GET, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (302, GET, redirect.py%3Flocation%3Dcontent.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (302, HEAD, content.py): FAIL
+	XMLHttpRequest: send() - Redirects (basics) (302, GET, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (302, GET, redirect.py%3Flocation%3Dcontent.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (302, HEAD, content.py): PASS
 	XMLHttpRequest: send() - Redirects (basics) (302, HEAD, redirect.py%3Flocation%3Dcontent.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (302, POST, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (302, POST, redirect.py%3Flocation%3Dcontent.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (303, CHICKEN, redirect.py%3Flocation%3Dcontent.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (303, GET, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (303, GET, redirect.py%3Flocation%3Dcontent.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (303, HEAD, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (303, HEAD, redirect.py%3Flocation%3Dcontent.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (303, POST, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (303, POST, redirect.py%3Flocation%3Dcontent.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (304, GET, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (305, GET, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (306, GET, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (307, GET, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (307, GET, redirect.py%3Flocation%3Dcontent.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (307, HEAD, content.py): FAIL
+	XMLHttpRequest: send() - Redirects (basics) (302, POST, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (302, POST, redirect.py%3Flocation%3Dcontent.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (303, CHICKEN, redirect.py%3Flocation%3Dcontent.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (303, GET, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (303, GET, redirect.py%3Flocation%3Dcontent.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (303, HEAD, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (303, HEAD, redirect.py%3Flocation%3Dcontent.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (303, POST, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (303, POST, redirect.py%3Flocation%3Dcontent.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (304, GET, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (305, GET, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (306, GET, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (307, GET, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (307, GET, redirect.py%3Flocation%3Dcontent.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (307, HEAD, content.py): PASS
 	XMLHttpRequest: send() - Redirects (basics) (307, HEAD, redirect.py%3Flocation%3Dcontent.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (307, POST, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (307, POST, redirect.py%3Flocation%3Dcontent.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (308, GET, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (309, GET, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (310, GET, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (350, GET, content.py): FAIL
-	XMLHttpRequest: send() - Redirects (basics) (399, GET, content.py): FAIL
+	XMLHttpRequest: send() - Redirects (basics) (307, POST, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (307, POST, redirect.py%3Flocation%3Dcontent.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (308, GET, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (309, GET, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (310, GET, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (350, GET, content.py): PASS
+	XMLHttpRequest: send() - Redirects (basics) (399, GET, content.py): PASS
 /xhr/send-response-event-order.htm: ERROR
 	XMLHttpRequest: The send() method: event order when synchronous flag is unset: FAIL
 /xhr/send-response-upload-event-loadend.htm: OK
@@ -1796,279 +1807,279 @@
 /xhr/send-sync-timeout.htm: OK
 	XMLHttpRequest: timeout during sync send() should not run: FAIL
 /xhr/send-timeout-events.htm: OK
-	XMLHttpRequest: The send() method: timeout is not 0 : FAIL
+	XMLHttpRequest: The send() method: timeout is not 0 : PASS
 /xhr/send-usp.any.html: OK
 	Overall fetch with URLSearchParams: PASS
-	XMLHttpRequest.send(URLSearchParams) (0): FAIL
-	XMLHttpRequest.send(URLSearchParams) (1): FAIL
-	XMLHttpRequest.send(URLSearchParams) (10): FAIL
-	XMLHttpRequest.send(URLSearchParams) (100): FAIL
-	XMLHttpRequest.send(URLSearchParams) (101): FAIL
-	XMLHttpRequest.send(URLSearchParams) (102): FAIL
-	XMLHttpRequest.send(URLSearchParams) (103): FAIL
-	XMLHttpRequest.send(URLSearchParams) (104): FAIL
-	XMLHttpRequest.send(URLSearchParams) (105): FAIL
-	XMLHttpRequest.send(URLSearchParams) (106): FAIL
-	XMLHttpRequest.send(URLSearchParams) (107): FAIL
-	XMLHttpRequest.send(URLSearchParams) (108): FAIL
-	XMLHttpRequest.send(URLSearchParams) (109): FAIL
-	XMLHttpRequest.send(URLSearchParams) (11): FAIL
-	XMLHttpRequest.send(URLSearchParams) (110): FAIL
-	XMLHttpRequest.send(URLSearchParams) (111): FAIL
-	XMLHttpRequest.send(URLSearchParams) (112): FAIL
-	XMLHttpRequest.send(URLSearchParams) (113): FAIL
-	XMLHttpRequest.send(URLSearchParams) (114): FAIL
-	XMLHttpRequest.send(URLSearchParams) (115): FAIL
-	XMLHttpRequest.send(URLSearchParams) (116): FAIL
-	XMLHttpRequest.send(URLSearchParams) (117): FAIL
-	XMLHttpRequest.send(URLSearchParams) (118): FAIL
-	XMLHttpRequest.send(URLSearchParams) (119): FAIL
-	XMLHttpRequest.send(URLSearchParams) (12): FAIL
-	XMLHttpRequest.send(URLSearchParams) (120): FAIL
-	XMLHttpRequest.send(URLSearchParams) (121): FAIL
-	XMLHttpRequest.send(URLSearchParams) (122): FAIL
-	XMLHttpRequest.send(URLSearchParams) (123): FAIL
-	XMLHttpRequest.send(URLSearchParams) (124): FAIL
-	XMLHttpRequest.send(URLSearchParams) (125): FAIL
-	XMLHttpRequest.send(URLSearchParams) (126): FAIL
-	XMLHttpRequest.send(URLSearchParams) (127): FAIL
-	XMLHttpRequest.send(URLSearchParams) (13): FAIL
-	XMLHttpRequest.send(URLSearchParams) (14): FAIL
-	XMLHttpRequest.send(URLSearchParams) (15): FAIL
-	XMLHttpRequest.send(URLSearchParams) (16): FAIL
-	XMLHttpRequest.send(URLSearchParams) (17): FAIL
-	XMLHttpRequest.send(URLSearchParams) (18): FAIL
-	XMLHttpRequest.send(URLSearchParams) (19): FAIL
-	XMLHttpRequest.send(URLSearchParams) (2): FAIL
-	XMLHttpRequest.send(URLSearchParams) (20): FAIL
-	XMLHttpRequest.send(URLSearchParams) (21): FAIL
-	XMLHttpRequest.send(URLSearchParams) (22): FAIL
-	XMLHttpRequest.send(URLSearchParams) (23): FAIL
-	XMLHttpRequest.send(URLSearchParams) (24): FAIL
-	XMLHttpRequest.send(URLSearchParams) (25): FAIL
-	XMLHttpRequest.send(URLSearchParams) (26): FAIL
-	XMLHttpRequest.send(URLSearchParams) (27): FAIL
-	XMLHttpRequest.send(URLSearchParams) (28): FAIL
-	XMLHttpRequest.send(URLSearchParams) (29): FAIL
-	XMLHttpRequest.send(URLSearchParams) (3): FAIL
-	XMLHttpRequest.send(URLSearchParams) (30): FAIL
-	XMLHttpRequest.send(URLSearchParams) (31): FAIL
-	XMLHttpRequest.send(URLSearchParams) (32): FAIL
-	XMLHttpRequest.send(URLSearchParams) (33): FAIL
-	XMLHttpRequest.send(URLSearchParams) (34): FAIL
-	XMLHttpRequest.send(URLSearchParams) (35): FAIL
-	XMLHttpRequest.send(URLSearchParams) (36): FAIL
-	XMLHttpRequest.send(URLSearchParams) (37): FAIL
-	XMLHttpRequest.send(URLSearchParams) (38): FAIL
-	XMLHttpRequest.send(URLSearchParams) (39): FAIL
-	XMLHttpRequest.send(URLSearchParams) (4): FAIL
-	XMLHttpRequest.send(URLSearchParams) (40): FAIL
-	XMLHttpRequest.send(URLSearchParams) (41): FAIL
-	XMLHttpRequest.send(URLSearchParams) (42): FAIL
-	XMLHttpRequest.send(URLSearchParams) (43): FAIL
-	XMLHttpRequest.send(URLSearchParams) (44): FAIL
-	XMLHttpRequest.send(URLSearchParams) (45): FAIL
-	XMLHttpRequest.send(URLSearchParams) (46): FAIL
-	XMLHttpRequest.send(URLSearchParams) (47): FAIL
-	XMLHttpRequest.send(URLSearchParams) (48): FAIL
-	XMLHttpRequest.send(URLSearchParams) (49): FAIL
-	XMLHttpRequest.send(URLSearchParams) (5): FAIL
-	XMLHttpRequest.send(URLSearchParams) (50): FAIL
-	XMLHttpRequest.send(URLSearchParams) (51): FAIL
-	XMLHttpRequest.send(URLSearchParams) (52): FAIL
-	XMLHttpRequest.send(URLSearchParams) (53): FAIL
-	XMLHttpRequest.send(URLSearchParams) (54): FAIL
-	XMLHttpRequest.send(URLSearchParams) (55): FAIL
-	XMLHttpRequest.send(URLSearchParams) (56): FAIL
-	XMLHttpRequest.send(URLSearchParams) (57): FAIL
-	XMLHttpRequest.send(URLSearchParams) (58): FAIL
-	XMLHttpRequest.send(URLSearchParams) (59): FAIL
-	XMLHttpRequest.send(URLSearchParams) (6): FAIL
-	XMLHttpRequest.send(URLSearchParams) (60): FAIL
-	XMLHttpRequest.send(URLSearchParams) (61): FAIL
-	XMLHttpRequest.send(URLSearchParams) (62): FAIL
-	XMLHttpRequest.send(URLSearchParams) (63): FAIL
-	XMLHttpRequest.send(URLSearchParams) (64): FAIL
-	XMLHttpRequest.send(URLSearchParams) (65): FAIL
-	XMLHttpRequest.send(URLSearchParams) (66): FAIL
-	XMLHttpRequest.send(URLSearchParams) (67): FAIL
-	XMLHttpRequest.send(URLSearchParams) (68): FAIL
-	XMLHttpRequest.send(URLSearchParams) (69): FAIL
-	XMLHttpRequest.send(URLSearchParams) (7): FAIL
-	XMLHttpRequest.send(URLSearchParams) (70): FAIL
-	XMLHttpRequest.send(URLSearchParams) (71): FAIL
-	XMLHttpRequest.send(URLSearchParams) (72): FAIL
-	XMLHttpRequest.send(URLSearchParams) (73): FAIL
-	XMLHttpRequest.send(URLSearchParams) (74): FAIL
-	XMLHttpRequest.send(URLSearchParams) (75): FAIL
-	XMLHttpRequest.send(URLSearchParams) (76): FAIL
-	XMLHttpRequest.send(URLSearchParams) (77): FAIL
-	XMLHttpRequest.send(URLSearchParams) (78): FAIL
-	XMLHttpRequest.send(URLSearchParams) (79): FAIL
-	XMLHttpRequest.send(URLSearchParams) (8): FAIL
-	XMLHttpRequest.send(URLSearchParams) (80): FAIL
-	XMLHttpRequest.send(URLSearchParams) (81): FAIL
-	XMLHttpRequest.send(URLSearchParams) (82): FAIL
-	XMLHttpRequest.send(URLSearchParams) (83): FAIL
-	XMLHttpRequest.send(URLSearchParams) (84): FAIL
-	XMLHttpRequest.send(URLSearchParams) (85): FAIL
-	XMLHttpRequest.send(URLSearchParams) (86): FAIL
-	XMLHttpRequest.send(URLSearchParams) (87): FAIL
-	XMLHttpRequest.send(URLSearchParams) (88): FAIL
-	XMLHttpRequest.send(URLSearchParams) (89): FAIL
-	XMLHttpRequest.send(URLSearchParams) (9): FAIL
-	XMLHttpRequest.send(URLSearchParams) (90): FAIL
-	XMLHttpRequest.send(URLSearchParams) (91): FAIL
-	XMLHttpRequest.send(URLSearchParams) (92): FAIL
-	XMLHttpRequest.send(URLSearchParams) (93): FAIL
-	XMLHttpRequest.send(URLSearchParams) (94): FAIL
-	XMLHttpRequest.send(URLSearchParams) (95): FAIL
-	XMLHttpRequest.send(URLSearchParams) (96): FAIL
-	XMLHttpRequest.send(URLSearchParams) (97): FAIL
-	XMLHttpRequest.send(URLSearchParams) (98): FAIL
-	XMLHttpRequest.send(URLSearchParams) (99): FAIL
-	XMLHttpRequest.send(URLSearchParams): GET keeps an author-set Content-Type: FAIL
-	XMLHttpRequest.send(URLSearchParams): GET sends neither a body nor a Content-Type: FAIL
-	XMLHttpRequest.send(URLSearchParams): HEAD sends neither a body nor a Content-Type: FAIL
-	XMLHttpRequest.send(URLSearchParams): POST keeps an author-set Content-Type: FAIL
+	XMLHttpRequest.send(URLSearchParams) (0): PASS
+	XMLHttpRequest.send(URLSearchParams) (1): PASS
+	XMLHttpRequest.send(URLSearchParams) (10): PASS
+	XMLHttpRequest.send(URLSearchParams) (100): PASS
+	XMLHttpRequest.send(URLSearchParams) (101): PASS
+	XMLHttpRequest.send(URLSearchParams) (102): PASS
+	XMLHttpRequest.send(URLSearchParams) (103): PASS
+	XMLHttpRequest.send(URLSearchParams) (104): PASS
+	XMLHttpRequest.send(URLSearchParams) (105): PASS
+	XMLHttpRequest.send(URLSearchParams) (106): PASS
+	XMLHttpRequest.send(URLSearchParams) (107): PASS
+	XMLHttpRequest.send(URLSearchParams) (108): PASS
+	XMLHttpRequest.send(URLSearchParams) (109): PASS
+	XMLHttpRequest.send(URLSearchParams) (11): PASS
+	XMLHttpRequest.send(URLSearchParams) (110): PASS
+	XMLHttpRequest.send(URLSearchParams) (111): PASS
+	XMLHttpRequest.send(URLSearchParams) (112): PASS
+	XMLHttpRequest.send(URLSearchParams) (113): PASS
+	XMLHttpRequest.send(URLSearchParams) (114): PASS
+	XMLHttpRequest.send(URLSearchParams) (115): PASS
+	XMLHttpRequest.send(URLSearchParams) (116): PASS
+	XMLHttpRequest.send(URLSearchParams) (117): PASS
+	XMLHttpRequest.send(URLSearchParams) (118): PASS
+	XMLHttpRequest.send(URLSearchParams) (119): PASS
+	XMLHttpRequest.send(URLSearchParams) (12): PASS
+	XMLHttpRequest.send(URLSearchParams) (120): PASS
+	XMLHttpRequest.send(URLSearchParams) (121): PASS
+	XMLHttpRequest.send(URLSearchParams) (122): PASS
+	XMLHttpRequest.send(URLSearchParams) (123): PASS
+	XMLHttpRequest.send(URLSearchParams) (124): PASS
+	XMLHttpRequest.send(URLSearchParams) (125): PASS
+	XMLHttpRequest.send(URLSearchParams) (126): PASS
+	XMLHttpRequest.send(URLSearchParams) (127): PASS
+	XMLHttpRequest.send(URLSearchParams) (13): PASS
+	XMLHttpRequest.send(URLSearchParams) (14): PASS
+	XMLHttpRequest.send(URLSearchParams) (15): PASS
+	XMLHttpRequest.send(URLSearchParams) (16): PASS
+	XMLHttpRequest.send(URLSearchParams) (17): PASS
+	XMLHttpRequest.send(URLSearchParams) (18): PASS
+	XMLHttpRequest.send(URLSearchParams) (19): PASS
+	XMLHttpRequest.send(URLSearchParams) (2): PASS
+	XMLHttpRequest.send(URLSearchParams) (20): PASS
+	XMLHttpRequest.send(URLSearchParams) (21): PASS
+	XMLHttpRequest.send(URLSearchParams) (22): PASS
+	XMLHttpRequest.send(URLSearchParams) (23): PASS
+	XMLHttpRequest.send(URLSearchParams) (24): PASS
+	XMLHttpRequest.send(URLSearchParams) (25): PASS
+	XMLHttpRequest.send(URLSearchParams) (26): PASS
+	XMLHttpRequest.send(URLSearchParams) (27): PASS
+	XMLHttpRequest.send(URLSearchParams) (28): PASS
+	XMLHttpRequest.send(URLSearchParams) (29): PASS
+	XMLHttpRequest.send(URLSearchParams) (3): PASS
+	XMLHttpRequest.send(URLSearchParams) (30): PASS
+	XMLHttpRequest.send(URLSearchParams) (31): PASS
+	XMLHttpRequest.send(URLSearchParams) (32): PASS
+	XMLHttpRequest.send(URLSearchParams) (33): PASS
+	XMLHttpRequest.send(URLSearchParams) (34): PASS
+	XMLHttpRequest.send(URLSearchParams) (35): PASS
+	XMLHttpRequest.send(URLSearchParams) (36): PASS
+	XMLHttpRequest.send(URLSearchParams) (37): PASS
+	XMLHttpRequest.send(URLSearchParams) (38): PASS
+	XMLHttpRequest.send(URLSearchParams) (39): PASS
+	XMLHttpRequest.send(URLSearchParams) (4): PASS
+	XMLHttpRequest.send(URLSearchParams) (40): PASS
+	XMLHttpRequest.send(URLSearchParams) (41): PASS
+	XMLHttpRequest.send(URLSearchParams) (42): PASS
+	XMLHttpRequest.send(URLSearchParams) (43): PASS
+	XMLHttpRequest.send(URLSearchParams) (44): PASS
+	XMLHttpRequest.send(URLSearchParams) (45): PASS
+	XMLHttpRequest.send(URLSearchParams) (46): PASS
+	XMLHttpRequest.send(URLSearchParams) (47): PASS
+	XMLHttpRequest.send(URLSearchParams) (48): PASS
+	XMLHttpRequest.send(URLSearchParams) (49): PASS
+	XMLHttpRequest.send(URLSearchParams) (5): PASS
+	XMLHttpRequest.send(URLSearchParams) (50): PASS
+	XMLHttpRequest.send(URLSearchParams) (51): PASS
+	XMLHttpRequest.send(URLSearchParams) (52): PASS
+	XMLHttpRequest.send(URLSearchParams) (53): PASS
+	XMLHttpRequest.send(URLSearchParams) (54): PASS
+	XMLHttpRequest.send(URLSearchParams) (55): PASS
+	XMLHttpRequest.send(URLSearchParams) (56): PASS
+	XMLHttpRequest.send(URLSearchParams) (57): PASS
+	XMLHttpRequest.send(URLSearchParams) (58): PASS
+	XMLHttpRequest.send(URLSearchParams) (59): PASS
+	XMLHttpRequest.send(URLSearchParams) (6): PASS
+	XMLHttpRequest.send(URLSearchParams) (60): PASS
+	XMLHttpRequest.send(URLSearchParams) (61): PASS
+	XMLHttpRequest.send(URLSearchParams) (62): PASS
+	XMLHttpRequest.send(URLSearchParams) (63): PASS
+	XMLHttpRequest.send(URLSearchParams) (64): PASS
+	XMLHttpRequest.send(URLSearchParams) (65): PASS
+	XMLHttpRequest.send(URLSearchParams) (66): PASS
+	XMLHttpRequest.send(URLSearchParams) (67): PASS
+	XMLHttpRequest.send(URLSearchParams) (68): PASS
+	XMLHttpRequest.send(URLSearchParams) (69): PASS
+	XMLHttpRequest.send(URLSearchParams) (7): PASS
+	XMLHttpRequest.send(URLSearchParams) (70): PASS
+	XMLHttpRequest.send(URLSearchParams) (71): PASS
+	XMLHttpRequest.send(URLSearchParams) (72): PASS
+	XMLHttpRequest.send(URLSearchParams) (73): PASS
+	XMLHttpRequest.send(URLSearchParams) (74): PASS
+	XMLHttpRequest.send(URLSearchParams) (75): PASS
+	XMLHttpRequest.send(URLSearchParams) (76): PASS
+	XMLHttpRequest.send(URLSearchParams) (77): PASS
+	XMLHttpRequest.send(URLSearchParams) (78): PASS
+	XMLHttpRequest.send(URLSearchParams) (79): PASS
+	XMLHttpRequest.send(URLSearchParams) (8): PASS
+	XMLHttpRequest.send(URLSearchParams) (80): PASS
+	XMLHttpRequest.send(URLSearchParams) (81): PASS
+	XMLHttpRequest.send(URLSearchParams) (82): PASS
+	XMLHttpRequest.send(URLSearchParams) (83): PASS
+	XMLHttpRequest.send(URLSearchParams) (84): PASS
+	XMLHttpRequest.send(URLSearchParams) (85): PASS
+	XMLHttpRequest.send(URLSearchParams) (86): PASS
+	XMLHttpRequest.send(URLSearchParams) (87): PASS
+	XMLHttpRequest.send(URLSearchParams) (88): PASS
+	XMLHttpRequest.send(URLSearchParams) (89): PASS
+	XMLHttpRequest.send(URLSearchParams) (9): PASS
+	XMLHttpRequest.send(URLSearchParams) (90): PASS
+	XMLHttpRequest.send(URLSearchParams) (91): PASS
+	XMLHttpRequest.send(URLSearchParams) (92): PASS
+	XMLHttpRequest.send(URLSearchParams) (93): PASS
+	XMLHttpRequest.send(URLSearchParams) (94): PASS
+	XMLHttpRequest.send(URLSearchParams) (95): PASS
+	XMLHttpRequest.send(URLSearchParams) (96): PASS
+	XMLHttpRequest.send(URLSearchParams) (97): PASS
+	XMLHttpRequest.send(URLSearchParams) (98): PASS
+	XMLHttpRequest.send(URLSearchParams) (99): PASS
+	XMLHttpRequest.send(URLSearchParams): GET keeps an author-set Content-Type: PASS
+	XMLHttpRequest.send(URLSearchParams): GET sends neither a body nor a Content-Type: PASS
+	XMLHttpRequest.send(URLSearchParams): HEAD sends neither a body nor a Content-Type: PASS
+	XMLHttpRequest.send(URLSearchParams): POST keeps an author-set Content-Type: PASS
 	XMLHttpRequest.send(URLSearchParams): POST replaces the charset parameter of an author-set Content-Type: FAIL
-	XMLHttpRequest.send(URLSearchParams): POST uses the URLSearchParams MIME type when no Content-Type was set: FAIL
+	XMLHttpRequest.send(URLSearchParams): POST uses the URLSearchParams MIME type when no Content-Type was set: PASS
 /xhr/send-usp.any.worker.html: OK
 	Overall fetch with URLSearchParams: PASS
-	XMLHttpRequest.send(URLSearchParams) (0): FAIL
-	XMLHttpRequest.send(URLSearchParams) (1): FAIL
-	XMLHttpRequest.send(URLSearchParams) (10): FAIL
-	XMLHttpRequest.send(URLSearchParams) (100): FAIL
-	XMLHttpRequest.send(URLSearchParams) (101): FAIL
-	XMLHttpRequest.send(URLSearchParams) (102): FAIL
-	XMLHttpRequest.send(URLSearchParams) (103): FAIL
-	XMLHttpRequest.send(URLSearchParams) (104): FAIL
-	XMLHttpRequest.send(URLSearchParams) (105): FAIL
-	XMLHttpRequest.send(URLSearchParams) (106): FAIL
-	XMLHttpRequest.send(URLSearchParams) (107): FAIL
-	XMLHttpRequest.send(URLSearchParams) (108): FAIL
-	XMLHttpRequest.send(URLSearchParams) (109): FAIL
-	XMLHttpRequest.send(URLSearchParams) (11): FAIL
-	XMLHttpRequest.send(URLSearchParams) (110): FAIL
-	XMLHttpRequest.send(URLSearchParams) (111): FAIL
-	XMLHttpRequest.send(URLSearchParams) (112): FAIL
-	XMLHttpRequest.send(URLSearchParams) (113): FAIL
-	XMLHttpRequest.send(URLSearchParams) (114): FAIL
-	XMLHttpRequest.send(URLSearchParams) (115): FAIL
-	XMLHttpRequest.send(URLSearchParams) (116): FAIL
-	XMLHttpRequest.send(URLSearchParams) (117): FAIL
-	XMLHttpRequest.send(URLSearchParams) (118): FAIL
-	XMLHttpRequest.send(URLSearchParams) (119): FAIL
-	XMLHttpRequest.send(URLSearchParams) (12): FAIL
-	XMLHttpRequest.send(URLSearchParams) (120): FAIL
-	XMLHttpRequest.send(URLSearchParams) (121): FAIL
-	XMLHttpRequest.send(URLSearchParams) (122): FAIL
-	XMLHttpRequest.send(URLSearchParams) (123): FAIL
-	XMLHttpRequest.send(URLSearchParams) (124): FAIL
-	XMLHttpRequest.send(URLSearchParams) (125): FAIL
-	XMLHttpRequest.send(URLSearchParams) (126): FAIL
-	XMLHttpRequest.send(URLSearchParams) (127): FAIL
-	XMLHttpRequest.send(URLSearchParams) (13): FAIL
-	XMLHttpRequest.send(URLSearchParams) (14): FAIL
-	XMLHttpRequest.send(URLSearchParams) (15): FAIL
-	XMLHttpRequest.send(URLSearchParams) (16): FAIL
-	XMLHttpRequest.send(URLSearchParams) (17): FAIL
-	XMLHttpRequest.send(URLSearchParams) (18): FAIL
-	XMLHttpRequest.send(URLSearchParams) (19): FAIL
-	XMLHttpRequest.send(URLSearchParams) (2): FAIL
-	XMLHttpRequest.send(URLSearchParams) (20): FAIL
-	XMLHttpRequest.send(URLSearchParams) (21): FAIL
-	XMLHttpRequest.send(URLSearchParams) (22): FAIL
-	XMLHttpRequest.send(URLSearchParams) (23): FAIL
-	XMLHttpRequest.send(URLSearchParams) (24): FAIL
-	XMLHttpRequest.send(URLSearchParams) (25): FAIL
-	XMLHttpRequest.send(URLSearchParams) (26): FAIL
-	XMLHttpRequest.send(URLSearchParams) (27): FAIL
-	XMLHttpRequest.send(URLSearchParams) (28): FAIL
-	XMLHttpRequest.send(URLSearchParams) (29): FAIL
-	XMLHttpRequest.send(URLSearchParams) (3): FAIL
-	XMLHttpRequest.send(URLSearchParams) (30): FAIL
-	XMLHttpRequest.send(URLSearchParams) (31): FAIL
-	XMLHttpRequest.send(URLSearchParams) (32): FAIL
-	XMLHttpRequest.send(URLSearchParams) (33): FAIL
-	XMLHttpRequest.send(URLSearchParams) (34): FAIL
-	XMLHttpRequest.send(URLSearchParams) (35): FAIL
-	XMLHttpRequest.send(URLSearchParams) (36): FAIL
-	XMLHttpRequest.send(URLSearchParams) (37): FAIL
-	XMLHttpRequest.send(URLSearchParams) (38): FAIL
-	XMLHttpRequest.send(URLSearchParams) (39): FAIL
-	XMLHttpRequest.send(URLSearchParams) (4): FAIL
-	XMLHttpRequest.send(URLSearchParams) (40): FAIL
-	XMLHttpRequest.send(URLSearchParams) (41): FAIL
-	XMLHttpRequest.send(URLSearchParams) (42): FAIL
-	XMLHttpRequest.send(URLSearchParams) (43): FAIL
-	XMLHttpRequest.send(URLSearchParams) (44): FAIL
-	XMLHttpRequest.send(URLSearchParams) (45): FAIL
-	XMLHttpRequest.send(URLSearchParams) (46): FAIL
-	XMLHttpRequest.send(URLSearchParams) (47): FAIL
-	XMLHttpRequest.send(URLSearchParams) (48): FAIL
-	XMLHttpRequest.send(URLSearchParams) (49): FAIL
-	XMLHttpRequest.send(URLSearchParams) (5): FAIL
-	XMLHttpRequest.send(URLSearchParams) (50): FAIL
-	XMLHttpRequest.send(URLSearchParams) (51): FAIL
-	XMLHttpRequest.send(URLSearchParams) (52): FAIL
-	XMLHttpRequest.send(URLSearchParams) (53): FAIL
-	XMLHttpRequest.send(URLSearchParams) (54): FAIL
-	XMLHttpRequest.send(URLSearchParams) (55): FAIL
-	XMLHttpRequest.send(URLSearchParams) (56): FAIL
-	XMLHttpRequest.send(URLSearchParams) (57): FAIL
-	XMLHttpRequest.send(URLSearchParams) (58): FAIL
-	XMLHttpRequest.send(URLSearchParams) (59): FAIL
-	XMLHttpRequest.send(URLSearchParams) (6): FAIL
-	XMLHttpRequest.send(URLSearchParams) (60): FAIL
-	XMLHttpRequest.send(URLSearchParams) (61): FAIL
-	XMLHttpRequest.send(URLSearchParams) (62): FAIL
-	XMLHttpRequest.send(URLSearchParams) (63): FAIL
-	XMLHttpRequest.send(URLSearchParams) (64): FAIL
-	XMLHttpRequest.send(URLSearchParams) (65): FAIL
-	XMLHttpRequest.send(URLSearchParams) (66): FAIL
-	XMLHttpRequest.send(URLSearchParams) (67): FAIL
-	XMLHttpRequest.send(URLSearchParams) (68): FAIL
-	XMLHttpRequest.send(URLSearchParams) (69): FAIL
-	XMLHttpRequest.send(URLSearchParams) (7): FAIL
-	XMLHttpRequest.send(URLSearchParams) (70): FAIL
-	XMLHttpRequest.send(URLSearchParams) (71): FAIL
-	XMLHttpRequest.send(URLSearchParams) (72): FAIL
-	XMLHttpRequest.send(URLSearchParams) (73): FAIL
-	XMLHttpRequest.send(URLSearchParams) (74): FAIL
-	XMLHttpRequest.send(URLSearchParams) (75): FAIL
-	XMLHttpRequest.send(URLSearchParams) (76): FAIL
-	XMLHttpRequest.send(URLSearchParams) (77): FAIL
-	XMLHttpRequest.send(URLSearchParams) (78): FAIL
-	XMLHttpRequest.send(URLSearchParams) (79): FAIL
-	XMLHttpRequest.send(URLSearchParams) (8): FAIL
-	XMLHttpRequest.send(URLSearchParams) (80): FAIL
-	XMLHttpRequest.send(URLSearchParams) (81): FAIL
-	XMLHttpRequest.send(URLSearchParams) (82): FAIL
-	XMLHttpRequest.send(URLSearchParams) (83): FAIL
-	XMLHttpRequest.send(URLSearchParams) (84): FAIL
-	XMLHttpRequest.send(URLSearchParams) (85): FAIL
-	XMLHttpRequest.send(URLSearchParams) (86): FAIL
-	XMLHttpRequest.send(URLSearchParams) (87): FAIL
-	XMLHttpRequest.send(URLSearchParams) (88): FAIL
-	XMLHttpRequest.send(URLSearchParams) (89): FAIL
-	XMLHttpRequest.send(URLSearchParams) (9): FAIL
-	XMLHttpRequest.send(URLSearchParams) (90): FAIL
-	XMLHttpRequest.send(URLSearchParams) (91): FAIL
-	XMLHttpRequest.send(URLSearchParams) (92): FAIL
-	XMLHttpRequest.send(URLSearchParams) (93): FAIL
-	XMLHttpRequest.send(URLSearchParams) (94): FAIL
-	XMLHttpRequest.send(URLSearchParams) (95): FAIL
-	XMLHttpRequest.send(URLSearchParams) (96): FAIL
-	XMLHttpRequest.send(URLSearchParams) (97): FAIL
-	XMLHttpRequest.send(URLSearchParams) (98): FAIL
-	XMLHttpRequest.send(URLSearchParams) (99): FAIL
-	XMLHttpRequest.send(URLSearchParams): GET keeps an author-set Content-Type: FAIL
-	XMLHttpRequest.send(URLSearchParams): GET sends neither a body nor a Content-Type: FAIL
-	XMLHttpRequest.send(URLSearchParams): HEAD sends neither a body nor a Content-Type: FAIL
-	XMLHttpRequest.send(URLSearchParams): POST keeps an author-set Content-Type: FAIL
+	XMLHttpRequest.send(URLSearchParams) (0): PASS
+	XMLHttpRequest.send(URLSearchParams) (1): PASS
+	XMLHttpRequest.send(URLSearchParams) (10): PASS
+	XMLHttpRequest.send(URLSearchParams) (100): PASS
+	XMLHttpRequest.send(URLSearchParams) (101): PASS
+	XMLHttpRequest.send(URLSearchParams) (102): PASS
+	XMLHttpRequest.send(URLSearchParams) (103): PASS
+	XMLHttpRequest.send(URLSearchParams) (104): PASS
+	XMLHttpRequest.send(URLSearchParams) (105): PASS
+	XMLHttpRequest.send(URLSearchParams) (106): PASS
+	XMLHttpRequest.send(URLSearchParams) (107): PASS
+	XMLHttpRequest.send(URLSearchParams) (108): PASS
+	XMLHttpRequest.send(URLSearchParams) (109): PASS
+	XMLHttpRequest.send(URLSearchParams) (11): PASS
+	XMLHttpRequest.send(URLSearchParams) (110): PASS
+	XMLHttpRequest.send(URLSearchParams) (111): PASS
+	XMLHttpRequest.send(URLSearchParams) (112): PASS
+	XMLHttpRequest.send(URLSearchParams) (113): PASS
+	XMLHttpRequest.send(URLSearchParams) (114): PASS
+	XMLHttpRequest.send(URLSearchParams) (115): PASS
+	XMLHttpRequest.send(URLSearchParams) (116): PASS
+	XMLHttpRequest.send(URLSearchParams) (117): PASS
+	XMLHttpRequest.send(URLSearchParams) (118): PASS
+	XMLHttpRequest.send(URLSearchParams) (119): PASS
+	XMLHttpRequest.send(URLSearchParams) (12): PASS
+	XMLHttpRequest.send(URLSearchParams) (120): PASS
+	XMLHttpRequest.send(URLSearchParams) (121): PASS
+	XMLHttpRequest.send(URLSearchParams) (122): PASS
+	XMLHttpRequest.send(URLSearchParams) (123): PASS
+	XMLHttpRequest.send(URLSearchParams) (124): PASS
+	XMLHttpRequest.send(URLSearchParams) (125): PASS
+	XMLHttpRequest.send(URLSearchParams) (126): PASS
+	XMLHttpRequest.send(URLSearchParams) (127): PASS
+	XMLHttpRequest.send(URLSearchParams) (13): PASS
+	XMLHttpRequest.send(URLSearchParams) (14): PASS
+	XMLHttpRequest.send(URLSearchParams) (15): PASS
+	XMLHttpRequest.send(URLSearchParams) (16): PASS
+	XMLHttpRequest.send(URLSearchParams) (17): PASS
+	XMLHttpRequest.send(URLSearchParams) (18): PASS
+	XMLHttpRequest.send(URLSearchParams) (19): PASS
+	XMLHttpRequest.send(URLSearchParams) (2): PASS
+	XMLHttpRequest.send(URLSearchParams) (20): PASS
+	XMLHttpRequest.send(URLSearchParams) (21): PASS
+	XMLHttpRequest.send(URLSearchParams) (22): PASS
+	XMLHttpRequest.send(URLSearchParams) (23): PASS
+	XMLHttpRequest.send(URLSearchParams) (24): PASS
+	XMLHttpRequest.send(URLSearchParams) (25): PASS
+	XMLHttpRequest.send(URLSearchParams) (26): PASS
+	XMLHttpRequest.send(URLSearchParams) (27): PASS
+	XMLHttpRequest.send(URLSearchParams) (28): PASS
+	XMLHttpRequest.send(URLSearchParams) (29): PASS
+	XMLHttpRequest.send(URLSearchParams) (3): PASS
+	XMLHttpRequest.send(URLSearchParams) (30): PASS
+	XMLHttpRequest.send(URLSearchParams) (31): PASS
+	XMLHttpRequest.send(URLSearchParams) (32): PASS
+	XMLHttpRequest.send(URLSearchParams) (33): PASS
+	XMLHttpRequest.send(URLSearchParams) (34): PASS
+	XMLHttpRequest.send(URLSearchParams) (35): PASS
+	XMLHttpRequest.send(URLSearchParams) (36): PASS
+	XMLHttpRequest.send(URLSearchParams) (37): PASS
+	XMLHttpRequest.send(URLSearchParams) (38): PASS
+	XMLHttpRequest.send(URLSearchParams) (39): PASS
+	XMLHttpRequest.send(URLSearchParams) (4): PASS
+	XMLHttpRequest.send(URLSearchParams) (40): PASS
+	XMLHttpRequest.send(URLSearchParams) (41): PASS
+	XMLHttpRequest.send(URLSearchParams) (42): PASS
+	XMLHttpRequest.send(URLSearchParams) (43): PASS
+	XMLHttpRequest.send(URLSearchParams) (44): PASS
+	XMLHttpRequest.send(URLSearchParams) (45): PASS
+	XMLHttpRequest.send(URLSearchParams) (46): PASS
+	XMLHttpRequest.send(URLSearchParams) (47): PASS
+	XMLHttpRequest.send(URLSearchParams) (48): PASS
+	XMLHttpRequest.send(URLSearchParams) (49): PASS
+	XMLHttpRequest.send(URLSearchParams) (5): PASS
+	XMLHttpRequest.send(URLSearchParams) (50): PASS
+	XMLHttpRequest.send(URLSearchParams) (51): PASS
+	XMLHttpRequest.send(URLSearchParams) (52): PASS
+	XMLHttpRequest.send(URLSearchParams) (53): PASS
+	XMLHttpRequest.send(URLSearchParams) (54): PASS
+	XMLHttpRequest.send(URLSearchParams) (55): PASS
+	XMLHttpRequest.send(URLSearchParams) (56): PASS
+	XMLHttpRequest.send(URLSearchParams) (57): PASS
+	XMLHttpRequest.send(URLSearchParams) (58): PASS
+	XMLHttpRequest.send(URLSearchParams) (59): PASS
+	XMLHttpRequest.send(URLSearchParams) (6): PASS
+	XMLHttpRequest.send(URLSearchParams) (60): PASS
+	XMLHttpRequest.send(URLSearchParams) (61): PASS
+	XMLHttpRequest.send(URLSearchParams) (62): PASS
+	XMLHttpRequest.send(URLSearchParams) (63): PASS
+	XMLHttpRequest.send(URLSearchParams) (64): PASS
+	XMLHttpRequest.send(URLSearchParams) (65): PASS
+	XMLHttpRequest.send(URLSearchParams) (66): PASS
+	XMLHttpRequest.send(URLSearchParams) (67): PASS
+	XMLHttpRequest.send(URLSearchParams) (68): PASS
+	XMLHttpRequest.send(URLSearchParams) (69): PASS
+	XMLHttpRequest.send(URLSearchParams) (7): PASS
+	XMLHttpRequest.send(URLSearchParams) (70): PASS
+	XMLHttpRequest.send(URLSearchParams) (71): PASS
+	XMLHttpRequest.send(URLSearchParams) (72): PASS
+	XMLHttpRequest.send(URLSearchParams) (73): PASS
+	XMLHttpRequest.send(URLSearchParams) (74): PASS
+	XMLHttpRequest.send(URLSearchParams) (75): PASS
+	XMLHttpRequest.send(URLSearchParams) (76): PASS
+	XMLHttpRequest.send(URLSearchParams) (77): PASS
+	XMLHttpRequest.send(URLSearchParams) (78): PASS
+	XMLHttpRequest.send(URLSearchParams) (79): PASS
+	XMLHttpRequest.send(URLSearchParams) (8): PASS
+	XMLHttpRequest.send(URLSearchParams) (80): PASS
+	XMLHttpRequest.send(URLSearchParams) (81): PASS
+	XMLHttpRequest.send(URLSearchParams) (82): PASS
+	XMLHttpRequest.send(URLSearchParams) (83): PASS
+	XMLHttpRequest.send(URLSearchParams) (84): PASS
+	XMLHttpRequest.send(URLSearchParams) (85): PASS
+	XMLHttpRequest.send(URLSearchParams) (86): PASS
+	XMLHttpRequest.send(URLSearchParams) (87): PASS
+	XMLHttpRequest.send(URLSearchParams) (88): PASS
+	XMLHttpRequest.send(URLSearchParams) (89): PASS
+	XMLHttpRequest.send(URLSearchParams) (9): PASS
+	XMLHttpRequest.send(URLSearchParams) (90): PASS
+	XMLHttpRequest.send(URLSearchParams) (91): PASS
+	XMLHttpRequest.send(URLSearchParams) (92): PASS
+	XMLHttpRequest.send(URLSearchParams) (93): PASS
+	XMLHttpRequest.send(URLSearchParams) (94): PASS
+	XMLHttpRequest.send(URLSearchParams) (95): PASS
+	XMLHttpRequest.send(URLSearchParams) (96): PASS
+	XMLHttpRequest.send(URLSearchParams) (97): PASS
+	XMLHttpRequest.send(URLSearchParams) (98): PASS
+	XMLHttpRequest.send(URLSearchParams) (99): PASS
+	XMLHttpRequest.send(URLSearchParams): GET keeps an author-set Content-Type: PASS
+	XMLHttpRequest.send(URLSearchParams): GET sends neither a body nor a Content-Type: PASS
+	XMLHttpRequest.send(URLSearchParams): HEAD sends neither a body nor a Content-Type: PASS
+	XMLHttpRequest.send(URLSearchParams): POST keeps an author-set Content-Type: PASS
 	XMLHttpRequest.send(URLSearchParams): POST replaces the charset parameter of an author-set Content-Type: FAIL
-	XMLHttpRequest.send(URLSearchParams): POST uses the URLSearchParams MIME type when no Content-Type was set: FAIL
+	XMLHttpRequest.send(URLSearchParams): POST uses the URLSearchParams MIME type when no Content-Type was set: PASS
 /xhr/setrequestheader-after-send.htm: OK
 	XMLHttpRequest: setRequestHeader() after send(): PASS
 /xhr/setrequestheader-allow-empty-value.htm: OK
@@ -2275,28 +2286,28 @@
 /xhr/status-error.htm: OK
 	POST on blob uri: PASS
 	Unknown scheme: PASS
-	XMLHttpRequest: status error handling GET 200: FAIL
-	XMLHttpRequest: status error handling GET 400: FAIL
-	XMLHttpRequest: status error handling GET 401: FAIL
-	XMLHttpRequest: status error handling GET 404: FAIL
-	XMLHttpRequest: status error handling GET 410: FAIL
-	XMLHttpRequest: status error handling GET 500: FAIL
-	XMLHttpRequest: status error handling GET 699: FAIL
-	XMLHttpRequest: status error handling HEAD 200: FAIL
-	XMLHttpRequest: status error handling HEAD 404: FAIL
-	XMLHttpRequest: status error handling HEAD 500: FAIL
+	XMLHttpRequest: status error handling GET 200: PASS
+	XMLHttpRequest: status error handling GET 400: PASS
+	XMLHttpRequest: status error handling GET 401: PASS
+	XMLHttpRequest: status error handling GET 404: PASS
+	XMLHttpRequest: status error handling GET 410: PASS
+	XMLHttpRequest: status error handling GET 500: PASS
+	XMLHttpRequest: status error handling GET 699: PASS
+	XMLHttpRequest: status error handling HEAD 200: PASS
+	XMLHttpRequest: status error handling HEAD 404: PASS
+	XMLHttpRequest: status error handling HEAD 500: PASS
 	XMLHttpRequest: status error handling HEAD 699: FAIL
-	XMLHttpRequest: status error handling POST 200: FAIL
-	XMLHttpRequest: status error handling POST 404: FAIL
-	XMLHttpRequest: status error handling POST 500: FAIL
-	XMLHttpRequest: status error handling POST 699: FAIL
-	XMLHttpRequest: status error handling PUT 200: FAIL
-	XMLHttpRequest: status error handling PUT 404: FAIL
-	XMLHttpRequest: status error handling PUT 500: FAIL
-	XMLHttpRequest: status error handling PUT 699: FAIL
+	XMLHttpRequest: status error handling POST 200: PASS
+	XMLHttpRequest: status error handling POST 404: PASS
+	XMLHttpRequest: status error handling POST 500: PASS
+	XMLHttpRequest: status error handling POST 699: PASS
+	XMLHttpRequest: status error handling PUT 200: PASS
+	XMLHttpRequest: status error handling PUT 404: PASS
+	XMLHttpRequest: status error handling PUT 500: PASS
+	XMLHttpRequest: status error handling PUT 699: PASS
 /xhr/status.h2.window.html: OK
 	statusText over H2 for status 200 should be the empty string: FAIL
-	statusText over H2 for status 210 should be the empty string: FAIL
+	statusText over H2 for status 210 should be the empty string: PASS
 	statusText over H2 for status 400 should be the empty string: FAIL
 	statusText over H2 for status 404 should be the empty string: FAIL
 	statusText over H2 for status 410 should be the empty string: FAIL
@@ -2321,11 +2332,11 @@
 /xhr/thrown-error-in-events.html: OK
 	errors thrown in XMLHttpRequest's load event (using addEventListener) goes to window.onerror: PASS
 	errors thrown in XMLHttpRequest's load event (using onload) goes to window.onerror: PASS
-/xhr/timeout-cors-async.htm: ERROR
-	XMLHttpRequest: timeout event and cross-origin request: NOTRUN
+/xhr/timeout-cors-async.htm: OK
+	XMLHttpRequest: timeout event and cross-origin request: PASS
 /xhr/timeout-multiple-fetches.html: OK
-	CORS preflights should not reset the timer: FAIL
-	Redirects should not reset the timer: FAIL
+	CORS preflights should not reset the timer: PASS
+	Redirects should not reset the timer: PASS
 /xhr/timeout-sync.htm: OK
 	open() with async false when timeout is set: PASS
 	setting timeout attribute on sync request: PASS
@@ -2334,9 +2345,9 @@
 	getAuthorizationHeaderValue - no redirection: FAIL
 	getAuthorizationHeaderValue - same origin redirection: FAIL
 /xhr/xhr-authorization-redirect.any.worker.html: OK
-	getAuthorizationHeaderValue - cross origin redirection: FAIL
-	getAuthorizationHeaderValue - no redirection: FAIL
-	getAuthorizationHeaderValue - same origin redirection: FAIL
+	getAuthorizationHeaderValue - cross origin redirection: PASS
+	getAuthorizationHeaderValue - no redirection: PASS
+	getAuthorizationHeaderValue - same origin redirection: PASS
 /xhr/xhr-timeout-longtask.any.html: OK
 	Long tasks should not trigger load timeout: FAIL
 /xhr/xhr-timeout-longtask.any.worker.html: OK
@@ -2348,7 +2359,7 @@
 /xhr/xmlhttprequest-network-error-sync.htm: OK
 	XMLHttpRequest: members during network errors (sync): PASS
 /xhr/xmlhttprequest-network-error.htm: OK
-	XMLHttpRequest: members during network errors: FAIL
+	XMLHttpRequest: members during network errors: PASS
 /xhr/xmlhttprequest-sync-block-defer-scripts.html: OK
 	Check that a sync XHR in a defer script blocks later defer scripts from running: FAIL
 /xhr/xmlhttprequest-sync-block-scripts.html: OK
@@ -2359,13 +2370,13 @@
 /xhr/xmlhttprequest-timeout-aborted.html?aborted immediately after send(): OK
 	Timeout test: time to abort is -1, timeout set at 2000: PASS
 /xhr/xmlhttprequest-timeout-aborted.html?call abort() after TIME_NORMAL_LOAD: OK
-	Timeout test: time to abort is 5000, timeout set at 2000: FAIL
+	Timeout test: time to abort is 5000, timeout set at 2000: PASS
 /xhr/xmlhttprequest-timeout-aborted.html?only open()ed, not aborted: OK
 	Timeout test: No events should fire for an unsent, unaborted request: PASS
 /xhr/xmlhttprequest-timeout-abortedonmain.html?abort() from a 0ms timeout: OK
 	Timeout test: time to abort is 0, timeout set at 2000: PASS
 /xhr/xmlhttprequest-timeout-abortedonmain.html?aborted after TIME_DELAY: OK
-	Timeout test: time to abort is 1000, timeout set at 2000: FAIL
+	Timeout test: time to abort is 1000, timeout set at 2000: PASS
 /xhr/xmlhttprequest-timeout-overrides.html?timeout disabled after initially set: OK
 	Timeout test: timeout disabled after initially set, original timeout at 5000, reset at 2000 to 0: PASS
 /xhr/xmlhttprequest-timeout-overrides.html?timeout enabled after initially disabled: OK
@@ -2377,15 +2388,15 @@
 /xhr/xmlhttprequest-timeout-overridesexpires.html?timeout set to expiring value after load fires: OK
 	Timeout test: timeout set to expiring value after load fires, original timeout at 5000, reset at 4000 to 1000: PASS
 /xhr/xmlhttprequest-timeout-overridesexpires.html?timeout set to non-expiring value after timeout fires: OK
-	Timeout test: timeout set to non-expiring value after timeout fires, original timeout at 1000, reset at 2000 to 500: FAIL
-/xhr/xmlhttprequest-timeout-reused.html: ERROR
-	XHR2 Timeout Property Tests: TIMEOUT
+	Timeout test: timeout set to non-expiring value after timeout fires, original timeout at 1000, reset at 2000 to 500: PASS
+/xhr/xmlhttprequest-timeout-reused.html: OK
+	XHR2 Timeout Property Tests: PASS
 /xhr/xmlhttprequest-timeout-simple.html?load fires normally: OK
 	Timeout test: load fires normally, timeout scheduled at 5000: PASS
 /xhr/xmlhttprequest-timeout-simple.html?no time out scheduled, load fires normally: OK
 	Timeout test: no time out scheduled, load fires normally, timeout scheduled at 0: PASS
 /xhr/xmlhttprequest-timeout-simple.html?timeout hit before load: OK
-	Timeout test: timeout hit before load, timeout scheduled at 2000: FAIL
+	Timeout test: timeout hit before load, timeout scheduled at 2000: PASS
 /xhr/xmlhttprequest-timeout-synconmain.html?timeout after open: OK
 	Timeout test: Synchronous XHR must not allow a timeout to be set - setting timeout must throw: PASS
 /xhr/xmlhttprequest-timeout-synconmain.html?timeout before open: OK
@@ -2395,19 +2406,19 @@
 /xhr/xmlhttprequest-timeout-twice.html?load fires normally with same timeout set twice: OK
 	Timeout test: load fires normally with same timeout set twice, original timeout at 5000, reset at 2000 to 5000: PASS
 /xhr/xmlhttprequest-timeout-twice.html?timeout fires normally with same timeout set twice: OK
-	Timeout test: timeout fires normally with same timeout set twice, original timeout at 2000, reset at 1000 to 2000: FAIL
+	Timeout test: timeout fires normally with same timeout set twice, original timeout at 2000, reset at 1000 to 2000: PASS
 /xhr/xmlhttprequest-timeout-worker-aborted.html?aborted immediately after send(): OK
 	Timeout test: No events should fire for an unsent, unaborted request: PASS
 	Timeout test: time to abort is -1, timeout set at 2000: PASS
-	Timeout test: time to abort is 5000, timeout set at 2000: FAIL
+	Timeout test: time to abort is 5000, timeout set at 2000: PASS
 /xhr/xmlhttprequest-timeout-worker-aborted.html?call abort() after TIME_NORMAL_LOAD: OK
 	Timeout test: No events should fire for an unsent, unaborted request: PASS
 	Timeout test: time to abort is -1, timeout set at 2000: PASS
-	Timeout test: time to abort is 5000, timeout set at 2000: FAIL
+	Timeout test: time to abort is 5000, timeout set at 2000: PASS
 /xhr/xmlhttprequest-timeout-worker-aborted.html?only open()ed, not aborted: OK
 	Timeout test: No events should fire for an unsent, unaborted request: PASS
 	Timeout test: time to abort is -1, timeout set at 2000: PASS
-	Timeout test: time to abort is 5000, timeout set at 2000: FAIL
+	Timeout test: time to abort is 5000, timeout set at 2000: PASS
 /xhr/xmlhttprequest-timeout-worker-overrides.html?timeout disabled after initially set: OK
 	Timeout test: timeout disabled after initially set, original timeout at 5000, reset at 2000 to 0: PASS
 /xhr/xmlhttprequest-timeout-worker-overrides.html?timeout enabled after initially disabled: OK
@@ -2417,32 +2428,32 @@
 /xhr/xmlhttprequest-timeout-worker-overridesexpires.html?timeout set to expired value before load fires: OK
 	Timeout test: timeout set to expired value before load fires, original timeout at 5000, reset at 2000 to 1100: FAIL
 	Timeout test: timeout set to expiring value after load fires, original timeout at 5000, reset at 4000 to 1000: PASS
-	Timeout test: timeout set to non-expiring value after timeout fires, original timeout at 1000, reset at 2000 to 500: FAIL
+	Timeout test: timeout set to non-expiring value after timeout fires, original timeout at 1000, reset at 2000 to 500: PASS
 /xhr/xmlhttprequest-timeout-worker-overridesexpires.html?timeout set to expiring value after load fires: OK
 	Timeout test: timeout set to expired value before load fires, original timeout at 5000, reset at 2000 to 1100: FAIL
 	Timeout test: timeout set to expiring value after load fires, original timeout at 5000, reset at 4000 to 1000: PASS
-	Timeout test: timeout set to non-expiring value after timeout fires, original timeout at 1000, reset at 2000 to 500: FAIL
+	Timeout test: timeout set to non-expiring value after timeout fires, original timeout at 1000, reset at 2000 to 500: PASS
 /xhr/xmlhttprequest-timeout-worker-overridesexpires.html?timeout set to non-expiring value after timeout fires: OK
 	Timeout test: timeout set to expired value before load fires, original timeout at 5000, reset at 2000 to 1100: FAIL
 	Timeout test: timeout set to expiring value after load fires, original timeout at 5000, reset at 4000 to 1000: PASS
-	Timeout test: timeout set to non-expiring value after timeout fires, original timeout at 1000, reset at 2000 to 500: FAIL
+	Timeout test: timeout set to non-expiring value after timeout fires, original timeout at 1000, reset at 2000 to 500: PASS
 /xhr/xmlhttprequest-timeout-worker-simple.html?load fires normally: OK
 	Timeout test: load fires normally, timeout scheduled at 5000: PASS
 /xhr/xmlhttprequest-timeout-worker-simple.html?no time out scheduled, load fires normally: OK
 	Timeout test: no time out scheduled, load fires normally, timeout scheduled at 0: PASS
 /xhr/xmlhttprequest-timeout-worker-simple.html?timeout hit before load: OK
-	Timeout test: timeout hit before load, timeout scheduled at 2000: FAIL
+	Timeout test: timeout hit before load, timeout scheduled at 2000: PASS
 /xhr/xmlhttprequest-timeout-worker-synconworker.html?load fires normally: OK
 	Timeout test: load fires normally, timeout scheduled at 5000: PASS
 /xhr/xmlhttprequest-timeout-worker-synconworker.html?no time out scheduled, load fires normally: OK
 	Timeout test: no time out scheduled, load fires normally, timeout scheduled at 0: PASS
 /xhr/xmlhttprequest-timeout-worker-synconworker.html?timeout hit before load: OK
-	Timeout test: timeout hit before load, timeout scheduled at 2000: FAIL
+	Timeout test: Unexpected error: TimeoutError: Failed to execute 'send' on 'XMLHttpRequest': the request failed.: PASS
 /xhr/xmlhttprequest-timeout-worker-twice.html?load fires normally with no timeout set, twice: OK
 	Timeout test: load fires normally with no timeout set, twice, original timeout at 0, reset at 2000 to 0: PASS
 /xhr/xmlhttprequest-timeout-worker-twice.html?load fires normally with same timeout set twice: OK
 	Timeout test: load fires normally with same timeout set twice, original timeout at 5000, reset at 2000 to 5000: PASS
 /xhr/xmlhttprequest-timeout-worker-twice.html?timeout fires normally with same timeout set twice: OK
-	Timeout test: timeout fires normally with same timeout set twice, original timeout at 2000, reset at 1000 to 2000: FAIL
+	Timeout test: timeout fires normally with same timeout set twice, original timeout at 2000, reset at 1000 to 2000: PASS
 /xhr/xmlhttprequest-unsent.htm: OK
 	XMLHttpRequest: members during UNSENT: PASS

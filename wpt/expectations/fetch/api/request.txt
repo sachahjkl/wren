@@ -7,53 +7,53 @@
 	Initialize global state: PASS
 	iframe fetches with a "iframe" Request.destination: PASS
 /fetch/api/request/destination/fetch-destination-no-load-event.https.html: TIMEOUT
-	@import fetches with a "style" Request.destination: FAIL
-	Background image fetches with an "image" Request.destination: FAIL
-	CSS font fetches with an "font" Request.destination: FAIL
-	Cache.add() fetches with an empty string Request.destination: FAIL
-	Font loading API fetches with an "font" Request.destination: FAIL
+	@import fetches with a "style" Request.destination: NOTRUN
+	Background image fetches with an "image" Request.destination: TIMEOUT
+	CSS font fetches with an "font" Request.destination: NOTRUN
+	Cache.add() fetches with an empty string Request.destination: NOTRUN
+	Font loading API fetches with an "font" Request.destination: NOTRUN
 	Initialize global state: PASS
-	SVG use element fetches with an "image" Request.destination: FAIL
-	importScripts() fetches with a "script" Request.destination: FAIL
-	sendBeacon() fetches with an empty string Request.destination: FAIL
-/fetch/api/request/destination/fetch-destination-prefetch.https.html: OK
-	HTMLLinkElement with rel=prefetch fetches with an empty string Request.destination: FAIL
+	SVG use element fetches with an "image" Request.destination: NOTRUN
+	importScripts() fetches with a "script" Request.destination: NOTRUN
+	sendBeacon() fetches with an empty string Request.destination: NOTRUN
+/fetch/api/request/destination/fetch-destination-prefetch.https.html: TIMEOUT
+	HTMLLinkElement with rel=prefetch fetches with an empty string Request.destination: TIMEOUT
 	Initialize global state: PASS
 /fetch/api/request/destination/fetch-destination-worker.https.html: TIMEOUT
-	DedicatedWorker fetches with a "worker" Request.destination: FAIL
+	DedicatedWorker fetches with a "worker" Request.destination: TIMEOUT
 	Initialize global state: PASS
-	SharedWorker fetches with a "sharedworker" Request.destination: FAIL
-/fetch/api/request/destination/fetch-destination.https.html: OK
-	AudioWorklet module fetches with a "audioworklet" Request.destination: FAIL
-	EventSource() fetches with an empty string Request.destination: FAIL
-	HTMLAudioElement fetches with an "audio" Request.destination: FAIL
-	HTMLImageElement fetches with an "image" Request.destination: FAIL
-	HTMLImageElement with a HTMLPictureElement parent attribute fetches with an "image" Request.destination: FAIL
-	HTMLImageElement with srcset attribute fetches with an "image" Request.destination: FAIL
-	HTMLLinkElement with rel=preload and as=audio fetches with a "audio" Request.destination: FAIL
-	HTMLLinkElement with rel=preload and as=document fetches with a "document" Request.destination: FAIL
-	HTMLLinkElement with rel=preload and as=fetch fetches with an empty string Request.destination: FAIL
-	HTMLLinkElement with rel=preload and as=font fetches with a "font" Request.destination: FAIL
-	HTMLLinkElement with rel=preload and as=image fetches with a "image" Request.destination: FAIL
-	HTMLLinkElement with rel=preload and as=json fetches with a "json" Request.destination: FAIL
-	HTMLLinkElement with rel=preload and as=manifest fetches with a "manifest" Request.destination: FAIL
-	HTMLLinkElement with rel=preload and as=script fetches with a "script" Request.destination: FAIL
-	HTMLLinkElement with rel=preload and as=sharedworker fetches with a "sharedworker" Request.destination: FAIL
-	HTMLLinkElement with rel=preload and as=style fetches with a "style" Request.destination: FAIL
-	HTMLLinkElement with rel=preload and as=track fetches with a "track" Request.destination: FAIL
-	HTMLLinkElement with rel=preload and as=video fetches with a "video" Request.destination: FAIL
-	HTMLLinkElement with rel=preload and as=worker fetches with a "worker" Request.destination: FAIL
-	HTMLLinkElement with rel=preload and as=xslt fetches with a "xslt" Request.destination: FAIL
-	HTMLLinkElement with rel=stylesheet fetches with a "style" Request.destination: FAIL
-	HTMLScriptElement fetches with a "script" Request.destination: FAIL
-	HTMLVideoElement fetches with a "video" Request.destination: FAIL
-	Import declaration with `type: "css"` fetches with a "style" Request.destination: FAIL
-	Import declaration with `type: "json"` fetches with a "json" Request.destination: FAIL
-	Import declaration with `type: "text"` fetches with a "text" Request.destination: FAIL
+	SharedWorker fetches with a "sharedworker" Request.destination: NOTRUN
+/fetch/api/request/destination/fetch-destination.https.html: TIMEOUT
+	AudioWorklet module fetches with a "audioworklet" Request.destination: NOTRUN
+	EventSource() fetches with an empty string Request.destination: NOTRUN
+	HTMLAudioElement fetches with an "audio" Request.destination: NOTRUN
+	HTMLImageElement fetches with an "image" Request.destination: PASS
+	HTMLImageElement with a HTMLPictureElement parent attribute fetches with an "image" Request.destination: TIMEOUT
+	HTMLImageElement with srcset attribute fetches with an "image" Request.destination: PASS
+	HTMLLinkElement with rel=preload and as=audio fetches with a "audio" Request.destination: NOTRUN
+	HTMLLinkElement with rel=preload and as=document fetches with a "document" Request.destination: NOTRUN
+	HTMLLinkElement with rel=preload and as=fetch fetches with an empty string Request.destination: NOTRUN
+	HTMLLinkElement with rel=preload and as=font fetches with a "font" Request.destination: NOTRUN
+	HTMLLinkElement with rel=preload and as=image fetches with a "image" Request.destination: NOTRUN
+	HTMLLinkElement with rel=preload and as=json fetches with a "json" Request.destination: NOTRUN
+	HTMLLinkElement with rel=preload and as=manifest fetches with a "manifest" Request.destination: NOTRUN
+	HTMLLinkElement with rel=preload and as=script fetches with a "script" Request.destination: NOTRUN
+	HTMLLinkElement with rel=preload and as=sharedworker fetches with a "sharedworker" Request.destination: NOTRUN
+	HTMLLinkElement with rel=preload and as=style fetches with a "style" Request.destination: NOTRUN
+	HTMLLinkElement with rel=preload and as=track fetches with a "track" Request.destination: NOTRUN
+	HTMLLinkElement with rel=preload and as=video fetches with a "video" Request.destination: NOTRUN
+	HTMLLinkElement with rel=preload and as=worker fetches with a "worker" Request.destination: NOTRUN
+	HTMLLinkElement with rel=preload and as=xslt fetches with a "xslt" Request.destination: NOTRUN
+	HTMLLinkElement with rel=stylesheet fetches with a "style" Request.destination: NOTRUN
+	HTMLScriptElement fetches with a "script" Request.destination: NOTRUN
+	HTMLVideoElement fetches with a "video" Request.destination: NOTRUN
+	Import declaration with `type: "css"` fetches with a "style" Request.destination: NOTRUN
+	Import declaration with `type: "json"` fetches with a "json" Request.destination: NOTRUN
+	Import declaration with `type: "text"` fetches with a "text" Request.destination: NOTRUN
 	Initialize global state: PASS
-	SVGImageElement fetches with an "image" Request.destination: FAIL
-	XMLHttpRequest() fetches with an empty string Request.destination: FAIL
-	fetch() fetches with an empty string Request.destination: FAIL
+	SVGImageElement fetches with an "image" Request.destination: NOTRUN
+	XMLHttpRequest() fetches with an empty string Request.destination: NOTRUN
+	fetch() fetches with an empty string Request.destination: NOTRUN
 /fetch/api/request/forbidden-method.any.html: OK
 	Request() with a forbidden method CONNECT must throw.: PASS
 	Request() with a forbidden method TRACE must throw.: PASS
@@ -821,9 +821,9 @@
 	Check referrer init value of  and associated getter: PASS
 	Check referrer init value of /relative/ressource and associated getter: PASS
 	Check referrer init value of about:client and associated getter: PASS
-	Check referrer init value of http://127.0.0.1:8778/ and associated getter: PASS
-	Check referrer init value of http://127.0.0.1:8778/relative/ressource?query=true#fragment and associated getter: PASS
 	Check referrer init value of http://test.url and associated getter: FAIL
+	Check referrer init value of http://web-platform.test:8778/ and associated getter: PASS
+	Check referrer init value of http://web-platform.test:8778/relative/ressource?query=true#fragment and associated getter: PASS
 	Check referrerPolicy init value of  and associated getter: PASS
 	Check referrerPolicy init value of no-referrer and associated getter: PASS
 	Check referrerPolicy init value of no-referrer-when-downgrade and associated getter: PASS
@@ -980,7 +980,7 @@
 /fetch/api/request/request-reset-attributes.https.html: OK
 	Request.isHistoryNavigation is reset with non-empty RequestInit: FAIL
 	Request.isReloadNavigation is reset with non-empty RequestInit: FAIL
-	Request.mode is reset with non-empty RequestInit when it's "navigate": FAIL
+	Request.mode is reset with non-empty RequestInit when it's "navigate": PASS
 /fetch/api/request/request-structure.any.html: OK
 	Check bodyUsed attribute: PASS
 	Check cache attribute: PASS

@@ -201,4 +201,5 @@ func Reset() {
 	httpCacheStash.m = map[string][]map[string]any{}
 	httpCacheStash.Unlock()
 	wptDispatcherReset()
+	wptStashReset()
 }
