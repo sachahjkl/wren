@@ -321,6 +321,17 @@ test("a name cannot turn the mail into something else: it only ever appears in t
 	assert.equal(m.to, "a@example.org");
 });
 
+test("a buyer Paddle knows by an address only: the mail says it once, and does not call the licence 'Supporter'", async () => {
+	const env = makeEnv();
+	const bare = body.replace('"customer_id":', '"customer": {"name": "a@example.org", "email": "a@example.org"}, "customer_id":');
+	assert.equal((await post(env, network(), bare)).status, 200);
+	const text = env.EMAIL.sent[0].text;
+	assert.ok(text.startsWith("Hello,\n"), "no 'Hello a@example.org,'");
+	assert.ok(text.includes("\nLicensed to: a@example.org\n"), "the address once, not 'a@example.org <a@example.org>'");
+	assert.ok(text.includes("Your Wren User Licence is below"));
+	assert.ok(!text.includes("Supporter licence"));
+});
+
 test("GET /licence: 202 while the licence does not exist, then the licence", async () => {
 	const env = makeEnv();
 	const early = await get(env, `/licence?txn=${TXN}`);
