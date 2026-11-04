@@ -558,13 +558,14 @@ layer_rank :: proc(e: ^Engine, path: string) -> u32 {
 	return u32(len(rs.layers) - 1)
 }
 
+// A var() or an env() in `vs`: the value is substituted at computed-value time (substitute), valid until then.
 @(private)
 contains_var :: proc(vs: []css.Value) -> bool {
 	for v in vs {
 		switch v.kind {
 		case .Token:
 		case .Function:
-			if base.ascii_equal_fold(v.tok.text, "var") || contains_var(v.children) { return true }
+			if base.ascii_equal_fold(v.tok.text, "var") || base.ascii_equal_fold(v.tok.text, "env") || contains_var(v.children) { return true }
 		case .Block:
 			if contains_var(v.children) { return true }
 		}

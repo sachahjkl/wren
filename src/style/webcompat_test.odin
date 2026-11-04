@@ -99,6 +99,43 @@ custom_properties_keywords :: proc(t: ^testing.T) {
 	testing.expect(t, el(d, "c").padding[.Left].v == 4, "unset inherits")
 }
 
+// The values Edge computes for these on a desktop: the safe area and keyboard insets are 0, titlebar-area-* is not
+// defined outside a window controls overlay.
+@(test)
+env_substitution :: proc(t: ^testing.T) {
+	d := open_doc(`<style>
+		:root { --gutter: 16px }
+		#a { padding-left: max(var(--gutter), env(safe-area-inset-left, 0px)) }
+		#b { padding-left: max(16px, env(safe-area-inset-left)); padding-right: env( safe-area-inset-right , 30px ) }
+		#c { padding-left: 40px; padding-left: env(safe-area-inset-left) }
+		#d { padding-left: min(50px, env(safe-area-inset-left, 0px) + 20px); padding-right: clamp(10px, env(keyboard-inset-width), 90px) }
+		#e { --e: env(safe-area-inset-left, 7px); padding-left: calc(env(safe-area-max-inset-left, 0px) + 24px); padding-right: calc(var(--e) + 10px) }
+		#f { padding: 0 0 0 max(var(--gutter), env(safe-area-inset-left, 0px)) }
+		#g { padding-inline: max(var(--gutter), env(safe-area-inset-left, 0px)) }
+		#h { padding-left: env(no-such-thing, 33px); padding-right: env(titlebar-area-x, 55px) }
+		#i { padding-left: 44px; padding-left: env(no-such-thing); padding-right: env(safe-area-inset-left 0, 99px) }
+	</style><div id=a></div><div id=b></div><div id=c></div><div id=d></div><div id=e></div><div id=f></div><div id=g></div><div id=h></div><div id=i></div>`)
+	defer fixture_unload(d)
+	pad :: proc(d: ^Fixture, id: string, side: Side) -> f32 { return el(d, id).padding[side].v }
+	testing.expect_value(t, pad(d, "a", .Left), 16)
+	testing.expect_value(t, pad(d, "b", .Left), 16)
+	testing.expect_value(t, pad(d, "b", .Right), 0)
+	testing.expect_value(t, pad(d, "c", .Left), 0)   // valid until computed: it wins over the 40px
+	testing.expect_value(t, pad(d, "d", .Left), 20)
+	testing.expect_value(t, pad(d, "d", .Right), 10)
+	testing.expect_value(t, pad(d, "e", .Left), 24)
+	testing.expect_value(t, pad(d, "e", .Right), 10)
+	testing.expect_value(t, pad(d, "f", .Left), 16)
+	testing.expect_value(t, pad(d, "g", .Left), 16)
+	testing.expect_value(t, pad(d, "g", .Right), 16)
+	testing.expect_value(t, pad(d, "h", .Left), 33)
+	testing.expect_value(t, pad(d, "h", .Right), 55)
+	testing.expect_value(t, pad(d, "i", .Left), 0)    // an unknown name without fallback: invalid at computed-value time
+	testing.expect_value(t, pad(d, "i", .Right), 99)  // indices to a variable that takes none: the fallback
+	e, ok := custom_get(el(d, "e").custom, "--e")
+	testing.expect(t, ok && e == "0px", "env() in a custom property is substituted")
+}
+
 @(test)
 registered_properties :: proc(t: ^testing.T) {
 	d := open_doc(`<style>
