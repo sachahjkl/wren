@@ -8,8 +8,10 @@ images. The option is **off by default**.
 
 ## When the network is touched
 
-Never at start-up, never while the option is off, and never while the loader is held offline. The first time an art new
-tab is actually shown in a session, a background task starts; from then on it keeps a sliding window of about
+Never while the option is off, and never while the loader is held offline. With the option on, a background task starts
+about 2.5 seconds after the start (or after the option is turned on), so that the first new tab already has a painting; it
+also starts at the first art new tab if it was stopped. Until a painting is ready, the new tab shows a gradient with a
+spinner and "Fetching a painting…", and is replaced by the painting as soon as one is. From then on the task keeps a sliding window of about
 `browser.newtab.art.window` paintings ready, downloading a fresh one whenever a shown painting is consumed. The task
 stops after `browser.newtab.art.idle_minutes` with no art new tab shown and resumes at the next one.
 

@@ -6,8 +6,9 @@ package browser
 // Google Arts & Culture's "art new tab" idea, but every piece runs natively here: the engine renders the page, the
 // shell downloads and caches the images.
 //
-// Nothing reaches the network before the first art new tab of the session is shown (never at start-up, never when the
-// option is off, never while the loader is held offline). From then on a background task keeps a sliding window of about
+// Nothing reaches the network while the option is off, or while the loader is held offline. With it on, the first listing is asked
+// for a moment after the start (ART_WARMUP_MS), so that the first new tab already has a painting; the task stops after
+// browser.newtab.art.idle_minutes with no art new tab. From then on a background task keeps a sliding window of about
 // browser.newtab.art.window images ready in a dedicated folder of the profile's temporary area, each with a JSON file of
 // its metadata. A shown image is replaced by a fresh one, so the window always holds that many unseen paintings; the
 // last browser.newtab.art.window picks are remembered so the same painting does not come back at once. The downloader is
@@ -153,6 +154,7 @@ Art :: struct {
 	started:    bool,           // the background task is running (started on the first art new tab)
 	phase:      Art_Phase,
 	last_shown_ms: f64,         // loop clock when an art new tab was last shown (inactivity)
+	warm_timer: base.Handle,    // the first fetch after the start, when the option is on (ART_WARMUP_MS)
 	stop_timer: base.Handle,    // the inactivity deadline
 
 	ready:      [dynamic]^Art_Item,   // paintings downloaded and validated, newest last
@@ -225,6 +227,23 @@ art_init :: proc(app: ^App) {
 		// turning the option off while it ran stops it at once and lets the next new tab be the plain start page again
 		if !the_app.art.cfg.enabled && the_app.art.started { art_stop() }
 		if the_app.art.started { art_pump() }
+		// the option was just turned on: the first painting is fetched now, not at the next new tab
+		if the_app.art.cfg.enabled && !the_app.art.started && the_app.art.warm_timer == base.NIL_HANDLE { art_warm_up(the_app) }
+	}, app)
+	// The person turned the art new tab on: the first painting is fetched a moment after the start (the window is up first), so that
+	// the first new tab already has one instead of a gradient that waits for a listing and a download. Off: no request, as always.
+	if app.art.cfg.enabled { art_warm_up(app) }
+}
+
+// How long after the start (or after the option is turned on) the first listing is asked for.
+ART_WARMUP_MS :: 2500
+
+@(private = "file")
+art_warm_up :: proc(app: ^App) {
+	app.art.warm_timer = host.set_timer(&app.loop, ART_WARMUP_MS, 0, proc(data: rawptr) {
+		app := (^App)(data)
+		app.art.warm_timer = base.NIL_HANDLE
+		if app.art.cfg.enabled && !app.art.started { art_seen_new_tab(app) }   // (starts the background task; the idle timer stops it if no art tab comes)
 	}, app)
 }
 
@@ -232,6 +251,7 @@ art_destroy :: proc(app: ^App) {
 	config.unwatch(&app.prefs, app.art.watch)
 	art_cancel_io()
 	if app.art.stop_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.art.stop_timer) }
+	if app.art.warm_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.art.warm_timer) }
 	if app.art.wait_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.art.wait_timer) }
 	if app.art.port != 0 { images.port_close(app.art.port) }
 	// `current`, if it was consumed, is no longer in `ready`: free it separately. If it is still in `ready` it is freed with it.
