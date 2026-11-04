@@ -55,7 +55,7 @@
 				"PADDLE_API_BASE": "https://sandbox-api.paddle.com",
 				"PRICE_SUPPORTER": "pri_01m6kd3nvpkemxgwamft6z2fjw",
 				"PRICE_PATRON": "",
-				"LICENSE_PUBLIC_KEY": "",
+				"LICENSE_PUBLIC_KEY": "NLbdwv2jpoDIMu5pVxyjYBUMEu2Lvfd8StzxR0PGqs8",
 				"MAIL_FROM": "Wren <licences@froment.software>",
 				"MAIL_REPLY_TO": "contact@froment.software",
 				"ALLOWED_ORIGIN": "https://wren.froment.software,https://sachahjkl.github.io,http://localhost:8765",
