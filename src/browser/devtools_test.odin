@@ -59,6 +59,53 @@ console_line_numbers_do_not_move_when_old_lines_go :: proc(t: ^testing.T) {
 	testing.expect_value(t, con_abs(&tab, 2), 9)
 }
 
+// A navigation clears the console, and a line said before the next frame looks like "only lines were added": the rows of the old lines
+// stayed, their indexes past the end of the new list (a bounds check in console_panel, 0.6.28).
+@(test)
+console_rows_never_outlive_the_lines_they_index :: proc(t: ^testing.T) {
+	app := test_app(t)
+	app.con_prefs.levels = max(u32)
+	say :: proc(tab: ^Tab, text: string) {
+		append(&tab.console, strings.clone(text))
+		tab.console_added += 1
+	}
+	drop :: proc(tab: ^Tab, n: int) {
+		for l in tab.console[:n] { delete(l) }
+		remove_range(&tab.console, 0, n)
+	}
+	indexes_hold :: proc(t: ^testing.T, tab: ^Tab, c: ^Dev_Console, want: int) {
+		testing.expect_value(t, len(c.rows), want)
+		for r in c.rows { testing.expect(t, r.idx < len(tab.console) && con_abs(tab, r.idx) == r.abs, "a row's index names its line") }
+	}
+	tab: Tab
+	c: Dev_Console
+	defer {
+		for l in tab.console { delete(l) }
+		delete(tab.console)
+		delete(c.rows)
+		delete(c.offs)
+	}
+	for text in ([]string{"a", "b", "c", "d"}) { say(&tab, text) }
+	con_refresh(&tab, &c)
+	indexes_hold(t, &tab, &c, 4)
+
+	drop(&tab, 4)   // the navigation's console_reset
+	say(&tab, "new page")
+	con_refresh(&tab, &c)
+	indexes_hold(t, &tab, &c, 1)
+
+	say(&tab, "e")
+	say(&tab, "f")
+	say(&tab, "g")
+	con_refresh(&tab, &c)
+	indexes_hold(t, &tab, &c, 4)
+
+	drop(&tab, 2)   // con_trim: the first lines go as more come
+	say(&tab, "h")
+	con_refresh(&tab, &c)
+	indexes_hold(t, &tab, &c, 3)
+}
+
 @(test)
 labels_never_hold_an_id_marker_or_a_line_break :: proc(t: ^testing.T) {
 	test_app(t)

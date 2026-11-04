@@ -45,6 +45,7 @@ Dev_Console :: struct {
 	key_fs:    f32,
 	key_stop:  u64,
 	built_abs: u64,                    // lines before this absolute number are in `rows`
+	built_first: u64,                  // the absolute number of t.console[0] when `rows` was made: what their `idx` counts from
 	skip:      int,                    // inside a folded group: the depth that ends the fold (-1: none)
 	expanded:  map[u64]bool,
 	folded:    map[u64]bool,           // group headers folded by the user
@@ -192,7 +193,7 @@ con_next_depth :: proc(t: ^Tab, i: int) -> int {
 	return d
 }
 
-@(private = "file")
+@(private)
 con_refresh :: proc(t: ^Tab, c: ^Dev_Console) {
 	ser := dt_filter_prepare(&c.filter)
 	ser = ser * 31 + u64(the_app.con_prefs.levels) * 7 + (the_app.con_prefs.hide_network ? 3 : 0) + (the_app.con_prefs.group_similar ? 5 : 0)
@@ -201,14 +202,15 @@ con_refresh :: proc(t: ^Tab, c: ^Dev_Console) {
 	same := c.key_tab == t.id && c.key_ser == ser && c.key_exp == c.exp_ver && c.key_fs == the_app.dtm.row && c.key_stop == stop
 	first_abs := con_abs(t, 0)
 	if same && c.key_added == t.console_added && c.key_len == len(t.console) { return }
-	// only lines were added, and none of what the rows hold went: the new ones are appended
-	incremental := same && c.key_added < t.console_added && c.built_abs >= first_abs && c.built_abs <= t.console_added
+	// only lines were added, and none went (a reset or a trim moves every `idx`): the new ones are appended
+	incremental := same && c.key_added < t.console_added && c.built_first == first_abs && c.built_abs <= t.console_added
 	if !incremental {
 		clear(&c.rows)
 		c.built_abs = first_abs
 		c.skip = -1
 	}
 	c.key_tab, c.key_added, c.key_len, c.key_ser, c.key_exp, c.key_fs, c.key_stop = t.id, t.console_added, len(t.console), ser, c.exp_ver, the_app.dtm.row, stop
+	c.built_first = first_abs
 	start := int(c.built_abs - first_abs)
 	// a header is known by the line after it: the last line waits until the next arrives
 	end := len(t.console)
