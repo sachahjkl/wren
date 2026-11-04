@@ -240,6 +240,7 @@ sym_name :: proc(proc_h: win.HANDLE, addr: u64, buf: []u8) -> (name: string, ok:
 }
 
 SAMPLE_DEPTH :: 24
+SAMPLE_PERIOD_NS :: 1_000_000
 Sample :: struct { rip: u64, phase: Phase, t: i64, from: [SAMPLE_DEPTH]u64 }   // from: the callers inside the executable, innermost first (WREN_SAMPLE_STACK=1)
 
 // A sample of one of the process's other threads (WREN_SAMPLE_THREADS=1): where it was, and who called (the executable's frames).
@@ -247,6 +248,8 @@ Osample :: struct { tid: u32, rip: u64, from: [SAMPLE_DEPTH]u64 }
 
 // A thread that ran this recently is sampled at every tick (other_sampler_proc).
 THREAD_ACTIVE_SECONDS :: 1.0
+// ... when it ran more than this since the last tick: being stopped and resumed moves the counter of a thread that sleeps too.
+THREAD_ACTIVE_CYCLES :: 1_000_000
 
 Prof :: struct {
 	on:        bool,
@@ -395,10 +398,19 @@ callers_in_exe :: proc(ctx: ^win.CONTEXT) -> (out: [SAMPLE_DEPTH]u64) {
 	return
 }
 
+// A sampler's millisecond, on a high-resolution timer: a Sleep(1) lasts the system's timer period, 5 to 16 ms in a process
+// without a window to show, and one load of a page was a few samples.
+sample_tick :: proc(timer: rawptr) {
+	if timer == nil || !pacer_timer_arm(timer, SAMPLE_PERIOD_NS) { win.Sleep(1); return }
+	win.WaitForSingleObject(win.HANDLE(timer), win.INFINITE)
+}
+
 sampler_proc :: proc(_: ^thread.Thread) {
 	sync.atomic_store(&sampler_tid, win.GetCurrentThreadId())   // (the other threads' sampler leaves it out)
+	timer := pacer_timer_create()
+	defer pacer_timer_destroy(timer)
 	for !sync.atomic_load(&prof.stop) {
-		win.Sleep(1)
+		sample_tick(timer)
 		if win.SuspendThread(prof.target) == ~u32(0) { continue }
 		ctx: win.CONTEXT
 		ctx.ContextFlags = prof.stacks ? CONTEXT_FULL_AMD64 : CONTEXT_CONTROL_AMD64
@@ -464,7 +476,9 @@ module_of :: proc(addr: u64) -> string {
 // stopped in turn and their instruction pointers and callers read (the main thread has its own sampler): a busy worker
 // among ninety mostly idle threads has its samples, the others none. A thread's cycle counter moves when it leaves the
 // processor, not while it runs: choosing the thread whose counter moved most found each one just after its burst, in its
-// wait (0 of 1873 samples running on repeated loads of p10k, whose bursts last a few ms). Its "wait" samples are real waits.
+// wait (0 of 1873 samples running on repeated loads of p10k, whose bursts last a few ms), and each sample moved the counter of
+// the thread it stopped, sleeping or not. It sees threads that run for long (nodes10k's page thread); those bursts it still
+// does not (0 of 44 807 samples on repeated loads of p10k, not explained: docs/performance.md round 25).
 other_sampler_proc :: proc(_: ^thread.Thread) {
 	pid := win.GetCurrentProcessId()
 	me := win.GetCurrentThreadId()
@@ -472,8 +486,10 @@ other_sampler_proc :: proc(_: ^thread.Thread) {
 	Watched :: struct { tid: u32, h: win.HANDLE, cycles: u64, ran: i64 }
 	threads := make([dynamic]Watched, 0, 128)
 	next_refresh: i64
+	timer := pacer_timer_create()
+	defer pacer_timer_destroy(timer)
 	for !sync.atomic_load(&prof.stop) {
-		win.Sleep(1)
+		sample_tick(timer)
 		now := qpc()
 		if now >= next_refresh {
 			next_refresh = now + i64(prof.freq / 2)
@@ -503,7 +519,7 @@ other_sampler_proc :: proc(_: ^thread.Thread) {
 		for &w in threads {
 			c: u64
 			if !QueryThreadCycleTime(w.h, &c) { continue }
-			if c != w.cycles { w.ran = now }
+			if c - w.cycles > THREAD_ACTIVE_CYCLES { w.ran = now }
 			w.cycles = c
 			if w.tid == sync.atomic_load(&sampler_tid) || w.ran == 0 || now - w.ran > active { continue }
 			if win.SuspendThread(w.h) == ~u32(0) { continue }

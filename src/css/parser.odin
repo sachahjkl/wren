@@ -322,7 +322,7 @@ parse_rule_list :: proc(p: ^Parser, top_level: bool) -> []^Rule {
 }
 
 // A qualified rule outside any other: what it gathers while it is read goes with it, so that a sheet of thousands of rules
-// reads and writes the same few KB, not megabytes of memory touched once.
+// reads and writes the same memory, not fresh memory for each.
 @(private)
 parse_outer_rule :: proc(p: ^Parser) -> ^Rule {
 	if p.rule_arena == nil { return parse_qualified_rule(p, nil) }

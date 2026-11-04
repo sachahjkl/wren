@@ -2053,6 +2053,112 @@ frame the box as it then shows); its thumb (the same, and no `mousedown` for the
 90 ms apart at a 200 ms blink: one differs from the first). Each fails without its change (the tests built against the
 shell without it: the values above).
 
+## What changed, round 25: what a first load waited for, found by loading it again and again
+
+Item 10 of the list, as it stood after round 18 (and the list brought up to date: rounds 19 to 24 had not been added to
+it). The browser: `wrentool bench perf`, profile builds, the base (4e78b4fa: 0.6.30 and the Inventory's commit) and the
+round's binary in turn, the order turning, 7 runs of each, median, range in brackets; times in ms from the navigation's
+start. Conditions: other agents built and ran WPT for most of the round (6.7 of the 16 logical processors busy besides the
+bench at one reading; p10k's first paint then 72 against 62 ms, ranges overlapping: those series are not below). The
+table below is the last series, taken when the machine had gone quiet (0.5 processors busy just after it). A sheet's
+parsing and index were measured alone, outside the browser (a program of `wb:css` and `wb:style` over p10k's sheet, 87 KB
+and 2 000 rules, 41 passes a run, the thread's cycles by `QueryThreadCycleTime`, 11 interleaved runs, and on the loaded
+machine 15): the same code gave 11 to 19 ms from one run to the next while the others ran, cycles moved with it, so the
+figures are the quiet series.
+
+**The measure.** One load is about 30 samples of the window's thread, and nothing above one sample: why round 18 saw no
+function stand out. `p10k_renav` and `legacy_renav` load a page again and again from itself, for as long as `-Seconds`
+says. And timers put for the round around the stages (not kept) gave what the samples could not, for one load of p10k,
+in ms: the parser's thread 20.2 (`html.parse_into` 10.1, the walk for `<style>` and `css.parse_stylesheet` 7.3, decoding
+and the rest 2.8); the window's thread `compute_styles` 13.9 (the engine's rebuild 7.2, half of it compiling declarations;
+the style threads 3.9; the rest 2.8), the layout 15.6, then a second layout of 1.6.
+
+1. **`legacy-html.html`'s task of 18 to 21 ms: the codecs' probe, under the pool's lock** (`decoder_thread`,
+   `src/images/pool.odin`). Unidentified since round 18, its samples in waits. With callers (`WREN_SLOW_MS=10
+   WREN_SAMPLE_STACK=1`) 18 to 25 of the frame's samples read `ZwWaitForAlertByThreadId <- images::submit <-
+   page::entry_start`: the page's first image waits for `Decoder.mu`, which the pool's first thread held while it probed
+   the optional codecs (`CoCreateInstance` of WIC's HEIF decoder). Round 17 took the wait out of `decoder_start`; the lock
+   stayed. The first thread to claim the probe (`codecs.claimed`, an atomic) now runs it holding nothing, and a second
+   thread decodes meanwhile. Test: `a_submit_does_not_wait_for_the_codecs_probe` (images: the pool's lock is free while a
+   gate holds the probe; fails with the lock around it, checked).
+2. **A sheet's selectors held 3.3 KB a rule** (`css/selectors.odin`). Each list of a selector was a dynamic array in the
+   sheet's arena, where the default first capacity of eight stays for good, for each compound and each selector, in
+   pages touched once. The lists start at what selectors use (`COMPOUNDS_RESERVE`, `SIMPLES_RESERVE`) and `split_commas`
+   counts first. p10k's sheet 6 711 -> 2 782 KB (a count, the same in every run), and what reads the rules after it
+   gains too: the rebuild below moved without being touched.
+3. **A rule's scratch memory goes with it** (`parse_outer_rule`, `css/parser.odin`). What a rule gathers while it is read
+   (prelude, values, declarations, lists that start at eight) stayed in the sheet's scratch arena until the end: fresh
+   memory for every rule, faulted in and given back. An arena of its own, emptied after each rule outside any other,
+   reads and writes the same memory. Beside it: names and preprocessing have an ASCII path (a name was appended byte by byte through
+   `utf8.encode_rune`), an An+B no longer goes through the formatter (`fmt` was 4 % of p10k's parsing).
+4. **The rebuild mapped every node of the document to order its sheets** (`order_sheets`, `style/engine.odin`): a hash
+   table of every node at each rebuild, on the window thread, for the places of a few owners. Now an array by handle
+   index and a walk that ends at the last owner (usually in the head). The program alone has no document: the rebuild
+   cost 1.5 ms more in the browser than alone before (5.7 against 4.17, two series), 0.1 after (3.3 against 3.16). Beside it: one walk of a
+   declaration's values for viewport and container units, an index key starts with two entries, not eight. Test:
+   `sheets_follow_their_owners_in_tree_order` (style).
+5. **The first read of a layout was laid out twice** (`js_layout_update`, `src/browser/js_layout_shell.odin`). A page's first
+   pass is forced during `run_animation_frames` (the Animation phase, which is why the report showed no full pass for it),
+   and the frame's own layout then ran an incremental pass over a document nothing had changed: finish, display list and
+   bands, 0.8 to 1.6 ms. `layout_stale` said why (printed for the round): the images' generation, 2 against 5 on a page with
+   no image, the tab's being that of its last frame. The forced pass now notes the page's generation. Frames of a first
+   paint with a second pass 1.00 -> 0.00 a load (7 runs of 14 loads, no exception).
+6. **The profiler.** Each of these found the one above it:
+   - A name was the nearest public symbol before the address, however far: everything the PDB has no procedure for read as
+     `_extendhfsf2` (`host::pool_take` "calling" it; 7 % of the forced layout's samples). Round 17's "half-float
+     conversions' calls" in `text.html` are not established: its samples of this round do not show the name. Such
+     addresses are named by their source line now (`sort.odin:43`).
+   - The layout pass a read forced was not recorded (`prof_layout` was called by the frame's own only), and a frame's last
+     pass replaced the one before: the report said "Incremental" for p10k's only real pass. The longer pass of a frame is
+     kept. The steps of a pass that does not run them keep their last values (`Layout.stats`), which is what made that
+     row read as a pass of 7 ms.
+   - `Sleep(1)` lasted 5 to 16 ms in a process without a window to show: the samplers wait on a high-resolution timer
+     (2 651 samples in 15 s of `p10k_renav`, 16 383 in 20 s).
+   - **Not solved: `WREN_SAMPLE_THREADS=1` does not see p10k's threads.** 0 of 408, 1 873 and, after what follows, 44 807
+     samples running, though the parser alone runs 10 to 20 ms a load. Choosing the thread whose cycles moved most found
+     each just after its burst (the counter moves when a thread leaves the processor) and each sample moved the counter of
+     the thread it stopped, sleeping or not: the sampler now takes every thread that ran over a million cycles in the last
+     second, and shows the threads' names. On sustained work it reads well (nodes10k: 799 of 41 217 running, the page
+     thread 226 of 1 839, `place_element`, `finish`...); on bursts of a few ms still nothing, and I do not know why. So
+     the brief's profile of the threads was not obtained, the timers above stand for it, and ETW (`wrentool trace`, an
+     elevated prompt) is what is left to ask.
+
+| | before | after |
+|---|---|---|
+| `legacy-html.html`: first contentful paint, load | 29.7 (28.6-51.3), 29.2 (28.1-50.8) | 7.4 (7.1-8.2), 7.2 (6.5-12.8) |
+| p10k: DOM interactive, first contentful paint | 22.0 (19.8-22.9), 48.9 (43.5-52.6) | 18.2 (17.8-20.0), 39.7 (38.3-42.8) |
+| p10k, per load (`p10k_renav`, 6 s, 7 runs): the engine's rebuild | 5.7 (5.1-6.6) | 3.3 (3.1-4.5) |
+| ... the full style pass, rebuild included | 11.3 (10.1-13.6) | 8.2 (7.9-11.1) |
+| ... the forced style and layout | 22.9 (20.9-28.4) | 19.5 (18.6-25.3) |
+| ... the frame of its first paint, without its wait | 27.2 (26.4-37.0) | 24.0 (23.1-33.8) |
+| p10k's sheet alone, parsed: Mcycles, ms (11 runs) | 23.4, 6.18 | 15.2, 4.02 |
+| ... indexed (`engine_rebuild`, no document) | 15.7, 4.17 | 11.9, 3.16 |
+| ... its memory | 6 711 KB | 2 782 KB |
+| `shadow-dom.html`: first contentful paint, load | 14.2 (12.9-21.0), 19.3 (17.6-29.5) | 13.5 (13.1-14.8), 18.6 (17.9-20.0) |
+| `index.html`: first contentful paint | 10.8 (10.0-19.4) | 10.0 (9.4-15.9) |
+| `modern-css.html`: first contentful paint | 8.6 (8.2-12.4) | 7.9 (7.8-15.2) |
+| `js-dom.html`: first contentful paint | 8.0 (7.2-16.0) | 8.0 (7.2-13.8) |
+| `text.html`: first contentful paint | 15.8 (15.1-39.0) | 16.3 (14.7-25.7) |
+| `style.html`: first contentful paint, load | 6.7 (6.1-11.7), 9.4 (8.8-15.3) | 7.4 (6.2-22.5), 10.5 (8.8-27.1) |
+
+The first two rows and the rebuild are the gains; their ranges do not meet. The rows from `shadow-dom.html` down are inside
+their ranges, no gain to claim and none lost: `style.html`'s medians are higher, with runs of 22.5 and 27.1 ms in its
+range, and the series was not repeated. `text.html`'s first paint has two modes (15 and 50 to 80
+ms) in both builds, on the loaded series too: a frame's slot, not looked into.
+
+7. **Measured, not changed.** `probe_context` copies two `Computed` of 1 056 bytes for each rule (3 % of a rebuild, under
+   the noise of any series here). `selector_text` serialized at parse time, 12 % of parsing: reading it from the source
+   when asked would take it, against the six places that read the field. Compiling declarations on the style threads:
+   what is left of the rebuild is half that, about 1.5 ms of p10k's load, for arenas per thread that live as long as the
+   engine's: not tried. No change was tried and dropped this round; items 2 to 4 were built in two steps, and the program
+   alone took them apart (15 runs, loaded: parsing 41.3 -> 30.6 -> 25.0 Mcycles, indexing 29.7 -> 22.1 -> 21.0).
+
+Tests: `test_all -Quick -Only` each of the unit tests of css, style, images, layout, page and browser, "style run-time
+test", "images end-to-end test" and "DOM for JavaScript end-to-end test": all pass. New: `sheet_memory_test.odin` (css:
+a name's ASCII path and what it leaves to the long way, what a rule keeps once its memory is emptied, lists past their
+reserve and a plain rule under 2 KB, An+B written without the formatter), the two named above. Not run: the full suite,
+WPT, the unit tests under AddressSanitizer.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -2218,8 +2324,14 @@ After rounds 22 and 24. Off this list too: what the user does while a script is 
 keys, then animations of `transform` and `opacity`, scroll boxes and the caret, drawn by chrome frames from the last
 layout). Hover stays the page's, by design (round 24, item 4).
 
-1. **The script stage of DOM-heavy pages, what is left** (nodes10k: 11.8 ms of a 17.7 ms frame; the browser's side
-   1.4 ms of it). In order of the engine's samples: the interpreter itself (`interp_hot` 17 % before round 15's 15 to 25 %
+After round 25. The list is in the order of its measures again: item 10 is item 2, done for two of what it named
+(`legacy-html.html`'s task, identified and gone; p10k's first passes in part), and the profiler's bursts are in item 9.
+Item 1's figures were old: measured again they are higher, and nothing here says why.
+
+1. **The script stage of DOM-heavy pages, what is left** (`js_nodes10k` on the day of round 25: the Animation phase 18.6 ms of a
+   frame of 20.6 to 29.5 ms, 3 runs, where this list kept 17.7 ms; the base 25.2 to 32.2 ms, 3 runs, so not this round's; the
+   JIT off 28.9 to 30.7 ms and one run of 83 under load, 3 runs interleaved. To bisect by build first: nothing here says
+   what moved it, and the machine was not quiet for all of it). In order of the engine's samples: the interpreter itself (`interp_hot` 17 % before round 15's 15 to 25 %
    on the loop's own instructions, `call_native` and the bridge 8 %; a DOM call costs 50 to 100 ns over the loop); the
    collection the DOM asks for (2.9 ms every 2 frames: the browser's `Node_unpinAll`, the prologue's walk of every
    wrapper with `JS_IsUntouched` for each, the finalizers' chain of calls, the sweep's frees, `gc_drain`); the browser's
@@ -2229,8 +2341,18 @@ layout). Hover stays the page's, by design (round 24, item 4).
    frame). Measured and left: a flag per interface for the unforgeable members of its chain (round 7); the finalizers'
    skipped calls, the pre-sweep walks in one, the prologue's walk inlined, `temp_reset` in place (round 12); the hot
    loop as a procedure of its own (round 15: 8 % slower than inlined).
-2. **Layout of DOM-heavy pages: the steps' own code** (nodes10k: the window thread waits 3.1 ms a frame, the page
-   thread's full pass: tree 0.96, layout 1.07, finish 0.32, display 0.37, bands 0.13 ms). Round 10 found the records'
+2. **Pages loaded from the navigation** (rounds 15 to 18 and 25; `wrentool bench perf -Only p10k_nav,nav_...`,
+   `p10k_renav` for the samples), by cost: p10k's first contentful paint is 39.7 ms: its parser's thread about 16 (`html.parse_into`
+   10, then the sheet 4 to 5: the sheet waits for the whole document, on the same thread, when it could start with the
+   `</style>`), then the window's thread 24: the layout about 11 (flat in the samples; `place_element`, the threads'
+   paragraphs, growing lists: `new_box` still reallocates), the style pass 8 (the rebuild 3.3, the style threads 3.9). Then
+   `text.html`'s first paint (`Paint_Items`, DirectWrite's `glyph_formats` under `platform_color_glyph`, the bands, the
+   outlines; `_extendhfsf2` was a misnamed sample, round 25) and its two modes; the first realm (5 ms from response to
+   script, instantiation included: the instance made on the read-ahead thread would take a part). A task that arrives
+   during the swap chain's wait (a fixed refresh screen's whole wait, at most a refresh) still waits for its end: the
+   latency object cannot be woken by the loop.
+3. **Layout of DOM-heavy pages: the steps' own code** (nodes10k: the Layout phase 5.3 ms a frame on the day of round 25,
+   3.1 ms when this was written; the page thread's full pass then: tree 0.96, layout 1.07, finish 0.32, display 0.37, bands 0.13 ms). Round 10 found the records'
    layout no gain, round 11 took the image search, the cut of the flow and the display item's padding. What the profile
    shows now, by cost: building the box tree (19 % of the page thread; `place_element`, and the layout threads'
    summaries of the styles); the block layout of the columns (34 %, no part above 0.11 ms in process: `apply_shifts`
@@ -2238,34 +2360,26 @@ layout). Hover stays the page's, by design (round 24, item 4).
    whose paragraph came from the threads and whose style is its siblings' is what is left to try); finishing (`finish`
    itself 6 %); `note_refresh_inputs` (4.5 %: every display item and inline item read again after the list is made,
    which the shares making the list could note as they go); the bands (4.4 %).
-3. **What a full style pass still costs per page** (`mutation_fullstyle`, the style stage 0.75 ms in the browser, a pass
+4. **What a full style pass still costs per page** (`mutation_fullstyle`, 3.34 ms of CPU a frame in all, 5 runs, round 25; the style stage 0.75 ms in the browser, a pass
    0.57 ms in process with seven threads since round 14, four fifths of that on the threads since round 9): on the
    style threads, matching
    (`match_chain`, the families of pages whose elements are each of their own kind: modern-css, p10k, matched in full
    as before) and the journal's comparison of the pairs that differ; on the window thread, the weights of the subtrees
    (0.07 ms, one walk since round 9: weights the DOM keeps would cost every insertion).
-4. **The temporary arenas of the window thread and of the thread pool** (`src/host`): emptied by zeroing what they held
+5. **The temporary arenas of the window thread and of the thread pool** (`src/host`): emptied by zeroing what they held
    after each frame or job (`mem_free_all` and its `memset` are 6 to 12 % of some pool threads' samples on nodes10k), and
    given back past their first block. Allocations that need no zero (`make` of what is overwritten whole) are the gain
    there, not when the zeroing happens (round 5, item 5).
-5. **The atlas lock and the word cache's 64 locks** (toolkit): toolkit 0.64.0 took the atlas lock once per run of glyphs
+6. **The atlas lock and the word cache's 64 locks** (toolkit): toolkit 0.64.0 took the atlas lock once per run of glyphs
    and a word cache hit under a shared lock (its `docs/locks.md`: 8 threads, a word's shape 442 -> 194 ns, a glyph's bitmap
    120 -> 17 ns); what is left is measuring the page's text again before any per-thread front.
-6. **The style index's string tables** (`style/engine.odin:66-68`): atoms (interned ids) and flat arrays by atom (looked
+7. **The style index's string tables** (`style/engine.odin:68-69`): atoms (interned ids) and flat arrays by atom (looked
    up now only for the first element of each kind of a family).
-7. **The job queues of the blocking pool, the image decoders, the script compiler and the caches** (the table above):
+8. **The job queues of the blocking pool, the image decoders, the script compiler and the caches** (the table above):
    measured first (round 3: a lock-free queue lost to the loop's mutex); a worker's `ordered_remove(0)` is a cost of its own.
-8. **The profiler**: correct the bias of samples taken in a system call.
-9. **The interpreter, what is left after its loop** (round 15): the full dispatch of `interp_run` for what the loop
+9. **The profiler**: the threads' bursts of a few ms (round 25: 0 running of 44 807 samples on p10k, not explained; ETW's context
+   switches would say); correct the bias of samples taken in a system call.
+10. **The interpreter, what is left after its loop** (round 15): the full dispatch of `interp_run` for what the loop
    leaves (closures made, `arguments`, spreads, destructuring of iterables: the two cases of `macro.js` that did not gain
    are there), and native callbacks (`sort`, `forEach`: an `interp_run` activation each). A handler added to the loop
    must call nothing itself (`interp_hot.odin`'s header says how).
-10. **Pages loaded from the navigation** (rounds 15 to 18; `wrentool bench perf -Only p10k_nav,nav_...`), by cost:
-   p10k's first style, layout and paint passes (23 ms of the 34 ms frame of its first paint, its first contentful paint
-   at 44 ms: most of it on the style and layout threads, to be profiled with `WREN_SAMPLE_THREADS=1`, round 18 item 3);
-   `legacy-html.html`'s task of 18 to 21 ms in the frame before its first paint (its samples in waits: not identified);
-   what is left of `text.html`'s first paint (`Paint_Items` 15.6 ms: the color glyph probe of color faces, the
-   half-float conversions' calls, the outlines; Slug's data made while shaping only moved it onto the layout the paint
-   waits for, round 17 item 3); the first realm (5 ms from response to script, instantiation included: the instance
-   made on the read-ahead thread would take a part). A task that arrives during the swap chain's wait (a fixed refresh
-   screen's whole wait, at most a refresh) still waits for its end: the latency object cannot be woken by the loop.
