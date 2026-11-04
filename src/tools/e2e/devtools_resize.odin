@@ -13,6 +13,7 @@ import "wb:e2e"
 
 @(private = "file") RESIZE_STEPS :: [?][2]int{{1100, 760}, {900, 600}, {1270, 800}, {760, 480}, {1000, 700}}   // all within the monitor's size
 @(private = "file") AT_REST :: [2]int{1000, 700}
+@(private = "file") SCALE_DPI :: 96                            // 100 %, whatever the monitor: at 200 % the narrow steps leave the tab no room, and it shrinks in the strip compared
 @(private = "file") HEADER_STRIP :: e2e.Rect{0, 0, 260, 44}   // the window's top left: the tab, the panel's header: what a scaled surface would move
 @(private = "file") SAME_WITHIN :: 8                          // a channel's difference
 @(private = "file") STRIP_DIFFERS_AT_MOST :: 40               // pixels
@@ -26,7 +27,7 @@ expect_same_buffers :: proc(t: ^testing.T, s: ^e2e.Surface, want: [2]int, what: 
 @(test)
 a_window_resized_keeps_its_surface :: proc(t: ^testing.T) {
 	page := e2e.file_page(e2e.temp_folder(t), "static.html", `<!doctype html><meta charset=utf-8><title>static</title><body style="margin:0;background:#fff"><h1>Nothing moves</h1><p>A static page.</p>`)
-	s := e2e.start(t, {size = AT_REST, hidden = true, url = page, prefs = {"browser.devtools.visible=true", "browser.devtools.tab=console"}})
+	s := e2e.start(t, {size = AT_REST, dpi = SCALE_DPI, hidden = true, url = page, prefs = {"browser.devtools.visible=true", "browser.devtools.tab=console"}})
 	e2e.wait_chrome_still(s)
 	s0 := e2e.stats(s).surface
 	testing.expectf(t, s0.buffers.x >= AT_REST.x && s0.buffers.y >= AT_REST.y, "the buffers hold the window: %v", s0.buffers)
