@@ -344,6 +344,14 @@
   p("objects: literals", lits(RUN));
   function arrs(n) { var s = 0, a; for (var i = 0; i < n; i++) { a = [i, i * 0.5, "s", null, [i]]; s += a.length + a[0] + a[4][0]; } return show(s) + " " + a[1]; }
   p("objects: array literals", arrs(RUN));
+  // objects the code allocates itself: their prototype the constructor's (closures of one function, each with its own;
+  // the prototype replaced while the loop runs), literals given more properties than they hold inline, one frozen
+  function mkClass() { return function K(v) { this.v = v; }; }
+  var K1 = mkClass(), K2 = mkClass();
+  function mkKs(F, n) { var s = 0, last; for (var i = 0; i < n; i++) { last = new F(i); s += last.v & 3; if (i === n >> 1) { F.prototype = { half: 1 }; } } return s + " " + (Object.getPrototypeOf(last) === F.prototype) + " " + last.half; }
+  p("allocation: constructions", mkKs(K1, RUN), mkKs(K2, RUN), mkKs(K1, RUN));
+  function grow(n) { var s = 0, o; for (var i = 0; i < n; i++) { o = {}; o.a = i; o.b = 1; o.c = 2; o.d = 3; o.e = 4; o.f = 5; s += o.f + o.a; if ((i & 1023) === 0) { Object.freeze(o); } } return s + " " + Object.keys(o).join("") + " " + Object.isExtensible({}) + " " + Object.isFrozen(o); }
+  p("allocation: literals grown", grow(RUN));
 
   // strings made and compared by compiled code: + and += of strings with numbers, bools, null, undefined, BigInts,
   // objects whose conversion has an effect (made once) or throws, symbols (a TypeError); === of strings equal by value
