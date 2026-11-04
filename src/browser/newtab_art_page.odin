@@ -125,11 +125,12 @@ ART_STYLE :: `
   .art-bottom { position: fixed; bottom: 0; left: 0; right: 0; height: 220px;
                 background-image: linear-gradient(to top, rgba(5,8,14,0.82), rgba(5,8,14,0)); pointer-events: none; }
   .art-shortcuts { position: fixed; top: 26px; left: 0; right: 0; display: flex; justify-content: center; flex-wrap: wrap; gap: 2px 24px; }
-  .art-chip { display: inline-flex; align-items: center; gap: 8px; padding: 5px 2px; color: rgba(241,244,251,0.62); text-decoration: none;
-              font-size: 13px; text-shadow: 0 1px 5px rgba(0,0,0,0.85); border-bottom: 1px solid transparent; }
+  .art-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 13px 6px 10px; border-radius: 16px; color: rgba(241,244,251,0.94);
+              text-decoration: none; font-size: 13px; text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+              background-color: rgba(8,11,18,0.5); backdrop-filter: blur(10px); }
   .art-chip svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
                   filter: drop-shadow(0 1px 3px rgba(0,0,0,0.7)); }
-  .art-chip:hover { color: #ffffff; border-bottom-color: rgba(255,255,255,0.55); }
+  .art-chip:hover { color: #ffffff; background-color: rgba(8,11,18,0.72); }
   .art-caption { position: fixed; left: 28px; bottom: 24px; right: 28px; display: flex; align-items: flex-end;
                  justify-content: space-between; gap: 20px; }
   .art-text { max-width: 70%; text-shadow: 0 1px 6px rgba(0,0,0,0.85); }
@@ -138,10 +139,11 @@ ART_STYLE :: `
   .art-meta a { color: #ffd699; text-decoration: none; }
   .art-meta a:hover { text-decoration: underline; }
   .art-license { margin: 4px 0 0; font-size: 12px; color: #9aa6c0; letter-spacing: 0.2px; }
-  .art-actions { display: flex; gap: 2px; align-items: center; }
-  .art-btn { padding: 5px 9px; border-radius: 7px; color: rgba(241,244,251,0.58); text-decoration: none; font-size: 13px;
-             white-space: nowrap; text-shadow: 0 1px 4px rgba(0,0,0,0.8); }
-  .art-btn:hover { color: #ffffff; background-color: rgba(255,255,255,0.14); }
+  .art-actions { display: flex; gap: 2px; align-items: center; padding: 3px; border-radius: 10px;
+                 background-color: rgba(8,11,18,0.5); backdrop-filter: blur(10px); }
+  .art-btn { padding: 5px 9px; border-radius: 7px; color: rgba(241,244,251,0.92); text-decoration: none; font-size: 13px;
+             white-space: nowrap; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+  .art-btn:hover { color: #ffffff; background-color: rgba(255,255,255,0.16); }
   .art-sep { width: 1px; height: 12px; background-color: rgba(255,255,255,0.22); margin: 0 4px; }
   .art-empty { position: fixed; inset: 0; background-image: linear-gradient(135deg, #10213f, #1a1030 60%, #0d1017); }
   @media (prefers-reduced-motion: no-preference) { .art-bg { transition: opacity 240ms ease; } }
