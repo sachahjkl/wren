@@ -300,6 +300,64 @@ section("map, dialog, document, element", () => {
   for (const e of [fd, outer, empty, inert]) e.remove();
 });
 
+section("reflection: keywords, numbers out of range, nullable strings, the body's colors", () => {
+  const d = document.createElement("div");
+  eq("inputMode: its keywords only", [d.inputMode, (d.setAttribute("inputmode", "NUMERIC"), d.inputMode), (d.inputMode = "x", d.inputMode)].join("|"), "|numeric|");
+  eq("enterKeyHint", (d.enterKeyHint = "Send", d.enterKeyHint) + "|" + d.getAttribute("enterkeyhint"), "send|Send");
+  const v = document.createElement("video");
+  eq("a media element's loading: eager by default", v.loading + "|" + (v.loading = "LAZY", v.loading), "eager|lazy");
+  const i = document.createElement("input");
+  eq("input.size: 20 by default", i.size, 20);
+  throws("input.size = 0", () => { i.size = 0; }, "IndexSizeError");
+  i.setAttribute("maxlength", "+5%");
+  eq("maxlength by the rules for non-negative integers", i.maxLength, 5);
+  i.maxLength = 2147483647;
+  eq("maxLength's largest value", i.maxLength, 2147483647);
+  const td = document.createElement("td");
+  td.colSpan = 2147483648;
+  eq("an unsigned long out of range sets the default", td.getAttribute("colspan"), "1");
+  td.setAttribute("rowspan", "4294967296");
+  eq("a clamped one clamps any integer", td.rowSpan, 65534);
+  const pr = document.createElement("progress");
+  pr.setAttribute("max", " \v7");
+  eq("no number after a vertical tab", pr.max, 1);
+  d.ariaLabel = "x";
+  d.ariaLabel = undefined;
+  t("a nullable string set to undefined removes the attribute", !d.hasAttribute("aria-label"));
+  const s = document.createElement("script");
+  s.crossOrigin = "use-credentials\0";
+  eq("crossOrigin: a NUL is part of the value", s.crossOrigin, "anonymous");
+  const b = document.body;
+  document.fgColor = "red";
+  eq("document.fgColor is the body's text attribute", b.getAttribute("text") + "|" + document.fgColor, "red|red");
+  document.fgColor = null;
+  eq("... null is the empty string", b.getAttribute("text"), "");
+  b.removeAttribute("text");
+  const o = document.createElement("object");
+  o.codeBase = "x/";
+  t("object.codeBase is a URL", o.codeBase.endsWith("/x/"), o.codeBase);
+});
+
+section("SubmitEvent and FormDataEvent", () => {
+  const f = document.createElement("form"), btn = document.createElement("button"), inp = document.createElement("input");
+  inp.name = "q";
+  inp.value = "v";
+  f.append(inp, btn);
+  document.body.append(f);
+  let sub = null, fd = null;
+  f.addEventListener("submit", e => { sub = e; e.preventDefault(); });
+  f.addEventListener("formdata", e => { fd = e; e.formData.append("extra", "1"); });
+  f.requestSubmit(btn);
+  t("submit is a SubmitEvent whose submitter stays after the dispatch", sub instanceof SubmitEvent && sub.submitter === btn);
+  const data = new FormData(f);
+  t("formdata is a FormDataEvent whose list the listener changes", fd instanceof FormDataEvent && data.get("extra") === "1" && data.get("q") === "v");
+  t("new SubmitEvent", new SubmitEvent("submit", { submitter: btn }).submitter === btn && new SubmitEvent("submit").submitter === null);
+  const made = new FormData();
+  t("new FormDataEvent", new FormDataEvent("formdata", { formData: made }).formData === made);
+  throws("a FormDataEvent needs its FormData", () => new FormDataEvent("formdata"), "TypeError");
+  f.remove();
+});
+
 section("performance.timing (Navigation Timing 1)", () => {
   const tm = performance.timing;
   t("performance.timing is [SameObject]", tm === performance.timing && tm instanceof PerformanceTiming);

@@ -71,7 +71,7 @@
 	div.ariaAtomic (<div aria-atomic>): IDL set to object "test-toString": FAIL
 	div.ariaAtomic (<div aria-atomic>): IDL set to object "test-valueOf": FAIL
 	div.ariaAtomic (<div aria-atomic>): IDL set to true: PASS
-	div.ariaAtomic (<div aria-atomic>): IDL set to undefined: FAIL
+	div.ariaAtomic (<div aria-atomic>): IDL set to undefined: PASS
 	div.ariaAtomic (<div aria-atomic>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaAtomic (<div aria-atomic>): setAttribute() to "": FAIL
 	div.ariaAtomic (<div aria-atomic>): setAttribute() to "+100": FAIL
@@ -141,7 +141,7 @@
 	div.ariaAutoComplete (<div aria-autocomplete>): IDL set to object "test-toString": FAIL
 	div.ariaAutoComplete (<div aria-autocomplete>): IDL set to object "test-valueOf": FAIL
 	div.ariaAutoComplete (<div aria-autocomplete>): IDL set to true: FAIL
-	div.ariaAutoComplete (<div aria-autocomplete>): IDL set to undefined: FAIL
+	div.ariaAutoComplete (<div aria-autocomplete>): IDL set to undefined: PASS
 	div.ariaAutoComplete (<div aria-autocomplete>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaAutoComplete (<div aria-autocomplete>): setAttribute() to "": FAIL
 	div.ariaAutoComplete (<div aria-autocomplete>): setAttribute() to "+100": FAIL
@@ -211,7 +211,7 @@
 	div.ariaBusy (<div aria-busy>): IDL set to object "test-toString": FAIL
 	div.ariaBusy (<div aria-busy>): IDL set to object "test-valueOf": FAIL
 	div.ariaBusy (<div aria-busy>): IDL set to true: PASS
-	div.ariaBusy (<div aria-busy>): IDL set to undefined: FAIL
+	div.ariaBusy (<div aria-busy>): IDL set to undefined: PASS
 	div.ariaBusy (<div aria-busy>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaBusy (<div aria-busy>): setAttribute() to "": FAIL
 	div.ariaBusy (<div aria-busy>): setAttribute() to "+100": FAIL
@@ -276,7 +276,7 @@
 	div.ariaChecked (<div aria-checked>): IDL set to object "test-toString": FAIL
 	div.ariaChecked (<div aria-checked>): IDL set to object "test-valueOf": FAIL
 	div.ariaChecked (<div aria-checked>): IDL set to true: PASS
-	div.ariaChecked (<div aria-checked>): IDL set to undefined: FAIL
+	div.ariaChecked (<div aria-checked>): IDL set to undefined: PASS
 	div.ariaChecked (<div aria-checked>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaChecked (<div aria-checked>): setAttribute() to "": FAIL
 	div.ariaChecked (<div aria-checked>): setAttribute() to "+100": FAIL
@@ -367,7 +367,7 @@
 	div.ariaCurrent (<div aria-current>): IDL set to object "test-toString": FAIL
 	div.ariaCurrent (<div aria-current>): IDL set to object "test-valueOf": FAIL
 	div.ariaCurrent (<div aria-current>): IDL set to true: PASS
-	div.ariaCurrent (<div aria-current>): IDL set to undefined: FAIL
+	div.ariaCurrent (<div aria-current>): IDL set to undefined: PASS
 	div.ariaCurrent (<div aria-current>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaCurrent (<div aria-current>): setAttribute() to "": FAIL
 	div.ariaCurrent (<div aria-current>): setAttribute() to "+100": FAIL
@@ -453,7 +453,7 @@
 	div.ariaDisabled (<div aria-disabled>): IDL set to object "test-toString": FAIL
 	div.ariaDisabled (<div aria-disabled>): IDL set to object "test-valueOf": FAIL
 	div.ariaDisabled (<div aria-disabled>): IDL set to true: PASS
-	div.ariaDisabled (<div aria-disabled>): IDL set to undefined: FAIL
+	div.ariaDisabled (<div aria-disabled>): IDL set to undefined: PASS
 	div.ariaDisabled (<div aria-disabled>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaDisabled (<div aria-disabled>): setAttribute() to "": FAIL
 	div.ariaDisabled (<div aria-disabled>): setAttribute() to "+100": FAIL
@@ -513,7 +513,7 @@
 	div.ariaExpanded (<div aria-expanded>): IDL set to object "test-toString": FAIL
 	div.ariaExpanded (<div aria-expanded>): IDL set to object "test-valueOf": FAIL
 	div.ariaExpanded (<div aria-expanded>): IDL set to true: PASS
-	div.ariaExpanded (<div aria-expanded>): IDL set to undefined: FAIL
+	div.ariaExpanded (<div aria-expanded>): IDL set to undefined: PASS
 	div.ariaExpanded (<div aria-expanded>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaExpanded (<div aria-expanded>): setAttribute() to "": FAIL
 	div.ariaExpanded (<div aria-expanded>): setAttribute() to "+100": FAIL
@@ -599,7 +599,7 @@
 	div.ariaHasPopup (<div aria-haspopup>): IDL set to object "test-toString": FAIL
 	div.ariaHasPopup (<div aria-haspopup>): IDL set to object "test-valueOf": FAIL
 	div.ariaHasPopup (<div aria-haspopup>): IDL set to true: PASS
-	div.ariaHasPopup (<div aria-haspopup>): IDL set to undefined: FAIL
+	div.ariaHasPopup (<div aria-haspopup>): IDL set to undefined: PASS
 	div.ariaHasPopup (<div aria-haspopup>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaHasPopup (<div aria-haspopup>): setAttribute() to "": FAIL
 	div.ariaHasPopup (<div aria-haspopup>): setAttribute() to "+100": FAIL
@@ -685,7 +685,7 @@
 	div.ariaHidden (<div aria-hidden>): IDL set to object "test-toString": FAIL
 	div.ariaHidden (<div aria-hidden>): IDL set to object "test-valueOf": FAIL
 	div.ariaHidden (<div aria-hidden>): IDL set to true: PASS
-	div.ariaHidden (<div aria-hidden>): IDL set to undefined: FAIL
+	div.ariaHidden (<div aria-hidden>): IDL set to undefined: PASS
 	div.ariaHidden (<div aria-hidden>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaHidden (<div aria-hidden>): setAttribute() to "": FAIL
 	div.ariaHidden (<div aria-hidden>): setAttribute() to "+100": FAIL
@@ -756,7 +756,7 @@
 	div.ariaInvalid (<div aria-invalid>): IDL set to object "test-toString": FAIL
 	div.ariaInvalid (<div aria-invalid>): IDL set to object "test-valueOf": FAIL
 	div.ariaInvalid (<div aria-invalid>): IDL set to true: PASS
-	div.ariaInvalid (<div aria-invalid>): IDL set to undefined: FAIL
+	div.ariaInvalid (<div aria-invalid>): IDL set to undefined: PASS
 	div.ariaInvalid (<div aria-invalid>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaInvalid (<div aria-invalid>): setAttribute() to "": FAIL
 	div.ariaInvalid (<div aria-invalid>): setAttribute() to "+100": FAIL
@@ -832,7 +832,7 @@
 	div.ariaLive (<div aria-live>): IDL set to object "test-toString": FAIL
 	div.ariaLive (<div aria-live>): IDL set to object "test-valueOf": FAIL
 	div.ariaLive (<div aria-live>): IDL set to true: FAIL
-	div.ariaLive (<div aria-live>): IDL set to undefined: FAIL
+	div.ariaLive (<div aria-live>): IDL set to undefined: PASS
 	div.ariaLive (<div aria-live>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaLive (<div aria-live>): setAttribute() to "": FAIL
 	div.ariaLive (<div aria-live>): setAttribute() to "+100": FAIL
@@ -897,7 +897,7 @@
 	div.ariaModal (<div aria-modal>): IDL set to object "test-toString": FAIL
 	div.ariaModal (<div aria-modal>): IDL set to object "test-valueOf": FAIL
 	div.ariaModal (<div aria-modal>): IDL set to true: PASS
-	div.ariaModal (<div aria-modal>): IDL set to undefined: FAIL
+	div.ariaModal (<div aria-modal>): IDL set to undefined: PASS
 	div.ariaModal (<div aria-modal>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaModal (<div aria-modal>): setAttribute() to "": FAIL
 	div.ariaModal (<div aria-modal>): setAttribute() to "+100": FAIL
@@ -957,7 +957,7 @@
 	div.ariaMultiLine (<div aria-multiline>): IDL set to object "test-toString": FAIL
 	div.ariaMultiLine (<div aria-multiline>): IDL set to object "test-valueOf": FAIL
 	div.ariaMultiLine (<div aria-multiline>): IDL set to true: PASS
-	div.ariaMultiLine (<div aria-multiline>): IDL set to undefined: FAIL
+	div.ariaMultiLine (<div aria-multiline>): IDL set to undefined: PASS
 	div.ariaMultiLine (<div aria-multiline>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaMultiLine (<div aria-multiline>): setAttribute() to "": FAIL
 	div.ariaMultiLine (<div aria-multiline>): setAttribute() to "+100": FAIL
@@ -1017,7 +1017,7 @@
 	div.ariaMultiSelectable (<div aria-multiselectable>): IDL set to object "test-toString": FAIL
 	div.ariaMultiSelectable (<div aria-multiselectable>): IDL set to object "test-valueOf": FAIL
 	div.ariaMultiSelectable (<div aria-multiselectable>): IDL set to true: PASS
-	div.ariaMultiSelectable (<div aria-multiselectable>): IDL set to undefined: FAIL
+	div.ariaMultiSelectable (<div aria-multiselectable>): IDL set to undefined: PASS
 	div.ariaMultiSelectable (<div aria-multiselectable>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaMultiSelectable (<div aria-multiselectable>): setAttribute() to "": FAIL
 	div.ariaMultiSelectable (<div aria-multiselectable>): setAttribute() to "+100": FAIL
@@ -1076,7 +1076,7 @@
 	div.ariaOrientation (<div aria-orientation>): IDL set to object "test-toString": FAIL
 	div.ariaOrientation (<div aria-orientation>): IDL set to object "test-valueOf": FAIL
 	div.ariaOrientation (<div aria-orientation>): IDL set to true: FAIL
-	div.ariaOrientation (<div aria-orientation>): IDL set to undefined: FAIL
+	div.ariaOrientation (<div aria-orientation>): IDL set to undefined: PASS
 	div.ariaOrientation (<div aria-orientation>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaOrientation (<div aria-orientation>): setAttribute() to "": FAIL
 	div.ariaOrientation (<div aria-orientation>): setAttribute() to "+100": FAIL
@@ -1140,7 +1140,7 @@
 	div.ariaPressed (<div aria-pressed>): IDL set to object "test-toString": FAIL
 	div.ariaPressed (<div aria-pressed>): IDL set to object "test-valueOf": FAIL
 	div.ariaPressed (<div aria-pressed>): IDL set to true: PASS
-	div.ariaPressed (<div aria-pressed>): IDL set to undefined: FAIL
+	div.ariaPressed (<div aria-pressed>): IDL set to undefined: PASS
 	div.ariaPressed (<div aria-pressed>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaPressed (<div aria-pressed>): setAttribute() to "": FAIL
 	div.ariaPressed (<div aria-pressed>): setAttribute() to "+100": FAIL
@@ -1205,7 +1205,7 @@
 	div.ariaReadOnly (<div aria-readonly>): IDL set to object "test-toString": FAIL
 	div.ariaReadOnly (<div aria-readonly>): IDL set to object "test-valueOf": FAIL
 	div.ariaReadOnly (<div aria-readonly>): IDL set to true: PASS
-	div.ariaReadOnly (<div aria-readonly>): IDL set to undefined: FAIL
+	div.ariaReadOnly (<div aria-readonly>): IDL set to undefined: PASS
 	div.ariaReadOnly (<div aria-readonly>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaReadOnly (<div aria-readonly>): setAttribute() to "": FAIL
 	div.ariaReadOnly (<div aria-readonly>): setAttribute() to "+100": FAIL
@@ -1265,7 +1265,7 @@
 	div.ariaRequired (<div aria-required>): IDL set to object "test-toString": FAIL
 	div.ariaRequired (<div aria-required>): IDL set to object "test-valueOf": FAIL
 	div.ariaRequired (<div aria-required>): IDL set to true: PASS
-	div.ariaRequired (<div aria-required>): IDL set to undefined: FAIL
+	div.ariaRequired (<div aria-required>): IDL set to undefined: PASS
 	div.ariaRequired (<div aria-required>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaRequired (<div aria-required>): setAttribute() to "": FAIL
 	div.ariaRequired (<div aria-required>): setAttribute() to "+100": FAIL
@@ -1325,7 +1325,7 @@
 	div.ariaSelected (<div aria-selected>): IDL set to object "test-toString": FAIL
 	div.ariaSelected (<div aria-selected>): IDL set to object "test-valueOf": FAIL
 	div.ariaSelected (<div aria-selected>): IDL set to true: PASS
-	div.ariaSelected (<div aria-selected>): IDL set to undefined: FAIL
+	div.ariaSelected (<div aria-selected>): IDL set to undefined: PASS
 	div.ariaSelected (<div aria-selected>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaSelected (<div aria-selected>): setAttribute() to "": FAIL
 	div.ariaSelected (<div aria-selected>): setAttribute() to "+100": FAIL
@@ -1396,7 +1396,7 @@
 	div.ariaSort (<div aria-sort>): IDL set to object "test-toString": FAIL
 	div.ariaSort (<div aria-sort>): IDL set to object "test-valueOf": FAIL
 	div.ariaSort (<div aria-sort>): IDL set to true: FAIL
-	div.ariaSort (<div aria-sort>): IDL set to undefined: FAIL
+	div.ariaSort (<div aria-sort>): IDL set to undefined: PASS
 	div.ariaSort (<div aria-sort>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
 	div.ariaSort (<div aria-sort>): setAttribute() to "": FAIL
 	div.ariaSort (<div aria-sort>): setAttribute() to "+100": FAIL
@@ -1766,51 +1766,51 @@
 	div.title: setAttribute() to undefined: PASS
 	div.title: typeof IDL attribute: PASS
 /html/dom/aria-attribute-reflection.html: OK
-	aria-atomic attribute reflects.: FAIL
-	aria-autocomplete attribute reflects.: FAIL
-	aria-braillelabel attribute reflects.: FAIL
-	aria-brailleroledescription attribute reflects.: FAIL
-	aria-busy attribute reflects.: FAIL
-	aria-checked attribute reflects.: FAIL
-	aria-colcount attribute reflects.: FAIL
-	aria-colindex attribute reflects.: FAIL
-	aria-colspan attribute reflects.: FAIL
-	aria-current attribute reflects.: FAIL
-	aria-disabled attribute reflects.: FAIL
-	aria-expanded attribute reflects.: FAIL
-	aria-haspopup attribute reflects.: FAIL
-	aria-hidden attribute reflects.: FAIL
-	aria-invalid attribute reflects.: FAIL
-	aria-keyshortcuts attribute reflects.: FAIL
-	aria-label attribute reflects.: FAIL
-	aria-level attribute reflects.: FAIL
-	aria-live attribute reflects.: FAIL
-	aria-modal attribute reflects.: FAIL
-	aria-multiline attribute reflects.: FAIL
-	aria-multiselectable attribute reflects.: FAIL
-	aria-orientation attribute reflects.: FAIL
-	aria-placeholder attribute reflects.: FAIL
-	aria-posinset attribute reflects.: FAIL
-	aria-pressed attribute reflects.: FAIL
-	aria-readonly attribute reflects.: FAIL
-	aria-relevant attribute reflects.: FAIL
-	aria-required attribute reflects.: FAIL
-	aria-roledescription attribute reflects.: FAIL
-	aria-rowcount attribute reflects.: FAIL
-	aria-rowindex attribute reflects.: FAIL
-	aria-rowspan attribute reflects.: FAIL
-	aria-selected attribute reflects.: FAIL
-	aria-setsize attribute reflects.: FAIL
-	aria-sort attribute reflects.: FAIL
-	aria-valuemax attribute reflects.: FAIL
-	aria-valuemin attribute reflects.: FAIL
-	aria-valuenow attribute reflects.: FAIL
-	aria-valuetext attribute reflects.: FAIL
-	role attribute reflects.: FAIL
+	aria-atomic attribute reflects.: PASS
+	aria-autocomplete attribute reflects.: PASS
+	aria-braillelabel attribute reflects.: PASS
+	aria-brailleroledescription attribute reflects.: PASS
+	aria-busy attribute reflects.: PASS
+	aria-checked attribute reflects.: PASS
+	aria-colcount attribute reflects.: PASS
+	aria-colindex attribute reflects.: PASS
+	aria-colspan attribute reflects.: PASS
+	aria-current attribute reflects.: PASS
+	aria-disabled attribute reflects.: PASS
+	aria-expanded attribute reflects.: PASS
+	aria-haspopup attribute reflects.: PASS
+	aria-hidden attribute reflects.: PASS
+	aria-invalid attribute reflects.: PASS
+	aria-keyshortcuts attribute reflects.: PASS
+	aria-label attribute reflects.: PASS
+	aria-level attribute reflects.: PASS
+	aria-live attribute reflects.: PASS
+	aria-modal attribute reflects.: PASS
+	aria-multiline attribute reflects.: PASS
+	aria-multiselectable attribute reflects.: PASS
+	aria-orientation attribute reflects.: PASS
+	aria-placeholder attribute reflects.: PASS
+	aria-posinset attribute reflects.: PASS
+	aria-pressed attribute reflects.: PASS
+	aria-readonly attribute reflects.: PASS
+	aria-relevant attribute reflects.: PASS
+	aria-required attribute reflects.: PASS
+	aria-roledescription attribute reflects.: PASS
+	aria-rowcount attribute reflects.: PASS
+	aria-rowindex attribute reflects.: PASS
+	aria-rowspan attribute reflects.: PASS
+	aria-selected attribute reflects.: PASS
+	aria-setsize attribute reflects.: PASS
+	aria-sort attribute reflects.: PASS
+	aria-valuemax attribute reflects.: PASS
+	aria-valuemin attribute reflects.: PASS
+	aria-valuenow attribute reflects.: PASS
+	aria-valuetext attribute reflects.: PASS
+	role attribute reflects.: PASS
 /html/dom/aria-attribute-reflection.tentative.html: OK
-	aria-colindextext attribute reflects.: FAIL
-	aria-description attribute reflects.: FAIL
-	aria-rowindextext attribute reflects.: FAIL
+	aria-colindextext attribute reflects.: PASS
+	aria-description attribute reflects.: PASS
+	aria-rowindextext attribute reflects.: PASS
 /html/dom/aria-element-reflection-disconnected.html: OK
 	Element references should stay valid when content is disconnected (element array): FAIL
 	Element references should stay valid when content is disconnected (single element): FAIL
@@ -2307,7 +2307,7 @@
 	Getting element.dataset['à'] should return the value of element.getAttribute('data-à')': PASS
 	Tests that an attribute named dataFoo does not make an entry in the dataset DOMStringMap.: PASS
 /html/dom/elements/global-attributes/dataset-prototype.html: OK
-	An elements dataset property is an instance of a DOMStringMap: FAIL
+	An elements dataset property is an instance of a DOMStringMap: PASS
 	Properties on Object.prototype should shine through.: PASS
 /html/dom/elements/global-attributes/dataset-set.html: OK
 	Setting element.dataset[''] should also change the value of element.getAttribute('data-'): PASS
@@ -2322,9 +2322,9 @@
 	Setting element.dataset[';foo'] should not throw.: PASS
 	Setting element.dataset['ெfoo'] should also change the value of element.getAttribute('ெfoo'): PASS
 /html/dom/elements/global-attributes/dataset.html: OK
-	HTML elements should have a .dataset: FAIL
-	MathML elements should have a .dataset: FAIL
-	SVG elements should have a .dataset: FAIL
+	HTML elements should have a .dataset: PASS
+	MathML elements should have a .dataset: PASS
+	SVG elements should have a .dataset: PASS
 	Should not have a .dataset on random elements: PASS
 	Should return 'undefined' after removing an attribute: PASS
 	Should return 'undefined' before setting an attribute: PASS
@@ -5292,13 +5292,13 @@
 	DOMStringList interface: operation contains(DOMString): PASS
 	DOMStringList interface: operation item(unsigned long): PASS
 	DOMStringList must be primary interface of location.ancestorOrigins: PASS
-	DOMStringMap interface object length: FAIL
-	DOMStringMap interface object name: FAIL
-	DOMStringMap interface: existence and properties of interface object: FAIL
-	DOMStringMap interface: existence and properties of interface prototype object: FAIL
-	DOMStringMap interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	DOMStringMap interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	DOMStringMap must be primary interface of document.head.dataset: FAIL
+	DOMStringMap interface object length: PASS
+	DOMStringMap interface object name: PASS
+	DOMStringMap interface: existence and properties of interface object: PASS
+	DOMStringMap interface: existence and properties of interface prototype object: PASS
+	DOMStringMap interface: existence and properties of interface prototype object's "constructor" property: PASS
+	DOMStringMap interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	DOMStringMap must be primary interface of document.head.dataset: PASS
 	DataTransfer interface object length: PASS
 	DataTransfer interface object name: PASS
 	DataTransfer interface: attribute dropEffect: PASS
@@ -5505,15 +5505,15 @@
 	External interface: window.external must inherit property "AddSearchProvider()" with the proper type: FAIL
 	External interface: window.external must inherit property "IsSearchProviderInstalled()" with the proper type: FAIL
 	External must be primary interface of window.external: FAIL
-	FormDataEvent interface object length: FAIL
-	FormDataEvent interface object name: FAIL
-	FormDataEvent interface: attribute formData: FAIL
-	FormDataEvent interface: existence and properties of interface object: FAIL
-	FormDataEvent interface: existence and properties of interface prototype object: FAIL
-	FormDataEvent interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	FormDataEvent interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	FormDataEvent interface: new FormDataEvent("formdata", { formData: new FormData() }) must inherit property "formData" with the proper type: FAIL
-	FormDataEvent must be primary interface of new FormDataEvent("formdata", { formData: new FormData() }): FAIL
+	FormDataEvent interface object length: PASS
+	FormDataEvent interface object name: PASS
+	FormDataEvent interface: attribute formData: PASS
+	FormDataEvent interface: existence and properties of interface object: PASS
+	FormDataEvent interface: existence and properties of interface prototype object: PASS
+	FormDataEvent interface: existence and properties of interface prototype object's "constructor" property: PASS
+	FormDataEvent interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	FormDataEvent interface: new FormDataEvent("formdata", { formData: new FormData() }) must inherit property "formData" with the proper type: PASS
+	FormDataEvent must be primary interface of new FormDataEvent("formdata", { formData: new FormData() }): PASS
 	HashChangeEvent interface object length: PASS
 	HashChangeEvent interface object name: PASS
 	HashChangeEvent interface: attribute newURL: PASS
@@ -6461,7 +6461,7 @@
 	Stringification of location.ancestorOrigins: PASS
 	Stringification of new DOMParser(): PASS
 	Stringification of new EventSource("http://invalid"): PASS
-	Stringification of new FormDataEvent("formdata", { formData: new FormData() }): FAIL
+	Stringification of new FormDataEvent("formdata", { formData: new FormData() }): PASS
 	Stringification of new ImageData(10, 10): PASS
 	Stringification of new MessageEvent("message", { data: 5 }): PASS
 	Stringification of new PopStateEvent("popstate", { data: {} }): PASS
@@ -6475,13 +6475,13 @@
 	Stringification of window.history: PASS
 	Stringification of window.location: PASS
 	Stringification of window.navigator: PASS
-	SubmitEvent interface object length: FAIL
-	SubmitEvent interface object name: FAIL
-	SubmitEvent interface: attribute submitter: FAIL
-	SubmitEvent interface: existence and properties of interface object: FAIL
-	SubmitEvent interface: existence and properties of interface prototype object: FAIL
-	SubmitEvent interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	SubmitEvent interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	SubmitEvent interface object length: PASS
+	SubmitEvent interface object name: PASS
+	SubmitEvent interface: attribute submitter: PASS
+	SubmitEvent interface: existence and properties of interface object: PASS
+	SubmitEvent interface: existence and properties of interface prototype object: PASS
+	SubmitEvent interface: existence and properties of interface prototype object's "constructor" property: PASS
+	SubmitEvent interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	TextMetrics interface object length: PASS
 	TextMetrics interface object name: PASS
 	TextMetrics interface: attribute actualBoundingBoxAscent: PASS
@@ -7405,13 +7405,13 @@
 	HTMLElement interface: attribute dataset: PASS
 	HTMLElement interface: attribute dir: PASS
 	HTMLElement interface: attribute draggable: PASS
-	HTMLElement interface: attribute enterKeyHint: FAIL
+	HTMLElement interface: attribute enterKeyHint: PASS
 	HTMLElement interface: attribute headingOffset: PASS
 	HTMLElement interface: attribute headingReset: PASS
 	HTMLElement interface: attribute hidden: PASS
 	HTMLElement interface: attribute inert: PASS
 	HTMLElement interface: attribute innerText: PASS
-	HTMLElement interface: attribute inputMode: FAIL
+	HTMLElement interface: attribute inputMode: PASS
 	HTMLElement interface: attribute isContentEditable: PASS
 	HTMLElement interface: attribute lang: PASS
 	HTMLElement interface: attribute nonce: PASS
@@ -7513,7 +7513,7 @@
 	HTMLElement interface: document.createElement("noscript") must inherit property "dataset" with the proper type: PASS
 	HTMLElement interface: document.createElement("noscript") must inherit property "dir" with the proper type: PASS
 	HTMLElement interface: document.createElement("noscript") must inherit property "draggable" with the proper type: PASS
-	HTMLElement interface: document.createElement("noscript") must inherit property "enterKeyHint" with the proper type: FAIL
+	HTMLElement interface: document.createElement("noscript") must inherit property "enterKeyHint" with the proper type: PASS
 	HTMLElement interface: document.createElement("noscript") must inherit property "focus(optional FocusOptions)" with the proper type: PASS
 	HTMLElement interface: document.createElement("noscript") must inherit property "headingOffset" with the proper type: PASS
 	HTMLElement interface: document.createElement("noscript") must inherit property "headingReset" with the proper type: PASS
@@ -7521,7 +7521,7 @@
 	HTMLElement interface: document.createElement("noscript") must inherit property "hidePopover()" with the proper type: PASS
 	HTMLElement interface: document.createElement("noscript") must inherit property "inert" with the proper type: PASS
 	HTMLElement interface: document.createElement("noscript") must inherit property "innerText" with the proper type: PASS
-	HTMLElement interface: document.createElement("noscript") must inherit property "inputMode" with the proper type: FAIL
+	HTMLElement interface: document.createElement("noscript") must inherit property "inputMode" with the proper type: PASS
 	HTMLElement interface: document.createElement("noscript") must inherit property "isContentEditable" with the proper type: PASS
 	HTMLElement interface: document.createElement("noscript") must inherit property "lang" with the proper type: PASS
 	HTMLElement interface: document.createElement("noscript") must inherit property "nonce" with the proper type: PASS
@@ -9705,7 +9705,7 @@
 	HTMLMediaElement interface: attribute duration: PASS
 	HTMLMediaElement interface: attribute ended: PASS
 	HTMLMediaElement interface: attribute error: PASS
-	HTMLMediaElement interface: attribute loading: FAIL
+	HTMLMediaElement interface: attribute loading: PASS
 	HTMLMediaElement interface: attribute loop: PASS
 	HTMLMediaElement interface: attribute muted: PASS
 	HTMLMediaElement interface: attribute networkState: PASS
@@ -9775,7 +9775,7 @@
 	HTMLMediaElement interface: document.createElement("audio") must inherit property "fastSeek(double)" with the proper type: FAIL
 	HTMLMediaElement interface: document.createElement("audio") must inherit property "getStartDate()" with the proper type: FAIL
 	HTMLMediaElement interface: document.createElement("audio") must inherit property "load()" with the proper type: PASS
-	HTMLMediaElement interface: document.createElement("audio") must inherit property "loading" with the proper type: FAIL
+	HTMLMediaElement interface: document.createElement("audio") must inherit property "loading" with the proper type: PASS
 	HTMLMediaElement interface: document.createElement("audio") must inherit property "loop" with the proper type: PASS
 	HTMLMediaElement interface: document.createElement("audio") must inherit property "muted" with the proper type: PASS
 	HTMLMediaElement interface: document.createElement("audio") must inherit property "networkState" with the proper type: PASS
@@ -9820,7 +9820,7 @@
 	HTMLMediaElement interface: document.createElement("video") must inherit property "fastSeek(double)" with the proper type: FAIL
 	HTMLMediaElement interface: document.createElement("video") must inherit property "getStartDate()" with the proper type: FAIL
 	HTMLMediaElement interface: document.createElement("video") must inherit property "load()" with the proper type: PASS
-	HTMLMediaElement interface: document.createElement("video") must inherit property "loading" with the proper type: FAIL
+	HTMLMediaElement interface: document.createElement("video") must inherit property "loading" with the proper type: PASS
 	HTMLMediaElement interface: document.createElement("video") must inherit property "loop" with the proper type: PASS
 	HTMLMediaElement interface: document.createElement("video") must inherit property "muted" with the proper type: PASS
 	HTMLMediaElement interface: document.createElement("video") must inherit property "networkState" with the proper type: PASS
@@ -9869,7 +9869,7 @@
 	HTMLMediaElement interface: new Audio() must inherit property "fastSeek(double)" with the proper type: FAIL
 	HTMLMediaElement interface: new Audio() must inherit property "getStartDate()" with the proper type: FAIL
 	HTMLMediaElement interface: new Audio() must inherit property "load()" with the proper type: PASS
-	HTMLMediaElement interface: new Audio() must inherit property "loading" with the proper type: FAIL
+	HTMLMediaElement interface: new Audio() must inherit property "loading" with the proper type: PASS
 	HTMLMediaElement interface: new Audio() must inherit property "loop" with the proper type: PASS
 	HTMLMediaElement interface: new Audio() must inherit property "muted" with the proper type: PASS
 	HTMLMediaElement interface: new Audio() must inherit property "networkState" with the proper type: PASS
@@ -12138,7 +12138,7 @@
 	audio.crossOrigin: IDL set to object "test-toString": PASS
 	audio.crossOrigin: IDL set to object "test-valueOf": PASS
 	audio.crossOrigin: IDL set to true: PASS
-	audio.crossOrigin: IDL set to undefined: FAIL
+	audio.crossOrigin: IDL set to undefined: PASS
 	audio.crossOrigin: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	audio.crossOrigin: setAttribute() to "": PASS
 	audio.crossOrigin: setAttribute() to "+100": PASS
@@ -12393,64 +12393,64 @@
 	audio.lang: setAttribute() to true: PASS
 	audio.lang: setAttribute() to undefined: PASS
 	audio.lang: typeof IDL attribute: PASS
-	audio.loading: IDL get with DOM attribute unset: FAIL
-	audio.loading: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	audio.loading: IDL set to "": FAIL
-	audio.loading: IDL set to "+100": FAIL
-	audio.loading: IDL set to ".5": FAIL
-	audio.loading: IDL set to "5%": FAIL
-	audio.loading: IDL set to "EAGER": FAIL
-	audio.loading: IDL set to "LAZY": FAIL
-	audio.loading: IDL set to "\\0": FAIL
-	audio.loading: IDL set to "ager": FAIL
-	audio.loading: IDL set to "azy": FAIL
-	audio.loading: IDL set to "eager": FAIL
-	audio.loading: IDL set to "eager\\0": FAIL
-	audio.loading: IDL set to "lazy": FAIL
-	audio.loading: IDL set to "lazy\\0": FAIL
-	audio.loading: IDL set to "xeager": FAIL
-	audio.loading: IDL set to "xlazy": FAIL
-	audio.loading: IDL set to -Infinity: FAIL
-	audio.loading: IDL set to 1.5: FAIL
-	audio.loading: IDL set to 7: FAIL
-	audio.loading: IDL set to Infinity: FAIL
-	audio.loading: IDL set to NaN: FAIL
-	audio.loading: IDL set to false: FAIL
-	audio.loading: IDL set to null: FAIL
-	audio.loading: IDL set to object "[object Object]": FAIL
-	audio.loading: IDL set to object "test-toString": FAIL
-	audio.loading: IDL set to object "test-valueOf": FAIL
-	audio.loading: IDL set to true: FAIL
-	audio.loading: IDL set to undefined: FAIL
-	audio.loading: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	audio.loading: setAttribute() to "": FAIL
-	audio.loading: setAttribute() to "+100": FAIL
-	audio.loading: setAttribute() to ".5": FAIL
-	audio.loading: setAttribute() to "5%": FAIL
-	audio.loading: setAttribute() to "EAGER": FAIL
-	audio.loading: setAttribute() to "LAZY": FAIL
-	audio.loading: setAttribute() to "\\0": FAIL
-	audio.loading: setAttribute() to "ager": FAIL
-	audio.loading: setAttribute() to "azy": FAIL
-	audio.loading: setAttribute() to "eager": FAIL
-	audio.loading: setAttribute() to "eager\\0": FAIL
-	audio.loading: setAttribute() to "lazy": FAIL
-	audio.loading: setAttribute() to "lazy\\0": FAIL
-	audio.loading: setAttribute() to "xeager": FAIL
-	audio.loading: setAttribute() to "xlazy": FAIL
-	audio.loading: setAttribute() to -Infinity: FAIL
-	audio.loading: setAttribute() to 1.5: FAIL
-	audio.loading: setAttribute() to 7: FAIL
-	audio.loading: setAttribute() to Infinity: FAIL
-	audio.loading: setAttribute() to NaN: FAIL
-	audio.loading: setAttribute() to false: FAIL
-	audio.loading: setAttribute() to null: FAIL
-	audio.loading: setAttribute() to object "[object Object]": FAIL
-	audio.loading: setAttribute() to object "test-toString": FAIL
-	audio.loading: setAttribute() to object "test-valueOf": FAIL
-	audio.loading: setAttribute() to true: FAIL
-	audio.loading: setAttribute() to undefined: FAIL
-	audio.loading: typeof IDL attribute: FAIL
+	audio.loading: IDL get with DOM attribute unset: PASS
+	audio.loading: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	audio.loading: IDL set to "": PASS
+	audio.loading: IDL set to "+100": PASS
+	audio.loading: IDL set to ".5": PASS
+	audio.loading: IDL set to "5%": PASS
+	audio.loading: IDL set to "EAGER": PASS
+	audio.loading: IDL set to "LAZY": PASS
+	audio.loading: IDL set to "\\0": PASS
+	audio.loading: IDL set to "ager": PASS
+	audio.loading: IDL set to "azy": PASS
+	audio.loading: IDL set to "eager": PASS
+	audio.loading: IDL set to "eager\\0": PASS
+	audio.loading: IDL set to "lazy": PASS
+	audio.loading: IDL set to "lazy\\0": PASS
+	audio.loading: IDL set to "xeager": PASS
+	audio.loading: IDL set to "xlazy": PASS
+	audio.loading: IDL set to -Infinity: PASS
+	audio.loading: IDL set to 1.5: PASS
+	audio.loading: IDL set to 7: PASS
+	audio.loading: IDL set to Infinity: PASS
+	audio.loading: IDL set to NaN: PASS
+	audio.loading: IDL set to false: PASS
+	audio.loading: IDL set to null: PASS
+	audio.loading: IDL set to object "[object Object]": PASS
+	audio.loading: IDL set to object "test-toString": PASS
+	audio.loading: IDL set to object "test-valueOf": PASS
+	audio.loading: IDL set to true: PASS
+	audio.loading: IDL set to undefined: PASS
+	audio.loading: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	audio.loading: setAttribute() to "": PASS
+	audio.loading: setAttribute() to "+100": PASS
+	audio.loading: setAttribute() to ".5": PASS
+	audio.loading: setAttribute() to "5%": PASS
+	audio.loading: setAttribute() to "EAGER": PASS
+	audio.loading: setAttribute() to "LAZY": PASS
+	audio.loading: setAttribute() to "\\0": PASS
+	audio.loading: setAttribute() to "ager": PASS
+	audio.loading: setAttribute() to "azy": PASS
+	audio.loading: setAttribute() to "eager": PASS
+	audio.loading: setAttribute() to "eager\\0": PASS
+	audio.loading: setAttribute() to "lazy": PASS
+	audio.loading: setAttribute() to "lazy\\0": PASS
+	audio.loading: setAttribute() to "xeager": PASS
+	audio.loading: setAttribute() to "xlazy": PASS
+	audio.loading: setAttribute() to -Infinity: PASS
+	audio.loading: setAttribute() to 1.5: PASS
+	audio.loading: setAttribute() to 7: PASS
+	audio.loading: setAttribute() to Infinity: PASS
+	audio.loading: setAttribute() to NaN: PASS
+	audio.loading: setAttribute() to false: PASS
+	audio.loading: setAttribute() to null: PASS
+	audio.loading: setAttribute() to object "[object Object]": PASS
+	audio.loading: setAttribute() to object "test-toString": PASS
+	audio.loading: setAttribute() to object "test-valueOf": PASS
+	audio.loading: setAttribute() to true: PASS
+	audio.loading: setAttribute() to undefined: PASS
+	audio.loading: typeof IDL attribute: PASS
 	audio.loop: IDL get with DOM attribute unset: PASS
 	audio.loop: IDL set to " foo ": PASS
 	audio.loop: IDL set to "": PASS
@@ -12855,9 +12855,9 @@
 	canvas.height: IDL set to "-0": PASS
 	canvas.height: IDL set to 0: PASS
 	canvas.height: IDL set to 1: PASS
-	canvas.height: IDL set to 2147483648: FAIL
+	canvas.height: IDL set to 2147483648: PASS
 	canvas.height: IDL set to 257: PASS
-	canvas.height: IDL set to 4294967295: FAIL
+	canvas.height: IDL set to 4294967295: PASS
 	canvas.height: setAttribute() to " 7": PASS
 	canvas.height: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	canvas.height: setAttribute() to " \\v7": PASS
@@ -12865,7 +12865,7 @@
 	canvas.height: setAttribute() to "+": PASS
 	canvas.height: setAttribute() to "+100": PASS
 	canvas.height: setAttribute() to "-": PASS
-	canvas.height: setAttribute() to "-0": FAIL
+	canvas.height: setAttribute() to "-0": PASS
 	canvas.height: setAttribute() to "-1": PASS
 	canvas.height: setAttribute() to ".5": PASS
 	canvas.height: setAttribute() to "0": PASS
@@ -13108,9 +13108,9 @@
 	canvas.width: IDL set to "-0": PASS
 	canvas.width: IDL set to 0: PASS
 	canvas.width: IDL set to 1: PASS
-	canvas.width: IDL set to 2147483648: FAIL
+	canvas.width: IDL set to 2147483648: PASS
 	canvas.width: IDL set to 257: PASS
-	canvas.width: IDL set to 4294967295: FAIL
+	canvas.width: IDL set to 4294967295: PASS
 	canvas.width: setAttribute() to " 7": PASS
 	canvas.width: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	canvas.width: setAttribute() to " \\v7": PASS
@@ -13118,7 +13118,7 @@
 	canvas.width: setAttribute() to "+": PASS
 	canvas.width: setAttribute() to "+100": PASS
 	canvas.width: setAttribute() to "-": PASS
-	canvas.width: setAttribute() to "-0": FAIL
+	canvas.width: setAttribute() to "-0": PASS
 	canvas.width: setAttribute() to "-1": PASS
 	canvas.width: setAttribute() to ".5": PASS
 	canvas.width: setAttribute() to "0": PASS
@@ -14283,7 +14283,7 @@
 	iframe.marginHeight: IDL set to Infinity: PASS
 	iframe.marginHeight: IDL set to NaN: PASS
 	iframe.marginHeight: IDL set to false: PASS
-	iframe.marginHeight: IDL set to null: FAIL
+	iframe.marginHeight: IDL set to null: PASS
 	iframe.marginHeight: IDL set to object "[object Object]": PASS
 	iframe.marginHeight: IDL set to object "test-toString": PASS
 	iframe.marginHeight: IDL set to object "test-valueOf": PASS
@@ -14321,7 +14321,7 @@
 	iframe.marginWidth: IDL set to Infinity: PASS
 	iframe.marginWidth: IDL set to NaN: PASS
 	iframe.marginWidth: IDL set to false: PASS
-	iframe.marginWidth: IDL set to null: FAIL
+	iframe.marginWidth: IDL set to null: PASS
 	iframe.marginWidth: IDL set to object "[object Object]": PASS
 	iframe.marginWidth: IDL set to object "test-toString": PASS
 	iframe.marginWidth: IDL set to object "test-valueOf": PASS
@@ -14902,7 +14902,7 @@
 	img.border: IDL set to Infinity: PASS
 	img.border: IDL set to NaN: PASS
 	img.border: IDL set to false: PASS
-	img.border: IDL set to null: FAIL
+	img.border: IDL set to null: PASS
 	img.border: IDL set to object "[object Object]": PASS
 	img.border: IDL set to object "test-toString": PASS
 	img.border: IDL set to object "test-valueOf": PASS
@@ -14995,7 +14995,7 @@
 	img.crossOrigin: IDL set to object "test-toString": PASS
 	img.crossOrigin: IDL set to object "test-valueOf": PASS
 	img.crossOrigin: IDL set to true: PASS
-	img.crossOrigin: IDL set to undefined: FAIL
+	img.crossOrigin: IDL set to undefined: PASS
 	img.crossOrigin: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	img.crossOrigin: setAttribute() to "": PASS
 	img.crossOrigin: setAttribute() to "+100": PASS
@@ -16491,7 +16491,7 @@
 	object.border: IDL set to Infinity: PASS
 	object.border: IDL set to NaN: PASS
 	object.border: IDL set to false: PASS
-	object.border: IDL set to null: FAIL
+	object.border: IDL set to null: PASS
 	object.border: IDL set to object "[object Object]": PASS
 	object.border: IDL set to object "test-toString": PASS
 	object.border: IDL set to object "test-valueOf": PASS
@@ -16593,48 +16593,48 @@
 	object.code: setAttribute() to undefined: PASS
 	object.code: typeof IDL attribute: PASS
 	object.codeBase: IDL get with DOM attribute unset: PASS
-	object.codeBase: IDL set to " foo ": FAIL
-	object.codeBase: IDL set to "": FAIL
-	object.codeBase: IDL set to "+100": FAIL
-	object.codeBase: IDL set to ".5": FAIL
-	object.codeBase: IDL set to "//site.example/path???@#l": FAIL
-	object.codeBase: IDL set to "5%": FAIL
-	object.codeBase: IDL set to "\\0": FAIL
-	object.codeBase: IDL set to "\\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f ": FAIL
+	object.codeBase: IDL set to " foo ": PASS
+	object.codeBase: IDL set to "": PASS
+	object.codeBase: IDL set to "+100": PASS
+	object.codeBase: IDL set to ".5": PASS
+	object.codeBase: IDL set to "//site.example/path???@#l": PASS
+	object.codeBase: IDL set to "5%": PASS
+	object.codeBase: IDL set to "\\0": PASS
+	object.codeBase: IDL set to "\\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f ": PASS
 	object.codeBase: IDL set to "http://site.example/": PASS
-	object.codeBase: IDL set to -Infinity: FAIL
-	object.codeBase: IDL set to 1.5: FAIL
-	object.codeBase: IDL set to 7: FAIL
-	object.codeBase: IDL set to Infinity: FAIL
-	object.codeBase: IDL set to NaN: FAIL
-	object.codeBase: IDL set to false: FAIL
-	object.codeBase: IDL set to null: FAIL
-	object.codeBase: IDL set to object "[object Object]": FAIL
-	object.codeBase: IDL set to object "test-toString": FAIL
-	object.codeBase: IDL set to object "test-valueOf": FAIL
-	object.codeBase: IDL set to true: FAIL
-	object.codeBase: IDL set to undefined: FAIL
-	object.codeBase: setAttribute() to " foo ": FAIL
-	object.codeBase: setAttribute() to "": FAIL
-	object.codeBase: setAttribute() to "+100": FAIL
-	object.codeBase: setAttribute() to ".5": FAIL
-	object.codeBase: setAttribute() to "//site.example/path???@#l": FAIL
-	object.codeBase: setAttribute() to "5%": FAIL
-	object.codeBase: setAttribute() to "\\0": FAIL
-	object.codeBase: setAttribute() to "\\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f ": FAIL
+	object.codeBase: IDL set to -Infinity: PASS
+	object.codeBase: IDL set to 1.5: PASS
+	object.codeBase: IDL set to 7: PASS
+	object.codeBase: IDL set to Infinity: PASS
+	object.codeBase: IDL set to NaN: PASS
+	object.codeBase: IDL set to false: PASS
+	object.codeBase: IDL set to null: PASS
+	object.codeBase: IDL set to object "[object Object]": PASS
+	object.codeBase: IDL set to object "test-toString": PASS
+	object.codeBase: IDL set to object "test-valueOf": PASS
+	object.codeBase: IDL set to true: PASS
+	object.codeBase: IDL set to undefined: PASS
+	object.codeBase: setAttribute() to " foo ": PASS
+	object.codeBase: setAttribute() to "": PASS
+	object.codeBase: setAttribute() to "+100": PASS
+	object.codeBase: setAttribute() to ".5": PASS
+	object.codeBase: setAttribute() to "//site.example/path???@#l": PASS
+	object.codeBase: setAttribute() to "5%": PASS
+	object.codeBase: setAttribute() to "\\0": PASS
+	object.codeBase: setAttribute() to "\\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f ": PASS
 	object.codeBase: setAttribute() to "http://site.example/": PASS
-	object.codeBase: setAttribute() to -Infinity: FAIL
-	object.codeBase: setAttribute() to 1.5: FAIL
-	object.codeBase: setAttribute() to 7: FAIL
-	object.codeBase: setAttribute() to Infinity: FAIL
-	object.codeBase: setAttribute() to NaN: FAIL
-	object.codeBase: setAttribute() to false: FAIL
-	object.codeBase: setAttribute() to null: FAIL
-	object.codeBase: setAttribute() to object "[object Object]": FAIL
-	object.codeBase: setAttribute() to object "test-toString": FAIL
-	object.codeBase: setAttribute() to object "test-valueOf": FAIL
-	object.codeBase: setAttribute() to true: FAIL
-	object.codeBase: setAttribute() to undefined: FAIL
+	object.codeBase: setAttribute() to -Infinity: PASS
+	object.codeBase: setAttribute() to 1.5: PASS
+	object.codeBase: setAttribute() to 7: PASS
+	object.codeBase: setAttribute() to Infinity: PASS
+	object.codeBase: setAttribute() to NaN: PASS
+	object.codeBase: setAttribute() to false: PASS
+	object.codeBase: setAttribute() to null: PASS
+	object.codeBase: setAttribute() to object "[object Object]": PASS
+	object.codeBase: setAttribute() to object "test-toString": PASS
+	object.codeBase: setAttribute() to object "test-valueOf": PASS
+	object.codeBase: setAttribute() to true: PASS
+	object.codeBase: setAttribute() to undefined: PASS
 	object.codeBase: typeof IDL attribute: PASS
 	object.codeType: IDL get with DOM attribute unset: PASS
 	object.codeType: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
@@ -19667,7 +19667,7 @@
 	video.crossOrigin: IDL set to object "test-toString": PASS
 	video.crossOrigin: IDL set to object "test-valueOf": PASS
 	video.crossOrigin: IDL set to true: PASS
-	video.crossOrigin: IDL set to undefined: FAIL
+	video.crossOrigin: IDL set to undefined: PASS
 	video.crossOrigin: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	video.crossOrigin: setAttribute() to "": PASS
 	video.crossOrigin: setAttribute() to "+100": PASS
@@ -19995,64 +19995,64 @@
 	video.lang: setAttribute() to true: PASS
 	video.lang: setAttribute() to undefined: PASS
 	video.lang: typeof IDL attribute: PASS
-	video.loading: IDL get with DOM attribute unset: FAIL
-	video.loading: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	video.loading: IDL set to "": FAIL
-	video.loading: IDL set to "+100": FAIL
-	video.loading: IDL set to ".5": FAIL
-	video.loading: IDL set to "5%": FAIL
-	video.loading: IDL set to "EAGER": FAIL
-	video.loading: IDL set to "LAZY": FAIL
-	video.loading: IDL set to "\\0": FAIL
-	video.loading: IDL set to "ager": FAIL
-	video.loading: IDL set to "azy": FAIL
-	video.loading: IDL set to "eager": FAIL
-	video.loading: IDL set to "eager\\0": FAIL
-	video.loading: IDL set to "lazy": FAIL
-	video.loading: IDL set to "lazy\\0": FAIL
-	video.loading: IDL set to "xeager": FAIL
-	video.loading: IDL set to "xlazy": FAIL
-	video.loading: IDL set to -Infinity: FAIL
-	video.loading: IDL set to 1.5: FAIL
-	video.loading: IDL set to 7: FAIL
-	video.loading: IDL set to Infinity: FAIL
-	video.loading: IDL set to NaN: FAIL
-	video.loading: IDL set to false: FAIL
-	video.loading: IDL set to null: FAIL
-	video.loading: IDL set to object "[object Object]": FAIL
-	video.loading: IDL set to object "test-toString": FAIL
-	video.loading: IDL set to object "test-valueOf": FAIL
-	video.loading: IDL set to true: FAIL
-	video.loading: IDL set to undefined: FAIL
-	video.loading: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	video.loading: setAttribute() to "": FAIL
-	video.loading: setAttribute() to "+100": FAIL
-	video.loading: setAttribute() to ".5": FAIL
-	video.loading: setAttribute() to "5%": FAIL
-	video.loading: setAttribute() to "EAGER": FAIL
-	video.loading: setAttribute() to "LAZY": FAIL
-	video.loading: setAttribute() to "\\0": FAIL
-	video.loading: setAttribute() to "ager": FAIL
-	video.loading: setAttribute() to "azy": FAIL
-	video.loading: setAttribute() to "eager": FAIL
-	video.loading: setAttribute() to "eager\\0": FAIL
-	video.loading: setAttribute() to "lazy": FAIL
-	video.loading: setAttribute() to "lazy\\0": FAIL
-	video.loading: setAttribute() to "xeager": FAIL
-	video.loading: setAttribute() to "xlazy": FAIL
-	video.loading: setAttribute() to -Infinity: FAIL
-	video.loading: setAttribute() to 1.5: FAIL
-	video.loading: setAttribute() to 7: FAIL
-	video.loading: setAttribute() to Infinity: FAIL
-	video.loading: setAttribute() to NaN: FAIL
-	video.loading: setAttribute() to false: FAIL
-	video.loading: setAttribute() to null: FAIL
-	video.loading: setAttribute() to object "[object Object]": FAIL
-	video.loading: setAttribute() to object "test-toString": FAIL
-	video.loading: setAttribute() to object "test-valueOf": FAIL
-	video.loading: setAttribute() to true: FAIL
-	video.loading: setAttribute() to undefined: FAIL
-	video.loading: typeof IDL attribute: FAIL
+	video.loading: IDL get with DOM attribute unset: PASS
+	video.loading: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	video.loading: IDL set to "": PASS
+	video.loading: IDL set to "+100": PASS
+	video.loading: IDL set to ".5": PASS
+	video.loading: IDL set to "5%": PASS
+	video.loading: IDL set to "EAGER": PASS
+	video.loading: IDL set to "LAZY": PASS
+	video.loading: IDL set to "\\0": PASS
+	video.loading: IDL set to "ager": PASS
+	video.loading: IDL set to "azy": PASS
+	video.loading: IDL set to "eager": PASS
+	video.loading: IDL set to "eager\\0": PASS
+	video.loading: IDL set to "lazy": PASS
+	video.loading: IDL set to "lazy\\0": PASS
+	video.loading: IDL set to "xeager": PASS
+	video.loading: IDL set to "xlazy": PASS
+	video.loading: IDL set to -Infinity: PASS
+	video.loading: IDL set to 1.5: PASS
+	video.loading: IDL set to 7: PASS
+	video.loading: IDL set to Infinity: PASS
+	video.loading: IDL set to NaN: PASS
+	video.loading: IDL set to false: PASS
+	video.loading: IDL set to null: PASS
+	video.loading: IDL set to object "[object Object]": PASS
+	video.loading: IDL set to object "test-toString": PASS
+	video.loading: IDL set to object "test-valueOf": PASS
+	video.loading: IDL set to true: PASS
+	video.loading: IDL set to undefined: PASS
+	video.loading: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	video.loading: setAttribute() to "": PASS
+	video.loading: setAttribute() to "+100": PASS
+	video.loading: setAttribute() to ".5": PASS
+	video.loading: setAttribute() to "5%": PASS
+	video.loading: setAttribute() to "EAGER": PASS
+	video.loading: setAttribute() to "LAZY": PASS
+	video.loading: setAttribute() to "\\0": PASS
+	video.loading: setAttribute() to "ager": PASS
+	video.loading: setAttribute() to "azy": PASS
+	video.loading: setAttribute() to "eager": PASS
+	video.loading: setAttribute() to "eager\\0": PASS
+	video.loading: setAttribute() to "lazy": PASS
+	video.loading: setAttribute() to "lazy\\0": PASS
+	video.loading: setAttribute() to "xeager": PASS
+	video.loading: setAttribute() to "xlazy": PASS
+	video.loading: setAttribute() to -Infinity: PASS
+	video.loading: setAttribute() to 1.5: PASS
+	video.loading: setAttribute() to 7: PASS
+	video.loading: setAttribute() to Infinity: PASS
+	video.loading: setAttribute() to NaN: PASS
+	video.loading: setAttribute() to false: PASS
+	video.loading: setAttribute() to null: PASS
+	video.loading: setAttribute() to object "[object Object]": PASS
+	video.loading: setAttribute() to object "test-toString": PASS
+	video.loading: setAttribute() to object "test-valueOf": PASS
+	video.loading: setAttribute() to true: PASS
+	video.loading: setAttribute() to undefined: PASS
+	video.loading: typeof IDL attribute: PASS
 	video.loop: IDL get with DOM attribute unset: PASS
 	video.loop: IDL set to " foo ": PASS
 	video.loop: IDL set to "": PASS
@@ -21314,21 +21314,21 @@
 	input.maxLength: IDL set to -36: PASS
 	input.maxLength: IDL set to 0: PASS
 	input.maxLength: IDL set to 1: PASS
-	input.maxLength: IDL set to 2147483647: FAIL
+	input.maxLength: IDL set to 2147483647: PASS
 	input.maxLength: setAttribute() to " 7": PASS
 	input.maxLength: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	input.maxLength: setAttribute() to " \\v7": PASS
 	input.maxLength: setAttribute() to "": PASS
 	input.maxLength: setAttribute() to "+": PASS
-	input.maxLength: setAttribute() to "+100": FAIL
+	input.maxLength: setAttribute() to "+100": PASS
 	input.maxLength: setAttribute() to "-": PASS
-	input.maxLength: setAttribute() to "-0": FAIL
+	input.maxLength: setAttribute() to "-0": PASS
 	input.maxLength: setAttribute() to "-1": PASS
 	input.maxLength: setAttribute() to ".5": PASS
 	input.maxLength: setAttribute() to "0": PASS
 	input.maxLength: setAttribute() to "1": PASS
-	input.maxLength: setAttribute() to "5%": FAIL
-	input.maxLength: setAttribute() to "7\\v": FAIL
+	input.maxLength: setAttribute() to "5%": PASS
+	input.maxLength: setAttribute() to "7\\v": PASS
 	input.maxLength: setAttribute() to "\\0": PASS
 	input.maxLength: setAttribute() to "\\f7": PASS
 	input.maxLength: setAttribute() to "\\f\\v7": PASS
@@ -21366,11 +21366,11 @@
 	input.maxLength: setAttribute() to -Infinity: PASS
 	input.maxLength: setAttribute() to 0: PASS
 	input.maxLength: setAttribute() to 1: PASS
-	input.maxLength: setAttribute() to 1.5: FAIL
-	input.maxLength: setAttribute() to 2147483647: FAIL
-	input.maxLength: setAttribute() to 2147483648: FAIL
-	input.maxLength: setAttribute() to 4294967295: FAIL
-	input.maxLength: setAttribute() to 4294967296: FAIL
+	input.maxLength: setAttribute() to 1.5: PASS
+	input.maxLength: setAttribute() to 2147483647: PASS
+	input.maxLength: setAttribute() to 2147483648: PASS
+	input.maxLength: setAttribute() to 4294967295: PASS
+	input.maxLength: setAttribute() to 4294967296: PASS
 	input.maxLength: setAttribute() to Infinity: PASS
 	input.maxLength: setAttribute() to NaN: PASS
 	input.maxLength: setAttribute() to false: PASS
@@ -21424,21 +21424,21 @@
 	input.minLength: IDL set to -36: PASS
 	input.minLength: IDL set to 0: PASS
 	input.minLength: IDL set to 1: PASS
-	input.minLength: IDL set to 2147483647: FAIL
+	input.minLength: IDL set to 2147483647: PASS
 	input.minLength: setAttribute() to " 7": PASS
 	input.minLength: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	input.minLength: setAttribute() to " \\v7": PASS
 	input.minLength: setAttribute() to "": PASS
 	input.minLength: setAttribute() to "+": PASS
-	input.minLength: setAttribute() to "+100": FAIL
+	input.minLength: setAttribute() to "+100": PASS
 	input.minLength: setAttribute() to "-": PASS
-	input.minLength: setAttribute() to "-0": FAIL
+	input.minLength: setAttribute() to "-0": PASS
 	input.minLength: setAttribute() to "-1": PASS
 	input.minLength: setAttribute() to ".5": PASS
 	input.minLength: setAttribute() to "0": PASS
 	input.minLength: setAttribute() to "1": PASS
-	input.minLength: setAttribute() to "5%": FAIL
-	input.minLength: setAttribute() to "7\\v": FAIL
+	input.minLength: setAttribute() to "5%": PASS
+	input.minLength: setAttribute() to "7\\v": PASS
 	input.minLength: setAttribute() to "\\0": PASS
 	input.minLength: setAttribute() to "\\f7": PASS
 	input.minLength: setAttribute() to "\\f\\v7": PASS
@@ -21476,11 +21476,11 @@
 	input.minLength: setAttribute() to -Infinity: PASS
 	input.minLength: setAttribute() to 0: PASS
 	input.minLength: setAttribute() to 1: PASS
-	input.minLength: setAttribute() to 1.5: FAIL
-	input.minLength: setAttribute() to 2147483647: FAIL
-	input.minLength: setAttribute() to 2147483648: FAIL
-	input.minLength: setAttribute() to 4294967295: FAIL
-	input.minLength: setAttribute() to 4294967296: FAIL
+	input.minLength: setAttribute() to 1.5: PASS
+	input.minLength: setAttribute() to 2147483647: PASS
+	input.minLength: setAttribute() to 2147483648: PASS
+	input.minLength: setAttribute() to 4294967295: PASS
+	input.minLength: setAttribute() to 4294967296: PASS
 	input.minLength: setAttribute() to Infinity: PASS
 	input.minLength: setAttribute() to NaN: PASS
 	input.minLength: setAttribute() to false: PASS
@@ -21721,75 +21721,75 @@
 	input.required: setAttribute() to true: PASS
 	input.required: setAttribute() to undefined: PASS
 	input.required: typeof IDL attribute: PASS
-	input.size: IDL get with DOM attribute unset: FAIL
-	input.size: IDL set to 0: FAIL
+	input.size: IDL get with DOM attribute unset: PASS
+	input.size: IDL set to 0: PASS
 	input.size: IDL set to 1: PASS
 	input.size: IDL set to 2147483647: PASS
-	input.size: IDL set to 2147483648: FAIL
-	input.size: IDL set to 4294967295: FAIL
+	input.size: IDL set to 2147483648: PASS
+	input.size: IDL set to 4294967295: PASS
 	input.size: setAttribute() to " 7": PASS
-	input.size: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	input.size: setAttribute() to " \\v7": FAIL
-	input.size: setAttribute() to "": FAIL
-	input.size: setAttribute() to "+": FAIL
+	input.size: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	input.size: setAttribute() to " \\v7": PASS
+	input.size: setAttribute() to "": PASS
+	input.size: setAttribute() to "+": PASS
 	input.size: setAttribute() to "+100": PASS
-	input.size: setAttribute() to "-": FAIL
-	input.size: setAttribute() to "-0": FAIL
-	input.size: setAttribute() to "-1": FAIL
-	input.size: setAttribute() to ".5": FAIL
-	input.size: setAttribute() to "0": FAIL
+	input.size: setAttribute() to "-": PASS
+	input.size: setAttribute() to "-0": PASS
+	input.size: setAttribute() to "-1": PASS
+	input.size: setAttribute() to ".5": PASS
+	input.size: setAttribute() to "0": PASS
 	input.size: setAttribute() to "1": PASS
 	input.size: setAttribute() to "5%": PASS
 	input.size: setAttribute() to "7\\v": PASS
-	input.size: setAttribute() to "\\0": FAIL
+	input.size: setAttribute() to "\\0": PASS
 	input.size: setAttribute() to "\\f7": PASS
-	input.size: setAttribute() to "\\f\\v7": FAIL
+	input.size: setAttribute() to "\\f\\v7": PASS
 	input.size: setAttribute() to "\\n7": PASS
-	input.size: setAttribute() to "\\n\\v7": FAIL
+	input.size: setAttribute() to "\\n\\v7": PASS
 	input.size: setAttribute() to "\\r7": PASS
-	input.size: setAttribute() to "\\r\\v7": FAIL
+	input.size: setAttribute() to "\\r\\v7": PASS
 	input.size: setAttribute() to "\\t7": PASS
-	input.size: setAttribute() to "\\t\\v7": FAIL
-	input.size: setAttribute() to "\\v7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to "᠎7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to "　7": FAIL
-	input.size: setAttribute() to "﻿7": FAIL
-	input.size: setAttribute() to -1: FAIL
-	input.size: setAttribute() to -2147483648: FAIL
-	input.size: setAttribute() to -2147483649: FAIL
-	input.size: setAttribute() to -36: FAIL
-	input.size: setAttribute() to -Infinity: FAIL
-	input.size: setAttribute() to 0: FAIL
+	input.size: setAttribute() to "\\t\\v7": PASS
+	input.size: setAttribute() to "\\v7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to "᠎7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to "　7": PASS
+	input.size: setAttribute() to "﻿7": PASS
+	input.size: setAttribute() to -1: PASS
+	input.size: setAttribute() to -2147483648: PASS
+	input.size: setAttribute() to -2147483649: PASS
+	input.size: setAttribute() to -36: PASS
+	input.size: setAttribute() to -Infinity: PASS
+	input.size: setAttribute() to 0: PASS
 	input.size: setAttribute() to 1: PASS
 	input.size: setAttribute() to 1.5: PASS
 	input.size: setAttribute() to 2147483647: PASS
-	input.size: setAttribute() to 2147483648: FAIL
-	input.size: setAttribute() to 4294967295: FAIL
-	input.size: setAttribute() to 4294967296: FAIL
-	input.size: setAttribute() to Infinity: FAIL
-	input.size: setAttribute() to NaN: FAIL
-	input.size: setAttribute() to false: FAIL
+	input.size: setAttribute() to 2147483648: PASS
+	input.size: setAttribute() to 4294967295: PASS
+	input.size: setAttribute() to 4294967296: PASS
+	input.size: setAttribute() to Infinity: PASS
+	input.size: setAttribute() to NaN: PASS
+	input.size: setAttribute() to false: PASS
 	input.size: setAttribute() to object "2": PASS
 	input.size: setAttribute() to object "3": PASS
-	input.size: setAttribute() to object "[object Object]": FAIL
-	input.size: setAttribute() to true: FAIL
-	input.size: setAttribute() to undefined: FAIL
+	input.size: setAttribute() to object "[object Object]": PASS
+	input.size: setAttribute() to true: PASS
+	input.size: setAttribute() to undefined: PASS
 	input.size: typeof IDL attribute: PASS
 	input.src: IDL get with DOM attribute unset: PASS
 	input.src: IDL set to " foo ": PASS
@@ -25377,21 +25377,21 @@
 	input.maxLength: IDL set to -36: PASS
 	input.maxLength: IDL set to 0: PASS
 	input.maxLength: IDL set to 1: PASS
-	input.maxLength: IDL set to 2147483647: FAIL
+	input.maxLength: IDL set to 2147483647: PASS
 	input.maxLength: setAttribute() to " 7": PASS
 	input.maxLength: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	input.maxLength: setAttribute() to " \\v7": PASS
 	input.maxLength: setAttribute() to "": PASS
 	input.maxLength: setAttribute() to "+": PASS
-	input.maxLength: setAttribute() to "+100": FAIL
+	input.maxLength: setAttribute() to "+100": PASS
 	input.maxLength: setAttribute() to "-": PASS
-	input.maxLength: setAttribute() to "-0": FAIL
+	input.maxLength: setAttribute() to "-0": PASS
 	input.maxLength: setAttribute() to "-1": PASS
 	input.maxLength: setAttribute() to ".5": PASS
 	input.maxLength: setAttribute() to "0": PASS
 	input.maxLength: setAttribute() to "1": PASS
-	input.maxLength: setAttribute() to "5%": FAIL
-	input.maxLength: setAttribute() to "7\\v": FAIL
+	input.maxLength: setAttribute() to "5%": PASS
+	input.maxLength: setAttribute() to "7\\v": PASS
 	input.maxLength: setAttribute() to "\\0": PASS
 	input.maxLength: setAttribute() to "\\f7": PASS
 	input.maxLength: setAttribute() to "\\f\\v7": PASS
@@ -25429,11 +25429,11 @@
 	input.maxLength: setAttribute() to -Infinity: PASS
 	input.maxLength: setAttribute() to 0: PASS
 	input.maxLength: setAttribute() to 1: PASS
-	input.maxLength: setAttribute() to 1.5: FAIL
-	input.maxLength: setAttribute() to 2147483647: FAIL
-	input.maxLength: setAttribute() to 2147483648: FAIL
-	input.maxLength: setAttribute() to 4294967295: FAIL
-	input.maxLength: setAttribute() to 4294967296: FAIL
+	input.maxLength: setAttribute() to 1.5: PASS
+	input.maxLength: setAttribute() to 2147483647: PASS
+	input.maxLength: setAttribute() to 2147483648: PASS
+	input.maxLength: setAttribute() to 4294967295: PASS
+	input.maxLength: setAttribute() to 4294967296: PASS
 	input.maxLength: setAttribute() to Infinity: PASS
 	input.maxLength: setAttribute() to NaN: PASS
 	input.maxLength: setAttribute() to false: PASS
@@ -25487,21 +25487,21 @@
 	input.minLength: IDL set to -36: PASS
 	input.minLength: IDL set to 0: PASS
 	input.minLength: IDL set to 1: PASS
-	input.minLength: IDL set to 2147483647: FAIL
+	input.minLength: IDL set to 2147483647: PASS
 	input.minLength: setAttribute() to " 7": PASS
 	input.minLength: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	input.minLength: setAttribute() to " \\v7": PASS
 	input.minLength: setAttribute() to "": PASS
 	input.minLength: setAttribute() to "+": PASS
-	input.minLength: setAttribute() to "+100": FAIL
+	input.minLength: setAttribute() to "+100": PASS
 	input.minLength: setAttribute() to "-": PASS
-	input.minLength: setAttribute() to "-0": FAIL
+	input.minLength: setAttribute() to "-0": PASS
 	input.minLength: setAttribute() to "-1": PASS
 	input.minLength: setAttribute() to ".5": PASS
 	input.minLength: setAttribute() to "0": PASS
 	input.minLength: setAttribute() to "1": PASS
-	input.minLength: setAttribute() to "5%": FAIL
-	input.minLength: setAttribute() to "7\\v": FAIL
+	input.minLength: setAttribute() to "5%": PASS
+	input.minLength: setAttribute() to "7\\v": PASS
 	input.minLength: setAttribute() to "\\0": PASS
 	input.minLength: setAttribute() to "\\f7": PASS
 	input.minLength: setAttribute() to "\\f\\v7": PASS
@@ -25539,11 +25539,11 @@
 	input.minLength: setAttribute() to -Infinity: PASS
 	input.minLength: setAttribute() to 0: PASS
 	input.minLength: setAttribute() to 1: PASS
-	input.minLength: setAttribute() to 1.5: FAIL
-	input.minLength: setAttribute() to 2147483647: FAIL
-	input.minLength: setAttribute() to 2147483648: FAIL
-	input.minLength: setAttribute() to 4294967295: FAIL
-	input.minLength: setAttribute() to 4294967296: FAIL
+	input.minLength: setAttribute() to 1.5: PASS
+	input.minLength: setAttribute() to 2147483647: PASS
+	input.minLength: setAttribute() to 2147483648: PASS
+	input.minLength: setAttribute() to 4294967295: PASS
+	input.minLength: setAttribute() to 4294967296: PASS
 	input.minLength: setAttribute() to Infinity: PASS
 	input.minLength: setAttribute() to NaN: PASS
 	input.minLength: setAttribute() to false: PASS
@@ -25784,75 +25784,75 @@
 	input.required: setAttribute() to true: PASS
 	input.required: setAttribute() to undefined: PASS
 	input.required: typeof IDL attribute: PASS
-	input.size: IDL get with DOM attribute unset: FAIL
-	input.size: IDL set to 0: FAIL
+	input.size: IDL get with DOM attribute unset: PASS
+	input.size: IDL set to 0: PASS
 	input.size: IDL set to 1: PASS
 	input.size: IDL set to 2147483647: PASS
-	input.size: IDL set to 2147483648: FAIL
-	input.size: IDL set to 4294967295: FAIL
+	input.size: IDL set to 2147483648: PASS
+	input.size: IDL set to 4294967295: PASS
 	input.size: setAttribute() to " 7": PASS
-	input.size: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	input.size: setAttribute() to " \\v7": FAIL
-	input.size: setAttribute() to "": FAIL
-	input.size: setAttribute() to "+": FAIL
+	input.size: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	input.size: setAttribute() to " \\v7": PASS
+	input.size: setAttribute() to "": PASS
+	input.size: setAttribute() to "+": PASS
 	input.size: setAttribute() to "+100": PASS
-	input.size: setAttribute() to "-": FAIL
-	input.size: setAttribute() to "-0": FAIL
-	input.size: setAttribute() to "-1": FAIL
-	input.size: setAttribute() to ".5": FAIL
-	input.size: setAttribute() to "0": FAIL
+	input.size: setAttribute() to "-": PASS
+	input.size: setAttribute() to "-0": PASS
+	input.size: setAttribute() to "-1": PASS
+	input.size: setAttribute() to ".5": PASS
+	input.size: setAttribute() to "0": PASS
 	input.size: setAttribute() to "1": PASS
 	input.size: setAttribute() to "5%": PASS
 	input.size: setAttribute() to "7\\v": PASS
-	input.size: setAttribute() to "\\0": FAIL
+	input.size: setAttribute() to "\\0": PASS
 	input.size: setAttribute() to "\\f7": PASS
-	input.size: setAttribute() to "\\f\\v7": FAIL
+	input.size: setAttribute() to "\\f\\v7": PASS
 	input.size: setAttribute() to "\\n7": PASS
-	input.size: setAttribute() to "\\n\\v7": FAIL
+	input.size: setAttribute() to "\\n\\v7": PASS
 	input.size: setAttribute() to "\\r7": PASS
-	input.size: setAttribute() to "\\r\\v7": FAIL
+	input.size: setAttribute() to "\\r\\v7": PASS
 	input.size: setAttribute() to "\\t7": PASS
-	input.size: setAttribute() to "\\t\\v7": FAIL
-	input.size: setAttribute() to "\\v7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to "᠎7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to " 7": FAIL
-	input.size: setAttribute() to "　7": FAIL
-	input.size: setAttribute() to "﻿7": FAIL
-	input.size: setAttribute() to -1: FAIL
-	input.size: setAttribute() to -2147483648: FAIL
-	input.size: setAttribute() to -2147483649: FAIL
-	input.size: setAttribute() to -36: FAIL
-	input.size: setAttribute() to -Infinity: FAIL
-	input.size: setAttribute() to 0: FAIL
+	input.size: setAttribute() to "\\t\\v7": PASS
+	input.size: setAttribute() to "\\v7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to "᠎7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to " 7": PASS
+	input.size: setAttribute() to "　7": PASS
+	input.size: setAttribute() to "﻿7": PASS
+	input.size: setAttribute() to -1: PASS
+	input.size: setAttribute() to -2147483648: PASS
+	input.size: setAttribute() to -2147483649: PASS
+	input.size: setAttribute() to -36: PASS
+	input.size: setAttribute() to -Infinity: PASS
+	input.size: setAttribute() to 0: PASS
 	input.size: setAttribute() to 1: PASS
 	input.size: setAttribute() to 1.5: PASS
 	input.size: setAttribute() to 2147483647: PASS
-	input.size: setAttribute() to 2147483648: FAIL
-	input.size: setAttribute() to 4294967295: FAIL
-	input.size: setAttribute() to 4294967296: FAIL
-	input.size: setAttribute() to Infinity: FAIL
-	input.size: setAttribute() to NaN: FAIL
-	input.size: setAttribute() to false: FAIL
+	input.size: setAttribute() to 2147483648: PASS
+	input.size: setAttribute() to 4294967295: PASS
+	input.size: setAttribute() to 4294967296: PASS
+	input.size: setAttribute() to Infinity: PASS
+	input.size: setAttribute() to NaN: PASS
+	input.size: setAttribute() to false: PASS
 	input.size: setAttribute() to object "2": PASS
 	input.size: setAttribute() to object "3": PASS
-	input.size: setAttribute() to object "[object Object]": FAIL
-	input.size: setAttribute() to true: FAIL
-	input.size: setAttribute() to undefined: FAIL
+	input.size: setAttribute() to object "[object Object]": PASS
+	input.size: setAttribute() to true: PASS
+	input.size: setAttribute() to undefined: PASS
 	input.size: typeof IDL attribute: PASS
 	input.src: IDL get with DOM attribute unset: PASS
 	input.src: IDL set to " foo ": PASS
@@ -29171,7 +29171,7 @@
 	progress.max: IDL set to 1e-10: PASS
 	progress.max: setAttribute() to " 7": PASS
 	progress.max: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
-	progress.max: setAttribute() to " \\v7": FAIL
+	progress.max: setAttribute() to " \\v7": PASS
 	progress.max: setAttribute() to "": PASS
 	progress.max: setAttribute() to "+": PASS
 	progress.max: setAttribute() to "+100": PASS
@@ -29200,14 +29200,14 @@
 	progress.max: setAttribute() to "7\\v": PASS
 	progress.max: setAttribute() to "\\0": PASS
 	progress.max: setAttribute() to "\\f7": PASS
-	progress.max: setAttribute() to "\\f\\v7": FAIL
+	progress.max: setAttribute() to "\\f\\v7": PASS
 	progress.max: setAttribute() to "\\n7": PASS
-	progress.max: setAttribute() to "\\n\\v7": FAIL
+	progress.max: setAttribute() to "\\n\\v7": PASS
 	progress.max: setAttribute() to "\\r7": PASS
-	progress.max: setAttribute() to "\\r\\v7": FAIL
+	progress.max: setAttribute() to "\\r\\v7": PASS
 	progress.max: setAttribute() to "\\t7": PASS
-	progress.max: setAttribute() to "\\t\\v7": FAIL
-	progress.max: setAttribute() to "\\v7": FAIL
+	progress.max: setAttribute() to "\\t\\v7": PASS
+	progress.max: setAttribute() to "\\v7": PASS
 	progress.max: setAttribute() to " 7": PASS
 	progress.max: setAttribute() to " 7": PASS
 	progress.max: setAttribute() to "᠎7": PASS
@@ -30397,21 +30397,21 @@
 	textarea.maxLength: IDL set to -36: PASS
 	textarea.maxLength: IDL set to 0: PASS
 	textarea.maxLength: IDL set to 1: PASS
-	textarea.maxLength: IDL set to 2147483647: FAIL
+	textarea.maxLength: IDL set to 2147483647: PASS
 	textarea.maxLength: setAttribute() to " 7": PASS
 	textarea.maxLength: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	textarea.maxLength: setAttribute() to " \\v7": PASS
 	textarea.maxLength: setAttribute() to "": PASS
 	textarea.maxLength: setAttribute() to "+": PASS
-	textarea.maxLength: setAttribute() to "+100": FAIL
+	textarea.maxLength: setAttribute() to "+100": PASS
 	textarea.maxLength: setAttribute() to "-": PASS
-	textarea.maxLength: setAttribute() to "-0": FAIL
+	textarea.maxLength: setAttribute() to "-0": PASS
 	textarea.maxLength: setAttribute() to "-1": PASS
 	textarea.maxLength: setAttribute() to ".5": PASS
 	textarea.maxLength: setAttribute() to "0": PASS
 	textarea.maxLength: setAttribute() to "1": PASS
-	textarea.maxLength: setAttribute() to "5%": FAIL
-	textarea.maxLength: setAttribute() to "7\\v": FAIL
+	textarea.maxLength: setAttribute() to "5%": PASS
+	textarea.maxLength: setAttribute() to "7\\v": PASS
 	textarea.maxLength: setAttribute() to "\\0": PASS
 	textarea.maxLength: setAttribute() to "\\f7": PASS
 	textarea.maxLength: setAttribute() to "\\f\\v7": PASS
@@ -30449,11 +30449,11 @@
 	textarea.maxLength: setAttribute() to -Infinity: PASS
 	textarea.maxLength: setAttribute() to 0: PASS
 	textarea.maxLength: setAttribute() to 1: PASS
-	textarea.maxLength: setAttribute() to 1.5: FAIL
-	textarea.maxLength: setAttribute() to 2147483647: FAIL
-	textarea.maxLength: setAttribute() to 2147483648: FAIL
-	textarea.maxLength: setAttribute() to 4294967295: FAIL
-	textarea.maxLength: setAttribute() to 4294967296: FAIL
+	textarea.maxLength: setAttribute() to 1.5: PASS
+	textarea.maxLength: setAttribute() to 2147483647: PASS
+	textarea.maxLength: setAttribute() to 2147483648: PASS
+	textarea.maxLength: setAttribute() to 4294967295: PASS
+	textarea.maxLength: setAttribute() to 4294967296: PASS
 	textarea.maxLength: setAttribute() to Infinity: PASS
 	textarea.maxLength: setAttribute() to NaN: PASS
 	textarea.maxLength: setAttribute() to false: PASS
@@ -30469,21 +30469,21 @@
 	textarea.minLength: IDL set to -36: PASS
 	textarea.minLength: IDL set to 0: PASS
 	textarea.minLength: IDL set to 1: PASS
-	textarea.minLength: IDL set to 2147483647: FAIL
+	textarea.minLength: IDL set to 2147483647: PASS
 	textarea.minLength: setAttribute() to " 7": PASS
 	textarea.minLength: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	textarea.minLength: setAttribute() to " \\v7": PASS
 	textarea.minLength: setAttribute() to "": PASS
 	textarea.minLength: setAttribute() to "+": PASS
-	textarea.minLength: setAttribute() to "+100": FAIL
+	textarea.minLength: setAttribute() to "+100": PASS
 	textarea.minLength: setAttribute() to "-": PASS
-	textarea.minLength: setAttribute() to "-0": FAIL
+	textarea.minLength: setAttribute() to "-0": PASS
 	textarea.minLength: setAttribute() to "-1": PASS
 	textarea.minLength: setAttribute() to ".5": PASS
 	textarea.minLength: setAttribute() to "0": PASS
 	textarea.minLength: setAttribute() to "1": PASS
-	textarea.minLength: setAttribute() to "5%": FAIL
-	textarea.minLength: setAttribute() to "7\\v": FAIL
+	textarea.minLength: setAttribute() to "5%": PASS
+	textarea.minLength: setAttribute() to "7\\v": PASS
 	textarea.minLength: setAttribute() to "\\0": PASS
 	textarea.minLength: setAttribute() to "\\f7": PASS
 	textarea.minLength: setAttribute() to "\\f\\v7": PASS
@@ -30521,11 +30521,11 @@
 	textarea.minLength: setAttribute() to -Infinity: PASS
 	textarea.minLength: setAttribute() to 0: PASS
 	textarea.minLength: setAttribute() to 1: PASS
-	textarea.minLength: setAttribute() to 1.5: FAIL
-	textarea.minLength: setAttribute() to 2147483647: FAIL
-	textarea.minLength: setAttribute() to 2147483648: FAIL
-	textarea.minLength: setAttribute() to 4294967295: FAIL
-	textarea.minLength: setAttribute() to 4294967296: FAIL
+	textarea.minLength: setAttribute() to 1.5: PASS
+	textarea.minLength: setAttribute() to 2147483647: PASS
+	textarea.minLength: setAttribute() to 2147483648: PASS
+	textarea.minLength: setAttribute() to 4294967295: PASS
+	textarea.minLength: setAttribute() to 4294967296: PASS
 	textarea.minLength: setAttribute() to Infinity: PASS
 	textarea.minLength: setAttribute() to NaN: PASS
 	textarea.minLength: setAttribute() to false: PASS
@@ -37956,7 +37956,7 @@
 	link.crossOrigin: IDL set to object "test-toString": PASS
 	link.crossOrigin: IDL set to object "test-valueOf": PASS
 	link.crossOrigin: IDL set to true: PASS
-	link.crossOrigin: IDL set to undefined: FAIL
+	link.crossOrigin: IDL set to undefined: PASS
 	link.crossOrigin: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	link.crossOrigin: setAttribute() to "": PASS
 	link.crossOrigin: setAttribute() to "+100": PASS
@@ -43156,7 +43156,7 @@
 	script.crossOrigin: IDL set to "nonymous": PASS
 	script.crossOrigin: IDL set to "se-credentials": PASS
 	script.crossOrigin: IDL set to "use-credentials": PASS
-	script.crossOrigin: IDL set to "use-credentials\\0": FAIL
+	script.crossOrigin: IDL set to "use-credentials\\0": PASS
 	script.crossOrigin: IDL set to "uſe-credentialſ": PASS
 	script.crossOrigin: IDL set to "xanonymous": PASS
 	script.crossOrigin: IDL set to "xuse-credentials": PASS
@@ -43171,7 +43171,7 @@
 	script.crossOrigin: IDL set to object "test-toString": PASS
 	script.crossOrigin: IDL set to object "test-valueOf": PASS
 	script.crossOrigin: IDL set to true: PASS
-	script.crossOrigin: IDL set to undefined: FAIL
+	script.crossOrigin: IDL set to undefined: PASS
 	script.crossOrigin: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	script.crossOrigin: setAttribute() to "": PASS
 	script.crossOrigin: setAttribute() to "+100": PASS
@@ -43186,7 +43186,7 @@
 	script.crossOrigin: setAttribute() to "nonymous": PASS
 	script.crossOrigin: setAttribute() to "se-credentials": PASS
 	script.crossOrigin: setAttribute() to "use-credentials": PASS
-	script.crossOrigin: setAttribute() to "use-credentials\\0": FAIL
+	script.crossOrigin: setAttribute() to "use-credentials\\0": PASS
 	script.crossOrigin: setAttribute() to "uſe-credentialſ": PASS
 	script.crossOrigin: setAttribute() to "xanonymous": PASS
 	script.crossOrigin: setAttribute() to "xuse-credentials": PASS
@@ -45043,120 +45043,120 @@
 	undefinedelement.dir: setAttribute() to true: PASS
 	undefinedelement.dir: setAttribute() to undefined: PASS
 	undefinedelement.dir: typeof IDL attribute: PASS
-	undefinedelement.enterKeyHint: IDL get with DOM attribute unset: FAIL
-	undefinedelement.enterKeyHint: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	undefinedelement.enterKeyHint: IDL set to "": FAIL
-	undefinedelement.enterKeyHint: IDL set to "+100": FAIL
-	undefinedelement.enterKeyHint: IDL set to ".5": FAIL
-	undefinedelement.enterKeyHint: IDL set to "5%": FAIL
-	undefinedelement.enterKeyHint: IDL set to "DONE": FAIL
-	undefinedelement.enterKeyHint: IDL set to "ENTER": FAIL
-	undefinedelement.enterKeyHint: IDL set to "GO": FAIL
-	undefinedelement.enterKeyHint: IDL set to "NEXT": FAIL
-	undefinedelement.enterKeyHint: IDL set to "PREVIOUS": FAIL
-	undefinedelement.enterKeyHint: IDL set to "SEARCH": FAIL
-	undefinedelement.enterKeyHint: IDL set to "SEND": FAIL
-	undefinedelement.enterKeyHint: IDL set to "\\0": FAIL
-	undefinedelement.enterKeyHint: IDL set to "done": FAIL
-	undefinedelement.enterKeyHint: IDL set to "done\\0": FAIL
-	undefinedelement.enterKeyHint: IDL set to "earch": FAIL
-	undefinedelement.enterKeyHint: IDL set to "end": FAIL
-	undefinedelement.enterKeyHint: IDL set to "enter": FAIL
-	undefinedelement.enterKeyHint: IDL set to "enter\\0": FAIL
-	undefinedelement.enterKeyHint: IDL set to "ext": FAIL
-	undefinedelement.enterKeyHint: IDL set to "go": FAIL
-	undefinedelement.enterKeyHint: IDL set to "go\\0": FAIL
-	undefinedelement.enterKeyHint: IDL set to "next": FAIL
-	undefinedelement.enterKeyHint: IDL set to "next\\0": FAIL
-	undefinedelement.enterKeyHint: IDL set to "nter": FAIL
-	undefinedelement.enterKeyHint: IDL set to "o": FAIL
-	undefinedelement.enterKeyHint: IDL set to "one": FAIL
-	undefinedelement.enterKeyHint: IDL set to "previous": FAIL
-	undefinedelement.enterKeyHint: IDL set to "previous\\0": FAIL
-	undefinedelement.enterKeyHint: IDL set to "previouſ": FAIL
-	undefinedelement.enterKeyHint: IDL set to "revious": FAIL
-	undefinedelement.enterKeyHint: IDL set to "search": FAIL
-	undefinedelement.enterKeyHint: IDL set to "search\\0": FAIL
-	undefinedelement.enterKeyHint: IDL set to "send": FAIL
-	undefinedelement.enterKeyHint: IDL set to "send\\0": FAIL
-	undefinedelement.enterKeyHint: IDL set to "xdone": FAIL
-	undefinedelement.enterKeyHint: IDL set to "xenter": FAIL
-	undefinedelement.enterKeyHint: IDL set to "xgo": FAIL
-	undefinedelement.enterKeyHint: IDL set to "xnext": FAIL
-	undefinedelement.enterKeyHint: IDL set to "xprevious": FAIL
-	undefinedelement.enterKeyHint: IDL set to "xsearch": FAIL
-	undefinedelement.enterKeyHint: IDL set to "xsend": FAIL
-	undefinedelement.enterKeyHint: IDL set to "ſearch": FAIL
-	undefinedelement.enterKeyHint: IDL set to "ſend": FAIL
-	undefinedelement.enterKeyHint: IDL set to -Infinity: FAIL
-	undefinedelement.enterKeyHint: IDL set to 1.5: FAIL
-	undefinedelement.enterKeyHint: IDL set to 7: FAIL
-	undefinedelement.enterKeyHint: IDL set to Infinity: FAIL
-	undefinedelement.enterKeyHint: IDL set to NaN: FAIL
-	undefinedelement.enterKeyHint: IDL set to false: FAIL
-	undefinedelement.enterKeyHint: IDL set to null: FAIL
-	undefinedelement.enterKeyHint: IDL set to object "[object Object]": FAIL
-	undefinedelement.enterKeyHint: IDL set to object "test-toString": FAIL
-	undefinedelement.enterKeyHint: IDL set to object "test-valueOf": FAIL
-	undefinedelement.enterKeyHint: IDL set to true: FAIL
-	undefinedelement.enterKeyHint: IDL set to undefined: FAIL
-	undefinedelement.enterKeyHint: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "+100": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to ".5": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "5%": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "DONE": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "ENTER": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "GO": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "NEXT": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "PREVIOUS": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "SEARCH": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "SEND": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "\\0": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "done": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "done\\0": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "earch": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "end": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "enter": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "enter\\0": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "ext": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "go": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "go\\0": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "next": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "next\\0": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "nter": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "o": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "one": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "previous": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "previous\\0": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "previouſ": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "revious": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "search": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "search\\0": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "send": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "send\\0": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "xdone": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "xenter": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "xgo": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "xnext": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "xprevious": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "xsearch": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "xsend": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "ſearch": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to "ſend": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to -Infinity: FAIL
-	undefinedelement.enterKeyHint: setAttribute() to 1.5: FAIL
-	undefinedelement.enterKeyHint: setAttribute() to 7: FAIL
-	undefinedelement.enterKeyHint: setAttribute() to Infinity: FAIL
-	undefinedelement.enterKeyHint: setAttribute() to NaN: FAIL
-	undefinedelement.enterKeyHint: setAttribute() to false: FAIL
-	undefinedelement.enterKeyHint: setAttribute() to null: FAIL
-	undefinedelement.enterKeyHint: setAttribute() to object "[object Object]": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to object "test-toString": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to object "test-valueOf": FAIL
-	undefinedelement.enterKeyHint: setAttribute() to true: FAIL
-	undefinedelement.enterKeyHint: setAttribute() to undefined: FAIL
-	undefinedelement.enterKeyHint: typeof IDL attribute: FAIL
+	undefinedelement.enterKeyHint: IDL get with DOM attribute unset: PASS
+	undefinedelement.enterKeyHint: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	undefinedelement.enterKeyHint: IDL set to "": PASS
+	undefinedelement.enterKeyHint: IDL set to "+100": PASS
+	undefinedelement.enterKeyHint: IDL set to ".5": PASS
+	undefinedelement.enterKeyHint: IDL set to "5%": PASS
+	undefinedelement.enterKeyHint: IDL set to "DONE": PASS
+	undefinedelement.enterKeyHint: IDL set to "ENTER": PASS
+	undefinedelement.enterKeyHint: IDL set to "GO": PASS
+	undefinedelement.enterKeyHint: IDL set to "NEXT": PASS
+	undefinedelement.enterKeyHint: IDL set to "PREVIOUS": PASS
+	undefinedelement.enterKeyHint: IDL set to "SEARCH": PASS
+	undefinedelement.enterKeyHint: IDL set to "SEND": PASS
+	undefinedelement.enterKeyHint: IDL set to "\\0": PASS
+	undefinedelement.enterKeyHint: IDL set to "done": PASS
+	undefinedelement.enterKeyHint: IDL set to "done\\0": PASS
+	undefinedelement.enterKeyHint: IDL set to "earch": PASS
+	undefinedelement.enterKeyHint: IDL set to "end": PASS
+	undefinedelement.enterKeyHint: IDL set to "enter": PASS
+	undefinedelement.enterKeyHint: IDL set to "enter\\0": PASS
+	undefinedelement.enterKeyHint: IDL set to "ext": PASS
+	undefinedelement.enterKeyHint: IDL set to "go": PASS
+	undefinedelement.enterKeyHint: IDL set to "go\\0": PASS
+	undefinedelement.enterKeyHint: IDL set to "next": PASS
+	undefinedelement.enterKeyHint: IDL set to "next\\0": PASS
+	undefinedelement.enterKeyHint: IDL set to "nter": PASS
+	undefinedelement.enterKeyHint: IDL set to "o": PASS
+	undefinedelement.enterKeyHint: IDL set to "one": PASS
+	undefinedelement.enterKeyHint: IDL set to "previous": PASS
+	undefinedelement.enterKeyHint: IDL set to "previous\\0": PASS
+	undefinedelement.enterKeyHint: IDL set to "previouſ": PASS
+	undefinedelement.enterKeyHint: IDL set to "revious": PASS
+	undefinedelement.enterKeyHint: IDL set to "search": PASS
+	undefinedelement.enterKeyHint: IDL set to "search\\0": PASS
+	undefinedelement.enterKeyHint: IDL set to "send": PASS
+	undefinedelement.enterKeyHint: IDL set to "send\\0": PASS
+	undefinedelement.enterKeyHint: IDL set to "xdone": PASS
+	undefinedelement.enterKeyHint: IDL set to "xenter": PASS
+	undefinedelement.enterKeyHint: IDL set to "xgo": PASS
+	undefinedelement.enterKeyHint: IDL set to "xnext": PASS
+	undefinedelement.enterKeyHint: IDL set to "xprevious": PASS
+	undefinedelement.enterKeyHint: IDL set to "xsearch": PASS
+	undefinedelement.enterKeyHint: IDL set to "xsend": PASS
+	undefinedelement.enterKeyHint: IDL set to "ſearch": PASS
+	undefinedelement.enterKeyHint: IDL set to "ſend": PASS
+	undefinedelement.enterKeyHint: IDL set to -Infinity: PASS
+	undefinedelement.enterKeyHint: IDL set to 1.5: PASS
+	undefinedelement.enterKeyHint: IDL set to 7: PASS
+	undefinedelement.enterKeyHint: IDL set to Infinity: PASS
+	undefinedelement.enterKeyHint: IDL set to NaN: PASS
+	undefinedelement.enterKeyHint: IDL set to false: PASS
+	undefinedelement.enterKeyHint: IDL set to null: PASS
+	undefinedelement.enterKeyHint: IDL set to object "[object Object]": PASS
+	undefinedelement.enterKeyHint: IDL set to object "test-toString": PASS
+	undefinedelement.enterKeyHint: IDL set to object "test-valueOf": PASS
+	undefinedelement.enterKeyHint: IDL set to true: PASS
+	undefinedelement.enterKeyHint: IDL set to undefined: PASS
+	undefinedelement.enterKeyHint: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "+100": PASS
+	undefinedelement.enterKeyHint: setAttribute() to ".5": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "5%": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "DONE": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "ENTER": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "GO": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "NEXT": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "PREVIOUS": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "SEARCH": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "SEND": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "\\0": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "done": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "done\\0": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "earch": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "end": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "enter": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "enter\\0": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "ext": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "go": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "go\\0": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "next": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "next\\0": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "nter": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "o": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "one": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "previous": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "previous\\0": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "previouſ": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "revious": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "search": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "search\\0": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "send": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "send\\0": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "xdone": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "xenter": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "xgo": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "xnext": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "xprevious": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "xsearch": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "xsend": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "ſearch": PASS
+	undefinedelement.enterKeyHint: setAttribute() to "ſend": PASS
+	undefinedelement.enterKeyHint: setAttribute() to -Infinity: PASS
+	undefinedelement.enterKeyHint: setAttribute() to 1.5: PASS
+	undefinedelement.enterKeyHint: setAttribute() to 7: PASS
+	undefinedelement.enterKeyHint: setAttribute() to Infinity: PASS
+	undefinedelement.enterKeyHint: setAttribute() to NaN: PASS
+	undefinedelement.enterKeyHint: setAttribute() to false: PASS
+	undefinedelement.enterKeyHint: setAttribute() to null: PASS
+	undefinedelement.enterKeyHint: setAttribute() to object "[object Object]": PASS
+	undefinedelement.enterKeyHint: setAttribute() to object "test-toString": PASS
+	undefinedelement.enterKeyHint: setAttribute() to object "test-valueOf": PASS
+	undefinedelement.enterKeyHint: setAttribute() to true: PASS
+	undefinedelement.enterKeyHint: setAttribute() to undefined: PASS
+	undefinedelement.enterKeyHint: typeof IDL attribute: PASS
 	undefinedelement.hidden: IDL get with DOM attribute unset: PASS
 	undefinedelement.hidden: IDL set to " foo ": PASS
 	undefinedelement.hidden: IDL set to "": PASS
@@ -45235,126 +45235,126 @@
 	undefinedelement.inert: setAttribute() to true: PASS
 	undefinedelement.inert: setAttribute() to undefined: PASS
 	undefinedelement.inert: typeof IDL attribute: PASS
-	undefinedelement.inputMode: IDL get with DOM attribute unset: FAIL
-	undefinedelement.inputMode: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	undefinedelement.inputMode: IDL set to "": FAIL
-	undefinedelement.inputMode: IDL set to "+100": FAIL
-	undefinedelement.inputMode: IDL set to ".5": FAIL
-	undefinedelement.inputMode: IDL set to "5%": FAIL
-	undefinedelement.inputMode: IDL set to "DECIMAL": FAIL
-	undefinedelement.inputMode: IDL set to "EMAIL": FAIL
-	undefinedelement.inputMode: IDL set to "NONE": FAIL
-	undefinedelement.inputMode: IDL set to "NUMERIC": FAIL
-	undefinedelement.inputMode: IDL set to "SEARCH": FAIL
-	undefinedelement.inputMode: IDL set to "TEL": FAIL
-	undefinedelement.inputMode: IDL set to "TEXT": FAIL
-	undefinedelement.inputMode: IDL set to "URL": FAIL
-	undefinedelement.inputMode: IDL set to "\\0": FAIL
-	undefinedelement.inputMode: IDL set to "decimal": FAIL
-	undefinedelement.inputMode: IDL set to "decimal\\0": FAIL
-	undefinedelement.inputMode: IDL set to "earch": FAIL
-	undefinedelement.inputMode: IDL set to "ecimal": FAIL
-	undefinedelement.inputMode: IDL set to "el": FAIL
-	undefinedelement.inputMode: IDL set to "email": FAIL
-	undefinedelement.inputMode: IDL set to "email\\0": FAIL
-	undefinedelement.inputMode: IDL set to "ext": FAIL
-	undefinedelement.inputMode: IDL set to "mail": FAIL
-	undefinedelement.inputMode: IDL set to "none": FAIL
-	undefinedelement.inputMode: IDL set to "none\\0": FAIL
-	undefinedelement.inputMode: IDL set to "numeric": FAIL
-	undefinedelement.inputMode: IDL set to "numeric\\0": FAIL
-	undefinedelement.inputMode: IDL set to "one": FAIL
-	undefinedelement.inputMode: IDL set to "rl": FAIL
-	undefinedelement.inputMode: IDL set to "search": FAIL
-	undefinedelement.inputMode: IDL set to "search\\0": FAIL
-	undefinedelement.inputMode: IDL set to "tel": FAIL
-	undefinedelement.inputMode: IDL set to "tel\\0": FAIL
-	undefinedelement.inputMode: IDL set to "text": FAIL
-	undefinedelement.inputMode: IDL set to "text\\0": FAIL
-	undefinedelement.inputMode: IDL set to "umeric": FAIL
-	undefinedelement.inputMode: IDL set to "url": FAIL
-	undefinedelement.inputMode: IDL set to "url\\0": FAIL
-	undefinedelement.inputMode: IDL set to "xdecimal": FAIL
-	undefinedelement.inputMode: IDL set to "xemail": FAIL
-	undefinedelement.inputMode: IDL set to "xnone": FAIL
-	undefinedelement.inputMode: IDL set to "xnumeric": FAIL
-	undefinedelement.inputMode: IDL set to "xsearch": FAIL
-	undefinedelement.inputMode: IDL set to "xtel": FAIL
-	undefinedelement.inputMode: IDL set to "xtext": FAIL
-	undefinedelement.inputMode: IDL set to "xurl": FAIL
-	undefinedelement.inputMode: IDL set to "ſearch": FAIL
-	undefinedelement.inputMode: IDL set to -Infinity: FAIL
-	undefinedelement.inputMode: IDL set to 1.5: FAIL
-	undefinedelement.inputMode: IDL set to 7: FAIL
-	undefinedelement.inputMode: IDL set to Infinity: FAIL
-	undefinedelement.inputMode: IDL set to NaN: FAIL
-	undefinedelement.inputMode: IDL set to false: FAIL
-	undefinedelement.inputMode: IDL set to null: FAIL
-	undefinedelement.inputMode: IDL set to object "[object Object]": FAIL
-	undefinedelement.inputMode: IDL set to object "test-toString": FAIL
-	undefinedelement.inputMode: IDL set to object "test-valueOf": FAIL
-	undefinedelement.inputMode: IDL set to true: FAIL
-	undefinedelement.inputMode: IDL set to undefined: FAIL
-	undefinedelement.inputMode: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	undefinedelement.inputMode: setAttribute() to "": FAIL
-	undefinedelement.inputMode: setAttribute() to "+100": FAIL
-	undefinedelement.inputMode: setAttribute() to ".5": FAIL
-	undefinedelement.inputMode: setAttribute() to "5%": FAIL
-	undefinedelement.inputMode: setAttribute() to "DECIMAL": FAIL
-	undefinedelement.inputMode: setAttribute() to "EMAIL": FAIL
-	undefinedelement.inputMode: setAttribute() to "NONE": FAIL
-	undefinedelement.inputMode: setAttribute() to "NUMERIC": FAIL
-	undefinedelement.inputMode: setAttribute() to "SEARCH": FAIL
-	undefinedelement.inputMode: setAttribute() to "TEL": FAIL
-	undefinedelement.inputMode: setAttribute() to "TEXT": FAIL
-	undefinedelement.inputMode: setAttribute() to "URL": FAIL
-	undefinedelement.inputMode: setAttribute() to "\\0": FAIL
-	undefinedelement.inputMode: setAttribute() to "decimal": FAIL
-	undefinedelement.inputMode: setAttribute() to "decimal\\0": FAIL
-	undefinedelement.inputMode: setAttribute() to "earch": FAIL
-	undefinedelement.inputMode: setAttribute() to "ecimal": FAIL
-	undefinedelement.inputMode: setAttribute() to "el": FAIL
-	undefinedelement.inputMode: setAttribute() to "email": FAIL
-	undefinedelement.inputMode: setAttribute() to "email\\0": FAIL
-	undefinedelement.inputMode: setAttribute() to "ext": FAIL
-	undefinedelement.inputMode: setAttribute() to "mail": FAIL
-	undefinedelement.inputMode: setAttribute() to "none": FAIL
-	undefinedelement.inputMode: setAttribute() to "none\\0": FAIL
-	undefinedelement.inputMode: setAttribute() to "numeric": FAIL
-	undefinedelement.inputMode: setAttribute() to "numeric\\0": FAIL
-	undefinedelement.inputMode: setAttribute() to "one": FAIL
-	undefinedelement.inputMode: setAttribute() to "rl": FAIL
-	undefinedelement.inputMode: setAttribute() to "search": FAIL
-	undefinedelement.inputMode: setAttribute() to "search\\0": FAIL
-	undefinedelement.inputMode: setAttribute() to "tel": FAIL
-	undefinedelement.inputMode: setAttribute() to "tel\\0": FAIL
-	undefinedelement.inputMode: setAttribute() to "text": FAIL
-	undefinedelement.inputMode: setAttribute() to "text\\0": FAIL
-	undefinedelement.inputMode: setAttribute() to "umeric": FAIL
-	undefinedelement.inputMode: setAttribute() to "url": FAIL
-	undefinedelement.inputMode: setAttribute() to "url\\0": FAIL
-	undefinedelement.inputMode: setAttribute() to "xdecimal": FAIL
-	undefinedelement.inputMode: setAttribute() to "xemail": FAIL
-	undefinedelement.inputMode: setAttribute() to "xnone": FAIL
-	undefinedelement.inputMode: setAttribute() to "xnumeric": FAIL
-	undefinedelement.inputMode: setAttribute() to "xsearch": FAIL
-	undefinedelement.inputMode: setAttribute() to "xtel": FAIL
-	undefinedelement.inputMode: setAttribute() to "xtext": FAIL
-	undefinedelement.inputMode: setAttribute() to "xurl": FAIL
-	undefinedelement.inputMode: setAttribute() to "ſearch": FAIL
-	undefinedelement.inputMode: setAttribute() to -Infinity: FAIL
-	undefinedelement.inputMode: setAttribute() to 1.5: FAIL
-	undefinedelement.inputMode: setAttribute() to 7: FAIL
-	undefinedelement.inputMode: setAttribute() to Infinity: FAIL
-	undefinedelement.inputMode: setAttribute() to NaN: FAIL
-	undefinedelement.inputMode: setAttribute() to false: FAIL
-	undefinedelement.inputMode: setAttribute() to null: FAIL
-	undefinedelement.inputMode: setAttribute() to object "[object Object]": FAIL
-	undefinedelement.inputMode: setAttribute() to object "test-toString": FAIL
-	undefinedelement.inputMode: setAttribute() to object "test-valueOf": FAIL
-	undefinedelement.inputMode: setAttribute() to true: FAIL
-	undefinedelement.inputMode: setAttribute() to undefined: FAIL
-	undefinedelement.inputMode: typeof IDL attribute: FAIL
+	undefinedelement.inputMode: IDL get with DOM attribute unset: PASS
+	undefinedelement.inputMode: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	undefinedelement.inputMode: IDL set to "": PASS
+	undefinedelement.inputMode: IDL set to "+100": PASS
+	undefinedelement.inputMode: IDL set to ".5": PASS
+	undefinedelement.inputMode: IDL set to "5%": PASS
+	undefinedelement.inputMode: IDL set to "DECIMAL": PASS
+	undefinedelement.inputMode: IDL set to "EMAIL": PASS
+	undefinedelement.inputMode: IDL set to "NONE": PASS
+	undefinedelement.inputMode: IDL set to "NUMERIC": PASS
+	undefinedelement.inputMode: IDL set to "SEARCH": PASS
+	undefinedelement.inputMode: IDL set to "TEL": PASS
+	undefinedelement.inputMode: IDL set to "TEXT": PASS
+	undefinedelement.inputMode: IDL set to "URL": PASS
+	undefinedelement.inputMode: IDL set to "\\0": PASS
+	undefinedelement.inputMode: IDL set to "decimal": PASS
+	undefinedelement.inputMode: IDL set to "decimal\\0": PASS
+	undefinedelement.inputMode: IDL set to "earch": PASS
+	undefinedelement.inputMode: IDL set to "ecimal": PASS
+	undefinedelement.inputMode: IDL set to "el": PASS
+	undefinedelement.inputMode: IDL set to "email": PASS
+	undefinedelement.inputMode: IDL set to "email\\0": PASS
+	undefinedelement.inputMode: IDL set to "ext": PASS
+	undefinedelement.inputMode: IDL set to "mail": PASS
+	undefinedelement.inputMode: IDL set to "none": PASS
+	undefinedelement.inputMode: IDL set to "none\\0": PASS
+	undefinedelement.inputMode: IDL set to "numeric": PASS
+	undefinedelement.inputMode: IDL set to "numeric\\0": PASS
+	undefinedelement.inputMode: IDL set to "one": PASS
+	undefinedelement.inputMode: IDL set to "rl": PASS
+	undefinedelement.inputMode: IDL set to "search": PASS
+	undefinedelement.inputMode: IDL set to "search\\0": PASS
+	undefinedelement.inputMode: IDL set to "tel": PASS
+	undefinedelement.inputMode: IDL set to "tel\\0": PASS
+	undefinedelement.inputMode: IDL set to "text": PASS
+	undefinedelement.inputMode: IDL set to "text\\0": PASS
+	undefinedelement.inputMode: IDL set to "umeric": PASS
+	undefinedelement.inputMode: IDL set to "url": PASS
+	undefinedelement.inputMode: IDL set to "url\\0": PASS
+	undefinedelement.inputMode: IDL set to "xdecimal": PASS
+	undefinedelement.inputMode: IDL set to "xemail": PASS
+	undefinedelement.inputMode: IDL set to "xnone": PASS
+	undefinedelement.inputMode: IDL set to "xnumeric": PASS
+	undefinedelement.inputMode: IDL set to "xsearch": PASS
+	undefinedelement.inputMode: IDL set to "xtel": PASS
+	undefinedelement.inputMode: IDL set to "xtext": PASS
+	undefinedelement.inputMode: IDL set to "xurl": PASS
+	undefinedelement.inputMode: IDL set to "ſearch": PASS
+	undefinedelement.inputMode: IDL set to -Infinity: PASS
+	undefinedelement.inputMode: IDL set to 1.5: PASS
+	undefinedelement.inputMode: IDL set to 7: PASS
+	undefinedelement.inputMode: IDL set to Infinity: PASS
+	undefinedelement.inputMode: IDL set to NaN: PASS
+	undefinedelement.inputMode: IDL set to false: PASS
+	undefinedelement.inputMode: IDL set to null: PASS
+	undefinedelement.inputMode: IDL set to object "[object Object]": PASS
+	undefinedelement.inputMode: IDL set to object "test-toString": PASS
+	undefinedelement.inputMode: IDL set to object "test-valueOf": PASS
+	undefinedelement.inputMode: IDL set to true: PASS
+	undefinedelement.inputMode: IDL set to undefined: PASS
+	undefinedelement.inputMode: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	undefinedelement.inputMode: setAttribute() to "": PASS
+	undefinedelement.inputMode: setAttribute() to "+100": PASS
+	undefinedelement.inputMode: setAttribute() to ".5": PASS
+	undefinedelement.inputMode: setAttribute() to "5%": PASS
+	undefinedelement.inputMode: setAttribute() to "DECIMAL": PASS
+	undefinedelement.inputMode: setAttribute() to "EMAIL": PASS
+	undefinedelement.inputMode: setAttribute() to "NONE": PASS
+	undefinedelement.inputMode: setAttribute() to "NUMERIC": PASS
+	undefinedelement.inputMode: setAttribute() to "SEARCH": PASS
+	undefinedelement.inputMode: setAttribute() to "TEL": PASS
+	undefinedelement.inputMode: setAttribute() to "TEXT": PASS
+	undefinedelement.inputMode: setAttribute() to "URL": PASS
+	undefinedelement.inputMode: setAttribute() to "\\0": PASS
+	undefinedelement.inputMode: setAttribute() to "decimal": PASS
+	undefinedelement.inputMode: setAttribute() to "decimal\\0": PASS
+	undefinedelement.inputMode: setAttribute() to "earch": PASS
+	undefinedelement.inputMode: setAttribute() to "ecimal": PASS
+	undefinedelement.inputMode: setAttribute() to "el": PASS
+	undefinedelement.inputMode: setAttribute() to "email": PASS
+	undefinedelement.inputMode: setAttribute() to "email\\0": PASS
+	undefinedelement.inputMode: setAttribute() to "ext": PASS
+	undefinedelement.inputMode: setAttribute() to "mail": PASS
+	undefinedelement.inputMode: setAttribute() to "none": PASS
+	undefinedelement.inputMode: setAttribute() to "none\\0": PASS
+	undefinedelement.inputMode: setAttribute() to "numeric": PASS
+	undefinedelement.inputMode: setAttribute() to "numeric\\0": PASS
+	undefinedelement.inputMode: setAttribute() to "one": PASS
+	undefinedelement.inputMode: setAttribute() to "rl": PASS
+	undefinedelement.inputMode: setAttribute() to "search": PASS
+	undefinedelement.inputMode: setAttribute() to "search\\0": PASS
+	undefinedelement.inputMode: setAttribute() to "tel": PASS
+	undefinedelement.inputMode: setAttribute() to "tel\\0": PASS
+	undefinedelement.inputMode: setAttribute() to "text": PASS
+	undefinedelement.inputMode: setAttribute() to "text\\0": PASS
+	undefinedelement.inputMode: setAttribute() to "umeric": PASS
+	undefinedelement.inputMode: setAttribute() to "url": PASS
+	undefinedelement.inputMode: setAttribute() to "url\\0": PASS
+	undefinedelement.inputMode: setAttribute() to "xdecimal": PASS
+	undefinedelement.inputMode: setAttribute() to "xemail": PASS
+	undefinedelement.inputMode: setAttribute() to "xnone": PASS
+	undefinedelement.inputMode: setAttribute() to "xnumeric": PASS
+	undefinedelement.inputMode: setAttribute() to "xsearch": PASS
+	undefinedelement.inputMode: setAttribute() to "xtel": PASS
+	undefinedelement.inputMode: setAttribute() to "xtext": PASS
+	undefinedelement.inputMode: setAttribute() to "xurl": PASS
+	undefinedelement.inputMode: setAttribute() to "ſearch": PASS
+	undefinedelement.inputMode: setAttribute() to -Infinity: PASS
+	undefinedelement.inputMode: setAttribute() to 1.5: PASS
+	undefinedelement.inputMode: setAttribute() to 7: PASS
+	undefinedelement.inputMode: setAttribute() to Infinity: PASS
+	undefinedelement.inputMode: setAttribute() to NaN: PASS
+	undefinedelement.inputMode: setAttribute() to false: PASS
+	undefinedelement.inputMode: setAttribute() to null: PASS
+	undefinedelement.inputMode: setAttribute() to object "[object Object]": PASS
+	undefinedelement.inputMode: setAttribute() to object "test-toString": PASS
+	undefinedelement.inputMode: setAttribute() to object "test-valueOf": PASS
+	undefinedelement.inputMode: setAttribute() to true: PASS
+	undefinedelement.inputMode: setAttribute() to undefined: PASS
+	undefinedelement.inputMode: typeof IDL attribute: PASS
 	undefinedelement.lang: IDL get with DOM attribute unset: PASS
 	undefinedelement.lang: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	undefinedelement.lang: IDL set to "": PASS
@@ -45992,7 +45992,7 @@
 	font.color: IDL set to Infinity: PASS
 	font.color: IDL set to NaN: PASS
 	font.color: IDL set to false: PASS
-	font.color: IDL set to null: FAIL
+	font.color: IDL set to null: PASS
 	font.color: IDL set to object "[object Object]": PASS
 	font.color: IDL set to object "test-toString": PASS
 	font.color: IDL set to object "test-valueOf": PASS
@@ -46737,7 +46737,7 @@
 	frame.marginHeight: IDL set to Infinity: PASS
 	frame.marginHeight: IDL set to NaN: PASS
 	frame.marginHeight: IDL set to false: PASS
-	frame.marginHeight: IDL set to null: FAIL
+	frame.marginHeight: IDL set to null: PASS
 	frame.marginHeight: IDL set to object "[object Object]": PASS
 	frame.marginHeight: IDL set to object "test-toString": PASS
 	frame.marginHeight: IDL set to object "test-valueOf": PASS
@@ -46775,7 +46775,7 @@
 	frame.marginWidth: IDL set to Infinity: PASS
 	frame.marginWidth: IDL set to NaN: PASS
 	frame.marginWidth: IDL set to false: PASS
-	frame.marginWidth: IDL set to null: FAIL
+	frame.marginWidth: IDL set to null: PASS
 	frame.marginWidth: IDL set to object "[object Object]": PASS
 	frame.marginWidth: IDL set to object "test-toString": PASS
 	frame.marginWidth: IDL set to object "test-valueOf": PASS
@@ -47919,9 +47919,9 @@
 	marquee.scrollAmount: IDL set to 0: PASS
 	marquee.scrollAmount: IDL set to 1: PASS
 	marquee.scrollAmount: IDL set to 2147483647: PASS
-	marquee.scrollAmount: IDL set to 2147483648: FAIL
+	marquee.scrollAmount: IDL set to 2147483648: PASS
 	marquee.scrollAmount: IDL set to 257: PASS
-	marquee.scrollAmount: IDL set to 4294967295: FAIL
+	marquee.scrollAmount: IDL set to 4294967295: PASS
 	marquee.scrollAmount: setAttribute() to " 7": PASS
 	marquee.scrollAmount: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	marquee.scrollAmount: setAttribute() to " \\v7": PASS
@@ -47992,9 +47992,9 @@
 	marquee.scrollDelay: IDL set to 0: PASS
 	marquee.scrollDelay: IDL set to 1: PASS
 	marquee.scrollDelay: IDL set to 2147483647: PASS
-	marquee.scrollDelay: IDL set to 2147483648: FAIL
+	marquee.scrollDelay: IDL set to 2147483648: PASS
 	marquee.scrollDelay: IDL set to 257: PASS
-	marquee.scrollDelay: IDL set to 4294967295: FAIL
+	marquee.scrollDelay: IDL set to 4294967295: PASS
 	marquee.scrollDelay: setAttribute() to " 7": PASS
 	marquee.scrollDelay: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	marquee.scrollDelay: setAttribute() to " \\v7": PASS
@@ -48279,82 +48279,82 @@
 /html/dom/reflection-overridden-methods.html: OK
 	Reflection isn't impacted by overridden (get|set)Attribute(NS) methods: PASS
 /html/dom/reflection-sections.html: OK
-	#document.alinkColor (<body alink>): IDL get with DOM attribute unset: FAIL
-	#document.alinkColor (<body alink>): IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	#document.alinkColor (<body alink>): IDL set to "": FAIL
-	#document.alinkColor (<body alink>): IDL set to "+100": FAIL
-	#document.alinkColor (<body alink>): IDL set to ".5": FAIL
-	#document.alinkColor (<body alink>): IDL set to "5%": FAIL
-	#document.alinkColor (<body alink>): IDL set to "\\0": FAIL
-	#document.alinkColor (<body alink>): IDL set to -Infinity: FAIL
-	#document.alinkColor (<body alink>): IDL set to 1.5: FAIL
-	#document.alinkColor (<body alink>): IDL set to 7: FAIL
-	#document.alinkColor (<body alink>): IDL set to Infinity: FAIL
-	#document.alinkColor (<body alink>): IDL set to NaN: FAIL
-	#document.alinkColor (<body alink>): IDL set to false: FAIL
-	#document.alinkColor (<body alink>): IDL set to null: FAIL
-	#document.alinkColor (<body alink>): IDL set to object "[object Object]": FAIL
-	#document.alinkColor (<body alink>): IDL set to object "test-toString": FAIL
-	#document.alinkColor (<body alink>): IDL set to object "test-valueOf": FAIL
-	#document.alinkColor (<body alink>): IDL set to true: FAIL
-	#document.alinkColor (<body alink>): IDL set to undefined: FAIL
-	#document.alinkColor (<body alink>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	#document.alinkColor (<body alink>): setAttribute() to "": FAIL
-	#document.alinkColor (<body alink>): setAttribute() to "+100": FAIL
-	#document.alinkColor (<body alink>): setAttribute() to ".5": FAIL
-	#document.alinkColor (<body alink>): setAttribute() to "5%": FAIL
-	#document.alinkColor (<body alink>): setAttribute() to "\\0": FAIL
-	#document.alinkColor (<body alink>): setAttribute() to -Infinity: FAIL
-	#document.alinkColor (<body alink>): setAttribute() to 1.5: FAIL
-	#document.alinkColor (<body alink>): setAttribute() to 7: FAIL
-	#document.alinkColor (<body alink>): setAttribute() to Infinity: FAIL
-	#document.alinkColor (<body alink>): setAttribute() to NaN: FAIL
-	#document.alinkColor (<body alink>): setAttribute() to false: FAIL
-	#document.alinkColor (<body alink>): setAttribute() to null: FAIL
-	#document.alinkColor (<body alink>): setAttribute() to object "[object Object]": FAIL
-	#document.alinkColor (<body alink>): setAttribute() to object "test-toString": FAIL
-	#document.alinkColor (<body alink>): setAttribute() to object "test-valueOf": FAIL
-	#document.alinkColor (<body alink>): setAttribute() to true: FAIL
-	#document.alinkColor (<body alink>): setAttribute() to undefined: FAIL
-	#document.alinkColor (<body alink>): typeof IDL attribute: FAIL
-	#document.bgColor (<body bgcolor>): IDL get with DOM attribute unset: FAIL
-	#document.bgColor (<body bgcolor>): IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	#document.bgColor (<body bgcolor>): IDL set to "": FAIL
-	#document.bgColor (<body bgcolor>): IDL set to "+100": FAIL
-	#document.bgColor (<body bgcolor>): IDL set to ".5": FAIL
-	#document.bgColor (<body bgcolor>): IDL set to "5%": FAIL
-	#document.bgColor (<body bgcolor>): IDL set to "\\0": FAIL
-	#document.bgColor (<body bgcolor>): IDL set to -Infinity: FAIL
-	#document.bgColor (<body bgcolor>): IDL set to 1.5: FAIL
-	#document.bgColor (<body bgcolor>): IDL set to 7: FAIL
-	#document.bgColor (<body bgcolor>): IDL set to Infinity: FAIL
-	#document.bgColor (<body bgcolor>): IDL set to NaN: FAIL
-	#document.bgColor (<body bgcolor>): IDL set to false: FAIL
-	#document.bgColor (<body bgcolor>): IDL set to null: FAIL
-	#document.bgColor (<body bgcolor>): IDL set to object "[object Object]": FAIL
-	#document.bgColor (<body bgcolor>): IDL set to object "test-toString": FAIL
-	#document.bgColor (<body bgcolor>): IDL set to object "test-valueOf": FAIL
-	#document.bgColor (<body bgcolor>): IDL set to true: FAIL
-	#document.bgColor (<body bgcolor>): IDL set to undefined: FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to "": FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to "+100": FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to ".5": FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to "5%": FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to "\\0": FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to -Infinity: FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to 1.5: FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to 7: FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to Infinity: FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to NaN: FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to false: FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to null: FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to object "[object Object]": FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to object "test-toString": FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to object "test-valueOf": FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to true: FAIL
-	#document.bgColor (<body bgcolor>): setAttribute() to undefined: FAIL
-	#document.bgColor (<body bgcolor>): typeof IDL attribute: FAIL
+	#document.alinkColor (<body alink>): IDL get with DOM attribute unset: PASS
+	#document.alinkColor (<body alink>): IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	#document.alinkColor (<body alink>): IDL set to "": PASS
+	#document.alinkColor (<body alink>): IDL set to "+100": PASS
+	#document.alinkColor (<body alink>): IDL set to ".5": PASS
+	#document.alinkColor (<body alink>): IDL set to "5%": PASS
+	#document.alinkColor (<body alink>): IDL set to "\\0": PASS
+	#document.alinkColor (<body alink>): IDL set to -Infinity: PASS
+	#document.alinkColor (<body alink>): IDL set to 1.5: PASS
+	#document.alinkColor (<body alink>): IDL set to 7: PASS
+	#document.alinkColor (<body alink>): IDL set to Infinity: PASS
+	#document.alinkColor (<body alink>): IDL set to NaN: PASS
+	#document.alinkColor (<body alink>): IDL set to false: PASS
+	#document.alinkColor (<body alink>): IDL set to null: PASS
+	#document.alinkColor (<body alink>): IDL set to object "[object Object]": PASS
+	#document.alinkColor (<body alink>): IDL set to object "test-toString": PASS
+	#document.alinkColor (<body alink>): IDL set to object "test-valueOf": PASS
+	#document.alinkColor (<body alink>): IDL set to true: PASS
+	#document.alinkColor (<body alink>): IDL set to undefined: PASS
+	#document.alinkColor (<body alink>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	#document.alinkColor (<body alink>): setAttribute() to "": PASS
+	#document.alinkColor (<body alink>): setAttribute() to "+100": PASS
+	#document.alinkColor (<body alink>): setAttribute() to ".5": PASS
+	#document.alinkColor (<body alink>): setAttribute() to "5%": PASS
+	#document.alinkColor (<body alink>): setAttribute() to "\\0": PASS
+	#document.alinkColor (<body alink>): setAttribute() to -Infinity: PASS
+	#document.alinkColor (<body alink>): setAttribute() to 1.5: PASS
+	#document.alinkColor (<body alink>): setAttribute() to 7: PASS
+	#document.alinkColor (<body alink>): setAttribute() to Infinity: PASS
+	#document.alinkColor (<body alink>): setAttribute() to NaN: PASS
+	#document.alinkColor (<body alink>): setAttribute() to false: PASS
+	#document.alinkColor (<body alink>): setAttribute() to null: PASS
+	#document.alinkColor (<body alink>): setAttribute() to object "[object Object]": PASS
+	#document.alinkColor (<body alink>): setAttribute() to object "test-toString": PASS
+	#document.alinkColor (<body alink>): setAttribute() to object "test-valueOf": PASS
+	#document.alinkColor (<body alink>): setAttribute() to true: PASS
+	#document.alinkColor (<body alink>): setAttribute() to undefined: PASS
+	#document.alinkColor (<body alink>): typeof IDL attribute: PASS
+	#document.bgColor (<body bgcolor>): IDL get with DOM attribute unset: PASS
+	#document.bgColor (<body bgcolor>): IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	#document.bgColor (<body bgcolor>): IDL set to "": PASS
+	#document.bgColor (<body bgcolor>): IDL set to "+100": PASS
+	#document.bgColor (<body bgcolor>): IDL set to ".5": PASS
+	#document.bgColor (<body bgcolor>): IDL set to "5%": PASS
+	#document.bgColor (<body bgcolor>): IDL set to "\\0": PASS
+	#document.bgColor (<body bgcolor>): IDL set to -Infinity: PASS
+	#document.bgColor (<body bgcolor>): IDL set to 1.5: PASS
+	#document.bgColor (<body bgcolor>): IDL set to 7: PASS
+	#document.bgColor (<body bgcolor>): IDL set to Infinity: PASS
+	#document.bgColor (<body bgcolor>): IDL set to NaN: PASS
+	#document.bgColor (<body bgcolor>): IDL set to false: PASS
+	#document.bgColor (<body bgcolor>): IDL set to null: PASS
+	#document.bgColor (<body bgcolor>): IDL set to object "[object Object]": PASS
+	#document.bgColor (<body bgcolor>): IDL set to object "test-toString": PASS
+	#document.bgColor (<body bgcolor>): IDL set to object "test-valueOf": PASS
+	#document.bgColor (<body bgcolor>): IDL set to true: PASS
+	#document.bgColor (<body bgcolor>): IDL set to undefined: PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to "": PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to "+100": PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to ".5": PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to "5%": PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to "\\0": PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to -Infinity: PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to 1.5: PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to 7: PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to Infinity: PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to NaN: PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to false: PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to null: PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to object "[object Object]": PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to object "test-toString": PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to object "test-valueOf": PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to true: PASS
+	#document.bgColor (<body bgcolor>): setAttribute() to undefined: PASS
+	#document.bgColor (<body bgcolor>): typeof IDL attribute: PASS
 	#document.dir (<html dir>): IDL get with DOM attribute unset: PASS
 	#document.dir (<html dir>): IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	#document.dir (<html dir>): IDL set to "": PASS
@@ -48423,120 +48423,120 @@
 	#document.dir (<html dir>): setAttribute() to true: PASS
 	#document.dir (<html dir>): setAttribute() to undefined: PASS
 	#document.dir (<html dir>): typeof IDL attribute: PASS
-	#document.fgColor (<body text>): IDL get with DOM attribute unset: FAIL
-	#document.fgColor (<body text>): IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	#document.fgColor (<body text>): IDL set to "": FAIL
-	#document.fgColor (<body text>): IDL set to "+100": FAIL
-	#document.fgColor (<body text>): IDL set to ".5": FAIL
-	#document.fgColor (<body text>): IDL set to "5%": FAIL
-	#document.fgColor (<body text>): IDL set to "\\0": FAIL
-	#document.fgColor (<body text>): IDL set to -Infinity: FAIL
-	#document.fgColor (<body text>): IDL set to 1.5: FAIL
-	#document.fgColor (<body text>): IDL set to 7: FAIL
-	#document.fgColor (<body text>): IDL set to Infinity: FAIL
-	#document.fgColor (<body text>): IDL set to NaN: FAIL
-	#document.fgColor (<body text>): IDL set to false: FAIL
-	#document.fgColor (<body text>): IDL set to null: FAIL
-	#document.fgColor (<body text>): IDL set to object "[object Object]": FAIL
-	#document.fgColor (<body text>): IDL set to object "test-toString": FAIL
-	#document.fgColor (<body text>): IDL set to object "test-valueOf": FAIL
-	#document.fgColor (<body text>): IDL set to true: FAIL
-	#document.fgColor (<body text>): IDL set to undefined: FAIL
-	#document.fgColor (<body text>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	#document.fgColor (<body text>): setAttribute() to "": FAIL
-	#document.fgColor (<body text>): setAttribute() to "+100": FAIL
-	#document.fgColor (<body text>): setAttribute() to ".5": FAIL
-	#document.fgColor (<body text>): setAttribute() to "5%": FAIL
-	#document.fgColor (<body text>): setAttribute() to "\\0": FAIL
-	#document.fgColor (<body text>): setAttribute() to -Infinity: FAIL
-	#document.fgColor (<body text>): setAttribute() to 1.5: FAIL
-	#document.fgColor (<body text>): setAttribute() to 7: FAIL
-	#document.fgColor (<body text>): setAttribute() to Infinity: FAIL
-	#document.fgColor (<body text>): setAttribute() to NaN: FAIL
-	#document.fgColor (<body text>): setAttribute() to false: FAIL
-	#document.fgColor (<body text>): setAttribute() to null: FAIL
-	#document.fgColor (<body text>): setAttribute() to object "[object Object]": FAIL
-	#document.fgColor (<body text>): setAttribute() to object "test-toString": FAIL
-	#document.fgColor (<body text>): setAttribute() to object "test-valueOf": FAIL
-	#document.fgColor (<body text>): setAttribute() to true: FAIL
-	#document.fgColor (<body text>): setAttribute() to undefined: FAIL
-	#document.fgColor (<body text>): typeof IDL attribute: FAIL
-	#document.linkColor (<body link>): IDL get with DOM attribute unset: FAIL
-	#document.linkColor (<body link>): IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	#document.linkColor (<body link>): IDL set to "": FAIL
-	#document.linkColor (<body link>): IDL set to "+100": FAIL
-	#document.linkColor (<body link>): IDL set to ".5": FAIL
-	#document.linkColor (<body link>): IDL set to "5%": FAIL
-	#document.linkColor (<body link>): IDL set to "\\0": FAIL
-	#document.linkColor (<body link>): IDL set to -Infinity: FAIL
-	#document.linkColor (<body link>): IDL set to 1.5: FAIL
-	#document.linkColor (<body link>): IDL set to 7: FAIL
-	#document.linkColor (<body link>): IDL set to Infinity: FAIL
-	#document.linkColor (<body link>): IDL set to NaN: FAIL
-	#document.linkColor (<body link>): IDL set to false: FAIL
-	#document.linkColor (<body link>): IDL set to null: FAIL
-	#document.linkColor (<body link>): IDL set to object "[object Object]": FAIL
-	#document.linkColor (<body link>): IDL set to object "test-toString": FAIL
-	#document.linkColor (<body link>): IDL set to object "test-valueOf": FAIL
-	#document.linkColor (<body link>): IDL set to true: FAIL
-	#document.linkColor (<body link>): IDL set to undefined: FAIL
-	#document.linkColor (<body link>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	#document.linkColor (<body link>): setAttribute() to "": FAIL
-	#document.linkColor (<body link>): setAttribute() to "+100": FAIL
-	#document.linkColor (<body link>): setAttribute() to ".5": FAIL
-	#document.linkColor (<body link>): setAttribute() to "5%": FAIL
-	#document.linkColor (<body link>): setAttribute() to "\\0": FAIL
-	#document.linkColor (<body link>): setAttribute() to -Infinity: FAIL
-	#document.linkColor (<body link>): setAttribute() to 1.5: FAIL
-	#document.linkColor (<body link>): setAttribute() to 7: FAIL
-	#document.linkColor (<body link>): setAttribute() to Infinity: FAIL
-	#document.linkColor (<body link>): setAttribute() to NaN: FAIL
-	#document.linkColor (<body link>): setAttribute() to false: FAIL
-	#document.linkColor (<body link>): setAttribute() to null: FAIL
-	#document.linkColor (<body link>): setAttribute() to object "[object Object]": FAIL
-	#document.linkColor (<body link>): setAttribute() to object "test-toString": FAIL
-	#document.linkColor (<body link>): setAttribute() to object "test-valueOf": FAIL
-	#document.linkColor (<body link>): setAttribute() to true: FAIL
-	#document.linkColor (<body link>): setAttribute() to undefined: FAIL
-	#document.linkColor (<body link>): typeof IDL attribute: FAIL
-	#document.vlinkColor (<body vlink>): IDL get with DOM attribute unset: FAIL
-	#document.vlinkColor (<body vlink>): IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	#document.vlinkColor (<body vlink>): IDL set to "": FAIL
-	#document.vlinkColor (<body vlink>): IDL set to "+100": FAIL
-	#document.vlinkColor (<body vlink>): IDL set to ".5": FAIL
-	#document.vlinkColor (<body vlink>): IDL set to "5%": FAIL
-	#document.vlinkColor (<body vlink>): IDL set to "\\0": FAIL
-	#document.vlinkColor (<body vlink>): IDL set to -Infinity: FAIL
-	#document.vlinkColor (<body vlink>): IDL set to 1.5: FAIL
-	#document.vlinkColor (<body vlink>): IDL set to 7: FAIL
-	#document.vlinkColor (<body vlink>): IDL set to Infinity: FAIL
-	#document.vlinkColor (<body vlink>): IDL set to NaN: FAIL
-	#document.vlinkColor (<body vlink>): IDL set to false: FAIL
-	#document.vlinkColor (<body vlink>): IDL set to null: FAIL
-	#document.vlinkColor (<body vlink>): IDL set to object "[object Object]": FAIL
-	#document.vlinkColor (<body vlink>): IDL set to object "test-toString": FAIL
-	#document.vlinkColor (<body vlink>): IDL set to object "test-valueOf": FAIL
-	#document.vlinkColor (<body vlink>): IDL set to true: FAIL
-	#document.vlinkColor (<body vlink>): IDL set to undefined: FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to "": FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to "+100": FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to ".5": FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to "5%": FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to "\\0": FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to -Infinity: FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to 1.5: FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to 7: FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to Infinity: FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to NaN: FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to false: FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to null: FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to object "[object Object]": FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to object "test-toString": FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to object "test-valueOf": FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to true: FAIL
-	#document.vlinkColor (<body vlink>): setAttribute() to undefined: FAIL
-	#document.vlinkColor (<body vlink>): typeof IDL attribute: FAIL
+	#document.fgColor (<body text>): IDL get with DOM attribute unset: PASS
+	#document.fgColor (<body text>): IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	#document.fgColor (<body text>): IDL set to "": PASS
+	#document.fgColor (<body text>): IDL set to "+100": PASS
+	#document.fgColor (<body text>): IDL set to ".5": PASS
+	#document.fgColor (<body text>): IDL set to "5%": PASS
+	#document.fgColor (<body text>): IDL set to "\\0": PASS
+	#document.fgColor (<body text>): IDL set to -Infinity: PASS
+	#document.fgColor (<body text>): IDL set to 1.5: PASS
+	#document.fgColor (<body text>): IDL set to 7: PASS
+	#document.fgColor (<body text>): IDL set to Infinity: PASS
+	#document.fgColor (<body text>): IDL set to NaN: PASS
+	#document.fgColor (<body text>): IDL set to false: PASS
+	#document.fgColor (<body text>): IDL set to null: PASS
+	#document.fgColor (<body text>): IDL set to object "[object Object]": PASS
+	#document.fgColor (<body text>): IDL set to object "test-toString": PASS
+	#document.fgColor (<body text>): IDL set to object "test-valueOf": PASS
+	#document.fgColor (<body text>): IDL set to true: PASS
+	#document.fgColor (<body text>): IDL set to undefined: PASS
+	#document.fgColor (<body text>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	#document.fgColor (<body text>): setAttribute() to "": PASS
+	#document.fgColor (<body text>): setAttribute() to "+100": PASS
+	#document.fgColor (<body text>): setAttribute() to ".5": PASS
+	#document.fgColor (<body text>): setAttribute() to "5%": PASS
+	#document.fgColor (<body text>): setAttribute() to "\\0": PASS
+	#document.fgColor (<body text>): setAttribute() to -Infinity: PASS
+	#document.fgColor (<body text>): setAttribute() to 1.5: PASS
+	#document.fgColor (<body text>): setAttribute() to 7: PASS
+	#document.fgColor (<body text>): setAttribute() to Infinity: PASS
+	#document.fgColor (<body text>): setAttribute() to NaN: PASS
+	#document.fgColor (<body text>): setAttribute() to false: PASS
+	#document.fgColor (<body text>): setAttribute() to null: PASS
+	#document.fgColor (<body text>): setAttribute() to object "[object Object]": PASS
+	#document.fgColor (<body text>): setAttribute() to object "test-toString": PASS
+	#document.fgColor (<body text>): setAttribute() to object "test-valueOf": PASS
+	#document.fgColor (<body text>): setAttribute() to true: PASS
+	#document.fgColor (<body text>): setAttribute() to undefined: PASS
+	#document.fgColor (<body text>): typeof IDL attribute: PASS
+	#document.linkColor (<body link>): IDL get with DOM attribute unset: PASS
+	#document.linkColor (<body link>): IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	#document.linkColor (<body link>): IDL set to "": PASS
+	#document.linkColor (<body link>): IDL set to "+100": PASS
+	#document.linkColor (<body link>): IDL set to ".5": PASS
+	#document.linkColor (<body link>): IDL set to "5%": PASS
+	#document.linkColor (<body link>): IDL set to "\\0": PASS
+	#document.linkColor (<body link>): IDL set to -Infinity: PASS
+	#document.linkColor (<body link>): IDL set to 1.5: PASS
+	#document.linkColor (<body link>): IDL set to 7: PASS
+	#document.linkColor (<body link>): IDL set to Infinity: PASS
+	#document.linkColor (<body link>): IDL set to NaN: PASS
+	#document.linkColor (<body link>): IDL set to false: PASS
+	#document.linkColor (<body link>): IDL set to null: PASS
+	#document.linkColor (<body link>): IDL set to object "[object Object]": PASS
+	#document.linkColor (<body link>): IDL set to object "test-toString": PASS
+	#document.linkColor (<body link>): IDL set to object "test-valueOf": PASS
+	#document.linkColor (<body link>): IDL set to true: PASS
+	#document.linkColor (<body link>): IDL set to undefined: PASS
+	#document.linkColor (<body link>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	#document.linkColor (<body link>): setAttribute() to "": PASS
+	#document.linkColor (<body link>): setAttribute() to "+100": PASS
+	#document.linkColor (<body link>): setAttribute() to ".5": PASS
+	#document.linkColor (<body link>): setAttribute() to "5%": PASS
+	#document.linkColor (<body link>): setAttribute() to "\\0": PASS
+	#document.linkColor (<body link>): setAttribute() to -Infinity: PASS
+	#document.linkColor (<body link>): setAttribute() to 1.5: PASS
+	#document.linkColor (<body link>): setAttribute() to 7: PASS
+	#document.linkColor (<body link>): setAttribute() to Infinity: PASS
+	#document.linkColor (<body link>): setAttribute() to NaN: PASS
+	#document.linkColor (<body link>): setAttribute() to false: PASS
+	#document.linkColor (<body link>): setAttribute() to null: PASS
+	#document.linkColor (<body link>): setAttribute() to object "[object Object]": PASS
+	#document.linkColor (<body link>): setAttribute() to object "test-toString": PASS
+	#document.linkColor (<body link>): setAttribute() to object "test-valueOf": PASS
+	#document.linkColor (<body link>): setAttribute() to true: PASS
+	#document.linkColor (<body link>): setAttribute() to undefined: PASS
+	#document.linkColor (<body link>): typeof IDL attribute: PASS
+	#document.vlinkColor (<body vlink>): IDL get with DOM attribute unset: PASS
+	#document.vlinkColor (<body vlink>): IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	#document.vlinkColor (<body vlink>): IDL set to "": PASS
+	#document.vlinkColor (<body vlink>): IDL set to "+100": PASS
+	#document.vlinkColor (<body vlink>): IDL set to ".5": PASS
+	#document.vlinkColor (<body vlink>): IDL set to "5%": PASS
+	#document.vlinkColor (<body vlink>): IDL set to "\\0": PASS
+	#document.vlinkColor (<body vlink>): IDL set to -Infinity: PASS
+	#document.vlinkColor (<body vlink>): IDL set to 1.5: PASS
+	#document.vlinkColor (<body vlink>): IDL set to 7: PASS
+	#document.vlinkColor (<body vlink>): IDL set to Infinity: PASS
+	#document.vlinkColor (<body vlink>): IDL set to NaN: PASS
+	#document.vlinkColor (<body vlink>): IDL set to false: PASS
+	#document.vlinkColor (<body vlink>): IDL set to null: PASS
+	#document.vlinkColor (<body vlink>): IDL set to object "[object Object]": PASS
+	#document.vlinkColor (<body vlink>): IDL set to object "test-toString": PASS
+	#document.vlinkColor (<body vlink>): IDL set to object "test-valueOf": PASS
+	#document.vlinkColor (<body vlink>): IDL set to true: PASS
+	#document.vlinkColor (<body vlink>): IDL set to undefined: PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to "": PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to "+100": PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to ".5": PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to "5%": PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to "\\0": PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to -Infinity: PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to 1.5: PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to 7: PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to Infinity: PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to NaN: PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to false: PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to null: PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to object "[object Object]": PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to object "test-toString": PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to object "test-valueOf": PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to true: PASS
+	#document.vlinkColor (<body vlink>): setAttribute() to undefined: PASS
+	#document.vlinkColor (<body vlink>): typeof IDL attribute: PASS
 	address.accessKey: IDL get with DOM attribute unset: PASS
 	address.accessKey: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	address.accessKey: IDL set to "": PASS
@@ -49645,7 +49645,7 @@
 	body.aLink: IDL set to Infinity: PASS
 	body.aLink: IDL set to NaN: PASS
 	body.aLink: IDL set to false: PASS
-	body.aLink: IDL set to null: FAIL
+	body.aLink: IDL set to null: PASS
 	body.aLink: IDL set to object "[object Object]": PASS
 	body.aLink: IDL set to object "test-toString": PASS
 	body.aLink: IDL set to object "test-valueOf": PASS
@@ -49798,7 +49798,7 @@
 	body.bgColor: IDL set to Infinity: PASS
 	body.bgColor: IDL set to NaN: PASS
 	body.bgColor: IDL set to false: PASS
-	body.bgColor: IDL set to null: FAIL
+	body.bgColor: IDL set to null: PASS
 	body.bgColor: IDL set to object "[object Object]": PASS
 	body.bgColor: IDL set to object "test-toString": PASS
 	body.bgColor: IDL set to object "test-valueOf": PASS
@@ -50058,7 +50058,7 @@
 	body.link: IDL set to Infinity: PASS
 	body.link: IDL set to NaN: PASS
 	body.link: IDL set to false: PASS
-	body.link: IDL set to null: FAIL
+	body.link: IDL set to null: PASS
 	body.link: IDL set to object "[object Object]": PASS
 	body.link: IDL set to object "test-toString": PASS
 	body.link: IDL set to object "test-valueOf": PASS
@@ -50124,7 +50124,7 @@
 	body.text: IDL set to Infinity: PASS
 	body.text: IDL set to NaN: PASS
 	body.text: IDL set to false: PASS
-	body.text: IDL set to null: FAIL
+	body.text: IDL set to null: PASS
 	body.text: IDL set to object "[object Object]": PASS
 	body.text: IDL set to object "test-toString": PASS
 	body.text: IDL set to object "test-valueOf": PASS
@@ -50200,7 +50200,7 @@
 	body.vLink: IDL set to Infinity: PASS
 	body.vLink: IDL set to NaN: PASS
 	body.vLink: IDL set to false: PASS
-	body.vLink: IDL set to null: FAIL
+	body.vLink: IDL set to null: PASS
 	body.vLink: IDL set to object "[object Object]": PASS
 	body.vLink: IDL set to object "test-toString": PASS
 	body.vLink: IDL set to object "test-valueOf": PASS
@@ -55292,9 +55292,9 @@
 	col.span: IDL set to 1000: PASS
 	col.span: IDL set to 1001: PASS
 	col.span: IDL set to 2147483647: PASS
-	col.span: IDL set to 2147483648: FAIL
+	col.span: IDL set to 2147483648: PASS
 	col.span: IDL set to 257: PASS
-	col.span: IDL set to 4294967295: FAIL
+	col.span: IDL set to 4294967295: PASS
 	col.span: setAttribute() to " 7": PASS
 	col.span: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	col.span: setAttribute() to " \\v7": PASS
@@ -55349,9 +55349,9 @@
 	col.span: setAttribute() to 1000: PASS
 	col.span: setAttribute() to 1001: PASS
 	col.span: setAttribute() to 2147483647: PASS
-	col.span: setAttribute() to 2147483648: FAIL
-	col.span: setAttribute() to 4294967295: FAIL
-	col.span: setAttribute() to 4294967296: FAIL
+	col.span: setAttribute() to 2147483648: PASS
+	col.span: setAttribute() to 4294967295: PASS
+	col.span: setAttribute() to 4294967296: PASS
 	col.span: setAttribute() to Infinity: PASS
 	col.span: setAttribute() to NaN: PASS
 	col.span: setAttribute() to false: PASS
@@ -55923,9 +55923,9 @@
 	colgroup.span: IDL set to 1000: PASS
 	colgroup.span: IDL set to 1001: PASS
 	colgroup.span: IDL set to 2147483647: PASS
-	colgroup.span: IDL set to 2147483648: FAIL
+	colgroup.span: IDL set to 2147483648: PASS
 	colgroup.span: IDL set to 257: PASS
-	colgroup.span: IDL set to 4294967295: FAIL
+	colgroup.span: IDL set to 4294967295: PASS
 	colgroup.span: setAttribute() to " 7": PASS
 	colgroup.span: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	colgroup.span: setAttribute() to " \\v7": PASS
@@ -55980,9 +55980,9 @@
 	colgroup.span: setAttribute() to 1000: PASS
 	colgroup.span: setAttribute() to 1001: PASS
 	colgroup.span: setAttribute() to 2147483647: PASS
-	colgroup.span: setAttribute() to 2147483648: FAIL
-	colgroup.span: setAttribute() to 4294967295: FAIL
-	colgroup.span: setAttribute() to 4294967296: FAIL
+	colgroup.span: setAttribute() to 2147483648: PASS
+	colgroup.span: setAttribute() to 4294967295: PASS
+	colgroup.span: setAttribute() to 4294967296: PASS
 	colgroup.span: setAttribute() to Infinity: PASS
 	colgroup.span: setAttribute() to NaN: PASS
 	colgroup.span: setAttribute() to false: PASS
@@ -56262,7 +56262,7 @@
 	table.bgColor: IDL set to Infinity: PASS
 	table.bgColor: IDL set to NaN: PASS
 	table.bgColor: IDL set to false: PASS
-	table.bgColor: IDL set to null: FAIL
+	table.bgColor: IDL set to null: PASS
 	table.bgColor: IDL set to object "[object Object]": PASS
 	table.bgColor: IDL set to object "test-toString": PASS
 	table.bgColor: IDL set to object "test-valueOf": PASS
@@ -56338,7 +56338,7 @@
 	table.cellPadding: IDL set to Infinity: PASS
 	table.cellPadding: IDL set to NaN: PASS
 	table.cellPadding: IDL set to false: PASS
-	table.cellPadding: IDL set to null: FAIL
+	table.cellPadding: IDL set to null: PASS
 	table.cellPadding: IDL set to object "[object Object]": PASS
 	table.cellPadding: IDL set to object "test-toString": PASS
 	table.cellPadding: IDL set to object "test-valueOf": PASS
@@ -56376,7 +56376,7 @@
 	table.cellSpacing: IDL set to Infinity: PASS
 	table.cellSpacing: IDL set to NaN: PASS
 	table.cellSpacing: IDL set to false: PASS
-	table.cellSpacing: IDL set to null: FAIL
+	table.cellSpacing: IDL set to null: PASS
 	table.cellSpacing: IDL set to object "[object Object]": PASS
 	table.cellSpacing: IDL set to object "test-toString": PASS
 	table.cellSpacing: IDL set to object "test-valueOf": PASS
@@ -57562,7 +57562,7 @@
 	td.bgColor: IDL set to Infinity: PASS
 	td.bgColor: IDL set to NaN: PASS
 	td.bgColor: IDL set to false: PASS
-	td.bgColor: IDL set to null: FAIL
+	td.bgColor: IDL set to null: PASS
 	td.bgColor: IDL set to object "[object Object]": PASS
 	td.bgColor: IDL set to object "test-toString": PASS
 	td.bgColor: IDL set to object "test-valueOf": PASS
@@ -57708,9 +57708,9 @@
 	td.colSpan: IDL set to 1000: PASS
 	td.colSpan: IDL set to 1001: PASS
 	td.colSpan: IDL set to 2147483647: PASS
-	td.colSpan: IDL set to 2147483648: FAIL
+	td.colSpan: IDL set to 2147483648: PASS
 	td.colSpan: IDL set to 257: PASS
-	td.colSpan: IDL set to 4294967295: FAIL
+	td.colSpan: IDL set to 4294967295: PASS
 	td.colSpan: setAttribute() to " 7": PASS
 	td.colSpan: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	td.colSpan: setAttribute() to " \\v7": PASS
@@ -57765,9 +57765,9 @@
 	td.colSpan: setAttribute() to 1000: PASS
 	td.colSpan: setAttribute() to 1001: PASS
 	td.colSpan: setAttribute() to 2147483647: PASS
-	td.colSpan: setAttribute() to 2147483648: FAIL
-	td.colSpan: setAttribute() to 4294967295: FAIL
-	td.colSpan: setAttribute() to 4294967296: FAIL
+	td.colSpan: setAttribute() to 2147483648: PASS
+	td.colSpan: setAttribute() to 4294967295: PASS
+	td.colSpan: setAttribute() to 4294967296: PASS
 	td.colSpan: setAttribute() to Infinity: PASS
 	td.colSpan: setAttribute() to NaN: PASS
 	td.colSpan: setAttribute() to false: PASS
@@ -58081,9 +58081,9 @@
 	td.rowSpan: IDL set to 0: PASS
 	td.rowSpan: IDL set to 1: PASS
 	td.rowSpan: IDL set to 2147483647: PASS
-	td.rowSpan: IDL set to 2147483648: FAIL
+	td.rowSpan: IDL set to 2147483648: PASS
 	td.rowSpan: IDL set to 257: PASS
-	td.rowSpan: IDL set to 4294967295: FAIL
+	td.rowSpan: IDL set to 4294967295: PASS
 	td.rowSpan: IDL set to 65534: PASS
 	td.rowSpan: IDL set to 65535: PASS
 	td.rowSpan: setAttribute() to " 7": PASS
@@ -58138,9 +58138,9 @@
 	td.rowSpan: setAttribute() to 1: PASS
 	td.rowSpan: setAttribute() to 1.5: PASS
 	td.rowSpan: setAttribute() to 2147483647: PASS
-	td.rowSpan: setAttribute() to 2147483648: FAIL
-	td.rowSpan: setAttribute() to 4294967295: FAIL
-	td.rowSpan: setAttribute() to 4294967296: FAIL
+	td.rowSpan: setAttribute() to 2147483648: PASS
+	td.rowSpan: setAttribute() to 4294967295: PASS
+	td.rowSpan: setAttribute() to 4294967296: PASS
 	td.rowSpan: setAttribute() to 65534: PASS
 	td.rowSpan: setAttribute() to 65535: PASS
 	td.rowSpan: setAttribute() to Infinity: PASS
@@ -59093,7 +59093,7 @@
 	th.bgColor: IDL set to Infinity: PASS
 	th.bgColor: IDL set to NaN: PASS
 	th.bgColor: IDL set to false: PASS
-	th.bgColor: IDL set to null: FAIL
+	th.bgColor: IDL set to null: PASS
 	th.bgColor: IDL set to object "[object Object]": PASS
 	th.bgColor: IDL set to object "test-toString": PASS
 	th.bgColor: IDL set to object "test-valueOf": PASS
@@ -59239,9 +59239,9 @@
 	th.colSpan: IDL set to 1000: PASS
 	th.colSpan: IDL set to 1001: PASS
 	th.colSpan: IDL set to 2147483647: PASS
-	th.colSpan: IDL set to 2147483648: FAIL
+	th.colSpan: IDL set to 2147483648: PASS
 	th.colSpan: IDL set to 257: PASS
-	th.colSpan: IDL set to 4294967295: FAIL
+	th.colSpan: IDL set to 4294967295: PASS
 	th.colSpan: setAttribute() to " 7": PASS
 	th.colSpan: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	th.colSpan: setAttribute() to " \\v7": PASS
@@ -59296,9 +59296,9 @@
 	th.colSpan: setAttribute() to 1000: PASS
 	th.colSpan: setAttribute() to 1001: PASS
 	th.colSpan: setAttribute() to 2147483647: PASS
-	th.colSpan: setAttribute() to 2147483648: FAIL
-	th.colSpan: setAttribute() to 4294967295: FAIL
-	th.colSpan: setAttribute() to 4294967296: FAIL
+	th.colSpan: setAttribute() to 2147483648: PASS
+	th.colSpan: setAttribute() to 4294967295: PASS
+	th.colSpan: setAttribute() to 4294967296: PASS
 	th.colSpan: setAttribute() to Infinity: PASS
 	th.colSpan: setAttribute() to NaN: PASS
 	th.colSpan: setAttribute() to false: PASS
@@ -59612,9 +59612,9 @@
 	th.rowSpan: IDL set to 0: PASS
 	th.rowSpan: IDL set to 1: PASS
 	th.rowSpan: IDL set to 2147483647: PASS
-	th.rowSpan: IDL set to 2147483648: FAIL
+	th.rowSpan: IDL set to 2147483648: PASS
 	th.rowSpan: IDL set to 257: PASS
-	th.rowSpan: IDL set to 4294967295: FAIL
+	th.rowSpan: IDL set to 4294967295: PASS
 	th.rowSpan: IDL set to 65534: PASS
 	th.rowSpan: IDL set to 65535: PASS
 	th.rowSpan: setAttribute() to " 7": PASS
@@ -59669,9 +59669,9 @@
 	th.rowSpan: setAttribute() to 1: PASS
 	th.rowSpan: setAttribute() to 1.5: PASS
 	th.rowSpan: setAttribute() to 2147483647: PASS
-	th.rowSpan: setAttribute() to 2147483648: FAIL
-	th.rowSpan: setAttribute() to 4294967295: FAIL
-	th.rowSpan: setAttribute() to 4294967296: FAIL
+	th.rowSpan: setAttribute() to 2147483648: PASS
+	th.rowSpan: setAttribute() to 4294967295: PASS
+	th.rowSpan: setAttribute() to 4294967296: PASS
 	th.rowSpan: setAttribute() to 65534: PASS
 	th.rowSpan: setAttribute() to 65535: PASS
 	th.rowSpan: setAttribute() to Infinity: PASS
@@ -60548,7 +60548,7 @@
 	tr.bgColor: IDL set to Infinity: PASS
 	tr.bgColor: IDL set to NaN: PASS
 	tr.bgColor: IDL set to false: PASS
-	tr.bgColor: IDL set to null: FAIL
+	tr.bgColor: IDL set to null: PASS
 	tr.bgColor: IDL set to object "[object Object]": PASS
 	tr.bgColor: IDL set to object "test-toString": PASS
 	tr.bgColor: IDL set to object "test-valueOf": PASS

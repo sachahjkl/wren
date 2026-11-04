@@ -208,13 +208,13 @@ wjr_HTMLScriptElement_get_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 
 @(export, link_name = "wjr_HTMLScriptElement_set_src")
 wjr_HTMLScriptElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
-	return wj_reflect_set(ctx, this_val, if_script(), "src", REFLECT_URL, v, 0, 0, 0)
+	return wj_reflect_set(ctx, this_val, if_script(), "src", REFLECT_URL, v, 0, 0, 0, 0)
 }
 
-// ASCII case-insensitive equality of a NUL-terminated string and a literal (strcasecmp == 0)
+// ASCII case-insensitive equality of a string of n bytes (a NUL in it is a character) and a literal
 @(private = "file")
-ieq :: proc "contextless" (s: cstring, lit: cstring) -> bool {
-	return wj.web_ascii_ieq(([^]u8)(rawptr(s)), wj.strlen(s), lit)
+ieq :: proc "contextless" (s: cstring, n: uint, lit: cstring) -> bool {
+	return wj.web_ascii_ieq(([^]u8)(rawptr(s)), n, lit)
 }
 
 // crossOrigin: a nullable enumerated attribute ("anonymous" its invalid value default)
@@ -223,10 +223,11 @@ wjr_HTMLScriptElement_get_crossOrigin :: proc "c" (ctx: ^wj.Context, this_val: w
 	if wj.wj_this(ctx, this_val, if_script()) == nil { return wj.EXCEPTION }
 	a := get_attr(ctx, this_val, "crossorigin")
 	if wj.is_exception(a) || wj.is_null(a) { return a }
-	s := wj.JS_ToCStringLen2(ctx, nil, a, false)
+	n: uint
+	s := wj.JS_ToCStringLen2(ctx, &n, a, false)
 	wj.JS_FreeValue(ctx, a)
 	if s == nil { return wj.EXCEPTION }
-	r := wj.JS_NewString(ctx, ieq(s, "use-credentials") ? "use-credentials" : "anonymous")
+	r := wj.JS_NewString(ctx, ieq(s, n, "use-credentials") ? "use-credentials" : "anonymous")
 	wj.JS_FreeCString(ctx, s)
 	return r
 }
@@ -234,7 +235,7 @@ wjr_HTMLScriptElement_get_crossOrigin :: proc "c" (ctx: ^wj.Context, this_val: w
 @(export, link_name = "wjr_HTMLScriptElement_set_crossOrigin")
 wjr_HTMLScriptElement_set_crossOrigin :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
 	if wj.wj_this(ctx, this_val, if_script()) == nil { return wj.EXCEPTION }
-	s := wj.is_null(v) ? wj.NULL : wj.JS_ToString(ctx, v)
+	s := wj.is_nullish(v) ? wj.NULL : wj.JS_ToString(ctx, v)   // undefined is null for a nullable string
 	if wj.is_exception(s) { return s }
 	r := set_attr(ctx, this_val, "crossorigin", s)
 	wj.JS_FreeValue(ctx, s)
@@ -253,11 +254,12 @@ wjr_HTMLScriptElement_get_referrerPolicy :: proc "c" (ctx: ^wj.Context, this_val
 	a := get_attr(ctx, this_val, "referrerpolicy")
 	if wj.is_exception(a) { return a }
 	if wj.is_null(a) { return wj.JS_NewString(ctx, "") }
-	s := wj.JS_ToCStringLen2(ctx, nil, a, false)
+	n: uint
+	s := wj.JS_ToCStringLen2(ctx, &n, a, false)
 	wj.JS_FreeValue(ctx, a)
 	if s == nil { return wj.EXCEPTION }
 	out: cstring = ""
-	for known in referrer_policies { if ieq(s, known) { out = known } }
+	for known in referrer_policies { if ieq(s, n, known) { out = known } }
 	wj.JS_FreeCString(ctx, s)
 	return wj.JS_NewString(ctx, out)
 }

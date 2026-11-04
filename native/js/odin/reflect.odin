@@ -14,10 +14,19 @@ import "../odin/wj"
 @(private = "file") PROP_HAS_CONFIGURABLE :: wj.PROP_HAS_CONFIGURABLE
 @(private = "file") PROP_CONFIGURABLE     :: wj.PROP_CONFIGURABLE
 
-// Reflect kinds (wj.h WJ_REFLECT_*), as the generated binding table passes them.
+// Reflect kinds (wj.h WJ_REFLECT_*), as the generated binding table passes them. Null_Empty_String: a DOMString with
+// [LegacyNullToEmptyString] (null sets "").
 Kind :: enum i32 {
-	String = 0, Nullable_String, Url, Bool, Long, Ulong, Double,
+	String = 0, Nullable_String, Url, Bool, Long, Ulong, Double, Null_Empty_String,
 }
+
+// The modes of a number (the generated tables pass them): 1 non-negative, 2 limited to only positive, 3 positive with
+// fallback, 4 clamped to [lo, hi].
+MODE_POSITIVE :: 2
+MODE_POSITIVE_FALLBACK :: 3
+MODE_CLAMPED :: 4
+// The largest value a long or unsigned long reflects (HTML: 2^31 - 1).
+@(private = "file") REFLECT_INT_MAX :: 2147483647
 
 @(private = "file") empty: [1]u8   // a valid non-nil pointer for a zero-length string
 
@@ -45,14 +54,22 @@ parse_int :: proc "contextless" (s: [^]u8, n: uint) -> (out: f64, ok: bool) {
 	return neg ? -v : v, true
 }
 
-// HTML "rules for parsing floating-point number values" (the common subset strtod covers).
+// HTML "rules for parsing floating-point number values" (the common subset strtod covers): after the whitespace, a sign
+// then a digit or a '.'; strtod reads only the characters of a decimal number (no other whitespace, "inf" or hex).
 @(private = "file")
 parse_double :: proc "contextless" (s: [^]u8, n: uint) -> (out: f64, ok: bool) {
 	buf: [64]u8
 	i: uint = 0
 	for i < n && is_ws(s[i]) { i += 1 }
-	l := n - i < len(buf) - 1 ? n - i : len(buf) - 1
-	for k: uint = 0; k < l; k += 1 { buf[k] = s[i + k] }
+	first := i < n && (s[i] == '-' || s[i] == '+') ? i + 1 : i
+	if first >= n || !(s[first] >= '0' && s[first] <= '9' || s[first] == '.') { return 0, false }
+	l: uint = 0
+	for l < n - i && l < len(buf) - 1 {
+		c := s[i + l]
+		if !(c >= '0' && c <= '9' || c == '.' || c == 'e' || c == 'E' || c == '-' || c == '+') { break }
+		buf[l] = c
+		l += 1
+	}
 	buf[l] = 0
 	end: [^]u8
 	v := wj.strtod(&buf[0], &end)
@@ -97,7 +114,7 @@ wj_reflect_get :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, 
 	n := attr_get(wj.handle_of(o), name)
 	v := wj.scratch_data()
 	switch Kind(kind) {
-	case .String:
+	case .String, .Null_Empty_String:
 		return wj.new_string_len(ctx, v, n < 0 ? 0 : uint(n))
 	case .Nullable_String:
 		return n < 0 ? wj.NULL : wj.new_string_len(ctx, v, uint(n))
@@ -117,10 +134,11 @@ wj_reflect_get :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, 
 		x: f64; ok: bool
 		if n >= 0 { x, ok = parse_int(v, uint(n)) }
 		if ok && Kind(kind) == .Long && (x < -2147483648.0 || x > 2147483647.0) { ok = false }
-		if ok && Kind(kind) == .Ulong && (x < 0 || x > 2147483647.0) { ok = false }
+		// clamped: any non-negative integer, however large, is clamped
+		if ok && Kind(kind) == .Ulong && (x < 0 || (x > REFLECT_INT_MAX && mode != MODE_CLAMPED)) { ok = false }
 		if ok && mode == 1 && x < 0 { ok = false }
 		if ok && (mode == 2 || mode == 3) && x <= 0 { ok = false }
-		if ok && mode == 4 { x = x < lo ? lo : (x > hi ? hi : x) }
+		if ok && mode == MODE_CLAMPED { x = x < lo ? lo : (x > hi ? hi : x) }
 		if !ok { x = def }
 		return Kind(kind) == .Long ? wj.new_int32(i32(x)) : wj.new_uint32(ctx, u32(x))
 	case .Double:
@@ -156,7 +174,7 @@ itoa :: proc "contextless" (buf: []u8, v: i64, unsigned: bool) -> uint {
 }
 
 @(export, link_name = "wj_reflect_set")
-wj_reflect_set :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, name: cstring, kind: i32, v: wj.JSValue, mode: i32, lo: f64, hi: f64) -> wj.JSValue {
+wj_reflect_set :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, name: cstring, kind: i32, v: wj.JSValue, def: f64, mode: i32, lo: f64, hi: f64) -> wj.JSValue {
 	o := wj.wj_this(ctx, this_val, iface)
 	if o == nil { return wj.EXCEPTION }
 	if iface == internals_iface() {
@@ -176,11 +194,12 @@ wj_reflect_set :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, 
 		wj.wr_Element_removeAttribute(el, nm, u32(len(name)))
 		return wj.UNDEFINED
 	case .Nullable_String:
-		if wj.is_null(v) { wj.wr_Element_removeAttribute(el, nm, u32(len(name))); return wj.UNDEFINED }
+		// undefined converts to null too (Web IDL: a nullable type)
+		if wj.is_nullish(v) { wj.wr_Element_removeAttribute(el, nm, u32(len(name))); return wj.UNDEFINED }
 		fallthrough
-	case .String, .Url:
+	case .String, .Url, .Null_Empty_String:
 		s: wj.Str
-		if !wj.wj_to_str(ctx, v, &s, 0, "") { return wj.EXCEPTION }
+		if !wj.wj_to_str(ctx, v, &s, Kind(kind) == .Null_Empty_String ? wj.STR_NULL_EMPTY : 0, "") { return wj.EXCEPTION }
 		r := set_attr(ctx, el, name, s.ptr != nil ? s.ptr : &empty[0], s.len)
 		wj.wj_str_free(ctx, &s)
 		return r
@@ -194,8 +213,10 @@ wj_reflect_set :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, 
 	case .Ulong:
 		x: u32
 		if !wj.wj_to_uint32(ctx, v, &x, 32, 0) { return wj.EXCEPTION }
-		if (mode == 2 || mode == 3) && x == 0 { return wj.wj_throw_dom(ctx, "IndexSizeError", "The value provided is 0.") }
-		if x > 2147483647 { x = 0 }
+		positive := mode == MODE_POSITIVE || mode == MODE_POSITIVE_FALLBACK
+		if mode == MODE_POSITIVE && x == 0 { return wj.wj_throw_dom(ctx, "IndexSizeError", "The value provided is 0.") }
+		// out of range: the default (1 when a positive number has none)
+		if x > REFLECT_INT_MAX || (mode == MODE_POSITIVE_FALLBACK && x == 0) { x = def == 0 && positive ? 1 : u32(def) }
 		buf: [24]u8
 		n := itoa(buf[:], i64(x), true)
 		return set_attr(ctx, el, name, &buf[0], n)

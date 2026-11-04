@@ -27,6 +27,10 @@ import "wb:style"
 
 // The font size a canvas resolves relative sizes against when its element has no style: the default "10px sans-serif".
 CANVAS_DEFAULT_FONT_PX :: 10
+// A canvas's size when its attribute is missing or not a number (HTML), and the largest an attribute reflects (2^31 - 1).
+CANVAS_DEFAULT_WIDTH :: 300
+CANVAS_DEFAULT_HEIGHT :: 150
+CANVAS_DIM_MAX :: 2147483647
 
 // Textures of canvases are keyed in the shell by their backing's id with this bit, apart from the image cache's ids.
 CANVAS_TEXTURE_BIT :: u64(1) << 62
@@ -242,25 +246,26 @@ canvas_note :: proc(p: ^Page, b: ^Canvas_Backing, text: string) {
 
 @(private)
 parse_canvas_dim :: proc(s: string, fallback: int) -> int {
-	// HTML "rules for parsing non-negative integers": white space, an optional +, digits (the rest is ignored)
+	// HTML "rules for parsing non-negative integers": white space, an optional sign, digits (the rest is ignored); "-0" is 0
 	i := 0
 	for i < len(s) && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r' || s[i] == '\f') { i += 1 }
-	if i < len(s) && s[i] == '+' { i += 1 }
+	negative := i < len(s) && s[i] == '-'
+	if i < len(s) && (s[i] == '+' || s[i] == '-') { i += 1 }
 	start := i
 	v := 0
 	for i < len(s) && s[i] >= '0' && s[i] <= '9' {
 		v = v * 10 + int(s[i] - '0')
-		if v > 2147483647 { return fallback }   // (an unsigned long that does not fit: the default)
+		if v > CANVAS_DIM_MAX { return fallback }   // (an unsigned long that does not fit: the default)
 		i += 1
 	}
-	if i == start { return fallback }
+	if i == start || (negative && v != 0) { return fallback }
 	return v
 }
 
 canvas_dims :: proc(d: ^dom.Document, node: base.Handle) -> (w, h: int) {
 	wv, _ := dom.get_attribute(d, node, "width")
 	hv, _ := dom.get_attribute(d, node, "height")
-	return parse_canvas_dim(wv, 300), parse_canvas_dim(hv, 150)
+	return parse_canvas_dim(wv, CANVAS_DEFAULT_WIDTH), parse_canvas_dim(hv, CANVAS_DEFAULT_HEIGHT)
 }
 
 @(private)

@@ -73,6 +73,7 @@ reflect_kind_index :: proc(kind: string) -> int {
 	case "long": return 4
 	case "ulong": return 5
 	case "double": return 6
+	case "null_empty_string": return 7
 	}
 	return 0
 }
@@ -88,7 +89,7 @@ emit_reflect_odin :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, ki
 	}
 	if !mb.readonly {
 		setter = fmt.aprintf("wjg_%s_set_%s", it.name, id)
-		wl(&g.o, "%s :: %s {{ return wj_reflect_set(ctx, this_val, %d, %q, %d, v, %d, %s, %s) }", setter, glue_sig_setter, idx, content, k, mode, odin_num(lo), odin_num(hi))
+		wl(&g.o, "%s :: %s {{ return wj_reflect_set(ctx, this_val, %d, %q, %d, v, %s, %d, %s, %s) }", setter, glue_sig_setter, idx, content, k, odin_num(def), mode, odin_num(lo), odin_num(hi))
 	}
 	return
 }

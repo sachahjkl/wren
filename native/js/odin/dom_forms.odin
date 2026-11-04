@@ -258,3 +258,50 @@ wjr_HTMLOptionsCollection_set_selectedIndex :: proc "c" (ctx: ^wj.Context, this_
 	wj.JS_FreeValue(ctx, sel)
 	return r < 0 ? wj.EXCEPTION : wj.UNDEFINED
 }
+
+// ---- SubmitEvent.submitter, FormDataEvent.formData: the constructor's dictionary, or the browser's event's object read
+// when the event was wrapped (dom_events.odin wj_event_wrapped) ----
+
+@(private = "file")
+event_member :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, iface: i32, name: cstring) -> wj.JSValue {
+	if wj.wj_this(ctx, t, iface) == nil { return wj.EXCEPTION }
+	v := wj.web_extra_get(ctx, t, name)
+	return wj.is_undefined(v) ? wj.NULL : v
+}
+
+@(export, link_name = "wjr_SubmitEvent_get_submitter")
+wjr_SubmitEvent_get_submitter :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return event_member(ctx, t, ifc("SubmitEvent"), "submitter") }
+
+@(export, link_name = "wjr_SubmitEvent_constructor")
+wjr_SubmitEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	ev := wj_event_construct(ctx, new_target, argc, argv, ifc("SubmitEvent"), "SubmitEvent")
+	if wj.is_exception(ev) { return ev }
+	s: wj.JSValue
+	if !wj.web_dict_get(ctx, wj.arg(argc, argv, 1), "submitter", &s) { wj.JS_FreeValue(ctx, ev); return wj.EXCEPTION }
+	if !wj.is_nullish(s) && wj.wj_unwrap(s, ifc("HTMLElement")) == nil {
+		wj.JS_FreeValue(ctx, s)
+		wj.JS_FreeValue(ctx, ev)
+		return wj.wj_throw_type(ctx, "Failed to construct 'SubmitEvent': member submitter is not of type 'HTMLElement'.")
+	}
+	wj.web_extra_set(ctx, ev, "submitter", wj.is_undefined(s) ? wj.NULL : s)
+	return ev
+}
+
+// the browser's entry list of the submission, which the listeners change
+@(export, link_name = "wjr_FormDataEvent_get_formData")
+wjr_FormDataEvent_get_formData :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return event_member(ctx, t, ifc("FormDataEvent"), "formData") }
+
+@(export, link_name = "wjr_FormDataEvent_constructor")
+wjr_FormDataEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	ev := wj_event_construct(ctx, new_target, argc, argv, ifc("FormDataEvent"), "FormDataEvent")
+	if wj.is_exception(ev) { return ev }
+	fd: wj.JSValue
+	if !wj.web_dict_get(ctx, wj.arg(argc, argv, 1), "formData", &fd) { wj.JS_FreeValue(ctx, ev); return wj.EXCEPTION }
+	if !web_formdata_is(fd) {
+		wj.JS_FreeValue(ctx, fd)
+		wj.JS_FreeValue(ctx, ev)
+		return wj.wj_throw_type(ctx, "Failed to construct 'FormDataEvent': member formData is required and must be a FormData.")
+	}
+	wj.web_extra_set(ctx, ev, "formData", fd)
+	return ev
+}

@@ -67,6 +67,12 @@ Reflect_Enum :: struct {
 	{"script", ""}, {"serviceworker", ""}, {"sharedworker", ""}, {"style", ""}, {"track", ""}, {"video", ""},
 	{"webidentity", ""}, {"worker", ""}, {"xslt", ""},
 }}
+@(private = "file") E_INPUT_MODE := Reflect_Enum{keywords = {
+	{"none", ""}, {"text", ""}, {"tel", ""}, {"url", ""}, {"email", ""}, {"numeric", ""}, {"decimal", ""}, {"search", ""},
+}}
+@(private = "file") E_ENTER_KEY_HINT := Reflect_Enum{keywords = {
+	{"enter", ""}, {"done", ""}, {"go", ""}, {"next", ""}, {"previous", ""}, {"search", ""}, {"send", ""},
+}}
 // declarative shadow roots
 @(private = "file") E_SHADOW_MODE := Reflect_Enum{keywords = {{"open", ""}, {"closed", ""}}}
 @(private = "file") E_SLOT_ASSIGNMENT := Reflect_Enum{keywords = {{"named", ""}, {"manual", ""}}, missing = "named", invalid = "named"}
@@ -87,7 +93,7 @@ enum_get :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, attr: 
 // the setter writes the value as given (null removes the attribute of a nullable one)
 @(private = "file")
 enum_set :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, attr: cstring, v: wj.JSValue, nullable := false) -> wj.JSValue {
-	return wj_reflect_set(ctx, this_val, iface, attr, i32(nullable ? Kind.Nullable_String : Kind.String), v, 0, 0, 0)
+	return wj_reflect_set(ctx, this_val, iface, attr, i32(nullable ? Kind.Nullable_String : Kind.String), v, 0, 0, 0, 0)
 }
 
 @(export, link_name = "wjr_HTMLImageElement_get_crossOrigin")    wjr_HTMLImageElement_get_crossOrigin    :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return enum_get(ctx, t, ifc("HTMLImageElement"), "crossorigin", &E_CORS) }
@@ -114,6 +120,8 @@ enum_set :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, attr: 
 @(export, link_name = "wjr_HTMLImageElement_set_loading")   wjr_HTMLImageElement_set_loading   :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return enum_set(ctx, t, ifc("HTMLImageElement"), "loading", v) }
 @(export, link_name = "wjr_HTMLIFrameElement_get_loading")  wjr_HTMLIFrameElement_get_loading  :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return enum_get(ctx, t, ifc("HTMLIFrameElement"), "loading", &E_LOADING) }
 @(export, link_name = "wjr_HTMLIFrameElement_set_loading")  wjr_HTMLIFrameElement_set_loading  :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return enum_set(ctx, t, ifc("HTMLIFrameElement"), "loading", v) }
+@(export, link_name = "wjr_HTMLMediaElement_get_loading")  wjr_HTMLMediaElement_get_loading  :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return enum_get(ctx, t, ifc("HTMLMediaElement"), "loading", &E_LOADING) }
+@(export, link_name = "wjr_HTMLMediaElement_set_loading")  wjr_HTMLMediaElement_set_loading  :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return enum_set(ctx, t, ifc("HTMLMediaElement"), "loading", v) }
 @(export, link_name = "wjr_HTMLImageElement_get_decoding")  wjr_HTMLImageElement_get_decoding  :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return enum_get(ctx, t, ifc("HTMLImageElement"), "decoding", &E_DECODING) }
 @(export, link_name = "wjr_HTMLImageElement_set_decoding")  wjr_HTMLImageElement_set_decoding  :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return enum_set(ctx, t, ifc("HTMLImageElement"), "decoding", v) }
 
@@ -135,6 +143,12 @@ enum_set :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, attr: 
 @(export, link_name = "wjr_HTMLTemplateElement_set_shadowRootMode")           wjr_HTMLTemplateElement_set_shadowRootMode           :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return enum_set(ctx, t, ifc("HTMLTemplateElement"), "shadowrootmode", v) }
 @(export, link_name = "wjr_HTMLTemplateElement_get_shadowRootSlotAssignment") wjr_HTMLTemplateElement_get_shadowRootSlotAssignment :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return enum_get(ctx, t, ifc("HTMLTemplateElement"), "shadowrootslotassignment", &E_SLOT_ASSIGNMENT) }
 @(export, link_name = "wjr_HTMLTemplateElement_set_shadowRootSlotAssignment") wjr_HTMLTemplateElement_set_shadowRootSlotAssignment :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return enum_set(ctx, t, ifc("HTMLTemplateElement"), "shadowrootslotassignment", v) }
+
+// the virtual keyboard's hints of any element
+@(export, link_name = "wjr_HTMLElement_get_inputMode")    wjr_HTMLElement_get_inputMode    :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return enum_get(ctx, t, ifc("HTMLElement"), "inputmode", &E_INPUT_MODE) }
+@(export, link_name = "wjr_HTMLElement_set_inputMode")    wjr_HTMLElement_set_inputMode    :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return enum_set(ctx, t, ifc("HTMLElement"), "inputmode", v) }
+@(export, link_name = "wjr_HTMLElement_get_enterKeyHint") wjr_HTMLElement_get_enterKeyHint :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return enum_get(ctx, t, ifc("HTMLElement"), "enterkeyhint", &E_ENTER_KEY_HINT) }
+@(export, link_name = "wjr_HTMLElement_set_enterKeyHint") wjr_HTMLElement_set_enterKeyHint :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return enum_set(ctx, t, ifc("HTMLElement"), "enterkeyhint", v) }
 
 // forms
 @(export, link_name = "wjr_HTMLFormElement_get_autocomplete")  wjr_HTMLFormElement_get_autocomplete  :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return enum_get(ctx, t, ifc("HTMLFormElement"), "autocomplete", &E_ONOFF) }
@@ -225,7 +239,7 @@ wjr_HTMLScriptElement_set_innerText :: proc "c" (ctx: ^wj.Context, t, v: wj.JSVa
 @(export, link_name = "wjr_HTMLBaseElement_get_href")
 wjr_HTMLBaseElement_get_href :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, t, ifc("HTMLBaseElement"), "href", i32(Kind.Url), 0, 0, 0, 0) }
 @(export, link_name = "wjr_HTMLBaseElement_set_href")
-wjr_HTMLBaseElement_set_href :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, t, ifc("HTMLBaseElement"), "href", i32(Kind.Url), v, 0, 0, 0) }
+wjr_HTMLBaseElement_set_href :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, t, ifc("HTMLBaseElement"), "href", i32(Kind.Url), v, 0, 0, 0, 0) }
 
 // ---- img.width / img.height: the attribute, else the natural size ----
 
@@ -254,11 +268,11 @@ image_size :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, attr: string, width: bo
 @(export, link_name = "wjr_HTMLImageElement_get_width")
 wjr_HTMLImageElement_get_width :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return image_size(ctx, t, "width", true) }
 @(export, link_name = "wjr_HTMLImageElement_set_width")
-wjr_HTMLImageElement_set_width :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, t, ifc("HTMLImageElement"), "width", i32(Kind.Ulong), v, 0, 0, 0) }
+wjr_HTMLImageElement_set_width :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, t, ifc("HTMLImageElement"), "width", i32(Kind.Ulong), v, 0, 0, 0, 0) }
 @(export, link_name = "wjr_HTMLImageElement_get_height")
 wjr_HTMLImageElement_get_height :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return image_size(ctx, t, "height", false) }
 @(export, link_name = "wjr_HTMLImageElement_set_height")
-wjr_HTMLImageElement_set_height :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, t, ifc("HTMLImageElement"), "height", i32(Kind.Ulong), v, 0, 0, 0) }
+wjr_HTMLImageElement_set_height :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, t, ifc("HTMLImageElement"), "height", i32(Kind.Ulong), v, 0, 0, 0, 0) }
 
 // ---- numbers: textarea cols / rows, progress, meter ----
 
@@ -336,7 +350,7 @@ wjr_HTMLProgressElement_get_value :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) 
 }
 
 @(export, link_name = "wjr_HTMLProgressElement_set_value")
-wjr_HTMLProgressElement_set_value :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, t, ifc("HTMLProgressElement"), "value", i32(Kind.Double), v, 0, 0, 0) }
+wjr_HTMLProgressElement_set_value :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, t, ifc("HTMLProgressElement"), "value", i32(Kind.Double), v, 0, 0, 0, 0) }
 
 @(export, link_name = "wjr_HTMLProgressElement_get_max")
 wjr_HTMLProgressElement_get_max :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
@@ -351,7 +365,7 @@ wjr_HTMLProgressElement_set_max :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue)
 	x: f64
 	if !wj.wj_to_double(ctx, v, &x, true) { return wj.EXCEPTION }
 	if x <= 0 { return wj.UNDEFINED }
-	return wj_reflect_set(ctx, t, ifc("HTMLProgressElement"), "max", i32(Kind.Double), v, 0, 0, 0)
+	return wj_reflect_set(ctx, t, ifc("HTMLProgressElement"), "max", i32(Kind.Double), v, 0, 0, 0, 0)
 }
 
 @(export, link_name = "wjr_HTMLProgressElement_get_position")
@@ -389,7 +403,7 @@ meter_get :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, which: Meter_Value) -> w
 }
 
 @(private = "file")
-meter_set :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, attr: cstring, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, t, ifc("HTMLMeterElement"), attr, i32(Kind.Double), v, 0, 0, 0) }
+meter_set :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, attr: cstring, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, t, ifc("HTMLMeterElement"), attr, i32(Kind.Double), v, 0, 0, 0, 0) }
 
 @(export, link_name = "wjr_HTMLMeterElement_get_value")   wjr_HTMLMeterElement_get_value   :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return meter_get(ctx, t, .Value) }
 @(export, link_name = "wjr_HTMLMeterElement_set_value")   wjr_HTMLMeterElement_set_value   :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return meter_set(ctx, t, "value", v) }
@@ -527,11 +541,65 @@ wjr_HTMLInputElement_set_valueAsDate :: proc "c" (ctx: ^wj.Context, t, v: wj.JSV
 @(export, link_name = "wjr_HTMLInputElement_get_width")
 wjr_HTMLInputElement_get_width :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, t, ifc("HTMLInputElement"), "width", i32(Kind.Ulong), 0, 0, 0, 0) }
 @(export, link_name = "wjr_HTMLInputElement_set_width")
-wjr_HTMLInputElement_set_width :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, t, ifc("HTMLInputElement"), "width", i32(Kind.Ulong), v, 0, 0, 0) }
+wjr_HTMLInputElement_set_width :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, t, ifc("HTMLInputElement"), "width", i32(Kind.Ulong), v, 0, 0, 0, 0) }
 @(export, link_name = "wjr_HTMLInputElement_get_height")
 wjr_HTMLInputElement_get_height :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, t, ifc("HTMLInputElement"), "height", i32(Kind.Ulong), 0, 0, 0, 0) }
 @(export, link_name = "wjr_HTMLInputElement_set_height")
-wjr_HTMLInputElement_set_height :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, t, ifc("HTMLInputElement"), "height", i32(Kind.Ulong), v, 0, 0, 0) }
+wjr_HTMLInputElement_set_height :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, t, ifc("HTMLInputElement"), "height", i32(Kind.Ulong), v, 0, 0, 0, 0) }
+
+// input.size: limited to only positive numbers, 20 by default (the IDL says no default)
+@(private = "file") INPUT_SIZE_DEFAULT :: 20
+@(export, link_name = "wjr_HTMLInputElement_get_size")
+wjr_HTMLInputElement_get_size :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, t, ifc("HTMLInputElement"), "size", i32(Kind.Ulong), INPUT_SIZE_DEFAULT, MODE_POSITIVE, 0, 0) }
+@(export, link_name = "wjr_HTMLInputElement_set_size")
+wjr_HTMLInputElement_set_size :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, t, ifc("HTMLInputElement"), "size", i32(Kind.Ulong), v, INPUT_SIZE_DEFAULT, MODE_POSITIVE, 0, 0) }
+
+// ---- document.fgColor, linkColor, vlinkColor, alinkColor, bgColor: the body element's attributes ----
+
+// The body element of the document `t` (0: none).
+@(private = "file")
+body_of :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> (body: u64, ok: bool) {
+	o := wj.wj_this(ctx, t, ifc("Document"))
+	if o == nil { return 0, false }
+	if !wj.wj_doc_target(o.handle) { wj.wj_throw_gone(ctx); return 0, false }
+	return wj.wr_Document_body(), true
+}
+
+// "" without a body element
+@(private = "file")
+body_color_get :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, attr: string) -> wj.JSValue {
+	context = jsb.glue_context()
+	body, ok := body_of(ctx, t)
+	if !ok { return wj.EXCEPTION }
+	v: string
+	if body != 0 { v, _ = attr_read(body, attr) }
+	return wj.new_string_len(ctx, v)
+}
+
+// nothing without a body element; null is "" ([LegacyNullToEmptyString])
+@(private = "file")
+body_color_set :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue, attr: string) -> wj.JSValue {
+	context = jsb.glue_context()
+	body, ok := body_of(ctx, t)
+	if !ok { return wj.EXCEPTION }
+	s: wj.Str
+	if !wj.wj_to_str(ctx, v, &s, wj.STR_NULL_EMPTY, "") { return wj.EXCEPTION }
+	defer wj.wj_str_free(ctx, &s)
+	if body == 0 { return wj.UNDEFINED }
+	st := jsb.host(&nothing, api_decl.Element_setAttribute, wj.wr_Element_setAttribute, api_decl.Element(body), attr, str_view(s))
+	return st != .None ? wj.wj_throw_status(ctx, i32(st), "Document") : wj.UNDEFINED
+}
+
+@(export, link_name = "wjr_Document_get_fgColor")    wjr_Document_get_fgColor    :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return body_color_get(ctx, t, "text") }
+@(export, link_name = "wjr_Document_set_fgColor")    wjr_Document_set_fgColor    :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return body_color_set(ctx, t, v, "text") }
+@(export, link_name = "wjr_Document_get_linkColor")  wjr_Document_get_linkColor  :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return body_color_get(ctx, t, "link") }
+@(export, link_name = "wjr_Document_set_linkColor")  wjr_Document_set_linkColor  :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return body_color_set(ctx, t, v, "link") }
+@(export, link_name = "wjr_Document_get_vlinkColor") wjr_Document_get_vlinkColor :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return body_color_get(ctx, t, "vlink") }
+@(export, link_name = "wjr_Document_set_vlinkColor") wjr_Document_set_vlinkColor :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return body_color_set(ctx, t, v, "vlink") }
+@(export, link_name = "wjr_Document_get_alinkColor") wjr_Document_get_alinkColor :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return body_color_get(ctx, t, "alink") }
+@(export, link_name = "wjr_Document_set_alinkColor") wjr_Document_set_alinkColor :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return body_color_set(ctx, t, v, "alink") }
+@(export, link_name = "wjr_Document_get_bgColor")    wjr_Document_get_bgColor    :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return body_color_get(ctx, t, "bgcolor") }
+@(export, link_name = "wjr_Document_set_bgColor")    wjr_Document_set_bgColor    :: proc "c" (ctx: ^wj.Context, t, v: wj.JSValue) -> wj.JSValue { return body_color_set(ctx, t, v, "bgcolor") }
 
 // ---- live lists of forms (collection kinds of src/page/js_dom_collections.odin) ----
 

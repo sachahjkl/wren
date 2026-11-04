@@ -116,6 +116,8 @@ generate :: proc(api: ^idl.Api, m: ^webidl.Model, raw_impls: []string, odin_pack
 		any_impl := false
 		for mi in impls[i] { if mi.kind == .Raw || mi.kind == .Import { any_impl = true; break } }
 		if g.raw[fmt.tprintf("wjr_%s_constructor", it.name)] { any_impl = true }
+		// an interface of named or indexed properties only (DOMStringMap): its hooks are its implementation
+		if g.raw[fmt.tprintf("wjr_%s_named_get", it.name)] || g.raw[fmt.tprintf("wjr_%s_index_get", it.name)] { any_impl = true }
 		if any_impl || is_node_interface(it.name) || slice.contains(ALWAYS[:], it.name) { mark_supported(&g, it) }
 	}
 
@@ -349,8 +351,13 @@ emit_reflect :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member) -> (get
 	if r.kind != .Named { return }
 	kind := ""
 	switch r.name {
-	case "DOMString": kind = r.nullable ? "nullable_string" : "string"
-	case "USVString": kind = webidl.attr_has(mb.attrs, "ReflectURL") ? "url" : "string"
+	case "DOMString", "USVString":
+		switch {
+		case webidl.attr_has(mb.attrs, "ReflectURL"): kind = "url"   // object.codeBase is a DOMString
+		case r.nullable: kind = "nullable_string"
+		case webidl.attr_has(r.attrs, "LegacyNullToEmptyString"): kind = "null_empty_string"
+		case: kind = "string"
+		}
 	case "boolean": kind = "bool"
 	case "long": kind = "long"
 	case "unsigned long": kind = "ulong"
@@ -388,7 +395,7 @@ emit_reflect :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member) -> (get
 	}
 	if !mb.readonly {
 		setter = fmt.aprintf("wjg_%s_set_%s", it.name, id)
-		wl(&g.c, "static JSValue %s(JSContext *ctx, JSValueConst this_val, JSValueConst v) {{ return wj_reflect_set(ctx, this_val, %d, %q, WJ_REFLECT_%s, v, %d, %s, %s); }}", setter, idx, content, strings.to_upper(kind, context.temp_allocator), mode, lo, hi)
+		wl(&g.c, "static JSValue %s(JSContext *ctx, JSValueConst this_val, JSValueConst v) {{ return wj_reflect_set(ctx, this_val, %d, %q, WJ_REFLECT_%s, v, %s, %d, %s, %s); }}", setter, idx, content, strings.to_upper(kind, context.temp_allocator), def, mode, lo, hi)
 	}
 	return getter, setter, true
 }
