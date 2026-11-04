@@ -1,17 +1,27 @@
 package jsrt
 
-// The interpreter's hot loop, as a procedure of its own.
+// The interpreter's hot loop.
 //
 // interp_run (interp.odin) is one very large procedure: with its hundreds of live values the code generator
 // keeps `sp`, `locals`, `args`, `code` ... in stack slots and reloads them in every handler. The commonest
-// instructions live here instead, in a small procedure whose few live values (ip, s, locals, args, the
-// constant pool) stay in registers, with raw pointers instead of slices and indices (no bounds checks: the
-// reader's verifier has checked every operand index, jump target and stack height).
+// instructions run here instead, in a loop whose few live values (ip, s, locals, args, the constant pool) stay
+// in registers, with raw pointers instead of slices and indices (no bounds checks: the reader's verifier has
+// checked every operand index, jump target and stack height).
+//
+// The loop itself calls nothing. Wasmtime's code saves no register across a Wasm call, so a value the loop
+// carries across a call in one handler must be split around it or kept in a stack slot, and where the register
+// allocator drew that line moved with any change of the code around the loop (round 13 of docs/performance.md:
+// a test of one bit in a property lookup slowed every instruction by 12 %). What needs a call (a call
+// instruction, a return, a getter, a lazy shape, an atom's number made a string) is a procedure of its own,
+// never inlined, that reads and writes the loop's registers in a `Hot` in memory: they are written before the
+// call and read back after it, so none of them lives across one. A loop that calls nothing is inlined into
+// interp_run (#force_inline): the full dispatch and the loop then pass pc and sp without a call.
 //
 // Contract: run from (pc0, sp0) until an instruction this loop does not handle, or whose fast path does not
 // apply (operand types, a due collection / interrupt at a back edge ...). The instruction has had NO effect
-// then: the caller executes it with the full dispatch, and re-enters. Nothing here allocates, throws or calls
-// out, so the collector never runs inside it (back edges leave when one is due).
+// then: the caller executes it with the full dispatch, and re-enters. Nothing here allocates; the natives it
+// calls (call instructions, getters) run at a safepoint as call_native makes them, and back edges leave when a
+// collection is due.
 
 import "base:intrinsics"
 import "base:runtime"
@@ -71,11 +81,45 @@ quick_truthy :: #force_inline proc "contextless" (v: Value) -> (t: bool, ok: boo
 	return false, false
 }
 
-// Own property lookup, then the prototype chain of ordinary objects: a data property's value, or an accessor's native
-// getter for the caller to call (a DOM attribute); ok = false for anything else (the full path handles it).
+// What a property lookup of the loop found: a data property's value, an accessor's native getter for the caller to
+// call (a DOM attribute), or something the loop leaves to a procedure that may call (a lazy shape) or to the full
+// dispatch (a proxy, a host object whose class has exotic hooks ...).
 @(private = "file")
-hot_get_prop :: proc "contextless" (rt: ^Runtime, o: ^Object, a: Atom) -> (v: Value, getter: ^Object, ok: bool) {
-	p := o
+Hot_Found :: enum u8 {
+	value,
+	getter,
+	slow,
+}
+
+// Own property lookup, then the prototype chain of ordinary objects, calling nothing. `p` is the object of a lazy shape
+// when the answer is .slow because of one (nil when the full dispatch must answer).
+@(private = "file")
+hot_find :: #force_inline proc "contextless" (o: ^Object, a: Atom) -> (v: Value, getter: ^Object, p: ^Object, found: Hot_Found) {
+	p = o
+	for {
+		sh := p.shape
+		if sh.lazy != nil {return {}, nil, p, .slow}
+		i := shape_lookup(sh, a)
+		if i >= 0 {
+			#partial switch raw_data(sh.props)[i].kind {
+			case .data: return p.slots[i].value, nil, p, .value
+			case .accessor:
+				g := p.slots[i].getset.getter
+				if hot_native_getter(g) {return {}, g, p, .getter}
+			}
+			return {}, nil, nil, .slow
+		}
+		if p.fast_array || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return {}, nil, nil, .slow}
+		p = sh.proto
+		if p == nil {return UNDEFINED, nil, nil, .value}
+	}
+}
+
+// The lookup of hot_find from `p` on, the members of lazy shapes defined. ok = false for anything else (the full path
+// handles it).
+@(private = "file")
+hot_find_slow :: proc "contextless" (p_in: ^Object, a: Atom) -> (v: Value, getter: ^Object, ok: bool) {
+	p := p_in
 	for {
 		i := shape_find(p.shape, a)
 		if i >= 0 {
@@ -87,8 +131,7 @@ hot_get_prop :: proc "contextless" (rt: ^Runtime, o: ^Object, a: Atom) -> (v: Va
 			}
 			return
 		}
-		if p.fast_array || p.class == .proxy || p.class == .module_ns || p.class == .string || is_typed_array_class(p.class) {return}
-		if p.class == .host && host_exotic_of(rt, p) != nil {return}
+		if p.fast_array || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return}
 		p = p.shape.proto
 		if p == nil {return UNDEFINED, nil, true}
 	}
@@ -118,81 +161,178 @@ hot_regs :: #force_inline proc "contextless" (f: ^Frame) -> Hot_Regs {
 	return Hot_Regs{code = raw_data(b.code), stack = f.stack, locals = f.locals, args = f.args, var_refs = f.closure_refs, cpool = raw_data(b.cpool), root_base = f.root_base}
 }
 
+// The loop's registers in memory, for the procedures that call: written before one runs, read back after.
+@(private = "file")
+Hot :: struct {
+	ctx:    ^Context,
+	rt:     ^Runtime,
+	f:      ^Frame,
+	ip:     [^]u8,
+	s:      [^]Value, // the next free slot
+	regs:   Hot_Regs,
+	moved:  bool,
+	thrown: bool,
+}
+
+// A call instruction (call0 ... call3, call, call_method): a native function called at once, its result replacing the
+// callee and its arguments; a plain bytecode function's frame pushed and run by this loop. False: the loop stops
+// (the instruction not run, or `thrown`, or a collection due on entering the new frame).
+@(private = "file")
+hot_call :: #force_no_inline proc(h: ^Hot, op: Opcode) -> bool {
+	rt, ctx, f, ip, s := h.rt, h.ctx, h.f, h.ip, h.s
+	argc: int
+	isz := 1
+	if op == .call || op == .call_method {
+		argc = rd16(ip[1:])
+		isz = 3
+	} else {
+		argc = int(op) - int(Opcode.call0)
+	}
+	first := intrinsics.ptr_offset(s, -argc) // the first argument
+	fv := first[-1]
+	if fv.tag != .object {return false}
+	fo := as_obj(fv)
+	if fo.class == .c_function {
+		nd := &fo.data.(Native_Data)
+		if fo.ctor_only || rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {return false}
+		this := UNDEFINED
+		slot := intrinsics.ptr_offset(first, -1)
+		if op == .call_method {
+			if !fo.is_constructor {this = first[-2]}
+			slot = intrinsics.ptr_offset(first, -2)
+		}
+		h.ip = ip[isz:]
+		f.pc = int(uintptr(h.ip) - uintptr(h.regs.code))
+		r := call_native(ctx, fo, nd, this, first[:argc])
+		if r.tag == .exception {
+			h.thrown = true
+			return false
+		}
+		slot[0] = r
+		h.s = slot[1:]
+		return true
+	}
+	if fo.class != .bytecode_function {return false}
+	nb := fo.data.(Func_Data).bc
+	if nb.func_kind != .normal || rt.stack_depth >= rt.config.max_stack_depth || (nb.realm != nil && nb.realm != ctx) {return false}
+	this := UNDEFINED
+	slot := intrinsics.ptr_offset(first, -1) // where the result goes
+	if op == .call_method {
+		this = first[-2]
+		slot = intrinsics.ptr_offset(first, -2)
+	}
+	f.pc = int(uintptr(ip) - uintptr(h.regs.code)) + isz
+	f.sp = int(uintptr(slot) - uintptr(h.regs.stack)) / size_of(Value)
+	nf := frame_push(ctx, fo, this, first[:argc])
+	h.f = nf
+	h.moved = true
+	h.regs = hot_regs(nf)
+	h.ip = h.regs.code
+	h.s = h.regs.stack
+	// the entry safepoint (a collection due) is for interp_run: it sees pc == 0
+	return !gc_should_run(rt)
+}
+
+// op_return / return_undef of a frame this loop pushed: back to its caller's frame.
+@(private = "file")
+hot_return :: #force_no_inline proc(h: ^Hot, op: Opcode) -> bool {
+	f := h.f
+	if !f.stackless {return false}
+	ret := op == .op_return ? h.s[-1] : UNDEFINED
+	c := frame_pop(h.rt, f)
+	c.stack[c.sp] = ret
+	c.sp += 1
+	h.f = c
+	h.moved = true
+	h.regs = hot_regs(c)
+	h.ip = h.regs.code[c.pc:]
+	h.s = h.regs.stack[c.sp:]
+	return true
+}
+
+// A native getter called where a lookup found it, with `this`, its value at `at`; `next` is the instruction after.
+@(private = "file")
+hot_getter :: proc(h: ^Hot, getter: ^Object, this: Value, at: ^Value, next: [^]u8) -> bool {
+	rt := h.rt
+	if rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {return false}
+	h.f.pc = int(uintptr(next) - uintptr(h.regs.code))
+	v := call_native(h.ctx, getter, &getter.data.(Native_Data), this, {})
+	if v.tag == .exception {
+		h.ip = next
+		h.thrown = true
+		return false
+	}
+	at^ = v
+	return true
+}
+
+// get_field / get_field2 when the loop's lookup did not settle it: a getter it found (`getter`), or the lookup from
+// `p` on (hot_find_slow), a getter it finds called too.
+@(private = "file")
+hot_get_field :: #force_no_inline proc(h: ^Hot, op: Opcode, getter_in: ^Object, p: ^Object) -> bool {
+	ip, s := h.ip, h.s
+	o := s[-1]
+	getter := getter_in
+	v: Value
+	if getter == nil {
+		if p == nil {return false}
+		ok: bool
+		v, getter, ok = hot_find_slow(p, Atom(rd32(ip[1:])))
+		if !ok {return false}
+	}
+	at := op == .get_field2 ? &s[0] : &s[-1]
+	if getter != nil {
+		if !hot_getter(h, getter, o, at, ip[5:]) {return false}
+	} else {
+		at^ = v
+	}
+	if op == .get_field2 {h.s = s[1:]}
+	h.ip = ip[5:]
+	return true
+}
+
+// get_var of a global object's own accessor (window.document, [LegacyUnforgeable]): its native getter called here.
+@(private = "file")
+hot_get_var_getter :: #force_no_inline proc(h: ^Hot, getter: ^Object) -> bool {
+	if !hot_native_getter(getter) {return false}
+	ip, s := h.ip, h.s
+	if !hot_getter(h, getter, mk_obj(h.ctx.global_obj), &s[0], ip[5:]) {return false}
+	h.s = s[1:]
+	h.ip = ip[5:]
+	return true
+}
+
+// push_atom_value of an atom that is an integer: its string made.
+@(private = "file")
+hot_push_atom :: #force_no_inline proc(h: ^Hot) {
+	h.s[0] = atom_to_value(h.rt, Atom(rd32(h.ip[1:])))
+	h.s = h.s[1:]
+	h.ip = h.ip[5:]
+}
+
 // Runs frame `f_in` from (pc0, sp0). Plain calls and returns between frames pushed by this very loop
 // (Frame.stackless) are handled here too, so `f` of the result may be another frame than `f_in`; the
 // returned pc / sp belong to it. `moved` says a frame was pushed or popped: `f` may then have the address of
-// f_in (frame memory is reused) and still be another frame, so the pointer alone cannot tell. `thrown`: a native\n// callee raised an exception; pc is past the call and sp still above its arguments, as the unwinder expects.
-interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int) -> (f: ^Frame, pc: int, sp: int, moved: bool, thrown: bool) {
-	f = f_in
-	regs := hot_regs(f)
+// f_in (frame memory is reused) and still be another frame, so the pointer alone cannot tell. `thrown`: a native
+// callee raised an exception; pc is past the call and sp still above its arguments, as the unwinder expects.
+interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int) -> (f: ^Frame, pc: int, sp: int, moved: bool, thrown: bool) {
+	h := Hot{ctx = ctx, rt = rt, f = f_in, regs = hot_regs(f_in)}
+	regs := h.regs
 	ip := regs.code[pc0:]
-	s := regs.stack[sp0:] // the next free slot
-	temp := cast(^runtime.Raw_Dynamic_Array)&rt.temp_roots
+	s := regs.stack[sp0:]
 	loop: for {
 		op := Opcode(ip[0])
 		#partial switch op {
 		case .call0, .call1, .call2, .call3, .call, .call_method:
-			argc: int
-			isz := 1
-			if op == .call || op == .call_method {
-				argc = rd16(ip[1:])
-				isz = 3
-			} else {
-				argc = int(op) - int(Opcode.call0)
-			}
-			first := intrinsics.ptr_offset(s, -argc) // the first argument
-			fv := first[-1]
-			if fv.tag != .object {break loop}
-			fo := as_obj(fv)
-			if fo.class == .c_function {
-				// a native function: no frame, the result replaces the callee and its arguments
-				nd := &fo.data.(Native_Data)
-				if fo.ctor_only || rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {break loop}
-				this := UNDEFINED
-				slot := intrinsics.ptr_offset(first, -1)
-				if op == .call_method {
-					if !fo.is_constructor {this = first[-2]}
-					slot = intrinsics.ptr_offset(first, -2)
-				}
-				ip = ip[isz:]
-				f.pc = int(uintptr(ip) - uintptr(regs.code))
-				r := call_native(ctx, fo, nd, this, first[:argc])
-				if r.tag == .exception {
-					thrown = true
-					break loop
-				}
-				slot[0] = r
-				s = slot[1:]
-				continue loop
-			}
-			if fo.class != .bytecode_function {break loop}
-			nb := fo.data.(Func_Data).bc
-			if nb.func_kind != .normal || rt.stack_depth >= rt.config.max_stack_depth || (nb.realm != nil && nb.realm != ctx) {break loop}
-			this := UNDEFINED
-			slot := intrinsics.ptr_offset(first, -1) // where the result goes
-			if op == .call_method {
-				this = first[-2]
-				slot = intrinsics.ptr_offset(first, -2)
-			}
-			f.pc = int(uintptr(ip) - uintptr(regs.code)) + isz
-			f.sp = int(uintptr(slot) - uintptr(regs.stack)) / size_of(Value)
-			f = frame_push(ctx, fo, this, first[:argc])
-			moved = true
-			regs = hot_regs(f)
-			ip = regs.code
-			s = regs.stack
-			// the entry safepoint (a collection due) is for interp_run: it sees pc == 0
-			if gc_should_run(rt) {break loop}
+			h.ip, h.s = ip, s
+			go := hot_call(&h, op)
+			ip, s, regs = h.ip, h.s, h.regs
+			if !go {break loop}
 		case .op_return, .return_undef:
-			if !f.stackless {break loop}
-			ret := op == .op_return ? s[-1] : UNDEFINED
-			f = frame_pop(rt, f)
-			moved = true
-			f.stack[f.sp] = ret
-			f.sp += 1
-			regs = hot_regs(f)
-			ip = regs.code[f.pc:]
-			s = regs.stack[f.sp:]
+			h.ip, h.s = ip, s
+			go := hot_return(&h, op)
+			ip, s, regs = h.ip, h.s, h.regs
+			if !go {break loop}
 		case .get_loc0, .get_loc1, .get_loc2, .get_loc3:
 			s[0] = regs.locals[int(op) - int(Opcode.get_loc0)]
 			s = s[1:]
@@ -341,7 +481,7 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			s = s[1:]
 			ip = ip[1:]
 		case .push_empty_string:
-			s[0] = mk_str(rt.empty_string)
+			s[0] = mk_str(h.rt.empty_string)
 			s = s[1:]
 			ip = ip[1:]
 		case .op_nop:
@@ -624,12 +764,7 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			if !ok {break loop}
 			d := int(i8(ip[1]))
 			if t == (op == .if_true8) {
-				if d < 0 {
-					if f.bc.jit_active != 0 {break loop}   // a compiled loop of this function: the back edge goes through the full dispatch, which offers it to the JIT
-					if temp.len > regs.root_base {temp.len = regs.root_base}
-					rt.interrupt_counter += 1
-					if rt.interrupt_counter >= INTERRUPT_POLL_EVERY || gc_should_run(rt) {break loop}
-				}
+				if d < 0 && !hot_back_edge(&h, regs.root_base) {break loop}
 				ip = intrinsics.ptr_offset(ip, 1 + d)
 			} else {
 				ip = ip[2:]
@@ -640,12 +775,7 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			if !ok {break loop}
 			d := int(i32(rd32(ip[1:])))
 			if t == (op == .if_true) {
-				if d < 0 {
-					if f.bc.jit_active != 0 {break loop}   // a compiled loop of this function: the back edge goes through the full dispatch, which offers it to the JIT
-					if temp.len > regs.root_base {temp.len = regs.root_base}
-					rt.interrupt_counter += 1
-					if rt.interrupt_counter >= INTERRUPT_POLL_EVERY || gc_should_run(rt) {break loop}
-				}
+				if d < 0 && !hot_back_edge(&h, regs.root_base) {break loop}
 				ip = intrinsics.ptr_offset(ip, 1 + d)
 			} else {
 				ip = ip[5:]
@@ -653,34 +783,32 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			s = intrinsics.ptr_offset(s, -1)
 		case .goto8:
 			d := int(i8(ip[1]))
-			if d < 0 {
-				if f.bc.jit_active != 0 {break loop}   // a compiled loop of this function: the back edge goes through the full dispatch, which offers it to the JIT
-				if temp.len > regs.root_base {temp.len = regs.root_base}
-				rt.interrupt_counter += 1
-				if rt.interrupt_counter >= INTERRUPT_POLL_EVERY || gc_should_run(rt) {break loop}
-			}
+			if d < 0 && !hot_back_edge(&h, regs.root_base) {break loop}
 			ip = intrinsics.ptr_offset(ip, 1 + d)
 		case .goto16:
 			d := int(i16(u16(rd16(ip[1:]))))
-			if d < 0 {
-				if f.bc.jit_active != 0 {break loop}   // a compiled loop of this function: the back edge goes through the full dispatch, which offers it to the JIT
-				if temp.len > regs.root_base {temp.len = regs.root_base}
-				rt.interrupt_counter += 1
-				if rt.interrupt_counter >= INTERRUPT_POLL_EVERY || gc_should_run(rt) {break loop}
-			}
+			if d < 0 && !hot_back_edge(&h, regs.root_base) {break loop}
 			ip = intrinsics.ptr_offset(ip, 1 + d)
 		case .goto:
 			d := int(i32(rd32(ip[1:])))
-			if d < 0 {
-				if f.bc.jit_active != 0 {break loop}   // a compiled loop of this function: the back edge goes through the full dispatch, which offers it to the JIT
-				if temp.len > regs.root_base {temp.len = regs.root_base}
-				rt.interrupt_counter += 1
-				if rt.interrupt_counter >= INTERRUPT_POLL_EVERY || gc_should_run(rt) {break loop}
-			}
+			if d < 0 && !hot_back_edge(&h, regs.root_base) {break loop}
 			ip = intrinsics.ptr_offset(ip, 1 + d)
 
 		case .push_atom_value:
-			s[0] = atom_to_value(rt, Atom(rd32(ip[1:])))
+			a := Atom(rd32(ip[1:]))
+			if atom_is_int(a) {
+				h.ip, h.s = ip, s
+				hot_push_atom(&h)
+				ip, s, regs = h.ip, h.s, h.regs
+				continue loop
+			}
+			e := &h.rt.atoms[a]
+			if e.sym != nil {
+				s[0] = mk_sym(e.sym)
+			} else {
+				if e.str == nil {break loop} // ATOM_NULL (only malformed bytecode asks)
+				s[0] = mk_str(e.str)
+			}
 			s = s[1:]
 			ip = ip[5:]
 		case .get_array_el:
@@ -705,31 +833,26 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			ip = ip[1:]
 		case .get_var, .get_var_undef:
 			a := Atom(rd32(ip[1:]))
-			gv := ctx.global_var_obj
-			i := len(gv.shape.props) != 0 ? shape_find(gv.shape, a) : -1
+			cx := h.ctx
+			gv := cx.global_var_obj
+			if gv.shape.lazy != nil {break loop}
+			i := len(gv.shape.props) != 0 ? shape_lookup(gv.shape, a) : -1
 			if i >= 0 {
 				v := gv.slots[i].value
 				if v.tag == .uninitialized {break loop}
 				s[0] = v
 			} else {
-				g := ctx.global_obj
-				j := global_index(ctx, g, a)
+				g := cx.global_obj
+				if g.shape.lazy != nil {break loop}
+				j := global_index(cx, g, a)
 				if j < 0 {break loop}
 				#partial switch raw_data(g.shape.props)[j].kind {
 				case .data: s[0] = g.slots[j].value
 				case .accessor:
-					// the global object's own accessor (window.document, [LegacyUnforgeable]): its native getter called here
-					getter := g.slots[j].getset.getter
-					if !hot_native_getter(getter) || rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {break loop}
-					ip = ip[5:]
-					f.pc = int(uintptr(ip) - uintptr(regs.code))
-					v := call_native(ctx, getter, &getter.data.(Native_Data), mk_obj(g), {})
-					if v.tag == .exception {
-						thrown = true
-						break loop
-					}
-					s[0] = v
-					s = s[1:]
+					h.ip, h.s = ip, s
+					go := hot_get_var_getter(&h, g.slots[j].getset.getter)
+					ip, s, regs = h.ip, h.s, h.regs
+					if !go {break loop}
 					continue loop
 				case: break loop
 				}
@@ -738,14 +861,17 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			ip = ip[5:]
 		case .put_var:
 			a := Atom(rd32(ip[1:]))
-			gv := ctx.global_var_obj
-			i := len(gv.shape.props) != 0 ? shape_find(gv.shape, a) : -1
+			cx := h.ctx
+			gv := cx.global_var_obj
+			if gv.shape.lazy != nil {break loop}
+			i := len(gv.shape.props) != 0 ? shape_lookup(gv.shape, a) : -1
 			if i >= 0 {
 				if gv.slots[i].value.tag == .uninitialized || .writable not_in raw_data(gv.shape.props)[i].flags {break loop}
 				gv.slots[i].value = s[-1]
 			} else {
-				g := ctx.global_obj
-				j := global_slot(ctx, g, a)
+				g := cx.global_obj
+				if g.shape.lazy != nil {break loop}
+				j := global_slot(cx, g, a)
 				if j < 0 || .writable not_in raw_data(g.shape.props)[j].flags {break loop}
 				g.slots[j].value = s[-1]
 			}
@@ -754,18 +880,13 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 		case .get_field, .get_field2:
 			o := s[-1]
 			if o.tag != .object {break loop}
-			v, getter, ok := hot_get_prop(rt, as_obj(o), Atom(rd32(ip[1:])))
-			if !ok {break loop}
-			if getter != nil {
-				// a native getter (a DOM attribute) called where it was found, as a call instruction calls a native
-				if rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {break loop}
-				f.pc = int(uintptr(ip) - uintptr(regs.code)) + 5
-				v = call_native(ctx, getter, &getter.data.(Native_Data), o, {})
-				if v.tag == .exception {
-					ip = ip[5:]
-					thrown = true
-					break loop
-				}
+			v, getter, p, found := hot_find(as_obj(o), Atom(rd32(ip[1:])))
+			if found != .value {
+				h.ip, h.s = ip, s
+				go := hot_get_field(&h, op, getter, p)
+				ip, s, regs = h.ip, h.s, h.regs
+				if !go {break loop}
+				continue loop
 			}
 			if op == .get_field2 {
 				s[0] = v
@@ -778,8 +899,8 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			o := s[-1]
 			if o.tag != .object {break loop}
 			p := as_obj(o)
-			if !p.fast_array {break loop}
-			i := shape_find(p.shape, pa(.A_length))
+			if !p.fast_array || p.shape.lazy != nil {break loop}
+			i := shape_lookup(p.shape, pa(.A_length))
 			if i < 0 || raw_data(p.shape.props)[i].kind != .data {break loop}
 			s[-1] = p.slots[i].value
 			ip = ip[1:]
@@ -787,8 +908,9 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			o := s[-2]
 			if o.tag != .object {break loop}
 			p := as_obj(o)
+			if p.shape.lazy != nil {break loop}
 			a := Atom(rd32(ip[1:]))
-			i := shape_find(p.shape, a)
+			i := shape_lookup(p.shape, a)
 			if i < 0 {break loop}
 			sp_ := raw_data(p.shape.props)[i]
 			if sp_.kind != .data || .writable not_in sp_.flags || (p.class == .array && a == pa(.A_length)) {break loop}
@@ -799,5 +921,17 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			break loop
 		}
 	}
-	return f, int(uintptr(ip) - uintptr(regs.code)), int(uintptr(s) - uintptr(regs.stack)) / size_of(Value), moved, thrown
+	return h.f, int(uintptr(ip) - uintptr(regs.code)), int(uintptr(s) - uintptr(regs.stack)) / size_of(Value), h.moved, h.thrown
+}
+
+// A back edge: false when the loop must leave (a compiled loop of this function, whose back edges go through the full
+// dispatch, which offers them to the JIT; an interrupt to poll or a collection due). Calls nothing.
+@(private = "file")
+hot_back_edge :: #force_inline proc "contextless" (h: ^Hot, root_base: int) -> bool {
+	if h.f.bc.jit_active != 0 {return false}
+	rt := h.rt
+	temp := cast(^runtime.Raw_Dynamic_Array)&rt.temp_roots
+	if temp.len > root_base {temp.len = root_base}
+	rt.interrupt_counter += 1
+	return rt.interrupt_counter < INTERRUPT_POLL_EVERY && !gc_should_run(rt)
 }

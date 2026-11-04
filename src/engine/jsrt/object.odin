@@ -96,6 +96,7 @@ Object :: struct {
 		is_class_ctor:  bool | 1,
 		watch_index:    bool | 1, // Array.prototype / Object.prototype: an index key or a new [[Prototype]] disables array fast paths
 		ctor_only:      bool | 1, // a native function that throws when called without `new` (Native_Kind.constructor_only)
+		host_exotic:    bool | 1, // a host object whose class has exotic hooks, or had none defined when it was made
 	},
 	shape:          ^Shape,
 	slots:          [^]Prop_Slot,
@@ -435,6 +436,11 @@ object_is_lazy :: #force_inline proc "contextless" (o: ^Object) -> bool {return 
 
 shape_find :: #force_inline proc "contextless" (sh: ^Shape, a: Atom) -> int {
 	if sh.lazy != nil {shape_realize(sh)}
+	return shape_lookup(sh, a)
+}
+
+// shape_find in a shape whose members are defined (not lazy): calls nothing.
+shape_lookup :: #force_inline proc "contextless" (sh: ^Shape, a: Atom) -> int {
 	if sh.hash == nil {
 		for p, i in sh.props {
 			if p.atom == a {return i}

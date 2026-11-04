@@ -121,7 +121,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 		if !exc && pc == 0 && gc_should_run(rt) && !gc_safepoint(ctx) {exc = true}
 		for {
 		if !exc {
-			// The commonest instructions run in interp_hot (interp_hot.odin), a procedure of its own whose
+			// The commonest instructions run in interp_hot (interp_hot.odin), a loop that calls nothing, whose
 			// few live values stay in registers. It returns with pc on the first instruction it does not
 			// handle (or whose fast path does not apply), for the full dispatch below.
 			when JSRT_TRACE_LAST_OP {trace_last_bc = b}

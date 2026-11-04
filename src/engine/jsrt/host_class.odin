@@ -94,7 +94,9 @@ host_object_new :: proc(ctx: ^Context, proto: ^Object, id: u32, payload := 0, ma
 	d.payload = u32(payload)
 	if payload > 0 {d.opaque = rawptr(uintptr(d) + HOST_PAYLOAD_OFFSET)}
 	o.data = d
-	if c := host_class(rt, id); c != nil {
+	c := host_class(rt, id)
+	o.host_exotic = c == nil || !c.defined || c.exotic != nil
+	if c != nil {
 		if c.gc_mark != nil && marked {
 			d.hook_idx = len(rt.gc_hooked)
 			list_push(&rt.gc_hooked, o)
