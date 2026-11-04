@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="A modern golden key whose bow is the head of a bird">
   <!-- flat, one gold: a modern flat key with a cut edge and a groove; the bow is a round head with a small beak and the key's hole is the bird's eye -->
-  <g fill="#e3b341" stroke="#e3b341" stroke-width="6" stroke-linejoin="round" transform="translate(256 256) translate(-4 -4) translate(-256 -256) rotate(40 256 256)">
+  <g fill="#e3b341" stroke="#e3b341" stroke-width="6" stroke-linejoin="round" transform="translate(256 256) translate(-10 20) translate(-256 -256) rotate(40 256 256)">
     <path fill-rule="evenodd" stroke="none" d="M178 142a78 78 0 1 0 156 0a78 78 0 1 0-156 0zM219 124a13 13 0 1 0 26 0a13 13 0 1 0-26 0z"/>
     <path d="M182 128 132 146 184 162z"/>
-    <path fill-rule="evenodd" stroke="none" d="M232 214 H288 V292 L278 298 V302 L288 308 V311 L266 324.2 V328.2 L288 341.4 V344.4 L275 352.2 V356.2 L288 364 V367 L262 382.6 V386.6 L288 402.2 V405.2 L279 410.6 V414.6 L288 420 V423 L269 434.4 V438.4 L288 449.8 V452.8 L272 466.8 H232 Z M254 236 h7 v70 h-7 z"/>
+    <path fill-rule="evenodd" stroke="none" d="M232 214 H288 V262 L279 267.4 V270.4 L288 275.8 V277.8 L270 288.6 V291.6 L288 302.4 V304.4 L277 311 V314 L288 320.6 V322.6 L267 335.2 V338.2 L288 350.8 V352.8 L280 357.6 V360.6 L288 365.4 V367.4 L272 377 V380 L288 389.6 V391.6 L272 405.6 H232 Z M254 232 h7 v40 h-7 z"/>
   </g>
 </svg>
