@@ -148,7 +148,11 @@ GIF, BMP, ICO and TIFF to WIC as before (`src/images/parity_test_windows.odin` c
 - **SVG**: resvg 0.48.1 (usvg + tiny-skia; text with the system fonts through fontdb). Rendered at the size it is
   shown at (device pixels), in the secure static mode of SVG images (no external resource, script or animation);
   hostile documents are bounded by `images.svg.*` (nodes, depth, entity and `<use>` expansion, rendering cost). Inline
-  `<svg>` elements of HTML documents are drawn by the same renderer (`src/page/inline_svg.odin`).
+  `<svg>` elements of HTML documents are drawn by the same renderer (`src/page/inline_svg.odin`); the HTML of their
+  `<foreignObject>` elements is laid out and painted by Wren's own layout, in the SVG's coordinate space: the viewBox
+  mapping and the transforms around it, a `<clipPath>` as a polygon clip, `feGaussianBlur` filters as `blur()`
+  (`src/layout/foreign_object.odin`). Not yet: shapes drawn after a foreignObject covering it (it paints over the whole
+  picture), objectBoundingBox clips, other filters, a foreignObject inside a nested `<svg>`.
 - **WebP**: image-webp 0.2.4 (pure safe Rust: lossy, lossless, alpha, animation).
 - **AVIF**: zenavif-parse 0.6.2 (container: alpha, grids, sequences, colr / irot / imir / clap) + rav1d 1.1.0 (the
   Rust port of dav1d, with dav1d's assembly: NASM 2.16.03 is fetched and checked by SHA-256 by the script).

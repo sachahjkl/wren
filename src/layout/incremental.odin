@@ -241,7 +241,11 @@ add_target :: proc(c: ^Ctx, h: base.Handle, roots, dirty: ^[dynamic]i32) -> bool
 		case .Element:
 			if bi := live_box(l, cur); bi != NONE {
 				b := &l.boxes[bi]
-				if b.kind == .Replaced { append(dirty, bi); return true }
+				if b.kind == .Replaced {
+					if b.first != NONE { return false }   // an inline <svg> with foreign objects (foreign_object.odin)
+					append(dirty, bi)
+					return true
+				}
 				if b.kind != .Inline && .Root not_in b.flags && .Pseudo not_in b.flags {
 					// (the same container again, for each of its children that changed: once)
 					if len(roots) == 0 || roots[len(roots) - 1] != bi { append(roots, bi) }
@@ -341,6 +345,7 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 			// the flat children of a slot or a new host changed; or a node left its place under a slot or a host
 			append(&containers, e.parent != base.NIL_HANDLE ? e.parent : e.node)
 		case .Attribute:
+			if foreign_attribute_changed(&c, e.node) { return bail(l, "an inline <svg> with foreign objects changed") }
 			switch attr_kind(e.name) {
 			case .None:
 			case .Build:
@@ -621,6 +626,12 @@ remap_styles :: proc(c: ^Ctx) -> bool {
 			nc := el
 			if .Pseudo in b.flags { nc = pseudo_style(el, b.pseudo) }
 			if nc == nil { return false }
+			if .Foreign in b.flags {
+				moved: bool
+				b.cs, moved = foreign_restyle(l, i32(i), nc)
+				changed[i] = moved
+				continue
+			}
 			b.cs = nc
 		}
 		changed[i] = b.cs != old
@@ -678,6 +689,7 @@ remap_journaled :: proc(c: ^Ctx, changes: []style.Journal_Entry) -> bool {
 		clear(&ifcs)
 		b := &l.boxes[bi]
 		b.cs = el
+		if .Foreign in b.flags { b.cs, _ = foreign_restyle(l, bi, el) }
 		if b.ifc_root != NONE { append(&ifcs, b.ifc_root) }
 		if .Ifc in b.flags { append(&ifcs, bi) }
 		anon_below(c, bi, &ifcs)

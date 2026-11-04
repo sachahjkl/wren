@@ -61,6 +61,7 @@ stacking_effect :: proc(cs: ^style.Computed) -> bool {
 // in CSS px, then scaled to device px (the linear part does not change; translations scale).
 box_matrix :: proc(l: ^Layout, b: ^Box) -> Matrix {
 	if .Transformed not_in b.flags || b.cs == nil { return IDENTITY }
+	if .Foreign in b.flags { return foreign_matrix(l, b) }
 	s := l.scale > 0 ? l.scale : 1
 	r := Rect{b.abs, b.abs + b.size}
 	if b.cs.transform_box == .Content_Box || b.cs.transform_box == .Fill_Box { r = content_rect(b) }

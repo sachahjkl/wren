@@ -73,7 +73,7 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 	replaced := false
 	anon := anon_paint_props()
 	// boxes in index order: a parent comes before its children (anonymous boxes copy from their parent)
-	for &b in l.boxes {
+	for &b, i in l.boxes {
 		if .Root in b.flags || .Dead in b.flags { continue }
 		if b.node == base.NIL_HANDLE {
 			if b.parent == NONE || b.cs == nil { continue }
@@ -86,6 +86,7 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 		nc := el
 		if .Pseudo in b.flags { nc = pseudo_style(el, b.pseudo) }
 		if nc == nil { return false }
+		if .Foreign in b.flags { foreign_restyle(l, i32(i), nc); continue }   // (its own record, made again in place)
 		if nc == b.cs { continue }   // an animation overlay is rewritten in place: same record, new values
 		b.cs = nc
 		replaced = true

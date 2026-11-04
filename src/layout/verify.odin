@@ -97,8 +97,8 @@ compare_layouts :: proc(a, b: ^Layout, allocator := context.temp_allocator) -> (
 		case .Scroll in x.flags && !req(x.overflow, y.overflow): fail(&m, "%s: overflow %v / %v", at, x.overflow, y.overflow)
 		case x.col != y.col || x.row != y.row || x.colspan != y.colspan || x.rowspan != y.rowspan: fail(&m, "%s: table slot", at)
 		case !font_eq(&m, x.fi, y.fi): fail(&m, "%s: font", at)
-		// an element's box points at its element's record; anonymous boxes at equal copies
-		case (x.node == base.NIL_HANDLE || .Root in x.flags) ? !style.computed_equal(x.cs, y.cs) : x.cs != y.cs: fail(&m, "%s: style record", at)
+		// an element's box points at its element's record; anonymous boxes and foreign objects at equal copies
+		case (x.node == base.NIL_HANDLE || x.flags & {.Root, .Foreign} != {}) ?!style.computed_equal(x.cs, y.cs) : x.cs != y.cs: fail(&m, "%s: style record", at)
 		case x.lines[1] - x.lines[0] != y.lines[1] - y.lines[0]: fail(&m, "%s: %d / %d lines", at, x.lines[1] - x.lines[0], y.lines[1] - y.lines[0])
 		case x.items[1] - x.items[0] != y.items[1] - y.items[0]: fail(&m, "%s: %d / %d inline items", at, x.items[1] - x.items[0], y.items[1] - y.items[0])
 		}
@@ -171,8 +171,8 @@ compare_layouts :: proc(a, b: ^Layout, allocator := context.temp_allocator) -> (
 	for i in 0 ..< len(a.items) {
 		if m.bad { break }
 		p, q := &a.items[i], &b.items[i]
-		// the styles of anonymous boxes are records of each pass: compared through their box
-		cs_same := p.cs == q.cs || (p.item < 0 && p.box >= 0 && a.boxes[p.box].node == base.NIL_HANDLE)
+		// the styles of anonymous boxes and foreign objects are records of each pass: compared through their box
+		cs_same := p.cs == q.cs || (p.item < 0 && p.box >= 0 && (a.boxes[p.box].node == base.NIL_HANDLE || .Foreign in a.boxes[p.box].flags))
 		if p.kind != q.kind || p.flags != q.flags || p.space != q.space || p.clip != q.clip || p.group != q.group || !beq(&m, p.box, q.box) ||
 		   p.node != q.node || !req(p.rect, q.rect) || p.text != q.text || !font_eq(&m, p.fi, q.fi) || !feq(p.baseline, q.baseline) ||
 		   !feq(p.extra, q.extra) || p.deco != q.deco || p.deco_color != q.deco_color || !beq(&m, p.deco_box, q.deco_box) || !cs_same {

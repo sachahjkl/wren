@@ -98,7 +98,6 @@ path_add_svg :: proc(p: ^Path, d: string) {
 	}
 }
 
-@(private)
 Svg_Reader :: struct {
 	s: string,
 	i: int,
@@ -112,7 +111,6 @@ svg_is_command :: proc(c: u8) -> bool {
 	return false
 }
 
-@(private)
 svg_skip :: proc(r: ^Svg_Reader, commas: bool) {
 	for r.i < len(r.s) {
 		c := r.s[r.i]
@@ -121,7 +119,6 @@ svg_skip :: proc(r: ^Svg_Reader, commas: bool) {
 }
 
 // A number, after white space and at most one comma.
-@(private)
 svg_number :: proc(r: ^Svg_Reader) -> (v: f64, ok: bool) {
 	svg_skip(r, false)
 	if r.i < len(r.s) && r.s[r.i] == ',' { r.i += 1; svg_skip(r, false) }
