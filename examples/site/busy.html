@@ -56,6 +56,8 @@
   // For tests: one task that keeps the thread until the window's height changes, and what the page saw then.
   window.changes = 0;
   window.downs = 0;
+  window.boxScrolls = 0;
+  scroller.addEventListener("scroll", () => { window.boxScrolls++; });
   document.addEventListener("selectionchange", () => { window.changes++; });
   document.addEventListener("mousedown", () => { window.downs++; });
   window.hold = () => {
@@ -63,7 +65,7 @@
     setTimeout(() => {
       const h = innerHeight, begun = performance.now();
       while (innerHeight == h && performance.now() - begun < HOLD_LIMIT_MS) {}
-      window.held = { selection: String(getSelection()), changes: window.changes, downs: window.downs, scrollY: scrollY, ms: performance.now() - begun };
+      window.held = { selection: String(getSelection()), changes: window.changes, downs: window.downs, scrollY: scrollY, boxTop: scroller.scrollTop, boxScrolls: window.boxScrolls, ms: performance.now() - begun };
       window.released = innerHeight != h;
     }, 0);
     return "held";

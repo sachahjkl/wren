@@ -142,6 +142,20 @@ blink_ms :: proc(app: ^App) -> int {
 	return system_caret_blink_ms()   // forms_shell_<os>.odin: the system's blink rate (Windows), or a sane default
 }
 
+// The focused field's caret by the clock: whether it shows now (its blink's phase since caret_epoch), whether there is one (a
+// text field with the focus in the window the user is in, editable, an empty selection: a selection or a read-only field shows
+// none), and its half period (0: it does not blink). The full frames set blink_on from it, and so do chrome frames
+// (shell_shown.odin): the blink goes on while the page holds the thread.
+caret_phase :: proc(app: ^App, f: ^forms.Forms) -> (on, caret: bool, period: int) {
+	fv := forms_view(app)
+	a, b, _ := forms.selection(f, f.focus)
+	if !fv.page_focus || !forms.is_text_field(f, f.focus) || !window_is_front(app) || a != b || !forms.is_mutable(f, f.focus) { return false, false, 0 }
+	period = blink_ms(app)
+	if period <= 0 { return true, true, 0 }
+	elapsed := time.duration_milliseconds(time.tick_since(fv.caret_epoch))
+	return int(elapsed / f64(period)) % 2 == 0, true, period
+}
+
 @(private = "file")
 double_click_ms :: proc(app: ^App) -> f64 {
 	if ms := app.page_settings.forms.double_click_ms; ms > 0 { return f64(ms) }
@@ -191,25 +205,16 @@ forms_shell_frame :: proc(app: ^App) {
 	// caret blinking: wake this window at the next toggle while a text field has the focus. Only in the window the user is in (as
 	// other browsers: a window in the back shows no caret); each window's timer is its own, in its own phase (its caret_epoch)
 	wid := rawptr(uintptr(active_window(app).id))   // (the timers name the window: it may close before they fire)
-	caret_a, caret_b, _ := forms.selection(f, f.focus)
-	if fv.page_focus && forms.is_text_field(f, f.focus) && window_is_front(app) && caret_a == caret_b && forms.is_mutable(f, f.focus) {   // (a selection or a read-only field shows no caret: nothing to blink)
-		period := blink_ms(app)
-		if period > 0 {
-			elapsed := time.duration_milliseconds(time.tick_since(fv.caret_epoch))
-			fv.blink_on = int(elapsed / f64(period)) % 2 == 0
-			if fv.blink_timer == base.NIL_HANDLE {
-				next := f64(period) - math.mod(elapsed, f64(period))
-				fv.blink_timer = host.set_timer(&app.loop, max(next, 1), 0, proc(data: rawptr) {
-					// (one frame per toggle: counted as a task as well, it asked for two)
-					if the_app != nil { host.quiet_note(&the_app.loop) }
-					if w := forms_timer_window(the_app, data); w != nil { w.own.forms.blink_timer = base.NIL_HANDLE; window_request_errand(the_app, w, .Caret) }
-				}, wid)
-			}
-		} else {
-			fv.blink_on = true
-		}
-	} else {
-		fv.blink_on = false
+	on, caret, period := caret_phase(app, f)
+	fv.blink_on = on
+	if caret && period > 0 && fv.blink_timer == base.NIL_HANDLE {
+		elapsed := time.duration_milliseconds(time.tick_since(fv.caret_epoch))
+		next := f64(period) - math.mod(elapsed, f64(period))
+		fv.blink_timer = host.set_timer(&app.loop, max(next, 1), 0, proc(data: rawptr) {
+			// (one frame per toggle: counted as a task as well, it asked for two)
+			if the_app != nil { host.quiet_note(&the_app.loop) }
+			if w := forms_timer_window(the_app, data); w != nil { w.own.forms.blink_timer = base.NIL_HANDLE; window_request_errand(the_app, w, .Caret) }
+		}, wid)
 	}
 	if _, _, shown := forms.current_report(f); shown && fv.report_timer == base.NIL_HANDLE {
 		fv.report_timer = host.set_timer(&app.loop, FORMS_REPORT_POLL_MS, 0, proc(data: rawptr) {

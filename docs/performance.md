@@ -1992,6 +1992,67 @@ Not done: array literals allocated inline; a direct call of a getter of the scri
 a direct call of a function about 25); `new F()` of a function without an operand stack (`function Empty() {}`: not
 compiled whole, called through the helper, 190 ns); callees with branches inlined, polymorphic inlining.
 
+## What changed, round 24: what still froze under a busy page
+
+Round 22's list, in the order a user feels it: what moves by itself (animations), the scroll boxes, hover, the caret.
+All of it is drawn by a chrome frame painting the page from its last layout (round 22's `shell_paint_layout`, while
+`Paint_Source` says nothing it was painted from has moved), with values the shell sets on that layout for the one paint
+and puts back at once (`shell_shown.odin` `Shown`): nothing of the page runs in between, and what its scripts read
+(`getComputedStyle`, `getAnimations()`, `scrollTop`, the boxes) stays what their turn left. Measured as round 22 did,
+on `busy.html` under `hold()` in the e2e harness's process (`e2e.while_busy`), with a new step, `busy_wait` (chrome
+frames until that long has passed: what moves by the clock moves meanwhile).
+
+| while the page is busy | before | after |
+|---|---|---|
+| CSS animations and transitions of `transform` and `opacity` | frozen (two captures 400 ms apart: the slid box at x 181 in both, the faded one's red 26 in both) | go on: the box at x 184 then 274 (a slide of 200 px/s), red 26 then 49 (a fade of 0.2 a second); at the page's turn the animation's `currentTime` is the clock's (3 ms off) and the box goes on from where it was shown |
+| the wheel over a scroll container | the document scrolled instead (166 px); the container never had it | the container scrolls at once (167 px), painted from the layout; the document stays; `scrollTop` 0 under the task, the offset and the container's `scroll` event at the page's turn |
+| the thumb of a container's scroll bar | waits (the drag happened at the page's turn: the busy frame differed from the page once it ran in 5464 px) | follows: the busy frame is the box as the page then shows it; the bar's presses are not the page's |
+| the caret's blink | frozen (6 captures over 450 ms at a 200 ms blink: all the same) | blinks: 2 or 3 of the 5 later captures differ from the first |
+| hover (`:hover` restyle) | waits | waits (below) |
+
+1. **Animations the compositor runs** (`style.timeline_compositor_values`, `page.animations_compositor_values`). The
+   compositor already applies a transform as a slot of its pictures and an opacity around their replays (round 4): a
+   chrome frame only needs the values. They are taken from the page's timeline without moving it: the run's local time
+   advanced on a copy to the frame's time (the pacer's `frame_ms`, the clock the page's ticks pin), the keyframes the
+   page resolved for the element (`apply_run`, `transition_value` on a copy of its cascaded style), then the box's
+   matrix (`layout.box_matrix_of`) and its group's alpha. No event fires, no run, overlay or clock changes: at its turn
+   the page's tick reaches the same instant from the same clock, so nothing jumps and `getAnimations()` reads what it
+   would have. Only elements whose effects animate `transform`, `translate`, `rotate`, `scale` and `opacity` alone
+   (Chromium's composited animations), whose box has the transform space or the opacity group in the last layout (an
+   opacity of 1 has no group: that box waits for the page), not in a 3D plane, not animated by a script's Web
+   Animations (their timing is the script's to change). A busy page that animates so now has chrome frames at the
+   display's rate where it had none: under three 1 s tasks with a sliding box, 198 to 204 chrome frames, 164 to 260 ms
+   of them (0.76 to 1.24 ms median each, headless): 5 to 9 % of the thread, what full frames would cost it were it not
+   busy. While a style pass's threads run (its wait lends the thread to chrome frames) the timeline is not read.
+2. **Scroll containers** (`Shell_Frames.boxes`, `shell_wheel_box`, `shell_box_bar_press`). The wheel over the page
+   looks for the container under the pointer that can move that way (`wheel_scroller`, the full frame's search, asked of
+   the layout with what the chrome frame shows set on it); the offset it shows is kept per container and painted as the
+   layout's offset (`l.scroll`, a slot of the pictures). At the page's turn, before the input that waited (as for the
+   document), the layout takes it (`set_scroll`), and its next frame fires the container's `scroll` as for any scroll
+   (`scroll_events.odin` compares offsets). A press on a container's thumb is found on the layout as a full frame finds
+   it (`scrollbar_at`), and the drag is the shell's `Scrollbar_Drag`, which a frame of either kind goes on with. When the
+   layout cannot be painted (the script changed what shows), the wheel over a container waits for the page instead of
+   scrolling the document under it.
+3. **The caret** (`forms_shell.odin` `caret_phase`): its phase is the clock's since the field's last change, which the
+   full frames read through a timer of the loop (a running script does not let it fire). A chrome frame reads it too,
+   paints the page from its layout when the caret blinks and asks for a chrome frame at each toggle.
+4. **Hover: not done.** A `:hover` change is a restyle of the element entering or leaving the state, of what selectors
+   reach from it (`:hover .x`, `:hover + .x`, `:has(:hover)`), written into the page's styles, which scripts read
+   (`getComputedStyle`, `matches(':hover')`); showing it off the page's turn needs a second set of styles for those
+   elements and a refresh of the layout pointing at them, a style match in a chrome frame. And a hover that starts a
+   transition (`busy.html`'s `#hoverbox`) starts it at the page's turn, not when the chrome frame showed it: the box
+   would jump back to its start. Only a hover whose rules change nothing but `transform` or `opacity` with no
+   transition could be shown honestly, at the cost of the style match; Chromium and Firefox restyle hover on their main
+   thread too (a busy page shows no hover in them either).
+
+Tests (`src/tools/e2e/busy_page.odin`, step "input under a busy page"): a slide and a fade under the task (the box at
+least 40 px further and the faded box's red at least 10 higher after 400 ms; at the page's turn the animation's time is
+the clock's within 150 ms and the box no further back); the wheel over the scroll box (the box's pixels moved under the
+task, `scrollTop` 0 then, the offset, the document's `scrollY` 0 and the box's `scroll` event once it ran, the busy
+frame the box as it then shows); its thumb (the same, and no `mousedown` for the page); the caret's blink (6 captures
+90 ms apart at a 200 ms blink: one differs from the first). Each fails without its change (the tests built against the
+shell without it: the values above).
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)

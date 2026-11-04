@@ -887,6 +887,65 @@ timeline_tick :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wall_ms: f6
 	return true
 }
 
+////////////////////////////////
+// The compositor's values
+
+// What the compositor may move without the page: a transformed box's matrix and an opacity group's alpha.
+COMPOSITOR_PROPS :: [?]Prop{.Transform, .Translate, .Rotate, .Scale, .Opacity}
+
+// An element's style at a later instant than the page's last tick, for its compositor-only animations.
+Compositor_Value :: struct {
+	node:  base.Handle,
+	cs:    ^Computed,   // its cascaded style with the animated properties at that instant (temp allocator)
+	props: Prop_Set,    // what is animated (some of COMPOSITOR_PROPS)
+}
+
+// The values at `wall_ms` of the elements whose effects are CSS animations and transitions of COMPOSITOR_PROPS only, written
+// into `out` without moving the timeline: its clock, runs, events and overlays stay as the page's last tick left them, and that
+// is what scripts read. The page's tick takes over at its turn from the same clock. Left out: elements a script animates (Web
+// Animations), animations whose keyframes were not resolved for the element's style yet, effects that do not run. Returns
+// whether one of the values changes at every frame.
+timeline_compositor_values :: proc(tl: ^Timeline, s: ^Styled, wall_ms: f64, out: ^[dynamic]Compositor_Value) -> (moving: bool) {
+	if tl == nil || s == nil || !tl.has_wall || len(tl.elements) == 0 { return false }
+	list := COMPOSITOR_PROPS
+	allowed := ps_of(..list[:])
+	now := tl.now + max(wall_ms - tl.last_wall, 0) * f64(max(tl.engine.settings.anim_time_scale, ANIM_TIME_SCALE_MIN))
+	scratch := new(Computed, context.temp_allocator)
+	ctx := Interp_Ctx{alloc = context.temp_allocator, space = tl.engine.settings.anim_color_space}
+	elements: for _, ea in tl.elements {
+		b := base_style_of(s, ea.node)
+		if len(ea.scripts) > 0 || b == nil || style_of(s, ea.node) == nil { continue }
+		props: Prop_Set
+		live := false   // (by the page's time: an effect that ends at the later instant shows its end, not the layout's value)
+		for r in ea.runs {
+			if !r.frames_ready || r.frames_gen != ea.base_gen || r.frames_rebuilds != tl.engine.rebuilds { continue elements }
+			props = ps_union(props, r.props)
+			if run_running(r) && run_state(r).phase != .After { live = true }
+		}
+		for tr in ea.transitions {
+			ps_add(&props, tr.prop)
+			if phase, _ := transition_progress(tr, tl.now); phase != .After { live = true }
+		}
+		if !live || ps_empty(props) || ps_intersect(props, allowed) != props { continue }
+		c := new(Computed, context.temp_allocator)
+		c^ = b^
+		for r in ea.runs {
+			at := r^   // (a copy at that instant: the run keeps the page's time)
+			if run_running(&at) { at.local += now - at.last_now }
+			st := run_state(&at)
+			if st.phase == .Active && run_running(&at) { moving = true }
+			apply_run(&at, st, c, scratch, &ctx)
+		}
+		for tr in ea.transitions {
+			if phase, _ := transition_progress(tr, now); phase == .Active { moving = true }
+			transition_value(tr, now, c, &ctx)
+		}
+		derive_fields(c, context.temp_allocator)
+		append(out, Compositor_Value{node = ea.node, cs = c, props = props})
+	}
+	return
+}
+
 @(private)
 remove_finished :: proc(tl: ^Timeline, tr: ^Transition) {
 	for h, ea in tl.elements {
