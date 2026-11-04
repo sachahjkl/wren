@@ -5,6 +5,7 @@ build/
 *.ilk
 examples/site/counter.wasm
 examples/site/formstest.wasm
+examples/site/fetchpage.wasm
 examples/site/mutation.wasm
 examples/site/workerstest_worker.wasm
 src/browser/wren.res

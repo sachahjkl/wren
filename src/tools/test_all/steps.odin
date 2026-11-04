@@ -361,7 +361,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "build the test program (src\\tools\\e2e: the browser in the tests' process, no window, the real renderer offscreen, every allocation tracked: a test that leaves anything allocated fails)", actions = slice_of(odin_build("src/tools/e2e", exe("build/e2e_test"), join({TRACK}, E2E_BUILD_FLAGS))), needs = COMMON_NEEDS + {.Browser}, makes = {.E2E}})   // (it links build/native, which the browser's build makes)
 	append(&t, Step{name = "the Wasm guests of the pages of the web tests",
 		actions = slice_of(
-			guest("examples/e2e", "build/e2e.wasm"), guest("examples/counter", "examples/site/counter.wasm"), guest("examples/formstest", "examples/site/formstest.wasm"),
+			guest("examples/e2e", "build/e2e.wasm"), guest("examples/counter", "examples/site/counter.wasm"), guest("examples/formstest", "examples/site/formstest.wasm"), guest("examples/fetchpage", "examples/site/fetchpage.wasm"),
 			guest("examples/mutation", "examples/site/mutation.wasm"), guest("examples/mutation_class", "examples/site/mutation_class.wasm"), guest("examples/webapitest", "build/webapitest.wasm"),
 			guest("examples/netapitest", "build/netapitest.wasm"), guest("examples/workerstest", "build/workerstest.wasm"), guest("examples/workerstest_worker", "examples/site/workerstest_worker.wasm"),
 			guest("examples/imagestest", "build/imagestest.wasm"),

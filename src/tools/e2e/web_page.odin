@@ -23,6 +23,10 @@ COUNTER_HTML :: "examples/site/counter.html"
 COUNTER_WASM :: "examples/site/counter.wasm"
 ADDRESS :: "http://127.0.0.1:8765/page.html"
 COUNTER_ADDRESS :: "http://127.0.0.1:8765/site/counter.html"
+FETCH_EXAMPLE_ADDRESS :: "http://127.0.0.1:8765/site/fetchpage.html"
+FETCH_EXAMPLE_HTML :: "examples/site/fetchpage.html"
+FETCH_EXAMPLE_WASM :: "examples/site/fetchpage.wasm"
+FETCH_EXAMPLE_TEXT :: "examples/site/message.txt"
 FILE_ADDRESS :: "file:///S:/wasm_browser/build/x.html"
 SECURE_ADDRESS :: "https://example.test/"
 ROOT_BODY_BYTES :: "49"            // what the test server answers at /
@@ -186,6 +190,27 @@ page_closing_with_work_in_flight :: proc(t: ^testing.T) {
 	testing.expect(t, fetch.in_flight(&loader) == 0 && net.in_flight(&client) == 0, "closing the page cancelled its requests")
 	testing.expect_value(t, loop.timers.count, timers)
 	testing.expect(t, wait_until(t, "the page's scope to leave", Children{children}, proc(c: Children) -> bool { return len(process.children) == c.want }), "page scope detached from its parent")
+}
+
+// The site's "Write a page" example, as written there: fetch a text from Wasm, show it.
+@(test)
+page_the_sites_fetch_example :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	pr := page_make(t, "the site's fetch example", testenv.url(FETCH_EXAMPLE_ADDRESS))
+	p := pr.p
+	rr := page.load_html(p, read(t, FETCH_EXAMPLE_HTML))
+	check(pr, rr.ok, "the example's page parsed")
+	_, ok, e := page.load_module(p, read(t, FETCH_EXAMPLE_WASM), "fetchpage")
+	check(pr, ok, fmt.tprintf("the example's module runs %s", e))
+	if !ok { close_page(pr); return }
+	shown := wait_until(t, "the fetched text", p, proc(p: ^page.Page) -> bool { return dom.text_content(p.doc, dom.find_by_id(p.doc, "out")) != "…" })
+	want := string(read(t, FETCH_EXAMPLE_TEXT))
+	check(pr, shown && dom.text_content(p.doc, dom.find_by_id(p.doc, "out")) == want, "the text of message.txt is in #out")
+	close_page(pr, min_checks = 3)
+	testing.expect(t, fetch.in_flight(&loader) == 0, "the example's request was released")
 }
 
 // The second module is e2e itself: both instances share the DOM, and their table indices collide on purpose.
