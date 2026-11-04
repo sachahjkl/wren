@@ -50,30 +50,46 @@
     <div class="steps">
       <div>
         <div class="code">
-          <div class="file">hello/main.odin</div>
-<pre><code><span class="k">package</span> hello
+          <div class="file">fetchpage/main.odin</div>
+<pre><code><span class="k">package</span> fetchpage
 
 <span class="k">import</span> <span class="s">"wren:core"</span>
 <span class="k">import</span> <span class="s">"wren:dom"</span>
+<span class="k">import</span> <span class="s">"wren:fetch"</span>
+<span class="k">import</span> <span class="s">"wren:net"</span>
 
-<span class="f">on_click</span> :: <span class="k">proc</span> <span class="s">"contextless"</span> (user: <span class="t">i32</span>, ev: core.<span class="t">Event</span>) {
-	out := dom.<span class="f">Document_getElementById</span>(<span class="s">"out"</span>)
-	dom.<span class="f">Node_setTextContent</span>(out, <span class="s">"Hello from WebAssembly!"</span>)
-}
+out: dom.<span class="t">Element</span>
 
 <span class="c">// called once the document is parsed</span>
 @(export)
 <span class="f">wb_main</span> :: <span class="k">proc</span> <span class="s">"contextless"</span> () {
-	button := dom.<span class="f">Document_getElementById</span>(<span class="s">"greet"</span>)
-	core.<span class="f">EventTarget_addEventListener</span>(button, <span class="s">"click"</span>, on_click)
+	out = dom.<span class="f">Document_getElementById</span>(<span class="s">"out"</span>)
+
+	<span class="c">// fetch(url): a Promise of the Response</span>
+	p, err := fetch.<span class="f">promise</span>(<span class="s">"message.txt"</span>)
+	<span class="k">if</span> err != .None { dom.<span class="f">Node_setTextContent</span>(out, <span class="s">"fetch refused"</span>); <span class="k">return</span> }
+	core.<span class="f">Promise_then</span>(p, on_response)
+}
+
+<span class="f">on_response</span> :: <span class="k">proc</span> <span class="s">"contextless"</span> (user: <span class="t">i32</span>, p: core.<span class="t">Promise</span>, st: core.<span class="t">PromiseState</span>) {
+	<span class="k">if</span> st == .Rejected { dom.<span class="f">Node_setTextContent</span>(out, <span class="s">"network error"</span>); <span class="k">return</span> }
+	resp := net.<span class="t">Response</span>(core.<span class="f">Promise_value</span>(p))
+	core.<span class="f">Promise_then</span>(fetch.<span class="f">Response_text</span>(resp), on_text)   <span class="c">// response.text()</span>
+}
+
+<span class="f">on_text</span> :: <span class="k">proc</span> <span class="s">"contextless"</span> (user: <span class="t">i32</span>, p: core.<span class="t">Promise</span>, st: core.<span class="t">PromiseState</span>) {
+	buf: [4096]<span class="t">u8</span>
+	text, _ := core.<span class="f">Promise_text</span>(p, buf[:])
+	dom.<span class="f">Node_setTextContent</span>(out, text)
 }</code></pre>
         </div>
         <div class="code">
           <div class="file">the same page in JavaScript</div>
 <pre><code><span class="k">&lt;script&gt;</span>
-document.<span class="f">getElementById</span>(<span class="s">"greet"</span>).<span class="f">addEventListener</span>(<span class="s">"click"</span>, () =&gt; {
-  document.<span class="f">getElementById</span>(<span class="s">"out"</span>).textContent = <span class="s">"Hello from JavaScript!"</span>;
-});
+<span class="f">fetch</span>(<span class="s">"message.txt"</span>)
+  .<span class="f">then</span>((r) =&gt; r.<span class="f">text</span>())
+  .<span class="f">then</span>((text) =&gt; { document.<span class="f">getElementById</span>(<span class="s">"out"</span>).textContent = text; })
+  .<span class="f">catch</span>(() =&gt; { document.<span class="f">getElementById</span>(<span class="s">"out"</span>).textContent = <span class="s">"network error"</span>; });
 <span class="k">&lt;/script&gt;</span></code></pre>
         </div>
       </div>
@@ -82,20 +98,21 @@ document.<span class="f">getElementById</span>(<span class="s">"greet"</span>).<
           <div class="file">index.html</div>
 <pre><code>&lt;!doctype html&gt;
 &lt;meta charset="utf-8"&gt;
-&lt;title&gt;Hello, Wren&lt;/title&gt;
-&lt;script type="application/wasm" src="../../write/hello.wasm"&gt;&lt;/script&gt;
-&lt;button id="greet"&gt;Say hello&lt;/button&gt;
-&lt;p id="out"&gt;&lt;/p&gt;</code></pre>
+&lt;title&gt;Fetch, from Wasm&lt;/title&gt;
+&lt;script type="application/wasm" src="../../write/fetchpage.wasm"&gt;&lt;/script&gt;
+&lt;pre id="out"&gt;…&lt;/pre&gt;</code></pre>
         </div>
         <div class="code">
           <div class="file">build (from a clone of the repository)</div>
-<pre><code>odin build hello -target:freestanding_wasm32 -no-entry-point ^
+<pre><code>odin build fetchpage -target:freestanding_wasm32 -no-entry-point ^
   -default-to-nil-allocator -collection:wren=sdk/odin ^
-  -out:hello.wasm -o:size</code></pre>
+  -out:fetchpage.wasm -o:size</code></pre>
         </div>
-        <p class="fine">The module above compiles to 702 bytes. Open <code>index.html</code> in Wren (a
-          <code>file:///</code> address or a Windows path works) and click the button. For the JavaScript version, put
-          the script at the end of the page instead of the module.</p>
+        <p class="fine">The module above compiles to 1,135 bytes; it is
+          <a href="https://github.com/sachahjkl/wren/tree/master/examples/fetchpage"><code>examples/fetchpage</code></a>,
+          and the tests load it as written here. Put a <code>message.txt</code> beside <code>index.html</code> and open
+          the page in Wren. For the JavaScript version, put the script at the end of the page instead of the
+          module.</p>
       </div>
     </div>
   </div>
