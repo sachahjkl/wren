@@ -1,7 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="A golden key whose bow is the head of a bird">
   <!-- flat, one gold, drawn like a real modern key: a round bow, a flared collar, a long narrow blade with a groove and four cuts on one edge, a pointed tip.
        The bow is a bird's head (a small beak) and the key's hole is its eye. -->
-  <g fill="#e3b341" stroke="#e3b341" stroke-width="2" stroke-linejoin="round" transform="translate(256 256) scale(1.1) translate(-256 -256) translate(-10 16) rotate(40 256 256)">
+  <defs>
+    <!-- along the key, from the bow to the tip: a light gold, the usual gold, a deeper gold -->
+    <linearGradient id="gold" gradientUnits="userSpaceOnUse" x1="256" y1="58" x2="256" y2="422">
+      <stop offset="0" stop-color="#f4d98a"/>
+      <stop offset="0.35" stop-color="#e8bd4c"/>
+      <stop offset="0.7" stop-color="#d09a2a"/>
+      <stop offset="1" stop-color="#a97716"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#gold)" stroke="url(#gold)" stroke-width="2" stroke-linejoin="round" transform="translate(256 256) scale(1.1) translate(-256 -256) translate(-10 16) rotate(40 256 256)">
     <path fill-rule="evenodd" d="M186 128a70 70 0 1 0 140 0a70 70 0 1 0-140 0zM224 112a12 12 0 1 0 24 0a12 12 0 1 0-24 0z"/>
     <path d="M192 114 140 128 194 142z"/>
     <path d="M228 190H284L306 212L296 224H216L206 212Z"/>
