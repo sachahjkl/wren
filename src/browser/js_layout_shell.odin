@@ -43,8 +43,12 @@ js_layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 	prev := images_shell_page_swap(p)
 	defer images_shell_page_swap(prev)
 	fonts_gen := u64(t.web_fonts)
+	// (the sizes this pass reads are the page's now: noted with the generation of the tab's last frame, the next frame would
+	// lay out again what the first read of a new page just laid out)
+	t.image_sizes = page.images_sizes_generation(p)
 	if layout_stale(&t.layout, p.doc, styled, size, scale, t.image_sizes, fonts_gen) {
 		page_layout(app, t, styled, size, scale, fonts_gen)   // page_thread.odin: a long one on the page thread, the chrome drawing meanwhile
+		prof_layout(&t.layout)
 	}
 	request_frames(app, 2)   // what the script changed is to be painted
 	return &t.layout

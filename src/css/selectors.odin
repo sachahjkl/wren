@@ -95,6 +95,11 @@ Simple :: struct {
 
 Compound :: struct { simples: []Simple }
 
+// What a selector's lists start with, in the sheet's memory, which keeps what they outgrow: the default of eight made a
+// rule of `.a .b` hold about 3 KB, most of a sheet's memory, its pages touched once.
+COMPOUNDS_RESERVE :: 3
+SIMPLES_RESERVE :: 2
+
 Complex :: struct {
 	compounds:      []Compound,       // left to right
 	combinators:    []Combinator,     // combinators[i] sits between compounds[i] and compounds[i+1]
@@ -128,7 +133,7 @@ specificity_add :: proc(x, y: Specificity) -> Specificity { return {x.a + y.a, x
 // Parses a selector list (invalid anywhere = invalid as a whole). `parent` is the enclosing rule's selectors for `&`.
 parse_selector_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, ns: ^Namespaces = nil) -> (list: Selector_List, ok: bool) {
 	items := split_commas(vs, a)
-	out := make([dynamic]Complex, a)
+	out := make([dynamic]Complex, 0, len(items), a)
 	for item in items {
 		// inside a style rule a selector may start with a combinator, and means `& <selector>` when it does or does not use &
 		c, good := parse_complex(trim_values(item), a, parent, parent != nil, ns)
@@ -145,7 +150,7 @@ parse_selector_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List,
 @(private)
 parse_inner_selector_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, ns: ^Namespaces) -> (list: Selector_List, ok: bool) {
 	items := split_commas(vs, a)
-	out := make([dynamic]Complex, a)
+	out := make([dynamic]Complex, 0, len(items), a)
 	for item in items {
 		c, good := parse_complex(trim_values(item), a, parent, false, ns)
 		if !good { return nil, false }
@@ -191,7 +196,7 @@ with_implicit_nesting :: proc(c: Complex, a: Arena_Alloc, parent: ^Selector_List
 @(private)
 parse_forgiving_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relative: bool, ns: ^Namespaces) -> Selector_List {
 	items := split_commas(vs, a)
-	out := make([dynamic]Complex, a)
+	out := make([dynamic]Complex, 0, len(items), a)
 	for item in items {
 		if c, good := parse_complex(trim_values(item), a, parent, relative, ns); good { append(&out, c) }
 	}
@@ -199,20 +204,22 @@ parse_forgiving_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List
 }
 
 split_commas :: proc(vs: []Value, a: Arena_Alloc) -> [][]Value {
-	out := make([dynamic][]Value, a)
-	start := 0
+	n := 1
+	for v in vs { if v.kind == .Token && v.tok.kind == .Comma { n += 1 } }
+	out := make([][]Value, n, a)
+	start, k := 0, 0
 	for v, i in vs {
-		if v.kind == .Token && v.tok.kind == .Comma { append(&out, vs[start:i]); start = i + 1 }
+		if v.kind == .Token && v.tok.kind == .Comma { out[k] = vs[start:i]; k += 1; start = i + 1 }
 	}
-	append(&out, vs[start:])
-	return out[:]
+	out[k] = vs[start:]
+	return out
 }
 
 @(private)
 parse_complex :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relative: bool, ns: ^Namespaces) -> (c: Complex, ok: bool) {
 	if len(vs) == 0 { return {}, false }
-	compounds := make([dynamic]Compound, a)
-	combs := make([dynamic]Combinator, a)
+	compounds := make([dynamic]Compound, 0, COMPOUNDS_RESERVE, a)
+	combs := make([dynamic]Combinator, 0, COMPOUNDS_RESERVE, a)
 	i := 0
 	c.relative = relative
 	c.leading = .Descendant
@@ -239,7 +246,7 @@ parse_complex :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relat
 			continue
 		}
 		// a compound selector
-		simples := make([dynamic]Simple, a)
+		simples := make([dynamic]Simple, 0, SIMPLES_RESERVE, a)
 		for i < len(vs) && !is_ws_value(vs[i]) {
 			if _, is_comb := as_combinator(vs[i]); is_comb { break }
 			s, pe, consumed, good := parse_simple(vs[i:], a, parent, ns)

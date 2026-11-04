@@ -104,6 +104,7 @@ Parser :: struct {
 	// component values go to `va` (`a`, or `scratch` while reading a rule list's block or a selector). Both nil: `a`.
 	scratch: Arena_Alloc,
 	va:      Arena_Alloc,
+	rule_arena: ^virtual.Arena,   // a rule's own scratch memory, emptied after it (parse_outer_rule); nil: `scratch`
 }
 
 @(private) p_scratch :: #force_inline proc(p: ^Parser) -> Arena_Alloc { return p.scratch.procedure != nil ? p.scratch : p.a }
@@ -146,7 +147,10 @@ parse_stylesheet :: proc(source: string, opt: Parse_Options) -> ^Stylesheet {
 		s.newlines = nls[:]
 	}
 	s.namespaces.prefixes = make([dynamic]Ns_Prefix, s.alloc)
-	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &s.errors, runes = runes, scratch = sa, ns = &s.namespaces, ns_open = true}
+	rule_scratch: virtual.Arena
+	_ = virtual.arena_init_growing(&rule_scratch)
+	defer virtual.arena_destroy(&rule_scratch)
+	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &s.errors, runes = runes, scratch = sa, ns = &s.namespaces, ns_open = true, rule_arena = &rule_scratch}
 	s.rules = parse_rule_list(&p, true)
 	return s
 }
@@ -309,12 +313,25 @@ parse_rule_list :: proc(p: ^Parser, top_level: bool) -> []^Rule {
 				append(&rules, r)
 				if r.kind != .Import && r.kind != .Namespace && r.kind != .Layer_Statement { p.ns_open = false }
 			}
-		} else if r := parse_qualified_rule(p, nil); r != nil {
+		} else if r := parse_outer_rule(p); r != nil {
 			append(&rules, r)
 			p.ns_open = false
 		}
 	}
 	return keep(p, rules)
+}
+
+// A qualified rule outside any other: what it gathers while it is read goes with it, so that a sheet of thousands of rules
+// reads and writes the same few KB, not megabytes of memory touched once.
+@(private)
+parse_outer_rule :: proc(p: ^Parser) -> ^Rule {
+	if p.rule_arena == nil { return parse_qualified_rule(p, nil) }
+	mark := virtual.arena_temp_begin(p.rule_arena)
+	defer virtual.arena_temp_end(mark)
+	saved := p.scratch
+	defer p.scratch = saved
+	p.scratch = virtual.arena_allocator(p.rule_arena)
+	return parse_qualified_rule(p, nil)
 }
 
 // A qualified rule: prelude, then a { } block. With `parent`, selectors may use & (CSS Nesting).

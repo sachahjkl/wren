@@ -44,6 +44,7 @@ foreign kernel32_prof {
 	RtlLookupFunctionEntry :: proc(pc: u64, image_base: ^u64, history: rawptr) -> rawptr ---
 	RtlVirtualUnwind :: proc(kind: u32, image_base: u64, pc: u64, entry: rawptr, ctx: ^win.CONTEXT, handler_data: ^rawptr, establisher: ^u64, pointers: rawptr) -> rawptr ---
 	QueryThreadCycleTime :: proc(thread: win.HANDLE, cycles: ^u64) -> win.BOOL ---
+	GetThreadDescription :: proc(thread: win.HANDLE, description: ^win.wstring) -> win.HRESULT ---
 }
 }
 
@@ -188,6 +189,8 @@ Startup_Mark :: enum u8 {
 
 when PROFILE {
 
+SYM_OPTIONS :: 0x2 | 0x4 | 0x10   // undecorate, defer loads, line numbers
+
 SYMBOL_INFO :: struct {
 	SizeOfStruct, TypeIndex: u32,
 	Reserved:   [2]u64,
@@ -204,6 +207,36 @@ foreign dbghelp {
 	SymInitialize :: proc(process: win.HANDLE, search_path: cstring, invade: win.BOOL) -> win.BOOL ---
 	SymSetOptions :: proc(options: u32) -> u32 ---
 	SymFromAddr :: proc(process: win.HANDLE, address: u64, displacement: ^u64, symbol: ^SYMBOL_INFO) -> win.BOOL ---
+	SymGetLineFromAddr64 :: proc(process: win.HANDLE, address: u64, displacement: ^u32, line: ^IMAGEHLP_LINE64) -> win.BOOL ---
+}
+
+IMAGEHLP_LINE64 :: struct {
+	SizeOfStruct: u32,
+	Key:          rawptr,
+	LineNumber:   u32,
+	FileName:     cstring,
+	Address:      u64,
+}
+
+// The name of a code address. A public symbol has no size and SymFromAddr gives the nearest one before the address, however
+// far: every procedure the PDB names no symbol for read as the public symbol before it. Those are named by their source line.
+sym_name :: proc(proc_h: win.HANDLE, addr: u64, buf: []u8) -> (name: string, ok: bool) {
+	info := (^SYMBOL_INFO)(raw_data(buf))
+	info^ = {}
+	info.SizeOfStruct = size_of(SYMBOL_INFO)
+	info.MaxNameLen = u32(len(buf) - size_of(SYMBOL_INFO))
+	disp: u64
+	if !SymFromAddr(proc_h, addr, &disp, info) { return }
+	if info.Size == 0 || disp >= u64(info.Size) {
+		line := IMAGEHLP_LINE64{SizeOfStruct = size_of(IMAGEHLP_LINE64)}
+		line_disp: u32
+		if SymGetLineFromAddr64(proc_h, addr, &line_disp, &line) {
+			file := string(line.FileName)
+			if i := strings.last_index_any(file, "\\/"); i >= 0 { file = file[i + 1:] }
+			return fmt.tprintf("%s:%d", file, line.LineNumber), true
+		}
+	}
+	return strings.clone(string(cstring(&info.Name[0])), context.temp_allocator), true
 }
 
 SAMPLE_DEPTH :: 24
@@ -211,6 +244,9 @@ Sample :: struct { rip: u64, phase: Phase, t: i64, from: [SAMPLE_DEPTH]u64 }   /
 
 // A sample of one of the process's other threads (WREN_SAMPLE_THREADS=1): where it was, and who called (the executable's frames).
 Osample :: struct { tid: u32, rip: u64, from: [SAMPLE_DEPTH]u64 }
+
+// A thread that ran this recently is sampled at every tick (other_sampler_proc).
+THREAD_ACTIVE_SECONDS :: 1.0
 
 Prof :: struct {
 	on:        bool,
@@ -230,6 +266,7 @@ Prof :: struct {
 	stacks:    bool,             // the sampler also unwinds the stack (WREN_SAMPLE_STACK=1)
 	osamples:  []Osample,        // the other threads, one at a time in turn (WREN_SAMPLE_THREADS=1)
 	n_osamples: int,
+	names:     map[u32]string,    // the other threads' names, by id (the sampler's)
 	osampler:  ^thread.Thread,
 	main_tid:  u32,
 	exe_lo, exe_hi: u64,
@@ -274,6 +311,9 @@ prof_mark :: proc(m: Startup_Mark) {
 prof_layout :: proc(l: ^lay.Layout) {
 	hud_layout(l)
 	if !prof.on { return }
+	// (a frame may run two: the one a read forced, then its own: the longer one is kept)
+	sum :: proc(steps: [5]f32) -> (t: f32) { for s in steps { t += s }; return }
+	if sum(l.stats) < sum(prof.cur_lay.lay_steps) { return }
 	prof.cur_lay.lay_pass = l.last_pass
 	prof.cur_lay.lay_steps = l.stats
 	prof.cur_lay.lay_pre = {i32(l.pre_counts[0]), i32(l.pre_counts[1])}
@@ -420,15 +460,16 @@ module_of :: proc(addr: u64) -> string {
 	return name
 }
 
-// WREN_SAMPLE_THREADS=1: every millisecond one of the other threads of the process is stopped and its instruction pointer
-// and callers read (the main thread has its own sampler): the one that ran the most CPU cycles since its last sample, so
-// that a thread is sampled in proportion to the time it runs (a busy worker among ninety mostly idle threads gets most of
-// the samples, not one in ninety). Its "wait" samples are those that found it blocked all the same (it ran, then waited).
+// WREN_SAMPLE_THREADS=1: every millisecond the other threads of the process that ran in the last THREAD_ACTIVE_SECONDS are
+// stopped in turn and their instruction pointers and callers read (the main thread has its own sampler): a busy worker
+// among ninety mostly idle threads has its samples, the others none. A thread's cycle counter moves when it leaves the
+// processor, not while it runs: choosing the thread whose counter moved most found each one just after its burst, in its
+// wait (0 of 1873 samples running on repeated loads of p10k, whose bursts last a few ms). Its "wait" samples are real waits.
 other_sampler_proc :: proc(_: ^thread.Thread) {
 	pid := win.GetCurrentProcessId()
 	me := win.GetCurrentThreadId()
-	// per thread of the process: its handle, its cycle counter when last read, the cycles it ran since its last sample
-	Watched :: struct { tid: u32, h: win.HANDLE, cycles, owed: u64 }
+	// per thread of the process: its handle, its cycle counter when last read, when that moved last
+	Watched :: struct { tid: u32, h: win.HANDLE, cycles: u64, ran: i64 }
 	threads := make([dynamic]Watched, 0, 128)
 	next_refresh: i64
 	for !sync.atomic_load(&prof.stop) {
@@ -447,7 +488,7 @@ other_sampler_proc :: proc(_: ^thread.Thread) {
 					tid := te.th32ThreadID
 					if te.th32OwnerProcessID == pid && tid != me && tid != prof.main_tid {
 						w := Watched{tid = tid}
-						for &o in old { if o.tid == tid { w, o.h = o, nil; break } }   // (a thread seen before keeps what it owes)
+						for &o in old { if o.tid == tid { w, o.h = o, nil; break } }
 						if w.h == nil { w.h = win.OpenThread(0x2 | 0x8 | 0x800, false, tid) }   // SUSPEND_RESUME | GET_CONTEXT | QUERY_LIMITED_INFORMATION
 						if w.h != nil { append(&threads, w) }
 					}
@@ -458,36 +499,38 @@ other_sampler_proc :: proc(_: ^thread.Thread) {
 			for o in old { if o.h != nil { win.CloseHandle(o.h) } }
 			delete(old)
 		}
-		best := -1
-		for &w, i in threads {
+		active := i64(THREAD_ACTIVE_SECONDS * prof.freq)
+		for &w in threads {
 			c: u64
 			if !QueryThreadCycleTime(w.h, &c) { continue }
-			if w.cycles != 0 { w.owed += c - w.cycles }
+			if c != w.cycles { w.ran = now }
 			w.cycles = c
-			if w.tid != sync.atomic_load(&sampler_tid) && w.owed > 0 && (best < 0 || w.owed > threads[best].owed) { best = i }
-		}
-		if best < 0 { continue }
-		threads[best].owed = 0
-		h, tid := threads[best].h, threads[best].tid
-		got := false
-		s: Osample
-		if win.SuspendThread(h) != ~u32(0) {
+			if w.tid == sync.atomic_load(&sampler_tid) || w.ran == 0 || now - w.ran > active { continue }
+			if win.SuspendThread(w.h) == ~u32(0) { continue }
 			ctx: win.CONTEXT
 			ctx.ContextFlags = CONTEXT_FULL_AMD64
-			if win.GetThreadContext(h, &ctx) {
-				s = Osample{tid = tid, rip = u64(ctx.Rip)}
+			if win.GetThreadContext(w.h, &ctx) && prof.n_osamples < len(prof.osamples) {
+				s := Osample{tid = w.tid, rip = u64(ctx.Rip)}
 				s.from = callers_in_exe(&ctx)
-				got = true
+				prof.osamples[prof.n_osamples] = s
+				prof.n_osamples += 1
 			}
-			win.ResumeThread(h)
-		}
-		if got && prof.n_osamples < len(prof.osamples) {
-			prof.osamples[prof.n_osamples] = s
-			prof.n_osamples += 1
+			win.ResumeThread(w.h)
+			if prof.names[w.tid] == "" { prof.names[w.tid] = thread_name(w.h) }
 		}
 	}
 	for w in threads { win.CloseHandle(w.h) }
 	delete(threads)
+}
+
+// The name a thread gave itself ("": none).
+@(private = "file")
+thread_name :: proc(h: win.HANDLE) -> string {
+	w: win.wstring
+	if GetThreadDescription(h, &w) < 0 || w == nil { return "" }
+	defer win.LocalFree(rawptr(w))
+	name, _ := win.wstring_to_utf8(w, -1, context.allocator)
+	return name
 }
 
 @(private = "file")
@@ -497,23 +540,14 @@ sampler_tid: u32
 // called them. A thread that spins in the kernel (a yield, a zero-timeout wait) shows as "running" in a system call.
 report_threads :: proc(sb: ^strings.Builder) {
 	proc_h := win.GetCurrentProcess()
-	SymSetOptions(0x2 | 0x4)
+	SymSetOptions(SYM_OPTIONS)
 	SymInitialize(proc_h, ".;build", true)
 	buf: [768]u8
 	cache := make(map[u64]string, context.temp_allocator)
 	sym :: proc(addr: u64, proc_h: win.HANDLE, buf: []u8, cache: ^map[u64]string) -> string {
 		if s, ok := cache[addr]; ok { return s }
-		info := (^SYMBOL_INFO)(raw_data(buf))
-		info^ = {}
-		info.SizeOfStruct = size_of(SYMBOL_INFO)
-		info.MaxNameLen = u32(len(buf) - size_of(SYMBOL_INFO))
-		disp: u64
-		r: string
-		if SymFromAddr(proc_h, addr, &disp, info) {
-			r = fmt.tprintf("%s!%s", module_of(addr), string(cstring(&info.Name[0])))
-		} else {
-			r = fmt.tprintf("%s+0x%x", module_of(addr), addr & 0xffff)
-		}
+		name, ok := sym_name(proc_h, addr, buf)
+		r := ok ? fmt.tprintf("%s!%s", module_of(addr), name) : fmt.tprintf("%s+0x%x", module_of(addr), addr & 0xffff)
 		r = strings.clone(r, context.temp_allocator)
 		cache[addr] = r
 		return r
@@ -567,7 +601,7 @@ report_threads :: proc(sb: ^strings.Builder) {
 	fmt.sbprintf(sb, "all threads: %d of %d samples were not in a wait (%.1f %%)\n", running_all, prof.n_osamples, f64(running_all) * 100 / f64(max(prof.n_osamples, 1)))
 	for r, i in list {
 		if i >= 12 { break }
-		fmt.sbprintf(sb, "\n  thread %d: %d samples, running %d (%.0f %%)\n", r.tid, r.total, r.total - r.wait, f64(r.total - r.wait) * 100 / f64(max(r.total, 1)))
+		fmt.sbprintf(sb, "\n  thread %d %s: %d samples, running %d (%.0f %%)\n", r.tid, prof.names[r.tid], r.total, r.total - r.wait, f64(r.total - r.wait) * 100 / f64(max(r.total, 1)))
 		Row :: struct { k: string, v: int }
 		items := make([dynamic]Row, context.temp_allocator)
 		for k, v in r.by { append(&items, Row{k, v}) }
@@ -760,7 +794,7 @@ report_layout_passes :: proc(sb: ^strings.Builder) {
 
 report_samples :: proc(sb: ^strings.Builder) {
 	proc_h := win.GetCurrentProcess()
-	SymSetOptions(0x2 | 0x4)   // undecorate, defer loads
+	SymSetOptions(SYM_OPTIONS)
 	SymInitialize(proc_h, ".;build", true)
 
 	// resolve each distinct address once
@@ -768,16 +802,8 @@ report_samples :: proc(sb: ^strings.Builder) {
 	cache := make(map[u64]Sym, context.temp_allocator)
 	buf: [768]u8
 	resolve :: proc(addr: u64, proc_h: win.HANDLE, buf: []u8) -> Sym {
-		info := (^SYMBOL_INFO)(raw_data(buf))
-		info^ = {}
-		info.SizeOfStruct = size_of(SYMBOL_INFO)
-		info.MaxNameLen = u32(len(buf) - size_of(SYMBOL_INFO))
-		disp: u64
 		mod := module_of(addr)
-		if SymFromAddr(proc_h, addr, &disp, info) {
-			name := strings.clone(string(cstring(&info.Name[0])), context.temp_allocator)
-			return {name, mod}
-		}
+		if name, ok := sym_name(proc_h, addr, buf); ok { return {strings.clone(name, context.temp_allocator), mod} }
 		return {fmt.tprintf("%s+0x%x", mod, addr & 0xffff), mod}
 	}
 

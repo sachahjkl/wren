@@ -311,6 +311,28 @@ optional_codecs_asked_after_the_probe :: proc(t: ^testing.T) {
 	testing.expect_value(t, heif, codecs.heif)
 }
 
+// The probe holds nothing the window thread takes: a submit during it does not wait (it took 18 to 21 ms of legacy-html.html's
+// load), and the job is run by another thread meanwhile.
+@(test)
+a_submit_does_not_wait_for_the_codecs_probe :: proc(t: ^testing.T) {
+	sync.mutex_lock(&decoder_tests)
+	defer sync.mutex_unlock(&decoder_tests)
+	codecs = {}
+	gate: Gate
+	sync.atomic_store(&probe_gate, &gate)
+	defer sync.atomic_store(&probe_gate, nil)
+	decoder_start(2)
+	defer decoder_stop()
+	sync.sema_wait(&gate.entered)
+	free_now := sync.mutex_try_lock(&dec.mu)
+	if free_now { sync.mutex_unlock(&dec.mu) }
+	testing.expect(t, free_now, "the pool's lock is free during the probe")
+	testing.expect(t, !sync.atomic_load(&codecs.probed), "the probe is still held")
+	sync.sema_post(&gate.release)
+	testing.expect(t, !codec_supported(.Heif) || codecs.heif, "the answer comes after the probe")
+	testing.expect(t, sync.atomic_load(&codecs.probed), "the probe ended")
+}
+
 // The ownership of a job, in the orders that used to free one twice: the cache keeps a pointer to the job it submitted (to cancel it or to
 // change its priority) and the port that owns the job can close, deliver or free it before the cache lets go.
 @(private = "file")

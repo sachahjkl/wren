@@ -136,6 +136,8 @@ Decoder_Stats :: struct {
 Gate :: struct { entered, release: sync.Sema }
 @(private)
 decode_gate: ^Gate
+@(private)
+probe_gate: ^Gate   // ... and the first thread before it probes the optional codecs
 
 @(private)
 dec: ^Decoder
@@ -146,7 +148,7 @@ dec_mu: sync.Mutex   // start / stop
 // Optional codecs found on this system (the built-in ones are always there). Probed once, by the first decoding thread;
 // codecs_ready is posted then, and again by each one that waited for it.
 @(private)
-codecs: struct { heif, probed: bool }
+codecs: struct { heif, claimed, probed: bool }
 @(private)
 codecs_ready: sync.Sema
 
@@ -397,12 +399,14 @@ decoder_thread :: proc(data: rawptr) {
 	codec: Codec_Context
 	have_codec := codec_init(&codec)
 	defer if have_codec { codec_destroy(&codec) }
-	sync.mutex_lock(&d.mu)
-	first := !codecs.probed
-	if first && have_codec { probe_codecs() }
-	codecs.probed = true
-	sync.mutex_unlock(&d.mu)
-	if first { sync.sema_post(&codecs_ready) }
+	// the first thread probes, holding nothing: under d.mu a submit waited for it, the window thread 18 to 21 ms at a page's
+	// first image
+	if !sync.atomic_exchange(&codecs.claimed, true) {
+		if g := sync.atomic_load(&probe_gate); g != nil { sync.sema_post(&g.entered); sync.sema_wait(&g.release) }   // (tests: a probe held)
+		if have_codec { probe_codecs() }
+		sync.atomic_store(&codecs.probed, true)
+		sync.sema_post(&codecs_ready)
+	}
 	for {
 		sync.mutex_lock(&d.mu)
 		ended := false

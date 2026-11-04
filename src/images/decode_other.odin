@@ -9,7 +9,7 @@ Codec_Context :: struct {
 }
 
 @(private)
-probe_codecs :: proc() { codecs.probed = true }
+probe_codecs :: proc() {}
 
 codec_init :: proc(c: ^Codec_Context) -> bool {
 	c.ok = true

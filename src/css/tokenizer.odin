@@ -65,6 +65,8 @@ preprocess :: proc(input: string, allocator: Arena_Alloc) -> []rune {
 	out := make([dynamic]rune, 0, len(input), allocator)
 	i := 0
 	for i < len(input) {
+		c := input[i]
+		if c >= ' ' && c < 0x80 { append(&out, rune(c)); i += 1; continue }
 		r, w := utf8.decode_rune_in_string(input[i:])
 		i += w
 		switch r {
@@ -128,7 +130,17 @@ consume_escape :: proc(l: ^Lexer) -> rune {
 
 @(private)
 consume_name :: proc(l: ^Lexer) -> string {
+	// most names are ASCII without escapes: their bytes straight from the code points, copied once
+	start := l.pos
+	for l.pos < len(l.src) && l.src[l.pos] < 0x80 && is_name_char(l.src[l.pos]) { l.pos += 1 }
+	after := peek(l)
+	if after < 0x80 && !valid_escape(after, peek(l, 1)) {
+		text := make([]u8, l.pos - start, l.arena)
+		for c, i in l.src[start:l.pos] { text[i] = u8(c) }
+		return string(text)
+	}
 	clear(&l.buf)
+	for c in l.src[start:l.pos] { append(&l.buf, u8(c)) }
 	for {
 		r := peek(l)
 		switch {

@@ -24,9 +24,9 @@ profile build (`build.bat profile`, `-define:PROFILE=true`) with the native libr
   `domInteractive - responseEnd`), then the scenario's input, then `api.stats` (CPU, frames, the loop's meter:
   `loop.turns`, `sleeps`, `causes`).
 - `WREN_SAMPLE=1` (1 ms samples of the window's thread, by phase), `WREN_SAMPLE_STACK=1` (callers),
-  `WREN_SAMPLE_THREADS=1` (the other threads, in proportion to the CPU cycles each ran: every millisecond the one that
-  ran the most since its last sample; per thread, its hottest call chains and the functions on its stack). Before round
-  3 it visited the ninety threads in turn, about 13 samples a second each. Samples that land in a system call are biased: on the
+  `WREN_SAMPLE_THREADS=1` (the other threads: every millisecond each one that ran in the last second; per thread, its
+  name, hottest call chains and the functions on its stack; round 25). Before round 3 it visited the ninety threads in
+  turn, about 13 samples a second each; from round 3 to 24 it took the one whose cycles moved most. Samples that land in a system call are biased: on the
   script-heavy page `NtUserGetQueueStatus` (the chrome's preemption checking for input) took 13 % of the samples, and turning
   preemption off (`browser.shell.preempt=false`) changed neither the frame rate nor the CPU.
 
@@ -2204,6 +2204,19 @@ that waits for its slot before the tasks, leads item 10 below. Item 1 is unchang
 
 After round 18. Round 17's item 10 is done for its first part (round 18: the loop's tasks run in the frame's wait for its
 slot, a first paint waits for no slot); p10k's first passes lead item 10 below. Item 1 is unchanged.
+
+After round 19. Off this list: the licence card of about:wren under the pointer (a document changed only in style
+attributes is refreshed, not laid out; planes keep their raster scale; the development build lost the Direct3D debug
+layer).
+
+After rounds 20, 21 and 23. Item 1's interpreter gave way to a JIT for hot loops and hot functions (round 20: loops,
+properties, calls; 21: whole functions, direct calls, objects, strings, DOM getters, natives; 23: `document`, objects
+allocated inline, the script's accessors): nodes10k's `build()` p50 8.63 -> 7.44 ms in round 23's series. What is left of
+item 9 now counts only for code the JIT does not take; [engine/jit.md](engine/jit.md) has the JIT's own list.
+
+After rounds 22 and 24. Off this list too: what the user does while a script is busy (input, selection, the scroll bars,
+keys, then animations of `transform` and `opacity`, scroll boxes and the caret, drawn by chrome frames from the last
+layout). Hover stays the page's, by design (round 24, item 4).
 
 1. **The script stage of DOM-heavy pages, what is left** (nodes10k: 11.8 ms of a 17.7 ms frame; the browser's side
    1.4 ms of it). In order of the engine's samples: the interpreter itself (`interp_hot` 17 % before round 15's 15 to 25 %
