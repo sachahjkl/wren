@@ -66,9 +66,20 @@ again after. An exception is exact: the helper puts the context's thrower in the
 an object whose property of that name is an accessor with `jit_rethrow` as its getter), the code leaves through a throw
 exit, and the interpreter makes the read again, which throws the exception pending. Host objects without exotic hooks
 are ordinary objects there (`Object.host_exotic` checked where the code reads past one), so a DOM node's attributes and
-methods are read through its prototypes. A global's accessor (`window.document`) is not called: a read of a global has
-no object on the stack to put the thrower in, and an exception would have no exact way back into the interpreter but a
-throw exit in its back edges (round 20: 4 % of nodes10k with the JIT off).
+methods are read through its prototypes.
+
+A global's own accessor (`window.document`) is read the same way when the instruction after the read reads a named
+property of its value (`get_field`, `get_field2`, `get_length`: `document.createElement(...)`): a read of a global has
+no object on the stack to put the thrower in, so the helper puts it in the result's place, with that next property as
+its accessor, and the throw exit resumes at the next instruction, which throws the exception pending. The interpreter's
+code is unchanged (a throw exit of its own in its back edges cost 4 % of nodes10k with the JIT off, round 20). A global
+accessor whose value is used otherwise keeps the loop interpreted.
+
+A call whose callee the translation cannot tell (a method of an object a getter returned, unknown when the loop is
+translated) leaves through a learn exit (`JIT_AUX_CALLEE`) the first time: the site keeps the callee it met
+(`Jit_Site.callee`, a hint marked by the collector, never relied on), and the loop is translated again. A read of an
+object the translation cannot tell, at a site that learned its shape, takes what the prototype holds for its hint (the
+method `document.createElement` is, from `Document.prototype`).
 
 What a site was compiled for is per site and bounded (`Jit_Site`: `JIT_SITE_SHAPES` shapes with their objects' class,
 the type of the value read): taken from the frame's values when the loop is translated (the translation follows what

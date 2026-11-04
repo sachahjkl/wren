@@ -398,6 +398,26 @@
   p("getters: an accessor without a getter", sizes([new Map(), new Map(), new Map(), new Map()], RUN));
   Object.defineProperty(Map.prototype, "size", realSize);
 
+  // a global's own accessor whose native getter compiled code calls (as window.document): Array.prototype.join on the
+  // global object, whose element 0 counts its conversions (each read calls the getter once) and throws once asked to
+  // (the exception unwinds once, from the read); the value used other than by a property read (the loop interpreted);
+  // the accessor replaced by a data property, then deleted
+  var joins = 0, joinThrows = -1;
+  globalThis.length = 1;
+  globalThis[0] = { toString: function () { joins++; if (joins === joinThrows) { throw new RangeError("join " + joins); } return "ab"; } };
+  Object.defineProperty(globalThis, "jitJoined", { get: Array.prototype.join, configurable: true });
+  function joinedLen(n) { var s = 0; for (var i = 0; i < n; i++) { s += jitJoined.length; } return s; }
+  function joinedAll(n) { var s = ""; for (var i = 0; i < n; i++) { var j = jitJoined; s = j; } return s + n; }
+  p("global accessor: read", joinedLen(RUN), joins);
+  joinThrows = joins + 7;
+  try { p("global accessor: a getter that throws", joinedLen(RUN)); } catch (e) { p("global accessor: a getter that throws", e.name, e.message, joins); }
+  p("global accessor: its value kept", joinedAll(RUN), joins);
+  Object.defineProperty(globalThis, "jitJoined", { value: "xyz", configurable: true, writable: true });
+  p("global accessor: replaced by data", joinedLen(RUN), joins);
+  delete globalThis.jitJoined;
+  try { p("global accessor: deleted", joinedLen(RUN)); } catch (e) { p("global accessor: deleted", e.name); }
+  delete globalThis[0]; delete globalThis.length;
+
   // reads through prototypes whose shapes are dictionaries (a property deleted from them): one that gets the key in
   // place later (it shadows what was read further), one whose own prototype is changed, an attribute changed in place
   function Base2() {} Base2.prototype.k = 1; Base2.prototype.tmp = 0; delete Base2.prototype.tmp;

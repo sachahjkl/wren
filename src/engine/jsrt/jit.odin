@@ -75,6 +75,7 @@ JIT_MAX_SHADOWS :: 4        // the objects seen whose properties a translation a
 JIT_AUX_NONE :: 0xffff
 JIT_AUX_LEARN :: 0xfffd
 JIT_AUX_NO_INLINE :: 0xfffc   // a deopt in a callee inlined at the call that left: it is called instead
+JIT_AUX_CALLEE :: 0xfffb      // a call whose callee the translation did not know: the site takes the one met
 
 #assert(size_of(Value) == 16)
 #assert(offset_of(Value, u) == 8)
@@ -398,6 +399,7 @@ Jit_Site :: struct {
 	classes: [JIT_SITE_SHAPES]Class_ID,
 	inline:  bit_set[0 ..< JIT_SITE_SHAPES],
 	str:     bool,   // a read that met a string
+	callee:  ^Object,   // a call's callee as an exit found it, when the translation could not tell (marked by the collector)
 }
 
 Jit_Info :: struct {
@@ -702,9 +704,9 @@ jit_exit :: proc(f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, index: u32, r:
 			op := xpc < len(b.code) ? reflect.enum_string(Opcode(b.code[xpc])) : "end"
 			jit_trace(cat(f.ctx, "jit: deopt in ", atom_utf8(f.ctx.rt, b.func_name), jl.whole ? " (whole)" : "", " at ", int_str(xpc), " (", op, ") aux ", int_str(aux)))
 		}
-		if aux == JIT_AUX_LEARN || aux == JIT_AUX_NO_INLINE {
+		if aux == JIT_AUX_LEARN || aux == JIT_AUX_NO_INLINE || aux == JIT_AUX_CALLEE {
 			// a site met an object or a value it was not compiled for: it learns them, the region is translated again
-			if jit_learn(f, b, jl, xpc, xsp, aux == JIT_AUX_NO_INLINE) {
+			if jit_learn(f, b, jl, xpc, xsp, u32(aux)) {
 				jl.learns += 1
 				jl.state = jl.learns > JIT_MAX_LEARNS ? .never : .fresh
 				b.jit_active -= 1
@@ -800,6 +802,7 @@ jit_mark :: proc(rt: ^Runtime, info: ^Jit_Info) {
 		for s in 0 ..< jl.n_sites {
 			site := &jl.sites[s]
 			for k in 0 ..< site.n {mark_cell(rt, site.shapes[k])}
+			if site.callee != nil {mark_cell(rt, site.callee)}
 		}
 	}
 	for i in 0 ..< info.n {mark(rt, &info.loops[i])}
@@ -948,11 +951,20 @@ jit_peek_elem :: proc(o: Value, k: Value) -> (v: Value, ok: bool) {
 // A learn exit at the site of xpc: the operand stack is as the instruction there would find it. changed: the site
 // learned something (or what it guards changed); otherwise the exit is only a deopt.
 @(private = "file")
-jit_learn :: proc(f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, xpc: int, xsp: int, no_inline: bool) -> (changed: bool) {
+jit_learn :: proc(f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, xpc: int, xsp: int, aux: u32) -> (changed: bool) {
 	site := jit_site_of(jl, xpc, true)
 	if site == nil {return false}
 	st := f.stack
 	op := Opcode(b.code[xpc])
+	no_inline := aux == JIT_AUX_NO_INLINE
+	if aux == JIT_AUX_CALLEE {
+		// (a call's callee, under its arguments; a construction's under new.target too)
+		argc := op >= .call0 && op <= .call3 ? int(op) - int(Opcode.call0) : jr_u16(b.code, xpc + 1)
+		cv := st[xsp - argc - (op == .call_constructor ? 2 : 1)]
+		if cv.tag != .object || site.callee == as_obj(cv) {return false}
+		site.callee = as_obj(cv)
+		return true
+	}
 	#partial switch op {
 	case .get_field, .get_field2, .get_length:
 		o := st[xsp - 1]
@@ -1941,6 +1953,14 @@ jit_get_field :: proc(c: ^Jc, op: Opcode, a: Atom, pc: int) -> bool {
 	shadow := EXCEPTION
 	if recv.tag == .object {
 		if v, ok := jit_peek_field(as_obj(recv), a); ok {shadow = v}
+	} else {
+		// (an object the translation cannot tell, of a shape the site learned: what its prototype holds, a method)
+		for k in 0 ..< site.n {
+			if l, ok := jit_lookup(site.shapes[k], a); ok && l.depth > 0 {
+				shadow = l.objs[l.depth - 1].slots[l.idx].value
+				break
+			}
+		}
 	}
 	// (a string there: the site learns it, the read is compiled for strings too)
 	j_as_obj(c, n - 1, pc, JIT_AUX_LEARN)
@@ -1955,7 +1975,7 @@ jit_get_field :: proc(c: ^Jc, op: Opcode, a: Atom, pc: int) -> bool {
 		}
 	}
 	if !j_prop_addr(c, obj, site, a, false, pc, getter) {return false}
-	if getter {return j_call_getter(c, op, a, obj, pc)}
+	if getter {return j_call_getter(c, op, a, obj, nil, pc)}
 	t := j_read_ty(c, site, shadow)
 	if t == .O || t == .L {t = .V}
 	j_check_value(c, I_T0, t, pc)
@@ -1970,12 +1990,29 @@ jit_get_field :: proc(c: ^Jc, op: Opcode, a: Atom, pc: int) -> bool {
 // when it is a native function called as a function (hot_native_getter), else the interpreter reads the property: the
 // result a V in the place of the object (above it for get_field2). An exception leaves through a throw exit, the object
 // replaced by the thrower (jit_getter); the held arrays are taken again after it.
+// A global's (get_var: `global`, the global object, its `this`): the result pushed. There is no object on the stack to
+// put the thrower in, so the instruction after the read must be a read of a named property of its result (get_field,
+// get_field2, get_length: window.document.createElement): the thrower is put in the result's place, whose property
+// is the accessor that throws, and the throw exit resumes at that instruction, which throws the exception pending.
 @(private = "file")
-j_call_getter :: proc(c: ^Jc, op: Opcode, a: Atom, obj: u32, pc: int) -> bool {
+j_call_getter :: proc(c: ^Jc, op: Opcode, a: Atom, obj: u32, global: ^Object, pc: int) -> bool {
 	n := c.st.n
 	if c.inl_depth > 0 {
 		j_fail(c, "a getter in a callee being inlined")
 		return false
+	}
+	// where the result goes, where the thrower goes and the property it throws for, where the throw exit resumes
+	dest, at, ta, xpc := op == .get_field2 ? n : n - 1, n - 1, a, pc
+	if global != nil {
+		next := pc + int(opcode_info[op].size)
+		#partial switch Opcode(c.code[next]) {
+		case .get_field, .get_field2: ta = Atom(jr_u32(c.code, next + 1))
+		case .get_length: ta = pa(.A_length)
+		case:
+			j_fail(c, "a global's accessor whose value is not read from at once")
+			return false
+		}
+		dest, at, xpc = n, n, next
 	}
 	j_lget(c, I_T0)
 	j_mem(c, W_I32_LOAD, 2, 0)
@@ -1999,24 +2036,23 @@ j_call_getter :: proc(c: ^Jc, op: Opcode, a: Atom, obj: u32, pc: int) -> bool {
 	j_deopt_if(c, pc)
 	j_flush_objs(c)
 	j_materialize(c, true)
-	dest := op == .get_field2 ? n : n - 1
 	j_lget(c, P_FRAME)
 	j_lget(c, I_T2)
-	j_lget(c, obj)
+	if global != nil {j_i32(c, i32(uintptr(global)))} else {j_lget(c, obj)}
 	j_i32(c, i32(dest))
-	j_i32(c, i32(n - 1))
-	j_i32(c, i32(a))
+	j_i32(c, i32(at))
+	j_i32(c, i32(ta))
 	j_helper(c, .get)
 	j_op(c, W_IF)
 	j_op(c, W_VOID)
 	c.nest += 1
-	// (the object's place is the thrower's: it stays in the frame)
-	c.st.n = n - 1
-	j_stub(c, pc, .throw, 0, n)
+	// (the thrower's place stays in the frame)
+	c.st.n = at
+	j_stub(c, xpc, .throw, 0, at + 1)
 	c.st.n = n
 	j_op(c, W_END)
 	c.nest -= 1
-	if op != .get_field2 {c.st.n -= 1}
+	if op == .get_field || op == .get_length {c.st.n -= 1}
 	d := j_push(c, .V)
 	off := u32(d * size_of(Value))
 	j_lget(c, P_STACK)
@@ -2096,22 +2132,25 @@ jit_global :: proc(c: ^Jc, op: Opcode, a: Atom, pc: int) -> bool {
 	}
 	if !j_keep(c, gv.shape) || !j_keep(c, g.shape) {return false}
 	j_guard_shape(c, gv, 0, gv.shape, pc)
-	lexical := true
+	lexical, accessor := true, false
 	i := shape_lookup(gv.shape, a)
 	if i < 0 {
 		lexical = false
 		i = shape_lookup(g.shape, a)
-		if i < 0 || g.shape.props[i].kind != .data || (write && .writable not_in g.shape.props[i].flags) {
+		// (an own accessor of the global object, window.document: its native getter called)
+		accessor = !write && i >= 0 && g.shape.props[i].kind == .accessor
+		if i < 0 || (g.shape.props[i].kind != .data && !accessor) || (write && .writable not_in g.shape.props[i].flags) {
 			j_fail(c, "a global the JIT does not read inline")
 			return false
 		}
-		if g.shape.is_dict {j_dict_check(c, g.shape, i, a, write, pc)} else {j_guard_shape(c, g, 0, g.shape, pc)}
+		if g.shape.is_dict {j_dict_check(c, g.shape, i, a, write, pc, accessor)} else {j_guard_shape(c, g, 0, g.shape, pc)}
 	} else if write && .writable not_in gv.shape.props[i].flags {
 		j_fail(c, "a write to a constant")
 		return false
 	}
 	holder := lexical ? gv : g
 	j_slot_of(c, holder, 0, i)
+	if accessor {return j_call_getter(c, op, a, 0, g, pc)}
 	n := c.st.n
 	if write {
 		if lexical {
@@ -2598,6 +2637,26 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 	next := pc + int(opcode_info[op].size)
 	tail := op == .tail_call || op == .tail_call_method
 	fv := c.st.v[n - argc - (kind == .construct ? 2 : 1)]
+	if fv.tag != .object && c.inl_depth == 0 {
+		// a callee the translation cannot tell (a method of an object a getter returned): the one an exit met, else
+		// such an exit, for the site to learn it
+		site := jit_site_of(c.jl, pc, true)
+		if site == nil {
+			j_fail(c, "too many sites")
+			return false
+		}
+		if site.callee == nil {
+			j_stub(c, pc, .deopt, JIT_AUX_CALLEE)
+			c.st.n = low
+			d := j_push(c, .V)
+			if tail {
+				j_return(c, d)
+				return false
+			}
+			return true
+		}
+		fv = mk_obj(site.callee)
+	}
 	if fv.tag == .object && kind != .construct && !tail {
 		fo := as_obj(fv)
 		if mi := math_intrinsic_of(fo); mi != .none && j_math(c, fo, mi, argc, low, pc) {return true}
