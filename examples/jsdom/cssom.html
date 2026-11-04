@@ -173,6 +173,16 @@ section("rules serialized", () => {
   s.remove();
 });
 
+section("sheet.media", () => {
+  const s = document.createElement("style");
+  s.media = "screen, PRINT and (COLOR)";
+  document.head.appendChild(s);
+  const m = s.sheet.media;
+  eq("mediaText, length, item, [i]", [m.mediaText, m.length, m.item(0), m[1], m.item(-1)].join("|"), "screen, print and (color)|2|screen|print and (color)|");
+  t("[SameObject] MediaList", m === s.sheet.media && m instanceof MediaList);
+  s.remove();
+});
+
 // JSS's dynamic values (MUI v4's makeStyles with props) write a rule's style after inserting it.
 section("a rule's style written reaches the sheet", () => {
   const s = document.createElement("style");

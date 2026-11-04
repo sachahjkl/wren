@@ -29186,7 +29186,7 @@ wj_install_bindings :: proc "c" () {
 	m_MediaError[3] = wj.Member{name = "MEDIA_ERR_SRC_NOT_SUPPORTED", kind = wj.M_CONSTANT, value = 4}
 	m_MediaError[4] = wj.Member{name = "code", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_MediaError_get_code, set = nil}
 	m_MediaError[5] = wj.Member{name = "message", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_MediaError_get_message, set = nil}
-	m_MediaList[0] = wj.Member{name = "mediaText", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = wjr_MediaList_get_mediaText, set = nil}
+	m_MediaList[0] = wj.Member{name = "mediaText", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_MediaList_get_mediaText, set = wjr_MediaList_set_mediaText}
 	m_MediaList[1] = wj.Member{name = "toString", kind = wj.M_METHOD, fn = wj.wj_stringifier, get = wjr_MediaList_get_mediaText}
 	m_MediaList[2] = wj.Member{name = "length", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_MediaList_get_length, set = nil}
 	m_MediaList[3] = wj.Member{name = "item", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_MediaList_item}
@@ -29924,7 +29924,7 @@ wj_install_bindings :: proc "c" () {
 	m_StyleSheet[2] = wj.Member{name = "ownerNode", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_StyleSheet_get_ownerNode, set = nil}
 	m_StyleSheet[3] = wj.Member{name = "parentStyleSheet", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_StyleSheet_get_parentStyleSheet, set = nil}
 	m_StyleSheet[4] = wj.Member{name = "title", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_StyleSheet_get_title, set = nil}
-	m_StyleSheet[5] = wj.Member{name = "media", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 266, get = nil, set = wjg_StyleSheet_set_media}
+	m_StyleSheet[5] = wj.Member{name = "media", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 266, get = wjr_StyleSheet_get_media, set = wjg_StyleSheet_set_media}
 	m_StyleSheet[6] = wj.Member{name = "disabled", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_StyleSheet_get_disabled, set = wjr_StyleSheet_set_disabled}
 	m_CSSStyleSheet[0] = wj.Member{name = "ownerRule", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_CSSStyleSheet_get_ownerRule, set = nil}
 	m_CSSStyleSheet[1] = wj.Member{name = "cssRules", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 267, get = wjr_CSSStyleSheet_get_cssRules, set = nil}
@@ -32075,7 +32075,7 @@ wj_install_bindings :: proc "c" () {
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
 	the_interfaces[456] = wj.Interface{name = "MediaList", parent = -1, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_INDEXED_ITERATOR), class_kind = u8(wj.CLASS_INDEXED), ctor_length = 0, ctor = nil,
 		members = rawptr(&m_MediaList[0]), n_members = 6, subtree_end = 457,
-		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
+		index_get = rawptr(wjr_MediaList_index_get), length_get = rawptr(wjr_MediaList_length_hook), named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
 	the_interfaces[457] = wj.Interface{name = "MediaMetadata", parent = -1, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_UNSUPPORTED | wj.I_CTOR_UNSUPPORTED), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
 		members = rawptr(&m_MediaMetadata[0]), n_members = 5, subtree_end = 458,

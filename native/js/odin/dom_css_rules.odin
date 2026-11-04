@@ -347,13 +347,53 @@ media_items :: proc "contextless" (text: string, out: ^[MEDIA_ITEMS_MAX][2]int) 
 	return n
 }
 
+// The sheet a MediaList is the media of (StyleSheet.media: its text is the browser's, live), 0 for a rule's.
+@(private = "file")
+media_sheet :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue) -> api_decl.CSSStyleSheet {
+	v := wj.web_extra_get(ctx, t, "sheet")
+	defer wj.JS_FreeValue(ctx, v)
+	o := wj.wj_unwrap(v, wj.iface("CSSStyleSheet"))
+	return o != nil ? api_decl.CSSStyleSheet(o.handle) : 0
+}
+
+// A MediaList's text: its sheet's media now, or what its rule says. A view until `c` is freed (when not nil).
+@(private = "file")
+media_text :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue) -> (text: string, c: cstring) {
+	context = jsb.glue_context()
+	if sheet := media_sheet(ctx, t); sheet != 0 {
+		jsb.host(&text, api_decl.CSSStyleSheet_mediaText, wj.wr_CSSStyleSheet_mediaText, sheet)
+		return text, nil
+	}
+	return extra_view(ctx, t, "text")
+}
+
 @(export, link_name = "wjr_MediaList_get_mediaText")
-wjr_MediaList_get_mediaText :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return extra_or_null(ctx, t, "MediaList", "text", empty_string(ctx)) }
+wjr_MediaList_get_mediaText :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
+	if wj.wj_this(ctx, t, wj.iface("MediaList")) == nil { return wj.EXCEPTION }
+	text, c := media_text(ctx, t)
+	defer if c != nil { wj.free_cstring(ctx, c) }
+	return wj.new_string_len(ctx, transmute([]u8)text)
+}
+
+// mediaText = v: a constructed sheet's media change (an element's sheet follows its media attribute); a rule's list is a view.
+@(export, link_name = "wjr_MediaList_set_mediaText")
+wjr_MediaList_set_mediaText :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	if wj.wj_this(ctx, t, wj.iface("MediaList")) == nil { return wj.EXCEPTION }
+	text, c, ok := wj.to_string_view(ctx, v)
+	if !ok { return wj.EXCEPTION }
+	defer wj.free_cstring(ctx, c)
+	if sheet := media_sheet(ctx, t); sheet != 0 {
+		nothing: abi.Nothing
+		jsb.host(&nothing, api_decl.CSSStyleSheet_setMediaText, wj.wr_CSSStyleSheet_setMediaText, sheet, text)
+	}
+	return wj.UNDEFINED
+}
 
 @(export, link_name = "wjr_MediaList_get_length")
 wjr_MediaList_get_length :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
 	if wj.wj_this(ctx, t, wj.iface("MediaList")) == nil { return wj.EXCEPTION }
-	text, c := extra_view(ctx, t, "text")
+	text, c := media_text(ctx, t)
 	defer if c != nil { wj.free_cstring(ctx, c) }
 	items: [MEDIA_ITEMS_MAX][2]int
 	return wj.new_uint32(ctx, u32(media_items(text, &items)))
@@ -365,11 +405,43 @@ wjr_MediaList_item :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv
 	if argc < 1 { return wj.wj_throw_arity(ctx, "MediaList.item", 1, argc) }
 	index: u32
 	if wj.JS_ToUint32(ctx, &index, argv[0]) < 0 { return wj.EXCEPTION }
-	text, c := extra_view(ctx, t, "text")
+	text, c := media_text(ctx, t)
 	defer if c != nil { wj.free_cstring(ctx, c) }
 	items: [MEDIA_ITEMS_MAX][2]int
-	if int(index) >= media_items(text, &items) { return wj.NULL }
+	if index >= u32(media_items(text, &items)) { return wj.NULL }   // (compared as u32: an int is 32 bits in the guest)
 	return wj.new_string_len(ctx, transmute([]u8)trimmed(text[items[index][0]:items[index][1]]))
+}
+
+@(export, link_name = "wjr_MediaList_length_hook")
+wjr_MediaList_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue) -> u32 {
+	text, c := media_text(ctx, obj)
+	defer if c != nil { wj.free_cstring(ctx, c) }
+	items: [MEDIA_ITEMS_MAX][2]int
+	return u32(media_items(text, &items))
+}
+
+@(export, link_name = "wjr_MediaList_index_get")
+wjr_MediaList_index_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, index: u32, found: ^bool) -> wj.JSValue {
+	text, c := media_text(ctx, obj)
+	defer if c != nil { wj.free_cstring(ctx, c) }
+	items: [MEDIA_ITEMS_MAX][2]int
+	found^ = index < u32(media_items(text, &items))
+	if !found^ { return wj.UNDEFINED }
+	return wj.new_string_len(ctx, transmute([]u8)trimmed(text[items[index][0]:items[index][1]]))
+}
+
+// StyleSheet.media ([SameObject]): a MediaList over the sheet's media. (The list holds the sheet, which holds the list
+// in an extra: one cycle of two objects, which the collector frees together.)
+@(export, link_name = "wjr_StyleSheet_get_media")
+wjr_StyleSheet_get_media :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
+	if wj.wj_this(ctx, t, wj.iface("CSSStyleSheet")) == nil { return wj.EXCEPTION }
+	kept := wj.web_extra_get(ctx, t, "media")
+	if !wj.is_undefined(kept) { return kept }
+	l := wj.wj_new_object(ctx, wj.iface("MediaList"), nil, nil)
+	if wj.is_exception(l) { return l }
+	wj.web_extra_set(ctx, l, "sheet", wj.JS_DupValue(ctx, t))
+	wj.web_extra_set(ctx, t, "media", wj.JS_DupValue(ctx, l))
+	return l
 }
 
 @(export, link_name = "wjr_CSSMediaRule_get_media")

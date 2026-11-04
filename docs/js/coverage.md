@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 605 |
 | exposed by default | 385 |
 | members | 5311 |
-| members implemented | 3849 (72.5 %) |
+| members implemented | 3850 (72.5 %) |
 
 ## By specification
 
@@ -41,7 +41,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `css-typed-om.idl` | 37 (0) | 3 / 126 |
 | `css-view-transitions.idl` | 3 (0) | 0 / 10 |
 | `cssom-view.idl` | 5 (4) | 24 / 28 |
-| `cssom.idl` | 16 (15) | 61 / 149 |
+| `cssom.idl` | 16 (15) | 62 / 149 |
 | `dom.idl` | 35 (31) | 591 / 700 |
 | `element-timing.idl` | 1 (1) | 12 / 12 |
 | `encoding.idl` | 4 (4) | 19 / 19 |
@@ -5094,7 +5094,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 3 / 5 members.
 
-- `mediaText`: C `wjr_MediaList_get_mediaText (setter not supported)`
+- `mediaText`: C `wjr_MediaList_get_mediaText`
 - `readonly length`: C `wjr_MediaList_get_length`
 - `item()`: C `wjr_MediaList_item`
 - `appendMedium()`: not supported
@@ -5846,14 +5846,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### StyleSheet
 
-6 / 7 members.
+7 / 7 members.
 
 - `readonly type`: C `wjr_StyleSheet_get_type`
 - `readonly href`: C `wjr_StyleSheet_get_href`
 - `readonly ownerNode`: C `wjr_StyleSheet_get_ownerNode`
 - `readonly parentStyleSheet`: C `wjr_StyleSheet_get_parentStyleSheet`
 - `readonly title`: C `wjr_StyleSheet_get_title`
-- `readonly media`: not supported
+- `readonly media`: C `wjr_StyleSheet_get_media`
 - `disabled`: C `wjr_StyleSheet_get_disabled`
 
 ### CSSStyleSheet : StyleSheet
