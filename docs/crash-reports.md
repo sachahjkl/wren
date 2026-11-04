@@ -2,7 +2,7 @@
 
 When Wren crashes, `src/tools/crashtrace` writes `<profile>\crashes\crash <date> <time>.txt` (the faulting thread's
 stack) and a minidump beside it (`.dmp`). A session that ended with no chance to write one (a fail-fast, a kill) is
-reported at the next start as `unclean exit <date>.txt`.
+reported at the next start as `unclean exit <date>.txt`. A crash that wrote its report leaves none, nor does a close ended by the shutdown watchdog (`shutdown.log` in the profile says what it waited for).
 
 ## What a report says
 
