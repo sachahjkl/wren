@@ -317,6 +317,7 @@
 <li class="lvl3"><a href="#node-rootnode">Node_rootNode</a></li>
 <li class="lvl3"><a href="#node-length">Node_length</a></li>
 <li class="lvl3"><a href="#node-preinsert">Node_preInsert</a></li>
+<li class="lvl3"><a href="#node-movebefore">Node_moveBefore</a></li>
 <li class="lvl3"><a href="#node-replacechildchecked">Node_replaceChildChecked</a></li>
 <li class="lvl3"><a href="#node-preremove">Node_preRemove</a></li>
 <li class="lvl3"><a href="#node-insertitems">Node_insertItems</a></li>
@@ -432,6 +433,10 @@
 <li class="lvl3"><a href="#cssstylesheet-setruleselector">CSSStyleSheet_setRuleSelector</a></li>
 <li class="lvl3"><a href="#cssstylesheet-ruletextof">CSSStyleSheet_ruleTextOf</a></li>
 <li class="lvl3"><a href="#cssstylesheet-setrulestyle">CSSStyleSheet_setRuleStyle</a></li>
+<li class="lvl3"><a href="#cssstylesheet-childcount">CSSStyleSheet_childCount</a></li>
+<li class="lvl3"><a href="#cssstylesheet-childid">CSSStyleSheet_childId</a></li>
+<li class="lvl3"><a href="#cssstylesheet-insertchildat">CSSStyleSheet_insertChildAt</a></li>
+<li class="lvl3"><a href="#cssstylesheet-deletechildat">CSSStyleSheet_deleteChildAt</a></li>
 <li class="lvl3"><a href="#cssstylesheet-insertruleat">CSSStyleSheet_insertRuleAt</a></li>
 <li class="lvl3"><a href="#cssstylesheet-deleteruleat">CSSStyleSheet_deleteRuleAt</a></li>
 <li class="lvl3"><a href="#cssstylesheet-isdisabled">CSSStyleSheet_isDisabled</a></li>
@@ -1650,6 +1655,12 @@ contents included), so its elements of a defined name are upgraded before it ret
 Not_Found), a DocumentFragment's children inserted as one mutation.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Node_preInsert :: proc(c: ^Call, parent: Api_Node, node: Api_Node, child: Api_Node) -&gt; Api_Error</code></p>
+<h3 id="node-movebefore"><a class="anchor" href="#node-movebefore" aria-hidden="true">#</a><code>Node_moveBefore</code></h3>
+<div class="code"><pre><code>void Node_moveBefore(Node parent, Node node, optional Node child) raises</code></pre></div>
+<p>parent.moveBefore(node, child): Node_preInsert's insertion without the insertion steps of script elements (HTML: a
+script moved, or text moved into one, does not run).</p>
+<p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
+<p>Host: <code>Node_moveBefore :: proc(c: ^Call, parent: Api_Node, node: Api_Node, child: Api_Node) -&gt; Api_Error</code></p>
 <h3 id="node-replacechildchecked"><a class="anchor" href="#node-replacechildchecked" aria-hidden="true">#</a><code>Node_replaceChildChecked</code></h3>
 <div class="code"><pre><code>void Node_replaceChildChecked(Node parent, Node node, Node child) raises</code></pre></div>
 <p>parent.replaceChild(node, child): DOM "replace a child".</p>
@@ -2161,18 +2172,37 @@ past the end).</p>
 <p>Host: <code>CSSStyleSheet_ruleText :: proc(c: ^Call, sheet: u64, index: u32) -&gt; (string, Api_Error)</code></p>
 <h3 id="cssstylesheet-setruleselector"><a class="anchor" href="#cssstylesheet-setruleselector" aria-hidden="true">#</a><code>CSSStyleSheet_setRuleSelector</code></h3>
 <div class="code"><pre><code>string CSSStyleSheet_setRuleSelector(u64 sheet, u32 rule_id, string selector)</code></pre></div>
-<p>CSSStyleRule.selectorText = selector, on the top-level rule numbered <code>rule_id</code> (CSSStyleSheet_ruleId): the
-rule's new cssText, "" when nothing changed (the rule is gone, not a style rule, or the selector is invalid).</p>
+<p>CSSStyleRule.selectorText = selector, on the rule numbered <code>rule_id</code> (CSSStyleSheet_ruleId, CSSStyleSheet_childId):
+the rule's new cssText, "" when nothing changed (the rule is gone, not a style rule, or the selector is invalid).</p>
 <p>Host: <code>CSSStyleSheet_setRuleSelector :: proc(c: ^Call, sheet: u64, rule_id: u32, selector: string) -&gt; string</code></p>
 <h3 id="cssstylesheet-ruletextof"><a class="anchor" href="#cssstylesheet-ruletextof" aria-hidden="true">#</a><code>CSSStyleSheet_ruleTextOf</code></h3>
 <div class="code"><pre><code>string CSSStyleSheet_ruleTextOf(u64 sheet, u32 rule_id)</code></pre></div>
-<p>The cssText of the top-level rule numbered <code>rule_id</code> as it is now ("" when it is gone).</p>
+<p>The cssText of the rule numbered <code>rule_id</code> as it is now ("" when it is gone).</p>
 <p>Host: <code>CSSStyleSheet_ruleTextOf :: proc(c: ^Call, sheet: u64, rule_id: u32) -&gt; string</code></p>
 <h3 id="cssstylesheet-setrulestyle"><a class="anchor" href="#cssstylesheet-setrulestyle" aria-hidden="true">#</a><code>CSSStyleSheet_setRuleStyle</code></h3>
 <div class="code"><pre><code>void CSSStyleSheet_setRuleStyle(u64 sheet, u32 rule_id, string text)</code></pre></div>
-<p>CSSStyleRule.style written: the top-level style rule numbered <code>rule_id</code> takes the declarations of <code>text</code> (nothing
-changes for a rule that is gone, is no style rule or holds nested rules).</p>
+<p>CSSStyleRule.style written: the style rule numbered <code>rule_id</code> takes the declarations of <code>text</code> (nothing changes
+for a rule that is gone or is no style rule).</p>
 <p>Host: <code>CSSStyleSheet_setRuleStyle :: proc(c: ^Call, sheet: u64, rule_id: u32, text: string)</code></p>
+<h3 id="cssstylesheet-childcount"><a class="anchor" href="#cssstylesheet-childcount" aria-hidden="true">#</a><code>CSSStyleSheet_childCount</code></h3>
+<div class="code"><pre><code>u32 CSSStyleSheet_childCount(u64 sheet, u32 rule_id)</code></pre></div>
+<p>CSSGroupingRule.cssRules of the rule numbered <code>rule_id</code> (a group, or a style rule's nested rules): their number,
+and the number of one (0 past the end), which names it as CSSStyleSheet_ruleId names a top-level rule.</p>
+<p>Host: <code>CSSStyleSheet_childCount :: proc(c: ^Call, sheet: u64, rule_id: u32) -&gt; u32</code></p>
+<h3 id="cssstylesheet-childid"><a class="anchor" href="#cssstylesheet-childid" aria-hidden="true">#</a><code>CSSStyleSheet_childId</code></h3>
+<div class="code"><pre><code>u32 CSSStyleSheet_childId(u64 sheet, u32 rule_id, u32 index)</code></pre></div>
+<p>Host: <code>CSSStyleSheet_childId :: proc(c: ^Call, sheet: u64, rule_id: u32, index: u32) -&gt; u32</code></p>
+<h3 id="cssstylesheet-insertchildat"><a class="anchor" href="#cssstylesheet-insertchildat" aria-hidden="true">#</a><code>CSSStyleSheet_insertChildAt</code></h3>
+<div class="code"><pre><code>u32 CSSStyleSheet_insertChildAt(u64 sheet, u32 rule_id, string rule, u32 index) raises</code></pre></div>
+<p>CSSGroupingRule.insertRule(rule, index) on the rule numbered <code>rule_id</code>: Index_Size past the end, Syntax when
+<code>rule</code> is not one rule (inside a style rule: nor declarations), Hierarchy when it cannot be there; the index.</p>
+<p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
+<p>Host: <code>CSSStyleSheet_insertChildAt :: proc(c: ^Call, sheet: u64, rule_id: u32, rule: string, index: u32) -&gt; (u32, Api_Error)</code></p>
+<h3 id="cssstylesheet-deletechildat"><a class="anchor" href="#cssstylesheet-deletechildat" aria-hidden="true">#</a><code>CSSStyleSheet_deleteChildAt</code></h3>
+<div class="code"><pre><code>void CSSStyleSheet_deleteChildAt(u64 sheet, u32 rule_id, u32 index) raises</code></pre></div>
+<p>CSSGroupingRule.deleteRule(index) on the rule numbered <code>rule_id</code>: Index_Size past the end.</p>
+<p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
+<p>Host: <code>CSSStyleSheet_deleteChildAt :: proc(c: ^Call, sheet: u64, rule_id: u32, index: u32) -&gt; Api_Error</code></p>
 <h3 id="cssstylesheet-insertruleat"><a class="anchor" href="#cssstylesheet-insertruleat" aria-hidden="true">#</a><code>CSSStyleSheet_insertRuleAt</code></h3>
 <div class="code"><pre><code>u32 CSSStyleSheet_insertRuleAt(u64 sheet, string rule, u32 index) raises</code></pre></div>
 <p>insertRule(rule, index): Index_Size past the end, Syntax when <code>rule</code> is not one rule; the index.</p>
