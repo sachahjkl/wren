@@ -712,8 +712,8 @@ release :: proc(s: ^Session, at: Point, space := Space.Page, button := Button.Le
 	answer(s, &o, browser.control_release(s.app, &c, browser.control_point(s.app, at, space), browser.control_button(button)), "release", loc)
 }
 
-// The wheel at a point: `notches` positive goes down (one is WHEEL_NOTCH px); `ctrl`: with Ctrl held.
-scroll :: proc(s: ^Session, notches: f64, at := Point{api.SCROLL_X, api.SCROLL_Y}, space := Space.Page, ctrl := false, loc := #caller_location) {
+// The wheel at a point: `notches` positive goes down (one is WHEEL_NOTCH px), `across` positive right (a touchpad's sideways wheel); `ctrl`: with Ctrl held.
+scroll :: proc(s: ^Session, notches: f64, at := Point{api.SCROLL_X, api.SCROLL_Y}, space := Space.Page, ctrl := false, across := 0.0, loc := #caller_location) {
 	context = s.ctx
 	enter(s, loc)
 	o: browser.Control_Outcome
@@ -721,7 +721,7 @@ scroll :: proc(s: ^Session, notches: f64, at := Point{api.SCROLL_X, api.SCROLL_Y
 	c := browser.control_call(&o)
 	mods: platform.Modifiers
 	if ctrl { mods += {.Ctrl} }
-	answer(s, &o, browser.control_wheel(s.app, &c, browser.control_point(s.app, at, space), {0, notches * WHEEL_NOTCH}, mods), "scroll", loc)
+	answer(s, &o, browser.control_wheel(s.app, &c, browser.control_point(s.app, at, space), {across * WHEEL_NOTCH, notches * WHEEL_NOTCH}, mods), "scroll", loc)
 }
 WHEEL_NOTCH :: 100
 
