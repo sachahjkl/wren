@@ -98,7 +98,7 @@ forms_attach :: proc(p: ^Page) {
 		inert = proc(user: rawptr, h: base.Handle) -> bool { return node_inert((^Page)(user), h) },
 		follow_link = proc(user: rawptr, link: base.Handle) { navigation_follow_script_link((^Page)(user), link) },
 	})
-	p.style_state.controls = style.Control_Provider{query = forms_style_query, user = p}
+	p.style_state.controls = style.Control_Provider{query = forms_style_query, settle = forms_style_settle, user = p}
 }
 
 @(private)
@@ -236,6 +236,20 @@ forms_plan_picker :: proc(p: ^Page, input: base.Handle, color: bool) {
 			pf.embedder.pick_files(pf.embedder.user, p, input)
 		}
 	}, p, p.scope)
+}
+
+// Before a parallel style pass, on its thread: every query of every control answered once, so that what the forms
+// model fills in lazily (a control, its checkedness, a radio group's list) is there before the style threads ask, and
+// their queries only read (two threads that built a radio group's list at once freed it twice: a crash on Linux).
+@(private)
+forms_style_settle :: proc(user: rawptr) {
+	p := (^Page)(user)
+	if p.formctl == nil { return }
+	it: u32
+	for h, n in base.pool_next(&p.doc.nodes, &it) {   // every node, shadow trees' too: the threads style them
+		if n.kind != .Element || (forms.kind_of(n) == .None && n.name != "progress") { continue }
+		for q in style.Control_Query { _, _ = forms_style_query(user, h, q) }
+	}
 }
 
 // The style engine's view of control state.
