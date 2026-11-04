@@ -212,6 +212,7 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 	if bw := active_window(app); bw.focus_address {
 		bw.focus_address = false
 		if b := res.box; b != nil {   // the field's own box: it sits in the address bar's container
+			if ui.focus_key() != b.key { urlbar_view(app).key_focus = true }   // the list waits for a click (urlbar_keys)
 			ui.set_focus(b.key)
 			ui.field_select_all(&wnd.address)
 			forms_page_blur(app)

@@ -20,7 +20,7 @@ package browser
 //   * The cross at the end of a history row (shown on the row under the pointer or the chosen one, red under the
 //     pointer) removes every visit of that address from the history at once (written to the profile right away);
 //     the row goes, the list stays open with what was typed, the next row takes the choice.
-//   * Before anything is typed (browser.urlbar.top_sites): a field that gets the keyboard (a click, Ctrl+L, a new tab)
+//   * Before anything is typed (browser.urlbar.top_sites): a field that is clicked (not one that a key focuses: Ctrl+T, Ctrl+L)
 //     lists the pages visited most and most lately (frecency), without the one shown, whatever the field holds. No row is
 //     chosen: Enter does what the field says, Down / Up chooses the first / last row, a click opens one.
 // The rows are made again only when the text or the history changes; with the pointer still, nothing is drawn.
@@ -57,9 +57,9 @@ URLBAR_PREFS := [?]config.Def{
 	{name = "browser.urlbar.min_chars", kind = .Int, default = {i = 1}, bounded = true, min = 1, max = 20,
 		description = "Characters typed before the suggestions show."},
 	{name = "browser.urlbar.top_sites", kind = .Bool, default = {b = true},
-		description = "When the address bar gets the keyboard (a click, Ctrl+L, a new tab), list the pages visited most and most lately before anything is typed; Enter still opens what the field shows."},
-	{name = "browser.newtab.focus_address", kind = .Bool, default = {b = false},
-		description = "A new tab or window (Ctrl+T, Ctrl+N, the + of the strip) puts the keyboard in the address bar, as Chromium does. Off: the new tab shows its page and the address bar waits for a click or Ctrl+L."},
+		description = "A click in the address bar lists the pages visited most and most lately before anything is typed (the keyboard put there by a new tab, Ctrl+L or Tab shows no list until a click or a letter); Enter still opens what the field shows."},
+	{name = "browser.newtab.focus_address", kind = .Bool, default = {b = true},
+		description = "A new tab or window (Ctrl+T, Ctrl+N, the + of the strip) puts the keyboard in the address bar, as Chromium does, with no list of suggestions until a click or a letter. Off: the new tab shows its page and the address bar waits for a click or Ctrl+L."},
 }
 
 register_urlbar_prefs :: proc(p: ^config.Prefs) { config.register(p, URLBAR_PREFS[:]) }
@@ -109,6 +109,7 @@ Urlbar_View :: struct {
 	engine_pick:  int,                 // the engine the search rows use this time (Ctrl+Up / Down), index + 1; 0: what the text says
 	zero:         bool,                // the list is the one of an address bar that got the keyboard: the pages visited, whatever the field shows
 	idle:         bool,                // ... and no row is chosen yet (Enter does what the field says; the first Down / Up chooses one)
+	key_focus:    bool,                // the keyboard was put there (a new tab, Ctrl+L, Tab): no list until a click or a letter
 }
 
 Urlbar :: struct {
@@ -488,8 +489,12 @@ urlbar_keys :: proc(app: ^App, t: ^Tab) {
 		uv.tab_id = t != nil ? t.id : 0
 		// the index in step now (a first build, or the day's new weights), not at the first letter typed
 		if app.ub.cfg.enabled && app.ub.cfg.history && app.hcfg.global { _ = urlbar_index_ready(app, age = true) }
-		if app.ub.cfg.top_sites { uv.zero, uv.idle = true, true; urlbar_refresh(app, .None) }
+		if app.ub.cfg.top_sites && !uv.key_focus { uv.zero, uv.idle = true, true; urlbar_refresh(app, .None) }
+	} else if app.ub.cfg.top_sites && !uv.open && ui.mouse_pressed() {
+		// a click on the field that has the keyboard already (after a new tab or Ctrl+L) opens the list
+		if b := ui.box_from_key(akey); b != nil && draw.rect_contains(b.rect, ui.mouse_pos()) { uv.zero, uv.idle = true, true; urlbar_refresh(app, .None) }
 	}
+	uv.key_focus = false
 	uv.focused = true
 	if t != nil && t.id != uv.tab_id { urlbar_close(uv); uv.tab_id = t.id }
 	if uv.open && uv.rows_serial != app.ghist.serial { sel := uv.sel; urlbar_refresh(app, .Keep); urlbar_choose(app, sel) }
