@@ -78,6 +78,7 @@
 <li><a href="#what-changed-round-20-the-loop-jit-takes-properties-and-calls">What changed, round 20: the loop JIT takes properties and calls</a></li>
 <li><a href="#what-changed-round-21-the-jit-compiles-functions-calls-them-directly-makes-objects-and-strings-reads-dom-attributes">What changed, round 21: the JIT compiles functions, calls them directly, makes objects and strings, reads DOM attributes</a></li>
 <li><a href="#what-changed-round-22-what-the-user-does-while-the-pages-script-is-busy">What changed, round 22: what the user does while the page's script is busy</a></li>
+<li><a href="#what-changed-round-23-document-read-by-compiled-code-objects-allocated-inline-accessors-of-the-scripts">What changed, round 23: document read by compiled code, objects allocated inline, accessors of the script's</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
@@ -1923,6 +1924,65 @@ refresh. Making <code>transform</code> / <code>opacity</code> animations tick wi
 keyframes resolved to matrices and alphas per frame, the chunks of the animated spaces drawn with them): the next step of
 this list, as is a container's scroll bar and the wheel over a scroll container (both need the layout's offsets of the
 container, written only by the page's turn).</p>
+<h2 id="what-changed-round-23-document-read-by-compiled-code-objects-allocated-inline-accessors-of-the-scripts"><a class="anchor" href="#what-changed-round-23-document-read-by-compiled-code-objects-allocated-inline-accessors-of-the-scripts" aria-hidden="true">#</a>What changed, round 23: <code>document</code> read by compiled code, objects allocated inline, accessors of the script's</h2>
+<p>What round 21 left, in its order (<a href="../../docs/engine/jit/">engine/jit.md</a>). Measured as round 21 did (<code>jsengine run -jit -image
+&lt;engine&gt;</code>, every image of the round in turn, 5 rounds, the median and the range in brackets; nodes10k in <code>jspage
+-image</code>, a timed copy: <code>build()</code>'s p50 over 400 frames). Other agents ran test suites on the machine for much of the
+round: each run waited for the machine to be quiet (under 1.5 cores busy besides it) and ran at a high priority; series
+taken while it was busy are said so.</p>
+<ol>
+<li><strong>A global's accessor</strong> (<code>jit_global</code>, <code>j_call_getter</code>). <code>window.document</code> is the global object's own accessor; a
+read of a global has no object on the stack to put the thrower in. Kept: when the next instruction reads a named
+property of the value (<code>document.createElement</code>), the thrower goes in the result's place with that property as its
+accessor, and the throw exit resumes at the next instruction, which throws the exception pending. The interpreter's
+code is not touched (a throw exit of its own in its back edges was 4 % of nodes10k with the JIT off, round 20). The
+loop was still refused after that: the callee <code>document.createElement</code> was not known at translation (the value of
+a getter); a call whose callee the translation cannot tell now leaves through a learn exit once
+(<code>JIT_AUX_CALLEE</code>, <code>Jit_Site.callee</code>), and a read of an unknown object at a site that learned its shape takes what
+the prototype holds for its hint. nodes10k <code>build()</code> p50, 7 interleaved runs (the quiet ones): with the JIT 9.1
+(8.8-9.1) -&gt; 7.9 (7.65-8.1) ms, without it 9.0 -&gt; 9.1 ms (the same). In <code>macro.js</code> the object literal was 57 -&gt; 66
+ns at this step alone (code placement, not explained further), made 28 by step 2.</li>
+<li><strong>Objects allocated inline</strong> (<code>j_alloc</code>, <code>j_ctor_proto</code>). <code>{}</code> cost 58 ns through the helper, of which the
+allocation itself is little: the call, <code>shape_root_for</code>'s map, the temporary root and its drop. The code now pops a
+block of the pool's class from the free list (zeroed) or cuts it from the bump chunk, links the cell, counts it,
+charges the heap and its peak, and writes the object, as <code>cell_new</code> and <code>object_new_shape</code> do; a construction reads
+the constructor's <code>prototype</code> slot (its shape and the value guarded). The collector's contract is the same: no
+allocation collects, the object is only in the code's hands until its next call or exit. <code>new Point(i, i)</code> 110
+(107-160) -&gt; 51 (50-53) ns, <code>{a, b, c}</code> 56.7 (56.3-59.8) -&gt; 28.4 (27.4-30.0) ns; array literals keep the helper
+(<code>Array_Data</code> and its values: 83 ns).</li>
+<li><strong>The two slowdowns with the JIT off</strong>, bisected by engine image (round 21's commits, only <code>src/engine/jsrt</code> and
+the glue's <code>jit.odin</code> taken from each, 7 runs): a closure made and called in a loop 531 (524-558) ns before round 21,
+522 at its first step, 565 from its third (<code>shape_transition</code> factored out of <code>add_property</code>, so the JIT could
+append properties: a closure's four properties each paid the call), 540 (537-562) with it inlined again (kept;
+round 21 measured that change as nothing, on a noisier machine). try/catch in a loop was not slower: 68.4
+(67.7-71.8) before round 21, 69.3 (68.0-73.1) after, 67.4 with this; the 6 % was noise.</li>
+<li><strong>Getters and setters of the script's</strong> (<code>j_call_setter</code>, <code>jit_setter</code>, <code>jit_accessor_call</code>). Through the helper,
+as compiled code calls a function (the getter's frame pushed, its compiled code run): a getter in a loop 151
+(151-153) -&gt; 78 (77-80) ns, a class's 168 -&gt; 77 ns, a setter 145 (141-412) -&gt; 81 (80-126) ns, <code>macro.js</code>'s getter
+access 184 -&gt; 92 ns. The accessor's call out of line in the helper made Map's <code>size</code> 37 -&gt; 44 ns; inlined, 36.7.
+The helpers now set the frame's pc to the instruction after the access, as the hot loop does.</li>
+</ol>
+<div class="table-box"><table>
+<thead><tr><th></th><th>base</th><th>1: <code>document</code></th><th>2: allocation</th><th>3, 4</th></tr></thead>
+<tbody>
+<tr><td>nodes10k <code>build()</code> p50, JIT on / off</td><td>9.1 / 9.0 ms</td><td>7.9 / 9.1 ms</td><td></td><td>7.44 (7.41-7.84) / 8.74 (8.67-9.08) ms (base in this series 8.63 (8.47-8.78) / 8.89 (8.73-9.01))</td></tr>
+<tr><td><code>new Point(i, i)</code></td><td>110 (107-160) ns</td><td>118 ns</td><td>51 (50-53) ns</td><td></td></tr>
+<tr><td>object literal <code>{a, b, c}</code></td><td>56.7 (56.3-59.8) ns</td><td>66.0 (60.6-69.6) ns</td><td>28.4 (27.4-30.0) ns</td><td></td></tr>
+<tr><td>a closure made and called, JIT off</td><td>565 (556-586) ns</td><td></td><td></td><td>540 (537-562) ns (531 before round 21)</td></tr>
+<tr><td>a getter, a setter of the script's</td><td>151, 145 ns</td><td></td><td>147, 144 ns</td><td>78, 81 ns</td></tr>
+</tbody>
+</table></div>
+<p>Every other case of <code>micro.js</code>, <code>macro.js</code> and <code>realworld.js</code> within its range at steps 1 and 2 (the quiet series); the
+checksums the same in every build.</p>
+<p>Tests: jitcheck.js 762 -&gt; 779 lines compared (a global accessor read, throwing once, its value kept, replaced, deleted;
+constructions with their own prototypes and one replaced while running, literals grown and frozen; getters and setters
+of the script's counting, throwing once, changing shapes and arrays, recursing; a native setter), also with
+<code>-jit-step</code>, <code>-jit-threshold 30</code> and under <code>JSRT_GC_STRESS=8192</code> with <code>JSRT_GC_POISON</code>; <code>examples/jsweb/jit_dom.js</code>: a
+compiled loop that reads <code>document</code>; test262 with the JIT (thresholds 2 and 1) and interpreted 49/82220, 0
+regressions; <code>judge capi</code> 64 checks.</p>
+<p>Not done: array literals allocated inline; a direct call of a getter of the script's (through the helper it is 78 ns,
+a direct call of a function about 25); <code>new F()</code> of a function without an operand stack (<code>function Empty() {}</code>: not
+compiled whole, called through the helper, 190 ns); callees with branches inlined, polymorphic inlining.</p>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
@@ -2272,6 +2332,7 @@ screen's whole wait, at most a refresh) still waits for its end: the latency obj
 <li><a href="../../docs/releases/v0.6.26/">Wren 0.6.26</a></li>
 <li><a href="../../docs/releases/v0.6.27/">Wren 0.6.27</a></li>
 <li><a href="../../docs/releases/v0.6.28/">Wren 0.6.28</a></li>
+<li><a href="../../docs/releases/v0.6.29/">Wren 0.6.29</a></li>
 <li><a href="../../docs/releases/v0.6.3/">Wren 0.6.3</a></li>
 <li><a href="../../docs/releases/v0.6.4/">Wren 0.6.4</a></li>
 <li><a href="../../docs/releases/v0.6.5/">Wren 0.6.5</a></li>

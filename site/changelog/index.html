@@ -47,11 +47,27 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-6-28">
+      <article class="release latest" id="v0-6-29">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-11-04">November 4, 2026</time></p>
-          <div class="release-title"><h3>0.6.28</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.6.29</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>Signed updates (Windows)</strong>: a release carries a manifest signed with a key of its own. About Wren checks for a newer release and, when you press "Install the update", downloads the program, compares its length and SHA-256 with the signed ones, and swaps it in with a way back. Nothing is installed without the button. The channel (address, files, key, signature required) is configurable: see docs/updates.md.</li>
+            <li><strong>Developer tools</strong>: find in the panels, a console drawer, a colour picker, style values.</li>
+            <li><strong>Faster scripts</strong>: the JIT compiles whole functions, calls, objects, strings and DOM getters.</li>
+            <li><strong>Compatibility</strong>: SVG <code>foreignObject</code>, CSS module scripts, subresource integrity, script preparation, CSSOM rules and <code>innerText</code>, among many fixes (see the list below).</li>
+            <li><strong>Help</strong>: the licence help button opens a GitHub issue form with your order number filled in.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.6.29.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.6.29">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-6-28">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-11-04">November 4, 2026</time></p>
+          <div class="release-title"><h3>0.6.28</h3></div>
           <ul class="release-list">
             <li><strong>Classic scroll bars</strong>: page and element scroll bars take their room, with arrows at their ends (<code>documentElement.clientWidth</code> is the window less the bar, as in Chrome on Windows); <code>scrollbar-gutter</code> and <code>scrollbar-width</code> apply. The old overlay bars are <code>layout.scrollbar.overlay</code>.</li>
             <li><strong>Developer tools you dock</strong>: drag a tab onto a panel or an edge to split, onto a strip to join it, out to float it; panes resize from a few em to nearly the whole room and fold; the layout is kept in the profile.</li>
