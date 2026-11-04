@@ -10,6 +10,31 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.6.30] - 2026-11-04
+
+### Added
+- A name under `.localhost` (`wren.localhost`, `a.b.localhost`) resolves to the loopback address in Wren itself, as in Chrome and Firefox (RFC 6761): the system's resolver may not answer it (Windows says "host unknown"). `wrentool shots -Site <address>` takes the demo pages from a server behind such a name (portless: docs/testing.md), so a screenshot's address bar shows `wren.localhost` and not the path of a checkout.
+- **Scroll boxes follow the wheel and their scroll bar's thumb while a page's script is busy** (`src/browser/shell_shown.odin`): the box under the pointer scrolls at once, painted from the page's last layout, and takes the offset at the page's turn with its `scroll` event; the wheel over a box no longer scrolls the document under it.
+- **The caret of a focused field keeps blinking while the page's script is busy** (`src/browser/forms_shell.odin` `caret_phase`).
+- **CSS animations of transform and opacity go on while a page's script is busy** (`src/browser/shell_shown.odin`): the interface's frames drawn under a long script take their values from the page's timeline at their own time, without moving it, and the compositor applies them; the page's turn goes on from the same clock (nothing jumps, `getAnimations()` reads what it would have). Animations of other properties, of elements a script animates, and an opacity that was 1 at the last layout wait for the page as before.
+- **CSS Nesting's nested declarations** (`CSSNestedDeclarations`): declarations after a nested rule apply after it, as their own rule in `cssRules` with its `style` and `cssText`; a nested selector without `&`, or one starting with a combinator, reads back with its implied `& ` (`.b` is `& .b`), and `&div` is invalid.
+
+### Changed
+- With the art new tab on, the first painting is fetched a moment after the start (2.5 s), so the first new tab already has one; until then the page shows a spinner and "Fetching a painting..." instead of a bare gradient, and is replaced by the painting as soon as it is ready.
+- The gallery (site and README) shows the developer tools, the command palette, the content blocker's panel and about:wren: four new shots in `wrentool shots` (taken with the release's own program).
+- **A new tab puts the keyboard in the address bar, with no list until a click** (`browser.newtab.focus_address`, now on by default; `src/browser/urlbar.odin`): Ctrl+T, Ctrl+N and the + of the strip focus the field as Chromium does, and the list of pages visited (`browser.urlbar.top_sites`) opens only for a click in the field (or a letter typed), not for the keyboard put there by a new tab, Ctrl+L or Tab.
+
+### Fixed
+- The clickable zones over the tabs of the home page's picture match its tabs again (they were set for the earlier style of the tab strip).
+- **A crash while styling a page with radio buttons on several threads** (`src/page/bindings_forms.odin`, `style.Control_Provider.settle`): the style threads of a parallel pass asked the forms model for `:checked`, and the model filled itself in lazily (a control made, checkedness synced, a radio group's list rebuilt): two threads rebuilding the list at once freed it twice, and Wren aborted (seen on Linux on Wikipedia). The pass's thread now settles every control before the threads start, and their queries only read.
+- **A click a script dispatches activates as a user's does**: `dispatchEvent(new MouseEvent("click"))` on a label clicks its control, on a check box or a radio button checks it (with `input` and `change`), on a link follows it; one that does not bubble activates its target only, and a submit button its listener disabled does not submit.
+- **`<details>` fires `toggle` whenever `open` is added or removed** (`details.open = true`, `setAttribute`), from a task, coalesced as HTML says; it fired only for a click on its summary.
+- **`unhandledrejection` at the right moment**: it is fired from a task queued when the microtask checkpoint ends, one for each checkpoint's rejections, so a task queued before it can still handle a rejection; `rejectionhandled` from a task queued when the handler is attached.
+- **`document.write` after a written external script**: what a script writes after it waits behind it in the order written (it went before what was written earlier), and what the external script writes comes right after it.
+
+### Security
+- **Errors of another origin's script are muted**: an uncaught error of a classic script fetched from another origin without CORS reaches `window.onerror` as `Script error.` with no file, line or error object, as in other browsers; and a `data:` URL holding parentheses is the whole file name of its script's errors.
+
 ## [0.6.29] - 2026-11-04
 
 ### Added
@@ -1070,7 +1095,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.6.29...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.6.30...HEAD
+[0.6.30]: https://github.com/sachahjkl/wren/compare/v0.6.29...v0.6.30
 [0.6.29]: https://github.com/sachahjkl/wren/compare/v0.6.28...v0.6.29
 [0.6.28]: https://github.com/sachahjkl/wren/compare/v0.6.27...v0.6.28
 [0.6.27]: https://github.com/sachahjkl/wren/compare/v0.6.26...v0.6.27
