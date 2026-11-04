@@ -1942,12 +1942,27 @@ innermost first. Handles, 8 bytes each.</p>
 <p>Host: <code>CSSStyleSheet_replaceText :: proc(c: ^Call, sheet: u64, text: string) -&gt; Api_Error</code></p>
 <h3 id="cssstylesheet-rulecount"><a class="anchor" href="#cssstylesheet-rulecount" aria-hidden="true">#</a><code>CSSStyleSheet_ruleCount</code></h3>
 <div class="code"><pre><code>u32 CSSStyleSheet_ruleCount(u64 sheet)</code></pre></div>
-<p>The number of top-level rules, and the text of one (Index_Size past the end).</p>
+<p>The number of top-level rules, and the cssText of one, CSSOM's serialization of the rule as parsed (Index_Size
+past the end).</p>
 <p>Host: <code>CSSStyleSheet_ruleCount :: proc(c: ^Call, sheet: u64) -&gt; u32</code></p>
 <h3 id="cssstylesheet-ruletext"><a class="anchor" href="#cssstylesheet-ruletext" aria-hidden="true">#</a><code>CSSStyleSheet_ruleText</code></h3>
 <div class="code"><pre><code>string CSSStyleSheet_ruleText(u64 sheet, u32 index) raises</code></pre></div>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>CSSStyleSheet_ruleText :: proc(c: ^Call, sheet: u64, index: u32) -&gt; (string, Api_Error)</code></p>
+<h3 id="cssstylesheet-setruleselector"><a class="anchor" href="#cssstylesheet-setruleselector" aria-hidden="true">#</a><code>CSSStyleSheet_setRuleSelector</code></h3>
+<div class="code"><pre><code>string CSSStyleSheet_setRuleSelector(u64 sheet, u32 rule_id, string selector)</code></pre></div>
+<p>CSSStyleRule.selectorText = selector, on the top-level rule numbered <code>rule_id</code> (CSSStyleSheet_ruleId): the
+rule's new cssText, "" when nothing changed (the rule is gone, not a style rule, or the selector is invalid).</p>
+<p>Host: <code>CSSStyleSheet_setRuleSelector :: proc(c: ^Call, sheet: u64, rule_id: u32, selector: string) -&gt; string</code></p>
+<h3 id="cssstylesheet-ruletextof"><a class="anchor" href="#cssstylesheet-ruletextof" aria-hidden="true">#</a><code>CSSStyleSheet_ruleTextOf</code></h3>
+<div class="code"><pre><code>string CSSStyleSheet_ruleTextOf(u64 sheet, u32 rule_id)</code></pre></div>
+<p>The cssText of the top-level rule numbered <code>rule_id</code> as it is now ("" when it is gone).</p>
+<p>Host: <code>CSSStyleSheet_ruleTextOf :: proc(c: ^Call, sheet: u64, rule_id: u32) -&gt; string</code></p>
+<h3 id="cssstylesheet-setrulestyle"><a class="anchor" href="#cssstylesheet-setrulestyle" aria-hidden="true">#</a><code>CSSStyleSheet_setRuleStyle</code></h3>
+<div class="code"><pre><code>void CSSStyleSheet_setRuleStyle(u64 sheet, u32 rule_id, string text)</code></pre></div>
+<p>CSSStyleRule.style written: the top-level style rule numbered <code>rule_id</code> takes the declarations of <code>text</code> (nothing
+changes for a rule that is gone, is no style rule or holds nested rules).</p>
+<p>Host: <code>CSSStyleSheet_setRuleStyle :: proc(c: ^Call, sheet: u64, rule_id: u32, text: string)</code></p>
 <h3 id="cssstylesheet-insertruleat"><a class="anchor" href="#cssstylesheet-insertruleat" aria-hidden="true">#</a><code>CSSStyleSheet_insertRuleAt</code></h3>
 <div class="code"><pre><code>u32 CSSStyleSheet_insertRuleAt(u64 sheet, string rule, u32 index) raises</code></pre></div>
 <p>insertRule(rule, index): Index_Size past the end, Syntax when <code>rule</code> is not one rule; the index.</p>
@@ -2384,6 +2399,9 @@ well-formed-checked). Range past page.max_fetch_bytes.</p>
 <li class="lvl3"><a href="#cssstylesheet-replacetext">CSSStyleSheet_replaceText</a></li>
 <li class="lvl3"><a href="#cssstylesheet-rulecount">CSSStyleSheet_ruleCount</a></li>
 <li class="lvl3"><a href="#cssstylesheet-ruletext">CSSStyleSheet_ruleText</a></li>
+<li class="lvl3"><a href="#cssstylesheet-setruleselector">CSSStyleSheet_setRuleSelector</a></li>
+<li class="lvl3"><a href="#cssstylesheet-ruletextof">CSSStyleSheet_ruleTextOf</a></li>
+<li class="lvl3"><a href="#cssstylesheet-setrulestyle">CSSStyleSheet_setRuleStyle</a></li>
 <li class="lvl3"><a href="#cssstylesheet-insertruleat">CSSStyleSheet_insertRuleAt</a></li>
 <li class="lvl3"><a href="#cssstylesheet-deleteruleat">CSSStyleSheet_deleteRuleAt</a></li>
 <li class="lvl3"><a href="#cssstylesheet-isdisabled">CSSStyleSheet_isDisabled</a></li>
