@@ -219,8 +219,8 @@ group_sig_at :: proc(e: ^Effects, c: ^Comp, g: i32, anchor: draw.Vec2) -> u64 {
 	h := fx_mix(0x67726f7570, u64(transmute(u8)gr.effects))
 	h = fx_f32(h, gr.alpha)
 	if cs != nil {
-		h = fx_filters(h, css_filters(cs.filter, l.scale))
-		h = fx_filters(h, css_filters(cs.backdrop_filter, l.scale))
+		h = fx_filters(h, css_filters(cs.filter, filter_scale(e, gr)))
+		h = fx_filters(h, css_filters(cs.backdrop_filter, filter_scale(e, gr)))
 		h = fx_mix(h, u64(cs.mix_blend_mode))
 		if .Clip_Path in gr.effects {
 			sh := lay.clip_path_shape(l, gr.box)

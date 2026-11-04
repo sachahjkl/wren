@@ -389,7 +389,7 @@ Page_Images :: struct {
 	started:    int,                    // downloads started (statistics, tests)
 	pump_armed: bool,                   // a turn of the loop will start what is queued (images_pump_soon)
 	shared:     int,                    // entries taken from the cache
-	svgs:       map[base.Handle]^Inline_Svg,   // inline <svg> elements drawn so far (inline_svg.odin)
+	svgs:       map[Svg_Key]^Inline_Svg,   // inline <svg> elements (and parts of their pictures) drawn so far (inline_svg.odin)
 	svg_ids:    map[string]base.Handle, // id -> element, for the references of inline <svg> (rebuilt on mutation)
 	svg_ids_at: u64,
 }

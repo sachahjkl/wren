@@ -395,14 +395,15 @@ content_radii :: proc(cs: ^style.Computed, border, content: draw.Rect, scale: f3
 	return padding_radii(outer, {content.min.y - border.min.y, border.max.x - content.max.x, border.max.y - content.max.y, content.min.x - border.min.x})
 }
 
-// The content of an image element; false for other replaced elements (the next painter takes them).
-images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, fid: font.Font_Id, font_size, scale: f32) -> bool {
+// The content of an image element; false for other replaced elements (the next painter takes them). `parts`: of an
+// inline <svg>'s picture, those the item draws.
+images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, fid: font.Font_Id, font_size, scale: f32, parts: lay.Svg_Parts) -> bool {
 	p := the_app.images_shell.page
 	if p == nil || d == nil || p.doc != d { return false }
 	n := dom.get(d, node)
 	if n == nil || n.kind != .Element { return false }
 	if n.name == "svg" {
-		paint_inline_svg(dc, node, content, scale)
+		paint_inline_svg(dc, node, content, scale, parts)
 		return true
 	}
 	if n.name == "video" { return video_paint_content(dc, p, node, content, border, cs, scale) }   // (video_shell.odin)
@@ -508,11 +509,11 @@ canvas_texture_for :: proc(v: page.Canvas_View) -> (Image_Texture, bool) {
 // An inline <svg>: its markup rendered at the content box's device size (nothing while it is being rendered, nothing
 // when it cannot be: an inline SVG has no broken-image icon).
 @(private = "file")
-paint_inline_svg :: proc(dc: ^draw.Context, node: base.Handle, content: draw.Rect, scale: f32) {
+paint_inline_svg :: proc(dc: ^draw.Context, node: base.Handle, content: draw.Rect, scale: f32, parts: lay.Svg_Parts) {
 	s := max(scale, 0.01)
 	cw, ch := content.max.x - content.min.x, content.max.y - content.min.y
 	if cw < 0.5 || ch < 0.5 { return }
-	v := page.inline_svg_view(the_app.images_shell.page, node, cw / s, ch / s)
+	v := page.inline_svg_view(the_app.images_shell.page, node, cw / s, ch / s, parts)
 	if v.state != .Ready { return }
 	ww, wh := want_size(content)
 	fp := page.frame_pixels(v.id, the_app.images_shell.now_ms, ww, wh, IMAGE_PIXELS_PRIORITY_ON_SCREEN)

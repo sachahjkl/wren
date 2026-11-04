@@ -357,6 +357,7 @@ Display_Item :: struct {
 	kind:     Item_Kind,
 	flags:    Item_Flags,
 	level:    u8,                   // Text: bidi embedding level of its text (odd: right to left)
+	parts:    Svg_Parts,            // Replaced <svg>: the parts of its picture drawn here (foreign_object.odin)
 	deco:     style.Decorations,    // Text: underline / overline / line-through to draw
 	space, clip, group: i32,
 	box:      i32,

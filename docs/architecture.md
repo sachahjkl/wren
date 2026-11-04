@@ -150,9 +150,11 @@ GIF, BMP, ICO and TIFF to WIC as before (`src/images/parity_test_windows.odin` c
   hostile documents are bounded by `images.svg.*` (nodes, depth, entity and `<use>` expansion, rendering cost). Inline
   `<svg>` elements of HTML documents are drawn by the same renderer (`src/page/inline_svg.odin`); the HTML of their
   `<foreignObject>` elements is laid out and painted by Wren's own layout, in the SVG's coordinate space: the viewBox
-  mapping and the transforms around it, a `<clipPath>` as a polygon clip, `feGaussianBlur` filters as `blur()`
-  (`src/layout/foreign_object.odin`). Not yet: shapes drawn after a foreignObject covering it (it paints over the whole
-  picture), objectBoundingBox clips, other filters, a foreignObject inside a nested `<svg>`.
+  mapping, nested `<svg>` viewports and the transforms around it, its `<clipPath>`s (user space or bounding box units,
+  intersected) as a polygon clip, `feGaussianBlur` filters as `blur()` (`src/layout/foreign_object.odin`). The picture
+  is drawn in parts split at the foreign objects, so that shapes drawn after one cover it (`Svg_Parts`). An inline
+  `<svg>` clips to its viewport (`svg:not(:root) { overflow: hidden }`). Not yet: other filters, the clip of a nested
+  viewport.
 - **WebP**: image-webp 0.2.4 (pure safe Rust: lossy, lossless, alpha, animation).
 - **AVIF**: zenavif-parse 0.6.2 (container: alpha, grids, sequences, colr / irot / imir / clap) + rav1d 1.1.0 (the
   Rust port of dav1d, with dav1d's assembly: NASM 2.16.03 is fetched and checked by SHA-256 by the script).

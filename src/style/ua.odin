@@ -79,6 +79,8 @@ br { display: inline; }
 center { text-align: -webkit-center; }
 img, video, canvas, iframe, embed, object { display: inline-block; }
 img { overflow: clip; }
+/* (SVG 2 §6.4: an inline <svg> clips what it holds, its foreign objects, to its viewport) */
+svg:not(:root) { overflow: hidden; }
 iframe { border: 2px inset; }
 button, input, select, textarea, meter, progress { display: inline-block; }
 /* (Chromium's -webkit-small-control on Windows: 13.333px Arial, the rest of the font shorthand reset; textarea and

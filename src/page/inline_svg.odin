@@ -14,7 +14,8 @@ package page
 //     page, `fill="url(#gradient)"`), copied into a <defs>, transitively;
 //   * without a viewBox, the size of its box (the document's coordinates are then CSS px, not scaled).
 // Scripts and event handler attributes are left out, and so are <foreignObject> elements: the layout makes boxes of
-// their HTML, drawn over the picture in the SVG's coordinate space (layout/foreign_object.odin). The
+// their HTML, drawn in the SVG's coordinate space (layout/foreign_object.odin) between parts of the picture, each its own
+// markup without the shapes of the others (Svg_Key), so that what follows a foreign object covers it. The
 // markup is made again when the document mutates or styles change, and a new entry is used when it differs.
 // Limits: images.svg.inline_max_bytes on the markup, then the images.svg.* limits of every SVG document.
 
@@ -24,10 +25,17 @@ import "core:strconv"
 import "core:strings"
 import "wb:base"
 import "wb:dom"
+import lay "wb:layout"
 import "wb:style"
 
 // How many referenced elements are copied into one serialized <svg>.
 INLINE_SVG_MAX_COPIED_REFS :: 4096
+
+// One picture of an inline <svg>: all of it, or the parts between two of its foreign objects (layout/foreign_object.odin).
+Svg_Key :: struct {
+	node:  base.Handle,
+	parts: lay.Svg_Parts,
+}
 
 Inline_Svg :: struct {
 	node:         base.Handle,
@@ -68,14 +76,14 @@ inline_svgs_reset :: proc(p: ^Page) {
 // After a mutation: records of elements that are gone (or are no longer <svg>) go.
 @(private)
 inline_svgs_prune :: proc(p: ^Page) {
-	gone := make([dynamic]base.Handle, 0, 4, context.temp_allocator)
-	for h in p.images.svgs {
-		n := dom.get(p.doc, h)
-		if n == nil || n.kind != .Element || n.name != "svg" { append(&gone, h) }
+	gone := make([dynamic]Svg_Key, 0, 4, context.temp_allocator)
+	for k in p.images.svgs {
+		n := dom.get(p.doc, k.node)
+		if n == nil || n.kind != .Element || n.name != "svg" { append(&gone, k) }
 	}
-	for h in gone {
-		s := p.images.svgs[h]
-		delete_key(&p.images.svgs, h)
+	for k in gone {
+		s := p.images.svgs[k]
+		delete_key(&p.images.svgs, k)
 		inline_svg_free(s, true)
 	}
 }
@@ -148,20 +156,22 @@ inline_svg_ratio :: proc(p: ^Page, node: base.Handle) -> f32 {
 ////////////////////////////////
 // The picture
 
-// What the inline <svg> `node` shows, for a box of `css_w` x `css_h` CSS px. UI thread, while painting.
-inline_svg_view :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32) -> Image_View {
+// What the inline <svg> `node` shows, for a box of `css_w` x `css_h` CSS px: the `parts` of its picture a display item
+// draws. UI thread, while painting.
+inline_svg_view :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32, parts := lay.Svg_Parts{}) -> Image_View {
 	if p == nil || p.closed || p.worker != nil || p.doc == nil { return {} }
 	s := &p.settings.images
 	if !s.enabled || !s.svg_inline_enabled || !s.limits.svg.enabled { return {} }
 	images_init(p)
 	images_adopt_document(p)
 	pi := &p.images
-	if pi.svgs == nil { pi.svgs = make(map[base.Handle]^Inline_Svg) }
-	rec, found := pi.svgs[node]
+	if pi.svgs == nil { pi.svgs = make(map[Svg_Key]^Inline_Svg) }
+	key := Svg_Key{node, parts}
+	rec, found := pi.svgs[key]
 	if !found {
 		rec = new(Inline_Svg)
 		rec.node = node
-		pi.svgs[node] = rec
+		pi.svgs[key] = rec
 	}
 	style_serial := p.styled != nil ? p.styled.serial : 0
 	stale := !found || rec.mutations != p.doc.mutations || rec.style_serial != style_serial
@@ -169,7 +179,7 @@ inline_svg_view :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32) -> Image
 	if stale {
 		rec.mutations, rec.style_serial, rec.css_w, rec.css_h = p.doc.mutations, style_serial, css_w, css_h
 		_, rec.has_view_box = svg_view_box(p.doc, node)
-		markup, ok := svg_serialize(p, node, css_w, css_h)
+		markup, ok := svg_serialize(p, node, css_w, css_h, parts)
 		if !ok {
 			request_release(rec.request)
 			rec.request, rec.hash = nil, 0
@@ -287,7 +297,20 @@ Serializer :: struct {
 	max_depth: int,
 	ids:      map[string]bool,     // ids defined in what was written
 	refs:     [dynamic]string,     // ids referenced
+	parts:    lay.Svg_Parts,       // the shapes written ({0, 0}: all)
 	failed:   bool,
+}
+
+// Elements that draw nothing where they are (what they hold is referenced, or they act on their parent): every part of a
+// picture split at its foreign objects keeps them.
+@(private = "file")
+svg_kept_in_parts :: proc(name: string) -> bool {
+	switch name {
+	case "defs", "clippath", "mask", "pattern", "marker", "symbol", "lineargradient", "radialgradient", "filter", "style",
+	     "title", "desc", "metadata", "animate", "animatetransform", "animatemotion", "set":
+		return true
+	}
+	return false
 }
 
 // What the page's CSS sets on an element inside the <svg> (`.logo__text { fill: ... }`, `svg path { stroke: ... }`): its
@@ -315,13 +338,17 @@ inner_style :: proc(p: ^Page, h: base.Handle, name: string) -> string {
 	return strings.to_string(st)
 }
 
-// One element and its subtree, without recursion. `root_extra` is written into the root's start tag.
+// One element and its subtree, without recursion. `root_extra` is written into the root's start tag. `split`: the
+// <svg> itself, whose shapes outside s.parts are left out (counted as the layout counts its foreign objects:
+// lay.svg_drawn_container).
 @(private = "file")
-write_tree :: proc(s: ^Serializer, top: base.Handle, root_extra: string, skip_size: bool) {
+write_tree :: proc(s: ^Serializer, top: base.Handle, root_extra: string, skip_size: bool, split: bool) {
 	d := s.p.doc
-	Item :: struct { h: base.Handle, close: bool, depth: int }
+	Item :: struct { h: base.Handle, close: bool, drawn: bool, depth: int }   // drawn: its parent draws its children
 	stack := make([dynamic]Item, 0, 32, context.temp_allocator)
 	append(&stack, Item{h = top})
+	splits := split && s.parts != {}
+	part := 0   // foreign objects passed
 	for len(stack) > 0 {
 		if strings.builder_len(s.b) > s.max_bytes { s.failed = true; return }
 		it := pop(&stack)
@@ -338,6 +365,11 @@ write_tree :: proc(s: ^Serializer, top: base.Handle, root_extra: string, skip_si
 		case .Comment, .Document, .Doctype, .Fragment:
 			continue
 		case .Element:
+		}
+		if splits && it.drawn {
+			if n.name == "foreignobject" { part += 1 }
+			if !lay.svg_drawn_container(n.name) && !svg_kept_in_parts(n.name) &&
+			   (part < int(s.parts.from) || (s.parts.to != 0 && part >= int(s.parts.to))) { continue }
 		}
 		if n.name == "script" || n.name == "foreignobject" { continue }
 		if it.depth > s.max_depth { s.failed = true; return }
@@ -377,7 +409,8 @@ write_tree :: proc(s: ^Serializer, top: base.Handle, root_extra: string, skip_si
 		}
 		strings.write_byte(&s.b, '>')
 		append(&stack, Item{h = it.h, close = true})
-		for c := n.last_child; c != base.NIL_HANDLE; c = dom.get(d, c).prev { append(&stack, Item{h = c, depth = it.depth + 1}) }
+		drawn := it.h == top || (it.drawn && lay.svg_drawn_container(n.name))
+		for c := n.last_child; c != base.NIL_HANDLE; c = dom.get(d, c).prev { append(&stack, Item{h = c, drawn = drawn, depth = it.depth + 1}) }
 	}
 }
 
@@ -437,9 +470,9 @@ svg_style_sets :: proc(style_attr, name: string) -> bool {
 	return false
 }
 
-svg_serialize :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32) -> (string, bool) {
+svg_serialize :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32, parts := lay.Svg_Parts{}) -> (string, bool) {
 	d := p.doc
-	s := Serializer{p = p, max_bytes = p.settings.images.svg_inline_max_bytes, max_depth = p.settings.images.limits.svg.max_depth}
+	s := Serializer{p = p, max_bytes = p.settings.images.svg_inline_max_bytes, max_depth = p.settings.images.limits.svg.max_depth, parts = parts}
 	s.b = strings.builder_make(context.temp_allocator)
 	s.ids = make(map[string]bool, 16, context.temp_allocator)
 	s.refs = make([dynamic]string, context.temp_allocator)
@@ -501,7 +534,7 @@ svg_serialize :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32) -> (string
 		base.write_escaped(&extra, strings.to_string(st), {.Quote})
 		strings.write_byte(&extra, '"')
 	}
-	write_tree(&s, node, strings.to_string(extra), !has_vb && css_w > 0 && css_h > 0)
+	write_tree(&s, node, strings.to_string(extra), !has_vb && css_w > 0 && css_h > 0, true)
 	if s.failed { return "", false }
 
 	// elements referenced from outside the subtree (sprite sheets, shared gradients): copied, transitively
@@ -524,7 +557,7 @@ svg_serialize :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32) -> (string
 			copied += 1
 			if copied > INLINE_SVG_MAX_COPIED_REFS { break }
 			s.b = strings.builder_make(context.temp_allocator)
-			write_tree(&s, h, "", false)
+			write_tree(&s, h, "", false, false)
 			if s.failed { return "", false }
 			strings.write_string(&out, strings.to_string(s.b))
 			if strings.builder_len(out) > s.max_bytes { return "", false }

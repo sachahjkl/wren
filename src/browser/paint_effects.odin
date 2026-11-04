@@ -324,6 +324,18 @@ plan_groups :: proc(e: ^Effects) -> []Group_Paint {
 	return gp
 }
 
+// The scale of the lengths of group `g`'s filters: the page's, times the transformation of its box (filters apply in its
+// own coordinates, Filter Effects 1 §5: blur(1px) on a box scaled 8 times blurs 8 px) when the group is drawn in device
+// space; a plane is drawn in its own.
+@(private)
+filter_scale :: proc(e: ^Effects, g: ^lay.Group) -> f32 {
+	s := e.l.scale
+	sp := e.l.boxes[g.box].space
+	if .Plane in g.effects || lay.space_plain(e.l, sp) { return s }
+	m := e.v.mats[sp]
+	return s * math.sqrt(abs(m[0] * m[3] - m[1] * m[2]))
+}
+
 // CSS filter functions as draw filters (lengths in device px of the box's space). url() filters need SVG: skipped.
 @(private)
 css_filters :: proc(ops: []style.Filter_Op, scale: f32) -> []draw.Filter {
@@ -417,7 +429,7 @@ open_group :: proc(e: ^Effects, c: i32) {
 	bd_radii: [4]f32
 	has_bd := false
 	if .Backdrop in g.effects && the_app.effects_settings.backdrop_filters && b.kind != .Inline {
-		bfs := css_filters(cs.backdrop_filter, l.scale)
+		bfs := css_filters(cs.backdrop_filter, filter_scale(e, g))
 		if plane {
 			// a plane's backdrop is what lies under its projection: read when it is composited (close_plane)
 			if any_active(bfs) { og.backdrop = bfs }
@@ -434,7 +446,7 @@ open_group :: proc(e: ^Effects, c: i32) {
 	fx_cache_under(e, nil, group = c)
 	filters: []draw.Filter
 	if .Filter in g.effects && the_app.effects_settings.filters {
-		filters = css_filters(cs.filter, l.scale)
+		filters = css_filters(cs.filter, filter_scale(e, g))
 		if !any_active(filters) { filters = nil }
 	}
 	blend := draw.Blend_Mode.Normal
