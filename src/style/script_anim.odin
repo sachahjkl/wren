@@ -230,13 +230,14 @@ script_element :: proc(tl: ^Timeline, h: base.Handle) -> ^Element_Anim {
 @(private)
 script_detach :: proc(tl: ^Timeline, sr: ^Script_Run) {
 	if sr.node == base.NIL_HANDLE { return }
-	ea := tl.elements[sr.node] or_else nil
+	node := sr.node
+	ea := tl.elements[node] or_else nil
 	sr.node = base.NIL_HANDLE
 	if ea == nil { return }
 	for x, i in ea.scripts { if x == sr { ordered_remove(&ea.scripts, i); break } }
 	if len(ea.runs) == 0 && len(ea.transitions) == 0 && len(ea.scripts) == 0 {
 		element_free(tl, ea)
-		delete_key(&tl.elements, ea.node)
+		delete_key(&tl.elements, node)
 		tl.order_dirty = true
 	}
 }
