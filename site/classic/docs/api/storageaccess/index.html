@@ -53,6 +53,7 @@ cookies are its partition of the tab's site (storage.partitioned), asks for its 
 document.requestStorageAccess(). Granted per (its site, the tab's site) for the session, by the person (a prompt over
 the page) or by storage.access_requests; its requests then say so (Sec-Fetch-Storage-Access).</p>
 <p>Exposed to: Window. Source: <code>api/js_storage_access.widl</code>.</p>
+<p>Odin: <code>import "wren:storageaccess"</code>.</p>
 <h2 id="functions"><a class="anchor" href="#functions" aria-hidden="true">#</a>Functions</h2>
 <h3 id="document-hasstorageaccess"><a class="anchor" href="#document-hasstorageaccess" aria-hidden="true">#</a><code>Document_hasStorageAccess</code></h3>
 <div class="code"><pre><code>Promise Document_hasStorageAccess()</code></pre></div>

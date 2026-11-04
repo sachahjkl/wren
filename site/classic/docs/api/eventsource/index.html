@@ -59,6 +59,7 @@
 <p>Server-sent events (HTML EventSource) and the MessageEvent members that are not plain payload. Messages arrive as
 "message" (or named) events: data in Event_data, the last event id in Event_text.</p>
 <p>Exposed to: Window. Source: <code>api/eventsource.widl</code>.</p>
+<p>Odin: <code>import "wren:eventsource"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="handle-eventsource-object"><a class="anchor" href="#handle-eventsource-object" aria-hidden="true">#</a>handle <code>EventSource</code> : <code>Object</code></h3>
 <p>Checked by the browser on every call (<code>lookup_EventSource</code>).</p>
@@ -76,20 +77,25 @@
 <h3 id="eventsource-create"><a class="anchor" href="#eventsource-create" aria-hidden="true">#</a><code>EventSource_create</code></h3>
 <div class="code"><pre><code>EventSource EventSource_create(string url, bool with_credentials = false) raises</code></pre></div>
 <p>new EventSource(url, {withCredentials}). Syntax for an invalid URL.</p>
+<p>Odin: <code>eventsource.create</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>EventSource_create :: proc(c: ^Call, url: string, with_credentials: bool) -&gt; (u64, Api_Error)</code></p>
 <h3 id="eventsource-readystate"><a class="anchor" href="#eventsource-readystate" aria-hidden="true">#</a><code>EventSource_readyState</code></h3>
 <div class="code"><pre><code>EventSourceState EventSource_readyState(EventSource source)</code></pre></div>
+<p>Odin: <code>eventsource.readyState</code>.</p>
 <p>Host: <code>EventSource_readyState :: proc(c: ^Call, source: Api_EventSource) -&gt; Api_EventSourceState</code></p>
 <h3 id="eventsource-url"><a class="anchor" href="#eventsource-url" aria-hidden="true">#</a><code>EventSource_url</code></h3>
 <div class="code"><pre><code>string EventSource_url(EventSource source)</code></pre></div>
+<p>Odin: <code>eventsource.url</code>.</p>
 <p>Host: <code>EventSource_url :: proc(c: ^Call, source: Api_EventSource) -&gt; string</code></p>
 <h3 id="eventsource-withcredentials"><a class="anchor" href="#eventsource-withcredentials" aria-hidden="true">#</a><code>EventSource_withCredentials</code></h3>
 <div class="code"><pre><code>bool EventSource_withCredentials(EventSource source)</code></pre></div>
+<p>Odin: <code>eventsource.withCredentials</code>.</p>
 <p>Host: <code>EventSource_withCredentials :: proc(c: ^Call, source: Api_EventSource) -&gt; bool</code></p>
 <h3 id="eventsource-close"><a class="anchor" href="#eventsource-close" aria-hidden="true">#</a><code>EventSource_close</code></h3>
 <div class="code"><pre><code>void EventSource_close(EventSource source)</code></pre></div>
 <p>source.close()</p>
+<p>Odin: <code>eventsource.close</code>.</p>
 <p>Host: <code>EventSource_close :: proc(c: ^Call, source: Api_EventSource)</code></p>
 <h3 id="messageevent-origin"><a class="anchor" href="#messageevent-origin" aria-hidden="true">#</a><code>MessageEvent_origin</code></h3>
 <div class="code"><pre><code>string MessageEvent_origin(Event event)</code></pre></div>

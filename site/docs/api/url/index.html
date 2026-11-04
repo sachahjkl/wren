@@ -240,6 +240,7 @@
 changing the URL's search re-parses the list, changing the list rewrites the URL's query. Either may be released
 first.</p>
 <p>Exposed to: Window, Worker. Source: <code>api/url.widl</code>.</p>
+<p>Odin: <code>import "wren:url"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="handle-url-object"><a class="anchor" href="#handle-url-object" aria-hidden="true">#</a>handle <code>URL</code> : <code>Object</code></h3>
 <p>Checked by the browser on every call (<code>lookup_URL</code>).</p>
@@ -284,25 +285,30 @@ first.</p>
 <h3 id="url-parse"><a class="anchor" href="#url-parse" aria-hidden="true">#</a><code>URL_parse</code></h3>
 <div class="code"><pre><code>URL URL_parse(string input, optional string base) raises</code></pre></div>
 <p>new URL(input, base): Type when the input (or the base) is not a valid URL or too long (web.url_max_length).</p>
+<p>Odin: <code>url.parse</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>URL_parse :: proc(c: ^Call, input: string, base: Maybe(string)) -&gt; (u64, Api_Error)</code></p>
 <h3 id="url-canparse"><a class="anchor" href="#url-canparse" aria-hidden="true">#</a><code>URL_canParse</code></h3>
 <div class="code"><pre><code>bool URL_canParse(string input, optional string base)</code></pre></div>
 <p>URL.canParse(input, base)</p>
+<p>Odin: <code>url.canParse</code>.</p>
 <p>Host: <code>URL_canParse :: proc(c: ^Call, input: string, base: Maybe(string)) -&gt; bool</code></p>
 <h3 id="url-get"><a class="anchor" href="#url-get" aria-hidden="true">#</a><code>URL_get</code></h3>
 <div class="code"><pre><code>string URL_get(URL url, URLComponent component)</code></pre></div>
 <p>A getter: url.href, url.protocol...</p>
+<p>Odin: <code>url.get</code>.</p>
 <p>Host: <code>URL_get :: proc(c: ^Call, url: Api_URL, component: Api_URLComponent) -&gt; string</code></p>
 <h3 id="url-set"><a class="anchor" href="#url-set" aria-hidden="true">#</a><code>URL_set</code></h3>
 <div class="code"><pre><code>void URL_set(URL url, URLComponent component, string value) raises</code></pre></div>
 <p>A setter. Only href can fail (Type); values the standard ignores leave the URL unchanged. Origin is read-only
 (Invalid_Argument).</p>
+<p>Odin: <code>url.set</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>URL_set :: proc(c: ^Call, url: Api_URL, component: Api_URLComponent, value: string) -&gt; Api_Error</code></p>
 <h3 id="url-searchparams"><a class="anchor" href="#url-searchparams" aria-hidden="true">#</a><code>URL_searchParams</code></h3>
 <div class="code"><pre><code>URLSearchParams URL_searchParams(URL url)</code></pre></div>
 <p>url.searchParams: the same object every time.</p>
+<p>Odin: <code>url.searchParams</code>.</p>
 <p>Host: <code>URL_searchParams :: proc(c: ^Call, url: Api_URL) -&gt; u64</code></p>
 <h3 id="urlsearchparams-create"><a class="anchor" href="#urlsearchparams-create" aria-hidden="true">#</a><code>URLSearchParams_create</code></h3>
 <div class="code"><pre><code>URLSearchParams URLSearchParams_create(string init = "") raises</code></pre></div>

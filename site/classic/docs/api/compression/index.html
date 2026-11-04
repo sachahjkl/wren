@@ -57,6 +57,7 @@
 native/js/runtime/web_transform.c): a DEFLATE stream (the toolkit's flate package: gzip, zlib "deflate" or raw) fed chunk by chunk. One call's
 output is bounded by page.max_fetch_bytes (Quota past it: a decompression bomb errors the stream).</p>
 <p>Exposed to: Window, Worker. Source: <code>api/compression.widl</code>.</p>
+<p>Odin: <code>import "wren:compression"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="handle-compressor-object"><a class="anchor" href="#handle-compressor-object" aria-hidden="true">#</a>handle <code>Compressor</code> : <code>Object</code></h3>
 <p>Checked by the browser on every call (<code>lookup_Compressor</code>).</p>
@@ -73,24 +74,28 @@ output is bounded by page.max_fetch_bytes (Quota past it: a decompression bomb e
 <h3 id="compression-create"><a class="anchor" href="#compression-create" aria-hidden="true">#</a><code>Compression_create</code></h3>
 <div class="code"><pre><code>Compressor Compression_create(CompressionFormat format, bool decompress) raises</code></pre></div>
 <p>A compressor (decompress false) or a decompressor of <code>format</code>.</p>
+<p>Odin: <code>compression.create</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Compression_create :: proc(c: ^Call, format: Api_CompressionFormat, decompress: bool) -&gt; (u64, Api_Error)</code></p>
 <h3 id="compression-push"><a class="anchor" href="#compression-push" aria-hidden="true">#</a><code>Compression_push</code></h3>
 <div class="code"><pre><code>bytes Compression_push(Compressor compressor, bytes input) raises</code></pre></div>
 <p>Feeds <code>input</code>: the output it made (Compression_output reads it again when the buffer was too small). Type for
 data that is not of the format, or that follows the end of the compressed data; Quota past the bound.</p>
+<p>Odin: <code>compression.push</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Has effects: call it once per result (no length query).</p>
 <p>Host: <code>Compression_push :: proc(c: ^Call, compressor: Api_Compressor, input: []u8) -&gt; ([]u8, Api_Error)</code></p>
 <h3 id="compression-finish"><a class="anchor" href="#compression-finish" aria-hidden="true">#</a><code>Compression_finish</code></h3>
 <div class="code"><pre><code>bytes Compression_finish(Compressor compressor) raises</code></pre></div>
 <p>The end of the input: what is left of the output. Type when the compressed data ended before its end.</p>
+<p>Odin: <code>compression.finish</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Has effects: call it once per result (no length query).</p>
 <p>Host: <code>Compression_finish :: proc(c: ^Call, compressor: Api_Compressor) -&gt; ([]u8, Api_Error)</code></p>
 <h3 id="compression-output"><a class="anchor" href="#compression-output" aria-hidden="true">#</a><code>Compression_output</code></h3>
 <div class="code"><pre><code>bytes Compression_output(Compressor compressor)</code></pre></div>
 <p>The output of the last push or finish.</p>
+<p>Odin: <code>compression.output</code>.</p>
 <p>Host: <code>Compression_output :: proc(c: ^Call, compressor: Api_Compressor) -&gt; []u8</code></p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/api/canvas/"><span>Previous</span><strong>Module canvas</strong></a>

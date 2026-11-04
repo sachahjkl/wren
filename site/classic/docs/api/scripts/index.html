@@ -81,6 +81,7 @@ graphs (the browser fetches a whole graph, the engine links and runs it), unhand
 URLs, workers whose script is JavaScript and their structured-clone messages. Implemented in src/page/js_load*.odin
 and js_workers.odin; used by native/js/runtime (load.c, modules.c, handlers.c, load_errors.c, timers.c, workers.c).</p>
 <p>Exposed to: Window, Worker. Source: <code>api/js_load.widl</code>.</p>
+<p>Odin: <code>import "wren:scripts"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="enum-inlinescriptkind-i32"><a class="anchor" href="#enum-inlinescriptkind-i32" aria-hidden="true">#</a>enum <code>InlineScriptKind</code> : i32</h3>
 <p>What a Content-Security-Policy check of inline code is about: a script element's text, an event handler

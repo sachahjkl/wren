@@ -57,10 +57,12 @@ the page may not use IndexedDB (an opaque origin, indexeddb.enabled off, no prof
 anything else: it needs no client; the realm loads it when a script first uses an IndexedDB interface).
 Windows and dedicated workers: a worker's realm is a client of the same manager as the pages of its origin.</p>
 <p>Exposed to: Window, Worker. Source: <code>api/idb.widl</code>.</p>
+<p>Odin: <code>import "wren:idb"</code>.</p>
 <h2 id="functions"><a class="anchor" href="#functions" aria-hidden="true">#</a>Functions</h2>
 <h3 id="idb-call"><a class="anchor" href="#idb-call" aria-hidden="true">#</a><code>Idb_call</code></h3>
 <div class="code"><pre><code>bytes Idb_call(i32 op, bytes args) raises</code></pre></div>
 <p>See the module comment.</p>
+<p>Odin: <code>idb.call</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Idb_call :: proc(c: ^Call, op: i32, args: []u8) -&gt; ([]u8, Api_Error)</code></p>
 <nav class="doc-seq" aria-label="Previous and next page">

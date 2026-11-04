@@ -68,6 +68,7 @@ FileSystemDirectoryEntry for a dropped file or folder; a folder is listed lazily
 background thread (createReader().readEntries()), and its files are opened the same way (file()). Paths stay inside
 what was dropped: a path that leaves it ("..") is refused.</p>
 <p>Exposed to: Window. Source: <code>api/js_entries.widl</code>.</p>
+<p>Odin: <code>import "wren:entries"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="handle-fsentry-object"><a class="anchor" href="#handle-fsentry-object" aria-hidden="true">#</a>handle <code>FsEntry</code> : <code>Object</code></h3>
 <p>Checked by the browser on every call (<code>lookup_FsEntry</code>).</p>

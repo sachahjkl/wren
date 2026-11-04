@@ -239,18 +239,22 @@
 <p>The console of the page (or of the worker): messages appear in the browser's console. Invalid UTF-8 is shown as
 U+FFFD.</p>
 <p>Exposed to: Window, Worker. Source: <code>api/console.widl</code>.</p>
+<p>Odin: <code>import "wren:console"</code>.</p>
 <h2 id="functions"><a class="anchor" href="#functions" aria-hidden="true">#</a>Functions</h2>
 <h3 id="console-log"><a class="anchor" href="#console-log" aria-hidden="true">#</a><code>console_log</code></h3>
 <div class="code"><pre><code>void console_log(usvstring message)</code></pre></div>
 <p>console.log(message)</p>
+<p>Odin: <code>console.log</code>.</p>
 <p>Host: <code>console_log :: proc(c: ^Call, message: string)</code></p>
 <h3 id="console-warn"><a class="anchor" href="#console-warn" aria-hidden="true">#</a><code>console_warn</code></h3>
 <div class="code"><pre><code>void console_warn(usvstring message)</code></pre></div>
 <p>console.warn(message)</p>
+<p>Odin: <code>console.warn</code>.</p>
 <p>Host: <code>console_warn :: proc(c: ^Call, message: string)</code></p>
 <h3 id="console-error"><a class="anchor" href="#console-error" aria-hidden="true">#</a><code>console_error</code></h3>
 <div class="code"><pre><code>void console_error(usvstring message)</code></pre></div>
 <p>console.error(message)</p>
+<p>Odin: <code>console.error</code>.</p>
 <p>Host: <code>console_error :: proc(c: ^Call, message: string)</code></p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/api/compression/"><span>Previous</span><strong>Module compression</strong></a>

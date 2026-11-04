@@ -60,6 +60,7 @@
 <p>localStorage and sessionStorage (Web Storage). Security for an opaque origin or disabled storage, Quota for a write
 past the quota, Not_Found for a null result.</p>
 <p>Exposed to: Window. Source: <code>api/storage.widl</code>.</p>
+<p>Odin: <code>import "wren:storage"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="enum-storagearea-i32"><a class="anchor" href="#enum-storagearea-i32" aria-hidden="true">#</a>enum <code>StorageArea</code> : i32</h3>
 <div class="table-box"><table>
@@ -84,31 +85,37 @@ past the quota, Not_Found for a null result.</p>
 <h3 id="storage-length"><a class="anchor" href="#storage-length" aria-hidden="true">#</a><code>Storage_length</code></h3>
 <div class="code"><pre><code>i32 Storage_length(StorageArea area) raises</code></pre></div>
 <p>storage.length</p>
+<p>Odin: <code>storage.length</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Storage_length :: proc(c: ^Call, area: Api_StorageArea) -&gt; (i32, Api_Error)</code></p>
 <h3 id="storage-key"><a class="anchor" href="#storage-key" aria-hidden="true">#</a><code>Storage_key</code></h3>
 <div class="code"><pre><code>string Storage_key(StorageArea area, i32 index) raises</code></pre></div>
 <p>storage.key(index)</p>
+<p>Odin: <code>storage.key</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Storage_key :: proc(c: ^Call, area: Api_StorageArea, index: i32) -&gt; (string, Api_Error)</code></p>
 <h3 id="storage-getitem"><a class="anchor" href="#storage-getitem" aria-hidden="true">#</a><code>Storage_getItem</code></h3>
 <div class="code"><pre><code>string Storage_getItem(StorageArea area, string key) raises</code></pre></div>
 <p>storage.getItem(key)</p>
+<p>Odin: <code>storage.getItem</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Storage_getItem :: proc(c: ^Call, area: Api_StorageArea, key: string) -&gt; (string, Api_Error)</code></p>
 <h3 id="storage-setitem"><a class="anchor" href="#storage-setitem" aria-hidden="true">#</a><code>Storage_setItem</code></h3>
 <div class="code"><pre><code>void Storage_setItem(StorageArea area, usvstring key, usvstring value) raises</code></pre></div>
 <p>storage.setItem(key, value)</p>
+<p>Odin: <code>storage.setItem</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Storage_setItem :: proc(c: ^Call, area: Api_StorageArea, key: string, value: string) -&gt; Api_Error</code></p>
 <h3 id="storage-removeitem"><a class="anchor" href="#storage-removeitem" aria-hidden="true">#</a><code>Storage_removeItem</code></h3>
 <div class="code"><pre><code>void Storage_removeItem(StorageArea area, string key) raises</code></pre></div>
 <p>storage.removeItem(key)</p>
+<p>Odin: <code>storage.removeItem</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Storage_removeItem :: proc(c: ^Call, area: Api_StorageArea, key: string) -&gt; Api_Error</code></p>
 <h3 id="storage-clear"><a class="anchor" href="#storage-clear" aria-hidden="true">#</a><code>Storage_clear</code></h3>
 <div class="code"><pre><code>void Storage_clear(StorageArea area) raises</code></pre></div>
 <p>storage.clear()</p>
+<p>Odin: <code>storage.clear</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Storage_clear :: proc(c: ^Call, area: Api_StorageArea) -&gt; Api_Error</code></p>
 <h3 id="storageevent-get"><a class="anchor" href="#storageevent-get" aria-hidden="true">#</a><code>StorageEvent_get</code></h3>

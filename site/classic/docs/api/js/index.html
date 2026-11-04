@@ -67,6 +67,7 @@ its levels, uncaught exceptions with their position, compiled code handed back f
 zone, and the bookkeeping of the wrappers that keep DOM nodes alive (a node referenced by a JavaScript object is
 "pinned": it is not freed when it leaves the tree, and a detached tree is freed once nothing pins it any more).</p>
 <p>Exposed to: Window, Worker. Source: <code>api/js.widl</code>.</p>
+<p>Odin: <code>import "wren:js"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="enum-consolelevel-i32"><a class="anchor" href="#enum-consolelevel-i32" aria-hidden="true">#</a>enum <code>ConsoleLevel</code> : i32</h3>
 <p>The level of a console message.</p>

@@ -57,6 +57,7 @@ and TaskSignal. The priority queue and the ordering are native (on the page's ev
 task's JavaScript promise, callback and signal and runs the callback when the host says the task is due. Three
 priorities, highest first: user-blocking, user-visible, background.</p>
 <p>Exposed to: Window, Worker. Source: <code>api/scheduler.widl</code>.</p>
+<p>Odin: <code>import "wren:scheduler"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="enum-taskpriority-i32"><a class="anchor" href="#enum-taskpriority-i32" aria-hidden="true">#</a>enum <code>TaskPriority</code> : i32</h3>
 <p>A task priority (TaskPriority), highest first.</p>
@@ -73,20 +74,24 @@ priorities, highest first: user-blocking, user-visible, background.</p>
 <div class="code"><pre><code>u64 Scheduler_post(u32 callback, i32 user, TaskPriority priority, f64 delay_ms)</code></pre></div>
 <p>Post a task; <code>callback</code> (a function-table index) runs with (user: i32) when the task is due. <code>delay_ms</code> 0 queues
 it at once. Returns the task id (for cancel / setPriority), 0 when there is no page realm.</p>
+<p>Odin: <code>scheduler.post</code>.</p>
 <p>Host: <code>Scheduler_post :: proc(c: ^Call, callback: u32, user: i32, priority: Api_TaskPriority, delay_ms: f64) -&gt; u64</code></p>
 <h3 id="scheduler-cancel"><a class="anchor" href="#scheduler-cancel" aria-hidden="true">#</a><code>Scheduler_cancel</code></h3>
 <div class="code"><pre><code>void Scheduler_cancel(u64 id) raises</code></pre></div>
 <p>Drop a queued (or delayed) task: its signal aborted, or the realm released it.</p>
+<p>Odin: <code>scheduler.cancel</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Scheduler_cancel :: proc(c: ^Call, id: u64) -&gt; Api_Error</code></p>
 <h3 id="scheduler-setpriority"><a class="anchor" href="#scheduler-setpriority" aria-hidden="true">#</a><code>Scheduler_setPriority</code></h3>
 <div class="code"><pre><code>void Scheduler_setPriority(u64 id, TaskPriority priority) raises</code></pre></div>
 <p>Change a queued task's priority (TaskController.setPriority).</p>
+<p>Odin: <code>scheduler.setPriority</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Scheduler_setPriority :: proc(c: ^Call, id: u64, priority: Api_TaskPriority) -&gt; Api_Error</code></p>
 <h3 id="scheduler-isinputpending"><a class="anchor" href="#scheduler-isinputpending" aria-hidden="true">#</a><code>Scheduler_isInputPending</code></h3>
 <div class="code"><pre><code>bool Scheduler_isInputPending(bool include_continuous)</code></pre></div>
 <p>navigator.scheduling.isInputPending.</p>
+<p>Odin: <code>scheduler.isInputPending</code>.</p>
 <p>Host: <code>Scheduler_isInputPending :: proc(c: ^Call, include_continuous: bool) -&gt; bool</code></p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/api/ports/"><span>Previous</span><strong>Module ports</strong></a>

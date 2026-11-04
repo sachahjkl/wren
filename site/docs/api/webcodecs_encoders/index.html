@@ -241,6 +241,7 @@ No encoder is linked in this build, so isConfigSupported is honestly false and c
 The objects and their state machine exist so feature detection and <code>new VideoEncoder({...})</code> behave; when an encoder
 crate is added, configure()/encode() wire to it here.</p>
 <p>Exposed to: Window, Worker. Source: <code>api/webcodecs_encoders.widl</code>.</p>
+<p>Odin: <code>import "wren:webcodecs"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="handle-videoencoder-object"><a class="anchor" href="#handle-videoencoder-object" aria-hidden="true">#</a>handle <code>VideoEncoder</code> : <code>Object</code></h3>
 <p>Checked by the browser on every call (<code>lookup_VideoEncoder</code>).</p>

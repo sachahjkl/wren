@@ -244,6 +244,7 @@ events the browser sends (install, activate, fetch, message, the answers to its 
 ServiceWorkerRegistration_info and ServiceWorker_info answer in both realms (a service worker reads the last state
 the browser sent it).</p>
 <p>Exposed to: Window, Worker. Source: <code>api/serviceworker.widl</code>.</p>
+<p>Odin: <code>import "wren:serviceworker"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="struct-sweventinfo"><a class="anchor" href="#struct-sweventinfo" aria-hidden="true">#</a>struct <code>SwEventInfo</code></h3>
 <p>What the current event of a service worker's realm is (kind 0: none waits).</p>
@@ -264,23 +265,28 @@ the browser sent it).</p>
 <p>navigator.serviceWorker.register(script, {scope, updateViaCache, type}): a promise of the registration's id,
 resolved once the script ran (an unchanged script: at once; TypeError when it failed). Security outside a secure
 context, for another origin or a scope outside what the script may control.</p>
+<p>Odin: <code>serviceworker.register</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>ServiceWorker_register :: proc(c: ^Call, script: string, scope: Maybe(string), update_via_cache: string, module: bool) -&gt; (u64, Api_Error)</code></p>
 <h3 id="serviceworker-ready"><a class="anchor" href="#serviceworker-ready" aria-hidden="true">#</a><code>ServiceWorker_ready</code></h3>
 <div class="code"><pre><code>Promise ServiceWorker_ready()</code></pre></div>
 <p>navigator.serviceWorker.ready: a promise of the id of the active registration whose scope holds the page.</p>
+<p>Odin: <code>serviceworker.ready</code>.</p>
 <p>Host: <code>ServiceWorker_ready :: proc(c: ^Call) -&gt; u64</code></p>
 <h3 id="serviceworker-getregistration"><a class="anchor" href="#serviceworker-getregistration" aria-hidden="true">#</a><code>ServiceWorker_getRegistration</code></h3>
 <div class="code"><pre><code>u64 ServiceWorker_getRegistration(string client_url)</code></pre></div>
 <p>getRegistration(clientURL): the id of the registration matching the URL (0: none).</p>
+<p>Odin: <code>serviceworker.getRegistration</code>.</p>
 <p>Host: <code>ServiceWorker_getRegistration :: proc(c: ^Call, client_url: string) -&gt; u64</code></p>
 <h3 id="serviceworker-registrationids"><a class="anchor" href="#serviceworker-registrationids" aria-hidden="true">#</a><code>ServiceWorker_registrationIds</code></h3>
 <div class="code"><pre><code>string ServiceWorker_registrationIds()</code></pre></div>
 <p>getRegistrations(): the ids of the origin's registrations, "\n"-separated.</p>
+<p>Odin: <code>serviceworker.registrationIds</code>.</p>
 <p>Host: <code>ServiceWorker_registrationIds :: proc(c: ^Call) -&gt; string</code></p>
 <h3 id="serviceworker-controller"><a class="anchor" href="#serviceworker-controller" aria-hidden="true">#</a><code>ServiceWorker_controller</code></h3>
 <div class="code"><pre><code>u64 ServiceWorker_controller()</code></pre></div>
 <p>navigator.serviceWorker.controller: the id of the version controlling the page (0: none).</p>
+<p>Odin: <code>serviceworker.controller</code>.</p>
 <p>Host: <code>ServiceWorker_controller :: proc(c: ^Call) -&gt; u64</code></p>
 <h3 id="serviceworkerregistration-info"><a class="anchor" href="#serviceworkerregistration-info" aria-hidden="true">#</a><code>ServiceWorkerRegistration_info</code></h3>
 <div class="code"><pre><code>string ServiceWorkerRegistration_info(u64 id)</code></pre></div>
@@ -290,6 +296,7 @@ versions' ids (0: none), navigation preload enabled (1 / 0), its header value.</
 <h3 id="serviceworker-info"><a class="anchor" href="#serviceworker-info" aria-hidden="true">#</a><code>ServiceWorker_info</code></h3>
 <div class="code"><pre><code>string ServiceWorker_info(u64 version)</code></pre></div>
 <p>A version ("" when unknown): its state, then its script URL ("\n"-separated).</p>
+<p>Odin: <code>serviceworker.info</code>.</p>
 <p>Host: <code>ServiceWorker_info :: proc(c: ^Call, version: u64) -&gt; string</code></p>
 <h3 id="serviceworkerregistration-unregisterid"><a class="anchor" href="#serviceworkerregistration-unregisterid" aria-hidden="true">#</a><code>ServiceWorkerRegistration_unregisterId</code></h3>
 <div class="code"><pre><code>bool ServiceWorkerRegistration_unregisterId(u64 id)</code></pre></div>
@@ -310,12 +317,14 @@ enabled (1 / 0), "\n", the header value. Invalid_State for enable / disable with
 <h3 id="serviceworker-posttoworker"><a class="anchor" href="#serviceworker-posttoworker" aria-hidden="true">#</a><code>ServiceWorker_postToWorker</code></h3>
 <div class="code"><pre><code>void ServiceWorker_postToWorker(u64 version, bytes data) raises</code></pre></div>
 <p>serviceWorker.postMessage(message): the serialized message to that version's worker (started if it stopped).</p>
+<p>Odin: <code>serviceworker.postToWorker</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>ServiceWorker_postToWorker :: proc(c: ^Call, version: u64, data: []u8) -&gt; Api_Error</code></p>
 <h3 id="serviceworker-takemessage"><a class="anchor" href="#serviceworker-takemessage" aria-hidden="true">#</a><code>ServiceWorker_takeMessage</code></h3>
 <div class="code"><pre><code>bytes ServiceWorker_takeMessage() raises</code></pre></div>
 <p>The next message a service worker sent this page (Not_Found when none waits): the sender's version id (8 bytes)
 then the serialized message.</p>
+<p>Odin: <code>serviceworker.takeMessage</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>ServiceWorker_takeMessage :: proc(c: ^Call) -&gt; ([]u8, Api_Error)</code></p>
 <h3 id="serviceworkerglobalscope-registration"><a class="anchor" href="#serviceworkerglobalscope-registration" aria-hidden="true">#</a><code>ServiceWorkerGlobalScope_registration</code></h3>

@@ -240,6 +240,7 @@
 For test programs only (src/tools/testhost): the global <code>wrenTest</code> that calls these exists only in a page that has been
 given a test host (page.set_test_host), and without one they do nothing. A browser never gives one.</p>
 <p>Exposed to: Window. Source: <code>api/testhost.widl</code>.</p>
+<p>Odin: <code>import "wren:testhost"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="enum-testskipreason-i32"><a class="anchor" href="#enum-testskipreason-i32" aria-hidden="true">#</a>enum <code>TestSkipReason</code> : i32</h3>
 <p>Why something a test needs cannot run on this machine. The test host decides whether that is true.</p>
@@ -254,34 +255,42 @@ given a test host (page.set_test_host), and without one they do nothing. A brows
 <h3 id="testhost-testbegin"><a class="anchor" href="#testhost-testbegin" aria-hidden="true">#</a><code>TestHost_testBegin</code></h3>
 <div class="code"><pre><code>void TestHost_testBegin(usvstring name)</code></pre></div>
 <p>A test of the section begins.</p>
+<p>Odin: <code>testhost.testBegin</code>.</p>
 <p>Host: <code>TestHost_testBegin :: proc(c: ^Call, name: string)</code></p>
 <h3 id="testhost-testend"><a class="anchor" href="#testhost-testend" aria-hidden="true">#</a><code>TestHost_testEnd</code></h3>
 <div class="code"><pre><code>void TestHost_testEnd(usvstring name)</code></pre></div>
 <p>The test ends.</p>
+<p>Odin: <code>testhost.testEnd</code>.</p>
 <p>Host: <code>TestHost_testEnd :: proc(c: ^Call, name: string)</code></p>
 <h3 id="testhost-check"><a class="anchor" href="#testhost-check" aria-hidden="true">#</a><code>TestHost_check</code></h3>
 <div class="code"><pre><code>void TestHost_check(bool passed, usvstring what)</code></pre></div>
 <p>One check and its result.</p>
+<p>Odin: <code>testhost.check</code>.</p>
 <p>Host: <code>TestHost_check :: proc(c: ^Call, passed: bool, what: string)</code></p>
 <h3 id="testhost-measure"><a class="anchor" href="#testhost-measure" aria-hidden="true">#</a><code>TestHost_measure</code></h3>
 <div class="code"><pre><code>void TestHost_measure(usvstring name, f64 value)</code></pre></div>
 <p>A value the section measured.</p>
+<p>Odin: <code>testhost.measure</code>.</p>
 <p>Host: <code>TestHost_measure :: proc(c: ^Call, name: string, value: f64)</code></p>
 <h3 id="testhost-note"><a class="anchor" href="#testhost-note" aria-hidden="true">#</a><code>TestHost_note</code></h3>
 <div class="code"><pre><code>void TestHost_note(usvstring text)</code></pre></div>
 <p>Something the program may wait for or read ("LISTENING").</p>
+<p>Odin: <code>testhost.note</code>.</p>
 <p>Host: <code>TestHost_note :: proc(c: ^Call, text: string)</code></p>
 <h3 id="testhost-signal"><a class="anchor" href="#testhost-signal" aria-hidden="true">#</a><code>TestHost_signal</code></h3>
 <div class="code"><pre><code>void TestHost_signal(usvstring name)</code></pre></div>
 <p>The script asks the program to act on the page, and waits (the program resumes it).</p>
+<p>Odin: <code>testhost.signal</code>.</p>
 <p>Host: <code>TestHost_signal :: proc(c: ^Call, name: string)</code></p>
 <h3 id="testhost-skip"><a class="anchor" href="#testhost-skip" aria-hidden="true">#</a><code>TestHost_skip</code></h3>
 <div class="code"><pre><code>void TestHost_skip(TestSkipReason reason, usvstring why)</code></pre></div>
 <p>The current test, or with no test open the whole section, does not run on this machine.</p>
+<p>Odin: <code>testhost.skip</code>.</p>
 <p>Host: <code>TestHost_skip :: proc(c: ^Call, reason: Api_TestSkipReason, why: string)</code></p>
 <h3 id="testhost-done"><a class="anchor" href="#testhost-done" aria-hidden="true">#</a><code>TestHost_done</code></h3>
 <div class="code"><pre><code>void TestHost_done()</code></pre></div>
 <p>The section is over.</p>
+<p>Odin: <code>testhost.done</code>.</p>
 <p>Host: <code>TestHost_done :: proc(c: ^Call)</code></p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/api/storageaccess/"><span>Previous</span><strong>Module storageaccess</strong></a>

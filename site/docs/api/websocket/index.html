@@ -238,6 +238,7 @@
 <h1 id="module-websocket"><a class="anchor" href="#module-websocket" aria-hidden="true">#</a>Module <code>websocket</code></h1>
 <p>WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object.</p>
 <p>Exposed to: Window. Source: <code>api/websocket.widl</code>.</p>
+<p>Odin: <code>import "wren:websocket"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="handle-websocket-object"><a class="anchor" href="#handle-websocket-object" aria-hidden="true">#</a>handle <code>WebSocket</code> : <code>Object</code></h3>
 <p>Checked by the browser on every call (<code>lookup_WebSocket</code>).</p>
@@ -257,46 +258,57 @@
 <div class="code"><pre><code>WebSocket WebSocket_create(string url, string protocols = "") raises</code></pre></div>
 <p>new WebSocket(url, protocols): <code>protocols</code> is a comma-separated list ("" = none). Syntax for an invalid URL or
 protocol list.</p>
+<p>Odin: <code>websocket.create</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>WebSocket_create :: proc(c: ^Call, url: string, protocols: string) -&gt; (u64, Api_Error)</code></p>
 <h3 id="websocket-readystate"><a class="anchor" href="#websocket-readystate" aria-hidden="true">#</a><code>WebSocket_readyState</code></h3>
 <div class="code"><pre><code>WebSocketState WebSocket_readyState(WebSocket socket)</code></pre></div>
+<p>Odin: <code>websocket.readyState</code>.</p>
 <p>Host: <code>WebSocket_readyState :: proc(c: ^Call, socket: Api_WebSocket) -&gt; Api_WebSocketState</code></p>
 <h3 id="websocket-url"><a class="anchor" href="#websocket-url" aria-hidden="true">#</a><code>WebSocket_url</code></h3>
 <div class="code"><pre><code>string WebSocket_url(WebSocket socket)</code></pre></div>
+<p>Odin: <code>websocket.url</code>.</p>
 <p>Host: <code>WebSocket_url :: proc(c: ^Call, socket: Api_WebSocket) -&gt; string</code></p>
 <h3 id="websocket-protocol"><a class="anchor" href="#websocket-protocol" aria-hidden="true">#</a><code>WebSocket_protocol</code></h3>
 <div class="code"><pre><code>string WebSocket_protocol(WebSocket socket)</code></pre></div>
+<p>Odin: <code>websocket.protocol</code>.</p>
 <p>Host: <code>WebSocket_protocol :: proc(c: ^Call, socket: Api_WebSocket) -&gt; string</code></p>
 <h3 id="websocket-extensions"><a class="anchor" href="#websocket-extensions" aria-hidden="true">#</a><code>WebSocket_extensions</code></h3>
 <div class="code"><pre><code>string WebSocket_extensions(WebSocket socket)</code></pre></div>
+<p>Odin: <code>websocket.extensions</code>.</p>
 <p>Host: <code>WebSocket_extensions :: proc(c: ^Call, socket: Api_WebSocket) -&gt; string</code></p>
 <h3 id="websocket-bufferedamount"><a class="anchor" href="#websocket-bufferedamount" aria-hidden="true">#</a><code>WebSocket_bufferedAmount</code></h3>
 <div class="code"><pre><code>i64 WebSocket_bufferedAmount(WebSocket socket)</code></pre></div>
+<p>Odin: <code>websocket.bufferedAmount</code>.</p>
 <p>Host: <code>WebSocket_bufferedAmount :: proc(c: ^Call, socket: Api_WebSocket) -&gt; i64</code></p>
 <h3 id="websocket-binarytype"><a class="anchor" href="#websocket-binarytype" aria-hidden="true">#</a><code>WebSocket_binaryType</code></h3>
 <div class="code"><pre><code>i32 WebSocket_binaryType(WebSocket socket)</code></pre></div>
 <p>0 = "arraybuffer" (buffer handles), the only binary type of this platform.</p>
+<p>Odin: <code>websocket.binaryType</code>.</p>
 <p>Host: <code>WebSocket_binaryType :: proc(c: ^Call, socket: Api_WebSocket) -&gt; i32</code></p>
 <h3 id="websocket-setbinarytype"><a class="anchor" href="#websocket-setbinarytype" aria-hidden="true">#</a><code>WebSocket_setBinaryType</code></h3>
 <div class="code"><pre><code>void WebSocket_setBinaryType(WebSocket socket, i32 binary_type) raises</code></pre></div>
 <p>Not_Supported for anything but 0.</p>
+<p>Odin: <code>websocket.setBinaryType</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>WebSocket_setBinaryType :: proc(c: ^Call, socket: Api_WebSocket, binary_type: i32) -&gt; Api_Error</code></p>
 <h3 id="websocket-send"><a class="anchor" href="#websocket-send" aria-hidden="true">#</a><code>WebSocket_send</code></h3>
 <div class="code"><pre><code>void WebSocket_send(WebSocket socket, usvstring text) raises</code></pre></div>
 <p>socket.send(text). Invalid_State while connecting.</p>
+<p>Odin: <code>websocket.send</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>WebSocket_send :: proc(c: ^Call, socket: Api_WebSocket, text: string) -&gt; Api_Error</code></p>
 <h3 id="websocket-sendbuffer"><a class="anchor" href="#websocket-sendbuffer" aria-hidden="true">#</a><code>WebSocket_sendBuffer</code></h3>
 <div class="code"><pre><code>void WebSocket_sendBuffer(WebSocket socket, Buffer data) raises</code></pre></div>
 <p>socket.send(buffer): a binary message.</p>
+<p>Odin: <code>websocket.sendBuffer</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>WebSocket_sendBuffer :: proc(c: ^Call, socket: Api_WebSocket, data: Api_Buffer) -&gt; Api_Error</code></p>
 <h3 id="websocket-close"><a class="anchor" href="#websocket-close" aria-hidden="true">#</a><code>WebSocket_close</code></h3>
 <div class="code"><pre><code>void WebSocket_close(WebSocket socket, i32 code = -1, string reason = "") raises</code></pre></div>
 <p>socket.close(code, reason): code &lt; 0 means absent. Invalid_Access for a code that is not 1000 or 3000-4999,
 Syntax for a reason over 123 bytes.</p>
+<p>Odin: <code>websocket.close</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>WebSocket_close :: proc(c: ^Call, socket: Api_WebSocket, code: i32, reason: string) -&gt; Api_Error</code></p>
 <h3 id="closeevent-wasclean"><a class="anchor" href="#closeevent-wasclean" aria-hidden="true">#</a><code>CloseEvent_wasClean</code></h3>
