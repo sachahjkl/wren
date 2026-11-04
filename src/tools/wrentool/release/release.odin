@@ -69,7 +69,7 @@ version_label :: proc() -> string { return builder.version_label(env("WREN_VERSI
 // package
 
 run_package :: proc(args: []string) -> int {
-	f, ok := tooling.parse_flags(args, "-Version= -Dev -Extras -AllowUnreleased")
+	f, ok := tooling.parse_flags(args, "-Version= -Dev -Extras -AllowUnreleased -RequireUpdateManifest")
 	if !ok { return EXIT_USAGE }
 	version := tooling.flag(f, "-Version", source_version())
 	if version == "" { return fail("APP_VERSION not found in", builder.ABOUT_FILE) }
@@ -180,6 +180,8 @@ package_windows :: proc(f: tooling.Flags, version: string) -> int {
 		fmt.printfln("packaged %s (%d MB)", z, fi.size / BYTES_PER_MB)
 	}
 	_ = os.write_entire_file(fmt.tprintf("%s/SHA256SUMS.txt", DIST), strings.to_string(sums))
+	// the signed manifest an installed Wren updates itself from (src/update): the release workflow requires it, a local package may go without
+	if !dev && !package_update_manifest(exe, version, "windows-x64", DIST, tooling.flag_has(f, "-RequireUpdateManifest")) { return 1 }
 	fmt.printfln("symbols  %s (build %s; not published)", symbols, fp)
 	return 0
 }

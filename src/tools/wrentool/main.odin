@@ -45,6 +45,7 @@ COMMANDS := []Command{
 	{name = "changelog", about = "-New | -Check [-Release v] | -Assemble [-Version v] | -Section -Version v | -Migrate", run = changelog.run},
 	{name = "package", about = "[-Version v] [-Dev] [-Extras] [-AllowUnreleased]: the release file from a finished build", run = release.run_package},
 	{name = "sign", about = "a.exe b.exe: Authenticode, when the environment names an identity", run = release.run_sign},
+	{name = "update", about = "keygen | pubkey | manifest | sign | verify ...: the signed manifest an installed Wren updates itself from (docs/updates.md)", run = release.run_update},
 	{name = "winget", about = "-Version v [-Url u] [-Sha256 h] [-Out d]: the manifest files; submits nothing", run = release.run_winget},
 	{name = "notes", about = "-Tag v [-Ref r] [-Out f]: the notes of a release", run = release.run_notes},
 	{name = "experimental", about = "[-Label l] [-NoBuild] [-NoUpload] [-NoVerify] [-NoEmbed] [-Notes f] [-Vault d]: a labelled build to hand out", run = release.run_experimental},

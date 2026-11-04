@@ -487,6 +487,9 @@ commands_build :: proc(r: ^Command_Registry) {
 		}})
 	add(r, {name = "browser.check_updates", title = "Check for updates", category = "Browser", keywords = "update upgrade new version release github latest",
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { update_check_now(app) }})
+	add(r, {name = "browser.install_update", title = "Install the update", category = "Browser", keywords = "update upgrade install new version signed release",
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return update_install_ready(app) },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { update_install(app) }})
 	add(r, {name = "browser.desktop_integration", title = "Integrate Wren with the desktop", category = "Browser", keywords = "start menu shortcut default apps browser application menu desktop entry install uninstall",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return desktop_available() },
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return desktop_checked(app) },
