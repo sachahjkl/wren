@@ -1924,6 +1924,67 @@ keyframes resolved to matrices and alphas per frame, the chunks of the animated 
 this list, as is a container's scroll bar and the wheel over a scroll container (both need the layout's offsets of the
 container, written only by the page's turn).
 
+## What changed, round 23: `document` read by compiled code, objects allocated inline, accessors of the script's
+
+What round 21 left, in its order ([engine/jit.md](engine/jit.md)). Measured as round 21 did (`jsengine run -jit -image
+<engine>`, every image of the round in turn, 5 rounds, the median and the range in brackets; nodes10k in `jspage
+-image`, a timed copy: `build()`'s p50 over 400 frames). Other agents ran test suites on the machine for much of the
+round: each run waited for the machine to be quiet (under 1.5 cores busy besides it) and ran at a high priority; series
+taken while it was busy are said so.
+
+1. **A global's accessor** (`jit_global`, `j_call_getter`). `window.document` is the global object's own accessor; a
+   read of a global has no object on the stack to put the thrower in. Kept: when the next instruction reads a named
+   property of the value (`document.createElement`), the thrower goes in the result's place with that property as its
+   accessor, and the throw exit resumes at the next instruction, which throws the exception pending. The interpreter's
+   code is not touched (a throw exit of its own in its back edges was 4 % of nodes10k with the JIT off, round 20). The
+   loop was still refused after that: the callee `document.createElement` was not known at translation (the value of
+   a getter); a call whose callee the translation cannot tell now leaves through a learn exit once
+   (`JIT_AUX_CALLEE`, `Jit_Site.callee`), and a read of an unknown object at a site that learned its shape takes what
+   the prototype holds for its hint. nodes10k `build()` p50, 7 interleaved runs (the quiet ones): with the JIT 9.1
+   (8.8-9.1) -> 7.9 (7.65-8.1) ms, without it 9.0 -> 9.1 ms (the same). In `macro.js` the object literal was 57 -> 66
+   ns at this step alone (code placement, not explained further), made 28 by step 2.
+2. **Objects allocated inline** (`j_alloc`, `j_ctor_proto`). `{}` cost 58 ns through the helper, of which the
+   allocation itself is little: the call, `shape_root_for`'s map, the temporary root and its drop. The code now pops a
+   block of the pool's class from the free list (zeroed) or cuts it from the bump chunk, links the cell, counts it,
+   charges the heap and its peak, and writes the object, as `cell_new` and `object_new_shape` do; a construction reads
+   the constructor's `prototype` slot (its shape and the value guarded). The collector's contract is the same: no
+   allocation collects, the object is only in the code's hands until its next call or exit. `new Point(i, i)` 110
+   (107-160) -> 51 (50-53) ns, `{a, b, c}` 56.7 (56.3-59.8) -> 28.4 (27.4-30.0) ns; array literals keep the helper
+   (`Array_Data` and its values: 83 ns).
+3. **The two slowdowns with the JIT off**, bisected by engine image (round 21's commits, only `src/engine/jsrt` and
+   the glue's `jit.odin` taken from each, 7 runs): a closure made and called in a loop 531 (524-558) ns before round 21,
+   522 at its first step, 565 from its third (`shape_transition` factored out of `add_property`, so the JIT could
+   append properties: a closure's four properties each paid the call), 540 (537-562) with it inlined again (kept;
+   round 21 measured that change as nothing, on a noisier machine). try/catch in a loop was not slower: 68.4
+   (67.7-71.8) before round 21, 69.3 (68.0-73.1) after, 67.4 with this; the 6 % was noise.
+4. **Getters and setters of the script's** (`j_call_setter`, `jit_setter`, `jit_accessor_call`). Through the helper,
+   as compiled code calls a function (the getter's frame pushed, its compiled code run): a getter in a loop 151
+   (151-153) -> 78 (77-80) ns, a class's 168 -> 77 ns, a setter 145 (141-412) -> 81 (80-126) ns, `macro.js`'s getter
+   access 184 -> 92 ns. The accessor's call out of line in the helper made Map's `size` 37 -> 44 ns; inlined, 36.7.
+   The helpers now set the frame's pc to the instruction after the access, as the hot loop does.
+
+| | base | 1: `document` | 2: allocation | 3, 4 |
+|---|---|---|---|---|
+| nodes10k `build()` p50, JIT on / off | 9.1 / 9.0 ms | 7.9 / 9.1 ms | | 7.44 (7.41-7.84) / 8.74 (8.67-9.08) ms (base in this series 8.63 (8.47-8.78) / 8.89 (8.73-9.01)) |
+| `new Point(i, i)` | 110 (107-160) ns | 118 ns | 51 (50-53) ns | |
+| object literal `{a, b, c}` | 56.7 (56.3-59.8) ns | 66.0 (60.6-69.6) ns | 28.4 (27.4-30.0) ns | |
+| a closure made and called, JIT off | 565 (556-586) ns | | | 540 (537-562) ns (531 before round 21) |
+| a getter, a setter of the script's | 151, 145 ns | | 147, 144 ns | 78, 81 ns |
+
+Every other case of `micro.js`, `macro.js` and `realworld.js` within its range at steps 1 and 2 (the quiet series); the
+checksums the same in every build.
+
+Tests: jitcheck.js 762 -> 779 lines compared (a global accessor read, throwing once, its value kept, replaced, deleted;
+constructions with their own prototypes and one replaced while running, literals grown and frozen; getters and setters
+of the script's counting, throwing once, changing shapes and arrays, recursing; a native setter), also with
+`-jit-step`, `-jit-threshold 30` and under `JSRT_GC_STRESS=8192` with `JSRT_GC_POISON`; `examples/jsweb/jit_dom.js`: a
+compiled loop that reads `document`; test262 with the JIT (thresholds 2 and 1) and interpreted 49/82220, 0
+regressions; `judge capi` 64 checks.
+
+Not done: array literals allocated inline; a direct call of a getter of the script's (through the helper it is 78 ns,
+a direct call of a function about 25); `new F()` of a function without an operand stack (`function Empty() {}`: not
+compiled whole, called through the helper, 190 ns); callees with branches inlined, polymorphic inlining.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
