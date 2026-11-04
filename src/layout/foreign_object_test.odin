@@ -123,3 +123,41 @@ foreign_object_clips_nested :: proc(t: ^testing.T) {
 	top := content_rect(&f.l.boxes[bx(f, "svg")]).min
 	testing.expectf(t, near(mat_apply(m, cb.abs), top + {50, 50}) && near(mat_apply(m, cb.abs + {10, 10}), top + {70, 70}), "the nested viewport: x / y and its viewBox: %v", m)
 }
+
+// A nested <svg> clips a foreign object to its viewport (in the foreign object's coordinates), unless its overflow is
+// visible.
+@(test)
+foreign_object_nested_viewport_clip :: proc(t: ^testing.T) {
+	f := fixture_load(`<body style="margin:0"><svg style="display:block" width="100" height="100">
+<svg x="50" y="50" width="40" height="40" viewBox="0 0 20 20"><foreignObject id=d x="-10" y="-10" width="40" height="40"></foreignObject></svg>
+<svg style="overflow:visible" width="40" height="40"><foreignObject id=e x="-10" width="40" height="40"></foreignObject></svg>
+</svg></body>`)
+	defer fixture_unload(f)
+	d, e := bx(f, "d"), bx(f, "e")
+	if !testing.expect(t, d != NONE && e != NONE) { return }
+	sd := clip_path_shape(&f.l, d)
+	pd := f.l.boxes[d].abs
+	testing.expect(t, clip_shape_contains(sd, pd + {15, 15}) && !clip_shape_contains(sd, pd + {5, 15}) && !clip_shape_contains(sd, pd + {15, 35}), "its inner <svg>'s viewport: 10 to 30 of its own units")
+	testing.expect(t, f.l.boxes[e].cs.rare_group.clip_path == nil, "an overflow: visible <svg> clips nothing")
+}
+
+// The filters of a foreign object and its ancestors, innermost first: a <filter> chain of primitives as filter functions
+// (lengths in its own units), one of other primitives or not a chain left out.
+@(test)
+foreign_object_filter_chains :: proc(t: ^testing.T) {
+	f := fixture_load(`<body style="margin:0"><svg style="display:block" width="100" height="100">
+<filter id=chain><feColorMatrix type="saturate" values="0.5" result="s"/><feGaussianBlur in="s" stdDeviation="2"/><feComponentTransfer><feFuncR type="linear" slope="2"/><feFuncG type="linear" slope="2"/><feFuncB type="linear" slope="2"/></feComponentTransfer></filter>
+<filter id=offset><feOffset dx="2"/></filter>
+<filter id=fork><feGaussianBlur stdDeviation="1" result="a"/><feGaussianBlur in="SourceGraphic" stdDeviation="1"/></filter>
+<g style="filter:grayscale(1)" transform="scale(2)"><foreignObject id=a style="filter:url(#chain)" width="10" height="10"></foreignObject></g>
+<foreignObject id=b filter="url(#offset)" width="10" height="10"></foreignObject>
+<foreignObject id=c filter="url(#fork)" width="10" height="10"></foreignObject>
+</svg></body>`)
+	defer fixture_unload(f)
+	a, b, c := bx(f, "a"), bx(f, "b"), bx(f, "c")
+	if !testing.expect(t, a != NONE && b != NONE && c != NONE) { return }
+	fa := f.l.boxes[a].cs.filter
+	testing.expectf(t, len(fa) == 4 && fa[0].kind == .Saturate && fa[0].v == 0.5 && fa[1].kind == .Blur && fa[1].v == 2 && fa[2].kind == .Brightness && fa[2].v == 2 && fa[3].kind == .Grayscale, "the chain, then the <g>'s: %v", fa)
+	testing.expect(t, len(f.l.boxes[b].cs.filter) == 0, "feOffset: left out")
+	testing.expect(t, len(f.l.boxes[c].cs.filter) == 0, "not a chain: left out")
+}
