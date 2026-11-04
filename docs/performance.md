@@ -67,7 +67,8 @@ build.bat profile                         (-> build\wren_prof_tracy.exe; any var
 build\wrentool fetch tracy                (-> build\tracy\tracy-profiler.exe, tracy-capture.exe)
 build\wren_prof_tracy.exe examples\jsbench\nodes10k.html
 build\tracy\tracy-profiler.exe            the client is listed: Connect
-build\tracy\tracy-capture.exe -o build\perf\nodes10k.tracy -s 10      (no window: 10 s into a file the viewer opens)
+build\tracy\tracy-capture.exe -a 127.0.0.1 -o build\perf\nodes10k.tracy -s 10    (no window: 10 s into a file the viewer opens)
+build\tracy\tracy-csvexport.exe build\perf\nodes10k.tracy                    (each zone's count, mean and total, as CSV)
 ```
 
 It shows the phases, the frames, a plot of the layout items per frame, and in a Tracy build every call of a module into
@@ -75,7 +76,8 @@ the browser (each import of the JavaScript engine: a DOM call, a style or layout
 thread that made it (`src/wasm/host_trace.odin`). Run elevated, Tracy also samples the CPU and shows context switches
 (its own ETW session). Not there: GPU zones (the toolkit keeps its Direct3D 11 device and context to itself, its
 timestamp queries are the renderer's: `gpu_steps.odin` reads their results), lock annotations (Odin's `sync.Mutex`
-has no hook).
+has no hook). Connected, it costs: 5 s of nodes10k made 6.5 million zones (2.2 million `dom.Node_preInsert` alone),
+and 44 frames a second instead of 230; the phases alone are a few hundred zones a second.
 
 ### VTune (and perf)
 
@@ -89,7 +91,9 @@ vtune -collect hotspots -result-dir build\vtune\nodes10k -- build\wren_prof.exe 
 vtune -report hotspots -result-dir build\vtune\nodes10k -format csv
 ```
 
-(`jspage --pref wasm.wasmtime.profiler=vtune` is the engine alone.)
+(`jspage --pref wasm.wasmtime.profiler=vtune` is the engine alone.) VTune then lists the engine's functions as `[Dynamic code]`,
+`wasmtime::jsrt::interp_run`, `wasmtime::jscapi::...::bridge_invoke`, `wasmtime::jsrt::call_native`; telling it about every function
+costs about 1.2 s of CPU at the start (Wasmtime's `VTuneAgent::register_function`).
 
 ### WPR and WPA
 
@@ -106,6 +110,13 @@ build\wren_prof.exe examples\jsbench\nodes10k.html
 build\wrentool trace stop                 (-> build\trace\wren.etl)
 wpa build\trace\wren.etl                  Trace > Load Symbols; Trace > Trace Properties > Regions of Interest: tools\wren_regions.xml
 ```
+
+Checked on 2026-11-04 (WPR and WPA of the Windows Performance Toolkit 11.8): 3 s of nodes10k give 1 082 regions of
+each phase that runs every frame, the start-up's marks, Wren's functions named from the PDB, DxgKrnl's events.
+`xperf -i build\trace\wren.etl -a regions -man tools\wren_regions.xml` lists the regions without a window.
+
+The profile build with ETW in it and no session, against the one before it (5 interleaved runs of nodes10k, 5 s, median):
+CPU work per frame p50 17.70 -> 17.54 ms, Animation p50 11.79 -> 11.66 ms, 222.0 -> 227.7 frames/s: no cost seen.
 
 ### PIX
 
