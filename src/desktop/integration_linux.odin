@@ -99,6 +99,9 @@ linux_status :: proc(o: ^Options, allocator: runtime.Allocator) -> Status {
 			if o.register_browser {
 				mime, _ := entry_value(content, "MimeType")
 				ps.partial = !strings.contains(mime, "x-scheme-handler/https")
+				for name in link_scheme_names(o.identity.link_prefix) {   // (an entry of a version without the links: Repair adds them)
+					if !strings.contains(mime, strings.concatenate({SCHEME_MIME_PREFIX, name, ";"}, context.temp_allocator)) { ps.partial = true }
+				}
 			}
 		}
 	}

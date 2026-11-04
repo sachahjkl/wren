@@ -50,7 +50,7 @@ scratch_make :: proc() -> Scratch {
 		_ = os.write_entire_file(p, "MZ not a program")
 	}
 	s.opts = Options{
-		identity = Identity{name = "Wren", key = "Wren", slug = "wren", aumid = "FromentSoftware.Wren.Test", description = "A test.", vendor = "Froment Software"},
+		identity = Identity{name = "Wren", key = "Wren", slug = "wren", aumid = "FromentSoftware.Wren.Test", description = "A test.", vendor = "Froment Software", link_prefix = "wren-"},
 		exe = s.exe, register_browser = true, start_menu = true, file_types = split_list(".htm,.html,.svg,.webp", context.temp_allocator),
 		menu_dir = s.menu, desktop_dir = s.desk, environment_root = s.env, registry_root = s.root, notify_system = false,
 	}
@@ -175,6 +175,7 @@ windows_repair_states :: proc(t: ^testing.T) {
 	reg_delete_tree(client)
 	reg_delete_tree(progid)
 	reg_delete_value(fmt.tprintf("%s\\RegisteredApplications", s.root), "Wren")
+	for name in link_scheme_names(o.identity.link_prefix) { reg_delete_tree(fmt.tprintf("%s\\Classes\\%s", s.root, name)) }
 	state, st = state_of(&moved)
 	testing.expect_value(t, state, State.Repair)
 	testing.expect(t, !st.parts[.Registration].present, "no registration")
@@ -243,6 +244,60 @@ windows_removal_leaves_what_is_not_the_programs :: proc(t: ^testing.T) {
 	_, ok = reg_get(fmt.tprintf("%s\\RegisteredApplications", s.root), "Other")
 	testing.expect(t, ok, "another program's list entry stays")
 	testing.expect(t, reg_key_exists(fmt.tprintf("%s\\Clients\\StartMenuInternet\\Other", s.root)), "another browser's entry stays")
+}
+
+// The schemes of the links that open in Wren (links.odin): three keys with the registration, gone with it, and the keys of
+// the default browser (the user's choice for http and https, another program's scheme) never touched.
+@(test)
+windows_link_schemes :: proc(t: ^testing.T) {
+	s := scratch_make()
+	defer scratch_destroy(&s)
+	o := &s.opts
+	classes := fmt.tprintf("%s\\Classes", s.root)
+	choice := fmt.tprintf("%s\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\https\\UserChoice", s.root)
+	testing.expect(t, reg_set(choice, "ProgId", "OtherHTML"), "the user's default browser")
+	testing.expect(t, reg_set(fmt.tprintf("%s\\http\\shell\\open\\command", classes), "", "\"C:\\other\\other.exe\" \"%1\""), "the http class")
+	testing.expect(t, reg_set(fmt.tprintf("%s\\other-https\\shell\\open\\command", classes), "", "\"C:\\other\\other.exe\" \"%1\""), "another program's scheme")
+
+	testing.expect_value(t, install(o).error, Error.None)
+	for name in ([]string{"wren-http", "wren-https", "wren-about"}) {
+		key := fmt.tprintf("%s\\%s", classes, name)
+		v, ok := reg_get(key, "")
+		testing.expectf(t, ok && v == "URL:Wren", "%s: %q", name, v)
+		v, ok = reg_get(key, "URL Protocol")
+		testing.expectf(t, ok && v == "", "%s is a URL protocol (%v)", name, ok)
+		v, ok = reg_get(fmt.tprintf("%s\\shell\\open\\command", key), "")
+		testing.expectf(t, ok && v == fmt.tprintf("\"%s\" --open-url \"%%1\"", s.exe), "%s runs %q", name, v)
+	}
+	state, st := state_of(o)
+	testing.expect_value(t, state, State.Installed)
+
+	// one gone: to repair, and Repair writes it again
+	testing.expect(t, reg_delete_tree(fmt.tprintf("%s\\wren-about", classes)), "delete a scheme")
+	state, st = state_of(o)
+	testing.expect_value(t, state, State.Repair)
+	testing.expect(t, st.parts[.Registration].partial, "the registration is partial")
+	testing.expect_value(t, install(o).error, Error.None)
+	testing.expect(t, reg_key_exists(fmt.tprintf("%s\\wren-about", classes)), "written again")
+
+	// the program moved: they point to the old executable until Update
+	moved := o^
+	moved.exe = s.exe2
+	state, st = state_of(&moved)
+	testing.expect_value(t, state, State.Repair)
+	testing.expect(t, st.parts[.Registration].stale, "stale")
+	testing.expect_value(t, install(&moved).error, Error.None)
+	v, _ := reg_get(fmt.tprintf("%s\\wren-https\\shell\\open\\command", classes), "")
+	testing.expect_value(t, v, fmt.tprintf("\"%s\" --open-url \"%%1\"", s.exe2))
+
+	testing.expect_value(t, remove(&moved).error, Error.None)
+	for name in ([]string{"wren-http", "wren-https", "wren-about"}) {
+		testing.expectf(t, !reg_key_exists(fmt.tprintf("%s\\%s", classes, name)), "%s is gone", name)
+	}
+	v, _ = reg_get(choice, "ProgId")
+	testing.expect_value(t, v, "OtherHTML")
+	testing.expect(t, reg_key_exists(fmt.tprintf("%s\\http\\shell\\open\\command", classes)), "the http class stays")
+	testing.expect(t, reg_key_exists(fmt.tprintf("%s\\other-https", classes)), "another program's scheme stays")
 }
 
 // The windows of the process carry the AppUserModelID the shortcut has: what makes pinning and grouping work.

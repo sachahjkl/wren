@@ -24,6 +24,7 @@ CONTENT_TYPES := [?]Content_Type{
 }
 
 SCHEME_MIME_TYPES :: [?]string{"x-scheme-handler/http", "x-scheme-handler/https"}
+SCHEME_MIME_PREFIX :: "x-scheme-handler/"
 
 mime_of_extension :: proc(ext: string) -> string {
 	e := normalize_extension(ext)
@@ -31,10 +32,12 @@ mime_of_extension :: proc(ext: string) -> string {
 	return ""
 }
 
-// The MIME types the entry lists: the two web schemes, then those of the file types (each once, in order).
-mime_types :: proc(file_types: []string, allocator := context.temp_allocator) -> []string {
+// The MIME types the entry lists: the two web schemes, the schemes of the program's links (links.odin), then those of the
+// file types (each once, in order).
+mime_types :: proc(file_types: []string, link_prefix := "", allocator := context.temp_allocator) -> []string {
 	out := make([dynamic]string, allocator)
 	for s in SCHEME_MIME_TYPES { append(&out, s) }
+	for s in link_scheme_names(link_prefix) { append(&out, strings.concatenate({SCHEME_MIME_PREFIX, s}, allocator)) }
 	for ft in file_types {
 		m := mime_of_extension(ft)
 		if m == "" { continue }
@@ -163,7 +166,7 @@ desktop_entry_text :: proc(o: ^Options, allocator := context.temp_allocator) -> 
 	line(&sb, "Keywords", "Internet;WWW;Browser;Web;WebAssembly;")
 	if o.register_browser {
 		sb2 := strings.builder_make(context.temp_allocator)
-		for m in mime_types(o.file_types) { strings.write_string(&sb2, m); strings.write_byte(&sb2, ';') }
+		for m in mime_types(o.file_types, id.link_prefix) { strings.write_string(&sb2, m); strings.write_byte(&sb2, ';') }
 		line(&sb, "MimeType", strings.to_string(sb2))
 	}
 	line(&sb, ENTRY_MARKER, id.slug)

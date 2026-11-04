@@ -1538,7 +1538,10 @@ app_start :: proc(args: []string) -> ^App {
 	// `wren --version`, `wren version`, `wren --help`, `wren help` (cli_usage.odin): said on the console, nothing else is set up
 	if info := cli_info_of(args); info != .None { desktop.console_write(cli_info_text(info)); os.exit(0) }
 	host.phase("arguments and preferences")
-	profile_override, a1 := extract_flag(args, "--profile")
+	// `--open-url wren-https://...` (what a link of a web page runs) and the links among the arguments: addresses from here on, or nothing opens (desktop/links.odin)
+	linked, link_err := desktop.links_in_args(args, {desktop_identity().link_prefix, desktop.LINK_PREFIX})
+	if link_err != .None { desktop.console_write(fmt.tprintf("refused: %s\n", desktop.link_error_text(link_err))); os.exit(desktop.LINK_REFUSED_EXIT) }
+	profile_override, a1 := extract_flag(linked[:], "--profile")
 	policy_file, a2 := extract_flag(a1[:], "--policy")
 	purge_requested, a2b := extract_switch(a2[:], "--purge")   // with --uninstall: also delete the profile (desktop_shell.odin)
 	cli_mode, a3, cli_bad := desktop.parse_cli(a2b[:])   // --desktop-integration=install|remove|status|uninstall, --uninstall (desktop_shell.odin)

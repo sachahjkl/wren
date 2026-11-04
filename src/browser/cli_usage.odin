@@ -60,6 +60,7 @@ cli_usage_text :: proc() -> string {
 	row(&sb, "--profile <dir>", i18n.tr("the profile folder to use"))
 	row(&sb, "--policy <file>", i18n.tr("a policy file (settings an administrator fixes)"))
 	row(&sb, "--pref name=value", i18n.tr("sets a preference for this run (about:config lists them)"))
+	row(&sb, "--open-url <link>", i18n.tr("opens a wren-https:, wren-http: or wren-about:wren link (the last argument)"))
 	row(&sb, "--setup", i18n.tr("opens the Setup dialog"))
 	row(&sb, "--remote[=name]", i18n.tr("opens the remote control channel (wren ctl)"))
 	row(&sb, "--hidden", i18n.tr("windows are made and never shown (`wren ctl start`; needs a desktop session)"))
