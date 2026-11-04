@@ -47,11 +47,26 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-6-29">
+      <article class="release latest" id="v0-6-30">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-11-04">November 4, 2026</time></p>
-          <div class="release-title"><h3>0.6.29</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.6.30</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>A crash fixed</strong>: styling a page with radio buttons on several threads could free a list twice and abort Wren (seen on Linux on Wikipedia). The style threads now only read the forms' state, settled before they start.</li>
+            <li><strong>A busy page keeps moving</strong>: while a page's script runs a long task, CSS animations of transform and opacity go on, scroll boxes follow the wheel and their scroll bar, and the caret keeps blinking.</li>
+            <li><strong>New tab</strong>: Ctrl+T puts the keyboard in the address bar; the list of pages visited opens for a click or a letter, not by itself. With the art new tab on, the first painting is fetched a moment after the start.</li>
+            <li><strong>Compatibility</strong>: CSS Nesting's nested declarations, <code>document.write</code>'s insertion point, promise rejections and muted errors as HTML reports them, <code>toggle</code> on <code>&lt;details&gt;</code>, clicks dispatched by scripts.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.6.30.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.6.30">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-6-29">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-11-04">November 4, 2026</time></p>
+          <div class="release-title"><h3>0.6.29</h3></div>
           <ul class="release-list">
             <li><strong>Signed updates (Windows)</strong>: a release carries a manifest signed with a key of its own. About Wren checks for a newer release and, when you press "Install the update", downloads the program, compares its length and SHA-256 with the signed ones, and swaps it in with a way back. Nothing is installed without the button. The channel (address, files, key, signature required) is configurable: see docs/updates.md.</li>
             <li><strong>Developer tools</strong>: find in the panels, a console drawer, a colour picker, style values.</li>
