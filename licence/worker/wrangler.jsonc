@@ -53,7 +53,7 @@
 			"send_email": [{ "name": "EMAIL" }],
 			"vars": {
 				"PADDLE_API_BASE": "https://sandbox-api.paddle.com",
-				"PRICE_SUPPORTER": "",
+				"PRICE_SUPPORTER": "pri_01m6kd3nvpkemxgwamft6z2fjw",
 				"PRICE_PATRON": "",
 				"LICENSE_PUBLIC_KEY": "",
 				"MAIL_FROM": "Wren <licences@froment.software>",
