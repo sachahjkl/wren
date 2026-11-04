@@ -1,9 +1,9 @@
 package deps
 
-import "core:fmt"
-import "core:os"
+@(require) import "core:fmt"   // (each of these is of one system)
+@(require) import "core:os"
 @(require) import "wb:base"   // (Windows)
-import "wb:tools/tooling"
+@(require) import "wb:tools/tooling"
 
 // Tracy (github.com/wolfpld/tracy), a pinned release, for the builds that ask for it (WREN_TRACY=1 wrentool build <variant>:
 // package trace). Its client is one C++ file built as a static library: it records only while a viewer is connected
