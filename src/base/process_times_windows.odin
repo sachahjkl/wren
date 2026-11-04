@@ -27,30 +27,32 @@ process_times :: proc() -> (t: Process_Times) {
 	return
 }
 
-foreign import kernel32_pt "system:Kernel32.lib"
+foreign import ntdll_pt "system:ntdll.lib"
 
 @(default_calling_convention = "system", private = "file")
-foreign kernel32_pt {
-	@(link_name = "CreateToolhelp32Snapshot") pt_CreateToolhelp32Snapshot :: proc(flags: u32, pid: u32) -> win.HANDLE ---
-	@(link_name = "Process32FirstW") pt_Process32FirstW :: proc(snap: win.HANDLE, e: ^win.PROCESSENTRY32W) -> win.BOOL ---
-	@(link_name = "Process32NextW") pt_Process32NextW :: proc(snap: win.HANDLE, e: ^win.PROCESSENTRY32W) -> win.BOOL ---
+foreign ntdll_pt {
+	@(link_name = "NtGetNextThread") pt_NtGetNextThread :: proc(process, thread: win.HANDLE, access: u32, attributes, flags: u32, next: ^win.HANDLE) -> i32 ---
 }
 
-@(private = "file") TH32CS_SNAPPROCESS :: 0x2
+// What a thread handle of the walk may do: nothing is asked of it, the least the system grants.
+@(private = "file") THREAD_QUERY_LIMITED_INFORMATION :: 0x0800
+// NtGetNextThread past the last thread.
+@(private = "file") STATUS_NO_MORE_ENTRIES :: i32(-2147483622)   // 0x8000001A
 
-// Threads of this process, from the process's own entry of the process snapshot (each entry carries its thread count):
-// -1 when the system will not say. Never the machine-wide thread list, which has thousands of entries on a busy runner.
+// Threads of this process, walked one by one (NtGetNextThread: each step a handle to the next thread of this process):
+// -1 when the system will not say. Never a snapshot of the system's processes or threads: a snapshot copies every
+// process of the machine, 20 to 45 ms on a busy one, where this walk costs microseconds per thread.
 process_threads :: proc() -> int {
-	snap := pt_CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
-	if snap == win.INVALID_HANDLE_VALUE { return -1 }
-	defer win.CloseHandle(snap)
-	e := win.PROCESSENTRY32W{dwSize = size_of(win.PROCESSENTRY32W)}
-	pid := win.GetCurrentProcessId()
-	ok := pt_Process32FirstW(snap, &e)
-	for ok {
-		if e.th32ProcessID == pid { return int(e.cntThreads) }
-		e.dwSize = size_of(win.PROCESSENTRY32W)
-		ok = pt_Process32NextW(snap, &e)
+	self := win.GetCurrentProcess()
+	at: win.HANDLE
+	n := 0
+	for {
+		next: win.HANDLE
+		status := pt_NtGetNextThread(self, at, THREAD_QUERY_LIMITED_INFORMATION, 0, 0, &next)
+		if at != nil { win.CloseHandle(at) }
+		if status == STATUS_NO_MORE_ENTRIES { return n }
+		if status < 0 { return -1 }
+		at = next
+		n += 1
 	}
-	return -1
 }

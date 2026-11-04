@@ -20,6 +20,7 @@ import "core:sync"
 import "wb:base"
 import "wb:config"
 import "wb:dom"
+import "wb:host"
 import "wb:js"
 import js_image "wb:js/image"
 import "wb:wasm"
@@ -84,6 +85,42 @@ js_image_digest :: proc() -> ^wasm.Digest {
 	return js_engine_digest_known ? &js_engine_digest : nil
 }
 
+// The engine's compiled code read ahead at the process's start (js_startup), on a thread of its own: the image's digest,
+// the file of the disk cache read and its HMAC checked, Wasmtime's deserializing and the imports resolved (10 to 20 ms)
+// were the first realm's, on the window thread, before its page's first script. The first realm then finds the module in
+// memory; it waits for the read-ahead only while it runs. States: Off --js_startup--> Running --thread--> Done
+// --js_shutdown (joined)--> Off.
+Js_Read_Ahead_State :: enum u32 { Off, Running, Done }
+
+Js_Read_Ahead :: struct {
+	state: sync.Futex,     // a Js_Read_Ahead_State
+	th:    ^host.Thread,
+}
+
+@(private)
+js_read_ahead: Js_Read_Ahead
+
+@(private)
+js_read_ahead_start :: proc() {
+	sync.atomic_store(&js_read_ahead.state, sync.Futex(Js_Read_Ahead_State.Running))
+	js_read_ahead.th = host.thread_start(proc(_: rawptr) {
+		_ = wasm.read_ahead(js_engine_image(), js_image_digest())
+		sync.atomic_store(&js_read_ahead.state, sync.Futex(Js_Read_Ahead_State.Done))
+		sync.futex_broadcast(&js_read_ahead.state)
+	}, nil, name = "wren-js-read-ahead")
+	if js_read_ahead.th == nil { sync.atomic_store(&js_read_ahead.state, sync.Futex(Js_Read_Ahead_State.Off)) }
+}
+
+// Until the read-ahead is done, when it runs (a realm about to be made).
+@(private)
+js_read_ahead_wait :: proc() {
+	for {
+		v := sync.atomic_load(&js_read_ahead.state)
+		if Js_Read_Ahead_State(v) != .Running { return }
+		sync.futex_wait(&js_read_ahead.state, u32(v))
+	}
+}
+
 // Whether this page runs scripts (javascript.enabled, per site).
 js_enabled :: proc(p: ^Page) -> bool {
 	if p.frames != nil && !sandbox_allows(p.frames.sandbox, .Scripts) { return false }   // a sandboxed frame (frames.odin)
@@ -109,6 +146,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 	}
 	// (a worker terminated while it starts: nothing went wrong, a page may well do that at once)
 	stopping := proc(opt: ^wasm.Options) -> bool { return opt.stop != nil && bool(sync.atomic_load(opt.stop)) }
+	js_read_ahead_wait()
 	inst, err := wasm.instance_create(js_engine_image(), p, p.scope, opt, "javascript", nil, js_image_digest())
 	if inst == nil {
 		r.failed = true
@@ -276,9 +314,12 @@ js_startup :: proc(prefs: ^config.Prefs, profile_dir: string) {
 	s := js.settings_from_prefs(prefs, profile_dir)
 	defer js.settings_destroy(&s)
 	js.cache_start(s.cache)
+	js_read_ahead_start()
 }
 
 js_shutdown :: proc() {   // (every App's compile threads stopped first: they store into the cache, js_load_compile.odin)
+	host.thread_join(js_read_ahead.th)
+	js_read_ahead = {}
 	js.cache_stop()
 	delete(js_engine_version, base.process_allocator())
 	js_engine_version = ""

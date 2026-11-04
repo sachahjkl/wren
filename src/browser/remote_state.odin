@@ -70,8 +70,8 @@ process_uptime_ms :: proc() -> f64 {
 }
 
 // Threads of this process: -1 when the system will not say. From base.process_threads (toolkit's testkit does not carry
-// this, so base reads it per system: a cheap read of /proc/self/status on Linux; on Windows the process's own entry of
-// the process snapshot, never the machine-wide thread list, which cost `wren ctl stats` 16 to 47 ms of CPU to walk).
+// this, so base reads it per system: a cheap read of /proc/self/status on Linux; on Windows a walk of this process's own
+// threads, never a snapshot of the machine's processes, which cost `wren ctl stats` 20 to 45 ms of CPU).
 process_thread_count :: proc() -> int {
 	return base.process_threads()
 }

@@ -225,10 +225,12 @@ style_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		l.failed = true
 		log(p, .Warn, fmt.tprintf("stylesheet %s: %s", l.url, ev.detail))
 		if l.is_import { import_failed(p, l) } else { link_sheet_settled(p, l, false) }
+		arrived_pump(p)
 	case .Done:
 		l.task = base.NIL_HANDLE
 		if l.bad_status {
 			if l.is_import { import_failed(p, l) } else { link_sheet_settled(p, l, false) }
+			arrived_pump(p)
 			return
 		}
 		if !l.is_import { if _, still := p.link_loads[l.owner]; !still { return } }
@@ -255,7 +257,16 @@ style_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		p.style_stale = true
 		start_pending_imports(p)
 		if l.is_import { links_check_imports(p) }
+		arrived_pump(p)
 	}
+}
+
+// What the parser's script or the load event waited for is in (a sheet in or failed, the element events of sheets and
+// images dispatched): they go on now rather than at the next look of the poll (javascript.load.poll_ms: 16 ms, more
+// with the loop's timer slices).
+@(private)
+arrived_pump :: proc(p: ^Page) {
+	if p.scripts != nil && !p.closed { scripts_pump(p) }
 }
 
 // The <link>'s sheet is in (or will never be): its load or error event, as a task (HTML "process the linked

@@ -532,6 +532,43 @@ disk_cache :: proc(t: ^testing.T) {
 	runtime_destroy()
 }
 
+// The read-ahead of a process's start (page.js_startup): on another thread, the module from the disk into memory; the
+// instance made after it reads nothing from the disk. Nothing is compiled ahead when the disk has no entry.
+@(test)
+read_ahead_from_disk :: proc(t: ^testing.T) {
+	dir := temp_dir(t, "ahead")
+	defer testenv.remove_tree(dir)
+	setup(t, dir)
+	image := wat(t, MODULE)
+	testing.expect(t, !read_ahead(image), "no entry on disk: nothing read")
+	s := cache_stats()
+	testing.expectf(t, s.compiles == 0 && s.entries == 0, "nothing compiled ahead: %v", s)
+	destroy(make_instance(t, image))
+	cache_flush()
+
+	setup(t, dir)   // the next start
+	Ahead :: struct { image: []byte, read: bool }
+	ahead := Ahead{image = image}
+	th := thread.create_and_start_with_data(&ahead, proc(data: rawptr) {
+		a := (^Ahead)(data)
+		a.read = read_ahead(a.image)
+	})
+	thread.join(th)
+	thread.destroy(th)
+	testing.expect(t, ahead.read, "the entry read ahead")
+	s = cache_stats()
+	testing.expectf(t, s.disk_hits == 1 && s.entries == 1 && s.compiles == 0, "in memory from the disk: %v", s)
+	inst := make_instance(t, image)
+	if inst != nil {
+		r, res := call_i32(inst, "sum4")
+		testing.expect(t, res == .Ok && r == 10, "a module read ahead runs")
+		destroy(inst)
+	}
+	s = cache_stats()
+	testing.expectf(t, s.disk_hits == 1 && s.memory_hits == 1 && s.compiles == 0, "the instance read nothing from the disk: %v", s)
+	runtime_destroy()
+}
+
 @(test)
 memory_cache_limit :: proc(t: ^testing.T) {
 	setup(t, tweak = proc(rs: ^Runtime_Settings) { rs.cache_memory_bytes = 0 })

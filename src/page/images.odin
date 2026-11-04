@@ -1143,6 +1143,7 @@ queue_element_event :: proc(p: ^Page, node: base.Handle, type: string, media_err
 			if !p.closed && dom.get(p.doc, ev.node) != nil { dispatch_event(p, ev.node, dom.Event{type = ev.type}) }
 			delete(ev.type)
 		}
+		arrived_pump(p)   // (the document's load event waited for these: not for the poll)
 	}, p, p.scope)
 }
 
