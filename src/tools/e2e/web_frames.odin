@@ -155,6 +155,15 @@ try { document.body.removeChild(d.body); log("no throw"); } catch (e) { log("rem
 try { made.matches(); log("no throw"); } catch (e) { log("arity " + (e instanceof f.contentWindow.TypeError) + " " + (e instanceof TypeError)); }
 d.title = "frame title";
 log("title " + d.title + " | " + document.title + " | " + d.readyState + " " + d.URL + " " + d.compatMode);
+const goes = document.createElement("script");
+goes.src = "data:text/javascript,log('moved script ran')";
+goes.async = false;
+document.body.appendChild(goes);
+d.body.appendChild(goes);
+const stays = document.createElement("script");
+stays.src = "data:text/javascript,log('script after it ran')";
+stays.async = false;
+document.body.appendChild(stays);
 </script></body>`)
 	check(pr, wait_note(pr, "doc 9 true true true true"), "contentDocument, contentWindow.document and frames[0].document are one object in the caller's realm")
 	check(pr, said(pr, "parts HTML BODY true true true"), "it is a real document: its elements, their identity, ownerDocument and defaultView")
@@ -171,6 +180,7 @@ log("title " + d.title + " | " + document.title + " | " + d.readyState + " " + d
 	check(pr, said(pr, "removeChild across documents NotFoundError"), "a node of another document is not a child")
 	check(pr, said(pr, "arity true false"), "a method of a node of the frame given too few arguments throws the frame's TypeError")
 	check(pr, said_part(pr, "title frame title |  | "), "document.title of the frame, not of the parent")
+	check(pr, wait_note(pr, "script after it ran") && !said(pr, "moved script ran"), "a script moved to another document after it was prepared does not run (the one after it does)")
 	c := child_of(pr.p)
 	check(pr, c != nil && strings.contains(page.serialize_html(c.doc, c.body, false), `<span data-a="1"`), "what was written is in the frame's own DOM (seen from the browser's side)")
 	// the frame's own styles and layout follow what the parent wrote
@@ -180,7 +190,7 @@ log("title " + d.title + " | " + document.title + " | " + d.readyState + " " + d
 		cs := style.style_of(st, span)
 		check(pr, cs != nil && rgb_of(cs) == {1, 2, 3}, "the frame's styles compute after a write from the parent")
 	}
-	close_page(pr, min_checks = 16)
+	close_page(pr, min_checks = 17)
 }
 
 // from the frame: parent.document, top.document, frameElement; a frame of a frame

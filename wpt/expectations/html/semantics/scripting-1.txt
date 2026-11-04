@@ -384,9 +384,9 @@
 	scheduler: DOM added external SVG script, force-async? : FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/137.html: OK
 	scheduler: SVG script empty xlink:href: FAIL
-/html/semantics/scripting-1/the-script-element/execution-timing/138.html: ERROR
-	scheduler: SVG script nested inlines: FAIL
-/html/semantics/scripting-1/the-script-element/execution-timing/139.html: ERROR
+/html/semantics/scripting-1/the-script-element/execution-timing/138.html: OK
+	scheduler: SVG script nested inlines: PASS
+/html/semantics/scripting-1/the-script-element/execution-timing/139.html: OK
 	scheduler: SVG script nested external in inline: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/140.html: OK
 	scheduler: SVG script nested inline in external: FAIL
@@ -394,7 +394,7 @@
 	scheduler: SVG inline script that document.writes inline script : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/142.html: OK
 	scheduler: SVG inline script that document.writes external script : FAIL
-/html/semantics/scripting-1/the-script-element/execution-timing/143.html: OK
+/html/semantics/scripting-1/the-script-element/execution-timing/143.html: ERROR
 	scheduler: SVG nested inline script that document.writes inline script : FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/144.html: OK
 	scheduler: SVG inline script changing the type attribute : FAIL
@@ -1556,15 +1556,15 @@
 	Eval: Move success inline classic script to iframe move-back: NOTRUN
 	Sanity check around top-level Window: PASS
 	window error: Move success inline classic script to iframe move-back: NOTRUN
-/html/semantics/scripting-1/the-script-element/moving-between-documents/ordering/delay-load-event-1.html: ERROR
+/html/semantics/scripting-1/the-script-element/moving-between-documents/ordering/delay-load-event-1.html: OK
 	Script elements (parser-blocking) does not delay the load event in the new Document after move: PASS
 	Script elements (parser-blocking) still delay the load event in the original Document after move: PASS
-/html/semantics/scripting-1/the-script-element/moving-between-documents/ordering/delay-load-event-2.html: ERROR
+/html/semantics/scripting-1/the-script-element/moving-between-documents/ordering/delay-load-event-2.html: OK
 	Script elements (async) does not delay the load event in the new Document after move: PASS
 	Script elements (async) still delay the load event in the original Document after move: PASS
-/html/semantics/scripting-1/the-script-element/moving-between-documents/ordering/in-order.html: ERROR
+/html/semantics/scripting-1/the-script-element/moving-between-documents/ordering/in-order.html: OK
 	Script elements (in-order) still block subsequent in-order scripts in the original Document after moved to another Document: PASS
-/html/semantics/scripting-1/the-script-element/moving-between-documents/ordering/parser-blocking.html: ERROR
+/html/semantics/scripting-1/the-script-element/moving-between-documents/ordering/parser-blocking.html: OK
 	Script elements (parser-blocking) still block the parser in the original Document after moved to another Document: PASS
 /html/semantics/scripting-1/the-script-element/muted-errors.sub.html: OK
 	Errors for cross-origin script should be muted: FAIL
@@ -1615,8 +1615,8 @@
 	UTF-8 script decoded using document encoding (windows-1250): FAIL
 	assumption: document encoding is windows-1250: PASS
 	windows-1250 script decoded using document encoding (also windows-1250): FAIL
-/html/semantics/scripting-1/the-script-element/script-charset-03.html: ERROR
-	Script changing @charset: FAIL
+/html/semantics/scripting-1/the-script-element/script-charset-03.html: OK
+	Script changing @charset: PASS
 /html/semantics/scripting-1/the-script-element/script-crossorigin-network.sub.html: TIMEOUT
 	cross-origin invalid: NOTRUN
 	cross-origin missing: NOTRUN

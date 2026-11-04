@@ -158,6 +158,9 @@ window.addEventListener("load", () => log("load " + document.readyState));
 <script nomodule>log("nomodule ran")</script>
 <script type="text/x-template">log("data block ran")</script>
 <p id=p2>two</p>
+<svg><script>log("svg outer " + (function () { var a = {
+<script>log("svg inner")</script>
+a: 1}; return a.a })())</script></svg>
 <script>log("last inline")</script>
 </body></html>`))
 	check(pr, wait_note(pr, "load complete"), "the load event comes")
@@ -169,9 +172,10 @@ window.addEventListener("load", () => log("load " + document.readyState));
 	check(pr, noted(pr, "DCL at window true 3"), "DOMContentLoaded bubbles to the window")
 	check(pr, in_order(pr, "DCL at document true", "readystate complete", "load complete"), "then readyState complete and load at the window")
 	check(pr, index_of(pr, "async") >= 0 && index_of(pr, "async") < index_of(pr, "load complete"), "async scripts run before load")
+	check(pr, in_order(pr, "svg inner", "svg outer 1", "last inline"), "an SVG script inside an SVG script runs at its end tag, first; the outer's text is its own text children")
 	ran := page.scripts_timing(pr.p).scripts_run
 	check(pr, ran >= SCRIPTS_IN_ORDER_PAGE, fmt.tprintf("%d scripts ran", ran))
-	close_page(pr, min_checks = 10)
+	close_page(pr, min_checks = 11)
 }
 
 @(test)
