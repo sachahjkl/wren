@@ -40,6 +40,7 @@ What dispatchEvent creates.
 | `Bubbles` | 0 |  |%!(EXTRA false)
 | `Cancelable` | 1 |  |%!(EXTRA false)
 | `Composed` | 2 | The event crosses shadow roots: its path goes on to the hosts (targets retargeted). |%!(EXTRA false)
+| `Activation` | 3 | A MouseEvent: a click runs the activation behaviour of what it targets (DOM dispatch's activation target: a check box toggles, a label clicks its control, a link is followed). |%!(EXTRA true)
 
 ### callback `EventListener`
 

@@ -158,6 +158,14 @@ section("form controls", () => {
   eq("labels by for=", Array.from(in1.labels, l => l.id).join(), "l1");
   eq("labels by nesting", document.getElementById("in2").labels[0].id, "l2");
   eq("hidden input has no labels", document.getElementById("hid").labels, null);
+  // a script's MouseEvent click activates as a user's does (DOM "dispatch": the activation target); another Event does not
+  const in2 = document.getElementById("in2"), l2 = document.getElementById("l2");
+  l2.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+  eq("a MouseEvent click dispatched at a label clicks its control", in2.checked, true);
+  in2.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+  eq("one at a check box toggles it", in2.checked, false);
+  l2.dispatchEvent(new Event("click", { bubbles: true }));
+  eq("an Event that is no MouseEvent activates nothing", in2.checked, false);
   const sel = document.getElementById("sel");
   const so = sel.selectedOptions;
   eq("selectedOptions", so.length, 2);

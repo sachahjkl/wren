@@ -251,6 +251,7 @@ Api_EventInit_Flag :: enum u32 {
 	Bubbles = 0,
 	Cancelable = 1,
 	Composed = 2,
+	Activation = 3,
 }
 Api_EventInit :: bit_set[Api_EventInit_Flag; u32]
 
@@ -983,7 +984,7 @@ _valid_TextDecoderOptions :: #force_inline proc "contextless" (v: u32) -> bool {
 _valid_ListenerOptions :: #force_inline proc "contextless" (v: u32) -> bool { return u64(u32(v)) & ~u64(0x7) == 0 }
 
 @(private = "file")
-_valid_EventInit :: #force_inline proc "contextless" (v: u32) -> bool { return u64(u32(v)) & ~u64(0x7) == 0 }
+_valid_EventInit :: #force_inline proc "contextless" (v: u32) -> bool { return u64(u32(v)) & ~u64(0xf) == 0 }
 
 @(private = "file")
 _valid_EventSourceState :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }

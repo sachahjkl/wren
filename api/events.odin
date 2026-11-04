@@ -30,6 +30,9 @@ EventInit :: enum u32 {
 	Cancelable,
 	/// The event crosses shadow roots: its path goes on to the hosts (targets retargeted).
 	Composed,
+	/// A MouseEvent: a click runs the activation behaviour of what it targets (DOM dispatch's activation target: a check box
+	/// toggles, a label clicks its control, a link is followed).
+	Activation,
 }
 
 /// A listener: `user` is the value given to addEventListener.

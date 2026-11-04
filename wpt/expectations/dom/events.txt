@@ -169,9 +169,9 @@
 	In window.document with click event: PASS
 	In window.document with load event: PASS
 	In window.document.cloneNode(true): FAIL
-/dom/events/Event-dispatch-click.html: TIMEOUT
+/dom/events/Event-dispatch-click.html: OK
 	basic with click(): PASS
-	basic with dispatchEvent(): FAIL
+	basic with dispatchEvent(): PASS
 	basic with wrong event class: PASS
 	disabled checkbox should be checked from dispatchEvent(new MouseEvent("click")): FAIL
 	disabled checkbox should fire onclick: PASS
@@ -190,17 +190,17 @@
 	disabling radio in onclick listener shouldn't suppress onchange: PASS
 	disabling radio in onclick listener shouldn't suppress oninput: PASS
 	disconnected checkbox should be checked: PASS
-	disconnected checkbox should be checked from dispatchEvent(new MouseEvent('click')): FAIL
+	disconnected checkbox should be checked from dispatchEvent(new MouseEvent('click')): PASS
 	disconnected form should not submit: PASS
 	disconnected radio should be checked: PASS
-	disconnected radio should be checked from dispatchEvent(new MouseEvent('click')): FAIL
-	event state during post-click handling: TIMEOUT
+	disconnected radio should be checked from dispatchEvent(new MouseEvent('click')): PASS
+	event state during post-click handling: PASS
 	look at parents only when event bubbles: PASS
-	look at parents when event bubbles: FAIL
-	pick the first with activation behavior <a href>: TIMEOUT
-	pick the first with activation behavior <input type=checkbox>: FAIL
-	pick the first with activation behavior <input type=radio>: FAIL
-	redispatch during post-click handling: TIMEOUT
+	look at parents when event bubbles: PASS
+	pick the first with activation behavior <a href>: PASS
+	pick the first with activation behavior <input type=checkbox>: PASS
+	pick the first with activation behavior <input type=radio>: PASS
+	redispatch during post-click handling: FAIL
 	submit button should not activate if the event listener disables it: PASS
 	submit button that morphed from checkbox should not activate: PASS
 /dom/events/Event-dispatch-click.tentative.html: OK
@@ -215,9 +215,9 @@
 	Click event on an element not in the document: PASS
 /dom/events/Event-dispatch-detached-input-and-change.html: OK
 	attached checkbox should emit input and change events on click().: PASS
-	attached checkbox should emit input and change events on dispatchEvent(new MouseEvent('click')).: FAIL
+	attached checkbox should emit input and change events on dispatchEvent(new MouseEvent('click')).: PASS
 	attached radio should emit input and change events on click().: PASS
-	attached radio should emit input and change events on dispatchEvent(new MouseEvent('click')).: FAIL
+	attached radio should emit input and change events on dispatchEvent(new MouseEvent('click')).: PASS
 	attached to shadow dom checkbox should emit input and change events on click().: FAIL
 	attached to shadow dom checkbox should emit input and change events on dispatchEvent(new MouseEvent('click')).: FAIL
 	attached to shadow dom radio should emit input and change events on click().: FAIL
