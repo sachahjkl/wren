@@ -1621,6 +1621,49 @@ are in waits (`ZwWaitForAlertByThreadId`), not identified.
    most of the work is on the style and layout threads, which this sampler does not see. A profile of the threads
    (`WREN_SAMPLE_THREADS=1`) is the next measure. **Not done this round**: the script stage of DOM-heavy pages (item 1).
 
+## What changed, round 19: the licence card of about:wren under the pointer
+
+`wrentool bench perf -Only card_hover -Shown` (about:wren?card=sample, the card scrolled into view, the pointer wandering
+over it every 8 ms; `card_idle`: the card at rest), profile builds, 3 interleaved runs, 60 Hz, RTX 4070 SUPER (the
+hardware adapter: `nvwgf2umx.dll` in the process, not WARP). GPU times are those of a GPU that the driver keeps at low
+clocks for so little work: the counts of `-GpuSteps 1` say more.
+
+1. **A document changed only in style attributes is refreshed, not laid out** (`styles_only_mutations`,
+   `src/layout/refresh.odin`). The card's script writes its tilt in the style attributes of the card, its lettering and
+   the seal's shadow at each frame (transform, `--rx`...): paint-only values, but any change of the document disqualified
+   the refresh path, the incremental pass ran (0.2 ms, nothing to lay out), and the compositor, seeing a layout pass,
+   drew the page directly for `render.compositor.settle_ms`, without its kept layers: the card's 59 planes (the rims are
+   52 of them) rasterized again at every frame. Now the entries of the mutation journal since the last pass are looked
+   at: `style` attributes of HTML elements only (no inline `<svg>` with foreign objects), and the styles say whether
+   that is paint-only (`layout_serial`). Test: `inline_transform_refreshes` (layout).
+2. **A plane keeps its raster scale for `paint.planes.settle_ms` after its last move** (`plane_plan`), not for one frame:
+   a pointer that tilts at its own rate leaves frames without a move, and each one rasterized the planes whose scale
+   needed was a quarter octave off (the rims, seen edge-on, at every tilt). Test:
+   `planes_keep_their_scale_while_moving_and_sharpen_at_rest` (a still frame keeps it).
+3. **Mip levels only where a plane is reduced more than twice** (`plane_needs_mips`, `PLANE_MIPS_REDUCTION`): across the
+   slant, or along it more than the anisotropic taps take. The card's base and seal, rasterized again at every frame for
+   their shader, built theirs at every frame. Test: `planes_tilted_by_the_pointer_build_no_mips`.
+4. **The development build has no Direct3D debug layer** (`builder.odin`, `.Dev`: `-define:D3D_DEBUG=false`): `-debug`,
+   there for the PDB, made ODIN_DEBUG true, which turned it on (`D3D11_3SDKLayers.dll` in `build\wren.exe`). The debug
+   build keeps it.
+
+| card_hover | before | after |
+|---|---|---|
+| layers cleared and drawn per frame (`-GpuSteps 1`) | 40.6, 38.6 (3.2 Mpx cleared) | 2.7, 2.7 (0.4 Mpx) |
+| kept plane layers reused per frame | 13.2 | 52.3 |
+| layout passes: incremental / refresh (8 s) | 269 / 89 | 3 / 217 |
+| GPU draw p50, p95 | 3.8, 4.9-5.0 ms | 2.7-2.9, 4.1-4.2 ms |
+| CPU work of a frame p50, p95 | 0.87-0.92, 2.3-2.9 ms | 0.79-1.01, 2.2-3.1 ms |
+| frame gaps p50, p95 | 16.7, 18.4-19.4 ms | 16.7, 18.4-22.5 ms |
+| input -> screen p50 | 37.2-37.7 ms | 37.3-37.8 ms |
+| dev build, mean CPU of a frame (stats, 4 runs, another agent building at times) | 3.0-4.7 ms (debug layer) | 1.75-2.7 ms |
+
+At 60 Hz on this machine the card made every frame before too: the CPU work was about 1 ms and the GPU's a few. What
+went is the work a slower GPU, or the debug layer's validation of each of its calls, makes visible. At rest the card
+draws for its sweep (the light crosses it in 40 % of 7 s) and not in the pause; the first frame that shows it costs
+62 ms (its relief, lettering and seal made natively and uploaded, `about_card_relief.odin`): once. Input to screen is
+the browser's anywhere (about:home: 38.5 ms).
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
