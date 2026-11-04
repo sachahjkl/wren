@@ -212,7 +212,7 @@
 <li><a href="../../docs/engine/bigint/">bigint: arbitrary-precision integers for the JavaScript engine</a></li>
 <li><a href="../../docs/engine/datetime/">datetime (package jsdate): the JavaScript engine's Date</a></li>
 <li><a href="../../docs/engine/frontend/">Moteur JavaScript — front-end E1 (src/engine/frontend)</a></li>
-<li><a href="../../docs/engine/jit/">The loop JIT (src/engine/jsrt/jit.odin)</a></li>
+<li><a href="../../docs/engine/jit/">The JIT (src/engine/jsrt/jit.odin)</a></li>
 <li><a href="../../docs/engine/jscapi/">The QuickJS C API on the Odin runtime (src/engine/jscapi)</a></li>
 <li><a href="../../docs/engine/numconv/">numconv: float64 ↔ string for the JavaScript engine</a></li>
 <li><a href="../../docs/engine/regexp/">engine/regexp</a></li>
@@ -341,8 +341,9 @@ function, <code>html.wasm_scripts</code>, if it ever changes.)</p>
 <h2 id="javascript"><a class="anchor" href="#javascript" aria-hidden="true">#</a>JavaScript</h2>
 <p>JavaScript is one more Wasm guest, not a second engine beside Wasm. The engine is written in Odin (<code>src/engine</code>): a
 front-end that compiles source to QuickJS-ng 0.17 bytecode, the interpreter (<code>jsrt</code>, with a hot loop of its own and a loop
-JIT that compiles hot loops to Wasm at run time: numbers, properties guarded by shapes, small callees inlined,
-natives called; <a href="../../docs/engine/jit/">engine/jit.md</a>), and the numeric, Unicode, regexp and date libraries. <code>jscapi</code> gives it
+JIT that compiles hot loops and hot functions to Wasm at run time: numbers, properties guarded by shapes, small callees
+inlined, compiled functions called directly, natives and getters called, objects and strings made;
+<a href="../../docs/engine/jit/">engine/jit.md</a>), and the numeric, Unicode, regexp and date libraries. <code>jscapi</code> gives it
 the QuickJS C API, which the glue (<code>native/js/odin</code>, all Odin) is written against; the web platform's objects are
 hand-written members plus bindings generated from the Web IDL of webref (<code>src/tools/bindgen</code>, package <code>jsgen</code>, into
 <code>native/js/odin/bindings_gen.odin</code>). <code>src\tools\buildjs</code> compiles it all to one wasm32 module (Odin, linked by Odin's own <code>wasm-ld</code>, no C library:

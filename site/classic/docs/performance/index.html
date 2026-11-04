@@ -76,6 +76,7 @@
 <li><a href="#what-changed-round-18-the-frames-wait-for-its-slot-runs-the-loops-tasks">What changed, round 18: the frame's wait for its slot runs the loop's tasks</a></li>
 <li><a href="#what-changed-round-19-the-licence-card-of-aboutwren-under-the-pointer">What changed, round 19: the licence card of about:wren under the pointer</a></li>
 <li><a href="#what-changed-round-20-the-loop-jit-takes-properties-and-calls">What changed, round 20: the loop JIT takes properties and calls</a></li>
+<li><a href="#what-changed-round-21-the-jit-compiles-functions-calls-them-directly-makes-objects-and-strings-reads-dom-attributes">What changed, round 21: the JIT compiles functions, calls them directly, makes objects and strings, reads DOM attributes</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
@@ -1750,6 +1751,85 @@ the same; <code>judge capi</code> 64 checks.</p>
 calls of bytecode that is not inlined (a direct call into compiled code, which needs the callee compiled whole); the
 allocation of objects and arrays in compiled code (<code>new Point</code>, <code>{a, b}</code>, <code>[i, j]</code>: such a loop stays interpreted);
 string concatenation and comparison by value; callees with branches (a <code>?:</code>); polymorphic inlining.</p>
+<h2 id="what-changed-round-21-the-jit-compiles-functions-calls-them-directly-makes-objects-and-strings-reads-dom-attributes"><a class="anchor" href="#what-changed-round-21-the-jit-compiles-functions-calls-them-directly-makes-objects-and-strings-reads-dom-attributes" aria-hidden="true">#</a>What changed, round 21: the JIT compiles functions, calls them directly, makes objects and strings, reads DOM attributes</h2>
+<p>What round 20 left, in its order (<a href="../../docs/engine/jit/">engine/jit.md</a>). Measured with <code>jsengine run -jit -image &lt;engine&gt;</code> on
+<code>examples/jsbench/micro.js</code>, <code>macro.js</code> and <code>realworld.js</code>, every engine image of the round in turn, 5 rounds (the
+median, the range in brackets); DOM loops and nodes10k in <code>jspage -image</code> (a timed copy of nodes10k: <code>build()</code>'s p50 over
+400 frames). Other agents built and ran <code>test_all</code> on the machine for part of the round: the series below are the ones
+taken while it was quiet, and a step's figures were checked again on their own where a series was hit.</p>
+<ol>
+<li><strong>Whole functions</strong> (<code>jit_fn_enter</code>, <code>Jit_Info.fn</code>). A function without loops of its own is compiled once its calls
+reach <code>javascript.jit.call_threshold</code> (500 now, passed to the engine: the glue had ignored it), as the region
+<code>[0, end)</code> entered at its call: where <code>frame_push</code> pushes the callee's frame (<code>jit_pushed</code>), in <code>interp_call</code>
+(<code>jit_entered</code>), in the helper of compiled code. The interpreter's own code is as it was but for <code>frame_push</code>'s last
+line and <code>interp_call</code>: the same hooks in <code>interp_run</code>'s call paths and in <code>hot_call</code> made interpreted code 5 %
+slower with the JIT off (a selection of <code>macro.js</code>, 3 runs: the native calls, <code>class new</code>, destructuring), measured
+and moved. Measured, not kept: not entering a small function compiled from the interpreter (under 16 bytes of
+bytecode, whose entry might cost more than its code saves): an interpreted loop calling two such functions 220 ns
+either way.</li>
+<li><strong>Direct calls</strong> (<code>j_direct_call</code>). Compiled code calls a function that can be compiled whole (any closure of its
+bytecode) itself: the callee's frame pushed on the value stack exactly as <code>frame_push</code> pushes it, its code called
+through the engine's table (imported by the module), the frame popped as <code>frame_pop</code> pops it. No state of the caller
+lives across the call but in its frame (frames in memory, as today: nothing to save around the call); the callee
+leaving other than by its return is finished by the interpreter (<code>jit_call_finish</code>). A first version through the
+helper (<code>frame_push</code>, then the callee's code) was slower than the interpreter (fib 78 -&gt; 104 ns a call): the helper's
+layers cost more than the call. Compiled code nested on the host stack is bounded (<code>JIT_MAX_NEST</code>): a recursion
+deeper than that is interpreted, to the same depth limit.</li>
+<li><strong>Objects made by compiled code</strong> (<code>jit_new</code>, <code>j_prop_add</code>, <code>jit_define_field</code>). Plain objects, literals, arrays and
+constructions from a helper of the engine (its allocator and collector unchanged: the code reaches a safe point only
+through a call, which writes what it holds to the frame first); a property appended through the shape's transition
+(a constructor's <code>this.x = x</code>), a literal's fields with no guard (the shape the code made is known until a join).</li>
+<li><strong>Strings</strong> (<code>jit_add</code>, <code>jit_streq</code>). <code>+</code> of a string and <code>s += x</code> by the engine's concatenation (ropes, append
+buffers), done only when no conversion could run code or throw (else the interpreter makes it, once); <code>===</code> of
+strings by value.</li>
+<li><strong>Getters and DOM objects</strong> (<code>j_call_getter</code>, <code>Shape.version</code>). Native getters called (as the hot loop calls them:
+<code>call_native</code>; through <code>call_internal</code> the DOM walk below was 790 ns, not 530), an exception exact through the
+context's thrower (the interpreter makes the read again and throws); DOM wrappers ordinary objects, the Web IDL
+prototypes (dictionaries) walked past, guarded by their version. A global's accessor (<code>window.document</code>) is not
+called: there is no object on the stack to put the thrower in, and a throw exit of the interpreter's back edges was
+measured 4 % in round 20. nodes10k's building loop reads <code>document</code> and stays interpreted.</li>
+<li><strong>Natives called as the hot loop calls them</strong> (<code>jit_call</code>): a native function called through <code>call_native</code> directly,
+without <code>call_internal</code>'s dispatch (<code>macro.js</code>'s native calls in compiled loops, 5 runs, base, 5, 6: array push/pop
+116 (114-125), 117, 107 (105-112) ns; Set add/has 168 (166-259), 169, 150 (149-154) ns; Math.sin / sqrt / pow 160
+(155-230), 164, 147 (146-189) ns: from 5 % slower than the base to 8 to 10 % faster).</li>
+</ol>
+<div class="table-box"><table>
+<thead><tr><th></th><th>base</th><th>1, 2: functions</th><th>3: objects</th><th>4: strings</th></tr></thead>
+<tbody>
+<tr><td><code>micro.js</code>, geometric mean of the 20 cases</td><td>1</td><td>0.892</td><td>0.843</td><td>0.816</td></tr>
+<tr><td>... recursion (<code>fib</code>), closure counter</td><td>82.8 (77.4-95.4), 76.7 (71.3-91.1) ns</td><td>27.2 (26.0-34.6), 23.5 (22.8-29.0) ns</td><td>26.6, 23.4 ns</td><td>26.9 (25.9-30.2), 23.4 (22.9-27.8) ns</td></tr>
+<tr><td>... <code>new Point(i, i)</code></td><td>410 (364-697) ns</td><td>387 ns</td><td>116 (108-476) ns</td><td>113 (110-141) ns</td></tr>
+<tr><td>... string concat + <code>charCodeAt</code></td><td>242 (237-559) ns</td><td>244 ns</td><td>263 ns</td><td>130 (124-146) ns</td></tr>
+<tr><td>... try/catch in a loop (interpreted)</td><td>69.6 (68.0-99.2) ns</td><td>74.0 ns</td><td>73.2 ns</td><td>76.3 (71.8-78.6) ns</td></tr>
+<tr><td><code>realworld.js</code>, geometric mean of the 6 cases</td><td>1</td><td>0.961</td><td>0.952</td><td>0.950</td></tr>
+<tr><td>... sort with a comparator (a native calling it)</td><td>1190 (1175-1226) ns</td><td>931 ns</td><td>926 ns</td><td>910 (900-951) ns</td></tr>
+<tr><td><code>macro.js</code>, geometric mean of the 28 cases (base, 4)</td><td>1</td><td></td><td></td><td>0.865</td></tr>
+<tr><td>... object literal, array literal</td><td>244 (242-254), 132 (129-132) ns</td><td></td><td></td><td>56.3 (55.8-58.4), 82.0 (81.5-83.0) ns</td></tr>
+<tr><td>... switch on strings, map + filter + reduce</td><td>105 (104-113), 385 (381-389) ns</td><td></td><td></td><td>12.8 (12.7-13.0), 328 (319-332) ns</td></tr>
+<tr><td>... array push/pop, Math.sin / sqrt / pow</td><td>112 (112-114), 153 (151-155) ns</td><td></td><td></td><td>118 (116-120), 160 (157-165) ns</td></tr>
+<tr><td>... class new + super, closure creation + call</td><td>995 (992-1012), 505 (481-546) ns</td><td></td><td></td><td>1044 (1017-1058), 546 (523-587) ns</td></tr>
+</tbody>
+</table></div>
+<p>The checksums of the three scripts are the same in every build. The slower cases of the last column: native calls made
+by compiled loops (5 %), which item 6 made faster than the base; and interpreted code: a closure made and called in a
+loop the JIT does not take 520 -&gt; 560 ns with the JIT off too (+5 % at item 3, +4 % at item 5, bisected by image; the
+transition search inlined again into <code>add_property</code> changed nothing, measured), try/catch in a loop 6 %: the engine's
+code placed otherwise, not explained further.</p>
+<p>DOM (<code>jspage</code>, 3 runs each, ns an iteration): a walk reading <code>firstChild</code>, <code>nodeType</code>, <code>nextSibling</code>, <code>textContent.length</code>
+750 (736-763) -&gt; 530 (530-548); <code>m.size</code> in a loop 115 -&gt; 48; emptying a list (<code>removeChild</code> of <code>lastChild</code>) 1400, the
+same (the DOM's call). nodes10k <code>build()</code> p50 (7 interleaved runs): with the JIT 9.31 (9.07-9.63) -&gt; 8.96 (8.62-9.26)
+ms, without it 9.15 (8.96-9.53) -&gt; 8.84 (8.76-9.15) ms: the JIT's part is nil there, its building loop interpreted.</p>
+<p>Tests: test262 with the JIT (thresholds 2 and 1) 49/82220 errors before and after (0 regressions), interpreted the
+same; jitcheck.js 722 -&gt; 762 lines compared (whole functions and their calls, recursion past <code>JIT_MAX_NEST</code> and the
+engine's limit, objects and literals, strings, getters, dictionary prototypes), also with <code>-jit-step</code>, <code>-jit-threshold 30</code>
+and under <code>JSRT_GC_STRESS=8192</code> with <code>JSRT_GC_POISON</code>; <code>examples/jsweb/jit_dom.js</code> (e2e <code>jsweb_jit_dom</code>, every function
+compiled at its first call): DOM attributes read by compiled loops, a loop that empties the list it reads, a getter that
+throws once, one replaced by a script's. Found by test262 at threshold 1 on the way: a function without an operand stack
+had its result written over its frame; the truth of an array held in a local; re-taking held arrays after a tail call
+resumed past the end of the function; an object added took the numbers path.</p>
+<p>Not done: a global's accessor (<code>document</code>: nodes10k's building loop); callees with branches inlined, polymorphic
+inlining (step 5 of the round's list: not reached); objects allocated inline by the code (the helper's
+<code>create_from_ctor</code> is most of <code>new Point</code>'s 113 ns); a JavaScript getter or setter called by compiled code.</p>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
@@ -2117,7 +2197,7 @@ screen's whole wait, at most a refresh) still waits for its end: the latency obj
 <li><a href="../../docs/engine/bigint/">bigint: arbitrary-precision integers for the JavaScript engine</a></li>
 <li><a href="../../docs/engine/datetime/">datetime (package jsdate): the JavaScript engine's Date</a></li>
 <li><a href="../../docs/engine/frontend/">Moteur JavaScript — front-end E1 (src/engine/frontend)</a></li>
-<li><a href="../../docs/engine/jit/">The loop JIT (src/engine/jsrt/jit.odin)</a></li>
+<li><a href="../../docs/engine/jit/">The JIT (src/engine/jsrt/jit.odin)</a></li>
 <li><a href="../../docs/engine/jscapi/">The QuickJS C API on the Odin runtime (src/engine/jscapi)</a></li>
 <li><a href="../../docs/engine/numconv/">numconv: float64 ↔ string for the JavaScript engine</a></li>
 <li><a href="../../docs/engine/regexp/">engine/regexp</a></li>
