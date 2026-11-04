@@ -1961,6 +1961,13 @@ as compiled code calls a function (the getter's frame pushed, its compiled code 
 (151-153) -&gt; 78 (77-80) ns, a class's 168 -&gt; 77 ns, a setter 145 (141-412) -&gt; 81 (80-126) ns, <code>macro.js</code>'s getter
 access 184 -&gt; 92 ns. The accessor's call out of line in the helper made Map's <code>size</code> 37 -&gt; 44 ns; inlined, 36.7.
 The helpers now set the frame's pc to the instruction after the access, as the hot loop does.</li>
+<li><strong>Found after the round: the interrupt in a compiled loop that calls.</strong> The compiled code gave the interpreter its
+safe point every <code>JIT_BUDGET</code> iterations whatever the iterations did; the interpreter polls once its native calls count
+for a poll (<code>NATIVE_CALL_POLL_WEIGHT</code>). With step 1 a <code>document.write</code> flood is compiled, and 16 384 slow writes ran
+between two polls: past <code>wasm.max_call_ms</code> the page lost its engine (<code>js_hostile_document_write</code>, intermittent). A
+loop that calls now also leaves for the safe point once <code>interrupt_counter</code> reaches <code>INTERRUPT_POLL_EVERY</code> (a load
+and a compare at its back edge: the accessor loops above within 1 ns). <code>js_hostile_compiled_native_flood</code> (a
+compiled loop of <code>big.join(document.title)</code>, each ~0.1 ms) fails without it, passes with it.</li>
 </ol>
 <div class="table-box"><table>
 <thead><tr><th></th><th>base</th><th>1: <code>document</code></th><th>2: allocation</th><th>3, 4</th></tr></thead>
