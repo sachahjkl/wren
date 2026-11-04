@@ -1115,6 +1115,8 @@ OBJ_DATA :: u32(offset_of(Object, data))
 OBJ_SLOT_CAP :: u32(offset_of(Object, slot_cap))
 ARR_VALUES :: u32(offset_of(Array_Data, values))
 ARR_COUNT :: u32(offset_of(Array_Data, count))
+ARR_CAP :: u32(offset_of(Array_Data, cap))
+#assert(size_of(Object_Data) % size_of(u32) == 0)
 SHAPE_PROPS :: u32(offset_of(Shape, props))
 SHAPE_VERSION :: u32(offset_of(Shape, version))
 SHAPE_PROPS_LEN :: SHAPE_PROPS + u32(offset_of(runtime.Raw_Dynamic_Array, len))
@@ -1186,8 +1188,8 @@ CELL_SIZE :: u32(offset_of(Cell, size))
 CELL_KIND :: u32(offset_of(Cell, kind))
 POOL_BLOCK_NEXT :: u32(offset_of(Pool_Block, next))
 JIT_OBJ_BYTES :: size_of(Object) + INLINE_SLOTS * size_of(Prop_Slot)               // a plain object with its inline slots
-JIT_OBJ_BLOCK :: (JIT_OBJ_BYTES + POOL_GRAIN - 1) &~ (POOL_GRAIN - 1)              // the pool block it takes
-#assert(JIT_OBJ_BLOCK <= POOL_MAX_BYTES && JIT_OBJ_BLOCK % size_of(i64) == 0 && size_of(Cell_Kind) == 1 && size_of(Class_ID) == 1)
+JIT_ARR_MAX :: POOL_MAX_BYTES / size_of(Value)   // the entries of an array literal the code allocates itself, at most
+#assert(JIT_OBJ_BYTES <= POOL_MAX_BYTES && POOL_GRAIN % size_of(i64) == 0 && size_of(Cell_Kind) == 1 && size_of(Class_ID) == 1)
 FUNC_BC :: OBJ_DATA + u32(offset_of(Func_Data, bc))   // (a bytecode function's data is its Func_Data)
 FUNC_VAR_REFS :: OBJ_DATA + u32(offset_of(Func_Data, var_refs))
 
@@ -1908,15 +1910,27 @@ j_alloc_open :: proc(c: ^Jc) {
 	}
 }
 
-// A plain object of the shape sh (a root shape: no properties) into local `out`, as cell_new and object_new_shape make
-// it (its slots the inline ones): a block of its pool class popped from the free list (zeroed) or cut from the bump chunk
-// (zero), linked into the collector's cells, charged to the heap; then out of $done. No block in the free list and the
-// chunk's end reached: out of $slow, to the helper. Allocation never collects, as with the helper: the object is in the
-// code's hands until its next call or exit.
+// A block the code took from the pool (j_pool_take): the local that holds it, the size it was taken for.
+Jit_Block :: struct {
+	local: u32,
+	bytes: int,
+}
+
+// The address of the free list of the pool class of `bytes` (raw_alloc's), and the size of its blocks.
 @(private = "file")
-j_alloc :: proc(c: ^Jc, sh: ^Shape, out: u32) {
+j_pool_class :: proc(c: ^Jc, bytes: int) -> (free: i32, n: int) {
+	n = (bytes + POOL_GRAIN - 1) &~ (POOL_GRAIN - 1)
+	return i32(uintptr(c.rt)) + i32(RT_POOL_FREE) + i32(n / POOL_GRAIN) * size_of(rawptr), n
+}
+
+// A block for `bytes` into local `out`, as raw_alloc takes it: popped from its pool class's free list (zeroed) or cut
+// from the bump chunk (zero). No block in the free list and the chunk's end reached: the blocks taken before go back
+// to their free lists (as raw_free gives them back) and the code leaves $slow, to the helper. Emitted in $slow itself
+// (j_alloc_open).
+@(private = "file")
+j_pool_take :: proc(c: ^Jc, bytes: int, out: u32, taken: []Jit_Block) {
 	rtp := i32(uintptr(c.rt))
-	free := rtp + i32(RT_POOL_FREE) + i32(JIT_OBJ_BLOCK / POOL_GRAIN) * size_of(rawptr)
+	free, n := j_pool_class(c, bytes)
 	j_i32(c, free)
 	j_mem(c, W_I32_LOAD, 2, 0)
 	j_op(c, W_LOCAL_TEE)
@@ -1928,37 +1942,56 @@ j_alloc :: proc(c: ^Jc, sh: ^Shape, out: u32) {
 	j_lget(c, out)
 	j_mem(c, W_I32_LOAD, 2, POOL_BLOCK_NEXT)
 	j_mem(c, W_I32_STORE, 2, 0)
-	for off := u32(0); off < JIT_OBJ_BLOCK; off += size_of(i64) {
+	for off := u32(0); off < u32(n); off += size_of(i64) {
 		j_lget(c, out)
 		j_op(c, W_I64_CONST)
 		w_sleb(&c.out, 0)
 		j_mem(c, W_I64_STORE, 3, off)
 	}
 	j_op(c, W_ELSE)
-	// cut from the chunk, or $slow (out of the if: depth 1)
+	// cut from the chunk, or the blocks taken given back and $slow (out of the two ifs: depth 2)
 	j_i32(c, rtp)
 	j_mem(c, W_I32_LOAD, 2, RT_POOL_LEFT)
-	j_i32(c, JIT_OBJ_BLOCK)
+	j_i32(c, i32(n))
 	j_op(c, W_I32_LT_S)
-	j_op(c, W_BR_IF)
-	w_uleb(&c.out, 1)
+	j_op(c, W_IF)
+	j_op(c, W_VOID)
+	for t in taken {
+		tfree, _ := j_pool_class(c, t.bytes)
+		j_lget(c, t.local)
+		j_i32(c, tfree)
+		j_mem(c, W_I32_LOAD, 2, 0)
+		j_mem(c, W_I32_STORE, 2, POOL_BLOCK_NEXT)
+		j_i32(c, tfree)
+		j_lget(c, t.local)
+		j_mem(c, W_I32_STORE, 2, 0)
+	}
+	j_op(c, W_BR)
+	w_uleb(&c.out, 2)
+	j_op(c, W_END)
 	j_i32(c, rtp)
 	j_mem(c, W_I32_LOAD, 2, RT_POOL_BUMP)
 	j_lset(c, out)
 	j_i32(c, rtp)
 	j_lget(c, out)
-	j_i32(c, JIT_OBJ_BLOCK)
+	j_i32(c, i32(n))
 	j_op(c, W_I32_ADD)
 	j_mem(c, W_I32_STORE, 2, RT_POOL_BUMP)
 	j_i32(c, rtp)
 	j_i32(c, rtp)
 	j_mem(c, W_I32_LOAD, 2, RT_POOL_LEFT)
-	j_i32(c, JIT_OBJ_BLOCK)
+	j_i32(c, i32(n))
 	j_op(c, W_I32_SUB)
 	j_mem(c, W_I32_STORE, 2, RT_POOL_LEFT)
 	j_op(c, W_END)
-	// the cell (cell_new): its size and kind, first of the runtime's cells, counted, charged to the heap (and its peak)
-	j_st32(c, out, CELL_SIZE, i32(JIT_OBJ_BYTES))
+}
+
+// The block in local `out` made a cell of `size` bytes, as cell_new makes it: its size and kind, first of the
+// runtime's cells, counted; `charge` bytes (the cell's and the blocks it owns) charged to the heap, and its peak.
+@(private = "file")
+j_cell_new :: proc(c: ^Jc, out: u32, size: int, charge: int) {
+	rtp := i32(uintptr(c.rt))
+	j_st32(c, out, CELL_SIZE, i32(size))
 	j_lget(c, out)
 	j_i32(c, i32(Cell_Kind.object))
 	j_mem(c, W_I32_STORE8, 0, CELL_KIND)
@@ -1977,7 +2010,7 @@ j_alloc :: proc(c: ^Jc, sh: ^Shape, out: u32) {
 	j_i32(c, rtp)
 	j_mem(c, W_I64_LOAD, 3, RT_HEAP_BYTES)
 	j_op(c, W_I64_CONST)
-	w_sleb(&c.out, JIT_OBJ_BYTES)
+	w_sleb(&c.out, i64(charge))
 	j_op(c, W_I64_ADD)
 	j_mem(c, W_I64_STORE, 3, RT_HEAP_BYTES)
 	j_i32(c, rtp)
@@ -1992,20 +2025,39 @@ j_alloc :: proc(c: ^Jc, sh: ^Shape, out: u32) {
 	j_mem(c, W_I64_LOAD, 3, RT_HEAP_BYTES)
 	j_mem(c, W_I64_STORE, 3, RT_PEAK_HEAP_BYTES)
 	j_op(c, W_END)
-	// the object (object_new_shape): ordinary, extensible, of shape sh, its slots the inline ones
+}
+
+// The object in local `out` (a cell made by j_cell_new) as object_new_shape makes it: of class `class`, extensible (and
+// `bits`), of shape sh, its slots at the address in local `slots` (0: the inline ones), slot_cap of them.
+@(private = "file")
+j_object_init :: proc(c: ^Jc, out: u32, class: Class_ID, bits: u8, sh: ^Shape, slots: u32, slot_cap: int) {
 	j_lget(c, out)
-	j_i32(c, i32(Class_ID.object))
+	j_i32(c, i32(class))
 	j_mem(c, W_I32_STORE8, 0, OBJ_CLASS)
 	j_lget(c, out)
-	j_i32(c, i32(c.extensible_bit))
+	j_i32(c, i32(c.extensible_bit | bits))
 	j_mem(c, W_I32_STORE8, 0, OBJ_BITS)
 	j_st32(c, out, OBJ_SHAPE, i32(uintptr(sh)))
 	j_lget(c, out)
-	j_lget(c, out)
-	j_i32(c, size_of(Object))
-	j_op(c, W_I32_ADD)
+	if slots != 0 {
+		j_lget(c, slots)
+	} else {
+		j_lget(c, out)
+		j_i32(c, size_of(Object))
+		j_op(c, W_I32_ADD)
+	}
 	j_mem(c, W_I32_STORE, 2, OBJ_SLOTS)
-	j_st32(c, out, OBJ_SLOT_CAP, INLINE_SLOTS)
+	j_st32(c, out, OBJ_SLOT_CAP, i32(slot_cap))
+}
+
+// A plain object of the shape sh (a root shape: no properties) into local `out`, as cell_new and object_new_shape make
+// it (its slots the inline ones), then out of $done; no block for it: out of $slow, to the helper. Allocation never
+// collects, as with the helper: the object is in the code's hands until its next call or exit.
+@(private = "file")
+j_alloc :: proc(c: ^Jc, sh: ^Shape, out: u32) {
+	j_pool_take(c, JIT_OBJ_BYTES, out, nil)
+	j_cell_new(c, out, JIT_OBJ_BYTES, JIT_OBJ_BYTES)
+	j_object_init(c, out, .object, 0, sh, 0, INLINE_SLOTS)
 	j_op(c, W_BR)
 	w_uleb(&c.out, 1)
 	j_op(c, W_END)
@@ -2034,7 +2086,9 @@ jit_object :: proc(c: ^Jc) -> bool {
 	return true
 }
 
-// array_from: an Array of the argc top entries (written to the frame for the helper, which copies them).
+// array_from: an Array of the argc top entries, made by the code as array_from_values makes it (array_new: the object,
+// its slots, its values, three pool blocks; the length in its slot) when the values fit a pool block; else, or when the
+// pool has no block for one of them, by the helper, the entries written to the frame for it to copy.
 @(private = "file")
 jit_array_from :: proc(c: ^Jc, argc: int) -> bool {
 	base := c.st.n - argc
@@ -2047,11 +2101,54 @@ jit_array_from :: proc(c: ^Jc, argc: int) -> bool {
 			j_fail(c, "an array of entries under the loop's own")
 			return false
 		}
-		j_store_entry(c, d, P_STACK, u32(d * size_of(Value)), true, true)
 	}
+	sh := c.ctx.array_shape
+	at := shape_lookup(sh, pa(.A_length))
+	if argc <= JIT_ARR_MAX && at >= 0 {
+		if !j_keep(c, sh) {return false}
+		slot_bytes := len(sh.props) * size_of(Prop_Slot)
+		value_bytes := argc * size_of(Value)
+		// I_T2 the values, I_T1 the slots, I_T0 the object (the entries' locals hold them until they are stored)
+		taken: [2]Jit_Block
+		nt := 0
+		j_alloc_open(c)
+		if argc > 0 {
+			j_pool_take(c, value_bytes, I_T2, nil)
+			for d in base ..< c.st.n {j_store_entry(c, d, I_T2, u32((d - base) * size_of(Value)), true, true)}
+			taken[nt] = {I_T2, value_bytes}
+			nt += 1
+		}
+		j_pool_take(c, slot_bytes, I_T1, taken[:nt])
+		taken[nt] = {I_T1, slot_bytes}
+		nt += 1
+		j_pool_take(c, size_of(Object), I_T0, taken[:nt])
+		j_cell_new(c, I_T0, size_of(Object), size_of(Object) + slot_bytes + value_bytes)
+		j_object_init(c, I_T0, .array, c.fast_bit, sh, I_T1, len(sh.props))
+		j_st_value(c, I_T1, u32(at * size_of(Prop_Slot)), .int, i64(argc))
+		// its data: an Array_Data (the union's tag, as an Object_Data of that variant has it), argc values
+		tmpl: Object
+		tmpl.data = Array_Data{}
+		words := ([^]u32)(uintptr(&tmpl) + uintptr(OBJ_DATA))
+		for w in 0 ..< u32(size_of(Object_Data) / size_of(u32)) {
+			if words[w] != 0 {j_st32(c, I_T0, OBJ_DATA + w * size_of(u32), i32(words[w]))}
+		}
+		if argc > 0 {
+			j_st32l(c, I_T0, OBJ_DATA + ARR_VALUES, I_T2)
+			j_st32(c, I_T0, OBJ_DATA + ARR_COUNT, i32(argc))
+			j_st32(c, I_T0, OBJ_DATA + ARR_CAP, i32(argc))
+		}
+		j_op(c, W_BR)
+		w_uleb(&c.out, 1)
+		j_op(c, W_END)
+		c.nest -= 1
+	}
+	for d in base ..< c.st.n {j_store_entry(c, d, P_STACK, u32(d * size_of(Value)), true, true)}
 	j_new(c, .array, base, argc)
+	j_lset(c, I_T0)
+	if argc <= JIT_ARR_MAX && at >= 0 {j_alloc_end(c)}
 	c.st.n = base
 	d := j_push(c, .P)
+	j_lget(c, I_T0)
 	j_lset(c, j_si(c, d))
 	return true
 }
