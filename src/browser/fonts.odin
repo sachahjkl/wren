@@ -446,6 +446,19 @@ fonts_preload_adopt :: proc(pf: ^Page_Fonts, fp: ^Font_Preload) {
 	free(fp)
 }
 
+// What color glyphs are drawn with (Direct2D on a WARP device, font.color_prepare), made on a thread of its own once the
+// first frame's work is under way: 20 ms the first page with a color glyph paid in its first paint, and 10 ms of the
+// first present when the preload thread made it. Joined by fonts_color_join before the font state goes.
+fonts_color_start :: proc(app: ^App) {
+	if !app.fonts.settings.color_glyphs { return }
+	app.fonts_color = host.thread_start(proc(data: rawptr) { font.color_prepare((^font.State)(data)) }, &app.fonts, name = "wren-color-glyphs")
+}
+
+fonts_color_join :: proc(app: ^App) {
+	host.thread_join(app.fonts_color)
+	app.fonts_color = nil
+}
+
 // Faces the page downloaded (@font-face) join the font registry of the painter; the layout is redone with them. A new
 // page in the tab drops the faces of the one before, unless that page is still on screen while the new one prepares
 // its first paint (first_paint.odin): its faces then go with the held frame (`&t.hold`, dropped by hold_release).

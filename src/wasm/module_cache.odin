@@ -135,9 +135,9 @@ cached_free :: proc(c: ^Cached) {
 }
 
 // The compiled module of `image`, ready to instantiate (`pre`), or an error message (allocated). Pair with
-// cache_release.
+// cache_release. `disk_only`: nil and no error when the module is neither in memory nor on disk (nothing compiled).
 @(private)
-cache_acquire :: proc(image: []byte, known: ^Digest = nil) -> (c: ^Cached, err: string) {
+cache_acquire :: proc(image: []byte, known: ^Digest = nil, disk_only := false) -> (c: ^Cached, err: string) {
 	caller := context.allocator
 	context.allocator = base.process_allocator()
 	key: Digest
@@ -160,6 +160,7 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil) -> (c: ^Cached, err: 
 		return found, ""
 	}
 	sync.mutex_unlock(&cache.lock)
+	if disk_only && !cache.disk { return nil, "" }
 
 	info, aerr := analyze_image(image)
 	if aerr != "" { return nil, strings.clone(aerr, caller) }
@@ -174,6 +175,7 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil) -> (c: ^Cached, err: 
 		module = disk_load(path, filekey)
 		from_disk = module != nil
 	}
+	if module == nil && disk_only { return nil, "" }
 	if module == nil {
 		patched, copied := patch_image(image, info)
 		e := wasmtime_module_new(wt.engine, raw_data(patched), len(patched), &module)
@@ -217,6 +219,18 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil) -> (c: ^Cached, err: 
 		evict_memory()
 	}
 	return c, ""
+}
+
+// The compiled module of `image` read from the disk cache into memory ahead of its first instance (a process's first
+// JavaScript realm: page.js_startup), its imports resolved. False when it was not (not on disk, or memory keeps no
+// module): nothing is compiled. Any thread.
+read_ahead :: proc(image: []byte, known: ^Digest = nil) -> bool {
+	if cache.max_bytes <= 0 { return false }
+	c, err := cache_acquire(image, known, disk_only = true)
+	delete(err)
+	if c == nil { return false }
+	cache_release(c)
+	return true
 }
 
 @(private)

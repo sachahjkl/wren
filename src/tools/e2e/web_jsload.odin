@@ -39,6 +39,8 @@ SHEET_BLOCKING_MS :: 50
 SHEET_NEVER_WAITED_FOR_MS :: 3000   // still on its way when the page has closed
 SHEET_REL_CHANGED_MS :: 200
 SCRIPT_AFTER_REL_CHANGE_MS :: 300
+POLL_NEVER_MS :: 600_000         // a poll of the waiting page that never comes within a test
+SHEET_IN_WAIT_SECONDS :: 20.0    // far below the poll: only ends a run that fails
 
 SCRIPTS_IN_ORDER_PAGE :: 8       // at least: those of test_order's page that run
 FRAGMENT_PARSE_BUDGET :: 1000
@@ -893,6 +895,23 @@ log("inserted");
 	wait_note(pr, "inserted")
 	st, why = page.first_paint_state(pr.p)
 	check(pr, st == .Ready, fmt.tprintf("a stylesheet a script inserted does not block it (%v %s)", st, why))
+	close_page(pr, min_checks = 2)
+}
+
+// The parser's script that waits for a stylesheet, and the load event, go on once the sheet is in and its load event
+// fired: not at the next look of the poll (javascript.load.poll_ms, set here past the test's wait; 16 ms by default, the
+// first realm's script on shadow-dom.html ran 25 ms after its sheets).
+@(test)
+jsload_a_sheet_in_lets_the_parser_and_the_load_go_on :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	settings.js_load.poll_ms = POLL_NEVER_MS
+	pr := load(t, "sheet in", concat(`<!doctype html><head>`, PRELUDE, `<link rel=stylesheet href="`, css("p { color: red }", ARRIVES_SOON_MS, "nopoll"),
+		`"><script>log("after the sheet"); addEventListener("load", () => log("loaded"))</script></head><body><p>x</p></body>`))
+	check(pr, wait_note(pr, "after the sheet", SHEET_IN_WAIT_SECONDS), "the parser's script ran once the sheet was in")
+	check(pr, wait_note(pr, "loaded", SHEET_IN_WAIT_SECONDS), "the load event fired once the sheet's load event had")
 	close_page(pr, min_checks = 2)
 }
 

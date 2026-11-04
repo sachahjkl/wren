@@ -168,6 +168,7 @@ compile_main :: proc(data: rawptr) {
 	// wasm.max_call_ms (1 s by default) a large bundle trapped here, the thread's engine was dead for good, and the interface
 	// thread compiled the bundle and every later one itself, inside the task the slow script limit measures.
 	opt.max_call_ms = -1
+	js_read_ahead_wait()
 	inst, err := wasm.instance_create(js_engine_image(), ctx_page, nil, opt, "javascript compiler", nil, js_image_digest())
 	delete(err)
 	if inst != nil { inst.lenient = true }

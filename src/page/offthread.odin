@@ -400,6 +400,7 @@ css_apply :: proc(p: ^Page, j: ^Css_Job) {
 	}
 	p.style_stale = true
 	start_pending_imports(p)
+	arrived_pump(p)
 }
 
 // A fetched stylesheet: parsed off the UI thread when preferences allow, then registered. False when the caller must

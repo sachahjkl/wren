@@ -139,6 +139,7 @@ App :: struct {
 	rates:    Loop_Rates,   // loop_rates.odin: turns, sleeps, frames and why
 	r:        render.Renderer,
 	fonts:    font.State,
+	fonts_color: ^host.Thread,   // what color glyphs are drawn with, made meanwhile (fonts.odin fonts_color_start)
 	dc:       draw.Context,
 	theme:    ui.Theme,
 	ui_font:  font.Font_Id,
@@ -1683,6 +1684,7 @@ app_start :: proc(args: []string) -> ^App {
 	first_paint_init(app)
 	interaction_init(app)
 	fonts_preload_adopt(&app.page_render.fonts, preload)
+	fonts_color_start(app)
 	images_shell_init(app)
 	canvas_shell_init(app)
 	images_set_texture_api(renderer_texture_api(app))
@@ -1893,6 +1895,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	windows_destroy_surfaces(app)
 	render.destroy(&app.r)
 	host.shutdown_step("font.destroy")
+	fonts_color_join(app)
 	font.destroy(&app.fonts)
 	host.shutdown_step("platform.destroy_window")
 	windows_destroy(app)

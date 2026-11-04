@@ -1336,6 +1336,72 @@ run this round (no DOM calls, nothing of the engine).
    (item 2). Not done this round: the collection's prologue, finalizers and sweep, the insertion hooks and the journal
    (item 1 of the list), and layout's own code (item 2): the round's time went to the interpreter and to the pages.
 
+## What changed, round 16: first page loads
+
+Item 10 of round 15's list. The machine quiet but for another agent's `test_all` during one series (thrown away and run
+again: the numbers below are the quiet series). The browser: `wrentool bench perf`, profile builds, 5 runs of each
+build, interleaved, the order turning; median, range in brackets; times in ms from the navigation's start (the page's
+Navigation and Paint Timing). The base is master at 5af6e1ec.
+
+1. **The engine's compiled code read ahead, off the window thread** (`js_read_ahead`, `src/page/js_realm.odin`;
+   `wasm.read_ahead`, `src/wasm/module_cache.odin`). The first realm of a process hashed the 7 MB image for its digest
+   (`wasm.digest`, 3.5 ms), read the disk cache's file and checked its HMAC-SHA256 (`disk_load`, `sha256_transf_hw`),
+   had Wasmtime deserialize it and resolved its imports, all on the window thread before the page's first script. Now
+   `js_startup` starts a thread that does all of it into the module cache's memory (only from the disk: a module not on
+   disk is not compiled ahead, nothing is done when memory keeps no module); the first realm, and the compile threads'
+   engines, wait for it only while it runs (a state in a futex: Off, Running, Done), then find the module in memory.
+   In the samples of `nav_js_dom` the window thread no longer has `cache_acquire` nor `disk_load`. Test:
+   `read_ahead_from_disk` (wasm: nothing compiled ahead without an entry on disk; read ahead on another thread, the
+   instance made after it reads nothing from the disk and runs).
+2. **What waits for a stylesheet goes on when it arrives** (`arrived_pump`, `src/page/styles.odin`, called when a
+   sheet is in or failed, after an off-thread parse, and once the element events of sheets and images are
+   dispatched). The parser's script that waits for the sheets and the document's load event looked again only at the
+   poll (`javascript.load.poll_ms`, 16 ms, longer with the loop's timer slices); found in `shadow-dom.html`, whose
+   sheets were in at 7 to 10 ms (Resource Timing) and whose script ran at 34 to 59. The first paint of such a page now
+   comes after its script (as the specification has it, the script before the rendering): `shadow-dom.html`'s first
+   contentful paint 8.1 -> 13.3 ms for an interactive 59.0 -> 11.9 ms. Test: e2e
+   `jsload_a_sheet_in_lets_the_parser_and_the_load_go_on` (the poll set past the test's wait: the script runs and the
+   load fires).
+3. **Direct2D for color glyphs made ahead** (`font.color_prepare`, toolkit 0.74.0; `fonts_color_start`,
+   `src/browser/fonts.odin`). The first glyph of a system color font a frame looked up (`is_color_glyph`, which asks
+   what Direct2D can draw) made the WARP device and the Direct2D context on the window thread: 20.1 ms of `text.html`'s first
+   paint (timed, once). The `DWriteCreateFactory` and color glyph formats round 15 saw under `platform_color_glyph`
+   were that. A thread of its own makes it once the first frame's work is under way, joined before the font state
+   goes. Made on the font preload thread instead (joined before the first present) it cost the first present 10 ms
+   (`wrentool bench startup`, 4 rounds of 3: 247 against 238 without it): not kept there.
+4. **Textures zeroed on the GPU** (toolkit 0.74.0, `zero_texture` in `render/render_d3d.odin`): a texture is a render
+   target too and is zeroed by `ClearRenderTargetView`, where its zeros were uploaded: the glyph atlas's R8 page
+   (2048 x 2048, a driver call per row) took 5.8 ms of the start, the first color page (RGBA, in 1 MB bands) 3.5 ms
+   of the first frame with a color glyph (its `Submit`). Only a format that cannot be a render target is still
+   uploaded.
+5. **The thread count of `stats` walks this process's threads** (`base.process_threads`,
+   `src/base/process_times_windows.odin`: `NtGetNextThread`, a handle to each thread of this process in turn). The
+   process snapshot it replaced copied every process of the machine: 19.3 to 20.3 ms a call, against 10 to 12 µs (a
+   process of 4 threads, best of 3); in the samples of `nav_index`, 17 ms of `ZwQuerySystemInformation` under `m_stats`
+   before, none after. Test: `process_threads_counts_this_process_cheaply` (base: eight held threads counted, gone once
+   joined, a count under 2 ms).
+
+| | before | after |
+|---|---|---|
+| `js-dom.html`: DOM interactive, first contentful paint, load | 35.3 (34.6-35.3), 35.7 (35.1-35.8), 35.3 (34.7-35.3) | 7.5 (7.2-13.0), 8.1 (7.8-13.5), 7.6 (7.3-13.0) |
+| `shadow-dom.html`: DOM interactive, first contentful paint, load | 59.0 (58.5-59.5), 8.1 (8.0-8.5), 59.0 (58.5-59.6) | 11.9 (11.6-14.6), 13.3 (12.9-16.1), 20.3 (20.1-23.2) |
+| `style.html`: load | 26.1 (25.3-27.5) | 10.9 (10.6-11.1) |
+| `legacy-html.html`: first contentful paint, load | 72.7 (72.2-73.5), 86.9 (86.2-87.6) | 72.7 (72.2-73.3), 72.1 (71.6-72.7) |
+| `text.html`: the frame of its first paint, of it `Paint_Items`, `Submit` | 41.95 (41.73-42.42), 36.16 (36.02-36.39), 4.10 | 22.72 (22.17-39.49), 20.47 (20.06-21.55), 0.96 |
+| `text.html`: first contentful paint, load | 14.7 (14.5-15.2), 2.5 | 15.0 (14.6-40.9), 2.5 |
+| p10k: DOM interactive, first contentful paint | 33.1 (32.9-33.5), 55.6 (55.1-56.3) | 33.3 (32.6-33.7), 55.8 (55.4-56.5) |
+| `index.html`: first contentful paint, load | 9.6 (9.5-10.4), 3.5 | 9.4 (9.3-11.2), 3.4 |
+| `wrentool bench startup`, first present, single instance off / on (4 rounds of 3) | 243.5 (242-248) / 241.5 (239-242) | 238.5 (236-245) / 239 (237-241) |
+
+`text.html`'s first contentful paint is the time of the frame that paints it, taken at its start, before the paint's
+work: the frame itself is the measure of what changed there. What is left of that frame is Slug's data for the glyphs
+the page uses first (`font.slug_glyphs`: 21 ms of the paint timed, once; `pick_band_count`, the sort of the curves by
+band, the outlines): hundreds of glyphs of a dozen scripts, made once per face. The CPU column of the bench (the
+process's during the load until quiet) is the same within its noise: the system counts it at 15.6 ms steps.
+
+6. **Measured, not kept**: `color_prepare` on the font preload thread (item 3). **Not done this round**: the script
+   stage of DOM-heavy pages (item 1 of the list), whose engine work needs its own series in `jspage`.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -1477,6 +1543,10 @@ After round 15. Round 14's item 9 is done (round 15: the hot loop calls nothing 
 faster, `macro.js` 9 %), and with it the prototype walk without the host class's hooks of item 1. Real pages loaded from
 the navigation are item 10 below.
 
+After round 16. Round 15's item 10 is done for what it named (round 16: the engine read ahead, Direct2D made ahead,
+textures zeroed on the GPU, the thread count of `stats`) and for what its measures found besides (what waits for a
+stylesheet goes on when it arrives); what the loads still spend is item 10 below. Item 1 is unchanged.
+
 1. **The script stage of DOM-heavy pages, what is left** (nodes10k: 11.8 ms of a 17.7 ms frame; the browser's side
    1.4 ms of it). In order of the engine's samples: the interpreter itself (`interp_hot` 17 % before round 15's 15 to 25 %
    on the loop's own instructions, `call_native` and the bridge 8 %; a DOM call costs 50 to 100 ns over the loop); the
@@ -1519,9 +1589,9 @@ the navigation are item 10 below.
    leaves (closures made, `arguments`, spreads, destructuring of iterables: the two cases of `macro.js` that did not gain
    are there), and native callbacks (`sort`, `forEach`: an `interp_run` activation each). A handler added to the loop
    must call nothing itself (`interp_hot.odin`'s header says how).
-10. **Pages loaded from the navigation** (round 15, item 3; `wrentool bench perf -Only p10k_nav,nav_...`): the first
-   realm of a process (the engine's compiled code read from the disk cache and its whole file hashed for the HMAC on the
-   window thread, 10 to 15 ms, then instantiated: a page's first inline script waits 50 to 65 ms) could be read ahead,
-   off the window thread, when the process starts; the first paint of text makes the system's font factory and color
-   glyph tables on the window thread (`text.html`: first paint 27 to 66 ms after its load); a remote `stats` walks every
-   process of the machine for its own thread count (20 to 45 ms).
+10. **Pages loaded from the navigation** (rounds 15 and 16; `wrentool bench perf -Only p10k_nav,nav_...`), by cost:
+   Slug's data for the glyphs a page uses first (`font.slug_glyphs`: 21 ms of `text.html`'s first paint, made once per
+   face; `pick_band_count` and the sort of the curves by band); the first realm of a process, now read ahead, still
+   instantiated and started on the window thread (about 10 ms: `shadow-dom.html`'s script runs 10 ms after its sheets);
+   `legacy-html.html`'s first paint waits on a PNG's decode (72 ms); p10k's first style, layout and paint passes (22 ms
+   from DOM interactive to the first paint).

@@ -238,6 +238,7 @@ page/js_realm.odin js_image_override process  # an engine of a tool, set before 
 page/js_realm.odin js_on_realm process  # a tool's procedure for each new realm, set before the first
 page/js_realm.odin js_on_realm_started process  # ... and once one has started
 page/js_realm.odin js_engine_once process  # the engine is loaded once
+page/js_realm.odin js_read_ahead process  # the engine's compiled code read ahead at the process's start: its thread, its state (atomic)
 page/js_resize_observer.odin ro_vt const  # a host object's table of procedures
 page/js_shadow.odin internals_vt const  # a host object's table of procedures
 page/js_web_media.odin media_pages thread  # the media queries of the thread's pages
