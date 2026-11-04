@@ -296,8 +296,8 @@
 /navigation-api/navigate-event/navigate-history-traversal-during-onnavigate-should-reject.html: TIMEOUT
 	Test that await navigation.back().finished during onnavigate should reject: TIMEOUT
 /navigation-api/navigate-event/navigate-history-traversal-during-onnavigate.html: OK
-	Test that navigation.back() silently aborts during onnavigate: FAIL
-	Test that navigation.traverseTo() works during onnavigate: FAIL
+	Test that navigation.back() silently aborts during onnavigate: PASS
+	Test that navigation.traverseTo() works during onnavigate: PASS
 /navigation-api/navigate-event/navigate-iframe-location.html: OK
 	location API on another window fires navigate event in the target window only: PASS
 /navigation-api/navigate-event/navigate-location.html: OK

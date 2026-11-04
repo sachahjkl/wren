@@ -149,7 +149,8 @@ a_modal_dialog_has_a_backdrop :: proc(t: ^testing.T) {
 
 // examples/site/navigation.html: a real click on a link is intercepted by the page's navigate listener (the document stays: its marker too), a navigation to another page carries its
 // state there, the browser's Back brings the demo back from the back/forward cache with the right current entry, and a second Back is a same-document traversal the page intercepts
-// (userInitiated). Then another document reached by a push: navigation.activation; the browser's reload button fires navigate, which the page intercepts (the document stays).
+// (userInitiated). Then another document reached by a push: navigation.activation; the browser's reload button fires navigate, which the page intercepts (the document stays);
+// navigation.traverseTo() called in the navigate event of history.back() runs after that traversal, from where it went.
 @(test)
 the_navigation_api_with_the_browsers_own_buttons :: proc(t: ^testing.T) {
 	s := e2e.start(t, {url = e2e.url(e2e.test_server(t), "/site/navigation.html")})
@@ -182,6 +183,20 @@ the_navigation_api_with_the_browsers_own_buttons :: proc(t: ^testing.T) {
 	e2e.run_command(s, "nav.reload")
 	e2e.wait_js(s, "window.sawReload === true")
 	testing.expect_value(t, e2e.eval(s, "[window.sawReload, window.keep].join()"), "true,kept")
+
+	// navigation.traverseTo() during the navigate event of a traversal goes on from where that one went, after it
+	e2e.eval(s, `(async () => {
+		for (const f of ["#a", "#b", "#c"]) await navigation.navigate(f).finished;
+		const key = navigation.entries()[navigation.currentEntry.index - 3].key;
+		const from = () => navigation.currentEntry.index - navigation.entries().findIndex((e) => e.key === key);
+		window.hashes = [];
+		let began = false;   // (the hashchange events of the fragments above may still come)
+		onhashchange = () => { if (began) hashes.push(from()); };
+		navigation.onnavigate = () => { began = true; navigation.onnavigate = null; navigation.traverseTo(key); };
+		history.back();
+	})(); 1`)
+	e2e.wait_js(s, "window.hashes && hashes.length === 2")
+	testing.expect_value(t, e2e.eval(s, "hashes.join()"), "2,0")
 }
 
 // examples/site/remote/xhtml.xhtml, served as application/xhtml+xml: parsed as XML (a self-closed <div/> is empty, names keep their case), its CDATA script runs, its style applies (the box painted blue).

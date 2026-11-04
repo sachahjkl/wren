@@ -97,6 +97,7 @@ Web_State :: struct {
 	history_state:   string,    // history.state of the current entry (owned)
 	has_state:       bool,
 	nav_pending:     ^Nav_Pending,   // the navigation whose navigate event is being fired (navigation.odin)
+	traverse_queued: u64,            // the key navigation.traverseTo() asked for during a traversal's navigate event: after it (0: none)
 	nav_scrolled_from: [2]f64,       // CSS px: the document's scroll position when an intercepted traversal fired (history_scroll.odin)
 	unloading:       int,            // beforeunload, pagehide or unload is running (HTML "unload counter")
 	perf:            [dynamic]Perf_Entry,

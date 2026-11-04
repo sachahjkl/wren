@@ -231,6 +231,7 @@ entry_leaving :: proc(p: ^Page) {
 // (navigate's userInitiated).
 history_traverse_to :: proc(p: ^Page, target: ^History_Entry, user := true) -> Traverse_Result {
 	if p == nil || p.closed || target == nil { return .None }
+	defer traverse_queued_start(p)
 	sh := p.web.session
 	if target == session_current(sh) { return .None }
 	if target.doc != p.web.id {
@@ -279,6 +280,21 @@ history_traverse_to :: proc(p: ^Page, target: ^History_Entry, user := true) -> T
 	nu, _ := url.parse(href, nil, context.temp_allocator)
 	if url.without_fragment(ou) == url.without_fragment(nu) { queue_hashchange(p, old, href) }
 	return .Same_Document
+}
+
+// A traversal is done: the one navigation.traverseTo() asked for during its navigate event starts, toward the entry of
+// that key from where this one went (a task of its own: after what this one queued, its hashchange).
+@(private)
+traverse_queued_start :: proc(p: ^Page) {
+	key := p.web.traverse_queued
+	p.web.traverse_queued = 0
+	if key == 0 || p.closed { return }
+	list, _ := nav_entries(p)
+	for e in list {
+		if e.id != key { continue }
+		if delta, ok := joint_delta_to(p, e); ok && delta != 0 { request_navigation(p, .Traverse, "", delta) }
+		return
+	}
 }
 
 // HTML "can have its URL rewritten" (pushState / replaceState).
