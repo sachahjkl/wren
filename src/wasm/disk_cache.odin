@@ -32,6 +32,8 @@ Disk_Cache :: struct {
 	dir:         string,
 	key:         [32]u8,
 	writes, rejects, evictions: int,   // files written, refused (and deleted), trimmed (atomic)
+	scans:       int,    // the folder read by disk_trim (atomic)
+	known_bytes: i64,    // what it held at that time and what was written since (the writer's)
 	qlock:       sync.Mutex,
 	qcond:       sync.Cond,
 	queue:       [dynamic]Disk_Job,
@@ -186,12 +188,13 @@ disk_writer_main :: proc(data: rawptr) {
 		}
 		job := pop_front(&d.queue)
 		d.writing = true
-		last := len(d.queue) == 0
 		sync.mutex_unlock(&d.qlock)
 
 		if disk_write(d, job) {
 			sync.atomic_add(&d.writes, 1)
-			if last || !d.stop { disk_trim(d) }
+			d.known_bytes += i64(len(job.payload))
+			// the folder is read once a run and when it may be over its limit: with thousands of files that is seconds of a thread for each write, and of a closing window for the last one
+			if !d.stop && (sync.atomic_load(&d.scans) == 0 || d.known_bytes > d.max_bytes) { disk_trim(d) }
 		}
 		delete(job.path)
 		delete(job.payload)
@@ -224,6 +227,7 @@ disk_write :: proc(d: ^Disk_Cache, job: Disk_Job) -> bool {
 // are removed too.
 @(private)
 disk_trim :: proc(d: ^Disk_Cache) {
+	sync.atomic_add(&d.scans, 1)
 	infos, err := os.read_all_directory_by_path(d.dir, context.temp_allocator)
 	if err != nil { return }
 	entries := make([dynamic]os.File_Info, context.temp_allocator)
@@ -234,6 +238,7 @@ disk_trim :: proc(d: ^Disk_Cache) {
 		append(&entries, fi)
 		total += fi.size
 	}
+	defer d.known_bytes = total
 	if total <= d.max_bytes { return }
 	slice.sort_by(entries[:], proc(a, b: os.File_Info) -> bool { return time.diff(a.modification_time, b.modification_time) > 0 })
 	for fi in entries {
