@@ -29,6 +29,9 @@ EventInit_Flag :: enum u32 {
 	Cancelable = 1,
 	// The event crosses shadow roots: its path goes on to the hosts (targets retargeted).
 	Composed = 2,
+	// A MouseEvent: a click runs the activation behaviour of what it targets (DOM dispatch's activation target: a check box
+	// toggles, a label clicks its control, a link is followed).
+	Activation = 3,
 }
 EventInit :: bit_set[EventInit_Flag; u32]
 

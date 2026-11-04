@@ -155,6 +155,7 @@ wr_EventInit_Flag :: enum u32 {
 	Bubbles = 0,
 	Cancelable = 1,
 	Composed = 2,
+	Activation = 3,
 }
 wr_EventInit :: bit_set[wr_EventInit_Flag; u32]
 // A listener: `user` is the value given to addEventListener.

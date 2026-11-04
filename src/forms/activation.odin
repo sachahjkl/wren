@@ -198,23 +198,38 @@ Click_Info :: struct {
 	trusted:     bool,     // a real user click (file and color pickers need one)
 }
 
+// What dispatches a click that is not the browser's own: a MouseEvent a script dispatches (its listeners see that object).
+// `fire` returns whether no listener cancelled it. One that does not bubble activates its target only (DOM "dispatch":
+// the activation target is looked for in the parents of a bubbling event).
+Click_Dispatch :: struct {
+	fire:    proc(user: rawptr) -> bool,
+	user:    rawptr,
+	bubbles: bool,
+}
+
+// The most clicks inside one another's activation (a label's control clicked from the label's: a loop of labels stops).
+@(private)
+ACTIVATION_DEPTH_MAX :: 8
+
 // Dispatches a click with the activation behaviour around it (the dispatch algorithm's legacy-pre-activation, activation
 // and legacy-canceled-activation steps). Returns false when a listener cancelled the click (or nothing was dispatched
-// because the target is a disabled control).
-click :: proc(f: ^Forms, target: base.Handle, info: Click_Info) -> bool {
-	if element(f, target) == nil && dom.get(f.doc, target) == nil { return true }
+// because the target is a disabled control). `script`: the event is a script's (dispatchEvent of a MouseEvent), dispatched
+// by its `fire`; a disabled control does not swallow it, it only has no activation.
+click :: proc(f: ^Forms, target: base.Handle, info: Click_Info, script := Click_Dispatch{}) -> bool {
+	if element(f, target) == nil && dom.get(f.doc, target) == nil { return script.fire != nil ? script.fire(script.user) : true }
 	// a press outside the showing auto popovers closes them (HTML "light dismiss")
 	if info.trusted && f.in_activation == 0 && f.host.popover_dismiss != nil { f.host.popover_dismiss(f.host.user, target) }
 	// disabled form controls swallow user clicks
 	for cur := target; cur != base.NIL_HANDLE; cur = parent_element(f, cur) {
 		k := kind(f, cur)
-		if is_form_control_kind(k) && k != .Fieldset && is_disabled(f, cur) { return false }
+		if is_form_control_kind(k) && k != .Fieldset && is_disabled(f, cur) { return script.fire != nil ? script.fire(script.user) : false }
 	}
-	if f.in_activation > 8 { return true }
+	if f.in_activation > ACTIVATION_DEPTH_MAX { return script.fire != nil ? script.fire(script.user) : true }
 	f.in_activation += 1
 	defer f.in_activation -= 1
 
 	at := activation_target(f, target)
+	if script.fire != nil && !script.bubbles && at != target { at = base.NIL_HANDLE }
 	n := element(f, at)
 	t := input_type_of(n)
 	is_input := kind_of(n) == .Input
@@ -234,7 +249,7 @@ click :: proc(f: ^Forms, target: base.Handle, info: Click_Info) -> bool {
 	if is_input && t == .Image {
 		if c := control_of(f, at); c != nil { c.image_coords = info.offset }
 	}
-	ok := fire(f, target, "click", bubbles = true, cancelable = true, x = info.x, y = info.y, code = i64(info.button))
+	ok := script.fire != nil ? script.fire(script.user) : fire(f, target, "click", bubbles = true, cancelable = true, x = info.x, y = info.y, code = i64(info.button))
 	if at == base.NIL_HANDLE || element(f, at) == nil { return ok }
 	if !ok {
 		// legacy-canceled-activation
@@ -256,6 +271,7 @@ activate :: proc(f: ^Forms, at, target: base.Handle, info: Click_Info, was_check
 	switch kind_of(n) {
 	case .Input:
 		t := input_type_of(n)
+		if t != .Checkbox && t != .Radio && is_disabled(f, at) { return }   // (disabled by a listener of its click)
 		if (t == .Button || ((t == .Submit || t == .Image || t == .Reset) && form_owner(f, at) == base.NIL_HANDLE)) && popover_invoker(f, at) { return }
 		#partial switch t {
 		case .Checkbox:

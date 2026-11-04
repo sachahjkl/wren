@@ -698,6 +698,7 @@ wjr_EventTarget_dispatchEvent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 	if e.bubbles { init += {.Bubbles} }
 	if e.cancelable { init += {.Cancelable} }
 	if e.composed { init += {.Composed} }
+	if wj.wj_unwrap(argv[0], ifc("MouseEvent")) != nil { init += {.Activation} }   // (a click of one activates its target)
 	e.trusted = wj.wj_dispatch_trusted
 	e.stop, e.stop_immediate, e.canceled = false, false, false
 	e.dispatching = true

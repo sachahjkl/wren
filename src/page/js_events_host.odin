@@ -5,6 +5,7 @@ package page
 
 import "wb:base"
 import "wb:dom"
+import "wb:forms"
 
 EventTarget_dispatchEngineEvent :: proc(c: ^Call, target: u64, type: string, init: Api_EventInit, engine_id: i64, time_stamp: f64) -> (bool, Api_Error) {
 	p := c.page
@@ -29,6 +30,20 @@ EventTarget_dispatchEngineEvent :: proc(c: ^Call, target: u64, type: string, ini
 		c.caller.dp.last_related = p.dp.last_related
 	}
 	if p.worker != nil || dom.get(p.doc, H(target)) == nil { return false, fail(c, .Invalid_Handle, "dispatchEvent: the target is gone") }
+	if type == "click" && .Activation in init && p.formctl != nil {
+		// a script's MouseEvent click: its target's activation behaviour around its dispatch (DOM "dispatch" steps 5.3
+		// and 11 to 13, as the browser's own clicks: forms.click)
+		Dispatch :: struct { p: ^Page, target: base.Handle, ev: dom.Event, final: base.Handle }
+		d := Dispatch{p = p, target = H(target), ev = ev, final = H(target)}
+		ok := forms.click(page_forms(p), H(target), {}, forms.Click_Dispatch{user = &d, bubbles = ev.bubbles, fire = proc(user: rawptr) -> bool {
+			x := (^Dispatch)(user)
+			ok: bool
+			ok, x.final = dom.dispatch_ex(x.p.doc, &x.p.dp, x.target, x.ev)
+			return ok
+		}})
+		js_dom_state(p).shadow.last_target = u64(d.final)
+		return ok, .None
+	}
 	ok, final := dom.dispatch_ex(p.doc, &p.dp, H(target), ev)
 	// the target as the event shows it once dispatched (EventTarget_lastTarget): null when it was in a shadow tree
 	js_dom_state(p).shadow.last_target = u64(final)
