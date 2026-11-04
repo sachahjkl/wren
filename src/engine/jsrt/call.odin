@@ -501,7 +501,7 @@ interp_call :: proc(ctx: ^Context, fo: ^Object, this: Value, new_target: Value, 
 	r: Value
 	if jit_cfg.enabled && jit_entered(&f, fd.var_refs) {
 		// the whole function's compiled code returned (jit.odin)
-		r = f.stack[0]
+		r = jit_result(&f)
 		temp_reset(rt, f.root_base)
 		root(rt, r)
 	} else {
