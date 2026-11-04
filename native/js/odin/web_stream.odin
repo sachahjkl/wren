@@ -727,7 +727,7 @@ web_stream_from_host :: proc "c" (ctx: ^wj.Context, host_stream: u64, signal: wj
 	}
 	s := stream_of(obj)
 	s.started = true
-	s.hwm = 0   // read on demand
+	s.hwm = 1   // a chunk ahead once reading started: a failure of the network reaches a reader waiting on `closed`
 	return obj
 }
 

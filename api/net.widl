@@ -45,6 +45,10 @@ module net {
   FetchState Fetch_state(Fetch request);
   /// The HTTP status (0 for an opaque response).
   i32 Fetch_status(Fetch request);
+  /// The status message of the response ("" over HTTP/2 and HTTP/3, which have none).
+  string Fetch_statusText(Fetch request);
+  /// False for a response that has no body whatever the server sent: to a HEAD, or of a null body status (204, 205, 304...).
+  bool Fetch_hasBody(Fetch request);
   ResponseType Fetch_type(Fetch request);
   bool Fetch_redirected(Fetch request);
   /// The response headers the module may see: "Name: value" lines, CR LF terminated.

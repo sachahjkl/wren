@@ -25,6 +25,7 @@ Fetch_Update :: struct {
 	redirected: bool,
 	usable:     bool,
 	url:        string,
+	status_text: string,
 	headers:    string,     // "Name: value" lines, CR LF terminated
 	data:       []byte,
 	error:      fetch.Error_Kind,
@@ -48,7 +49,7 @@ fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	u := Fetch_Update{kind = ev.kind, data = ev.data, error = ev.error, detail = ev.detail}
 	if ev.kind == .Response {
 		r := ev.response
-		u.status, u.type, u.redirected, u.usable, u.url = r.status, r.type, r.redirected, r.body_usable, r.url
+		u.status, u.status_text, u.type, u.redirected, u.usable, u.url = r.status, r.status_text, r.type, r.redirected, r.body_usable, r.url
 		u.headers = serialize_headers(r.headers.list[:])
 	}
 	if f.ext != nil { fetch_ext_event(f, u); return }   // promise / stream / abort signal (bindings_fetch.odin)
@@ -70,6 +71,7 @@ fetch_update :: proc(f: ^Fetch, ev: Fetch_Update) {
 	case .Response:
 		f.state, f.status, f.type, f.redirected, f.usable = 1, ev.status, ev.type, ev.redirected, ev.usable
 		f.final_url = strings.clone(ev.url)
+		f.status_text = strings.clone(ev.status_text)
 		f.headers = strings.clone(ev.headers)
 	case .Data:
 		if !f.usable { return }   // opaque: scripts never see the bytes
@@ -133,7 +135,7 @@ fetch_options_pack :: proc(o: Api_FetchOptions) -> u32 {
 // request is relayed to the UI thread, where the loader lives (worker.odin); the extended forms are page-only.
 @(private)
 fetch_begin :: proc(p: ^Page, owner: u32, target, method, headers: string, body: []byte, options: u32, callback, user: u32, ext: ^Fetch_Ext) -> u64 {
-	h, f := base.pool_insert(&p.fetches, Fetch{page = p, instance = owner, callback = callback, user = user, ext = ext})
+	h, f := base.pool_insert(&p.fetches, Fetch{page = p, instance = owner, callback = callback, user = user, ext = ext, head = method == "HEAD"})
 	f.self = h
 	if ext != nil && !fetch_ext_attach(p, f) { return u64(h) }   // its signal is already aborted: the failure is on its way
 
@@ -152,11 +154,27 @@ fetch_begin :: proc(p: ^Page, owner: u32, target, method, headers: string, body:
 	return u64(h)
 }
 
+// Infra "isomorphic encode": a guest's strings are UTF-8, a header's value is a ByteString, a byte for each code point. A value
+// with a code point past U+00FF is not one (a Wasm guest's text): it goes as it is.
+@(private)
+isomorphic_encode :: proc(s: string) -> string {
+	ascii := true
+	for i in 0 ..< len(s) { if s[i] >= 0x80 { ascii = false; break } }
+	if ascii { return s }
+	out := make([dynamic]byte, 0, len(s), context.temp_allocator)
+	for r in s {
+		if r > 0xFF { return s }
+		append(&out, byte(r))
+	}
+	return string(out[:])
+}
+
 // The request a guest asks for with Fetch_start (strings are borrowed; fetch.start copies them).
 @(private)
 guest_request :: proc(abs, method, headers: string, body: []byte, o: u32, initiator: ^fetch.Environment) -> fetch.Request_Desc {
 	pairs := make([dynamic]fetch.Header_Pair, context.temp_allocator)
 	parse_header_lines(headers, &pairs)
+	for &pair in pairs { pair.value = isomorphic_encode(pair.value) }
 	mode := fetch.Mode.Cors
 	switch o & 3 { case 1: mode = .Same_Origin; case 2: mode = .No_Cors }
 	creds := fetch.Credentials.Same_Origin
@@ -187,6 +205,12 @@ FETCH_OPTION_CLASSIC_SCRIPT :: u32(1) << 14
 
 Fetch_state :: proc(c: ^Call, request: Api_Fetch) -> Api_FetchState { return Api_FetchState(request.data.state) }
 Fetch_status :: proc(c: ^Call, request: Api_Fetch) -> i32 { return i32(request.data.status) }
+Fetch_statusText :: proc(c: ^Call, request: Api_Fetch) -> string { return request.data.status_text }
+// Fetch "null body status", and a HEAD's answer.
+Fetch_hasBody :: proc(c: ^Call, request: Api_Fetch) -> bool {
+	f := request.data
+	return !f.head && f.status != 101 && f.status != 103 && f.status != 204 && f.status != 205 && f.status != 304
+}
 // 0 basic, 1 cors, 2 opaque, 3 opaque-redirect
 Fetch_type :: proc(c: ^Call, request: Api_Fetch) -> Api_ResponseType { return Api_ResponseType(request.data.type) }
 Fetch_redirected :: proc(c: ^Call, request: Api_Fetch) -> bool { return request.data.redirected }

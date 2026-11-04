@@ -96,6 +96,8 @@ foreign _m_net {
 	@(link_name = "Fetch_start") _Fetch_start :: proc(url: [^]u8, url_len: u32, callback: FetchCallback, user: i32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, options_mode: FetchMode, options_credentials: Credentials, options_redirect: RedirectMode, options_referrer_policy: ReferrerPolicy, options_no_referrer: i32, options_cache: RequestCache) -> Fetch ---
 	@(link_name = "Fetch_state") _Fetch_state :: proc(request: u64) -> FetchState ---
 	@(link_name = "Fetch_status") _Fetch_status :: proc(request: u64) -> i32 ---
+	@(link_name = "Fetch_statusText") _Fetch_statusText :: proc(request: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Fetch_hasBody") _Fetch_hasBody :: proc(request: u64) -> i32 ---
 	@(link_name = "Fetch_type") _Fetch_type :: proc(request: u64) -> ResponseType ---
 	@(link_name = "Fetch_redirected") _Fetch_redirected :: proc(request: u64) -> i32 ---
 	@(link_name = "Fetch_headers") _Fetch_headers :: proc(request: u64, _buf: [^]u8, _cap: u32) -> i32 ---
@@ -123,6 +125,40 @@ Fetch_state :: proc "contextless" (request: $T_request) -> FetchState where intr
 // The HTTP status (0 for an opaque response).
 Fetch_status :: proc "contextless" (request: $T_request) -> i32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_request)) && size_of(T_request) == 8 {
 	return _Fetch_status(u64(request))
+}
+
+// The status message of the response ("" over HTTP/2 and HTTP/3, which have none).
+Fetch_statusText :: proc "contextless" (request: $T_request, buf: []u8) -> (string, core.Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_request)) && size_of(T_request) == 8 {
+	n := _Fetch_statusText(u64(request), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, core.Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Fetch_statusText's result.
+Fetch_statusText_len :: proc "contextless" (request: $T_request) -> (int, core.Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_request)) && size_of(T_request) == 8 {
+	n := _Fetch_statusText(u64(request), nil, 0)
+	if n < 0 { return 0, core.Error(n) }
+	return int(n), .None
+}
+
+// Fetch_statusText's result in a buffer allocated to fit.
+Fetch_statusText_alloc :: proc(request: $T_request, allocator: runtime.Allocator) -> (string, core.Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_request)) && size_of(T_request) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Fetch_statusText(u64(request), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, core.Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// False for a response that has no body whatever the server sent: to a HEAD, or of a null body status (204, 205, 304...).
+Fetch_hasBody :: proc "contextless" (request: $T_request) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_request)) && size_of(T_request) == 8 {
+	return _Fetch_hasBody(u64(request)) != 0
 }
 
 Fetch_type :: proc "contextless" (request: $T_request) -> ResponseType where intrinsics.type_is_integer(intrinsics.type_core_type(T_request)) && size_of(T_request) == 8 {

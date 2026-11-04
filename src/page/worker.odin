@@ -640,7 +640,7 @@ relay_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		res := ev.response
 		m.code2 = i64(res.status) | i64(res.type) << 32 | (res.redirected ? 1 << 40 : 0) | (res.body_usable || r.internal ? 1 << 41 : 0)
 		m.text = strings.clone(res.url)
-		m.text2 = serialize_headers(res.headers.list[:], context.allocator)
+		m.text2 = strings.concatenate({res.status_text, "\r\n", serialize_headers(res.headers.list[:])})   // (the message first: Fetch_Event)
 	case .Data, .Done:
 		if len(ev.data) > 0 { m.bytes = make([]byte, len(ev.data)); copy(m.bytes, ev.data) }
 	case .Failed:
@@ -1032,7 +1032,8 @@ worker_fetch_event :: proc(p: ^Page, m: ^Worker_Msg) {
 		u.type = fetch.Response_Type((m.code2 >> 32) & 0xFF)
 		u.redirected = m.code2 & (1 << 40) != 0
 		u.usable = m.code2 & (1 << 41) != 0
-		u.url, u.headers = m.text, m.text2
+		line, _, rest := strings.partition(m.text2, "\r\n")
+		u.url, u.status_text, u.headers = m.text, line, rest
 	case .Failed:
 		u.error, u.detail = fetch.Error_Kind(m.code2), m.text
 	case .Data, .Done:

@@ -3398,6 +3398,10 @@ foreign _wr_wj_net {
 	@(link_name = "Fetch_state") wr_Fetch_state :: proc(request: u64) -> i32 ---
 	// The HTTP status (0 for an opaque response).
 	@(link_name = "Fetch_status") wr_Fetch_status :: proc(request: u64) -> i32 ---
+	// The status message of the response ("" over HTTP/2 and HTTP/3, which have none).
+	@(link_name = "Fetch_statusText") wr_Fetch_statusText :: proc(request: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	// False for a response that has no body whatever the server sent: to a HEAD, or of a null body status (204, 205, 304...).
+	@(link_name = "Fetch_hasBody") wr_Fetch_hasBody :: proc(request: u64) -> i32 ---
 	@(link_name = "Fetch_type") wr_Fetch_type :: proc(request: u64) -> i32 ---
 	@(link_name = "Fetch_redirected") wr_Fetch_redirected :: proc(request: u64) -> i32 ---
 	// The response headers the module may see: "Name: value" lines, CR LF terminated.

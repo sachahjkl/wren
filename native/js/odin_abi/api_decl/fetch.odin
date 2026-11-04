@@ -45,6 +45,8 @@ Fetch_sync :: #type proc(url: string, method: string, headers: string, body: May
 Fetch_type :: #type proc(request: Fetch) -> ResponseType
 // The HTTP status (0 for an opaque response).
 Fetch_status :: #type proc(request: Fetch) -> i32
+Fetch_statusText :: #type proc(request: Fetch) -> string
+Fetch_hasBody :: #type proc(request: Fetch) -> bool
 Fetch_redirected :: #type proc(request: Fetch) -> bool
 // The response headers the page may see: "Name: value" lines, CR LF terminated.
 Fetch_headers :: #type proc(request: Fetch) -> string

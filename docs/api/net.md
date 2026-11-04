@@ -155,6 +155,26 @@ The HTTP status (0 for an opaque response).
 
 Host: `Fetch_status :: proc(c: ^Call, request: Api_Fetch) -> i32`
 
+### `Fetch_statusText`
+
+```
+string Fetch_statusText(Fetch request)
+```
+
+The status message of the response ("" over HTTP/2 and HTTP/3, which have none).
+
+Host: `Fetch_statusText :: proc(c: ^Call, request: Api_Fetch) -> string`
+
+### `Fetch_hasBody`
+
+```
+bool Fetch_hasBody(Fetch request)
+```
+
+False for a response that has no body whatever the server sent: to a HEAD, or of a null body status (204, 205, 304...).
+
+Host: `Fetch_hasBody :: proc(c: ^Call, request: Api_Fetch) -> bool`
+
 ### `Fetch_type`
 
 ```

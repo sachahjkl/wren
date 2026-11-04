@@ -215,6 +215,7 @@ Response_Type :: enum u8 {
 Response :: struct {
 	type:       Response_Type,
 	status:     int,                 // 0 for opaque
+	status_text: string,             // the status message: over HTTP/1, the server's; "" over HTTP/2 and 3 (and from the cache, but for a 200)
 	url:        string,              // the final URL (after redirects)
 	redirected: bool,
 	headers:    http.Headers,        // filtered according to `type`
