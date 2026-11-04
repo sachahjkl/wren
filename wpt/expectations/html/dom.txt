@@ -2696,8 +2696,8 @@
 	::first-letter styles applied ("<div class='first-letter-uppercase' style='width:0'>abc def"): FAIL
 	::first-line styles applied ("<div class='first-line-uppercase' style='width:0'>abc def"): FAIL
 	::first-line styles applied ("<div class='first-line-uppercase'>abc"): FAIL
-	<audio> contents ignored ("<audio style='display:block'>abc"): FAIL
-	<audio> contents ignored ("<div><audio>abc"): FAIL
+	<audio> contents ignored ("<audio style='display:block'>abc"): PASS
+	<audio> contents ignored ("<div><audio>abc"): PASS
 	<audio> contents ok for element not being rendered ("<audio style='display:block'><source id='target' class='poke' style='display:block'>"): PASS
 	<audio> contents ok for element not being rendered ("<audio style='display:block'><source id='target' class='poke' style='display:none'>"): PASS
 	<b> gets no special treatment ("<div>123<b>abc</b>def"): PASS
@@ -2705,14 +2705,14 @@
 	<br> content ignored ("<div><br class='poke'>"): PASS
 	<br> induces line break ("<div>abc<br>def"): PASS
 	<br> induces line break even at end of block ("<div>abc<br>"): PASS
-	<br> returned as newline, adjacent spaces collapsed across element boundaries ("<div style='width:1px; word-break:break-word'><x>Hello </x> <br> <x> Kitty</x></div>"): FAIL
+	<br> returned as newline, adjacent spaces collapsed across element boundaries ("<div style='width:1px; word-break:break-word'><x>Hello </x> <br> <x> Kitty</x></div>"): PASS
 	<br> returned as newline, following space collapsed ("<div style='width:1px; word-break:break-word'>Hello<br> Kitty</div>"): PASS
-	<br> returned as newline, preceding space collapsed ("<div style='width:1px; word-break:break-word'>Hello <br>Kitty</div>"): FAIL
+	<br> returned as newline, preceding space collapsed ("<div style='width:1px; word-break:break-word'>Hello <br>Kitty</div>"): PASS
 	<button> contents preserved ("<button>abc"): PASS
 	<button> contents preserved ("<div><button>abc"): PASS
-	<canvas> contents ignored ("<canvas>abc"): FAIL
-	<canvas> contents ignored ("<div><canvas>abc"): FAIL
-	<canvas> should not collapse following space ("<div><canvas></canvas> abc"): FAIL
+	<canvas> contents ignored ("<canvas>abc"): PASS
+	<canvas> contents ignored ("<div><canvas>abc"): PASS
+	<canvas> should not collapse following space ("<div><canvas></canvas> abc"): PASS
 	<canvas><div id='target'> contents ok for element not being rendered ("<canvas><div id='target'>abc"): PASS
 	<code> gets no special treatment ("<div>123<code>abc</code>def"): PASS
 	<div> in <option> ("<select><option class='poke-div'>123</select>"): PASS
@@ -2727,45 +2727,45 @@
 	<hr><hr> induces just one line break ("<div>abc<hr><hr>def"): PASS
 	<hr><hr><hr> induces just one line break ("<div>abc<hr><hr><hr>def"): PASS
 	<i> gets no special treatment ("<div>123<i>abc</i>def"): PASS
-	<iframe> contents ignored ("<div><iframe>abc"): FAIL
-	<iframe> contents ignored ("<iframe><div id='target'>abc"): FAIL
-	<iframe> contents ignored ("<iframe>abc"): FAIL
+	<iframe> contents ignored ("<div><iframe>abc"): PASS
+	<iframe> contents ignored ("<iframe><div id='target'>abc"): PASS
+	<iframe> contents ignored ("<iframe>abc"): PASS
 	<iframe> subdocument ignored ("<iframe src='data:text/html,abc'>"): PASS
 	<img> alt text ignored ("<div><img alt='abc'>"): PASS
 	<img> alt text ignored ("<img alt='abc'>"): PASS
-	<img> contents ignored ("<img src='about:blank' class='poke'>"): FAIL
+	<img> contents ignored ("<img src='about:blank' class='poke'>"): PASS
 	<input> contents ignored ("<div><input type='text' value='abc'>"): PASS
 	<input> contents ignored ("<input type='text' value='abc'>"): PASS
-	<object> contents ignored ("<div><object>abc"): FAIL
+	<object> contents ignored ("<div><object>abc"): PASS
 	<ol> list items get no special treatment ("<div><ol><li>abc"): PASS
 	<optgroup> containing <optgroup> ("<select><optgroup class='poke-optgroup'></select>"): FAIL
 	<optgroup> containing <option> ("<select><optgroup><option>abc</select>"): PASS
 	<optgroup> in <div> ("<div>a<optgroup>123</optgroup>bc"): PASS
-	<option> in <div> ("<div>a<option>123</option>bc"): FAIL
+	<option> in <div> ("<div>a<option>123</option>bc"): PASS
 	<pre> trailing newlines don't suppress <p> blank line ("<div><pre>abc\\n\\n</pre><p>def"): PASS
 	<rp> ("<div><ruby>abc<rp>(</rp><rt>def</rt><rp>)</rp></ruby>"): PASS
 	<rp> in a <select> ("<div><select class='poke-rp'></select>"): PASS
 	<rt> and no <rp> ("<div><ruby>abc<rt>def</rt></ruby>"): PASS
-	<select size='1'> contents of options preserved ("<div><select size='1'><option>abc</option><option>def"): FAIL
-	<select size='1'> contents of options preserved ("<select size='1'><option>abc</option><option>def"): FAIL
+	<select size='1'> contents of options preserved ("<div><select size='1'><option>abc</option><option>def"): PASS
+	<select size='1'> contents of options preserved ("<select size='1'><option>abc</option><option>def"): PASS
 	<select size='1'> contents of target option preserved ("<select size='1'><option id='target'>abc</option><option>def"): PASS
-	<select size='2'> contents of options preserved ("<div><select size='2'><option>abc</option><option>def"): FAIL
-	<select size='2'> contents of options preserved ("<select size='2'><option>abc</option><option>def"): FAIL
+	<select size='2'> contents of options preserved ("<div><select size='2'><option>abc</option><option>def"): PASS
+	<select size='2'> contents of options preserved ("<select size='2'><option>abc</option><option>def"): PASS
 	<select size='2'> contents of target option preserved ("<select size='2'><option id='target'>abc</option><option>def"): PASS
-	<select> containing text node child ("<select class='poke'></select>"): FAIL
+	<select> containing text node child ("<select class='poke'></select>"): PASS
 	<span> boundaries are irrelevant ("<div style='width:0'>123 <span>abc</span> def"): PASS
 	<span> boundaries are irrelevant ("<div>123 <span>abc</span> def"): PASS
 	<span> boundaries are irrelevant ("<div>123<span>abc</span>def"): PASS
 	<strong> gets no special treatment ("<div>123<strong>abc</strong>def"): PASS
-	<svg> non-rendered text ignored ("<div><svg><stop>abc</stop></svg></div>"): FAIL
+	<svg> non-rendered text ignored ("<div><svg><stop>abc</stop></svg></div>"): PASS
 	<svg> text contents preserved ("<div><svg><text>abc</text></svg></div>"): PASS
-	<svg><defs> text contents ignored ("<div><svg><defs><text>abc</text></defs></svg></div>"): FAIL
-	<textarea> contents ignored ("<div><textarea>abc"): FAIL
-	<textarea> contents ignored ("<textarea>abc"): FAIL
+	<svg><defs> text contents ignored ("<div><svg><defs><text>abc</text></defs></svg></div>"): PASS
+	<textarea> contents ignored ("<div><textarea>abc"): PASS
+	<textarea> contents ignored ("<textarea>abc"): PASS
 	<tt> gets no special treatment ("<div>123<tt>abc</tt>def"): PASS
 	<ul> list items get no special treatment ("<div><ul><li>abc"): PASS
-	<video> contents ignored ("<div><video>abc"): FAIL
-	<video> contents ignored ("<video>abc"): FAIL
+	<video> contents ignored ("<div><video>abc"): PASS
+	<video> contents ignored ("<video>abc"): PASS
 	<video> contents ok for element not being rendered ("<video style='display:block'><source id='target' class='poke' style='display:block'>"): PASS
 	<video> contents ok for element not being rendered ("<video style='display:block'><source id='target' class='poke' style='display:none'>"): PASS
 	Blank line after <p> ("<div><p>abc</p>def"): PASS
@@ -2785,27 +2785,27 @@
 	Element boundaries ignored for soft break handling (4) ("<div style='width:1px; word-break:break-word'><x>Hello</x> Kitty</div>"): PASS
 	Element boundaries ignored for soft break handling (5) ("<div style='width:1px; word-break:break-word'><x>Hello </x>Kitty</div>"): PASS
 	Empty block induces single line break ("<div>abc<div></div>def"): PASS
-	Flex items blockified ("<div style='display:flex'><span>1</span><span>2</span></div>"): FAIL
+	Flex items blockified ("<div style='display:flex'><span>1</span><span>2</span></div>"): PASS
 	Generated content not included ("<div class='before'>"): PASS
 	Generated content on child not included ("<div><div class='before'>"): PASS
-	Grid items blockified ("<div style='display:grid'><span>1</span><span>2</span></div>"): FAIL
-	Ignoring non-rendered table whitespace ("<div><table style='white-space:pre'>  <td>abc</td>  </table>"): FAIL
+	Grid items blockified ("<div style='display:grid'><span>1</span><span>2</span></div>"): PASS
+	Ignoring non-rendered table whitespace ("<div><table style='white-space:pre'>  <td>abc</td>  </table>"): PASS
 	Internal whitespace collapsed ("<div style='white-space:pre-line'>abc  def"): PASS
 	Internal whitespace compressed ("<div>abc  def"): PASS
 	Internal whitespace preserved ("<div style='white-space:pre'>abc  def"): PASS
 	Internal whitespace preserved ("<pre>abc  def"): PASS
 	Internal whitespace preserved ("<span style='white-space:pre'>abc  def"): PASS
 	Invisible <p> doesn't induce extra line breaks ("<div style='visibility:hidden'><p><span style='visibility:visible'>abc</span></p>\\n<div style='visibility:visible'>def</div>"): FAIL
-	Leading whitesapce should not be collapsed ("<div><img> abc"): FAIL
+	Leading whitesapce should not be collapsed ("<div><img> abc"): PASS
 	Leading whitespace after hard line break removed ("<div>abc<br> def"): PASS
 	Leading whitespace preserved ("<div style='white-space:pre'> abc"): PASS
 	Leading whitespace preserved ("<pre> abc"): PASS
 	Leading whitespace preserved ("<span style='white-space:pre'> abc"): PASS
 	Leading whitespace removed ("<div style='white-space:pre-line'> abc"): PASS
 	Leading whitespace removed ("<div> abc"): PASS
-	Leading/trailing space removal at display:inline-block boundary ("<div>123<span style='display:inline-block'> abc </span>def"): FAIL
-	Leading/trailing space removal at display:inline-flex boundary ("<div>123<span style='display:inline-flex'> abc </span>def"): FAIL
-	Leading/trailing space removal at display:inline-grid boundary ("<div>123<span style='display:inline-grid'> abc </span>def"): FAIL
+	Leading/trailing space removal at display:inline-block boundary ("<div>123<span style='display:inline-block'> abc </span>def"): PASS
+	Leading/trailing space removal at display:inline-flex boundary ("<div>123<span style='display:inline-flex'> abc </span>def"): PASS
+	Leading/trailing space removal at display:inline-grid boundary ("<div>123<span style='display:inline-grid'> abc </span>def"): PASS
 	Lone <rp> ("<div><rp>abc</rp>"): PASS
 	Newline at block boundary ("<div>123<div>abc</div>def"): PASS
 	Newline at display:block boundary ("<div>123<span style='display:block'>abc</span>def"): PASS
@@ -2835,16 +2835,16 @@
 	Remove leading/trailing whitespace in opacity:0 container ("<div style='opacity:0'> abc def "): PASS
 	Replaced element <canvas> with display:block should be treated as block-level ("<div>abc <canvas style='display:block'></canvas> def"): PASS
 	Replaced element <img> with display:block should be treated as block-level ("<div>abc <img style='display:block'> def"): PASS
-	Shadow DOM contents ignored ("<div class='shadow'>"): FAIL
-	Shadow DOM contents ignored ("<div><div class='shadow'>"): FAIL
+	Shadow DOM contents ignored ("<div class='shadow'>"): PASS
+	Shadow DOM contents ignored ("<div><div class='shadow'>"): PASS
 	Simplest possible test ("<div>abc"): PASS
 	Single newline in two-row inline-table ("<div>abc<div class='itable'><span class='row'><span class='cell'>def</span></span>\\n<span class='row'><span class='cell'>123</span></span></div>ghi"): FAIL
 	Soft breaks ignored in presence of word-break:break-word ("<div style='width:1px; word-break:break-word'>Hello Kitty</div>"): PASS
 	Soft breaks ignored, text-transform applied ("<div style='width:1px; word-break:break-word; text-transform:uppercase'>Hello Kitty</div>"): PASS
 	Soft line break at hyphen ignored ("<div style='width:0'>abc-def"): PASS
 	Soft line breaks ignored ("<div style='width:0'>abc def"): PASS
-	Tab-separated table cells ("<div><div class='itable'><span class='cell'>abc</span>\\n<span class='cell'>def</span></div>"): FAIL
-	Tab-separated table cells ("<div><div class='table'><span class='cell'>abc</span>\\n<span class='cell'>def</span></div>"): FAIL
+	Tab-separated table cells ("<div><div class='itable'><span class='cell'>abc</span>\\n<span class='cell'>def</span></div>"): PASS
+	Tab-separated table cells ("<div><div class='table'><span class='cell'>abc</span>\\n<span class='cell'>def</span></div>"): PASS
 	Tab-separated table cells ("<div><table><tr><td>abc<td>def</table>"): PASS
 	Tab-separated table cells in a border-collapse table ("<div><table style='border-collapse:collapse'><tr><td>abc<td>def</table>"): PASS
 	Tab-separated table cells including empty cells ("<div><table><tr><td>abc<td><td>def</table>"): PASS
@@ -2852,22 +2852,22 @@
 	Trailing space at end of grid-flex should be collapsed ("<div>abc <span style='display:inline-grid'> def </span> ghi"): PASS
 	Trailing space at end of inline-block should be collapsed ("<div>abc <span style='display:inline-block'> def </span> ghi"): PASS
 	Trailing space at end of inline-flex should be collapsed ("<div>abc <span style='display:inline-flex'> def </span> ghi"): PASS
-	Trailing whitesapce should not be collapsed ("<div>abc <img>"): FAIL
-	Trailing whitespace before hard line break removed ("<div>abc <br>def"): FAIL
+	Trailing whitesapce should not be collapsed ("<div>abc <img>"): PASS
+	Trailing whitespace before hard line break removed ("<div>abc <br>def"): PASS
 	Trailing whitespace preserved ("<div style='white-space:pre'>abc "): PASS
 	Trailing whitespace preserved ("<pre>abc "): PASS
 	Trailing whitespace preserved ("<span style='white-space:pre'>abc "): PASS
 	Trailing whitespace removed ("<div style='white-space:pre-line'>abc "): PASS
 	Trailing whitespace removed ("<div>abc "): PASS
 	Two <pre> siblings ("<div><pre>abc</pre><pre>def</pre>"): PASS
-	Whitespace around <img> should not be collapsed ("<div>abc <img width=1 height=1> def"): FAIL
-	Whitespace around <img> should not be collapsed ("<div>abc <img> def"): FAIL
-	Whitespace around <input> should not be collapsed ("<div>abc <input> def"): FAIL
+	Whitespace around <img> should not be collapsed ("<div>abc <img width=1 height=1> def"): PASS
+	Whitespace around <img> should not be collapsed ("<div>abc <img> def"): PASS
+	Whitespace around <input> should not be collapsed ("<div>abc <input> def"): PASS
 	Whitespace around empty span should be collapsed ("<div>abc <b></b> def"): PASS
 	Whitespace around empty spans should be collapsed ("<div>abc <b><i></i></b> def"): PASS
-	Whitespace around inline-block should not be collapsed ("<div>abc <span style='display:inline-block'></span> def"): FAIL
-	Whitespace around inline-flex should not be collapsed ("<div>abc <span style='display:inline-flex'></span> def"): FAIL
-	Whitespace around inline-grid should not be collapsed ("<div>abc <span style='display:inline-grid'></span> def"): FAIL
+	Whitespace around inline-block should not be collapsed ("<div>abc <span style='display:inline-block'></span> def"): PASS
+	Whitespace around inline-flex should not be collapsed ("<div>abc <span style='display:inline-flex'></span> def"): PASS
+	Whitespace around inline-grid should not be collapsed ("<div>abc <span style='display:inline-grid'></span> def"): PASS
 	Whitespace between <input> and block should be collapsed ("<div><input> <div>abc</div>"): PASS
 	Whitespace between inline-block and block should be collapsed ("<div><span style='inline-block'></span> <div>abc</div>"): PASS
 	Whitespace between inline-flex and block should be collapsed ("<div><span style='inline-flex'></span> <div>abc</div>"): PASS
@@ -2922,8 +2922,8 @@
 	empty <div> ("<div>"): PASS
 	empty <optgroup> in <div> ("<div>a<optgroup></optgroup>bc"): PASS
 	empty <optgroup> in <select> ("<div>a<select><optgroup></select>bc"): PASS
-	empty <option> in <div> ("<div>a<option></option>bc"): FAIL
-	empty <option> in <select> ("<div>a<select><option></select>bc"): FAIL
+	empty <option> in <div> ("<div>a<option></option>bc"): PASS
+	empty <option> in <select> ("<div>a<select><option></select>bc"): PASS
 	empty <p> ("<p>"): PASS
 	empty <select> ("<div>a<select></select>bc"): PASS
 	float on the element itself ("<div style='float:left'>123"): PASS
@@ -2947,11 +2947,11 @@
 	soft hyphen preserved ("<div>abc&shy;def"): PASS
 	text-overflow:ellipsis ignored ("<div style='width:0; overflow:hidden; text-overflow:ellipsis'>abc"): PASS
 	text-transform handles Turkish casing ("<div><div lang='tr' style='text-transform:uppercase'>i ı"): FAIL
-	text-transform handles es-zet ("<div><div style='text-transform:uppercase'>Maß"): FAIL
+	text-transform handles es-zet ("<div><div style='text-transform:uppercase'>Maß"): PASS
 	text-transform is applied ("<div><div style='text-transform:uppercase'>abc"): PASS
 	tfoot not reordered ("<div><table><tfoot>x</tfoot><tbody>y</tbody></table>"): PASS
 	undefined ("<select><option>one</option><div><optgroup label=optgroup><div><option><span>two"): PASS
-	unopened <details> ignored ("<div><details><summary>abc</summary>123"): FAIL
+	unopened <details> ignored ("<div><details><summary>abc</summary>123"): PASS
 	visibility:collapse cell ("<table><tr><td style='visibility:collapse'>abc"): PASS
 	visibility:collapse honored on flex item ("<div style='display:flex'><span style='visibility:collapse'>1</span><span>2</span></div>"): PASS
 	visibility:collapse honored on grid item ("<div style='display:grid'><span style='visibility:collapse'>1</span><span>2</span></div>"): PASS
@@ -3097,7 +3097,7 @@
 	CR after <br> should be invisible if it's collapsible: PASS
 	CR after <div> should be invisible if it's collapsible: PASS
 	CR after <hr> should be invisible if it's collapsible: PASS
-	CR before <br> should be invisible if it's collapsible: FAIL
+	CR before <br> should be invisible if it's collapsible: PASS
 	CR before <div> should be invisible if it's collapsible: PASS
 	CR before <hr> should be invisible if it's collapsible: PASS
 	CR between <br>s should be invisible if it's collapsible: PASS
@@ -3140,7 +3140,7 @@
 	linefeed after <br> should be invisible if it's collapsible: PASS
 	linefeed after <div> should be invisible if it's collapsible: PASS
 	linefeed after <hr> should be invisible if it's collapsible: PASS
-	linefeed before <br> should be invisible if it's collapsible: FAIL
+	linefeed before <br> should be invisible if it's collapsible: PASS
 	linefeed before <div> should be invisible if it's collapsible: PASS
 	linefeed before <hr> should be invisible if it's collapsible: PASS
 	linefeed between <br>s should be invisible if it's collapsible: PASS
@@ -3149,7 +3149,7 @@
 	tab after <br> should be invisible if it's collapsible: PASS
 	tab after <div> should be invisible if it's collapsible: PASS
 	tab after <hr> should be invisible if it's collapsible: PASS
-	tab before <br> should be invisible if it's collapsible: FAIL
+	tab before <br> should be invisible if it's collapsible: PASS
 	tab before <div> should be invisible if it's collapsible: PASS
 	tab before <hr> should be invisible if it's collapsible: PASS
 	tab between <br>s should be invisible if it's collapsible: PASS
@@ -3158,7 +3158,7 @@
 	white-space after <br> should be invisible if it's collapsible: PASS
 	white-space after <div> should be invisible if it's collapsible: PASS
 	white-space after <hr> should be invisible if it's collapsible: PASS
-	white-space before <br> should be invisible if it's collapsible: FAIL
+	white-space before <br> should be invisible if it's collapsible: PASS
 	white-space before <div> should be invisible if it's collapsible: PASS
 	white-space before <hr> should be invisible if it's collapsible: PASS
 	white-space between <br>s should be invisible if it's collapsible: PASS
@@ -3167,7 +3167,7 @@
 	white-spaces after <br> should be invisible if they are collapsible: PASS
 	white-spaces after <div> should be invisible if they are collapsible: PASS
 	white-spaces after <hr> should be invisible if they are collapsible: PASS
-	white-spaces before <br> should be invisible if they are collapsible: FAIL
+	white-spaces before <br> should be invisible if they are collapsible: PASS
 	white-spaces before <div> should be invisible if they are collapsible: PASS
 	white-spaces before <hr> should be invisible if they are collapsible: PASS
 	white-spaces between <br>s should be invisible if they are collapsible: PASS
@@ -3177,7 +3177,7 @@
 	CR after <br> should be invisible if it's collapsible: PASS
 	CR after <div> should be invisible if it's collapsible: PASS
 	CR after <hr> should be invisible if it's collapsible: PASS
-	CR before <br> should be invisible if it's collapsible: FAIL
+	CR before <br> should be invisible if it's collapsible: PASS
 	CR before <div> should be invisible if it's collapsible: PASS
 	CR before <hr> should be invisible if it's collapsible: PASS
 	CR between <br>s should be invisible if it's collapsible: PASS
@@ -3220,7 +3220,7 @@
 	linefeed after <br> should be invisible if it's collapsible: PASS
 	linefeed after <div> should be invisible if it's collapsible: PASS
 	linefeed after <hr> should be invisible if it's collapsible: PASS
-	linefeed before <br> should be invisible if it's collapsible: FAIL
+	linefeed before <br> should be invisible if it's collapsible: PASS
 	linefeed before <div> should be invisible if it's collapsible: PASS
 	linefeed before <hr> should be invisible if it's collapsible: PASS
 	linefeed between <br>s should be invisible if it's collapsible: PASS
@@ -3229,7 +3229,7 @@
 	tab after <br> should be invisible if it's collapsible: PASS
 	tab after <div> should be invisible if it's collapsible: PASS
 	tab after <hr> should be invisible if it's collapsible: PASS
-	tab before <br> should be invisible if it's collapsible: FAIL
+	tab before <br> should be invisible if it's collapsible: PASS
 	tab before <div> should be invisible if it's collapsible: PASS
 	tab before <hr> should be invisible if it's collapsible: PASS
 	tab between <br>s should be invisible if it's collapsible: PASS
@@ -3238,7 +3238,7 @@
 	white-space after <br> should be invisible if it's collapsible: PASS
 	white-space after <div> should be invisible if it's collapsible: PASS
 	white-space after <hr> should be invisible if it's collapsible: PASS
-	white-space before <br> should be invisible if it's collapsible: FAIL
+	white-space before <br> should be invisible if it's collapsible: PASS
 	white-space before <div> should be invisible if it's collapsible: PASS
 	white-space before <hr> should be invisible if it's collapsible: PASS
 	white-space between <br>s should be invisible if it's collapsible: PASS
@@ -3247,7 +3247,7 @@
 	white-spaces after <br> should be invisible if they are collapsible: PASS
 	white-spaces after <div> should be invisible if they are collapsible: PASS
 	white-spaces after <hr> should be invisible if they are collapsible: PASS
-	white-spaces before <br> should be invisible if they are collapsible: FAIL
+	white-spaces before <br> should be invisible if they are collapsible: PASS
 	white-spaces before <div> should be invisible if they are collapsible: PASS
 	white-spaces before <hr> should be invisible if they are collapsible: PASS
 	white-spaces between <br>s should be invisible if they are collapsible: PASS
@@ -3257,7 +3257,7 @@
 	CR after <br> should be invisible if it's collapsible: PASS
 	CR after <div> should be invisible if it's collapsible: PASS
 	CR after <hr> should be invisible if it's collapsible: PASS
-	CR before <br> should be invisible if it's collapsible: FAIL
+	CR before <br> should be invisible if it's collapsible: PASS
 	CR before <div> should be invisible if it's collapsible: PASS
 	CR before <hr> should be invisible if it's collapsible: PASS
 	CR between <br>s should be invisible if it's collapsible: PASS
@@ -3300,7 +3300,7 @@
 	linefeed after <br> should be invisible if it's collapsible: PASS
 	linefeed after <div> should be invisible if it's collapsible: PASS
 	linefeed after <hr> should be invisible if it's collapsible: PASS
-	linefeed before <br> should be invisible if it's collapsible: FAIL
+	linefeed before <br> should be invisible if it's collapsible: PASS
 	linefeed before <div> should be invisible if it's collapsible: PASS
 	linefeed before <hr> should be invisible if it's collapsible: PASS
 	linefeed between <br>s should be invisible if it's collapsible: PASS
@@ -3309,7 +3309,7 @@
 	tab after <br> should be invisible if it's collapsible: PASS
 	tab after <div> should be invisible if it's collapsible: PASS
 	tab after <hr> should be invisible if it's collapsible: PASS
-	tab before <br> should be invisible if it's collapsible: FAIL
+	tab before <br> should be invisible if it's collapsible: PASS
 	tab before <div> should be invisible if it's collapsible: PASS
 	tab before <hr> should be invisible if it's collapsible: PASS
 	tab between <br>s should be invisible if it's collapsible: PASS
@@ -3318,7 +3318,7 @@
 	white-space after <br> should be invisible if it's collapsible: PASS
 	white-space after <div> should be invisible if it's collapsible: PASS
 	white-space after <hr> should be invisible if it's collapsible: PASS
-	white-space before <br> should be invisible if it's collapsible: FAIL
+	white-space before <br> should be invisible if it's collapsible: PASS
 	white-space before <div> should be invisible if it's collapsible: PASS
 	white-space before <hr> should be invisible if it's collapsible: PASS
 	white-space between <br>s should be invisible if it's collapsible: PASS
@@ -3327,7 +3327,7 @@
 	white-spaces after <br> should be invisible if they are collapsible: PASS
 	white-spaces after <div> should be invisible if they are collapsible: PASS
 	white-spaces after <hr> should be invisible if they are collapsible: PASS
-	white-spaces before <br> should be invisible if they are collapsible: FAIL
+	white-spaces before <br> should be invisible if they are collapsible: PASS
 	white-spaces before <div> should be invisible if they are collapsible: PASS
 	white-spaces before <hr> should be invisible if they are collapsible: PASS
 	white-spaces between <br>s should be invisible if they are collapsible: PASS
@@ -3629,7 +3629,7 @@
 	tab after <br> should be invisible if it's collapsible: PASS
 	tab after <div> should be invisible if it's collapsible: PASS
 	tab after <hr> should be invisible if it's collapsible: PASS
-	tab before <br> should be invisible if it's collapsible: FAIL
+	tab before <br> should be invisible if it's collapsible: PASS
 	tab before <div> should be invisible if it's collapsible: PASS
 	tab before <hr> should be invisible if it's collapsible: PASS
 	tab between <br>s should be invisible if it's collapsible: PASS
@@ -3638,7 +3638,7 @@
 	white-space after <br> should be invisible if it's collapsible: PASS
 	white-space after <div> should be invisible if it's collapsible: PASS
 	white-space after <hr> should be invisible if it's collapsible: PASS
-	white-space before <br> should be invisible if it's collapsible: FAIL
+	white-space before <br> should be invisible if it's collapsible: PASS
 	white-space before <div> should be invisible if it's collapsible: PASS
 	white-space before <hr> should be invisible if it's collapsible: PASS
 	white-space between <br>s should be invisible if it's collapsible: PASS
@@ -3647,7 +3647,7 @@
 	white-spaces after <br> should be invisible if they are collapsible: PASS
 	white-spaces after <div> should be invisible if they are collapsible: PASS
 	white-spaces after <hr> should be invisible if they are collapsible: PASS
-	white-spaces before <br> should be invisible if they are collapsible: FAIL
+	white-spaces before <br> should be invisible if they are collapsible: PASS
 	white-spaces before <div> should be invisible if they are collapsible: PASS
 	white-spaces before <hr> should be invisible if they are collapsible: PASS
 	white-spaces between <br>s should be invisible if they are collapsible: PASS
@@ -3709,7 +3709,7 @@
 	tab after <br> should be invisible if it's collapsible: PASS
 	tab after <div> should be invisible if it's collapsible: PASS
 	tab after <hr> should be invisible if it's collapsible: PASS
-	tab before <br> should be invisible if it's collapsible: FAIL
+	tab before <br> should be invisible if it's collapsible: PASS
 	tab before <div> should be invisible if it's collapsible: PASS
 	tab before <hr> should be invisible if it's collapsible: PASS
 	tab between <br>s should be invisible if it's collapsible: PASS
@@ -3718,7 +3718,7 @@
 	white-space after <br> should be invisible if it's collapsible: PASS
 	white-space after <div> should be invisible if it's collapsible: PASS
 	white-space after <hr> should be invisible if it's collapsible: PASS
-	white-space before <br> should be invisible if it's collapsible: FAIL
+	white-space before <br> should be invisible if it's collapsible: PASS
 	white-space before <div> should be invisible if it's collapsible: PASS
 	white-space before <hr> should be invisible if it's collapsible: PASS
 	white-space between <br>s should be invisible if it's collapsible: PASS
@@ -3727,7 +3727,7 @@
 	white-spaces after <br> should be invisible if they are collapsible: PASS
 	white-spaces after <div> should be invisible if they are collapsible: PASS
 	white-spaces after <hr> should be invisible if they are collapsible: PASS
-	white-spaces before <br> should be invisible if they are collapsible: FAIL
+	white-spaces before <br> should be invisible if they are collapsible: PASS
 	white-spaces before <div> should be invisible if they are collapsible: PASS
 	white-spaces before <hr> should be invisible if they are collapsible: PASS
 	white-spaces between <br>s should be invisible if they are collapsible: PASS
@@ -3789,7 +3789,7 @@
 	tab after <br> should be invisible if it's collapsible: PASS
 	tab after <div> should be invisible if it's collapsible: PASS
 	tab after <hr> should be invisible if it's collapsible: PASS
-	tab before <br> should be invisible if it's collapsible: FAIL
+	tab before <br> should be invisible if it's collapsible: PASS
 	tab before <div> should be invisible if it's collapsible: PASS
 	tab before <hr> should be invisible if it's collapsible: PASS
 	tab between <br>s should be invisible if it's collapsible: PASS
@@ -3798,7 +3798,7 @@
 	white-space after <br> should be invisible if it's collapsible: PASS
 	white-space after <div> should be invisible if it's collapsible: PASS
 	white-space after <hr> should be invisible if it's collapsible: PASS
-	white-space before <br> should be invisible if it's collapsible: FAIL
+	white-space before <br> should be invisible if it's collapsible: PASS
 	white-space before <div> should be invisible if it's collapsible: PASS
 	white-space before <hr> should be invisible if it's collapsible: PASS
 	white-space between <br>s should be invisible if it's collapsible: PASS
@@ -3807,7 +3807,7 @@
 	white-spaces after <br> should be invisible if they are collapsible: PASS
 	white-spaces after <div> should be invisible if they are collapsible: PASS
 	white-spaces after <hr> should be invisible if they are collapsible: PASS
-	white-spaces before <br> should be invisible if they are collapsible: FAIL
+	white-spaces before <br> should be invisible if they are collapsible: PASS
 	white-spaces before <div> should be invisible if they are collapsible: PASS
 	white-spaces before <hr> should be invisible if they are collapsible: PASS
 	white-spaces between <br>s should be invisible if they are collapsible: PASS

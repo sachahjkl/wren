@@ -479,6 +479,107 @@ is_block_level :: proc(dsp: style.Display) -> bool {
 	return false
 }
 
+// Block-level as laid out: by its display, or as an item of a flex or grid container (CSS Display: items are blockified).
+@(private = "file")
+block_like :: proc(d: ^dom.Document, st: ^style.Styled, h: base.Handle, cs: ^style.Computed) -> bool {
+	if is_block_level(cs.display) { return true }
+	if n := dom.get(d, h); n.ns == .HTML && n.name == "option" { return true }   // (a line each, in a list or a drop-down)
+	pcs := style.style_of(st, fparent(d, h))
+	if pcs == nil { return false }
+	#partial switch pcs.display {
+	case .Flex, .Inline_Flex, .Grid, .Inline_Grid: return true
+	}
+	return false
+}
+
+// An atomic inline: laid out as one box in its line, its contents (if any) a formatting context of their own.
+@(private = "file")
+is_atomic_inline :: proc(dsp: style.Display) -> bool {
+	#partial switch dsp {
+	case .Inline_Block, .Inline_Flex, .Inline_Grid, .Inline_Table: return true
+	}
+	return false
+}
+
+// Elements whose children are not rendered as text: replaced elements and form controls (their fallback content, a
+// textarea's value) contribute nothing to the rendered text but are there, in their line, as atomic inlines.
+@(private = "file")
+REPLACED_ELEMENTS :: [?]string{"img", "canvas", "video", "audio", "iframe", "object", "embed", "textarea", "input", "meter", "progress"}
+
+@(private = "file")
+is_replaced_element :: proc(n: ^dom.Node) -> bool {
+	if n.ns != .HTML { return false }
+	names := REPLACED_ELEMENTS
+	for name in names { if n.name == name { return true } }
+	return false
+}
+
+// The SVG elements whose contents are never rendered (paint servers, resources, metadata).
+@(private = "file")
+SVG_NOT_RENDERED :: [?]string{"defs", "symbol", "clippath", "mask", "pattern", "marker", "lineargradient", "radialgradient", "stop", "filter", "title", "desc", "metadata", "style", "script"}
+
+// The SVG elements whose text is rendered.
+@(private = "file")
+SVG_TEXT_ELEMENTS :: [?]string{"text", "tspan", "textpath", "a"}
+
+// A child the rendering leaves out though its style would show it: a text of a <select> or <optgroup> (only the options'
+// labels are shown), what a closed <details> holds besides its summary, a text outside SVG's text elements and the
+// contents of SVG resources, white space between the parts of a table.
+@(private = "file")
+not_rendered_child :: proc(d: ^dom.Document, st: ^style.Styled, parent: base.Handle, child: ^dom.Node) -> bool {
+	pn := dom.get(d, parent)
+	if pn == nil || pn.kind != .Element { return false }
+	if child.kind == .Element && child.ns == .SVG {
+		names := SVG_NOT_RENDERED
+		for name in names { if child.name == name { return true } }
+	}
+	switch pn.ns {
+	case .HTML:
+		switch pn.name {
+		case "select": return child.kind == .Text
+		case "optgroup":
+			gp := dom.get(d, pn.parent)
+			return child.kind == .Text && gp != nil && gp.kind == .Element && gp.ns == .HTML && gp.name == "select"
+		case "details":
+			if _, open := dom.get_attribute(d, parent, "open"); open { return false }
+			if child.kind != .Element || child.name != "summary" { return true }
+			for c := pn.first_child; c != base.NIL_HANDLE; c = dom.get(d, c).next {
+				if cn := dom.get(d, c); cn.kind == .Element && cn.name == "summary" { return cn != child }
+			}
+		}
+	case .SVG:
+		if child.kind != .Text { return false }
+		names := SVG_TEXT_ELEMENTS
+		for name in names { if pn.name == name { return false } }
+		return true
+	case .None, .MathML, .Other:
+	}
+	if child.kind == .Text && strings.trim(child.text, " \t\n\r\f") == "" {
+		if pcs := style.style_of(st, parent); pcs != nil {
+			#partial switch pcs.display {
+			case .Table, .Inline_Table, .Table_Row_Group, .Table_Header_Group, .Table_Footer_Group, .Table_Row: return true
+			}
+		}
+	}
+	return false
+}
+
+// Something that takes room in a line without text: a space pending before it stays, one after it too (it gives no
+// text of its own, so line breaks around it alone are still left out at the ends).
+@(private = "file")
+emit_atomic :: proc(fb: ^Flat_Builder) {
+	if fb.space && !fb.at_line_start {
+		flush_breaks(fb)
+		r := fb.space_at
+		r.out, r.out_len = strings.builder_len(fb.sb), 1
+		strings.write_byte(&fb.sb, ' ')
+		if r.node != base.NIL_HANDLE { append(&fb.runs, r) }
+		fb.started = true
+	}
+	fb.space = false
+	fb.at_line_start = false
+}
+
 @(private = "file")
 transform_rune :: proc(r: rune, t: style.Text_Transform, prev_letter: ^bool) -> rune {
 	out := r
@@ -491,6 +592,10 @@ transform_rune :: proc(r: rune, t: style.Text_Transform, prev_letter: ^bool) -> 
 	prev_letter^ = unicode.is_letter(r) || unicode.is_digit(r) || r == '\''
 	return out
 }
+
+// U+00DF LATIN SMALL LETTER SHARP S: "SS" upper-cased.
+@(private = "file")
+SHARP_S :: 'ß'
 
 // Text of node `node`'s bytes [lo, hi) with the white space processing of `cs`.
 @(private = "file")
@@ -534,6 +639,12 @@ emit_text :: proc(fb: ^Flat_Builder, text: string, node: base.Handle, lo, hi: in
 		} else {
 			for k := i; k < j; {
 				rr, m := utf8.decode_rune_in_string(text[k:])
+				if rr == SHARP_S && cs.text_transform == .Uppercase {   // (Unicode's special casing: one letter becomes two)
+					prev_letter = true
+					emit(fb, "SS", node, k, m)
+					k += m
+					continue
+				}
 				buf, bn := utf8.encode_rune(transform_rune(rr, cs.text_transform, &prev_letter))
 				emit(fb, strings.clone(string(buf[:bn]), context.temp_allocator), node, k, m)
 				k += m
@@ -546,8 +657,9 @@ emit_text :: proc(fb: ^Flat_Builder, text: string, node: base.Handle, lo, hi: in
 // The rendered text of [start, end] (innerText rules). `root`: where to walk from (an ancestor of both ends; NIL = the
 // document). Hidden content (display: none, visibility: hidden, unstyled nodes) is left out; generated content and
 // images contribute nothing. `selectable_only`: text that cannot be selected (user-select: none) is left out too, as
-// what a selection copies. Allocated in `allocator` (temp by default).
-range_text :: proc(d: ^dom.Document, st: ^style.Styled, start, end: Text_Pos, root := base.NIL_HANDLE, allocator := context.temp_allocator, selectable_only := false) -> Flat_Text {
+// what a selection copies. `light`: the nodes' own children, not the flat tree (innerText: a shadow tree's contents are
+// not the host's text). Allocated in `allocator` (temp by default).
+range_text :: proc(d: ^dom.Document, st: ^style.Styled, start, end: Text_Pos, root := base.NIL_HANDLE, allocator := context.temp_allocator, selectable_only := false, light := false) -> Flat_Text {
 	modes: map[base.Handle]Select_Mode
 	if selectable_only { modes = make(map[base.Handle]Select_Mode, 64, context.temp_allocator) }
 	fb := Flat_Builder{sb = strings.builder_make(allocator), runs = make([dynamic]Flat_Run, allocator), at_line_start = true}
@@ -569,11 +681,22 @@ range_text :: proc(d: ^dom.Document, st: ^style.Styled, start, end: Text_Pos, ro
 			case .Table_Cell:
 				// a tab between cells of a row (not after the last one)
 				for nx := fnext(d, s.h); nx != base.NIL_HANDLE; nx = fnext(d, nx) {
-					if ncs := style.style_of(st, nx); ncs != nil && ncs.display == .Table_Cell { emit(&fb, "\t", base.NIL_HANDLE, 0, 0); break }
+					if ncs := style.style_of(st, nx); ncs != nil && ncs.display == .Table_Cell {
+						emit(&fb, "\t", base.NIL_HANDLE, 0, 0)
+						fb.at_line_start = true   // (white space between the cells is no text of theirs)
+						break
+					}
 				}
 			case .Table_Row: require_breaks(&fb, 1)
 			case:
-				if n.name == "p" { require_breaks(&fb, 2) } else if is_block_level(cs.display) { require_breaks(&fb, 1) }
+				if n.name == "p" {
+					require_breaks(&fb, 2)
+				} else if block_like(d, st, s.h, cs) {
+					require_breaks(&fb, 1)
+				} else if is_atomic_inline(cs.display) {
+					fb.space = false   // its trailing spaces go; the space after it is the line's
+					fb.at_line_start = false
+				}
 			}
 			continue
 		}
@@ -583,9 +706,9 @@ range_text :: proc(d: ^dom.Document, st: ^style.Styled, start, end: Text_Pos, ro
 		case .Text:
 			if pos_compare(d, {s.h, len(n.text)}, start) <= 0 { continue }
 			if pos_compare(d, {s.h, 0}, end) >= 0 { clear(&stack); continue }   // past the end of the range
-			tp := fparent(d, s.h)
+			tp := light ? n.parent : fparent(d, s.h)
 			pcs := style.style_of(st, tp)
-			if pcs == nil || pcs.visibility != .Visible { continue }
+			if pcs == nil || pcs.visibility != .Visible || not_rendered_child(d, st, tp, n) { continue }
 			if selectable_only && select_mode(d, st, tp, &modes) == .None { continue }
 			lo := start.node == s.h ? start.offset : 0
 			hi := end.node == s.h ? end.offset : len(n.text)
@@ -594,19 +717,36 @@ range_text :: proc(d: ^dom.Document, st: ^style.Styled, start, end: Text_Pos, ro
 		case .Element:
 			cs := style.style_of(st, s.h)
 			if cs == nil || cs.display == .None { continue }
+			if s.h == top && is_replaced_element(n) { return {} }   // (a canvas's fallback, a textarea's value: no rendered text)
+			if s.h != top && not_rendered_child(d, st, n.parent, n) { continue }
 			// entirely before the range: skip it (its end is before start)
 			if pos_compare(d, pos_after(d, s.h), start) <= 0 && s.h != top { continue }
 			if pos_compare(d, pos_before(d, s.h), end) >= 0 && s.h != top { clear(&stack); continue }
 			if n.name == "br" {
-				if pos_compare(d, pos_before(d, s.h), start) >= 0 { emit(&fb, "\n", base.NIL_HANDLE, 0, 0) }
+				if pos_compare(d, pos_before(d, s.h), start) >= 0 {
+					fb.space = false   // (a space before a forced line break is not rendered)
+					emit(&fb, "\n", base.NIL_HANDLE, 0, 0)
+				}
+				continue
+			}
+			if s.h != top && is_replaced_element(n) {
+				if pos_compare(d, pos_before(d, s.h), start) >= 0 { if block_like(d, st, s.h, cs) { require_breaks(&fb, 1) } else { emit_atomic(&fb) } }
 				continue
 			}
 			if s.h != top {
-				if n.name == "p" { require_breaks(&fb, 2) } else if is_block_level(cs.display) || cs.display == .Table_Row { require_breaks(&fb, 1) }
+				if n.name == "p" { require_breaks(&fb, 2) } else if block_like(d, st, s.h, cs) || cs.display == .Table_Row { require_breaks(&fb, 1) }
+				if is_atomic_inline(cs.display) && !block_like(d, st, s.h, cs) {
+					emit_atomic(&fb)
+					fb.at_line_start = true   // (its contents start a line of their own: their leading spaces go)
+				}
 				append(&stack, Step{h = s.h, exit = true})
 			}
 		}
-		for c := flast(d, s.h); c != base.NIL_HANDLE; c = fprev(d, c) { append(&stack, Step{h = c}) }
+		if light {
+			for c := n.last_child; c != base.NIL_HANDLE; c = dom.get(d, c).prev { append(&stack, Step{h = c}) }
+		} else {
+			for c := flast(d, s.h); c != base.NIL_HANDLE; c = fprev(d, c) { append(&stack, Step{h = c}) }
+		}
 	}
 	return Flat_Text{text = strings.to_string(fb.sb), runs = fb.runs[:]}
 }
