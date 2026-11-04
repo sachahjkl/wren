@@ -610,6 +610,25 @@ checkbox_and_label_activation :: proc(t: ^testing.T) {
 	testing.expect(t, checked(f, id(x, "r2")) && f.focus == id(x, "r2"))
 }
 
+// A click inside a label: on interactive content (a nested label, a <video controls>) it is that content's; on other
+// content (a <meter>, which is labelable, a <video> without controls) the label's control is clicked.
+@(test)
+nested_label_activation :: proc(t: ^testing.T) {
+	x := fx_make(`<label id=outer><input type=checkbox id=cb><label id=inner>in</label><meter id=m></meter>` +
+		`<video id=v1 controls></video><video id=v2></video></label>`)
+	defer fx_destroy(x)
+	f := x.f
+	cb := id(x, "cb")
+	for h in ([]string{"inner", "v1"}) {
+		click(f, id(x, h), {})
+		testing.expect(t, !checked(f, cb), h)
+	}
+	click(f, id(x, "m"), {})
+	testing.expect(t, checked(f, cb), "a meter's click goes to the control")
+	click(f, id(x, "v2"), {})
+	testing.expect(t, !checked(f, cb), "a video without controls' click too")
+}
+
 @(test)
 select_options_and_selectedness :: proc(t: ^testing.T) {
 	x := fx_make(`<select id=s><option id=a disabled>A</option><option id=b value=bv> B  text </option><option id=c>C</option></select>

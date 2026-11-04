@@ -136,6 +136,21 @@ has_activation :: proc(f: ^Forms, h: base.Handle) -> bool {
 	return false
 }
 
+// HTML §3.2.5.2.7 interactive content: what a click inside a <label> belongs to instead of the label's control.
+@(private)
+is_interactive_content :: proc(f: ^Forms, h: base.Handle) -> bool {
+	n := element(f, h)
+	if n == nil || n.ns != .HTML { return false }
+	switch n.name {
+	case "button", "details", "embed", "iframe", "label", "select", "textarea": return true
+	case "a": return has_attr(n, "href")
+	case "audio", "video": return has_attr(n, "controls")
+	case "img": return has_attr(n, "usemap")
+	case "input": return input_type_of(n) != .Hidden
+	}
+	return false
+}
+
 // The <details> the <summary> `h` stands for (HTML §4.11.1: the first <summary> child of a <details>), else NIL.
 @(private)
 details_of_summary :: proc(f: ^Forms, h: base.Handle) -> base.Handle {
@@ -277,9 +292,10 @@ activate :: proc(f: ^Forms, at, target: base.Handle, info: Click_Info, was_check
 	case .Label:
 		ctl := labeled_control(f, at)
 		if ctl == base.NIL_HANDLE || ctl == target { return }
-		// a click on interactive content inside the label is that content's, not the label's
+		// a click on interactive content inside the label (a label in it too) is that content's, not the label's; one on
+		// other content, a labelable <meter> or <output> included, goes to the control
 		for cur := target; cur != at && cur != base.NIL_HANDLE; cur = parent_element(f, cur) {
-			if cur == ctl || is_labelable(f, cur) || has_activation(f, cur) { return }
+			if cur == ctl || is_interactive_content(f, cur) { return }
 		}
 		if is_focusable(f, ctl) && kind(f, ctl) != .Button { focus(f, ctl) }
 		sub := info
