@@ -1,3 +1,0 @@
-type: Added
-
-**A colour picker in the Styles pane** (`src/browser/devtools_style_edit.odin`, the toolkit's `ui.color_picker`): a swatch before every colour of a value (hex, the colour functions, the names; several in a value), a click opens the picker on it (square, hue and opacity bars, the old and new colour, hex / rgb / hsl / oklch); the page follows each change, the colour stays in the format it was written in (hex stays hex, `rgb(1, 2, 3)` keeps its commas; a name, `hwb()` or `lab()` becomes hex), Escape takes the value back, Enter or a click elsewhere keeps it. The Computed view's swatches read every colour syntax too.
