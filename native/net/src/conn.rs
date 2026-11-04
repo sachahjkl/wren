@@ -183,6 +183,13 @@ pub(crate) fn never_resolves(host: &str) -> bool {
     ["invalid", "test", "example"].iter().any(|tld| h == *tld || h.ends_with(&format!(".{tld}")))
 }
 
+/// A name under .localhost (`wren.localhost`, `a.b.localhost`): RFC 6761 section 6.3 has a browser resolve it to the loopback itself, as
+/// Chrome and Firefox do, because a system's resolver may not (Windows answers "host unknown"). `localhost` itself is left to the system.
+pub(crate) fn is_localhost_subdomain(host: &str) -> bool {
+    let h = host.trim_end_matches('.').to_ascii_lowercase();
+    h.len() > ".localhost".len() && h.ends_with(".localhost")
+}
+
 /// The addresses of `host`, through the settings' names first, then the system's resolver; with loopback_only, none that is not loopback.
 pub(crate) async fn resolve(host: &str, port: u16, s: &crate::Settings, info: &mut ConnInfo) -> Result<Vec<SocketAddr>, NetError> {
     let addrs = resolve_any(host, port, s, info).await?;
@@ -201,6 +208,10 @@ async fn resolve_any(host: &str, port: u16, s: &crate::Settings, info: &mut Conn
     }
     if let Some(ip) = host_override(&s.hosts, host) {
         return Ok(vec![SocketAddr::new(ip, port)]);
+    }
+    if is_localhost_subdomain(host) {
+        // (the IPv4 loopback first, the IPv6 one after it: a server that listens on one of them only is reached all the same)
+        return Ok(vec![SocketAddr::new(IpAddr::from([127, 0, 0, 1]), port), SocketAddr::new(IpAddr::from([0u16, 0, 0, 0, 0, 0, 0, 1]), port)]);
     }
     if s.loopback_only && never_resolves(host) {
         // (RFC 6761's names that no resolver answers: what a test of a name that does not resolve uses)
@@ -377,6 +388,16 @@ mod tests {
         assert_eq!(host_override(&hosts, "www2.not-web-platform.test"), Some("127.0.0.2".parse().unwrap()));
         assert_eq!(host_override(&hosts, "xweb-platform.test"), None);
         assert_eq!(host_override(&hosts, "example.com"), None);
+    }
+
+    #[test]
+    fn a_name_under_localhost_is_this_machine() {
+        assert!(is_localhost_subdomain("wren.localhost"));
+        assert!(is_localhost_subdomain("A.B.Localhost."));
+        assert!(!is_localhost_subdomain("localhost"));
+        assert!(!is_localhost_subdomain(".localhost"));
+        assert!(!is_localhost_subdomain("notlocalhost"));
+        assert!(!is_localhost_subdomain("localhost.example.com"));
     }
 
     #[test]
