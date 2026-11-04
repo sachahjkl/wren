@@ -78,6 +78,21 @@ section("createEvent", () => {
   throws("unknown interface", () => document.createEvent("NoSuchEvent"), "NotSupportedError");
 });
 
+// DOM's default passive value: what Chrome and Firefox do, so that a page's wheel or touch listener on the document that
+// calls preventDefault() does not stop scrolling.
+section("passive by default", () => {
+  const prevented = (target, type, options) => {
+    let seen = null;
+    const f = e => { e.preventDefault(); seen = e.defaultPrevented; };
+    target.addEventListener(type, f, options);
+    target.dispatchEvent(new Event(type, {cancelable: true}));
+    target.removeEventListener(type, f, options);
+    return seen;
+  };
+  eq("wheel on the document, touchstart on the body", [prevented(document, "wheel"), prevented(document.body, "touchstart")].join(), "false,false");
+  eq("passive: false, another element, another event", [prevented(window, "wheel", {passive: false}), prevented(document.getElementById("b"), "wheel"), prevented(window, "touchend")].join(), "true,true,true");
+});
+
 section("browser events (recorded for the tool)", () => {
   const b = document.getElementById("b");
   window.seen = {};

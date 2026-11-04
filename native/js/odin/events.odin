@@ -170,7 +170,35 @@ listener_register :: proc(ctx: ^wj.Context, o: ^wj.Obj, l: ^wj.Listener) -> bool
 @(private = "file")
 Listen_Options :: struct {
 	capture, once, passive: bool,
+	passive_given:          bool,         // `passive` was in the options (else DOM's default passive value)
 	signal:                 wj.JSValue,   // owned; undefined when none
+}
+
+// DOM "default passive value": touchstart, touchmove, wheel and mousewheel listeners on the window, the document, its
+// document element or its body are passive unless told otherwise (their preventDefault() does not stop scrolling).
+@(private = "file")
+PASSIVE_BY_DEFAULT :: [?]string{"touchstart", "touchmove", "wheel", "mousewheel"}
+
+@(private = "file")
+default_passive :: proc "contextless" (ctx: ^wj.Context, target: wj.JSValue, type: wj.JSValue) -> bool {
+	name, c, ok := wj.to_string_view(ctx, type)
+	if !ok { return false }
+	defer wj.free_cstring(ctx, c)
+	listed := false
+	names := PASSIVE_BY_DEFAULT
+	for n in names { if name == n { listed = true } }
+	if !listed { return false }
+	if wj.wj_unwrap(target, ifc("Window")) != nil || wj.wj_unwrap(target, ifc("Document")) != nil { return true }
+	if wj.wj_unwrap(target, ifc("Element")) == nil { return false }
+	doc := wj.global_get(ctx, "document")
+	defer wj.JS_FreeValue(ctx, doc)
+	for field in ([2]cstring{"documentElement", "body"}) {
+		el := wj.JS_GetPropertyStr(ctx, doc, field)
+		same := el == target
+		wj.JS_FreeValue(ctx, el)
+		if same { return true }
+	}
+	return false
 }
 
 @(private = "file")
@@ -190,7 +218,7 @@ read_options :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue, full: bool)
 	if !flag(ctx, v, "once", &o.once) { return o, false }
 	passive := wj.JS_GetPropertyStr(ctx, v, "passive")
 	if wj.is_exception(passive) { return o, false }
-	if !wj.is_undefined(passive) { o.passive = wj.JS_ToBool(ctx, passive) != 0 }
+	if !wj.is_undefined(passive) { o.passive, o.passive_given = wj.JS_ToBool(ctx, passive) != 0, true }
 	wj.JS_FreeValue(ctx, passive)
 	sig := wj.JS_GetPropertyStr(ctx, v, "signal")
 	if wj.is_exception(sig) { return o, false }
@@ -268,6 +296,7 @@ wjr_EventTarget_addEventListener :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 	// the signal's own state, not its (patchable) `aborted` getter
 	if !wj.is_undefined(opt.signal) && web_signal_aborted(opt.signal) { wj.JS_FreeValue(ctx, type); return wj.UNDEFINED }
 	if find_listener(ctx, o, type, opt.capture, cb) != nil { wj.JS_FreeValue(ctx, type); return wj.UNDEFINED }
+	if !opt.passive_given { opt.passive = default_passive(ctx, this_val, type) }
 	l := listener_add(ctx, o, wj.JS_DupValue(ctx, cb), type, opt.capture, opt.once, opt.passive, 0)
 	if l == nil { return wj.EXCEPTION }
 	if !wj.is_undefined(opt.signal) { wj_signal_follow_listener(ctx, opt.signal, this_val, l) }
