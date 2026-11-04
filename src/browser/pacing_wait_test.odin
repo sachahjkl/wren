@@ -8,14 +8,15 @@ import "core:time"
 import "toolkit:platform"
 import "wb:host"
 
-@(private = "file") SLOT_MS :: 200          // the slot the frame waits for
-@(private = "file") POST_AFTER_MS :: 20     // another thread posts this long into the wait
+@(private = "file") SLOT_MS :: 1000         // the slot the frame waits for (long: a loaded machine schedules the poster late)
+@(private = "file") POLL_MS :: 1            // the poster looks this often whether the frame waits yet
 @(private = "file") TIMER_AFTER_MS :: 40    // a timer of the loop due this long into the wait
 
 @(private = "file")
 Slot_Probe :: struct {
 	loop:     ^host.Loop,
-	posted:   i64,   // ticks (ns) the task and the timer ran at, 0: not yet
+	waiting:  ^bool,  // the pacer's flag: the poster posts once the frame waits for its slot
+	posted:   i64,    // ticks (ns) the task and the timer ran at, 0: not yet
 	timed:    i64,
 	poster:   ^thread.Thread,
 }
@@ -33,11 +34,12 @@ the_loop_tasks_run_while_a_frame_waits_for_its_slot :: proc(t: ^testing.T) {
 	app.pacing.timer = pacer_timer_create()
 	defer pacer_timer_destroy(app.pacing.timer)
 
-	probe := Slot_Probe{loop = &app.loop}
+	probe := Slot_Probe{loop = &app.loop, waiting = &app.pacing.waiting}
 	host.set_timer(&app.loop, TIMER_AFTER_MS, 0, proc(data: rawptr) { (^Slot_Probe)(data).timed = time.tick_now()._nsec }, &probe)
 	probe.poster = thread.create_and_start_with_data(&probe, proc(data: rawptr) {
 		p := (^Slot_Probe)(data)
-		time.sleep(POST_AFTER_MS * time.Millisecond)
+		start := time.tick_now()
+		for !sync.atomic_load(p.waiting) && time.tick_since(start) < SLOT_MS * time.Millisecond { time.sleep(POLL_MS * time.Millisecond) }
 		host.post(p.loop, proc(data: rawptr) { (^Slot_Probe)(data).posted = time.tick_now()._nsec }, p)
 	})
 	defer thread.destroy(probe.poster)
