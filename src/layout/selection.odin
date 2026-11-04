@@ -473,7 +473,7 @@ require_breaks :: proc(fb: ^Flat_Builder, n: int) {
 @(private = "file")
 is_block_level :: proc(dsp: style.Display) -> bool {
 	#partial switch dsp {
-	case .Block, .Flow_Root, .List_Item, .Flex, .Grid, .Table, .Table_Caption, .Table_Row_Group, .Table_Header_Group, .Table_Footer_Group:
+	case .Block, .Flow_Root, .List_Item, .Flex, .Grid, .Table, .Table_Caption:   // (row groups are inside a table: its rows break lines)
 		return true
 	}
 	return false
@@ -538,8 +538,9 @@ not_rendered_child :: proc(d: ^dom.Document, st: ^style.Styled, parent: base.Han
 		switch pn.name {
 		case "select": return child.kind == .Text
 		case "optgroup":
+			// in a <select>: neither its text nor an <optgroup> inside it
 			gp := dom.get(d, pn.parent)
-			return child.kind == .Text && gp != nil && gp.kind == .Element && gp.ns == .HTML && gp.name == "select"
+			return (child.kind == .Text || child.kind == .Element && child.name == "optgroup") && gp != nil && gp.kind == .Element && gp.ns == .HTML && gp.name == "select"
 		case "details":
 			if _, open := dom.get_attribute(d, parent, "open"); open { return false }
 			if child.kind != .Element || child.name != "summary" { return true }
@@ -562,6 +563,28 @@ not_rendered_child :: proc(d: ^dom.Document, st: ^style.Styled, parent: base.Han
 		}
 	}
 	return false
+}
+
+// Whether no table row follows `row` in its table (HTML's rendered text: a line feed after every row but the last),
+// among its siblings and the row groups after its own.
+@(private = "file")
+last_table_row :: proc(d: ^dom.Document, st: ^style.Styled, row: base.Handle) -> bool {
+	display_of :: proc(st: ^style.Styled, h: base.Handle) -> style.Display {
+		cs := style.style_of(st, h)
+		return cs != nil ? cs.display : .None
+	}
+	is_group :: proc(v: style.Display) -> bool { return v == .Table_Row_Group || v == .Table_Header_Group || v == .Table_Footer_Group }
+	n := dom.get(d, row)
+	for x := n.next; x != base.NIL_HANDLE; x = dom.get(d, x).next { if display_of(st, x) == .Table_Row { return false } }
+	if !is_group(display_of(st, n.parent)) { return true }
+	for g := dom.get(d, n.parent).next; g != base.NIL_HANDLE; g = dom.get(d, g).next {
+		switch v := display_of(st, g); {
+		case v == .Table_Row: return false
+		case is_group(v):
+			for x := dom.get(d, g).first_child; x != base.NIL_HANDLE; x = dom.get(d, x).next { if display_of(st, x) == .Table_Row { return false } }
+		}
+	}
+	return true
 }
 
 // Something that takes room in a line without text: a space pending before it stays, one after it too (it gives no
@@ -675,7 +698,7 @@ range_text :: proc(d: ^dom.Document, st: ^style.Styled, start, end: Text_Pos, ro
 		if n == nil { continue }
 		if s.exit {
 			cs := style.style_of(st, s.h)
-			if cs == nil { continue }
+			if cs == nil || cs.visibility != .Visible { continue }   // (an invisible element gives its contents' items only)
 			// past the end: nothing more can be inside
 			#partial switch cs.display {
 			case .Table_Cell:
@@ -687,7 +710,11 @@ range_text :: proc(d: ^dom.Document, st: ^style.Styled, start, end: Text_Pos, ro
 						break
 					}
 				}
-			case .Table_Row: require_breaks(&fb, 1)
+			case .Table_Row:
+				if !last_table_row(d, st, s.h) {
+					fb.space = false   // (the row's trailing spaces go)
+					emit(&fb, "\n", base.NIL_HANDLE, 0, 0)
+				}
 			case:
 				if n.name == "p" {
 					require_breaks(&fb, 2)
@@ -734,7 +761,11 @@ range_text :: proc(d: ^dom.Document, st: ^style.Styled, start, end: Text_Pos, ro
 				continue
 			}
 			if s.h != top {
-				if n.name == "p" { require_breaks(&fb, 2) } else if block_like(d, st, s.h, cs) || cs.display == .Table_Row { require_breaks(&fb, 1) }
+				switch {
+			case cs.visibility != .Visible:   // (an invisible element gives its contents' items only)
+			case n.name == "p": require_breaks(&fb, 2)
+			case block_like(d, st, s.h, cs): require_breaks(&fb, 1)
+			}
 				if is_atomic_inline(cs.display) && !block_like(d, st, s.h, cs) {
 					emit_atomic(&fb)
 					fb.at_line_start = true   // (its contents start a line of their own: their leading spaces go)

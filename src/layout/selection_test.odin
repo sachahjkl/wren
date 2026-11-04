@@ -173,6 +173,15 @@ c</p></body>`)
 		testing.expect_value(t, text_of_all(f), "abc  def |in|\n1\n2\nx\ny\nend\nMASS")
 	}
 	{
+		// a line feed after a table row but the last, an empty row's too, none before one (an inline table stays in its
+		// line); an invisible <p> adds no line breaks
+		f := fixture_load(`<body><table><thead><tr><td>h</td></tr></thead><tbody><tr></tr><tr><td>b</td></tr></tbody></table>` +
+			`<div>abc<span style="display:inline-table"><span style="display:table-row">d</span> <span style="display:table-row">e</span></span>f</div>` +
+			`<div style="visibility:hidden"><p><span style="visibility:visible">p</span></p></div><div>q</div></body>`)
+		defer fixture_unload(f)
+		testing.expect_value(t, text_of_all(f), "h\n\nb\nabcd\nef\np\nq")
+	}
+	{
 		// a range from the middle of one block to the middle of another
 		f := fixture_load(`<body><div id=a>alpha beta</div><div id=b>gamma delta</div></body>`)
 		defer fixture_unload(f)
