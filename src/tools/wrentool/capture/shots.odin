@@ -18,6 +18,8 @@ RAW_DIR :: "build/shots"
 SHOT_PREFS :: "browser.remote.indicator=false"
 SHOT_WIDTH :: 1600
 SHOT_HEIGHT :: 1000
+// The scale of every picture, whatever the machine's screen (the first Wren of a run got 96 dpi, the next ones the system's)
+SHOT_DPI :: 1.5 * api.DPI_ONE
 WEBP_QUALITY :: "82"
 WEBP_SMALL_QUALITY :: "80"
 WEBP_SMALL_WIDTH :: "640x"
@@ -139,7 +141,7 @@ run_shots :: proc(args: []string) -> int {
 		prefs := make([dynamic]string, context.temp_allocator)
 		append(&prefs, SHOT_PREFS)
 		append(&prefs, ..s.prefs)
-		if !bench.start(&w, {exe = exe, size = size, prefs = prefs[:], url = address(s.url)}) { return 1 }
+		if !bench.start(&w, {exe = exe, size = size, dpi = SHOT_DPI, prefs = prefs[:], url = address(s.url)}) { return 1 }
 		good := at_rest(&w.session) && run_actions(&w.session, s.actions) && take(&w.session, png)
 		bench.stop(&w)
 		fmt.printfln("%s %s", good ? "shot" : "MISSING", s.name)
