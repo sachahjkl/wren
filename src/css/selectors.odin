@@ -130,7 +130,7 @@ parse_selector_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List,
 	items := split_commas(vs, a)
 	out := make([dynamic]Complex, a)
 	for item in items {
-		// inside a style rule a selector may start with a combinator, and means `& <selector>` unless it uses & itself
+		// inside a style rule a selector may start with a combinator, and means `& <selector>` when it does or does not use &
 		c, good := parse_complex(trim_values(item), a, parent, parent != nil, ns)
 		if !good { return nil, false }
 		if parent != nil { c = with_implicit_nesting(c, a, parent) }
@@ -170,7 +170,7 @@ uses_nesting :: proc(c: Complex, depth := 0) -> bool {
 
 @(private)
 with_implicit_nesting :: proc(c: Complex, a: Arena_Alloc, parent: ^Selector_List) -> Complex {
-	if uses_nesting(c) { out := c; out.relative = false; return out }
+	if c.leading == .Descendant && uses_nesting(c) { out := c; out.relative = false; return out }   // (no combinator first)
 	lst := new(Selector_List, a)
 	lst^ = parent^
 	first := make([]Simple, 1, a)
@@ -244,6 +244,7 @@ parse_complex :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relat
 			if _, is_comb := as_combinator(vs[i]); is_comb { break }
 			s, pe, consumed, good := parse_simple(vs[i:], a, parent, ns)
 			if !good { return {}, false }
+			if (s.kind == .Type || s.kind == .Universal) && len(simples) > 0 && pe == .None { return {}, false }   // a type selector comes first (&div)
 			i += consumed
 			if pe != .None {
 				// a pseudo-element must end the selector

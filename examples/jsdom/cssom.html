@@ -220,6 +220,20 @@ section("rules inside rules", () => {
   s.remove();
 });
 
+// Declarations after a nested rule: a CSSNestedDeclarations in its place, after it in the cascade (CSS Nesting §3.2).
+section("nested declarations", () => {
+  const s = document.createElement("style");
+  s.textContent = "#pb { margin-left: 1px; & { margin-left: 2px } margin-left: 3px }";
+  document.head.appendChild(s);
+  const outer = s.sheet.cssRules[0], decls = outer.cssRules[1];
+  eq("they apply after the rule", px(document.getElementById("pb"), "marginLeft"), "3px");
+  eq("their rule", outer.cssRules.length + "|" + (decls instanceof CSSNestedDeclarations) + "|" + decls.cssText, "2|true|margin-left: 3px;");
+  decls.style.marginLeft = "4px";
+  eq("its style written", px(document.getElementById("pb"), "marginLeft"), "4px");
+  eq("the outer rule's text", outer.cssText, "#pb {\n  margin-left: 1px;\n  & { margin-left: 2px; }\n  margin-left: 4px;\n}");
+  s.remove();
+});
+
 section("@namespace", () => {
   const s = document.createElement("style");
   s.textContent = "@namespace svg url(http://www.w3.org/2000/svg); *|p, svg|p, |p { }";

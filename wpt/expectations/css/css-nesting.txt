@@ -34,44 +34,44 @@
 /css/css-nesting/invalidation-004.html: OK
 	CSS Selectors nested invalidation through @media by selectorText: PASS
 /css/css-nesting/mixed-declarations-rules.html: OK
-	Nested declarations and rules should be handled correctly: FAIL
+	Nested declarations and rules should be handled correctly: PASS
 /css/css-nesting/nested-declarations-cssom-whitespace.html: OK
-	Empty CSSNestedDeclarations do not affect outer serialization: FAIL
-	Empty CSSNestedDeclarations do not affect outer serialization (nested grouping rule): FAIL
+	Empty CSSNestedDeclarations do not affect outer serialization: PASS
+	Empty CSSNestedDeclarations do not affect outer serialization (nested grouping rule): PASS
 /css/css-nesting/nested-declarations-cssom.html: OK
 	Attempting to insert a CSSNestedDeclaration rule into a stylesheet: PASS
 	Attempting to insert a CSSNestedDeclaration rule into top-level @media rule: PASS
 	Attempting to insert a CSSNestedDeclaration rule, all invalid declarations: PASS
 	Attempting to insert a CSSNestedDeclaration rule, empty block: PASS
-	CSSNestedDeclarations.style: FAIL
-	Inner rule starting with an ident: FAIL
-	Inserting a CSSNestedDeclaration rule into nested group rule: FAIL
-	Inserting a CSSNestedDeclaration rule into style rule: FAIL
-	Mixed declarations: FAIL
+	CSSNestedDeclarations.style: PASS
+	Inner rule starting with an ident: PASS
+	Inserting a CSSNestedDeclaration rule into nested group rule: PASS
+	Inserting a CSSNestedDeclaration rule into style rule: PASS
+	Mixed declarations: PASS
 	Nested @scope rule: PASS
-	Nested group rule: FAIL
-	Trailing declarations: FAIL
+	Nested group rule: PASS
+	Trailing declarations: PASS
 /css/css-nesting/nested-declarations-matching.html: OK
 	Bare declartaion in nested grouping rule can match pseudo-element: FAIL
 	Nested @scope rules behave like :where(:scope): PASS
 	Nested @scope rules behave like :where(:scope) (trailing): PASS
 	Nested declarations rule has same specificity as outer selector: PASS
 	Nested declarations rule has top-level specificity behavior: PASS
-	Nested declarations rule has top-level specificity behavior (max matching): FAIL
-	Nested declarations rule responds to parent selector text change: FAIL
-	Nested group rules have top-level specificity behavior: FAIL
-	Trailing declarations apply after any preceding rules: FAIL
-	Trailing declarations apply after any preceding rules (multiple): FAIL
-	Trailing declarations apply after any preceding rules (no leading): FAIL
+	Nested declarations rule has top-level specificity behavior (max matching): PASS
+	Nested declarations rule responds to parent selector text change: PASS
+	Nested group rules have top-level specificity behavior: PASS
+	Trailing declarations apply after any preceding rules: PASS
+	Trailing declarations apply after any preceding rules (multiple): PASS
+	Trailing declarations apply after any preceding rules (no leading): PASS
 /css/css-nesting/nested-error-recovery.html: OK
 	CSS Nesting: Error recovery: PASS
 	CSS Nesting: Error recovery 1: PASS
 	CSS Nesting: Error recovery 2: PASS
-	CSS Nesting: Error recovery 3: FAIL
+	CSS Nesting: Error recovery 3: PASS
 /css/css-nesting/nested-media-in-layer.html: OK
 	Nested @media in @layer with CSS Nesting parses correctly: PASS
 /css/css-nesting/nested-rule-cssom-invalidation.html: OK
-	Nested rule responds to parent selector text change: FAIL
+	Nested rule responds to parent selector text change: PASS
 /css/css-nesting/nesting-braces-in-strings.html: OK
 	Multiple declarations after string containing } are all preserved: PASS
 	Nested rule with { in string followed by more declarations in parent: PASS
@@ -104,23 +104,23 @@
 	.foo { &:is(.bar, .baz) { color: green; }}: PASS
 	.foo { &:is(div) { color: green; }}: PASS
 	.foo { &[attr] { color: green; }}: PASS
-	.foo { + .bar & { color: green; }}: FAIL
-	.foo { + .bar, .foo, > .baz { color: green; }}: FAIL
+	.foo { + .bar & { color: green; }}: PASS
+	.foo { + .bar, .foo, > .baz { color: green; }}: PASS
 	.foo { .class& { color: green; }}: PASS
-	.foo { .foo { color: green; }}: FAIL
-	.foo { .foo, .bar { color: green; }}: FAIL
-	.foo { .foo, .foo & { color: green; }}: FAIL
+	.foo { .foo { color: green; }}: PASS
+	.foo { .foo, .bar { color: green; }}: PASS
+	.foo { .foo, .foo & { color: green; }}: PASS
 	.foo { .test > & .bar { color: green; }}: PASS
 	.foo { :hover& { color: green; }}: PASS
 	.foo { :is(.bar, &.baz) { color: green; }}: PASS
-	.foo { :is(.bar, .baz) { color: green; }}: FAIL
+	.foo { :is(.bar, .baz) { color: green; }}: PASS
 	.foo { :is(div)& { color: green; }}: PASS
-	.foo { > & .bar { color: green; }}: FAIL
-	.foo { > .bar { color: green; }}: FAIL
+	.foo { > & .bar { color: green; }}: PASS
+	.foo { > .bar { color: green; }}: PASS
 	.foo { [attr]& { color: green; }}: PASS
 	.foo { div& { color: green; }}: PASS
 	.foo, .bar { & + .baz, &.qux { color: green; }}: PASS
-	INVALID: .foo { &div { color: green; }}: FAIL
+	INVALID: .foo { &div { color: green; }}: PASS
 /css/css-nesting/serialize-group-rules-with-decls.html: OK
 	Declarations are serialized on one line, rules on two.: PASS
 	Empty conditional inside style rule: PASS

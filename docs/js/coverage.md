@@ -12,10 +12,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 | | count |
 |---|---:|
-| interfaces, namespaces in the table | 605 |
-| exposed by default | 385 |
-| members | 5311 |
-| members implemented | 3854 (72.6 %) |
+| interfaces, namespaces in the table | 606 |
+| exposed by default | 386 |
+| members | 5312 |
+| members implemented | 3855 (72.6 %) |
 
 ## By specification
 
@@ -35,6 +35,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `css-conditional.idl` | 3 (3) | 4 / 4 |
 | `css-font-loading.idl` | 8 (1) | 13 / 43 |
 | `css-highlight-api.idl` | 2 (0) | 0 / 6 |
+| `css-nesting.idl` | 1 (1) | 1 / 1 |
 | `css-properties-values-api.idl` | 1 (1) | 4 / 4 |
 | `css-transitions-2.idl` | 2 (1) | 1 / 1 |
 | `css-transitions.idl` | 1 (1) | 4 / 5 |
@@ -514,6 +515,12 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 - `readonly namespaceURI`: C `wjr_CSSNamespaceRule_get_namespaceURI`
 - `readonly prefix`: C `wjr_CSSNamespaceRule_get_prefix`
+
+### CSSNestedDeclarations : CSSRule
+
+1 / 1 members.
+
+- `readonly style`: C `wjr_CSSNestedDeclarations_get_style`
 
 ### CSSPropertyRule : CSSRule
 

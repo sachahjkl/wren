@@ -338,7 +338,7 @@ engine_sheet_set_selector :: proc(e: ^Engine, id: u64, rule_id: u32, text: strin
 	sel, good := css.parse_selector_list(vals, s.sheet.alloc, at.nest != nil ? &at.nest.selectors : nil, &s.sheet.namespaces)
 	if !good || len(vals) == 0 { return -1 }
 	at.rule.selectors = sel
-	at.rule.selector_text = css.serialize_selector_list(vals, s.sheet.alloc, &s.sheet.namespaces)
+	at.rule.selector_text = css.serialize_selector_list(vals, s.sheet.alloc, &s.sheet.namespaces, nested = at.nest != nil)
 	nest_again(e, s, at.rule, at.rule)
 	rules_changed(e, s)
 	return at.top

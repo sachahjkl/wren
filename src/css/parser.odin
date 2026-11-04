@@ -183,12 +183,7 @@ parse_nested_rule_into :: proc(s: ^Stylesheet, text: string, opt: Parse_Options,
 	decls, nested := parse_block_contents(&p, parse_values(&p, .EOF, 0), parent)
 	switch {
 	case len(nested) == 1 && len(decls) == 0: return nested[0]
-	case len(nested) == 0 && len(decls) > 0:
-		r := new(Rule, s.alloc)
-		r.kind = .Style
-		r.selectors = parent.selectors
-		r.declarations = decls
-		return r
+	case len(nested) == 0 && len(decls) > 0: return nested_declarations(&p, parent, decls)
 	}
 	return nil
 }
@@ -388,7 +383,7 @@ finish_style_rule :: proc(p: ^Parser, prelude, body: []Value, parent: ^Rule) -> 
 	}
 	r.selectors = sel
 	if pre := trim_values(prelude); len(pre) > 0 {
-		r.selector_text = serialize_selector_list(pre, p.a, p.ns)
+		r.selector_text = serialize_selector_list(pre, p.a, p.ns, nested = parent != nil)
 		r.pos = first_pos(pre)
 	}
 	decls, nested := parse_block_contents(p, body, r)
@@ -415,11 +410,20 @@ line_of :: proc(s: ^Stylesheet, pos: u32) -> int {
 	return 1 + lo
 }
 
-// Splits a { } block into declarations and nested rules (CSS Nesting).
+// Splits a { } block into declarations and nested rules (CSS Nesting). In a style rule (or a group rule inside one) the
+// declarations after a nested rule are a nested declarations rule in its place (CSS Nesting §3.2, "consume a block's
+// contents"): they apply after the rules before them. The declarations before any rule are the block's own.
 @(private)
 parse_block_contents :: proc(p: ^Parser, body: []Value, owner: ^Rule) -> ([]Declaration, []^Rule) {
 	decls := make([dynamic]Declaration, p_scratch(p))
 	nested := make([dynamic]^Rule, p_scratch(p))
+	nesting := owner != nil && owner.kind == .Style
+	run := -1   // the declarations of `decls` from here on came after a nested rule (-1: no rule yet, they are the block's)
+	flush :: proc(p: ^Parser, owner: ^Rule, decls: ^[dynamic]Declaration, run: int, nested: ^[dynamic]^Rule) {
+		if run < 0 || run >= len(decls) { return }
+		if r := nested_declarations(p, owner, decls[run:]); r != nil { append(nested, r) }
+		resize(decls, run)
+	}
 	i := 0
 	for i < len(body) {
 		// one item: values up to ';' or through a { } block
@@ -439,11 +443,18 @@ parse_block_contents :: proc(p: ^Parser, body: []Value, owner: ^Rule) -> ([]Decl
 
 		if has_block {
 			// a nested rule: re-parse the item through a sub-parser over its tokens
-			if r := parse_nested_item(p, item, owner); r != nil { append(&nested, r) }
+			r := parse_nested_item(p, item, owner)
+			if r == nil { continue }
+			if nesting {
+				flush(p, owner, &decls, run, &nested)
+				run = len(decls)
+			}
+			append(&nested, r)
 			continue
 		}
 		if d, ok := parse_declaration(p, item); ok { append(&decls, d) }
 	}
+	if nesting { flush(p, owner, &decls, run, &nested) }
 	if p_scratch(p) == p.a { return decls[:], nested[:] }
 	out_d := len(decls) > 0 ? make([]Declaration, len(decls), p.a) : nil
 	copy(out_d, decls[:])
@@ -451,6 +462,24 @@ parse_block_contents :: proc(p: ^Parser, body: []Value, owner: ^Rule) -> ([]Decl
 	copy(out_n, nested[:])
 	return out_d, out_n
 }
+
+// A nested declarations rule (CSS Nesting §3.2, CSSNestedDeclarations): `decls` (copied where the sheet keeps its rules)
+// applied as the style rule `owner` would apply them, its selectors; selector_text "" tells it from a style rule. nil past
+// the sheet's limit of rules.
+@(private)
+nested_declarations :: proc(p: ^Parser, owner: ^Rule, decls: []Declaration) -> ^Rule {
+	if p.rules >= p.opt.max_rules { return nil }
+	p.rules += 1
+	r := new(Rule, p.a)
+	r.kind = .Style
+	r.selectors = owner.selectors
+	r.declarations = make([]Declaration, len(decls), p.a)
+	copy(r.declarations, decls)
+	return r
+}
+
+// Whether `r` is a nested declarations rule (nested_declarations).
+is_nested_declarations :: proc(r: ^Rule) -> bool { return r.kind == .Style && r.selector_text == "" }
 
 @(private)
 parse_nested_item :: proc(p: ^Parser, item: []Value, owner: ^Rule) -> ^Rule {
@@ -780,18 +809,14 @@ namespace_url_of :: proc(v: Value) -> (string, bool) {
 @(private)
 parse_rules_in_block_or_nested :: proc(p: ^Parser, blk: Value, parent: ^Rule) -> []^Rule {
 	if parent == nil { return parse_rules_in_block(p, blk) }
-	// inside a style rule: a conditional group holds declarations (applied to the parent's selector) and nested rules
+	// inside a style rule: a conditional group holds nested rules, and declarations as nested declarations rules (applied
+	// to the parent's selector), those before its first rule too
 	decls, nested := parse_block_contents(p, blk.children, parent)
-	rules := make([dynamic]^Rule, p.a)
-	if len(decls) > 0 {
-		inner := new(Rule, p.a)
-		inner.kind = .Style
-		inner.selectors = parent.selectors
-		inner.declarations = decls
-		append(&rules, inner)
-	}
-	for n in nested { append(&rules, n) }
-	return rules[:]
+	lead := len(decls) > 0 ? nested_declarations(p, parent, decls) : nil
+	rules := make([]^Rule, len(nested) + (lead != nil ? 1 : 0), p.a)
+	if lead != nil { rules[0] = lead }
+	copy(rules[lead != nil ? 1 : 0:], nested)
+	return rules
 }
 
 @(private)
