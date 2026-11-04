@@ -19,6 +19,7 @@ import { TXN_ID, Transient, verifySignature } from "./paddle.ts";
 import type { Event } from "./paddle.ts";
 import type { OrderState } from "./order.ts";
 import { getTxn, listDeadLetters, takeResendSlot, transactionsOf } from "./store.ts";
+import type { Stored } from "./store.ts";
 import { timingSafeEqual } from "./encoding.ts";
 
 const MAX_WEBHOOK_BYTES = 512 * 1024;
@@ -134,12 +135,27 @@ async function mailBounce(request: Request, env: Env): Promise<Response> {
 	return json(200, { status: "ok", mail: state.stored?.mail });
 }
 
+// The licence of one transaction, for the buyer's page. KV is eventually consistent, and a key read before it exists is
+// remembered as missing at that edge for up to a minute: the thank-you page polls from the first second, so it could wait a
+// minute for a licence that was already made (and mailed). So when KV does not show it, ask the order's object, which is
+// consistent at once. Only a real purchase has anything there: for an unknown id the object has nothing and answers so.
+async function readOrder(env: Env, txn: string): Promise<Stored | null> {
+	const fromKv = await getTxn(env.LICENSES, txn);
+	if (fromKv) return fromKv;
+	try {
+		const res = await orderStub(env, txn).fetch("https://order/", { method: "POST", body: JSON.stringify({ op: "status", id: txn }) });
+		if (!res.ok) return null;
+		return ((await res.json()) as OrderState).stored ?? null;
+	} catch {
+		return null;
+	}
+}
 async function licenceJson(url: URL, env: Env): Promise<Response> {
 	const txn = url.searchParams.get("txn") ?? "";
 	// The id is the only secret of this endpoint: a 26-character ULID whose 80 random bits cannot be guessed, known to
 	// the buyer (Paddle puts it in the success URL) and to Paddle. What it gives is a licence that unlocks nothing.
 	if (!TXN_ID.test(txn)) return json(400, { error: "not a transaction id" });
-	const s = await getTxn(env.LICENSES, txn);
+	const s = await readOrder(env, txn);
 	if (!s || !s.licence) return json(202, { status: "pending", message: "Your licence is being made: try again in a few seconds." }, { "Retry-After": "3" });
 	return json(200, { status: "ready", edition: s.edition, name: s.name, order: s.order, date: s.date, licence: s.licence, file: s.file, filename: licenceFileName(s.order) });
 }
@@ -147,7 +163,7 @@ async function licenceJson(url: URL, env: Env): Promise<Response> {
 async function licenceFile(path: string, env: Env): Promise<Response> {
 	const txn = path.slice("/licence/".length, -".wrenlicense".length);
 	if (!TXN_ID.test(txn)) return json(400, { error: "not a transaction id" });
-	const s = await getTxn(env.LICENSES, txn);
+	const s = await readOrder(env, txn);
 	if (!s || !s.file) return json(404, { error: "no licence for this transaction (yet)" });
 	return new Response(s.file, { headers: { "Content-Type": "application/octet-stream", "Content-Disposition": `attachment; filename="${licenceFileName(s.order)}"`, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
 }
