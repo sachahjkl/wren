@@ -177,7 +177,7 @@
         <h2>A problem with your licence? We are here.</h2>
         <p>No key, a key that is refused, a wrong name: write to us on GitHub with your <strong>order number</strong>
           (never the key itself) and we will sort it out.</p>
-        <p class="links"><a class="btn primary" href="https://github.com/sachahjkl/wren/issues/new">Ask for help</a>
+        <p class="links"><a class="btn primary" id="help-link" href="https://github.com/sachahjkl/wren/issues/new?template=licence-help.yml">Ask for help</a>
           <a href="../pricing/">Back to the pricing page</a></p>
       </div>
     </aside>
@@ -216,6 +216,9 @@
   // Paddle's checkout leads here with the transaction id (the pricing page passes txn; _ptxn is Paddle's own name for it)
   var params = new URLSearchParams(location.search);
   var txn = params.get("txn") || params.get("_ptxn") || "";
+  // the help form opens with the order number filled in (an order number is not a secret: the key is, and is never sent)
+  var help = document.getElementById("help-link");
+  if (help && /^txn_[0-9a-z]{20,40}$/.test(txn)) { help.href += "&order=" + encodeURIComponent(txn); }
   var started = Date.now();
 
   var dots = document.getElementById("dots");
