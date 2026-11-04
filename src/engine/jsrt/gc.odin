@@ -531,6 +531,7 @@ gc_trace :: proc(rt: ^Runtime, c: ^Cell) {
 		b := cast(^Function_Bytecode)c
 		mark_values(rt, b.cpool)
 		mark_cell(rt, b.source_string)
+		if b.jit != nil {jit_mark(rt, b.jit)}
 	case .var_ref:
 		vr := cast(^Var_Ref)c
 		if vr.is_detached {

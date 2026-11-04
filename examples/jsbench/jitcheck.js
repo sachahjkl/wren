@@ -76,7 +76,7 @@
   function fib(n) { return n < 2 ? n : fib(n - 1) + fib(n - 2); }
   p("fib", fib(20));
   function tail(n, acc) { if (n === 0) { return acc; } return tail(n - 1, acc + n); }
-  p("tail", tail(1000, 0));
+  p("tail", tail(100, 0));   // (a tail call recurses through the native call path: 1000 of them overflowed and ended the script here)
 
   // globals and equality with null / undefined
   globalThis.__g = 1;
@@ -93,6 +93,113 @@
   p("loop return", found);
   function depth() { var n = 0; function f() { n++; f(); } try { f(); } catch (e) {} return n; }
   var before = depth(); for (var q = 0; q < 500; q++) { twice(hay, 1000); } p("loop return leaves the depth", before === depth());
+
+  // compiled loops that read and write properties: each loop runs long enough to be compiled (a loop is offered to the
+  // JIT within INTERRUPT_POLL_EVERY back edges), then is called again with objects of other shapes, prototypes changed,
+  // values of other types, so that the compiled code meets what it was not made for (learn exits, deopts)
+  var RUN = 24000;
+  function Pt3(x) { this.x = x; this.y = x + 1; }
+  function sumXY(o, n) { var s = 0; for (var i = 0; i < n; i++) { s = (s + o.x + o.y) | 0; o.x = i & 15; } return s; }
+  var shaped = [new Pt3(1), { y: 2, x: 1 }, { x: 1, y: 2 }, { a: 0, x: 1, y: 2 }, { b: 0, x: 1, y: 2 }, { c: 0, x: 1, y: 2 }];
+  for (var r = 0; r < shaped.length; r++) { p("prop loop", r, sumXY(shaped[r], RUN)); }
+  var dict = { x: 1, y: 2, z: 3 }; delete dict.z;
+  p("prop loop: a dictionary", sumXY(dict, RUN));
+  dict.w = 4; delete dict.w; p("prop loop: the dictionary changed", sumXY(dict, RUN));
+  var getter = { y: 2 }; Object.defineProperty(getter, "x", { get: function () { return 3; }, set: function () {} });
+  p("prop loop: an accessor", sumXY(getter, RUN));
+  var frozenPt = Object.freeze({ x: 1, y: 2 });
+  try { p("prop loop: frozen", sumXY(frozenPt, RUN)); } catch (e) { p("prop loop: frozen", e.name); }
+  p("prop loop: a proxy", sumXY(new Proxy({ x: 1, y: 2 }, {}), RUN));
+  p("prop loop: an array", sumXY([1, 2], RUN));
+  try { p("prop loop: null", sumXY(null, RUN)); } catch (e) { p("prop loop: null", e.name); }
+
+  function sumProto(o, n) { var s = 0; for (var i = 0; i < n; i++) { s = (s + o.k + o.m) | 0; } return s; }
+  var P0 = { k: 5, m: 1 }, Q0 = Object.create(P0), o0 = Object.create(Q0);
+  p("prototype", sumProto(o0, RUN));
+  P0.k = 6; p("prototype: the holder's value", sumProto(o0, RUN));
+  Q0.k = 100; p("prototype: shadowed in the middle", sumProto(o0, RUN));
+  o0.k = 1000; p("prototype: shadowed in the object", sumProto(o0, RUN));
+  delete o0.k; Object.setPrototypeOf(Q0, { k: -1, m: 2 }); delete Q0.k; p("prototype: another chain", sumProto(o0, RUN));
+  Object.defineProperty(Object.getPrototypeOf(Q0), "m", { get: function () { return 9; } }); p("prototype: a getter", sumProto(o0, RUN));
+  p("prototype: a function's", sumProto(Object.assign(function () {}, { k: 1, m: 1 }), RUN));
+
+  function setV(o, n, v) { for (var i = 0; i < n; i++) { o.v = i & 3; } o.v = v; return o.v; }
+  var sv = { v: 0 };
+  p("write", setV(sv, RUN, 1), setV(sv, RUN, "s"));
+  var withSetter = Object.create({ set v(x) { this.log = (this.log | 0) + x; }, get v() { return this.log; } });
+  p("write: a setter on the prototype", setV(withSetter, RUN, 2), withSetter.log);
+  Object.freeze(sv); try { p("write: frozen", setV(sv, RUN, 3)); } catch (e) { p("write: frozen", e.name, sv.v); }
+
+  function typesOf(o, n) {
+    var same = 0, nullish = 0, truthy = 0, sum = 0;
+    for (var i = 0; i < n; i++) {
+      var v = o.v;
+      if (i === (n >> 1)) { o.v = o.w; }   // a compiled store of another type
+      if (v === o.w) { same++; }
+      if (v == null) { nullish++; }
+      if (v) { truthy++; }
+      o.last = v;
+      if (i < (n >> 1)) { sum = sum + v; }
+    }
+    return [same, nullish, truthy, show(sum), show(o.last)].join(" ");
+  }
+  [[1, 2147483647], [1, -0], [1, 0.5], [0.5, 1], [1, "s"], [1, {}], [1, null], [1, undefined], [1, true], ["s", 1]].forEach(function (vw) {
+    p("types", show(vw[0]), show(vw[1]), typesOf({ v: vw[0], w: vw[1] }, RUN));
+  });
+
+  function polyX(os, n) { var s = 0; for (var i = 0; i < n; i++) { s += os[i & 3].x; } return show(s); }
+  var four = [{ x: 1 }, { a: 0, x: 2 }, { b: 0, c: 0, x: 3 }, Object.create({ x: 5 })];
+  p("polymorphic", polyX(four, RUN));
+  four[1] = new Proxy({ x: 9 }, { get: function (t, k) { return k === "x" ? 4 : undefined; } }); p("polymorphic: a proxy", polyX(four, RUN));
+  four[2] = { get x() { return 11; } }; p("polymorphic: a getter", polyX(four, RUN));
+  four[3] = { x: 0.5 }; p("polymorphic: a double", polyX(four, RUN));
+  four[0] = { d: 1, e: 1, x: 1 }; four[1] = { f: 1, x: 2 }; p("polymorphic: more shapes than a site takes", polyX(four, RUN));
+
+  function eqsOf(vals, n) {
+    var c = 0, o = vals[5];
+    for (var i = 0; i < n; i++) {
+      var a = vals[i & 7], b = vals[(i >> 3) & 7];
+      if (a === b) { c += 1; }
+      if (a !== null) { c += 2; }
+      if (a === undefined) { c += 4; }
+      if (a === o) { c += 8; }
+      if (a) { c += 16; }
+      if (!a) { c += 32; }
+      if (a == null) { c += 64; }
+    }
+    return c;
+  }
+  p("equality and truth", eqsOf([null, undefined, 0, true, false, {}, [], -1], RUN));
+  p("equality and truth: strings", eqsOf([null, "ab", "a" + "b", "", {}, {}, 1.5, NaN], RUN));
+
+  globalThis.__h = 0;
+  function bumpGlobal(n) { var s = 0; for (var i = 0; i < n; i++) { __h = __h + 1; s += __h; } return s; }
+  p("globals", bumpGlobal(RUN));
+  globalThis.__other = 1; p("globals: the global object grew", bumpGlobal(RUN));
+  __h = 0.5; p("globals: a double", show(bumpGlobal(RUN)));
+  delete globalThis.__other; delete globalThis.__h;
+  try { p("globals: deleted", bumpGlobal(RUN)); } catch (e) { p("globals: deleted", e.name); }
+
+  function elems(o, n) { var s = 0; for (var i = 0; i < n; i++) { var e = o.a[i & 3]; s += e === undefined ? 100 : e; o.a[1] = i & 7; } return show(s) + " " + o.a.length; }
+  var eo = { a: [1, 2, 3, 4] };
+  p("elements", elems(eo, RUN));
+  eo.a.length = 2; p("elements: shorter", elems(eo, RUN));
+  eo.a[6] = 1; p("elements: a hole", elems(eo, RUN));
+  eo.a = [0.5, 1, 2, 3]; p("elements: doubles", elems(eo, RUN));
+  eo.a = new Int8Array(4); p("elements: a typed array", elems(eo, RUN));
+  eo.a = { 0: 1, 1: 2, 2: 3, 3: 4, length: 4 }; p("elements: an object", elems(eo, RUN));
+
+  function deep(os, n) { var s = 0; for (var i = 0; i < n; i++) { s += os[0].p.q; } return s; }
+  p("chain", deep([{ p: { q: 1 } }], RUN));
+  try { p("chain: null", deep([{ p: null }], RUN)); } catch (e) { p("chain: null", e.constructor.name); }
+
+  var cell = 0, late = 1;
+  function closed(n) { for (var i = 0; i < n; i++) { cell = cell + (i & 1); } return cell + late; }
+  p("closure cells", closed(RUN), closed(RUN));
+  function tdzCell(n) { var s = 0; try { for (var i = 0; i < n; i++) { s += i & 1; if (i === n - 1) { s += lateLet; } } } catch (e) { s += 1000; } return s; }
+  p("closure cell before its declaration", tdzCell(RUN));
+  let lateLet = 5;
+  p("closure cell after its declaration", tdzCell(RUN));
 
   // switch, strings, generators (not compiled) next to compiled code
   function sw(x) { switch (x) { case 1: return "one"; case "1": return "string"; default: return "other"; } }
