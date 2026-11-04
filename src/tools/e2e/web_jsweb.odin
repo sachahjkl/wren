@@ -187,7 +187,7 @@ jsweb_jit_dom :: proc(t: ^testing.T) {
 	defer section_end()
 	settings.js.jit.call_threshold = 1
 	settings.js.jit.background_threads = 0
-	script(t, "jit_dom", tests = 4)
+	script(t, "jit_dom", tests = 5)
 }
 
 // The section again with the decoders of a machine that has no system AV1 decoder (a CI runner), on a machine that has one.

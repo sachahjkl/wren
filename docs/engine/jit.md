@@ -60,11 +60,14 @@ from `String.prototype` (the value's tag checked, then the prototype's shape) on
 
 A read whose site's first shape finds an accessor reads through getters (`j_call_getter`): the shapes guarded as for a
 data property, the getter read from its `Getset` and checked to be a native function called as a function (as the hot
-loop's `hot_native_getter`: a DOM attribute's, Map's `size`), else the interpreter reads it; the helper `wj_jit_get`
-(`jit_getter`) calls it, the operand stack and the objects held written to the frame first, the held arrays taken
-again after. An exception is exact: the helper puts the context's thrower in the object's place (`Context.jit_thrower`,
-an object whose property of that name is an accessor with `jit_rethrow` as its getter), the code leaves through a throw
-exit, and the interpreter makes the read again, which throws the exception pending. Host objects without exotic hooks
+loop's `hot_native_getter`: a DOM attribute's, Map's `size`) or a function of the script's, else the interpreter reads
+it; the helper `wj_jit_get` (`jit_getter`) calls it (a native through `call_native`, a script's as compiled code calls
+bytecode: its frame pushed, its compiled code run when it has some), the operand stack and the objects held written to
+the frame first, the held arrays taken again after. A write whose site's first shape finds an accessor writes through
+setters the same way (`j_call_setter`, `wj_jit_set`). An exception is exact: the helper puts the context's thrower in
+the object's place (`Context.jit_thrower`, an object whose property of that name is an accessor with `jit_rethrow` as
+its getter and its setter), the code leaves through a throw exit, and the interpreter makes the read or the write
+again, which throws the exception pending. Host objects without exotic hooks
 are ordinary objects there (`Object.host_exotic` checked where the code reads past one), so a DOM node's attributes and
 methods are read through its prototypes.
 
@@ -101,14 +104,20 @@ marked by the collector through `Function_Bytecode.jit`): an address the code ho
 
 ## Objects made by compiled code
 
-Compiled code makes objects through the helper `wj_jit_new` (`jit_new`): a plain object (`object`, the start of an
-object literal), an Array of entries (`array_from`, an array literal), the object a construction makes
-(`create_from_ctor`). The allocator and the collector's contract are the engine's own: allocation never collects, a
-collection runs only at a safe point, and the compiled code reaches one only through a call (whose helper writes the
+Compiled code allocates a plain object itself (`j_alloc`): the start of an object literal (`object`), and the object a
+construction makes when the constructor's own `prototype` is the object the translation saw (`j_ctor_proto`: the
+callee's shape and the slot's value guarded; the root shape of that prototype is a constant). It does what `cell_new`
+and `object_new_shape` do: a block of the object's pool class popped from the free list (zeroed) or cut from the bump
+chunk, linked first in the runtime's cells, counted and charged to the heap, the object's class, bits, shape and inline
+slots written. An empty free list at the chunk's end, or a guard that fails, makes the object through the helper
+`wj_jit_new` (`jit_new`), which also makes an Array of entries (`array_from`, an array literal) and the other
+constructions (`create_from_ctor`). The collector's contract is the engine's own either way: allocation never collects,
+a collection runs only at a safe point, and the compiled code reaches one only through a call (whose helper writes the
 operand stack and the objects held in locals to the frame first) or an exit; the helper drops the temporary roots of
-the allocation (`temp_roots` back to the frame's height), the object being in the code's hands until then. An object
-literal's fields (`define_field`) need no guard: the translation knows the shape of the object it made until the next
-join (`Jit_State.k`), and appends each field through the transition, its slots grown when full.
+the allocation (`temp_roots` back to the frame's height) and the code's own allocation pushes none, the object being in
+the code's hands until then. An object literal's fields (`define_field`) need no guard: the translation knows the shape
+of the object it made until the next join (`Jit_State.k`), and appends each field through the transition, its slots
+grown when full.
 
 A construction `new F(...)` of a constructor that can be compiled whole (not a derived class's) is a direct call
 (below): the object made by the helper is the callee's `this`, new.target the constructor, the result the callee's
