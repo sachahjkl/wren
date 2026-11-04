@@ -11,6 +11,8 @@ showing tracks over the video.
 
 Exposed to: Window. Source: `api/media_tracks.widl`.
 
+Odin: `import "wren:mediatracks"`.
+
 ## Types
 
 ### handle `AudioTrackList` : `Object`

@@ -8,6 +8,8 @@ callbacks are on the performance.now() timeline of the page.
 
 Exposed to: Window, Worker. Source: `api/timers.widl`.
 
+Odin: `import "wren:timers"`.
+
 ## Types
 
 ### handle `Timer`
@@ -65,6 +67,8 @@ Timer Timers_setTimeout(TimerHandler callback, i32 user, f64 delay_ms = 0)
 
 setTimeout(callback, delay_ms)
 
+Odin: `timers.setTimeout`.
+
 Host: `Timers_setTimeout :: proc(c: ^Call, callback: u32, user: i32, delay_ms: f64) -> u64`
 
 ### `Timers_setInterval`
@@ -74,6 +78,8 @@ Timer Timers_setInterval(TimerHandler callback, i32 user, f64 delay_ms = 0)
 ```
 
 setInterval(callback, delay_ms)
+
+Odin: `timers.setInterval`.
 
 Host: `Timers_setInterval :: proc(c: ^Call, callback: u32, user: i32, delay_ms: f64) -> u64`
 
@@ -85,6 +91,8 @@ Timer Timers_setTimeout64(TimerHandler64 callback, i64 user, f64 delay_ms = 0)
 
 setTimeout with a 64-bit user value.
 
+Odin: `timers.setTimeout64`.
+
 Host: `Timers_setTimeout64 :: proc(c: ^Call, callback: u32, user: i64, delay_ms: f64) -> u64`
 
 ### `Timers_setInterval64`
@@ -95,6 +103,8 @@ Timer Timers_setInterval64(TimerHandler64 callback, i64 user, f64 delay_ms = 0)
 
 setInterval with a 64-bit user value.
 
+Odin: `timers.setInterval64`.
+
 Host: `Timers_setInterval64 :: proc(c: ^Call, callback: u32, user: i64, delay_ms: f64) -> u64`
 
 ### `Timers_clear`
@@ -104,6 +114,8 @@ void Timers_clear(Timer timer) raises
 ```
 
 clearTimeout / clearInterval. Invalid_Handle when the timer already fired or was cleared.
+
+Odin: `timers.clear`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -116,6 +128,8 @@ f64 Timers_now()
 ```
 
 The browser's monotonic clock in ms (performance.now() is the page's own timeline).
+
+Odin: `timers.now`.
 
 Host: `Timers_now :: proc(c: ^Call) -> f64`
 

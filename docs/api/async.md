@@ -13,6 +13,8 @@ the module's memory (fetch bodies, messages, socket frames), counted against pag
 
 Exposed to: Window, Worker. Source: `api/async.widl`.
 
+Odin: `import "wren:core"`.
+
 ## Types
 
 ### handle `Object` : `EventTarget`

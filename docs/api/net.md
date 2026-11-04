@@ -8,6 +8,8 @@ the request record until Fetch_release. A Response (module fetch) is the same re
 
 Exposed to: Window, Worker. Source: `api/net.widl`.
 
+Odin: `import "wren:net"`.
+
 ## Types
 
 ### handle `Fetch`

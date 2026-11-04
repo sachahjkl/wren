@@ -191,7 +191,7 @@ package_extras :: proc(dir, version: string) -> int {
 	_ = os.make_directory_all(fmt.tprintf("%s/examples/jsweb", dir))
 	// the Wasm modules the demo pages load, and the server for the others
 	for g in EXTRAS_GUESTS {
-		if tooling.run({command = {tooling.odin_program(), "build", fmt.tprintf("examples/%s", g), "-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-collection:web=sdk/odin", fmt.tprintf("-out:examples/site/%s.wasm", g), "-o:size"}}) != 0 { return fail("building examples/", g, "failed") }
+		if tooling.run({command = {tooling.odin_program(), "build", fmt.tprintf("examples/%s", g), "-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-collection:wren=sdk/odin", fmt.tprintf("-out:examples/site/%s.wasm", g), "-o:size"}}) != 0 { return fail("building examples/", g, "failed") }
 	}
 	index, _ := os.read_entire_file("examples/site/index.html", context.temp_allocator)
 	if !strings.contains(string(index), DEMOS_INDEX_MARK) { return fail("examples/site/index.html is not the demos index (src/browser/demos_index.odin)") }

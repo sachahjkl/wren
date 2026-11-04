@@ -12,6 +12,8 @@ document (base.pool_insert_tagged), the browser routes the call to it and checks
 
 Exposed to: Window. Source: `api/frames.widl`.
 
+Odin: `import "wren:frames"`.
+
 ## Functions
 
 ### `Frame_self`

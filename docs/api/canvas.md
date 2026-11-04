@@ -18,6 +18,8 @@ the interface thread); functions taking an element answer as for a dead handle t
 
 Exposed to: Window, Worker. Source: `api/canvas.widl`.
 
+Odin: `import "wren:canvas"`.
+
 ## Types
 
 ### handle `HTMLCanvasElement` : `Element`
@@ -138,6 +140,8 @@ Buffer Canvas_encode(u64 canvas, string type, f64 quality) raises
 The canvas (an element, or an OffscreenCanvas handle) encoded as `type`: "image/png", or "image/jpeg" at `quality`
 (0 to 1; outside it the default, canvas.encode.jpeg_quality). Security when the canvas is tainted. An empty buffer
 for a canvas with no pixels (width or height 0).
+
+Odin: `canvas.encode`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -438,6 +442,8 @@ CanvasPattern Canvas_createPattern(CanvasRenderingContext2D ctx, u64 source, str
 createPattern(image, repetition): `source` is an element handle (img, canvas) or an object handle (ImageBitmap,
 OffscreenCanvas); repetition "repeat", "repeat-x", "repeat-y", "no-repeat". Not_Found: no pattern (an image that is
 not available yet); Syntax: bad repetition; Invalid_State: a canvas with no pixels.
+
+Odin: `canvas.createPattern`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -1348,6 +1354,8 @@ so both behave the same), `resize_w` / `resize_h` the wanted output size (0 mean
 (0 pixelated, 1 low, 2 medium, 3 high). Not_Found: no pixels yet (the image is not available); Invalid_State:
 broken or empty image; Index_Size: an empty rectangle or an out-of-range resize.
 
+Odin: `canvas.createBitmap`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Canvas_createBitmap :: proc(c: ^Call, source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32) -> (u64, Api_Error)`
@@ -1360,6 +1368,8 @@ ImageBitmap Canvas_bitmapFromPixels(bytes data, i32 width, i32 height, i32 orien
 
 An ImageBitmap of straight RGBA8 pixels (an ImageData, a decoded Blob, a VideoFrame read back). `orient`, `premul`,
 `colorspace`, `resize_*` and `resize_q` as Canvas_createBitmap.
+
+Odin: `canvas.bitmapFromPixels`.
 
 Raises: returns an `Error` (see [web](web.md)).
 

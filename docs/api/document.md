@@ -7,6 +7,8 @@ WindowOrWorkerGlobalScope: in a worker they describe the worker.
 
 Exposed to: Window, Worker. Source: `api/document.widl`.
 
+Odin: `import "wren:document"`.
+
 ## Functions
 
 ### `Document_URL`
@@ -16,6 +18,8 @@ string Document_URL() raises
 ```
 
 document.URL. Invalid_Handle in a worker (see WorkerGlobalScope_location).
+
+Odin: `document.URL`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -50,6 +54,8 @@ string Document_cookie_get() raises
 document.cookie: the cookies scripts may see, "name=value; ...". Security for a document without a tuple origin
 on http(s), and in a worker.
 
+Odin: `document.cookie_get`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Document_cookie_get :: proc(c: ^Call) -> (string, Api_Error)`
@@ -62,6 +68,8 @@ i32 Document_cookie_set(string cookie) raises
 
 document.cookie = cookie. 0 when stored (or deleted), else 1 + the browser's reason (cookies.Store_Result) for
 refusing it. Security as for the getter.
+
+Odin: `document.cookie_set`.
 
 Raises: returns an `Error` (see [web](web.md)).
 

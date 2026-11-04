@@ -1,5 +1,5 @@
 // The guest side of the scalar baseline: the current wr_* ABI shape, one import per function with the arguments as
-// separate Wasm scalars, a string result into a (ptr,cap) buffer. This is what sdk/odin/web generates today; it is
+// separate Wasm scalars, a string result into a (ptr,cap) buffer. This is what sdk/odin generates today; it is
 // written here by hand only to time it next to the serialised path on the same machine.
 package bench_guest
 

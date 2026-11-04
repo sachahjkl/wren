@@ -13,6 +13,8 @@ bits of a float, a function's number + 1, or an externref's number (0: a null re
 
 Exposed to: Window, Worker. Source: `api/webassembly.widl`.
 
+Odin: `import "wren:webassembly"`.
+
 ## Types
 
 ### handle `WebAssemblyModule` : `Object`
@@ -29,6 +31,8 @@ bool WebAssembly_enabled()
 
 Whether the page's realm has the `WebAssembly` object (javascript.webassembly.enabled).
 
+Odin: `webassembly.enabled`.
+
 Host: `WebAssembly_enabled :: proc(c: ^Call) -> bool`
 
 ### `WebAssembly_validate`
@@ -38,6 +42,8 @@ bool WebAssembly_validate(bytes module)
 ```
 
 WebAssembly.validate(bytes): whether `bytes` is a valid module.
+
+Odin: `webassembly.validate`.
 
 Host: `WebAssembly_validate :: proc(c: ^Call, module: []u8) -> bool`
 
@@ -49,6 +55,8 @@ WebAssemblyModule WebAssembly_compile(bytes module) raises
 
 new WebAssembly.Module(bytes): `bytes` compiled. Syntax with the reason when it is not a valid module, Security when
 the page's Content Security Policy refuses it.
+
+Odin: `webassembly.compile`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -62,6 +70,8 @@ Promise<WebAssemblyModule> WebAssembly_compileAsync(bytes module)
 
 WebAssembly.compile(bytes): the same on a thread of its own; the promise is rejected with the reason.
 
+Odin: `webassembly.compileAsync`.
+
 Host: `WebAssembly_compileAsync :: proc(c: ^Call, module: []u8) -> u64`
 
 ### `WebAssembly_Module_imports`
@@ -71,6 +81,8 @@ string WebAssembly_Module_imports(WebAssemblyModule module)
 ```
 
 WebAssembly.Module.imports(module), as JSON.
+
+Odin: `webassembly.Module_imports`.
 
 Host: `WebAssembly_Module_imports :: proc(c: ^Call, module: Api_WebAssemblyModule) -> string`
 
@@ -82,6 +94,8 @@ string WebAssembly_Module_exports(WebAssemblyModule module)
 
 WebAssembly.Module.exports(module), as JSON.
 
+Odin: `webassembly.Module_exports`.
+
 Host: `WebAssembly_Module_exports :: proc(c: ^Call, module: Api_WebAssemblyModule) -> string`
 
 ### `WebAssembly_Module_customSectionCount`
@@ -91,6 +105,8 @@ i32 WebAssembly_Module_customSectionCount(WebAssemblyModule module, string name)
 ```
 
 How many custom sections of the module are called `name`.
+
+Odin: `webassembly.Module_customSectionCount`.
 
 Host: `WebAssembly_Module_customSectionCount :: proc(c: ^Call, module: Api_WebAssemblyModule, name: string) -> i32`
 
@@ -102,6 +118,8 @@ bytes WebAssembly_Module_customSection(WebAssemblyModule module, string name, i3
 
 The bytes of the custom section number `index` of those called `name`.
 
+Odin: `webassembly.Module_customSection`.
+
 Host: `WebAssembly_Module_customSection :: proc(c: ^Call, module: Api_WebAssemblyModule, name: string, index: i32) -> []u8`
 
 ### `WebAssembly_Module_linkInfo`
@@ -111,6 +129,8 @@ string WebAssembly_Module_linkInfo(WebAssemblyModule module)
 ```
 
 What the module imports with the types, as JSON: [{module, name, kind, sig, value, mutable}].
+
+Odin: `webassembly.Module_linkInfo`.
 
 Host: `WebAssembly_Module_linkInfo :: proc(c: ^Call, module: Api_WebAssemblyModule) -> string`
 
@@ -122,6 +142,8 @@ string WebAssembly_lastError()
 
 The message of the last failure.
 
+Odin: `webassembly.lastError`.
+
 Host: `WebAssembly_lastError :: proc(c: ^Call) -> string`
 
 ### `WebAssembly_Memory_create`
@@ -131,6 +153,8 @@ i32 WebAssembly_Memory_create(i64 initial, i64 maximum)
 ```
 
 new WebAssembly.Memory: a number. `maximum` -1 for none.
+
+Odin: `webassembly.Memory_create`.
 
 Host: `WebAssembly_Memory_create :: proc(c: ^Call, initial: i64, maximum: i64) -> i32`
 
@@ -142,6 +166,8 @@ i64 WebAssembly_Memory_pages(i32 memory)
 
 The size in pages (-1: no such memory).
 
+Odin: `webassembly.Memory_pages`.
+
 Host: `WebAssembly_Memory_pages :: proc(c: ^Call, memory: i32) -> i64`
 
 ### `WebAssembly_Memory_grow`
@@ -151,6 +177,8 @@ i64 WebAssembly_Memory_grow(i32 memory, i64 delta)
 ```
 
 memory.grow: the previous size in pages.
+
+Odin: `webassembly.Memory_grow`.
 
 Host: `WebAssembly_Memory_grow :: proc(c: ^Call, memory: i32, delta: i64) -> i64`
 
@@ -162,6 +190,8 @@ i32 WebAssembly_Memory_read(i32 memory, i64 offset, out bytes destination)
 
 Bytes of the memory at `offset`: how many were copied. What memory.buffer reads.
 
+Odin: `webassembly.Memory_read`.
+
 Host: `WebAssembly_Memory_read :: proc(c: ^Call, memory: i32, offset: i64, destination: []u8) -> i32`
 
 ### `WebAssembly_Memory_write`
@@ -171,6 +201,8 @@ i32 WebAssembly_Memory_write(i32 memory, i64 offset, bytes source)
 ```
 
 `source` into the memory at `offset`: how many were copied. What memory.buffer writes.
+
+Odin: `webassembly.Memory_write`.
 
 Host: `WebAssembly_Memory_write :: proc(c: ^Call, memory: i32, offset: i64, source: []u8) -> i32`
 
@@ -182,6 +214,8 @@ i32 WebAssembly_Memory_createShared(i64 initial, i64 maximum, i64 bytes)
 
 A memory that other agents can have: a number. Its size in bytes is ytes (-1: all of its pages).
 
+Odin: `webassembly.Memory_createShared`.
+
 Host: `WebAssembly_Memory_createShared :: proc(c: ^Call, initial: i64, maximum: i64, bytes: i64) -> i32`
 
 ### `WebAssembly_Memory_release`
@@ -191,6 +225,8 @@ void WebAssembly_Memory_release(i32 memory)
 ```
 
 A SharedArrayBuffer has gone: one use of the memory less.
+
+Odin: `webassembly.Memory_release`.
 
 Host: `WebAssembly_Memory_release :: proc(c: ^Call, memory: i32)`
 
@@ -202,6 +238,8 @@ i64 WebAssembly_Memory_byteLength(i32 memory)
 
 What a SharedArrayBuffer of the memory says its length is.
 
+Odin: `webassembly.Memory_byteLength`.
+
 Host: `WebAssembly_Memory_byteLength :: proc(c: ^Call, memory: i32) -> i64`
 
 ### `WebAssembly_Memory_growBytes`
@@ -211,6 +249,8 @@ bool WebAssembly_Memory_growBytes(i32 memory, i64 bytes)
 ```
 
 SharedArrayBuffer.grow.
+
+Odin: `webassembly.Memory_growBytes`.
 
 Host: `WebAssembly_Memory_growBytes :: proc(c: ^Call, memory: i32, bytes: i64) -> bool`
 
@@ -222,6 +262,8 @@ i64 WebAssembly_Memory_atomic(i32 memory, i32 op, i64 offset, i32 size, i64 firs
 
 An Atomics operation on a shared memory (op: add and compareExchange exchange load or store sub xor): the value it held.
 
+Odin: `webassembly.Memory_atomic`.
+
 Host: `WebAssembly_Memory_atomic :: proc(c: ^Call, memory: i32, op: i32, offset: i64, size: i32, first: i64, second: i64) -> i64`
 
 ### `WebAssembly_Memory_wait`
@@ -231,6 +273,8 @@ i32 WebAssembly_Memory_wait(i32 memory, i64 offset, i32 size, i64 expected, f64 
 ```
 
 Atomics.wait on a shared memory: 0 woken, 1 not equal, 2 timed out. 	imeout in milliseconds, < 0: none.
+
+Odin: `webassembly.Memory_wait`.
 
 Host: `WebAssembly_Memory_wait :: proc(c: ^Call, memory: i32, offset: i64, size: i32, expected: i64, timeout: f64) -> i32`
 
@@ -242,6 +286,8 @@ i32 WebAssembly_Memory_notify(i32 memory, i64 offset, u32 count)
 
 Atomics.notify on a shared memory: how many it woke.
 
+Odin: `webassembly.Memory_notify`.
+
 Host: `WebAssembly_Memory_notify :: proc(c: ^Call, memory: i32, offset: i64, count: u32) -> i32`
 
 ### `WebAssembly_Memory_share`
@@ -251,6 +297,8 @@ i64 WebAssembly_Memory_share(i32 memory)
 ```
 
 A token that gives another agent of the cluster this shared memory; 0 when this realm may not (not cross-origin isolated).
+
+Odin: `webassembly.Memory_share`.
 
 Host: `WebAssembly_Memory_share :: proc(c: ^Call, memory: i32) -> i64`
 
@@ -262,6 +310,8 @@ i32 WebAssembly_Memory_adopt(i64 token)
 
 The shared memory of a token, a number: -1 when the token is not of this agent cluster.
 
+Odin: `webassembly.Memory_adopt`.
+
 Host: `WebAssembly_Memory_adopt :: proc(c: ^Call, token: i64) -> i32`
 
 ### `WebAssembly_Module_share`
@@ -272,6 +322,8 @@ i64 WebAssembly_Module_share(WebAssemblyModule module)
 
 A token that gives another agent of the cluster this module.
 
+Odin: `webassembly.Module_share`.
+
 Host: `WebAssembly_Module_share :: proc(c: ^Call, module: Api_WebAssemblyModule) -> i64`
 
 ### `WebAssembly_Module_adopt`
@@ -281,6 +333,8 @@ WebAssemblyModule WebAssembly_Module_adopt(i64 token) raises
 ```
 
 The module of a token: Data_Clone when the token is not of this agent cluster.
+
+Odin: `webassembly.Module_adopt`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -294,6 +348,8 @@ bool WebAssembly_crossOriginIsolated()
 
 HTML's cross-origin isolated capability of this realm.
 
+Odin: `webassembly.crossOriginIsolated`.
+
 Host: `WebAssembly_crossOriginIsolated :: proc(c: ^Call) -> bool`
 
 ### `WebAssembly_canBlock`
@@ -303,6 +359,8 @@ bool WebAssembly_canBlock()
 ```
 
 Whether this realm's agent may block ([[CanBlock]]): a dedicated or shared worker.
+
+Odin: `webassembly.canBlock`.
 
 Host: `WebAssembly_canBlock :: proc(c: ^Call) -> bool`
 
@@ -314,6 +372,8 @@ i32 WebAssembly_Table_create(string element, i64 initial, i64 maximum, i64 init)
 
 new WebAssembly.Table: a number. `element` "r" (funcref) or "e" (externref), `maximum` -1 for none.
 
+Odin: `webassembly.Table_create`.
+
 Host: `WebAssembly_Table_create :: proc(c: ^Call, element: string, initial: i64, maximum: i64, init: i64) -> i32`
 
 ### `WebAssembly_Table_element`
@@ -324,6 +384,8 @@ string WebAssembly_Table_element(i32 table)
 
 "r", "e", or "" for no such table.
 
+Odin: `webassembly.Table_element`.
+
 Host: `WebAssembly_Table_element :: proc(c: ^Call, table: i32) -> string`
 
 ### `WebAssembly_Table_length`
@@ -331,6 +393,8 @@ Host: `WebAssembly_Table_element :: proc(c: ^Call, table: i32) -> string`
 ```
 i64 WebAssembly_Table_length(i32 table)
 ```
+
+Odin: `webassembly.Table_length`.
 
 Host: `WebAssembly_Table_length :: proc(c: ^Call, table: i32) -> i64`
 
@@ -342,6 +406,8 @@ i32 WebAssembly_Table_get(i32 table, i64 index, out bytes cell)
 
 The cell at `index`, into `cell` (8 bytes): 0, or the opposite of a failure.
 
+Odin: `webassembly.Table_get`.
+
 Host: `WebAssembly_Table_get :: proc(c: ^Call, table: i32, index: i64, cell: []u8) -> i32`
 
 ### `WebAssembly_Table_set`
@@ -349,6 +415,8 @@ Host: `WebAssembly_Table_get :: proc(c: ^Call, table: i32, index: i64, cell: []u
 ```
 i32 WebAssembly_Table_set(i32 table, i64 index, i64 cell)
 ```
+
+Odin: `webassembly.Table_set`.
 
 Host: `WebAssembly_Table_set :: proc(c: ^Call, table: i32, index: i64, cell: i64) -> i32`
 
@@ -360,6 +428,8 @@ i64 WebAssembly_Table_grow(i32 table, i64 delta, i64 init)
 
 table.grow: the previous length.
 
+Odin: `webassembly.Table_grow`.
+
 Host: `WebAssembly_Table_grow :: proc(c: ^Call, table: i32, delta: i64, init: i64) -> i64`
 
 ### `WebAssembly_Global_create`
@@ -369,6 +439,8 @@ i32 WebAssembly_Global_create(string type, bool mutable, i64 cell)
 ```
 
 new WebAssembly.Global: a number. `type` a value type's letter.
+
+Odin: `webassembly.Global_create`.
 
 Host: `WebAssembly_Global_create :: proc(c: ^Call, type: string, mutable: bool, cell: i64) -> i32`
 
@@ -380,6 +452,8 @@ string WebAssembly_Global_type(i32 global)
 
 The value type's letter, then "m" when it can change; "" for no such global.
 
+Odin: `webassembly.Global_type`.
+
 Host: `WebAssembly_Global_type :: proc(c: ^Call, global: i32) -> string`
 
 ### `WebAssembly_Global_get`
@@ -388,6 +462,8 @@ Host: `WebAssembly_Global_type :: proc(c: ^Call, global: i32) -> string`
 i64 WebAssembly_Global_get(i32 global)
 ```
 
+Odin: `webassembly.Global_get`.
+
 Host: `WebAssembly_Global_get :: proc(c: ^Call, global: i32) -> i64`
 
 ### `WebAssembly_Global_set`
@@ -395,6 +471,8 @@ Host: `WebAssembly_Global_get :: proc(c: ^Call, global: i32) -> i64`
 ```
 i32 WebAssembly_Global_set(i32 global, i64 cell)
 ```
+
+Odin: `webassembly.Global_set`.
 
 Host: `WebAssembly_Global_set :: proc(c: ^Call, global: i32, cell: i64) -> i32`
 
@@ -406,6 +484,8 @@ i32 WebAssembly_Func_import(i32 slot, string sig)
 
 A function of signature `sig` that runs import `slot` of the realm (wj_wasm_import).
 
+Odin: `webassembly.Func_import`.
+
 Host: `WebAssembly_Func_import :: proc(c: ^Call, slot: i32, sig: string) -> i32`
 
 ### `WebAssembly_Func_sig`
@@ -415,6 +495,8 @@ string WebAssembly_Func_sig(i32 func)
 ```
 
 The signature of a function, "params:results" (see src/wasm/user_store.odin); "" for no such function.
+
+Odin: `webassembly.Func_sig`.
 
 Host: `WebAssembly_Func_sig :: proc(c: ^Call, func: i32) -> string`
 
@@ -426,6 +508,8 @@ i32 WebAssembly_Func_call(i32 func, bytes args)
 
 Calls a function: `args` its cells (8 bytes each). 0, or the opposite of a failure.
 
+Odin: `webassembly.Func_call`.
+
 Host: `WebAssembly_Func_call :: proc(c: ^Call, func: i32, args: []u8) -> i32`
 
 ### `WebAssembly_Func_results`
@@ -435,6 +519,8 @@ bytes WebAssembly_Func_results()
 ```
 
 The results of the call that just ended, as cells (apart: the call may have moved the engine's memory).
+
+Odin: `webassembly.Func_results`.
 
 Host: `WebAssembly_Func_results :: proc(c: ^Call) -> []u8`
 
@@ -446,6 +532,8 @@ bytes WebAssembly_import_args()
 
 The arguments of the import running, as cells.
 
+Odin: `webassembly.import_args`.
+
 Host: `WebAssembly_import_args :: proc(c: ^Call) -> []u8`
 
 ### `WebAssembly_import_results`
@@ -455,6 +543,8 @@ void WebAssembly_import_results(bytes results)
 ```
 
 The results of the import running, as cells.
+
+Odin: `webassembly.import_results`.
 
 Host: `WebAssembly_import_results :: proc(c: ^Call, results: []u8)`
 
@@ -466,6 +556,8 @@ void WebAssembly_import_failed(string message)
 
 Why the import running failed.
 
+Odin: `webassembly.import_failed`.
+
 Host: `WebAssembly_import_failed :: proc(c: ^Call, message: string)`
 
 ### `WebAssembly_Tag_create`
@@ -475,6 +567,8 @@ i32 WebAssembly_Tag_create(string parameters)
 ```
 
 new WebAssembly.Tag: a number. `parameters` a value type's letter for each.
+
+Odin: `webassembly.Tag_create`.
 
 Host: `WebAssembly_Tag_create :: proc(c: ^Call, parameters: string) -> i32`
 
@@ -486,6 +580,8 @@ string WebAssembly_Tag_sig(i32 tag)
 
 The parameters of a tag, one letter each.
 
+Odin: `webassembly.Tag_sig`.
+
 Host: `WebAssembly_Tag_sig :: proc(c: ^Call, tag: i32) -> string`
 
 ### `WebAssembly_exception_tag`
@@ -495,6 +591,8 @@ i32 WebAssembly_exception_tag()
 ```
 
 The tag of the exception a call just failed with (failure 5); its values come from WebAssembly_Func_results.
+
+Odin: `webassembly.exception_tag`.
 
 Host: `WebAssembly_exception_tag :: proc(c: ^Call) -> i32`
 
@@ -506,6 +604,8 @@ void WebAssembly_import_throw(i32 tag, bytes values)
 
 The import running ends by throwing a WebAssembly exception of `tag` with `values` (cells).
 
+Odin: `webassembly.import_throw`.
+
 Host: `WebAssembly_import_throw :: proc(c: ^Call, tag: i32, values: []u8)`
 
 ### `WebAssembly_extern_released`
@@ -515,6 +615,8 @@ i32 WebAssembly_extern_released()
 ```
 
 The number of an externref no reference is left to, one at each call; 0 when there is none.
+
+Odin: `webassembly.extern_released`.
 
 Host: `WebAssembly_extern_released :: proc(c: ^Call) -> i32`
 
@@ -527,6 +629,8 @@ i32 WebAssembly_Instance_create(WebAssemblyModule module, bytes externs)
 new WebAssembly.Instance: a number. `externs` the number of a thing for each import (4 bytes each); the start function
 runs here.
 
+Odin: `webassembly.Instance_create`.
+
 Host: `WebAssembly_Instance_create :: proc(c: ^Call, module: Api_WebAssemblyModule, externs: []u8) -> i32`
 
 ### `WebAssembly_Instance_exports`
@@ -536,6 +640,8 @@ string WebAssembly_Instance_exports(i32 instance, WebAssemblyModule module)
 ```
 
 The exports of an instance, as JSON: [{name, kind, id, index}].
+
+Odin: `webassembly.Instance_exports`.
 
 Host: `WebAssembly_Instance_exports :: proc(c: ^Call, instance: i32, module: Api_WebAssemblyModule) -> string`
 

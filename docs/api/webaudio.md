@@ -8,6 +8,8 @@ these calls come from a realm's finalizers too, in any order.
 
 Exposed to: Window. Source: `api/webaudio.widl`.
 
+Odin: `import "wren:webaudio"`.
+
 ## Types
 
 ### callback `WebAudioNotify`
@@ -29,6 +31,8 @@ bool WebAudio_enabled()
 
 The preference webaudio.enabled.
 
+Odin: `webaudio.enabled`.
+
 Host: `WebAudio_enabled :: proc(c: ^Call) -> bool`
 
 ### `WebAudio_fullyActive`
@@ -38,6 +42,8 @@ bool WebAudio_fullyActive()
 ```
 
 The document can start something (not gone, not in the back/forward cache).
+
+Odin: `webaudio.fullyActive`.
 
 Host: `WebAudio_fullyActive :: proc(c: ^Call) -> bool`
 
@@ -49,6 +55,8 @@ f64 WebAudio_defaultRate()
 
 The sample rate of a context that does not ask for one.
 
+Odin: `webaudio.defaultRate`.
+
 Host: `WebAudio_defaultRate :: proc(c: ^Call) -> f64`
 
 ### `WebAudio_maxBufferBytes`
@@ -58,6 +66,8 @@ f64 WebAudio_maxBufferBytes()
 ```
 
 The largest AudioBuffer, in bytes of samples.
+
+Odin: `webaudio.maxBufferBytes`.
 
 Host: `WebAudio_maxBufferBytes :: proc(c: ^Call) -> f64`
 
@@ -69,6 +79,8 @@ u64 WebAudio_create(f64 rate, u32 channels, u32 offline_frames, f64 latency, Web
 
 A graph. offline_frames 0: an AudioContext, else an OfflineAudioContext of that length. 0: too many contexts.
 
+Odin: `webaudio.create`.
+
 Host: `WebAudio_create :: proc(c: ^Call, rate: f64, channels: u32, offline_frames: u32, latency: f64, notify: u32, user: i32) -> u64`
 
 ### `WebAudio_resume`
@@ -78,6 +90,8 @@ void WebAudio_resume(u64 graph)
 ```
 
 The page wants the context to run: at once if the autoplay policy allows, else at the first click or key press.
+
+Odin: `webaudio.resume`.
 
 Host: `WebAudio_resume :: proc(c: ^Call, graph: u64)`
 
@@ -89,6 +103,8 @@ bool WebAudio_suspend(u64 graph)
 
 false: it was not running (no state change will come).
 
+Odin: `webaudio.suspend`.
+
 Host: `WebAudio_suspend :: proc(c: ^Call, graph: u64) -> bool`
 
 ### `WebAudio_close`
@@ -97,6 +113,8 @@ Host: `WebAudio_suspend :: proc(c: ^Call, graph: u64) -> bool`
 void WebAudio_close(u64 graph)
 ```
 
+Odin: `webaudio.close`.
+
 Host: `WebAudio_close :: proc(c: ^Call, graph: u64)`
 
 ### `WebAudio_time`
@@ -104,6 +122,8 @@ Host: `WebAudio_close :: proc(c: ^Call, graph: u64)`
 ```
 f64 WebAudio_time(u64 graph)
 ```
+
+Odin: `webaudio.time`.
 
 Host: `WebAudio_time :: proc(c: ^Call, graph: u64) -> f64`
 
@@ -115,6 +135,8 @@ f64 WebAudio_queued(u64 graph)
 
 Seconds of audio queued ahead of the device.
 
+Odin: `webaudio.queued`.
+
 Host: `WebAudio_queued :: proc(c: ^Call, graph: u64) -> f64`
 
 ### `WebAudio_render`
@@ -124,6 +146,8 @@ bool WebAudio_render(u64 graph, u32 frames)
 ```
 
 Starts an OfflineAudioContext's rendering.
+
+Odin: `webaudio.render`.
 
 Host: `WebAudio_render :: proc(c: ^Call, graph: u64, frames: u32) -> bool`
 
@@ -135,6 +159,8 @@ u64 WebAudio_takeResult(u64 graph)
 
 The rendering that is over, as a buffer. 0: none.
 
+Odin: `webaudio.takeResult`.
+
 Host: `WebAudio_takeResult :: proc(c: ^Call, graph: u64) -> u64`
 
 ### `WebAudio_offlineSuspend`
@@ -143,6 +169,8 @@ Host: `WebAudio_takeResult :: proc(c: ^Call, graph: u64) -> u64`
 bool WebAudio_offlineSuspend(u64 graph, f64 frame)
 ```
 
+Odin: `webaudio.offlineSuspend`.
+
 Host: `WebAudio_offlineSuspend :: proc(c: ^Call, graph: u64, frame: f64) -> bool`
 
 ### `WebAudio_offlineResume`
@@ -150,6 +178,8 @@ Host: `WebAudio_offlineSuspend :: proc(c: ^Call, graph: u64, frame: f64) -> bool
 ```
 void WebAudio_offlineResume(u64 graph)
 ```
+
+Odin: `webaudio.offlineResume`.
 
 Host: `WebAudio_offlineResume :: proc(c: ^Call, graph: u64)`
 
@@ -161,6 +191,8 @@ i32 WebAudio_nodeCreate(u64 graph, i32 kind, f64 first, f64 second)
 
 A node. first, second: a splitter's or merger's count, a delay's longest delay, a script processor's block size and channels.
 
+Odin: `webaudio.nodeCreate`.
+
 Host: `WebAudio_nodeCreate :: proc(c: ^Call, graph: u64, kind: i32, first: f64, second: f64) -> i32`
 
 ### `WebAudio_nodeRelease`
@@ -171,6 +203,8 @@ void WebAudio_nodeRelease(u64 graph, i32 node)
 
 The object of a node is gone: it leaves the graph once it can give nothing any more.
 
+Odin: `webaudio.nodeRelease`.
+
 Host: `WebAudio_nodeRelease :: proc(c: ^Call, graph: u64, node: i32)`
 
 ### `WebAudio_connect`
@@ -178,6 +212,8 @@ Host: `WebAudio_nodeRelease :: proc(c: ^Call, graph: u64, node: i32)`
 ```
 bool WebAudio_connect(u64 graph, i32 from, i32 output, i32 to, i32 input, bool param)
 ```
+
+Odin: `webaudio.connect`.
 
 Host: `WebAudio_connect :: proc(c: ^Call, graph: u64, from: i32, output: i32, to: i32, input: i32, param: bool) -> bool`
 
@@ -189,6 +225,8 @@ i32 WebAudio_disconnect(u64 graph, i32 from, i32 output, i32 to, i32 input, bool
 
 -1: any. The number of connections that went.
 
+Odin: `webaudio.disconnect`.
+
 Host: `WebAudio_disconnect :: proc(c: ^Call, graph: u64, from: i32, output: i32, to: i32, input: i32, param: bool) -> i32`
 
 ### `WebAudio_nodeSet`
@@ -196,6 +234,8 @@ Host: `WebAudio_disconnect :: proc(c: ^Call, graph: u64, from: i32, output: i32,
 ```
 void WebAudio_nodeSet(u64 graph, i32 node, i32 field, f64 value)
 ```
+
+Odin: `webaudio.nodeSet`.
 
 Host: `WebAudio_nodeSet :: proc(c: ^Call, graph: u64, node: i32, field: i32, value: f64)`
 
@@ -205,6 +245,8 @@ Host: `WebAudio_nodeSet :: proc(c: ^Call, graph: u64, node: i32, field: i32, val
 f64 WebAudio_nodeGet(u64 graph, i32 node, i32 field)
 ```
 
+Odin: `webaudio.nodeGet`.
+
 Host: `WebAudio_nodeGet :: proc(c: ^Call, graph: u64, node: i32, field: i32) -> f64`
 
 ### `WebAudio_start`
@@ -212,6 +254,8 @@ Host: `WebAudio_nodeGet :: proc(c: ^Call, graph: u64, node: i32, field: i32) -> 
 ```
 void WebAudio_start(u64 graph, i32 node, f64 at, f64 offset, f64 duration)
 ```
+
+Odin: `webaudio.start`.
 
 Host: `WebAudio_start :: proc(c: ^Call, graph: u64, node: i32, at: f64, offset: f64, duration: f64)`
 
@@ -221,6 +265,8 @@ Host: `WebAudio_start :: proc(c: ^Call, graph: u64, node: i32, at: f64, offset: 
 void WebAudio_stop(u64 graph, i32 node, f64 at)
 ```
 
+Odin: `webaudio.stop`.
+
 Host: `WebAudio_stop :: proc(c: ^Call, graph: u64, node: i32, at: f64)`
 
 ### `WebAudio_setBuffer`
@@ -228,6 +274,8 @@ Host: `WebAudio_stop :: proc(c: ^Call, graph: u64, node: i32, at: f64)`
 ```
 void WebAudio_setBuffer(u64 graph, i32 node, u64 pcm)
 ```
+
+Odin: `webaudio.setBuffer`.
 
 Host: `WebAudio_setBuffer :: proc(c: ^Call, graph: u64, node: i32, pcm: u64)`
 
@@ -237,6 +285,8 @@ Host: `WebAudio_setBuffer :: proc(c: ^Call, graph: u64, node: i32, pcm: u64)`
 void WebAudio_setConvolver(u64 graph, i32 node, u64 pcm, bool normalize)
 ```
 
+Odin: `webaudio.setConvolver`.
+
 Host: `WebAudio_setConvolver :: proc(c: ^Call, graph: u64, node: i32, pcm: u64, normalize: bool)`
 
 ### `WebAudio_setCurve`
@@ -245,6 +295,8 @@ Host: `WebAudio_setConvolver :: proc(c: ^Call, graph: u64, node: i32, pcm: u64, 
 void WebAudio_setCurve(u64 graph, i32 node, bytes curve)
 ```
 
+Odin: `webaudio.setCurve`.
+
 Host: `WebAudio_setCurve :: proc(c: ^Call, graph: u64, node: i32, curve: []u8)`
 
 ### `WebAudio_setWave`
@@ -252,6 +304,8 @@ Host: `WebAudio_setCurve :: proc(c: ^Call, graph: u64, node: i32, curve: []u8)`
 ```
 void WebAudio_setWave(u64 graph, i32 node, bytes real, bytes imag, bool normalize)
 ```
+
+Odin: `webaudio.setWave`.
 
 Host: `WebAudio_setWave :: proc(c: ^Call, graph: u64, node: i32, real: []u8, imag: []u8, normalize: bool)`
 
@@ -263,6 +317,8 @@ bool WebAudio_captureElement(u64 graph, i32 node, Element element)
 
 The audio of a media element comes to this node from now on (and no longer to the speakers). false: not playable.
 
+Odin: `webaudio.captureElement`.
+
 Host: `WebAudio_captureElement :: proc(c: ^Call, graph: u64, node: i32, element: Api_Element) -> bool`
 
 ### `WebAudio_paramGet`
@@ -270,6 +326,8 @@ Host: `WebAudio_captureElement :: proc(c: ^Call, graph: u64, node: i32, element:
 ```
 f64 WebAudio_paramGet(u64 graph, i32 node, i32 index)
 ```
+
+Odin: `webaudio.paramGet`.
 
 Host: `WebAudio_paramGet :: proc(c: ^Call, graph: u64, node: i32, index: i32) -> f64`
 
@@ -279,6 +337,8 @@ Host: `WebAudio_paramGet :: proc(c: ^Call, graph: u64, node: i32, index: i32) ->
 bool WebAudio_paramSet(u64 graph, i32 node, i32 index, f64 value)
 ```
 
+Odin: `webaudio.paramSet`.
+
 Host: `WebAudio_paramSet :: proc(c: ^Call, graph: u64, node: i32, index: i32, value: f64) -> bool`
 
 ### `WebAudio_paramRate`
@@ -286,6 +346,8 @@ Host: `WebAudio_paramSet :: proc(c: ^Call, graph: u64, node: i32, index: i32, va
 ```
 void WebAudio_paramRate(u64 graph, i32 node, i32 index, bool a_rate)
 ```
+
+Odin: `webaudio.paramRate`.
 
 Host: `WebAudio_paramRate :: proc(c: ^Call, graph: u64, node: i32, index: i32, a_rate: bool)`
 
@@ -297,6 +359,8 @@ bool WebAudio_paramEvent(u64 graph, i32 node, i32 index, i32 kind, f64 time, f64
 
 kind: 0 setValue, 1 linearRamp, 2 exponentialRamp, 3 setTarget, 4 setValueCurve. false: it overlaps a value curve.
 
+Odin: `webaudio.paramEvent`.
+
 Host: `WebAudio_paramEvent :: proc(c: ^Call, graph: u64, node: i32, index: i32, kind: i32, time: f64, value: f64, extra: f64, curve: []u8) -> bool`
 
 ### `WebAudio_paramCancel`
@@ -305,6 +369,8 @@ Host: `WebAudio_paramEvent :: proc(c: ^Call, graph: u64, node: i32, index: i32, 
 void WebAudio_paramCancel(u64 graph, i32 node, i32 index, f64 time, bool hold)
 ```
 
+Odin: `webaudio.paramCancel`.
+
 Host: `WebAudio_paramCancel :: proc(c: ^Call, graph: u64, node: i32, index: i32, time: f64, hold: bool)`
 
 ### `WebAudio_biquadResponse`
@@ -312,6 +378,8 @@ Host: `WebAudio_paramCancel :: proc(c: ^Call, graph: u64, node: i32, index: i32,
 ```
 void WebAudio_biquadResponse(u64 graph, i32 node, bytes frequencies, out bytes magnitude, out bytes phase)
 ```
+
+Odin: `webaudio.biquadResponse`.
 
 Host: `WebAudio_biquadResponse :: proc(c: ^Call, graph: u64, node: i32, frequencies: []u8, magnitude: []u8, phase: []u8)`
 
@@ -323,6 +391,8 @@ void WebAudio_setIir(u64 graph, i32 node, bytes feedforward, bytes feedback)
 
 The coefficients of an IIRFilterNode (64-bit floats).
 
+Odin: `webaudio.setIir`.
+
 Host: `WebAudio_setIir :: proc(c: ^Call, graph: u64, node: i32, feedforward: []u8, feedback: []u8)`
 
 ### `WebAudio_iirResponse`
@@ -330,6 +400,8 @@ Host: `WebAudio_setIir :: proc(c: ^Call, graph: u64, node: i32, feedforward: []u
 ```
 void WebAudio_iirResponse(u64 graph, i32 node, bytes frequencies, out bytes magnitude, out bytes phase)
 ```
+
+Odin: `webaudio.iirResponse`.
 
 Host: `WebAudio_iirResponse :: proc(c: ^Call, graph: u64, node: i32, frequencies: []u8, magnitude: []u8, phase: []u8)`
 
@@ -341,6 +413,8 @@ i32 WebAudio_analyserRead(u64 graph, i32 node, i32 what, out bytes values)
 
 what: 0 float frequency, 1 byte frequency, 2 float time, 3 byte time.
 
+Odin: `webaudio.analyserRead`.
+
 Host: `WebAudio_analyserRead :: proc(c: ^Call, graph: u64, node: i32, what: i32, values: []u8) -> i32`
 
 ### `WebAudio_scriptPull`
@@ -349,6 +423,8 @@ Host: `WebAudio_analyserRead :: proc(c: ^Call, graph: u64, node: i32, what: i32,
 void WebAudio_scriptPull(u64 graph, i32 node, out bytes values)
 ```
 
+Odin: `webaudio.scriptPull`.
+
 Host: `WebAudio_scriptPull :: proc(c: ^Call, graph: u64, node: i32, values: []u8)`
 
 ### `WebAudio_scriptPush`
@@ -356,6 +432,8 @@ Host: `WebAudio_scriptPull :: proc(c: ^Call, graph: u64, node: i32, values: []u8
 ```
 void WebAudio_scriptPush(u64 graph, i32 node, bytes values)
 ```
+
+Odin: `webaudio.scriptPush`.
 
 Host: `WebAudio_scriptPush :: proc(c: ^Call, graph: u64, node: i32, values: []u8)`
 
@@ -367,6 +445,8 @@ u64 WebAudio_pcmCreate(u32 channels, u32 length, f64 rate)
 
 A buffer of zeros in the browser. 0: past webaudio.max_buffer_mb or the page's memory.
 
+Odin: `webaudio.pcmCreate`.
+
 Host: `WebAudio_pcmCreate :: proc(c: ^Call, channels: u32, length: u32, rate: f64) -> u64`
 
 ### `WebAudio_pcmWrite`
@@ -377,6 +457,8 @@ void WebAudio_pcmWrite(u64 pcm, u32 channel, u32 start, bytes values)
 
 What a graph plays keeps what it had: the samples are only replaced when they differ.
 
+Odin: `webaudio.pcmWrite`.
+
 Host: `WebAudio_pcmWrite :: proc(c: ^Call, pcm: u64, channel: u32, start: u32, values: []u8)`
 
 ### `WebAudio_pcmRead`
@@ -384,6 +466,8 @@ Host: `WebAudio_pcmWrite :: proc(c: ^Call, pcm: u64, channel: u32, start: u32, v
 ```
 void WebAudio_pcmRead(u64 pcm, u32 channel, u32 start, out bytes values)
 ```
+
+Odin: `webaudio.pcmRead`.
 
 Host: `WebAudio_pcmRead :: proc(c: ^Call, pcm: u64, channel: u32, start: u32, values: []u8)`
 
@@ -395,6 +479,8 @@ f64 WebAudio_pcmInfo(u64 pcm, i32 which)
 
 which: 0 channels, 1 length, 2 sample rate.
 
+Odin: `webaudio.pcmInfo`.
+
 Host: `WebAudio_pcmInfo :: proc(c: ^Call, pcm: u64, which: i32) -> f64`
 
 ### `WebAudio_decode`
@@ -404,6 +490,8 @@ u64 WebAudio_decode(bytes data, f64 rate)
 ```
 
 decodeAudioData: a promise of a buffer (a u64 object handle), on a blocking thread; rejected when it is not audio.
+
+Odin: `webaudio.decode`.
 
 Host: `WebAudio_decode :: proc(c: ^Call, data: []u8, rate: f64) -> u64`
 
@@ -415,6 +503,8 @@ u64 WebAudio_workletStart(u64 graph)
 
 The realm of a context's AudioWorklet: a Worker object on its own thread, started once. 0: refused (workers disabled, too many).
 
+Odin: `webaudio.workletStart`.
+
 Host: `WebAudio_workletStart :: proc(c: ^Call, graph: u64) -> u64`
 
 ### `WebAudio_workletStop`
@@ -424,6 +514,8 @@ void WebAudio_workletStop(u64 graph)
 ```
 
 Stops the realm (a context closed, or its realm stalled); the nodes then give silence and fire processorerror.
+
+Odin: `webaudio.workletStop`.
 
 Host: `WebAudio_workletStop :: proc(c: ^Call, graph: u64)`
 
@@ -435,6 +527,8 @@ i32 WebAudio_workletNode(u64 graph, i32 inputs, i32 outputs, i32 params, i32 pro
 
 An AudioWorkletNode's node: processor is the number the realm knows it by, output_channels the counts asked for (i32 each, or none). -1: refused.
 
+Odin: `webaudio.workletNode`.
+
 Host: `WebAudio_workletNode :: proc(c: ^Call, graph: u64, inputs: i32, outputs: i32, params: i32, processor: i32, output_channels: []u8) -> i32`
 
 ### `WebAudio_workletParam`
@@ -444,6 +538,8 @@ void WebAudio_workletParam(u64 graph, i32 node, i32 index, f64 default_value, f6
 ```
 
 What a registered parameter is (AudioParamDescriptor).
+
+Odin: `webaudio.workletParam`.
 
 Host: `WebAudio_workletParam :: proc(c: ^Call, graph: u64, node: i32, index: i32, default_value: f64, min_value: f64, max_value: f64, a_rate: bool)`
 

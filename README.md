@@ -129,7 +129,7 @@ Everything below exists in the code today and is covered by the tests of [`src/t
   browser.
 - `src/tools/bindgen` turns `api/*.widl` into: host trampolines defined directly on the Wasmtime linker (every address
   checked against the guest's memory, UTF-8 validated, handles looked up by kind), the Odin guest SDK
-  ([`sdk/odin/web`](sdk/odin/web)), the reference documentation ([`docs/api`](docs/api)) and generated conformance
+  ([`sdk/odin`](sdk/odin)), the reference documentation ([`docs/api`](docs/api)) and generated conformance
   tests (bad addresses, bad UTF-8, dead handles, enums out of range, buffers too small, for every function).
 - Promises, microtasks and EventTarget for host objects, as the web platform defines them.
 
@@ -347,8 +347,9 @@ What is implemented is listed in [`docs/js/coverage.md`](docs/js/coverage.md); w
 `if ("ResizeObserver" in window)` takes the fallback.
 
 **In WebAssembly**, without JavaScript: a page module is any Wasm module that imports the functions of
-[`docs/api`](docs/api) and exports `wb_main`. The Odin SDK is [`sdk/odin/web`](sdk/odin/web), one generated file per
-API module. A page:
+[`docs/api`](docs/api) and exports `wb_main`. The Odin SDK is [`sdk/odin`](sdk/odin), the `wren` collection: one generated package
+per area of the API (`wren:dom`, `wren:fetch`, `wren:canvas`...; `wren:core` holds the errors, host objects, promises
+and events every other one uses). A page:
 
 ```html
 <!doctype html>
@@ -362,30 +363,32 @@ and its module ([`examples/counter`](examples/counter/main.odin) is the full ver
 ```odin
 package counter
 
-import "web:web"
+import "wren:console"
+import "wren:core"
+import "wren:dom"
 
 count: i64
-count_node: web.Element
+count_node: dom.Element
 
-on_click :: proc "contextless" (user: i32, ev: web.Event) {
+on_click :: proc "contextless" (user: i32, ev: core.Event) {
 	count += i64(user)
 	buf: [24]u8
 	n := len(buf)
 	for v := count; ; v /= 10 { n -= 1; buf[n] = u8('0' + v % 10); if v < 10 { break } }
-	web.Node_setTextContent(count_node, string(buf[n:]))
+	dom.Node_setTextContent(count_node, string(buf[n:]))
 }
 
 @(export)
 wb_main :: proc "contextless" () {
-	count_node = web.Document_getElementById("count")
-	web.EventTarget_addEventListener(web.Document_getElementById("inc"), "click", on_click, 1)
-	web.console_log("counter ready")
+	count_node = dom.Document_getElementById("count")
+	core.EventTarget_addEventListener(dom.Document_getElementById("inc"), "click", on_click, 1)
+	console.log("counter ready")
 }
 ```
 
 ```bat
 odin build examples/counter -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator ^
-    -collection:web=sdk/odin -out:examples/site/counter.wasm -o:size
+    -collection:wren=sdk/odin -out:examples/site/counter.wasm -o:size
 ```
 
 Conventions (the full ABI is in [`docs/api/README.md`](docs/api/README.md)): handles are `i64`, strings are UTF-8
@@ -411,7 +414,7 @@ native/         Cargo workspace of the one Rust static library of wren.exe (nati
                 picks native/media, native/net and the toolkit's native/text and native/a11y)
 native/media/   raster images (image), SVG (resvg), WebP (image-webp), AVIF (rav1d), color (qcms), WOFF2 (brotli)
 native/net/     the network stack: HTTP/1.1, HTTP/2, HTTP/3, WebSockets, TLS
-sdk/odin/web/   generated Odin guest SDK
+sdk/odin/       generated Odin guest SDK (the `wren` collection: a package per area of the API)
 src/
   base/         scopes (ownership tree with cleanups) and generational handle pools
   host/         event loop, thread-safe posts, timers, blocking-work pool

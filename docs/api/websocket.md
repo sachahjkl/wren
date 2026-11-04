@@ -6,6 +6,8 @@ WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_dat
 
 Exposed to: Window. Source: `api/websocket.widl`.
 
+Odin: `import "wren:websocket"`.
+
 ## Types
 
 ### handle `WebSocket` : `Object`
@@ -34,6 +36,8 @@ WebSocket WebSocket_create(string url, string protocols = "") raises
 new WebSocket(url, protocols): `protocols` is a comma-separated list ("" = none). Syntax for an invalid URL or
 protocol list.
 
+Odin: `websocket.create`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `WebSocket_create :: proc(c: ^Call, url: string, protocols: string) -> (u64, Api_Error)`
@@ -44,6 +48,8 @@ Host: `WebSocket_create :: proc(c: ^Call, url: string, protocols: string) -> (u6
 WebSocketState WebSocket_readyState(WebSocket socket)
 ```
 
+Odin: `websocket.readyState`.
+
 Host: `WebSocket_readyState :: proc(c: ^Call, socket: Api_WebSocket) -> Api_WebSocketState`
 
 ### `WebSocket_url`
@@ -51,6 +57,8 @@ Host: `WebSocket_readyState :: proc(c: ^Call, socket: Api_WebSocket) -> Api_WebS
 ```
 string WebSocket_url(WebSocket socket)
 ```
+
+Odin: `websocket.url`.
 
 Host: `WebSocket_url :: proc(c: ^Call, socket: Api_WebSocket) -> string`
 
@@ -60,6 +68,8 @@ Host: `WebSocket_url :: proc(c: ^Call, socket: Api_WebSocket) -> string`
 string WebSocket_protocol(WebSocket socket)
 ```
 
+Odin: `websocket.protocol`.
+
 Host: `WebSocket_protocol :: proc(c: ^Call, socket: Api_WebSocket) -> string`
 
 ### `WebSocket_extensions`
@@ -68,6 +78,8 @@ Host: `WebSocket_protocol :: proc(c: ^Call, socket: Api_WebSocket) -> string`
 string WebSocket_extensions(WebSocket socket)
 ```
 
+Odin: `websocket.extensions`.
+
 Host: `WebSocket_extensions :: proc(c: ^Call, socket: Api_WebSocket) -> string`
 
 ### `WebSocket_bufferedAmount`
@@ -75,6 +87,8 @@ Host: `WebSocket_extensions :: proc(c: ^Call, socket: Api_WebSocket) -> string`
 ```
 i64 WebSocket_bufferedAmount(WebSocket socket)
 ```
+
+Odin: `websocket.bufferedAmount`.
 
 Host: `WebSocket_bufferedAmount :: proc(c: ^Call, socket: Api_WebSocket) -> i64`
 
@@ -86,6 +100,8 @@ i32 WebSocket_binaryType(WebSocket socket)
 
 0 = "arraybuffer" (buffer handles), the only binary type of this platform.
 
+Odin: `websocket.binaryType`.
+
 Host: `WebSocket_binaryType :: proc(c: ^Call, socket: Api_WebSocket) -> i32`
 
 ### `WebSocket_setBinaryType`
@@ -95,6 +111,8 @@ void WebSocket_setBinaryType(WebSocket socket, i32 binary_type) raises
 ```
 
 Not_Supported for anything but 0.
+
+Odin: `websocket.setBinaryType`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -108,6 +126,8 @@ void WebSocket_send(WebSocket socket, usvstring text) raises
 
 socket.send(text). Invalid_State while connecting.
 
+Odin: `websocket.send`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `WebSocket_send :: proc(c: ^Call, socket: Api_WebSocket, text: string) -> Api_Error`
@@ -119,6 +139,8 @@ void WebSocket_sendBuffer(WebSocket socket, Buffer data) raises
 ```
 
 socket.send(buffer): a binary message.
+
+Odin: `websocket.sendBuffer`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -132,6 +154,8 @@ void WebSocket_close(WebSocket socket, i32 code = -1, string reason = "") raises
 
 socket.close(code, reason): code < 0 means absent. Invalid_Access for a code that is not 1000 or 3000-4999,
 Syntax for a reason over 123 bytes.
+
+Odin: `websocket.close`.
 
 Raises: returns an `Error` (see [web](web.md)).
 

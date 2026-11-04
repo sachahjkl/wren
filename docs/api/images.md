@@ -7,6 +7,8 @@ naturalHeight are density-corrected CSS pixels (0 until the image is available).
 
 Exposed to: Window, Worker. Source: `api/images.widl`.
 
+Odin: `import "wren:images"`.
+
 ## Types
 
 ### handle `HTMLImageElement` : `Element`

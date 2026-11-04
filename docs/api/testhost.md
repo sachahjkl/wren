@@ -8,6 +8,8 @@ given a test host (page.set_test_host), and without one they do nothing. A brows
 
 Exposed to: Window. Source: `api/testhost.widl`.
 
+Odin: `import "wren:testhost"`.
+
 ## Types
 
 ### enum `TestSkipReason` : i32
@@ -29,6 +31,8 @@ void TestHost_testBegin(usvstring name)
 
 A test of the section begins.
 
+Odin: `testhost.testBegin`.
+
 Host: `TestHost_testBegin :: proc(c: ^Call, name: string)`
 
 ### `TestHost_testEnd`
@@ -38,6 +42,8 @@ void TestHost_testEnd(usvstring name)
 ```
 
 The test ends.
+
+Odin: `testhost.testEnd`.
 
 Host: `TestHost_testEnd :: proc(c: ^Call, name: string)`
 
@@ -49,6 +55,8 @@ void TestHost_check(bool passed, usvstring what)
 
 One check and its result.
 
+Odin: `testhost.check`.
+
 Host: `TestHost_check :: proc(c: ^Call, passed: bool, what: string)`
 
 ### `TestHost_measure`
@@ -58,6 +66,8 @@ void TestHost_measure(usvstring name, f64 value)
 ```
 
 A value the section measured.
+
+Odin: `testhost.measure`.
 
 Host: `TestHost_measure :: proc(c: ^Call, name: string, value: f64)`
 
@@ -69,6 +79,8 @@ void TestHost_note(usvstring text)
 
 Something the program may wait for or read ("LISTENING").
 
+Odin: `testhost.note`.
+
 Host: `TestHost_note :: proc(c: ^Call, text: string)`
 
 ### `TestHost_signal`
@@ -78,6 +90,8 @@ void TestHost_signal(usvstring name)
 ```
 
 The script asks the program to act on the page, and waits (the program resumes it).
+
+Odin: `testhost.signal`.
 
 Host: `TestHost_signal :: proc(c: ^Call, name: string)`
 
@@ -89,6 +103,8 @@ void TestHost_skip(TestSkipReason reason, usvstring why)
 
 The current test, or with no test open the whole section, does not run on this machine.
 
+Odin: `testhost.skip`.
+
 Host: `TestHost_skip :: proc(c: ^Call, reason: Api_TestSkipReason, why: string)`
 
 ### `TestHost_done`
@@ -98,6 +114,8 @@ void TestHost_done()
 ```
 
 The section is over.
+
+Odin: `testhost.done`.
 
 Host: `TestHost_done :: proc(c: ^Call)`
 

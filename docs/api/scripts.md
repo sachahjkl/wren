@@ -10,6 +10,8 @@ and js_workers.odin; used by native/js/runtime (load.c, modules.c, handlers.c, l
 
 Exposed to: Window, Worker. Source: `api/js_load.widl`.
 
+Odin: `import "wren:scripts"`.
+
 ## Types
 
 ### enum `InlineScriptKind` : i32

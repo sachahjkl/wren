@@ -9,6 +9,8 @@ priorities, highest first: user-blocking, user-visible, background.
 
 Exposed to: Window, Worker. Source: `api/scheduler.widl`.
 
+Odin: `import "wren:scheduler"`.
+
 ## Types
 
 ### enum `TaskPriority` : i32
@@ -32,6 +34,8 @@ u64 Scheduler_post(u32 callback, i32 user, TaskPriority priority, f64 delay_ms)
 Post a task; `callback` (a function-table index) runs with (user: i32) when the task is due. `delay_ms` 0 queues
 it at once. Returns the task id (for cancel / setPriority), 0 when there is no page realm.
 
+Odin: `scheduler.post`.
+
 Host: `Scheduler_post :: proc(c: ^Call, callback: u32, user: i32, priority: Api_TaskPriority, delay_ms: f64) -> u64`
 
 ### `Scheduler_cancel`
@@ -41,6 +45,8 @@ void Scheduler_cancel(u64 id) raises
 ```
 
 Drop a queued (or delayed) task: its signal aborted, or the realm released it.
+
+Odin: `scheduler.cancel`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -54,6 +60,8 @@ void Scheduler_setPriority(u64 id, TaskPriority priority) raises
 
 Change a queued task's priority (TaskController.setPriority).
 
+Odin: `scheduler.setPriority`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Scheduler_setPriority :: proc(c: ^Call, id: u64, priority: Api_TaskPriority) -> Api_Error`
@@ -65,6 +73,8 @@ bool Scheduler_isInputPending(bool include_continuous)
 ```
 
 navigator.scheduling.isInputPending.
+
+Odin: `scheduler.isInputPending`.
 
 Host: `Scheduler_isInputPending :: proc(c: ^Call, include_continuous: bool) -> bool`
 

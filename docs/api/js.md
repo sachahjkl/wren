@@ -9,6 +9,8 @@ zone, and the bookkeeping of the wrappers that keep DOM nodes alive (a node refe
 
 Exposed to: Window, Worker. Source: `api/js.widl`.
 
+Odin: `import "wren:js"`.
+
 ## Types
 
 ### enum `ConsoleLevel` : i32

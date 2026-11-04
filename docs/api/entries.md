@@ -10,6 +10,8 @@ what was dropped: a path that leaves it ("..") is refused.
 
 Exposed to: Window. Source: `api/js_entries.widl`.
 
+Odin: `import "wren:entries"`.
+
 ## Types
 
 ### handle `FsEntry` : `Object`

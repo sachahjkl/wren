@@ -8,6 +8,8 @@ output is bounded by page.max_fetch_bytes (Quota past it: a decompression bomb e
 
 Exposed to: Window, Worker. Source: `api/compression.widl`.
 
+Odin: `import "wren:compression"`.
+
 ## Types
 
 ### handle `Compressor` : `Object`
@@ -32,6 +34,8 @@ Compressor Compression_create(CompressionFormat format, bool decompress) raises
 
 A compressor (decompress false) or a decompressor of `format`.
 
+Odin: `compression.create`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Compression_create :: proc(c: ^Call, format: Api_CompressionFormat, decompress: bool) -> (u64, Api_Error)`
@@ -44,6 +48,8 @@ bytes Compression_push(Compressor compressor, bytes input) raises
 
 Feeds `input`: the output it made (Compression_output reads it again when the buffer was too small). Type for
 data that is not of the format, or that follows the end of the compressed data; Quota past the bound.
+
+Odin: `compression.push`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -59,6 +65,8 @@ bytes Compression_finish(Compressor compressor) raises
 
 The end of the input: what is left of the output. Type when the compressed data ended before its end.
 
+Odin: `compression.finish`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Has effects: call it once per result (no length query).
@@ -72,6 +80,8 @@ bytes Compression_output(Compressor compressor)
 ```
 
 The output of the last push or finish.
+
+Odin: `compression.output`.
 
 Host: `Compression_output :: proc(c: ^Call, compressor: Api_Compressor) -> []u8`
 

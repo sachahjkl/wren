@@ -123,12 +123,44 @@ generation_is_deterministic :: proc(t: ^testing.T) {
 	defer vmem.arena_destroy(&out)
 	context.allocator = vmem.arena_allocator(&out)
 	testing.expect(t, emit_host(a, cfg) == emit_host(b, cfg), "host output is stable")
-	for m, i in a.modules { testing.expect(t, emit_guest_module(a, {"web"}, m) == emit_guest_module(b, {"web"}, b.modules[i]), "guest output is stable") }
-	da, db := emit_docs(a, cfg), emit_docs(b, cfg)
+	for m, i in a.modules { testing.expect(t, emit_guest_module(a, {package_name = "web"}, m) == emit_guest_module(b, {package_name = "web"}, b.modules[i]), "guest output is stable") }
+	da, db := emit_docs(a, cfg, {}), emit_docs(b, cfg, {})
 	for f, i in da { testing.expect(t, f.text == db[i].text, "docs are stable") }
 	ca, cb := emit_conformance(a, "g", "h"), emit_conformance(b, "g", "h")
 	testing.expect(t, ca.guest == cb.guest && ca.table == cb.table, "conformance tests are stable")
 	host := emit_host(a, cfg)
 	testing.expect(t, strings.contains(host, "f :: proc(c: ^Call, h: Api_H, e: Api_E, s: Maybe(string)) -> (string, Api_Error)"), "the prototype of the implementation is written")
 	testing.expect(t, strings.contains(ca.table, `"m.f", "s: invalid UTF-8", .Error_Code, -10`), "a UTF-8 case with its expected code")
+}
+
+@(test)
+guest_packages_qualify_and_import :: proc(t: ^testing.T) {
+	api := load_text(BASE, `module thing { handle Gadget : Thing; Gadget Thing_make(i32 n) raises; i32 Thing_count(); string Gadget_name(Gadget g); }`)
+	defer destroy(api)
+	clash := load_text(BASE, `module thing { i32 Thing_count(); i32 count(); }`)
+	defer destroy(clash)
+	testing.expect(t, len(api.diags) == 0 && len(clash.diags) == 0, "valid")
+	if len(api.diags) > 0 || len(clash.diags) > 0 { return }
+	// the generated texts are the caller's: this test's arena
+	out: vmem.Arena
+	defer vmem.arena_destroy(&out)
+	context.allocator = vmem.arena_allocator(&out)
+	cfg := Guest_Config{collection = "wren", packages = {{name = "core", modules = {"web"}}}}
+	for m in api.modules {
+		if m.name != "thing" { continue }
+		text := emit_guest_module(api, cfg, m)
+		testing.expect(t, strings.contains(text, "package thing\n"), "a module is the package of its name")
+		testing.expect(t, strings.contains(text, "import \"wren:core\"\n"), "the package of the types it names is imported")
+		testing.expect(t, strings.contains(text, "Gadget :: distinct core.Thing\n"), "another package's type is qualified")
+		testing.expect(t, strings.contains(text, "Thing_make :: proc \"contextless\" (n: i32) -> (result: Gadget, err: core.Error)"), "a builtin the wrappers call keeps its prefix; the error is qualified")
+		testing.expect(t, strings.contains(text, "\ncount :: proc \"contextless\" () -> i32"), "a prefix repeating the package's name goes")
+		testing.expect(t, strings.contains(text, "Gadget_name :: proc \"contextless\" (g: Gadget, buf: []u8) -> (string, core.Error)"), "one interface among several keeps its prefix")
+	}
+	testing.expect(t, guest_name("fetch", "Fetch_promise") == "promise", "the package's own interface")
+	testing.expect(t, guest_name("url", "URL_parse") == "parse", "compared without case")
+	testing.expect(t, guest_name("dom", "Node_appendChild") == "Node_appendChild", "another interface's prefix stays")
+	testing.expect(t, guest_name("fetch", "Fetch_map") == "Fetch_map", "a keyword keeps its prefix")
+	testing.expect(t, len(guest_name_clashes(api, cfg)) == 0, "no two names alike")
+	found := guest_name_clashes(clash, cfg)
+	testing.expectf(t, len(found) == 1 && strings.contains(found[0], "thing.count"), "a dropped prefix onto another function's name: %v", found)
 }

@@ -8,6 +8,8 @@ order, at most performance.max_user_timing_entries (the oldest go first).
 
 Exposed to: Window, Worker. Source: `api/performance.widl`.
 
+Odin: `import "wren:performance"`.
+
 ## Types
 
 ### enum `PerformanceEntryType` : i32
@@ -54,6 +56,8 @@ f64 Performance_now()
 
 performance.now()
 
+Odin: `performance.now`.
+
 Host: `Performance_now :: proc(c: ^Call) -> f64`
 
 ### `Performance_timeOrigin`
@@ -64,6 +68,8 @@ f64 Performance_timeOrigin()
 
 performance.timeOrigin (ms since the Unix epoch).
 
+Odin: `performance.timeOrigin`.
+
 Host: `Performance_timeOrigin :: proc(c: ^Call) -> f64`
 
 ### `Performance_mark`
@@ -73,6 +79,8 @@ void Performance_mark(string name, f64 start_time = -1) raises
 ```
 
 performance.mark(name, {startTime}): a negative or NaN start_time means now. Syntax for an empty name.
+
+Odin: `performance.mark`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -87,6 +95,8 @@ void Performance_measure(string name, string start_mark = "", string end_mark = 
 performance.measure(name, startMark, endMark): an empty start is the time origin, an empty end is now. Syntax for
 a mark that does not exist.
 
+Odin: `performance.measure`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Performance_measure :: proc(c: ^Call, name: string, start_mark: string, end_mark: string) -> Api_Error`
@@ -98,6 +108,8 @@ void Performance_measureTimes(string name, f64 start, f64 end) raises
 ```
 
 performance.measure(name, {start, end})
+
+Odin: `performance.measureTimes`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -111,6 +123,8 @@ i32 Performance_entryCount(string name, PerformanceEntryType entry_type)
 
 How many entries match `name` ("" = any) and `entry_type`.
 
+Odin: `performance.entryCount`.
+
 Host: `Performance_entryCount :: proc(c: ^Call, name: string, entry_type: Api_PerformanceEntryType) -> i32`
 
 ### `Performance_entryStartTime`
@@ -120,6 +134,8 @@ f64 Performance_entryStartTime(string name, PerformanceEntryType entry_type, i32
 ```
 
 startTime of the index-th matching entry (NaN when none).
+
+Odin: `performance.entryStartTime`.
 
 Host: `Performance_entryStartTime :: proc(c: ^Call, name: string, entry_type: Api_PerformanceEntryType, index: i32) -> f64`
 
@@ -131,6 +147,8 @@ f64 Performance_entryDuration(string name, PerformanceEntryType entry_type, i32 
 
 duration of the index-th matching entry (NaN when none).
 
+Odin: `performance.entryDuration`.
+
 Host: `Performance_entryDuration :: proc(c: ^Call, name: string, entry_type: Api_PerformanceEntryType, index: i32) -> f64`
 
 ### `Performance_entryName`
@@ -140,6 +158,8 @@ string Performance_entryName(string name, PerformanceEntryType entry_type, i32 i
 ```
 
 name of the index-th matching entry: Not_Found when none.
+
+Odin: `performance.entryName`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -153,6 +173,8 @@ PerformanceEntryType Performance_entryType(string name, PerformanceEntryType ent
 
 entryType of the index-th matching entry (Mark or Measure): Not_Found when none.
 
+Odin: `performance.entryType`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Performance_entryType :: proc(c: ^Call, name: string, entry_type: Api_PerformanceEntryType, index: i32) -> (Api_PerformanceEntryType, Api_Error)`
@@ -165,6 +187,8 @@ void Performance_clearMarks(string name = "")
 
 performance.clearMarks(name): "" clears all.
 
+Odin: `performance.clearMarks`.
+
 Host: `Performance_clearMarks :: proc(c: ^Call, name: string)`
 
 ### `Performance_clearMeasures`
@@ -174,6 +198,8 @@ void Performance_clearMeasures(string name = "")
 ```
 
 performance.clearMeasures(name): "" clears all.
+
+Odin: `performance.clearMeasures`.
 
 Host: `Performance_clearMeasures :: proc(c: ^Call, name: string)`
 
@@ -188,6 +214,8 @@ least `from_seq`, in order, as a JSON array of objects with the members of the e
 duration, initiatorType, responseStart...) and `seq`. A kept entry never changes; the buffers drop their oldest
 entries (performance.resource_timing_entries...).
 
+Odin: `performance.timeline`.
+
 Host: `Performance_timeline :: proc(c: ^Call, entry_type: Api_PerformanceEntryType, from_seq: u64) -> string`
 
 ### `Performance_timelineNextSeq`
@@ -197,6 +225,8 @@ u64 Performance_timelineNextSeq(PerformanceEntryType entry_type)
 ```
 
 The sequence number the next entry of this kind will have.
+
+Odin: `performance.timelineNextSeq`.
 
 Host: `Performance_timelineNextSeq :: proc(c: ^Call, entry_type: Api_PerformanceEntryType) -> u64`
 
@@ -212,6 +242,8 @@ Element, index 0 is the entry's own element (its `element` attribute); for Layou
 i-th source (LayoutShiftAttribution.node). The engine carries the other members of each entry in the JSON of
 Performance_timeline; only live node handles come from here (a handle cannot be put in JSON and stay valid).
 
+Odin: `performance.timelineNode`.
+
 Host: `Performance_timelineNode :: proc(c: ^Call, entry_type: Api_PerformanceEntryType, seq: u64, index: u32) -> u64`
 
 ### `Performance_timelineInterest`
@@ -221,6 +253,8 @@ void Performance_timelineInterest(u32 kinds)
 ```
 
 The kinds (bits 1 << PerformanceEntryType) a PerformanceObserver wants to hear of: only those wake the realm.
+
+Odin: `performance.timelineInterest`.
 
 Host: `Performance_timelineInterest :: proc(c: ^Call, kinds: u32)`
 
@@ -232,6 +266,8 @@ void Performance_onTimeline(TimelineCallback callback, i32 user = 0)
 
 Where the browser announces new entries of the kinds of Performance_timelineInterest (a task of the page).
 
+Odin: `performance.onTimeline`.
+
 Host: `Performance_onTimeline :: proc(c: ^Call, callback: u32, user: i32)`
 
 ### `Performance_setResourceTimingBufferSize`
@@ -242,6 +278,8 @@ void Performance_setResourceTimingBufferSize(u32 entries)
 
 performance.setResourceTimingBufferSize(n) / performance.clearResourceTimings().
 
+Odin: `performance.setResourceTimingBufferSize`.
+
 Host: `Performance_setResourceTimingBufferSize :: proc(c: ^Call, entries: u32)`
 
 ### `Performance_clearResourceTimings`
@@ -249,6 +287,8 @@ Host: `Performance_setResourceTimingBufferSize :: proc(c: ^Call, entries: u32)`
 ```
 void Performance_clearResourceTimings()
 ```
+
+Odin: `performance.clearResourceTimings`.
 
 Host: `Performance_clearResourceTimings :: proc(c: ^Call)`
 
@@ -262,6 +302,8 @@ performance.timing (Navigation Timing 1): the moment of attribute `which` of Per
 1 unloadEventStart ... 20 loadEventEnd, in the interface's order) on the page's timeline (ms since the time
 origin), or NaN when it has not happened or does not apply (the attribute is then 0). The network phases of the
 document's own fetch are not measured: they are all the time origin.
+
+Odin: `performance.timingOf`.
 
 Host: `Performance_timingOf :: proc(c: ^Call, which: i32) -> f64`
 

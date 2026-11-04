@@ -93,7 +93,7 @@ TRACK :: "-define:WREN_TRACK_MEMORY=true"
 ONE_THREAD :: "-define:ODIN_TEST_THREADS=1"
 TOOLKIT :: "-collection:toolkit=ext/gui_toolkit"
 WB :: "-collection:wb=src"
-GUEST_FLAGS :: []string{"-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-collection:web=sdk/odin", "-o:size"}
+GUEST_FLAGS :: []string{"-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-collection:wren=sdk/odin", "-o:size"}
 E2E_BUILD_FLAGS :: []string{"-build-mode:test", "-o:speed", "-debug", "-use-separate-modules", "-vet", TOOLKIT, WB, "-define:FONT_BACKEND=native", "-define:FONT_NATIVE_LINK=false",
 	"-define:A11Y_ACCESSKIT=true", "-define:A11Y_NATIVE_LINK=false", "-define:WREN_CHANNEL=dev", "-define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=1048576", ONE_THREAD, "-define:ODIN_TEST_FANCY=false",
 	"-extra-linker-flags:/STACK:33554432"}

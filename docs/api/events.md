@@ -7,6 +7,8 @@ promise, a socket, a worker, an abort signal...) is an EventTarget. An Event han
 
 Exposed to: Window, Worker. Source: `api/events.widl`.
 
+Odin: `import "wren:core"`.
+
 ## Types
 
 ### handle `EventTarget`

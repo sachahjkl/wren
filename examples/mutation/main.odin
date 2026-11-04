@@ -4,12 +4,14 @@
 // again, a few display items replaced.
 package mutation
 
-import "web:web"
+import "wren:console"
+import "wren:dom"
+import "wren:timers"
 
 SECTIONS :: 323
 WORDS :: [?]string{"lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "sed", "do", "eiusmod", "tempor"}
 
-target: web.Element
+target: dom.Element
 frames: i64
 seed: u32 = 12345
 
@@ -26,15 +28,15 @@ itoa :: proc "contextless" (v: i64, buf: []u8) -> string {
 	return string(buf[i:])
 }
 
-el :: proc "contextless" (parent: web.Element, tag, class: string) -> web.Element {
-	e, _ := web.Document_createElement(tag)
-	if class != "" { web.Element_setAttribute(e, "class", class) }
-	web.Node_appendChild(parent, e)
+el :: proc "contextless" (parent: dom.Element, tag, class: string) -> dom.Element {
+	e, _ := dom.Document_createElement(tag)
+	if class != "" { dom.Element_setAttribute(e, "class", class) }
+	dom.Node_appendChild(parent, e)
 	return e
 }
 
-text :: proc "contextless" (s: string) -> web.Node {
-	n, _ := web.Document_createTextNode(s)
+text :: proc "contextless" (s: string) -> dom.Node {
+	n, _ := dom.Document_createTextNode(s)
 	return n
 }
 
@@ -59,13 +61,13 @@ on_tick :: proc "contextless" (user: i32) {
 	for c in transmute([]u8)string("frame ") { msg[k] = c; k += 1 }
 	for i in 0 ..< len(n) { msg[k] = n[i]; k += 1 }
 	for c in transmute([]u8)string(" updated by the module") { msg[k] = c; k += 1 }
-	web.Node_setTextContent(target, string(msg[:k]))
+	dom.Node_setTextContent(target, string(msg[:k]))
 }
 
 @(export)
 wb_main :: proc "contextless" () {
-	root := web.Document_getElementById("root")
-	if root == 0 { web.console_error("#root not found"); return }
+	root := dom.Document_getElementById("root")
+	if root == 0 { console.error("#root not found"); return }
 	buf: [128]u8
 	num: [24]u8
 	for s in 0 ..< SECTIONS {
@@ -77,16 +79,16 @@ wb_main :: proc "contextless" () {
 			t := itoa(i64(s * 5 + a), num[:])
 			copy(title[:], "Title ")
 			copy(title[6:], t)
-			web.Node_appendChild(h, text(string(title[:6 + len(t)])))
+			dom.Node_appendChild(h, text(string(title[:6 + len(t)])))
 			p := el(art, "p", "")
 			for k in 0 ..< 3 {
 				sp := el(p, "span", "")
-				web.Node_appendChild(sp, text(sentence(buf[:])))
+				dom.Node_appendChild(sp, text(sentence(buf[:])))
 				if s == SECTIONS / 2 && a == 2 && k == 1 { target = sp }
 			}
 		}
 	}
-	web.Element_setAttribute(target, "id", "target")
-	web.Timers_setInterval(on_tick, 0, 16)
-	web.console_log("mutation page ready")
+	dom.Element_setAttribute(target, "id", "target")
+	timers.setInterval(on_tick, 0, 16)
+	console.log("mutation page ready")
 }

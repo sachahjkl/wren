@@ -8,6 +8,8 @@ delivered through the output callback.
 
 Exposed to: Window, Worker. Source: `api/webcodecs_audio_decoder.widl`.
 
+Odin: `import "wren:webcodecs"`.
+
 ## Types
 
 ### handle `AudioDecoder` : `Object`

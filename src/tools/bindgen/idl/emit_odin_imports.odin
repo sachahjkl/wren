@@ -64,7 +64,7 @@ emit_odin_imports :: proc(api: ^Api, pkg: string) -> string {
 	o := out_make()
 	wl(&o, "// %s", GENERATED_BY)
 	wl(&o, "// The browser's imports for an Odin guest (wasm32): see src/tools/bindgen/idl/emit_odin_imports.odin for the")
-	wl(&o, "// conventions. This is the raw ABI the engine's wj layer links against; the per-page SDK (sdk/odin/web) is the")
+	wl(&o, "// conventions. This is the raw ABI the engine's wj layer links against; the per-page SDK (sdk/odin) is the")
 	wl(&o, "// friendly wrapper of the same imports.")
 	wl(&o, "package %s", pkg)
 	wl(&o, "")

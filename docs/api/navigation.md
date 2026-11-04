@@ -8,6 +8,8 @@ commits a navigation, and the rest (wj_nav_commit) after a same-document commit.
 
 Exposed to: Window. Source: `api/navigation.widl`.
 
+Odin: `import "wren:navigation"`.
+
 ## Types
 
 ### struct `NavigationSource`
@@ -32,6 +34,8 @@ string Navigation_entries()
 navigation.entries(): "<current index>\n" then "<key> <id> <same document 0|1> <url>\n" per entry (the same-origin
 entries around the current one; none for an opaque origin, current index -1).
 
+Odin: `navigation.entries`.
+
 Host: `Navigation_entries :: proc(c: ^Call) -> string`
 
 ### `Navigation_serial`
@@ -42,6 +46,8 @@ i64 Navigation_serial()
 
 Changes with every change of the session history (the engine reads the entries again only then).
 
+Odin: `navigation.serial`.
+
 Host: `Navigation_serial :: proc(c: ^Call) -> i64`
 
 ### `Navigation_getState`
@@ -51,6 +57,8 @@ string Navigation_getState(i64 key, i64 id) raises
 ```
 
 entry.getState(): the state of the entry `key` while its id is `id`; Not_Found when it has none.
+
+Odin: `navigation.getState`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -63,6 +71,8 @@ void Navigation_updateCurrentEntry(string state) raises
 ```
 
 navigation.updateCurrentEntry({state}): Data_Clone past history.max_state_bytes, Invalid_State without entries.
+
+Odin: `navigation.updateCurrentEntry`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -77,6 +87,8 @@ void Navigation_navigate(string url, optional string state, i32 history = 0) rai
 navigation.navigate(url, {state, history}) (history: 0 auto, 1 push, 2 replace): Syntax for an invalid URL,
 Not_Supported for a push to a javascript: URL, Data_Clone for a state too big. navigate fires inside the call.
 
+Odin: `navigation.navigate`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Navigation_navigate :: proc(c: ^Call, url: string, state: Maybe(string), history: i32) -> Api_Error`
@@ -89,6 +101,8 @@ void Navigation_reload(optional string state) raises
 
 navigation.reload({state}): without a state the entry keeps its own.
 
+Odin: `navigation.reload`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Navigation_reload :: proc(c: ^Call, state: Maybe(string)) -> Api_Error`
@@ -100,6 +114,8 @@ void Navigation_traverseTo(i64 key) raises
 ```
 
 navigation.traverseTo(key), back(), forward(): Invalid_State when no entry has this key. From a task of its own.
+
+Odin: `navigation.traverseTo`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -115,6 +131,8 @@ The navigation whose navigate event is being fired: "<type> <flags> <key> <id> <
 1 replace, 2 reload, 3 traverse; flags: 1 same document, 2 user initiated, 4 hash change, 8 can intercept,
 16 cancelable, 32 has a state). Not_Found outside the firing.
 
+Odin: `navigation.pending`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Navigation_pending :: proc(c: ^Call) -> (string, Api_Error)`
@@ -127,6 +145,8 @@ string Navigation_pendingState() raises
 
 destination.getState() of that navigation: Not_Found when it has none.
 
+Odin: `navigation.pendingState`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Navigation_pendingState :: proc(c: ^Call) -> (string, Api_Error)`
@@ -136,6 +156,8 @@ Host: `Navigation_pendingState :: proc(c: ^Call) -> (string, Api_Error)`
 ```
 NavigationSource Navigation_pendingSource()
 ```
+
+Odin: `navigation.pendingSource`.
 
 Host: `Navigation_pendingSource :: proc(c: ^Call) -> Api_NavigationSource`
 
@@ -149,6 +171,8 @@ navigation.activation: "<type> <from key>" (type as Navigation_pending's; from k
 document this one replaced when it is among navigation.entries()); "" when the document was not reached by a
 navigation the browser measured (activation null).
 
+Odin: `navigation.activation`.
+
 Host: `Navigation_activation :: proc(c: ^Call) -> string`
 
 ### `Navigation_scroll`
@@ -159,6 +183,8 @@ void Navigation_scroll(i32 type)
 
 The scroll of an intercepted navigation of `type` (as Navigation_pending's), once its handlers are done or at
 event.scroll(): a traversal puts the entry's scroll positions back, anything else goes to the fragment or the top.
+
+Odin: `navigation.scroll`.
 
 Host: `Navigation_scroll :: proc(c: ^Call, type: i32)`
 

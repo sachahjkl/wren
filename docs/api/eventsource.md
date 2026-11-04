@@ -7,6 +7,8 @@ Server-sent events (HTML EventSource) and the MessageEvent members that are not 
 
 Exposed to: Window. Source: `api/eventsource.widl`.
 
+Odin: `import "wren:eventsource"`.
+
 ## Types
 
 ### handle `EventSource` : `Object`
@@ -33,6 +35,8 @@ EventSource EventSource_create(string url, bool with_credentials = false) raises
 
 new EventSource(url, {withCredentials}). Syntax for an invalid URL.
 
+Odin: `eventsource.create`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `EventSource_create :: proc(c: ^Call, url: string, with_credentials: bool) -> (u64, Api_Error)`
@@ -43,6 +47,8 @@ Host: `EventSource_create :: proc(c: ^Call, url: string, with_credentials: bool)
 EventSourceState EventSource_readyState(EventSource source)
 ```
 
+Odin: `eventsource.readyState`.
+
 Host: `EventSource_readyState :: proc(c: ^Call, source: Api_EventSource) -> Api_EventSourceState`
 
 ### `EventSource_url`
@@ -51,6 +57,8 @@ Host: `EventSource_readyState :: proc(c: ^Call, source: Api_EventSource) -> Api_
 string EventSource_url(EventSource source)
 ```
 
+Odin: `eventsource.url`.
+
 Host: `EventSource_url :: proc(c: ^Call, source: Api_EventSource) -> string`
 
 ### `EventSource_withCredentials`
@@ -58,6 +66,8 @@ Host: `EventSource_url :: proc(c: ^Call, source: Api_EventSource) -> string`
 ```
 bool EventSource_withCredentials(EventSource source)
 ```
+
+Odin: `eventsource.withCredentials`.
 
 Host: `EventSource_withCredentials :: proc(c: ^Call, source: Api_EventSource) -> bool`
 
@@ -68,6 +78,8 @@ void EventSource_close(EventSource source)
 ```
 
 source.close()
+
+Odin: `eventsource.close`.
 
 Host: `EventSource_close :: proc(c: ^Call, source: Api_EventSource)`
 

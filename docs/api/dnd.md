@@ -10,6 +10,8 @@ otherwise (types and kinds are visible, data and files are not).
 
 Exposed to: Window. Source: `api/js_dnd.widl`.
 
+Odin: `import "wren:dnd"`.
+
 ## Types
 
 ### handle `DataTransfer` : `Object`

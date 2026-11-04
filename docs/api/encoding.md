@@ -8,6 +8,8 @@ the next call. Output is UTF-8.
 
 Exposed to: Window, Worker. Source: `api/encoding.widl`.
 
+Odin: `import "wren:encoding"`.
+
 ## Types
 
 ### handle `TextDecoder` : `Object`

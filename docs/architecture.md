@@ -102,8 +102,8 @@ generates from it, deterministically:
   which checks every address against the module's memory, converts strings (UTF-8 checked), handles (looked up by
   kind), enums, flags and structs, and calls the implementation (`bindings_*.odin`) with Odin values. The expected
   prototype of each implementation is written above its trampoline: a missing or mistyped one does not compile;
-- the Odin guest SDK, `sdk/odin/web/<module>.odin` (distinct handle types, `string` / `[]u8` / `Maybe`, `(T, Error)`
-  results, `F` / `F_len` / `F_alloc` for strings of unknown size);
+- the Odin guest SDK, `sdk/odin/<package>/<module>.odin`, the `wren` collection (`import "wren:dom"`; distinct handle
+  types, `string` / `[]u8` / `Maybe`, `(T, Error)` results, `F` / `F_len` / `F_alloc` for strings of unknown size);
 - the documentation, `docs/api/` (with the ABI);
 - conformance tests: `examples/apiconformance` and `src/tools/apiconformance/cases_generated.odin` (bad addresses,
   bad UTF-8, dead handles, enums out of range, buffers too small, for every function).

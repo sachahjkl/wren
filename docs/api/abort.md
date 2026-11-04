@@ -8,6 +8,8 @@ sources as the specification describes.
 
 Exposed to: Window. Source: `api/abort.widl`.
 
+Odin: `import "wren:abort"`.
+
 ## Types
 
 ### handle `AbortController` : `Object`

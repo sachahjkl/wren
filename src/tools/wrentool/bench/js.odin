@@ -430,7 +430,7 @@ dom_cell :: proc(answers: [dynamic]string) -> (text: string, ns: f64) {
 
 @(private = "file")
 wasm_call_floor :: proc() -> (ns: string, has: bool) {
-	build := []string{tooling.odin_program(), "build", "examples/wasmbench", "-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-collection:web=sdk/odin", fmt.tprintf("-out:%s", WASMBENCH_WASM), "-o:speed"}
+	build := []string{tooling.odin_program(), "build", "examples/wasmbench", "-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-collection:wren=sdk/odin", fmt.tprintf("-out:%s", WASMBENCH_WASM), "-o:speed"}
 	if tooling.run({command = build}) != 0 { return }
 	exe, good := build_tool("wasmbench")
 	if !good { return }

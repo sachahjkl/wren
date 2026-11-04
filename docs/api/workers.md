@@ -9,6 +9,8 @@ waiting, or a function of the other side (a page calling a worker function or th
 
 Exposed to: Window, Worker. Source: `api/workers.widl`.
 
+Odin: `import "wren:workers"`.
+
 ## Types
 
 ### handle `Worker` : `Object`
