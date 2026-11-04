@@ -108,6 +108,17 @@ dispatcher_destroy :: proc(dp: ^Dispatcher) {
 	base.pool_destroy(&dp.events)
 }
 
+// DOM "invoke": the prefixed name of an event that has one; "" for the others.
+legacy_event_type :: proc(type: string) -> string {
+	switch type {
+	case "animationend":       return "webkitAnimationEnd"
+	case "animationiteration": return "webkitAnimationIteration"
+	case "animationstart":     return "webkitAnimationStart"
+	case "transitionend":      return "webkitTransitionEnd"
+	}
+	return ""
+}
+
 add_listener :: proc(d: ^Document, target: base.Handle, type: string, callback, user: u32, capture, once, passive: bool, owner: u32 = 0) -> (Listener_Id, Error) {
 	n := get(d, target)
 	if n == nil { return 0, .Invalid_Handle }
@@ -321,11 +332,21 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 		e.phase = phase
 		snapshot: [dynamic]Listener
 		defer delete(snapshot)
-		for l in n.listeners {
-			if l.removed || l.type != e.type || l.capture != capture { continue }
-			snap := l
-			snap.type = ""   // the node's string: a listener may remove (and free) it; the event has the type
-			append(&snapshot, snap)
+		listening :: proc(n: ^Node, type: string, capture: bool, snapshot: ^[dynamic]Listener) {
+			for l in n.listeners {
+				if l.removed || l.type != type || l.capture != capture { continue }
+				snap := l
+				snap.type = ""   // the node's string: a listener may remove (and free) it; the event has the type
+				append(snapshot, snap)
+			}
+		}
+		listening(n, e.type, capture, &snapshot)
+		// DOM "invoke": a trusted event nobody listens to under its name goes to those of its legacy name, under that name
+		name := e.type
+		defer if cur := base.pool_get(&dp.events, eh); cur != nil { cur.type = name }
+		if legacy := legacy_event_type(e.type); legacy != "" && len(snapshot) == 0 && !e.untrusted {
+			listening(n, legacy, capture, &snapshot)
+			if len(snapshot) > 0 { e.type = legacy }
 		}
 		for l in snapshot {
 			// (a listener may have moved the node to another document: its listeners went with it, owners in that document's terms)

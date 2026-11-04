@@ -285,6 +285,20 @@ dispatch_phases_stop_and_prevent :: proc(t: ^testing.T) {
 	add_listener(d, inner, "submit", 4, 4, false, false, false)
 	testing.expect(t, !dispatch(d, &dp, inner, Event{type = "submit", bubbles = true, cancelable = true}))
 	testing.expect(t, dispatch(d, &dp, inner, Event{type = "submit", bubbles = true, cancelable = false}))
+
+	// a trusted event no listener takes under its name goes to those of its legacy name, an untrusted one does not
+	add_listener(d, inner, "webkitAnimationEnd", 2, 2, false, false, false)
+	clear(&tr.log)
+	dispatch(d, &dp, inner, Event{type = "animationend"})
+	testing.expect_value(t, len(tr.log), 2)
+	clear(&tr.log)
+	dispatch(d, &dp, inner, Event{type = "animationend", untrusted = true})
+	testing.expect_value(t, len(tr.log), 0)
+	add_listener(d, inner, "animationend", 3, 3, false, false, false)
+	clear(&tr.log)
+	dispatch(d, &dp, inner, Event{type = "animationend"})
+	testing.expect_value(t, tr.log[0], "stop:")   // the listener of its name, alone
+	testing.expect_value(t, len(tr.log), 2)
 }
 
 @(test)

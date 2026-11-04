@@ -49,7 +49,7 @@ Glue_Arg :: struct { conv: Conv, iface: string, t: ^webidl.Type, a: ^webidl.Argu
 
 @(private)
 emit_event_handler_odin :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, getter: bool) -> string {
-	event := strings.has_prefix(mb.name, "on") ? mb.name[2:] : mb.name
+	event := handler_event(mb.name)
 	special := 0
 	if mb.type.name == "OnErrorEventHandler" { special = 1 }
 	if mb.type.name == "OnBeforeUnloadEventHandler" { special = 2 }

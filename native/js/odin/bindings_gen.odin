@@ -2437,14 +2437,14 @@ wjg_Document_get_onvolumechange :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 wjg_Document_set_onvolumechange :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 253, "volumechange", v, 0) }
 wjg_Document_get_onwaiting :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 253, "waiting") }
 wjg_Document_set_onwaiting :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 253, "waiting", v, 0) }
-wjg_Document_get_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 253, "webkitanimationend") }
-wjg_Document_set_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 253, "webkitanimationend", v, 0) }
-wjg_Document_get_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 253, "webkitanimationiteration") }
-wjg_Document_set_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 253, "webkitanimationiteration", v, 0) }
-wjg_Document_get_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 253, "webkitanimationstart") }
-wjg_Document_set_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 253, "webkitanimationstart", v, 0) }
-wjg_Document_get_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 253, "webkittransitionend") }
-wjg_Document_set_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 253, "webkittransitionend", v, 0) }
+wjg_Document_get_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 253, "webkitAnimationEnd") }
+wjg_Document_set_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 253, "webkitAnimationEnd", v, 0) }
+wjg_Document_get_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 253, "webkitAnimationIteration") }
+wjg_Document_set_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 253, "webkitAnimationIteration", v, 0) }
+wjg_Document_get_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 253, "webkitAnimationStart") }
+wjg_Document_set_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 253, "webkitAnimationStart", v, 0) }
+wjg_Document_get_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 253, "webkitTransitionEnd") }
+wjg_Document_set_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 253, "webkitTransitionEnd", v, 0) }
 wjg_Document_get_onwheel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 253, "wheel") }
 wjg_Document_set_onwheel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 253, "wheel", v, 0) }
 wjg_Document_get_onpointerover :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 253, "pointerover") }
@@ -3627,14 +3627,14 @@ wjg_HTMLElement_get_onvolumechange :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 wjg_HTMLElement_set_onvolumechange :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 260, "volumechange", v, 0) }
 wjg_HTMLElement_get_onwaiting :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 260, "waiting") }
 wjg_HTMLElement_set_onwaiting :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 260, "waiting", v, 0) }
-wjg_HTMLElement_get_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 260, "webkitanimationend") }
-wjg_HTMLElement_set_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 260, "webkitanimationend", v, 0) }
-wjg_HTMLElement_get_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 260, "webkitanimationiteration") }
-wjg_HTMLElement_set_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 260, "webkitanimationiteration", v, 0) }
-wjg_HTMLElement_get_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 260, "webkitanimationstart") }
-wjg_HTMLElement_set_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 260, "webkitanimationstart", v, 0) }
-wjg_HTMLElement_get_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 260, "webkittransitionend") }
-wjg_HTMLElement_set_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 260, "webkittransitionend", v, 0) }
+wjg_HTMLElement_get_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 260, "webkitAnimationEnd") }
+wjg_HTMLElement_set_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 260, "webkitAnimationEnd", v, 0) }
+wjg_HTMLElement_get_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 260, "webkitAnimationIteration") }
+wjg_HTMLElement_set_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 260, "webkitAnimationIteration", v, 0) }
+wjg_HTMLElement_get_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 260, "webkitAnimationStart") }
+wjg_HTMLElement_set_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 260, "webkitAnimationStart", v, 0) }
+wjg_HTMLElement_get_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 260, "webkitTransitionEnd") }
+wjg_HTMLElement_set_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 260, "webkitTransitionEnd", v, 0) }
 wjg_HTMLElement_get_onwheel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 260, "wheel") }
 wjg_HTMLElement_set_onwheel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 260, "wheel", v, 0) }
 wjg_HTMLElement_get_onpointerover :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 260, "pointerover") }
@@ -6684,14 +6684,14 @@ wjg_MathMLElement_get_onvolumechange :: proc "c" (ctx: ^wj.Context, this_val: wj
 wjg_MathMLElement_set_onvolumechange :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 332, "volumechange", v, 0) }
 wjg_MathMLElement_get_onwaiting :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 332, "waiting") }
 wjg_MathMLElement_set_onwaiting :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 332, "waiting", v, 0) }
-wjg_MathMLElement_get_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 332, "webkitanimationend") }
-wjg_MathMLElement_set_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 332, "webkitanimationend", v, 0) }
-wjg_MathMLElement_get_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 332, "webkitanimationiteration") }
-wjg_MathMLElement_set_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 332, "webkitanimationiteration", v, 0) }
-wjg_MathMLElement_get_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 332, "webkitanimationstart") }
-wjg_MathMLElement_set_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 332, "webkitanimationstart", v, 0) }
-wjg_MathMLElement_get_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 332, "webkittransitionend") }
-wjg_MathMLElement_set_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 332, "webkittransitionend", v, 0) }
+wjg_MathMLElement_get_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 332, "webkitAnimationEnd") }
+wjg_MathMLElement_set_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 332, "webkitAnimationEnd", v, 0) }
+wjg_MathMLElement_get_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 332, "webkitAnimationIteration") }
+wjg_MathMLElement_set_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 332, "webkitAnimationIteration", v, 0) }
+wjg_MathMLElement_get_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 332, "webkitAnimationStart") }
+wjg_MathMLElement_set_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 332, "webkitAnimationStart", v, 0) }
+wjg_MathMLElement_get_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 332, "webkitTransitionEnd") }
+wjg_MathMLElement_set_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 332, "webkitTransitionEnd", v, 0) }
 wjg_MathMLElement_get_onwheel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 332, "wheel") }
 wjg_MathMLElement_set_onwheel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 332, "wheel", v, 0) }
 wjg_MathMLElement_get_onpointerover :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 332, "pointerover") }
@@ -7144,14 +7144,14 @@ wjg_SVGElement_get_onvolumechange :: proc "c" (ctx: ^wj.Context, this_val: wj.JS
 wjg_SVGElement_set_onvolumechange :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 334, "volumechange", v, 0) }
 wjg_SVGElement_get_onwaiting :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 334, "waiting") }
 wjg_SVGElement_set_onwaiting :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 334, "waiting", v, 0) }
-wjg_SVGElement_get_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 334, "webkitanimationend") }
-wjg_SVGElement_set_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 334, "webkitanimationend", v, 0) }
-wjg_SVGElement_get_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 334, "webkitanimationiteration") }
-wjg_SVGElement_set_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 334, "webkitanimationiteration", v, 0) }
-wjg_SVGElement_get_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 334, "webkitanimationstart") }
-wjg_SVGElement_set_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 334, "webkitanimationstart", v, 0) }
-wjg_SVGElement_get_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 334, "webkittransitionend") }
-wjg_SVGElement_set_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 334, "webkittransitionend", v, 0) }
+wjg_SVGElement_get_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 334, "webkitAnimationEnd") }
+wjg_SVGElement_set_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 334, "webkitAnimationEnd", v, 0) }
+wjg_SVGElement_get_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 334, "webkitAnimationIteration") }
+wjg_SVGElement_set_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 334, "webkitAnimationIteration", v, 0) }
+wjg_SVGElement_get_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 334, "webkitAnimationStart") }
+wjg_SVGElement_set_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 334, "webkitAnimationStart", v, 0) }
+wjg_SVGElement_get_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 334, "webkitTransitionEnd") }
+wjg_SVGElement_set_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 334, "webkitTransitionEnd", v, 0) }
 wjg_SVGElement_get_onwheel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 334, "wheel") }
 wjg_SVGElement_set_onwheel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 334, "wheel", v, 0) }
 wjg_SVGElement_get_onpointerover :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 334, "pointerover") }
@@ -8142,14 +8142,14 @@ wjg_Window_get_onvolumechange :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 wjg_Window_set_onvolumechange :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 391, "volumechange", v, 0) }
 wjg_Window_get_onwaiting :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 391, "waiting") }
 wjg_Window_set_onwaiting :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 391, "waiting", v, 0) }
-wjg_Window_get_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 391, "webkitanimationend") }
-wjg_Window_set_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 391, "webkitanimationend", v, 0) }
-wjg_Window_get_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 391, "webkitanimationiteration") }
-wjg_Window_set_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 391, "webkitanimationiteration", v, 0) }
-wjg_Window_get_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 391, "webkitanimationstart") }
-wjg_Window_set_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 391, "webkitanimationstart", v, 0) }
-wjg_Window_get_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 391, "webkittransitionend") }
-wjg_Window_set_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 391, "webkittransitionend", v, 0) }
+wjg_Window_get_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 391, "webkitAnimationEnd") }
+wjg_Window_set_onwebkitanimationend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 391, "webkitAnimationEnd", v, 0) }
+wjg_Window_get_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 391, "webkitAnimationIteration") }
+wjg_Window_set_onwebkitanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 391, "webkitAnimationIteration", v, 0) }
+wjg_Window_get_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 391, "webkitAnimationStart") }
+wjg_Window_set_onwebkitanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 391, "webkitAnimationStart", v, 0) }
+wjg_Window_get_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 391, "webkitTransitionEnd") }
+wjg_Window_set_onwebkittransitionend :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 391, "webkitTransitionEnd", v, 0) }
 wjg_Window_get_onwheel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 391, "wheel") }
 wjg_Window_set_onwheel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 391, "wheel", v, 0) }
 wjg_Window_get_onpointerover :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 391, "pointerover") }

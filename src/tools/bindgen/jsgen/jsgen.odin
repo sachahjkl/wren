@@ -309,10 +309,22 @@ Class_Kind :: enum { Plain, Indexed, Named }
 ////////////////////////////////
 // Generic members
 
+// The event of an event handler attribute: its name without "on"; HTML names the legacy ones in camel case.
+@(private)
+handler_event :: proc(name: string) -> string {
+	switch name {
+	case "onwebkitanimationend":       return "webkitAnimationEnd"
+	case "onwebkitanimationiteration": return "webkitAnimationIteration"
+	case "onwebkitanimationstart":     return "webkitAnimationStart"
+	case "onwebkittransitionend":      return "webkitTransitionEnd"
+	}
+	return strings.has_prefix(name, "on") ? name[2:] : name
+}
+
 @(private)
 emit_event_handler :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, getter: bool) -> string {
 	if g.lang == .Glue { return emit_event_handler_odin(g, it, mb, getter) }
-	event := strings.has_prefix(mb.name, "on") ? mb.name[2:] : mb.name
+	event := handler_event(mb.name)
 	special := 0
 	if mb.type.name == "OnErrorEventHandler" { special = 1 }
 	if mb.type.name == "OnBeforeUnloadEventHandler" { special = 2 }
