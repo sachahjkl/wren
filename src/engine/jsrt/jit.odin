@@ -11,8 +11,8 @@ package jsrt
 // uses as numbers or objects are kept in Wasm locals (i32 for ints, f64 for doubles, i32 for bools and object pointers;
 // the types are speculated from the values the frame holds when the loop gets hot, widened int -> double when the region
 // itself needs it), read once at entry (guarded by their tags) and written back when the code leaves; other locals stay
-// in the frame's memory. It never allocates and calls nothing but the engine's helpers (JIT_HELPERS: a call of a native
-// function) and compiled code: an operation it cannot do inline keeps the loop from being compiled at all, a small
+// in the frame's memory. It allocates and calls only through the engine's helpers (JIT_HELPERS: an object, a call of a
+// native function) and compiled code: an operation it cannot do inline keeps the loop from being compiled at all, a small
 // function it calls is inlined (jit_inline), and a speculation that fails at run time (int overflow, -0, a modulo of a
 // negative number...) leaves through a deopt exit that stores the operand stack back in the frame and hands the
 // interpreter the pc and sp of the instruction that was about to run. Exits: leaving the region, return, deopt, a
@@ -68,6 +68,7 @@ JIT_ELEM_PEEK :: 16    // the first elements of an array looked at for the type 
 JIT_INLINE_MAX_CODE :: 96   // the bytecode of a function inlined at a call, at most
 JIT_INLINE_DEPTH :: 2       // calls inlined in an inlined callee, at most one level down
 JIT_INLINE_SITE_SHIFT :: 20 // an inlined callee's sites: (the call's site + 1) << this, plus the callee's pc
+JIT_MAX_SHADOWS :: 4        // the objects seen whose properties a translation appended (a constructor's this), followed
 
 // The aux word of a deopt exit: a slot to widen (< 64), none, a site that missed, a callee not to inline
 JIT_AUX_NONE :: 0xffff
@@ -91,7 +92,7 @@ jit_cfg: Jit_Cfg
 
 // The engine's procedures compiled code calls: exported by the glue (native/js/odin/jit.odin) under these names,
 // imported by a module whose loop calls (function index = the helper's), each (i32...) -> i32.
-Jit_Helper :: enum u8 {call, array, finish}
+Jit_Helper :: enum u8 {call, array, finish, new, reserve}
 
 Jit_Helper_Def :: struct {
 	name:   string,
@@ -99,9 +100,11 @@ Jit_Helper_Def :: struct {
 }
 
 JIT_HELPERS :: [Jit_Helper]Jit_Helper_Def {
-	.call   = {"wj_jit_call", 5},
-	.array  = {"wj_jit_array", 4},
-	.finish = {"wj_jit_finish", 5},
+	.call    = {"wj_jit_call", 5},
+	.array   = {"wj_jit_array", 4},
+	.finish  = {"wj_jit_finish", 5},
+	.new     = {"wj_jit_new", 4},
+	.reserve = {"wj_jit_reserve", 3},
 }
 
 // The engine's table, which a module whose code calls compiled code directly imports ("e" "table": the host gives it
@@ -234,6 +237,40 @@ jit_rethrow :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Va
 	return EXCEPTION
 }
 
+// Jit_Helper.new: an object for compiled code: a plain object (kind object), an Array of the argc values at f.stack[a:]
+// (array), the object a construction makes for the constructor at f.stack[a], new.target at f.stack[a + 1] (ctor,
+// create_from_ctor). nil: it threw (the constructor's place is then jit_rethrow's, as jit_call leaves a call). The
+// object is only in the compiled code's hands: no collection runs before the code's next call, which writes what it
+// holds to the frame first.
+Jit_New_Kind :: enum i32 {object, array, ctor}
+
+jit_new :: proc(f: ^Frame, kind: Jit_New_Kind, a: int, argc: int) -> ^Object {
+	ctx := f.ctx
+	rt := ctx.rt
+	o: ^Object
+	switch kind {
+	case .object:
+		o = new_plain_object(ctx)
+	case .array:
+		o = array_from_values(ctx, f.stack[a:a + argc])
+	case .ctor:
+		v := create_from_ctor(ctx, f.stack[a + 1], .object)
+		if is_exception(v) {
+			if ctx.jit_rethrow == nil {ctx.jit_rethrow = new_native_function(ctx, jit_rethrow, "", 0, 0, .constructor)}
+			f.stack[a] = mk_obj(ctx.jit_rethrow)
+			return nil
+		}
+		o = as_obj(v)
+	}
+	if len(rt.temp_roots) > f.root_base {resize(&rt.temp_roots, f.root_base)}
+	return o
+}
+
+// Jit_Helper.reserve: room for n slots in o, which the compiled code appends a property to.
+jit_reserve :: proc(f: ^Frame, o: ^Object, n: int) {
+	object_slots_reserve(f.ctx.rt, o, n)
+}
+
 // Jit_Helper.array: after a call, the array in a held local again (the call may have grown, shrunk or detached it).
 // False: it is no longer of the kind the code was made for.
 jit_array_again :: proc(f: ^Frame, slot: int, kind: Jit_Arr_Kind, out: ^Jit_Arr) -> bool {
@@ -319,12 +356,14 @@ Jit_Resume :: enum u8 {none, resume, ret}
 Jit_Ty :: enum u8 {I, F, B, L, O, P, V, M}
 
 // v: what the entry held when the loop was translated, as far as the translation can tell from the frame (tag
-// .exception: not known); only a hint for the speculations, never relied on
+// .exception: not known); only a hint for the speculations, never relied on. k: the shape of a P that the code itself
+// made since the last join (an object literal being filled), known exactly: its fields need no guard.
 Jit_State :: struct {
 	n: int,
 	t: [JIT_STACK_MAX]Jit_Ty,
 	a: [JIT_STACK_MAX]u16,
 	v: [JIT_STACK_MAX]Value,
+	k: [JIT_STACK_MAX]^Shape,
 }
 
 // obj: an object, in an i32 local; box: left to the frame's memory (read as a V)
@@ -742,11 +781,11 @@ jit_site_see :: proc(site: ^Jit_Site, v: Value) -> (changed: bool) {
 	return
 }
 
-// The shape of o for the site: a shape it can guard (not lazy), if there is room. changed: new, or one the code reads
-// inline (then what missed is further on: a prototype, a dictionary's key).
+// The shape of o for the site (sh: o's, or the one the translation knows o takes by then): a shape it can guard (not
+// lazy), if there is room. changed: new, or one the code reads inline (then what missed is further on: a prototype, a
+// dictionary's key).
 @(private = "file")
-jit_site_add_shape :: proc(site: ^Jit_Site, o: ^Object) -> (changed: bool) {
-	sh := o.shape
+jit_site_add_shape :: proc(site: ^Jit_Site, o: ^Object, sh: ^Shape) -> (changed: bool) {
 	if sh.lazy != nil {return false}
 	for k in 0 ..< site.n {if site.shapes[k] == sh {return k in site.inline}}
 	if site.n >= JIT_SITE_SHAPES {return false}
@@ -855,12 +894,12 @@ jit_learn :: proc(f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, xpc: int, xsp
 			return true
 		}
 		if o.tag != .object {return false}
-		changed = jit_site_add_shape(site, as_obj(o))
+		changed = jit_site_add_shape(site, as_obj(o), as_obj(o).shape)
 		a := op == .get_length ? pa(.A_length) : Atom(jr_u32(b.code, xpc + 1))
 		if v, ok := jit_peek_field(as_obj(o), a); ok {changed = jit_site_see(site, v) || changed}
 	case .put_field:
 		o := st[xsp - 2]
-		if o.tag == .object {changed = jit_site_add_shape(site, as_obj(o))}
+		if o.tag == .object {changed = jit_site_add_shape(site, as_obj(o), as_obj(o).shape)}
 	case .get_var, .get_var_undef, .put_var:
 		// (the realm's shapes changed, or the value's type)
 		changed = true
@@ -929,9 +968,13 @@ Jc :: struct {
 	fail:      bool,
 	why:       string,
 	restart:   bool,
-	fast_bit:    u8,   // Object.bits: fast_array, is_htmldda
+	fast_bit:    u8,   // Object.bits: fast_array, is_htmldda, extensible
 	htmldda_bit: u8,
-	calls:       bool, // the region calls (the helpers are imported)
+	extensible_bit: u8,
+	calls:       bool, // the region calls (locals a closure may reach stay in memory)
+	helpers:     bool, // the region calls or makes objects (the helpers and the table are imported)
+	shadows:     [JIT_MAX_SHADOWS]Jit_Shadow,   // the objects seen whose properties the translation appended, and their shapes then
+	n_shadows:   int,
 	// a callee being inlined (jit_inline): its code replaces the loop's, its slots are stack entries
 	inl_depth:   int,
 	inl_n:       int,   // the stack height and the pc of the outermost inlined call: a deopt in a callee resumes there
@@ -944,12 +987,18 @@ Jc :: struct {
 	inl_wide:    bool,  // the callee's numbers are taken for doubles (it left once on an int that was not one)
 }
 
+Jit_Shadow :: struct {
+	o:  ^Object,
+	sh: ^Shape,
+}
+
 // What the compiled code reads of an object, a shape, a property and an array (the engine's own layout on wasm32)
 OBJ_SHAPE :: u32(offset_of(Object, shape))
 OBJ_SLOTS :: u32(offset_of(Object, slots))
 OBJ_CLASS :: u32(offset_of(Object, class))
 OBJ_BITS :: u32(offset_of(Object, bits))
 OBJ_DATA :: u32(offset_of(Object, data))
+OBJ_SLOT_CAP :: u32(offset_of(Object, slot_cap))
 ARR_VALUES :: u32(offset_of(Array_Data, values))
 ARR_COUNT :: u32(offset_of(Array_Data, count))
 SHAPE_PROPS :: u32(offset_of(Shape, props))
@@ -1017,13 +1066,14 @@ when ODIN_ARCH == .wasm32 {
 
 // The bit of Object.bits that a field of it is.
 @(private = "file")
-Jit_Object_Bit :: enum u8 {fast_array, is_htmldda}
+Jit_Object_Bit :: enum u8 {fast_array, is_htmldda, extensible}
 
 @(private = "file")
 jit_object_bit :: proc(which: Jit_Object_Bit) -> u8 {
 	o: Object
 	switch which {
 	case .fast_array: o.fast_array = true
+	case .extensible: o.extensible = true
 	case .is_htmldda: o.is_htmldda = true
 	}
 	return (cast(^u8)(uintptr(&o) + uintptr(OBJ_BITS)))^
@@ -1058,11 +1108,12 @@ I_AUX :: 9
 I_BUDGET :: 10
 I_T0 :: 11
 I_T1 :: 12
-I_T2 :: 13   // (I_T2 .. I_T5: a direct call's own, j_direct_call)
+I_T2 :: 13   // (I_T2 .. I_T6: a direct call's own, j_direct_call)
 I_T3 :: 14
 I_T4 :: 15
 I_T5 :: 16
-I_FIRST :: 17
+I_T6 :: 17
+I_FIRST :: 18
 
 Jit_Outcome :: enum u8 {ok, refuse, restart}
 
@@ -1142,6 +1193,7 @@ j_push :: proc(c: ^Jc, t: Jit_Ty) -> int {
 	}
 	c.st.t[c.st.n] = t
 	c.st.v[c.st.n] = EXCEPTION
+	c.st.k[c.st.n] = nil
 	c.st.n += 1
 	return c.st.n - 1
 }
@@ -1386,12 +1438,18 @@ jit_put_array_el :: proc(c: ^Jc, pc: int) -> bool {
 // at pc to the interpreter).
 @(private = "file")
 j_store_value :: proc(c: ^Jc, d: int, pc: int) -> bool {
-	if c.st.t[d] == .L {
-		j_l_not_i32(c, d)
-		j_deopt_if(c, pc)
-	}
+	j_fits_value(c, d, pc)
 	j_store_entry(c, d, I_T0, 0)
 	return !c.fail
+}
+
+// The stack entry d can be stored as a Value, or the instruction at pc is left to the interpreter (an integer beyond
+// the int32 range; before anything of the instruction is done: a property it appends, a shape it changes).
+@(private = "file")
+j_fits_value :: proc(c: ^Jc, d: int, pc: int) {
+	if c.st.t[d] != .L {return}
+	j_l_not_i32(c, d)
+	j_deopt_if(c, pc)
 }
 
 // The Value at the address in local `addr` is of type t (a V: anything but a hole of the TDZ), or the site at pc learns
@@ -1540,7 +1598,12 @@ j_prop_addr :: proc(c: ^Jc, obj: u32, site: ^Jit_Site, a: Atom, write: bool, pc:
 		// objects of a shape whose property is not a plain data property (an accessor, an exotic object, absent; for a
 		// write, an own writable one) take the exit
 		l, ok := jit_lookup(sh, a)
-		if !ok {continue}
+		if !ok {
+			// (a write of a property the object does not have: appended, when objects of this shape take it as such)
+			if write && j_prop_add(c, obj, sh, site.classes[k], a, pc) {site.inline += {k}}
+			if c.fail {return false}
+			continue
+		}
 		if write && (l.depth != 0 || .writable not_in sh.props[l.idx].flags || (site.classes[k] == .array && a == pa(.A_length))) {continue}
 		if l.depth != 0 && !jit_ordinary_class(site.classes[k]) {continue}
 		site.inline += {k}
@@ -1580,6 +1643,160 @@ j_prop_addr :: proc(c: ^Jc, obj: u32, site: ^Jit_Site, a: Atom, write: bool, pc:
 	return !c.fail
 }
 
+// A write of the property `a` an object of shape sh does not have, as a case of j_prop_addr (the slot's address in I_T0,
+// out of its block): the property appended as [[Set]] appends it, when the object is an ordinary extensible one and `a`
+// is nowhere on its prototype chain (each prototype's shape guarded), the shape's transition taken. False: objects of
+// this shape take the exit.
+@(private = "file")
+j_prop_add :: proc(c: ^Jc, obj: u32, sh: ^Shape, class: Class_ID, a: Atom, pc: int) -> bool {
+	if class != .object || sh.lazy != nil || sh.is_dict || shape_lookup(sh, a) >= 0 {return false}
+	protos: [JIT_MAX_CHAIN]^Object
+	np := 0
+	for p := sh.proto; p != nil; p = p.shape.proto {
+		ps := p.shape
+		if np >= JIT_MAX_CHAIN || ps.lazy != nil || ps.is_dict || shape_lookup(ps, a) >= 0 || p.fast_array || p.class == .proxy ||
+		   p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {
+			return false
+		}
+		protos[np] = p
+		np += 1
+	}
+	next := shape_transition(c.rt, sh, a, CWE, .data)
+	if next.is_dict || !j_keep(c, sh) || !j_keep(c, next) {return false}
+	for j in 0 ..< np {if !j_keep(c, protos[j].shape) {return false}}
+	j_lget(c, obj)
+	j_mem(c, W_I32_LOAD, 2, OBJ_SHAPE)
+	j_i32(c, i32(uintptr(sh)))
+	j_op(c, W_I32_EQ)
+	j_op(c, W_IF)
+	j_op(c, W_VOID)
+	c.nest += 1
+	// an ordinary object (a shape may be shared with an exotic one), extensible
+	j_lget(c, obj)
+	j_mem(c, W_I32_LOAD8_U, 0, OBJ_CLASS)
+	j_i32(c, i32(Class_ID.object))
+	j_op(c, W_I32_NE)
+	j_lget(c, obj)
+	j_mem(c, W_I32_LOAD8_U, 0, OBJ_BITS)
+	j_i32(c, i32(c.extensible_bit))
+	j_op(c, W_I32_AND)
+	j_op(c, W_I32_EQZ)
+	j_op(c, W_I32_OR)
+	j_deopt_if(c, pc)
+	for j in 0 ..< np {j_guard_shape(c, protos[j], 0, protos[j].shape, pc)}
+	j_add_slot(c, obj, next, len(next.props) - 1)
+	j_op(c, W_BR)
+	w_uleb(&c.out, 1)
+	j_op(c, W_END)
+	c.nest -= 1
+	return !c.fail
+}
+
+// The object in local `obj` takes the shape `next`, which appends a property at idx: room for its slot (the helper
+// grows the slots), the shape stored, the slot's address in I_T0.
+@(private = "file")
+j_add_slot :: proc(c: ^Jc, obj: u32, next: ^Shape, idx: int) {
+	j_lget(c, obj)
+	j_mem(c, W_I32_LOAD, 2, OBJ_SLOT_CAP)
+	j_i32(c, i32(idx))
+	j_op(c, W_I32_LE_U)
+	j_op(c, W_IF)
+	j_op(c, W_VOID)
+	j_lget(c, P_FRAME)
+	j_lget(c, obj)
+	j_i32(c, i32(idx + 1))
+	j_op(c, W_CALL)
+	w_uleb(&c.out, u64(Jit_Helper.reserve))
+	j_op(c, W_DROP)
+	j_op(c, W_END)
+	j_lget(c, obj)
+	j_i32(c, i32(uintptr(next)))
+	j_mem(c, W_I32_STORE, 2, OBJ_SHAPE)
+	j_slot_of(c, nil, obj, idx)
+}
+
+// Objects made by compiled code ---------------------------------------------------------------------------------------
+
+// An object made by the helper (Jit_Helper.new, jit_new), its address on the Wasm stack.
+@(private = "file")
+j_new :: proc(c: ^Jc, kind: Jit_New_Kind, a: int, argc: int) {
+	j_lget(c, P_FRAME)
+	j_i32(c, i32(kind))
+	j_i32(c, i32(a))
+	j_i32(c, i32(argc))
+	j_op(c, W_CALL)
+	w_uleb(&c.out, u64(Jit_Helper.new))
+}
+
+// `object`: a plain object, whose shape (the root one of Object.prototype) the code knows until the next join.
+@(private = "file")
+jit_object :: proc(c: ^Jc) -> bool {
+	sh := shape_root_for(c.rt, c.ctx.class_proto[.object])
+	if !j_keep(c, sh) {return false}
+	d := j_push(c, .P)
+	j_new(c, .object, 0, 0)
+	j_lset(c, j_si(c, d))
+	c.st.k[d] = sh
+	return true
+}
+
+// array_from: an Array of the argc top entries (written to the frame for the helper, which copies them).
+@(private = "file")
+jit_array_from :: proc(c: ^Jc, argc: int) -> bool {
+	base := c.st.n - argc
+	if base < 0 {
+		j_fail(c, "an array of entries under the loop's stack")
+		return false
+	}
+	for d in base ..< c.st.n {
+		if c.st.t[d] == .M {
+			j_fail(c, "an array of entries under the loop's own")
+			return false
+		}
+		j_store_entry(c, d, P_STACK, u32(d * size_of(Value)), true, true)
+	}
+	j_new(c, .array, base, argc)
+	c.st.n = base
+	d := j_push(c, .P)
+	j_lset(c, j_si(c, d))
+	return true
+}
+
+// define_field of an object the code made (an object literal's field): the property appended, its shape known, no
+// guard; a key defined again with the same attributes stored.
+@(private = "file")
+jit_define_field :: proc(c: ^Jc, a: Atom, pc: int) -> bool {
+	n := c.st.n
+	o := n - 2
+	sh := c.st.k[o]
+	if _, is_index := atom_index(c.rt, a); is_index || c.st.t[o] != .P || sh == nil || sh.lazy != nil || sh.is_dict {
+		j_fail(c, "a field of an object the JIT did not make")
+		return false
+	}
+	obj := j_si(c, o)
+	next := sh
+	j_fits_value(c, n - 1, pc)
+	if i := shape_lookup(sh, a); i >= 0 {
+		if sh.props[i].kind != .data || sh.props[i].flags != CWE {
+			j_fail(c, "a field defined again with other attributes")
+			return false
+		}
+		j_slot_of(c, nil, obj, i)
+	} else {
+		next = shape_transition(c.rt, sh, a, CWE, .data)
+		if next.is_dict {
+			j_fail(c, "an object literal of a dictionary's size")
+			return false
+		}
+		if !j_keep(c, next) {return false}
+		j_add_slot(c, obj, next, len(next.props) - 1)
+	}
+	j_store_entry(c, n - 1, I_T0, 0)
+	c.st.n -= 1
+	c.st.k[o] = next
+	return true
+}
+
 // The site of pc, with the shape of the object the translation sees there (shadow) added.
 @(private = "file")
 j_prop_site :: proc(c: ^Jc, pc: int, shadow: Value) -> ^Jit_Site {
@@ -1588,7 +1805,7 @@ j_prop_site :: proc(c: ^Jc, pc: int, shadow: Value) -> ^Jit_Site {
 		j_fail(c, "too many sites")
 		return nil
 	}
-	if shadow.tag == .object {jit_site_add_shape(site, as_obj(shadow))}
+	if shadow.tag == .object {jit_site_add_shape(site, as_obj(shadow), j_shadow_shape(c, as_obj(shadow)))}
 	return site
 }
 
@@ -1641,11 +1858,41 @@ jit_put_field :: proc(c: ^Jc, a: Atom, pc: int) -> bool {
 	site := j_prop_site(c, pc, c.st.v[n - 2])
 	if site == nil {return false}
 	j_as_obj(c, n - 2, pc)
+	j_fits_value(c, n - 1, pc)
 	obj, ok := j_obj_local(c, n - 2)
 	if !ok || !j_prop_addr(c, obj, site, a, true, pc) {return false}
-	if !j_store_value(c, n - 1, pc) {return false}
+	j_store_entry(c, n - 1, I_T0, 0)
+	if shadow := c.st.v[n - 2]; shadow.tag == .object {
+		// (the object the translation sees takes the property: a write that follows is compiled for its next shape)
+		sh := j_shadow_shape(c, as_obj(shadow))
+		for t in sh.transitions {
+			if t.atom == a && t.flags == CWE && t.kind == .data {j_shadow_took(c, as_obj(shadow), t.to)}
+		}
+	}
 	c.st.n -= 2
 	return true
+}
+
+// The shape the translation knows the object it sees takes by then (an object whose properties it appended: a
+// constructor's `this`), else its own.
+@(private = "file")
+j_shadow_shape :: proc(c: ^Jc, o: ^Object) -> ^Shape {
+	for i in 0 ..< c.n_shadows {if c.shadows[i].o == o {return c.shadows[i].sh}}
+	return o.shape
+}
+
+@(private = "file")
+j_shadow_took :: proc(c: ^Jc, o: ^Object, sh: ^Shape) {
+	for i in 0 ..< c.n_shadows {
+		if c.shadows[i].o == o {
+			c.shadows[i].sh = sh
+			return
+		}
+	}
+	if c.n_shadows < len(c.shadows) {
+		c.shadows[c.n_shadows] = {o, sh}
+		c.n_shadows += 1
+	}
 }
 
 // get_var / put_var of a global the realm holds as a data property: in its lexical declarations (whose shape is
@@ -2140,7 +2387,7 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 	}
 	next := pc + int(opcode_info[op].size)
 	tail := op == .tail_call || op == .tail_call_method
-	fv := c.st.v[n - argc - 1]
+	fv := c.st.v[n - argc - (kind == .construct ? 2 : 1)]
 	if fv.tag == .object && kind != .construct && !tail {
 		fo := as_obj(fv)
 		if mi := math_intrinsic_of(fo); mi != .none && j_math(c, fo, mi, argc, low, pc) {return true}
@@ -2154,13 +2401,14 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 	}
 	// the helper: a call of a native function, or of a function compiled whole (through the helper, a call of bytecode
 	// that is interpreted costs more than the interpreter's own); a callee being inlined calls nothing that has effects
-	if c.inl_depth > 0 || fv.tag != .object || (as_obj(fv).class == .bytecode_function && (kind == .construct || !jit_fn_compilable(as_obj(fv).data.(Func_Data).bc))) {
+	bytecode_callee := fv.tag == .object && as_obj(fv).class == .bytecode_function
+	if c.inl_depth > 0 || fv.tag != .object || (bytecode_callee && !(kind == .construct ? j_construct_ok(as_obj(fv)) : jit_fn_compilable(as_obj(fv).data.(Func_Data).bc))) {
 		j_fail(c, "a call the JIT does not make (a function it does not inline or compile, or not known)")
 		return false
 	}
 	j_flush_objs(c)
 	j_materialize(c, true)
-	direct := !tail && kind != .construct && j_direct_ok(c, as_obj(fv))
+	direct := !tail && j_direct_ok(c, as_obj(fv))
 	if direct {
 		// block $result: the direct call, which leaves through its end with the result in the frame; else block $slow
 		// (one of its checks failed): the helper's call
@@ -2258,6 +2506,14 @@ j_direct_ok :: proc(c: ^Jc, fo: ^Object) -> bool {
 	return j_keep(c, nb)
 }
 
+// Can a construction of fo be made by compiled code: a constructor that may be compiled whole, not a derived class's (its
+// `this` is super()'s).
+@(private = "file")
+j_construct_ok :: proc(fo: ^Object) -> bool {
+	nb := fo.data.(Func_Data).bc
+	return fo.is_constructor && !nb.is_derived_class_ctor && jit_fn_compilable(nb)
+}
+
 // i32 stores at the address in local `base`: a constant, or a local's value
 @(private = "file")
 j_st32 :: proc(c: ^Jc, base: u32, off: u32, v: i32) {
@@ -2286,6 +2542,19 @@ j_st_value :: proc(c: ^Jc, base: u32, off: u32, tag: Tag, payload: i64) {
 	j_mem(c, W_I64_STORE, 3, off + 8)
 }
 
+// the object whose address is in local `obj` as a Value at the address in local `base`
+@(private = "file")
+j_st_object :: proc(c: ^Jc, base: u32, off: u32, obj: u32) {
+	j_lget(c, base)
+	j_op(c, W_I64_CONST)
+	w_sleb(&c.out, i64(Tag.object))
+	j_mem(c, W_I64_STORE, 3, off)
+	j_lget(c, base)
+	j_lget(c, obj)
+	j_op(c, W_I64_EXTEND_I32_U)
+	j_mem(c, W_I64_STORE, 3, off + 8)
+}
+
 // a Value copied from (local `from` + off_from) to (local `to` + off_to)
 @(private = "file")
 j_copy_value :: proc(c: ^Jc, from: u32, off_from: u32, to: u32, off_to: u32) {
@@ -2305,7 +2574,8 @@ j_ld32 :: proc(c: ^Jc, addr: uintptr, off: u32) {
 }
 
 // The call at pc of fo (argc arguments materialized on the frame's stack, its result to go at `low`) made directly
-// when the callee is a function of fo's bytecode (any of its closures: T5), compiled and holding no arrays, and there
+// when the callee is a function of fo's bytecode (any of its closures: T5), compiled and holding no arrays (and for a
+// construction new.target is the callee, the object made by the helper: T6), and there
 // is room: its frame pushed on the value stack as frame_push pushes it (so that the collector, a deopt, an exception
 // see an interpreter's frame), its code called through the engine's table, its frame popped as frame_pop pops it. Emitted inside block $slow, which any check that
 // fails leaves (the helper then makes the call), itself in block $result, which the call leaves with the result in the
@@ -2319,7 +2589,9 @@ j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: 
 	abl := max(argc, int(nb.arg_count))
 	stack0 := u32(abl + int(nb.var_count)) * size_of(Value)
 	total := abl + int(nb.var_count) + int(nb.stack_size)   // (no closure cells: no room for their pointers)
-	callee := u32((n - argc - 1) * size_of(Value))
+	construct := kind == .construct
+	slot := n - argc - (construct ? 2 : 1)   // the callee's (a construction's new.target after it)
+	callee := u32(slot * size_of(Value))
 	// the callee is a function of nb, its code compiled and holding no arrays
 	j_lget(c, P_STACK)
 	j_mem(c, W_I32_LOAD8_U, 0, callee)
@@ -2347,6 +2619,19 @@ j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: 
 	j_op(c, W_I32_OR)
 	j_ld32(c, info, INFO_FN_N_ARR)
 	j_op(c, W_I32_OR)
+	if construct {
+		// new F(): new.target is the callee
+		j_lget(c, P_STACK)
+		j_mem(c, W_I32_LOAD8_U, 0, callee + size_of(Value))
+		j_i32(c, i32(Tag.object))
+		j_op(c, W_I32_NE)
+		j_op(c, W_I32_OR)
+		j_lget(c, P_STACK)
+		j_mem(c, W_I32_LOAD, 2, callee + size_of(Value) + 8)
+		j_lget(c, I_T5)
+		j_op(c, W_I32_NE)
+		j_op(c, W_I32_OR)
+	}
 	// room: on the host stack, in the call depth, in the value stack's segment (T3 its index, T2 its address, T4 its
 	// top)
 	j_ld32(c, rtp, RT_JIT_DEPTH)
@@ -2382,6 +2667,22 @@ j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: 
 	j_op(c, W_I32_GT_U)
 	j_op(c, W_BR_IF)
 	w_uleb(&c.out, 0)
+	if construct {
+		// the object the construction makes (T6); it threw: the interpreter makes the construction again, with a
+		// constructor jit_new made one that throws
+		j_new(c, .ctor, slot, 0)
+		j_op(c, W_LOCAL_TEE)
+		w_uleb(&c.out, I_T6)
+		j_op(c, W_I32_EQZ)
+		j_op(c, W_IF)
+		j_op(c, W_VOID)
+		c.nest += 1
+		c.st.n = low
+		j_stub(c, pc, .throw, 0, n)
+		c.st.n = n
+		j_op(c, W_END)
+		c.nest -= 1
+	}
 	// the block: T1 its values, T0 the frame after them; the segment's top moves past it
 	j_lget(c, I_T2)
 	j_mem(c, W_I32_LOAD, 2, SEG_DATA)
@@ -2406,21 +2707,21 @@ j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: 
 	j_st32l(c, I_T0, FRAME_PREV, P_FRAME)
 	j_st32(c, I_T0, FRAME_CTX, i32(uintptr(c.ctx)))
 	j_st32(c, I_T0, FRAME_CALLER_CTX, i32(uintptr(c.ctx)))
-	j_lget(c, I_T0)
-	j_op(c, W_I64_CONST)
-	w_sleb(&c.out, i64(Tag.object))
-	j_mem(c, W_I64_STORE, 3, FRAME_FUNC)
-	j_lget(c, I_T0)
-	j_lget(c, I_T5)
-	j_op(c, W_I64_EXTEND_I32_U)
-	j_mem(c, W_I64_STORE, 3, FRAME_FUNC + 8)
+	j_st_object(c, I_T0, FRAME_FUNC, I_T5)
 	j_st32(c, I_T0, FRAME_BC, i32(uintptr(nb)))
-	if kind == .method {
+	switch kind {
+	case .method:
 		j_copy_value(c, P_STACK, u32(low * size_of(Value)), I_T0, FRAME_THIS)
-	} else {
+	case .construct:
+		j_st_object(c, I_T0, FRAME_THIS, I_T6)
+	case .call:
 		j_st_value(c, I_T0, FRAME_THIS, .undefined, 0)
 	}
-	j_st_value(c, I_T0, FRAME_NEW_TARGET, .undefined, 0)
+	if construct {
+		j_copy_value(c, P_STACK, callee + size_of(Value), I_T0, FRAME_NEW_TARGET)
+	} else {
+		j_st_value(c, I_T0, FRAME_NEW_TARGET, .undefined, 0)
+	}
 	j_st32l(c, I_T0, FRAME_ARGS, I_T1)
 	j_st32(c, I_T0, FRAME_ARG_BUF_LEN, i32(abl))
 	j_st32(c, I_T0, FRAME_ARGC, i32(argc))
@@ -2509,7 +2810,7 @@ j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: 
 	j_op(c, W_I64_SHR_U)
 	j_op(c, W_I32_WRAP_I64)
 	j_lget(c, I_T3)
-	j_i32(c, i32(n - argc - 1))
+	j_i32(c, i32(slot))
 	j_op(c, W_CALL)
 	w_uleb(&c.out, u64(Jit_Helper.finish))
 	j_lset(c, I_T2)
@@ -2562,7 +2863,21 @@ j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: 
 	j_i32(c, i32(stack0))
 	j_op(c, W_I32_ADD)
 	j_lset(c, I_T1)
-	j_copy_value(c, I_T1, 0, P_STACK, u32(low * size_of(Value)))
+	if construct {
+		// (a construction's result: the callee's when it is an object, else the object made)
+		j_lget(c, I_T1)
+		j_mem(c, W_I32_LOAD8_U, 0, 0)
+		j_i32(c, i32(Tag.object))
+		j_op(c, W_I32_EQ)
+		j_op(c, W_IF)
+		j_op(c, W_VOID)
+		j_copy_value(c, I_T1, 0, P_STACK, u32(low * size_of(Value)))
+		j_op(c, W_ELSE)
+		j_st_object(c, P_STACK, u32(low * size_of(Value)), I_T6)
+		j_op(c, W_END)
+	} else {
+		j_copy_value(c, I_T1, 0, P_STACK, u32(low * size_of(Value)))
+	}
 	j_op(c, W_BR)
 	w_uleb(&c.out, 1)
 }
@@ -2868,6 +3183,8 @@ j_join :: proc(c: ^Jc, j: int) -> bool {
 			c.st.t[d] = .F
 		}
 	}
+	// (the shapes the code knows of the objects it made are not followed across a join)
+	for d in 0 ..< c.st.n {c.st.k[d] = nil}
 	if !c.lvalid[j] {
 		c.lstate[j] = c.st
 		c.lvalid[j] = true
@@ -3259,6 +3576,9 @@ jit_translate :: proc(c: ^Jc, f: ^Frame) -> Jit_Outcome {
 		#partial switch op {
 		case .call0, .call1, .call2, .call3, .call, .call_method, .call_constructor, .tail_call, .tail_call_method:
 			c.calls = true
+			c.helpers = true
+		case .object, .array_from, .define_field, .put_field:
+			c.helpers = true
 		}
 		pc += size
 	}
@@ -3326,6 +3646,7 @@ jit_translate :: proc(c: ^Jc, f: ^Frame) -> Jit_Outcome {
 		}
 	}
 	c.fast_bit = jit_object_bit(.fast_array)
+	c.extensible_bit = jit_object_bit(.extensible)
 	c.htmldda_bit = jit_object_bit(.is_htmldda)
 	// entry stack types from the frame
 	c.st.n = c.entry_sp
@@ -3386,15 +3707,16 @@ jit_emit :: proc(c: ^Jc, f: ^Frame) {
 		w_u8(&sec, W_I32)
 	}
 	w_section(&m, 1, &sec)
-	// imports: the engine's memory, and when the region calls its helpers (function indices from 0) and its table
-	n_imports := c.calls ? len(Jit_Helper) : 0
-	w_uleb(&sec, u64(1 + n_imports + (c.calls ? 1 : 0)))
+	// imports: the engine's memory, and when the region calls or makes objects its helpers (function indices from 0) and
+	// its table
+	n_imports := c.helpers ? len(Jit_Helper) : 0
+	w_uleb(&sec, u64(1 + n_imports + (c.helpers ? 1 : 0)))
 	w_name(&sec, "e")
 	w_name(&sec, "memory")
 	w_u8(&sec, 0x02)
 	w_u8(&sec, 0x00)
 	w_uleb(&sec, 0)
-	if c.calls {
+	if c.helpers {
 		for h in Jit_Helper {
 			w_name(&sec, "e")
 			w_name(&sec, helpers[h].name)
@@ -3797,7 +4119,7 @@ jit_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
 	     .typeof_is_undefined, .typeof_is_function, .get_field, .get_field2, .put_field, .put_var, .strict_eq, .strict_neq,
 	     .eq, .neq, .lnot, .if_true, .if_false, .if_true8, .if_false8, .op_return, .put_var_ref, .put_var_ref0, .put_var_ref1, .put_var_ref2,
 	     .put_var_ref3, .put_var_ref_check, .set_var_ref, .set_var_ref0, .set_var_ref1, .set_var_ref2, .set_var_ref3, .call0,
-	     .call1, .call2, .call3, .call, .tail_call, .call_method, .tail_call_method, .call_constructor:
+	     .call1, .call2, .call3, .call, .tail_call, .call_method, .tail_call_method, .call_constructor, .define_field, .array_from:
 	case:
 		for i in max(0, n - int(opcode_info[op].n_pop)) ..< n {
 			t := c.st.t[i]
@@ -3818,6 +4140,12 @@ jit_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
 		return jit_get_field(c, op, Atom(jr_u32(code, pc + 1)), pc)
 	case .put_field:
 		return jit_put_field(c, Atom(jr_u32(code, pc + 1)), pc)
+	case .object:
+		return jit_object(c)
+	case .array_from:
+		return jit_array_from(c, jr_u16(code, pc + 1))
+	case .define_field:
+		return jit_define_field(c, Atom(jr_u32(code, pc + 1)), pc)
 	case .get_var, .get_var_undef, .put_var:
 		return jit_global(c, op, Atom(jr_u32(code, pc + 1)), pc)
 	case .get_var_ref, .get_var_ref0, .get_var_ref1, .get_var_ref2, .get_var_ref3, .get_var_ref_check, .put_var_ref, .put_var_ref0,
@@ -3886,6 +4214,7 @@ jit_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
 			d := j_push(c, t)
 			c.st.a[d] = c.st.a[src]
 			c.st.v[d] = c.st.v[src]
+			c.st.k[d] = c.st.k[src]
 			j_copy(c, src, d, t)
 		}
 	case .get_loc0_loc1:
@@ -3943,6 +4272,7 @@ jit_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
 		d := j_push(c, t)
 		c.st.a[d] = c.st.a[n - 1]
 		c.st.v[d] = c.st.v[n - 1]
+		c.st.k[d] = c.st.k[n - 1]
 		j_copy(c, n - 1, d, t)
 	// stack shuffles: the top entries become copies of some of the old ones (QuickJS's names: bottom to top)
 	case .nip: j_permute(c, n - 2, {1})
@@ -4246,6 +4576,7 @@ j_permute :: proc(c: ^Jc, base: int, src: []int) {
 		c.st.t[base + j] = t
 		c.st.a[base + j] = old.a[from]
 		c.st.v[base + j] = old.v[from]
+		c.st.k[base + j] = old.k[from]
 	}
 	c.st.n = base + m
 }

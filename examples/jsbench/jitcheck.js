@@ -306,6 +306,45 @@
   function grow(n) { return n === 0 ? [] : JSON.parse("[" + n + "]").concat(grow(n - 1)); }
   p("whole: collections during calls", grow(300).length, grow(300)[299]);
 
+  // objects made by compiled code: constructions (properties appended through the shapes' transitions, a constructor
+  // whose shape depends on its arguments, one that returns another object, a prototype replaced by a primitive, a
+  // setter or a read-only property put on the prototype later, an object made non-extensible), object literals (keys
+  // defined again, values from calls, more fields than an object holds inline), array literals, all of it while the
+  // collector runs
+  function Pt3(x, y, z) { this.x = x; this.y = y; if (z !== undefined) { this.z = z; } }
+  function Other(v) { this.v = v; if (v === 7) { return { other: v }; } }
+  function mkPts(n) {
+    var s = 0, keep = [];
+    for (var i = 0; i < n; i++) {
+      var p = new Pt3(i, i & 3, (i & 7) === 0 ? i : undefined);
+      s += p.x + p.y + (p.z === undefined ? 0 : 1) + (new Other(i & 7).v === 7 ? 100 : 0);
+      if ((i & 255) === 0) { keep.push(p); }
+    }
+    return s + " " + keep.length + " " + keep[3].x + " " + Object.keys(keep[2]).join("");
+  }
+  p("objects: constructions", mkPts(RUN));
+  Pt3.prototype = 5; p("objects: a prototype that is not an object", mkPts(RUN), Object.getPrototypeOf(new Pt3(1, 2)) === Object.prototype);
+  Pt3.prototype = { hello: 1 };
+  Object.defineProperty(Pt3.prototype, "y", { set: function (v) { this.sety = v; } });
+  p("objects: a setter on the prototype", mkPts(RUN), new Pt3(1, 2).sety);
+  Object.defineProperty(Pt3.prototype, "x", { value: 0, writable: false });
+  try { p("objects: a read-only property on the prototype", mkPts(RUN)); } catch (e) { p("objects: a read-only property on the prototype", e.name); }
+  function Sealed(v) { this.a = v; if (v === 3) { Object.preventExtensions(this); } this.b = v; }
+  function mkSealed(n) { var s = 0; for (var i = 0; i < n; i++) { try { s += new Sealed(i & 3).b; } catch (e) { s += 1000; } } return s; }
+  p("objects: not extensible", mkSealed(RUN));
+  function lits(n) {
+    var s = 0, last;
+    for (var i = 0; i < n; i++) {
+      var o = { a: i, b: add2(i, 1), c: "x", a: i + 2, d: [i, i + 1], e: { f: i & 3 }, g: 1, h: 2, k: null };
+      s += o.a + o.b + o.d[1] + o.e.f + o.h;
+      last = o;
+    }
+    return s + " " + Object.keys(last).join("") + " " + last.a;
+  }
+  p("objects: literals", lits(RUN));
+  function arrs(n) { var s = 0, a; for (var i = 0; i < n; i++) { a = [i, i * 0.5, "s", null, [i]]; s += a.length + a[0] + a[4][0]; } return show(s) + " " + a[1]; }
+  p("objects: array literals", arrs(RUN));
+
   // switch, strings, generators (not compiled) next to compiled code
   function sw(x) { switch (x) { case 1: return "one"; case "1": return "string"; default: return "other"; } }
   p("switch", sw(1), sw("1"), sw(2));

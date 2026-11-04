@@ -46,6 +46,19 @@ when wj.WJ_JSRT {
 		return jsrt.jit_call_finish(f, lo, hi, index, int(slot)) ? 1 : 0
 	}
 
+	@(export, link_name = "wj_jit_new")
+	wj_jit_new :: proc "c" (f: ^jsrt.Frame, kind: i32, a: i32, argc: i32) -> i32 {
+		context = jit_context
+		return i32(uintptr(jsrt.jit_new(f, jsrt.Jit_New_Kind(kind), int(a), int(argc))))
+	}
+
+	@(export, link_name = "wj_jit_reserve")
+	wj_jit_reserve :: proc "c" (f: ^jsrt.Frame, o: ^jsrt.Object, n: i32) -> i32 {
+		context = jit_context
+		jsrt.jit_reserve(f, o, int(n))
+		return 0
+	}
+
 	@(export, link_name = "wj_jit_array")
 	wj_jit_array :: proc "c" (f: ^jsrt.Frame, slot: i32, kind: i32, out: ^jsrt.Jit_Arr) -> i32 {
 		context = jit_context

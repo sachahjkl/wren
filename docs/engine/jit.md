@@ -63,8 +63,30 @@ site takes its shape or a wider type, and the loop is translated again (`JIT_MAX
 nothing to learn (a shape the site does not take inline: an accessor, an exotic object, a frozen property for a write;
 more shapes than the site takes) is a deopt.
 
+A write of a property the object does not have appends it as `[[Set]]` does, when the site's shape is an ordinary
+object's that is not a dictionary and the property is nowhere on its prototype chain: the shape's transition (made at
+translation if it was not, `shape_transition`) is taken, the prototypes' shapes guarded, the object checked to be
+ordinary and extensible, its slots grown by a helper (`wj_jit_reserve`) when they are full. The translation follows the
+shapes the object it sees takes (`Jc.shadows`: a constructor's `this.x = x; this.y = y` is compiled for the shape after
+`x` at the second write).
+
 The shapes and objects the code compares against are kept alive by the loop (`Jit_Loop.keep` and the sites' shapes,
 marked by the collector through `Function_Bytecode.jit`): an address the code holds is never another shape's.
+
+## Objects made by compiled code
+
+Compiled code makes objects through the helper `wj_jit_new` (`jit_new`): a plain object (`object`, the start of an
+object literal), an Array of entries (`array_from`, an array literal), the object a construction makes
+(`create_from_ctor`). The allocator and the collector's contract are the engine's own: allocation never collects, a
+collection runs only at a safe point, and the compiled code reaches one only through a call (whose helper writes the
+operand stack and the objects held in locals to the frame first) or an exit; the helper drops the temporary roots of
+the allocation (`temp_roots` back to the frame's height), the object being in the code's hands until then. An object
+literal's fields (`define_field`) need no guard: the translation knows the shape of the object it made until the next
+join (`Jit_State.k`), and appends each field through the transition, its slots grown when full.
+
+A construction `new F(...)` of a constructor that can be compiled whole (not a derived class's) is a direct call
+(below): the object made by the helper is the callee's `this`, new.target the constructor, the result the callee's
+when it returns an object, else the object.
 
 ## Calls
 
