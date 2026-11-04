@@ -100,7 +100,8 @@ visit_link :: proc(a: Tag_Attr, data: rawptr) {
 	c := (^Link_Check)(data)
 	href := a.value
 	if href == "" { return }
-	if is_external(href) || strings.has_prefix(href, "data:") || strings.has_prefix(href, "javascript:") { return }
+	// wren-https:, wren-http: and wren-about: are the schemes that open a link in Wren (docs/desktop-integration.md): not files of the site
+	if is_external(href) || strings.has_prefix(href, "data:") || strings.has_prefix(href, "javascript:") || strings.has_prefix(href, "wren-") { return }
 	if strings.has_prefix(href, "/") {
 		append(c.dead, fmt.aprintf("%s: %s starts with / and leaves the site (it lives under /wren/): make it relative", c.page.rel, href))
 		return
