@@ -513,7 +513,6 @@ wjr_Window_get_document :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> 
 
 // Is `doc` a page's document (the realm's, or one of another document it reaches), not a document of its own (createHTMLDocument's,
 // DOMParser's)? For another page's, the next import acts on it (wj_doc_target): this comes right before it.
-@(private = "file")
 is_page_document :: proc(doc: api_decl.Document) -> bool {
 	if doc == page_document() { return true }
 	if !wj.wj_is_foreign(u64(doc)) { return false }

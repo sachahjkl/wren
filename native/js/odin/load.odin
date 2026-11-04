@@ -10,6 +10,8 @@
 //   * javascript: URLs (wj_eval_javascript_url): the script runs, a string result replaces the document.
 package odin_glue
 
+import "../odin_abi/api_decl"
+import "../odin/jsb"
 import "../odin/wj"
 
 @(private = "file") _if_document := i32(-2)
@@ -37,6 +39,33 @@ wj_load_init :: proc "c" () -> i32 {
 
 // ---- document.write / writeln / open / close ----
 
+// A document of its own (DOMParser's, createHTMLDocument's, a response's): the stream of a page's document is not its.
+@(private = "file")
+own_document :: proc "contextless" (document: wj.JSValue) -> bool {
+	context = jsb.glue_context()
+	return !is_page_document(api_decl.Document(wj.obj_of(document).handle))
+}
+
+// document.write on one: no parser stays open on it, each write's markup is its whole content, without declarative shadow roots.
+@(private = "file")
+own_document_write :: proc "contextless" (ctx: ^wj.Context, document: wj.JSValue, markup: string) -> wj.JSValue {
+	context = jsb.glue_context()
+	h: api_decl.Document
+	st := jsb.host(&h, api_decl.DOMParser_parseHTMLNode, wj.wr_DOMParser_parseHTMLNode, markup)
+	parsed := node_or_throw(ctx, h, st, "Document.write")
+	if wj.is_exception(parsed) { return parsed }
+	defer wj.JS_FreeValue(ctx, parsed)
+	root := wj.JS_GetPropertyStr(ctx, parsed, "documentElement")
+	defer wj.JS_FreeValue(ctx, root)
+	adopted := wj.invoke(ctx, document, "adoptNode", {root})
+	if wj.is_exception(adopted) { return adopted }
+	defer wj.JS_FreeValue(ctx, adopted)
+	r := wj.invoke(ctx, document, "replaceChildren", {adopted})
+	if wj.is_exception(r) { return r }
+	wj.JS_FreeValue(ctx, r)
+	return wj.UNDEFINED
+}
+
 @(private = "file")
 write_markup :: proc "contextless" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, newline: bool) -> wj.JSValue {
 	if wj.wj_this(ctx, this_val, if_document()) == nil { return wj.EXCEPTION }
@@ -59,6 +88,11 @@ write_markup :: proc "contextless" (ctx: ^wj.Context, this_val: wj.JSValue, argc
 		wj.JS_FreeCString(ctx, s)
 	}
 	if newline { buf[total] = '\n'; total += 1 }
+	if own_document(this_val) {
+		r := own_document_write(ctx, this_val, string(buf[:total]))
+		wj.libc_free(buf)
+		return r
+	}
 	if !wj.wj_doc_target(wj.obj_of(this_val).handle) { wj.libc_free(buf); return wj.wj_throw_gone(ctx) }
 	st := wj.wr_Document_writeMarkup(buf, u32(total))
 	wj.libc_free(buf)
@@ -89,6 +123,12 @@ wjr_Document_open :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32
 		r := wj.JS_Call(ctx, wo, wj.wj_the_realm.global, 3, argv)
 		wj.JS_FreeValue(ctx, wo)
 		return r
+	}
+	if own_document(this_val) {
+		r := wj.invoke(ctx, this_val, "replaceChildren", {})
+		if wj.is_exception(r) { return r }
+		wj.JS_FreeValue(ctx, r)
+		return wj.JS_DupValue(ctx, this_val)
 	}
 	if !wj.wj_doc_target(wj.obj_of(this_val).handle) { return wj.wj_throw_gone(ctx) }
 	st := wj.wr_Document_openStream()
@@ -131,6 +171,7 @@ wj_document_replaced :: proc "c" () {
 @(export, link_name = "wjr_Document_close")
 wjr_Document_close :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.wj_this(ctx, this_val, if_document()) == nil { return wj.EXCEPTION }
+	if own_document(this_val) { return wj.UNDEFINED }
 	if !wj.wj_doc_target(wj.obj_of(this_val).handle) { return wj.wj_throw_gone(ctx) }
 	st := wj.wr_Document_closeStream()
 	if st < 0 {

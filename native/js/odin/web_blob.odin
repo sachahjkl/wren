@@ -416,7 +416,7 @@ wjr_File_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSV
 @(export, link_name = "wjr_File_get_lastModified")
 wjr_File_get_lastModified :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	b := blob_this(ctx, this_val, .File)
-	return b != nil ? wj.new_float64(ctx, b.last_modified) : wj.EXCEPTION
+	return b != nil ? wj.new_float64(ctx, f64(i64(b.last_modified))) : wj.EXCEPTION   // (whole milliseconds, as Date.now())
 }
 
 @(export, link_name = "wjr_File_get_webkitRelativePath")
