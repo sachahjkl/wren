@@ -65,6 +65,7 @@
 <li><a href="#what-changed-round-12-the-script-stage-of-dom-heavy-pages-the-crossings-and-the-interpreters-exits">What changed, round 12: the script stage of DOM-heavy pages, the crossings and the interpreter's exits</a></li>
 <li><a href="#what-changed-round-13-the-script-stage-of-dom-heavy-pages-the-collection">What changed, round 13: the script stage of DOM-heavy pages, the collection</a></li>
 <li><a href="#what-changed-round-14-the-static-c-runtime-measured-what-backdrop-cost-every-element">What changed, round 14: the static C runtime, measured; what ::backdrop cost every element</a></li>
+<li><a href="#what-changed-round-15-the-interpreters-hot-loop-calls-nothing-real-pages-loaded-from-the-navigation">What changed, round 15: the interpreter's hot loop calls nothing; real pages loaded from the navigation</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
@@ -231,6 +232,9 @@ box's border by the scans 0.13 -&gt; 0.07 ms.</p>
 <p>After round 13 (5 runs of each build, interleaved; median, range in brackets): the script stage 12.15 (12.04-12.27) -&gt;
 11.39 (11.31-11.60) ms a frame p50, 164.6 (160.4-167.8) -&gt; 169.0 (166.2-169.4) frames/s, CPU work per frame 17.4
 (16.9-17.7) -&gt; 16.8 (16.7-17.0) ms; in jspage the collection the DOM asks for 3.57 -&gt; 2.89 ms, <code>build()</code> the same.</p>
+<p>After round 15 (5 runs of each build, interleaved; median, range in brackets): the script stage 11.97 (11.79-12.33) -&gt;
+11.81 (11.63-22.41) ms a frame p50, CPU work per frame p50 17.94 (17.91-18.45) -&gt; 17.74 (17.53-36.53) ms; the
+interpreter alone (<code>micro.js</code>) 14 % faster, but nodes10k's script is the DOM's calls more than the interpreter's loop.</p>
 <p><strong>Bottleneck:</strong> the script stage (the interpreter and the wrappers it makes, the browser's insertions and the trees
 the collection frees), then layout.</p>
 <h3 id="3-scrolling-a-long-page-p10k-3-wheel-notches-every-16-ms"><a class="anchor" href="#3-scrolling-a-long-page-p10k-3-wheel-notches-every-16-ms" aria-hidden="true">#</a>3. Scrolling a long page (p10k, 3 wheel notches every 16 ms)</h3>
@@ -1260,6 +1264,101 @@ memory for that.</li>
 </table></div>
 <p>nodes10k's frames moved by a third within each build in these runs (the first round's ranges are narrower), and the
 pages that do not restyle whole are the same within their noise.</p>
+<h2 id="what-changed-round-15-the-interpreters-hot-loop-calls-nothing-real-pages-loaded-from-the-navigation"><a class="anchor" href="#what-changed-round-15-the-interpreters-hot-loop-calls-nothing-real-pages-loaded-from-the-navigation" aria-hidden="true">#</a>What changed, round 15: the interpreter's hot loop calls nothing; real pages loaded from the navigation</h2>
+<p>Items 9 and 1 of round 14's list, and pages of the site measured from their navigation. The engine's changes were timed
+with <code>jsengine run -image &lt;engine&gt;</code> on <code>examples/jsbench/micro.js</code> and <code>macro.js</code> (every engine image of the round in turn
+in one jsengine, 4 rounds; another agent built and ran tests on the machine all along, so single runs moved by up to a
+factor of 2: the best run of each case is the figure, the median of the runs said the same within a few per cent), and in
+<code>jspage -image</code> on a timed copy of nodes10k (<code>build()</code> a frame over 400 frames, 5 rounds: its p50 was bimodal with the
+machine's load, 8.6 or 14 to 20 ms in every build, so its p10 is the figure); then the browser (5 runs of each build,
+interleaved).</p>
+<ol>
+<li><strong>The hot loop calls nothing</strong> (<code>interp_hot</code>, <code>src/engine/jsrt/interp_hot.odin</code>). What round 13 saw, looked at in the
+code LLVM makes for wasm32 (<code>odin build -build-mode:asm</code>): <code>interp_hot</code> was a procedure of its own with 36 locals and
+calls in its handlers (<code>call_native</code> three times, <code>frame_push</code>, <code>close_var_refs</code> and the dynamic array's resize of an
+inlined <code>frame_pop</code>, <code>atom_to_value</code>, <code>host_exotic_of</code>, and <code>shape_realize</code> from each of the seven inlined
+<code>shape_find</code>). Wasmtime compiles Wasm calls with a convention that saves no register across them, so <code>ip</code>, <code>s</code> and the
+frame's registers, live across those calls in some handlers, were split or kept in stack slots wherever the register
+allocator chose, and a change elsewhere in the procedure moved that choice (round 13's bit test). Now every handler
+that needs a call (call instructions, returns, getters, a lazy shape, an atom's number made a string) is a procedure
+of its own, never inlined (<code>hot_call</code>, <code>hot_return</code>, <code>hot_get_field</code>, <code>hot_get_var_getter</code>, <code>hot_push_atom</code>), that
+reads and writes the loop's registers in a <code>Hot</code> in memory: written before the call, read back after it, so no value
+of the loop lives across one. The loop's lookups read realized shapes only (<code>shape_lookup</code>, <code>shape_find</code> without its
+realization; a lazy shape goes to <code>hot_get_field</code> or to the full dispatch). The listing of the loop now has calls only
+to those procedures and to the bounds checks' traps, which do not return. A loop that calls nothing LLVM inlined into
+<code>interp_run</code> of its own accord (the full dispatch and the loop then share pc and sp without a call); it is now
+<code>#force_inline</code>, so that does not depend on its size. Built as a procedure of its own (<code>#force_no_inline</code>) the same
+loop was 8 % slower on <code>micro.js</code> than inlined (0.875 against 0.801 of the base, same runs).</li>
+<li><strong>The prototype walk without the host class's hooks, again</strong> (<code>Object.host_exotic</code>, <code>src/engine/jsrt/object.odin</code>, set by
+<code>host_object_new</code>: the class has exotic hooks or was not defined when the object was made). Round 13's change, which
+then slowed <code>micro.js</code> 12 %: on top of 1, the loop walks a node wrapper's chain to the DOM attribute's getter itself
+(without it, the loop handed every lookup that met a host object to <code>hot_get_field</code>, <code>build()</code> 8.51 -&gt; 8.81 ms p10);
+with it, the int loop that reads no property is 0.74 of the base's time against 0.76 without the bit (best runs, two
+series of the same hour), not slower.</li>
+</ol>
+<div class="table-box"><table>
+<thead><tr><th></th><th>before</th><th>after</th></tr></thead>
+<tbody>
+<tr><td><code>micro.js</code>, geometric mean of the 20 cases (best run of each)</td><td>1</td><td>0.857</td></tr>
+<tr><td>... int loop, property get, <code>switch</code> on small ints</td><td>39.1, 68.3, 84.4 ns</td><td>30.5, 51.5, 63.9 ns</td></tr>
+<tr><td>... call of a small function, closure counter</td><td>83.5, 73.2 ns</td><td>79.0, 72.5 ns</td></tr>
+<tr><td><code>macro.js</code>, geometric mean of the 28 cases (best run of each)</td><td>1</td><td>0.913</td></tr>
+<tr><td>... destructuring, <code>Float64Array</code> fill + sum, string switch</td><td>694, 195, 134 ns</td><td>538, 141, 104 ns</td></tr>
+<tr><td>... closure creation + call, array map + filter + reduce (the two slower)</td><td>492, 349 ns</td><td>504, 364 ns</td></tr>
+<tr><td>nodes10k (jspage): <code>build()</code> p10</td><td>8.51 (8.42-8.80) ms</td><td>8.44 (8.31-8.75) ms (loop not inlined), 8.49 (8.28-8.66) ms (inlined)</td></tr>
+<tr><td>nodes10k: script (Animation) p50</td><td>11.97 (11.79-12.33) ms</td><td>11.81 (11.63-22.41) ms</td></tr>
+<tr><td>nodes10k: CPU work per frame p50, style stage, the window thread waiting on layout</td><td>17.94 (17.91-18.45), 1.66, 3.23 ms</td><td>17.74 (17.53-36.53), 1.63, 3.17 ms</td></tr>
+<tr><td><code>mutation</code>: CPU work per frame, mean</td><td>0.777 (0.723-0.810) ms</td><td>0.772 (0.737-0.927) ms</td></tr>
+<tr><td><code>mutation_class</code>: CPU work per frame, mean</td><td>1.52 (1.31-1.85) ms</td><td>1.32 (1.25-6.76) ms</td></tr>
+<tr><td><code>mutation_fullstyle</code>: CPU work per frame mean, style stage p50</td><td>2.97 (2.87-3.44), 0.755 ms</td><td>2.93 (2.82-4.70), 0.756 ms</td></tr>
+<tr><td>p10k_load: navigation to the first paint of the page</td><td>181.0 (177.8-200.0) ms</td><td>183.1 (180.4-228.8) ms</td></tr>
+<tr><td>p10k_scroll: CPU work per frame, mean</td><td>0.380 (0.355-0.402) ms</td><td>0.384 (0.370-0.499) ms</td></tr>
+</tbody>
+</table></div>
+<p>The checksums of both benchmarks are the same in every build. One run of the new build's nodes10k ran at half rate (the
+other agent's build): the upper ends of its ranges. nodes10k's script is the DOM's calls, the collection and the
+wrappers more than the loop: the loop's 15 to 25 % shows as 1 % there. <code>examples/site/modern-css.html</code> resized was not
+run this round (no DOM calls, nothing of the engine).</p>
+<ol>
+<li><p><strong>Real pages, loaded from the navigation</strong> (<code>wrentool bench perf</code>, the <code>Navigate</code> action: the page opened on about:blank,
+then navigated to, timed by its own Navigation and Paint Timing; scenarios <code>p10k_nav</code> and <code>nav_*</code>; the new build, 5
+runs each, median and range in ms from the navigation's start; CPU: the process's during the load until quiet,
+in ms). sacha.house was not measured: the bench's Wren keeps its connections on the machine
+(<code>network.loopback_only</code>).</p>
+<div class="table-box"><table>
+<thead><tr><th>page</th><th>response end</th><th>DOM interactive</th><th>first contentful paint</th><th>load</th><th>CPU</th></tr></thead>
+<tbody>
+<tr><td>p10k (611 KB, 10 020 elements)</td><td>4.3 (3.5-4.8)</td><td>49.9 (34.1-54.5)</td><td>114.6 (70.5-138.0)</td><td>50.0 (34.1-54.7)</td><td>797</td></tr>
+<tr><td><code>examples/site/text.html</code></td><td>2.9 (2.8-5.2)</td><td>3.6 (3.3-5.8)</td><td>43.1 (27.4-66.3)</td><td>3.7 (3.3-5.9)</td><td>656</td></tr>
+<tr><td><code>legacy-html.html</code></td><td>2.2 (2.2-2.7)</td><td>2.6 (2.5-3.1)</td><td>77.7 (77.3-82.2)</td><td>92.0 (91.6-96.5)</td><td>406</td></tr>
+<tr><td><code>shadow-dom.html</code></td><td>2.2 (1.9-2.5)</td><td>65.1 (57.3-67.6)</td><td>9.1 (8.6-11.3)</td><td>65.1 (57.3-67.6)</td><td>375</td></tr>
+<tr><td><code>js-dom.html</code></td><td>3.9 (3.1-6.2)</td><td>53.9 (44.5-64.2)</td><td>54.7 (45.3-65.6)</td><td>54.0 (44.6-64.3)</td><td>578</td></tr>
+<tr><td><code>modern-css.html</code>, <code>grid.html</code>, <code>layout.html</code>, <code>index.html</code></td><td>3.2 to 3.9</td><td>3.8 to 4.9</td><td>10.8 to 14.3</td><td>3.9 to 5.0</td><td>450 to 720</td></tr>
+<tr><td><code>style.html</code> (load 24 ms: its sheet), <code>forms.html</code>, <code>multicol.html</code>, <code>about.html</code></td><td>2.3 to 3.5</td><td>2.5 to 4.1</td><td>4.0 to 8.7</td><td>2.5 to 24.1</td><td>360 to 580</td></tr>
+</tbody>
+</table></div>
+<p>What the sampler (<code>-Sample</code>, <code>WREN_SAMPLE_STACK=1</code>) shows of the window thread in those loads, by cost:</p>
+<ul>
+<li>the first realm of the process (<code>js-dom.html</code>, <code>shadow-dom.html</code>: DOM interactive 54 and 65 ms for an inline
+script): the engine's compiled code read from the disk cache and its HMAC-SHA256 checked (<code>disk_load</code>,
+<code>sha256_transf_hw</code> 8 to 12 ms of samples, the file's reads 3 to 5), then its instantiation; once per process;</li>
+<li>the first paint of text (<code>text.html</code>: 27 to 66 ms after a load at 4 ms): the system's font machinery made on the
+window thread (<code>DWriteCreateFactory</code>, the color glyph formats of <code>platform_color_glyph</code>, a thread started by
+<code>color_enqueue</code>) and the paint's fresh memory (<code>NtAllocateVirtualMemory</code> in <code>Paint_Items</code>);</li>
+<li><code>legacy-html.html</code>: its first paint and load wait on a PNG's decode (<code>effects-photo.png</code>);</li>
+<li>p10k: the stages of section 1 (parse off the thread, then the first style and layout passes and the first paint:
+65 ms from DOM interactive to the first paint);</li>
+<li>not the page's: the bench's own <code>stats</code> calls walk the machine's process list for the thread count
+(<code>process_threads</code>, <code>CreateToolhelp32Snapshot</code>, 20 to 45 ms of the window thread each on this machine), outside the
+timed navigation but inside the CPU column.</li>
+</ul></li>
+<li><strong>The compile thread's engine instantiated with the image's digest</strong> (<code>compile_main</code>, <code>src/page/js_load_compile.odin</code>):
+it hashed the 7 MB image again (3.5 ms with the processor's SHA instructions, <code>wasm.digest</code>, best of 10) where the
+realms take the digest computed once for the process.</li>
+<li><strong>Measured, not kept</strong>: the loop as a procedure of its own (<code>#force_no_inline</code>, item 1); the loop without the host bit
+(item 2). Not done this round: the collection's prologue, finalizers and sweep, the insertion hooks and the journal
+(item 1 of the list), and layout's own code (item 2): the round's time went to the interpreter and to the pages.</li>
+</ol>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
@@ -1377,18 +1476,21 @@ hold nothing, a detached tree freed by its links); what is left of it is item 1 
 interpreter's code generation is item 9.</p>
 <p>After round 14. The static C runtime measured against the dynamic one: the same (round 14, item 1). Item 3 below no
 longer pays for <code>::backdrop</code> on every element (round 14, item 2); item 1 is unchanged.</p>
+<p>After round 15. Round 14's item 9 is done (round 15: the hot loop calls nothing and is inlined; <code>micro.js</code> 14 %
+faster, <code>macro.js</code> 9 %), and with it the prototype walk without the host class's hooks of item 1. Real pages loaded from
+the navigation are item 10 below.</p>
 <ol>
-<li><strong>The script stage of DOM-heavy pages, what is left</strong> (nodes10k: 11.4 ms of a 16.8 ms frame; the browser's side
-1.4 ms of it). In order of the engine's samples: the interpreter itself (<code>interp_hot</code> 17 %, <code>call_native</code> and the
-bridge 8 %; a DOM call costs 50 to 100 ns over the loop, a method found five shapes up its chain 20 ns more); the
+<li><strong>The script stage of DOM-heavy pages, what is left</strong> (nodes10k: 11.8 ms of a 17.7 ms frame; the browser's side
+1.4 ms of it). In order of the engine's samples: the interpreter itself (<code>interp_hot</code> 17 % before round 15's 15 to 25 %
+on the loop's own instructions, <code>call_native</code> and the bridge 8 %; a DOM call costs 50 to 100 ns over the loop); the
 collection the DOM asks for (2.9 ms every 2 frames: the browser's <code>Node_unpinAll</code>, the prologue's walk of every
 wrapper with <code>JS_IsUntouched</code> for each, the finalizers' chain of calls, the sweep's frees, <code>gc_drain</code>); the browser's
 insertions (0.5 ms a frame by the browser's sampler: the insertion hooks 29 %, the journal 23 %, <code>check_insert</code> 9 %);
 the browser's factories (<code>create_element</code>, <code>pool_insert_tagged</code> copying a <code>Node</code> by value, the pin, the interface);
 making the wrappers (6 %). Texts are still copied to the heap and freed one by one (<code>create_text</code>, about 0.1 ms a
 frame). Measured and left: a flag per interface for the unforgeable members of its chain (round 7); the finalizers'
-skipped calls, the pre-sweep walks in one, the prologue's walk inlined, <code>temp_reset</code> in place (round 12); the
-prototype walk without the host class's hooks, a gain on nodes10k lost to the whole interpreter (round 13, item 3).</li>
+skipped calls, the pre-sweep walks in one, the prologue's walk inlined, <code>temp_reset</code> in place (round 12); the hot
+loop as a procedure of its own (round 15: 8 % slower than inlined).</li>
 <li><strong>Layout of DOM-heavy pages: the steps' own code</strong> (nodes10k: the window thread waits 3.1 ms a frame, the page
 thread's full pass: tree 0.96, layout 1.07, finish 0.32, display 0.37, bands 0.13 ms). Round 10 found the records'
 layout no gain, round 11 took the image search, the cut of the flow and the display item's padding. What the profile
@@ -1416,10 +1518,16 @@ up now only for the first element of each kind of a family).</li>
 <li><strong>The job queues of the blocking pool, the image decoders, the script compiler and the caches</strong> (the table above):
 measured first (round 3: a lock-free queue lost to the loop's mutex); a worker's <code>ordered_remove(0)</code> is a cost of its own.</li>
 <li><strong>The profiler</strong>: correct the bias of samples taken in a system call.</li>
-<li><strong>The interpreter's speed, by its code generation</strong> (round 13, item 3): a test of one bit in place of a call in
-<code>hot_get_prop</code> made every case of <code>micro.js</code> 12 % slower, the int loop that reads no property 34 -&gt; 40 ns. Before the
-next change to the hot loop: find what moves (Cranelift's registers in <code>interp_run</code>, the size of the procedure,
-where its handlers land) and what keeps the loop's speed from depending on the code around it.</li>
+<li><strong>The interpreter, what is left after its loop</strong> (round 15): the full dispatch of <code>interp_run</code> for what the loop
+leaves (closures made, <code>arguments</code>, spreads, destructuring of iterables: the two cases of <code>macro.js</code> that did not gain
+are there), and native callbacks (<code>sort</code>, <code>forEach</code>: an <code>interp_run</code> activation each). A handler added to the loop
+must call nothing itself (<code>interp_hot.odin</code>'s header says how).</li>
+<li><strong>Pages loaded from the navigation</strong> (round 15, item 3; <code>wrentool bench perf -Only p10k_nav,nav_...</code>): the first
+realm of a process (the engine's compiled code read from the disk cache and its whole file hashed for the HMAC on the
+window thread, 10 to 15 ms, then instantiated: a page's first inline script waits 50 to 65 ms) could be read ahead,
+off the window thread, when the process starts; the first paint of text makes the system's font factory and color
+glyph tables on the window thread (<code>text.html</code>: first paint 27 to 66 ms after its load); a remote <code>stats</code> walks every
+process of the machine for its own thread count (20 to 45 ms).</li>
 </ol>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/testing/"><span>Previous</span><strong>How the tests run, and how to go fast</strong></a>
