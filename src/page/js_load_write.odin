@@ -4,12 +4,13 @@ package page
 // close, the result of a javascript: URL; and the scripting flag's effect on parsing (<noscript>).
 //
 // Written markup is parsed on its own (a document of its own), then its nodes are copied into the page's document as
-// lone nodes and spliced into the parser's reveal at its current position (js_load.odin): the parser attaches them
+// lone nodes and spliced into the parser's reveal at the insertion point (js_load.odin: its current position, or after
+// what the running script wrote before, which may wait behind a written external script): the parser attaches them
 // next, before the rest of the document, and runs their scripts; the inline ones, and any already there, before
 // document.write returns (a written external script stops the reveal until it arrived, as a parser-blocking script
 // does). Nodes of the written <head> go where the writing script is; those of the written <body> too, unless that
-// script is in <head>, then into <body>. Markup is taken a call at a time: a tag split across two writes is not joined
-// (the common uses write complete elements).
+// script is in <head>, then into <body>. Markup is taken a call at a time: a tag split across two writes is not joined,
+// nor does a written end tag close an element of the document's own markup (the common uses write complete elements).
 //
 // After the document was parsed, document.write opens it again (document.open: emptied, a "script-created" parser
 // that ends at document.close), unless it runs from an external script (ignored, as in browsers).
@@ -153,17 +154,22 @@ document_write :: proc(p: ^Page, markup: string) -> Api_Error {
 	items := markup_items(p, markup, parent, body_target, whole)
 	ps.revealing -= 1
 	if len(items) == 0 { return .None }
-	// spliced at the parser's position, then revealed now (a nested reveal: its scripts run before write returns)
-	inject_at(&ps.queue, ps.next, ..items)
+	// spliced at the insertion point (after what the script wrote before, which may wait behind a written external
+	// script), then revealed now (a nested reveal: its scripts run before write returns, writing in turn)
+	at := max(ps.insert, ps.next)
+	inject_at(&ps.queue, at, ..items)
+	queued := len(ps.queue)
 	saved_stop := ps.stop
-	ps.stop = ps.next + len(items)
+	ps.stop = at + len(items)
 	s.write_depth += 1
 	ps.nesting += 1
 	reveal_run(p)
 	if p.closed { return .None }
 	ps.nesting -= 1
 	s.write_depth -= 1
-	ps.stop = saved_stop >= 0 ? saved_stop + len(items) : -1
+	written := len(items) + len(ps.queue) - queued
+	ps.stop = saved_stop >= 0 ? saved_stop + written : -1
+	ps.insert = at + written
 	return .None
 }
 
@@ -180,6 +186,7 @@ document_open :: proc(p: ^Page) -> bool {
 	clear(&ps.queue)
 	ps.next = 0
 	ps.stop = -1
+	ps.insert = -1
 	ps.pending = nil
 	clear(&s.deferred)
 	// erase all event listeners and handlers of the document's tree and of its Window: the old document's
