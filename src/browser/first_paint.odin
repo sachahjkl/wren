@@ -183,6 +183,12 @@ hold_destroy :: proc(t: ^Tab) {
 	page_fonts_drop(&the_app.page_render.fonts, &t.hold)
 }
 
+// Whether the held frame still says what its page is. The page runs: a script that reads a computed style makes a pass of its own (js_dom_styled) with no layout to go with it,
+// and the records of the held display list are in the arena that pass emptied (a read of a freed record in background_has_url, imdb.com).
+hold_exact :: proc(h: ^Paint_Hold) -> bool {
+	return h.active && h.page != nil && h.layout.valid && h.layout.mutations == h.page.doc.mutations && h.page.styled != nil && h.layout.serial == h.page.styled.serial
+}
+
 // Paints what the tab shows while its page cannot paint: the held frame if it is still exact and not timed out, else
 // `fallback` as the canvas. Returns true when the held frame was painted.
 hold_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect, fallback: css.Color) -> bool {
@@ -190,7 +196,7 @@ hold_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect, fallback
 	if h.active && h.committed && shell_elapsed_ms(h.commit) >= app.scheme_ui.timeout_ms {
 		hold_release(app, t)
 	}
-	if !h.active || h.page == nil || !h.layout.valid || h.layout.mutations != h.page.doc.mutations {
+	if !hold_exact(h) {
 		draw.rect(dc, r, to_draw(h.active ? h.canvas : fallback))
 		return false
 	}
