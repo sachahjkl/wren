@@ -2176,6 +2176,11 @@ foreign _wr_wj_dom {
 	// CSSStyleRule.selectorText = selector, on the top-level rule numbered `rule_id` (CSSStyleSheet_ruleId): the
 	// rule's new cssText, "" when nothing changed (the rule is gone, not a style rule, or the selector is invalid).
 	@(link_name = "CSSStyleSheet_setRuleSelector") wr_CSSStyleSheet_setRuleSelector :: proc(sheet: u64, rule_id: u32, selector: [^]u8, selector_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	// The cssText of the top-level rule numbered `rule_id` as it is now ("" when it is gone).
+	@(link_name = "CSSStyleSheet_ruleTextOf") wr_CSSStyleSheet_ruleTextOf :: proc(sheet: u64, rule_id: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	// CSSStyleRule.style written: the top-level style rule numbered `rule_id` takes the declarations of `text` (nothing
+	// changes for a rule that is gone, is no style rule or holds nested rules).
+	@(link_name = "CSSStyleSheet_setRuleStyle") wr_CSSStyleSheet_setRuleStyle :: proc(sheet: u64, rule_id: u32, text: [^]u8, text_len: u32) ---
 	// insertRule(rule, index): Index_Size past the end, Syntax when `rule` is not one rule; the index.
 	@(link_name = "CSSStyleSheet_insertRuleAt") wr_CSSStyleSheet_insertRuleAt :: proc(sheet: u64, rule: [^]u8, rule_len: u32, index: u32, _ret: ^u32) -> i32 ---
 	// deleteRule(index): Index_Size past the end.

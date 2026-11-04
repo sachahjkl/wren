@@ -79,4 +79,7 @@ cssom_rule_selector_set :: proc(t: ^testing.T) {
 	testing.expect(t, !engine_sheet_set_selector(e, sh.id, id, "p..b"))
 	testing.expect(t, !engine_sheet_set_selector(e, sh.id, id + 1, "p"))
 	testing.expect_value(t, color_of(e, doc, "b"), [4]f32{1, 0, 0, 1})
+	// its style written (CSSStyleRule.style): the rule's declarations are those now
+	testing.expect(t, engine_sheet_set_declarations(e, sh.id, id, "color: blue;"))
+	testing.expect_value(t, color_of(e, doc, "b"), [4]f32{0, 0, 1, 1})
 }

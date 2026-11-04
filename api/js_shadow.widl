@@ -100,6 +100,11 @@ partial module dom {
   /// CSSStyleRule.selectorText = selector, on the top-level rule numbered `rule_id` (CSSStyleSheet_ruleId): the
   /// rule's new cssText, "" when nothing changed (the rule is gone, not a style rule, or the selector is invalid).
   string CSSStyleSheet_setRuleSelector(u64 sheet, u32 rule_id, string selector);
+  /// The cssText of the top-level rule numbered `rule_id` as it is now ("" when it is gone).
+  string CSSStyleSheet_ruleTextOf(u64 sheet, u32 rule_id);
+  /// CSSStyleRule.style written: the top-level style rule numbered `rule_id` takes the declarations of `text` (nothing
+  /// changes for a rule that is gone, is no style rule or holds nested rules).
+  void CSSStyleSheet_setRuleStyle(u64 sheet, u32 rule_id, string text);
   /// insertRule(rule, index): Index_Size past the end, Syntax when `rule` is not one rule; the index.
   u32 CSSStyleSheet_insertRuleAt(u64 sheet, string rule, u32 index) raises;
   /// deleteRule(index): Index_Size past the end.

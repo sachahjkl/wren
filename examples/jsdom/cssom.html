@@ -173,6 +173,19 @@ section("rules serialized", () => {
   s.remove();
 });
 
+// JSS's dynamic values (MUI v4's makeStyles with props) write a rule's style after inserting it.
+section("a rule's style written reaches the sheet", () => {
+  const s = document.createElement("style");
+  document.head.appendChild(s);
+  s.sheet.insertRule("#pa { padding-bottom: 1px }", 0);
+  const rule = s.sheet.cssRules[0];
+  rule.style.setProperty("padding-bottom", "3px");
+  rule.style.paddingRight = "4px";
+  eq("applies", px(document.getElementById("pa"), "paddingBottom") + px(document.getElementById("pa"), "paddingRight"), "3px4px");
+  eq("its cssText", rule.cssText, "#pa { padding-bottom: 3px; padding-right: 4px; }");
+  s.remove();
+});
+
 // A computed url() is absolute, against the base of the sheet that wrote it (CSS Values 4 §4.5.1.1): a CSS module's
 // images, a constructed sheet's baseURL.
 section("url() against the sheet's base", () => {

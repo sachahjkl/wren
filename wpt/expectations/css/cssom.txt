@@ -279,9 +279,9 @@
 	Duplicate stylesheets have the right cascade position in the Document: PASS
 	Duplicate stylesheets have the right cascade position in the ShadowRoot: PASS
 /css/cssom/CSSStyleSheet-constructable-invalidation.html: OK
-	mutating constructed CSSStyleSheet applied to root invalidates styles: FAIL
-	mutating constructed CSSStyleSheet applied to shadowdom invalidates styles: FAIL
-	mutating dependent constructed CSSStyleSheet applied to shadowdom invalidates styles: FAIL
+	mutating constructed CSSStyleSheet applied to root invalidates styles: PASS
+	mutating constructed CSSStyleSheet applied to shadowdom invalidates styles: PASS
+	mutating dependent constructed CSSStyleSheet applied to shadowdom invalidates styles: PASS
 /css/cssom/CSSStyleSheet-constructable-replace-cssRules.html: OK
 	cssRules tests (sync: false): PASS
 	cssRules tests (sync: true): PASS
@@ -307,7 +307,7 @@
 	CSSStyleSheet.replaceSync correctly updates the style of its adopters synchronously: PASS
 	CSSStyleSheet.replaceSync replaces stylesheet text synchronously: PASS
 	CSSStyleSheet.replaceSync should not trigger any loads from @import rules: PASS
-	Changes to constructed stylesheets through CSSOM is reflected: FAIL
+	Changes to constructed stylesheets through CSSOM is reflected: PASS
 	Cloning a shadow host will not clone shadow root, and also adoptedStyleSheets: PASS
 	Constructed style sheets can be applied on document: PASS
 	Constructed style sheets can be applied on shadow root: PASS
@@ -473,7 +473,7 @@
 /css/cssom/adoptedstylesheets-modify-array-and-sheet.html: OK
 	Add the two sheets. Text should be red.: PASS
 	Flip the two sheet. Still red.: PASS
-	Modify the color declaration. Should now be green.: FAIL
+	Modify the color declaration. Should now be green.: PASS
 /css/cssom/adoptedstylesheets-observablearray-removal.html: OK
 	Document: modifying a sheet still applies after overwriting its duplicate: PASS
 	Document: modifying a sheet still applies after popping its duplicate: PASS
@@ -576,9 +576,9 @@
 /css/cssom/css-style-attribute-modifications.html: OK
 	Mutating the style declaration doesn't remove the style attribute: PASS
 /css/cssom/css-style-declaration-modifications.html: OK
-	Calling CSSStyleDeclaration#setProperty: FAIL
+	Calling CSSStyleDeclaration#setProperty: PASS
 	Reading CSSStyleDeclaration initialized from a style element: PASS
-	Setting CSSStyleDeclaration#cssText: FAIL
+	Setting CSSStyleDeclaration#cssText: PASS
 	setProperty priority should be case-insensitive: PASS
 /css/cssom/css-style-reparse.html: OK
 	style.innerHTML modification: FAIL
@@ -797,7 +797,7 @@
 	Custom properties are included in computed style: FAIL
 /css/cssom/cssstyledeclaration-mutability.html: OK
 	HTMLElement's CSSStyleDeclaration is mutable: PASS
-	StyleSheet's CSSStyleDeclaration is mutable: FAIL
+	StyleSheet's CSSStyleDeclaration is mutable: PASS
 	getComputedStyle's CSSStyleDeclaration is not mutable: PASS
 /css/cssom/cssstyledeclaration-mutationrecord-001.html: OK
 	CSSStyleDeclaration.setPropertyValue queues a mutation record when serialization is changed: PASS
@@ -4465,7 +4465,7 @@
 /css/cssom/serialize-whitespace.html: OK
 	Serialize whitespace: PASS
 /css/cssom/set-selector-text-attachment.html: OK
-	Modifying property value invalidates style, even after selectorText mutation: FAIL
+	Modifying property value invalidates style, even after selectorText mutation: PASS
 /css/cssom/setproperty-null-undefined.html: OK
 	Verify that setting a CSS property priority to null is treated like empty string.: PASS
 	Verify that setting a CSS property priority to undefined is accepted.: PASS

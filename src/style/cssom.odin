@@ -207,6 +207,28 @@ engine_sheet_set_selector :: proc(e: ^Engine, id: u64, rule_id: u32, text: strin
 	return false
 }
 
+// CSSStyleRule.style changed: the declarations of the top-level style rule numbered `rule_id` are now those of `text`
+// (the block a script wrote, serialized); false when the rule is gone, is no style rule or holds rules (CSS Nesting:
+// its text would have to be made again whole).
+engine_sheet_set_declarations :: proc(e: ^Engine, id: u64, rule_id: u32, text: string) -> bool {
+	s := cssom_sheet(e, id)
+	if s == nil { return false }
+	l := cssom_list(e, s)
+	for rid, i in l.ids {
+		if rid != rule_id { continue }
+		r := l.rules[i]
+		if r.kind != .Style || len(r.nested) > 0 { return false }
+		r.declarations = css.parse_declarations(text, parse_options(&e.settings), s.sheet.alloc)
+		old := l.texts[i]
+		l.texts[i] = strings.concatenate({r.selector_text, " { ", text, " }"})
+		delete(old)
+		s.version += 1
+		sheet_changed(e, s)
+		return true
+	}
+	return false
+}
+
 // sheet.disabled = v, for any sheet a script holds (an element's sheet stops applying while its element stays).
 engine_sheet_set_disabled :: proc(e: ^Engine, id: u64, disabled: bool) {
 	s := cssom_sheet(e, id)

@@ -25720,6 +25720,52 @@ _t_dom_CSSStyleSheet_setRuleSelector :: proc "c" (env: rawptr, caller: wasm.Call
 	return nil
 }
 
+// CSSStyleSheet_ruleTextOf :: proc(c: ^Call, sheet: u64, rule_id: u32) -> string
+@(private = "file")
+_t_dom_CSSStyleSheet_ruleTextOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_ruleTextOf", "result buffer") }
+	api_route(&c, u64(a[0].i64))
+	_p0 := u64(a[0].i64)
+	_p1 := u32(a[1].i32)
+	_r := CSSStyleSheet_ruleTextOf(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CSSStyleSheet_setRuleStyle :: proc(c: ^Call, sheet: u64, rule_id: u32, text: string)
+@(private = "file")
+_t_dom_CSSStyleSheet_setRuleStyle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_setRuleStyle", "text") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CSSStyleSheet_setRuleStyle: argument text is not valid UTF-8") }
+		return wasm.trap_new("dom.CSSStyleSheet_setRuleStyle: argument text is not valid UTF-8")
+	}
+	api_route(&c, u64(a[0].i64))
+	_p0 := u64(a[0].i64)
+	_p1 := u32(a[1].i32)
+	CSSStyleSheet_setRuleStyle(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
 // CSSStyleSheet_insertRuleAt :: proc(c: ^Call, sheet: u64, rule: string, index: u32) -> (u32, Api_Error)
 @(private = "file")
 _t_dom_CSSStyleSheet_insertRuleAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -39474,6 +39520,8 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "CSSStyleSheet_ruleCount", fn = _t_dom_CSSStyleSheet_ruleCount, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "CSSStyleSheet_ruleText", fn = _t_dom_CSSStyleSheet_ruleText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "CSSStyleSheet_setRuleSelector", fn = _t_dom_CSSStyleSheet_setRuleSelector, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "CSSStyleSheet_ruleTextOf", fn = _t_dom_CSSStyleSheet_ruleTextOf, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "CSSStyleSheet_setRuleStyle", fn = _t_dom_CSSStyleSheet_setRuleStyle, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "dom", name = "CSSStyleSheet_insertRuleAt", fn = _t_dom_CSSStyleSheet_insertRuleAt, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "CSSStyleSheet_deleteRuleAt", fn = _t_dom_CSSStyleSheet_deleteRuleAt, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "CSSStyleSheet_isDisabled", fn = _t_dom_CSSStyleSheet_isDisabled, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},

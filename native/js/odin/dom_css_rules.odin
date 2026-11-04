@@ -1,10 +1,11 @@
 // dom_css_rules.odin: the objects of CSSRule's family, made from a rule's serialized text (CSSStyleSheet_ruleText) when
 // `sheet.cssRules` is read: the right interface for `instanceof`, and what a script reads of a rule. They are views: a rule's `style` is
-// parsed from its text in a detached element, so what is written there, or to `cssText`, does not reach the sheet; the `selectorText` of a
-// top-level style rule does.
+// parsed from its text in a detached element; what is written there, or to `selectorText`, reaches the sheet for a top-level style rule
+// (JSS's dynamic values, MUI's makeStyles with props), not for a rule inside another one.
 package odin_glue
 
 import "core:strconv"
+import "../odin_abi/abi"
 import "../odin_abi/api_decl"
 import "../odin/jsb"
 import "../odin/wj"
@@ -97,8 +98,23 @@ extra_or_null :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, iface: cst
 @(private = "file")
 empty_string :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue { return wj.new_string_len(ctx, nil) }
 
+// A top-level rule whose style a script may have written gives the browser's text of it now; another, the text it was made with.
 @(export, link_name = "wjr_CSSRule_get_cssText")
-wjr_CSSRule_get_cssText :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return extra_or_null(ctx, t, "CSSRule", "cssText", empty_string(ctx)) }
+wjr_CSSRule_get_cssText :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	if wj.wj_this(ctx, t, wj.iface("CSSRule")) == nil { return wj.EXCEPTION }
+	idv := wj.web_extra_get(ctx, t, "id")
+	style := wj.web_extra_get(ctx, t, "style")
+	sheet := wj.web_extra_get(ctx, t, "parentStyleSheet")
+	defer { wj.JS_FreeValue(ctx, idv); wj.JS_FreeValue(ctx, style); wj.JS_FreeValue(ctx, sheet) }
+	id: u32
+	if o := wj.wj_unwrap(sheet, wj.iface("CSSStyleSheet")); o != nil && o.handle != 0 && !wj.is_undefined(style) && !wj.is_undefined(idv) && wj.JS_ToUint32(ctx, &id, idv) >= 0 {
+		text: string
+		jsb.host(&text, api_decl.CSSStyleSheet_ruleTextOf, wj.wr_CSSStyleSheet_ruleTextOf, api_decl.CSSStyleSheet(o.handle), id)
+		if text != "" { return wj.new_string_len(ctx, transmute([]u8)text) }
+	}
+	return extra_or_null(ctx, t, "CSSRule", "cssText", empty_string(ctx))
+}
 @(export, link_name = "wjr_CSSRule_get_type")
 wjr_CSSRule_get_type :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return extra_or_null(ctx, t, "CSSRule", "type", wj.new_int32(0)) }
 @(export, link_name = "wjr_CSSRule_get_parentRule")
@@ -159,8 +175,33 @@ rule_style :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, iface: cstrin
 	body := wj.web_extra_get(ctx, t, "body")
 	if wj.is_string(body) { wj.JS_SetPropertyStr(ctx, style, "cssText", wj.JS_DupValue(ctx, body)) }
 	wj.JS_FreeValue(ctx, body)
+	// a top-level rule's: what is written to it reaches the sheet (rule_style_written)
+	if id := wj.web_extra_get(ctx, t, "id"); !wj.is_undefined(id) {
+		wj.web_extra_set(ctx, style, "ruleId", id)
+		wj.web_extra_set(ctx, style, "sheet", wj.web_extra_get(ctx, t, "parentStyleSheet"))
+	}
 	wj.web_extra_set(ctx, t, "style", wj.JS_DupValue(ctx, style))
 	return style
+}
+
+// A CSSStyleDeclaration was written (dom_style.odin): when it is a top-level style rule's, the rule takes its declarations.
+rule_style_written :: proc "contextless" (ctx: ^wj.Context, style: wj.JSValue) {
+	context = jsb.glue_context()
+	idv := wj.web_extra_get(ctx, style, "ruleId")
+	defer wj.JS_FreeValue(ctx, idv)
+	id: u32
+	if wj.is_undefined(idv) || wj.JS_ToUint32(ctx, &id, idv) < 0 { return }
+	sheet := wj.web_extra_get(ctx, style, "sheet")
+	defer wj.JS_FreeValue(ctx, sheet)
+	o := wj.wj_unwrap(sheet, wj.iface("CSSStyleSheet"))
+	if o == nil || o.handle == 0 { return }
+	text := wj.JS_GetPropertyStr(ctx, style, "cssText")
+	defer wj.JS_FreeValue(ctx, text)
+	decls, c, ok := wj.to_string_view(ctx, text)
+	if !ok { return }
+	defer wj.free_cstring(ctx, c)
+	nothing: abi.Nothing
+	jsb.host(&nothing, api_decl.CSSStyleSheet_setRuleStyle, wj.wr_CSSStyleSheet_setRuleStyle, api_decl.CSSStyleSheet(o.handle), id, decls)
 }
 
 @(export, link_name = "wjr_CSSStyleRule_get_style")
