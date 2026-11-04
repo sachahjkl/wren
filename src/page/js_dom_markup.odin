@@ -269,7 +269,7 @@ HTMLElement_innerText :: proc(c: ^Call, element: Api_Element) -> string {
 	if st == nil || !dom.is_connected(d, h) { return dom.text_content(d, h) }
 	cs := style.style_of(st, h)
 	if cs == nil || cs.display == .None { return dom.text_content(d, h) }
-	return lay.range_text(d, st, {h, 0}, {h, lay.child_count(d, h)}, root = h).text
+	return lay.range_text(d, st, {h, 0}, {h, lay.child_count(d, h)}, root = h, light = true).text
 }
 
 HTMLElement_outerText :: proc(c: ^Call, element: Api_Element) -> string { return HTMLElement_innerText(c, element) }

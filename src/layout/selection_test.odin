@@ -163,6 +163,16 @@ c</p></body>`)
 		testing.expect_value(t, text_of_all(f), "LOUD\n\na b\nc")
 	}
 	{
+		// replaced elements and atomic inlines keep the spaces around them, give no text of their own (a canvas's
+		// fallback, a textarea's value); flex items are blocks; a select shows its options a line each; a space before
+		// <br> goes; ß upper-cased is SS
+		f := fixture_load(`<body><div>abc <img> def <canvas>fallback</canvas>|<span style="display:inline-block"> in </span>|<textarea>value</textarea></div>` +
+			`<div style="display:flex"><span>1</span><span>2</span></div><select><option>x</option>gone<option>y</option></select>` +
+			`<div>end <br><span style="text-transform:uppercase">maß</span></div></body>`)
+		defer fixture_unload(f)
+		testing.expect_value(t, text_of_all(f), "abc  def |in|\n1\n2\nx\ny\nend\nMASS")
+	}
+	{
 		// a range from the middle of one block to the middle of another
 		f := fixture_load(`<body><div id=a>alpha beta</div><div id=b>gamma delta</div></body>`)
 		defer fixture_unload(f)
