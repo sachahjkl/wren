@@ -54,9 +54,10 @@ back_forward_run :: proc(t: ^testing.T) {
 	e: Env
 	if !testing.expect(t, init(&e), "the page stack starts") { return }
 	defer destroy(&e)
-	a := doc_url(`<script>window.runs = (window.runs || 0) + 1; onpageshow = (e) => console.log("A show " + e.persisted + " " + runs); onpagehide = (e) => console.log("A hide " + e.persisted);</script>`)
-	b := doc_url(`<script>onpageshow = () => console.log("B shown");</script>`)
-	opener := doc_url(strings.concatenate({`<script>const w = open(`, quoted(a), `); setTimeout(() => { w.location = `, quoted(b), `; setTimeout(() => w.history.back(), 500); }, 500);</script>`}, context.temp_allocator))
+	// (each step starts from the page shown before it, not from a timer: a loaded machine shows them late)
+	b := doc_url(`<script>onpageshow = () => { console.log("B shown"); setTimeout(() => history.back()); };</script>`)
+	a := doc_url(strings.concatenate({`<script>window.runs = (window.runs || 0) + 1; onpageshow = (e) => { console.log("A show " + e.persisted + " " + runs); if (!e.persisted) setTimeout(() => { location = `, quoted(b), `; }); }; onpagehide = (e) => console.log("A hide " + e.persisted);</script>`}, context.temp_allocator))
+	opener := doc_url(strings.concatenate({`<script>open(`, quoted(a), `);</script>`}, context.temp_allocator))
 	seen: Seen
 	defer { for l in seen.lines { delete(l) }; delete(seen.lines) }
 	d := open(&e, opener, seen_console, &seen)
