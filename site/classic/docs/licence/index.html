@@ -334,7 +334,7 @@ Open the destination and copy its <strong>Secret key</strong> (<code>pdl_ntfset_
 commas);</li>
 <li>then <code>cf deploy --mode sandbox --secrets-file secrets.sandbox.env</code> again, and check <code>/health</code>.</li>
 </ul></li>
-<li><strong>Checkout → Checkout settings</strong>: <em>Default payment link</em> = <code>https://sachahjkl.github.io/wren/pricing/</code>.</li>
+<li><strong>Checkout → Checkout settings</strong>: <em>Default payment link</em> = <code>https://wren.froment.software/pricing/</code>.</li>
 <li><strong>The site</strong> (<code>site/pricing/index.html</code>, the <code>&lt;div id="buy"&gt;</code>): <code>data-environment="sandbox"</code>, <code>data-client-token</code>,
 <code>data-price-supporter</code>, <code>data-price-patron</code>, <code>data-worker</code> (the Worker's address, no trailing slash), and in
 <code>site/thanks/index.html</code> <code>&lt;main data-worker="…"&gt;</code> the same address. Publish <code>site/</code> (GitHub Pages), or serve the folder
@@ -353,7 +353,7 @@ E_SENDER_NOT_VERIFIED</code> (see <code>mail_refused</code> in the logs) while t
 <h3 id="5-production"><a class="anchor" href="#5-production" aria-hidden="true">#</a>5. Production</h3>
 <p>Same, in the <strong>live</strong> Paddle account (its own products, prices, ids, destination, secret, API key and client token: the
 sandbox ones do not exist there). Paddle asks to verify the business and to <strong>approve the website domain</strong>
-(<em>Checkout → Website approval</em>: <code>sachahjkl.github.io</code>, or the domain you use). Then:</p>
+(<em>Checkout → Website approval</em>: <code>wren.froment.software</code>). Then:</p>
 <div class="code"><div class="file">PowerShell</div><pre><code>copy secrets.example.env secrets.env      <span class="c"># live webhook secret, live API key, the private key</span>
 <span class="c"># cloudflare.config.ts / wrangler.jsonc: PRICE_* (live ids), LICENSE_PUBLIC_KEY, MAIL_FROM (domain onboarded in Email Sending, Workers Paid)</span>
 cf deploy --secrets-file secrets.env</code></pre></div>
@@ -604,7 +604,7 @@ build, and a re-issue to every buyer (<code>order:</code> and <code>txn:</code> 
 </aside>
 </div>
 <footer class="foot">
-Wren is made by <a href="https://froment.software">Froment Software</a>. Supporter licence: one payment of 29&nbsp;&euro;, unlocks nothing, keeps the work going.
+Wren is made by <a href="https://froment.software">Froment Software</a>. Wren licence: one payment of 29&nbsp;&euro;, personal and perpetual, two years of updates from 1.0.
 - <a href="../../archive/">archive</a>
 - <a href="../../privacy/">privacy</a>
 - <a href="../../terms/">terms</a>

@@ -298,7 +298,7 @@ rooted :: proc(html, dir: string) -> string {
 }
 
 root_of :: proc(href, dir: string) -> string {
-	if href == "" || is_external(href) || strings.has_prefix(href, "#") || strings.has_prefix(href, "/") || strings.has_prefix(href, "data:") || strings.has_prefix(href, "javascript:") { return href }
+	if href == "" || is_external(href) || strings.has_prefix(href, "#") || strings.has_prefix(href, "/") || strings.has_prefix(href, "data:") || strings.has_prefix(href, "javascript:") || strings.has_prefix(href, "wren-") { return href }
 	target, frag := href, ""
 	if h := strings.index_byte(href, '#'); h >= 0 { target, frag = href[:h], href[h:] }
 	path := posix_normalize(posix_join(dir, target))

@@ -38,37 +38,63 @@
 
 <section class="section">
   <div class="wrap">
-    <h1>Thank you for supporting Wren</h1>
-    <p class="intro" id="status" role="status">Making your licence&hellip;</p>
+    <div class="hero">
+      <div class="stage"><img class="bird" src="../../img/logo.png" alt="" width="133" height="133"></div>
+      <h1>Thank you for supporting Wren</h1>
+      <p class="intro"><span id="status" role="status">Making your licence&hellip;</span><span class="dots" id="dots" aria-hidden="true" hidden><i></i><i></i><i></i></span></p>
+    </div>
+    <p class="warm" id="warm" hidden>You keep an independent browser, written from scratch, moving forward. It&nbsp;means&nbsp;a&nbsp;lot.</p>
 
     <div id="licence" hidden>
       <div class="card">
+        <i class="spark" style="top: 14px; right: 36px; --sd: 0s" aria-hidden="true"></i>
+        <i class="spark" style="top: 52px; right: 12px; width: 9px; height: 9px; --sd: 1.3s" aria-hidden="true"></i>
+        <i class="spark" style="top: 118px; left: 10px; width: 10px; height: 10px; --sd: 2.1s" aria-hidden="true"></i>
+        <i class="spark" style="top: 214px; right: 52px; width: 11px; height: 11px; --sd: 0.7s" aria-hidden="true"></i>
+        <i class="spark" style="top: 252px; left: 40px; width: 12px; height: 12px; --sd: 1.8s" aria-hidden="true"></i>
+        <i class="spark" style="bottom: 16px; right: 22px; width: 16px; height: 16px; --sd: 2.6s" aria-hidden="true"></i>
         <h3 id="who"></h3>
-        <p class="fine" id="details"></p>
-        <p>Your key:</p>
+        <dl class="facts">
+          <div><dt>Order</dt><dd id="order"></dd></div>
+          <div><dt>Date</dt><dd id="date"></dd></div>
+          <div><dt>Edition</dt><dd>Wren licence</dd></div>
+        </dl>
+        <p class="keylabel">Your key</p>
         <div class="key" id="key" tabindex="0"></div>
         <div class="actions">
           <button class="btn primary" type="button" id="download">Download the .wrenlicense</button>
-          <button class="btn" type="button" id="copy">Copy the key</button>
+          <button class="btn copy" type="button" id="copy">
+            <span class="lab on"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>Copy the key</span>
+            <span class="lab off" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Copied</span>
+          </button>
         </div>
       </div>
 
       <h2>Registering it</h2>
       <p>Open <code>about:wren</code> in Wren (menu, <em>About Wren</em>), paste the key into the box and press
-        <em>Register</em>. Or drop the <code>.wrenlicense</code> file you just downloaded onto the Wren window.</p>
+        <span class="mini-btn">Register</span>. Or drop the <code>.wrenlicense</code> file you just downloaded onto the Wren window.</p>
+      <p><a class="btn" href="wren-about:wren">Open the registration page in Wren</a></p>
+      <p class="fine">The button opens <code>about:wren</code> in Wren itself, whatever your default browser is. If nothing happens, open <code>about:wren</code> in Wren by hand.</p>
       <p class="fine">The same key is sent to the e-mail address you gave at the checkout, with the file attached. Keep
         it: it covers every version of Wren, the updates after the beta included, on every computer you use. During the beta it unlocks nothing. Wren checks it on your computer, without any network access.</p>
     </div>
 
-    <p class="fine">Questions about a licence: open an issue on
-      <a href="https://github.com/sachahjkl/wren/issues">GitHub</a>, with your order number (never the key).
-      Back to <a href="../pricing/">the pricing page</a>.</p>
+    <aside id="questions">
+      <span class="help-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24m5.66 0 4.24-4.24m-4.24 9.9 4.24 4.24m-9.9-4.24-4.24 4.24"/><circle cx="12" cy="12" r="4"/></svg></span>
+      <div>
+        <h2>A problem with your licence? We are here.</h2>
+        <p>No key, a key that is refused, a wrong name: write to us on GitHub with your <strong>order number</strong>
+          (never the key itself) and we will sort it out.</p>
+        <p class="links"><a class="btn primary" href="https://github.com/sachahjkl/wren/issues/new">Ask for help</a>
+          <a href="../pricing/">Back to the pricing page</a></p>
+      </div>
+    </aside>
   </div>
 </section>
 
 </main>
 <footer class="foot">
-Wren is made by <a href="https://froment.software">Froment Software</a>. Supporter licence: one payment of 29&nbsp;&euro;, unlocks nothing, keeps the work going.
+Wren is made by <a href="https://froment.software">Froment Software</a>. Wren licence: one payment of 29&nbsp;&euro;, personal and perpetual, two years of updates from 1.0.
 - <a href="../archive/">archive</a>
 - <a href="../privacy/">privacy</a>
 - <a href="../terms/">terms</a>
@@ -90,7 +116,29 @@ Wren is made by <a href="https://froment.software">Froment Software</a>. Support
   var txn = params.get("txn") || params.get("_ptxn") || "";
   var started = Date.now();
 
-  function say(text) { status.textContent = text; }
+  var dots = document.getElementById("dots");
+  function say(text, waiting) { status.textContent = text; dots.hidden = !waiting; }
+
+  // A short burst of confetti, once, unless the visitor asked for less motion
+  function celebrate() {
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var box = document.createElement("div");
+    box.className = "confetti";
+    box.setAttribute("aria-hidden", "true");
+    var colours = ["#4cc2ff", "#a8dcf7", "#ffffff", "#ffcf5c", "#7bd88f", "#ff8fa3"];
+    for (var i = 0; i < 56; i++) {
+      var p = document.createElement("b");
+      p.style.left = (Math.random() * 100) + "%";
+      p.style.background = colours[i % colours.length];
+      p.style.setProperty("--x", ((Math.random() - 0.5) * 220) + "px");
+      p.style.setProperty("--r", ((Math.random() - 0.5) * 1080) + "deg");
+      p.style.setProperty("--t", (3.6 + Math.random() * 2.4) + "s");
+      p.style.setProperty("--d", (Math.random() * 1.6) + "s");
+      box.appendChild(p);
+    }
+    document.body.appendChild(box);
+    setTimeout(function () { box.remove(); }, 8500);
+  }
 
   if (!/^txn_[0-9a-z]{20,40}$/.test(txn)) {
     say("This page shows the licence of a purchase: it needs the transaction number that the checkout passes on. If you have just paid, your licence is also on its way to your e-mail address.");
@@ -103,10 +151,14 @@ Wren is made by <a href="https://froment.software">Froment Software</a>. Support
 
   function show(j) {
     document.getElementById("who").textContent = "Wren licence for " + j.name;
-    document.getElementById("details").textContent = "Order " + j.order + ", " + j.date;
+    document.getElementById("order").textContent = j.order;
+    document.getElementById("date").textContent = j.date;
     document.getElementById("key").textContent = j.licence;
     document.getElementById("licence").hidden = false;
+    document.getElementById("warm").hidden = false;
+    main.classList.add("ready");
     say("Your licence is ready. Thank you!");
+    celebrate();
 
     document.getElementById("download").addEventListener("click", function () {
       var url = URL.createObjectURL(new Blob([j.file], { type: "application/octet-stream" }));
@@ -119,7 +171,11 @@ Wren is made by <a href="https://froment.software">Froment Software</a>. Support
       setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
     });
     document.getElementById("copy").addEventListener("click", function () {
-      var done = function () { document.getElementById("copy").textContent = "Copied"; };
+      var done = function () {
+        var b = document.getElementById("copy");
+        b.classList.add("done");
+        setTimeout(function () { b.classList.remove("done"); }, 2200);
+      };
       if (navigator.clipboard) navigator.clipboard.writeText(j.licence).then(done, function () { selectKey(); });
       else selectKey();
     });
@@ -138,7 +194,7 @@ Wren is made by <a href="https://froment.software">Froment Software</a>. Support
     fetch(worker + "/licence?txn=" + encodeURIComponent(txn), { cache: "no-store" }).then(function (res) {
       if (res.status === 200) return res.json().then(show);
       if (res.status === 202 && Date.now() - started < giveUp) {
-        say("Making your licence (this takes a few seconds)\u2026");
+        say("Making your licence (this takes a few seconds)", true);
         setTimeout(poll, every);
         return;
       }
@@ -152,6 +208,7 @@ Wren is made by <a href="https://froment.software">Froment Software</a>. Support
     say("The licence is not ready yet, or the service could not be reached. Nothing is lost: it is sent by e-mail to the address you gave at the checkout, within a few minutes. If nothing arrives, reload this page later or open an issue on GitHub with your order number.");
   }
 
+  say("Making your licence", true);
   poll();
 })();
 </script>
