@@ -78,15 +78,15 @@
 	src, 404, not parser-inserted: PASS
 	src, 404, parser-inserted: PASS
 /html/semantics/scripting-1/the-script-element/css-module/redirect-relative-urls.html: OK
-	A relative URL in a dynamically imported CSS module resolves against the URL the request was redirected to: FAIL
-	A relative URL in a statically imported CSS module resolves against the URL the request was redirected to: FAIL
+	A relative URL in a dynamically imported CSS module resolves against the URL the request was redirected to: PASS
+	A relative URL in a statically imported CSS module resolves against the URL the request was redirected to: PASS
 /html/semantics/scripting-1/the-script-element/css-module/redirect.html: OK
 	A CSS module fetched through a redirect loads and applies: PASS
 	A redirecting URL and its target are distinct module map entries: PASS
 	Repeated import of a redirecting URL returns the same CSSStyleSheet: PASS
 /html/semantics/scripting-1/the-script-element/css-module/referrer-policies.sub.html: TIMEOUT
 /html/semantics/scripting-1/the-script-element/css-module/relative-urls.html: OK
-	A relative URL in a CSS module should be resolved relative to the CSS file's URL, not the importing document's URL: FAIL
+	A relative URL in a CSS module should be resolved relative to the CSS file's URL, not the importing document's URL: PASS
 /html/semantics/scripting-1/the-script-element/css-module/repeated-import.html: OK
 	CSS Module repeated imports: FAIL
 	CSS Module repeated parallel imports: FAIL

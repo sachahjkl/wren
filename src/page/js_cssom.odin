@@ -192,7 +192,12 @@ CSSStyleSheet_create :: proc(c: ^Call, media: string, disabled: bool, base_url: 
 	if p.engine == nil { return 0 }
 	s := new(Css_Sheet)
 	s.media = strings.clone(media)
-	s.id = style.engine_constructed_create(p.engine, "", media, base_url != "" ? base_url : document_base_url(p))
+	base_of := base_url != "" ? base_url : document_base_url(p)
+	// a CSS module being compiled: its URLs resolve against where its request led (HTML: the response's URL)
+	if ms := scripts_of(p).modules; ms != nil && ms.preparing != nil {
+		if e := ms.preparing; e.type == .Css && e.key == base_url && e.response_url != "" { base_of = e.response_url }
+	}
+	s.id = style.engine_constructed_create(p.engine, "", media, base_of)
 	if disabled { style.engine_constructed_set_disabled(p.engine, s.id, true) }
 	return object_create(p, &css_sheet_vt, s, c.owner)
 }

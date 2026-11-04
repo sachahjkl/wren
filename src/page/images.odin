@@ -1216,6 +1216,29 @@ css_bases_rebuild :: proc(p: ^Page) {
 	for s in p.engine.sheets { walk_sheet(pi, s) }
 }
 
+// The bases again after the engine rebuilt its rules (a sheet came or went); every style looked at again then.
+@(private)
+css_bases_update :: proc(p: ^Page) {
+	pi := &p.images
+	if p.engine.rebuilds != pi.css_rebuilds { css_bases_rebuild(p); pi.css_rebuilds = p.engine.rebuilds; pi.css_serial = 0 }
+}
+
+// The absolute URL of a URL written in a sheet (the document's base for one no sheet wrote: a style attribute's).
+@(private)
+css_url_absolute :: proc(p: ^Page, written: string) -> (string, bool) {
+	pi := &p.images
+	base_url := document_base_url(p)
+	if p.engine != nil {
+		images_init(p)
+		css_bases_update(p)
+		base_url = pi.css_bases[written] or_else base_url
+	}
+	abs, ok := resolve_against(written, base_url)
+	if !ok { return "", false }
+	defer delete(abs)
+	return strings.clone(abs, context.temp_allocator), true
+}
+
 @(private)
 css_base_note :: proc(pi: ^Page_Images, written, base_url: string) {
 	if written in pi.css_bases { return }
@@ -1230,7 +1253,7 @@ css_base_note :: proc(pi: ^Page_Images, written, base_url: string) {
 css_images_sync :: proc(p: ^Page) {
 	pi := &p.images
 	if p.engine == nil || p.styled == nil { return }
-	if p.engine.rebuilds != pi.css_rebuilds { css_bases_rebuild(p); pi.css_rebuilds = p.engine.rebuilds; pi.css_serial = 0 }
+	css_bases_update(p)
 	s := p.styled
 	if s.serial == pi.css_serial { return }
 	used := make(map[string]bool, 16, context.temp_allocator)

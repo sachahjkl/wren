@@ -918,7 +918,30 @@ ComputedStyle_get :: proc(c: ^Call, element: Api_Element, pseudo: string, name: 
 			if physical != n { n = physical } else if canon, ok := property_canonical(n); ok { n = canon }
 		}
 	}
-	return computed_value(cs, n, used)
+	return absolute_css_urls(p, computed_value(cs, n, used))
+}
+
+// The url("...") of a resolved value made absolute (CSS Values 4 §4.5.1.1: a computed <url> is absolute), against the
+// base of the sheet that wrote each.
+@(private)
+absolute_css_urls :: proc(p: ^Page, value: string) -> string {
+	OPEN :: "url(\""
+	if !strings.contains(value, OPEN) { return value }
+	b := strings.builder_make(context.temp_allocator)
+	rest := value
+	for {
+		at := strings.index(rest, OPEN)
+		if at < 0 { break }
+		strings.write_string(&b, rest[:at + len(OPEN)])
+		rest = rest[at + len(OPEN):]
+		end := strings.index_byte(rest, '"')
+		if end < 0 { break }
+		abs, ok := css_url_absolute(p, rest[:end])
+		strings.write_string(&b, ok ? abs : rest[:end])
+		rest = rest[end:]
+	}
+	strings.write_string(&b, rest)
+	return strings.to_string(b)
 }
 
 // The standard name an alias stands for ("-webkit-box-shadow" -> "box-shadow", "margin-inline-start" -> "margin-left").
