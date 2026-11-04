@@ -332,6 +332,23 @@ test("a buyer Paddle knows by an address only: the mail says it once, and does n
 	assert.ok(!text.includes("Supporter licence"));
 });
 
+test("GET /licence: a licence KV does not show yet (it is eventually consistent) is read from the order's object", async () => {
+	const env = makeEnv();
+	assert.equal((await post(env, network())).status, 200);
+	// as seen from an edge whose KV copy has not caught up, or that remembers the key as missing
+	env.LICENSES.data.delete(`txn:${TXN}`);
+	const res = await get(env, `/licence?txn=${TXN}`, network());
+	assert.equal(res.status, 200, "the licence is there, whatever KV says");
+	const j = (await res.json()) as { status: string; licence: string };
+	assert.equal(j.status, "ready");
+	assert.ok(j.licence.startsWith("WREN1."));
+	const file = await get(env, `/licence/${TXN}.wrenlicense`, network());
+	assert.equal(file.status, 200, "the file too");
+	// and an id nobody bought is still pending, not an error
+	const unknown = await get(env, "/licence?txn=txn_00000000000000000000000000", network());
+	assert.equal(unknown.status, 202);
+});
+
 test("GET /licence: 202 while the licence does not exist, then the licence", async () => {
 	const env = makeEnv();
 	const early = await get(env, `/licence?txn=${TXN}`);
