@@ -27,12 +27,12 @@
 
 	"vars": {
 		"PADDLE_API_BASE": "https://api.paddle.com",
-		"PRICE_SUPPORTER": "",
+		"PRICE_SUPPORTER": "pri_01m6kfkhzrwvx28tr378f8ztr3",
 		"PRICE_PATRON": "",
 		"LICENSE_PUBLIC_KEY": "",
 		"MAIL_FROM": "Wren <licences@froment.software>",
 		"MAIL_REPLY_TO": "contact@froment.software",
-		"ALLOWED_ORIGIN": "https://sachahjkl.github.io",
+		"ALLOWED_ORIGIN": "https://wren.froment.software,https://sachahjkl.github.io",
 		"WEBHOOK_TOLERANCE_SECONDS": "300",
 		"RESEND_ENABLED": "false",
 		"RESEND_MAX_PER_HOUR": "3",
@@ -58,7 +58,7 @@
 				"LICENSE_PUBLIC_KEY": "",
 				"MAIL_FROM": "Wren <licences@froment.software>",
 				"MAIL_REPLY_TO": "contact@froment.software",
-				"ALLOWED_ORIGIN": "https://sachahjkl.github.io,http://localhost:8765",
+				"ALLOWED_ORIGIN": "https://wren.froment.software,https://sachahjkl.github.io,http://localhost:8765",
 				"WEBHOOK_TOLERANCE_SECONDS": "300",
 				"RESEND_ENABLED": "false",
 				"RESEND_MAX_PER_HOUR": "3",

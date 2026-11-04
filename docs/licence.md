@@ -336,7 +336,7 @@ npx wrangler tail --env sandbox                         # live logs
    - `cloudflare.config.ts` (and `wrangler.jsonc`): `PRICE_SUPPORTER`, `PRICE_PATRON` (several ids may be separated by
      commas);
    - then `cf deploy --mode sandbox --secrets-file secrets.sandbox.env` again, and check `/health`.
-5. **Checkout → Checkout settings**: *Default payment link* = `https://sachahjkl.github.io/wren/pricing/`.
+5. **Checkout → Checkout settings**: *Default payment link* = `https://wren.froment.software/pricing/`.
 6. **The site** (`site/pricing/index.html`, the `<div id="buy">`): `data-environment="sandbox"`, `data-client-token`,
    `data-price-supporter`, `data-price-patron`, `data-worker` (the Worker's address, no trailing slash), and in
    `site/thanks/index.html` `<main data-worker="…">` the same address. Publish `site/` (GitHub Pages), or serve the folder
@@ -360,7 +360,7 @@ npx wrangler tail --env sandbox                         # live logs
 
 Same, in the **live** Paddle account (its own products, prices, ids, destination, secret, API key and client token: the
 sandbox ones do not exist there). Paddle asks to verify the business and to **approve the website domain**
-(*Checkout → Website approval*: `sachahjkl.github.io`, or the domain you use). Then:
+(*Checkout → Website approval*: `wren.froment.software`). Then:
 
 ```powershell
 copy secrets.example.env secrets.env      # live webhook secret, live API key, the private key

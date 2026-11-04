@@ -16,6 +16,18 @@ Fields (the Worker's `licence/worker/src/env.ts`):
 | `PADDLE_WEBHOOK_SECRET` | Paddle > Developer tools > Notifications > the destination > Secret key (`pdl_ntfset_...`) |
 | `PADDLE_API_KEY` | Paddle > Developer tools > Authentication > API keys (server side, `customer.read`) |
 
+Paddle keys to **set the accounts up** (catalogue, client token, webhook destination), not for the Worker. They have wide
+rights and are meant to be revoked in Paddle once the set-up is done; then delete the line (`sops unset`):
+
+| Key | File | What it is |
+|---|---|---|
+| `PADDLE_SANDBOX_API_KEY` | `development.yaml` | a key of the Paddle sandbox (no real money) |
+| `PADDLE_LIVE_SETUP_KEY` | `production.yaml` | a key of the live Paddle account, all rights |
+
+The Worker declares three secrets only (`LICENSE_PRIVATE_KEY`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_API_KEY`). When you write
+`secrets.env` for `cf deploy` (below), keep those three lines and **not** the setup key: it would otherwise be uploaded
+to the Worker.
+
 Code signing of the executables (`wrentool sign`, called by `wrentool package`):
 
 | Key (`development.yaml`) | What it is |
@@ -64,7 +76,8 @@ sops --set '["LICENSE_PRIVATE_KEY"] "…"' /mnt/s/wren/secrets/production.yaml
 The Worker takes a dotenv file of secrets (`licence/worker/README.md`):
 
 ```sh
-sops --decrypt --output-type dotenv /mnt/s/wren/secrets/production.yaml > /mnt/s/wren/licence/worker/secrets.env
+sops --decrypt --output-type dotenv /mnt/s/wren/secrets/production.yaml \
+  | grep -E '^(LICENSE_PRIVATE_KEY|PADDLE_WEBHOOK_SECRET|PADDLE_API_KEY)=' > /mnt/s/wren/licence/worker/secrets.env
 ```
 
 `licence/worker/secrets*.env` is git-ignored; delete the file once the secrets are uploaded.
