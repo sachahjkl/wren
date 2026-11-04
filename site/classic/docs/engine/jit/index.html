@@ -215,7 +215,7 @@ nested frame (a call that recurses): the exit of the outer one checks that the r
 <tr><td>ret</td><td>a return (the value in the frame's <code>stack[0]</code>; an exact integer is an int when it fits, as the interpreter has it)</td></tr>
 <tr><td>guard</td><td>an entry guard failed (aux: the slot): the slot is widened or left in memory, translated again</td></tr>
 <tr><td>deopt</td><td>a speculation failed in the loop (int overflow, -0, a bound, a type): aux a slot to widen, <code>JIT_AUX_LEARN</code>, <code>JIT_AUX_NO_INLINE</code> or none</td></tr>
-<tr><td>budget</td><td>every <code>JIT_BUDGET</code> iterations: the interpreter's safe point (interrupts, collection) runs</td></tr>
+<tr><td>budget</td><td>every <code>JIT_BUDGET</code> iterations, and in a loop that calls once its calls count for a poll (<code>interrupt_counter</code>, as the interpreter counts them): the interpreter's safe point (interrupts, collection) runs</td></tr>
 <tr><td>throw</td><td>a call made through the helper threw</td></tr>
 </tbody>
 </table></div>
