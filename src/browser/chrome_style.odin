@@ -31,7 +31,7 @@ CHROME_ANIM_SELECT_RATE :: 34
 CHROME_ANIM_HOVER_RATE :: 40
 
 CHROME_PREFS := [?]config.Def{
-	{name = "browser.ui.chrome_style", kind = .String, default = {s = "modern"}, choices = {"modern", "classic"},
+	{name = "browser.ui.chrome_style", kind = .String, default = {s = "classic"}, choices = {"modern", "classic"},
 		description = "How the browser's own interface (tab bar, tabs, toolbar, address field) is drawn. modern: flat, tabs are rounded pills. classic: tabs are trapezoids with sloped sides, rounded shoulders and a concave foot, the current tab is attached to the toolbar (one gradient, no line between them), the others are darker and overlap behind it, with gradients and light and dark hairlines; with the tabs in a sidebar (browser.tabs.position), the current tab is a panel with rounded outer corners that flows into the page's side, the others lie flat on the bar, engraved apart. Either one follows browser.ui.theme: the classic colors are derived from the palette, light or dark. Applies at once."},
 	{name = "browser.ui.classic_slope_deg", kind = .Float, default = {f = 22}, bounded = true, min = 8, max = 40, unit = "deg",
 		description = "Classic style: how far the sides of a tab lean from the vertical (Chrome of 2010-2015: about 17). The larger, the more angular the tabs and the more they overlap."},

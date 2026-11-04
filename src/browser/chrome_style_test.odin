@@ -339,7 +339,7 @@ side_colors_compose_with_palettes :: proc(t: ^testing.T) {
 	}
 }
 
-// The style is a preference: modern by default, changeable at once, with bounded companions.
+// The style is a preference: classic by default, changeable at once, with bounded companions.
 @(test)
 chrome_style_preferences :: proc(t: ^testing.T) {
 	test_app(t)
@@ -347,10 +347,10 @@ chrome_style_preferences :: proc(t: ^testing.T) {
 	defer config.prefs_destroy(&p)
 	register_all_prefs(&p)
 	s := chrome_settings_from_prefs(&p)
-	testing.expect_value(t, s.style, Chrome_Style.Modern)
+	testing.expect_value(t, s.style, Chrome_Style.Classic)
 	testing.expect(t, s.slope_deg >= 8 && s.slope_deg <= 40)
-	testing.expect_value(t, config.set_from_string(&p, "browser.ui.chrome_style", "classic", .User), config.Set_Error.None)
-	testing.expect_value(t, chrome_settings_from_prefs(&p).style, Chrome_Style.Classic)
+	testing.expect_value(t, config.set_from_string(&p, "browser.ui.chrome_style", "modern", .User), config.Set_Error.None)
+	testing.expect_value(t, chrome_settings_from_prefs(&p).style, Chrome_Style.Modern)
 	testing.expect(t, config.set_from_string(&p, "browser.ui.chrome_style", "pill", .User) != config.Set_Error.None, "an unknown style is refused")
 	testing.expect(t, config.set_from_string(&p, "browser.ui.classic_slope_deg", "80", .User) != config.Set_Error.None, "a slope out of range is refused")
 }
