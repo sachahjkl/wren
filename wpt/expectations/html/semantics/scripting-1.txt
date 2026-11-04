@@ -243,6 +243,7 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/082.html: OK
 	 scheduler: multiple slow loading external scripts added with DOM (appendChild): PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/083.html: OK
+	 scheduler: event listener defined by script in a document in history: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/084.html: OK
 	 scheduler: event listener defined by script in a removed IFRAME: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/085.html: OK
@@ -418,7 +419,7 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/non-external-no-import.html: OK
 	Module scripts with no imports always execute asynchronously: PASS
 /html/semantics/scripting-1/the-script-element/fetch-src/alpha/base.html: OK
-	Script src with a base URL: FAIL
+	Script src with a base URL: PASS
 /html/semantics/scripting-1/the-script-element/fetch-src/empty-set-while-connected.html: OK
 	Setting src to the empty string on a connected classic script fires an error event: PASS
 	Setting src to the empty string on a connected module script fires an error event: PASS
@@ -833,22 +834,22 @@
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/alpha/base-url.sub.html: TIMEOUT
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/basic-deferred-evaluation.tentative.html: ERROR
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/blob-url-workers.window.html: OK
-	A blob URL created in a window agent can be imported from a worker: FAIL
+	A blob URL created in a window agent can be imported from a worker: PASS
 	A blob URL revoked in a window agent will not resolve in a worker: PASS
-	A revoked blob URL will not resolve in a worker even if it's in the window's module graph: FAIL
+	A revoked blob URL will not resolve in a worker even if it's in the window's module graph: PASS
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/blob-url.any.html: OK
 	A revoked blob URL will not resolve: PASS
-	A revoked blob URL will resolve if it's already in the module graph: FAIL
-	Blob URLs are supported in dynamic imports: FAIL
-	Different blob URLs pointing to the same blob resolve to different modules: FAIL
-	Identical blob URLs resolve to the same module: FAIL
+	A revoked blob URL will resolve if it's already in the module graph: PASS
+	Blob URLs are supported in dynamic imports: PASS
+	Different blob URLs pointing to the same blob resolve to different modules: PASS
+	Identical blob URLs resolve to the same module: PASS
 	Revoking a blob URL immediately after calling import will not fail: FAIL
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/blob-url.any.worker.html: OK
 	A revoked blob URL will not resolve: PASS
-	A revoked blob URL will resolve if it's already in the module graph: FAIL
-	Blob URLs are supported in dynamic imports: FAIL
-	Different blob URLs pointing to the same blob resolve to different modules: FAIL
-	Identical blob URLs resolve to the same module: FAIL
+	A revoked blob URL will resolve if it's already in the module graph: PASS
+	Blob URLs are supported in dynamic imports: PASS
+	Different blob URLs pointing to the same blob resolve to different modules: PASS
+	Identical blob URLs resolve to the same module: PASS
 	Revoking a blob URL immediately after calling import will not fail: FAIL
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/code-cache-base-url.html: OK
 	alpha - Function: FAIL
@@ -857,10 +858,10 @@
 	beta - eval: FAIL
 	gamma - Function: FAIL
 	gamma - eval: FAIL
-/html/semantics/scripting-1/the-script-element/module/dynamic-import/code-cache-nonce.html: ERROR
-	First dynamic import should use nonce=abc: TIMEOUT
-	Second dynamic import should use nonce=def: NOTRUN
-	Third dynamic import should use nonce=ghi: NOTRUN
+/html/semantics/scripting-1/the-script-element/module/dynamic-import/code-cache-nonce.html: OK
+	First dynamic import should use nonce=abc: FAIL
+	Second dynamic import should use nonce=def: FAIL
+	Third dynamic import should use nonce=ghi: FAIL
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/concurrent-failed-imports.any.html: OK
 	A joined import is notified with its own fetch result even if a sibling's rejection handler re-imports the same specifier: FAIL
 	Multiple concurrent imports of a failing module should all reject but only fetch once: FAIL
@@ -1017,19 +1018,24 @@
 	Evaled the script via Function, successful import: FAIL
 	Evaled the script via eval, failed import: PASS
 	Evaled the script via eval, successful import: FAIL
-/html/semantics/scripting-1/the-script-element/module/dynamic-import/string-compilation-other-document.html: ERROR
+/html/semantics/scripting-1/the-script-element/module/dynamic-import/string-compilation-other-document.html: OK
+	eval should successfully import: FAIL
+	inline event handlers triggered by JS should successfully import: PASS
+	reflected inline event handlers should successfully import: FAIL
+	setTimeout should successfully import: FAIL
+	the Function constructor should successfully import: FAIL
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/tla-deferred-evaluation.tentative.html: ERROR
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/v8-code-cache.html: ERROR
-	module: Run #1: NOTRUN
+	module: Run #1: TIMEOUT
 	module: Run #2: NOTRUN
 	module: Run #3: NOTRUN
 	module: Run #4: NOTRUN
 	module: Run #5: NOTRUN
-	text/javascript: Run #1: TIMEOUT
-	text/javascript: Run #2: NOTRUN
-	text/javascript: Run #3: NOTRUN
-	text/javascript: Run #4: NOTRUN
-	text/javascript: Run #5: NOTRUN
+	text/javascript: Run #1: FAIL
+	text/javascript: Run #2: FAIL
+	text/javascript: Run #3: FAIL
+	text/javascript: Run #4: FAIL
+	text/javascript: Run #5: FAIL
 /html/semantics/scripting-1/the-script-element/module/error-and-slow-dependency.html: OK
 	module graph with a syntax error should not evaulate but should not crash UA.: PASS
 /html/semantics/scripting-1/the-script-element/module/error-type-1.html: OK
@@ -1071,7 +1077,7 @@
 	import.meta.resolve() given an import mapped  URL-like specifier: PASS
 	import.meta.resolve() given an import mapped bare specifier: PASS
 /html/semantics/scripting-1/the-script-element/module/import-meta/import-meta-resolve-multiple-scripts.html: OK
-	import.meta.resolve resolves URLs relative to the import.meta.url, not relative to the active script when it is called: another global's inline script: FAIL
+	import.meta.resolve resolves URLs relative to the import.meta.url, not relative to the active script when it is called: another global's inline script: PASS
 	import.meta.resolve resolves URLs relative to the import.meta.url, not relative to the active script when it is called: another module script: PASS
 	import.meta.resolve still works if its global has been destroyed (by detaching the iframe): FAIL
 /html/semantics/scripting-1/the-script-element/module/import-meta/import-meta-url.html: OK
@@ -1151,26 +1157,26 @@
 	Test that evaluating something as classic script does not prevent it from being evaluated as module script.: PASS
 /html/semantics/scripting-1/the-script-element/module/module-vs-script-2.html: OK
 	Test that evaluating something as classic script does not prevent it from being evaluated as module script.: PASS
-/html/semantics/scripting-1/the-script-element/module/modulepreload-cross-origin-referrerpolicy.sub.html: TIMEOUT
+/html/semantics/scripting-1/the-script-element/module/modulepreload-cross-origin-referrerpolicy.sub.html: OK
 	Cross-origin modulepreload with default referrer policy should load: FAIL
 	Cross-origin modulepreload with no-referrer policy should load: FAIL
-	Cross-origin modulepreload with origin policy should load: TIMEOUT
-	Cross-origin modulepreload with same-origin policy should load: NOTRUN
-	Cross-origin modulepreload with strict-origin policy should load: NOTRUN
-	Cross-origin modulepreload with strict-origin-when-cross-origin policy should load: NOTRUN
-	Cross-origin modulepreload with unsafe-url policy should load: NOTRUN
+	Cross-origin modulepreload with origin policy should load: FAIL
+	Cross-origin modulepreload with same-origin policy should load: FAIL
+	Cross-origin modulepreload with strict-origin policy should load: FAIL
+	Cross-origin modulepreload with strict-origin-when-cross-origin policy should load: FAIL
+	Cross-origin modulepreload with unsafe-url policy should load: FAIL
 /html/semantics/scripting-1/the-script-element/module/modulepreload-inline-referrerpolicy.html: OK
 	Inline modulepreload elements should respect the referrerpolicy attribute: FAIL
 /html/semantics/scripting-1/the-script-element/module/modulepreload-referrer-check.html: OK
 	Modulepreload should send a referrer header: FAIL
-/html/semantics/scripting-1/the-script-element/module/modulepreload-referrerpolicy.html: TIMEOUT
+/html/semantics/scripting-1/the-script-element/module/modulepreload-referrerpolicy.html: OK
 	Modulepreload should use default referrer policy: FAIL
-	Modulepreload with no-referrer policy should not send referrer: TIMEOUT
-	Modulepreload with origin policy should send origin-only referrer: NOTRUN
-	Modulepreload with same-origin policy should send full referrer for same-origin requests: NOTRUN
-	Modulepreload with strict-origin policy should send origin-only referrer: NOTRUN
-	Modulepreload with strict-origin-when-cross-origin policy should send full referrer for same-origin requests: NOTRUN
-	Modulepreload with unsafe-url policy should send full referrer: NOTRUN
+	Modulepreload with no-referrer policy should not send referrer: FAIL
+	Modulepreload with origin policy should send origin-only referrer: FAIL
+	Modulepreload with same-origin policy should send full referrer for same-origin requests: FAIL
+	Modulepreload with strict-origin policy should send origin-only referrer: FAIL
+	Modulepreload with strict-origin-when-cross-origin policy should send full referrer for same-origin requests: FAIL
+	Modulepreload with unsafe-url policy should send full referrer: FAIL
 /html/semantics/scripting-1/the-script-element/module/nested-imports.html: OK
 	should load all modules successfully: FAIL
 /html/semantics/scripting-1/the-script-element/module/nomodule-attribute.html: OK
@@ -1538,15 +1544,15 @@
 	Sanity check around top-level Window: PASS
 	window error: Move success inline classic script to iframe move-back: NOTRUN
 /html/semantics/scripting-1/the-script-element/moving-between-documents/ordering/delay-load-event-1.html: ERROR
-	Script elements (parser-blocking) does not delay the load event in the new Document after move: NOTRUN
-	Script elements (parser-blocking) still delay the load event in the original Document after move: FAIL
+	Script elements (parser-blocking) does not delay the load event in the new Document after move: PASS
+	Script elements (parser-blocking) still delay the load event in the original Document after move: PASS
 /html/semantics/scripting-1/the-script-element/moving-between-documents/ordering/delay-load-event-2.html: ERROR
-	Script elements (async) does not delay the load event in the new Document after move: NOTRUN
-	Script elements (async) still delay the load event in the original Document after move: FAIL
+	Script elements (async) does not delay the load event in the new Document after move: PASS
+	Script elements (async) still delay the load event in the original Document after move: PASS
 /html/semantics/scripting-1/the-script-element/moving-between-documents/ordering/in-order.html: ERROR
-	Script elements (in-order) still block subsequent in-order scripts in the original Document after moved to another Document: FAIL
+	Script elements (in-order) still block subsequent in-order scripts in the original Document after moved to another Document: PASS
 /html/semantics/scripting-1/the-script-element/moving-between-documents/ordering/parser-blocking.html: ERROR
-	Script elements (parser-blocking) still block the parser in the original Document after moved to another Document: FAIL
+	Script elements (parser-blocking) still block the parser in the original Document after moved to another Document: PASS
 /html/semantics/scripting-1/the-script-element/muted-errors.sub.html: OK
 	Errors for cross-origin script should be muted: FAIL
 	Errors for cross-origin script should be muted even if the script is once loaded as same-origin: FAIL
@@ -1594,7 +1600,7 @@
 	Script @type: unknown parameters 5: FAIL
 /html/semantics/scripting-1/the-script-element/script-charset-02.html: OK
 	UTF-8 script decoded using document encoding (windows-1250): FAIL
-	assumption: document encoding is windows-1250: FAIL
+	assumption: document encoding is windows-1250: PASS
 	windows-1250 script decoded using document encoding (also windows-1250): FAIL
 /html/semantics/scripting-1/the-script-element/script-charset-03.html: ERROR
 	Script changing @charset: FAIL
@@ -1619,7 +1625,7 @@
 /html/semantics/scripting-1/the-script-element/script-for-event-xhtml.xhtml: OK
 	Scripts with for and event attributes should not run.: PASS
 /html/semantics/scripting-1/the-script-element/script-for-event.html: OK
-	Script 0: FAIL
+	Script 0: PASS
 	Script 1: PASS
 	Script 10: FAIL
 	Script 11: FAIL
@@ -1638,18 +1644,18 @@
 	Script 9: FAIL
 	Scripts with for and event attributes: PASS
 /html/semantics/scripting-1/the-script-element/script-noembed-noframes-iframe.xhtml: OK
-	Script inside noembed, noframes and iframe: FAIL
+	Script inside noembed, noframes and iframe: PASS
 /html/semantics/scripting-1/the-script-element/script-not-executed-after-shutdown.html: OK
 	Script is not executed after script thread is shutdown: PASS
 /html/semantics/scripting-1/the-script-element/script-not-found-not-executed.html: OK
 	Script that 404: PASS
 	Script that does not 404: FAIL
 /html/semantics/scripting-1/the-script-element/script-onerror-insertion-point-1.html: TIMEOUT
-	Test that the insertion point is defined in the error event of a parser-inserted script that actually started a fetch (but just had it fail).: NOTRUN
-/html/semantics/scripting-1/the-script-element/script-onerror-insertion-point-2.html: TIMEOUT
-	Test that the insertion point is not defined in the error event of a\n  parser-inserted script that has an unparseable URL: NOTRUN
-/html/semantics/scripting-1/the-script-element/script-onload-insertion-point.html: TIMEOUT
-	Test that the insertion point is defined in the load event of a parser-inserted script.: NOTRUN
+	Test that the insertion point is defined in the error event of a parser-inserted script that actually started a fetch (but just had it fail).: FAIL
+/html/semantics/scripting-1/the-script-element/script-onerror-insertion-point-2.html: OK
+	Test that the insertion point is not defined in the error event of a\n  parser-inserted script that has an unparseable URL: PASS
+/html/semantics/scripting-1/the-script-element/script-onload-insertion-point.html: OK
+	Test that the insertion point is defined in the load event of a parser-inserted script.: FAIL
 /html/semantics/scripting-1/the-script-element/script-onload-string.html: OK
 	Setting onload to a string should convert to null.: PASS
 /html/semantics/scripting-1/the-script-element/script-referrerpolicy-idl.html: OK
@@ -1663,8 +1669,15 @@
 /html/semantics/scripting-1/the-script-element/script-text-modifications-csp.html: TIMEOUT
 /html/semantics/scripting-1/the-script-element/script-text-modifications.html: OK
 	Modify inline script element's text after prepare-a-script before evaluation: FAIL
-/html/semantics/scripting-1/the-script-element/script-text-xhtml.xhtml: TIMEOUT
-/html/semantics/scripting-1/the-script-element/script-text.html: ERROR
+/html/semantics/scripting-1/the-script-element/script-text-xhtml.xhtml: OK
+	Getter with CDATA section: FAIL
+/html/semantics/scripting-1/the-script-element/script-text.html: OK
+	Getter: PASS
+	Setter (empty string): PASS
+	Setter (non-empty string): PASS
+	Setter (null): PASS
+	Setter (text node reuse): PASS
+	Setter (undefined): PASS
 /html/semantics/scripting-1/the-script-element/script-type-and-language-empty.html: OK
 	A script with empty type and a random language should run: PASS
 	A script with empty type and empty language should run: PASS
@@ -2887,7 +2900,8 @@
 	Parsing XHTML: Node's node document must be set to that of the element to which it will be appended. Test loading of XHTML document with nested templates from a file: FAIL
 	Parsing XHTML: Node's node document must be set to that of the element to which it will be appended. Test nested templates: PASS
 	Parsing XHTML: Node's node document must be set to that of the element to which it will be appended. Test not empty template: PASS
-/html/semantics/scripting-1/the-template-element/additions-to-parsing-xhtml-documents/tag-name.xhtml: ERROR
+/html/semantics/scripting-1/the-template-element/additions-to-parsing-xhtml-documents/tag-name.xhtml: OK
+	tagName case: FAIL
 /html/semantics/scripting-1/the-template-element/additions-to-parsing-xhtml-documents/template-child-nodes.html: OK
 	Child nodes of nested template element in XHTML documents must be appended to template content: PASS
 	Child nodes of nested template element in XHTML documents must be appended to template content. Test loading XHTML document from a file: FAIL
@@ -2906,33 +2920,33 @@
 	ownerDocument of cloned template content is set to template content owner. Test cloning nested template: PASS
 	ownerDocument of cloned template content is set to template content owner. Test cloning with children: PASS
 	ownerDocument of cloned template content is set to template content owner. Test cloning without children: FAIL
-	ownerDocument of cloned template content is set to template content owner. Test loading HTML document from file: FAIL
+	ownerDocument of cloned template content is set to template content owner. Test loading HTML document from file: PASS
 /html/semantics/scripting-1/the-template-element/definitions/template-contents-owner-document-type.html: OK
-	The template contents owner document type is HTML document (case when document has browsing context and the template is created by HTML parser): FAIL
-	The template contents owner document type is HTML document (case when document has browsing context and the template is created by createElement()): FAIL
+	The template contents owner document type is HTML document (case when document has browsing context and the template is created by HTML parser): PASS
+	The template contents owner document type is HTML document (case when document has browsing context and the template is created by createElement()): PASS
 	The template contents owner document type is HTML document (case when document has no browsing context and the template is created by createElement()): PASS
 	The template contents owner document type is HTML document (case when document has no browsing context and the template is created via innerHTML): PASS
 /html/semantics/scripting-1/the-template-element/definitions/template-contents-owner-test-001.html: OK
 	Test the template contents owner document when enclosing document has no browsing content. Template element is created by createElement(): PASS
 	Test the template contents owner document when enclosing document has no browsing content. Template element is created by innerHTML: PASS
 /html/semantics/scripting-1/the-template-element/definitions/template-contents-owner-test-002.html: OK
-	The template contents owner document must be different from template owner document, which has browsing context. Template element is created by HTML parser: FAIL
-	The template contents owner document must be different from template owner document, which has browsing context. Template element is created by createElement(): FAIL
-	The template contents owner document must be different from template owner document, which has browsing context. Template element is created via innerHTML: FAIL
+	The template contents owner document must be different from template owner document, which has browsing context. Template element is created by HTML parser: PASS
+	The template contents owner document must be different from template owner document, which has browsing context. Template element is created by createElement(): PASS
+	The template contents owner document must be different from template owner document, which has browsing context. Template element is created via innerHTML: PASS
 /html/semantics/scripting-1/the-template-element/definitions/template-contents.html: OK
 	The template contents must be a DocumentFragment (empty template): PASS
 	The template contents must be a DocumentFragment (nested template containing a text node): PASS
 	The template contents must be a DocumentFragment (non empty template containing div which is an Element instance): PASS
-	The template contents must be a DocumentFragment (non empty template tag inside HTML file loaded in iframe): FAIL
+	The template contents must be a DocumentFragment (non empty template tag inside HTML file loaded in iframe): PASS|FAIL
 	The template contents must be a DocumentFragment (non empty template): PASS
 	The template contents must be a DocumentFragment (not empty template containing text node): PASS
-	The template contents must be a DocumentFragment (the empty template tag inside HTML file loaded in iframe): FAIL
-	The template contents must be a DocumentFragment (the template tag with nested template tag inside HTML file loaded in iframe): FAIL
-	The template contents must be a DocumentFragment (the template tag with some text inside HTML file loaded in iframe): FAIL
+	The template contents must be a DocumentFragment (the empty template tag inside HTML file loaded in iframe): PASS|FAIL
+	The template contents must be a DocumentFragment (the template tag with nested template tag inside HTML file loaded in iframe): PASS|FAIL
+	The template contents must be a DocumentFragment (the template tag with some text inside HTML file loaded in iframe): PASS
 /html/semantics/scripting-1/the-template-element/innerhtml-on-templates/innerhtml.html: OK
 	innerHTML of template element replaces all referenced by the content attribute: PASS
 	innerHTML of template element replaces all referenced by the content attribute. Test empty HTML string: PASS
-	innerHTML of template element replaces all referenced by the content attribute. Test loading of HTML document from a file: FAIL
+	innerHTML of template element replaces all referenced by the content attribute. Test loading of HTML document from a file: PASS
 	innerHTML of template element replaces all referenced by the content attribute. Test nested template: PASS
 /html/semantics/scripting-1/the-template-element/reflect-html-for.html: OK
 	template.accessKey: IDL get with DOM attribute unset: PASS
@@ -3343,19 +3357,19 @@
 	Template contents should be serialized instead of template element if serializing template element. Test nested template: PASS
 	Template contents should be serialized instead of template element if serializing template element. Test serializing whole document: PASS
 /html/semantics/scripting-1/the-template-element/template-element/content-attribute.html: OK
-	Content attribute of template element is read-only. Test content attribute of a document loaded from a file: FAIL
+	Content attribute of template element is read-only. Test content attribute of a document loaded from a file: PASS
 	Content attribute of template element is read-only. Test empty template: PASS
 	Content attribute of template element is read-only. Test not empty template populated by appendchild(): PASS
 	Content attribute of template element is read-only. Test not empty template populated by innerHTML: PASS
 	Content attribute of template element is read-only. Test that custom content attribute named 'content' doesn't affect content IDL attribute: PASS
 	Content attribute of template element is read-only. Test that custom content attribute named 'content' doesn't make content IDL attribute writable: PASS
-	Content attribute of template element is read-only. Text value of content attribute of template tag should be ignored, when loading document from a file: FAIL
+	Content attribute of template element is read-only. Text value of content attribute of template tag should be ignored, when loading document from a file: PASS
 /html/semantics/scripting-1/the-template-element/template-element/node-document-changes.html: OK
 	Changing of template element's node document. Adobt template element into a document that has a browsing context: FAIL
-	Changing of template element's node document. Test document loaded from a file: FAIL
-	Changing of template element's node document. Test that ownerDocument of a not empty template and its content changes: FAIL
-	Changing of template element's node document. Test that ownerDocument of an empty template and its content changes: FAIL
-	Changing of template element's node document. Test that ownerDocument of nested template and its content changes: FAIL
+	Changing of template element's node document. Test document loaded from a file: PASS
+	Changing of template element's node document. Test that ownerDocument of a not empty template and its content changes: PASS
+	Changing of template element's node document. Test that ownerDocument of an empty template and its content changes: PASS
+	Changing of template element's node document. Test that ownerDocument of nested template and its content changes: PASS
 	Changing of template element's node document. Test the case when both old and new owner documents of template element have browsing context: FAIL
 /html/semantics/scripting-1/the-template-element/template-element/template-as-a-descendant.html: OK
 	Template element as a descendant of the BODY element. Template element is appended by appendChild(): PASS
@@ -3375,7 +3389,7 @@
 	Template content should throw when an ancestor across two template boundaries is being appended.: FAIL
 	Template content should throw when its ancestor is being appended.: FAIL
 /html/semantics/scripting-1/the-template-element/template-element/template-content-node-document.html: OK
-	Node document of the template content attribute must be template contents owner. Load HTML file with multiple template elements: FAIL
+	Node document of the template content attribute must be template contents owner. Load HTML file with multiple template elements: PASS
 	Node document of the template content attribute must be template contents owner. Nested template element created by createElement: PASS
 	Node document of the template content attribute must be template contents owner. Nested template element created by innerHTML: PASS
 /html/semantics/scripting-1/the-template-element/template-element/template-content.html: OK
@@ -3596,20 +3610,21 @@
 	Template may contain wbr element: PASS
 	Template may contain wbr element. The template element and contents are added via body.innerHTML: PASS
 /html/semantics/scripting-1/the-template-element/template-element/template-descendant-body.html: OK
-	Template element as a descendant of the body element. Test loading from a file: FAIL
+	Template element as a descendant of the body element. Test loading from a file: PASS
 /html/semantics/scripting-1/the-template-element/template-element/template-descendant-frameset.html: OK
-	Template element as a descendant of the frameset element. Test loading from a file: FAIL
-	Template element as a descendant of the frameset element. Test template element appended to frameset by appendChild(): FAIL
-	Template element as a descendant of the frameset element. Test template element is assigned to frameset's innerHTML): FAIL
+	Template element as a descendant of the frameset element. Test loading from a file: PASS
+	Template element as a descendant of the frameset element. Test template element appended to frameset by appendChild(): PASS
+	Template element as a descendant of the frameset element. Test template element is assigned to frameset's innerHTML): PASS
 /html/semantics/scripting-1/the-template-element/template-element/template-descendant-head.html: OK
-	Template element as a descendant of the head element. Test loading from a file: FAIL
+	Template element as a descendant of the head element. Test loading from a file: PASS
 /html/semantics/scripting-1/the-template-element/template-for/template-for-append-element.html: OK
 	<template for> appending element: FAIL
 /html/semantics/scripting-1/the-template-element/template-for/template-for-append-text-and-element.html: OK
 	<template for> with text: FAIL
 /html/semantics/scripting-1/the-template-element/template-for/template-for-append-to-head.html: OK
 	HTML partial updates - append to head: FAIL
-/html/semantics/scripting-1/the-template-element/template-for/template-for-case-sensitive-dom-inserted.html: ERROR
+/html/semantics/scripting-1/the-template-element/template-for/template-for-case-sensitive-dom-inserted.html: OK
+	marker/end/start PI targets are parsed as lower case, but attributes are case-sensitive: FAIL
 /html/semantics/scripting-1/the-template-element/template-for/template-for-case-sensitive.html: OK
 	marker/end/start PI targets, attributes and their values are case-sensitive: FAIL
 /html/semantics/scripting-1/the-template-element/template-for/template-for-empty-hash.html: OK
@@ -3634,15 +3649,15 @@
 	Setter beforeHTMLUnsafe should not patch existing target in head: FAIL
 	Setter beforeHTMLUnsafe should patch targets inside the fragment: FAIL
 	Setter createContextualFragment should not patch existing target in body: PASS
-	Setter createContextualFragment should not patch existing target in head: FAIL
+	Setter createContextualFragment should not patch existing target in head: PASS
 	Setter createContextualFragment should patch targets inside the fragment: FAIL
-	Setter innerHTML should not patch existing target in head: FAIL
+	Setter innerHTML should not patch existing target in head: PASS
 	Setter innerHTML should patch targets inside the fragment: FAIL
 	Setter insertAdjacentHTML should not patch existing target in body: PASS
-	Setter insertAdjacentHTML should not patch existing target in head: FAIL
+	Setter insertAdjacentHTML should not patch existing target in head: PASS
 	Setter insertAdjacentHTML should patch targets inside the fragment: FAIL
 	Setter outerHTML should not patch existing target in body: PASS
-	Setter outerHTML should not patch existing target in head: FAIL
+	Setter outerHTML should not patch existing target in head: PASS
 	Setter outerHTML should patch targets inside the fragment: FAIL
 	Setter prependHTMLUnsafe should not patch existing target in body: FAIL
 	Setter prependHTMLUnsafe should not patch existing target in head: FAIL
@@ -3650,7 +3665,7 @@
 	Setter replaceWithHTMLUnsafe should not patch existing target in body: FAIL
 	Setter replaceWithHTMLUnsafe should not patch existing target in head: FAIL
 	Setter replaceWithHTMLUnsafe should patch targets inside the fragment: FAIL
-	Setter setHTMLUnsafe should not patch existing target in head: FAIL
+	Setter setHTMLUnsafe should not patch existing target in head: PASS
 	Setter setHTMLUnsafe should patch targets inside the fragment: FAIL
 /html/semantics/scripting-1/the-template-element/template-for/template-for-innerHTML-ambiguous.html: OK
 	<template for> in innerHTML patching inner element: FAIL
