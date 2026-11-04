@@ -1707,6 +1707,12 @@ a new inert XML document; one whose element is &lt;parsererror&gt; when the text
 type, Quota past dom.max_fragment_nodes.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>DOMParser_parseXMLNode :: proc(c: ^Call, text: string, type: string) -&gt; (u64, Api_Error)</code></p>
+<h3 id="document-parseresponse"><a class="anchor" href="#document-parseresponse" aria-hidden="true">#</a><code>Document_parseResponse</code></h3>
+<div class="code"><pre><code>Node Document_parseResponse(string text, string type) raises</code></pre></div>
+<p>The response document of an XMLHttpRequest (XHR "set a document response"): <code>type</code> text/html, or an XML type. Nothing loads
+or runs in it. 0 for XML that is not well-formed; Quota past dom.max_fragment_nodes.</p>
+<p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
+<p>Host: <code>Document_parseResponse :: proc(c: ^Call, text: string, type: string) -&gt; (u64, Api_Error)</code></p>
 <h3 id="processinginstruction-target"><a class="anchor" href="#processinginstruction-target" aria-hidden="true">#</a><code>ProcessingInstruction_target</code></h3>
 <div class="code"><pre><code>string ProcessingInstruction_target(Node node)</code></pre></div>
 <p>processingInstruction.target</p>
@@ -2373,6 +2379,7 @@ well-formed-checked). Range past page.max_fetch_bytes.</p>
 <li class="lvl3"><a href="#domimplementation-createhtmldocument">DOMImplementation_createHTMLDocument</a></li>
 <li class="lvl3"><a href="#domparser-parsehtmlnode">DOMParser_parseHTMLNode</a></li>
 <li class="lvl3"><a href="#domparser-parsexmlnode">DOMParser_parseXMLNode</a></li>
+<li class="lvl3"><a href="#document-parseresponse">Document_parseResponse</a></li>
 <li class="lvl3"><a href="#processinginstruction-target">ProcessingInstruction_target</a></li>
 <li class="lvl3"><a href="#document-xmlcontenttype">Document_xmlContentType</a></li>
 <li class="lvl3"><a href="#document-createxmlelement">Document_createXMLElement</a></li>
