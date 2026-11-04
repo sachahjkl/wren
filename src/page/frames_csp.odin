@@ -4,12 +4,11 @@ package page
 // the documents it embeds (Navigable.required_csp, read with the other attributes at a navigation; a frame without one takes its
 // parent's own). Its requests say which (Sec-Required-CSP). A response takes it:
 //   * when it allows blanket enforcement, Allow-CSP-From: * or the parent's origin: the policy is enforced on the document;
-//   * when its own enforced policies subsume it (here: one of them has each of its directives, with the same sources);
+//   * when its own enforced policies subsume it (each of its directives as strict at least in one of them: csp.policy_list_subsumes);
 //   * when it is of a local scheme (about:blank, srcdoc, data:, blob:): the policy is enforced on the document.
 // Any other is refused, as X-Frame-Options refuses. The policy's sandbox directive sandboxes the document, as any enforced policy's
 // does (csp_sandbox_apply).
 
-import "core:slice"
 import "core:strings"
 import "wb:csp"
 import "wb:http"
@@ -20,12 +19,20 @@ REQUIRED_CSP_HEADER :: "Sec-Required-CSP"
 Required_Csp_Verdict :: enum u8 { Allowed, Enforced, Refused }
 
 // The csp attribute as a required policy (CSPEE "is valid required CSP": one serialized policy of printable ASCII, without
-// report-uri nor report-to), else the parent's own required policy, which holds for what it embeds too; "" none.
+// report-uri nor report-to), else the parent's own required policy, which holds for what it embeds too; "" none. An attribute
+// less strict than the parent's own requirement gives way to it (CSPEE §4.1 "required CSP": the parent's must subsume it).
 @(private)
 frame_required_csp :: proc(n: ^Navigable, value: string, has: bool) -> string {
-	if has && required_csp_valid(value) { return strings.trim_space(value) }
-	if pn := frame_navigable_of(n.parent); pn != nil { return pn.required_csp }
-	return ""
+	inherited := ""
+	if pn := frame_navigable_of(n.parent); pn != nil { inherited = pn.required_csp }
+	if !has || !required_csp_valid(value) { return inherited }
+	own := strings.trim_space(value)
+	if inherited == "" { return own }
+	l: csp.Policy_List
+	defer csp.list_destroy(&l)
+	csp.parse_header(&l, own, .Enforce)
+	origin := n.parent != nil ? n.parent.env.origin : url.Origin{opaque = true}
+	return policies_subsume(&l, inherited, origin) ? own : inherited
 }
 
 required_csp_valid :: proc(value: string) -> bool {
@@ -57,32 +64,15 @@ required_csp_verdict :: proc(n: ^Navigable, final: url.URL, headers: http.Header
 	own: csp.Policy_List
 	defer csp.list_destroy(&own)
 	for v in http.get_all(headers, "content-security-policy") { csp.parse_header(&own, v, .Enforce) }
-	return policies_subsume(&own, n.required_csp) ? .Allowed : .Refused
+	return policies_subsume(&own, n.required_csp, url.origin_of(final, context.temp_allocator)) ? .Allowed : .Refused
 }
 
-// Whether an enforced policy of `l` has each directive of `required` with the same sources (in any order): a policy as strict at
-// least, the part of CSPEE's subsumption that does not compare source lists.
+// Whether the enforced policies of `l` are as strict as `required` at least (`self`: the origin they protect).
 @(private)
-policies_subsume :: proc(l: ^csp.Policy_List, required: string) -> bool {
+policies_subsume :: proc(l: ^csp.Policy_List, required: string, self: url.Origin) -> bool {
 	req := csp.parse_policy(required, .Enforce)
 	defer csp.policy_destroy(&req)
-	sorted_tokens :: proc(raw: string) -> []string {
-		tokens := csp.split_ws(raw)
-		slice.sort(tokens)
-		return tokens
-	}
-	next_policy: for &pol in l.policies {
-		if pol.disposition != .Enforce { continue }
-		for want in req.directives {
-			found := false
-			for have in pol.directives {
-				if have.name == want.name && slice.equal(sorted_tokens(have.raw), sorted_tokens(want.raw)) { found = true; break }
-			}
-			if !found { continue next_policy }
-		}
-		return true
-	}
-	return false
+	return csp.policy_list_subsumes(l, &req, self)
 }
 
 // The frame's required policy is the document's: enforced, its sandbox directive applied.

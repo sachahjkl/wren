@@ -38,12 +38,15 @@ required_csp_policies :: proc(t: ^testing.T) {
 	testing.expect(t, !required_csp_valid("script-src 'café'"), "only printable ASCII")
 	own: csp.Policy_List
 	defer csp.list_destroy(&own)
+	self := O("https://b.example/")
 	csp.parse_header(&own, "img-src 'none'", .Report_Only)
-	testing.expect(t, !policies_subsume(&own, "img-src 'none'"), "a report-only policy enforces nothing")
+	testing.expect(t, !policies_subsume(&own, "img-src 'none'", self), "a report-only policy enforces nothing")
 	csp.parse_header(&own, "default-src 'self'; script-src https://a.example 'self'", .Enforce)
-	testing.expect(t, policies_subsume(&own, "script-src 'self' https://a.example"), "the same sources in another order")
-	testing.expect(t, !policies_subsume(&own, "script-src 'self'"), "fewer sources are a stricter policy than the response's")
-	testing.expect(t, !policies_subsume(&own, "script-src 'self' https://a.example; sandbox"), "a directive the response does not have")
+	testing.expect(t, policies_subsume(&own, "script-src 'self' https://a.example", self), "the same sources in another order")
+	testing.expect(t, !policies_subsume(&own, "script-src 'self'", self), "fewer sources are a stricter policy than the response's")
+	testing.expect(t, !policies_subsume(&own, "script-src 'self' https://a.example; sandbox", self), "a directive the response does not have")
+	testing.expect(t, policies_subsume(&own, "script-src https://*.example", self), "its sources within the required ones ('self' is b.example)")
+	testing.expect(t, policies_subsume(&own, "img-src https:", self), "img-src through its default-src")
 }
 
 @(test)

@@ -881,6 +881,8 @@ addEventListener("load", () => {
   d.body.lastChild.addEventListener("error", () => log("the image failed"));
   const w = s.contentWindow;
   log("no realm " + typeof w.eval + " " + w.foo);
+  w.flag = 7;
+  log("kept " + w.flag + " " + ("flag" in w) + " " + delete w.flag + " " + w.flag);
   log("sandbox checked");
 });
 </script></body>`)
@@ -888,6 +890,7 @@ addEventListener("load", () => {
 	check(pr, wait_note(pr, "sandboxed child SecurityError SecurityError null"), "and the parent is out of reach from it")
 	check(pr, wait_note(pr, "same reached"), "allow-same-origin keeps the origin: reachable")
 	check(pr, wait_note(pr, "no realm undefined undefined") && wait_note(pr, "sandbox checked"), "allow-same-origin without allow-scripts: the frame has no realm to reach")
+	check(pr, wait_note(pr, "kept 7 true true undefined"), "what the parent sets on the window of a frame without a realm stays there for it")
 	page.images_sync(child_of(pr.p, 1))   // (what a frame of the shell starts)
 	wait_note(pr, "the image failed")
 	run(pr, SETTLE)

@@ -29,7 +29,7 @@ find_directive :: proc(p: ^Policy, names: []string) -> (^Directive, string) {
 	return nil, ""
 }
 
-@(private = "file")
+@(private)
 has_keyword :: proc(d: ^Directive, k: Keyword) -> bool {
 	for s in d.sources { if s.kind == .Keyword && s.keyword == k { return true } }
 	return false
