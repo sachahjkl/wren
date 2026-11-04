@@ -38,11 +38,11 @@ SWEEP_ALARM_LINES :: 6
 SWEEP_DEVTOOLS_PANELS :: []string{"console", "elements", "network"}
 SWEEP_LINE_MAX :: 200
 
-// A link a person may follow: on this site, on screen, that signs no one in and starts no download. `x y address`, or "".
-SWEEP_PICK_LINK :: `(()=>{const skip=/log.?(in|out)|sign.?(in|up|out)|regist|cart|checkout|subscri|download|account|\.(zip|exe|pdf|dmg|msi)/i;
-for(const a of document.querySelectorAll('a[href]')){if(a.host!==location.host||!a.protocol.startsWith('http')||a.href.split('#')[0]===location.href.split('#')[0]||skip.test(a.href+' '+a.textContent))continue;
-const r=a.getBoundingClientRect();if(r.width<4||r.height<4||r.top<0||r.top>innerHeight-4||r.left<0||r.left>innerWidth-4)continue;
-return Math.round(r.left+r.width/2)+' '+Math.round(r.top+r.height/2)+' '+a.href}return ''})()`
+// A link a person may follow is on this site and on screen, signs no one in and starts no download. (Read through the channel, not by a script: the sites' Content-Security-Policy refuses eval.)
+SWEEP_LINKS_LOOKED_AT :: 300
+SWEEP_LINK_MIN_SIDE :: 4
+SWEEP_CHROME_HEIGHT :: 110
+SWEEP_LINK_SKIP :: []string{"login", "log-in", "logout", "signin", "sign-in", "signup", "sign-up", "register", "cart", "checkout", "subscri", "download", "account", ".zip", ".exe", ".pdf", ".dmg", ".msi"}
 
 Sweep_Step :: enum u8 { Start, Load, Scroll, Devtools, Link, Back, Reload, Tab, Race, Close }
 Sweep_Verdict :: enum u8 { Passed, Crash, Hang, Unclean, No_Start }
@@ -108,7 +108,7 @@ run_sweep :: proc(args: []string) -> int {
 	defer os.close(summary)
 	fmt.fprint(summary, "verdict\turl\tstep")
 	for name in SWEEP_STEP_NAMES { fmt.fprintf(summary, "\t%s_ms", name) }
-	fmt.fprintln(summary, "\tslow\tjs_errors\tnodes\tmemory_mb\texit\tnote")
+	fmt.fprintln(summary, "\tslow\tjs_errors\tnodes\tmemory_mb\texit\tlink\tnote")
 
 	failed, pages := 0, 0
 	for url, i in urls {
@@ -137,7 +137,7 @@ sweep_write :: proc(out: ^os.File, v: ^Sweep_Visit) {
 	for ms in v.ms { fmt.fprintf(out, "\t%d", ms) }
 	fmt.fprint(out, "\t")
 	for s in Sweep_Step { if s in v.slow { fmt.fprintf(out, "%s ", SWEEP_STEP_NAMES[s]) } }
-	fmt.fprintfln(out, "\t%d\t%d\t%d\t%d\t%s", v.js_errors, v.nodes, v.memory_mb, v.exit_code, v.note)
+	fmt.fprintfln(out, "\t%d\t%d\t%d\t%d\t%s\t%s", v.js_errors, v.nodes, v.memory_mb, v.exit_code, v.link, v.note)
 }
 
 // Every step of a page, one after the other, as long as the browser lives and answers.
@@ -229,22 +229,57 @@ sweep_limit :: proc(v: ^Sweep_Visit, step: Sweep_Step, e: api.Error) {
 	if e == .Timeout { v.slow += {step} }
 }
 
+// The address of the tab shown.
+@(private = "file")
+sweep_location :: proc(s: ^api.Session) -> string {
+	list, e := api.targets(s)
+	if e != .None { return "" }
+	for tab in list.tabs { if tab.active { return tab.url } }
+	return ""
+}
+
+// The first link of the page, as sweep's comment above says: where to click it, its address.
+@(private = "file")
+sweep_pick_link :: proc(s: ^api.Session, here: string) -> (at: api.Point, address: string, ok: bool) {
+	scheme := strings.index(here, "://")
+	if scheme < 0 { return }
+	path := strings.index_byte(here[scheme + 3:], '/')
+	origin := path < 0 ? here : here[:scheme + 3 + path]
+	links, e := api.query_all(s, "a[href]", SWEEP_LINKS_LOOKED_AT)
+	if e != .None { return }
+	next_link: for n in links.nodes {
+		b := n.box
+		if !n.has_box || b.w < SWEEP_LINK_MIN_SIDE || b.h < SWEEP_LINK_MIN_SIDE || b.x < 0 || b.y < 0 || b.x + b.w / 2 >= f64(SWEEP_SIZE.x) || b.y + b.h / 2 >= f64(SWEEP_SIZE.y - SWEEP_CHROME_HEIGHT) { continue }
+		at_href := strings.index(n.outer_html, `href="`)
+		if at_href < 0 { continue }
+		rest := n.outer_html[at_href + len(`href="`):]
+		end := strings.index_byte(rest, '"')
+		if end <= 0 { continue }
+		href := rest[:end]
+		for word in SWEEP_LINK_SKIP { if strings.contains(strings.to_lower(href, context.temp_allocator), word) { continue next_link } }
+		switch {
+		case strings.has_prefix(href, origin): address = href
+		case strings.has_prefix(href, "/") && !strings.has_prefix(href, "//"): address = strings.concatenate({origin, href}, context.temp_allocator)
+		case !strings.contains(href, ":") && !strings.has_prefix(href, "#") && !strings.has_prefix(href, "//"): address = strings.concatenate({origin, "/", href}, context.temp_allocator)
+		case: continue
+		}
+		if strings.has_prefix(address, here) { continue }   // (this page, or a fragment of it)
+		return {b.x + b.w / 2, b.y + b.h / 2}, address, true
+	}
+	return
+}
+
 // A click on a link of the page; when that goes nowhere (something covers it, a script takes it), the address.
 @(private = "file")
 sweep_follow_link :: proc(r: ^Sweep_Run, v: ^Sweep_Visit) {
 	s := &r.wren.session
-	before, e := api.location(s)
-	if e != .None { return }
-	picked, pe := api.eval(s, SWEEP_PICK_LINK, deadline = SWEEP_SETTLE_LIMIT)
-	if pe != .None || picked == "" { return }
-	parts := strings.split_n(picked, " ", 3, context.temp_allocator)
-	if len(parts) != 3 { return }
-	v.link = strings.clone(parts[2])
-	x, _ := strconv.parse_f64(parts[0])
-	y, _ := strconv.parse_f64(parts[1])
-	_ = api.click_at(s, {x, y})
-	moved := api.wait_js(s, fmt.tprintf("location.href !== %q", before), SWEEP_LINK_LIMIT)
-	if moved != .None { sweep_limit(v, .Link, api.navigate(s, parts[2], .Load, SWEEP_LOAD_LIMIT)); return }
+	before := sweep_location(s)
+	at, address, ok := sweep_pick_link(s, before)
+	if !ok { return }
+	v.link = strings.clone(address)
+	_ = api.click_at(s, at)
+	moved := api.wait_until(s, before, proc(s: ^api.Session, before: string) -> bool { now := sweep_location(s); return now != "" && now != before }, "the link", SWEEP_LINK_LIMIT)
+	if !moved { sweep_limit(v, .Link, api.navigate(s, address, .Load, SWEEP_LOAD_LIMIT)); return }
 	sweep_limit(v, .Link, api.wait_load(s, SWEEP_LOAD_LIMIT))
 	_ = api.wait_quiet(s, deadline = SWEEP_DWELL_LIMIT)
 }
