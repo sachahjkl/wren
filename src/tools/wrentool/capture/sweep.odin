@@ -1,5 +1,5 @@
 // `wrentool sweep`: real pages visited as a person does, each in a Wren of its own with a throwaway profile (headless, nothing takes the focus): loaded, scrolled, the developer tools
-// opened, a link followed, back, reload, opened again in a tab of its own and closed, then the browser closed. What it records is what a report needs: a crash and its report, a hang and
+// opened, a link followed, back, reload, opened again in a tab of its own and closed, loads cut short, then the browser closed. What it records is what a report needs: a crash and its report, a hang and
 // its stacks, an unclean end, what the standard error said, the time of each step. One visit at a time per site: `-Shard i -Shards n` splits the list between runs.
 package capture
 
@@ -14,7 +14,7 @@ import "wb:remote/api"
 import "wb:tools/tooling"
 import "wb:tools/wrentool/bench"
 
-SWEEP_FLAGS :: "-Urls= -List= -OutDir= -Exe= -Shard= -Shards= -Pref= -Keep -OneProcess"
+SWEEP_FLAGS :: "-Urls= -List= -OutDir= -Exe= -Shard= -Shards= -Pref= -CloseMs= -PingMs= -Keep -OneProcess"
 SWEEP_OUT :: "build/sweep"
 SWEEP_SIZE :: [2]int{1280, 800}
 // A page may take this long to load; past it the visit goes on with what is there (slow is not a failure).
@@ -27,6 +27,8 @@ SWEEP_DWELL_LIMIT :: 2 * time.Second
 SWEEP_FRAMES_LIMIT :: 10 * time.Second
 // The interface must answer within this, twice: else the process is hung.
 SWEEP_PING_MS :: 15_000
+// A load interrupted this long after it began: a tab closed, another navigation, reload and back on top of it.
+SWEEP_RACE_WAIT :: 300 * time.Millisecond
 SWEEP_SCROLLS :: 6
 SWEEP_NOTCHES :: 4.0
 SWEEP_FRAMES :: 3
@@ -42,10 +44,10 @@ for(const a of document.querySelectorAll('a[href]')){if(a.host!==location.host||
 const r=a.getBoundingClientRect();if(r.width<4||r.height<4||r.top<0||r.top>innerHeight-4||r.left<0||r.left>innerWidth-4)continue;
 return Math.round(r.left+r.width/2)+' '+Math.round(r.top+r.height/2)+' '+a.href}return ''})()`
 
-Sweep_Step :: enum u8 { Start, Load, Scroll, Devtools, Link, Back, Reload, Tab, Close }
+Sweep_Step :: enum u8 { Start, Load, Scroll, Devtools, Link, Back, Reload, Tab, Race, Close }
 Sweep_Verdict :: enum u8 { Passed, Crash, Hang, Unclean, No_Start }
 
-SWEEP_STEP_NAMES := [Sweep_Step]string{.Start = "start", .Load = "load", .Scroll = "scroll", .Devtools = "devtools", .Link = "link", .Back = "back", .Reload = "reload", .Tab = "tab", .Close = "close"}
+SWEEP_STEP_NAMES := [Sweep_Step]string{.Start = "start", .Load = "load", .Scroll = "scroll", .Devtools = "devtools", .Link = "link", .Back = "back", .Reload = "reload", .Tab = "tab", .Race = "race", .Close = "close"}
 SWEEP_VERDICT_NAMES := [Sweep_Verdict]string{.Passed = "passed", .Crash = "CRASH", .Hang = "HANG", .Unclean = "UNCLEAN", .No_Start = "NO-START"}
 
 // One page's visit: the step it is at, what each took, how it ended.
@@ -69,6 +71,8 @@ Sweep_Run :: struct {
 	prefs:     []string,
 	keep:      bool,   // the profile stays when a page passed too
 	one:       bool,   // one Wren for every page, until it dies: what a long session does
+	close_ms:  int,    // how long a close may take (0: what api.finish gives; a sanitizer build needs more)
+	ping_ms:   int,    // how long the interface may take to answer, twice
 	wren:      bench.Wren,
 	running:   bool,
 	profile, stderr: string,
@@ -88,10 +92,11 @@ run_sweep :: proc(args: []string) -> int {
 		}
 	}
 	if len(urls) == 0 { fmt.eprintln("wrentool sweep -Urls a,b | -List file[,file] [-OutDir dir] [-Exe path] [-Shard i -Shards n] [-Pref a=b] [-Keep] [-OneProcess]"); return EXIT_USAGE }
-	r := Sweep_Run{exe = strings.clone(tooling.flag(f, "-Exe", bench.WREN_EXE)), keep = tooling.flag_has(f, "-Keep"), one = tooling.flag_has(f, "-OneProcess")}
+	r := Sweep_Run{exe = strings.clone(tooling.flag(f, "-Exe", bench.WREN_EXE)), keep = tooling.flag_has(f, "-Keep"), one = tooling.flag_has(f, "-OneProcess"), close_ms = tooling.flag_int(f, "-CloseMs", 0), ping_ms = tooling.flag_int(f, "-PingMs", SWEEP_PING_MS)}
 	if !os.exists(r.exe) { fmt.eprintfln("%s is missing (build.bat)", r.exe); return 1 }
-	r.out, _ = filepath.abs(tooling.flag(f, "-OutDir", SWEEP_OUT), context.allocator)
-	_ = os.make_directory_all(r.out)
+	out := tooling.flag(f, "-OutDir", SWEEP_OUT)
+	_ = os.make_directory_all(out)   // (before abs: on Linux it asks the system, for what exists)
+	r.out, _ = filepath.abs(out, context.allocator)
 	prefs := make([dynamic]string)
 	append(&prefs, "blocker.update.enabled=false", "blocker.welcome_toast=false")
 	for p in tooling.flag_list(f, "-Pref") { if p != "" { append(&prefs, strings.clone(p)) } }
@@ -139,7 +144,7 @@ sweep_write :: proc(out: ^os.File, v: ^Sweep_Visit) {
 @(private = "file")
 sweep_visit :: proc(r: ^Sweep_Run, v: ^Sweep_Visit) {
 	if !sweep_start(r, v) { return }
-	for step in Sweep_Step.Load ..= Sweep_Step.Tab {
+	for step in Sweep_Step.Load ..= Sweep_Step.Race {
 		v.step = step
 		at := time.tick_now()
 		sweep_do(r, v, step)
@@ -202,6 +207,20 @@ sweep_do :: proc(r: ^Sweep_Run, v: ^Sweep_Visit, step: Sweep_Step) {
 			_ = api.scroll(s, SWEEP_NOTCHES)
 			_ = api.close_tab(s, id)
 		}
+	case .Race:
+		if id, e := api.new_tab(s, v.url, .None); e == .None {
+			time.sleep(SWEEP_RACE_WAIT)
+			_ = api.close_tab(s, id)
+		}
+		if id, e := api.new_tab(s, v.url, .None); e == .None {
+			time.sleep(SWEEP_RACE_WAIT)
+			_ = api.navigate(s, "about:blank", .None)
+			_ = api.go_back(s, .None)
+			time.sleep(SWEEP_RACE_WAIT)
+			_ = api.reload(s, .None)
+			time.sleep(SWEEP_RACE_WAIT)
+			_ = api.close_tab(s, id)
+		}
 	}
 }
 
@@ -241,12 +260,12 @@ sweep_alive :: proc(r: ^Sweep_Run, v: ^Sweep_Visit) -> bool {
 	}
 	limit := s.timeout_ms
 	defer s.timeout_ms = limit
-	s.timeout_ms = SWEEP_PING_MS
+	s.timeout_ms = r.ping_ms
 	_, e := api.ping(s)
 	if e == .Timeout { _, e = api.ping(s) }
 	if e == .None { return true }
 	// (a channel that closes is a process that ends: its crash report is being written)
-	if e == .Closed { api.process_wait(&l.process, SWEEP_PING_MS) }
+	if e == .Closed { api.process_wait(&l.process, r.ping_ms) }
 	if !api.process_alive(&l.process) {
 		sweep_died(r, v)
 		return false
@@ -281,6 +300,7 @@ sweep_close :: proc(r: ^Sweep_Run, v: ^Sweep_Visit) {
 	v.step = .Close
 	at := time.tick_now()
 	forced: bool
+	if r.close_ms > 0 && api.browser_close(&r.wren.session) == .None { api.process_wait(&r.wren.launched.process, r.close_ms) }
 	v.exit_code, forced = api.finish(&r.wren.session, &r.wren.launched, true)
 	v.ms[.Close] = int(time.duration_milliseconds(time.tick_since(at)))
 	r.running = false
