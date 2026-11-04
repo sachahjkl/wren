@@ -68,6 +68,15 @@ preempt_tick :: proc(inst: ^Instance) {
 	if s.soft_deadline != {} { s.soft_deadline = time.tick_add(s.soft_deadline, spent) }
 }
 
+// The thread waits in a host call of `inst` (a synchronous request): the hook takes its turn as at a tick, and the `spent` of the
+// wait is given back to the call's deadlines: it is not the guest's time.
+host_wait_tick :: proc(inst: ^Instance, spent: time.Duration) {
+	preempt_tick(inst)
+	s := &inst.wt
+	if s.deadline != {} { s.deadline = time.tick_add(s.deadline, spent) }
+	if s.soft_deadline != {} { s.soft_deadline = time.tick_add(s.soft_deadline, spent) }
+}
+
 // The ticker's period (ms).
 @(private)
 ticker_period_ms :: proc() -> int {

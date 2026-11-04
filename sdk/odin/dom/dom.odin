@@ -360,6 +360,7 @@ foreign _m_dom {
 	@(link_name = "DOMImplementation_createHTMLDocument") _DOMImplementation_createHTMLDocument :: proc(title: [^]u8, title_len: u32, _ret: ^Node) -> core.Error ---
 	@(link_name = "DOMParser_parseHTMLNode") _DOMParser_parseHTMLNode :: proc(html: [^]u8, html_len: u32, _ret: ^Node) -> core.Error ---
 	@(link_name = "DOMParser_parseXMLNode") _DOMParser_parseXMLNode :: proc(text: [^]u8, text_len: u32, type: [^]u8, type_len: u32, _ret: ^Node) -> core.Error ---
+	@(link_name = "Document_parseResponse") _Document_parseResponse :: proc(text: [^]u8, text_len: u32, type: [^]u8, type_len: u32, _ret: ^Node) -> core.Error ---
 	@(link_name = "ProcessingInstruction_target") _ProcessingInstruction_target :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Document_xmlContentType") _Document_xmlContentType :: proc(document: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Document_createXMLElement") _Document_createXMLElement :: proc(document: u64, namespace: [^]u8, namespace_len: u32, qualified_name: [^]u8, qualified_name_len: u32, with_namespace: i32, _ret: ^Element) -> core.Error ---
@@ -4133,6 +4134,13 @@ DOMParser_parseHTMLNode :: proc "contextless" (html: string) -> (result: Node, e
 // type, Quota past dom.max_fragment_nodes.
 DOMParser_parseXMLNode :: proc "contextless" (text: string, type: string) -> (result: Node, err: core.Error) {
 	err = _DOMParser_parseXMLNode(raw_data(text), u32(len(text)), raw_data(type), u32(len(type)), &result)
+	return
+}
+
+// The response document of an XMLHttpRequest (XHR "set a document response"): `type` text/html, or an XML type. Nothing loads
+// or runs in it. 0 for XML that is not well-formed; Quota past dom.max_fragment_nodes.
+Document_parseResponse :: proc "contextless" (text: string, type: string) -> (result: Node, err: core.Error) {
+	err = _Document_parseResponse(raw_data(text), u32(len(text)), raw_data(type), u32(len(type)), &result)
 	return
 }
 

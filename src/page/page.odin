@@ -33,6 +33,7 @@ Fetch :: struct {
 	self:       base.Handle,
 	instance:   u32,
 	task:       base.Handle,    // the fetch task, NIL when finished
+	sync_loader: ^fetch.Loader, // the task is of this loader, not the page's (a document's synchronous request)
 	callback:   u32,
 	user:       u32,
 	state:      i32,            // 0 pending, 1 response, 2 done, 3 failed

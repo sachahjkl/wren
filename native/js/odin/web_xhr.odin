@@ -7,9 +7,8 @@
 // events, upload events when there is a body. The body is copied once into the engine when it is complete; responseText,
 // response (text, json, arraybuffer, blob) are made from it on demand. A request in flight keeps its object alive.
 // timeout uses a timeout signal of the browser; abort() releases the request (no callback comes after it).
-// Synchronous requests: a worker's thread waits for them (Fetch_sync); a document's are not supported (send() throws a
-// NetworkError, as for a network failure; the console says why). Not supported: responseType "document" (response is
-// null), progress events while the body arrives (one before load).
+// Synchronous requests: the thread waits for them (Fetch_sync). Not supported: progress events while the body arrives (one
+// before load).
 //
 // Every call into the browser is a declaration of api_decl/fetch.odin (and abort.odin) through jsb.host.
 package odin_glue
@@ -21,6 +20,12 @@ import "../odin/jsb"
 import "../odin/wj"
 
 @(private = "file") none: abi.Nothing
+
+@(private = "file") HTTP_OK :: 200
+@(private = "file") HTTP_PARTIAL_CONTENT :: 206
+@(private = "file") XHR_DEFAULT_MIME :: "text/xml"
+@(private = "file") XHR_BAD_OVERRIDE_MIME :: "application/octet-stream"
+@(private = "file") XHR_MIME_MAX :: 256   // an essence longer than this is cut: no HTML or XML type is
 
 @(private = "file") State :: enum i32 { Unsent, Opened, Headers_Received, Loading, Done }
 @(private = "file") Response_Type :: enum i32 { Empty, Array_Buffer, Blob, Document, JSON, Text }
@@ -53,6 +58,7 @@ Xhr :: struct {
 	response_headers:     wj.JSValue,
 	body:                 [dynamic]u8,
 	response:             wj.JSValue,             // the response of the current responseType, once made
+	document:             wj.JSValue,             // the response document, once made
 	self:                 wj.JSValue,             // not counted
 }
 // The internal callbacks: slot -> the object (not counted; cleared when the wrapper dies). Slot 0 is never used.
@@ -117,7 +123,7 @@ wjr_XMLHttpRequest_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSV
 	x := new(Xhr)
 	if x == nil { wj.JS_FreeValue(ctx, obj); return wj.JS_ThrowOutOfMemory(ctx) }
 	x.method, x.url, x.headers, x.upload, x.mime_override = wj.UNDEFINED, wj.UNDEFINED, wj.UNDEFINED, wj.UNDEFINED, wj.UNDEFINED
-	x.response_headers, x.response = wj.UNDEFINED, wj.UNDEFINED
+	x.response_headers, x.response, x.document = wj.UNDEFINED, wj.UNDEFINED, wj.UNDEFINED
 	x.status_text = wj.new_string(ctx, "")
 	x.response_url = wj.new_string(ctx, "")
 	x.self = obj
@@ -154,6 +160,7 @@ reset_response :: proc(ctx: ^wj.Context, x: ^Xhr) {
 	wj.JS_FreeValue(ctx, x.response_url); x.response_url = wj.new_string(ctx, "")
 	wj.JS_FreeValue(ctx, x.response_headers); x.response_headers = wj.UNDEFINED
 	wj.JS_FreeValue(ctx, x.response); x.response = wj.UNDEFINED
+	wj.JS_FreeValue(ctx, x.document); x.document = wj.UNDEFINED
 	clear(&x.body)
 	x.body_done = false
 }
@@ -398,9 +405,8 @@ body_of :: proc(e: ^wj.Extracted, has_body: bool) -> Maybe(string) {
 	return string(e.data != nil ? e.data[:e.len] : wj.empty_ptr()[:0])
 }
 
-// send() of a synchronous request (XHR "send" step 12): a worker's thread waits for it (Fetch_sync); a document's
-// cannot (its thread is the page's: the console says so and it fails as a network error would). Only the final
-// readystatechange, load and loadend fire; a failure throws instead.
+// send() of a synchronous request (XHR "send" step 12): this thread waits for it (Fetch_sync).
+// Only the final readystatechange, load and loadend fire; a failure throws instead.
 @(private = "file")
 send_sync :: proc(ctx: ^wj.Context, x: ^Xhr, method: string, has_body: bool, e: ^wj.Extracted) -> wj.JSValue {
 	c, url := to_text(ctx, x.url)
@@ -409,24 +415,28 @@ send_sync :: proc(ctx: ^wj.Context, x: ^Xhr, method: string, has_body: bool, e: 
 	hb: wj.Web_Buf
 	defer wj.web_buf_free(&hb)
 	web_headers_serialize(x.headers, &hb)
-	f: api_decl.Fetch
-	st := jsb.host(&f, api_decl.Fetch_sync, wj.wr_Fetch_sync, url, method, string(wj.web_buf_bytes(&hb)), body_of(e, has_body),
-		api_decl.FetchMode.Cors, x.with_credentials ? api_decl.Credentials.Include : api_decl.Credentials.Same_Origin,
-		api_decl.RedirectMode.Follow, api_decl.ReferrerPolicy.Default, false, api_decl.RequestCache.Default, x.timeout)
-	if st != .None || f == 0 {
+	failed :: proc(ctx: ^wj.Context, x: ^Xhr, name: cstring) -> wj.JSValue {
 		x.state = .Done
 		x.send_flag = false
 		reset_response(ctx, x)
 		x.failed = true
-		if st == .Not_Supported {
-			warn := "XMLHttpRequest: a document's synchronous requests are not supported by this browser (a worker's are)"
-			wj.wj_console_text(i32(wj.wr_ConsoleLevel.Warn), raw_data(warn), uint(len(warn)))
-			return wj.wj_throw_dom(ctx, "NetworkError", "Failed to execute 'send' on 'XMLHttpRequest': synchronous requests of a document are not supported")
-		}
-		return wj.wj_throw_dom(ctx, st == .Timeout ? "TimeoutError" : "NetworkError", "Failed to execute 'send' on 'XMLHttpRequest': the request failed.")
+		return wj.wj_throw_dom(ctx, name, "Failed to execute 'send' on 'XMLHttpRequest': the request failed.")
 	}
-	take_response(ctx, x, f)
-	jsb.host(&none, api_decl.Fetch_release, wj.wr_Fetch_release, f)
+	// blob: URLs of this realm are answered here
+	if len(url) >= 5 && url[:5] == "blob:" {
+		blob := method == "GET" ? web_blob_url_lookup(ctx, raw_data(url), uint(len(url))) : wj.UNDEFINED
+		answered := !wj.is_undefined(blob) && blob_response(ctx, x, blob)
+		wj.JS_FreeValue(ctx, blob)
+		if !answered { return failed(ctx, x, "NetworkError") }
+	} else {
+		f: api_decl.Fetch
+		st := jsb.host(&f, api_decl.Fetch_sync, wj.wr_Fetch_sync, url, method, string(wj.web_buf_bytes(&hb)), body_of(e, has_body),
+			api_decl.FetchMode.Cors, x.with_credentials ? api_decl.Credentials.Include : api_decl.Credentials.Same_Origin,
+			api_decl.RedirectMode.Follow, api_decl.ReferrerPolicy.Default, false, api_decl.RequestCache.Default, x.timeout)
+		if st != .None || f == 0 { return failed(ctx, x, st == .Timeout ? "TimeoutError" : "NetworkError") }
+		take_response(ctx, x, f)
+		jsb.host(&none, api_decl.Fetch_release, wj.wr_Fetch_release, f)
+	}
 	x.upload_complete = true
 	x.state = .Done
 	x.send_flag = false
@@ -437,9 +447,43 @@ send_sync :: proc(ctx: ^wj.Context, x: ^Xhr, method: string, has_body: bool, e: 
 	return wj.UNDEFINED
 }
 
-// A request answered here: a blob: URL of this realm.
+// send(document): the document serialized (XHR "send" step 4), as markup for an HTML one.
 @(private = "file")
-answer_blob :: proc(ctx: ^wj.Context, x: ^Xhr, blob: wj.JSValue) {
+document_markup :: proc(ctx: ^wj.Context, document: wj.JSValue, node: ^wj.Obj, html: bool) -> wj.JSValue {
+	if !html {
+		s: string
+		if st := jsb.host(&s, api_decl.XMLSerializer_serialize, wj.wr_XMLSerializer_serialize, api_decl.Node(node.handle)); st != .None {
+			return wj.wj_throw_status(ctx, i32(st), "XMLHttpRequest.send")
+		}
+		return wj.new_string_len(ctx, s)
+	}
+	root := wj.JS_GetPropertyStr(ctx, document, "documentElement")
+	defer wj.JS_FreeValue(ctx, root)
+	if !wj.is_object(root) { return wj.new_string(ctx, "") }
+	markup := wj.JS_GetPropertyStr(ctx, root, "outerHTML")
+	doctype := wj.JS_GetPropertyStr(ctx, document, "doctype")
+	defer wj.JS_FreeValue(ctx, doctype)
+	if !wj.is_object(doctype) { return markup }
+	defer wj.JS_FreeValue(ctx, markup)
+	name := wj.JS_GetPropertyStr(ctx, doctype, "name")
+	defer wj.JS_FreeValue(ctx, name)
+	nc, ns := to_text(ctx, name)
+	mc, ms := to_text(ctx, markup)
+	defer if nc != nil { wj.JS_FreeCString(ctx, nc) }
+	defer if mc != nil { wj.JS_FreeCString(ctx, mc) }
+	if nc == nil || mc == nil { return wj.EXCEPTION }
+	text: [dynamic]u8
+	defer delete(text)
+	append(&text, "<!DOCTYPE ")
+	append(&text, ns)
+	append(&text, ">")
+	append(&text, ms)
+	return wj.new_string_len(ctx, string(text[:]))
+}
+
+// The response to a blob: URL of this realm, whole or the range the request asks for (false: a network error).
+@(private = "file")
+blob_response :: proc(ctx: ^wj.Context, x: ^Xhr, blob: wj.JSValue) -> bool {
 	bytes: [^]u8
 	n: uint
 	web_blob_bytes(blob, &bytes, &n)
@@ -457,13 +501,23 @@ answer_blob :: proc(ctx: ^wj.Context, x: ^Xhr, blob: wj.JSValue) {
 	wj.JS_FreeValue(ctx, x.response_headers); x.response_headers = web_headers_new(ctx, .Immutable)
 	web_blob_answer_headers(ctx, x.response_headers, blob, start, end, size, range != nil)
 	clear(&x.body)
-	append(&x.body, ..bytes[:n])
+	append(&x.body, ..bytes[start:end])
 	x.body_done = true
-	wj.JS_FreeValue(ctx, blob)
+	return true
+}
+
+// A request answered here: a blob: URL of this realm.
+@(private = "file")
+answer_blob :: proc(ctx: ^wj.Context, x: ^Xhr, blob: wj.JSValue) {
+	defer wj.JS_FreeValue(ctx, blob)
+	if !blob_response(ctx, x, blob) {
+		request_error(ctx, x, "error")
+		return
+	}
 	set_state(ctx, x, .Headers_Received)
 	if x.send_flag { set_state(ctx, x, .Loading) }
 	if x.send_flag {
-		size := f64(n)
+		size := f64(len(x.body))
 		fire_progress(ctx, x.self, "progress", size, size, true)
 		x.state = .Done
 		x.send_flag = false
@@ -490,13 +544,21 @@ wjr_XMLHttpRequest_send :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, arg
 	defer web_extracted_free(ctx, &e)
 	has_body := !get_head && !wj.is_undefined(bodyv) && !wj.is_null(bodyv)
 	if has_body {
-		if wj.wj_unwrap(bodyv, ifc("Document")) != nil {
-			// a Document body: its markup is the dom part's (serialized as a string here)
-			s := wj.JS_ToString(ctx, bodyv)
+		if doc := wj.wj_unwrap(bodyv, ifc("Document")); doc != nil {
+			kind := wj.JS_GetPropertyStr(ctx, bodyv, "contentType")
+			kc, ks := to_text(ctx, kind)
+			html := kc != nil && ks == "text/html"
+			if kc != nil { wj.JS_FreeCString(ctx, kc) }
+			wj.JS_FreeValue(ctx, kind)
+			s := document_markup(ctx, bodyv, doc, html)
 			if wj.is_exception(s) { return s }
 			ok := web_extract_body(ctx, s, &e, "XMLHttpRequest.send")
 			wj.JS_FreeValue(ctx, s)
 			if !ok { return wj.EXCEPTION }
+			if !web_headers_has(x.headers, "content-type") {
+				type := html ? "text/html;charset=UTF-8" : "application/xml;charset=UTF-8"
+				web_headers_append_raw(x.headers, wj.raw_bytes("Content-Type"), 12, raw_data(type), uint(len(type)))
+			}
 		} else if web_stream_is(bodyv) || !web_extract_body(ctx, bodyv, &e, "XMLHttpRequest.send") {
 			if !wj.JS_HasException(ctx) {
 				wj.JS_ThrowTypeError(ctx, "Failed to execute 'send' on 'XMLHttpRequest': a ReadableStream body is not supported")
@@ -519,7 +581,7 @@ wjr_XMLHttpRequest_send :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, arg
 	uc, url := to_text(ctx, x.url)
 	defer if uc != nil { wj.JS_FreeCString(ctx, uc) }
 	// blob: URLs of this realm are answered here
-	blob := uc != nil ? web_blob_url_lookup(ctx, raw_data(url), uint(len(url))) : wj.UNDEFINED
+	blob := uc != nil && method == "GET" ? web_blob_url_lookup(ctx, raw_data(url), uint(len(url))) : wj.UNDEFINED
 	if !wj.is_undefined(blob) {
 		answer_blob(ctx, x, blob)
 		return wj.UNDEFINED
@@ -610,7 +672,14 @@ wjr_XMLHttpRequest_get_responseType :: proc "c" (ctx: ^wj.Context, this_val: wj.
 }
 @(export, link_name = "wjr_XMLHttpRequest_get_responseXML")
 wjr_XMLHttpRequest_get_responseXML :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
-	return xhr_this(ctx, this_val) != nil ? wj.NULL : wj.EXCEPTION
+	context = wj.heap_context()
+	x := xhr_this(ctx, this_val)
+	if x == nil { return wj.EXCEPTION }
+	if x.rtype != .Empty && x.rtype != .Document {
+		return wj.wj_throw_dom(ctx, "InvalidStateError", "Failed to read the 'responseXML' property from 'XMLHttpRequest': The value is only accessible if the object's 'responseType' is '' or 'document'.")
+	}
+	if x.state != .Done || x.failed || !x.body_done { return wj.NULL }
+	return response_document(ctx, x)
 }
 
 @(export, link_name = "wjr_XMLHttpRequest_set_withCredentials")
@@ -769,6 +838,55 @@ response_text :: proc(ctx: ^wj.Context, x: ^Xhr) -> wj.JSValue {
 	return decode_text(ctx, cs, x.body[:])
 }
 
+// The essence of the final MIME type (XHR "get a final MIME type"): the overridden one, else Content-Type's, else text/xml.
+@(private = "file")
+final_essence :: proc(ctx: ^wj.Context, x: ^Xhr, out: []u8) -> string {
+	ct: string
+	c: cstring
+	v: [^]u8
+	defer if c != nil { wj.JS_FreeCString(ctx, c) }
+	defer if v != nil { wj.libc_free(v) }
+	fallback := XHR_DEFAULT_MIME
+	if !wj.is_undefined(x.mime_override) {
+		c, ct = to_text(ctx, x.mime_override)
+		fallback = XHR_BAD_OVERRIDE_MIME
+	} else if !wj.is_undefined(x.response_headers) {
+		n: uint
+		if v = web_headers_get(x.response_headers, "content-type", &n); v != nil { ct = string(v[:n]) }
+	}
+	e := 0
+	for e < len(ct) && ct[e] != ';' { e += 1 }
+	ct = strings.trim_space(ct[:e])
+	if !strings.contains_rune(ct, '/') { ct = fallback }
+	n := copy(out, ct)
+	for i in 0 ..< n { if out[i] >= 'A' && out[i] <= 'Z' { out[i] += 'a' - 'A' } }
+	return string(out[:n])
+}
+
+// XHR "set a document response": null but for a body of an HTML MIME type (asked for with responseType "document") or an XML
+// one that is well-formed. Made once.
+@(private = "file")
+response_document :: proc(ctx: ^wj.Context, x: ^Xhr) -> wj.JSValue {
+	if !wj.is_undefined(x.document) { return wj.JS_DupValue(ctx, x.document) }
+	buffer: [XHR_MIME_MAX]u8
+	mime := final_essence(ctx, x, buffer[:])
+	html := mime == "text/html"
+	xml := mime == "text/xml" || mime == "application/xml" || strings.has_suffix(mime, "+xml")
+	if !wj.is_window() || !(xml || (html && x.rtype == .Document)) { return wj.NULL }
+	text := response_text(ctx, x)
+	if wj.is_exception(text) { return text }
+	defer wj.JS_FreeValue(ctx, text)
+	c, s := to_text(ctx, text)
+	if c == nil { return wj.EXCEPTION }
+	defer wj.JS_FreeCString(ctx, c)
+	h: api_decl.Document
+	st := jsb.host(&h, api_decl.Document_parseResponse, wj.wr_Document_parseResponse, s, mime)
+	if st == .None && h == 0 { return wj.NULL }
+	d := node_or_throw(ctx, h, st, "XMLHttpRequest.responseXML")
+	if !wj.is_exception(d) { x.document = wj.JS_DupValue(ctx, d) }
+	return d
+}
+
 @(export, link_name = "wjr_XMLHttpRequest_get_responseText")
 wjr_XMLHttpRequest_get_responseText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	context = wj.heap_context()
@@ -795,6 +913,8 @@ wjr_XMLHttpRequest_get_response :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 	if !wj.is_undefined(x.response) { return wj.JS_DupValue(ctx, x.response) }
 	r := wj.NULL
 	#partial switch x.rtype {
+	case .Document:
+		return response_document(ctx, x)
 	case .Array_Buffer:
 		r = wj.JS_NewArrayBufferCopy(ctx, raw_data(x.body), uint(len(x.body)))
 	case .Blob:

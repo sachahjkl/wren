@@ -525,6 +525,78 @@ wjr_Blob_textStream :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 	return s
 }
 
+// ---- ranges ----
+
+@(private = "file") BLOB_NUMBER_DIGITS :: 24   // of a size, in decimal
+
+// Fetch "parse a single range header value" (whitespace allowed), then the blob: branch of "scheme fetch" on a Blob of `size`
+// bytes: the bytes [start, end) to send, false for a network error.
+web_blob_range :: proc "contextless" (value: string, size: int) -> (start, end: int, ok: bool) {
+	blanks :: proc "contextless" (s: string, i: ^int) { for i^ < len(s) && (s[i^] == ' ' || s[i^] == '\t') { i^ += 1 } }
+	// (a number past any Blob's size stays past it: it saturates)
+	digits :: proc "contextless" (s: string, i: ^int) -> (n: int, found: bool) {
+		for i^ < len(s) && s[i^] >= '0' && s[i^] <= '9' {
+			n = n > (max(int) - 9) / 10 ? max(int) / 10 * 10 : n * 10 + int(s[i^] - '0')
+			i^ += 1
+			found = true
+		}
+		return
+	}
+	if len(value) < 5 || value[:5] != "bytes" { return }
+	i := 5
+	blanks(value, &i)
+	if i >= len(value) || value[i] != '=' { return }
+	i += 1
+	blanks(value, &i)
+	first, has_first := digits(value, &i)
+	blanks(value, &i)
+	if i >= len(value) || value[i] != '-' { return }
+	i += 1
+	blanks(value, &i)
+	last, has_last := digits(value, &i)
+	if i != len(value) || (!has_first && !has_last) || (has_first && has_last && first > last) { return }
+	if !has_first { return max(size - last, 0), size, true }   // the last `last` bytes
+	if first >= size { return }
+	return first, has_last && last < size ? last + 1 : size, true
+}
+
+// The headers of the answer to a blob: URL (the blob: branch of "scheme fetch"): `start` and `end` as web_blob_range gave
+// them; `partial` for a range.
+web_blob_answer_headers :: proc(ctx: ^wj.Context, headers, blob: wj.JSValue, start, end, size: int, partial: bool) {
+	push :: proc(headers: wj.JSValue, name: string, value: []u8) {
+		web_headers_append_raw(headers, raw_data(name), uint(len(name)), raw_data(value), uint(len(value)))
+	}
+	put :: proc "contextless" (out: []u8, at: ^int, n: int) {
+		digits: [BLOB_NUMBER_DIGITS]u8
+		k, v := len(digits), n
+		for {
+			k -= 1
+			digits[k] = u8('0' + v % 10)
+			v /= 10
+			if v == 0 { break }
+		}
+		at^ += copy(out[at^:], digits[k:])
+	}
+	line: [3 * BLOB_NUMBER_DIGITS + 8]u8
+	n := 0
+	put(line[:], &n, end - start)
+	push(headers, "content-length", line[:n])
+	t := web_blob_type(ctx, blob)
+	if ts, c, ok := wj.to_string_view(ctx, t); ok {
+		web_headers_append_raw(headers, wj.raw_bytes("content-type"), 12, raw_data(ts), uint(len(ts)))
+		wj.free_cstring(ctx, c)
+	}
+	wj.JS_FreeValue(ctx, t)
+	if !partial { return }
+	n = copy(line[:], "bytes ")
+	put(line[:], &n, start)
+	n += copy(line[n:], "-")
+	put(line[:], &n, end - 1)
+	n += copy(line[n:], "/")
+	put(line[:], &n, size)
+	push(headers, "content-range", line[:n])
+}
+
 // ---- blob: URLs ----
 
 // url (without its fragment) -> Blob (counted); the keys are heap copies.

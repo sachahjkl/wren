@@ -184,6 +184,9 @@ partial module dom {
   /// a new inert XML document; one whose element is <parsererror> when the text is not well-formed. Type for another
   /// type, Quota past dom.max_fragment_nodes.
   Node DOMParser_parseXMLNode(string text, string type) raises;
+  /// The response document of an XMLHttpRequest (XHR "set a document response"): `type` text/html, or an XML type. Nothing loads
+  /// or runs in it. 0 for XML that is not well-formed; Quota past dom.max_fragment_nodes.
+  Node Document_parseResponse(string text, string type) raises;
   /// processingInstruction.target
   string ProcessingInstruction_target(Node node);
   /// document.contentType of an XML document (DOMParser's type); Not_Found for an HTML one.

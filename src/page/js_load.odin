@@ -1247,7 +1247,8 @@ Window_document :: proc(c: ^Call) -> u64 {
 }
 
 Document_resolveURL :: proc(c: ^Call, u: string) -> (string, Api_Error) {
-	resolved, ok := url.parse(u, &c.page.env.location, context.temp_allocator)
+	base, known := url.parse_absolute(document_base_url(c.page), context.temp_allocator)
+	resolved, ok := url.parse(u, known ? &base : &c.page.env.location, context.temp_allocator)
 	if !ok { return "", fail(c, .Syntax, "not a valid URL") }
 	return resolved.href, .None
 }

@@ -3517,6 +3517,19 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `DOMParser_parseXMLNode :: proc(c: ^Call, text: string, type: string) -> (u64, Api_Error)`
 
+### `Document_parseResponse`
+
+```
+Node Document_parseResponse(string text, string type) raises
+```
+
+The response document of an XMLHttpRequest (XHR "set a document response"): `type` text/html, or an XML type. Nothing loads
+or runs in it. 0 for XML that is not well-formed; Quota past dom.max_fragment_nodes.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_parseResponse :: proc(c: ^Call, text: string, type: string) -> (u64, Api_Error)`
+
 ### `ProcessingInstruction_target`
 
 ```

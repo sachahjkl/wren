@@ -23078,6 +23078,41 @@ _t_dom_DOMParser_parseXMLNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	return nil
 }
 
+// Document_parseResponse :: proc(c: ^Call, text: string, type: string) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Document_parseResponse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_parseResponse", "text") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Document_parseResponse", "type") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Document_parseResponse", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "dom.Document_parseResponse: argument text is not valid UTF-8")
+	}
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.Document_parseResponse: argument type is not valid UTF-8")
+	}
+	_r, _err := Document_parseResponse(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // ProcessingInstruction_target :: proc(c: ^Call, node: Api_Node) -> string
 @(private = "file")
 _t_dom_ProcessingInstruction_target :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -39584,6 +39619,7 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "DOMImplementation_createHTMLDocument", fn = _t_dom_DOMImplementation_createHTMLDocument, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "DOMParser_parseHTMLNode", fn = _t_dom_DOMParser_parseHTMLNode, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "DOMParser_parseXMLNode", fn = _t_dom_DOMParser_parseXMLNode, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_parseResponse", fn = _t_dom_Document_parseResponse, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "ProcessingInstruction_target", fn = _t_dom_ProcessingInstruction_target, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Document_xmlContentType", fn = _t_dom_Document_xmlContentType, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Document_createXMLElement", fn = _t_dom_Document_createXMLElement, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},

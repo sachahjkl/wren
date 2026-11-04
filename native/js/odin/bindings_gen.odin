@@ -31846,7 +31846,7 @@ wj_install_bindings :: proc "c" () {
 		members = rawptr(&m_XMLHttpRequest[0]), n_members = 24, subtree_end = 399,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
-	the_interfaces[399] = wj.Interface{name = "XMLHttpRequestUpload", parent = 397, exposed = u16(wj.EXPOSE_WINDOW | wj.EXPOSE_WORKER | wj.EXPOSE_SHARED_WORKER), flags = u16(wj.I_UNSUPPORTED), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
+	the_interfaces[399] = wj.Interface{name = "XMLHttpRequestUpload", parent = 397, exposed = u16(wj.EXPOSE_WINDOW | wj.EXPOSE_WORKER | wj.EXPOSE_SHARED_WORKER), flags = u16(0), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
 		members = nil, n_members = 0, subtree_end = 400,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}

@@ -83,7 +83,7 @@ function not exposed to workers is not instantiated.
 | [`credentials`](credentials.md) | `wren:credentials` | 16 | Window | Web Authentication Level 3 (passkeys, security keys) and the Credential Management container it hangs off |
 | [`crypto`](crypto.md) | `wren:crypto` | 20 | Window, Worker | Web Crypto: random values, UUIDs and digests (SHA-1, SHA-256, SHA-384, SHA-512 through BCrypt; large inputs are |
 | [`document`](document.md) | `wren:document` | 5 | Window, Worker | The document's address, origin and cookies. Window_origin and Window_isSecureContext belong to |
-| [`dom`](dom.md) | `wren:dom` | 398 | Window, Worker | The document tree (DOM Standard: Document, Node, Element). In a worker there is no document: the functions taking a |
+| [`dom`](dom.md) | `wren:dom` | 399 | Window, Worker | The document tree (DOM Standard: Document, Node, Element). In a worker there is no document: the functions taking a |
 | [`encoding`](encoding.md) | `wren:encoding` | 8 | Window, Worker | TextEncoder and TextDecoder (Encoding Standard). Decoders keep their state between calls, so every WHATWG label |
 | [`events`](events.md) | `wren:core` | 44 | Window, Worker | Events (DOM Standard: EventTarget, Event; UI Events: MouseEvent, KeyboardEvent). Any node and any host object (a |
 | [`eventsource`](eventsource.md) | `wren:eventsource` | 7 | Window | Server-sent events (HTML EventSource) and the MessageEvent members that are not plain payload. Messages arrive as |
@@ -108,7 +108,7 @@ function not exposed to workers is not instantiated.
 | [`mse`](mse.md) | `wren:mse` | 35 | Window, Worker | Media Source Extensions: MediaSource, SourceBuffer and SourceBufferList (src/page/media_source.odin). A SourceBuffer holds |
 | [`mediatracks`](mediatracks.md) | `wren:mediatracks` | 49 | Window | The track lists of a media element (src/page/media_tracks.odin, media_texttracks.odin): AudioTrackList, VideoTrackList |
 | [`navigation`](navigation.md) | `wren:navigation` | 12 | Window | The Navigation API (HTML): window.navigation over the tab's session history. The browser keeps the entries, their |
-| [`net`](net.md) | `wren:net` | 12 | Window, Worker | Fetch with a callback (Fetch Standard through the browser's loader: origin, CORS, cookies, referrer, CSP and mixed |
+| [`net`](net.md) | `wren:net` | 14 | Window, Worker | Fetch with a callback (Fetch Standard through the browser's loader: origin, CORS, cookies, referrer, CSP and mixed |
 | [`performance`](performance.md) | `wren:performance` | 20 | Window, Worker | High Resolution Time and User Timing: performance.now() and timeOrigin on the page's own timeline, mark / measure, |
 | [`popover`](popover.md) | `wren:popover` | 5 | Window | The Popover API (src/page/popover.odin): the `popover` attribute, showPopover / hidePopover / togglePopover, the |
 | [`ports`](ports.md) | `wren:ports` | 10 | Window, Worker | MessagePorts between realms (src/page/ports.odin; native/js/runtime/web_message.c, workers.c): a port whose other |
@@ -131,4 +131,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | `wren:websocket` | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | `wren:workers` | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1601 imports in 1502 functions.
+1604 imports in 1505 functions.

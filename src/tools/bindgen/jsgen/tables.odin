@@ -81,4 +81,5 @@ ALWAYS := [?]string{
 	"Window", "WorkerGlobalScope", "DedicatedWorkerGlobalScope", "EventTarget", "Event", "DOMException", "console",
 	"NodeFilter",   // a callback interface of constants only: nothing to implement, scripts use NodeFilter.SHOW_*
 	"MediaSourceHandle",   // an opaque transferable object without members (MSE in a worker: src/page/mse_worker.odin)
+	"XMLHttpRequestUpload",   // no member of its own: what it does is its parent's, the object xhr.upload (web_xhr.odin)
 }
