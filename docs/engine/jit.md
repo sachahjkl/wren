@@ -88,6 +88,15 @@ A construction `new F(...)` of a constructor that can be compiled whole (not a d
 (below): the object made by the helper is the callee's `this`, new.target the constructor, the result the callee's
 when it returns an object, else the object.
 
+## Strings
+
+A `+` whose site met a string adds values through the helper `wj_jit_add` (`jit_add`): the two entries written to the
+frame, `op_add` makes the string (a rope or an append buffer, as the engine builds them), the result a V; `s += x` of
+a local the loop leaves in memory is added there (`add_loc`). The helper makes only what cannot run code or throw (no
+object, symbol or BigInt operand, a result that fits a string); otherwise it does nothing and the interpreter makes the
+instruction (a deopt), so a conversion's effects happen once. `===` and `!==` of two strings compare the pointers,
+then the contents through `wj_jit_streq` (`str_eq`); a string against another type is false by the tags.
+
 ## Calls
 
 - **Inlined**: a call of a small function (`JIT_INLINE_MAX_CODE` bytes of bytecode, no closure cells of its own,
