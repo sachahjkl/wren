@@ -1799,7 +1799,7 @@
 	importNode() should throw with global registry from another document: FAIL
 	initialize() of global registry should throw for nodes from another document: FAIL
 /custom-elements/registries/initial-about-blank.window.html: OK
-	Each navigable document has its own registry: FAIL
+	Each navigable document has its own registry: PASS
 /custom-elements/registries/per-document.html: OK
 	Discarding the browsing context must not change window.customElements: FAIL
 	Navigating from the initial about:blank must replace window.customElements: PASS
@@ -3927,7 +3927,7 @@
 	:state(foo) and :host(): PASS
 	:state(foo) and other pseudo classes: PASS
 	:state(foo) in simple cases: PASS
-	:state(foo) serialization: FAIL
+	:state(foo) serialization: PASS
 	deprecated :--state parsing failures: PASS
 /custom-elements/throw-on-dynamic-markup-insertion-counter-construct-xml-parser.xhtml: OK
 	document.close() must throw an InvalidStateError when synchronously constructing a custom element: PASS

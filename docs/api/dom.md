@@ -2896,6 +2896,19 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Node_preInsert :: proc(c: ^Call, parent: Api_Node, node: Api_Node, child: Api_Node) -> Api_Error`
 
+### `Node_moveBefore`
+
+```
+void Node_moveBefore(Node parent, Node node, optional Node child) raises
+```
+
+parent.moveBefore(node, child): Node_preInsert's insertion without the insertion steps of script elements (HTML: a
+script moved, or text moved into one, does not run).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Node_moveBefore :: proc(c: ^Call, parent: Api_Node, node: Api_Node, child: Api_Node) -> Api_Error`
+
 ### `Node_replaceChildChecked`
 
 ```

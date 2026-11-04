@@ -15212,17 +15212,17 @@
 	invalid syntax for insertAdjacentElement: PASS
 	invalid syntax for insertAdjacentText: PASS
 /dom/nodes/insertion-removing-steps/Node-append-form-and-script-from-fragment.html: OK
-	When adding a script+form in a fragment and the form matches an associated element, the script that checks whether the button is associated to the form should run after inserting the form: FAIL
+	When adding a script+form in a fragment and the form matches an associated element, the script that checks whether the button is associated to the form should run after inserting the form: PASS
 /dom/nodes/insertion-removing-steps/Node-append-meta-referrer-and-script-from-fragment.html: OK
 	<meta name=referrer> gets processed and applied in the post-insertion steps: FAIL
 /dom/nodes/insertion-removing-steps/Node-appendChild-script-and-button-from-div.html: OK
 	Script inserted before a form-associated button can observe the button's form, because by the time the script executes, the DOM insertion that associates the button with the form is already done: PASS
 /dom/nodes/insertion-removing-steps/Node-appendChild-script-and-custom-from-fragment.html: OK
-	An earlier-inserted script can upgrade a later-inserted custom element, whose upgrading is synchronously observable to the script, since DOM insertion has been completed by the time it runs: FAIL
+	An earlier-inserted script can upgrade a later-inserted custom element, whose upgrading is synchronously observable to the script, since DOM insertion has been completed by the time it runs: PASS
 /dom/nodes/insertion-removing-steps/Node-appendChild-script-and-default-style-meta-from-fragment.html: OK
 	Inserting <meta> that uses alternate stylesheets, applies the style during DOM post-insertion steps: FAIL
 /dom/nodes/insertion-removing-steps/Node-appendChild-script-and-div-from-fragment.html: OK
-	Earlier-inserted scripts can observe the parentNode of later-inserted nodes, because script runs after DOM insertion completes: FAIL
+	Earlier-inserted scripts can observe the parentNode of later-inserted nodes, because script runs after DOM insertion completes: PASS
 /dom/nodes/insertion-removing-steps/Node-appendChild-script-and-iframe.html: OK
 	A script inserted atomically before an iframe (using a DocumentFragment) does not observe the iframe's contentWindow, since the 'script running' and 'iframe setup' both happen in order, after DOM insertion completes: PASS
 	A script inserted atomically before an iframe (using a append() with multiple arguments) does not observe the iframe's contentWindow, since the 'script running' and 'iframe setup' both happen in order, after DOM insertion completes: PASS
@@ -15231,21 +15231,21 @@
 /dom/nodes/insertion-removing-steps/Node-appendChild-script-and-source-from-fragment.html: OK
 	Empty <source> immediately sets media.networkState during DOM insertion, so that an earlier-running script can observe networkState: FAIL
 /dom/nodes/insertion-removing-steps/Node-appendChild-script-and-style.html: OK
-	An earlier-inserted <script> synchronously observes a later-inserted <style> (via a DocumentFragment) being applied: FAIL
+	An earlier-inserted <script> synchronously observes a later-inserted <style> (via a DocumentFragment) being applied: PASS
 	An earlier-inserted <script> synchronously observes a later-inserted <style> (via a div) being applied: PASS
 	Earlier-inserted <script> (via a DocumentFragment) synchronously observes a later-inserted <link rel=stylesheet>'s CSSStyleSheet creation: FAIL
 	Earlier-inserted <script> (via a append()) synchronously observes a later-inserted <link rel=stylesheet>'s CSSStyleSheet creation: FAIL
 	Earlier-inserted <script> (via a div) synchronously observes a later-inserted <link rel=stylesheet>'s CSSStyleSheet creation: FAIL
 /dom/nodes/insertion-removing-steps/Node-appendChild-script-in-script.html: OK
-	An outer script whose preparation/execution gets triggered by the insertion of a 'nested'/'inner' script, executes *before* the inner script executes: FAIL
+	An outer script whose preparation/execution gets triggered by the insertion of a 'nested'/'inner' script, executes *before* the inner script executes: PASS
 /dom/nodes/insertion-removing-steps/Node-appendChild-script-with-mutation-observer-takeRecords.html: OK
 	An inserted script should be able to observe its own mutation record with takeRecords: PASS
 /dom/nodes/insertion-removing-steps/Node-appendChild-text-and-script-in-style.html: OK
-	All style rules appended to a <style> element are inserted and script-observable to scripts inserted in the `<style>` element, by the time scripts execute after DOM insertions.: FAIL
+	All style rules appended to a <style> element are inserted and script-observable to scripts inserted in the `<style>` element, by the time scripts execute after DOM insertions.: PASS
 /dom/nodes/insertion-removing-steps/Node-appendChild-text-in-script.html: OK
-	Node.appendChild: inserting two text nodes in an empty script: FAIL
+	Node.appendChild: inserting two text nodes in an empty script: PASS
 /dom/nodes/insertion-removing-steps/Node-appendChild-three-scripts-from-fragment.html: OK
-	Node.appendChild: inserting three scripts from a document fragment: FAIL
+	Node.appendChild: inserting three scripts from a document fragment: PASS
 /dom/nodes/insertion-removing-steps/Node-appendChild-three-scripts.html: OK
 	Node.appendChild: inserting three scripts from a div: PASS
 /dom/nodes/insertion-removing-steps/blur-event.window.html: OK
@@ -15256,19 +15256,19 @@
 	<textarea> element does not fire change event upon DOM removal: PASS
 /dom/nodes/insertion-removing-steps/frame-post-connection-steps.html: OK
 	A script after frame and iframe elements observes post-connection order: PASS
-	A script before frame and iframe elements observes post-connection order: FAIL
+	A script before frame and iframe elements observes post-connection order: PASS
 	Both frames and iframes create a child window when connected inside a shadow tree: PASS
 	Neither frames nor iframes create a child window in a document without a browsing context: FAIL
 /dom/nodes/insertion-removing-steps/insertion-removing-steps-iframe.window.html: OK
-	Insertion steps: load event fires synchronously *after* iframe DOM insertion, as part of the iframe element's insertion steps: FAIL
+	Insertion steps: load event fires synchronously *after* iframe DOM insertion, as part of the iframe element's insertion steps: PASS
 	Removing steps (innerHTML): script does not run synchronously during iframe destruction: PASS
 	Removing steps (remove): script does not run synchronously during iframe destruction: PASS
 	Removing steps (replaceChildren): script does not run synchronously during iframe destruction: PASS
-/dom/nodes/insertion-removing-steps/insertion-removing-steps-script.window.html: ERROR
+/dom/nodes/insertion-removing-steps/insertion-removing-steps-script.window.html: OK
 	Script execution happens after all batched DOM insertions complete through post-connection steps: PASS
-/dom/nodes/insertion-removing-steps/later-script-removed-by-earlier-script.html: ERROR
-	A later-inserted script removed by an earlier-inserted script in the same append() call should not run: FAIL
-	A later-inserted script removed by an earlier-inserted script in the same document fragment should not run: FAIL
+/dom/nodes/insertion-removing-steps/later-script-removed-by-earlier-script.html: OK
+	A later-inserted script removed by an earlier-inserted script in the same append() call should not run: PASS
+	A later-inserted script removed by an earlier-inserted script in the same document fragment should not run: PASS
 /dom/nodes/insertion-removing-steps/script-does-not-run-on-child-removal.window.html: OK
 	Script execution is never triggered on child removals: PASS
 /dom/nodes/live-collections-batched-mutations.window.html: OK
@@ -15712,7 +15712,7 @@
 /dom/nodes/remove-and-adopt-thcrash.html: OK
 	Check that removing a node and then adopting its parent into a different window/document doesn't crash.: PASS
 /dom/nodes/remove-next-sibling-during-replace-with.html: OK
-	remove-next-sibling-during-replace-with: FAIL
+	remove-next-sibling-during-replace-with: PASS
 /dom/nodes/remove-unscopable.html: OK
 	after() should be unscopable: FAIL
 	append() should be unscopable: FAIL

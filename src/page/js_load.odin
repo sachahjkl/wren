@@ -125,6 +125,7 @@ Page_Scripts :: struct {
 	loaded:       bool,                    // load fired
 	ignore_destructive_writes: int,
 	write_depth:  int,
+	moving:       int,                     // moveBefore calls under way: what they insert prepares no script
 	written:      int,                     // bytes document.write inserted
 	poll:         base.Handle,             // a timer looking again at what the page waits for
 	pumping:      bool,
@@ -176,6 +177,22 @@ script_kind_of :: proc(d: ^dom.Document, el: base.Handle) -> (Script_Kind, bool)
 
 @(private)
 is_script_element :: #force_inline proc(n: ^dom.Node) -> bool { return n != nil && n.kind == .Element && n.name == "script" }
+
+// The URL attribute of a script element: an HTML script's src, an SVG script's href (or xlink:href, SVG 2 §16.4).
+@(private)
+script_src :: proc(d: ^dom.Document, el: base.Handle) -> (string, bool) {
+	if n := dom.get(d, el); n != nil && n.ns == .SVG {
+		if v, ok := dom.get_attribute(d, el, "href"); ok { return v, true }
+		return dom.get_attribute(d, el, "xlink:href")
+	}
+	return dom.get_attribute(d, el, "src")
+}
+
+// Whether `name` is the URL attribute of the script element `n` (script_src).
+@(private)
+is_script_src_name :: proc(n: ^dom.Node, name: string) -> bool {
+	return n.ns == .SVG ? name == "href" || name == "xlink:href" : name == "src"
+}
 
 // The page's script state, made on first use (a page that never parsed a document can still get dynamic scripts).
 @(private)
@@ -427,16 +444,21 @@ script_prepare :: proc(p: ^Page, el: base.Handle, parser_inserted: bool) {
 	d := p.doc
 	flags := s.flags[el]
 	if .Already_Started in flags { return }
+	// HTML "prepare the script element" steps 2 to 4: the parser's mark goes until the script starts (step 9), so that one
+	// that does not start now (no text yet, a type that is no script's) is prepared again as a script's own would be, and
+	// is force-async then
+	flags -= {.Parser_Inserted}
+	s.flags[el] = flags
 	n := dom.get(d, el)
 	if n == nil { return }
 	if the_pages.embedder.before_script != nil { the_pages.embedder.before_script(the_pages.embedder.user, p, el); if n = dom.get(d, el); n == nil { return } }
-	src, has_src := dom.get_attribute(d, el, "src")
+	src, has_src := script_src(d, el)
 	text := script_text(d, el)
 	if !has_src && text == "" { return }
 	if !parser_inserted && !dom.is_connected(d, el) { return }
 	kind, ok := script_kind_of(d, el)
 	if !ok { return }
-	s.flags[el] = flags + {.Already_Started}
+	s.flags[el] = flags + {.Already_Started} + (parser_inserted ? {.Parser_Inserted} : {})
 	if !js_enabled(p) { return }
 	_, nomodule := dom.get_attribute(d, el, "nomodule")
 	if nomodule && kind == .Classic { return }
@@ -852,7 +874,7 @@ scripts_preload :: proc(p: ^Page, el: base.Handle) {
 	d := p.doc
 	kind, ok := script_kind_of(d, el)
 	if !ok || kind == .Import_Map { return }
-	src, has := dom.get_attribute(d, el, "src")
+	src, has := script_src(d, el)
 	if !has || src == "" { return }
 	if _, nomodule := dom.get_attribute(d, el, "nomodule"); nomodule && kind == .Classic { return }
 	resolved, okurl := url.parse(src, script_base_url(p), context.temp_allocator)
@@ -1076,8 +1098,9 @@ hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 	if .Media in kinds { media_note_inserted(p, node) }   // a <video> / <audio> / <source> (media_element.odin)
 	if n.kind == .Element { dialog_note_attribute(p, node) }   // an open <dialog> inserted is an open dialog again (dialog_modal.odin)
 	fragment := d.parser_inserting > 0
-	// a node inserted into a connected script element that has not started: its text changed ("children changed")
-	if parent := dom.get(d, n.parent); is_script_element(parent) && !fragment {
+	// a node inserted into a connected script element that has not started: its text changed ("children changed"); not
+	// by a move (moveBefore: script elements have no moving steps)
+	if parent := dom.get(d, n.parent); is_script_element(parent) && !fragment && s.moving == 0 {
 		if script_flags(p, n.parent) & {.Already_Started, .Parser_Inserted} == {} && dom.is_connected(d, n.parent) {
 			script_prepare(p, n.parent, parser_inserted = false)
 			return
@@ -1113,7 +1136,7 @@ hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 			s.flags[el] += {.Already_Started, .From_Fragment}
 			continue
 		}
-		if !connected { continue }
+		if !connected || s.moving > 0 { continue }
 		if script_flags(p, el) & {.Already_Started, .Parser_Inserted} != {} { continue }
 		script_prepare(p, el, parser_inserted = false)
 		if p.closed { return }
@@ -1147,12 +1170,11 @@ hook_attribute :: proc(user: rawptr, d: ^dom.Document, el: base.Handle, name: st
 		if n := dom.get(d, el); is_script_element(n) { scripts_of(p).flags[el] += {.Async_Touched} }
 		return
 	}
-	if name == "src" {
-		n := dom.get(d, el)
+	if n := dom.get(d, el); is_script_element(n) && is_script_src_name(n, name) {
 		s := p.scripts
-		if s == nil || !is_script_element(n) || s.parser.revealing > 0 { return }
+		if s == nil || s.parser.revealing > 0 { return }
 		if script_flags(p, el) & {.Already_Started, .Parser_Inserted} != {} { return }
-		if _, has := dom.get_attribute(d, el, "src"); !has { return }
+		if _, has := script_src(d, el); !has { return }
 		if dom.is_connected(d, el) { script_prepare(p, el, parser_inserted = false) }
 	}
 }

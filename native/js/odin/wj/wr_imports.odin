@@ -1925,6 +1925,9 @@ foreign _wr_wj_dom {
 	// parent.insertBefore(node, child) / appendChild (child absent): DOM "pre-insert", every check (Hierarchy,
 	// Not_Found), a DocumentFragment's children inserted as one mutation.
 	@(link_name = "Node_preInsert") wr_Node_preInsert :: proc(parent: u64, node: u64, child: u64) -> i32 ---
+	// parent.moveBefore(node, child): Node_preInsert's insertion without the insertion steps of script elements (HTML: a
+	// script moved, or text moved into one, does not run).
+	@(link_name = "Node_moveBefore") wr_Node_moveBefore :: proc(parent: u64, node: u64, child: u64) -> i32 ---
 	// parent.replaceChild(node, child): DOM "replace a child".
 	@(link_name = "Node_replaceChildChecked") wr_Node_replaceChildChecked :: proc(parent: u64, node: u64, child: u64) -> i32 ---
 	// parent.removeChild(child): Not_Found when child is not a child of parent.

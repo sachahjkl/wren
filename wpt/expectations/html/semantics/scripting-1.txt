@@ -24,7 +24,7 @@
 /html/semantics/scripting-1/the-script-element/async_010.htm: OK
 	Removing an async script before execution: FAIL
 /html/semantics/scripting-1/the-script-element/async_011.htm: OK
-	An empty parser-inserted script element should return async=true: FAIL
+	An empty parser-inserted script element should return async=true: PASS
 /html/semantics/scripting-1/the-script-element/change-src-attr-prepare-a-script.html: OK
 	Mutating `src` attribute from an already-valid value does 'prepare' the script: PASS
 /html/semantics/scripting-1/the-script-element/changing-src.html: OK
@@ -98,13 +98,13 @@
 /html/semantics/scripting-1/the-script-element/dynamically-created-defer-script.html: OK
 	Dynamically created defer scripts inserted after DOMContentLoaded: PASS
 /html/semantics/scripting-1/the-script-element/emptyish-script-elements.html: OK
-	A script with a comment child inserted bails early, before setting already-started, so can be executed when adding text: FAIL
-	A script with a text child inserted executes, setting already-started, so adding text is a no-op: FAIL
+	A script with a comment child inserted bails early, before setting already-started, so can be executed when adding text: PASS
+	A script with a text child inserted executes, setting already-started, so adding text is a no-op: PASS
 	A script with a whitespace child executes, setting already-started, so adding text is a no-op: PASS
-	A script with an element containing text inserted bails early, before setting already-started, so can be executed when adding text: FAIL
-	A script with an empty element inserted bails early, before setting already-started, so can be executed when adding text: FAIL
-	A script with an empty text node inserted bails early, before setting already-started, so can be executed when adding text: FAIL
-	A script with no children bails early, before setting already-started, so can be executed when adding text: FAIL
+	A script with an element containing text inserted bails early, before setting already-started, so can be executed when adding text: PASS
+	A script with an empty element inserted bails early, before setting already-started, so can be executed when adding text: PASS
+	A script with an empty text node inserted bails early, before setting already-started, so can be executed when adding text: PASS
+	A script with no children bails early, before setting already-started, so can be executed when adding text: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/001.html: OK
 	 scheduler: inline in markup : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/002.html: OK
@@ -158,7 +158,7 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/025.html: OK
 	 scheduler: DOM added script, .src set on script with content: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/026.html: OK
-	 scheduler: doc write added script, .src set later: FAIL
+	 scheduler: doc write added script, .src set later: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/027.html: OK
 	 scheduler: doc write added script with content, .src set later: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/028.html: OK
@@ -204,7 +204,7 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/053.html: OK
 	 scheduler: adding external script that removes itself from document when loading: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/056.html: OK
-	 scheduler: appending code to initially empty SCRIPT tag in DOM : FAIL
+	 scheduler: appending code to initially empty SCRIPT tag in DOM : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/057.html: OK
 	 scheduler: appending code to initially non-empty SCRIPT tag in DOM (whitespace only) : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/058.html: OK
@@ -352,24 +352,24 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/121.html: OK
 	scheduler: altering the type attribute : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/122.html: OK
-	Reinserted script async IDL attribute: FAIL
-	scheduler: altering the type attribute and adding/removing external script : FAIL
+	Reinserted script async IDL attribute: PASS
+	scheduler: altering the type attribute and adding/removing external script : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/123.html: OK
-	scheduler: altering the type attribute and adding/removing external script with async=false : FAIL
+	scheduler: altering the type attribute and adding/removing external script with async=false : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/124.html: OK
-	scheduler: altering the type attribute and changing script data inline script : FAIL
+	scheduler: altering the type attribute and changing script data inline script : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/125.html: OK
-	scheduler: altering the type attribute and changing script data external script : FAIL
+	scheduler: altering the type attribute and changing script data external script : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/126.html: OK
-	scheduler: altering the type attribute and changing script data external script async=false : FAIL
+	scheduler: altering the type attribute and changing script data external script async=false : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/127.html: OK
-	scheduler: appending non-text children to script : FAIL
+	scheduler: appending non-text children to script : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/128.html: OK
-	scheduler: appending script element to script : FAIL
+	scheduler: appending script element to script : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/129.html: OK
 	scheduler: appending multiple script elements: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/130.html: OK
-	scheduler: appending external script element to script : FAIL
+	scheduler: appending external script element to script : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/131.html: OK
 	scheduler: inline svg script : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/132.html: OK
@@ -397,17 +397,17 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/143.html: ERROR
 	scheduler: SVG nested inline script that document.writes inline script : FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/144.html: OK
-	scheduler: SVG inline script changing the type attribute : FAIL
+	scheduler: SVG inline script changing the type attribute : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/145.html: OK
-	scheduler: SVG inline script adding text to empty script : FAIL
+	scheduler: SVG inline script adding text to empty script : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/146-href.html: OK
-	scheduler: SVG script adding src attribute : FAIL
+	scheduler: SVG script adding src attribute : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/146.html: OK
 	scheduler: SVG script adding src attribute : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/147.html: OK
-	scheduler: insert multiple inline scripts; first script moves subsequent scripts : FAIL
+	scheduler: insert multiple inline scripts; first script moves subsequent scripts : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/148.html: OK
-	scheduler: insert multiple inline scripts; first script deletes subsequent script : FAIL
+	scheduler: insert multiple inline scripts; first script deletes subsequent script : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/149.html: OK
 	for='  WINdow\t\n' event='ONload\t\n' dom inserted executes immediately: PASS
 	for='  WINdow\t\n' event='ONload\t\n' parser inserted executes immediately: PASS
