@@ -25,7 +25,8 @@ Worker_terminate :: #type proc(worker: Worker) -> abi.Api_Error
 DedicatedWorkerGlobalScope_postSerialized :: #type proc(data: abi.Bytes) -> abi.Api_Error
 // postMessage(message, transfer) in a worker, with MessagePorts.
 DedicatedWorkerGlobalScope_postSerializedPorts :: #type proc(data: abi.Bytes, ports: []u64) -> abi.Api_Error
-// importScripts(url), one URL, fetched synchronously: the final URL, a NUL, then the source.
+// importScripts(url), one URL, fetched synchronously: '1' when its errors are muted (else '0'), the final URL, a NUL,
+// then the source.
 WorkerGlobalScope_importScript :: #type proc(url: string) -> (string, abi.Api_Error)
 // Whether the calling worker's script is a module.
 WorkerGlobalScope_isModule :: #type proc() -> bool

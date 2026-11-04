@@ -9,7 +9,8 @@
 //     everything else to the browser (module fetch: Fetch_promise), which applies the page's policy (CORS, cookies,
 //     referrer, CSP, mixed content). The promise is fulfilled with a Response when the headers arrive; a network error
 //     rejects it with a TypeError, an abort with the signal's reason (also for body reads afterwards).
-// Request.cache goes to the browser's HTTP cache. Not supported: integrity (not checked), keepalive (a request does not
+// Request.cache goes to the browser's HTTP cache. Integrity is checked against opaque responses only (they never match
+// a hash: on_fetch_settled_hashed); not the hashes of others. Not supported: keepalive (a request does not
 // outlive its page), a referrer URL (only "" and the default), request bodies streamed while sent (a ReadableStream body
 // is read whole first).
 //
@@ -1987,6 +1988,49 @@ on_fetch_settled :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i6
 	return failure_reason(ctx, host, data)
 }
 
+// on_fetch_settled for a request whose integrity metadata has a hash: an opaque response is a network error (SRI §3.3.5:
+// it is not eligible for integrity validation, so it never matches).
+@(private = "file")
+on_fetch_settled_hashed :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue {
+	context = wj.heap_context()
+	if state == 1 {
+		t: api_decl.ResponseType
+		jsb.host(&t, api_decl.Fetch_type, wj.wr_Fetch_type, api_decl.Fetch(value))
+		if t == .Opaque || t == .Opaque_Redirect {
+			jsb.host(&none_fetch, api_decl.Fetch_release, wj.wr_Fetch_release, api_decl.Fetch(value))
+			reject^ = true
+			return wj.web_type_error(ctx, "Failed to fetch: an opaque response cannot match the request's integrity")
+		}
+	}
+	return on_fetch_settled(ctx, state, host, value, data, reject)
+}
+
+// The length of the names of the hash algorithms of SRI: sha256, sha384, sha512.
+@(private = "file")
+SRI_ALGO_LEN :: 6
+
+// Integrity metadata (SRI §3.3.3) with a hash of an algorithm it knows: sha256, sha384 or sha512 (ASCII case-insensitive).
+@(private = "file")
+integrity_has_hash :: proc(ctx: ^wj.Context, v: wj.JSValue) -> bool {
+	s, c, ok := wj.to_string_view(ctx, v)
+	if !ok { return false }
+	defer wj.free_cstring(ctx, c)
+	i := 0
+	for i < len(s) {
+		for i < len(s) && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r' || s[i] == '\f') { i += 1 }
+		start := i
+		for i < len(s) && s[i] != ' ' && s[i] != '\t' && s[i] != '\n' && s[i] != '\r' && s[i] != '\f' { i += 1 }
+		tok := s[start:i]
+		if len(tok) <= SRI_ALGO_LEN || tok[SRI_ALGO_LEN] != '-' { continue }
+		name: [SRI_ALGO_LEN]u8
+		for k in 0 ..< SRI_ALGO_LEN { name[k] = tok[k] >= 'A' && tok[k] <= 'Z' ? tok[k] + ('a' - 'A') : tok[k] }
+		switch string(name[:]) {
+		case "sha256", "sha384", "sha512": return true
+		}
+	}
+	return false
+}
+
 // blob: URLs of this realm: a Response made here (GET only)
 @(private = "file")
 fetch_blob_url :: proc(ctx: ^wj.Context, r: ^Fetch_Request, blob: wj.JSValue) -> wj.JSValue {
@@ -2060,7 +2104,8 @@ fetch_start :: proc(ctx: ^wj.Context, r: ^Fetch_Request, body: Maybe([]u8)) -> w
 		api_decl.AbortSignal(web_signal_handle(r.signal)), fetch_mode(r.mode), r.credentials, r.redirect, r.referrer_policy,
 		no_referrer, r.cache)
 	if st != .None { wj.wj_throw_status(ctx, i32(st), "fetch"); return wj.web_promise_reject_pending(ctx) }
-	return wj.wj_promise_from_host(ctx, u64(pr), wj.HOST_UNDEFINED, on_fetch_settled, r.signal)
+	settled := integrity_has_hash(ctx, r.integrity) ? on_fetch_settled_hashed : on_fetch_settled
+	return wj.wj_promise_from_host(ctx, u64(pr), wj.HOST_UNDEFINED, settled, r.signal)
 }
 
 // a stream body read whole, then the request: data = [request object]

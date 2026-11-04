@@ -227,8 +227,9 @@ DedicatedWorkerGlobalScope_postSerialized :: proc "contextless" (data: []u8) -> 
 	return _DedicatedWorkerGlobalScope_postSerialized(raw_data(data), u32(len(data)))
 }
 
-// importScripts(url), one URL: fetched synchronously (same rules as the worker's script). The result is the
-// response's URL, a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript; Type in a
+// importScripts(url), one URL: fetched synchronously (same rules as the worker's script). The result is '1' when
+// the script's errors are muted (an opaque response: another origin without CORS) else '0', the response's URL,
+// a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript; Type in a
 // module worker (importScripts is a classic worker's).
 WorkerGlobalScope_importScript :: proc "contextless" (url: string, buf: []u8) -> (string, Error) {
 	n := _WorkerGlobalScope_importScript(raw_data(url), u32(len(url)), raw_data(buf), u32(len(buf)))

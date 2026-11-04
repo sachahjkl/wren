@@ -101,7 +101,7 @@
 	Multiple integrities: invalid as strong as valid: PASS
 	Multiple integrities: invalid stronger than valid: FAIL
 	Multiple integrities: valid stronger than invalid: PASS
-	SHA-* integrity for opaque response: FAIL
+	SHA-* integrity for opaque response: PASS
 	SHA-256 integrity: PASS
 	SHA-384 integrity: PASS
 	SHA-512 integrity: PASS
@@ -120,7 +120,7 @@
 	Multiple integrities: invalid as strong as valid: PASS
 	Multiple integrities: invalid stronger than valid: FAIL
 	Multiple integrities: valid stronger than invalid: PASS
-	SHA-* integrity for opaque response: FAIL
+	SHA-* integrity for opaque response: PASS
 	SHA-256 integrity: PASS
 	SHA-384 integrity: PASS
 	SHA-512 integrity: PASS
