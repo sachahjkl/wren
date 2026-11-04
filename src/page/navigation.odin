@@ -397,6 +397,12 @@ Navigation_traverseTo :: proc(c: ^Call, key: i64) -> Api_Error {
 		delta, ok := joint_delta_to(p, e)
 		if !ok { break }
 		if !joint_traverse_allowed(p, delta) { return fail(c, .Security, "SecurityError: the traversal would navigate what this sandboxed document may not") }
+		if n := p.web.nav_pending; n != nil && n.type == .Traverse {
+			// during a traversal's navigate event: once it is done, from where it went (HTML's session history traversal
+			// queue; history_traverse_to)
+			p.web.traverse_queued = e.id
+			return .None
+		}
 		if delta != 0 { request_navigation(p, .Traverse, "", delta) }
 		return .None
 	}
