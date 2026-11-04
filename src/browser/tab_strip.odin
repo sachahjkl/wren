@@ -156,7 +156,9 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 				// the tabs themselves are clipped to their own part of the area (when they scroll they must not run under the button)
 				add = classic_new_tab_button(app, &cg, cc, h, plus_w, area_w - plus_pull)
 				ui.next({fixed_x = 0, fixed_y = 0, width = ui.px(area_w), height = ui.pct(1), axis = .X})
-				ui.push_parent(ui.build_box({.Clip}, "###tabs_clip"))
+				clip := ui.build_box({.Clip}, "###tabs_clip")
+				own.strip.area_key = clip.key   // (the tabs' keys derive from the clip)
+				ui.push_parent(clip)
 			}
 			defer if classic { ui.pop_parent() }
 			// the dragged tab is built last: it draws over the others (classic: the current one just before it, as it

@@ -98,11 +98,19 @@ drop_there :: proc(s: ^e2e.Session, a, b: int, over: e2e.Point) {
 	e2e.wait_chrome_still(s)
 }
 
+// In each style of the interface (browser.ui.chrome_style): the classic tabs overlap, their boxes hold the flare of their feet.
 @(test)
-tab_drag_between_windows :: proc(t: ^testing.T) {
+tab_drag_between_windows_classic :: proc(t: ^testing.T) { between_windows(t, "classic") }
+
+@(test)
+tab_drag_between_windows_modern :: proc(t: ^testing.T) { between_windows(t, "modern") }
+
+@(private = "file")
+between_windows :: proc(t: ^testing.T, style: string) {
 	dir := e2e.temp_folder(t)
 	s := e2e.start(t, {size = DRAG_SIZE, url = titled_page(dir, "Alpha")})
 	e2e.pref_set(s, "browser.ui.animations", "off")
+	e2e.pref_set(s, "browser.ui.chrome_style", style)
 	a := e2e.windows(s)[0].id
 	add_tabs(s, dir, {"Carried", "Charlie"})
 
