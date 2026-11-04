@@ -1,5 +1,6 @@
 package style
 
+import "base:runtime"
 import "core:math"
 import "core:testing"
 import "wb:dom"
@@ -52,6 +53,30 @@ effect_timing_model :: proc(t: ^testing.T) {
 	ez.easing = Easing{kind = .Steps, steps = 2, pos = .Jump_End}
 	st = effect_state(ez, 600, true)
 	testing.expect(t, near(st.progress, 0.5), "the effect's easing transforms the progress")
+}
+
+// The first word of what is freed is overwritten, as glibc's heap does (its list of free blocks) and Windows' mostly does not: what reads a block it just freed reads this.
+@(private = "file") SCRIBBLE :: max(u64)
+
+@(private = "file")
+scribble_proc :: proc(data: rawptr, mode: runtime.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, loc := #caller_location) -> ([]byte, runtime.Allocator_Error) {
+	if mode == .Free && old_memory != nil { (^u64)(old_memory)^ = SCRIBBLE }
+	inner := (^runtime.Allocator)(data)
+	return inner.procedure(inner.data, mode, size, alignment, old_memory, old_size, loc)
+}
+
+// The key of the element was read from the record just freed: on Linux the entry stayed, for the next tick to read (the last effect of an element ended, reddit and YouTube).
+@(test)
+an_element_goes_with_its_last_script_effect :: proc(t: ^testing.T) {
+	f := open(`<div id=a></div>`)
+	defer fixture_unload(f)
+	inner := context.allocator
+	context.allocator = {scribble_proc, &inner}
+	a := dom.find_by_id(f.doc, "a")
+	testing.expect(t, timeline_script_put(f.tl, 1, a, "0\x1f\x1fopacity\x1f0\x1e1\x1f\x1fopacity\x1f1", timing(1000), "", .Replace))
+	testing.expect_value(t, len(f.tl.elements), 1)
+	timeline_script_remove(f.tl, 1)
+	testing.expect_value(t, len(f.tl.elements), 0)
 }
 
 @(test)
