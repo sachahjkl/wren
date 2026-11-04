@@ -42,6 +42,11 @@
 <p class="doc-toc-title">On this page</p>
 <ul>
 <li><a href="#how-it-was-measured">How it was measured</a></li>
+<li><a href="#profilers">Profilers</a></li>
+<li class="lvl3"><a href="#tracy">Tracy</a></li>
+<li class="lvl3"><a href="#vtune-and-perf">VTune (and perf)</a></li>
+<li class="lvl3"><a href="#wpr-and-wpa">WPR and WPA</a></li>
+<li class="lvl3"><a href="#pix">PIX</a></li>
 <li><a href="#the-map">The map</a></li>
 <li class="lvl3"><a href="#1-a-large-static-page-loaded-buildperfp10khtml-611-kb-10-020-elements-16-478-layout-items-2-000-rules">1. A large static page, loaded (build/perf/p10k.html: 611 KB, 10 020 elements, 16 478 layout items, 2 000 rules)</a></li>
 <li class="lvl3"><a href="#2-a-script-heavy-page-examplesjsbenchnodes10khtml-10-000-nodes-made-and-removed-per-frame">2. A script-heavy page (examples/jsbench/nodes10k.html: 10 000 nodes made and removed per frame)</a></li>
@@ -108,6 +113,69 @@ preemption off (<code>browser.shell.preempt=false</code>) changed neither the fr
 </ul>
 <p>Numbers are medians of 5 runs unless a range is given; the machine runs other programs, so CPU per second moves by a
 factor of 2 from run to run, frame times much less.</p>
+<h2 id="profilers"><a class="anchor" href="#profilers" aria-hidden="true">#</a>Profilers</h2>
+<p>Beside the built-in profiler, Wren speaks to four external ones. What they see of Wren comes from one place, package
+<code>trace</code> (<code>src/trace</code>): the phases of a frame (<code>Phase</code>, <code>src/browser/prof.odin</code>) are its zones, named as above, on the
+window's thread; a frame mark at each present; the start-up's marks (the profile build). Without its switches every call
+of it is empty and nothing is linked: <code>build\wren.exe</code> imports none of ETW's writing functions and holds no Tracy client
+(test_all checks it). The zones of a thread pair on every path: an end closes what an early return left open, and each
+frame begins by closing whatever the last one left.</p>
+<p>Threads have names (<code>SetThreadDescription</code>, which Tracy, WPA, VTune and the debuggers read): <code>wren-window</code>,
+<code>wren-page-layout</code>, <code>wren-style</code> and <code>wren-layout</code> (the style and layout pools; the compositor's work runs on the
+latter), <code>wren-js-compile</code>, <code>wren-js-worker</code>, <code>wren-wasm-compile</code>, <code>wren-wasm-epoch</code>, <code>wren-wasm-cache</code>,
+<code>wren-image-decode</code>, <code>wren-blocking-&lt;n&gt;</code>, the media's.</p>
+<p>Symbols: every variant but the release has its PDB beside it (<code>build\wren_prof.pdb</code>...). For WPA and VTune, the
+system's from Microsoft's server:</p>
+<div class="code"><pre><code>set _NT_SYMBOL_PATH=S:\wren\build;srv*C:\symbols*https://msdl.microsoft.com/download/symbols</code></pre></div>
+<h3 id="tracy"><a class="anchor" href="#tracy" aria-hidden="true">#</a>Tracy</h3>
+<p><a href="https://github.com/wolfpld/tracy" rel="noopener">Tracy</a> 0.14.1, pinned by SHA-256 (<code>src/tools/wrentool/deps/tracy.odin</code>): its client
+built from the source release into <code>build\tracy\tracy.lib</code> by the builds that ask for it, its viewer from the release's
+Windows build. The client records only while a viewer is connected (<code>TRACY_ON_DEMAND</code>) and answers on this machine only
+(<code>TRACY_ONLY_LOCALHOST</code>, port 8086).</p>
+<div class="code"><pre><code>set WREN_TRACY=1
+build.bat profile                         (-&gt; build\wren_prof_tracy.exe; any variant: build\wren_tracy.exe...)
+build\wrentool fetch tracy                (-&gt; build\tracy\tracy-profiler.exe, tracy-capture.exe)
+build\wren_prof_tracy.exe examples\jsbench\nodes10k.html
+build\tracy\tracy-profiler.exe            the client is listed: Connect
+build\tracy\tracy-capture.exe -a 127.0.0.1 -o build\perf\nodes10k.tracy -s 10    (no window: 10 s into a file the viewer opens)
+build\tracy\tracy-csvexport.exe build\perf\nodes10k.tracy                    (each zone's count, mean and total, as CSV)</code></pre></div>
+<p>It shows the phases, the frames, a plot of the layout items per frame, and in a Tracy build every call of a module into
+the browser (each import of the JavaScript engine: a DOM call, a style or layout read) as a zone <code>module.name</code> on the
+thread that made it (<code>src/wasm/host_trace.odin</code>). Run elevated, Tracy also samples the CPU and shows context switches
+(its own ETW session). Not there: GPU zones (the toolkit keeps its Direct3D 11 device and context to itself, its
+timestamp queries are the renderer's: <code>gpu_steps.odin</code> reads their results), lock annotations (Odin's <code>sync.Mutex</code>
+has no hook). Connected, it costs: 5 s of nodes10k made 6.5 million zones (2.2 million <code>dom.Node_preInsert</code> alone),
+and 44 frames a second instead of 230; the phases alone are a few hundred zones a second.</p>
+<h3 id="vtune-and-perf"><a class="anchor" href="#vtune-and-perf" aria-hidden="true">#</a>VTune (and perf)</h3>
+<p>Wasmtime tells a profiler about the code it compiles when <code>wasm.wasmtime.profiler</code> says which (a restart preference;
+<code>none</code> by default): <code>vtune</code> (Windows and Linux on x86-64: the prebuilt library has Intel's ITT API), <code>perfmap</code> and
+<code>jitdump</code> (Linux's perf). The code read from the compiled-code cache is told too. The JavaScript engine's image keeps
+its functions' names (its <code>name</code> section: <code>wasm-ld --strip-debug</code> drops only DWARF, which <code>buildjs -names</code> keeps):</p>
+<div class="code"><pre><code>vtune -collect hotspots -result-dir build\vtune\nodes10k -- build\wren_prof.exe --pref wasm.wasmtime.profiler=vtune examples\jsbench\nodes10k.html
+vtune -report hotspots -result-dir build\vtune\nodes10k -format csv</code></pre></div>
+<p>(<code>jspage --pref wasm.wasmtime.profiler=vtune</code> is the engine alone.) VTune then lists the engine's functions as <code>[Dynamic code]</code>,
+<code>wasmtime::jsrt::interp_run</code>, <code>wasmtime::jscapi::...::bridge_invoke</code>, <code>wasmtime::jsrt::call_native</code>; telling it about every function
+costs about 1.2 s of CPU at the start (Wasmtime's <code>VTuneAgent::register_function</code>).</p>
+<h3 id="wpr-and-wpa"><a class="anchor" href="#wpr-and-wpa" aria-hidden="true">#</a>WPR and WPA</h3>
+<p>The profile build (<code>-define:WREN_ETW=true</code> in any other) is an ETW provider, <code>Wren.Browser</code>, a TraceLogging one (each
+event describes itself: no manifest to install), GUID <code>10e6f595-25dd-53c9-a97c-bdec823560e6</code> (TraceLogging's hash of
+the name). Each zone is a Start and a Stop event named after its phase; <code>Presented</code> at each present; <code>Mark</code> with the
+start-up's steps. While no session listens an event costs the test of a flag. <code>tools\wren.wprp</code> records CPU samples
+with stacks, context switches with the thread that readied each, the GPU's scheduler (DxgKrnl) and the provider;
+<code>tools\wren_regions.xml</code> makes the phases WPA's regions of interest.</p>
+<div class="code"><pre><code>build\wrentool trace start                (an elevated prompt: WPR asks for one, wrentool does not)
+build\wren_prof.exe examples\jsbench\nodes10k.html
+build\wrentool trace stop                 (-&gt; build\trace\wren.etl)
+wpa build\trace\wren.etl                  Trace &gt; Load Symbols; Trace &gt; Trace Properties &gt; Regions of Interest: tools\wren_regions.xml</code></pre></div>
+<p>Checked on 2026-11-04 (WPR and WPA of the Windows Performance Toolkit 11.8): 3 s of nodes10k give 1 082 regions of
+each phase that runs every frame, the start-up's marks, Wren's functions named from the PDB, DxgKrnl's events.
+<code>xperf -i build\trace\wren.etl -a regions -man tools\wren_regions.xml</code> lists the regions without a window.</p>
+<p>The profile build with ETW in it and no session, against the one before it (5 interleaved runs of nodes10k, 5 s, median):
+CPU work per frame p50 17.70 -&gt; 17.54 ms, Animation p50 11.79 -&gt; 11.66 ms, 222.0 -&gt; 227.7 frames/s: no cost seen.</p>
+<h3 id="pix"><a class="anchor" href="#pix" aria-hidden="true">#</a>PIX</h3>
+<p>PIX's GPU captures are of Direct3D 12 programs: Wren's Direct3D 11 renderer is not one, the wgpu backend
+(<code>WREN_RENDER=wgpu</code>, Direct3D 12 on Windows) is. Its timing captures read their own markers (WinPixEventRuntime), not
+another provider: nothing of Wren's is added for it; WPA shows the same phases.</p>
 <h2 id="the-map"><a class="anchor" href="#the-map" aria-hidden="true">#</a>The map</h2>
 <p>Times are per load or per frame on the window's thread unless said; "items/s" is what the stage gets through.</p>
 <h3 id="1-a-large-static-page-loaded-buildperfp10khtml-611-kb-10-020-elements-16-478-layout-items-2-000-rules"><a class="anchor" href="#1-a-large-static-page-loaded-buildperfp10khtml-611-kb-10-020-elements-16-478-layout-items-2-000-rules" aria-hidden="true">#</a>1. A large static page, loaded (<code>build/perf/p10k.html</code>: 611 KB, 10 020 elements, 16 478 layout items, 2 000 rules)</h3>
