@@ -14,6 +14,92 @@
     .key { font-family: ui-monospace, Consolas, monospace; font-size: 0.85rem; word-break: break-all; white-space: pre-wrap;
            background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 12px; user-select: all; }
     .actions { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; }
+
+    /* A little life: the bird, a waiting indicator, and a short celebration when the licence arrives */
+    main { overflow-x: clip; }
+    .hero { position: relative; isolation: isolate; text-align: center; padding: 8px 0 4px; background: none; }
+    /* the page's usual hero gradient, across the whole width of the window and up to the header */
+    .hero::before { content: ""; position: absolute; z-index: -1; top: -100px; bottom: -24px; left: 50%; width: 100vw; margin-left: -50vw;
+      background: linear-gradient(180deg, #16232c 0%, #121212 100%); }
+    .hero .stage { position: relative; display: block; width: 104px; height: 104px; margin: 0 auto 16px; }
+    /* logo.png has about 11 % of transparent margin on every side: it is drawn larger, with negative margins, so the
+       icon is 104 px; the glow is a drop-shadow, which follows the icon's own shape and not the image's box */
+    .hero .stage::before { content: ""; position: absolute; inset: -22px; border-radius: 50%;
+      background: radial-gradient(closest-side, rgba(76, 194, 255, 0.16), rgba(76, 194, 255, 0)); }
+    .hero .bird { position: absolute; left: -15px; top: -15px; display: block; width: 133px; height: 133px; max-width: none; aspect-ratio: 1;
+      filter: drop-shadow(0 0 10px rgba(76, 194, 255, 0.55)) drop-shadow(0 8px 20px rgba(76, 194, 255, 0.3));
+      animation: bob 3.6s ease-in-out infinite; }
+    .hero h1 { margin-bottom: 0.3em; }
+    .hero .intro { margin-left: auto; margin-right: auto; max-width: 640px; }
+    .dots { display: inline-flex; gap: 5px; vertical-align: middle; margin-left: 6px; }
+    .dots[hidden] { display: none; }
+    .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: 0.25; animation: dot 1.2s infinite; }
+    .dots i:nth-child(2) { animation-delay: 0.2s; }
+    .dots i:nth-child(3) { animation-delay: 0.4s; }
+    .warm { position: relative; text-align: center; color: var(--muted); margin: 0 auto 18px; max-width: 640px; text-wrap: balance; }
+    #licence, #questions { max-width: 760px; margin-left: auto; margin-right: auto; }
+    #questions { display: flex; gap: 20px; align-items: flex-start; margin-top: 44px; padding: 22px 26px;
+      background: rgba(76, 194, 255, 0.07); border: 1px solid rgba(76, 194, 255, 0.28); border-radius: 10px; }
+    #questions .help-icon { flex: none; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
+      color: var(--accent); background: rgba(76, 194, 255, 0.14); border: 1px solid rgba(76, 194, 255, 0.4); }
+    #questions h2 { margin: 2px 0 6px; font-size: 1.2rem; }
+    #questions p { margin: 0 0 10px; }
+    #questions .links { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin: 14px 0 0; }
+    @media (max-width: 560px) { #questions { flex-direction: column; } }
+    #licence .card { margin-bottom: 40px; }
+    #licence h2 { margin-top: 0; }
+    /* both labels sit in the same grid cell: the button is as wide as the longer one and never changes size */
+    .btn.copy { display: inline-grid; justify-items: center; align-items: center; }
+    .btn.copy .lab { grid-area: 1 / 1; display: inline-flex; align-items: center; gap: 8px; }
+    .btn.copy .lab.off, .btn.copy.done .lab.on { visibility: hidden; }
+    .btn.copy.done .lab.off { visibility: visible; }
+    .facts { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 18px; padding: 0; }
+    .facts > div { flex: 1 1 150px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; }
+    .facts dt { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+    .facts dd { margin: 0; font-weight: 600; color: var(--text, #fff); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    .keylabel { margin: 0 0 6px; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+    #licence .card { position: relative; border-color: #2f4d61; overflow: hidden;
+      background: linear-gradient(160deg, #1b2b36 0%, #1a1a1a 62%); }
+    #licence .card::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(115deg, transparent 35%, rgba(168, 220, 247, 0.16) 50%, transparent 65%);
+      transform: translateX(-120%); }
+    main.ready #licence .card { animation: rise 0.7s cubic-bezier(.2, .8, .2, 1) both; }
+    main.ready #licence .card::after { animation: sheen 1.6s 0.5s ease-out 1 both; }
+    .confetti { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 50; }
+    .confetti b { position: absolute; top: -14px; width: 8px; height: 14px; border-radius: 2px; opacity: 0;
+      animation: fall var(--t, 3s) var(--d, 0s) cubic-bezier(.25, .35, .55, 1) both; }
+    @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+    @keyframes dot { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+    @keyframes rise { from { opacity: 0; transform: translateY(18px) scale(0.98); } to { opacity: 1; transform: none; } }
+    @keyframes sheen { to { transform: translateX(120%); } }
+    @keyframes fall {
+      0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(0); }
+      10% { opacity: 1; }
+      60% { opacity: 1; }
+      100% { opacity: 0; transform: translate3d(var(--x, 0), 108vh, 0) rotate(var(--r, 540deg)); }
+    }
+    /* a little luxury on the key: a champagne-gold edge, a slow glint across it, a few stars that twinkle */
+    #licence .key { position: relative; overflow: hidden; color: #f4ead2;
+      border: 1px solid transparent;
+      background: linear-gradient(var(--surface-2), var(--surface-2)) padding-box,
+                  linear-gradient(115deg, rgba(255, 214, 120, 0.65), rgba(76, 194, 255, 0.3) 45%, rgba(255, 214, 120, 0.65)) border-box;
+      box-shadow: 0 0 22px rgba(255, 205, 100, 0.07); }
+    #licence .key::after { content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 30%; pointer-events: none;
+      background: linear-gradient(100deg, transparent, rgba(255, 236, 190, 0.16), transparent); transform: skewX(-18deg);
+      animation: glint 7s 1.5s ease-in-out infinite; }
+    @keyframes glint { 0%, 55% { left: -40%; } 85%, 100% { left: 125%; } }
+    #licence .card .spark { position: absolute; width: 14px; height: 14px; pointer-events: none; opacity: 0;
+      background: #fff1c6; filter: drop-shadow(0 0 4px rgba(255, 220, 140, 0.9));
+      clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+      animation: twinkle 3.4s var(--sd, 0s) ease-in-out infinite; }
+    @keyframes twinkle { 0%, 70%, 100% { opacity: 0; transform: scale(0.3) rotate(0); } 82% { opacity: 1; transform: scale(1) rotate(45deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      #licence .key::after, #licence .card .spark { animation: none; }
+      #licence .card .spark { display: none; }
+      .hero .bird, .dots i, main.ready #licence .card, main.ready #licence .card::after { animation: none; }
+      .dots i { opacity: 0.6; }
+      .confetti { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -44,31 +130,57 @@
 
 <section class="section">
   <div class="wrap">
-    <h1>Thank you for supporting Wren</h1>
-    <p class="intro" id="status" role="status">Making your licence&hellip;</p>
+    <div class="hero">
+      <div class="stage"><img class="bird" src="../img/logo.png" alt="" width="133" height="133"></div>
+      <h1>Thank you for supporting Wren</h1>
+      <p class="intro"><span id="status" role="status">Making your licence&hellip;</span><span class="dots" id="dots" aria-hidden="true" hidden><i></i><i></i><i></i></span></p>
+    </div>
+    <p class="warm" id="warm" hidden>You keep an independent browser, written from scratch, moving forward. It&nbsp;means&nbsp;a&nbsp;lot.</p>
 
     <div id="licence" hidden>
       <div class="card">
+        <i class="spark" style="top: 14px; right: 36px; --sd: 0s" aria-hidden="true"></i>
+        <i class="spark" style="top: 52px; right: 12px; width: 9px; height: 9px; --sd: 1.3s" aria-hidden="true"></i>
+        <i class="spark" style="top: 118px; left: 10px; width: 10px; height: 10px; --sd: 2.1s" aria-hidden="true"></i>
+        <i class="spark" style="top: 214px; right: 52px; width: 11px; height: 11px; --sd: 0.7s" aria-hidden="true"></i>
+        <i class="spark" style="top: 252px; left: 40px; width: 12px; height: 12px; --sd: 1.8s" aria-hidden="true"></i>
+        <i class="spark" style="bottom: 16px; right: 22px; width: 16px; height: 16px; --sd: 2.6s" aria-hidden="true"></i>
         <h3 id="who"></h3>
-        <p class="fine" id="details"></p>
-        <p>Your key:</p>
+        <dl class="facts">
+          <div><dt>Order</dt><dd id="order"></dd></div>
+          <div><dt>Date</dt><dd id="date"></dd></div>
+          <div><dt>Edition</dt><dd>Wren licence</dd></div>
+        </dl>
+        <p class="keylabel">Your key</p>
         <div class="key" id="key" tabindex="0"></div>
         <div class="actions">
           <button class="btn primary" type="button" id="download">Download the .wrenlicense</button>
-          <button class="btn" type="button" id="copy">Copy the key</button>
+          <button class="btn copy" type="button" id="copy">
+            <span class="lab on"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>Copy the key</span>
+            <span class="lab off" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Copied</span>
+          </button>
         </div>
       </div>
 
       <h2>Registering it</h2>
       <p>Open <code>about:wren</code> in Wren (menu, <em>About Wren</em>), paste the key into the box and press
-        <em>Register</em>. Or drop the <code>.wrenlicense</code> file you just downloaded onto the Wren window.</p>
+        <span class="mini-btn">Register</span>. Or drop the <code>.wrenlicense</code> file you just downloaded onto the Wren window.</p>
+      <p><a class="btn" href="wren-about:wren">Open the registration page in Wren</a></p>
+      <p class="fine">The button opens <code>about:wren</code> in Wren itself, whatever your default browser is. If nothing happens, open <code>about:wren</code> in Wren by hand.</p>
       <p class="fine">The same key is sent to the e-mail address you gave at the checkout, with the file attached. Keep
         it: it covers every version of Wren, the updates after the beta included, on every computer you use. During the beta it unlocks nothing. Wren checks it on your computer, without any network access.</p>
     </div>
 
-    <p class="fine">Questions about a licence: open an issue on
-      <a href="https://github.com/sachahjkl/wren/issues">GitHub</a>, with your order number (never the key).
-      Back to <a href="../pricing/">the pricing page</a>.</p>
+    <aside id="questions">
+      <span class="help-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24m5.66 0 4.24-4.24m-4.24 9.9 4.24 4.24m-9.9-4.24-4.24 4.24"/><circle cx="12" cy="12" r="4"/></svg></span>
+      <div>
+        <h2>A problem with your licence? We are here.</h2>
+        <p>No key, a key that is refused, a wrong name: write to us on GitHub with your <strong>order number</strong>
+          (never the key itself) and we will sort it out.</p>
+        <p class="links"><a class="btn primary" href="https://github.com/sachahjkl/wren/issues/new">Ask for help</a>
+          <a href="../pricing/">Back to the pricing page</a></p>
+      </div>
+    </aside>
   </div>
 </section>
 
@@ -106,7 +218,29 @@
   var txn = params.get("txn") || params.get("_ptxn") || "";
   var started = Date.now();
 
-  function say(text) { status.textContent = text; }
+  var dots = document.getElementById("dots");
+  function say(text, waiting) { status.textContent = text; dots.hidden = !waiting; }
+
+  // A short burst of confetti, once, unless the visitor asked for less motion
+  function celebrate() {
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var box = document.createElement("div");
+    box.className = "confetti";
+    box.setAttribute("aria-hidden", "true");
+    var colours = ["#4cc2ff", "#a8dcf7", "#ffffff", "#ffcf5c", "#7bd88f", "#ff8fa3"];
+    for (var i = 0; i < 56; i++) {
+      var p = document.createElement("b");
+      p.style.left = (Math.random() * 100) + "%";
+      p.style.background = colours[i % colours.length];
+      p.style.setProperty("--x", ((Math.random() - 0.5) * 220) + "px");
+      p.style.setProperty("--r", ((Math.random() - 0.5) * 1080) + "deg");
+      p.style.setProperty("--t", (3.6 + Math.random() * 2.4) + "s");
+      p.style.setProperty("--d", (Math.random() * 1.6) + "s");
+      box.appendChild(p);
+    }
+    document.body.appendChild(box);
+    setTimeout(function () { box.remove(); }, 8500);
+  }
 
   if (!/^txn_[0-9a-z]{20,40}$/.test(txn)) {
     say("This page shows the licence of a purchase: it needs the transaction number that the checkout passes on. If you have just paid, your licence is also on its way to your e-mail address.");
@@ -119,10 +253,14 @@
 
   function show(j) {
     document.getElementById("who").textContent = "Wren licence for " + j.name;
-    document.getElementById("details").textContent = "Order " + j.order + ", " + j.date;
+    document.getElementById("order").textContent = j.order;
+    document.getElementById("date").textContent = j.date;
     document.getElementById("key").textContent = j.licence;
     document.getElementById("licence").hidden = false;
+    document.getElementById("warm").hidden = false;
+    main.classList.add("ready");
     say("Your licence is ready. Thank you!");
+    celebrate();
 
     document.getElementById("download").addEventListener("click", function () {
       var url = URL.createObjectURL(new Blob([j.file], { type: "application/octet-stream" }));
@@ -135,7 +273,11 @@
       setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
     });
     document.getElementById("copy").addEventListener("click", function () {
-      var done = function () { document.getElementById("copy").textContent = "Copied"; };
+      var done = function () {
+        var b = document.getElementById("copy");
+        b.classList.add("done");
+        setTimeout(function () { b.classList.remove("done"); }, 2200);
+      };
       if (navigator.clipboard) navigator.clipboard.writeText(j.licence).then(done, function () { selectKey(); });
       else selectKey();
     });
@@ -154,7 +296,7 @@
     fetch(worker + "/licence?txn=" + encodeURIComponent(txn), { cache: "no-store" }).then(function (res) {
       if (res.status === 200) return res.json().then(show);
       if (res.status === 202 && Date.now() - started < giveUp) {
-        say("Making your licence (this takes a few seconds)\u2026");
+        say("Making your licence (this takes a few seconds)", true);
         setTimeout(poll, every);
         return;
       }
@@ -168,6 +310,7 @@
     say("The licence is not ready yet, or the service could not be reached. Nothing is lost: it is sent by e-mail to the address you gave at the checkout, within a few minutes. If nothing arrives, reload this page later or open an issue on GitHub with your order number.");
   }
 
+  say("Making your licence", true);
   poll();
 })();
 </script>

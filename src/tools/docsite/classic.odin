@@ -228,7 +228,7 @@ write_classic_top :: proc(b: ^strings.Builder, current: string) {
 write_classic_foot :: proc(b: ^strings.Builder, modern: string) {
 	ws := strings.write_string
 	ws(b, "<footer class=\"foot\">\nWren is made by <a href=\"https://froment.software\">Froment Software</a>. ")
-	ws(b, "Supporter licence: one payment of 29&nbsp;&euro;, unlocks nothing, keeps the work going.\n")
+	ws(b, "Wren licence: one payment of 29&nbsp;&euro;, personal and perpetual, two years of updates from 1.0.\n")
 	for it in ([?][2]string{{"/archive/", "archive"}, {"/privacy/", "privacy"}, {"/terms/", "terms"}, {"/refunds/", "refunds"}, {"/imprint/", "imprint"}, {modern, "Modern version"}}) {
 		ws(b, "- <a href=\"")
 		ws(b, it[0])
