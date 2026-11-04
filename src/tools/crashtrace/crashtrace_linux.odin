@@ -187,6 +187,8 @@ write_report :: proc(sig: posix.Signal, info: ^posix.siginfo_t, uctx: rawptr) {
 	}
 	emit("*** end of the stack\n")
 	if report_fd >= 0 { linux.close(report_fd); report_fd = -1 }
+	// the report says all: the next start has no unclean exit to report for this end (end_session, with no allocator: a signal handler)
+	if report_dir_len > 0 { linux.unlink(cstring(raw_data(fmt.bprintf(buf[:], "%s/session.txt\x00", string(report_dir[:report_dir_len]))))) }
 }
 
 // "build <exe> <build id>, base 0x...": which build crashed and where it was loaded.

@@ -34,6 +34,7 @@ each_way_of_dying_leaves_a_report_with_its_cause_and_a_minidump :: proc(t: ^test
 	}
 	for m, i in MODES {
 		code := e2e.program_wait(programs[i])
+		testing.expectf(t, !os.exists(fmt.tprintf("%s/session.txt", dirs[i])), "%s: the report ends the session, the next start reports it no second time", m.name)
 		reports := e2e.files_with_prefix(dirs[i], "crash ", ".txt")
 		dumps := e2e.files_with_prefix(dirs[i], "crash ", ".dmp")
 		text := len(reports) == 1 ? e2e.read_text(reports[0]) : ""

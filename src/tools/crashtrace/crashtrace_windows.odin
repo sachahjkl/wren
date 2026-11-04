@@ -261,6 +261,7 @@ write_report :: proc(info: ^win.EXCEPTION_POINTERS, tid: win.DWORD) {
 	}
 	emit("*** end of the stack\n")
 	if report_file != nil { win.CloseHandle(report_file); report_file = nil }
+	end_session()   // (the report says all: the next start has no unclean exit to report for this end)
 }
 
 // "build <exe> <fingerprint>, base 0x..., size 0x...": which build crashed and where it was loaded. A release has no PDB:
@@ -367,9 +368,9 @@ emit :: proc(s: string) {
 ////////////////////////////////
 // Sessions that ended without a report
 
-// Some ends leave the filter no chance: a fail-fast (a Rust or C runtime that aborts, __fastfail), the system killing the process,
-// ExitProcess of a watchdog. A file "session.txt" in the report folder says a session is running (its process id and start time,
-// the header); end_session() removes it at a clean exit. Found at the next start with its process gone, it becomes
+// Some ends leave the filter no chance: a fail-fast (a Rust or C runtime that aborts, __fastfail), the system killing the process.
+// A file "session.txt" in the report folder says a session is running (its process id and start time,
+// the header); end_session() removes it at a clean exit, a watchdog's (host.shutdown_on_force) and a written report. Found at the next start with its process gone, it becomes
 // "unclean exit <date>.txt" in the same folder: what the session was, and Windows' own record of the end (the Application Error
 // event with the exception code and the fault offset: wevtutil), so that an end without a stack still says what it was.
 begin_session :: proc() {
