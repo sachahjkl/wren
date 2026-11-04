@@ -104,7 +104,7 @@
 	Event.cancelBubble=false must have no effect.: PASS
 	Event.cancelBubble=true must set the stop propagation flag.: PASS
 	Initializing an event must set cancelBubble to false.: PASS
-	cancelBubble must be false after an event has been dispatched.: FAIL
+	cancelBubble must be false after an event has been dispatched.: PASS
 	cancelBubble must be false when an event is initially created.: PASS
 	stopImmediatePropagation() must set cancelBubble to true.: PASS
 	stopPropagation() must set cancelBubble to true.: PASS
@@ -156,7 +156,7 @@
 	returnValue should change defaultPrevented if cancelable is true.: PASS
 	returnValue should not change defaultPrevented if cancelable is false.: PASS
 /dom/events/Event-dispatch-bubble-canceled.html: OK
-	Setting cancelBubble=true prior to dispatchEvent(): FAIL
+	Setting cancelBubble=true prior to dispatchEvent(): PASS
 /dom/events/Event-dispatch-bubbles-false.html: OK
 	In DOMImplementation.createHTMLDocument(): PASS
 	In new Document(): PASS
@@ -253,7 +253,7 @@
 /dom/events/Event-dispatch-other-document.html: OK
 	Custom event on an element in another document: PASS
 /dom/events/Event-dispatch-propagation-stopped.html: OK
-	 Calling stopPropagation() prior to dispatchEvent() : FAIL
+	 Calling stopPropagation() prior to dispatchEvent() : PASS
 /dom/events/Event-dispatch-redispatch.html: OK
 	Redispatching DOMContentLoaded event after being dispatched: PASS
 	Redispatching event which is being dispatched: PASS
@@ -428,9 +428,9 @@
 /dom/events/Event-isTrusted.any.worker.html: OK
 	Event-isTrusted: FAIL
 /dom/events/Event-propagation.html: OK
-	After cancelBubble=true: FAIL
-	After stopImmediatePropagation(): FAIL
-	After stopPropagation(): FAIL
+	After cancelBubble=true: PASS
+	After stopImmediatePropagation(): PASS
+	After stopPropagation(): PASS
 	Newly-created Event: PASS
 	Reinitialized after cancelBubble=true: PASS
 	Reinitialized after stopImmediatePropagation(): PASS
@@ -1020,10 +1020,10 @@
 	Tests that the target_div within iframe gets scrollend event when touch dragging.: FAIL
 	scrollend fires to iframe window on mousewheelscroll: NOTRUN
 /dom/events/scrolling/scrollend-event-for-user-scroll.html: TIMEOUT
-	Tests that the target_div gets scrollend event when clicking scrollbar.: PASS
-	Tests that the target_div gets scrollend event when dragging the scrollbar thumb.: PASS
-	Tests that the target_div gets scrollend event when mouse wheel scrolling.: PASS
-	Tests that the target_div gets scrollend event when sending DOWN key to the target.: TIMEOUT
+	Tests that the target_div gets scrollend event when clicking scrollbar.: TIMEOUT
+	Tests that the target_div gets scrollend event when dragging the scrollbar thumb.: NOTRUN
+	Tests that the target_div gets scrollend event when mouse wheel scrolling.: NOTRUN
+	Tests that the target_div gets scrollend event when sending DOWN key to the target.: NOTRUN
 	Tests that the target_div gets scrollend event when touch dragging.: FAIL
 /dom/events/scrolling/scrollend-event-handler-content-attributes.html: OK
 	Tests scrollend event is fired to document event handler property: PASS
@@ -1081,7 +1081,7 @@
 	relatedTarget should not leak at target.: PASS
 /dom/events/webkit-animation-end-event.html: TIMEOUT
 	dispatchEvent of a webkitAnimationEnd event does not trigger an unprefixed event handler or listener: PASS
-	dispatchEvent of a webkitAnimationEnd event does trigger a prefixed event handler or listener: FAIL
+	dispatchEvent of a webkitAnimationEnd event does trigger a prefixed event handler or listener: PASS
 	dispatchEvent of an animationend event does not trigger a prefixed event handler or listener: PASS
 	event types for prefixed and unprefixed animationend event handlers should be named appropriately: NOTRUN
 	event types for prefixed and unprefixed animationend event listeners should be named appropriately: NOTRUN
@@ -1095,7 +1095,7 @@
 	webkitAnimationEnd event listener should trigger for an animation: NOTRUN
 /dom/events/webkit-animation-iteration-event.html: TIMEOUT
 	dispatchEvent of a webkitAnimationIteration event does not trigger an unprefixed event handler or listener: PASS
-	dispatchEvent of a webkitAnimationIteration event does trigger a prefixed event handler or listener: FAIL
+	dispatchEvent of a webkitAnimationIteration event does trigger a prefixed event handler or listener: PASS
 	dispatchEvent of an animationiteration event does not trigger a prefixed event handler or listener: PASS
 	event types for prefixed and unprefixed animationiteration event handlers should be named appropriately: NOTRUN
 	event types for prefixed and unprefixed animationiteration event listeners should be named appropriately: NOTRUN
@@ -1109,7 +1109,7 @@
 	webkitAnimationIteration event listener should trigger for an animation: NOTRUN
 /dom/events/webkit-animation-start-event.html: TIMEOUT
 	dispatchEvent of a webkitAnimationStart event does not trigger an unprefixed event handler or listener: PASS
-	dispatchEvent of a webkitAnimationStart event does trigger a prefixed event handler or listener: FAIL
+	dispatchEvent of a webkitAnimationStart event does trigger a prefixed event handler or listener: PASS
 	dispatchEvent of an animationstart event does not trigger a prefixed event handler or listener: PASS
 	event types for prefixed and unprefixed animationstart event handlers should be named appropriately: NOTRUN
 	event types for prefixed and unprefixed animationstart event listeners should be named appropriately: NOTRUN
@@ -1123,7 +1123,7 @@
 	webkitAnimationStart event listener should trigger for an animation: NOTRUN
 /dom/events/webkit-transition-end-event.html: TIMEOUT
 	dispatchEvent of a webkitTransitionEnd event does not trigger an unprefixed event handler or listener: PASS
-	dispatchEvent of a webkitTransitionEnd event does trigger a prefixed event handler or listener: FAIL
+	dispatchEvent of a webkitTransitionEnd event does trigger a prefixed event handler or listener: PASS
 	dispatchEvent of an transitionend event does not trigger a prefixed event handler or listener: PASS
 	event types for prefixed and unprefixed transitionend event handlers should be named appropriately: NOTRUN
 	event types for prefixed and unprefixed transitionend event listeners should be named appropriately: NOTRUN

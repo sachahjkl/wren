@@ -1743,7 +1743,7 @@
 /dom/nodes/Document-contentType/contentType/createHTMLDocument.html: OK
 	document.implementation.createHTMLDocument: document.contentType === 'text/html': PASS
 /dom/nodes/Document-contentType/contentType/xhr_responseType_document.html: OK
-	XHR - retrieve HTML document: document.contentType === 'application/xml': FAIL
+	XHR - retrieve HTML document: document.contentType === 'application/xml': PASS
 /dom/nodes/Document-createAttribute.html: OK
 	HTML document.createAttribute("") should throw: PASS
 	HTML document.createAttribute("'"): PASS

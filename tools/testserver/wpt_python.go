@@ -228,6 +228,10 @@ func (p *pyResponse) head() []byte {
 	for _, h := range p.headers {
 		fmt.Fprintf(&b, "%s: %s\r\n", h[0], h[1])
 	}
+	// (the end of the socket ends the exchange: a client must not keep the connection for its next request)
+	if !p.has("Connection") {
+		b.WriteString("Connection: close\r\n")
+	}
 	if !p.has("Server") {
 		fmt.Fprintf(&b, "Server: %s\r\n", wptServerName)
 	}

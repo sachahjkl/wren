@@ -51,9 +51,9 @@
 	Headers.prototype.set works for set-cookie: PASS
 	Set-Cookie is a forbidden response header: PASS
 /fetch/api/headers/header-values-last-event-id.any.html: OK
-	fetch() sends the bytes of a non-ASCII Last-Event-ID header value unchanged: FAIL
+	fetch() sends the bytes of a non-ASCII Last-Event-ID header value unchanged: PASS
 /fetch/api/headers/header-values-last-event-id.any.worker.html: OK
-	fetch() sends the bytes of a non-ASCII Last-Event-ID header value unchanged: FAIL
+	fetch() sends the bytes of a non-ASCII Last-Event-ID header value unchanged: PASS
 /fetch/api/headers/header-values-normalize.any.html: OK
 	XMLHttpRequest with value %00: PASS
 	XMLHttpRequest with value %01: FAIL
@@ -66,7 +66,7 @@
 	XMLHttpRequest with value %08: FAIL
 	XMLHttpRequest with value %09: PASS
 	XMLHttpRequest with value %0A: PASS
-	XMLHttpRequest with value %0D: FAIL
+	XMLHttpRequest with value %0D: PASS
 	XMLHttpRequest with value %0E: FAIL
 	XMLHttpRequest with value %0F: FAIL
 	XMLHttpRequest with value %10: FAIL

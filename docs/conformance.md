@@ -36,6 +36,8 @@ folder. The chart and the table on this page are generated from `wpt/expectation
 when a run has produced it) by `src/tools/docsite`, the same tool that builds this site. Nothing here is typed by
 hand, so it cannot drift from the recorded results.
 
+The test server does not run Python: the handlers the measured folders use are ported to Go (`tools/testserver/wpt_python.go`: wptserve's request, response and stash; `wpt_xhr.go`, `wpt_fetch.go`...), and a handler that is not answers 501, its tests counting as failing.
+
 Most folders run without layout: what their tests read of geometry is 0, and their expectations say so. The folders that
 test geometry (`LAYOUT_FOLDERS` in `src/tools/wpt/layout_host.odin`: `dom/events/scrolling`, `css/css-anchor-position`, `css/css-multicol`,
 `css/css-nesting`, `css/css-writing-modes`, `css/cssom`, `html/semantics/interactive-elements/the-dialog-element`, `navigation-api/scroll-behavior`) get a layout of an 800 x 600 with fixed text metrics, so that `getComputedStyle`, `offsetTop` or `getBoundingClientRect` answer there as a page's;
