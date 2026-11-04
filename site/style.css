@@ -203,10 +203,10 @@ strong, b { color: var(--text); font-weight: 650; }
 /* the hotspots sit on the tabs of the picture (percentages of its box) */
 .shot-hot { position: absolute; top: 0.2%; height: 4%; display: block; cursor: pointer; border-radius: 5px 5px 0 0; }
 .shot-hot:hover { background: rgba(255, 255, 255, 0.08); }
-.hot-1 { left: 2.06%; width: 14%; }
-.hot-2 { left: 16.13%; width: 14%; }
-.hot-3 { left: 30.19%; width: 14%; }
-.hot-4 { left: 44.25%; width: 14%; }
+.hot-1 { left: 3.44%; width: 14%; }
+.hot-2 { left: 17.5%; width: 14%; }
+.hot-3 { left: 31.56%; width: 14%; }
+.hot-4 { left: 45.63%; width: 14%; }
 
 #shot-1:focus-visible ~ .shot-hot.hot-1,
 #shot-2:focus-visible ~ .shot-hot.hot-2,
