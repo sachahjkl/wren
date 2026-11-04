@@ -191,13 +191,11 @@ fill_siblings :: proc(m: ^Match_Ctx, parent: base.Handle) {
 	}
 	// second pass: indexes from the end
 	type_totals := types
-	seen := make(map[string]int, context.temp_allocator)
 	cur = pn.first_child
 	for cur != base.NIL_HANDLE {
 		n := node_of(m, cur)
 		if n.kind == .Element {
 			info := m.sibs[cur]
-			seen[n.name] += 1
 			info.index_last = total - info.index + 1
 			info.type_index_last = type_totals[n.name] - info.type_index + 1
 			m.sibs[cur] = info

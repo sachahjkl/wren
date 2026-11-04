@@ -2072,27 +2072,27 @@ To remove:
 
 | where | what | hot on |
 |---|---|---|
-| `ext/gui_toolkit/font/shape.odin:383-611` | `Word_Cache`: 64 shards of shaped words, a mutex each, plus `l1_words` per thread | every word measured or painted |
-| `style/inline_cache.odin:37`, `cascade.odin:114` | compiled `style` attributes by text | every element with a style attribute |
-| `style/match.odin:55-64` | `sibs`, `filled`, `has_memo`: maps by handle per pass (and `seen` at `:191` written, never read) | nth-child and `:has()` |
-| `layout/types.odin:435` | `font_lookup`: fonts by content across partial passes (the per-pass map and its one-entry memo went in round 4) | a font a pass has not found yet |
-| `layout/types.odin:220`, `block.odin:268-311` | `Box.cache_*`: a block's result for the same inputs | block layout |
-| `browser/fonts.odin:343-379` | `Page_Fonts.resolved`: request string (built per lookup) -> font | font resolution |
-| `browser/paint_masks.odin:126-156` | text items per box for `background-clip: text`, wiped every pass | that property |
-| `browser/compositor.odin:252-293` | `raster_hash` memo per call | compositor rebuild |
+| `ext/gui_toolkit/font/shape.odin:400-460` | `Word_Cache`: 64 shards of shaped words, a mutex each, plus `l1_words` per thread | every word measured or painted |
+| `style/inline_cache.odin:47-129`, `cascade.odin:124-125` | compiled `style` attributes by text | every element with a style attribute |
+| `style/match.odin:58-67` | `sibs`, `filled`, `has_memo`: maps by handle per pass | nth-child and `:has()` |
+| `layout/types.odin:459` | `font_lookup`: fonts by content across partial passes (the per-pass map and its one-entry memo went in round 4) | a font a pass has not found yet |
+| `layout/types.odin:242-247`, `block.odin:320-333` | `Box.cache_*`: a block's result for the same inputs | block layout |
+| `browser/fonts.odin:347-380` | `Page_Fonts.resolved`: request string (built per lookup) -> font | font resolution |
+| `browser/paint_masks.odin:128-156` | text items per box for `background-clip: text`, wiped every pass | that property |
+| `browser/compositor.odin:251-293` | `raster_hash` memo per call | compositor rebuild |
 | `browser/effects_cache.odin:51` | content keys per group for the GPU layer cache | filters |
 | `browser/web_font_faces.odin:166` | family list -> invisible while loading | paint |
-| `ui/text_wrap.odin:61`, `ui/rich_text.odin:370` | wrapped and rich text of the chrome | chrome frames |
+| `ext/gui_toolkit/ui/text_wrap.odin:61`, `ext/gui_toolkit/ui/rich_text.odin:370` | wrapped and rich text of the chrome | chrome frames |
 
 ### Hash tables on hot paths
 
-`style/engine.odin:66-68` (`by_id`, `by_class`, `by_tag`, `by_attr`: string keys looked up per class, id, tag and attribute
-of every element, plus a concatenation per indexed attribute at `cascade.odin:443`); `style/match.odin:55-64`;
-`style/cascade.odin:345-361` (custom properties, contexts, `fs_chain` per element); `layout/context.odin:26-60`
-(`anon_cs`, `frame_cs`; `font_cache` gone in round 4); `layout/types.odin:454` (`scroll`, read per space); `browser/compositor.odin:115`
-(`node_items`, a heap list per node) and `:421-556` (per rebuild); `page/images.odin` `css_images_sync` and
+`style/engine.odin:68-69` (`by_id`, `by_class`, `by_tag`, `by_attr`: string keys looked up per class, id, tag and attribute
+of every element, plus a concatenation per indexed attribute at `cascade.odin:577`); `style/match.odin:58-67`;
+`style/cascade.odin:476-493` (custom properties, contexts, `fs_chain` per element); `layout/context.odin:28-58`
+(`anon_cs`, `frame_cs`; `font_cache` gone in round 4); `layout/types.odin:479` (`scroll`, read per space); `browser/compositor.odin:114`
+(`node_items`, a heap list per node) and `:419-554` (per rebuild); `page/images.odin` `css_images_sync` and
 `page/fonts.odin` `fonts_sync` (a `seen` table of shared lists, now only when something new may be used);
-`ext/gui_toolkit/font/raster.odin:74-79` (per glyph, under the atlas lock); `page/timeline_lcp.odin` `et_seen` (per
+`ext/gui_toolkit/font/raster.odin:77-82` (per glyph, under the atlas lock); `page/timeline.odin` `et_seen` (per
 element with `elementtiming` only). Gone in round 1: `page/timeline_lcp.odin` `ls_prev` (per box, per mutated frame).
 Added in round 4, flat: `style/share.odin` (a style pass's shared styles: open addressing, the keys' words in one array,
 one lookup per element). Gone in round 5: `style/restyle_dom.odin` `inserted_exceed` (the inserted nodes of a restyle,
@@ -2103,31 +2103,31 @@ an array, `Box.mc` the index).
 
 ### Arrays of bools
 
-Per box or element, per pass: `layout/context.odin:53` (`plain`), `layout/finish.odin:37,81`, `layout/effects.odin:45`,
-`layout/incremental.odin:563`, `layout/query.odin:91` (`View.singular`, per frame), `style/cascade.odin:349`
-(`gate_probe`), `style/engine.odin:119-120`, `browser/compositor.odin:450,763`, `browser/effects_cache.odin:54,65`;
-`map[...]bool` used as sets: `style/match.odin:56,64`, `style/engine.odin:68`, `style/restyle_dom.odin:144-147`,
-`font/raster.odin:76-77` (per glyph); `draw/bsp.odin:241` (n x n per 3D sort).
+Per box or element, per pass: `layout/context.odin:51` (`plain`), `layout/finish.odin:37,81`, `layout/effects.odin:46`,
+`layout/incremental.odin:485,610`, `layout/query.odin:88` (`View.singular`, per frame), `style/cascade.odin:480`
+(`gate_probe`), `browser/compositor.odin:448,761`, `browser/effects_cache.odin:54,65`;
+`map[...]bool` used as sets: `style/match.odin:59,67`, `style/engine.odin:70`, `style/restyle_dom.odin:145-148`,
+`font/raster.odin:79-80` (per glyph); `draw/bsp.odin:241` (n x n per 3D sort).
 
-### Mutexes (51 in Wren, 17 in the toolkit, outside tests)
+### Mutexes (57 in Wren, 20 in the toolkit, outside tests)
 
 The ones on a per-frame or per-item path, and what fits instead (the loop's, the network's and `parallel_for`'s were
 measured against lock-free designs in round 3 and stay):
 
 | where | guards | threads | instead |
 |---|---|---|---|
-| `font/raster.odin:72` `Atlas.mu` | glyph maps, atlas pages, Slug store; rasterizes under it | every drawing thread, the color-glyph thread | per-thread lookup front, misses to a raster owner over an MPSC queue |
-| `font/shape.odin:398` `Word_Shard.mu` x 64 | shaped words; glyphs copied out under it | layout threads, page, chrome paint | goes with the word cache |
+| `font/raster.odin:75` `Atlas.mu` (shared for a hit since toolkit 0.64.0) | glyph maps, atlas pages, Slug store; rasterizes under it | every drawing thread, the color-glyph thread | per-thread lookup front, misses to a raster owner over an MPSC queue |
+| `font/shape.odin:401` `Word_Shard.mu` x 64 (shared for a hit) | shaped words; glyphs copied out under it | layout threads, page, chrome paint | goes with the word cache |
 | `style/invalidation.odin:454` `Key_Sets.mu` | interned selector keys, process-wide | every page's style engine | per-engine tables |
 | `webaudio/graph.odin:79` | the audio graph | page vs the real-time render thread | SPSC command ring |
 | `media/store.odin:57` | coded frames | demux vs decoder | SPSC ring |
 | `page/worker.odin:95` | page <-> worker queues | two threads | two SPSC rings |
 | `page/canvas_offscreen.odin:19` | the latest picture | worker -> window | a latest-value mailbox |
 | `page/canvas_offscreen.odin:146`, `page/mse_worker.odin:185`, `page/bindings_webcodecs.odin:383` | transfer tokens | one thread to another | ownership hand-off |
-| `host/blocking.odin:19`, `images/pool.odin:106`, `page/js_load_compile.odin:33`, `httpcache/disk.odin:72,78`, `js/cache.odin:73`, `wasm/module_cache.odin:86` | job queues in, results out | loop <-> workers | MPMC in, MPSC out |
+| `host/blocking.odin:19`, `images/pool.odin:107`, `page/js_load_compile.odin:33`, `httpcache/disk.odin:72,78`, `js/cache.odin:49`, `wasm/module_cache.odin:65` | job queues in, results out | loop <-> workers | MPMC in, MPSC out |
 | `idb/manager.odin:192` (recursive) | the whole IndexedDB manager | pages and workers | an owner thread fed by an MPSC queue |
-| `wasm/instance.odin:67`, `images/pool.odin:43`, `page/storage.odin:53`, `font/emoji.odin:23`, `media/h264_linux.odin:32` | something made once | | `sync.Once` |
-| `wasm/attach.odin:25`, `webauthn/webauthn.odin:229` | counters, a cancel flag | | atomics |
+| `wasm/instance.odin:67`, `images/pool.odin:44`, `page/storage.odin:53`, `font/emoji.odin:23`, `media/h264_linux.odin:32` | something made once | | `sync.Once` |
+| `wasm/attach.odin:30`, `webauthn/webauthn.odin:229` | counters, a cancel flag | | atomics |
 
 The others guard real shared registries (live threads, blob URLs, Web Locks, OPFS, the Cache API, storage buckets,
 shutdown, the clipboard, the shader compiler) and stay.
@@ -2135,7 +2135,7 @@ shutdown, the clipboard, the shader compiler) and stay.
 ### Heap lists per call on hot paths
 
 `style/timeline.odin:429-432,468` (an `Element_Anim` and three dynamic arrays for each element that declares a transition,
-on every full pass); `browser/compositor.odin:322` (`compute_floors`: one heap array per group per rebuild) and `:532`
+on every full pass); `browser/compositor.odin:321` (`compute_floors`: one heap array per group per rebuild) and `:530`
 (`node_items_make`: one per node); the window thread's and the thread pool's temporary arenas, which give back what
 outgrew their first block after each frame or job (`NtFreeVirtualMemory`, 1 % of the window thread on nodes10k; the
 pool's are `src/host`'s). Gone in round 2: the style threads' arenas mapped and freed with every pass. Gone in round 3:
