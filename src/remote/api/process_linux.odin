@@ -18,6 +18,19 @@ Process :: struct {
 	status: i32,
 }
 
+// posix_spawn's list of what to do in the child (core:sys/posix has the call, not these): an opaque block, 80 bytes in glibc.
+@(private = "file") Spawn_Actions :: [128]u8
+@(private = "file") STDERR_FILE_MODE :: posix.mode_t{.IRUSR, .IWUSR}
+
+foreign import libc "system:c"
+
+@(private = "file", default_calling_convention = "c")
+foreign libc {
+	posix_spawn_file_actions_init    :: proc(actions: ^Spawn_Actions) -> posix.Errno ---
+	posix_spawn_file_actions_destroy :: proc(actions: ^Spawn_Actions) -> posix.Errno ---
+	posix_spawn_file_actions_addopen :: proc(actions: ^Spawn_Actions, fd: posix.FD, path: cstring, flags: posix.O_Flags, mode: posix.mode_t) -> posix.Errno ---
+}
+
 this_pid :: proc() -> int { return int(posix.getpid()) }
 
 // The start of process `pid` after boot (clock ticks, /proc/<pid>/stat field 22) and its program (/proc/<pid>/exe).
@@ -76,11 +89,17 @@ process_stacks :: proc(pid: int, minidump := "") -> (text: string, ok: bool) { r
 // Starts `args` (args[0] the program, a path) with this process's environment and `o.env` over it. err "": started. (A
 // folder and outputs of its own are not written for this system.)
 process_start :: proc(args: []string, o := Start_Options{}) -> (p: Process, pid: int, err: string) {
-	if o.cwd != "" || o.stdout != {} || o.stderr != {} || o.merged { return {}, 0, "a folder or outputs of its own are not written for this system" }
+	if o.cwd != "" || o.stdout != {} || o.stderr.pipe || o.merged { return {}, 0, "a folder or outputs of its own are not written for this system" }
 	argv := make([]cstring, len(args) + 1, context.temp_allocator)
 	for a, i in args { argv[i] = strings.clone_to_cstring(a, context.temp_allocator) }
 	child: posix.pid_t
-	if e := posix.posix_spawn(&child, argv[0], nil, nil, raw_data(argv), environment_with(o.env)); e != .NONE {
+	actions: Spawn_Actions
+	if o.stderr.file != "" {
+		posix_spawn_file_actions_init(&actions)
+		posix_spawn_file_actions_addopen(&actions, posix.STDERR_FILENO, strings.clone_to_cstring(o.stderr.file, context.temp_allocator), posix.O_Flags{.WRONLY, .CREAT, .TRUNC}, STDERR_FILE_MODE)
+	}
+	defer if o.stderr.file != "" { posix_spawn_file_actions_destroy(&actions) }
+	if e := posix.posix_spawn(&child, argv[0], o.stderr.file != "" ? &actions : nil, nil, raw_data(argv), environment_with(o.env)); e != .NONE {
 		return {}, 0, string(posix.strerror(e))
 	}
 	return {pid = child, child = true}, int(child), ""

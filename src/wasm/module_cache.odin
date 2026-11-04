@@ -20,6 +20,7 @@ import "core:strings"
 import "core:sync"
 import "core:time"
 import "wb:base"
+import "wb:host"
 
 @(private) DISK_MAGIC :: "WRENWTC1"
 @(private) DISK_EXT :: ".wtc"
@@ -88,6 +89,7 @@ cache_start :: proc(rs: Runtime_Settings) {
 cache_stop :: proc() {
 	context.allocator = base.process_allocator()
 	disk_stop(&cache.files)
+	host.shutdown_step("wasm.runtime_destroy: compiled modules")
 	for _, c in cache.entries { cached_free(c) }
 	delete(cache.entries)
 	cache = {}
