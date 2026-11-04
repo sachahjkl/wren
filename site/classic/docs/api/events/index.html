@@ -127,6 +127,7 @@ promise, a socket, a worker, an abort signal...) is an EventTarget. An Event han
 <tr><td><code>Bubbles</code></td><td style="text-align:right">0</td><td></td></tr>
 <tr><td><code>Cancelable</code></td><td style="text-align:right">1</td><td></td></tr>
 <tr><td><code>Composed</code></td><td style="text-align:right">2</td><td>The event crosses shadow roots: its path goes on to the hosts (targets retargeted).</td></tr>
+<tr><td><code>Activation</code></td><td style="text-align:right">3</td><td>A MouseEvent: a click runs the activation behaviour of what it targets (DOM dispatch's activation target: a check box toggles, a label clicks its control, a link is followed).</td></tr>
 </tbody>
 </table></div>
 <h3 id="callback-eventlistener"><a class="anchor" href="#callback-eventlistener" aria-hidden="true">#</a>callback <code>EventListener</code></h3>

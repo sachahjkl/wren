@@ -78,6 +78,7 @@
 <li class="lvl3"><a href="#csslayerstatementrule-cssrule">CSSLayerStatementRule : CSSRule</a></li>
 <li class="lvl3"><a href="#cssmarginrule-cssrule">CSSMarginRule : CSSRule</a></li>
 <li class="lvl3"><a href="#cssnamespacerule-cssrule">CSSNamespaceRule : CSSRule</a></li>
+<li class="lvl3"><a href="#cssnesteddeclarations-cssrule">CSSNestedDeclarations : CSSRule</a></li>
 <li class="lvl3"><a href="#csspropertyrule-cssrule">CSSPropertyRule : CSSRule</a></li>
 <li class="lvl3"><a href="#cssrulelist">CSSRuleList</a></li>
 <li class="lvl3"><a href="#cssstyledeclaration">CSSStyleDeclaration</a></li>
@@ -442,10 +443,10 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <div class="table-box"><table>
 <thead><tr><th></th><th style="text-align:right">count</th></tr></thead>
 <tbody>
-<tr><td>interfaces, namespaces in the table</td><td style="text-align:right">605</td></tr>
-<tr><td>exposed by default</td><td style="text-align:right">385</td></tr>
-<tr><td>members</td><td style="text-align:right">5311</td></tr>
-<tr><td>members implemented</td><td style="text-align:right">3854 (72.6 %)</td></tr>
+<tr><td>interfaces, namespaces in the table</td><td style="text-align:right">606</td></tr>
+<tr><td>exposed by default</td><td style="text-align:right">386</td></tr>
+<tr><td>members</td><td style="text-align:right">5312</td></tr>
+<tr><td>members implemented</td><td style="text-align:right">3855 (72.6 %)</td></tr>
 </tbody>
 </table></div>
 <h2 id="by-specification"><a class="anchor" href="#by-specification" aria-hidden="true">#</a>By specification</h2>
@@ -466,6 +467,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <tr><td><code>css-conditional.idl</code></td><td style="text-align:right">3 (3)</td><td style="text-align:right">4 / 4</td></tr>
 <tr><td><code>css-font-loading.idl</code></td><td style="text-align:right">8 (1)</td><td style="text-align:right">13 / 43</td></tr>
 <tr><td><code>css-highlight-api.idl</code></td><td style="text-align:right">2 (0)</td><td style="text-align:right">0 / 6</td></tr>
+<tr><td><code>css-nesting.idl</code></td><td style="text-align:right">1 (1)</td><td style="text-align:right">1 / 1</td></tr>
 <tr><td><code>css-properties-values-api.idl</code></td><td style="text-align:right">1 (1)</td><td style="text-align:right">4 / 4</td></tr>
 <tr><td><code>css-transitions-2.idl</code></td><td style="text-align:right">2 (1)</td><td style="text-align:right">1 / 1</td></tr>
 <tr><td><code>css-transitions.idl</code></td><td style="text-align:right">1 (1)</td><td style="text-align:right">4 / 5</td></tr>
@@ -911,6 +913,11 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <ul>
 <li><code>readonly namespaceURI</code>: C <code>wjr_CSSNamespaceRule_get_namespaceURI</code></li>
 <li><code>readonly prefix</code>: C <code>wjr_CSSNamespaceRule_get_prefix</code></li>
+</ul>
+<h3 id="cssnesteddeclarations-cssrule"><a class="anchor" href="#cssnesteddeclarations-cssrule" aria-hidden="true">#</a>CSSNestedDeclarations : CSSRule</h3>
+<p>1 / 1 members.</p>
+<ul>
+<li><code>readonly style</code>: C <code>wjr_CSSNestedDeclarations_get_style</code></li>
 </ul>
 <h3 id="csspropertyrule-cssrule"><a class="anchor" href="#csspropertyrule-cssrule" aria-hidden="true">#</a>CSSPropertyRule : CSSRule</h3>
 <p>4 / 4 members.</p>
