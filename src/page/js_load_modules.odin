@@ -29,6 +29,7 @@ Module_Entry_State :: enum u8 { Fetching, Fetched, Prepared, Failed }
 Module_Entry :: struct {
 	page:      ^Page,
 	key:       string,              // owned: its name (the requested URL, or the inline name)
+	response_url: string,           // owned: where a redirect led ("": the key itself); a CSS module's URLs resolve against it
 	type:      Api_ModuleType,
 	state:     Module_Entry_State,
 	source:    [dynamic]byte,
@@ -82,7 +83,7 @@ modules_free :: proc(p: ^Page, ms: ^Module_State) {
 		} else if e.task != base.NIL_HANDLE && !p.closed {
 			fetch.cancel(p.loader, e.task)
 		}
-		delete(e.key); delete(e.source); delete(e.error)
+		delete(e.key); delete(e.response_url); delete(e.source); delete(e.error)
 		for d in e.deps { delete(d) }
 		delete(e.deps)
 		free(e)
@@ -165,6 +166,7 @@ module_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	case .Response:
 		r := ev.response
 		if r.status < 200 || r.status >= 300 { delete(e.error); e.error = fmt.aprintf("HTTP %d", r.status) }
+		if r.url != "" && r.url != e.key { delete(e.response_url); e.response_url = strings.clone(r.url) }
 	case .Done:
 		e.task = base.NIL_HANDLE
 		module_arrived(p, e, ev.data, "")

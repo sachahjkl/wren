@@ -173,6 +173,20 @@ section("rules serialized", () => {
   s.remove();
 });
 
+// A computed url() is absolute, against the base of the sheet that wrote it (CSS Values 4 §4.5.1.1): a CSS module's
+// images, a constructed sheet's baseURL.
+section("url() against the sheet's base", () => {
+  const c = new CSSStyleSheet({baseURL: "https://img.test/a/"});
+  c.replaceSync("#pa { background-image: url(b.png) }");
+  document.adoptedStyleSheets = [c];
+  eq("a constructed sheet's", px(document.getElementById("pa"), "backgroundImage"), "url(\"https://img.test/a/b.png\")");
+  document.adoptedStyleSheets = [];
+  const pb = document.getElementById("pb");
+  pb.style.backgroundImage = "url(c.png)";
+  eq("a style attribute's: the document's", px(pb, "backgroundImage"), "url(\"" + new URL("c.png", document.baseURI).href + "\")");
+  pb.style.backgroundImage = "";
+});
+
 // import() of code with no script URL of its own (a string given to eval): the document's URL is the base, an absolute
 // specifier needs none (it once failed with "invalid base").
 const url = "data:text/javascript,export default 41 + 1;";
