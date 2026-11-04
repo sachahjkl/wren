@@ -5,7 +5,7 @@ import "core:testing"
 
 @(private = "file")
 test_identity :: proc() -> Identity {
-	return Identity{name = "Wren", key = "Wren", slug = "wren", aumid = "FromentSoftware.Wren", description = "A small browser where WebAssembly runs everything.", vendor = "Froment Software"}
+	return Identity{name = "Wren", key = "Wren", slug = "wren", aumid = "FromentSoftware.Wren", description = "A small browser where WebAssembly runs everything.", vendor = "Froment Software", link_prefix = "wren-"}
 }
 
 @(test)
@@ -24,7 +24,7 @@ Terminal=false
 StartupNotify=true
 Categories=Network;WebBrowser;
 Keywords=Internet;WWW;Browser;Web;WebAssembly;
-MimeType=x-scheme-handler/http;x-scheme-handler/https;text/html;image/svg+xml;image/webp;
+MimeType=x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/wren-http;x-scheme-handler/wren-https;x-scheme-handler/wren-about;text/html;image/svg+xml;image/webp;
 X-Wren-Integration=wren
 `
 	testing.expect_value(t, desktop_entry_text(&o), want)

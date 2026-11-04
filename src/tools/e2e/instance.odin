@@ -12,6 +12,7 @@ import win "core:sys/windows"
 import "core:testing"
 import "core:time"
 import "wb:base"
+import "wb:desktop"
 import "wb:e2e"
 import "wb:remote/api"
 
@@ -151,6 +152,32 @@ has_a_window :: proc(pid: int) -> bool {
 		return true
 	}, win.LPARAM(uintptr(&f)))
 	return f.found
+}
+
+// A link of a web page (`--open-url wren-https://...`, what the registered schemes run: desktop/links.odin) opens as a tab of the Wren that runs;
+// a refused one opens nothing and the start ends with its code.
+@(test)
+a_link_opens_as_a_tab_of_the_wren_that_runs :: proc(t: ^testing.T) {
+	page := e2e.url(e2e.test_server(t), "/site/index.html")
+	profile := e2e.temp_profile(t)
+	a := first(t, profile)
+	api.wait_load(a.s)
+	testing.expect_value(t, e2e.program_wait(later(t, e2e.wren_exe(), profile, SINGLE_ON, "--open-url", strings.concatenate({"wren-", page}, context.temp_allocator))), 0)
+	api.wait_until(a.s, proc(s: ^api.Session) -> bool { targets, _ := api.targets(s); return len(targets.tabs) == 2 }, "the link's tab")
+	testing.expect_value(t, e2e.program_wait(later(t, e2e.wren_exe(), profile, SINGLE_ON, "--open-url", "wren-file:///c:/windows/win.ini")), desktop.LINK_REFUSED_EXIT)
+	testing.expect_value(t, e2e.program_wait(later(t, e2e.wren_exe(), profile, SINGLE_ON, "--open-url", "wren-about:wren")), 0)
+	api.wait_until(a.s, proc(s: ^api.Session) -> bool { targets, _ := api.targets(s); return len(targets.tabs) == 3 }, "about:wren's tab")
+	testing.expect_value(t, tabs_of(a), fmt.tprintf("about:config %s about:wren", page))
+	e2e.quit(a)
+}
+
+// ... and of a Wren that starts for it, when none runs.
+@(test)
+a_link_starts_a_wren_on_its_tab :: proc(t: ^testing.T) {
+	a := e2e.launch(t, {hidden = true, profile = e2e.temp_profile(t), single_instance = true, no_address = true, extra = {"--open-url", "wren-about:wren"}, start = {env = SINGLE_ON}})
+	api.wait_load(a.s)
+	testing.expect_value(t, tabs_of(a), "about:wren")
+	e2e.quit(a)
 }
 
 // A start while the first one is closing: its address is not lost, whichever of the two ends up with it.

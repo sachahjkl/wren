@@ -8,7 +8,7 @@
 //
 //     integration_windows.odin   Start menu shortcut (IShellLink, with the AppUserModelID) and the registration as a
 //                                candidate browser (HKCU\Software\Clients\StartMenuInternet, RegisteredApplications,
-//                                a ProgID)
+//                                a ProgID, the URL schemes of links that open in Wren: links.odin)
 //     integration_linux.odin     the XDG .desktop file and the icons of the hicolor theme
 //     integration_darwin.odin    nothing that makes sense for an executable outside a bundle (documented stub)
 //     integration_other.odin     every other target: unsupported
@@ -35,6 +35,7 @@ Identity :: struct {
 	description: string,   // one line, for the menu entry
 	vendor:      string,   // "Froment Software"
 	exe_name:    string,   // "wren.exe": the executable's file name in an install folder ("" = slug, with .exe on Windows)
+	link_prefix: string,   // "wren-": the schemes of links that open in the program (links.odin), registered with the browser; "" = none
 }
 
 // An icon of the theme (Linux): a square PNG of `size` pixels.
@@ -72,7 +73,7 @@ Options :: struct {
 // The parts of an integration, as the platforms keep them (`Backend.parts`).
 Part :: enum u8 {
 	Launcher,           // the shortcut in the application menu, the .desktop file
-	Registration,       // the registry keys that list the program as a browser (Windows)
+	Registration,       // the registry keys that list the program as a browser, and the schemes of its links (Windows)
 	Icons,              // the icons of the theme (Linux)
 	Desktop_Shortcut,   // a shortcut on the desktop (Windows)
 	Path,               // the program's folder in the user's PATH (Windows)
@@ -284,6 +285,7 @@ validate :: proc(o: ^Options, need_exe: bool) -> Result {
 	for r in id.key { if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9') { return {.Bad_Options, "identity.key is letters and digits only"} } }
 	for r in id.slug { if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-') { return {.Bad_Options, "identity.slug is lower case letters, digits and hyphens"} } }
 	if strings.contains_any(id.name, "\\/:*?\"<>|\x00") { return {.Bad_Options, "identity.name is used in a file name"} }
+	for r in id.link_prefix { if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-') { return {.Bad_Options, "identity.link_prefix is lower case letters, digits and hyphens"} } }
 	if o.exe == "" { o.exe = executable_path() }
 	if need_exe {
 		if o.exe == "" { return {.No_Executable, error_text(.No_Executable)} }

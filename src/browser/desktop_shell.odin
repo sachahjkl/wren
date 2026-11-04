@@ -47,9 +47,9 @@ register_desktop_shell_prefs :: proc(p: ^config.Prefs) {
 // takes over those of the release.
 desktop_identity :: proc() -> desktop.Identity {
 	when IS_DEV_BUILD {
-		return {name = APP_NAME + " Dev", key = APP_NAME + "Dev", slug = "wren-dev", aumid = "FromentSoftware.Wren.Dev", description = APP_TAGLINE, vendor = "Froment Software", exe_name = "wren.exe"}
+		return {name = APP_NAME + " Dev", key = APP_NAME + "Dev", slug = "wren-dev", aumid = "FromentSoftware.Wren.Dev", description = APP_TAGLINE, vendor = "Froment Software", exe_name = "wren.exe", link_prefix = "wren-dev-"}
 	} else {
-		return {name = APP_NAME, key = APP_NAME, slug = "wren", aumid = "FromentSoftware.Wren", description = APP_TAGLINE, vendor = "Froment Software", exe_name = "wren.exe"}
+		return {name = APP_NAME, key = APP_NAME, slug = "wren", aumid = "FromentSoftware.Wren", description = APP_TAGLINE, vendor = "Froment Software", exe_name = "wren.exe", link_prefix = desktop.LINK_PREFIX}
 	}
 }
 

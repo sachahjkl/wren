@@ -29,8 +29,12 @@ Everything is in `HKEY_CURRENT_USER` and the user's Start menu folder.
     `https` and the file associations of `browser.desktop_integration.file_types`)
   - `Software\RegisteredApplications`, value `Wren`
   - `Software\Classes\WrenHTML`, the ProgID, whose `shell\open\command` is `"<exe>" "%1"`
+  - `Software\Classes\wren-http`, `wren-https`, `wren-about`, the schemes of [links that open in Wren](#links-that-open-in-wren):
+    default value `URL:Wren`, an empty `URL Protocol`, the `WrenIntegration` mark, and `shell\open\command`
+    `"<exe>" --open-url "%1"`
   - then `SHChangeNotify(SHCNE_ASSOCCHANGED)`.
-- Development builds use `Wren Dev`, `WrenDev`, `FromentSoftware.Wren.Dev`: they never touch the release's entries.
+- Development builds use `Wren Dev`, `WrenDev`, `FromentSoftware.Wren.Dev` and the link schemes `wren-dev-http`,
+  `wren-dev-https`, `wren-dev-about`: they never touch the release's entries.
 
 Removal deletes the shortcut when it carries the AppUserModelID or runs the executable, the keys that hold the
 `WrenIntegration` mark or run the executable, and the `RegisteredApplications` value that names Wren's Capabilities key.
@@ -40,7 +44,9 @@ Nothing else: the user's choices (`UserChoice`), other programs' keys, a `Wren.l
 
 - `$XDG_DATA_HOME/applications/wren.desktop` (`~/.local/share/applications` by default): `Type`, `Name`, `Exec` (quoted as
   the Desktop Entry Specification says, `%U`), `TryExec`, `Icon`, `Categories=Network;WebBrowser;`, `MimeType=` for
-  `x-scheme-handler/http`, `x-scheme-handler/https` and the file types, and the marker `X-Wren-Integration=wren`.
+  `x-scheme-handler/http`, `x-scheme-handler/https`, the link schemes (`x-scheme-handler/wren-http`, `wren-https`,
+  `wren-about`) and the file types, and the marker `X-Wren-Integration=wren`. An entry without the link schemes is "to
+  repair".
   `update-desktop-database` runs afterwards when installed. The entry passes `desktop-file-validate`.
 - `$XDG_DATA_HOME/icons/hicolor/<n>x<n>/apps/wren.png` for the sizes Wren embeds (16, 32, 64, 256, 512).
 
@@ -58,7 +64,7 @@ The integration is a set of **parts**; `install` writes the ones the options ask
 |---|---|---|---|
 | Launcher | Add to Start menu | `Wren.lnk` in the Start menu | the `.desktop` file |
 | Desktop shortcut | Create desktop shortcut | a second `.lnk` (same AppUserModelID) in the Desktop folder | not provided |
-| Registration | Register as a web browser | the `StartMenuInternet` / ProgID keys above | `MimeType=` in the `.desktop` file |
+| Registration | Register as a web browser | the `StartMenuInternet` / ProgID / link scheme keys above | `MimeType=` in the `.desktop` file |
 | Path | Add Wren to PATH | the program's folder in `HKCU\Environment\Path` | not provided |
 | Icons | - | - | the hicolor icons |
 
@@ -147,6 +153,32 @@ history, cookies, session, crash reports, licence). Exit codes: 0 done, 1 failed
 removed when the running copy closes (the one being uninstalled is the one running). `remove` takes away only the
 integration; `uninstall` takes away the installed copy. `--install` is the shorthand for `--desktop-integration=install`.
 
+## Links that open in Wren
+
+A web page cannot link to `about:wren` (browsers block `about:` links), and an `https:` link opens in the user's default
+browser. A link whose scheme is one of Wren's opens in Wren: the address is the link without its `wren-` prefix.
+
+| Link | Opens |
+|---|---|
+| `wren-https://example.org/a?b#c` | `https://example.org/a?b#c` |
+| `wren-http://...` | the same in `http:` |
+| `wren-about:wren` | `about:wren` |
+
+The system runs `wren.exe --open-url <link>` (Linux: the desktop entry's `%U`, a link among the addresses); the address
+opens as a new tab of the Wren that runs on the profile ([one Wren per profile](#one-wren-per-profile)), else Wren starts
+with it. The browser that had the link asks "Open Wren?" first; Wren asks nothing more.
+
+A link comes from any page, so `src/desktop/links.odin` lets out only what it is meant for: the prefix taken away, the
+rest is parsed by Wren's URL parser and must be an `http` or `https` address with a host, or exactly `about:wren`.
+Refused, and nothing opens (exit code 2, the reason on the console): any other scheme (`wren-file:`, `wren-javascript:`,
+`wren-data:`, `wren-blob:`), a control character, a link longer than 8 KiB (`LINK_MAX_BYTES`), and `--open-url`
+anywhere but as the one but last argument or more than once (a quote in a link the system did not encode could only add
+arguments after it). The tab has no referrer and nothing of the page that had the link; the link never goes through a
+shell. A development build opens its own `wren-dev-` links and the release's `wren-` ones.
+
+Where Wren is not installed the link does nothing (the browser says it cannot open it): a page shows the address beside
+it ("or open `about:wren` in Wren") and never tries to find out with a script.
+
 ## Preferences
 
 `browser.desktop_integration.on_first_run`, `.status_refresh_ms`, `.start_menu`, `.desktop_shortcut`, `.add_to_path`,
@@ -171,7 +203,7 @@ uses an identity of its own.
 `src/instance`, `src/browser/instance_shell.odin`. The first Wren of a channel and a profile owns it (a named mutex
 `Local\WrenInstance.Wren.<channel>.<hash of the profile folder>` and a message-only window titled with that key); a second
 start hands its addresses (`wren.exe <address or path>...`: paths become `file:` addresses by the command line's rules),
-`--setup` and the request to come forward to it with `WM_COPYDATA`, after `AllowSetForegroundWindow`, and ends with exit code
+`--setup` and the request to come forward to it with `WM_COPYDATA` (a link, `--open-url wren-https://...`, is its address by then), after `AllowSetForegroundWindow`, and ends with exit code
 0 before it has a window (about 30 ms). The first opens a tab per address, restores its window if minimized and takes the
 foreground. Nothing is done per frame.
 

@@ -13,6 +13,8 @@ package desktop
 //                                                                          URL schemes and file types it can open)
 //                         Software\RegisteredApplications                 (<key> -> its Capabilities key)
 //                         Software\Classes\<key>HTML                      (the ProgID: `"<exe>" "%1"`)
+//                         Software\Classes\<prefix>http, https, about    (the links that open in Wren, links.odin:
+//                                                                          `URL Protocol`, `"<exe>" --open-url "%1"`)
 //                       then SHChangeNotify(SHCNE_ASSOCCHANGED), so open windows of Settings notice.
 //
 // Marks: the shortcut carries the AppUserModelID; the keys carry `WrenIntegration` (the AppUserModelID) or run the
@@ -63,6 +65,7 @@ Layout :: struct {
 	progid:       string,   // Software\Classes\<key>HTML
 	registered:   string,   // Software\RegisteredApplications
 	progid_name:  string,   // <key>HTML
+	links:        []string, // Software\Classes\<prefix>http, https, about (none without a prefix)
 }
 
 @(private = "file")
@@ -78,6 +81,9 @@ layout_of :: proc(o: ^Options) -> (l: Layout, ok: bool) {
 	l.progid_name = strings.concatenate({o.identity.key, "HTML"}, context.temp_allocator)
 	l.progid = reg_join(root, "Classes", l.progid_name)
 	l.registered = reg_join(root, "RegisteredApplications")
+	names := link_scheme_names(o.identity.link_prefix)
+	l.links = make([]string, len(names), context.temp_allocator)
+	for n, i in names { l.links[i] = reg_join(root, "Classes", n) }
 	return l, true
 }
 
@@ -129,13 +135,24 @@ windows_status :: proc(o: ^Options, allocator: runtime.Allocator) -> Status {
 	client_mine := client_mark == o.identity.aumid || (client_cmd_ok && same_path(client_prog, o.exe))
 	progid_mine := progid_mark == o.identity.aumid || (progid_cmd_ok && same_path(progid_prog, o.exe))
 	registered_mine := registered_ok && strings.equal_fold(registered, l.capabilities)
-	if client_mine || progid_mine || registered_mine {
+	links_mine, links_all, links_prog := false, true, ""   // (any of the link schemes is the program's, all of them are, the other program one runs)
+	for key in l.links {
+		cmd, cmd_ok, mine := link_key_status(o, key)
+		links_mine ||= mine
+		links_all &&= mine && cmd_ok
+		if mine && cmd_ok && !same_path(command_program(cmd), o.exe) { links_prog = command_program(cmd) }
+	}
+	if client_mine || progid_mine || registered_mine || links_mine {
 		ps := &s.parts[.Registration]
 		ps.present = true
-		ps.partial = !(client_mine && client_cmd_ok && progid_mine && progid_cmd_ok && registered_mine && reg_key_exists(l.capabilities))
+		ps.partial = !(client_mine && client_cmd_ok && progid_mine && progid_cmd_ok && registered_mine && reg_key_exists(l.capabilities) && links_all)
 		if client_mine && client_cmd_ok && !same_path(client_prog, o.exe) { ps.stale, ps.target = true, clone_or_empty(client_prog, allocator) }
 		if progid_mine && progid_cmd_ok && !same_path(progid_prog, o.exe) {
 			if ps.target == "" { ps.target = clone_or_empty(progid_prog, allocator) }
+			ps.stale = true
+		}
+		if links_prog != "" {
+			if ps.target == "" { ps.target = clone_or_empty(links_prog, allocator) }
 			ps.stale = true
 		}
 		if ps.target == "" && client_cmd_ok { ps.target = clone_or_empty(client_prog, allocator) }
@@ -303,6 +320,7 @@ write_registration :: proc(o: ^Options, l: Layout) -> Result {
 	icon := strings.concatenate({exe, ",0"}, context.temp_allocator)
 	command := strings.concatenate({"\"", exe, "\""}, context.temp_allocator)
 	open_one := strings.concatenate({"\"", exe, "\" \"%1\""}, context.temp_allocator)
+	open_link := strings.concatenate({"\"", exe, "\" ", LINK_FLAG, " \"%1\""}, context.temp_allocator)   // (links.odin: the link is the last argument)
 	caps := l.capabilities
 	failed :: proc(path: string) -> Result { return {.System, strings.concatenate({"cannot write HKCU\\", path}, context.temp_allocator)} }
 
@@ -333,6 +351,12 @@ write_registration :: proc(o: ^Options, l: Layout) -> Result {
 	if !reg_set(app, "ApplicationName", id.name) || !reg_set(app, "ApplicationIcon", icon) || !reg_set(app, "AppUserModelId", id.aumid) { return failed(app) }
 	if id.vendor != "" && !reg_set(app, "ApplicationCompany", id.vendor) { return failed(app) }
 	if id.description != "" && !reg_set(app, "ApplicationDescription", id.description) { return failed(app) }
+
+	// the schemes of the links that open in the program
+	for key in l.links {
+		if !reg_set(key, "", strings.concatenate({"URL:", id.name}, context.temp_allocator)) || !reg_set(key, "URL Protocol", "") || !reg_set(key, MARK_VALUE, id.aumid) { return failed(key) }
+		if !reg_set(reg_join(key, "DefaultIcon"), "", icon) || !reg_set(reg_join(key, "shell", "open", "command"), "", open_link) { return failed(key) }
+	}
 
 	// and the list Settings reads
 	if !reg_set(l.registered, id.key, caps) { return failed(l.registered) }
@@ -392,7 +416,19 @@ remove_registration :: proc(o: ^Options, l: Layout) -> Result {
 	if registered, ok := reg_get(l.registered, o.identity.key); ok && strings.equal_fold(registered, l.capabilities) {
 		if !reg_delete_value(l.registered, o.identity.key) && res.error == .None { res = failed(l.registered) }
 	}
+	for key in l.links {
+		if _, _, mine := link_key_status(o, key); mine && !reg_delete_tree(key) && res.error == .None { res = failed(key) }
+	}
 	return res
+}
+
+// A link scheme's key: its command, and whether it is the program's (the mark, or the executable in the command).
+@(private = "file")
+link_key_status :: proc(o: ^Options, key: string) -> (command: string, command_ok, mine: bool) {
+	command, command_ok = reg_get(reg_join(key, "shell", "open", "command"), "")
+	mark, _ := reg_get(key, MARK_VALUE)
+	mine = mark == o.identity.aumid || (command_ok && same_path(command_program(command), o.exe))
+	return
 }
 
 ////////////////////////////////

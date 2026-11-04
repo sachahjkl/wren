@@ -35,7 +35,7 @@ ctl_help_and_version_are_the_words_that_are_not_addresses :: proc(t: ^testing.T)
 the_usage_names_every_option_and_the_version_the_build :: proc(t: ^testing.T) {
 	test_app(t)
 	usage := cli_usage_text()
-	for s in ([]string{"wren ctl", "wren version", "wren help", "--new-window", "--no-single-instance", "--profile", "--policy", "--pref", "--setup", "--remote", "--headless", "--desktop-integration", "./ctl"}) {
+	for s in ([]string{"wren ctl", "wren version", "wren help", "--new-window", "--no-single-instance", "--profile", "--policy", "--pref", "--open-url", "--setup", "--remote", "--headless", "--desktop-integration", "./ctl"}) {
 		testing.expectf(t, strings.contains(usage, s), "the usage does not mention %q", s)
 	}
 	ver := cli_version_text()
