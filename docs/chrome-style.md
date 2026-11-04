@@ -5,11 +5,11 @@ preference, and a palette on top of either (`browser.ui.theme`: Graphite, Daylig
 
 | Preference | Default | |
 |---|---|---|
-| `browser.ui.chrome_style` | `modern` | `modern`: flat, tabs are rounded pills. `classic`: Chrome of 2010-2015, see below. Applies at once. |
+| `browser.ui.chrome_style` | `classic` | `modern`: flat, tabs are rounded pills. `classic`: Chrome of 2010-2015, see below. Applies at once. |
 | `browser.ui.classic_slope_deg` | 22 | Classic: how far the sides of a tab lean from the vertical (8 to 40). The larger, the more angular, the more the tabs overlap. |
 | `browser.ui.classic_gloss` | 1 | Classic: strength of the gradients and of the steps between the current tab, the other tabs and the tab bar (0 = flat colors, shapes and lines stay; 2 = more depth). |
 
-Change it in about:config, with `wren ctl pref set browser.ui.chrome_style classic`, from the command palette
+Change it in about:config, with `wren ctl pref set browser.ui.chrome_style modern`, from the command palette
 (`Appearance: classic tabs`, `Appearance: modern tabs`) or from the menu, View.
 
 ## Classic
