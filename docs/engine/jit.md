@@ -184,7 +184,7 @@ The code returns an exit word (kind, pc, sp, aux) and the interpreter carries on
 | ret | a return (the value in the frame's `stack[0]`; an exact integer is an int when it fits, as the interpreter has it) |
 | guard | an entry guard failed (aux: the slot): the slot is widened or left in memory, translated again |
 | deopt | a speculation failed in the loop (int overflow, -0, a bound, a type): aux a slot to widen, `JIT_AUX_LEARN`, `JIT_AUX_NO_INLINE` or none |
-| budget | every `JIT_BUDGET` iterations: the interpreter's safe point (interrupts, collection) runs |
+| budget | every `JIT_BUDGET` iterations, and in a loop that calls once its calls count for a poll (`interrupt_counter`, as the interpreter counts them): the interpreter's safe point (interrupts, collection) runs |
 | throw | a call made through the helper threw |
 
 ## Tests

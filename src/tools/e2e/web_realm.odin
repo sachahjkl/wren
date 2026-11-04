@@ -541,6 +541,28 @@ try { for (let i = 0; i < 1e7; i++) document.write("xxxxxxxxxxxxxxxx"); } catch 
 	close_page(pr, min_checks = 3)
 }
 
+// The same flood in a loop the JIT compiled at once (it reads `document` and calls a native of a fixed cost, ~0.1 ms):
+// the compiled code must give the interrupt its turn as the interpreter does, once the native calls count for a poll.
+// It gave it only every JIT_BUDGET iterations, seconds of such calls, past wasm.max_call_ms: the engine was stopped.
+@(test)
+js_hostile_compiled_native_flood :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	hostile()
+	settings.js.jit.call_threshold = 1
+	settings.js.jit.loop_threshold = 1
+	settings.js.jit.background_threads = 0
+	pr := load(t, "compiled flood", HEAD + `<body><script>
+function flood() { const big = new Array(20000).fill("ab"); let n = 0; for (;;) { n += big.join(document.title).length; } }
+try { flood(); } catch (e) {}
+</script><script>wrenTest.check(true, "a compiled loop of native calls is stopped like a slow script, the next script runs")</script></body>`)
+	pr.expect_uncaught = true
+	check(pr, console_says(pr, "slow_script_ms"), "it was stopped by javascript.slow_script_ms")
+	usable(pr, "compiled flood")
+	close_page(pr, min_checks = 3)
+}
+
 @(test)
 js_hostile_an_observer_that_feeds_itself :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()

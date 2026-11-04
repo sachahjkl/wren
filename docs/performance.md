@@ -1962,6 +1962,13 @@ taken while it was busy are said so.
    (151-153) -> 78 (77-80) ns, a class's 168 -> 77 ns, a setter 145 (141-412) -> 81 (80-126) ns, `macro.js`'s getter
    access 184 -> 92 ns. The accessor's call out of line in the helper made Map's `size` 37 -> 44 ns; inlined, 36.7.
    The helpers now set the frame's pc to the instruction after the access, as the hot loop does.
+5. **Found after the round: the interrupt in a compiled loop that calls.** The compiled code gave the interpreter its
+   safe point every `JIT_BUDGET` iterations whatever the iterations did; the interpreter polls once its native calls count
+   for a poll (`NATIVE_CALL_POLL_WEIGHT`). With step 1 a `document.write` flood is compiled, and 16 384 slow writes ran
+   between two polls: past `wasm.max_call_ms` the page lost its engine (`js_hostile_document_write`, intermittent). A
+   loop that calls now also leaves for the safe point once `interrupt_counter` reaches `INTERRUPT_POLL_EVERY` (a load
+   and a compare at its back edge: the accessor loops above within 1 ns). `js_hostile_compiled_native_flood` (a
+   compiled loop of `big.join(document.title)`, each ~0.1 ms) fails without it, passes with it.
 
 | | base | 1: `document` | 2: allocation | 3, 4 |
 |---|---|---|---|---|

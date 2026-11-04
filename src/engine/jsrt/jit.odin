@@ -1159,6 +1159,7 @@ FRAME_STACKLESS :: u32(offset_of(Frame, stackless))
 RT_CUR_FRAME :: u32(offset_of(Runtime, cur_frame))
 RT_STACK_DEPTH :: u32(offset_of(Runtime, stack_depth))
 RT_JIT_DEPTH :: u32(offset_of(Runtime, jit_depth))
+RT_INTERRUPT_COUNTER :: u32(offset_of(Runtime, interrupt_counter))
 RT_MAX_STACK_DEPTH :: u32(offset_of(Runtime, config) + offset_of(Host_Config, max_stack_depth))
 RT_TEMP_ROOTS_LEN :: u32(offset_of(Runtime, temp_roots) + offset_of(runtime.Raw_Dynamic_Array, len))
 RT_VSTACK_DATA :: u32(offset_of(Runtime, vstack) + offset_of(runtime.Raw_Dynamic_Array, data))
@@ -4587,13 +4588,22 @@ j_jump :: proc(c: ^Jc, pc: int, target: int, conditional: bool) -> bool {
 			j_op(c, W_VOID)
 			c.nest += 1
 		}
-		// the budget: every JIT_BUDGET iterations the interpreter gets a turn (interrupt poll, collection)
+		// the budget: every JIT_BUDGET iterations the interpreter gets a turn (interrupt poll, collection); in a loop
+		// that calls, also once the calls made count for a poll (call_native adds NATIVE_CALL_POLL_WEIGHT to
+		// interrupt_counter, as in the interpreter): a loop of slow natives (document.write) otherwise polled after
+		// JIT_BUDGET of them, past the host's hard limit (wasm.max_call_ms), and the page lost its engine
 		j_lget(c, I_BUDGET)
 		j_i32(c, 1)
 		j_op(c, W_I32_SUB)
 		j_op(c, 0x22)   // local.tee
 		w_uleb(&c.out, I_BUDGET)
 		j_op(c, W_I32_EQZ)
+		if c.helpers || c.table {
+			j_ld32(c, uintptr(c.rt), RT_INTERRUPT_COUNTER)
+			j_i32(c, INTERRUPT_POLL_EVERY)
+			j_op(c, W_I32_GE_S)
+			j_op(c, W_I32_OR)
+		}
 		j_op(c, W_IF)
 		j_op(c, W_VOID)
 		c.nest += 1
