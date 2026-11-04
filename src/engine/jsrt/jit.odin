@@ -1139,6 +1139,21 @@ SEG_TOP :: u32(offset_of(Value_Segment, top))
 INFO_FN_STATE :: u32(offset_of(Jit_Info, fn) + offset_of(Jit_Loop, state))
 INFO_FN_INDEX :: u32(offset_of(Jit_Info, fn) + offset_of(Jit_Loop, index))
 INFO_FN_N_ARR :: u32(offset_of(Jit_Info, fn) + offset_of(Jit_Loop, n_arr))
+// what an object the code allocates itself writes (j_alloc: cell_new, object_new_shape) of the pool and the cell
+RT_POOL_FREE :: u32(offset_of(Runtime, pool_free))
+RT_POOL_BUMP :: u32(offset_of(Runtime, pool_bump))
+RT_POOL_LEFT :: u32(offset_of(Runtime, pool_left))
+RT_CELLS :: u32(offset_of(Runtime, cells))
+RT_CELL_COUNT :: u32(offset_of(Runtime, cell_count))
+RT_HEAP_BYTES :: u32(offset_of(Runtime, heap_bytes))
+RT_PEAK_HEAP_BYTES :: u32(offset_of(Runtime, peak_heap_bytes))
+CELL_GC_NEXT :: u32(offset_of(Cell, gc_next))
+CELL_SIZE :: u32(offset_of(Cell, size))
+CELL_KIND :: u32(offset_of(Cell, kind))
+POOL_BLOCK_NEXT :: u32(offset_of(Pool_Block, next))
+JIT_OBJ_BYTES :: size_of(Object) + INLINE_SLOTS * size_of(Prop_Slot)               // a plain object with its inline slots
+JIT_OBJ_BLOCK :: (JIT_OBJ_BYTES + POOL_GRAIN - 1) &~ (POOL_GRAIN - 1)              // the pool block it takes
+#assert(JIT_OBJ_BLOCK <= POOL_MAX_BYTES && JIT_OBJ_BLOCK % size_of(i64) == 0 && size_of(Cell_Kind) == 1 && size_of(Class_ID) == 1)
 FUNC_BC :: OBJ_DATA + u32(offset_of(Func_Data, bc))   // (a bytecode function's data is its Func_Data)
 FUNC_VAR_REFS :: OBJ_DATA + u32(offset_of(Func_Data, var_refs))
 
@@ -1848,14 +1863,139 @@ j_new :: proc(c: ^Jc, kind: Jit_New_Kind, a: int, argc: int) {
 	j_helper(c, .new)
 }
 
+// A plain object made by the code itself: block $done { block $slow { the caller's guards (br_if 0), j_alloc } the
+// caller's helper call } (j_alloc_open, j_alloc, its helper's code, j_alloc_end).
+@(private = "file")
+j_alloc_open :: proc(c: ^Jc) {
+	for _ in 0 ..< 2 {
+		j_op(c, W_BLOCK)
+		j_op(c, W_VOID)
+		c.nest += 1
+	}
+}
+
+// A plain object of the shape sh (a root shape: no properties) into local `out`, as cell_new and object_new_shape make
+// it (its slots the inline ones): a block of its pool class popped from the free list (zeroed) or cut from the bump chunk
+// (zero), linked into the collector's cells, charged to the heap; then out of $done. No block in the free list and the
+// chunk's end reached: out of $slow, to the helper. Allocation never collects, as with the helper: the object is in the
+// code's hands until its next call or exit.
+@(private = "file")
+j_alloc :: proc(c: ^Jc, sh: ^Shape, out: u32) {
+	rtp := i32(uintptr(c.rt))
+	free := rtp + i32(RT_POOL_FREE) + i32(JIT_OBJ_BLOCK / POOL_GRAIN) * size_of(rawptr)
+	j_i32(c, free)
+	j_mem(c, W_I32_LOAD, 2, 0)
+	j_op(c, W_LOCAL_TEE)
+	w_uleb(&c.out, u64(out))
+	j_op(c, W_IF)
+	j_op(c, W_VOID)
+	// popped, zeroed
+	j_i32(c, free)
+	j_lget(c, out)
+	j_mem(c, W_I32_LOAD, 2, POOL_BLOCK_NEXT)
+	j_mem(c, W_I32_STORE, 2, 0)
+	for off := u32(0); off < JIT_OBJ_BLOCK; off += size_of(i64) {
+		j_lget(c, out)
+		j_op(c, W_I64_CONST)
+		w_sleb(&c.out, 0)
+		j_mem(c, W_I64_STORE, 3, off)
+	}
+	j_op(c, W_ELSE)
+	// cut from the chunk, or $slow (out of the if: depth 1)
+	j_i32(c, rtp)
+	j_mem(c, W_I32_LOAD, 2, RT_POOL_LEFT)
+	j_i32(c, JIT_OBJ_BLOCK)
+	j_op(c, W_I32_LT_S)
+	j_op(c, W_BR_IF)
+	w_uleb(&c.out, 1)
+	j_i32(c, rtp)
+	j_mem(c, W_I32_LOAD, 2, RT_POOL_BUMP)
+	j_lset(c, out)
+	j_i32(c, rtp)
+	j_lget(c, out)
+	j_i32(c, JIT_OBJ_BLOCK)
+	j_op(c, W_I32_ADD)
+	j_mem(c, W_I32_STORE, 2, RT_POOL_BUMP)
+	j_i32(c, rtp)
+	j_i32(c, rtp)
+	j_mem(c, W_I32_LOAD, 2, RT_POOL_LEFT)
+	j_i32(c, JIT_OBJ_BLOCK)
+	j_op(c, W_I32_SUB)
+	j_mem(c, W_I32_STORE, 2, RT_POOL_LEFT)
+	j_op(c, W_END)
+	// the cell (cell_new): its size and kind, first of the runtime's cells, counted, charged to the heap (and its peak)
+	j_st32(c, out, CELL_SIZE, i32(JIT_OBJ_BYTES))
+	j_lget(c, out)
+	j_i32(c, i32(Cell_Kind.object))
+	j_mem(c, W_I32_STORE8, 0, CELL_KIND)
+	j_lget(c, out)
+	j_ld32(c, uintptr(rtp), RT_CELLS)
+	j_mem(c, W_I32_STORE, 2, CELL_GC_NEXT)
+	j_i32(c, rtp)
+	j_lget(c, out)
+	j_mem(c, W_I32_STORE, 2, RT_CELLS)
+	j_i32(c, rtp)
+	j_ld32(c, uintptr(rtp), RT_CELL_COUNT)
+	j_i32(c, 1)
+	j_op(c, W_I32_ADD)
+	j_mem(c, W_I32_STORE, 2, RT_CELL_COUNT)
+	j_i32(c, rtp)
+	j_i32(c, rtp)
+	j_mem(c, W_I64_LOAD, 3, RT_HEAP_BYTES)
+	j_op(c, W_I64_CONST)
+	w_sleb(&c.out, JIT_OBJ_BYTES)
+	j_op(c, W_I64_ADD)
+	j_mem(c, W_I64_STORE, 3, RT_HEAP_BYTES)
+	j_i32(c, rtp)
+	j_mem(c, W_I64_LOAD, 3, RT_HEAP_BYTES)
+	j_i32(c, rtp)
+	j_mem(c, W_I64_LOAD, 3, RT_PEAK_HEAP_BYTES)
+	j_op(c, W_I64_GT_S)
+	j_op(c, W_IF)
+	j_op(c, W_VOID)
+	j_i32(c, rtp)
+	j_i32(c, rtp)
+	j_mem(c, W_I64_LOAD, 3, RT_HEAP_BYTES)
+	j_mem(c, W_I64_STORE, 3, RT_PEAK_HEAP_BYTES)
+	j_op(c, W_END)
+	// the object (object_new_shape): ordinary, extensible, of shape sh, its slots the inline ones
+	j_lget(c, out)
+	j_i32(c, i32(Class_ID.object))
+	j_mem(c, W_I32_STORE8, 0, OBJ_CLASS)
+	j_lget(c, out)
+	j_i32(c, i32(c.extensible_bit))
+	j_mem(c, W_I32_STORE8, 0, OBJ_BITS)
+	j_st32(c, out, OBJ_SHAPE, i32(uintptr(sh)))
+	j_lget(c, out)
+	j_lget(c, out)
+	j_i32(c, size_of(Object))
+	j_op(c, W_I32_ADD)
+	j_mem(c, W_I32_STORE, 2, OBJ_SLOTS)
+	j_st32(c, out, OBJ_SLOT_CAP, INLINE_SLOTS)
+	j_op(c, W_BR)
+	w_uleb(&c.out, 1)
+	j_op(c, W_END)
+	c.nest -= 1
+}
+
+// The end of block $done (j_alloc_open).
+@(private = "file")
+j_alloc_end :: proc(c: ^Jc) {
+	j_op(c, W_END)
+	c.nest -= 1
+}
+
 // `object`: a plain object, whose shape (the root one of Object.prototype) the code knows until the next join.
 @(private = "file")
 jit_object :: proc(c: ^Jc) -> bool {
 	sh := shape_root_for(c.rt, c.ctx.class_proto[.object])
 	if !j_keep(c, sh) {return false}
 	d := j_push(c, .P)
+	j_alloc_open(c)
+	j_alloc(c, sh, j_si(c, d))
 	j_new(c, .object, 0, 0)
 	j_lset(c, j_si(c, d))
+	j_alloc_end(c)
 	c.st.k[d] = sh
 	return true
 }
@@ -2788,6 +2928,21 @@ j_construct_ok :: proc(fo: ^Object) -> bool {
 	return fo.is_constructor && !nb.is_derived_class_ctor && jit_fn_compilable(nb)
 }
 
+// The prototype a construction of fo gives the object it makes (create_from_ctor, new.target the callee: the callee's
+// own `prototype`, a data property that holds an object) and the root shape of such objects, kept with the code; nil
+// when the translation cannot tell (the helper makes the object).
+@(private = "file")
+j_ctor_proto :: proc(c: ^Jc, fo: ^Object) -> (^Object, ^Shape) {
+	sh := fo.shape
+	if sh.lazy != nil || sh.is_dict {return nil, nil}
+	i := shape_lookup(sh, pa(.A_prototype))
+	if i < 0 || sh.props[i].kind != .data || fo.slots[i].value.tag != .object {return nil, nil}
+	p := as_obj(fo.slots[i].value)
+	psh := shape_root_for(c.rt, p)
+	if !j_keep(c, sh) || !j_keep(c, p) || !j_keep(c, psh) {return nil, nil}
+	return p, psh
+}
+
 // i32 stores at the address in local `base`: a constant, or a local's value
 @(private = "file")
 j_st32 :: proc(c: ^Jc, base: u32, off: u32, v: i32) {
@@ -2942,8 +3097,35 @@ j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: 
 	j_op(c, W_BR_IF)
 	w_uleb(&c.out, 0)
 	if construct {
-		// the object the construction makes (T6); it threw: the interpreter makes the construction again, with a
-		// constructor jit_new made one that throws
+		// the object the construction makes (T6): made by the code when the callee's `prototype` is the object it was
+		// for (its shape and the slot's value guarded), else by the helper; it threw: the interpreter makes the
+		// construction again, with a constructor jit_new made one that throws
+		proto, psh := j_ctor_proto(c, fo)
+		if psh != nil {
+			j_alloc_open(c)
+			j_lget(c, I_T5)
+			j_mem(c, W_I32_LOAD, 2, OBJ_SHAPE)
+			j_i32(c, i32(uintptr(fo.shape)))
+			j_op(c, W_I32_NE)
+			j_op(c, W_BR_IF)
+			w_uleb(&c.out, 0)
+			j_lget(c, I_T5)
+			j_mem(c, W_I32_LOAD, 2, OBJ_SLOTS)
+			j_lset(c, I_T0)
+			at := u32(shape_lookup(fo.shape, pa(.A_prototype)) * size_of(Prop_Slot))
+			j_lget(c, I_T0)
+			j_mem(c, W_I32_LOAD8_U, 0, at)
+			j_i32(c, i32(Tag.object))
+			j_op(c, W_I32_NE)
+			j_lget(c, I_T0)
+			j_mem(c, W_I32_LOAD, 2, at + 8)
+			j_i32(c, i32(uintptr(proto)))
+			j_op(c, W_I32_NE)
+			j_op(c, W_I32_OR)
+			j_op(c, W_BR_IF)
+			w_uleb(&c.out, 0)
+			j_alloc(c, psh, I_T6)
+		}
 		j_new(c, .ctor, slot, 0)
 		j_op(c, W_LOCAL_TEE)
 		w_uleb(&c.out, I_T6)
@@ -2956,6 +3138,7 @@ j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: 
 		c.st.n = n
 		j_op(c, W_END)
 		c.nest -= 1
+		if psh != nil {j_alloc_end(c)}
 	}
 	// the block: T1 its values, T0 the frame after them; the segment's top moves past it
 	j_lget(c, I_T2)
