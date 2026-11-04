@@ -156,6 +156,7 @@ page_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) {
 	forms_paint_overlays(app, dc, rect)
 	images_after_paint(app)
 	shell_capture(app, t, dc, rect, to_draw(p.canvas))   // shell_frames.odin: shown while the page is busy (without the scroll bar: it is drawn there at the wheel's position)
+	window_own(app).page_painted = paint_source(t)   // (shell_frames.odin: what chrome frames may paint again from this layout)
 	paint_doc_scrollbar(&t.layout, dc, rect.min, paint_size, t.scroll)
 	prof_end(.Paint_Items)
 	draw.pop_clip(dc)

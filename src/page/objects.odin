@@ -144,6 +144,16 @@ object_has_listener :: proc(p: ^Page, h: u64, type: string) -> bool {
 	return false
 }
 
+// Whether some node of the document, or its Window, has a listener of `type`: an event of the user's of that type would
+// run the page's code.
+page_listens :: proc(p: ^Page, type: string) -> bool {
+	it: u32
+	for _, n in base.pool_next(&p.doc.nodes, &it) {
+		for l in n.listeners { if !l.removed && l.type == type { return true } }
+	}
+	return p.web != nil && p.web.window != 0 && object_has_listener(p, p.web.window, type)
+}
+
 // Fires `ev` at an object (no propagation path: objects are leaves). The object may be released by a listener.
 object_dispatch :: proc(p: ^Page, h: u64, proto: dom.Event) -> bool {
 	o := object_get(p, h)

@@ -116,6 +116,7 @@ Remote :: struct {
 	capture_window: int,                  // a capture waits for this window's next frame (0: none): remote_capture_arm
 	capture_rect:   [4]int,
 	tl:         Timeline,                 // the frames being recorded (remote_timeline.odin)
+	busy:       Busy_Input,               // input for the chrome frames of a long script (busy_input.odin)
 	call_ns:    i64,                      // when the last request came (loop clock)
 }
 
@@ -210,6 +211,7 @@ remote_stop :: proc(app: ^App) {
 	delete(r.name); delete(r.error); delete(r.sync_text)
 	delete(r.stash_text)
 	remote_recording_destroy(&r.rec)
+	busy_input_destroy(&r.busy)
 	remote_state_free()
 	remote_exit_code = r.exit_code
 	r^ = {}

@@ -65,6 +65,8 @@ DEMOS := [?]Demo{
 		"CSS only: hover transitions that reverse halfway, endless keyframe animations (spin, pulse, alternate, steps), nested <code>counters()</code>, quotes by depth, gradients, and a web font with <code>font-display: swap</code>. <code>style.animations.mode</code> turns motion down.", false, "", false},
 	{.Layout, "Autoscroll (middle click)", "autoscroll.html",
 		"A tall page for the middle-click scroll: press the wheel and move the pointer up or down (the farther, the faster), or click it once and move; a click, Escape or the wheel ends it. A middle click on the link opens it in a new tab.", false, "", false},
+	{.Layout, "A busy page", "busy.html",
+		"Tasks of 100 to 400 ms, one or a loop: drag over the text, scroll with the wheel, the keys or the scroll bar, press Ctrl+L meanwhile, and see what follows at once and what waits for the page (hover, the caret, its animations).", false, "", false},
 	{.Layout, "Autoscroll in two axes", "autoscroll-2d.html",
 		"A page that scrolls both ways with a panel that scrolls down only: the middle-click scroll goes sideways too, in the panel as well (its page takes that part).", false, "", false},
 	{.Css, "Cursors", "cursors.html",
