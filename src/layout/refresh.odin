@@ -3,10 +3,12 @@ package layout
 import "core:sync"
 import "core:time"
 import "wb:base"
+import "wb:dom"
 import "wb:style"
 
 // The refresh path: when only paint-only values changed since the last full layout (style.layout_equal: transforms,
-// opacity, colors, backgrounds, shadows, radii... the usual animations and hover effects), the boxes, lines and display
+// opacity, colors, backgrounds, shadows, radii... the usual animations and hover effects), the document unchanged or changed
+// only in the style attributes of HTML elements (styles_only_mutations), the boxes, lines and display
 // list stay; only what is derived from those values is updated:
 //   * the computed-style pointers of boxes, inline items and display items (an animation overlay or a partial restyle
 //     hands out new Computed records), and the inherited paint-only values copied into anonymous boxes;
@@ -20,8 +22,25 @@ can_refresh :: proc(l: ^Layout, input: Input) -> bool {
 	if !l.valid || l.last_pass == .None || !input.settings.paint_refresh || l.anchor_stale { return false }
 	st := input.styled
 	return l.styled == rawptr(st) && l.layout_serial == st.layout_serial && l.canvas == st.canvas &&
-		l.mutations == input.doc.mutations && l.viewport == input.viewport && l.scale == input.scale &&
+		styles_only_mutations(l, input.doc) && l.viewport == input.viewport && l.scale == input.scale &&
 		l.settings == input.settings^ && l.inc.images_gen == input.images_generation && l.inc.fonts_gen == input.fonts_generation
+}
+
+// The document changed since the last pass by nothing but the `style` attributes of HTML elements: those reach layout through the
+// styles only, and the styles tell whether that was paint-only (layout_serial). A script that moves something by its inline
+// transform at every frame (the licence card of about:wren, tilted by the pointer) then makes refresh passes, not layouts, and the
+// compositor keeps what it retained.
+@(private = "file")
+styles_only_mutations :: proc(l: ^Layout, d: ^dom.Document) -> bool {
+	if l.mutations == d.mutations { return true }
+	if len(l.foreign_objects) > 0 { return false }   // (an attribute inside an inline <svg> with foreign objects: incremental.odin)
+	changes, ok := dom.journal_since(d, l.mutations)
+	if !ok { return false }
+	for &e in changes {
+		if e.kind != .Attribute || e.name != "style" || e.ns != dom.ATTR_NS_NONE { return false }
+		if n := dom.get(d, e.node); n == nil || n.ns != .HTML { return false }
+	}
+	return true
 }
 
 // Inherited paint-only properties: what an anonymous box takes from its parent that can change without a layout.
@@ -120,6 +139,7 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 refresh_rest :: proc(l: ^Layout, input: Input, t0: time.Tick) -> bool {
 	if !refresh_paint_values(l, input) { return false }
 	l.serial = input.styled.serial
+	l.mutations = input.doc.mutations
 	l.last_pass = .Refresh
 	l.passes[.Refresh] += 1
 	ms := f32(time.duration_milliseconds(time.tick_since(t0)))

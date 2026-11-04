@@ -694,8 +694,8 @@ planes_painted_control_projection :: proc(t: ^testing.T) {
 	draw.end_frame(&f.dc)
 }
 
-// The density a plane's projection asks for is the larger singular value of the Jacobian: it matches finite differences, and
-// the scale steps are a quarter octave.
+// The density a plane's projection asks for is the larger singular value of the Jacobian (the smaller is the stretch along the
+// slant): both match finite differences, and the scale steps are a quarter octave.
 @(test)
 planes_density_is_the_jacobian :: proc(t: ^testing.T) {
 	test_app(t)
@@ -711,13 +711,15 @@ planes_density_is_the_jacobian :: proc(t: ^testing.T) {
 	}
 	for p in ([]lay.Vec2{{0, 0}, {200, 0}, {200, 120}, {100, 60}, {10, 100}}) {
 		h := style.m4_apply(m, p.x, p.y, 0)
-		got := plane_density_at(m, Plane_Vert{p, {h[0], h[1], h[3]}})
+		got, got_least := plane_density_at(m, Plane_Vert{p, {h[0], h[1], h[3]}})
 		e := f32(0.01)
 		dx := (proj(m, p + lay.Vec2{e, 0}) - proj(m, p - lay.Vec2{e, 0})) / (2 * e)
 		dy := (proj(m, p + lay.Vec2{0, e}) - proj(m, p - lay.Vec2{0, e})) / (2 * e)
 		g11, g12, g22 := dx.x * dx.x + dx.y * dx.y, dx.x * dy.x + dx.y * dy.y, dy.x * dy.x + dy.y * dy.y
-		want := math.sqrt(0.5 * (g11 + g22 + math.sqrt((g11 - g22) * (g11 - g22) + 4 * g12 * g12)))
+		root := math.sqrt((g11 - g22) * (g11 - g22) + 4 * g12 * g12)
+		want, want_least := math.sqrt(0.5 * (g11 + g22 + root)), math.sqrt(0.5 * (g11 + g22 - root))
 		testing.expectf(t, math.abs(got - want) < 0.01 * want, "density at %v: %.4f, finite differences %.4f", p, got, want)
+		testing.expectf(t, math.abs(got_least - want_least) < 0.01 * want, "along the slant at %v: %.4f, finite differences %.4f", p, got_least, want_least)
 	}
 	testing.expect(t, quantize_scale(1.0001) == 1 && quantize_scale(0.5) == 0.5 && math.abs(quantize_scale(1.3) - 1.4142135) < 1e-4)
 	// the polygon that shows: a plane partly behind the eye is cut at the eye plane, the rest by the screen
@@ -726,6 +728,36 @@ planes_density_is_the_jacobian :: proc(t: ^testing.T) {
 	for v in poly {
 		testing.expectf(t, v.h[2] > 0 && v.h[0] >= -0.01 * v.h[2] && v.h[0] <= 360.01 * v.h[2] && v.h[1] >= -0.01 * v.h[2] && v.h[1] <= 300.01 * v.h[2], "the vertex %v is on the screen", v)
 	}
+}
+
+// The licence card of about:wren (440 x 277 css px, perspective 900px, device scale 1.75) at the most the pointer tilts it (rotateX 14deg,
+// rotateY 18deg: about_card.odin) is shown nowhere reduced enough to need mip levels: its layer, rasterized again at every frame for its
+// shader, builds none. Turned (the manipulation mode) it builds them once the slant is more than the anisotropic taps take.
+@(test)
+planes_tilted_by_the_pointer_build_no_mips :: proc(t: ^testing.T) {
+	test_app(t)
+	W, H, PERSPECTIVE, DPR, TAPS :: 440, 277.4, 900, 1.75, 8
+	card :: proc(ax, ay: f32) -> style.Matrix4 {
+		rad :: math.PI / 180
+		cx, sx, cy, sy := math.cos(ax * rad), math.sin(ax * rad), math.cos(ay * rad), math.sin(ay * rad)
+		rx := style.Matrix4{1, 0, 0, 0, 0, cx, sx, 0, 0, -sx, cx, 0, 0, 0, 0, 1}
+		ry := style.Matrix4{cy, 0, -sy, 0, 0, 1, 0, 0, sy, 0, cy, 0, 0, 0, 0, 1}
+		pers := style.IDENTITY_MATRIX4
+		pers[11] = -1.0 / PERSPECTIVE
+		about_middle := style.m4_mul(style.m4_translate(W / 2, H / 2, 0), style.m4_mul(pers, style.m4_mul(rx, style.m4_mul(ry, style.m4_translate(-W / 2, -H / 2, 0)))))
+		return style.m4_mul(style.m4_scale(DPR, DPR, 1), about_middle)
+	}
+	needs :: proc(m: style.Matrix4) -> bool {
+		poly := plane_visible_polygon(m, lay.Rect{{0, 0}, {W, H}}, lay.Rect{{-1e9, -1e9}, {1e9, 1e9}})
+		density: f32
+		for v in poly { d, _ := plane_density_at(m, v); density = max(density, d) }
+		return plane_needs_mips(m, poly, quantize_scale(density), TAPS)
+	}
+	for tilt in ([][2]f32{{0, 0}, {14, 18}, {-14, -18}, {14, -18}}) {
+		testing.expectf(t, !needs(card(tilt.x, tilt.y)), "tilted by %v degrees the card needs no mip levels", tilt)
+	}
+	testing.expect(t, !needs(card(0, 80)), "turned 80 degrees the anisotropic taps take the slant")
+	testing.expect(t, needs(card(0, 88)), "nearly edge-on it needs them")
 }
 
 // A plane turned toward the viewer so that perspective makes its near edge much larger than the layout size is rasterized
@@ -770,8 +802,8 @@ planes_are_rasterized_as_dense_as_they_show :: proc(t: ^testing.T) {
 	testing.expectf(t, best >= 0.9, "...at full density, not scaled down to fit (%.2f)", best)
 }
 
-// While a plane moves it keeps the scale it was rasterized at (no new layer at every frame); once its matrix holds still it
-// is rasterized at the scale it needs.
+// While a plane moves it keeps the scale it was rasterized at (no new layer at every frame); once its matrix has held still for
+// settle_ms it is rasterized at the scale it needs.
 @(test)
 planes_keep_their_scale_while_moving_and_sharpen_at_rest :: proc(t: ^testing.T) {
 	test_app(t)
@@ -804,11 +836,16 @@ planes_keep_their_scale_while_moving_and_sharpen_at_rest :: proc(t: ^testing.T) 
 	card.mat4 = style.m4_mul(style.m4_translate(c.x, c.y, 0), style.m4_mul(ry, style.m4_translate(-c.x, -c.y, 0)))
 	cx_paint(&f, true)
 	moving := scale_now()
+	// a frame without a move between two moves (a pointer that drives the tilt): the scale holds
+	cx_paint(&f, true)
+	paused := scale_now()
+	pacer_of(the_app).frame_ms += the_app.plane_settings.settle_ms
 	cx_paint(&f, true)
 	settled := scale_now()
 	testing.expectf(t, at_rest <= 1.2, "at 1 degree the card needs about 1 texel per pixel (%.2f)", at_rest)
 	testing.expectf(t, moving == at_rest, "the first frame of the move keeps the scale (%.2f, was %.2f)", moving, at_rest)
-	testing.expectf(t, settled > moving * 1.2, "with the matrix unchanged it is rasterized at the scale it needs (%.2f, was %.2f)", settled, moving)
+	testing.expectf(t, paused == moving, "a frame still for less than settle_ms keeps it (%.2f, was %.2f)", paused, moving)
+	testing.expectf(t, settled > moving * 1.2, "still for settle_ms, it is rasterized at the scale it needs (%.2f, was %.2f)", settled, moving)
 }
 
 // A flat 3D child on a plain 3D parent is composited on its own: animating it draws the parent again not at all (its layer

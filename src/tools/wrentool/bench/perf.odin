@@ -55,6 +55,9 @@ Scenario :: struct {
 	prefs:  []string,
 }
 
+// Scenarios about one element (a selector): it is scrolled into view first, and a Hover wanders over its box instead of the window.
+SCENARIO_ELEMENT := [?][2]string{{"card_hover", "#lic"}, {"card_idle", "#lic"}}
+
 FULL_LAYOUT := []string{"layout.incremental.enabled=false"}
 FULL_STYLE := []string{"style.incremental.enabled=false"}
 NO_COMPOSITOR := []string{"render.compositor.enabled=false"}
@@ -85,6 +88,8 @@ SCENARIOS := []Scenario{
 	{"transforms", "site:transforms.html", .Idle, nil}, {"transforms_nocomp", "site:transforms.html", .Idle, NO_COMPOSITOR}, {"transforms3d", "site:transforms-3d.html", .Idle, nil},
 	{"effects", "site:effects.html", .Idle, nil}, {"effects_hover", "site:effects.html", .Hover, nil}, {"effects_wheel", "site:effects.html", .Wheel, nil},
 	{"gradients", "site:gradients.html", .Idle, nil},
+	// the licence card of about:wren (3D planes, shaders) under a moving pointer, and at rest
+	{"card_hover", "about:wren?card=sample", .Hover, nil}, {"card_idle", "about:wren?card=sample", .Idle, nil},
 	{"planes_nested", "perf:planes-nested.html", .Idle, nil}, {"planes_nested_merged", "perf:planes-nested.html", .Idle, {"paint.planes.detach_children=false"}},
 	// a module changes one text of a page of ~17 000 nodes every 16 ms (examples/mutation), or toggles a class (examples/mutation_class)
 	{"mutation", "site:mutation.html", .Idle, nil}, {"mutation_full", "site:mutation.html", .Idle, FULL_LAYOUT}, {"mutation_fullstyle", "site:mutation.html", .Idle, FULL_STYLE},
@@ -225,12 +230,13 @@ perf_scenario :: proc(o: ^Options, r: ^Report, exe: string, s: Scenario, measure
 		if !ok { return }
 		ok = false
 	} else {
-		perf_action(&w, s.action, measure)
+		perf_action(&w, s, measure)
 	}
 	took := time.duration_seconds(time.tick_since(before))
 	st, e := api.stats(ses)
 	if e != .None { fmt.eprintfln("%s: %s", s.name, api.last_failure().message); return }
 	row = {load_ms, f64(st.frames_drawn), f64(st.frames_drawn) / max(took, 0.001), st.cpu_time_ms, f64(st.private_bytes / tooling_mb), f64(st.working_set_bytes / tooling_mb)}
+	fmt.printfln("%s: frame gaps p50 %.1f, p95 %.1f, p99 %.1f, max %.1f ms; CPU of a frame %.2f ms (p95 %.2f), GPU %.2f ms", s.name, st.frame_gap_p50_ms, st.frame_gap_p95_ms, st.frame_gap_p99_ms, st.frame_gap_max_ms, st.cpu_ms, st.cpu_p95_ms, st.gpu_ms)
 	report_row(r, s.name, row[0], st.frames_drawn, row[2], row[3], st.private_bytes / tooling_mb, st.working_set_bytes / tooling_mb)
 	return row, true
 }
@@ -258,10 +264,20 @@ perf_navigate :: proc(w: ^Wren, name, url: string) -> (load_ms: f64, ok: bool) {
 
 // `measure` of input of this kind, or of nothing. Each call waits for the browser's answer: the rate of the input is the rate it takes it at.
 @(private)
-perf_action :: proc(w: ^Wren, action: Action, measure: time.Duration) {
+perf_action :: proc(w: ^Wren, s: Scenario, measure: time.Duration) {
 	ses := &w.session
+	action := s.action
 	bounds, _ := api.window_bounds(ses)
 	width, height := f64(bounds.width), f64(bounds.height)
+	// where the pointer wanders: the window, or the element named
+	area := api.Rect{0, 0, width, height}
+	for o in SCENARIO_ELEMENT {
+		if o[0] != s.name { continue }
+		_, _ = api.eval(ses, fmt.tprintf("document.querySelector(%q).scrollIntoView({{block: 'center'}})", o[1]))
+		settle(w)
+		_, _ = api.stats(ses, reset_frames = true)
+		if b, e := api.box_model(ses, o[1]); e == .None && b.visible { area = b.window } else { fmt.eprintfln("%s: no box for %q", s.name, o[1]) }
+	}
 	begin := time.tick_now()
 	left :: proc(begin: time.Tick, measure: time.Duration) -> bool { return time.tick_since(begin) < measure }
 	switch action {
@@ -270,7 +286,7 @@ perf_action :: proc(w: ^Wren, action: Action, measure: time.Duration) {
 	case .Hover:
 		for left(begin, measure) {
 			t := time.duration_seconds(time.tick_since(begin))
-			at := api.Point{width * (HOVER_X + HOVER_X_SWING * math.sin(t * HOVER_X_RATE)), height * (HOVER_Y + HOVER_Y_SWING * math.sin(t * HOVER_Y_RATE))}
+			at := api.Point{area.x + area.w * (HOVER_X + HOVER_X_SWING * math.sin(t * HOVER_X_RATE)), area.y + area.h * (HOVER_Y + HOVER_Y_SWING * math.sin(t * HOVER_Y_RATE))}
 			if api.hover(ses, at, .Window) != .None { return }
 			pace(w, HOVER_PERIOD_MS)
 		}

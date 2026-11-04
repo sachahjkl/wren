@@ -183,16 +183,17 @@ plane_visible_polygon :: proc(m: style.Matrix4, r: lay.Rect, screen: lay.Rect) -
 }
 
 // Screen pixels per plane-frame unit at the point `v` of the plane through `m`: the larger singular value of the Jacobian of the
-// projection there (the most the projection stretches anything at that point).
+// projection there (the most the projection stretches anything at that point), and the smaller (along the slant).
 @(private)
-plane_density_at :: proc(m: style.Matrix4, v: Plane_Vert) -> f32 {
+plane_density_at :: proc(m: style.Matrix4, v: Plane_Vert) -> (most, least: f32) {
 	w := v.h[2]
-	if !(w > 1e-9) { return 0 }
+	if !(w > 1e-9) { return 0, 0 }
 	sx, sy := v.h[0] / w, v.h[1] / w
 	j11, j12 := (m[0] - sx * m[3]) / w, (m[4] - sx * m[7]) / w
 	j21, j22 := (m[1] - sy * m[3]) / w, (m[5] - sy * m[7]) / w
 	a, b, d := j11 * j11 + j21 * j21, j11 * j12 + j21 * j22, j12 * j12 + j22 * j22
-	return math.sqrt(0.5 * (a + d + math.sqrt((a - d) * (a - d) + 4 * b * b)))
+	r := math.sqrt((a - d) * (a - d) + 4 * b * b)
+	return math.sqrt(0.5 * (a + d + r)), math.sqrt(max(0.5 * (a + d - r), 0))
 }
 
 // Raster scales come in steps of a quarter octave (a plane that animates is not rasterized again for every change).
@@ -208,6 +209,7 @@ Plane_Mem :: struct {
 	scale: f32,
 	mat:   u64,
 	ms:    f64,
+	moved: f64,   // frame time its matrix last changed
 }
 
 // (the painting thread's, as the compositor's layers are: compositor.odin comps)
@@ -233,12 +235,18 @@ plane_arm_settle :: proc() {
 Plane_Plan :: struct {
 	bounds: lay.Rect,   // what the layer holds: the plane's bounds, or the window of them that shows when the whole does not fit
 	scale:  f32,        // texels per plane-frame unit
+	mips:   bool,       // the layer gets its mip levels: somewhere it is shown reduced more than PLANE_MIPS_REDUCTION times
 }
+
+// A layer shown at most this many times smaller than it is rasterized needs no mip levels (a GPU samples the full-size level up to
+// a reduction of 2, and the anisotropic taps take the long axis of a slant): a card tilted by a few degrees, rasterized again at
+// every frame for its shader, does not build them at every frame.
+PLANE_MIPS_REDUCTION :: 2
 
 // How a plane group's layer is rasterized: its bounds (cut to the part that shows when the layer would be too big) and its
 // scale. The scale is the density the projection asks for over the part of the quad on the page, in quarter octaves, within
-// the preferences and the layer memory budget. While the plane's matrix is changing the scale it had is kept, unless the one
-// it needs is `motion_tolerance` times larger (or much smaller: memory); a timer then brings the sharper frame.
+// the preferences and the layer memory budget. While the plane's matrix is changing, and for settle_ms after, the scale it had
+// is kept, unless the one it needs is `motion_tolerance` times larger (or much smaller: memory); a timer then brings the sharper frame.
 @(private)
 plane_plan :: proc(e: ^Effects, g, s: i32, bounds: lay.Rect) -> Plane_Plan {
 	st := the_app.plane_settings
@@ -249,10 +257,11 @@ plane_plan :: proc(e: ^Effects, g, s: i32, bounds: lay.Rect) -> Plane_Plan {
 	density: f32
 	window: lay.Rect
 	for v, i in poly {
-		density = max(density, plane_density_at(m, v))
+		d, _ := plane_density_at(m, v)
+		density = max(density, d)
 		window = i == 0 ? lay.Rect{v.p, v.p} : lay.rect_union(window, lay.Rect{v.p, v.p})
 	}
-	plan := Plane_Plan{bounds = bounds, scale = clamp(f32(1), st.min_scale, st.max_scale)}
+	plan := Plane_Plan{bounds = bounds, scale = clamp(f32(1), st.min_scale, st.max_scale), mips = st.mips}
 	if density <= 0 { return plan }
 	want := clamp(quantize_scale(density), st.min_scale, st.max_scale)
 	// the memory the layer may use: texels at 8 bytes (fp16), a third more for the mip levels
@@ -277,8 +286,12 @@ plane_plan :: proc(e: ^Effects, g, s: i32, bounds: lay.Rect) -> Plane_Plan {
 	if plane_mem.allocator.procedure == nil { plane_mem = make(map[u64]Plane_Mem, 64, base.permanent_allocator()) }   // (lives as long as the process)
 	mem, known := plane_mem[key]
 	stale := false
+	moved := now
 	if known && now - mem.ms < 2000 && mem.scale > 0 {
-		if sig != mem.mat && mem.scale * st.tolerance >= want && mem.scale <= want * 4 {
+		if sig == mem.mat { moved = mem.moved }
+		// (still for settle_ms, not for one frame: a pointer that drives a tilt leaves frames without a move between its moves, and the
+		// scale each plane needs at that instant differs from the one it keeps: every such frame rasterized the card's planes again)
+		if now - moved < st.settle_ms && mem.scale * st.tolerance >= want && mem.scale <= want * 4 {
 			scale = mem.scale
 			stale = mem.scale < want * 0.98
 		}
@@ -286,10 +299,22 @@ plane_plan :: proc(e: ^Effects, g, s: i32, bounds: lay.Rect) -> Plane_Plan {
 	if len(plane_mem) > 512 {
 		for k, v in plane_mem { if now - v.ms > 5000 { delete_key(&plane_mem, k) } }
 	}
-	plane_mem[key] = Plane_Mem{scale = scale, mat = sig, ms = now}
+	plane_mem[key] = Plane_Mem{scale = scale, mat = sig, ms = now, moved = moved}
 	if stale { plane_arm_settle() }
 	plan.scale = scale
+	plan.mips = st.mips && plane_needs_mips(m, poly, scale, st.taps)
 	return plan
+}
+
+// Is a layer rasterized at `scale` and drawn through `m` reduced somewhere on `poly` (what shows of it) more than PLANE_MIPS_REDUCTION
+// times: across the slant, or along it more than its `taps` anisotropic taps share?
+@(private)
+plane_needs_mips :: proc(m: style.Matrix4, poly: []Plane_Vert, scale: f32, taps: int) -> bool {
+	for v in poly {
+		most, least := plane_density_at(m, v)
+		if scale > most * PLANE_MIPS_REDUCTION || scale > least * PLANE_MIPS_REDUCTION * f32(max(taps, 1)) { return true }
+	}
+	return false
 }
 
 // Does a plane group's projection show on the page (its destination frame, after the planes that receive it)? Planes inside
@@ -347,8 +372,8 @@ open_plane :: proc(e: ^Effects, c: i32, og: ^Open_Group, bounds: lay.Rect) -> bo
 
 // The cache parameters of segment `seg` of plane group `c`'s layer (see Fx_Cache.segs).
 @(private)
-plane_fx :: proc(e: ^Effects, c: i32, seg: int) -> draw.Plane_Fx {
-	fx := draw.Plane_Fx{mips = the_app.plane_settings.mips}
+plane_fx :: proc(e: ^Effects, c: i32, seg: int, mips: bool) -> draw.Plane_Fx {
+	fx := draw.Plane_Fx{mips = mips}
 	if !fx_cache_skipping(e) { fx_cache_plane(e, c, &fx, seg) }
 	return fx
 }
@@ -362,7 +387,7 @@ plane_segment_empty :: proc(e: ^Effects, c: i32, seg: int) -> bool {
 
 @(private)
 plane_push_segment :: proc(e: ^Effects, og: ^Open_Group, c, s: i32) {
-	fx := plane_fx(e, c, og.seg)
+	fx := plane_fx(e, c, og.seg, og.plan.mips)
 	drawn := draw.push_plane(e.dc, draw.Rect{og.plan.bounds.min, og.plan.bounds.max}, og.plan.scale, fx)
 	og.layer_open = true
 	if !drawn {

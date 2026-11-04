@@ -51,8 +51,9 @@ Variant_Spec :: struct {
 }
 
 VARIANTS := [Variant]Variant_Spec{
-	// -debug only adds the PDB: a crash report then names functions and lines (crashtrace)
-	.Dev     = {name = "dev", about = "(default) optimised, PDB, fast to compile          -> build\\wren.exe", program = "wren", flags = {"-o:speed", "-debug"}, separate_modules = true, channel_file = true},
+	// -debug is there for the PDB: a crash report then names functions and lines (crashtrace). It also makes ODIN_DEBUG true, which would turn on
+	// the Direct3D debug layer (the toolkit's D3D_DEBUG): every draw call validated, the licence card's frame twice the CPU; the debug variant keeps it
+	.Dev     = {name = "dev", about = "(default) optimised, PDB, fast to compile          -> build\\wren.exe", program = "wren", flags = {"-o:speed", "-debug", "-define:D3D_DEBUG=false"}, separate_modules = true, channel_file = true},
 	.Debug   = {name = "debug", about = "debug information, no optimisation                 -> build\\wren.exe", program = "wren", flags = {"-debug"}, separate_modules = true, channel_file = true},
 	// one module, as the release; a PDB for the profiler; no Direct3D debug layer (GPU and present times as shipped)
 	.Profile = {name = "profile", about = "optimised, PDB, the built-in profiler (bench perf) -> build\\wren_prof.exe", program = "wren_prof", flags = {"-o:speed", "-debug", "-define:PROFILE=true", "-define:D3D_DEBUG=false"}, native_release = true},
