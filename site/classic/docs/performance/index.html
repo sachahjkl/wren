@@ -79,6 +79,7 @@
 <li><a href="#what-changed-round-21-the-jit-compiles-functions-calls-them-directly-makes-objects-and-strings-reads-dom-attributes">What changed, round 21: the JIT compiles functions, calls them directly, makes objects and strings, reads DOM attributes</a></li>
 <li><a href="#what-changed-round-22-what-the-user-does-while-the-pages-script-is-busy">What changed, round 22: what the user does while the page's script is busy</a></li>
 <li><a href="#what-changed-round-23-document-read-by-compiled-code-objects-allocated-inline-accessors-of-the-scripts">What changed, round 23: document read by compiled code, objects allocated inline, accessors of the script's</a></li>
+<li><a href="#what-changed-round-24-what-still-froze-under-a-busy-page">What changed, round 24: what still froze under a busy page</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
@@ -1990,6 +1991,67 @@ regressions; <code>judge capi</code> 64 checks.</p>
 <p>Not done: array literals allocated inline; a direct call of a getter of the script's (through the helper it is 78 ns,
 a direct call of a function about 25); <code>new F()</code> of a function without an operand stack (<code>function Empty() {}</code>: not
 compiled whole, called through the helper, 190 ns); callees with branches inlined, polymorphic inlining.</p>
+<h2 id="what-changed-round-24-what-still-froze-under-a-busy-page"><a class="anchor" href="#what-changed-round-24-what-still-froze-under-a-busy-page" aria-hidden="true">#</a>What changed, round 24: what still froze under a busy page</h2>
+<p>Round 22's list, in the order a user feels it: what moves by itself (animations), the scroll boxes, hover, the caret.
+All of it is drawn by a chrome frame painting the page from its last layout (round 22's <code>shell_paint_layout</code>, while
+<code>Paint_Source</code> says nothing it was painted from has moved), with values the shell sets on that layout for the one paint
+and puts back at once (<code>shell_shown.odin</code> <code>Shown</code>): nothing of the page runs in between, and what its scripts read
+(<code>getComputedStyle</code>, <code>getAnimations()</code>, <code>scrollTop</code>, the boxes) stays what their turn left. Measured as round 22 did,
+on <code>busy.html</code> under <code>hold()</code> in the e2e harness's process (<code>e2e.while_busy</code>), with a new step, <code>busy_wait</code> (chrome
+frames until that long has passed: what moves by the clock moves meanwhile).</p>
+<div class="table-box"><table>
+<thead><tr><th>while the page is busy</th><th>before</th><th>after</th></tr></thead>
+<tbody>
+<tr><td>CSS animations and transitions of <code>transform</code> and <code>opacity</code></td><td>frozen (two captures 400 ms apart: the slid box at x 181 in both, the faded one's red 26 in both)</td><td>go on: the box at x 184 then 274 (a slide of 200 px/s), red 26 then 49 (a fade of 0.2 a second); at the page's turn the animation's <code>currentTime</code> is the clock's (3 ms off) and the box goes on from where it was shown</td></tr>
+<tr><td>the wheel over a scroll container</td><td>the document scrolled instead (166 px); the container never had it</td><td>the container scrolls at once (167 px), painted from the layout; the document stays; <code>scrollTop</code> 0 under the task, the offset and the container's <code>scroll</code> event at the page's turn</td></tr>
+<tr><td>the thumb of a container's scroll bar</td><td>waits (the drag happened at the page's turn: the busy frame differed from the page once it ran in 5464 px)</td><td>follows: the busy frame is the box as the page then shows it; the bar's presses are not the page's</td></tr>
+<tr><td>the caret's blink</td><td>frozen (6 captures over 450 ms at a 200 ms blink: all the same)</td><td>blinks: 2 or 3 of the 5 later captures differ from the first</td></tr>
+<tr><td>hover (<code>:hover</code> restyle)</td><td>waits</td><td>waits (below)</td></tr>
+</tbody>
+</table></div>
+<ol>
+<li><strong>Animations the compositor runs</strong> (<code>style.timeline_compositor_values</code>, <code>page.animations_compositor_values</code>). The
+compositor already applies a transform as a slot of its pictures and an opacity around their replays (round 4): a
+chrome frame only needs the values. They are taken from the page's timeline without moving it: the run's local time
+advanced on a copy to the frame's time (the pacer's <code>frame_ms</code>, the clock the page's ticks pin), the keyframes the
+page resolved for the element (<code>apply_run</code>, <code>transition_value</code> on a copy of its cascaded style), then the box's
+matrix (<code>layout.box_matrix_of</code>) and its group's alpha. No event fires, no run, overlay or clock changes: at its turn
+the page's tick reaches the same instant from the same clock, so nothing jumps and <code>getAnimations()</code> reads what it
+would have. Only elements whose effects animate <code>transform</code>, <code>translate</code>, <code>rotate</code>, <code>scale</code> and <code>opacity</code> alone
+(Chromium's composited animations), whose box has the transform space or the opacity group in the last layout (an
+opacity of 1 has no group: that box waits for the page), not in a 3D plane, not animated by a script's Web
+Animations (their timing is the script's to change). A busy page that animates so now has chrome frames at the
+display's rate where it had none: under three 1 s tasks with a sliding box, 198 to 204 chrome frames, 164 to 260 ms
+of them (0.76 to 1.24 ms median each, headless): 5 to 9 % of the thread, what full frames would cost it were it not
+busy. While a style pass's threads run (its wait lends the thread to chrome frames) the timeline is not read.</li>
+<li><strong>Scroll containers</strong> (<code>Shell_Frames.boxes</code>, <code>shell_wheel_box</code>, <code>shell_box_bar_press</code>). The wheel over the page
+looks for the container under the pointer that can move that way (<code>wheel_scroller</code>, the full frame's search, asked of
+the layout with what the chrome frame shows set on it); the offset it shows is kept per container and painted as the
+layout's offset (<code>l.scroll</code>, a slot of the pictures). At the page's turn, before the input that waited (as for the
+document), the layout takes it (<code>set_scroll</code>), and its next frame fires the container's <code>scroll</code> as for any scroll
+(<code>scroll_events.odin</code> compares offsets). A press on a container's thumb is found on the layout as a full frame finds
+it (<code>scrollbar_at</code>), and the drag is the shell's <code>Scrollbar_Drag</code>, which a frame of either kind goes on with. When the
+layout cannot be painted (the script changed what shows), the wheel over a container waits for the page instead of
+scrolling the document under it.</li>
+<li><strong>The caret</strong> (<code>forms_shell.odin</code> <code>caret_phase</code>): its phase is the clock's since the field's last change, which the
+full frames read through a timer of the loop (a running script does not let it fire). A chrome frame reads it too,
+paints the page from its layout when the caret blinks and asks for a chrome frame at each toggle.</li>
+<li><strong>Hover: not done.</strong> A <code>:hover</code> change is a restyle of the element entering or leaving the state, of what selectors
+reach from it (<code>:hover .x</code>, <code>:hover + .x</code>, <code>:has(:hover)</code>), written into the page's styles, which scripts read
+(<code>getComputedStyle</code>, <code>matches(':hover')</code>); showing it off the page's turn needs a second set of styles for those
+elements and a refresh of the layout pointing at them, a style match in a chrome frame. And a hover that starts a
+transition (<code>busy.html</code>'s <code>#hoverbox</code>) starts it at the page's turn, not when the chrome frame showed it: the box
+would jump back to its start. Only a hover whose rules change nothing but <code>transform</code> or <code>opacity</code> with no
+transition could be shown honestly, at the cost of the style match; Chromium and Firefox restyle hover on their main
+thread too (a busy page shows no hover in them either).</li>
+</ol>
+<p>Tests (<code>src/tools/e2e/busy_page.odin</code>, step "input under a busy page"): a slide and a fade under the task (the box at
+least 40 px further and the faded box's red at least 10 higher after 400 ms; at the page's turn the animation's time is
+the clock's within 150 ms and the box no further back); the wheel over the scroll box (the box's pixels moved under the
+task, <code>scrollTop</code> 0 then, the offset, the document's <code>scrollY</code> 0 and the box's <code>scroll</code> event once it ran, the busy
+frame the box as it then shows); its thumb (the same, and no <code>mousedown</code> for the page); the caret's blink (6 captures
+90 ms apart at a 200 ms blink: one differs from the first). Each fails without its change (the tests built against the
+shell without it: the values above).</p>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
