@@ -44,7 +44,7 @@
 /html/browsers/sandboxing/sandbox-new-execution-context.html: OK
 	iframe with sandbox should load with new execution context: FAIL
 /html/browsers/sandboxing/sandbox-popup-inherits-script-blocking.html: OK
-	Popup opened from sandbox without allow-scripts cannot execute script: FAIL
+	Popup opened from sandbox without allow-scripts cannot execute script: PASS
 /html/browsers/sandboxing/sandbox-window-open-srcdoc.html: TIMEOUT
 	popup is isolated from an isolated iframe: NOTRUN
 	window.open('about:srcdoc') from sandboxed srcdoc doesn't crash.: TIMEOUT

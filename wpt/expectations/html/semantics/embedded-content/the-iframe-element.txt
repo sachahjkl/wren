@@ -210,13 +210,13 @@
 	<a target="_blank" > triggered download in sandbox is blocked.: FAIL
 	<a target="_blank" rel="noopener" > triggered download in sandbox is blocked.: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_block_modals-1.html: OK
-	Frames without `allow-modals` should not be able to open modal dialogs: FAIL
+	Frames without `allow-modals` should not be able to open modal dialogs: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_block_modals-2.html: OK
 	Frames without `allow-modals` should not be able to open modal dialogs: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_block_modals-3.html: OK
 	Frames without `allow-modals` should not be able to open modal dialogs: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_block_modals-4.html: OK
-	Frames without `allow-modals` should not be able to open modal dialogs: FAIL
+	Frames without `allow-modals` should not be able to open modal dialogs: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_navigate_ancestor-1.html: OK
 	Check that sandboxed iframe can not navigate their ancestors: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_navigate_ancestor-2.html: OK
@@ -279,7 +279,7 @@
 	Check the frame heriarchy 2: FAIL
 /html/semantics/embedded-content/the-iframe-element/sandbox-ascii-case-insensitive.html: OK
 	iframe 'sandbox' ASCII case insensitive, allow-same-orİgin: PASS
-	iframe 'sandbox' ASCII case insensitive, allow-ſcripts: FAIL
+	iframe 'sandbox' ASCII case insensitive, allow-ſcripts: PASS
 /html/semantics/embedded-content/the-iframe-element/sandbox-inherit-to-blank-document-unsandboxed-frame.html: OK
 	Popup do not inherit sandbox, because of 'allow-popups-to-escape-sandbox'. The document isn't sandboxed.: FAIL
 /html/semantics/embedded-content/the-iframe-element/sandbox-inherit-to-blank-document-unsandboxed.html: OK

@@ -35,6 +35,7 @@ Window_State :: struct {
 	id:       Navigable,
 	location: wj.JSValue,   // the cross-origin Location (counted)
 	history:  wj.JSValue,   // a frame without a realm: an object with History.prototype and no brand (counted)
+	globals:  wj.JSValue,   // a frame without a realm: what scripts of this realm set on its window (counted)
 }
 
 // The state of the cross-origin Location.
@@ -349,6 +350,7 @@ wp_finalizer :: proc "c" (rt: ^wj.Runtime, val: wj.JSValue) {
 	if w == nil { return }
 	wj.JS_FreeValueRT(rt, w.location)
 	wj.JS_FreeValueRT(rt, w.history)
+	wj.JS_FreeValueRT(rt, w.globals)
 	wj.libc_free(w)
 }
 
@@ -358,6 +360,17 @@ wp_mark :: proc "c" (rt: ^wj.Runtime, val: wj.JSValue, mark: wj.Mark_Func) {
 	if w == nil { return }
 	wj.JS_MarkValue(rt, w.location, mark)
 	wj.JS_MarkValue(rt, w.history, mark)
+	wj.JS_MarkValue(rt, w.globals, mark)
+}
+
+// The global names of a same-origin frame without a realm (a sandbox without scripts): an object of this realm, made on first
+// use, that holds what its scripts set on that window (the frame runs none to see them). ok false: the frame has a realm, or
+// is out of reach.
+@(private = "file")
+realmless_globals :: proc "contextless" (ctx: ^wj.Context, w: ^Window_State) -> (g: wj.JSValue, ok: bool) {
+	if frames_bridge_realm(w.id) != 0 || !frame_same_origin(w.id) { return wj.UNDEFINED, false }
+	if wj.is_undefined(w.globals) { w.globals = wj.JS_NewObject(ctx) }
+	return w.globals, !wj.is_exception(w.globals)
 }
 
 @(private = "file")
@@ -494,6 +507,24 @@ wp_dispatch_event_fn :: proc "contextless" (ctx: ^wj.Context, id: Navigable) -> 
 	return fn
 }
 
+// open() of a frame without a realm: the frame opens the window, as its own open() would (its sandbox, its navigable the opener).
+@(private = "file")
+wp_open_call :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
+	context = m4_context()
+	doc: api_decl.Node
+	jsb.host(&doc, api_decl.Frame_documentOf, wj.wr_Frame_documentOf, Navigable(data_handle(data)))
+	if doc == 0 || !wj.wj_doc_target(u64(doc)) { return wj.wj_throw_gone(ctx) }
+	return wjr_Window_open(ctx, wj.UNDEFINED, argc, argv)
+}
+
+@(private = "file")
+wp_open_fn :: proc "contextless" (ctx: ^wj.Context, id: Navigable) -> wj.JSValue {
+	data := handle_data(u64(id))
+	fn := wj.JS_NewCFunctionData(ctx, wp_open_call, 0, 0, 2, &data[0])
+	name_function(ctx, fn, "open")
+	return fn
+}
+
 // Objects a same-origin frame's own would answer the same for: this realm's are given (a page takes a clean `navigator` or `crypto`
 // from a blank frame it made).
 @(private = "file", rodata) WP_SHARED := [?]string{"console", "navigator", "screen", "crypto"}
@@ -528,6 +559,8 @@ wp_pristine :: proc "contextless" (ctx: ^wj.Context, w: ^Window_State, c: cstrin
 		return global_prop(ctx, c)
 	case p == "dispatchEvent" && frames_bridge_realm(w.id) != 0:
 		return wp_dispatch_event_fn(ctx, w.id)
+	case p == "open" && frames_bridge_realm(w.id) == 0:
+		return wp_open_fn(ctx, w.id)
 	case in_list(WP_FUNCTIONS[:], p):
 		// the frame's own (its timers, its listeners); without a realm (a sandbox without scripts), a copy of this realm's
 		return frames_bridge_realm(w.id) != 0 ? wj.UNINITIALIZED : pristine_function(ctx, c)
@@ -570,7 +603,10 @@ wp_lookup :: proc "contextless" (ctx: ^wj.Context, self: wj.JSValue, w: ^Window_
 wp_bridged :: proc "contextless" (ctx: ^wj.Context, w: ^Window_State, prop: wj.Atom) -> (v: wj.JSValue, found: bool) {
 	if !frame_same_origin(w.id) { return wj.UNINITIALIZED, false }
 	realm := frames_bridge_realm(w.id)
-	if realm == 0 { return wj.UNDEFINED, true }
+	if realm == 0 {
+		if g, ok := realmless_globals(ctx, w); ok { return wj.JS_GetProperty(ctx, g, prop), true }
+		return wj.UNDEFINED, true
+	}
 	key := wj.JS_AtomToValue(ctx, prop)
 	defer wj.JS_FreeValue(ctx, key)
 	return frames_bridge_get(ctx, realm, key), true
@@ -600,6 +636,7 @@ wp_set :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, prop: wj.Atom, value, rec
 			wj.JS_FreeValue(ctx, r)
 			return 1
 		}
+		if g, ok := realmless_globals(ctx, w); ok { return wj.JS_SetProperty(ctx, g, prop, wj.JS_DupValue(ctx, value)) }
 	}
 	throw_security(ctx, prop)
 	return -1
@@ -622,6 +659,7 @@ wp_has :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, prop: wj.Atom) -> i32 {
 		defer wj.JS_FreeValue(ctx, r)
 		return wj.is_exception(r) ? -1 : (wj.JS_ToBool(ctx, r) != 0 ? 1 : 0)
 	}
+	if g, ok := realmless_globals(ctx, w); ok { return wj.JS_HasProperty(ctx, g, prop) }
 	return 0
 }
 
@@ -660,6 +698,7 @@ wp_get_own :: proc "c" (ctx: ^wj.Context, desc: ^wj.Property_Descriptor, obj: wj
 		}
 	}
 	if realm := frames_bridge_realm(w.id); realm != 0 { return wp_bridged_own(ctx, desc, realm, prop) }
+	if g, ok := realmless_globals(ctx, w); ok { return wj.JS_GetOwnProperty(ctx, desc, g, prop) }
 	if frame_same_origin(w.id) { return 0 }
 	throw_security(ctx, prop)
 	return -1
@@ -760,6 +799,7 @@ wp_define :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, prop: wj.Atom, val, ge
 			wj.JS_FreeValue(ctx, r)
 			return 1
 		}
+		if g, ok := realmless_globals(ctx, w); ok { return wj.JS_DefineProperty(ctx, g, prop, val, getter, setter, flags) }
 	}
 	throw_security(ctx, prop)
 	return -1
@@ -776,6 +816,7 @@ wp_delete :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, prop: wj.Atom) -> i32 
 			defer wj.JS_FreeValue(ctx, r)
 			return wj.JS_ToBool(ctx, r) != 0 ? 1 : 0
 		}
+		if g, ok := realmless_globals(ctx, w); ok { return wj.JS_DeleteProperty(ctx, g, prop, 0) }
 	}
 	throw_security(ctx, prop)
 	return -1
@@ -848,7 +889,7 @@ wp_new :: proc "contextless" (ctx: ^wj.Context, id: Navigable) -> wj.JSValue {
 	if wj.is_exception(obj) { return obj }
 	w := (^Window_State)(wj.libc_calloc(1, size_of(Window_State)))
 	if w == nil { wj.JS_FreeValue(ctx, obj); return wj.JS_ThrowOutOfMemory(ctx) }
-	w^ = {id = id, location = wj.UNDEFINED, history = wj.UNDEFINED}
+	w^ = {id = id, location = wj.UNDEFINED, history = wj.UNDEFINED, globals = wj.UNDEFINED}
 	wj.JS_SetOpaque(obj, w)
 	wj.JS_SetPrototype(ctx, obj, wj.NULL)
 	return obj

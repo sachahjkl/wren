@@ -49,10 +49,15 @@ func TestWPTWrappers(t *testing.T) {
 	if got := get("/a/b/h.sub.js").Body.String(); got != "www1.web-platform.test xn--lve-6lad.web-platform.test not-web-platform.test www2.not-web-platform.test www.web-platform.test" {
 		t.Errorf("host names: %q", got)
 	}
-	// wptserve's second http port: the block's second origin, which answers the WPT names as the WPT origin, the site's others
-	savedPort2 := wptHTTPPort2
-	wptHTTPPort2 = 8767
-	defer func() { wptHTTPPort2 = savedPort2 }()
+	// wptserve's second http port: the block's second origin, which answers the WPT names as the WPT origin, the site's others;
+	// its second https port (a WPT-only server's)
+	savedPort2, savedSecure2 := wptHTTPPort2, wptHTTPSPort2
+	wptHTTPPort2, wptHTTPSPort2 = 8767, 8770
+	defer func() { wptHTTPPort2, wptHTTPSPort2 = savedPort2, savedSecure2 }()
+	os.WriteFile(filepath.Join(dir, "a", "b", "s.sub.js"), []byte("{{ports[https][0]}} {{ports[https][1]}}"), 0o644)
+	if got := get("/a/b/s.sub.js").Body.String(); got != "8769 8770" {
+		t.Errorf("https ports: %q", got)
+	}
 	os.WriteFile(filepath.Join(dir, "a", "b", "p.sub.js"), []byte("{{ports[http][0]}} {{ports[http][1]}} {{ports[https][0]}}"), 0o644)
 	if got := get("/a/b/p.sub.js").Body.String(); got != "8768 8767 8769" {
 		t.Errorf("ports: %q", got)

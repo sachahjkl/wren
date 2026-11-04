@@ -113,6 +113,8 @@ What it is not is one heap:
 - `navigator`, `screen`, `crypto` and `console` of another window are the caller's (a page takes a clean `crypto` from a blank frame
   and hands it typed arrays of its own, which the frame's would refuse);
 - a frame without a realm (sandboxed without `allow-scripts`) gives the caller's native constructors for its upper-case names;
+  what the caller's scripts set on its window is kept in the caller's realm (another realm sets and reads its own), and its
+  `open()` opens a window as the frame (its sandbox, the frame its opener);
 - `w.Function.prototype.toString.call(f)` on a function of the caller says `[native code]`: the frame sees a `Proxy`.
 
 A custom element class of one realm defined in the registry of another (`frame.contentWindow.customElements.define(name, class extends
@@ -190,8 +192,10 @@ Not there: a redirect's own policy (only the final response's counts), reports (
 
 `<iframe csp="...">` (CSP Embedded Enforcement, `src/page/frames_csp.odin`) is a policy the frame's documents must take; a frame
 without one takes its parent's own. Its requests send it (`Sec-Required-CSP`). A response with `Allow-CSP-From: *` or the parent's
-origin takes it, enforced on the document; one whose own enforced policies are as strict (a policy with each of its directives and
-the same sources: the part of the standard's subsumption that does not compare source lists) takes it as it is; about:blank, srcdoc,
+origin takes it, enforced on the document; one whose own enforced policies are as strict (the standard's subsumption,
+`src/csp/subsume.odin`: each required directive matched in one of them, through the fetch directives' fallbacks, by a source list that
+allows nothing more: hosts within its wildcards, ports and paths, no keyword or nonce it lacks; a sandbox with no more tokens) takes it as
+it is; a `csp` attribute less strict than the parent's own requirement gives way to that one; about:blank, srcdoc,
 `data:` and `blob:` documents take it enforced. Any other is refused, as `X-Frame-Options` refuses: the frame shows an error
 document. The `sandbox` directive of any enforced policy, a response's header or a required one, sandboxes the document on top of
 what its container asks.
