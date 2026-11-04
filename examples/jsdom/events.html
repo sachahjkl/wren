@@ -93,6 +93,20 @@ section("passive by default", () => {
   eq("passive: false, another element, another event", [prevented(window, "wheel", {passive: false}), prevented(document.getElementById("b"), "wheel"), prevented(window, "touchend")].join(), "true,true,true");
 });
 
+// A clone copies its on* attributes, which are handlers in the clone as in the source.
+section("event handler attributes of a clone", () => {
+  const tpl = document.createElement("template");
+  tpl.innerHTML = "<button onclick=\"window.clicks = (window.clicks || 0) + 1\">t</button>";
+  const fromTemplate = tpl.content.cloneNode(true).firstChild;
+  document.body.appendChild(fromTemplate);
+  fromTemplate.click();
+  const imported = document.importNode(tpl.content, true).firstChild;
+  imported.click();
+  eq("a template's contents cloned, imported", window.clicks, 2);
+  t("its handler", typeof fromTemplate.onclick === "function");
+  fromTemplate.remove();
+});
+
 section("browser events (recorded for the tool)", () => {
   const b = document.getElementById("b");
   window.seen = {};

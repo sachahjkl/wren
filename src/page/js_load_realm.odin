@@ -72,6 +72,13 @@ content_handlers_register :: proc(p: ^Page, el: base.Handle) {
 	for name in names { content_handler_changed(p, el, name) }
 }
 
+// A clone was made (cloneNode, importNode): its on* attributes are handlers too, as their source's were (a clone copies
+// the attributes without setting them one by one: a <template>'s onclick="..." cloned into the document fired nothing).
+content_handlers_cloned :: proc(p: ^Page, clone: base.Handle) {
+	if !p.settings.js_load.content_handlers || p.worker != nil || js_realm(p) == nil { return }
+	for h := clone; h != base.NIL_HANDLE; h = dom.next_in_tree(p.doc, h, clone) { content_handlers_register(p, h) }
+}
+
 // The attribute `name` (on*) of `el` was set, changed or removed: the realm's handler follows.
 content_handler_changed :: proc(p: ^Page, el: base.Handle, name: string) {
 	if !p.settings.js_load.content_handlers || p.worker != nil { return }

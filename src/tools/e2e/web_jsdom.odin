@@ -714,7 +714,7 @@ jsdom_leaks :: proc(t: ^testing.T) { page_test(t, "leaks.html", checks = 4, afte
 jsdom_layout_page :: proc(t: ^testing.T) { page_test(t, "layout.html", checks = 43, after = proc(pr: ^Probe, lh: ^Layout_Host) { layout_cost_checks(pr); resize_checks(pr, lh) }) }
 
 @(test)
-jsdom_events :: proc(t: ^testing.T) { page_test(t, "events.html", checks = 35, after = proc(pr: ^Probe, _: ^Layout_Host) { browser_event_checks(pr) }) }
+jsdom_events :: proc(t: ^testing.T) { page_test(t, "events.html", checks = 37, after = proc(pr: ^Probe, _: ^Layout_Host) { browser_event_checks(pr) }) }
 
 @(test)
 jsdom_fullscreen :: proc(t: ^testing.T) {
