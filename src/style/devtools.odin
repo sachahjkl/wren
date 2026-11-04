@@ -134,6 +134,16 @@ dev_parse_inline :: proc(e: ^Engine, text: string, allocator := context.temp_all
 	return out
 }
 
+// Every property name the engine takes (its longhands and shorthands, not the aliases), sorted: what the Styles pane suggests.
+dev_property_names :: proc(allocator := context.temp_allocator) -> []string {
+	tables_init()
+	out := make([dynamic]string, 0, len(Prop) + len(short_by_name), allocator)
+	for p in Prop { append(&out, prop_names[p]) }
+	for name in short_by_name { append(&out, name) }
+	slice.sort(out[:])
+	return out[:]
+}
+
 // Whether a property is inherited by default (what the "Inherited from" sections list).
 dev_inherited_property :: proc(name: string) -> bool {
 	switch name {

@@ -480,7 +480,7 @@ net_toolbar :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 		filter_w := max(dev_width() - fixed, dt_px(DT_FILTER_MIN))
 		ui.next({width = ui.px(filter_w), height = ui.px(app.dtm.bar), axis = .X, cross = .Center})
 		if ui.row(.Center, {}, "###dt_net_fw") {
-			dt_search("###dt_net_filter", &v.filter, "Filter  (-word excludes)", filter_w)
+			dt_find_here(.Network, dt_search("###dt_net_filter", &v.filter, "Filter  (-word excludes)", filter_w), &v.filter)
 		}
 		inv := dt_btn("###dt_net_inv", .None, "Invert", tooltip = "Invert the filter", on = v.filter.invert)
 		if inv.clicked { v.filter.invert = !v.filter.invert }
@@ -632,7 +632,7 @@ net_keys :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, n: int) {
 	if dt_list_keys(&v.list, n, max(int(v.list.view / app.dtm.row) - 1, 1)) {
 		v.has_sel, v.sel_id = true, t.net.entries[v.rows[clamp(v.list.sel, 0, n - 1)]].id
 	}
-	if ui.key_press(.Escape) && v.has_sel { v.has_sel = false }
+	if v.has_sel && ui.key_press(.Escape) { v.has_sel = false }
 	if ui.key_press(.C, {.Ctrl}) && v.has_sel { if e := net_entry_of(&t.net, v.sel_id); e != nil { clip_set(e.url) } }
 	if ui.key_press(.Delete) && v.has_sel { }
 }

@@ -534,6 +534,15 @@ dt_search :: proc(id: string, f: ^Dt_Filter, placeholder: string, w: f32 = 0, fl
 	return res
 }
 
+// Ctrl+F in panel `p` (devtools_take_keys): its search field (`res`, dt_search's of `f`) takes the keyboard, its text selected.
+dt_find_here :: proc(p: Dev_Panel, res: ui.Edit_Result, f: ^Dt_Filter) {
+	d := dev()
+	if !d.find_asked || d.find != p || res.box == nil { return }
+	ui.set_focus(res.box.key)
+	ui.field_select_all(&f.field)
+	d.find_asked = false
+}
+
 @(private = "file")
 field_clear_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Dt_Btn_Draw)(user)

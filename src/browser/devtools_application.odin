@@ -177,7 +177,7 @@ app_table :: proc(app: ^App, t: ^Tab, a: ^Dev_Application) {
 		if dt_btn("###dt_app_clear", .Clear, tooltip = fmt.tprintf("Clear all %s", area_title(a.area)), enabled = len(rows) > 0).clicked { clear_area(app, t, a) }
 		dt_vsep("###dt_app_b0")
 		ui.next({width = ui.fill(), height = ui.px(app.dtm.bar), axis = .X, cross = .Center})
-		if ui.row(.Center, {}, "###dt_app_fw") { dt_search("###dt_app_filter", &a.filter, "Filter by key or value", 0, false) }
+		if ui.row(.Center, {}, "###dt_app_fw") { dt_find_here(.Application, dt_search("###dt_app_filter", &a.filter, "Filter by key or value", 0, false), &a.filter) }
 		dt_gap(3)
 	}
 	if !ok { dt_empty("###dt_app_unavail", .Lock, "Storage is not available", why); return }

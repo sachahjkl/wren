@@ -553,7 +553,7 @@ console_keys :: proc(app: ^App, t: ^Tab, c: ^Dev_Console, n: int) {
 	if !c.list.focused || n == 0 { return }
 	if ui.key_press(.C, {.Ctrl}) && c.has_sel { clip_set(con_text(t, c, true, app.con_prefs.timestamps)) }
 	if ui.key_press(.A, {.Ctrl}) { c.has_sel, c.sel_a, c.sel_b = true, c.rows[0].abs, c.rows[n - 1].abs }
-	if ui.key_press(.Escape) { c.has_sel = false }
+	if c.has_sel && ui.key_press(.Escape) { c.has_sel = false }   // (else Escape is the drawer's: devtools_drawer_toggle)
 	if dt_list_keys(&c.list, n, max(int(c.list.view / app.dtm.row) - 1, 1)) {
 		ab := c.rows[clamp(c.list.sel, 0, n - 1)].abs
 		c.has_sel, c.sel_a, c.sel_b = true, ab, ab
@@ -731,7 +731,7 @@ console_toolbar :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 		// the filter
 		ui.next({width = ui.fill(), height = ui.px(app.dtm.bar), axis = .X, cross = .Center})
 		if ui.row(.Center, {}, "###dt_con_fw") {
-			dt_search("###dt_con_filter", &c.filter, "Filter  (-word excludes)")
+			dt_find_here(.Console, dt_search("###dt_con_filter", &c.filter, "Filter  (-word excludes)"), &c.filter)
 		}
 		// counts, one chip per level
 		errors, warns := console_counts(t)

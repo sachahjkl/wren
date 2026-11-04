@@ -2,7 +2,8 @@ package browser
 
 // The views of the chosen node, panels of the Elements panel's dock: Styles (the rules that apply to the chosen element, strongest first, each
 // with its selector, where it is written, and its declarations: a box switches one off, a click on a name or a value edits it
-// and the page follows as you type, a click under the last one adds one; what an element inherits is listed under it, what
+// and the page follows as you type (numbers step from the keys and the wheel, names and keywords are suggested, a colour's swatch opens
+// the colour picker: devtools_style_edit.odin), a click under the last one adds one; what an element inherits is listed under it, what
 // is overridden is struck through), Computed (every resolved property), Layout (the box model as nested rectangles), Event
 // Listeners and Accessibility (role, name, state).
 //
@@ -12,6 +13,7 @@ package browser
 
 import "core:fmt"
 import "core:math"
+import "core:slice"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:ui"
@@ -81,6 +83,22 @@ Dev_Styles :: struct {
 	size:      [2]f32,
 	acc:       [dynamic][2]string,
 	menu_text: string,
+	// what the declaration being edited was (Escape puts it back), and whether it was added by the edit
+	was_name, was_value: string,   // owned
+	was_important, was_new: bool,
+	// the suggestions under the field being edited (devtools_style_edit.odin): shown after a key typed, the one chosen; the keywords
+	// of the property kw_prop (owned)
+	sug_on:    bool,
+	sug_sel:   int,
+	kw_prop:   string,
+	kw:        [dynamic]string,
+	// the colour picker on colour [pick_lo, pick_hi) of declaration pick_d of block pick_b, under its swatch (pick_at); pick_was
+	// the value it was opened on (owned)
+	pick:      ui.Color_Pick,
+	pick_on:   bool,
+	pick_b, pick_d, pick_lo, pick_hi: int,
+	pick_was:  string,
+	pick_at:   draw.Rect,
 }
 
 Lst_Item :: struct { type: string, flags: string, node: string, id: u32 }
@@ -101,6 +119,12 @@ styles_destroy :: proc(s: ^Dev_Styles) {
 	delete(s.off_classes)
 	delete(s.acc)
 	delete(s.menu_text)
+	delete(s.was_name)
+	delete(s.was_value)
+	delete(s.kw_prop)
+	delete(s.kw)
+	ui.color_pick_destroy(&s.pick)
+	delete(s.pick_was)
 }
 
 @(private = "file")
@@ -116,7 +140,7 @@ styles_reset :: proc(s: ^Dev_Styles) {
 	free_blocks(s)
 	for k, v in s.shadow { free_decls(v[:]); delete(v); delete_key(&s.shadow, k) }
 	free_views(s)
-	s.key_h, s.key_page, s.editing = base.NIL_HANDLE, nil, false
+	s.key_h, s.key_page, s.editing, s.pick_on = base.NIL_HANDLE, nil, false, false
 }
 
 // What the Computed, Event Listeners and Accessibility views list (their strings are theirs), emptied.
@@ -288,7 +312,6 @@ css_label_for :: proc(p: ^page.Page, h: base.Handle) -> string {
 // Applying an edit
 
 // Writes block `bi` back: the enabled declarations to the sheet's rule, or the style attribute.
-@(private = "file")
 apply_block :: proc(app: ^App, t: ^Tab, s: ^Dev_Styles, bi: int) {
 	if t.page == nil || bi < 0 || bi >= len(s.blocks) { return }
 	b := &s.blocks[bi]
@@ -323,6 +346,10 @@ Sty_Row_Kind :: enum u8 { Section, Head, Decl, Close, Media }
 @(private = "file")
 Sty_Row :: struct { kind: Sty_Row_Kind, b, d: int }
 
+// A declaration's row: its switch this far in (logical px), its name after the switch's room.
+STY_DECL_X :: 18
+STY_SWITCH_W :: 16
+
 @(private = "file")
 Sty_Draw :: struct {
 	row:      Sty_Row,
@@ -331,8 +358,7 @@ Sty_Draw :: struct {
 	hot, editing: bool,
 	filter:   string,
 	hit:      bool,
-	swatch:   draw.Color,
-	has_swatch: bool,
+	colors:   []Sty_Color,         // the colours of the value (a swatch before each)
 	first_of_block: bool,
 	hot_part: int,
 	name_w:   f32,
@@ -362,7 +388,7 @@ sty_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.92, r.max.x - dt_px(8), cy, with_alpha(the_app.dtc.accent, 0.85), d.block.source)
 	case .Decl:
 		if d.hot && !d.editing { draw.rect(dc, r, the_app.dtc.hover) }
-		x := left + dt_px(8)
+		x := r.min.x + dt_px(STY_DECL_X)
 		// the switch
 		if d.decl.enabled || d.hot || d.editing {
 			cs := dt_px(11)
@@ -371,7 +397,7 @@ sty_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 			draw.rect(dc, box, d.decl.enabled ? the_app.dtc.accent : the_app.dtc.faint, dt_px(2), the_app.dtm.line)
 			if d.decl.enabled { dt_icon(dc, .Check, draw.rect_center(box), cs * 0.9, the_app.dtc.accent_text, the_app.dtm.sc) }
 		}
-		x += dt_px(16)
+		x += dt_px(STY_SWITCH_W)
 		if d.editing { return }
 		struck := d.decl.overridden || !d.decl.enabled
 		namecol := d.decl.enabled ? (d.block.inherited ? the_app.dtc.weak : syn_color(.Prop)) : the_app.dtc.faint
@@ -379,18 +405,19 @@ sty_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		nw := dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, namecol, d.decl.name)
 		cw := dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x + nw, cy, the_app.dtc.weak, ": ")
 		vx := x + nw + cw
-		if d.has_swatch {
-			sw := the_app.dtm.mono_fs * 0.85
-			sr := draw.Rect{{vx, cy - sw * 0.5}, {vx + sw, cy + sw * 0.5}}
-			draw.rect(dc, sr, draw.Color{0.9, 0.9, 0.9, 1}, 2)
-			draw.rect(dc, sr, d.swatch, 2)
-			draw.rect(dc, sr, with_alpha(the_app.dtc.text, 0.4), 2, the_app.dtm.line)
-			vx += sw + dt_px(5)
-		}
+		// the value, a swatch before each of its colours
 		val := d.decl.value
-		if d.decl.important { val = fmt.tprintf("%s !important", val) }
-		vruns := css_value_runs(val, valcol, d.decl.enabled)
-		ve := dt_runs(dc, the_app.dtm.mono, the_app.dtm.mono_fs, vx, cy, vruns, r.max.x - dt_px(14))
+		limit := r.max.x - dt_px(14)
+		from := 0
+		ve := vx
+		for c in d.colors {
+			ve = dt_runs(dc, the_app.dtm.mono, the_app.dtm.mono_fs, ve, cy, css_value_runs(val[from:c.lo], valcol, d.decl.enabled), limit)
+			sty_swatch_draw(dc, ve, cy, c.c)
+			ve += sty_swatch_w() + dt_px(STY_SWATCH_GAP)
+			from = c.lo
+		}
+		ve = dt_runs(dc, the_app.dtm.mono, the_app.dtm.mono_fs, ve, cy, css_value_runs(val[from:], valcol, d.decl.enabled), limit)
+		if d.decl.important { ve = dt_runs(dc, the_app.dtm.mono, the_app.dtm.mono_fs, ve, cy, css_value_runs(" !important", valcol, d.decl.enabled), limit) }
 		dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, ve, cy, the_app.dtc.weak, ";")
 		if struck {
 			y := math.round(cy)
@@ -463,60 +490,6 @@ css_value_runs :: proc(v: string, base_col: draw.Color, enabled: bool) -> []Dt_R
 	return out[:]
 }
 
-// The color a value stands for, when it is plain (#rgb, #rrggbb, rgb(), a few names): for the swatch beside it.
-swatch_of :: proc(v: string) -> (draw.Color, bool) {
-	s := strings.trim_space(v)
-	hexv :: proc(c: u8) -> (int, bool) {
-		switch { case c >= '0' && c <= '9': return int(c - '0'), true; case c >= 'a' && c <= 'f': return int(c - 'a') + 10, true; case c >= 'A' && c <= 'F': return int(c - 'A') + 10, true }
-		return 0, false
-	}
-	if len(s) > 0 && s[0] == '#' && (len(s) == 4 || len(s) == 7 || len(s) == 9) {
-		vals: [8]int
-		n := len(s) - 1
-		for i in 0 ..< n { v, ok := hexv(s[1 + i]); if !ok { return {}, false }; vals[i] = v }
-		if n == 3 { return draw.srgb(f32(vals[0] * 17) / 255, f32(vals[1] * 17) / 255, f32(vals[2] * 17) / 255), true }
-		a: f32 = 1
-		if n == 8 { a = f32(vals[6] * 16 + vals[7]) / 255 }
-		return draw.srgb(f32(vals[0] * 16 + vals[1]) / 255, f32(vals[2] * 16 + vals[3]) / 255, f32(vals[4] * 16 + vals[5]) / 255, a), true
-	}
-	if strings.has_prefix(s, "rgb") {
-		open := strings.index_byte(s, '(')
-		close := strings.index_byte(s, ')')
-		if open < 0 || close < open { return {}, false }
-		inner, _ := strings.replace_all(s[open + 1:close], ",", " ", context.temp_allocator)
-		inner, _ = strings.replace_all(inner, "/", " ", context.temp_allocator)
-		parts := strings.split(strings.trim_space(inner), " ", context.temp_allocator)
-		nums := make([dynamic]f32, context.temp_allocator)
-		for p in parts { if p == "" { continue }; f, _ := parse_f32(strings.trim_suffix(p, "%")); append(&nums, strings.has_suffix(p, "%") ? f * 2.55 : f) }
-		if len(nums) >= 3 { return draw.srgb(nums[0] / 255, nums[1] / 255, nums[2] / 255, len(nums) > 3 ? (nums[3] > 1 ? nums[3] / 255 : nums[3]) : 1), true }
-	}
-	switch s {
-	case "red": return draw.srgb(1, 0, 0), true
-	case "green": return draw.srgb(0, 0.5, 0), true
-	case "blue": return draw.srgb(0, 0, 1), true
-	case "black": return draw.srgb(0, 0, 0), true
-	case "white": return draw.srgb(1, 1, 1), true
-	case "orange": return draw.srgb(1, 0.65, 0), true
-	case "yellow": return draw.srgb(1, 1, 0), true
-	case "gray", "grey": return draw.srgb(0.5, 0.5, 0.5), true
-	case "crimson": return draw.srgb(0.86, 0.08, 0.24), true
-	}
-	return {}, false
-}
-
-@(private = "file")
-parse_f32 :: proc(s: string) -> (f32, bool) {
-	f, div := f32(0), f32(0)
-	neg := false
-	for c, i in transmute([]u8)s {
-		if i == 0 && c == '-' { neg = true; continue }
-		if c == '.' { div = 1; continue }
-		if c < '0' || c > '9' { return 0, false }
-		if div > 0 { div *= 10; f += f32(c - '0') / div } else { f = f * 10 + f32(c - '0') }
-	}
-	return neg ? -f : f, true
-}
-
 @(private = "file")
 styles_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	s := &e.side
@@ -553,7 +526,7 @@ styles_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 			editing_here := s.editing && r.kind == .Decl && s.edit_b == r.b && s.edit_d == r.d
 			d.editing = editing_here
 			if r.kind == .Decl {
-				if c, sok := swatch_of(blk.decls[r.d].value); sok { d.swatch, d.has_swatch = c, true }
+				d.colors = slice.clone(sty_colors(blk.decls[r.d].value), ui.frame_allocator())
 			}
 			if editing_here { decl_editor(app, t, e, s, r.b, r.d); continue }
 			ui.next({width = ui.fill(), height = ui.px(app.dtm.row), cursor = .Arrow})
@@ -568,6 +541,7 @@ styles_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		if ui.menu_item("Copy declaration###dt_sm_decl").clicked { clip_set(s.menu_text) }
 		if ui.menu_item("Copy all declarations###dt_sm_all").clicked { clip_set(styles_all_text(s, s.edit_b)) }
 	}
+	styles_pick_popover(app, t, s)
 }
 
 @(private = "file")
@@ -593,10 +567,19 @@ styles_row_input :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, s: ^Dev_Styles, r
 			ui.ctx_menu_open(menu_key, ui.mouse_pos())
 		}
 		if sig.clicked && !blk.inherited {
-			x := sig.mouse.x - dt_px(18)
-			if x < dt_px(16) { d.enabled = !d.enabled; apply_block(app, t, s, r.b); mark_overrides(s) } else {
-				nw := dt_w(app.dtm.mono, app.dtm.mono_fs, d.name) + dt_px(16)
-				begin_decl_edit(s, r.b, r.d, x - dt_px(16) < nw ? 0 : 1)
+			x := sig.mouse.x - dt_px(STY_DECL_X)
+			value_x := dt_px(STY_SWITCH_W) + dt_w(app.dtm.mono, app.dtm.mono_fs, d.name) + dt_w(app.dtm.mono, app.dtm.mono_fs, ": ")
+			switch {
+			case x < dt_px(STY_SWITCH_W): d.enabled = !d.enabled; apply_block(app, t, s, r.b); mark_overrides(s)
+			case x < value_x: begin_decl_edit(s, r.b, r.d, 0)
+			case:
+				// a colour's swatch opens the picker on it, the rest of the value edits it
+				if ci := sty_swatch_at(d.value, x - value_x); ci >= 0 {
+					at := sig.box.rect.min.x + dt_px(STY_DECL_X) + value_x + sty_swatch_x(d.value, ci)
+					styles_pick_open(s, r.b, r.d, ci, {{at, sig.box.rect.min.y}, {at + sty_swatch_w(), sig.box.rect.max.y}})
+				} else {
+					begin_decl_edit(s, r.b, r.d, 1)
+				}
 			}
 		}
 	case .Close:
@@ -613,18 +596,26 @@ styles_row_input :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, s: ^Dev_Styles, r
 begin_decl_edit :: proc(s: ^Dev_Styles, b, d, part: int) {
 	blk := &s.blocks[b]
 	s.editing, s.edit_b, s.edit_d, s.edit_part, s.focus_set, s.field_age = true, b, d, part, true, 0
-	ui.field_set(&s.field_n, blk.decls[d].name)
-	ui.field_set(&s.field_v, blk.decls[d].value)
+	s.sug_on, s.sug_sel = false, 0
+	dc := blk.decls[d]
+	ui.field_set(&s.field_n, dc.name)
+	ui.field_set(&s.field_v, dc.important ? strings.concatenate({dc.value, " !important"}, context.temp_allocator) : dc.value)
+	delete(s.was_name); delete(s.was_value)
+	s.was_name, s.was_value, s.was_important, s.was_new = strings.clone(dc.name), strings.clone(dc.value), dc.important, dc.name == "" && dc.value == ""
 }
 
-// A declaration being edited: its name and value as two fields; the page follows each change.
+// A declaration being edited: its name and value as two fields; the page follows each change. Tab goes on (name, value, the next
+// declaration or a new one), Shift+Tab back; Enter in the value goes to the next one too; Escape puts back what it was. The value's
+// numbers step by the keys and the wheel (Up / Down, Shift, Alt, Ctrl, Page Up / Down); a typed word is suggested names or keywords.
 @(private = "file")
 decl_editor :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, s: ^Dev_Styles, bi, di: int) {
 	blk := &s.blocks[bi]
 	d := &blk.decls[di]
 	ui.next({width = ui.fill(), height = ui.px(app.dtm.row), axis = .X, cross = .Center})
 	if ui.row(.Center, {}, "###dt_sty_edit") {
-		ui.spacer(ui.px(dt_px(10 + 8 + 16)))
+		ui.spacer(ui.px(dt_px(STY_DECL_X + STY_SWITCH_W)))
+		// an open list of suggestions has Escape first (it closes)
+		if s.sug_on && ui.key_press(.Escape) { s.sug_on = false }
 		nw := max(dt_w(app.dtm.mono, app.dtm.mono_fs, ui.field_string(&s.field_n)) + dt_px(14), dt_px(46))
 		ui.next({width = ui.px(nw), height = ui.pct(1), radius = app.dtm.radius, font = app.dtm.mono, font_size = app.dtm.mono_fs, text_pad = dt_px(3)})
 		rn := ui.line_edit("###dt_sty_fn", &s.field_n, "property")
@@ -636,6 +627,23 @@ decl_editor :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, s: ^Dev_Styles, bi, di
 			if s.edit_part == 0 { if rn.box != nil { ui.set_focus(rn.box.key) } } else if rv.box != nil { ui.set_focus(rv.box.key) }
 			s.focus_set = false
 		}
+		// the suggestions of the field that has the keyboard: Up / Down choose, Enter / Tab / a click take one
+		on_value := rv.focused
+		if rn.changed || rv.changed { s.sug_on, s.sug_sel = true, 0 }
+		items, lo, hi := styles_suggestions(t, s, on_value)
+		if s.sug_on && len(items) > 0 && (rn.focused || rv.focused) {
+			if ui.key_press(.Down) { s.sug_sel = (s.sug_sel + 1) %% len(items) }
+			if ui.key_press(.Up) { s.sug_sel = (s.sug_sel - 1) %% len(items) }
+			take := styles_suggest_list(s, items, on_value ? rv.box : rn.box)
+			if take < 0 && (rn.committed || rv.committed || ui.key_pressed_peek(.Tab)) { take = s.sug_sel }
+			if take >= 0 {
+				styles_suggest_take(on_value ? &s.field_v : &s.field_n, items[take], lo, hi)
+				if on_value { rv.changed = true } else { rn.changed = true }
+				s.sug_on = false
+			}
+		}
+		// the value's numbers: keys and wheel
+		if ui.field_num_step(&s.field_v, rv.box) { rv.changed = true; s.sug_on = false }
 		// a pasted "name: value;" fills both
 		name := ui.field_string(&s.field_n)
 		if colon := strings.index_byte(name, ':'); colon > 0 && rn.changed {
@@ -648,12 +656,21 @@ decl_editor :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, s: ^Dev_Styles, bi, di
 		if rn.changed || rv.changed {
 			delete(d.name); delete(d.value)
 			d.name, d.value = strings.clone(strings.trim_space(ui.field_string(&s.field_n))), strings.clone(strings.trim_space(strings.trim_suffix(strings.trim_space(ui.field_string(&s.field_v)), ";")))
-			if strings.has_suffix(d.value, "!important") { d.important = true; d.value = strings.clone(strings.trim_space(strings.trim_suffix(d.value, "!important"))) } else { d.important = false }
+			if strings.has_suffix(d.value, "!important") { v := strings.clone(strings.trim_space(strings.trim_suffix(d.value, "!important"))); delete(d.value); d.value, d.important = v, true } else { d.important = false }
 			apply_block(app, t, s, bi)
 		}
-		// Enter / Tab: on
-		if rn.focused && (ui.key_press(.Return) || ui.key_press(.Tab)) { ui.set_focus(rv.box.key) }
-		if rv.committed || (rv.focused && ui.key_press(.Tab)) {
+		switch {
+		case rn.cancelled || rv.cancelled:   // Escape: as it was
+			cancel_decl(app, t, s, bi, di)
+		case rn.focused && ui.key_press(.Tab, {.Shift}):   // back: the value of the declaration before
+			if di > 0 { finish_decl(s, bi, di); begin_decl_edit(s, bi, di - 1, 1) }
+		case rv.focused && ui.key_press(.Tab, {.Shift}):
+			ui.set_focus(rn.box.key)
+			ui.field_select_all(&s.field_n)
+		case rn.focused && (rn.committed || ui.key_press(.Tab)):   // (the value taken whole, as a key goes into it)
+			ui.set_focus(rv.box.key)
+			ui.field_select_all(&s.field_v)
+		case rv.committed || (rv.focused && ui.key_press(.Tab)):
 			has_name := d.name != ""
 			finish_decl(s, bi, di)
 			// the next declaration of the block, or a new one at its end
@@ -661,11 +678,25 @@ decl_editor :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, s: ^Dev_Styles, bi, di
 				append(&blk.decls, Sty_Decl{name = strings.clone(""), value = strings.clone(""), enabled = true})
 				begin_decl_edit(s, bi, len(blk.decls) - 1, 0)
 			}
+		case:
+			s.field_age += 1
+			if s.field_age > 3 && !rn.focused && !rv.focused && ui.focus_key() != 0 { finish_decl(s, bi, di); s.editing = false; s.key_mut = 0 }
 		}
-		if rn.cancelled || rv.cancelled { finish_decl(s, bi, di); s.editing = false; s.key_mut = 0 }
-		s.field_age += 1
-		if s.field_age > 3 && !rn.focused && !rv.focused && ui.focus_key() != 0 { finish_decl(s, bi, di); s.editing = false; s.key_mut = 0 }
 	}
+}
+
+// Escape: the declaration as it was when its edit began (one the edit added goes), the page too.
+@(private = "file")
+cancel_decl :: proc(app: ^App, t: ^Tab, s: ^Dev_Styles, bi, di: int) {
+	blk := &s.blocks[bi]
+	if di < len(blk.decls) {
+		d := &blk.decls[di]
+		delete(d.name); delete(d.value)
+		d.name, d.value, d.important = strings.clone(s.was_new ? "" : s.was_name), strings.clone(s.was_new ? "" : s.was_value), s.was_important
+		apply_block(app, t, s, bi)
+	}
+	finish_decl(s, bi, di)
+	s.key_mut = 0
 }
 
 @(private = "file")
@@ -675,10 +706,9 @@ finish_decl :: proc(s: ^Dev_Styles, bi, di: int) {
 		delete(blk.decls[di].name); delete(blk.decls[di].value)
 		ordered_remove(&blk.decls, di)
 	}
-	s.editing = false
+	s.editing, s.sug_on = false, false
 	s.rev += 1
 }
-
 ////////////////////////////////
 // The pane
 

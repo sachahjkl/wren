@@ -377,3 +377,25 @@ devtools_old_drawer_and_side_pane_become_layouts :: proc(t: ^testing.T) {
 	testing.expect_value(t, ui.dock_format(&e.layout, dev_panel_name, nil), DEV_LAYOUT_DEFAULT)
 	testing.expect(t, config.is_default(&q, config.ref_of(&q, DEV_LAYOUT_PREF)), "nothing saved")
 }
+
+// The colours of a Styles value (the swatches before them, what the picker edits): each with its place and the style it is
+// written in; none in a string or a url(), none in a word that is not a colour.
+@(test)
+style_values_find_their_colours :: proc(t: ^testing.T) {
+	test_app(t)
+	v := `1px solid #f00, rgba(0, 0, 255, 0.5) url("red.png") "red" blue currentcolor`
+	cs := sty_colors(v)
+	testing.expect_value(t, len(cs), 3)
+	if len(cs) != 3 { return }
+	testing.expect_value(t, v[cs[0].lo:cs[0].hi], "#f00")
+	testing.expect_value(t, cs[0].style, ui.Color_Style{.Hex, true})
+	testing.expect_value(t, v[cs[1].lo:cs[1].hi], "rgba(0, 0, 255, 0.5)")
+	testing.expect_value(t, cs[1].style, ui.Color_Style{.Rgb, true})
+	testing.expect_value(t, cs[1].c, ui.Srgba{0, 0, 1, 0.5})
+	testing.expect_value(t, v[cs[2].lo:cs[2].hi], "blue")
+	testing.expect_value(t, cs[2].style.format, ui.Color_Format.Hex)   // (a name is written back as hex)
+	_, whole := swatch_of("hsl(120deg 100% 25%)")
+	testing.expect(t, whole, "a value that is one colour has a swatch in Computed")
+	_, whole = swatch_of("1px solid red")
+	testing.expect(t, !whole, "one with more has none")
+}
