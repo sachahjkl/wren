@@ -1074,93 +1074,93 @@ wjg_DataTransfer_clearData :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 }
 
 wjg_ElementInternals_get_role :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "role", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_role :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "role", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_role :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "role", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaAtomic :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-atomic", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaAtomic :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-atomic", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaAtomic :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-atomic", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaAutoComplete :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-autocomplete", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaAutoComplete :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-autocomplete", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaAutoComplete :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-autocomplete", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaBrailleLabel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-braillelabel", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaBrailleLabel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-braillelabel", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaBrailleLabel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-braillelabel", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaBrailleRoleDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-brailleroledescription", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaBrailleRoleDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-brailleroledescription", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaBrailleRoleDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-brailleroledescription", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaBusy :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-busy", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaBusy :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-busy", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaBusy :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-busy", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaChecked :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-checked", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaChecked :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-checked", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaChecked :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-checked", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaColCount :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-colcount", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaColCount :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-colcount", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaColCount :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-colcount", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaColIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-colindex", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaColIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-colindex", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaColIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-colindex", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaColIndexText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-colindextext", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaColIndexText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-colindextext", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaColIndexText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-colindextext", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaColSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-colspan", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaColSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-colspan", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaColSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-colspan", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaCurrent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-current", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaCurrent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-current", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaCurrent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-current", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-description", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-description", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-description", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaDisabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-disabled", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaDisabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-disabled", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaDisabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-disabled", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaExpanded :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-expanded", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaExpanded :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-expanded", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaExpanded :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-expanded", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaHasPopup :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-haspopup", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaHasPopup :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-haspopup", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaHasPopup :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-haspopup", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaHidden :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-hidden", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaHidden :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-hidden", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaHidden :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-hidden", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaInvalid :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-invalid", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaInvalid :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-invalid", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaInvalid :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-invalid", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaKeyShortcuts :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-keyshortcuts", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaKeyShortcuts :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-keyshortcuts", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaKeyShortcuts :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-keyshortcuts", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaLabel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-label", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaLabel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-label", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaLabel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-label", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaLevel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-level", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaLevel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-level", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaLevel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-level", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaLive :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-live", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaLive :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-live", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaLive :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-live", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaModal :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-modal", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaModal :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-modal", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaModal :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-modal", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaMultiLine :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-multiline", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaMultiLine :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-multiline", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaMultiLine :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-multiline", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaMultiSelectable :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-multiselectable", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaMultiSelectable :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-multiselectable", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaMultiSelectable :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-multiselectable", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaOrientation :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-orientation", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaOrientation :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-orientation", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaOrientation :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-orientation", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaPlaceholder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-placeholder", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaPlaceholder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-placeholder", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaPlaceholder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-placeholder", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaPosInSet :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-posinset", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaPosInSet :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-posinset", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaPosInSet :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-posinset", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaPressed :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-pressed", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaPressed :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-pressed", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaPressed :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-pressed", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaReadOnly :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-readonly", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaReadOnly :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-readonly", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaReadOnly :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-readonly", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaRelevant :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-relevant", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaRelevant :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-relevant", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaRelevant :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-relevant", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaRequired :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-required", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaRequired :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-required", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaRequired :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-required", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaRoleDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-roledescription", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaRoleDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-roledescription", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaRoleDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-roledescription", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaRowCount :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-rowcount", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaRowCount :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-rowcount", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaRowCount :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-rowcount", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaRowIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-rowindex", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaRowIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-rowindex", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaRowIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-rowindex", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaRowIndexText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-rowindextext", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaRowIndexText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-rowindextext", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaRowIndexText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-rowindextext", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaRowSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-rowspan", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaRowSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-rowspan", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaRowSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-rowspan", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaSelected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-selected", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaSelected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-selected", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaSelected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-selected", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaSetSize :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-setsize", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaSetSize :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-setsize", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaSetSize :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-setsize", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaSort :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-sort", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaSort :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-sort", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaSort :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-sort", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaValueMax :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-valuemax", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaValueMax :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-valuemax", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaValueMax :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-valuemax", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaValueMin :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-valuemin", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaValueMin :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-valuemin", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaValueMin :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-valuemin", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaValueNow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-valuenow", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaValueNow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-valuenow", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaValueNow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-valuenow", 1, v, 0, 0, 0, 0) }
 wjg_ElementInternals_get_ariaValueText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 128, "aria-valuetext", 1, 0, 0, 0, 0) }
-wjg_ElementInternals_set_ariaValueText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-valuetext", 1, v, 0, 0, 0) }
+wjg_ElementInternals_set_ariaValueText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 128, "aria-valuetext", 1, v, 0, 0, 0, 0) }
 wjg_AbortSignal_get_onabort :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 191, "abort") }
 wjg_AbortSignal_set_onabort :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 191, "abort", v, 0) }
 wjg_TaskSignal_get_onprioritychange :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 192, "prioritychange") }
@@ -3073,7 +3073,7 @@ wjg_Element_insertAdjacentText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 }
 
 wjg_Element_get_elementTiming :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "elementtiming", 0, 0, 0, 0, 0) }
-wjg_Element_set_elementTiming :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "elementtiming", 0, v, 0, 0, 0) }
+wjg_Element_set_elementTiming :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "elementtiming", 0, v, 0, 0, 0, 0) }
 wjg_Element_get_onfullscreenchange :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 259, "fullscreenchange") }
 wjg_Element_set_onfullscreenchange :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 259, "fullscreenchange", v, 0) }
 wjg_Element_get_onfullscreenerror :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 259, "fullscreenerror") }
@@ -3190,93 +3190,93 @@ wjg_Element_get_assignedSlot :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 }
 
 wjg_Element_get_role :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "role", 1, 0, 0, 0, 0) }
-wjg_Element_set_role :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "role", 1, v, 0, 0, 0) }
+wjg_Element_set_role :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "role", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaAtomic :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-atomic", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaAtomic :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-atomic", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaAtomic :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-atomic", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaAutoComplete :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-autocomplete", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaAutoComplete :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-autocomplete", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaAutoComplete :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-autocomplete", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaBrailleLabel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-braillelabel", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaBrailleLabel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-braillelabel", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaBrailleLabel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-braillelabel", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaBrailleRoleDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-brailleroledescription", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaBrailleRoleDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-brailleroledescription", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaBrailleRoleDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-brailleroledescription", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaBusy :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-busy", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaBusy :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-busy", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaBusy :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-busy", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaChecked :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-checked", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaChecked :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-checked", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaChecked :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-checked", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaColCount :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-colcount", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaColCount :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-colcount", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaColCount :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-colcount", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaColIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-colindex", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaColIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-colindex", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaColIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-colindex", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaColIndexText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-colindextext", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaColIndexText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-colindextext", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaColIndexText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-colindextext", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaColSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-colspan", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaColSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-colspan", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaColSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-colspan", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaCurrent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-current", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaCurrent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-current", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaCurrent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-current", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-description", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-description", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-description", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaDisabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-disabled", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaDisabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-disabled", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaDisabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-disabled", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaExpanded :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-expanded", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaExpanded :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-expanded", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaExpanded :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-expanded", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaHasPopup :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-haspopup", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaHasPopup :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-haspopup", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaHasPopup :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-haspopup", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaHidden :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-hidden", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaHidden :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-hidden", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaHidden :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-hidden", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaInvalid :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-invalid", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaInvalid :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-invalid", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaInvalid :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-invalid", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaKeyShortcuts :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-keyshortcuts", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaKeyShortcuts :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-keyshortcuts", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaKeyShortcuts :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-keyshortcuts", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaLabel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-label", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaLabel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-label", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaLabel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-label", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaLevel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-level", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaLevel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-level", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaLevel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-level", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaLive :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-live", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaLive :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-live", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaLive :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-live", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaModal :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-modal", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaModal :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-modal", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaModal :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-modal", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaMultiLine :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-multiline", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaMultiLine :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-multiline", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaMultiLine :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-multiline", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaMultiSelectable :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-multiselectable", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaMultiSelectable :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-multiselectable", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaMultiSelectable :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-multiselectable", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaOrientation :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-orientation", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaOrientation :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-orientation", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaOrientation :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-orientation", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaPlaceholder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-placeholder", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaPlaceholder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-placeholder", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaPlaceholder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-placeholder", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaPosInSet :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-posinset", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaPosInSet :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-posinset", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaPosInSet :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-posinset", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaPressed :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-pressed", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaPressed :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-pressed", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaPressed :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-pressed", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaReadOnly :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-readonly", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaReadOnly :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-readonly", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaReadOnly :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-readonly", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaRelevant :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-relevant", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaRelevant :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-relevant", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaRelevant :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-relevant", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaRequired :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-required", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaRequired :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-required", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaRequired :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-required", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaRoleDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-roledescription", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaRoleDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-roledescription", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaRoleDescription :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-roledescription", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaRowCount :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-rowcount", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaRowCount :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-rowcount", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaRowCount :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-rowcount", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaRowIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-rowindex", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaRowIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-rowindex", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaRowIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-rowindex", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaRowIndexText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-rowindextext", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaRowIndexText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-rowindextext", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaRowIndexText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-rowindextext", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaRowSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-rowspan", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaRowSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-rowspan", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaRowSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-rowspan", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaSelected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-selected", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaSelected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-selected", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaSelected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-selected", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaSetSize :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-setsize", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaSetSize :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-setsize", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaSetSize :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-setsize", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaSort :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-sort", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaSort :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-sort", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaSort :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-sort", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaValueMax :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-valuemax", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaValueMax :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-valuemax", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaValueMax :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-valuemax", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaValueMin :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-valuemin", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaValueMin :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-valuemin", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaValueMin :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-valuemin", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaValueNow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-valuenow", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaValueNow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-valuenow", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaValueNow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-valuenow", 1, v, 0, 0, 0, 0) }
 wjg_Element_get_ariaValueText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 259, "aria-valuetext", 1, 0, 0, 0, 0) }
-wjg_Element_set_ariaValueText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-valuetext", 1, v, 0, 0, 0) }
+wjg_Element_set_ariaValueText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 259, "aria-valuetext", 1, v, 0, 0, 0, 0) }
 // HTMLElement.offsetParent -> dom.HTMLElement_offsetParent
 wjg_HTMLElement_get_offsetParent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 260)
@@ -3318,9 +3318,9 @@ wjg_HTMLElement_get_offsetHeight :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 }
 
 wjg_HTMLElement_get_title :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 260, "title", 0, 0, 0, 0, 0) }
-wjg_HTMLElement_set_title :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "title", 0, v, 0, 0, 0) }
+wjg_HTMLElement_set_title :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "title", 0, v, 0, 0, 0, 0) }
 wjg_HTMLElement_get_lang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 260, "lang", 0, 0, 0, 0, 0) }
-wjg_HTMLElement_set_lang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "lang", 0, v, 0, 0, 0) }
+wjg_HTMLElement_set_lang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "lang", 0, v, 0, 0, 0, 0) }
 // HTMLElement.translate -> dom.HTMLElement_translate
 wjg_HTMLElement_get_translate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 260)
@@ -3365,7 +3365,7 @@ wjg_HTMLElement_set_dir :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: 
 }
 
 wjg_HTMLElement_get_inert :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 260, "inert", 3, 0, 0, 0, 0) }
-wjg_HTMLElement_set_inert :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "inert", 3, v, 0, 0, 0) }
+wjg_HTMLElement_set_inert :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "inert", 3, v, 0, 0, 0, 0) }
 // HTMLElement.click() -> forms.HTMLElement_click
 wjg_HTMLElement_click :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 260)
@@ -3375,7 +3375,7 @@ wjg_HTMLElement_click :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc:
 }
 
 wjg_HTMLElement_get_accessKey :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 260, "accesskey", 0, 0, 0, 0, 0) }
-wjg_HTMLElement_set_accessKey :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "accesskey", 0, v, 0, 0, 0) }
+wjg_HTMLElement_set_accessKey :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "accesskey", 0, v, 0, 0, 0, 0) }
 // HTMLElement.accessKeyLabel -> dom.HTMLElement_accessKeyLabel
 wjg_HTMLElement_get_accessKeyLabel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 260)
@@ -3426,8 +3426,8 @@ wjg_HTMLElement_set_spellcheck :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 	return wj.UNDEFINED
 }
 
-wjg_HTMLElement_set_writingSuggestions :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "writingsuggestions", 0, v, 0, 0, 0) }
-wjg_HTMLElement_set_autocapitalize :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "autocapitalize", 0, v, 0, 0, 0) }
+wjg_HTMLElement_set_writingSuggestions :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "writingsuggestions", 0, v, 0, 0, 0, 0) }
+wjg_HTMLElement_set_autocapitalize :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "autocapitalize", 0, v, 0, 0, 0, 0) }
 // HTMLElement.innerText -> dom.HTMLElement_innerText
 wjg_HTMLElement_get_innerText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 260)
@@ -3477,9 +3477,9 @@ wjg_HTMLElement_set_outerText :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 }
 
 wjg_HTMLElement_get_headingOffset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 260, "headingoffset", 5, 0, 4, 0, 8) }
-wjg_HTMLElement_set_headingOffset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "headingoffset", 5, v, 4, 0, 8) }
+wjg_HTMLElement_set_headingOffset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "headingoffset", 5, v, 0, 4, 0, 8) }
 wjg_HTMLElement_get_headingReset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 260, "headingreset", 3, 0, 0, 0, 0) }
-wjg_HTMLElement_set_headingReset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "headingreset", 3, v, 0, 0, 0) }
+wjg_HTMLElement_set_headingReset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "headingreset", 3, v, 0, 0, 0, 0) }
 wjg_HTMLElement_set_style :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj.wj_put_forwards(ctx, this_val, "style", "cssText", v) }
 wjg_HTMLElement_get_onanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 260, "animationstart") }
 wjg_HTMLElement_set_onanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 260, "animationstart", v, 0) }
@@ -3728,8 +3728,8 @@ wjg_HTMLElement_set_nonce :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v
 }
 
 wjg_HTMLElement_get_autofocus :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 260, "autofocus", 3, 0, 0, 0, 0) }
-wjg_HTMLElement_set_autofocus :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "autofocus", 3, v, 0, 0, 0) }
-wjg_HTMLElement_set_tabIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "tabindex", 4, v, 0, 0, 0) }
+wjg_HTMLElement_set_autofocus :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "autofocus", 3, v, 0, 0, 0, 0) }
+wjg_HTMLElement_set_tabIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 260, "tabindex", 4, v, 0, 0, 0, 0) }
 // HTMLElement.tabIndex -> dom.HTMLOrSVGOrMathMLElement_tabIndex
 wjg_HTMLElement_get_tabIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 260)
@@ -3747,11 +3747,11 @@ wjg_HTMLElement_blur :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: 
 }
 
 wjg_HTMLAnchorElement_get_download :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 261, "download", 0, 0, 0, 0, 0) }
-wjg_HTMLAnchorElement_set_download :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "download", 0, v, 0, 0, 0) }
+wjg_HTMLAnchorElement_set_download :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "download", 0, v, 0, 0, 0, 0) }
 wjg_HTMLAnchorElement_get_ping :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 261, "ping", 0, 0, 0, 0, 0) }
-wjg_HTMLAnchorElement_set_ping :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "ping", 0, v, 0, 0, 0) }
+wjg_HTMLAnchorElement_set_ping :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "ping", 0, v, 0, 0, 0, 0) }
 wjg_HTMLAnchorElement_get_rel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 261, "rel", 0, 0, 0, 0, 0) }
-wjg_HTMLAnchorElement_set_rel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "rel", 0, v, 0, 0, 0) }
+wjg_HTMLAnchorElement_set_rel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "rel", 0, v, 0, 0, 0, 0) }
 wjg_HTMLAnchorElement_set_relList :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj.wj_put_forwards(ctx, this_val, "relList", "value", v) }
 // HTMLAnchorElement.text -> dom.HTMLAnchorElement_text
 wjg_HTMLAnchorElement_get_text :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
@@ -3778,15 +3778,15 @@ wjg_HTMLAnchorElement_set_text :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 }
 
 wjg_HTMLAnchorElement_get_coords :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 261, "coords", 0, 0, 0, 0, 0) }
-wjg_HTMLAnchorElement_set_coords :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "coords", 0, v, 0, 0, 0) }
+wjg_HTMLAnchorElement_set_coords :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "coords", 0, v, 0, 0, 0, 0) }
 wjg_HTMLAnchorElement_get_charset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 261, "charset", 0, 0, 0, 0, 0) }
-wjg_HTMLAnchorElement_set_charset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "charset", 0, v, 0, 0, 0) }
+wjg_HTMLAnchorElement_set_charset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "charset", 0, v, 0, 0, 0, 0) }
 wjg_HTMLAnchorElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 261, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLAnchorElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "name", 0, v, 0, 0, 0) }
+wjg_HTMLAnchorElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "name", 0, v, 0, 0, 0, 0) }
 wjg_HTMLAnchorElement_get_rev :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 261, "rev", 0, 0, 0, 0, 0) }
-wjg_HTMLAnchorElement_set_rev :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "rev", 0, v, 0, 0, 0) }
+wjg_HTMLAnchorElement_set_rev :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "rev", 0, v, 0, 0, 0, 0) }
 wjg_HTMLAnchorElement_get_shape :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 261, "shape", 0, 0, 0, 0, 0) }
-wjg_HTMLAnchorElement_set_shape :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "shape", 0, v, 0, 0, 0) }
+wjg_HTMLAnchorElement_set_shape :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "shape", 0, v, 0, 0, 0, 0) }
 // HTMLAnchorElement.origin -> dom.HyperlinkElementUtils_origin
 wjg_HTMLAnchorElement_get_origin :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 261)
@@ -4016,10 +4016,10 @@ wjg_HTMLAnchorElement_set_hash :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 }
 
 wjg_HTMLAnchorElement_get_hreflang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 261, "hreflang", 0, 0, 0, 0, 0) }
-wjg_HTMLAnchorElement_set_hreflang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "hreflang", 0, v, 0, 0, 0) }
+wjg_HTMLAnchorElement_set_hreflang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "hreflang", 0, v, 0, 0, 0, 0) }
 wjg_HTMLAnchorElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 261, "type", 0, 0, 0, 0, 0) }
-wjg_HTMLAnchorElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "type", 0, v, 0, 0, 0) }
-wjg_HTMLAnchorElement_set_href :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "href", 0, v, 0, 0, 0) }
+wjg_HTMLAnchorElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "type", 0, v, 0, 0, 0, 0) }
+wjg_HTMLAnchorElement_set_href :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "href", 0, v, 0, 0, 0, 0) }
 // HTMLAnchorElement.href -> dom.HTMLHyperlinkElementUtils_href
 wjg_HTMLAnchorElement_get_href :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 261)
@@ -4033,22 +4033,22 @@ wjg_HTMLAnchorElement_get_href :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 }
 
 wjg_HTMLAnchorElement_get_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 261, "target", 0, 0, 0, 0, 0) }
-wjg_HTMLAnchorElement_set_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "target", 0, v, 0, 0, 0) }
+wjg_HTMLAnchorElement_set_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 261, "target", 0, v, 0, 0, 0, 0) }
 wjg_HTMLAreaElement_get_alt :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 262, "alt", 0, 0, 0, 0, 0) }
-wjg_HTMLAreaElement_set_alt :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "alt", 0, v, 0, 0, 0) }
+wjg_HTMLAreaElement_set_alt :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "alt", 0, v, 0, 0, 0, 0) }
 wjg_HTMLAreaElement_get_coords :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 262, "coords", 0, 0, 0, 0, 0) }
-wjg_HTMLAreaElement_set_coords :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "coords", 0, v, 0, 0, 0) }
+wjg_HTMLAreaElement_set_coords :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "coords", 0, v, 0, 0, 0, 0) }
 wjg_HTMLAreaElement_get_shape :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 262, "shape", 0, 0, 0, 0, 0) }
-wjg_HTMLAreaElement_set_shape :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "shape", 0, v, 0, 0, 0) }
+wjg_HTMLAreaElement_set_shape :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "shape", 0, v, 0, 0, 0, 0) }
 wjg_HTMLAreaElement_get_download :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 262, "download", 0, 0, 0, 0, 0) }
-wjg_HTMLAreaElement_set_download :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "download", 0, v, 0, 0, 0) }
+wjg_HTMLAreaElement_set_download :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "download", 0, v, 0, 0, 0, 0) }
 wjg_HTMLAreaElement_get_ping :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 262, "ping", 0, 0, 0, 0, 0) }
-wjg_HTMLAreaElement_set_ping :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "ping", 0, v, 0, 0, 0) }
+wjg_HTMLAreaElement_set_ping :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "ping", 0, v, 0, 0, 0, 0) }
 wjg_HTMLAreaElement_get_rel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 262, "rel", 0, 0, 0, 0, 0) }
-wjg_HTMLAreaElement_set_rel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "rel", 0, v, 0, 0, 0) }
+wjg_HTMLAreaElement_set_rel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "rel", 0, v, 0, 0, 0, 0) }
 wjg_HTMLAreaElement_set_relList :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj.wj_put_forwards(ctx, this_val, "relList", "value", v) }
 wjg_HTMLAreaElement_get_noHref :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 262, "nohref", 3, 0, 0, 0, 0) }
-wjg_HTMLAreaElement_set_noHref :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "nohref", 3, v, 0, 0, 0) }
+wjg_HTMLAreaElement_set_noHref :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "nohref", 3, v, 0, 0, 0, 0) }
 // HTMLAreaElement.origin -> dom.HyperlinkElementUtils_origin
 wjg_HTMLAreaElement_get_origin :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 262)
@@ -4278,10 +4278,10 @@ wjg_HTMLAreaElement_set_hash :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 }
 
 wjg_HTMLAreaElement_get_hreflang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 262, "hreflang", 0, 0, 0, 0, 0) }
-wjg_HTMLAreaElement_set_hreflang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "hreflang", 0, v, 0, 0, 0) }
+wjg_HTMLAreaElement_set_hreflang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "hreflang", 0, v, 0, 0, 0, 0) }
 wjg_HTMLAreaElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 262, "type", 0, 0, 0, 0, 0) }
-wjg_HTMLAreaElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "type", 0, v, 0, 0, 0) }
-wjg_HTMLAreaElement_set_href :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "href", 0, v, 0, 0, 0) }
+wjg_HTMLAreaElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "type", 0, v, 0, 0, 0, 0) }
+wjg_HTMLAreaElement_set_href :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "href", 0, v, 0, 0, 0, 0) }
 // HTMLAreaElement.href -> dom.HTMLHyperlinkElementUtils_href
 wjg_HTMLAreaElement_get_href :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 262)
@@ -4295,30 +4295,30 @@ wjg_HTMLAreaElement_get_href :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 }
 
 wjg_HTMLAreaElement_get_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 262, "target", 0, 0, 0, 0, 0) }
-wjg_HTMLAreaElement_set_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "target", 0, v, 0, 0, 0) }
+wjg_HTMLAreaElement_set_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 262, "target", 0, v, 0, 0, 0, 0) }
 wjg_HTMLBRElement_get_clear :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 263, "clear", 0, 0, 0, 0, 0) }
-wjg_HTMLBRElement_set_clear :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 263, "clear", 0, v, 0, 0, 0) }
+wjg_HTMLBRElement_set_clear :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 263, "clear", 0, v, 0, 0, 0, 0) }
 wjg_HTMLBaseElement_get_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 264, "target", 0, 0, 0, 0, 0) }
-wjg_HTMLBaseElement_set_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 264, "target", 0, v, 0, 0, 0) }
-wjg_HTMLBodyElement_get_text :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 265, "text", 0, 0, 0, 0, 0) }
-wjg_HTMLBodyElement_set_text :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 265, "text", 0, v, 0, 0, 0) }
-wjg_HTMLBodyElement_get_link :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 265, "link", 0, 0, 0, 0, 0) }
-wjg_HTMLBodyElement_set_link :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 265, "link", 0, v, 0, 0, 0) }
-wjg_HTMLBodyElement_get_vLink :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 265, "vlink", 0, 0, 0, 0, 0) }
-wjg_HTMLBodyElement_set_vLink :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 265, "vlink", 0, v, 0, 0, 0) }
-wjg_HTMLBodyElement_get_aLink :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 265, "alink", 0, 0, 0, 0, 0) }
-wjg_HTMLBodyElement_set_aLink :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 265, "alink", 0, v, 0, 0, 0) }
-wjg_HTMLBodyElement_get_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 265, "bgcolor", 0, 0, 0, 0, 0) }
-wjg_HTMLBodyElement_set_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 265, "bgcolor", 0, v, 0, 0, 0) }
+wjg_HTMLBaseElement_set_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 264, "target", 0, v, 0, 0, 0, 0) }
+wjg_HTMLBodyElement_get_text :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 265, "text", 7, 0, 0, 0, 0) }
+wjg_HTMLBodyElement_set_text :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 265, "text", 7, v, 0, 0, 0, 0) }
+wjg_HTMLBodyElement_get_link :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 265, "link", 7, 0, 0, 0, 0) }
+wjg_HTMLBodyElement_set_link :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 265, "link", 7, v, 0, 0, 0, 0) }
+wjg_HTMLBodyElement_get_vLink :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 265, "vlink", 7, 0, 0, 0, 0) }
+wjg_HTMLBodyElement_set_vLink :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 265, "vlink", 7, v, 0, 0, 0, 0) }
+wjg_HTMLBodyElement_get_aLink :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 265, "alink", 7, 0, 0, 0, 0) }
+wjg_HTMLBodyElement_set_aLink :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 265, "alink", 7, v, 0, 0, 0, 0) }
+wjg_HTMLBodyElement_get_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 265, "bgcolor", 7, 0, 0, 0, 0) }
+wjg_HTMLBodyElement_set_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 265, "bgcolor", 7, v, 0, 0, 0, 0) }
 wjg_HTMLBodyElement_get_background :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 265, "background", 0, 0, 0, 0, 0) }
-wjg_HTMLBodyElement_set_background :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 265, "background", 0, v, 0, 0, 0) }
+wjg_HTMLBodyElement_set_background :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 265, "background", 0, v, 0, 0, 0, 0) }
 wjg_HTMLBodyElement_get_ongamepadconnected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 265, "gamepadconnected") }
 wjg_HTMLBodyElement_set_ongamepadconnected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 265, "gamepadconnected", v, 0) }
 wjg_HTMLBodyElement_get_ongamepaddisconnected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 265, "gamepaddisconnected") }
 wjg_HTMLBodyElement_set_ongamepaddisconnected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 265, "gamepaddisconnected", v, 0) }
-wjg_HTMLButtonElement_set_command :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 266, "command", 0, v, 0, 0, 0) }
+wjg_HTMLButtonElement_set_command :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 266, "command", 0, v, 0, 0, 0, 0) }
 wjg_HTMLButtonElement_get_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 266, "disabled", 3, 0, 0, 0, 0) }
-wjg_HTMLButtonElement_set_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 266, "disabled", 3, v, 0, 0, 0) }
+wjg_HTMLButtonElement_set_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 266, "disabled", 3, v, 0, 0, 0, 0) }
 // HTMLButtonElement.form -> forms.HTMLButtonElement_form
 wjg_HTMLButtonElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 266)
@@ -4328,12 +4328,12 @@ wjg_HTMLButtonElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 }
 
 wjg_HTMLButtonElement_get_formNoValidate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 266, "formnovalidate", 3, 0, 0, 0, 0) }
-wjg_HTMLButtonElement_set_formNoValidate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 266, "formnovalidate", 3, v, 0, 0, 0) }
+wjg_HTMLButtonElement_set_formNoValidate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 266, "formnovalidate", 3, v, 0, 0, 0, 0) }
 wjg_HTMLButtonElement_get_formTarget :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 266, "formtarget", 0, 0, 0, 0, 0) }
-wjg_HTMLButtonElement_set_formTarget :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 266, "formtarget", 0, v, 0, 0, 0) }
+wjg_HTMLButtonElement_set_formTarget :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 266, "formtarget", 0, v, 0, 0, 0, 0) }
 wjg_HTMLButtonElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 266, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLButtonElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 266, "name", 0, v, 0, 0, 0) }
-wjg_HTMLButtonElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 266, "type", 0, v, 0, 0, 0) }
+wjg_HTMLButtonElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 266, "name", 0, v, 0, 0, 0, 0) }
+wjg_HTMLButtonElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 266, "type", 0, v, 0, 0, 0, 0) }
 // HTMLButtonElement.type -> forms.HTMLButtonElement_type
 wjg_HTMLButtonElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 266)
@@ -4347,7 +4347,7 @@ wjg_HTMLButtonElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 }
 
 wjg_HTMLButtonElement_get_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 266, "value", 0, 0, 0, 0, 0) }
-wjg_HTMLButtonElement_set_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 266, "value", 0, v, 0, 0, 0) }
+wjg_HTMLButtonElement_set_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 266, "value", 0, v, 0, 0, 0, 0) }
 // HTMLButtonElement.willValidate -> forms.HTMLButtonElement_willValidate
 wjg_HTMLButtonElement_get_willValidate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 266)
@@ -4433,15 +4433,15 @@ wjg_HTMLCanvasElement_set_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 }
 
 wjg_HTMLDListElement_get_compact :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 268, "compact", 3, 0, 0, 0, 0) }
-wjg_HTMLDListElement_set_compact :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 268, "compact", 3, v, 0, 0, 0) }
+wjg_HTMLDListElement_set_compact :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 268, "compact", 3, v, 0, 0, 0, 0) }
 wjg_HTMLDataElement_get_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 269, "value", 0, 0, 0, 0, 0) }
-wjg_HTMLDataElement_set_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 269, "value", 0, v, 0, 0, 0) }
+wjg_HTMLDataElement_set_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 269, "value", 0, v, 0, 0, 0, 0) }
 wjg_HTMLDetailsElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 271, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLDetailsElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 271, "name", 0, v, 0, 0, 0) }
+wjg_HTMLDetailsElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 271, "name", 0, v, 0, 0, 0, 0) }
 wjg_HTMLDetailsElement_get_open :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 271, "open", 3, 0, 0, 0, 0) }
-wjg_HTMLDetailsElement_set_open :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 271, "open", 3, v, 0, 0, 0) }
+wjg_HTMLDetailsElement_set_open :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 271, "open", 3, v, 0, 0, 0, 0) }
 wjg_HTMLDialogElement_get_open :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 272, "open", 3, 0, 0, 0, 0) }
-wjg_HTMLDialogElement_set_open :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 272, "open", 3, v, 0, 0, 0) }
+wjg_HTMLDialogElement_set_open :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 272, "open", 3, v, 0, 0, 0, 0) }
 // HTMLDialogElement.returnValue -> forms.HTMLDialogElement_returnValue
 wjg_HTMLDialogElement_get_returnValue :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 272)
@@ -4465,7 +4465,7 @@ wjg_HTMLDialogElement_set_returnValue :: proc "c" (ctx: ^wj.Context, this_val: w
 	return wj.UNDEFINED
 }
 
-wjg_HTMLDialogElement_set_closedBy :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 272, "closedby", 0, v, 0, 0, 0) }
+wjg_HTMLDialogElement_set_closedBy :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 272, "closedby", 0, v, 0, 0, 0, 0) }
 // HTMLDialogElement.closedBy -> dom.HTMLDialogElement_closedBy
 wjg_HTMLDialogElement_get_closedBy :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 272)
@@ -4519,23 +4519,23 @@ wjg_HTMLDialogElement_requestClose :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 }
 
 wjg_HTMLDirectoryElement_get_compact :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 273, "compact", 3, 0, 0, 0, 0) }
-wjg_HTMLDirectoryElement_set_compact :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 273, "compact", 3, v, 0, 0, 0) }
+wjg_HTMLDirectoryElement_set_compact :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 273, "compact", 3, v, 0, 0, 0, 0) }
 wjg_HTMLDivElement_get_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 274, "align", 0, 0, 0, 0, 0) }
-wjg_HTMLDivElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 274, "align", 0, v, 0, 0, 0) }
+wjg_HTMLDivElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 274, "align", 0, v, 0, 0, 0, 0) }
 wjg_HTMLEmbedElement_get_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 275, "src", 2, 0, 0, 0, 0) }
-wjg_HTMLEmbedElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 275, "src", 2, v, 0, 0, 0) }
+wjg_HTMLEmbedElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 275, "src", 2, v, 0, 0, 0, 0) }
 wjg_HTMLEmbedElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 275, "type", 0, 0, 0, 0, 0) }
-wjg_HTMLEmbedElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 275, "type", 0, v, 0, 0, 0) }
+wjg_HTMLEmbedElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 275, "type", 0, v, 0, 0, 0, 0) }
 wjg_HTMLEmbedElement_get_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 275, "width", 0, 0, 0, 0, 0) }
-wjg_HTMLEmbedElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 275, "width", 0, v, 0, 0, 0) }
+wjg_HTMLEmbedElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 275, "width", 0, v, 0, 0, 0, 0) }
 wjg_HTMLEmbedElement_get_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 275, "height", 0, 0, 0, 0, 0) }
-wjg_HTMLEmbedElement_set_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 275, "height", 0, v, 0, 0, 0) }
+wjg_HTMLEmbedElement_set_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 275, "height", 0, v, 0, 0, 0, 0) }
 wjg_HTMLEmbedElement_get_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 275, "align", 0, 0, 0, 0, 0) }
-wjg_HTMLEmbedElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 275, "align", 0, v, 0, 0, 0) }
+wjg_HTMLEmbedElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 275, "align", 0, v, 0, 0, 0, 0) }
 wjg_HTMLEmbedElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 275, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLEmbedElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 275, "name", 0, v, 0, 0, 0) }
+wjg_HTMLEmbedElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 275, "name", 0, v, 0, 0, 0, 0) }
 wjg_HTMLFieldSetElement_get_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 276, "disabled", 3, 0, 0, 0, 0) }
-wjg_HTMLFieldSetElement_set_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 276, "disabled", 3, v, 0, 0, 0) }
+wjg_HTMLFieldSetElement_set_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 276, "disabled", 3, v, 0, 0, 0, 0) }
 // HTMLFieldSetElement.form -> forms.HTMLFieldSetElement_form
 wjg_HTMLFieldSetElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 276)
@@ -4545,7 +4545,7 @@ wjg_HTMLFieldSetElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 }
 
 wjg_HTMLFieldSetElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 276, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLFieldSetElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 276, "name", 0, v, 0, 0, 0) }
+wjg_HTMLFieldSetElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 276, "name", 0, v, 0, 0, 0, 0) }
 // HTMLFieldSetElement.type -> forms.HTMLFieldSetElement_type
 wjg_HTMLFieldSetElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 276)
@@ -4606,22 +4606,22 @@ wjg_HTMLFieldSetElement_setCustomValidity :: proc "c" (ctx: ^wj.Context, this_va
 	return wj.UNDEFINED
 }
 
-wjg_HTMLFontElement_get_color :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 277, "color", 0, 0, 0, 0, 0) }
-wjg_HTMLFontElement_set_color :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 277, "color", 0, v, 0, 0, 0) }
+wjg_HTMLFontElement_get_color :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 277, "color", 7, 0, 0, 0, 0) }
+wjg_HTMLFontElement_set_color :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 277, "color", 7, v, 0, 0, 0, 0) }
 wjg_HTMLFontElement_get_face :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 277, "face", 0, 0, 0, 0, 0) }
-wjg_HTMLFontElement_set_face :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 277, "face", 0, v, 0, 0, 0) }
+wjg_HTMLFontElement_set_face :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 277, "face", 0, v, 0, 0, 0, 0) }
 wjg_HTMLFontElement_get_size :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 277, "size", 0, 0, 0, 0, 0) }
-wjg_HTMLFontElement_set_size :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 277, "size", 0, v, 0, 0, 0) }
+wjg_HTMLFontElement_set_size :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 277, "size", 0, v, 0, 0, 0, 0) }
 wjg_HTMLFormElement_get_acceptCharset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 278, "accept-charset", 0, 0, 0, 0, 0) }
-wjg_HTMLFormElement_set_acceptCharset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 278, "accept-charset", 0, v, 0, 0, 0) }
+wjg_HTMLFormElement_set_acceptCharset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 278, "accept-charset", 0, v, 0, 0, 0, 0) }
 wjg_HTMLFormElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 278, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLFormElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 278, "name", 0, v, 0, 0, 0) }
+wjg_HTMLFormElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 278, "name", 0, v, 0, 0, 0, 0) }
 wjg_HTMLFormElement_get_noValidate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 278, "novalidate", 3, 0, 0, 0, 0) }
-wjg_HTMLFormElement_set_noValidate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 278, "novalidate", 3, v, 0, 0, 0) }
+wjg_HTMLFormElement_set_noValidate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 278, "novalidate", 3, v, 0, 0, 0, 0) }
 wjg_HTMLFormElement_get_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 278, "target", 0, 0, 0, 0, 0) }
-wjg_HTMLFormElement_set_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 278, "target", 0, v, 0, 0, 0) }
+wjg_HTMLFormElement_set_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 278, "target", 0, v, 0, 0, 0, 0) }
 wjg_HTMLFormElement_get_rel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 278, "rel", 0, 0, 0, 0, 0) }
-wjg_HTMLFormElement_set_rel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 278, "rel", 0, v, 0, 0, 0) }
+wjg_HTMLFormElement_set_rel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 278, "rel", 0, v, 0, 0, 0, 0) }
 wjg_HTMLFormElement_set_relList :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj.wj_put_forwards(ctx, this_val, "relList", "value", v) }
 // HTMLFormElement.length -> forms.HTMLFormElement_length
 wjg_HTMLFormElement_get_length :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
@@ -4677,45 +4677,45 @@ wjg_HTMLFormElement_reportValidity :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 }
 
 wjg_HTMLFrameElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 279, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLFrameElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 279, "name", 0, v, 0, 0, 0) }
+wjg_HTMLFrameElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 279, "name", 0, v, 0, 0, 0, 0) }
 wjg_HTMLFrameElement_get_scrolling :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 279, "scrolling", 0, 0, 0, 0, 0) }
-wjg_HTMLFrameElement_set_scrolling :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 279, "scrolling", 0, v, 0, 0, 0) }
+wjg_HTMLFrameElement_set_scrolling :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 279, "scrolling", 0, v, 0, 0, 0, 0) }
 wjg_HTMLFrameElement_get_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 279, "src", 2, 0, 0, 0, 0) }
-wjg_HTMLFrameElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 279, "src", 2, v, 0, 0, 0) }
+wjg_HTMLFrameElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 279, "src", 2, v, 0, 0, 0, 0) }
 wjg_HTMLFrameElement_get_frameBorder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 279, "frameborder", 0, 0, 0, 0, 0) }
-wjg_HTMLFrameElement_set_frameBorder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 279, "frameborder", 0, v, 0, 0, 0) }
+wjg_HTMLFrameElement_set_frameBorder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 279, "frameborder", 0, v, 0, 0, 0, 0) }
 wjg_HTMLFrameElement_get_longDesc :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 279, "longdesc", 2, 0, 0, 0, 0) }
-wjg_HTMLFrameElement_set_longDesc :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 279, "longdesc", 2, v, 0, 0, 0) }
+wjg_HTMLFrameElement_set_longDesc :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 279, "longdesc", 2, v, 0, 0, 0, 0) }
 wjg_HTMLFrameElement_get_noResize :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 279, "noresize", 3, 0, 0, 0, 0) }
-wjg_HTMLFrameElement_set_noResize :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 279, "noresize", 3, v, 0, 0, 0) }
-wjg_HTMLFrameElement_get_marginHeight :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 279, "marginheight", 0, 0, 0, 0, 0) }
-wjg_HTMLFrameElement_set_marginHeight :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 279, "marginheight", 0, v, 0, 0, 0) }
-wjg_HTMLFrameElement_get_marginWidth :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 279, "marginwidth", 0, 0, 0, 0, 0) }
-wjg_HTMLFrameElement_set_marginWidth :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 279, "marginwidth", 0, v, 0, 0, 0) }
+wjg_HTMLFrameElement_set_noResize :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 279, "noresize", 3, v, 0, 0, 0, 0) }
+wjg_HTMLFrameElement_get_marginHeight :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 279, "marginheight", 7, 0, 0, 0, 0) }
+wjg_HTMLFrameElement_set_marginHeight :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 279, "marginheight", 7, v, 0, 0, 0, 0) }
+wjg_HTMLFrameElement_get_marginWidth :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 279, "marginwidth", 7, 0, 0, 0, 0) }
+wjg_HTMLFrameElement_set_marginWidth :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 279, "marginwidth", 7, v, 0, 0, 0, 0) }
 wjg_HTMLFrameSetElement_get_cols :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 280, "cols", 0, 0, 0, 0, 0) }
-wjg_HTMLFrameSetElement_set_cols :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 280, "cols", 0, v, 0, 0, 0) }
+wjg_HTMLFrameSetElement_set_cols :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 280, "cols", 0, v, 0, 0, 0, 0) }
 wjg_HTMLFrameSetElement_get_rows :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 280, "rows", 0, 0, 0, 0, 0) }
-wjg_HTMLFrameSetElement_set_rows :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 280, "rows", 0, v, 0, 0, 0) }
+wjg_HTMLFrameSetElement_set_rows :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 280, "rows", 0, v, 0, 0, 0, 0) }
 wjg_HTMLFrameSetElement_get_ongamepadconnected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 280, "gamepadconnected") }
 wjg_HTMLFrameSetElement_set_ongamepadconnected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 280, "gamepadconnected", v, 0) }
 wjg_HTMLFrameSetElement_get_ongamepaddisconnected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 280, "gamepaddisconnected") }
 wjg_HTMLFrameSetElement_set_ongamepaddisconnected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 280, "gamepaddisconnected", v, 0) }
 wjg_HTMLHRElement_get_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 281, "align", 0, 0, 0, 0, 0) }
-wjg_HTMLHRElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 281, "align", 0, v, 0, 0, 0) }
+wjg_HTMLHRElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 281, "align", 0, v, 0, 0, 0, 0) }
 wjg_HTMLHRElement_get_color :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 281, "color", 0, 0, 0, 0, 0) }
-wjg_HTMLHRElement_set_color :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 281, "color", 0, v, 0, 0, 0) }
+wjg_HTMLHRElement_set_color :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 281, "color", 0, v, 0, 0, 0, 0) }
 wjg_HTMLHRElement_get_noShade :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 281, "noshade", 3, 0, 0, 0, 0) }
-wjg_HTMLHRElement_set_noShade :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 281, "noshade", 3, v, 0, 0, 0) }
+wjg_HTMLHRElement_set_noShade :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 281, "noshade", 3, v, 0, 0, 0, 0) }
 wjg_HTMLHRElement_get_size :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 281, "size", 0, 0, 0, 0, 0) }
-wjg_HTMLHRElement_set_size :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 281, "size", 0, v, 0, 0, 0) }
+wjg_HTMLHRElement_set_size :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 281, "size", 0, v, 0, 0, 0, 0) }
 wjg_HTMLHRElement_get_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 281, "width", 0, 0, 0, 0, 0) }
-wjg_HTMLHRElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 281, "width", 0, v, 0, 0, 0) }
+wjg_HTMLHRElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 281, "width", 0, v, 0, 0, 0, 0) }
 wjg_HTMLHeadingElement_get_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 283, "align", 0, 0, 0, 0, 0) }
-wjg_HTMLHeadingElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 283, "align", 0, v, 0, 0, 0) }
+wjg_HTMLHeadingElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 283, "align", 0, v, 0, 0, 0, 0) }
 wjg_HTMLHtmlElement_get_version :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 284, "version", 0, 0, 0, 0, 0) }
-wjg_HTMLHtmlElement_set_version :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 284, "version", 0, v, 0, 0, 0) }
+wjg_HTMLHtmlElement_set_version :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 284, "version", 0, v, 0, 0, 0, 0) }
 wjg_HTMLIFrameElement_get_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 285, "src", 2, 0, 0, 0, 0) }
-wjg_HTMLIFrameElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "src", 2, v, 0, 0, 0) }
+wjg_HTMLIFrameElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "src", 2, v, 0, 0, 0, 0) }
 // HTMLIFrameElement.srcdoc -> dom.HTMLIFrameElement_srcdoc
 wjg_HTMLIFrameElement_get_srcdoc :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 285)
@@ -4741,42 +4741,42 @@ wjg_HTMLIFrameElement_set_srcdoc :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 }
 
 wjg_HTMLIFrameElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 285, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLIFrameElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "name", 0, v, 0, 0, 0) }
+wjg_HTMLIFrameElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "name", 0, v, 0, 0, 0, 0) }
 wjg_HTMLIFrameElement_set_sandbox :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj.wj_put_forwards(ctx, this_val, "sandbox", "value", v) }
 wjg_HTMLIFrameElement_get_allow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 285, "allow", 0, 0, 0, 0, 0) }
-wjg_HTMLIFrameElement_set_allow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "allow", 0, v, 0, 0, 0) }
+wjg_HTMLIFrameElement_set_allow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "allow", 0, v, 0, 0, 0, 0) }
 wjg_HTMLIFrameElement_get_allowFullscreen :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 285, "allowfullscreen", 3, 0, 0, 0, 0) }
-wjg_HTMLIFrameElement_set_allowFullscreen :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "allowfullscreen", 3, v, 0, 0, 0) }
+wjg_HTMLIFrameElement_set_allowFullscreen :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "allowfullscreen", 3, v, 0, 0, 0, 0) }
 wjg_HTMLIFrameElement_get_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 285, "width", 0, 0, 0, 0, 0) }
-wjg_HTMLIFrameElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "width", 0, v, 0, 0, 0) }
+wjg_HTMLIFrameElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "width", 0, v, 0, 0, 0, 0) }
 wjg_HTMLIFrameElement_get_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 285, "height", 0, 0, 0, 0, 0) }
-wjg_HTMLIFrameElement_set_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "height", 0, v, 0, 0, 0) }
+wjg_HTMLIFrameElement_set_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "height", 0, v, 0, 0, 0, 0) }
 wjg_HTMLIFrameElement_get_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 285, "align", 0, 0, 0, 0, 0) }
-wjg_HTMLIFrameElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "align", 0, v, 0, 0, 0) }
+wjg_HTMLIFrameElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "align", 0, v, 0, 0, 0, 0) }
 wjg_HTMLIFrameElement_get_scrolling :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 285, "scrolling", 0, 0, 0, 0, 0) }
-wjg_HTMLIFrameElement_set_scrolling :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "scrolling", 0, v, 0, 0, 0) }
+wjg_HTMLIFrameElement_set_scrolling :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "scrolling", 0, v, 0, 0, 0, 0) }
 wjg_HTMLIFrameElement_get_frameBorder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 285, "frameborder", 0, 0, 0, 0, 0) }
-wjg_HTMLIFrameElement_set_frameBorder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "frameborder", 0, v, 0, 0, 0) }
+wjg_HTMLIFrameElement_set_frameBorder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "frameborder", 0, v, 0, 0, 0, 0) }
 wjg_HTMLIFrameElement_get_longDesc :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 285, "longdesc", 2, 0, 0, 0, 0) }
-wjg_HTMLIFrameElement_set_longDesc :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "longdesc", 2, v, 0, 0, 0) }
-wjg_HTMLIFrameElement_get_marginHeight :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 285, "marginheight", 0, 0, 0, 0, 0) }
-wjg_HTMLIFrameElement_set_marginHeight :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "marginheight", 0, v, 0, 0, 0) }
-wjg_HTMLIFrameElement_get_marginWidth :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 285, "marginwidth", 0, 0, 0, 0, 0) }
-wjg_HTMLIFrameElement_set_marginWidth :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "marginwidth", 0, v, 0, 0, 0) }
+wjg_HTMLIFrameElement_set_longDesc :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "longdesc", 2, v, 0, 0, 0, 0) }
+wjg_HTMLIFrameElement_get_marginHeight :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 285, "marginheight", 7, 0, 0, 0, 0) }
+wjg_HTMLIFrameElement_set_marginHeight :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "marginheight", 7, v, 0, 0, 0, 0) }
+wjg_HTMLIFrameElement_get_marginWidth :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 285, "marginwidth", 7, 0, 0, 0, 0) }
+wjg_HTMLIFrameElement_set_marginWidth :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 285, "marginwidth", 7, v, 0, 0, 0, 0) }
 wjg_HTMLImageElement_get_alt :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 286, "alt", 0, 0, 0, 0, 0) }
-wjg_HTMLImageElement_set_alt :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "alt", 0, v, 0, 0, 0) }
+wjg_HTMLImageElement_set_alt :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "alt", 0, v, 0, 0, 0, 0) }
 wjg_HTMLImageElement_get_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 286, "src", 2, 0, 0, 0, 0) }
-wjg_HTMLImageElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "src", 2, v, 0, 0, 0) }
+wjg_HTMLImageElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "src", 2, v, 0, 0, 0, 0) }
 wjg_HTMLImageElement_get_srcset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 286, "srcset", 0, 0, 0, 0, 0) }
-wjg_HTMLImageElement_set_srcset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "srcset", 0, v, 0, 0, 0) }
+wjg_HTMLImageElement_set_srcset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "srcset", 0, v, 0, 0, 0, 0) }
 wjg_HTMLImageElement_get_sizes :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 286, "sizes", 0, 0, 0, 0, 0) }
-wjg_HTMLImageElement_set_sizes :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "sizes", 0, v, 0, 0, 0) }
+wjg_HTMLImageElement_set_sizes :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "sizes", 0, v, 0, 0, 0, 0) }
 wjg_HTMLImageElement_get_useMap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 286, "usemap", 0, 0, 0, 0, 0) }
-wjg_HTMLImageElement_set_useMap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "usemap", 0, v, 0, 0, 0) }
+wjg_HTMLImageElement_set_useMap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "usemap", 0, v, 0, 0, 0, 0) }
 wjg_HTMLImageElement_get_isMap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 286, "ismap", 3, 0, 0, 0, 0) }
-wjg_HTMLImageElement_set_isMap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "ismap", 3, v, 0, 0, 0) }
+wjg_HTMLImageElement_set_isMap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "ismap", 3, v, 0, 0, 0, 0) }
 wjg_HTMLImageElement_get_controls :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 286, "controls", 3, 0, 0, 0, 0) }
-wjg_HTMLImageElement_set_controls :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "controls", 3, v, 0, 0, 0) }
+wjg_HTMLImageElement_set_controls :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "controls", 3, v, 0, 0, 0, 0) }
 // HTMLImageElement.naturalWidth -> images.HTMLImageElement_naturalWidth
 wjg_HTMLImageElement_get_naturalWidth :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 286)
@@ -4827,27 +4827,27 @@ wjg_HTMLImageElement_decode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue,
 }
 
 wjg_HTMLImageElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 286, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLImageElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "name", 0, v, 0, 0, 0) }
+wjg_HTMLImageElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "name", 0, v, 0, 0, 0, 0) }
 wjg_HTMLImageElement_get_lowsrc :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 286, "lowsrc", 2, 0, 0, 0, 0) }
-wjg_HTMLImageElement_set_lowsrc :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "lowsrc", 2, v, 0, 0, 0) }
+wjg_HTMLImageElement_set_lowsrc :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "lowsrc", 2, v, 0, 0, 0, 0) }
 wjg_HTMLImageElement_get_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 286, "align", 0, 0, 0, 0, 0) }
-wjg_HTMLImageElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "align", 0, v, 0, 0, 0) }
+wjg_HTMLImageElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "align", 0, v, 0, 0, 0, 0) }
 wjg_HTMLImageElement_get_hspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 286, "hspace", 5, 0, 0, 0, 0) }
-wjg_HTMLImageElement_set_hspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "hspace", 5, v, 0, 0, 0) }
+wjg_HTMLImageElement_set_hspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "hspace", 5, v, 0, 0, 0, 0) }
 wjg_HTMLImageElement_get_vspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 286, "vspace", 5, 0, 0, 0, 0) }
-wjg_HTMLImageElement_set_vspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "vspace", 5, v, 0, 0, 0) }
+wjg_HTMLImageElement_set_vspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "vspace", 5, v, 0, 0, 0, 0) }
 wjg_HTMLImageElement_get_longDesc :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 286, "longdesc", 2, 0, 0, 0, 0) }
-wjg_HTMLImageElement_set_longDesc :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "longdesc", 2, v, 0, 0, 0) }
-wjg_HTMLImageElement_get_border :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 286, "border", 0, 0, 0, 0, 0) }
-wjg_HTMLImageElement_set_border :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "border", 0, v, 0, 0, 0) }
+wjg_HTMLImageElement_set_longDesc :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "longdesc", 2, v, 0, 0, 0, 0) }
+wjg_HTMLImageElement_get_border :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 286, "border", 7, 0, 0, 0, 0) }
+wjg_HTMLImageElement_set_border :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 286, "border", 7, v, 0, 0, 0, 0) }
 wjg_HTMLInputElement_get_accept :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "accept", 0, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_accept :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "accept", 0, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_accept :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "accept", 0, v, 0, 0, 0, 0) }
 wjg_HTMLInputElement_get_alpha :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "alpha", 3, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_alpha :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "alpha", 3, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_alpha :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "alpha", 3, v, 0, 0, 0, 0) }
 wjg_HTMLInputElement_get_alt :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "alt", 0, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_alt :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "alt", 0, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_alt :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "alt", 0, v, 0, 0, 0, 0) }
 wjg_HTMLInputElement_get_defaultChecked :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "checked", 3, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_defaultChecked :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "checked", 3, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_defaultChecked :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "checked", 3, v, 0, 0, 0, 0) }
 // HTMLInputElement.checked -> forms.HTMLInputElement_checked
 wjg_HTMLInputElement_get_checked :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 287)
@@ -4868,9 +4868,9 @@ wjg_HTMLInputElement_set_checked :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 }
 
 wjg_HTMLInputElement_get_dirName :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "dirname", 0, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_dirName :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "dirname", 0, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_dirName :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "dirname", 0, v, 0, 0, 0, 0) }
 wjg_HTMLInputElement_get_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "disabled", 3, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "disabled", 3, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "disabled", 3, v, 0, 0, 0, 0) }
 // HTMLInputElement.form -> forms.HTMLInputElement_form
 wjg_HTMLInputElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 287)
@@ -4880,9 +4880,9 @@ wjg_HTMLInputElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 }
 
 wjg_HTMLInputElement_get_formNoValidate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "formnovalidate", 3, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_formNoValidate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "formnovalidate", 3, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_formNoValidate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "formnovalidate", 3, v, 0, 0, 0, 0) }
 wjg_HTMLInputElement_get_formTarget :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "formtarget", 0, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_formTarget :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "formtarget", 0, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_formTarget :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "formtarget", 0, v, 0, 0, 0, 0) }
 // HTMLInputElement.indeterminate -> forms.HTMLInputElement_indeterminate
 wjg_HTMLInputElement_get_indeterminate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 287)
@@ -4910,7 +4910,7 @@ wjg_HTMLInputElement_get_list :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 }
 
 wjg_HTMLInputElement_get_max :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "max", 0, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_max :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "max", 0, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_max :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "max", 0, v, 0, 0, 0, 0) }
 // HTMLInputElement.maxLength -> forms.HTMLInputElement_maxLength
 wjg_HTMLInputElement_get_maxLength :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 287)
@@ -4931,7 +4931,7 @@ wjg_HTMLInputElement_set_maxLength :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 }
 
 wjg_HTMLInputElement_get_min :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "min", 0, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_min :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "min", 0, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_min :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "min", 0, v, 0, 0, 0, 0) }
 // HTMLInputElement.minLength -> forms.HTMLInputElement_minLength
 wjg_HTMLInputElement_get_minLength :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 287)
@@ -4952,23 +4952,21 @@ wjg_HTMLInputElement_set_minLength :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 }
 
 wjg_HTMLInputElement_get_multiple :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "multiple", 3, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_multiple :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "multiple", 3, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_multiple :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "multiple", 3, v, 0, 0, 0, 0) }
 wjg_HTMLInputElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "name", 0, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "name", 0, v, 0, 0, 0, 0) }
 wjg_HTMLInputElement_get_pattern :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "pattern", 0, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_pattern :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "pattern", 0, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_pattern :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "pattern", 0, v, 0, 0, 0, 0) }
 wjg_HTMLInputElement_get_placeholder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "placeholder", 0, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_placeholder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "placeholder", 0, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_placeholder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "placeholder", 0, v, 0, 0, 0, 0) }
 wjg_HTMLInputElement_get_readOnly :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "readonly", 3, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_readOnly :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "readonly", 3, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_readOnly :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "readonly", 3, v, 0, 0, 0, 0) }
 wjg_HTMLInputElement_get_required :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "required", 3, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_required :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "required", 3, v, 0, 0, 0) }
-wjg_HTMLInputElement_get_size :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "size", 5, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_size :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "size", 5, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_required :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "required", 3, v, 0, 0, 0, 0) }
 wjg_HTMLInputElement_get_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "src", 2, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "src", 2, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "src", 2, v, 0, 0, 0, 0) }
 wjg_HTMLInputElement_get_step :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "step", 0, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_step :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "step", 0, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_step :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "step", 0, v, 0, 0, 0, 0) }
 // HTMLInputElement.type -> forms.HTMLInputElement_type
 wjg_HTMLInputElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 287)
@@ -4994,7 +4992,7 @@ wjg_HTMLInputElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 }
 
 wjg_HTMLInputElement_get_defaultValue :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "value", 0, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_defaultValue :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "value", 0, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_defaultValue :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "value", 0, v, 0, 0, 0, 0) }
 // HTMLInputElement.value -> forms.HTMLInputElement_value
 wjg_HTMLInputElement_get_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 287)
@@ -5147,13 +5145,13 @@ wjg_HTMLInputElement_get_selectionDirection :: proc "c" (ctx: ^wj.Context, this_
 }
 
 wjg_HTMLInputElement_get_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "align", 0, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "align", 0, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "align", 0, v, 0, 0, 0, 0) }
 wjg_HTMLInputElement_get_useMap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 287, "usemap", 0, 0, 0, 0, 0) }
-wjg_HTMLInputElement_set_useMap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "usemap", 0, v, 0, 0, 0) }
+wjg_HTMLInputElement_set_useMap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 287, "usemap", 0, v, 0, 0, 0, 0) }
 wjg_HTMLLIElement_get_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 288, "value", 4, 0, 0, 0, 0) }
-wjg_HTMLLIElement_set_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 288, "value", 4, v, 0, 0, 0) }
+wjg_HTMLLIElement_set_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 288, "value", 4, v, 0, 0, 0, 0) }
 wjg_HTMLLIElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 288, "type", 0, 0, 0, 0, 0) }
-wjg_HTMLLIElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 288, "type", 0, v, 0, 0, 0) }
+wjg_HTMLLIElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 288, "type", 0, v, 0, 0, 0, 0) }
 // HTMLLabelElement.form -> forms.HTMLLabelElement_form
 wjg_HTMLLabelElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 289)
@@ -5163,7 +5161,7 @@ wjg_HTMLLabelElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 }
 
 wjg_HTMLLabelElement_get_htmlFor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 289, "for", 0, 0, 0, 0, 0) }
-wjg_HTMLLabelElement_set_htmlFor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 289, "for", 0, v, 0, 0, 0) }
+wjg_HTMLLabelElement_set_htmlFor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 289, "for", 0, v, 0, 0, 0, 0) }
 // HTMLLabelElement.control -> forms.HTMLLabelElement_control
 wjg_HTMLLabelElement_get_control :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 289)
@@ -5181,58 +5179,58 @@ wjg_HTMLLegendElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 }
 
 wjg_HTMLLegendElement_get_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 290, "align", 0, 0, 0, 0, 0) }
-wjg_HTMLLegendElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 290, "align", 0, v, 0, 0, 0) }
+wjg_HTMLLegendElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 290, "align", 0, v, 0, 0, 0, 0) }
 wjg_HTMLLinkElement_get_href :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 291, "href", 2, 0, 0, 0, 0) }
-wjg_HTMLLinkElement_set_href :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "href", 2, v, 0, 0, 0) }
+wjg_HTMLLinkElement_set_href :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "href", 2, v, 0, 0, 0, 0) }
 wjg_HTMLLinkElement_get_rel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 291, "rel", 0, 0, 0, 0, 0) }
-wjg_HTMLLinkElement_set_rel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "rel", 0, v, 0, 0, 0) }
+wjg_HTMLLinkElement_set_rel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "rel", 0, v, 0, 0, 0, 0) }
 wjg_HTMLLinkElement_set_relList :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj.wj_put_forwards(ctx, this_val, "relList", "value", v) }
 wjg_HTMLLinkElement_get_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 291, "media", 0, 0, 0, 0, 0) }
-wjg_HTMLLinkElement_set_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "media", 0, v, 0, 0, 0) }
+wjg_HTMLLinkElement_set_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "media", 0, v, 0, 0, 0, 0) }
 wjg_HTMLLinkElement_get_integrity :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 291, "integrity", 0, 0, 0, 0, 0) }
-wjg_HTMLLinkElement_set_integrity :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "integrity", 0, v, 0, 0, 0) }
+wjg_HTMLLinkElement_set_integrity :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "integrity", 0, v, 0, 0, 0, 0) }
 wjg_HTMLLinkElement_get_hreflang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 291, "hreflang", 0, 0, 0, 0, 0) }
-wjg_HTMLLinkElement_set_hreflang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "hreflang", 0, v, 0, 0, 0) }
+wjg_HTMLLinkElement_set_hreflang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "hreflang", 0, v, 0, 0, 0, 0) }
 wjg_HTMLLinkElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 291, "type", 0, 0, 0, 0, 0) }
-wjg_HTMLLinkElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "type", 0, v, 0, 0, 0) }
+wjg_HTMLLinkElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "type", 0, v, 0, 0, 0, 0) }
 wjg_HTMLLinkElement_set_sizes :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj.wj_put_forwards(ctx, this_val, "sizes", "value", v) }
 wjg_HTMLLinkElement_get_imageSrcset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 291, "imagesrcset", 0, 0, 0, 0, 0) }
-wjg_HTMLLinkElement_set_imageSrcset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "imagesrcset", 0, v, 0, 0, 0) }
+wjg_HTMLLinkElement_set_imageSrcset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "imagesrcset", 0, v, 0, 0, 0, 0) }
 wjg_HTMLLinkElement_get_imageSizes :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 291, "imagesizes", 0, 0, 0, 0, 0) }
-wjg_HTMLLinkElement_set_imageSizes :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "imagesizes", 0, v, 0, 0, 0) }
+wjg_HTMLLinkElement_set_imageSizes :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "imagesizes", 0, v, 0, 0, 0, 0) }
 wjg_HTMLLinkElement_set_blocking :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj.wj_put_forwards(ctx, this_val, "blocking", "value", v) }
 wjg_HTMLLinkElement_get_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 291, "disabled", 3, 0, 0, 0, 0) }
-wjg_HTMLLinkElement_set_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "disabled", 3, v, 0, 0, 0) }
+wjg_HTMLLinkElement_set_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "disabled", 3, v, 0, 0, 0, 0) }
 wjg_HTMLLinkElement_get_charset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 291, "charset", 0, 0, 0, 0, 0) }
-wjg_HTMLLinkElement_set_charset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "charset", 0, v, 0, 0, 0) }
+wjg_HTMLLinkElement_set_charset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "charset", 0, v, 0, 0, 0, 0) }
 wjg_HTMLLinkElement_get_rev :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 291, "rev", 0, 0, 0, 0, 0) }
-wjg_HTMLLinkElement_set_rev :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "rev", 0, v, 0, 0, 0) }
+wjg_HTMLLinkElement_set_rev :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "rev", 0, v, 0, 0, 0, 0) }
 wjg_HTMLLinkElement_get_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 291, "target", 0, 0, 0, 0, 0) }
-wjg_HTMLLinkElement_set_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "target", 0, v, 0, 0, 0) }
+wjg_HTMLLinkElement_set_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 291, "target", 0, v, 0, 0, 0, 0) }
 wjg_HTMLMapElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 292, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLMapElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 292, "name", 0, v, 0, 0, 0) }
+wjg_HTMLMapElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 292, "name", 0, v, 0, 0, 0, 0) }
 wjg_HTMLMarqueeElement_get_behavior :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 293, "behavior", 0, 0, 0, 0, 0) }
-wjg_HTMLMarqueeElement_set_behavior :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "behavior", 0, v, 0, 0, 0) }
+wjg_HTMLMarqueeElement_set_behavior :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "behavior", 0, v, 0, 0, 0, 0) }
 wjg_HTMLMarqueeElement_get_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 293, "bgcolor", 0, 0, 0, 0, 0) }
-wjg_HTMLMarqueeElement_set_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "bgcolor", 0, v, 0, 0, 0) }
+wjg_HTMLMarqueeElement_set_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "bgcolor", 0, v, 0, 0, 0, 0) }
 wjg_HTMLMarqueeElement_get_direction :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 293, "direction", 0, 0, 0, 0, 0) }
-wjg_HTMLMarqueeElement_set_direction :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "direction", 0, v, 0, 0, 0) }
+wjg_HTMLMarqueeElement_set_direction :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "direction", 0, v, 0, 0, 0, 0) }
 wjg_HTMLMarqueeElement_get_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 293, "height", 0, 0, 0, 0, 0) }
-wjg_HTMLMarqueeElement_set_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "height", 0, v, 0, 0, 0) }
+wjg_HTMLMarqueeElement_set_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "height", 0, v, 0, 0, 0, 0) }
 wjg_HTMLMarqueeElement_get_hspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 293, "hspace", 5, 0, 0, 0, 0) }
-wjg_HTMLMarqueeElement_set_hspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "hspace", 5, v, 0, 0, 0) }
+wjg_HTMLMarqueeElement_set_hspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "hspace", 5, v, 0, 0, 0, 0) }
 wjg_HTMLMarqueeElement_get_scrollAmount :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 293, "scrollamount", 5, 6, 0, 0, 0) }
-wjg_HTMLMarqueeElement_set_scrollAmount :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "scrollamount", 5, v, 0, 0, 0) }
+wjg_HTMLMarqueeElement_set_scrollAmount :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "scrollamount", 5, v, 6, 0, 0, 0) }
 wjg_HTMLMarqueeElement_get_scrollDelay :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 293, "scrolldelay", 5, 85, 0, 0, 0) }
-wjg_HTMLMarqueeElement_set_scrollDelay :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "scrolldelay", 5, v, 0, 0, 0) }
+wjg_HTMLMarqueeElement_set_scrollDelay :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "scrolldelay", 5, v, 85, 0, 0, 0) }
 wjg_HTMLMarqueeElement_get_trueSpeed :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 293, "truespeed", 3, 0, 0, 0, 0) }
-wjg_HTMLMarqueeElement_set_trueSpeed :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "truespeed", 3, v, 0, 0, 0) }
+wjg_HTMLMarqueeElement_set_trueSpeed :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "truespeed", 3, v, 0, 0, 0, 0) }
 wjg_HTMLMarqueeElement_get_vspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 293, "vspace", 5, 0, 0, 0, 0) }
-wjg_HTMLMarqueeElement_set_vspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "vspace", 5, v, 0, 0, 0) }
+wjg_HTMLMarqueeElement_set_vspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "vspace", 5, v, 0, 0, 0, 0) }
 wjg_HTMLMarqueeElement_get_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 293, "width", 0, 0, 0, 0, 0) }
-wjg_HTMLMarqueeElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "width", 0, v, 0, 0, 0) }
+wjg_HTMLMarqueeElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 293, "width", 0, v, 0, 0, 0, 0) }
 wjg_HTMLMediaElement_get_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 294, "src", 2, 0, 0, 0, 0) }
-wjg_HTMLMediaElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 294, "src", 2, v, 0, 0, 0) }
+wjg_HTMLMediaElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 294, "src", 2, v, 0, 0, 0, 0) }
 // HTMLMediaElement.currentSrc -> htmlmedia.HTMLMediaElement_currentSrc
 wjg_HTMLMediaElement_get_currentSrc :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 294)
@@ -5390,9 +5388,9 @@ wjg_HTMLMediaElement_get_ended :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 }
 
 wjg_HTMLMediaElement_get_autoplay :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 294, "autoplay", 3, 0, 0, 0, 0) }
-wjg_HTMLMediaElement_set_autoplay :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 294, "autoplay", 3, v, 0, 0, 0) }
+wjg_HTMLMediaElement_set_autoplay :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 294, "autoplay", 3, v, 0, 0, 0, 0) }
 wjg_HTMLMediaElement_get_loop :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 294, "loop", 3, 0, 0, 0, 0) }
-wjg_HTMLMediaElement_set_loop :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 294, "loop", 3, v, 0, 0, 0) }
+wjg_HTMLMediaElement_set_loop :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 294, "loop", 3, v, 0, 0, 0, 0) }
 // HTMLMediaElement.play() -> htmlmedia.HTMLMediaElement_play
 wjg_HTMLMediaElement_play_body :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 294)
@@ -5415,7 +5413,7 @@ wjg_HTMLMediaElement_pause :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 }
 
 wjg_HTMLMediaElement_get_controls :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 294, "controls", 3, 0, 0, 0, 0) }
-wjg_HTMLMediaElement_set_controls :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 294, "controls", 3, v, 0, 0, 0) }
+wjg_HTMLMediaElement_set_controls :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 294, "controls", 3, v, 0, 0, 0, 0) }
 // HTMLMediaElement.volume -> htmlmedia.HTMLMediaElement_volume
 wjg_HTMLMediaElement_get_volume :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 294)
@@ -5454,11 +5452,11 @@ wjg_HTMLMediaElement_set_muted :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 }
 
 wjg_HTMLMediaElement_get_defaultMuted :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 294, "muted", 3, 0, 0, 0, 0) }
-wjg_HTMLMediaElement_set_defaultMuted :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 294, "muted", 3, v, 0, 0, 0) }
+wjg_HTMLMediaElement_set_defaultMuted :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 294, "muted", 3, v, 0, 0, 0, 0) }
 wjg_HTMLVideoElement_get_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 296, "width", 5, 0, 0, 0, 0) }
-wjg_HTMLVideoElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 296, "width", 5, v, 0, 0, 0) }
+wjg_HTMLVideoElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 296, "width", 5, v, 0, 0, 0, 0) }
 wjg_HTMLVideoElement_get_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 296, "height", 5, 0, 0, 0, 0) }
-wjg_HTMLVideoElement_set_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 296, "height", 5, v, 0, 0, 0) }
+wjg_HTMLVideoElement_set_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 296, "height", 5, v, 0, 0, 0, 0) }
 // HTMLVideoElement.videoWidth -> htmlmedia.HTMLVideoElement_videoWidth
 wjg_HTMLVideoElement_get_videoWidth :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 296)
@@ -5476,39 +5474,39 @@ wjg_HTMLVideoElement_get_videoHeight :: proc "c" (ctx: ^wj.Context, this_val: wj
 }
 
 wjg_HTMLVideoElement_get_poster :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 296, "poster", 2, 0, 0, 0, 0) }
-wjg_HTMLVideoElement_set_poster :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 296, "poster", 2, v, 0, 0, 0) }
+wjg_HTMLVideoElement_set_poster :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 296, "poster", 2, v, 0, 0, 0, 0) }
 wjg_HTMLVideoElement_get_playsInline :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 296, "playsinline", 3, 0, 0, 0, 0) }
-wjg_HTMLVideoElement_set_playsInline :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 296, "playsinline", 3, v, 0, 0, 0) }
+wjg_HTMLVideoElement_set_playsInline :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 296, "playsinline", 3, v, 0, 0, 0, 0) }
 wjg_HTMLMenuElement_get_compact :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 297, "compact", 3, 0, 0, 0, 0) }
-wjg_HTMLMenuElement_set_compact :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 297, "compact", 3, v, 0, 0, 0) }
+wjg_HTMLMenuElement_set_compact :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 297, "compact", 3, v, 0, 0, 0, 0) }
 wjg_HTMLMetaElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 298, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLMetaElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 298, "name", 0, v, 0, 0, 0) }
+wjg_HTMLMetaElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 298, "name", 0, v, 0, 0, 0, 0) }
 wjg_HTMLMetaElement_get_httpEquiv :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 298, "http-equiv", 0, 0, 0, 0, 0) }
-wjg_HTMLMetaElement_set_httpEquiv :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 298, "http-equiv", 0, v, 0, 0, 0) }
+wjg_HTMLMetaElement_set_httpEquiv :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 298, "http-equiv", 0, v, 0, 0, 0, 0) }
 wjg_HTMLMetaElement_get_content :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 298, "content", 0, 0, 0, 0, 0) }
-wjg_HTMLMetaElement_set_content :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 298, "content", 0, v, 0, 0, 0) }
+wjg_HTMLMetaElement_set_content :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 298, "content", 0, v, 0, 0, 0, 0) }
 wjg_HTMLMetaElement_get_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 298, "media", 0, 0, 0, 0, 0) }
-wjg_HTMLMetaElement_set_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 298, "media", 0, v, 0, 0, 0) }
+wjg_HTMLMetaElement_set_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 298, "media", 0, v, 0, 0, 0, 0) }
 wjg_HTMLMetaElement_get_scheme :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 298, "scheme", 0, 0, 0, 0, 0) }
-wjg_HTMLMetaElement_set_scheme :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 298, "scheme", 0, v, 0, 0, 0) }
+wjg_HTMLMetaElement_set_scheme :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 298, "scheme", 0, v, 0, 0, 0, 0) }
 wjg_HTMLModElement_get_cite :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 300, "cite", 2, 0, 0, 0, 0) }
-wjg_HTMLModElement_set_cite :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 300, "cite", 2, v, 0, 0, 0) }
+wjg_HTMLModElement_set_cite :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 300, "cite", 2, v, 0, 0, 0, 0) }
 wjg_HTMLModElement_get_dateTime :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 300, "datetime", 0, 0, 0, 0, 0) }
-wjg_HTMLModElement_set_dateTime :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 300, "datetime", 0, v, 0, 0, 0) }
+wjg_HTMLModElement_set_dateTime :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 300, "datetime", 0, v, 0, 0, 0, 0) }
 wjg_HTMLOListElement_get_reversed :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 301, "reversed", 3, 0, 0, 0, 0) }
-wjg_HTMLOListElement_set_reversed :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 301, "reversed", 3, v, 0, 0, 0) }
+wjg_HTMLOListElement_set_reversed :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 301, "reversed", 3, v, 0, 0, 0, 0) }
 wjg_HTMLOListElement_get_start :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 301, "start", 4, 1, 0, 0, 0) }
-wjg_HTMLOListElement_set_start :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 301, "start", 4, v, 0, 0, 0) }
+wjg_HTMLOListElement_set_start :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 301, "start", 4, v, 1, 0, 0, 0) }
 wjg_HTMLOListElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 301, "type", 0, 0, 0, 0, 0) }
-wjg_HTMLOListElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 301, "type", 0, v, 0, 0, 0) }
+wjg_HTMLOListElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 301, "type", 0, v, 0, 0, 0, 0) }
 wjg_HTMLOListElement_get_compact :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 301, "compact", 3, 0, 0, 0, 0) }
-wjg_HTMLOListElement_set_compact :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 301, "compact", 3, v, 0, 0, 0) }
+wjg_HTMLOListElement_set_compact :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 301, "compact", 3, v, 0, 0, 0, 0) }
 wjg_HTMLObjectElement_get_data :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "data", 2, 0, 0, 0, 0) }
-wjg_HTMLObjectElement_set_data :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "data", 2, v, 0, 0, 0) }
+wjg_HTMLObjectElement_set_data :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "data", 2, v, 0, 0, 0, 0) }
 wjg_HTMLObjectElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "type", 0, 0, 0, 0, 0) }
-wjg_HTMLObjectElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "type", 0, v, 0, 0, 0) }
+wjg_HTMLObjectElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "type", 0, v, 0, 0, 0, 0) }
 wjg_HTMLObjectElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLObjectElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "name", 0, v, 0, 0, 0) }
+wjg_HTMLObjectElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "name", 0, v, 0, 0, 0, 0) }
 // HTMLObjectElement.form -> forms.HTMLObjectElement_form
 wjg_HTMLObjectElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 302)
@@ -5518,9 +5516,9 @@ wjg_HTMLObjectElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 }
 
 wjg_HTMLObjectElement_get_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "width", 0, 0, 0, 0, 0) }
-wjg_HTMLObjectElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "width", 0, v, 0, 0, 0) }
+wjg_HTMLObjectElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "width", 0, v, 0, 0, 0, 0) }
 wjg_HTMLObjectElement_get_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "height", 0, 0, 0, 0, 0) }
-wjg_HTMLObjectElement_set_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "height", 0, v, 0, 0, 0) }
+wjg_HTMLObjectElement_set_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "height", 0, v, 0, 0, 0, 0) }
 // HTMLObjectElement.willValidate -> forms.HTMLObjectElement_willValidate
 wjg_HTMLObjectElement_get_willValidate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 302)
@@ -5570,33 +5568,33 @@ wjg_HTMLObjectElement_setCustomValidity :: proc "c" (ctx: ^wj.Context, this_val:
 }
 
 wjg_HTMLObjectElement_get_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "align", 0, 0, 0, 0, 0) }
-wjg_HTMLObjectElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "align", 0, v, 0, 0, 0) }
+wjg_HTMLObjectElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "align", 0, v, 0, 0, 0, 0) }
 wjg_HTMLObjectElement_get_archive :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "archive", 0, 0, 0, 0, 0) }
-wjg_HTMLObjectElement_set_archive :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "archive", 0, v, 0, 0, 0) }
+wjg_HTMLObjectElement_set_archive :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "archive", 0, v, 0, 0, 0, 0) }
 wjg_HTMLObjectElement_get_code :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "code", 0, 0, 0, 0, 0) }
-wjg_HTMLObjectElement_set_code :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "code", 0, v, 0, 0, 0) }
+wjg_HTMLObjectElement_set_code :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "code", 0, v, 0, 0, 0, 0) }
 wjg_HTMLObjectElement_get_declare :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "declare", 3, 0, 0, 0, 0) }
-wjg_HTMLObjectElement_set_declare :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "declare", 3, v, 0, 0, 0) }
+wjg_HTMLObjectElement_set_declare :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "declare", 3, v, 0, 0, 0, 0) }
 wjg_HTMLObjectElement_get_hspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "hspace", 5, 0, 0, 0, 0) }
-wjg_HTMLObjectElement_set_hspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "hspace", 5, v, 0, 0, 0) }
+wjg_HTMLObjectElement_set_hspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "hspace", 5, v, 0, 0, 0, 0) }
 wjg_HTMLObjectElement_get_standby :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "standby", 0, 0, 0, 0, 0) }
-wjg_HTMLObjectElement_set_standby :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "standby", 0, v, 0, 0, 0) }
+wjg_HTMLObjectElement_set_standby :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "standby", 0, v, 0, 0, 0, 0) }
 wjg_HTMLObjectElement_get_vspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "vspace", 5, 0, 0, 0, 0) }
-wjg_HTMLObjectElement_set_vspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "vspace", 5, v, 0, 0, 0) }
-wjg_HTMLObjectElement_get_codeBase :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "codebase", 0, 0, 0, 0, 0) }
-wjg_HTMLObjectElement_set_codeBase :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "codebase", 0, v, 0, 0, 0) }
+wjg_HTMLObjectElement_set_vspace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "vspace", 5, v, 0, 0, 0, 0) }
+wjg_HTMLObjectElement_get_codeBase :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "codebase", 2, 0, 0, 0, 0) }
+wjg_HTMLObjectElement_set_codeBase :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "codebase", 2, v, 0, 0, 0, 0) }
 wjg_HTMLObjectElement_get_codeType :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "codetype", 0, 0, 0, 0, 0) }
-wjg_HTMLObjectElement_set_codeType :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "codetype", 0, v, 0, 0, 0) }
+wjg_HTMLObjectElement_set_codeType :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "codetype", 0, v, 0, 0, 0, 0) }
 wjg_HTMLObjectElement_get_useMap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "usemap", 0, 0, 0, 0, 0) }
-wjg_HTMLObjectElement_set_useMap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "usemap", 0, v, 0, 0, 0) }
-wjg_HTMLObjectElement_get_border :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "border", 0, 0, 0, 0, 0) }
-wjg_HTMLObjectElement_set_border :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "border", 0, v, 0, 0, 0) }
+wjg_HTMLObjectElement_set_useMap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "usemap", 0, v, 0, 0, 0, 0) }
+wjg_HTMLObjectElement_get_border :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 302, "border", 7, 0, 0, 0, 0) }
+wjg_HTMLObjectElement_set_border :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 302, "border", 7, v, 0, 0, 0, 0) }
 wjg_HTMLOptGroupElement_get_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 303, "disabled", 3, 0, 0, 0, 0) }
-wjg_HTMLOptGroupElement_set_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 303, "disabled", 3, v, 0, 0, 0) }
+wjg_HTMLOptGroupElement_set_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 303, "disabled", 3, v, 0, 0, 0, 0) }
 wjg_HTMLOptGroupElement_get_label :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 303, "label", 0, 0, 0, 0, 0) }
-wjg_HTMLOptGroupElement_set_label :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 303, "label", 0, v, 0, 0, 0) }
+wjg_HTMLOptGroupElement_set_label :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 303, "label", 0, v, 0, 0, 0, 0) }
 wjg_HTMLOptionElement_get_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 304, "disabled", 3, 0, 0, 0, 0) }
-wjg_HTMLOptionElement_set_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 304, "disabled", 3, v, 0, 0, 0) }
+wjg_HTMLOptionElement_set_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 304, "disabled", 3, v, 0, 0, 0, 0) }
 // HTMLOptionElement.form -> forms.HTMLOptionElement_form
 wjg_HTMLOptionElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 304)
@@ -5605,7 +5603,7 @@ wjg_HTMLOptionElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 	return wj.wj_wrap_node(ctx, r)
 }
 
-wjg_HTMLOptionElement_set_label :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 304, "label", 0, v, 0, 0, 0) }
+wjg_HTMLOptionElement_set_label :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 304, "label", 0, v, 0, 0, 0, 0) }
 // HTMLOptionElement.label -> forms.HTMLOptionElement_label
 wjg_HTMLOptionElement_get_label :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 304)
@@ -5619,7 +5617,7 @@ wjg_HTMLOptionElement_get_label :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 }
 
 wjg_HTMLOptionElement_get_defaultSelected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 304, "selected", 3, 0, 0, 0, 0) }
-wjg_HTMLOptionElement_set_defaultSelected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 304, "selected", 3, v, 0, 0, 0) }
+wjg_HTMLOptionElement_set_defaultSelected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 304, "selected", 3, v, 0, 0, 0, 0) }
 // HTMLOptionElement.selected -> forms.HTMLOptionElement_selected
 wjg_HTMLOptionElement_get_selected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 304)
@@ -5639,7 +5637,7 @@ wjg_HTMLOptionElement_set_selected :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 	return wj.UNDEFINED
 }
 
-wjg_HTMLOptionElement_set_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 304, "value", 0, v, 0, 0, 0) }
+wjg_HTMLOptionElement_set_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 304, "value", 0, v, 0, 0, 0, 0) }
 // HTMLOptionElement.value -> forms.HTMLOptionElement_value
 wjg_HTMLOptionElement_get_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 304)
@@ -5694,7 +5692,7 @@ wjg_HTMLOutputElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 }
 
 wjg_HTMLOutputElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 305, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLOutputElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 305, "name", 0, v, 0, 0, 0) }
+wjg_HTMLOutputElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 305, "name", 0, v, 0, 0, 0, 0) }
 // HTMLOutputElement.type -> forms.HTMLOutputElement_type
 wjg_HTMLOutputElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 305)
@@ -5804,36 +5802,36 @@ wjg_HTMLOutputElement_setCustomValidity :: proc "c" (ctx: ^wj.Context, this_val:
 }
 
 wjg_HTMLParagraphElement_get_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 306, "align", 0, 0, 0, 0, 0) }
-wjg_HTMLParagraphElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 306, "align", 0, v, 0, 0, 0) }
+wjg_HTMLParagraphElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 306, "align", 0, v, 0, 0, 0, 0) }
 wjg_HTMLParamElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 307, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLParamElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 307, "name", 0, v, 0, 0, 0) }
+wjg_HTMLParamElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 307, "name", 0, v, 0, 0, 0, 0) }
 wjg_HTMLParamElement_get_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 307, "value", 0, 0, 0, 0, 0) }
-wjg_HTMLParamElement_set_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 307, "value", 0, v, 0, 0, 0) }
+wjg_HTMLParamElement_set_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 307, "value", 0, v, 0, 0, 0, 0) }
 wjg_HTMLParamElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 307, "type", 0, 0, 0, 0, 0) }
-wjg_HTMLParamElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 307, "type", 0, v, 0, 0, 0) }
+wjg_HTMLParamElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 307, "type", 0, v, 0, 0, 0, 0) }
 wjg_HTMLParamElement_get_valueType :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 307, "valuetype", 0, 0, 0, 0, 0) }
-wjg_HTMLParamElement_set_valueType :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 307, "valuetype", 0, v, 0, 0, 0) }
+wjg_HTMLParamElement_set_valueType :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 307, "valuetype", 0, v, 0, 0, 0, 0) }
 wjg_HTMLPreElement_get_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 309, "width", 4, 0, 0, 0, 0) }
-wjg_HTMLPreElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 309, "width", 4, v, 0, 0, 0) }
+wjg_HTMLPreElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 309, "width", 4, v, 0, 0, 0, 0) }
 wjg_HTMLQuoteElement_get_cite :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 311, "cite", 2, 0, 0, 0, 0) }
-wjg_HTMLQuoteElement_set_cite :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 311, "cite", 2, v, 0, 0, 0) }
+wjg_HTMLQuoteElement_set_cite :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 311, "cite", 2, v, 0, 0, 0, 0) }
 wjg_HTMLScriptElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 312, "type", 0, 0, 0, 0, 0) }
-wjg_HTMLScriptElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 312, "type", 0, v, 0, 0, 0) }
+wjg_HTMLScriptElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 312, "type", 0, v, 0, 0, 0, 0) }
 wjg_HTMLScriptElement_get_noModule :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 312, "nomodule", 3, 0, 0, 0, 0) }
-wjg_HTMLScriptElement_set_noModule :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 312, "nomodule", 3, v, 0, 0, 0) }
+wjg_HTMLScriptElement_set_noModule :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 312, "nomodule", 3, v, 0, 0, 0, 0) }
 wjg_HTMLScriptElement_get_defer :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 312, "defer", 3, 0, 0, 0, 0) }
-wjg_HTMLScriptElement_set_defer :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 312, "defer", 3, v, 0, 0, 0) }
+wjg_HTMLScriptElement_set_defer :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 312, "defer", 3, v, 0, 0, 0, 0) }
 wjg_HTMLScriptElement_set_blocking :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj.wj_put_forwards(ctx, this_val, "blocking", "value", v) }
 wjg_HTMLScriptElement_get_integrity :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 312, "integrity", 0, 0, 0, 0, 0) }
-wjg_HTMLScriptElement_set_integrity :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 312, "integrity", 0, v, 0, 0, 0) }
+wjg_HTMLScriptElement_set_integrity :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 312, "integrity", 0, v, 0, 0, 0, 0) }
 wjg_HTMLScriptElement_get_charset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 312, "charset", 0, 0, 0, 0, 0) }
-wjg_HTMLScriptElement_set_charset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 312, "charset", 0, v, 0, 0, 0) }
+wjg_HTMLScriptElement_set_charset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 312, "charset", 0, v, 0, 0, 0, 0) }
 wjg_HTMLScriptElement_get_event :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 312, "event", 0, 0, 0, 0, 0) }
-wjg_HTMLScriptElement_set_event :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 312, "event", 0, v, 0, 0, 0) }
+wjg_HTMLScriptElement_set_event :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 312, "event", 0, v, 0, 0, 0, 0) }
 wjg_HTMLScriptElement_get_htmlFor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 312, "for", 0, 0, 0, 0, 0) }
-wjg_HTMLScriptElement_set_htmlFor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 312, "for", 0, v, 0, 0, 0) }
+wjg_HTMLScriptElement_set_htmlFor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 312, "for", 0, v, 0, 0, 0, 0) }
 wjg_HTMLSelectElement_get_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 313, "disabled", 3, 0, 0, 0, 0) }
-wjg_HTMLSelectElement_set_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 313, "disabled", 3, v, 0, 0, 0) }
+wjg_HTMLSelectElement_set_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 313, "disabled", 3, v, 0, 0, 0, 0) }
 // HTMLSelectElement.form -> forms.HTMLSelectElement_form
 wjg_HTMLSelectElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 313)
@@ -5843,13 +5841,13 @@ wjg_HTMLSelectElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 }
 
 wjg_HTMLSelectElement_get_multiple :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 313, "multiple", 3, 0, 0, 0, 0) }
-wjg_HTMLSelectElement_set_multiple :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 313, "multiple", 3, v, 0, 0, 0) }
+wjg_HTMLSelectElement_set_multiple :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 313, "multiple", 3, v, 0, 0, 0, 0) }
 wjg_HTMLSelectElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 313, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLSelectElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 313, "name", 0, v, 0, 0, 0) }
+wjg_HTMLSelectElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 313, "name", 0, v, 0, 0, 0, 0) }
 wjg_HTMLSelectElement_get_required :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 313, "required", 3, 0, 0, 0, 0) }
-wjg_HTMLSelectElement_set_required :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 313, "required", 3, v, 0, 0, 0) }
+wjg_HTMLSelectElement_set_required :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 313, "required", 3, v, 0, 0, 0, 0) }
 wjg_HTMLSelectElement_get_size :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 313, "size", 5, 0, 0, 0, 0) }
-wjg_HTMLSelectElement_set_size :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 313, "size", 5, v, 0, 0, 0) }
+wjg_HTMLSelectElement_set_size :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 313, "size", 5, v, 0, 0, 0, 0) }
 // HTMLSelectElement.type -> forms.HTMLSelectElement_type
 wjg_HTMLSelectElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 313)
@@ -5973,34 +5971,34 @@ wjg_HTMLSelectElement_setCustomValidity :: proc "c" (ctx: ^wj.Context, this_val:
 }
 
 wjg_HTMLSlotElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 315, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLSlotElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 315, "name", 0, v, 0, 0, 0) }
+wjg_HTMLSlotElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 315, "name", 0, v, 0, 0, 0, 0) }
 wjg_HTMLSourceElement_get_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 316, "src", 2, 0, 0, 0, 0) }
-wjg_HTMLSourceElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 316, "src", 2, v, 0, 0, 0) }
+wjg_HTMLSourceElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 316, "src", 2, v, 0, 0, 0, 0) }
 wjg_HTMLSourceElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 316, "type", 0, 0, 0, 0, 0) }
-wjg_HTMLSourceElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 316, "type", 0, v, 0, 0, 0) }
+wjg_HTMLSourceElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 316, "type", 0, v, 0, 0, 0, 0) }
 wjg_HTMLSourceElement_get_srcset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 316, "srcset", 0, 0, 0, 0, 0) }
-wjg_HTMLSourceElement_set_srcset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 316, "srcset", 0, v, 0, 0, 0) }
+wjg_HTMLSourceElement_set_srcset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 316, "srcset", 0, v, 0, 0, 0, 0) }
 wjg_HTMLSourceElement_get_sizes :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 316, "sizes", 0, 0, 0, 0, 0) }
-wjg_HTMLSourceElement_set_sizes :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 316, "sizes", 0, v, 0, 0, 0) }
+wjg_HTMLSourceElement_set_sizes :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 316, "sizes", 0, v, 0, 0, 0, 0) }
 wjg_HTMLSourceElement_get_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 316, "media", 0, 0, 0, 0, 0) }
-wjg_HTMLSourceElement_set_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 316, "media", 0, v, 0, 0, 0) }
+wjg_HTMLSourceElement_set_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 316, "media", 0, v, 0, 0, 0, 0) }
 wjg_HTMLSourceElement_get_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 316, "width", 5, 0, 0, 0, 0) }
-wjg_HTMLSourceElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 316, "width", 5, v, 0, 0, 0) }
+wjg_HTMLSourceElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 316, "width", 5, v, 0, 0, 0, 0) }
 wjg_HTMLSourceElement_get_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 316, "height", 5, 0, 0, 0, 0) }
-wjg_HTMLSourceElement_set_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 316, "height", 5, v, 0, 0, 0) }
+wjg_HTMLSourceElement_set_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 316, "height", 5, v, 0, 0, 0, 0) }
 wjg_HTMLStyleElement_get_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 318, "media", 0, 0, 0, 0, 0) }
-wjg_HTMLStyleElement_set_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 318, "media", 0, v, 0, 0, 0) }
+wjg_HTMLStyleElement_set_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 318, "media", 0, v, 0, 0, 0, 0) }
 wjg_HTMLStyleElement_set_blocking :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj.wj_put_forwards(ctx, this_val, "blocking", "value", v) }
 wjg_HTMLStyleElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 318, "type", 0, 0, 0, 0, 0) }
-wjg_HTMLStyleElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 318, "type", 0, v, 0, 0, 0) }
+wjg_HTMLStyleElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 318, "type", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableCaptionElement_get_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 319, "align", 0, 0, 0, 0, 0) }
-wjg_HTMLTableCaptionElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 319, "align", 0, v, 0, 0, 0) }
+wjg_HTMLTableCaptionElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 319, "align", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableCellElement_get_colSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 320, "colspan", 5, 1, 4, 1, 1000) }
-wjg_HTMLTableCellElement_set_colSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "colspan", 5, v, 4, 1, 1000) }
+wjg_HTMLTableCellElement_set_colSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "colspan", 5, v, 1, 4, 1, 1000) }
 wjg_HTMLTableCellElement_get_rowSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 320, "rowspan", 5, 1, 4, 0, 65534) }
-wjg_HTMLTableCellElement_set_rowSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "rowspan", 5, v, 4, 0, 65534) }
+wjg_HTMLTableCellElement_set_rowSpan :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "rowspan", 5, v, 1, 4, 0, 65534) }
 wjg_HTMLTableCellElement_get_headers :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 320, "headers", 0, 0, 0, 0, 0) }
-wjg_HTMLTableCellElement_set_headers :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "headers", 0, v, 0, 0, 0) }
+wjg_HTMLTableCellElement_set_headers :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "headers", 0, v, 0, 0, 0, 0) }
 // HTMLTableCellElement.cellIndex -> dom.HTMLTableCellElement_cellIndex
 wjg_HTMLTableCellElement_get_cellIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 320)
@@ -6010,37 +6008,37 @@ wjg_HTMLTableCellElement_get_cellIndex :: proc "c" (ctx: ^wj.Context, this_val: 
 }
 
 wjg_HTMLTableCellElement_get_abbr :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 320, "abbr", 0, 0, 0, 0, 0) }
-wjg_HTMLTableCellElement_set_abbr :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "abbr", 0, v, 0, 0, 0) }
+wjg_HTMLTableCellElement_set_abbr :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "abbr", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableCellElement_get_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 320, "align", 0, 0, 0, 0, 0) }
-wjg_HTMLTableCellElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "align", 0, v, 0, 0, 0) }
+wjg_HTMLTableCellElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "align", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableCellElement_get_axis :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 320, "axis", 0, 0, 0, 0, 0) }
-wjg_HTMLTableCellElement_set_axis :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "axis", 0, v, 0, 0, 0) }
+wjg_HTMLTableCellElement_set_axis :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "axis", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableCellElement_get_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 320, "height", 0, 0, 0, 0, 0) }
-wjg_HTMLTableCellElement_set_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "height", 0, v, 0, 0, 0) }
+wjg_HTMLTableCellElement_set_height :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "height", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableCellElement_get_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 320, "width", 0, 0, 0, 0, 0) }
-wjg_HTMLTableCellElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "width", 0, v, 0, 0, 0) }
+wjg_HTMLTableCellElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "width", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableCellElement_get_ch :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 320, "char", 0, 0, 0, 0, 0) }
-wjg_HTMLTableCellElement_set_ch :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "char", 0, v, 0, 0, 0) }
+wjg_HTMLTableCellElement_set_ch :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "char", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableCellElement_get_chOff :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 320, "charoff", 0, 0, 0, 0, 0) }
-wjg_HTMLTableCellElement_set_chOff :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "charoff", 0, v, 0, 0, 0) }
+wjg_HTMLTableCellElement_set_chOff :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "charoff", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableCellElement_get_noWrap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 320, "nowrap", 3, 0, 0, 0, 0) }
-wjg_HTMLTableCellElement_set_noWrap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "nowrap", 3, v, 0, 0, 0) }
+wjg_HTMLTableCellElement_set_noWrap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "nowrap", 3, v, 0, 0, 0, 0) }
 wjg_HTMLTableCellElement_get_vAlign :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 320, "valign", 0, 0, 0, 0, 0) }
-wjg_HTMLTableCellElement_set_vAlign :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "valign", 0, v, 0, 0, 0) }
-wjg_HTMLTableCellElement_get_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 320, "bgcolor", 0, 0, 0, 0, 0) }
-wjg_HTMLTableCellElement_set_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "bgcolor", 0, v, 0, 0, 0) }
+wjg_HTMLTableCellElement_set_vAlign :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "valign", 0, v, 0, 0, 0, 0) }
+wjg_HTMLTableCellElement_get_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 320, "bgcolor", 7, 0, 0, 0, 0) }
+wjg_HTMLTableCellElement_set_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 320, "bgcolor", 7, v, 0, 0, 0, 0) }
 wjg_HTMLTableColElement_get_span :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 321, "span", 5, 1, 4, 1, 1000) }
-wjg_HTMLTableColElement_set_span :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 321, "span", 5, v, 4, 1, 1000) }
+wjg_HTMLTableColElement_set_span :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 321, "span", 5, v, 1, 4, 1, 1000) }
 wjg_HTMLTableColElement_get_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 321, "align", 0, 0, 0, 0, 0) }
-wjg_HTMLTableColElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 321, "align", 0, v, 0, 0, 0) }
+wjg_HTMLTableColElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 321, "align", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableColElement_get_ch :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 321, "char", 0, 0, 0, 0, 0) }
-wjg_HTMLTableColElement_set_ch :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 321, "char", 0, v, 0, 0, 0) }
+wjg_HTMLTableColElement_set_ch :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 321, "char", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableColElement_get_chOff :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 321, "charoff", 0, 0, 0, 0, 0) }
-wjg_HTMLTableColElement_set_chOff :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 321, "charoff", 0, v, 0, 0, 0) }
+wjg_HTMLTableColElement_set_chOff :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 321, "charoff", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableColElement_get_vAlign :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 321, "valign", 0, 0, 0, 0, 0) }
-wjg_HTMLTableColElement_set_vAlign :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 321, "valign", 0, v, 0, 0, 0) }
+wjg_HTMLTableColElement_set_vAlign :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 321, "valign", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableColElement_get_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 321, "width", 0, 0, 0, 0, 0) }
-wjg_HTMLTableColElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 321, "width", 0, v, 0, 0, 0) }
+wjg_HTMLTableColElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 321, "width", 0, v, 0, 0, 0, 0) }
 // HTMLTableElement.caption -> dom.HTMLTableElement_caption
 wjg_HTMLTableElement_get_caption :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 322)
@@ -6179,23 +6177,23 @@ wjg_HTMLTableElement_deleteRow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 }
 
 wjg_HTMLTableElement_get_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 322, "align", 0, 0, 0, 0, 0) }
-wjg_HTMLTableElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "align", 0, v, 0, 0, 0) }
+wjg_HTMLTableElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "align", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableElement_get_border :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 322, "border", 0, 0, 0, 0, 0) }
-wjg_HTMLTableElement_set_border :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "border", 0, v, 0, 0, 0) }
+wjg_HTMLTableElement_set_border :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "border", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableElement_get_frame :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 322, "frame", 0, 0, 0, 0, 0) }
-wjg_HTMLTableElement_set_frame :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "frame", 0, v, 0, 0, 0) }
+wjg_HTMLTableElement_set_frame :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "frame", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableElement_get_rules :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 322, "rules", 0, 0, 0, 0, 0) }
-wjg_HTMLTableElement_set_rules :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "rules", 0, v, 0, 0, 0) }
+wjg_HTMLTableElement_set_rules :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "rules", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableElement_get_summary :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 322, "summary", 0, 0, 0, 0, 0) }
-wjg_HTMLTableElement_set_summary :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "summary", 0, v, 0, 0, 0) }
+wjg_HTMLTableElement_set_summary :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "summary", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableElement_get_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 322, "width", 0, 0, 0, 0, 0) }
-wjg_HTMLTableElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "width", 0, v, 0, 0, 0) }
-wjg_HTMLTableElement_get_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 322, "bgcolor", 0, 0, 0, 0, 0) }
-wjg_HTMLTableElement_set_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "bgcolor", 0, v, 0, 0, 0) }
-wjg_HTMLTableElement_get_cellPadding :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 322, "cellpadding", 0, 0, 0, 0, 0) }
-wjg_HTMLTableElement_set_cellPadding :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "cellpadding", 0, v, 0, 0, 0) }
-wjg_HTMLTableElement_get_cellSpacing :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 322, "cellspacing", 0, 0, 0, 0, 0) }
-wjg_HTMLTableElement_set_cellSpacing :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "cellspacing", 0, v, 0, 0, 0) }
+wjg_HTMLTableElement_set_width :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "width", 0, v, 0, 0, 0, 0) }
+wjg_HTMLTableElement_get_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 322, "bgcolor", 7, 0, 0, 0, 0) }
+wjg_HTMLTableElement_set_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "bgcolor", 7, v, 0, 0, 0, 0) }
+wjg_HTMLTableElement_get_cellPadding :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 322, "cellpadding", 7, 0, 0, 0, 0) }
+wjg_HTMLTableElement_set_cellPadding :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "cellpadding", 7, v, 0, 0, 0, 0) }
+wjg_HTMLTableElement_get_cellSpacing :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 322, "cellspacing", 7, 0, 0, 0, 0) }
+wjg_HTMLTableElement_set_cellSpacing :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 322, "cellspacing", 7, v, 0, 0, 0, 0) }
 // HTMLTableRowElement.rowIndex -> dom.HTMLTableRowElement_rowIndex
 wjg_HTMLTableRowElement_get_rowIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 323)
@@ -6237,15 +6235,15 @@ wjg_HTMLTableRowElement_deleteCell :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 }
 
 wjg_HTMLTableRowElement_get_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 323, "align", 0, 0, 0, 0, 0) }
-wjg_HTMLTableRowElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 323, "align", 0, v, 0, 0, 0) }
+wjg_HTMLTableRowElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 323, "align", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableRowElement_get_ch :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 323, "char", 0, 0, 0, 0, 0) }
-wjg_HTMLTableRowElement_set_ch :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 323, "char", 0, v, 0, 0, 0) }
+wjg_HTMLTableRowElement_set_ch :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 323, "char", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableRowElement_get_chOff :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 323, "charoff", 0, 0, 0, 0, 0) }
-wjg_HTMLTableRowElement_set_chOff :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 323, "charoff", 0, v, 0, 0, 0) }
+wjg_HTMLTableRowElement_set_chOff :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 323, "charoff", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableRowElement_get_vAlign :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 323, "valign", 0, 0, 0, 0, 0) }
-wjg_HTMLTableRowElement_set_vAlign :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 323, "valign", 0, v, 0, 0, 0) }
-wjg_HTMLTableRowElement_get_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 323, "bgcolor", 0, 0, 0, 0, 0) }
-wjg_HTMLTableRowElement_set_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 323, "bgcolor", 0, v, 0, 0, 0) }
+wjg_HTMLTableRowElement_set_vAlign :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 323, "valign", 0, v, 0, 0, 0, 0) }
+wjg_HTMLTableRowElement_get_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 323, "bgcolor", 7, 0, 0, 0, 0) }
+wjg_HTMLTableRowElement_set_bgColor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 323, "bgcolor", 7, v, 0, 0, 0, 0) }
 // HTMLTableSectionElement.insertRow() -> dom.HTMLTableSectionElement_insertRow
 wjg_HTMLTableSectionElement_insertRow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 324)
@@ -6271,13 +6269,13 @@ wjg_HTMLTableSectionElement_deleteRow :: proc "c" (ctx: ^wj.Context, this_val: w
 }
 
 wjg_HTMLTableSectionElement_get_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 324, "align", 0, 0, 0, 0, 0) }
-wjg_HTMLTableSectionElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 324, "align", 0, v, 0, 0, 0) }
+wjg_HTMLTableSectionElement_set_align :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 324, "align", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableSectionElement_get_ch :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 324, "char", 0, 0, 0, 0, 0) }
-wjg_HTMLTableSectionElement_set_ch :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 324, "char", 0, v, 0, 0, 0) }
+wjg_HTMLTableSectionElement_set_ch :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 324, "char", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableSectionElement_get_chOff :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 324, "charoff", 0, 0, 0, 0, 0) }
-wjg_HTMLTableSectionElement_set_chOff :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 324, "charoff", 0, v, 0, 0, 0) }
+wjg_HTMLTableSectionElement_set_chOff :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 324, "charoff", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTableSectionElement_get_vAlign :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 324, "valign", 0, 0, 0, 0, 0) }
-wjg_HTMLTableSectionElement_set_vAlign :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 324, "valign", 0, v, 0, 0, 0) }
+wjg_HTMLTableSectionElement_set_vAlign :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 324, "valign", 0, v, 0, 0, 0, 0) }
 // HTMLTemplateElement.content -> dom.HTMLTemplateElement_content
 wjg_HTMLTemplateElement_get_content :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 325)
@@ -6287,19 +6285,19 @@ wjg_HTMLTemplateElement_get_content :: proc "c" (ctx: ^wj.Context, this_val: wj.
 }
 
 wjg_HTMLTemplateElement_get_htmlFor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 325, "for", 0, 0, 0, 0, 0) }
-wjg_HTMLTemplateElement_set_htmlFor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 325, "for", 0, v, 0, 0, 0) }
+wjg_HTMLTemplateElement_set_htmlFor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 325, "for", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTemplateElement_get_shadowRootDelegatesFocus :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 325, "shadowrootdelegatesfocus", 3, 0, 0, 0, 0) }
-wjg_HTMLTemplateElement_set_shadowRootDelegatesFocus :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 325, "shadowrootdelegatesfocus", 3, v, 0, 0, 0) }
+wjg_HTMLTemplateElement_set_shadowRootDelegatesFocus :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 325, "shadowrootdelegatesfocus", 3, v, 0, 0, 0, 0) }
 wjg_HTMLTemplateElement_get_shadowRootSerializable :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 325, "shadowrootserializable", 3, 0, 0, 0, 0) }
-wjg_HTMLTemplateElement_set_shadowRootSerializable :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 325, "shadowrootserializable", 3, v, 0, 0, 0) }
+wjg_HTMLTemplateElement_set_shadowRootSerializable :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 325, "shadowrootserializable", 3, v, 0, 0, 0, 0) }
 wjg_HTMLTemplateElement_get_shadowRootClonable :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 325, "shadowrootclonable", 3, 0, 0, 0, 0) }
-wjg_HTMLTemplateElement_set_shadowRootClonable :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 325, "shadowrootclonable", 3, v, 0, 0, 0) }
+wjg_HTMLTemplateElement_set_shadowRootClonable :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 325, "shadowrootclonable", 3, v, 0, 0, 0, 0) }
 wjg_HTMLTemplateElement_get_shadowRootCustomElementRegistry :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 325, "shadowrootcustomelementregistry", 0, 0, 0, 0, 0) }
-wjg_HTMLTemplateElement_set_shadowRootCustomElementRegistry :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 325, "shadowrootcustomelementregistry", 0, v, 0, 0, 0) }
+wjg_HTMLTemplateElement_set_shadowRootCustomElementRegistry :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 325, "shadowrootcustomelementregistry", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTextAreaElement_get_dirName :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 326, "dirname", 0, 0, 0, 0, 0) }
-wjg_HTMLTextAreaElement_set_dirName :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 326, "dirname", 0, v, 0, 0, 0) }
+wjg_HTMLTextAreaElement_set_dirName :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 326, "dirname", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTextAreaElement_get_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 326, "disabled", 3, 0, 0, 0, 0) }
-wjg_HTMLTextAreaElement_set_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 326, "disabled", 3, v, 0, 0, 0) }
+wjg_HTMLTextAreaElement_set_disabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 326, "disabled", 3, v, 0, 0, 0, 0) }
 // HTMLTextAreaElement.form -> forms.HTMLTextAreaElement_form
 wjg_HTMLTextAreaElement_get_form :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 326)
@@ -6347,15 +6345,15 @@ wjg_HTMLTextAreaElement_set_minLength :: proc "c" (ctx: ^wj.Context, this_val: w
 }
 
 wjg_HTMLTextAreaElement_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 326, "name", 0, 0, 0, 0, 0) }
-wjg_HTMLTextAreaElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 326, "name", 0, v, 0, 0, 0) }
+wjg_HTMLTextAreaElement_set_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 326, "name", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTextAreaElement_get_placeholder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 326, "placeholder", 0, 0, 0, 0, 0) }
-wjg_HTMLTextAreaElement_set_placeholder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 326, "placeholder", 0, v, 0, 0, 0) }
+wjg_HTMLTextAreaElement_set_placeholder :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 326, "placeholder", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTextAreaElement_get_readOnly :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 326, "readonly", 3, 0, 0, 0, 0) }
-wjg_HTMLTextAreaElement_set_readOnly :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 326, "readonly", 3, v, 0, 0, 0) }
+wjg_HTMLTextAreaElement_set_readOnly :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 326, "readonly", 3, v, 0, 0, 0, 0) }
 wjg_HTMLTextAreaElement_get_required :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 326, "required", 3, 0, 0, 0, 0) }
-wjg_HTMLTextAreaElement_set_required :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 326, "required", 3, v, 0, 0, 0) }
+wjg_HTMLTextAreaElement_set_required :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 326, "required", 3, v, 0, 0, 0, 0) }
 wjg_HTMLTextAreaElement_get_wrap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 326, "wrap", 0, 0, 0, 0, 0) }
-wjg_HTMLTextAreaElement_set_wrap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 326, "wrap", 0, v, 0, 0, 0) }
+wjg_HTMLTextAreaElement_set_wrap :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 326, "wrap", 0, v, 0, 0, 0, 0) }
 // HTMLTextAreaElement.type -> forms.HTMLTextAreaElement_type
 wjg_HTMLTextAreaElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 326)
@@ -6502,7 +6500,7 @@ wjg_HTMLTextAreaElement_get_selectionDirection :: proc "c" (ctx: ^wj.Context, th
 }
 
 wjg_HTMLTimeElement_get_dateTime :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 327, "datetime", 0, 0, 0, 0, 0) }
-wjg_HTMLTimeElement_set_dateTime :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 327, "datetime", 0, v, 0, 0, 0) }
+wjg_HTMLTimeElement_set_dateTime :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 327, "datetime", 0, v, 0, 0, 0, 0) }
 // HTMLTitleElement.text -> dom.HTMLTitleElement_text
 wjg_HTMLTitleElement_get_text :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 328)
@@ -6528,17 +6526,17 @@ wjg_HTMLTitleElement_set_text :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 }
 
 wjg_HTMLTrackElement_get_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 329, "src", 2, 0, 0, 0, 0) }
-wjg_HTMLTrackElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 329, "src", 2, v, 0, 0, 0) }
+wjg_HTMLTrackElement_set_src :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 329, "src", 2, v, 0, 0, 0, 0) }
 wjg_HTMLTrackElement_get_srclang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 329, "srclang", 0, 0, 0, 0, 0) }
-wjg_HTMLTrackElement_set_srclang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 329, "srclang", 0, v, 0, 0, 0) }
+wjg_HTMLTrackElement_set_srclang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 329, "srclang", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTrackElement_get_label :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 329, "label", 0, 0, 0, 0, 0) }
-wjg_HTMLTrackElement_set_label :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 329, "label", 0, v, 0, 0, 0) }
+wjg_HTMLTrackElement_set_label :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 329, "label", 0, v, 0, 0, 0, 0) }
 wjg_HTMLTrackElement_get_default_ :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 329, "default", 3, 0, 0, 0, 0) }
-wjg_HTMLTrackElement_set_default_ :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 329, "default", 3, v, 0, 0, 0) }
+wjg_HTMLTrackElement_set_default_ :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 329, "default", 3, v, 0, 0, 0, 0) }
 wjg_HTMLUListElement_get_compact :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 330, "compact", 3, 0, 0, 0, 0) }
-wjg_HTMLUListElement_set_compact :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 330, "compact", 3, v, 0, 0, 0) }
+wjg_HTMLUListElement_set_compact :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 330, "compact", 3, v, 0, 0, 0, 0) }
 wjg_HTMLUListElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 330, "type", 0, 0, 0, 0, 0) }
-wjg_HTMLUListElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 330, "type", 0, v, 0, 0, 0) }
+wjg_HTMLUListElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 330, "type", 0, v, 0, 0, 0, 0) }
 wjg_MathMLElement_set_style :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj.wj_put_forwards(ctx, this_val, "style", "cssText", v) }
 wjg_MathMLElement_get_onanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 332, "animationstart") }
 wjg_MathMLElement_set_onanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 332, "animationstart", v, 0) }
@@ -6755,8 +6753,8 @@ wjg_MathMLElement_set_nonce :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue,
 }
 
 wjg_MathMLElement_get_autofocus :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 332, "autofocus", 3, 0, 0, 0, 0) }
-wjg_MathMLElement_set_autofocus :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 332, "autofocus", 3, v, 0, 0, 0) }
-wjg_MathMLElement_set_tabIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 332, "tabindex", 4, v, 0, 0, 0) }
+wjg_MathMLElement_set_autofocus :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 332, "autofocus", 3, v, 0, 0, 0, 0) }
+wjg_MathMLElement_set_tabIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 332, "tabindex", 4, v, 0, 0, 0, 0) }
 // MathMLElement.tabIndex -> dom.HTMLOrSVGOrMathMLElement_tabIndex
 wjg_MathMLElement_get_tabIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 332)
@@ -6765,9 +6763,9 @@ wjg_MathMLElement_get_tabIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 	return wj.new_int32(i32(r))
 }
 
-wjg_MathMLAnchorElement_set_href :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 333, "href", 0, v, 0, 0, 0) }
+wjg_MathMLAnchorElement_set_href :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 333, "href", 0, v, 0, 0, 0, 0) }
 wjg_MathMLAnchorElement_get_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 333, "target", 0, 0, 0, 0, 0) }
-wjg_MathMLAnchorElement_set_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 333, "target", 0, v, 0, 0, 0) }
+wjg_MathMLAnchorElement_set_target :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 333, "target", 0, v, 0, 0, 0, 0) }
 // MathMLAnchorElement.origin -> dom.HyperlinkElementUtils_origin
 wjg_MathMLAnchorElement_get_origin :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 333)
@@ -6997,9 +6995,9 @@ wjg_MathMLAnchorElement_set_hash :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 }
 
 wjg_MathMLAnchorElement_get_hreflang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 333, "hreflang", 0, 0, 0, 0, 0) }
-wjg_MathMLAnchorElement_set_hreflang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 333, "hreflang", 0, v, 0, 0, 0) }
+wjg_MathMLAnchorElement_set_hreflang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 333, "hreflang", 0, v, 0, 0, 0, 0) }
 wjg_MathMLAnchorElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 333, "type", 0, 0, 0, 0, 0) }
-wjg_MathMLAnchorElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 333, "type", 0, v, 0, 0, 0) }
+wjg_MathMLAnchorElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 333, "type", 0, v, 0, 0, 0, 0) }
 wjg_SVGElement_get_onanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 334, "animationstart") }
 wjg_SVGElement_set_onanimationstart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 334, "animationstart", v, 0) }
 wjg_SVGElement_get_onanimationiteration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 334, "animationiteration") }
@@ -7215,8 +7213,8 @@ wjg_SVGElement_set_nonce :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v:
 }
 
 wjg_SVGElement_get_autofocus :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 334, "autofocus", 3, 0, 0, 0, 0) }
-wjg_SVGElement_set_autofocus :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 334, "autofocus", 3, v, 0, 0, 0) }
-wjg_SVGElement_set_tabIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 334, "tabindex", 4, v, 0, 0, 0) }
+wjg_SVGElement_set_autofocus :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 334, "autofocus", 3, v, 0, 0, 0, 0) }
+wjg_SVGElement_set_tabIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 334, "tabindex", 4, v, 0, 0, 0, 0) }
 // SVGElement.tabIndex -> dom.HTMLOrSVGOrMathMLElement_tabIndex
 wjg_SVGElement_get_tabIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, 334)
@@ -7227,11 +7225,11 @@ wjg_SVGElement_get_tabIndex :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue)
 
 wjg_SVGElement_set_style :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj.wj_put_forwards(ctx, this_val, "style", "cssText", v) }
 wjg_SVGAElement_get_download :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 340, "download", 0, 0, 0, 0, 0) }
-wjg_SVGAElement_set_download :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 340, "download", 0, v, 0, 0, 0) }
+wjg_SVGAElement_set_download :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 340, "download", 0, v, 0, 0, 0, 0) }
 wjg_SVGAElement_get_ping :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 340, "ping", 0, 0, 0, 0, 0) }
-wjg_SVGAElement_set_ping :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 340, "ping", 0, v, 0, 0, 0) }
+wjg_SVGAElement_set_ping :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 340, "ping", 0, v, 0, 0, 0, 0) }
 wjg_SVGAElement_get_rel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 340, "rel", 0, 0, 0, 0, 0) }
-wjg_SVGAElement_set_rel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 340, "rel", 0, v, 0, 0, 0) }
+wjg_SVGAElement_set_rel :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 340, "rel", 0, v, 0, 0, 0, 0) }
 wjg_SVGAElement_set_relList :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj.wj_put_forwards(ctx, this_val, "relList", "value", v) }
 // SVGAElement.origin -> dom.HyperlinkElementUtils_origin
 wjg_SVGAElement_get_origin :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
@@ -7462,21 +7460,21 @@ wjg_SVGAElement_set_hash :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v:
 }
 
 wjg_SVGAElement_get_hreflang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 340, "hreflang", 0, 0, 0, 0, 0) }
-wjg_SVGAElement_set_hreflang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 340, "hreflang", 0, v, 0, 0, 0) }
+wjg_SVGAElement_set_hreflang :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 340, "hreflang", 0, v, 0, 0, 0, 0) }
 wjg_SVGAElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 340, "type", 0, 0, 0, 0, 0) }
-wjg_SVGAElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 340, "type", 0, v, 0, 0, 0) }
+wjg_SVGAElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 340, "type", 0, v, 0, 0, 0, 0) }
 wjg_SVGSVGElement_get_ongamepadconnected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 352, "gamepadconnected") }
 wjg_SVGSVGElement_set_ongamepadconnected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 352, "gamepadconnected", v, 0) }
 wjg_SVGSVGElement_get_ongamepaddisconnected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 352, "gamepaddisconnected") }
 wjg_SVGSVGElement_set_ongamepaddisconnected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 352, "gamepaddisconnected", v, 0) }
 wjg_SVGScriptElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 364, "type", 0, 0, 0, 0, 0) }
-wjg_SVGScriptElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 364, "type", 0, v, 0, 0, 0) }
+wjg_SVGScriptElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 364, "type", 0, v, 0, 0, 0, 0) }
 wjg_SVGStyleElement_get_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 366, "type", 0, 0, 0, 0, 0) }
-wjg_SVGStyleElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 366, "type", 0, v, 0, 0, 0) }
+wjg_SVGStyleElement_set_type :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 366, "type", 0, v, 0, 0, 0, 0) }
 wjg_SVGStyleElement_get_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 366, "media", 0, 0, 0, 0, 0) }
-wjg_SVGStyleElement_set_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 366, "media", 0, v, 0, 0, 0) }
+wjg_SVGStyleElement_set_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 366, "media", 0, v, 0, 0, 0, 0) }
 wjg_SVGStyleElement_get_title :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 366, "title", 0, 0, 0, 0, 0) }
-wjg_SVGStyleElement_set_title :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 366, "title", 0, v, 0, 0, 0) }
+wjg_SVGStyleElement_set_title :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 366, "title", 0, v, 0, 0, 0, 0) }
 wjg_Notification_get_onclick :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 369, "click") }
 wjg_Notification_set_onclick :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 369, "click", v, 0) }
 wjg_Notification_get_onshow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 369, "show") }
@@ -26153,7 +26151,7 @@ wj_install_bindings :: proc "c" () {
 	m_NotificationEvent[0] = wj.Member{name = "notification", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
 	m_NotificationEvent[1] = wj.Member{name = "action", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
 	m_FontFaceSetLoadEvent[0] = wj.Member{name = "fontfaces", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 38, get = nil, set = nil}
-	m_FormDataEvent[0] = wj.Member{name = "formData", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
+	m_FormDataEvent[0] = wj.Member{name = "formData", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_FormDataEvent_get_formData, set = nil}
 	m_GamepadEvent[0] = wj.Member{name = "gamepad", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 39, get = nil, set = nil}
 	m_HashChangeEvent[0] = wj.Member{name = "oldURL", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_HashChangeEvent_get_oldURL, set = nil}
 	m_HashChangeEvent[1] = wj.Member{name = "newURL", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_HashChangeEvent_get_newURL, set = nil}
@@ -26211,7 +26209,7 @@ wj_install_bindings :: proc "c" () {
 	m_StorageEvent[3] = wj.Member{name = "url", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_StorageEvent_get_url, set = nil}
 	m_StorageEvent[4] = wj.Member{name = "storageArea", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_StorageEvent_get_storageArea, set = nil}
 	m_StorageEvent[5] = wj.Member{name = "initStorageEvent", kind = wj.M_METHOD, flags = 0, length = 1, fn = nil}
-	m_SubmitEvent[0] = wj.Member{name = "submitter", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
+	m_SubmitEvent[0] = wj.Member{name = "submitter", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_SubmitEvent_get_submitter, set = nil}
 	m_TaskPriorityChangeEvent[0] = wj.Member{name = "previousPriority", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_TaskPriorityChangeEvent_get_previousPriority, set = nil}
 	m_ToggleEvent[0] = wj.Member{name = "oldState", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_ToggleEvent_get_oldState, set = nil}
 	m_ToggleEvent[1] = wj.Member{name = "newState", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_ToggleEvent_get_newState, set = nil}
@@ -26824,11 +26822,11 @@ wj_install_bindings :: proc "c" () {
 	m_Document[74] = wj.Member{name = "visibilityState", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Document_get_visibilityState, set = nil}
 	m_Document[75] = wj.Member{name = "onreadystatechange", kind = wj.M_ATTRIBUTE, flags = wj.F_LENIENT_THIS, length = 0, get = wjg_Document_get_onreadystatechange, set = wjg_Document_set_onreadystatechange}
 	m_Document[76] = wj.Member{name = "onvisibilitychange", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Document_get_onvisibilitychange, set = wjg_Document_set_onvisibilitychange}
-	m_Document[77] = wj.Member{name = "fgColor", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
-	m_Document[78] = wj.Member{name = "linkColor", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
-	m_Document[79] = wj.Member{name = "vlinkColor", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
-	m_Document[80] = wj.Member{name = "alinkColor", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
-	m_Document[81] = wj.Member{name = "bgColor", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
+	m_Document[77] = wj.Member{name = "fgColor", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Document_get_fgColor, set = wjr_Document_set_fgColor}
+	m_Document[78] = wj.Member{name = "linkColor", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Document_get_linkColor, set = wjr_Document_set_linkColor}
+	m_Document[79] = wj.Member{name = "vlinkColor", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Document_get_vlinkColor, set = wjr_Document_set_vlinkColor}
+	m_Document[80] = wj.Member{name = "alinkColor", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Document_get_alinkColor, set = wjr_Document_set_alinkColor}
+	m_Document[81] = wj.Member{name = "bgColor", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Document_get_bgColor, set = wjr_Document_set_bgColor}
 	m_Document[82] = wj.Member{name = "anchors", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 56, get = wjr_Document_get_anchors, set = nil}
 	m_Document[83] = wj.Member{name = "applets", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 57, get = nil, set = nil}
 	m_Document[84] = wj.Member{name = "clear", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
@@ -27296,9 +27294,9 @@ wj_install_bindings :: proc "c" () {
 	m_HTMLElement[130] = wj.Member{name = "ontouchmove", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLElement_get_ontouchmove, set = wjg_HTMLElement_set_ontouchmove}
 	m_HTMLElement[131] = wj.Member{name = "ontouchcancel", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLElement_get_ontouchcancel, set = wjg_HTMLElement_set_ontouchcancel}
 	m_HTMLElement[132] = wj.Member{name = "contentEditable", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLElement_get_contentEditable, set = wjg_HTMLElement_set_contentEditable}
-	m_HTMLElement[133] = wj.Member{name = "enterKeyHint", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
+	m_HTMLElement[133] = wj.Member{name = "enterKeyHint", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_HTMLElement_get_enterKeyHint, set = wjr_HTMLElement_set_enterKeyHint}
 	m_HTMLElement[134] = wj.Member{name = "isContentEditable", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLElement_get_isContentEditable, set = nil}
-	m_HTMLElement[135] = wj.Member{name = "inputMode", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
+	m_HTMLElement[135] = wj.Member{name = "inputMode", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_HTMLElement_get_inputMode, set = wjr_HTMLElement_set_inputMode}
 	m_HTMLElement[136] = wj.Member{name = "dataset", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 69, get = wjr_HTMLOrSVGOrMathMLElement_get_dataset, set = nil}
 	m_HTMLElement[137] = wj.Member{name = "nonce", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLElement_get_nonce, set = wjg_HTMLElement_set_nonce}
 	m_HTMLElement[138] = wj.Member{name = "autofocus", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLElement_get_autofocus, set = wjg_HTMLElement_set_autofocus}
@@ -27583,7 +27581,7 @@ wj_install_bindings :: proc "c" () {
 	m_HTMLInputElement[29] = wj.Member{name = "placeholder", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLInputElement_get_placeholder, set = wjg_HTMLInputElement_set_placeholder}
 	m_HTMLInputElement[30] = wj.Member{name = "readOnly", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLInputElement_get_readOnly, set = wjg_HTMLInputElement_set_readOnly}
 	m_HTMLInputElement[31] = wj.Member{name = "required", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLInputElement_get_required, set = wjg_HTMLInputElement_set_required}
-	m_HTMLInputElement[32] = wj.Member{name = "size", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLInputElement_get_size, set = wjg_HTMLInputElement_set_size}
+	m_HTMLInputElement[32] = wj.Member{name = "size", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_HTMLInputElement_get_size, set = wjr_HTMLInputElement_set_size}
 	m_HTMLInputElement[33] = wj.Member{name = "src", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLInputElement_get_src, set = wjg_HTMLInputElement_set_src}
 	m_HTMLInputElement[34] = wj.Member{name = "step", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLInputElement_get_step, set = wjg_HTMLInputElement_set_step}
 	m_HTMLInputElement[35] = wj.Member{name = "type", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLInputElement_get_type, set = wjg_HTMLInputElement_set_type}
@@ -27694,7 +27692,7 @@ wj_install_bindings :: proc "c" () {
 	m_HTMLMediaElement[37] = wj.Member{name = "volume", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLMediaElement_get_volume, set = wjg_HTMLMediaElement_set_volume}
 	m_HTMLMediaElement[38] = wj.Member{name = "muted", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLMediaElement_get_muted, set = wjg_HTMLMediaElement_set_muted}
 	m_HTMLMediaElement[39] = wj.Member{name = "defaultMuted", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLMediaElement_get_defaultMuted, set = wjg_HTMLMediaElement_set_defaultMuted}
-	m_HTMLMediaElement[40] = wj.Member{name = "loading", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
+	m_HTMLMediaElement[40] = wj.Member{name = "loading", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_HTMLMediaElement_get_loading, set = wjr_HTMLMediaElement_set_loading}
 	m_HTMLMediaElement[41] = wj.Member{name = "audioTracks", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 82, get = wjr_HTMLMediaElement_get_audioTracks, set = nil}
 	m_HTMLMediaElement[42] = wj.Member{name = "videoTracks", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 83, get = wjr_HTMLMediaElement_get_videoTracks, set = nil}
 	m_HTMLMediaElement[43] = wj.Member{name = "textTracks", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 84, get = wjr_HTMLMediaElement_get_textTracks, set = nil}
@@ -30740,7 +30738,7 @@ wj_install_bindings :: proc "c" () {
 		members = rawptr(&m_DOMStringList[0]), n_members = 3, subtree_end = 122,
 		index_get = rawptr(wjr_DOMStringList_index_get), length_get = rawptr(wjr_DOMStringList_length_hook), named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
-	the_interfaces[122] = wj.Interface{name = "DOMStringMap", parent = -1, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_UNSUPPORTED | wj.I_OVERRIDE_BUILTINS), class_kind = u8(wj.CLASS_NAMED), ctor_length = 0, ctor = nil,
+	the_interfaces[122] = wj.Interface{name = "DOMStringMap", parent = -1, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_OVERRIDE_BUILTINS), class_kind = u8(wj.CLASS_NAMED), ctor_length = 0, ctor = nil,
 		members = nil, n_members = 0, subtree_end = 123,
 		index_get = nil, length_get = nil, named_get = rawptr(wjr_DOMStringMap_named_get), named_set = rawptr(wjr_DOMStringMap_named_set), named_delete = rawptr(wjr_DOMStringMap_named_delete), named_keys = rawptr(wjr_DOMStringMap_named_keys),
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
@@ -30860,7 +30858,7 @@ wj_install_bindings :: proc "c" () {
 		members = rawptr(&m_FontFaceSetLoadEvent[0]), n_members = 1, subtree_end = 152,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
-	the_interfaces[152] = wj.Interface{name = "FormDataEvent", parent = 131, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_UNSUPPORTED | wj.I_CTOR_UNSUPPORTED), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 2, ctor = nil,
+	the_interfaces[152] = wj.Interface{name = "FormDataEvent", parent = 131, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(0), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 2, ctor = rawptr(wjr_FormDataEvent_constructor),
 		members = rawptr(&m_FormDataEvent[0]), n_members = 1, subtree_end = 153,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
@@ -30944,7 +30942,7 @@ wj_install_bindings :: proc "c" () {
 		members = rawptr(&m_StorageEvent[0]), n_members = 6, subtree_end = 173,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
-	the_interfaces[173] = wj.Interface{name = "SubmitEvent", parent = 131, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_UNSUPPORTED | wj.I_CTOR_UNSUPPORTED), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 1, ctor = nil,
+	the_interfaces[173] = wj.Interface{name = "SubmitEvent", parent = 131, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(0), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 1, ctor = rawptr(wjr_SubmitEvent_constructor),
 		members = rawptr(&m_SubmitEvent[0]), n_members = 1, subtree_end = 174,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}

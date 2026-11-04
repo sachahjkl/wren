@@ -9,6 +9,8 @@ import "wb:url"
 
 // A digit string read as a count stops growing here (it only needs to be larger than anything real).
 DIGITS_SATURATE :: 1 << 30
+// The largest maxlength / minlength: a long IDL attribute reflects up to 2^31 - 1, a larger value is none.
+LENGTH_ATTR_MAX :: 2147483647
 // Compiled `pattern` attributes kept; the cache starts over when it is full.
 PATTERN_CACHE_MAX :: 256
 
@@ -201,16 +203,21 @@ validity :: proc(f: ^Forms, h: base.Handle) -> Validity {
 }
 
 @(private)
+// HTML "rules for parsing non-negative integers" (leading whitespace, a sign, the digits up to anything else: "+5%" is 5,
+// "-0" is 0), within what the IDL attribute reflects (a long's non-negative range).
 parse_length_attr :: proc(n: ^dom.Node, name: string) -> (int, bool) {
 	s, ok := attr(n, name)
 	if !ok { return 0, false }
 	t := trim_ascii_ws(s)
-	if len(t) == 0 { return 0, false }
+	neg := false
+	if len(t) > 0 && (t[0] == '-' || t[0] == '+') { neg = t[0] == '-'; t = t[1:] }
+	if len(t) == 0 || !is_digit(t[0]) { return 0, false }
 	x := 0
 	for ch in transmute([]u8)t {
-		if !is_digit(ch) { return 0, false }
-		x = min(x * 10 + int(ch - '0'), DIGITS_SATURATE)
+		if !is_digit(ch) { break }
+		x = min(x * 10 + int(ch - '0'), LENGTH_ATTR_MAX + 1)
 	}
+	if x > LENGTH_ATTR_MAX || (neg && x != 0) { return 0, false }
 	return x, true
 }
 

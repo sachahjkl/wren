@@ -37,6 +37,9 @@ wj_event_wrapped :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, host: u64, ifac
 		}
 		return
 	}
+	// a submission's submitter and entry list stay readable after the dispatch (dom_forms.odin)
+	if iface == ifc("SubmitEvent") { wj.web_extra_set(ctx, obj, "submitter", wj.wj_wrap_node(ctx, wj.wr_Event_object(host))); return }
+	if iface == ifc("FormDataEvent") { wj.web_extra_set(ctx, obj, "formData", wj.wj_wrap_host(ctx, wj.wr_Event_object(host), ifc("FormData"))); return }
 	if !inherits(iface, ifc("UIEvent")) { return }
 	ev := api_decl.Event(host)
 	d: wj.wr_UiEventData

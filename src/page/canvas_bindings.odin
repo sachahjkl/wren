@@ -27,10 +27,11 @@ HTMLCanvasElement_height :: proc(c: ^Call, canvas: Api_HTMLCanvasElement) -> u32
 
 // Setting either attribute clears the canvas and resets its context, even to the value it had (the idiom for clearing).
 @(private)
-canvas_set_dim :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, name: string, value: u32) {
+canvas_set_dim :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, name: string, value: u32, fallback: u32) {
 	node := base.Handle(canvas.handle)
 	buf: [16]u8
-	dom.set_attribute(c.page.doc, node, name, strconv.write_uint(buf[:], u64(value), 10))
+	v := value > CANVAS_DIM_MAX ? fallback : value   // an unsigned long out of range sets the default
+	dom.set_attribute(c.page.doc, node, name, strconv.write_uint(buf[:], u64(v), 10))
 	if b := canvas_element_backing(c.page, node, false); b != nil {
 		b.seen = c.page.doc.mutations
 		w, h := canvas_dims(c.page.doc, node)
@@ -38,8 +39,8 @@ canvas_set_dim :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, name: string, va
 	}
 }
 
-HTMLCanvasElement_set_width :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, value: u32) { canvas_set_dim(c, canvas, "width", value) }
-HTMLCanvasElement_set_height :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, value: u32) { canvas_set_dim(c, canvas, "height", value) }
+HTMLCanvasElement_set_width :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, value: u32) { canvas_set_dim(c, canvas, "width", value, CANVAS_DEFAULT_WIDTH) }
+HTMLCanvasElement_set_height :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, value: u32) { canvas_set_dim(c, canvas, "height", value, CANVAS_DEFAULT_HEIGHT) }
 
 HTMLCanvasElement_context2d :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, alpha: bool, will_read_frequently: bool) -> (u64, Api_Error) {
 	if !c.page.settings.canvas.enabled || c.page.worker != nil { return 0, .None }
