@@ -126,7 +126,8 @@ then the contents through `wj_jit_streq` (`str_eq`); a string against another ty
   the string: the interpreter makes the call, and flattens the rope).
 - **Natives**: any other call of a native function goes through the helper `wj_jit_call` (`jit_call`): the operand
   stack is stored in the frame first and the objects the loop holds in locals written back (the collector's roots), the
-  helper makes the call as the interpreter does, its result comes back as a V. An exception leaves through a throw exit:
+  helper makes the call as the hot loop does (`call_native` for a native function, `call_internal` for the other
+  kinds), its result comes back as a V. An exception leaves through a throw exit:
   the helper put `jit_rethrow` in the callee's place, the interpreter makes the call again, which throws the exception
   pending, and unwinds from there. After the call the arrays the loop holds are taken again (`wj_jit_array`: a
   call may have grown, moved or detached them). Locals a closure may reach (captured ones, the arguments of a function

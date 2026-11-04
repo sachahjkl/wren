@@ -92,7 +92,7 @@ Everything below exists in the code today and is covered by the tests of [`src/t
 - Dedicated **workers**: a module on a thread of its own with its own store, messages and transferable buffers.
 
 **JavaScript, inside WebAssembly** ([`native/js`](native/js/README.md))
-- **An engine written in Odin** (`src/engine`: parser, bytecode interpreter, a JIT for hot loops, ES2023 and later;
+- **An engine written in Odin** (`src/engine`: parser, bytecode interpreter, a JIT for hot code, ES2023 and later;
   99.92 % of the test262 tests it runs pass), compiled to a WebAssembly module linked by Odin's own `wasm-ld` (no C
   compiler, no C library) and pre-initialized at build time: the interfaces and prototypes of the web platform are
   already built in the image (5.8 MiB, embedded in `wren.exe`), so a new realm starts in about 1.3 ms.
@@ -447,9 +447,10 @@ across every boundary, a single UI thread, mechanism separate from policy, a bou
 Wren is a beta. It is meant to show how far a browser with a single, sandboxed execution engine can go, not to
 replace one. Known limits:
 
-- **JavaScript is mostly interpreted** (a bytecode interpreter in Wasm, with a JIT for hot loops of numbers, properties and
-  small or native calls; functions that are not in such a loop stay interpreted): far slower than Edge on script-heavy
-  benchmarks, and a DOM call crosses the Wasm boundary. Pages that run a lot of script are slow.
+- **JavaScript is mostly interpreted** (a bytecode interpreter in Wasm, with a JIT for hot loops and hot functions
+  without loops of their own: numbers, properties, calls, objects and strings made, DOM attributes read; a function
+  with loops is compiled loop by loop): far slower than Edge on script-heavy benchmarks, and a DOM call crosses the
+  Wasm boundary. Pages that run a lot of script are slow.
 - **Each document has its own heap.** The DOM of a same-origin frame and its globals are reachable (`contentDocument`,
   `parent.foo()`), through handles and a bridge of proxies, not one heap: a native function refuses another realm's typed
   array or `Blob`, built-ins read from another window are the caller's, and a node moved between documents loses its shadow

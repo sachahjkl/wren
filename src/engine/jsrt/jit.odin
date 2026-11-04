@@ -138,6 +138,11 @@ jit_call :: proc(f: ^Frame, sp: int, argc: int, kind: Jit_Call_Kind, pc: int) ->
 		if fv.tag == .object && as_obj(fv).class == .bytecode_function {
 			if nb := as_obj(fv).data.(Func_Data).bc; nb.jit != nil && nb.jit.fn.state == .never {return .interpret}
 			r = jit_call_bytecode(ctx, as_obj(fv), this, f.stack[base:sp])
+		} else if fv.tag == .object && as_obj(fv).class == .c_function && native_kind(as_obj(fv)) == .function &&
+		          rt.stack_depth < rt.config.max_stack_depth && !stack_exhausted(rt) {
+			// (a native function called as call_internal calls it, without its dispatch: as the hot loop's hot_call)
+			fo := as_obj(fv)
+			r = call_native(ctx, fo, &fo.data.(Native_Data), this, f.stack[base:sp])
 		} else {
 			r = call_internal(ctx, fv, this, UNDEFINED, f.stack[base:sp], false)
 		}
