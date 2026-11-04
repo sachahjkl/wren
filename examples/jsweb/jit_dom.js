@@ -55,3 +55,5 @@ test("a getter replaced by a script's", () => {
   }
   eq(types(RUN), RUN, "the native getter again");
 });
+
+__run();

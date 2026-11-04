@@ -119,8 +119,9 @@ function, `html.wasm_scripts`, if it ever changes.)
 
 JavaScript is one more Wasm guest, not a second engine beside Wasm. The engine is written in Odin (`src/engine`): a
 front-end that compiles source to QuickJS-ng 0.17 bytecode, the interpreter (`jsrt`, with a hot loop of its own and a loop
-JIT that compiles hot loops to Wasm at run time: numbers, properties guarded by shapes, small callees inlined,
-natives called; [engine/jit.md](engine/jit.md)), and the numeric, Unicode, regexp and date libraries. `jscapi` gives it
+JIT that compiles hot loops and hot functions to Wasm at run time: numbers, properties guarded by shapes, small callees
+inlined, compiled functions called directly, natives and getters called, objects and strings made;
+[engine/jit.md](engine/jit.md)), and the numeric, Unicode, regexp and date libraries. `jscapi` gives it
 the QuickJS C API, which the glue (`native/js/odin`, all Odin) is written against; the web platform's objects are
 hand-written members plus bindings generated from the Web IDL of webref (`src/tools/bindgen`, package `jsgen`, into
 `native/js/odin/bindings_gen.odin`). `src\tools\buildjs` compiles it all to one wasm32 module (Odin, linked by Odin's own `wasm-ld`, no C library:
