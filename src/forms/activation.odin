@@ -166,17 +166,14 @@ details_of_summary :: proc(f: ^Forms, h: base.Handle) -> base.Handle {
 	return base.NIL_HANDLE
 }
 
-// The activation behaviour of a <summary>: its <details> opens or closes, and `toggle` is fired (it is queued, does not
-// bubble, and is not cancelable).
+// The activation behaviour of a <summary>: its <details> opens or closes (its `toggle` event is the attribute's: the page
+// queues it when `open` is added or removed, src/page/dialog_modal.odin open_note_attribute).
 @(private)
 toggle_details :: proc(f: ^Forms, details: base.Handle) {
 	n := element(f, details)
 	if n == nil { return }
-	was_open := has_attr(n, "open")
-	if was_open { dom.remove_attribute(f.doc, details, "open") } else { dom.set_attribute(f.doc, details, "open", "") }
+	if has_attr(n, "open") { dom.remove_attribute(f.doc, details, "open") } else { dom.set_attribute(f.doc, details, "open", "") }
 	changed_widely(f)
-	// ToggleEvent: newState in `data`, oldState in `text`
-	fire(f, details, "toggle", data = was_open ? "closed" : "open", text = was_open ? "open" : "closed")
 }
 
 // The activation target of a click on `target`: itself or the nearest ancestor with an activation behaviour.

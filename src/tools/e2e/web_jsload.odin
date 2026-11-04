@@ -728,6 +728,36 @@ log("PromiseRejectionEvent ctor " + pre.reason + " " + (pre.promise === late));
 	close_page(pr, min_checks = 10)
 }
 
+// HTML "notify about rejected promises" runs from a task queued at the end of the checkpoint, one for each checkpoint's
+// rejections: a task queued before it (a <details> given open queues its toggle) may still handle one. A classic script
+// of another origin fetched without CORS reports its errors muted; a data: URL is a script's whole name.
+@(test)
+jsload_rejection_tasks_muted_errors :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	other_origin := testenv.url(concat("http://localhost:8765", gen(`undefined_variable_of_another_origin`)))
+	pr := load(t, "rejections", concat(`<!doctype html><body>`, PRELUDE, `<script>
+addEventListener("unhandledrejection", e => log("unhandledrejection " + e.reason));
+addEventListener("error", e => { log("error " + e.message + "|" + e.filename + "|" + e.lineno + "|" + (e.error === null)); e.preventDefault(); });
+const later = Promise.reject("later");
+const d = document.createElement("details");
+d.ontoggle = e => { log("toggle " + e.oldState + " " + e.newState); Promise.resolve().then(() => later.catch(() => {})); Promise.reject("in toggle"); };
+d.open = true;
+Promise.reject("loud");
+</script><script src="`, other_origin, `"></script><script src="data:text/javascript,for(;){}"></script><script>log("last script")</script></body>`))
+	pr.expect_uncaught = true   // what this is about
+	wait_note(pr, "unhandledrejection in toggle")
+	wait_note(pr, "last script")
+	drain()
+	check(pr, in_order(pr, "toggle closed open", "unhandledrejection loud", "unhandledrejection in toggle"), "the toggle task, then a notification for each checkpoint's rejections, in order")
+	check(pr, !noted(pr, "unhandledrejection later"), "a task queued before the notification still handles a rejection")
+	check(pr, noted(pr, "error Script error.||0|true"), "an error of another origin's script without CORS is muted")
+	check(pr, has_part(pr, "|data:text/javascript,for(;){}|"), "a data: URL is the name of its script's errors, parentheses and all")
+	close_page(pr, min_checks = 4)
+}
+
 has_part :: proc(pr: ^Probe, part: string) -> bool {
 	for n in pr.section.notes { if strings.contains(n, part) { return true } }
 	return false

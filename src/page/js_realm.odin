@@ -248,12 +248,13 @@ js_hooks :: proc(p: ^Page, spec: []byte) -> bool {
 	return js.hook_install(r.inst, spec, js_call, p) >= 0
 }
 
-js_run :: proc(p: ^Page, source: []byte, url: string, line: i32 = 1, module := false, print_result := false) -> js.Eval_Status {
+js_run :: proc(p: ^Page, source: []byte, url: string, line: i32 = 1, module := false, print_result := false, muted := false) -> js.Eval_Status {
 	r := js_realm(p)
 	if r == nil { return .Trapped }
 	flags: js.Eval_Flags
 	if module { flags += {.Module} }
 	if print_result { flags += {.Print_Result} }
+	if muted { flags += {.Muted} }
 	defer js_after_task(p, r, url)
 	if !print_result && js.cacheable(len(source)) {
 		key := js.key_of(js_version(), transmute(i32)flags, url, source)

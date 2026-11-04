@@ -8,6 +8,7 @@ dom/collections
 dom/lists
 html/webappapis/timers
 html/webappapis/microtask-queuing
+html/webappapis/scripting/processing-model-2
 html/semantics/scripting-1
 html/dom
 url
@@ -64,3 +65,4 @@ css/css-anchor-position
 webgl
 css/css-multicol
 css/css-writing-modes
+html/semantics/forms/the-label-element

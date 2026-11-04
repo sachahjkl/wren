@@ -14,6 +14,7 @@ Eval_Flag :: enum i32 {
 	Want_Bytecode = 1,   // hand the bytecode to Engine_storeBytecode
 	Strict        = 2,
 	Print_Result  = 3,   // show the completion value in the console (the console's "run JavaScript")
+	Muted         = 4,   // HTML's muted errors (a classic script of another origin fetched without CORS): an uncaught error is "Script error."
 }
 Eval_Flags :: bit_set[Eval_Flag; i32]
 

@@ -559,7 +559,7 @@ attribute_write :: proc(d: ^Document, h: base.Handle, i: int, name, value: strin
 		// the same value (a script that writes it again at every scroll event): observers and callbacks still see the write,
 		// as the DOM says, but the document did not change: no new version, so no restyle and no layout
 		journal_record(d, .Attribute, h, base.NIL_HANDLE, name, old, true, ns = a.ns)
-		if plain { notify_attribute(d, h, name) }
+		if plain { notify_attribute(d, h, name, .Changed) }
 		return
 	}
 	a.value = heap_str(value)
@@ -570,7 +570,7 @@ attribute_write :: proc(d: ^Document, h: base.Handle, i: int, name, value: strin
 	delete(old)
 	if !plain { return }
 	if len(d.shadow_roots) > 0 { shadow_attribute(d, h, name) }
-	notify_attribute(d, h, name)
+	notify_attribute(d, h, name, .Changed)
 }
 
 // A new attribute `a` of element `h`, named `name` to the hooks (its local name).
@@ -585,7 +585,7 @@ attribute_add :: proc(d: ^Document, h: base.Handle, a: Attr, name: string) {
 	journal_record(d, .Attribute, h, base.NIL_HANDLE, name, "", false, ns = a.ns)
 	if !plain { return }
 	if len(d.shadow_roots) > 0 { shadow_attribute(d, h, name) }
-	notify_attribute(d, h, name)
+	notify_attribute(d, h, name, .Added)
 }
 
 // The value of the attribute of no namespace named `name`: what the browser reads (style, src, on*...).
@@ -689,7 +689,7 @@ attribute_remove :: proc(d: ^Document, h: base.Handle, i: int, name: string) {
 	delete(a.name); delete(a.value)
 	if !plain { return }
 	if len(d.shadow_roots) > 0 { shadow_attribute(d, h, name) }
-	notify_attribute(d, h, name)
+	notify_attribute(d, h, name, .Removed)
 }
 
 // Replaces all children by one text node (or none for ""), like Node.textContent = ...

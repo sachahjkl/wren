@@ -206,7 +206,7 @@ wj_console_text :: proc "c" (level: i32, text: [^]u8, n: uint) {
 
 // ---- exceptions ----
 
-// Where an error was thrown: the first "(url:line:col)" or "at url:line:col" frame of its stack (NUL-terminated, `n`
+// Where an error was thrown: the first "at name (url:line:col)" or "at url:line:col" frame of its stack (NUL-terminated, `n`
 // bytes). `url` points into `stack` (or is an empty string).
 stack_position :: proc "contextless" (stack: [^]u8, n: uint) -> (url: [^]u8, url_len: uint, line: i32, col: i32) {
 	url = empty_ptr()
@@ -217,12 +217,10 @@ stack_position :: proc "contextless" (stack: [^]u8, n: uint) -> (url: [^]u8, url
 	if at < 0 { return }
 	end := index_byte(stack[at:], int(n) - at, '\n')
 	end = end >= 0 ? at + end : int(n)
-	open := index_byte(stack[at:], end - at, '(')
-	s := open >= 0 ? at + open + 1 : at + 7
-	e := end
-	if open >= 0 {
-		close := index_byte(stack[s:], end - s, ')')
-		if close >= 0 { e = s + close }
+	// "at name (url:line:col)", or "at url:line:col" (a URL may hold parentheses: data:text/javascript,for(;){})
+	s, e := at + 7, end
+	if e > s && stack[e - 1] == ')' {
+		if open := index_of(stack[s:], e - s, " ("); open >= 0 { s, e = s + open + 2, e - 1 }
 	}
 	// url:line:col, the url possibly containing ':'
 	c2, c1 := -1, -1
