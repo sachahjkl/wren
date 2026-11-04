@@ -610,6 +610,7 @@ hud_captures :: proc(app: ^App, pos: draw.Vec2) -> bool {
 	if palette_captures(app, pos) { return true }   // and the command palette while it is open (palette.odin)
 	if setup_captures(app) { return true }   // and the Setup dialog (setup.odin)
 	if urlbar_captures(app, pos) { return true }   // and the address bar's suggestions (urlbar.odin)
+	if ui.menu_at(pos) { return true }   // and the open menus: their wheel scrolls them, never the page or a frame under them
 	if !app.hud.panel_open { return false }
 	r, ok := ui.popover_rect(PANEL_ID)
 	return ok && draw.rect_contains(r, pos)
