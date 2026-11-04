@@ -441,7 +441,10 @@ Jit_Site :: struct {
 	classes: [JIT_SITE_SHAPES]Class_ID,
 	inline:  bit_set[0 ..< JIT_SITE_SHAPES],
 	str:     bool,   // a read that met a string
+	odd:     bool,   // a bitwise operation that met undefined, null or a bool (ToInt32 makes them 0, 0, 0 or 1)
 	callee:  ^Object,   // a call's callee as an exit found it, when the translation could not tell (marked by the collector)
+	callees: [JIT_SITE_SHAPES]^Object,   // the functions a call inlines (each guarded in turn: j_inline_poly; marked by the collector)
+	n_callees: int,
 }
 
 Jit_Info :: struct {
@@ -1046,6 +1049,10 @@ jit_learn :: proc(f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, xpc: int, xsp
 		for i in max(0, xsp - int(opcode_info[op].n_pop)) ..< xsp {
 			v := st[i]
 			if v.tag == .int || v.tag == .float || (op == .add && v.tag == .string) {changed = jit_site_see(site, v) || changed}
+			if v.tag <= .bool && jit_is_bitwise(op) && !site.odd {
+				site.odd = true
+				changed = true
+			}
 		}
 	}
 	return
@@ -5193,26 +5200,32 @@ j_unbox_num :: proc(c: ^Jc, d: int, pc: int) -> bool {
 		j_fail(c, "a value that is not a number taken as one")
 		return false
 	}
+	// (a bitwise operation's site that met undefined, null or a bool takes them too: their tags are under int's)
+	odd := site.odd && jit_is_bitwise(Opcode(c.code[pc]))
+	#assert(Tag.undefined < Tag.bool && Tag.null < Tag.bool && Tag.bool < Tag.int && Tag.int < Tag.float)
 	tag := j_si(c, d)
 	j_lget(c, tag)
-	j_i32(c, i32(Tag.int))
-	j_op(c, W_I32_NE)
-	if want == .F {
-		j_lget(c, tag)
-		j_i32(c, i32(Tag.float))
+	if odd {
+		j_i32(c, i32(want == .F ? Tag.float : Tag.int))
+		j_op(c, W_I32_GT_U)
+	} else {
+		j_i32(c, i32(Tag.int))
 		j_op(c, W_I32_NE)
-		j_op(c, W_I32_AND)
+		if want == .F {
+			j_lget(c, tag)
+			j_i32(c, i32(Tag.float))
+			j_op(c, W_I32_NE)
+			j_op(c, W_I32_AND)
+		}
 	}
 	j_deopt_if(c, pc, JIT_AUX_LEARN)
 	if want == .I {
-		j_lget(c, c.sl0 + u32(d))
-		j_op(c, W_I32_WRAP_I64)
+		j_int_of(c, d, odd)
 		j_lset(c, tag)
 	} else {
 		j_lget(c, c.sl0 + u32(d))
 		j_op(c, W_F64_REINTERPRET_I64)
-		j_lget(c, c.sl0 + u32(d))
-		j_op(c, W_I32_WRAP_I64)
+		j_int_of(c, d, odd)
 		j_op(c, W_F64_CONVERT_I32_S)
 		j_lget(c, tag)
 		j_i32(c, i32(Tag.float))
@@ -5222,6 +5235,36 @@ j_unbox_num :: proc(c: ^Jc, d: int, pc: int) -> bool {
 	}
 	c.st.t[d] = want
 	return true
+}
+
+// The int32 of the V entry d, an int (odd: or undefined, null, a bool: 0, 0, 0 or 1), on the Wasm stack.
+@(private = "file")
+j_int_of :: proc(c: ^Jc, d: int, odd: bool) {
+	j_lget(c, c.sl0 + u32(d))
+	j_op(c, W_I32_WRAP_I64)
+	if !odd {return}
+	tag := j_si(c, d)
+	j_lget(c, c.sl0 + u32(d))
+	j_op(c, W_I32_WRAP_I64)
+	j_i32(c, 0xff)
+	j_op(c, W_I32_AND)
+	j_lget(c, tag)
+	j_i32(c, i32(Tag.int))
+	j_op(c, W_I32_EQ)
+	j_op(c, W_SELECT)
+	j_i32(c, 0)
+	j_lget(c, tag)
+	j_i32(c, i32(Tag.bool))
+	j_op(c, W_I32_GE_U)
+	j_op(c, W_SELECT)
+}
+
+@(private = "file")
+jit_is_bitwise :: proc(op: Opcode) -> bool {
+	#partial switch op {
+	case .shl, .sar, .shr, .op_and, .op_or, .xor: return true
+	}
+	return false
 }
 
 // The operands an instruction takes as numbers, unboxed when they are V entries.

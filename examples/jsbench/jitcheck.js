@@ -516,6 +516,21 @@
   function mkNoCall(n) { var s = 0; for (var i = 0; i < n; i++) { s += new NoCall() instanceof NoCall ? 1 : 0; } try { NoCall(); } catch (e) { s += e.name.length; } return s; }
   p("no operand stack: a class", mkNoCall(RUN));
 
+  // bitwise operations of values that are undefined, null or bools besides numbers (ToInt32: 0, 0, 0 or 1): a Map's
+  // missing keys, flags; then a double, a string, an object among them
+  function bits(vals, n) {
+    var m = new Map(), c = 0;
+    for (var i = 0; i < n; i++) {
+      if ((i & 3) === 0) { m.set(i & 255, i); }
+      var v = vals[i & 7];
+      c = (c + (m.get(i & 255) | 0) + (v ^ 5) + (v >>> 1) + (v << 2) + (v & 6) + (v >> 1)) | 0;
+    }
+    return c;
+  }
+  p("bitwise: undefined, null, bools", bits([1, undefined, null, true, false, 7, -3, 0x7fffffff], RUN));
+  p("bitwise: a double", bits([1, undefined, 2.75, true, false, 7, -3.5, 1e10], RUN));
+  p("bitwise: a string, an object", bits([1, "12", null, true, { valueOf: function () { return 3; } }, 7, -3, 0], RUN));
+
   // switch, strings, generators (not compiled) next to compiled code
   function sw(x) { switch (x) { case 1: return "one"; case "1": return "string"; default: return "other"; } }
   p("switch", sw(1), sw("1"), sw(2));
