@@ -37,6 +37,13 @@ DEV_ELEMENTS_SEARCH_MATCHES :: 5000
 EL_INLINE_TEXT_MAX :: 90
 // The search's "n of m" (logical px).
 EL_SEARCH_COUNT_W :: 76
+// The highlight of a box over the page (elements_overlay): each area is a ring around the next, one layer per pixel, light
+// enough that the page shows through, in Chromium's hues.
+EL_HL_CONTENT :: draw.Color{0.30, 0.55, 0.95, 0.22}
+EL_HL_PADDING :: draw.Color{0.45, 0.72, 0.32, 0.20}
+EL_HL_BORDER :: draw.Color{0.98, 0.80, 0.30, 0.24}
+EL_HL_MARGIN :: draw.Color{0.97, 0.62, 0.30, 0.18}
+EL_HL_TRANSFORMED :: draw.Color{0.25, 0.55, 0.95, 0.20}
 // The panels of the Elements panel's dock: the tree and the views of the chosen node.
 Dev_Side :: enum u32 { Tree, Styles, Computed, Layout, Listeners, Accessibility }
 DEV_SIDE_NAMES := [Dev_Side]string{.Tree = "tree", .Styles = "styles", .Computed = "computed", .Layout = "layout", .Listeners = "listeners", .Accessibility = "accessibility"}
@@ -1222,7 +1229,7 @@ elements_overlay :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, area: draw.Rect,
 	if p == nil || p.closed || !t.layout.valid { return }
 	n := dom.get(p.doc, h)
 	if n == nil { return }
-	if n.kind != .Element { h = n.parent }
+	if n.kind == .Text { h = n.parent } else if n.kind != .Element { return }   // a comment, the doctype: nothing on the page
 	r, ok := lay.box_of(&t.layout, h, draw.rect_size(area), t.scroll)
 	if !ok || !r.visible { return }
 	shift := area.min - doc_scroll_vec(t)   // (box_of: document coordinates, position: fixed boxes included)
@@ -1230,17 +1237,17 @@ elements_overlay :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, area: draw.Rect,
 	draw.push_clip(dc, area)
 	defer draw.pop_clip(dc)
 	if r.transformed {
-		draw.rect(dc, at(r.bounds, shift), draw.Color{0.25, 0.55, 0.95, 0.30})
+		draw.rect(dc, at(r.bounds, shift), EL_HL_TRANSFORMED)
 	} else {
 		// the margin box, from the computed margins
 		m := [4]f32{px_of(p, h, "margin-top"), px_of(p, h, "margin-right"), px_of(p, h, "margin-bottom"), px_of(p, h, "margin-left")}
 		sc := t.zoom > 0 ? t.zoom : 1
 		bx := r.border
 		mb := lay.Rect{{bx.min.x - m[3] * sc, bx.min.y - m[0] * sc}, {bx.max.x + m[1] * sc, bx.max.y + m[2] * sc}}
-		draw.rect(dc, at(mb, shift), draw.Color{0.97, 0.62, 0.30, 0.26})
-		draw.rect(dc, at(r.border, shift), draw.Color{0.98, 0.80, 0.30, 0.30})
-		draw.rect(dc, at(r.padding, shift), draw.Color{0.45, 0.72, 0.32, 0.30})
-		draw.rect(dc, at(r.content, shift), draw.Color{0.30, 0.55, 0.95, 0.32})
+		ring(dc, at(mb, shift), at(r.border, shift), EL_HL_MARGIN)
+		ring(dc, at(r.border, shift), at(r.padding, shift), EL_HL_BORDER)
+		ring(dc, at(r.padding, shift), at(r.content, shift), EL_HL_PADDING)
+		draw.rect(dc, at(r.content, shift), EL_HL_CONTENT)
 	}
 	b := at(r.bounds, shift)
 	draw.rect(dc, b, draw.Color{0.30, 0.55, 0.95, 0.95}, 0, 1)
@@ -1258,6 +1265,23 @@ elements_overlay :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, area: draw.Rect,
 	draw.rect(dc, {{x, y}, {x + w, y + hh}}, draw.Color{0.12, 0.14, 0.20, 0.95}, 4)
 	draw.rect(dc, {{x, y}, {x + w, y + hh}}, draw.Color{0.30, 0.55, 0.95, 0.9}, 4, 1)
 	draw.text(dc, f, fs, {x + 7, math.round(y + hh * 0.5 + fs * 0.34)}, draw.Color{0.93, 0.95, 1, 1}, text)
+}
+
+@(private = "file")
+ring :: proc(dc: ^draw.Context, outer, inner: draw.Rect, c: draw.Color) {
+	parts, n := ring_parts(outer, inner)
+	for r in parts[:n] { draw.rect(dc, r, c) }
+}
+
+// `outer` less `inner` (clamped inside it), as up to four rectangles that do not overlap: no pixel painted twice.
+ring_parts :: proc(outer, inner: draw.Rect) -> (parts: [4]draw.Rect, n: int) {
+	in_ := draw.Rect{{clamp(inner.min.x, outer.min.x, outer.max.x), clamp(inner.min.y, outer.min.y, outer.max.y)}, {clamp(inner.max.x, outer.min.x, outer.max.x), clamp(inner.max.y, outer.min.y, outer.max.y)}}
+	add :: proc(parts: ^[4]draw.Rect, n: ^int, r: draw.Rect) { parts[n^] = r; n^ += 1 }
+	if in_.min.y > outer.min.y { add(&parts, &n, {outer.min, {outer.max.x, in_.min.y}}) }
+	if outer.max.y > in_.max.y { add(&parts, &n, {{outer.min.x, in_.max.y}, outer.max}) }
+	if in_.min.x > outer.min.x { add(&parts, &n, {{outer.min.x, in_.min.y}, {in_.min.x, in_.max.y}}) }
+	if outer.max.x > in_.max.x { add(&parts, &n, {{in_.max.x, in_.min.y}, {outer.max.x, in_.max.y}}) }
+	return
 }
 
 @(private = "file")
