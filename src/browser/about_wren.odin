@@ -288,7 +288,7 @@ updates_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
 	if d.update.can_check {
 		strings.write_string(sb, "<form method=\"get\" action=\"about:wren\"><input type=\"hidden\" name=\"action\" value=\"check_update\"><button type=\"submit\">Check for updates</button></form>\n")
 	}
-	strings.write_string(sb, "<p class=\"weak\" style=\"margin-top: 12px\">An update is a program signed by Froment Software with a key built into Wren: its signature, its length and its checksum are checked before anything is written, the old program is kept until the new one is in place, and nothing is installed unless you press the button. Wren asks GitHub only when you check.</p>\n")
+	strings.write_string(sb, "<p class=\"weak\" style=\"margin-top: 12px\">By default an update is a program signed with a key built into Wren (browser.update.public_key and the other browser.update.* settings in about:config choose another channel or key, or turn the signature off): its signature, its length and its checksum are checked before anything is written, the old program is kept until the new one is in place, and nothing is installed unless you press the button. Wren asks GitHub only when you check.</p>\n")
 }
 
 // The people and projects Wren owes its design or its code to: one link each, to the official site (the official X account

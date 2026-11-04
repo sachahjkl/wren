@@ -109,6 +109,8 @@ SETUP_PREFS := [?]config.Def{
 		description = "Where the files of a release are fetched from when you install an update: <this>v<version>/update-windows-x64.json (the signed manifest), its .sig and the program. An address ending in /, https (or http on this computer). A mirror or a test server sets it; the signature is checked whatever the address."},
 	{name = "browser.update.public_key", kind = .String, default = {s = ""},
 		description = "The key (base64url of 32 bytes) that a release's manifest must be signed with, instead of the one built into Wren. Empty: the built-in one. For trying releases made with another key (the tests); setting it widens whom you trust to update Wren."},
+	{name = "browser.update.require_signature", kind = .Bool, default = {b = true},
+		description = "Install an update only when its manifest carries a valid signature of the key above (the built-in one, or browser.update.public_key). Turn it off only for a channel of your own that does not sign: the file's length and SHA-256 are then checked against an unsigned manifest, which proves nothing about who made it. A channel is: browser.update.url (what announces a release), browser.update.base_url (where its files are), this and browser.update.public_key."},
 	{name = "browser.update.allow_development_build", kind = .Bool, default = {b = false},
 		description = "Let a development build install a release over itself. For the tests of the updater only: a development build is updated by hand."},
 }
