@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The loop JIT (src/engine/jsrt/jit.odin) · Wren docs</title>
-<meta name="description" content="The loop JIT (src/engine/jsrt/jit.odin) A hot loop of a function is translated from its bytecode to a WebAssembly function, which the host compiles with Cranelift and att">
+<title>The JIT (src/engine/jsrt/jit.odin) · Wren docs</title>
+<meta name="description" content="The JIT (src/engine/jsrt/jit.odin) A hot loop of a function, or a hot function without loops of its own, is translated from its bytecode to a WebAssembly function, which ">
 <link rel="icon" type="image/png" sizes="32x32" href="../../../img/logo-32.png">
 <link rel="stylesheet" href="../../../style.css">
 <link rel="stylesheet" href="../../../docs/docs.css">
@@ -212,7 +212,7 @@
 <li><a href="../../../docs/engine/bigint/">bigint: arbitrary-precision integers for the JavaScript engine</a></li>
 <li><a href="../../../docs/engine/datetime/">datetime (package jsdate): the JavaScript engine's Date</a></li>
 <li><a href="../../../docs/engine/frontend/">Moteur JavaScript — front-end E1 (src/engine/frontend)</a></li>
-<li><a href="../../../docs/engine/jit/" aria-current="page" class="active">The loop JIT (src/engine/jsrt/jit.odin)</a></li>
+<li><a href="../../../docs/engine/jit/" aria-current="page" class="active">The JIT (src/engine/jsrt/jit.odin)</a></li>
 <li><a href="../../../docs/engine/jscapi/">The QuickJS C API on the Odin runtime (src/engine/jscapi)</a></li>
 <li><a href="../../../docs/engine/numconv/">numconv: float64 ↔ string for the JavaScript engine</a></li>
 <li><a href="../../../docs/engine/regexp/">engine/regexp</a></li>
@@ -232,13 +232,14 @@
 <nav class="doc-crumbs" aria-label="Breadcrumb"><ol>
 <li><a href="../../../docs/">Docs</a></li>
 <li>More</li>
-<li aria-current="page">The loop JIT (src/engine/jsrt/jit.odin)</li>
+<li aria-current="page">The JIT (src/engine/jsrt/jit.odin)</li>
 </ol></nav>
-<h1 id="the-loop-jit-srcenginejsrtjitodin"><a class="anchor" href="#the-loop-jit-srcenginejsrtjitodin" aria-hidden="true">#</a>The loop JIT (<code>src/engine/jsrt/jit.odin</code>)</h1>
-<p>A hot loop of a function is translated from its bytecode to a WebAssembly function, which the host compiles with
-Cranelift and attaches to the engine's table (<code>src/js/jit.odin</code>, <code>wasm.attach_function</code>); the interpreter then calls it
-like a C function pointer. WebAssembly stays the only execution engine: the code made at run time lives in the engine's
-sandbox and reaches only the engine's memory and the helpers the engine exports to it.</p>
+<h1 id="the-jit-srcenginejsrtjitodin"><a class="anchor" href="#the-jit-srcenginejsrtjitodin" aria-hidden="true">#</a>The JIT (<code>src/engine/jsrt/jit.odin</code>)</h1>
+<p>A hot loop of a function, or a hot function without loops of its own, is translated from its bytecode to a WebAssembly
+function, which the host compiles with Cranelift and attaches to the engine's table (<code>src/js/jit.odin</code>,
+<code>wasm.attach_function</code>); the interpreter then calls it like a C function pointer. WebAssembly stays the only execution
+engine: the code made at run time lives in the engine's sandbox and reaches only the engine's memory, its table and the
+helpers the engine exports to it.</p>
 <h2 id="when-a-loop-is-compiled"><a class="anchor" href="#when-a-loop-is-compiled" aria-hidden="true">#</a>When a loop is compiled</h2>
 <p>The interpreter's hot loop counts back edges for the interrupt poll; every <code>INTERRUPT_POLL_EVERY</code> of them it leaves to
 the full dispatch, which offers the back edge to <code>jit_back_edge</code>. A loop seen there for the first time is translated
@@ -247,6 +248,12 @@ memory. While a loop of a function is compiled, the hot loop leaves at that loop
 the function's other loops stay in it.</p>
 <p>A loop that runs few iterations per entry costs more to enter than the code saves: after <code>JIT_PROBE</code> entries with fewer
 than <code>JIT_MIN_ITERS</code> iterations each on average it is left to the interpreter.</p>
+<h2 id="when-a-function-is-compiled-whole"><a class="anchor" href="#when-a-function-is-compiled-whole" aria-hidden="true">#</a>When a function is compiled whole</h2>
+<p>A call of a plain function counts toward <code>javascript.jit.call_threshold</code> (<code>Function_Bytecode.jit_calls</code>, counted where
+the interpreter pushes the callee's frame: <code>jit_pushed</code>, <code>jit_entered</code>, and in the helper of compiled code). Once it is
+reached, a function whose backward jumps (if any) go to its start is translated as the region <code>[0, end)</code> and entered
+at its call (<code>jit_fn_enter</code>): its arguments' types guarded at entry, its locals in the frame's memory. A function with
+loops of its own is left to the loop JIT; a function that is refused counts no more (<code>JIT_CALLS_NEVER</code>).</p>
 <h2 id="what-the-code-holds"><a class="anchor" href="#what-the-code-holds" aria-hidden="true">#</a>What the code holds</h2>
 <p>The translation follows the operand stack with a type per entry:</p>
 <div class="table-box"><table>
@@ -270,10 +277,24 @@ code leaves; the others stay in the frame's memory (read as V).</p>
 constant index: in the object, or in the prototype that holds it, whose shape (and those of the prototypes before it)
 is guarded too. A shape that is not a dictionary never changes, so the guard is a check of data in the object: there is
 nothing to invalidate when a prototype or an object changes. A dictionary shape changes in place: a holder's (or an
-object's own) is checked by the key, kind and flags at the index. A global is read from the realm's lexical
+object's own) is checked by the key, kind and flags at the index; one the read walks past (a Web IDL prototype, made a
+dictionary for its lazy members) by its version (<code>Shape.version</code>, bumped by every change in place: a key added or
+removed, an attribute, the prototype), so that a key added to it later, which would shadow what was found further, is
+seen. A global is read from the realm's lexical
 declarations or from the global object, the declarations' shape guarded (none of them shadows it). A closure's
 variable is read and written where its cell points. A string's <code>length</code> is read from the string, its other properties
 from <code>String.prototype</code> (the value's tag checked, then the prototype's shape) once the site has met a string.</p>
+<p>A read whose site's first shape finds an accessor reads through getters (<code>j_call_getter</code>): the shapes guarded as for a
+data property, the getter read from its <code>Getset</code> and checked to be a native function called as a function (as the hot
+loop's <code>hot_native_getter</code>: a DOM attribute's, Map's <code>size</code>), else the interpreter reads it; the helper <code>wj_jit_get</code>
+(<code>jit_getter</code>) calls it, the operand stack and the objects held written to the frame first, the held arrays taken
+again after. An exception is exact: the helper puts the context's thrower in the object's place (<code>Context.jit_thrower</code>,
+an object whose property of that name is an accessor with <code>jit_rethrow</code> as its getter), the code leaves through a throw
+exit, and the interpreter makes the read again, which throws the exception pending. Host objects without exotic hooks
+are ordinary objects there (<code>Object.host_exotic</code> checked where the code reads past one), so a DOM node's attributes and
+methods are read through its prototypes. A global's accessor (<code>window.document</code>) is not called: a read of a global has
+no object on the stack to put the thrower in, and an exception would have no exact way back into the interpreter but a
+throw exit in its back edges (round 20: 4 % of nodes10k with the JIT off).</p>
 <p>What a site was compiled for is per site and bounded (<code>Jit_Site</code>: <code>JIT_SITE_SHAPES</code> shapes with their objects' class,
 the type of the value read): taken from the frame's values when the loop is translated (the translation follows what
 each entry held, as far as it can tell, for these hints), and learned when the site misses. A learn exit
@@ -281,8 +302,33 @@ each entry held, as far as it can tell, for these hints), and learned when the s
 site takes its shape or a wider type, and the loop is translated again (<code>JIT_MAX_LEARNS</code> times at most). A miss with
 nothing to learn (a shape the site does not take inline: an accessor, an exotic object, a frozen property for a write;
 more shapes than the site takes) is a deopt.</p>
+<p>A write of a property the object does not have appends it as <code>[[Set]]</code> does, when the site's shape is an ordinary
+object's that is not a dictionary and the property is nowhere on its prototype chain: the shape's transition (made at
+translation if it was not, <code>shape_transition</code>) is taken, the prototypes' shapes guarded, the object checked to be
+ordinary and extensible, its slots grown by a helper (<code>wj_jit_reserve</code>) when they are full. The translation follows the
+shapes the object it sees takes (<code>Jc.shadows</code>: a constructor's <code>this.x = x; this.y = y</code> is compiled for the shape after
+<code>x</code> at the second write).</p>
 <p>The shapes and objects the code compares against are kept alive by the loop (<code>Jit_Loop.keep</code> and the sites' shapes,
 marked by the collector through <code>Function_Bytecode.jit</code>): an address the code holds is never another shape's.</p>
+<h2 id="objects-made-by-compiled-code"><a class="anchor" href="#objects-made-by-compiled-code" aria-hidden="true">#</a>Objects made by compiled code</h2>
+<p>Compiled code makes objects through the helper <code>wj_jit_new</code> (<code>jit_new</code>): a plain object (<code>object</code>, the start of an
+object literal), an Array of entries (<code>array_from</code>, an array literal), the object a construction makes
+(<code>create_from_ctor</code>). The allocator and the collector's contract are the engine's own: allocation never collects, a
+collection runs only at a safe point, and the compiled code reaches one only through a call (whose helper writes the
+operand stack and the objects held in locals to the frame first) or an exit; the helper drops the temporary roots of
+the allocation (<code>temp_roots</code> back to the frame's height), the object being in the code's hands until then. An object
+literal's fields (<code>define_field</code>) need no guard: the translation knows the shape of the object it made until the next
+join (<code>Jit_State.k</code>), and appends each field through the transition, its slots grown when full.</p>
+<p>A construction <code>new F(...)</code> of a constructor that can be compiled whole (not a derived class's) is a direct call
+(below): the object made by the helper is the callee's <code>this</code>, new.target the constructor, the result the callee's
+when it returns an object, else the object.</p>
+<h2 id="strings"><a class="anchor" href="#strings" aria-hidden="true">#</a>Strings</h2>
+<p>A <code>+</code> whose site met a string adds values through the helper <code>wj_jit_add</code> (<code>jit_add</code>): the two entries written to the
+frame, <code>op_add</code> makes the string (a rope or an append buffer, as the engine builds them), the result a V; <code>s += x</code> of
+a local the loop leaves in memory is added there (<code>add_loc</code>). The helper makes only what cannot run code or throw (no
+object, symbol or BigInt operand, a result that fits a string); otherwise it does nothing and the interpreter makes the
+instruction (a deopt), so a conversion's effects happen once. <code>===</code> and <code>!==</code> of two strings compare the pointers,
+then the contents through <code>wj_jit_streq</code> (<code>str_eq</code>); a string against another type is false by the tags.</p>
 <h2 id="calls"><a class="anchor" href="#calls" aria-hidden="true">#</a>Calls</h2>
 <ul>
 <li><strong>Inlined</strong>: a call of a small function (<code>JIT_INLINE_MAX_CODE</code> bytes of bytecode, no closure cells of its own,
@@ -297,23 +343,40 @@ inline, and <code>s.charCodeAt(i)</code> of a flat string and an index within it
 the string: the interpreter makes the call, and flattens the rope).</li>
 <li><strong>Natives</strong>: any other call of a native function goes through the helper <code>wj_jit_call</code> (<code>jit_call</code>): the operand
 stack is stored in the frame first and the objects the loop holds in locals written back (the collector's roots), the
-helper makes the call as the interpreter does, its result comes back as a V. An exception leaves through a throw exit:
+helper makes the call as the hot loop does (<code>call_native</code> for a native function, <code>call_internal</code> for the other
+kinds), its result comes back as a V. An exception leaves through a throw exit:
 the helper put <code>jit_rethrow</code> in the callee's place, the interpreter makes the call again, which throws the exception
 pending, and unwinds from there. After the call the arrays the loop holds are taken again (<code>wj_jit_array</code>: a
 call may have grown, moved or detached them). Locals a closure may reach (captured ones, the arguments of a function
 with a mapped <code>arguments</code>) stay in the frame's memory in a loop that calls.</li>
-<li>A call of bytecode that is not inlined keeps the loop interpreted: through the helper it is a nested <code>interp_run</code>,
-slower than the interpreter's own call (measured: 84 -&gt; 130 ns for a small function).</li>
+<li><strong>Compiled functions, directly</strong> (<code>j_direct_call</code>): a call of a function that can be compiled whole, with no closure
+cells of its own, is made by the compiled code itself when the callee is a function of that bytecode (any of its
+closures) and its code is compiled: the callee's frame is pushed on the value stack exactly as <code>frame_push</code> pushes it
+(so the collector, a deopt and an exception see an interpreter's frame), its code is called through the engine's
+table (imported by the module, <code>"e" "table"</code>), the frame is popped as <code>frame_pop</code> pops it. Nothing of the caller
+lives across the call but in its frame (its operand stack materialized, its objects written back), so no register
+state is saved. When the callee's code leaves other than by its return, the helper <code>wj_jit_finish</code>
+(<code>jit_call_finish</code>) interprets the rest of the call on its frame; an exception comes back as a throw exit of the
+caller. Any check that fails (another callee, not compiled, no room in the value stack's segment, too deep) makes
+the call through the helper instead, which pushes the frame the same way and enters the callee's code if it has
+some, else interprets it.</li>
+<li>A call of bytecode that cannot be compiled whole (a function with loops, a generator...) keeps the loop interpreted:
+through the helper it is a nested <code>interp_run</code>, slower than the interpreter's own call (measured in round 20: 84 -&gt;
+130 ns for a small function). A callee refused after the caller was compiled makes the helper hand the call back to
+the interpreter (a deopt), until the caller is left to the interpreter.</li>
 </ul>
-<p>Compiled code may run the same loop again in a nested frame (a call that recurses): the exit of the outer one checks
-that the loop is still the code it ran (<code>jl.index</code>) before it changes the loop's state.</p>
+<p>Compiled code nested on the host stack (a compiled call of compiled code, a helper's call of a native that calls
+compiled code) is bounded by <code>JIT_MAX_NEST</code> (<code>Runtime.jit_depth</code>): deeper calls are interpreted, with the interpreter's
+own depth limit, so a recursion goes as deep as it does interpreted. Compiled code may run the same region again in a
+nested frame (a call that recurses): the exit of the outer one checks that the region is still the code it ran
+(<code>jl.index</code>) before it changes the region's state.</p>
 <h2 id="exits"><a class="anchor" href="#exits" aria-hidden="true">#</a>Exits</h2>
 <p>The code returns an exit word (kind, pc, sp, aux) and the interpreter carries on at (pc, sp):</p>
 <div class="table-box"><table>
 <thead><tr><th>exit</th><th>when</th></tr></thead>
 <tbody>
 <tr><td>leave</td><td>a jump out of the region (aux: the iterations this entry ran)</td></tr>
-<tr><td>ret</td><td>a return (the value in the frame's <code>stack[0]</code>)</td></tr>
+<tr><td>ret</td><td>a return (the value in the frame's <code>stack[0]</code>; an exact integer is an int when it fits, as the interpreter has it)</td></tr>
 <tr><td>guard</td><td>an entry guard failed (aux: the slot): the slot is widened or left in memory, translated again</td></tr>
 <tr><td>deopt</td><td>a speculation failed in the loop (int overflow, -0, a bound, a type): aux a slot to widen, <code>JIT_AUX_LEARN</code>, <code>JIT_AUX_NO_INLINE</code> or none</td></tr>
 <tr><td>budget</td><td>every <code>JIT_BUDGET</code> iterations: the interpreter's safe point (interrupts, collection) runs</td></tr>
@@ -342,8 +405,11 @@ what compiled code would leave unrooted.</li>
 <p class="doc-toc-title">On this page</p>
 <ul>
 <li><a href="#when-a-loop-is-compiled">When a loop is compiled</a></li>
+<li><a href="#when-a-function-is-compiled-whole">When a function is compiled whole</a></li>
 <li><a href="#what-the-code-holds">What the code holds</a></li>
 <li><a href="#properties">Properties</a></li>
+<li><a href="#objects-made-by-compiled-code">Objects made by compiled code</a></li>
+<li><a href="#strings">Strings</a></li>
 <li><a href="#calls">Calls</a></li>
 <li><a href="#exits">Exits</a></li>
 <li><a href="#tests">Tests</a></li>
