@@ -72,7 +72,7 @@ process_data_url :: proc(u: url.URL, allocator := context.allocator) -> (d: Data
 		header = strings.trim_right(header[:len(header) - len(";base64")], " ")
 	}
 	mime_str := header
-	if strings.has_prefix(mime_str, ";") || mime_str == "" { mime_str = strings.concatenate({"text/plain", mime_str}, context.temp_allocator) }
+	if strings.has_prefix(mime_str, ";") { mime_str = strings.concatenate({"text/plain", mime_str}, context.temp_allocator) }
 	m, mok := http.parse_mime(mime_str, context.temp_allocator)
 	if mok {
 		essence := strings.concatenate({m.type, "/", m.subtype}, context.temp_allocator)

@@ -325,7 +325,8 @@ run_hop :: proc(t: ^Task) {
 	case "blob":          blob_hop(t)
 	case "file":          file_hop(t)
 	case "about":
-		if t.target.href == "about:blank" { synthetic(t, 200, "text/html;charset=utf-8", nil); return }
+		// (a document's URL, not a resource: Fetch has no answer for it outside a navigation)
+		if t.target.href == "about:blank" && t.mode == .Navigate { synthetic(t, 200, "text/html;charset=utf-8", nil, false); return }
 		fail(t, .Bad_Scheme, "unsupported about: URL")
 	case:
 		fail(t, .Bad_Scheme, fmt.tprintf("unsupported scheme %q", t.target.scheme))
@@ -606,6 +607,8 @@ request_header_list :: proc(t: ^Task) -> http.Headers {
 		ctx := cookies.Context{url = t.target, site_context = site_context(t), http_api = true, now_ms = now_ms(), partition = cookie_partition(t)}
 		if c := cookies.header_for(&l.profile.jar, ctx, context.temp_allocator); c != "" { http.set_header(&h, "Cookie", c) }
 	}
+	// Fetch "HTTP-network-or-cache fetch": a POST or a PUT without a body says so
+	if len(t.body) == 0 && (t.method == "POST" || t.method == "PUT") { http.set_header(&h, "Content-Length", "0") }
 	return h
 }
 
@@ -1001,11 +1004,11 @@ handle_redirect :: proc(t: ^Task, location: string) {
 // Local schemes
 
 @(private)
-synthetic :: proc(t: ^Task, status: int, mime: string, body: []byte) {
+synthetic :: proc(t: ^Task, status: int, mime: string, body: []byte, with_length := true) {
 	raw := http.headers_make(context.temp_allocator)
 	http.append_header(&raw, "Content-Type", mime)
 	buf: [24]byte
-	http.append_header(&raw, "Content-Length", fmt.bprintf(buf[:], "%d", len(body)))
+	if with_length { http.append_header(&raw, "Content-Length", fmt.bprintf(buf[:], "%d", len(body))) }
 	m, has := http.parse_mime(mime, context.temp_allocator)
 	if why, ok := check_task_mime(t, m, has, false); !ok { fail(t, .Bad_Mime, why); return }
 	// each callback may cancel the task (and another task may take its slot): it is found again by handle after each
@@ -1034,7 +1037,8 @@ data_hop :: proc(t: ^Task) {
 	if !ok { fail(t, .Bad_Data_URL, "malformed data: URL"); return }
 	defer data_url_destroy(&d)
 	t.taint = .Basic   // a data: response is readable by whoever asked for it
-	synthetic(t, 200, d.mime, d.body)
+	// (Fetch "scheme fetch": a Content-Type and nothing else; a HEAD gets no body)
+	synthetic(t, 200, d.mime, t.method == "HEAD" ? nil : d.body, false)
 }
 
 @(private)
