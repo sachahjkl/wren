@@ -297,6 +297,20 @@ decoding_threads :: proc(t: ^testing.T) {
 	port_close(port2)
 }
 
+// The pool's start does not wait for its first thread to probe the optional codecs; asking for one does: HEIF's answer
+// is the probe's, never the "no" of before it.
+@(test)
+optional_codecs_asked_after_the_probe :: proc(t: ^testing.T) {
+	sync.mutex_lock(&decoder_tests)   // (one decoder for the process: tests that start it run one at a time)
+	defer sync.mutex_unlock(&decoder_tests)
+	codecs = {}
+	decoder_start(1)
+	defer decoder_stop()
+	heif := codec_supported(.Heif)
+	testing.expect(t, sync.atomic_load(&codecs.probed), "the answer came after the probe")
+	testing.expect_value(t, heif, codecs.heif)
+}
+
 // The ownership of a job, in the orders that used to free one twice: the cache keeps a pointer to the job it submitted (to cancel it or to
 // change its priority) and the port that owns the job can close, deliver or free it before the cache lets go.
 @(private = "file")

@@ -26,7 +26,7 @@ import "core:time"
 import "wb:base"
 import "wb:host"
 
-// How long starting the pool waits for the first thread to look at the optional codecs (for <source type> selection).
+// How long asking for an optional codec waits for the first thread to look at them (<source type> selection).
 CODECS_PROBE_WAIT :: 2 * time.Second
 
 Port_Id :: distinct u64
@@ -143,7 +143,8 @@ dec: ^Decoder
 @(private)
 dec_mu: sync.Mutex   // start / stop
 
-// Optional codecs found on this system (the built-in ones are always there). Probed once, by the first decoding thread.
+// Optional codecs found on this system (the built-in ones are always there). Probed once, by the first decoding thread;
+// codecs_ready is posted then, and again by each one that waited for it.
 @(private)
 codecs: struct { heif, probed: bool }
 @(private)
@@ -154,10 +155,21 @@ codecs_ready: sync.Sema
 codec_supported :: proc(f: Format) -> bool {
 	switch f {
 	case .Png, .Jpeg, .Gif, .Bmp, .Ico, .Tiff, .Webp, .Avif, .Svg: return true
-	case .Heif: return codecs.heif
+	case .Heif: codecs_wait(); return codecs.heif
 	case .Unknown: return false
 	}
 	return false
+}
+
+// Until the first decoding thread probed the optional codecs, when the pool started one (its start does not wait: the
+// probe's COM and imaging factory took 12 ms of the window thread at a page's first image).
+@(private)
+codecs_wait :: proc() {
+	if d := dec; sync.atomic_load(&codecs.probed) || d == nil || d.threads_live == 0 { return }
+	// (a post can be an earlier pool's: the probe is looked at again)
+	posted := false
+	for !sync.atomic_load(&codecs.probed) && sync.sema_wait_with_timeout(&codecs_ready, CODECS_PROBE_WAIT) { posted = true }
+	if posted { sync.sema_post(&codecs_ready) }
 }
 
 // The format a MIME type names (for <source type>), Unknown when it is not an image type this browser knows.
@@ -197,8 +209,6 @@ decoder_start :: proc(threads: int, stack_bytes := DECODER_STACK_DEFAULT, idle_m
 	sync.mutex_lock(&d.mu)
 	for _ in 0 ..< d.max_threads { spawn_thread(d) }
 	sync.mutex_unlock(&d.mu)
-	// <source type> selection needs to know the optional codecs: the first thread looks (a few CoCreateInstance calls)
-	if len(d.threads) > 0 && !codecs.probed { _ = sync.sema_wait_with_timeout(&codecs_ready, CODECS_PROBE_WAIT) }
 }
 
 decoder_running :: proc() -> bool { return dec != nil }

@@ -1402,6 +1402,77 @@ process's during the load until quiet) is the same within its noise: the system 
 6. **Measured, not kept**: `color_prepare` on the font preload thread (item 3). **Not done this round**: the script
    stage of DOM-heavy pages (item 1 of the list), whose engine work needs its own series in `jspage`.
 
+## What changed, round 17: first page loads, what they wait for
+
+Item 10 of round 16's list. The browser: `wrentool bench perf`, profile builds, 5 runs of each build, interleaved, the
+order turning; median, range in brackets; times in ms from the navigation's start (the page's Navigation and Paint
+Timing), and the frame of the first paint of the page from the report's frames. Another agent built Wren on the machine
+during the first series; its numbers were thrown away and the series run again, the machine quiet. The base is master at
+143ebc1c. Slug's data was also timed alone (a program of the toolkit's font package: 400 glyphs of six system faces,
+outline then `slug_build`, best of 5).
+
+1. **Slug's bands made from one sort per axis** (toolkit 0.75.0, `slug_build`, `font/slug_build.odin`: `band_axis`,
+   `band_grid`, `band_span`). The curves an axis's bands can hold were tested against every band of each of the ten
+   band counts `pick_band_count` tries (108 bands an axis), then each band of the chosen count tested every curve again
+   and sorted its own list. Now the curves of an axis are sorted once, by a `u64` key each (the order of the largest
+   coordinate across the band, inverted, above the curve's index: the lists' order, stable), their extents kept in
+   arrays in that order; a curve's first and last bands come from its bounds times the count, corrected against the
+   bands' own bounds (the same expressions as before, so the same bands); a count's fullest band is the running sum
+   of curves starting and ending; the lists are filled curve by curve in the sorted order. The bounds are read from the
+   half-float texels already written (the conversions are calls: no F16C in the generic x86-64 target). The same data
+   (test `slug bands_are_their_definition`: 300 glyphs of three faces, the counts and every list against the definition
+   written out); built alone, 400 glyphs: Segoe UI 5.52 -> 2.77 ms, Times New Roman 8.21 -> 3.85, Nirmala UI 9.91 ->
+   4.56 (the outlines 0.4 to 0.5 ms). In the page: `text.html`'s first paint frame below.
+2. **The image decoder's start waits for nothing** (`decoder_start`, `codecs_wait`, `src/images/pool.odin`). Starting
+   the pool, at a page's first image, waited on the window thread for its first thread to probe the optional codecs
+   (COM, the imaging factory, HEIF's decoder: 12 ms of samples under `page::element_start` on `legacy-html.html`), for
+   `<source type>` selection; the wait is now in `codec_supported(.Heif)`, the one answer that needs the probe, and the
+   probe's post is given back for the next to ask. That 12 ms was what held `legacy-html.html`'s first paint, not a PNG's
+   decode as round 16 read it (the decoder's threads were busy 1 ms in all): with the window thread taken, its
+   stylesheet's completion (Resource Timing: `theme.css` 2 -> 41 ms) and then its `@import`'s (42 -> 72 ms) each waited
+   for the next frame, whose time slot came first (below, item 4). Test: `optional_codecs_asked_after_the_probe`
+   (images: the answer for HEIF after the probe, the probe's).
+3. **Measured, not kept: Slug's data made by the thread that shapes a word** (`slug_prepare` from the toolkit's
+   `shape_word`, built outside the atlas lock and stored under it, color faces and hinted glyphs left to the drawing).
+   The paint's share went (`text.html` `Paint_Items` 20.0 -> 8.7 ms) but onto the passes the first paint waits for:
+   `text.html`'s first contentful paint 15.4 (14.6-15.5) -> 38.2 (37.3-56.2) ms (its layout ended past its frame's
+   slot), `shadow-dom.html`'s DOM interactive 12.1 -> 15.6 ms (its script's read of the layout shapes on the window
+   thread), `index.html`'s first contentful paint 9.8 -> 13.2 ms. The data a frame draws is made before that frame
+   whichever thread makes it; only less of it to make helps.
+4. **Found, not changed: a frame waits for its time slot before the loop's tasks run.** A frame begins with the wait for
+   its slot (`pacer_wait`: the timer, then the swap chain), and only then runs what arrived (`host.run_ready`): a task
+   that comes during the wait waits with it. In a run of frames (each task asks for two) a first paint pays it once per
+   hop: p10k's parsed document arrived during the wait of the frame that then styled, laid out and painted it (`Wait`
+   15.1 ms of that 44 ms frame), `legacy-html.html`'s sheet and its import one slot each. Running the tasks while the
+   slot is waited for (the wait woken by the loop's own wake-up, the frame started at once when a document's first paint
+   can be made) is item 10 below: it changes when the loop's tasks run against the frame gate and the chrome frames made
+   under scripts, a change of its own.
+5. **Measured, not changed: the first realm** (round 16's item 10). Since the read-ahead, `js-dom.html`'s and
+   `shadow-dom.html`'s scripts run 5 ms after their response or sheets, the instantiation, the realm's start, the
+   script and the DOM work it does together (3 to 4 samples of 1 ms under `page::js_run` a load); moving the
+   instantiation to the read-ahead thread (a Wasmtime store may change threads, but the instance's options, owner and
+   scope are the page's) would take a part of that. Not done. p10k's first passes (style, layout, paint: 23 ms in the
+   frame of its first paint, after the 15 ms of item 4) were not changed either; nor the script stage of DOM-heavy pages
+   (item 1).
+
+| | before | after |
+|---|---|---|
+| `legacy-html.html`: first contentful paint, load | 73.0 (72.2-74.0), 72.3 (71.6-73.3) | 40.4 (24.7-41.6), 40.1 (39.2-40.9) |
+| `legacy-html.html`: the frame of its first paint, of it `Paint_Items` | 21.70 (21.23-21.95), 5.45 | 19.55 (4.52-20.04), 3.38 |
+| `text.html`: the frame of its first paint, of it `Paint_Items` | 23.43 (21.98-25.22), 21.14 (19.84-22.46) | 17.81 (17.30-18.00), 15.59 (15.00-15.66) |
+| `text.html`: first contentful paint, load | 15.3 (14.8-18.1), 2.6 | 15.0 (14.6-15.8), 2.5 |
+| `shadow-dom.html`: DOM interactive, first contentful paint, load | 12.2 (11.8-13.5), 13.5 (13.1-15.1), 20.8 (20.5-22.5) | 11.8 (11.6-12.2), 13.1 (13.0-13.7), 18.0 (17.8-18.5) |
+| `shadow-dom.html`: the frame of its first paint, of it `Paint_Items` | 12.64 (12.50-12.96), 6.08 | 10.16 (10.07-10.55), 3.82 |
+| `index.html`: the frame of its first paint, of it `Paint_Items` | 11.06 (10.86-12.71), 3.79 | 10.48 (9.81-10.97), 2.73 |
+| `js-dom.html`: DOM interactive, first contentful paint | 7.5 (7.3-9.3), 8.1 (7.8-10.2) | 7.6 (7.2-7.9), 8.1 (7.7-8.6) |
+| p10k: DOM interactive, first contentful paint, `Paint_Items` of its first paint | 33.1 (32.8-51.1), 56.0 (55.4-111.2), 3.25 | 33.4 (32.8-33.5), 56.6 (55.6-58.4), 2.73 |
+
+`text.html`'s first contentful paint is the time its frame starts (round 16): the frame is the measure there. What is
+left of its `Paint_Items` by the sampler (3 loads): the color glyph probe of the faces that have color glyphs
+(`platform_color_glyph`, DirectWrite's glyph formats), the half-float conversions' calls (`_extendhfsf2`) and the
+outlines; then the GPU textures made for the page (`NtGdiDdDDICreateAllocation`). `legacy-html.html`'s range is its
+frames: one run in five had its import in before a slot (24.7 ms).
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -1547,6 +1618,10 @@ After round 16. Round 15's item 10 is done for what it named (round 16: the engi
 textures zeroed on the GPU, the thread count of `stats`) and for what its measures found besides (what waits for a
 stylesheet goes on when it arrives); what the loads still spend is item 10 below. Item 1 is unchanged.
 
+After round 17. Round 16's item 10 is done in part (round 17: Slug's bands from one sort per axis, the image decoder's
+start that waits for nothing; Slug's data made while shaping measured and not kept); what its measures found, the frame
+that waits for its slot before the tasks, leads item 10 below. Item 1 is unchanged.
+
 1. **The script stage of DOM-heavy pages, what is left** (nodes10k: 11.8 ms of a 17.7 ms frame; the browser's side
    1.4 ms of it). In order of the engine's samples: the interpreter itself (`interp_hot` 17 % before round 15's 15 to 25 %
    on the loop's own instructions, `call_native` and the bridge 8 %; a DOM call costs 50 to 100 ns over the loop); the
@@ -1589,9 +1664,10 @@ stylesheet goes on when it arrives); what the loads still spend is item 10 below
    leaves (closures made, `arguments`, spreads, destructuring of iterables: the two cases of `macro.js` that did not gain
    are there), and native callbacks (`sort`, `forEach`: an `interp_run` activation each). A handler added to the loop
    must call nothing itself (`interp_hot.odin`'s header says how).
-10. **Pages loaded from the navigation** (rounds 15 and 16; `wrentool bench perf -Only p10k_nav,nav_...`), by cost:
-   Slug's data for the glyphs a page uses first (`font.slug_glyphs`: 21 ms of `text.html`'s first paint, made once per
-   face; `pick_band_count` and the sort of the curves by band); the first realm of a process, now read ahead, still
-   instantiated and started on the window thread (about 10 ms: `shadow-dom.html`'s script runs 10 ms after its sheets);
-   `legacy-html.html`'s first paint waits on a PNG's decode (72 ms); p10k's first style, layout and paint passes (22 ms
-   from DOM interactive to the first paint).
+10. **Pages loaded from the navigation** (rounds 15 to 17; `wrentool bench perf -Only p10k_nav,nav_...`), by cost: the
+   frame's wait for its time slot before the loop's tasks run (round 17, item 4: 15 ms of p10k's first paint, a slot
+   per hop of `legacy-html.html`'s sheet and import, 40 ms); p10k's first style, layout and paint passes (23 ms in the
+   frame of its first paint); what is left of `text.html`'s first paint (`Paint_Items` 15.6 ms: the color glyph probe
+   of color faces, the half-float conversions' calls, the outlines; Slug's data made while shaping only moved it onto
+   the layout the paint waits for, round 17 item 3); the first realm (5 ms from response to script, instantiation
+   included: the instance made on the read-ahead thread would take a part).
