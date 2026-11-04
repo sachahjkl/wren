@@ -286,6 +286,7 @@ CSSStyleSheet_ruleCount      :: #type proc(sheet: CSSStyleSheet) -> u32
 CSSStyleSheet_ruleId         :: #type proc(sheet: CSSStyleSheet, index: u32) -> u32
 CSSStyleSheet_rulesVersion   :: #type proc(sheet: CSSStyleSheet) -> u32
 CSSStyleSheet_ruleText       :: #type proc(sheet: CSSStyleSheet, index: u32) -> (string, abi.Api_Error)
+CSSStyleSheet_setRuleSelector :: #type proc(sheet: CSSStyleSheet, rule_id: u32, selector: string) -> (string, abi.Api_Error)   // empty: unchanged
 CSSStyleSheet_hrefOf         :: #type proc(sheet: CSSStyleSheet) -> (string, abi.Api_Error)   // empty: null
 CSSStyleSheet_titleOf        :: #type proc(sheet: CSSStyleSheet) -> (string, abi.Api_Error)   // empty: null
 CSSStyleSheet_ownerNodeOf    :: #type proc(sheet: CSSStyleSheet) -> Node

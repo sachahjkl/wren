@@ -218,9 +218,20 @@ CSSStyleSheet_ruleCount :: proc(c: ^Call, sheet: u64) -> u32 {
 CSSStyleSheet_ruleText :: proc(c: ^Call, sheet: u64, index: u32) -> (string, Api_Error) {
 	s := css_sheet_of(c, sheet)
 	if s != nil {
-		if t, ok := style.engine_sheet_rule_text(c.page.engine, s.id, int(index)); ok { return t, .None }
+		if r := style.engine_sheet_rule(c.page.engine, s.id, int(index)); r != nil { return rule_css_text(c.page, r), .None }
 	}
 	return "", fail(c, .Index_Size, "The index is past the end of the rule list.")
+}
+
+// selectorText = selector on the top-level rule numbered `rule_id`: its new cssText, "" when nothing changed (an
+// invalid selector leaves the rule as it is, CSSOM §6.4.3).
+CSSStyleSheet_setRuleSelector :: proc(c: ^Call, sheet: u64, rule_id: u32, selector: string) -> string {
+	s := css_sheet_of(c, sheet)
+	if s == nil || !style.engine_sheet_set_selector(c.page.engine, s.id, rule_id, selector) { return "" }
+	for i in 0 ..< style.engine_sheet_rule_count(c.page.engine, s.id) {
+		if style.engine_sheet_rule_id(c.page.engine, s.id, i) == rule_id { return rule_css_text(c.page, style.engine_sheet_rule(c.page.engine, s.id, i)) }
+	}
+	return ""
 }
 
 @(private)

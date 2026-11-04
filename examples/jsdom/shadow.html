@@ -171,7 +171,7 @@ section("constructable stylesheets and adoptedStyleSheets", () => {
   t("a CSSStyleSheet", sheet instanceof CSSStyleSheet);
   sheet.replaceSync("p { margin-left: 11px } @import url(x.css); b { margin-left: 2px }");
   eq("@import dropped", sheet.cssRules.length, 2);
-  eq("cssText", sheet.cssRules[0].cssText, "p { margin-left: 11px }");
+  eq("cssText", sheet.cssRules[0].cssText, "p { margin-left: 11px; }");
   sheet.insertRule("i { margin-left: 4px }", 0);
   eq("insertRule", sheet.cssRules.length, 3);
   sheet.deleteRule(0);

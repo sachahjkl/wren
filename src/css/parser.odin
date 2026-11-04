@@ -26,7 +26,16 @@ Declaration :: struct {
 	raw:       string,    // @font-face descriptors only: the value as written (unicode-range needs the token representation)
 }
 
-Rule_Kind :: enum u8 { Style, Media, Supports, Import, Font_Face, Keyframes, Layer_Block, Layer_Statement, Namespace, Page, Container, Property, Position_Try, Unknown }
+// (Margin: a margin rule, @top-left { }..., in the `nested` of its @page; nothing paged reads it, CSSOM lists it)
+Rule_Kind :: enum u8 { Style, Media, Supports, Import, Font_Face, Keyframes, Layer_Block, Layer_Statement, Namespace, Page, Container, Property, Position_Try, Margin, Unknown }
+
+// The margin boxes of a page (CSS Paged Media §5): the at-rules a @page block holds.
+@(private)
+PAGE_MARGIN_RULES :: [?]string{
+	"top-left-corner", "top-left", "top-center", "top-right", "top-right-corner",
+	"bottom-left-corner", "bottom-left", "bottom-center", "bottom-right", "bottom-right-corner",
+	"left-top", "left-middle", "left-bottom", "right-top", "right-middle", "right-bottom",
+}
 
 Rule :: struct {
 	kind:         Rule_Kind,
@@ -35,7 +44,7 @@ Rule :: struct {
 	declarations: []Declaration,
 	nested:       []^Rule,
 	pos:          u32,          // Style: where the selector starts in the sheet's source (code points: see line_of)
-	selector_text: string,      // Style: the selector list as written, serialized
+	selector_text: string,      // Style: the selector list, serialized (CSSOM selectorText)
 	// Media / Supports / Container / Layer_Block: the rules inside
 	rules:        []^Rule,
 	media:        Media_Query_List,
@@ -321,7 +330,7 @@ finish_style_rule :: proc(p: ^Parser, prelude, body: []Value, parent: ^Rule) -> 
 	}
 	r.selectors = sel
 	if pre := trim_values(prelude); len(pre) > 0 {
-		r.selector_text = serialize_values(pre, p.a)
+		r.selector_text = serialize_selector_list(pre, p.a)
 		r.pos = first_pos(pre)
 	}
 	decls, nested := parse_block_contents(p, body, r)
@@ -620,7 +629,7 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 		if !has_block { return nil }
 		r.kind = .Page
 		r.prelude = prelude
-		r.declarations, _ = parse_block_contents(p, blk.children, r)
+		r.declarations, r.nested = parse_block_contents(p, blk.children, r)
 	case "keyframes", "-webkit-keyframes":
 		if !has_block { return nil }
 		r.kind = .Keyframes
@@ -632,6 +641,13 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 	case "charset":
 		return nil   // meaningful only to the byte-level decoder
 	case:
+		margins := PAGE_MARGIN_RULES
+		for m in margins {
+			if lname != m || parent == nil || parent.kind != .Page || !has_block { continue }
+			r.kind = .Margin
+			r.declarations, _ = parse_block_contents(p, blk.children, nil)
+			return r
+		}
 		perr(p, strings.concatenate({"unknown at-rule @", lname}, context.temp_allocator))
 		return nil
 	}

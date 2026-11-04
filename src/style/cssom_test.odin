@@ -29,8 +29,8 @@ cssom_element_sheet_rules :: proc(t: ^testing.T) {
 	sh := engine_style_element_sheet(e, doc, el, "about:test")
 	testing.expect(t, sh != nil && sh == engine_sheet_of_owner(e, el))
 	testing.expect_value(t, engine_sheet_rule_count(e, sh.id), 2)
-	txt, _ := engine_sheet_rule_text(e, sh.id, 1)
-	testing.expect_value(t, txt, "#b { color: blue }")
+	r := engine_sheet_rule(e, sh.id, 1)
+	testing.expect(t, r != nil && r.selector_text == "#b")
 	first := engine_sheet_rule_id(e, sh.id, 0)
 
 	testing.expect_value(t, engine_sheet_insert_rule(e, sh.id, "  #a { color: lime }  ", 2), Rule_Edit_Error.None)
@@ -57,4 +57,26 @@ cssom_element_sheet_rules :: proc(t: ^testing.T) {
 	testing.expect(t, sh2 != nil && sh2.id != old && engine_find_sheet(e, old) == nil)
 	testing.expect_value(t, engine_sheet_rule_count(e, sh2.id), 1)
 	testing.expect_value(t, color_of(e, doc, "a"), [4]f32{0, 0, 1, 1})
+}
+
+// selectorText = x on a sheet's rule: the rule selects what x does, serialized; an invalid selector changes nothing.
+@(test)
+cssom_rule_selector_set :: proc(t: ^testing.T) {
+	doc := dom.document_create(nil)
+	defer dom.document_destroy(doc)
+	html.parse_into(doc, doc.root, transmute([]byte)string(`<style id=s>#a { color: red }</style><p id=a>a</p><p id=b>b</p>`), 1 << 20)
+	s := settings_default()
+	e := engine_make(s)
+	settings_destroy(&s)
+	defer engine_destroy(e)
+	sync_document_sheets(e, doc, "about:test")
+	sh := engine_style_element_sheet(e, doc, dom.find_by_id(doc, "s"), "about:test")
+	id := engine_sheet_rule_id(e, sh.id, 0)
+	testing.expect(t, engine_sheet_set_selector(e, sh.id, id, "P#b , q"))
+	testing.expect_value(t, engine_sheet_rule(e, sh.id, 0).selector_text, "P#b, q")
+	testing.expect_value(t, color_of(e, doc, "a"), [4]f32{0, 0, 0, 1})
+	testing.expect_value(t, color_of(e, doc, "b"), [4]f32{1, 0, 0, 1})
+	testing.expect(t, !engine_sheet_set_selector(e, sh.id, id, "p..b"))
+	testing.expect(t, !engine_sheet_set_selector(e, sh.id, id + 1, "p"))
+	testing.expect_value(t, color_of(e, doc, "b"), [4]f32{1, 0, 0, 1})
 }

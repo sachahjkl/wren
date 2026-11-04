@@ -140,14 +140,12 @@ engine_sheet_rule_count :: proc(e: ^Engine, id: u64) -> int {
 	return s != nil ? len(cssom_list(e, s).rules) : 0
 }
 
-// cssRules[index].cssText; false past the end.
-engine_sheet_rule_text :: proc(e: ^Engine, id: u64, index: int) -> (string, bool) {
+// cssRules[index], parsed (its cssText is serialized from it: page/js_cssom_serialize.odin); nil past the end.
+engine_sheet_rule :: proc(e: ^Engine, id: u64, index: int) -> ^css.Rule {
 	s := cssom_sheet(e, id)
-	if s == nil { return "", false }
+	if s == nil { return nil }
 	l := cssom_list(e, s)
-	if index < 0 || index >= len(l.texts) { return "", false }
-	if r := l.rules[index]; r.kind == .Position_Try { return try_rule_text(e, r), true }
-	return l.texts[index], true
+	return index >= 0 && index < len(l.rules) ? l.rules[index] : nil
 }
 
 // The identity of cssRules[index] (0 past the end).
@@ -181,6 +179,32 @@ engine_sheet_insert_rule :: proc(e: ^Engine, id: u64, text: string, index: int) 
 	s.version += 1
 	sheet_changed(e, s)
 	return .None
+}
+
+// CSSStyleRule.selectorText = text, for the top-level style rule numbered `rule_id`: false (nothing changed) when the
+// rule is gone or `text` is not a valid selector list.
+engine_sheet_set_selector :: proc(e: ^Engine, id: u64, rule_id: u32, text: string) -> bool {
+	s := cssom_sheet(e, id)
+	if s == nil { return false }
+	l := cssom_list(e, s)
+	for rid, i in l.ids {
+		if rid != rule_id { continue }
+		r := l.rules[i]
+		if r.kind != .Style { return false }
+		vals := css.trim_values(css.parse_component_values(text, parse_options(&e.settings), s.sheet.alloc))
+		sel, ok := css.parse_selector_list(vals, s.sheet.alloc, nil)
+		if !ok || len(vals) == 0 { return false }
+		r.selectors = sel
+		r.selector_text = css.serialize_selector_list(vals, s.sheet.alloc)
+		// the rule's text: the new selector before its block
+		old := l.texts[i]
+		l.texts[i] = strings.concatenate({r.selector_text, " ", old[max(strings.index_byte(old, '{'), 0):]})
+		delete(old)
+		s.version += 1
+		sheet_changed(e, s)
+		return true
+	}
+	return false
 }
 
 // sheet.disabled = v, for any sheet a script holds (an element's sheet stops applying while its element stays).

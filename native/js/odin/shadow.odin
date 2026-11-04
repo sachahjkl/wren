@@ -711,7 +711,10 @@ rules_items :: proc(ctx: ^wj.Context, r: ^Rules) -> wj.JSValue {
 		text: string
 		if jsb.host(&text, api_decl.CSSStyleSheet_ruleText, wj.wr_CSSStyleSheet_ruleText, h, i) != .None { break }
 		rule := css_rule_make(ctx, text, r.sheet, wj.NULL)   // dom_css_rules.odin
-		if id != 0 { wj.JS_SetPropertyUint32(ctx, by_id, id, wj.JS_DupValue(ctx, rule)) }
+		if id != 0 {
+			wj.web_extra_set(ctx, rule, "id", wj.new_uint32(ctx, id))   // (what its setters name it by)
+			wj.JS_SetPropertyUint32(ctx, by_id, id, wj.JS_DupValue(ctx, rule))
+		}
 		wj.array_set(ctx, arr, i, rule)
 	}
 	wj.JS_FreeValue(ctx, r.items)

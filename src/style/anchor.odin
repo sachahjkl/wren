@@ -101,7 +101,6 @@ try_rule_add :: proc(e: ^Engine, r: ^css.Rule, layer: u32) {
 }
 
 // A rule's cssText: the declarations it may have, in the order written.
-@(private)
 try_rule_text :: proc(e: ^Engine, r: ^css.Rule) -> string {
 	sb := strings.builder_make(context.temp_allocator)
 	strings.write_string(&sb, "@position-try ")

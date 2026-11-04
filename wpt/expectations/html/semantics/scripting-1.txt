@@ -31,8 +31,8 @@
 	adding a src attribute after inserting the script into the document causes the script to load and execute: PASS
 /html/semantics/scripting-1/the-script-element/css-module/charset-2.html: TIMEOUT
 /html/semantics/scripting-1/the-script-element/css-module/charset-bom.html: OK
-	UTF-16BE BOM should be ignored, so CSS module should be UTF-8 decoded: FAIL
-	UTF-16LE BOM should be ignored, so CSS module should be UTF-8 decoded: FAIL
+	UTF-16BE BOM should be ignored, so CSS module should be UTF-8 decoded: PASS
+	UTF-16LE BOM should be ignored, so CSS module should be UTF-8 decoded: PASS
 	UTF-8 BOM should be stripped when decoding CSS module script: PASS
 /html/semantics/scripting-1/the-script-element/css-module/charset.html: ERROR
 /html/semantics/scripting-1/the-script-element/css-module/content-type-checking.html: OK

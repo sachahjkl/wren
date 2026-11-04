@@ -23,7 +23,7 @@ section("element.sheet of a <style>", () => {
   t("cssRules is a CSSRuleList", sh.cssRules instanceof CSSRuleList);
   eq("cssRules [SameObject]", sh.cssRules, sh.cssRules);
   eq("two rules", sh.cssRules.length, 2);
-  eq("cssText", sh.cssRules[0].cssText, "p.a { margin-left: 5px }");
+  eq("cssText", sh.cssRules[0].cssText, "p.a { margin-left: 5px; }");
   eq("selectorText", sh.cssRules.item(1).selectorText, "p.b");
   eq("item past the end", sh.cssRules.item(9), null);
   eq("the same rule object while nothing changes", sh.cssRules[0], sh.cssRules[0]);
@@ -76,7 +76,7 @@ section("insertRule into an empty <style> (Emotion's speedy mode)", () => {
   eq("the text stays empty", tag.textContent, "");
   box.className = "css-1 css-x42";
   eq("a rule inserted later applies", px(box, "marginTop"), "42px");
-  eq("the last rule's text", sheet.cssRules[300].cssText, ".css-x299 { margin-top: 299px }");
+  eq("the last rule's text", sheet.cssRules[300].cssText, ".css-x299 { margin-top: 299px; }");
   sheet.insertRule(".css-1 { margin-left: 9px }", 0);
   eq("inserted at 0: the later rule wins", px(box, "marginLeft"), "7px");
   sheet.deleteRule(1);
@@ -135,12 +135,42 @@ section("constructed sheets still work the same", () => {
   c.replaceSync("p { margin-right: 2px } b { margin-right: 3px }");
   eq("two rules", c.cssRules.length, 2);
   c.insertRule("i { margin-right: 4px }", 1);
-  eq("insertRule", c.cssRules[1].cssText, "i { margin-right: 4px }");
+  eq("insertRule", c.cssRules[1].cssText, "i { margin-right: 4px; }");
   throws("@import into a constructed sheet", () => c.insertRule("@import url(x.css);", 0), "SyntaxError");
   eq("ownerNode null", c.ownerNode, null);
   document.adoptedStyleSheets = [c];
   eq("adopted", px(document.getElementById("pb"), "marginRight"), "2px");
   document.adoptedStyleSheets = [];
+});
+
+// What frameworks read back of a rule (CSSOM "serialize a CSS rule"): the rule as parsed, not its source.
+section("rules serialized", () => {
+  const c = new CSSStyleSheet();
+  c.replaceSync("DIV>P  .x:NTH-CHILD( 2N + 1 ),[data-a=b i]{margin:0;COLOR:red}" +
+    "@media ALL and (MIN-WIDTH:10px){a{color:blue}}@keyframes k{from{opacity:0}50.0%{opacity:.5}}" +
+    "@layer x,y;@import url(i.css);");
+  eq("a style rule", c.cssRules[0].cssText, "DIV > P .x:nth-child(2n+1), [data-a=\"b\" i] { margin: 0; color: red; }");
+  eq("selectorText", c.cssRules[0].selectorText, "DIV > P .x:nth-child(2n+1), [data-a=\"b\" i]");
+  eq("@media", c.cssRules[1].cssText, "@media (min-width: 10px) {\n  a { color: blue; }\n}");
+  t("a CSSMediaRule", c.cssRules[1] instanceof CSSMediaRule && c.cssRules[1] instanceof CSSConditionRule);
+  eq("its media", c.cssRules[1].media.mediaText + "|" + c.cssRules[1].media.length, "(min-width: 10px)|1");
+  eq("@keyframes", c.cssRules[2].cssText, "@keyframes k {\n  0% { opacity: 0; }\n  50% { opacity: 0.5; }\n}");
+  t("its keyframes", c.cssRules[2][1] instanceof CSSKeyframeRule && c.cssRules[2].length === 2);
+  eq("keyText", c.cssRules[2].findRule("from").keyText, "0%");
+  eq("@layer", c.cssRules[3].cssText + "|" + c.cssRules[3].nameList.join(), "@layer x, y;|x,y");
+  eq("@import is not in a constructed sheet", c.cssRules.length, 4);
+  const s = document.createElement("style");
+  s.textContent = "@import url(i.css) screen; p.a { padding-top: 1px }";
+  document.head.appendChild(s);
+  const imp = s.sheet.cssRules[0];
+  eq("@import", imp.cssText + "|" + imp.href + "|" + imp.media.mediaText, "@import url(\"i.css\") screen;|i.css|screen");
+  const rule = s.sheet.cssRules[1];
+  rule.selectorText = "p.b";
+  eq("selectorText set", rule.cssText, "p.b { padding-top: 1px; }");
+  eq("the rule applies to what it selects now", px(document.getElementById("pb"), "paddingTop") + px(document.getElementById("pa"), "paddingTop"), "1px0px");
+  rule.selectorText = "p..b";
+  eq("an invalid selector changes nothing", rule.selectorText, "p.b");
+  s.remove();
 });
 
 // import() of code with no script URL of its own (a string given to eval): the document's URL is the base, an absolute
