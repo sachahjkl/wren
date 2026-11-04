@@ -19,7 +19,7 @@ Wren is a single executable for Windows x64. There is no installer to run as adm
   nothing to unzip. `wren.exe --setup` installs it.
 - Or, for a release that has reached [winget](winget.md): `winget install FromentSoftware.Wren`.
 
-Every version is free during the beta. A [Wren licence](licence.md) unlocks nothing during the beta; it keeps the work going and covers two years of updates from 1.0.
+Every version is free during the beta. A [Wren User Licence](licence.md) unlocks nothing during the beta; it keeps the work going and covers two years of updates from 1.0.
 
 ## Driving Wren
 

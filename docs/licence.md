@@ -1,4 +1,4 @@
-# Wren licences
+# Wren User Licences
 
 Wren is a beta under development and every version is free. During the beta a **supporter licence** only supports its
 development: it unlocks nothing, nothing in Wren checks it, and no window or reminder asks for one. Once Wren is out of
@@ -323,7 +323,7 @@ npx wrangler tail --env sandbox                         # live logs
 
 ### 4. Paddle sandbox
 
-1. **Catalog → Products → New product**: "Wren licence" (category: standard digital goods). Add two **one-time** prices
+1. **Catalog → Products → New product**: "Wren User Licence" (category: standard digital goods). Add two **one-time** prices
    (no billing period): *Supporter* 29 EUR and *Patron* 79 EUR, tax mode "inclusive" so that the buyer pays the displayed
    price, quantity 1 to 1. Copy both **price ids** (`pri_…`).
 2. **Developer tools → Notifications → New destination**: type *Webhook*, URL
