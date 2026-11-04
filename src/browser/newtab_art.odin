@@ -13,9 +13,13 @@ package browser
 // its metadata. A shown image is replaced by a fresh one, so the window always holds that many unseen paintings; the
 // last browser.newtab.art.window picks are remembered so the same painting does not come back at once. The downloader is
 // courteous: one request at a time per host, an honest User-Agent (Wren/<version>), exponential backoff on 429 / 403 /
-// network error, and it validates every answer (image MIME, a size cap, a probe decode with the shared decoder, a sane
-// aspect ratio and a minimum width for full-screen use) before keeping it. Files beyond the cache cap are purged oldest
-// first. The task stops after a spell with no art new tab open (inactivity) and resumes on the next one.
+// network error, and it validates every answer (image MIME, a size cap, a decode with the shared decoder, a sane aspect
+// ratio and a minimum width for full-screen use) before keeping it. What it keeps is sized for a screen, not for print: the
+// decoder reduces the painting to browser.newtab.art.short_side_px and a worker encodes it as JPEG, so showing one costs a
+// small read and a decode at its size, in the page's own loader (newtab_art_page.odin); the 8 MB a museum serves cost that
+// once, in the background. The disk holds what was not seen yet: a shown painting goes, and the first scan of a session
+// (art_scan) takes the rest back, so a first new tab has one at once, and removes everything else in the folder. The task
+// stops after a spell with no art new tab open (inactivity) and resumes on the next one.
 //
 // "Smart": it prefers an image whose orientation suits the window (a tall portrait is avoided on a wide screen, or shown
 // over a blurred fill of itself), it pre-fetches the next while the current one is on screen, and it downloads nothing
@@ -29,10 +33,12 @@ package browser
 // sent, no identifier, no referrer to a third party. The images and their metadata live in the profile's temporary
 // folder and are cleared with "Clear browsing data".
 
+import "base:runtime"
 import "core:encoding/json"
 import "core:fmt"
 import "core:math/rand"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:time"
 import "wb:base"
@@ -41,6 +47,13 @@ import "wb:fetch"
 import "wb:host"
 import "wb:images"
 import "wb:url"
+
+// What a kept painting's JSON says it is: a file of another format (the print-sized originals of before) goes at the scan.
+ART_CACHE_FORMAT :: 1
+// A painting that needed no reduction and is at most this large is kept as it came: encoding it again would lose more than it saves.
+ART_KEEP_AS_IS_BYTES :: 1 << 20
+// Behind every image of a page: this work has no one waiting.
+ART_DECODE_PRIORITY :: -1
 
 ////////////////////////////////
 // Preferences
@@ -64,6 +77,10 @@ ART_PREFS := [?]config.Def{
 		description = "Smallest width (in image pixels) a painting may have to be kept: below it looks soft filling a screen. Images narrower than this are refused."},
 	{name = "browser.newtab.art.max_image_bytes", kind = .Int, default = {i = 8 << 20}, bounded = true, min = 64 << 10, max = 128 << 20, bytes = true, unit = "bytes",
 		description = "Largest image file downloaded for one painting. A larger answer is refused."},
+	{name = "browser.newtab.art.short_side_px", kind = .Int, default = {i = 1600}, bounded = true, min = 320, max = 16384, unit = "px",
+		description = "A painting is kept with its shorter side at most this long, enough to fill a 2560 x 1440 window: a larger one is reduced and encoded as JPEG when it arrives, so that a new tab reads and decodes little. Raise it for a larger screen."},
+	{name = "browser.newtab.art.jpeg_quality", kind = .Float, default = {f = 0.82}, bounded = true, min = 0.1, max = 1,
+		description = "Quality of the JPEG a painting is kept as when it is reduced, from 0.1 to 1: higher is finer and takes more disk."},
 	{name = "browser.newtab.art.idle_minutes", kind = .Float, default = {f = 30}, bounded = true, min = 0, max = 1440, unit = "min",
 		description = "The background task stops after this long with no art new tab shown, and resumes at the next one, so an idle window downloads nothing. 0: never stop on its own."},
 	{name = "browser.newtab.art.backoff_base_ms", kind = .Int, default = {i = 2000}, bounded = true, min = 100, max = 600_000, unit = "ms",
@@ -84,6 +101,8 @@ Art_Settings :: struct {
 	offline_fallback: bool,
 	min_width_px:    int,
 	max_image_bytes: int,
+	short_side_px:   int,
+	jpeg_quality:    f32,
 	idle_ms:         f64,      // 0 = never stop
 	backoff_base_ms: i64,
 	backoff_max_ms:  i64,
@@ -100,6 +119,8 @@ art_settings_from_prefs :: proc(p: ^config.Prefs) -> Art_Settings {
 		offline_fallback = config.bool_of(p, "browser.newtab.art.offline_fallback"),
 		min_width_px = int(config.int_of(p, "browser.newtab.art.min_width_px")),
 		max_image_bytes = int(config.int_of(p, "browser.newtab.art.max_image_bytes")),
+		short_side_px = int(config.int_of(p, "browser.newtab.art.short_side_px")),
+		jpeg_quality = f32(config.float_of(p, "browser.newtab.art.jpeg_quality")),
 		idle_ms = config.float_of(p, "browser.newtab.art.idle_minutes") * MS_PER_MINUTE,
 		backoff_base_ms = config.int_of(p, "browser.newtab.art.backoff_base_ms"),
 		backoff_max_ms = config.int_of(p, "browser.newtab.art.backoff_max_ms"),
@@ -111,8 +132,10 @@ art_settings_destroy :: proc(s: ^Art_Settings) { delete(s.sources) }
 ////////////////////////////////
 // A cached painting
 
-// One painting ready to show: the bytes on disk and the facts the caption needs. Every string is owned.
+// One painting ready to show: the bytes on disk and the facts the caption needs. Every string is owned. Its JSON file is this
+// structure, with the image's name for `file`.
 Art_Item :: struct {
+	format:    int,      // ART_CACHE_FORMAT
 	id:        string,   // stable, source-prefixed ("cleveland:123", "commons:File:x.jpg"): the cache file's stem, dedup key
 	file:      string,   // absolute path of the image file in the cache folder
 	source:    string,   // "cleveland" / "commons"
@@ -122,7 +145,7 @@ Art_Item :: struct {
 	museum:    string,
 	record:    string,   // the web page of the painting's record (opened by "open the record")
 	license:   string,   // "CC0", "Public domain", "CC BY-SA 4.0", ...
-	width:     int,       // image pixels (probed)
+	width:     int,       // image pixels of the file
 	height:    int,
 	bytes:     i64,       // size of the file
 	fetched:   i64,       // unix seconds when written
@@ -141,9 +164,13 @@ Art_Phase :: enum u8 {
 	Idle,        // not started, or stopped after inactivity
 	Listing,     // fetching a source's listing
 	Downloading, // fetching one image
-	Validating,  // probing an image on the decoder threads
+	Validating,  // decoding an image on the decoder threads
+	Encoding,    // a worker encodes and writes it (art_encode_work)
 	Waiting,     // backing off, or window full: a timer will wake it
 }
+
+// The first look at the folder, once a session (art_scan): nothing is written there until it has ended.
+Art_Scan :: enum u8 { Not_Yet, Running, Done }
 
 Art :: struct {
 	app:        ^App,
@@ -160,6 +187,10 @@ Art :: struct {
 	ready:      [dynamic]^Art_Item,   // paintings downloaded and validated, newest last
 	recent:     [dynamic]string,      // ids shown lately, oldest first (at most `window`): no immediate repeat
 	current:    ^Art_Item,            // what the last art new tab chose (shown): replaced once consumed
+	retired:    ^Art_Item,            // the one before it: its page may still be reading the file, which goes at the next pick
+	scan:       Art_Scan,
+	jobs:       int,                  // on the workers: art_destroy waits for them
+	gen:        u32,                  // what a worker was given under another one is dropped when it comes back (art_cancel_io)
 
 	// the listing in hand: candidate image descriptors not yet downloaded
 	candidates: [dynamic]Art_Candidate,
@@ -167,7 +198,6 @@ Art :: struct {
 
 	// the download in flight
 	task:       base.Handle,
-	dl_bytes:   [dynamic]byte,
 	dl:         Art_Candidate,  // the candidate being downloaded (owned copy)
 	dl_active:  bool,
 
@@ -219,7 +249,6 @@ art_init :: proc(app: ^App) {
 	app.art.ready = make([dynamic]^Art_Item, base.process_allocator())
 	app.art.recent = make([dynamic]string, base.process_allocator())
 	app.art.candidates = make([dynamic]Art_Candidate, base.process_allocator())
-	app.art.dl_bytes = make([dynamic]byte, base.process_allocator())
 	app.art.watch = config.watch(&app.prefs, "browser.newtab.art.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		old := the_app.art.cfg
 		the_app.art.cfg = art_settings_from_prefs(p)
@@ -240,6 +269,7 @@ ART_WARMUP_MS :: 2500
 
 @(private = "file")
 art_warm_up :: proc(app: ^App) {
+	art_scan(app)
 	app.art.warm_timer = host.set_timer(&app.loop, ART_WARMUP_MS, 0, proc(data: rawptr) {
 		app := (^App)(data)
 		app.art.warm_timer = base.NIL_HANDLE
@@ -250,12 +280,15 @@ art_warm_up :: proc(app: ^App) {
 art_destroy :: proc(app: ^App) {
 	config.unwatch(&app.prefs, app.art.watch)
 	art_cancel_io()
+	app.art.started = false   // (what comes back from a worker starts nothing)
+	for app.art.jobs > 0 { host.blocking_settle(&app.blocking) }
 	if app.art.stop_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.art.stop_timer) }
 	if app.art.warm_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.art.warm_timer) }
 	if app.art.wait_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.art.wait_timer) }
 	if app.art.port != 0 { images.port_close(app.art.port) }
-	// `current`, if it was consumed, is no longer in `ready`: free it separately. If it is still in `ready` it is freed with it.
-	if app.art.current != nil && !art_in_ready(app.art.current) { art_item_destroy(app.art.current); free(app.art.current) }
+	// `current`, if it was consumed, is no longer in `ready`: it was shown, so it leaves the disk too. If it is still in `ready` it is freed with it.
+	if app.art.current != nil && !art_in_ready(app.art.current) { art_drop(app.art.current) }
+	if app.art.retired != nil { art_drop(app.art.retired) }
 	for it in app.art.ready { art_item_destroy(it); free(it) }
 	delete(app.art.ready)
 	for s in app.art.recent { delete(s) }
@@ -263,7 +296,6 @@ art_destroy :: proc(app: ^App) {
 	for &c in app.art.candidates { art_candidate_destroy(&c) }
 	delete(app.art.candidates)
 	art_candidate_destroy(&app.art.dl)
-	delete(app.art.dl_bytes)
 	art_settings_destroy(&app.art.cfg)
 	delete(app.art.dir)
 	app.art = {}
@@ -271,6 +303,7 @@ art_destroy :: proc(app: ^App) {
 
 @(private = "file")
 art_cancel_io :: proc() {
+	the_app.art.gen += 1
 	if the_app.art.task != base.NIL_HANDLE { fetch.cancel(&the_app.art.app.loader, the_app.art.task); the_app.art.task = base.NIL_HANDLE }
 	the_app.art.dl_active = false
 	if the_app.art.job != 0 { images.job_cancel(the_app.art.job); the_app.art.job = 0 }
@@ -323,7 +356,8 @@ art_stop :: proc() {
 art_pump :: proc() {
 	app := the_app.art.app
 	if !app.art.started || !app.art.cfg.enabled { return }
-	if app.art.phase == .Listing || app.art.phase == .Downloading || app.art.phase == .Validating { return }   // a request is in flight
+	if app.art.scan == .Running { return }   // (art_scan_done pumps)
+	if app.art.phase == .Listing || app.art.phase == .Downloading || app.art.phase == .Validating || app.art.phase == .Encoding { return }   // a request is in flight
 	if app.loader.hold { art_wait(app.art.cfg.backoff_base_ms); return }   // held offline: try again shortly, make no request
 
 	art_purge_over_cap()
@@ -356,7 +390,7 @@ art_pump :: proc() {
 	art_list_next_source()
 }
 
-// Continues the state machine from an answer (a listing, a probe): the request that just ended is no longer in flight.
+// Continues the state machine from an answer (a listing, a decode): the request that just ended is no longer in flight.
 @(private = "file")
 art_continue :: proc() {
 	the_app.art.phase = .Idle
@@ -662,13 +696,11 @@ art_commons_file_title :: proc(title: string) -> string {
 ////////////////////////////////
 // Downloading one image
 
-@(private = "file")
 art_download :: proc(c: Art_Candidate) {
 	the_app.art.phase = .Downloading
 	art_candidate_destroy(&the_app.art.dl)
 	the_app.art.dl = c   // we own it now
 	the_app.art.dl_active = true
-	clear(&the_app.art.dl_bytes)
 	the_app.art.task = fetch.start(&the_app.art.app.loader, {
 		request = {
 			url = c.image_url, mode = .Navigate, credentials = .Omit, redirect = .Follow, destination = .Empty,   // the browser's own request (a no-cors answer is opaque: its bytes are not ours to read)
@@ -693,10 +725,7 @@ art_download_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		if len(ev.data) == 0 || i64(len(ev.data)) > i64(the_app.art.cfg.max_image_bytes) { art_fail(); return }
 		if images.sniff(ev.data) == .Unknown { art_fail(); return }   // not a decodable image signature
 		art_ok()
-		// keep the bytes while the probe runs: art_keep writes them to disk once the image passes
-		clear(&the_app.art.dl_bytes)
-		append(&the_app.art.dl_bytes, ..ev.data)
-		art_validate(the_app.art.dl_bytes[:])
+		art_validate(ev.data)
 	case .Failed:
 		the_app.art.task = base.NIL_HANDLE
 		the_app.art.dl_active = false
@@ -705,7 +734,7 @@ art_download_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 }
 
 ////////////////////////////////
-// Validation: probe the bytes on the decoder threads (dimensions, ratio, that it decodes)
+// Validation: decode on the decoder threads, at the size it will be kept at (dimensions, ratio, that it decodes)
 
 @(private = "file")
 art_validate :: proc(data: []byte) {
@@ -723,26 +752,31 @@ art_validate :: proc(data: []byte) {
 	app.art.blob = images.blob_make(bytes)
 	lim := app.page_settings.images.limits
 	lim.max_encoded_bytes = min(lim.max_encoded_bytes, app.art.cfg.max_image_bytes)
-	opts := images.Decode_Options{limits = lim}
 	app.art.phase = .Validating
-	app.art.job = images.submit(app.art.port, images.job_make(.Probe, app.art.blob, opts))
+	app.art.job = images.submit(app.art.port, images.job_make(.Decode, app.art.blob, art_decode_options(lim, app.art.cfg.short_side_px), ART_DECODE_PRIORITY))
 	if app.art.job == 0 { images.blob_release(app.art.blob); app.art.blob = nil; art_continue() }
+}
+
+// The size is the shorter side's: images.reduced_size keeps the larger of the two scales, as a painting that covers a window needs.
+art_decode_options :: proc(limits: images.Limits, short_side_px: int) -> images.Decode_Options {
+	return {limits = limits, target_w = short_side_px, target_h = short_side_px, downscale_below = 1, first_frame_only = true}
 }
 
 @(private = "file")
 art_validated :: proc(user: rawptr, j: ^images.Job) {
 	defer images.job_free(j)
 	the_app.art.job = 0
-	if the_app.art.blob != nil { images.blob_release(the_app.art.blob); the_app.art.blob = nil }
-	ok := j.err == .None && art_dimensions_ok(j.info.width, j.info.height)
-	if !ok {
+	blob := the_app.art.blob
+	the_app.art.blob = nil
+	if j.err != .None || j.image == nil || !art_dimensions_ok(j.info.width, j.info.height) {
+		if blob != nil { images.blob_release(blob) }
 		art_candidate_destroy(&the_app.art.dl)   // drop this one, do not keep the file
 		art_continue()
 		return
 	}
-	art_keep(the_app.art.dl, j.info.width, j.info.height)
-	the_app.art.dl = {}   // ownership moved into the Art_Item
-	art_continue()
+	img := j.image
+	j.image = nil   // the worker's now
+	art_encode(blob, img, j.info.width, j.info.height)
 }
 
 // A painting is kept only if it is large enough and not an extreme sliver: a minimum width for full screen, and a ratio
@@ -755,43 +789,190 @@ art_dimensions_ok :: proc(w, h: int) -> bool {
 }
 
 ////////////////////////////////
-// Keeping: write the image and its metadata to the cache folder, add to the ready window
+// Keeping: on a worker, the painting encoded at the size it was decoded at, then the file and its metadata; the loop adds it to the window
 
+// Handed to the worker whole and back at art_encode_done: nothing is shared with the loop meanwhile.
 @(private = "file")
-art_keep :: proc(c: Art_Candidate, w, h: int) {
-	if !art_ensure_dir() { art_candidate_destroy_copy(c); return }
-	stem := art_safe_stem(c.id)
-	img_path := strings.concatenate({the_app.art.dir, "/", stem, art_ext(c.image_url)}, context.temp_allocator)
-	if os.write_entire_file(img_path, art_last_bytes()) != nil { art_candidate_destroy_copy(c); return }
-	it := new(Art_Item)
-	it^ = Art_Item{
-		id = strings.clone(c.id), file = strings.clone(img_path), source = strings.clone(c.source),
-		title = strings.clone(c.title), artist = strings.clone(c.artist), date = strings.clone(c.date),
-		museum = strings.clone(c.museum), record = strings.clone(c.record), license = strings.clone(c.license),
-		width = w, height = h, bytes = i64(len(art_last_bytes())), fetched = i64(time.to_unix_seconds(time.now())),
-	}
-	meta_path := strings.concatenate({the_app.art.dir, "/", stem, ".json"}, context.temp_allocator)
-	_ = os.write_entire_file(meta_path, transmute([]byte)art_meta_json(it^))
-	append(&the_app.art.ready, it)
-	art_candidate_destroy_copy(c)
-	art_fill_waiting(the_app.art.app)   // an art new tab that showed no painting yet shows this one
-	request_frames(the_app.art.app, 1)
+Art_Encode_Job :: struct {
+	alloc:   runtime.Allocator,   // the loop's: what the item owns is freed there
+	gen:     u32,
+	dir:     string,
+	quality: f32,
+	c:       Art_Candidate,
+	blob:    ^images.Blob,        // the bytes as they came
+	image:   ^images.Image,
+	item:    Art_Item,            // the worker's answer
+	ok:      bool,
 }
 
-// The bytes of the download in hand still live in art.blob until it is released; art_keep runs after the probe, which
-// released the blob. We therefore keep a copy of the download bytes alongside the candidate while it is in flight.
 @(private = "file")
-art_last_bytes :: proc() -> []byte { return the_app.art.dl_bytes[:] }
+art_encode :: proc(blob: ^images.Blob, img: ^images.Image, w, h: int) {
+	app := the_app.art.app
+	if !art_ensure_dir() { images.blob_release(blob); images.image_destroy(img); art_candidate_destroy(&app.art.dl); art_continue(); return }
+	j := new(Art_Encode_Job)
+	j^ = {alloc = context.allocator, gen = app.art.gen, dir = app.art.dir, quality = app.art.cfg.jpeg_quality, c = app.art.dl, blob = blob, image = img}
+	j.item.width, j.item.height = w, h
+	app.art.dl = {}   // ownership moved into the job
+	app.art.phase = .Encoding
+	app.art.jobs += 1
+	host.run_blocking(&app.blocking, art_encode_work, art_encode_done, j)
+}
+
+// The JPEG to keep instead of `source`, nil when `source` is better kept as it is: it needed no reducing and is small, or the JPEG
+// would not be smaller. The result is allocated with `allocator`.
+art_reencoded :: proc(source: []byte, img: ^images.Image, quality: f32, allocator := context.allocator) -> []byte {
+	if len(img.frames) == 0 || img.stride != img.width * 4 { return nil }
+	if !img.reduced && len(source) <= ART_KEEP_AS_IS_BYTES { return nil }
+	out, ok := images.encode_rgba(img.frames[0].pixels, img.width, img.height, .Jpeg, quality, false, allocator)
+	if !ok { return nil }
+	if len(out) >= len(source) { delete(out, allocator); return nil }
+	return out
+}
 
 @(private = "file")
-art_candidate_destroy_copy :: proc(c: Art_Candidate) { cc := c; art_candidate_destroy(&cc) }
+art_encode_work :: proc(data: rawptr) {
+	j := (^Art_Encode_Job)(data)
+	context.allocator = j.alloc
+	kept := j.blob.bytes
+	ext := art_ext(j.c.image_url)
+	w, h := j.item.width, j.item.height
+	if out := art_reencoded(kept, j.image, j.quality, context.temp_allocator); out != nil {
+		kept, ext, w, h = out, ".jpg", j.image.width, j.image.height
+	}
+	images.image_destroy(j.image)
+	j.image = nil
+	c := j.c
+	j.c = {}   // what it owns goes to the item, but for what the item has no use for
+	defer { delete(c.image_url) }
+	name := strings.concatenate({art_safe_stem(c.id), ext}, context.temp_allocator)
+	j.item = Art_Item{
+		format = ART_CACHE_FORMAT, id = c.id, file = name, source = c.source, title = c.title, artist = c.artist, date = c.date, museum = c.museum, record = c.record,
+		license = c.license, width = w, height = h, bytes = i64(len(kept)), fetched = i64(time.to_unix_seconds(time.now())),
+	}
+	meta, merr := json.marshal(j.item, {}, context.temp_allocator)   // (the image's name, not its path: the folder may move with the profile)
+	j.item.file = strings.concatenate({j.dir, "/", name})
+	if merr != nil { return }
+	if os.write_entire_file(j.item.file, kept) != nil { return }
+	j.ok = os.write_entire_file(art_meta_path(j.item.file), meta) == nil
+}
 
 @(private = "file")
-art_meta_json :: proc(it: Art_Item) -> string {
-	return fmt.aprintf(
-		`{{"id":%q,"source":%q,"title":%q,"artist":%q,"date":%q,"museum":%q,"record":%q,"license":%q,"width":%d,"height":%d,"bytes":%d,"fetched":%d}}`,
-		it.id, it.source, it.title, it.artist, it.date, it.museum, it.record, it.license, it.width, it.height, it.bytes, it.fetched,
-		allocator = context.temp_allocator)
+art_encode_done :: proc(data: rawptr) {
+	j := (^Art_Encode_Job)(data)
+	defer free(j)
+	app := the_app.art.app
+	app.art.jobs -= 1
+	images.blob_release(j.blob)
+	if j.gen != app.art.gen || !j.ok {   // cleared, stopped or not written: nothing of it stays
+		art_delete_files(&j.item)
+		art_item_destroy(&j.item)
+		if j.gen == app.art.gen { art_continue() }
+		return
+	}
+	it := new(Art_Item)
+	it^ = j.item
+	append(&app.art.ready, it)
+	art_fill_waiting(app)   // an art new tab that showed no painting yet shows this one
+	request_frames(app, 1)
+	art_continue()
+}
+
+////////////////////////////////
+// The scan: what an earlier session left, once, on a worker. The folder then holds what the window shows next and nothing else
+
+@(private = "file")
+Art_Scan_Job :: struct {
+	alloc:     runtime.Allocator,
+	gen:       u32,
+	dir:       string,
+	window:    int,
+	max_bytes: i64,
+	items:     [dynamic]^Art_Item,   // the worker's answer
+}
+
+@(private = "file")
+art_scan :: proc(app: ^App) {
+	if app.art.scan != .Not_Yet || !art_ensure_dir() { return }
+	j := new(Art_Scan_Job)
+	j^ = {alloc = context.allocator, gen = app.art.gen, dir = app.art.dir, window = app.art.cfg.window, max_bytes = app.art.cfg.max_cache_bytes}
+	app.art.scan = .Running
+	app.art.jobs += 1
+	host.run_blocking(&app.blocking, art_scan_work, art_scan_done, j)
+}
+
+@(private = "file")
+art_scan_work :: proc(data: rawptr) {
+	j := (^Art_Scan_Job)(data)
+	context.allocator = j.alloc
+	entries, err := os.read_directory_by_path(j.dir, -1, context.temp_allocator)
+	if err != nil { return }
+	found := make([dynamic]^Art_Item, context.temp_allocator)
+	for e in entries {
+		if e.type == .Directory || !strings.has_suffix(e.name, ".json") { continue }
+		if it := art_item_read(j.dir, e.fullpath); it != nil { append(&found, it) }
+	}
+	slice.sort_by(found[:], proc(a, b: ^Art_Item) -> bool { return a.fetched > b.fetched })   // the newest stay
+	total: i64 = 0
+	for it in found {
+		if len(j.items) < j.window && total + it.bytes <= j.max_bytes {
+			total += it.bytes
+			append(&j.items, it)
+		} else {
+			art_item_destroy(it)
+			free(it)
+		}
+	}
+	for e in entries { if e.type != .Directory && !art_names_file(j.items[:], e.name) { _ = os.remove(e.fullpath) } }
+}
+
+// The painting a JSON file describes, nil when it is of another format or its image is not there.
+@(private = "file")
+art_item_read :: proc(dir, path: string) -> ^Art_Item {
+	text, err := os.read_entire_file(path, context.temp_allocator)
+	if err != nil { return nil }
+	it := new(Art_Item)
+	if json.unmarshal(text, it) == nil && it.format == ART_CACHE_FORMAT && it.id != "" && it.file != "" && strings.index_any(it.file, "/\\") < 0 {
+		full := strings.concatenate({dir, "/", it.file})
+		delete(it.file)
+		it.file = full
+		if info, serr := os.stat(full, context.temp_allocator); serr == nil && info.size > 0 {
+			it.bytes = info.size
+			return it
+		}
+	}
+	art_item_destroy(it)
+	free(it)
+	return nil
+}
+
+// Whether `name` (of a file of the folder) is one of the items' image or JSON file.
+@(private = "file")
+art_names_file :: proc(items: []^Art_Item, name: string) -> bool {
+	stem := art_stem(name)
+	for it in items {
+		file := it.file[strings.last_index_byte(it.file, '/') + 1:]
+		if art_stem(file) == stem { return true }
+	}
+	return false
+}
+
+@(private = "file")
+art_scan_done :: proc(data: rawptr) {
+	j := (^Art_Scan_Job)(data)
+	defer free(j)
+	app := the_app.art.app
+	app.art.jobs -= 1
+	app.art.scan = .Done
+	for it in j.items {
+		if j.gen != app.art.gen || art_have_id(it.id) { art_item_destroy(it); free(it) } else { append(&app.art.ready, it) }
+	}
+	has_items := len(j.items) > 0 && j.gen == app.art.gen
+	delete(j.items)
+	if has_items {
+		art_fill_waiting(app)
+		request_frames(app, 1)
+	}
+	art_pump()
 }
 
 ////////////////////////////////
@@ -831,19 +1012,39 @@ art_purge_over_cap :: proc() {
 
 @(private = "file")
 art_delete_files :: proc(it: ^Art_Item) {
-	if it.file != "" { _ = os.remove(it.file) }
-	stem := it.file
-	if i := strings.last_index_byte(stem, '.'); i >= 0 { stem = stem[:i] }
-	_ = os.remove(strings.concatenate({stem, ".json"}, context.temp_allocator))
+	if it.file == "" { return }
+	_ = os.remove(it.file)
+	_ = os.remove(art_meta_path(it.file))
+}
+
+// The name without its extension.
+@(private = "file")
+art_stem :: proc(name: string) -> string {
+	i := strings.last_index_byte(name, '.')
+	return i >= 0 ? name[:i] : name
+}
+
+@(private = "file")
+art_meta_path :: proc(file: string) -> string { return strings.concatenate({art_stem(file), ".json"}, context.temp_allocator) }
+
+// The painting and everything of it.
+@(private = "file")
+art_drop :: proc(it: ^Art_Item) {
+	art_delete_files(it)
+	art_item_destroy(it)
+	free(it)
 }
 
 // Cleared with "Clear browsing data" (site_data_ui.odin's cache kind): every cached painting and its metadata go, and the
 // window starts over. The task, if running, fills it again.
 art_clear_cache :: proc() {
 	art_cancel_io()
-	if the_app.art.current != nil && !art_in_ready(the_app.art.current) { art_delete_files(the_app.art.current); art_item_destroy(the_app.art.current); free(the_app.art.current) }
+	if the_app.art.phase == .Encoding { the_app.art.phase = .Idle }   // (it comes back to nothing: art_encode_done)
+	if the_app.art.current != nil && !art_in_ready(the_app.art.current) { art_drop(the_app.art.current) }
 	the_app.art.current = nil
-	for it in the_app.art.ready { art_delete_files(it); art_item_destroy(it); free(it) }
+	if the_app.art.retired != nil { art_drop(the_app.art.retired) }
+	the_app.art.retired = nil
+	for it in the_app.art.ready { art_drop(it) }
 	clear(&the_app.art.ready)
 	for s in the_app.art.recent { delete(s) }
 	clear(&the_app.art.recent)
@@ -879,11 +1080,10 @@ art_pick :: proc(landscape: bool) -> ^Art_Item {
 	// remember the pick so it does not repeat at once; cap the ring at the window size
 	append(&the_app.art.recent, strings.clone(best.id))
 	for len(the_app.art.recent) > max(the_app.art.cfg.window, 1) { delete(the_app.art.recent[0]); ordered_remove(&the_app.art.recent, 0) }
-	// the previous current, if it was consumed (removed from `ready`), is no longer referenced: free it so it does not leak
+	// the previous current, if it was consumed (removed from `ready`), was seen: it leaves the disk, one pick later, for a page that has not read it yet
 	if the_app.art.current != nil && the_app.art.current != best && !art_in_ready(the_app.art.current) {
-		art_delete_files(the_app.art.current)
-		art_item_destroy(the_app.art.current)
-		free(the_app.art.current)
+		if the_app.art.retired != nil { art_drop(the_app.art.retired) }
+		the_app.art.retired = the_app.art.current
 	}
 	the_app.art.current = best
 	return best
@@ -896,8 +1096,8 @@ art_recently_shown :: proc(id: string) -> bool {
 }
 
 // Called once an art new tab has shown the current painting: it leaves the ready window (it was consumed) and the task
-// fetches a replacement so the window stays full of unseen paintings. The file stays on disk until purged, so the same
-// tab can keep showing it; a new new tab gets a different one.
+// fetches a replacement so the window stays full of unseen paintings. Its file stays through the next two picks (art_pick), long
+// enough for the tab to read it; a new new tab gets a different one.
 art_consume :: proc() {
 	if the_app.art.current == nil { return }
 	// drop the current from `ready` so the window refills with a fresh painting; keep the Art_Item alive as `current`

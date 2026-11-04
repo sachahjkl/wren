@@ -8,9 +8,10 @@ images. The option is **off by default**.
 
 ## When the network is touched
 
-Never while the option is off, and never while the loader is held offline. With the option on, a background task starts
-about 2.5 seconds after the start (or after the option is turned on), so that the first new tab already has a painting; it
-also starts at the first art new tab if it was stopped. Until a painting is ready, the new tab shows a gradient with a
+Never while the option is off, and never while the loader is held offline. With the option on, the paintings an earlier
+session kept and nobody saw yet are taken back at the start, without the network, so the first new tab has one at once. A
+background task then starts about 2.5 seconds after the start (or after the option is turned on), so that a first session
+has one too; it also starts at the first art new tab if it was stopped. Until a painting is ready, the new tab shows a gradient with a
 spinner and "Fetching a painting…", and is replaced by the painting as soon as one is. From then on the task keeps a sliding window of about
 `browser.newtab.art.window` paintings ready, downloading a fresh one whenever a shown painting is consumed. The task
 stops after `browser.newtab.art.idle_minutes` with no art new tab shown and resumes at the next one.
@@ -41,9 +42,33 @@ Chicago (Cloudflare challenge) do not answer a client without a browser reliably
 The downloader makes one request at a time per host and backs off exponentially on `429` / `403` / network error
 (`browser.newtab.art.backoff_base_ms` doubling up to `browser.newtab.art.backoff_max_ms`). Every answer is validated
 before it is kept: an `image/*` MIME type, a size below `browser.newtab.art.max_image_bytes`, a known image signature, a
-probe decode with Wren's own image decoder, a sane aspect ratio (between 1:3 and 3:1) and a minimum width
-(`browser.newtab.art.min_width_px`, 1280 px by default) for full-screen use. Files beyond `browser.newtab.art.max_cache_mb`
-are purged oldest first.
+decode with Wren's own image decoder, a sane aspect ratio (between 1:3 and 3:1) and a minimum width
+(`browser.newtab.art.min_width_px`, 1280 px by default, of the file as it came) for full-screen use.
+
+## What is kept, and what a new tab costs
+
+Museums serve paintings for print: 4 MB on average, up to 8 MB and 3400 px. A new tab needs a screenful, so the work is done
+once, when a painting arrives and in the background: the decoder reduces it to `browser.newtab.art.short_side_px` on its
+shorter side (the side that matters for an image that covers a window), and a worker encodes that as JPEG
+(`browser.newtab.art.jpeg_quality`) and writes it with its JSON file. A file that needed no reducing and is at most 1 MB is
+kept as it came, and so is one whose JPEG would be no smaller.
+
+The page is a few kilobytes and names the file at a `file:` address: the page's loader reads it off the window's thread and
+the decoder decodes it at the size it is kept at. The page may read that folder and nothing else; with
+`security.file_access.policy=none` it reads nothing and shows its gradient.
+
+Measured on the development machine (2026-11-04, a window of 1920 x 1080, headless, from the navigation to the painting in a
+frame; the longest wait for a frame in brackets):
+
+| What the new tab loads | Before: a `data:` URL | A `file:` address | Kept as it is now |
+|---|---|---|---|
+| A painting of 8 MB, 2833 x 3400 | 950 ms (770 ms) | 165 ms (25 ms) | 40 ms (15 ms), 0.6 MB |
+| A painting of 4.4 MB | 640 ms (450 ms) | | 40 ms (14 ms), 0.3 MB |
+
+The disk holds what was not seen yet. A shown painting leaves it two picks later (its tab has read it by then), and the
+first look at the folder in a session keeps the newest `browser.newtab.art.window` paintings within
+`browser.newtab.art.max_cache_mb` and removes everything else: other formats, strays, what a crash left. While the task
+runs, files beyond `browser.newtab.art.max_cache_mb` are purged oldest first.
 
 ## "Smart"
 
@@ -65,6 +90,8 @@ pre-fetched while the current is on screen. Nothing downloads on a limited or of
 | `browser.newtab.art.offline_fallback` | `true` | An elegant gradient with the caption when nothing is ready yet. |
 | `browser.newtab.art.min_width_px` | `1280` | Smallest width a painting may have. |
 | `browser.newtab.art.max_image_bytes` | `8 MB` | Largest image file downloaded. |
+| `browser.newtab.art.short_side_px` | `1600` | A painting is kept with its shorter side at most this long. |
+| `browser.newtab.art.jpeg_quality` | `0.82` | Quality of the JPEG a reduced painting is kept as. |
 | `browser.newtab.art.idle_minutes` | `30` | Stop the task after this long with no art new tab. 0 = never. |
 | `browser.newtab.art.backoff_base_ms` | `2000` | First retry wait after a failure (doubles). |
 | `browser.newtab.art.backoff_max_ms` | `300000` | Longest retry wait. |

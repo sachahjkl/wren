@@ -6,18 +6,20 @@ package browser
 // prefers-reduced-motion (no cross-fade then). It is an ordinary document, rendered by the same engine as every other
 // page, like about:home; its links open as if typed in the address bar.
 //
-// The image is embedded as a data: URL from the cached file, so the page needs no network of its own and no special
-// scheme. When no painting is ready yet it falls back to an elegant gradient with the caption (or, with the fallback
-// preference off, to the plain start page). The background task is started by art_seen_new_tab the first time an art new
-// tab is shown.
+// The image is the cached file, at a file: address: the page's loader reads it off the loop's thread and the decoder decodes it,
+// and the document stays a few kilobytes (a data: URL was a read, 11 MB of text through the parsers and a decode, on the way to
+// the first frame). The page may read that folder and nothing else (art_page_reads); with security.file_access.policy=none it
+// reads nothing and shows its gradient. When no painting is ready yet it falls back to an elegant gradient with the caption
+// (or, with the fallback preference off, to the plain start page). The background task is started by art_seen_new_tab the
+// first time an art new tab is shown.
 
-import "core:encoding/base64"
 import "core:fmt"
-import "core:os"
 import "core:strings"
 import "wb:base"
+import "wb:fetch"
 import "wb:i18n"
 import "wb:page"
+import "wb:url"
 
 // about:home with this query shows the next painting without leaving the tab (the "another painting" button links here).
 ART_NEXT_URL :: "about:home?art=next"
@@ -35,7 +37,7 @@ art_newtab_maybe :: proc(app: ^App, t: ^Tab, want_next: bool) -> bool {
 	it := art_pick(landscape)
 	if it == nil && !app.art.cfg.offline_fallback { return false }   // nothing ready and no fallback: the plain start page
 	html := art_page_html(app, it, landscape)
-	art_show_page(app, t, html)
+	art_show_page(app, t, html, it)
 	t.art_empty = it == nil   // no painting yet: art_fill_waiting replaces this page when the first one is ready
 	if it != nil { art_consume() }   // this painting is shown: let the window refill with a fresh one
 	return true
@@ -59,7 +61,7 @@ art_empty_failed :: proc(app: ^App) {
 		if !t.art_empty || t.kind != .Web || t.url != HOME_URL || t.page == nil { continue }
 		cur := app.active
 		if w, _ := window_of_tab(app, t); w != nil { window_activate(app, w) }
-		art_show_page(app, t, art_page_html(app, nil, art_window_landscape(app)))
+		art_show_page(app, t, art_page_html(app, nil, art_window_landscape(app)), nil)
 		t.art_empty = true
 		if cur != nil && cur != app.active { window_activate(app, cur) }
 	}
@@ -79,11 +81,12 @@ home_query :: proc(app: ^App, t: ^Tab, target: string, acts: bool) {
 
 // Loads the art page HTML into the tab, like show_home.
 @(private = "file")
-art_show_page :: proc(app: ^App, t: ^Tab, html: string) {
+art_show_page :: proc(app: ^App, t: ^Tab, html: string, it: ^Art_Item) {
 	base.scope_close(t.nav)
 	t.nav = base.scope_make("navigation", t.scope)
 	t.load, t.kind = nil, .Web
 	t.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, HOME_URL, console_sink, t)
+	if it != nil { art_page_reads(t.page, it) }
 	attach_page(app, t, t.page)
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
@@ -174,12 +177,12 @@ art_page_html :: proc(app: ^App, it: ^Art_Item, landscape: bool) -> string {
 		// nothing fetched yet and nothing failed: say it is on its way (the page is replaced when the painting is ready: art_fill_waiting)
 		if app.art.fails == 0 { fmt.sbprintf(&sb, "<div class=\"art-loading\"><div class=\"art-spin\"></div><div>%s</div></div>\n", i18n.tr("Fetching a painting…")) }
 	} else {
-		data := art_data_url(it)
+		file := art_file_url(it)
 		// a blurred fill behind a "contain" image so a portrait on a wide window (or the reverse) has no black bars
 		if fit == "contain" {
-			fmt.sbprintf(&sb, "<div class=\"art-blur\" style=\"background-image:url('%s')\"></div>\n", data)
+			fmt.sbprintf(&sb, "<div class=\"art-blur\" style=\"background-image:url('%s')\"></div>\n", file)
 		}
-		fmt.sbprintf(&sb, "<div class=\"art-bg\" style=\"background-image:url('%s')\"></div>\n", data)
+		fmt.sbprintf(&sb, "<div class=\"art-bg\" style=\"background-image:url('%s')\"></div>\n", file)
 	}
 
 	strings.write_string(&sb, "<div class=\"art-top\"></div>\n")
@@ -251,26 +254,15 @@ art_write_meta :: proc(sb: ^strings.Builder, it: ^Art_Item) {
 	strings.write_string(sb, "</p>\n")
 }
 
-// The cached image as a data: URL (base64), read from disk each time the page is built. Returns an empty transparent
-// pixel when the file is gone (purged between the pick and the paint): the gradient stays.
+// The address the page loads the cached file at.
 @(private = "file")
-art_data_url :: proc(it: ^Art_Item) -> string {
-	data, err := os.read_entire_file(it.file, context.temp_allocator)
-	if err != nil || len(data) == 0 {
-		return "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
-	}
-	mime := art_mime_of(it.file)
-	return strings.concatenate({"data:", mime, ";base64,", base64.encode(data, allocator = context.temp_allocator)}, context.temp_allocator)
-}
+art_file_url :: proc(it: ^Art_Item) -> string { return fetch.file_url_from_path(it.file, allocator = context.temp_allocator) }
 
+// The folder of the painting is the tree the page may read (a file: document's rule, fetch.file_access_allowed): about:home has none.
 @(private = "file")
-art_mime_of :: proc(path: string) -> string {
-	s := base.ascii_lower(path)
-	switch {
-	case strings.has_suffix(s, ".png"):  return "image/png"
-	case strings.has_suffix(s, ".webp"): return "image/webp"
-	case strings.has_suffix(s, ".gif"):  return "image/gif"
-	case strings.has_suffix(s, ".bmp"):  return "image/bmp"
+art_page_reads :: proc(p: ^page.Page, it: ^Art_Item) {
+	if u, ok := url.parse_absolute(art_file_url(it), context.temp_allocator); ok {
+		delete(p.env.file_root)
+		p.env.file_root = fetch.file_directory(u)
 	}
-	return "image/jpeg"
 }
