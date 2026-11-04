@@ -249,9 +249,9 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <thead><tr><th></th><th style="text-align:right">count</th></tr></thead>
 <tbody>
 <tr><td>interfaces, namespaces in the table</td><td style="text-align:right">606</td></tr>
-<tr><td>exposed by default</td><td style="text-align:right">386</td></tr>
+<tr><td>exposed by default</td><td style="text-align:right">389</td></tr>
 <tr><td>members</td><td style="text-align:right">5312</td></tr>
-<tr><td>members implemented</td><td style="text-align:right">3855 (72.6 %)</td></tr>
+<tr><td>members implemented</td><td style="text-align:right">3867 (72.8 %)</td></tr>
 </tbody>
 </table></div>
 <h2 id="by-specification"><a class="anchor" href="#by-specification" aria-hidden="true">#</a>By specification</h2>
@@ -280,7 +280,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <tr><td><code>css-view-transitions.idl</code></td><td style="text-align:right">3 (0)</td><td style="text-align:right">0 / 10</td></tr>
 <tr><td><code>cssom-view.idl</code></td><td style="text-align:right">5 (4)</td><td style="text-align:right">24 / 28</td></tr>
 <tr><td><code>cssom.idl</code></td><td style="text-align:right">16 (15)</td><td style="text-align:right">66 / 149</td></tr>
-<tr><td><code>dom.idl</code></td><td style="text-align:right">35 (31)</td><td style="text-align:right">591 / 700</td></tr>
+<tr><td><code>dom.idl</code></td><td style="text-align:right">35 (31)</td><td style="text-align:right">596 / 700</td></tr>
 <tr><td><code>element-timing.idl</code></td><td style="text-align:right">1 (1)</td><td style="text-align:right">12 / 12</td></tr>
 <tr><td><code>encoding.idl</code></td><td style="text-align:right">4 (4)</td><td style="text-align:right">19 / 19</td></tr>
 <tr><td><code>entries-api.idl</code></td><td style="text-align:right">5 (5)</td><td style="text-align:right">13 / 13</td></tr>
@@ -290,7 +290,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <tr><td><code>gamepad.idl</code></td><td style="text-align:right">4 (0)</td><td style="text-align:right">0 / 17</td></tr>
 <tr><td><code>geometry.idl</code></td><td style="text-align:right">8 (8)</td><td style="text-align:right">126 / 126</td></tr>
 <tr><td><code>hr-time.idl</code></td><td style="text-align:right">1 (1)</td><td style="text-align:right">15 / 17</td></tr>
-<tr><td><code>html.idl</code></td><td style="text-align:right">161 (136)</td><td style="text-align:right">1578 / 1830</td></tr>
+<tr><td><code>html.idl</code></td><td style="text-align:right">161 (139)</td><td style="text-align:right">1585 / 1830</td></tr>
 <tr><td><code>intersection-observer.idl</code></td><td style="text-align:right">2 (2)</td><td style="text-align:right">20 / 20</td></tr>
 <tr><td><code>is-input-pending.idl</code></td><td style="text-align:right">1 (1)</td><td style="text-align:right">1 / 1</td></tr>
 <tr><td><code>largest-contentful-paint.idl</code></td><td style="text-align:right">1 (1)</td><td style="text-align:right">9 / 9</td></tr>
@@ -1190,6 +1190,8 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>item()</code>: C <code>wjr_DOMStringList_item</code></li>
 <li><code>contains()</code>: C <code>wjr_DOMStringList_contains</code></li>
 </ul>
+<h3 id="domstringmap"><a class="anchor" href="#domstringmap" aria-hidden="true">#</a>DOMStringMap</h3>
+<p>0 / 0 members.</p>
 <h3 id="domtokenlist"><a class="anchor" href="#domtokenlist" aria-hidden="true">#</a>DOMTokenList</h3>
 <p>10 / 10 members.</p>
 <ul>
@@ -1440,6 +1442,12 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>constructor()</code>: C <code>wjr_InstallEvent_constructor</code></li>
 <li><code>addRoutes()</code>: C <code>wjr_InstallEvent_addRoutes</code></li>
 </ul>
+<h3 id="formdataevent-event"><a class="anchor" href="#formdataevent-event" aria-hidden="true">#</a>FormDataEvent : Event</h3>
+<p>2 / 2 members.</p>
+<ul>
+<li><code>constructor()</code>: C <code>wjr_FormDataEvent_constructor</code></li>
+<li><code>readonly formData</code>: C <code>wjr_FormDataEvent_get_formData</code></li>
+</ul>
 <h3 id="hashchangeevent-event"><a class="anchor" href="#hashchangeevent-event" aria-hidden="true">#</a>HashChangeEvent : Event</h3>
 <p>3 / 3 members.</p>
 <ul>
@@ -1528,6 +1536,12 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>readonly url</code>: C <code>wjr_StorageEvent_get_url</code></li>
 <li><code>readonly storageArea</code>: C <code>wjr_StorageEvent_get_storageArea</code></li>
 <li><code>initStorageEvent()</code>: not supported</li>
+</ul>
+<h3 id="submitevent-event"><a class="anchor" href="#submitevent-event" aria-hidden="true">#</a>SubmitEvent : Event</h3>
+<p>2 / 2 members.</p>
+<ul>
+<li><code>constructor()</code>: C <code>wjr_SubmitEvent_constructor</code></li>
+<li><code>readonly submitter</code>: C <code>wjr_SubmitEvent_get_submitter</code></li>
 </ul>
 <h3 id="taskprioritychangeevent-event"><a class="anchor" href="#taskprioritychangeevent-event" aria-hidden="true">#</a>TaskPriorityChangeEvent : Event</h3>
 <p>2 / 2 members.</p>
@@ -2025,7 +2039,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <h3 id="cdatasection-text"><a class="anchor" href="#cdatasection-text" aria-hidden="true">#</a>CDATASection : Text</h3>
 <p>0 / 0 members.</p>
 <h3 id="document-node"><a class="anchor" href="#document-node" aria-hidden="true">#</a>Document : Node</h3>
-<p>193 / 225 members.</p>
+<p>198 / 225 members.</p>
 <ul>
 <li><code>readonly rootElement</code>: not supported</li>
 <li><code>startViewTransition()</code>: not supported</li>
@@ -2106,11 +2120,11 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>readonly visibilityState</code>: C <code>wjr_Document_get_visibilityState</code></li>
 <li><code>onreadystatechange</code>: generic (event handler)</li>
 <li><code>onvisibilitychange</code>: generic (event handler)</li>
-<li><code>fgColor</code>: not supported</li>
-<li><code>linkColor</code>: not supported</li>
-<li><code>vlinkColor</code>: not supported</li>
-<li><code>alinkColor</code>: not supported</li>
-<li><code>bgColor</code>: not supported</li>
+<li><code>fgColor</code>: C <code>wjr_Document_get_fgColor</code></li>
+<li><code>linkColor</code>: C <code>wjr_Document_get_linkColor</code></li>
+<li><code>vlinkColor</code>: C <code>wjr_Document_get_vlinkColor</code></li>
+<li><code>alinkColor</code>: C <code>wjr_Document_get_alinkColor</code></li>
+<li><code>bgColor</code>: C <code>wjr_Document_get_bgColor</code></li>
 <li><code>readonly anchors</code>: C <code>wjr_Document_get_anchors</code></li>
 <li><code>readonly applets</code>: not supported</li>
 <li><code>clear()</code>: not supported</li>
@@ -2469,7 +2483,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>getAnimations()</code> (Animatable): C <code>wjr_Animatable_getAnimations</code></li>
 </ul>
 <h3 id="htmlelement-element"><a class="anchor" href="#htmlelement-element" aria-hidden="true">#</a>HTMLElement : Element</h3>
-<p>136 / 143 members.</p>
+<p>138 / 143 members.</p>
 <ul>
 <li><code>readonly scrollParent</code>: not supported</li>
 <li><code>readonly offsetParent</code>: import <code>dom.HTMLElement_offsetParent</code></li>
@@ -2605,9 +2619,9 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>ontouchmove</code> (GlobalEventHandlers): generic (event handler)</li>
 <li><code>ontouchcancel</code> (GlobalEventHandlers): generic (event handler)</li>
 <li><code>contentEditable</code> (ElementContentEditable): import <code>dom.ElementContentEditable_contentEditable</code></li>
-<li><code>enterKeyHint</code> (ElementContentEditable): not supported</li>
+<li><code>enterKeyHint</code> (ElementContentEditable): C <code>wjr_HTMLElement_get_enterKeyHint</code></li>
 <li><code>readonly isContentEditable</code> (ElementContentEditable): import <code>dom.ElementContentEditable_isContentEditable</code></li>
-<li><code>inputMode</code> (ElementContentEditable): not supported</li>
+<li><code>inputMode</code> (ElementContentEditable): C <code>wjr_HTMLElement_get_inputMode</code></li>
 <li><code>readonly dataset</code> (HTMLOrSVGOrMathMLElement): C <code>wjr_HTMLOrSVGOrMathMLElement_get_dataset</code></li>
 <li><code>nonce</code> (HTMLOrSVGOrMathMLElement): import <code>dom.HTMLOrSVGOrMathMLElement_nonce</code></li>
 <li><code>autofocus</code> (HTMLOrSVGOrMathMLElement): generic (reflects a content attribute)</li>
@@ -3025,7 +3039,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>placeholder</code>: generic (reflects a content attribute)</li>
 <li><code>readOnly</code>: generic (reflects a content attribute)</li>
 <li><code>required</code>: generic (reflects a content attribute)</li>
-<li><code>size</code>: generic (reflects a content attribute)</li>
+<li><code>size</code>: C <code>wjr_HTMLInputElement_get_size</code></li>
 <li><code>src</code>: generic (reflects a content attribute)</li>
 <li><code>step</code>: generic (reflects a content attribute)</li>
 <li><code>type</code>: import <code>forms.HTMLInputElement_type</code></li>
@@ -3129,7 +3143,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>stop()</code>: not supported</li>
 </ul>
 <h3 id="htmlmediaelement-htmlelement"><a class="anchor" href="#htmlmediaelement-htmlelement" aria-hidden="true">#</a>HTMLMediaElement : HTMLElement</h3>
-<p>42 / 45 members.</p>
+<p>43 / 45 members.</p>
 <ul>
 <li><code>readonly error</code>: C <code>wjr_HTMLMediaElement_get_error</code></li>
 <li><code>src</code>: generic (reflects a content attribute)</li>
@@ -3171,7 +3185,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>volume</code>: import <code>htmlmedia.HTMLMediaElement_volume</code></li>
 <li><code>muted</code>: import <code>htmlmedia.HTMLMediaElement_muted</code></li>
 <li><code>defaultMuted</code>: generic (reflects a content attribute)</li>
-<li><code>loading</code>: not supported</li>
+<li><code>loading</code>: C <code>wjr_HTMLMediaElement_get_loading</code></li>
 <li><code>readonly audioTracks</code>: C <code>wjr_HTMLMediaElement_get_audioTracks</code></li>
 <li><code>readonly videoTracks</code>: C <code>wjr_HTMLMediaElement_get_videoTracks</code></li>
 <li><code>readonly textTracks</code>: C <code>wjr_HTMLMediaElement_get_textTracks</code></li>
@@ -6123,7 +6137,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>timeEnd()</code>: C <code>wjr_console_timeEnd</code></li>
 </ul>
 <h2 id="not-exposed-nothing-implemented"><a class="anchor" href="#not-exposed-nothing-implemented" aria-hidden="true">#</a>Not exposed (nothing implemented)</h2>
-<p>AnimationNodeList, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, BarProp, CSSNumericArray, CSSStartingStyleRule, CSSViewTransitionRule, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, CaretPosition, ChapterInformation, ClipboardItem, CookieStoreManager, FederatedCredential, PasswordCredential, OverconstrainedError, QuotaExceededError, DOMStringMap, AudioProcessingEvent, BeforeUnloadEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ExtendableCookieChangeEvent, NotificationEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TrackEvent, TextEvent, EventCounts, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, BaseAudioContext, AudioContext, OfflineAudioContext, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaStream, MediaStreamTrack, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, ScreenOrientation, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, XMLHttpRequestUpload, External, FetchLaterResult, FileReaderSync, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, GroupEffect, SequenceEffect, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, MediaDeviceInfo, InputDeviceInfo, MediaMetadata, MediaSession, MimeType, MimeTypeArray, NavigationPrecommitController, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor</p>
+<p>AnimationNodeList, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, BarProp, CSSNumericArray, CSSStartingStyleRule, CSSViewTransitionRule, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, CaretPosition, ChapterInformation, ClipboardItem, CookieStoreManager, FederatedCredential, PasswordCredential, OverconstrainedError, QuotaExceededError, AudioProcessingEvent, BeforeUnloadEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ExtendableCookieChangeEvent, NotificationEvent, FontFaceSetLoadEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, TrackEvent, TextEvent, EventCounts, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, BaseAudioContext, AudioContext, OfflineAudioContext, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaStream, MediaStreamTrack, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, ScreenOrientation, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, XMLHttpRequestUpload, External, FetchLaterResult, FileReaderSync, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, GroupEffect, SequenceEffect, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, MediaDeviceInfo, InputDeviceInfo, MediaMetadata, MediaSession, MimeType, MimeTypeArray, NavigationPrecommitController, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/api/README/"><span>Previous</span><strong>Web API of Wren (Wasm imports)</strong></a>
 <a class="doc-next" href="../../../docs/api/README/"><span>Next</span><strong>Web API of Wren (Wasm imports)</strong></a>
@@ -6203,6 +6217,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li class="lvl3"><a href="#domrectreadonly">DOMRectReadOnly</a></li>
 <li class="lvl3"><a href="#domrect-domrectreadonly">DOMRect : DOMRectReadOnly</a></li>
 <li class="lvl3"><a href="#domstringlist">DOMStringList</a></li>
+<li class="lvl3"><a href="#domstringmap">DOMStringMap</a></li>
 <li class="lvl3"><a href="#domtokenlist">DOMTokenList</a></li>
 <li class="lvl3"><a href="#datatransfer">DataTransfer</a></li>
 <li class="lvl3"><a href="#datatransferitem">DataTransferItem</a></li>
@@ -6222,6 +6237,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li class="lvl3"><a href="#extendablemessageevent-extendableevent">ExtendableMessageEvent : ExtendableEvent</a></li>
 <li class="lvl3"><a href="#fetchevent-extendableevent">FetchEvent : ExtendableEvent</a></li>
 <li class="lvl3"><a href="#installevent-extendableevent">InstallEvent : ExtendableEvent</a></li>
+<li class="lvl3"><a href="#formdataevent-event">FormDataEvent : Event</a></li>
 <li class="lvl3"><a href="#hashchangeevent-event">HashChangeEvent : Event</a></li>
 <li class="lvl3"><a href="#mediaquerylistevent-event">MediaQueryListEvent : Event</a></li>
 <li class="lvl3"><a href="#messageevent-event">MessageEvent : Event</a></li>
@@ -6232,6 +6248,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li class="lvl3"><a href="#progressevent-event">ProgressEvent : Event</a></li>
 <li class="lvl3"><a href="#promiserejectionevent-event">PromiseRejectionEvent : Event</a></li>
 <li class="lvl3"><a href="#storageevent-event">StorageEvent : Event</a></li>
+<li class="lvl3"><a href="#submitevent-event">SubmitEvent : Event</a></li>
 <li class="lvl3"><a href="#taskprioritychangeevent-event">TaskPriorityChangeEvent : Event</a></li>
 <li class="lvl3"><a href="#toggleevent-event">ToggleEvent : Event</a></li>
 <li class="lvl3"><a href="#transitionevent-event">TransitionEvent : Event</a></li>
