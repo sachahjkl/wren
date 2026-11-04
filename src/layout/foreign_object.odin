@@ -11,31 +11,37 @@ import "wb:style"
 
 // <foreignObject> in an inline <svg> (SVG 2 §23.2): the HTML inside is laid out and painted by this layout, in the
 // SVG's coordinate space. The <svg> is a replaced box whose picture (page/inline_svg.odin) leaves its foreign objects
-// out; each one in its own viewport (not inside a nested <svg>, nor in <defs>, a <clipPath>, a <mask>... that are not
-// drawn) becomes an absolutely positioned child of that box, with the style its element has and what SVG says of it:
+// out; each one drawn (in groups and nested <svg>s, not in <defs>, a <clipPath>, a <mask>...) becomes an absolutely
+// positioned child of that box, with the style its element has and what SVG says of it:
 //   * a block of its width and height (user units), its overflow clipped (the UA style of SVG 2 §6.4);
 //   * a transform: the viewBox mapping of the <svg> box's content box (preserveAspectRatio), the transform attributes
-//     of its ancestors and its own, then its x and y (box_matrix asks foreign_matrix, once the <svg> is laid out);
-//   * the clip-path url(#id) of the nearest of it and its ancestors that has one, a <clipPath> in user space whose shapes
-//     become one polygon in its own coordinates (clip-rule evenodd if a shape asks for it);
+//     and nested viewports of its ancestors and its own transform, then its x and y (box_matrix asks foreign_matrix,
+//     once the <svg> is laid out);
+//   * the clip-paths url(#id) of it and its ancestors, <clipPath>s in user space or of the bounding box whose shapes
+//     become one polygon in its own coordinates (clip-rule evenodd if a shape asks for it), intersected while all but
+//     one are convex;
 //   * its filters, and the url(#id) filters of it and its ancestors made of feGaussianBlur alone, as one blur();
 //   * the opacity of its ancestors.
+// The picture keeps document order: it is made in parts split at the foreign objects (Svg_Parts), the <svg>'s item
+// draws the first and each foreign object's paint is followed by an item of the part after it (emit_foreign_rest).
 // What it is made from stays in Layout.foreign_objects: a restyle of the element makes its style again in place (foreign_restyle).
 // Changes inside the <svg> other than in the foreign objects' content take a full pass (incremental.odin add_target,
-// foreign_attribute_changed). Left: a foreign object that shapes drawn after it should cover (it paints over the whole
-// picture), objectBoundingBox clip units, filters other than blurs, more than one clip.
+// foreign_attribute_changed). Left: filters other than blurs, the clip of a nested viewport.
 
 // How far a clip's polygon may stray from its curves, in the foreign object's units (a 24-unit icon shown at 240 px:
 // a tenth of a pixel).
 FOREIGN_CLIP_TOLERANCE :: 0.01
 // Most points one clip's polygon keeps.
 FOREIGN_CLIP_MAX_POINTS :: 20000
+// How far from one full turn (radians) the turns of a convex clip polygon may add up to.
+FOREIGN_CLIP_TURN_SLACK :: 0.01
 
 Foreign_Align :: enum u8 { None, Min, Mid, Max }
 
 // One foreign object of the layout (Layout.foreign_objects).
 Foreign_Object :: struct {
 	box, svg:  i32,                   // its box, the <svg>'s
+	index:     i32,                   // its place among the <svg>'s foreign objects (Svg_Parts)
 	base:      ^style.Computed,       // the element's record its style was made from
 	cs:        ^style.Computed,       // that style (in the layout's arena), with its own transform and rare groups
 	transform: ^style.Transform_Group,
@@ -64,23 +70,55 @@ foreign_frames :: proc(c: ^Ctx, stack: ^[dynamic]Frame, svg: i32, g: Frame) {
 		x := dom.get(c.d, h)
 		if x == nil || x.kind != .Element { continue }
 		if x.name == "foreignobject" { append(&found, h); continue }
-		if !foreign_drawn_container(x.name) { continue }
+		if !svg_drawn_container(x.name) { continue }
 		for ch := x.last_child; ch != base.NIL_HANDLE; ch = dom.get(c.d, ch).prev { append(&walk, ch) }
 	}
 	sb := &c.l.boxes[svg]
 	for i := len(found) - 1; i >= 0; i -= 1 {
 		append(stack, Frame{kind = .Foreign, node = found[i], parent = svg, mode = .Block, cb = svg, fcb = g.fcb, depth = sb.depth,
-			ifc = NONE, deco_box = NONE, font_el = root, fi = sb.fi})
+			ifc = i32(i), deco_box = NONE, font_el = root, fi = sb.fi})
 	}
 }
 
-// Elements whose children are drawn where they are (the others hold what is referenced, or a viewport of its own).
-@(private = "file")
-foreign_drawn_container :: proc(name: string) -> bool {
+// Elements whose children are drawn where they are (the others hold what is referenced): groups, links, and nested
+// viewports. The serialisation of the picture splits it at the foreign objects found through them (page/inline_svg.odin).
+svg_drawn_container :: proc(name: string) -> bool {
 	switch name {
-	case "g", "a", "switch": return true
+	case "g", "a", "switch", "svg": return true
 	}
 	return false
+}
+
+// Which parts of an inline <svg>'s picture an item draws. Part k holds the shapes after its k-th foreign object (document
+// order, through svg_drawn_container) and before the next: the item draws parts from..<to (to 0: to the end). The
+// <svg>'s own item draws those before its first foreign object with a box, each such foreign object's item those after
+// it ({0, 0}: all of it).
+Svg_Parts :: struct { from, to: u16 }
+
+// The parts drawn after the foreign object of place `after` among those of the <svg> box `svg` (-1: by the <svg> itself).
+@(private)
+foreign_parts :: proc(l: ^Layout, svg: i32, after: i32) -> Svg_Parts {
+	next := i32(-1)
+	for &fo in l.foreign_objects {
+		if fo.svg == svg && fo.index > after && (next < 0 || fo.index < next) { next = fo.index }
+	}
+	if after < 0 && next < 0 { return {} }
+	return {u16(after + 1), next < 0 ? 0 : u16(next + 1)}
+}
+
+// After the foreign object box `bi` is painted: the shapes of its <svg> that follow it, over it.
+@(private)
+emit_foreign_rest :: proc(c: ^Ctx, bi: i32) {
+	for &fo in c.l.foreign_objects {
+		if fo.box != bi { continue }
+		sb := &c.l.boxes[fo.svg]
+		if .Hidden in sb.flags { return }
+		it := item_for_box(c, .Replaced, fo.svg, content_rect(sb))
+		it.flags -= {.Hit}
+		it.parts = foreign_parts(c.l, fo.svg, fo.index)
+		push_item(c, it)
+		return
+	}
 }
 
 // The box of a foreign object (a Foreign frame): its style made, then placed as an element's.
@@ -91,6 +129,7 @@ visit_foreign :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame) {
 	if n == nil || el == nil || el.display == .None { return }
 	fo, ok := foreign_make(c, f.node, f.parent, el)
 	if !ok { return }
+	fo.index = f.ifc
 	bi := i32(len(c.l.boxes))
 	place_element(c, stack, f, f.node, n, fo.cs, false, false)
 	if bi >= i32(len(c.l.boxes)) || c.l.boxes[bi].node != f.node { return }
@@ -100,7 +139,7 @@ visit_foreign :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame) {
 }
 
 // What SVG makes of foreign object `h` of the <svg> box `svg`. false: it draws nothing (no size, hidden by an
-// ancestor, in a nested viewport).
+// ancestor, in an element that is not drawn).
 @(private = "file")
 foreign_make :: proc(c: ^Ctx, h: base.Handle, svg: i32, el: ^style.Computed) -> (fo: Foreign_Object, ok: bool) {
 	d := c.d
@@ -114,26 +153,23 @@ foreign_make :: proc(c: ^Ctx, h: base.Handle, svg: i32, el: ^style.Computed) -> 
 	fo.size = {length_attr(d, h, "width", ref.x), length_attr(d, h, "height", ref.y)}
 	if fo.size.x <= 0 || fo.size.y <= 0 { return }
 
-	// up to the <svg>: transforms, the nearest clip, blurs, opacity
+	// up to the <svg>: transforms and nested viewports, clips, blurs, opacity
 	m := mat_translate({x, y})   // its coordinates to the user space of the element being looked at
 	sigma2: f32
 	fo.opacity = 1
-	clip_from: base.Handle
-	clip_m: Matrix
+	clip: ^style.Clip_Path
 	for cur := h; cur != root; {
 		cn := dom.get(d, cur)
 		if cn == nil { return }
 		cs := style.style_of(c.st, cur)
 		if cs == nil || cs.display == .None { return }
 		if cur != h {
-			if !foreign_drawn_container(cn.name) { return }
+			if !svg_drawn_container(cn.name) { return }
 			fo.opacity *= cs.opacity
 		}
 		// (a clip and a filter are in the element's user space: inside its own transform)
-		if clip_from == base.NIL_HANDLE {
-			if id := ref_id(d, cur, "clip-path", cs.clip_path != nil && cs.clip_path.kind == .Url ? cs.clip_path.url : ""); id != "" {
-				clip_from, clip_m = dom.find_by_id(d, id), m
-			}
+		if id := ref_id(d, cur, "clip-path", cs.clip_path != nil && cs.clip_path.kind == .Url ? cs.clip_path.url : ""); id != "" {
+			if inv, inv_ok := mat_inverse(m); inv_ok { clip = clip_intersect(c, clip, clip_polygon(c, dom.find_by_id(d, id), inv, foreign_bbox(m, fo.size))) }
 		}
 		filter_url := ""
 		for op in cs.filter { if op.kind == .Url { filter_url = op.url } }
@@ -144,6 +180,7 @@ foreign_make :: proc(c: ^Ctx, h: base.Handle, svg: i32, el: ^style.Computed) -> 
 			}
 		}
 		if t, has := dom.get_attribute(d, cur, "transform"); has { m = mat_mul(svg_transform(t), m) }
+		if cur != h && cn.name == "svg" { m = mat_mul(nested_viewport(d, cur, ref), m) }
 		cur = cn.parent
 		if cur == base.NIL_HANDLE { return }
 	}
@@ -160,9 +197,7 @@ foreign_make :: proc(c: ^Ctx, h: base.Handle, svg: i32, el: ^style.Computed) -> 
 	for op in el.filter { if op.kind != .Url { append(&filters, op) } }
 	if sigma2 > 0 { append(&filters, style.Filter_Op{kind = .Blur, v = math.sqrt(sigma2)}) }
 	fo.filter = filters[:]
-	if clip_from != base.NIL_HANDLE {
-		if inv, inv_ok := mat_inverse(clip_m); inv_ok { fo.clip = clip_polygon(c, clip_from, inv) }
-	}
+	fo.clip = clip
 	foreign_style(&fo, el)
 	return fo, true
 }
@@ -217,7 +252,7 @@ foreign_matrix :: proc(l: ^Layout, b: ^Box) -> Matrix {
 		if &l.boxes[fo.box] != b { continue }
 		s := l.scale > 0 ? l.scale : 1
 		port := content_rect(&l.boxes[fo.svg])
-		m := mat_mul(view_box_matrix(&fo, (port.max - port.min) / s), fo.user)
+		m := mat_mul(view_box_matrix(fo.view_box, fo.align, fo.slice, (port.max - port.min) / s), fo.user)
 		// q (layout) -> its own units (q - abs) / s -> the viewport's CSS px -> layout
 		a := b.abs
 		return Matrix{m[0], m[1], m[2], m[3], port.min.x + s * m[4] - (m[0] * a.x + m[2] * a.y), port.min.y + s * m[5] - (m[1] * a.x + m[3] * a.y)}
@@ -225,14 +260,13 @@ foreign_matrix :: proc(l: ^Layout, b: ^Box) -> Matrix {
 	return IDENTITY
 }
 
-// The <svg>'s user space to its viewport of `port` CSS px (SVG 2 §8.2 "viewBox to viewport transformation").
+// A user space of viewBox `vb` to its viewport of `port` units (SVG 2 §8.2 "viewBox to viewport transformation").
 @(private = "file")
-view_box_matrix :: proc(fo: ^Foreign_Object, port: Vec2) -> Matrix {
-	vb := fo.view_box
+view_box_matrix :: proc(vb: [4]f32, align: [2]Foreign_Align, slice: bool, port: Vec2) -> Matrix {
 	if vb[2] <= 0 || vb[3] <= 0 { return IDENTITY }
 	sx, sy := port.x / vb[2], port.y / vb[3]
-	if fo.align.x != .None {
-		k := fo.slice ? max(sx, sy) : min(sx, sy)
+	if align.x != .None {
+		k := slice ? max(sx, sy) : min(sx, sy)
 		sx, sy = k, k
 	}
 	shift :: proc(a: Foreign_Align, free: f32) -> f32 {
@@ -242,9 +276,31 @@ view_box_matrix :: proc(fo: ^Foreign_Object, port: Vec2) -> Matrix {
 		}
 		return 0
 	}
-	tx := shift(fo.align.x, port.x - vb[2] * sx) - vb[0] * sx
-	ty := shift(fo.align.y, port.y - vb[3] * sy) - vb[1] * sy
+	tx := shift(align.x, port.x - vb[2] * sx) - vb[0] * sx
+	ty := shift(align.y, port.y - vb[3] * sy) - vb[1] * sy
 	return Matrix{sx, 0, 0, sy, tx, ty}
+}
+
+// A nested <svg> `h`: its user space to its parent's (`ref`: the size percentages are of). Its x and y, and its viewBox
+// fitted to its width and height (100% when missing).
+@(private = "file")
+nested_viewport :: proc(d: ^dom.Document, h: base.Handle, ref: Vec2) -> Matrix {
+	port := ref
+	if _, has := dom.get_attribute(d, h, "width"); has { port.x = length_attr(d, h, "width", ref.x) }
+	if _, has := dom.get_attribute(d, h, "height"); has { port.y = length_attr(d, h, "height", ref.y) }
+	m := mat_translate({length_attr(d, h, "x", ref.x), length_attr(d, h, "y", ref.y)})
+	if vb, ok := view_box_of(d, h); ok {
+		align, slice := aspect_of(d, h)
+		m = mat_mul(m, view_box_matrix(vb, align, slice, port))
+	}
+	return m
+}
+
+// The bounding box of a foreign object of `size` in the user space `m` maps its coordinates to: x, y, width, height.
+@(private = "file")
+foreign_bbox :: proc(m: Matrix, size: Vec2) -> [4]f32 {
+	r := mat_bounds(m, Rect{{0, 0}, size})
+	return {r.min.x, r.min.y, r.max.x - r.min.x, r.max.y - r.min.y}
 }
 
 // A change of an attribute of element `h`: true when it is in an <svg> with foreign objects and not in their content
@@ -407,16 +463,19 @@ svg_transform :: proc(s: string) -> Matrix {
 }
 
 // The shapes of <clipPath> `h` (user space units) as one polygon in the foreign object's coordinates (`to_local`: from
-// the clipped element's user space). Subpaths are joined through their first point and back, which adds nothing under
-// either fill rule. nil: no clip that can be made (objectBoundingBox units, nothing in it: then nothing is drawn).
+// the clipped element's user space; `bbox`: the clipped element's bounding box there, the unit square of
+// clipPathUnits="objectBoundingBox"). Subpaths are joined through their first point and back, which adds nothing under
+// either fill rule. nil: no clip (not a <clipPath>); nothing in it: then nothing is drawn.
 @(private = "file")
-clip_polygon :: proc(c: ^Ctx, h: base.Handle, to_local: Matrix) -> ^style.Clip_Path {
+clip_polygon :: proc(c: ^Ctx, h: base.Handle, to_local: Matrix, bbox: [4]f32) -> ^style.Clip_Path {
 	d := c.d
 	n := dom.get(d, h)
 	if n == nil || n.kind != .Element || n.name != "clippath" { return nil }
-	if u, ok := dom.get_attribute(d, h, "clippathunits"); ok && strings.trim_space(u) == "objectBoundingBox" { return nil }
 	base_m := to_local
 	if t, ok := dom.get_attribute(d, h, "transform"); ok { base_m = mat_mul(base_m, svg_transform(t)) }
+	if u, ok := dom.get_attribute(d, h, "clippathunits"); ok && strings.trim_space(u) == "objectBoundingBox" {
+		base_m = mat_mul(base_m, Matrix{bbox[2], 0, 0, bbox[3], bbox[0], bbox[1]})
+	}
 	flat: canvas2d.Flat
 	flat.pts = make([dynamic][2]f64, 0, 64, context.temp_allocator)
 	flat.subs = make([dynamic]canvas2d.Subpath, 0, 4, context.temp_allocator)
@@ -465,4 +524,75 @@ clip_polygon :: proc(c: ^Ctx, h: base.Handle, to_local: Matrix) -> ^style.Clip_P
 	}
 	cp.points = pts[:]
 	return cp
+}
+
+// The clip of a foreign object under two clip-paths (of it and of an ancestor, or of two ancestors): their intersection
+// when one is convex (the other cut by each of its edges, Sutherland-Hodgman, which keeps a concave polygon's fill), else
+// `inner`, the nearest.
+@(private = "file")
+clip_intersect :: proc(c: ^Ctx, inner, outer: ^style.Clip_Path) -> ^style.Clip_Path {
+	if inner == nil { return outer }
+	if outer == nil { return inner }
+	subject, cut := inner, outer
+	edges := clip_vertices(cut)
+	sign := convex_winding(edges[:])
+	if sign == 0 {
+		subject, cut = outer, inner
+		edges = clip_vertices(cut)
+		sign = convex_winding(edges[:])
+		if sign == 0 { return inner }
+	}
+	cross :: proc(a, b, p: Vec2) -> f32 { return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x) }
+	pts := clip_vertices(subject)
+	next := make([dynamic]Vec2, 0, len(pts), context.temp_allocator)
+	for a, i in edges {
+		b := edges[(i + 1) % len(edges)]
+		clear(&next)
+		for j in 0 ..< len(pts) {
+			p, q := pts[j], pts[(j + 1) % len(pts)]
+			dp, dq := sign * cross(a, b, p), sign * cross(a, b, q)
+			if dp >= 0 { append(&next, p) }
+			if (dp >= 0) != (dq >= 0) { append(&next, p + (q - p) * (dp / (dp - dq))) }
+		}
+		pts, next = next, pts
+		if len(pts) == 0 { break }
+	}
+	cp := new(style.Clip_Path, c.sa)
+	cp^ = subject^
+	out := make([][2]style.Length, max(len(pts), 3), c.sa)   // (nothing left: an empty polygon)
+	for p, i in pts { out[i] = {style.px(p.x), style.px(p.y)} }
+	cp.points = out
+	return cp
+}
+
+// The vertices of a clip's polygon, without repeated points (a subpath's closing point).
+@(private = "file")
+clip_vertices :: proc(cp: ^style.Clip_Path) -> [dynamic]Vec2 {
+	out := make([dynamic]Vec2, 0, len(cp.points), context.temp_allocator)
+	for p in cp.points {
+		q := Vec2{p.x.v, p.y.v}
+		if len(out) == 0 || out[len(out) - 1] != q { append(&out, q) }
+	}
+	for len(out) > 1 && out[0] == out[len(out) - 1] { pop(&out) }
+	return out
+}
+
+// The way a convex polygon turns (1 or -1, the sign of the cross product of its edges), 0 when it is not convex: its
+// turns go both ways, or they go round more than once.
+@(private = "file")
+convex_winding :: proc(pts: []Vec2) -> f32 {
+	n := len(pts)
+	if n < 3 { return 0 }
+	turn, total: f32
+	for i in 0 ..< n {
+		a, b, q := pts[i], pts[(i + 1) % n], pts[(i + 2) % n]
+		u, v := b - a, q - b
+		z := u.x * v.y - u.y * v.x
+		if z == 0 { continue }
+		if turn != 0 && (z > 0) != (turn > 0) { return 0 }
+		turn = z
+		total += math.atan2(z, u.x * v.x + u.y * v.y)
+	}
+	if turn == 0 || abs(abs(total) - math.TAU) > FOREIGN_CLIP_TURN_SLACK { return 0 }
+	return turn > 0 ? 1 : -1
 }

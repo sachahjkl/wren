@@ -66,7 +66,9 @@ emit_box :: proc(p: ^Paint_Ctx, bi: i32) {
 	}
 	if b.kind == .Replaced {
 		kind := .Control in b.flags ? Item_Kind.Control : Item_Kind.Replaced
-		push_item(c, item_for_box(c, kind, bi, content_rect(b)))
+		it := item_for_box(c, kind, bi, content_rect(b))
+		if b.first != NONE { it.parts = foreign_parts(c.l, bi, -1) }   // (an <svg> with foreign objects)
+		push_item(c, it)
 	}
 	if .Multicol in b.fx { emit_column_rules(c, bi) }
 	if cs.outline_width > 0 { append(p.outlines, bi) }
@@ -229,6 +231,7 @@ paint_pseudo :: proc(p: ^Paint_Ctx, bi: i32) {
 	if !stack_ok(p.c) { return }
 	emit_box(p, bi)
 	paint_content(p, bi)
+	if .Foreign in p.c.l.boxes[bi].flags { emit_foreign_rest(p.c, bi) }
 }
 
 @(private)
@@ -295,6 +298,7 @@ paint_stacking :: proc(p: ^Paint_Ctx, bi: i32) {
 		it.flags -= {.Hit}
 		push_item(c, it)
 	}
+	if .Foreign in c.l.boxes[bi].flags { emit_foreign_rest(c, bi) }
 }
 
 @(private)

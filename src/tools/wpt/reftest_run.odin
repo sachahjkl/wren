@@ -171,7 +171,7 @@ raster_replaced :: proc(user: rawptr, l: ^lay.Layout, it: ^lay.Display_Item, w, 
 	}
 	switch n.name {
 	case "svg":
-		v := page.inline_svg_view(p, it.node, f32(w), f32(h))
+		v := page.inline_svg_view(p, it.node, f32(w), f32(h), it.parts)
 		c := picture(v, w, h)
 		if c.kind == .Pixels { c.natural = {f32(w), f32(h)} }
 		return c

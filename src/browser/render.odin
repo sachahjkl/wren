@@ -742,7 +742,7 @@ paint_content :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, it: ^lay.
 	fi := lay.item_font(l, it)
 	fid := fi != nil ? font.Font_Id(fi.font) : font.Font_Id(0)
 	size := fi != nil ? fi.size : 13
-	if it.kind == .Replaced && images_paint_content(dc, d, it.node, r, border, it.cs, fid, size, l.scale) { return }
+	if it.kind == .Replaced && images_paint_content(dc, d, it.node, r, border, it.cs, fid, size, l.scale, it.parts) { return }
 	if it.kind == .Replaced && frames_paint_content(the_app, dc, d, it.node, r, it.cs) { return }   // (frames_shell.odin)
 	if the_app.page_render.content != nil {
 		if the_app.page_render.content(the_app.page_render.content_user, dc, d, it.node, it.kind, r, border, it.cs, fid, size) { return }

@@ -241,3 +241,27 @@ kept_masked_effects_match_direct_drawing :: proc(t: ^testing.T) {
 	testing.expectf(t, s.misses >= 1 && s.hits >= 2, "the changed mask is drawn again, the others reused: %v", s)
 	fx_same(t, f, "masks settled again", 0)
 }
+
+// Filters apply in the coordinates of their box: blur(2px) on a box scaled 4 times blurs 8 px of the page (its
+// group is drawn in device space), one not transformed keeps the page's scale.
+@(test)
+filter_lengths_follow_the_transform :: proc(t: ^testing.T) {
+	test_app(t)
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
+	page_render_test_lock()
+	defer page_render_test_unlock()
+	f := new(Fx_Cx)
+	defer free(f)
+	if !fx_open(f, `<body style="margin:0"><div id=a style="width:20px;height:20px;transform:scale(4);filter:blur(2px)"></div><div id=b style="width:20px;height:20px;filter:blur(2px)"></div></body>`) { testing.fail_now(t, "no D3D11 device (WARP) or font") }
+	defer fx_close(f)
+	v := lay.view_make(&f.l, {f32(FX_SIZE.x), f32(FX_SIZE.y)}, 0, cull = false)
+	e := Effects{l = &f.l, v = &v}
+	scales: [2]f32
+	for &g in f.l.groups {
+		id, _ := dom.get_attribute(f.doc, f.l.boxes[g.box].node, "id")
+		if id == "a" { scales[0] = filter_scale(&e, &g) }
+		if id == "b" { scales[1] = filter_scale(&e, &g) }
+	}
+	testing.expectf(t, abs(scales[0] - 4) < 0.001 && scales[1] == 1, "scaled 4 times, untransformed: %v", scales)
+}
