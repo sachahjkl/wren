@@ -12,7 +12,7 @@ const settings = {
 		name: "wren-licence",
 		PADDLE_API_BASE: "https://api.paddle.com",
 		ALLOWED_ORIGIN: "https://wren.froment.software,https://sachahjkl.github.io",
-		LICENSE_PUBLIC_KEY: "",   // the line of `wrentool license pubkey`, once the production pair is made (src/license/public_key.odin)
+		LICENSE_PUBLIC_KEY: "6vZ2PkrA6JVQvH9T9O9wffaz_SmFcChOaHcMW61LoqI",   // the production pair's public key (src/license/public_key.odin); the private half is in secrets/production.yaml
 		PRICE_SUPPORTER: "pri_01m6kfkhzrwvx28tr378f8ztr3",   // live: product "Wren licence" pro_01m6kfkhr4b032d7r1wz4sk62y, 29 EUR once
 	},
 	sandbox: {
