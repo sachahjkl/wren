@@ -22,6 +22,7 @@ import "wb:base"
 import "wb:config"
 import "wb:desktop"
 import "wb:fetch"
+import "wb:update"
 
 UPDATE_FILE :: "update.txt"
 UPDATE_EVERY_SECONDS :: 24 * 60 * 60
@@ -35,10 +36,26 @@ Update_State :: struct {
 	checked:  i64,           // unix seconds of the last request
 	notified: string,        // the version announced last (owned)
 	loaded:   bool,
+
+	// the signed update (update_install.odin)
+	phase:         Update_Phase,
+	tag:           string,            // the version whose manifest is being verified, without a leading v (owned)
+	manifest:      update.Manifest,   // the verified manifest (owned): meaningful from .Ready on
+	man_bytes:     []byte,            // the manifest as downloaded (owned)
+	sig_text:      string,            // its signature as downloaded (owned)
+	got_manifest:  bool,
+	got_sig:       bool,
+	man_status:    int,               // the HTTP status of each of the three downloads
+	sig_status:    int,
+	bin_status:    int,
+	install_asked: bool,              // the person asked to install: a failure is said even when the check was the daily one
+	problem:       string,            // why the last attempt failed (owned)
+	installed:     string,            // the version the last install wrote (owned)
 }
 
 
 update_destroy :: proc(app: ^App) {
+	update_install_destroy(app)   // update_install.odin
 	delete(app.upd.latest); delete(app.upd.url); delete(app.upd.notified)
 	app.upd = {}
 }
@@ -86,6 +103,7 @@ update_save :: proc(app: ^App) {
 
 // At start: the daily request, when it is due.
 update_startup :: proc(app: ^App, profile_explicit: bool) {
+	update_cleanup()   // update_install.odin: what an earlier update left (the old program), whatever the preferences say: local files only
 	if !config.bool_of(&app.prefs, "browser.update.check_daily") { return }
 	for name in ([]string{"WREN_DESKTOP_INTEGRATION", "WREN_UPDATE_CHECK"}) {
 		if v, ok := os.lookup_env(name, context.temp_allocator); ok && v == "off" { return }
@@ -139,7 +157,12 @@ update_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		announce := newer && (app.upd.forced || app.upd.notified != version)
 		if newer { delete(app.upd.notified); app.upd.notified = strings.clone(version) }
 		update_save(app)
+		// a release this program may install: its signed manifest is fetched and checked (update_install.odin), About Wren offers the install
+		installable, _ := update_install_allowed(app)
+		if newer { update_verify_start(app, version) }
 		switch {
+		case announce && app.upd.forced && installable:
+			ui.toast(.Info, "%s v%s is available (you have v%s): checking its signature…", APP_NAME, version, APP_VERSION)
 		case announce && app.upd.forced:
 			ui.toast(.Info, "%s v%s is available (you have v%s): opening its page", APP_NAME, version, APP_VERSION)
 			if page != "" { tab_open(app, page) }

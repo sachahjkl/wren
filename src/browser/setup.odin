@@ -105,6 +105,12 @@ SETUP_PREFS := [?]config.Def{
 		description = "Once a day, ask GitHub's releases API (api.github.com/repos/sachahjkl/wren/releases/latest) whether a newer Wren exists and say so with a notice. Nothing is downloaded or installed by itself; no other data is sent than an ordinary request with Wren's user agent. Off by default: no network request is made until you tick \"Check for updates once per day\" in Setup. The command \"Check for updates\" asks once, whatever this says."},
 	{name = "browser.update.url", kind = .String, default = {s = "https://api.github.com/repos/sachahjkl/wren/releases/latest"},
 		description = "The address the update check reads (a JSON document with tag_name and html_url, as GitHub's \"latest release\" answers). For tests and mirrors."},
+	{name = "browser.update.base_url", kind = .String, default = {s = "https://github.com/sachahjkl/wren/releases/download/"},
+		description = "Where the files of a release are fetched from when you install an update: <this>v<version>/update-windows-x64.json (the signed manifest), its .sig and the program. An address ending in /, https (or http on this computer). A mirror or a test server sets it; the signature is checked whatever the address."},
+	{name = "browser.update.public_key", kind = .String, default = {s = ""},
+		description = "The key (base64url of 32 bytes) that a release's manifest must be signed with, instead of the one built into Wren. Empty: the built-in one. For trying releases made with another key (the tests); setting it widens whom you trust to update Wren."},
+	{name = "browser.update.allow_development_build", kind = .Bool, default = {b = false},
+		description = "Let a development build install a release over itself. For the tests of the updater only: a development build is updated by hand."},
 }
 
 setup_destroy :: proc(app: ^App) {

@@ -43,6 +43,7 @@ Wren_Page :: struct {
 	support_url: string,
 	profile_dir: string,
 	card_sample: bool,   // about:wren?card=sample: the licence card of a sample licence, to see its shader without a licence (nothing is registered)
+	update:      Update_Summary,   // the "Updates" section (update_install.odin); zero: not shown
 }
 
 // What about:wren?card=sample shows on the card.
@@ -274,6 +275,22 @@ build_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
 	strings.write_string(sb, "</table>\n")
 }
 
+// Updates: what is known, a button that asks GitHub, and, when a release signed by Froment Software is waiting, the button that installs it.
+@(private = "file")
+updates_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
+	if !d.update.shown { return }
+	strings.write_string(sb, "<h2>Updates</h2>\n<p>")
+	esc(sb, d.update.text)
+	strings.write_string(sb, "</p>\n")
+	if d.update.can_install {
+		strings.write_string(sb, "<form method=\"get\" action=\"about:wren\"><input type=\"hidden\" name=\"action\" value=\"install_update\"><button type=\"submit\">Install the update</button></form>\n")
+	}
+	if d.update.can_check {
+		strings.write_string(sb, "<form method=\"get\" action=\"about:wren\"><input type=\"hidden\" name=\"action\" value=\"check_update\"><button type=\"submit\">Check for updates</button></form>\n")
+	}
+	strings.write_string(sb, "<p class=\"weak\" style=\"margin-top: 12px\">An update is a program signed by Froment Software with a key built into Wren: its signature, its length and its checksum are checked before anything is written, the old program is kept until the new one is in place, and nothing is installed unless you press the button. Wren asks GitHub only when you check.</p>\n")
+}
+
 // The people and projects Wren owes its design or its code to: one link each, to the official site (the official X account
 // when there is none). The libraries are named by four of their links; about:licenses has every component.
 @(private = "file")
@@ -371,6 +388,7 @@ wren_page_html :: proc(d: Wren_Page) -> string {
 	strings.write_string(&sb, "<p class=\"beta\"><b>Wren is a beta under development.</b> Every version is free; a licence only supports development.</p>\n")
 	licence_section(&sb, d)
 	build_section(&sb, d)
+	updates_section(&sb, d)
 	thanks_section(&sb)
 	strings.write_string(&sb, "<h2>Third-party software</h2>\n<p>Wren's own code is under the PolyForm Strict License 1.0.0 (its source is public). It is built from the components below, whose licences require this notice; the full texts are in <a href=\"about:licenses\">about:licenses</a>.</p>\n<p>Text rendering can use the Slug algorithm and shaders by Eric Lengyel (MIT licence), credited as its licence requires.</p>\n")
 	third_party_table(&sb, false)
@@ -407,7 +425,7 @@ wren_page_data :: proc(app: ^App, notice: Wren_Notice) -> Wren_Page {
 	if !ok { pal = ui.PALETTE_GRAPHITE }
 	return Wren_Page{
 		palette = pal, state = license_state(app), notice = notice,
-		support_url = license_support_url(app), profile_dir = app.profile_dir,
+		support_url = license_support_url(app), profile_dir = app.profile_dir, update = update_summary(app),
 	}
 }
 
@@ -470,6 +488,12 @@ wren_query :: proc(app: ^App, sp: url.Search_Params) -> Wren_Notice {
 	case "remove":
 		license_remove(app)
 		return {"The licence was removed from this computer.", false}
+	case "check_update":
+		update_check_now(app)
+		return {"Asking GitHub whether a newer Wren exists. The answer is a notice; open this page again to see it.", false}
+	case "install_update":
+		update_install(app)
+		return {"Installing the update: the notices say how it goes.", false}
 	}
 	return {}
 }

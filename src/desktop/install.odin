@@ -316,6 +316,20 @@ place_file :: proc(src, dst: string) -> Result {
 	return {}
 }
 
+// For a program that updates itself: `dst` (the program that runs, or the installed copy) becomes a copy of `src`. The new file is
+// written beside it, the old one is renamed to `dst.old` (Windows lets a running program's file be renamed, not overwritten) and the
+// new one takes its place; if that last step fails the old one is put back, so a failure leaves the program as it was.
+replace_file :: proc(src, dst: string) -> Result { return place_file(src, dst) }
+
+// What an update of the running program leaves behind: the old copy (`.old`, kept while it ran), and a half-written new one.
+// Called at start: the old copy is not running any more by then (a program that is, cannot be deleted: it stays for next time).
+remove_update_leftovers :: proc(exe: string) {
+	for suffix in ([]string{OLD_SUFFIX, ".new", ".update"}) {
+		path := strings.concatenate({exe, suffix}, context.temp_allocator)
+		if os.is_file(path) { _ = os.remove(path) }
+	}
+}
+
 // Removes the `.old` files an earlier replacement left in `dir` (those of the manifest's files only).
 clean_old :: proc(dir: string) {
 	m, ok := manifest_read(join_path(dir, MANIFEST_NAME), context.temp_allocator)

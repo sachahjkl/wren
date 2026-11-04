@@ -56,10 +56,15 @@ jobs:
         run: |
           odin build src/tools/test_all -collection:wb=src -vet -out:build/test_all.exe || exit /b 1
           build\test_all.exe -CI -NoAsan -Only "remote_channel|remote_state"
+      # The signed manifest an installed Wren updates itself from (src/update, docs/updates.md): the key is the repository secret
+      # WREN_UPDATE_SIGNING_KEY (its public half is src/update/public_key.odin). -RequireUpdateManifest: a release that no Wren could
+      # verify (no key, or not the key built in) is not published.
       - name: Package
         shell: cmd
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.WREN_UPDATE_SIGNING_KEY }}
         run: |
-          build\wrentool.exe package -Version ${{ steps.version.outputs.version }} || exit /b 1
+          build\wrentool.exe package -Version ${{ steps.version.outputs.version }} -RequireUpdateManifest || exit /b 1
           build\wrentool.exe notes -Tag ${{ github.ref_name }} -Out build\dist\NOTES.md || exit /b 1
 
       # the release's map (wrentool symbols): not published with it; wrentool crash-symbolize names the frames of its crash
@@ -77,7 +82,7 @@ jobs:
         run: |
           $v = '${{ steps.version.outputs.version }}'
           $tag = '${{ github.ref_name }}'
-          gh release create $tag "build/dist/wren-$v-windows-x64.exe" build/dist/SHA256SUMS.txt --title "Wren $v" --notes-file build/dist/NOTES.md --verify-tag
+          gh release create $tag "build/dist/wren-$v-windows-x64.exe" build/dist/SHA256SUMS.txt build/dist/update-windows-x64.json build/dist/update-windows-x64.json.sig --title "Wren $v" --notes-file build/dist/NOTES.md --verify-tag
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
 
