@@ -249,8 +249,7 @@ decoder_stats :: proc() -> Decoder_Stats {
 }
 
 // While held, the decoding threads take no job (they finish the one they run): what is queued meanwhile is then
-// taken in priority order, whatever the threads' scheduling.
-@(private)
+// taken in priority order, whatever the threads' scheduling. (Tests: a frame drawn while a picture is being made.)
 decoder_hold :: proc(hold: bool) {
 	d := dec
 	if d == nil { return }
