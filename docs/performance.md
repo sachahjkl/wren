@@ -1696,7 +1696,10 @@ a series was hit the minimum says the same. The checksums of the three scripts a
    185 -> 248 ns. A loop that calls bytecode it does not inline stays interpreted.
 4. **Found on the way.** A compiled loop of a function sent every back edge of the function's other loops through the
    full dispatch (`hot_back_edge` tested the function's count of compiled loops): a `for-of` beside a compiled loop
-   37 -> 56 ns an element; the hot loop now leaves only at the back edges of the loops the JIT took (`jit_loop_taken`).
+   37 -> 56 ns an element; the hot loop now leaves only at the back edges of the loops the JIT took (`jit_loop_taken`,
+   asked out of line, `hot_jit_taken`: inlined in the hot loop's five back edges, the check made the interpreter 3 % slower on
+   nodes10k with the JIT off, and so did a throw exit of its own in `interp_run`'s back edges, 4 %; a call that threw now
+   leaves the call to the interpreter with `jit_rethrow` as its callee, which throws the exception pending).
    Writing whole Value words (the tag's padding and the payload's high word zeroed) in the deopt stubs made a compiled
    `switch` loop 1.36 -> 1.62 ns (Cranelift's code for the larger stubs), with no reader of those bytes in the engine: the
    code writes the bytes the interpreter reads, as before. jitcheck.js ended at `tail(1000)` (a tail call recurses
@@ -1730,6 +1733,10 @@ inline (an accessor, a proxy, a frozen property written), an int overflows, an i
 inlined meets what it was not translated for (the call is then made by the interpreter, and the loop translated without
 inlining it), a held array changed kind after a call; a throw exit when a native called throws. In jitcheck.js (722 lines
 compared, interpreted against the JIT): 43 loops compiled, 9 refused, 228 deopts.
+
+nodes10k (`jspage -image`, a timed copy: `build()` p50 of 400 frames, 3 runs each, interleaved): with the JIT 11.00
+(10.99-11.06) -> 11.11 (11.11-11.16) ms, without it 11.01 (11.01-11.06) -> 11.02 (10.91-11.06) ms; its loops call DOM getters and
+concatenate strings, which the JIT does not take (one is compiled and leaves at its first getter, 16 times).
 
 Tests: jitcheck.js (above), test262 with the JIT 49/82220 errors before and after (0 regressions), interpreted the same;
 jitcheck.js under a collection every 8 KiB with poisoned cells (`-define:JSRT_GC_STRESS=8192 -define:JSRT_GC_POISON=true`):

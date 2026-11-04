@@ -94,7 +94,7 @@ JIT_HELPERS :: [Jit_Helper]Jit_Helper_Def {
 // Jit_Helper.call: a call instruction of a compiled loop. The operand stack is in the frame's memory below sp: the
 // callee and its argc arguments on top, `this` under the callee for a method call (kind .method), new.target after
 // the constructor for a construction (kind .construct). The result takes the place of the callee (and of `this` or
-// new.target); pc is the instruction after the call. True: it threw (the exception is pending).
+// new.target); pc is the instruction after the call. True: it threw (the exception is pending, the stack as it was).
 Jit_Call_Kind :: enum i32 {call, method, construct}
 
 jit_call :: proc(f: ^Frame, sp: int, argc: int, kind: Jit_Call_Kind, pc: int) -> bool {
@@ -114,11 +114,23 @@ jit_call :: proc(f: ^Frame, sp: int, argc: int, kind: Jit_Call_Kind, pc: int) ->
 		}
 		r = call_internal(ctx, fn, UNDEFINED, f.stack[base - 1], f.stack[base:sp], true)
 	}
-	if is_exception(r) {return true}
+	if is_exception(r) {
+		// the instruction is made again by the interpreter, with a callee that throws the exception pending: it
+		// unwinds from the call as if it had made it (and the interpreter's code needs no exit of its own for this)
+		if ctx.jit_rethrow == nil {ctx.jit_rethrow = new_native_function(ctx, jit_rethrow, "", 0, 0, .constructor)}
+		f.stack[kind == .method ? base - 1 : kind == .construct ? base - 2 : base - 1] = mk_obj(ctx.jit_rethrow)
+		return true
+	}
 	f.stack[kind == .call ? base - 1 : base - 2] = r
 	// (what the frame needs is on its stack: the temporaries of the call go, as at a back edge)
 	if len(rt.temp_roots) > f.root_base {resize(&rt.temp_roots, f.root_base)}
 	return false
+}
+
+// The callee jit_call leaves in the place of one that threw: the exception is still pending.
+@(private = "file")
+jit_rethrow :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
+	return EXCEPTION
 }
 
 // Jit_Helper.array: after a call, the array in a held local again (the call may have grown, shrunk or detached it).
@@ -192,7 +204,7 @@ Jit_Info :: struct {
 	n:     int,
 }
 
-Jit_Resume :: enum u8 {none, resume, ret, throw}
+Jit_Resume :: enum u8 {none, resume, ret}
 
 // I: an int32 (an Int in the interpreter); F: a double; B: a bool; L: an integer of at most 2^53 in magnitude, the exact
 // result of an int +, - or * that may have left the int32 range (what the interpreter holds as a double, which a following
@@ -341,8 +353,9 @@ jit_back_edge :: proc(ctx: ^Context, f: ^Frame, b: ^Function_Bytecode, target, r
 		xsp := int((r >> 32) & 0xffff)
 		aux := int(r >> 48)
 		if kind == .throw {
+			// (the call is made again by the interpreter: its callee is now jit_rethrow, see jit_call)
 			jit_stats.exits_throw += 1
-			return .throw, xpc, xsp
+			return .resume, xpc, xsp
 		}
 		if jl.state != .compiled || jl.index != index {
 			// a call of the loop's code ran this loop again in another frame, which changed what it is: this exit has
@@ -377,7 +390,7 @@ jit_back_edge :: proc(ctx: ^Context, f: ^Frame, b: ^Function_Bytecode, target, r
 			jit_invalidate(f, b, jl, aux, true)
 			return .none, 0, 0
 		case .throw:
-			return .throw, xpc, xsp
+			return .resume, xpc, xsp
 		case .deopt:
 			jit_stats.exits_deopt += 1
 			if aux == JIT_AUX_LEARN || aux == JIT_AUX_NO_INLINE {
@@ -1902,8 +1915,9 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 	j_op(c, W_IF)
 	j_op(c, W_VOID)
 	c.nest += 1
+	// (the entries from low up are in the frame as the call left them: the call is made again)
 	c.st.n = low
-	j_stub(c, next, .throw, 0)
+	j_stub(c, pc, .throw, 0, n)
 	c.st.n = n
 	j_op(c, W_END)
 	c.nest -= 1
@@ -2185,12 +2199,12 @@ j_loop_depth :: proc(c: ^Jc) -> u64 {return u64(c.nest + (c.nblocks - c.cur))}
 // leave the loop with the current stack, to resume at `pc`; in a callee being inlined, at the call with the caller's
 // stack, the call's site learning that the callee is not to be inlined
 @(private = "file")
-j_stub :: proc(c: ^Jc, pc: int, kind: Jit_Exit, aux: u32) {
+j_stub :: proc(c: ^Jc, pc: int, kind: Jit_Exit, aux: u32, sp := -1) {
 	j_materialize(c)
 	inlined := c.inl_depth > 0
 	j_i32(c, i32(inlined ? c.inl_pc : pc))
 	j_lset(c, I_PC)
-	j_i32(c, i32(inlined ? c.inl_n : c.st.n))
+	j_i32(c, i32(inlined ? c.inl_n : sp >= 0 ? sp : c.st.n))
 	j_lset(c, I_SP)
 	j_i32(c, i32(kind))
 	j_lset(c, I_KIND)

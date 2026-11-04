@@ -71,8 +71,9 @@ marked by the collector through `Function_Bytecode.jit`): an address the code ho
   the string: the interpreter makes the call, and flattens the rope).
 - **Natives**: any other call of a native function goes through the helper `wj_jit_call` (`jit_call`): the operand
   stack is stored in the frame first and the objects the loop holds in locals written back (the collector's roots), the
-  helper makes the call as the interpreter does, its result comes back as a V. An exception leaves through a throw exit
-  and the interpreter unwinds from the call. After the call the arrays the loop holds are taken again (`wj_jit_array`: a
+  helper makes the call as the interpreter does, its result comes back as a V. An exception leaves through a throw exit:
+  the helper put `jit_rethrow` in the callee's place, the interpreter makes the call again, which throws the exception
+  pending, and unwinds from there. After the call the arrays the loop holds are taken again (`wj_jit_array`: a
   call may have grown, moved or detached them). Locals a closure may reach (captured ones, the arguments of a function
   with a mapped `arguments`) stay in the frame's memory in a loop that calls.
 - A call of bytecode that is not inlined keeps the loop interpreted: through the helper it is a nested `interp_run`,

@@ -351,6 +351,7 @@ Context :: struct {
 	throw_type_error: ^Object, // %ThrowTypeError%
 	array_proto_values: ^Object,
 	array_proto_push: ^Object,
+	jit_rethrow:     ^Object, // the callee a call the JIT made leaves when it threw (jit.odin, jit_call)
 	promise_then:    ^Object,
 	promise_resolve_fn: ^Object,
 	regexp_exec:     ^Object, // the original RegExp.prototype.exec (fast paths)
