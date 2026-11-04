@@ -304,9 +304,28 @@ HTMLElement_set_outerText :: proc(c: ^Call, element: Api_Element, value: string)
 	h := H(element.handle)
 	parent := element.data.parent
 	if parent == base.NIL_HANDLE { return fail(c, .No_Modification_Allowed, "The element has no parent.") }
+	next, prev := element.data.next, element.data.prev
 	frag := rendered_text_fragment(d, value)
 	if dom.get(d, frag).first_child == base.NIL_HANDLE { dom.append_child(d, frag, dom.create_text(d, "")) }
 	err := replace_child(c, parent, frag, h)
 	dom.destroy_unpinned(d, frag)
-	return err
+	if err != .None { return err }
+	// the text at either end joins the Text nodes beside it (HTML "set the outer text" steps 6 and 7)
+	if next != base.NIL_HANDLE {
+		if n := dom.get(d, next); n != nil && n.prev != base.NIL_HANDLE { merge_with_next_text(d, n.prev) }
+	}
+	if prev != base.NIL_HANDLE { merge_with_next_text(d, prev) }
+	return .None
+}
+
+// HTML "merge with the next text node": a Text node followed by another takes its data, the other is removed.
+@(private = "file")
+merge_with_next_text :: proc(d: ^dom.Document, h: base.Handle) {
+	n := dom.get(d, h)
+	if n == nil || n.kind != .Text || n.next == base.NIL_HANDLE { return }
+	m := dom.get(d, n.next)
+	if m == nil || m.kind != .Text { return }
+	after := n.next
+	dom.set_data(d, h, strings.concatenate({n.text, m.text}, context.temp_allocator))
+	remove_node(d, after)
 }

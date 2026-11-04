@@ -2687,7 +2687,7 @@
 /html/dom/elements/the-innertext-and-outertext-properties/getter-first-letter-marker-multicol.html: OK
 	Test innerText/outerText for a combination of a list item with ::first-letter in multicol: PASS
 /html/dom/elements/the-innertext-and-outertext-properties/getter.html: OK
-	 ("<table><tfoot><tr><td>footer</tfoot><thead><tr><td style='visibility:collapse'>thead</thead><tbody><tr><td>tbody</tbody></table>"): FAIL
+	 ("<table><tfoot><tr><td>footer</tfoot><thead><tr><td style='visibility:collapse'>thead</thead><tbody><tr><td>tbody</tbody></table>"): PASS
 	 <iframe> subdocument ignored ("<div><iframe src='data:text/html,abc'>"): PASS
 	&nbsp; preserved ("<div>&nbsp;"): PASS
 	2 blank lines around <p> even when display:block ("<div>123<p style='display:block'>abc"): PASS
@@ -2738,7 +2738,7 @@
 	<input> contents ignored ("<input type='text' value='abc'>"): PASS
 	<object> contents ignored ("<div><object>abc"): PASS
 	<ol> list items get no special treatment ("<div><ol><li>abc"): PASS
-	<optgroup> containing <optgroup> ("<select><optgroup class='poke-optgroup'></select>"): FAIL
+	<optgroup> containing <optgroup> ("<select><optgroup class='poke-optgroup'></select>"): PASS
 	<optgroup> containing <option> ("<select><optgroup><option>abc</select>"): PASS
 	<optgroup> in <div> ("<div>a<optgroup>123</optgroup>bc"): PASS
 	<option> in <div> ("<div>a<option>123</option>bc"): PASS
@@ -2795,7 +2795,7 @@
 	Internal whitespace preserved ("<div style='white-space:pre'>abc  def"): PASS
 	Internal whitespace preserved ("<pre>abc  def"): PASS
 	Internal whitespace preserved ("<span style='white-space:pre'>abc  def"): PASS
-	Invisible <p> doesn't induce extra line breaks ("<div style='visibility:hidden'><p><span style='visibility:visible'>abc</span></p>\\n<div style='visibility:visible'>def</div>"): FAIL
+	Invisible <p> doesn't induce extra line breaks ("<div style='visibility:hidden'><p><span style='visibility:visible'>abc</span></p>\\n<div style='visibility:visible'>def</div>"): PASS
 	Leading whitesapce should not be collapsed ("<div><img> abc"): PASS
 	Leading whitespace after hard line break removed ("<div>abc<br> def"): PASS
 	Leading whitespace preserved ("<div style='white-space:pre'> abc"): PASS
@@ -2838,7 +2838,7 @@
 	Shadow DOM contents ignored ("<div class='shadow'>"): PASS
 	Shadow DOM contents ignored ("<div><div class='shadow'>"): PASS
 	Simplest possible test ("<div>abc"): PASS
-	Single newline in two-row inline-table ("<div>abc<div class='itable'><span class='row'><span class='cell'>def</span></span>\\n<span class='row'><span class='cell'>123</span></span></div>ghi"): FAIL
+	Single newline in two-row inline-table ("<div>abc<div class='itable'><span class='row'><span class='cell'>def</span></span>\\n<span class='row'><span class='cell'>123</span></span></div>ghi"): PASS
 	Soft breaks ignored in presence of word-break:break-word ("<div style='width:1px; word-break:break-word'>Hello Kitty</div>"): PASS
 	Soft breaks ignored, text-transform applied ("<div style='width:1px; word-break:break-word; text-transform:uppercase'>Hello Kitty</div>"): PASS
 	Soft line break at hyphen ignored ("<div style='width:0'>abc-def"): PASS
@@ -4070,7 +4070,7 @@
 	CRs convert to <br> in white-space:pre element: PASS
 	Detached node: PASS
 	Empty string: PASS
-	Empty string with surrounding text nodes: FAIL
+	Empty string with surrounding text nodes: PASS
 	End with CR: PASS
 	End with CRLF: PASS
 	End with LF: PASS
@@ -4084,11 +4084,11 @@
 	Newlines convert to <br> in non-white-space:pre elements: PASS
 	Newlines convert to <br> in white-space:pre element: PASS
 	Null characters preserved: PASS
-	Only merges with the previous and following text nodes, does not completely normalize: FAIL
+	Only merges with the previous and following text nodes, does not completely normalize: PASS
 	Removing a node: PASS
-	Replacing a node and merging with the following text node: FAIL
-	Replacing a node and merging with the previous and following text node: FAIL
-	Replacing a node and merging with the previous text node: FAIL
+	Replacing a node and merging with the following text node: PASS
+	Replacing a node and merging with the previous and following text node: PASS
+	Replacing a node and merging with the previous text node: PASS
 	Setting outerText to a bunch of newlines creates a bunch of <br>s with no text nodes: PASS
 	Simplest possible test: PASS
 	Start with CR: PASS
