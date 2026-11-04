@@ -1664,6 +1664,82 @@ draws for its sweep (the light crosses it in 40 % of 7 s) and not in the pause; 
 62 ms (its relief, lettering and seal made natively and uploaded, `about_card_relief.odin`): once. Input to screen is
 the browser's anywhere (about:home: 38.5 ms).
 
+## What changed, round 20: the loop JIT takes properties and calls
+
+The loop JIT (`src/engine/jsrt/jit.odin`, [engine/jit.md](engine/jit.md)) compiled loops of number arithmetic,
+comparisons, branches and locals; a property read, a call or a global kept the loop interpreted (round 13: "the loop JIT
+does not take a loop that reads a property"). Measured with `jsengine run -jit -image <engine>` on
+`examples/jsbench/micro.js`, `macro.js` and `realworld.js` (new: JSON records, particles updated in place, a sort with a
+comparator, a tokenizer over `charCodeAt`, methods of a class), every engine image of the round in turn in one round, 5
+rounds; other agents built and ran tests on the machine all along, so single runs moved by up to a factor of 2 (a round
+of the base at twice its time is the machine): the figure is the median of the 5 runs, the range in brackets, and where
+a series was hit the minimum says the same. The checksums of the three scripts are the same in every build.
+
+1. **Properties** (`jit_get_field`, `jit_put_field`, `jit_global`, `jit_var_ref`, `j_prop_addr`). A named property read
+   or written is a guard of the object's own shape against the shapes the site was compiled for (a few per site, tried
+   in turn), then the slot at a constant index, in the object or in the prototype that holds it, whose shape is guarded
+   too; a dictionary holder is checked by the key at the index; a global by the shapes of the realm's lexical
+   declarations and of the global object; a closure variable where its cell points; a string's `length` and its methods
+   from `String.prototype`. The guard is data in the object: nothing to invalidate, no cache. What a site takes comes
+   from the frame's values when the loop is translated and from learn exits (the interpreter looks at what missed, the
+   site takes it, the loop is translated again, at most 12 times); the shapes the code compares against are marked by
+   the collector through the function. New types in the translation: objects (P), any value (V), entries under the
+   loop's own stack (M, a `try`'s catch offset: such a loop was refused before).
+2. **Calls** (`jit_call_insn`, `j_inline`, `j_math`, `j_char_code_at`). A small function of straight-line code that only
+   reads and computes is inlined, the callee guarded; a deopt in it leaves the call to the interpreter as if it had not
+   begun (then the loop is translated again with the callee's numbers taken for doubles, then the call is made).
+   `Math.abs`, `floor`, `ceil`, `trunc`, `sqrt`, `min`, `max`, `imul` and `s.charCodeAt(i)` are computed inline. Other
+   natives are called through a helper the engine exports to the module (`wj_jit_call`), the operand stack and the
+   objects the loop holds written to the frame first; an exception is a throw exit the interpreter unwinds from.
+3. **Measured, not kept: calls of bytecode through the helper.** A nested `interp_run` per call is slower than the
+   interpreter's own call: a call of a small function 84 -> 130 ns, a closure counter 74 -> 102 ns, a method call
+   185 -> 248 ns. A loop that calls bytecode it does not inline stays interpreted.
+4. **Found on the way.** A compiled loop of a function sent every back edge of the function's other loops through the
+   full dispatch (`hot_back_edge` tested the function's count of compiled loops): a `for-of` beside a compiled loop
+   37 -> 56 ns an element; the hot loop now leaves only at the back edges of the loops the JIT took (`jit_loop_taken`).
+   Writing whole Value words (the tag's padding and the payload's high word zeroed) in the deopt stubs made a compiled
+   `switch` loop 1.36 -> 1.62 ns (Cranelift's code for the larger stubs), with no reader of those bytes in the engine: the
+   code writes the bytes the interpreter reads, as before. jitcheck.js ended at `tail(1000)` (a tail call recurses
+   through the native call path and overflowed the guest's stack in both runs): `tail(100)`, and the 400 lines after it
+   now run.
+
+| | base | properties (1) | calls (2) |
+|---|---|---|---|
+| `micro.js`, geometric mean of the 20 cases | 1 | 0.420 | 0.233 |
+| ... property get, set, a get over 4 shapes | 54.8, 25.3, 57.5 ns | 1.77, 1.31, 1.97 ns | 1.76, 1.30, 2.00 ns |
+| ... a global read and written, an array written (`new Array(n).fill(0)`) | 40.5, 80.1 ns | 2.17, 0.95 ns | 2.17 (2.16-2.18), 0.95 ns |
+| ... a call of a small function, a method on a prototype | 82.4 (82.4-96.1), 180 (178-191) ns | 79.7, 177 ns | 1.31 (1.30-1.32), 4.13 (4.08-4.16) ns |
+| ... `Math.floor` / `Math.abs` | 153 (149-181) ns | the same | 3.26 (3.22-3.28) ns |
+| ... int loop, switch, for-of, recursion, `new Point` | 0.64, 1.39, 38.9, 83.0, 341 ns | the same | 0.64, 1.39, 37.9, 82.0, 347 ns |
+| `macro.js`, geometric mean of the 28 cases | 1 | 1.001 | 0.927 |
+| ... array push/pop, Math.sin / sqrt / pow, Set add/has | 197, 264, 203 ns | the same | 113, 154, 160 ns |
+| ... arguments / rest / spread, JSON.parse | 891, 3082 ns | the same | 929, 3052 ns |
+| `realworld.js`, geometric mean of the 6 cases | 1 | 0.378 | 0.116 |
+| ... parsed records summed, particles | 84.9 (83.9-86.8), 274 (265-314) ns | 4.95, 13.3 ns | 5.04 (4.95-5.42), 13.35 (13.17-13.35) ns |
+| ... methods of a class, tokenizer over `charCodeAt` | 324 (322-330), 224 (222-228) ns | the same | 6.78 (6.71-6.85), 8.58 (8.54-8.63) ns |
+| ... JSON parsed then summed, sort with a comparator | 1961, 1165 ns | 1984, 1205 ns | 2014, 1170 ns |
+
+(The last series, the machine quiet: medians of 5 runs, ranges in brackets; "the same": within 2 % of the base. The base is master at 92630cdf.) What
+neither step changes: what calls bytecode it does not inline (the closure counter, `fib`, the comparator of `sort`, which
+the native calls), allocates (`new Point`, literals) or concatenates strings; the 4 % of the spread case is its
+function's code, not compiled either way.
+
+What deopts, and when: a learn exit when a site meets an object of another shape, a value of another type, a string,
+or a callee that is another function (the loop translated again); a deopt when the shape is one the site does not read
+inline (an accessor, a proxy, a frozen property written), an int overflows, an index is out of an array, a callee
+inlined meets what it was not translated for (the call is then made by the interpreter, and the loop translated without
+inlining it), a held array changed kind after a call; a throw exit when a native called throws. In jitcheck.js (722 lines
+compared, interpreted against the JIT): 43 loops compiled, 9 refused, 228 deopts.
+
+Tests: jitcheck.js (above), test262 with the JIT 49/82220 errors before and after (0 regressions), interpreted the same;
+jitcheck.js under a collection every 8 KiB with poisoned cells (`-define:JSRT_GC_STRESS=8192 -define:JSRT_GC_POISON=true`):
+the same; `judge capi` 64 checks.
+
+Not done: whole functions compiled by their call counts (a recursive `fib`, a function called from interpreted code);
+calls of bytecode that is not inlined (a direct call into compiled code, which needs the callee compiled whole); the
+allocation of objects and arrays in compiled code (`new Point`, `{a, b}`, `[i, j]`: such a loop stays interpreted);
+string concatenation and comparison by value; callees with branches (a `?:`); polymorphic inlining.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
