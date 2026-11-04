@@ -519,29 +519,33 @@ add_property :: proc(rt: ^Runtime, o: ^Object, a: Atom, flags: Prop_Flags, kind:
 			}
 		}
 	} else {
-		next: ^Shape
-		for t in sh.transitions {
-			if t.atom == a && t.flags == flags && t.kind == kind {next = t.to; break}
-		}
-		if next == nil {
-			if len(sh.props) >= SHAPE_SHARED_MAX {
-				next = shape_clone(rt, sh, true)
-			} else {
-				next = shape_clone(rt, sh, false)
-			}
-			append(&next.props, Shape_Prop{a, flags, kind})
-			shape_build_hash(rt, next)
-			if !next.is_dict {
-				append(&sh.transitions, Transition{a, flags, kind, next})
-			}
-		}
-		o.shape = next
+		o.shape = shape_transition(rt, sh, a, flags, kind)
 	}
 	n := len(o.shape.props)
 	slots_reserve(rt, o, n)
 	s := &o.slots[n - 1]
 	s^ = {}
 	return s
+}
+
+// The shape an object of the shared shape `sh` takes when the property `a` is appended: the transition's (made the
+// first time; a dictionary shape of its own past SHAPE_SHARED_MAX properties, which no transition keeps).
+shape_transition :: proc(rt: ^Runtime, sh: ^Shape, a: Atom, flags: Prop_Flags, kind: Prop_Kind) -> ^Shape {
+	for t in sh.transitions {
+		if t.atom == a && t.flags == flags && t.kind == kind {return t.to}
+	}
+	next := shape_clone(rt, sh, len(sh.props) >= SHAPE_SHARED_MAX)
+	append(&next.props, Shape_Prop{a, flags, kind})
+	shape_build_hash(rt, next)
+	if !next.is_dict {
+		append(&sh.transitions, Transition{a, flags, kind, next})
+	}
+	return next
+}
+
+// Room for n slots in o (the JIT's code, which appends properties itself: jit.odin).
+object_slots_reserve :: proc(rt: ^Runtime, o: ^Object, n: int) {
+	slots_reserve(rt, o, n)
 }
 
 // Remove own property at index `idx` (keeps the order of the others).
