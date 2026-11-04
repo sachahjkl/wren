@@ -18,15 +18,16 @@ import "wb:style"
 //     and nested viewports of its ancestors and its own transform, then its x and y (box_matrix asks foreign_matrix,
 //     once the <svg> is laid out);
 //   * the clip-paths url(#id) of it and its ancestors, <clipPath>s in user space or of the bounding box whose shapes
-//     become one polygon in its own coordinates (clip-rule evenodd if a shape asks for it), intersected while all but
-//     one are convex;
-//   * its filters, and the url(#id) filters of it and its ancestors made of feGaussianBlur alone, as one blur();
+//     become one polygon in its own coordinates (clip-rule evenodd if a shape asks for it), and the viewports of the
+//     nested <svg>s it is in, intersected while all but one are convex;
+//   * the filters of it and its ancestors, innermost first: filter functions, and url(#id) <filter>s whose primitives
+//     are a chain of what filter functions draw (blurs, saturation, hue rotation, a linear transfer: filter_chain);
 //   * the opacity of its ancestors.
 // The picture keeps document order: it is made in parts split at the foreign objects (Svg_Parts), the <svg>'s item
 // draws the first and each foreign object's paint is followed by an item of the part after it (emit_foreign_rest).
 // What it is made from stays in Layout.foreign_objects: a restyle of the element makes its style again in place (foreign_restyle).
 // Changes inside the <svg> other than in the foreign objects' content take a full pass (incremental.odin add_target,
-// foreign_attribute_changed). Left: filters other than blurs, the clip of a nested viewport.
+// foreign_attribute_changed). Left: <filter>s of other primitives (offsets, floods, merges, matrices...).
 
 // How far a clip's polygon may stray from its curves, in the foreign object's units (a 24-unit icon shown at 240 px:
 // a tenth of a pixel).
@@ -153,9 +154,10 @@ foreign_make :: proc(c: ^Ctx, h: base.Handle, svg: i32, el: ^style.Computed) -> 
 	fo.size = {length_attr(d, h, "width", ref.x), length_attr(d, h, "height", ref.y)}
 	if fo.size.x <= 0 || fo.size.y <= 0 { return }
 
-	// up to the <svg>: transforms and nested viewports, clips, blurs, opacity
+	// up to the <svg>: transforms and nested viewports (and their clips), clips, filters, opacity
 	m := mat_translate({x, y})   // its coordinates to the user space of the element being looked at
-	sigma2: f32
+	a := c.sa
+	filters := make([dynamic]style.Filter_Op, 0, len(el.filter) + 1, a)   // the innermost element's first
 	fo.opacity = 1
 	clip: ^style.Clip_Path
 	for cur := h; cur != root; {
@@ -171,31 +173,25 @@ foreign_make :: proc(c: ^Ctx, h: base.Handle, svg: i32, el: ^style.Computed) -> 
 		if id := ref_id(d, cur, "clip-path", cs.clip_path != nil && cs.clip_path.kind == .Url ? cs.clip_path.url : ""); id != "" {
 			if inv, inv_ok := mat_inverse(m); inv_ok { clip = clip_intersect(c, clip, clip_polygon(c, dom.find_by_id(d, id), inv, foreign_bbox(m, fo.size))) }
 		}
-		filter_url := ""
-		for op in cs.filter { if op.kind == .Url { filter_url = op.url } }
-		if id := ref_id(d, cur, "filter", filter_url); id != "" {
-			if s, blur := blur_of(d, dom.find_by_id(d, id)); blur {
-				k := math.sqrt(abs(m[0] * m[3] - m[1] * m[2]))
-				if k > 0 { sigma2 += (s / k) * (s / k) }
-			}
-		}
+		foreign_filters(d, cur, cs, math.sqrt(abs(m[0] * m[3] - m[1] * m[2])), &filters)
 		if t, has := dom.get_attribute(d, cur, "transform"); has { m = mat_mul(svg_transform(t), m) }
-		if cur != h && cn.name == "svg" { m = mat_mul(nested_viewport(d, cur, ref), m) }
+		if cur != h && cn.name == "svg" {
+			port := nested_port(d, cur, ref)
+			m = mat_mul(nested_viewport(d, cur, ref), m)
+			// a nested viewport clips what is in it unless its overflow is visible (SVG 2 §8.2, the UA's overflow: hidden)
+			if inv, inv_ok := mat_inverse(m); inv_ok && cs.overflow_x != .Visible { clip = clip_intersect(c, clip, rect_polygon(c, inv, port)) }
+		}
 		cur = cn.parent
 		if cur == base.NIL_HANDLE { return }
 	}
 	fo.user = m
 
-	a := c.sa
 	fo.svg, fo.base = svg, el
 	fo.cs = new(style.Computed, a)
 	fo.transform = new(style.Transform_Group, a)
 	fo.rare = new(style.Rare_Group, a)
 	fo.ops = make([]style.Transform_Op, 1, a)
 	fo.ops[0] = style.Transform_Op{kind = .Matrix, v = {1, 0, 0, 1, 0, 0}}
-	filters := make([dynamic]style.Filter_Op, 0, len(el.filter) + 1, a)
-	for op in el.filter { if op.kind != .Url { append(&filters, op) } }
-	if sigma2 > 0 { append(&filters, style.Filter_Op{kind = .Blur, v = math.sqrt(sigma2)}) }
 	fo.filter = filters[:]
 	fo.clip = clip
 	foreign_style(&fo, el)
@@ -281,19 +277,42 @@ view_box_matrix :: proc(vb: [4]f32, align: [2]Foreign_Align, slice: bool, port: 
 	return Matrix{sx, 0, 0, sy, tx, ty}
 }
 
-// A nested <svg> `h`: its user space to its parent's (`ref`: the size percentages are of). Its x and y, and its viewBox
-// fitted to its width and height (100% when missing).
+// The viewport of a nested <svg> `h` in its parent's user space (`ref`: the size percentages are of): its x and y, its
+// width and height (100% when missing).
+@(private = "file")
+nested_port :: proc(d: ^dom.Document, h: base.Handle, ref: Vec2) -> Rect {
+	size := ref
+	if _, has := dom.get_attribute(d, h, "width"); has { size.x = length_attr(d, h, "width", ref.x) }
+	if _, has := dom.get_attribute(d, h, "height"); has { size.y = length_attr(d, h, "height", ref.y) }
+	at := Vec2{length_attr(d, h, "x", ref.x), length_attr(d, h, "y", ref.y)}
+	return Rect{at, at + size}
+}
+
+// A nested <svg> `h`: its user space to its parent's. Its viewBox fitted to its viewport (nested_port).
 @(private = "file")
 nested_viewport :: proc(d: ^dom.Document, h: base.Handle, ref: Vec2) -> Matrix {
-	port := ref
-	if _, has := dom.get_attribute(d, h, "width"); has { port.x = length_attr(d, h, "width", ref.x) }
-	if _, has := dom.get_attribute(d, h, "height"); has { port.y = length_attr(d, h, "height", ref.y) }
-	m := mat_translate({length_attr(d, h, "x", ref.x), length_attr(d, h, "y", ref.y)})
+	port := nested_port(d, h, ref)
+	m := mat_translate(port.min)
 	if vb, ok := view_box_of(d, h); ok {
 		align, slice := aspect_of(d, h)
-		m = mat_mul(m, view_box_matrix(vb, align, slice, port))
+		m = mat_mul(m, view_box_matrix(vb, align, slice, port.max - port.min))
 	}
 	return m
+}
+
+// A rectangle of a user space as a clip polygon in the foreign object's coordinates (`to_local`: from that space).
+@(private = "file")
+rect_polygon :: proc(c: ^Ctx, to_local: Matrix, r: Rect) -> ^style.Clip_Path {
+	cp := new(style.Clip_Path, c.sa)
+	cp.kind, cp.box = .Polygon, .Border_Box
+	corners := [4]Vec2{r.min, {r.max.x, r.min.y}, r.max, {r.min.x, r.max.y}}
+	pts := make([][2]style.Length, len(corners), c.sa)
+	for q, i in corners {
+		p := mat_apply(to_local, q)
+		pts[i] = {style.px(p.x), style.px(p.y)}
+	}
+	cp.points = pts
+	return cp
 }
 
 // The bounding box of a foreign object of `size` in the user space `m` maps its coordinates to: x, y, width, height.
@@ -334,27 +353,108 @@ ref_id :: proc(d: ^dom.Document, h: base.Handle, attr, computed: string) -> stri
 	return strings.has_prefix(v, "#") ? v[1:] : ""
 }
 
-// The standard deviation of a <filter> made of feGaussianBlur primitives alone (their deviations combined); false:
-// another filter.
+// The filters of element `cur` of a foreign object's ancestry (its filter property, else a filter presentation
+// attribute's url(#id)), after those already in `out`, in the foreign object's units (`k`: how much larger the
+// element's units are). Filter functions are taken as they are; a <filter> when its primitives are a chain filter
+// functions draw (filter_chain), else it is left out.
 @(private = "file")
-blur_of :: proc(d: ^dom.Document, h: base.Handle) -> (sigma: f32, ok: bool) {
+foreign_filters :: proc(d: ^dom.Document, cur: base.Handle, cs: ^style.Computed, k: f32, out: ^[dynamic]style.Filter_Op) {
+	if k <= 0 { return }
+	if len(cs.filter) == 0 {
+		if id := ref_id(d, cur, "filter", ""); id != "" { filter_chain(d, dom.find_by_id(d, id), k, out) }
+		return
+	}
+	for op in cs.filter {
+		switch op.kind {
+		case .Url: if id := ref_id(d, cur, "filter", op.url); id != "" { filter_chain(d, dom.find_by_id(d, id), k, out) }
+		case .Blur: append(out, style.Filter_Op{kind = .Blur, v = op.v / k})
+		case .Drop_Shadow:
+			s := op
+			s.shadow.x, s.shadow.y, s.shadow.blur, s.shadow.spread = op.shadow.x / k, op.shadow.y / k, op.shadow.blur / k, op.shadow.spread / k
+			append(out, s)
+		case .Brightness, .Contrast, .Grayscale, .Hue_Rotate, .Invert, .Opacity, .Saturate, .Sepia: append(out, op)
+		}
+	}
+}
+
+// The filter functions a <filter> `h` is (Filter Effects 1 §15, read backwards): a chain of primitives each taking the
+// one before (or SourceGraphic first): feGaussianBlur (blur), feColorMatrix saturate and hueRotate, feComponentTransfer
+// with the same linear slope for red, green and blue and no intercept (brightness). Appended to `out` when the whole
+// chain is such (drawn in sRGB, as filter functions are, whatever color-interpolation-filters says); else nothing.
+@(private = "file")
+filter_chain :: proc(d: ^dom.Document, h: base.Handle, k: f32, out: ^[dynamic]style.Filter_Op) {
 	n := dom.get(d, h)
 	if n == nil || n.kind != .Element || n.name != "filter" { return }
-	s2: f32
+	ops := make([dynamic]style.Filter_Op, 0, 4, context.temp_allocator)
+	prev := "SourceGraphic"   // the result the next primitive must take
 	for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).next {
 		x := dom.get(d, ch)
 		if x.kind != .Element { continue }
-		if x.name != "fegaussianblur" { return 0, false }
-		v, _ := dom.get_attribute(d, ch, "stddeviation")
-		r := canvas2d.Svg_Reader{s = v}
-		sx, okx := canvas2d.svg_number(&r)
-		sy, oky := canvas2d.svg_number(&r)
-		if !okx { continue }
-		if !oky { sy = sx }
-		s := f32(max(sx, sy, 0))
-		s2 += s * s
+		if in_, has := dom.get_attribute(d, ch, "in"); has && in_ != prev { return }
+		numbers :: proc(d: ^dom.Document, h: base.Handle, name: string) -> (v: [2]f64, n: int) {
+			s, _ := dom.get_attribute(d, h, name)
+			r := canvas2d.Svg_Reader{s = s}
+			for n < len(v) {
+				x, ok := canvas2d.svg_number(&r)
+				if !ok { break }
+				v[n] = x
+				n += 1
+			}
+			return
+		}
+		switch x.name {
+		case "fegaussianblur":
+			v, count := numbers(d, ch, "stddeviation")
+			if count == 0 { return }
+			append(&ops, style.Filter_Op{kind = .Blur, v = f32(max(v[0], count > 1 ? v[1] : v[0], 0)) / k})
+		case "fecolormatrix":
+			t, _ := dom.get_attribute(d, ch, "type")
+			v, count := numbers(d, ch, "values")
+			switch strings.trim_space(t) {
+			case "saturate": append(&ops, style.Filter_Op{kind = .Saturate, v = count > 0 ? f32(v[0]) : 1})
+			case "hueRotate": append(&ops, style.Filter_Op{kind = .Hue_Rotate, v = count > 0 ? f32(v[0]) * math.PI / 180 : 0})
+			case: return
+			}
+		case "fecomponenttransfer":
+			slope, ok := linear_transfer(d, ch)
+			if !ok { return }
+			append(&ops, style.Filter_Op{kind = .Brightness, v = slope})
+		case: return
+		}
+		r, has_result := dom.get_attribute(d, ch, "result")
+		prev = has_result ? r : ""
 	}
-	return math.sqrt(s2), s2 > 0
+	append(out, ..ops[:])
+}
+
+// The slope of an feComponentTransfer whose red, green and blue are one linear function without intercept and whose
+// alpha is left as it is: brightness(slope).
+@(private = "file")
+linear_transfer :: proc(d: ^dom.Document, h: base.Handle) -> (slope: f32, ok: bool) {
+	n := dom.get(d, h)
+	seen: [3]bool
+	for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).next {
+		x := dom.get(d, ch)
+		if x.kind != .Element { continue }
+		at: int
+		switch x.name {
+		case "fefuncr": at = 0
+		case "fefuncg": at = 1
+		case "fefuncb": at = 2
+		case "fefunca":
+			if t, has := dom.get_attribute(d, ch, "type"); has && strings.trim_space(t) != "identity" { return 0, false }
+			continue
+		case: return 0, false
+		}
+		t, _ := dom.get_attribute(d, ch, "type")
+		s, _ := dom.get_attribute(d, ch, "slope")
+		i, _ := dom.get_attribute(d, ch, "intercept")
+		v, sok := strconv.parse_f32(strings.trim_space(s))
+		if strings.trim_space(t) != "linear" || !sok || (strings.trim_space(i) != "" && strings.trim_space(i) != "0") { return 0, false }
+		if (seen[0] || seen[1] || seen[2]) && v != slope { return 0, false }
+		seen[at], slope = true, v
+	}
+	return slope, seen[0] && seen[1] && seen[2]
 }
 
 // A length attribute in user units (a number, px, or a percentage of `ref`); 0 when missing or invalid.
