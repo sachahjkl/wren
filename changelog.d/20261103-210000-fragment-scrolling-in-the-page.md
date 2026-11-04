@@ -1,3 +1,0 @@
-type: Fixed
-
-**Anchor links, back and forward within a page and the Navigation API's scrolling**: a fragment navigation (a link to `#id`, `location.hash`, `navigation.navigate("#x")`) scrolls to its element at once, before the script that asked goes on, and makes it `:target` (which never matched before); back and forward within a document put the scroll positions the entry was left at back at once, before `hashchange`; `pushState` no longer scrolls to the fragment of its URL; an intercepted navigation scrolls when its handlers are done, or at `event.scroll()`: a traversal restores the entry's positions unless the page scrolled meanwhile, a push, a replace or a reload goes to the fragment or the top (`intercept({scroll})`).
