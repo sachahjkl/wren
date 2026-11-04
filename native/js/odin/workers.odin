@@ -191,12 +191,14 @@ wjr_DedicatedWorkerGlobalScope_postMessage :: proc "c" (ctx: ^wj.Context, this_v
 	return wj.UNDEFINED
 }
 
-// One script of importScripts: its final URL and its source, each NUL-terminated (JS_Eval2 wants both).
+// One script of importScripts: its final URL and its source, each NUL-terminated (JS_Eval2 wants both), and whether its
+// errors are muted (fetched from another origin without CORS).
 @(private = "file")
-Script :: struct { url: []u8, source: []u8 }
+Script :: struct { url: []u8, source: []u8, muted: bool }
 
 // importScripts(...urls): every script fetched (synchronously, in order), then run in order; a failure throws
-// NetworkError and runs nothing more.
+// NetworkError and runs nothing more. What a script of muted errors throws, a syntax error included, becomes a
+// NetworkError (HTML "run a classic script", rethrow errors): nothing of it reaches the worker.
 @(export, link_name = "wjr_WorkerGlobalScope_importScripts")
 wjr_WorkerGlobalScope_importScripts :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	context = m4_context()
@@ -212,16 +214,19 @@ wjr_WorkerGlobalScope_importScripts :: proc "c" (ctx: ^wj.Context, this_val: wj.
 	for i in 0 ..< argc {
 		u: wj.Str
 		if !wj.wj_to_str(ctx, argv[i], &u, wj.STR_USV, "") { return wj.EXCEPTION }
-		// the browser resolves it, fetches it and writes the final URL first, a NUL, then the source
-		text: string
-		st := jsb.host(&text, api_decl.WorkerGlobalScope_importScript, wj.wr_WorkerGlobalScope_importScript, str_view(u))
+		// the browser resolves it, fetches it and writes '1' when its errors are muted (else '0'), the final URL, a NUL,
+		// then the source
+		reply: string
+		st := jsb.host(&reply, api_decl.WorkerGlobalScope_importScript, wj.wr_WorkerGlobalScope_importScript, str_view(u))
 		wj.wj_str_free(ctx, &u)
 		if st != .None { return wj.wj_throw_status(ctx, i32(st), "importScripts") }
+		muted := len(reply) > 0 && reply[0] == '1'
+		text := len(reply) > 0 ? reply[1:] : reply
 		url_part, source_part := "", text
 		for c, k in transmute([]u8)text {
 			if c == 0 { url_part, source_part = text[:k], text[k + 1:]; break }
 		}
-		s := Script{make([]u8, len(url_part) + 1), make([]u8, len(source_part) + 1)}
+		s := Script{make([]u8, len(url_part) + 1), make([]u8, len(source_part) + 1), muted}
 		if s.url == nil || s.source == nil { delete(s.url); delete(s.source); return wj.JS_ThrowOutOfMemory(ctx) }
 		copy(s.url, url_part)
 		copy(s.source, source_part)
@@ -230,7 +235,11 @@ wjr_WorkerGlobalScope_importScripts :: proc "c" (ctx: ^wj.Context, this_val: wj.
 	for s in scripts {
 		opt := wj.Eval_Options{version = wj.EVAL_OPTIONS_VERSION, eval_flags = wj.EVAL_TYPE_GLOBAL, filename = cstring(raw_data(s.url)), line_num = 1}
 		r := wj.JS_Eval2(ctx, raw_data(s.source), uint(len(s.source) - 1), &opt)
-		if wj.is_exception(r) { return r }   // rethrown to the caller of importScripts
+		if wj.is_exception(r) {
+			if !s.muted { return r }   // rethrown to the caller of importScripts
+			wj.JS_FreeValue(ctx, wj.JS_GetException(ctx))
+			return wj.wj_throw_dom(ctx, "NetworkError", "Failed to execute 'importScripts' on 'WorkerGlobalScope': a script of another origin threw.")
+		}
 		wj.JS_FreeValue(ctx, r)
 	}
 	return wj.UNDEFINED

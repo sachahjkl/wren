@@ -180,7 +180,8 @@ Uncaught :: struct { message, filename: wj.JSValue, line, col: i32 }
 @(private = "file")
 uncaught_of :: proc "contextless" (ctx: ^wj.Context, exc: wj.JSValue) -> (u: Uncaught) {
 	u.message = error_message(ctx, exc)
-	st := wj.JS_IsError(exc) ? wj.JS_GetPropertyStr(ctx, exc, "stack") : wj.UNDEFINED
+	// (an Error's, or a DOMException's: made with the stack of where it was made)
+	st := wj.JS_IsError(exc) || wj.is_dom_exception(exc) ? wj.JS_GetPropertyStr(ctx, exc, "stack") : wj.UNDEFINED
 	stack_len: uint
 	stack := wj.is_string(st) ? ([^]u8)(rawptr(wj.JS_ToCStringLen2(ctx, &stack_len, st, false))) : nil
 	if wj.JS_HasException(ctx) { wj.JS_FreeValue(ctx, wj.JS_GetException(ctx)) }

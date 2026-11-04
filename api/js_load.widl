@@ -61,8 +61,9 @@ module scripts {
   void Worker_postSerialized(u64 worker, bytes data) raises;
   /// postMessage(message) in a JavaScript worker.
   void DedicatedWorkerGlobalScope_postSerialized(bytes data) raises;
-  /// importScripts(url), one URL: fetched synchronously (same rules as the worker's script). The result is the
-  /// response's URL, a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript; Type in a
+  /// importScripts(url), one URL: fetched synchronously (same rules as the worker's script). The result is '1' when
+  /// the script's errors are muted (an opaque response: another origin without CORS) else '0', the response's URL,
+  /// a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript; Type in a
   /// module worker (importScripts is a classic worker's).
   string WorkerGlobalScope_importScript(usvstring url) raises;
   /// Whether the calling worker's script is a module ({type: "module"}).

@@ -708,21 +708,21 @@
 	Blob URLs work on importScripts: PASS
 	Revoking a blob URL in an earlier script will not fail: PASS
 /workers/interfaces/WorkerUtils/importScripts/catch.sub.any.worker.html: OK
-	Cross-origin syntax error: FAIL
-	Cross-origin throw: FAIL
-	Redirect-to-Cross-origin throw: FAIL
-	Redirect-to-cross-origin syntax error: FAIL
+	Cross-origin syntax error: PASS
+	Cross-origin throw: PASS
+	Redirect-to-Cross-origin throw: PASS
+	Redirect-to-cross-origin syntax error: PASS
 	Same-origin syntax error: PASS
 	Same-origin throw: PASS
 /workers/interfaces/WorkerUtils/importScripts/report-error-cross-origin.sub.any.worker.html: OK
-	WorkerGlobalScope error event: error: FAIL
-	WorkerGlobalScope error event: filename: FAIL
-	WorkerGlobalScope error event: lineno: FAIL
+	WorkerGlobalScope error event: error: PASS
+	WorkerGlobalScope error event: filename: PASS
+	WorkerGlobalScope error event: lineno: PASS
 	WorkerGlobalScope error event: message: PASS
 /workers/interfaces/WorkerUtils/importScripts/report-error-redirect-to-cross-origin.sub.any.worker.html: OK
-	WorkerGlobalScope error event: error: FAIL
-	WorkerGlobalScope error event: filename: FAIL
-	WorkerGlobalScope error event: lineno: FAIL
+	WorkerGlobalScope error event: error: PASS
+	WorkerGlobalScope error event: filename: PASS
+	WorkerGlobalScope error event: lineno: PASS
 	WorkerGlobalScope error event: message: PASS
 /workers/interfaces/WorkerUtils/importScripts/report-error-same-origin.sub.any.worker.html: OK
 	WorkerGlobalScope error event: error: PASS
@@ -730,14 +730,14 @@
 	WorkerGlobalScope error event: lineno: PASS
 	WorkerGlobalScope error event: message: PASS
 /workers/interfaces/WorkerUtils/importScripts/report-error-setTimeout-cross-origin.sub.any.worker.html: OK
-	WorkerGlobalScope error event: error: FAIL
-	WorkerGlobalScope error event: filename: FAIL
-	WorkerGlobalScope error event: lineno: FAIL
+	WorkerGlobalScope error event: error: PASS
+	WorkerGlobalScope error event: filename: PASS
+	WorkerGlobalScope error event: lineno: PASS
 	WorkerGlobalScope error event: message: PASS
 /workers/interfaces/WorkerUtils/importScripts/report-error-setTimeout-redirect-to-cross-origin.sub.any.worker.html: OK
-	WorkerGlobalScope error event: error: FAIL
-	WorkerGlobalScope error event: filename: FAIL
-	WorkerGlobalScope error event: lineno: FAIL
+	WorkerGlobalScope error event: error: PASS
+	WorkerGlobalScope error event: filename: PASS
+	WorkerGlobalScope error event: lineno: PASS
 	WorkerGlobalScope error event: message: PASS
 /workers/interfaces/WorkerUtils/importScripts/report-error-setTimeout-same-origin.sub.any.worker.html: OK
 	WorkerGlobalScope error event: error: PASS

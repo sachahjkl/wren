@@ -249,8 +249,9 @@ Host: `DedicatedWorkerGlobalScope_postSerialized :: proc(c: ^Call, data: []u8) -
 string WorkerGlobalScope_importScript(usvstring url) raises
 ```
 
-importScripts(url), one URL: fetched synchronously (same rules as the worker's script). The result is the
-response's URL, a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript; Type in a
+importScripts(url), one URL: fetched synchronously (same rules as the worker's script). The result is '1' when
+the script's errors are muted (an opaque response: another origin without CORS) else '0', the response's URL,
+a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript; Type in a
 module worker (importScripts is a classic worker's).
 
 Raises: returns an `Error` (see [web](web.md)).

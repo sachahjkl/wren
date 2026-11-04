@@ -108,19 +108,23 @@ WorkerGlobalScope_importScript :: proc(c: ^Call, u: string) -> (string, Api_Erro
 	if g.module { return "", fail(c, .Type, "TypeError: importScripts() is not allowed in module workers (use import)") }
 	resolved, ok := url.parse(u, &p.env.location, context.temp_allocator)
 	if !ok { return "", fail(c, .Syntax, fmt.tprintf("SyntaxError: %q is not a valid URL", u)) }
-	final_url, body, why := worker_fetch_sync(p, resolved.href)
+	final_url, body, opaque, why := worker_fetch_sync(p, resolved.href)
 	if why != "" { return "", fail(c, .Network, fmt.tprintf("NetworkError: importScripts(%q): %s", resolved.href, why)) }
+	// '1' first when the script's errors are muted (HTML "fetch a classic worker-imported script": an opaque response,
+	// of another origin without CORS), else '0'; then the final URL, a NUL, the source
 	sb := strings.builder_make(context.temp_allocator)
+	strings.write_byte(&sb, opaque ? '1' : '0')
 	strings.write_string(&sb, final_url)
 	strings.write_byte(&sb, 0)
 	strings.write_string(&sb, string(body))
 	return strings.to_string(sb), .None
 }
 
-// A request of the worker waited for synchronously: its final URL and body (temporary), or why it failed. Only the
-// events of this request are taken from the worker's queue meanwhile; the rest stays there, in order.
+// A request of the worker waited for synchronously: its final URL and body (temporary) and whether the response is
+// opaque, or why it failed. Only the events of this request are taken from the worker's queue meanwhile; the rest stays
+// there, in order.
 @(private)
-worker_fetch_sync :: proc(p: ^Page, target: string) -> (final_url: string, body: []byte, why: string) {
+worker_fetch_sync :: proc(p: ^Page, target: string) -> (final_url: string, body: []byte, opaque: bool, why: string) {
 	h, f := base.pool_insert(&p.fetches, Fetch{page = p, instance = max(u32)})
 	f.self = h
 	defer {
@@ -136,13 +140,13 @@ worker_fetch_sync :: proc(p: ^Page, target: string) -> (final_url: string, body:
 	worker_fetch_start(p, f, target, "GET", "", nil, 2 | 2 << 2 | FETCH_OPTION_CLASSIC_SCRIPT)
 	switch worker_fetch_wait(p, h, p.settings.js_load.import_scripts_ms) {
 	case .Done:
-	case .Stopping: return "", nil, "the worker is stopping"
-	case .Timed_Out: return "", nil, "timed out (javascript.workers.import_scripts_timeout_ms)"
+	case .Stopping: return "", nil, false, "the worker is stopping"
+	case .Timed_Out: return "", nil, false, "timed out (javascript.workers.import_scripts_timeout_ms)"
 	}
 	rec := base.pool_get(&p.fetches, h)
-	if rec == nil { return "", nil, "the request was lost" }
-	if rec.state == 3 { return "", nil, strings.clone(rec.error, context.temp_allocator) }
-	if rec.type != .Opaque && (rec.status < 200 || rec.status >= 300) { return "", nil, fmt.tprintf("HTTP %d", rec.status) }
+	if rec == nil { return "", nil, false, "the request was lost" }
+	if rec.state == 3 { return "", nil, false, strings.clone(rec.error, context.temp_allocator) }
+	if rec.type != .Opaque && (rec.status < 200 || rec.status >= 300) { return "", nil, false, fmt.tprintf("HTTP %d", rec.status) }
 	// HTML "fetch a classic worker-imported script": a JavaScript MIME type (an opaque response shows no headers: it is not checked).
 	// A blob with no type passes: new Blob([source]) given to importScripts is common, and the other browsers run it.
 	is_blob := strings.has_prefix(target, "blob:")
@@ -151,11 +155,11 @@ worker_fetch_sync :: proc(p: ^Page, target: string) -> (final_url: string, body:
 		m, okm := http.parse_mime(type_header, context.temp_allocator)
 		js_type := false
 		if okm { for t in js_mime_types { if strings.concatenate({m.type, "/", m.subtype}, context.temp_allocator) == t { js_type = true } } }
-		if !js_type { return "", nil, okm ? fmt.tprintf("its MIME type %s/%s is not a JavaScript MIME type", m.type, m.subtype) : "it has no JavaScript MIME type" }
+		if !js_type { return "", nil, false, okm ? fmt.tprintf("its MIME type %s/%s is not a JavaScript MIME type", m.type, m.subtype) : "it has no JavaScript MIME type" }
 	}
 	body = make([]byte, len(rec.body), context.temp_allocator)
 	copy(body, rec.body[:])
-	return strings.clone(rec.final_url != "" ? rec.final_url : target, context.temp_allocator), body, ""
+	return strings.clone(rec.final_url != "" ? rec.final_url : target, context.temp_allocator), body, rec.type == .Opaque, ""
 }
 
 // What the wait swallowed (a wake) is given back: the worker's loop looks at its queues again. Always: the wait also

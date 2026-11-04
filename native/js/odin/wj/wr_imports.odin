@@ -3017,8 +3017,9 @@ foreign _wr_wj_scripts {
 	@(link_name = "Worker_postSerialized") wr_Worker_postSerialized :: proc(worker: u64, data: [^]u8, data_len: u32) -> i32 ---
 	// postMessage(message) in a JavaScript worker.
 	@(link_name = "DedicatedWorkerGlobalScope_postSerialized") wr_DedicatedWorkerGlobalScope_postSerialized :: proc(data: [^]u8, data_len: u32) -> i32 ---
-	// importScripts(url), one URL: fetched synchronously (same rules as the worker's script). The result is the
-	// response's URL, a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript; Type in a
+	// importScripts(url), one URL: fetched synchronously (same rules as the worker's script). The result is '1' when
+	// the script's errors are muted (an opaque response: another origin without CORS) else '0', the response's URL,
+	// a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript; Type in a
 	// module worker (importScripts is a classic worker's).
 	@(link_name = "WorkerGlobalScope_importScript") wr_WorkerGlobalScope_importScript :: proc(url: [^]u8, url_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
 	// Whether the calling worker's script is a module ({type: "module"}).

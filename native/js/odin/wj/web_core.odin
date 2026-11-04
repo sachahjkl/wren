@@ -345,6 +345,13 @@ domexc_make :: proc "contextless" (ctx: ^Context, new_target: JSValue, name: JSV
 	return obj
 }
 
+// A DOMException (or an object of an interface that inherits from it).
+is_dom_exception :: proc "contextless" (v: JSValue) -> bool {
+	o := obj_of(v)
+	iface := iface_domexception()
+	return o != nil && iface >= 0 && i32(o.iface) >= iface && i32(o.iface) < i32(interfaces()[iface].subtree_end)
+}
+
 @(export, link_name = "wj_new_dom_exception")
 wj_new_dom_exception :: proc "c" (ctx: ^Context, name: cstring, message: cstring) -> JSValue {
 	return domexc_make(ctx, UNDEFINED, JS_NewString(ctx, name), JS_NewString(ctx, message != nil ? message : ""))
