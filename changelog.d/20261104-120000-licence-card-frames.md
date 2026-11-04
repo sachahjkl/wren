@@ -1,6 +1,0 @@
-type: Fixed
-
-**The licence card of about:wren drew all of its 59 planes again at every frame while the pointer tilted it**: the tilt is written in the card's style attribute at each frame, and any change of the document made a layout pass, which the compositor took for a page being laid out and drew directly, without the layers it keeps (40 layers cleared and drawn per frame, 3.2 Mpx). A document changed only in the style attributes of HTML elements, with paint-only values, is now refreshed (`src/layout/refresh.odin`): the planes come from the cache, and only the two whose shader moves are drawn again (2.7 layers per frame, GPU time of a frame p50 3.8 -> 2.8 ms). Also:
-  - a plane keeps the scale it was rasterized at for `paint.planes.settle_ms` after its last move, not for one frame: the frames without a move between a pointer's moves rasterized the card's rims again at another scale;
-  - a plane builds its mip levels only where it is shown reduced more than twice (`PLANE_MIPS_REDUCTION`): the card, drawn again at every frame for its shader, built them at every frame;
-  - the development build (`build.bat`, `build\wren.exe`) no longer runs with the Direct3D debug layer (`-debug`, there for the PDB, turned it on): every draw call was validated, the card's frame took twice the CPU (3.0 -> 1.75 ms); the debug build keeps it.
