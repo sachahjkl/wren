@@ -470,7 +470,7 @@ namespaced_attributes_beside_plain_ones :: proc(t: ^testing.T) {
 	defer document_destroy(d)
 	heard: [dynamic]string
 	defer delete(heard)
-	hooks_set(d, Hooks{user = &heard, attribute = proc(user: rawptr, d: ^Document, el: base.Handle, name: string) { append((^[dynamic]string)(user), name) }})
+	hooks_set(d, Hooks{user = &heard, attribute = proc(user: rawptr, d: ^Document, el: base.Handle, name: string, change: Attr_Change) { append((^[dynamic]string)(user), name) }})
 	el := create_element(d, "div")
 	append_child(d, d.root, el)
 	ns := attr_ns_of(d, "https://example.com/attributes")

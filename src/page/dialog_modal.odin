@@ -70,7 +70,7 @@ dialog_open :: proc(p: ^Page, h: base.Handle, modal: bool) {
 	if _, open := node_attr(dom.get(p.doc, h), "open"); open || dom.get(p.doc, h) == nil { return }
 	if modal && (!dom.is_connected(p.doc, h) || popover_showing(p, h)) { return }
 	s := popover_state(p)
-	dialog_queue_toggle(p, h, false, true)
+	element_queue_toggle(p, h, false, true)
 	dom.set_attribute(p.doc, h, "open", "")
 	forms.changed(page_forms(p), h)
 	open_dialogs_add(s, h)
@@ -88,7 +88,7 @@ dialog_open :: proc(p: ^Page, h: base.Handle, modal: bool) {
 @(private)
 dialog_closing :: proc(p: ^Page, h: base.Handle) {
 	dispatch_event(p, h, dom.Event{type = "beforetoggle", data = "closed", text = "open"})
-	if _, open := node_attr(dom.get(p.doc, h), "open"); open { dialog_queue_toggle(p, h, true, false) }
+	if _, open := node_attr(dom.get(p.doc, h), "open"); open { element_queue_toggle(p, h, true, false) }
 }
 
 // A cancelable "cancel" at the dialog: true when no listener canceled it. False without firing for a dialog whose
@@ -256,35 +256,36 @@ dialog_close_request :: proc(p: ^Page) -> bool {
 	return true
 }
 
-// A dialog's "toggle" to fire from a task, its old state the one of a toggle still queued for it (which it replaces).
-Dialog_Toggle :: struct { dialog: base.Handle, old_open, new_open: bool, seq: u32 }
+// A dialog's or a <details>'s "toggle" to fire from a task, its old state the one of a toggle still queued for it (which
+// it replaces: HTML's dialog toggle task tracker, the details toggle task tracker).
+Element_Toggle :: struct { element: base.Handle, old_open, new_open: bool, seq: u32 }
 
 @(private = "file")
-Dialog_Toggle_Task :: struct { dialog: base.Handle, seq: u32 }
+Toggle_Task :: struct { element: base.Handle, seq: u32 }
 
 @(private)
-dialog_queue_toggle :: proc(p: ^Page, h: base.Handle, old_open, new_open: bool) {
+element_queue_toggle :: proc(p: ^Page, h: base.Handle, old_open, new_open: bool) {
 	s := popover_state(p)
 	if s == nil { return }
-	s.dialog_toggle_seq += 1
-	entry := Dialog_Toggle{dialog = h, old_open = old_open, new_open = new_open, seq = s.dialog_toggle_seq}
+	s.toggle_seq += 1
+	entry := Element_Toggle{element = h, old_open = old_open, new_open = new_open, seq = s.toggle_seq}
 	found := false
-	for &q in s.dialog_toggles {
-		if q.dialog == h { entry.old_open = q.old_open; q = entry; found = true }
+	for &q in s.element_toggles {
+		if q.element == h { entry.old_open = q.old_open; q = entry; found = true }
 	}
-	if !found { append(&s.dialog_toggles, entry) }
-	t := new(Dialog_Toggle_Task)
-	t^ = {dialog = h, seq = entry.seq}
+	if !found { append(&s.element_toggles, entry) }
+	t := new(Toggle_Task)
+	t^ = {element = h, seq = entry.seq}
 	post_page_task(p, proc(pg: ^Page, data: rawptr) {
-		t := (^Dialog_Toggle_Task)(data)
+		t := (^Toggle_Task)(data)
 		defer free(t)
 		s := pg != nil ? popover_state(pg) : nil
 		if s == nil { return }
-		for q, i in s.dialog_toggles {
-			if q.dialog != t.dialog || q.seq != t.seq { continue }   // (a later toggle replaced it)
-			unordered_remove(&s.dialog_toggles, i)
-			if dom.get(pg.doc, q.dialog) != nil {
-				dispatch_event(pg, q.dialog, dom.Event{type = "toggle", data = q.new_open ? "open" : "closed", text = q.old_open ? "open" : "closed"})
+		for q, i in s.element_toggles {
+			if q.element != t.element || q.seq != t.seq { continue }   // (a later toggle replaced it)
+			unordered_remove(&s.element_toggles, i)
+			if dom.get(pg.doc, q.element) != nil {
+				dispatch_event(pg, q.element, dom.Event{type = "toggle", data = q.new_open ? "open" : "closed", text = q.old_open ? "open" : "closed"})
 			}
 			return
 		}
@@ -348,11 +349,18 @@ open_dialogs_add :: proc(s: ^Popover_State, h: base.Handle) {
 }
 
 // HTML's dialog attribute change and insertion steps: a dialog in the document given its open attribute another way than
-// show() or showModal() (dialog.open = true), or inserted with it, is an open dialog too.
+// show() or showModal() (dialog.open = true), or inserted with it, is an open dialog too. The details element's attribute
+// change steps: its open attribute added or removed queues a toggle (a summary's click, details.open, setAttribute).
 @(private)
-dialog_note_attribute :: proc(p: ^Page, el: base.Handle) {
+open_note_attribute :: proc(p: ^Page, el: base.Handle, change: dom.Attr_Change) {
 	n := dom.get(p.doc, el)
 	s := popover_state(p)
-	if n == nil || s == nil || n.name != "dialog" || n.ns != .HTML || !dom.is_connected(p.doc, el) { return }
-	if _, open := node_attr(n, "open"); open { open_dialogs_add(s, el) }
+	if n == nil || s == nil || n.ns != .HTML { return }
+	switch n.name {
+	case "dialog":
+		if !dom.is_connected(p.doc, el) { return }
+		if _, open := node_attr(n, "open"); open { open_dialogs_add(s, el) }
+	case "details":
+		if change != .Changed { element_queue_toggle(p, el, change == .Removed, change == .Added) }
+	}
 }

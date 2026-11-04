@@ -41,6 +41,7 @@ wj_run_jobs :: proc "c" () -> i32 {
 		// next checkpoint, and stall every task after it
 		if wj.interrupted() { wj.JS_DropPendingJobs(rt); break }
 	}
+	rejections_checkpoint()   // (load_errors.odin)
 	return ran
 }
 
@@ -50,6 +51,7 @@ wj_run_jobs :: proc "c" () -> i32 {
 @(private = "file") EVAL_WANT_BYTECODE :: 1 << 1   // hand the compiled code to the browser (Engine_storeBytecode)
 @(private = "file") EVAL_STRICT        :: 1 << 2
 @(private = "file") EVAL_RESULT        :: 1 << 3   // print the completion value (the console's "run JavaScript")
+@(private = "file") EVAL_MUTED         :: 1 << 4   // its errors are muted (load_errors.odin errors_muted)
 
 // Runs a compiled script or module function (takes it). 0 ok, 1 threw (reported).
 @(private = "file")
@@ -89,6 +91,9 @@ copy_name :: proc "contextless" (name: []u8, url: u32, url_len: u32) -> cstring 
 wj_eval_script :: proc "c" (src: u32, src_len: u32, url: u32, url_len: u32, line: i32, flags: i32) -> i32 {
 	ctx := wj.wj_the_realm.ctx
 	wj.wj_stack_enter(ctx)
+	outer := errors_muted
+	errors_muted = flags & EVAL_MUTED != 0
+	defer errors_muted = outer
 	name: [SCRIPT_NAME_BYTES]u8
 	opt := wj.Eval_Options{
 		version    = wj.EVAL_OPTIONS_VERSION,
@@ -127,6 +132,9 @@ wj_eval_script :: proc "c" (src: u32, src_len: u32, url: u32, url_len: u32, line
 wj_eval_bytecode :: proc "c" (code: u32, code_len: u32, flags: i32) -> i32 {
 	ctx := wj.wj_the_realm.ctx
 	wj.wj_stack_enter(ctx)
+	outer := errors_muted
+	errors_muted = flags & EVAL_MUTED != 0
+	defer errors_muted = outer
 	fn := wj.JS_ReadObject(ctx, ([^]u8)(uintptr(code)), uint(code_len), wj.READ_OBJ_BYTECODE)
 	if wj.is_exception(fn) {
 		wj.JS_FreeValue(ctx, wj.JS_GetException(ctx))

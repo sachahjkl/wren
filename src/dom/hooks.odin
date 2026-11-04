@@ -14,10 +14,15 @@ import "wb:base"
 
 Hook_Kind :: enum u8 { Inserted, Attribute }
 
+// What happened to an attribute: HTML's attribute change steps tell an attribute added (its old value null) or removed
+// (its new value null) from one changed.
+Attr_Change :: enum u8 { Changed, Added, Removed }
+
 Hook_Event :: struct {
-	kind: Hook_Kind,
-	node: base.Handle,
-	name: string,   // Attribute: the attribute's name (lower case, owned while queued)
+	kind:   Hook_Kind,
+	node:   base.Handle,
+	name:   string,        // Attribute: the attribute's name (lower case, owned while queued)
+	change: Attr_Change,   // Attribute
 }
 
 Hooks :: struct {
@@ -25,7 +30,7 @@ Hooks :: struct {
 	// `node` was inserted (it may have a subtree); called once the tree is consistent again
 	inserted:  proc(user: rawptr, d: ^Document, node: base.Handle),
 	// an attribute of `element` was set, changed or removed
-	attribute: proc(user: rawptr, d: ^Document, element: base.Handle, name: string),
+	attribute: proc(user: rawptr, d: ^Document, element: base.Handle, name: string, change: Attr_Change),
 	// `node` left `parent` (a removal, or the first half of a move): called at once, even when muted, with the tree
 	// consistent; it must not change the tree (the embedder checks what got disconnected: nested documents' frames)
 	removed:   proc(user: rawptr, d: ^Document, node, parent: base.Handle),
@@ -52,7 +57,7 @@ hooks_unmute :: proc(d: ^Document) {
 		ordered_remove(&d.hooks.queued, 0)
 		switch ev.kind {
 		case .Inserted: if d.hooks.inserted != nil { d.hooks.inserted(d.hooks.user, d, ev.node) }
-		case .Attribute: if d.hooks.attribute != nil { d.hooks.attribute(d.hooks.user, d, ev.node, ev.name) }
+		case .Attribute: if d.hooks.attribute != nil { d.hooks.attribute(d.hooks.user, d, ev.node, ev.name, ev.change) }
 		}
 		delete(ev.name)
 	}
@@ -73,8 +78,8 @@ notify_inserted :: proc(d: ^Document, node: base.Handle) {
 }
 
 @(private)
-notify_attribute :: proc(d: ^Document, element: base.Handle, name: string) {
+notify_attribute :: proc(d: ^Document, element: base.Handle, name: string, change: Attr_Change) {
 	if d.hooks.attribute == nil { return }
-	if d.hooks.muted > 0 { append(&d.hooks.queued, Hook_Event{kind = .Attribute, node = element, name = heap_str(name)}); return }
-	d.hooks.attribute(d.hooks.user, d, element, name)
+	if d.hooks.muted > 0 { append(&d.hooks.queued, Hook_Event{kind = .Attribute, node = element, name = heap_str(name), change = change}); return }
+	d.hooks.attribute(d.hooks.user, d, element, name, change)
 }

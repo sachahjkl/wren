@@ -546,11 +546,11 @@ a_summary_opens_and_closes_its_details :: proc(t: ^testing.T) {
 	open :: proc(x: ^Fixture, name: string) -> bool { return has_attr(dom.get(x.f.doc, id(x, name)), "open") }
 	click(f, id(x, "s1"), {trusted = true})
 	testing.expect(t, open(x, "d1"), "a click on the summary opens its details")
-	testing.expect_value(t, events_string(x), "click@s1 toggle@d1")
+	testing.expect_value(t, events_string(x), "click@s1")   // (its toggle is the page's, from the attribute)
 	clear_events(x)
 	click(f, id(x, "sp"), {trusted = true})
 	testing.expect(t, !open(x, "d1"), "a click on what is inside the summary (its text) closes it")
-	testing.expect_value(t, events_string(x), "click@sp toggle@d1")
+	testing.expect_value(t, events_string(x), "click@sp")
 	clear_events(x)
 	x.cancel["click"] = true
 	click(f, id(x, "s1"), {trusted = true})

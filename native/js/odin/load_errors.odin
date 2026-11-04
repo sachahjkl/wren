@@ -8,10 +8,11 @@
 //     listener calling preventDefault). An exception thrown while the error event is being dispatched is not
 //     dispatched again (it goes to the console).
 //   * Promises: the engine's rejection tracker keeps HTML's "about-to-be-notified rejected promises list" and the
-//     "outstanding rejected promises weak set" (a WeakSet of the realm). The first entry asks the browser for a task
-//     (Engine_queueRejectionCheck); in that task, after the microtask checkpoint that may have handled them,
-//     wj_notify_rejections fires unhandledrejection for those still unhandled (the console shows the ones nobody
-//     canceled), and rejectionhandled for promises handled after being reported.
+//     "outstanding rejected promises weak set" (a WeakSet of the realm). At the end of a microtask checkpoint
+//     (wj_run_jobs) the promises it left in the list ask the browser for a task (Engine_queueRejectionCheck: HTML
+//     "notify about rejected promises", a task queued then, after those the checkpoint's task queued); in it
+//     wj_notify_rejections fires unhandledrejection for those of that checkpoint still unhandled (the console shows the
+//     ones nobody canceled). A promise reported, then handled, asks for a task of its own at once: its rejectionhandled.
 //   * ErrorEvent and PromiseRejectionEvent objects made here (or by scripts) keep their fields in the event's spare slot
 //     (wj_event_extra) as an array; ErrorEvents the browser made (a worker's error, at the Worker object) answer from
 //     the browser's event (Event_data: message, Event_text: filename).
@@ -210,6 +211,10 @@ wj_error_event_for :: proc "c" (ctx: ^wj.Context, type_name: cstring, exc: wj.JS
 // ---- report the exception ----
 
 @(private = "file") in_error_event: bool
+// The script running at the top is a classic script of another origin fetched without CORS (wj_eval_script's
+// EVAL_MUTED): its uncaught errors are reported as HTML's muted errors, "Script error." and nothing of the script.
+errors_muted: bool
+@(private = "file") MUTED_MESSAGE :: "Script error."
 
 // Uncaught exception: the global's error event first (wj/qjs_realm.odin reports to the console when this returns
 // false). Does not take `exc`.
@@ -218,8 +223,13 @@ wj_fire_error_event :: proc "c" (ctx: ^wj.Context, exc: wj.JSValue) -> bool {
 	if in_error_event || !wj.wj_the_realm.started { return false }
 	if wj_global_handle() == 0 { return false }
 	u := uncaught_of(ctx, exc)
+	if errors_muted {
+		wj.JS_FreeValue(ctx, u.message)
+		wj.JS_FreeValue(ctx, u.filename)
+		u = Uncaught{message = wj.JS_NewString(ctx, MUTED_MESSAGE), filename = wj.JS_NewString(ctx, "")}
+	}
 	type := wj.JS_NewString(ctx, "error")
-	ev := new_error_event(ctx, type, u.message, u.filename, u.line, u.col, exc, true)
+	ev := new_error_event(ctx, type, u.message, u.filename, u.line, u.col, errors_muted ? wj.NULL : exc, true)
 	wj.JS_FreeValue(ctx, type)
 	wj.JS_FreeValue(ctx, u.message)
 	wj.JS_FreeValue(ctx, u.filename)
@@ -325,8 +335,18 @@ wjr_PromiseRejectionEvent_get_reason :: proc "c" (ctx: ^wj.Context, this_val: wj
 @(private = "file")
 Rej_List :: struct { items: [^]wj.JSValue, n, cap: u32 }
 
-@(private = "file") about_to_be_notified: Rej_List   // promises (counted) rejected without a handler since the last notification
-@(private = "file") handled_later: Rej_List          // promises reported unhandled, then handled: rejectionhandled
+// A task asked of the browser (Engine_queueRejectionCheck), in the order asked: the browser runs them in that order, each
+// one wj_notify_rejections. `promise` undefined: HTML "notify about rejected promises" of a checkpoint, the first `count`
+// promises of about_to_be_notified (unhandledrejection); else the rejectionhandled of that promise (counted).
+@(private = "file")
+Rej_Task :: struct { promise: wj.JSValue, count: u32 }
+@(private = "file")
+Rej_Tasks :: struct { items: [^]Rej_Task, n, cap: u32 }
+
+@(private = "file") about_to_be_notified: Rej_List   // promises (counted) rejected without a handler, not notified yet
+@(private = "file") assigned: u32                    // how many of them the queued tasks notify (the rest: the next checkpoint's)
+@(private = "file") tasks: Rej_Tasks                 // the queued tasks, first to run first
+@(private = "file") notifying: Rej_List              // the batch whose events are being fired (one handled meanwhile: undefined)
 @(private = "file") outstanding: wj.JSValue          // WeakSet of the promises reported unhandled
 // WeakSet.prototype's has, delete and add as the realm started (counted): a script replacing them never runs from the
 // rejection tracker, which the engine calls in the middle of its promise operations
@@ -335,12 +355,12 @@ Rej_List :: struct { items: [^]wj.JSValue, n, cap: u32 }
 @(private = "file") WS_ADD    :: 2
 @(private = "file") ws_methods: [3]wj.JSValue
 @(private = "file") ws_names := [3]cstring{"has", "delete", "add"}
-@(private = "file") check_queued: bool
+@(private = "file") REJ_LIST_FIRST_CAP :: 16
 
 @(private = "file")
 list_push :: proc "contextless" (l: ^Rej_List, v: wj.JSValue) -> bool {
 	if l.n == l.cap {
-		cap := l.cap != 0 ? l.cap * 2 : 16
+		cap := l.cap != 0 ? l.cap * 2 : REJ_LIST_FIRST_CAP
 		n := ([^]wj.JSValue)(wj.libc_realloc(l.items, uint(cap) * size_of(wj.JSValue)))
 		if n == nil { return false }
 		l.items = n
@@ -351,16 +371,20 @@ list_push :: proc "contextless" (l: ^Rej_List, v: wj.JSValue) -> bool {
 	return true
 }
 
+// Asks the browser for a task; false (nothing asked) when there is no memory for its record.
 @(private = "file")
-list_remove :: proc "contextless" (ctx: ^wj.Context, l: ^Rej_List, v: wj.JSValue) -> bool {
-	for i: u32 = 0; i < l.n; i += 1 {
-		if !wj.same_ptr(l.items[i], v) { continue }
-		wj.JS_FreeValue(ctx, l.items[i])
-		for j := i; j + 1 < l.n; j += 1 { l.items[j] = l.items[j + 1] }
-		l.n -= 1
-		return true
+task_queue :: proc "contextless" (t: Rej_Task) -> bool {
+	if tasks.n == tasks.cap {
+		cap := tasks.cap != 0 ? tasks.cap * 2 : REJ_LIST_FIRST_CAP
+		n := ([^]Rej_Task)(wj.libc_realloc(tasks.items, uint(cap) * size_of(Rej_Task)))
+		if n == nil { return false }
+		tasks.items = n
+		tasks.cap = cap
 	}
-	return false
+	tasks.items[tasks.n] = t
+	tasks.n += 1
+	wj.wr_Engine_queueRejectionCheck()
+	return true
 }
 
 @(private = "file")
@@ -372,29 +396,53 @@ weakset_call :: proc "contextless" (ctx: ^wj.Context, method: int, v: wj.JSValue
 	return r
 }
 
-@(private = "file")
-queue_check :: proc "contextless" () {
-	if check_queued { return }
-	check_queued = true
-	wj.wr_Engine_queueRejectionCheck()
+// The end of a microtask checkpoint (wj_run_jobs): the promises it left rejected without a handler are notified from a
+// task queued now (HTML "notify about rejected promises"), after the tasks queued while it ran.
+rejections_checkpoint :: proc "contextless" () {
+	if about_to_be_notified.n == assigned { return }
+	if task_queue(Rej_Task{promise = wj.UNDEFINED, count = about_to_be_notified.n - assigned}) { assigned = about_to_be_notified.n }
 }
 
+// HTML's HostPromiseRejectionTracker: "reject" adds the promise to the list; "handle" takes it out (out of the batch of
+// its task too, when one was queued), or, for a promise already reported, queues its rejectionhandled at once.
 @(private = "file")
 rejection_tracker :: proc "c" (ctx: ^wj.Context, promise: wj.JSValue, reason: wj.JSValue, is_handled: bool, opaque: rawptr) {
 	if !is_handled {
-		if list_push(&about_to_be_notified, wj.JS_DupValue(ctx, promise)) { queue_check() }
+		list_push(&about_to_be_notified, wj.JS_DupValue(ctx, promise))
 		return
 	}
-	if list_remove(ctx, &about_to_be_notified, promise) { return }
+	// (handled by a listener of an event of its batch, before its own event: it has none)
+	for i: u32 = 0; i < notifying.n; i += 1 {
+		if wj.same_ptr(notifying.items[i], promise) { wj.JS_FreeValue(ctx, notifying.items[i]); notifying.items[i] = wj.UNDEFINED; return }
+	}
+	l := &about_to_be_notified
+	for i: u32 = 0; i < l.n; i += 1 {
+		if !wj.same_ptr(l.items[i], promise) { continue }
+		wj.JS_FreeValue(ctx, l.items[i])
+		for j := i; j + 1 < l.n; j += 1 { l.items[j] = l.items[j + 1] }
+		l.n -= 1
+		if i < assigned {
+			// the batch it was in: the batches are the list's first `assigned` entries, in the order of their tasks
+			assigned -= 1
+			before: u32
+			for k: u32 = 0; k < tasks.n; k += 1 {
+				t := &tasks.items[k]
+				if !wj.is_undefined(t.promise) { continue }
+				if i < before + t.count { t.count -= 1; break }
+				before += t.count
+			}
+		}
+		return
+	}
 	had := weakset_call(ctx, WS_HAS, promise)
 	was_reported := wj.JS_ToBool(ctx, had) > 0
 	wj.JS_FreeValue(ctx, had)
 	if !was_reported { return }
 	r := weakset_call(ctx, WS_DELETE, promise)
 	wj.JS_FreeValue(ctx, r)
-	if list_push(&handled_later, wj.JS_DupValue(ctx, promise)) { queue_check() }
+	dup := wj.JS_DupValue(ctx, promise)
+	if !task_queue(Rej_Task{promise = dup}) { wj.JS_FreeValue(ctx, dup) }
 }
-
 @(private = "file")
 new_rejection_event :: proc "contextless" (ctx: ^wj.Context, type: cstring, promise: wj.JSValue, reason: wj.JSValue, cancelable: bool) -> wj.JSValue {
 	init := wj.JS_NewObject(ctx)
@@ -459,19 +507,47 @@ report_unhandled :: proc "contextless" (ctx: ^wj.Context, reason: wj.JSValue) {
 	wj.JS_FreeValue(ctx, st)
 }
 
-// The browser's task for HTML "notify about rejected promises". Returns how many events were fired.
+// The browser's task for the first task asked (task_queue): HTML "notify about rejected promises" of a checkpoint, or a
+// rejectionhandled. Returns how many events were fired.
 @(export, link_name = "wj_notify_rejections")
 wj_notify_rejections :: proc "c" () -> i32 {
 	ctx := wj.wj_the_realm.ctx
 	wj.wj_stack_enter(ctx)
-	check_queued = false
-	fired: i32
-	list := about_to_be_notified
-	about_to_be_notified = {}
+	if tasks.n == 0 { return 0 }
+	t := tasks.items[0]
+	for j: u32 = 0; j + 1 < tasks.n; j += 1 { tasks.items[j] = tasks.items[j + 1] }
+	tasks.n -= 1
 	global := wj.wj_the_realm.global
-	for i: u32 = 0; i < list.n; i += 1 {
-		promise := list.items[i]
-		// handled meanwhile (the tracker took it out of the list then, but a later rejection could re-add)
+	if !wj.is_undefined(t.promise) {
+		reason := wj.JS_PromiseResult(ctx, t.promise)
+		ev := new_rejection_event(ctx, "rejectionhandled", t.promise, reason, false)
+		fired: i32
+		if !wj.is_exception(ev) {
+			if wj_dispatch_own_event(ctx, global, ev) < 0 { wj.wj_report_pending(ctx) }
+			wj.JS_FreeValue(ctx, ev)
+			fired = 1
+		} else {
+			wj.JS_FreeValue(ctx, wj.JS_GetException(ctx))
+		}
+		wj.JS_FreeValue(ctx, reason)
+		wj.JS_FreeValue(ctx, t.promise)
+		return fired
+	}
+	// the batch leaves the list before its events: their listeners may reject more (the next checkpoint's), or handle
+	// promises of the batch not notified yet (they are not, HTML's [[PromiseIsHandled]] check)
+	n := min(t.count, about_to_be_notified.n)
+	notifying.n = 0
+	for i: u32 = 0; i < n; i += 1 {
+		if !list_push(&notifying, about_to_be_notified.items[i]) { wj.JS_FreeValue(ctx, about_to_be_notified.items[i]) }
+	}
+	for j := n; j < about_to_be_notified.n; j += 1 { about_to_be_notified.items[j - n] = about_to_be_notified.items[j] }
+	about_to_be_notified.n -= n
+	assigned -= n
+	fired: i32
+	for i: u32 = 0; i < notifying.n; i += 1 {
+		promise := notifying.items[i]
+		if wj.is_undefined(promise) { continue }
+		notifying.items[i] = wj.UNDEFINED
 		reason := wj.JS_PromiseResult(ctx, promise)
 		ev := new_rejection_event(ctx, "unhandledrejection", promise, reason, true)
 		not_canceled: i32 = 1
@@ -489,27 +565,9 @@ wj_notify_rejections :: proc "c" () -> i32 {
 		wj.JS_FreeValue(ctx, reason)
 		wj.JS_FreeValue(ctx, promise)
 	}
-	wj.libc_free(list.items)
-	later := handled_later
-	handled_later = {}
-	for i: u32 = 0; i < later.n; i += 1 {
-		promise := later.items[i]
-		reason := wj.JS_PromiseResult(ctx, promise)
-		ev := new_rejection_event(ctx, "rejectionhandled", promise, reason, false)
-		if !wj.is_exception(ev) {
-			if wj_dispatch_own_event(ctx, global, ev) < 0 { wj.wj_report_pending(ctx) }
-			wj.JS_FreeValue(ctx, ev)
-			fired += 1
-		} else {
-			wj.JS_FreeValue(ctx, wj.JS_GetException(ctx))
-		}
-		wj.JS_FreeValue(ctx, reason)
-		wj.JS_FreeValue(ctx, promise)
-	}
-	wj.libc_free(later.items)
+	notifying.n = 0
 	return fired
 }
-
 // Realm start (load.odin): the tracker and the weak set.
 errors_start :: proc "contextless" (ctx: ^wj.Context) {
 	wj.JS_SetHostPromiseRejectionTracker(wj.JS_GetRuntime(ctx), rejection_tracker, nil)

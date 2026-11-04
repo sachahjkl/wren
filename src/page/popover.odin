@@ -35,8 +35,8 @@ Popover_State :: struct {
 	timer:      base.Handle,
 	busy:       int,                            // nesting of show / hide (listeners may call them again)
 	cancelling: base.Handle,                    // the dialog whose "cancel" is being fired (dialog_cancel)
-	dialog_toggles:    [dynamic]Dialog_Toggle,  // queued toggle events of dialogs, apart (HTML's dialog toggle task tracker)
-	dialog_toggle_seq: u32,
+	element_toggles: [dynamic]Element_Toggle,   // queued toggle events of dialogs and <details>, apart (HTML's toggle task trackers)
+	toggle_seq: u32,
 }
 
 @(private)
@@ -48,7 +48,7 @@ popover_state_destroy :: proc(p: ^Page, s: ^Popover_State) {
 	delete(s.showing)
 	delete(s.invokers)
 	delete(s.focus_back)
-	delete(s.dialog_toggles)
+	delete(s.element_toggles)
 	delete(s.toggles)
 	delete(s.modals)
 	delete(s.open_dialogs)

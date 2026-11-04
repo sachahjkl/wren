@@ -1,0 +1,185 @@
+# web-platform-tests expectations of Wren for html/semantics/forms/the-label-element, written by build/wpt -update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/html/semantics/forms/the-label-element/clicking-interactive-content.html: OK
+	interactive content <a href="about:blank" onclick="event.preventDefault()"></a> as first child of <label>: PASS
+	interactive content <a href="about:blank" onclick="event.preventDefault()"></a> as second child under <label>: PASS
+	interactive content <a href="about:blank" onclick="event.preventDefault()"></a> deeply nested under <label>: PASS
+	interactive content <audio controls=""></audio> as first child of <label>: PASS
+	interactive content <audio controls=""></audio> as second child under <label>: PASS
+	interactive content <audio controls=""></audio> deeply nested under <label>: PASS
+	interactive content <button></button> as first child of <label>: PASS
+	interactive content <button></button> as second child under <label>: PASS
+	interactive content <button></button> deeply nested under <label>: PASS
+	interactive content <details></details> as first child of <label>: PASS
+	interactive content <details></details> as second child under <label>: PASS
+	interactive content <details></details> deeply nested under <label>: PASS
+	interactive content <embed> as first child of <label>: PASS
+	interactive content <embed> as second child under <label>: PASS
+	interactive content <embed> deeply nested under <label>: PASS
+	interactive content <iframe></iframe> as first child of <label>: PASS
+	interactive content <iframe></iframe> as second child under <label>: PASS
+	interactive content <iframe></iframe> deeply nested under <label>: PASS
+	interactive content <img usemap=""> as first child of <label>: PASS
+	interactive content <img usemap=""> as second child under <label>: PASS
+	interactive content <img usemap=""> deeply nested under <label>: PASS
+	interactive content <input> as first child of <label>: PASS
+	interactive content <input> as second child under <label>: PASS
+	interactive content <input> deeply nested under <label>: PASS
+	interactive content <label>label</label> as first child of <label>: PASS
+	interactive content <label>label</label> as second child under <label>: PASS
+	interactive content <label>label</label> deeply nested under <label>: PASS
+	interactive content <select></select> as first child of <label>: PASS
+	interactive content <select></select> as second child under <label>: PASS
+	interactive content <select></select> deeply nested under <label>: PASS
+	interactive content <textarea></textarea> as first child of <label>: PASS
+	interactive content <textarea></textarea> as second child under <label>: PASS
+	interactive content <textarea></textarea> deeply nested under <label>: PASS
+	interactive content <video controls=""></video> as first child of <label>: PASS
+	interactive content <video controls=""></video> as second child under <label>: PASS
+	interactive content <video controls=""></video> deeply nested under <label>: PASS
+/html/semantics/forms/the-label-element/clicking-noninteractive-labelable-content.html: OK
+	labelable element <meter></meter> as first child of <label>: PASS
+	labelable element <meter></meter> as second child under <label>: PASS
+	labelable element <meter></meter> deeply nested under <label>: PASS
+	labelable element <output></output> as first child of <label>: PASS
+	labelable element <output></output> as second child under <label>: PASS
+	labelable element <output></output> deeply nested under <label>: PASS
+	labelable element <progress></progress> as first child of <label>: PASS
+	labelable element <progress></progress> as second child under <label>: PASS
+	labelable element <progress></progress> deeply nested under <label>: PASS
+/html/semantics/forms/the-label-element/clicking-noninteractive-unlabelable-content.html: OK
+	noninteractive unlabelable content <a tabindex=""></a> as first child of <label>: PASS
+	noninteractive unlabelable content <a tabindex=""></a> as second child under <label>: FAIL
+	noninteractive unlabelable content <a tabindex=""></a> deeply nested under <label>: PASS
+	noninteractive unlabelable content <a></a> as first child of <label>: PASS
+	noninteractive unlabelable content <a></a> as second child under <label>: FAIL
+	noninteractive unlabelable content <a></a> deeply nested under <label>: PASS
+	noninteractive unlabelable content <audio tabindex=""></audio> as first child of <label>: PASS
+	noninteractive unlabelable content <audio tabindex=""></audio> as second child under <label>: FAIL
+	noninteractive unlabelable content <audio tabindex=""></audio> deeply nested under <label>: PASS
+	noninteractive unlabelable content <audio></audio> as first child of <label>: PASS
+	noninteractive unlabelable content <audio></audio> as second child under <label>: FAIL
+	noninteractive unlabelable content <audio></audio> deeply nested under <label>: PASS
+	noninteractive unlabelable content <details></details> as first child of <label>: PASS
+	noninteractive unlabelable content <details></details> as second child under <label>: FAIL
+	noninteractive unlabelable content <details></details> deeply nested under <label>: PASS
+	noninteractive unlabelable content <div tabindex=""></div> as first child of <label>: PASS
+	noninteractive unlabelable content <div tabindex=""></div> as second child under <label>: FAIL
+	noninteractive unlabelable content <div tabindex=""></div> deeply nested under <label>: PASS
+	noninteractive unlabelable content <div></div> as first child of <label>: PASS
+	noninteractive unlabelable content <div></div> as second child under <label>: FAIL
+	noninteractive unlabelable content <div></div> deeply nested under <label>: PASS
+	noninteractive unlabelable content <img tabindex=""> as first child of <label>: PASS
+	noninteractive unlabelable content <img tabindex=""> as second child under <label>: FAIL
+	noninteractive unlabelable content <img tabindex=""> deeply nested under <label>: PASS
+	noninteractive unlabelable content <img> as first child of <label>: PASS
+	noninteractive unlabelable content <img> as second child under <label>: FAIL
+	noninteractive unlabelable content <img> deeply nested under <label>: PASS
+	noninteractive unlabelable content <input type="hidden" tabindex=""> as first child of <label>: PASS
+	noninteractive unlabelable content <input type="hidden" tabindex=""> as second child under <label>: FAIL
+	noninteractive unlabelable content <input type="hidden" tabindex=""> deeply nested under <label>: PASS
+	noninteractive unlabelable content <input type="hidden"> as first child of <label>: PASS
+	noninteractive unlabelable content <input type="hidden"> as second child under <label>: FAIL
+	noninteractive unlabelable content <input type="hidden"> deeply nested under <label>: PASS
+	noninteractive unlabelable content <object tabindex=""></object> as first child of <label>: PASS
+	noninteractive unlabelable content <object tabindex=""></object> as second child under <label>: FAIL
+	noninteractive unlabelable content <object tabindex=""></object> deeply nested under <label>: PASS
+	noninteractive unlabelable content <object usemap=""></object> as first child of <label>: PASS
+	noninteractive unlabelable content <object usemap=""></object> as second child under <label>: FAIL
+	noninteractive unlabelable content <object usemap=""></object> deeply nested under <label>: PASS
+	noninteractive unlabelable content <object></object> as first child of <label>: PASS
+	noninteractive unlabelable content <object></object> as second child under <label>: FAIL
+	noninteractive unlabelable content <object></object> deeply nested under <label>: PASS
+	noninteractive unlabelable content <svg></svg> as first child of <label>: PASS
+	noninteractive unlabelable content <svg></svg> as second child under <label>: FAIL
+	noninteractive unlabelable content <svg></svg> deeply nested under <label>: PASS
+	noninteractive unlabelable content <video tabindex=""></video> as first child of <label>: PASS
+	noninteractive unlabelable content <video tabindex=""></video> as second child under <label>: FAIL
+	noninteractive unlabelable content <video tabindex=""></video> deeply nested under <label>: PASS
+	noninteractive unlabelable content <video></video> as first child of <label>: PASS
+	noninteractive unlabelable content <video></video> as second child under <label>: FAIL
+	noninteractive unlabelable content <video></video> deeply nested under <label>: PASS
+/html/semantics/forms/the-label-element/control-active-with-multiple-clicks.html: OK
+	Control should be :active on mousedown when clicking the label twice in succession.: FAIL
+/html/semantics/forms/the-label-element/disabled-labeled-control.html: OK
+	A disabled checkbox input remains its explicit label's control: PASS
+	A disabled checkbox input remains its implicit label's control: PASS
+	A disabled text input remains its explicit label's control: PASS
+	A disabled text input remains its implicit label's control: PASS
+	clicking on a label should not cause a disabled checkbox referenced in the 'for' attribute to become checked: PASS
+	clicking on a label should not cause a disabled child checkbox to become checked: PASS
+	clicking on a label should not cause a disabled child input to receive a click event: PASS
+	clicking on a label should not cause a disabled input referenced in the 'for' attribute to receive a click event: PASS
+/html/semantics/forms/the-label-element/forward-focus-to-associated-element.html: TIMEOUT
+	focusing a hidden label with tabindex should forward focus to the labelable element: FAIL
+	focusing a label with empty tabindex should forward focus to the labelable element: TIMEOUT
+	focusing a label with for attribute should forward focus to the associated element: TIMEOUT
+	focusing a label with negative tabindex should not forward focus to the labelable element: PASS
+	focusing a label with tabindex should not forward focus to the labelable element: PASS
+	focusing a label without for attribute should fowrad focus to the first labelable child: TIMEOUT
+/html/semantics/forms/the-label-element/label-attributes.sub.html: OK
+	A div element which contains labelable element is removed.: PASS
+	A form control has an implicit label.: PASS
+	A form control has multiple labels.: PASS
+	A form control has no label 1.: PASS
+	A form control has no label 2.: PASS
+	A label element not in a document can not label any element in the document.: PASS
+	A label element with a 'for' attribute should only be associated with a labelable element.: PASS
+	A label in a form without a control: PASS
+	A label outside a form with a control inside the form: PASS
+	A label's htmlFor attribute must reflect the for content attribute: PASS
+	A labelable element inside the shadow DOM.: PASS
+	A labelable element is moved to iframe.: FAIL
+	A labelable element is moved to inside of nested associated labels.: PASS
+	A labelable element is moved to outside of nested associated labels.: PASS
+	A labelable element not in a document can label element in the same tree.: FAIL
+	A labelable element which is a descendant of non-labelable element is moved to outside of associated label.: PASS
+	A non-control follows by a control with same ID.: PASS
+	The 'for' attribute is an empty string.: PASS
+	The 'for' attribute points to an inexistent id.: PASS
+	The labeled control for a label element that has no 'for' attribute is the first labelable element which is a descendant of that label element.: PASS
+/html/semantics/forms/the-label-element/label-forwarded-click-pointer-properties.html: OK
+	Click forwarded from label to control preserves pointer metadata: FAIL
+	Click forwarded from label.click() is not trusted: FAIL
+/html/semantics/forms/the-label-element/label-inside-anchor.html: OK
+	click on inline element inside a label that's placed inside a anchor should trigger default label behavior: PASS
+/html/semantics/forms/the-label-element/labelable-elements.html: OK
+	Check if the button element can access 'labels': PASS
+	Check if the button element is a labelable element: PASS
+	Check if the fieldset element can access 'labels': PASS
+	Check if the fieldset element is not a labelable element: PASS
+	Check if the hidden input element has null 'labels': FAIL
+	Check if the hidden input element is not a labelable element.: PASS
+	Check if the img element can access 'labels': PASS
+	Check if the img element is not a labelable element: PASS
+	Check if the input element in radio state can access 'labels': PASS
+	Check if the input element in radio state is a labelable element: PASS
+	Check if the keygen element can access 'labels': PASS
+	Check if the keygen element is not a labelable element: PASS
+	Check if the label element can access 'labels': PASS
+	Check if the label element is not a labelable element: PASS
+	Check if the meter element can access 'labels': PASS
+	Check if the meter element is a labelable element: PASS
+	Check if the object element can access 'labels': PASS
+	Check if the object element is not a labelable element: PASS
+	Check if the output element can access 'labels': PASS
+	Check if the output element is a labelable element: PASS
+	Check if the progress element can access 'labels': PASS
+	Check if the progress element is a labelable element: PASS
+	Check if the select element can access 'labels': PASS
+	Check if the select element is a labelable element: PASS
+	Check if the textarea element can access 'labels': PASS
+	Check if the textarea element is a labelable form-element: PASS
+/html/semantics/forms/the-label-element/labels-live-attribute-changes.html: OK
+	The labels NodeList stays live when label associations change.: PASS
+/html/semantics/forms/the-label-element/labels-live-label-removal.html: OK
+	A retained labels list updates when an explicit label's subtree is removed and reinserted: PASS
+/html/semantics/forms/the-label-element/proxy-click-to-associated-element.html: OK
+	clicking a label that prevents the event's default should not proxy click events: PASS
+	label with for attribute should proxy click events to the associated element: PASS
+	label without for attribute should proxy click events to the first labelable child: PASS
+/html/semantics/forms/the-label-element/proxy-modifier-click-to-associated-element.tentative.html: OK
+	label with for attribute should proxy click events to the associated element on alt click: PASS
+	label with for attribute should proxy click events to the associated element on click: PASS
+	label with for attribute should proxy click events to the associated element on meta click: PASS
+	label with for attribute should proxy click events to the associated element on shift click: PASS

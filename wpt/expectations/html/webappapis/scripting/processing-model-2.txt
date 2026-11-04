@@ -1,0 +1,303 @@
+# web-platform-tests expectations of Wren for html/webappapis/scripting/processing-model-2, written by build/wpt -update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/html/webappapis/scripting/processing-model-2/addEventListener.html: OK
+	window.onerror - addEventListener: PASS
+/html/webappapis/scripting/processing-model-2/body-onerror-compile-error-data-url.html: OK
+	<body onerror> - compile error in <script src=data:...>: PASS
+	<body onerror> - compile error in <script src=data:...> (column): PASS
+/html/webappapis/scripting/processing-model-2/body-onerror-compile-error.html: OK
+	<body onerror> - compile error in <script>: PASS
+	<body onerror> - compile error in <script> (column): PASS
+/html/webappapis/scripting/processing-model-2/body-onerror-runtime-error.html: OK
+	<body onerror> - runtime error in <script>: PASS
+	<body onerror> - runtime error in <script> (column): PASS
+/html/webappapis/scripting/processing-model-2/compile-error-cross-origin-setInterval.html: OK
+	window.onerror - compile error in cross-origin setInterval: PASS
+/html/webappapis/scripting/processing-model-2/compile-error-cross-origin-setTimeout.html: OK
+	window.onerror - compile error in cross-origin setTimeout: PASS
+/html/webappapis/scripting/processing-model-2/compile-error-cross-origin.html: OK
+	window.onerror - compile error in <script src=//www1...>: PASS
+	window.onerror - compile error in <script src=//www1...> (column): PASS
+/html/webappapis/scripting/processing-model-2/compile-error-data-url.html: OK
+	window.onerror - compile error in <script src=data:...>: PASS
+	window.onerror - compile error in <script src=data:...> (column): PASS
+/html/webappapis/scripting/processing-model-2/compile-error-in-attribute.html: OK
+	window.onerror - compile error in attribute: PASS
+	window.onerror - compile error in attribute (column): PASS
+/html/webappapis/scripting/processing-model-2/compile-error-in-body-onerror.html: OK
+	window.onerror - compile error in <body onerror>: PASS
+/html/webappapis/scripting/processing-model-2/compile-error-in-setInterval.html: OK
+	window.onerror - compile error in setInterval: PASS
+	window.onerror - compile error in setInterval (column): PASS
+/html/webappapis/scripting/processing-model-2/compile-error-in-setTimeout.html: OK
+	window.onerror - compile error in setTimeout: PASS
+	window.onerror - compile error in setTimeout (column): PASS
+/html/webappapis/scripting/processing-model-2/compile-error-same-origin-with-hash.html: OK
+	window.onerror - compile error in <script src=...> with hash: PASS
+	window.onerror - compile error in <script src=...> with hash (column): PASS
+/html/webappapis/scripting/processing-model-2/compile-error-same-origin.html: OK
+	window.onerror - compile error in <script src=...>: PASS
+	window.onerror - compile error in <script src=...> (column): PASS
+/html/webappapis/scripting/processing-model-2/compile-error.html: OK
+	window.onerror - compile error in <script>: PASS
+	window.onerror - compile error in <script> (column): PASS
+/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/atomics-wait-async.https.any.html: OK
+	Atomics.waitAsync notification in a Window: FAIL
+	Atomics.waitAsync timeout in a Window: FAIL
+/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/atomics-wait-async.https.any.worker.html: OK
+	Atomics.waitAsync notification in a DedicatedWorkerGlobalScope: FAIL
+	Atomics.waitAsync timeout in a DedicatedWorkerGlobalScope: FAIL
+/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/requires-failure.https.any.html: OK
+	[[CanBlock]] in a Window: PASS
+/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/requires-success.any.worker.html: OK
+	[[CanBlock]] in a DedicatedWorkerGlobalScope: PASS
+/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-job-queue/promise-job-detached-iframe.html: ERROR
+	No job with detached iframe's realm should be used for Promise.reject on fulfilled promise: PASS
+	No job with detached iframe's realm should be used for Promise.reject on rejected promise: PASS
+	Reaction job should not be skipped if onFulfilled handler belongs to fully active global: TIMEOUT
+	Reaction job should not be skipped if onRejected handler belongs to fully active global: TIMEOUT
+	Reaction job should run even if onFulfilled handler belongs to detached iframe: FAIL
+	Reaction job should run even if onRejected handler belongs to detached iframe: FAIL
+	Thenable job created by Promise.all should run even if it belongs to detached iframe: PASS
+	Thenable job created by Promise.allSettled should run even if it belongs to detached iframe: PASS
+	Thenable job created by Promise.any should run even if it belongs to detached iframe: PASS
+	Thenable job created by Promise.race should run even if it belongs to detached iframe: PASS
+	Thenable job created by reaction job for fulfillment should run even if it belongs to detached iframe: PASS
+	Thenable job created by reaction job for rejection should run even if it belongs to detached iframe: PASS
+	Thenable job for fulfilled promise should run even if it belongs to detached iframe: PASS
+	Thenable job for rejected promise should run even if it belongs to detached iframe: FAIL
+/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-job-queue/promise-job-entry-different-function-realm.html: OK
+	Fulfillment handler on fulfilled promise: FAIL
+	Fulfillment handler on pending-then-fulfilled promise: FAIL
+	Rejection handler on pending-then-rejected promise: FAIL
+	Rejection handler on rejected promise: FAIL
+	Thenable resolution: FAIL
+/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-job-queue/promise-job-entry.html: OK
+	Fulfillment handler on fulfilled promise: FAIL
+	Fulfillment handler on pending-then-fulfilled promise: FAIL
+	Rejection handler on pending-then-rejected promise: FAIL
+	Rejection handler on rejected promise: FAIL
+	Sanity check: this all works as expected with no promises involved: FAIL
+	Thenable resolution: FAIL
+/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-job-queue/promise-job-incumbent.html: TIMEOUT
+	Fulfillment handler on fulfilled promise: TIMEOUT
+	Fulfillment handler on fulfilled promise, using backup incumbent settings object stack: TIMEOUT
+	Fulfillment handler on pending-then-fulfilled promise: TIMEOUT
+	Fulfillment handler on pending-then-fulfilled promise, using backup incumbent settings object stack: TIMEOUT
+	Rejection handler on pending-then-rejected promise: TIMEOUT
+	Rejection handler on pending-then-rejected promise, using backup incumbent settings object stack: TIMEOUT
+	Rejection handler on rejected promise: TIMEOUT
+	Rejection handler on rejected promise, using backup incumbent settings object stack: TIMEOUT
+	Sanity check: this all works as expected with no promises involved: TIMEOUT
+	Thenable resolution: TIMEOUT
+	Thenable resolution, using backup incumbent settings object stack: TIMEOUT
+/html/webappapis/scripting/processing-model-2/runtime-error-cross-origin-setInterval.html: OK
+	window.onerror - runtime error in cross-origin setInterval: PASS
+/html/webappapis/scripting/processing-model-2/runtime-error-cross-origin-setTimeout.html: OK
+	window.onerror - runtime error in cross-origin setTimeout: PASS
+/html/webappapis/scripting/processing-model-2/runtime-error-cross-origin.html: OK
+	window.onerror - runtime error in <script src=//www1...>: PASS
+	window.onerror - runtime error in <script src=//www1...> (column): PASS
+/html/webappapis/scripting/processing-model-2/runtime-error-data-url.html: OK
+	window.onerror - runtime error in <script src=data:...>: PASS
+	window.onerror - runtime error in <script src=data:...> (column): PASS
+/html/webappapis/scripting/processing-model-2/runtime-error-in-attribute.html: OK
+	window.onerror - runtime error in attribute: PASS
+	window.onerror - runtime error in attribute (column): PASS
+/html/webappapis/scripting/processing-model-2/runtime-error-in-body-onerror.html: OK
+	runtime error in <body onerror>: PASS
+/html/webappapis/scripting/processing-model-2/runtime-error-in-setInterval.html: OK
+	window.onerror - runtime error in setInterval: PASS
+	window.onerror - runtime error in setInterval (column): PASS
+/html/webappapis/scripting/processing-model-2/runtime-error-in-setTimeout.html: OK
+	window.onerror - runtime error in setTimeout: PASS
+	window.onerror - runtime error in setTimeout (column): PASS
+/html/webappapis/scripting/processing-model-2/runtime-error-in-window-onerror.html: OK
+	runtime error in window.onerror: PASS
+/html/webappapis/scripting/processing-model-2/runtime-error-same-origin-with-hash.html: OK
+	window.onerror - runtime error in <script src=...> with hash: PASS
+	window.onerror - runtime error in <script src=...> with hash (column): PASS
+/html/webappapis/scripting/processing-model-2/runtime-error-same-origin.html: OK
+	window.onerror - runtime error in <script src=...>: PASS
+	window.onerror - runtime error in <script src=...> (column): PASS
+/html/webappapis/scripting/processing-model-2/runtime-error.html: OK
+	window.onerror - runtime error in <script>: PASS
+	window.onerror - runtime error in <script> (column): PASS
+/html/webappapis/scripting/processing-model-2/unhandled-promise-rejections/allow-crossorigin.html: TIMEOUT
+	Promise rejection event should be received for the cross-origin CORS script: TIMEOUT
+/html/webappapis/scripting/processing-model-2/unhandled-promise-rejections/disallow-crossorigin.html: TIMEOUT
+	Promise rejection event should be muted for cross-origin non-CORS script: TIMEOUT
+	Promise rejection should be muted if the rejected promise is handled in cross-origin non-CORS script: NOTRUN
+	Promise rejection should be muted if the rejected promise is handled in unhandledrejection event handler in cross-origin non-CORS script: NOTRUN
+/html/webappapis/scripting/processing-model-2/unhandled-promise-rejections/promise-rejection-event-constructor.html: OK
+	This tests the constructor for the PromiseRejectionEvent DOM class.: PASS
+/html/webappapis/scripting/processing-model-2/unhandled-promise-rejections/promise-rejection-event-during-parse.html: OK
+	Promise rejection during initial parsing of document: FAIL
+/html/webappapis/scripting/processing-model-2/unhandled-promise-rejections/promise-rejection-events-attached-in-event.html: OK
+	Attaching a handler in unhandledrejection should not trigger rejectionhandled.: PASS
+/html/webappapis/scripting/processing-model-2/unhandled-promise-rejections/promise-rejection-events-iframe.html: ERROR
+	delayed handling: promise is created in iframe and being rejected elsewhere: TIMEOUT
+	no unhandledrejection/rejectionhandled: promise is created in iframe and being rejected elsewhere: TIMEOUT
+	unhandledrejection: promise is created in iframe and being rejected elsewhere: PASS
+/html/webappapis/scripting/processing-model-2/unhandled-promise-rejections/promise-rejection-events-many-promises.dedicatedworker.html: OK
+	rejectionhandled: fires once for each of many rejections handled after they were reported: PASS
+	unhandledrejection: does not fire when many rejections are all handled in the same turn: PASS
+	unhandledrejection: does not fire when many rejections are handled in reverse order: PASS
+	unhandledrejection: fires once for each of many rejections in one turn: PASS
+	unhandledrejection: fires only for the rejections left unhandled: PASS
+	unhandledrejection: handling a reported batch does not suppress a batch rejected after it: PASS
+/html/webappapis/scripting/processing-model-2/unhandled-promise-rejections/promise-rejection-events-many-promises.html: OK
+	rejectionhandled: fires once for each of many rejections handled after they were reported: PASS
+	unhandledrejection: does not fire when many rejections are all handled in the same turn: PASS
+	unhandledrejection: does not fire when many rejections are handled in reverse order: PASS
+	unhandledrejection: fires once for each of many rejections in one turn: PASS
+	unhandledrejection: fires only for the rejections left unhandled: PASS
+	unhandledrejection: handling a reported batch does not suppress a batch rejected after it: PASS
+/html/webappapis/scripting/processing-model-2/unhandled-promise-rejections/promise-rejection-events-onerror.html: OK
+	Throwing inside an unhandledrejection handler invokes the error handler.: PASS
+/html/webappapis/scripting/processing-model-2/unhandled-promise-rejections/promise-rejection-events.dedicatedworker.html: OK
+	delayed handling: a microtask delay before attaching a handler prevents both events (Promise.reject-created promise): PASS
+	delayed handling: a microtask delay before attaching a handler prevents both events (immediately-rejected new Promise-created promise): PASS
+	delayed handling: a microtask delay before attaching the handler, and before rejecting the promise, indirected through Promise.all: PASS
+	delayed handling: a nested-queueTask after promise creation/rejection, plus many promise microtasks, is too late to attach a rejection handler: PASS
+	delayed handling: a nested-queueTask after promise creation/rejection, plus promise microtasks, is too late to attach a rejection handler: PASS
+	delayed handling: a nested-queueTask before promise creation/rejection, plus many promise microtasks, is too late to attach a rejection handler: PASS
+	delayed handling: a nested-task delay before attaching a handler causes unhandledrejection: PASS
+	delayed handling: delaying handling by setTimeout(,10) will cause both events to fire: PASS
+	delayed handling: delaying handling rejected promise created from createImageBitmap will cause both events to fire: PASS
+	microtask nesting: attaching a handler inside a combination of mutationObserverMicrotask + promise microtasks: PASS
+	microtask nesting: attaching a handler inside a combination of mutationObserverMicrotask + promise microtasks, all inside a queueTask: PASS
+	microtask nesting: attaching a handler inside a combination of mutationObserverMicrotask + promise microtasks, all inside a setTimeout: PASS
+	microtask nesting: attaching a handler inside a combination of promise microtasks + mutationObserverMicrotask: PASS
+	microtask nesting: attaching a handler inside a combination of promise microtasks + mutationObserverMicrotask, all inside a queueTask: PASS
+	microtask nesting: attaching a handler inside a combination of promise microtasks + mutationObserverMicrotask, all inside a setTimeout: PASS
+	mutationObserverMicrotask vs. queueTask ordering is not disturbed inside unhandledrejection events: PASS
+	no unhandledrejection/rejectionhandled: all inside a queued task, a rejection handler attached synchronously to a promise created from returning a Promise.reject-created promise in a fulfillment handler: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise created from createImageBitmap: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise created from returning a Promise.reject-created promise in a fulfillment handler: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise created from returning a setTimeout-delayed rejection in a fulfillment handler: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise created from throwing in a fulfillment handler: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise from Promise.reject: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise from Promise.reject, indirecting through Promise.all: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a synchronously-rejected promise created with new Promise: PASS
+	unhandledrejection: from Promise.reject: PASS
+	unhandledrejection: from Promise.reject, indirected through Promise.all: PASS
+	unhandledrejection: from a setTimeout-delayed rejection: PASS
+	unhandledrejection: from a synchronous rejection in new Promise: PASS
+	unhandledrejection: from a task-delayed rejection: PASS
+	unhandledrejection: from a throw in a fulfillment handler: PASS
+	unhandledrejection: from a throw in a rejection handler attached one microtask after a setTimeout-delayed rejection: PASS
+	unhandledrejection: from a throw in a rejection handler chained off of Promise.reject: PASS
+	unhandledrejection: from a throw in a rejection handler chained off of a setTimeout-delayed rejection: PASS
+	unhandledrejection: from createImageBitmap which is UA triggered: PASS
+	unhandledrejection: from returning a Promise.reject-created rejection in a fulfillment handler: PASS
+	unhandledrejection: from returning a setTimeout-delayed rejection in a fulfillment handler: PASS
+/html/webappapis/scripting/processing-model-2/unhandled-promise-rejections/promise-rejection-events.html: OK
+	delayed handling: a microtask delay before attaching a handler prevents both events (Promise.reject-created promise): PASS
+	delayed handling: a microtask delay before attaching a handler prevents both events (immediately-rejected new Promise-created promise): PASS
+	delayed handling: a microtask delay before attaching the handler, and before rejecting the promise, indirected through Promise.all: PASS
+	delayed handling: a nested-queueTask after promise creation/rejection, plus many promise microtasks, is too late to attach a rejection handler: PASS
+	delayed handling: a nested-queueTask after promise creation/rejection, plus promise microtasks, is too late to attach a rejection handler: PASS
+	delayed handling: a nested-queueTask before promise creation/rejection, plus many promise microtasks, is too late to attach a rejection handler: PASS
+	delayed handling: a nested-task delay before attaching a handler causes unhandledrejection: PASS
+	delayed handling: a task delay before attaching a handler prevents unhandledrejection: PASS
+	delayed handling: delaying handling by setTimeout(,10) will cause both events to fire: PASS
+	delayed handling: delaying handling rejected promise created from createImageBitmap will cause both events to fire: PASS
+	delayed handling: queueTask after promise creation/rejection, plus many promise microtasks, is not too late to attach a rejection handler: PASS
+	delayed handling: queueTask after promise creation/rejection, plus promise microtasks, is not too late to attach a rejection handler: PASS
+	delayed handling: queueTask before promise creation/rejection, plus many promise microtasks, is not too late to attach a rejection handler: PASS
+	microtask nesting: attaching a handler inside a combination of mutationObserverMicrotask + promise microtasks: PASS
+	microtask nesting: attaching a handler inside a combination of mutationObserverMicrotask + promise microtasks, all inside a queueTask: PASS
+	microtask nesting: attaching a handler inside a combination of mutationObserverMicrotask + promise microtasks, all inside a setTimeout: PASS
+	microtask nesting: attaching a handler inside a combination of promise microtasks + mutationObserverMicrotask: PASS
+	microtask nesting: attaching a handler inside a combination of promise microtasks + mutationObserverMicrotask, all inside a queueTask: PASS
+	microtask nesting: attaching a handler inside a combination of promise microtasks + mutationObserverMicrotask, all inside a setTimeout: PASS
+	mutationObserverMicrotask vs. queueTask ordering is not disturbed inside unhandledrejection events: PASS
+	no unhandledrejection/rejectionhandled: all inside a queued task, a rejection handler attached synchronously to a promise created from returning a Promise.reject-created promise in a fulfillment handler: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise created from createImageBitmap: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise created from returning a Promise.reject-created promise in a fulfillment handler: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise created from returning a setTimeout-delayed rejection in a fulfillment handler: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise created from throwing in a fulfillment handler: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise from Promise.reject: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise from Promise.reject, indirecting through Promise.all: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a synchronously-rejected promise created with new Promise: PASS
+	queueTask ordering vs. the task queued for unhandled rejection notification (1): PASS
+	queueTask ordering vs. the task queued for unhandled rejection notification (2): PASS
+	rejectionhandled is dispatched from a queued task, and not immediately: PASS
+	unhandledrejection: from Promise.reject: PASS
+	unhandledrejection: from Promise.reject, indirected through Promise.all: PASS
+	unhandledrejection: from a setTimeout-delayed rejection: PASS
+	unhandledrejection: from a synchronous rejection in new Promise: PASS
+	unhandledrejection: from a task-delayed rejection: PASS
+	unhandledrejection: from a throw in a fulfillment handler: PASS
+	unhandledrejection: from a throw in a rejection handler attached one microtask after a setTimeout-delayed rejection: PASS
+	unhandledrejection: from a throw in a rejection handler chained off of Promise.reject: PASS
+	unhandledrejection: from a throw in a rejection handler chained off of a setTimeout-delayed rejection: PASS
+	unhandledrejection: from createImageBitmap which is UA triggered: PASS
+	unhandledrejection: from returning a Promise.reject-created rejection in a fulfillment handler: PASS
+	unhandledrejection: from returning a setTimeout-delayed rejection in a fulfillment handler: PASS
+/html/webappapis/scripting/processing-model-2/unhandled-promise-rejections/promise-rejection-events.serviceworker.https.html: TIMEOUT
+	Service worker setup: TIMEOUT
+/html/webappapis/scripting/processing-model-2/unhandled-promise-rejections/promise-rejection-events.sharedworker.html: OK
+	delayed handling: a microtask delay before attaching a handler prevents both events (Promise.reject-created promise): PASS
+	delayed handling: a microtask delay before attaching a handler prevents both events (immediately-rejected new Promise-created promise): PASS
+	delayed handling: a microtask delay before attaching the handler, and before rejecting the promise, indirected through Promise.all: PASS
+	delayed handling: a nested-queueTask after promise creation/rejection, plus many promise microtasks, is too late to attach a rejection handler: PASS
+	delayed handling: a nested-queueTask after promise creation/rejection, plus promise microtasks, is too late to attach a rejection handler: PASS
+	delayed handling: a nested-queueTask before promise creation/rejection, plus many promise microtasks, is too late to attach a rejection handler: PASS
+	delayed handling: a nested-task delay before attaching a handler causes unhandledrejection: PASS
+	delayed handling: delaying handling by setTimeout(,10) will cause both events to fire: PASS
+	delayed handling: delaying handling rejected promise created from createImageBitmap will cause both events to fire: PASS
+	microtask nesting: attaching a handler inside a combination of mutationObserverMicrotask + promise microtasks: PASS
+	microtask nesting: attaching a handler inside a combination of mutationObserverMicrotask + promise microtasks, all inside a queueTask: PASS
+	microtask nesting: attaching a handler inside a combination of mutationObserverMicrotask + promise microtasks, all inside a setTimeout: PASS
+	microtask nesting: attaching a handler inside a combination of promise microtasks + mutationObserverMicrotask: PASS
+	microtask nesting: attaching a handler inside a combination of promise microtasks + mutationObserverMicrotask, all inside a queueTask: PASS
+	microtask nesting: attaching a handler inside a combination of promise microtasks + mutationObserverMicrotask, all inside a setTimeout: PASS
+	mutationObserverMicrotask vs. queueTask ordering is not disturbed inside unhandledrejection events: PASS
+	no unhandledrejection/rejectionhandled: all inside a queued task, a rejection handler attached synchronously to a promise created from returning a Promise.reject-created promise in a fulfillment handler: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise created from createImageBitmap: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise created from returning a Promise.reject-created promise in a fulfillment handler: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise created from returning a setTimeout-delayed rejection in a fulfillment handler: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise created from throwing in a fulfillment handler: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise from Promise.reject: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a promise from Promise.reject, indirecting through Promise.all: PASS
+	no unhandledrejection/rejectionhandled: rejection handler attached synchronously to a synchronously-rejected promise created with new Promise: PASS
+	unhandledrejection: from Promise.reject: PASS
+	unhandledrejection: from Promise.reject, indirected through Promise.all: PASS
+	unhandledrejection: from a setTimeout-delayed rejection: PASS
+	unhandledrejection: from a synchronous rejection in new Promise: PASS
+	unhandledrejection: from a task-delayed rejection: PASS
+	unhandledrejection: from a throw in a fulfillment handler: PASS
+	unhandledrejection: from a throw in a rejection handler attached one microtask after a setTimeout-delayed rejection: PASS
+	unhandledrejection: from a throw in a rejection handler chained off of Promise.reject: PASS
+	unhandledrejection: from a throw in a rejection handler chained off of a setTimeout-delayed rejection: PASS
+	unhandledrejection: from createImageBitmap which is UA triggered: PASS
+	unhandledrejection: from returning a Promise.reject-created rejection in a fulfillment handler: PASS
+	unhandledrejection: from returning a setTimeout-delayed rejection in a fulfillment handler: PASS
+/html/webappapis/scripting/processing-model-2/unhandled-promise-rejections/promise-resolution-order.html: TIMEOUT
+	Promise rejection ordering: TIMEOUT
+/html/webappapis/scripting/processing-model-2/window-onerror-event-throw-null.html: OK
+	Throwing null in event listener: PASS
+/html/webappapis/scripting/processing-model-2/window-onerror-parse-error.html: OK
+	correct line number passed to window.onerror: FAIL
+	correct number of calls to window.onerror: PASS
+	correct url passed to window.onerror: PASS
+/html/webappapis/scripting/processing-model-2/window-onerror-runtime-error-throw.html: OK
+	correct line number passed to window.onerror: FAIL
+	correct number of calls to window.onerror: PASS
+	correct url passed to window.onerror: FAIL
+/html/webappapis/scripting/processing-model-2/window-onerror-runtime-error.html: OK
+	correct line number passed to window.onerror: FAIL
+	correct number of calls to window.onerror: PASS
+	correct url passed to window.onerror: PASS
+/html/webappapis/scripting/processing-model-2/window-onerror-with-cross-frame-event-listeners-1.html: OK
+	The error event from an event listener should fire on that listener's global: PASS
+/html/webappapis/scripting/processing-model-2/window-onerror-with-cross-frame-event-listeners-2.html: OK
+	The error event from an event listener should fire on that listener's global: PASS
+/html/webappapis/scripting/processing-model-2/window-onerror-with-cross-frame-event-listeners-3.html: OK
+	The error event from an event listener should fire on that listener's global: PASS
+/html/webappapis/scripting/processing-model-2/window-onerror-with-cross-frame-event-listeners-4.html: OK
+	The error event from an event listener should fire on that listener's global: PASS
+/html/webappapis/scripting/processing-model-2/window-onerror-with-cross-frame-event-listeners-5.html: OK
+	window.onerror listener reports the exception in global object of its callback: PASS

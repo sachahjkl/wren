@@ -694,7 +694,7 @@ script_execute :: proc(p: ^Page, sc: ^Page_Script) {
 		ps := &s.parser
 		outer, queued := ps.insert, len(ps.queue)
 		if parser { ps.executing += 1; ps.nesting += 1; ps.insert = -1 }
-		js_run(p, sc.source[:], sc.url, sc.line)
+		js_run(p, sc.source[:], sc.url, sc.line, muted = sc.download != nil && sc.download.opaque)
 		if p.closed { return }
 		if parser { ps.executing -= 1; ps.nesting -= 1; ps.insert = outer >= 0 ? outer + len(ps.queue) - queued : -1 }
 		s.current = prev
@@ -1101,7 +1101,7 @@ hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 	kinds := inserted_kinds(d, node)
 	if kinds & {.Link, .Style} != {} { styles_note_inserted(p, node) }   // a <link> a script inserts loads now, not at the next styling (styles.odin)
 	if .Media in kinds { media_note_inserted(p, node) }   // a <video> / <audio> / <source> (media_element.odin)
-	if n.kind == .Element { dialog_note_attribute(p, node) }   // an open <dialog> inserted is an open dialog again (dialog_modal.odin)
+	if n.kind == .Element { open_note_attribute(p, node, .Changed) }   // an open <dialog> inserted is an open dialog again (dialog_modal.odin)
 	fragment := d.parser_inserting > 0
 	// a node inserted into a connected script element that has not started: its text changed ("children changed"); not
 	// by a move (moveBefore: script elements have no moving steps)
@@ -1149,7 +1149,7 @@ hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 }
 
 @(private)
-hook_attribute :: proc(user: rawptr, d: ^dom.Document, el: base.Handle, name: string) {
+hook_attribute :: proc(user: rawptr, d: ^dom.Document, el: base.Handle, name: string, change: dom.Attr_Change) {
 	p := (^Page)(user)
 	if p.closed || d != p.doc { return }
 	if p.scripts != nil && p.scripts.parser.revealing > 0 { return }
@@ -1160,7 +1160,7 @@ hook_attribute :: proc(user: rawptr, d: ^dom.Document, el: base.Handle, name: st
 	styles_note_attribute(p, el, name)
 	media_note_attribute(p, el, name)
 	if p.formctl != nil { forms.note_attribute(p.formctl.model, el, name) }   // a select's multiple or size (values.odin)
-	if name == "open" { dialog_note_attribute(p, el) }
+	if name == "open" { open_note_attribute(p, el, change) }
 	// HTML "update the image data" runs for an <img> whether or not it is in the tree: `new Image()` with src and onload
 	// (the canvas idiom) never gets a walk of the document, so the image's record is made now (images.odin)
 	if name == "src" || name == "srcset" || name == "sizes" {
