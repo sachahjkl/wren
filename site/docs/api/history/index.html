@@ -239,6 +239,7 @@
 <p>Window, Location and History (HTML). Navigations requested by a module happen from a task of their own, never
 inside the call; same-document changes (pushState, fragments) fire popstate / hashchange as HTML says.</p>
 <p>Exposed to: Window. Source: <code>api/history.widl</code>.</p>
+<p>Odin: <code>import "wren:history"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="handle-window-object"><a class="anchor" href="#handle-window-object" aria-hidden="true">#</a>handle <code>Window</code> : <code>Object</code></h3>
 <p>The Window object (an EventTarget: popstate, hashchange, storage...).</p>
@@ -286,34 +287,41 @@ inside the call; same-document changes (pushState, fragments) fire popstate / ha
 <h3 id="history-length"><a class="anchor" href="#history-length" aria-hidden="true">#</a><code>History_length</code></h3>
 <div class="code"><pre><code>i32 History_length()</code></pre></div>
 <p>history.length</p>
+<p>Odin: <code>history.length</code>.</p>
 <p>Host: <code>History_length :: proc(c: ^Call) -&gt; i32</code></p>
 <h3 id="history-state"><a class="anchor" href="#history-state" aria-hidden="true">#</a><code>History_state</code></h3>
 <div class="code"><pre><code>string History_state() raises</code></pre></div>
 <p>history.state: Not_Found when null.</p>
+<p>Odin: <code>history.state</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>History_state :: proc(c: ^Call) -&gt; (string, Api_Error)</code></p>
 <h3 id="history-pushstate"><a class="anchor" href="#history-pushstate" aria-hidden="true">#</a><code>History_pushState</code></h3>
 <div class="code"><pre><code>void History_pushState(optional string state, optional string url) raises</code></pre></div>
 <p>history.pushState(state, "", url): Data_Clone past history.max_state_bytes, Syntax for an invalid URL, Security
 for a URL the document cannot be rewritten to.</p>
+<p>Odin: <code>history.pushState</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>History_pushState :: proc(c: ^Call, state: Maybe(string), url: Maybe(string)) -&gt; Api_Error</code></p>
 <h3 id="history-replacestate"><a class="anchor" href="#history-replacestate" aria-hidden="true">#</a><code>History_replaceState</code></h3>
 <div class="code"><pre><code>void History_replaceState(optional string state, optional string url) raises</code></pre></div>
 <p>history.replaceState(state, "", url)</p>
+<p>Odin: <code>history.replaceState</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>History_replaceState :: proc(c: ^Call, state: Maybe(string), url: Maybe(string)) -&gt; Api_Error</code></p>
 <h3 id="history-go"><a class="anchor" href="#history-go" aria-hidden="true">#</a><code>History_go</code></h3>
 <div class="code"><pre><code>void History_go(i32 delta = 0)</code></pre></div>
 <p>history.go(delta): back() is go(-1), forward() go(1), go(0) reloads. Asynchronous.</p>
+<p>Odin: <code>history.go</code>.</p>
 <p>Host: <code>History_go :: proc(c: ^Call, delta: i32)</code></p>
 <h3 id="history-scrollrestoration"><a class="anchor" href="#history-scrollrestoration" aria-hidden="true">#</a><code>History_scrollRestoration</code></h3>
 <div class="code"><pre><code>ScrollRestoration History_scrollRestoration()</code></pre></div>
 <p>history.scrollRestoration, of the current entry.</p>
+<p>Odin: <code>history.scrollRestoration</code>.</p>
 <p>Host: <code>History_scrollRestoration :: proc(c: ^Call) -&gt; Api_ScrollRestoration</code></p>
 <h3 id="history-set-scrollrestoration"><a class="anchor" href="#history-set-scrollrestoration" aria-hidden="true">#</a><code>History_set_scrollRestoration</code></h3>
 <div class="code"><pre><code>void History_set_scrollRestoration(ScrollRestoration mode)</code></pre></div>
 <p>history.scrollRestoration = mode, for the current entry (and the entries this document adds after it).</p>
+<p>Odin: <code>history.set_scrollRestoration</code>.</p>
 <p>Host: <code>History_set_scrollRestoration :: proc(c: ^Call, mode: Api_ScrollRestoration)</code></p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/api/fullscreen/"><span>Previous</span><strong>Module fullscreen</strong></a>

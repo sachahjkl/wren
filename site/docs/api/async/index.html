@@ -243,6 +243,7 @@ create a chained promise: a reaction that passes a result on resolves a promise 
 <p>A buffer is the ArrayBuffer of this platform: bytes owned by the browser, passed between APIs without copies into
 the module's memory (fetch bodies, messages, socket frames), counted against page.max_fetch_bytes.</p>
 <p>Exposed to: Window, Worker. Source: <code>api/async.widl</code>.</p>
+<p>Odin: <code>import "wren:core"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="handle-object-eventtarget"><a class="anchor" href="#handle-object-eventtarget" aria-hidden="true">#</a>handle <code>Object</code> : <code>EventTarget</code></h3>
 <p>Any host object (not a node). Released with Object_release; freed with the page in any case.</p>

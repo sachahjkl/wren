@@ -241,30 +241,36 @@ popover target attributes of buttons, light dismiss and Escape. "beforetoggle" (
 and "toggle" are ToggleEvents: Event_data the newState, Event_text the oldState ("open" / "closed"), Event_object
 the source (the invoker, 0 for none).</p>
 <p>Exposed to: Window. Source: <code>api/popover.widl</code>.</p>
+<p>Odin: <code>import "wren:popover"</code>.</p>
 <h2 id="functions"><a class="anchor" href="#functions" aria-hidden="true">#</a>Functions</h2>
 <h3 id="popover-show"><a class="anchor" href="#popover-show" aria-hidden="true">#</a><code>Popover_show</code></h3>
 <div class="code"><pre><code>void Popover_show(Element element, optional Element source) raises</code></pre></div>
 <p>element.showPopover({source}): Not_Supported without a valid popover attribute, Invalid_State when it is not
 connected or is the fullscreen element; nothing when it is showing already or a beforetoggle listener cancelled.</p>
+<p>Odin: <code>popover.show</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Popover_show :: proc(c: ^Call, element: Api_Element, source: Api_Element) -&gt; Api_Error</code></p>
 <h3 id="popover-hide"><a class="anchor" href="#popover-hide" aria-hidden="true">#</a><code>Popover_hide</code></h3>
 <div class="code"><pre><code>void Popover_hide(Element element) raises</code></pre></div>
 <p>element.hidePopover(): the same errors.</p>
+<p>Odin: <code>popover.hide</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Popover_hide :: proc(c: ^Call, element: Api_Element) -&gt; Api_Error</code></p>
 <h3 id="popover-toggle"><a class="anchor" href="#popover-toggle" aria-hidden="true">#</a><code>Popover_toggle</code></h3>
 <div class="code"><pre><code>bool Popover_toggle(Element element, i32 force, optional Element source) raises</code></pre></div>
 <p>element.togglePopover(force): force -1 none, 0 false (hide only), 1 true (show only). Whether it shows after.</p>
+<p>Odin: <code>popover.toggle</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Popover_toggle :: proc(c: ^Call, element: Api_Element, force: i32, source: Api_Element) -&gt; (bool, Api_Error)</code></p>
 <h3 id="popover-state"><a class="anchor" href="#popover-state" aria-hidden="true">#</a><code>Popover_state</code></h3>
 <div class="code"><pre><code>i32 Popover_state(Element element)</code></pre></div>
 <p>The popover attribute's state: 0 none, 1 auto, 2 manual, 3 hint.</p>
+<p>Odin: <code>popover.state</code>.</p>
 <p>Host: <code>Popover_state :: proc(c: ^Call, element: Api_Element) -&gt; i32</code></p>
 <h3 id="popover-targetof"><a class="anchor" href="#popover-targetof" aria-hidden="true">#</a><code>Popover_targetOf</code></h3>
 <div class="code"><pre><code>Element Popover_targetOf(Element invoker)</code></pre></div>
 <p>The popover a button's popovertarget names (0: none).</p>
+<p>Odin: <code>popover.targetOf</code>.</p>
 <p>Host: <code>Popover_targetOf :: proc(c: ^Call, invoker: Api_Element) -&gt; u64</code></p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/api/performance/"><span>Previous</span><strong>Module performance</strong></a>

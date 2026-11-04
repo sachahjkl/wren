@@ -244,6 +244,7 @@ self, close, focus, blur). The windows a script opens (window.open, links to _bl
 kind (src/page/auxiliary.odin). Between documents of one origin, nodes are reached directly: every node handle names its
 document (base.pool_insert_tagged), the browser routes the call to it and checks the origin on each call.</p>
 <p>Exposed to: Window. Source: <code>api/frames.widl</code>.</p>
+<p>Odin: <code>import "wren:frames"</code>.</p>
 <h2 id="functions"><a class="anchor" href="#functions" aria-hidden="true">#</a>Functions</h2>
 <h3 id="frame-self"><a class="anchor" href="#frame-self" aria-hidden="true">#</a><code>Frame_self</code></h3>
 <div class="code"><pre><code>u64 Frame_self()</code></pre></div>

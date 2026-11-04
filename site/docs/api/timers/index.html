@@ -240,6 +240,7 @@
 background throttling), requestAnimationFrame, requestIdleCallback, and the page's visibility. Timestamps given to
 callbacks are on the performance.now() timeline of the page.</p>
 <p>Exposed to: Window, Worker. Source: <code>api/timers.widl</code>.</p>
+<p>Odin: <code>import "wren:timers"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="handle-timer"><a class="anchor" href="#handle-timer" aria-hidden="true">#</a>handle <code>Timer</code></h3>
 <p>A pending timeout or interval.</p>
@@ -268,27 +269,33 @@ callbacks are on the performance.now() timeline of the page.</p>
 <h3 id="timers-settimeout"><a class="anchor" href="#timers-settimeout" aria-hidden="true">#</a><code>Timers_setTimeout</code></h3>
 <div class="code"><pre><code>Timer Timers_setTimeout(TimerHandler callback, i32 user, f64 delay_ms = 0)</code></pre></div>
 <p>setTimeout(callback, delay_ms)</p>
+<p>Odin: <code>timers.setTimeout</code>.</p>
 <p>Host: <code>Timers_setTimeout :: proc(c: ^Call, callback: u32, user: i32, delay_ms: f64) -&gt; u64</code></p>
 <h3 id="timers-setinterval"><a class="anchor" href="#timers-setinterval" aria-hidden="true">#</a><code>Timers_setInterval</code></h3>
 <div class="code"><pre><code>Timer Timers_setInterval(TimerHandler callback, i32 user, f64 delay_ms = 0)</code></pre></div>
 <p>setInterval(callback, delay_ms)</p>
+<p>Odin: <code>timers.setInterval</code>.</p>
 <p>Host: <code>Timers_setInterval :: proc(c: ^Call, callback: u32, user: i32, delay_ms: f64) -&gt; u64</code></p>
 <h3 id="timers-settimeout64"><a class="anchor" href="#timers-settimeout64" aria-hidden="true">#</a><code>Timers_setTimeout64</code></h3>
 <div class="code"><pre><code>Timer Timers_setTimeout64(TimerHandler64 callback, i64 user, f64 delay_ms = 0)</code></pre></div>
 <p>setTimeout with a 64-bit user value.</p>
+<p>Odin: <code>timers.setTimeout64</code>.</p>
 <p>Host: <code>Timers_setTimeout64 :: proc(c: ^Call, callback: u32, user: i64, delay_ms: f64) -&gt; u64</code></p>
 <h3 id="timers-setinterval64"><a class="anchor" href="#timers-setinterval64" aria-hidden="true">#</a><code>Timers_setInterval64</code></h3>
 <div class="code"><pre><code>Timer Timers_setInterval64(TimerHandler64 callback, i64 user, f64 delay_ms = 0)</code></pre></div>
 <p>setInterval with a 64-bit user value.</p>
+<p>Odin: <code>timers.setInterval64</code>.</p>
 <p>Host: <code>Timers_setInterval64 :: proc(c: ^Call, callback: u32, user: i64, delay_ms: f64) -&gt; u64</code></p>
 <h3 id="timers-clear"><a class="anchor" href="#timers-clear" aria-hidden="true">#</a><code>Timers_clear</code></h3>
 <div class="code"><pre><code>void Timers_clear(Timer timer) raises</code></pre></div>
 <p>clearTimeout / clearInterval. Invalid_Handle when the timer already fired or was cleared.</p>
+<p>Odin: <code>timers.clear</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Timers_clear :: proc(c: ^Call, timer: Api_Timer) -&gt; Api_Error</code></p>
 <h3 id="timers-now"><a class="anchor" href="#timers-now" aria-hidden="true">#</a><code>Timers_now</code></h3>
 <div class="code"><pre><code>f64 Timers_now()</code></pre></div>
 <p>The browser's monotonic clock in ms (performance.now() is the page's own timeline).</p>
+<p>Odin: <code>timers.now</code>.</p>
 <p>Host: <code>Timers_now :: proc(c: ^Call) -&gt; f64</code></p>
 <h3 id="requestanimationframe"><a class="anchor" href="#requestanimationframe" aria-hidden="true">#</a><code>requestAnimationFrame</code></h3>
 <div class="code"><pre><code>u64 requestAnimationFrame(FrameRequestCallback callback, i32 user = 0)</code></pre></div>

@@ -447,6 +447,7 @@
 <p>The document tree (DOM Standard: Document, Node, Element). In a worker there is no document: the functions taking a
 node see no live node, and those returning one return null.</p>
 <p>Exposed to: Window, Worker. Source: <code>api/dom.widl</code>.</p>
+<p>Odin: <code>import "wren:dom"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="handle-node-eventtarget"><a class="anchor" href="#handle-node-eventtarget" aria-hidden="true">#</a>handle <code>Node</code> : <code>EventTarget</code></h3>
 <p>A node of the document. A node created by the module and never inserted lives until Node_release.</p>

@@ -71,89 +71,107 @@ native/js/runtime/web_fs.c). A handle is a root (the origin private file system 
 folder of the user's disk given by a picker or a drop) and a "/"-joined path of names below it ("" is the root).
 Errors carry their DOMException's name first in the message ("TypeMismatchError: ...").</p>
 <p>Exposed to: Window, Worker. Source: <code>api/fs.widl</code>.</p>
+<p>Odin: <code>import "wren:fs"</code>.</p>
 <h2 id="functions"><a class="anchor" href="#functions" aria-hidden="true">#</a>Functions</h2>
 <h3 id="fs-opfsroot"><a class="anchor" href="#fs-opfsroot" aria-hidden="true">#</a><code>Fs_opfsRoot</code></h3>
 <div class="code"><pre><code>u64 Fs_opfsRoot(usvstring bucket) raises</code></pre></div>
 <p>navigator.storage.getDirectory(): the root of the realm's origin private file system. Security outside a secure
 context, for an opaque origin or a profile without a folder. <code>bucket</code>: a storage bucket's (StorageBucket.getDirectory),
 "" for the default one; Invalid_State once the bucket was deleted.</p>
+<p>Odin: <code>fs.opfsRoot</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_opfsRoot :: proc(c: ^Call, bucket: string) -&gt; (u64, Api_Error)</code></p>
 <h3 id="fs-getentry"><a class="anchor" href="#fs-getentry" aria-hidden="true">#</a><code>Fs_getEntry</code></h3>
 <div class="code"><pre><code>string Fs_getEntry(u64 root, string path, string name, bool directory, bool create) raises</code></pre></div>
 <p>getFileHandle / getDirectoryHandle(name, {create}) on the directory at <code>path</code>: the child's path. Not_Found,
 Type (an invalid name), Not_Allowed (no permission), Invalid_State ("TypeMismatchError": the other kind).</p>
+<p>Odin: <code>fs.getEntry</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_getEntry :: proc(c: ^Call, root: u64, path: string, name: string, directory: bool, create: bool) -&gt; (string, Api_Error)</code></p>
 <h3 id="fs-removeentry"><a class="anchor" href="#fs-removeentry" aria-hidden="true">#</a><code>Fs_removeEntry</code></h3>
 <div class="code"><pre><code>void Fs_removeEntry(u64 root, string path, string name, bool recursive) raises</code></pre></div>
 <p>removeEntry(name, {recursive}): Invalid_Modification for a directory that is not empty, No_Modification_Allowed
 for an entry in use.</p>
+<p>Odin: <code>fs.removeEntry</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_removeEntry :: proc(c: ^Call, root: u64, path: string, name: string, recursive: bool) -&gt; Api_Error</code></p>
 <h3 id="fs-list"><a class="anchor" href="#fs-list" aria-hidden="true">#</a><code>Fs_list</code></h3>
 <div class="code"><pre><code>string Fs_list(u64 root, string path) raises</code></pre></div>
 <p>The directory's entries: "f" or "d", a tab, the name, one per line.</p>
+<p>Odin: <code>fs.list</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_list :: proc(c: ^Call, root: u64, path: string) -&gt; (string, Api_Error)</code></p>
 <h3 id="fs-resolve"><a class="anchor" href="#fs-resolve" aria-hidden="true">#</a><code>Fs_resolve</code></h3>
 <div class="code"><pre><code>string Fs_resolve(u64 root, string path, u64 root2, string path2) raises</code></pre></div>
 <p>resolve(): the names from the first entry down to the second, "/"-joined (Not_Found: not below it).</p>
+<p>Odin: <code>fs.resolve</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_resolve :: proc(c: ^Call, root: u64, path: string, root2: u64, path2: string) -&gt; (string, Api_Error)</code></p>
 <h3 id="fs-same"><a class="anchor" href="#fs-same" aria-hidden="true">#</a><code>Fs_same</code></h3>
 <div class="code"><pre><code>bool Fs_same(u64 root, string path, u64 root2, string path2)</code></pre></div>
 <p>isSameEntry</p>
+<p>Odin: <code>fs.same</code>.</p>
 <p>Host: <code>Fs_same :: proc(c: ^Call, root: u64, path: string, root2: u64, path2: string) -&gt; bool</code></p>
 <h3 id="fs-getfile"><a class="anchor" href="#fs-getfile" aria-hidden="true">#</a><code>Fs_getFile</code></h3>
 <div class="code"><pre><code>u64 Fs_getFile(u64 root, string path) raises</code></pre></div>
 <p>getFile(): a File object (a LocalFile of module dnd: read on demand).</p>
+<p>Odin: <code>fs.getFile</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_getFile :: proc(c: ^Call, root: u64, path: string) -&gt; (u64, Api_Error)</code></p>
 <h3 id="fs-open"><a class="anchor" href="#fs-open" aria-hidden="true">#</a><code>Fs_open</code></h3>
 <div class="code"><pre><code>u64 Fs_open(u64 root, string path, bool keep, bool sync) raises</code></pre></div>
 <p>createWritable({keepExistingData}) (a temporary file) or createSyncAccessHandle() (<code>sync</code>: the file itself,
 exclusive): an open entry's id. No_Modification_Allowed while it is locked.</p>
+<p>Odin: <code>fs.open</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_open :: proc(c: ^Call, root: u64, path: string, keep: bool, sync: bool) -&gt; (u64, Api_Error)</code></p>
 <h3 id="fs-write"><a class="anchor" href="#fs-write" aria-hidden="true">#</a><code>Fs_write</code></h3>
 <div class="code"><pre><code>i64 Fs_write(u64 id, i64 at, bytes data) raises</code></pre></div>
 <p>Writes at <code>at</code> (-1: the cursor): the bytes written. Quota past opfs.max_bytes_per_origin.</p>
+<p>Odin: <code>fs.write</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_write :: proc(c: ^Call, id: u64, at: i64, data: []u8) -&gt; (i64, Api_Error)</code></p>
 <h3 id="fs-read"><a class="anchor" href="#fs-read" aria-hidden="true">#</a><code>Fs_read</code></h3>
 <div class="code"><pre><code>i64 Fs_read(u64 id, i64 at, out bytes into) raises</code></pre></div>
 <p>Reads into <code>into</code> from <code>at</code> (-1: the cursor): the bytes read.</p>
+<p>Odin: <code>fs.read</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_read :: proc(c: ^Call, id: u64, at: i64, into: []u8) -&gt; (i64, Api_Error)</code></p>
 <h3 id="fs-seek"><a class="anchor" href="#fs-seek" aria-hidden="true">#</a><code>Fs_seek</code></h3>
 <div class="code"><pre><code>void Fs_seek(u64 id, i64 position) raises</code></pre></div>
+<p>Odin: <code>fs.seek</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_seek :: proc(c: ^Call, id: u64, position: i64) -&gt; Api_Error</code></p>
 <h3 id="fs-truncate"><a class="anchor" href="#fs-truncate" aria-hidden="true">#</a><code>Fs_truncate</code></h3>
 <div class="code"><pre><code>void Fs_truncate(u64 id, i64 size) raises</code></pre></div>
+<p>Odin: <code>fs.truncate</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_truncate :: proc(c: ^Call, id: u64, size: i64) -&gt; Api_Error</code></p>
 <h3 id="fs-size"><a class="anchor" href="#fs-size" aria-hidden="true">#</a><code>Fs_size</code></h3>
 <div class="code"><pre><code>i64 Fs_size(u64 id) raises</code></pre></div>
+<p>Odin: <code>fs.size</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_size :: proc(c: ^Call, id: u64) -&gt; (i64, Api_Error)</code></p>
 <h3 id="fs-flush"><a class="anchor" href="#fs-flush" aria-hidden="true">#</a><code>Fs_flush</code></h3>
 <div class="code"><pre><code>void Fs_flush(u64 id) raises</code></pre></div>
+<p>Odin: <code>fs.flush</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_flush :: proc(c: ^Call, id: u64) -&gt; Api_Error</code></p>
 <h3 id="fs-close"><a class="anchor" href="#fs-close" aria-hidden="true">#</a><code>Fs_close</code></h3>
 <div class="code"><pre><code>void Fs_close(u64 id, bool commit) raises</code></pre></div>
 <p>close(): a writable's temporary file replaces the entry (<code>commit</code> false: abort); a sync handle's lock goes.</p>
+<p>Odin: <code>fs.close</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_close :: proc(c: ^Call, id: u64, commit: bool) -&gt; Api_Error</code></p>
 <h3 id="fs-permission"><a class="anchor" href="#fs-permission" aria-hidden="true">#</a><code>Fs_permission</code></h3>
 <div class="code"><pre><code>i32 Fs_permission(u64 root, bool write)</code></pre></div>
 <p>queryPermission: 0 granted, 1 prompt, 2 denied.</p>
+<p>Odin: <code>fs.permission</code>.</p>
 <p>Host: <code>Fs_permission :: proc(c: ^Call, root: u64, write: bool) -&gt; i32</code></p>
 <h3 id="fs-requestpermission"><a class="anchor" href="#fs-requestpermission" aria-hidden="true">#</a><code>Fs_requestPermission</code></h3>
 <div class="code"><pre><code>Promise Fs_requestPermission(u64 root, bool write) raises</code></pre></div>
 <p>requestPermission({mode}): a promise of the state after (the user may be asked).</p>
+<p>Odin: <code>fs.requestPermission</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_requestPermission :: proc(c: ^Call, root: u64, write: bool) -&gt; (u64, Api_Error)</code></p>
 <h3 id="fs-showpicker"><a class="anchor" href="#fs-showpicker" aria-hidden="true">#</a><code>Fs_showPicker</code></h3>
@@ -161,15 +179,18 @@ exclusive): an open entry's id. No_Modification_Allowed while it is locked.</p>
 <p>showOpenFilePicker (kind 0), showSaveFilePicker (1), showDirectoryPicker (2): a promise of the number of
 handles, its text one line per handle: root TAB path TAB "f" or "d" TAB name. Abort when cancelled, Security
 without a user gesture, Not_Supported when disabled. <code>types</code>: a line per type, description TAB patterns...</p>
+<p>Odin: <code>fs.showPicker</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_showPicker :: proc(c: ^Call, kind: i32, types: string, multiple: bool, exclude_all: bool, suggested: string, start_in: string, start_root: u64, start_path: string, id: string, readwrite: bool) -&gt; (u64, Api_Error)</code></p>
 <h3 id="fs-describe"><a class="anchor" href="#fs-describe" aria-hidden="true">#</a><code>Fs_describe</code></h3>
 <div class="code"><pre><code>string Fs_describe(u64 root)</code></pre></div>
 <p>A root as structuredClone keeps it ("" when unknown).</p>
+<p>Odin: <code>fs.describe</code>.</p>
 <p>Host: <code>Fs_describe :: proc(c: ^Call, root: u64) -&gt; string</code></p>
 <h3 id="fs-restore"><a class="anchor" href="#fs-restore" aria-hidden="true">#</a><code>Fs_restore</code></h3>
 <div class="code"><pre><code>u64 Fs_restore(string description) raises</code></pre></div>
 <p>The root a kept description stands for in this realm. Data_Clone for another origin's.</p>
+<p>Odin: <code>fs.restore</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Fs_restore :: proc(c: ^Call, description: string) -&gt; (u64, Api_Error)</code></p>
 <nav class="doc-seq" aria-label="Previous and next page">

@@ -61,6 +61,7 @@
 <p>What the web APIs of JavaScript need beyond the modules Wasm pages use (native/js/runtime/web*.c): the browser's
 identity for navigator, beacons, the screen, media queries scripts evaluate (matchMedia), and FormData file entries.</p>
 <p>Exposed to: Window, Worker. Source: <code>api/js_web.widl</code>.</p>
+<p>Odin: <code>import "wren:navigator"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="enum-navigatorfield-i32"><a class="anchor" href="#enum-navigatorfield-i32" aria-hidden="true">#</a>enum <code>NavigatorField</code> : i32</h3>
 <p>A string member of Navigator.</p>
@@ -79,22 +80,27 @@ identity for navigator, beacons, the screen, media queries scripts evaluate (mat
 <h3 id="navigator-get"><a class="anchor" href="#navigator-get" aria-hidden="true">#</a><code>Navigator_get</code></h3>
 <div class="code"><pre><code>string Navigator_get(NavigatorField field)</code></pre></div>
 <p>A string member of Navigator.</p>
+<p>Odin: <code>navigator.get</code>.</p>
 <p>Host: <code>Navigator_get :: proc(c: ^Call, field: Api_NavigatorField) -&gt; string</code></p>
 <h3 id="navigator-hardwareconcurrency"><a class="anchor" href="#navigator-hardwareconcurrency" aria-hidden="true">#</a><code>Navigator_hardwareConcurrency</code></h3>
 <div class="code"><pre><code>i32 Navigator_hardwareConcurrency()</code></pre></div>
 <p>navigator.hardwareConcurrency: the logical processors the page may use.</p>
+<p>Odin: <code>navigator.hardwareConcurrency</code>.</p>
 <p>Host: <code>Navigator_hardwareConcurrency :: proc(c: ^Call) -&gt; i32</code></p>
 <h3 id="navigator-online"><a class="anchor" href="#navigator-online" aria-hidden="true">#</a><code>Navigator_onLine</code></h3>
 <div class="code"><pre><code>bool Navigator_onLine()</code></pre></div>
 <p>navigator.onLine: whether the system has a network connection.</p>
+<p>Odin: <code>navigator.onLine</code>.</p>
 <p>Host: <code>Navigator_onLine :: proc(c: ^Call) -&gt; bool</code></p>
 <h3 id="navigator-maxtouchpoints"><a class="anchor" href="#navigator-maxtouchpoints" aria-hidden="true">#</a><code>Navigator_maxTouchPoints</code></h3>
 <div class="code"><pre><code>i32 Navigator_maxTouchPoints()</code></pre></div>
 <p>navigator.maxTouchPoints: the touches the touch screen takes at once (0: none), as browser.touch.expose says.</p>
+<p>Odin: <code>navigator.maxTouchPoints</code>.</p>
 <p>Host: <code>Navigator_maxTouchPoints :: proc(c: ^Call) -&gt; i32</code></p>
 <h3 id="navigator-cookieenabled"><a class="anchor" href="#navigator-cookieenabled" aria-hidden="true">#</a><code>Navigator_cookieEnabled</code></h3>
 <div class="code"><pre><code>bool Navigator_cookieEnabled()</code></pre></div>
 <p>navigator.cookieEnabled: whether the document may use cookies.</p>
+<p>Odin: <code>navigator.cookieEnabled</code>.</p>
 <p>Host: <code>Navigator_cookieEnabled :: proc(c: ^Call) -&gt; bool</code></p>
 <h3 id="useractivation-isactive"><a class="anchor" href="#useractivation-isactive" aria-hidden="true">#</a><code>UserActivation_isActive</code></h3>
 <div class="code"><pre><code>bool UserActivation_isActive()</code></pre></div>

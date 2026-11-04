@@ -73,6 +73,7 @@ hashed on a worker thread), and the operations of crypto.subtle (src/page/bindin
 the rules of the specification: native/js/odin/web_crypto.odin and web_crypto.js). A key's material stays here: a
 realm holds a CryptoKeyData, and CryptoKey_export gives what is secret only of a key that is extractable.</p>
 <p>Exposed to: Window, Worker. Source: <code>api/crypto.widl</code>.</p>
+<p>Odin: <code>import "wren:crypto"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="handle-cryptokeydata-object"><a class="anchor" href="#handle-cryptokeydata-object" aria-hidden="true">#</a>handle <code>CryptoKeyData</code> : <code>Object</code></h3>
 <p>The material of a key, known by the realm's CryptoKey.</p>
@@ -81,11 +82,13 @@ realm holds a CryptoKeyData, and CryptoKey_export gives what is secret only of a
 <h3 id="crypto-getrandomvalues"><a class="anchor" href="#crypto-getrandomvalues" aria-hidden="true">#</a><code>Crypto_getRandomValues</code></h3>
 <div class="code"><pre><code>void Crypto_getRandomValues(out bytes destination) raises</code></pre></div>
 <p>crypto.getRandomValues(destination). Quota past crypto.max_random_bytes.</p>
+<p>Odin: <code>crypto.getRandomValues</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Crypto_getRandomValues :: proc(c: ^Call, destination: []u8) -&gt; Api_Error</code></p>
 <h3 id="crypto-randomuuid"><a class="anchor" href="#crypto-randomuuid" aria-hidden="true">#</a><code>Crypto_randomUUID</code></h3>
 <div class="code"><pre><code>string Crypto_randomUUID() raises</code></pre></div>
 <p>crypto.randomUUID()</p>
+<p>Odin: <code>crypto.randomUUID</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Has effects: call it once per result (no length query).</p>
 <p>Host: <code>Crypto_randomUUID :: proc(c: ^Call) -&gt; (string, Api_Error)</code></p>

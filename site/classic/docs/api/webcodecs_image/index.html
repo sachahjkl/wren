@@ -71,6 +71,7 @@ is native: the host decodes the encoded bytes once with src/images (every frame 
 VideoFrame. The engine holds the ImageDecoder wrapper, builds the ImageDecoderInit dictionary, resolves decode()'s
 and completed's promises, and exposes the ImageTrackList / ImageTrack. One track (the primary image) is exposed.</p>
 <p>Exposed to: Window, Worker. Source: <code>api/webcodecs_image.widl</code>.</p>
+<p>Odin: <code>import "wren:webcodecs"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="handle-imagedecoder-object"><a class="anchor" href="#handle-imagedecoder-object" aria-hidden="true">#</a>handle <code>ImageDecoder</code> : <code>Object</code></h3>
 <p>Checked by the browser on every call (<code>lookup_ImageDecoder</code>).</p>

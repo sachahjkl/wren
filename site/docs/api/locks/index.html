@@ -241,6 +241,7 @@ across every page and worker of that origin in this process. The grant order, th
 ifAvailable, steal and the waiting queue are native; the engine holds each request's callback and the promise it
 returns and runs the callback when the host grants the lock (wj_cb_lock_granted).</p>
 <p>Exposed to: Window, Worker. Source: <code>api/locks.widl</code>.</p>
+<p>Odin: <code>import "wren:locks"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="enum-lockmode-i32"><a class="anchor" href="#enum-lockmode-i32" aria-hidden="true">#</a>enum <code>LockMode</code> : i32</h3>
 <p>A lock mode (LockMode).</p>

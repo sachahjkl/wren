@@ -51,13 +51,16 @@
 <p>The blob URL store (src/fetch/blob_urls.odin): what <code>URL.createObjectURL</code> makes, for everything that loads a URL outside the
 realm that made it (an image, a stylesheet, a frame, a media element).</p>
 <p>Exposed to: Window, Worker. Source: <code>api/bloburl.widl</code>.</p>
+<p>Odin: <code>import "wren:bloburl"</code>.</p>
 <h2 id="functions"><a class="anchor" href="#functions" aria-hidden="true">#</a>Functions</h2>
 <h3 id="bloburl-register"><a class="anchor" href="#bloburl-register" aria-hidden="true">#</a><code>BlobURL_register</code></h3>
 <div class="code"><pre><code>void BlobURL_register(string url, string type, bytes data)</code></pre></div>
 <p>The bytes (a copy) a blob: URL stands for, until BlobURL_revoke or the end of the realm.</p>
+<p>Odin: <code>bloburl.register</code>.</p>
 <p>Host: <code>BlobURL_register :: proc(c: ^Call, url: string, type: string, data: []u8)</code></p>
 <h3 id="bloburl-revoke"><a class="anchor" href="#bloburl-revoke" aria-hidden="true">#</a><code>BlobURL_revoke</code></h3>
 <div class="code"><pre><code>void BlobURL_revoke(string url)</code></pre></div>
+<p>Odin: <code>bloburl.revoke</code>.</p>
 <p>Host: <code>BlobURL_revoke :: proc(c: ^Call, url: string)</code></p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/api/async/"><span>Previous</span><strong>Module async</strong></a>

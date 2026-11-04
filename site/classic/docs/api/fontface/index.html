@@ -51,13 +51,16 @@
 <p>What <code>document.fonts.add(new FontFace(...))</code> puts in force: a rule of its own for the document's fonts (src/page/fonts.odin), in
 no style sheet a script can see. The objects are native/js/odin/web_fontface.js.</p>
 <p>Exposed to: Window. Source: <code>api/fontface.widl</code>.</p>
+<p>Odin: <code>import "wren:fontface"</code>.</p>
 <h2 id="functions"><a class="anchor" href="#functions" aria-hidden="true">#</a>Functions</h2>
 <h3 id="fontface-addrule"><a class="anchor" href="#fontface-addrule" aria-hidden="true">#</a><code>FontFace_addRule</code></h3>
 <div class="code"><pre><code>i32 FontFace_addRule(string rule)</code></pre></div>
 <p>The @font-face rule, in force: a number for FontFace_removeRule, -1 when there is no document to style.</p>
+<p>Odin: <code>fontface.addRule</code>.</p>
 <p>Host: <code>FontFace_addRule :: proc(c: ^Call, rule: string) -&gt; i32</code></p>
 <h3 id="fontface-removerule"><a class="anchor" href="#fontface-removerule" aria-hidden="true">#</a><code>FontFace_removeRule</code></h3>
 <div class="code"><pre><code>void FontFace_removeRule(i32 id)</code></pre></div>
+<p>Odin: <code>fontface.removeRule</code>.</p>
 <p>Host: <code>FontFace_removeRule :: proc(c: ^Call, id: i32)</code></p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/api/fetch/"><span>Previous</span><strong>Module fetch</strong></a>

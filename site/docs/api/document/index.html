@@ -239,10 +239,12 @@
 <p>The document's address, origin and cookies. Window_origin and Window_isSecureContext belong to
 WindowOrWorkerGlobalScope: in a worker they describe the worker.</p>
 <p>Exposed to: Window, Worker. Source: <code>api/document.widl</code>.</p>
+<p>Odin: <code>import "wren:document"</code>.</p>
 <h2 id="functions"><a class="anchor" href="#functions" aria-hidden="true">#</a>Functions</h2>
 <h3 id="document-url"><a class="anchor" href="#document-url" aria-hidden="true">#</a><code>Document_URL</code></h3>
 <div class="code"><pre><code>string Document_URL() raises</code></pre></div>
 <p>document.URL. Invalid_Handle in a worker (see WorkerGlobalScope_location).</p>
+<p>Odin: <code>document.URL</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Document_URL :: proc(c: ^Call) -&gt; (string, Api_Error)</code></p>
 <h3 id="window-origin"><a class="anchor" href="#window-origin" aria-hidden="true">#</a><code>Window_origin</code></h3>
@@ -257,12 +259,14 @@ WindowOrWorkerGlobalScope: in a worker they describe the worker.</p>
 <div class="code"><pre><code>string Document_cookie_get() raises</code></pre></div>
 <p>document.cookie: the cookies scripts may see, "name=value; ...". Security for a document without a tuple origin
 on http(s), and in a worker.</p>
+<p>Odin: <code>document.cookie_get</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Document_cookie_get :: proc(c: ^Call) -&gt; (string, Api_Error)</code></p>
 <h3 id="document-cookie-set"><a class="anchor" href="#document-cookie-set" aria-hidden="true">#</a><code>Document_cookie_set</code></h3>
 <div class="code"><pre><code>i32 Document_cookie_set(string cookie) raises</code></pre></div>
 <p>document.cookie = cookie. 0 when stored (or deleted), else 1 + the browser's reason (cookies.Store_Result) for
 refusing it. Security as for the getter.</p>
+<p>Odin: <code>document.cookie_set</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Document_cookie_set :: proc(c: ^Call, cookie: string) -&gt; (i32, Api_Error)</code></p>
 <nav class="doc-seq" aria-label="Previous and next page">

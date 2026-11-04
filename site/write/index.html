@@ -53,18 +53,19 @@
           <div class="file">hello/main.odin</div>
 <pre><code><span class="k">package</span> hello
 
-<span class="k">import</span> <span class="s">"web:web"</span>
+<span class="k">import</span> <span class="s">"wren:core"</span>
+<span class="k">import</span> <span class="s">"wren:dom"</span>
 
-<span class="f">on_click</span> :: <span class="k">proc</span> <span class="s">"contextless"</span> (user: <span class="t">i32</span>, ev: web.<span class="t">Event</span>) {
-	out := web.<span class="f">Document_getElementById</span>(<span class="s">"out"</span>)
-	web.<span class="f">Node_setTextContent</span>(out, <span class="s">"Hello from WebAssembly!"</span>)
+<span class="f">on_click</span> :: <span class="k">proc</span> <span class="s">"contextless"</span> (user: <span class="t">i32</span>, ev: core.<span class="t">Event</span>) {
+	out := dom.<span class="f">Document_getElementById</span>(<span class="s">"out"</span>)
+	dom.<span class="f">Node_setTextContent</span>(out, <span class="s">"Hello from WebAssembly!"</span>)
 }
 
 <span class="c">// called once the document is parsed</span>
 @(export)
 <span class="f">wb_main</span> :: <span class="k">proc</span> <span class="s">"contextless"</span> () {
-	button := web.<span class="f">Document_getElementById</span>(<span class="s">"greet"</span>)
-	web.<span class="f">EventTarget_addEventListener</span>(button, <span class="s">"click"</span>, on_click)
+	button := dom.<span class="f">Document_getElementById</span>(<span class="s">"greet"</span>)
+	core.<span class="f">EventTarget_addEventListener</span>(button, <span class="s">"click"</span>, on_click)
 }</code></pre>
         </div>
         <div class="code">
@@ -89,7 +90,7 @@ document.<span class="f">getElementById</span>(<span class="s">"greet"</span>).<
         <div class="code">
           <div class="file">build (from a clone of the repository)</div>
 <pre><code>odin build hello -target:freestanding_wasm32 -no-entry-point ^
-  -default-to-nil-allocator -collection:web=sdk/odin ^
+  -default-to-nil-allocator -collection:wren=sdk/odin ^
   -out:hello.wasm -o:size</code></pre>
         </div>
         <p class="fine">The module above compiles to 702 bytes. Open <code>index.html</code> in Wren (a
@@ -107,8 +108,8 @@ document.<span class="f">getElementById</span>(<span class="s">"greet"</span>).<
       <div class="card">
         <h3>The web API</h3>
         <p><strong>58 modules, 1,482 functions</strong>: DOM, events, timers, fetch, WebSocket, workers, storage, URL and
-          encoding. Described once in <code>api/*.widl</code>, generated for Odin, documented with its ABI for other
-          languages.</p>
+          encoding. Described once in <code>api/*.widl</code>, generated for Odin (a package per area:
+          <code>import "wren:dom"</code>, <code>"wren:fetch"</code>...), documented with its ABI for other languages.</p>
       </div>
       <div class="card">
         <h3>JavaScript, if you want it</h3>

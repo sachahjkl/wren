@@ -147,8 +147,8 @@ generates from it, deterministically:</p>
 which checks every address against the module's memory, converts strings (UTF-8 checked), handles (looked up by
 kind), enums, flags and structs, and calls the implementation (<code>bindings_*.odin</code>) with Odin values. The expected
 prototype of each implementation is written above its trampoline: a missing or mistyped one does not compile;</li>
-<li>the Odin guest SDK, <code>sdk/odin/web/&lt;module&gt;.odin</code> (distinct handle types, <code>string</code> / <code>[]u8</code> / <code>Maybe</code>, <code>(T, Error)</code>
-results, <code>F</code> / <code>F_len</code> / <code>F_alloc</code> for strings of unknown size);</li>
+<li>the Odin guest SDK, <code>sdk/odin/&lt;package&gt;/&lt;module&gt;.odin</code>, the <code>wren</code> collection (<code>import "wren:dom"</code>; distinct handle
+types, <code>string</code> / <code>[]u8</code> / <code>Maybe</code>, <code>(T, Error)</code> results, <code>F</code> / <code>F_len</code> / <code>F_alloc</code> for strings of unknown size);</li>
 <li>the documentation, <code>docs/api/</code> (with the ABI);</li>
 <li>conformance tests: <code>examples/apiconformance</code> and <code>src/tools/apiconformance/cases_generated.odin</code> (bad addresses,
 bad UTF-8, dead handles, enums out of range, buffers too small, for every function).</li>

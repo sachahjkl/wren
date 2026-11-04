@@ -218,6 +218,7 @@ fillStyle / strokeStyle read back as <code>#rrggbb</code> or <code>rgba(r, g, b,
 the interface thread); functions taking an element answer as for a dead handle there.</li>
 </ul>
 <p>Exposed to: Window, Worker. Source: <code>api/canvas.widl</code>.</p>
+<p>Odin: <code>import "wren:canvas"</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="handle-htmlcanvaselement-element"><a class="anchor" href="#handle-htmlcanvaselement-element" aria-hidden="true">#</a>handle <code>HTMLCanvasElement</code> : <code>Element</code></h3>
 <p>Checked by the browser on every call (<code>lookup_HTMLCanvasElement</code>).</p>
@@ -280,6 +281,7 @@ the size is over canvas.max_dimension / canvas.max_pixels or the page's canvas m
 <p>The canvas (an element, or an OffscreenCanvas handle) encoded as <code>type</code>: "image/png", or "image/jpeg" at <code>quality</code>
 (0 to 1; outside it the default, canvas.encode.jpeg_quality). Security when the canvas is tainted. An empty buffer
 for a canvas with no pixels (width or height 0).</p>
+<p>Odin: <code>canvas.encode</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Canvas_encode :: proc(c: ^Call, canvas: u64, type: string, quality: f64) -&gt; (u64, Api_Error)</code></p>
 <h3 id="canvasrenderingcontext2d-canvas"><a class="anchor" href="#canvasrenderingcontext2d-canvas" aria-hidden="true">#</a><code>CanvasRenderingContext2D_canvas</code></h3>
@@ -401,6 +403,7 @@ caller owns (0 for a color style).</p>
 <p>createPattern(image, repetition): <code>source</code> is an element handle (img, canvas) or an object handle (ImageBitmap,
 OffscreenCanvas); repetition "repeat", "repeat-x", "repeat-y", "no-repeat". Not_Found: no pattern (an image that is
 not available yet); Syntax: bad repetition; Invalid_State: a canvas with no pixels.</p>
+<p>Odin: <code>canvas.createPattern</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Canvas_createPattern :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, source: u64, repetition: string) -&gt; (u64, Api_Error)</code></p>
 <h3 id="canvasgradient-addcolorstop"><a class="anchor" href="#canvasgradient-addcolorstop" aria-hidden="true">#</a><code>CanvasGradient_addColorStop</code></h3>
@@ -764,12 +767,14 @@ so it is a no-op here and kept for completeness), <code>colorspace</code> (0 def
 so both behave the same), <code>resize_w</code> / <code>resize_h</code> the wanted output size (0 means keep that axis) and <code>resize_q</code>
 (0 pixelated, 1 low, 2 medium, 3 high). Not_Found: no pixels yet (the image is not available); Invalid_State:
 broken or empty image; Index_Size: an empty rectangle or an out-of-range resize.</p>
+<p>Odin: <code>canvas.createBitmap</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Canvas_createBitmap :: proc(c: ^Call, source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32) -&gt; (u64, Api_Error)</code></p>
 <h3 id="canvas-bitmapfrompixels"><a class="anchor" href="#canvas-bitmapfrompixels" aria-hidden="true">#</a><code>Canvas_bitmapFromPixels</code></h3>
 <div class="code"><pre><code>ImageBitmap Canvas_bitmapFromPixels(bytes data, i32 width, i32 height, i32 orient, i32 premul, i32 colorspace, i32 resize_w, i32 resize_h, i32 resize_q) raises</code></pre></div>
 <p>An ImageBitmap of straight RGBA8 pixels (an ImageData, a decoded Blob, a VideoFrame read back). <code>orient</code>, <code>premul</code>,
 <code>colorspace</code>, <code>resize_*</code> and <code>resize_q</code> as Canvas_createBitmap.</p>
+<p>Odin: <code>canvas.bitmapFromPixels</code>.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Canvas_bitmapFromPixels :: proc(c: ^Call, data: []u8, width: i32, height: i32, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32) -&gt; (u64, Api_Error)</code></p>
 <h3 id="htmlcanvaselement-bitmaprenderer"><a class="anchor" href="#htmlcanvaselement-bitmaprenderer" aria-hidden="true">#</a><code>HTMLCanvasElement_bitmapRenderer</code></h3>
