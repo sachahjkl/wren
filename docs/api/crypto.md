@@ -9,6 +9,8 @@ realm holds a CryptoKeyData, and CryptoKey_export gives what is secret only of a
 
 Exposed to: Window, Worker. Source: `api/crypto.widl`.
 
+Odin: `import "wren:crypto"`.
+
 ## Types
 
 ### handle `CryptoKeyData` : `Object`
@@ -27,6 +29,8 @@ void Crypto_getRandomValues(out bytes destination) raises
 
 crypto.getRandomValues(destination). Quota past crypto.max_random_bytes.
 
+Odin: `crypto.getRandomValues`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Crypto_getRandomValues :: proc(c: ^Call, destination: []u8) -> Api_Error`
@@ -38,6 +42,8 @@ string Crypto_randomUUID() raises
 ```
 
 crypto.randomUUID()
+
+Odin: `crypto.randomUUID`.
 
 Raises: returns an `Error` (see [web](web.md)).
 

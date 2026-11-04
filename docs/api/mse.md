@@ -11,6 +11,8 @@ the page and set as the element's srcObject.
 
 Exposed to: Window, Worker. Source: `api/media_source.widl`.
 
+Odin: `import "wren:mse"`.
+
 ## Types
 
 ### handle `MediaSource` : `Object`

@@ -8,6 +8,8 @@ VideoPlaybackQuality are made by the engine (native/js/runtime/web_mediaobjects.
 
 Exposed to: Window. Source: `api/media_element.widl`.
 
+Odin: `import "wren:htmlmedia"`.
+
 ## Types
 
 ### handle `HTMLMediaElement` : `Element`

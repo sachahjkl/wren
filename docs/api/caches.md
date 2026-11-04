@@ -9,6 +9,8 @@ objects; these functions are synchronous. Security for a realm that is not a sec
 
 Exposed to: Window, Worker. Source: `api/caches.widl`.
 
+Odin: `import "wren:caches"`.
+
 ## Functions
 
 ### `CacheStorage_check`

@@ -9,7 +9,7 @@ Doc_File :: struct {
 }
 
 // Markdown: an index with the ABI conventions, then one page per module.
-emit_docs :: proc(api: ^Api, cfg: Host_Config) -> []Doc_File {
+emit_docs :: proc(api: ^Api, cfg: Host_Config, guest: Guest_Config) -> []Doc_File {
 	files := make([dynamic]Doc_File)
 	idx := out_make()
 	wl(&idx, "<!-- %s -->", GENERATED_BY)
@@ -17,8 +17,31 @@ emit_docs :: proc(api: ^Api, cfg: Host_Config) -> []Doc_File {
 	wl(&idx, "# Web API of Wren (Wasm imports)")
 	wl(&idx, "")
 	wl(&idx, "Every function a page or worker module can import, generated from `api/*.widl`. The same description produces the")
-	wl(&idx, "host trampolines (`src/page/api_generated.odin`), the Odin guest SDK (`sdk/odin/web`), these pages and the")
+	wl(&idx, "host trampolines (`src/page/api_generated.odin`), the Odin guest SDK (`sdk/odin`), these pages and the")
 	wl(&idx, "conformance tests (`examples/apiconformance`, `src/tools/apiconformance`).")
+	wl(&idx, "")
+	wl(&idx, "## The Odin SDK")
+	wl(&idx, "")
+	wl(&idx, "`sdk/odin` is a collection of packages, one per area of the API: a module, or the modules of one package below.")
+	wl(&idx, "A program names the collection when it is built and imports the packages it uses:")
+	wl(&idx, "")
+	wl(&idx, "```odin")
+	wl(&idx, "import \"%s:core\"   // errors, host objects, promises, buffers, events: what every other package uses", guest.collection)
+	wl(&idx, "import \"%s:dom\"", guest.collection)
+	wl(&idx, "```")
+	wl(&idx, "")
+	wl(&idx, "```")
+	wl(&idx, "odin build . -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:%s=<path to sdk/odin>", guest.collection)
+	wl(&idx, "```")
+	wl(&idx, "")
+	for p in guest.packages { wl(&idx, "* `%s:%s` holds the modules %s.", guest.collection, p.name, backticks(p.modules)) }
+	wl(&idx, "* any other module is the package of its name (module `dom` is `%s:dom`).", guest.collection)
+	wl(&idx, "")
+	wl(&idx, "Names are the Web IDL names of this description, without an interface prefix that repeats the package's name:")
+	wl(&idx, "`Fetch_promise` of module `fetch` is `fetch.promise`, `console_log` is `console.log`, `URL_parse` is `url.parse`")
+	wl(&idx, "(the prefix compared without case); a prefix naming one interface among several of the package stays")
+	wl(&idx, "(`dom.Node_appendChild`, `dom.Document_getElementById`), and so does one whose rest would be an Odin keyword or a")
+	wl(&idx, "builtin the wrappers call. A function's page says its Odin name when it differs.")
 	wl(&idx, "")
 	wl(&idx, "## ABI")
 	wl(&idx, "")
@@ -60,14 +83,14 @@ emit_docs :: proc(api: ^Api, cfg: Host_Config) -> []Doc_File {
 	wl(&idx, "")
 	wl(&idx, "## Modules")
 	wl(&idx, "")
-	wl(&idx, "| module | functions | exposed | |")
-	wl(&idx, "|---|---:|---|---|")
+	wl(&idx, "| module | Odin package | functions | exposed | |")
+	wl(&idx, "|---|---|---:|---|---|")
 	for m in api.modules {
 		if m.partial { continue }
 		n := 0
 		for d in api.functions { if d.module == m { n += len(d.imports) } }
 		first := strings.split_lines(m.doc, context.temp_allocator)[0] if m.doc != "" else ""
-		wl(&idx, "| [`%s`](%s.md) | %d | %s | %s |", m.name, m.name, n, realms_text(m.exposed), first)
+		wl(&idx, "| [`%s`](%s.md) | `%s:%s` | %d | %s | %s |", m.name, m.name, guest.collection, guest_package_of(guest, m.name), n, realms_text(m.exposed), first)
 	}
 	wl(&idx, "")
 	total := 0
@@ -83,7 +106,10 @@ emit_docs :: proc(api: ^Api, cfg: Host_Config) -> []Doc_File {
 		wl(&o, "# Module `%s`", m.name)
 		wl(&o, "")
 		if m.doc != "" { wl(&o, "%s", m.doc); wl(&o, "") }
+		pkg := guest_package_of(guest, m.name)
 		wl(&o, "Exposed to: %s. Source: `%s`.", realms_text(m.exposed), m.file)
+		wl(&o, "")
+		wl(&o, "Odin: `import \"%s:%s\"`.", guest.collection, pkg)
 		wl(&o, "")
 		types := false
 		for mm in api.modules {
@@ -106,6 +132,7 @@ emit_docs :: proc(api: ^Api, cfg: Host_Config) -> []Doc_File {
 			wl(&o, "")
 			if d.doc != "" { wl(&o, "%s", d.doc); wl(&o, "") }
 			if len(d.imports) > 1 { wl(&o, "Imported as %s.", backticks(d.imports)); wl(&o, "") }
+			if name := guest_name(pkg, d.imports[0]); name != d.imports[0] { wl(&o, "Odin: `%s.%s`.", pkg, name); wl(&o, "") }
 			if d.exposed != m.exposed { wl(&o, "Exposed to: %s.", realms_text(d.exposed)); wl(&o, "") }
 			if d.raises { wl(&o, "Raises: returns an `Error` (see [web](web.md)).") ; wl(&o, "") }
 			if d.effects { wl(&o, "Has effects: call it once per result (no length query).") ; wl(&o, "") }

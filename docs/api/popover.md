@@ -9,6 +9,8 @@ the source (the invoker, 0 for none).
 
 Exposed to: Window. Source: `api/popover.widl`.
 
+Odin: `import "wren:popover"`.
+
 ## Functions
 
 ### `Popover_show`
@@ -19,6 +21,8 @@ void Popover_show(Element element, optional Element source) raises
 
 element.showPopover({source}): Not_Supported without a valid popover attribute, Invalid_State when it is not
 connected or is the fullscreen element; nothing when it is showing already or a beforetoggle listener cancelled.
+
+Odin: `popover.show`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -32,6 +36,8 @@ void Popover_hide(Element element) raises
 
 element.hidePopover(): the same errors.
 
+Odin: `popover.hide`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Popover_hide :: proc(c: ^Call, element: Api_Element) -> Api_Error`
@@ -43,6 +49,8 @@ bool Popover_toggle(Element element, i32 force, optional Element source) raises
 ```
 
 element.togglePopover(force): force -1 none, 0 false (hide only), 1 true (show only). Whether it shows after.
+
+Odin: `popover.toggle`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -56,6 +64,8 @@ i32 Popover_state(Element element)
 
 The popover attribute's state: 0 none, 1 auto, 2 manual, 3 hint.
 
+Odin: `popover.state`.
+
 Host: `Popover_state :: proc(c: ^Call, element: Api_Element) -> i32`
 
 ### `Popover_targetOf`
@@ -65,6 +75,8 @@ Element Popover_targetOf(Element invoker)
 ```
 
 The popover a button's popovertarget names (0: none).
+
+Odin: `popover.targetOf`.
 
 Host: `Popover_targetOf :: proc(c: ^Call, invoker: Api_Element) -> u64`
 

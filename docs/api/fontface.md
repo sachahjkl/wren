@@ -7,6 +7,8 @@ no style sheet a script can see. The objects are native/js/odin/web_fontface.js.
 
 Exposed to: Window. Source: `api/fontface.widl`.
 
+Odin: `import "wren:fontface"`.
+
 ## Functions
 
 ### `FontFace_addRule`
@@ -17,6 +19,8 @@ i32 FontFace_addRule(string rule)
 
 The @font-face rule, in force: a number for FontFace_removeRule, -1 when there is no document to style.
 
+Odin: `fontface.addRule`.
+
 Host: `FontFace_addRule :: proc(c: ^Call, rule: string) -> i32`
 
 ### `FontFace_removeRule`
@@ -24,6 +28,8 @@ Host: `FontFace_addRule :: proc(c: ^Call, rule: string) -> i32`
 ```
 void FontFace_removeRule(i32 id)
 ```
+
+Odin: `fontface.removeRule`.
 
 Host: `FontFace_removeRule :: proc(c: ^Call, id: i32)`
 

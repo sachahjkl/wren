@@ -7,6 +7,8 @@ of the calling module, and the entry point of a page module.
 
 Exposed to: Window, Worker. Source: `api/web.widl`.
 
+Odin: `import "wren:core"`.
+
 ## Types
 
 ### enum `Error` : i32

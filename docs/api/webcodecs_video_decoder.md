@@ -8,6 +8,8 @@ callbacks; a decoded VideoFrame is delivered through the output callback (user, 
 
 Exposed to: Window, Worker. Source: `api/webcodecs_video_decoder.widl`.
 
+Odin: `import "wren:webcodecs"`.
+
 ## Types
 
 ### handle `VideoDecoder` : `Object`

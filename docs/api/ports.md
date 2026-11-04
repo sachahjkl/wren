@@ -9,6 +9,8 @@ for its next owner.
 
 Exposed to: Window, Worker. Source: `api/ports.widl`.
 
+Odin: `import "wren:ports"`.
+
 ## Functions
 
 ### `Port_entangle`

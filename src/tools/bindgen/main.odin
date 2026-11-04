@@ -2,7 +2,7 @@
 //   bindgen          writes what changed (wrentool build runs it)
 //   bindgen -check   writes nothing, fails if a generated file is missing, stale or left over (test_all runs it)
 // Run from the repository root. Targets:
-//   * the browser API: api/*.widl -> src/page/api_generated.odin (host), sdk/odin/web/<module>.odin (guest SDK),
+//   * the browser API: api/*.widl -> src/page/api_generated.odin (host), sdk/odin/<package>/<module>.odin (guest SDK),
 //     native/js/gen/wren_api.h (C guests), docs/api/*.md, examples/apiconformance + src/tools/apiconformance/cases_generated.odin (conformance tests)
 //   * the host-call benchmark: src/tools/wasmbench/bench.widl -> its host and guest bindings
 package bindgen
@@ -20,8 +20,8 @@ Target :: struct {
 	sources:          []string,   // .widl files or directories of them
 	host:             idl.Host_Config,
 	host_out:         string,
-	guest_package:    string,
-	guest_dir:        string,     // one file per module ("" = none)
+	guest:            idl.Guest_Config,
+	guest_dir:        string,     // the collection: <package>/<module>.odin ("" = none)
 	guest_file:       string,     // or everything in one file
 	docs_dir:         string,
 	conf_guest:       string,
@@ -53,10 +53,18 @@ BENCH_HOST :: idl.Host_Config{
 	scrub = "api_scrub", invoke = "api_invoke", call_export = "api_call_export", invoke_ctx = "rawptr", collection = "wb:",
 }
 
+// The Odin SDK's packages of several modules (every other module is a package of its own name): core is what every
+// package shares (errors, host objects, promises, buffers, event targets: the three modules name each other's types,
+// and Odin packages cannot import each other), webcodecs the modules of one specification.
+SDK_PACKAGES := [?]idl.Guest_Package{
+	{name = "core", modules = {"web", "async", "events"}},
+	{name = "webcodecs", modules = {"webcodecs", "webcodecs_audio_decoder", "webcodecs_codec", "webcodecs_encoders", "webcodecs_image", "webcodecs_video_decoder"}},
+}
+
 TARGETS := [?]Target{
 	{
 		sources = {"api"}, host = PAGE_HOST, host_out = "src/page/api_generated.odin",
-		guest_package = "web", guest_dir = "sdk/odin/web", docs_dir = "docs/api",
+		guest = {collection = "wren", packages = SDK_PACKAGES[:]}, guest_dir = "sdk/odin", docs_dir = "docs/api",
 		conf_guest = "examples/apiconformance/main.odin", conf_guest_pkg = "apiconformance",
 		conf_table = "src/tools/apiconformance/cases_generated.odin", conf_table_pkg = "apiconformance",
 		c_header = "native/js/gen/wren_api.h",
@@ -64,7 +72,7 @@ TARGETS := [?]Target{
 	},
 	{
 		sources = {"src/tools/wasmbench/bench.widl"}, host = BENCH_HOST, host_out = "src/tools/wasmbench/bench_generated.odin",
-		guest_package = "wasmbench", guest_file = "examples/wasmbench/bench_generated.odin",
+		guest = {package_name = "wasmbench"}, guest_file = "examples/wasmbench/bench_generated.odin",
 	},
 }
 
@@ -141,26 +149,27 @@ run :: proc(t: Target) -> ^idl.Api {
 	}
 	emit(t.host_out, idl.emit_host(api, t.host))
 	if t.guest_dir != "" {
-		keep := make(map[string]bool)
+		for c in idl.guest_name_clashes(api, t.guest) { fmt.eprintfln("bindgen: the Odin SDK: %s", c); problems += 1 }
+		keep := make(map[string]bool)   // <package>/<module>.odin
 		for m in api.modules {
 			if m.partial { continue }
-			path := filepath.join({t.guest_dir, fmt.tprintf("%s.odin", m.name)}) or_else ""
-			emit(path, idl.emit_guest_module(api, idl.Guest_Config{package_name = t.guest_package}, m))
-			keep[filepath.base(path)] = true
+			file := fmt.tprintf("%s/%s.odin", idl.guest_package_of(t.guest, m.name), m.name)
+			emit(filepath.join({t.guest_dir, file}) or_else "", idl.emit_guest_module(api, t.guest, m))
+			keep[file] = true
 		}
-		prune(t.guest_dir, ".odin", keep)
+		prune_packages(t.guest_dir, keep)
 	}
 	if t.guest_file != "" {
 		b := strings.builder_make()
 		for m in api.modules {
 			if m.partial { continue }
-			strings.write_string(&b, idl.emit_guest_module(api, idl.Guest_Config{package_name = t.guest_package}, m))
+			strings.write_string(&b, idl.emit_guest_module(api, t.guest, m))
 		}
 		emit(t.guest_file, strings.to_string(b))
 	}
 	if t.docs_dir != "" {
 		keep := make(map[string]bool)
-		for f in idl.emit_docs(api, t.host) {
+		for f in idl.emit_docs(api, t.host, t.guest) {
 			emit(filepath.join({t.docs_dir, f.name}) or_else "", f.text)
 			keep[f.name] = true
 		}
@@ -261,7 +270,7 @@ verify_roundtrip :: proc() {
 		if m.partial { continue }
 		om, ok := by_name[m.name]
 		if !ok { fmt.eprintfln("bindgen -verify-roundtrip: module %s missing from the Odin form", m.name); diffs += 1; continue }
-		check(fmt.tprintf("guest %s", m.name), idl.emit_guest_module(widl, idl.Guest_Config{package_name = t.guest_package}, m), idl.emit_guest_module(odin, idl.Guest_Config{package_name = t.guest_package}, om), &diffs)
+		check(fmt.tprintf("guest %s", m.name), idl.emit_guest_module(widl, t.guest, m), idl.emit_guest_module(odin, t.guest, om), &diffs)
 	}
 	// docs carry a "Source: `api/<file>`" line and a count of modules per spec in the README: these legitimately name
 	// the new .odin files, so they are normalized away before comparing (the migration renames the source, the
@@ -281,8 +290,8 @@ verify_roundtrip :: proc() {
 		}
 		return strings.to_string(b)
 	}
-	dw := idl.emit_docs(widl, t.host)
-	docs_odin := idl.emit_docs(odin, t.host)
+	dw := idl.emit_docs(widl, t.host, t.guest)
+	docs_odin := idl.emit_docs(odin, t.host, t.guest)
 	docs_by_name := make(map[string]string)
 	for f in docs_odin { docs_by_name[f.name] = f.text }
 	for f in dw {
@@ -416,6 +425,21 @@ emit :: proc(path, text: string) {
 		return
 	}
 	written += 1
+}
+
+// prune over the package folders of a collection (`keep` names <package>/<file>); a folder left empty is removed.
+prune_packages :: proc(root: string, keep: map[string]bool) {
+	infos, err := os.read_all_directory_by_path(root, context.allocator)
+	if err != nil { return }
+	for fi in infos {
+		if fi.type != .Directory { continue }
+		in_dir := make(map[string]bool, context.temp_allocator)
+		prefix := fmt.tprintf("%s/", fi.name)
+		for k in keep { if strings.has_prefix(k, prefix) { in_dir[k[len(prefix):]] = true } }
+		prune(fi.fullpath, ".odin", in_dir)
+		if check_only { continue }
+		if left, lerr := os.read_all_directory_by_path(fi.fullpath, context.temp_allocator); lerr == nil && len(left) == 0 { _ = os.remove(fi.fullpath) }
+	}
 }
 
 // Deletes generated files of `dir` no description produces any more (hand-written files are left alone).

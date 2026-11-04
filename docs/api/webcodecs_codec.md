@@ -8,6 +8,8 @@ copyTo. All the layouts and conversions are native.
 
 Exposed to: Window, Worker. Source: `api/webcodecs_codec.widl`.
 
+Odin: `import "wren:webcodecs"`.
+
 ## Types
 
 ### handle `EncodedVideoChunk` : `Object`

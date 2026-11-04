@@ -7,6 +7,8 @@ realm that made it (an image, a stylesheet, a frame, a media element).
 
 Exposed to: Window, Worker. Source: `api/bloburl.widl`.
 
+Odin: `import "wren:bloburl"`.
+
 ## Functions
 
 ### `BlobURL_register`
@@ -17,6 +19,8 @@ void BlobURL_register(string url, string type, bytes data)
 
 The bytes (a copy) a blob: URL stands for, until BlobURL_revoke or the end of the realm.
 
+Odin: `bloburl.register`.
+
 Host: `BlobURL_register :: proc(c: ^Call, url: string, type: string, data: []u8)`
 
 ### `BlobURL_revoke`
@@ -24,6 +28,8 @@ Host: `BlobURL_register :: proc(c: ^Call, url: string, type: string, data: []u8)
 ```
 void BlobURL_revoke(string url)
 ```
+
+Odin: `bloburl.revoke`.
 
 Host: `BlobURL_revoke :: proc(c: ^Call, url: string)`
 

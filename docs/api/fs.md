@@ -9,6 +9,8 @@ Errors carry their DOMException's name first in the message ("TypeMismatchError:
 
 Exposed to: Window, Worker. Source: `api/fs.widl`.
 
+Odin: `import "wren:fs"`.
+
 ## Functions
 
 ### `Fs_opfsRoot`
@@ -20,6 +22,8 @@ u64 Fs_opfsRoot(usvstring bucket) raises
 navigator.storage.getDirectory(): the root of the realm's origin private file system. Security outside a secure
 context, for an opaque origin or a profile without a folder. `bucket`: a storage bucket's (StorageBucket.getDirectory),
 "" for the default one; Invalid_State once the bucket was deleted.
+
+Odin: `fs.opfsRoot`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -34,6 +38,8 @@ string Fs_getEntry(u64 root, string path, string name, bool directory, bool crea
 getFileHandle / getDirectoryHandle(name, {create}) on the directory at `path`: the child's path. Not_Found,
 Type (an invalid name), Not_Allowed (no permission), Invalid_State ("TypeMismatchError": the other kind).
 
+Odin: `fs.getEntry`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Fs_getEntry :: proc(c: ^Call, root: u64, path: string, name: string, directory: bool, create: bool) -> (string, Api_Error)`
@@ -47,6 +53,8 @@ void Fs_removeEntry(u64 root, string path, string name, bool recursive) raises
 removeEntry(name, {recursive}): Invalid_Modification for a directory that is not empty, No_Modification_Allowed
 for an entry in use.
 
+Odin: `fs.removeEntry`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Fs_removeEntry :: proc(c: ^Call, root: u64, path: string, name: string, recursive: bool) -> Api_Error`
@@ -58,6 +66,8 @@ string Fs_list(u64 root, string path) raises
 ```
 
 The directory's entries: "f" or "d", a tab, the name, one per line.
+
+Odin: `fs.list`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -71,6 +81,8 @@ string Fs_resolve(u64 root, string path, u64 root2, string path2) raises
 
 resolve(): the names from the first entry down to the second, "/"-joined (Not_Found: not below it).
 
+Odin: `fs.resolve`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Fs_resolve :: proc(c: ^Call, root: u64, path: string, root2: u64, path2: string) -> (string, Api_Error)`
@@ -83,6 +95,8 @@ bool Fs_same(u64 root, string path, u64 root2, string path2)
 
 isSameEntry
 
+Odin: `fs.same`.
+
 Host: `Fs_same :: proc(c: ^Call, root: u64, path: string, root2: u64, path2: string) -> bool`
 
 ### `Fs_getFile`
@@ -92,6 +106,8 @@ u64 Fs_getFile(u64 root, string path) raises
 ```
 
 getFile(): a File object (a LocalFile of module dnd: read on demand).
+
+Odin: `fs.getFile`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -106,6 +122,8 @@ u64 Fs_open(u64 root, string path, bool keep, bool sync) raises
 createWritable({keepExistingData}) (a temporary file) or createSyncAccessHandle() (`sync`: the file itself,
 exclusive): an open entry's id. No_Modification_Allowed while it is locked.
 
+Odin: `fs.open`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Fs_open :: proc(c: ^Call, root: u64, path: string, keep: bool, sync: bool) -> (u64, Api_Error)`
@@ -117,6 +135,8 @@ i64 Fs_write(u64 id, i64 at, bytes data) raises
 ```
 
 Writes at `at` (-1: the cursor): the bytes written. Quota past opfs.max_bytes_per_origin.
+
+Odin: `fs.write`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -130,6 +150,8 @@ i64 Fs_read(u64 id, i64 at, out bytes into) raises
 
 Reads into `into` from `at` (-1: the cursor): the bytes read.
 
+Odin: `fs.read`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Fs_read :: proc(c: ^Call, id: u64, at: i64, into: []u8) -> (i64, Api_Error)`
@@ -139,6 +161,8 @@ Host: `Fs_read :: proc(c: ^Call, id: u64, at: i64, into: []u8) -> (i64, Api_Erro
 ```
 void Fs_seek(u64 id, i64 position) raises
 ```
+
+Odin: `fs.seek`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -150,6 +174,8 @@ Host: `Fs_seek :: proc(c: ^Call, id: u64, position: i64) -> Api_Error`
 void Fs_truncate(u64 id, i64 size) raises
 ```
 
+Odin: `fs.truncate`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Fs_truncate :: proc(c: ^Call, id: u64, size: i64) -> Api_Error`
@@ -160,6 +186,8 @@ Host: `Fs_truncate :: proc(c: ^Call, id: u64, size: i64) -> Api_Error`
 i64 Fs_size(u64 id) raises
 ```
 
+Odin: `fs.size`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Fs_size :: proc(c: ^Call, id: u64) -> (i64, Api_Error)`
@@ -169,6 +197,8 @@ Host: `Fs_size :: proc(c: ^Call, id: u64) -> (i64, Api_Error)`
 ```
 void Fs_flush(u64 id) raises
 ```
+
+Odin: `fs.flush`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -182,6 +212,8 @@ void Fs_close(u64 id, bool commit) raises
 
 close(): a writable's temporary file replaces the entry (`commit` false: abort); a sync handle's lock goes.
 
+Odin: `fs.close`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Fs_close :: proc(c: ^Call, id: u64, commit: bool) -> Api_Error`
@@ -194,6 +226,8 @@ i32 Fs_permission(u64 root, bool write)
 
 queryPermission: 0 granted, 1 prompt, 2 denied.
 
+Odin: `fs.permission`.
+
 Host: `Fs_permission :: proc(c: ^Call, root: u64, write: bool) -> i32`
 
 ### `Fs_requestPermission`
@@ -203,6 +237,8 @@ Promise Fs_requestPermission(u64 root, bool write) raises
 ```
 
 requestPermission({mode}): a promise of the state after (the user may be asked).
+
+Odin: `fs.requestPermission`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -218,6 +254,8 @@ showOpenFilePicker (kind 0), showSaveFilePicker (1), showDirectoryPicker (2): a 
 handles, its text one line per handle: root TAB path TAB "f" or "d" TAB name. Abort when cancelled, Security
 without a user gesture, Not_Supported when disabled. `types`: a line per type, description TAB patterns...
 
+Odin: `fs.showPicker`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Fs_showPicker :: proc(c: ^Call, kind: i32, types: string, multiple: bool, exclude_all: bool, suggested: string, start_in: string, start_root: u64, start_path: string, id: string, readwrite: bool) -> (u64, Api_Error)`
@@ -230,6 +268,8 @@ string Fs_describe(u64 root)
 
 A root as structuredClone keeps it ("" when unknown).
 
+Odin: `fs.describe`.
+
 Host: `Fs_describe :: proc(c: ^Call, root: u64) -> string`
 
 ### `Fs_restore`
@@ -239,6 +279,8 @@ u64 Fs_restore(string description) raises
 ```
 
 The root a kept description stands for in this realm. Data_Clone for another origin's.
+
+Odin: `fs.restore`.
 
 Raises: returns an `Error` (see [web](web.md)).
 

@@ -7,6 +7,8 @@ U+FFFD.
 
 Exposed to: Window, Worker. Source: `api/console.widl`.
 
+Odin: `import "wren:console"`.
+
 ## Functions
 
 ### `console_log`
@@ -16,6 +18,8 @@ void console_log(usvstring message)
 ```
 
 console.log(message)
+
+Odin: `console.log`.
 
 Host: `console_log :: proc(c: ^Call, message: string)`
 
@@ -27,6 +31,8 @@ void console_warn(usvstring message)
 
 console.warn(message)
 
+Odin: `console.warn`.
+
 Host: `console_warn :: proc(c: ^Call, message: string)`
 
 ### `console_error`
@@ -36,6 +42,8 @@ void console_error(usvstring message)
 ```
 
 console.error(message)
+
+Odin: `console.error`.
 
 Host: `console_error :: proc(c: ^Call, message: string)`
 

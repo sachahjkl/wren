@@ -12,6 +12,8 @@ the browser sent it).
 
 Exposed to: Window, Worker. Source: `api/serviceworker.widl`.
 
+Odin: `import "wren:serviceworker"`.
+
 ## Types
 
 ### struct `SwEventInfo`
@@ -39,6 +41,8 @@ navigator.serviceWorker.register(script, {scope, updateViaCache, type}): a promi
 resolved once the script ran (an unchanged script: at once; TypeError when it failed). Security outside a secure
 context, for another origin or a scope outside what the script may control.
 
+Odin: `serviceworker.register`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `ServiceWorker_register :: proc(c: ^Call, script: string, scope: Maybe(string), update_via_cache: string, module: bool) -> (u64, Api_Error)`
@@ -51,6 +55,8 @@ Promise ServiceWorker_ready()
 
 navigator.serviceWorker.ready: a promise of the id of the active registration whose scope holds the page.
 
+Odin: `serviceworker.ready`.
+
 Host: `ServiceWorker_ready :: proc(c: ^Call) -> u64`
 
 ### `ServiceWorker_getRegistration`
@@ -60,6 +66,8 @@ u64 ServiceWorker_getRegistration(string client_url)
 ```
 
 getRegistration(clientURL): the id of the registration matching the URL (0: none).
+
+Odin: `serviceworker.getRegistration`.
 
 Host: `ServiceWorker_getRegistration :: proc(c: ^Call, client_url: string) -> u64`
 
@@ -71,6 +79,8 @@ string ServiceWorker_registrationIds()
 
 getRegistrations(): the ids of the origin's registrations, "\n"-separated.
 
+Odin: `serviceworker.registrationIds`.
+
 Host: `ServiceWorker_registrationIds :: proc(c: ^Call) -> string`
 
 ### `ServiceWorker_controller`
@@ -80,6 +90,8 @@ u64 ServiceWorker_controller()
 ```
 
 navigator.serviceWorker.controller: the id of the version controlling the page (0: none).
+
+Odin: `serviceworker.controller`.
 
 Host: `ServiceWorker_controller :: proc(c: ^Call) -> u64`
 
@@ -101,6 +113,8 @@ string ServiceWorker_info(u64 version)
 ```
 
 A version ("" when unknown): its state, then its script URL ("\n"-separated).
+
+Odin: `serviceworker.info`.
 
 Host: `ServiceWorker_info :: proc(c: ^Call, version: u64) -> string`
 
@@ -148,6 +162,8 @@ void ServiceWorker_postToWorker(u64 version, bytes data) raises
 
 serviceWorker.postMessage(message): the serialized message to that version's worker (started if it stopped).
 
+Odin: `serviceworker.postToWorker`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `ServiceWorker_postToWorker :: proc(c: ^Call, version: u64, data: []u8) -> Api_Error`
@@ -160,6 +176,8 @@ bytes ServiceWorker_takeMessage() raises
 
 The next message a service worker sent this page (Not_Found when none waits): the sender's version id (8 bytes)
 then the serialized message.
+
+Odin: `serviceworker.takeMessage`.
 
 Raises: returns an `Error` (see [web](web.md)).
 

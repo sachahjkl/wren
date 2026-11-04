@@ -7,6 +7,8 @@ identity for navigator, beacons, the screen, media queries scripts evaluate (mat
 
 Exposed to: Window, Worker. Source: `api/js_web.widl`.
 
+Odin: `import "wren:navigator"`.
+
 ## Types
 
 ### enum `NavigatorField` : i32
@@ -32,6 +34,8 @@ string Navigator_get(NavigatorField field)
 
 A string member of Navigator.
 
+Odin: `navigator.get`.
+
 Host: `Navigator_get :: proc(c: ^Call, field: Api_NavigatorField) -> string`
 
 ### `Navigator_hardwareConcurrency`
@@ -41,6 +45,8 @@ i32 Navigator_hardwareConcurrency()
 ```
 
 navigator.hardwareConcurrency: the logical processors the page may use.
+
+Odin: `navigator.hardwareConcurrency`.
 
 Host: `Navigator_hardwareConcurrency :: proc(c: ^Call) -> i32`
 
@@ -52,6 +58,8 @@ bool Navigator_onLine()
 
 navigator.onLine: whether the system has a network connection.
 
+Odin: `navigator.onLine`.
+
 Host: `Navigator_onLine :: proc(c: ^Call) -> bool`
 
 ### `Navigator_maxTouchPoints`
@@ -62,6 +70,8 @@ i32 Navigator_maxTouchPoints()
 
 navigator.maxTouchPoints: the touches the touch screen takes at once (0: none), as browser.touch.expose says.
 
+Odin: `navigator.maxTouchPoints`.
+
 Host: `Navigator_maxTouchPoints :: proc(c: ^Call) -> i32`
 
 ### `Navigator_cookieEnabled`
@@ -71,6 +81,8 @@ bool Navigator_cookieEnabled()
 ```
 
 navigator.cookieEnabled: whether the document may use cookies.
+
+Odin: `navigator.cookieEnabled`.
 
 Host: `Navigator_cookieEnabled :: proc(c: ^Call) -> bool`
 

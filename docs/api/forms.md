@@ -12,6 +12,8 @@ FormDataEvent.formData are Event_object.
 
 Exposed to: Window. Source: `api/forms.widl`.
 
+Odin: `import "wren:forms"`.
+
 ## Types
 
 ### handle `FormData` : `Object`

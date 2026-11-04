@@ -4,6 +4,8 @@
 
 Exposed to: Window. Source: `api/js_web.widl`.
 
+Odin: `import "wren:media"`.
+
 ## Types
 
 ### handle `MediaQueryList` : `Object`

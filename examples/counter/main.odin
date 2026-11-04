@@ -2,12 +2,15 @@
 // <script type="application/wasm" src="counter.wasm">.
 package counter
 
-import "web:web"
+import "wren:console"
+import "wren:core"
+import "wren:dom"
+import "wren:timers"
 
 count: i64
-count_node: web.Element
+count_node: dom.Element
 ticks: i64
-clock_node: web.Element
+clock_node: dom.Element
 
 itoa :: proc "contextless" (v: i64, buf: []u8) -> string {
 	if v == 0 { buf[0] = '0'; return string(buf[:1]) }
@@ -21,33 +24,33 @@ itoa :: proc "contextless" (v: i64, buf: []u8) -> string {
 
 show :: proc "contextless" () {
 	b: [24]u8
-	web.Node_setTextContent(count_node, itoa(count, b[:]))
+	dom.Node_setTextContent(count_node, itoa(count, b[:]))
 }
 
-on_button :: proc "contextless" (user: i32, ev: web.Event) {
+on_button :: proc "contextless" (user: i32, ev: core.Event) {
 	if user == 0 { count = 0 } else { count += i64(user) }
 	show()
-	web.Event_preventDefault(ev)   // the buttons live inside links in the demo: do not navigate
+	core.Event_preventDefault(ev)   // the buttons live inside links in the demo: do not navigate
 }
 
 on_tick :: proc "contextless" (user: i32) {
 	ticks += 1
 	b: [24]u8
-	web.Node_setTextContent(clock_node, itoa(ticks, b[:]))
+	dom.Node_setTextContent(clock_node, itoa(ticks, b[:]))
 }
 
 @(export)
 wb_main :: proc "contextless" () {
-	count_node = web.Document_getElementById("count")
-	clock_node = web.Document_getElementById("clock")
+	count_node = dom.Document_getElementById("count")
+	clock_node = dom.Document_getElementById("clock")
 	if count_node == 0 {
-		web.console_error("#count not found")
+		console.error("#count not found")
 		return
 	}
-	web.EventTarget_addEventListener(web.Document_getElementById("inc"), "click", on_button, 1)
-	web.EventTarget_addEventListener(web.Document_getElementById("dec"), "click", on_button, -1)
-	web.EventTarget_addEventListener(web.Document_getElementById("reset"), "click", on_button, 0)
-	web.Timers_setInterval(on_tick, 0, 1000)
+	core.EventTarget_addEventListener(dom.Document_getElementById("inc"), "click", on_button, 1)
+	core.EventTarget_addEventListener(dom.Document_getElementById("dec"), "click", on_button, -1)
+	core.EventTarget_addEventListener(dom.Document_getElementById("reset"), "click", on_button, 0)
+	timers.setInterval(on_tick, 0, 1000)
 	show()
-	web.console_log("counter ready")
+	console.log("counter ready")
 }

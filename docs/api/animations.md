@@ -12,6 +12,8 @@ timelineTime, NaN for null).
 
 Exposed to: Window. Source: `api/animations.widl`.
 
+Odin: `import "wren:animations"`.
+
 ## Types
 
 ### handle `Animation` : `Object`

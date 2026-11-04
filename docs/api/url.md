@@ -8,6 +8,8 @@ first.
 
 Exposed to: Window, Worker. Source: `api/url.widl`.
 
+Odin: `import "wren:url"`.
+
 ## Types
 
 ### handle `URL` : `Object`
@@ -65,6 +67,8 @@ URL URL_parse(string input, optional string base) raises
 
 new URL(input, base): Type when the input (or the base) is not a valid URL or too long (web.url_max_length).
 
+Odin: `url.parse`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `URL_parse :: proc(c: ^Call, input: string, base: Maybe(string)) -> (u64, Api_Error)`
@@ -77,6 +81,8 @@ bool URL_canParse(string input, optional string base)
 
 URL.canParse(input, base)
 
+Odin: `url.canParse`.
+
 Host: `URL_canParse :: proc(c: ^Call, input: string, base: Maybe(string)) -> bool`
 
 ### `URL_get`
@@ -86,6 +92,8 @@ string URL_get(URL url, URLComponent component)
 ```
 
 A getter: url.href, url.protocol...
+
+Odin: `url.get`.
 
 Host: `URL_get :: proc(c: ^Call, url: Api_URL, component: Api_URLComponent) -> string`
 
@@ -98,6 +106,8 @@ void URL_set(URL url, URLComponent component, string value) raises
 A setter. Only href can fail (Type); values the standard ignores leave the URL unchanged. Origin is read-only
 (Invalid_Argument).
 
+Odin: `url.set`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `URL_set :: proc(c: ^Call, url: Api_URL, component: Api_URLComponent, value: string) -> Api_Error`
@@ -109,6 +119,8 @@ URLSearchParams URL_searchParams(URL url)
 ```
 
 url.searchParams: the same object every time.
+
+Odin: `url.searchParams`.
 
 Host: `URL_searchParams :: proc(c: ^Call, url: Api_URL) -> u64`
 

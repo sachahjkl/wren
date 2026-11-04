@@ -117,7 +117,7 @@ SCENARIOS := []Scenario{
 }
 
 // The Wasm guests of the mutation scenarios: built when a run needs them.
-GUEST_FLAGS := []string{"-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-collection:web=sdk/odin", "-o:size"}
+GUEST_FLAGS := []string{"-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-collection:wren=sdk/odin", "-o:size"}
 ensure_guest :: proc(name: string) -> bool {
 	wasm := fmt.tprintf("examples/site/%s.wasm", name)
 	if os.exists(wasm) { return true }

@@ -13,6 +13,8 @@ or with 0 (text "done") at the end; Stream_cancel stops the download.
 
 Exposed to: Window. Source: `api/fetch.widl`.
 
+Odin: `import "wren:fetch"`.
+
 ## Types
 
 ### handle `ReadableStream` : `Object`
@@ -33,6 +35,8 @@ fetch(url, init): the body is `body`, or the bytes of `body_buffer` when given. 
 AbortSignal or the buffer not a buffer. With `integrity` metadata (SRI: sha256-, sha384-, sha512- hashes), the
 promise settles once the whole body is there: with the Response when it matches, rejected (Network) when not.
 
+Odin: `fetch.promise`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Fetch_promise :: proc(c: ^Call, url: string, method: string, headers: string, body: Maybe([]u8), body_buffer: Api_Buffer, signal: Api_AbortSignal, options: Api_FetchOptions, integrity: string) -> (u64, Api_Error)`
@@ -44,6 +48,8 @@ Fetch Fetch_startWithSignal(string url, FetchCallback callback, i32 user = 0, st
 ```
 
 The callback API (Fetch_start) with an abort signal and an optional buffer body.
+
+Odin: `fetch.startWithSignal`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -58,6 +64,8 @@ Fetch Fetch_sync(string url, string method = "GET", string headers = "", optiona
 A synchronous XMLHttpRequest of a worker: the request Fetch_startWithSignal would make, waited for on the worker's
 thread; the finished record (read it with Fetch_status, Fetch_headers, Fetch_readBody..., then release it).
 Not_Supported in a document (its thread is the page's), Timeout past `timeout_ms` (0: none), Network on a failure.
+
+Odin: `fetch.sync`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -144,6 +152,8 @@ Fetch Fetch_startFormData(string url, FormData data, FetchCallback callback, i32
 
 fetch with a FormData body: the Content-Type (with its boundary) is set unless `headers` name one. Same callback
 and options as Fetch_start.
+
+Odin: `fetch.startFormData`.
 
 Host: `Fetch_startFormData :: proc(c: ^Call, url: string, data: Api_FormData, callback: u32, user: i32, method: string, headers: string, enctype: Api_FormEnctype, options: Api_FetchOptions) -> u64`
 

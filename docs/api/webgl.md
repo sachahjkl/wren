@@ -9,6 +9,8 @@ numbers, and the command stream is checked on the device's side. In a worker a c
 
 Exposed to: Window, Worker. Source: `api/webgl.widl`.
 
+Odin: `import "wren:webgl"`.
+
 ## Types
 
 ### callback `WebGLNotify`
@@ -29,6 +31,8 @@ bool WebGL_enabled(i32 version)
 
 The preference webgl.enabled, and webgl.webgl2 for `version` 2.
 
+Odin: `webgl.enabled`.
+
 Host: `WebGL_enabled :: proc(c: ^Call, version: i32) -> bool`
 
 ### `WebGL_create`
@@ -41,6 +45,8 @@ A context on a canvas (an element or an OffscreenCanvas). flags: 1 WebGL 2, 2 al
 32 premultipliedAlpha, 64 preserveDrawingBuffer, 128 failIfMajorPerformanceCaveat. `info`: 8 i32, for the script. 0: refused,
 WebGL_createError says why (nothing when the canvas already has a context of another kind).
 
+Odin: `webgl.create`.
+
 Host: `WebGL_create :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, flags: u32, notify: u32, user: i32, info: []u8) -> u64`
 
 ### `WebGL_createOffscreen`
@@ -49,6 +55,8 @@ Host: `WebGL_create :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, flags: u32,
 u64 WebGL_createOffscreen(OffscreenCanvas canvas, u32 flags, WebGLNotify notify, i32 user, out bytes info)
 ```
 
+Odin: `webgl.createOffscreen`.
+
 Host: `WebGL_createOffscreen :: proc(c: ^Call, canvas: Api_OffscreenCanvas, flags: u32, notify: u32, user: i32, info: []u8) -> u64`
 
 ### `WebGL_createError`
@@ -56,6 +64,8 @@ Host: `WebGL_createOffscreen :: proc(c: ^Call, canvas: Api_OffscreenCanvas, flag
 ```
 string WebGL_createError()
 ```
+
+Odin: `webgl.createError`.
 
 Host: `WebGL_createError :: proc(c: ^Call) -> string`
 
@@ -66,6 +76,8 @@ void WebGL_submit(u64 gl, bytes commands, bytes data, bool drew)
 ```
 
 Commands; `data` is the bytes of the last one. `drew`: the canvas changed.
+
+Odin: `webgl.submit`.
 
 Host: `WebGL_submit :: proc(c: ^Call, gl: u64, commands: []u8, data: []u8, drew: bool)`
 
@@ -78,6 +90,8 @@ f64 WebGL_query(u64 gl, bytes request, out bytes reply)
 A question: waits for the answer (its bytes in `reply`). Its length, or the length it needs when it does not fit; -1: the
 context did not answer in time or is gone.
 
+Odin: `webgl.query`.
+
 Host: `WebGL_query :: proc(c: ^Call, gl: u64, request: []u8, reply: []u8) -> f64`
 
 ### `WebGL_queryText`
@@ -87,6 +101,8 @@ f64 WebGL_queryText(u64 gl, bytes request, bytes text, out bytes reply)
 ```
 
 As WebGL_query, with bytes after the request (a name).
+
+Odin: `webgl.queryText`.
 
 Host: `WebGL_queryText :: proc(c: ^Call, gl: u64, request: []u8, text: []u8, reply: []u8) -> f64`
 
@@ -98,6 +114,8 @@ i32 WebGL_upload(u64 gl, bytes command, u64 source) raises
 
 texImage2D of an element or an ImageBitmap: the command with the source's pixels and size. Raises Security for what the
 page may not read. 1: nothing to read yet (an image still loading), the page gets INVALID_VALUE.
+
+Odin: `webgl.upload`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -111,6 +129,8 @@ u32 WebGL_width(u64 gl)
 
 The drawing buffer's size.
 
+Odin: `webgl.width`.
+
 Host: `WebGL_width :: proc(c: ^Call, gl: u64) -> u32`
 
 ### `WebGL_height`
@@ -118,6 +138,8 @@ Host: `WebGL_width :: proc(c: ^Call, gl: u64) -> u32`
 ```
 u32 WebGL_height(u64 gl)
 ```
+
+Odin: `webgl.height`.
 
 Host: `WebGL_height :: proc(c: ^Call, gl: u64) -> u32`
 
@@ -129,6 +151,8 @@ void WebGL_snapshot(u64 gl)
 
 What was drawn so far into the canvas's bitmap, now (toDataURL, drawImage).
 
+Odin: `webgl.snapshot`.
+
 Host: `WebGL_snapshot :: proc(c: ^Call, gl: u64)`
 
 ### `WebGL_commit`
@@ -139,6 +163,8 @@ void WebGL_commit(u64 gl)
 
 The same, and the frame ends: the drawing buffer starts again as after a present (transferToImageBitmap).
 
+Odin: `webgl.commit`.
+
 Host: `WebGL_commit :: proc(c: ^Call, gl: u64)`
 
 ### `WebGL_isLost`
@@ -146,6 +172,8 @@ Host: `WebGL_commit :: proc(c: ^Call, gl: u64)`
 ```
 bool WebGL_isLost(u64 gl)
 ```
+
+Odin: `webgl.isLost`.
 
 Host: `WebGL_isLost :: proc(c: ^Call, gl: u64) -> bool`
 
@@ -155,6 +183,8 @@ Host: `WebGL_isLost :: proc(c: ^Call, gl: u64) -> bool`
 void WebGL_lose(u64 gl)
 ```
 
+Odin: `webgl.lose`.
+
 Host: `WebGL_lose :: proc(c: ^Call, gl: u64)`
 
 ### `WebGL_restore`
@@ -162,6 +192,8 @@ Host: `WebGL_lose :: proc(c: ^Call, gl: u64)`
 ```
 bool WebGL_restore(u64 gl)
 ```
+
+Odin: `webgl.restore`.
 
 Host: `WebGL_restore :: proc(c: ^Call, gl: u64) -> bool`
 

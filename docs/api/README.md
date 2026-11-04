@@ -3,8 +3,32 @@
 # Web API of Wren (Wasm imports)
 
 Every function a page or worker module can import, generated from `api/*.widl`. The same description produces the
-host trampolines (`src/page/api_generated.odin`), the Odin guest SDK (`sdk/odin/web`), these pages and the
+host trampolines (`src/page/api_generated.odin`), the Odin guest SDK (`sdk/odin`), these pages and the
 conformance tests (`examples/apiconformance`, `src/tools/apiconformance`).
+
+## The Odin SDK
+
+`sdk/odin` is a collection of packages, one per area of the API: a module, or the modules of one package below.
+A program names the collection when it is built and imports the packages it uses:
+
+```odin
+import "wren:core"   // errors, host objects, promises, buffers, events: what every other package uses
+import "wren:dom"
+```
+
+```
+odin build . -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:wren=<path to sdk/odin>
+```
+
+* `wren:core` holds the modules `web`, `async`, `events`.
+* `wren:webcodecs` holds the modules `webcodecs`, `webcodecs_audio_decoder`, `webcodecs_codec`, `webcodecs_encoders`, `webcodecs_image`, `webcodecs_video_decoder`.
+* any other module is the package of its name (module `dom` is `wren:dom`).
+
+Names are the Web IDL names of this description, without an interface prefix that repeats the package's name:
+`Fetch_promise` of module `fetch` is `fetch.promise`, `console_log` is `console.log`, `URL_parse` is `url.parse`
+(the prefix compared without case); a prefix naming one interface among several of the package stays
+(`dom.Node_appendChild`, `dom.Document_getElementById`), and so does one whose rest would be an Odin keyword or a
+builtin the wrappers call. A function's page says its Odin name when it differs.
 
 ## ABI
 
@@ -46,65 +70,65 @@ function not exposed to workers is not instantiated.
 
 ## Modules
 
-| module | functions | exposed | |
-|---|---:|---|---|
-| [`abort`](abort.md) | 10 | Window | AbortController and AbortSignal (DOM Standard). A signal is an EventTarget ("abort"). Its reason is a (code, text) |
-| [`animations`](animations.md) | 30 | Window | Web Animations (src/page/web_animations.odin): Element.animate, Animation, KeyframeEffect, document.timeline. The |
-| [`async`](async.md) | 17 | Window, Worker | Promises, microtasks, buffers and host objects: the asynchronous core every other module builds on. |
-| [`bloburl`](bloburl.md) | 2 | Window, Worker | The blob URL store (src/fetch/blob_urls.odin): what `URL.createObjectURL` makes, for everything that loads a URL outside the |
-| [`caches`](caches.md) | 11 | Window, Worker | The Cache API (Service Workers §5: CacheStorage, Cache) on the browser's storage (src/page/cache_store.odin): named |
-| [`canvas`](canvas.md) | 144 | Window, Worker | Canvas 2D (HTML §4.12.5): the 2D rendering context of <canvas> and OffscreenCanvas, drawn by a software rasterizer |
-| [`compression`](compression.md) | 4 | Window, Worker | CompressionStream and DecompressionStream (Compression Standard; src/page/compression.odin, the streams themselves: |
-| [`console`](console.md) | 3 | Window, Worker | The console of the page (or of the worker): messages appear in the browser's console. Invalid UTF-8 is shown as |
-| [`credentials`](credentials.md) | 16 | Window | Web Authentication Level 3 (passkeys, security keys) and the Credential Management container it hangs off |
-| [`crypto`](crypto.md) | 20 | Window, Worker | Web Crypto: random values, UUIDs and digests (SHA-1, SHA-256, SHA-384, SHA-512 through BCrypt; large inputs are |
-| [`document`](document.md) | 5 | Window, Worker | The document's address, origin and cookies. Window_origin and Window_isSecureContext belong to |
-| [`dom`](dom.md) | 393 | Window, Worker | The document tree (DOM Standard: Document, Node, Element). In a worker there is no document: the functions taking a |
-| [`encoding`](encoding.md) | 8 | Window, Worker | TextEncoder and TextDecoder (Encoding Standard). Decoders keep their state between calls, so every WHATWG label |
-| [`events`](events.md) | 44 | Window, Worker | Events (DOM Standard: EventTarget, Event; UI Events: MouseEvent, KeyboardEvent). Any node and any host object (a |
-| [`eventsource`](eventsource.md) | 7 | Window | Server-sent events (HTML EventSource) and the MessageEvent members that are not plain payload. Messages arrive as |
-| [`fetch`](fetch.md) | 11 | Window | The promise side of the Fetch API, on the same records as the callback API of module net (a Response is a Fetch: |
-| [`fontface`](fontface.md) | 2 | Window | What `document.fonts.add(new FontFace(...))` puts in force: a rule of its own for the document's fonts (src/page/fonts.odin), in |
-| [`forms`](forms.md) | 186 | Window | Form controls (HTML forms): values, checkedness, validity, selection, select / option / form members, focus, and |
-| [`frames`](frames.md) | 29 | Window | Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin, frames_access.odin; |
-| [`fs`](fs.md) | 20 | Window, Worker | File handles (WHATWG File System, WICG File System Access; src/page/fs_store.odin, fs_api.odin; |
-| [`fullscreen`](fullscreen.md) | 6 | Window | The Fullscreen API (src/page/fullscreen.odin): an element fills the screen. The page keeps one fullscreen element per |
-| [`history`](history.md) | 14 | Window | Window, Location and History (HTML). Navigations requested by a module happen from a task of their own, never |
-| [`idb`](idb.md) | 1 | Window, Worker | IndexedDB (the JavaScript engine's prelude, native/js/lazy/idb.js, is the only caller). One entry point: the |
-| [`images`](images.md) | 6 | Window, Worker | Images: HTMLImageElement (<img> and <input type=image>) and decoding image files from buffers. naturalWidth and |
-| [`js`](js.md) | 13 | Window, Worker | What the JavaScript engine (native/js, a C guest) needs from the browser beyond the web API itself: the console with |
-| [`dnd`](dnd.md) | 32 | Window | HTML drag and drop for JavaScript (src/page/dnd.odin; native/js/runtime/web_dnd.c): the drag data store behind a |
-| [`entries`](entries.md) | 12 | Window | The File and Directory Entries API for what the user dropped (src/page/dnd_entries.odin; |
-| [`scripts`](scripts.md) | 25 | Window, Worker | Script loading, the event loop and JavaScript workers as the engine needs them (HTML "scripting"): document.write / |
-| [`storageaccess`](storageaccess.md) | 2 | Window | The Storage Access API (src/page/storage_access.odin): a frame of another site than its tab's, whose storage and |
-| [`navigator`](navigator.md) | 10 | Window, Worker | What the web APIs of JavaScript need beyond the modules Wasm pages use (native/js/runtime/web*.c): the browser's |
-| [`media`](media.md) | 4 | Window |  |
-| [`locks`](locks.md) | 6 | Window, Worker | The Web Locks API (src/page/bindings_locks.odin): navigator.locks.request / query, held per origin and shared |
-| [`htmlmedia`](htmlmedia.md) | 37 | Window | HTMLMediaElement (<video>, <audio>): the media element state machine of HTML §4.8.11 (src/page/media_element.odin) on the |
-| [`mse`](mse.md) | 35 | Window, Worker | Media Source Extensions: MediaSource, SourceBuffer and SourceBufferList (src/page/media_source.odin). A SourceBuffer holds |
-| [`mediatracks`](mediatracks.md) | 49 | Window | The track lists of a media element (src/page/media_tracks.odin, media_texttracks.odin): AudioTrackList, VideoTrackList |
-| [`navigation`](navigation.md) | 12 | Window | The Navigation API (HTML): window.navigation over the tab's session history. The browser keeps the entries, their |
-| [`net`](net.md) | 12 | Window, Worker | Fetch with a callback (Fetch Standard through the browser's loader: origin, CORS, cookies, referrer, CSP and mixed |
-| [`performance`](performance.md) | 20 | Window, Worker | High Resolution Time and User Timing: performance.now() and timeOrigin on the page's own timeline, mark / measure, |
-| [`popover`](popover.md) | 5 | Window | The Popover API (src/page/popover.odin): the `popover` attribute, showPopover / hidePopover / togglePopover, the |
-| [`ports`](ports.md) | 10 | Window, Worker | MessagePorts between realms (src/page/ports.odin; native/js/runtime/web_message.c, workers.c): a port whose other |
-| [`scheduler`](scheduler.md) | 4 | Window, Worker | Prioritized Task Scheduling (src/page/bindings_scheduler.odin): scheduler.postTask / scheduler.yield, TaskController |
-| [`serviceworker`](serviceworker.md) | 21 | Window, Worker | Service workers (src/page/service_worker.odin; native/js/runtime/web_sw.c): registrations kept by the browser, each |
-| [`storage`](storage.md) | 8 | Window | localStorage and sessionStorage (Web Storage). Security for an opaque origin or disabled storage, Quota for a write |
-| [`testhost`](testhost.md) | 8 | Window | What a page of a test program tells that program: its tests, their checks, what it measures, what it wants done to it. |
-| [`timers`](timers.md) | 11 | Window, Worker | Timers and the rendering-related scheduling of HTML: setTimeout / setInterval (with the HTML nesting clamp and |
-| [`url`](url.md) | 30 | Window, Worker | URL and URLSearchParams (WHATWG URL Standard) as host objects. A URL's searchParams is linked to it both ways: |
-| [`web`](web.md) | 2 | Window, Worker | What every other module shares: the error codes (Web IDL exceptions and DOMException names), the exception record |
-| [`webassembly`](webassembly.md) | 52 | Window, Worker | The WebAssembly JavaScript API (src/page/webassembly.odin, the objects: native/js/odin/web_wasm.odin): a page's own |
-| [`webaudio`](webaudio.md) | 54 | Window | The Web Audio API's render graph (src/webaudio, src/page/bindings_webaudio.odin), for native/js/odin/web_audio.js: nodes |
-| [`webcodecs`](webcodecs.md) | 20 | Window, Worker | WebCodecs (src/page/bindings_webcodecs.odin, webcodecs_frame.odin): the pixel model, memory accounting and format |
-| [`webcodecs_audio_decoder`](webcodecs_audio_decoder.md) | 9 | Window, Worker | WebCodecs AudioDecoder (src/page/bindings_audio_decoder.odin, native/js/runtime/web_webcodecs_audio_decoder.c). |
-| [`webcodecs_codec`](webcodecs_codec.md) | 23 | Window, Worker | WebCodecs encoded chunks and AudioData (src/page/webcodecs_chunks.odin, native/js/runtime/web_webcodecs_codec.c). |
-| [`webcodecs_encoders`](webcodecs_encoders.md) | 18 | Window, Worker | WebCodecs VideoEncoder / AudioEncoder (src/page/bindings_encoders.odin, native/js/runtime/web_webcodecs_encoders.c). |
-| [`webcodecs_image`](webcodecs_image.md) | 16 | Window, Worker | WebCodecs ImageDecoder (src/page/bindings_image_decoder.odin, native/js/runtime/web_webcodecs_image.c). The decode |
-| [`webcodecs_video_decoder`](webcodecs_video_decoder.md) | 9 | Window, Worker | WebCodecs VideoDecoder (src/page/bindings_video_decoder.odin, native/js/runtime/web_webcodecs_video_decoder.c). |
-| [`webgl`](webgl.md) | 15 | Window, Worker | WebGL 1 and 2 for native/js/odin/web_webgl.js: a context is a host object over a device of its own (native/webgl: a thread in the GPU |
-| [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
-| [`workers`](workers.md) | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
+| module | Odin package | functions | exposed | |
+|---|---|---:|---|---|
+| [`abort`](abort.md) | `wren:abort` | 10 | Window | AbortController and AbortSignal (DOM Standard). A signal is an EventTarget ("abort"). Its reason is a (code, text) |
+| [`animations`](animations.md) | `wren:animations` | 30 | Window | Web Animations (src/page/web_animations.odin): Element.animate, Animation, KeyframeEffect, document.timeline. The |
+| [`async`](async.md) | `wren:core` | 17 | Window, Worker | Promises, microtasks, buffers and host objects: the asynchronous core every other module builds on. |
+| [`bloburl`](bloburl.md) | `wren:bloburl` | 2 | Window, Worker | The blob URL store (src/fetch/blob_urls.odin): what `URL.createObjectURL` makes, for everything that loads a URL outside the |
+| [`caches`](caches.md) | `wren:caches` | 11 | Window, Worker | The Cache API (Service Workers §5: CacheStorage, Cache) on the browser's storage (src/page/cache_store.odin): named |
+| [`canvas`](canvas.md) | `wren:canvas` | 144 | Window, Worker | Canvas 2D (HTML §4.12.5): the 2D rendering context of <canvas> and OffscreenCanvas, drawn by a software rasterizer |
+| [`compression`](compression.md) | `wren:compression` | 4 | Window, Worker | CompressionStream and DecompressionStream (Compression Standard; src/page/compression.odin, the streams themselves: |
+| [`console`](console.md) | `wren:console` | 3 | Window, Worker | The console of the page (or of the worker): messages appear in the browser's console. Invalid UTF-8 is shown as |
+| [`credentials`](credentials.md) | `wren:credentials` | 16 | Window | Web Authentication Level 3 (passkeys, security keys) and the Credential Management container it hangs off |
+| [`crypto`](crypto.md) | `wren:crypto` | 20 | Window, Worker | Web Crypto: random values, UUIDs and digests (SHA-1, SHA-256, SHA-384, SHA-512 through BCrypt; large inputs are |
+| [`document`](document.md) | `wren:document` | 5 | Window, Worker | The document's address, origin and cookies. Window_origin and Window_isSecureContext belong to |
+| [`dom`](dom.md) | `wren:dom` | 393 | Window, Worker | The document tree (DOM Standard: Document, Node, Element). In a worker there is no document: the functions taking a |
+| [`encoding`](encoding.md) | `wren:encoding` | 8 | Window, Worker | TextEncoder and TextDecoder (Encoding Standard). Decoders keep their state between calls, so every WHATWG label |
+| [`events`](events.md) | `wren:core` | 44 | Window, Worker | Events (DOM Standard: EventTarget, Event; UI Events: MouseEvent, KeyboardEvent). Any node and any host object (a |
+| [`eventsource`](eventsource.md) | `wren:eventsource` | 7 | Window | Server-sent events (HTML EventSource) and the MessageEvent members that are not plain payload. Messages arrive as |
+| [`fetch`](fetch.md) | `wren:fetch` | 11 | Window | The promise side of the Fetch API, on the same records as the callback API of module net (a Response is a Fetch: |
+| [`fontface`](fontface.md) | `wren:fontface` | 2 | Window | What `document.fonts.add(new FontFace(...))` puts in force: a rule of its own for the document's fonts (src/page/fonts.odin), in |
+| [`forms`](forms.md) | `wren:forms` | 186 | Window | Form controls (HTML forms): values, checkedness, validity, selection, select / option / form members, focus, and |
+| [`frames`](frames.md) | `wren:frames` | 29 | Window | Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin, frames_access.odin; |
+| [`fs`](fs.md) | `wren:fs` | 20 | Window, Worker | File handles (WHATWG File System, WICG File System Access; src/page/fs_store.odin, fs_api.odin; |
+| [`fullscreen`](fullscreen.md) | `wren:fullscreen` | 6 | Window | The Fullscreen API (src/page/fullscreen.odin): an element fills the screen. The page keeps one fullscreen element per |
+| [`history`](history.md) | `wren:history` | 14 | Window | Window, Location and History (HTML). Navigations requested by a module happen from a task of their own, never |
+| [`idb`](idb.md) | `wren:idb` | 1 | Window, Worker | IndexedDB (the JavaScript engine's prelude, native/js/lazy/idb.js, is the only caller). One entry point: the |
+| [`images`](images.md) | `wren:images` | 6 | Window, Worker | Images: HTMLImageElement (<img> and <input type=image>) and decoding image files from buffers. naturalWidth and |
+| [`js`](js.md) | `wren:js` | 13 | Window, Worker | What the JavaScript engine (native/js, a C guest) needs from the browser beyond the web API itself: the console with |
+| [`dnd`](dnd.md) | `wren:dnd` | 32 | Window | HTML drag and drop for JavaScript (src/page/dnd.odin; native/js/runtime/web_dnd.c): the drag data store behind a |
+| [`entries`](entries.md) | `wren:entries` | 12 | Window | The File and Directory Entries API for what the user dropped (src/page/dnd_entries.odin; |
+| [`scripts`](scripts.md) | `wren:scripts` | 25 | Window, Worker | Script loading, the event loop and JavaScript workers as the engine needs them (HTML "scripting"): document.write / |
+| [`storageaccess`](storageaccess.md) | `wren:storageaccess` | 2 | Window | The Storage Access API (src/page/storage_access.odin): a frame of another site than its tab's, whose storage and |
+| [`navigator`](navigator.md) | `wren:navigator` | 10 | Window, Worker | What the web APIs of JavaScript need beyond the modules Wasm pages use (native/js/runtime/web*.c): the browser's |
+| [`media`](media.md) | `wren:media` | 4 | Window |  |
+| [`locks`](locks.md) | `wren:locks` | 6 | Window, Worker | The Web Locks API (src/page/bindings_locks.odin): navigator.locks.request / query, held per origin and shared |
+| [`htmlmedia`](htmlmedia.md) | `wren:htmlmedia` | 37 | Window | HTMLMediaElement (<video>, <audio>): the media element state machine of HTML §4.8.11 (src/page/media_element.odin) on the |
+| [`mse`](mse.md) | `wren:mse` | 35 | Window, Worker | Media Source Extensions: MediaSource, SourceBuffer and SourceBufferList (src/page/media_source.odin). A SourceBuffer holds |
+| [`mediatracks`](mediatracks.md) | `wren:mediatracks` | 49 | Window | The track lists of a media element (src/page/media_tracks.odin, media_texttracks.odin): AudioTrackList, VideoTrackList |
+| [`navigation`](navigation.md) | `wren:navigation` | 12 | Window | The Navigation API (HTML): window.navigation over the tab's session history. The browser keeps the entries, their |
+| [`net`](net.md) | `wren:net` | 12 | Window, Worker | Fetch with a callback (Fetch Standard through the browser's loader: origin, CORS, cookies, referrer, CSP and mixed |
+| [`performance`](performance.md) | `wren:performance` | 20 | Window, Worker | High Resolution Time and User Timing: performance.now() and timeOrigin on the page's own timeline, mark / measure, |
+| [`popover`](popover.md) | `wren:popover` | 5 | Window | The Popover API (src/page/popover.odin): the `popover` attribute, showPopover / hidePopover / togglePopover, the |
+| [`ports`](ports.md) | `wren:ports` | 10 | Window, Worker | MessagePorts between realms (src/page/ports.odin; native/js/runtime/web_message.c, workers.c): a port whose other |
+| [`scheduler`](scheduler.md) | `wren:scheduler` | 4 | Window, Worker | Prioritized Task Scheduling (src/page/bindings_scheduler.odin): scheduler.postTask / scheduler.yield, TaskController |
+| [`serviceworker`](serviceworker.md) | `wren:serviceworker` | 21 | Window, Worker | Service workers (src/page/service_worker.odin; native/js/runtime/web_sw.c): registrations kept by the browser, each |
+| [`storage`](storage.md) | `wren:storage` | 8 | Window | localStorage and sessionStorage (Web Storage). Security for an opaque origin or disabled storage, Quota for a write |
+| [`testhost`](testhost.md) | `wren:testhost` | 8 | Window | What a page of a test program tells that program: its tests, their checks, what it measures, what it wants done to it. |
+| [`timers`](timers.md) | `wren:timers` | 11 | Window, Worker | Timers and the rendering-related scheduling of HTML: setTimeout / setInterval (with the HTML nesting clamp and |
+| [`url`](url.md) | `wren:url` | 30 | Window, Worker | URL and URLSearchParams (WHATWG URL Standard) as host objects. A URL's searchParams is linked to it both ways: |
+| [`web`](web.md) | `wren:core` | 2 | Window, Worker | What every other module shares: the error codes (Web IDL exceptions and DOMException names), the exception record |
+| [`webassembly`](webassembly.md) | `wren:webassembly` | 52 | Window, Worker | The WebAssembly JavaScript API (src/page/webassembly.odin, the objects: native/js/odin/web_wasm.odin): a page's own |
+| [`webaudio`](webaudio.md) | `wren:webaudio` | 54 | Window | The Web Audio API's render graph (src/webaudio, src/page/bindings_webaudio.odin), for native/js/odin/web_audio.js: nodes |
+| [`webcodecs`](webcodecs.md) | `wren:webcodecs` | 20 | Window, Worker | WebCodecs (src/page/bindings_webcodecs.odin, webcodecs_frame.odin): the pixel model, memory accounting and format |
+| [`webcodecs_audio_decoder`](webcodecs_audio_decoder.md) | `wren:webcodecs` | 9 | Window, Worker | WebCodecs AudioDecoder (src/page/bindings_audio_decoder.odin, native/js/runtime/web_webcodecs_audio_decoder.c). |
+| [`webcodecs_codec`](webcodecs_codec.md) | `wren:webcodecs` | 23 | Window, Worker | WebCodecs encoded chunks and AudioData (src/page/webcodecs_chunks.odin, native/js/runtime/web_webcodecs_codec.c). |
+| [`webcodecs_encoders`](webcodecs_encoders.md) | `wren:webcodecs` | 18 | Window, Worker | WebCodecs VideoEncoder / AudioEncoder (src/page/bindings_encoders.odin, native/js/runtime/web_webcodecs_encoders.c). |
+| [`webcodecs_image`](webcodecs_image.md) | `wren:webcodecs` | 16 | Window, Worker | WebCodecs ImageDecoder (src/page/bindings_image_decoder.odin, native/js/runtime/web_webcodecs_image.c). The decode |
+| [`webcodecs_video_decoder`](webcodecs_video_decoder.md) | `wren:webcodecs` | 9 | Window, Worker | WebCodecs VideoDecoder (src/page/bindings_video_decoder.odin, native/js/runtime/web_webcodecs_video_decoder.c). |
+| [`webgl`](webgl.md) | `wren:webgl` | 15 | Window, Worker | WebGL 1 and 2 for native/js/odin/web_webgl.js: a context is a host object over a device of its own (native/webgl: a thread in the GPU |
+| [`websocket`](websocket.md) | `wren:websocket` | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
+| [`workers`](workers.md) | `wren:workers` | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
 1596 imports in 1497 functions.

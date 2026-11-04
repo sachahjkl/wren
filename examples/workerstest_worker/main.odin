@@ -2,7 +2,13 @@
 package workerstest_worker
 
 import "base:intrinsics"
-import "web:web"
+import "wren:console"
+import "wren:core"
+import "wren:document"
+import "wren:dom"
+import "wren:net"
+import "wren:timers"
+import "wren:workers"
 
 itoa :: proc "contextless" (v: i64, buf: []u8) -> string {
 	if v == 0 { buf[len(buf) - 1] = '0'; return string(buf[len(buf) - 1:]) }
@@ -30,7 +36,7 @@ put :: proc "contextless" (o: ^Out, s: string) {
 put_int :: proc "contextless" (o: ^Out, v: i64) { b: [24]u8; put(o, itoa(v, b[:])) }
 text_of :: proc "contextless" (o: ^Out) -> string { return string(o.buf[:o.n]) }
 
-reply :: proc "contextless" (s: string) { web.DedicatedWorkerGlobalScope_postMessage(s, nil) }
+reply :: proc "contextless" (s: string) { workers.DedicatedWorkerGlobalScope_postMessage(s, nil) }
 
 sink: u64   // keeps the compute loops from being optimized away
 
@@ -49,7 +55,7 @@ spin_tick :: proc "contextless" (user: i32) {
 	work(CHUNK)
 	spin_turns += 1
 	if spin_turns == SPIN_TURNS_BEFORE_SAYING { reply("spinning") }
-	web.Timers_setTimeout(spin_tick, 0, 0)
+	timers.setTimeout(spin_tick, 0, 0)
 }
 
 compute_left: i64
@@ -57,7 +63,7 @@ compute_left: i64
 compute_tick :: proc "contextless" (user: i32) {
 	work(CHUNK)
 	compute_left -= 1
-	if compute_left > 0 { web.Timers_setTimeout(compute_tick, 0, 0); return }
+	if compute_left > 0 { timers.setTimeout(compute_tick, 0, 0); return }
 	o: Out
 	put(&o, "done:")
 	put_int(&o, i64(intrinsics.volatile_load(&sink) & 0xFFFF))
@@ -71,27 +77,27 @@ on_timer :: proc "contextless" (user: i32) {
 	reply(text_of(&o))
 }
 
-on_fetch :: proc "contextless" (user: i32, req: web.Fetch, st: web.FetchState) {
+on_fetch :: proc "contextless" (user: i32, req: net.Fetch, st: net.FetchState) {
 	#partial switch st {
 	case .Done, .Failed:
 		o: Out
 		put(&o, st == .Done ? "fetch:done:" : "fetch:failed:")
-		put_int(&o, i64(web.Fetch_status(req)))
+		put_int(&o, i64(net.Fetch_status(req)))
 		put(&o, ":")
-		put_int(&o, i64(web.Fetch_errorKind(req)))
+		put_int(&o, i64(net.Fetch_errorKind(req)))
 		put(&o, ":")
-		put_int(&o, i64(web.Fetch_bodyLength(req)))
+		put_int(&o, i64(net.Fetch_bodyLength(req)))
 		put(&o, ":")
 		buf: [64]u8
-		put(&o, string(buf[:web.Fetch_readBody(req, 0, buf[:])]))
-		web.Fetch_release(req)
+		put(&o, string(buf[:net.Fetch_readBody(req, 0, buf[:])]))
+		net.Fetch_release(req)
 		reply(text_of(&o))
 	}
 }
 
-on_message :: proc "contextless" (user: i32, ev: web.Event) {
+on_message :: proc "contextless" (user: i32, ev: core.Event) {
 	buf: [256]u8
-	text, _ := web.Event_data(ev, buf[:])
+	text, _ := core.Event_data(ev, buf[:])
 	o: Out
 	switch {
 	case has_prefix(text, "echo:"):
@@ -99,29 +105,29 @@ on_message :: proc "contextless" (user: i32, ev: web.Event) {
 		put(&o, text[5:])
 		reply(text_of(&o))
 	case text == "buf":
-		b := web.Buffer(web.Event_object(ev))
-		n := web.Buffer_length(b)
-		ok := web.Event_code(ev) == 1 && web.MessageEvent_transfer(ev, 0) == b
+		b := core.Buffer(core.Event_object(ev))
+		n := core.Buffer_length(b)
+		ok := core.Event_code(ev) == 1 && workers.MessageEvent_transfer(ev, 0) == b
 		probe := [?]i64{0, 1, 255, 256, 65535, 65536, 1_000_003, n - 1}
 		for k in probe {
 			one: [1]u8
-			if k < 0 || k >= n || web.Buffer_read(b, k, one[:]) != 1 || one[0] != u8(k & 255) { ok = false }
+			if k < 0 || k >= n || core.Buffer_read(b, k, one[:]) != 1 || one[0] != u8(k & 255) { ok = false }
 		}
 		marker := [1]u8{0xEE}
-		web.Buffer_write(b, 0, marker[:])
+		core.Buffer_write(b, 0, marker[:])
 		put(&o, "buf:")
 		put_int(&o, n)
 		put(&o, ok ? ":ok" : ":bad")
-		list := [1]web.Buffer{b}
-		web.DedicatedWorkerGlobalScope_postMessage(text_of(&o), list[:])
+		list := [1]core.Buffer{b}
+		workers.DedicatedWorkerGlobalScope_postMessage(text_of(&o), list[:])
 		o2: Out
 		put(&o2, "detached:")
-		put_int(&o2, web.Buffer_length(b))
+		put_int(&o2, core.Buffer_length(b))
 		reply(text_of(&o2))
 	case has_prefix(text, "fetch:"):
-		web.Fetch_start(text[6:], on_fetch)
+		net.Fetch_start(text[6:], on_fetch)
 	case has_prefix(text, "timer:"):
-		web.Timers_setTimeout(on_timer, 7, f64(atoi(text[6:])))
+		timers.setTimeout(on_timer, 7, f64(atoi(text[6:])))
 	case text == "trap":
 		intrinsics.trap()
 	case text == "spin":
@@ -134,44 +140,44 @@ on_message :: proc "contextless" (user: i32, ev: web.Event) {
 		compute_tick(0)
 	case text == "close":
 		reply("closing")
-		web.DedicatedWorkerGlobalScope_close()
+		workers.DedicatedWorkerGlobalScope_close()
 		reply("after-close")
 	case text == "dom":
 		put(&o, "dom:")
-		el, _ := web.Document_createElement("div")
+		el, _ := dom.Document_createElement("div")
 		put_int(&o, i64(el))
 		put(&o, ":")
-		put_int(&o, i64(web.Node_appendChild(web.Document_body(), web.Node(0))))
+		put_int(&o, i64(dom.Node_appendChild(dom.Document_body(), dom.Node(0))))
 		put(&o, ":")
-		put_int(&o, i64(web.Document_body()))
+		put_int(&o, i64(dom.Document_body()))
 		reply(text_of(&o))
 	case text == "name":
 		put(&o, "name:")
 		nb: [64]u8
-		nm, _ := web.DedicatedWorkerGlobalScope_name(nb[:])
+		nm, _ := workers.DedicatedWorkerGlobalScope_name(nb[:])
 		put(&o, nm)
 		put(&o, "|")
 		lb: [256]u8
-		loc, _ := web.WorkerGlobalScope_location(lb[:])
+		loc, _ := workers.WorkerGlobalScope_location(lb[:])
 		put(&o, loc)
 		put(&o, "|")
 		ob: [128]u8
-		org, _ := web.Window_origin(ob[:])
+		org, _ := document.Window_origin(ob[:])
 		put(&o, org)
 		reply(text_of(&o))
 	case text == "origin":
 		put(&o, "origin:")
 		ob: [128]u8
-		org, _ := web.Window_origin(ob[:])
+		org, _ := document.Window_origin(ob[:])
 		put(&o, org)
 		reply(text_of(&o))
 	case text == "console":
-		web.console_log("hello from the worker")
+		console.log("hello from the worker")
 		reply("logged")
 	case text == "promise":
-		p := web.Promise_create()
-		web.Promise_then(p, on_settled, 0)
-		web.Promise_resolve(p, 99)
+		p := core.Promise_create()
+		core.Promise_then(p, on_settled, 0)
+		core.Promise_resolve(p, 99)
 	case:
 		put(&o, "unknown:")
 		put(&o, text)
@@ -179,16 +185,16 @@ on_message :: proc "contextless" (user: i32, ev: web.Event) {
 	}
 }
 
-on_settled :: proc "contextless" (user: i32, p: web.Promise, st: web.PromiseState) {
+on_settled :: proc "contextless" (user: i32, p: core.Promise, st: core.PromiseState) {
 	o: Out
 	put(&o, "promise:")
-	put_int(&o, web.Promise_value(p))
+	put_int(&o, core.Promise_value(p))
 	reply(text_of(&o))
-	web.Object_release(p)
+	core.Object_release(p)
 }
 
 @(export)
 wb_main :: proc "contextless" () {
-	web.EventTarget_addEventListener(web.DedicatedWorkerGlobalScope_self(), "message", on_message)
+	core.EventTarget_addEventListener(workers.DedicatedWorkerGlobalScope_self(), "message", on_message)
 	reply("ready")
 }

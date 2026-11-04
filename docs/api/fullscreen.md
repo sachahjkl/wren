@@ -9,6 +9,8 @@ events (bubbling, composed) fired at the element, or at the document when the el
 
 Exposed to: Window. Source: `api/fullscreen.widl`.
 
+Odin: `import "wren:fullscreen"`.
+
 ## Types
 
 ### enum `FullscreenNavigation` : i32

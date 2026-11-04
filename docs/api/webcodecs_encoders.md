@@ -9,6 +9,8 @@ crate is added, configure()/encode() wire to it here.
 
 Exposed to: Window, Worker. Source: `api/webcodecs_encoders.widl`.
 
+Odin: `import "wren:webcodecs"`.
+
 ## Types
 
 ### handle `VideoEncoder` : `Object`

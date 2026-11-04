@@ -9,6 +9,8 @@ the page) or by storage.access_requests; its requests then say so (Sec-Fetch-Sto
 
 Exposed to: Window. Source: `api/js_storage_access.widl`.
 
+Odin: `import "wren:storageaccess"`.
+
 ## Functions
 
 ### `Document_hasStorageAccess`

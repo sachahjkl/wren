@@ -7,6 +7,8 @@ past the quota, Not_Found for a null result.
 
 Exposed to: Window. Source: `api/storage.widl`.
 
+Odin: `import "wren:storage"`.
+
 ## Types
 
 ### enum `StorageArea` : i32
@@ -37,6 +39,8 @@ i32 Storage_length(StorageArea area) raises
 
 storage.length
 
+Odin: `storage.length`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Storage_length :: proc(c: ^Call, area: Api_StorageArea) -> (i32, Api_Error)`
@@ -48,6 +52,8 @@ string Storage_key(StorageArea area, i32 index) raises
 ```
 
 storage.key(index)
+
+Odin: `storage.key`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -61,6 +67,8 @@ string Storage_getItem(StorageArea area, string key) raises
 
 storage.getItem(key)
 
+Odin: `storage.getItem`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Storage_getItem :: proc(c: ^Call, area: Api_StorageArea, key: string) -> (string, Api_Error)`
@@ -72,6 +80,8 @@ void Storage_setItem(StorageArea area, usvstring key, usvstring value) raises
 ```
 
 storage.setItem(key, value)
+
+Odin: `storage.setItem`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -85,6 +95,8 @@ void Storage_removeItem(StorageArea area, string key) raises
 
 storage.removeItem(key)
 
+Odin: `storage.removeItem`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Storage_removeItem :: proc(c: ^Call, area: Api_StorageArea, key: string) -> Api_Error`
@@ -96,6 +108,8 @@ void Storage_clear(StorageArea area) raises
 ```
 
 storage.clear()
+
+Odin: `storage.clear`.
 
 Raises: returns an `Error` (see [web](web.md)).
 

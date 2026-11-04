@@ -5,7 +5,7 @@
 // nothing.
 package testports
 
-import "web:web"
+import "wren:document"
 
 DEFAULT_BASE_PORT :: 8765
 
@@ -20,7 +20,7 @@ port_shift :: proc "contextless" () -> int {
 	if known { return shift }
 	known = true
 	buf: [128]u8
-	origin, err := web.Window_origin(buf[:])
+	origin, err := document.Window_origin(buf[:])
 	if err != .None { return 0 }
 	host_end := 0
 	for i := len(origin) - 1; i >= 0; i -= 1 {

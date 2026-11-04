@@ -9,6 +9,8 @@ and completed's promises, and exposes the ImageTrackList / ImageTrack. One track
 
 Exposed to: Window, Worker. Source: `api/webcodecs_image.widl`.
 
+Odin: `import "wren:webcodecs"`.
+
 ## Types
 
 ### handle `ImageDecoder` : `Object`

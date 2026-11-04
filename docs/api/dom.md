@@ -7,6 +7,8 @@ node see no live node, and those returning one return null.
 
 Exposed to: Window, Worker. Source: `api/dom.widl`.
 
+Odin: `import "wren:dom"`.
+
 ## Types
 
 ### handle `Node` : `EventTarget`

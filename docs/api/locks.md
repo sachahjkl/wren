@@ -9,6 +9,8 @@ returns and runs the callback when the host grants the lock (wj_cb_lock_granted)
 
 Exposed to: Window, Worker. Source: `api/locks.widl`.
 
+Odin: `import "wren:locks"`.
+
 ## Types
 
 ### enum `LockMode` : i32

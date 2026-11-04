@@ -7,6 +7,8 @@ inside the call; same-document changes (pushState, fragments) fire popstate / ha
 
 Exposed to: Window. Source: `api/history.widl`.
 
+Odin: `import "wren:history"`.
+
 ## Types
 
 ### handle `Window` : `Object`
@@ -108,6 +110,8 @@ i32 History_length()
 
 history.length
 
+Odin: `history.length`.
+
 Host: `History_length :: proc(c: ^Call) -> i32`
 
 ### `History_state`
@@ -117,6 +121,8 @@ string History_state() raises
 ```
 
 history.state: Not_Found when null.
+
+Odin: `history.state`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -131,6 +137,8 @@ void History_pushState(optional string state, optional string url) raises
 history.pushState(state, "", url): Data_Clone past history.max_state_bytes, Syntax for an invalid URL, Security
 for a URL the document cannot be rewritten to.
 
+Odin: `history.pushState`.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `History_pushState :: proc(c: ^Call, state: Maybe(string), url: Maybe(string)) -> Api_Error`
@@ -142,6 +150,8 @@ void History_replaceState(optional string state, optional string url) raises
 ```
 
 history.replaceState(state, "", url)
+
+Odin: `history.replaceState`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -155,6 +165,8 @@ void History_go(i32 delta = 0)
 
 history.go(delta): back() is go(-1), forward() go(1), go(0) reloads. Asynchronous.
 
+Odin: `history.go`.
+
 Host: `History_go :: proc(c: ^Call, delta: i32)`
 
 ### `History_scrollRestoration`
@@ -165,6 +177,8 @@ ScrollRestoration History_scrollRestoration()
 
 history.scrollRestoration, of the current entry.
 
+Odin: `history.scrollRestoration`.
+
 Host: `History_scrollRestoration :: proc(c: ^Call) -> Api_ScrollRestoration`
 
 ### `History_set_scrollRestoration`
@@ -174,6 +188,8 @@ void History_set_scrollRestoration(ScrollRestoration mode)
 ```
 
 history.scrollRestoration = mode, for the current entry (and the entries this document adds after it).
+
+Odin: `history.set_scrollRestoration`.
 
 Host: `History_set_scrollRestoration :: proc(c: ^Call, mode: Api_ScrollRestoration)`
 

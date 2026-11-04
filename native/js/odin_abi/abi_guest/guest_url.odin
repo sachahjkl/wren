@@ -1,7 +1,7 @@
 // The guest bindings of the URL / URLSearchParams / URLPattern domain, over the generic serialised boundary. Each is
 // the same three steps: write the arguments (`arg`, one marshaller per type, chosen by the compiler), `finish` by
 // operation number (the results decoded by the declaration's types), and abi.must_match, which fails the build if the
-// stub's signature drifts from api_decl. A later integration folds these into sdk/odin/web as the shipped SDK.
+// stub's signature drifts from api_decl. A later integration folds these into sdk/odin as the shipped SDK.
 package abi_guest
 
 import "../abi"

@@ -16,6 +16,8 @@ Encoding (invalid base64url).
 
 Exposed to: Window. Source: `api/credentials.widl`.
 
+Odin: `import "wren:credentials"`.
+
 ## Types
 
 ### handle `PublicKeyCredential` : `Object`

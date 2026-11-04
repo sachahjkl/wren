@@ -10,6 +10,8 @@ createImageBitmap resolve it through the canvas image-source path. Decoders and 
 
 Exposed to: Window, Worker. Source: `api/webcodecs.widl`.
 
+Odin: `import "wren:webcodecs"`.
+
 ## Types
 
 ### handle `VideoFrame` : `Object`

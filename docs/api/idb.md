@@ -15,6 +15,8 @@ Windows and dedicated workers: a worker's realm is a client of the same manager 
 
 Exposed to: Window, Worker. Source: `api/idb.widl`.
 
+Odin: `import "wren:idb"`.
+
 ## Functions
 
 ### `Idb_call`
@@ -24,6 +26,8 @@ bytes Idb_call(i32 op, bytes args) raises
 ```
 
 See the module comment.
+
+Odin: `idb.call`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
