@@ -700,7 +700,14 @@ wjr_EventTarget_dispatchEvent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 	if e.composed { init += {.Composed} }
 	if wj.wj_unwrap(argv[0], ifc("MouseEvent")) != nil { init += {.Activation} }   // (a click of one activates its target)
 	e.trusted = wj.wj_dispatch_trusted
-	e.stop, e.stop_immediate, e.canceled = false, false, false
+	e.canceled = false
+	// (DOM "invoke": stopped before its dispatch, no listener sees it; the flags go at the end of each)
+	if e.stop {
+		e.stop, e.stop_immediate = false, false
+		wj.JS_FreeValue(ctx, e.target)
+		e.target = wj.JS_DupValue(ctx, this_val)
+		return wj.new_bool(true)
+	}
 	e.dispatching = true
 	wj.JS_FreeValue(ctx, e.target)
 	e.target = wj.JS_DupValue(ctx, this_val)
@@ -728,6 +735,7 @@ wjr_EventTarget_dispatchEvent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 		wj.JS_SetPropertyStr(ctx, e.ext, "relatedTarget", r)
 	}
 	e.dispatching = false
+	e.stop, e.stop_immediate = false, false
 	e.host = 0
 	eo.handle = 0
 	if st != .None { return wj.wj_throw_status(ctx, i32(st), "dispatchEvent") }
