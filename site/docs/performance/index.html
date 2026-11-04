@@ -1776,6 +1776,49 @@ above 1 sample in the frame of the first paint: <code>compute_styles</code>, <co
 most of the work is on the style and layout threads, which this sampler does not see. A profile of the threads
 (<code>WREN_SAMPLE_THREADS=1</code>) is the next measure. <strong>Not done this round</strong>: the script stage of DOM-heavy pages (item 1).</li>
 </ol>
+<h2 id="what-changed-round-19-the-licence-card-of-aboutwren-under-the-pointer"><a class="anchor" href="#what-changed-round-19-the-licence-card-of-aboutwren-under-the-pointer" aria-hidden="true">#</a>What changed, round 19: the licence card of about:wren under the pointer</h2>
+<p><code>wrentool bench perf -Only card_hover -Shown</code> (about:wren?card=sample, the card scrolled into view, the pointer wandering
+over it every 8 ms; <code>card_idle</code>: the card at rest), profile builds, 3 interleaved runs, 60 Hz, RTX 4070 SUPER (the
+hardware adapter: <code>nvwgf2umx.dll</code> in the process, not WARP). GPU times are those of a GPU that the driver keeps at low
+clocks for so little work: the counts of <code>-GpuSteps 1</code> say more.</p>
+<ol>
+<li><strong>A document changed only in style attributes is refreshed, not laid out</strong> (<code>styles_only_mutations</code>,
+<code>src/layout/refresh.odin</code>). The card's script writes its tilt in the style attributes of the card, its lettering and
+the seal's shadow at each frame (transform, <code>--rx</code>...): paint-only values, but any change of the document disqualified
+the refresh path, the incremental pass ran (0.2 ms, nothing to lay out), and the compositor, seeing a layout pass,
+drew the page directly for <code>render.compositor.settle_ms</code>, without its kept layers: the card's 59 planes (the rims are
+52 of them) rasterized again at every frame. Now the entries of the mutation journal since the last pass are looked
+at: <code>style</code> attributes of HTML elements only (no inline <code>&lt;svg&gt;</code> with foreign objects), and the styles say whether
+that is paint-only (<code>layout_serial</code>). Test: <code>inline_transform_refreshes</code> (layout).</li>
+<li><strong>A plane keeps its raster scale for <code>paint.planes.settle_ms</code> after its last move</strong> (<code>plane_plan</code>), not for one frame:
+a pointer that tilts at its own rate leaves frames without a move, and each one rasterized the planes whose scale
+needed was a quarter octave off (the rims, seen edge-on, at every tilt). Test:
+<code>planes_keep_their_scale_while_moving_and_sharpen_at_rest</code> (a still frame keeps it).</li>
+<li><strong>Mip levels only where a plane is reduced more than twice</strong> (<code>plane_needs_mips</code>, <code>PLANE_MIPS_REDUCTION</code>): across the
+slant, or along it more than the anisotropic taps take. The card's base and seal, rasterized again at every frame for
+their shader, built theirs at every frame. Test: <code>planes_tilted_by_the_pointer_build_no_mips</code>.</li>
+<li><strong>The development build has no Direct3D debug layer</strong> (<code>builder.odin</code>, <code>.Dev</code>: <code>-define:D3D_DEBUG=false</code>): <code>-debug</code>,
+there for the PDB, made ODIN_DEBUG true, which turned it on (<code>D3D11_3SDKLayers.dll</code> in <code>build\wren.exe</code>). The debug
+build keeps it.</li>
+</ol>
+<div class="table-box"><table>
+<thead><tr><th>card_hover</th><th>before</th><th>after</th></tr></thead>
+<tbody>
+<tr><td>layers cleared and drawn per frame (<code>-GpuSteps 1</code>)</td><td>40.6, 38.6 (3.2 Mpx cleared)</td><td>2.7, 2.7 (0.4 Mpx)</td></tr>
+<tr><td>kept plane layers reused per frame</td><td>13.2</td><td>52.3</td></tr>
+<tr><td>layout passes: incremental / refresh (8 s)</td><td>269 / 89</td><td>3 / 217</td></tr>
+<tr><td>GPU draw p50, p95</td><td>3.8, 4.9-5.0 ms</td><td>2.7-2.9, 4.1-4.2 ms</td></tr>
+<tr><td>CPU work of a frame p50, p95</td><td>0.87-0.92, 2.3-2.9 ms</td><td>0.79-1.01, 2.2-3.1 ms</td></tr>
+<tr><td>frame gaps p50, p95</td><td>16.7, 18.4-19.4 ms</td><td>16.7, 18.4-22.5 ms</td></tr>
+<tr><td>input -&gt; screen p50</td><td>37.2-37.7 ms</td><td>37.3-37.8 ms</td></tr>
+<tr><td>dev build, mean CPU of a frame (stats, 4 runs, another agent building at times)</td><td>3.0-4.7 ms (debug layer)</td><td>1.75-2.7 ms</td></tr>
+</tbody>
+</table></div>
+<p>At 60 Hz on this machine the card made every frame before too: the CPU work was about 1 ms and the GPU's a few. What
+went is the work a slower GPU, or the debug layer's validation of each of its calls, makes visible. At rest the card
+draws for its sweep (the light crosses it in 40 % of 7 s) and not in the pause; the first frame that shows it costs
+62 ms (its relief, lettering and seal made natively and uploaded, <code>about_card_relief.odin</code>): once. Input to screen is
+the browser's anywhere (about:home: 38.5 ms).</p>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
@@ -1999,6 +2042,7 @@ screen's whole wait, at most a refresh) still waits for its end: the latency obj
 <li><a href="#what-changed-round-16-first-page-loads">What changed, round 16: first page loads</a></li>
 <li><a href="#what-changed-round-17-first-page-loads-what-they-wait-for">What changed, round 17: first page loads, what they wait for</a></li>
 <li><a href="#what-changed-round-18-the-frames-wait-for-its-slot-runs-the-loops-tasks">What changed, round 18: the frame's wait for its slot runs the loop's tasks</a></li>
+<li><a href="#what-changed-round-19-the-licence-card-of-aboutwren-under-the-pointer">What changed, round 19: the licence card of about:wren under the pointer</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
