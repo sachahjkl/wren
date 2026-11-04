@@ -468,6 +468,24 @@
   delete Mid2.prototype.k; Object.setPrototypeOf(Mid2.prototype, { k: 7 }); p("dictionaries: a prototype changed", readK(m2, RUN));
   Object.defineProperty(Mid2.prototype, "k", { get: function () { return 9; }, configurable: true }); p("dictionaries: an accessor in place", readK(m2, RUN));
 
+  // array literals the code allocates itself: empty, of every kind of entry (ints, doubles, an int sum past 2^31,
+  // objects, strings, arrays held), of the most entries it takes and of one more, grown and shrunk after, kept across
+  // collections
+  function arrKinds(n) {
+    var s = 0, keep = [], a, e, big, more;
+    for (var i = 0; i < n; i++) {
+      e = [];
+      a = [i, i * 0.25, (i + 0x7ffffff0) + i, e, "k" + (i & 3), keep, null, undefined, true];
+      a.push(i); a[20] = 1;
+      big = [i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29];
+      more = [i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30];
+      big.length = 2;
+      s += a.length + a[0] + a[2] + a[3].length + e.length + big[1] + more[30] + more.length;
+      if ((i & 511) === 0) { keep.push(a); }
+    }
+    return show(s) + " " + keep.length + " " + keep[1].join(",").length + " " + JSON.stringify(a.slice(0, 5));
+  }
+  p("arrays: literals", arrKinds(RUN));
   // switch, strings, generators (not compiled) next to compiled code
   function sw(x) { switch (x) { case 1: return "one"; case "1": return "string"; default: return "other"; } }
   p("switch", sw(1), sw("1"), sw(2));
