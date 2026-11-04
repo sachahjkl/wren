@@ -44,7 +44,9 @@ HOVER_X_RATE, HOVER_Y_RATE :: 3.0, 1.7
 
 // 8 s of input, or of watching, unless a scenario says otherwise.
 MEASURE :: 8 * time.Second
-Action :: enum u8 { Load, Idle, Hover, Scroll, Wheel, Touchpad, Keys, Typing, Resize, Fullscreen }
+// Navigate: the page loaded from about:blank (the process started already), timed from the navigation by the page's own
+// Navigation and Paint Timing; the CPU and frames are those of the load until the page is quiet.
+Action :: enum u8 { Load, Navigate, Idle, Hover, Scroll, Wheel, Touchpad, Keys, Typing, Resize, Fullscreen }
 
 Scenario :: struct {
 	name:   string,
@@ -66,6 +68,12 @@ SCENARIOS := []Scenario{
 	{"config_scroll", "about:config", .Scroll, nil}, {"config_hover", "about:config", .Hover, nil},
 	{"p1k_load", "gen:p1k", .Load, nil}, {"p1k_hover", "gen:p1k", .Hover, nil}, {"p1k_scroll", "gen:p1k", .Scroll, nil},
 	{"p10k_load", "gen:p10k", .Load, nil}, {"p10k_idle", "gen:p10k", .Idle, nil}, {"p10k_hover", "gen:p10k", .Hover, nil}, {"p10k_scroll", "gen:p10k", .Scroll, nil}, {"p10k_resize", "gen:p10k", .Resize, nil},
+	{"p10k_nav", "gen:p10k", .Navigate, nil},
+	// the site's pages loaded from about:blank
+	{"nav_index", "site:index.html", .Navigate, nil}, {"nav_about", "site:about.html", .Navigate, nil}, {"nav_layout", "site:layout.html", .Navigate, nil},
+	{"nav_style", "site:style.html", .Navigate, nil}, {"nav_text", "site:text.html", .Navigate, nil}, {"nav_modern_css", "site:modern-css.html", .Navigate, nil},
+	{"nav_grid", "site:grid.html", .Navigate, nil}, {"nav_forms", "site:forms.html", .Navigate, nil}, {"nav_js_dom", "site:js-dom.html", .Navigate, nil},
+	{"nav_legacy", "site:legacy-html.html", .Navigate, nil}, {"nav_shadow_dom", "site:shadow-dom.html", .Navigate, nil}, {"nav_multicol", "site:multicol.html", .Navigate, nil},
 	{"p10k_wheel", "gen:p10k", .Wheel, nil}, {"p10k_touchpad", "gen:p10k", .Touchpad, nil}, {"p10k_keys", "gen:p10k", .Keys, nil},
 	{"p10k_mq_resize", "gen:p10k_mq", .Resize, nil},
 	{"p10k_resize_full", "gen:p10k", .Resize, FULL_LAYOUT}, {"p10k_scroll_nocomp", "gen:p10k", .Scroll, NO_COMPOSITOR},
@@ -204,7 +212,7 @@ perf_scenario :: proc(o: ^Options, r: ^Report, exe: string, s: Scenario, measure
 	append(&prefs, ..o.prefs)
 	w: Wren
 	began := time.tick_now()
-	if !start(&w, {exe = exe, window = o.window, prefs = prefs[:], env = env, url = url}) { return }
+	if !start(&w, {exe = exe, window = o.window, prefs = prefs[:], env = env, url = s.action == .Navigate ? "about:blank" : url}) { return }
 	defer stop(&w)
 	ses := &w.session
 	if e := api.wait_load(ses); e != .None { fmt.eprintfln("%s: %s", s.name, api.last_failure().message); return }
@@ -212,7 +220,13 @@ perf_scenario :: proc(o: ^Options, r: ^Report, exe: string, s: Scenario, measure
 	if s.action != .Load { settle(&w) }
 	_, _ = api.stats(ses, reset_frames = true)
 	before := time.tick_now()
-	perf_action(&w, s.action, measure)
+	if s.action == .Navigate {
+		load_ms, ok = perf_navigate(&w, s.name, url)
+		if !ok { return }
+		ok = false
+	} else {
+		perf_action(&w, s.action, measure)
+	}
 	took := time.duration_seconds(time.tick_since(before))
 	st, e := api.stats(ses)
 	if e != .None { fmt.eprintfln("%s: %s", s.name, api.last_failure().message); return }
@@ -223,6 +237,25 @@ perf_scenario :: proc(o: ^Options, r: ^Report, exe: string, s: Scenario, measure
 
 @(private) tooling_mb :: 1024 * 1024
 
+// The page's own timings of a navigation, in ms from its start: the response's end, the DOM interactive, the
+// DOMContentLoaded handlers' end, the first contentful paint (-1: none), the load handlers' end.
+@(private) NAV_TIMING :: "(function(){var n=performance.getEntriesByType('navigation')[0]||{};var p=performance.getEntriesByName('first-contentful-paint')[0];" +
+	"return JSON.stringify({response:n.responseEnd,interactive:n.domInteractive,dcl:n.domContentLoadedEventEnd,fcp:p?p.startTime:-1,load:n.loadEventEnd})})()"
+
+// The Navigate action: `url` loaded from the page already open, then the page's timings printed. load_ms: from the
+// navigation's start to the end of the load handlers, as the page measured it.
+@(private)
+perf_navigate :: proc(w: ^Wren, name, url: string) -> (load_ms: f64, ok: bool) {
+	ses := &w.session
+	if e := api.navigate(ses, url); e != .None { fmt.eprintfln("%s: %s", name, api.last_failure().message); return }
+	settle(w)
+	text, e := api.eval(ses, NAV_TIMING)
+	if e != .None { fmt.eprintfln("%s: %s", name, api.last_failure().message); return }
+	fmt.printfln("%s: response %.1f, interactive %.1f, DOMContentLoaded %.1f, first contentful paint %.1f, load %.1f ms", name,
+		json_number(text, "response"), json_number(text, "interactive"), json_number(text, "dcl"), json_number(text, "fcp"), json_number(text, "load"))
+	return json_number(text, "load"), true
+}
+
 // `measure` of input of this kind, or of nothing. Each call waits for the browser's answer: the rate of the input is the rate it takes it at.
 @(private)
 perf_action :: proc(w: ^Wren, action: Action, measure: time.Duration) {
@@ -232,7 +265,7 @@ perf_action :: proc(w: ^Wren, action: Action, measure: time.Duration) {
 	begin := time.tick_now()
 	left :: proc(begin: time.Tick, measure: time.Duration) -> bool { return time.tick_since(begin) < measure }
 	switch action {
-	case .Load:
+	case .Load, .Navigate:
 	case .Idle: hold(w, measure)
 	case .Hover:
 		for left(begin, measure) {
