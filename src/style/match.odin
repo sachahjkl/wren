@@ -36,8 +36,11 @@ Control_Query :: enum u8 {
 }
 
 Control_Provider :: struct {
-	query: proc(user: rawptr, el: base.Handle, q: Control_Query) -> (answer: bool, known: bool),
-	user:  rawptr,
+	query:  proc(user: rawptr, el: base.Handle, q: Control_Query) -> (answer: bool, known: bool),
+	// before the threads of a parallel pass, on the pass's thread: what `query` fills in lazily is filled in, so that the
+	// threads' queries only read (the forms model makes a control, syncs checkedness, builds a radio group's list)
+	settle: proc(user: rawptr),
+	user:   rawptr,
 }
 
 @(private)

@@ -1172,6 +1172,7 @@ compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State, pool: ^host
 		// counters and quotes need tree order: the threads compute everything else, then one ordered walk resolves them.
 		// When no box shows one, nothing reads their values: no walk (what it would say of counters_used, the threads
 		// counted: a box shown that changes a counter)
+		if state.controls.settle != nil { state.controls.settle(state.controls.user) }
 		shows, ops := style_document_parallel(e, s, doc, state, pool)
 		s.counters_used = shows > 0 ? counters_post_pass(s, doc, e.settings.counters_max_listed) : ops > 0
 	} else {
