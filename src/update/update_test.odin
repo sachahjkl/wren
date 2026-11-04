@@ -57,6 +57,22 @@ a_signed_manifest_is_read :: proc(t: ^testing.T) {
 }
 
 @(test)
+an_unsigned_channel_is_read_only_when_the_signature_is_turned_off :: proc(t: ^testing.T) {
+	manifest, _ := signed(test_manifest("0.6.29", test_file(MIN_BINARY)))
+	// required (the default): no signature, no update
+	_, err := check_release(manifest, "", test_public(), PLATFORM_WINDOWS_X64, "0.6.28", "0.6.29", context.temp_allocator)
+	testing.expect(t, err != .None, "refused without a signature")
+	// turned off: read, and still only when it is for this platform, the announced version, and newer
+	m, err2 := check_release(manifest, "", "", PLATFORM_WINDOWS_X64, "0.6.28", "0.6.29", context.temp_allocator, require_signature = false)
+	testing.expect_value(t, err2, Error.None)
+	testing.expect_value(t, m.version, "0.6.29")
+	_, err3 := check_release(manifest, "", "", PLATFORM_WINDOWS_X64, "0.6.29", "0.6.29", context.temp_allocator, require_signature = false)
+	testing.expect_value(t, err3, Error.Not_Newer)
+	_, err4 := check_release(manifest, "", "", PLATFORM_WINDOWS_X64, "0.6.28", "0.6.30", context.temp_allocator, require_signature = false)
+	testing.expect_value(t, err4, Error.Version_Mismatch)
+}
+
+@(test)
 another_key_is_refused :: proc(t: ^testing.T) {
 	manifest, sig := signed(test_manifest("0.6.29", test_file(MIN_BINARY)), OTHER_SEED[:])
 	_, err := verify(manifest, sig, test_public(), PLATFORM_WINDOWS_X64, context.temp_allocator)

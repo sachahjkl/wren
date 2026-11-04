@@ -278,8 +278,14 @@ verify :: proc(manifest: []byte, signature, public_key, platform: string, alloca
 // What a program does with the manifest and the signature it downloaded for a release: the signature and the content (verify),
 // that it is the version the release announced (a signed manifest of an old version put under a new release is a replay), and
 // that it is newer than `current`. `announced` is the version of the release's tag ("" when none is claimed).
-check_release :: proc(manifest: []byte, signature, public_key, platform, current, announced: string, allocator := context.allocator) -> (m: Manifest, err: Error) {
-	m, err = verify(manifest, signature, public_key, platform, allocator)
+// `require_signature` false (the person turned it off for a channel of their own: browser.update.require_signature) reads the manifest
+// without a signature: only the length and the SHA-256 of the file are then checked against it, which proves nothing about who made it.
+check_release :: proc(manifest: []byte, signature, public_key, platform, current, announced: string, allocator := context.allocator, require_signature := true) -> (m: Manifest, err: Error) {
+	if require_signature {
+		m, err = verify(manifest, signature, public_key, platform, allocator)
+	} else {
+		m, err = manifest_read(manifest, platform, allocator)
+	}
 	if err != .None { return {}, err }
 	if announced != "" && m.version != announced { manifest_destroy(&m, allocator); return {}, .Version_Mismatch }
 	if e := check_newer(m, current); e != .None { manifest_destroy(&m, allocator); return {}, e }

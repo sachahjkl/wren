@@ -15,6 +15,19 @@ Wren can install a new release itself. It never does so without you pressing "In
 - Development and labelled builds are not releases: they are updated by hand.
 - The update key is not the licence key. A leaked licence key cannot sign an update.
 
+## Your own channel
+
+A channel is four settings in `about:config`:
+
+| Setting | Meaning | Default |
+| --- | --- | --- |
+| `browser.update.url` | What announces a release (a JSON document with `tag_name` and `html_url`, as GitHub's "latest release" answers) | the GitHub API of this repository |
+| `browser.update.base_url` | Where the files are: `<base>v<version>/update-windows-x64.json`, its `.sig` and the program. `https://` (or `http://127.0.0.1`/`localhost`), ending in `/` | the GitHub releases of this repository |
+| `browser.update.public_key` | The key (base64url, 32 bytes) the manifest must be signed with | empty: the key built into Wren |
+| `browser.update.require_signature` | Refuse a manifest that is not validly signed | on |
+
+Sign your manifests with `wrentool update keygen` / `manifest` / `sign`. Turning `require_signature` off makes Wren take an unsigned manifest: only the length and SHA-256 are then checked, which proves nothing about who made the file, and About Wren says "UNSIGNED". The version rules (for this platform, the announced version, strictly newer) apply either way.
+
 ## For maintainers
 
 - The private key is `UPDATE_SIGNING_KEY` in `secrets/production.yaml` and the GitHub secret `WREN_UPDATE_SIGNING_KEY`. The public key is `src/update/public_key.odin`.

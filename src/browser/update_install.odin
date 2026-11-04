@@ -59,6 +59,11 @@ update_public_key :: proc(app: ^App) -> string {
 	return update.UPDATE_PUBLIC_KEY
 }
 
+// Whether a manifest must be signed (browser.update.require_signature, on unless a channel of the person's own says otherwise).
+update_signature_required :: proc(app: ^App) -> bool {
+	return config.bool_of(&app.prefs, "browser.update.require_signature")
+}
+
 // Where the release files are: "<base>v<version>/<file>". A mirror or a test server sets it; anything but an address ending in / is the default.
 update_base_url :: proc(app: ^App) -> string {
 	b := config.string_of(&app.prefs, "browser.update.base_url")
@@ -75,7 +80,7 @@ update_install_allowed :: proc(app: ^App) -> (ok: bool, why: string) {
 	if APP_VERSION_LABEL != "" { return false, "This is a labelled build, not a release: update it by hand." }
 	if IS_DEV_BUILD && !config.bool_of(&app.prefs, "browser.update.allow_development_build") { return false, "This is a development build, not a release: update it by hand." }
 	if !update.version_valid(APP_VERSION) { return false, "This build's version is not X.Y.Z: update it by hand." }
-	if update_public_key(app) == "" { return false, "This build has no update key, so it cannot check an update." }
+	if update_signature_required(app) && update_public_key(app) == "" { return false, "This build has no update key, so it cannot check an update." }
 	return true, ""
 }
 
@@ -121,6 +126,10 @@ update_verify_start :: proc(app: ^App, version: string) {
 		request = {url = strings.concatenate({release, name}, context.temp_allocator), mode = .Navigate, credentials = .Omit, redirect = .Follow, destination = .Empty, max_body = update.MAX_MANIFEST},
 		on_event = update_manifest_event, user = app, scope = app.process, collect = true,
 	})
+	if !update_signature_required(app) {
+		app.upd.got_sig = true   // nothing to fetch: the channel is not signed (and the person said so)
+		return
+	}
 	fetch.start(&app.loader, {
 		request = {url = strings.concatenate({release, name, ".sig"}, context.temp_allocator), mode = .Navigate, credentials = .Omit, redirect = .Follow, destination = .Empty, max_body = update.MAX_SIGNATURE_TEXT},
 		on_event = update_signature_event, user = app, scope = app.process, collect = true,
@@ -164,13 +173,13 @@ update_signature_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event
 @(private = "file")
 update_verify_both :: proc(app: ^App) {
 	if !app.upd.got_manifest || !app.upd.got_sig { return }
-	m, err := update.check_release(app.upd.man_bytes, app.upd.sig_text, update_public_key(app), update_platform(), APP_VERSION, app.upd.tag)
+	m, err := update.check_release(app.upd.man_bytes, app.upd.sig_text, update_public_key(app), update_platform(), APP_VERSION, app.upd.tag, require_signature = update_signature_required(app))
 	if err != .None { update_fail(app, update.error_text(err)); return }
 	update.manifest_destroy(&app.upd.manifest)
 	app.upd.manifest = m
 	app.upd.phase = .Ready
 	if app.upd.forced {
-		ui.toast(.Info, "%s v%s is available and its signature is valid. About Wren has the button that installs it.", APP_NAME, m.version)
+		ui.toast(.Info, "%s v%s is available and was checked (see About Wren). About Wren has the button that installs it.", APP_NAME, m.version)
 		tab_open(app, WREN_URL, origin = .User)
 	} else {
 		ui.toast(.Info, "%s v%s is available (signed). Menu > Install the update, or About Wren.", APP_NAME, m.version)
@@ -267,7 +276,11 @@ update_summary :: proc(app: ^App) -> Update_Summary {
 	case .Verifying:
 		s.text, s.busy = fmt.tprintf("v%s is available: checking its signature…", app.upd.tag), true
 	case .Ready:
-		s.text = fmt.tprintf("v%s is available and signed by Froment Software (%d MB). Nothing is installed until you press the button.", app.upd.manifest.version, app.upd.manifest.size / (1024 * 1024))
+		if update_signature_required(app) {
+			s.text = fmt.tprintf("v%s is available and its signature is valid (%d MB). Nothing is installed until you press the button.", app.upd.manifest.version, app.upd.manifest.size / (1024 * 1024))
+		} else {
+			s.text = fmt.tprintf("v%s is available, UNSIGNED: signature checking is turned off (browser.update.require_signature), so only the file's checksum is checked, not who made it (%d MB). Nothing is installed until you press the button.", app.upd.manifest.version, app.upd.manifest.size / (1024 * 1024))
+		}
 		s.can_install = allowed
 	case .Downloading:
 		s.text, s.busy = fmt.tprintf("Downloading v%s…", app.upd.manifest.version), true
