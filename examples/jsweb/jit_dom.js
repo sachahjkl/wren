@@ -28,6 +28,18 @@ test("a loop that changes the DOM it reads", () => {
   eq(list.lastChild.nodeName, "I", "the last child");
 });
 
+test("a compiled loop that reads document", () => {
+  // (window.document is the global object's own accessor: its getter called by the compiled code, as nodes10k builds)
+  const list = document.createElement("ul");
+  function build(n) { for (let i = 0; i < n; i++) { const li = document.createElement("li"); li.appendChild(document.createTextNode("item " + i)); list.appendChild(li); } }
+  build(2000);
+  eq(list.childNodes.length, 2000, "the items made");
+  eq(list.lastChild.textContent, "item 1999", "the last one");
+  function bad(n) { for (let i = 0; i < n; i++) { list.appendChild(document.createElement(i === n - 1 ? "" : "b")); } }
+  throws(() => bad(100), "InvalidCharacterError", "a call that throws in the loop");
+  eq(list.childNodes.length, 2099, "the items before it");
+});
+
 test("a getter that throws", () => {
   const list = document.createElement("ul");
   let reached = 0;
