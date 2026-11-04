@@ -60,12 +60,17 @@ stacking_effect :: proc(cs: ^style.Computed) -> bool {
 // the content box for transform-box: content-box / fill-box), transform-origin and the transform properties resolved
 // in CSS px, then scaled to device px (the linear part does not change; translations scale).
 box_matrix :: proc(l: ^Layout, b: ^Box) -> Matrix {
-	if .Transformed not_in b.flags || b.cs == nil { return IDENTITY }
-	if .Foreign in b.flags { return foreign_matrix(l, b) }
+	if .Foreign in b.flags && .Transformed in b.flags && b.cs != nil { return foreign_matrix(l, b) }
+	return box_matrix_of(l, b, b.cs)
+}
+
+// The same for another style of the box's (a compositor's animation of it: browser/shell_shown.odin).
+box_matrix_of :: proc(l: ^Layout, b: ^Box, cs: ^style.Computed) -> Matrix {
+	if .Transformed not_in b.flags || cs == nil { return IDENTITY }
 	s := l.scale > 0 ? l.scale : 1
 	r := Rect{b.abs, b.abs + b.size}
-	if b.cs.transform_box == .Content_Box || b.cs.transform_box == .Fill_Box { r = content_rect(b) }
-	m := style.transform_matrix(b.cs, r.min.x / s, r.min.y / s, (r.max.x - r.min.x) / s, (r.max.y - r.min.y) / s)
+	if cs.transform_box == .Content_Box || cs.transform_box == .Fill_Box { r = content_rect(b) }
+	m := style.transform_matrix(cs, r.min.x / s, r.min.y / s, (r.max.x - r.min.x) / s, (r.max.y - r.min.y) / s)
 	m[4] *= s
 	m[5] *= s
 	for v in m { if math.is_nan(v) || math.is_inf(v) { return Matrix{0, 0, 0, 0, 0, 0} } }

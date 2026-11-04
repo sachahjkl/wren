@@ -8,7 +8,11 @@ package e2e_scenarios
 //     mousemove listener the drag waits for the page as before, and selects the same;
 //   * the thumb of the document's scroll bar and Page Down scroll the page under the task, with what was below the fold
 //     painted (the busy frame is the page as it shows once it ran), and the presses on the bar are not the page's;
-//   * Ctrl+L takes the address bar under the task.
+//   * Ctrl+L takes the address bar under the task;
+//   * a slide (transform) and a fade (opacity) go on under the task, and the page's turn goes on from the same clock;
+//   * the wheel over the scroll box and the thumb of its bar scroll it under the task (not the document), the task saw
+//     none of it, the box took the offset and fired its scroll event once it ran;
+//   * the focused field's caret blinks under the task.
 
 import "core:fmt"
 import "core:testing"
@@ -30,10 +34,30 @@ import "wb:e2e"
 @(private = "file") SCROLLED_LEAST :: 50          // the page moved at least this much (CSS px)
 @(private = "file") EMPTY :: e2e.Point{500, 500}   // the tall box under everything: a press there selects nothing and gives the page the keyboard
 
+// The animations the compositor runs: a box slid sideways and one faded, both linear, long enough to be under way all along.
+@(private = "file") SLIDE_PX :: 800
+@(private = "file") FADE_FROM :: 0.9
+@(private = "file") FADE_TO :: 0.1
+@(private = "file") ANIM_S :: 4
+@(private = "file") ANIM_WAIT_MS :: 400         // between the two pictures under the task: 80 px of the slide, 0.08 of the fade
+@(private = "file") SLID_LEAST :: 40            // px the box moved between them, at least (half what the clock gives)
+@(private = "file") FADED_LEAST :: 10           // the faded box's red channel rose this much, at least (white shows through)
+@(private = "file") BOX_COLOR :: [3]u8{0x00, 0x88, 0xaa}   // .moving's background
+@(private = "file") CLOCK_WITHIN_MS :: 150      // the animation's currentTime once the task ran, against the time since it began
+// The caret: a short half period, pictures closer than it over two periods (both phases are seen whatever the timing).
+@(private = "file") CARET_BLINK_MS :: 200
+@(private = "file") CARET_SHOTS :: 6
+@(private = "file") CARET_GAP_MS :: 90
+// The scroll box: the wheel over it, then its thumb.
+@(private = "file") BOX_THUMB_GRAB :: 4      // below its bar's top arrow (CSS px): on the thumb, short as it is (40 lines in the box)
+@(private = "file") BOX_THUMB_MOVE :: 40
+
 @(private = "file")
-open :: proc(t: ^testing.T, loc := #caller_location) -> ^e2e.Session {
-	prefs := []string{fmt.tprintf("browser.selection.background=%s", HIGHLIGHT), fmt.tprintf("browser.selection.inactive_background=%s", HIGHLIGHT)}
-	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, prefs = prefs, url = e2e.file_url(fmt.tprintf("%s/examples/site/busy.html", e2e.repo_root()))}, loc)
+open :: proc(t: ^testing.T, extra: []string = nil, loc := #caller_location) -> ^e2e.Session {
+	prefs := make([dynamic]string, context.temp_allocator)
+	append(&prefs, fmt.tprintf("browser.selection.background=%s", HIGHLIGHT), fmt.tprintf("browser.selection.inactive_background=%s", HIGHLIGHT))
+	append(&prefs, ..extra)
+	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, prefs = prefs[:], url = e2e.file_url(fmt.tprintf("%s/examples/site/busy.html", e2e.repo_root()))}, loc)
 	e2e.wait_idle(s)
 	e2e.eval(s, "for (const e of document.querySelectorAll('.moving')) e.style.animation = 'none'; 1")   // (two pictures of the page are alike)
 	e2e.wait_frames(s)
@@ -147,4 +171,87 @@ the_scroll_bar_and_the_keys_scroll_a_busy_page :: proc(t: ^testing.T) {
 	ctrl_up := e2e.Busy_Step{kind = .Event, ev = {kind = .Key_Release, key = .Ctrl}}
 	shots = while_held(s, &short, {e2e.busy_capture(), ctrl_down, e2e.busy_key(s, "Ctrl+L", true), e2e.busy_key(s, "Ctrl+L", false), ctrl_up, e2e.busy_capture()})
 	testing.expectf(t, differing(shots[0], shots[1], field) > 0, "the address field took the keyboard under the task")
+}
+
+// The first x at or right of `from` on row `y` where the slid box shows (-1: nowhere).
+@(private = "file")
+box_left :: proc(img: e2e.Image, y, from: int) -> int {
+	for x in max(from, 0) ..< img.width {
+		c := e2e.pixel(img, x, y)
+		if abs(int(c[0]) - int(BOX_COLOR[0])) <= CHANNEL_WITHIN && abs(int(c[1]) - int(BOX_COLOR[1])) <= CHANNEL_WITHIN && abs(int(c[2]) - int(BOX_COLOR[2])) <= CHANNEL_WITHIN { return x }
+	}
+	return -1
+}
+
+@(test)
+animations_of_transform_and_opacity_go_on_while_the_page_is_busy :: proc(t: ^testing.T) {
+	s := open(t, {"style.animations.mode=normal"})   // (whatever the system's reduced motion)
+	short := false
+	slid, faded := e2e.box_model(s, "#hoverbox").window, e2e.box_model(s, "#pulse").window
+	e2e.eval(s, fmt.tprintf(`const k = document.head.appendChild(document.createElement("style"));
+		k.textContent = "@keyframes slide {{ to {{ transform: translateX(%dpx) }} }} @keyframes fade {{ from {{ opacity: %v }} to {{ opacity: %v }} }}";
+		document.getElementById("hoverbox").style.animation = "slide %ds linear forwards";
+		document.getElementById("pulse").style.animation = "fade %ds linear forwards";
+		window.began = performance.now(); 1`, SLIDE_PX, FADE_FROM, FADE_TO, ANIM_S, ANIM_S))
+	row := int(slid.y + slid.h / 2)
+	mid := e2e.Point{faded.x + faded.w / 2, faded.y + faded.h / 2}
+	shots := while_held(s, &short, {e2e.busy_capture(), e2e.busy_wait(ANIM_WAIT_MS), e2e.busy_capture()})
+	x0, x1 := box_left(shots[0], row, int(slid.x) - 1), box_left(shots[1], row, int(slid.x) - 1)
+	testing.expectf(t, x0 >= 0 && x1 - x0 >= SLID_LEAST, "the slide goes on under the task: the box at x %d, then %d", x0, x1)
+	r0, r1 := int(e2e.pixel(shots[0], int(mid.x), int(mid.y))[0]), int(e2e.pixel(shots[1], int(mid.x), int(mid.y))[0])
+	testing.expectf(t, r1 - r0 >= FADED_LEAST, "the fade goes on under the task: red %d, then %d", r0, r1)
+	// the page's turn: its timeline went by the same clock (the chrome frames did not move it), and the box goes on from there
+	off := e2e.eval_f64(s, `document.getElementById("hoverbox").getAnimations()[0].currentTime - (performance.now() - window.began)`)
+	testing.expectf(t, abs(off) <= CLOCK_WITHIN_MS, "the animation's time at the page's turn is the clock's: %v ms off", off)
+	after := e2e.capture(s, {target = .Window})
+	testing.expectf(t, box_left(after, row, int(slid.x) - 1) >= x1, "no jump back once the page has its turn: at x %d, %d under the task", box_left(after, row, int(slid.x) - 1), x1)
+}
+
+@(test)
+a_scroll_box_scrolls_while_the_page_is_busy :: proc(t: ^testing.T) {
+	s := open(t)
+	short := false
+	box := e2e.box_model(s, "#scroller")
+	at := e2e.Point{box.box.x + box.box.w / 2, box.box.y + box.box.h / 2}
+	scrolls := e2e.eval(s, "String(window.boxScrolls)")
+
+	// the wheel over it: the box scrolls under the task, not the document
+	shots := while_held(s, &short, {e2e.busy_capture(), e2e.busy_wheel(s, 1, at), e2e.busy_capture()})
+	testing.expect_value(t, e2e.eval(s, "String(held.boxTop)"), "0")   // the task did not see it move
+	testing.expectf(t, e2e.eval_f64(s, "scroller.scrollTop") >= SCROLLED_LEAST, "the box took the wheel's offset: %s", e2e.eval(s, "String(scroller.scrollTop)"))
+	testing.expect_value(t, e2e.eval(s, "String(scrollY)"), "0")
+	testing.expectf(t, differing(shots[0], shots[1], box.window) > SAME_MOST_DIFFERENT, "the box moved under the task: %d px differ", differing(shots[0], shots[1], box.window))
+	e2e.wait_js(s, fmt.tprintf("window.boxScrolls > %s", scrolls))   // its scroll event, at the page's turn
+	after := e2e.capture(s, {target = .Window})
+	testing.expectf(t, differing(shots[1], after, box.window) <= SAME_MOST_DIFFERENT, "the busy frame is the box as it shows once the page ran: %d px differ", differing(shots[1], after, box.window))
+
+	// the thumb of its bar: a press on it, a move down, the release, all under the task
+	e2e.eval(s, "scroller.scrollTop = 0; 1")
+	e2e.wait_frames(s)
+	bar := e2e.eval_f64(s, "scroller.offsetWidth - scroller.clientWidth - 2")   // (less its two borders)
+	grab := e2e.Point{box.box.x + box.box.w - 1 - bar / 2, box.box.y + 1 + bar + BOX_THUMB_GRAB}
+	downs := e2e.eval(s, "String(window.downs)")
+	shots = while_held(s, &short, {e2e.busy_press(s, grab), e2e.busy_move(s, grab + {0, BOX_THUMB_MOVE}), e2e.busy_release(s, grab + {0, BOX_THUMB_MOVE}), e2e.busy_capture()})
+	testing.expect_value(t, e2e.eval(s, "String(held.boxTop)"), "0")
+	testing.expectf(t, e2e.eval_f64(s, "scroller.scrollTop") >= SCROLLED_LEAST, "the box took the thumb's offset: %s", e2e.eval(s, "String(scroller.scrollTop)"))
+	after = e2e.capture(s, {target = .Window})
+	testing.expectf(t, differing(shots[0], after, box.window) <= SAME_MOST_DIFFERENT, "the busy frame is the box as the thumb left it: %d px differ", differing(shots[0], after, box.window))
+	testing.expect_value(t, e2e.eval(s, "String(window.downs)"), downs)   // the bar's presses are not the page's
+}
+
+@(test)
+the_caret_blinks_while_the_page_is_busy :: proc(t: ^testing.T) {
+	s := open(t, {fmt.tprintf("forms.caret.blink_ms=%d", CARET_BLINK_MS)})
+	short := false
+	field := e2e.box_model(s, "#field")
+	e2e.click_at(s, e2e.center(field.box))
+	steps := make([dynamic]e2e.Busy_Step, context.temp_allocator)
+	for i in 0 ..< CARET_SHOTS {
+		if i > 0 { append(&steps, e2e.busy_wait(CARET_GAP_MS)) }
+		append(&steps, e2e.busy_capture())
+	}
+	shots := while_held(s, &short, steps[:])
+	toggled := 0
+	for sh in shots[1:] { if differing(shots[0], sh, field.window) > 0 { toggled += 1 } }
+	testing.expectf(t, toggled > 0, "the caret blinks under the task: %d of %d pictures differ from the first", toggled, len(shots) - 1)
 }

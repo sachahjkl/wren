@@ -311,6 +311,32 @@ keyframe_animations :: proc(t: ^testing.T) {
 	testing.expect(t, !timeline_active(f.tl) && timeline_next_ms(f.tl) < 0, "all finished: idle")
 }
 
+// What a chrome frame paints of a busy page (browser/shell_shown.odin): the values at a later instant, the timeline untouched,
+// the page's own tick at that instant the same.
+@(test)
+compositor_values_at_a_later_instant :: proc(t: ^testing.T) {
+	f := open(`<style>
+		@keyframes fade { from { opacity: 1 } to { opacity: 0 } }
+		@keyframes move { from { margin-left: 0px } to { margin-left: 100px } }
+		#a { animation: fade 1000ms linear }
+		#b { animation: move 1000ms linear }
+	</style><div id=a></div><div id=b></div>`)
+	defer fixture_unload(f)
+	tick(f, 250)
+	timeline_clear_events(f.tl)
+	now := f.tl.now
+	vals := make([dynamic]Compositor_Value, context.temp_allocator)
+	testing.expect(t, timeline_compositor_values(f.tl, f.st, 500, &vals), "the fade moves at every frame")
+	testing.expect_value(t, len(vals), 1)   // (#b animates a margin: the page's)
+	testing.expectf(t, len(vals) == 1 && vals[0].node == dom.find_by_id(f.doc, "a") && close_to(f64(vals[0].cs.opacity), 0.5), "the fade halfway at 500 ms: %v", vals)
+	testing.expectf(t, close_to(f64(node(f, "a").opacity), 0.75) && f.tl.now == now && len(timeline_events(f.tl)) == 0, "the timeline as the page left it: opacity %v", node(f, "a").opacity)
+	tick(f, 500)
+	testing.expect(t, close_to(f64(node(f, "a").opacity), 0.5), "the page's tick at that instant gives the same value")
+	clear(&vals)
+	timeline_compositor_values(f.tl, f.st, 1500, &vals)
+	testing.expectf(t, len(vals) == 1 && vals[0].cs.opacity == 1, "past its end (fill none): the cascaded value, %v", vals)
+}
+
 @(test)
 a_loop_that_rests_sleeps_until_it_moves_again :: proc(t: ^testing.T) {
 	f := open(`<style>

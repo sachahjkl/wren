@@ -39,6 +39,9 @@ busy_key :: proc(s: ^Session, combo: string, down: bool, loc := #caller_location
 
 busy_capture :: proc() -> Busy_Step { return {kind = .Capture} }
 
+// Chrome frames until `ms` have passed (what moves by the clock under the task moves meanwhile).
+busy_wait :: proc(ms: f64) -> Busy_Step { return {kind = .Wait, ms = ms} }
+
 busy_resize :: proc(size: [2]int) -> Busy_Step { return {kind = .Resize, size = size} }
 
 // The steps go to the chrome frames to come; returns at once (a barrier, wait_js on what the page sets once it let go, runs them).

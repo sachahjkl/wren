@@ -433,7 +433,8 @@ scroll_chain_by :: proc(app: ^App, t: ^Tab, node: base.Handle, d: draw.Vec2) {
 	if rest != {} { take(app, t, base.NIL_HANDLE, rest) }
 }
 
-@(private = "file")
+// The scroller under `p` (page-area px) that can still move by `d` (counting where it is already going), innermost first;
+// NIL: the document. (Chrome frames ask it of the layout with what they show set on it: shell_shown.odin shell_wheel_box.)
 wheel_scroller :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2) -> base.Handle {
 	l := &t.layout
 	h := lay.hit_test(l, p, draw.rect_size(active_window(app).page_rect), t.scroll)

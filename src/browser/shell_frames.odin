@@ -20,6 +20,8 @@ package browser
 //     the input that waited is given to the page (it was aimed at what the screen showed);
 //   * a text selection's drag shows what it selects at once (selection_shell.odin Sel_Preview); its moves wait for the page
 //     as any input does, and select when they get there;
+//   * painted from that layout, the page's CSS animations of transform and opacity go on, a scroll container under the
+//     wheel or the thumb of its bar scrolls, and the focused field's caret blinks (shell_shown.odin);
 //   * the browser's shortcuts and the tab keys reach the chrome at once when no key listener could see them; the commands
 //     that act on the chrome alone (the address bar, the next tab) are done there and then;
 //   * input meant for the page (presses, keys while the page has the keyboard) waits, in order, for the next full
@@ -31,7 +33,8 @@ package browser
 // instructions of the guest: the same thread, nothing moves meanwhile.
 //
 // What it changes for pages (see "Interface hors page" in the notes): while a script runs, the document scrolls under
-// the wheel without the page knowing until it is done (scroll containers and wheel listeners do not get that wheel),
+// the wheel without the page knowing until it is done (wheel listeners do not get that wheel; the container under the pointer
+// does, at the page's turn),
 // and the screen shows its last frame, not the changes the script made so far (as before: nothing was shown at all).
 // What a script observes is the same: the events it is given come in the order they happened, and nothing it can read
 // (the selection, the scroll offsets, the focus) changes under it.
@@ -141,6 +144,7 @@ Shell_Frames :: struct {
 	phase_start: time.Tick,
 	nested:     bool,            // a chrome frame is being made (under a guest call, a style pass, a layout pass)
 	page_locked: bool,           // the current tab's layout runs on the page thread (page_thread.odin): not even read
+	styling:    bool,            // a style pass's threads run (its wait lends the thread to chrome frames): the page's animations are not sampled
 	last_present: time.Tick,
 	outer:      [dynamic]platform.Event,   // the full frame's own input (copied: chrome frames poll again)
 	outer_taken: bool,           // a chrome frame used it (its page part went to `deferred`)
@@ -149,6 +153,7 @@ Shell_Frames :: struct {
 	actions:    [dynamic]Shell_Action,
 	pending_scroll: draw.Vec2,   // scroll taken by chrome frames for the current tab's document (the wheel, the bar's thumb, the keys; device px)
 	pending_tab: u64,
+	boxes:      [dynamic]Box_Scroll,   // the containers of that tab's document chrome frames scrolled (the wheel, a bar's thumb: shell_shown.odin)
 	press_to_page: [8]bool,      // per mouse button: its press went to the page, in a chrome frame or a full one (its moves and its release follow)
 	page_keyboard: bool,         // chrome frames: whether the page has the keyboard (followed through presses)
 	snaps:      [dynamic]Page_Snapshot,
@@ -171,7 +176,7 @@ shell_frames_init :: proc(app: ^App) {
 shell_install_hook :: proc(app: ^App) {
 	if app.chrome_frames.cfg.preempt {
 		wasm.set_preempt_hook(shell_preempt, app, app.chrome_frames.cfg.tick_ms)
-		host.set_parallel_wait_hook(shell_preempt, app, i64(app.chrome_frames.cfg.tick_ms) * 500_000)   // (twice per tick)
+		host.set_parallel_wait_hook(shell_preempt_styling, app, i64(app.chrome_frames.cfg.tick_ms) * 500_000)   // (twice per tick)
 	} else {
 		wasm.set_preempt_hook(nil, nil)
 		host.set_parallel_wait_hook(nil, nil, 0)
@@ -185,7 +190,7 @@ shell_frames_destroy :: proc(app: ^App) {
 	config.unwatch(&app.prefs, app.chrome_frames.watch)
 	shell_snapshots_clear(app)
 	for a in app.chrome_frames.actions { delete(a.text) }
-	delete(app.chrome_frames.actions); delete(app.chrome_frames.deferred); delete(app.chrome_frames.outer); delete(app.chrome_frames.snaps)
+	delete(app.chrome_frames.actions); delete(app.chrome_frames.deferred); delete(app.chrome_frames.boxes); delete(app.chrome_frames.outer); delete(app.chrome_frames.snaps)
 	app.chrome_frames = {}
 }
 
@@ -274,13 +279,16 @@ shell_page_phase_end :: proc(app: ^App, events: []platform.Event) -> []platform.
 	return out
 }
 
-// The document takes the scroll chrome frames showed: before the page's input that waited (it was aimed at what they showed)
-// and at the end of the page phase.
+// The document and its containers take the scroll chrome frames showed: before the page's input that waited (it was aimed at
+// what they showed) and at the end of the page phase. (A container's scroll event comes with the page's next frame, as for
+// any scroll: page/scroll_events.odin.)
 @(private = "file")
 shell_take_scroll :: proc(app: ^App) {
-	if app.chrome_frames.pending_scroll == {} { return }
+	if app.chrome_frames.pending_scroll == {} && len(app.chrome_frames.boxes) == 0 { return }
 	for t in tabs_all(app) {
 		if t.id != app.chrome_frames.pending_tab || t.kind != .Web || t.page == nil { continue }
+		for b in app.chrome_frames.boxes { lay.set_scroll(&t.layout, b.node, b.to) }
+		if app.chrome_frames.pending_scroll == {} { continue }
 		size := draw.rect_size(active_window(app).page_rect)
 		lo, hi := lay.doc_scroll_x_range(&t.layout, size.x)
 		to := [2]f32{t.layout.doc_scroll_x, t.scroll} + app.chrome_frames.pending_scroll
@@ -288,6 +296,7 @@ shell_take_scroll :: proc(app: ^App) {
 		scroll_document_to(app, t, {clamp(to.x, lo, hi), clamp(to.y, lo_y, hi_y)}, false)
 	}
 	app.chrome_frames.pending_scroll = {}
+	clear(&app.chrome_frames.boxes)
 	request_frames(app, 2)
 }
 
@@ -319,11 +328,30 @@ shell_preempt :: proc(user: rawptr) {
 	since := time.duration_milliseconds(time.tick_diff(app.chrome_frames.last_present, now))
 	if !pacer_resize_step(app) && since < wnd.pacer.period_ms * 0.75 { return }
 	// and only when the chrome has something new to show: input (or a message: a resize, a repaint), an animation of its
-	// own, a wake it asked for (a caret's blink). Otherwise the page keeps the thread: no cost to a busy page nobody
-	// touches.
+	// own, a wake it asked for (a caret's blink), or the page's animations the compositor runs and its caret's blink
+	// (shell_shown.odin). Otherwise the page keeps the thread: no cost to a busy page nobody touches.
 	unseen := (app.chrome_frames.phase == .Loop || app.chrome_frames.phase == .Anim) && !app.chrome_frames.outer_taken && len(app.chrome_frames.outer) > 0   // the frame's own input, not drawn yet
-	if !unseen && !shell_input_pending() && !busy_input_pending(app) && !ui.needs_frame(wnd.ui) && !(ui.wake_ms(wnd.ui) > 0 && since >= f64(ui.wake_ms(wnd.ui))) { return }
+	if !unseen && !shell_input_pending() && !busy_input_pending(app) && !ui.needs_frame(wnd.ui) && !(ui.wake_ms(wnd.ui) > 0 && since >= f64(ui.wake_ms(wnd.ui))) && !shell_page_moves(app) { return }
 	shell_chrome_frame(app)
+}
+
+// The style passes' hook: the pool's threads write styles meanwhile, which a chrome frame then does not read for the page's
+// animations (shell_shown.odin).
+@(private = "file")
+shell_preempt_styling :: proc(user: rawptr) {
+	app := (^App)(user)
+	app.chrome_frames.styling = true
+	defer app.chrome_frames.styling = false
+	shell_preempt(user)
+}
+
+// The current tab's page shows something new by itself in a chrome frame: an animation the compositor runs, a caret's toggle.
+@(private = "file")
+shell_page_moves :: proc(app: ^App) -> bool {
+	t := current_tab(app)
+	if t == nil || t.kind != .Web || !shell_layout_paintable(app, t) { return false }
+	_, moving := shell_shown_wanted(app, t)
+	return moving
 }
 
 // Messages wait in the thread's queue (input, posted or sent messages, a repaint), without taking them.
@@ -481,7 +509,13 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 		append(chrome, ev)
 	case .Scroll:
 		if over_page && .Ctrl not_in ev.mods && t.page != nil {
-			shell_async_scroll(app, t, wheel_axes(ev) * wheel_step(app, (wnd.page_rect.max - wnd.page_rect.min) / max(page_scale(app), 0.01)) * page_scale(app))
+			d := wheel_axes(ev) * wheel_step(app, (wnd.page_rect.max - wnd.page_rect.min) / max(page_scale(app), 0.01)) * page_scale(app)
+			// a container under the pointer takes it (shell_shown.odin), shown at once when it can be, else at the page's turn
+			if taken, wait := shell_wheel_box(app, t, ev.pos - wnd.page_rect.min, d); taken {
+				if wait { append(&app.chrome_frames.deferred, ev) }
+				return
+			}
+			shell_async_scroll(app, t, d)
 			return
 		}
 		if over_page { append(&app.chrome_frames.deferred, ev); return }   // zoom: the page's layout
@@ -504,6 +538,13 @@ shell_shown_scroll :: proc(t: ^Tab) -> draw.Vec2 {
 	return doc_scroll_vec(t)
 }
 
+// What chrome frames scroll belongs to one tab: another one's is dropped (it is shown no more).
+shell_pending_for :: proc(app: ^App, t: ^Tab) {
+	if app.chrome_frames.pending_tab == t.id { return }
+	app.chrome_frames.pending_scroll, app.chrome_frames.pending_tab = {}, t.id
+	clear(&app.chrome_frames.boxes)
+}
+
 // The wheel over a busy page: its last frame moves at once; the document takes the position when the page has its turn
 // (shell_take_scroll).
 @(private = "file")
@@ -512,7 +553,7 @@ shell_async_scroll :: proc(app: ^App, t: ^Tab, d: draw.Vec2) { shell_async_scrol
 // The document of a busy page shown at `to` (clamped to its range), and scrolled there when the page has its turn.
 @(private = "file")
 shell_async_scroll_to :: proc(app: ^App, t: ^Tab, to: draw.Vec2) {
-	if app.chrome_frames.pending_tab != t.id { app.chrome_frames.pending_scroll, app.chrome_frames.pending_tab = {}, t.id }
+	shell_pending_for(app, t)
 	lo, limit: draw.Vec2
 	if !app.chrome_frames.page_locked {   // (page thread: not read)
 		size := draw.rect_size(active_window(app).page_rect)
@@ -526,9 +567,10 @@ shell_async_scroll_to :: proc(app: ^App, t: ^Tab, to: draw.Vec2) {
 
 // The document's scroll bars of a busy page, on its last frame: the press on a thumb, the drag's moves and its release are
 // the shell's, as in a full frame (smooth_scroll.odin scrollbar_event, whose Scrollbar_Drag this is: a drag begun in one kind
-// of frame goes on in the other), and the document is shown where the thumb puts it, as under the wheel. A press waits for
-// the page while presses or keys it has not had yet wait (it must not overtake them), or on a container's bar (its scroll
-// offsets are the layout's).
+// of frame goes on in the other), and the document is shown where the thumb puts it, as under the wheel. A container's thumb
+// likewise while the page can be painted from its last layout (shell_shown.odin: the bar is found there, the container shown
+// at its new offset), else it waits. A press waits for the page while presses or keys it has not had yet wait (it must not
+// overtake them), and so does one on a container's track or arrows.
 @(private = "file")
 shell_bar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, over_page: bool) -> bool {
 	s := smooth_of(t)
@@ -550,17 +592,25 @@ shell_bar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, over_page: bool)
 				track_min = rail.min[ax], travel = (rail.max[ax] - rail.min[ax]) - (thumb.max[ax] - thumb.min[ax]), lo = snap.lo[ax], limit = snap.limit[ax]}
 			return true
 		}
+		return shell_box_bar_press(app, t, p)   // a container's thumb, shown from the layout (shell_shown.odin)
 	case .Mouse_Move:
-		if !s.drag.active || s.drag.node != base.NIL_HANDLE { return false }
+		// (a container's drag goes on while its page can be painted from its layout; else its moves wait for the page)
+		if !s.drag.active || (s.drag.node != base.NIL_HANDLE && !shell_layout_paintable(app, t)) { return false }
 		dr := s.drag
 		ax := dr.vertical ? 1 : 0
 		f := dr.travel > 0 ? clamp((p[ax] - dr.grab - dr.track_min) / dr.travel, 0, 1) : 0
+		if dr.node != base.NIL_HANDLE {
+			to := shell_box_shown(app, t, dr.node)
+			to[ax] = dr.lo + f * (dr.limit - dr.lo)
+			shell_box_scroll_to(app, t, dr.node, to)
+			return true
+		}
 		to := shell_shown_scroll(t)
 		to[ax] = dr.lo + f * (dr.limit - dr.lo)
 		shell_async_scroll_to(app, t, to)
 		return true
 	case .Mouse_Release:
-		if ev.button != .Left || !s.drag.active || s.drag.node != base.NIL_HANDLE { return false }
+		if ev.button != .Left || !s.drag.active || (s.drag.node != base.NIL_HANDLE && !shell_layout_paintable(app, t)) { return false }
 		s.drag = {}
 		return true
 	}
@@ -801,26 +851,32 @@ shell_layout_paintable :: proc(app: ^App, t: ^Tab) -> bool {
 
 // The page painted again from the layout of its last frame, in place of its pixels (shell_layout_paintable), for what the shell
 // changed meanwhile: the document scrolled by the wheel or a scroll bar's thumb (what was not in view comes into view, fixed
-// and sticky boxes stay where they belong), a drag's selection (selection_shell.odin Sel_Preview). Nothing of the page runs:
-// the painter reads the layout, the document, the styles and the compositor's pictures (it may record some again).
+// and sticky boxes stay where they belong), a drag's selection (selection_shell.odin Sel_Preview), the animations the
+// compositor runs, the containers scrolled, the caret's blink (shell_shown.odin). Nothing of the page runs: the painter reads
+// the layout, the document, the styles and the compositor's pictures (it may record some again).
 shell_paint_layout :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) {
 	size := draw.rect_size(rect)
 	scroll := shell_shown_scroll(t)
 	draw.rect(dc, rect, to_draw(window_own(app).page_prep.canvas))
 	draw.push_clip(dc, rect)
 	selection_paint_begin(app, t)
+	shell_shown_caret(app, t)
+	sh := shell_shown_set(app, t)
 	paint(&t.layout, dc, t.page.doc, rect.min, size, scroll.y, rect, doc_scrollbar = false)
+	shell_shown_put(&sh)
 	paint_doc_scrollbar(&t.layout, dc, rect.min, size, scroll.y)
 	draw.pop_clip(dc)
 }
 
 // A chrome frame paints the page from its layout when the shell changed what it shows (it scrolled the document vertically, a
-// drag selects) and it can (shell_layout_paintable); else its kept pixels. (A sideways scroll is the layout's own offset: kept
-// pixels for it.)
+// drag selects, shell_shown_wanted) and it can (shell_layout_paintable); else its kept pixels. (A sideways scroll is the
+// layout's own offset: kept pixels for it.)
 shell_layout_wanted :: proc(app: ^App, t: ^Tab) -> bool {
 	scrolled := app.chrome_frames.pending_tab == t.id && app.chrome_frames.pending_scroll != {}
 	if scrolled && app.chrome_frames.pending_scroll.x != 0 { return false }
-	return (scrolled || selection_preview_shown(app, t)) && shell_layout_paintable(app, t)
+	if !shell_layout_paintable(app, t) { return false }
+	shown, _ := shell_shown_wanted(app, t)
+	return scrolled || selection_preview_shown(app, t) || shown
 }
 
 // Keeps at most `keep` snapshots (the current tab's and the most recently used).
