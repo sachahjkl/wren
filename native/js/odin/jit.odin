@@ -41,9 +41,9 @@ when wj.WJ_JSRT {
 	}
 
 	@(export, link_name = "wj_jit_finish")
-	wj_jit_finish :: proc "c" (f: ^jsrt.Frame, lo: u32, hi: u32, index: u32, slot: i32) -> i32 {
+	wj_jit_finish :: proc "c" (f: ^jsrt.Frame, lo: u32, hi: u32, index: u32, slot: i32, a: u32) -> i32 {
 		context = jit_context
-		return jsrt.jit_call_finish(f, lo, hi, index, int(slot)) ? 1 : 0
+		return jsrt.jit_call_finish(f, lo, hi, index, int(slot), jsrt.Atom(a)) ? 1 : 0
 	}
 
 	@(export, link_name = "wj_jit_new")

@@ -104,7 +104,7 @@ Jit_Helper_Def :: struct {
 JIT_HELPERS :: [Jit_Helper]Jit_Helper_Def {
 	.call    = {"wj_jit_call", 5},
 	.array   = {"wj_jit_array", 4},
-	.finish  = {"wj_jit_finish", 5},
+	.finish  = {"wj_jit_finish", 6},
 	.new     = {"wj_jit_new", 4},
 	.reserve = {"wj_jit_reserve", 3},
 	.add     = {"wj_jit_add", 3},
@@ -171,32 +171,43 @@ jit_call :: proc(f: ^Frame, sp: int, argc: int, kind: Jit_Call_Kind, pc: int) ->
 
 // Jit_Helper.finish: the compiled code of a function called directly by compiled code (j_direct_call) left other than
 // by its return, with the exit word (lo, hi) of the code made at `index`: the rest of the call interpreted on its
-// frame, which the caller pops. Its result in f.stack[0]; true: it threw (the caller's callee, at `slot` of its stack,
-// is then jit_rethrow, as jit_call leaves it).
-jit_call_finish :: proc(f: ^Frame, lo: u32, hi: u32, index: u32, slot: int) -> bool {
+// frame, which the caller pops. Its result in f.stack[0] (when it has an operand stack); true: it threw (the caller's
+// callee, at `slot` of its stack, is then jit_rethrow, as jit_call leaves it; a getter's object there, with `a` the
+// property read, the context's thrower, as jit_getter leaves it).
+jit_call_finish :: proc(f: ^Frame, lo: u32, hi: u32, index: u32, slot: int, a: Atom) -> bool {
 	b := f.bc
 	res, pc, sp := jit_exit(f, b, &b.jit.fn, index, u64(lo) | u64(hi) << 32)
-	v := f.stack[0]
+	v := jit_result(f)
 	if res != .ret {
 		f.pc = pc
 		f.sp = sp
 		v, _ = interp_run(f.ctx, f, f.closure_refs)
 	}
 	if is_exception(v) {
+		if a != ATOM_NULL {
+			jit_thrower_at(f.prev, slot, a)
+			return true
+		}
 		ctx := f.prev.ctx
 		if ctx.jit_rethrow == nil {ctx.jit_rethrow = new_native_function(ctx, jit_rethrow, "", 0, 0, .constructor)}
 		f.prev.stack[slot] = mk_obj(ctx.jit_rethrow)
 		return true
 	}
-	f.stack[0] = v
+	if b.stack_size > 0 {f.stack[0] = v}
 	return false
 }
 
-// A function the JIT may compile whole: a plain one within the size limit, with an operand stack (its result is
-// returned in stack[0]; a function without one, which only returns undefined, has its frame there)
+// What a function whose compiled code returned (a ret exit) returns: the value in its frame's stack[0], undefined for a
+// function without an operand stack (its frame is there: return_undef is its only return).
+jit_result :: #force_inline proc(f: ^Frame) -> Value {
+	return f.bc.stack_size > 0 ? f.stack[0] : UNDEFINED
+}
+
+// A function the JIT may compile whole: a plain one within the size limit (its result is returned in stack[0]; a
+// function without an operand stack, which only returns undefined, has its frame there and returns nothing: jit_result)
 @(private = "file")
 jit_fn_kind_ok :: proc(b: ^Function_Bytecode) -> bool {
-	return b.func_kind == .normal && len(b.code) <= jit_cfg.max_code_bytes && b.stack_size > 0
+	return b.func_kind == .normal && len(b.code) <= jit_cfg.max_code_bytes
 }
 
 // Can the function be compiled whole, and so be called from compiled code without the cost of an interpreted call
@@ -231,7 +242,7 @@ jit_call_bytecode :: proc(ctx: ^Context, fo: ^Object, this: Value, args: []Value
 	if nb.jit_calls >= jit_cfg.call_threshold {res, pc, sp = jit_fn_enter(nf.ctx, nf)}
 	r: Value
 	if res == .ret {
-		r = nf.stack[0]
+		r = jit_result(nf)
 	} else {
 		nf.pc = pc
 		nf.sp = sp
@@ -604,7 +615,7 @@ jit_pushed :: #force_no_inline proc(f: ^Frame) -> ^Frame {
 		f.pc = pc
 		f.sp = sp
 	case .ret:
-		v := f.stack[0]
+		v := jit_result(f)
 		c := frame_pop(f.ctx.rt, f)
 		c.stack[c.sp] = v
 		c.sp += 1
@@ -2237,16 +2248,20 @@ jit_get_field :: proc(c: ^Jc, op: Opcode, a: Atom, pc: int) -> bool {
 	j_as_obj(c, n - 1, pc, JIT_AUX_LEARN)
 	obj, ok := j_obj_local(c, n - 1)
 	if !ok {return false}
-	// (a site whose first shape it can read finds an accessor reads through getters)
+	// (a site whose first shape it can read finds an accessor reads through getters; the getter the translation sees,
+	// in the prototype that holds it or in the object it sees, is the one a direct call is made for)
 	getter := false
+	seen: ^Object
 	for k in 0 ..< site.n {
 		if l, found := jit_lookup(site.shapes[k], a, true); found {
 			getter = l.accessor
+			holder := l.depth > 0 ? l.objs[l.depth - 1] : recv.tag == .object && as_obj(recv).shape == site.shapes[k] ? as_obj(recv) : nil
+			if getter && holder != nil {seen = holder.slots[l.idx].getset.getter}
 			break
 		}
 	}
 	if !j_prop_addr(c, obj, site, a, false, pc, getter) {return false}
-	if getter {return j_call_getter(c, op, a, obj, nil, pc)}
+	if getter {return j_call_getter(c, op, a, obj, nil, pc, seen)}
 	t := j_read_ty(c, site, shadow)
 	if t == .O || t == .L {t = .V}
 	j_check_value(c, I_T0, t, pc)
@@ -2266,8 +2281,10 @@ jit_get_field :: proc(c: ^Jc, op: Opcode, a: Atom, pc: int) -> bool {
 // put the thrower in, so the instruction after the read must be a read of a named property of its result (get_field,
 // get_field2, get_length: window.document.createElement): the thrower is put in the result's place, whose property
 // is the accessor that throws, and the throw exit resumes at that instruction, which throws the exception pending.
+// A getter of the script's that may be compiled whole (`seen`, the one the translation saw) is called directly
+// (j_direct_call) when it is the function the read finds; any other through the helper.
 @(private = "file")
-j_call_getter :: proc(c: ^Jc, op: Opcode, a: Atom, obj: u32, global: ^Object, pc: int) -> bool {
+j_call_getter :: proc(c: ^Jc, op: Opcode, a: Atom, obj: u32, global: ^Object, pc: int, seen: ^Object = nil) -> bool {
 	n := c.st.n
 	if c.inl_depth > 0 {
 		j_fail(c, "a getter in a callee being inlined")
@@ -2275,8 +2292,8 @@ j_call_getter :: proc(c: ^Jc, op: Opcode, a: Atom, obj: u32, global: ^Object, pc
 	}
 	// where the result goes, where the thrower goes and the property it throws for, where the throw exit resumes
 	dest, at, ta, xpc := op == .get_field2 ? n : n - 1, n - 1, a, pc
+	next := pc + int(opcode_info[op].size)
 	if global != nil {
-		next := pc + int(opcode_info[op].size)
 		#partial switch Opcode(c.code[next]) {
 		case .get_field, .get_field2: ta = Atom(jr_u32(c.code, next + 1))
 		case .get_length: ta = pa(.A_length)
@@ -2289,13 +2306,26 @@ j_call_getter :: proc(c: ^Jc, op: Opcode, a: Atom, obj: u32, global: ^Object, pc
 	j_accessor_fn(c, GETSET_GETTER, pc)
 	j_flush_objs(c)
 	j_materialize(c, true)
+	direct := global == nil && seen != nil && j_direct_ok(c, seen)
+	if direct {
+		// block $result: the direct call; block $slow: the helper's, with the getter in I_T5 (j_direct_call moved it
+		// there before any of its checks)
+		for _ in 0 ..< 2 {
+			j_op(c, W_BLOCK)
+			j_op(c, W_VOID)
+			c.nest += 1
+		}
+		j_direct_call(c, seen, 0, .method, at, xpc, next, dest, ta)
+		j_op(c, W_END)
+		c.nest -= 1
+	}
 	j_lget(c, P_FRAME)
-	j_lget(c, I_T2)
+	j_lget(c, direct ? I_T5 : I_T2)
 	if global != nil {j_i32(c, i32(uintptr(global)))} else {j_lget(c, obj)}
 	j_i32(c, i32(dest))
 	j_i32(c, i32(at))
 	j_i32(c, i32(ta))
-	j_i32(c, i32(pc + int(opcode_info[op].size)))
+	j_i32(c, i32(next))
 	j_helper(c, .get)
 	j_op(c, W_IF)
 	j_op(c, W_VOID)
@@ -2306,6 +2336,10 @@ j_call_getter :: proc(c: ^Jc, op: Opcode, a: Atom, obj: u32, global: ^Object, pc
 	c.st.n = n
 	j_op(c, W_END)
 	c.nest -= 1
+	if direct {
+		j_op(c, W_END)
+		c.nest -= 1
+	}
 	if op == .get_field || op == .get_length {c.st.n -= 1}
 	d := j_push(c, .V)
 	off := u32(d * size_of(Value))
@@ -2315,7 +2349,7 @@ j_call_getter :: proc(c: ^Jc, op: Opcode, a: Atom, obj: u32, global: ^Object, pc
 	j_lget(c, P_STACK)
 	j_mem(c, W_I64_LOAD, 3, off + 8)
 	j_lset(c, c.sl0 + u32(d))
-	j_retake_arrays(c, pc + int(opcode_info[op].size))
+	j_retake_arrays(c, next)
 	return !c.fail
 }
 
@@ -3014,7 +3048,7 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 			j_op(c, W_VOID)
 			c.nest += 1
 		}
-		j_direct_call(c, as_obj(fv), argc, kind, low, pc, next)
+		j_direct_call(c, as_obj(fv), argc, kind, low, pc, next, low)
 		j_op(c, W_END)
 		c.nest -= 1
 	}
@@ -3197,8 +3231,10 @@ j_ld32 :: proc(c: ^Jc, addr: uintptr, off: u32) {
 // see an interpreter's frame), its code called through the engine's table, its frame popped as frame_pop pops it. Emitted inside block $slow, which any check that
 // fails leaves (the helper then makes the call), itself in block $result, which the call leaves with the result in the
 // frame at `low`. The callee's code leaving other than by its return: the helper finishes the call (jit_call_finish).
+// A getter's call (`getter` the property read, j_call_getter): the callee in I_T2, `this` the object at `low`, the result
+// at `dest`; when it throws, the object's place is the thrower's (jit_getter's contract).
 @(private = "file")
-j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: int, pc: int, next: int) {
+j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: int, pc: int, next: int, dest: int, getter := ATOM_NULL) {
 	nb := fo.data.(Func_Data).bc
 	info := uintptr(nb.jit)
 	rtp := uintptr(c.rt)
@@ -3207,19 +3243,25 @@ j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: 
 	stack0 := u32(abl + int(nb.var_count)) * size_of(Value)
 	total := abl + int(nb.var_count) + int(nb.stack_size)   // (no closure cells: no room for their pointers)
 	construct := kind == .construct
-	slot := n - argc - (construct ? 2 : 1)   // the callee's (a construction's new.target after it)
+	slot := getter != ATOM_NULL ? low : n - argc - (construct ? 2 : 1)   // the callee's (a construction's new.target after it), a getter's object
 	callee := u32(slot * size_of(Value))
 	// the callee is a function of nb, its code compiled and holding no arrays
-	j_lget(c, P_STACK)
-	j_mem(c, W_I32_LOAD8_U, 0, callee)
-	j_i32(c, i32(Tag.object))
-	j_op(c, W_I32_NE)
-	j_op(c, W_BR_IF)
-	w_uleb(&c.out, 0)
-	j_lget(c, P_STACK)
-	j_mem(c, W_I32_LOAD, 2, callee + 8)
-	j_op(c, W_LOCAL_TEE)
-	w_uleb(&c.out, I_T5)
+	if getter != ATOM_NULL {
+		j_lget(c, I_T2)
+		j_op(c, W_LOCAL_TEE)
+		w_uleb(&c.out, I_T5)
+	} else {
+		j_lget(c, P_STACK)
+		j_mem(c, W_I32_LOAD8_U, 0, callee)
+		j_i32(c, i32(Tag.object))
+		j_op(c, W_I32_NE)
+		j_op(c, W_BR_IF)
+		w_uleb(&c.out, 0)
+		j_lget(c, P_STACK)
+		j_mem(c, W_I32_LOAD, 2, callee + 8)
+		j_op(c, W_LOCAL_TEE)
+		w_uleb(&c.out, I_T5)
+	}
 	j_mem(c, W_I32_LOAD8_U, 0, OBJ_CLASS)
 	j_i32(c, i32(Class_ID.bytecode_function))
 	j_op(c, W_I32_NE)
@@ -3457,6 +3499,7 @@ j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: 
 	j_op(c, W_I32_WRAP_I64)
 	j_lget(c, I_T3)
 	j_i32(c, i32(slot))
+	j_i32(c, i32(getter))
 	j_helper(c, .finish)
 	j_lset(c, I_T2)
 	j_op(c, W_END)
@@ -3508,7 +3551,9 @@ j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: 
 	j_i32(c, i32(stack0))
 	j_op(c, W_I32_ADD)
 	j_lset(c, I_T1)
-	if construct {
+	if construct && nb.stack_size == 0 {
+		j_st_object(c, P_STACK, u32(low * size_of(Value)), I_T6)
+	} else if construct {
 		// (a construction's result: the callee's when it is an object, else the object made)
 		j_lget(c, I_T1)
 		j_mem(c, W_I32_LOAD8_U, 0, 0)
@@ -3520,8 +3565,10 @@ j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: 
 		j_op(c, W_ELSE)
 		j_st_object(c, P_STACK, u32(low * size_of(Value)), I_T6)
 		j_op(c, W_END)
+	} else if nb.stack_size == 0 {
+		j_st_value(c, P_STACK, u32(dest * size_of(Value)), .undefined, 0)
 	} else {
-		j_copy_value(c, I_T1, 0, P_STACK, u32(low * size_of(Value)))
+		j_copy_value(c, I_T1, 0, P_STACK, u32(dest * size_of(Value)))
 	}
 	j_op(c, W_BR)
 	w_uleb(&c.out, 1)
@@ -5102,7 +5149,8 @@ jit_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
 	case .call_constructor:
 		return jit_call_insn(c, f, op, jr_u16(code, pc + 1), .construct, pc)
 	case .return_undef:
-		j_store_tag(c, P_STACK, 0, .undefined)
+		// (a function without an operand stack has its frame there, and returns undefined: jit_result)
+		if c.b.stack_size > 0 {j_store_tag(c, P_STACK, 0, .undefined)}
 		j_i32(c, 0)
 		j_lset(c, I_PC)
 		j_i32(c, 0)

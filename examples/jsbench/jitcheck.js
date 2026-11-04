@@ -486,6 +486,36 @@
     return show(s) + " " + keep.length + " " + keep[1].join(",").length + " " + JSON.stringify(a.slice(0, 5));
   }
   p("arrays: literals", arrKinds(RUN));
+  // getters of the script's called directly: closures of one function (each its own state), one without an operand
+  // stack, a getter read for a call (get_field2), one replaced by another function, then by a native one
+  function mkGet(k) { return { get g() { return k++; } }; }
+  function readG(o, n) { var s = 0; for (var i = 0; i < n; i++) { s += o.g; } return s; }
+  var g1 = mkGet(1), g2 = mkGet(100);
+  p("direct getters: closures", readG(g1, RUN), readG(g2, RUN), readG(g1, 3));
+  var noOp = { get g() {} };
+  function readU(o, n) { var s = 0; for (var i = 0; i < n; i++) { if (o.g === undefined) { s++; } } return s; }
+  p("direct getters: no operand stack", readU(noOp, RUN));
+  var callee = { get f() { return function (x) { return x + 1; }; } };
+  function callF(o, n) { var s = 0; for (var i = 0; i < n; i++) { s += o.f(i & 7); } return s; }
+  p("direct getters: read for a call", callF(callee, RUN));
+  var swapped = { k: 3, get g() { return this.k; } };
+  function readSwap(o, n) { var s = 0; for (var i = 0; i < n; i++) { s += o.g; if (i === n >> 1) { Object.defineProperty(o, "g", { get: function () { return 1000; } }); } } return s; }
+  p("direct getters: replaced", readSwap(swapped, RUN));
+  Object.defineProperty(swapped, "g", { get: Array.prototype.join.bind([1, 2]), configurable: true });
+  p("direct getters: replaced by a native", readSwap(swapped, RUN));
+  // constructions and calls of functions without an operand stack: their result undefined (the object made), the
+  // prototype replaced while the loop runs, one called as a method, one that throws when called (a class)
+  function Empty() {}
+  function Ret() { return; }
+  function mkEmpty(n) { var s = 0, e; for (var i = 0; i < n; i++) { e = new Empty(); s += e instanceof Empty ? 1 : 0; new Ret(); Ret(); if (i === n >> 1) { Empty.prototype = { half: 2 }; } } return s + " " + e.half + " " + typeof Ret(); }
+  p("no operand stack: constructions", mkEmpty(RUN), mkEmpty(RUN));
+  var holder = { m: function () {} };
+  function callM(o, n) { var s = 0; for (var i = 0; i < n; i++) { if (o.m() === undefined) { s++; } } return s; }
+  p("no operand stack: a method", callM(holder, RUN));
+  class NoCall {}
+  function mkNoCall(n) { var s = 0; for (var i = 0; i < n; i++) { s += new NoCall() instanceof NoCall ? 1 : 0; } try { NoCall(); } catch (e) { s += e.name.length; } return s; }
+  p("no operand stack: a class", mkNoCall(RUN));
+
   // switch, strings, generators (not compiled) next to compiled code
   function sw(x) { switch (x) { case 1: return "one"; case "1": return "string"; default: return "other"; } }
   p("switch", sw(1), sw("1"), sw(2));
