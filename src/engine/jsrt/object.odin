@@ -532,8 +532,9 @@ add_property :: proc(rt: ^Runtime, o: ^Object, a: Atom, flags: Prop_Flags, kind:
 }
 
 // The shape an object of the shared shape `sh` takes when the property `a` is appended: the transition's (made the
-// first time; a dictionary shape of its own past SHAPE_SHARED_MAX properties, which no transition keeps).
-shape_transition :: proc(rt: ^Runtime, sh: ^Shape, a: Atom, flags: Prop_Flags, kind: Prop_Kind) -> ^Shape {
+// first time; a dictionary shape of its own past SHAPE_SHARED_MAX properties, which no transition keeps). Inlined in
+// add_property: out of line, a closure took 5 % longer to make (its four properties; docs/performance.md, round 22).
+shape_transition :: #force_inline proc(rt: ^Runtime, sh: ^Shape, a: Atom, flags: Prop_Flags, kind: Prop_Kind) -> ^Shape {
 	for t in sh.transitions {
 		if t.atom == a && t.flags == flags && t.kind == kind {return t.to}
 	}
