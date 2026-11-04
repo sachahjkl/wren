@@ -27,7 +27,7 @@
       ];
 
       # The compiler this tree is written for (odin.version; the same release and SHA-256 as .github/workflows/ci.yml).
-      odinTag = "dev-2026-11";
+      odinTag = "dev-2026-11a";
       odin = pkgs.stdenv.mkDerivation {
         pname = "odin";
         version = odinTag;

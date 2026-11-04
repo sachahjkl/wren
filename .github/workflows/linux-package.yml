@@ -48,9 +48,9 @@ jobs:
           name: wren-js-image
           path: build/js
 
-      - name: Odin dev-2026-11, clang, NASM, the libraries
+      - name: Odin dev-2026-11a, clang, NASM, the libraries
         env:
-          ODIN_TAG: dev-2026-11
+          ODIN_TAG: dev-2026-11a
           ODIN_SHA256: 65c9f6e97d6f8a30930e151f270ce5aeaa98fe8b2ba49fe067394e2af04f7618
         run: |
           sudo apt-get update -qq

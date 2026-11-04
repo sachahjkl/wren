@@ -71,7 +71,7 @@
 
 ## Toolchain versions
 
-Odin is pinned to the `dev-2026-11` release (`.github/actions/setup/action.yml`: tag and SHA-256 of the archive). To
+Odin is pinned to the `dev-2026-11a` release (`.github/actions/setup/action.yml`: tag and SHA-256 of the archive). To
 move to another one, change both there and in the README, and build and test locally first. Wasmtime, NASM,
 Lexbor, the Rust crates, webref's Web IDL, test262 and web-platform-tests are pinned in their scripts,
 submodules, `native/Cargo.lock`, `native/js/webref/VERSION` and `wpt/MANIFEST.txt`. `src\tools\wpt` runs testharness tests,
