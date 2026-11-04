@@ -195,7 +195,7 @@ data_urls :: proc(t: ^testing.T) {
 	testing.expect(t, ok2)
 	defer data_url_destroy(&d2)
 	testing.expect_value(t, string(d2.body), "Hello World")
-	testing.expect_value(t, d2.mime, "text/plain")
+	testing.expect_value(t, d2.mime, "text/plain;charset=US-ASCII")
 
 	d3, ok3 := process_data_url(U("data:application/wasm;base64, AGFz bQ== "))
 	testing.expect(t, ok3)
