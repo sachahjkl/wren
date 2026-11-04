@@ -5,6 +5,7 @@ import "core:strings"
 import "core:testing"
 import "wb:base"
 import "wb:config"
+import "toolkit:draw"
 import "toolkit:ui"
 import "wb:fetch"
 
@@ -398,4 +399,21 @@ style_values_find_their_colours :: proc(t: ^testing.T) {
 	testing.expect(t, whole, "a value that is one colour has a swatch in Computed")
 	_, whole = swatch_of("1px solid red")
 	testing.expect(t, !whole, "one with more has none")
+}
+// The highlight's areas are rings around the next (elements_overlay): the parts of a ring cover the outer box less the
+// inner one exactly, none overlapping, so no pixel of the page gets two layers of color (four stacked layers hid it).
+@(test)
+highlight_rings_paint_each_pixel_once :: proc(t: ^testing.T) {
+	area :: proc(r: draw.Rect) -> f32 { return max(r.max.x - r.min.x, 0) * max(r.max.y - r.min.y, 0) }
+	overlap :: proc(a, b: draw.Rect) -> draw.Rect { return {{max(a.min.x, b.min.x), max(a.min.y, b.min.y)}, {min(a.max.x, b.max.x), min(a.max.y, b.max.y)}} }
+	outer := draw.Rect{{0, 0}, {100, 60}}
+	for inner in ([]draw.Rect{{{10, 5}, {90, 50}}, {{0, 0}, {100, 60}}, {{-5, 10}, {40, 70}}, {{20, 20}, {20, 20}}}) {
+		parts, n := ring_parts(outer, inner)
+		sum: f32
+		for p, i in parts[:n] {
+			sum += area(p)
+			for q in parts[i + 1:n] { testing.expectf(t, area(overlap(p, q)) == 0, "parts %v and %v overlap", p, q) }
+		}
+		testing.expectf(t, sum == area(outer) - area(overlap(outer, inner)), "the parts of %v cover the ring: %v", inner, sum)
+	}
 }
