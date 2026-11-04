@@ -1,6 +1,6 @@
 // Package capture: pictures of Wren, each the browser's real render read from its frame, in a headless Wren: no window of the system, nothing to cover it, nothing of the machine's taken.
-//   wrentool capture -Url u -Out shot.png [-Width n] [-Height n] [-Actions "key:Ctrl+F; type:x; click:600,695"] [-Exe path] [-Pref a=b] [-Page]
-//   wrentool shots [-Only home,css-grid] [-Width n] [-Height n] [-NoConvert] [-Exe path]     the README's (docs/screenshots) and the site's (site/img, through ImageMagick)
+//   wrentool capture -Url u -Out shot.png [-Width n] [-Height n] [-Actions "key:Ctrl+F; type:x; click:600,695"] [-Exe path] [-Pref a=b] [-Page] [-Site url]
+//   wrentool shots [-Only home,css-grid] [-Width n] [-Height n] [-NoConvert] [-Exe path] [-Site url]     the README's (docs/screenshots) and the site's (site/img, through ImageMagick)
 //   wrentool compare ...                                                                     Wren against Edge (compare.odin)
 package capture
 
@@ -64,7 +64,12 @@ SHOTS := []Shot{
 
 HERO_PAGES := [][2]string{{"hero-css", "site:effects.html"}, {"hero-js", "site:js.html"}, {"hero-shadow", "site:shadow-dom.html"}, {"hero-config", "about:config"}}
 
+// -Site http://wren.localhost/site/ (the local test server behind a name, e.g. through portless: docs/testing.md): the demo pages are taken from
+// there, and the address bar shows that name, not the path of a checkout.
+site_base: string
+
 address :: proc(url: string) -> string {
+	if strings.has_prefix(url, SITE) && site_base != "" { return fmt.tprintf("%s%s", site_base, url[len(SITE):]) }
 	if strings.has_prefix(url, SITE) { return bench.file_url(fmt.tprintf("examples/site/%s", url[len(SITE):])) }
 	return url
 }
@@ -115,8 +120,9 @@ take :: proc(s: ^api.Session, path: string, o := api.Shot_Options{}) -> bool {
 }
 
 run_capture :: proc(args: []string) -> int {
-	f, ok := tooling.parse_flags(args, "-Url= -Out= -Width= -Height= -Actions= -Exe= -Pref= -Page")
-	if !ok || !tooling.flag_has(f, "-Url") || !tooling.flag_has(f, "-Out") { fmt.eprintln("wrentool capture -Url u -Out shot.png [-Width n] [-Height n] [-Actions a] [-Exe path] [-Pref a=b] [-Page]"); return EXIT_USAGE }
+	f, ok := tooling.parse_flags(args, "-Url= -Out= -Width= -Height= -Actions= -Exe= -Pref= -Page -Site=")
+	site_base = tooling.flag(f, "-Site")
+	if !ok || !tooling.flag_has(f, "-Url") || !tooling.flag_has(f, "-Out") { fmt.eprintln("wrentool capture -Url u -Out shot.png [-Width n] [-Height n] [-Actions a] [-Exe path] [-Pref a=b] [-Page] [-Site url]"); return EXIT_USAGE }
 	w: bench.Wren
 	if !bench.start(&w, {exe = tooling.flag(f, "-Exe", bench.WREN_EXE), size = {tooling.flag_int(f, "-Width", bench.DEFAULT_SIZE.x), tooling.flag_int(f, "-Height", bench.DEFAULT_SIZE.y)}, prefs = tooling.flag_list(f, "-Pref"), url = address(tooling.flag(f, "-Url"))}) { return 1 }
 	defer bench.stop(&w)
@@ -128,8 +134,9 @@ run_capture :: proc(args: []string) -> int {
 }
 
 run_shots :: proc(args: []string) -> int {
-	f, ok := tooling.parse_flags(args, "-Only= -Width= -Height= -NoConvert -Exe=")
+	f, ok := tooling.parse_flags(args, "-Only= -Width= -Height= -NoConvert -Exe= -Site=")
 	if !ok { return EXIT_USAGE }
+	site_base = tooling.flag(f, "-Site")
 	exe := tooling.flag(f, "-Exe", bench.WREN_EXE)
 	only := tooling.flag_list(f, "-Only")
 	size := [2]int{tooling.flag_int(f, "-Width", SHOT_WIDTH), tooling.flag_int(f, "-Height", SHOT_HEIGHT)}

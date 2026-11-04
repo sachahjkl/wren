@@ -253,6 +253,19 @@ The rules, besides those of the [end-to-end tests](#writing-an-end-to-end-test):
 
 Every origin is an offset from the base port (`tools/testserver/ports.go`): +0 http on 127.0.0.1 and localhost, +1 https, +2 a second http origin (and, for the WPT names, the web-platform-tests origin's second http port: `{{ports[http][1]}}`), +3 and +4 the web-platform-tests origin, +5 to +9 the transports. A block is free or taken as a whole; a test takes the next free one from a port derived from the worktree's path. A test writes the default ports (`testenv.url("http://127.0.0.1:8765/x")`) and they move with the block, in the text files of `/site/` too.
 
+### The demo pages under a name, with no port (portless)
+
+Wren resolves a name under `.localhost` (`wren.localhost`, `a.b.localhost`) to the loopback itself, as Chrome and Firefox do (RFC 6761; the system's resolver may not: Windows answers "host unknown"). That makes [portless](https://portless.sh) (`npm install -g portless`, Node 24) usable for the demo pages: it is a proxy that gives a server a name instead of a port.
+
+```bat
+build\testserver.exe -site examples\site -scan -base-port 18765 -port-file build\testserver_wren.port
+portless proxy start --no-tls          & plain http on port 80 (without --no-tls: https on 443, which needs openssl for its certificate)
+portless alias wren 18765              & http://wren.localhost/site/grid.html
+build\wrentool shots -Site http://wren.localhost/site/ -Only css-grid
+```
+
+`-Site` makes the `site:` pages of `wrentool shots` and `wrentool capture` come from that address, so the address bar of a screenshot says `wren.localhost/site/grid.html` and not the path of a checkout. The names of `.localhost` only reach this computer. The default stays the files of `examples\site`.
+
 ## Tools beside the tests
 
 Anything with a window runs on the desktop of its own that `src/tools/test_all` makes, or through `build\wrentool desktop <program> [arguments]`; no tool takes the person's focus or holds a lock. `build\wrentool help` lists the other commands, by family: deps (`fetch`, `build`, `symbols`, `crash-symbolize`), `bench` (opt-in measures: `perf`, `shell`, `js`, `idle`, `webgl`, `blocker`, `sidebar`, `startup`, `cadence`), `capture` / `shots` / `compare` (headless pictures, Wren against Edge), `gen` (generated data and fixtures), `docs`, and the release helpers (`package`, `sign`, `winget`, `notes`, `experimental`, `smoke`). A fresh checkout builds it with `odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe`. Only `tools/make_logo.ps1` stays a script.
