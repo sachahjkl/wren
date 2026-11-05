@@ -2,7 +2,7 @@ package wasm
 
 // Compiled modules of the Wasmtime engine, keyed by the SHA-256 of the module image.
 //
-// Memory: entries kept up to wasm.cache.memory_bytes of compiled code, least recently used evicted first (an entry in
+// Memory: entries kept up to wasm.cache.memory_bytes (their machine code and MODULE_BYTES each), least recently used evicted first (an entry in
 // use by an instantiation in progress is never freed under it; instances themselves do not need the entry: Wasmtime
 // keeps what they use alive). Each entry holds the InstancePre of the module (imports resolved against the Linker
 // once), rebuilt when host functions are added later.
@@ -25,6 +25,9 @@ import "wb:host"
 @(private) DISK_MAGIC :: "WRENWTC1"
 @(private) DISK_EXT :: ".wtc"
 @(private) DISK_STOP_BUDGET :: 1500 * time.Millisecond
+// What a module costs beyond its machine code (its mappings, whole pages, and the engine's tables of it), measured: 1300 modules of the JIT, 14 KB of
+// code each, took 40 KB each of private bytes. A session makes thousands of them: counted by their code alone, 256 MB of it were 700 MB.
+@(private) MODULE_BYTES :: 32 << 10
 
 Cache_Stats :: struct {
 	memory_hits:  int,
@@ -99,7 +102,7 @@ cache_stats :: proc() -> Cache_Stats {
 	sync.mutex_lock(&cache.lock)
 	defer sync.mutex_unlock(&cache.lock)
 	s := cache.stats
-	s.entries, s.code_bytes = len(cache.entries), cache.total
+	s.entries, s.code_bytes = len(cache.entries), cache.total - len(cache.entries) * MODULE_BYTES
 	s.disk_writes, s.disk_rejects, s.disk_evictions = sync.atomic_load(&cache.files.writes), sync.atomic_load(&cache.files.rejects), sync.atomic_load(&cache.files.evictions)
 	return s
 }
@@ -114,7 +117,7 @@ cache_clear_memory :: proc() {
 	context.allocator = base.process_allocator()
 	for k, c in cache.entries {
 		if c.users > 0 { continue }
-		cache.total -= c.code_bytes
+		cache.total -= c.code_bytes + MODULE_BYTES
 		delete_key(&cache.entries, k)
 		cached_free(c)
 	}
@@ -217,7 +220,7 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, disk_only := false) -
 	if cache.max_bytes > 0 {
 		c.in_map = true
 		cache.entries[key] = c
-		cache.total += c.code_bytes
+		cache.total += c.code_bytes + MODULE_BYTES
 		evict_memory()
 	}
 	return c, ""
@@ -255,7 +258,7 @@ evict_memory :: proc() {
 		}
 		if victim == nil { return }
 		delete_key(&cache.entries, victim.key)
-		cache.total -= victim.code_bytes
+		cache.total -= victim.code_bytes + MODULE_BYTES
 		cache.stats.memory_evictions += 1
 		cached_free(victim)
 	}
