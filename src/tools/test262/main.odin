@@ -453,6 +453,23 @@ engine_jit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uin
 	return nil
 }
 
+engine_stack_move :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	context = base.process_context()
+	f := wasm.frame(env, caller)
+	r := wasm.stack_pointer_move(f.inst, u32(a[0].i32))
+	a[0] = {}
+	a[0].i32 = i32(r)
+	return nil
+}
+
+engine_native_stack_low :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	context = base.process_context()
+	f := wasm.frame(env, caller)
+	a[0] = {}
+	a[0].i32 = wasm.native_stack_low(f.inst) ? 1 : 0
+	return nil
+}
+
 engine_jit_poll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	context = base.process_context()
 	f := wasm.frame(env, caller)
@@ -481,6 +498,8 @@ IMPORTS := [?]wasm.Import{
 	{module = "webassembly", name = "WebAssembly_enabled", fn = no_credentials, params = {}, results = {.I32}},   // (the shell has no WebAssembly object)
 	{module = "js", name = "Engine_jitPoll", fn = engine_jit_poll, params = {.I32}, results = {.I32}},
 	{module = "js", name = "Engine_span", fn = proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap { return nil }, params = {.I32, .I32}},
+	{module = "js", name = "Engine_stackMove", fn = engine_stack_move, params = {.I32}, results = {.I32}},
+	{module = "js", name = "Engine_nativeStackLow", fn = engine_native_stack_low, params = {}, results = {.I32}},
 	{module = "js", name = "Engine_jitCompile", fn = engine_jit, params = {.I32, .I32}, results = {.I32}},
 	{module = "js", name = "Engine_console", fn = engine_console, params = {.I32, .I32, .I32}},
 	{module = "js", name = "Engine_reportException", fn = engine_ignore, params = {.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}},

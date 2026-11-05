@@ -910,7 +910,7 @@ delete_property :: proc(ctx: ^Context, o: ^Object, a: Atom) -> int {
 }
 
 // delete obj[key] with strict-mode failure reporting.
-delete_property_value :: proc(ctx: ^Context, obj: Value, key: Value, strict: bool) -> int {
+delete_property_value :: #force_no_inline proc(ctx: ^Context, obj: Value, key: Value, strict: bool) -> int {
 	ov := to_object(ctx, obj)
 	if is_exception(ov) {return -1}
 	a, ok := to_property_key(ctx, key)

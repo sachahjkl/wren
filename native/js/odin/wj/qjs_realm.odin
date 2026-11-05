@@ -333,43 +333,23 @@ wj_report_pending :: proc "c" (ctx: ^Context) {
 	wj_report_exception(ctx, JS_GetException(ctx))
 }
 
-// ---- the C stack budget of JavaScript ----
-// QuickJS bounds recursion from the stack top it was last given (JS_UpdateStackTop). Every entry from the browser calls
-// wj_stack_enter, but only the outermost one moves the top: when the browser calls back into the engine from inside one
-// of its own calls (a listener calling dispatchEvent, a getter that runs script...), the frames below stay counted, so
-// recursion through the browser meets the same limit as plain recursion instead of starting over at each level and
-// running past the end of the C stack. The C stack grows down: an entry nested in running frames is below the mark.
+// ---- the stack of JavaScript ----
+// The engine bounds recursion from its outermost entry and moves to other stacks past that (src/engine/jsrt/stack.odin).
+// Every entry from the browser calls wj_stack_enter: one nested in a call of the engine (a listener calling dispatchEvent,
+// a getter that runs script...) has the browser's frames under it on the machine's stack.
 
-STACK_BUDGET :: 1536 * 1024
-
-@(private = "file") stack_mark: uintptr
-
-// The current position of the C stack (the shadow stack in linear memory that C and Odin share): the address of a
-// local of a frame of its own, as __builtin_frame_address(0) gave the C.
-@(private = "file")
-stack_pointer :: #force_no_inline proc "contextless" () -> uintptr {
-	marker: u32
-	intrinsics.volatile_store(&marker, 0)
-	return uintptr(&marker)
-}
-
-// C recursion with no JavaScript frame in between (structured clone of a deeply nested value) never meets QuickJS's
-// check: it asks here, against the same budget, measured from the same outermost entry.
+// Recursion in the glue with no JavaScript frame in between (structured clone of a deeply nested value) never meets
+// the engine's check: it asks here.
 @(export, link_name = "wj_stack_exhausted")
 wj_stack_exhausted :: proc "c" () -> bool {
-	sp := stack_pointer()
-	return stack_mark != 0 && sp < stack_mark && stack_mark - sp > STACK_BUDGET
+	return JS_StackOut(JS_GetRuntime(wj_the_realm.ctx))
 }
 
 @(export, link_name = "wj_stack_enter")
 wj_stack_enter :: proc "c" (ctx_in: ^Context) {
 	ctx := ctx_in != nil ? ctx_in : wj_the_realm.ctx
 	if ctx == nil { return }
-	sp := stack_pointer()
-	if sp >= stack_mark {
-		JS_UpdateStackTop(JS_GetRuntime(ctx))
-		stack_mark = sp
-	}
+	JS_StackEntered(JS_GetRuntime(ctx))
 }
 
 // ---- small byte helpers (contextless: the glue has no Odin runtime) ----

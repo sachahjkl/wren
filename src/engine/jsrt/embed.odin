@@ -17,10 +17,12 @@ engine_free :: proc(rt: ^Runtime) {runtime_free(rt)}
 
 host_enter :: proc(rt: ^Runtime) -> int {
 	if rt.host_depth == 0 {
-		marker: u8
-		base := uintptr(&marker)
-		lim := uintptr(rt.config.max_stack_bytes)
-		rt.stack_limit = base > lim ? base - lim : 0
+		if rt.stack_segments.used == 0 {
+			marker: u8
+			base := uintptr(&marker)
+			lim := uintptr(rt.config.max_stack_bytes)
+			stack_bounds_at(rt, base > lim ? base - lim : 0)
+		}
 		// (another agent may have written a SharedArrayBuffer since the last call: a message telling so is a host call)
 		host_cache_sync(rt)
 	}
@@ -41,6 +43,7 @@ host_exit :: proc(rt: ^Runtime, mark: int, result: Value) {
 		root(rt, result) // until the host's next call
 		root(rt, rt.exception)
 		mem_free_all_scratch(rt)
+		stack_segments_free(rt)
 	}
 }
 

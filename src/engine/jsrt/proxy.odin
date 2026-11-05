@@ -5,6 +5,11 @@ package jsrt
 
 @(private = "file")
 proxy_check :: proc(ctx: ^Context, o: ^Object) -> (^Proxy_Data, bool) {
+	// (a chain of proxies without traps recurses here, with no call to meet the limit)
+	if stack_out(ctx.rt) {
+		stack_overflow(ctx)
+		return nil, false
+	}
 	pd := o.data.(^Proxy_Data)
 	if pd.revoked {
 		throw_type_error(ctx, "revoked proxy")

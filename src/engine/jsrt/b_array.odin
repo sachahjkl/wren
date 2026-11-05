@@ -382,7 +382,7 @@ flatten_into :: proc(ctx: ^Context, target: ^Object, source: Value, source_len: 
 		if flatten {
 			el, ok := length_of_array_like(ctx, e)
 			if !ok {return 0, false}
-			if ctx.rt.stack_depth > ctx.rt.config.max_stack_depth || stack_exhausted(ctx.rt) {
+			if ctx.rt.stack_depth > ctx.rt.config.max_stack_depth || stack_out(ctx.rt) {
 				stack_overflow(ctx)
 				return 0, false
 			}

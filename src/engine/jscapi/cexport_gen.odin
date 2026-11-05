@@ -23,6 +23,10 @@ export_JS_GetRuntime :: proc "c" (c: ^Context) -> ^Runtime {return JS_GetRuntime
 export_JS_GetContextOpaque :: proc "c" (c: ^Context) -> rawptr {return JS_GetContextOpaque(c)}
 @(export, link_name = "JS_SetContextOpaque")
 export_JS_SetContextOpaque :: proc "c" (c: ^Context, opaque: rawptr) {JS_SetContextOpaque(c, opaque)}
+@(export, link_name = "JS_StackEntered")
+export_JS_StackEntered :: proc "c" (r: ^Runtime) {JS_StackEntered(r)}
+@(export, link_name = "JS_StackOut")
+export_JS_StackOut :: proc "c" (r: ^Runtime) -> bool {return JS_StackOut(r)}
 @(export, link_name = "JS_SetMaxStackSize")
 export_JS_SetMaxStackSize :: proc "c" (r: ^Runtime, stack_size: uint) {JS_SetMaxStackSize(r, stack_size)}
 @(export, link_name = "JS_SetMemoryLimit")

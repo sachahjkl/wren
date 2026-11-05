@@ -870,14 +870,15 @@ is_constructor :: proc "contextless" (v: Value) -> bool {
 	return as_obj(v).is_constructor
 }
 
-is_array_value :: proc(ctx: ^Context, v: Value) -> int {
-	if v.tag != .object {return 0}
-	o := as_obj(v)
-	if o.class == .array {return 1}
-	if o.class == .proxy {
+is_array_value :: proc(ctx: ^Context, v_in: Value) -> int {
+	v := v_in
+	for v.tag == .object {
+		o := as_obj(v)
+		if o.class == .array {return 1}
+		if o.class != .proxy {return 0}
 		pd := o.data.(^Proxy_Data)
 		if pd.revoked {throw_type_error(ctx, "revoked proxy"); return -1}
-		return is_array_value(ctx, pd.target)
+		v = pd.target
 	}
 	return 0
 }

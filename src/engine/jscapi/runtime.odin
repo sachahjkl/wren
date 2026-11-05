@@ -119,9 +119,11 @@ JS_SetMaxStackSize :: proc "c" (r: ^Runtime, stack_size: uint) {
 	rt.config.max_stack_bytes = stack_size == 0 ? js.DEFAULT_MAX_STACK_BYTES : int(stack_size)
 }
 
-// The engine measures the host stack from the outermost entry (host_enter), so there is no stack top to
-// refresh; kept for the glue's call.
-JS_UpdateStackTop :: proc "c" (r: ^Runtime) {}
+// An entry of the browser into the engine, nested in a call of it or not (stack.odin).
+JS_StackEntered :: proc "c" (r: ^Runtime) {js.stack_host_entered(jrt(r))}
+
+// May a native recursion go on (a structured clone)?
+JS_StackOut :: proc "c" (r: ^Runtime) -> bool {return js.stack_out(jrt(r))}
 
 JS_SetMemoryLimit :: proc "c" (r: ^Runtime, limit: uint) {
 	jrt(r).config.malloc_limit = limit == 0 ? -1 : i64(limit)

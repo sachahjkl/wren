@@ -450,7 +450,7 @@ strict_equals :: proc(ctx: ^Context, a, b: Value) -> bool {
 }
 
 // IsLooselyEqual. ok=false on exception.
-loose_equals :: proc(ctx: ^Context, a_in, b_in: Value) -> (bool, bool) {
+loose_equals :: #force_no_inline proc(ctx: ^Context, a_in, b_in: Value) -> (bool, bool) {
 	a, b := a_in, b_in
 	for {
 		if is_number(a) && is_number(b) {return as_f64(a) == as_f64(b), true}

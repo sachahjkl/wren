@@ -94,7 +94,7 @@ jp_value :: proc(p: ^JSON_Parser, depth: int, rec: ^Parse_Record = nil) -> Value
 jp_value_inner :: proc(p: ^JSON_Parser, depth: int, rec: ^Parse_Record) -> Value {
 	ctx := p.ctx
 	rt := ctx.rt
-	if depth > JSON_PARSE_MAX_DEPTH || stack_exhausted(rt) {return jp_fail(p, "too deeply nested")}
+	if depth > JSON_PARSE_MAX_DEPTH || stack_out(rt) {return jp_fail(p, "too deeply nested")}
 	jp_ws(p)
 	c := jp_peek(p)
 	if rec != nil {rec.start = p.pos}
@@ -269,7 +269,7 @@ jp_string :: proc(p: ^JSON_Parser) -> Value {
 @(private = "file")
 internalize :: proc(ctx: ^Context, holder: Value, a: Atom, reviver: Value, depth: int, src: ^JS_String, parent: ^Parse_Record) -> Value {
 	rt := ctx.rt
-	if depth > JSON_PARSE_MAX_DEPTH || stack_exhausted(rt) {return throw_range_error(ctx, "JSON.parse: too deeply nested")}
+	if depth > JSON_PARSE_MAX_DEPTH || stack_out(rt) {return throw_range_error(ctx, "JSON.parse: too deeply nested")}
 	val := get(ctx, holder, a)
 	if is_exception(val) {return EXCEPTION}
 	// the record of this value, if it is still the parsed one
@@ -481,7 +481,7 @@ json_enter :: proc(w: ^JSON_Writer, o: ^Object) -> bool {
 			return false
 		}
 	}
-	if len(w.stack) > JSON_STRINGIFY_MAX_DEPTH || stack_exhausted(w.ctx.rt) {
+	if len(w.stack) > JSON_STRINGIFY_MAX_DEPTH || stack_out(w.ctx.rt) {
 		throw_range_error(w.ctx, "JSON.stringify: too deeply nested")
 		return false
 	}

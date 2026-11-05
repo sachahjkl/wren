@@ -33,7 +33,7 @@ PREFS := [?]config.Def{
 	{name = "wasm.wasmtime.parallel_compilation", kind = .Bool, default = {b = true}, restart = true,
 		description = "Compile the functions of a module on several threads."},
 	{name = "wasm.wasmtime.max_stack_bytes", kind = .Int, default = {i = 32 << 20}, bounded = true, min = 32 << 10, max = 64 << 20, bytes = true, unit = "bytes", restart = true,
-		description = "Native stack the compiled code of a call may use, with the host functions it calls back (bounds recursion depth). Must fit in the thread's stack: see wasm.wasmtime.host_stack_reserve_bytes. The JavaScript engine needs about ten times its own stack limit here (32 MiB lets scripts recurse ten thousand plain calls deep, or hundreds through `new` and natives, and stop with a RangeError, not a trap)."},
+		description = "Native stack the compiled code of a call may use, with the host functions it calls back (bounds recursion depth). Must fit in the thread's stack: see wasm.wasmtime.host_stack_reserve_bytes. The JavaScript engine stops by itself with a RangeError when three quarters of it are used (src/engine/jsrt/stack.odin), not a trap: a level through a native takes about 2 KiB of it, through the browser (dispatchEvent) much more."},
 	{name = "wasm.wasmtime.host_stack_reserve_bytes", kind = .Int, default = {i = 128 << 10}, bounded = true, min = 16 << 10, max = 64 << 20, bytes = true, unit = "bytes", restart = true,
 		description = "Native stack kept for the browser on top of wasm.wasmtime.max_stack_bytes. A call is refused (with an error) when the thread has less than the sum left, instead of overflowing the thread's stack."},
 	{name = "wasm.wasmtime.epoch_tick_ms", kind = .Int, default = {i = 5}, bounded = true, min = 1, max = 1000, unit = "ms", restart = true,

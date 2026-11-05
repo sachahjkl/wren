@@ -8,6 +8,11 @@ package jsrt
 // pushes a catch-offset marker, and an exception unwinds the operand stack to the nearest marker
 // (offset 0 marks a for-of iterator to close). Coroutine frames (generators, async functions) return
 // to their driver with the kind of suspension.
+//
+// interp_run's frame is on the stack once for each level of a recursion through a native, and the larger the procedure the
+// worse the code generator keeps its registers: what an instruction calls once and -o:size would inline is #force_no_inline
+// (107 -> 81 KB of Wasm, 132 -> 79 locals, fib 12 % faster). The frame itself is 3.5 KiB, the slots of the Values that calls
+// return or take by address, each with its own: Odin gives LLVM no lifetimes to share them.
 
 import "core:reflect"
 
@@ -85,7 +90,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 	f := f_in
 	rt := ctx.rt
 	f.closure_refs = var_refs_in
-	f.stackless = false
+	f.stackless = .no
 	f.root_base = temp_mark(rt)
 
 	// the registers of the frame being run, loaded from `f` at the top of `frames`
@@ -404,6 +409,13 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				base := sp - argc
 				fn := stack[base - 2]
 				if !is_constructor(fn) {throw_type_error(ctx, "not a constructor"); exc = true; break}
+				if frame_can_push(rt, f, as_obj(fn)) {
+					f.sp = base - 2 // the result goes here when the constructor returns
+					nf := frame_push_construct(ctx, as_obj(fn), stack[base - 1], stack[base:sp])
+					if nf == nil {exc = true; break}
+					f = nf
+					continue frames
+				}
 				r := call_internal(ctx, fn, UNDEFINED, stack[base - 1], stack[base:sp], true)
 				if is_exception(r) {exc = true; break}
 				sp = base - 2
@@ -421,6 +433,19 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				magic := rd_u16(code, pc)
 				pc += 2
 				f.pc = pc
+				if stack[sp - 3].tag == .object && stack[sp - 1].tag == .object && frame_can_push(rt, f, as_obj(stack[sp - 3])) && (magic == 0 || magic == 1 && is_constructor(stack[sp - 3])) {
+					list, ok := build_arg_list(ctx, stack[sp - 1])
+					if !ok {exc = true; break}
+					f.sp = sp - 3
+					if magic == 0 {
+						f = frame_push(ctx, as_obj(stack[sp - 3]), stack[sp - 2], list)
+						continue frames
+					}
+					nf := frame_push_construct(ctx, as_obj(stack[sp - 3]), stack[sp - 2], list)
+					if nf == nil {exc = true; break}
+					f = nf
+					continue frames
+				}
 				r := function_apply(ctx, stack[sp - 3], stack[sp - 2], stack[sp - 1], magic)
 				if is_exception(r) {exc = true; break}
 				sp -= 3
@@ -500,6 +525,13 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				super := get_prototype_of(ctx, as_obj(f.func))
 				if is_exception(super) {exc = true; break}
 				if !is_constructor(super) {throw_type_error(ctx, "parent class must be a constructor"); exc = true; break}
+				if frame_can_push(rt, f, as_obj(super)) {
+					f.sp = sp
+					nf := frame_push_construct(ctx, as_obj(super), f.new_target, args[:f.argc])
+					if nf == nil {exc = true; break}
+					f = nf
+					continue frames
+				}
 				r := call_internal(ctx, super, UNDEFINED, f.new_target, args[:f.argc], true)
 				if is_exception(r) {exc = true; break}
 				stack[sp] = r
@@ -689,6 +721,11 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				}
 				if accessor {
 					f.pc = pc
+					if getter != nil && frame_can_push(rt, f, getter) {
+						f.sp = op == .get_field2 ? sp : sp - 1 // the value goes here when the getter returns
+						f = frame_push(ctx, getter, o, {})
+						continue frames
+					}
 					v = getter != nil ? call(ctx, mk_obj(getter), o, {}) : UNDEFINED
 					if is_exception(v) {exc = true; break}
 				} else if !fast {
@@ -720,6 +757,13 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				}
 				if !done {
 					f.pc = pc
+					if setter := script_setter(o, a); setter != nil && frame_can_push(rt, f, setter) {
+						f.sp = sp - 2
+						f = frame_push(ctx, setter, o, stack[sp - 1:sp], false)
+						f.stackless = .setter
+						if jit_cfg.enabled {f = jit_pushed(f)}
+						continue frames
+					}
 					if set_property(ctx, o, a, stack[sp - 1], o, strict) < 0 {exc = true; break}
 				}
 				sp -= 2
@@ -1648,11 +1692,9 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 			}
 			if returning {
 				returning = false
-				if f.stackless {
+				if f.stackless != .no {
 					// resume the caller: the result takes the place of the callee and its arguments
-					f = frame_pop(rt, f)
-					f.stack[f.sp] = ret_val
-					f.sp += 1
+					f = frame_return(rt, f, ret_val)
 					continue frames
 				}
 				return finish(f, rt, ret_val, root_base)
@@ -1695,7 +1737,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 			}
 		}
 		if caught {continue}
-		if f.stackless {
+		if f.stackless != .no {
 			// uncaught in a frame this activation pushed: pop it and unwind the caller from its call site
 			f = frame_pop(rt, f)
 			exc = true
@@ -1717,13 +1759,27 @@ finish :: #force_inline proc(f: ^Frame, rt: ^Runtime, v: Value, root_base: int) 
 
 // --- helpers used by the interpreter ---
 
+// The setter o.a = v would call, found as put_field's own lookups find properties: nil when the walk meets anything else
+// than an accessor first (a data property, nothing, an object with a [[Set]] of its own): set_property decides then.
+script_setter :: #force_no_inline proc(v: Value, a: Atom) -> ^Object {
+	if v.tag != .object {return nil}
+	p := as_obj(v)
+	for p != nil {
+		i := shape_find(p.shape, a)
+		if i >= 0 {return p.shape.props[i].kind == .accessor ? p.slots[i].getset.setter : nil}
+		if p.fast_array || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return nil}
+		p = p.shape.proto
+	}
+	return nil
+}
+
 to_property_key_value :: proc(ctx: ^Context, v: Value) -> Value {
 	a, ok := to_property_key(ctx, v)
 	if !ok {return EXCEPTION}
 	return atom_to_value(ctx.rt, a)
 }
 
-has_unscopable :: proc(ctx: ^Context, obj: Value, a: Atom) -> int {
+has_unscopable :: #force_no_inline proc(ctx: ^Context, obj: Value, a: Atom) -> int {
 	u := get(ctx, obj, well_known_atom(.unscopables))
 	if is_exception(u) {return -1}
 	if u.tag != .object {return 0}
@@ -1822,7 +1878,7 @@ build_arg_list :: proc(ctx: ^Context, a: Value) -> ([]Value, bool) {
 }
 
 // OP_append: array pos iterable -> array pos (spread into an array literal / argument list).
-append_enumerate :: proc(ctx: ^Context, stack: []Value, sp: int) -> bool {
+append_enumerate :: #force_no_inline proc(ctx: ^Context, stack: []Value, sp: int) -> bool {
 	if stack[sp - 2].tag != .int {
 		throw_internal_error(ctx, "invalid index for append")
 		return false
@@ -1962,7 +2018,7 @@ function_name_value :: proc(ctx: ^Context, a: Atom, prefix: string) -> Value {
 }
 
 // js_method_set_properties: name ("get x"/"set x") and home object of a method.
-method_set_properties :: proc(ctx: ^Context, fn: Value, a: Atom, kind: int, home: Value) -> int {
+method_set_properties :: #force_no_inline proc(ctx: ^Context, fn: Value, a: Atom, kind: int, home: Value) -> int {
 	prefix := kind == 1 ? "get " : (kind == 2 ? "set " : "")
 	name := function_name_value(ctx, a, prefix)
 	if fn.tag == .object {
@@ -1973,7 +2029,7 @@ method_set_properties :: proc(ctx: ^Context, fn: Value, a: Atom, kind: int, home
 }
 
 // js_op_define_class: parent ctor_bytecode -> ctor proto
-define_class :: proc(ctx: ^Context, stack: []Value, sp: int, name: Atom, class_flags: int, var_refs: [^]^Var_Ref, f: ^Frame, computed: bool) -> bool {
+define_class :: #force_no_inline proc(ctx: ^Context, stack: []Value, sp: int, name: Atom, class_flags: int, var_refs: [^]^Var_Ref, f: ^Frame, computed: bool) -> bool {
 	rt := ctx.rt
 	parent_class := stack[sp - 2]
 	bfunc := stack[sp - 1]
@@ -2032,7 +2088,7 @@ private_atom :: proc(ctx: ^Context, name: Value) -> (Atom, bool) {
 	return atom_from_symbol(ctx.rt, as_sym(name)), true
 }
 
-get_private_field :: proc(ctx: ^Context, obj, name: Value) -> Value {
+get_private_field :: #force_no_inline proc(ctx: ^Context, obj, name: Value) -> Value {
 	if obj.tag != .object {return throw_not_object(ctx)}
 	a, ok := private_atom(ctx, name)
 	if !ok {return EXCEPTION}
@@ -2042,7 +2098,7 @@ get_private_field :: proc(ctx: ^Context, obj, name: Value) -> Value {
 	return o.slots[i].value
 }
 
-set_private_field :: proc(ctx: ^Context, obj, name, val: Value) -> int {
+set_private_field :: #force_no_inline proc(ctx: ^Context, obj, name, val: Value) -> int {
 	if obj.tag != .object {throw_not_object(ctx); return -1}
 	a, ok := private_atom(ctx, name)
 	if !ok {return -1}
@@ -2056,7 +2112,7 @@ set_private_field :: proc(ctx: ^Context, obj, name, val: Value) -> int {
 	return 0
 }
 
-define_private_field :: proc(ctx: ^Context, obj, name, val: Value) -> int {
+define_private_field :: #force_no_inline proc(ctx: ^Context, obj, name, val: Value) -> int {
 	if obj.tag != .object {throw_not_object(ctx); return -1}
 	a, ok := private_atom(ctx, name)
 	if !ok {return -1}
@@ -2074,7 +2130,7 @@ define_private_field :: proc(ctx: ^Context, obj, name, val: Value) -> int {
 	return 0
 }
 
-add_brand :: proc(ctx: ^Context, obj, home: Value) -> int {
+add_brand :: #force_no_inline proc(ctx: ^Context, obj, home: Value) -> int {
 	rt := ctx.rt
 	if home.tag != .object {throw_not_object(ctx); return -1}
 	h := as_obj(home)
@@ -2120,7 +2176,7 @@ check_brand :: proc(ctx: ^Context, obj, fn: Value) -> int {
 	return shape_find(as_obj(obj).shape, atom_from_symbol(ctx.rt, as_sym(brand))) >= 0 ? 1 : 0
 }
 
-private_in :: proc(ctx: ^Context, obj, name: Value) -> int {
+private_in :: #force_no_inline proc(ctx: ^Context, obj, name: Value) -> int {
 	if obj.tag != .object {
 		throw_type_error(ctx, "invalid 'in' operand")
 		return -1
@@ -2152,7 +2208,7 @@ sync_dispose_wrapper :: proc(ctx: ^Context, this: Value, args: []Value, magic: i
 	return promise_resolve_value(ctx, UNDEFINED)
 }
 
-using_check :: proc(ctx: ^Context, val: Value, hint: int) -> (Value, bool) {
+using_check :: #force_no_inline proc(ctx: ^Context, val: Value, hint: int) -> (Value, bool) {
 	if is_nullish(val) {return UNDEFINED, true}
 	if val.tag != .object {
 		throw_type_error(ctx, "not an object")

@@ -404,7 +404,7 @@ jit_setter :: proc(f: ^Frame, setter: ^Object, o: ^Object, at: int, a: Atom, pc:
 jit_accessor_call :: #force_inline proc(ctx: ^Context, fn: ^Object, o: ^Object, args: []Value) -> Value {
 	rt := ctx.rt
 	if fn.class == .bytecode_function {return jit_call_bytecode(ctx, fn, mk_obj(o), args)}
-	if rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {return stack_overflow(ctx)}
+	if rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {return call_internal(ctx, mk_obj(fn), mk_obj(o), UNDEFINED, args, false)}
 	return call_native(ctx, fn, &fn.data.(Native_Data), mk_obj(o), args)
 }
 
@@ -685,7 +685,7 @@ jit_fn_enter :: proc(ctx: ^Context, f: ^Frame) -> (res: Jit_Resume, pc: int, sp:
 // The instruction at pc of a frame being recorded, about to run: what its site would learn from an exit it takes now,
 // from the operands on the stack. A function compiled from what its first calls met leaves little to learn: an exit
 // per site, a translation for each, is what bounded (JIT_MAX_LEARNS) what could be compiled.
-jit_record :: proc(f: ^Frame, op: Opcode, pc: int, sp: int) {
+jit_record :: #force_no_inline proc(f: ^Frame, op: Opcode, pc: int, sp: int) {
 	if f.recording == &jit_stepping {return}
 	jl := f.recording
 	if jl.hit == nil {jl.hit = make([]u8, len(f.bc.code) / JIT_HIT_BITS + 1, rt_allocator(jl.rt))}
@@ -715,11 +715,7 @@ jit_pushed :: #force_no_inline proc(f: ^Frame) -> ^Frame {
 		f.pc = pc
 		f.sp = sp
 	case .ret:
-		v := jit_result(f)
-		c := frame_pop(f.ctx.rt, f)
-		c.stack[c.sp] = v
-		c.sp += 1
-		return c
+		return frame_return(f.ctx.rt, f, jit_result(f))
 	}
 	return f
 }
@@ -730,7 +726,7 @@ jit_pushed :: #force_no_inline proc(f: ^Frame) -> ^Frame {
 jit_entered :: #force_no_inline proc(f: ^Frame, var_refs: [^]^Var_Ref) -> bool {
 	b := f.bc
 	f.closure_refs = var_refs
-	f.stackless = false
+	f.stackless = .no
 	f.root_base = temp_mark(f.ctx.rt)
 	b.jit_calls += 1
 	if b.jit_calls < jit_cfg.call_threshold {return false}

@@ -615,7 +615,7 @@ ta_fast_ptr :: #force_inline proc(o: ^Object, idx: u32, write: bool) -> (rawptr,
 	return &ab.data[ta.offset + int(idx) * es], e, true
 }
 
-ta_fast_get :: proc(o: ^Object, idx: u32) -> (Value, bool) {
+ta_fast_get :: #force_no_inline proc(o: ^Object, idx: u32) -> (Value, bool) {
 	p, e, ok := ta_fast_ptr(o, idx, false)
 	if !ok {return UNDEFINED, false}
 	#partial switch e {
@@ -631,7 +631,7 @@ ta_fast_get :: proc(o: ^Object, idx: u32) -> (Value, bool) {
 	return UNDEFINED, false
 }
 
-ta_fast_set :: proc(o: ^Object, idx: u32, v: Value) -> bool {
+ta_fast_set :: #force_no_inline proc(o: ^Object, idx: u32, v: Value) -> bool {
 	if v.tag != .int && v.tag != .float {return false}
 	// (no immutable buffer or BigInt element reaches a host line: those are told apart below, where a line would be marked in vain)
 	p, e, ok := ta_fast_ptr(o, idx, true)

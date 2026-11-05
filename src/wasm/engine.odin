@@ -54,6 +54,7 @@ Wt_State :: struct {
 	table:        wt_table,
 	has_memory:   bool,
 	has_table:    bool,
+	stack_base:   uintptr,    // the machine's stack at the outermost call in progress
 	deadline:     time.Tick,  // of the outermost call in progress; zero = none
 	soft_deadline: time.Tick, // when Instance.soft_flag is raised; zero = none (or raised already)
 	deadline_ticks: int,      // the ticks the module ran through since the call began, or since Instance.soft_flag was raised
@@ -427,6 +428,32 @@ tidy_error :: proc(text: string) -> string {
 	return strings.to_string(b)
 }
 
+// The linker's name for it (src/tools/tooling/js_engine.odin exports it).
+STACK_POINTER_EXPORT :: "__stack_pointer"
+// One part in this of wasm.wasmtime.max_stack_bytes stays for what a module does between two looks at native_stack_low.
+NATIVE_STACK_KEPT_PART :: 4
+
+// The stack pointer of a module that exports it (the JavaScript engine: its stack in linear memory, src/engine/jsrt/stack.odin) moved to `sp`: where it was.
+stack_pointer_move :: proc(inst: ^Instance, sp: u32) -> u32 {
+	s := &inst.wt
+	ext: wt_extern
+	if !wasmtime_instance_export_get(s.ctx, &s.instance, raw_data(string(STACK_POINTER_EXPORT)), len(STACK_POINTER_EXPORT), &ext) || ext.kind != WT_EXTERN_GLOBAL { return 0 }
+	v: wt_val
+	wasmtime_global_get(s.ctx, rawptr(&ext.of.raw), &v)
+	was := u32(v.of.i32)
+	v.of.i32 = i32(sp)
+	if e := wasmtime_global_set(s.ctx, &ext.of.global, &v); e != nil { wasmtime_error_delete(e); return 0 }
+	return was
+}
+
+// Has the running call used most of what wasm.wasmtime.max_stack_bytes gives it? It traps at the end of that, and a trap takes the instance:
+// a module that can stop by itself asks before it goes deeper.
+native_stack_low :: proc(inst: ^Instance) -> bool {
+	here: u8
+	used := inst.wt.stack_base - uintptr(&here)
+	return int(used) > wt.rs.max_stack_bytes - wt.rs.max_stack_bytes / NATIVE_STACK_KEPT_PART
+}
+
 // Starts a call from the host. The outermost one arms the deadline (and fuel) and wakes the ticker.
 @(private)
 wt_enter :: proc(inst: ^Instance) -> bool {
@@ -448,6 +475,7 @@ wt_enter :: proc(inst: ^Instance) -> bool {
 			set_error(inst, fmt.tprintf("not enough native stack on this thread to call the module (%d KiB left, %d KiB needed: wasm.wasmtime.max_stack_bytes + wasm.wasmtime.host_stack_reserve_bytes)", (here - low) >> 10, need >> 10))
 			return false
 		}
+		s.stack_base = here
 		s.stopped, s.timed_out = false, false
 		s.deadline = {}
 		if inst.opt.max_call_ms > 0 { s.deadline = time.tick_add(time.tick_now(), time.Duration(inst.opt.max_call_ms) * time.Millisecond) }

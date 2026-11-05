@@ -29,7 +29,7 @@ global_index :: #force_inline proc "contextless" (ctx: ^Context, g: ^Object, a: 
 	return j
 }
 
-global_get :: proc(ctx: ^Context, a: Atom, throw_ref: bool) -> Value {
+global_get :: #force_no_inline proc(ctx: ^Context, a: Atom, throw_ref: bool) -> Value {
 	gv := ctx.global_var_obj
 	i := shape_find(gv.shape, a)
 	if i >= 0 {
@@ -56,7 +56,7 @@ global_get :: proc(ctx: ^Context, a: Atom, throw_ref: bool) -> Value {
 }
 
 // put_var (init=false) / put_var_init (init=true).
-global_set :: proc(ctx: ^Context, a: Atom, v: Value, init: bool, strict: bool) -> int {
+global_set :: #force_no_inline proc(ctx: ^Context, a: Atom, v: Value, init: bool, strict: bool) -> int {
 	gv := ctx.global_var_obj
 	i := shape_find(gv.shape, a)
 	if i >= 0 {
@@ -86,7 +86,7 @@ global_set :: proc(ctx: ^Context, a: Atom, v: Value, init: bool, strict: bool) -
 	return r < 0 ? -1 : 0
 }
 
-global_check_define :: proc(ctx: ^Context, a: Atom, flags: int) -> int {
+global_check_define :: #force_no_inline proc(ctx: ^Context, a: Atom, flags: int) -> int {
 	g := ctx.global_obj
 	i := shape_find(g.shape, a)
 	if flags & DEFINE_GLOBAL_LEX_VAR != 0 {
@@ -114,7 +114,7 @@ global_check_define :: proc(ctx: ^Context, a: Atom, flags: int) -> int {
 	return 0
 }
 
-global_define_var :: proc(ctx: ^Context, a: Atom, def_flags: int) -> int {
+global_define_var :: #force_no_inline proc(ctx: ^Context, a: Atom, def_flags: int) -> int {
 	o: ^Object
 	flags: Prop_Flags
 	val: Value
@@ -136,7 +136,7 @@ global_define_var :: proc(ctx: ^Context, a: Atom, def_flags: int) -> int {
 	return 0
 }
 
-global_define_func :: proc(ctx: ^Context, a: Atom, fn: Value, def_flags: int) -> int {
+global_define_func :: #force_no_inline proc(ctx: ^Context, a: Atom, fn: Value, def_flags: int) -> int {
 	g := ctx.global_obj
 	i := shape_find(g.shape, a)
 	d: Prop_Desc
@@ -151,7 +151,7 @@ global_define_func :: proc(ctx: ^Context, a: Atom, fn: Value, def_flags: int) ->
 }
 
 // make_var_ref: push (object, name) for a global reference.
-global_make_ref :: proc(ctx: ^Context, a: Atom, stack: []Value, sp: int) -> int {
+global_make_ref :: #force_no_inline proc(ctx: ^Context, a: Atom, stack: []Value, sp: int) -> int {
 	gv := ctx.global_var_obj
 	i := shape_find(gv.shape, a)
 	if i >= 0 {
@@ -170,7 +170,7 @@ global_make_ref :: proc(ctx: ^Context, a: Atom, stack: []Value, sp: int) -> int 
 	return 0
 }
 
-global_delete :: proc(ctx: ^Context, a: Atom) -> int {
+global_delete :: #force_no_inline proc(ctx: ^Context, a: Atom) -> int {
 	if shape_find(ctx.global_var_obj.shape, a) >= 0 {return 0}
 	return delete_property(ctx, ctx.global_obj, a)
 }

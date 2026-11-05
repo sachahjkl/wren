@@ -17,8 +17,8 @@ import "core:strings"
 QJS_VERSION :: "0.17.0"
 QJS_SHA256 :: "559bc4c420475e55c7ab4510adbc562f55d7524d75e8e89d79ce4bb02f5687d9"
 
-// The C stack in linear memory: JavaScript recursion depth is bounded by JS_SetMaxStackSize (STACK_BUDGET: a `new` or a call through a native takes about 4 KiB of it, and about ten times that of wasm.wasmtime.max_stack_bytes, which is what holds it down); the rest is room for what runs past that bound before unwinding (reporting
-// the RangeError of a listener deep in a recursion through the browser: its error event, the host calls). What a realm does not reach of it stays zero pages.
+// The stack in linear memory, first in it (--stack-first: running past its end is a trap, not a write over the engine's data). Every page of it is committed for each realm, touched or not: a
+// recursion that runs past it goes on in the engine's heap (src/engine/jsrt/stack.odin, for which the host moves the stack pointer: the export). The engine's limit comes from what the linker made of this.
 WASM_STACK_BYTES :: 2 << 20
 JS_OUT_DEFAULT :: "build/js"
 THIS_FILE :: "src/tools/tooling/js_engine.odin"
@@ -161,7 +161,7 @@ build_js_engine :: proc(options: Js_Options) -> bool {
 	if run({command = cmd[:], log = o.log}) != 0 { say(o.log, "the odin build of native/js/odin failed\n"); return false }
 
 	link := make([dynamic]string, context.temp_allocator)
-	append(&link, wasm_ld, "--no-entry", "--gc-sections", "-z", fmt.tprintf("stack-size=%d", WASM_STACK_BYTES))
+	append(&link, wasm_ld, "--no-entry", "--gc-sections", "--stack-first", "--export=__stack_pointer", "--extra-features=mutable-globals", "-z", fmt.tprintf("stack-size=%d", WASM_STACK_BYTES))
 	if !o.names { append(&link, "--strip-debug") }
 	append(&link, object, "-o", raw)
 	if run({command = link[:], log = o.log}) != 0 { say(o.log, "wasm-ld failed\n"); return false }
