@@ -2458,6 +2458,66 @@ Read plainly: **the loads hardly moved, and the CPU went up.** The engine does t
 
 Tests: `jsengine reach examples/jsbench/jitreach.js` in the step of test262 with the JIT (what stayed interpreted: nothing refused, four checks in five in compiled code; the base fails), 25 new cases in `jitcheck.js`, also under `JSRT_GC_STRESS=8192` and `JSRT_GC_POISON`, `judge capi`, test262 quick with and without the JIT (no regression), the end-to-end tests of JavaScript in pages, its loading and its web APIs.
 
+## What changed, round 30: what holds a first load, measured task by task
+
+The first item of the list after round 29. Edge loads theverge.com in 1.8 s, npr.org in 1.3, cnn.com in 1.1, bbc.com/news in 0.5; Wren took 3 to 8. Development builds, the native library `quick`, a quiet machine, `wrentool waterfall`, each load in a fresh process with a throwaway profile, arms interleaved, the order turning; public sites, whose ads change.
+
+**The measure.** `WREN_SPANS=<prefix>` (`base/spans.odin`): every task of the loop by who posted it, the frame's phases, each script's run and life (request, last byte, bytecode, turn), each outermost call into the engine, imports over 20 us, and from the engine (`Engine_span`) compiling, reading bytecode, collecting, translating; written as a table of nested spans at the end of the process. `WREN_JS_PROFILE_TIME=1` makes `WREN_JS_PROFILE` sample by time: a tick of the epoch raises the interrupt counter, the next check samples. `WREN_JS_IMAGE=<file>`: another engine image in the browser, which is how a named image gets profiled in a real load and two engines are compared with one browser. Beware of the first load of a binary or an image: it compiles the engine, 2 s on the window thread.
+
+**The timeline.** On theverge.com, npr.org and cnn.com the window thread is busy from the first script to the load event: 12 to 20 ms idle in 7 to 8 s (Phase `wait` is not counted as idle: about 480 ms of it on cnn.com, 60 on npr.org). The waves of requests are that: a response is taken in at a turn of the loop, and tasks last up to a second, so a request of 43 bytes shows 1.3 s, and what it would have started waits. What fills the thread (self time to the load event, one load each, so orders of magnitude; theverge.com with the JIT off, the two others with the thresholds of item 1; imports include the listeners they run):
+
+| ms | theverge.com | npr.org | cnn.com |
+|---|---|---|---|
+| the engine (Guest + imports) | 5 017 | 5 496 | 3 242 |
+| collections | 1 017 | 587 | 269 |
+| the front end, on this thread | 225 | 59 | 843 |
+| Animation phase (the frame's forced style and layout) | 400 | 591 | 1 500 |
+| rest of frames, tasks | 900 | 240 | 260 |
+
+Compile is **not** what holds these loads: 3 to 12 % of the thread, and a script's wait for its bytecode is mostly the wait for the thread's turn (`compile_done` is a task). Three different pages, three different reasons:
+- theverge.com: flat. No function over 12 % of the time; React's render under a `MessageChannel`, 30 %.
+- npr.org: concentrated. **41 % of its JavaScript is one function**, a bot manager's murmur3 of its own 500 KB source, written as a state machine of a dozen methods per character: 5.2 million calls through one site, `while (!o.step())`, 250 ns each, on the way to DOMContentLoaded. OneTrust's `OtAutoBlock.js` 21 %, otTCF's `M` 8 %.
+- cnn.com: the layout that a frame or a read forces (Animation 1.5 s, `getComputedStyle` 641 ms in 11 calls), and 0.8 s of front end for the 6.8 MB document's inline scripts.
+
+**Round 29's contradiction, explained.** The JIT halved the engine's samples in the first 25 s and the load did not move: **during a load the JIT costs more than it gives.** theverge.com, 3 interleaved runs: JIT on 8.4 s and 22.7 s of CPU, off 7.5 s and 11 s. Two reasons, both measured. `interp_run` is 22 % of the engine's samples: the rest is natives, property definition, allocation, the collection, which compiled code does not make faster. And what is compiled does not last long enough to pay: 2 400 translations, 11 s more of CPU, and the window thread slower everywhere, native code included (self time of tasks 591 -> 866 ms in one pair of loads; not explained; more compile threads change nothing). Round 29's table counted samples over 25 s, most of them after the load.
+
+**Fixed.**
+1. **Hot means hot** (`javascript.jit.call_threshold` 2 000 -> 100 000; `loop_threshold` was read by nobody, a loop being compiled at the first interrupt check that fell on it: it now counts those checks, 500 by default). Calls alone or loops alone gain little: the arms below decided. A hot loop is compiled after about 5 million iterations. Tests: `jsengine cold examples/jsbench/jitcold.js` (81 translations at the old thresholds, 0 now), `jsengine reach examples/jsbench/jithot.js` at the default thresholds (hot code is compiled).
+
+| theverge.com, 3 runs | load | CPU |
+|---|---|---|
+| as before | 8 872 (8 571-11 353) | 24 266 (23 750-53 828) |
+| loops 500 checks, calls 2 000 | 8 262 (8 064-8 365) | 18 062 (17 859-19 344) |
+| loops 64, calls 100 000 | 7 583 (6 889-8 209) | 13 484 (12 969-14 484) |
+| **loops 500, calls 100 000** | 7 237 (6 904-7 567) | 11 688 (11 453-12 000) |
+| JIT off | 7 655 (7 382-7 911) | 10 953 (10 953-11 750) |
+
+2. **A `<link rel=preload>` and its element are one request**, whatever the destination. The preload's key said script type Classic for a sheet, a font or an image, the element's said none: each of theverge.com's 66 sheets went out twice, 75 requests of the 323. Not a listing artefact. The fonts listed three times were: their copies are `hit` rows of the HTTP cache, for recaptcha's frames. Test: `jsload_a_preload_and_its_element_share_one_request_whatever_the_destination` (without the fix: four requests ahead for two resources, the server asked twice for each).
+
+Master and the round, 5 runs, ms; Edge, 3 runs:
+
+| | load before | load after | CPU before | CPU after | requests | Edge load |
+|---|---|---|---|---|---|---|
+| theverge.com | 8 404 (8 310-8 809) | **7 005 (6 973-7 109)** | 22 531 (22 328-22 938) | **11 234 (11 031-11 750)** | 323 -> 248 | 1 825 (1 799-1 903) |
+| npr.org | 6 707 (6 414-7 122) | 6 277 (6 137-6 668) | 11 453 (10 516-13 156) | 9 156 (9 031-9 594) | 133 -> 154 | 1 310 (1 066-1 359) |
+| cnn.com | 6 663 (6 544-7 012) | 6 464 (6 338-6 778) | 14 375 (13 406-14 781) | 12 125 (11 734-12 625) | 153 -> 150 | 1 142 (1 122-1 197) |
+| bbc.com/news | 3 423 (3 156-3 804) | 3 125 (825-3 286) | 8 375 (7 312-9 719) | 4 203 (1 672-4 406) | 119 -> 118 | 546 (416-555) |
+
+Read plainly: **the ranges of the load separate on theverge.com alone**, -17 %. npr.org, cnn.com and bbc.com/news gain by their medians, 3 to 9 %, ranges meeting: not claimed. The CPU is the sure result: halved on theverge.com and bbc.com/news, -20 and -16 % on npr.org and cnn.com, ranges separate on all four. DOMContentLoaded and the first paint do not move. bbc.com/news's 825 is one run of 109 requests, a page that went differently. npr.org's requests go from 133 to 154 by the median and from 128 to 155 in both arms: which ads came. **Wren stays 3.8 to 5.7 times Edge.** The goal of the round is not reached.
+
+**Measured, not kept.**
+- **Fewer frames while a page loads** (at most one per 100 or 250 ms after the first contentful paint): cnn.com 6 942 -> 7 126 -> 7 347, theverge.com unchanged. The layouts are not proportional to the frames: what a frame did not lay out, the next read does. The thought that cnn.com's Animation phase was the number of its frames was wrong.
+- **A hash table for a shape's transitions** (`add_property` is 5 % of the samples, `{}` has a transition per first key): nothing on either page, worse if anything. Removed.
+- **The engine without bounds checks and assertions**: nothing, 7 127 against 7 120 on theverge.com, 4 runs. An earlier series seemed to show 10 %: it compared arms of two series, which this file says not to do.
+- **A floor of 32, 64 or 128 MiB under the collector's threshold**: 64 MiB nothing on theverge.com, on npr.org 6 901 -> 6 463 with ranges meeting; 128 MiB -0.6 s on theverge.com without the JIT, 3 runs. 20 collections a load cost 1 s, but not for the memory they would take.
+- `wasm.wasmtime.parallel_compilation=false`, `javascript.jit.background_threads=8`: no change on the load.
+
+**Not done, and why.** Lazy compilation: the numbers do not put it first: the front end is 225 ms of theverge.com's window thread and 843 ms of cnn.com's; what lazy compilation would take of that is not measured. Bytecode shared across realms: the realms already find recaptcha in the cache (two of its runs took 100 and 47 ms in the trace, reading included). Compilation when a script arrives: not measured.
+
+**Not verified.** That raised thresholds cost nothing on long-running pages: `macro.js`, games and anything hot but not quite were not measured; a function under 100 000 calls now stays interpreted for good. A loaded machine, the release build, memory. The self time of tasks rising with compile threads at work is seen, not explained.
+
+Tests: the two above, `spans_keep_what_was_added_and_stop_at_their_room`; `test_all -Quick -NoAsan` on test262 with and without the JIT, jitcheck, `judge`, the JavaScript steps and the unit tests of what changed. Not run: WPT, the full suite, AddressSanitizer.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -2633,6 +2693,8 @@ loaded. Not done: a preload scanner that works while the document arrives (the p
 request of the page); `priority` headers (RFC 9218) now that images go out beside scripts; a style pass scoped to what a sheet that arrives can reach (cnn.com: 15 full passes for sheets, 2.2 s).
 
 After round 29. The JIT reaches what pages run (round 29): nothing refused, 72 to 89 % of the interpreter's checks in compiled code on the pages measured. The loads did not follow, and the CPU went up. In order: **what holds a load on a quiet machine**, measured on the window thread by phase and against the waterfall, before more work on the engine; **what a translation costs**: each guard's exit materializes the stack in Wasm code (47 bytes of module for one of bytecode), a table of stack maps read by `jit_exit` would make an exit a few bytes; the translation itself is on the window thread (9 % of theverge.com's samples before the undo record was made small); identical code compiled once per realm (css-tricks.com's embeds); locals typed from the recorded runs (a whole function holds them in memory as values); inline caches for the interpreter's `get_field` where code stays cold; `frontend_compile`, 10 to 19 % of the window thread's engine samples, scripts under `javascript.compile.offthread_min_bytes`; the collection (10 to 16 %), generations or a floor above GC_MIN_ALLOCATION.
+
+After round 30. A heavy page's load is the window thread's, busy from the first script to the load event, in the engine (natives, property definition, allocation, the collection, not the interpreter's dispatch alone) and the layouts it forces. The JIT no longer works against the load, and does not help it either. In order: **a call through one site with a few callees** (npr.org: 41 % of its JavaScript is `while (!o.step())`, 250 ns a call); **the collection** (1 s of theverge.com's 7: generations, its share is not a question of memory, round 30); **what `getComputedStyle` and a forced layout cost** on cnn.com (2 s); the engine's natives by a direct measure each; a compiler for a load, cheap enough to pay in seconds (Winch was not tried: `wasm.wasmtime.compiler` is the engine's whole, the JavaScript engine's own code included). Round 29's first item is done: what follows that names lazy compilation or bytecode sharing is not first by the numbers.
 
 1. **The script stage of DOM-heavy pages, what is left** (`js_nodes10k` on a quiet machine after round 25, 5 runs: a frame of 16.9 ms
    (16.8 to 17.4), the Animation phase 10.5 ms, where this list kept 17.7 and 11.8; the 20.6 to 29.5 ms first noted for that day were
