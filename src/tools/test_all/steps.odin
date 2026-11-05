@@ -99,7 +99,7 @@ TOOLKIT :: "-collection:toolkit=ext/gui_toolkit"
 WB :: "-collection:wb=src"
 GUEST_FLAGS :: []string{"-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-collection:wren=sdk/odin", "-o:size"}
 E2E_BUILD_FLAGS :: []string{"-build-mode:test", "-o:speed", "-debug", "-use-separate-modules", "-vet", TOOLKIT, WB, "-define:FONT_BACKEND=native", "-define:FONT_NATIVE_LINK=false",
-	"-define:A11Y_ACCESSKIT=true", "-define:A11Y_NATIVE_LINK=false", "-define:WREN_CHANNEL=dev", "-define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=1048576", ONE_THREAD, "-define:ODIN_TEST_FANCY=false",
+	"-define:A11Y_ACCESSKIT=true", "-define:A11Y_NATIVE_LINK=false", "-define:WREN_CHANNEL=dev", "-define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=65536", ONE_THREAD, "-define:ODIN_TEST_FANCY=false",
 	"-extra-linker-flags:/STACK:33554432"}
 // How long what may legitimately take long gets, seconds. (A full WPT or test262 is hours under load: a hang shows as children that stop answering, which the tools end themselves.)
 LONG_STEP_SECONDS :: 4 * 3600

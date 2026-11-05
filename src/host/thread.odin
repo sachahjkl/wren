@@ -93,6 +93,17 @@ forget_thread :: proc(t: ^Thread) {
 	sync.mutex_unlock(&live_mu)
 }
 
+// The first block of a thread that runs a pass of every frame (the window, the style and layout helpers): what it asks for between two
+// free_all stays in that block, nothing is mapped and given back each pass. Any other thread keeps the build's small default: a block per
+// thread that ever used its temporary allocator, for the life of the thread, was 1 MiB of the process's private bytes for each of them.
+HOT_TEMP_BLOCK_BYTES :: 1 << 20
+
+// Makes the calling thread's temporary arena a hot one. Nothing of it may be in use: it is called first thing on the thread.
+thread_temp_hot :: proc() {
+	runtime.default_temp_allocator_destroy(&runtime.global_default_temp_allocator_data)
+	runtime.global_default_temp_allocator_data.arena.minimum_block_size = HOT_TEMP_BLOCK_BYTES
+}
+
 // Logical processors available to the process.
 processor_count :: proc() -> int { return max(native_processor_count(), 1) }
 
