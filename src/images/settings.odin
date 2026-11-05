@@ -61,7 +61,7 @@ PREFS := [?]config.Def{
 		description = "Reduction factor (shown size / natural size) under which an image is decoded at the reduced size."},
 	{name = "images.decode.allow_truncated", kind = .Bool, default = {b = false},
 		description = "Show the part of a PNG, GIF or JPEG file that stops before its end. Off: such a file is a broken image (error event)."},
-	{name = "images.cache.max_bytes", kind = .Int, default = {i = 512 << 20}, bounded = true, min = 1 << 20, max = 1 << 38, bytes = true, unit = "bytes",
+	{name = "images.cache.max_bytes", kind = .Int, default = {i = 128 << 20}, bounded = true, min = 1 << 20, max = 1 << 38, bytes = true, unit = "bytes",
 		description = "Memory of the image cache shared by every page: encoded files and decoded pixels. Past it, the least recently shown pixels are dropped (and decoded again when needed), then the files no page uses any more."},
 	{name = "images.cache.share_between_pages", kind = .Bool, default = {b = true},
 		description = "A page may use an image another page of the same top-level site already downloaded (after its own Content-Security-Policy check) instead of downloading it again."},

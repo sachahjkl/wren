@@ -53,7 +53,7 @@ PREFS := [?]config.Def{
 		description = "Give the pages' realms the WebAssembly object (WebAssembly.validate, compile, Module, Instance, Memory, Table, Global, Tag...), so they can run their own WebAssembly modules (Blazor, Emscripten, wasm-bindgen). Off: such a page finds no WebAssembly, as in a browser without it."},
 	{name = "javascript.compile.offthread_min_bytes", kind = .Int, default = {i = 64 << 10}, bounded = true, min = 0, max = 1 << 30, bytes = true, unit = "bytes",
 		description = "External classic scripts of a document at least this large (and at least javascript.bytecode_cache.min_source_bytes) are compiled to bytecode on a background thread while the page does other work, when the bytecode cache is on (0 = all of them, the maximum = none)."},
-	{name = "javascript.bytecode_cache.memory_bytes", kind = .Int, default = {i = 64 << 20}, bounded = true, min = 0, max = 1 << 34, bytes = true, unit = "bytes", restart = true,
+	{name = "javascript.bytecode_cache.memory_bytes", kind = .Int, default = {i = 32 << 20}, bounded = true, min = 0, max = 1 << 34, bytes = true, unit = "bytes", restart = true,
 		description = "Compiled scripts (bytecode) kept in memory, shared by every page and tab: a script loaded again is not parsed again. 0 = no memory cache."},
 	{name = "javascript.bytecode_cache.disk", kind = .Bool, default = {b = true}, restart = true,
 		description = "Keep compiled scripts in the profile (folder js-cache), authenticated with a key of this profile, so the next start does not parse them again."},
