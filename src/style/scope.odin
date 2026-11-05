@@ -196,7 +196,7 @@ engine_constructed_destroy :: proc(e: ^Engine, id: u64) {
 	if s == nil || !s.constructed { return }
 	if adopted_by_document(e, id) {
 		for x, i in e.shadow.doc_adopted { if x == id { ordered_remove(&e.shadow.doc_adopted, i); break } }
-		e.dirty = true
+		rules_stale(e)
 	}
 	for _, &l in e.shadow.adopted {
 		for i := len(l) - 1; i >= 0; i -= 1 { if l[i] == id { ordered_remove(&l, i); e.shadow.dirty = true } }
@@ -217,7 +217,7 @@ engine_set_adopted :: proc(e: ^Engine, root: base.Handle, ids: []u64, document: 
 		if slice.equal(sh.doc_adopted[:], ids) { return }
 		clear(&sh.doc_adopted)
 		append(&sh.doc_adopted, ..ids)
-		e.dirty = true
+		rules_stale(e)
 		return
 	}
 	old, had := sh.adopted[root]

@@ -398,7 +398,6 @@ css_apply :: proc(p: ^Page, j: ^Css_Job) {
 		}
 		link_sheet_settled(p, l, s != nil)
 	}
-	p.style_stale = true
 	start_pending_imports(p)
 	arrived_pump(p)
 }

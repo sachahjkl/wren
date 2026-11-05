@@ -66,6 +66,7 @@ sync_document_sheets :: proc(e: ^Engine, doc: ^dom.Document, base_url: string, a
 	}
 
 	// drop what no longer matches
+	back := false
 	for i := len(e.sheets) - 1; i >= 0; i -= 1 {
 		s := e.sheets[i]
 		if s.origin != .Author || s.constructed { continue }
@@ -90,13 +91,14 @@ sync_document_sheets :: proc(e: ^Engine, doc: ^dom.Document, base_url: string, a
 		}
 		if !found && keep_missing != nil && keep_missing(keep_user, s.owner) { keep = true; s.detached = true }
 		// the owner is back in the tree: the rebuilds made meanwhile ordered the sheet as if it were nowhere
-		if found && keep && s.detached { s.detached = false; sheet_changed(e, s) }
+		if found && keep && s.detached { s.detached = false; back = true }
 		if !keep {
 			sheet_changed(e, s)
 			sheet_free(s)
 			ordered_remove(&e.sheets, i)
 		}
 	}
+	if back && !e.dirty_other && !sheets_sorted(e, doc) { rules_stale(e) }   // (usually they are where the rules say: after the others)
 	// add the new <style> sheets
 	for st in styles {
 		have := false

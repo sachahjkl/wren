@@ -244,11 +244,12 @@ engine_sheet_insert_rule :: proc(e: ^Engine, id: u64, text: string, index: int) 
 	if r.kind == .Import && s.constructed { return .Syntax }
 	if err := placement_error(l.rules[:], r.kind, index); err != .None { return err }
 	if r.kind == .Import { return .Import }
+	at_end := index == len(l.rules)
 	inject_at(&l.rules, index, r)
 	inject_at(&l.texts, index, strings.clone(t))
 	rule_number(e, r)
 	s.sheet.rules = l.rules[:]
-	rules_changed(e, s)
+	if !rule_arrived(e, s, r, at_end) { rules_changed(e, s) }
 	return .None
 }
 

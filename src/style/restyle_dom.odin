@@ -798,7 +798,8 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 			structure = true
 			if controls && !scope_controls(m, en.node, n.parent) { m.fail = "form controls inserted"; return }
 			if local_controls && legend_in(doc, en.node) { mark(m, n.parent, true) }
-			if (n.name == "style" || n.name == "link") && !in_shadow(m, en.node) { m.fail = "stylesheet element inserted"; return }
+			// (a <link> changes nothing until its sheet comes; a <style> has one once the sheets were read: dom_touches_sheets)
+			if n.name == "style" && engine_sheet_of_owner(m.e, en.node) == nil && !in_shadow(m, en.node) { m.fail = "stylesheet element inserted"; return }
 			// moved here from elsewhere: counter values change on both sides (new elements: see settle)
 			if s.counters_used && !m.rewalk && subtree_feeds(s, doc, en.node) { m.rewalk = true }
 			mark(m, en.node, true)
