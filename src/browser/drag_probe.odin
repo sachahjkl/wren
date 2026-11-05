@@ -51,6 +51,8 @@ drag_probe_presented :: proc(app: ^App) {
 	if s.read != pacer_of(app).read_tick { return }
 	s.done = time.tick_now()._nsec
 	s.area_w = draw.rect_size(active_window(app).page_rect).x
+	// (a chrome frame, made while the frame's layout runs on the page thread or its styles take long, paints no page: the width of the pass under way is not its own, and the area has the handle's newer one)
+	if shell_nested() { return }
 	if t, pp := current_tab(app), &window_own(app).page_prep; t != nil && pp.tab == t && pp.frame == app.chrome_frames.frame_no { s.page_w = pp.size.x }
 }
 
