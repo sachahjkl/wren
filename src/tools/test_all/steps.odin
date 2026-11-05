@@ -146,6 +146,11 @@ web_run :: proc(subject: string, env: []string = nil) -> Action {
 	return Command{argv = strs(exe("build/e2e_test")), tests_of = fmt.aprintf("src/tools/e2e/web_%s.odin", subject), also = "zz_the_process_ends_with_nothing_left", env = slice.clone(env), rule = .Says_Successful}
 }
 
+// Tests of a file of src/tools/e2e, every block of the heap on pages of its own.
+pages_run :: proc(file: string, only: []string) -> Action {
+	return Command{argv = strs(exe("build/e2e_test")), tests_of = file, only = only, env = strs("WREN_POISON_PAGES=1"), rule = .Says_Successful}
+}
+
 // A scenario of src/tools/e2e, as a step. `each_test`: a step per test it declares, side by side: tests that mostly wait on processes of their own (real Wrens, their starts
 // and ends, a watcher's limit), which one after the other in one process added up to a minute. Each step's name is the scenario's with its test.
 e2e_step :: proc(t: ^[dynamic]Step, name, file: string, marks := Marks{}, weight := 0, browser := false, each_test := false) {
@@ -258,6 +263,9 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	unit(&t, "unit tests: remote client (wren ctl: options, help, picture diff)", "src/remote/client", exe("build/remote_client_test"), {ONE_THREAD, WB})
 
 	e2e_step(&t, "a frame held through a navigation stands while its page makes style passes (src\\tools\\e2e\\held_styles.odin: what crashed in background_has_url; freed memory poisoned)", "held_styles")
+	// (what only pages of their own saw: a flag of a freed block read as a plain value)
+	append(&t, Step{name = "IndexedDB, loads cut short and the end of the browser with every block on pages of its own (WREN_POISON_PAGES=1, src\\base\\poison_windows.odin: any touch of a freed block faults)",
+		actions = slice_of(pages_run("src/tools/e2e/web_jsweb.odin", strs("jsweb_idb", "jsweb_sections_cut_short_after_100ms")), pages_run("src/tools/e2e/autoscroll.odin", strs("autoscroll_end_to_end"))), needs = COMMON_NEEDS + {.Guests, .E2E, .Test_Server}, inputs = .Tree})
 	e2e_step(&t, "the developer tools resized (src\\tools\\e2e\\devtools_resize.odin: a real window, never shown, and the panel's own keep their surface while they resize, 1:1 and clipped)", "devtools_resize", marks = {.No_CI})   // (a runner's screen is smaller than these real windows)
 	e2e_step(&t, "the interface with no browser around it (src\\tools\\e2e\\chrome_interface.odin: its zoom, by the keys and the wheel; the developer tools docked at their size; an open menu over the top resize band; the main menu in a short window, scrolled; the themes' colours; a row's menu over the downloads drop-down; the history tree's text through an animated zoom)", "chrome_interface")
 	e2e_step(&t, "the tab sidebar with no browser around it (src\\tools\\e2e\\chrome_sidebar.odin: opening and closing through the widths between, pinned tabs, tab groups, by commands and by the pointer)", "chrome_sidebar")
