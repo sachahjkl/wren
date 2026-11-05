@@ -16,13 +16,12 @@ warn_programs_running :: proc() {}
 
 fetch_emoji_when_missing :: proc() {}
 
-// What /STACK:33554432 is on Windows: Wasm calls run on the calling thread. Every child inherits it.
-LINUX_STACK_BYTES :: 33554432
+// What /STACK is on Windows: Wasm calls run on the calling thread. Every child inherits it.
 
 linux_raise_stack :: proc() {
 	limit: linux.RLimit
 	if linux.getrlimit(.STACK, &limit) != nil { return }
-	limit.cur = min(LINUX_STACK_BYTES, limit.max)
+	limit.cur = min(tooling.JS_THREAD_STACK_BYTES, limit.max)
 	_ = linux.setrlimit(.STACK, &limit)
 }
 
