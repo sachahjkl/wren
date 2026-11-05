@@ -457,10 +457,7 @@ recovery_restore_backup :: proc(app: ^App) -> bool {
 	if !pok || len(tabs) == 0 { return false }
 	blank := len(wnd.tabs) == 1 && wnd.tabs[0].url == "about:blank"
 	first := session_open_tabs(app, tabs, current)
-	if blank && first == 1 {
-		wnd.current -= 1   // (tab_close keeps the index: the tabs shift down by one)
-		tab_close(app, 0)
-	}
+	if blank && first == 1 { tab_close(app, 0) }
 	app.recovery.restored = len(tabs)
 	app.recovery.banner = .None
 	recovery_touch(app)

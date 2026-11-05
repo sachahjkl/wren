@@ -47,6 +47,7 @@ chrome_frame :: proc(user: rawptr) {
 	app := w.app
 	wnd := w.wnd
 	events := platform.poll_events(wnd.win, false)
+	browser.shell_actions_run(app)
 	events = browser.chrome_zoom_events(app, events)
 	if len(events) > 0 { browser.request_frames(app, 2) }
 	size := draw.Vec2{f32(wnd.win.size.x), f32(wnd.win.size.y)}

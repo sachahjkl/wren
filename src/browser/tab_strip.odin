@@ -77,8 +77,8 @@ spinner_turning :: proc(app: ^App, t: ^Tab) -> bool {
 ////////////////////////////////
 // Building
 
-// The row of tabs. Returns true when a tab closed (the build stops: the tab list changed under it).
-tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
+// The row of tabs. It is built whole: what changes the list of tabs waits for the next frame (shell_after_build).
+tab_strip :: proc(app: ^App, integrated: bool) {
 	wnd := active_window(app)
 	own := &wnd.own
 	em := ui.font_size()
@@ -176,17 +176,14 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 				tab_stack_order(n, wnd.current, dragged, &order)
 				for i in order {
 					if !built(i, first, last, wnd.current, dragged, focused) { continue }
-					if tab_box(app, i, w, area, &move_from, &move_to, &cg, cc) == .Closed { return true }
+					tab_box(app, i, w, area, &move_from, &move_to, &cg, cc)
 				}
 			} else {
 				for _, i in wnd.tabs {
 					if i == dragged || !built(i, first, last, wnd.current, dragged, focused) { continue }
-					r := tab_box(app, i, w, area, &move_from, &move_to, &cg, cc)
-					if r == .Closed { return true }
+					tab_box(app, i, w, area, &move_from, &move_to, &cg, cc)
 				}
-				if dragged >= 0 {
-					if tab_box(app, dragged, w, area, &move_from, &move_to, &cg, cc) == .Closed { return true }
-				}
+				if dragged >= 0 { tab_box(app, dragged, w, area, &move_from, &move_to, &cg, cc) }
 			}
 			if app.active != nil && app.active.dropping { drop_ghost(app, area, false, app.active.drop.mark - own.strip.offset, w, 0, 0) }   // a tab carried over this bar (tab_drag.odin)
 		}
@@ -223,11 +220,7 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		ui.spacer(ui.fill())   // drags the window
 		if integrated { _, _ = ui.window_buttons() }
 	}
-	return false
 }
-
-@(private = "file")
-Tab_Result :: enum u8 { None, Closed }
 
 @(private = "file")
 Tab_Look :: struct {
@@ -242,7 +235,7 @@ Tab_Look :: struct {
 
 // One tab. Positions are the slot's, animated when tabs move; a dragged tab follows the pointer.
 @(private = "file")
-tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^int, cg: ^Classic_Geom, cc: ^Classic_Colors) -> Tab_Result {
+tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^int, cg: ^Classic_Geom, cc: ^Classic_Colors) {
 	wnd := active_window(app)
 	own := &wnd.own
 	classic := cc != nil
@@ -363,11 +356,11 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		// (classic: the next tab covers this one's right foot: the content stops before its slope)
 		ui.spacer(ui.px(classic ? tab_dims(paint.m).ext + max(cg.overlap - tab_dims(paint.m).run * 0.5, tab_dims(paint.m).run * 0.5) + math.round(em * 0.2) : math.round(em * 0.35)))
 	}
-	if closed { tab_close(app, i); return .Closed }
+	if closed { shell_after_build(app, {kind = .Close_Tab, tab = t.id}); return }
 	sig := ui.signal(b)
 	if (sig.pressed || sig.clicked) && !on { tab_select(app, i) }   // the press selects; Enter / Space too
 	if sig.right_clicked { tab_context_menu(app, i, ui.mouse_pos()) }
-	if sig.middle_clicked && app.favs.cfg.middle_close { tab_close(app, i); return .Closed }
+	if sig.middle_clicked && app.favs.cfg.middle_close { shell_after_build(app, {kind = .Close_Tab, tab = t.id}); return }
 	if !(classic && own.strip.drag.active) { tip(sig, t.title) }   // (classic: the title's tip does not cover the tab being dragged)
 	// drag to reorder (straight down starts a drag too: it may leave the bar)
 	if sig.dragging && app.favs.cfg.drag_reorder && (n > 1 || app.favs.cfg.drag_detach) {
@@ -380,11 +373,10 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 			// far enough below (or above) the row: the tab leaves for a window of its own (tab_drag.odin)
 			if app.favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), false, app.favs.cfg.detach_distance_em * em) {
 				own.strip.drag.active = false
-				if tab_drag_begin(app, t, ui.mouse_pos()) && len(wnd.tabs) != n { return .Closed }
+				shell_after_build(app, {kind = .Tear_Off, tab = t.id, at = ui.mouse_pos()})
 			}
 		}
 	}
-	return .None
 }
 
 close_cross_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {

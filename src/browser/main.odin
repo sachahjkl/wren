@@ -354,6 +354,7 @@ tab_close_in :: proc(app: ^App, w: ^Browser_Window, index: int) {
 	if len(tabs) == 0 {
 		if len(app.windows) > 1 { w.closing = true } else { tab_open(app) }
 	} else {
+		if index < cur^ { cur^ -= 1 }   // (the tabs after it shift down: the current one stays the current one)
 		cur^ = clamp(cur^, 0, len(tabs) - 1)
 		ui.field_set(window_address(app, w), tabs[cur^].url)
 	}
@@ -1034,7 +1035,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 				if side && platform.is_integrated_title(active_window(app).win) {
 					sidebar_titlebar(app, t)
 				} else {
-					if !side && tab_strip(app, platform.is_integrated_title(active_window(app).win)) { return }
+					if !side { tab_strip(app, platform.is_integrated_title(active_window(app).win)) }
 					toolbar_row(app, t)   // chrome_style.odin
 				}
 			}
@@ -1043,10 +1044,10 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 				pos := app.favs.cfg.position
 				ui.next({width = ui.fill(), height = ui.fill()})
 				if ui.row(.Start, {}, "###sidebar_row") {
-					if pos == .Left { if tab_sidebar(app, pos) { return } }
+					if pos == .Left { tab_sidebar(app, pos) }
 					ui.next({width = ui.fill(), height = ui.fill()})
 					if ui.column(.Start, {}, "###page_column") { page_column(app, t, elem_fs) }
-					if pos == .Right { if tab_sidebar(app, pos) { return } }
+					if pos == .Right { tab_sidebar(app, pos) }
 				}
 			} else {
 				window_own(app).sidebar.shown = false
@@ -1347,6 +1348,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 		// the window the user is in is the one the process acts on outside a frame (windows.odin)
 		if (e.kind == .Activate && active_window(app).win.active) || e.kind == .Mouse_Press || e.kind == .Key_Press { window_set_front(app, app.active) }
 	}
+	shell_actions_run(app)   // shell_frames.odin: what the last build asked of the list of tabs (a tab closed, a tab out of its bar)
 	tab_drag_events(app, events)   // tab_drag.odin: a tab carried by this window's press
 	remote_record_events(app, events)   // remote_extras.odin: a recording of the input, when one runs
 	events = shell_frame_begin(app, events)   // shell_frames.odin: input held back by chrome frames first; the page phase

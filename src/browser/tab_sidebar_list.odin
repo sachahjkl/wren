@@ -117,11 +117,11 @@ side_pin_slot_at :: proc(p: [2]f32, cols, np: int, cell: f32) -> int {
 ////////////////////////////////
 // Building
 
-// The pinned tabs then the list. Returns true when a tab closed (the build stops: the tab list changed under it).
-sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: ^Classic_Colors) -> (closed: bool) {
+// The pinned tabs then the list.
+sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: ^Classic_Colors) {
 	wnd := active_window(app)
 	group_reveal_current(app, wnd)
-	if sidebar_pins(app, pos, open, extent, cc) { return true }
+	sidebar_pins(app, pos, open, extent, cc)
 
 	own := &wnd.own
 	em := ui.font_size()
@@ -182,10 +182,9 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 	focused := focused_tab_index(app)
 	// classic: the current tab is built after the others (its feet flare over its neighbours' rows)
 	late := cc != nil && wnd.current != dragged ? wnd.current : -1
-	row :: proc(app: ^App, it: Side_Item, rh, row_x, row_w, inset, open, total, limit: f32, area: ^ui.Box, cc: ^Classic_Colors, drag_y: ^f32) -> bool {
-		y, dragging, closed := sidebar_row(app, it.index, it.y, rh, row_x, row_w, inset, open, area, limit, total, cc)
+	row :: proc(app: ^App, it: Side_Item, rh, row_x, row_w, inset, open, total, limit: f32, area: ^ui.Box, cc: ^Classic_Colors, drag_y: ^f32) {
+		y, dragging := sidebar_row(app, it.index, it.y, rh, row_x, row_w, inset, open, area, limit, total, cc)
 		if dragging { drag_y^ = y }
-		return closed
 	}
 
 	drag_y: f32 = -1
@@ -212,17 +211,17 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 				continue
 			}
 			if it.index == dragged || it.index == late { continue }
-			if row(app, it, rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y) { return true }
+			row(app, it, rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y)
 		}
 		if late_item >= first && late_item < last {
-			if row(app, moved(items[late_item], gap, rh), rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y) { return true }
+			row(app, moved(items[late_item], gap, rh), rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y)
 		}
 		// a row that has the keyboard stays built when it scrolls out of view
 		if focus_item >= 0 && (focus_item < first || focus_item >= last) && focused != dragged {
-			if row(app, moved(items[focus_item], gap, rh), rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y) { return true }
+			row(app, moved(items[focus_item], gap, rh), rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y)
 		}
 		if drag_item >= 0 {   // built last: it draws over the others and takes the clicks
-			if row(app, moved(items[drag_item], gap, rh), rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y) { return true }
+			row(app, moved(items[drag_item], gap, rh), rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y)
 		}
 		if gap >= 0 { drop_ghost(app, area, true, gap - area.view_off.y, rh, row_x, row_w) }
 	}
@@ -247,7 +246,6 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 		}
 	}
 	tabs_frame(app, first, last, items)
-	return false
 }
 
 // What every frame of the sidebar does for every tab: its title and icon follow its document (throttled per tab), the
@@ -271,9 +269,9 @@ tabs_frame :: proc(app: ^App, first, last: int, items: []Side_Item) {
 	if any_turning { spinner_wake(app) }
 }
 
-// The pinned tabs: a grid of icons above the list. Returns true when a tab closed.
+// The pinned tabs: a grid of icons above the list.
 @(private = "file")
-sidebar_pins :: proc(app: ^App, pos: Tabs_Position, open, extent: f32, cc: ^Classic_Colors) -> (closed: bool) {
+sidebar_pins :: proc(app: ^App, pos: Tabs_Position, open, extent: f32, cc: ^Classic_Colors) {
 	wnd := active_window(app)
 	own := &wnd.own
 	em := ui.font_size()
@@ -289,7 +287,7 @@ sidebar_pins :: proc(app: ^App, pos: Tabs_Position, open, extent: f32, cc: ^Clas
 	ui.next({width = ui.fill(), height = ui.px(h), axis = .Y})
 	box := ui.build_box(np > 0 ? {.Clip, .View_Scroll_Y, .View_Clamp_Y, .Allow_Overflow_Y, .Draw_Side_Bottom} : {}, "###pins")
 	own.sidebar.pins_key = box.key
-	if np == 0 { return false }
+	if np == 0 { return }
 	_ = ui.signal(box)
 	ui.a11y_set(box, {name = i18n.tr("Pinned tabs")})
 	margin := math.round((extent - f32(cols) * cell) * 0.5)
@@ -341,7 +339,7 @@ sidebar_pins :: proc(app: ^App, pos: Tabs_Position, open, extent: f32, cc: ^Clas
 			sig := ui.signal(b)
 			if (sig.pressed || sig.clicked) && !on { tab_select(app, k) }
 			if sig.right_clicked { tab_context_menu(app, k, ui.mouse_pos()) }
-			if sig.middle_clicked && app.favs.cfg.middle_close { tab_close(app, k); return true }
+			if sig.middle_clicked && app.favs.cfg.middle_close { shell_after_build(app, {kind = .Close_Tab, tab = t.id}); return }
 			if !own.strip.drag.active { sidebar_tip(sig, t) }
 			if sig.pressed { own.sidebar.pin_grab = ui.mouse_pos() - b.rect.min + {gap, gap} }
 			if sig.dragging && app.favs.cfg.drag_reorder {
@@ -355,7 +353,7 @@ sidebar_pins :: proc(app: ^App, pos: Tabs_Position, open, extent: f32, cc: ^Clas
 					tab_set_pinned(app, t, false)
 					own.strip.drag.grab = cell * 0.5
 					own.strip.follow_id = t.id
-					return false
+					return
 				}
 				to := side_pin_slot_at(p, cols, np, cell)
 				if to != k {
@@ -365,7 +363,6 @@ sidebar_pins :: proc(app: ^App, pos: Tabs_Position, open, extent: f32, cc: ^Clas
 			}
 		}
 	}
-	return false
 }
 
 @(private = "file")
@@ -377,9 +374,9 @@ Side_Look :: struct {
 }
 
 // One tab's row at `slot` (content y), animated when tabs move; a dragged row follows the pointer. Returns where it is
-// (content y) and whether it is the one dragged; `closed` when the tab closed.
+// (content y) and whether it is the one dragged.
 @(private = "file")
-sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open: f32, area: ^ui.Box, limit, total: f32, cc: ^Classic_Colors) -> (y: f32, dragging: bool, closed: bool) {
+sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open: f32, area: ^ui.Box, limit, total: f32, cc: ^Classic_Colors) -> (y: f32, dragging: bool) {
 	wnd := active_window(app)
 	own := &wnd.own
 	t := wnd.tabs[i]
@@ -433,6 +430,7 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 	b.cursor = .Arrow
 	tab_a11y(b, t, i, n, on)
 
+	closed := false
 	if ui.parent(b) {
 		isz := f32(tab_icon_px(app))
 		// (one layout whatever `open` is: the icon slides from the middle of the narrow row to its place, the title and the
@@ -476,11 +474,11 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 			ui.spacer(ui.px(math.round(em * 0.35)))
 		}
 	}
-	if closed { tab_close(app, i); return }
+	if closed { shell_after_build(app, {kind = .Close_Tab, tab = t.id}); return }
 	sig := ui.signal(b)
 	if (sig.pressed || sig.clicked) && !on { tab_select(app, i) }   // the press selects; Enter / Space too
 	if sig.right_clicked { tab_context_menu(app, i, ui.mouse_pos()) }
-	if sig.middle_clicked && app.favs.cfg.middle_close { tab_close(app, i); closed = true; return }
+	if sig.middle_clicked && app.favs.cfg.middle_close { shell_after_build(app, {kind = .Close_Tab, tab = t.id}); return }
 	if !own.strip.drag.active { sidebar_tip(sig, t) }
 
 	// drag to reorder, along Y (straight out sideways starts a drag too: it may leave the bar)
@@ -497,7 +495,7 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 		if app.favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), true, app.favs.cfg.detach_distance_em * em) {
 			own.strip.drag.active = false
 			dragging = false
-			if tab_drag_begin(app, t, ui.mouse_pos()) && len(wnd.tabs) != n { closed = true; return }
+			shell_after_build(app, {kind = .Tear_Off, tab = t.id, at = ui.mouse_pos()})
 		}
 	}
 	return

@@ -134,22 +134,21 @@ client_origin :: proc(w: ^Browser_Window) -> draw.Vec2 {
 // backend answers with sane values (the event position, no clamp, the app's own window order) — enough for a single
 // window and for injected input, which is how tests and the remote control drive a drag.
 
-// The tab `t` of the active window is dragged out of its bar with the pointer at `pos` (client pixels of the active window). Called
-// from the build of the bar: the tab list changes under it, so the caller stops its build. false: nothing was done.
-tab_drag_begin :: proc(app: ^App, t: ^Tab, pos: draw.Vec2) -> bool {
+// The tab `t` of the active window is dragged out of its bar with the pointer at `pos` (client pixels of the active window). Asked by the
+// build of the bar (the list of tabs changes: shell_after_build).
+tab_drag_begin :: proc(app: ^App, t: ^Tab, pos: draw.Vec2) {
 	src := app.active
-	if src == nil || app.tab_drag.active { return false }
+	if src == nil || app.tab_drag.active { return }
 	scale := max(src.win.dpi_scale, 0.5)
 	grab := [2]int{int(60 * scale), int(16 * scale)}
 	screen := client_origin(src) + pos
 	carried := src
 	if len(active_window(app).tabs) > 1 {
 		carried = tab_detach(app, t, [2]int{int(screen.x) - grab.x, int(screen.y) - grab.y}, focus = false)
-		if carried == nil { return false }
+		if carried == nil { return }
 	}
 	app.tab_drag = {active = true, tab = t.id, window = carried.id, source = src.id, grab = grab}
 	window_request(app, src, 2)
-	return true
 }
 
 // The events of the window the press began in, while a tab is carried: the carried window follows the pointer, the bar under it

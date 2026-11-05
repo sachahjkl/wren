@@ -321,9 +321,9 @@ sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
 	if classic_on(app) { bar.custom, bar.custom_user = titlebar_toolbar_draw, classic_colors_frame(app) }
 }
 
-// The sidebar: header, list of tabs and, over its inner edge, the width handle. Returns true when a tab closed (the build
-// stops: the tab list changed under it).
-tab_sidebar :: proc(app: ^App, pos: Tabs_Position) -> (closed: bool) {
+// The sidebar: header, list of tabs and, over its inner edge, the width handle. It is built whole: what changes the list of tabs
+// waits for the next frame (shell_after_build).
+tab_sidebar :: proc(app: ^App, pos: Tabs_Position) {
 	own := window_own(app)
 	dpi := ui_scale_of(app)
 	// the held handle's width from this frame's pointer, before anything is built: the sidebar and the page are laid out at
@@ -363,10 +363,9 @@ tab_sidebar :: proc(app: ^App, pos: Tabs_Position) -> (closed: bool) {
 	if ui.parent(bar) {
 		sidebar_edge(pos, extent, cc)   // first: the current tab of the classic style is drawn over it
 		sidebar_header(app, pos, open, extent)
-		if sidebar_list(app, pos, open, extent, cc) { return true }
+		sidebar_list(app, pos, open, extent, cc)
 	}
 	if open >= 1 { sidebar_handle(app, pos, bar, extent, dpi) }
-	return false
 }
 
 @(private = "file")
