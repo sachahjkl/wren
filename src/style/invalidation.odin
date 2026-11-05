@@ -186,6 +186,7 @@ Inv_Index :: struct {
 	uses_control_groups: bool,
 	uses_has:   bool,
 	has_anchors: [dynamic]Has_Anchor,
+	members_tested: int,            // the last walk for the anchors' members: how many times an element was tested against an argument
 	collect:    ^Has_Feat,          // while an anchor's :has() argument is analyzed: where its features are noted too
 	has_classes, has_ids, has_attrs: map[string]bool,   // features tested inside :has()
 	has_sibling: bool,              // :has() arguments reach siblings (anchors include earlier siblings)
@@ -611,20 +612,65 @@ watch_sync :: proc(ix: ^Inv_Index, doc: ^dom.Document, force := false) -> (fresh
 	return
 }
 
+// The exact anchors by what the last compound of their argument requires, as the rule index keeps rules by their subject: an
+// element is tested against the anchors of its own class tokens, id, attributes and tag, not against all of them.
+@(private = "file")
+Members_Index :: struct {
+	by_class, by_id, by_attr, by_tag: map[string][dynamic]^Has_Anchor,
+	any: [dynamic]^Has_Anchor,   // no key: every element
+}
+
+@(private = "file")
+members_index_add :: proc(x: ^Members_Index, ha: ^Has_Anchor) {
+	put :: proc(m: ^map[string][dynamic]^Has_Anchor, key: string, ha: ^Has_Anchor) {
+		if key not_in m { m[key] = make([dynamic]^Has_Anchor, context.temp_allocator) }
+		append(&m[key], ha)
+	}
+	// (the rarest kind of key the compound has)
+	best: ^css.Simple
+	for &sp in ha.arg.simples {
+		#partial switch sp.kind {
+		case .Id: best = &sp
+		case .Class: if best == nil || best.kind != .Id { best = &sp }
+		case .Attribute: if best == nil || best.kind == .Type { best = &sp }
+		case .Type: if best == nil { best = &sp }
+		}
+	}
+	if best == nil { append(&x.any, ha); return }
+	#partial switch best.kind {
+	case .Id:        put(&x.by_id, best.name, ha)
+	case .Class:     put(&x.by_class, best.name, ha)
+	case .Attribute: put(&x.by_attr, best.name, ha)
+	case .Type:      put(&x.by_tag, best.name, ha)
+	}
+}
+
 // The members of the exact anchors: one walk of the document.
 @(private = "file")
 members_scan :: proc(ix: ^Inv_Index, doc: ^dom.Document) {
+	keys: Members_Index
+	keys.by_class = make(map[string][dynamic]^Has_Anchor, allocator = context.temp_allocator)
+	keys.by_id = make(map[string][dynamic]^Has_Anchor, allocator = context.temp_allocator)
+	keys.by_attr = make(map[string][dynamic]^Has_Anchor, allocator = context.temp_allocator)
+	keys.by_tag = make(map[string][dynamic]^Has_Anchor, allocator = context.temp_allocator)
+	keys.any = make([dynamic]^Has_Anchor, context.temp_allocator)
 	any := false
 	for &ha in ix.has_anchors {
 		if !ha.exact { continue }
 		if ha.members == nil { ha.members = new(Has_Members) }
 		clear(&ha.members.set); clear(&ha.members.added); clear(&ha.members.removed); clear(&ha.members.held)
 		ha.members.dirty, ha.members.lost_held, ha.members.head_touched = false, false, false
+		members_index_add(&keys, &ha)
 		any = true
 	}
 	if !any { return }
 	mc: Match_Ctx
 	match_ctx_init(&mc, doc, State{}, context.temp_allocator)
+	ix.members_tested = 0
+	test :: proc(ix: ^Inv_Index, mc: ^Match_Ctx, h: base.Handle, list: []^Has_Anchor) {
+		ix.members_tested += len(list)
+		for ha in list { if matches_compound(mc, h, ha.arg) { ha.members.set[h] = {} } }
+	}
 	stack := make([dynamic]base.Handle, 0, 64, context.temp_allocator)
 	append(&stack, doc.root)
 	for len(stack) > 0 {
@@ -632,7 +678,23 @@ members_scan :: proc(ix: ^Inv_Index, doc: ^dom.Document) {
 		n := dom.get(doc, h)
 		if n == nil { continue }
 		if n.kind == .Element {
-			for &ha in ix.has_anchors { if ha.exact && matches_compound(&mc, h, ha.arg) { ha.members.set[h] = {} } }
+			test(ix, &mc, h, keys.any[:])
+			if l, found := keys.by_tag[n.name]; found { test(ix, &mc, h, l[:]) }
+			for a in n.attrs {
+				if l, found := keys.by_attr[a.name]; found { test(ix, &mc, h, l[:]) }
+				switch a.name {
+				case "id": if l, found := keys.by_id[a.value]; found { test(ix, &mc, h, l[:]) }
+				case "class":
+					rest := a.value
+					for len(rest) > 0 {
+						for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
+						end := 0
+						for end < len(rest) && !is_space(rest[end]) { end += 1 }
+						if end > 0 { if l, found := keys.by_class[rest[:end]]; found { test(ix, &mc, h, l[:]) } }
+						rest = rest[end:]
+					}
+				}
+			}
 		}
 		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
 	}

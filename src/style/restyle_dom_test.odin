@@ -745,6 +745,34 @@ restyle_dom_has_bare_anchor :: proc(t: ^testing.T) {
 	expect_partial(t, f, "the subtree that held both removed and destroyed")
 }
 
+// The walk for the members of the exact anchors tests an element against the anchors its class tokens, id, attributes and tag name,
+// not against all of them: each element here has one, of a hundred anchors. It ran after every full pass: on CNN, with its anchors and
+// 11 500 elements, a good part of the window thread's time.
+@(test)
+restyle_dom_has_members_found_by_their_keys :: proc(t: ^testing.T) {
+	ANCHORS :: 100
+	ELEMENTS :: 300
+	src := strings.builder_make(context.temp_allocator)
+	strings.write_string(&src, `<style>:has(#solo) .y { margin: 1px } :has([data-x]) .y { margin: 2px } :has(ghost-el) .y { margin: 3px } :has(.two.k1) .y { margin: 4px }`)
+	for i in 0 ..< ANCHORS { fmt.sbprintf(&src, ` :has(.k%d) .y {{ padding: %dpx }}`, i, i) }
+	strings.write_string(&src, `</style><div id=box><p class=y>u</p><i id=solo></i><i data-x=1></i><ghost-el></ghost-el><i class="k1 two"></i>`)
+	for i in 0 ..< ELEMENTS { fmt.sbprintf(&src, `<i class="k%d"></i>`, i % ANCHORS) }
+	strings.write_string(&src, `</div>`)
+	f := rx_load(strings.to_string(src))
+	defer rx_unload(f)
+	dom.set_attribute(f.doc, by_id(f, "box"), "title", "x")
+	expect_partial(t, f, "a first change")   // (it takes the members)
+	ix := inv_index(f.eng)
+	testing.expect_value(t, len(ix.has_anchors), ANCHORS + 4)
+	KEYED :: 2 * ELEMENTS   // (about one an element: every element against every anchor is ELEMENTS * ANCHORS)
+	testing.expectf(t, ix.members_tested <= KEYED, "%d tests of an element against an argument, at most %d expected", ix.members_tested, KEYED)
+	for &ha in ix.has_anchors {
+		want := len(ha.arg.simples) == 2 || ha.arg.simples[0].kind != .Class ? 1 : ELEMENTS / ANCHORS
+		if ha.arg.simples[0].name == "k1" && len(ha.arg.simples) == 1 { want += 1 }
+		testing.expectf(t, ha.members != nil && len(ha.members.set) == want, "%s: %d members, %d expected", ha.arg.simples[0].name, ha.members == nil ? -1 : len(ha.members.set), want)
+	}
+}
+
 // A :has() of tags, ids, classes and attributes keeps the elements that match its argument; the subtree of an anchor is restyled
 // when its answer flips (the first member under it comes, the last one leaves), not whenever one more comes or goes.
 @(test)
