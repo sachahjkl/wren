@@ -37,7 +37,7 @@ sidebar_page :: proc() -> string {
 @(test)
 sidebar_edge_follows_the_pointer :: proc(t: ^testing.T) {
 	url := e2e.file_page(e2e.temp_folder(t), "mq.html", sidebar_page())
-	s := e2e.start(t, {size = SIDEBAR_SIZE, dpi = SIDEBAR_DPI, url = url, prefs = {"browser.tabs.position=left", "browser.frame.drag_probe=true"}})
+	s := e2e.start(t, {size = SIDEBAR_SIZE, dpi = SIDEBAR_DPI, url = url, prefs = {"browser.tabs.position=left", "browser.frame.drag_probe=true", "browser.shell.resize_anchored=false"}})   // (anchored: a layout past browser.shell.page_thread_min_ms shows at its last width for a frame, by the clock)
 	e2e.wait_chrome_still(s)
 	inner0 := e2e.eval_f64(s, "innerWidth")
 	grab := e2e.Point{math.round(f64(WIDTH_AT_REST) * SIDEBAR_SCALE) - GRAB_INSIDE, GRAB_Y}
