@@ -331,7 +331,7 @@ wj_report_pending :: proc "c" (ctx: ^Context) {
 // recursion through the browser meets the same limit as plain recursion instead of starting over at each level and
 // running past the end of the C stack. The C stack grows down: an entry nested in running frames is below the mark.
 
-STACK_BUDGET :: 768 * 1024
+STACK_BUDGET :: 1536 * 1024
 
 @(private = "file") stack_mark: uintptr
 

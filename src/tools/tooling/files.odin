@@ -10,10 +10,10 @@ import "core:strings"
 import "core:time"
 
 EXE_SUFFIX :: ".exe" when ODIN_OS == .Windows else ""
-// What programs that run Wasm are linked with: 32 MiB of thread stack (wasm.wasmtime.max_stack_bytes). On Linux, `ulimit -s` of test_all.
-STACK_FLAGS :: []string{"-extra-linker-flags:/STACK:33554432"} when ODIN_OS == .Windows else []string{}
+// What programs that run Wasm are linked with: 64 MiB of thread stack (twice wasm.wasmtime.max_stack_bytes, for a call nested in a call). On Linux, `ulimit -s` of test_all.
+STACK_FLAGS :: []string{"-extra-linker-flags:/STACK:67108864"} when ODIN_OS == .Windows else []string{}
 // The stack of a thread a tool makes to run JavaScript on (what the browser's workers get, workers.thread_stack_bytes): a tool that runs its scripts on such a thread works whatever linked it.
-JS_THREAD_STACK_BYTES :: 32 << 20
+JS_THREAD_STACK_BYTES :: 64 << 20
 // What makes every Wren a test starts keep its connections on this machine (src/net/settings.odin: network.loopback_only).
 LOOPBACK_ONLY_ENV :: "WREN_NETWORK_LOOPBACK_ONLY"
 SHA256_BYTES :: 32

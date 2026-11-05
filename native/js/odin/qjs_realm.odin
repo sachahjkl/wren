@@ -253,7 +253,7 @@ wj_preinit :: proc "c" () -> i32 {
 	wj.error_event_hook = wj_fire_error_event
 	rt := new_runtime()
 	if rt == nil { return -1 }
-	// well below the C stack the module reserves (src/tools/buildjs: -z stack-size, 1 MiB): 256 KiB stay for what runs past
+	// well below the C stack the module reserves (src/tools/buildjs: -z stack-size, 2 MiB): 512 KiB stay for what runs past
 	// the bound before the engine unwinds (an uncaught RangeError's report, deep in a recursion through the browser)
 	wj.JS_SetMaxStackSize(rt, wj.STACK_BUDGET)
 	wj.JS_SetInterruptHandler(rt, wj.interrupt_handler, nil)
