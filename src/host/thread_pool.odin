@@ -124,6 +124,7 @@ pool_take :: proc(p: ^Thread_Pool, gen: u64, fn: Parallel_Proc, data: rawptr, co
 
 @(private)
 pool_thread :: proc(data: rawptr) {
+	thread_temp_hot()
 	p := (^Thread_Pool)(data)
 	seen: u64
 	for {
