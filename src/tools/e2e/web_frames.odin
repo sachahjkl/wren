@@ -1344,6 +1344,8 @@ frames_measurements :: proc(t: ^testing.T) {
 	wait_note(pr, "warm")
 	close_page(pr)
 	drain()
+	keep := base.poison_quarantine_limit(0)   // (private bytes count what is freed otherwise)
+	defer base.poison_quarantine_limit(keep)
 	before := int(base.process_memory().private)
 	t0 := time.tick_now()
 	pr = load(t, fill(`<body><script>

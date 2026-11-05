@@ -378,6 +378,8 @@ stress :: proc(t: ^testing.T, parallel: int) {
 	pr, ok := open(t, "stress", testenv.url(ORIGIN + "/stress.html"))
 	if !ok { return }
 	if parallel > 0 { settings.websocket.limits.max_connecting_per_host = parallel }
+	keep := base.poison_quarantine_limit(0)   // (private bytes count what is freed otherwise)
+	defer base.poison_quarantine_limit(keep)
 	mem_before := int(base.process_memory().private)
 	page.call_export(pr.p, pr.p.instances[0], "stress", {STRESS_SOCKETS})
 	watch := Stress_Watch{p = pr.p}

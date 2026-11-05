@@ -278,7 +278,11 @@ async fn send(sender: &mut Sender, req: &http::Request<Bytes>) -> Result<(http::
         stream.send_data(req.body().clone()).await.map_err(ce)?;
     }
     stream.finish().await.map_err(ce)?;
-    let resp = stream.recv_response().await.map_err(|_| NetError::new(error::INVALID_SERVER_RESPONSE))?;
+    // (an informational response comes before the response: 103 Early Hints, which codepen.io sends when its origin is slow)
+    let resp = loop {
+        let resp = stream.recv_response().await.map_err(|_| NetError::new(error::INVALID_SERVER_RESPONSE))?;
+        if !resp.status().is_informational() { break resp; }
+    };
     Ok((resp, H3Body { stream }))
 }
 

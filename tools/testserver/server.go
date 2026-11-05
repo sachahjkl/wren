@@ -6,6 +6,7 @@
 //
 //	/                hello
 //	/big?mb=N        N MB of incompressible bytes, streamed
+//	/early-hints     103 Early Hints, then the page
 //	/gzip            text with Content-Encoding: gzip
 //	/redirect?n=K    K redirects, then /
 //	/status/NNN      replies NNN
@@ -79,6 +80,11 @@ func Start(o Options) (int, error) {
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		io.WriteString(w, "<!doctype html><title>hello</title><h1>hello</h1>")
+	})
+	mux.HandleFunc("/early-hints", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Link", "</big>; rel=preload")
+		w.WriteHeader(http.StatusEarlyHints)
+		io.WriteString(w, "after the hints")
 	})
 	mux.HandleFunc("/big", func(w http.ResponseWriter, r *http.Request) {
 		mb, _ := strconv.Atoi(r.URL.Query().Get("mb"))
