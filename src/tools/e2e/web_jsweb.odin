@@ -347,8 +347,8 @@ jsweb_idb_beside_another_process :: proc(t: ^testing.T) {
 	script(t, "idb_beside_another_process", tests = 1)
 	// (what keeps a file open goes: the origin leaves memory)
 	wait_until(t, "the origin out of memory", storage_world(), proc(s: ^page.Storage_Manager) -> bool { return idb.manager_tick(&s.idb.m) == 0 })
-	state, _, _, err := os.process_exec({command = {os.args[0], "-tests:" + OTHER_PROGRAM_TEST + ",zz_the_process_ends_with_nothing_left"}}, context.temp_allocator)
-	testing.expectf(t, err == nil && state.exit_code == 0, "%s in another process: error %v, exit code %d", OTHER_PROGRAM_TEST, err, state.exit_code)
+	state, out, said, err := os.process_exec({command = {os.args[0], "-tests:" + OTHER_PROGRAM_TEST + ",zz_the_process_ends_with_nothing_left"}}, context.temp_allocator)
+	testing.expectf(t, err == nil && state.exit_code == 0, "%s in another process: error %v, exit code %d\n%s\n%s", OTHER_PROGRAM_TEST, err, state.exit_code, string(out), string(said))
 	script(t, "idb_beside_another_process", tests = 1)
 }
 
