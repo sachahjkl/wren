@@ -2406,6 +2406,76 @@ callers of <code>has_class</code> are inferred, item 4's from what the fix took 
 <p>Tests: <code>test_all -Quick -NoAsan</code> with <code>build/native</code> copied with its stamp (no Cargo): the unit tests of host, dom, css, html, fetch, style, page, browser and remote, the end-to-end tests of JavaScript
 loading, pages, the DOM, nested documents, images, the HTTP cache, network policy, the transport on both stacks, the content blocker, site compatibility and the remote channel, the changelog and the site: all pass. New: the
 six named above. Not run: the full suite, WPT, the unit tests under AddressSanitizer.</p>
+<h2 id="what-changed-round-27-memory-what-a-long-session-on-many-sites-keeps"><a class="anchor" href="#what-changed-round-27-memory-what-a-long-session-on-many-sites-keeps" aria-hidden="true">#</a>What changed, round 27: memory, what a long session on many sites keeps</h2>
+<p>The numbers of <code>wrentool sweep</code>: example.com 190 MB of private bytes, a Wikipedia article 500 MB, cnn.com 2 GB, 4.7 GB (6.4 on another day) after 37 sites in one process.
+Repeated open and close of one site settled near 300 MB: what was kept was kept per site. Headless, development builds, RTX 4070 SUPER, 16 logical processors, other agents building
+beside it (a third of the machine at one reading); throwaway profiles; every site visited through <code>wrentool sweep -OneProcess</code>, one visit at a time.</p>
+<p><strong>The measure.</strong> <code>Wren.stats</code> has <code>memory</code>, the heaps and private pages against what each store says it holds; <code>Wren.memoryReport</code> writes the allocations by kind (a heap's segment, a
+thread's stack from its TEB, a Wasm memory by its 4 GiB reservation, code); <code>wrentool sweep</code> writes <code>memory_&lt;shard&gt;.tsv</code> after each page, and with <code>-MemoryReports</code> a report before and after
+<code>Wren.memoryTrim</code>. The check build's <code>.live</code> file names the tracked blocks by place. For what those do not see, a throwaway build hooked <code>NtAllocateVirtualMemory</code> and kept the call stack of
+each commit: not committed.</p>
+<p><strong>Where it was</strong>, in MB, one tab, after the 16th site (the Guardian), before and after items 1, 3 to 7 below; then after the 21st site (the Verge) with all of them, a trim just made. Before, the style arenas are in the first line:</p>
+<div class="table-box"><table>
+<thead><tr><th></th><th>before</th><th>after</th><th>21st site, final code</th></tr></thead>
+<tbody>
+<tr><td>private bytes</td><td>2 419</td><td>1 364</td><td>2 928</td></tr>
+<tr><td>Wasm linear memories (realms of pages and frames)</td><td>892</td><td>221</td><td>1 401</td></tr>
+<tr><td>process heaps</td><td>729</td><td>473</td><td>834</td></tr>
+<tr><td>mapped by the kernel for the GPU driver, sheets' arenas, the rest</td><td>630</td><td>467</td><td>454</td></tr>
+<tr><td>style arenas</td><td></td><td>69</td><td>59</td></tr>
+<tr><td>compiled code</td><td>76</td><td>36</td><td>40</td></tr>
+<tr><td>thread stacks</td><td>10</td><td>10</td><td>11</td></tr>
+</tbody>
+</table></div>
+<p>Of the heaps after 11 sites (check build, 581 MB in use): 259 MB tracked (HTTP bodies 35, bytecode 22, layout arrays 76, decoded images 27, media 25, web fonts 18), 84 MB of temporary arenas,
+the rest native (Wasmtime's modules and stores, Lexbor, the decoders, DirectWrite).</p>
+<p>example.com, 190 MB: 65 MB of regions no <code>NtAllocateVirtualMemory</code> of the process made: they are the GPU driver's, mapped by the kernel (instance buffers and uploads are what they contain), 30 MB
+of the driver's own writable image sections, 19 MB the engine's code, 30 MB of heaps once the temporary arenas are small (72 KB per thread of <code>font.l1_words</code> in thread-local storage: 7 MB
+over the 96 threads, of which 68 are the driver's), 6.5 MB of realm, 7 MB of stacks.</p>
+<p><strong>What was wrong, by bytes.</strong></p>
+<ol>
+<li><em>The back/forward cache counted a realm for 8 MB</em> (<code>history.bfcache.page_overhead</code>). A news site's is 136 MB: five such pages were "under" the 512 MB limit, and 21 instances lived after 15 sites.
+<code>page.memory_held</code> now reads the linear memories of the page and of its frames, nodes count 4 KiB (a page of 10 000 nodes takes 50 MB), the limit is 128 MB. A page kept gives back the style arenas
+and the layout arrays only its next pass would use.</li>
+<li><em>A layout kept its arrays from one document to the next</em>: fragments, lines, segments, sized by the largest page the tab showed: 300 MB after lemonde.fr, carried to every page after it. Past
+1 MiB an array goes at the new document (<code>LAYOUT_KEEP_BYTES</code>); the first pass sizes them from the document anyway.</li>
+<li><em>Compiled modules were counted by their code alone</em>: 14 KB of code took 40 KB of private bytes. The JIT made 12 000 of them in 37 sites, all kept. <code>MODULE_BYTES</code> counts the rest, the
+limit is 64 MB; what is evicted comes back from the disk cache.</li>
+<li><em>Caches sized for one big page, kept for the session</em>: decoded images 512 -&gt; 128 MB, bytecode 64 -&gt; 32, HTTP bodies 64 -&gt; 32 (the last two are on disk).</li>
+<li><em>The key sets of style invalidation were process-wide, never freed</em>: tens of MB after a few dozen sites, and a table no page could give back. They belong to the engine now.</li>
+<li><em>Temporary arenas</em>: every thread that used one kept 1 MiB, 84 blocks after a few sites. 64 KiB now, 1 MiB for the threads of a frame's passes (<code>host.thread_temp_hot</code>). The page thread's kept the
+size of the largest page laid out (42 MB): a trim takes it back to its first size.</li>
+<li><em>A trim came only when idle</em>: never with an animation on screen. A closed tab or a kept page gone asks for one within a second, at most every 10 s (<code>memory_trim_soon</code>).</li>
+</ol>
+<p><strong>The result.</strong> <code>wrentool sweep -OneProcess</code> on the same 37 sites, private MB after each, one run of each (one tab; the session ends on apple.com):</p>
+<div class="table-box"><table>
+<thead><tr><th>site</th><th>before</th><th>after</th></tr></thead>
+<tbody>
+<tr><td>1 example.com</td><td>192</td><td>182</td></tr>
+<tr><td>5 python.org</td><td>862</td><td>531</td></tr>
+<tr><td>10 react.dev</td><td>1 720</td><td>969</td></tr>
+<tr><td>15 bbc.com/news</td><td>3 068</td><td>1 316</td></tr>
+<tr><td>20 arstechnica.com</td><td>3 544</td><td>1 864</td></tr>
+<tr><td>22 cnn.com</td><td>4 701</td><td>2 777</td></tr>
+<tr><td>25 old.reddit.com</td><td>4 507</td><td>2 211</td></tr>
+<tr><td>30 gitlab.com/explore</td><td>4 442</td><td>2 495</td></tr>
+<tr><td>34 bing.com</td><td>4 694</td><td>2 454</td></tr>
+<tr><td>37 apple.com</td><td>4 732</td><td>2 951</td></tr>
+</tbody>
+</table></div>
+<p>Heap in use 1 054 -&gt; 578 MB, compiled modules 11 999 -&gt; 960, images 330 -&gt; 120 MB, at the end. From the 22nd site on the session goes up and down with the page shown, between 2.2 and 2.9 GB.
+What it follows now is the sites' own memory: the Verge's frames and workers hold 24 linear memories, 1.4 GB, while it is open. All 37 pages passed, no crash, no hang.</p>
+<p>Each site alone in a Wren of its own, two runs of each, private MB: example.com 192, 189 -&gt; 173, 188; the Wikipedia article 426, 409 -&gt; 426, 345; lemonde.fr 1 082, 983 -&gt; 759, 748; cnn.com 1 865, 1 647 -&gt;
+2 099, 1 479 (cnn differs by 600 MB from one visit to the next: its adverts). So a single page changes little: <strong>example.com is not far lower</strong>, the target was not reached there, see below.</p>
+<p>A local session (<code>examples/site/memory-growth.html</code>, 40 pages unlike each other, 40 modules each): 402 -&gt; 334 MB at the end, compiled modules 1 740 -&gt; 1 002 and no more from the 30th page.</p>
+<p>Speed: <code>wrentool bench perf -Only js_nodes10k</code>, development builds, base and final in turn, 6 of each on the loaded machine: load 350 against 353 ms (median), frames as many in the same time within their
+scatter (553 to 658, 549 to 616), private bytes 245 -&gt; 233 MB. <code>p10k_load</code>, 4 of each: 797 to 2 152 ms against 582 to 1 309, no difference this machine could show. What a limit costs: a page evicted from the back/forward cache loads again instead of coming back at once, more often than before (the price of
+128 MB: two or three pages of news sites are kept instead of six); a module evicted is read from the disk cache instead of memory; a reload of a large page sizes its arrays again, as its first pass did.</p>
+<p><strong>What is left</strong>, and why. The GPU driver's memory (65 MB at the start, 200 to 300 MB in a session) is mapped by the kernel; it stays after <code>IDXGIDevice3::Trim</code>, with or without <code>ClearState</code>, and <code>text.renderer=atlas</code> changes
+little (77 -&gt; 64 MB on the local pages). Whether a shown window, whose presents throttle the frames, keeps as much was not measured. <code>font.l1_words</code> (7 MB of thread-local storage) and the 68 threads are in the toolkit and the driver.
+The sheets' 1 MiB arena blocks and the heap's native part (Wasmtime's stores, Lexbor) were not taken apart further. example.com stays near 180 MB because of those: about 95 MB of it is the driver's.</p>
+<p>Tests: <code>src/tools/e2e/memory_growth.odin</code>, on a local page: the back/forward cache counts what the scripts of its pages hold (fails without: 5 pages of 24 MB in 64 MB), compiled modules stay within their limit (fails
+without: 367 kept for at most 150), a tab forgets the size of a large page (fails without: 101 MB carried), a long session levels off, closing tabs gives their memory back.</p>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
@@ -2657,6 +2727,7 @@ must call nothing itself (<code>interp_hot.odin</code>'s header says how).</li>
 <li><a href="#what-changed-round-24-what-still-froze-under-a-busy-page">What changed, round 24: what still froze under a busy page</a></li>
 <li><a href="#what-changed-round-25-what-a-first-load-waited-for-found-by-loading-it-again-and-again">What changed, round 25: what a first load waited for, found by loading it again and again</a></li>
 <li><a href="#what-changed-round-26-heavy-pages-from-the-navigation-to-the-load-event">What changed, round 26: heavy pages, from the navigation to the load event</a></li>
+<li><a href="#what-changed-round-27-memory-what-a-long-session-on-many-sites-keeps">What changed, round 27: memory, what a long session on many sites keeps</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
