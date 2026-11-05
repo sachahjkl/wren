@@ -196,9 +196,16 @@ every fast path that does not apply, leaves it with the pc on the instruction fo
 Frames come from segmented value stacks so generators and async functions can suspend them (<code>coro.odin</code>:
 generators, async functions, async generators, <code>for await</code>, <code>yield*</code>). A plain JS‑to‑JS call does not
 recurse natively: <code>frame_push</code> puts the callee's <code>Frame</code> at the end of its value‑stack block and the same
-<code>interp_run</code> activation runs it (<code>Frame.stackless</code>); native callees (<code>c_function</code>) are called from the hot
-loop without a frame. The engine's own stack budget and call depth bound recursion
-(<code>Host_Config.max_stack_bytes</code>, <code>max_stack_depth</code>; a <code>RangeError</code> instead of a crash). The interrupt hook
+<code>interp_run</code> activation runs it (<code>Frame.stackless</code>), and so does <code>new</code> of a bytecode function, a spread call and a getter
+or a setter a property instruction finds (<code>Stackless</code>: what the frame's return gives its caller); native callees
+(<code>c_function</code>) are called from the hot loop without a frame. What goes through a native (<code>map</code>, a Proxy trap,
+<code>Reflect</code>, a bound function, a listener) takes a new <code>interp_run</code> on the host stack. <code>Host_Config.max_stack_depth</code> bounds
+all of it, with a <code>RangeError</code> at the limit. On Wasm the host stack is two stacks (<code>stack.odin</code>): the shadow stack in
+linear memory is 2 MiB, every page of which is committed for each realm, and a recursion that runs past it goes on in
+blocks of the heap (the host moves the stack pointer, <code>Engine_stackMove</code>; the blocks go when the outermost call
+returns); the machine's stack ends in a trap, so the engine asks the host (<code>Engine_nativeStackLow</code>) at each move and at
+each entry of the browser into a running engine, and stops with the same <code>RangeError</code>. Natively, one stack and
+<code>Host_Config.max_stack_bytes</code>. The interrupt hook
 runs on a budget from the loop back edge. Operators follow the spec (<code>+</code> through ToPrimitive, ModRing bitwise, BigInt paths, loose and
 strict equality). Try/catch uses a per‑frame handler stack (<code>catch</code>/<code>gosub</code>/<code>ret</code>/<code>nip_catch</code>).</p>
 <h2 id="standard-library"><a class="anchor" href="#standard-library" aria-hidden="true">#</a>Standard library</h2>
