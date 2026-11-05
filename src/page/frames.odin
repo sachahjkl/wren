@@ -125,10 +125,11 @@ Page_Frames :: struct {
 // What a page keeps alive, its frames with it: its buffers, an estimate of its nodes, and the linear memory of its scripts' engines,
 // which only grows while the page lives and is most of a page with scripts (136 MB for a news site's realm, 8 MB for a page's nodes).
 memory_held :: proc(p: ^Page) -> int {
-	n := p.held + p.doc.nodes.count * NODE_BYTES
+	n := p.held
+	if p.doc != nil { n += p.doc.nodes.count * NODE_BYTES }
 	if p.js != nil { n += int(wasm.memory_bytes(p.js.inst)) }
 	for inst in p.instances { n += int(wasm.memory_bytes(inst)) }
-	for c in p.frames.children { if c.page != nil { n += memory_held(c.page) } }
+	if p.frames != nil { for c in p.frames.children { if c.page != nil { n += memory_held(c.page) } } }
 	return n
 }
 
