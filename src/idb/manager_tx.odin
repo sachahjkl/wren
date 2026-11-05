@@ -386,6 +386,7 @@ tx_finish :: proc(m: ^Manager, tx: ^Tx, committed: bool, err: Error) {
 	for x, i in ds.txs { if x == tx { ordered_remove(&ds.txs, i); break } }
 	delete_key(&m.txs, tx.id)
 	conn := tx.conn
+	if conn != nil { conn.refs += 1 }   // (an upgrade that failed drops the request's: the connection goes)
 	if req := tx.upgrade; req != nil { upgrade_done(o, ds, req, committed) }
 	if req := tx.system; req != nil {
 		if committed {
@@ -395,7 +396,10 @@ tx_finish :: proc(m: ^Manager, tx: ^Tx, committed: bool, err: Error) {
 		}
 		request_done(ds, req)
 	}
-	if conn != nil { conn_try_close(m, conn) }
+	if conn != nil {
+		conn_try_close(m, conn)
+		conn_unref(conn)
+	}
 	tx_free(tx)
 	schedule(ds)
 	db_pump(o, ds)
