@@ -28,8 +28,19 @@ run :: proc(l: ^Layout, input: Input) {
 		if l.frames_on || !run_incremental(l, input) { run_full(l, input) }
 	}
 	clear(&l.bar_dirty)
+	read_pass(l, input.styled)
 }
 
+// What the layout reads from now on; the pass it read until now may go (at the end of a pass: it read the old records to the last).
+@(private)
+read_pass :: proc(l: ^Layout, s: ^style.Styled) {
+	if l.reading != s {
+		if s != nil { style.styled_read_begin(s) }
+		style.styled_read_end(l.reading)
+		l.reading = s
+	}
+	if s != nil { style.styled_read_caught_up(s) }
+}
 
 @(private)
 ctx_make :: proc(l: ^Layout, input: Input, marker: ^u8) -> Ctx {
@@ -175,12 +186,14 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 	l.valid = false
 	l.last_pass = .None
 	l.styled = nil
+	read_pass(l, nil)
 	l.height = 0
 	l.doc_width, l.doc_min_x = 0, 0
 	l.doc_min_y = 0
 }
 
 destroy :: proc(l: ^Layout) {
+	read_pass(l, nil)
 	delete(l.boxes); delete(l.inline_items); delete(l.lines); delete(l.frags); delete(l.fonts); delete(l.items); delete(l.font_lookup)
 	delete(l.spaces); delete(l.clips); delete(l.groups); delete(l.band_start); delete(l.band_items); delete(l.node_box)
 	delete(l.scroll)

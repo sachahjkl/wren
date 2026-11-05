@@ -183,10 +183,10 @@ hold_destroy :: proc(t: ^Tab) {
 	page_fonts_drop(&the_app.page_render.fonts, &t.hold)
 }
 
-// Whether the held frame still says what its page is. The page runs: a script that reads a computed style makes a pass of its own (js_dom_styled) with no layout to go with it,
-// and the records of the held display list are in the arena that pass emptied (a read of a freed record in background_has_url, imdb.com).
+// Whether the held frame still says what its page is: its items read the document's text. The page runs: a script that reads a computed style makes a pass of its own with
+// no layout to go with it (js_dom_styled); the held layout reads the records of its own pass, which stands as long as it does (style.styled_read_begin).
 hold_exact :: proc(h: ^Paint_Hold) -> bool {
-	return h.active && h.page != nil && h.layout.valid && h.layout.mutations == h.page.doc.mutations && h.page.styled != nil && h.layout.serial == h.page.styled.serial
+	return h.active && h.page != nil && h.layout.valid && h.layout.mutations == h.page.doc.mutations
 }
 
 // Paints what the tab shows while its page cannot paint: the held frame if it is still exact and not timed out, else

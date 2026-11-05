@@ -125,6 +125,11 @@ Styled :: struct {
 	// records made by this pass and the partial restyles since with background, mask or cursor images: when it has not moved,
 	// the page's image loader has no new CSS image URL to look for (page/images.odin css_images_sync)
 	image_records:  int,
+	// who reads the records (styled_read_begin)
+	readers:        int,
+	ended:          bool,                  // its page has moved on: it goes with its last reader
+	engine:         ^Engine,               // ... to the spares of this one (nil: the engine went first)
+	dead_overlays:  [dynamic]^Overlay,     // animations over since the layouts last followed: their records are still pointed at
 }
 
 // A computed style replaced by a partial restyle: `old` is what was in effect (animated values included), `new` the
@@ -143,8 +148,41 @@ styled_bytes :: proc(s: ^Styled) -> int {
 	return n
 }
 
+// A layout keeps pointers to the records of the pass it was made from (Display_Item.cs, Box.cs): they are the layout's to read
+// for as long as it stands, whatever the page does meanwhile. A paint from a held frame or under a long script, a hit test, a
+// script's pass that no layout follows: the page's next pass does not take them away (styled_recycle, styled_destroy leave a
+// pass with readers to its last reader). One reader per Layout, begun and ended by the layout package.
+styled_read_begin :: proc(s: ^Styled) { s.readers += 1 }
+
+styled_read_end :: proc(s: ^Styled) {
+	if s == nil { return }
+	s.readers -= 1
+	if s.readers > 0 || !s.ended { return }
+	s.ended = false
+	e := s.engine
+	if e != nil {
+		for x, i in e.ended { if x == s { unordered_remove(&e.ended, i); break } }
+	}
+	styled_recycle(e, s)
+}
+
+// The layouts of `s` have followed its journal: no record of an overlay that went is pointed at any more.
+styled_read_caught_up :: proc(s: ^Styled) {
+	for ov in s.dead_overlays { overlay_free(ov) }
+	clear(&s.dead_overlays)
+}
+
+@(private)
+styled_read_on :: proc(e: ^Engine, s: ^Styled) {
+	s.ended, s.engine = true, e
+	if e != nil { append(&e.ended, s) }
+}
+
 styled_destroy :: proc(s: ^Styled) {
 	if s == nil { return }
+	if s.readers > 0 { styled_read_on(nil, s); return }
+	styled_read_caught_up(s)
+	delete(s.dead_overlays)
 	delete(s.by_node)
 	delete(s.nodes)
 	for a in s.thread_arenas { thread_arena_free(a) }
@@ -211,6 +249,7 @@ record_new :: #force_inline proc(a: runtime.Allocator) -> ^Computed {
 // (style.recycle_bytes): a new pass then writes into pages already mapped instead of faulting fresh ones in.
 styled_recycle :: proc(e: ^Engine, s: ^Styled) {
 	if s == nil { return }
+	if s.readers > 0 { styled_read_on(e, s); return }
 	// the threads' arenas go back to the engine in every case, and the slots unless they are larger than the memory kept
 	if e != nil {
 		for a in s.thread_arenas { thread_arena_give(e, a) }
@@ -237,6 +276,8 @@ styled_recycle :: proc(e: ^Engine, s: ^Styled) {
 	inline_cache_destroy(s)
 	journal_destroy(s)
 	delete(s.thread_arenas)
+	styled_read_caught_up(s)
+	delete(s.dead_overlays)
 	style_arena_empty(&s.arena)
 	e.spare = s.arena
 	e.has_spare = true
