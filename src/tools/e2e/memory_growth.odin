@@ -2,7 +2,7 @@ package e2e_scenarios
 
 // What a long session on many sites leaves behind, in a loop on a local page (examples/site/memory-growth.html, a page unlike the one before it at each ?n=: functions hot enough to be
 // compiled, styles, nodes, an image): the stores stay within their limits counted by what they really hold, the process levels off, closing tabs gives their memory back.
-// docs/performance.md, round 26.
+// docs/performance.md, round 27.
 
 import "core:fmt"
 import "core:testing"

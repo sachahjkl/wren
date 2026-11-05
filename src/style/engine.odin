@@ -232,7 +232,7 @@ engine_destroy :: proc(e: ^Engine) {
 
 // Gives back what a next full pass would have reused (styled_recycle, thread_arena_give): for a page that stops drawing, nothing is kept for a pass to come.
 engine_release_spares :: proc(e: ^Engine) {
-	if e.has_spare { virtual.arena_destroy(&e.spare); e.has_spare = false }
+	if e.has_spare { base.arena_destroy(&e.spare); e.has_spare = false }
 	delete(e.spare_by_node)
 	delete(e.spare_nodes)
 	e.spare_by_node, e.spare_nodes = nil, nil
