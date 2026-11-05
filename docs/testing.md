@@ -284,7 +284,7 @@ build.bat check
 build\wrentool sweep -List tools\site_compare_list.txt,tools\site_compare_list2.txt -Exe build\wren_check.exe -CloseMs 60000 -PingMs 60000
 ```
 
-`test_all` has it in every end-to-end test, in the unit tests of `base`, `style` and `layout`, in the crash reports (`crashmodes_poison`), and `-CI` and full runs visit the pages of `tools/sweep_local.txt` on the check build (a minute, no network; a line of a list that is no address is a file of the repository). So does the Linux job of the CI.
+`test_all` has it in every end-to-end test, in the unit tests of `base`, `style` and `layout`, in the crash reports (`crashmodes_poison`), `WREN_POISON_PAGES=1` for the tests that found something only with it, and `-CI` and full runs visit the pages of `tools/sweep_local.txt` on the check build (a minute, no network; a line of a list that is no address is a file of the repository). So does the Linux job of the CI.
 
 ## Tools beside the tests
 
