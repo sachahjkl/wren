@@ -660,6 +660,7 @@ timeline_scroll_sample :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, pr
 	for _, st in tl.progress_timelines {
 		was := st.progress
 		st.progress = {}
+		if st.src.view { st.src.source = nearest_scroller(s, doc, st.src.subject, probe.root) }
 		if !st.none { progress_measure(s, probe, st.src, &st.progress) }
 		if st.progress != was { changed = true }
 	}

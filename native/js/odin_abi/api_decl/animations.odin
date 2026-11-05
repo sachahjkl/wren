@@ -21,6 +21,7 @@ Animation_setTimeline :: #type proc(animation: Animation, document_timeline: boo
 ProgressTimeline_create :: #type proc(source: u64, none: bool, subject: u64, axis: i32, inset: string) -> u64
 ProgressTimeline_currentTime :: #type proc(timeline: u64) -> f64   // percents; NaN: null
 ProgressTimeline_offset :: #type proc(timeline: u64, which: i32) -> f64
+ProgressTimeline_source :: #type proc(timeline: u64) -> u64   // 0: the viewport
 Animation_setProgressTimeline :: #type proc(animation: Animation, timeline: u64)
 Animation_isProgress :: #type proc(animation: Animation) -> bool
 Animation_setRange :: #type proc(animation: Animation, which: i32, text: string) -> bool

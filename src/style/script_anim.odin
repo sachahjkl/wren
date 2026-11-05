@@ -416,6 +416,12 @@ timeline_progress_remove :: proc(tl: ^Timeline, id: u64) {
 	}
 }
 
+// What timeline `id` scrolls with (NIL: the viewport), as last measured.
+timeline_progress_source :: proc(tl: ^Timeline, id: u64) -> base.Handle {
+	st := tl.progress_timelines[id] or_else nil
+	return st != nil ? st.src.source : base.NIL_HANDLE
+}
+
 // Timeline `id`'s current time, in percents; active false: it has none.
 timeline_progress_percent :: proc(tl: ^Timeline, id: u64) -> (percent: f64, active: bool) {
 	st := tl.progress_timelines[id] or_else nil

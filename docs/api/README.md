@@ -73,7 +73,7 @@ function not exposed to workers is not instantiated.
 | module | Odin package | functions | exposed | |
 |---|---|---:|---|---|
 | [`abort`](abort.md) | `wren:abort` | 10 | Window | AbortController and AbortSignal (DOM Standard). A signal is an EventTarget ("abort"). Its reason is a (code, text) |
-| [`animations`](animations.md) | `wren:animations` | 37 | Window | Web Animations (src/page/web_animations.odin): Element.animate, Animation, KeyframeEffect, document.timeline. The |
+| [`animations`](animations.md) | `wren:animations` | 38 | Window | Web Animations (src/page/web_animations.odin): Element.animate, Animation, KeyframeEffect, document.timeline. The |
 | [`async`](async.md) | `wren:core` | 17 | Window, Worker | Promises, microtasks, buffers and host objects: the asynchronous core every other module builds on. |
 | [`bloburl`](bloburl.md) | `wren:bloburl` | 2 | Window, Worker | The blob URL store (src/fetch/blob_urls.odin): what `URL.createObjectURL` makes, for everything that loads a URL outside the |
 | [`caches`](caches.md) | `wren:caches` | 11 | Window, Worker | The Cache API (Service Workers §5: CacheStorage, Cache) on the browser's storage (src/page/cache_store.odin): named |
@@ -132,4 +132,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | `wren:websocket` | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | `wren:workers` | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1618 imports in 1519 functions.
+1619 imports in 1520 functions.

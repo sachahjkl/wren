@@ -941,6 +941,8 @@ foreign _wr_wj_animations {
 	@(link_name = "ProgressTimeline_create") wr_ProgressTimeline_create :: proc(source: u64, none: i32, subject: u64, axis: i32, inset: [^]u8, inset_len: u32) -> u64 ---
 	// timeline.currentTime, in percents (NaN: null).
 	@(link_name = "ProgressTimeline_currentTime") wr_ProgressTimeline_currentTime :: proc(timeline: u64) -> f64 ---
+	// The scroller a view timeline found for its subject (0: the viewport).
+	@(link_name = "ProgressTimeline_source") wr_ProgressTimeline_source :: proc(timeline: u64) -> u64 ---
 	// ViewTimeline startOffset (0) and endOffset (1), CSS px.
 	@(link_name = "ProgressTimeline_offset") wr_ProgressTimeline_offset :: proc(timeline: u64, which: i32) -> f64 ---
 	// animation.timeline = a ScrollTimeline or ViewTimeline.
