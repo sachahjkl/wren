@@ -11,6 +11,9 @@ import "core:time"
 @(private = "file") COUNT_TRIES :: 5
 // What one count may cost: the process snapshot it replaced took 20 to 45 ms of a busy machine.
 @(private = "file") COUNT_BUDGET :: 2 * time.Millisecond
+// A joined thread leaves the system's list a moment later, and the tests beside this one have threads of their own: the count is read again for this long.
+@(private = "file") JOINED_GONE_WITHIN :: 2 * time.Second
+@(private = "file") JOINED_POLL :: time.Millisecond
 
 @(test)
 process_threads_counts_this_process_cheaply :: proc(t: ^testing.T) {
@@ -24,6 +27,9 @@ process_threads_counts_this_process_cheaply :: proc(t: ^testing.T) {
 	sync.sema_post(&gate, HELD_THREADS)
 	for h in held { thread.join(h); thread.destroy(h) }
 	after := process_threads()
+	for t0 := time.tick_now(); during - after < HELD_THREADS && time.tick_since(t0) < JOINED_GONE_WITHIN; after = process_threads() {
+		time.sleep(JOINED_POLL)
+	}
 	when ODIN_OS == .Windows || ODIN_OS == .Linux {
 		testing.expect(t, before >= 1, "the test's own thread at least")
 		testing.expectf(t, during - before >= HELD_THREADS, "the held threads counted: %d before, %d while held", before, during)
