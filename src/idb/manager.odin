@@ -323,6 +323,7 @@ client_destroy :: proc(c: ^Client) {
 		}
 	}
 	conns := slice.clone(c.conns[:], context.temp_allocator)
+	for conn in conns { conn.refs += 1 }   // (a transaction rolled back may end its connection: an upgrade)
 	for conn in conns {
 		txs := slice.clone(conn.ds.txs[:], context.temp_allocator)
 		for tx in txs {
@@ -335,6 +336,7 @@ client_destroy :: proc(c: ^Client) {
 	for conn in conns {
 		conn.close_pending = true
 		conn_try_close(m, conn)
+		conn_unref(conn)
 	}
 	for conn in c.conns { conn.client = nil }   // still open: a transaction of it is being written
 	if o != nil {
