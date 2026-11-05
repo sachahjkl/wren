@@ -219,6 +219,7 @@ jobs:
           key: native-linux-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-${{ hashFiles('native/**/*.rs', 'native/**/Cargo.toml', 'src/tools/wrentool/deps/native.odin') }}
           restore-keys: native-linux-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-
 
+      # (the Rust library with the toolkit's text backend and accessibility adapter, as build.sh builds it: the browser's tests that run here shape text)
       - name: Native libraries (Wasmtime, Lexbor, the Rust library)
         run: |
           mkdir -p build
@@ -226,7 +227,7 @@ jobs:
           build/wrentool fetch wasmtime
           build/wrentool fetch wgpu
           CC=clang build/wrentool build lexbor
-          build/wrentool build native -Profile quick
+          build/wrentool build native -Profile quick -Features text,a11y
 
       - name: odin check and unit tests (src/tools/test_all)
         run: |

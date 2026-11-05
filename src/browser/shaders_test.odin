@@ -185,6 +185,32 @@ the_back_of_the_card_is_the_fronts_relief_inside_out_with_the_logo_raised :: pro
 	testing.expectf(t, left_edge > 0 && at(back, left_edge, mid_y, 0) < 120, "the bird's left flank leans to the left (%d at x = %d)", at(back, left_edge, mid_y, 0), left_edge)
 }
 
+// The card's lettering comes from the glyphs' outlines, so it is there on every system (the glyph atlas has no bitmaps of plain text off
+// Windows: the card was blank on Linux). The name is inked where the design puts it, the space between the name and the dates is bare.
+@(test)
+the_lettering_of_the_card_is_raised_on_every_system :: proc(t: ^testing.T) {
+	test_app(t)
+	fs := new(font.State)
+	defer free(fs)
+	font.init(fs)
+	defer font.destroy(fs)
+	fields := card_engrave_fields(SAMPLE_LICENSE.product, SAMPLE_LICENSE.edition,SAMPLE_LICENSE.name, SAMPLE_LICENSE.email, SAMPLE_LICENSE.date, SAMPLE_LICENSE.order)
+	tex, ok := card_engraving(fs, 0, fields)
+	defer delete(tex)
+	if !testing.expect(t, ok, "a font for the lettering") { return }
+	testing.expect_value(t, len(tex), ENGRAVE_W * ENGRAVE_H * 4)
+	inked :: proc(tex: []u8, x0, y0, x1, y1: int) -> (n: int) {
+		for y in y0 ..< y1 { for x in x0 ..< x1 { if tex[(y * ENGRAVE_W + x) * 4 + 2] > 127 { n += 1 } } }
+		return
+	}
+	S :: int(ENGRAVE_SCALE)
+	name := inked(tex, 22 * S, (134 - 20) * S, 418 * S, 134 * S)
+	testing.expectf(t, name > 200 * S * S, "the name is lettered (%d texels inked)", name)
+	dates := inked(tex, 22 * S, (254 - 10) * S, 418 * S, 254 * S)
+	testing.expectf(t, dates > 20 * S * S, "the date and the order are lettered (%d texels inked)", dates)
+	testing.expect_value(t, inked(tex, 0, 160 * S, ENGRAVE_W, 215 * S), 0)
+}
+
 // about:wren with the card's preview (the sample licence)
 @(private = "file")
 sample_card_page :: proc() -> Wren_Page {

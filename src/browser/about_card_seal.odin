@@ -131,10 +131,10 @@ seal_engraving :: proc(fs: ^font.State, renderer: u64, word: string, allocator :
 	N :: SEAL_TEX
 	semibold, found := engrave_font(fs, renderer, true)
 	if !found { return nil, false }
-	blits := make([dynamic]Blit, context.temp_allocator)
+	glyphs := make([dynamic]Glyph_Place, context.temp_allocator)
 	w := engrave_width(fs, semibold, word, SEAL_WORD_SIZE, SEAL_WORD_TRACK) - SEAL_WORD_TRACK * SEAL_WORD_SIZE
-	engrave_line(fs, semibold, &blits, SEAL_SCALE, word, SEAL_DESIGN / 2 - w / 2, SEAL_WORD_BASELINE, SEAL_WORD_SIZE, SEAL_WORD_TRACK, false)
-	cov := engrave_coverage(fs, blits[:], N, N)
+	engrave_line(fs, semibold, &glyphs, SEAL_SCALE, word, SEAL_DESIGN / 2 - w / 2, SEAL_WORD_BASELINE, SEAL_WORD_SIZE, SEAL_WORD_TRACK, false)
+	cov := engrave_coverage(fs, glyphs[:], N, N)
 	defer delete(cov)
 	// the tick: coverage from the distance to the polyline, one texel of antialiasing
 	for y in 0 ..< N {
