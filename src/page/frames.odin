@@ -46,6 +46,7 @@ import "wb:html"
 import "wb:http"
 import "wb:style"
 import "wb:url"
+import "wb:wasm"
 
 // How much of a text resource a frame shows in its <pre>.
 FRAME_TEXT_DOCUMENT_MAX_BYTES :: 1 << 20
@@ -104,6 +105,9 @@ Navigable :: struct {
 }
 
 // A page's side of nesting (made on first use).
+// What a node of a document is counted for in memory_held: its record, its computed style, its text (a page of 10 000 nodes takes 50 MB more than an empty one).
+@(private = "file") NODE_BYTES :: 4 << 10
+
 Page_Frames :: struct {
 	nav:           ^Navigable,          // the navigable this page is the active document of
 	owns_nav:      bool,                // a top-level navigable made for this page (freed with it)
@@ -116,6 +120,16 @@ Page_Frames :: struct {
 	fallback_base: string,              // owned: about:blank / srcdoc documents resolve URLs against their parent's
 	complete:      bool,                // its load is complete (the container's load event was queued)
 	ready_poll:    base.Handle,         // a document without scripts: waits for its resources before it is complete
+}
+
+// What a page keeps alive, its frames with it: its buffers, an estimate of its nodes, and the linear memory of its scripts' engines,
+// which only grows while the page lives and is most of a page with scripts (136 MB for a news site's realm, 8 MB for a page's nodes).
+memory_held :: proc(p: ^Page) -> int {
+	n := p.held + p.doc.nodes.count * NODE_BYTES
+	if p.js != nil { n += int(wasm.memory_bytes(p.js.inst)) }
+	for inst in p.instances { n += int(wasm.memory_bytes(inst)) }
+	for c in p.frames.children { if c.page != nil { n += memory_held(c.page) } }
+	return n
 }
 
 // The navigables of the thread's pages: an App runs its pages on the thread of its loop (docs/architecture.md, Where state lives).

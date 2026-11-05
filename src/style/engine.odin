@@ -230,6 +230,17 @@ engine_destroy :: proc(e: ^Engine) {
 	free(e)
 }
 
+// Gives back what a next full pass would have reused (styled_recycle, thread_arena_give): for a page that stops drawing, nothing is kept for a pass to come.
+engine_release_spares :: proc(e: ^Engine) {
+	if e.has_spare { virtual.arena_destroy(&e.spare); e.has_spare = false }
+	delete(e.spare_by_node)
+	delete(e.spare_nodes)
+	e.spare_by_node, e.spare_nodes = nil, nil
+	for a in e.spare_arenas { thread_arena_free(a) }
+	clear(&e.spare_arenas)
+	e.spare_arena_bytes = 0
+}
+
 @(private)
 sheet_free :: proc(s: ^Sheet) {
 	for &slot in s.imports { if slot.child != nil { sheet_free(slot.child) } }

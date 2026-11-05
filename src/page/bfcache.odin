@@ -15,6 +15,7 @@ package page
 import "wb:base"
 import "wb:dom"
 import "wb:host"
+import "wb:style"
 
 Bfcache_Blocker :: enum u8 {
 	Unload_Listener,      // unload / beforeunload on the Window
@@ -70,6 +71,7 @@ page_freeze :: proc(p: ^Page) {
 	w := p.web
 	w.frozen = true
 	if w.idle_timer != base.NIL_HANDLE { host.clear_timer(p.loop, w.idle_timer); w.idle_timer = base.NIL_HANDLE }
+	if p.engine != nil { style.engine_release_spares(p.engine) }
 }
 
 // Back from the back/forward cache: what came due runs (tasks first, in the order they were posted, then timers),
