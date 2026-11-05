@@ -63,8 +63,8 @@ PREFS := [?]config.Def{
 	{name = "wasm.features.gc", kind = .Bool, default = {b = false}, restart = true, description = "Garbage-collected structs and arrays (wasmtime with cranelift; implies typed function references)."},
 	{name = "wasm.features.wide_arithmetic", kind = .Bool, default = {b = false}, restart = true, description = "128-bit wide arithmetic instructions (wasmtime)."},
 
-	{name = "wasm.cache.memory_bytes", kind = .Int, default = {i = 256 << 20}, bounded = true, min = 0, max = 1 << 40, bytes = true, unit = "bytes", restart = true,
-		description = "Compiled modules kept in memory, by size of their code (wasmtime). A page loading a module already compiled reuses it without compiling. 0 = no memory cache."},
+	{name = "wasm.cache.memory_bytes", kind = .Int, default = {i = 64 << 20}, bounded = true, min = 0, max = 1 << 40, bytes = true, unit = "bytes", restart = true,
+		description = "Compiled modules kept in memory: their code and what the engine holds for each (wasmtime). What is left out is read back from the disk cache. A page loading a module already compiled reuses it without compiling. 0 = no memory cache."},
 	{name = "wasm.cache.disk", kind = .Bool, default = {b = true}, restart = true,
 		description = "Keep compiled modules in the profile (folder wasm-cache) so the next start does not compile them again (wasmtime). Entries are authenticated with a key of this profile; anything else is ignored and recompiled."},
 	{name = "wasm.cache.disk_max_bytes", kind = .Int, default = {i = 512 << 20}, bounded = true, min = 1 << 20, max = 1 << 42, bytes = true, unit = "bytes", restart = true,
