@@ -16,6 +16,7 @@ Backend :: enum u8 { Winhttp, Rust }
 Settings :: struct {
 	backend:       Backend,
 	max_per_host:  int,
+	max_streams_per_host: int,
 	max_total:     int,
 	timeout_resolve_ms, timeout_connect_ms, timeout_send_ms, timeout_receive_ms: i32,
 	http2:         bool,
@@ -61,7 +62,9 @@ PREFS := [?]config.Def{
 		description = "Built-in stack: connect only to this machine (loopback addresses, localhost and the names of network.hosts); anything else fails at once, named on the standard error. What the tests run with (the WREN_NETWORK_LOOPBACK_ONLY=1 environment variable turns it on): nothing tested reaches the Internet."},
 	{name = "network.max_connections_per_host", kind = .Int, default = {i = 6}, bounded = true, min = 1, max = 256,
 		description = "Requests in flight to one host:port. Extra requests wait in the browser's own priority queues, so waiting never counts against the connect timeout."},
-	{name = "network.max_connections_total", kind = .Int, default = {i = 64}, bounded = true, min = 1, max = 4096,
+	{name = "network.max_streams_per_host", kind = .Int, default = {i = 100}, bounded = true, min = 1, max = 4096,
+		description = "Requests in flight to one host:port once it has answered over HTTP/2 or HTTP/3, where a request is a stream of one connection and not a connection. 100: the least RFC 9113 recommends a server to allow."},
+	{name = "network.max_connections_total", kind = .Int, default = {i = 256}, bounded = true, min = 1, max = 4096,
 		description = "Requests in flight in total."},
 	{name = "network.timeout.resolve_ms", kind = .Int, default = {i = 15_000}, bounded = true, min = 0, max = 3_600_000, unit = "ms",
 		description = "Name resolution timeout. 0 = no timeout."},
@@ -111,6 +114,7 @@ user_agent_default :: proc(allocator := context.allocator) -> string {
 settings_from_prefs :: proc(p: ^config.Prefs, allocator := context.allocator) -> Settings {
 	s: Settings
 	s.max_per_host = int(config.int_of(p, "network.max_connections_per_host"))
+	s.max_streams_per_host = int(config.int_of(p, "network.max_streams_per_host"))
 	s.max_total = int(config.int_of(p, "network.max_connections_total"))
 	s.timeout_resolve_ms = i32(config.int_of(p, "network.timeout.resolve_ms"))
 	s.timeout_connect_ms = i32(config.int_of(p, "network.timeout.connect_ms"))

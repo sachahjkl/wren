@@ -56,6 +56,9 @@ SHORT_TIMEOUT_MS :: 500
 RECEIVE_TIMEOUT_SERVER_WAIT_MS :: 25_000
 H3_RACE_MS :: 10_000                          // generous: a slow runner still gets its QUIC connection
 H3_RACE_LOST_MS :: 250
+// A burst at one host, each answer held this long by the server: more requests than connections, fewer than streams.
+BURST_REQUESTS :: 20
+BURST_SERVER_MS :: 400
 REQUESTS_WITH_QUIC_BLOCKED :: 3
 WS_LIMITS := net.Ws_Limits{max_total = 16, max_connecting_per_host = 6, handshake_timeout_ms = 30_000, close_timeout_ms = 10_000,
 	max_message = 1 << 20, receive_chunk = 64 << 10, high_water = 4 << 20, low_water = 1 << 20, send_fragment = 256 << 10}
@@ -310,6 +313,42 @@ net_http_2_then_http_3_learnt_from_alt_svc :: proc(t: ^testing.T) {
 	testing.expectf(t, !r2.failed && r2.protocol == HTTP_3 && len(r2.body) == OVER_H3_MB << 20, "then HTTP/3, learnt from Alt-Svc (protocol %d, %d bytes)", r2.protocol, len(r2.body))
 	r3 := get(t, &tls, at("https", HTTPS_H2_H3, "/echo"), "POST", "X-Test: h3", "abc")
 	testing.expectf(t, r3.protocol == HTTP_3 && text_of(r3) == `POST 3 bytes, X-Test="h3"`, "a POST over HTTP/3 (%q)", text_of(r3))
+}
+
+// When each request of a burst left the queue, in ms from when it was asked for.
+burst_started :: proc(t: ^testing.T, c: ^net.Client, origin_url: string) -> (started: [BURST_REQUESTS]f32) {
+	rs: [BURST_REQUESTS]^Result
+	for &r, i in rs {
+		r = result_make(t)
+		net.fetch(c, {url = fmt.tprintf("%s/jsload/gen?ms=%d&code=%d", origin_url, BURST_SERVER_MS, i), on_event = on_event, user = r})
+	}
+	for r in rs { wait_until(t, origin_url, r, proc(r: ^Result) -> bool { return r.done }) }
+	for r, i in rs {
+		testing.expectf(t, !r.failed && r.status == 200, "request %d of the burst (%d)", i, r.error)
+		started[i] = r.timing.started
+	}
+	return
+}
+
+@(test)
+net_a_burst_goes_out_at_once_on_a_host_that_multiplexes :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t, .Net)
+	defer end()
+	if !on_builtin_stack() { return }
+	serve(t)
+	trust_the_test_authority(t)
+	tls: net.Client
+	testing.expect(t, trusting_client(&tls), "a client that trusts the test authority")
+	defer net.client_destroy(&tls)
+	first := get(t, &tls, at("https", HTTPS_H2_H3, "/"))
+	testing.expect_value(t, first.protocol, u8(HTTP_2))
+	for ms, i in burst_started(t, &tls, origin("https", HTTPS_H2_H3)) { testing.expectf(t, ms < BURST_SERVER_MS / 2, "HTTP/2: request %d left the queue after %.0f ms", i, ms) }
+	// HTTP/1.1: a connection each, a server's answer before the seventh goes
+	slots := int(net.settings_default(context.temp_allocator).max_per_host)
+	warm := get(t, &tls, at("http", HTTP, "/"))
+	testing.expect_value(t, warm.protocol, u8(HTTP_1))
+	for ms, i in burst_started(t, &tls, origin("http", HTTP)) { testing.expectf(t, (ms >= BURST_SERVER_MS / 2) == (i >= slots), "HTTP/1.1: request %d left the queue after %.0f ms", i, ms) }
 }
 
 @(test)
