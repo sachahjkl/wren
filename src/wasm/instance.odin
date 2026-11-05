@@ -52,6 +52,8 @@ Instance :: struct {
 	// Cooperative interruption: a word in the module's memory that its own code polls (the JavaScript engine's
 	// interrupt handler). Cleared when an outermost call starts, set to 1 once the call runs past opt.soft_call_ms;
 	// the module then unwinds by itself, consistent, before the hard deadline (opt.max_call_ms) would trap it.
+	poll_tick:         ^i32,   // WREN_JS_PROFILE_TIME: raised at each tick of the epoch, with poll_counter past any limit: the engine looks at the next interrupt check
+	poll_counter:      ^i32,
 	soft_flag:         ^i32,
 	soft_fired:        int,     // calls interrupted this way
 	// Argument errors of host functions that do not raise (a dead handle...) give the zero result and an exception

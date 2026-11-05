@@ -13,6 +13,11 @@ import "core:os"
 import "core:slice"
 import "core:strings"
 import "core:time"
+import "wb:base"
+
+// WREN_SPANS: the imports that took at least this long have a span of their own.
+@(private = "file")
+HOST_SPAN_MIN_NS :: 20_000
 
 @(private = "file")
 Timed :: struct {
@@ -46,7 +51,7 @@ host_profile_enabled :: proc() -> bool {
 // The callback and env to define for `im` (the originals when the profile is off).
 @(private)
 host_profile_wrap :: proc(im: ^Import, env: rawptr) -> (Host_Fn, rawptr) {
-	if !host_profile_enabled() { return im.fn, env }
+	if !host_profile_enabled() && !base.spans_enabled() { return im.fn, env }
 	t := new(Timed, context.allocator)
 	t.module, t.name, t.fn, t.env = im.module, im.name, im.fn, env
 	append(&timed, t)
@@ -70,6 +75,7 @@ host_timed :: proc "c" (env: rawptr, caller: wt_caller, args: [^]wt_val_raw, n: 
 	intrinsics.atomic_add(&t.total_ns, d)
 	intrinsics.atomic_add(&t.self_ns, d - min(child_ns, d))
 	if d > intrinsics.atomic_load(&t.max_ns) { intrinsics.atomic_store(&t.max_ns, d) }
+	if d >= HOST_SPAN_MIN_NS { base.span_add(.Host, base.span_now() - i64(d), t.name) }
 	child_ns = outer + d
 	return r
 }

@@ -78,6 +78,8 @@ Prof_Slot :: struct { key: [^]u8, key_len: u32, self, incl: u32 }
 
 @(private = "file") prof_tab: [^]Prof_Slot   // allocated when profiling starts (128 KiB a realm that never profiles does not carry)
 @(private = "file") prof_on: i32
+@(private = "file") prof_tick: i32
+@(private = "file") PROF_BY_TIME :: 2
 @(private = "file") prof_calls, prof_samples, prof_used, prof_lost: u32
 
 @(private = "file")
@@ -169,6 +171,11 @@ prof_sample :: proc "contextless" (ctx: ^Context) {
 	JS_FreeValue(ctx, err)
 }
 
+// WREN_JS_PROFILE_TIME: a sample at the first interrupt check after each tick of the host's clock, not every few checks. The host raises the
+// flag and the check's counter (at these addresses) from its epoch callback: what a function's natives took shows on that function.
+@(export, link_name = "wj_profile_tick_address")
+wj_profile_tick_address :: proc "c" () -> u32 { return u32(uintptr(&prof_tick)) }
+
 @(export, link_name = "wj_profile_set")
 wj_profile_set :: proc "c" (on: i32) {
 	if on != 0 && prof_tab == nil { prof_tab = ([^]Prof_Slot)(libc_calloc(PROF_SLOTS, size_of(Prof_Slot))) }
@@ -195,7 +202,9 @@ wj_profile_dump :: proc "c" (buf: u32, size: u32) -> u32 {
 interrupt_handler :: proc "c" (rt: ^Runtime, opaque: rawptr) -> i32 {
 	if intrinsics.expect(prof_on != 0, false) && wj_the_realm.ctx != nil {
 		prof_calls += 1
-		if prof_calls % PROF_EVERY == 0 { prof_sample(wj_the_realm.ctx) }
+		if prof_on == PROF_BY_TIME {
+			if prof_tick != 0 { prof_tick = 0; prof_sample(wj_the_realm.ctx) }
+		} else if prof_calls % PROF_EVERY == 0 { prof_sample(wj_the_realm.ctx) }
 	}
 	if intrinsics.expect(!interrupted(), true) { return 0 }
 	interrupt_count += 1

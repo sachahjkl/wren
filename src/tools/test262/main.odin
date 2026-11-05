@@ -480,6 +480,7 @@ IMPORTS := [?]wasm.Import{
 	{module = "credentials", name = "PublicKeyCredential_enabled", fn = no_credentials, params = {}, results = {.I32}},
 	{module = "webassembly", name = "WebAssembly_enabled", fn = no_credentials, params = {}, results = {.I32}},   // (the shell has no WebAssembly object)
 	{module = "js", name = "Engine_jitPoll", fn = engine_jit_poll, params = {.I32}, results = {.I32}},
+	{module = "js", name = "Engine_span", fn = proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap { return nil }, params = {.I32, .I32}},
 	{module = "js", name = "Engine_jitCompile", fn = engine_jit, params = {.I32, .I32}, results = {.I32}},
 	{module = "js", name = "Engine_console", fn = engine_console, params = {.I32, .I32, .I32}},
 	{module = "js", name = "Engine_reportException", fn = engine_ignore, params = {.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}},

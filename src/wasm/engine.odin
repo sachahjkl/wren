@@ -38,6 +38,8 @@ Wt_Export :: struct {
 	is_func: bool,
 }
 
+// What a tick writes to Instance.poll_counter: past any limit of the engine's, far from the top of an i32 (the engine goes on counting).
+POLL_NOW :: 1 << 30
 // How many epoch ticks a module runs through, in a call or once asked to stop (Instance.soft_flag), before the hard stop may end it.
 // They are counted, not timed: the callback runs on the module's own thread, at most once each time that thread runs on, so on a
 // machine under load a module that nobody lets run is not stopped for good for not having run. An idle machine gets them before
@@ -298,6 +300,10 @@ wt_on_epoch :: proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) 
 		return wasmtime_error_new("interrupted: the call ran longer than wasm.max_call_ms")
 	}
 	if inst.wt.profiler != nil { profile_sample(inst) }
+	if inst.poll_tick != nil {
+		sync.atomic_store(inst.poll_tick, 1)
+		sync.atomic_store(inst.poll_counter, POLL_NOW)
+	}
 	if preempt.hook != nil {
 		context = base.process_context()
 		preempt_tick(inst)   // preempt.odin: the embedder's turn on this thread
@@ -460,11 +466,13 @@ wt_enter :: proc(inst: ^Instance) -> bool {
 	}
 	inst.depth += 1
 	guest_clock_enter()
+	guest_span_enter()
 	return true
 }
 
 @(private)
 wt_leave :: proc(inst: ^Instance) {
+	guest_span_leave()
 	guest_clock_leave()
 	inst.depth -= 1
 	if inst.depth == 0 {
@@ -519,6 +527,7 @@ wt_has_export :: proc(inst: ^Instance, name: cstring) -> bool { return wt_export
 wt_call_export :: proc(inst: ^Instance, name: cstring, buf: []u32, argc: int) -> Call_Result {
 	x := wt_export(inst, name)
 	if !x.is_func { return .No_Such_Export }
+	if guest_span_depth == 0 { guest_span_label = string(name) }
 	f := x.func
 	sig := x.sig
 	return wt_call(inst, &f, &sig, buf, argc)
@@ -527,6 +536,7 @@ wt_call_export :: proc(inst: ^Instance, name: cstring, buf: []u32, argc: int) ->
 @(private)
 wt_call_indirect :: proc(inst: ^Instance, table_index: u32, buf: []u32, argc: int) -> Call_Result {
 	s := &inst.wt
+	if guest_span_depth == 0 { guest_span_label = "indirect" }
 	if !s.has_table {
 		set_error(inst, "call_indirect: the module has no table")
 		return .Trapped

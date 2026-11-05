@@ -14,6 +14,8 @@ COMPILE_ARENA_ALIGN :: 16
 
 frontend_compile :: proc(ctx: ^Context, req: ^Compile_Request) -> Value {
 	rt := ctx.rt
+	span_stage(.compile, true)
+	defer span_stage(.compile, false)
 	arena: mem.Dynamic_Arena
 	mem.dynamic_arena_init(&arena, rt.allocator, rt.allocator, COMPILE_ARENA_BLOCK_BYTES, COMPILE_ARENA_OUT_BAND_BYTES, COMPILE_ARENA_ALIGN)
 	defer mem.dynamic_arena_destroy(&arena)

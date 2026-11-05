@@ -9,7 +9,9 @@ helpers the engine exports to it.
 ## When a loop is compiled
 
 The interpreter's hot loop counts back edges for the interrupt poll; every `INTERRUPT_POLL_EVERY` of them it leaves to
-the full dispatch, which offers the back edge to `jit_back_edge`. A loop seen there for the first time is translated
+the full dispatch, which offers the back edge to `jit_back_edge`. A check falls on a loop in proportion to the part it has in
+what runs: a loop met by `javascript.jit.loop_threshold` of them (`Jit_Loop.sightings`) is hot, one met once is not: compiled at
+its first sighting, theverge.com translated 1 600 loops during its load for nothing it got back. It is then translated
 (`jit_build`) and entered at its header (on-stack replacement), with the frame's arguments, locals and operand stack in
 memory. While a loop of a function is compiled, the hot loop leaves at that loop's back edges only (`jit_loop_taken`);
 the function's other loops stay in it.

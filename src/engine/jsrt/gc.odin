@@ -331,6 +331,8 @@ gc_collect :: proc(rt: ^Runtime) {
 	if rt.in_gc {return}
 	rt.in_gc = true
 	defer rt.in_gc = false
+	span_stage(.gc, true)
+	defer span_stage(.gc, false)
 	t0 := now_ns(rt)
 	if rt.config.gc_prologue != nil {rt.config.gc_prologue(rt, rt.config.gc_prologue_user)}
 
@@ -361,6 +363,15 @@ now_ns :: proc(rt: ^Runtime) -> i64 {
 
 // Optional monotonic clock for GC pause statistics (the host sets it; wasm has none of its own).
 clock_hook: proc() -> i64
+
+// What the engine does, for the embedder's measures (WREN_SPANS). The values are the embedder's: base.Span_Kind.
+Span_Stage :: enum i32 {compile = 7, deserialize = 8, gc = 9, jit = 10}
+
+span_hook: proc "c" (kind: i32, begin: bool)
+
+span_stage :: #force_inline proc(s: Span_Stage, begin: bool) {
+	if span_hook != nil {span_hook(i32(s), begin)}
+}
 
 @(private = "file")
 gc_mark_roots :: proc(rt: ^Runtime) {

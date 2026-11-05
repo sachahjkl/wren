@@ -2897,6 +2897,8 @@ foreign _wr_wj_js {
 	// The table index of the function of an Engine_jitCompile ticket once compiled and attached; -1 while it still
 	// compiles; 0 when it failed (the ticket is then forgotten).
 	@(link_name = "Engine_jitPoll") wr_Engine_jitPoll :: proc(ticket: i32) -> i32 ---
+	// WREN_SPANS (base/spans.odin): the engine enters (`begin`) or leaves a stage of its own work: a Span_Kind.
+	@(link_name = "Engine_span") wr_Engine_span :: proc(kind: i32, begin: i32) ---
 	// A JavaScript object (its wrapper) now refers to `node`: pins it (it stays alive while pinned, even out of the tree)
 	// and returns the wrapper's interface, an index into the engine's interface table (gen/bindings.c) chosen from the
 	// node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...). One call per new wrapper.

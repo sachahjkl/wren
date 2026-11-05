@@ -123,6 +123,16 @@ compiles; 0 when it failed (the ticket is then forgotten).
 
 Host: `Engine_jitPoll :: proc(c: ^Call, ticket: i32) -> i32`
 
+### `Engine_span`
+
+```
+void Engine_span(i32 kind, bool begin)
+```
+
+WREN_SPANS (base/spans.odin): the engine enters (`begin`) or leaves a stage of its own work: a Span_Kind.
+
+Host: `Engine_span :: proc(c: ^Call, kind: i32, begin: bool)`
+
 ### `Node_wrap`
 
 ```

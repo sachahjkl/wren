@@ -131,6 +131,8 @@ js_enabled :: proc(p: ^Page) -> bool {
 js_realm :: proc(p: ^Page) -> ^Js_Realm {
 	if p.js != nil { return p.js.failed ? nil : p.js }
 	if p.closed || !js_enabled(p) { return nil }
+	at := base.span_now()
+	defer base.span_add(.Realm, at, p.env.location.href, copy_label = true)
 	r := new(Js_Realm)
 	p.js = r
 	base.on_close(p.scope, proc(data: rawptr) { free((^Js_Realm)(data)) }, r)
@@ -180,6 +182,8 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 		return nil
 	}
 	if p.settings.js.jit.enabled { js.jit_configure(inst, p.settings.js.jit) }
+	if base.spans_enabled() { wasm.call_raw(inst, "wj_spans_on") }
+	js_profile_ticks(inst)   // (WREN_JS_PROFILE_TIME: js_profile.odin)
 	if addr := js.interrupt_address(inst); addr != 0 {
 		if b := wasm.guest_bytes(inst, u64(addr), 4); b != nil {
 			r.interrupt = (^i32)(raw_data(b))
@@ -251,6 +255,8 @@ js_hooks :: proc(p: ^Page, spec: []byte) -> bool {
 js_run :: proc(p: ^Page, source: []byte, url: string, line: i32 = 1, module := false, print_result := false, muted := false) -> js.Eval_Status {
 	r := js_realm(p)
 	if r == nil { return .Trapped }
+	at := base.span_now()
+	defer base.span_add(.Script, at, url, copy_label = true)
 	flags: js.Eval_Flags
 	if module { flags += {.Module} }
 	if print_result { flags += {.Print_Result} }
@@ -313,6 +319,7 @@ js_node_interface :: proc(p: ^Page, n: ^dom.Node) -> u32 {
 // Process start: the bytecode cache shared by every realm (memory, and the profile's js-cache folder unless
 // `profile_dir` is ""). Process end: js_shutdown (after every page is closed).
 js_startup :: proc(prefs: ^config.Prefs, profile_dir: string) {
+	js_image_from_env()   // (WREN_JS_IMAGE: js_profile.odin)
 	s := js.settings_from_prefs(prefs, profile_dir)
 	defer js.settings_destroy(&s)
 	js.cache_start(s.cache)

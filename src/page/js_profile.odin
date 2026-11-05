@@ -7,6 +7,8 @@ package page
 // (native/js/odin/qjs_realm.odin), written as <prefix>.<n>.js.txt when the page closes: the functions with the most samples of their
 // own, and with the most on the stack.
 // WREN_JS_PROFILE_FROM=<ms>: with WREN_JS_PROFILE, count only from that many ms after the realm was made.
+// WREN_JS_PROFILE_TIME=1: with WREN_JS_PROFILE, a sample per tick of wasm.wasmtime.epoch_tick_ms, at the next interrupt check: time, where the default counts checks.
+// WREN_JS_IMAGE=<file>: another engine image, for all the realms of the browser (buildjs -names for a readable WREN_WASM_PROFILE; an A/B of two engines with one browser).
 // WREN_JS_PRELUDE=<file>: a script run in every window realm before the page's own scripts (a measure wraps the engine's
 // functions with timers).
 
@@ -48,7 +50,8 @@ js_profile_begin :: proc(p: ^Page, inst: ^wasm.Instance) {
 		// WREN_JS_PROFILE_FROM=<ms>: the functions are counted from that long after the realm was made (a page that has settled: what
 		// it does when nothing moves), not from its first script
 		from_ms, _ := strconv.parse_f64(os.get_env("WREN_JS_PROFILE_FROM", context.temp_allocator))
-		argv := [1]u32{from_ms > 0 ? 0 : 1}
+		by_time := os.get_env("WREN_JS_PROFILE_TIME", context.temp_allocator) != ""
+		argv := [1]u32{from_ms > 0 ? 0 : by_time ? 2 : 1}
 		if wasm.call_raw(inst, "wj_profile_set", argv[:]) == .Ok {
 			jp.js_path = fmt.aprintf("%s.%d.js.txt", js_prefix, the_pages.profile_seq)
 			trace_on := [1]u32{1}
@@ -123,6 +126,25 @@ js_profile_dump :: proc(inst: ^wasm.Instance, path: string) {
 	}
 	for r in notes { fmt.sbprintf(&sb, "%6d  %s\n", r.self, r.frame) }
 	_ = os.write_entire_file(path, transmute([]byte)strings.to_string(sb))
+}
+
+// WREN_JS_IMAGE=<file>: another engine image (one that keeps its names: buildjs -names), for WREN_WASM_PROFILE in the browser itself.
+js_image_from_env :: proc() {
+	path := os.get_env("WREN_JS_IMAGE", context.temp_allocator)
+	if path == "" { return }
+	data, err := os.read_entire_file(path, base.process_allocator())
+	if err != nil { fmt.eprintfln("WREN_JS_IMAGE: cannot read %s", path); return }
+	js_image_override = data
+}
+
+// WREN_JS_PROFILE_TIME, a realm that has started: its epoch ticks ask for samples.
+js_profile_ticks :: proc(inst: ^wasm.Instance) {
+	if os.get_env("WREN_JS_PROFILE_TIME", context.temp_allocator) == "" { return }
+	tick, res := wasm.call_i32(inst, "wj_profile_tick_address")
+	counter, res2 := wasm.call_i32(inst, "wj_profile_counter_address")
+	if res != .Ok || res2 != .Ok { return }
+	inst.poll_tick = (^i32)(raw_data(wasm.guest_bytes(inst, u64(u32(tick)), 4)))
+	inst.poll_counter = (^i32)(raw_data(wasm.guest_bytes(inst, u64(u32(counter)), 4)))
 }
 
 js_prelude :: proc(p: ^Page) {

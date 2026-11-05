@@ -293,7 +293,9 @@ quiet_take :: proc(l: ^Loop) -> int {
 @(private = "file")
 run_one :: proc(l: ^Loop, fn: Task_Proc, data: rawptr, by: runtime.Source_Code_Location) {
 	quiet := l.quiet
+	at := base.span_now()
 	fn(data)
+	base.span_add(.Task, at, by.file_path, by.line)
 	if l.quiet == quiet { l.last_ran = by } else { l.last_quiet = by }
 }
 
