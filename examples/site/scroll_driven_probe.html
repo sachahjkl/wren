@@ -28,8 +28,10 @@
   #farther { position: absolute; top: 3200px; left: 300px; width: 50px; height: 50px; background: #288; animation: slide linear both; animation-timeline: --far; }
   @keyframes named { entry 0% { opacity: 0; } entry 100% { opacity: 1; } exit 0% { opacity: 1; } exit 100% { opacity: 0; } }
   #kf { position: absolute; top: 3500px; left: 0; width: 100px; height: 100px; background: #828; animation: named linear both; animation-timeline: view(); }
+  #sticky { position: sticky; top: 300px; margin-left: 700px; width: 50px; height: 30px; background: #c40; }
   #none { position: absolute; top: 3700px; left: 0; width: 100px; height: 50px; background: #333; animation: slide linear both; animation-timeline: none; }
 </style>
+<div id=sticky></div>
 <div id=slide class=fixed></div>
 <div id=fade class=fixed></div>
 <div id=tint class=fixed></div>

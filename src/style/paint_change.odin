@@ -96,10 +96,10 @@ structure_sig :: proc(c: ^Computed) -> u8 {
 	if c == nil { return 0xff }
 	sig: u8
 	if has_transform(c) { sig |= 1 }
-	if c.opacity < 1 { sig |= 2 }
-	if len(c.filter) > 0 { sig |= 4 }
+	if c.opacity < 1 || .Opacity in c.compositing { sig |= 2 }
+	if len(c.filter) > 0 || .Filter in c.compositing { sig |= 4 }
 	if len(c.backdrop_filter) > 0 { sig |= 8 }
-	if c.clip_path != nil || has_clip_rect(c) { sig |= 16 }
+	if c.clip_path != nil || has_clip_rect(c) || .Clip_Path in c.compositing { sig |= 16 }
 	if has_mask(c) { sig |= 32 }
 	if transform_is_3d(c) || c.transform_style == .Preserve_3d { sig |= 64 }   // a plane (layout/plane.odin)
 	if c.backface_visibility == .Hidden { sig |= 128 }

@@ -134,6 +134,8 @@ Overlay :: struct {
 	arena: base.Arena,
 	tick:  u64,
 	sig:   u8,     // structure_sig of `c` as last applied (what layout saw)
+	pushed_by: base.Handle,   // the animated ancestor it inherits `pushed` from (push_inherited); NIL: none
+	pushed:    Prop_Set,
 }
 
 Timeline :: struct {
@@ -958,14 +960,50 @@ progress_tick :: proc(tl: ^Timeline, ea: ^Element_Anim, r: ^Anim_Run) -> (change
 ////////////////////////////////
 // The compositor's values
 
+// What a box keeps while an animation may change it (Computed.compositing).
+Compositing :: enum u8 { Transform, Opacity, Filter, Clip_Path }
+Compositing_Set :: bit_set[Compositing; u8]
+
 // What the compositor may move without the page: a transformed box's matrix and an opacity group's alpha.
 COMPOSITOR_PROPS :: [?]Prop{.Transform, .Translate, .Rotate, .Scale, .Opacity}
+// What a chrome frame paints from the style record of the box (Compositor_Value.record): colours, shadows, radii, effects' parameters. The
+// items keep their place, and the pictures of the chunks they are in are recorded again.
+RECORD_PROPS :: [?]Prop{
+	.Color, .Background_Color, .Background_Position, .Background_Size, .Border_Top_Color, .Border_Right_Color, .Border_Bottom_Color, .Border_Left_Color,
+	.Border_Top_Left_Radius, .Border_Top_Right_Radius, .Border_Bottom_Right_Radius, .Border_Bottom_Left_Radius, .Box_Shadow, .Text_Shadow,
+	.Text_Decoration_Color, .Outline_Color, .Outline_Offset, .Filter, .Backdrop_Filter, .Clip_Path, .Object_Position, .Caret_Color, .Accent_Color,
+	.Mask_Position, .Mask_Size, .Text_Fill_Color,
+}
+
+@(private)
+compositing_of :: proc(props: Prop_Set) -> (out: Compositing_Set) {
+	if ps_has(props, .Transform) || ps_has(props, .Translate) || ps_has(props, .Rotate) || ps_has(props, .Scale) { out += {.Transform} }
+	if ps_has(props, .Opacity) { out += {.Opacity} }
+	if ps_has(props, .Filter) { out += {.Filter} }
+	if ps_has(props, .Clip_Path) { out += {.Clip_Path} }
+	return
+}
 
 // An element's style at a later instant than the page's last tick, for its compositor-only animations.
 Compositor_Value :: struct {
-	node:  base.Handle,
-	cs:    ^Computed,   // its cascaded style with the animated properties at that instant (temp allocator)
-	props: Prop_Set,    // what is animated (some of COMPOSITOR_PROPS)
+	node:   base.Handle,
+	cs:     ^Computed,   // its cascaded style with the animated properties at that instant (temp allocator)
+	props:  Prop_Set,    // what is animated (some of COMPOSITOR_PROPS and RECORD_PROPS)
+	record: ^Computed,   // the record its boxes and display items hold: `cs` takes its place for one paint, for RECORD_PROPS (nil: it has none now)
+}
+
+// What among `props` moves a box's transform space.
+compositor_moves :: proc(props: Prop_Set) -> Prop_Set {
+	list := COMPOSITOR_PROPS
+	moves := ps_intersect(props, ps_of(..list[:]))
+	ps_remove(&moves, .Opacity)
+	return moves
+}
+
+// The RECORD_PROPS among `props`.
+compositor_record_props :: proc(props: Prop_Set) -> Prop_Set {
+	list := RECORD_PROPS
+	return ps_intersect(props, ps_of(..list[:]))
 }
 
 // Where a chrome frame shows a scroller (CSS px; `source` NIL: the document).
@@ -993,8 +1031,8 @@ progress_shown :: proc(at: ^Anim_Run, shown: []Shown_Offset) {
 // not resolved for the element's style yet, effects that do not run. Returns whether one of the values changes at every frame.
 timeline_compositor_values :: proc(tl: ^Timeline, s: ^Styled, wall_ms: f64, shown: []Shown_Offset, out: ^[dynamic]Compositor_Value) -> (moving: bool) {
 	if tl == nil || s == nil || !tl.has_wall || len(tl.elements) == 0 { return false }
-	list := COMPOSITOR_PROPS
-	allowed := ps_of(..list[:])
+	list, records := COMPOSITOR_PROPS, RECORD_PROPS
+	allowed := ps_union(ps_of(..list[:]), ps_of(..records[:]))
 	now := tl.now + max(wall_ms - tl.last_wall, 0) * f64(max(tl.engine.settings.anim_time_scale, ANIM_TIME_SCALE_MIN))
 	scratch := new(Computed, context.temp_allocator)
 	ctx := Interp_Ctx{alloc = context.temp_allocator, space = tl.engine.settings.anim_color_space}
@@ -1030,9 +1068,43 @@ timeline_compositor_values :: proc(tl: ^Timeline, s: ^Styled, wall_ms: f64, show
 			transition_value(tr, now, c, &ctx)
 		}
 		derive_fields(c, context.temp_allocator)
-		append(out, Compositor_Value{node = ea.node, cs = c, props = props})
+		ov := tl.overlays[ea.node] or_else nil
+		record: ^Computed
+		if ov != nil {
+			record = &ov.c
+			c.compositing = ov.c.compositing
+		}
+		push := ps_intersect(props, inherited_set)
+		if !ps_empty(push) { pseudo_inherit(c, push, context.temp_allocator) }
+		append(out, Compositor_Value{node = ea.node, cs = c, props = props, record = record})
 	}
+	compositor_inherited(tl, out)
 	return
+}
+
+// The descendants that inherit an animated value at that instant (their overlays say from whom: push_inherited).
+@(private)
+compositor_inherited :: proc(tl: ^Timeline, out: ^[dynamic]Compositor_Value) {
+	shown := len(out)
+	any_inherited := false
+	for &v in out[:shown] { if !ps_empty(ps_intersect(v.props, inherited_set)) { any_inherited = true } }
+	if !any_inherited { return }
+	for h, ov in tl.overlays {
+		if ov.pushed_by == base.NIL_HANDLE { continue }
+		for &v in out[:shown] {
+			if v.node != ov.pushed_by { continue }
+			take := ps_intersect(ov.pushed, v.props)
+			if ps_empty(take) { break }
+			c := new(Computed, context.temp_allocator)
+			c^ = ov.c
+			group_take(c, .Inherited, context.temp_allocator)
+			for p in Prop { if ps_has(take, p) { copy_prop(c, v.cs, p) } }
+			derive_fields(c, context.temp_allocator)
+			pseudo_inherit(c, take, context.temp_allocator)
+			append(out, Compositor_Value{node = h, cs = c, props = take, record = &ov.c})
+			break
+		}
+	}
 }
 
 @(private)
@@ -1103,6 +1175,7 @@ overlay_for :: proc(tl: ^Timeline, s: ^Styled, h: base.Handle) -> ^Overlay {
 		b := base_style_of(s, h)
 		ov.c = b^
 		ov.tick = tl.tick
+		ov.pushed_by, ov.pushed = base.NIL_HANDLE, {}
 		idx := int(base.handle_index(h))
 		s.by_node[idx] = &ov.c
 		s.overlaid[h] = b
@@ -1123,7 +1196,7 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 	for ea in tl.order {
 		if style_of(s, ea.node) == nil { continue }
 		has := len(ea.transitions) > 0
-		for r in ea.runs { if run_state(r).effect { has = true } }
+		for r in ea.runs { if run_state(r).effect || (r.timeline.kind != .Auto && r.progress.active) { has = true } }
 		for sr in ea.scripts { if script_state_of(tl, sr, tl.now).has_active { has = true } }
 		if !has { continue }
 		if ea.base == nil {   // an element only scripts animate, not restyled since
@@ -1134,12 +1207,16 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 		ov := overlay_for(tl, s, ea.node)
 		ctx := Interp_Ctx{alloc = base.arena_allocator(&ov.arena), space = tl.engine.settings.anim_color_space}
 		animated: Prop_Set
+		promised: Prop_Set   // (CSS Animations 1 §3: the box behaves as under will-change for what a running animation targets)
 		for r in ea.runs {
 			st := run_state(r)
-			if !st.effect { continue }
+			on_scroll := r.timeline.kind != .Auto && r.progress.active   // (out of its range now, in it as soon as the scroll moves: chrome frames show it then)
+			if !st.effect && !on_scroll { continue }
 			ensure_frames(tl, doc, s, ea, r)
-			animated = ps_union(animated, apply_run(r, st, &ov.c, scratch, &ctx))
+			promised = ps_union(promised, r.props)
+			if st.effect { animated = ps_union(animated, apply_run(r, st, &ov.c, scratch, &ctx)) }
 		}
+		ov.c.compositing = compositing_of(promised)
 		// Web Animations, above the CSS animations (composite order: CSS animations first)
 		for sr in ea.scripts {
 			es := script_state_of(tl, sr, tl.now)
@@ -1220,6 +1297,7 @@ push_inherited :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, h: base.Ha
 		take := ps_intersect(it.set, cb.inherits)
 		if ps_empty(take) { continue }
 		ov := overlay_for(tl, s, it.h)
+		ov.pushed_by, ov.pushed = h, take
 		oa := base.arena_allocator(&ov.arena)
 		group_take(&ov.c, .Inherited, oa)   // (shared with its cascaded style, or with the parent's)
 		for p in Prop { if ps_has(take, p) { copy_prop(&ov.c, it.src, p) } }

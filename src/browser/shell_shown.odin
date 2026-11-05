@@ -35,11 +35,15 @@ Shown :: struct {
 	mats:    [dynamic]Shown_Mat,
 	alphas:  [dynamic]Shown_Alpha,
 	scrolls: [dynamic]Shown_Scroll,
+	records: [dynamic]Shown_Record,
+	radii:   [dynamic]Shown_Radii,
 }
 
 Shown_Mat :: struct { space: i32, mat: lay.Matrix }
 Shown_Alpha :: struct { group: i32, alpha: f32 }
 Shown_Scroll :: struct { node: base.Handle, off: draw.Vec2, had: bool }
+Shown_Record :: struct { record: ^style.Computed, was: style.Computed }
+Shown_Radii :: struct { clip: i32, radii: [4]f32 }
 
 // Sets on the tab's layout what the chrome frame shows (its animations at the frame's time, the containers scrolled); the
 // caller puts it back with shell_shown_put before anything of the page can run. Nothing is set when the layout cannot be read
@@ -50,17 +54,24 @@ shell_shown_set :: proc(app: ^App, t: ^Tab) -> (sh: Shown) {
 	if app.chrome_frames.page_locked || t.page == nil || !l.valid { return }
 	sh.set = true
 	sh.scroll = t.scroll
-	t.scroll = shell_shown_scroll(t).y
 	sh.mats = make([dynamic]Shown_Mat, context.temp_allocator)
 	sh.alphas = make([dynamic]Shown_Alpha, context.temp_allocator)
 	sh.scrolls = make([dynamic]Shown_Scroll, context.temp_allocator)
+	sh.records = make([dynamic]Shown_Record, context.temp_allocator)
+	sh.radii = make([dynamic]Shown_Radii, context.temp_allocator)
 	vals := make([dynamic]style.Compositor_Value, context.temp_allocator)
 	shell_animated(app, t, &vals)
+	t.scroll = shell_shown_scroll(t).y   // (after those: what the chrome frames scrolled is added to the tab's offset, once)
 	for v in vals {
 		bi := lay.box_index(l, v.node)
 		if bi == lay.NONE || .Foreign in l.boxes[bi].flags { continue }
-		moves := v.props
-		style.ps_remove(&moves, .Opacity)
+		records := style.compositor_record_props(v.props)
+		if !style.ps_empty(records) && v.record != nil {
+			append(&sh.records, Shown_Record{v.record, v.record^})
+			v.record^ = v.cs^
+			shell_shown_radii(&sh, l, bi)
+		}
+		moves := style.compositor_moves(v.props)
 		if !style.ps_empty(moves) {
 			for &sp, i in l.spaces {
 				if sp.kind != .Transform || sp.box != bi || sp.proj { continue }
@@ -76,6 +87,7 @@ shell_shown_set :: proc(app: ^App, t: ^Tab) -> (sh: Shown) {
 			}
 		}
 	}
+	if len(sh.records) > 0 { l.passes[.Refresh] += 1 }   // (the compositor looks at the paint values of its pictures again, and again once they are put back)
 	if app.chrome_frames.pending_tab == t.id {
 		for b in app.chrome_frames.boxes {
 			off, had := l.scroll[b.node]
@@ -86,6 +98,16 @@ shell_shown_set :: proc(app: ^App, t: ^Tab) -> (sh: Shown) {
 	return
 }
 
+// The clips of a box whose record changed for this paint take its radii.
+@(private = "file")
+shell_shown_radii :: proc(sh: ^Shown, l: ^lay.Layout, bi: i32) {
+	for &cl, i in l.clips {
+		if cl.box != bi { continue }
+		append(&sh.radii, Shown_Radii{i32(i), cl.radii})
+		cl.radii = lay.clip_radii(l, &l.boxes[bi])
+	}
+}
+
 // The layout as the page's turn left it.
 shell_shown_put :: proc(sh: ^Shown) {
 	if !sh.set { return }
@@ -93,6 +115,9 @@ shell_shown_put :: proc(sh: ^Shown) {
 	sh.t.scroll = sh.scroll
 	for m in sh.mats { l.spaces[m.space].mat = m.mat }
 	for a in sh.alphas { l.groups[a.group].alpha = a.alpha }
+	for r in sh.records { r.record^ = r.was }
+	for r in sh.radii { l.clips[r.clip].radii = r.radii }
+	if len(sh.records) > 0 { l.passes[.Refresh] += 1 }
 	for s in sh.scrolls {
 		if s.had { l.scroll[s.node] = s.off } else { delete_key(&l.scroll, s.node) }
 	}
