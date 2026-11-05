@@ -183,7 +183,7 @@ fullscreen_bars :: proc(app: ^App, t: ^Tab) {
 	ui.next({fixed_x = 0, fixed_y = 0, width = ui.px(f32(wnd.win.size.x)), height = ui.children_sum(), axis = .Y})
 	col := ui.build_box({.Draw_Background, .Draw_Side_Bottom}, "###fullscreen_bars")
 	if ui.parent(col) {
-		if tab_strip(app, false) { return }
+		tab_strip(app, false)
 		toolbar_row(app, t)   // chrome_style.odin
 	}
 	// (the rect is last layout's: one more frame when it moved, so that the capture follows)

@@ -960,13 +960,13 @@ control_replay :: proc(app: ^App, c: ^Call, events: []Rec_Event, speed := 1.0, t
 @(private = "file") NS_PER_MS :: 1e6
 
 // The timeline starts: a picture of each frame of the window, or of its page, at this scale, up to `most`.
-control_timeline_start :: proc(app: ^App, scale: f64, most: int, page_only := false) -> (kept_scale: f64, kept_most: int) {
+control_timeline_start :: proc(app: ^App, scale: f64, most: int, page_only := false, every := false) -> (kept_scale: f64, kept_most: int) {
 	rect: [4]int
 	if page_only {
 		pr := active_window(app).page_rect
 		rect = {int(pr.min.x), int(pr.min.y), int(pr.max.x - pr.min.x), int(pr.max.y - pr.min.y)}
 	}
-	timeline_begin(app, f32(scale), most, rect)
+	timeline_begin(app, f32(scale), most, rect, every)
 	return f64(app.remote.tl.scale), app.remote.tl.max
 }
 

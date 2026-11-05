@@ -99,6 +99,8 @@ Shell_Phase :: enum u8 {
 }
 
 SNAPSHOT_STUCK_MAX :: 16
+// What the offsets of a zoom there and back miss their value by, at most.
+@(private = "file") SNAPSHOT_ZOOM_ROUNDING_PX :: 0.5
 
 // The last frame of a tab's page, kept on the GPU.
 Page_Snapshot :: struct {
@@ -119,12 +121,14 @@ Page_Snapshot :: struct {
 	n_stuck: int,
 	canvas: draw.Color,
 	gen:    u64,             // render.targets_generation of the texture
+	scale:  f32,             // page_scale then: a zoom changes it, and scroll is in its pixels
 	used:   u64,             // chrome_frames.frame_no when last captured or shown (least recently used go first)
 }
 
-Shell_Action_Kind :: enum u8 { Command, Navigate, Reload, History, Entry, Close_Tab, Prefs }
+Shell_Action_Kind :: enum u8 { Command, Navigate, Reload, History, Entry, Close_Tab, Tear_Off, Prefs }
 
-// Something the chrome asked of pages during a chrome frame, done at the end of the page phase.
+// Something the chrome asked of pages during a chrome frame, done at the end of the page phase, or what a build asked of the list of tabs,
+// done before the next frame of its window (shell_after_build).
 Shell_Action :: struct {
 	kind:    Shell_Action_Kind,
 	tab:     u64,
@@ -136,6 +140,8 @@ Shell_Action :: struct {
 	cache:   fetch.Cache_Mode,
 	origin:  Nav_Origin,       // navigate: who chose the address (nav_trust.odin), kept across the wait
 	from:    ^page.Page,       // navigate: the document that asked; used only if a tab still shows it when the action runs
+	at:      draw.Vec2,        // tear off: where the pointer was (client pixels)
+	window:  int,              // done in a frame of this window (shell_after_build; 0: of any)
 }
 
 Shell_Frames :: struct {
@@ -270,13 +276,7 @@ shell_page_phase_end :: proc(app: ^App, events: []platform.Event) -> []platform.
 	app.chrome_frames.phase = .None
 	clear(&app.chrome_frames.outer)
 	shell_take_scroll(app)
-	if len(app.chrome_frames.actions) > 0 {
-		todo := make([]Shell_Action, len(app.chrome_frames.actions), context.temp_allocator)
-		copy(todo, app.chrome_frames.actions[:])
-		clear(&app.chrome_frames.actions)
-		for a in todo { shell_run_action(app, a); delete(a.text) }
-		request_frames(app, 3)
-	}
+	shell_actions_run(app)
 	return out
 }
 
@@ -663,6 +663,34 @@ shell_deferred_buttons_or_keys :: proc(app: ^App) -> bool {
 ////////////////////////////////
 // Deferred actions
 
+// What the build of the tabs asks of their list: done before the next frame of the window, whatever kind of frame is being built. A build is never cut short by a
+// list that changed under it: the frame it would leave has the window's colour where the toolbar, the page and the status bar were, and that frame is presented.
+shell_after_build :: proc(app: ^App, a: Shell_Action) {
+	a := a
+	a.window = app.active.id
+	append(&app.chrome_frames.actions, a)
+	request_frames(app, 2)
+}
+
+// What waits is done (never under a guest: at the start of a frame and at the end of its page phase), but what another window asked, which waits for that window's frame.
+shell_actions_run :: proc(app: ^App) {
+	if len(app.chrome_frames.actions) == 0 { return }
+	todo := make([]Shell_Action, len(app.chrome_frames.actions), context.temp_allocator)
+	copy(todo, app.chrome_frames.actions[:])
+	clear(&app.chrome_frames.actions)
+	ran := false
+	for a in todo {
+		if a.window != 0 && a.window != app.active.id && window_by_id(app, a.window) != nil {
+			append(&app.chrome_frames.actions, a)
+			continue
+		}
+		shell_run_action(app, a)
+		delete(a.text)
+		ran = true
+	}
+	if ran { request_frames(app, 3) }
+}
+
 // Inside a chrome frame, queues what the chrome asks of pages; true when queued (the caller does nothing now).
 shell_defer :: proc(a: Shell_Action) -> bool {
 	if !the_app.chrome_frames.nested { return false }
@@ -695,6 +723,8 @@ shell_run_action :: proc(app: ^App, a: Shell_Action) {
 		if e := page.session_find(&t.session, a.entry); e != nil { go_entry(app, t, e) }
 	case .Close_Tab:
 		tab_close_tab(app, t)
+	case .Tear_Off:
+		tab_drag_begin(app, t, a.at)
 	case .Prefs:
 	}
 }
@@ -724,7 +754,7 @@ shell_capture :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect, ca
 	} else if s.image.image.tex != 0 && s.gen == gen {
 		render.unkeep_target(dc.renderer, s.image.image.tex)
 	}
-	s.image, s.rect, s.scroll, s.canvas, s.gen, s.used, s.page = bd, rect, doc_scroll_vec(t), canvas, gen, app.chrome_frames.frame_no, t.page
+	s.image, s.rect, s.scroll, s.canvas, s.gen, s.used, s.page, s.scale = bd, rect, doc_scroll_vec(t), canvas, gen, app.chrome_frames.frame_no, t.page, page_scale(app)
 	s.selection[0], s.selection[1], _ = page.selection_range(t.page)
 	s.lo.x, s.limit.x = lay.doc_scroll_x_range(&t.layout, draw.rect_size(rect).x)
 	s.lo.y, s.limit.y = lay.doc_scroll_y_range(&t.layout, draw.rect_size(rect).y)
@@ -771,6 +801,19 @@ thumb_along :: proc(track, thumb: draw.Rect, vertical: bool, t: f32) -> draw.Rec
 	return moved
 }
 
+// Where the tab's document is shown, in the pixels of its last frame: a zoom keeps the same part of the document at the top while its offsets scale (zoom.odin zoom_set), and
+// the frame, at its own scale, stays where it is until the new layout is painted. (Taken as a scroll, the offsets' change moved it out of the page area, by a screen and more
+// far down a long document, and the canvas filled what it left.)
+@(private = "file")
+shell_kept_scroll :: proc(app: ^App, t: ^Tab, s: ^Page_Snapshot) -> draw.Vec2 {
+	scroll := shell_shown_scroll(t)
+	now := page_scale(app)
+	if s.scale == now { return scroll }
+	scroll *= s.scale / now
+	near := abs(scroll.x - s.scroll.x) < SNAPSHOT_ZOOM_ROUNDING_PX && abs(scroll.y - s.scroll.y) < SNAPSHOT_ZOOM_ROUNDING_PX
+	return near ? s.scroll : scroll
+}
+
 // Draws a tab's last page frame in the page area, moved by the wheel taken meanwhile and anchored at the top left.
 // False when there is none (the caller shows something else).
 shell_paint_page :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) -> bool {
@@ -783,7 +826,7 @@ shell_paint_page :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect)
 	}
 	s.used = app.chrome_frames.frame_no
 	draw.rect(dc, rect, s.canvas)
-	scroll := shell_shown_scroll(t)
+	scroll := shell_kept_scroll(app, t, s)
 	img := s.image
 	shift := (rect.min - s.rect.min) - (scroll - s.scroll)
 	img.image.origin += shift

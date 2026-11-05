@@ -11,6 +11,7 @@ package browser
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:time"
 import "wb:base"
 import "toolkit:render"
 import "wb:host"
@@ -37,12 +38,16 @@ Timeline :: struct {
 	t0:     i64,
 	frames: [dynamic]Tl_Frame,
 	asked:  bool,       // a copy of the frame before is waiting to be read
+	every:  bool,       // no frame is missed: the read waits for the GPU (a test, whose frames come back to back)
 	meta:   Tl_Frame,
 	missed: int,
 	seen:   int,
 }
 
 TIMELINE_MAX_FRAMES :: 1500
+// How long a read waits for the GPU's copy (Timeline.every), and how often it looks.
+@(private = "file") TIMELINE_COPY_LIMIT_MS :: 2000
+@(private = "file") TIMELINE_COPY_POLL_MS :: 1
 
 // Before a frame ends (remote_capture_arm): the copy of the frame before is taken, and this frame's is asked for.
 timeline_frame :: proc(app: ^App) {
@@ -50,6 +55,10 @@ timeline_frame :: proc(app: ^App) {
 	if !tl.on || app.remote.capture_window != 0 { return }
 	if tl.asked {
 		pixels, size, st := render.capture_poll(&app.r)
+		for waited := 0; tl.every && st == .Pending && waited < TIMELINE_COPY_LIMIT_MS; waited += TIMELINE_COPY_POLL_MS {
+			time.sleep(TIMELINE_COPY_POLL_MS * time.Millisecond)
+			pixels, size, st = render.capture_poll(&app.r)
+		}
 		#partial switch st {
 		case .Ready:
 			f := tl.meta
@@ -82,16 +91,17 @@ timeline_frame :: proc(app: ^App) {
 
 timeline_free :: proc(tl: ^Timeline) {
 	for f in tl.frames { delete(f.pixels) }
-	clear(&tl.frames)
+	delete(tl.frames)
+	tl.frames = nil
 	tl.asked, tl.missed, tl.seen = false, 0, 0
 }
 
 // Starts recording (the frames already recorded go): at most `max_frames` of the window (`rect` zeros) or of a part of it, at `scale`.
-timeline_begin :: proc(app: ^App, scale: f32, max_frames: int, rect: [4]int) {
+timeline_begin :: proc(app: ^App, scale: f32, max_frames: int, rect: [4]int, every := false) {
 	tl := &app.remote.tl
 	timeline_free(tl)
 	tl.scale, tl.max, tl.rect = f32(clamp(scale, 0.05, 1)), clamp(max_frames, 2, TIMELINE_MAX_FRAMES), rect
-	tl.t0, tl.on = host.now_ns(&app.loop), true
+	tl.t0, tl.on, tl.every = host.now_ns(&app.loop), true, every
 	request_frames(app, 2)
 }
 
