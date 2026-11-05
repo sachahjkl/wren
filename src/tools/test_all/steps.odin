@@ -373,6 +373,8 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 			Command{argv = strs(exe("build/jsengine_jit"), "reach", "-image", "build/js/wren_js.wasm", "-jit-threshold", "2000", "-jit-loop", "1", "examples/jsbench/jitreach.js")},
 			Command{argv = strs(exe("build/jsengine_jit"), "reach", "-image", "build/js/wren_js.wasm", "examples/jsbench/jithot.js")},
 			Command{argv = strs(exe("build/jsengine_jit"), "cold", "-image", "build/js/wren_js.wasm", "examples/jsbench/jitcold.js")},
+			Command{argv = strs(exe("build/jsengine_jit"), "run", "-image", "build/js/wren_js.wasm", "examples/jsbench/hotcheck.js")},
+			Command{argv = strs(exe("build/jsengine_jit"), "cost", "-image", "build/js/wren_js.wasm", "--pref", "wasm.wasmtime.fuel=true", "examples/jsbench/cost.js")},
 			Command{argv = join({exe("build/test262"), "-jit", "-jit-sync", "-jit-threshold", "2", "-jit-loop", "1"}, test262_quick)},
 		), weight = 70, needs = {.JS_Engine, .Test262}, inputs = .Tree, limit = LONG_STEP_SECONDS})
 	append(&t, Step{name = "web API conformance (generated cases: bounds, UTF-8, handles, enums, capacity)",

@@ -359,9 +359,9 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				stack[sp - 1] = t2
 
 			// --- calls ---
-			case .call0, .call1, .call2, .call3, .call, .tail_call:
+			case .call0, .call1, .call2, .call3, .call:
 				argc: int
-				if op == .call || op == .tail_call {
+				if op == .call {
 					argc = rd_u16(code, pc)
 					pc += 2
 				} else {
@@ -369,7 +369,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				}
 				f.pc = pc
 				base := sp - argc
-				if op != .tail_call && stack[base - 1].tag == .object {
+				if stack[base - 1].tag == .object {
 					fo := as_obj(stack[base - 1])
 					if fo.class == .bytecode_function && fo.data.(Func_Data).bc.func_kind == .normal && rt.stack_depth < rt.config.max_stack_depth {
 						f.sp = base - 1 // the result goes here when the callee returns
@@ -379,16 +379,15 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				}
 				r := call_internal(ctx, stack[base - 1], UNDEFINED, UNDEFINED, stack[base:sp], false)
 				if is_exception(r) {exc = true; break}
-				if op == .tail_call {ret_val = r; returning = true; break}
 				sp = base - 1
 				stack[sp] = r
 				sp += 1
-			case .call_method, .tail_call_method:
+			case .call_method:
 				argc := rd_u16(code, pc)
 				pc += 2
 				f.pc = pc
 				base := sp - argc
-				if op != .tail_call_method && stack[base - 1].tag == .object {
+				if stack[base - 1].tag == .object {
 					fo := as_obj(stack[base - 1])
 					if fo.class == .bytecode_function && fo.data.(Func_Data).bc.func_kind == .normal && rt.stack_depth < rt.config.max_stack_depth {
 						f.sp = base - 2
@@ -398,7 +397,6 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				}
 				r := call_internal(ctx, stack[base - 1], stack[base - 2], UNDEFINED, stack[base:sp], false)
 				if is_exception(r) {exc = true; break}
-				if op == .tail_call_method {ret_val = r; returning = true; break}
 				sp = base - 2
 				stack[sp] = r
 				sp += 1
@@ -1807,11 +1805,15 @@ build_arguments :: proc(ctx: ^Context, args: []Value) -> Value {
 	return mk_obj(o)
 }
 
-// The mapped (sloppy) arguments object: the first `mapped` elements alias the parameters.
+// What a mapped arguments object has beside its elements: length, its iterator, callee.
+MAPPED_ARGUMENTS_OTHER_PROPERTIES :: 3
+
+// The mapped (sloppy) arguments object: the first `mapped` elements alias the parameters. Its shape comes by transitions: one
+// shape for all the calls of the same argument count, none made for each call (a dictionary was 1 us of each call).
 build_mapped_arguments :: proc(ctx: ^Context, f: ^Frame, mapped: int) -> Value {
 	rt := ctx.rt
 	o := object_new_proto(ctx, ctx.class_proto[.object], .mapped_arguments)
-	object_make_dict(rt, o)
+	object_reserve_exact(rt, o, f.argc + MAPPED_ARGUMENTS_OTHER_PROPERTIES)
 	for i in 0 ..< f.argc {
 		if i < mapped {
 			vr := get_var_ref(rt, f, i, true)

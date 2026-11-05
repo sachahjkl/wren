@@ -181,7 +181,7 @@ Runtime :: struct {
 	ext_cells:      [dynamic]^Cell, // cells with host references (Cell.ext > 0), the host roots (gc.odin)
 	host_classes:   [dynamic]Class_Hooks, // classes the host registered (host_class.odin), by id - FIRST_HOST_CLASS
 	gc_hooked:      [dynamic]^Object,     // host objects whose class exposes its references to the collector
-	host_final_live: int,                 // live host objects whose class has a finalizer
+	host_finals:    [dynamic]^Object,     // the live host objects whose class has a finalizer
 	weak_list:      [dynamic]^Object, // WeakMap/WeakSet/WeakRef/FinalizationRegistry objects
 	in_gc:          bool,
 	gc_disabled:    int,
@@ -370,8 +370,10 @@ Context :: struct {
 	rx_snap_shape:   ^Shape,
 	rx_snap_n:       int,
 	array_shape:     ^Shape, // shape of a fresh Array (proto + length)
+	plain_shape:     ^Shape, // shape of a fresh {}
+	ctor_proto_shape: ^Shape, // the object a function's prototype starts as: constructor
+	closure_shapes:  [Func_Kind][2]^Shape, // shape of a fresh closure (closure_shape), without and with its prototype
 	arguments_shape: ^Shape,
-	mapped_arguments_shape: ^Shape,
 	regexp_shape:    ^Shape,
 	std_array_proto: bool, // Array.prototype is untouched by scripts (enables append fast paths); see array_append_ok
 	host_defined:    rawptr,
@@ -396,6 +398,7 @@ runtime_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) ->
 	rt.ext_cells = make([dynamic]^Cell, allocator)
 	rt.host_classes = make([dynamic]Class_Hooks, allocator)
 	rt.gc_hooked = make([dynamic]^Object, allocator)
+	rt.host_finals = make([dynamic]^Object, allocator)
 	rt.weak_list = make([dynamic]^Object, allocator)
 	rt.contexts = make([dynamic]^Context, allocator)
 	rt.jobs = make([dynamic]Job, allocator)
@@ -437,6 +440,7 @@ runtime_free :: proc(rt: ^Runtime) {
 	delete(rt.ext_cells)
 	delete(rt.host_classes)
 	delete(rt.gc_hooked)
+	delete(rt.host_finals)
 	delete(rt.weak_list)
 	delete(rt.contexts)
 	delete(rt.jobs)

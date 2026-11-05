@@ -16,7 +16,6 @@ Host_Object :: struct {
 	class_id:  u32,
 	opaque:    rawptr,
 	hook_idx:  int, // index in Runtime.gc_hooked, -1 when not listed
-	finalized: bool,
 	payload:   u32, // bytes of opaque data in the same block, from HOST_PAYLOAD_OFFSET (0: the host's own pointer, if any)
 }
 
@@ -101,7 +100,7 @@ host_object_new :: proc(ctx: ^Context, proto: ^Object, id: u32, payload := 0, ma
 			d.hook_idx = len(rt.gc_hooked)
 			list_push(&rt.gc_hooked, o)
 		}
-		if c.finalizer != nil {rt.host_final_live += 1}
+		if c.finalizer != nil {list_push(&rt.host_finals, o)}
 	}
 	return o
 }
@@ -161,39 +160,27 @@ host_mark_value :: proc(st: ^Host_Mark_State, v: Value) {
 }
 
 host_object_free :: proc(rt: ^Runtime, o: ^Object, d: ^Host_Object) {
-	c := host_class(rt, d.class_id)
-	if !d.finalized {
-		d.finalized = true
-		if c != nil && c.finalizer != nil {c.finalizer(rt, o)}
-	}
-	if c != nil && c.finalizer != nil {rt.host_final_live -= 1}
 	if d.hook_idx >= 0 {hooked_remove(rt, d)}
 	mem_free(rt, d, HOST_PAYLOAD_OFFSET + int(d.payload))
 }
 
 // Run the finalizers of the host objects the collection is about to free, while every cell is still
-// allocated.
+// allocated. They are listed: a walk of every cell for them cost as much as the marking.
 host_run_finalizers :: proc(rt: ^Runtime) {
-	if rt.host_final_live == 0 {return}
-	for c := rt.cells; c != nil; c = c.gc_next {
-		if c.kind != .object || c.mark || c.pinned {continue}
-		o := cast(^Object)c
-		d := host_object_of(o)
-		if d == nil || d.finalized {continue}
-		d.finalized = true
-		if h := host_class(rt, d.class_id); h != nil && h.finalizer != nil {h.finalizer(rt, o)}
+	kept := 0
+	for o in rt.host_finals {
+		if o.mark || o.pinned {
+			rt.host_finals[kept] = o
+			kept += 1
+		} else {
+			host_class(rt, host_object_of(o).class_id).finalizer(rt, o)
+		}
 	}
+	resize(&rt.host_finals, kept)
 }
 
 // Runtime teardown: every host object's finalizer, before any cell is freed.
 host_finalize_all :: proc(rt: ^Runtime) {
-	if rt.host_final_live == 0 {return}
-	for c := rt.cells; c != nil; c = c.gc_next {
-		if c.kind != .object {continue}
-		o := cast(^Object)c
-		d := host_object_of(o)
-		if d == nil || d.finalized {continue}
-		d.finalized = true
-		if h := host_class(rt, d.class_id); h != nil && h.finalizer != nil {h.finalizer(rt, o)}
-	}
+	for o in rt.host_finals {host_class(rt, host_object_of(o).class_id).finalizer(rt, o)}
+	clear(&rt.host_finals)
 }

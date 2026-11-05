@@ -793,6 +793,12 @@ js_parse_postfix_expr :: proc(s: ^Parse_State, parse_flags: int) -> bool {
 			if js_parse_expect(s, ']') {return true}
 			if prev_op == O(.get_super) {
 				emit_op(s, O(.get_super_value))
+			} else if get_prev_opcode(fd) == O(.push_atom_value) {
+				// a["b"] is a.b: no atom to find at each run, and a site for the JIT (what an obfuscator writes)
+				name := Atom(get_u32(fd.byte_code[:], fd.last_opcode_pos + 1))
+				resize(&fd.byte_code, fd.last_opcode_pos)
+				emit_op(s, O(.get_field))
+				emit_atom(s, name)
 			} else {
 				emit_op(s, O(.get_array_el))
 			}

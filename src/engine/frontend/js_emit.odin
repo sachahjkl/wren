@@ -90,7 +90,7 @@ get_prev_opcode :: proc(fd: ^Func_Def) -> int {
 
 js_is_live_code :: proc(s: ^Parse_State) -> bool {
 	#partial switch Opcode(get_prev_opcode(s.cur_func)) {
-	case .tail_call, .tail_call_method, .ret_, .return_undef, .return_async, .throw_, .throw_error, .goto, .goto8, .goto16, .ret:
+	case .ret_, .return_undef, .return_async, .throw_, .throw_error, .goto, .goto8, .goto16, .ret:
 		return false
 	case:
 		return true

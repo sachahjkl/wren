@@ -12,16 +12,17 @@ package jsrt
 // carries across a call in one handler must be split around it or kept in a stack slot, and where the register
 // allocator drew that line moved with any change of the code around the loop (round 13 of docs/performance.md:
 // a test of one bit in a property lookup slowed every instruction by 12 %). What needs a call (a call
-// instruction, a return, a getter, a lazy shape, an atom's number made a string) is a procedure of its own,
+// instruction, a return, a getter, an object made, a read that is the engine's) is a procedure of its own,
 // never inlined, that reads and writes the loop's registers in a `Hot` in memory: they are written before the
 // call and read back after it, so none of them lives across one. A loop that calls nothing is inlined into
-// interp_run (#force_inline): the full dispatch and the loop then pass pc and sp without a call.
+// interp_run (#force_inline): the full dispatch and the loop then pass pc and sp without a call. Leaving the loop for
+// the full dispatch costs more than such a procedure: what real pages run often stays here (round 31).
 //
 // Contract: run from (pc0, sp0) until an instruction this loop does not handle, or whose fast path does not
 // apply (operand types, a due collection / interrupt at a back edge ...). The instruction has had NO effect
-// then: the caller executes it with the full dispatch, and re-enters. Nothing here allocates; the natives it
-// calls (call instructions, getters) run at a safepoint as call_native makes them, and back edges leave when a
-// collection is due.
+// then: the caller executes it with the full dispatch, and re-enters. Allocation never collects: the natives the
+// procedures call (call instructions, getters) run at a safepoint as call_native makes them, and back edges leave
+// when a collection is due.
 
 import "base:intrinsics"
 import "base:runtime"
@@ -81,6 +82,51 @@ quick_truthy :: #force_inline proc "contextless" (v: Value) -> (t: bool, ok: boo
 	return false, false
 }
 
+// ToInt32 of two numbers, calling nothing: a double within what an i64 holds truncated, its low 32 bits taken (what a hash
+// makes of its products; ok = false for anything else, NaN, the infinities and doubles past 2^63 included).
+@(private = "file")
+HOT_I64_LIMIT :: f64(1 << 63)
+
+@(private = "file")
+hot_int32 :: #force_inline proc "contextless" (v: Value) -> (r: i32, ok: bool) {
+	if v.tag == .int {return v.u.i, true}
+	if v.tag != .float || !(abs(v.u.f) < HOT_I64_LIMIT) {return 0, false}
+	return i32(u32(u64(i64(v.u.f)))), true
+}
+
+@(private = "file")
+hot_int32_pair :: #force_inline proc "contextless" (a, b: Value) -> (x: i32, y: i32, ok: bool) {
+	if a.tag == .int && b.tag == .int {return a.u.i, b.u.i, true}
+	ok_a, ok_b: bool
+	x, ok_a = hot_int32(a)
+	y, ok_b = hot_int32(b)
+	return x, y, ok_a && ok_b
+}
+
+// === and == of values that take no conversion: two of a type, or `strict`, or undefined and null; two strings when their
+// lengths or their atoms tell. ok = false for the rest.
+@(private = "file")
+hot_equal :: #force_inline proc "contextless" (x, y: Value, strict: bool) -> (r: bool, ok: bool) {
+	if x.tag == .int && y.tag == .int {return x.u.i == y.u.i, true}
+	if x.tag != y.tag {
+		if is_number(x) && is_number(y) {return as_f64(x) == as_f64(y), true}
+		if strict {return false, true}
+		return true, (x.tag == .undefined && y.tag == .null) || (x.tag == .null && y.tag == .undefined)
+	}
+	#partial switch x.tag {
+	case .undefined, .null: return true, true
+	case .bool: return x.u.b == y.u.b, true
+	case .float: return x.u.f == y.u.f, true
+	case .object, .symbol: return x.u.ptr == y.u.ptr, true
+	case .string:
+		a, b := as_str(x), as_str(y)
+		if a == b {return true, true}
+		if a.len != b.len {return false, true}
+		if a.atom != 0 && b.atom != 0 {return a.atom == b.atom, true}
+	}
+	return false, false
+}
+
 // What a property lookup of the loop found: a data property's value, an accessor's native getter for the caller to
 // call (a DOM attribute), or something the loop leaves to a procedure that may call (a lazy shape) or to the full
 // dispatch (a proxy, a host object whose class has exotic hooks ...).
@@ -109,7 +155,8 @@ hot_find :: #force_inline proc "contextless" (o: ^Object, a: Atom) -> (v: Value,
 			}
 			return {}, nil, nil, .slow
 		}
-		if p.fast_array || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return {}, nil, nil, .slow}
+		// (a fast array holds its elements elsewhere: an array's methods are looked up as an object's are)
+		if (p.fast_array && atom_is_int(a)) || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return {}, nil, nil, .slow}
 		p = sh.proto
 		if p == nil {return UNDEFINED, nil, nil, .value}
 	}
@@ -131,7 +178,7 @@ hot_find_slow :: proc "contextless" (p_in: ^Object, a: Atom) -> (v: Value, gette
 			}
 			return
 		}
-		if p.fast_array || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return}
+		if (p.fast_array && atom_is_int(a)) || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return}
 		p = p.shape.proto
 		if p == nil {return UNDEFINED, nil, true}
 	}
@@ -267,19 +314,37 @@ hot_getter :: proc(h: ^Hot, getter: ^Object, this: Value, at: ^Value, next: [^]u
 	return true
 }
 
+// A read the engine makes (get_property and the like, which may run a script's getter or a proxy's trap): its value, or
+// false with the exception thrown past the instruction, at `next`.
+@(private = "file")
+hot_read :: #force_inline proc(h: ^Hot, v: Value, next: [^]u8) -> bool {
+	if v.tag != .exception {return true}
+	h.ip = next
+	h.thrown = true
+	return false
+}
+
 // get_field / get_field2 when the loop's lookup did not settle it: a getter it found (`getter`), or the lookup from
-// `p` on (hot_find_slow), a getter it finds called too.
+// `p` on (hot_find_slow), a getter it finds called too; anything else (a string's method, a proxy, a script's getter) is
+// the engine's lookup.
 @(private = "file")
 hot_get_field :: #force_no_inline proc(h: ^Hot, op: Opcode, getter_in: ^Object, p: ^Object) -> bool {
 	ip, s := h.ip, h.s
 	o := s[-1]
+	a := Atom(rd32(ip[1:]))
 	getter := getter_in
 	v: Value
 	if getter == nil {
-		if p == nil {return false}
-		ok: bool
-		v, getter, ok = hot_find_slow(p, Atom(rd32(ip[1:])))
-		if !ok {return false}
+		ok := false
+		from := p
+		if o.tag == .string && a != pa(.A_length) {from = h.ctx.class_proto[.string]}   // (a string's method)
+		if from != nil {v, getter, ok = hot_find_slow(from, a)}
+		if !ok {
+			getter = nil
+			h.f.pc = int(uintptr(ip[5:]) - uintptr(h.regs.code))
+			v = get_property(h.ctx, o, a, o)
+			if !hot_read(h, v, ip[5:]) {return false}
+		}
 	}
 	at := op == .get_field2 ? &s[0] : &s[-1]
 	if getter != nil {
@@ -290,6 +355,115 @@ hot_get_field :: #force_no_inline proc(h: ^Hot, op: Opcode, getter_in: ^Object, 
 	if op == .get_field2 {h.s = s[1:]}
 	h.ip = ip[5:]
 	return true
+}
+
+// `+` of anything but two numbers: strings mostly.
+@(private = "file")
+hot_add :: #force_no_inline proc(h: ^Hot) -> bool {
+	ip, s := h.ip, h.s
+	h.f.pc = int(uintptr(ip[1:]) - uintptr(h.regs.code))
+	r := op_add(h.ctx, s[-2], s[-1])
+	if !hot_read(h, r, ip[1:]) {return false}
+	s[-2] = r
+	h.s = intrinsics.ptr_offset(s, -1)
+	h.ip = ip[1:]
+	return true
+}
+
+// get_length of anything but a string or a fast array.
+@(private = "file")
+hot_get_length :: #force_no_inline proc(h: ^Hot) -> bool {
+	ip, s := h.ip, h.s
+	h.f.pc = int(uintptr(ip[1:]) - uintptr(h.regs.code))
+	v := get_property(h.ctx, s[-1], pa(.A_length), s[-1])
+	if !hot_read(h, v, ip[1:]) {return false}
+	s[-1] = v
+	h.ip = ip[1:]
+	return true
+}
+
+// get_array_el / get_array_el2 of anything but an element of a fast array: a key that is a string, a typed array...
+@(private = "file")
+hot_get_el :: #force_no_inline proc(h: ^Hot, op: Opcode) -> bool {
+	ip, s := h.ip, h.s
+	o, k := s[-2], s[-1]
+	v: Value
+	fast := false
+	if o.tag == .object && k.tag == .int && k.u.i >= 0 && is_typed_array_class(as_obj(o).class) {v, fast = ta_fast_get(as_obj(o), u32(k.u.i))}
+	if !fast {
+		h.f.pc = int(uintptr(ip[1:]) - uintptr(h.regs.code))
+		v = get_by_value(h.ctx, o, k)
+		if !hot_read(h, v, ip[1:]) {return false}
+	}
+	s[-1] = v
+	if op == .get_array_el {
+		s[-2] = v
+		h.s = intrinsics.ptr_offset(s, -1)
+	}
+	h.ip = ip[1:]
+	return true
+}
+
+// put_field of what the loop does not write itself: a new property, a setter, a value's.
+@(private = "file")
+hot_put_field :: #force_no_inline proc(h: ^Hot) -> bool {
+	ip, s := h.ip, h.s
+	h.f.pc = int(uintptr(ip[5:]) - uintptr(h.regs.code))
+	if set_property(h.ctx, s[-2], Atom(rd32(ip[1:])), s[-1], s[-2], h.f.bc.is_strict_mode) < 0 {
+		h.ip = ip[5:]
+		h.thrown = true
+		return false
+	}
+	h.s = intrinsics.ptr_offset(s, -2)
+	h.ip = ip[5:]
+	return true
+}
+
+// define_field of an object literal or a class's field on an ordinary object that does not have it: appended, as an
+// ordinary [[DefineOwnProperty]] would. False: the full dispatch makes it.
+@(private = "file")
+hot_define_field :: #force_no_inline proc(h: ^Hot) -> bool {
+	ip, s := h.ip, h.s
+	o := s[-2]
+	if o.tag != .object {return false}
+	p := as_obj(o)
+	a := Atom(rd32(ip[1:]))
+	if p.class != .object || !p.extensible || p.shape.lazy != nil || shape_lookup(p.shape, a) >= 0 {return false}
+	add_property(h.rt, p, a, CWE).value = s[-1]
+	h.s = intrinsics.ptr_offset(s, -1)
+	h.ip = ip[5:]
+	return true
+}
+
+// What makes a cell and cannot fail: a plain object, a closure, an array of the stack's top entries, the name of a type.
+@(private = "file")
+hot_object :: #force_no_inline proc(h: ^Hot) {
+	h.s[0] = mk_obj(new_plain_object(h.ctx))
+	h.s = h.s[1:]
+	h.ip = h.ip[1:]
+}
+
+@(private = "file")
+hot_closure :: #force_no_inline proc(h: ^Hot, index: int, size: int) {
+	fb := cast(^Function_Bytecode)h.regs.cpool[index].u.ptr
+	h.s[0] = make_closure(h.ctx, fb, h.regs.var_refs, h.f)
+	h.s = h.s[1:]
+	h.ip = h.ip[size:]
+}
+
+@(private = "file")
+hot_array_from :: #force_no_inline proc(h: ^Hot) {
+	argc := rd16(h.ip[1:])
+	first := intrinsics.ptr_offset(h.s, -argc)
+	first[0] = mk_obj(array_from_values(h.ctx, first[:argc]))
+	h.s = first[1:]
+	h.ip = h.ip[3:]
+}
+
+@(private = "file")
+hot_typeof :: #force_no_inline proc(h: ^Hot) {
+	h.s[-1] = atom_to_value(h.rt, typeof_atom(h.s[-1]))
+	h.ip = h.ip[1:]
 }
 
 // get_var of a global object's own accessor (window.document, [LegacyUnforgeable]): its native getter called here.
@@ -334,6 +508,13 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			go := hot_return(&h, op)
 			ip, s, regs = h.ip, h.s, h.regs
 			if !go {break loop}
+		case .push_this:
+			// (a value to box, or the global object in place of undefined: the full dispatch)
+			t := h.f.this_val
+			if t.tag != .object {break loop}
+			s[0] = t
+			s = s[1:]
+			ip = ip[1:]
 		case .get_loc0, .get_loc1, .get_loc2, .get_loc3:
 			s[0] = regs.locals[int(op) - int(Opcode.get_loc0)]
 			s = s[1:]
@@ -601,7 +782,11 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			} else if (x.tag == .float || x.tag == .int) && (y.tag == .float || y.tag == .int) {
 				put_f64(&s[-2], as_f64(x) + as_f64(y))
 			} else {
-				break loop
+				h.ip, h.s = ip, s
+				go := hot_add(&h)
+				ip, s, regs = h.ip, h.s, h.regs
+				if !go {break loop}
+				continue loop
 			}
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
@@ -648,39 +833,39 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
 		case .op_and:
-			x, y := s[-2], s[-1]
-			if x.tag != .int || y.tag != .int {break loop}
-			put_int(&s[-2], x.u.i & y.u.i)
+			x, y, ok := hot_int32_pair(s[-2], s[-1])
+			if !ok {break loop}
+			put_int(&s[-2], x & y)
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
 		case .op_or:
-			x, y := s[-2], s[-1]
-			if x.tag != .int || y.tag != .int {break loop}
-			put_int(&s[-2], x.u.i | y.u.i)
+			x, y, ok := hot_int32_pair(s[-2], s[-1])
+			if !ok {break loop}
+			put_int(&s[-2], x | y)
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
 		case .xor:
-			x, y := s[-2], s[-1]
-			if x.tag != .int || y.tag != .int {break loop}
-			put_int(&s[-2], x.u.i ~ y.u.i)
+			x, y, ok := hot_int32_pair(s[-2], s[-1])
+			if !ok {break loop}
+			put_int(&s[-2], x ~ y)
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
 		case .shl:
-			x, y := s[-2], s[-1]
-			if x.tag != .int || y.tag != .int {break loop}
-			put_int(&s[-2], i32(u32(x.u.i) << (u32(y.u.i) & 31)))
+			x, y, ok := hot_int32_pair(s[-2], s[-1])
+			if !ok {break loop}
+			put_int(&s[-2], i32(u32(x) << (u32(y) & 31)))
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
 		case .sar:
-			x, y := s[-2], s[-1]
-			if x.tag != .int || y.tag != .int {break loop}
-			put_int(&s[-2], x.u.i >> (u32(y.u.i) & 31))
+			x, y, ok := hot_int32_pair(s[-2], s[-1])
+			if !ok {break loop}
+			put_int(&s[-2], x >> (u32(y) & 31))
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
 		case .shr:
-			x, y := s[-2], s[-1]
-			if x.tag != .int || y.tag != .int {break loop}
-			s[-2] = mk_u32(u32(x.u.i) >> (u32(y.u.i) & 31))
+			x, y, ok := hot_int32_pair(s[-2], s[-1])
+			if !ok {break loop}
+			s[-2] = mk_u32(u32(x) >> (u32(y) & 31))
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
 		case .op_not:
@@ -739,15 +924,15 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
 		case .strict_eq, .eq:
-			x, y := s[-2], s[-1]
-			if x.tag != .int || y.tag != .int {break loop}
-			put_bool(&s[-2], x.u.i == y.u.i)
+			r, ok := hot_equal(s[-2], s[-1], op == .strict_eq)
+			if !ok {break loop}
+			put_bool(&s[-2], r)
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
 		case .strict_neq, .neq:
-			x, y := s[-2], s[-1]
-			if x.tag != .int || y.tag != .int {break loop}
-			put_bool(&s[-2], x.u.i != y.u.i)
+			r, ok := hot_equal(s[-2], s[-1], op == .strict_neq)
+			if !ok {break loop}
+			put_bool(&s[-2], !r)
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
 		case .is_undefined:
@@ -814,14 +999,24 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			ip = ip[5:]
 		case .get_array_el:
 			o, k := s[-2], s[-1]
-			if o.tag != .object || k.tag != .int || k.u.i < 0 {break loop}
-			p := as_obj(o)
-			if !p.fast_array {break loop}
-			ad := &p.data.(Array_Data)
-			if u32(k.u.i) >= ad.count {break loop}
-			s[-2] = ad.values[k.u.i]
-			s = intrinsics.ptr_offset(s, -1)
-			ip = ip[1:]
+			if o.tag == .object && k.tag == .int && k.u.i >= 0 && as_obj(o).fast_array {
+				ad := &as_obj(o).data.(Array_Data)
+				if u32(k.u.i) < ad.count {
+					s[-2] = ad.values[k.u.i]
+					s = intrinsics.ptr_offset(s, -1)
+					ip = ip[1:]
+					continue loop
+				}
+			}
+			h.ip, h.s = ip, s
+			go := hot_get_el(&h, op)
+			ip, s, regs = h.ip, h.s, h.regs
+			if !go {break loop}
+		case .get_array_el2:
+			h.ip, h.s = ip, s
+			go := hot_get_el(&h, op)
+			ip, s, regs = h.ip, h.s, h.regs
+			if !go {break loop}
 		case .put_array_el:
 			o, k := s[-3], s[-2]
 			if o.tag != .object || k.tag != .int || k.u.i < 0 {break loop}
@@ -880,8 +1075,10 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			ip = ip[5:]
 		case .get_field, .get_field2:
 			o := s[-1]
-			if o.tag != .object {break loop}
-			v, getter, p, found := hot_find(as_obj(o), Atom(rd32(ip[1:])))
+			v: Value
+			getter, p: ^Object
+			found := Hot_Found.slow
+			if o.tag == .object {v, getter, p, found = hot_find(as_obj(o), Atom(rd32(ip[1:])))}
 			if found != .value {
 				h.ip, h.s = ip, s
 				go := hot_get_field(&h, op, getter, p)
@@ -898,26 +1095,77 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			ip = ip[5:]
 		case .get_length:
 			o := s[-1]
-			if o.tag != .object {break loop}
-			p := as_obj(o)
-			if !p.fast_array || p.shape.lazy != nil {break loop}
-			i := shape_lookup(p.shape, pa(.A_length))
-			if i < 0 || raw_data(p.shape.props)[i].kind != .data {break loop}
-			s[-1] = p.slots[i].value
-			ip = ip[1:]
+			if o.tag == .string {
+				put_int(&s[-1], i32(as_str(o).len))
+				ip = ip[1:]
+				continue loop
+			}
+			if o.tag == .object && as_obj(o).fast_array && as_obj(o).class == .array {
+				// (an array's length is its first property)
+				s[-1] = as_obj(o).slots[0].value
+				ip = ip[1:]
+				continue loop
+			}
+			h.ip, h.s = ip, s
+			go := hot_get_length(&h)
+			ip, s, regs = h.ip, h.s, h.regs
+			if !go {break loop}
 		case .put_field:
 			o := s[-2]
-			if o.tag != .object {break loop}
-			p := as_obj(o)
-			if p.shape.lazy != nil {break loop}
 			a := Atom(rd32(ip[1:]))
-			i := shape_lookup(p.shape, a)
-			if i < 0 {break loop}
-			sp_ := raw_data(p.shape.props)[i]
-			if sp_.kind != .data || .writable not_in sp_.flags || (p.class == .array && a == pa(.A_length)) {break loop}
-			p.slots[i].value = s[-1]
-			s = intrinsics.ptr_offset(s, -2)
-			ip = ip[5:]
+			if o.tag == .object && as_obj(o).shape.lazy == nil {
+				p := as_obj(o)
+				i := shape_lookup(p.shape, a)
+				if i >= 0 {
+					sp_ := raw_data(p.shape.props)[i]
+					if sp_.kind == .data && .writable in sp_.flags && !(p.class == .array && a == pa(.A_length)) {
+						p.slots[i].value = s[-1]
+						s = intrinsics.ptr_offset(s, -2)
+						ip = ip[5:]
+						continue loop
+					}
+				}
+			}
+			h.ip, h.s = ip, s
+			go := hot_put_field(&h)
+			ip, s, regs = h.ip, h.s, h.regs
+			if !go {break loop}
+		case .define_field:
+			h.ip, h.s = ip, s
+			go := hot_define_field(&h)
+			ip, s, regs = h.ip, h.s, h.regs
+			if !go {break loop}
+		case .object:
+			h.ip, h.s = ip, s
+			hot_object(&h)
+			ip, s, regs = h.ip, h.s, h.regs
+		case .fclosure8:
+			h.ip, h.s = ip, s
+			hot_closure(&h, int(ip[1]), 2)
+			ip, s, regs = h.ip, h.s, h.regs
+		case .fclosure:
+			h.ip, h.s = ip, s
+			hot_closure(&h, int(rd32(ip[1:])), 5)
+			ip, s, regs = h.ip, h.s, h.regs
+		case .array_from:
+			h.ip, h.s = ip, s
+			hot_array_from(&h)
+			ip, s, regs = h.ip, h.s, h.regs
+		case .op_typeof:
+			h.ip, h.s = ip, s
+			hot_typeof(&h)
+			ip, s, regs = h.ip, h.s, h.regs
+		case .to_propkey:
+			v := s[-1]
+			if v.tag != .int && v.tag != .string && v.tag != .symbol {break loop}
+			ip = ip[1:]
+		case .to_propkey2:
+			v := s[-1]
+			if (v.tag != .int && v.tag != .string && v.tag != .symbol) || s[-2].tag == .undefined || s[-2].tag == .null {break loop}
+			ip = ip[1:]
+		case .set_loc_uninitialized:
+			regs.locals[rd16(ip[1:])] = UNINITIALIZED
+			ip = ip[3:]
 		case:
 			break loop
 		}

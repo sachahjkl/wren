@@ -313,7 +313,8 @@ mark_cell :: #force_inline proc(rt: ^Runtime, c: ^Cell) {
 	poison_check(c)
 	if c != nil && !c.mark {
 		c.mark = true
-		list_push(&rt.gray, c)
+		// (a plain string holds no cell: it does not go through the list, nearly half of what a page's heap has)
+		if c.kind != .string || c.flags & STR_TAIL != 0 {list_push(&rt.gray, c)}
 	}
 }
 
@@ -474,8 +475,10 @@ mark_context :: proc(rt: ^Runtime, ctx: ^Context) {
 	mark_cell(rt, ctx.typed_array_ctor)
 	for p in ctx.typed_array_ctors {mark_cell(rt, p)}
 	mark_cell(rt, ctx.array_shape)
+	mark_cell(rt, ctx.plain_shape)
+	mark_cell(rt, ctx.ctor_proto_shape)
+	for &shapes in ctx.closure_shapes {for sh in shapes {mark_cell(rt, sh)}}
 	mark_cell(rt, ctx.arguments_shape)
-	mark_cell(rt, ctx.mapped_arguments_shape)
 	mark_cell(rt, ctx.regexp_shape)
 	mark_cell(rt, ctx.match_shape)
 	mark_cell(rt, ctx.iter_result_shape)
