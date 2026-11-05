@@ -54,6 +54,8 @@
 <li class="lvl3"><a href="#engine-locale">Engine_locale</a></li>
 <li class="lvl3"><a href="#engine-jitcompile">Engine_jitCompile</a></li>
 <li class="lvl3"><a href="#engine-jitpoll">Engine_jitPoll</a></li>
+<li class="lvl3"><a href="#engine-stackmove">Engine_stackMove</a></li>
+<li class="lvl3"><a href="#engine-nativestacklow">Engine_nativeStackLow</a></li>
 <li class="lvl3"><a href="#engine-span">Engine_span</a></li>
 <li class="lvl3"><a href="#node-wrap">Node_wrap</a></li>
 <li class="lvl3"><a href="#document-createelementwrapped">Document_createElementWrapped</a></li>
@@ -131,6 +133,15 @@ ticket when it compiles it in the background: Engine_jitPoll then tells when it 
 <p>The table index of the function of an Engine_jitCompile ticket once compiled and attached; -1 while it still
 compiles; 0 when it failed (the ticket is then forgotten).</p>
 <p>Host: <code>Engine_jitPoll :: proc(c: ^Call, ticket: i32) -&gt; i32</code></p>
+<h3 id="engine-stackmove"><a class="anchor" href="#engine-stackmove" aria-hidden="true">#</a><code>Engine_stackMove</code></h3>
+<div class="code"><pre><code>u32 Engine_stackMove(u32 sp)</code></pre></div>
+<p>The engine's stack in linear memory (src/engine/jsrt/stack.odin): moves its stack pointer to <code>sp</code>, a block of the
+engine's heap past the end of the stack it was linked with, and returns where it was. 0 from any other module.</p>
+<p>Host: <code>Engine_stackMove :: proc(c: ^Call, sp: u32) -&gt; u32</code></p>
+<h3 id="engine-nativestacklow"><a class="anchor" href="#engine-nativestacklow" aria-hidden="true">#</a><code>Engine_nativeStackLow</code></h3>
+<div class="code"><pre><code>bool Engine_nativeStackLow()</code></pre></div>
+<p>Is the machine's stack, which the engine's compiled code and the browser share, near its end? Asked before going deeper.</p>
+<p>Host: <code>Engine_nativeStackLow :: proc(c: ^Call) -&gt; bool</code></p>
 <h3 id="engine-span"><a class="anchor" href="#engine-span" aria-hidden="true">#</a><code>Engine_span</code></h3>
 <div class="code"><pre><code>void Engine_span(i32 kind, bool begin)</code></pre></div>
 <p>WREN_SPANS (base/spans.odin): the engine enters (<code>begin</code>) or leaves a stage of its own work: a Span_Kind.</p>
