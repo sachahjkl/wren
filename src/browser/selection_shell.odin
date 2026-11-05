@@ -33,6 +33,9 @@ import "wb:style"
 
 Sel_Unit :: enum u8 { Char, Word, Paragraph }
 
+// The longest step of a drag's automatic scrolling: the frames may have stopped for much longer.
+@(private = "file") AUTOSCROLL_MAX_STEP_S :: 0.1
+
 // A window's text selection gesture (Window_Own.selection).
 Selection_Shell :: struct {
 	page:        ^page.Page,          // the page the current gesture belongs to
@@ -63,8 +66,13 @@ Selection_Shell :: struct {
 // that layout (shell_paint_layout). Only where the moves cannot run the page's code: no pointermove or mousemove listener
 // anywhere, and no selectstart one before the gesture has started a selection. Gone once the page's turn has extended the
 // selection (extend_to), or when the gesture ends.
+// A press under a long script waits with its moves, for as long as the script runs: the gesture is opened here too (`pressed`,
+// selection_preview_press) where that press cannot run the page's code either and is sure to begin a selection. And past the
+// view's edge the drag scrolls the document as a full frame does (selection_preview_frame), which the page takes at its turn.
 Sel_Preview :: struct {
 	on:            bool,
+	pressed:       bool,   // the gesture's press still waits for the page: `down` is not set yet
+	dragged:       bool,   // past the drag threshold: `moved` is not set yet
 	anchor, focus: lay.Text_Pos,
 }
 
@@ -96,9 +104,13 @@ page_viewport :: proc(app: ^App) -> [2]f32 { return draw.rect_size(active_window
 text_api :: proc(app: ^App) -> lay.Text_Api { return page_text_api(&app.page_render.fonts, &app.measure, &app.page_settings.style) }
 
 // The text position under a window point (ok = false: no text, or a layout older than the document).
-position_of :: proc(app: ^App, t: ^Tab, pos: [2]f32) -> (lay.Text_Pos, bool) {
+position_of :: proc(app: ^App, t: ^Tab, pos: [2]f32) -> (lay.Text_Pos, bool) { return position_scrolled(app, t, pos, t.scroll) }
+
+// The same with the document at this offset.
+@(private = "file")
+position_scrolled :: proc(app: ^App, t: ^Tab, pos: [2]f32, scroll: f32) -> (lay.Text_Pos, bool) {
 	if t.page == nil || !t.layout.valid { return {}, false }
-	return lay.position_at(&t.layout, t.page.doc, t.page.styled, pos - active_window(app).page_rect.min, page_viewport(app), t.scroll, text_api(app))
+	return lay.position_at(&t.layout, t.page.doc, t.page.styled, pos - active_window(app).page_rect.min, page_viewport(app), scroll, text_api(app))
 }
 
 @(private = "file")
@@ -155,14 +167,18 @@ press_time :: proc(ev: platform.Event) -> time.Tick { return ev.stamp != {} ? ev
 // click lands on the word the second one selected, which is also how a drag of the selection begins.
 selection_press_count :: proc(app: ^App, ev: platform.Event) {
 	ss := &window_own(app).selection
-	now := press_time(ev)
+	ss.clicks = next_click(app, ss, ev)
+	ss.last_click, ss.last_click_pos = press_time(ev), ev.pos
+}
+
+// Which click of a series this press is.
+@(private = "file")
+next_click :: proc(app: ^App, ss: ^Selection_Shell, ev: platform.Event) -> int {
 	scale := page_scale(app)
-	if time.duration_milliseconds(time.tick_diff(ss.last_click, now)) <= double_click_ms(app) && abs(ev.pos.x - ss.last_click_pos.x) < 4 * scale && abs(ev.pos.y - ss.last_click_pos.y) < 4 * scale {
-		ss.clicks = ss.clicks % 3 + 1
-	} else {
-		ss.clicks = 1
+	if time.duration_milliseconds(time.tick_diff(ss.last_click, press_time(ev))) <= double_click_ms(app) && abs(ev.pos.x - ss.last_click_pos.x) < 4 * scale && abs(ev.pos.y - ss.last_click_pos.y) < 4 * scale {
+		return ss.clicks % 3 + 1
 	}
-	ss.last_click, ss.last_click_pos = now, ev.pos
+	return 1
 }
 
 // A left press in the page that no form control took (after mousedown, which `allowed` says was not cancelled).
@@ -171,10 +187,14 @@ selection_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: b
 	ss := &window_own(app).selection
 	p := t.page
 	ss.down, ss.moved, ss.selected_by_drag = false, false, false
-	ss.stale, ss.preview = false, {}
+	ss.stale = false
+	if allowed && !(target != base.NIL_HANDLE && in_control(t, target)) && !layout_fresh(t) {
+		ss.pending, ss.pending_ev = true, ev   // (what a chrome frame showed of the gesture stays until then)
+		return
+	}
+	ss.preview = {}
 	if !allowed { return }
 	if target != base.NIL_HANDLE && in_control(t, target) { page.selection_clear(p); return }
-	if !layout_fresh(t) { ss.pending, ss.pending_ev = true, ev; return }
 	start_gesture(app, t, ev)
 }
 
@@ -235,9 +255,9 @@ past_threshold :: proc(app: ^App, ss: ^Selection_Shell, pos: [2]f32) -> bool {
 
 // The anchor and focus a gesture has with the pointer at `pos` (ok = false: no text there).
 @(private = "file")
-gesture_range :: proc(app: ^App, t: ^Tab, pos: [2]f32) -> (anchor, focus: lay.Text_Pos, ok: bool) {
+gesture_range :: proc(app: ^App, t: ^Tab, pos: [2]f32, scroll: f32) -> (anchor, focus: lay.Text_Pos, ok: bool) {
 	ss := &window_own(app).selection
-	tp := position_of(app, t, pos) or_return
+	tp := position_scrolled(app, t, pos, scroll) or_return
 	a, b, uok := unit_at(t, tp, ss.unit)
 	if !uok { a, b = tp, tp }
 	o := ss.origin
@@ -251,7 +271,7 @@ extend_to :: proc(app: ^App, t: ^Tab, pos: [2]f32) {
 	p := t.page
 	if !layout_fresh(t) { ss.stale = true; return }
 	ss.stale, ss.preview = false, {}
-	anchor, focus, ok := gesture_range(app, t, pos)
+	anchor, focus, ok := gesture_range(app, t, pos, t.scroll)
 	if !ok { return }
 	if anchor != focus && !ss.started {
 		if !fire_selectstart(t, anchor) { ss.cancelled = true; page.selection_clear(p); return }
@@ -279,13 +299,83 @@ selection_pointer_up :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 // the page. What it will select is shown meanwhile (Sel_Preview), when that can be known without the page.
 selection_preview_move :: proc(app: ^App, t: ^Tab, pos: [2]f32) {
 	ss := &window_own(app).selection
-	if !ss.down || ss.cancelled || t.page == nil || t.page != ss.page || !preview_possible(app, t) { return }
-	if !ss.moved && !ss.preview.on && !past_threshold(app, ss, pos) { return }
-	anchor, focus, ok := gesture_range(app, t, pos)
+	if !gesture_open(ss) || ss.cancelled || t.page == nil || t.page != ss.page { return }
+	ss.mouse = pos
+	if !preview_possible(app, t) { return }
+	if !ss.moved && !ss.preview.dragged {
+		if !past_threshold(app, ss, pos) { return }
+		ss.preview.dragged = true
+	}
+	preview_to(app, t, pos)
+}
+
+// The gesture is open: its press had its turn, or a chrome frame opened it.
+@(private = "file")
+gesture_open :: proc(ss: ^Selection_Shell) -> bool { return ss.down || ss.preview.pressed }
+
+// The preview, with the pointer at `pos` over the document as a chrome frame shows it.
+@(private = "file")
+preview_to :: proc(app: ^App, t: ^Tab, pos: [2]f32) {
+	ss := &window_own(app).selection
+	anchor, focus, ok := gesture_range(app, t, pos, shell_shown_scroll(t).y)
 	if !ok { return }
 	// (the gesture's first selection fires selectstart, which the page may cancel)
 	if anchor != focus && !ss.started && page.page_listens(t.page, "selectstart") { return }
-	ss.preview = {true, anchor, focus}
+	ss.preview.on, ss.preview.anchor, ss.preview.focus = true, anchor, focus
+}
+
+// A chrome frame (shell_frames.odin): a left press over the page, which waits for the page as any press does, and nothing of the user's before it. The gesture it will
+// begin is opened now, as start_gesture will, when its turn can be told from here: it runs none of the page's code, it is the first of a series (no word to find), it does
+// not extend (Shift), and it is on text that will select: no form control, nothing draggable, not the selection itself. Else the gesture begins at the page's turn.
+selection_preview_press :: proc(app: ^App, t: ^Tab, ev: platform.Event) {
+	ss := &window_own(app).selection
+	p := t.page
+	if p == nil || ev.button != .Left || .Shift in ev.mods || !preview_possible(app, t) || next_click(app, ss, ev) != 1 { return }
+	if page.page_listens(p, "mousedown") || page.page_listens(p, "pointerdown") { return }
+	target := lay.hit_test(&t.layout, ev.pos - active_window(app).page_rect.min, page_viewport(app), shell_shown_scroll(t).y).node
+	if target != base.NIL_HANDLE {
+		if _, drag := page.drag_source_for(p, target); drag != .None || in_control(t, target) { return }
+	}
+	pos, ok := position_scrolled(app, t, ev.pos, shell_shown_scroll(t).y)
+	if !ok { return }
+	if a, b, has := page.selection_range(p); has && lay.pos_compare(p.doc, a, pos) <= 0 && lay.pos_compare(p.doc, pos, b) < 0 { return }
+	ss.page, ss.press_pos, ss.mouse, ss.unit = p, ev.pos, ev.pos, .Char
+	ss.moved, ss.cancelled, ss.started = false, false, false
+	ss.scroller = scroller_of(t, pos.node)
+	ss.origin = {pos, pos}
+	ss.preview = {on = true, pressed = true, anchor = pos, focus = pos}
+}
+
+// The pointer is past the edge of the view a chrome frame scrolls, its button held: a frame is wanted though no input comes.
+selection_preview_scrolls :: proc(app: ^App) -> bool {
+	t := current_tab(app)
+	ss := &window_own(app).selection
+	if t == nil || t.page == nil || t.page != ss.page || ss.scroller != base.NIL_HANDLE || autoscroll_velocity(app, ss.mouse, active_window(app).page_rect).y == 0 { return false }
+	return preview_drags(app, t)
+}
+
+// A drag's selection can be shown in chrome frames.
+@(private = "file")
+preview_drags :: proc(app: ^App, t: ^Tab) -> bool {
+	ss := &window_own(app).selection
+	return gesture_open(ss) && (ss.moved || ss.preview.dragged) && !ss.cancelled && preview_possible(app, t)
+}
+
+// A chrome frame, its input taken: past the view's top or bottom the drag scrolls the document, at the speed of a full frame's selection_shell_frame (a box that scrolls
+// waits for the page, and so does sideways: shell_layout_wanted), and what the pointer is over then is selected; so does what the wheel scrolled under it.
+selection_preview_frame :: proc(app: ^App) {
+	t := current_tab(app)
+	ss := &window_own(app).selection
+	if t == nil || t.page == nil || t.page != ss.page || !preview_drags(app, t) { return }
+	now := time.tick_now()
+	dt := autoscroll_dt(ss.last_tick, now)
+	ss.last_tick = now
+	port := active_window(app).page_rect
+	if v := autoscroll_velocity(app, ss.mouse, port); v.y != 0 && ss.scroller == base.NIL_HANDLE {
+		shown := shell_shown_scroll(t)
+		shell_async_scroll_to(app, t, {shown.x, shown.y + v.y * dt})
+	}
+	if app.chrome_frames.pending_tab == t.id && app.chrome_frames.pending_scroll != {} { preview_to(app, t, autoscroll_inside(ss.mouse, port)) }
 }
 
 // What is shown of the gesture in a chrome frame is its preview: the page's last frame painted again with it.
@@ -302,14 +392,30 @@ preview_valid :: proc(p: ^page.Page, pv: Sel_Preview) -> bool {
 }
 
 // The gesture's next selection can be worked out and painted from the layout of the page's last frame (shell_frames.odin
-// shell_layout_paintable), the moves run none of the page's code, and the wheel did not move the page meanwhile (the moves
-// are hit-tested where the page's turn finds it).
+// shell_layout_paintable), the moves run none of the page's code, and the page was not moved sideways meanwhile: that offset is the layout's own, a chrome frame shows it
+// from kept pixels. (The document's vertical offset is taken before the moves at the page's turn: they are hit-tested where the preview hit-tests them.)
 @(private = "file")
 preview_possible :: proc(app: ^App, t: ^Tab) -> bool {
 	if !shell_layout_paintable(app, t) || !layout_fresh(t) { return false }
-	if app.chrome_frames.pending_tab == t.id && app.chrome_frames.pending_scroll != {} { return false }
+	if app.chrome_frames.pending_tab == t.id && app.chrome_frames.pending_scroll.x != 0 { return false }
 	return !page.page_listens(t.page, "pointermove") && !page.page_listens(t.page, "mousemove")
 }
+
+// A frame's time for automatic scrolling: since the last one, at most AUTOSCROLL_MAX_STEP_S (the frames may have stopped).
+@(private = "file")
+autoscroll_dt :: proc(last, now: time.Tick) -> f32 { return f32(clamp(time.duration_seconds(time.tick_diff(last, now)), 0, AUTOSCROLL_MAX_STEP_S)) }
+
+// How fast a drag scrolls with the pointer at `m` (window pixels) and `port` the view it scrolls, in pixels a second.
+@(private = "file")
+autoscroll_velocity :: proc(app: ^App, m: [2]f32, port: draw.Rect) -> [2]f32 {
+	past :: proc(v, lo, hi: f32) -> f32 { return v < lo ? v - lo : (v > hi ? v - hi : 0) }
+	d := [2]f32{past(m.x, port.min.x, port.max.x), past(m.y, port.min.y, port.max.y)}
+	return [2]f32{clamp(d.x * app.ix.autoscroll_speed, -app.ix.autoscroll_max, app.ix.autoscroll_max), clamp(d.y * app.ix.autoscroll_speed, -app.ix.autoscroll_max, app.ix.autoscroll_max)} * page_scale(app)
+}
+
+// The pointer clamped into the view: what is scrolled in gets selected.
+@(private = "file")
+autoscroll_inside :: proc(m: [2]f32, port: draw.Rect) -> [2]f32 { return {clamp(m.x, port.min.x + 1, port.max.x - 1), clamp(m.y, port.min.y + 1, port.max.y - 1)} }
 
 // The nearest scroll container of `node` that can scroll (NIL: the document scrolls).
 @(private = "file")
@@ -329,24 +435,31 @@ selection_shell_frame :: proc(app: ^App) {
 	wnd := active_window(app)
 	ss := &window_own(app).selection
 	now := time.tick_now()
-	dt := f32(clamp(time.duration_seconds(time.tick_diff(ss.last_tick, now)), 0, 0.1))
+	dt := autoscroll_dt(ss.last_tick, now)
 	ss.last_tick = now
 	t := current_tab(app)
 	for tab in tabs_all(app) { if tab.page != nil { page.selection_flush(tab.page) } }
 	if t == nil || t.page == nil || t.kind != .Web { ss.down, ss.preview = false, {}; return }
 	if ss.pending && layout_fresh(t) {
+		// (the moves that came with the press found no gesture: it goes on from where they left the pointer)
+		mouse := ss.mouse
 		ss.pending = false
 		start_gesture(app, t, ss.pending_ev)
+		ss.mouse = mouse
+		if ss.down && past_threshold(app, ss, mouse) {
+			ss.moved = true
+			extend_to(app, t, mouse)
+		}
 	}
 	// the moves of this frame have had their turn: what a chrome frame showed of them is the selection now, but where the
-	// layout was older than the document (the script changed it), which the next frame, laid out, extends to the pointer
-	waits := false
+	// layout was older than the document (the script changed it), which the next frame, laid out, extends to the pointer,
+	// or where the gesture's press waits for that layout
+	waits := ss.pending
 	if ss.stale && ss.down && ss.moved && !ss.cancelled && t.page == ss.page {
 		extend_to(app, t, ss.mouse)
 		waits = ss.stale
-		if waits { request_frames(app, 2) }
 	}
-	if !waits { ss.stale, ss.preview = false, {} }
+	if waits { request_frames(app, 2) } else { ss.stale, ss.preview = false, {} }
 	if !ss.down || t.page != ss.page || !ss.moved || ss.cancelled || app.ix.autoscroll_speed <= 0 { return }
 	port := wnd.page_rect
 	if ss.scroller != base.NIL_HANDLE {
@@ -356,11 +469,8 @@ selection_shell_frame :: proc(app: ^App) {
 			port = {{max(port.min.x, wnd.page_rect.min.x), max(port.min.y, wnd.page_rect.min.y)}, {min(port.max.x, wnd.page_rect.max.x), min(port.max.y, wnd.page_rect.max.y)}}
 		}
 	}
-	past :: proc(v, lo, hi: f32) -> f32 { return v < lo ? v - lo : (v > hi ? v - hi : 0) }
-	m := ss.mouse
-	d := [2]f32{past(m.x, port.min.x, port.max.x), past(m.y, port.min.y, port.max.y)}
-	if d == {} { return }
-	speed := [2]f32{clamp(d.x * app.ix.autoscroll_speed, -app.ix.autoscroll_max, app.ix.autoscroll_max), clamp(d.y * app.ix.autoscroll_speed, -app.ix.autoscroll_max, app.ix.autoscroll_max)} * page_scale(app)
+	speed := autoscroll_velocity(app, ss.mouse, port)
+	if speed == {} { return }
 	step := speed * dt
 	moved := false
 	if ss.scroller != base.NIL_HANDLE {
@@ -376,9 +486,8 @@ selection_shell_frame :: proc(app: ^App) {
 		doc_scroll_x_set(t, t.layout.doc_scroll_x + step.x, page_viewport(app).x)
 		moved = before != {t.layout.doc_scroll_x, t.scroll}
 	}
-	// keep selecting under the pointer, clamped into the view (what is scrolled in gets selected)
-	inside := [2]f32{clamp(m.x, port.min.x + 1, port.max.x - 1), clamp(m.y, port.min.y + 1, port.max.y - 1)}
-	extend_to(app, t, inside)
+	// keep selecting under the pointer, clamped into the view
+	extend_to(app, t, autoscroll_inside(ss.mouse, port))
 	request_frames(app, 2)
 	_ = moved
 }
