@@ -47,7 +47,8 @@ link_preload_request :: proc(u, as: string, module, has_crossorigin: bool, cross
 	destination, known := preload_destination(as)
 	if module { destination, known = .Script, true }
 	if !known { return {} }
-	r := fetch.Request_Desc{url = u, mode = .No_Cors, credentials = .Include, destination = destination, script = module ? .Module : .Classic}
+	r := fetch.Request_Desc{url = u, mode = .No_Cors, credentials = .Include, destination = destination}
+	if destination == .Script { r.script = module ? .Module : .Classic }
 	if has_crossorigin || module || destination == .Font {
 		r.mode = .Cors
 		r.credentials = base.ascii_equal_fold(crossorigin, "use-credentials") ? .Include : .Same_Origin
