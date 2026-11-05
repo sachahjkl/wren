@@ -275,7 +275,7 @@ mark_keyed :: proc(m: ^Marker, h: base.Handle, set: u32) {
 	done := [2]u64{u64(h), u64(set)}
 	if done in m.keyed { return }
 	m.keyed[done] = true
-	keys := key_set_keys(set)
+	keys := key_set_keys(&m.e.key_sets, set)
 	if len(keys) == 0 { mark(m, h, true); return }
 	stack := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
 	append(&stack, h)
@@ -486,9 +486,9 @@ children_removed :: proc(m: ^Marker, p: base.Handle, mask: u64, mask_gen: u32) {
 			key := Walk_Key{p, ix, 2}
 			if key in m.emptied { continue }
 			m.emptied[key] = true
-			pos := reach_union(ix.pos_fwd, ix.pos_bwd)
+			pos := reach_union(ix.keys, ix.pos_fwd, ix.pos_bwd)
 			if reach_any(pos) || ix.sib_any {
-				every := reach_union(pos, ix.sib_rel)
+				every := reach_union(ix.keys, pos, ix.sib_rel)
 				every.self = true
 				for ch := pn.first_child; ch != base.NIL_HANDLE; ch = dom.get(m.doc, ch).next {
 					if !is_element_node(m.doc, ch) { continue }
@@ -521,15 +521,15 @@ inserted_features :: proc(m: ^Marker, h: base.Handle, n: ^dom.Node) {
 @(private = "file")
 inserted_features_of :: proc(m: ^Marker, ix: ^Inv_Index, h: base.Handle, n: ^dom.Node) {
 	r := ix.keyless
-	if t, ok := ix.by_tag[n.name]; ok { r = reach_union(r, t) }
+	if t, ok := ix.by_tag[n.name]; ok { r = reach_union(ix.keys, r, t) }
 	for a in n.attrs {
-		if x, ok := ix.by_attr[a.name]; ok { r = reach_union(r, x) }
+		if x, ok := ix.by_attr[a.name]; ok { r = reach_union(ix.keys, r, x) }
 		switch a.name {
-		case "id": if x, ok := ix.by_id[a.value]; ok { r = reach_union(r, x) }
+		case "id": if x, ok := ix.by_id[a.value]; ok { r = reach_union(ix.keys, r, x) }
 		case "class":
 			cls := make(map[string]bool, 8, context.temp_allocator)
 			each_class(a.value, &cls)
-			for c in cls { if x, ok := ix.by_class[c]; ok { r = reach_union(r, x) } }
+			for c in cls { if x, ok := ix.by_class[c]; ok { r = reach_union(ix.keys, r, x) } }
 		}
 	}
 	r.self, r.desc = false, false

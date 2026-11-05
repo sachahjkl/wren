@@ -143,6 +143,7 @@ Engine :: struct {
 	has_spare: bool,
 	spare_by_node: [dynamic]^Computed,    // the slots of a recycled pass, empty, their room kept (see styled_recycle)
 	spare_nodes:   [dynamic]base.Handle,
+	key_sets: Key_Sets,                      // what the invalidation indexes of its rules name (invalidation.odin)
 	spare_arenas: [dynamic]^base.Arena,   // style threads' arenas given back by recycled passes, emptied, for the next ones (parallel.odin)
 	spare_arena_bytes: int,                  // what they held (bounded by recycle_bytes)
 	ended:     [dynamic]^Styled,          // passes replaced that a layout still reads (styled_read_begin)
@@ -224,6 +225,7 @@ engine_destroy :: proc(e: ^Engine) {
 	delete(e.spare_nodes)
 	for a in e.spare_arenas { thread_arena_free(a) }
 	delete(e.spare_arenas)
+	key_sets_destroy(&e.key_sets)
 	settings_destroy(&e.settings)
 	free(e)
 }
