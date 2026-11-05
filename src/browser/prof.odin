@@ -32,18 +32,22 @@ import "wb:base"
 import "wb:images"
 import lay "wb:layout"
 import "wb:page"
+import "wb:tools/crashtrace"
 import "wb:trace"
 
 when ODIN_OS == .Windows {
 foreign import dbghelp "system:dbghelp.lib"
 foreign import kernel32_prof "system:Kernel32.lib"
+foreign import ntdll_prof "system:ntdll.lib"
+
+@(default_calling_convention = "system")
+foreign ntdll_prof {
+	NtQuerySystemInformation :: proc(class: u32, buffer: rawptr, size: u32, returned: ^u32) -> i32 ---
+}
 
 @(default_calling_convention = "system")
 foreign kernel32_prof {
 	GetModuleHandleExW :: proc(flags: u32, address: rawptr, out: ^win.HMODULE) -> win.BOOL ---
-	RtlLookupFunctionEntry :: proc(pc: u64, image_base: ^u64, history: rawptr) -> rawptr ---
-	RtlVirtualUnwind :: proc(kind: u32, image_base: u64, pc: u64, entry: rawptr, ctx: ^win.CONTEXT, handler_data: ^rawptr, establisher: ^u64, pointers: rawptr) -> rawptr ---
-	QueryThreadCycleTime :: proc(thread: win.HANDLE, cycles: ^u64) -> win.BOOL ---
 	GetThreadDescription :: proc(thread: win.HANDLE, description: ^win.wstring) -> win.HRESULT ---
 }
 }
@@ -241,15 +245,12 @@ sym_name :: proc(proc_h: win.HANDLE, addr: u64, buf: []u8) -> (name: string, ok:
 
 SAMPLE_DEPTH :: 24
 SAMPLE_PERIOD_NS :: 1_000_000
+SAMPLE_WALK_MOST :: 160   // frames walked for the SAMPLE_DEPTH ones in the executable
 Sample :: struct { rip: u64, phase: Phase, t: i64, from: [SAMPLE_DEPTH]u64 }   // from: the callers inside the executable, innermost first (WREN_SAMPLE_STACK=1)
 
 // A sample of one of the process's other threads (WREN_SAMPLE_THREADS=1): where it was, and who called (the executable's frames).
 Osample :: struct { tid: u32, rip: u64, from: [SAMPLE_DEPTH]u64 }
 
-// A thread that ran this recently is sampled at every tick (other_sampler_proc).
-THREAD_ACTIVE_SECONDS :: 1.0
-// ... when it ran more than this since the last tick: being stopped and resumed moves the counter of a thread that sleeps too.
-THREAD_ACTIVE_CYCLES :: 1_000_000
 
 Prof :: struct {
 	on:        bool,
@@ -370,30 +371,17 @@ prof_init :: proc(app: ^App) {
 	}
 }
 
-// The first two return addresses of the suspended thread that lie in the executable (the system's frames between are
-// skipped; the unwind uses the unwind tables the system knows, JIT code's included).
-callers_in_exe :: proc(ctx: ^win.CONTEXT) -> (out: [SAMPLE_DEPTH]u64) {
+// The return addresses that lie in the executable (the system's frames between are skipped; the unwind uses the unwind tables the system knows, JIT code's
+// included). In the copy made while the thread was stopped, once it runs again (crashtrace.Stack_Copy: a walk in place ended the browser on cnn.com, code without tables
+// sends it through nonsense, and the lookup of the tables takes a lock the stopped thread may hold).
+callers_in_exe :: proc(stack: ^crashtrace.Stack_Copy, ctx: ^win.CONTEXT) -> (out: [SAMPLE_DEPTH]u64) {
+	pcs: [SAMPLE_WALK_MOST]u64
 	n := 0
-	for depth in 0 ..< 160 {
-		pc := ctx.Rip
-		if pc >= prof.exe_lo && pc < prof.exe_hi && depth > 0 || (depth == 0 && pc >= prof.exe_lo && pc < prof.exe_hi) {
-			out[n] = pc
-			n += 1
-			if n == SAMPLE_DEPTH { return }
-		}
-		base: u64
-		entry := RtlLookupFunctionEntry(pc, &base, nil)
-		if entry == nil {
-			// a leaf without tables: the return address is at the top of the stack
-			if ctx.Rsp == 0 { return }
-			ctx.Rip = (^u64)(uintptr(ctx.Rsp))^
-			ctx.Rsp += 8
-		} else {
-			handler: rawptr
-			establisher: u64
-			RtlVirtualUnwind(0, base, pc, entry, ctx, &handler, &establisher, nil)
-		}
-		if ctx.Rip == 0 { return }
+	for pc in pcs[:crashtrace.stack_walk(stack, ctx, pcs[:])] {
+		if pc < prof.exe_lo || pc >= prof.exe_hi { continue }
+		out[n] = pc
+		n += 1
+		if n == SAMPLE_DEPTH { return }
 	}
 	return
 }
@@ -409,18 +397,24 @@ sampler_proc :: proc(_: ^thread.Thread) {
 	sync.atomic_store(&sampler_tid, win.GetCurrentThreadId())   // (the other threads' sampler leaves it out)
 	timer := pacer_timer_create()
 	defer pacer_timer_destroy(timer)
+	stack: crashtrace.Stack_Copy
+	if prof.stacks { crashtrace.stack_copy_init(&stack) }
+	defer crashtrace.stack_copy_destroy(&stack)
 	for !sync.atomic_load(&prof.stop) {
 		sample_tick(timer)
 		if win.SuspendThread(prof.target) == ~u32(0) { continue }
 		ctx: win.CONTEXT
 		ctx.ContextFlags = prof.stacks ? CONTEXT_FULL_AMD64 : CONTEXT_CONTROL_AMD64
-		if win.GetThreadContext(prof.target, &ctx) && prof.n_samples < len(prof.samples) {
-			sm := Sample{u64(ctx.Rip), prof.clock.cur, qpc(), {}}
-			if prof.stacks { sm.from = callers_in_exe(&ctx) }
+		got := win.GetThreadContext(prof.target, &ctx)
+		if got && prof.stacks { crashtrace.stack_copy_take(&stack, ctx.Rsp) }
+		phase := prof.clock.cur
+		win.ResumeThread(prof.target)
+		if got && prof.n_samples < len(prof.samples) {
+			sm := Sample{u64(ctx.Rip), phase, qpc(), {}}
+			if prof.stacks { sm.from = callers_in_exe(&stack, &ctx) }
 			prof.samples[prof.n_samples] = sm
 			prof.n_samples += 1
 		}
-		win.ResumeThread(prof.target)
 	}
 }
 
@@ -472,72 +466,101 @@ module_of :: proc(addr: u64) -> string {
 	return name
 }
 
-// WREN_SAMPLE_THREADS=1: every millisecond the other threads of the process that ran in the last THREAD_ACTIVE_SECONDS are
-// stopped in turn and their instruction pointers and callers read (the main thread has its own sampler): a busy worker
-// among ninety mostly idle threads has its samples, the others none. A thread's cycle counter moves when it leaves the
-// processor, not while it runs: choosing the thread whose counter moved most found each one just after its burst, in its
-// wait (0 of 1873 samples running on repeated loads of p10k, whose bursts last a few ms), and each sample moved the counter of
-// the thread it stopped, sleeping or not. It sees threads that run for long (nodes10k's page thread); those bursts it still
-// does not (0 of 44 807 samples on repeated loads of p10k, not explained: docs/performance.md round 25).
+// The system's list of the processes and their threads: what a thread is doing right now. (Its layout is the one the system's headers give for 64 bits.)
+@(private = "file") SYSTEM_PROCESS_INFORMATION :: 5
+@(private = "file") SYSTEM_LIST_BYTES :: 8 << 20
+@(private = "file") LIST_NEXT_ENTRY, LIST_THREAD_COUNT, LIST_PROCESS_ID, LIST_THREADS :: 0x0, 0x4, 0x50, 0x100
+@(private = "file") LIST_THREAD_BYTES, LIST_THREAD_ID, LIST_THREAD_STATE :: 0x50, 0x30, 0x44
+@(private = "file") THREAD_READY, THREAD_RUNNING, THREAD_STANDBY :: 1, 2, 3
+@(private = "file") THREAD_SAMPLED_RIGHTS :: 0x2 | 0x8 | 0x800   // SUSPEND_RESUME | GET_CONTEXT | QUERY_LIMITED_INFORMATION
+@(private = "file") SYSCALL_OPCODE :: [2]u8{0x0F, 0x05}
+
+// WREN_SAMPLE_THREADS=1: the other threads of the process that are on a processor or waiting for one are stopped in turn, their instruction pointers read, their stacks copied (the main thread
+// has its own sampler). Which threads those are comes from the system's list, which is exact and slow (30 ms on a machine with many processes, the list being all of theirs): each thread it
+// names is then followed every millisecond, for as long as the list took, until it goes back into the system.
+// What was tried before, in order: the thread whose cycle counter moved most, then every thread that ran in the last second. The counter moves when a thread leaves the processor, and a list of
+// the threads read twice a second never saw one that lived for a load: the samples were of threads that had just gone back to their wait (0 of 44 807 samples running on repeated loads of p10k,
+// docs/performance.md round 25), and stopping a sleeping thread woke it for nothing.
 other_sampler_proc :: proc(_: ^thread.Thread) {
-	pid := win.GetCurrentProcessId()
+	pid := uintptr(win.GetCurrentProcessId())
 	me := win.GetCurrentThreadId()
-	// per thread of the process: its handle, its cycle counter when last read, when that moved last
-	Watched :: struct { tid: u32, h: win.HANDLE, cycles: u64, ran: i64 }
-	threads := make([dynamic]Watched, 0, 128)
-	next_refresh: i64
+	handles := make(map[u32]win.HANDLE)
+	followed := make([dynamic]u32, 0, 64)
+	list := make([]u8, SYSTEM_LIST_BYTES)
+	defer delete(list)
 	timer := pacer_timer_create()
 	defer pacer_timer_destroy(timer)
+	stack: crashtrace.Stack_Copy
+	crashtrace.stack_copy_init(&stack)
+	defer crashtrace.stack_copy_destroy(&stack)
 	for !sync.atomic_load(&prof.stop) {
-		sample_tick(timer)
-		now := qpc()
-		if now >= next_refresh {
-			next_refresh = now + i64(prof.freq / 2)
-			old := threads
-			threads = make([dynamic]Watched, 0, max(len(old), 128))
-			snap := win.CreateToolhelp32Snapshot(win.TH32CS_SNAPTHREAD, 0)
-			if snap != win.INVALID_HANDLE_VALUE {
-				te: win.THREADENTRY32
-				te.dwSize = size_of(te)
-				ok := win.Thread32First(snap, &te)
-				for ok {
-					tid := te.th32ThreadID
-					if te.th32OwnerProcessID == pid && tid != me && tid != prof.main_tid {
-						w := Watched{tid = tid}
-						for &o in old { if o.tid == tid { w, o.h = o, nil; break } }
-						if w.h == nil { w.h = win.OpenThread(0x2 | 0x8 | 0x800, false, tid) }   // SUSPEND_RESUME | GET_CONTEXT | QUERY_LIMITED_INFORMATION
-						if w.h != nil { append(&threads, w) }
-					}
-					ok = win.Thread32Next(snap, &te)
-				}
-				win.CloseHandle(snap)
+		began := qpc()
+		clear(&followed)
+		size: u32
+		if NtQuerySystemInformation(SYSTEM_PROCESS_INFORMATION, raw_data(list), u32(len(list)), &size) >= 0 {
+			entry := uintptr(raw_data(list))
+			for entry != 0 && (^uintptr)(entry + LIST_PROCESS_ID)^ != pid {
+				next := (^u32)(entry + LIST_NEXT_ENTRY)^
+				entry = next == 0 ? 0 : entry + uintptr(next)
 			}
-			for o in old { if o.h != nil { win.CloseHandle(o.h) } }
-			delete(old)
+			for i in 0 ..< (entry == 0 ? 0 : uintptr((^u32)(entry + LIST_THREAD_COUNT)^)) {
+				row := entry + LIST_THREADS + i * LIST_THREAD_BYTES
+				state := (^u32)(row + LIST_THREAD_STATE)^
+				tid := u32((^uintptr)(row + LIST_THREAD_ID)^)
+				if state != THREAD_RUNNING && state != THREAD_READY && state != THREAD_STANDBY { continue }
+				if tid == me || tid == prof.main_tid || tid == sync.atomic_load(&sampler_tid) { continue }
+				append(&followed, tid)
+			}
 		}
-		active := i64(THREAD_ACTIVE_SECONDS * prof.freq)
-		for &w in threads {
-			c: u64
-			if !QueryThreadCycleTime(w.h, &c) { continue }
-			if c - w.cycles > THREAD_ACTIVE_CYCLES { w.ran = now }
-			w.cycles = c
-			if w.tid == sync.atomic_load(&sampler_tid) || w.ran == 0 || now - w.ran > active { continue }
-			if win.SuspendThread(w.h) == ~u32(0) { continue }
-			ctx: win.CONTEXT
-			ctx.ContextFlags = CONTEXT_FULL_AMD64
-			if win.GetThreadContext(w.h, &ctx) && prof.n_osamples < len(prof.osamples) {
-				s := Osample{tid = w.tid, rip = u64(ctx.Rip)}
-				s.from = callers_in_exe(&ctx)
-				prof.osamples[prof.n_osamples] = s
-				prof.n_osamples += 1
+		took := qpc() - began
+		until := qpc() + took
+		for {
+			for i := len(followed) - 1; i >= 0; i -= 1 {
+				if !other_sample(followed[i], &handles, &stack) { unordered_remove(&followed, i) }
 			}
-			win.ResumeThread(w.h)
-			if prof.names[w.tid] == "" { prof.names[w.tid] = thread_name(w.h) }
+			sample_tick(timer)
+			if len(followed) == 0 || qpc() >= until || sync.atomic_load(&prof.stop) { break }
 		}
 	}
-	for w in threads { win.CloseHandle(w.h) }
-	delete(threads)
+	for _, h in handles { win.CloseHandle(h) }
+	delete(handles)
+	delete(followed)
 }
+
+// A sample of a thread. False: it has left user code, or the process.
+@(private = "file")
+other_sample :: proc(tid: u32, handles: ^map[u32]win.HANDLE, stack: ^crashtrace.Stack_Copy) -> bool {
+	h, known := handles[tid]
+	if !known {
+		h = win.OpenThread(THREAD_SAMPLED_RIGHTS, false, tid)
+		if h == nil { return false }
+		handles[tid] = h
+		prof.names[tid] = thread_name(h)
+	}
+	if win.SuspendThread(h) == ~u32(0) {   // (it ended, and its id may come back)
+		win.CloseHandle(h)
+		delete_key(handles, tid)
+		return false
+	}
+	ctx: win.CONTEXT
+	ctx.ContextFlags = CONTEXT_FULL_AMD64
+	got := win.GetThreadContext(h, &ctx)
+	if got { crashtrace.stack_copy_take(stack, ctx.Rsp) }
+	win.ResumeThread(h)
+	if !got { return false }
+	rip := u64(ctx.Rip)
+	if prof.n_osamples < len(prof.osamples) {
+		s := Osample{tid = tid, rip = rip}
+		s.from = callers_in_exe(stack, &ctx)
+		prof.osamples[prof.n_osamples] = s
+		prof.n_osamples += 1
+	}
+	before: [2]u8
+	read: uint
+	win.ReadProcessMemory(win.GetCurrentProcess(), rawptr(uintptr(rip - len(before))), &before, len(before), &read)
+	return before != SYSCALL_OPCODE
+}
+
 
 // The name a thread gave itself ("": none).
 @(private = "file")
