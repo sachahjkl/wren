@@ -17,6 +17,7 @@ package page
 import "core:fmt"
 import "core:strings"
 import "wb:base"
+import "wb:fetch"
 import "wb:host"
 import "wb:url"
 
@@ -214,7 +215,7 @@ shared_connect :: proc(c: ^Call, u: string, name: string, type: Api_WorkerType, 
 	}
 	pu, ok := url.parse(u, &p.env.location, context.temp_allocator)
 	if !ok { return 0, fail(c, .Syntax, fmt.tprintf("SyntaxError: %q is not a valid URL", u)) }
-	if pu.scheme != "data" && !url.same_origin(url.origin_of(pu, context.temp_allocator), p.env.origin) {
+	if pu.scheme != "data" && !url.same_origin(fetch.url_origin(pu, context.temp_allocator), p.env.origin) {
 		return 0, fail(c, .Security, fmt.tprintf("SecurityError: %s is not same-origin with the document", pu.href))
 	}
 	key := storage_origin_key(p)

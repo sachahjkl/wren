@@ -20,6 +20,7 @@ package page
 import "core:fmt"
 import "core:strings"
 import "wb:dom"
+import "wb:fetch"
 import "wb:url"
 
 NESTED_MESSAGE :: 0
@@ -137,7 +138,7 @@ nested_host_create :: proc(ph: ^Worker_Host, m: ^Worker_Msg) {
 	case why != "":
 	case !ok: why = fmt.tprintf("Worker: invalid URL %q", m.text)
 	case ph.depth + 1 > ws.max_depth: why = fmt.tprintf("Worker: workers nest %d deep at most (workers.max_depth)", ws.max_depth)
-	case u.scheme != "data" && !url.same_origin(url.origin_of(u, context.temp_allocator), ph.env.origin):
+	case u.scheme != "data" && !url.same_origin(fetch.url_origin(u, context.temp_allocator), ph.env.origin):
 		// (HTML: the script is fetched in mode same-origin for its parent: the fetch fails, an error event follows)
 		why = fmt.tprintf("Worker: %s is not same-origin with its parent worker %s", u.href, ph.url)
 	case !worker_take_slot(ws): why = fmt.tprintf("Worker: the browser already runs %d workers (workers.max_total)", ws.max_total)

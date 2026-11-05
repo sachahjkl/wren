@@ -270,7 +270,7 @@ worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascrip
 	u, ok := url.parse(src, &p.env.location, context.temp_allocator)
 	if !ok { log(p, .Error, fmt.tprintf("Worker: invalid URL %q", src)); return 0 }
 	if u.scheme != "data" && worklet == nil {
-		o := url.origin_of(u, context.temp_allocator)
+		o := fetch.url_origin(u, context.temp_allocator)
 		if !url.same_origin(o, p.env.origin) {
 			log(p, .Error, fmt.tprintf("Worker: %s is not same-origin with the document (SecurityError)", u.href)); return 0
 		}
@@ -336,6 +336,11 @@ worker_host_new :: proc(p: ^Page, u: url.URL, name: string, javascript, module: 
 	h.env.agent_cluster = creator.agent_cluster
 	h.env.on_violation = worker_csp_violation
 	h.env.violation_user = h
+	if u.scheme == "blob" {
+		// (an opaque origin in its text says nothing: the worker is of its creator's, and only then may it read its own script)
+		url.origin_destroy(&h.env.origin)
+		h.env.origin = url.origin_clone(creator.origin)
+	}
 	if u.scheme == "data" {
 		// a data: worker has an opaque origin and inherits the policies of its creator
 		for pol in creator.policies.policies { append(&h.env.policies.policies, csp.parse_policy(pol.raw, pol.disposition)) }
@@ -435,6 +440,7 @@ worker_spawn :: proc(h: ^Worker_Host, image: []byte) {
 	g.worklet = h.worklet
 	h.worklet = nil
 	g.embedder_policy, g.cross_origin_isolated = h.env.embedder_policy, h.env.cross_origin_isolated
+	g.origin = url.origin_clone(h.env.origin)
 	if h.env.agent_cluster == 0 { h.env.agent_cluster = wasm.user_cluster_new() } else { wasm.user_cluster_retain(h.env.agent_cluster) }
 	g.agent_cluster = h.env.agent_cluster
 	// service_worker.odin: a service worker's instance, or another worker's view as a client of its document's controller
@@ -780,6 +786,8 @@ worker_terminate_object :: proc(p: ^Page, w: u64) -> dom.Error {
 ////////////////////////////////
 // Worker side
 
+Worker_Origin :: url.Origin   // (in Worker_Global the field `url` hides the package)
+
 Worker_Global :: struct {
 	link:     ^Worker_Link,
 	pages:    ^Pages,               // its creator's (worker_main binds this thread to them)
@@ -808,6 +816,7 @@ Worker_Global :: struct {
 	depth:    int,                       // how deep it is nested (1: a document's worker)
 	can_block: bool,                     // [[CanBlock]] of its agent: not a service worker
 	embedder_policy: fetch.Embedder_Policy,
+	origin:   Worker_Origin,      // its host's: a blob: worker's is its creator's, not what its URL says
 	cross_origin_isolated: bool,
 	agent_cluster: u64,                  // (one reference, given back when it goes)
 	worklet:  ^webaudio.Worklet,         // an AudioWorklet's realm: what the render thread asks of it (one reference)
@@ -822,6 +831,7 @@ worker_global_free :: proc(g: ^Worker_Global) {
 	js_web_settings_destroy(&g.settings.js_web)
 	webaudio.worklet_release(g.worklet)
 	delete(g.url); delete(g.name); delete(g.image); delete(g.storage_key)
+	url.origin_destroy(&g.origin)
 	sw_global_free(&g.sw)
 	delete(g.client_sw)
 	for m in g.client_inbox { delete(m) }
@@ -903,6 +913,8 @@ worker_realm_create :: proc(g: ^Worker_Global) -> ^Page {
 	u, ok := url.parse_absolute(g.url, context.temp_allocator)
 	if !ok { u, _ = url.parse_absolute("about:blank", context.temp_allocator) }
 	p.env = fetch.environment_make(u)
+	url.origin_destroy(&p.env.origin)
+	p.env.origin = url.origin_clone(g.origin)
 	p.env.embedder_policy, p.env.cross_origin_isolated, p.env.agent_cluster = g.embedder_policy, g.cross_origin_isolated, g.agent_cluster
 	p.doc = dom.document_create(p.scope, p.tag)   // never exposed: holds the listener id counter of the realm's objects
 	p.dp.tag = p.tag
