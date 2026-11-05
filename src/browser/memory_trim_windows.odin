@@ -19,7 +19,7 @@ foreign kernel32_trim {
 
 memory_trim_native :: proc(app: ^App) {
 	when !render.USE_WGPU {
-		if app.r.ctx != nil { app.r.ctx->Flush() }
+		if app.r.ctx != nil { app.r.ctx->ClearState(); app.r.ctx->Flush() }   // (what Trim asks for first: what is still bound is not given back)
 		if app.r.device != nil {
 			dev3: ^dxgi.IDevice3
 			if windows.SUCCEEDED(app.r.device->QueryInterface(dxgi.IDevice3_UUID, (^rawptr)(&dev3))) {
