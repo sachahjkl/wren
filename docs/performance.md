@@ -2259,6 +2259,84 @@ callers of `has_class` are inferred, item 4's from what the fix took away, and w
 Tests: `test_all -Quick -NoAsan` with `build/native` copied with its stamp (no Cargo): the unit tests of host, dom, css, html, fetch, style, page, browser and remote, the end-to-end tests of JavaScript
 loading, pages, the DOM, nested documents, images, the HTTP cache, network policy, the transport on both stacks, the content blocker, site compatibility and the remote channel, the changelog and the site: all pass. New: the
 six named above. Not run: the full suite, WPT, the unit tests under AddressSanitizer.
+## What changed, round 27: memory, what a long session on many sites keeps
+
+The numbers of `wrentool sweep`: example.com 190 MB of private bytes, a Wikipedia article 500 MB, cnn.com 2 GB, 4.7 GB (6.4 on another day) after 37 sites in one process.
+Repeated open and close of one site settled near 300 MB: what was kept was kept per site. Headless, development builds, RTX 4070 SUPER, 16 logical processors, other agents building
+beside it (a third of the machine at one reading); throwaway profiles; every site visited through `wrentool sweep -OneProcess`, one visit at a time.
+
+**The measure.** `Wren.stats` has `memory`, the heaps and private pages against what each store says it holds; `Wren.memoryReport` writes the allocations by kind (a heap's segment, a
+thread's stack from its TEB, a Wasm memory by its 4 GiB reservation, code); `wrentool sweep` writes `memory_<shard>.tsv` after each page, and with `-MemoryReports` a report before and after
+`Wren.memoryTrim`. The check build's `.live` file names the tracked blocks by place. For what those do not see, a throwaway build hooked `NtAllocateVirtualMemory` and kept the call stack of
+each commit: not committed.
+
+**Where it was**, in MB, one tab, after the 16th site (the Guardian), before and after items 1, 3 to 7 below; then after the 21st site (the Verge) with all of them, a trim just made. Before, the style arenas are in the first line:
+
+| | before | after | 21st site, final code |
+|---|---|---|---|
+| private bytes | 2 419 | 1 364 | 2 928 |
+| Wasm linear memories (realms of pages and frames) | 892 | 221 | 1 401 |
+| process heaps | 729 | 473 | 834 |
+| mapped by the kernel for the GPU driver, sheets' arenas, the rest | 630 | 467 | 454 |
+| style arenas | | 69 | 59 |
+| compiled code | 76 | 36 | 40 |
+| thread stacks | 10 | 10 | 11 |
+
+Of the heaps after 11 sites (check build, 581 MB in use): 259 MB tracked (HTTP bodies 35, bytecode 22, layout arrays 76, decoded images 27, media 25, web fonts 18), 84 MB of temporary arenas,
+the rest native (Wasmtime's modules and stores, Lexbor, the decoders, DirectWrite).
+
+example.com, 190 MB: 65 MB of regions no `NtAllocateVirtualMemory` of the process made: they are the GPU driver's, mapped by the kernel (instance buffers and uploads are what they contain), 30 MB
+of the driver's own writable image sections, 19 MB the engine's code, 30 MB of heaps once the temporary arenas are small (72 KB per thread of `font.l1_words` in thread-local storage: 7 MB
+over the 96 threads, of which 68 are the driver's), 6.5 MB of realm, 7 MB of stacks.
+
+**What was wrong, by bytes.**
+
+1. *The back/forward cache counted a realm for 8 MB* (`history.bfcache.page_overhead`). A news site's is 136 MB: five such pages were "under" the 512 MB limit, and 21 instances lived after 15 sites.
+   `page.memory_held` now reads the linear memories of the page and of its frames, nodes count 4 KiB (a page of 10 000 nodes takes 50 MB), the limit is 128 MB. A page kept gives back the style arenas
+   and the layout arrays only its next pass would use.
+2. *A layout kept its arrays from one document to the next*: fragments, lines, segments, sized by the largest page the tab showed: 300 MB after lemonde.fr, carried to every page after it. Past
+   1 MiB an array goes at the new document (`LAYOUT_KEEP_BYTES`); the first pass sizes them from the document anyway.
+3. *Compiled modules were counted by their code alone*: 14 KB of code took 40 KB of private bytes. The JIT made 12 000 of them in 37 sites, all kept. `MODULE_BYTES` counts the rest, the
+   limit is 64 MB; what is evicted comes back from the disk cache.
+4. *Caches sized for one big page, kept for the session*: decoded images 512 -> 128 MB, bytecode 64 -> 32, HTTP bodies 64 -> 32 (the last two are on disk).
+5. *The key sets of style invalidation were process-wide, never freed*: tens of MB after a few dozen sites, and a table no page could give back. They belong to the engine now.
+6. *Temporary arenas*: every thread that used one kept 1 MiB, 84 blocks after a few sites. 64 KiB now, 1 MiB for the threads of a frame's passes (`host.thread_temp_hot`). The page thread's kept the
+   size of the largest page laid out (42 MB): a trim takes it back to its first size.
+7. *A trim came only when idle*: never with an animation on screen. A closed tab or a kept page gone asks for one within a second, at most every 10 s (`memory_trim_soon`).
+
+**The result.** `wrentool sweep -OneProcess` on the same 37 sites, private MB after each, one run of each (one tab; the session ends on apple.com):
+
+| site | before | after |
+|---|---|---|
+| 1 example.com | 192 | 182 |
+| 5 python.org | 862 | 531 |
+| 10 react.dev | 1 720 | 969 |
+| 15 bbc.com/news | 3 068 | 1 316 |
+| 20 arstechnica.com | 3 544 | 1 864 |
+| 22 cnn.com | 4 701 | 2 777 |
+| 25 old.reddit.com | 4 507 | 2 211 |
+| 30 gitlab.com/explore | 4 442 | 2 495 |
+| 34 bing.com | 4 694 | 2 454 |
+| 37 apple.com | 4 732 | 2 951 |
+
+Heap in use 1 054 -> 578 MB, compiled modules 11 999 -> 960, images 330 -> 120 MB, at the end. From the 22nd site on the session goes up and down with the page shown, between 2.2 and 2.9 GB.
+What it follows now is the sites' own memory: the Verge's frames and workers hold 24 linear memories, 1.4 GB, while it is open. All 37 pages passed, no crash, no hang.
+
+Each site alone in a Wren of its own, two runs of each, private MB: example.com 192, 189 -> 173, 188; the Wikipedia article 426, 409 -> 426, 345; lemonde.fr 1 082, 983 -> 759, 748; cnn.com 1 865, 1 647 ->
+2 099, 1 479 (cnn differs by 600 MB from one visit to the next: its adverts). So a single page changes little: **example.com is not far lower**, the target was not reached there, see below.
+
+A local session (`examples/site/memory-growth.html`, 40 pages unlike each other, 40 modules each): 402 -> 334 MB at the end, compiled modules 1 740 -> 1 002 and no more from the 30th page.
+
+Speed: `wrentool bench perf -Only js_nodes10k`, development builds, base and final in turn, 6 of each on the loaded machine: load 350 against 353 ms (median), frames as many in the same time within their
+scatter (553 to 658, 549 to 616), private bytes 245 -> 233 MB. `p10k_load`, 4 of each: 797 to 2 152 ms against 582 to 1 309, no difference this machine could show. What a limit costs: a page evicted from the back/forward cache loads again instead of coming back at once, more often than before (the price of
+128 MB: two or three pages of news sites are kept instead of six); a module evicted is read from the disk cache instead of memory; a reload of a large page sizes its arrays again, as its first pass did.
+
+**What is left**, and why. The GPU driver's memory (65 MB at the start, 200 to 300 MB in a session) is mapped by the kernel; it stays after `IDXGIDevice3::Trim`, with or without `ClearState`, and `text.renderer=atlas` changes
+little (77 -> 64 MB on the local pages). Whether a shown window, whose presents throttle the frames, keeps as much was not measured. `font.l1_words` (7 MB of thread-local storage) and the 68 threads are in the toolkit and the driver.
+The sheets' 1 MiB arena blocks and the heap's native part (Wasmtime's stores, Lexbor) were not taken apart further. example.com stays near 180 MB because of those: about 95 MB of it is the driver's.
+
+Tests: `src/tools/e2e/memory_growth.odin`, on a local page: the back/forward cache counts what the scripts of its pages hold (fails without: 5 pages of 24 MB in 64 MB), compiled modules stay within their limit (fails
+without: 367 kept for at most 150), a tab forgets the size of a large page (fails without: 101 MB carried), a long session levels off, closing tabs gives their memory back.
 
 ## Inventory
 
