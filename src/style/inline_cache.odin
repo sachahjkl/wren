@@ -71,6 +71,7 @@ inline_rule_of :: proc(p: ^Pass, text: string) -> ^Rule {
 inline_rule_put :: proc(e: ^Engine, s: ^Styled, text: string, r: ^Rule) {
 	if len(s.inline_rules) >= e.settings.inline_cache_entries { clear(&s.inline_rules) }
 	s.inline_rules[strings.clone(text, s.alloc)] = r
+	s.inline_rules_made += 1
 }
 
 // The compiled form of one declaration `name: value` (`name` lowercase, or a custom property), as a style attribute

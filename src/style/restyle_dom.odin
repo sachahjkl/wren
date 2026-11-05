@@ -1067,15 +1067,16 @@ settle :: proc(w: ^Walker, h: base.Handle, c: ^Computed) -> (cur: ^Computed, cha
 
 // Computes the style of one element and settles it. A style equal to the one in force is dropped with all it
 // allocated (the share table, if it took it, gets the equal record in force instead): restyles that change nothing
-// leave nothing behind.
+// leave nothing behind, but for what the inline cache kept of a new style attribute: it outlives the element's pass.
 @(private = "file")
 restyle_one :: proc(w: ^Walker, f: ^Frame, n: ^dom.Node) -> (cur: ^Computed, changed: bool, old_base: ^Computed) {
 	w.marked += 1
 	tmp := base.arena_temp_begin(w.arena)
 	made := w.p.share.count
+	kept := w.s.inline_rules_made
 	c, _ := compute_element(w.p, f.h, n, f.parent, &f.bloom, f.ctx, int(f.depth))
 	cur, changed, old_base = settle(w, f.h, c)
-	if changed { base.arena_temp_ignore(tmp); return }
+	if changed || w.s.inline_rules_made != kept { base.arena_temp_ignore(tmp); return }
 	if w.p.share.count != made { share_replace_last(&w.p.share, cur) }
 	base.arena_temp_end(tmp)
 	return

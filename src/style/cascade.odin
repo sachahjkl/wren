@@ -122,6 +122,7 @@ Styled :: struct {
 	// compiled style attributes and CSSOM declarations by text (inline_cache.odin), in `alloc`
 	inline_rules:   map[string]^Rule,
 	inline_decls:   map[string]Inline_Decl,
+	inline_rules_made: u64,                // entries put in inline_rules so far: what a restyle that rolls its memory back must keep
 	// records made by this pass and the partial restyles since with background, mask or cursor images: when it has not moved,
 	// the page's image loader has no new CSS image URL to look for (page/images.odin css_images_sync)
 	image_records:  int,
