@@ -81,6 +81,7 @@
 <li><a href="#what-changed-round-23-document-read-by-compiled-code-objects-allocated-inline-accessors-of-the-scripts">What changed, round 23: document read by compiled code, objects allocated inline, accessors of the script's</a></li>
 <li><a href="#what-changed-round-24-what-still-froze-under-a-busy-page">What changed, round 24: what still froze under a busy page</a></li>
 <li><a href="#what-changed-round-25-what-a-first-load-waited-for-found-by-loading-it-again-and-again">What changed, round 25: what a first load waited for, found by loading it again and again</a></li>
+<li><a href="#what-changed-round-26-heavy-pages-from-the-navigation-to-the-load-event">What changed, round 26: heavy pages, from the navigation to the load event</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
@@ -2160,6 +2161,105 @@ test", "images end-to-end test" and "DOM for JavaScript end-to-end test": all pa
 a name's ASCII path and what it leaves to the long way, what a rule keeps once its memory is emptied, lists past their
 reserve and a plain rule under 2 KB, An+B written without the formatter), the two named above. Not run: the full suite,
 WPT, the unit tests under AddressSanitizer.</p>
+<h2 id="what-changed-round-26-heavy-pages-from-the-navigation-to-the-load-event"><a class="anchor" href="#what-changed-round-26-heavy-pages-from-the-navigation-to-the-load-event" aria-hidden="true">#</a>What changed, round 26: heavy pages, from the navigation to the load event</h2>
+<p>Real pages took 25 to 30 s in <code>wrentool sweep</code>. The browser: development builds (<code>build.bat dev</code>, separate modules: no inlining across packages, so <code>string_eq</code>,
+<code>pool_get</code> and the bounds checks show in the samples as they do not in a release), with the native library <code>quick</code>. Each load in a fresh process with a throwaway
+profile, cold HTTP cache and cold bytecode cache, the engine's compiled code warm. Three arms, the order turning: base (3c15c689 and the measure of item 1), the
+round's binary, and the round's binary with <code>network.max_streams_per_host=6</code>; 5 runs of each, median, range in brackets, ms from the first request. Conditions: public
+sites over the Internet, one visit at a time, two other agents at work on the machine, the pages' ads and videos changing from one load to the next. What is inside these
+ranges is not claimed. What depends on neither was measured on generated pages on loopback (7 runs, interleaved). The <code>load</code> of two base runs (cnn.com, css-tricks.com) is
+0 in their ranges: the 30 s limit ran out first, so the base's medians there flatter it.</p>
+<p><strong>The measure.</strong> <code>load_ms</code> of the sweep was not the load: <code>api.navigate</code>, then <code>wait_quiet</code>, which takes <code>browser.remote.quiet_ms</code> (400 ms) at the least and up to 4 s on a
+page that keeps a timer. example.com's 581 ms is a load of 100 ms; the Wikipedia article's 3.9 s is 0.65 s. The 25 s were real pages all the same, and the wait is now
+<code>settle_ms</code>. <code>wrentool waterfall</code> (<code>src/tools/wrentool/capture/waterfall.odin</code>) gives a first load request by request: the wait for a slot, name, connection, handshake,
+server, body, protocol, the time with nothing in flight, first paint, DOMContentLoaded, load, <code>-Idle</code> the time to a quiet network. The page's marks and the phases are in
+<code>Wren.network</code>.</p>
+<p><strong>The waterfall.</strong> The network is not what these pages wait for. Name, connection and handshake are 20 to 100 ms a host, in parallel; HTTP/2 and 3 are used; a body is in
+within 10 to 300 ms of its head. What the requests show is the window thread: a script's body in at 377 ms and seen at 2 790 ms. Its samples during the load, base: the
+engine's code 47 to 68 % on vimeo.com, npr.org, css-tricks.com, bbc.com, theverge.com and spotify.com, 22 % on cnn.com; style 40 % and more on cnn.com and github.com. Of
+vimeo.com's engine (the guest profiler): the interpreter's own 27 %, compilation 14 %, the collection 13 %, the rest spread out, nothing that stands alone.</p>
+<ol>
+<li><strong>A host that answers over HTTP/2 or 3 has <code>network.max_streams_per_host</code> requests in flight (100)</strong> (<code>Host_Slots</code>, <code>src/net/client.odin</code>). Six, the limit of HTTP/1.1
+connections, held the streams of one connection too; github.com's 374 requests to one host queued for 470 s in all. And a slot was given back by the window thread,
+so a busy page starved its own requests. <code>network.max_connections_total</code> 64 -&gt; 256. A host has six until its first answer says what it speaks. Test: e2e
+<code>net_a_burst_goes_out_at_once_on_a_host_that_multiplexes</code> (twenty requests held 400 ms by the server: on HTTP/2 all leave the queue at once, on HTTP/1.1 the seventh after an answer).</li>
+<li><strong>A classic script of another origin runs from what a compile thread made of it</strong> (<code>js_run</code>, <code>src/page/js_realm.odin</code>). Muted errors were in the bytecode's key and the compile
+threads did not know of them: every script of a CDN over 64 KB was compiled off the window thread for nothing, waited for, then compiled on it. That is the 14 % above. Test:
+e2e <code>jsload_a_large_script_of_another_origin_compiles_once</code> (fails without the fix).</li>
+<li><strong>Ready scripts give the loop a turn</strong> (<code>scripts_pump</code>, <code>javascript.load.pump_slice_ms</code>, 50). The pump ran every script that was ready in one go: no frame, no network between
+them, though each is a task of its own in HTML. bbc.com was interactive at 371 ms and painted at 3.4 s. Test: e2e <code>jsload_ready_scripts_give_the_loop_a_turn</code>.</li>
+<li><strong>The members of the exact <code>:has()</code> anchors are found by each element's keys</strong> (<code>Members_Index</code>, <code>src/style/invalidation.odin</code>). After every full pass, on the window thread,
+every element was tested against every argument. Test: <code>restyle_dom_has_members_found_by_their_keys</code> (a hundred anchors, 300 elements: at most two tests an element).</li>
+<li><strong>Two sets of custom properties that differ are told apart by a digest</strong> (<code>Custom_Props.digest</code>). A variable changed high in the tree made each element under it flatten
+every name into a map, only to learn that they differ: one frame of cnn.com took 5 to 20 s, in <code>default_hasher_string</code> and <code>map_rehash_dynamic</code>. Test: <code>custom_properties_digest</code>
+(the comparison runs under an allocator that panics).</li>
+<li><strong>A full pass keeps the classes of each element as bits of their hashes</strong> (<code>class_bits_fill</code>, <code>Match_Ctx.class_bits</code>, <code>css.Simple.hash</code>). Most selectors tried on an element name
+a class it does not have, and each try read its attribute through. <code>has_class</code> 5 % -&gt; 1.4 % of cnn.com's samples, a full pass there 286 ms in the base, 140 after item 4, 120
+after this (three single runs of the profile build). Test: <code>class_bits_of_a_full_pass</code>.</li>
+</ol>
+<p>Loopback (<code>load</code>, and <code>paint</code> where it is the point; 7 runs):</p>
+<div class="table-box"><table>
+<thead><tr><th></th><th>before</th><th>after</th></tr></thead>
+<tbody>
+<tr><td>twelve scripts of 100 ms behind a sheet of 150 ms: first paint</td><td>1 222 (1 215-1 232)</td><td>322 (316-332)</td></tr>
+<tr><td>... load</td><td>1 224 (1 217-1 235)</td><td>1 235 (1 226-1 256)</td></tr>
+<tr><td>8 000 elements with a layer of their own under 400 variables, one changed four times</td><td>7 781 (6 482-9 355)</td><td>259 (164-1 650)</td></tr>
+<tr><td>300 <code>:has()</code> rules, 8 000 elements, ten full passes</td><td>1 396 (1 108-1 664)</td><td>267 (192-285)</td></tr>
+<tr><td>a bundle of 3.1 MB of another origin</td><td>2 770 (2 419-3 582)</td><td>1 561 (1 441-2 136)</td></tr>
+</tbody>
+</table></div>
+<p>Public pages, first paint and load (ms):</p>
+<div class="table-box"><table>
+<thead><tr><th></th><th>paint before</th><th>paint after</th><th>paint, 6 streams</th><th>load before</th><th>load after</th><th>load, 6 streams</th></tr></thead>
+<tbody>
+<tr><td>cnn.com</td><td>8 774 (6 526-10 935)</td><td>5 037 (1 407-5 271)</td><td>4 989 (1 563-5 833)</td><td>19 921 (0-29 888)</td><td>11 133 (9 735-23 279)</td><td>11 138 (9 457-19 969)</td></tr>
+<tr><td>npr.org</td><td>2 532 (1 346-4 683)</td><td>1 245 (1 085-1 590)</td><td>1 428 (1 187-1 599)</td><td>23 351 (19 908-25 830)</td><td>21 175 (19 456-21 811)</td><td>20 584 (17 630-22 390)</td></tr>
+<tr><td>vimeo.com</td><td>6 882 (5 987-7 193)</td><td>1 740 (817-6 380)</td><td>1 688 (822-6 228)</td><td>11 387 (9 834-13 153)</td><td>10 381 (8 522-12 156)</td><td>10 195 (8 620-13 647)</td></tr>
+<tr><td>theverge.com</td><td>3 586 (1 138-5 734)</td><td>1 381 (1 099-1 665)</td><td>1 177 (908-5 197)</td><td>14 147 (13 584-14 632)</td><td>14 337 (12 758-14 412)</td><td>13 476 (12 810-13 824)</td></tr>
+<tr><td>css-tricks.com, flexbox</td><td>1 978 (1 810-2 211)</td><td>1 058 (846-1 586)</td><td>1 870 (1 233-2 142)</td><td>13 732 (0-16 358)</td><td><strong>21 802 (19 183-23 091)</strong></td><td>12 277 (8 548-12 807)</td></tr>
+<tr><td>youtube.com</td><td>577 (376-1 121)</td><td>407 (-203-660)</td><td>429 (28-489)</td><td>6 677 (4 762-7 313)</td><td>6 628 (4 886-8 259)</td><td>5 715 (4 515-8 773)</td></tr>
+<tr><td>bbc.com/news/technology</td><td>4 963 (4 578-8 787)</td><td>1 279 (1 201-2 652)</td><td>4 316 (1 449-5 284)</td><td>11 039 (8 510-15 160)</td><td>9 739 (7 892-12 396)</td><td>9 245 (7 608-10 561)</td></tr>
+<tr><td>twitch.tv</td><td>2 039 (1 191-4 045)</td><td>1 384 (1 190-2 062)</td><td>1 365 (1 124-3 757)</td><td>3 872 (2 025-4 142)</td><td>2 292 (1 849-4 374)</td><td>2 481 (1 968-4 016)</td></tr>
+<tr><td>open.spotify.com</td><td>1 220 (1 161-2 802)</td><td>1 222 (1 169-2 656)</td><td>1 202 (1 158-1 215)</td><td>6 951 (6 649-14 531)</td><td>5 237 (4 601-7 354)</td><td>4 504 (4 013-7 253)</td></tr>
+<tr><td>microsoft.com</td><td>776 (660-1 282)</td><td>933 (864-1 443)</td><td>741 (601-1 091)</td><td>5 931 (5 732-7 503)</td><td>5 761 (5 477-6 519)</td><td>6 193 (5 919-6 819)</td></tr>
+<tr><td>github.com, issues</td><td>1 419 (1 307-1 650)</td><td>1 108 (921-1 857)</td><td>1 282 (1 059-1 380)</td><td>5 795 (4 717-6 624)</td><td>4 854 (3 578-5 096)</td><td>5 091 (4 744-6 316)</td></tr>
+<tr><td>en.wikipedia.org, an article</td><td>372 (321-528)</td><td>403 (330-408)</td><td>340 (333-2 232)</td><td>651 (561-967)</td><td>672 (621-749)</td><td>624 (580-2 907)</td></tr>
+<tr><td>example.com</td><td>82 (66-95)</td><td>84 (73-109)</td><td>74 (67-84)</td><td>122 (111-140)</td><td>128 (108-152)</td><td>113 (104-127)</td></tr>
+<tr><td>mean of the eleven heavy pages</td><td>3 159</td><td>1 527</td><td>1 862</td><td>11 164</td><td>10 304</td><td>9 173</td></tr>
+</tbody>
+</table></div>
+<p>Beside them, the longest wait for a slot: vimeo.com 5 384 -&gt; 472 ms, github.com 3 738 -&gt; 422, css-tricks.com 4 262 -&gt; 370, microsoft.com 1 658 -&gt; 93, theverge.com 1 026 -&gt; 21.</p>
+<p>Read plainly: the first paint is the gain, halved on the mean. Its ranges separate on cnn.com, bbc.com and css-tricks.com; vimeo.com, npr.org and theverge.com gain by their medians,
+their ranges meeting (vimeo.com: one run in five stays at 6 s). The load moved far less. Its ranges separate on none of these but css-tricks.com, the wrong way; twitch.tv, spotify.com and cnn.com are better by their medians.
+What is left of these loads is the engine running the pages' scripts. cnn.com's first paint has two modes, 1.4 and 5 s, not looked into.</p>
+<p><strong>What got worse.</strong></p>
+<ul>
+<li><strong>css-tricks.com: 13.7 -&gt; 21.8 s to its load event, 226 -&gt; 340 requests, CPU 30 -&gt; 40 s, from item 1 alone</strong> (6 streams: 12.3 s, 217 requests; the slice of item 3 changes nothing: 20.7 and
+19.3 s, 4 runs). Not only a later event: on a quiet network (<code>-Idle</code>, 3 runs) 18.3 s and 342 requests against 12.2 s and 233. Its codepen embeds start more of themselves: 41 frames against 35,
+batches at 7 and 11 s that the six streams never reach. Why is not established. Lazy frames seen near the viewport by an early layout was the guess; that an unknown distance
+counts as near is ruled out (<code>Navigable.distance</code> starts at <code>max(f32)</code>). Left as it is: this page's first paint is 800 ms better for it and bbc.com's 3 s, and without css-tricks.com the loads
+of the two arms are the same (8.85 and 8.86 s on the mean). <code>network.max_streams_per_host=6</code> is the way back.</li>
+<li><strong>DOMContentLoaded</strong> comes later on theverge.com (1 603 -&gt; 3 679), github.com (3 452 -&gt; 4 537) and npr.org (8 656 -&gt; 10 897): frames run between the scripts now.</li>
+<li>theverge.com's CPU 23.8 -&gt; 29.0 s, from item 1 (6 streams 23.4 s), for the same load.</li>
+</ul>
+<p><strong>Against Edge.</strong> Headless Edge through the DevTools protocol, a fresh profile a load, Wren's user agent. Two series gave very different numbers, the machine's load being what it was:
+load 1.4 and 2.4 s on cnn.com (1 and 3 runs), 1.6 and 3.3 npr.org, 2.0 and 2.9 vimeo.com, 2.2 and 7.6 theverge.com, 1.6 and 7.1 css-tricks.com, 0.7 and 2.5 bbc.com, 1.8 and 17.8 spotify.com,
+1.4 and 5.3 github.com, 0.4 and 1.7 Wikipedia. Those series ran on other minutes than Wren's, so only the order of magnitude counts: a page is not slow on the network for Edge, and Wren is
+behind by a factor of 2 to 13 on the load where scripts dominate, on a par on what has few. First paint: Edge 0.35 to 1.1 s in the first series, Wren 0.4 to 1.7 now, cnn.com aside. Edge's request
+counts leave out the frames of other sites, which run in other processes: they do not compare.</p>
+<ol>
+<li><p><strong>Measured, not kept.</strong></p>
+<ul>
+<li><strong>The engine at <code>-o:speed</code></strong> (the image is <code>-o:size</code>, for its size budget, not for speed, and nothing said what that cost): 9.4 against 7.5 MB, and <strong>slower</strong>: 2.1 times on <code>macro.js</code>'s geometric mean,
+2.9 on <code>realworld.js</code>, 5 to 18 times on what calls (<code>arguments</code>, closures, <code>class</code>, getters), 0.37 on <code>forEach</code>. Not looked into; large frames of the interpreter are the guess.</li>
+<li><strong><code>browser.shell.preempt=false</code></strong>: <code>NtUserGetQueueStatus</code> is 4 to 7 % of these samples; off, vimeo.com 11.6 -&gt; 10.6 s, css-tricks.com 19.3 -&gt; 18.8 s, 5 runs, ranges inside each other. Round 1's bias of samples in a system call.</li>
+</ul></li>
+</ol>
+<p><strong>The profiler.</strong> <code>WREN_SAMPLE_STACK=1</code> and <code>WREN_SAMPLE_THREADS=1</code> end the browser on cnn.com (<code>Page.navigate: the connection to Wren ended</code>), with <code>WREN_SAMPLE=1</code> alone it runs. Not looked into: so the
+callers of <code>has_class</code> are inferred, item 4's from what the fix took away, and what the style threads do is not known.</p>
+<p>Tests: <code>test_all -Quick -NoAsan</code> with <code>build/native</code> copied with its stamp (no Cargo): the unit tests of host, dom, css, html, fetch, style, page, browser and remote, the end-to-end tests of JavaScript
+loading, pages, the DOM, nested documents, images, the HTTP cache, network policy, the transport on both stacks, the content blocker, site compatibility and the remote channel, the changelog and the site: all pass. New: the
+six named above. Not run: the full suite, WPT, the unit tests under AddressSanitizer.</p>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
@@ -2301,6 +2401,10 @@ layout). Hover stays the page's, by design (round 24, item 4).</p>
 <p>After round 25. The list is in the order of its measures again: item 10 is item 2, done for two of what it named
 (<code>legacy-html.html</code>'s task, identified and gone; p10k's first passes in part), and the profiler's bursts are in item 9.
 Item 1's figures were old: measured again they are higher, and nothing here says why.</p>
+<p>After round 26. Heavy pages from the navigation to the load event: the first paint is halved on the mean (round 26), the load much less. What is left of it is item 1 below and two things of its own. The engine's
+share of the window thread during a load is 47 to 68 % on most of them (vimeo.com: the interpreter 27 %, the collection 13 %, the rest spread out). And css-tricks.com is 8 s slower to its load event since
+round 26's item 1, for a reason not established. Not done: a preload scanner that works while the document arrives (the parser takes the whole document first: cnn.com's 6.8 MB, 240 to 700 ms before any
+request of the page); <code>priority</code> headers (RFC 9218) now that images go out beside scripts; a style pass scoped to what a sheet that arrives can reach (cnn.com: 15 full passes for sheets, 2.2 s).</p>
 <ol>
 <li><strong>The script stage of DOM-heavy pages, what is left</strong> (<code>js_nodes10k</code> on a quiet machine after round 25, 5 runs: a frame of 16.9 ms
 (16.8 to 17.4), the Animation phase 10.5 ms, where this list kept 17.7 and 11.8; the 20.6 to 29.5 ms first noted for that day were
