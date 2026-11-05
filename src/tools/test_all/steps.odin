@@ -363,11 +363,13 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 		actions = slice_of(Task{"the runner", task_runner, cfg.quick ? "test262 quick" : "test262"}, Command{argv = strs(exe("build/test262"), "-prepare")}), marks = {.No_Result}, makes = {.Test262}, limit = LONG_STEP_SECONDS})
 	append(&t, Step{name = "test262 in the Wasm engine (-Quick: every 25th test; fails on a failure src\\tools\\test262\\known_failures.txt does not list)",
 		actions = slice_of(Command{argv = join({exe("build/test262")}, test262_quick)}), weight = 40, needs = {.Test262}, inputs = .Tree, limit = LONG_STEP_SECONDS})
-	append(&t, Step{name = "test262 with the JIT: examples\\jsbench\\jitcheck.js interpreted and compiled (every function and loop at once, synchronously and with the step path), then test262 the same way",
+	append(&t, Step{name = "test262 with the JIT: examples\\jsbench\\jitcheck.js and recursion.js interpreted and compiled (every function and loop at once, synchronously and with the step path), then test262 the same way",
 		actions = slice_of(
 			Task{"the tool", task_runner, cfg.quick ? "jsengine=jsengine_jit quick" : "jsengine=jsengine_jit"},
 			Command{argv = strs(exe("build/jsengine_jit"), "verify", "-image", "build/js/wren_js.wasm", "-jit", "-jit-threshold", "1", "-jit-loop", "1", "-jit-sync", "examples/jsbench/jitcheck.js")},
 			Command{argv = strs(exe("build/jsengine_jit"), "verify", "-image", "build/js/wren_js.wasm", "-jit", "-jit-threshold", "1", "-jit-loop", "1", "-jit-sync", "-jit-step", "examples/jsbench/jitcheck.js")},
+			Command{argv = strs(exe("build/jsengine_jit"), "verify", "-image", "build/js/wren_js.wasm", "-jit", "-jit-threshold", "1", "-jit-loop", "1", "-jit-sync", "examples/jsbench/recursion.js")},
+			Command{argv = strs(exe("build/jsengine_jit"), "verify", "-image", "build/js/wren_js.wasm", "-jit", "-jit-threshold", "1", "-jit-loop", "1", "-jit-sync", "-jit-step", "examples/jsbench/recursion.js")},
 			Command{argv = strs(exe("build/jsengine_jit"), "reach", "-image", "build/js/wren_js.wasm", "-jit-threshold", "2000", "-jit-loop", "1", "examples/jsbench/jitreach.js")},
 			Command{argv = strs(exe("build/jsengine_jit"), "reach", "-image", "build/js/wren_js.wasm", "examples/jsbench/jithot.js")},
 			Command{argv = strs(exe("build/jsengine_jit"), "cold", "-image", "build/js/wren_js.wasm", "examples/jsbench/jitcold.js")},

@@ -42,8 +42,8 @@ SHEET_NEVER_WAITED_FOR_MS :: 3000   // still on its way when the page has closed
 SHEET_REL_CHANGED_MS :: 200
 SCRIPT_AFTER_REL_CHANGE_MS :: 300
 POLL_NEVER_MS :: 600_000         // a poll of the waiting page that never comes within a test
-RECURSION_CALLS :: 330          // the calls through `new`, spread or a Proxy a script reaches at the least
-RECURSION_NATIVE_CALLS :: 170   // through a native that calls back
+RECURSION_CALLS :: 2500         // the calls through `new`, spread or a Proxy a script reaches at the least
+RECURSION_NATIVE_CALLS :: 1500  // through a native that calls back
 // The components nested in the render of jsload_a_deep_render_is_not_blanked_by_a_swallowed_overflow, about 12 KiB of the engine's stack each: 80 are the 768 to 1024 KiB that
 // YouTube's results take (the engine's budget ended this page at 59 levels at 768 KiB, it ends it at 125 at 1536)
 RENDER_LEVELS :: 80
@@ -1427,24 +1427,41 @@ const paths = {
   new: step => { class A { constructor() { step(); new A(); } } new A(); },
   super: step => { class B {} class C extends B { constructor() { super(); step(); new C(); } } new C(); },
   spread: step => { const s = (...r) => { step(); return s(...r); }; s(1); },
+  getter: step => { const o = { get x() { step(); return o.x; } }; o.x; },
+  setter: step => { const o = { set x(v) { step(); o.x = v; } }; o.x = 1; },
+  bound: step => { let b; const f = () => { step(); b(); }; b = f.bind(null); b(); },
   proxy: step => { const p = new Proxy({}, { get(t, k, r) { step(); return r[k]; } }); p.x; },
   map: step => { const g = () => { step(); return [1].map(g); }; g(); },
   sort: step => { const g = () => { step(); [2, 1].sort(g); }; g(); },
 };
-const least = { new: calls, super: calls, spread: calls, proxy: calls, map: native, sort: native };
-for (const name in paths) {
-  let depth = 0, end = "no end";
-  try { paths[name](() => depth++); } catch (e) { end = e.name; }
-  log(name + " " + end + " " + (depth >= least[name] ? "deep" : "shallow " + depth));
-}
-log("alive");
+const least = { new: calls, super: calls, spread: calls, getter: calls, setter: calls, bound: native, proxy: calls, map: native, sort: native };
+const run = 'const run = (name, go, least) => { let depth = 0, end = "no end"; try { go(() => depth++); } catch (e) { end = e.name; } return name + " " + end + " " + (depth >= least ? "deep" : "shallow " + depth); };';
+const measure = eval(run + "run");
+for (const name in paths) { log(measure(name, paths[name], least[name])); }
+// a listener dispatching on its own target: each level goes through the browser, whose frames the machine's stack holds; the realm stays
+let dispatched = 0;
+const target = new EventTarget();
+target.addEventListener("x", () => { dispatched++; target.dispatchEvent(new Event("x")); });
+target.dispatchEvent(new Event("x"));
+log("dispatch " + (dispatched >= native ? "deep" : "shallow " + dispatched));
+// the same in a worker's realm and in a frame's, which have engines of their own
+const inner = run + "const go = step => { const g = () => { step(); return [1].map(g); }; g(); };";
+const worker = new Worker(URL.createObjectURL(new Blob([inner + 'postMessage(run("worker", go, ' + native + "));"])));
+worker.onmessage = e => { log(e.data); };
+const frame = document.createElement("iframe");
+frame.onload = () => { log(frame.contentWindow.eval(inner + 'run("frame", go, ' + native + ")")); log("alive"); };
+document.body.append(frame);
 </script>`)
 	pr := load(t, "recursion", concat(`<!doctype html><head>`, PRELUDE, `</head><body>`, script, `</body>`))
 	wait_note(pr, "alive")
-	for name in ([]string{"new", "super", "spread", "proxy", "map", "sort"}) {
+	wait_note(pr, "worker RangeError deep")
+	for name in ([]string{"new", "super", "spread", "getter", "setter", "bound", "proxy", "map", "sort", "worker", "frame"}) {
 		check(pr, noted(pr, fmt.tprintf("%s RangeError deep", name)), fmt.tprintf("recursion through %s goes deep and ends in a RangeError (%v)", name, pr.section.notes))
 	}
-	close_page(pr, min_checks = 6)
+	check(pr, noted(pr, "dispatch deep"), fmt.tprintf("a recursion through dispatchEvent goes deep and the realm stays (%v)", pr.section.notes))
+	check(pr, console_says(pr, "Uncaught RangeError"), "the error that ended it, in the last listener, is reported")
+	pr.expect_uncaught = true
+	close_page(pr, min_checks = 13)
 }
 
 // YouTube's search on 0.6.29: its results are one synchronous render, 627 frames of script from a promise's job through a listener, a promise's executor and a setter into

@@ -150,9 +150,16 @@ every fast path that does not apply, leaves it with the pc on the instruction fo
 Frames come from segmented value stacks so generators and async functions can suspend them (`coro.odin`:
 generators, async functions, async generators, `for await`, `yield*`). A plain JS‑to‑JS call does not
 recurse natively: `frame_push` puts the callee's `Frame` at the end of its value‑stack block and the same
-`interp_run` activation runs it (`Frame.stackless`); native callees (`c_function`) are called from the hot
-loop without a frame. The engine's own stack budget and call depth bound recursion
-(`Host_Config.max_stack_bytes`, `max_stack_depth`; a `RangeError` instead of a crash). The interrupt hook
+`interp_run` activation runs it (`Frame.stackless`), and so does `new` of a bytecode function, a spread call and a getter
+or a setter a property instruction finds (`Stackless`: what the frame's return gives its caller); native callees
+(`c_function`) are called from the hot loop without a frame. What goes through a native (`map`, a Proxy trap,
+`Reflect`, a bound function, a listener) takes a new `interp_run` on the host stack. `Host_Config.max_stack_depth` bounds
+all of it, with a `RangeError` at the limit. On Wasm the host stack is two stacks (`stack.odin`): the shadow stack in
+linear memory is 2 MiB, every page of which is committed for each realm, and a recursion that runs past it goes on in
+blocks of the heap (the host moves the stack pointer, `Engine_stackMove`; the blocks go when the outermost call
+returns); the machine's stack ends in a trap, so the engine asks the host (`Engine_nativeStackLow`) at each move and at
+each entry of the browser into a running engine, and stops with the same `RangeError`. Natively, one stack and
+`Host_Config.max_stack_bytes`. The interrupt hook
 runs on a budget from the loop back edge. Operators follow the spec (`+` through ToPrimitive, ModRing bitwise, BigInt paths, loose and
 strict equality). Try/catch uses a per‑frame handler stack (`catch`/`gosub`/`ret`/`nip_catch`).
 

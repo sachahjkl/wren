@@ -1,0 +1,3 @@
+type: Fixed
+
+**Scripts recurse as deep as in other browsers, through `new`, accessors, spread calls, Proxy traps, `Reflect`, bound functions and natives calling back**: a page's render a few hundred levels deep ended in a RangeError that a component caught, and the page stayed on its spinner (a YouTube search). `new`, spread calls, getters and setters now run in the interpreter's loop, and a recursion through a native goes on past the engine's stack in its heap, at no cost for a realm that does not go there: thousands of levels where it was 186 to 392, ending in a clean RangeError with the realm alive.
