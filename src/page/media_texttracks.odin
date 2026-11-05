@@ -31,6 +31,7 @@ Text_Cue_Object :: struct {
 	// VTT settings (used by the renderer and the VTTCue members)
 	vtt:       media.Vtt_Cue,        // owned copy of the parsed cue (runs for rendering); empty for a plain TextTrackCue
 	has_vtt:   bool,
+	left_to_track: bool,             // the wrapper that owned it is gone: the track holds it, and removing it from the track frees it
 }
 
 Text_Track_Object :: struct {
@@ -70,6 +71,13 @@ text_track_vt := Object_VTable{
 
 text_cue_vt := Object_VTable{
 	name = "TextTrackCue",
+	// A script makes a cue, adds it and forgets it (what a player does with its subtitles): the collector then lets go of the object while the track still lists it. It stays, the track's now.
+	script_let_go = proc(p: ^Page, data: rawptr) -> bool {
+		cue := (^Text_Cue_Object)(data)
+		if cue.track == nil { return false }
+		cue.left_to_track = true
+		return true
+	},
 	destroy = proc(p: ^Page, data: rawptr) {
 		cue := (^Text_Cue_Object)(data)
 		delete(cue.id); delete(cue.text)
@@ -375,6 +383,7 @@ TextTrack_removeCue :: proc(c: ^Call, t: Api_TextTrack, cue: Api_TextTrackCue) -
 	if tt == nil || cu == nil { return fail(c, .Invalid_State, "the text track or cue is gone") }
 	if cu.track != tt { return fail(c, .Not_Found, "the cue is not in this text track") }
 	text_cue_remove(c.page, tt, cu)
+	if cu.left_to_track { object_release(c.page, cu.self) }   // (no wrapper owns it any more, and no track)
 	return .None
 }
 

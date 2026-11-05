@@ -260,6 +260,7 @@ host_reactions_run :: proc(p: ^Page) {
 }
 
 Object_release :: proc(c: ^Call, object: Api_Object) -> Api_Error {
+	if o := object_get(c.page, object.handle); o != nil && o.vt != nil && o.vt.script_let_go != nil && o.vt.script_let_go(c.page, o.data) { return .None }
 	object_release(c.page, object.handle)
 	return .None
 }
