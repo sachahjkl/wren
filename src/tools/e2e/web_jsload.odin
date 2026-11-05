@@ -1169,6 +1169,16 @@ jsload_the_first_paint_comes_before_the_next_script :: proc(t: ^testing.T) {
 	wait_note(pr, "a turn of the loop")
 	check(pr, in_order(pr, "the long script", "a turn of the loop"), "painted, the parser has nothing to wait for")
 	close_page(pr, min_checks = 1)
+
+	// the first script of the document, what comes before it attached from the start
+	settings.js_load.pump_slice_ms = PUMP_SLICE_MS
+	pr = page_make(t, "first script", testenv.url(BASE))
+	page.load_html(pr.p, transmute([]byte)concat(`<!doctype html><body>`, content, `<script>wrenTest.note("the first script")</script></body>`))
+	run(pr, `setTimeout(() => wrenTest.note("a turn before it"), 0)`)
+	page.scripts_start(pr.p)
+	wait_note(pr, "the first script")
+	check(pr, in_order(pr, "a turn before it", "the first script"), "the loop had a turn before the document's first script")
+	close_page(pr, min_checks = 1)
 }
 
 // A script turns the parser's <link> into something else while the document is parsed: the scripts after it (which wait for pending
