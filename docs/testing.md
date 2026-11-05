@@ -275,7 +275,9 @@ A read of freed memory is silent on Windows: the heap and the arenas hand the sa
 - **Arenas**: `base.Arena` takes its chunks from the heap: `arena_free_all`, `arena_destroy`, a rolled back `arena_temp_end`, `free_all(context.temp_allocator)` of a `base.process_context()`, `base.scope_close`, a style arena emptied or recycled send their memory through the quarantine, and the next pass has other addresses. A removed `base.Pool` slot is poison too.
 - **Fatal at once**, with a crash report (`memory: fatal: ...` on the standard error): a double free, a free or a resize of what the heap does not know, and a write to a block in quarantine, seen when it leaves or at `base.mem_report`. `WREN_MEMTRACK_STACK=1` adds the stack of the free.
 
-It does not see the system's DLLs, the pools inside Lexbor, the toolkit's own arenas (`ui`, `font`, `dbus`), Wasm linear memories, or a read of a plain number from a freed block (it gets `0xDD...`, wrong but not fatal; a write to it is seen). PageHeap would catch those reads too, but it is an entry under `HKLM\...\Image File Execution Options`, a setting of the machine: not something a test may change.
+It does not see the system's DLLs, the pools inside Lexbor, the toolkit's own arenas (`ui`, `font`, `dbus`), Wasm linear memories, or a read of a plain number from a freed block (it gets `0xDD...`, wrong but not fatal; a write to it is seen).
+
+**`WREN_POISON_PAGES=1`** (Windows, the same builds) sees those too: every block of the executable's heap has pages of its own, taken away when it is freed and never given out again, what the system's PageHeap does without its key in `HKLM\...\Image File Execution Options`. Any read or write of a freed block, or of an arena that was emptied, faults at that instruction with the block's address in the crash report. It costs a system call per allocation and a page per block: the pages of `tools/sweep_local.txt` take a minute and a half instead of one and a quarter.
 
 ```
 build.bat check

@@ -67,6 +67,19 @@ freed_memory_ends_the_process_with_a_report_that_says_so :: proc(t: ^testing.T) 
 	}
 }
 
+// WREN_POISON_PAGES: a read of a plain number of a freed block faults too, the block on pages of its own (poison_windows.odin), and a program works on them.
+@(test)
+a_freed_number_faults_on_pages_of_their_own :: proc(t: ^testing.T) {
+	dir := e2e.temp_folder(t)
+	exe := e2e.build_path("crashmodes_poison", ".exe")
+	e2e.program_wait(e2e.program(t, {exe, "freed_number", dir}))
+	testing.expect_value(t, len(e2e.files_with_prefix(dir, "crash ", ".txt")), 0)
+	e2e.program_wait(e2e.program(t, {exe, "freed_number", dir}, {env = {"WREN_POISON_PAGES=1"}}))
+	reports := e2e.files_with_prefix(dir, "crash ", ".txt")
+	text := len(reports) == 1 ? e2e.read_text(reports[0]) : ""
+	testing.expectf(t, strings.contains(text, "access violation") && strings.contains(text, "crashmodes::die"), "a report at the read: %d report(s): %s", len(reports), text)
+}
+
 @(test)
 a_fail_fast_is_reported_by_the_next_start_once :: proc(t: ^testing.T) {
 	dir := e2e.temp_folder(t)
