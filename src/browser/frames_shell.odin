@@ -248,7 +248,7 @@ frames_paint_content :: proc(app: ^App, dc: ^draw.Context, d: ^dom.Document, nod
 	if fv == nil { return false }
 	size := draw.Vec2{math.round(content.max.x - content.min.x), math.round(content.max.y - content.min.y)}
 	if size.x <= 0 || size.y <= 0 { return true }
-	if !fv.ready || fv.size != size { frame_prepare(app, fv, size, page_scale(app)) }
+	if !fv.ready || fv.size != size || layout_behind(&fv.tab.layout, n.page.doc) { frame_prepare(app, fv, size, page_scale(app)) }
 	if !fv.ready { return true }
 	fv.rect = content
 	fv.painted = app.chrome_frames.frame_no

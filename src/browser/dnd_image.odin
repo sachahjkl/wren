@@ -167,6 +167,7 @@ paint_picture :: proc(app: ^App, dc: ^draw.Context) -> render.Readback_Id {
 	t := current_tab(app)
 	if t == nil || t.page == nil || !t.layout.valid { return 0 }
 	p := t.page
+	if t.layout.mutations != p.doc.mutations { return 0 }   // (a dragstart handler changed the page: its items show strings that may be gone)
 	l := &t.layout
 	d := p.doc
 	b := app.dimg.bounds
