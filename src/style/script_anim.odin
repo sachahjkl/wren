@@ -30,6 +30,7 @@ Effect_Phase :: enum u8 { Before, Active, After }
 Effect_Timing :: struct {
 	delay, end_delay: f64,
 	duration:         f64,   // the iteration duration (>= 0; "auto" is 0)
+	auto_duration:    bool,  // it is "auto"
 	iterations:       f64,   // >= 0, may be +Inf
 	iteration_start:  f64,   // >= 0
 	direction:        Anim_Direction,
@@ -53,7 +54,9 @@ Script_Clock :: struct {
 	start, hold:          f64,
 	has_start, has_hold:  bool,
 	rate:                 f64,
-	timeline:             bool,   // associated with the document timeline (false: a null timeline, never resolved)
+	timeline:             bool,   // associated with a timeline (false: a null timeline, never resolved)
+	progress:             u64,    // that timeline, a ScrollTimeline or ViewTimeline (timeline_progress_put); 0: the document's. Times are then percents of it
+	range:                [2]Anim_Range,   // its attachment range (rangeStart, rangeEnd)
 }
 
 @(private)
@@ -351,9 +354,118 @@ timeline_time :: proc(tl: ^Timeline, wall_ms: f64) -> f64 {
 }
 
 @(private)
-script_state_of :: proc(sr: ^Script_Run, now: f64) -> Effect_State {
-	local, has := script_clock_time(sr.clock, now)
-	return effect_state(sr.timing, local, has, sr.clock.rate < 0)
+script_state_of :: proc(tl: ^Timeline, sr: ^Script_Run, now: f64) -> Effect_State {
+	if sr.clock.progress == 0 {
+		local, has := script_clock_time(sr.clock, now)
+		return effect_state(sr.timing, local, has, sr.clock.rate < 0)
+	}
+	percent, active := timeline_progress_percent(tl, sr.clock.progress)
+	lo, hi := timeline_progress_range(tl, sr.clock.progress, sr.clock.range)
+	local, has := script_clock_time(sr.clock, percent)
+	if !active { has = sr.clock.has_hold }
+	t := effect_timing_normalised(sr.timing, hi - lo)
+	st := effect_state(t, local, has, sr.clock.rate < 0)
+	// (a scroller at the very end of its range still shows the end of an effect that reaches it: the boundary is the active phase's)
+	if st.phase == .After && !st.has_active && active && percent >= PROGRESS_SPAN && local <= effect_end_time(t) {
+		t.fill = .Forwards
+		st = effect_state(t, local, has, sr.clock.rate < 0)
+	}
+	return st
+}
+
+// The timing of an effect on a progress timeline, in `span` percents of it: an auto duration fills them, times share them in proportion.
+effect_timing_normalised :: proc(t: Effect_Timing, span: f64) -> Effect_Timing {
+	n := t
+	if t.auto_duration {
+		n.delay, n.end_delay = 0, 0
+		n.duration = t.iterations > 0 && !math.is_inf(t.iterations) ? span / t.iterations : 0
+		return n
+	}
+	end := effect_end_time(t)
+	if !(end > 0) || math.is_inf(end) {
+		n.delay, n.end_delay, n.duration = 0, 0, 0
+		return n
+	}
+	k := span / end
+	n.delay, n.end_delay, n.duration = t.delay * k, t.end_delay * k, t.duration * k
+	return n
+}
+
+// A ScrollTimeline or ViewTimeline of the page: what it reads, as last measured.
+@(private)
+Script_Timeline :: struct {
+	src:      Timeline_Source,
+	none:     bool,   // a null source: inactive for good
+	progress: Progress_Timeline,
+}
+
+// Makes or replaces timeline `id`. `source`: the scroller (NIL with `none` false: the viewport); `subject`: a view timeline's.
+timeline_progress_put :: proc(tl: ^Timeline, id: u64, view: bool, none: bool, source, subject: base.Handle, axis: Timeline_Axis, inset: View_Inset) {
+	st := tl.progress_timelines[id] or_else nil
+	if st == nil {
+		st = new(Script_Timeline)
+		tl.progress_timelines[id] = st
+	}
+	st^ = {src = {view = view, source = source, subject = subject, axis = axis, inset = inset}, none = none}
+}
+
+timeline_progress_remove :: proc(tl: ^Timeline, id: u64) {
+	if st := tl.progress_timelines[id] or_else nil; st != nil {
+		free(st)
+		delete_key(&tl.progress_timelines, id)
+	}
+}
+
+// Timeline `id`'s current time, in percents; active false: it has none.
+timeline_progress_percent :: proc(tl: ^Timeline, id: u64) -> (percent: f64, active: bool) {
+	st := tl.progress_timelines[id] or_else nil
+	if st == nil || !st.progress.active { return 0, false }
+	return timeline_percent(&st.progress, st.progress.offset), true
+}
+
+// The two ends of an attachment range on timeline `id`, in percents of it.
+timeline_progress_range :: proc(tl: ^Timeline, id: u64, r: [2]Anim_Range) -> (lo, hi: f64) {
+	st := tl.progress_timelines[id] or_else nil
+	if st == nil || !st.progress.active { return 0, PROGRESS_SPAN }
+	t := &st.progress
+	return timeline_percent(t, range_offset(t, r[0], 0)), timeline_percent(t, range_offset(t, r[1], 1))
+}
+
+// A view timeline's startOffset and endOffset: where its 0% and 100% lie in the scroller (CSS px).
+timeline_progress_offsets :: proc(tl: ^Timeline, id: u64) -> (start, end: f64, ok: bool) {
+	st := tl.progress_timelines[id] or_else nil
+	if st == nil || !st.progress.active { return 0, 0, false }
+	return st.progress.lo, st.progress.hi, true
+}
+
+// A timeline's end of a range (`entry 10%`, `normal`) as a script wrote it; ok false: it is not one.
+parse_range_text :: proc(e: ^Engine, text: string) -> (r: Anim_Range, ok: bool) {
+	vs := css.parse_component_values(text, parse_options(&e.settings), context.temp_allocator)
+	probe := probe_context(e, context.temp_allocator)
+	r, ok = parse_range_end(&probe, vs)
+	return r, ok && r.offset.kind != .Calc   // (a calc() would point into memory that does not stay)
+}
+
+// An inset as a script wrote it ("auto", "10px 20%").
+parse_inset_text :: proc(e: ^Engine, text: string) -> (i: View_Inset, ok: bool) {
+	vs := css.parse_component_values(text, parse_options(&e.settings), context.temp_allocator)
+	probe := probe_context(e, context.temp_allocator)
+	items := split_items(vs)
+	if len(items) < 1 || len(items) > 2 { return }
+	if i.start, ok = parse_inset_end(&probe, items[0]); !ok { return }
+	i.end = i.start
+	if len(items) == 2 { i.end, ok = parse_inset_end(&probe, items[1]) }
+	return i, ok && i.start.kind != .Calc && i.end.kind != .Calc
+}
+
+// What a CSS animation runs on, for its Animation object.
+Css_Timeline_Info :: struct {
+	kind:    Anim_Timeline_Kind,   // .Auto: the document's; .None; .Scroll, .View as resolved
+	source:  base.Handle,
+	subject: base.Handle,
+	axis:    Timeline_Axis,
+	inset:   View_Inset,
+	range:   [2]f64,               // its attachment range, in percents of its timeline
 }
 
 // The tick's part for the effects of scripts: did a value change, and when does one change next.
@@ -362,12 +474,12 @@ script_tick :: proc(tl: ^Timeline, now: f64, next: ^f64) -> (changed: bool) {
 	want :: proc(next: ^f64, ms: f64) { if next^ < 0 || ms < next^ { next^ = max(ms, 0) } }
 	for _, sr in tl.scripts {
 		if sr.node == base.NIL_HANDLE { continue }
-		st := script_state_of(sr, now)
+		st := script_state_of(tl, sr, now)
 		key := [3]f64{f64(st.phase), st.progress, st.has_active ? 1 : 0}
 		if !st.has_local { key = {-2, 0, 0} }
 		if key != sr.skey { sr.skey = key; changed = true }
 		c := sr.clock
-		if !st.has_local || c.has_hold || !c.has_start || !c.timeline || c.rate == 0 { continue }
+		if !st.has_local || c.has_hold || !c.has_start || !c.timeline || c.rate == 0 || c.progress != 0 { continue }
 		local, _ := script_clock_time(c, now)
 		t := sr.timing
 		active := effect_active_duration(t)

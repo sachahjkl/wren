@@ -1,0 +1,40 @@
+// Source: Scroll-driven Animations (https://drafts.csswg.org/scroll-animations-1/)
+
+enum ScrollAxis {
+  "block",
+  "inline",
+  "x",
+  "y"
+};
+
+dictionary ScrollTimelineOptions {
+  Element? source;
+  ScrollAxis axis = "block";
+};
+
+[Exposed=Window]
+interface ScrollTimeline : AnimationTimeline {
+  constructor(optional ScrollTimelineOptions options = {});
+  readonly attribute Element? source;
+  readonly attribute ScrollAxis axis;
+};
+
+dictionary ViewTimelineOptions {
+  Element subject;
+  ScrollAxis axis = "block";
+  (DOMString or sequence<(CSSNumericValue or CSSKeywordValue)>) inset = "auto";
+};
+
+[Exposed=Window]
+interface ViewTimeline : ScrollTimeline {
+  constructor(optional ViewTimelineOptions options = {});
+  readonly attribute Element subject;
+  readonly attribute CSSNumericValue startOffset;
+  readonly attribute CSSNumericValue endOffset;
+};
+
+[Exposed=Window]
+partial interface Animation {
+  attribute (TimelineRangeOffset or CSSNumericValue or CSSKeywordValue or DOMString) rangeStart;
+  attribute (TimelineRangeOffset or CSSNumericValue or CSSKeywordValue or DOMString) rangeEnd;
+};

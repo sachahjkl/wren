@@ -26,6 +26,7 @@ Keyframe_Block :: struct {
 	customs:    []Custom_Decl,   // custom properties the keyframe sets: registered ones animate what uses them
 	composition: Composition,    // the keyframe's own composite operation (Web Animations keyframe `composite`)
 	has_composition: bool,       // false: the effect's
+	range:      Range_Name,      // a keyframe at a named range (`entry 50%`): `offset` is in that range
 }
 
 Keyframes_Set :: struct {
@@ -39,7 +40,8 @@ not_in_keyframes :: proc(p: Prop) -> bool {
 	#partial switch p {
 	case .Transition_Property, .Transition_Duration, .Transition_Timing_Function, .Transition_Delay, .Transition_Behavior,
 	     .Animation_Name, .Animation_Duration, .Animation_Delay, .Animation_Iteration_Count, .Animation_Direction,
-	     .Animation_Fill_Mode, .Animation_Play_State, .Animation_Composition, .Will_Change, .Direction:
+	     .Animation_Fill_Mode, .Animation_Play_State, .Animation_Composition, .Animation_Timeline, .Animation_Range_Start, .Animation_Range_End,
+	     .Scroll_Timeline_Name, .Scroll_Timeline_Axis, .View_Timeline_Name, .View_Timeline_Axis, .View_Timeline_Inset, .Timeline_Scope, .Will_Change, .Direction:
 		return true
 	}
 	return false
@@ -86,11 +88,12 @@ compile_keyframes_into :: proc(e: ^Engine, refs: []Keyframes_Ref, out: ^map[stri
 				if not_in_keyframes(d.prop) { continue }
 				append(&decls, d)
 			}
-			for off in kf.offsets {
+			for off, oi in kf.offsets {
+				range, _ := range_name_of(kf.ranges[oi])
 				found := -1
-				for b, k in blocks { if b.offset == off { found = k; break } }
+				for b, k in blocks { if b.offset == off && b.range == range { found = k; break } }
 				if found < 0 {
-					append(&blocks, Keyframe_Block{offset = off})
+					append(&blocks, Keyframe_Block{offset = off, range = range})
 					found = len(blocks) - 1
 				}
 				b := &blocks[found]

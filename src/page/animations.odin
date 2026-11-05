@@ -87,9 +87,9 @@ animations_next_ms :: proc(p: ^Page) -> f64 {
 
 // The values at `wall_ms` (the loop clock) of the animations the compositor may run without the page, the timeline left as it
 // is (style.timeline_compositor_values): what a chrome frame paints while the page holds its thread. True: one moves at every frame.
-animations_compositor_values :: proc(p: ^Page, wall_ms: f64, out: ^[dynamic]style.Compositor_Value) -> bool {
+animations_compositor_values :: proc(p: ^Page, wall_ms: f64, shown: []style.Shown_Offset, out: ^[dynamic]style.Compositor_Value) -> bool {
 	if p == nil || p.closed || p.styled == nil { return false }
-	return style.timeline_compositor_values(p.anim.timeline, p.styled, wall_ms, out)
+	return style.timeline_compositor_values(p.anim.timeline, p.styled, wall_ms, shown, out)
 }
 
 // After `styles` stepped the timeline: queue its events, arm the timers.

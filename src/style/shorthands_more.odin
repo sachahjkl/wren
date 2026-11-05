@@ -329,6 +329,9 @@ expand_shorthand_more :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -
 		emit(&res, .Column_Rule_Color, or_initial(color))
 	case .Transition: return expand_transition(vs, a)
 	case .Animation: return expand_animation(vs, a)
+	case .Animation_Range: return expand_animation_range(vs, a)
+	case .Scroll_Timeline: return expand_scroll_timeline(vs, a)
+	case .View_Timeline: return expand_view_timeline(vs, a)
 	case .Grid_Row, .Grid_Column:
 		parts := split_at_slash(items)
 		if len(parts) > 2 || len(parts[0]) == 0 { return nil, false }
@@ -539,6 +542,7 @@ expand_animation :: proc(vs: []css.Value, a: runtime.Allocator) -> ([]Longhand, 
 			v := items[i:i + 1]
 			id := ident_lower(it)
 			switch {
+			case id == "auto" && got[1] == nil: got[1] = v; continue
 			case is_time_value(it):
 				if got[1] == nil { got[1] = v } else if got[3] == nil { got[3] = v } else { return nil, false }
 				continue
@@ -556,7 +560,8 @@ expand_animation :: proc(vs: []css.Value, a: runtime.Allocator) -> ([]Longhand, 
 		for c in 0 ..< 9 {
 			switch {
 			case got[c] != nil: cols[c][k] = got[c]
-			case c == 1 || c == 3: cols[c][k] = time_zero(a)
+			case c == 1: cols[c][k] = idents(a, "auto")
+			case c == 3: cols[c][k] = time_zero(a)
 			case c == 4: cols[c][k] = number_value(1, a)
 			case: cols[c][k] = idents(a, DEFAULTS[c])
 			}
@@ -565,5 +570,7 @@ expand_animation :: proc(vs: []css.Value, a: runtime.Allocator) -> ([]Longhand, 
 	props := [9]Prop{.Animation_Name, .Animation_Duration, .Animation_Timing_Function, .Animation_Delay, .Animation_Iteration_Count, .Animation_Direction, .Animation_Fill_Mode, .Animation_Play_State, .Animation_Composition}
 	res := make([dynamic]Longhand, a)
 	for c in 0 ..< 9 { append(&res, Longhand{props[c], comma_join(cols[c], a)}) }
+	// (reset by the shorthand, which cannot set them: CSS Animations 2)
+	append(&res, Longhand{.Animation_Timeline, idents(a, "auto")}, Longhand{.Animation_Range_Start, idents(a, "normal")}, Longhand{.Animation_Range_End, idents(a, "normal")})
 	return res[:], true
 }

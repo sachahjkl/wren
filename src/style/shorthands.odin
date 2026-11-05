@@ -165,7 +165,10 @@ short_longhands :: proc(s: Short) -> []Prop {
 	@(static) text_wrap := [?]Prop{.Text_Wrap_Mode, .Text_Wrap_Style}
 	@(static) font_variant := [?]Prop{.Font_Variant_Ligatures, .Font_Variant_Caps, .Font_Variant_Numeric, .Font_Variant_East_Asian, .Font_Variant_Position}
 	@(static) transition := [?]Prop{.Transition_Property, .Transition_Duration, .Transition_Timing_Function, .Transition_Delay, .Transition_Behavior}
-	@(static) animation := [?]Prop{.Animation_Name, .Animation_Duration, .Animation_Timing_Function, .Animation_Delay, .Animation_Iteration_Count, .Animation_Direction, .Animation_Fill_Mode, .Animation_Play_State, .Animation_Composition}
+	@(static) animation := [?]Prop{.Animation_Name, .Animation_Duration, .Animation_Timing_Function, .Animation_Delay, .Animation_Iteration_Count, .Animation_Direction, .Animation_Fill_Mode, .Animation_Play_State, .Animation_Composition, .Animation_Timeline, .Animation_Range_Start, .Animation_Range_End}
+	@(static) animation_range := [?]Prop{.Animation_Range_Start, .Animation_Range_End}
+	@(static) scroll_timeline := [?]Prop{.Scroll_Timeline_Name, .Scroll_Timeline_Axis}
+	@(static) view_timeline := [?]Prop{.View_Timeline_Name, .View_Timeline_Axis, .View_Timeline_Inset}
 	@(static) overscroll := [?]Prop{.Overscroll_Behavior_X, .Overscroll_Behavior_Y}
 	@(static) columns := [?]Prop{.Column_Width, .Column_Count}
 	@(static) column_rule := [?]Prop{.Column_Rule_Width, .Column_Rule_Style, .Column_Rule_Color}
@@ -250,6 +253,9 @@ short_longhands :: proc(s: Short) -> []Prop {
 	case .Font_Variant: return font_variant[:]
 	case .Transition: return transition[:]
 	case .Animation: return animation[:]
+	case .Animation_Range: return animation_range[:]
+	case .Scroll_Timeline: return scroll_timeline[:]
+	case .View_Timeline: return view_timeline[:]
 	case .Overscroll_Behavior: return overscroll[:]
 	case .Columns: return columns[:]
 	case .Column_Rule: return column_rule[:]
@@ -571,7 +577,7 @@ expand_shorthand :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -> ([]
 		emit(&res, .Position_Try_Order, order)
 		emit(&res, .Position_Try_Fallbacks, join_items(rest, a))
 
-	case .White_Space, .Text_Wrap, .Font_Variant, .Transition, .Animation, .Overscroll_Behavior, .Columns, .Column_Rule,
+	case .White_Space, .Text_Wrap, .Font_Variant, .Transition, .Animation, .Animation_Range, .Scroll_Timeline, .View_Timeline, .Overscroll_Behavior, .Columns, .Column_Rule,
 	     .Grid_Template, .Grid, .Grid_Row, .Grid_Column, .Grid_Area:
 		return expand_shorthand_more(s, vs, a)
 	}

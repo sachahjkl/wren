@@ -19,6 +19,7 @@ Css_Anim_Info :: struct {
 	canceled:   bool,
 	finished:   bool,      // past its active interval
 	filling:    bool,      // finished, its values still applied (animation-fill-mode)
+	inactive:   bool,      // its timeline has no time now
 }
 
 @(private = "file")
@@ -27,10 +28,16 @@ run_info :: proc(tl: ^Timeline, ea: ^Element_Anim, r: ^Anim_Run) -> Css_Anim_Inf
 	dur := max(f64(r.spec.duration), 0)
 	iters := max(f64(r.spec.iterations), 0)
 	finished := r.forced != .Canceled && st.phase == .After && !math.is_inf(iters)
+	current := r.local
+	if r.timeline.kind != .Auto {
+		// (the time of a progress-based one is a percentage of its timeline, from the start of its attachment range)
+		t := &r.progress
+		current = timeline_percent(t, t.offset) - timeline_percent(t, t.start)
+	}
 	return {
-		serial = r.serial, node = ea.node, name = r.name, current = r.local, delay = f64(r.spec.delay), duration = dur,
+		serial = r.serial, node = ea.node, name = r.name, current = current, delay = f64(r.spec.delay), duration = dur,
 		iterations = iters, running = run_running(r), canceled = r.forced == .Canceled, finished = finished,
-		filling = finished && st.effect,
+		filling = finished && st.effect, inactive = r.timeline.kind != .Auto && !r.progress.active,
 	}
 }
 
@@ -74,6 +81,20 @@ css_find :: proc(tl: ^Timeline, serial: u64) -> (ea: ^Element_Anim, r: ^Anim_Run
 		for x in e.transitions { if x.serial == serial { return e, nil, x } }
 	}
 	return
+}
+
+// What a CSS animation runs on; false once it is gone. A progress-based one tells its source and its attachment range.
+timeline_css_timeline :: proc(tl: ^Timeline, serial: u64) -> (info: Css_Timeline_Info, ok: bool) {
+	ea, r, _ := css_find(tl, serial)
+	if r == nil { return }
+	info.kind = r.timeline.kind
+	if r.timeline.kind == .Named || r.timeline.kind == .Scroll || r.timeline.kind == .View {
+		info.kind = r.src.view ? .View : .Scroll
+		info.source, info.subject, info.axis, info.inset = r.src.source, r.src.subject, r.src.axis, r.src.inset
+		info.range = {timeline_percent(&r.progress, r.progress.start), timeline_percent(&r.progress, r.progress.end)}
+	}
+	_ = ea
+	return info, true
 }
 
 // The state of one CSS animation or transition; false once it is gone (finished transition, name dropped).

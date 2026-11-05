@@ -13,6 +13,8 @@ wr_AbortSignal :: distinct u64
 
 // module animations: types
 wr_Animation :: distinct u64
+// A ScrollTimeline or ViewTimeline (src/page/web_animations_scroll.odin).
+wr_ProgressTimeline :: distinct u64
 wr_AnimationPlayState :: enum i32 {
 	Idle = 0,
 	Running = 1,
@@ -32,6 +34,11 @@ wr_CssAnimationInfo :: struct {
 	delay: f64,
 	duration: f64,
 	iterations: f64,
+	timeline_kind: i32,
+	timeline: u64,
+	source: u64,
+	subject: u64,
+	axis: i32,
 }
 
 // module async: types
@@ -929,6 +936,21 @@ foreign _wr_wj_animations {
 	@(link_name = "Animation_cssName") wr_Animation_cssName :: proc(animation: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	// document.timeline.currentTime (NaN: null)
 	@(link_name = "DocumentTimeline_currentTime") wr_DocumentTimeline_currentTime :: proc() -> f64 ---
+	// new ScrollTimeline({source, axis}), new ViewTimeline({subject, axis, inset}): `source` absent with `none`: a null source; absent
+	// without it: the viewport. `subject`: a view timeline's. `axis`: 0 block, 1 inline, 2 x, 3 y. `inset` as CSS text.
+	@(link_name = "ProgressTimeline_create") wr_ProgressTimeline_create :: proc(source: u64, none: i32, subject: u64, axis: i32, inset: [^]u8, inset_len: u32) -> u64 ---
+	// timeline.currentTime, in percents (NaN: null).
+	@(link_name = "ProgressTimeline_currentTime") wr_ProgressTimeline_currentTime :: proc(timeline: u64) -> f64 ---
+	// ViewTimeline startOffset (0) and endOffset (1), CSS px.
+	@(link_name = "ProgressTimeline_offset") wr_ProgressTimeline_offset :: proc(timeline: u64, which: i32) -> f64 ---
+	// animation.timeline = a ScrollTimeline or ViewTimeline.
+	@(link_name = "Animation_setProgressTimeline") wr_Animation_setProgressTimeline :: proc(animation: u64, timeline: u64) ---
+	// The animation's times are percents of a ScrollTimeline or ViewTimeline.
+	@(link_name = "Animation_isProgress") wr_Animation_isProgress :: proc(animation: u64) -> i32 ---
+	// rangeStart (0) or rangeEnd (1) as CSS text; false when it is not one.
+	@(link_name = "Animation_setRange") wr_Animation_setRange :: proc(animation: u64, which: i32, text: [^]u8, text_len: u32) -> i32 ---
+	// rangeStart (0) or rangeEnd (1) as CSS text.
+	@(link_name = "Animation_range") wr_Animation_range :: proc(animation: u64, which: i32, _buf: [^]u8, _cap: u32) -> i32 ---
 	// Whether `easing` is an easing function (CSS Easing 2).
 	@(link_name = "Animation_validEasing") wr_Animation_validEasing :: proc(easing: [^]u8, easing_len: u32) -> i32 ---
 }

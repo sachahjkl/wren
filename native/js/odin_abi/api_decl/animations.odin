@@ -17,6 +17,14 @@ Animation_setEffect :: #type proc(animation: Animation, target: u64, keyframes: 
 	direction: i32, fill: i32, easing: string, composite: i32) -> abi.Api_Error
 Animation_clearEffect :: #type proc(animation: Animation)
 Animation_setTimeline :: #type proc(animation: Animation, document_timeline: bool)
+// ScrollTimeline, ViewTimeline: `source` 0 with `none` a null source, without it the viewport; `subject` a view timeline's.
+ProgressTimeline_create :: #type proc(source: u64, none: bool, subject: u64, axis: i32, inset: string) -> u64
+ProgressTimeline_currentTime :: #type proc(timeline: u64) -> f64   // percents; NaN: null
+ProgressTimeline_offset :: #type proc(timeline: u64, which: i32) -> f64
+Animation_setProgressTimeline :: #type proc(animation: Animation, timeline: u64)
+Animation_isProgress :: #type proc(animation: Animation) -> bool
+Animation_setRange :: #type proc(animation: Animation, which: i32, text: string) -> bool
+Animation_range :: #type proc(animation: Animation, which: i32) -> string
 Animation_play        :: #type proc(animation: Animation) -> abi.Api_Error
 Animation_currentTime :: #type proc(animation: Animation) -> f64   // NaN: unresolved
 Animation_set_currentTime :: #type proc(animation: Animation, time: f64) -> abi.Api_Error

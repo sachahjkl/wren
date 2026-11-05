@@ -20,7 +20,8 @@ animatable :: proc(p: Prop) -> bool {
 	#partial switch p {
 	case .Transition_Property, .Transition_Duration, .Transition_Timing_Function, .Transition_Delay, .Transition_Behavior,
 	     .Animation_Name, .Animation_Duration, .Animation_Timing_Function, .Animation_Delay, .Animation_Iteration_Count,
-	     .Animation_Direction, .Animation_Fill_Mode, .Animation_Play_State, .Animation_Composition, .Will_Change, .Direction:
+	     .Animation_Direction, .Animation_Fill_Mode, .Animation_Play_State, .Animation_Composition, .Animation_Timeline, .Animation_Range_Start, .Animation_Range_End,
+	     .Scroll_Timeline_Name, .Scroll_Timeline_Axis, .View_Timeline_Name, .View_Timeline_Axis, .View_Timeline_Inset, .Timeline_Scope, .Will_Change, .Direction:
 		return false
 	}
 	return true

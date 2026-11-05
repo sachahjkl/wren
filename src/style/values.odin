@@ -239,7 +239,7 @@ initial_groups_fill :: proc(c: ^Computed) {
 	c.transition_timing = EASE_LIST[:]
 	c.transition_behavior = FALSE_LIST[:]
 	c.animation_name = NONE_NAMES[:]
-	c.animation_duration = ZERO_TIMES[:]
+	c.animation_duration = AUTO_DURATION[:]
 	c.animation_delay = ZERO_TIMES[:]
 	c.animation_timing = EASE_LIST[:]
 	c.animation_iterations = ONE_LIST[:]
@@ -247,6 +247,14 @@ initial_groups_fill :: proc(c: ^Computed) {
 	c.animation_fill_mode = NO_FILL[:]
 	c.animation_play_state = RUNNING[:]
 	c.animation_composition = REPLACE[:]
+	c.animation_timeline = AUTO_TIMELINE[:]
+	c.animation_range_start = NORMAL_RANGE[:]
+	c.animation_range_end = NORMAL_RANGE[:]
+	c.scroll_timeline_name = NONE_NAMES[:]
+	c.scroll_timeline_axis = BLOCK_AXIS[:]
+	c.view_timeline_name = NONE_NAMES[:]
+	c.view_timeline_axis = BLOCK_AXIS[:]
+	c.view_timeline_inset = AUTO_INSETS[:]
 	c.background_images = NO_IMAGES[:]
 	c.background_repeats = REPEATS[:]
 	c.background_positions = ORIGIN_POSITIONS[:]
@@ -261,6 +269,11 @@ initial_groups_fill :: proc(c: ^Computed) {
 
 @(private) INITIAL_TRANSITION_PROPERTY := [1]Transition_Prop{{kind = .All}}
 @(private) ZERO_TIMES := [1]f32{0}
+@(private) AUTO_DURATION := [1]f32{ANIM_DURATION_AUTO}
+@(private) AUTO_TIMELINE := [1]Anim_Timeline{{kind = .Auto}}
+@(private) NORMAL_RANGE := [1]Anim_Range{{}}
+@(private) BLOCK_AXIS := [1]Timeline_Axis{.Block}
+@(private) AUTO_INSETS := [1]View_Inset{AUTO_INSET}
 @(private) EASE_LIST := [1]Easing{EASE}
 @(private) FALSE_LIST := [1]bool{false}
 @(private) NONE_NAMES := [1]string{""}
@@ -920,6 +933,8 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	     .Grid_Template_Columns, .Grid_Template_Rows, .Grid_Template_Areas, .Grid_Auto_Columns, .Grid_Auto_Rows,
 	     .Grid_Auto_Flow, .Grid_Row_Start, .Grid_Row_End, .Grid_Column_Start, .Grid_Column_End, .Justify_Items, .Justify_Self:
 		return apply_prop_more(cx, p, vs)
+	case .Animation_Timeline, .Animation_Range_Start, .Animation_Range_End, .Scroll_Timeline_Name, .Scroll_Timeline_Axis, .View_Timeline_Name, .View_Timeline_Axis, .View_Timeline_Inset, .Timeline_Scope:
+		return apply_timeline_prop(cx, p, vs)
 	case .Container_Type, .Container_Name, .Scrollbar_Width, .Scrollbar_Color, .Scrollbar_Gutter:
 		return apply_container_prop(cx, p, vs)
 	case .Mask_Image, .Mask_Mode, .Mask_Repeat, .Mask_Position, .Mask_Size, .Mask_Origin, .Mask_Clip, .Mask_Composite, .Text_Fill_Color:

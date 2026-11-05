@@ -14,6 +14,9 @@ import "wren:core"
 
 Animation :: distinct core.Object
 
+// A ScrollTimeline or ViewTimeline (src/page/web_animations_scroll.odin).
+ProgressTimeline :: distinct core.Object
+
 AnimationPlayState :: enum i32 {
 	Idle = 0,
 	Running = 1,
@@ -35,6 +38,12 @@ CssAnimationInfo :: struct {
 	delay: f64,
 	duration: f64,
 	iterations: f64,
+	// The timeline: 0 the document's, 1 scroll, 2 view (`timeline`, `source`, `subject`, `axis`), 3 none.
+	timeline_kind: i32,
+	timeline: u64,
+	source: u64,
+	subject: u64,
+	axis: i32,
 }
 
 foreign import _m_animations "animations"
@@ -70,6 +79,13 @@ foreign _m_animations {
 	@(link_name = "Animation_cssBind") _Animation_cssBind :: proc(animation: Animation, notify: core.MicrotaskCallback, user: i32, _ret: ^CssAnimationInfo) ---
 	@(link_name = "Animation_cssName") _Animation_cssName :: proc(animation: Animation, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "DocumentTimeline_currentTime") _DocumentTimeline_currentTime :: proc() -> f64 ---
+	@(link_name = "ProgressTimeline_create") _ProgressTimeline_create :: proc(source: u64, none: i32, subject: u64, axis: i32, inset: [^]u8, inset_len: u32) -> u64 ---
+	@(link_name = "ProgressTimeline_currentTime") _ProgressTimeline_currentTime :: proc(timeline: ProgressTimeline) -> f64 ---
+	@(link_name = "ProgressTimeline_offset") _ProgressTimeline_offset :: proc(timeline: ProgressTimeline, which: i32) -> f64 ---
+	@(link_name = "Animation_setProgressTimeline") _Animation_setProgressTimeline :: proc(animation: Animation, timeline: ProgressTimeline) ---
+	@(link_name = "Animation_isProgress") _Animation_isProgress :: proc(animation: Animation) -> i32 ---
+	@(link_name = "Animation_setRange") _Animation_setRange :: proc(animation: Animation, which: i32, text: [^]u8, text_len: u32) -> i32 ---
+	@(link_name = "Animation_range") _Animation_range :: proc(animation: Animation, which: i32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Animation_validEasing") _Animation_validEasing :: proc(easing: [^]u8, easing_len: u32) -> i32 ---
 }
 
@@ -299,6 +315,66 @@ Animation_cssName_alloc :: proc(animation: Animation, allocator: runtime.Allocat
 // document.timeline.currentTime (NaN: null)
 DocumentTimeline_currentTime :: proc "contextless" () -> f64 {
 	return _DocumentTimeline_currentTime()
+}
+
+// new ScrollTimeline({source, axis}), new ViewTimeline({subject, axis, inset}): `source` absent with `none`: a null source; absent
+// without it: the viewport. `subject`: a view timeline's. `axis`: 0 block, 1 inline, 2 x, 3 y. `inset` as CSS text.
+ProgressTimeline_create :: proc "contextless" (source: $T_source, none: bool, subject: $T_subject, axis: i32, inset: string) -> u64 where intrinsics.type_is_integer(intrinsics.type_core_type(T_source)) && size_of(T_source) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_subject)) && size_of(T_subject) == 8 {
+	return _ProgressTimeline_create(u64(source), i32(1 if none else 0), u64(subject), axis, raw_data(inset), u32(len(inset)))
+}
+
+// timeline.currentTime, in percents (NaN: null).
+ProgressTimeline_currentTime :: proc "contextless" (timeline: ProgressTimeline) -> f64 {
+	return _ProgressTimeline_currentTime(timeline)
+}
+
+// ViewTimeline startOffset (0) and endOffset (1), CSS px.
+ProgressTimeline_offset :: proc "contextless" (timeline: ProgressTimeline, which: i32) -> f64 {
+	return _ProgressTimeline_offset(timeline, which)
+}
+
+// animation.timeline = a ScrollTimeline or ViewTimeline.
+Animation_setProgressTimeline :: proc "contextless" (animation: Animation, timeline: ProgressTimeline) {
+	_Animation_setProgressTimeline(animation, timeline)
+}
+
+// The animation's times are percents of a ScrollTimeline or ViewTimeline.
+Animation_isProgress :: proc "contextless" (animation: Animation) -> bool {
+	return _Animation_isProgress(animation) != 0
+}
+
+// rangeStart (0) or rangeEnd (1) as CSS text; false when it is not one.
+Animation_setRange :: proc "contextless" (animation: Animation, which: i32, text: string) -> bool {
+	return _Animation_setRange(animation, which, raw_data(text), u32(len(text))) != 0
+}
+
+// rangeStart (0) or rangeEnd (1) as CSS text.
+Animation_range :: proc "contextless" (animation: Animation, which: i32, buf: []u8) -> (string, core.Error) {
+	n := _Animation_range(animation, which, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, core.Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Animation_range's result.
+Animation_range_len :: proc "contextless" (animation: Animation, which: i32) -> (int, core.Error) {
+	n := _Animation_range(animation, which, nil, 0)
+	if n < 0 { return 0, core.Error(n) }
+	return int(n), .None
+}
+
+// Animation_range's result in a buffer allocated to fit.
+Animation_range_alloc :: proc(animation: Animation, which: i32, allocator: runtime.Allocator) -> (string, core.Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Animation_range(animation, which, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, core.Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
 }
 
 // Whether `easing` is an easing function (CSS Easing 2).

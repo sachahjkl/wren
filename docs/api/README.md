@@ -73,7 +73,7 @@ function not exposed to workers is not instantiated.
 | module | Odin package | functions | exposed | |
 |---|---|---:|---|---|
 | [`abort`](abort.md) | `wren:abort` | 10 | Window | AbortController and AbortSignal (DOM Standard). A signal is an EventTarget ("abort"). Its reason is a (code, text) |
-| [`animations`](animations.md) | `wren:animations` | 30 | Window | Web Animations (src/page/web_animations.odin): Element.animate, Animation, KeyframeEffect, document.timeline. The |
+| [`animations`](animations.md) | `wren:animations` | 37 | Window | Web Animations (src/page/web_animations.odin): Element.animate, Animation, KeyframeEffect, document.timeline. The |
 | [`async`](async.md) | `wren:core` | 17 | Window, Worker | Promises, microtasks, buffers and host objects: the asynchronous core every other module builds on. |
 | [`bloburl`](bloburl.md) | `wren:bloburl` | 2 | Window, Worker | The blob URL store (src/fetch/blob_urls.odin): what `URL.createObjectURL` makes, for everything that loads a URL outside the |
 | [`caches`](caches.md) | `wren:caches` | 11 | Window, Worker | The Cache API (Service Workers §5: CacheStorage, Cache) on the browser's storage (src/page/cache_store.odin): named |
@@ -97,7 +97,7 @@ function not exposed to workers is not instantiated.
 | [`history`](history.md) | `wren:history` | 14 | Window | Window, Location and History (HTML). Navigations requested by a module happen from a task of their own, never |
 | [`idb`](idb.md) | `wren:idb` | 1 | Window, Worker | IndexedDB (the JavaScript engine's prelude, native/js/lazy/idb.js, is the only caller). One entry point: the |
 | [`images`](images.md) | `wren:images` | 6 | Window, Worker | Images: HTMLImageElement (<img> and <input type=image>) and decoding image files from buffers. naturalWidth and |
-| [`js`](js.md) | `wren:js` | 16 | Window, Worker | What the JavaScript engine (native/js, a C guest) needs from the browser beyond the web API itself: the console with |
+| [`js`](js.md) | `wren:js` | 14 | Window, Worker | What the JavaScript engine (native/js, a C guest) needs from the browser beyond the web API itself: the console with |
 | [`dnd`](dnd.md) | `wren:dnd` | 32 | Window | HTML drag and drop for JavaScript (src/page/dnd.odin; native/js/runtime/web_dnd.c): the drag data store behind a |
 | [`entries`](entries.md) | `wren:entries` | 12 | Window | The File and Directory Entries API for what the user dropped (src/page/dnd_entries.odin; |
 | [`scripts`](scripts.md) | `wren:scripts` | 25 | Window, Worker | Script loading, the event loop and JavaScript workers as the engine needs them (HTML "scripting"): document.write / |
@@ -132,4 +132,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | `wren:websocket` | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | `wren:workers` | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1613 imports in 1514 functions.
+1618 imports in 1519 functions.
