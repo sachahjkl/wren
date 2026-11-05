@@ -315,6 +315,25 @@ net_http_2_then_http_3_learnt_from_alt_svc :: proc(t: ^testing.T) {
 	testing.expectf(t, r3.protocol == HTTP_3 && text_of(r3) == `POST 3 bytes, X-Test="h3"`, "a POST over HTTP/3 (%q)", text_of(r3))
 }
 
+// A 103 comes before the response: the body is the page's, on each protocol (over HTTP/3, codepen.io's embeds stayed empty).
+@(test)
+net_early_hints_come_before_the_response :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t, .Net)
+	defer end()
+	if !on_builtin_stack() { return }
+	serve(t)
+	trust_the_test_authority(t)
+	tls: net.Client
+	testing.expect(t, trusting_client(&tls, http3 = true, h3_race_ms = H3_RACE_MS), "a client that trusts the test authority")
+	defer net.client_destroy(&tls)
+	r := get(t, &tls, at("https", HTTPS_H2_H3, "/early-hints"))
+	testing.expectf(t, r.status == 200 && r.protocol == HTTP_2 && text_of(r) == "after the hints", "over HTTP/2 (%d, protocol %d, %q)", r.status, r.protocol, text_of(r))
+	_ = get(t, &tls, at("https", HTTPS_H2_H3, fmt.tprintf("/big?mb=%d", OVER_H3_MB)))
+	r3 := get(t, &tls, at("https", HTTPS_H2_H3, "/early-hints"))
+	testing.expectf(t, r3.status == 200 && r3.protocol == HTTP_3 && text_of(r3) == "after the hints", "over HTTP/3 (%d, protocol %d, %q)", r3.status, r3.protocol, text_of(r3))
+}
+
 // When each request of a burst left the queue, in ms from when it was asked for.
 burst_started :: proc(t: ^testing.T, c: ^net.Client, origin_url: string) -> (started: [BURST_REQUESTS]f32) {
 	rs: [BURST_REQUESTS]^Result

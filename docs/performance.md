@@ -2234,11 +2234,10 @@ their ranges meeting (vimeo.com: one run in five stays at 6 s). The load moved f
 What is left of these loads is the engine running the pages' scripts. cnn.com's first paint has two modes, 1.4 and 5 s, not looked into.
 
 **What got worse.**
-- **css-tricks.com: 13.7 -> 21.8 s to its load event, 226 -> 340 requests, CPU 30 -> 40 s, from item 1 alone** (6 streams: 12.3 s, 217 requests; the slice of item 3 changes nothing: 20.7 and
-  19.3 s, 4 runs). Not only a later event: on a quiet network (`-Idle`, 3 runs) 18.3 s and 342 requests against 12.2 s and 233. Its codepen embeds start more of themselves: 41 frames against 35,
-  batches at 7 and 11 s that the six streams never reach. Why is not established. Lazy frames seen near the viewport by an early layout was the guess; that an unknown distance
-  counts as near is ruled out (`Navigable.distance` starts at `max(f32)`). Left as it is: this page's first paint is 800 ms better for it and bbc.com's 3 s, and without css-tricks.com the loads
-  of the two arms are the same (8.85 and 8.86 s on the mean). `network.max_streams_per_host=6` is the way back.
+- **css-tricks.com: 13.7 -> 21.8 s to its load event, 226 -> 340 requests, CPU 30 -> 40 s, measured with item 1: not its cost, a bug it hid less.** The built-in stack took a `103 Early Hints` for the
+  response over HTTP/3, an empty one: the embed stayed blank, and its frames and scripts never came. With six streams twelve of the page's twenty-three embeds got one, with a hundred one (codepen.io answers 103
+  while its origin is slow, so the order of the requests decides). The six streams were quicker for doing less. Fixed (`h3conn.rs`), the two arms are the same, 19.3 and 18.4 s to quiet, 350 and 343 requests, 42 frames
+  each: what the page asks for, 38 s of CPU of twenty-three embeds.
 - **DOMContentLoaded** comes later on theverge.com (1 603 -> 3 679), github.com (3 452 -> 4 537) and npr.org (8 656 -> 10 897): frames run between the scripts now.
 - theverge.com's CPU 23.8 -> 29.0 s, from item 1 (6 streams 23.4 s), for the same load.
 
@@ -2508,8 +2507,8 @@ After round 25. The list is in the order of its measures again: item 10 is item 
 Item 1's figures were old: measured again they are higher, and nothing here says why.
 
 After round 26. Heavy pages from the navigation to the load event: the first paint is halved on the mean (round 26), the load much less. What is left of it is item 1 below and two things of its own. The engine's
-share of the window thread during a load is 47 to 68 % on most of them (vimeo.com: the interpreter 27 %, the collection 13 %, the rest spread out). And css-tricks.com is 8 s slower to its load event since
-round 26's item 1, for a reason not established. Not done: a preload scanner that works while the document arrives (the parser takes the whole document first: cnn.com's 6.8 MB, 240 to 700 ms before any
+share of the window thread during a load is 47 to 68 % on most of them (vimeo.com: the interpreter 27 %, the collection 13 %, the rest spread out). css-tricks.com is the engine too, 18 s for its twenty-three embeds, now that they are all
+loaded. Not done: a preload scanner that works while the document arrives (the parser takes the whole document first: cnn.com's 6.8 MB, 240 to 700 ms before any
 request of the page); `priority` headers (RFC 9218) now that images go out beside scripts; a style pass scoped to what a sheet that arrives can reach (cnn.com: 15 full passes for sheets, 2.2 s).
 
 1. **The script stage of DOM-heavy pages, what is left** (`js_nodes10k` on a quiet machine after round 25, 5 runs: a frame of 16.9 ms
