@@ -92,3 +92,34 @@ recycled_pass_slots :: proc(t: ^testing.T) {
 	testing.expectf(t, differ == 0, "%d elements differ from a pass of an engine that recycled none", differ)
 	testing.expect(t, styled >= 10)
 }
+
+// A layout reads the records of the pass it was made from: the page's next pass does not take them away, the last reader does.
+@(test)
+a_pass_with_a_reader_goes_with_its_last_reader :: proc(t: ^testing.T) {
+	doc := dom.document_create(nil)
+	defer dom.document_destroy(doc)
+	src := `<!doctype html><style>p { background-image: url(a.png), url(b.png) }</style><body><p id=p>a</p></body>`
+	html.parse_into(doc, doc.root, transmute([]byte)src, 100_000)
+	p := dom.find_by_id(doc, "p")
+	ss := settings_default()
+	defer settings_destroy(&ss)
+	e := engine_make(ss)
+	sync_document_sheets(e, doc, "about:test")
+
+	first := compute_styles(e, doc, {})
+	styled_read_begin(first)
+	read := style_of(first, p)
+	styled_recycle(e, first)
+	testing.expect(t, !e.has_spare, "its memory is not the next pass's")
+	second := compute_styles(e, doc, {})
+	testing.expect(t, computed_equal(read, style_of(second, p)), "the record stands after the next pass")
+	styled_read_end(first)
+	testing.expect(t, e.has_spare && len(e.ended) == 0, "the last reader gives it back")
+
+	// the page goes first: the engine, then the reader
+	styled_read_begin(second)
+	styled_destroy(second)
+	testing.expect_value(t, len(style_of(second, p).background_images), 2)
+	engine_destroy(e)
+	styled_read_end(second)
+}

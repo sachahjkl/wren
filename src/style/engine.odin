@@ -145,6 +145,7 @@ Engine :: struct {
 	spare_nodes:   [dynamic]base.Handle,
 	spare_arenas: [dynamic]^base.Arena,   // style threads' arenas given back by recycled passes, emptied, for the next ones (parallel.odin)
 	spare_arena_bytes: int,                  // what they held (bounded by recycle_bytes)
+	ended:     [dynamic]^Styled,          // passes replaced that a layout still reads (styled_read_begin)
 	ignored_properties: int,           // declarations naming a property this engine does not implement
 	ua:        ^Sheet,
 	user:      ^Sheet,
@@ -196,6 +197,8 @@ clone_settings :: proc(s: Settings) -> Settings {
 }
 
 engine_destroy :: proc(e: ^Engine) {
+	for s in e.ended { s.engine = nil }
+	delete(e.ended)
 	free(e.probe_base, base.process_allocator())
 	free(e.probe_inherited, base.process_allocator())
 	for s in e.sheets { sheet_free(s) }

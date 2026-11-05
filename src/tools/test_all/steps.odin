@@ -257,6 +257,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	unit(&t, "unit tests: remote api (the channel and the processes of wb:remote/api: a call through the channel and back, a process told again by its creation time)", "src/remote/api", exe("build/remote_api_test"), {ONE_THREAD, WB})
 	unit(&t, "unit tests: remote client (wren ctl: options, help, picture diff)", "src/remote/client", exe("build/remote_client_test"), {ONE_THREAD, WB})
 
+	e2e_step(&t, "a frame held through a navigation stands while its page makes style passes (src\\tools\\e2e\\held_styles.odin: what crashed in background_has_url; freed memory poisoned)", "held_styles")
 	e2e_step(&t, "the developer tools resized (src\\tools\\e2e\\devtools_resize.odin: a real window, never shown, and the panel's own keep their surface while they resize, 1:1 and clipped)", "devtools_resize", marks = {.No_CI})   // (a runner's screen is smaller than these real windows)
 	e2e_step(&t, "the interface with no browser around it (src\\tools\\e2e\\chrome_interface.odin: its zoom, by the keys and the wheel; the developer tools docked at their size; an open menu over the top resize band; the main menu in a short window, scrolled; the themes' colours; a row's menu over the downloads drop-down; the history tree's text through an animated zoom)", "chrome_interface")
 	e2e_step(&t, "the tab sidebar with no browser around it (src\\tools\\e2e\\chrome_sidebar.odin: opening and closing through the widths between, pinned tabs, tab groups, by commands and by the pointer)", "chrome_sidebar")

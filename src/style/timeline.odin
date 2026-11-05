@@ -175,7 +175,7 @@ timeline_destroy :: proc(tl: ^Timeline, s: ^Styled = nil) {
 	delete(tl.elements)
 	for _, sr in tl.scripts { script_run_free(sr) }
 	delete(tl.scripts)
-	for _, ov in tl.overlays { overlay_free(ov) }
+	for _, ov in tl.overlays { overlay_retire(s, ov) }
 	delete(tl.overlays)
 	delete(tl.order)
 	delete(tl.events)
@@ -195,7 +195,7 @@ timeline_reset :: proc(tl: ^Timeline, s: ^Styled) {
 	clear(&tl.elements)
 	for _, sr in tl.scripts { script_run_free(sr) }
 	clear(&tl.scripts)
-	for _, ov in tl.overlays { overlay_free(ov) }
+	for _, ov in tl.overlays { overlay_retire(s, ov) }
 	clear(&tl.overlays)
 	clear(&tl.order)
 	tl.running = 0
@@ -229,6 +229,11 @@ run_free :: proc(r: ^Anim_Run) {
 @(private)
 overlay_free :: proc(ov: ^Overlay) { base.arena_destroy(&ov.arena); free(ov) }
 
+// An overlay is over: a layout of `s` may still point at its record (see styled_read_begin), until it has followed the journal.
+@(private)
+overlay_retire :: proc(s: ^Styled, ov: ^Overlay) {
+	if s != nil && s.readers > 0 { append(&s.dead_overlays, ov) } else { overlay_free(ov) }
+}
 
 ////////////////////////////////
 // Clock and events
@@ -1088,7 +1093,7 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 		journal_add(s, h, crossed ? .Box : max(level, Change_Level.Paint))   // the overlay record (and its pseudo-elements')
 	}
 	for h in stale {
-		overlay_free(tl.overlays[h])
+		overlay_retire(s, tl.overlays[h])
 		delete_key(&tl.overlays, h)
 	}
 	if !paint_only(ps_union(props, tl.last_props)) { layout = true }

@@ -1,0 +1,27 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Style passes of a held page</title>
+<style>
+  body { margin: 0; font: 16px/1.4 sans-serif; }
+  .tile { display: inline-block; width: 120px; height: 90px; margin: 4px; background: url(data:image/gif;base64,R0lGODlhAQABAIAAAAAA/////yH5BAEAAAEALAAAAAABAAEAAAICTAEAOw==), linear-gradient(#fff, #fd8); }
+</style>
+<div id="tiles"></div>
+<script>
+  // A style read at every turn. A stylesheet that arrives while a navigation holds this page changes no node: the read makes a
+  // style pass of the old page that no layout follows (what imdb.com's scripts did while a link loaded).
+  const TILES = 200;
+  for (let i = 0; i < TILES; i++) {
+    const d = document.createElement('div');
+    d.className = 'tile';
+    d.textContent = i;
+    tiles.append(d);
+  }
+  window.passes = 0;
+  window.slowSheet = href => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    document.head.append(link);
+  };
+  setInterval(() => { getComputedStyle(document.body).color; window.passes++; }, 1);
+</script>
