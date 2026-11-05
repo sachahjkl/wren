@@ -23,6 +23,12 @@ import "wb:e2e"
 @(private = "file") HELD_LINES :: 4
 // The page's offset once two frames in a row leave it where it is.
 @(private = "file") STILL :: "new Promise((ok) => { let y = -1; const f = () => { if (scrollY === y) ok(y); else { y = scrollY; requestAnimationFrame(f) } }; requestAnimationFrame(f) })"
+// A page with a box of its own that scrolls: its bar answers like the document's.
+@(private = "file") BOX_PAGE :: `<!doctype html><style>body{margin:0} #tall{height:3000px} #box{position:fixed;left:0;top:0;width:200px;height:200px;overflow:scroll} #in{height:2000px}</style><div id=box><div id=in></div></div><div id=tall></div>`
+// How far down a bar a point of its thumb is, in widths of the bar; where the pointer goes to be on no bar; the box's side.
+@(private = "file") THUMB_AT :: 1.5
+@(private = "file") AWAY :: e2e.Point{400, 300}
+@(private = "file") BOX_SIDE :: 200
 
 @(private = "file")
 pref_f64 :: proc(s: ^e2e.Session, name: string) -> f64 {
@@ -66,4 +72,42 @@ classic_page_bar_takes_room_and_its_arrows_scroll :: proc(t: ^testing.T) {
 	// overlay bars take no room
 	e2e.pref_set(s, OVERLAY_PREF, "true")
 	e2e.wait_js(s, "document.documentElement.clientWidth == innerWidth")
+}
+
+@(private = "file")
+shown :: proc(s: ^e2e.Session, at: e2e.Point) -> [4]u8 {
+	e2e.wait_frames(s)
+	return e2e.pixel(e2e.capture(s, {target = .Page}), int(at.x), int(at.y))
+}
+
+@(private = "file")
+answers_the_pointer :: proc(t: ^testing.T, s: ^e2e.Session, at: e2e.Point, what: string) {
+	e2e.hover(s, AWAY)
+	rest := shown(s, at)
+	e2e.hover(s, at)
+	over := shown(s, at)
+	testing.expectf(t, over != rest, "%s under the pointer: %v as at rest", what, over)
+	e2e.press(s, at)
+	held := shown(s, at)
+	testing.expectf(t, held != over && held != rest, "%s held: %v, %v under the pointer, %v at rest", what, held, over, rest)
+	e2e.release(s, at)
+	e2e.hover(s, AWAY)
+	testing.expect_value(t, shown(s, at), rest)
+}
+
+// A scroll bar answers the pointer: under it a part changes, held it changes more, and it comes back. The document's thumb and arrow
+// buttons, and a box's thumb.
+@(test)
+a_scroll_bar_answers_the_pointer :: proc(t: ^testing.T) {
+	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, url = "about:blank"})
+	e2e.eval(s, fmt.tprintf("document.open(); document.write(%q); document.close(); 1", BOX_PAGE))
+	bar := pref_f64(s, WIDTH_PREF)
+	inner := e2e.eval_f64(s, "innerWidth")
+	height := e2e.eval_f64(s, "innerHeight")
+	answers_the_pointer(t, s, {inner - bar / 2, bar * THUMB_AT}, "the thumb")
+	// (a corner of the button, away from its triangle)
+	answers_the_pointer(t, s, {inner - bar + 1, height - bar + 1}, "the down arrow's button")
+	e2e.eval(s, "scrollTo(0, 0); 1")
+	e2e.wait_js(s, "scrollY == 0")
+	answers_the_pointer(t, s, {BOX_SIDE - bar / 2, bar * THUMB_AT}, "the thumb of a box")
 }

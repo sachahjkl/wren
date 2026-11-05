@@ -157,6 +157,16 @@ Arrow_Hold :: struct {
 	next_ms:  f64,            // the frame clock's time of the next step
 }
 
+// The part of a scroll bar under the pointer. One bar at most, whichever layout it is in.
+Bar_Part :: enum u8 { None, Thumb, Start, End, Track }
+Bar_Look :: struct { part: Bar_Part, pressed: bool }
+Bar_Over :: struct {
+	layout:   ^Layout,
+	node:     base.Handle,    // NIL: the document's bar
+	vertical: bool,
+	look:     Bar_Look,
+}
+
 Smooth_Scroll :: struct {
 	page:  rawptr,            // the page the offsets belong to (another one: forgotten)
 	anims: [dynamic]Scroller_Anim,
@@ -538,6 +548,40 @@ scrollbar_at :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> (hit: Bar_Hit, ok: boo
 	return
 }
 
+// How the bar of `node` in `l` looks now.
+bar_look :: proc(l: ^Layout, node: base.Handle, vertical: bool) -> Bar_Look {
+	o := &the_app.page_render.bar
+	if o.layout != l || o.node != node || o.vertical != vertical { return {} }
+	return o.look
+}
+
+bar_over_set :: proc(app: ^App, over: Bar_Over) {
+	if app.page_render.bar == over { return }
+	app.page_render.bar = over
+	request_frames(app, 2)
+}
+
+@(private = "file")
+bar_part_at :: proc(hit: Bar_Hit, p: draw.Vec2) -> Bar_Part {
+	if lay.rect_contains(hit.arrows[0], p) { return .Start }
+	if lay.rect_contains(hit.arrows[1], p) { return .End }
+	return lay.rect_contains(hit.thumb, p) ? .Thumb : .Track
+}
+
+// The pointer moved to `pos` (window coordinates), or left the page (`over` false). A bar with nothing to scroll answers nothing, and a part held stays held.
+scrollbar_over_move :: proc(app: ^App, t: ^Tab, pos: draw.Vec2, over: bool) {
+	s := smooth_of(t)
+	if s.drag.active || s.arrow.active { return }
+	now: Bar_Over
+	if over && t.layout.valid {
+		p := pos - active_window(app).page_rect.min
+		if hit, ok := scrollbar_at(app, t, p); ok && hit.limit > hit.lo {
+			now = {&t.layout, hit.node, hit.vertical, {bar_part_at(hit, p), false}}
+		}
+	}
+	bar_over_set(app, now)
+}
+
 // Pointer events for the scroll bars of the page (`ev.pos` in window coordinates). True when the event was theirs: a
 // press on a bar, the moves and the release of a thumb drag.
 scrollbar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
@@ -558,6 +602,7 @@ scrollbar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 			// an arrow: a line that way, again and again while it is held (smooth_tick)
 			s.arrow = Arrow_Hold{active = true, over = true, node = hit.node, button = r, next_ms = pacer_of(app).frame_ms + ARROW_REPEAT_DELAY_MS}
 			s.arrow.step[ax] = (i == 0 ? -1 : 1) * app.cfg.key_line_px * t.layout.scale
+			bar_over_set(app, {&t.layout, hit.node, hit.vertical, {i == 0 ? .Start : .End, true}})
 			smooth_scroll_by(app, t, hit.node, s.arrow.step, app.smooth_cfg.key_ms)
 			return true
 		}
@@ -566,6 +611,7 @@ scrollbar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 			s.drag = Scrollbar_Drag{active = true, node = hit.node, vertical = hit.vertical, grab = p[ax] - hit.thumb.min[ax],
 				track_min = hit.rail.min[ax], travel = (hit.rail.max[ax] - hit.rail.min[ax]) - (hit.thumb.max[ax] - hit.thumb.min[ax]), lo = hit.lo, limit = hit.limit}
 			if a := find_anim(s, hit.node); a != nil { a.axis = {} }
+			bar_over_set(app, {&t.layout, hit.node, hit.vertical, {.Thumb, true}})
 		} else {
 			// a page toward the pointer
 			step := max(hit.port * app.cfg.key_page_fraction, app.cfg.key_line_px * t.layout.scale)
@@ -593,6 +639,7 @@ scrollbar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 	case .Mouse_Release:
 		if ev.button != .Left || (!s.drag.active && !s.arrow.active) { return false }
 		s.drag, s.arrow = {}, {}
+		scrollbar_over_move(app, t, ev.pos, draw.rect_contains(wnd.page_rect, ev.pos))
 		return true
 	}
 	return false

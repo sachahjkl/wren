@@ -181,5 +181,6 @@ shell_box_bar_press :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> bool {
 	if p[ax] < hit.thumb.min[ax] || p[ax] >= hit.thumb.max[ax] { return false }   // (the track and the arrows: the page's turn)
 	smooth_of(t).drag = Scrollbar_Drag{active = true, node = hit.node, vertical = hit.vertical, grab = p[ax] - hit.thumb.min[ax],
 		track_min = hit.rail.min[ax], travel = (hit.rail.max[ax] - hit.rail.min[ax]) - (hit.thumb.max[ax] - hit.thumb.min[ax]), lo = hit.lo, limit = hit.limit}
+	bar_over_set(app, {&t.layout, hit.node, hit.vertical, {.Thumb, true}})
 	return true
 }
