@@ -324,7 +324,7 @@ function not exposed to workers is not instantiated.</p>
 <tr><td><a href="../../../docs/api/history/"><code>history</code></a></td><td><code>wren:history</code></td><td style="text-align:right">14</td><td>Window</td><td>Window, Location and History (HTML). Navigations requested by a module happen from a task of their own, never</td></tr>
 <tr><td><a href="../../../docs/api/idb/"><code>idb</code></a></td><td><code>wren:idb</code></td><td style="text-align:right">1</td><td>Window, Worker</td><td>IndexedDB (the JavaScript engine's prelude, native/js/lazy/idb.js, is the only caller). One entry point: the</td></tr>
 <tr><td><a href="../../../docs/api/images/"><code>images</code></a></td><td><code>wren:images</code></td><td style="text-align:right">6</td><td>Window, Worker</td><td>Images: HTMLImageElement (&lt;img&gt; and &lt;input type=image&gt;) and decoding image files from buffers. naturalWidth and</td></tr>
-<tr><td><a href="../../../docs/api/js/"><code>js</code></a></td><td><code>wren:js</code></td><td style="text-align:right">13</td><td>Window, Worker</td><td>What the JavaScript engine (native/js, a C guest) needs from the browser beyond the web API itself: the console with</td></tr>
+<tr><td><a href="../../../docs/api/js/"><code>js</code></a></td><td><code>wren:js</code></td><td style="text-align:right">14</td><td>Window, Worker</td><td>What the JavaScript engine (native/js, a C guest) needs from the browser beyond the web API itself: the console with</td></tr>
 <tr><td><a href="../../../docs/api/dnd/"><code>dnd</code></a></td><td><code>wren:dnd</code></td><td style="text-align:right">32</td><td>Window</td><td>HTML drag and drop for JavaScript (src/page/dnd.odin; native/js/runtime/web_dnd.c): the drag data store behind a</td></tr>
 <tr><td><a href="../../../docs/api/entries/"><code>entries</code></a></td><td><code>wren:entries</code></td><td style="text-align:right">12</td><td>Window</td><td>The File and Directory Entries API for what the user dropped (src/page/dnd_entries.odin;</td></tr>
 <tr><td><a href="../../../docs/api/scripts/"><code>scripts</code></a></td><td><code>wren:scripts</code></td><td style="text-align:right">25</td><td>Window, Worker</td><td>Script loading, the event loop and JavaScript workers as the engine needs them (HTML "scripting"): document.write /</td></tr>
@@ -360,7 +360,7 @@ function not exposed to workers is not instantiated.</p>
 <tr><td><a href="../../../docs/api/workers/"><code>workers</code></a></td><td><code>wren:workers</code></td><td style="text-align:right">11</td><td>Window, Worker</td><td>Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in</td></tr>
 </tbody>
 </table></div>
-<p>1610 imports in 1511 functions.</p>
+<p>1611 imports in 1512 functions.</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/licence/"><span>Previous</span><strong>Wren User Licences</strong></a>
 <a class="doc-next" href="../../../docs/js/coverage/"><span>Next</span><strong>JavaScript bindings: coverage</strong></a>

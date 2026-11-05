@@ -122,6 +122,9 @@ browser/prof.odin qpc_freq_cached process  # the performance counter's frequency
 browser/prof.odin prof process  # WREN_PROF's profiler: the first App's thread (prof_init; a profiled process runs one App)
 browser/prof.odin startup_marks process  # the process's start-up moments (from main's first line)
 browser/prof.odin sampler_tid process  # the profiler's sampling thread (atomic)
+browser/prof.odin phase_span_start process  # WREN_SPANS: when each phase began, on the profiled thread
+browser/prof.odin PHASE_NAMES const  # the phases' names in the spans
+page/js_host.odin engine_span_start thread  # WREN_SPANS: when each stage of the engine began on this thread
 browser/remote_shell.odin remote_exit_code process  # what the process ends with (Browser.close)
 browser/remote_shell.odin remote_fast_exit process  # the process ends at once, without the teardown
 browser/remote_state.odin KEEP_NAMES const  # a table

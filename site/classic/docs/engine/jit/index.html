@@ -64,7 +64,9 @@ engine: the code made at run time lives in the engine's sandbox and reaches only
 helpers the engine exports to it.</p>
 <h2 id="when-a-loop-is-compiled"><a class="anchor" href="#when-a-loop-is-compiled" aria-hidden="true">#</a>When a loop is compiled</h2>
 <p>The interpreter's hot loop counts back edges for the interrupt poll; every <code>INTERRUPT_POLL_EVERY</code> of them it leaves to
-the full dispatch, which offers the back edge to <code>jit_back_edge</code>. A loop seen there for the first time is translated
+the full dispatch, which offers the back edge to <code>jit_back_edge</code>. A check falls on a loop in proportion to the part it has in
+what runs: a loop met by <code>javascript.jit.loop_threshold</code> of them (<code>Jit_Loop.sightings</code>) is hot, one met once is not: compiled at
+its first sighting, theverge.com translated 1 600 loops during its load for nothing it got back. It is then translated
 (<code>jit_build</code>) and entered at its header (on-stack replacement), with the frame's arguments, locals and operand stack in
 memory. While a loop of a function is compiled, the hot loop leaves at that loop's back edges only (<code>jit_loop_taken</code>);
 the function's other loops stay in it.</p>
