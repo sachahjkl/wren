@@ -83,7 +83,7 @@ timeline_frame :: proc(app: ^App) {
 	if render.capture_request(&app.r, tl.rect) {
 		tl.asked = true
 		m := Tl_Frame{n = tl.seen, ms = f64(host.now_ns(&app.loop) - tl.t0) / 1e6, nested = shell_nested()}
-		if t := current_tab(app); t != nil { m.scroll, m.hold, m.loading = t.scroll, t.hold.active, tab_loading(t) }
+		if t := current_tab(app); t != nil { m.scroll, m.hold, m.loading = shell_shown_scroll(t).y, t.hold.active, tab_loading(t) }
 		tl.meta = m
 	}
 	tl.seen += 1

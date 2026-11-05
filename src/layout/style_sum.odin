@@ -45,7 +45,7 @@ style_sum_of :: proc(cs: ^style.Computed) -> (s: Style_Sum) {
 	case .Fixed: s.flags += {.Positioned, .Abs, .Bfc, .Stacking}
 	}
 	if .Positioned in s.flags && !cs.z_auto { s.flags += {.Stacking} }
-	if cs.opacity < 1 || stacking_effect(cs) { s.flags += {.Stacking} }
+	if cs.opacity < 1 || cs.compositing != {} || stacking_effect(cs) { s.flags += {.Stacking} }
 	if box_effects(cs) != {} { s.flags += {.Effects} }
 	if cs.mix_blend_mode != .Normal { s.flags += {.Blends} }
 	if cs.float != .None && .Abs not_in s.flags { s.flags += {.Float, .Bfc} }

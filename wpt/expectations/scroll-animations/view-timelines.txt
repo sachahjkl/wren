@@ -1,0 +1,132 @@
+# web-platform-tests expectations of Wren for scroll-animations/view-timelines, written by build/wpt -update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/scroll-animations/view-timelines/animation-events.html: OK
+	View timeline generates and resolves finish promises and events: PASS
+/scroll-animations/view-timelines/block-view-timeline-current-time-vertical-rl.tentative.html: OK
+	View timeline with container having vertical-rl layout: FAIL
+/scroll-animations/view-timelines/block-view-timeline-current-time.tentative.html: OK
+	View timeline  does not clamp end scroll offset at max scroll: FAIL
+	View timeline does not clamp starting scroll offset at 0: FAIL
+	View timeline with start and end scroll offsets that do not align with the scroll boundaries: FAIL
+/scroll-animations/view-timelines/block-view-timeline-nested-subject.tentative.html: OK
+	View timeline with subject that is not a direct descendant of the scroll container: FAIL
+/scroll-animations/view-timelines/change-animation-range-updates-play-state.html: OK
+	Changing the animation range updates the play state: FAIL
+/scroll-animations/view-timelines/contain-alignment.html: OK
+	Stability of animated elements aligned to the bounds of a contain region: FAIL
+/scroll-animations/view-timelines/duration.html: OK
+	The duration of a view timeline is 100%: FAIL
+/scroll-animations/view-timelines/fieldset-source.html: OK
+	Fieldset is a valid source for a view timeline: FAIL
+/scroll-animations/view-timelines/get-keyframes-with-timeline-offset.html: OK
+	Computed offsets can be outside [0,1] for keyframes with timeline offsets: FAIL
+	Include unreachable keyframes: FAIL
+	Mix of computed and timeline offsets.: FAIL
+	Offsets can be outside [0%,100%] for keyframes with timeline range names: FAIL
+	Report specified timeline offsets: FAIL
+	Retain specified ordering of keyframes with timeline offsets: FAIL
+/scroll-animations/view-timelines/inline-subject.html: OK
+	View timeline attached to SVG graphics element: FAIL
+/scroll-animations/view-timelines/inline-view-timeline-current-time.tentative.html: OK
+	View timeline does not clamp end scroll offset at max scroll: FAIL
+	View timeline does not clamp starting scroll offset at 0: FAIL
+	View timeline with container having RTL layout: FAIL
+	View timeline with start and end scroll offsets that do not align with the scroll boundaries: FAIL
+/scroll-animations/view-timelines/intermediate-transform.html: OK
+	View timeline delay: FAIL
+/scroll-animations/view-timelines/sticky/view-timeline-sticky-containing-block-clamp.html: OK
+	View timeline with a sticky element whose stuck range is cut short by its containing block.: FAIL
+/scroll-animations/view-timelines/sticky/view-timeline-sticky-offscreen-1.html: OK
+	View timeline top-sticky during entry.: FAIL
+/scroll-animations/view-timelines/sticky/view-timeline-sticky-offscreen-2.html: OK
+	View timeline bottom-sticky during entry and top-sticky during exit.: FAIL
+/scroll-animations/view-timelines/sticky/view-timeline-sticky-offscreen-3.html: OK
+	View timeline top-sticky and bottom-sticky during entry.: FAIL
+/scroll-animations/view-timelines/sticky/view-timeline-sticky-offscreen-4.html: OK
+	View timeline top-sticky before entry.: FAIL
+/scroll-animations/view-timelines/sticky/view-timeline-sticky-offscreen-5.html: OK
+	View timeline bottom-sticky before entry and top-sticky after exit.: FAIL
+/scroll-animations/view-timelines/sticky/view-timeline-sticky-offscreen-6.html: OK
+	View timeline target > viewport, bottom-sticky during entry and top-sticky during exit.: FAIL
+/scroll-animations/view-timelines/sticky/view-timeline-sticky-offscreen-7.html: OK
+	View timeline target > viewport, bottom-sticky and top-sticky during contain.: FAIL
+/scroll-animations/view-timelines/sticky/view-timeline-sticky-orthogonal-axis-only.html: OK
+	Block-axis view timeline with a sticky element stuck only in the (orthogonal) inline axis.: FAIL
+/scroll-animations/view-timelines/sticky/view-timeline-sticky-zero-size-subject.tentative.html: OK
+	View timeline ranges are not inverted for a zero-size subject inside a sticky element.: FAIL
+/scroll-animations/view-timelines/svg-graphics-element-001.html: OK
+	View timeline attached to SVG graphics element: FAIL
+/scroll-animations/view-timelines/svg-graphics-element-002.html: OK
+	View timeline attached to SVG graphics element: FAIL
+/scroll-animations/view-timelines/svg-graphics-element-003.html: OK
+	View timeline attached to SVG graphics element: FAIL
+/scroll-animations/view-timelines/timeline-offset-in-keyframe.html: OK
+	Invalid timeline offset in programmatic keyframe throws: FAIL
+	String offsets in programmatic keyframes: FAIL
+	Timeline offsets in programmatic keyframes: FAIL
+	Timeline offsets in programmatic keyframes adjust for change in timeline: FAIL
+	Timeline offsets in programmatic keyframes resolved when updating the animation effect: FAIL
+/scroll-animations/view-timelines/unattached-subject-inset.html: OK
+	Creating a view timeline with a subject that is not attached to the document works as expected: FAIL
+/scroll-animations/view-timelines/view-timeline-abspos-containing-block-outside-scroller.tentative.html: OK
+	View timeline ranges for an absolutely positioned subject whose containing block is outside the nearest DOM scroll container.: FAIL
+	ViewTimeline source follows the containing block chain for absolutely positioned subjects.: FAIL
+/scroll-animations/view-timelines/view-timeline-abspos-outside-scroll-range.html: OK
+	View timeline range boundaries are not clamped to the scroll range.: FAIL
+	View timeline ranges that start before the scroll range, sampled past 100%.: FAIL
+/scroll-animations/view-timelines/view-timeline-abspos-subject.html: OK
+	View timeline with an absolutely positioned subject whose containing block is inside the scroll container, block axis.: FAIL
+/scroll-animations/view-timelines/view-timeline-get-current-time-range-name.tentative.html: OK
+	View timeline current time for named range: FAIL
+/scroll-animations/view-timelines/view-timeline-get-set-range.html: OK
+	Getting and setting the animation range: FAIL
+/scroll-animations/view-timelines/view-timeline-inset.html: OK
+	View timeline with percent based inset.: FAIL
+	View timeline with px based inset.: FAIL
+	view timeline inset as string: FAIL
+	view timeline with inset auto.: FAIL
+	view timeline with invalid inset: FAIL
+/scroll-animations/view-timelines/view-timeline-on-display-none-element.html: OK
+	element with display: none should have inactive viewtimeline: PASS
+/scroll-animations/view-timelines/view-timeline-range-large-subject.html: OK
+	View timeline with range set via delays.: FAIL
+/scroll-animations/view-timelines/view-timeline-range.html: OK
+	View timeline range accepts absolute units.: PASS
+	View timeline with range and inferred name or offset.: FAIL
+	View timeline with range as <name> <percent+px> pair.: FAIL
+	View timeline with range as <name> <percent> pair.: FAIL
+	View timeline with range as <name> <px> pair.: FAIL
+	View timeline with range as strings.: FAIL
+	View timeline with range using relative units.: FAIL
+/scroll-animations/view-timelines/view-timeline-relative-ancestor.html: OK
+	View timeline with a relatively positioned ancestor, block axis.: FAIL
+/scroll-animations/view-timelines/view-timeline-relative-subject.html: OK
+	View timeline with a negatively offset relatively positioned subject.: FAIL
+	View timeline with a relatively positioned subject, block axis.: FAIL
+/scroll-animations/view-timelines/view-timeline-root-source.html: OK
+	Test view-timeline with document scrolling element.: FAIL
+/scroll-animations/view-timelines/view-timeline-snapport.html: OK
+	Default ViewTimeline is affected by scroll-padding: FAIL
+/scroll-animations/view-timelines/view-timeline-source-single-axis-inner.html: OK
+	ViewTimeline selects the nearest matching ancestor scroll container: FAIL
+/scroll-animations/view-timelines/view-timeline-source-single-axis-outer.html: OK
+	ViewTimeline skips non-matching ancestor scroll containers: FAIL
+/scroll-animations/view-timelines/view-timeline-source.tentative.html: OK
+	Default source for a View timeline is the nearest scroll ancestor to the subject: FAIL
+	View timeline ignores explicitly set source: FAIL
+	View timeline source is null when display:none: FAIL
+/scroll-animations/view-timelines/view-timeline-sticky-block.html: OK
+	View timeline with sticky target, block axis.: FAIL
+/scroll-animations/view-timelines/view-timeline-sticky-inline-ancestor.html: OK
+	A sticky inline ancestor adjusts the timeline like a sticky block ancestor at scrollTop 280: PASS
+	A sticky inline ancestor adjusts the timeline like a sticky block ancestor at scrollTop 300: PASS
+	A sticky inline ancestor adjusts the timeline like a sticky block ancestor at scrollTop 320: PASS
+/scroll-animations/view-timelines/view-timeline-sticky-inline.html: OK
+	View timeline with sticky target, block axis.: FAIL
+/scroll-animations/view-timelines/view-timeline-sticky-subpixel-adjustment.html: OK
+	Subpixel sticky room is preserved at the end of the cover range.: FAIL
+	Subpixel sticky room is preserved at the start of the cover range.: FAIL
+/scroll-animations/view-timelines/view-timeline-subject-size-changes.html: OK
+	View timeline with subject size change after the creation of the animation: FAIL
+/scroll-animations/view-timelines/zero-intrinsic-iteration-duration.tentative.html: OK
+	Intrinsic iteration duration is non-negative: FAIL

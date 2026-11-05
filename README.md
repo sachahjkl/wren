@@ -146,7 +146,7 @@ Everything below exists in the code today and is covered by the tests of [`src/t
   `delegatesFocus`.
 - CSS: cascade layers, custom properties and `@property`, nesting-era selectors (`:is`, `:where`, `:has`, `:not`…),
   media and container queries, Color 4 / 5 (Oklab, Oklch, `color-mix`…), math functions, `@font-face` with WOFF and
-  WOFF2, transitions and animations, `color-scheme` and system colors. Style is computed in parallel on large documents
+  WOFF2, transitions and animations, scroll-driven animations (`animation-timeline`, `scroll()`, `view()`, `ScrollTimeline`), `color-scheme` and system colors. Style is computed in parallel on large documents
   and restyled incrementally (invalidation sets, Bloom filter).
 - Layout: block and inline (bidi, line breaking, text placed vertically as Chromium places it: font metrics,
   half-leading, `vertical-align`), floats, positioning (absolute, fixed, sticky), **flexbox**, **grid** (with

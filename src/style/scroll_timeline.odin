@@ -509,7 +509,16 @@ declared_on :: proc(s: ^Styled, doc: ^dom.Document, h, root: base.Handle, name: 
 	return
 }
 
-// The one element under `scope` that declares `name` (more than one: none).
+@(private = "file")
+scope_lists :: proc(s: ^Styled, h: base.Handle, name: string) -> bool {
+	c := base_style_of(s, h)
+	if c == nil { return false }
+	if c.timeline_scope.all { return true }
+	for x in c.timeline_scope.names { if x == name { return true } }
+	return false
+}
+
+// The one element under `scope` that declares `name` (more than one: none), the subtrees of other timeline-scopes of that name aside.
 @(private = "file")
 declared_under :: proc(s: ^Styled, doc: ^dom.Document, scope, root: base.Handle, name: string) -> (src: Timeline_Source, ok: bool) {
 	stack := make([dynamic]base.Handle, context.temp_allocator)
@@ -523,31 +532,36 @@ declared_under :: proc(s: ^Styled, doc: ^dom.Document, scope, root: base.Handle,
 				if ok { return {}, false }
 				src, ok = d, true
 			}
+			if scope_lists(s, h, name) { continue }
 		}
 		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
 	}
 	return
 }
 
-// What `name` means for an animation of `h`: its own declaration, an ancestor's, or one under the nearest timeline-scope that lists it.
+// What `name` means for an animation of `h`: its own declaration or an ancestor's, one under the nearest timeline-scope that lists it, else
+// one of the document's outside any such scope. (`global`: what that last search found in this sample, by name.)
 @(private = "file")
-named_timeline :: proc(s: ^Styled, doc: ^dom.Document, h, root: base.Handle, name: string) -> (src: Timeline_Source, ok: bool) {
+named_timeline :: proc(s: ^Styled, doc: ^dom.Document, h, root: base.Handle, name: string, global: ^map[string]Global_Timeline) -> (src: Timeline_Source, ok: bool) {
 	for cur := h; cur != base.NIL_HANDLE; cur = dom.parent_or_host(doc, cur) {
 		n := dom.get(doc, cur)
 		if n == nil || n.kind != .Element { continue }
 		if d, found := declared_on(s, doc, cur, root, name); found { return d, true }
-		c := base_style_of(s, cur)
-		if c == nil { continue }
-		listed := c.timeline_scope.all
-		for x in c.timeline_scope.names { if x == name { listed = true } }
-		if listed { return declared_under(s, doc, cur, root, name) }
+		if scope_lists(s, cur, name) { return declared_under(s, doc, cur, root, name) }
 	}
+	if g, known := global[name]; known { return g.src, g.ok }
+	src, ok = declared_under(s, doc, doc.root, root, name)
+	global[name] = {src, ok}
 	return
 }
 
+// A name looked for in the whole document, for one sample.
+@(private = "file")
+Global_Timeline :: struct { src: Timeline_Source, ok: bool }
+
 // What an animation of `h` is attached to, by its animation-timeline. ok false: nothing (the timeline is inactive).
-@(private)
-resolve_timeline :: proc(s: ^Styled, doc: ^dom.Document, root, h: base.Handle, t: Anim_Timeline) -> (src: Timeline_Source, ok: bool) {
+@(private = "file")
+resolve_timeline :: proc(s: ^Styled, doc: ^dom.Document, root, h: base.Handle, t: Anim_Timeline, global: ^map[string]Global_Timeline) -> (src: Timeline_Source, ok: bool) {
 	#partial switch t.kind {
 	case .Scroll:
 		switch t.scroller {
@@ -560,7 +574,7 @@ resolve_timeline :: proc(s: ^Styled, doc: ^dom.Document, root, h: base.Handle, t
 	case .View:
 		return {view = true, subject = h, source = nearest_scroller(s, doc, h, root), axis = t.axis, inset = t.inset}, true
 	case .Named:
-		return named_timeline(s, doc, h, root, t.name)
+		return named_timeline(s, doc, h, root, t.name, global)
 	}
 	return
 }
@@ -620,13 +634,14 @@ progress_measure :: proc(s: ^Styled, probe: Timeline_Probe, src: Timeline_Source
 // Measures the timelines of the page's CSS animations; true when an animation has something new to show from them.
 timeline_scroll_sample :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, probe: Timeline_Probe) -> (changed: bool) {
 	if tl == nil || s == nil { return false }
+	global := make(map[string]Global_Timeline, 4, context.temp_allocator)
 	for _, ea in tl.elements {
 		if ea.base == nil { continue }
 		for r in ea.runs {
 			if r.timeline.kind == .Auto { continue }
 			was := r.progress
 			r.progress = {}
-			if src, ok := resolve_timeline(s, doc, probe.root, ea.node, r.timeline); ok {
+			if src, ok := resolve_timeline(s, doc, probe.root, ea.node, r.timeline, &global); ok {
 				r.src = src
 				progress_measure(s, probe, src, &r.progress)
 				if r.progress.active {
@@ -637,7 +652,8 @@ timeline_scroll_sample :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, pr
 			}
 			if r.progress != was {
 				changed = true
-				if r.progress.ranges != was.ranges { r.frames_ready = false }   // (keyframes at a named range)
+				// (keyframes at a named range move with it; the frames stay readable until the next tick: a chrome frame goes on with them)
+				if r.progress.ranges != was.ranges && r.frames_ranged { r.frames_moved = true }
 			}
 		}
 	}

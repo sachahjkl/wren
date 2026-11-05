@@ -188,9 +188,9 @@ shell_shown_wanted :: proc(app: ^App, t: ^Tab) -> (wanted, moving: bool) {
 	if t.page == nil || app.chrome_frames.page_locked { return }
 	tmp := runtime.default_temp_allocator_temp_begin()   // (also asked between two instructions of the guest: shell_preempt)
 	defer runtime.default_temp_allocator_temp_end(tmp)
-	vals := make([dynamic]style.Compositor_Value, context.temp_allocator)
-	moving = shell_animated(app, t, shell_shown_lays_out(app, t), &vals)
-	wanted = len(vals) > 0 || (app.chrome_frames.pending_tab == t.id && len(app.chrome_frames.boxes) > 0)
+	any: bool
+	moving, any = shell_animated(app, t, shell_shown_lays_out(app, t), nil)
+	wanted = any || (app.chrome_frames.pending_tab == t.id && len(app.chrome_frames.boxes) > 0)
 	if f := t.page.formctl != nil ? page.page_forms(t.page) : nil; f != nil {
 		if on, caret, period := caret_phase(app, f); caret && period > 0 {
 			wanted = true
@@ -203,8 +203,8 @@ shell_shown_wanted :: proc(app: ^App, t: ^Tab) -> (wanted, moving: bool) {
 // The values at the chrome frame's time of the page's animations the compositor runs (none while a style pass's threads write the
 // styles they are read from). True: one moves at every frame.
 @(private = "file")
-shell_animated :: proc(app: ^App, t: ^Tab, lays_out: bool, out: ^[dynamic]style.Compositor_Value) -> bool {
-	if app.chrome_frames.styling { return false }
+shell_animated :: proc(app: ^App, t: ^Tab, lays_out: bool, out: ^[dynamic]style.Compositor_Value) -> (moving, any: bool) {
+	if app.chrome_frames.styling { return }
 	return page.animations_compositor_values(t.page, pacer_of(app).frame_ms, shell_shown_offsets(app, t), lays_out, out)
 }
 

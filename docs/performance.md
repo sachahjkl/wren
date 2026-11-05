@@ -2587,6 +2587,50 @@ Read plainly. **The machine was busy through all of this** (other agents' builds
 **Not verified.** The release build, memory (the shapes are shared, nothing should grow), WPT, the full suite, AddressSanitizer. Long-running pages: `macro.js`, `macro.js`: geometric mean 0.94 and 0.82 of the base in two series under load, cases from 0.3 to 1.4 that do not repeat from one series to the next: not claimed; the counts of instructions fell in every case compared.
 
 Tests: `jsengine cost`, `jsengine run hotcheck.js` in the step of test262 with the JIT, `judge capi`, `restyle_dom_parallel_settles_the_controls`, `restyle_dom_unions_of_subjects_are_kept`, `jsload_large_inline_scripts_compile_ahead`; `test_all -Quick -NoAsan` on test262 with and without the JIT, jitcheck, the JavaScript steps, the unit tests of style.
+## What changed, round 32: CSS off the page's thread
+
+What the chrome frames of rounds 22 and 24 showed of a busy page was its transform and opacity animations by the clock. The reference is another browser's demo: a header that shrinks its
+`height`, a logo its `font-size`, a reading bar that grows its `width`, posts that widen as they cross the viewport, all in CSS on `scroll()` and `view()`, following the finger under tasks of
+200 ms back to back. Wren had no scroll-driven animations at all. It has them now, on the main path (`style/scroll_timeline.odin`, `page/scroll_timelines.odin`, `page/web_animations_scroll.odin`), and
+they, with most of what CSS animates, go on in the chrome frames (`browser/shell_shown.odin`):
+
+| under a task | how a chrome frame shows it | cost of a frame |
+|---|---|---|
+| `transform`, `opacity` by the clock or the scroll | the matrix of the box's space, the alpha of its group, set for one paint | nothing is recorded |
+| colours, shadows, radii, filters, clip-paths (`style.RECORD_PROPS`) by the clock or the scroll, and what inherits them | the box's style record, an overlay of the timeline's, holds the values for one paint | the chunks they are in are recorded again |
+| `width`, `height`, `font-size`, anything else | the same records, and a whole layout pass over a layout of the tab's own (`Tab.shown`, `layout.run_shown`) | that pass (0.5 to 0.9 ms on the demo); the page is drawn directly, without its pictures |
+| sticky and fixed boxes | what the paint from the layout always did | nothing |
+| `:hover` | not done: see below | |
+
+The third row is what made it worth a measure of its own. A script between two instructions holds nothing half way that a layout pass reads: the guest runs only between host calls, and
+`shell_layout_paintable` already says that the document, the rules, the forms and the pixels are what the page's last frame was painted from, which is what the display items' strings need
+(`lay.item_source`, `layout_behind`). A pass does not write to the document or the styles, takes no claim on the styles (`styled_read_caught_up` would free overlays the tab's layout still points at:
+`run_shown` is the pass without it), and its boxes are read by one paint: nothing of it can outlive the turn. So it needs no shadow of the boxes, no incremental pass, and no copy of the style: the
+overlay's record takes the value for that paint and is put back, as `Shown` did for matrices. What it costs is the limit: a whole pass in every frame of the chrome, hence
+`browser.shell.shown_layout_max_ms` (4), against the last whole pass the page made and the last one a chrome frame made. Past it, those animations wait for the page, as a task that changes the document
+makes every one of them wait: the frames then move the page's last pixels (test `a_task_that_changes_the_document_stops_the_layout_values`).
+
+A box with a running animation now behaves as `will-change` asks (`Computed.compositing`): it has its space or its group from the first frame. Before, an opacity that was 1 had no group, and a chrome frame could
+show nothing until the page's turn. An animation on a scroll or view timeline counts as running while its timeline is active, also out of its range: scrolling into it is the moment it must not wait.
+
+**Measured** (`the_demo_frame_by_frame_under_tasks`, `build\test_all.exe -Perf`, `Timeline.every`: each frame read back, what it shows of the bar and the header against the scroll it shows;
+`examples/site/scroll_driven.html`, 48 notes and 12 bands, 124 animations, a quarter of a notch at every frame for 240 frames, 1000 x 700, the renderer offscreen. Edge 148 headless, the same page, the wheel
+through CDP at the same rate, 36 px every 31 ms, the frames of `Page.startScreencast` decoded the same way):
+
+| tasks | Wren: frames with a new width of the bar | worst gap | Edge: frames with a new width of the bar | worst gap |
+|---|---|---|---|---|
+| 50 ms | 228 of 363 | 33 ms | 81 of 164 | 133 ms |
+| 200 ms | 225 of 279 | 33 ms | 40 of 88 | 417 ms |
+| 500 ms | 228 of 254 | 33 ms | 15 of 47 | 1000 ms |
+
+The 33 ms is the read-back of `Timeline.every`, at 30 frames a second, not the frames: nothing else is drawn between two of them. In Edge the scroll goes on in the compositor, the layout properties come with the main
+thread: one new width per task. In Wren they come in every frame made under the task; the frames that show no new width are the page's own (the first after a task, at the offset the last chrome frame showed). The
+lag of the bar against the offset is the same in both when it is read against the range the document had at the top (the notes widen, and the document shrinks as they do): 20 px on average for both at 200 ms, 66 px in Edge at 500.
+
+**Tried and left.** Offsets of keyframes at a named range made again when the range moved, at each sample: a layout that changes the document's height moved every range, and chrome frames found every animation's frames
+out of date until the next tick (a whole task without movement, every other task on the demo). They stay readable now, and are made again at the tick (`Anim_Run.frames_moved`). `:hover` of paint-only rules: a chrome frame can tell the
+hit element from the layout, but what a rule gives it is a restyle, and the cascade writes the styles it reads; a table of what each `:hover` rule would give, made at the page's turn, is
+as long as the rules that match. Left for the day a page shows the need.
 
 ## Inventory
 
