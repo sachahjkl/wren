@@ -529,6 +529,7 @@ gc_trace :: proc(rt: ^Runtime, c: ^Cell) {
 	case .shape:
 		sh := cast(^Shape)c
 		mark_cell(rt, sh.proto)
+		if len(sh.transitions) > 0 {list_push(&rt.gc_shapes, sh)}
 	case .function_bc:
 		b := cast(^Function_Bytecode)c
 		mark_values(rt, b.cpool)
@@ -612,19 +613,18 @@ weak_key_live :: proc(v: Value) -> bool {
 
 @(private = "file")
 gc_sweep :: proc(rt: ^Runtime) {
-	// weak caches first: they point at cells about to be freed
-	for c := rt.cells; c != nil; c = c.gc_next {
-		if c.kind == .shape && c.mark {
-			sh := cast(^Shape)c
-			for i := 0; i < len(sh.transitions); {
-				if !sh.transitions[i].to.mark {
-					unordered_remove(&sh.transitions, i)
-				} else {
-					i += 1
-				}
+	// weak caches first: they point at cells about to be freed (the shapes that have any, listed as they were traced: a
+	// walk of every cell for them cost as much as the sweep)
+	for sh in rt.gc_shapes {
+		for i := 0; i < len(sh.transitions); {
+			if !sh.transitions[i].to.mark {
+				unordered_remove(&sh.transitions, i)
+			} else {
+				i += 1
 			}
 		}
 	}
+	clear(&rt.gc_shapes)
 	for proto, sh in rt.shape_root {
 		if !sh.mark || (proto != nil && !proto.mark) {
 			delete_key(&rt.shape_root, proto)
