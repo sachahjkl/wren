@@ -147,6 +147,8 @@ foreign wren_native_net {
 	wn_ws_send :: proc(c: rawptr, id: u64, binary: u8, data: [^]u8, len: uint) -> u8 ---
 	wn_ws_shutdown :: proc(c: rawptr, id: u64, code: u16, reason: [^]u8, len: uint) -> u8 ---
 	wn_net_abi :: proc(out: ^[4]u64) ---
+	wn_net_preconnect :: proc(c: rawptr, url: [^]u8, url_len: uint, dns_only: u8) ---
+	wn_net_preconnected :: proc(c: rawptr, url: [^]u8, url_len: uint) -> u8 ---
 }
 
 @(private)

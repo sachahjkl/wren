@@ -470,3 +470,20 @@ net_proxy_from_the_environment :: proc(t: ^testing.T) {
 	stats := text_of(get(t, &client, at("http", HTTP, "/proxystats")))
 	testing.expectf(t, strings.has_prefix(stats, "tunnels=") && !strings.has_prefix(stats, "tunnels=0 ") && !strings.has_suffix(stats, "forwards=0"), "the proxy carried them (%s)", stats)
 }
+
+// <link rel=preconnect>: the connection is opened ahead, and the first request of its origin takes it, with no connect step of its own.
+@(test)
+net_a_connection_opened_ahead_is_what_the_first_request_takes :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t, .Net)
+	defer end()
+	serve(t)
+	if !on_builtin_stack() { return }
+	u := fmt.tprintf("http://ahead.localhost:%d/", testenv.port(HTTP))
+	net.preconnect(&client, u)
+	wait_until(t, "the connection opened ahead", u, proc(u: string) -> bool { return net.preconnected(&client, u) })
+	r := get(t, &client, u)
+	testing.expectf(t, !r.failed && r.status == 200, "the request is answered (%d)", r.status)
+	testing.expectf(t, r.timing.connect_start < 0, "it took the connection: no connect step (%.1f)", r.timing.connect_start)
+	testing.expect(t, !net.preconnected(&client, u), "and no connection waits any more")
+}

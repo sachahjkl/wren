@@ -5,6 +5,7 @@ import "core:strings"
 import "wb:base"
 import "wb:csp"
 import "wb:http"
+import "wb:net"
 import "wb:url"
 
 // Requests made ahead of the document's parser (the preload scanner: page/preload_scan.odin). A document is parsed once it is
@@ -111,6 +112,18 @@ speculate :: proc(s: ^Speculation, r: Request_Desc, link := false) -> bool {
 	req.speculative = true
 	e.task = start(s.loader, {request = req, on_event = spec_event, user = e, scope = s.scope})
 	return true
+}
+
+// <link rel=preconnect> or dns-prefetch: the origin of `u` will be asked soon. What the content blocker would refuse is not contacted.
+preconnect :: proc(l: ^Loader, env: ^Environment, u: string, dns_only: bool) {
+	if l.net == nil { return }
+	if l.interceptor.request != nil {
+		q := Intercept_Query{url = u, method = "GET", destination = .Empty, mode = .No_Cors, initiator = env}
+		r: Intercept_Result
+		l.interceptor.request(l.interceptor.user, &q, &r)
+		if r.action != .Allow { return }
+	}
+	net.preconnect(l.net, u, dns_only)
 }
 
 // The entry the request `d` can follow.

@@ -1452,7 +1452,7 @@ forms_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.
 	}
 	if ev.button != .Left { return true }
 	// click counting (double click selects a word, triple the whole field)
-	now := time.tick_now()
+	now := press_time(ev)
 	if time.duration_milliseconds(time.tick_diff(fv.last_click, now)) <= double_click_ms(app) && abs(ev.pos.x - fv.last_click_pos.x) < 4 * scale && abs(ev.pos.y - fv.last_click_pos.y) < 4 * scale {
 		fv.click_count += 1
 	} else {

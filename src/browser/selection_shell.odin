@@ -148,12 +148,14 @@ fire_selectstart :: proc(t: ^Tab, at: lay.Text_Pos) -> bool {
 	return page.dispatch_event(p, target, dom.Event{type = "selectstart", bubbles = true, cancelable = true})
 }
 
-// A left press in the page that no form control took (after mousedown, which `allowed` says was not cancelled).
-selection_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Handle, allowed: bool) {
-	if t.page == nil || ev.button != .Left { return }
+// When the user pressed: the event's time, not its turn's: on a busy page two quick clicks wait, and came together or far apart.
+press_time :: proc(ev: platform.Event) -> time.Tick { return ev.stamp != {} ? ev.stamp : time.tick_now() }
+
+// A left press in the page: which click of a series it is. Every press counts, whatever then takes it: the third click of a triple
+// click lands on the word the second one selected, which is also how a drag of the selection begins.
+selection_press_count :: proc(app: ^App, ev: platform.Event) {
 	ss := &window_own(app).selection
-	p := t.page
-	now := time.tick_now()
+	now := press_time(ev)
 	scale := page_scale(app)
 	if time.duration_milliseconds(time.tick_diff(ss.last_click, now)) <= double_click_ms(app) && abs(ev.pos.x - ss.last_click_pos.x) < 4 * scale && abs(ev.pos.y - ss.last_click_pos.y) < 4 * scale {
 		ss.clicks = ss.clicks % 3 + 1
@@ -161,6 +163,13 @@ selection_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: b
 		ss.clicks = 1
 	}
 	ss.last_click, ss.last_click_pos = now, ev.pos
+}
+
+// A left press in the page that no form control took (after mousedown, which `allowed` says was not cancelled).
+selection_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Handle, allowed: bool) {
+	if t.page == nil || ev.button != .Left { return }
+	ss := &window_own(app).selection
+	p := t.page
 	ss.down, ss.moved, ss.selected_by_drag = false, false, false
 	ss.stale, ss.preview = false, {}
 	if !allowed { return }

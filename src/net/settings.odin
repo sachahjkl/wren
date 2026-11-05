@@ -21,6 +21,7 @@ Settings :: struct {
 	timeout_resolve_ms, timeout_connect_ms, timeout_send_ms, timeout_receive_ms: i32,
 	http2:         bool,
 	http3:         bool,
+	preconnect:    bool,
 	proxy:         Proxy_Mode,
 	user_agent:    string,   // owned
 	max_body:      int,      // default cap of one response; a request may ask for less or more
@@ -42,6 +43,8 @@ Settings :: struct {
 LOOPBACK_ONLY_ENV :: "WREN_NETWORK_LOOPBACK_ONLY"
 
 PREFS := [?]config.Def{
+	{name = "network.preconnect.enabled", kind = .Bool, default = {b = true},
+		description = "Follow <link rel=preconnect> and dns-prefetch: connections and names ready before the requests that need them. Hosts the content blocker refuses are not contacted."},
 	{name = "network.backend", kind = .String, default = {s = "rust"}, choices = {"rust", "winhttp"}, restart = true,
 		description = "The network stack. rust: the built-in stack, the same on every platform (HTTP/1.1, HTTP/2, HTTP/3 raced against TCP, WebSockets, TLS 1.2 and 1.3 checked against the system's trust store, the system proxy settings). It does not run proxy auto-configuration scripts: where the system proxy is set by one (PAC), WinHTTP is used. winhttp: the operating system's (Windows only; no HTTP/3). The WREN_NET_BACKEND environment variable overrides it."},
 	{name = "network.http3.race_ms", kind = .Int, default = {i = 250}, bounded = true, min = 0, max = 60_000, unit = "ms",
@@ -122,6 +125,7 @@ settings_from_prefs :: proc(p: ^config.Prefs, allocator := context.allocator) ->
 	s.timeout_receive_ms = i32(config.int_of(p, "network.timeout.receive_ms"))
 	s.http2 = config.bool_of(p, "network.http2.enabled")
 	s.http3 = config.bool_of(p, "network.http3.enabled")
+	s.preconnect = config.bool_of(p, "network.preconnect.enabled")
 	s.proxy = config.string_of(p, "network.proxy.mode") == "none" ? .None : .System
 	ua := config.string_of(p, "network.user_agent")
 	s.user_agent = ua != "" ? strings.clone(ua, allocator) : user_agent_default(allocator)

@@ -492,7 +492,7 @@ control_devtools :: proc(app: ^App, panel, dock: string) -> string {
 control_urlbar :: proc(app: ^App, allocator := context.temp_allocator) -> api.Urlbar {
 	w := app.active
 	uv := urlbar_view(app)
-	bar := api.Urlbar{open = uv.open}
+	bar := api.Urlbar{open = uv.open, text = strings.clone(ui.field_string(&active_window(app).address), allocator)}
 	if b, ok := w.ui.boxes[window_own(app).address_key]; ok { bar.field = api_rect(b.rect) }
 	if !uv.open { return bar }
 	rows := make([]api.Urlbar_Row, len(uv.rows), allocator)
@@ -839,7 +839,10 @@ control_stats :: proc(app: ^App, allocator := context.temp_allocator) -> api.Sta
 
 // The next press starts a click of its own, whatever the system's double-click time and the time gone by: a program in this process
 // clicks twice in a row far sooner than a person does.
-control_forget_clicks :: proc(app: ^App) { active_window(app).ui.last_click_key = 0 }
+control_forget_clicks :: proc(app: ^App) {
+	active_window(app).ui.last_click_key = 0
+	window_own(app).selection.clicks, window_own(app).selection.last_click = 0, {}
+}
 
 // The browser's list of downloads.
 control_downloads :: proc(app: ^App, allocator := context.temp_allocator) -> []api.Download {

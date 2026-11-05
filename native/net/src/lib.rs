@@ -211,6 +211,8 @@ pub(crate) struct Shared {
     pub proxy: Option<hyper_util::client::proxy::matcher::Matcher>,
     /// per origin: connections being opened, and when the last one came up (the head timeout starts from there)
     pub track: Mutex<HashMap<String, (usize, Option<Instant>)>>,
+    /// connections opened ahead of a request, by origin
+    pub warm: Mutex<HashMap<String, conn::Warm>>,
 }
 
 impl Shared {
@@ -220,6 +222,34 @@ impl Shared {
 
     pub fn tracked(&self, key: &str) -> (usize, Option<Instant>) {
         self.track.lock().unwrap_or_else(|e| e.into_inner()).get(key).copied().unwrap_or((0, None))
+    }
+
+    /// Whether a connection to `key` is to be opened ahead: not when it has one coming, nor when requests already opened one.
+    pub fn warm_begin(&self, key: &str) -> bool {
+        if self.track.lock().unwrap_or_else(|e| e.into_inner()).get(key).is_some_and(|e| e.0 > 0 || e.1.is_some()) { return false; }
+        let mut w = self.warm.lock().unwrap_or_else(|e| e.into_inner());
+        w.retain(|_, v| !matches!(v, conn::Warm::Ready(at, _) if at.elapsed() >= conn::WARM_KEEP));
+        if w.len() >= conn::WARM_MOST || w.contains_key(key) { return false; }
+        w.insert(key.to_string(), conn::Warm::Opening);
+        true
+    }
+
+    pub fn warm_end(&self, key: &str, c: Option<conn::Conn>) {
+        let mut w = self.warm.lock().unwrap_or_else(|e| e.into_inner());
+        match c {
+            Some(c) => { w.insert(key.to_string(), conn::Warm::Ready(Instant::now(), c)); }
+            None => { w.remove(key); }
+        }
+    }
+
+    /// The connection opened ahead for `key`, for a request that needs one.
+    pub fn warm_take(&self, key: &str) -> Option<conn::Conn> {
+        let mut w = self.warm.lock().unwrap_or_else(|e| e.into_inner());
+        if !matches!(w.get(key), Some(conn::Warm::Ready(..))) { return None; }
+        match w.remove(key) {
+            Some(conn::Warm::Ready(at, c)) if at.elapsed() < conn::WARM_KEEP => Some(c),
+            _ => None,
+        }
     }
 
     pub fn track_start(&self, key: &str) {
@@ -381,6 +411,7 @@ pub unsafe extern "C" fn wn_net_create(cfg: *const WnConfig, notify: NotifyFn, u
             tls_h3: Arc::new(tls_h3),
             proxy,
             track: Mutex::new(HashMap::new()),
+            warm: Mutex::new(HashMap::new()),
         });
         let http = {
             let _g = rt.enter();
@@ -484,6 +515,31 @@ pub unsafe extern "C" fn wn_net_request(c: *mut Client, r: *const WnRequest) -> 
         let task = rt.spawn(http::run(inner.clone(), id, st.clone(), desc));
         running.insert(id, Running { state: st, abort: Some(task.abort_handle()), ws: None });
         id
+    }))
+    .unwrap_or(0)
+}
+
+/// Opens a connection to the origin of `url` ahead of its requests, or with `dns_only` only asks for its address. Nothing is reported.
+#[no_mangle]
+pub unsafe extern "C" fn wn_net_preconnect(c: *mut Client, url: *const u8, url_len: usize, dns_only: u8) {
+    if c.is_null() { return; }
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        let c = &*c;
+        let Ok(uri) = String::from_utf8_lossy(bytes(url, url_len)).parse::<::http::Uri>() else { return };
+        if !matches!(uri.scheme_str(), Some("http") | Some("https")) || uri.host().is_none() { return; }
+        c.rt.as_ref().unwrap().spawn(conn::preconnect(c.inner.shared.clone(), uri, dns_only != 0));
+    }));
+}
+
+/// Whether a connection opened ahead for the origin of `url` is ready.
+#[no_mangle]
+pub unsafe extern "C" fn wn_net_preconnected(c: *mut Client, url: *const u8, url_len: usize) -> u8 {
+    if c.is_null() { return 0; }
+    catch_unwind(AssertUnwindSafe(|| {
+        let c = &*c;
+        let Ok(uri) = String::from_utf8_lossy(bytes(url, url_len)).parse::<::http::Uri>() else { return 0 };
+        let w = c.inner.shared.warm.lock().unwrap_or_else(|e| e.into_inner());
+        matches!(w.get(&origin_of(&uri)), Some(conn::Warm::Ready(..))) as u8
     }))
     .unwrap_or(0)
 }

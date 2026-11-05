@@ -1207,6 +1207,7 @@ Urlbar_Row :: struct {
 // The address bar of a window, in window pixels.
 Urlbar :: struct {
 	open:  bool,
+	text:  string,   // what the field holds
 	field: Rect,
 	rows:  []Urlbar_Row,
 }

@@ -1164,6 +1164,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			// the middle button starts autoscroll when the page did not cancel the mousedown and it is not a link
 			if ev.button == .Middle && autoscroll_page_press(app, t, ev, pressed, allowed) { continue }
 			if ev.button == .Left { page_set_active(t.page, pressed) }   // :active while the button is held
+			if ev.button == .Left { selection_press_count(app, ev) }
 			draggable := ev.button == .Left && allowed && dnd_press(app, t, ev, pressed)   // dnd_shell.odin: a press that may become a drag selects nothing
 			if ev.button == .Left && !draggable { selection_pointer_down(app, t, ev, pressed, allowed) }
 			if ev.button == .Right { page_context_press(app, t, ev.pos) }

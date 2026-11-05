@@ -119,3 +119,49 @@ urlbar_new_tab_focus_without_the_list :: proc(t: ^testing.T) {
 	click_field(s)
 	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool { bar := e2e.urlbar(s); return bar.open && len(bar.rows) > 0 }, "the list of a click")
 }
+
+// Ctrl+T at the keyboard, from a page of any kind, and the letters typed at once are the address bar's: from a page at rest, with a text
+// field of its own holding the keyboard, and while its scripts keep the thread.
+@(private = "file") NEW_TAB_TYPED :: "abc"
+@(private = "file") NEW_TAB_PAGE :: `<!doctype html><input id=f value=mine>`
+@(private = "file") HOLD_THE_THREAD :: `setTimeout(() => { const end = performance.now() + 400; while (performance.now() < end) {} }, 0); 1`
+
+@(private = "file")
+new_tab_takes_the_letters :: proc(t: ^testing.T, s: ^e2e.Session, what: string) {
+	e2e.key(s, "Ctrl+T")
+	e2e.type_text(s, NEW_TAB_TYPED)
+	e2e.wait_chrome_still(s)
+	testing.expectf(t, e2e.urlbar(s).text == NEW_TAB_TYPED, "%s: the address bar has %q", what, e2e.urlbar(s).text)
+}
+
+@(test)
+ctrl_t_gives_the_keyboard_to_the_address_bar :: proc(t: ^testing.T) {
+	s := e2e.start(t, {size = URLBAR_SIZE, url = "about:blank"})
+	e2e.eval(s, "document.open(); document.write(`" + NEW_TAB_PAGE + "`); document.close(); 1")
+	new_tab_takes_the_letters(t, s, "from a page at rest")
+	e2e.key(s, "Ctrl+W")
+	e2e.wait_chrome_still(s)
+	e2e.eval(s, "f.focus(); 1")
+	new_tab_takes_the_letters(t, s, "from a page's field")
+	e2e.key(s, "Ctrl+W")
+	e2e.wait_chrome_still(s)
+	e2e.eval(s, HOLD_THE_THREAD)
+	new_tab_takes_the_letters(t, s, "from a busy page")
+}
+
+// The home page of a new tab comes after the address bar took the keyboard: a document that arrives gave it back to the page, and what
+// was typed went nowhere, more often the slower the page.
+@(private = "file") SLOW_HOME :: "/slow"
+
+@(test)
+a_home_page_that_arrives_leaves_the_keyboard_in_the_address_bar :: proc(t: ^testing.T) {
+	server := e2e.test_server(t)
+	s := e2e.start(t, {size = URLBAR_SIZE, url = "about:blank"})
+	e2e.pref_set(s, "browser.homepage", strings.concatenate({server.origin, SLOW_HOME}, context.temp_allocator))
+	e2e.key(s, "Ctrl+T")
+	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool { return strings.contains(e2e.location(s), SLOW_HOME) }, "the home page's document")
+	e2e.wait_chrome_still(s)
+	e2e.type_text(s, NEW_TAB_TYPED)
+	e2e.wait_chrome_still(s)
+	testing.expectf(t, strings.has_prefix(e2e.urlbar(s).text, NEW_TAB_TYPED), "the address bar has %q", e2e.urlbar(s).text)
+}

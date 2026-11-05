@@ -222,6 +222,7 @@ scan_link :: proc(s: ^Preload_Scan, t: ^html.Scan_Tag) {
 	if !has_href { return }
 	u := scan_url(s, href)
 	if u == "" || !scan_applies(s, t) { return }
+	if link_preconnect(p, rel, u) { return }
 	nonce, _ := html.scan_attr(t, "nonce")
 	if style.has_token(rel, "stylesheet") {
 		if style.has_token(rel, "alternate") || html.scan_has_attr(t, "disabled") { return }
