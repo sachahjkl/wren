@@ -12,7 +12,6 @@
 // scrolling.
 package layout
 
-import "core:mem/virtual"
 import "wb:base"
 import "wb:css"
 import "wb:dom"
@@ -483,7 +482,7 @@ Layout :: struct {
 	doc_bars_off: bool,                    // the embedder's: the page has none (a frame of scrolling="no"): set_doc_bars_off
 	bars:         map[base.Handle]Bar_Axes,   // the bars of the overflow: auto boxes that show some
 	bar_dirty:    [dynamic]i32,            // boxes whose bars came or went: laid out again by the next pass
-	arena:        virtual.Arena,           // strings made up by layout (transformed text, markers, generated content)
+	arena:        base.Arena,           // strings made up by layout (transformed text, markers, generated content)
 	arena_ready:  bool,
 	scratch:      [dynamic]u32,
 	inc:          Inc_State,               // what incremental passes need between runs (incremental.odin)

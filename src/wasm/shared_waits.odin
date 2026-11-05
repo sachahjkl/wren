@@ -20,7 +20,7 @@ package wasm
 // module; nil when there is nothing to do or it cannot be read, and the module stands as it is.
 
 import "core:mem"
-import vmem "core:mem/virtual"
+import "wb:base"
 
 @(private = "file")
 wait_wrapper_body :: proc(b: ^[dynamic]u8, wide: bool, memarg: []u8) {
@@ -95,10 +95,10 @@ skip_op :: proc(r: ^Reader, op: u8) -> bool {
 // `image` with the waits of a module with a shared memory as above, in `allocator`.
 translate_shared_waits :: proc(image: []byte, allocator: mem.Allocator) -> []byte {
 	if len(image) < 8 { return nil }
-	arena: vmem.Arena
-	if vmem.arena_init_growing(&arena) != nil { return nil }
-	defer vmem.arena_destroy(&arena)
-	context.allocator = vmem.arena_allocator(&arena)
+	arena: base.Arena
+	if base.arena_init_growing(&arena) != nil { return nil }
+	defer base.arena_destroy(&arena)
+	context.allocator = base.arena_allocator(&arena)
 
 	shared := false
 	type_at, func_at, code_at := [2]int{-1, -1}, [2]int{-1, -1}, [2]int{-1, -1}

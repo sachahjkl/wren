@@ -1,6 +1,5 @@
 package layout
 
-import "core:mem/virtual"
 import "core:time"
 import "wb:base"
 import "wb:dom"
@@ -31,11 +30,12 @@ run :: proc(l: ^Layout, input: Input) {
 	clear(&l.bar_dirty)
 }
 
+
 @(private)
 ctx_make :: proc(l: ^Layout, input: Input, marker: ^u8) -> Ctx {
 	c := Ctx{
 		l = l, d = input.doc, st = input.styled, set = &l.settings, text = input.text, replaced = input.replaced,
-		scale = input.scale, vp = doc_port(l, input.viewport), sa = virtual.arena_allocator(&l.arena),
+		scale = input.scale, vp = doc_port(l, input.viewport), sa = base.arena_allocator(&l.arena),
 		stack_base = uintptr(marker), stack_limit = l.settings.max_stack_bytes, rebuilding = NONE,
 	}
 	c.flat = dom.has_shadow_trees(input.doc)
@@ -69,10 +69,10 @@ note_inputs :: proc(l: ^Layout, input: Input) {
 @(private)
 run_full :: proc(l: ^Layout, input: Input) {
 	if !l.arena_ready {
-		_ = virtual.arena_init_growing(&l.arena)
+		_ = base.arena_init_growing(&l.arena)
 		l.arena_ready = true
 	} else {
-		virtual.arena_free_all(&l.arena)
+		base.arena_free_all(&l.arena)
 	}
 	if l.scroll == nil { l.scroll = make(map[base.Handle]Vec2) }
 	clear(&l.boxes); clear(&l.inline_items); clear(&l.lines); clear(&l.frags); clear(&l.fonts); clear(&l.items)
@@ -171,7 +171,7 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 	pre_destroy(l)
 	dl_walks_destroy(&l.dl_walks)
 	l.tree_gen += 1
-	if l.arena_ready { virtual.arena_free_all(&l.arena) }
+	if l.arena_ready { base.arena_free_all(&l.arena) }
 	l.valid = false
 	l.last_pass = .None
 	l.styled = nil
@@ -197,7 +197,7 @@ destroy :: proc(l: ^Layout) {
 	inc_destroy(l)
 	pre_destroy(l)
 	dl_walks_destroy(&l.dl_walks)
-	if l.arena_ready { virtual.arena_destroy(&l.arena) }
+	if l.arena_ready { base.arena_destroy(&l.arena) }
 	l^ = {}
 }
 

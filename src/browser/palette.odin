@@ -22,7 +22,6 @@ package browser
 
 import "core:fmt"
 import "core:math"
-import "core:mem/virtual"
 import "core:os"
 import "core:slice"
 import "core:strconv"
@@ -590,7 +589,7 @@ Palette_State :: struct {
 	sel, first:    int,
 	scroll_acc:    f32,
 	rows:          [dynamic]Palette_Row,
-	arena:         virtual.Arena,   // the rows' strings and ranges
+	arena:         base.Arena,   // the rows' strings and ranges
 	arena_ready:   bool,
 	pool:          [dynamic]ui.Fuzzy_Range,   // the candidates' highlighted ranges, while collecting
 	scratch:       Fuzzy_Scratch,
@@ -615,7 +614,7 @@ palette_destroy :: proc(app: ^App) {
 	delete(app.cpal.rows)
 	delete(app.cpal.pool)
 	fuzzy_scratch_destroy(&app.cpal.scratch)
-	if app.cpal.arena_ready { virtual.arena_destroy(&app.cpal.arena) }
+	if app.cpal.arena_ready { base.arena_destroy(&app.cpal.arena) }
 	delete(app.cpal.cache_text)
 	usage_destroy(&app.cpal.usage)
 	delete(app.cpal.sources)
@@ -629,7 +628,7 @@ palette_ready :: proc(app: ^App) {
 		app.cpal.cfg = palette_settings_from_prefs(&app.prefs)
 		app.cpal.cfg_version, app.cpal.cfg_ready = app.prefs.version, true
 	}
-	if !app.cpal.arena_ready { _ = virtual.arena_init_growing(&app.cpal.arena); app.cpal.arena_ready = true }
+	if !app.cpal.arena_ready { _ = base.arena_init_growing(&app.cpal.arena); app.cpal.arena_ready = true }
 	if !app.cpal.sources_ready {
 		app.cpal.sources_ready = true
 		palette_add_source(app, {name = "Visited", prefix = '/', in_default = true, items = tab_history_items, activate = tab_history_activate, version = tab_history_version})
@@ -700,7 +699,7 @@ results_key :: proc(app: ^App) -> u64 {
 // The candidates keep the strings they come with (the frame's); only the rows kept are copied, into the palette's arena.
 palette_collect :: proc(app: ^App, text: string) {
 	palette_ready(app)
-	virtual.arena_free_all(&app.cpal.arena)
+	base.arena_free_all(&app.cpal.arena)
 	clear(&app.cpal.rows)
 	clear(&app.cpal.pool)
 	mode, prefix, q := palette_parse_query(app, text)
@@ -809,7 +808,7 @@ palette_collect :: proc(app: ^App, text: string) {
 	clear(&app.cpal.rows)
 	append(&app.cpal.rows, ..sorted)
 	// what is kept outlives the frame
-	a := virtual.arena_allocator(&app.cpal.arena)
+	a := base.arena_allocator(&app.cpal.arena)
 	for &r in app.cpal.rows {
 		r.title = strings.clone(r.title, a)
 		r.detail = strings.clone(r.detail, a)

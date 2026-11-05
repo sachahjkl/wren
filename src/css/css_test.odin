@@ -2,7 +2,7 @@ package css
 
 import "core:fmt"
 import "core:math"
-import "core:mem/virtual"
+import "wb:base"
 import "core:strings"
 import "core:testing"
 
@@ -10,17 +10,17 @@ import "core:testing"
 OPT :: Parse_Options{max_nesting_depth = 512, max_rules = 100_000}
 
 @(private = "file")
-Arena :: struct { a: virtual.Arena, alloc: Arena_Alloc }
+Arena :: struct { a: base.Arena, alloc: Arena_Alloc }
 
 @(private = "file")
 arena_make :: proc() -> ^Arena {
 	r := new(Arena)
-	_ = virtual.arena_init_growing(&r.a)
-	r.alloc = virtual.arena_allocator(&r.a)
+	_ = base.arena_init_growing(&r.a)
+	r.alloc = base.arena_allocator(&r.a)
 	return r
 }
 @(private = "file")
-arena_free :: proc(r: ^Arena) { virtual.arena_destroy(&r.a); free(r) }
+arena_free :: proc(r: ^Arena) { base.arena_destroy(&r.a); free(r) }
 
 @(private = "file")
 dump_tokens :: proc(src: string) -> string {

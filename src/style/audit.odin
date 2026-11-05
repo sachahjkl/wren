@@ -1,7 +1,7 @@
 package style
 
 import "base:runtime"
-import "core:mem/virtual"
+import "wb:base"
 import "core:strings"
 import "wb:css"
 
@@ -19,10 +19,10 @@ Audit_Entry :: struct {
 // Appends what `sheet` uses and the engine does not take. Every rule is visited, whatever its conditions.
 audit_sheet :: proc(e: ^Engine, sheet: ^css.Stylesheet, out: ^[dynamic]Audit_Entry, allocator := context.allocator) {
 	for msg in sheet.errors { append(out, Audit_Entry{.Parse, strings.clone(msg, allocator)}) }
-	arena: virtual.Arena
-	_ = virtual.arena_init_growing(&arena)
-	defer virtual.arena_destroy(&arena)
-	a := virtual.arena_allocator(&arena)
+	arena: base.Arena
+	_ = base.arena_init_growing(&arena)
+	defer base.arena_destroy(&arena)
+	a := base.arena_allocator(&arena)
 	cx := probe_context(e, a)
 	// var(): approximated by the last value each custom property gets anywhere in the sheet
 	customs := new(Custom_Props, a)

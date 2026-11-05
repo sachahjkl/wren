@@ -1,6 +1,6 @@
 package css
 
-import "core:mem/virtual"
+import "wb:base"
 import "core:testing"
 
 @(private = "file")
@@ -14,10 +14,10 @@ function_of :: proc(text: string, a: Arena_Alloc) -> Value {
 
 @(test)
 anchor_function_parses_in_any_order :: proc(t: ^testing.T) {
-	arena: virtual.Arena
-	_ = virtual.arena_init_growing(&arena)
-	defer virtual.arena_destroy(&arena)
-	a := virtual.arena_allocator(&arena)
+	arena: base.Arena
+	_ = base.arena_init_growing(&arena)
+	defer base.arena_destroy(&arena)
+	a := base.arena_allocator(&arena)
 	Case :: struct { text: string, want: Anchor_Keyword }
 	for c in ([]Case{
 		{"anchor(top)", .Top}, {"anchor(--a left)", .Left}, {"anchor(right --a)", .Right}, {"anchor(inside)", .Inside}, {"anchor(outside)", .Outside},
@@ -41,10 +41,10 @@ anchor_function_parses_in_any_order :: proc(t: ^testing.T) {
 // Only the properties that take them ask for them; a math function may hold them; what is not replaced is its fallback.
 @(test)
 anchor_function_in_math :: proc(t: ^testing.T) {
-	arena: virtual.Arena
-	_ = virtual.arena_init_growing(&arena)
-	defer virtual.arena_destroy(&arena)
-	a := virtual.arena_allocator(&arena)
+	arena: base.Arena
+	_ = base.arena_init_growing(&arena)
+	defer base.arena_destroy(&arena)
+	a := base.arena_allocator(&arena)
 	testing.expect(t, parse_calc(function_of("anchor(top)", a), a) == nil)
 	testing.expect(t, parse_calc(function_of("calc(anchor(top) + 1px)", a), a) == nil)
 	n := parse_calc_anchored(function_of("calc(anchor(top, 2px) + 1px)", a), a)
@@ -59,10 +59,10 @@ anchor_function_in_math :: proc(t: ^testing.T) {
 
 @(test)
 position_try_rule_parses :: proc(t: ^testing.T) {
-	arena: virtual.Arena
-	_ = virtual.arena_init_growing(&arena)
-	defer virtual.arena_destroy(&arena)
-	a := virtual.arena_allocator(&arena)
+	arena: base.Arena
+	_ = base.arena_init_growing(&arena)
+	defer base.arena_destroy(&arena)
+	a := base.arena_allocator(&arena)
 	_ = a
 	s := parse_stylesheet("@position-try --x { top: 1px; left: anchor(right) } @position-try x { top: 1px } @position-try { top: 1px } a { color: red }", OPT)
 	defer { stylesheet_destroy(s); free(s) }

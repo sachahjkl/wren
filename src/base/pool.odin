@@ -24,10 +24,23 @@ Pool :: arena.Pool
 pool_insert :: arena.pool_insert
 pool_get :: arena.pool_get
 pool_valid :: arena.pool_valid
-pool_remove :: arena.pool_remove
 pool_handle_at :: arena.pool_handle_at
 pool_next :: arena.pool_next
 pool_destroy :: arena.pool_destroy
+
+when POISON_MEMORY {
+	// A removed object's slot says so to a ^T kept past it (a Handle fails to resolve by itself).
+	pool_remove :: proc(p: ^Pool($T), h: Handle) -> (value: T, ok: bool) {
+		value, ok = arena.pool_remove(p, h)
+		if ok {
+			index := handle_index(h)
+			poison_fill(&p.chunks[index >> POOL_CHUNK_SHIFT][index & POOL_CHUNK_MASK].value, size_of(T))
+		}
+		return
+	}
+} else {
+	pool_remove :: arena.pool_remove
+}
 
 ////////////////////////////////
 // Tagged pools: handles that say which document they belong to
@@ -78,7 +91,7 @@ pool_insert_tagged :: proc(p: ^Pool($T), tag: u32, value: T) -> (h: Handle, ptr:
 }
 
 pool_remove_tagged :: proc(p: ^Pool($T), h: Handle) -> (value: T, ok: bool) {
-	value, ok = arena.pool_remove(p, h)
+	value, ok = pool_remove(p, h)
 	if ok && handle_gen(h) & HANDLE_GEN_MASK == HANDLE_GEN_MASK {
 		// its last generation: taken back out of the free list (never reused: pool_insert would carry into the tag)
 		index := handle_index(h)

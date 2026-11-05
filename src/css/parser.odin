@@ -1,7 +1,6 @@
 package css
 
 import "base:runtime"
-import "core:mem/virtual"
 import "core:strings"
 import "wb:base"
 
@@ -67,7 +66,7 @@ Keyframe :: struct {
 }
 
 Stylesheet :: struct {
-	arena:  virtual.Arena,
+	arena:  base.Arena,
 	alloc:  Arena_Alloc,
 	source: string,            // the text it was parsed from (its owner compares it to know whether to parse again)
 	newlines: []u32,           // the code point offsets of its line feeds (line_of: the code points themselves are not kept)
@@ -85,7 +84,7 @@ Parse_Options :: struct {
 stylesheet_destroy :: proc(s: ^Stylesheet) {
 	for e in s.errors { delete(e) }
 	delete(s.errors)
-	virtual.arena_destroy(&s.arena)
+	base.arena_destroy(&s.arena)
 	s^ = {}
 }
 
@@ -104,7 +103,7 @@ Parser :: struct {
 	// component values go to `va` (`a`, or `scratch` while reading a rule list's block or a selector). Both nil: `a`.
 	scratch: Arena_Alloc,
 	va:      Arena_Alloc,
-	rule_arena: ^virtual.Arena,   // a rule's own scratch memory, emptied after it (parse_outer_rule); nil: `scratch`
+	rule_arena: ^base.Arena,   // a rule's own scratch memory, emptied after it (parse_outer_rule); nil: `scratch`
 }
 
 @(private) p_scratch :: #force_inline proc(p: ^Parser) -> Arena_Alloc { return p.scratch.procedure != nil ? p.scratch : p.a }
@@ -130,16 +129,16 @@ perr :: proc(p: ^Parser, msg: string) {
 // Parses `source` as a stylesheet (CSS Syntax §5, "parse a stylesheet").
 parse_stylesheet :: proc(source: string, opt: Parse_Options) -> ^Stylesheet {
 	s := new(Stylesheet)
-	_ = virtual.arena_init_growing(&s.arena)
-	s.alloc = virtual.arena_allocator(&s.arena)
+	_ = base.arena_init_growing(&s.arena)
+	s.alloc = base.arena_allocator(&s.arena)
 	s.source = strings.clone(source, s.alloc)
 	s.errors = make([dynamic]string)
 	// the code points, the tokens and what is read only to be read again live while the sheet is parsed: a sheet keeps
 	// its rules, selectors, declarations and their values, not its tokens (they were most of its memory)
-	scratch: virtual.Arena
-	_ = virtual.arena_init_growing(&scratch)
-	defer virtual.arena_destroy(&scratch)
-	sa := virtual.arena_allocator(&scratch)
+	scratch: base.Arena
+	_ = base.arena_init_growing(&scratch)
+	defer base.arena_destroy(&scratch)
+	sa := base.arena_allocator(&scratch)
 	toks, runes := tokenize_with_source(s.source, s.alloc, sa)
 	{
 		nls := make([dynamic]u32, 0, 64, s.alloc)
@@ -147,9 +146,9 @@ parse_stylesheet :: proc(source: string, opt: Parse_Options) -> ^Stylesheet {
 		s.newlines = nls[:]
 	}
 	s.namespaces.prefixes = make([dynamic]Ns_Prefix, s.alloc)
-	rule_scratch: virtual.Arena
-	_ = virtual.arena_init_growing(&rule_scratch)
-	defer virtual.arena_destroy(&rule_scratch)
+	rule_scratch: base.Arena
+	_ = base.arena_init_growing(&rule_scratch)
+	defer base.arena_destroy(&rule_scratch)
 	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &s.errors, runes = runes, scratch = sa, ns = &s.namespaces, ns_open = true, rule_arena = &rule_scratch}
 	s.rules = parse_rule_list(&p, true)
 	return s
@@ -159,10 +158,10 @@ parse_stylesheet :: proc(source: string, opt: Parse_Options) -> ^Stylesheet {
 // `s` and lives as long as the sheet; it is not added to `s.rules` (the caller places it). nil when `text` is not
 // exactly one valid rule. Positions (`pos`) are offsets in `text`, not in the sheet's source.
 parse_rule_into :: proc(s: ^Stylesheet, text: string, opt: Parse_Options) -> ^Rule {
-	scratch: virtual.Arena
-	_ = virtual.arena_init_growing(&scratch)
-	defer virtual.arena_destroy(&scratch)
-	sa := virtual.arena_allocator(&scratch)
+	scratch: base.Arena
+	_ = base.arena_init_growing(&scratch)
+	defer base.arena_destroy(&scratch)
+	sa := base.arena_allocator(&scratch)
 	toks, runes := tokenize_with_source(text, s.alloc, sa)
 	errors := make([dynamic]string, sa)
 	// its selectors read the sheet's namespaces; an @namespace rule inserted declares nothing (a copy takes it)
@@ -177,10 +176,10 @@ parse_rule_into :: proc(s: ^Stylesheet, text: string, opt: Parse_Options) -> ^Ru
 // declarations), or declarations alone, which make a nested declarations rule (selector_text "", the selectors of
 // `parent`). nil when `text` is neither.
 parse_nested_rule_into :: proc(s: ^Stylesheet, text: string, opt: Parse_Options, parent: ^Rule) -> ^Rule {
-	scratch: virtual.Arena
-	_ = virtual.arena_init_growing(&scratch)
-	defer virtual.arena_destroy(&scratch)
-	sa := virtual.arena_allocator(&scratch)
+	scratch: base.Arena
+	_ = base.arena_init_growing(&scratch)
+	defer base.arena_destroy(&scratch)
+	sa := base.arena_allocator(&scratch)
 	toks, runes := tokenize_with_source(text, s.alloc, sa)
 	errors := make([dynamic]string, sa)
 	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &errors, runes = runes, scratch = sa, ns = &s.namespaces}
@@ -326,11 +325,11 @@ parse_rule_list :: proc(p: ^Parser, top_level: bool) -> []^Rule {
 @(private)
 parse_outer_rule :: proc(p: ^Parser) -> ^Rule {
 	if p.rule_arena == nil { return parse_qualified_rule(p, nil) }
-	mark := virtual.arena_temp_begin(p.rule_arena)
-	defer virtual.arena_temp_end(mark)
+	mark := base.arena_temp_begin(p.rule_arena)
+	defer base.arena_temp_end(mark)
 	saved := p.scratch
 	defer p.scratch = saved
-	p.scratch = virtual.arena_allocator(p.rule_arena)
+	p.scratch = base.arena_allocator(p.rule_arena)
 	return parse_qualified_rule(p, nil)
 }
 

@@ -2,7 +2,6 @@ package style
 
 import "base:runtime"
 import "core:math"
-import "core:mem/virtual"
 import "core:slice"
 import "core:strings"
 import "wb:base"
@@ -52,7 +51,7 @@ Phase :: enum u8 { Before, Active, After }
 @(private)
 Transition :: struct {
 	prop:       Prop,
-	arena:      virtual.Arena,
+	arena:      base.Arena,
 	from, to:   ^Computed,     // only `prop` is meaningful; owned by `arena`
 	reverse_start: ^Computed,  // the reversing-adjusted start value (CSS Transitions 1 §3)
 	start:      f64,           // document time of creation
@@ -82,8 +81,8 @@ Frame_Value :: struct {
 Anim_Run :: struct {
 	name:        string,       // heap
 	spec:        Animation_Spec,
-	spec_arena:  virtual.Arena,   // the spec's easing points
-	frames_arena: virtual.Arena,
+	spec_arena:  base.Arena,   // the spec's easing points
+	frames_arena: base.Arena,
 	frames:      []Frame_Value,
 	props:       Prop_Set,
 	frames_gen:  u64,          // the Element_Anim.base_gen the frames were computed for
@@ -127,7 +126,7 @@ Element_Anim :: struct {
 @(private)
 Overlay :: struct {
 	c:     Computed,
-	arena: virtual.Arena,
+	arena: base.Arena,
 	tick:  u64,
 	sig:   u8,     // structure_sig of `c` as last applied (what layout saw)
 }
@@ -142,7 +141,7 @@ Timeline :: struct {
 	order_dirty: bool,
 	overlays:    map[base.Handle]^Overlay,
 	events:      [dynamic]Anim_Event,
-	event_arena: virtual.Arena,
+	event_arena: base.Arena,
 	dirty:       bool,         // the next tick recomputes the overlays even if no progress changed
 	tick:        u64,
 	running:     int,          // transitions + animations alive
@@ -163,7 +162,7 @@ timeline_make :: proc(e: ^Engine) -> ^Timeline {
 	tl.scripts = make(map[u64]^Script_Run)
 	tl.order = make([dynamic]^Element_Anim)
 	tl.events = make([dynamic]Anim_Event)
-	_ = virtual.arena_init_growing(&tl.event_arena, 64 * 1024)
+	_ = base.arena_init_growing(&tl.event_arena, 64 * 1024)
 	tl.next_ms = -1
 	return tl
 }
@@ -182,7 +181,7 @@ timeline_destroy :: proc(tl: ^Timeline, s: ^Styled = nil) {
 	delete(tl.events)
 	for r in tl.retired { run_free(r) }
 	delete(tl.retired)
-	virtual.arena_destroy(&tl.event_arena)
+	base.arena_destroy(&tl.event_arena)
 	free(tl)
 }
 
@@ -217,18 +216,19 @@ element_free :: proc(tl: ^Timeline, ea: ^Element_Anim) {
 }
 
 @(private)
-transition_free :: proc(tr: ^Transition) { virtual.arena_destroy(&tr.arena); free(tr) }
+transition_free :: proc(tr: ^Transition) { base.arena_destroy(&tr.arena); free(tr) }
 
 @(private)
 run_free :: proc(r: ^Anim_Run) {
-	virtual.arena_destroy(&r.spec_arena)
-	virtual.arena_destroy(&r.frames_arena)
+	base.arena_destroy(&r.spec_arena)
+	base.arena_destroy(&r.frames_arena)
 	delete(r.name)
 	free(r)
 }
 
 @(private)
-overlay_free :: proc(ov: ^Overlay) { virtual.arena_destroy(&ov.arena); free(ov) }
+overlay_free :: proc(ov: ^Overlay) { base.arena_destroy(&ov.arena); free(ov) }
+
 
 ////////////////////////////////
 // Clock and events
@@ -244,7 +244,7 @@ advance :: proc(tl: ^Timeline, wall_ms: f64) {
 @(private)
 push_event :: proc(tl: ^Timeline, kind: Anim_Event_Kind, node: base.Handle, name: string, elapsed: f64) {
 	if len(tl.events) >= max(tl.engine.settings.anim_max_events, 1) { tl.dropped_events += 1; return }
-	nm := strings.clone(name, virtual.arena_allocator(&tl.event_arena))
+	nm := strings.clone(name, base.arena_allocator(&tl.event_arena))
 	append(&tl.events, Anim_Event{kind = kind, node = node, name = nm, elapsed = elapsed})
 }
 
@@ -253,7 +253,7 @@ timeline_events :: proc(tl: ^Timeline) -> []Anim_Event { return tl.events[:] }
 
 timeline_clear_events :: proc(tl: ^Timeline) {
 	clear(&tl.events)
-	virtual.arena_free_all(&tl.event_arena)
+	base.arena_free_all(&tl.event_arena)
 }
 
 // Some value changes at every frame: the shell should keep drawing.
@@ -481,13 +481,13 @@ sync_runs :: proc(tl: ^Timeline, ea: ^Element_Anim, c: ^Computed) {
 			r.last_now = tl.now
 			r.iteration = -1
 			r.key = {-1, -1, -1}
-			_ = virtual.arena_init_growing(&r.spec_arena, 16 * 1024)
-			_ = virtual.arena_init_growing(&r.frames_arena, 64 * 1024)
+			_ = base.arena_init_growing(&r.spec_arena, 16 * 1024)
+			_ = base.arena_init_growing(&r.frames_arena, 64 * 1024)
 			tl.running += 1
 		}
 		spec := animation_at(c, i)
-		virtual.arena_free_all(&r.spec_arena)
-		spec.easing = clone_easing(spec.easing, virtual.arena_allocator(&r.spec_arena))
+		base.arena_free_all(&r.spec_arena)
+		spec.easing = clone_easing(spec.easing, base.arena_allocator(&r.spec_arena))
 		spec.name = r.name
 		if mode_of(tl) == .Reduce {
 			d, dl := reduced(tl, f64(spec.duration), f64(spec.delay))
@@ -541,8 +541,8 @@ remove_transition :: proc(tl: ^Timeline, ea: ^Element_Anim, tr: ^Transition, wit
 @(private)
 start_transition :: proc(tl: ^Timeline, ea: ^Element_Anim, p: Prop, from, to, reverse_start: ^Computed, duration, delay: f64, easing: Easing, discrete: bool, shortening: f64) -> ^Transition {
 	tr := new(Transition)
-	_ = virtual.arena_init_growing(&tr.arena, 16 * 1024)
-	a := virtual.arena_allocator(&tr.arena)
+	_ = base.arena_init_growing(&tr.arena, 16 * 1024)
+	a := base.arena_allocator(&tr.arena)
 	tr.prop = p
 	tl.css_serial += 1
 	tr.serial = tl.css_serial
@@ -707,8 +707,8 @@ run_state :: proc(r: ^Anim_Run) -> (st: Run_State) {
 @(private)
 ensure_frames :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, ea: ^Element_Anim, r: ^Anim_Run) {
 	if r.frames_ready && r.frames_gen == ea.base_gen && r.frames_rebuilds == tl.engine.rebuilds { return }
-	virtual.arena_free_all(&r.frames_arena)
-	a := virtual.arena_allocator(&r.frames_arena)
+	base.arena_free_all(&r.frames_arena)
+	a := base.arena_allocator(&r.frames_arena)
 	r.frames, r.props = nil, {}
 	r.frames_gen, r.frames_rebuilds, r.frames_ready = ea.base_gen, tl.engine.rebuilds, true
 	set := r.set != nil ? r.set : keyframes_lookup(tl.engine, r.name)
@@ -1005,12 +1005,12 @@ overlay_for :: proc(tl: ^Timeline, s: ^Styled, h: base.Handle) -> ^Overlay {
 	ov := tl.overlays[h] or_else nil
 	if ov == nil {
 		ov = new(Overlay)
-		_ = virtual.arena_init_growing(&ov.arena, 16 * 1024)
+		_ = base.arena_init_growing(&ov.arena, 16 * 1024)
 		ov.sig = structure_sig(base_style_of(s, h))
 		tl.overlays[h] = ov
 	}
 	if ov.tick != tl.tick {
-		virtual.arena_free_all(&ov.arena)
+		base.arena_free_all(&ov.arena)
 		b := base_style_of(s, h)
 		ov.c = b^
 		ov.tick = tl.tick
@@ -1043,7 +1043,7 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 			ea.base_gen = tl.base_gens
 		}
 		ov := overlay_for(tl, s, ea.node)
-		ctx := Interp_Ctx{alloc = virtual.arena_allocator(&ov.arena), space = tl.engine.settings.anim_color_space}
+		ctx := Interp_Ctx{alloc = base.arena_allocator(&ov.arena), space = tl.engine.settings.anim_color_space}
 		animated: Prop_Set
 		for r in ea.runs {
 			st := run_state(r)
@@ -1131,7 +1131,7 @@ push_inherited :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, h: base.Ha
 		take := ps_intersect(it.set, cb.inherits)
 		if ps_empty(take) { continue }
 		ov := overlay_for(tl, s, it.h)
-		oa := virtual.arena_allocator(&ov.arena)
+		oa := base.arena_allocator(&ov.arena)
 		group_take(&ov.c, .Inherited, oa)   // (shared with its cascaded style, or with the parent's)
 		for p in Prop { if ps_has(take, p) { copy_prop(&ov.c, it.src, p) } }
 		derive_fields(&ov.c, oa)

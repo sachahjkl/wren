@@ -17,6 +17,9 @@ import win "core:sys/windows"
 
 @(private = "file")
 MAX_FRAMES :: 64
+// What a pointer read from freed memory looks like: the upper half of base.POISON_BYTE's pattern.
+POISON_LOW_BITS :: 32
+POISON_HIGH_BITS :: u64(0xDDDD_DDDD)
 
 @(private = "file")
 RUNTIME_FUNCTION :: struct {
@@ -224,6 +227,15 @@ code_name :: proc(code: u32) -> string {
 	return "exception"
 }
 
+// A register holds the pattern of freed memory (base.POISON_BYTE: the checked builds), give or take a field's offset.
+@(private = "file")
+poison_in_registers :: proc(c: ^win.CONTEXT) -> bool {
+	for r in ([?]u64{c.Rax, c.Rbx, c.Rcx, c.Rdx, c.Rsi, c.Rdi, c.R8, c.R9, c.R10, c.R11, c.R12, c.R13, c.R14, c.R15}) {
+		if r >> POISON_LOW_BITS == POISON_HIGH_BITS { return true }
+	}
+	return false
+}
+
 @(private = "file")
 write_report :: proc(info: ^win.EXCEPTION_POINTERS, tid: win.DWORD) {
 	rec := info.ExceptionRecord
@@ -238,6 +250,8 @@ write_report :: proc(info: ^win.EXCEPTION_POINTERS, tid: win.DWORD) {
 	if rec.ExceptionCode == 0xC0000005 && rec.NumberParameters >= 2 {
 		kind := uintptr(rec.ExceptionInformation[0])
 		b = fmt.bprintf(buf[:], "%s, %s address 0x%X", b, kind == 0 ? "reading" : (kind == 1 ? "writing" : "executing"), uintptr(rec.ExceptionInformation[1]))
+		// (the system says -1 for any address that is not canonical: never a pointer of ours, the bytes of something else read as one)
+		if uintptr(rec.ExceptionInformation[1]) == ~uintptr(0) { b = fmt.bprintf(buf[:], "%s (not canonical%s)", b, poison_in_registers(&ctx) ? ": a pointer read from freed memory" : "") }
 	}
 	emit(b)
 	emit(build_line(buf[:]))

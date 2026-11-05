@@ -17,7 +17,7 @@
 package webauthn
 
 import "base:runtime"
-import "core:mem/virtual"
+import "wb:base"
 import "core:sync"
 
 // The DOMException a failure becomes (TypeError for Type).
@@ -236,7 +236,7 @@ Cancel_Token :: struct {
 
 // One ceremony: everything it allocates, so that the end is a single free.
 Ceremony :: struct {
-	arena:     virtual.Arena,
+	arena:     base.Arena,
 	kind:      Ceremony_Kind,
 	creation:  Creation_Options,
 	request:   Request_Options,
@@ -250,14 +250,14 @@ Ceremony :: struct {
 ceremony_make :: proc(kind: Ceremony_Kind) -> ^Ceremony {
 	c := new(Ceremony)
 	c.kind = kind
-	if virtual.arena_init_growing(&c.arena) != nil { free(c); return nil }
+	if base.arena_init_growing(&c.arena) != nil { free(c); return nil }
 	return c
 }
 
-ceremony_allocator :: proc(c: ^Ceremony) -> runtime.Allocator { return virtual.arena_allocator(&c.arena) }
+ceremony_allocator :: proc(c: ^Ceremony) -> runtime.Allocator { return base.arena_allocator(&c.arena) }
 
 ceremony_destroy :: proc(c: ^Ceremony) {
 	if c == nil { return }
-	virtual.arena_destroy(&c.arena)
+	base.arena_destroy(&c.arena)
 	free(c)
 }

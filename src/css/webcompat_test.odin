@@ -1,7 +1,7 @@
 package css
 
 import "core:math"
-import "core:mem/virtual"
+import "wb:base"
 import "core:testing"
 
 // Grammar added for real-world sheets: math functions and their types, colors in every space, @container and
@@ -28,10 +28,10 @@ near :: proc(a, b: f64, eps := 1e-3) -> bool { return math.abs(a - b) <= eps }
 
 @(test)
 math_functions :: proc(t: ^testing.T) {
-	arena: virtual.Arena
-	_ = virtual.arena_init_growing(&arena)
-	defer virtual.arena_destroy(&arena)
-	a := virtual.arena_allocator(&arena)
+	arena: base.Arena
+	_ = base.arena_init_growing(&arena)
+	defer base.arena_destroy(&arena)
+	a := base.arena_allocator(&arena)
 	lc := Length_Context{font_size = 10, root_font_size = 16, vw = 1000, vh = 500}
 	Case :: struct { src: string, want: f64, type: Calc_Type }
 	cases := [?]Case{
@@ -60,10 +60,10 @@ math_functions :: proc(t: ^testing.T) {
 
 @(test)
 colors_in_every_space :: proc(t: ^testing.T) {
-	arena: virtual.Arena
-	_ = virtual.arena_init_growing(&arena)
-	defer virtual.arena_destroy(&arena)
-	a := virtual.arena_allocator(&arena)
+	arena: base.Arena
+	_ = base.arena_init_growing(&arena)
+	defer base.arena_destroy(&arena)
+	a := base.arena_allocator(&arena)
 	Case :: struct { src: string, r, g, b, alpha: f32 }
 	cases := [?]Case{
 		{"oklch(0.628 0.2577 29.23)", 255, 0, 0, 1},
@@ -146,10 +146,10 @@ media_features_of_today :: proc(t: ^testing.T) {
 		{"(overflow-block: scroll)", true}, {"(grid)", false}, {"(inline-size > 0px)", false}, {"not (inline-size > 0px)", false},
 		{"(prefers-reduced-motion: no-preference) and (hover: hover)", true},
 	}
-	arena: virtual.Arena
-	_ = virtual.arena_init_growing(&arena)
-	defer virtual.arena_destroy(&arena)
-	a := virtual.arena_allocator(&arena)
+	arena: base.Arena
+	_ = base.arena_init_growing(&arena)
+	defer base.arena_destroy(&arena)
+	a := base.arena_allocator(&arena)
 	for c in cases {
 		l := parse_media_query_list(parse_component_values(c.q, OPT, a), a)
 		testing.expectf(t, media_matches(l, env) == c.want, "%s: want %v", c.q, c.want)
@@ -158,10 +158,10 @@ media_features_of_today :: proc(t: ^testing.T) {
 
 @(test)
 selectors_of_other_engines :: proc(t: ^testing.T) {
-	arena: virtual.Arena
-	_ = virtual.arena_init_growing(&arena)
-	defer virtual.arena_destroy(&arena)
-	a := virtual.arena_allocator(&arena)
+	arena: base.Arena
+	_ = base.arena_init_growing(&arena)
+	defer base.arena_destroy(&arena)
+	a := base.arena_allocator(&arena)
 	valid := [?]string{
 		":host", ":host(.x)", ":host-context(.dark) p", "::part(label)", "::slotted(span)", "::file-selector-button",
 		"input::-webkit-inner-spin-button", "::-webkit-scrollbar-thumb:hover", ":-webkit-any(a, b)", "details:open",

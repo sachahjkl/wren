@@ -75,7 +75,7 @@ thread_start :: proc(fn: Task_Proc, data: rawptr, stack_bytes := 0, priority := 
 thread_run :: proc(t: ^Thread) {
 	when !ODIN_DEFAULT_TO_NIL_ALLOCATOR {
 		// the creator's temporary allocator is thread-local state of the creator: never share it
-		context.temp_allocator = runtime.Allocator{runtime.default_temp_allocator_proc, &runtime.global_default_temp_allocator_data}
+		context.temp_allocator = base.process_context().temp_allocator
 	}
 	t.fn(t.data)
 	when !ODIN_DEFAULT_TO_NIL_ALLOCATOR {
