@@ -2,7 +2,7 @@ package crashmodes
 
 // Makes the process die in one of the ways a Wren has died, to see which leave a crash report (crashtrace): the report goes to the folder
 // given as the second argument. Run by src\tools\e2e\crash_reports.odin and the @(test) of src/tools/wrentool/deps/symbols_test.odin (Windows), wrentool crash-e2e (Linux).
-//   crashmodes <mode> <dir>     modes: access, assert, bounds, overflow, overflow_thread, heap (a double free), failfast, clean, exit, freed_read, arena_read, double_free, freed_write
+//   crashmodes <mode> <dir>     modes: access, assert, bounds, overflow, overflow_thread, heap (a double free), failfast, clean, exit, freed_read, arena_read, double_free, freed_write, freed_number
 
 import "base:intrinsics"
 import "core:os"
@@ -56,6 +56,11 @@ die :: proc(mode: string) {
 		kept.value = new(int, base.arena_allocator(&arena))
 		base.arena_free_all(&arena)
 		_ = intrinsics.volatile_load(kept.value)
+	case "freed_number":
+		// a plain number of a freed block: a fault with WREN_POISON_PAGES only
+		p := new(int)
+		free(p)
+		_ = intrinsics.volatile_load(p)
 	case "double_free":
 		p := new(int)
 		free(p)

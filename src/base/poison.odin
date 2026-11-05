@@ -12,6 +12,7 @@ package base
 //   - a block that grows always moves, so a pointer into a dynamic array kept across an append sees poison;
 //   - a second free of a block in quarantine, a free of what the heap does not know, a write to a block in quarantine (seen
 //     when it leaves) end the process with a crash report: its stack is the free's.
+// WREN_POISON_PAGES=1 (poison_windows.odin): every block on pages of its own, gone when it is freed.
 // The arenas ride on it: Poison_Arena takes its chunks from the heap, so emptying or closing one (a reset, a scope closed,
 // free_all of a temporary allocator) sends its memory through the quarantine, instead of handing the same addresses out
 // again. base.Scope (scope.odin), process_context's temporary allocator and base.Pool's slots go the same way.
@@ -119,7 +120,7 @@ quarantine_put :: proc "contextless" (heap, ptr: rawptr, size: int) {
 	stack: Stack = ---
 	stacks := want_stacks()
 	if stacks {
-		context = runtime.default_context()
+		context = runtime.default_context()   // memcheck: inside the free of any thread, the tracker's own
 		stack = {}
 		_ = trace.capture_fill(stack[:], 1)
 	}
@@ -160,7 +161,7 @@ poison_check :: proc "contextless" () {
 quarantined_check :: proc "contextless" (b: ^Quarantined) {
 	at := poison_written(b.ptr, b.size)
 	if at < 0 { return }
-	context = runtime.default_context()
+	context = runtime.default_context()   // memcheck: inside the free of any thread, the tracker's own
 	fmt.eprintfln("memory: at offset %d of a freed block: %2x", at, ([^]u8)(b.ptr)[at:min(at + POISON_SHOWN_BYTES, b.size)])
 	if want_stacks() {
 		text := strings.builder_make(HEAP)
@@ -205,7 +206,7 @@ poison_written :: proc "contextless" (p: rawptr, size: int) -> int {
 // The end of the process: one line on the standard error (test_all and wrentool sweep read it), the crash report's stack.
 @(private)
 poison_fail :: proc "contextless" (what: string, ptr: rawptr, size: int) -> ! {
-	context = runtime.default_context()
+	context = runtime.default_context()   // memcheck: inside the free of any thread, the tracker's own
 	fmt.eprintfln("memory: fatal: %s: %p (block of %d bytes)", what, ptr, size)
 	intrinsics.trap()
 }

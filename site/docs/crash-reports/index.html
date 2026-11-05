@@ -257,6 +257,7 @@ signing does not change it. <code>base</code> is where the exe was loaded.</li>
 profile build has its PDB beside it: the frames have names, files and lines. <strong>A release has no PDB</strong> (<code>-debug</code> would
 change the program: <code>ODIN_DEBUG</code>, the Direct3D debug layer, other code), so its own frames say <code>?</code> or the nearest
 export, which is wrong; the offsets are what counts.</li>
+<li><code>reading address 0xFFFFFFFFFFFFFFFF</code>: not -1. The system gives that for any address that is not canonical: the bytes of something else read as a pointer, most often a record freed and written over. The report adds <code>(not canonical)</code>, and in a build with freed memory poisoned <code>a pointer read from freed memory</code> (<a href="../../docs/testing/#freed-memory-made-loud">testing</a>).</li>
 </ul>
 <h2 id="the-symbols-of-a-build"><a class="anchor" href="#the-symbols-of-a-build" aria-hidden="true">#</a>The symbols of a build</h2>
 <p><code>build.bat</code> links every variant with <code>/MAP</code> (it changes nothing in the exe: the sections are byte for byte the same) and
