@@ -167,6 +167,17 @@ reserve_lines :: proc(l: ^Layout) {
 	reserve(&l.lines, n / 2 + 64)
 }
 
+// An array past this keeps no capacity for the next document: the first pass sizes them from the document anyway
+// (reserve_tree), and a tab that left a page of long text carried 300 MB of its arrays to every page after it.
+LAYOUT_KEEP_BYTES :: 1 << 20
+
+@(private = "file")
+release_large :: proc(l: ^Layout) {
+	drop :: proc(a: ^[dynamic]$T) { if cap(a) * size_of(T) > LAYOUT_KEEP_BYTES { delete(a^); a^ = nil } }
+	drop(&l.boxes); drop(&l.inline_items); drop(&l.lines); drop(&l.frags); drop(&l.items); drop(&l.band_items); drop(&l.node_box)
+	drop(&l.inc.info); drop(&l.inc.segs); drop(&l.inc.spare_lines); drop(&l.inc.spare_frags)
+}
+
 // Forgets the result (and, unless kept, the scroll offsets): a new document is coming.
 reset :: proc(l: ^Layout, keep_scroll := false) {
 	clear(&l.boxes); clear(&l.inline_items); clear(&l.lines); clear(&l.frags); clear(&l.fonts); clear(&l.items); clear(&l.font_lookup)
@@ -183,6 +194,7 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 	dl_walks_destroy(&l.dl_walks)
 	l.tree_gen += 1
 	if l.arena_ready { base.arena_free_all(&l.arena) }
+	release_large(l)
 	l.valid = false
 	l.last_pass = .None
 	l.styled = nil
