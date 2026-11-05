@@ -20,6 +20,9 @@ import "wb:host"
 @(private) DISK_KEY_FILE :: "cache-key.dpapi"
 @(private) DISK_FLUSH_POLL :: time.Millisecond   // disk_flush looks at the writer this often
 @(private) DISK_STALE_TMP_AGE :: time.Hour       // a temporary file older than this was left by a run that ended; it is removed
+// A trim makes this share of the limit free. Down to the limit only, the next write was over it: a full cache read its folder at each write, a second with thirty thousand files, the queue never ended
+// and every window waited for it at its close (DISK_STOP_BUDGET).
+@(private) DISK_TRIM_ROOM :: 8
 
 Disk_Cache :: struct {
 	// set before disk_start
@@ -240,9 +243,10 @@ disk_trim :: proc(d: ^Disk_Cache) {
 	}
 	defer d.known_bytes = total
 	if total <= d.max_bytes { return }
+	floor := d.max_bytes - d.max_bytes / DISK_TRIM_ROOM
 	slice.sort_by(entries[:], proc(a, b: os.File_Info) -> bool { return time.diff(a.modification_time, b.modification_time) > 0 })
 	for fi in entries {
-		if total <= d.max_bytes { break }
+		if total <= floor { break }
 		if os.remove(fi.fullpath) == nil {
 			total -= fi.size
 			sync.atomic_add(&d.evictions, 1)

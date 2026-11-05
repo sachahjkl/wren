@@ -548,6 +548,27 @@ disk_cache_reads_its_folder_once_a_run :: proc(t: ^testing.T) {
 	runtime_destroy()
 }
 
+// A cache at its limit: a trim leaves room, the writes after it read no folder (each one did, a second on a folder of thirty thousand files, and every close waited for what was queued).
+@(test)
+a_full_disk_cache_does_not_read_its_folder_at_each_write :: proc(t: ^testing.T) {
+	ENTRY_BYTES :: 1024
+	ENTRIES_THAT_FIT :: 32
+	WRITES :: 200
+	dir := temp_dir(t, "full")
+	defer testenv.remove_tree(dir)
+	d := Disk_Cache{magic = "test", ext = ".test", max_bytes = ENTRY_BYTES * ENTRIES_THAT_FIT}
+	testing.expect(t, disk_start(&d, dir))
+	for i in 0 ..< WRITES {
+		key: Digest
+		key[0], key[1] = u8(i), u8(i >> 8)
+		disk_queue(&d, disk_path(&d, key), key, make([]byte, ENTRY_BYTES, base.process_allocator()))
+		disk_flush(&d)
+	}
+	scans := sync.atomic_load(&d.scans)
+	disk_stop(&d)
+	testing.expectf(t, scans < WRITES / 2, "%d folder reads for %d writes", scans, WRITES)
+}
+
 // The read-ahead of a process's start (page.js_startup): on another thread, the module from the disk into memory; the
 // instance made after it reads nothing from the disk. Nothing is compiled ahead when the disk has no entry.
 @(test)
