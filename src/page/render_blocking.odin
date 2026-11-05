@@ -50,7 +50,10 @@ first_paint_done :: proc(p: ^Page) {
 	p.render.painted = true
 	p.render.collecting = false
 	timeline_painted(p)   // first-paint, first-contentful-paint (timeline.odin)
-	if p.scripts != nil { clear(&p.scripts.inserted_links) }
+	if p.scripts != nil {
+		p.scripts.timing.paint_ms = now_ms(p)
+		clear(&p.scripts.inserted_links)
+	}
 }
 
 // Whether `owner` (<link> or <style>) may block the first paint: a parser's element before that paint, or any element

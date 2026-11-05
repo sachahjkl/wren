@@ -1406,6 +1406,7 @@ m_network :: proc(app: ^App, c: ^Call) -> Reply {
 	b := builder()
 	j_begin(&b)
 	j_int(&b, "bytes", i64(x.bytes))
+	j_num(&b, "interactive", x.doc.interactive); j_num(&b, "dcl", x.doc.dcl); j_num(&b, "load", x.doc.load); j_num(&b, "paint", x.doc.paint)
 	j_key(&b, "requests"); j_begin(&b, '[')
 	for en in x.requests {
 		j_key(&b, ""); j_begin(&b)
@@ -1415,6 +1416,12 @@ m_network :: proc(app: ^App, c: ^Call) -> Reply {
 		j_bool(&b, "finished", en.has_ms); if en.has_ms { j_num(&b, "ms", en.ms) }
 		j_str(&b, "cache", en.cache)
 		if en.failed { j_bool(&b, "failed", true); j_str(&b, "error", en.error) }
+		j_str(&b, "protocol", en.protocol); j_num(&b, "startMs", en.start_ms)
+		if en.has_timing {
+			j_bool(&b, "hasTiming", true)
+			j_num(&b, "queued", en.queued); j_num(&b, "dnsStart", en.dns_start); j_num(&b, "dnsEnd", en.dns_end); j_num(&b, "connectStart", en.connect_start); j_num(&b, "connectEnd", en.connect_end)
+			j_num(&b, "sending", en.sending); j_num(&b, "response", en.response); j_num(&b, "done", en.done)
+		}
 		j_end(&b)
 	}
 	j_end(&b, ']'); j_end(&b)
