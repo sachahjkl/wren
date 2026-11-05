@@ -4,6 +4,10 @@ package base
 // of HeapFree and HeapReAlloc that the Odin runtime, the Rust library and the static C runtime call through.
 
 @(require) import "base:intrinsics"
+@(require) import "base:runtime"
+@(require) import "core:debug/trace"
+@(require) import "core:fmt"
+@(require) import "core:strings"
 @(require) import "core:sys/windows"
 
 when POISON_MEMORY {
@@ -25,6 +29,8 @@ foreign import kernel32 "system:Kernel32.lib"
 foreign kernel32 {
 	HeapSize :: proc(heap: rawptr, flags: u32, p: rawptr) -> uint ---
 	HeapAlloc :: proc(heap: rawptr, flags: u32, size: uint) -> rawptr ---
+	RtlLookupFunctionEntry :: proc(pc: u64, image: ^u64, history: rawptr) -> rawptr ---
+	RtlVirtualUnwind :: proc(kind: u32, image, pc: u64, fn: rawptr, c: ^windows.CONTEXT, handler: ^rawptr, establisher: ^u64, pointers: rawptr) -> rawptr ---
 }
 
 @(private) real_free: Heap_Free
@@ -46,6 +52,7 @@ heap_release :: proc "contextless" (heap, p: rawptr) { real_free(heap, 0, p) }
 @(private) GUARD_HEADER :: uint(16)   // the block's size, before what the caller gets (the heap's alignment)
 @(private) GUARD_ENV :: "WREN_POISON_PAGES"
 @(private) GUARD_ENV_BYTES :: 8
+@(private) GUARD_CONTINUE_SEARCH :: 0
 
 @(private) guard_next, guard_end, guard_start: uint
 
@@ -152,7 +159,37 @@ guard_begin :: proc "contextless" () -> bool {
 	guard_start = uint(uintptr(region))
 	guard_next = guard_start
 	guard_end = guard_start + GUARD_RESERVE
+	windows.AddVectoredExceptionHandler(1, guard_fault)
 	return true
+}
+
+// A freed block touched: said here, whatever becomes of the fault (a handler of a library, a report that cannot be written).
+@(private)
+guard_fault :: proc "system" (info: ^windows.EXCEPTION_POINTERS) -> windows.LONG {
+	rec := info.ExceptionRecord
+	if rec.ExceptionCode == windows.EXCEPTION_ACCESS_VIOLATION && rec.NumberParameters >= 2 && guard_owns(rawptr(rec.ExceptionInformation[1])) {
+		context = runtime.default_context()   // memcheck: in the fault of any thread
+		stack: Stack
+		c := info.ContextRecord^   // (unwound in a copy, as crashtrace does)
+		for &frame in stack {
+			if c.Rip == 0 { break }
+			frame = trace.Capture_Entry(c.Rip)
+			image: u64
+			fn := RtlLookupFunctionEntry(c.Rip, &image, nil)
+			if fn == nil {   // (a procedure the compiler made has no unwind table: its frame pointer)
+				frames := ([^]u64)(uintptr(c.Rbp))
+				c.Rip, c.Rsp, c.Rbp = frames[1], c.Rbp + 2 * size_of(u64), frames[0]
+				continue
+			}
+			handler: rawptr
+			establisher: u64
+			RtlVirtualUnwind(0, image, c.Rip, fn, &c, &handler, &establisher, nil)
+		}
+		text := strings.builder_make(HEAP)
+		write_stack(&text, stack)
+		fmt.eprintfln("memory: fatal: an access to freed memory: %p at %p, base %p, thread %d\n%s", rawptr(rec.ExceptionInformation[1]), rec.ExceptionAddress, rawptr(windows.GetModuleHandleW(nil)), windows.GetCurrentThreadId(), strings.to_string(text))
+	}
+	return GUARD_CONTINUE_SEARCH
 }
 
 @(private)
