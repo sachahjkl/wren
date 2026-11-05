@@ -113,6 +113,7 @@
 <li><a href="../../../docs/api/frames/">Module frames</a></li>
 <li><a href="../../../docs/api/fs/">Module fs</a></li>
 <li><a href="../../../docs/api/fullscreen/">Module fullscreen</a></li>
+<li><a href="../../../docs/api/highlight/">Module highlight</a></li>
 <li><a href="../../../docs/api/history/">Module history</a></li>
 <li><a href="../../../docs/api/htmlmedia/">Module htmlmedia</a></li>
 <li><a href="../../../docs/api/idb/">Module idb</a></li>
@@ -319,6 +320,7 @@ function not exposed to workers is not instantiated.</p>
 <tr><td><a href="../../../docs/api/frames/"><code>frames</code></a></td><td><code>wren:frames</code></td><td style="text-align:right">29</td><td>Window</td><td>Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin, frames_access.odin;</td></tr>
 <tr><td><a href="../../../docs/api/fs/"><code>fs</code></a></td><td><code>wren:fs</code></td><td style="text-align:right">20</td><td>Window, Worker</td><td>File handles (WHATWG File System, WICG File System Access; src/page/fs_store.odin, fs_api.odin;</td></tr>
 <tr><td><a href="../../../docs/api/fullscreen/"><code>fullscreen</code></a></td><td><code>wren:fullscreen</code></td><td style="text-align:right">6</td><td>Window</td><td>The Fullscreen API (src/page/fullscreen.odin): an element fills the screen. The page keeps one fullscreen element per</td></tr>
+<tr><td><a href="../../../docs/api/highlight/"><code>highlight</code></a></td><td><code>wren:highlight</code></td><td style="text-align:right">3</td><td>Window</td><td>What the CSS Custom Highlight API has registered (CSS.highlights), for the painter: the objects are native/js/odin/web_highlight.js,</td></tr>
 <tr><td><a href="../../../docs/api/history/"><code>history</code></a></td><td><code>wren:history</code></td><td style="text-align:right">14</td><td>Window</td><td>Window, Location and History (HTML). Navigations requested by a module happen from a task of their own, never</td></tr>
 <tr><td><a href="../../../docs/api/idb/"><code>idb</code></a></td><td><code>wren:idb</code></td><td style="text-align:right">1</td><td>Window, Worker</td><td>IndexedDB (the JavaScript engine's prelude, native/js/lazy/idb.js, is the only caller). One entry point: the</td></tr>
 <tr><td><a href="../../../docs/api/images/"><code>images</code></a></td><td><code>wren:images</code></td><td style="text-align:right">6</td><td>Window, Worker</td><td>Images: HTMLImageElement (&lt;img&gt; and &lt;input type=image&gt;) and decoding image files from buffers. naturalWidth and</td></tr>
@@ -358,7 +360,7 @@ function not exposed to workers is not instantiated.</p>
 <tr><td><a href="../../../docs/api/workers/"><code>workers</code></a></td><td><code>wren:workers</code></td><td style="text-align:right">11</td><td>Window, Worker</td><td>Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in</td></tr>
 </tbody>
 </table></div>
-<p>1607 imports in 1508 functions.</p>
+<p>1610 imports in 1511 functions.</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/licence/"><span>Previous</span><strong>Wren User Licences</strong></a>
 <a class="doc-next" href="../../../docs/js/coverage/"><span>Next</span><strong>JavaScript bindings: coverage</strong></a>
