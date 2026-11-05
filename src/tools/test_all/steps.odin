@@ -100,7 +100,7 @@ WB :: "-collection:wb=src"
 GUEST_FLAGS :: []string{"-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-collection:wren=sdk/odin", "-o:size"}
 E2E_BUILD_FLAGS :: []string{"-build-mode:test", "-o:speed", "-debug", "-use-separate-modules", "-vet", TOOLKIT, WB, "-define:FONT_BACKEND=native", "-define:FONT_NATIVE_LINK=false",
 	"-define:A11Y_ACCESSKIT=true", "-define:A11Y_NATIVE_LINK=false", "-define:WREN_CHANNEL=dev", "-define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=65536", ONE_THREAD, "-define:ODIN_TEST_FANCY=false",
-	"-extra-linker-flags:/STACK:33554432"}
+	"-extra-linker-flags:/STACK:67108864"}
 // How long what may legitimately take long gets, seconds. (A full WPT or test262 is hours under load: a hang shows as children that stop answering, which the tools end themselves.)
 LONG_STEP_SECONDS :: 4 * 3600
 ENDURANCE_LIMIT_SECONDS :: 1800
@@ -316,6 +316,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	e2e_step(&t, "the frame gate end to end (src\\tools\\e2e\\frame_gate.odin, a real window that nobody sees: the system's drag of a page drag, the page's context menu, a long script preempted by chrome frames; under them a loop of the system paints: a chrome frame, never a full one, deferred where no frame may begin)", "frame_gate")
 	e2e_step(&t, "tab sidebar resized by its handle (src\\tools\\e2e\\sidebar_resize.odin: the edge where the pointer is in every frame, the page at its area's width, the width written on release; an injected pointer, no window at all)", "sidebar_resize")
 	e2e_step(&t, "the page's cursors (src\\tools\\e2e\\cursor.odin: what the page asks for over each element, images and their hotspots, a press held; no window at all)", "cursor")
+	e2e_step(&t, "the CSS Custom Highlight API painted (src\\tools\\e2e\\highlight.odin: ::highlight() over a range, what follows the registry, the ranges and the priorities; no window at all)", "highlight")
 	e2e_step(&t, "input under a busy page (src\\tools\\e2e\\busy_page.odin: a script holds the thread, chrome frames take the input: a drag's selection, the scroll bar's thumb, Page Down and Ctrl+L follow at once, the page's turn sees the same; transform and opacity animations go on, a scroll box follows the wheel and its thumb, the caret blinks; no window at all)", "busy_page", flaky = {"the_caret_blinks_while_the_page_is_busy"})   // (failed once on the CI, 18 of 18 passed six at a time, nothing found by reading: a frame short of the screen or of the window's place in front)
 	e2e_step(&t, "an inline <svg> through a hover (src\\tools\\e2e\\inline_svg_hover.odin: the painting start page's shortcut icons, a new colour being made on the held decoding threads: every frame shows the icon, then the new colour; no window at all)", "inline_svg_hover")
 	e2e_step(&t, "an image opened by itself as a viewer (src\\tools\\e2e\\image_viewer.odin: Ctrl+wheel and a pinch zoom it around the pointer, + - 0, clicks, a drag and its cursors, the wheel and the arrows, R and Shift+R, a double click; no window at all)", "image_viewer")

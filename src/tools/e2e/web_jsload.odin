@@ -41,6 +41,8 @@ SHEET_NEVER_WAITED_FOR_MS :: 3000   // still on its way when the page has closed
 SHEET_REL_CHANGED_MS :: 200
 SCRIPT_AFTER_REL_CHANGE_MS :: 300
 POLL_NEVER_MS :: 600_000         // a poll of the waiting page that never comes within a test
+RECURSION_CALLS :: 330          // the calls through `new`, spread or a Proxy a script reaches at the least
+RECURSION_NATIVE_CALLS :: 170   // through a native that calls back
 PUMP_SLICE_MS :: 20
 PUMP_SCRIPT_MS :: 30             // past the slice
 SLICE_PER_FRAME :: 3
@@ -1375,4 +1377,38 @@ window.n = 0; const go = () => requestAnimationFrame(ts => {{ log("raf " + (++n)
 	log.infof("MEASURE requestAnimationFrame: %.1f us from the frame to the end of the callback (%d frames)", total / f64(max(frames, 1)), frames)
 	check(pr, noted(pr, last) && frames == RAF_FRAMES, fmt.tprintf("%d animation frames, one callback each (%d)", RAF_FRAMES, frames))
 	close_page(pr, min_checks = 1)
+}
+
+// What runs in a browser's stack runs here: a recursion through `new`, a spread call or a native (a component tree a page renders) takes the engine's own
+// stack, and YouTube's embed went past 195 of them. It ends in a RangeError the script catches, on every path, with the realm alive.
+@(test)
+jsload_recursion_through_new_and_natives_goes_deep :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	script := concat(`<script>
+const calls = `, fmt.tprint(RECURSION_CALLS), `, native = `, fmt.tprint(RECURSION_NATIVE_CALLS), `;
+const paths = {
+  new: step => { class A { constructor() { step(); new A(); } } new A(); },
+  super: step => { class B {} class C extends B { constructor() { super(); step(); new C(); } } new C(); },
+  spread: step => { const s = (...r) => { step(); return s(...r); }; s(1); },
+  proxy: step => { const p = new Proxy({}, { get(t, k, r) { step(); return r[k]; } }); p.x; },
+  map: step => { const g = () => { step(); return [1].map(g); }; g(); },
+  sort: step => { const g = () => { step(); [2, 1].sort(g); }; g(); },
+};
+const least = { new: calls, super: calls, spread: calls, proxy: calls, map: native, sort: native };
+for (const name in paths) {
+  let depth = 0, end = "no end";
+  try { paths[name](() => depth++); } catch (e) { end = e.name; }
+  log(name + " " + end + " " + (depth >= least[name] ? "deep" : "shallow " + depth));
+}
+log("alive");
+</script>`)
+	pr := load(t, "recursion", concat(`<!doctype html><head>`, PRELUDE, `</head><body>`, script, `</body>`))
+	wait_note(pr, "alive")
+	for name in ([]string{"new", "super", "spread", "proxy", "map", "sort"}) {
+		check(pr, noted(pr, fmt.tprintf("%s RangeError deep", name)), fmt.tprintf("recursion through %s goes deep and ends in a RangeError (%v)", name, pr.section.notes))
+	}
+	close_page(pr, min_checks = 6)
 }

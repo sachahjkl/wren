@@ -32,7 +32,7 @@ CHANNEL_FILE :: "build/wren.channel"
 LAUNCHER :: "build/wren.com"
 LAUNCHER_SOURCES :: "src/tools/wrencom"
 // 32 MiB of stack for the window thread: Wasm calls run on it (wasm.wasmtime.max_stack_bytes + host_stack_reserve_bytes)
-STACK_BYTES :: 32 << 20
+STACK_BYTES :: 64 << 20
 // every thread's temporary allocator keeps its first block for life: 64 KiB instead of Odin's 4 MiB (at 1 MiB each it was 70 MB of private bytes on a page with a video, mostly never touched); the threads of a frame's passes ask for more (host.thread_temp_hot)
 TEMP_ALLOCATOR_BACKING_BYTES :: 64 << 10
 SEPARATE_MODULES :: "-use-separate-modules"

@@ -53,8 +53,8 @@ FAILURE_CONSOLE :: "failure_console.txt"
 // rest_turns: how often what wakes the loop wakes it. wait_at_rest: how long without a frame counts as settled (scenarios keep the status bar's window far below it).
 REST_WAKE_MS :: 1
 REST_QUIET :: 500 * time.Millisecond
-// The stack the script engine's calls need (what /STACK:33554432 gives on Windows).
-STACK_BYTES :: 32 * 1024 * 1024
+// The stack the script engine's calls need (what /STACK:67108864 gives on Windows).
+STACK_BYTES :: 64 * 1024 * 1024
 
 // Re-exported: what a scenario reads.
 Image :: api.Image

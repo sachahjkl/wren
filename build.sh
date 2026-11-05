@@ -44,7 +44,7 @@ tests() {
 }
 
 # The linker flags the browser executable needs on Linux, the counterpart of build.bat's
-# "/STACK:33554432 /NODEFAULTLIB:... /MAP":
+# "/STACK:67108864 /NODEFAULTLIB:... /MAP":
 #   --build-id        a build id in the binary, so a crash report can name the build (wrentool crash-symbolize,
 #                     docs/portability.md "An executable linked without --build-id ...")
 #   -z noexecstack    a non-executable stack (the Rust and C objects are already marked; make it explicit)
@@ -52,7 +52,7 @@ tests() {
 #   -lm               the maths the Rust and C libraries use
 #   -Wl,--no-as-needed keeps -lpthread even when the direct references are pulled in only from the static archives
 # The static archives themselves (build/*-linux: libwren_native.a, libwasmtime.a, liblexbor.a) are named by each
-# package's foreign import; Odin passes their directories. The 32 MiB stack is set with a soft ulimit at run time
+# package's foreign import; Odin passes their directories. The 64 MiB stack is set with a soft ulimit at run time
 # (ulimit -s), as the Linux CI does, since the main-thread stack size is not a link option on Linux.
 link_flags() {
   echo "-Wl,--build-id -Wl,-z,noexecstack -Wl,--no-as-needed -lpthread -ldl -lm -lopus -lasound"

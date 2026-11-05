@@ -17,9 +17,9 @@ import "core:strings"
 QJS_VERSION :: "0.17.0"
 QJS_SHA256 :: "559bc4c420475e55c7ab4510adbc562f55d7524d75e8e89d79ce4bb02f5687d9"
 
-// The C stack in linear memory: JavaScript recursion depth is bounded by JS_SetMaxStackSize (768 KiB); the rest is room for what runs past that bound before unwinding (reporting
-// the RangeError of a listener deep in a recursion through the browser: its error event, the host calls). Each realm commits its stack: 1 MiB, not more.
-WASM_STACK_BYTES :: 1048576
+// The C stack in linear memory: JavaScript recursion depth is bounded by JS_SetMaxStackSize (STACK_BUDGET: a `new` or a call through a native takes about 4 KiB of it, and about ten times that of wasm.wasmtime.max_stack_bytes, which is what holds it down); the rest is room for what runs past that bound before unwinding (reporting
+// the RangeError of a listener deep in a recursion through the browser: its error event, the host calls). What a realm does not reach of it stays zero pages.
+WASM_STACK_BYTES :: 2 << 20
 JS_OUT_DEFAULT :: "build/js"
 THIS_FILE :: "src/tools/tooling/js_engine.odin"
 BYTES_PER_KIB :: 1024
