@@ -253,22 +253,47 @@ inv_index_of :: proc(e: ^Engine, rs: ^Rule_Set) -> ^Inv_Index {
 	ix.ready = true
 	ix.keys = &e.key_sets
 	ix.has_anchors = make([dynamic]Has_Anchor)
-	visit :: proc(ix: ^Inv_Index, list: [dynamic]Entry) {
-		for &ent in list { analyze_complex(ix, ent.complex, Reach{self = true, set = subject_keys(ix.keys, ent.complex)}, false, 0) }
-	}
-	for _, l in rs.index.by_id { visit(ix, l) }
-	for _, l in rs.index.by_class { visit(ix, l) }
-	for _, l in rs.index.by_tag { visit(ix, l) }
-	for _, l in rs.index.by_attr { visit(ix, l) }
-	visit(ix, rs.index.universal)
-	visit(ix, rs.index.backdrop)
-	visit(ix, rs.host_entries)
+	inv_visit_index(ix, &rs.index)
+	inv_visit(ix, rs.host_entries)
 	for &ent in rs.slotted_entries {
 		analyze_complex(ix, ent.complex, Reach{desc = true}, false, 0)
 		if ent.complex.slotted != nil { analyze_compound(ix, ent.complex.slotted^, Reach{self = true}) }
 	}
 	for &ent in rs.part_entries { analyze_complex(ix, ent.complex, Reach{desc = true}, false, 0) }
 	return ix
+}
+
+@(private = "file")
+inv_visit :: proc(ix: ^Inv_Index, list: [dynamic]Entry) {
+	for &ent in list { analyze_complex(ix, ent.complex, Reach{self = true, set = subject_keys(ix.keys, ent.complex)}, false, 0) }
+}
+
+@(private = "file")
+inv_visit_index :: proc(ix: ^Inv_Index, index: ^Index) {
+	for _, l in index.by_id { inv_visit(ix, l) }
+	for _, l in index.by_class { inv_visit(ix, l) }
+	for _, l in index.by_tag { inv_visit(ix, l) }
+	for _, l in index.by_attr { inv_visit(ix, l) }
+	inv_visit(ix, index.universal)
+	inv_visit(ix, index.backdrop)
+}
+
+// The document's rules grew by the entries of `fresh` (sheet_arrival.odin): what they reach joins what the index holds, which is a
+// union of what each entry reaches. New :has() anchors have their elements found again.
+@(private)
+inv_extend :: proc(e: ^Engine, fresh: ^Index) {
+	ix := &e.rules.inv
+	if !ix.ready || ix.rebuilds + 1 != e.rebuilds { return }   // (not made, or not for the rules before these: it is made when asked for)
+	ix.rebuilds = e.rebuilds
+	anchors := len(ix.has_anchors)
+	inv_visit_index(ix, fresh)
+	if len(ix.has_anchors) > anchors { ix.watched = nil }
+}
+
+// watch_prepare, when the rules' :has() anchors are not those the document's Watch has.
+watch_refresh :: proc(e: ^Engine, doc: ^dom.Document) {
+	if ix := &e.rules.inv; ix.ready && ix.rebuilds == e.rebuilds && ix.watched == doc { return }
+	watch_prepare(e, doc)
 }
 
 @(private = "file")

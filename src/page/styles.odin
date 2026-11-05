@@ -254,7 +254,6 @@ style_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			}
 			link_sheet_settled(p, l, !l.failed)
 		}
-		p.style_stale = true
 		start_pending_imports(p)
 		if l.is_import { links_check_imports(p) }
 		arrived_pump(p)
@@ -366,8 +365,7 @@ styles_sync_soon :: proc(p: ^Page) {
 		p := (^Page)(data)
 		p.link_sync_timer = base.NIL_HANDLE
 		if p.closed || p.engine == nil || p.doc == nil { return }
-		sync_styles(p)
-		p.style_stale = true
+		sync_styles(p)   // (what it changed marks the rules dirty)
 	}, p, p.scope)
 }
 
@@ -413,18 +411,23 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 	media_queries_update(p, env)   // matchMedia lists (js_web_media.odin)
 
 	now := document_time_ms(p)
+	// sheets that arrived join the rules as they stand; restyle_arrivals below applies them
+	if p.styled != nil && !p.style_stale && !e.restyle_needed { _ = style.engine_extend(e, p.doc, p.styled) }
 	full := p.styled == nil || p.style_stale || e.dirty || e.restyle_needed
-	why := p.styled == nil ? "no styles yet" : p.style_stale ? "the page's styles were marked stale" : e.dirty ? "style rules changed (a sheet came or went)" : e.restyle_needed ? "an environment change asked for one" : ""
+	why := p.styled == nil ? "no styles yet" : p.style_stale ? "the page's styles were marked stale" : e.dirty ? e.last_restyle.fallback : e.restyle_needed ? "an environment change asked for one" : ""
 	partial, dom_partial := false, false
 	if !full && (p.styled.mutations != p.doc.mutations || e.shadow.dirty) {
 		full, why = true, "shadow tree rules changed"
 		if e.settings.inc_enabled {
 			owners := make([dynamic]base.Handle, 0, len(p.link_loads), context.temp_allocator)
 			for o in p.link_loads { append(&owners, o) }
-			if style.dom_touches_sheets(e, p.doc, p.styled, owners[:]) { sync_styles(p) }
+			if style.dom_touches_sheets(e, p.doc, p.styled, owners[:]) {
+				sync_styles(p)
+				_ = style.engine_extend(e, p.doc, p.styled)
+			}
 			if !e.dirty {
 				if _, ok := style.restyle_dom(e, p.doc, p.styled, style_threads(p)); ok { full, dom_partial = false, true } else { why = e.last_restyle.fallback }
-			} else { why = "a changed element carries style rules (<style>, <link>)" }
+			} else { why = e.last_restyle.fallback }
 		}
 	}
 	if !full && !style.state_equal(effective_state(p), p.styled.state) {
@@ -441,6 +444,11 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 		// a media query changed value: only the elements that the rules of the blocks that flipped match (style/media_gate.odin)
 		if _, ok := style.restyle_media(e, p.doc, p.styled, style_threads(p)); ok { mq_partial = true } else { full, why = true, e.last_restyle.fallback }
 	}
+	sheet_partial := false
+	if !full && e.arrivals_due {
+		if _, ok := style.restyle_arrivals(e, p.doc, p.styled, style_threads(p)); ok { sheet_partial = true } else { full, why = true, e.last_restyle.fallback }
+	}
+
 	if full {
 		if p.styled == nil || p.style_stale || p.styled.mutations != p.doc.mutations { sync_styles(p) }
 		old := p.styled
@@ -463,20 +471,23 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 			p.doc.journal.max = max(p.doc.journal.max, e.settings.inc_journal)
 			style.watch_prepare(e, p.doc)   // (what removed subtrees held, for the :has() anchors: dom.Watch)
 		}
-	} else if partial || dom_partial || cq_partial || mq_partial {
+	} else if partial || dom_partial || cq_partial || mq_partial || sheet_partial {
 		style.timeline_restyled_dom(p.anim.timeline, p.doc, p.styled, now)
-		if dom_partial || mq_partial {
+		if sheet_partial { style.watch_refresh(e, p.doc) }   // (the rules changed: what the :has() anchors watch)
+		if dom_partial || mq_partial || sheet_partial {
 			fonts_sync(p)
 			if e.settings.inc_verify {
 				if diff := style.verify_styles(e, p.doc, p.styled, context.temp_allocator); diff != "" {
 					log(p, .Warn, fmt.tprintf("style.incremental.verify: partial restyle differs from a full one: %s", diff))
+
 				}
 			}
 		}
 	}
 	style.timeline_tick(p.anim.timeline, p.doc, p.styled, now)
 	animations_after_tick(p)
-	styles_note(full, dom_partial, partial, cq_partial, mq_partial, time.tick_since(t0), why)
+	styles_note(full, dom_partial || sheet_partial, partial, cq_partial, mq_partial, time.tick_since(t0), why)
+
 	if full { the_pages.styles_stats.full_bytes += i64(style.styled_bytes(p.styled)) }
 	return p.styled
 }

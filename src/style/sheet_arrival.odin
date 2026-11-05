@@ -1,0 +1,236 @@
+package style
+
+import "core:slice"
+import "core:sync"
+import "core:time"
+import "wb:base"
+import "wb:css"
+import "wb:dom"
+import "wb:host"
+
+// A stylesheet that arrives. cnn.com took fifteen full passes for its sheets, each with every rule of the page flattened again:
+// 2.2 s, for sheets that match a few hundred elements of ten thousand.
+//
+// What a sheet of plain style rules changes is the style of the elements it matches, and what they pass on: nothing else, whatever
+// its place among the others. So its rules are added to the index as it stands (engine_extend), numbered between those of its
+// neighbours in the document, and also go to an index of their own (Engine.fresh); restyle_arrivals runs the elements through that
+// small index, by the keys of the sheet's selectors (the same lookups as the cascade, on the entries of this sheet alone), and
+// restyles those it matches as restyle_media does for a flipped @media block: each is computed again, its children where what they
+// inherit changed.
+//
+// What decides beyond the elements a rule matches keeps the rebuild and the full pass: @layer (the order of layers), @property
+// (a value's meaning), @position-try, ::part() / ::slotted() / :host (they style other trees), @keyframes of a name that elements
+// already use, a sheet that came with others changed or removed, a sheet that belongs to a shadow tree. So does a sheet
+// that matches more than style.incremental.max_ratio of the document: there a full pass, on the style threads, is the shorter way.
+
+// Rules of a sheet are numbered from where the one before it ends, this far on: what a sheet that arrives between two others has.
+SHEET_ORDER_GAP :: 1 << 15
+
+// A rule a script inserted at the end of a sheet (CSSOM insertRule, what CSS-in-JS libraries do rule by rule).
+@(private)
+Arrived_Rule :: struct { sheet: ^Sheet, rule: ^css.Rule }
+
+// `r` went into `s`: true when it arrives as a sheet does, or comes with one; else the rules are stale.
+@(private)
+rule_arrived :: proc(e: ^Engine, s: ^Sheet, r: ^css.Rule, at_end: bool) -> bool {
+	if e.dirty_other { return false }
+	for a in e.arrived { if a == s { s.version += 1; return true } }   // (its rules are read when it joins)
+	if !at_end || !s.indexed || s.origin != .Author || s.in_layer { return false }
+	s.version += 1
+	e.dirty = true
+	append(&e.arrived_rules, Arrived_Rule{s, r})
+	return true
+}
+
+// The sheets in their places in the document, as the numbers of the rules in the index have them.
+@(private)
+sheets_sorted :: proc(e: ^Engine, doc: ^dom.Document) -> bool {
+	order_sheets(e, doc)
+	sheets_sort(e)
+	last: u32
+	for x in e.sheets {
+		if !x.indexed { continue }
+		if x.order_first < last { return false }
+		last = x.order_first
+	}
+	return true
+}
+
+// Whether the rules of `list` can join an index: nothing there depends on the rest of the sheets.
+@(private = "file")
+rules_extend :: proc(list: []^css.Rule) -> bool {
+	for r in list {
+		#partial switch r.kind {
+		case .Layer_Block, .Layer_Statement, .Property, .Position_Try: return false
+		case .Media, .Supports, .Container: if !rules_extend(r.rules) { return false }
+		case .Style: if !rules_extend(r.nested) { return false }
+		}
+	}
+	return true
+}
+
+// Some element's animation-name is one of the @keyframes of `list`: they start, or change, what runs.
+@(private = "file")
+keyframes_in_use :: proc(list: []^css.Rule, used: ^map[string]bool) -> bool {
+	for r in list {
+		#partial switch r.kind {
+		case .Keyframes: if r.name in used { return true }
+		case .Media, .Supports, .Container: if keyframes_in_use(r.rules, used) { return true }
+		}
+	}
+	return false
+}
+
+// The animation names of the elements styled.
+@(private = "file")
+animation_names :: proc(s: ^Styled, out: ^map[string]bool) {
+	for c in s.by_node {
+		if c == nil { continue }
+		for n in c.animation_name { if n != "" { out[n] = true } }
+	}
+}
+
+// Adds the sheets that arrived to the index, if what they are allows: the rules are no longer dirty then, and restyle_arrivals is due.
+// False: the rebuild stands, with a full pass.
+engine_extend :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled) -> bool {
+	refused :: proc(e: ^Engine, why: string) -> bool {
+		e.last_restyle.fallback = why
+		return false
+	}
+	if !e.dirty { return false }
+	if e.dirty_other { return refused(e, "style rules changed (a sheet went, or was changed)") }
+	if len(e.arrived) + len(e.arrived_rules) == 0 || !e.settings.inc_enabled || !e.settings.sheet_partial { return refused(e, "style rules changed") }
+	if len(e.shadow.doc_adopted) > 0 { return refused(e, "style rules changed: the document has adopted sheets") }
+	used: map[string]bool
+	if sync.atomic_load(&s.motion) {
+		used = make(map[string]bool, 16, context.temp_allocator)
+		animation_names(s, &used)
+	}
+	for a in e.arrived {
+		if a.in_layer || len(a.imports) > 0 { return refused(e, "a sheet with @import, or in a layer, came") }
+		if !rules_extend(a.sheet.rules) { return refused(e, "a sheet with @layer, @property or @position-try came") }
+		if len(used) > 0 && keyframes_in_use(a.sheet.rules, &used) { return refused(e, "a sheet came with @keyframes that elements use") }
+	}
+	for &a in e.arrived_rules {
+		one := []^css.Rule{a.rule}
+		if !rules_extend(one) { return refused(e, "a rule with @layer, @property or @position-try came") }
+		if len(used) > 0 && keyframes_in_use(one, &used) { return refused(e, "a rule came with @keyframes that elements use") }
+	}
+	t0 := time.tick_now()
+	defer { rebuild_total.n += 1; rebuild_total.ns += i64(time.tick_since(t0)); rebuild_total.sheets += len(e.arrived) }
+	// those already in the index stand in the order they were numbered: a sheet moved in the document meanwhile is for the rebuild
+	if !sheets_sorted(e, doc) { return refused(e, "a sheet moved in the document") }
+	e.cur = &e.rules
+	e.fresh_on = true
+	defer e.fresh_on = false
+	faces, frames := len(e.font_faces), len(e.keyframes)
+	high := e.rules.order
+	for x, i in e.sheets {
+		if x.indexed || x.disabled || x.scope != base.NIL_HANDLE || x.constructed { continue }
+		before, after: ^Sheet
+		for k := i - 1; k >= 0; k -= 1 { if e.sheets[k].indexed { before = e.sheets[k]; break } }
+		for k := i + 1; k < len(e.sheets); k += 1 { if e.sheets[k].indexed { after = e.sheets[k]; break } }
+		from := before != nil ? before.order_last : 0
+		e.rules.order = after != nil ? from + (after.order_first - from) / 2 : high + SHEET_ORDER_GAP
+		x.order_first = e.rules.order
+		flatten_sheet(e, x, LayerCtx{rank = UNLAYERED})
+		x.order_last = e.rules.order
+		x.indexed = true
+		high = max(high, e.rules.order)
+		if e.fresh_other || (after != nil && x.order_last >= after.order_first) {
+			e.dirty_other = true   // (what was added goes with the rebuild)
+			return refused(e, "a sheet came that styles another tree, or too long for its place")
+		}
+	}
+	for a in e.arrived_rules {
+		x := a.sheet
+		if x.disabled || (len(x.media) > 0 && !css.media_matches(x.media, e.env)) { continue }
+		e.rules.order = x.order_last
+		e.cur_base_url = x.base_url
+		flatten_rule(e, a.rule, x.origin, LayerCtx{rank = UNLAYERED})
+		x.order_last = e.rules.order
+		high = max(high, e.rules.order)
+		next := next_indexed(e, x)
+		if e.fresh_other || (next != nil && x.order_last >= next.order_first) {
+			e.dirty_other = true
+			return refused(e, "a rule came that styles another tree, or too long for its place")
+		}
+	}
+	e.cur_base_url = ""
+	e.rules.order = high
+	if len(e.font_faces) > faces {
+		slice.stable_sort_by(e.font_faces[:], proc(a, b: Font_Face_Ref) -> bool { return a.order < b.order })
+		parse_font_faces(e)
+	}
+	if len(e.keyframes) > frames {
+		clear(&e.keyframe_sets)
+		compile_keyframes(e)
+	}
+	e.rebuilds += 1
+	inv_extend(e, &e.fresh.index)
+	e.dirty = false
+	e.arrivals_due = true
+	clear(&e.arrived)
+	clear(&e.arrived_rules)
+	return true
+}
+
+// The sheet after `s` among those of the index.
+@(private = "file")
+next_indexed :: proc(e: ^Engine, s: ^Sheet) -> ^Sheet {
+	seen := false
+	for x in e.sheets {
+		if seen && x.indexed { return x }
+		if x == s { seen = true }
+	}
+	return nil
+}
+
+
+@(private)
+fresh_clear :: proc(e: ^Engine) {
+	index_free(&e.fresh.index)
+	e.arrivals_due, e.fresh_other = false, false
+}
+
+@(private = "file")
+arrival_fail :: proc(e: ^Engine, why: string) -> (bool, bool) {
+	e.last_restyle.fallback = why
+	return false, false
+}
+
+// The styles of the elements the rules of engine_extend reach, in place. ok = false: the caller makes a full pass; `changed`: some
+// computed style differs (s.serial changed then). The document's mutations are styled already.
+restyle_arrivals :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thread_Pool = nil) -> (changed: bool, ok: bool) {
+	if !e.arrivals_due { return false, true }
+	defer fresh_clear(e)
+	ix := &e.fresh.index
+	if len(ix.by_id) + len(ix.by_class) + len(ix.by_tag) + len(ix.by_attr) + len(ix.universal) + len(ix.backdrop) == 0 { return false, true }
+	if s.mutations != doc.mutations { return arrival_fail(e, "the document changed") }
+	if int(s.arena.total_used) - int(s.base_used) + s.partial_bytes > e.settings.restyle_waste_bytes { return arrival_fail(e, "memory left by partial restyles") }
+	p := pass_make(e, s, doc, s.state)
+	defer pass_destroy(p)
+	limit := int(e.settings.inc_max_ratio * f32(max(doc.nodes.count, 1)))
+	hits := make([dynamic]base.Handle, context.temp_allocator)
+	Frame :: struct { h: base.Handle, bloom: Bloom }
+	stack := make([dynamic]Frame, context.temp_allocator)
+	root := dom.get(doc, doc.root)
+	for c := root.last_child; c != base.NIL_HANDLE; c = dom.get(doc, c).prev { append(&stack, Frame{h = c}) }
+	p.fresh_probe = true
+	ctx := Elem_Ctx{set = &e.fresh}
+	for len(stack) > 0 {
+		f := pop(&stack)
+		n := dom.get(doc, f.h)
+		if n == nil || n.kind != .Element { continue }
+		collect_entries(p, f.h, n, &f.bloom, ctx, nil)
+		for l in p.lists {
+			if len(l) > 0 { append(&hits, f.h); break }
+		}
+		if len(hits) > limit { return arrival_fail(e, "a sheet that came reaches too much") }
+		child_bloom := f.bloom
+		bloom_add_element(&child_bloom, n)
+		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev { append(&stack, Frame{h = ch, bloom = child_bloom}) }
+	}
+	p.fresh_probe = false
+	return restyle_roots(e, doc, s, p, hits[:], pool)
+}

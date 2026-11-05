@@ -14,6 +14,7 @@ Font_Face_Ref :: struct {
 	rule:     ^css.Rule,
 	base_url: string,     // the sheet's URL: relative src URLs resolve against it
 	origin:   Origin,
+	order:    u32,        // among the rules (sheet_arrival.odin)
 }
 
 Font_Source_Kind :: enum u8 { Url, Local }

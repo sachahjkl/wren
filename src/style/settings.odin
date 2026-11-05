@@ -67,6 +67,7 @@ Settings :: struct {
 	// restyle after DOM mutations (restyle_dom.odin)
 	inc_enabled:         bool,
 	inc_max_ratio:       f32,       // part of the document's nodes past which a full pass is done instead
+	sheet_partial:       bool,      // a sheet that arrives restyles what it matches (sheet_arrival.odin), not the document
 	inc_parallel_min:    int,       // elements restyled at least before forced subtrees go to the style threads
 	inc_verify:          bool,      // diagnostic: compare with a full pass after every partial one
 	inc_journal:         int,       // entries of the document's mutation journal
@@ -185,6 +186,8 @@ PREFS := [?]config.Def{
 		description = "The first paint of a page waits for the stylesheets of the document (<link rel=stylesheet>, <style> with @import, media matching, or blocking=\"render\") so that it is not shown unstyled; past this delay it is painted with what has arrived. 0 = never wait."},
 	{name = "style.incremental.enabled", kind = .Bool, default = {b = true},
 		description = "After DOM changes, restyle only the elements the changes can affect (found from the selectors of the page). Off: every change restyles the whole document (same result)."},
+	{name = "style.incremental.sheets", kind = .Bool, default = {b = true},
+		description = "When a stylesheet arrives, add its rules to those in force and restyle the elements it matches instead of reading every sheet again and restyling the document. Sheets with @layer, @property and the like, or that match more than style.incremental.max_ratio of the document, still make a full pass."},
 	{name = "style.incremental.max_ratio", kind = .Float, default = {f = 0.3}, bounded = true, min = 0, max = 1,
 		description = "Part of the document's nodes a DOM change may restyle partially; past it the whole document is restyled (on the style threads)."},
 	{name = "style.incremental.parallel_min", kind = .Int, default = {i = 2048}, bounded = true, min = 1, max = 1 << 40, unit = "elements",
@@ -281,6 +284,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.render_block_ms = config.float_of(p, "style.render_blocking.timeout_ms")
 	s.inc_enabled = config.bool_of(p, "style.incremental.enabled")
 	s.inc_max_ratio = f32(config.float_of(p, "style.incremental.max_ratio"))
+	s.sheet_partial = config.bool_of(p, "style.incremental.sheets")
 	s.inc_parallel_min = int(config.int_of(p, "style.incremental.parallel_min"))
 	s.inc_verify = config.bool_of(p, "style.incremental.verify")
 	s.inc_journal = int(config.int_of(p, "style.incremental.journal_entries"))

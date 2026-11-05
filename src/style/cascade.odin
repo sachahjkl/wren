@@ -522,6 +522,7 @@ Pass :: struct {
 	res_map:   map[string]string,
 	state_map: map[string]u8,
 	lists:    [Entry_List][dynamic]Entry,   // matched entries: the element's, its pseudo-elements'
+	fresh_probe: bool,         // sheet_arrival.odin: only what the context's rule set says, no other tree's
 	gate_probe: []bool,        // media_gate.odin: the entries of the gates in it are the only ones matched, on or off (which elements a flip reaches)
 	compare:  bool,            // partial restyle: keep the old computed style when nothing changed
 	changed:  bool,            // ... and report whether some element really changed
@@ -599,7 +600,7 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 	rs := ctx.set != nil ? ctx.set : &p.e.rules
 	p.mc.featureless = ctx.host
 	defer p.mc.featureless = base.NIL_HANDLE
-	if dom.has_shadow_trees(p.mc.doc) { shadow_entries(p, el, n, ctx) }
+	if dom.has_shadow_trees(p.mc.doc) && !p.fresh_probe { shadow_entries(p, el, n, ctx) }
 	ix := &rs.index
 	if id, ok := attr(n, "id"); ok && id != "" {
 		if l, found := ix.by_id[id]; found { check(p, el, l[:], ancestors, rec) }
@@ -1209,6 +1210,7 @@ hidden_above :: proc(p: ^Pass, h: base.Handle) -> bool {
 // work is shared between threads (parallel.odin); the result is the same.
 compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State, pool: ^host.Thread_Pool = nil, min_nodes := 0) -> ^Styled {
 	if e.dirty { engine_rebuild(e, doc) }
+	if e.arrivals_due { fresh_clear(e) }   // (this pass reads the rules that were added)
 	shadow_prepare(e, doc)
 	clear(&e.shadow.changed)   // a full pass covers whatever changed
 	clear(&e.container_pending)

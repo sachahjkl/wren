@@ -98,10 +98,7 @@ LinkStyle_sheetOf :: proc(c: ^Call, node: Api_Node) -> u64 {
 	switch n.name {
 	case "style":
 		s = style.engine_style_element_sheet(p.engine, d, h, document_base_url(p))
-		if s != nil {
-			start_pending_imports(p)   // (a new sheet's @import rules load as the document's sync would start them)
-			p.style_stale = true
-		}
+		if s != nil { start_pending_imports(p) }   // (a new sheet's @import rules load as the document's sync would start them)
 	case "link":
 		s = style.engine_sheet_of_owner(p.engine, h)
 		if s != nil && !s.from_link { s = nil }

@@ -103,6 +103,8 @@ Sheet :: struct {
 	parent:  ^Sheet,                   // an imported sheet: the sheet that imports it
 	injected: bool,                    // added by the embedder (the content blocker's element hiding): kept when the built-in sheets are rebuilt
 	cssom:   ^Cssom_List,              // the rule list scripts see and change (cssom.odin); nil until one asks
+	indexed: bool,                     // its rules are in the index (sheet_arrival.odin): order_first to order_last
+	order_first, order_last: u32,
 }
 
 Engine :: struct {
@@ -127,6 +129,13 @@ Engine :: struct {
 	gate_touched: [dynamic]bool,       // ... which changed since the styles were computed
 	gates_pending: bool,               // some gate changed: restyle_media restyles what its rules reach
 	dirty:     bool,
+	dirty_other: bool,                 // ... and not only by sheets that arrived, which engine_extend may add to the index (sheet_arrival.odin)
+	arrived:   [dynamic]^Sheet,        // ... those sheets
+	arrived_rules: [dynamic]Arrived_Rule,   // ... and rules inserted at the end of a sheet in the index
+	arrivals_due: bool,                // engine_extend added rules that restyle_arrivals is to apply
+	fresh:     Rule_Set,               // ... those rules, by the keys of their selectors
+	fresh_on:  bool,                   // engine_extend is flattening: entries go to `fresh` too
+	fresh_other: bool,                 // ... and some rule styles something else than the elements it matches
 	font_faces: [dynamic]Font_Face_Ref,   // @font-face rules in force, with the URL their sources resolve against
 	faces:     [dynamic]Font_Face,        // ... parsed (fontface.odin); strings in `alloc`
 	keyframes: [dynamic]Keyframes_Ref,    // @keyframes rules in force
@@ -138,7 +147,7 @@ Engine :: struct {
 	container_pending: [dynamic]base.Handle,    // containers whose size changed since the styles were computed: restyle_containers restyles their subtrees
 	rebuilds:  u64,                       // counts rebuilds: compiled keyframes and faces are stale after one
 	cur_base_url: string,                 // while flattening: the URL of the sheet being read
-	kf_order:  u32,
+
 	spare:     base.Arena,             // the memory of a recycled style pass (see styled_recycle)
 	has_spare: bool,
 	spare_by_node: [dynamic]^Computed,    // the slots of a recycled pass, empty, their room kept (see styled_recycle)
@@ -208,6 +217,9 @@ engine_destroy :: proc(e: ^Engine) {
 	delete(e.forced_hidden)
 	delete(e.top_layer)
 	rule_set_clear(&e.rules)
+	index_free(&e.fresh.index)
+	delete(e.arrived)
+	delete(e.arrived_rules)
 	shadow_styles_destroy(e)
 	base.arena_destroy(&e.arena)
 	base.arena_destroy(&e.compile_scratch)
@@ -274,7 +286,7 @@ engine_configure :: proc(e: ^Engine, settings: Settings) -> (changed: bool) {
 	free(e.probe_inherited, base.process_allocator())
 	e.probe_base, e.probe_inherited = nil, nil
 	engine_reset_builtin_sheets(e)
-	e.dirty = true
+	rules_stale(e)
 	return true
 }
 
@@ -359,8 +371,19 @@ register_sheet :: proc(e: ^Engine, sheet: ^css.Stylesheet, origin: Origin, owner
 	s.imports = make([dynamic]Import_Slot)
 	for r in s.sheet.rules { if r.kind == .Import { append(&s.imports, Import_Slot{rule = r}) } }
 	append(&e.sheets, s)
-	sheet_changed(e, s)
+	if origin != .UA && scope == base.NIL_HANDLE && !constructed && depth == 0 {
+		e.dirty = true
+		append(&e.arrived, s)
+	} else {
+		sheet_changed(e, s)
+	}
 	return s
+}
+
+// What the index holds no longer stands: a rebuild is due, whatever came besides.
+@(private)
+rules_stale :: proc(e: ^Engine) {
+	e.dirty, e.dirty_other = true, true
 }
 
 engine_remove_sheet :: proc(e: ^Engine, s: ^Sheet) {
@@ -379,11 +402,11 @@ engine_remove_sheet :: proc(e: ^Engine, s: ^Sheet) {
 @(private)
 sheet_changed :: proc(e: ^Engine, s: ^Sheet) {
 	if s.constructed {
-		if adopted_by_document(e, s.id) { e.dirty = true }
+		if adopted_by_document(e, s.id) { rules_stale(e) }
 		e.shadow.dirty = true
 		return
 	}
-	if s.scope != base.NIL_HANDLE { e.shadow.dirty = true } else { e.dirty = true; clear(&e.media_seen) }
+	if s.scope != base.NIL_HANDLE { e.shadow.dirty = true } else { rules_stale(e); clear(&e.media_seen) }
 }
 
 // A sheet the embedder adds with user priority (the content blocker's display: none !important rules): it applies to the
@@ -430,7 +453,7 @@ engine_clear_document_sheets :: proc(e: ^Engine) {
 	for i := len(e.sheets) - 1; i >= 0; i -= 1 {
 		if e.sheets[i].origin == .Author { sheet_free(e.sheets[i]); ordered_remove(&e.sheets, i) }
 	}
-	e.dirty = true
+	rules_stale(e)
 	e.shadow.dirty = true
 }
 
@@ -715,11 +738,12 @@ bucket_add :: proc(e: ^Engine, ent_in: Entry) {
 	// shadow-tree rules apart (scope.odin): ::slotted() for slotted elements, ::part() for parts of hosts in this
 	// tree, :host in the subject for the host; they are matched where those elements are styled
 	#partial switch c.pseudo_element {
-	case .Slotted: append(&rs.slotted_entries, ent); return
-	case .Part: append(&rs.part_entries, ent); return
+	case .Slotted: append(&rs.slotted_entries, ent); e.fresh_other ||= e.fresh_on; return
+	case .Part: append(&rs.part_entries, ent); e.fresh_other ||= e.fresh_on; return
 	}
 	if host_only, has_host := compound_host(last); has_host {
 		append(&rs.host_entries, ent)
+		e.fresh_other ||= e.fresh_on
 		if host_only { return }
 	}
 	var_id, var_class, var_tag: string
@@ -739,18 +763,21 @@ bucket_add :: proc(e: ^Engine, ent_in: Entry) {
 		append(&list, ent)
 		m[key] = list
 	}
-	ix := &rs.index
-	switch {
-	// (the UA's `::backdrop` and Tailwind's `*, ::before, ::after, ::backdrop` would be tried for every element)
-	case c.pseudo_element == .Backdrop: append(&ix.backdrop, ent)
-	case var_id != "": add(&ix.by_id, var_id, ent)
-	case var_class != "": add(&ix.by_class, var_class, ent)
-	case var_attr != nil:
-		add(&ix.by_attr, strings.concatenate({var_attr.name, "\x00", var_attr.value}, context.temp_allocator), ent, own_key = true)
-		ix.attr_names[var_attr.name] = true
-	case var_tag != "": add(&ix.by_tag, var_tag, ent)
-	case: append(&ix.universal, ent)
+	fill :: proc(ix: ^Index, ent: Entry, var_id, var_class, var_tag: string, var_attr: ^css.Simple) {
+		switch {
+		// (the UA's `::backdrop` and Tailwind's `*, ::before, ::after, ::backdrop` would be tried for every element)
+		case ent.complex.pseudo_element == .Backdrop: append(&ix.backdrop, ent)
+		case var_id != "": add(&ix.by_id, var_id, ent)
+		case var_class != "": add(&ix.by_class, var_class, ent)
+		case var_attr != nil:
+			add(&ix.by_attr, strings.concatenate({var_attr.name, "\x00", var_attr.value}, context.temp_allocator), ent, own_key = true)
+			ix.attr_names[var_attr.name] = true
+		case var_tag != "": add(&ix.by_tag, var_tag, ent)
+		case: append(&ix.universal, ent)
+		}
 	}
+	fill(&rs.index, ent, var_id, var_class, var_tag, var_attr)
+	if e.fresh_on { fill(&e.fresh.index, ent, var_id, var_class, var_tag, var_attr) }
 }
 
 @(private)
@@ -809,10 +836,10 @@ flatten_rule :: proc(e: ^Engine, r: ^css.Rule, origin: Origin, lc: LayerCtx) {
 		}
 	// @font-face and @property apply from the document only (as in Blink and CSS Properties and Values: a shadow
 	// tree's are ignored); @keyframes of a shadow tree go to its rule set
-	case .Font_Face: if e.cur == &e.rules { append(&e.font_faces, Font_Face_Ref{rule = r, base_url = e.cur_base_url, origin = origin}) }
+	case .Font_Face: if e.cur == &e.rules { e.cur.order += 1; append(&e.font_faces, Font_Face_Ref{rule = r, base_url = e.cur_base_url, origin = origin, order = e.cur.order}) }
 	case .Keyframes:
-		e.kf_order += 1
-		append(e.cur == &e.rules ? &e.keyframes : &e.cur.kf_refs, Keyframes_Ref{rule = r, layer = lc.rank, order = e.kf_order, origin = origin})
+		e.cur.order += 1
+		append(e.cur == &e.rules ? &e.keyframes : &e.cur.kf_refs, Keyframes_Ref{rule = r, layer = lc.rank, order = e.cur.order, origin = origin})
 	case .Property: if e.cur == &e.rules { register_property(e, r) }
 	case .Position_Try: try_rule_add(e, r, lc.rank)
 	case .Import, .Namespace, .Page, .Margin, .Unknown:
@@ -893,7 +920,8 @@ flatten_sheet :: proc(e: ^Engine, s: ^Sheet, lc_in: LayerCtx) {
 }
 
 // The author sheets' places in shadow-including tree order: the sheets of a shadow tree in its own order. The walk ends at the
-// last owner (usually in the head). A sheet whose owner is not in the document comes first.
+// last owner (usually in the head). A sheet without an owner comes first; one whose owner is out of the tree for now, the
+// parser's reveal having the rest of the document detached, comes last, in the order they came, as they do in the document.
 @(private)
 order_sheets :: proc(e: ^Engine, doc: ^dom.Document) {
 	OWNER :: -1
@@ -912,8 +940,17 @@ order_sheets :: proc(e: ^Engine, doc: ^dom.Document) {
 	}
 	for s in e.sheets {
 		if s.origin != .Author || dom.get(doc, s.owner) == nil { continue }
-		s.order = max(int(place[base.handle_index(s.owner)]) - 1, 0)
+		at := place[base.handle_index(s.owner)]
+		s.order = at == OWNER ? int(n) + int(s.id) : max(int(at) - 1, 0)
 	}
+}
+
+@(private)
+sheets_sort :: proc(e: ^Engine) {
+	slice.stable_sort_by(e.sheets[:], proc(a, b: ^Sheet) -> bool {
+		if a.origin != b.origin { return int(a.origin) < int(b.origin) }
+		return a.order < b.order
+	})
 }
 
 // What the rebuilds cost, for the profile report (prof.odin): the thread's (an App's engines rebuild on the thread of its loop).
@@ -936,15 +973,15 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 	clear(&e.registered)
 	e.registered_noninherited = 0
 	e.container_dependent = false
-	e.media_dependent, e.anon_layers, e.kf_order = false, 0, 0
+	e.media_dependent, e.anon_layers = false, 0
+	clear(&e.arrived)
+	clear(&e.arrived_rules)
+	fresh_clear(e)
 	gates_reset(e)
 	clear(&e.media_seen)
 
 	if doc != nil { order_sheets(e, doc) }
-	slice.stable_sort_by(e.sheets[:], proc(a, b: ^Sheet) -> bool {
-		if a.origin != b.origin { return int(a.origin) < int(b.origin) }
-		return a.order < b.order
-	})
+	sheets_sort(e)
 	// the media lists of the owners live in e.alloc, which was just reset: parsed again from their text
 	opt := parse_options(&e.settings)
 	for s in e.sheets {
@@ -953,8 +990,13 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 	}
 	// the document's own sheets, then those it adopted (CSSOM: after the document's sheets, in their order)
 	for s in e.sheets {
+		s.indexed = false
 		if s.scope != base.NIL_HANDLE || s.constructed || s.disabled { continue }
+		s.order_first = e.rules.order
 		flatten_sheet(e, s, LayerCtx{rank = UNLAYERED})
+		s.order_last = e.rules.order
+		s.indexed = true
+		e.rules.order += SHEET_ORDER_GAP
 	}
 	for id in e.shadow.doc_adopted {
 		if s := engine_find_sheet(e, id); s != nil && !s.disabled { flatten_sheet(e, s, LayerCtx{rank = UNLAYERED}) }
@@ -962,7 +1004,7 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 	compile_keyframes(e)
 	parse_font_faces(e)
 	e.rebuilds += 1
-	e.dirty = false
+	e.dirty, e.dirty_other = false, false
 	e.shadow.dirty = true   // the environment may have changed: shadow rule sets are checked again (scope.odin)
 }
 
@@ -973,10 +1015,11 @@ engine_set_environment :: proc(e: ^Engine, env: css.Media_Env) -> bool {
 	old := e.env
 	e.env = env
 	if changed { gates_refresh(e) }
+	if changed && e.dirty { e.dirty_other = true }   // (what the rules evaluated so far said of the old environment is not looked at while they are dirty)
 	// the rules in force change only if some media list the last rebuild evaluated answers otherwise now (a window
 	// resized between two breakpoints keeps them)
 	flipped := changed && e.media_dependent && media_flipped(e)
-	if flipped { e.dirty = true }
+	if flipped { rules_stale(e) }
 	if changed && e.shadow.media_dependent { e.shadow.dirty = true; e.restyle_needed = true }
 	// styles depend on the viewport only through conditional rules and viewport units, and on the color scheme through
 	// light-dark() and media queries; anything else (a plain width change) needs layout only
