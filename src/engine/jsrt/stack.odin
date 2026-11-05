@@ -4,7 +4,7 @@ package jsrt
 //
 // Each such level takes the frames of interp_run and of the natives on the host stack. On Wasm that is two stacks: the
 // shadow stack in linear memory (what the compiled code keeps in memory: about 4 KiB a level) and the machine's stack,
-// which the code uses too (about 1.5 KiB a level) and whose end is a trap that takes the realm.
+// which the code uses too (about 2 KiB a level) and whose end is a trap that takes the realm.
 //
 // The shadow stack linked with the module stays small: every page of its size is committed for each realm, touched or
 // not (measured: 30 frames with a 64 MiB one, 2.4 GB of private bytes against 450 MB). A recursion that runs past it
