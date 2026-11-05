@@ -156,6 +156,21 @@ answer_string :: proc(s: ^Session, name: string, loc := #caller_location) -> (st
 
 Ping :: struct { protocol: int, version: string, pid: int }
 
+// The browser gives back now what it would when left alone (browser.memory.trim_idle_ms).
+memory_trim :: proc(s: ^Session, loc := #caller_location) -> Error {
+	p := params(loc)
+	_, e := request(s, "Wren.memoryTrim", &p)
+	return e
+}
+
+// Writes where the private bytes are in the file (the biggest allocations) and the file.heap (the heap blocks by size).
+memory_report :: proc(s: ^Session, file: string, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_str(&p, "file", file)
+	_, e := request(s, "Wren.memoryReport", &p)
+	return e
+}
+
 ping :: proc(s: ^Session, loc := #caller_location) -> (r: Ping, e: Error) {
 	p := params(loc)
 	o := request(s, "Remote.ping", &p) or_return
@@ -804,6 +819,7 @@ Stats :: struct {
 	devtools_room_checks: int,     // frames whose panel width, as taken for its content, was compared with its layout's
 	devtools_room_wrong:  int,     // ... and differed
 	bfcache:             Bfcache_Stats,
+	memory:              Memory_Stats,
 	workers_running:     int,      // the process's: dedicated, shared and service workers holding a thread
 	shared_workers:      int,      // shared workers alive in the process
 	history_restoring:   bool,     // the current tab is still putting back what its history entry showed (history_restore.odin)
@@ -845,6 +861,22 @@ Stats :: struct {
 	cookies, storage_sites, cache_entries, history_visits, closed_tabs, downloads_active, checkpoints: int,
 }
 
+// Where the private bytes are: the system's view of the process (heaps, private pages outside them), and what each store of the browser says it holds.
+Memory_Stats :: struct {
+	heap_allocated, heap_committed:  int,   // the process heaps: blocks in use, pages they hold
+	vm_rw, vm_exec:                  int,   // private committed pages, by kind
+	wasm_modules, wasm_code_bytes:   int,   // compiled modules kept
+	wasm_instances:                  int,   // instances alive: pages, workers
+	js_cache_entries, js_cache_bytes: int,  // bytecode in memory
+	image_entries, image_bytes:      int,   // decoded images kept
+	font_entries, font_bytes:        int,   // decoded web fonts
+	http_resident_bytes:             int,   // bodies the HTTP cache holds in memory
+	gpu_images, gpu_glyphs, gpu_targets, gpu_outlines: int,
+	pages_bytes, bfcache_bytes:      int,   // what the pages of the tabs hold, what the kept ones are counted for (page.memory_held)
+	pictures_bytes:                  int,   // display lists the compositor keeps
+	trims:                           int,   // how many times the browser gave memory back
+}
+
 stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc := #caller_location) -> (r: Stats, e: Error) {
 	p := params(loc)
 	p_bool(&p, "resetLatency", reset_latency)
@@ -874,6 +906,7 @@ stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc :=
 		return {f_of(x, "p50"), f_of(x, "p95"), f_of(x, "max"), f_of(x, "mean")}
 	}
 	bf, _ := remote.param_object(o, "bfcache")
+	mem, _ := remote.param_object(o, "memory")
 	why, _ := remote.param_object(bf, "reasons")
 	reasons := make([dynamic]Bfcache_Reason, 0, len(why), context.temp_allocator)
 	for k in why { append(&reasons, Bfcache_Reason{k, i_of(why, k)}) }
@@ -912,6 +945,13 @@ stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc :=
 		caret_blinking = b_of(o, "caretBlinking"), caret_shown = b_of(o, "caretShown"), drop_target = b_of(o, "dropTarget"),
 		chrome_animating = b_of(o, "chromeAnimating"), group_name_focused = b_of(o, "groupNameFocused"), backend = s_of(o, "backend"), drag_image = s_of(o, "dragImage"), drag_picture = s_of(o, "dragPicture"),
 		prefs_net_applied = i_of(o, "prefsNetApplied"), devtools_room_checks = i_of(o, "devtoolsRoomChecks"), devtools_room_wrong = i_of(o, "devtoolsRoomWrong"),
+		memory = {
+			heap_allocated = i_of(mem, "heapAllocated"), heap_committed = i_of(mem, "heapCommitted"), vm_rw = i_of(mem, "vmRw"), vm_exec = i_of(mem, "vmExec"),
+			wasm_modules = i_of(mem, "wasmModules"), wasm_code_bytes = i_of(mem, "wasmCodeBytes"), wasm_instances = i_of(mem, "wasmInstances"),
+			js_cache_entries = i_of(mem, "jsCacheEntries"), js_cache_bytes = i_of(mem, "jsCacheBytes"), image_entries = i_of(mem, "imageEntries"), image_bytes = i_of(mem, "imageBytes"),
+			font_entries = i_of(mem, "fontEntries"), font_bytes = i_of(mem, "fontBytes"), http_resident_bytes = i_of(mem, "httpResidentBytes"),
+			gpu_images = i_of(mem, "gpuImages"), gpu_glyphs = i_of(mem, "gpuGlyphs"), gpu_targets = i_of(mem, "gpuTargets"), gpu_outlines = i_of(mem, "gpuOutlines"), pages_bytes = i_of(mem, "pagesBytes"), bfcache_bytes = i_of(mem, "bfcacheBytes"), pictures_bytes = i_of(mem, "picturesBytes"), trims = i_of(mem, "trims"),
+		},
 		bfcache = {
 			cached = i_of(bf, "cached"), stores = i_of(bf, "stores"), restores = i_of(bf, "restores"), evictions = i_of(bf, "evictions"),
 			refusals = i_of(bf, "refusals"), traversals = i_of(bf, "traversals"), misses = i_of(bf, "misses"), reasons = reasons[:],

@@ -227,6 +227,7 @@ path). The rest is in the `Wren.` domain.
 | `Wren.click {x, y \| selector, button, count}` | an element is scrolled into view (the boxes that scroll around it, a dialog's, then the page), then clicked in the middle |
 | `Wren.drag`, `Wren.type {text}`, `Wren.key {keys, repeat}` | |
 | `Wren.stats`, `Wren.console {since, clear}`, `Wren.network {clear}` | the status bar's numbers and the process's (pid, uptimeMs, cpuTimeMs, threads, handles...); the tab's console and request logs |
+| `Wren.memoryTrim`, `Wren.memoryReport {file}` | gives back now what the browser gives back when left alone; writes where the private bytes are: `file` (allocations by kind: heaps, stacks, Wasm memories, code), `file.heap` (heap blocks by size), `file.live` (the check build: live blocks by place). `Wren.stats` has them as `memory`: the heaps and private pages, then what each store says it holds |
 | `Wren.getPref {name}` / `setPref {name, value, override}` / `resetPref {name \| all}` / `listPrefs {prefix}` | about:config |
 | `Wren.reset {keep, url, wait}` / `Wren.checkpoint {action: save\|restore\|list\|delete, name, wait}` | put the running Wren back to a clean or a saved state (see above) |
 | `Wren.listCommands` / `runCommand {name}` / `openDevTools {panel, dock}` / `openSetup` | the command registry |
