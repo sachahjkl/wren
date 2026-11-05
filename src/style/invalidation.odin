@@ -39,14 +39,14 @@ Reach :: struct {
 reach_any :: proc(r: Reach) -> bool { return r.self || r.desc || r.next > 0 || r.all_next || r.all_prev }
 
 @(private)
-reach_union :: proc(a, b: Reach) -> Reach {
+reach_union :: proc(ks: ^Key_Sets, a, b: Reach) -> Reach {
 	r := Reach{
 		self = a.self || b.self, desc = a.desc || b.desc, next = max(a.next, b.next), all_next = a.all_next || b.all_next,
 		all_prev = a.all_prev || b.all_prev, sib_desc = a.sib_desc || b.sib_desc,
 	}
 	sa, sb := a.desc || a.sib_desc, b.desc || b.sib_desc
 	switch {
-	case sa && sb: r.set = key_sets_union(a.set, b.set)
+	case sa && sb: r.set = key_sets_union(ks, a.set, b.set)
 	case sa: r.set = a.set
 	case sb: r.set = b.set
 	}
@@ -164,6 +164,7 @@ Has_Feat :: struct {
 
 Inv_Index :: struct {
 	rebuilds:   u64,                // the engine rebuild this was made for
+	keys:       ^Key_Sets,          // the engine's: what the sets of its reaches are numbers in
 	watched:    ^dom.Document,      // the document whose Watch has the features of the anchors (watch_sync), and its generation
 	watched_gen: u32,
 	ready:      bool,
@@ -217,8 +218,8 @@ inv_free :: proc(ix: ^Inv_Index) {
 }
 
 @(private = "file")
-merge :: proc(m: ^map[string]Reach, key: string, r: Reach) {
-	if old, ok := m[key]; ok { m[key] = reach_union(old, r); return }
+merge :: proc(ix: ^Inv_Index, m: ^map[string]Reach, key: string, r: Reach) {
+	if old, ok := m[key]; ok { m[key] = reach_union(ix.keys, old, r); return }
 	m[strings.clone(key)] = r
 }
 
@@ -250,9 +251,10 @@ inv_index_of :: proc(e: ^Engine, rs: ^Rule_Set) -> ^Inv_Index {
 	inv_free(ix)
 	ix.rebuilds = gen
 	ix.ready = true
+	ix.keys = &e.key_sets
 	ix.has_anchors = make([dynamic]Has_Anchor)
 	visit :: proc(ix: ^Inv_Index, list: [dynamic]Entry) {
-		for &ent in list { analyze_complex(ix, ent.complex, Reach{self = true, set = subject_keys(ent.complex)}, false, 0) }
+		for &ent in list { analyze_complex(ix, ent.complex, Reach{self = true, set = subject_keys(ix.keys, ent.complex)}, false, 0) }
 	}
 	for _, l in rs.index.by_id { visit(ix, l) }
 	for _, l in rs.index.by_class { visit(ix, l) }
@@ -273,7 +275,7 @@ inv_index_of :: proc(e: ^Engine, rs: ^Rule_Set) -> ^Inv_Index {
 analyze_compound :: proc(ix: ^Inv_Index, comp: css.Compound, total: Reach) {
 	keyed := false
 	for &s in comp.simples { if analyze_simple(ix, &s, comp, total, false, 0) { keyed = true } }
-	if !keyed { ix.keyless = reach_union(ix.keyless, total) }
+	if !keyed { ix.keyless = reach_union(ix.keys, ix.keyless, total) }
 }
 
 @(private = "file")
@@ -293,7 +295,7 @@ analyze_complex :: proc(ix: ^Inv_Index, c: ^css.Complex, outer: Reach, in_has: b
 	for j in 0 ..< len(c.combinators) {
 		if c.combinators[j] == .Next_Sibling || c.combinators[j] == .Subsequent_Sibling {
 			ix.sib_any = true
-			if !in_has { ix.sib_rel = reach_union(ix.sib_rel, reach_compose(reach_from(c, j + 1), outer)) }
+			if !in_has { ix.sib_rel = reach_union(ix.keys, ix.sib_rel, reach_compose(reach_from(c, j + 1), outer)) }
 		}
 	}
 	for k in 0 ..< len(c.compounds) {
@@ -303,7 +305,7 @@ analyze_complex :: proc(ix: ^Inv_Index, c: ^css.Complex, outer: Reach, in_has: b
 		for &s in comp.simples {
 			if analyze_simple(ix, &s, comp, total, in_has, depth) { keyed = true }
 		}
-		if !keyed && !in_has { ix.keyless = reach_union(ix.keyless, total) }
+		if !keyed && !in_has { ix.keyless = reach_union(ix.keys, ix.keyless, total) }
 		if !keyed && in_has && ix.collect != nil { ix.collect.unkeyed = true }
 	}
 }
@@ -312,19 +314,19 @@ analyze_complex :: proc(ix: ^Inv_Index, c: ^css.Complex, outer: Reach, in_has: b
 @(private = "file")
 analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total: Reach, in_has: bool, depth: int) -> bool {
 	attr_dep :: proc(ix: ^Inv_Index, name: string, r: Reach, in_has: bool) {
-		if in_has { flag(&ix.has_attrs, name); if ix.collect != nil { flag(&ix.collect.attrs, name) } } else { merge(&ix.by_attr, name, r) }
+		if in_has { flag(&ix.has_attrs, name); if ix.collect != nil { flag(&ix.collect.attrs, name) } } else { merge(ix, &ix.by_attr, name, r) }
 	}
 	subtree := reach_compose(Reach{self = true, desc = true}, total)   // read on an ancestor too (lang, dir, fieldset)
 	switch s.kind {
 	case .Type:
-		if !in_has { merge(&ix.by_tag, s.name, total) } else if ix.collect != nil { flag(&ix.collect.types, s.name) }
+		if !in_has { merge(ix, &ix.by_tag, s.name, total) } else if ix.collect != nil { flag(&ix.collect.types, s.name) }
 		return true
 	case .Universal:
 	case .Id:
-		if in_has { flag(&ix.has_ids, s.name); if ix.collect != nil { flag(&ix.collect.ids, s.name) } } else { merge(&ix.by_id, s.name, total) }
+		if in_has { flag(&ix.has_ids, s.name); if ix.collect != nil { flag(&ix.collect.ids, s.name) } } else { merge(ix, &ix.by_id, s.name, total) }
 		return true
 	case .Class:
-		if in_has { flag(&ix.has_classes, s.name); if ix.collect != nil { flag(&ix.collect.classes, s.name) } } else { merge(&ix.by_class, s.name, total) }
+		if in_has { flag(&ix.has_classes, s.name); if ix.collect != nil { flag(&ix.collect.classes, s.name) } } else { merge(ix, &ix.by_class, s.name, total) }
 		return true
 	case .Attribute:
 		attr_dep(ix, s.name, total, in_has)
@@ -334,18 +336,18 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 	case .Pseudo_Class:
 		#partial switch s.pseudo {
 		case .First_Child, .Nth_Child, .First_Of_Type, .Nth_Of_Type:
-			if !in_has { ix.pos_fwd = reach_union(ix.pos_fwd, total) }
+			if !in_has { ix.pos_fwd = reach_union(ix.keys, ix.pos_fwd, total) }
 			if s.list != nil { analyze_list(ix, s.list, reach_compose(Reach{self = true, all_next = true, all_prev = true}, total), in_has, depth) }
 		case .Last_Child, .Nth_Last_Child, .Last_Of_Type, .Nth_Last_Of_Type:
-			if !in_has { ix.pos_bwd = reach_union(ix.pos_bwd, total) }
+			if !in_has { ix.pos_bwd = reach_union(ix.keys, ix.pos_bwd, total) }
 			if s.list != nil { analyze_list(ix, s.list, reach_compose(Reach{self = true, all_next = true, all_prev = true}, total), in_has, depth) }
 		case .Only_Child, .Only_Of_Type:
 			if !in_has {
-				ix.pos_fwd = reach_union(ix.pos_fwd, total)
-				ix.pos_bwd = reach_union(ix.pos_bwd, total)
+				ix.pos_fwd = reach_union(ix.keys, ix.pos_fwd, total)
+				ix.pos_bwd = reach_union(ix.keys, ix.pos_bwd, total)
 			}
 		case .Empty:
-			if in_has { ix.has_empty = true } else { ix.empty = reach_union(ix.empty, total) }
+			if in_has { ix.has_empty = true } else { ix.empty = reach_union(ix.keys, ix.empty, total) }
 		case .Not, .Is, .Where:
 			analyze_list(ix, s.list, total, in_has, depth)
 		case .Has:
@@ -384,20 +386,20 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 		case .Modal, .Modal_Active:
 			// (showing or closing a modal dialog asks for a restyle: page/dialog_modal.odin)
 			ix.uses_controls = true
-			ix.controls = reach_union(ix.controls, subtree)
+			ix.controls = reach_union(ix.keys, ix.controls, subtree)
 		case .Popover_Open:
 			// showing or hiding a popover asks for a restyle (page/popover.odin); the attribute decides whether it is one
 			attr_dep(ix, "popover", total, in_has)
 			ix.uses_controls = true
-			ix.controls = reach_union(ix.controls, subtree)
+			ix.controls = reach_union(ix.keys, ix.controls, subtree)
 		case .Required, .Optional: attr_dep(ix, "required", total, in_has)
 		case .Placeholder_Shown:
 			attr_dep(ix, "placeholder", total, in_has)
 			attr_dep(ix, "value", total, in_has)
 			attr_dep(ix, "type", total, in_has)
-			if in_has { ix.has_empty = true } else { ix.empty = reach_union(ix.empty, total) }
+			if in_has { ix.has_empty = true } else { ix.empty = reach_union(ix.keys, ix.empty, total) }
 			ix.uses_controls = true
-			ix.controls = reach_union(ix.controls, subtree)
+			ix.controls = reach_union(ix.keys, ix.controls, subtree)
 		case .Checked, .Disabled, .Enabled, .Read_Only, .Read_Write, .Valid, .Invalid, .User_Valid, .User_Invalid,
 		     .In_Range, .Out_Of_Range, .Indeterminate, .Default, .Autofill:
 			// the forms model answers these from the whole control (and its form); attributes are the fallback
@@ -405,7 +407,7 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 			#partial switch s.pseudo {
 			case .Checked, .Indeterminate, .Default, .Valid, .Invalid, .User_Valid, .User_Invalid: ix.uses_control_groups = true
 			}
-			ix.controls = reach_union(ix.controls, subtree)
+			ix.controls = reach_union(ix.keys, ix.controls, subtree)
 			for name in ([?]string{"checked", "selected", "type", "disabled", "readonly", "contenteditable", "required"}) {
 				attr_dep(ix, name, subtree, in_has)
 			}
@@ -445,12 +447,16 @@ has_hops :: proc(list: ^css.Selector_List) -> int {
 // An element that can be a rule's subject has the subject compound's class, id or type: a change that reaches a whole
 // subtree (`.a .b`: .a changed) only needs the elements of it that carry the subject's key looked at, not every one
 // restyled. A key set is an interned list of such keys (class, id or type names), the Reach holds its number; unions of
-// reaches union their sets. Process-wide and never freed (bounded by the names the sheets use; interned, so a rebuild
-// of the same rules adds nothing); a lock because pages' engines run on their own threads.
+// reaches union their sets. An engine's, freed with it (interned, so a rebuild of the same rules adds nothing): process-wide
+// they were bounded by the names of every sheet of every site seen, tens of MB after a few dozen sites; a lock because the
+// restyle of a page may run beside its own style threads.
 Subject_Key_Kind :: enum u8 { Class, Id, Type }
 Subject_Key :: struct { kind: Subject_Key_Kind, name: string }
 
-@(private = "file")
+// The first block of an engine's sets: most pages name a few hundred keys, an iframe of an advert a handful.
+@(private = "file") KEY_SETS_BLOCK :: 64 << 10
+
+@(private)
 Key_Sets :: struct {
 	mu:    sync.Mutex,
 	arena: base.Arena,
@@ -461,17 +467,20 @@ Key_Sets :: struct {
 }
 
 @(private = "file")
-key_sets: Key_Sets
+key_sets_init :: proc(ks: ^Key_Sets) {
+	if ks.ready { return }
+	_ = base.arena_init_growing(&ks.arena, KEY_SETS_BLOCK)
+	a := base.arena_allocator(&ks.arena)
+	ks.sets = make([dynamic][]Subject_Key, a)
+	ks.index = make(map[string]u32, 64, a)
+	for &m in ks.single { m = make(map[string]u32, 64, a) }
+	ks.ready = true
+}
 
-@(private = "file")
-key_sets_init :: proc() {
-	if key_sets.ready { return }
-	_ = base.arena_init_growing(&key_sets.arena)
-	a := base.arena_allocator(&key_sets.arena)
-	key_sets.sets = make([dynamic][]Subject_Key, a)
-	key_sets.index = make(map[string]u32, 64, a)
-	for &m in key_sets.single { m = make(map[string]u32, 64, a) }
-	key_sets.ready = true
+@(private)
+key_sets_destroy :: proc(ks: ^Key_Sets) {
+	if ks.ready { base.arena_destroy(&ks.arena) }
+	ks^ = {}
 }
 
 @(private = "file")
@@ -483,26 +492,26 @@ key_text :: proc(keys: []Subject_Key, a: runtime.Allocator) -> string {
 
 // The number of the (sorted, distinct) key list, made when new.
 @(private = "file")
-key_sets_intern :: proc(keys: []Subject_Key) -> u32 {
-	key_sets_init()
+key_sets_intern :: proc(ks: ^Key_Sets, keys: []Subject_Key) -> u32 {
+	key_sets_init(ks)
 	text := key_text(keys, context.temp_allocator)
-	if n, ok := key_sets.index[text]; ok { return n }
-	a := base.arena_allocator(&key_sets.arena)
+	if n, ok := ks.index[text]; ok { return n }
+	a := base.arena_allocator(&ks.arena)
 	own := make([]Subject_Key, len(keys), a)
 	for k, i in keys { own[i] = Subject_Key{k.kind, strings.clone(k.name, a)} }
-	append(&key_sets.sets, own)
-	n := u32(len(key_sets.sets))
-	key_sets.index[strings.clone(text, a)] = n
+	append(&ks.sets, own)
+	n := u32(len(ks.sets))
+	ks.index[strings.clone(text, a)] = n
 	return n
 }
 
 @(private)
-key_sets_union :: proc(x, y: u32) -> u32 {
+key_sets_union :: proc(ks: ^Key_Sets, x, y: u32) -> u32 {
 	if x == 0 || y == 0 { return 0 }   // (one of them is unrestricted)
 	if x == y { return x }
-	sync.mutex_lock(&key_sets.mu)
-	defer sync.mutex_unlock(&key_sets.mu)
-	a, b := key_sets.sets[x - 1], key_sets.sets[y - 1]
+	sync.mutex_lock(&ks.mu)
+	defer sync.mutex_unlock(&ks.mu)
+	a, b := ks.sets[x - 1], ks.sets[y - 1]
 	all := make([dynamic]Subject_Key, 0, len(a) + len(b), context.temp_allocator)
 	for k in a { append(&all, k) }
 	for k in b {
@@ -512,16 +521,16 @@ key_sets_union :: proc(x, y: u32) -> u32 {
 	}
 	slice.sort_by(all[:], proc(p, q: Subject_Key) -> bool { return p.kind != q.kind ? p.kind < q.kind : p.name < q.name })
 	if len(all) > INV_MAX_SUBJECTS { return 0 }   // (a set that large filters little)
-	return key_sets_intern(all[:])
+	return key_sets_intern(ks, all[:])
 }
 
-// The keys of a set (valid for the process' life).
+// The keys of a set (valid as long as the engine).
 @(private)
-key_set_keys :: proc(n: u32) -> []Subject_Key {
-	sync.mutex_lock(&key_sets.mu)
-	defer sync.mutex_unlock(&key_sets.mu)
-	if n == 0 || int(n) > len(key_sets.sets) { return nil }
-	return key_sets.sets[n - 1]
+key_set_keys :: proc(ks: ^Key_Sets, n: u32) -> []Subject_Key {
+	sync.mutex_lock(&ks.mu)
+	defer sync.mutex_unlock(&ks.mu)
+	if n == 0 || int(n) > len(ks.sets) { return nil }
+	return ks.sets[n - 1]
 }
 
 @(private = "file")
@@ -537,7 +546,7 @@ key_rank :: proc(k: Subject_Key_Kind) -> int {
 // The key set of a selector's subject: one required class, id or type of its last compound (an id, else a class, else a
 // type). 0 when there is none (`*`, only attributes or pseudo-classes).
 @(private)
-subject_keys :: proc(c: ^css.Complex) -> u32 {
+subject_keys :: proc(ks: ^Key_Sets, c: ^css.Complex) -> u32 {
 	if len(c.compounds) == 0 { return 0 }
 	comp := c.compounds[len(c.compounds) - 1]
 	best: Subject_Key
@@ -554,12 +563,12 @@ subject_keys :: proc(c: ^css.Complex) -> u32 {
 		if !have || key_rank(k.kind) < key_rank(best.kind) { best, have = k, true }
 	}
 	if !have { return 0 }
-	sync.mutex_lock(&key_sets.mu)
-	defer sync.mutex_unlock(&key_sets.mu)
-	key_sets_init()
-	if n, ok := key_sets.single[best.kind][best.name]; ok { return n }
-	n := key_sets_intern([]Subject_Key{best})
-	key_sets.single[best.kind][strings.clone(best.name, base.arena_allocator(&key_sets.arena))] = n
+	sync.mutex_lock(&ks.mu)
+	defer sync.mutex_unlock(&ks.mu)
+	key_sets_init(ks)
+	if n, ok := ks.single[best.kind][best.name]; ok { return n }
+	n := key_sets_intern(ks, []Subject_Key{best})
+	ks.single[best.kind][strings.clone(best.name, base.arena_allocator(&ks.arena))] = n
 	return n
 }
 
