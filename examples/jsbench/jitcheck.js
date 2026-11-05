@@ -614,6 +614,18 @@
   p("spreads", spread([1, 2, 3], RUN >> 2));
   function strs(n) { var s = "", c = 0; for (var i = 0; i < n; i++) { var t = "k" + (i & 7); if (t) { c += t.length; } s = t.replace("k", "") ? s : "z"; if (s.indexOf("z") === 0) { c += 1; } } return c; }
   p("strings", strs(RUN));
+  // ?? and ??= of values whose tags the code reads: null is nullish as undefined is, nothing else is
+  function nullish(xs, n) {
+    var kept = 0, filled = 0, other = 0;
+    for (var i = 0; i < n; i++) {
+      var x = xs[i % xs.length], o = { r: x };
+      var r = (o.r ??= [i]);
+      if (Array.isArray(r) && r !== x) { filled += r.length; } else { kept++; }
+      if ((x ?? "none") === "none") { other++; }
+    }
+    return kept + " " + filled + " " + other;
+  }
+  p("nullish", nullish([null, undefined, 0, "", false, [1]], RUN), nullish([null, [1]], RUN), nullish([undefined, null], RUN));
 
   // switch, strings, generators (not compiled) next to compiled code
   function sw(x) { switch (x) { case 1: return "one"; case "1": return "string"; default: return "other"; } }
