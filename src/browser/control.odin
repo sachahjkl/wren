@@ -705,7 +705,7 @@ control_network :: proc(t: ^Tab, clear_after := false, allocator := context.temp
 	if t.page != nil && t.page.scripts != nil {
 		tm := &t.page.scripts.timing
 		mark :: proc(ms, t0: f64) -> f64 { return ms > 0 ? ms - t0 : 0 }
-		r.doc = {mark(tm.parsed_ms, t.net.t0_ms), mark(tm.dcl_ms, t.net.t0_ms), mark(tm.load_ms, t.net.t0_ms), mark(tm.paint_ms, t.net.t0_ms)}
+		r.doc = {mark(tm.parsed_ms, t.net.t0_ms), mark(tm.dcl_ms, t.net.t0_ms), mark(tm.load_ms, t.net.t0_ms), mark(tm.paint_ms, t.net.t0_ms), mark(tm.contentful_ms, t.net.t0_ms)}
 	}
 	for en, i in t.net.entries {
 		r.requests[i] = {
