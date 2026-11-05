@@ -240,7 +240,7 @@
 <h1 id="crash-reports-and-the-symbols-of-a-build"><a class="anchor" href="#crash-reports-and-the-symbols-of-a-build" aria-hidden="true">#</a>Crash reports and the symbols of a build</h1>
 <p>When Wren crashes, <code>src/tools/crashtrace</code> writes <code>&lt;profile&gt;\crashes\crash &lt;date&gt; &lt;time&gt;.txt</code> (the faulting thread's
 stack) and a minidump beside it (<code>.dmp</code>). A session that ended with no chance to write one (a fail-fast, a kill) is
-reported at the next start as <code>unclean exit &lt;date&gt;.txt</code>.</p>
+reported at the next start as <code>unclean exit &lt;date&gt;.txt</code>. A crash that wrote its report leaves none, nor does a close ended by the shutdown watchdog (<code>shutdown.log</code> in the profile says what it waited for).</p>
 <h2 id="what-a-report-says"><a class="anchor" href="#what-a-report-says" aria-hidden="true">#</a>What a report says</h2>
 <div class="code"><pre><code>Wren 0.4.0 (g6933902 2026-10-26)
 
