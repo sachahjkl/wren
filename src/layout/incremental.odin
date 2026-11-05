@@ -794,6 +794,13 @@ keep_segs :: proc(c: ^Ctx, bi: i32, segs: []Seg) {
 	inf.segs = {n, n + i32(len(segs))}
 }
 
+// A layout that stops being laid out (a page kept for going back): the arrays the next packing would have written to go. (Tens of MB on a page of long text.)
+release_spares :: proc(l: ^Layout) {
+	delete(l.inc.spare_lines)
+	delete(l.inc.spare_frags)
+	l.inc.spare_lines, l.inc.spare_frags = nil, nil
+}
+
 // Lines and fragments of contexts laid out again stay behind in the arrays: packed when they are the larger part.
 // Likewise the kept segments.
 @(private)

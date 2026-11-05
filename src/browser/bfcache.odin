@@ -9,7 +9,7 @@ package browser
 //     flight, still loading) and the shell's: a web document (not about:config, not an error page, not view-source),
 //     no Cache-Control: no-store on its response, no file or color picker waiting.
 //   * How long: history.bfcache.timeout_s; at most history.bfcache.max_entries pages and history.bfcache.max_memory
-//     (an estimate) for all tabs; the pages left longest ago go first. An entry gone from its tab's history tree, or
+//     (their documents, layouts and buffers, the linear memory of their scripts: page.memory_held) for all tabs; the pages left longest ago go first. An entry gone from its tab's history tree, or
 //     its tab closed, takes its page with it.
 //   * While the next page loads, the page left is still shown (paint holding, first_paint.odin): it goes into the
 //     cache when the hold ends instead of closing.
@@ -19,6 +19,7 @@ import "core:fmt"
 import "core:strings"
 import "wb:base"
 import "wb:host"
+import lay "wb:layout"
 import "wb:page"
 
 Bf_Entry :: struct {
@@ -153,6 +154,7 @@ bfcache_take_held :: proc(app: ^App, t: ^Tab) -> bool {
 		t.web_font_page, t.web_fonts = nil, 0
 	}
 	h.layout = {}
+	lay.release_spares(&e.layout)
 	bf_store(app, e)
 	return true
 }
@@ -173,7 +175,7 @@ bf_store :: proc(app: ^App, e: ^Bf_Entry) {
 @(private = "file")
 bf_estimate :: proc(app: ^App, e: ^Bf_Entry) -> int {
 	p := e.page
-	n := p.held + p.doc.nodes.count * 256
+	n := page.memory_held(p)
 	n += len(e.layout.items) * size_of(e.layout.items[0]) + len(e.layout.boxes) * size_of(e.layout.boxes[0])
 	if p.js != nil || len(p.instances) > 0 { n += app.hcfg.bf_overhead }
 	return n
