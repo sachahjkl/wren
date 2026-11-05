@@ -30,11 +30,11 @@ Group_Effects :: bit_set[Group_Effect; u8]
 box_effects :: proc(cs: ^style.Computed) -> Group_Effects {
 	if cs == nil { return {} }
 	fx: Group_Effects
-	if cs.opacity < 1 { fx += {.Opacity} }
-	if len(cs.filter) > 0 { fx += {.Filter} }
+	if cs.opacity < 1 || .Opacity in cs.compositing { fx += {.Opacity} }
+	if len(cs.filter) > 0 || .Filter in cs.compositing { fx += {.Filter} }
 	if len(cs.backdrop_filter) > 0 { fx += {.Backdrop} }
 	if cs.mix_blend_mode != .Normal { fx += {.Blend} }
-	if cs.clip_path != nil || style.has_clip_rect(cs) { fx += {.Clip_Path} }
+	if cs.clip_path != nil || style.has_clip_rect(cs) || .Clip_Path in cs.compositing { fx += {.Clip_Path} }
 	if style.has_mask(cs) { fx += {.Mask} }
 	return fx
 }

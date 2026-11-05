@@ -126,3 +126,86 @@ named_timelines_reach_their_animations :: proc(t: ^testing.T) {
 	testing.expect_value(t, e2e.eval(s, "getComputedStyle(bar).animationTimeline"), "scroll(root)")
 	testing.expect_value(t, e2e.eval(s, "getComputedStyle(range).animationRangeStart + ' / ' + getComputedStyle(range).animationRangeEnd"), "entry / entry")
 }
+
+@(private = "file") WHEEL_AT :: e2e.Point{800, 500}
+@(private = "file") SLIDE_COLOR :: [3]u8{0x00, 0x88, 0xaa}
+@(private = "file") CHANNEL_WITHIN :: 24
+@(private = "file") SLIDE_PX :: 400.0
+@(private = "file") ROW_SLIDE, ROW_FADE, ROW_TINT :: 25, 65, 105
+@(private = "file") FADE_X, TINT_X, STICKY_X :: 25, 25, 725
+@(private = "file") STICKY_LEFT, STICKY_TOP :: 700, 300
+@(private = "file") STICKY_COLOR :: [3]u8{0xcc, 0x44, 0x00}
+@(private = "file") SHOWN_WITHIN_PX :: 4     // the slide in a frame under the task, against where the scroll puts it
+@(private = "file") SHOWN_WITHIN_LEVEL :: 8  // a channel likewise
+@(private = "file") NOTCHES :: 4
+
+@(private = "file")
+close_to :: proc(c: [3]u8, want: [3]u8) -> bool {
+	for k in 0 ..< 3 { if abs(int(c[k]) - int(want[k])) > CHANNEL_WITHIN { return false } }
+	return true
+}
+
+// The first x of row `y` that shows `color` (-1: none).
+@(private = "file")
+left_of :: proc(img: e2e.Image, y: int, color: [3]u8) -> int {
+	for x in 0 ..< img.width { if close_to(e2e.pixel(img, x, y).rgb, color) { return x } }
+	return -1
+}
+
+// The first y of column `x` that shows `color` (-1: none).
+@(private = "file")
+top_of :: proc(img: e2e.Image, x: int, color: [3]u8) -> int {
+	for y in 0 ..< img.height { if close_to(e2e.pixel(img, x, y).rgb, color) { return y } }
+	return -1
+}
+
+// In the chrome frames under a task: the wheel moves the document, and what its timeline drives follows, transform, opacity and a background
+// colour, at the frame's offset. The task reads none of it; the page's turn shows the same.
+@(test)
+what_a_scroll_timeline_drives_follows_the_wheel_under_a_task :: proc(t: ^testing.T) {
+	s := open(t)
+	short := false
+	near(t, number(s, "getComputedStyle(fade).opacity * 100"), 100, "opaque at the top")
+	corner := e2e.box_model(s, "#sticky").window   // (the pictures are of the window; the box is held at its inset from the page's corner)
+	ox, oy := int(corner.x) - STICKY_LEFT, int(corner.y) - STICKY_TOP
+	notches := make([dynamic]e2e.Busy_Step, context.temp_allocator)
+	append(&notches, e2e.busy_capture())
+	for _ in 0 ..< NOTCHES { append(&notches, e2e.busy_wheel(s, 1, WHEEL_AT)) }
+	append(&notches, e2e.busy_capture())
+	shots := while_held(s, &short, notches[:])
+	near(t, number(s, "scrolled_in_task"), 0, "the task saw no scroll")
+	testing.expect_value(t, e2e.eval(s, "width_in_task"), "0px")
+	e2e.wait_frames(s)
+	e2e.wait_frames(s)
+	y := number(s, "scrollY")
+	testing.expectf(t, y > 0, "the page took the scroll")
+	p := y / number(s, "document.documentElement.scrollHeight - innerHeight")
+
+	before, after := shots[0], shots[1]
+	x0, x1 := left_of(before, oy + ROW_SLIDE, SLIDE_COLOR) - ox, left_of(after, oy + ROW_SLIDE, SLIDE_COLOR) - ox
+	testing.expectf(t, x0 == 0, "the slide at its start: %d", x0)
+	testing.expectf(t, abs(f64(x1) - SLIDE_PX * p) <= SHOWN_WITHIN_PX, "the slide follows under the task: x %d, the scroll puts it at %v", x1, SLIDE_PX * p)
+	// the fade: white shows through its green; the tint: red gives way to blue
+	fade, tint := e2e.pixel(after, ox + FADE_X, oy + ROW_FADE), e2e.pixel(after, ox + TINT_X, oy + ROW_TINT)
+	testing.expectf(t, abs(f64(fade.r) - 255 * p) <= SHOWN_WITHIN_LEVEL, "the fade follows under the task: red %d, the scroll says %v", fade.r, 255 * p)
+	testing.expectf(t, abs(f64(tint.b) - 255 * p) <= SHOWN_WITHIN_LEVEL, "the tint follows under the task: blue %d, the scroll says %v", tint.b, 255 * p)
+	// the sticky box stays where its inset holds it
+	testing.expectf(t, top_of(after, ox + STICKY_X, STICKY_COLOR) == oy + STICKY_TOP, "a sticky box holds under the wheel: y %d", top_of(after, ox + STICKY_X, STICKY_COLOR) - oy)
+	// the page's turn: the same values
+	near(t, number(s, "new DOMMatrix(getComputedStyle(slide).transform).m41"), f64(x1), "the page's turn goes on from there")
+}
+
+// While the task holds the thread, then the page takes the scroll: the pictures of the capture steps.
+@(private = "file")
+while_held :: proc(s: ^e2e.Session, short: ^bool, steps: []e2e.Busy_Step, loc := #caller_location) -> []e2e.Image {
+	short^ = !short^
+	all := make([dynamic]e2e.Busy_Step, context.temp_allocator)
+	append(&all, ..steps)
+	append(&all, e2e.busy_resize(short^ ? SHORTER : SIZE))
+	e2e.wait_frames(s, loc = loc)
+	e2e.eval(s, "hold()", loc = loc)
+	e2e.while_busy(s, all[:], loc)
+	e2e.wait_js(s, "window.released === true", loc = loc)
+	testing.expectf(s.t, e2e.busy_left(s, loc) == 0, "every step was taken under the task", loc = loc)
+	return e2e.busy_shots(s, loc)
+}

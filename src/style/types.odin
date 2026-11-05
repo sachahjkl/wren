@@ -137,6 +137,7 @@ Custom_Props :: struct {
 // A computed style is a value: elements whose inputs are the same share one record (share.odin), so a record does not
 // say whose style it is (Styled.nodes does).
 Computed :: struct {
+	compositing: Compositing_Set,   // what a running animation promises to change, as will-change does (timeline.odin apply_overlays): the box keeps the space or group it needs
 	// --- box ---
 	frames:     bool,     // a vertical writing mode, columns, or column-span (writing_mode_fixup): what building boxes looks at first
 	display:    Display,

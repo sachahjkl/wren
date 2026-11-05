@@ -131,7 +131,7 @@ ops_are_3d :: proc(ops: []Transform_Op) -> bool {
 // Some transform applies (transform, translate, rotate or scale is not none), or the box is a 3D container: perspective or
 // transform-style: preserve-3d (they make a stacking context and the containing block of fixed boxes, as transforms do).
 has_transform :: proc(c: ^Computed) -> bool {
-	return len(c.transform) > 0 || c.translate.set || c.rotate.set || c.scale.set || c.perspective > 0 || c.transform_style == .Preserve_3d
+	return .Transform in c.compositing || len(c.transform) > 0 || c.translate.set || c.rotate.set || c.scale.set || c.perspective > 0 || c.transform_style == .Preserve_3d
 }
 
 // Some part of the transform is truly 3D (not the identity on the plane z = 0 up to a 2D matrix once projected without

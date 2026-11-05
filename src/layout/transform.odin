@@ -102,7 +102,6 @@ border_radii :: proc(cs: ^style.Computed, w, h, scale: f32) -> [4]f32 {
 // Radii of the padding edge, what overflow clips to (CSS Backgrounds §5.3: outer radius minus the border). One radius
 // per corner, the larger of the two the border widths leave, so clipped content never shows outside the border's
 // inner curve.
-@(private)
 clip_radii :: proc(l: ^Layout, b: ^Box) -> [4]f32 {
 	if b.kind == .Inline { return {} }
 	out := border_radii(b.cs, b.size.x, b.size.y, l.scale)
