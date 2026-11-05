@@ -114,9 +114,11 @@ profile build (<code>build.bat profile</code>, <code>-define:PROFILE=true</code>
 <code>domInteractive - responseEnd</code>), then the scenario's input, then <code>api.stats</code> (CPU, frames, the loop's meter:
 <code>loop.turns</code>, <code>sleeps</code>, <code>causes</code>).</li>
 <li><code>WREN_SAMPLE=1</code> (1 ms samples of the window's thread, by phase), <code>WREN_SAMPLE_STACK=1</code> (callers),
-<code>WREN_SAMPLE_THREADS=1</code> (the other threads: every millisecond each one that ran in the last second; per thread, its
-name, hottest call chains and the functions on its stack; round 25). Before round 3 it visited the ninety threads in
-turn, about 13 samples a second each; from round 3 to 24 it took the one whose cycles moved most. Samples that land in a system call are biased: on the
+<code>WREN_SAMPLE_THREADS=1</code> (the other threads: those the system's list says are on a processor or waiting for one, each
+followed every millisecond until it goes back into the system; per thread, its name, hottest call chains and the
+functions on its stack). The list takes 30 ms on a machine with many processes, so a burst of a few ms is caught
+by chance: 145 samples, 123 running, on 15 s of <code>p10k_renav</code>. Before round 3 it visited the ninety threads in
+turn, about 13 samples a second each; from round 3 to 24 it took the one whose cycles moved most; rounds 25 to 27 every thread that ran in the last second (0 of 44 807 samples running on <code>p10k_renav</code>). Stacks are walked in a copy, after the thread has gone on (<code>crashtrace.Stack_Copy</code>). Samples that land in a system call are biased: on the
 script-heavy page <code>NtUserGetQueueStatus</code> (the chrome's preemption checking for input) took 13 % of the samples, and turning
 preemption off (<code>browser.shell.preempt=false</code>) changed neither the frame rate nor the CPU.</li>
 </ul>
