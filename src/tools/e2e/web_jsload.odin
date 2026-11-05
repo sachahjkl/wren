@@ -1026,6 +1026,35 @@ jsload_preload_scanner_asks_ahead_and_the_elements_take_the_requests :: proc(t: 
 	close_page(pr, min_checks = 8)
 }
 
+// A <link rel=preload> of a stylesheet or an image and the element that uses it make one request, as for a script: the preload's key
+// took the script type of a script, the element's had none, and each of theverge.com's 66 sheets went out twice.
+@(test)
+jsload_a_preload_and_its_element_share_one_request_whatever_the_destination :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	sheet := css("#x { color: rgb(4, 5, 6) }", 0, "scan_preloaded_sheet")
+	picture := gen(SCAN_SVG, 0, "&type=image/svg%2Bxml&k=scan_preloaded_img")
+	markup := concat(`<!doctype html><head>`, PRELUDE, `<link rel=preload as=style href="`, sheet, `"><link rel=stylesheet href="`, sheet, `">`,
+		`<link rel=preload as=image href="`, picture, `"></head><body><p id=x>x</p><img id=i src="`, picture, `" onload="log('image ' + this.naturalWidth)">`,
+		`<script>log(getComputedStyle(document.getElementById("x")).color)</script></body>`)
+	pr := page_make(t, "preloaded", testenv.url(BASE))
+	scan_read(pr, markup, strings.index(markup, "stylesheet"))
+	page.preload_scan_end(pr.p)
+	made, _ := fetch.speculation_counts(pr.p.speculation)
+	check(pr, made == 2, fmt.tprintf("two requests made ahead for two resources: %d", made))
+	page_load(pr, markup)
+	page.images_sync(pr.p)
+	wait_note(pr, "rgb(4, 5, 6)")
+	wait_note(pr, fmt.tprintf("image %d", SCAN_SVG_WIDTH))
+	for p in ([]string{sheet, picture}) {
+		n := hits(t, p)
+		check(pr, n == 1, fmt.tprintf("%s: asked once: %d", p, n))
+	}
+	close_page(pr, min_checks = 3)
+}
+
 // What is inert is not asked for: comments, the text of scripts and of <style>, <template>, <noscript> where scripts run, a request a
 // media attribute leaves out now (its element asks for it), images of loading=lazy.
 @(test)
