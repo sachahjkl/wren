@@ -68,4 +68,8 @@ a_highlight_is_painted_and_follows_its_ranges :: proc(t: ^testing.T) {
 	img = after(s, "high.priority = 2")
 	testing.expect(t, count(img, SECOND_LINE, GREEN) >= PAINTED_LEAST && count(img, SECOND_LINE, YELLOW) == 0, "and that follows the priority")
 	testing.expect(t, count(img, SECOND_LINE, BLUE) >= GLYPHS_LEAST, "a highlight with no color leaves the text the one under it gave")
+
+	// (a point over the word, and one past it)
+	e2e.expect_eval(s, "CSS.highlights.highlightsFromPoint(10, 90).map(r => r.highlight === high ? 'high' : 'low').join()", "high,low", "highlightsFromPoint: the highest priority first")
+	e2e.expect_eval(s, "CSS.highlights.highlightsFromPoint(600, 90).length", "0", "and nothing where no range is")
 }
