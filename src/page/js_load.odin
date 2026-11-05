@@ -132,6 +132,7 @@ Page_Scripts :: struct {
 	ready_state:  Ready_State,
 	started:      bool,
 	parse_done:   bool,                    // "stop parsing" happened
+	ahead:        [dynamic]^Compile_Job,   // inline scripts on a compile thread (compile_done takes them out)
 	content_loaded: bool,                  // DOMContentLoaded fired
 	loaded:       bool,                    // load fired
 	ignore_destructive_writes: int,
@@ -239,6 +240,7 @@ scripts_free :: proc(data: rawptr) {
 	delete(s.scripts)
 	for f in s.fetches { script_fetch_free(p, f) }
 	delete(s.fetches)
+	delete(s.ahead)
 	delete(s.flags)
 	delete(s.inserted_links)
 	delete(s.parser.queue)
@@ -294,7 +296,10 @@ scripts_start :: proc(p: ^Page) {
 		if first < 0 && is_script_element(n) {
 			if _, ok := script_kind_of(d, cur); ok { first = len(order) }
 		}
-		if n.kind == .Element && n.name == "script" { scripts_preload(p, cur) }
+		if n.kind == .Element && n.name == "script" {
+			scripts_preload(p, cur)
+			compile_inline_ahead(p, cur)
+		}
 		append(&order, Reveal_Item{cur, n.parent})
 		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).prev { append(&stack, ch) }
 	}

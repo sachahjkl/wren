@@ -1286,6 +1286,30 @@ jsload_large_scripts_compile_off_thread :: proc(t: ^testing.T) {
 	close_page(pr, min_checks = 2)
 }
 
+// A large inline script is compiled while what comes before it runs: on a compile thread as soon as the document is parsed, and it runs
+// from that bytecode, once, in its place. An error still says its own line.
+@(test)
+jsload_large_inline_scripts_compile_ahead :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
+	jobs, hits := page.compile_stats().jobs, js.cache_stats().memory_hits
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<!doctype html><head><script>wrenTest.note("first")</script><script>`)
+	lines := OFFTHREAD_MIN_BYTES / 16
+	for i in 0 ..< lines { fmt.sbprintf(&sb, "var v%d = %d;\n", i, i) }
+	fmt.sbprintf(&sb, `wrenTest.note("inline ran " + (v3 + 1) + " " + new Error("x").stack.includes(":%d:"));`, lines + 1)
+	strings.write_string(&sb, `</script><script>wrenTest.note("done")</script></head>`)
+	pr := load(t, "a large inline script", strings.to_string(sb))
+	check(pr, wait_note(pr, "done"), "the page ran")
+	check(pr, page.compile_stats().jobs - jobs == 1, "it went to a compile thread")
+	check(pr, js.cache_stats().memory_hits - hits == 1, "and ran from that bytecode")
+	check(pr, noted(pr, "first") && noted(pr, "inline ran 4 true"), "once, in its place")
+	close_page(pr, min_checks = 4)
+}
+
 // A classic script of another origin, fetched without CORS (the scripts of a CDN), runs from what the compile thread made of it: one
 // compilation, not a second one on the interface thread. Its errors are muted, which the bytecode does not know.
 @(test)

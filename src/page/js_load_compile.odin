@@ -6,12 +6,17 @@ package page
 // goes on with its other work (other downloads, the parser's reveal, painting). The script runs when its turn comes
 // and its bytecode is there: js_run finds it in the cache and does not parse it again.
 //
+// A large inline script is known as soon as the document is parsed, long before its turn comes (cnn.com: two of 3 MB, 0.8 s of the
+// window thread): it goes to a compile thread then (compile_inline_ahead), and at its turn js_run finds the bytecode, or waits for it.
+//
 // The threads are shared by every page, made on first use (javascript.compile.offthread_threads), and stopped by
 // compile_shutdown (js_shutdown). A job outlives its page if the page closes: the result is only cached.
 
+import "core:slice"
 import "core:sync"
 import "core:time"
 import "wb:base"
+import "wb:dom"
 import "wb:host"
 import "wb:js"
 import "wb:wasm"
@@ -27,6 +32,8 @@ Compile_Job :: struct {
 	ui_loop: ^host.Loop,
 	ms:      f64,             // compile time (diagnostics)
 	ok:      bool,
+	inline:  bool,            // an inline script compiled ahead of its turn (Page_Scripts.ahead)
+	finished: u32,            // (a futex) the compile thread is done with it: compile_ahead_wait
 }
 
 @(private)
@@ -83,6 +90,57 @@ compile_offthread :: proc(p: ^Page, f: ^Script_Fetch) {
 	append(&the_pages.compiler.queue, job)
 	sync.mutex_unlock(&the_pages.compiler.mu)
 	sync.sema_post(&the_pages.compiler.sema)
+}
+
+// The document is parsed: an inline classic script, large and not cached yet, goes to a compile thread now.
+@(private)
+compile_inline_ahead :: proc(p: ^Page, el: base.Handle) {
+	d := p.doc
+	n := compile_thread_count(p)
+	if _, has_src := dom.get_attribute(d, el, "src"); has_src || n == 0 || p.worker != nil { return }
+	if kind, ok := script_kind_of(d, el); !ok || kind != .Classic { return }
+	size := 0
+	for c := dom.get(d, el).first_child; c != base.NIL_HANDLE; c = dom.get(d, c).next { if t := dom.get(d, c); t.kind == .Text { size += len(t.text) } }
+	if size < p.settings.js.offthread_min_bytes || !js.cacheable(size) { return }
+	source := script_text(d, el)
+	u := p.env.location.href
+	key := js.key_of(js_version(), 0, u, transmute([]byte)source)
+	if code := js.lookup(key, context.temp_allocator); code != nil { return }
+	if !compile_service_start(p, n) { return }
+	job := new(Compile_Job)
+	job.page_id = page_id(p)
+	job.inline = true
+	job.source = make([]byte, len(source))
+	copy(job.source, source)
+	job.url = clone_heap(u)
+	job.key = key
+	job.ui_loop = p.loop
+	append(&p.scripts.ahead, job)
+	sync.mutex_lock(&the_pages.compiler.mu)
+	append(&the_pages.compiler.queue, job)
+	sync.mutex_unlock(&the_pages.compiler.mu)
+	sync.sema_post(&the_pages.compiler.sema)
+}
+
+// The script of `key` is about to run and its bytecode is not there. One compiled ahead: taken back if no thread took it (it is compiled
+// here then), else awaited: what remains of its compilation, where compiling it here would take all of it.
+@(private)
+compile_ahead_wait :: proc(p: ^Page, key: js.Key) {
+	if p.scripts == nil { return }
+	for job, i in p.scripts.ahead {
+		if job.key != key { continue }
+		sync.mutex_lock(&the_pages.compiler.mu)
+		queued := slice.linear_search(the_pages.compiler.queue[:], job) or_else -1
+		if queued >= 0 { ordered_remove(&the_pages.compiler.queue, queued) }
+		sync.mutex_unlock(&the_pages.compiler.mu)
+		if queued >= 0 {
+			ordered_remove(&p.scripts.ahead, i)
+			compile_job_free(job)
+			return
+		}
+		for sync.atomic_load(&job.finished) == 0 { sync.futex_wait((^sync.Futex)(&job.finished), 0) }
+		return
+	}
 }
 
 // A module arrived: compile it on another thread when it is large and not cached yet. True when a job took it: the
@@ -192,6 +250,8 @@ compile_main :: proc(data: rawptr) {
 			job.ms = time.duration_milliseconds(time.tick_since(t0))
 			base.span_add(.Off_Thread, at, job.url, copy_label = true)
 		}
+		sync.atomic_store(&job.finished, 1)
+		sync.futex_broadcast((^sync.Futex)(&job.finished))
 		sync.mutex_lock(&the_pages.compiler.mu)
 		the_pages.compiler.jobs += 1
 		if !job.ok { the_pages.compiler.failed += 1 }
@@ -213,6 +273,10 @@ compile_done :: proc(data: rawptr) {
 	defer compile_job_free(job)
 	p := page_by_id(job.page_id)
 	if p == nil || p.closed || p.scripts == nil { return }
+	if job.inline {
+		if i, found := slice.linear_search(p.scripts.ahead[:], job); found { ordered_remove(&p.scripts.ahead, i) }
+		return
+	}
 	if job.module != "" {
 		if p.scripts.modules == nil { return }
 		if e := p.scripts.modules.entries[job.module]; e != nil && e.compiling {

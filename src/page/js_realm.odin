@@ -265,7 +265,12 @@ js_run :: proc(p: ^Page, source: []byte, url: string, line: i32 = 1, module := f
 	if !print_result && js.cacheable(len(source)) {
 		// (muted errors are the run's, not the bytecode's: a script of another origin finds what the compile threads made of it)
 		key := js.key_of(js_version(), transmute(i32)(flags - {.Muted}), url, source)
-		if code := js.lookup(key, context.temp_allocator); code != nil {
+		code := js.lookup(key, context.temp_allocator)
+		if code == nil {
+			compile_ahead_wait(p, key)
+			code = js.lookup(key, context.temp_allocator)
+		}
+		if code != nil {
 			st := js.eval_bytecode(r.inst, code, flags, js_call, p)
 			if st != .Bad_Bytecode { return st }
 		}
