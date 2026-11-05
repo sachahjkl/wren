@@ -88,5 +88,7 @@ the_check_build_exits_a_scripted_session_with_nothing_allocated :: proc(t: ^test
 		{env = {fmt.tprintf("WREN_MEMCHECK_SCRIPT=%s", script), "WREN_MEMTRACK_FAIL=1"}})
 	code := e2e.program_wait(p, SESSION_LIMIT)
 	report := e2e.read_text(fmt.tprintf("%s/memtrack.txt", profile))
+	crashes := e2e.files_with_prefix(fmt.tprintf("%s/crashes", profile), "crash ", ".txt")
+	if len(crashes) > 0 { report = e2e.read_text(crashes[0]) }   // (the report of a crash says more than an empty one)
 	testing.expectf(t, code == 0 && strings.contains(report, CLEAN_REPORT), "the check build exits clean: code %d (3: allocations left at exit)\n%s", code, report)
 }

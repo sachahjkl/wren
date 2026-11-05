@@ -29,6 +29,7 @@ foreign import kernel32 "system:Kernel32.lib"
 foreign kernel32 {
 	HeapSize :: proc(heap: rawptr, flags: u32, p: rawptr) -> uint ---
 	HeapAlloc :: proc(heap: rawptr, flags: u32, size: uint) -> rawptr ---
+	GetCurrentThreadStackLimits :: proc(low, high: ^uint) ---
 	RtlLookupFunctionEntry :: proc(pc: u64, image: ^u64, history: rawptr) -> rawptr ---
 	RtlVirtualUnwind :: proc(kind: u32, image, pc: u64, fn: rawptr, c: ^windows.CONTEXT, handler: ^rawptr, establisher: ^u64, pointers: rawptr) -> rawptr ---
 }
@@ -177,6 +178,10 @@ guard_fault :: proc "system" (info: ^windows.EXCEPTION_POINTERS) -> windows.LONG
 			image: u64
 			fn := RtlLookupFunctionEntry(c.Rip, &image, nil)
 			if fn == nil {   // (a procedure the compiler made has no unwind table: its frame pointer)
+				// (none there, on a stack: no more of it. Read blindly it faulted here, and the crash report told of this handler instead of the freed block)
+				low, high: uint
+				GetCurrentThreadStackLimits(&low, &high)
+				if c.Rbp < u64(low) || c.Rbp + 2 * size_of(u64) > u64(high) { break }
 				frames := ([^]u64)(uintptr(c.Rbp))
 				c.Rip, c.Rsp, c.Rbp = frames[1], c.Rbp + 2 * size_of(u64), frames[0]
 				continue

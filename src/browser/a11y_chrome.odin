@@ -52,7 +52,8 @@ tip_name :: proc(text: string) -> (name, shortcut: string) {
 // A tab of the strip or of the sidebar: its page's title, selected when it is the current tab, "3 of 12", busy while
 // the page loads. Its close button stays reachable (no_children = false); its title is its name, not a child.
 tab_a11y :: proc(b: ^ui.Box, t: ^Tab, i, n: int, on: bool) {
-	title := t.title != "" ? t.title : (t.url != "" ? t.url : i18n.tr("tab", "New tab"))
+	// (a copy: the tree is made at the end of the build, and a built-in page writes its tab's title in the build, after the strip: the history page's name was a freed block)
+	title := strings.clone(t.title != "" ? t.title : (t.url != "" ? t.url : i18n.tr("tab", "New tab")), ui.frame_allocator())
 	ui.a11y_set(b, {role = .Tab, name = title, selected = on, position = i + 1, set_size = n, busy = tab_busy(t),
 		no_children = false, actions = {.Show_Context_Menu}})
 }
