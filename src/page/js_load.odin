@@ -305,6 +305,7 @@ scripts_start :: proc(p: ^Page) {
 		resize(&s.parser.queue, len(order) - first)
 		copy(s.parser.queue[:], order[first:])
 		s.parser.next = 0
+		s.parser.turn_next = -first   // (what comes before the first script is attached already: it can paint too)
 		for i := len(order) - 1; i >= first; i -= 1 { dom.detach(d, order[i].node) }
 		if p.body != base.NIL_HANDLE && !dom.is_connected(d, p.body) { p.body = base.NIL_HANDLE }
 		if p.head != base.NIL_HANDLE && !dom.is_connected(d, p.head) { p.head = base.NIL_HANDLE }
