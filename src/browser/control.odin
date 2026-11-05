@@ -215,6 +215,8 @@ control_button :: proc(b: api.Button) -> platform.Mouse_Button {
 	case .Left:   return .Left
 	case .Right:  return .Right
 	case .Middle: return .Middle
+	case .Back:   return .Back
+	case .Forward: return .Forward
 	}
 	return .Left
 }

@@ -906,6 +906,8 @@ button_of :: proc(c: ^Call) -> platform.Mouse_Button {
 	switch s {
 	case "right":  return .Right
 	case "middle": return .Middle
+	case "back":   return .Back
+	case "forward": return .Forward
 	}
 	return .Left
 }
