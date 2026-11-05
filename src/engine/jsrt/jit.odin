@@ -57,7 +57,7 @@ JIT_MAX_REJITS :: 8
 JIT_MAX_DEOPTS :: 16   // deopt exits after which a loop is not compiled again
 JIT_MAX_LEARNS :: 12   // learn exits (a site that missed) after which a loop is not compiled again
 JIT_DEFAULT_MAX_CODE_BYTES :: 64 << 10   // the largest function compiled when the host does not choose
-JIT_DEFAULT_CALL_THRESHOLD :: 500        // the calls after which a function is compiled whole, when the host does not choose
+JIT_DEFAULT_CALL_THRESHOLD :: 2000        // the calls after which a function is compiled whole, when the host does not choose
 JIT_CALLS_NEVER :: min(int) / 2          // where a function that is not compiled whole counts its calls from
 JIT_MAX_NEST :: 128    // compiled code running one inside another (a call made by compiled code to compiled code): past it, interpreted
 JIT_PROBE :: 64        // entries after which a loop that runs too few iterations per entry is dropped

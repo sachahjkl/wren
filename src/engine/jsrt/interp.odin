@@ -142,6 +142,8 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 					continue frames
 				}
 				if thrown {continue}
+			} else if pc < len(code) {
+				jit_record(f, Opcode(code[pc]), pc, sp)
 			}
 			if pc >= len(code) {
 				// only reachable with inconsistent bytecode: fail the call rather than the process
@@ -152,7 +154,6 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 			op := Opcode(code[pc])
 			prev_op = op
 			when JSRT_TRACE_LAST_OP {trace_last_op = op; trace_last_bc = b}
-			if f.recording != nil {jit_record(f, op, pc, sp)}
 			pc += 1
 			#partial switch op {
 			case .push_i32:
