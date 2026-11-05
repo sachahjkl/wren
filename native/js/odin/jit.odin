@@ -22,10 +22,16 @@ when wj.WJ_JSRT {
 		context = wj.heap_context()
 		jit_context = context
 		// (bit 2 of the flags, the C engine's step-only test mode, has no meaning here: the translator has no step path, and
-		// its trace must not reach the console, where a test compares what the scripts print)
-		log: proc(msg: string)
+		// its trace goes to the profile of the page's functions, never to the console, where a test compares what the scripts print)
 		if max_bytecode_bytes > 0 {jsrt.jit_cfg.max_code_bytes = int(max_bytecode_bytes)}
-		jsrt.jit_configure(flags & 1 != 0 && max_functions != 0, wj.wr_Engine_jitCompile, wj.wr_Engine_jitPoll, log, int(call_threshold))
+		jsrt.jit_configure(flags & 1 != 0 && max_functions != 0, wj.wr_Engine_jitCompile, wj.wr_Engine_jitPoll, nil, int(call_threshold))
+	}
+
+	// WREN_JS_PROFILE: why code stays in the interpreter. What the JIT refuses and every deopt counted in the profile of the page's functions (wj_profile_dump).
+	@(export, link_name = "wj_jit_trace")
+	wj_jit_trace :: proc "c" (on: i32) {
+		jsrt.jit_cfg.log = on != 0 ? proc(msg: string) { wj.prof_note(msg) } : nil
+		jsrt.jit_cfg.trace = on != 0
 	}
 
 	@(export, link_name = "wj_jit_stat")
@@ -81,6 +87,18 @@ when wj.WJ_JSRT {
 	wj_jit_set :: proc "c" (f: ^jsrt.Frame, setter: ^jsrt.Object, o: ^jsrt.Object, at: i32, a: u32, pc: i32) -> i32 {
 		context = jit_context
 		return jsrt.jit_setter(f, setter, o, int(at), jsrt.Atom(a), int(pc)) ? 1 : 0
+	}
+
+	@(export, link_name = "wj_jit_step")
+	wj_jit_step :: proc "c" (f: ^jsrt.Frame, pc: i32, sp: i32) -> i32 {
+		context = jit_context
+		return jsrt.jit_step(f, int(pc), int(sp)) ? 1 : 0
+	}
+
+	@(export, link_name = "wj_jit_truthy")
+	wj_jit_truthy :: proc "c" (tag: u32, lo: u32, hi: u32) -> i32 {
+		context = jit_context
+		return jsrt.jit_truthy(tag, lo, hi) ? 1 : 0
 	}
 
 	@(export, link_name = "wj_jit_array")

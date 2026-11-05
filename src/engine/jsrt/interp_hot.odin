@@ -230,8 +230,8 @@ hot_call :: #force_no_inline proc(h: ^Hot, op: Opcode) -> bool {
 	h.regs = hot_regs(nf)
 	h.ip = h.regs.code[nf.pc:]
 	h.s = h.regs.stack[nf.sp:]
-	// the entry safepoint (a collection due) is for interp_run: it sees pc == 0
-	return !gc_should_run(rt)
+	// the entry safepoint (a collection due) is for interp_run: it sees pc == 0; so is an exception compiled code left pending
+	return !gc_should_run(rt) && !nf.pending_throw && nf.recording == nil
 }
 
 // op_return / return_undef of a frame this loop pushed: back to its caller's frame.
@@ -248,7 +248,7 @@ hot_return :: #force_no_inline proc(h: ^Hot, op: Opcode) -> bool {
 	h.regs = hot_regs(c)
 	h.ip = h.regs.code[c.pc:]
 	h.s = h.regs.stack[c.sp:]
-	return true
+	return c.recording == nil
 }
 
 // A native getter called where a lookup found it, with `this`, its value at `at`; `next` is the instruction after.

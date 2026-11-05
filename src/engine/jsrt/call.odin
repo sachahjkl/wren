@@ -48,6 +48,7 @@ Frame :: struct {
 	storage:     [^]Value, // heap storage of a coroutine frame
 	storage_len: int,
 	pending_throw: bool, // resume by throwing the pending exception
+	recording:   ^Jit_Loop,    // the frame runs in the full dispatch, its sites taking what it meets (jit_record), for this region
 	// set by interp_run when it takes the frame over
 	closure_refs: [^]^Var_Ref, // the function object's captured cells (Func_Data.var_refs)
 	root_base:   int,          // height of temp_roots at entry: truncated back to it when the frame ends
@@ -494,6 +495,7 @@ interp_call :: proc(ctx: ^Context, fo: ^Object, this: Value, new_target: Value, 
 	f.storage = nil
 	f.storage_len = 0
 	f.pending_throw = false
+	f.recording = nil
 	frame_layout(&f, b, mem, args, arg_buf_len)
 	f.prev = rt.cur_frame
 	rt.cur_frame = &f
@@ -539,6 +541,7 @@ frame_push :: proc(ctx: ^Context, fo: ^Object, this: Value, args: []Value, jit :
 	f.storage = nil
 	f.storage_len = 0
 	f.pending_throw = false
+	f.recording = nil
 	f.closure_refs = fd.var_refs
 	f.stackless = true
 	frame_layout(f, b, mem, args, arg_buf_len)

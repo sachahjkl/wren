@@ -6,6 +6,8 @@ package jsrt
 // sandbox as the engine and reaches only its memory (it is given the frame's argument, local and operand areas) and the
 // helpers the engine exports to it.
 //
+// docs/engine/jit.md says it all in order; what follows is the first design, as far as it still holds.
+//
 // What it compiles: the loop region [header, end of the back edge) of one function, entered at the header (on-stack
 // replacement) from a frame whose locals the interpreter holds in memory. Locals and operand-stack entries the region
 // uses as numbers or objects are kept in Wasm locals (i32 for ints, f64 for doubles, i32 for bools and object pointers;
@@ -51,7 +53,7 @@ JIT_STACK_MAX :: 32
 JIT_BUDGET :: 16384
 JIT_MAX_RESTARTS :: 8
 JIT_MAX_LOOPS :: 4
-JIT_MAX_REJITS :: 4
+JIT_MAX_REJITS :: 8
 JIT_MAX_DEOPTS :: 16   // deopt exits after which a loop is not compiled again
 JIT_MAX_LEARNS :: 12   // learn exits (a site that missed) after which a loop is not compiled again
 JIT_DEFAULT_MAX_CODE_BYTES :: 64 << 10   // the largest function compiled when the host does not choose
@@ -60,7 +62,13 @@ JIT_CALLS_NEVER :: min(int) / 2          // where a function that is not compile
 JIT_MAX_NEST :: 128    // compiled code running one inside another (a call made by compiled code to compiled code): past it, interpreted
 JIT_PROBE :: 64        // entries after which a loop that runs too few iterations per entry is dropped
 JIT_MIN_ITERS :: 6
-JIT_MAX_SITES :: 32    // the property, global, element and call sites of a loop (an inlined callee's too)
+JIT_MAX_SITES :: 1024  // the property, global, element and call sites of a region (an inlined callee's too)
+JIT_SITES_FIRST :: 8   // the room for sites a region starts with
+JIT_HIT_BITS :: 8      // Jit_Loop.hit: bits a byte
+JIT_COLD_BATCH :: 4    // cold exits that make a translation (each is only a leave for the interpreter; a translation is Cranelift's time)
+JIT_RECORD_LOOP_RUNS :: 4   // iterations of a loop recorded before it is compiled
+JIT_RECORD_RUNS :: 2   // calls of a function recorded before it is compiled whole (jit_record)
+JIT_RECORD_EDGES :: 64 // back edges of a frame being recorded after which it runs at full speed again
 JIT_SITE_SHAPES :: 4   // the shapes one property site takes (a guard for each, in turn)
 JIT_MAX_CHAIN :: 4     // the prototypes a property read walks to its holder
 JIT_MAX_KEEP :: 64     // the shapes and objects the compiled code of a loop compares against
@@ -76,6 +84,9 @@ JIT_AUX_NONE :: 0xffff
 JIT_AUX_LEARN :: 0xfffd
 JIT_AUX_NO_INLINE :: 0xfffc   // a deopt in a callee inlined at the call that left: it is called instead
 JIT_AUX_CALLEE :: 0xfffb      // a call whose callee the translation did not know: the site takes the one met
+JIT_AUX_PENDING :: 0xfffa     // (a throw exit) an exception is pending: the interpreter unwinds from there, it makes no instruction again
+JIT_SITE_MISSES :: 2          // deopts of a site with nothing to learn after which its instruction is made by the interpreter's code (j_slow_op)
+JIT_DEOPT_SHARE :: 4          // past JIT_MAX_DEOPTS a region is given up when more than one entry in this many leaves through a deopt
 
 #assert(size_of(Value) == 16)
 #assert(offset_of(Value, u) == 8)
@@ -94,7 +105,7 @@ jit_cfg: Jit_Cfg
 
 // The engine's procedures compiled code calls: exported by the glue (native/js/odin/jit.odin) under these names,
 // imported by a module whose loop calls (function index = the helper's), each (i32...) -> i32.
-Jit_Helper :: enum u8 {call, array, finish, new, reserve, add, streq, get, set}
+Jit_Helper :: enum u8 {call, array, finish, new, reserve, add, streq, get, set, step, truthy}
 
 Jit_Helper_Def :: struct {
 	name:   string,
@@ -111,6 +122,8 @@ JIT_HELPERS :: [Jit_Helper]Jit_Helper_Def {
 	.streq   = {"wj_jit_streq", 3},
 	.get     = {"wj_jit_get", 7},
 	.set     = {"wj_jit_set", 6},
+	.step    = {"wj_jit_step", 3},
+	.truthy  = {"wj_jit_truthy", 3},
 }
 
 // The engine's table, which a module whose code calls compiled code directly imports ("e" "table": the host gives it
@@ -125,20 +138,26 @@ JIT_TABLE_IMPORT :: "table"
 // here than from the interpreter).
 Jit_Call_Kind :: enum i32 {call, method, construct}
 
+// Added to the kind: the call is made whatever the callee (a site that met too many of them, a callee the code cannot
+// tell), a function that is not compiled whole too.
+JIT_CALL_ANY :: i32(4)
+
 Jit_Call_Result :: enum i32 {made, threw, interpret}
 
-jit_call :: proc(f: ^Frame, sp: int, argc: int, kind: Jit_Call_Kind, pc: int) -> Jit_Call_Result {
+jit_call :: proc(f: ^Frame, sp: int, argc: int, kind_in: Jit_Call_Kind, pc: int) -> Jit_Call_Result {
 	ctx := f.ctx
 	rt := ctx.rt
 	base := sp - argc
 	f.pc = pc
 	r: Value
+	any := i32(kind_in) & JIT_CALL_ANY != 0
+	kind := Jit_Call_Kind(i32(kind_in) &~ JIT_CALL_ANY)
 	switch kind {
 	case .call, .method:
 		fv := f.stack[base - 1]
 		this := kind == .method ? f.stack[base - 2] : UNDEFINED
 		if fv.tag == .object && as_obj(fv).class == .bytecode_function {
-			if nb := as_obj(fv).data.(Func_Data).bc; nb.jit != nil && nb.jit.fn.state == .never {return .interpret}
+			if nb := as_obj(fv).data.(Func_Data).bc; !any && nb.jit != nil && nb.jit.fn.state == .never {return .interpret}
 			r = jit_call_bytecode(ctx, as_obj(fv), this, f.stack[base:sp])
 		} else if fv.tag == .object && as_obj(fv).class == .c_function && native_kind(as_obj(fv)) == .function &&
 		          rt.stack_depth < rt.config.max_stack_depth && !stack_exhausted(rt) {
@@ -197,6 +216,43 @@ jit_call_finish :: proc(f: ^Frame, lo: u32, hi: u32, index: u32, slot: int, a: A
 	return false
 }
 
+// What Frame.recording says of a frame that makes one instruction.
+jit_stepping: Jit_Loop
+
+// Jit_Helper.step: the instruction at pc made by the interpreter's own code on the frame of compiled code (j_slow_op): the
+// operand stack in memory below sp, the instruction takes and leaves what opcode_info says. True: it threw, the
+// exception is pending.
+jit_step :: proc(f: ^Frame, pc: int, sp: int) -> bool {
+	rt := f.ctx.rt
+	stackless, root_base := f.stackless, f.root_base
+	f.pc = pc
+	f.sp = sp
+	f.recording = &jit_stepping
+	_, kind := interp_run(f.ctx, f, f.closure_refs)
+	f.recording = nil
+	f.stackless = stackless
+	f.root_base = root_base
+	if kind == .exception {return true}
+	// (what the frame needs is on its stack: the temporaries of the instruction go, as at a back edge)
+	if len(rt.temp_roots) > root_base {resize(&rt.temp_roots, root_base)}
+	return false
+}
+
+// Jit_Helper.truthy: ToBoolean of a value that is not quick to decide in compiled code (a string, a double...).
+jit_truthy :: proc(tag: u32, lo: u32, hi: u32) -> bool {
+	v := Value{tag = Tag(tag)}
+	(cast(^u64)&v.u)^ = u64(lo) | u64(hi) << 32
+	return to_boolean(v)
+}
+
+// Did the compiled code that just left the frame leave an exception pending (the interpreter's back edges)? The
+// interpreter then unwinds where it left.
+jit_took_throw :: #force_inline proc "contextless" (f: ^Frame) -> bool {
+	if !f.pending_throw {return false}
+	f.pending_throw = false
+	return true
+}
+
 // What a function whose compiled code returned (a ret exit) returns: the value in its frame's stack[0], undefined for a
 // function without an operand stack (its frame is there: return_undef is its only return).
 jit_result :: #force_inline proc(f: ^Frame) -> Value {
@@ -211,19 +267,11 @@ jit_fn_kind_ok :: proc(b: ^Function_Bytecode) -> bool {
 }
 
 // Can the function be compiled whole, and so be called from compiled code without the cost of an interpreted call
-// through the helper: a plain function within the size limit whose backward jumps (if any) go to its start, not
+// through the helper: a plain function within the size limit, not
 // refused before.
 @(private = "file")
 jit_fn_compilable :: proc(b: ^Function_Bytecode) -> bool {
-	if !jit_fn_kind_ok(b) || (b.jit != nil && b.jit.fn.state == .never) {return false}
-	code := b.code
-	for pc := 0; pc < len(code); {
-		if int(code[pc]) >= OPCODE_COUNT {return false}
-		op := Opcode(code[pc])
-		if t, _, ok := jit_jump(op, code, pc); ok && t <= pc && t != 0 {return false}
-		pc += int(opcode_info[op].size)
-	}
-	return true
+	return jit_fn_kind_ok(b) && (b.jit == nil || b.jit.fn.state != .never)
 }
 
 // A call of a bytecode function made by compiled code: a plain function's frame pushed as the interpreter pushes it and
@@ -391,7 +439,7 @@ Jit_Stats :: struct {
 
 jit_stats: Jit_Stats
 
-Jit_Exit :: enum u8 {leave = 0, ret = 1, guard = 2, deopt = 3, budget = 4, throw = 5}
+Jit_Exit :: enum u8 {leave = 0, ret = 1, guard = 2, deopt = 3, budget = 4, throw = 5, cold = 6}
 
 Jit_Loop_State :: enum u8 {fresh, pending, compiled, never}
 
@@ -410,12 +458,19 @@ Jit_Loop :: struct {
 	widen:      u64,   // slots (arguments, then locals) whose int speculation must be a double
 	boxed:      u64,   // slots left to the interpreter's memory
 	learns:     int,
+	why:        string, // (-jit-trace, WREN_JS_PROFILE) why it was refused
+	runs:       int,   // entries of its code, for the share of them that leaves through a deopt
+	rt:         ^Runtime,
+	recorded:   int,   // the runs recorded before it was compiled (jit_record)
+	colds:      int,   // cold exits since the last translation
+	hit:        []u8,  // the bytecode the recorded runs reached, a bit per byte (nil: all of it is compiled)
+	edges:      int,   // back edges of the run being recorded
+	slow:       bool,  // some instruction is made by the interpreter's code: the code keeps in memory what a closure may reach (Jc.calls)
 	join_f:     [8]int, // pcs of joins (the end of a ?: or a && ||) whose operand stack entries are all doubles
 	n_join_f:   int,
 	join_v:     [8]Jit_Join_V,
 	n_join_v:   int,
-	sites:      [JIT_MAX_SITES]Jit_Site,
-	n_sites:    int,
+	sites:      [dynamic]^Jit_Site,   // by pc
 	keep:       [JIT_MAX_KEEP]^Cell,   // what the compiled code compares against or reads (marked by the collector)
 	n_keep:     int,
 	arr_slots:  [JIT_MAX_ARRS]int,   // the locals the compiled code reaches arrays through, and the kind it expects of each
@@ -443,6 +498,8 @@ Jit_Site :: struct {
 	str:     bool,   // a read that met a string
 	odd:     bool,   // a bitwise operation that met undefined, null or a bool (ToInt32 makes them 0, 0, 0 or 1)
 	callee:  ^Object,   // a call's callee as an exit found it, when the translation could not tell (marked by the collector)
+	slow:    bool,   // the instruction is made by the interpreter's code (j_slow_op), or a call by the helper, whatever it meets
+	misses:  u8,     // deopts of the site with nothing to learn
 	callees: [JIT_SITE_SHAPES]^Object,   // the functions a call inlines (each guarded in turn: j_inline_poly; marked by the collector)
 	n_callees: int,
 }
@@ -514,8 +571,7 @@ jit_configure :: proc(enabled: bool, compile: proc "contextless" (module: [^]u8,
 	jit_cfg.enabled = enabled && compile != nil && ODIN_ARCH == .wasm32
 	jit_cfg.compile = compile
 	jit_cfg.poll = poll
-	jit_cfg.log = log
-	jit_cfg.trace = log != nil
+	if log != nil {jit_cfg.log = log; jit_cfg.trace = true}
 	jit_cfg.call_threshold = call_threshold > 0 ? call_threshold : JIT_DEFAULT_CALL_THRESHOLD
 	if jit_cfg.max_code_bytes == 0 {jit_cfg.max_code_bytes = JIT_DEFAULT_MAX_CODE_BYTES}
 }
@@ -558,6 +614,12 @@ jit_back_edge :: proc(ctx: ^Context, f: ^Frame, b: ^Function_Bytecode, target, r
 		rt := ctx.rt
 		if b.jit == nil {b.jit = new(Jit_Info, rt_allocator(rt))}
 		info := b.jit
+		if r := f.recording; r != nil {
+			// (a loop in a run being recorded: that run goes on for a while, then at full speed)
+			r.edges += 1
+			if r.edges > (r.whole ? JIT_RECORD_EDGES : JIT_RECORD_LOOP_RUNS) {f.recording = nil}
+			return .none, 0, 0
+		}
 		jl: ^Jit_Loop
 		for i in 0 ..< info.n {
 			if info.loops[i].header == target {
@@ -567,9 +629,16 @@ jit_back_edge :: proc(ctx: ^Context, f: ^Frame, b: ^Function_Bytecode, target, r
 		}
 		if jl == nil {
 			if info.n >= JIT_MAX_LOOPS {return .none, 0, 0}
-			info.loops[info.n] = Jit_Loop{header = target, region_end = region_end, entry_sp = sp}
+			info.loops[info.n] = Jit_Loop{header = target, region_end = region_end, entry_sp = sp, rt = rt}
 			jl = &info.loops[info.n]
 			info.n += 1
+		}
+		if jl.state == .fresh && jl.recorded == 0 {
+			// (one iteration recorded, up to this back edge)
+			jl.recorded = 1
+			jl.edges = 0
+			f.recording = jl
+			return .none, 0, 0
 		}
 		if !jit_region_ready(ctx, f, b, jl, sp) || sp != jl.entry_sp || ctx.rt.jit_depth >= JIT_MAX_NEST {return .none, 0, 0}
 		return jit_run(ctx, f, b, jl)
@@ -594,12 +663,36 @@ jit_fn_enter :: proc(ctx: ^Context, f: ^Frame) -> (res: Jit_Resume, pc: int, sp:
 		if rt.jit_depth >= JIT_MAX_NEST || gc_should_run(rt) {return .none, 0, 0}
 		if b.jit == nil {b.jit = new(Jit_Info, rt_allocator(rt))}
 		jl := &b.jit.fn
-		if jl.region_end == 0 {jl^ = Jit_Loop{region_end = len(b.code), whole = true}}
+		if jl.region_end == 0 {jl^ = Jit_Loop{region_end = len(b.code), whole = true, rt = rt}}
+		if jl.state == .fresh && jl.recorded < JIT_RECORD_RUNS {
+			jl.recorded += 1
+			jl.edges = 0
+			f.recording = jl
+			return .none, 0, 0
+		}
 		if !jit_region_ready(ctx, f, b, jl, 0) {
 			if jl.state == .never {b.jit_calls = JIT_CALLS_NEVER}
 			return .none, 0, 0
 		}
 		return jit_run(ctx, f, b, jl)
+	}
+}
+
+// The instruction at pc of a frame being recorded, about to run: what its site would learn from an exit it takes now,
+// from the operands on the stack. A function compiled from what its first calls met leaves little to learn: an exit
+// per site, a translation for each, is what bounded (JIT_MAX_LEARNS) what could be compiled.
+jit_record :: proc(f: ^Frame, op: Opcode, pc: int, sp: int) {
+	if f.recording == &jit_stepping {return}
+	jl := f.recording
+	if jl.hit == nil {jl.hit = make([]u8, len(f.bc.code) / JIT_HIT_BITS + 1, rt_allocator(jl.rt))}
+	jl.hit[pc / JIT_HIT_BITS] |= 1 << uint(pc % JIT_HIT_BITS)
+	#partial switch op {
+	case .get_field, .get_field2, .get_length, .put_field, .get_var_ref, .get_var_ref0, .get_var_ref1, .get_var_ref2, .get_var_ref3,
+	     .get_var_ref_check, .get_array_el, .get_array_el2, .add, .sub, .mul, .div, .mod, .shl, .sar, .shr, .op_and, .op_or, .xor,
+	     .lt, .lte, .gt, .gte:
+		jit_learn(f, f.bc, f.recording, pc, sp, JIT_AUX_LEARN)
+	case .call0, .call1, .call2, .call3, .call, .call_method:
+		jit_learn(f, f.bc, f.recording, pc, sp, JIT_AUX_CALLEE)
 	}
 }
 
@@ -645,6 +738,38 @@ jit_entered :: #force_no_inline proc(f: ^Frame, var_refs: [^]^Var_Ref) -> bool {
 	return res == .ret
 }
 
+// Where the interpreter is at an interrupt check, for what is said of the JIT (jit_cfg.trace): the function it runs, and
+// why that code is not compiled. The share of the samples is the share of the interpreter's calls and iterations.
+jit_note_sample :: proc(rt: ^Runtime) {
+	f := rt.cur_frame
+	if f == nil || f.bc == nil {return}
+	b := f.bc
+	state := "a function called little"
+	if b.func_kind != .normal {
+		state = "a generator or an async function"
+	} else if len(b.code) > jit_cfg.max_code_bytes {
+		state = "a function too large"
+	} else if b.jit != nil {
+		info := b.jit
+		pick := &info.fn
+		if pick.state != .compiled {
+			for i in 0 ..< info.n {
+				if info.loops[i].header <= f.pc && f.pc < info.loops[i].region_end {pick = &info.loops[i]}
+			}
+		}
+		switch pick.state {
+		case .never:
+			state = pick.why != "" ? pick.why : pick.deopts > 0 ? "left after its deopts" : pick.learns > 0 ? "left after what it learned" : pick.whole ? "no whole function: it has loops, or few iterations" : "few iterations"
+		case .fresh: state = pick.whole ? "whole function, not compiled yet" : "loop, to compile"
+		case .pending: state = "being compiled"
+		case .compiled: state = "compiled, interpreted here"
+		}
+	} else if b.jit_calls >= jit_cfg.call_threshold {
+		state = "no record, hot"
+	}
+	if jit_cfg.trace {jit_trace(cat(f.ctx, "jit: sample in ", state))}
+}
+
 // The region compiled, or being compiled (its translation started when it is first seen hot): true when its code can
 // run.
 @(private = "file")
@@ -680,6 +805,7 @@ jit_run :: proc(ctx: ^Context, f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop) 
 	Jit_Fn :: #type proc "c" (args: [^]Value, locals: [^]Value, stack: [^]Value, arrays: [^]Jit_Arr, refs: [^]^Var_Ref, frame: ^Frame) -> u64
 	fn := transmute(Jit_Fn)uintptr(jl.index)
 	jit_stats.entries += 1
+	jl.runs += 1
 	arrays: [JIT_MAX_ARRS]Jit_Arr = ---
 	for i in 0 ..< jl.n_arr {arrays[i] = jit_array_of(jit_slot_value(f, jl.arr_slots[i]))}
 	index := jl.index
@@ -702,8 +828,10 @@ jit_exit :: proc(f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, index: u32, r:
 	xsp := int((r >> 32) & 0xffff)
 	aux := int(r >> 48)
 	if kind == .throw {
-		// (the call is made again by the interpreter: its callee is now jit_rethrow, see jit_call)
+		// (the call is made again by the interpreter: its callee is now jit_rethrow, see jit_call; or the exception
+		// pending is the interpreter's to unwind)
 		jit_stats.exits_throw += 1
+		if aux == JIT_AUX_PENDING {f.pending_throw = true}
 		return .resume, xpc, xsp
 	}
 	if jl.state != .compiled || jl.index != index {
@@ -724,6 +852,8 @@ jit_exit :: proc(f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, index: u32, r:
 		if !jl.whole && jl.entries == JIT_PROBE && jl.iters < JIT_PROBE * JIT_MIN_ITERS {
 			jl.state = .never
 			b.jit_active -= 1
+			// (entered that often, it is the function around it that is hot: compiled whole at its next call)
+			b.jit_calls = max(b.jit_calls, jit_cfg.call_threshold - 1)
 		}
 		if kind == .ret {
 			jit_stats.exits_return += 1
@@ -733,6 +863,21 @@ jit_exit :: proc(f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, index: u32, r:
 		return .resume, xpc, xsp
 	case .budget:
 		f.ctx.rt.interrupt_counter = INTERRUPT_POLL_EVERY
+		return .resume, xpc, xsp
+	case .cold:
+		// bytecode the recorded runs did not reach is reached: the region is translated again with it, in the end with all of it
+		jl.hit[xpc / JIT_HIT_BITS] |= 1 << uint(xpc % JIT_HIT_BITS)
+		jl.colds += 1
+		if jl.colds < JIT_COLD_BATCH {return .resume, xpc, xsp}
+		jl.colds = 0
+		jl.learns += 1
+		if jl.learns > JIT_MAX_LEARNS {
+			delete(jl.hit, rt_allocator(jl.rt))
+			jl.hit = nil
+			jl.learns = 0
+		}
+		jl.state = .fresh
+		b.jit_active -= 1
 		return .resume, xpc, xsp
 	case .guard:
 		jit_stats.exits_deopt += 1
@@ -758,15 +903,35 @@ jit_exit :: proc(f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, index: u32, r:
 			} else {
 				// nothing to learn (a shape the site does not take, more shapes than it takes): a deopt
 				jl.deopts += 1
-				jit_invalidate(f, b, jl, JIT_AUX_NONE, false)
+				if !jit_site_missed(b, jl, xpc) {jit_invalidate(f, b, jl, JIT_AUX_NONE, false)}
 			}
 		} else {
 			jl.deopts += 1
+			if aux == JIT_AUX_NONE && jit_site_missed(b, jl, xpc) {return .resume, xpc, xsp}
 			jit_invalidate(f, b, jl, aux, false)
 		}
 		return .resume, xpc, xsp
 	}
 	return .none, 0, 0
+}
+
+// An instruction that left with nothing to learn: past JIT_SITE_MISSES it is made by the interpreter's code from then
+// on (an object of too many shapes, an element outside the array, a callee that changes), the region translated again.
+// True: it will be.
+@(private = "file")
+jit_site_missed :: proc(b: ^Function_Bytecode, jl: ^Jit_Loop, xpc: int) -> bool {
+	if xpc >= len(b.code) {return false}
+	op := Opcode(b.code[xpc])
+	if !jit_steppable(op) && !jit_is_call(op) {return false}
+	site := jit_site_of(jl, xpc, true)
+	if site == nil || site.slow {return false}
+	site.misses += 1
+	if site.misses < JIT_SITE_MISSES {return false}
+	site.slow = true
+	jl.learns += 1   // (a translation that does not count against JIT_MAX_REJITS)
+	jl.state = .fresh
+	b.jit_active -= 1
+	return true
 }
 
 // Is the loop at `header` one the JIT took (compiled, being compiled, to compile again)? The interpreter's hot loop
@@ -822,7 +987,7 @@ jit_invalidate :: proc(f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, slot: in
 	} else if !at_entry && slot < 64 {
 		jl.widen |= u64(1) << uint(slot)
 	}
-	if jl.deopts > JIT_MAX_DEOPTS || jl.compiles - jl.learns >= JIT_MAX_REJITS {
+	if (jl.deopts > JIT_MAX_DEOPTS && jl.deopts * JIT_DEOPT_SHARE > jl.runs) || jl.compiles - jl.learns >= JIT_MAX_REJITS {
 		jl.state = .never
 		b.jit_active -= 1
 		return
@@ -844,8 +1009,7 @@ jit_slot_value :: proc(f: ^Frame, slot: int) -> Value {
 jit_mark :: proc(rt: ^Runtime, info: ^Jit_Info) {
 	mark :: proc(rt: ^Runtime, jl: ^Jit_Loop) {
 		for k in 0 ..< jl.n_keep {mark_cell(rt, jl.keep[k])}
-		for s in 0 ..< jl.n_sites {
-			site := &jl.sites[s]
+		for site in jl.sites {
 			for k in 0 ..< site.n {mark_cell(rt, site.shapes[k])}
 			if site.callee != nil {mark_cell(rt, site.callee)}
 			for k in 0 ..< site.n_callees {mark_cell(rt, site.callees[k])}
@@ -858,11 +1022,32 @@ jit_mark :: proc(rt: ^Runtime, info: ^Jit_Info) {
 // The site of the instruction at pc (nil: none, and no room for one when add).
 @(private = "file")
 jit_site_of :: proc(jl: ^Jit_Loop, pc: int, add: bool) -> ^Jit_Site {
-	for i in 0 ..< jl.n_sites {if jl.sites[i].pc == pc {return &jl.sites[i]}}
-	if !add || jl.n_sites >= JIT_MAX_SITES {return nil}
-	jl.sites[jl.n_sites] = Jit_Site{pc = pc}
-	jl.n_sites += 1
-	return &jl.sites[jl.n_sites - 1]
+	lo, hi := 0, len(jl.sites)
+	for lo < hi {
+		mid := (lo + hi) / 2
+		if jl.sites[mid].pc < pc {lo = mid + 1} else {hi = mid}
+	}
+	if lo < len(jl.sites) && jl.sites[lo].pc == pc {return jl.sites[lo]}
+	if !add || len(jl.sites) >= JIT_MAX_SITES {return nil}
+	a := rt_allocator(jl.rt)
+	if jl.sites == nil {jl.sites = make([dynamic]^Jit_Site, 0, JIT_SITES_FIRST, a)}
+	site := new(Jit_Site, a)
+	site.pc = pc
+	inject_at(&jl.sites, lo, site)
+	return site
+}
+
+// What a function keeps for the JIT, freed with it.
+jit_free :: proc(info: ^Jit_Info, a: runtime.Allocator) {
+	drop :: proc(jl: ^Jit_Loop, a: runtime.Allocator) {
+		for site in jl.sites {free(site, a)}
+		delete(jl.sites)
+		delete(jl.hit, a)
+		if jl.why != "" {delete(jl.why, a)}
+	}
+	for i in 0 ..< info.n {drop(&info.loops[i], a)}
+	drop(&info.fn, a)
+	free(info, a)
 }
 
 // The type a value is taken for, widened by what the site saw before.
@@ -1112,6 +1297,7 @@ Jc :: struct {
 	st:        Jit_State,
 	fail:      bool,
 	why:       string,
+	undo:      Jit_State,   // the stack before the instruction being translated (jit_insn_or_slow)
 	restart:   bool,
 	fast_bit:    u8,   // Object.bits: fast_array, is_htmldda, extensible
 	htmldda_bit: u8,
@@ -1119,6 +1305,7 @@ Jc :: struct {
 	host_exotic_bit: u8,
 	ctor_bits:   u8,   // Object.bits: is_constructor, ctor_only (a getter called as a native function has neither)
 	calls:       bool, // the region calls (locals a closure may reach stay in memory)
+	inner:       bool, // the region has loops of its own: their back edges go through a dispatch at the top (I_NEXT)
 	helpers:     bool, // the code calls the engine's helpers (they are imported)
 	table:       bool, // the code calls compiled code through the engine's table (it is imported)
 	shadows:     [JIT_MAX_SHADOWS]Jit_Shadow,   // the objects seen whose properties the translation appended, and their shapes then
@@ -1133,6 +1320,15 @@ Jc :: struct {
 	inl_this:    int,
 	site_base:   int,   // added to a pc for its site (an inlined callee's sites are the call's)
 	inl_wide:    bool,  // the callee's numbers are taken for doubles (it left once on an int that was not one)
+}
+
+// What else jit_insn_or_slow restores of the record.
+Jc_Mark :: struct {
+	n, nest, n_shadows:                                     int,
+	b:                                                      ^Function_Bytecode,
+	code:                                                   []u8,
+	inl_depth, inl_n, inl_pc, inl_first, inl_locals, inl_nargs, inl_this, site_base: int,
+	inl_wide:                                               bool,
 }
 
 Jit_Shadow :: struct {
@@ -1189,6 +1385,7 @@ FRAME_SEG_TOP :: u32(offset_of(Frame, seg_top))
 FRAME_STORAGE :: u32(offset_of(Frame, storage))
 FRAME_STORAGE_LEN :: u32(offset_of(Frame, storage_len))
 FRAME_PENDING_THROW :: u32(offset_of(Frame, pending_throw))
+FRAME_RECORDING :: u32(offset_of(Frame, recording))
 FRAME_CLOSURE_REFS :: u32(offset_of(Frame, closure_refs))
 FRAME_ROOT_BASE :: u32(offset_of(Frame, root_base))
 FRAME_STACKLESS :: u32(offset_of(Frame, stackless))
@@ -1285,7 +1482,8 @@ I_T3 :: 14
 I_T4 :: 15
 I_T5 :: 16
 I_T6 :: 17
-I_FIRST :: 18
+I_NEXT :: 18   // the leader a back edge goes to (Jc.inner)
+I_FIRST :: 19
 
 Jit_Outcome :: enum u8 {ok, refuse, restart}
 
@@ -1295,7 +1493,163 @@ j_fail :: proc(c: ^Jc, why: string) {
 }
 
 @(private = "file")
-j_op :: #force_inline proc(c: ^Jc, op: u8) {append(&c.out, op)}
+j_op :: proc(c: ^Jc, op: u8) {list_push(&c.out, op)}
+
+// The instruction translated, or else made by the interpreter's code: what the translation cannot do does not keep a
+// region from being compiled. What it emitted of the instruction is taken back (it runs in order: the code so far, the
+// state before it); an instruction that cannot be made alone leaves the code there, for the interpreter.
+@(private = "file")
+jit_insn_or_slow :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
+	// (what an instruction may change of the record; of the stack only what is on it)
+	mark := len(c.out)
+	saved := Jc_Mark{n = c.st.n, nest = c.nest, b = c.b, code = c.code, n_shadows = c.n_shadows, inl_depth = c.inl_depth, inl_n = c.inl_n, inl_pc = c.inl_pc, inl_first = c.inl_first, inl_locals = c.inl_locals, inl_nargs = c.inl_nargs, inl_this = c.inl_this, site_base = c.site_base, inl_wide = c.inl_wide}
+	for d in 0 ..< c.st.n {
+		c.undo.t[d] = c.st.t[d]
+		c.undo.a[d] = c.st.a[d]
+		c.undo.v[d] = c.st.v[d]
+		c.undo.k[d] = c.st.k[d]
+	}
+	site := jit_site_of(c.jl, pc, false)
+	valid := false
+	if site == nil || !site.slow || jit_is_call(op) {
+		valid = jit_insn(c, f, op, pc)
+		if !c.fail || c.restart {return valid}
+	} else {
+		c.why = "a site that keeps missing"
+	}
+	why := c.why
+	c.fail = false
+	c.st.n, c.nest, c.b, c.code, c.n_shadows = saved.n, saved.nest, saved.b, saved.code, saved.n_shadows
+	c.inl_depth, c.inl_n, c.inl_pc, c.inl_first, c.inl_locals = saved.inl_depth, saved.inl_n, saved.inl_pc, saved.inl_first, saved.inl_locals
+	c.inl_nargs, c.inl_this, c.site_base, c.inl_wide = saved.inl_nargs, saved.inl_this, saved.site_base, saved.inl_wide
+	for d in 0 ..< c.st.n {
+		c.st.t[d] = c.undo.t[d]
+		c.st.a[d] = c.undo.a[d]
+		c.st.v[d] = c.undo.v[d]
+		c.st.k[d] = c.undo.k[d]
+	}
+	resize(&c.out, mark)
+	if jit_cfg.trace {jit_trace(cat(c.ctx, "jit: left to the interpreter's code: ", why))}
+	if jit_steppable(op) {return j_slow_op(c, op, pc)}
+	j_stub(c, pc, .leave, 0)
+	return false
+}
+
+// The instruction made by the interpreter's code (jit_step) on the frame: everything it may read is written to memory
+// first, what it leaves comes back as values. It may do anything a call does; an exception is left pending for the
+// interpreter (JIT_AUX_PENDING).
+@(private = "file")
+j_slow_op :: proc(c: ^Jc, op: Opcode, pc: int) -> bool {
+	if !c.calls {
+		// (a closure may run: what it reaches must stay in memory)
+		c.jl.slow = true
+		c.restart = true
+		return false
+	}
+	info := opcode_info[op]
+	n := c.st.n
+	n_pop := int(info.n_pop)
+	if info.fmt == .npop || info.fmt == .npop_u16 {n_pop += jr_u16(c.code, pc + 1)}
+	n_push := int(info.n_push)
+	if n_pop > n || n - n_pop + n_push > c.ss {
+		j_stub(c, pc, .leave, 0)
+		return false
+	}
+	for s in 0 ..< c.nslots {
+		kind := c.skind[s]
+		if !c.written[s] || (kind != .i32 && kind != .f64 && kind != .obj) {continue}
+		base, off := j_slot_addr(c, s)
+		j_store_tag(c, base, off, kind == .i32 ? .int : kind == .obj ? .object : .float)
+		if kind == .f64 {
+			j_lget(c, base)
+			j_lget(c, c.wl[s])
+			j_mem(c, W_F64_STORE, 3, off + 8)
+		} else {
+			j_store_low(c, base, off + 8, c.wl[s])
+		}
+	}
+	j_materialize(c, true)
+	j_lget(c, P_FRAME)
+	j_i32(c, i32(pc))
+	j_i32(c, i32(n))
+	j_helper(c, .step)
+	j_op(c, W_IF)
+	j_op(c, W_VOID)
+	c.nest += 1
+	j_stub(c, pc, .throw, JIT_AUX_PENDING, n)
+	j_op(c, W_END)
+	c.nest -= 1
+	low := n - n_pop
+	was := c.st.t
+	c.st.n = low
+	for i in 0 ..< n_push {
+		// (an entry under the loop's own stays in memory, where the instruction left it)
+		if low + i < n && was[low + i] == .M {
+			d := j_push(c, .M)
+			c.st.v[d] = EXCEPTION
+			continue
+		}
+		j_reload(c, j_push(c, .V))
+	}
+	// (the shape of the objects the code made is no longer known; an iterator's record may have changed under the entries)
+	for d in 0 ..< c.st.n {
+		c.st.k[d] = nil
+		if jit_op_reaches_under(op) && d < low && c.st.t[d] == .V {j_reload(c, d)}
+	}
+	j_retake_arrays(c, pc + int(info.size))
+	return true
+}
+
+// The V entry d read from the frame's memory.
+@(private = "file")
+j_reload :: proc(c: ^Jc, d: int) {
+	off := u32(d * size_of(Value))
+	c.st.v[d] = EXCEPTION
+	j_lget(c, P_STACK)
+	j_mem(c, W_I32_LOAD8_U, 0, off)
+	j_lset(c, j_si(c, d))
+	j_lget(c, P_STACK)
+	j_mem(c, W_I64_LOAD, 3, off + 8)
+	j_lset(c, c.sl0 + u32(d))
+}
+
+@(private = "file")
+jit_is_call :: proc(op: Opcode) -> bool {
+	#partial switch op {
+	case .call0, .call1, .call2, .call3, .call, .call_method, .tail_call, .tail_call_method, .call_constructor: return true
+	}
+	return false
+}
+
+// The instructions that write entries under what they take.
+@(private = "file")
+jit_op_reaches_under :: proc(op: Opcode) -> bool {
+	#partial switch op {
+	case .for_of_next, .iterator_next, .iterator_call, .iterator_get_value_done, .for_await_of_start: return true
+	}
+	return false
+}
+
+// Can the interpreter's code make the instruction alone (j_slow_op)? It goes on to the next instruction, it takes and
+// leaves what opcode_info says, pushes no frame, writes no local a compiled region may hold.
+@(private = "file")
+jit_steppable :: proc(op: Opcode) -> bool {
+	#partial switch op {
+	case .push_bigint_i32, .push_const, .push_const8, .fclosure, .fclosure8, .push_atom_value, .private_symbol, .push_this, .object,
+	     .special_object, .rest, .drop, .nip, .nip1, .dup, .dup1, .dup2, .dup3, .insert2, .insert3, .insert4, .perm3, .rot3l, .rot4l,
+	     .rot5l, .rot3r, .perm4, .perm5, .swap, .swap2, .array_from, .check_brand, .add_brand, .regexp, .get_super, .get_var_undef,
+	     .get_var, .put_var, .get_ref_value, .put_ref_value, .get_field, .get_field2, .get_length, .put_field, .get_private_field,
+	     .put_private_field, .define_private_field, .get_array_el, .get_array_el2, .put_array_el, .get_super_value, .put_super_value,
+	     .define_field, .set_name, .set_name_computed, .set_proto, .set_home_object, .define_array_el, .append, .copy_data_properties,
+	     .define_method, .define_method_computed, .close_loc, .check_object, .to_object, .to_propkey, .to_propkey2, .for_in_start,
+	     .for_in_next, .for_of_start, .for_of_next, .iterator_get_value_done, .iterator_close, .iterator_next, .iterator_call, .neg,
+	     .plus, .inc, .dec, .post_inc, .post_dec, .op_not, .lnot, .op_typeof, .delete, .add, .sub, .mul, .div, .mod, .pow, .shl, .sar,
+	     .shr, .op_and, .op_or, .xor, .lt, .lte, .gt, .gte, .eq, .neq, .strict_eq, .strict_neq, .op_in, .private_in, .instanceof,
+	     .is_undefined_or_null, .is_undefined, .is_null, .typeof_is_undefined, .typeof_is_function:
+		return true
+	}
+	return false
+}
 
 // a call of the engine's helper h (which the module then imports)
 @(private = "file")
@@ -1307,13 +1661,13 @@ j_helper :: proc(c: ^Jc, h: Jit_Helper) {
 
 @(private = "file")
 j_lget :: proc(c: ^Jc, i: u32) {
-	append(&c.out, W_LOCAL_GET)
+	list_push(&c.out, u8(W_LOCAL_GET))
 	w_uleb(&c.out, u64(i))
 }
 
 @(private = "file")
 j_lset :: proc(c: ^Jc, i: u32) {
-	append(&c.out, W_LOCAL_SET)
+	list_push(&c.out, u8(W_LOCAL_SET))
 	w_uleb(&c.out, u64(i))
 }
 
@@ -3013,14 +3367,20 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 		j_fail(c, "a call under the loop's stack")
 		return false
 	}
-	for d in low ..< n {
-		if c.st.t[d] == .M {
-			j_fail(c, "a call that takes an entry from under the loop's own")
-			return false
-		}
-	}
 	next := pc + int(opcode_info[op].size)
 	tail := op == .tail_call || op == .tail_call_method
+	if c.inl_depth == 0 {
+		any := false
+		for d in low ..< n {any = any || c.st.t[d] == .M}
+		if slow := jit_site_of(c.jl, pc, false); any || (slow != nil && slow.slow) {return j_call_any(c, argc, kind, low, pc, next, tail)}
+	} else {
+		for d in low ..< n {
+			if c.st.t[d] == .M {
+				j_fail(c, "a call that takes an entry from under the loop's own")
+				return false
+			}
+		}
+	}
 	fv := c.st.v[n - argc - (kind == .construct ? 2 : 1)]
 	if fv.tag != .object && c.inl_depth == 0 {
 		// a callee the translation cannot tell (a method of an object a getter returned): the one an exit met, else
@@ -3074,9 +3434,16 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 	// the helper: a call of a native function, or of a function compiled whole (through the helper, a call of bytecode
 	// that is interpreted costs more than the interpreter's own); a callee being inlined calls nothing that has effects
 	bytecode_callee := fv.tag == .object && as_obj(fv).class == .bytecode_function
-	if c.inl_depth > 0 || fv.tag != .object || (bytecode_callee && !(kind == .construct ? j_construct_ok(as_obj(fv)) : jit_fn_compilable(as_obj(fv).data.(Func_Data).bc))) {
-		j_fail(c, "a call the JIT does not make (a function it does not inline or compile, or not known)")
+	if c.inl_depth > 0 {
+		j_fail(c, "a call in a callee being inlined")
 		return false
+	}
+	if fv.tag != .object || (bytecode_callee && !(kind == .construct ? j_construct_ok(as_obj(fv)) : jit_fn_compilable(as_obj(fv).data.(Func_Data).bc))) {
+		if joined {
+			j_fail(c, "a call at a polymorphic site of a function that is not compiled whole")
+			return false
+		}
+		return j_call_any(c, argc, kind, low, pc, next, tail)
 	}
 	j_flush_objs(c)
 	j_materialize(c, true)
@@ -3149,6 +3516,44 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 		j_op(c, W_END)
 		c.nest -= 1
 	}
+	return true
+}
+
+// A call made by the helper whatever the callee is: a function interpreted, a native, a callee that keeps changing.
+@(private = "file")
+j_call_any :: proc(c: ^Jc, argc: int, kind: Jit_Call_Kind, low: int, pc: int, next: int, tail: bool) -> bool {
+	n := c.st.n
+	if !c.calls {
+		c.jl.slow = true
+		c.restart = true
+		return false
+	}
+	j_flush_objs(c)
+	j_materialize(c, true)
+	j_lget(c, P_FRAME)
+	j_i32(c, i32(n))
+	j_i32(c, i32(argc))
+	j_i32(c, i32(kind) | JIT_CALL_ANY)
+	j_i32(c, i32(next))
+	j_helper(c, .call)
+	j_op(c, W_IF)
+	j_op(c, W_VOID)
+	c.nest += 1
+	// (the entries from low up are in the frame as the call left them: the call is made again, its callee rethrows)
+	c.st.n = low
+	j_stub(c, pc, .throw, 0, n)
+	c.st.n = n
+	j_op(c, W_END)
+	c.nest -= 1
+	c.st.n = low
+	d := j_push(c, .V)
+	j_reload(c, d)
+	for k in 0 ..< c.st.n {c.st.k[k] = nil}
+	if tail {
+		j_return(c, d)
+		return false
+	}
+	j_retake_arrays(c, next)
 	return true
 }
 
@@ -3473,6 +3878,7 @@ j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: 
 	j_lget(c, I_T0)
 	j_i32(c, 0)
 	j_mem(c, W_I32_STORE8, 0, FRAME_PENDING_THROW)
+	j_st32(c, I_T0, FRAME_RECORDING, 0)
 	j_lget(c, I_T0)
 	j_i32(c, 1)
 	j_mem(c, W_I32_STORE8, 0, FRAME_STACKLESS)
@@ -4141,8 +4547,19 @@ j_get_bool :: proc(c: ^Jc, d: int, pc: int) {
 		j_i32(c, i32(Tag.int))
 		j_op(c, W_I32_GT_U)
 		j_op(c, W_I32_XOR)
-		// (above int: only an object is quick to decide)
-		j_deopt_if(c, pc)
+		// (above int: only an object is quick to decide; a string, a double... are asked of the engine, which runs nothing)
+		j_op(c, W_IF)
+		j_op(c, W_I32)
+		j_lget(c, tag)
+		j_lget(c, c.sl0 + u32(d))
+		j_op(c, W_I32_WRAP_I64)
+		j_lget(c, c.sl0 + u32(d))
+		j_op(c, W_I64_CONST)
+		w_sleb(&c.out, 32)
+		j_op(c, W_I64_SHR_U)
+		j_op(c, W_I32_WRAP_I64)
+		j_helper(c, .truthy)
+		j_op(c, W_ELSE)
 		j_lget(c, tag)
 		j_i32(c, i32(Tag.object))
 		j_op(c, W_I32_EQ)
@@ -4164,6 +4581,7 @@ j_get_bool :: proc(c: ^Jc, d: int, pc: int) {
 		j_i32(c, i32(Tag.bool))
 		j_op(c, W_I32_GE_U)
 		j_op(c, W_I32_AND)
+		j_op(c, W_END)
 		j_op(c, W_END)
 		return
 	}
@@ -4192,7 +4610,7 @@ j_get_bool :: proc(c: ^Jc, d: int, pc: int) {
 jit_op_slot :: proc(op: Opcode, code: []u8, pc: int, nargs: int) -> (slot: int, write: bool, ok: bool) {
 	#partial switch op {
 	case .get_loc, .get_loc_check: return nargs + jr_u16(code, pc + 1), false, true
-	case .put_loc, .set_loc, .put_loc_check: return nargs + jr_u16(code, pc + 1), true, true
+	case .put_loc, .set_loc, .put_loc_check, .set_loc_uninitialized: return nargs + jr_u16(code, pc + 1), true, true
 	case .get_loc8: return nargs + int(code[pc + 1]), false, true
 	case .put_loc8, .set_loc8: return nargs + int(code[pc + 1]), true, true
 	case .get_loc0, .get_loc1, .get_loc2, .get_loc3: return nargs + int(op) - int(Opcode.get_loc0), false, true
@@ -4257,6 +4675,7 @@ jit_build :: proc(ctx: ^Context, f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop
 			jit_stats.refused += 1
 			jl.state = .never
 			if jit_cfg.trace {
+				jl.why = strings.clone(c.why, rt_allocator(rt))
 				jit_trace(cat(ctx, "jit: refused ", atom_utf8(rt, b.func_name), " loop at ", int_str(jl.header), ": ", c.why))
 			}
 			return
@@ -4270,6 +4689,12 @@ jit_build :: proc(ctx: ^Context, f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop
 			}
 			jit_stats.compiled += 1
 			jit_stats.module_bytes += f64(len(c.out))
+			if jit_cfg.trace {
+				jit_trace(cat(ctx, "jit: translation number ", int_str(min(jl.compiles, 12))))
+				kib := 1
+				for kib * 1024 < len(c.out) {kib *= 2}
+				jit_trace(cat(ctx, "jit: a module of at most ", int_str(kib), " KiB"))
+			}
 			jit_stats.bytecode_bytes += f64(jl.region_end - jl.header)
 			if idx < 0 {
 				jl.state = .pending
@@ -4363,11 +4788,10 @@ jit_translate :: proc(c: ^Jc, f: ^Frame) -> Jit_Outcome {
 			if w {c.written[s] = true}
 		}
 		if t, _, ok := jit_jump(op, code, pc); ok {
-			if t <= pc && t != c.header {
-				j_fail(c, "nested loop")
-				return .refuse
+			if t >= c.header && t < c.rend {
+				leader[t - c.header] = true
+				if t <= pc && t != c.header {c.inner = true}
 			}
-			if t >= c.header && t < c.rend {leader[t - c.header] = true}
 			if pc + size < c.rend {leader[pc + size - c.header] = true}
 		}
 		#partial switch op {
@@ -4380,6 +4804,7 @@ jit_translate :: proc(c: ^Jc, f: ^Frame) -> Jit_Outcome {
 		j_fail(c, "region does not end on an instruction")
 		return .refuse
 	}
+	if c.jl.slow {c.calls = true}
 	if c.calls {c.ss = JIT_STACK_MAX}   // (room for the callees inlined)
 	n := 0
 	for i in 0 ..< c.rend - c.header {
@@ -4566,6 +4991,17 @@ jit_emit :: proc(c: ^Jc, f: ^Frame) {
 		j_op(c, W_BLOCK)
 		j_op(c, W_VOID)
 	}
+	if c.inner {
+		// the leader to go on from: the end of the block before it
+		j_op(c, W_BLOCK)
+		j_op(c, W_VOID)
+		j_lget(c, I_NEXT)
+		j_op(c, W_BR_TABLE)
+		w_uleb(&c.out, u64(c.nblocks + 1))
+		for k in 0 ..= c.nblocks {w_uleb(&c.out, u64(k))}
+		w_uleb(&c.out, 0)
+		j_op(c, W_END)
+	}
 	c.cur = 0
 	c.nest = 0
 	valid := true
@@ -4580,12 +5016,17 @@ jit_emit :: proc(c: ^Jc, f: ^Frame) {
 			c.cur = k
 			valid = c.lvalid[k]
 			if valid {c.st = c.lstate[k]}
+			if valid && c.jl.hit != nil && c.jl.hit[pc / JIT_HIT_BITS] & (1 << uint(pc % JIT_HIT_BITS)) == 0 {
+				// (what the recorded runs did not reach is not compiled until it is)
+				j_stub(c, pc, .cold, 0)
+				valid = false
+			}
 		}
 		if !valid {
 			pc += size
 			continue
 		}
-		valid = jit_insn(c, f, op, pc)
+		valid = jit_insn_or_slow(c, f, op, pc)
 		pc += size
 	}
 	if c.fail || c.restart {return}
@@ -4826,8 +5267,8 @@ j_jump :: proc(c: ^Jc, pc: int, target: int, conditional: bool) -> bool {
 		j_fail(c, "jump into the middle of a block")
 		return false
 	}
-	if j == 0 {
-		if !j_state_eq(&c.lstate[0], &c.st) {
+	if j <= c.cur {
+		if !c.lvalid[j] || !j_state_eq(&c.lstate[j], &c.st) {
 			j_fail(c, "operand stack types differ at the back edge")
 			return false
 		}
@@ -4855,9 +5296,13 @@ j_jump :: proc(c: ^Jc, pc: int, target: int, conditional: bool) -> bool {
 		j_op(c, W_IF)
 		j_op(c, W_VOID)
 		c.nest += 1
-		j_stub_budget(c)
+		j_stub(c, target, .budget, 0)
 		j_op(c, W_END)
 		c.nest -= 1
+		if c.inner {
+			j_i32(c, i32(j))
+			j_lset(c, I_NEXT)
+		}
 		j_op(c, W_BR)
 		w_uleb(&c.out, j_loop_depth(c))
 		if conditional {
@@ -4867,21 +5312,12 @@ j_jump :: proc(c: ^Jc, pc: int, target: int, conditional: bool) -> bool {
 		}
 		return false
 	}
-	if j <= c.cur {
-		j_fail(c, "nested loop")
-		return false
-	}
 	if !j_join(c, j) {return false}
 	j_op(c, conditional ? W_BR_IF : W_BR)
 	w_uleb(&c.out, u64(c.nest + (j - c.cur - 1)))
 	return !(!conditional)
 }
 
-// leaves at the loop header (the stack holds what it held at the back edge)
-@(private = "file")
-j_stub_budget :: proc(c: ^Jc) {
-	j_stub(c, c.header, .budget, 0)
-}
 
 // The instruction at pc, translated; returns whether the next instruction is reachable from it.
 @(private = "file")
@@ -5241,6 +5677,17 @@ jit_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
 		c.st.n -= 1
 		d := j_push(c, .B)
 		j_lset(c, j_si(c, d))
+	case .op_catch:
+		// the marker the interpreter's unwinder looks for, written to the frame with the stack when the code leaves; an
+		// exception leaves the code, the handler runs in the interpreter
+		d := j_push(c, .V)
+		mark := mk_catch(i32(pc + 1 + jr_i32(code, pc + 1)), c.b)
+		j_i32(c, i32(mark.tag))
+		j_lset(c, j_si(c, d))
+		j_op(c, W_I64_CONST)
+		w_sleb(&c.out, i64((cast(^u64)&mark.u)^))
+		j_lset(c, c.sl0 + u32(d))
+		c.st.v[d] = EXCEPTION
 	case .op_return:
 		j_return(c, n - 1)
 		return false
@@ -5494,6 +5941,15 @@ jit_slot_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int, s: int, write: boo
 		return true
 	}
 	#partial switch op {
+	case .set_loc_uninitialized:
+		// (the hole of the TDZ only exists in memory)
+		if kind != .box {
+			j_box(c, s)
+			return false
+		}
+		base, off := j_slot_addr(c, s)
+		j_store_tag(c, base, off, .uninitialized)
+		return true
 	case .inc_loc, .dec_loc:
 		#partial switch kind {
 		case .i32:
