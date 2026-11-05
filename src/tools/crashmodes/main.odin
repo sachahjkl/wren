@@ -4,6 +4,7 @@ package crashmodes
 // given as the second argument. Run by src\tools\e2e\crash_reports.odin and the @(test) of src/tools/wrentool/deps/symbols_test.odin (Windows), wrentool crash-e2e (Linux).
 //   crashmodes <mode> <dir>     modes: access, assert, bounds, overflow, overflow_thread, heap (a double free), failfast, clean, exit, freed_read, arena_read, double_free, freed_write, freed_number
 
+import "base:builtin"
 import "base:intrinsics"
 import "core:os"
 import "core:thread"
@@ -45,8 +46,8 @@ die :: proc(mode: string) {
 		kept := new(Record)
 		kept.value = new(int)
 		value := kept.value
-		free(kept)
-		free(value)
+		builtin.free(kept)
+		builtin.free(value)
 		_ = intrinsics.volatile_load(kept.value)
 	case "arena_read":
 		// the same in an arena emptied by a new pass
@@ -59,15 +60,15 @@ die :: proc(mode: string) {
 	case "freed_number":
 		// a plain number of a freed block: a fault with WREN_POISON_PAGES only
 		p := new(int)
-		free(p)
+		builtin.free(p)
 		_ = intrinsics.volatile_load(p)
 	case "double_free":
 		p := new(int)
-		free(p)
-		free(p)
+		builtin.free(p)
+		builtin.free(p)
 	case "freed_write":
 		p := new(int)
-		free(p)
+		builtin.free(p)
 		intrinsics.volatile_store(p, 1)
 		base.mem_report("crashmodes")
 	case:
