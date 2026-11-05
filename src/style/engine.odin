@@ -108,6 +108,8 @@ Sheet :: struct {
 
 Engine :: struct {
 	settings:  Settings,               // owned copy
+	class_bits: [dynamic]u64,          // the document's classes during a full pass (class_bits_fill), by node index
+	class_bits_live: bool,             // ... which this is: the passes made now take them
 	forced_hidden: map[base.Handle]struct{},   // elements the embedder hides (engine_set_hidden)
 	top_layer:     [dynamic]base.Handle,       // the embedder's top layer, the fullscreen element aside (engine_set_top_layer)
 	sheets:    [dynamic]^Sheet,        // browser, user, then document sheets
@@ -199,6 +201,7 @@ engine_destroy :: proc(e: ^Engine) {
 	free(e.probe_inherited, base.process_allocator())
 	for s in e.sheets { sheet_free(s) }
 	delete(e.sheets)
+	delete(e.class_bits)
 	delete(e.forced_hidden)
 	delete(e.top_layer)
 	rule_set_clear(&e.rules)

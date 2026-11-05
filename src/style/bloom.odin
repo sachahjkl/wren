@@ -1,5 +1,7 @@
 package style
 
+import "core:slice"
+import "wb:base"
 import "wb:css"
 import "wb:dom"
 
@@ -13,6 +15,8 @@ BLOOM_MAX_LIST_DEPTH :: 8
 // normal check; there are no false negatives, so results are exactly those of plain matching.
 
 Bloom :: [4]u64   // 256 bits, two bits per hash
+
+CLASS_BIT_MASK :: 63   // Match_Ctx.class_bits: the bit of a class hash in a u64
 
 SALT_TAG   :: 0x9e3779b1
 SALT_ID    :: 0x85ebca6b
@@ -33,6 +37,28 @@ bloom_add :: #force_inline proc(b: ^Bloom, h: u32) {
 bloom_has :: #force_inline proc(b: ^Bloom, h: u32) -> bool {
 	i, j := h & 255, (h >> 8) & 255
 	return (b[i >> 6] >> (i & 63)) & (b[j >> 6] >> (j & 63)) & 1 == 1
+}
+
+// The classes of every element of `doc`, for a full pass (Match_Ctx.class_bits): a bit per class, from its hash.
+class_bits_fill :: proc(e: ^Engine, doc: ^dom.Document) {
+	resize(&e.class_bits, int(doc.nodes.used))
+	slice.zero(e.class_bits[:])
+	it: u32
+	for h, n in base.pool_next(&doc.nodes, &it) {
+		if n.kind != .Element { continue }
+		cls, ok := attr(n, "class")
+		if !ok { continue }
+		bits: u64
+		rest := cls
+		for len(rest) > 0 {
+			for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
+			end := 0
+			for end < len(rest) && !is_space(rest[end]) { end += 1 }
+			if end > 0 { bits |= 1 << (css.class_hash(rest[:end]) & CLASS_BIT_MASK) }
+			rest = rest[end:]
+		}
+		e.class_bits[base.handle_index(h)] = bits
+	}
 }
 
 bloom_add_element :: proc(b: ^Bloom, n: ^dom.Node) {

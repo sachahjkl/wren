@@ -65,6 +65,9 @@ Match_Ctx :: struct {
 	// :has() answered in this pass: (anchor, argument list) -> matched. A rule such as `:not(:has(.x)) > .item .by` asks it of the
 	// same ancestor for every element under it, each time scanning the ancestor's whole subtree.
 	has_memo: map[Has_Key]bool,
+	// a full pass (the document does not change during one): the classes of each element as bits of their hashes, by node index
+	// (class_bits_fill). Most selectors tried on an element name a class it does not have.
+	class_bits: []u64,
 }
 
 @(private)
@@ -496,7 +499,9 @@ matches_simple :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 	case .Id:
 		v, ok := attr(n, "id")
 		return ok && v == s.name
-	case .Class: return has_class(n, s.name)
+	case .Class:
+		if s.hash != 0 && m.class_bits != nil && (m.class_bits[base.handle_index(el)] >> (s.hash & CLASS_BIT_MASK)) & 1 == 0 { return false }
+		return has_class(n, s.name)
 	case .Attribute: return attr_matches(n, s)
 	case .Nesting:
 		if s.list == nil { return is_scope(m, el) }

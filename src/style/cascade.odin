@@ -1048,6 +1048,7 @@ pass_make :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, state: State) -> ^
 	p.e, p.s, p.opt = e, s, parse_options(&e.settings)
 	p.alloc = s.alloc
 	match_ctx_init(&p.mc, doc, state)
+	if e.class_bits_live { p.mc.class_bits = e.class_bits[:] }
 	// the fullscreen element is in the top layer: what its ancestors would do to it (a stacking context under a masthead,
 	// a transform or filter that makes them its containing block) does not apply (fullscreen_ancestor_reset)
 	if state.fullscreen != base.NIL_HANDLE && dom.get(doc, state.fullscreen) != nil {
@@ -1167,6 +1168,9 @@ compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State, pool: ^host
 	clear(&e.shadow.changed)   // a full pass covers whatever changed
 	clear(&e.container_pending)
 	clear_gates_pending(e)   // (the gates hold what the environment says now: this pass reads them so)
+	class_bits_fill(e, doc)
+	e.class_bits_live = true
+	defer e.class_bits_live = false
 	s := styled_make(e, doc, state)
 	if pool != nil && host.thread_pool_size(pool) > 1 && doc.nodes.count >= min_nodes {
 		// counters and quotes need tree order: the threads compute everything else, then one ordered walk resolves them.

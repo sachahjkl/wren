@@ -79,6 +79,9 @@ Pseudo :: enum u8 {
 	Other_Element,  // a valid pseudo-element that generates nothing here (::file-selector-button, ::-webkit-*...)
 }
 
+CLASS_HASH_BASIS :: 2166136261
+CLASS_HASH_PRIME :: 16777619
+
 Simple :: struct {
 	kind:   Simple_Kind,
 	name:   string,      // Type (lower case), Class, Id, Attribute name (lower case), Lang/Dir argument
@@ -87,10 +90,18 @@ Simple :: struct {
 	value:  string,
 	ci:     bool,        // attribute value compared case-insensitively
 	ns:     Ns_Match,    // Type, Universal: the element's namespace
+	hash:   u32,         // Class: class_hash(name)
 	nth_a, nth_b: int,   // An+B
 	list:   ^Selector_List,   // :not :is :where :has :host() :host-context(), `of S` of nth-child, the parent list for `&`;
 	                          // a ::slotted() being parsed: its argument
 	names:  []string,         // a ::part() being parsed: its names
+}
+
+// What a class name hashes to, in a selector and on an element (style.class_bits_fill). Not 0: 0 is no hash.
+class_hash :: proc(name: string) -> u32 {
+	h := u32(CLASS_HASH_BASIS)
+	for i in 0 ..< len(name) { h = (h ~ u32(name[i])) * CLASS_HASH_PRIME }
+	return h != 0 ? h : 1
 }
 
 Compound :: struct { simples: []Simple }
@@ -366,7 +377,7 @@ parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, ns: ^N
 				lst^ = parent^
 				return Simple{kind = .Nesting, list = lst}, .None, 1, true
 			case ".":
-				if len(vs) > 1 && vs[1].kind == .Token && vs[1].tok.kind == .Ident { return Simple{kind = .Class, name = vs[1].tok.text}, .None, 2, true }
+				if len(vs) > 1 && vs[1].kind == .Token && vs[1].tok.kind == .Ident { return Simple{kind = .Class, name = vs[1].tok.text, hash = class_hash(vs[1].tok.text)}, .None, 2, true }
 			}
 			return {}, .None, 0, false
 		case .Colon:
