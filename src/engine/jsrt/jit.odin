@@ -5665,7 +5665,8 @@ jit_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
 				j_deopt_if(c, pc)
 			}
 			j_lget(c, tag)
-			j_i32(c, i32(op == .is_null ? Tag.null : Tag.undefined))
+			// (is_undefined_or_null: every tag up to null's, the higher of the two)
+			j_i32(c, i32(op == .is_null || op == .is_undefined_or_null ? Tag.null : Tag.undefined))
 			j_op(c, op == .is_undefined_or_null ? W_I32_LE_U : W_I32_EQ)
 		} else if t == .P && op == .typeof_is_undefined {
 			j_obj_truthy(c, j_si(c, n - 1))
