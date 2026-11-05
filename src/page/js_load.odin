@@ -145,6 +145,7 @@ Script_Timing :: struct {
 	complete_ms:   f64,   // readyState became complete
 	load_ms:       f64,   // load fired
 	load_end_ms:   f64,   // its listeners returned
+	paint_ms:      f64,   // the shell painted it for the first time
 	scripts_run:   int,
 }
 

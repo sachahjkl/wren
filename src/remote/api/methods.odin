@@ -642,12 +642,21 @@ Net_Request :: struct {
 	ms:     f64,
 	has_ms: bool,     // it has ended
 	failed: bool,
+	protocol: string,
+	start_ms: f64,    // from the first request of the page
+	// where it went, in ms from `start_ms` (net.Timing; -1: that step did not happen; has_timing false: nothing went over the network)
+	has_timing: bool,
+	queued, dns_start, dns_end, connect_start, connect_end, sending, response, done: f64,
 }
+
+// When the page got there, in ms from its first request (0: not yet).
+Doc_Marks :: struct { interactive, dcl, load, paint: f64 }
 
 // What a tab's page fetched: `bytes` transferred in all.
 Network :: struct {
 	bytes:    int,
 	requests: []Net_Request,
+	doc:      Doc_Marks,
 }
 
 network :: proc(s: ^Session, clear := false, loc := #caller_location) -> (r: Network, e: Error) {
@@ -657,13 +666,16 @@ network :: proc(s: ^Session, clear := false, loc := #caller_location) -> (r: Net
 	o := request(s, "Wren.network", &p) or_return
 	a, _ := remote.param_array(o, "requests")
 	r.bytes = i_of(o, "bytes")
+	r.doc = {f_of(o, "interactive"), f_of(o, "dcl"), f_of(o, "load"), f_of(o, "paint")}
 	r.requests = make([]Net_Request, len(a), context.temp_allocator)
 	for item, i in a {
 		x, _ := item.(json.Object)
 		ms, has_ms := remote.param_float(x, "ms")
 		r.requests[i] = {
 			id = i_of(x, "id"), url = s_of(x, "url"), method = s_of(x, "method"), mime = s_of(x, "mime"), error = s_of(x, "error"), destination = s_of(x, "destination"), cache = s_of(x, "cache"),
-			status = i_of(x, "status"), bytes = i_of(x, "bytes"), ms = ms, has_ms = has_ms, failed = b_of(x, "failed"),
+			status = i_of(x, "status"), bytes = i_of(x, "bytes"), ms = ms, has_ms = has_ms, failed = b_of(x, "failed"), protocol = s_of(x, "protocol"), start_ms = f_of(x, "startMs"), has_timing = b_of(x, "hasTiming"),
+			queued = f_of(x, "queued"), dns_start = f_of(x, "dnsStart"), dns_end = f_of(x, "dnsEnd"), connect_start = f_of(x, "connectStart"), connect_end = f_of(x, "connectEnd"),
+			sending = f_of(x, "sending"), response = f_of(x, "response"), done = f_of(x, "done"),
 		}
 	}
 	return r, .None

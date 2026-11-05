@@ -43,10 +43,10 @@ SWEEP_LINK_MIN_SIDE :: 4
 SWEEP_CHROME_HEIGHT :: 110
 SWEEP_LINK_SKIP :: []string{"login", "log-in", "logout", "signin", "sign-in", "signup", "sign-up", "register", "cart", "checkout", "subscri", "download", "account", ".zip", ".exe", ".pdf", ".dmg", ".msi"}
 
-Sweep_Step :: enum u8 { Start, Load, Scroll, Devtools, Link, Back, Reload, Tab, Race, Close }
+Sweep_Step :: enum u8 { Start, Load, Settle, Scroll, Devtools, Link, Back, Reload, Tab, Race, Close }
 Sweep_Verdict :: enum u8 { Passed, Crash, Hang, Unclean, No_Start }
 
-SWEEP_STEP_NAMES := [Sweep_Step]string{.Start = "start", .Load = "load", .Scroll = "scroll", .Devtools = "devtools", .Link = "link", .Back = "back", .Reload = "reload", .Tab = "tab", .Race = "race", .Close = "close"}
+SWEEP_STEP_NAMES := [Sweep_Step]string{.Start = "start", .Load = "load", .Settle = "settle", .Scroll = "scroll", .Devtools = "devtools", .Link = "link", .Back = "back", .Reload = "reload", .Tab = "tab", .Race = "race", .Close = "close"}
 SWEEP_VERDICT_NAMES := [Sweep_Verdict]string{.Passed = "passed", .Crash = "CRASH", .Hang = "HANG", .Unclean = "UNCLEAN", .No_Start = "NO-START"}
 
 // One page's visit: the step it is at, what each took, how it ended.
@@ -176,9 +176,8 @@ sweep_start :: proc(r: ^Sweep_Run, v: ^Sweep_Visit) -> bool {
 sweep_do :: proc(r: ^Sweep_Run, v: ^Sweep_Visit, step: Sweep_Step) {
 	s := &r.wren.session
 	#partial switch step {
-	case .Load:
-		sweep_limit(v, step, api.navigate(s, v.url, .Load, SWEEP_LOAD_LIMIT))
-		_ = api.wait_quiet(s, deadline = SWEEP_SETTLE_LIMIT)
+	case .Load:   sweep_limit(v, step, api.navigate(s, v.url, .Load, SWEEP_LOAD_LIMIT))
+	case .Settle: _ = api.wait_quiet(s, deadline = SWEEP_SETTLE_LIMIT)   // (at the least browser.remote.quiet_ms; a page with a timer takes the limit: it is no part of its load)
 	case .Scroll:
 		for _ in 0 ..< SWEEP_SCROLLS {
 			if api.scroll(s, SWEEP_NOTCHES) != .None { break }

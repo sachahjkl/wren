@@ -697,11 +697,18 @@ control_console_total :: proc(t: ^Tab) -> int { return int(t.console_added) }
 // What the tab's page fetched (the Network tab's log). `clear_after`: the log is empty after this.
 control_network :: proc(t: ^Tab, clear_after := false, allocator := context.temp_allocator) -> api.Network {
 	r := api.Network{bytes = int(t.net.bytes), requests = make([]api.Net_Request, len(t.net.entries), allocator)}
+	if t.page != nil && t.page.scripts != nil {
+		tm := &t.page.scripts.timing
+		mark :: proc(ms, t0: f64) -> f64 { return ms > 0 ? ms - t0 : 0 }
+		r.doc = {mark(tm.parsed_ms, t.net.t0_ms), mark(tm.dcl_ms, t.net.t0_ms), mark(tm.load_ms, t.net.t0_ms), mark(tm.paint_ms, t.net.t0_ms)}
+	}
 	for en, i in t.net.entries {
 		r.requests[i] = {
 			id = int(en.id), url = strings.clone(en.url, allocator), method = strings.clone(en.method, allocator), mime = strings.clone(en.mime, allocator), error = strings.clone(en.error, allocator),
 			destination = base.ascii_lower_clone(fmt.tprintf("%v", en.dest), allocator), cache = base.ascii_lower_clone(fmt.tprintf("%v", en.cache), allocator),
-			status = en.status, bytes = en.bytes, ms = f64(en.ms), has_ms = en.ms >= 0, failed = en.failed,
+			status = en.status, bytes = en.bytes, ms = f64(en.ms), has_ms = en.ms >= 0, failed = en.failed, protocol = strings.clone(en.protocol, allocator), start_ms = en.start_ms - t.net.t0_ms, has_timing = en.has_timing,
+			queued = f64(en.timing.started), dns_start = f64(en.timing.dns_start), dns_end = f64(en.timing.dns_end), connect_start = f64(en.timing.connect_start), connect_end = f64(en.timing.connect_end),
+			sending = f64(en.timing.sending), response = f64(en.timing.response), done = f64(en.timing.done),
 		}
 	}
 	if clear_after { net_clear(&t.net) }
