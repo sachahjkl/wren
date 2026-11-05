@@ -8,6 +8,7 @@ import "core:strings"
 import "wb:base"
 import "wb:dom"
 import "wb:js"
+import "wb:wasm"
 
 Engine_console :: proc(c: ^Call, level: Api_ConsoleLevel, text: string) {
 	switch level {
@@ -57,6 +58,13 @@ Engine_jitPoll :: proc(c: ^Call, ticket: i32) -> i32 {
 	if !from_engine(c) { return 0 }
 	return js.jit_poll(c.inst, ticket)
 }
+
+Engine_stackMove :: proc(c: ^Call, sp: u32) -> u32 {
+	if !from_engine(c) { return 0 }
+	return wasm.stack_pointer_move(c.inst, sp)
+}
+
+Engine_nativeStackLow :: proc(c: ^Call) -> bool { return wasm.native_stack_low(c.inst) }
 
 // The stages of the engine's work seen from WREN_SPANS. They do not overlap but for a collection during a compilation.
 @(private = "file", thread_local) engine_span_start: [base.Span_Kind]i64

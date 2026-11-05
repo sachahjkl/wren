@@ -13984,6 +13984,37 @@ _t_js_Engine_jitPoll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	return nil
 }
 
+// Engine_stackMove :: proc(c: ^Call, sp: u32) -> u32
+@(private = "file")
+_t_js_Engine_stackMove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_p0 := u32(a[0].i32)
+	_r := Engine_stackMove(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// Engine_nativeStackLow :: proc(c: ^Call) -> bool
+@(private = "file")
+_t_js_Engine_nativeStackLow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_r := Engine_nativeStackLow(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
 // Engine_span :: proc(c: ^Call, kind: i32, begin: bool)
 @(private = "file")
 _t_js_Engine_span :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -39438,6 +39469,8 @@ api_imports := [?]wasm.Import{
 	{module = "js", name = "Engine_locale", fn = _t_js_Engine_locale, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "js", name = "Engine_jitCompile", fn = _t_js_Engine_jitCompile, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "js", name = "Engine_jitPoll", fn = _t_js_Engine_jitPoll, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "js", name = "Engine_stackMove", fn = _t_js_Engine_stackMove, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "js", name = "Engine_nativeStackLow", fn = _t_js_Engine_nativeStackLow, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "js", name = "Engine_span", fn = _t_js_Engine_span, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}},
 	{module = "js", name = "Node_wrap", fn = _t_js_Node_wrap, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "js", name = "Document_createElementWrapped", fn = _t_js_Document_createElementWrapped, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},

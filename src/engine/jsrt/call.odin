@@ -52,7 +52,15 @@ Frame :: struct {
 	// set by interp_run when it takes the frame over
 	closure_refs: [^]^Var_Ref, // the function object's captured cells (Func_Data.var_refs)
 	root_base:   int,          // height of temp_roots at entry: truncated back to it when the frame ends
-	stackless:   bool,         // pushed by a JS-to-JS call inside interp_run (lives in the value stack, no native recursion)
+	stackless:   Stackless,    // pushed by a JS-to-JS call inside interp_run (lives in the value stack, no native recursion)
+}
+
+// How a frame was pushed, and so what its return gives its caller.
+Stackless :: enum u8 {
+	no,          // run by an interp_run of its own: its return is that activation's
+	call,        // the result on the caller's stack
+	construct,   // the same, this_val when the result is not an object
+	setter,      // nothing
 }
 
 FRAME_VALUES :: (size_of(Frame) + size_of(Value) - 1) / size_of(Value)
@@ -320,7 +328,8 @@ call_internal :: proc(ctx: ^Context, f: Value, this: Value, new_target: Value, a
 	rt := ctx.rt
 	if f.tag != .object {return throw_not_a_function(ctx)}
 	o := as_obj(f)
-	if rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {return stack_overflow(ctx)}
+	if rt.stack_depth >= rt.config.max_stack_depth {return stack_overflow(ctx)}
+	if stack_exhausted(rt) {return call_on_more_stack(ctx, f, this, new_target, args, is_construct)}
 	#partial switch o.class {
 	case .bytecode_function:
 		fd := &o.data.(Func_Data)
@@ -448,24 +457,28 @@ proto_from_ctor_intrinsic :: proc(ctx: ^Context, new_target: Value, pick: proc(c
 }
 
 // GetFunctionRealm.
-function_realm :: proc(ctx: ^Context, f: Value) -> ^Context {
-	if f.tag != .object {return ctx}
-	o := as_obj(f)
-	#partial switch o.class {
-	case .c_function:
-		return o.data.(Native_Data).realm
-	case .bytecode_function:
-		b := o.data.(Func_Data).bc
-		if b != nil && b.realm != nil {return b.realm}
-	case .proxy:
-		pd := o.data.(^Proxy_Data)
-		if pd.revoked {
-			throw_type_error(ctx, "revoked proxy")
-			return nil
+function_realm :: proc(ctx: ^Context, f_in: Value) -> ^Context {
+	f := f_in
+	for f.tag == .object {
+		o := as_obj(f)
+		#partial switch o.class {
+		case .c_function:
+			return o.data.(Native_Data).realm
+		case .bytecode_function:
+			b := o.data.(Func_Data).bc
+			return b != nil && b.realm != nil ? b.realm : ctx
+		case .proxy:
+			pd := o.data.(^Proxy_Data)
+			if pd.revoked {
+				throw_type_error(ctx, "revoked proxy")
+				return nil
+			}
+			f = pd.target
+		case .bound_function:
+			f = o.data.(^Bound_Data).target
+		case:
+			return ctx
 		}
-		return function_realm(ctx, pd.target)
-	case .bound_function:
-		return function_realm(ctx, o.data.(^Bound_Data).target)
 	}
 	return ctx
 }
@@ -543,7 +556,7 @@ frame_push :: proc(ctx: ^Context, fo: ^Object, this: Value, args: []Value, jit :
 	f.pending_throw = false
 	f.recording = nil
 	f.closure_refs = fd.var_refs
-	f.stackless = true
+	f.stackless = .call
 	frame_layout(f, b, mem, args, arg_buf_len)
 	f.root_base = temp_mark(rt)
 	f.prev = rt.cur_frame
@@ -551,6 +564,41 @@ frame_push :: proc(ctx: ^Context, fo: ^Object, this: Value, args: []Value, jit :
 	rt.stack_depth += 1
 	if jit && jit_cfg.enabled {return jit_pushed(f)}
 	return f
+}
+
+// A frame for what a call instruction, new or an accessor asks of a plain bytecode function when the interpreter can run it
+// in this activation: not a frame stepped or recorded for compiled code, which stops at the end of its instruction.
+frame_can_push :: #force_inline proc(rt: ^Runtime, f: ^Frame, fo: ^Object) -> bool {
+	return f.recording == nil && fo.class == .bytecode_function && fo.data.(Func_Data).bc.func_kind == .normal && rt.stack_depth < rt.config.max_stack_depth
+}
+
+// The frame of a [[Construct]] of plain bytecode (frame_can_push), with what call_internal does around interp_call: the
+// new object, unless a derived class's constructor makes it. nil: an exception is pending.
+frame_push_construct :: #force_no_inline proc(ctx: ^Context, fo: ^Object, new_target: Value, args: []Value) -> ^Frame {
+	this := UNDEFINED
+	derived := fo.data.(Func_Data).bc.is_derived_class_ctor
+	if !derived {
+		this = create_from_ctor(ctx, new_target, .object)
+		if is_exception(this) {return nil}
+	}
+	f := frame_push(ctx, fo, this, args, false)
+	f.new_target = new_target
+	if !derived {f.stackless = .construct}
+	if jit_cfg.enabled {return jit_pushed(f)}
+	return f
+}
+
+// What a frame pushed in this activation hands its caller, its result returned (frame_pop gives the caller).
+frame_return :: #force_inline proc(rt: ^Runtime, f: ^Frame, ret_in: Value) -> ^Frame {
+	ret := ret_in
+	kind := f.stackless
+	if kind == .construct && ret.tag != .object {ret = f.this_val}
+	c := frame_pop(rt, f)
+	if kind != .setter {
+		c.stack[c.sp] = ret
+		c.sp += 1
+	}
+	return c
 }
 
 // Leave a frame made by frame_push; the caller's frame is returned.
@@ -596,9 +644,26 @@ coro_frame_free :: proc(rt: ^Runtime, f: ^Frame) {
 // Resume a suspended coroutine frame until it yields, awaits, returns or throws.
 coro_resume :: proc(ctx: ^Context, f: ^Frame) -> (Value, Exit_Kind) {
 	rt := ctx.rt
-	if rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {
+	if rt.stack_depth >= rt.config.max_stack_depth {
 		stack_overflow(ctx)
 		return EXCEPTION, .exception
+	}
+	if stack_exhausted(rt) {
+		top, bound, ok := stack_segment_enter(rt)
+		if !ok {
+			stack_overflow(ctx)
+			return EXCEPTION, .exception
+		}
+		sp := stack_move_hook(top)
+		r, k := EXCEPTION, Exit_Kind.exception
+		if sp != 0 {
+			r, k = coro_resume(ctx, f)
+			stack_move_hook(sp)
+		} else {
+			stack_overflow(ctx)
+		}
+		stack_segment_leave(rt, bound)
+		return r, k
 	}
 	fd := &as_obj(f.func).data.(Func_Data)
 	f.prev = rt.cur_frame

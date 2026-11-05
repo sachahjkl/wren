@@ -238,7 +238,7 @@ hot_call :: #force_no_inline proc(h: ^Hot, op: Opcode) -> bool {
 @(private = "file")
 hot_return :: #force_no_inline proc(h: ^Hot, op: Opcode) -> bool {
 	f := h.f
-	if !f.stackless {return false}
+	if f.stackless != .call {return false}
 	ret := op == .op_return ? h.s[-1] : UNDEFINED
 	c := frame_pop(h.rt, f)
 	c.stack[c.sp] = ret

@@ -54,6 +54,15 @@ Engine_jitCompile :: proc(module: bytes) -> i32
 //@wb fn
 Engine_jitPoll :: proc(ticket: i32) -> i32
 
+/// The engine's stack in linear memory (src/engine/jsrt/stack.odin): moves its stack pointer to `sp`, a block of the
+/// engine's heap past the end of the stack it was linked with, and returns where it was. 0 from any other module.
+//@wb fn
+Engine_stackMove :: proc(sp: u32) -> u32
+
+/// Is the machine's stack, which the engine's compiled code and the browser share, near its end? Asked before going deeper.
+//@wb fn
+Engine_nativeStackLow :: proc() -> bool
+
 /// A JavaScript object (its wrapper) now refers to `node`: pins it (it stays alive while pinned, even out of the tree)
 /// and returns the wrapper's interface, an index into the engine's interface table (gen/bindings.c) chosen from the
 /// node's type, namespace and local name (HTMLDivElement, SVGSVGElement, Text...). One call per new wrapper.

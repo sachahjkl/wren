@@ -35,6 +35,19 @@ when wj.WJ_JSRT {
 		jsrt.jit_cfg.trace = on != 0
 	}
 
+	// The stack past the one the module was linked with (src/engine/jsrt/stack.odin): its limit, from what wasm-ld made of
+	// -z stack-size, and the host's hands on the stack pointer.
+	foreign {
+		__stack_low: u8
+		__stack_high: u8
+	}
+
+	wj_stack_setup :: proc(rt: ^wj.Runtime) {
+		wj.JS_SetMaxStackSize(rt, uint(uintptr(&__stack_high) - uintptr(&__stack_low)) - jsrt.STACK_SEGMENT_KEPT)
+		jsrt.stack_move_hook = proc "contextless" (sp: uintptr) -> uintptr { return uintptr(wj.wr_Engine_stackMove(u32(sp))) }
+		jsrt.native_stack_low_hook = proc "contextless" () -> bool { return wj.wr_Engine_nativeStackLow() != 0 }
+	}
+
 	// WREN_SPANS: the engine says when it compiles, collects, reads bytecode and translates.
 	@(export, link_name = "wj_spans_on")
 	wj_spans_on :: proc "c" () {

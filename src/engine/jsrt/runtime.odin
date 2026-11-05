@@ -218,7 +218,10 @@ Runtime :: struct {
 	exception:      Value, // the pending exception; UNINITIALIZED when none
 	uncatchable:    bool,  // the pending exception cannot be caught (interrupt / OOM)
 	std_protos_touched: bool, // an index key or a new prototype on some realm's Array/Object.prototype
-	stack_limit:    uintptr, // lowest host stack address the engine may reach (set at the outermost entry)
+	stack_limit:    uintptr, // lowest host stack address a call may start from (stack.odin; set at the outermost entry)
+	stack_bound:    uintptr, // what stack_limit is unless the machine's stack ran low
+	stack_floor:    uintptr, // lowest host stack address a native's own recursion may reach
+	stack_segments: Stack_Segments,
 	interrupt_counter: int,
 	jobs:           [dynamic]Job,
 	modules:        [dynamic]^Module,
@@ -425,6 +428,7 @@ runtime_free :: proc(rt: ^Runtime) {
 	rt.cur_frame = nil
 	gc_free_all(rt)
 	atoms_free(rt)
+	stack_segments_free(rt)
 	for &seg in rt.vstack {delete(seg.data, allocator)}
 	delete(rt.vstack)
 	delete(rt.gray)

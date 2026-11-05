@@ -156,7 +156,7 @@ regexp_initialize :: proc(ctx: ^Context, o: ^Object, pattern: Value, flags: Valu
 
 // A regexp literal (OP_regexp): the pattern and its libregexp bytecode, compiled by the front-end
 // (or read from serialized bytecode, hence the verification).
-regexp_create_literal :: proc(ctx: ^Context, pattern, bytecode: Value) -> Value {
+regexp_create_literal :: #force_no_inline proc(ctx: ^Context, pattern, bytecode: Value) -> Value {
 	rt := ctx.rt
 	if bytecode.tag != .string || pattern.tag != .string {return throw_type_error(ctx, "invalid regexp literal")}
 	bs := str_flat(rt, as_str(bytecode))

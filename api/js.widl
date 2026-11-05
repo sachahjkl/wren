@@ -30,6 +30,11 @@ module js {
   /// The table index of the function of an Engine_jitCompile ticket once compiled and attached; -1 while it still
   /// compiles; 0 when it failed (the ticket is then forgotten).
   i32 Engine_jitPoll(i32 ticket);
+  /// The engine's stack in linear memory (src/engine/jsrt/stack.odin): moves its stack pointer to `sp`, a block of the
+  /// engine's heap past the end of the stack it was linked with, and returns where it was. 0 from any other module.
+  u32 Engine_stackMove(u32 sp);
+  /// Is the machine's stack, which the engine's compiled code and the browser share, near its end? Asked before going deeper.
+  bool Engine_nativeStackLow();
   /// WREN_SPANS (base/spans.odin): the engine enters (`begin`) or leaves a stage of its own work: a Span_Kind.
   void Engine_span(i32 kind, bool begin);
 

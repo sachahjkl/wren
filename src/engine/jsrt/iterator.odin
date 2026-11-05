@@ -236,7 +236,7 @@ for_in_collect_plain :: proc(ctx: ^Context, st: ^Iter_State, o: ^Object) -> bool
 
 // A snapshot of the enumerable string keys of `obj` and its prototype chain (shadowed keys
 // removed). Keys deleted before being reached are skipped by for_in_next.
-build_for_in_iterator :: proc(ctx: ^Context, v: Value) -> Value {
+build_for_in_iterator :: #force_no_inline proc(ctx: ^Context, v: Value) -> Value {
 	rt := ctx.rt
 	obj := v
 	if v.tag != .object && !is_nullish(v) {
@@ -273,7 +273,7 @@ build_for_in_iterator :: proc(ctx: ^Context, v: Value) -> Value {
 }
 
 // for_in_next: enum_obj -> enum_obj value done
-for_in_next :: proc(ctx: ^Context, stack: []Value, sp: int) -> bool {
+for_in_next :: #force_no_inline proc(ctx: ^Context, stack: []Value, sp: int) -> bool {
 	ev := stack[sp - 1]
 	if ev.tag != .object || as_obj(ev).class != .for_in_iterator {
 		stack[sp] = UNDEFINED

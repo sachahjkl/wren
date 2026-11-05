@@ -237,7 +237,8 @@ js_string_codePointRange :: proc "c" (ctx: ^Context, this_val: JSValue, argc: i3
 	JS_ToNumber :: jscapi.JS_ToNumber
 	JS_ToObject :: jscapi.JS_ToObject
 	JS_ToString :: jscapi.JS_ToString
-	JS_UpdateStackTop :: jscapi.JS_UpdateStackTop
+	JS_StackEntered :: jscapi.JS_StackEntered
+	JS_StackOut :: jscapi.JS_StackOut
 	JS_ValueToAtom :: jscapi.JS_ValueToAtom
 	JS_WriteObject :: jscapi.JS_WriteObject
 

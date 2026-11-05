@@ -1047,6 +1047,8 @@ foreign _m_js {
 	@(link_name = "Engine_locale") c_Engine_locale :: proc(a0: i32, a1: i32) -> i32 ---
 	@(link_name = "Engine_jitCompile") c_Engine_jitCompile :: proc(a0: i32, a1: i32) -> i32 ---
 	@(link_name = "Engine_jitPoll") c_Engine_jitPoll :: proc(a0: i32) -> i32 ---
+	@(link_name = "Engine_stackMove") c_Engine_stackMove :: proc(a0: i32) -> i32 ---
+	@(link_name = "Engine_nativeStackLow") c_Engine_nativeStackLow :: proc() -> i32 ---
 	@(link_name = "Engine_span") c_Engine_span :: proc(a0: i32, a1: i32) ---
 	@(link_name = "Node_wrap") c_Node_wrap :: proc(a0: i64) -> i32 ---
 	@(link_name = "Document_createElementWrapped") c_Document_createElementWrapped :: proc(a0: i32, a1: i32, a2: i32) -> i32 ---

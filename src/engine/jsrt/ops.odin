@@ -126,7 +126,7 @@ op_unary :: proc(ctx: ^Context, op: Unary_Op, v: Value) -> Value {
 Cmp_Op :: enum u8 {lt, lte, gt, gte}
 
 // Relational comparison; -1 on exception, else 0/1.
-op_compare :: proc(ctx: ^Context, op: Cmp_Op, a_in, b_in: Value) -> int {
+op_compare :: #force_no_inline proc(ctx: ^Context, op: Cmp_Op, a_in, b_in: Value) -> int {
 	a := to_primitive(ctx, a_in, .number)
 	if is_exception(a) {return -1}
 	b := to_primitive(ctx, b_in, .number)

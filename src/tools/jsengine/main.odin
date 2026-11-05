@@ -168,10 +168,29 @@ engine_jit_poll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 
 engine_span :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap { return nil }
 
+engine_stack_move :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	context = base.process_context()
+	f := wasm.frame(env, caller)
+	r := wasm.stack_pointer_move(f.inst, u32(a[0].i32))
+	a[0] = {}
+	a[0].i32 = i32(r)
+	return nil
+}
+
+engine_native_stack_low :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	context = base.process_context()
+	f := wasm.frame(env, caller)
+	a[0] = {}
+	a[0].i32 = wasm.native_stack_low(f.inst) ? 1 : 0
+	return nil
+}
+
 IMPORTS := [?]wasm.Import{
 	{module = "js", name = "Engine_jitPoll", fn = engine_jit_poll, params = {.I32}, results = {.I32}},
 	{module = "js", name = "Engine_jitCompile", fn = engine_jit, params = {.I32, .I32}, results = {.I32}},
 	{module = "js", name = "Engine_span", fn = engine_span, params = {.I32, .I32}},
+	{module = "js", name = "Engine_stackMove", fn = engine_stack_move, params = {.I32}, results = {.I32}},
+	{module = "js", name = "Engine_nativeStackLow", fn = engine_native_stack_low, params = {}, results = {.I32}},
 	{module = "js", name = "Engine_console", fn = engine_console, params = {.I32, .I32, .I32}},
 	{module = "js", name = "Engine_reportException", fn = engine_report, params = {.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}},
 	{module = "js", name = "Engine_storeBytecode", fn = engine_store, params = {.I32, .I32}},
@@ -425,6 +444,10 @@ parse_common :: proc(args: []string) -> (c: Common) {
 // jsengine verify [-jit-threshold n] [-jit-step] file.js...: each script runs interpreted, then with the JIT on (every
 // function compiled at its first call unless -jit-threshold says otherwise); what they print and the errors they leave
 // uncaught must be the same. Exit status 1 on any difference.
+// What fails a verify even when both runs say it: the script's own word, or a trap (the realm is gone).
+VERIFY_FAILED :: "FAILED"
+VERIFY_TRAP :: "TRAP "
+
 cmd_verify :: proc(args: []string) {
 	c := parse_common(args)
 	if !jit.enabled { jit.enabled = true; jit.call_threshold = 1 }
@@ -452,11 +475,13 @@ cmd_verify :: proc(args: []string) {
 		src := read_file(path)
 		a, ea := run_once(image, src, path, false)
 		b, eb := run_once(image, src, path, true)
-		if a == b && ea == eb {
+		said := a == b && strings.contains(a, VERIFY_FAILED) || strings.contains(a, VERIFY_TRAP)
+		if a == b && ea == eb && !said {
 			fmt.printfln("same   %s (%d lines)", path, strings.count(a, "\n"))
 			continue
 		}
 		failed += 1
+		if said { for line in strings.split_lines(a, context.temp_allocator) { if strings.contains(line, VERIFY_FAILED) || strings.contains(line, VERIFY_TRAP) { fmt.printfln("%s: %s", path, line) } } }
 		la := strings.split_lines(a, context.temp_allocator)
 		lb := strings.split_lines(b, context.temp_allocator)
 		for i in 0 ..< max(len(la), len(lb)) {
