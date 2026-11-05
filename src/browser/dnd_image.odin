@@ -30,10 +30,14 @@ DND_IMAGE_PREFS := [?]config.Def{
 		description = "Largest width or height of the drag picture, in device pixels: a larger element or image is scaled down to fit (Windows draws large drag pictures badly)."},
 }
 
+// Frames the drag's picture waits for a layout of the page as it is: a page that changes at every frame gets none.
+@(private = "file") DRAG_PICTURE_WAIT_FRAMES :: 8
+
 Dnd_Image :: struct {
 	active:  bool,
 	waiting: bool,            // the picture is to be painted offscreen and read back
 	asked:   bool,            // painted: the readback is waited for
+	waited:  int,             // frames the picture waited for the layout to catch up with the page
 	readback: render.Readback_Id,
 	mode:    Picture_Of,
 	el:      base.Handle,     // Element: what is painted
@@ -241,6 +245,12 @@ dnd_image_poll :: proc(app: ^App, dc: ^draw.Context) {
 	if !app.dimg.active || !app.dimg.waiting { return }
 	request_frames(app, 2)
 	if !app.dimg.asked {
+		// (a dragstart that changed the page, a class on what is dragged: the picture is of the next layout)
+		if t := current_tab(app); t != nil && t.page != nil && layout_behind(&t.layout, t.page.doc) && app.dimg.waited < DRAG_PICTURE_WAIT_FRAMES {
+			app.dimg.waited += 1
+			return
+		}
+		app.dimg.waited = 0
 		app.dimg.readback = paint_picture(app, dc)
 		app.dimg.asked = true
 		if app.dimg.readback == 0 { app.dimg.waiting, app.dimg.asked = false, false }   // (no readback on this renderer: the system's own picture)
