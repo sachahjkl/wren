@@ -103,6 +103,9 @@ doc_scroll_x_set :: proc(t: ^Tab, x, width: f32) {
 // A frame was laid out: anchored boxes keep what it chose while that fits.
 layout_commit_anchors :: proc(l: ^Layout) { lay.anchored_commit(l) }
 
+// The text of the display items refers to the document's strings: a layout behind its document is not to be read or painted (lay.item_source says the same to those who ask it).
+layout_behind :: proc(l: ^Layout, d: ^dom.Document) -> bool { return l.valid && l.mutations != d.mutations }
+
 layout_stale :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, viewport: draw.Vec2, scale: f32, images_gen: u64 = 0, fonts_gen: u64 = 0) -> bool {
 	return !l.valid || l.mutations != d.mutations || l.serial != styled.serial || l.viewport != viewport || l.scale != scale ||
 		l.inc.images_gen != images_gen || l.inc.fonts_gen != fonts_gen || l.anchor_stale
