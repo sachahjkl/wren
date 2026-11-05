@@ -1,9 +1,58 @@
 package style
 
 import "core:fmt"
+import "core:mem"
 import "core:strings"
 import "core:testing"
 import "wb:dom"
+
+CUSTOM_TEST_LAYERS :: 8
+
+// A variable changed on the root: every element under it compares its set of hundreds of names with the old one. The digest says they
+// differ, whatever the layers, without the map of every name each comparison made (CNN: a frame of 10.9 s, 11 500 elements); sets alike
+// have the same digest however they were built.
+@(test)
+custom_properties_digest :: proc(t: ^testing.T) {
+	VARS :: 300
+	layer :: proc(parent: ^Custom_Props, max_layers := CUSTOM_TEST_LAYERS) -> ^Custom_Props { return custom_begin(parent, max_layers, context.temp_allocator) }
+	root, changed := layer(nil), layer(nil)
+	for i in 0 ..< VARS {
+		name, value := fmt.tprintf("--v%d", i), fmt.tprintf("%dpx", i)
+		custom_set(root, name, value)
+		custom_set(changed, name, i == VARS / 2 ? "other" : value)
+	}
+	own_a, own_b := layer(root), layer(changed)
+	custom_set(own_a, "--own", "1")
+	custom_set(own_b, "--own", "1")
+	{
+		context.temp_allocator = mem.panic_allocator()   // (no name is read: a map of them would end the test here)
+		testing.expect(t, !custom_equal(root, changed), "one value of three hundred")
+		testing.expect(t, !custom_equal(own_a, own_b), "the same, a layer up")
+	}
+	// the same names and values by other ways: overridden, removed and set again, flat
+	again := layer(nil)
+	for i in 0 ..< VARS { custom_set(again, fmt.tprintf("--v%d", i), "before") }
+	custom_set(again, "--gone", "x")
+	custom_remove(again, "--gone", context.temp_allocator)
+	for i in 0 ..< VARS { custom_set(again, fmt.tprintf("--v%d", i), fmt.tprintf("%dpx", i)) }
+	testing.expect_value(t, again.digest, root.digest)
+	testing.expect(t, custom_equal(root, again), "overridden, removed: the same set")
+	over := layer(root)
+	custom_set(over, "--v3", "changed")
+	custom_remove(over, "--v4", context.temp_allocator)
+	custom_set(over, "--v4", "4px")
+	custom_set(over, "--v3", "3px")
+	testing.expect_value(t, over.digest, root.digest)
+	testing.expect(t, custom_equal(root, over), "a layer that says what is under it: the same set")
+	flat := layer(own_a, 0)
+	testing.expect_value(t, flat.digest, own_a.digest)
+	gone := layer(root)
+	custom_remove(gone, "--v5", context.temp_allocator)
+	testing.expect(t, gone.digest != root.digest && !custom_equal(gone, root), "a name dropped")
+	back := layer(gone)
+	custom_set(back, "--v5", "5px")
+	testing.expect_value(t, back.digest, root.digest)
+}
 
 // Hundreds of variables on :root and a few more set on every level of a deep tree (DuckDuckGo's pages): each element
 // keeps a layer of its own names, not a copy of every inherited one, and reads the same values as with copies.
@@ -55,9 +104,8 @@ custom_properties_layers :: proc(t: ^testing.T) {
 				testing.expect(t, p.parent == nil && len(p.values) == p.total)
 			}
 			// a flat copy has the same values as the layers
-			flat := new(Custom_Props, context.temp_allocator)
-			flat.values = custom_flatten(p, context.temp_allocator)
-			flat.total = len(flat.values)
+			flat := custom_begin(nil, max_layers, context.temp_allocator)
+			for name, value in custom_flatten(p, context.temp_allocator) { custom_set(flat, name, value) }
 			testing.expect(t, custom_equal(p, flat) && custom_equal(flat, p))
 		}
 	}

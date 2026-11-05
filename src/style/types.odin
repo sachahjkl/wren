@@ -131,6 +131,7 @@ Custom_Props :: struct {
 	parent:  ^Custom_Props,       // the layer below, nil for a flat map
 	depth:   int,                 // layers below this one
 	total:   int,                 // names present, all layers counted
+	digest:  u64,                 // the sum of what each name with its value hashes to, all layers counted: two sets that differ are told apart without reading them
 }
 
 // A computed style is a value: elements whose inputs are the same share one record (share.odin), so a record does not
