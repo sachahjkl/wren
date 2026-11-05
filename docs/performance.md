@@ -56,6 +56,9 @@ system's from Microsoft's server:
 set _NT_SYMBOL_PATH=S:\wren\build;srv*C:\symbols*https://msdl.microsoft.com/download/symbols
 ```
 
+### Instructions`n
+`jsengine cost --pref wasm.wasmtime.fuel=true examples\jsbench\cost.js`: what each case of the file costs in Wasm instructions an iteration, interpreted, deterministic (`wasm.wasmtime.fuel`; `local.get` counts: compare a path with itself). For a change of the engine on a busy machine, before any wall clock.
+
 ### Tracy
 
 [Tracy](https://github.com/wolfpld/tracy) 0.14.1, pinned by SHA-256 (`src/tools/wrentool/deps/tracy.odin`): its client
@@ -2518,6 +2521,73 @@ Read plainly: **the ranges of the load separate on theverge.com alone**, -17 %. 
 
 Tests: the two above, `spans_keep_what_was_added_and_stop_at_their_room`; `test_all -Quick -NoAsan` on test262 with and without the JIT, jitcheck, `judge`, the JavaScript steps and the unit tests of what changed. Not run: WPT, the full suite, AddressSanitizer.
 
+## What changed, round 31: the window thread during a first load, what the interpreter left behind
+
+The order of the list after round 30. Development builds, the native library `quick`, `wrentool waterfall`, each load in a fresh process with a throwaway profile, base (6b16ad8e) and round interleaved, the order turning, 5 runs, median (range), ms; public sites, other agents at work on the machine.
+
+**Measures added.** `jsengine cost --pref wasm.wasmtime.fuel=true <file>`: what each case of a file costs in Wasm instructions an iteration (`Instance.fuel_used`, `COST_CASES`), interpreted: a count that does not move with the load of the machine, and a test (`examples/jsbench/cost.js`, each case against a limit a tenth over). It counts `local.get` like a load: a `get_loc` and a `drop` are 120 "instructions" and 2 ns; it compares a path with itself, not one path with another. `wrentool waterfall -Stderr <file>`: what the browser says, `WREN_RESTYLE_TRACE` for one. A temporary histogram of the instructions the interpreter's full dispatch made, in real loads, gave the first list below; temporary spans gave the collection by phase. `examples/jsbench/statemachine.js`, `objectspread.js`: micro cases to compare with `node`. **ETW was not used: recording needs an elevated prompt, and this session had none.** Tracy neither: `WREN_SPANS` has the same imports, without what its zones cost. The Wasm code's `?` of the built-in sampler is named by `WREN_WASM_PROFILE` (every engine image keeps its name section: `buildjs -names` makes no other file): a sample there falls at the next function entry or loop, so what follows a long import takes its time (`JS_FreeCString` 3.3 %, `to_length` 2.2 % on theverge.com: nothing of theirs).
+
+**Target 1 was not the call.** Round 30 read npr.org's 41 % as the cost of a call through one site with a few callees. The bot manager's script, read: `while(!o.step());`, `step` an own property set by each step, a dozen functions of three lines per character. What cost was inside them: `this["x"]` compiled as an element access (an atom found from a string, twice per line), `this` taken in the full dispatch, every `&` of a product of doubles in the full dispatch, `[10,13,32].includes(c)`. A call is 64 ns of the 444. `statemachine.js`: 444 -> 190 ns a call, Node 8 to 13, the JIT 353 -> 163 once compiled. Nothing was done to the call site.
+
+**What the interpreter left behind.** Per load, instructions in the hot loop and in the full dispatch, by the histogram (millions):
+
+| | hot loop | full dispatch | first in the full dispatch |
+|---|---|---|---|
+| npr.org | 75 | 12 | `&` 1.9, `get_field` 1.8, `push_this` 1.7, `get_field2` 1.6, `return_undef` 1.1 |
+| theverge.com | 109 | 14 | `===` 1.8, `!==` 1.4, `get_array_el` 1.1, `define_field` 1.0, `to_propkey` 0.9, `push_this` 0.7 |
+| cnn.com | 23 | 3.5 | `get_array_el` 0.4, `get_field2` 0.3, `fclosure8` 0.3, `define_field` 0.25 |
+
+One instruction in eight left the loop, and a leave costs more than the instruction: the registers of the frame read again, `interp_run`'s own switch, the loop entered again.
+
+1. **The hot loop keeps what real pages run** (`interp_hot.odin`). In the loop: `push_this`, bitwise operators on doubles (`hot_int32`: below 2^63 the low bits of an i64), `===`, `!==`, `==`, `!=` that need no conversion (`hot_equal`: strings by length and atom), a string's `length`, an array's methods looked up as an object's are, `to_propkey`, `set_loc_uninitialized`. In procedures of the loop, never inlined (`Hot`): a string's methods and any read the engine makes (`hot_get_field`, `hot_get_length`, `hot_get_el`), `put_field` of a new property or a setter, `define_field`, `object`, `fclosure`, `array_from`, `typeof`, `+` of strings. Tests: `examples/jsbench/hotcheck.js` (what the loop answers, against the language; the file passes in Node), `cost.js`.
+2. **`o["x"]` is `o.x`** (`js_expr2.odin`): obfuscators write everything so. **`return f()` is a call and a return**: `tail_call` was no tail call here, a nested `interp_run` and `call_internal` for each, 400 000 a load on npr.org and theverge.com, and compiled code never inlined or called one directly. The front end differs from QuickJS by these two now; the opcodes stay in the generated table, the reader's verifier has nothing to say of them, the interpreter and the JIT do not know them.
+3. **A closure from a shape made once a realm** (`closure_shape`, `Context.ctor_proto_shape`, `plain_shape`): `make_closure` looked up a shape in a map and defined two to four properties through `define_own_property`. 500 000 closures a load on theverge.com. 6 449 -> 3 287 instructions a function expression, `{a, b, c}` 5 220 -> 2 763 (item 1).
+4. **`arguments` of a sloppy function has no dictionary of its own**: `build_mapped_arguments` made a shape, its property list and its hash at each call (200 000 a load): 9 148 -> 5 086 instructions, transitions instead.
+5. **The finalizers of the collection do not walk the heap** (`Runtime.host_finals`). By phase, spans of a temporary image: marking 30 %, finalizers 30 %, sweep 40 % of the collection. Round 29 removed one walk of every cell from the sweep; `host_run_finalizers` was another, for a few thousand wrappers among 300 000 cells. Plain strings do not go through the marking's list. Test: `judge capi`.
+6. **Large inline scripts compile when the document is parsed** (`compile_inline_ahead`, `compile_ahead_wait`). cnn.com's document holds scripts of 3.1 and 2.7 MB: 843 ms of compilation on the window thread at their turn, 2.5 s after the parser had them. Compile on the window thread: 896 -> 120 ms in a load. Test: `jsload_large_inline_scripts_compile_ahead` (one job, run from its bytecode, in its place, its line numbers its own).
+7. **A crash**, found by a measure below: `restyle_dom`'s threads ran the forms model's queries without `settle`, as a full pass does not, and a radio group's list was built by two threads at once. Any page with radio buttons and a partial restyle over `style.incremental.parallel_min` elements. Test: `restyle_dom_parallel_settles_the_controls`.
+8. **The unions of key sets are kept** (`Key_Sets.unions`): the invalidation index is built again for each sheet that comes, a dozen on cnn.com, each union a sort and a text: 9 % of its style passes. Test: `restyle_dom_unions_of_subjects_are_kept`.
+
+Instructions an iteration (`jsengine cost`) and time:
+
+| | before | after | |
+|---|---|---|---|
+| a method that reads `this` | 2 840 | 2 443 | |
+| `this["x"] = this["x"] ^ 5` | 3 390 | 2 874 | |
+| a hash on doubles | 4 156 | 3 446 | |
+| `return f()` | 4 585 | 3 131 | |
+| `===` of strings and values | 5 571 | 3 814 | |
+| `{a, b, c}` | 5 220 | 2 763 | |
+| a function expression | 6 449 | 3 287 | 956 ns before, under load |
+| `arguments` | 9 148 | 5 086 | 1 738 ns before, under load |
+| `statemachine.js`, a call | 444 ns | 190 ns | Node 8 to 13 |
+| `objectspread.js`, a round | 35 us | 29 us | Node 3.6: flat, no item of it stands out |
+
+Base and round, 5 runs, ms; Edge, 5 runs:
+
+| | load before | load after | CPU before | CPU after | DOMContentLoaded before | after | Edge load |
+|---|---|---|---|---|---|---|---|
+| npr.org | 7 220 (6 773-12 083) | **5 153 (5 002-9 124)** | 9 781 (9 297-15 406) | 7 469 (6 891-12 875) | 4 182 (4 002-7 199) | **2 657 (2 217-4 226)** | 1 382 (1 135-1 563) |
+| cnn.com | 7 175 (6 449-10 975) | 6 256 (5 970-7 054) | 13 297 (12 219-18 609) | 11 938 (11 625-13 047) | 3 226 (3 040-5 247) | 2 740 (2 662-3 141) | 1 081 (908-1 153) |
+| bbc.com/news | 3 177 (2 617-4 488) | 2 732 (1 179-5 318) | 4 641 (3 719-5 844) | 3 812 (1 906-7 734) | 646 (625-712) | 734 (648-1 069) | 426 (387-659) |
+| theverge.com | 8 757 (7 554-15 299) | 7 513 (6 942-10 181) | 12 984 (11 844-19 125) | 11 484 (10 688-14 375) | 1 245 (1 051-2 510) | 1 065 (1 035-1 368) | 1 808 (1 619-1 978) |
+
+Read plainly. **The machine was busy through all of this** (other agents' builds and suites: the same page took 7 or 14 s from one run to the next), so the upper ends of the ranges say nothing, and the lower ends, the medians of the quiet runs and the counts of instructions are what there is. **npr.org is the sure result**: DOMContentLoaded and the first paint (4 364 -> 2 786) separate in two series out of three, the third meeting only by one loaded run; load -29 % in this series, -12 % in the series before. cnn.com: -13 % by the median, the lower ends 6 449 and 5 970; compilation off the window thread is seen directly (896 -> 120 ms), and in the quietest pair of loads 5.5 and 5.9 s. bbc.com/news: -14 % by the median, ranges meeting; its first paint moved from 710 to 958 in this series and 885 to 1 724 in another, ranges meeting, not explained: to look at. theverge.com, four series: 8 757 -> 7 513, 11 857 -> 6 884, 7 810 -> 11 700, 11 455 -> 10 825, each load 7 or 12 s by what else ran; lower ends 6 213 to 8 897 before, 6 691 to 7 561 after: **within noise, not claimed**, a gain of 5 to 10 % if any. **Wren stays 3.7 to 6.4 times Edge** (npr.org 3.7, theverge.com about 4, cnn.com 5.8, bbc.com/news 6.4; Edge faster on bbc.com/news than in round 30 by its own variance). The goal is not reached: the window thread does less, but what it runs is interpreted in Wasm, a get_loc at 2 ns where a JIT has none, and Edge's load is 40 % of its CPU; a page's JavaScript is 8 to 20 times Node's time here, on all but one of the micro cases above.
+
+**Target 3, cnn.com's forced style and layout: it is style, not layout.** `wrentool bench perf -Sample`, `WREN_SAMPLE_UNDER=page::styles`: layouts forced by readings 3.6 s in a long run, a full layout 5 to 10 ms, the rest style passes: 27 full ones at 69 ms, 18 of them "too much changed", 239 partial at 4.6 ms. `getComputedStyle` is not forcing a layout it could do without: making it style-only was not done, it would save the 5 to 10 ms. 4 200 of 11 200 elements are marked by a few mutations: `WREN_RESTYLE_TRACE`: an insertion, a removal, a class, an id, twice a style, on `div`s, and the 3 400 elements of `.layout__content-wrapper` and the 770 of `header` marked whole; the rule that reaches them was not found. The Animation phase is those passes, not its frames, as round 30 found by the contrary.
+
+**Measured, not kept.**
+- **`style.incremental.max_ratio` 0.6** (4 200 elements of 11 200 restyled in part instead of a full pass): cnn.com load 7 509 -> 10 655, DOMContentLoaded 3 428 -> 5 247: a partial restyle of a third of the document costs much more than a full pass (the full pass is shared out; the marking and the sparse walk are not). This is what crashed (item 7).
+- **`GC_HEAP_GROWTH` 3**: theverge.com 6 581 -> 7 010, npr.org 5 427 -> 5 478, CPU the same, ranges meeting. As round 30 found of a floor.
+- **The answer of a dirty `:has()` anchor kept and compared** (`Has_Members.dirty` assumes a flip): the trace named it, the counts of the trace did not move: not what marks those elements. Removed.
+- **`get_field` with only the object's own data property in the loop, the prototypes in a procedure**: 42 instructions fewer, `statemachine.js` 10 % slower (189 -> 205 ns, two series). `frame_layout` inlined: kept, 6 to 12 instructions, nothing else to see.
+
+**Not done, and why.** A site with many callees compiled without the helper (a generic `j_direct_call`): the compiled state machine is 163 ns, 8 to 13 in Node; the frame's size is read from the bytecode there, a day's work, and it is reached after a million calls. Inline caches in the interpreter: `obj.f` is 460 instructions for a sixth property, 340 for the first: what a cache would save is the linear search, not the bulk. A lazy `prototype`: a new kind of property in every switch on `Prop_Kind`; a closure's object and prototype would be one allocation less of three; not measured. Generations: the collection is 10 to 13 % of the engine's samples. `new F`: another agent's frames this week: 5 237 instructions, 3.4 us under load, `call_internal`, a nested `interp_run`.
+
+**Not verified.** The release build, memory (the shapes are shared, nothing should grow), WPT, the full suite, AddressSanitizer. Long-running pages: `macro.js`, `macro.js`: geometric mean 0.94 and 0.82 of the base in two series under load, cases from 0.3 to 1.4 that do not repeat from one series to the next: not claimed; the counts of instructions fell in every case compared.
+
+Tests: `jsengine cost`, `jsengine run hotcheck.js` in the step of test262 with the JIT, `judge capi`, `restyle_dom_parallel_settles_the_controls`, `restyle_dom_unions_of_subjects_are_kept`, `jsload_large_inline_scripts_compile_ahead`; `test_all -Quick -NoAsan` on test262 with and without the JIT, jitcheck, the JavaScript steps, the unit tests of style.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -2695,6 +2765,8 @@ request of the page); `priority` headers (RFC 9218) now that images go out besid
 After round 29. The JIT reaches what pages run (round 29): nothing refused, 72 to 89 % of the interpreter's checks in compiled code on the pages measured. The loads did not follow, and the CPU went up. In order: **what holds a load on a quiet machine**, measured on the window thread by phase and against the waterfall, before more work on the engine; **what a translation costs**: each guard's exit materializes the stack in Wasm code (47 bytes of module for one of bytecode), a table of stack maps read by `jit_exit` would make an exit a few bytes; the translation itself is on the window thread (9 % of theverge.com's samples before the undo record was made small); identical code compiled once per realm (css-tricks.com's embeds); locals typed from the recorded runs (a whole function holds them in memory as values); inline caches for the interpreter's `get_field` where code stays cold; `frontend_compile`, 10 to 19 % of the window thread's engine samples, scripts under `javascript.compile.offthread_min_bytes`; the collection (10 to 16 %), generations or a floor above GC_MIN_ALLOCATION.
 
 After round 30. A heavy page's load is the window thread's, busy from the first script to the load event, in the engine (natives, property definition, allocation, the collection, not the interpreter's dispatch alone) and the layouts it forces. The JIT no longer works against the load, and does not help it either. In order: **a call through one site with a few callees** (npr.org: 41 % of its JavaScript is `while (!o.step())`, 250 ns a call); **the collection** (1 s of theverge.com's 7: generations, its share is not a question of memory, round 30); **what `getComputedStyle` and a forced layout cost** on cnn.com (2 s); the engine's natives by a direct measure each; a compiler for a load, cheap enough to pay in seconds (Winch was not tried: `wasm.wasmtime.compiler` is the engine's whole, the JavaScript engine's own code included). Round 29's first item is done: what follows that names lazy compilation or bytecode sharing is not first by the numbers.
+
+After round 31. "A call through one site" was the wrong name for npr.org's first item: what cost was inside the callees, one instruction in eight of what real pages run leaving the interpreter's hot loop (round 31: `this`, element reads of names, bitwise operators on doubles, `===` of strings, closures, object literals). In order: **cnn.com's full style passes** (18 of 27 for "too much changed", 4 200 of 11 200 elements marked whole by half a dozen mutations on `div`s: which rule; a partial restyle of a third of the document is slower than a full pass, why); **what the engine costs on a page, whatever the path**: a call of a function is 900 of a method call's Wasm instructions (`frame_push`, `hot_return`), a callback from a native a nested `interp_run` (2 600 an element of `forEach`); `new` the same; a compiler for a load (a baseline, Winch not tried); then the collection (10 to 13 % of the engine: generations), a lazy `prototype`; `getComputedStyle` without layout is worth 5 to 10 ms a call, no more. Measure with `jsengine cost` first: wall time on this machine, these weeks, says little under 10 %.
 
 1. **The script stage of DOM-heavy pages, what is left** (`js_nodes10k` on a quiet machine after round 25, 5 runs: a frame of 16.9 ms
    (16.8 to 17.4), the Animation phase 10.5 ms, where this list kept 17.7 and 11.8; the 20.6 to 29.5 ms first noted for that day were
