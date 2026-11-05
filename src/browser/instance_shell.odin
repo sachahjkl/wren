@@ -88,6 +88,7 @@ Instance_State :: struct {
 	mine:         bool,       // this process owns the profile
 	warning:      string,     // the owner did not answer (a static text): said once the interface exists
 	warn_pending: bool,
+	accepted:     [dynamic]^Instance_Open,   // the second starts told that it is done, not opened yet: instance_end opens what the loop did not
 }
 
 @(private = "file") inst: Instance_State
@@ -145,13 +146,16 @@ instance_begin :: proc(app: ^App) {
 
 // When the loop ends: later starts are told to wait (the window goes, the profile is still this one's until the end of main,
 // when the profile has been written: instance_release).
-instance_end :: proc() {
+instance_end :: proc(app: ^App) {
 	if inst.mine { instance.owner_closing(&inst.owner) }
+	instance_open_accepted(app, true)   // (no message comes any more: what was accepted goes into the session, its sender has ended)
 }
 
 // The very end: the profile is free.
 instance_release :: proc() {
 	if inst.mine { instance.owner_stop(&inst.owner); inst.mine = false }
+	delete(inst.accepted)
+	inst.accepted = nil
 }
 
 // The notice of an owner that did not answer, once the interface exists (build_ui).
@@ -175,18 +179,29 @@ instance_handler :: proc(user: rawptr, message: []byte) {
 	app := (^App)(user)   // (instance_begin: the App whose window takes the addresses)
 	m, ok := decode_message(message)
 	if !ok { return }
+	instance_accept(app, m)
+}
+
+// A copy of the message, for the loop's next turn (or instance_end's, when that turn never comes).
+instance_accept :: proc(app: ^App, m: Instance_Message) {
 	d := new(Instance_Open)
 	d.app, d.setup = app, m.setup
 	for a, i in m.addresses {
 		if i >= 64 { break }   // (a message from a program that means harm is not a way to open a thousand tabs)
 		append(&d.addresses, strings.clone(a))
 	}
-	host.post(&app.loop, instance_open, d)
+	append(&inst.accepted, d)
+	host.post(&app.loop, proc(data: rawptr) { instance_open_accepted((^App)(data), false) }, app)
 }
 
 @(private = "file")
-instance_open :: proc(data: rawptr) {
-	d := (^Instance_Open)(data)
+instance_open_accepted :: proc(app: ^App, closing: bool) {
+	for d in inst.accepted { instance_open(d, closing) }
+	clear(&inst.accepted)
+}
+
+@(private = "file")
+instance_open :: proc(d: ^Instance_Open, closing: bool) {
 	defer {
 		for a in d.addresses { delete(a) }
 		delete(d.addresses)
@@ -204,6 +219,7 @@ instance_open :: proc(data: rawptr) {
 		wnd.current = first
 		if t := current_tab(app); t != nil { ui.field_set(&wnd.address, t.url) }
 	}
+	if closing { return }   // (nothing comes forward: the window is going)
 	if d.setup { setup_open(app, .Command) }
 	when ODIN_OS == .Windows { instance.raise_window(rawptr(active_window(app).win.hwnd)) }
 	request_frames(app, 4)

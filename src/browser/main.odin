@@ -1775,7 +1775,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	cdp_stop(app)      // cdp.odin: the CDP / BiDi WebSocket server and its clients
 	remote_stop(app)   // remote_shell.odin: the pipe and its clients
 	host.shutdown_step("instance_end")
-	instance_end()   // instance_shell.odin: later starts are told to wait, then the profile is free
+	instance_end(app)   // instance_shell.odin: later starts are told to wait, then the profile is free
 	host.shutdown_step("prof_report")
 	prof_report(app)
 	wasm.host_profile_write()   // (WREN_HOST_PROFILE: before the pages are freed; the runtime's end writes it again)

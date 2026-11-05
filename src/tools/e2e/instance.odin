@@ -12,6 +12,7 @@ import win "core:sys/windows"
 import "core:testing"
 import "core:time"
 import "wb:base"
+import "wb:browser"
 import "wb:desktop"
 import "wb:e2e"
 import "wb:remote/api"
@@ -197,4 +198,15 @@ a_start_while_the_first_one_closes_loses_nothing :: proc(t: ^testing.T) {
 	testing.expect_value(t, e2e.quit(b), 0)
 	session := e2e.read_text(fmt.tprintf("%s/session.txt", profile))
 	testing.expectf(t, strings.contains(session, "about:wren"), "the address arrived, whichever kept it: %q", session)
+}
+
+// The window took a second start's address and that one has ended, told that it is done; the loop ends before its next turn. What decides is the order, so it is made here: without a loop in between.
+@(test)
+an_address_taken_as_the_loop_ends_goes_into_the_session :: proc(t: ^testing.T) {
+	ADDRESS :: "about:wren"
+	s := e2e.start(t)
+	context = s.ctx
+	browser.instance_accept(s.app, {addresses = {ADDRESS}})
+	browser.instance_end(s.app)
+	testing.expectf(t, strings.contains(browser.session_text(s.app), ADDRESS), "the session keeps it: %q", browser.session_text(s.app))
 }
