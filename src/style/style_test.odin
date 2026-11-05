@@ -1,5 +1,24 @@
 package style
 
+// The classes of a full pass as bits: a selector is tried only on the elements whose bits hold its class, and what those bits let through
+// is the element's classes, compared as ever (two names on one bit, a name in another case).
+@(test)
+class_bits_of_a_full_pass :: proc(t: ^testing.T) {
+	f := fixture_load(`<style>.a { margin: 1px } .A { margin: 2px } .b.c { padding: 3px } .a .d { padding: 4px } .none { padding: 5px }</style><div id=x class="a  b
+		c"><p id=y class=d></p><p id=z>no class</p></div>`)
+	defer fixture_unload(f)
+	x, y, z := dom.find_by_id(f.doc, "x"), dom.find_by_id(f.doc, "y"), dom.find_by_id(f.doc, "z")
+	bit :: proc(name: string) -> u64 { return 1 << (css.class_hash(name) & CLASS_BIT_MASK) }
+	testing.expect_value(t, f.eng.class_bits[base.handle_index(x)], bit("a") | bit("b") | bit("c"))
+	testing.expect_value(t, f.eng.class_bits[base.handle_index(y)], bit("d"))
+	testing.expect_value(t, f.eng.class_bits[base.handle_index(z)], u64(0))
+	testing.expect(t, !f.eng.class_bits_live, "the bits are of the pass: the document may change after it")
+	testing.expect_value(t, style_of(f.st, x).margin[.Top].v, 1)
+	testing.expect_value(t, style_of(f.st, x).padding[.Top].v, 3)
+	testing.expect_value(t, style_of(f.st, y).padding[.Top].v, 4)
+	testing.expect_value(t, style_of(f.st, z).padding[.Top].v, 0)
+}
+
 import "core:fmt"
 import "core:math"
 import "core:strings"
