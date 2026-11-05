@@ -153,10 +153,20 @@ pages_run :: proc(file: string, only: []string) -> Action {
 
 // A scenario of src/tools/e2e, as a step. `each_test`: a step per test it declares, side by side: tests that mostly wait on processes of their own (real Wrens, their starts
 // and ends, a watcher's limit), which one after the other in one process added up to a minute. Each step's name is the scenario's with its test.
-e2e_step :: proc(t: ^[dynamic]Step, name, file: string, marks := Marks{}, weight := 0, browser := false, each_test := false) {
+// `flaky`: tests of the file in a step of their own, marked .Flaky; the others stay as they are.
+e2e_step :: proc(t: ^[dynamic]Step, name, file: string, marks := Marks{}, weight := 0, browser := false, each_test := false, flaky: []string = nil) {
 	needs := COMMON_NEEDS + {.E2E, .Test_Server}
 	if browser { needs += {.Browser} }
 	path := fmt.aprintf("src/tools/e2e/%s.odin", file)
+	if names, why := declared_tests(path); len(flaky) > 0 && why == "" {
+		rest := make([dynamic]string)
+		for test in names { if !slice.contains(flaky, test) { append(&rest, strings.clone(test)) } }
+		append(t, Step{name = name, actions = slice_of(Command{argv = strs(exe("build/e2e_test")), tests_of = path, only = rest[:], rule = .Says_Successful}), marks = marks, weight = weight, needs = needs, inputs = .Tree})
+		for test in flaky {
+			append(t, Step{name = fmt.aprintf("%s [%s]", name, test), actions = slice_of(Command{argv = strs(exe("build/e2e_test")), tests_of = path, only = strs(test), rule = .Says_Successful}), marks = marks + {.Flaky}, needs = needs, inputs = .Tree})
+		}
+		return
+	}
 	if names, why := declared_tests(path); each_test && why == "" {
 		for test in names {
 			append(t, Step{name = fmt.aprintf("%s [%s]", name, test), actions = slice_of(Command{argv = strs(exe("build/e2e_test")), tests_of = path, only = strs(test), rule = .Says_Successful}),
@@ -306,7 +316,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	e2e_step(&t, "the frame gate end to end (src\\tools\\e2e\\frame_gate.odin, a real window that nobody sees: the system's drag of a page drag, the page's context menu, a long script preempted by chrome frames; under them a loop of the system paints: a chrome frame, never a full one, deferred where no frame may begin)", "frame_gate")
 	e2e_step(&t, "tab sidebar resized by its handle (src\\tools\\e2e\\sidebar_resize.odin: the edge where the pointer is in every frame, the page at its area's width, the width written on release; an injected pointer, no window at all)", "sidebar_resize")
 	e2e_step(&t, "the page's cursors (src\\tools\\e2e\\cursor.odin: what the page asks for over each element, images and their hotspots, a press held; no window at all)", "cursor")
-	e2e_step(&t, "input under a busy page (src\\tools\\e2e\\busy_page.odin: a script holds the thread, chrome frames take the input: a drag's selection, the scroll bar's thumb, Page Down and Ctrl+L follow at once, the page's turn sees the same; transform and opacity animations go on, a scroll box follows the wheel and its thumb, the caret blinks; no window at all)", "busy_page")
+	e2e_step(&t, "input under a busy page (src\\tools\\e2e\\busy_page.odin: a script holds the thread, chrome frames take the input: a drag's selection, the scroll bar's thumb, Page Down and Ctrl+L follow at once, the page's turn sees the same; transform and opacity animations go on, a scroll box follows the wheel and its thumb, the caret blinks; no window at all)", "busy_page", flaky = {"the_caret_blinks_while_the_page_is_busy"})   // (failed once on the CI, 18 of 18 passed six at a time, nothing found by reading: a frame short of the screen or of the window's place in front)
 	e2e_step(&t, "an inline <svg> through a hover (src\\tools\\e2e\\inline_svg_hover.odin: the painting start page's shortcut icons, a new colour being made on the held decoding threads: every frame shows the icon, then the new colour; no window at all)", "inline_svg_hover")
 	e2e_step(&t, "an image opened by itself as a viewer (src\\tools\\e2e\\image_viewer.odin: Ctrl+wheel and a pinch zoom it around the pointer, + - 0, clicks, a drag and its cursors, the wheel and the arrows, R and Shift+R, a double click; no window at all)", "image_viewer")
 	e2e_step(&t, "the GPU process in the real browser (src\\tools\\e2e\\webgl_process.odin: none without WebGL, one for the first context, killed and restored, hung and killed by the watcher, it ends with a killed browser)", "webgl_process", browser = true, each_test = true)
