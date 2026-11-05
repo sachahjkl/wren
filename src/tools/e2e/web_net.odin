@@ -479,6 +479,8 @@ net_a_connection_opened_ahead_is_what_the_first_request_takes :: proc(t: ^testin
 	defer end()
 	serve(t)
 	if !on_builtin_stack() { return }
+	client.settings.preconnect = true
+	defer client.settings.preconnect = false
 	u := fmt.tprintf("http://ahead.localhost:%d/", testenv.port(HTTP))
 	net.preconnect(&client, u)
 	wait_until(t, "the connection opened ahead", u, proc(u: string) -> bool { return net.preconnected(&client, u) })
