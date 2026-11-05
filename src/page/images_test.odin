@@ -58,3 +58,18 @@ images_found_among_the_documents_images :: proc(t: ^testing.T) {
 	testing.expect_value(t, followed(p), 3)
 	testing.expect_value(t, p.images.pass, pass)   // (not looked for again)
 }
+
+// The last request of an entry out of the index frees it, and nothing reads it after (test_all runs this package on pages of
+// their own: a touch of the entry faults).
+@(test)
+the_last_request_of_an_entry_out_of_the_index_frees_it :: proc(t: ^testing.T) {
+	test_pages(t)
+	e := new(Cache_Entry)
+	r: Img_Request
+	append(&e.requests, &r)
+	was := len(the_pages.image_cache.evicted)
+	entry_release(e, &r)
+	testing.expect_value(t, len(the_pages.image_cache.evicted), was + 1)
+	delete(the_pages.image_cache.evicted)
+	the_pages.image_cache.evicted = nil
+}

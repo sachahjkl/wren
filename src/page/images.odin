@@ -188,8 +188,9 @@ entry_unmap :: proc(e: ^Cache_Entry) {
 @(private)
 entry_release :: proc(e: ^Cache_Entry, r: ^Img_Request) {
 	for x, i in e.requests { if x == r { unordered_remove(&e.requests, i); break } }
-	if len(e.requests) == 0 && !e.in_map { entry_destroy(e) }
-	if len(e.requests) == 0 { cache_enforce() }
+	if len(e.requests) > 0 { return }
+	if !e.in_map { entry_destroy(e) }
+	cache_enforce()
 }
 
 @(private)
