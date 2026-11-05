@@ -22,7 +22,7 @@ JIT_PREFS := [?]config.Def{
 	{name = "javascript.jit.enabled", kind = .Bool, default = {b = true},
 		description = "Compile the hot functions of scripts to WebAssembly (then to machine code by the Wasm engine, in the page's sandbox): faster loops, arithmetic and local variables. Off, every function is interpreted. Pages already open keep their setting."},
 	{name = "javascript.jit.call_threshold", kind = .Int, default = {i = 500}, bounded = true, min = 1, max = 1 << 30, unit = "calls",
-		description = "A function without loops of its own is compiled whole at this call (1 = at its first); a function called from compiled code then runs compiled too, recursion included. Loops are compiled when they run hot, whatever this says."},
+		description = "A function is compiled whole after this call and the recorded runs that follow it (1 = from its first); a function called from compiled code then runs compiled too, recursion included. Loops are compiled when they run hot, whatever this says."},
 	{name = "javascript.jit.loop_threshold", kind = .Int, default = {i = 500}, bounded = true, min = 1, max = 1 << 30, unit = "iterations",
 		description = "A function is also compiled once its loops have run this many iterations, and a loop that is running enters the compiled code at its next iteration (on-stack replacement): a long loop in a function called once is compiled too."},
 	{name = "javascript.jit.max_functions", kind = .Int, default = {i = 4000}, bounded = true, min = 0, max = 9000, unit = "functions",

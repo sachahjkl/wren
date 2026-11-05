@@ -102,6 +102,11 @@ prof_slot_of :: proc "contextless" (s: [^]u8, n: int) -> ^Prof_Slot {
 	return nil
 }
 
+// A line of its own in the profile, counted (what the JIT says: wj_jit_trace).
+prof_note :: proc "contextless" (msg: string) {
+	if e := prof_slot_of(raw_data(msg), len(msg)); e != nil { e.self += 1; e.incl += 1 }
+}
+
 @(private = "file")
 ends_native :: #force_inline proc "contextless" (p: [^]u8, n: int) -> bool {
 	return n > 9 && memcmp(p[n - 8:], raw_data(string("(native)")), 8) == 0

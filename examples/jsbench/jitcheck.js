@@ -557,6 +557,64 @@
   function polyF(fs, n) { var s = 0; for (var i = 0; i < n; i++) { s = (s + fs[i % fs.length](i & 15)) | 0; } return s; }
   p("polymorphic calls: plain functions", polyF([f1, f2], RUN), polyF([f1, f2, f3], RUN), polyF([f3, Math.abs, f1], RUN));
 
+  // instructions the translation leaves to the interpreter's code (jit_step), and where it leaves the code: a try in a
+  // loop, closures, typeof, instanceof, in, for-of, for-in, nested loops, a throw in the middle
+  function tryLoop(a, n) {
+    var s = 0, e = 0;
+    for (var i = 0; i < n; i++) {
+      try { s += a[i & 3].v; if (i % 97 === 5) { throw new Error("x" + i); } } catch (x) { e += String(x).length; }
+    }
+    return s + ":" + e;
+  }
+  p("try in a loop", tryLoop([{ v: 1 }, { v: 2 }, { v: 3 }, { v: 4 }], RUN), tryLoop([{ v: 1 }, null, { v: 3 }, undefined], RUN));
+  function tryFinally(n) { var s = 0; for (var i = 0; i < n; i++) { try { if (i & 1) { continue; } s += 2; } finally { s += 1; } } return s; }
+  p("finally in a loop", tryFinally(RUN));
+  function tryReturn(x) { try { if (x > 1) { return x * 2; } return x.y.z; } catch (e) { return "caught"; } }
+  var trs = ""; for (var tr = 0; tr < 6; tr++) { trs += tryReturn(tr) + ","; } p("return from a try", trs);
+  function closures(n) { var fs = []; for (var i = 0; i < n; i++) { let j = i * 2; fs.push(function () { return j + i; }); } var s = 0; for (var k = 0; k < n; k++) { s += fs[k](); } return s; }
+  p("closures in a loop", closures(RUN));
+  function captured(n) { var c = 0; function inc() { c += 2; } for (var i = 0; i < n; i++) { inc(); (function () { c -= 1; })(); } return c; }
+  p("a local a closure of the loop writes", captured(RUN));
+  function kinds(vs, n) {
+    var t = "", s = 0;
+    for (var i = 0; i < n; i++) {
+      var v = vs[i % vs.length], ty = typeof v;
+      if (v instanceof Array) { s += 1; } else if (ty === "object" && v !== null && "k" in v) { s += 2; } else if (ty === "string" && v) { s += 3; } else if (v) { s += 4; }
+      if (i < 12) { t += ty[0]; }
+    }
+    return t + s;
+  }
+  p("typeof, instanceof, in, truthiness", kinds([1, "a", "", null, [], { k: 1 }, {}, 0.5, 0, NaN, undefined, true, false, function () {}, Symbol.iterator, 1n, 0n], RUN));
+  function forOf(a, n) { var s = 0; for (var r = 0; r < n; r++) { for (var x of a) { s += x; if (x === 3 && r === 7) { break; } } } return s; }
+  p("for-of", forOf([1, 2, 3, 4], RUN >> 2));
+  function forOfThrow(n) { var it = { c: 0, [Symbol.iterator]() { return this; }, next() { this.c++; return { done: this.c > n, value: this.c }; }, return() { this.closed = true; return {}; } }; var s = 0; try { for (var x of it) { s += x; if (x === n - 1) { throw 1; } } } catch (e) { s = -s; } return s + ":" + it.closed; }
+  p("for-of that throws", forOfThrow(RUN));
+  function forIn(o, n) { var s = ""; for (var r = 0; r < n; r++) { s = ""; for (var k in o) { s += k + o[k]; } } return s; }
+  p("for-in", forIn({ a: 1, b: 2, c: 3 }, RUN >> 2));
+  function nested(n) { var s = 0; for (var i = 0; i < n; i++) { for (var j = 0; j < 5; j++) { s += i ^ j; var k = 0; while (k < 3) { k++; s -= 1; } } } return s; }
+  p("nested loops", nested(RUN >> 1));
+  function shapes(n) { var os = []; for (var i = 0; i < 24; i++) { var o = {}; o["k" + i] = i; o.v = i; os.push(o); } var s = 0; for (var r = 0; r < n; r++) { s += os[r % 24].v; os[r % 7].v = r & 3; } return s; }
+  p("more shapes than a site takes", shapes(RUN));
+  function elems(a, n) { var s = 0; for (var i = 0; i < n; i++) { var v = a[i % 9]; s += v === undefined ? 1 : v; a[(i % 5) + 7] = i & 1; } return s + ":" + a.length; }
+  p("elements outside the array", elems([1, 2, 3], RUN), elems({ 0: 1, 1: 2, length: 2 }, RUN), elems("abcdef".split(""), 40));
+  function keys(o, ks, n) { var s = 0; for (var i = 0; i < n; i++) { s += o[ks[i & 3]] | 0; } return s; }
+  p("elements by string, symbol, double", keys({ a: 1, 1: 2, 1.5: 3, [Symbol.iterator]: 4 }, ["a", 1, 1.5, Symbol.iterator], RUN));
+  function nullRead(os, n) { var c = 0; for (var i = 0; i < n; i++) { try { c += os[i % 3].a.b; } catch (e) { c += e instanceof TypeError ? 2 : 1000; } } return c; }
+  p("a read of null through the interpreter's code", nullRead([{ a: { b: 1 } }, { a: null }, null], RUN));
+  function manyCallees(fs, n) { var s = 0; for (var i = 0; i < n; i++) { s = (s + fs[i % fs.length](i)) | 0; } return s; }
+  var callees = []; for (var ci = 0; ci < 12; ci++) { callees.push(new Function("x", "for (var i = 0; i < 2; i++) { x += " + ci + "; } return x;")); }
+  p("more callees than a site takes", manyCallees(callees, RUN), manyCallees([parseInt, Math.abs, callees[1], String.prototype.trim.call.bind(function (x) { return x; })], RUN));
+  function throwingCallee(n) { var f = function (i) { if (i % 50 === 49) { throw i; } return i; }, s = 0; for (var i = 0; i < n; i++) { try { s += f(i); } catch (e) { s -= e; } } return s; }
+  p("a callee that throws in a try", throwingCallee(RUN));
+  function tdz(n) { var s = 0; for (var i = 0; i < n; i++) { let a = i; let b = a + 1; { let c = b * 2; s += c; } } return s; }
+  p("let in a loop", tdz(RUN));
+  function tdzThrow() { try { for (var i = 0; i < 3; i++) { if (i === 2) { x; } let x = i; } } catch (e) { return e.name; } return "no"; }
+  var ts = ""; for (var tq = 0; tq < 4; tq++) { ts += tdzThrow(); } p("the hole of a let", ts);
+  function spread(a, n) { var s = 0; for (var i = 0; i < n; i++) { var b = [...a, i]; var o = { ...{ x: 1 }, y: i }; s += b.length + o.y + Math.max(...a); } return s; }
+  p("spreads", spread([1, 2, 3], RUN >> 2));
+  function strs(n) { var s = "", c = 0; for (var i = 0; i < n; i++) { var t = "k" + (i & 7); if (t) { c += t.length; } s = t.replace("k", "") ? s : "z"; if (s.indexOf("z") === 0) { c += 1; } } return c; }
+  p("strings", strs(RUN));
+
   // switch, strings, generators (not compiled) next to compiled code
   function sw(x) { switch (x) { case 1: return "one"; case "1": return "string"; default: return "other"; } }
   p("switch", sw(1), sw("1"), sw(2));

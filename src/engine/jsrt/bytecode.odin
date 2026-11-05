@@ -106,7 +106,7 @@ function_bc_finalize :: proc(rt: ^Runtime, b: ^Function_Bytecode) {
 	if b.source != nil {delete(b.source, a)}
 	if b.catch_levels != nil {delete(b.catch_levels, a)}
 	if b.image != nil {delete(b.image, a)}
-	if b.jit != nil {free(b.jit, a)}
+	if b.jit != nil {jit_free(b.jit, a)}
 }
 
 // The source line of instruction `pc`, decoded from the pc2line table (QuickJS's format: a leb128

@@ -17,13 +17,50 @@ the function's other loops stay in it.
 A loop that runs few iterations per entry costs more to enter than the code saves: after `JIT_PROBE` entries with fewer
 than `JIT_MIN_ITERS` iterations each on average it is left to the interpreter.
 
+Before a loop is translated one iteration is recorded, up to its back edge (`Frame.recording`, below).
+
 ## When a function is compiled whole
 
 A call of a plain function counts toward `javascript.jit.call_threshold` (`Function_Bytecode.jit_calls`, counted where
 the interpreter pushes the callee's frame: `jit_pushed`, `jit_entered`, and in the helper of compiled code). Once it is
-reached, a function whose backward jumps (if any) go to its start is translated as the region `[0, end)` and entered
-at its call (`jit_fn_enter`): its arguments' types guarded at entry, its locals in the frame's memory. A function with
-loops of its own is left to the loop JIT; a function that is refused counts no more (`JIT_CALLS_NEVER`).
+reached, the function is translated as the region `[0, end)` and entered at its call (`jit_fn_enter`): its arguments'
+types guarded at entry, its locals in the frame's memory. Its loops are part of the region: a back edge to a leader but
+the first sets `I_NEXT` and goes to the top of the code, a `br_table` to that leader (`Jc.inner`; only a region with
+inner loops has it). A function that is refused counts no more (`JIT_CALLS_NEVER`).
+
+## What the first runs met
+
+At the threshold the function's next `JIT_RECORD_RUNS` calls are recorded (`jit_record`): the frame runs in the full
+dispatch (`Frame.recording`, the hot loop leaves when it meets such a frame), and before each instruction with a site the
+site takes what a learn exit would have told it, from the operands on the stack. Translated after that, code leaves little
+to learn. Without it each site that had not been met was an exit and a translation: real functions reached
+`JIT_MAX_LEARNS` first, and stayed interpreted. A run in a loop stops being recorded after `JIT_RECORD_EDGES` back edges.
+
+The recorded runs also say which bytecode runs at all (`Jit_Loop.hit`): a block they did not reach is not compiled, only an
+exit (`cold`) that marks it; `JIT_COLD_BATCH` such exits translate the region again. Past `JIT_MAX_LEARNS` such translations everything is
+compiled. Cranelift's time is about proportional to the module, and most of a function is not what runs.
+
+## What the translation does not do
+
+No instruction keeps a region from being compiled (`jit_insn_or_slow`): what the translation emitted of the instruction is
+taken back, and
+
+- an instruction `jit_steppable` allows is made by the interpreter's own code (`j_slow_op`, the helper `jit_step`:
+  `interp_run` with `Frame.recording` at `jit_stepping`, the full dispatch for one instruction). The written locals, the operand stack and the objects held
+  are stored first, what it leaves comes back as V entries, the held arrays are taken again, as after a call. A closure may
+  run, so a region with such an instruction keeps captured locals in memory (`Jit_Loop.slow`, `Jc.calls`). An exception stays
+  pending: the code leaves through a throw exit with `JIT_AUX_PENDING`, which sets `Frame.pending_throw`, and the interpreter
+  unwinds from there;
+- any other instruction (`throw`, a `gosub`...) is where the code leaves: the interpreter goes on, and comes back at the
+  next back edge or the next call.
+
+`op_catch` is translated: its marker is a V entry, written to the frame with the stack when the code leaves. The handler is
+only reached by the interpreter's unwinder: its code is not emitted when nothing else jumps there.
+
+A site that leaves with nothing to learn (more shapes than it takes, an element outside the array, a callee that changes)
+is marked slow after `JIT_SITE_MISSES` deopts and translated again: `j_slow_op`, or for a call `j_call_any`, the helper
+whatever the callee is. A region is given up after `JIT_MAX_DEOPTS` only when more than one entry in `JIT_DEOPT_SHARE` still
+leaves through a deopt.
 
 ## What the code holds
 
@@ -94,7 +131,7 @@ each entry held, as far as it can tell, for these hints), and learned when the s
 (`JIT_AUX_LEARN`) hands the interpreter the state at the instruction; `jit_learn` looks at the object or the value, the
 site takes its shape or a wider type, and the loop is translated again (`JIT_MAX_LEARNS` times at most). A miss with
 nothing to learn (a shape the site does not take inline: an accessor, an exotic object, a frozen property for a write;
-more shapes than the site takes) is a deopt.
+more shapes than the site takes) is a deopt, then a slow site (above).
 
 A write of a property the object does not have appends it as `[[Set]]` does, when the site's shape is an ordinary
 object's that is not a dictionary and the property is nowhere on its prototype chain: the shape's transition (made at
@@ -183,10 +220,9 @@ then the contents through `wj_jit_streq` (`str_eq`); a string against another ty
   caller (a getter's: the object's place takes the context's thrower, as the helper of getters leaves it). Any check that fails (another callee, not compiled, no room in the value stack's segment, too deep) makes
   the call through the helper instead, which pushes the frame the same way and enters the callee's code if it has
   some, else interprets it.
-- A call of bytecode that cannot be compiled whole (a function with loops, a generator...) keeps the loop interpreted:
-  through the helper it is a nested `interp_run`, slower than the interpreter's own call (measured in round 20: 84 ->
-  130 ns for a small function). A callee refused after the caller was compiled makes the helper hand the call back to
-  the interpreter (a deopt), until the caller is left to the interpreter.
+- A call of bytecode that cannot be compiled whole (a generator, a function too large...) goes through the helper
+  (`j_call_any`): a nested `interp_run`, slower than the interpreter's own call (measured in round 20: 84 -> 130 ns for a
+  small function), but what is around it stays compiled.
 
 Compiled code nested on the host stack (a compiled call of compiled code, a helper's call of a native that calls
 compiled code) is bounded by `JIT_MAX_NEST` (`Runtime.jit_depth`): deeper calls are interpreted, with the interpreter's
@@ -205,7 +241,14 @@ The code returns an exit word (kind, pc, sp, aux) and the interpreter carries on
 | guard | an entry guard failed (aux: the slot): the slot is widened or left in memory, translated again |
 | deopt | a speculation failed in the loop (int overflow, -0, a bound, a type): aux a slot to widen, `JIT_AUX_LEARN`, `JIT_AUX_NO_INLINE` or none |
 | budget | every `JIT_BUDGET` iterations, and in a loop that calls once its calls count for a poll (`interrupt_counter`, as the interpreter counts them): the interpreter's safe point (interrupts, collection) runs |
-| throw | a call made through the helper threw |
+| cold | a block the recorded runs did not reach: it is marked, translated again after `JIT_COLD_BATCH` of them |
+| throw | a call made through the helper threw (the interpreter makes it again, its callee rethrows); aux `JIT_AUX_PENDING`: an instruction made by `jit_step` threw, the interpreter unwinds |
+
+## Why code stays in the interpreter
+
+`WREN_JS_PROFILE=<prefix>` (or `jsengine run -jit -jit-trace`) ends the page's profile with what the JIT said, counted: each
+deopt, what it refused or left to the interpreter's code, and at each interrupt check where the interpreter was
+(`jit: sample in ...`, `jit_note_sample`). `compiled, interpreted here` is mostly compiled code: its budget exit is where it polls.
 
 ## Tests
 

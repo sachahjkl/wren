@@ -100,11 +100,15 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 	ret_val: Value
 	prev_op := Opcode.invalid
 
-	// a coroutine resumed with throw() enters straight into the unwinder with the exception pending
-	exc := f.pending_throw
-	f.pending_throw = false
+	// a coroutine resumed with throw(), or compiled code that left with an exception pending (a frame the hot loop or
+	// a call moved to): straight into the unwinder
+	exc := false
 
 	frames: for {
+		if f.pending_throw {
+			f.pending_throw = false
+			exc = true
+		}
 		b = f.bc
 		code = b.code
 		stack = f.stack[:max(int(b.stack_size), 1)]
@@ -118,25 +122,27 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 		caller_ctx = f.caller_ctx != nil ? f.caller_ctx : ctx
 		var_refs = f.closure_refs
 		ctx = f.ctx
-		if !exc && pc == 0 && gc_should_run(rt) && !gc_safepoint(ctx) {exc = true}
+		if !exc && pc == 0 && f.recording != &jit_stepping && gc_should_run(rt) && !gc_safepoint(ctx) {exc = true}
 		for {
 		if !exc {
 			// The commonest instructions run in interp_hot (interp_hot.odin), a loop that calls nothing, whose
 			// few live values stay in registers. It returns with pc on the first instruction it does not
 			// handle (or whose fast path does not apply), for the full dispatch below.
 			when JSRT_TRACE_LAST_OP {trace_last_bc = b}
-			nf: ^Frame
-			moved, thrown: bool
-			nf, pc, sp, moved, thrown = interp_hot(ctx, rt, f, pc, sp)
-			if thrown {exc = true}
-			if moved {
-				// the hot loop moved to another frame (a call or a return); reload the registers
-				f = nf
-				f.pc = pc
-				f.sp = sp
-				continue frames
+			if f.recording == nil {
+				nf: ^Frame
+				moved, thrown: bool
+				nf, pc, sp, moved, thrown = interp_hot(ctx, rt, f, pc, sp)
+				if thrown {exc = true}
+				if moved {
+					// the hot loop moved to another frame (a call or a return); reload the registers
+					f = nf
+					f.pc = pc
+					f.sp = sp
+					continue frames
+				}
+				if thrown {continue}
 			}
-			if thrown {continue}
 			if pc >= len(code) {
 				// only reachable with inconsistent bytecode: fail the call rather than the process
 				throw_internal_error(ctx, cat(ctx, "bytecode ran past its end in ", atom_utf8(rt, b.func_name), " after ", fmt_opcode(prev_op)))
@@ -146,6 +152,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 			op := Opcode(code[pc])
 			prev_op = op
 			when JSRT_TRACE_LAST_OP {trace_last_op = op; trace_last_bc = b}
+			if f.recording != nil {jit_record(f, op, pc, sp)}
 			pc += 1
 			#partial switch op {
 			case .push_i32:
@@ -1020,7 +1027,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				if d < 0 {
 					if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
 						jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
-						if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {ret_val = stack[0]; returning = true}
+						if jr == .resume {pc = jpc; sp = jsp; exc = jit_took_throw(f)} else if jr == .ret {ret_val = stack[0]; returning = true}
 					}
 				}
 			case .goto16:
@@ -1030,7 +1037,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				if d < 0 {
 					if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
 						jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
-						if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {ret_val = stack[0]; returning = true}
+						if jr == .resume {pc = jpc; sp = jsp; exc = jit_took_throw(f)} else if jr == .ret {ret_val = stack[0]; returning = true}
 					}
 				}
 			case .goto8:
@@ -1040,7 +1047,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				if d < 0 {
 					if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
 						jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
-						if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {ret_val = stack[0]; returning = true}
+						if jr == .resume {pc = jpc; sp = jsp; exc = jit_took_throw(f)} else if jr == .ret {ret_val = stack[0]; returning = true}
 					}
 				}
 			case .if_true, .if_false:
@@ -1055,7 +1062,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 					if d < 0 {
 						if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
 							jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
-							if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {ret_val = stack[0]; returning = true}
+							if jr == .resume {pc = jpc; sp = jsp; exc = jit_took_throw(f)} else if jr == .ret {ret_val = stack[0]; returning = true}
 						}
 					}
 				}
@@ -1071,7 +1078,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 					if d < 0 {
 						if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
 							jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
-							if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {ret_val = stack[0]; returning = true}
+							if jr == .resume {pc = jpc; sp = jsp; exc = jit_took_throw(f)} else if jr == .ret {ret_val = stack[0]; returning = true}
 						}
 					}
 				}
@@ -1648,6 +1655,12 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 					continue frames
 				}
 				return finish(f, rt, ret_val, root_base)
+			}
+			if f.recording == &jit_stepping {
+				// one instruction for compiled code (jit_step): the frame as it left it, an exception pending
+				f.pc = pc
+				f.sp = sp
+				return UNDEFINED, exc ? .exception : .ret
 			}
 			if !exc {continue}
 		}

@@ -16,6 +16,7 @@ W_ELSE :: 0x05
 W_END :: 0x0B
 W_BR :: 0x0C
 W_BR_IF :: 0x0D
+W_BR_TABLE :: 0x0E
 W_RETURN :: 0x0F
 W_CALL :: 0x10
 W_CALL_INDIRECT :: 0x11
@@ -109,7 +110,7 @@ W_I64_REINTERPRET_F64 :: 0xBD
 
 Wbuf :: [dynamic]u8
 
-w_u8 :: proc(b: ^Wbuf, x: u8) {append(b, x)}
+w_u8 :: proc(b: ^Wbuf, x: u8) {list_push(b, x)}
 
 w_uleb :: proc(b: ^Wbuf, v: u64) {
 	x := v
@@ -117,10 +118,10 @@ w_uleb :: proc(b: ^Wbuf, v: u64) {
 		bt := u8(x & 0x7f)
 		x >>= 7
 		if x == 0 {
-			append(b, bt)
+			list_push(b, bt)
 			return
 		}
-		append(b, bt | 0x80)
+		list_push(b, bt | 0x80)
 	}
 }
 
@@ -130,10 +131,10 @@ w_sleb :: proc(b: ^Wbuf, v: i64) {
 		bt := u8(x & 0x7f)
 		x >>= 7
 		if (x == 0 && bt & 0x40 == 0) || (x == -1 && bt & 0x40 != 0) {
-			append(b, bt)
+			list_push(b, bt)
 			return
 		}
-		append(b, bt | 0x80)
+		list_push(b, bt | 0x80)
 	}
 }
 

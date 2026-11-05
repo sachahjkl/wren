@@ -9,6 +9,7 @@
 //   jsengine startup [-image m.wasm] [-raw] [-n count]
 //                                               measures realm creation (instantiate + start) and its memory
 //   jsengine verify [-jit-threshold n] [-jit-step] file.js...
+//   jsengine reach file.js   (the JIT: nothing refused, the hot code compiled)
 //                                               runs each script interpreted and with the JIT: same output
 //                                               measures realm creation (instantiate + start) and its memory
 // Only the engine's own imports are provided (console, errors, time zone, clock): anything of the web API traps.
@@ -20,6 +21,7 @@ import "core:fmt"
 import "core:os"
 import "core:path/filepath"
 import "core:slice"
+import "core:strconv"
 import "core:strings"
 import "core:time"
 import "wb:js"
@@ -134,7 +136,12 @@ performance_now :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 }
 
 jit: js.Jit_Settings
+JIT_TRACE_BYTES :: 1 << 20
+REACH_SAMPLE :: "jit: sample in "
+REACH_COMPILED :: "compiled"
+REACH_COMPILED_SHARE :: 4   // at least four interrupt checks in compiled code for one elsewhere
 jit_stats_wanted: bool
+jit_trace_wanted: bool   // -jit-trace: what the JIT refused and left, counted, at the end of a run
 
 engine_jit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	context = base.process_context()
@@ -232,6 +239,62 @@ realm_new :: proc(image: []byte, raw: bool, call_ms: i64 = -1, kind := js.Realm_
 	return Realm{inst = inst}, true
 }
 
+jit_trace_start :: proc(inst: ^wasm.Instance) {
+	on := [1]u32{1}
+	wasm.call_raw(inst, "wj_profile_set", on[:])
+	wasm.call_raw(inst, "wj_jit_trace", on[:])
+}
+
+// The lines of the JIT in the profile of the page's functions: "count<TAB>count<TAB>jit: ...".
+jit_trace_lines :: proc(inst: ^wasm.Instance) -> []string {
+	r, res := wasm.call_i32(inst, "wj_alloc", i32(JIT_TRACE_BYTES))
+	if res != .Ok || r == 0 { return nil }
+	argv := [2]u32{u32(r), JIT_TRACE_BYTES}
+	if wasm.call_raw(inst, "wj_profile_dump", argv[:], 1) != .Ok { return nil }
+	text := string(wasm.guest_bytes(inst, u64(u32(r)), u64(argv[0])))
+	lines := make([dynamic]string, context.temp_allocator)
+	for line in strings.split_lines(text, context.temp_allocator) {
+		if strings.contains(line, "\tjit: ") { append(&lines, strings.clone(line, context.temp_allocator)) }
+	}
+	return lines[:]
+}
+
+jit_trace_print :: proc(inst: ^wasm.Instance) {
+	for line in jit_trace_lines(inst) { fmt.eprintln(line) }
+}
+
+// jsengine reach file.js: the script with the JIT, as a page runs it (the default thresholds, compiled synchronously so that
+// the result does not depend on a compile thread): nothing refused, and most of the interpreter's interrupt checks in
+// compiled code (at its budget exits) rather than in code it left to the interpreter.
+cmd_reach :: proc(args: []string) {
+	c := parse_common(args)
+	jit.enabled = true
+	jit.background_threads = 0
+	setup()
+	image := read_file(c.image)
+	r, ok := realm_new(image, c.raw)
+	if !ok { os.exit(1) }
+	jit_trace_start(r.inst)
+	for path in c.rest {
+		st := js.eval_script(r.inst, read_file(path), path)
+		if st != .Ok { fmt.eprintln("reach: the script failed:", r.inst.last_error); os.exit(1) }
+		js.run_jobs(r.inst)
+	}
+	st, _ := js.jit_stats(r.inst)
+	compiled, other := 0, 0
+	for line in jit_trace_lines(r.inst) {
+		k := strings.index(line, REACH_SAMPLE)
+		if k < 0 { continue }
+		n, _ := strconv.parse_int(line[:strings.index_byte(line, '\t')])
+		if strings.has_prefix(line[k + len(REACH_SAMPLE):], REACH_COMPILED) { compiled += n } else { other += n; fmt.eprintln(line) }
+	}
+	fmt.printfln("reach: %d translated, %d refused, %d checks in compiled code, %d elsewhere", int(st.compiled), int(st.refused), compiled, other)
+	if st.refused > 0 || compiled == 0 || other * REACH_COMPILED_SHARE > compiled {
+		fmt.eprintln("reach: FAILED")
+		os.exit(1)
+	}
+}
+
 print_jit_stats :: proc(inst: ^wasm.Instance) {
 	if !jit_stats_wanted { return }
 	st, ok := js.jit_stats(inst)
@@ -269,6 +332,7 @@ main :: proc() {
 	case "startup": cmd_startup(os.args[2:])
 	case "mem": cmd_mem(os.args[2:])
 	case "verify": cmd_verify(os.args[2:])
+	case "reach": cmd_reach(os.args[2:])
 	case: usage()
 	}
 }
@@ -324,6 +388,7 @@ parse_common :: proc(args: []string) -> (c: Common) {
 		case "-jit-loop": i += 1; jit.loop_threshold = max(1, tooling.parse_digits(args[i]))
 		case "-jit-off": i += 1; jit.off_paths = tooling.parse_digits(args[i])
 		case "-jit-stats": jit_stats_wanted = true
+		case "-jit-trace": jit_trace_wanted = true
 		case "--pref": i += 1
 		case: append(&c.rest, a)
 		}
@@ -386,6 +451,7 @@ cmd_run :: proc(args: []string) {
 	r, ok := realm_new(image, c.raw)
 	if !ok { os.exit(1) }
 	if c.profile != "" && !wasm.profile_start(r.inst, image) { fmt.eprintln("jsengine: the profiler did not start"); os.exit(1) }
+	if jit_trace_wanted { jit_trace_start(r.inst) }
 	for code in c.evals {
 		js.eval_script(r.inst, transmute([]byte)code, "<command line>")
 		js.run_jobs(r.inst)
@@ -400,6 +466,7 @@ cmd_run :: proc(args: []string) {
 		if err := wasm.profile_finish(r.inst, c.profile); err != "" { fmt.eprintln("jsengine: profile:", err) }
 	}
 	print_jit_stats(r.inst)
+	if jit_trace_wanted { jit_trace_print(r.inst) }
 	wasm.destroy(r.inst)
 	os.exit(uncaught > 0 ? 1 : 0)
 }

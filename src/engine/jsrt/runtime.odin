@@ -176,6 +176,7 @@ Runtime :: struct {
 	gc_max_pause_ns:  i64,
 	peak_heap_bytes:  i64,
 	gray:           [dynamic]^Cell,
+	gc_shapes:      [dynamic]^Shape,   // during a collection: the live shapes with transitions (weak: gc_sweep drops the dead ones)
 	temp_roots:     [dynamic]^Cell, // cells created or held by native code; see gc.odin
 	ext_cells:      [dynamic]^Cell, // cells with host references (Cell.ext > 0), the host roots (gc.odin)
 	host_classes:   [dynamic]Class_Hooks, // classes the host registered (host_class.odin), by id - FIRST_HOST_CLASS
@@ -387,6 +388,7 @@ runtime_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) ->
 	rt.gc_threshold = GC_STRESS_BYTES > 0 ? GC_STRESS_BYTES : GC_MIN_ALLOCATION
 	rt.exception = UNINITIALIZED
 	rt.gray = make([dynamic]^Cell, 0, GC_LIST_INITIAL_CAP, allocator)
+	rt.gc_shapes = make([dynamic]^Shape, 0, GC_LIST_INITIAL_CAP, allocator)
 	rt.temp_roots = make([dynamic]^Cell, 0, GC_LIST_INITIAL_CAP, allocator)
 	rt.ext_cells = make([dynamic]^Cell, allocator)
 	rt.host_classes = make([dynamic]Class_Hooks, allocator)
@@ -426,6 +428,7 @@ runtime_free :: proc(rt: ^Runtime) {
 	for &seg in rt.vstack {delete(seg.data, allocator)}
 	delete(rt.vstack)
 	delete(rt.gray)
+	delete(rt.gc_shapes)
 	delete(rt.temp_roots)
 	delete(rt.ext_cells)
 	delete(rt.host_classes)
@@ -500,6 +503,7 @@ poll_interrupt :: proc(ctx: ^Context) -> bool {
 	rt.interrupt_counter += 1
 	if rt.interrupt_counter < INTERRUPT_POLL_EVERY {return false}
 	rt.interrupt_counter = 0
+	if jit_cfg.trace {jit_note_sample(rt)}
 	if rt.config.interrupt != nil && rt.config.interrupt(rt, rt.config.interrupt_user) {
 		throw_uncatchable(ctx, "interrupted")
 		return true
