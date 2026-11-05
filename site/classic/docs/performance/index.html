@@ -88,6 +88,7 @@
 <li><a href="#what-changed-round-29-the-jit-reaches-what-real-pages-run">What changed, round 29: the JIT reaches what real pages run</a></li>
 <li><a href="#what-changed-round-30-what-holds-a-first-load-measured-task-by-task">What changed, round 30: what holds a first load, measured task by task</a></li>
 <li><a href="#what-changed-round-31-the-window-thread-during-a-first-load-what-the-interpreter-left-behind">What changed, round 31: the window thread during a first load, what the interpreter left behind</a></li>
+<li><a href="#what-changed-round-32-css-off-the-pages-thread">What changed, round 32: CSS off the page's thread</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
@@ -2576,6 +2577,48 @@ npr.org's 56 % is one function, OneTrust's <code>OtAutoBlock.js</code>: 2 500 bl
 <p><strong>Not done, and why.</strong> A site with many callees compiled without the helper (a generic <code>j_direct_call</code>): the compiled state machine is 163 ns, 8 to 13 in Node; the frame's size is read from the bytecode there, a day's work, and it is reached after a million calls. Inline caches in the interpreter: <code>obj.f</code> is 460 instructions for a sixth property, 340 for the first: what a cache would save is the linear search, not the bulk. A lazy <code>prototype</code>: a new kind of property in every switch on <code>Prop_Kind</code>; a closure's object and prototype would be one allocation less of three; not measured. Generations: the collection is 10 to 13 % of the engine's samples. <code>new F</code>: another agent's frames this week: 5 237 instructions, 3.4 us under load, <code>call_internal</code>, a nested <code>interp_run</code>.</p>
 <p><strong>Not verified.</strong> The release build, memory (the shapes are shared, nothing should grow), WPT, the full suite, AddressSanitizer. Long-running pages: <code>macro.js</code>, <code>macro.js</code>: geometric mean 0.94 and 0.82 of the base in two series under load, cases from 0.3 to 1.4 that do not repeat from one series to the next: not claimed; the counts of instructions fell in every case compared.</p>
 <p>Tests: <code>jsengine cost</code>, <code>jsengine run hotcheck.js</code> in the step of test262 with the JIT, <code>judge capi</code>, <code>restyle_dom_parallel_settles_the_controls</code>, <code>restyle_dom_unions_of_subjects_are_kept</code>, <code>jsload_large_inline_scripts_compile_ahead</code>; <code>test_all -Quick -NoAsan</code> on test262 with and without the JIT, jitcheck, the JavaScript steps, the unit tests of style.</p>
+<h2 id="what-changed-round-32-css-off-the-pages-thread"><a class="anchor" href="#what-changed-round-32-css-off-the-pages-thread" aria-hidden="true">#</a>What changed, round 32: CSS off the page's thread</h2>
+<p>What the chrome frames of rounds 22 and 24 showed of a busy page was its transform and opacity animations by the clock. The reference is another browser's demo: a header that shrinks its
+<code>height</code>, a logo its <code>font-size</code>, a reading bar that grows its <code>width</code>, posts that widen as they cross the viewport, all in CSS on <code>scroll()</code> and <code>view()</code>, following the finger under tasks of
+200 ms back to back. Wren had no scroll-driven animations at all. It has them now, on the main path (<code>style/scroll_timeline.odin</code>, <code>page/scroll_timelines.odin</code>, <code>page/web_animations_scroll.odin</code>), and
+they, with most of what CSS animates, go on in the chrome frames (<code>browser/shell_shown.odin</code>):</p>
+<div class="table-box"><table>
+<thead><tr><th>under a task</th><th>how a chrome frame shows it</th><th>cost of a frame</th></tr></thead>
+<tbody>
+<tr><td><code>transform</code>, <code>opacity</code> by the clock or the scroll</td><td>the matrix of the box's space, the alpha of its group, set for one paint</td><td>nothing is recorded</td></tr>
+<tr><td>colours, shadows, radii, filters, clip-paths (<code>style.RECORD_PROPS</code>) by the clock or the scroll, and what inherits them</td><td>the box's style record, an overlay of the timeline's, holds the values for one paint</td><td>the chunks they are in are recorded again</td></tr>
+<tr><td><code>width</code>, <code>height</code>, <code>font-size</code>, anything else</td><td>the same records, and a whole layout pass over a layout of the tab's own (<code>Tab.shown</code>, <code>layout.run_shown</code>)</td><td>that pass (0.5 to 0.9 ms on the demo); the page is drawn directly, without its pictures</td></tr>
+<tr><td>sticky and fixed boxes</td><td>what the paint from the layout always did</td><td>nothing</td></tr>
+<tr><td><code>:hover</code></td><td>not done: see below</td><td></td></tr>
+</tbody>
+</table></div>
+<p>The third row is what made it worth a measure of its own. A script between two instructions holds nothing half way that a layout pass reads: the guest runs only between host calls, and
+<code>shell_layout_paintable</code> already says that the document, the rules, the forms and the pixels are what the page's last frame was painted from, which is what the display items' strings need
+(<code>lay.item_source</code>, <code>layout_behind</code>). A pass does not write to the document or the styles, takes no claim on the styles (<code>styled_read_caught_up</code> would free overlays the tab's layout still points at:
+<code>run_shown</code> is the pass without it), and its boxes are read by one paint: nothing of it can outlive the turn. So it needs no shadow of the boxes, no incremental pass, and no copy of the style: the
+overlay's record takes the value for that paint and is put back, as <code>Shown</code> did for matrices. What it costs is the limit: a whole pass in every frame of the chrome, hence
+<code>browser.shell.shown_layout_max_ms</code> (4), against the last whole pass the page made and the last one a chrome frame made. Past it, those animations wait for the page, as a task that changes the document
+makes every one of them wait: the frames then move the page's last pixels (test <code>a_task_that_changes_the_document_stops_the_layout_values</code>).</p>
+<p>A box with a running animation now behaves as <code>will-change</code> asks (<code>Computed.compositing</code>): it has its space or its group from the first frame. Before, an opacity that was 1 had no group, and a chrome frame could
+show nothing until the page's turn. An animation on a scroll or view timeline counts as running while its timeline is active, also out of its range: scrolling into it is the moment it must not wait.</p>
+<p><strong>Measured</strong> (<code>the_demo_frame_by_frame_under_tasks</code>, <code>build\test_all.exe -Perf</code>, <code>Timeline.every</code>: each frame read back, what it shows of the bar and the header against the scroll it shows;
+<code>examples/site/scroll_driven.html</code>, 48 notes and 12 bands, 124 animations, a quarter of a notch at every frame for 240 frames, 1000 x 700, the renderer offscreen. Edge 148 headless, the same page, the wheel
+through CDP at the same rate, 36 px every 31 ms, the frames of <code>Page.startScreencast</code> decoded the same way):</p>
+<div class="table-box"><table>
+<thead><tr><th>tasks</th><th>Wren: frames with a new width of the bar</th><th>worst gap</th><th>Edge: frames with a new width of the bar</th><th>worst gap</th></tr></thead>
+<tbody>
+<tr><td>50 ms</td><td>228 of 363</td><td>33 ms</td><td>81 of 164</td><td>133 ms</td></tr>
+<tr><td>200 ms</td><td>225 of 279</td><td>33 ms</td><td>40 of 88</td><td>417 ms</td></tr>
+<tr><td>500 ms</td><td>228 of 254</td><td>33 ms</td><td>15 of 47</td><td>1000 ms</td></tr>
+</tbody>
+</table></div>
+<p>The 33 ms is the read-back of <code>Timeline.every</code>, at 30 frames a second, not the frames: nothing else is drawn between two of them. In Edge the scroll goes on in the compositor, the layout properties come with the main
+thread: one new width per task. In Wren they come in every frame made under the task; the frames that show no new width are the page's own (the first after a task, at the offset the last chrome frame showed). The
+lag of the bar against the offset is the same in both when it is read against the range the document had at the top (the notes widen, and the document shrinks as they do): 20 px on average for both at 200 ms, 66 px in Edge at 500.</p>
+<p><strong>Tried and left.</strong> Offsets of keyframes at a named range made again when the range moved, at each sample: a layout that changes the document's height moved every range, and chrome frames found every animation's frames
+out of date until the next tick (a whole task without movement, every other task on the demo). They stay readable now, and are made again at the tick (<code>Anim_Run.frames_moved</code>). <code>:hover</code> of paint-only rules: a chrome frame can tell the
+hit element from the layout, but what a rule gives it is a restyle, and the cascade writes the styles it reads; a table of what each <code>:hover</code> rule would give, made at the page's turn, is
+as long as the rules that match. Left for the day a page shows the need.</p>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
