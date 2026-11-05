@@ -279,6 +279,7 @@ deopt, what it refused or left to the interpreter's code, and at each interrupt 
 (<code>jit: sample in ...</code>, <code>jit_note_sample</code>). <code>compiled, interpreted here</code> is mostly compiled code: its budget exit is where it polls.</p>
 <h2 id="tests"><a class="anchor" href="#tests" aria-hidden="true">#</a>Tests</h2>
 <ul>
+<li><code>build\jsengine_jit.exe cost --pref wasm.wasmtime.fuel=true examples\jsbench\cost.js</code>: what the interpreter's paths cost in Wasm instructions, each against its limit; <code>run examples\jsbench\hotcheck.js</code>: what its hot loop answers, against the language (the file passes in Node).</li>
 <li><code>build\jsengine_jit.exe verify -jit -jit-sync examples\jsbench\jitcheck.js</code>: the script runs interpreted, then with
 the JIT, and what it prints must be the same. Its loops run long enough to be compiled, then are called again with
 other shapes, prototypes, getters, frozen objects, proxies, values of other types, more shapes than a site takes,
