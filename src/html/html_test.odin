@@ -139,6 +139,90 @@ garbage_does_not_crash :: proc(t: ^testing.T) {
 	testing.expect(t, r.ok)
 }
 
+@(private = "file")
+Scan_Found :: struct { list: [dynamic]string }
+
+// `<tag name>=<value>` of each attribute named in `names`, in order: what the scanner reports of `markup`, fed `step` bytes at a time.
+@(private = "file")
+scan_all :: proc(markup: string, step: int, scripting := true) -> string {
+	found: Scan_Found
+	found.list = make([dynamic]string, context.temp_allocator)
+	s := Preload_Scanner{scripting = scripting, user = &found}
+	defer scan_destroy(&s)
+	s.on_tag = proc(user: rawptr, t: ^Scan_Tag) {
+		f := (^Scan_Found)(user)
+		out := strings.concatenate({t.closing ? "/" : "", t.name}, context.temp_allocator)
+		for a in t.attrs { out = strings.concatenate({out, " ", a.name, "=", a.bad ? "?" : a.value}, context.temp_allocator) }
+		append(&f.list, out)
+	}
+	data := transmute([]byte)markup
+	for n := step; ; n += step {
+		scan_feed(&s, data[:min(n, len(data))])
+		if n >= len(data) { break }
+	}
+	return strings.join(found.list[:], "|", context.temp_allocator)
+}
+
+// What a tag holds, whichever byte the document is cut at.
+@(test)
+preload_scan_reads_tags_across_any_cut :: proc(t: ^testing.T) {
+	markup := `<!DOCTYPE html><HTML><HEAD><Script SRC="a.js" async></script><link rel=stylesheet href='b.css'><img src=c.png alt="x > y">` +
+		`<picture><source srcset="d.webp 2x"></picture><meta charset=utf-8></head><img src="e&amp;f&#38;g&#x26;h">`
+	want := `script src=a.js async=|link rel=stylesheet href=b.css|img src=c.png alt=x > y|picture|source srcset=d.webp 2x|/picture|meta charset=utf-8|img src=e&f&g&h`
+	for step in 1 ..= len(markup) {
+		got := scan_all(markup, step)
+		testing.expectf(t, got == want, "cut every %d bytes: %s", step, got)
+	}
+}
+
+// The tokenizer's states: nothing is reported from where a tag is no tag.
+@(test)
+preload_scan_keeps_out_of_what_is_not_markup :: proc(t: ^testing.T) {
+	cases := [][2]string{
+		{`<!-- <img src=a> --><img src=b>`, `img src=b`},
+		{`<!--> <img src=b>`, `img src=b`},
+		{`<!---> <img src=b>`, `img src=b`},
+		{`<!-- --!> <img src=b>`, `img src=b`},
+		{`<!doctype html "<img src=a>"><img src=b>`, `img src=b`},
+		{`<? <img src=a> ?><img src=b>`, `img src=b`},
+		{`</ <img src=a>><img src=b>`, `img src=b`},
+		{`<script>"<img src=a>"</script><img src=b>`, `script|img src=b`},
+		{`<script>"</scripty><img src=a>"</script><img src=b>`, `script|img src=b`},
+		{`<script><!-- <script> </script> <img src=a> --> </script><img src=b>`, `script|img src=b`},
+		{`<script><!-- </script><img src=b>`, `script|img src=b`},
+		{`<script><!-- --> <script></script><img src=b>`, `script|img src=b`},
+		{`<style><img src=a></style><img src=b>`, `img src=b`},
+		{`<title><img src=a></title><img src=b>`, `img src=b`},
+		{`<textarea><img src=a></TEXTAREA ><img src=b>`, `img src=b`},
+		{`<xmp><img src=a></xmp><iframe><img src=a></iframe><noembed><img src=a></noembed><noframes><img src=a></noframes><img src=b>`, `img src=b`},
+		{`<template><img src=a><template><img src=a></template></template><img src=b>`, `img src=b`},
+		{`<noscript><img src=a></noscript><img src=b>`, `img src=b`},
+		{`<svg><title><image href=a></title><script>x</script><img src=a></svg><img src=b>`, `img src=b`},
+		{`<svg/><img src=b>`, `img src=b`},
+		{`<math><![CDATA[</math><img src=a>]]></math><img src=b>`, `img src=b`},
+		{`<plaintext><img src=a>`, ``},
+		{`<a title="<img src=a>" href='<img src=a>'><img src=b>`, `img src=b`},
+		{`a < b <1 <img src=b>`, `img src=b`},
+	}
+	for c, i in cases {
+		for step in ([]int{1, 2, 3, 5, 7, len(c[0])}) {
+			got := scan_all(c[0], step)
+			testing.expectf(t, got == c[1], "case %d, cut every %d bytes: %q gives %q", i, step, c[0], got)
+		}
+	}
+	testing.expect_value(t, scan_all(`<noscript><img src=a></noscript>`, 4, scripting = false), `img src=a`)
+}
+
+// Values: exact, or said not to be.
+@(test)
+preload_scan_decodes_values_or_says_it_cannot :: proc(t: ^testing.T) {
+	testing.expect_value(t, scan_all(`<img src="a?x=1&y=2&copy=3&amp;z&#65;">`, 64), `img src=a?x=1&y=2&copy=3&zA`)
+	testing.expect_value(t, scan_all(`<img src="a&eacute;b">`, 64), `img src=?`)        // a reference this scanner does not know
+	testing.expect_value(t, scan_all(`<img src="a&copy">`, 64), `img src=?`)            // one without its `;`
+	testing.expect_value(t, scan_all(`<img src="a&parameter/b">`, 64), `img src=a&parameter/b`)   // longer than any of those: text
+	testing.expect_value(t, scan_all(`<img src=a src=b SRC=c>`, 64), `img src=a`)       // (the first of a name counts)
+}
+
 @(test)
 declarative_shadow_roots :: proc(t: ^testing.T) {
 	d := dom.document_create()

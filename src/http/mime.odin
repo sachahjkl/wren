@@ -22,6 +22,13 @@ mime_destroy :: proc(m: ^Mime) {
 	m^ = {}
 }
 
+mime_clone :: proc(m: Mime, allocator := context.allocator) -> Mime {
+	c := Mime{type = strings.clone(m.type, allocator), subtype = strings.clone(m.subtype, allocator), allocator = allocator}
+	c.params = make([dynamic]Mime_Param, 0, len(m.params), allocator)
+	for p in m.params { append(&c.params, Mime_Param{strings.clone(p.name, allocator), strings.clone(p.value, allocator)}) }
+	return c
+}
+
 mime_essence :: proc(m: Mime, allocator := context.temp_allocator) -> string {
 	return strings.concatenate({m.type, "/", m.subtype}, allocator)
 }

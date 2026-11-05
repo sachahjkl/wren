@@ -112,6 +112,10 @@ Task :: struct {
 	cleanup:   base.Cleanup_Id,
 	collect:   bool,
 	collected: [dynamic]byte,
+	peek:      bool,            // Start_Desc.peek
+	follows:   ^Spec_Entry,     // it makes no request: it gets what the one made ahead brings (speculative.odin)
+	follow_live: bool,          // ... and it had its first turn: what comes is passed on
+	speculative: bool,          // Request_Desc.speculative
 
 	cache:     Task_Cache,      // the HTTP cache's view of the request (http_cache.odin)
 	filter:    Body_Filter,     // the interceptor's rewrite of the body (intercept.odin)
@@ -147,6 +151,7 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 		referrer_policy = r.referrer_policy, no_referrer = r.no_referrer, user_activation = r.user_activation,
 		initiator = r.initiator, max_body = r.max_body, on_event = d.on_event, user = d.user, scope = d.scope, collect = d.collect,
 		script = r.script, parser_inserted = r.parser_inserted, ping = r.ping, skip_service_worker = r.skip_service_worker,
+		peek = d.peek, speculative = r.speculative,
 	}
 	t.headers = http.headers_make()
 	t.raw_headers = http.headers_make()
@@ -179,7 +184,11 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 	tp.self = h
 	l.next_obs += 1
 	tp.obs_id = l.next_obs
-	if observing(l) {
+	if tp.early_error == .None { tp.follows = spec_claim(l, d) }
+	if tp.follows != nil {
+		append(&tp.follows.followers, h)
+		tp.obs_done = true   // (the row is the one of the request made ahead)
+	} else if observing(l) {
 		init_url := r.initiator != nil ? r.initiator.location.href : ""
 		observe(tp, Observed{kind = .Started, scope = d.scope, initiator = r.initiator, method = tp.method, url = ok ? tp.target.href : r.url, destination = r.destination, mode = r.mode,
 			navigate = r.mode == .Navigate, parser = r.parser_inserted, initiator_url = init_url})
@@ -197,6 +206,10 @@ kick :: proc(data: rawptr) {
 	if t == nil { return }
 	if t.early_error != .None {
 		fail(t, t.early_error, early_detail(t.early_error))
+		return
+	}
+	if t.follows != nil {
+		spec_follow(t)
 		return
 	}
 	if k.l.hold && (t.target.scheme == "http" || t.target.scheme == "https") {
@@ -232,6 +245,7 @@ release :: proc(l: ^Loader, h: base.Handle) -> bool {
 	t, ok := base.pool_remove(&l.tasks, h)
 	if !ok { return false }
 	if !t.obs_done && observing(l) { t.obs_done = true; observe(&t, Observed{kind = .Failed, error = .Aborted, detail = "cancelled", bytes = t.obs_bytes}) }
+	if t.follows != nil { spec_forget(t.follows, h) }
 	cancel_net(l, &t)
 	cache_task_release(l, &t)
 	url.destroy(&t.target)
@@ -755,6 +769,11 @@ main_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 		if t.filter.push != nil { clear(&t.filtered); t.filter.push(t.filter.user, data, &t.filtered); data = t.filtered[:] }
 		if t.collect {
 			append(&t.collected, ..data)
+			if t.peek && t.on_event != nil {
+				// (not a piece of a body for the observers: they get the whole of it on Done)
+				out := Event{kind = .Data, data = t.collected[:]}
+				t.on_event(t.user, t.self, &out)
+			}
 		} else if len(data) > 0 || t.filter.push == nil {
 			out := Event{kind = .Data, data = data}
 			deliver(t, &out)
@@ -1231,7 +1250,7 @@ content_security_check :: proc(t: ^Task) -> bool {
 	} else {
 		v = csp.check_request(&env.policies, kind, t.target, env.origin, t.redirected, t.nonce)
 	}
-	for viol in v.violations { if env.on_violation != nil { env.on_violation(env.violation_user, viol) } }
+	if !t.speculative { for viol in v.violations { if env.on_violation != nil { env.on_violation(env.violation_user, viol) } } }
 	if !v.allowed {
 		name := len(v.violations) > 0 ? v.violations[0].directive : "?"
 		fail(t, .Blocked_Csp, fmt.tprintf("blocked by Content-Security-Policy (%s)", name))

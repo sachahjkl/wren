@@ -512,7 +512,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 			initiator = load.has_initiator ? &load.initiator : nil, user_activation = user_activation,
 			method = method, body = body, headers = headers, cache = cache,
 		},
-		on_event = document_event, user = load, scope = t.nav, collect = true,
+		on_event = document_event, user = load, scope = t.nav, collect = true, peek = true,
 	})
 	return
 }
@@ -784,8 +784,11 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		rp, _ := http.get_header(r.headers, "referrer-policy")
 		page.apply_response_headers(load.page, csp_h, ro_h, rp)
 		page.apply_isolation_headers(load.page, r.headers)
+		if load.action == .Render && !load.view_source { page.preload_scan_begin(load.page, load.charset, load.mime) }
 	case .Data:
+		if load.page != nil { page.preload_scan_feed(load.page, ev.data) }
 	case .Done:
+		if load.page != nil { page.preload_scan_end(load.page) }
 		document_loaded(app, load, ev.data)
 	case .Failed:
 		load.task = base.NIL_HANDLE

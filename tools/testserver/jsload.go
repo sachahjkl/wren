@@ -9,6 +9,8 @@ package testserver
 //	/jsload/hits?path=P                                   how many times /jsload/gen or /jsload/files was asked for
 //	                                                      with path and query P (preload: one download per script)
 //	/jsload/cors?code=JS                                  the code with Access-Control-Allow-Origin: * (crossorigin)
+//	/jsload/held?head=H&until=P&ms=N                      a document: H, then, once P was asked for (hits) or after N ms, a
+//	                                                      <body data-asked=yes|no>: what its bytes alone made leave
 
 import (
 	"fmt"
@@ -22,6 +24,9 @@ import (
 	"sync"
 	"time"
 )
+
+// How often /jsload/held looks at the hits.
+const jsloadHeldPoll = 5 * time.Millisecond
 
 var jsloadHits = struct {
 	sync.Mutex
@@ -123,6 +128,25 @@ func registerJSLoadHandlers(mux *http.ServeMux) {
 		}
 		fmt.Fprintf(&sb, "big_%s = f_%s_1(10, 3);\nconsole.log(\"big %s \" + %d);\n", q.Get("id"), q.Get("id"), q.Get("id"), kb)
 		io.WriteString(w, sb.String())
+	})
+	mux.HandleFunc("/jsload/held", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		io.WriteString(w, q.Get("head"))
+		w.(http.Flusher).Flush()
+		ms, _ := strconv.Atoi(q.Get("ms"))
+		asked := "no"
+		for end := time.Now().Add(time.Duration(ms) * time.Millisecond); time.Now().Before(end); time.Sleep(jsloadHeldPoll) {
+			jsloadHits.Lock()
+			n := jsloadHits.m[q.Get("until")]
+			jsloadHits.Unlock()
+			if n > 0 {
+				asked = "yes"
+				break
+			}
+		}
+		fmt.Fprintf(w, `<body data-asked=%s></body>`, asked)
 	})
 	mux.HandleFunc("/jsload/hits", func(w http.ResponseWriter, r *http.Request) {
 		jsloadHits.Lock()

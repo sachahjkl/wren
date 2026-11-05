@@ -95,6 +95,7 @@ Request_Desc :: struct {
 	cache:           Cache_Mode,        // Request.cache (http_cache.odin)
 	ping:            bool,              // a beacon: filters see it as ping, not as a fetch
 	skip_service_worker: bool,          // service-workers mode "none": no service worker may answer it
+	speculative:     bool,              // asked ahead of the element (speculative.odin): a refusal of the policy reports nothing
 }
 
 // The "environment settings object" of a document: who is asking.
@@ -117,6 +118,7 @@ Environment :: struct {
 	cross_origin_isolated: bool,        // HTML's capability (apply_isolation_headers in src/page/page.odin)
 	origin_keyed:    bool,              // its agent cluster is keyed by origin (Origin-Agent-Cluster: ?1, or isolated): document.domain sets nothing
 	agent_cluster:   u64,               // the wasm package's number of its agent cluster: 0 until something needs one
+	speculation:     ^Speculation,      // what its document asked ahead of its parser (speculative.odin); nil: nothing
 }
 
 // Cross-Origin-Embedder-Policy.
@@ -272,4 +274,6 @@ Start_Desc :: struct {
 	user:     rawptr,
 	scope:    ^base.Scope,   // closing it cancels the task silently
 	collect:  bool,          // one Done event carrying the whole body instead of Data chunks
+	peek:     bool,          // collect: a Data event too when a piece of the network's body came, `data` being all there is so far (the document's preload scanner)
+	preload:  bool,          // a <link rel=preload>: a request made ahead serves it and stays for the element that uses it (speculative.odin)
 }

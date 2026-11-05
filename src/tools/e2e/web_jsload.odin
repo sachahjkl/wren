@@ -44,6 +44,9 @@ POLL_NEVER_MS :: 600_000         // a poll of the waiting page that never comes 
 PUMP_SLICE_MS :: 20
 PUMP_SCRIPT_MS :: 30             // past the slice
 SHEET_IN_WAIT_SECONDS :: 20.0    // far below the poll: only ends a run that fails
+SCAN_WAIT_SECONDS :: 10.0        // only ends a run that fails
+SCAN_SVG :: `<svg xmlns="http://www.w3.org/2000/svg" width="3" height="2"/>`
+SCAN_SVG_WIDTH :: 3
 
 SCRIPTS_IN_ORDER_PAGE :: 8       // at least: those of test_order's page that run
 FRAGMENT_PARSE_BUDGET :: 1000
@@ -964,6 +967,140 @@ jsload_ready_scripts_give_the_loop_a_turn :: proc(t: ^testing.T) {
 	wait_note(pr, "second script")
 	check(pr, in_order(pr, "first script", "a turn of the loop") && in_order(pr, "a turn of the loop", "second script"), "the loop had a turn between the two scripts")
 	close_page(pr, min_checks = 1)
+}
+
+Scan_Hits :: struct { t: ^testing.T, paths: []string }
+
+// What the preload scanner read of `markup` so far went out: the server was asked for each of `paths`.
+scan_asked :: proc(t: ^testing.T, paths: ..string) -> bool {
+	return wait_until(t, "the requests the scanner made", Scan_Hits{t, paths}, proc(w: Scan_Hits) -> bool {
+		for p in w.paths { if hits(w.t, p) != 1 { return false } }
+		return true
+	}, seconds = SCAN_WAIT_SECONDS)
+}
+
+// A document's bytes read as they arrive, cut anywhere: `first` of them, then the rest, then the end of the document.
+scan_read :: proc(pr: ^Probe, markup: string, first: int) {
+	page.preload_scan_begin(pr.p, "utf-8", "text/html")
+	page.preload_scan_feed(pr.p, transmute([]byte)markup[:first])
+	page.preload_scan_feed(pr.p, transmute([]byte)markup)
+}
+
+// Requests leave while the document arrives, and each element then takes the request made for it: the server is asked once, for a
+// response already in as for one on its way. A <link rel=preload> and the element that uses the resource share one.
+@(test)
+jsload_preload_scanner_asks_ahead_and_the_elements_take_the_requests :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	script := gen(`log("scanned script ran")`, ARRIVES_LATE_MS, "&k=scan_late")   // on its way when its element asks
+	preloaded := gen(`log("preloaded script ran")`, 0, "&k=scan_shared")          // in by then
+	sheet := css("#x { color: rgb(1, 2, 3) }", 0, "scan_sheet")
+	picture := gen(SCAN_SVG, 0, "&type=image/svg%2Bxml&k=scan_img")
+	markup := concat(`<!doctype html><head>`, PRELUDE, `<link rel=preload as=script href="`, preloaded, `"><link rel=stylesheet href="`, sheet, `"></head><body><p id=x>x</p>`,
+		`<script src="`, script, `"></script><script src="`, preloaded, `"></script><img id=i src="`, picture, `" onload="log('image ' + this.naturalWidth)">`,
+		`<script>log(getComputedStyle(document.getElementById("x")).color)</script></body>`)
+	pr := page_make(t, "scanned", testenv.url(BASE))
+	scan_read(pr, markup, strings.index(markup, "stylesheet"))   // (the cut is inside a tag)
+	check(pr, scan_asked(t, preloaded, sheet, script, picture), "each request left before the document was parsed")
+	page.preload_scan_end(pr.p)
+	made, reused := fetch.speculation_counts(pr.p.speculation)
+	check(pr, made == 4, fmt.tprintf("four requests made ahead: %d", made))
+	page_load(pr, markup)
+	page.images_sync(pr.p)
+	wait_note(pr, "rgb(1, 2, 3)")
+	wait_note(pr, fmt.tprintf("image %d", SCAN_SVG_WIDTH))
+	check(pr, in_order(pr, "scanned script ran", "preloaded script ran"), "the scripts ran in their order from those requests")
+	made, reused = fetch.speculation_counts(pr.p.speculation)
+	check(pr, reused == 5, fmt.tprintf("the elements followed them: the preload and its script, the sheet, the other script, the image: %d", reused))
+	for p in ([]string{script, preloaded, sheet, picture}) {
+		n := hits(t, p)
+		check(pr, n == 1, fmt.tprintf("%s: asked once: %d", p, n))
+	}
+	close_page(pr, min_checks = 8)
+}
+
+// What is inert is not asked for: comments, the text of scripts and of <style>, <template>, <noscript> where scripts run, a request a
+// media attribute leaves out now (its element asks for it), images of loading=lazy.
+@(test)
+jsload_preload_scanner_leaves_alone_what_is_not_markup :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	sentinel := gen(`log("sentinel")`, 0, "&k=scan_sentinel")
+	inert := []string{
+		gen("1", 0, "&k=inert_comment"), gen("2", 0, "&k=inert_text"), gen("3", 0, "&k=inert_style"), gen("4", 0, "&k=inert_template"),
+		gen("5", 0, "&k=inert_noscript"), gen("6", 0, "&k=inert_escaped"), gen("7", 0, "&k=inert_lazy"),
+	}
+	print := css("p {}", 0, "scan_print")
+	markup := concat(`<!doctype html><head>`, PRELUDE, `<!-- <script src="`, inert[0], `"></script> -->`,
+		`<script>var a = '<script src="`, inert[1], `"><\/script>'</script><style>/* <link rel=stylesheet href="`, inert[2], `"> */</style>`,
+		`<template><img src="`, inert[3], `"></template><noscript><img src="`, inert[4], `"></noscript>`,
+		`<script><!-- <script> </script><img src="`, inert[5], `"> --></script>`,
+		`<link rel=stylesheet media="print" href="`, print, `"></head><body><img loading=lazy src="`, inert[6], `"><script src="`, sentinel, `"></script></body>`)
+	pr := page_make(t, "inert", testenv.url(BASE))
+	scan_read(pr, markup, strings.index(markup, "<template>"))
+	check(pr, scan_asked(t, sentinel), "the script after them was found")
+	for p in inert {
+		n := hits(t, p)
+		check(pr, n == 0, fmt.tprintf("%s: not asked: %d", p, n))
+	}
+	check(pr, hits(t, print) == 0, "a sheet of another medium is left to its element")
+	page.preload_scan_end(pr.p)
+	page_load(pr, markup)
+	wait_note(pr, "sentinel")
+	check(pr, scan_asked(t, print), "which asks for it")
+	close_page(pr, min_checks = 9)
+}
+
+// The policies hold for what is asked ahead: the response's Content-Security-Policy refuses, silently, and the element reports the
+// violation once; a <meta> policy stops the scan; <base href> and <meta name=referrer> apply as they are read; crossorigin makes the
+// same request as the element's; integrity is the element's, whoever made the request.
+@(test)
+jsload_preload_scanner_honours_the_document_s_policies :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	other := testenv.url("http://localhost:8765/jsload/gen?code=log(1)&k=scan_other")
+	based := gen(`log("based")`, 0, "&k=scan_based")
+	sri := gen(`log("tampered")`, 0, "&k=scan_sri")
+	anonymous := gen(`log("anonymous")`, 0, "&k=scan_cors")
+	markup := concat(`<!doctype html><head>`, PRELUDE, `<base href="/jsload/some/where/"><meta name=referrer content=no-referrer>`,
+		`<script src="`, other, `"></script><script src="../..`, strings.trim_prefix(based, "/jsload"), `"></script>`,
+		`<script crossorigin=anonymous src="`, anonymous, `"></script>`,
+		`<script integrity="sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=" src="`, sri, `" onerror="log('integrity refused')"></script></head><body>`,
+		`<script>log("end")</script></body>`)
+	pr := page_make(t, "policies", testenv.url(BASE))
+	page.apply_response_headers(pr.p, {`script-src 'self' 'unsafe-inline'`}, {}, "")
+	scan_read(pr, markup, strings.index(markup, "<base"))
+	check(pr, scan_asked(t, based, anonymous, sri), "what the policy allows left, resolved against <base>")
+	check(pr, pr.p.env.referrer_policy == .No_Referrer, "and <meta name=referrer> was in force from there on")
+	check(pr, !console_says(pr, "script-src"), "what it refuses reported nothing yet")
+	page.preload_scan_end(pr.p)
+	page_load(pr, markup)
+	wait_note(pr, "end")
+	check(pr, noted(pr, "based") && noted(pr, "anonymous"), "the scripts ran")
+	check(pr, !noted(pr, "tampered") && noted(pr, "integrity refused"), "the integrity attribute refused what the request made ahead brought")
+	check(pr, hits(t, strings.trim_prefix(other, testenv.url("http://localhost:8765"))) == 0, "the server of the refused script was never asked")
+	check(pr, console_says(pr, "script-src"), "the element's refusal reported")
+	check(pr, hits(t, based) == 1 && hits(t, anonymous) == 1 && hits(t, sri) == 1, "each was asked once")
+	close_page(pr, min_checks = 8)
+
+	before := gen(`log("before")`, 0, "&k=scan_before_meta")
+	after := gen(`log("after")`, 0, "&k=scan_after_meta")
+	markup = concat(`<!doctype html><head>`, PRELUDE, `<script src="`, before, `"></script><meta http-equiv=Content-Security-Policy content="script-src 'self' 'unsafe-inline'">`,
+		`<script src="`, after, `"></script></head><body></body>`)
+	pr = page_make(t, "meta policy", testenv.url(BASE))
+	scan_read(pr, markup, len(markup) / 2)
+	check(pr, scan_asked(t, before), "what comes before a <meta> policy left")
+	check(pr, hits(t, after) == 0, "what comes after it is left to the parser, under the policy")
+	page.preload_scan_end(pr.p)
+	page_load(pr, markup)
+	wait_note(pr, "after")
+	close_page(pr, min_checks = 2)
 }
 
 // A script turns the parser's <link> into something else while the document is parsed: the scripts after it (which wait for pending

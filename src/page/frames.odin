@@ -639,7 +639,7 @@ frame_navigate :: proc(n: ^Navigable, href: string, replace := false, method := 
 	l.task = fetch.start(p.loader, {
 		request = {url = target.href, mode = .Navigate, credentials = .Include, redirect = .Follow, destination = n.kind == .Frame ? .Frame : .Iframe,
 			initiator = &p.env, referrer_policy = rp, method = method, body = body, headers = headers[:]},
-		on_event = frame_fetch_event, user = l, scope = p.scope, collect = true,
+		on_event = frame_fetch_event, user = l, scope = p.scope, collect = true, peek = true,
 	})
 }
 
@@ -731,11 +731,14 @@ frame_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		if required == .Enforced { frame_enforce_required_csp(n, c) }
 		apply_isolation_headers(c, r.headers, n.parent)
 		frame_apply_permissions_header(c, http.get_all(r.headers, "permissions-policy"))
+		preload_scan_begin(c, l.charset, l.mime)
 	case .Data:
+		if c := l.page; c != nil && !c.closed && n.page == c { preload_scan_feed(c, ev.data) }
 	case .Done:
 		l.task = base.NIL_HANDLE
 		c := l.page
 		if c == nil || c.closed || n.page != c { return }
+		preload_scan_end(c)
 		frame_document_body(n, l, ev.data)
 	case .Failed:
 		l.task = base.NIL_HANDLE

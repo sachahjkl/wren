@@ -896,6 +896,41 @@ choose_candidate :: proc(cands: []Candidate, size: f32, dppx: f32) -> (Candidate
 	return c, true
 }
 
+// The candidate of a srcset (with the `src` beside it) for this environment.
+@(private)
+srcset_choose :: proc(p: ^Page, srcset, sizes, src: string, has_src: bool, env: css.Media_Env) -> (Candidate, bool) {
+	cands := make([dynamic]Candidate, context.temp_allocator)
+	for c in parse_srcset(srcset) { append(&cands, c) }
+	has_1x, has_w := false, false
+	for c in cands { if c.has_w { has_w = true }; if !c.has_w && c.density == 1 { has_1x = true } }
+	if has_src && strings.trim_space(src) != "" && !has_1x && !has_w { append(&cands, Candidate{url = src, density = 1}) }
+	return choose_candidate(cands[:], source_size(p, sizes, env), f32(env.dppx > 0 ? env.dppx : 1))
+}
+
+// Whether a `media` attribute (of a <source>, a <link>) applies; an empty one does.
+@(private)
+media_attr_matches :: proc(media: string, env: css.Media_Env) -> bool {
+	if strings.trim_space(media) == "" { return true }
+	vals := css.parse_component_values(media, css.Parse_Options{max_nesting_depth = IMAGE_ATTR_CSS_MAX_NESTING, max_rules = IMAGE_ATTR_CSS_MAX_RULES}, context.temp_allocator)
+	return css.media_matches(css.parse_media_query_list(vals, context.temp_allocator), env)
+}
+
+// Whether the `type` of a <source> names a format that can be shown; an empty one does.
+@(private)
+type_attr_supported :: proc(t: string) -> bool {
+	if strings.trim_space(t) == "" { return true }
+	essence := base.ascii_lower(strings.trim_space(strings.split_n(t, ";", 2, context.temp_allocator)[0]))
+	return images.codec_supported(images.format_of_mime(essence))
+}
+
+// Whether the image cache has what a request for this image would bring, for this page.
+@(private)
+image_cached :: proc(p: ^Page, abs: string, mode: fetch.Mode, cred: fetch.Credentials) -> bool {
+	if !the_pages.image_cache.ready { return false }
+	e, ok := the_pages.image_cache.entries[cache_key(p, abs, mode, cred)]
+	return ok && can_share(p, e)
+}
+
 // What source selection gives now: an absolute URL and its density, or nothing.
 @(private)
 Selection :: struct { url: string, density: f32, has: bool, empty: bool, invalid: bool }
@@ -905,21 +940,13 @@ select_source :: proc(p: ^Page, el: ^Img_Element, env: css.Media_Env) -> Selecti
 	d := p.doc
 	h := el.node
 	n := dom.get(d, h)
-	dppx := f32(env.dppx > 0 ? env.dppx : 1)
-	base_url := p.env.location
+	base_url := script_base_url(p)^
 	resolve :: proc(raw: string, base_url: ^url.URL) -> (string, bool) {
 		u, ok := url.parse(strings.trim_space(raw), base_url, context.temp_allocator)
 		if !ok { return "", false }
 		return u.href, true
 	}
-	from_set :: proc(p: ^Page, srcset, sizes, src: string, has_src: bool, env: css.Media_Env, dppx: f32) -> (Candidate, bool) {
-		cands := make([dynamic]Candidate, context.temp_allocator)
-		for c in parse_srcset(srcset) { append(&cands, c) }
-		has_1x, has_w := false, false
-		for c in cands { if c.has_w { has_w = true }; if !c.has_w && c.density == 1 { has_1x = true } }
-		if has_src && strings.trim_space(src) != "" && !has_1x && !has_w { append(&cands, Candidate{url = src, density = 1}) }
-		return choose_candidate(cands[:], source_size(p, sizes, env), dppx)
-	}
+
 	// <picture>: the first <source> before the img that matches
 	if n.parent != base.NIL_HANDLE {
 		if parent := dom.get(d, n.parent); parent != nil && parent.kind == .Element && parent.name == "picture" {
@@ -928,16 +955,10 @@ select_source :: proc(p: ^Page, el: ^Img_Element, env: css.Media_Env) -> Selecti
 				if cn.kind != .Element || cn.name != "source" { continue }
 				srcset, has_set := dom.get_attribute(d, c, "srcset")
 				if !has_set || strings.trim_space(srcset) == "" { continue }
-				if media, has_media := dom.get_attribute(d, c, "media"); has_media && strings.trim_space(media) != "" {
-					vals := css.parse_component_values(media, css.Parse_Options{max_nesting_depth = IMAGE_ATTR_CSS_MAX_NESTING, max_rules = IMAGE_ATTR_CSS_MAX_RULES}, context.temp_allocator)
-					if !css.media_matches(css.parse_media_query_list(vals, context.temp_allocator), env) { continue }
-				}
-				if t, has_type := dom.get_attribute(d, c, "type"); has_type && strings.trim_space(t) != "" {
-					essence := base.ascii_lower(strings.trim_space(strings.split_n(t, ";", 2, context.temp_allocator)[0]))
-					if !images.codec_supported(images.format_of_mime(essence)) { continue }
-				}
+				if media, has_media := dom.get_attribute(d, c, "media"); has_media && !media_attr_matches(media, env) { continue }
+				if t, has_type := dom.get_attribute(d, c, "type"); has_type && !type_attr_supported(t) { continue }
 				sizes, _ := dom.get_attribute(d, c, "sizes")
-				if cand, ok := from_set(p, srcset, sizes, "", false, env, dppx); ok {
+				if cand, ok := srcset_choose(p, srcset, sizes, "", false, env); ok {
 					abs, aok := resolve(cand.url, &base_url)
 					if !aok { return Selection{invalid = true} }
 					return Selection{url = abs, density = cand.density, has = true}
@@ -949,7 +970,7 @@ select_source :: proc(p: ^Page, el: ^Img_Element, env: css.Media_Env) -> Selecti
 	srcset, has_set := dom.get_attribute(d, h, "srcset")
 	if has_set && strings.trim_space(srcset) != "" {
 		sizes, _ := dom.get_attribute(d, h, "sizes")
-		if cand, ok := from_set(p, srcset, sizes, src, has_src, env, dppx); ok {
+		if cand, ok := srcset_choose(p, srcset, sizes, src, has_src, env); ok {
 			abs, aok := resolve(cand.url, &base_url)
 			if !aok { return Selection{invalid = true} }
 			return Selection{url = abs, density = cand.density, has = true}

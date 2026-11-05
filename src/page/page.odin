@@ -112,6 +112,8 @@ Page :: struct {
 	style_stale:  bool,
 	link_loads:   map[base.Handle]^Style_Load,
 	link_preloads: map[base.Handle]^Link_Preload,   // link_preload.odin
+	scan:         ^Preload_Scan,        // the document's bytes being read as they arrive (preload_scan.odin)
+	speculation:  ^fetch.Speculation,   // what was asked ahead of the parser (fetch/speculative.odin)
 	import_loads: [dynamic]^Style_Load,
 	web:          ^Web_State,           // platform web APIs (web.odin)
 	formctl:      ^Page_Forms,          // form controls (bindings_forms.odin)
@@ -188,6 +190,9 @@ page_cleanup :: proc(data: rawptr) {
 	p := (^Page)(data)
 	p.closed = true
 	frames_closed(p)
+	preload_scan_end(p)
+	fetch.speculation_destroy(p.speculation)
+	p.speculation = nil
 	// requests first: their callbacks reference the page
 	it: u32
 	for _, f in base.pool_next(&p.fetches, &it) {
