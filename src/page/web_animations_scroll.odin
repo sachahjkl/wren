@@ -71,6 +71,10 @@ ProgressTimeline_currentTime :: proc(c: ^Call, timeline: Api_ProgressTimeline) -
 	return active ? percent : math.nan_f64()
 }
 
+ProgressTimeline_source :: proc(c: ^Call, timeline: Api_ProgressTimeline) -> u64 {
+	return u64(style.timeline_progress_source(c.page.anim.timeline, timeline.data.id))
+}
+
 ProgressTimeline_offset :: proc(c: ^Call, timeline: Api_ProgressTimeline, which: i32) -> f64 {
 	a, b, ok := style.timeline_progress_offsets(c.page.anim.timeline, timeline.data.id)
 	if !ok { return 0 }

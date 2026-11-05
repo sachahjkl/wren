@@ -81,6 +81,7 @@ foreign _m_animations {
 	@(link_name = "DocumentTimeline_currentTime") _DocumentTimeline_currentTime :: proc() -> f64 ---
 	@(link_name = "ProgressTimeline_create") _ProgressTimeline_create :: proc(source: u64, none: i32, subject: u64, axis: i32, inset: [^]u8, inset_len: u32) -> u64 ---
 	@(link_name = "ProgressTimeline_currentTime") _ProgressTimeline_currentTime :: proc(timeline: ProgressTimeline) -> f64 ---
+	@(link_name = "ProgressTimeline_source") _ProgressTimeline_source :: proc(timeline: ProgressTimeline) -> u64 ---
 	@(link_name = "ProgressTimeline_offset") _ProgressTimeline_offset :: proc(timeline: ProgressTimeline, which: i32) -> f64 ---
 	@(link_name = "Animation_setProgressTimeline") _Animation_setProgressTimeline :: proc(animation: Animation, timeline: ProgressTimeline) ---
 	@(link_name = "Animation_isProgress") _Animation_isProgress :: proc(animation: Animation) -> i32 ---
@@ -326,6 +327,11 @@ ProgressTimeline_create :: proc "contextless" (source: $T_source, none: bool, su
 // timeline.currentTime, in percents (NaN: null).
 ProgressTimeline_currentTime :: proc "contextless" (timeline: ProgressTimeline) -> f64 {
 	return _ProgressTimeline_currentTime(timeline)
+}
+
+// The scroller a view timeline found for its subject (0: the viewport).
+ProgressTimeline_source :: proc "contextless" (timeline: ProgressTimeline) -> u64 {
+	return _ProgressTimeline_source(timeline)
 }
 
 // ViewTimeline startOffset (0) and endOffset (1), CSS px.

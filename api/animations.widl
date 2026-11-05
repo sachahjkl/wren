@@ -102,6 +102,8 @@ module animations {
   u64 ProgressTimeline_create(optional Element source, bool none, optional Element subject, i32 axis, string inset);
   /// timeline.currentTime, in percents (NaN: null).
   f64 ProgressTimeline_currentTime(ProgressTimeline timeline);
+  /// The scroller a view timeline found for its subject (0: the viewport).
+  u64 ProgressTimeline_source(ProgressTimeline timeline);
   /// ViewTimeline startOffset (0) and endOffset (1), CSS px.
   f64 ProgressTimeline_offset(ProgressTimeline timeline, i32 which);
   /// animation.timeline = a ScrollTimeline or ViewTimeline.

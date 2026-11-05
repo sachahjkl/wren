@@ -1195,8 +1195,14 @@ wjr_ViewTimeline_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSVal
 
 @(export, link_name = "wjr_ScrollTimeline_get_source")
 wjr_ScrollTimeline_get_source :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
 	t := progress_of(this_val)
-	return t != nil ? wj.JS_DupValue(ctx, t.source) : wj.JS_ThrowTypeError(ctx, "Illegal invocation")
+	if t == nil { return wj.JS_ThrowTypeError(ctx, "Illegal invocation") }
+	if wj.is_null(t.subject) { return wj.JS_DupValue(ctx, t.source) }
+	// a view timeline: the scroller its subject has now
+	h: u64
+	jsb.host(&h, api_decl.ProgressTimeline_source, wj.wr_ProgressTimeline_source, wj.obj_of(this_val).handle)
+	return h != 0 ? wj.wj_wrap_node(ctx, h) : scrolling_element(ctx)
 }
 
 @(export, link_name = "wjr_ScrollTimeline_get_axis")

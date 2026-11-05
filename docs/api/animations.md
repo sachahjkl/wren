@@ -397,6 +397,16 @@ timeline.currentTime, in percents (NaN: null).
 
 Host: `ProgressTimeline_currentTime :: proc(c: ^Call, timeline: Api_ProgressTimeline) -> f64`
 
+### `ProgressTimeline_source`
+
+```
+u64 ProgressTimeline_source(ProgressTimeline timeline)
+```
+
+The scroller a view timeline found for its subject (0: the viewport).
+
+Host: `ProgressTimeline_source :: proc(c: ^Call, timeline: Api_ProgressTimeline) -> u64`
+
 ### `ProgressTimeline_offset`
 
 ```

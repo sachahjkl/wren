@@ -2243,6 +2243,28 @@ _t_animations_ProgressTimeline_currentTime :: proc "c" (env: rawptr, caller: was
 	return nil
 }
 
+// ProgressTimeline_source :: proc(c: ^Call, timeline: Api_ProgressTimeline) -> u64
+@(private = "file")
+_t_animations_ProgressTimeline_source :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_ProgressTimeline{handle = u64(a[0].i64)}
+	_p0.data = lookup_ProgressTimeline(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.ProgressTimeline_source: argument timeline is not a live ProgressTimeline") }
+		return wasm.trap_new("animations.ProgressTimeline_source: argument timeline is not a live ProgressTimeline")
+	}
+	_r := ProgressTimeline_source(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
 // ProgressTimeline_offset :: proc(c: ^Call, timeline: Api_ProgressTimeline, which: i32) -> f64
 @(private = "file")
 _t_animations_ProgressTimeline_offset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -39116,6 +39138,7 @@ api_imports := [?]wasm.Import{
 	{module = "animations", name = "DocumentTimeline_currentTime", fn = _t_animations_DocumentTimeline_currentTime, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.F64}},
 	{module = "animations", name = "ProgressTimeline_create", fn = _t_animations_ProgressTimeline_create, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "animations", name = "ProgressTimeline_currentTime", fn = _t_animations_ProgressTimeline_currentTime, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "animations", name = "ProgressTimeline_source", fn = _t_animations_ProgressTimeline_source, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "animations", name = "ProgressTimeline_offset", fn = _t_animations_ProgressTimeline_offset, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.F64}},
 	{module = "animations", name = "Animation_setProgressTimeline", fn = _t_animations_Animation_setProgressTimeline, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{}},
 	{module = "animations", name = "Animation_isProgress", fn = _t_animations_Animation_isProgress, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
