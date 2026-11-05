@@ -190,7 +190,9 @@ search_reaches_the_filter :: proc "contextless" (at: ^win.CONTEXT) -> bool {
 	ctx := at^
 	stack_rebase(&stack, &ctx)
 	for ctx.Rip != 0 {
+		was := ctx.Rsp
 		if !stack_step(&stack, &ctx) { return cut_short }
+		if ctx.Rsp <= was { return false }   // (a frame pointer written over can lead back down the stack: this walk would never end, in the handler of a crash)
 	}
 	return true
 }

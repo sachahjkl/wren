@@ -255,11 +255,11 @@ jsweb_webaudio_autoplay :: proc(t: ^testing.T) {
 webgl_settings :: proc() {
 	settings.webgl.force_software = true
 	settings.js.slow_script_ms = SLOW_SCRIPT_MS   // (not -1: the hard stop of wasm.max_call_ms, one second, would be the limit)
-	// On pages of their own a block costs system calls, and the macro that doubles forty times is a great many: its compile went past the time a context has to answer, which lost it, and the
+	// On pages of their own, or on a machine at work, the macro that doubles forty times takes a long while: its compile went past the time a context has to answer, which lost it, and the
 	// contexts after it had none. Nothing wrong, and slow.
-	if os.get_env("WREN_POISON_PAGES", context.temp_allocator) != "" { settings.webgl.gpu_hang_ms, settings.webgl.wait_ms = WEBGL_LIMIT_ON_PAGES_MS, WEBGL_LIMIT_ON_PAGES_MS }
+	settings.webgl.gpu_hang_ms, settings.webgl.wait_ms = WEBGL_LIMIT_MS, WEBGL_LIMIT_MS
 }
-@(private = "file") WEBGL_LIMIT_ON_PAGES_MS :: 600_000
+@(private = "file") WEBGL_LIMIT_MS :: 600_000
 
 @(test)
 jsweb_webgl_api :: proc(t: ^testing.T) {
