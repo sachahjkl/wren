@@ -265,6 +265,18 @@ fetch :: proc(c: ^Client, d: Request_Desc) -> base.Handle {
 	return h
 }
 
+// A request to the origin of `url` is likely soon: its connection is opened now, or with `dns_only` its address is asked for
+// (<link rel=preconnect>, dns-prefetch). A hint: nothing is reported, and the WinHTTP stack does nothing of it.
+preconnect :: proc(c: ^Client, url: string, dns_only := false) {
+	if c.settings.backend != .Rust || !c.settings.preconnect || c.rs == nil { return }
+	wn_net_preconnect(c.rs, raw_data(url), uint(len(url)), u8(dns_only))
+}
+
+// A connection opened ahead for the origin of `url` waits for its request.
+preconnected :: proc(c: ^Client, url: string) -> bool {
+	return c.settings.backend == .Rust && c.rs != nil && wn_net_preconnected(c.rs, raw_data(url), uint(len(url))) != 0
+}
+
 // Starts every queued request that fits under the limits, highest priority first, FIFO within a priority.
 @(private)
 pump :: proc(c: ^Client) {

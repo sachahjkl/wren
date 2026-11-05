@@ -22,6 +22,7 @@ import "wb:host"
 import "wb:html"
 import "wb:http"
 import "wb:js"
+import "wb:net"
 import "wb:page"
 import "wb:tools/testenv"
 import "wb:tools/testhost"
@@ -1512,5 +1513,33 @@ Promise.resolve().then(() => {
 	pr := load(t, "deep-render", concat(`<!doctype html><head>`, PRELUDE, `</head><body>`, script, `</body>`))
 	wait_note(pr, "done")
 	check(pr, noted(pr, fmt.tprintf("rendered %d, swallowed 0", RENDER_RESULTS)), fmt.tprintf("a render %d components deep has its %d results, no overflow taken for a component's failure (%v)", RENDER_LEVELS, RENDER_RESULTS, pr.section.notes))
+	close_page(pr, min_checks = 1)
+}
+
+// A <link rel=preconnect> opens its connection, from the document's bytes or put in by a script; to what the content blocker refuses, none.
+@(private = "file") PRECONNECT_NAMES :: [?]string{"parsed.localhost", "inserted.localhost"}
+@(private = "file") PRECONNECT_REFUSED :: "refused.localhost"
+@(private = "file") PLAIN_HTTP :: 0   // the test server's plain port (testenv.port)
+
+@(test)
+jsload_a_preconnect_opens_its_connection_unless_the_blocker_refuses :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	origin :: proc(name: string) -> string { return fmt.tprintf("http://%s:%d/", name, testenv.port(PLAIN_HTTP)) }
+	names := PRECONNECT_NAMES
+	kept := loader.interceptor
+	defer loader.interceptor = kept
+	loader.interceptor = {request = proc(_: rawptr, q: ^fetch.Intercept_Query, r: ^fetch.Intercept_Result) {
+		if strings.contains(q.url, PRECONNECT_REFUSED) { r.action = .Block }
+	}}
+	pr := load(t, "preconnect", concat(`<!doctype html><head>`, PRELUDE, `<link rel=preconnect href="`, origin(names[0]), `"><link rel=preconnect href="`, origin(PRECONNECT_REFUSED), `">
+<script>const l = document.createElement("link"); l.rel = "preconnect"; l.href = "`, origin(names[1]), `"; document.head.append(l); log("done");</script></head><body>`))
+	wait_note(pr, "done")
+	for name in names {
+		wait_until(t, "the connection opened ahead", origin(name), proc(u: string) -> bool { return net.preconnected(&client, u) })
+	}
+	check(pr, !net.preconnected(&client, origin(PRECONNECT_REFUSED)), "no connection to what the blocker refuses")
 	close_page(pr, min_checks = 1)
 }

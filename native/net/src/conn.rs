@@ -138,12 +138,44 @@ impl tower_service::Service<Uri> for Connector {
         Box::pin(async move {
             let h2 = shared.settings().http2;
             let key = crate::origin_of(&uri);
+            if let Some(mut c) = shared.warm_take(&key) {
+                c.info = ConnInfo::default();   // (no steps of its own: what it took was not this request's time)
+                return Ok(c);
+            }
             shared.track_start(&key);
             let r = connect(&shared, &uri, if h2 { Alpn::H2 } else { Alpn::H1 }).await;
             shared.track_end(&key, r.is_ok());
             r
         })
     }
+}
+
+/// A connection opened ahead of a request (<link rel=preconnect>), until a request of its origin takes it. Only the connector's: the
+/// HTTP client's pool knows of a connection once it has carried a request.
+pub(crate) enum Warm {
+    Opening,
+    Ready(Instant, Conn),
+}
+
+/// How long an unused connection is kept: a server closes one it does not hear from, and a hint not followed by now will not be.
+pub(crate) const WARM_KEEP: Duration = Duration::from_secs(10);
+/// Connections opened ahead at most: a page does not get to open a socket per hint.
+pub(crate) const WARM_MOST: usize = 16;
+
+/// Opens a connection to `uri`'s origin, or with `dns_only` asks for its address (the system's resolver remembers), for a request to come.
+pub(crate) async fn preconnect(shared: Arc<Shared>, uri: Uri, dns_only: bool) {
+    if dns_only {
+        if let Some(host) = bare_host(&uri) {
+            let s = shared.settings();
+            let _ = resolve(host, default_port(&uri), &s, &mut ConnInfo::default()).await;
+        }
+        return;
+    }
+    let key = crate::origin_of(&uri);
+    if !shared.warm_begin(&key) { return; }
+    let alpn = if shared.settings().http2 { Alpn::H2 } else { Alpn::H1 };
+    let r = connect(&shared, &uri, alpn).await;
+    shared.warm_end(&key, r.ok());
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

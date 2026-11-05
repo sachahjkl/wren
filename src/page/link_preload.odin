@@ -56,6 +56,15 @@ link_preload_request :: proc(u, as: string, module, has_crossorigin: bool, cross
 	return r
 }
 
+// <link rel=preconnect> or dns-prefetch to `u`: true when that is what it is.
+@(private)
+link_preconnect :: proc(p: ^Page, rel, u: string) -> bool {
+	connect := rel_has(rel, "preconnect")
+	if !connect && !rel_has(rel, "dns-prefetch") { return false }
+	if p.loader != nil { fetch.preconnect(p.loader, &p.env, u, !connect) }
+	return true
+}
+
 // A <link> was inserted, revealed by the parser, or an attribute of it changed.
 @(private)
 link_preload_note :: proc(p: ^Page, el: base.Handle) {
@@ -63,10 +72,14 @@ link_preload_note :: proc(p: ^Page, el: base.Handle) {
 	n := dom.get(p.doc, el)
 	if n == nil || n.kind != .Element || n.name != "link" { return }
 	rel, _ := dom.get_attribute(p.doc, el, "rel")
-	module := rel_has(rel, "modulepreload")
-	if !module && !rel_has(rel, "preload") { return }
 	href, has_href := dom.get_attribute(p.doc, el, "href")
 	if !has_href || href == "" { return }
+	if rel_has(rel, "preconnect") || rel_has(rel, "dns-prefetch") {
+		if u, ok := url.parse(href, &p.env.location, context.temp_allocator); ok { link_preconnect(p, rel, u.href) }
+		return
+	}
+	module := rel_has(rel, "modulepreload")
+	if !module && !rel_has(rel, "preload") { return }
 	if old, ok := p.link_preloads[el]; ok && old.href == href { return }
 	as, _ := dom.get_attribute(p.doc, el, "as")
 	destination, known := preload_destination(as)

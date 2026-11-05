@@ -263,11 +263,17 @@ tab_reveal :: proc(app: ^App, t: ^Tab) {
 }
 
 // The tab's address, shown in the address field of the window where the tab is the current one (nowhere else: a tab in the
-// background shows it when it is selected).
+// background shows it when it is selected). A field that has the keyboard is the user's: what they typed stays when the page
+// arrives, and what is shown in its place stays selected, for the next letter to replace (a new tab whose home page comes late).
 address_set :: proc(app: ^App, t: ^Tab, text: string) {
 	w, i := window_of_tab(app, t)
 	if w == nil || window_current(app, w)^ != i { return }
-	ui.field_set(window_address(app, w), text)
+	field := window_address(app, w)
+	focused := w == app.active && ui.focus_key() != 0 && ui.focus_key() == address_key(app)
+	all_selected := min(field.cursor, field.mark) == 0 && max(field.cursor, field.mark) == len(ui.field_string(field))
+	if focused && !all_selected { return }
+	ui.field_set(field, text)
+	if focused { ui.field_select_all(field) }
 }
 
 // What the tasks of the loop (and anything else made outside a frame) asked of the active window's frames, for the others too: the

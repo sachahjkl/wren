@@ -205,7 +205,8 @@ dnd_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: base.Handle) 
 			app.dnd.cand_field, app.dnd.cand_a, app.dnd.cand_b = field, a, b
 		}
 	}
-	if kind == .None && page.selection_active(p) {
+	// (the second or third click of a series selects more: it does not take the selection away)
+	if kind == .None && page.selection_active(p) && window_own(app).selection.clicks == 1 {
 		if tp, ok := position_of(app, t, ev.pos); ok {
 			a, b, _ := page.selection_range(p)
 			if lay.pos_compare(p.doc, a, tp) <= 0 && lay.pos_compare(p.doc, tp, b) < 0 {
