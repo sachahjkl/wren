@@ -25,7 +25,7 @@ Settings :: struct {
 PREFS := [?]config.Def{
 	{name = "network.cache.enabled", kind = .Bool, default = {b = true},
 		description = "Keep responses in the HTTP cache (RFC 9111) and reuse them while they are fresh, revalidating them with the server (If-None-Match / If-Modified-Since) when they are not. Off: every request goes to the network, nothing is stored."},
-	{name = "network.cache.memory.max_bytes", kind = .Int, default = {i = 64 << 20}, bounded = true, min = 0, max = 1 << 40, bytes = true, unit = "bytes",
+	{name = "network.cache.memory.max_bytes", kind = .Int, default = {i = 32 << 20}, bounded = true, min = 0, max = 1 << 40, bytes = true, unit = "bytes",
 		description = "Responses kept in memory, least recently used out first. With the disk cache, what leaves memory stays on disk; without it, it is gone."},
 	{name = "network.cache.disk.enabled", kind = .Bool, default = {b = true}, restart = true,
 		description = "Keep the cache in the profile between runs (only when the profile is kept: browser.profile.persist)."},
