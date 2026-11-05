@@ -2,7 +2,7 @@
 // fails when it was refused, or when the interpreter's checks are not mostly in compiled code.
 (function () {
   "use strict";
-  var RUN = 60000;
+  var RUN = 240000;
   var items = [];
   for (var i = 0; i < 64; i++) { var o = {}; o["k" + i] = i; o.v = i; o.t = "tag" + (i & 3); items.push(o); }   // more shapes than a site takes
   function blockList(url, list) {   // a try in the loop, natives on strings
