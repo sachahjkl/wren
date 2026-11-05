@@ -2399,6 +2399,64 @@ Read plainly. **One thing is out of the noise on public pages: cnn.com's content
 **Not kept / left.** `too much changed` is now most of cnn.com's full passes, 17 of 31 in one load: an element inserted near the top of the body, a sibling combinator, 3 900 elements marked of 10 800; about 2 s a load. Partial passes of 0.5 to 1 s after DOM changes (`restyle_dom`), which cost more than the full pass they avoid: `has_flip_scan` takes 12 to 150 microseconds an answer, it reads what was added. The body of a sheet that arrives early waits for its element to be parsed off the window thread; the same for a script's compilation. A sheet with `@import` still makes a full pass, and so does its import; `insertRule` before the end too, and the removal of a sheet. Images of `srcset` are chosen with a root font size of 16.
 
 Tests: `test_all -Quick -NoAsan` on the unit tests of html, fetch, page, style and browser, the end-to-end tests of pages, JavaScript loading, the web APIs, nested documents, the HTTP cache, the content blocker, site compatibility and fonts: all pass but one step. **`a_drag_selects_while_the_page_is_busy` fails on its own 6 times in 6 with the base binary as with this one**, and sometimes passes beside other tests: marked `.Flaky`, not looked into. WPT: `html/semantics/scripting-1`, `custom-elements`, `css/cssom`: 0 regressions, 4 improvements. The WPT runner parses as `src/tools/headless` does, without the scanner: it covers the reveal and the styles, not item 1. Not run: the full suite, the unit tests under AddressSanitizer. **The equivalence of item 2 is tested on generated documents only**: the one run with `style.incremental.verify` on cnn.com hit the 30 s limit before any sheet took the scoped path. The public arms are of cb1e93d1; the commit after it gives a document's first script the same turn (the 27 ms above) and was measured on loopback only.
+## What changed, round 29: the JIT reaches what real pages run
+
+Item 1 of the list after round 26: the engine's share of heavy pages. Development builds, the native library `quick`; each load in a fresh process with a throwaway profile (`wrentool waterfall -Idle`), the base (7f692633) and the
+round's binary in turn, the order turning, 5 runs of each, median, range in brackets, ms. Public sites, one visit at a time, two other agents at work on the machine, the pages' ads and variants changing from one load to the next (vimeo.com's first paint has two
+modes, 1.3 and 5 s, that come and go by the quarter of an hour). What is inside these ranges is not claimed.
+
+**The measure.** The guest profiler (`jspage -image <engine built with buildjs -names> -profile`) gives each sample the time since the last one, and a page that waits gives one sample tens of seconds: css-tricks.com read 94 % in the bytecode verifier, theverge.com 16 % in
+`str_eq`, on one sample each. Counted by samples they are nothing: 25 % `interp_run` on every page, 10 to 13 % the collection, 6 to 19 % `frontend_compile`, the rest spread out. What says more is where the interpreter is: **`WREN_JS_PROFILE` now ends with what the JIT said**
+(each refusal, each deopt, what it left to the interpreter's code, translations, Cranelift's time), and at each interrupt check why the code it is in is not compiled (`jit_note_sample`; `jsengine run -jit -jit-trace` the same). Interrupt checks
+count calls and iterations, not time, but of those, before this round:
+
+| | npr.org | vimeo.com | theverge.com |
+|---|---|---|---|
+| `op_catch` (a `try` in the loop) | 63 % | 5 % | 1 % |
+| given up after 16 deopts | 15 % | 69 % | 26 % |
+| `fclosure8` | 11 % | | 16 % |
+| a call of a function not compiled whole | 2 % | 1 % | 12 % |
+| for-of, for-in (an entry under the loop's) | 1 % | 10 % | 8 % |
+| too many sites, typeof, instanceof, a nested loop, other refusals | 5 % | 4 % | 20 % |
+| being compiled | 1 % | 6 % | 1 % |
+| a function called little | 2 % | 2 % | 4 % |
+| compiled | 1 % | 1 % | 10 % |
+
+So **almost nothing that runs often was compiled**: one instruction the translation did not know, anywhere in a function, kept all of it interpreted, and sixteen deopts in a whole life gave a function up. "Why does code stay in the interpreter" was the question of the task, and "cold code" was not the answer.
+npr.org's 56 % is one function, OneTrust's `OtAutoBlock.js`: 2 500 block-list entries tried against each node a page adds, with a `try` in the loop; its own copy in `build`: 6.3 -> 2.8 ms a call (Node 0.38), 5 runs of each.
+
+1. **No instruction keeps a region from being compiled** (`jit_insn_or_slow`, `j_slow_op`, `jit_step`). What the translation cannot do is taken back and made by the interpreter's own code from the compiled code (`interp_run` for one instruction on the frame, the stack written first, the results back as values); what cannot be made alone (`throw`, a `gosub`) is where the code leaves. An exception stays pending (`JIT_AUX_PENDING`). `op_catch` is translated.
+2. **A site that keeps missing goes through the engine's code** (`Jit_Site.slow`): more shapes or callees than a site takes, an element outside the array. A call of anything goes through the helper (`j_call_any`). A region is given up for the share of its entries that deopt (`JIT_DEOPT_SHARE`), not after sixteen.
+3. **Functions with loops are compiled whole, nested loops with them** (`Jc.inner`, a `br_table` at the top of the code). A loop dropped for its few iterations makes the function around it hot.
+4. **The first runs are recorded** (`jit_record`, `Frame.recording`). At the threshold two calls (four iterations of a loop) run in the full dispatch, their sites filled from the operands. Each site met was an exit and a translation of the whole region, and `JIT_MAX_LEARNS` came first. Blocks the recorded runs did not reach are not compiled (`Jit_Loop.hit`, a `cold` exit), and sites live in a list of their own: the record of a loop was 2.5 KB.
+5. **`javascript.jit.call_threshold` 500 -> 2 000.** All this costs: theverge.com translated 2 162 regions into 14 MB of Wasm for 299 KB of bytecode, 24 s of Cranelift on the two compile threads (2 us a byte). A module of 4.5 KB costs 8 ms and saves perhaps 0.5 us a call. Blocks not compiled took 14 to 10.5 MB; the threshold took npr.org's CPU 32.8 -> 23.3 s, theverge.com's 38.1 -> 36.6 s (3 runs, ranges meeting), nothing visible on the loads. 8 000 was no better.
+6. **`indexOf`, `includes`, `split`, `replace` search by width** (`units_index_of`: `str_at` tested the width at each unit) and a `replace` of one match without `$` makes its result at once. 5 % of npr.org's samples. Test: `judge capi` (each width against each).
+7. **The sweep walks the heap once.** It walked every cell a first time to find the shapes and their weak transitions: the marking lists them now (`gc_shapes`). Test: `judge capi`.
+
+Where the interpreter is after the round (the same counts; `compiled` is the budget exits of compiled code): npr.org 89 % compiled, vimeo.com 72 %, theverge.com 74 %, nothing refused; 4 to 10 % being compiled, 2 to 4 % in functions called little. Samples of the engine in the first 25 s of a load: npr.org 2 635 -> 1 378, vimeo.com 2 923 -> 972, theverge.com 2 693 -> 1 299 (single runs, before item 5; the same page does more in 25 s now, and one later run of theverge.com gave 3 396, so the order of magnitude only).
+
+Public pages, base and round (ms):
+
+| | paint before | paint after | load before | load after | quiet before | quiet after | CPU before | CPU after |
+|---|---|---|---|---|---|---|---|---|
+| npr.org | 1 047 (857-2 268) | 1 974 (1 595-2 210) | 12 165 (10 089-14 320) | 10 541 (8 518-11 069) | 20 193 (19 090-21 176) | 18 478 (17 845-19 162) | 25 250 (18 734-29 766) | 26 000 (15 359-27 391) |
+| vimeo.com | 1 301 (1 247-1 397) | 1 782 (1 266-3 508) | 6 355 (5 592-7 096) | 6 519 (5 796-8 718) | 19 276 (7 868-28 333) | 9 613 (7 629-10 619) | 16 641 (10 219-18 703) | 19 734 (13 578-20 031) |
+| theverge.com | 1 125 (1 068-1 175) | 1 108 (565-1 256) | 10 202 (9 310-11 499) | 11 196 (10 521-15 150) | 11 131 (10 819-20 653) | 14 058 (11 705-60 351) | 25 359 (17 359-27 297) | 36 047 (35 531-48 172) |
+| bbc.com/news/technology | 971 (808-1 139) | 939 (775-1 222) | 4 573 (1 178-6 609) | 5 021 (1 106-5 841) | 6 036 (3 686-7 274) | 6 268 (6 028-6 693) | 11 266 (2 922-13 844) | 14 766 (8 750-17 078) |
+| css-tricks.com, flexbox | 1 398 (1 154-1 585) | 1 091 (989-1 461) | 17 612 (16 762-17 993) | 17 504 (16 871-32 100) | 18 334 (17 374-18 655) | 18 287 (17 530-32 591) | 38 641 (36 297-41 141) | 51 203 (47 234-75 672) |
+| open.spotify.com (4 runs) | 1 144 (1 134-1 154) | 1 160 (1 131-1 165) | 2 261 (2 075-2 449) | 2 373 (2 259-2 476) | 12 836 (9 776-13 486) | 13 798 (10 275-13 911) | 5 234 (3 672-6 562) | 5 500 (5 000-6 344) |
+
+Read plainly: **the loads hardly moved, and the CPU went up.** The engine does the same work in about half the samples, but of these six the ranges of the load event separate on none; npr.org gains by its medians (load -13 %, quiet -8 %, ranges just meeting), vimeo.com's quiet time is the one large move and it is the page's own (175 requests in the base's median run, 110 in the round's: which ads came). theverge.com is worse by its medians (load +10 %, ranges meeting), its CPU +42 %, with separate ranges; css-tricks.com's CPU +33 %, separate too; both are Cranelift on the compile threads (theverge.com: 3 271 translations, 15 MB of modules, 13.7 s in that run), 23 embeds on css-tricks.com each compiling the same code in a realm of its own. npr.org's first paint is later in this series (ranges meeting) and was not in the two before it (1 741 against 2 006, 1 916 against 2 205). The machine was quiet this time: the base took 10 to 12 s on npr.org where round 26 had 21. So on a quiet machine the load of these pages is not held by the engine's speed the way the window thread's share suggested: what holds it (chains of requests, timers, what is not the engine on that thread) is what the next measure must say.
+
+**Measured, not kept.**
+- **The engine at `-o:speed`, why it is slower**: not much is. `realworld.js`, interpreted, 1 run of each, under load: 20 to 58 % slower where the interpreter runs (`interp_run` 68 % of the samples: it is the procedure the code generator's choices hurt, as in round 13), JSON the same (2 853 -> 2 808 ns). Nothing else in the engine gained enough to pay for a mixed build.
+- The first version of this round compiled at 500 calls: CPU 28 s on npr.org, 42 on theverge.com, 19 on bbc.com (base 24, 30, 6): item 5.
+
+**What got worse.** CPU, above. `macro.js` interpreted (`jsengine run`, no JIT, 3 runs of each image in turn): geometric mean 0.90 of the base over 29 cases, 1.03 in an earlier series under load: inside the noise, one case at 1.57 (`regexp exec global loop`), 0.83 to 1.28 in the other series. The interpreter pays one read of the frame per instruction of the full dispatch and two per return to it.
+
+**Not verified.** Memory: more modules per page, up to `javascript.jit.max_functions`, not measured against round 27's tests of a long session (they were not run). The full suite, WPT, AddressSanitizer: not run. The release build: not measured. Compile time of the engine: 5 to 10 min today against 2.5 min for the first build of the day, on a machine that was busy: three changes reverted one by one did not explain it, the load may. Not settled.
+
+Tests: `jsengine reach examples/jsbench/jitreach.js` in the step of test262 with the JIT (what stayed interpreted: nothing refused, four checks in five in compiled code; the base fails), 25 new cases in `jitcheck.js`, also under `JSRT_GC_STRESS=8192` and `JSRT_GC_POISON`, `judge capi`, test262 quick with and without the JIT (no regression), the end-to-end tests of JavaScript in pages, its loading and its web APIs.
 
 ## Inventory
 
@@ -2573,6 +2631,8 @@ After round 26. Heavy pages from the navigation to the load event: the first pai
 share of the window thread during a load is 47 to 68 % on most of them (vimeo.com: the interpreter 27 %, the collection 13 %, the rest spread out). css-tricks.com is the engine too, 18 s for its twenty-three embeds, now that they are all
 loaded. Not done: a preload scanner that works while the document arrives (the parser takes the whole document first: cnn.com's 6.8 MB, 240 to 700 ms before any
 request of the page); `priority` headers (RFC 9218) now that images go out beside scripts; a style pass scoped to what a sheet that arrives can reach (cnn.com: 15 full passes for sheets, 2.2 s).
+
+After round 29. The JIT reaches what pages run (round 29): nothing refused, 72 to 89 % of the interpreter's checks in compiled code on the pages measured. The loads did not follow, and the CPU went up. In order: **what holds a load on a quiet machine**, measured on the window thread by phase and against the waterfall, before more work on the engine; **what a translation costs**: each guard's exit materializes the stack in Wasm code (47 bytes of module for one of bytecode), a table of stack maps read by `jit_exit` would make an exit a few bytes; the translation itself is on the window thread (9 % of theverge.com's samples before the undo record was made small); identical code compiled once per realm (css-tricks.com's embeds); locals typed from the recorded runs (a whole function holds them in memory as values); inline caches for the interpreter's `get_field` where code stays cold; `frontend_compile`, 10 to 19 % of the window thread's engine samples, scripts under `javascript.compile.offthread_min_bytes`; the collection (10 to 16 %), generations or a floor above GC_MIN_ALLOCATION.
 
 1. **The script stage of DOM-heavy pages, what is left** (`js_nodes10k` on a quiet machine after round 25, 5 runs: a frame of 16.9 ms
    (16.8 to 17.4), the Animation phase 10.5 ms, where this list kept 17.7 and 11.8; the 20.6 to 29.5 ms first noted for that day were
