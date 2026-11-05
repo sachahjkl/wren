@@ -2328,10 +2328,9 @@ After round 25. The list is in the order of its measures again: item 10 is item 
 (`legacy-html.html`'s task, identified and gone; p10k's first passes in part), and the profiler's bursts are in item 9.
 Item 1's figures were old: measured again they are higher, and nothing here says why.
 
-1. **The script stage of DOM-heavy pages, what is left** (`js_nodes10k` on the day of round 25: the Animation phase 18.6 ms of a
-   frame of 20.6 to 29.5 ms, 3 runs, where this list kept 17.7 ms; the base 25.2 to 32.2 ms, 3 runs, so not this round's; the
-   JIT off 28.9 to 30.7 ms and one run of 83 under load, 3 runs interleaved. To bisect by build first: nothing here says
-   what moved it, and the machine was not quiet for all of it). In order of the engine's samples: the interpreter itself (`interp_hot` 17 % before round 15's 15 to 25 %
+1. **The script stage of DOM-heavy pages, what is left** (`js_nodes10k` on a quiet machine after round 25, 5 runs: a frame of 16.9 ms
+   (16.8 to 17.4), the Animation phase 10.5 ms, where this list kept 17.7 and 11.8; the 20.6 to 29.5 ms first noted for that day were
+   the load of the agents working beside the measure, nothing to bisect). In order of the engine's samples: the interpreter itself (`interp_hot` 17 % before round 15's 15 to 25 %
    on the loop's own instructions, `call_native` and the bridge 8 %; a DOM call costs 50 to 100 ns over the loop); the
    collection the DOM asks for (2.9 ms every 2 frames: the browser's `Node_unpinAll`, the prologue's walk of every
    wrapper with `JS_IsUntouched` for each, the finalizers' chain of calls, the sweep's frees, `gc_drain`); the browser's
