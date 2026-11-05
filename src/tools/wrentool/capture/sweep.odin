@@ -340,7 +340,15 @@ sweep_died :: proc(r: ^Sweep_Run, v: ^Sweep_Visit) {
 @(private = "file")
 sweep_measure :: proc(r: ^Sweep_Run, v: ^Sweep_Visit) {
 	s := &r.wren.session
-	if lines, e := api.console(s); e == .None { for l in lines { if l.level == "error" { v.js_errors += 1 } } }
+	if lines, e := api.console(s); e == .None {
+		said := strings.builder_make(context.temp_allocator)
+		for l in lines {
+			if l.level != "error" { continue }
+			v.js_errors += 1
+			fmt.sbprintln(&said, l.text)
+		}
+		if v.js_errors > 0 { _ = os.write_entire_file(fmt.tprintf("%s/%s.errors.txt", r.out, v.slug), transmute([]byte)strings.to_string(said)) }
+	}
 	if st, e := api.stats(s); e == .None {
 		v.nodes, v.memory_mb = st.nodes, st.private_bytes >> 20
 		sweep_memory_row(r, v.url, st)
