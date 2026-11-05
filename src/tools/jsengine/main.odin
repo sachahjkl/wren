@@ -11,6 +11,7 @@
 //   jsengine verify [-jit-threshold n] [-jit-step] file.js...
 //   jsengine reach file.js   (the JIT: nothing refused, the hot code compiled)
 //   jsengine cold file.js    (the JIT: nothing translated at the default thresholds)
+//   jsengine cost --pref wasm.wasmtime.fuel=true file.js   (what each of the file's cases costs in Wasm instructions, against its limit)
 //                                               runs each script interpreted and with the JIT: same output
 //                                               measures realm creation (instantiate + start) and its memory
 // Only the engine's own imports are provided (console, errors, time zone, clock): anything of the web API traps.
@@ -288,6 +289,47 @@ cmd_cold :: proc(args: []string) {
 	}
 }
 
+// How many times a case of `jsengine cost` runs: what is made once (the case's own closures) weighs nothing beside it.
+COST_ITERATIONS :: 20_000
+
+// jsengine cost file.js: the Wasm instructions an iteration of each case costs, interpreted: a count that does not move with the
+// machine. The file defines COST_CASES, [name, limit, function (n) {...n iterations...}]; a case over its limit fails. Each case runs
+// with 0 iterations, then COST_ITERATIONS: what surrounds the loop goes out by the difference.
+cmd_cost :: proc(args: []string) {
+	c := parse_common(args)
+	setup()
+	r, ok := realm_new(read_file(c.image), c.raw)
+	if !ok { os.exit(1) }
+	r.inst.budget = -1
+	quiet = true
+	if len(c.rest) != 1 || js.eval_script(r.inst, read_file(c.rest[0]), c.rest[0]) != .Ok { fmt.eprintln("cost: the script failed:", r.inst.last_error); os.exit(1) }
+	spend :: proc(r: Realm, source: string) -> u64 {
+		before := r.inst.fuel_used
+		if js.eval_script(r.inst, transmute([]byte)source, "cost") != .Ok { fmt.eprintln("cost: the case failed:", r.inst.last_error); os.exit(1) }
+		return r.inst.fuel_used - before
+	}
+	strings.builder_reset(&console_out)
+	spend(r, "console.log(COST_CASES.length)")
+	cases, _ := strconv.parse_int(strings.trim_space(strings.to_string(console_out)))
+	failed := 0
+	for i in 0 ..< cases {
+		strings.builder_reset(&console_out)
+		spend(r, fmt.tprintf("console.log(COST_CASES[%d][0] + '\\t' + COST_CASES[%d][1])", i, i))
+		fields := strings.split(strings.trim_space(strings.to_string(console_out)), "\t", context.temp_allocator)
+		limit, _ := strconv.parse_int(fields[1])
+		spend(r, fmt.tprintf("COST_CASES[%d][2](%d)", i, COST_ITERATIONS))   // (what a first run makes, shapes and atoms, is not the case's)
+		empty := spend(r, fmt.tprintf("COST_CASES[%d][2](0)", i))
+		full := spend(r, fmt.tprintf("COST_CASES[%d][2](%d)", i, COST_ITERATIONS))
+		cost := int((full - empty) / COST_ITERATIONS)
+		fmt.printfln("%8d %8d %s", cost, limit, fields[0])
+		if cost > limit { failed += 1 }
+	}
+	if failed > 0 {
+		fmt.eprintfln("cost: %d cases over their limits", failed)
+		os.exit(1)
+	}
+}
+
 // The lines of the JIT in the profile of the page's functions: "count<TAB>count<TAB>jit: ...".
 jit_trace_lines :: proc(inst: ^wasm.Instance) -> []string {
 	r, res := wasm.call_i32(inst, "wj_alloc", i32(JIT_TRACE_BYTES))
@@ -377,6 +419,7 @@ main :: proc() {
 	case "verify": cmd_verify(os.args[2:])
 	case "reach": cmd_reach(os.args[2:])
 	case "cold": cmd_cold(os.args[2:])
+	case "cost": cmd_cost(os.args[2:])
 	case: usage()
 	}
 }

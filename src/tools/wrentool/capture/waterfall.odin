@@ -14,7 +14,7 @@ import "wb:remote/api"
 import "wb:tools/tooling"
 import "wb:tools/wrentool/bench"
 
-WATERFALL_FLAGS :: "-Urls= -List= -OutDir= -Exe= -Runs= -Pref= -LimitMs= -Idle"
+WATERFALL_FLAGS :: "-Urls= -List= -OutDir= -Exe= -Runs= -Pref= -LimitMs= -Idle -Stderr="
 WATERFALL_OUT :: "build/waterfall"
 WATERFALL_RUNS :: 1
 WATERFALL_LIMIT_MS :: 30_000
@@ -57,7 +57,7 @@ run_waterfall :: proc(args: []string) -> int {
 	fmt.println(WATERFALL_HEADER)
 	for url in urls {
 		for run in 0 ..< tooling.flag_int(f, "-Runs", WATERFALL_RUNS) {
-			waterfall_load(exe, out, url, run, prefs[:], limit, tooling.flag_has(f, "-Idle"))
+			waterfall_load(exe, out, url, run, prefs[:], limit, tooling.flag_has(f, "-Idle"), tooling.flag(f, "-Stderr"))
 			free_all(context.temp_allocator)
 		}
 	}
@@ -65,13 +65,13 @@ run_waterfall :: proc(args: []string) -> int {
 }
 
 @(private = "file")
-waterfall_load :: proc(exe, out, url: string, run: int, prefs: []string, limit: time.Duration, idle: bool) {
+waterfall_load :: proc(exe, out, url: string, run: int, prefs: []string, limit: time.Duration, idle: bool, stderr: string) {
 	slug := compare_slug(url)
 	profile := fmt.tprintf("%s/profile_%s", out, slug)
 	base.remove_tree(profile)
 	defer base.remove_tree(profile)
 	w: bench.Wren
-	if !bench.start(&w, {exe = exe, profile = profile, window = .Headless, size = SWEEP_SIZE, prefs = prefs}) { return }
+	if !bench.start(&w, {exe = exe, profile = profile, window = .Headless, size = SWEEP_SIZE, prefs = prefs, stderr = stderr}) { return }
 	defer bench.stop(&w)
 	s := &w.session
 	before, _ := api.stats(s)
