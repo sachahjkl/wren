@@ -19,7 +19,6 @@ is_css_type :: proc(n: ^dom.Node) -> bool {
 	return t == "" || base.ascii_equal_fold(t, "text/css")
 }
 
-@(private)
 has_token :: proc(list, token: string) -> bool {
 	rest := list
 	for len(rest) > 0 {

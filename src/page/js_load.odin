@@ -163,6 +163,13 @@ js_mime_types := [?]string{
 // languages (application/wasm is the shell's).
 script_kind_of :: proc(d: ^dom.Document, el: base.Handle) -> (Script_Kind, bool) {
 	ty, has_type := dom.get_attribute(d, el, "type")
+	lang, _ := dom.get_attribute(d, el, "language")
+	return script_kind_of_text(ty, has_type, lang)
+}
+
+// The same from what the attributes say (the preload scanner has no element).
+@(private)
+script_kind_of_text :: proc(ty: string, has_type: bool, lang: string) -> (Script_Kind, bool) {
 	if has_type {
 		t := base.ascii_lower(strings.trim_space(ty))
 		if t == "" { return .Classic, true }
@@ -171,7 +178,7 @@ script_kind_of :: proc(d: ^dom.Document, el: base.Handle) -> (Script_Kind, bool)
 		for m in js_mime_types { if t == m { return .Classic, true } }
 		return .Classic, false
 	}
-	if lang, ok := dom.get_attribute(d, el, "language"); ok && lang != "" {
+	if lang != "" {
 		l := base.ascii_lower(lang)
 		for m in js_mime_types { if strings.concatenate({"text/", l}, context.temp_allocator) == m { return .Classic, true } }
 		return .Classic, false
@@ -824,6 +831,7 @@ the_end :: proc(p: ^Page) -> bool {
 	if p.images.ready { images_sync(p) }
 	if load_delayed(p) { return false }
 	s.loaded = true
+	fetch.speculation_end(p.speculation)   // (what no element took by now is not for this load)
 	s.timing.complete_ms = now_ms(p)
 	ready_state_set(p, .Complete)
 	if p.closed { return true }

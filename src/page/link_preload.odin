@@ -41,6 +41,20 @@ rel_has :: proc(rel, token: string) -> bool {
 	return false
 }
 
+// The request of a <link rel=preload> or modulepreload (`module`); destination Empty and no URL when `as` names nothing.
+@(private)
+link_preload_request :: proc(u, as: string, module, has_crossorigin: bool, crossorigin: string) -> fetch.Request_Desc {
+	destination, known := preload_destination(as)
+	if module { destination, known = .Script, true }
+	if !known { return {} }
+	r := fetch.Request_Desc{url = u, mode = .No_Cors, credentials = .Include, destination = destination, script = module ? .Module : .Classic}
+	if has_crossorigin || module || destination == .Font {
+		r.mode = .Cors
+		r.credentials = base.ascii_equal_fold(crossorigin, "use-credentials") ? .Include : .Same_Origin
+	}
+	return r
+}
+
 // A <link> was inserted, revealed by the parser, or an attribute of it changed.
 @(private)
 link_preload_note :: proc(p: ^Page, el: base.Handle) {
@@ -68,19 +82,11 @@ link_preload_note :: proc(p: ^Page, el: base.Handle) {
 		queue_element_event(p, el, "error")
 		return
 	}
-	mode := fetch.Mode.No_Cors
-	credentials := fetch.Credentials.Include
 	co, has_co := dom.get_attribute(p.doc, el, "crossorigin")
-	if has_co || module || destination == .Font {
-		mode = .Cors
-		credentials = base.ascii_equal_fold(co, "use-credentials") ? .Include : .Same_Origin
-	}
 	nonce, _ := dom.get_attribute(p.doc, el, "nonce")
-	script := module ? fetch.Script_Type.Module : fetch.Script_Type.Classic
-	l.task = fetch.start(p.loader, {
-		request = {url = u.href, mode = mode, credentials = credentials, destination = destination, script = script, initiator = &p.env, nonce = nonce},
-		on_event = link_preload_event, user = l, scope = p.scope, collect = false,
-	})
+	r := link_preload_request(u.href, as, module, has_co, co)
+	r.initiator, r.nonce = &p.env, nonce
+	l.task = fetch.start(p.loader, {request = r, on_event = link_preload_event, user = l, scope = p.scope, collect = false, preload = true})
 }
 
 @(private = "file")
