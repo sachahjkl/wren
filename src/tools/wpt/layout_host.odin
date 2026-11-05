@@ -16,7 +16,7 @@ import "wb:tools/wpt/reftest"
 // are rendered under the same layout, with the natural sizes of images besides (reftest_run.odin); those of every other
 // folder are not run.
 @(private)
-LAYOUT_FOLDERS :: [?]string{"/dom/events/scrolling/", "/css/css-anchor-position/", "/css/css-multicol/", "/css/css-nesting/", "/css/css-writing-modes/", "/css/cssom/", "/html/semantics/interactive-elements/the-dialog-element/", "/navigation-api/scroll-behavior/"}
+LAYOUT_FOLDERS :: [?]string{"/scroll-animations/", "/dom/events/scrolling/", "/css/css-anchor-position/", "/css/css-multicol/", "/css/css-nesting/", "/css/css-writing-modes/", "/css/cssom/", "/html/semantics/interactive-elements/the-dialog-element/", "/navigation-api/scroll-behavior/"}
 @(private)
 REFTEST_FOLDERS :: [?]string{"css/css-multicol", "css/css-writing-modes"}
 @(private)

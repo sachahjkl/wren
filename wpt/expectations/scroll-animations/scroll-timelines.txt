@@ -1,0 +1,415 @@
+# web-platform-tests expectations of Wren for scroll-animations/scroll-timelines, written by build/wpt -update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/scroll-animations/scroll-timelines/cancel-animation.html: OK
+	A pause-pending ready promise should be rejected when the animation is canceled: PASS
+	A play-pending ready promise should be rejected when the animation is canceled: PASS
+	Canceling an animation should cause its start time and hold time to be unresolved: PASS
+	Canceling an animation should fire cancel event on orphaned element: PASS
+	Canceling an animation with inactive timeline should cause its start time and hold time to be unresolved: PASS
+	The cancel event should NOT be fired if the animation is already idle: PASS
+	The finished promise should NOT be rejected if the animation is already idle: PASS
+	The ready promise should be replaced when the animation is canceled: PASS
+	When an animation is canceled, it should create a resolved Promise: PASS
+	oncancel event is fired when the timeline is inactive.: FAIL
+/scroll-animations/scroll-timelines/constructor-no-document.html: OK
+	The source can be null if the document.scrollingElement does not exist: PASS
+/scroll-animations/scroll-timelines/constructor.html: OK
+	'block' is a valid axis value: PASS
+	'inline' is a valid axis value: PASS
+	'x' is a valid axis value: PASS
+	'y' is a valid axis value: PASS
+	A ScrollTimeline can be created with a non-scrolling source: PASS
+	A ScrollTimeline can be created with a source: PASS
+	A ScrollTimeline created with a null source should have no source: PASS
+	A ScrollTimeline created with the default axis should default to 'block': PASS
+	A ScrollTimeline created without a source should use the document.scrollingElement: PASS
+	Creating a ScrollTimeline with an invalid axis value should throw: PASS
+/scroll-animations/scroll-timelines/current-time-nan.html: OK
+	currentTime should be null for a display: inline source: PASS
+	currentTime should be null for a display: none source: PASS
+	currentTime should be null for an unattached source: PASS
+	currentTime should be null when the source is not a scroller: PASS
+/scroll-animations/scroll-timelines/current-time-root-scroller.html: OK
+	currentTime calculates the correct time for a document.scrollingElement source: FAIL
+/scroll-animations/scroll-timelines/current-time-writing-modes.html: OK
+	currentTime handles direction: rtl correctly: FAIL
+	currentTime handles writing-mode: sideways-lr correctly: FAIL
+	currentTime handles writing-mode: sideways-rl correctly: FAIL
+	currentTime handles writing-mode: vertical-lr correctly: FAIL
+	currentTime handles writing-mode: vertical-rl correctly: FAIL
+/scroll-animations/scroll-timelines/duration.html: OK
+	The duration of a scroll timeline is 100%: FAIL
+/scroll-animations/scroll-timelines/effect-updateTiming.html: OK
+	Allows creating scroll linked animation with duration Infinity: PASS
+	Allows setting iterations to a double value: PASS
+	Allows setting the delay of an animation in progress: large negative delay that causes the animation to be finished: PASS
+	Allows setting the delay of an animation in progress: negative delay that seeks into the active interval: PASS
+	Allows setting the delay of an animation in progress: positive delay that causes the animation to be no longer in-effect: PASS
+	Allows setting the delay to a negative number: FAIL
+	Allows setting the delay to a positive number: PASS
+	Allows setting the direction of an animation in progress from 'alternate' to 'alternate-reverse': PASS
+	Allows setting the direction of an animation in progress from 'normal' to 'alternate': PASS
+	Allows setting the direction of an animation in progress from 'normal' to 'reverse': PASS
+	Allows setting the direction of an animation in progress from 'normal' to 'reverse' while at start of active interval: PASS
+	Allows setting the direction of an animation in progress from 'normal' to 'reverse' while filling backwards: PASS
+	Allows setting the direction to each of the possible keywords: PASS
+	Allows setting the duration of an animation in progress: PASS
+	Allows setting the duration of an animation in progress such that the the start and current time do not change: FAIL
+	Allows setting the duration to 123.45: FAIL
+	Allows setting the duration to Infinity: FAIL
+	Allows setting the duration to auto: FAIL
+	Allows setting the easing of an animation in progress: PASS
+	Allows setting the easing to a ease function: PASS
+	Allows setting the easing to a ease-in function: PASS
+	Allows setting the easing to a ease-in-out function: PASS
+	Allows setting the easing to a ease-out function: PASS
+	Allows setting the easing to a easing function which produces values greater than 1: PASS
+	Allows setting the easing to a easing function which produces values less than 1: PASS
+	Allows setting the easing to a linear function: PASS
+	Allows setting the easing to a step-end function: FAIL
+	Allows setting the easing to a step-start function: FAIL
+	Allows setting the easing to a steps(1) function: PASS
+	Allows setting the easing to a steps(1, end) function: FAIL
+	Allows setting the easing to a steps(1, start) function: PASS
+	Allows setting the easing to a steps(2, end) function: FAIL
+	Allows setting the easing to a steps(2, start) function: PASS
+	Allows setting the endDelay to a negative number: PASS
+	Allows setting the endDelay to a positive number: PASS
+	Allows setting the fill to 'backwards': PASS
+	Allows setting the fill to 'both': PASS
+	Allows setting the fill to 'forwards': PASS
+	Allows setting the fill to 'none': PASS
+	Allows setting the iterationStart of an animation in progress: active phase: PASS
+	Allows setting the iterationStart of an animation in progress: backwards-filling: PASS
+	Allows setting the iterationStart of an animation in progress: forwards-filling: FAIL
+	Allows setting the iterations of an animation in progress: FAIL
+	Allows setting the iterations of an animation in progress with duration "auto": FAIL
+	Throws when setting invalid delay value: -Infinity: PASS
+	Throws when setting invalid delay value: Infinity: PASS
+	Throws when setting invalid delay value: NaN: PASS
+	Throws when setting invalid duration: "100": PASS
+	Throws when setting invalid duration: "abc": PASS
+	Throws when setting invalid duration: -1: PASS
+	Throws when setting invalid duration: -Infinity: PASS
+	Throws when setting invalid duration: NaN: PASS
+	Throws when setting invalid iterationStart value: -1: PASS
+	Throws when setting invalid iterationStart value: -Infinity: PASS
+	Throws when setting invalid iterationStart value: Infinity: PASS
+	Throws when setting invalid iterationStart value: NaN: PASS
+	Throws when setting iterations to Infinity: FAIL
+	Throws when setting the endDelay to infinity: PASS
+	Throws when setting the endDelay to negative infinity: PASS
+	Updates the specified value when setting the easing to 'cubic-bezier(0.1, 5, 0.23, 0)': PASS
+	Updates the specified value when setting the easing to 'ease': PASS
+	Updates the specified value when setting the easing to 'ease-in': PASS
+	Updates the specified value when setting the easing to 'ease-in-out': PASS
+	Updates the specified value when setting the easing to 'ease-out': PASS
+	Updates the specified value when setting the easing to 'linear': PASS
+	Updates the specified value when setting the easing to 'steps(3)': PASS
+	Updates the specified value when setting the easing to 'steps(3, start)': PASS
+/scroll-animations/scroll-timelines/effect-updateTiming.tentative.html: OK
+	Reflects a zero startTime as a percentage on a progress-based timeline: FAIL
+/scroll-animations/scroll-timelines/finish-animation.html: OK
+	A pending playback rate should be applied immediately when an animation is finished: PASS
+	A pending ready promise is resolved and not replaced when the animation is finished: PASS
+	An exception should be thrown if the effective playback rate is zero: PASS
+	Finishing a canceled animation sets the current and start times: PASS
+	Finishing a pause-pending animation resolves the pending task immediately and update the start time: PASS
+	Finishing a pause-pending animation with negative playback rate resolves the pending task immediately: PASS
+	Finishing a paused animation resolves the start time: PASS
+	Finishing a reversed animation jumps to zero time: PASS
+	Finishing a reversed animation with a current time less than zero makes it jump back to zero: FAIL
+	Finishing an animation attached to inactive timeline while play-pending doesn't resolves the pending task: PASS
+	Finishing an animation during an aborted pause makes it finished immediately: PASS
+	Finishing an animation fires finish event on orphaned element: PASS
+	Finishing an animation resolves the finished promise synchronously: FAIL
+	Finishing an animation seeks to the end time: PASS
+	Finishing an animation while play-pending resolves the pending task immediately: PASS
+	Finishing an animation with a current time past the effect end jumps back to the end: FAIL
+	Finishing an animation with a zero playback rate throws: PASS
+	Finishing idle animation attached to inactive timeline pauses the animation.: PASS
+	Finishing idle animation produces correct state and fires finish event.: FAIL
+	Finishing running animation attached to inactive timeline pauses the animation.: FAIL
+	Finishing running animation produces correct state and fires finish event.: FAIL
+/scroll-animations/scroll-timelines/idlharness.window.html: OK
+	Element includes Animatable: member names are unique: PASS
+	Element includes ChildNode: member names are unique: PASS
+	Element includes NonDocumentTypeChildNode: member names are unique: PASS
+	Element includes ParentNode: member names are unique: PASS
+	Element includes Slottable: member names are unique: PASS
+	Partial interface Element: member names are unique: PASS
+	ScrollTimeline interface object length: PASS
+	ScrollTimeline interface object name: PASS
+	ScrollTimeline interface: attribute axis: PASS
+	ScrollTimeline interface: attribute source: PASS
+	ScrollTimeline interface: existence and properties of interface object: PASS
+	ScrollTimeline interface: existence and properties of interface prototype object: PASS
+	ScrollTimeline interface: existence and properties of interface prototype object's "constructor" property: PASS
+	ScrollTimeline interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	ScrollTimeline interface: new ScrollTimeline() must inherit property "axis" with the proper type: PASS
+	ScrollTimeline interface: new ScrollTimeline() must inherit property "source" with the proper type: PASS
+	ScrollTimeline must be primary interface of new ScrollTimeline(): PASS
+	Stringification of new ScrollTimeline(): PASS
+	ViewTimeline interface object length: FAIL
+	ViewTimeline interface object name: PASS
+	ViewTimeline interface: attribute endOffset: PASS
+	ViewTimeline interface: attribute startOffset: PASS
+	ViewTimeline interface: attribute subject: PASS
+	ViewTimeline interface: existence and properties of interface object: PASS
+	ViewTimeline interface: existence and properties of interface prototype object: PASS
+	ViewTimeline interface: existence and properties of interface prototype object's "constructor" property: PASS
+	ViewTimeline interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	idl_test setup: PASS
+	idl_test validation: PASS
+/scroll-animations/scroll-timelines/intrinsic-iteration-duration.tentative.html: OK
+	Computed duration in percent even when specified in ms: FAIL
+	Intrinsic iteration duration accounts for animation range.: FAIL
+	Intrinsic iteration duration accounts for number of iterations: FAIL
+	Intrinsic iteration duration fills timeline.: FAIL
+	Time-based duration normalized to fill animation range.: FAIL
+	Time-based duration normalized to preserve proportional delays.: FAIL
+/scroll-animations/scroll-timelines/null-scroll-source-crash.html: OK
+	Playing animation with null scroll source should not crash: FAIL
+/scroll-animations/scroll-timelines/pause-animation.html: OK
+	A pause-pending animation maintains the current time when applying a pending playback rate: FAIL
+	A pending ready promise should be resolved and not replaced when the animation is paused: PASS
+	Animation start and current times are correct if scroll timeline is activated after animation.pause call.: FAIL
+	Pause pending task doesn't run when the timeline is inactive.: FAIL
+	Pausing a canceled animation sets the current time: PASS
+	Pausing clears the start time: PASS
+	The animation's current time remains fixed after pausing: PASS
+/scroll-animations/scroll-timelines/play-animation.html: OK
+	A pending playback rate is used when determining timeline range alignment: FAIL
+	A pending ready promise should be resolved and not replaced when the animation enters the running state: PASS
+	Current time set while play pending is preserved.: FAIL
+	If a pause operation is interrupted, the ready promise is reused: PASS
+	Playing a canceled animation backwards sets the start time: PASS
+	Playing a canceled animation sets the start time: PASS
+	Playing a finished and reversed animation restarts the animation aligned at the end: FAIL
+	Playing a finished animation clears the start time: PASS
+	Playing a finished animation restarts the animation aligned at the start: PASS
+	Playing a pause-pending but previously finished animation realigns with the scroll position: PASS
+	Playing a running animation resets a sticky start time: FAIL
+	Playing an animations aligns the start time with the start of the active range: PASS
+	Playing an animations with a negative playback rate aligns the start time with the end of the active range: PASS
+	Resuming an animation from paused realigns with scroll position.: FAIL
+	Start time set while play pending is preserved.: FAIL
+	The ready promise should be replaced if the animation is not already pending: PASS
+/scroll-animations/scroll-timelines/reverse-animation.html: OK
+	Reversing an animation does not cause it to leave the pending state: PASS
+	Reversing an animation does not cause it to resolve the ready promise: PASS
+	Reversing an animation inverts the playback rate: FAIL
+	Reversing an animation plays a pausing animation: FAIL
+	Reversing an animation resets a sticky start time.: FAIL
+	Reversing an animation with a negative playback rate should cause the animation to play in a forward direction: PASS
+	Reversing an animation without an active timeline throws an InvalidStateError: FAIL
+	Reversing an idle animation aligns startTime with the rangeEnd boundary: PASS
+	Reversing should use the negative pending playback rate: PASS
+	Reversing when when playbackRate == 0 should preserve the playback rate: FAIL
+	Setting current time while reverse-pending preserves currentTime: FAIL
+/scroll-animations/scroll-timelines/scroll-animation-effect-fill-modes.tentative.html: TIMEOUT
+	Applied effect value after effect end with fill: backwards: NOTRUN
+	Applied effect value after effect end with fill: none: NOTRUN
+	Applied effect value after timeline end with fill: auto: NOTRUN
+	Applied effect value after timeline end with fill: both: NOTRUN
+	Applied effect value after timeline end with fill: forwards: NOTRUN
+	Applied effect value at effect end with fill: backwards: NOTRUN
+	Applied effect value at effect end with fill: none: NOTRUN
+	Applied effect value at midpoint with fill: backwards: NOTRUN
+	Applied effect value at midpoint with fill: none: NOTRUN
+	Applied effect value at start delay with fill: backwards: NOTRUN
+	Applied effect value at start delay with fill: none: NOTRUN
+	Applied effect value at timeline end with fill: auto: NOTRUN
+	Applied effect value at timeline end with fill: both: NOTRUN
+	Applied effect value at timeline end with fill: forwards: NOTRUN
+	Applied effect value at timeline start with fill: auto: NOTRUN
+	Applied effect value at timeline start with fill: both: NOTRUN
+	Applied effect value at timeline start with fill: forwards: NOTRUN
+	Applied effect value before start delay with fill: backwards: NOTRUN
+	Applied effect value before start delay with fill: none: TIMEOUT
+	Applied effect value before timeline start with fill: auto: NOTRUN
+	Applied effect value before timeline start with fill: both: NOTRUN
+	Applied effect value before timeline start with fill: forwards: NOTRUN
+	Applied effect value in timeline range with fill: auto: NOTRUN
+	Applied effect value in timeline range with fill: both: NOTRUN
+	Applied effect value in timeline range with fill: forwards: NOTRUN
+	Scroll based animation effect fill mode should return 'auto' for getTiming() and should return 'none' for getComputedTiming().: PASS
+/scroll-animations/scroll-timelines/scroll-animation-effect-phases.tentative.html: TIMEOUT
+	Animation effect is still applied after pausing and making timeline inactive.: NOTRUN
+	Current times and effect phase after effect end time when delay = 0 and endDelay = 500 |: NOTRUN
+	Current times and effect phase after effect end time when delay = 250 and endDelay = 250 |: NOTRUN
+	Current times and effect phase at effect end time when delay = 0 and endDelay = 0 |: NOTRUN
+	Current times and effect phase at effect end time when delay = 0 and endDelay = 500 |: NOTRUN
+	Current times and effect phase at effect end time when delay = 250 and endDelay = 250 |: NOTRUN
+	Current times and effect phase at effect end time when delay = 500 and endDelay = 0 |: NOTRUN
+	Current times and effect phase at start delay when delay = 250 and endDelay = 250 |: NOTRUN
+	Current times and effect phase at start delay when delay = 500 and endDelay = 0 |: NOTRUN
+	Current times and effect phase at start when delay = 0 and endDelay = 0 |: TIMEOUT
+	Current times and effect phase at timeline boundary when delay = 0 and endDelay = 500 |: NOTRUN
+	Current times and effect phase at timeline boundary when delay = 250 and endDelay = 250 |: NOTRUN
+	Current times and effect phase at timeline end when delay = -125 and endDelay = -125 |: NOTRUN
+	Current times and effect phase at timeline start when delay = -125 and endDelay = -125 |: NOTRUN
+	Current times and effect phase at timeline start when delay = 0 and endDelay = 500 |: NOTRUN
+	Current times and effect phase at timeline start when delay = 250 and endDelay = 250 |: NOTRUN
+	Current times and effect phase at timeline start when delay = 500 and endDelay = 0 |: NOTRUN
+	Current times and effect phase before start delay when delay = 250 and endDelay = 250 |: NOTRUN
+	Current times and effect phase before start delay when delay = 500 and endDelay = 0 |: NOTRUN
+	Current times and effect phase in active range when delay = -125 and endDelay = -125 |: NOTRUN
+	Current times and effect phase in active range when delay = 0 and endDelay = 0 |: NOTRUN
+	Current times and effect phase in active range when delay = 0 and endDelay = 500 |: NOTRUN
+	Current times and effect phase in active range when delay = 250 and endDelay = 250 |: NOTRUN
+	Current times and effect phase in active range when delay = 500 and endDelay = 0 |: NOTRUN
+	Make scroller inactive, then set current time to an in range time: NOTRUN
+	Make timeline inactive, force style update then pause the animation. No crashing indicates test success.: NOTRUN
+	Pause in before phase, scroll timeline into active phase, animation should remain in the before phase: NOTRUN
+	Pause in before phase, set animation current time to be in active range, animation should become active. Scrolling should have no effect.: NOTRUN
+	Playback rate affects whether active phase boundary is inclusive.: NOTRUN
+	Verify that (play -> pause -> play) doesn't change phase/progress.: NOTRUN
+/scroll-animations/scroll-timelines/scroll-animation-inactive-timeline.html: TIMEOUT
+	Animation current time is correct when the timeline becomes newly inactive and then active again.: NOTRUN
+	Animation start and current times are correct if scroll timeline is activated after animation.play call.: TIMEOUT
+	Animation start and current times are correct if scroll timeline is activated after setting start time.: NOTRUN
+	Play pending task doesn't run when the timeline is inactive.: PASS
+/scroll-animations/scroll-timelines/scroll-animation.html: OK
+	Animation start and current times are correct for each animation state when the animation starts playing with advanced scroller.: PASS
+	Animation start and current times are correct for each animation state.: PASS
+	Finished animation plays on reverse scrolling.: PASS
+	Sending animation finished events by finished animation on reverse scrolling.: PASS
+/scroll-animations/scroll-timelines/scroll-timeline-invalidation-002.html: OK
+	Basic invalidation for scroll(nearest): PASS
+	Basic invalidation for scroll(self): PASS
+	Opacity animation invalidation for scroll(nearest): PASS
+	Opacity animation invalidation for scroll(self): PASS
+	Other axis invalidation for scroll(nearest): PASS
+	Other axis invalidation for scroll(self): PASS
+/scroll-animations/scroll-timelines/scroll-timeline-invalidation.html: OK
+	Animation current time and effect local time are updated after scroller content size changes.: FAIL
+	Animation current time and effect local time are updated after scroller size changes.: FAIL
+	If scroll animation resizes its scroll timeline scroller, layout reruns once per frame.: FAIL
+/scroll-animations/scroll-timelines/scroll-timeline-range-with-zoom.html: OK
+	scroll-timeline-range-with-zoom: FAIL
+/scroll-animations/scroll-timelines/scroll-timeline-range.html: OK
+	Scroll timeline with EM range [CSS]: FAIL
+	Scroll timeline with calculated range [CSS]: FAIL
+	Scroll timeline with calculated range [JavaScript API]: FAIL
+	Scroll timeline with percentage range [CSS]: FAIL
+	Scroll timeline with percentage range [JavaScript API]: PASS
+	Scroll timeline with px range [CSS]: FAIL
+	Scroll timeline with px range [JavaScript API]: PASS
+	Scroll timeline with relative units range [JavaScript API]: PASS
+/scroll-animations/scroll-timelines/scroll-timeline-snapshot-elementsFromPoint.html: OK
+	Scroll timeline snapshotting should not happen for elementsFromPoint(): PASS
+/scroll-animations/scroll-timelines/scroll-timeline-snapshotting.html: OK
+	ScrollTimeline current time is updated after programmatic animated scroll.: PASS
+/scroll-animations/scroll-timelines/scroll-timeline-source-single-axis-inactive.html: OK
+	CSS anonymous ScrollTimeline falls back when no ancestor matches the axis: FAIL
+	JS-created ScrollTimeline for a non-scrollable axis is inactive: PASS
+	ScrollTimeline becomes inactive when the reference element has display:none: PASS
+/scroll-animations/scroll-timelines/scroll-timeline-source-single-axis-inner.html: OK
+	ScrollTimeline selects the nearest matching ancestor scroll container: FAIL
+/scroll-animations/scroll-timelines/scroll-timeline-source-single-axis-outer.html: OK
+	ScrollTimeline skips non-matching ancestor scroll containers: FAIL
+/scroll-animations/scroll-timelines/scroll-timeline-source-single-axis-progress.html: OK
+	Timeline progress follows the matched source's scroll offset: FAIL
+	Timeline progress is measured from the matched source's scroll origin: FAIL
+/scroll-animations/scroll-timelines/scroll-timeline-source-single-axis-viewport-writing-mode.html: OK
+	ScrollTimeline resolves the viewport fallback axis using the viewport writing mode: FAIL
+/scroll-animations/scroll-timelines/setting-current-time.html: OK
+	Animation current time and play state are correct when current time is set while the timeline is inactive.: FAIL
+	Animation current time set while the timeline is inactive holds when the timeline becomes active again.: FAIL
+	Set Animation current time then scroll.: FAIL
+	Set animation current time to a negative value.: FAIL
+	Set animation current time to a valid value while playing.: FAIL
+	Set animation current time to a valid value without playing.: FAIL
+	Set animation current time to a value beyond effect end.: FAIL
+	Setting animation current time to null throws TypeError.: PASS
+	Setting animation.currentTime then restarting the animation should reset the current time.: FAIL
+	Setting current time while play pending overrides the current time: FAIL
+	Setting the current time to an absolute time value throws exception: PASS
+/scroll-animations/scroll-timelines/setting-effect.html: OK
+	Setting the effect of scroll-driven animation computes percentage timing values.: FAIL
+/scroll-animations/scroll-timelines/setting-playback-rate.html: OK
+	Initial current time is scaled by playbackRate set while scroll-linked animation is in running state.: PASS
+	Negative initial playback rate should correctly modify initial current time.: PASS
+	Reversing an animation with non-boundary aligned start time symmetrically adjusts the start time: FAIL
+	Reversing the playback rate while playing correctly impacts current time during future scrolls: FAIL
+	Setting a zero playback rate while running preserves the start time: FAIL
+	Setting the playback rate while play-pending does not scale current time.: FAIL
+	Setting the playback rate while playing scales current time.: FAIL
+	Setting the playback rate while playing scales the set current time.: FAIL
+	The current time is scaled by playbackRate set while the scroll-linked animation is in play state.: FAIL
+	The playback rate affects the rate of progress of the current time when scrolling: PASS
+	The playback rate set before scroll-linked animation started playing affects the rate of progress of the current time: PASS
+	Zero current time is not affected by playbackRate set while the animation is in idle state.: PASS
+	Zero current time is not affected by playbackRate set while the animation is in play-pending state.: PASS
+	Zero initial playback rate should correctly modify initial current time.: PASS
+/scroll-animations/scroll-timelines/setting-start-time.html: OK
+	Setting an unresolved start time on a play-pending animation makes it idle: PASS
+	Setting an unresolved start time sets the hold time: FAIL
+	Setting an unresolved start time sets the hold time to unresolved when the timeline is inactive: FAIL
+	Setting the start time clears the hold time: FAIL
+	Setting the start time clears the hold time when the timeline is inactive: FAIL
+	Setting the start time of a play-pending animation applies a pending playback rate: FAIL
+	Setting the start time of a playing animation applies a pending playback rate: FAIL
+	Setting the start time on a reverse running animation updates the play state: FAIL
+	Setting the start time on a running animation updates the play state: FAIL
+	Setting the start time resolves a pending pause task: PASS
+	Setting the start time resolves a pending ready promise: FAIL
+	Setting the start time resolves a pending ready promise when the timelineis inactive: FAIL
+	Setting the start time to an absolute time value throws exception: PASS
+	Setting the start time updates the finished state: FAIL
+/scroll-animations/scroll-timelines/setting-timeline.tentative.html: OK
+	Changing from a scroll-timeline to a view-timeline updates start time.: FAIL
+	Setting a scroll timeline on a pause-pending animation fixes the currentTime of the animation based on the scroll position once resumed: FAIL
+	Setting a scroll timeline on a paused animation fixes the currentTime of the animation based on the scroll position when resumed: FAIL
+	Setting a scroll timeline on a play-pending animation synchronizes currentTime of the animation with the scroll position.: PASS
+	Setting a scroll timeline on a reversed paused animation fixes the currentTime of the animation based on the scroll position when resumed: FAIL
+	Setting a scroll timeline on a reversed play-pending animation synchronizes the currentTime of the animation with the scroll position.: PASS
+	Setting a scroll timeline on a running animation synchronizes the currentTime of the animation with the scroll position.: PASS
+	Switching from a document timeline to a scroll timeline and updating currentTime preserves the progress while paused.: FAIL
+	Switching from a document timeline to a scroll timeline on an infinite duration animation.: FAIL
+	Switching from a document timeline to a scroll timeline updates currentTime when unpaused via CSS.: FAIL
+	Switching from a null timeline to a scroll timeline on an animation with a resolved start time preserved the play state: PASS
+	Switching from one scroll timeline to another updates currentTime: PASS
+	Transition from a scroll timeline to a document timeline on a reversed paused animation maintains correct currentTime: FAIL
+	Transitioning from a scroll timeline to a document timeline on a pause-pending animation preserves currentTime: FAIL
+	Transitioning from a scroll timeline to a document timeline on a running animation preserves currentTime: FAIL
+	Transitioning from a scroll timeline to a null timeline on a running animation preserves current progress.: FAIL
+/scroll-animations/scroll-timelines/source-quirks-mode.html: OK
+	Style of <body> is reflected in source attribute in quirks mode: FAIL
+/scroll-animations/scroll-timelines/update-playback-rate.html: OK
+	If a pending playback rate is set multiple times, the latest wins: PASS
+	In the idle state, the playback rate is applied immediately: PASS
+	In the paused state, the playback rate is applied immediately: PASS
+	Updating the playback rate maintains the current time: FAIL
+	Updating the playback rate on a finished animation maintains the current time: PASS
+	Updating the playback rate on a pause-pending animation maintains the current time: FAIL
+	Updating the playback rate on a play-pending animation maintains the current time: FAIL
+	Updating the playback rate to zero on a finished animation maintains the current time: PASS
+	Updating the playback rate while running makes the animation pending: PASS
+/scroll-animations/scroll-timelines/updating-the-finished-state.html: OK
+	Animation finish event is fired again after replaying from start: PASS
+	Animation finish event is fired again after seeking back to start: PASS
+	Animation finished promise is replaced after replaying from start: PASS
+	Animation finished promise is replaced after seeking back to start: PASS
+	Finish notification steps don't run when the animation seeks to finish and then seeks back again: FAIL
+	Finish notification steps run when an animation without a target effect completes normally: PASS
+	Finish notification steps run when the animation completes normally: PASS
+	Finish notification steps run when the animation completes with .finish(), even if we then seek away: PASS
+	Finish notification steps run when the animation seeks past finish: PASS
+	Updating the finished state when current time is unresolved: PASS
+	Updating the finished state when playback rate is zero and the current time is less than end: PASS
+	Updating the finished state when playback rate is zero and the current time is less than zero: PASS
+	Updating the finished state when playback rate is zero and the currenttime is greater than end: PASS
+	Updating the finished state when playing  a reversed animation exactly to zero: PASS
+	Updating the finished state when playing exactly to end: PASS
+	Updating the finished state when playing in reverse past zero: PASS
+	Updating the finished state when seeking a reversed animation before end: PASS
+	Updating the finished state when seeking a reversed animation exactly to zero: PASS
+	Updating the finished state when seeking a reversed animation past zero: PASS
+	Updating the finished state when seeking before end: PASS
+	Updating the finished state when seeking exactly to end: PASS
+	Updating the finished state when seeking past end: PASS
+	Updating the finished state when start time is unresolved and did seek = true: PASS
+	finish event is fired after the endDelay has expired: PASS
+	finish event is not fired at the end of the active interval when the endDelay has not expired: PASS

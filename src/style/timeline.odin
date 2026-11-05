@@ -88,6 +88,8 @@ Anim_Run :: struct {
 	frames_gen:  u64,          // the Element_Anim.base_gen the frames were computed for
 	frames_rebuilds: u64,
 	frames_ready: bool,
+	frames_ranged: bool,       // some keyframe is at a named range: its place follows the timeline
+	frames_moved:  bool,       // those ranges moved since
 	local:       f64,          // time since the animation started, advancing only while it runs
 	last_now:    f64,
 	started:     bool,
@@ -730,7 +732,8 @@ run_state :: proc(r: ^Anim_Run) -> (st: Run_State) {
 
 @(private)
 ensure_frames :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, ea: ^Element_Anim, r: ^Anim_Run) {
-	if r.frames_ready && r.frames_gen == ea.base_gen && r.frames_rebuilds == tl.engine.rebuilds { return }
+	if r.frames_ready && !r.frames_moved && r.frames_gen == ea.base_gen && r.frames_rebuilds == tl.engine.rebuilds { return }
+	r.frames_moved = false
 	base.arena_free_all(&r.frames_arena)
 	a := base.arena_allocator(&r.frames_arena)
 	r.frames, r.props = nil, {}
@@ -742,6 +745,7 @@ ensure_frames :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, ea: ^Elemen
 	frames := make([dynamic]Frame_Value, 0, len(set.frames), a)
 	props := set.props
 	for &block in set.frames {
+		if block.range != .Normal { r.frames_ranged = true }
 		offset, used := keyframe_offset(r, &block)
 		if !used { continue }
 		c, extra := compute_keyframe(tl.engine, &block, ea.base, parent, s.initial, s.root_font_size, a)
@@ -1034,9 +1038,9 @@ progress_shown :: proc(at: ^Anim_Run, shown: []Shown_Offset) {
 // into `out` without moving the timeline: its clock, runs, events and overlays stay as the page's last tick left them, and that
 // is what scripts read. The page's tick takes over at its turn from the same clock. An animation on a scroll or view timeline
 // stands where `shown` puts its scroller. Left out: elements a script animates (Web Animations), animations whose keyframes were
-// not resolved for the element's style yet, effects that do not run. Returns whether one of the values changes at every frame.
-timeline_compositor_values :: proc(tl: ^Timeline, s: ^Styled, wall_ms: f64, shown: []Shown_Offset, lays_out: bool, out: ^[dynamic]Compositor_Value) -> (moving: bool) {
-	if tl == nil || s == nil || !tl.has_wall || len(tl.elements) == 0 { return false }
+// not resolved for the element's style yet, effects that do not run. `moving`: one of the values changes at every frame; `any`: there is one (`out` nil: only that is told).
+timeline_compositor_values :: proc(tl: ^Timeline, s: ^Styled, wall_ms: f64, shown: []Shown_Offset, lays_out: bool, out: ^[dynamic]Compositor_Value) -> (moving, any: bool) {
+	if tl == nil || s == nil || !tl.has_wall || len(tl.elements) == 0 { return }
 	list, records := COMPOSITOR_PROPS, RECORD_PROPS
 	allowed := ps_union(ps_of(..list[:]), ps_of(..records[:]))
 	now := tl.now + max(wall_ms - tl.last_wall, 0) * f64(max(tl.engine.settings.anim_time_scale, ANIM_TIME_SCALE_MIN))
@@ -1057,6 +1061,17 @@ timeline_compositor_values :: proc(tl: ^Timeline, s: ^Styled, wall_ms: f64, show
 			if phase, _ := transition_progress(tr, tl.now); phase != .After { live = true }
 		}
 		if !live || ps_empty(props) || (!lays_out && ps_intersect(props, allowed) != props) { continue }
+		any = true
+		if out == nil {
+			for r in ea.runs {
+				if r.timeline.kind != .Auto || !run_running(r) { continue }
+				at := r^
+				at.local += now - at.last_now
+				if run_state(&at).phase == .Active { moving = true }
+			}
+			for tr in ea.transitions { if phase, _ := transition_progress(tr, now); phase == .Active { moving = true } }
+			continue
+		}
 		c := new(Computed, context.temp_allocator)
 		c^ = b^
 		for r in ea.runs {
@@ -1084,7 +1099,7 @@ timeline_compositor_values :: proc(tl: ^Timeline, s: ^Styled, wall_ms: f64, show
 		if !ps_empty(push) { pseudo_inherit(c, push, context.temp_allocator) }
 		append(out, Compositor_Value{node = ea.node, cs = c, props = props, record = record})
 	}
-	compositor_inherited(tl, out)
+	if out != nil { compositor_inherited(tl, out) }
 	return
 }
 

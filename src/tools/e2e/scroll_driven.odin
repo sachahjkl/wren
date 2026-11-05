@@ -4,9 +4,12 @@ package e2e_scenarios
 // page's turn and in the chrome frames made while a script holds the thread.
 
 import "core:fmt"
+import "core:os"
 import "core:strconv"
 import "core:strings"
 import "core:testing"
+import "wb:base"
+import "wb:browser"
 import "wb:e2e"
 
 @(private = "file") SIZE :: [2]int{1000, 700}
@@ -15,8 +18,8 @@ import "wb:e2e"
 @(private = "file") WITHIN_PX :: 1.5               // a computed length, against what the scroll offset gives
 
 @(private = "file")
-open :: proc(t: ^testing.T, loc := #caller_location) -> ^e2e.Session {
-	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, url = e2e.file_url(fmt.tprintf("%s/examples/site/scroll_driven_probe.html", e2e.repo_root()))}, loc)
+open :: proc(t: ^testing.T, prefs: []string = nil, loc := #caller_location) -> ^e2e.Session {
+	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, prefs = prefs, url = e2e.file_url(fmt.tprintf("%s/examples/site/scroll_driven_probe.html", e2e.repo_root()))}, loc)
 	e2e.wait_idle(s)
 	e2e.wait_frames(s)
 	return s
@@ -162,8 +165,15 @@ top_of :: proc(img: e2e.Image, x: int, color: [3]u8) -> int {
 // In the chrome frames under a task: the wheel moves the document, and what its timeline drives follows, transform, opacity and a background
 // colour, at the frame's offset. The task reads none of it; the page's turn shows the same.
 @(test)
-what_a_scroll_timeline_drives_follows_the_wheel_under_a_task :: proc(t: ^testing.T) {
-	s := open(t)
+what_a_scroll_timeline_drives_follows_the_wheel_under_a_task :: proc(t: ^testing.T) { follows_the_wheel(t, nil) }
+
+// With no layout in chrome frames (a page too long for one): a box keeps its space and its group from the start, as under will-change, and those values follow by themselves.
+@(test)
+the_compositor_alone_follows_the_wheel_under_a_task :: proc(t: ^testing.T) { follows_the_wheel(t, {"browser.shell.shown_layout_max_ms=0"}) }
+
+@(private = "file")
+follows_the_wheel :: proc(t: ^testing.T, prefs: []string) {
+	s := open(t, prefs)
 	short := false
 	near(t, number(s, "getComputedStyle(fade).opacity * 100"), 100, "opaque at the top")
 	corner := e2e.box_model(s, "#sticky").window   // (the pictures are of the window; the box is held at its inset from the page's corner)
@@ -253,6 +263,31 @@ layout_values_of_a_timeline_follow_the_wheel_under_a_task :: proc(t: ^testing.T)
 	near(t, number(s, "parseFloat(getComputedStyle(bar).width)"), f64(bar), "the page's turn goes on from there")
 }
 
+@(private = "file") INK_X, INK_ROW :: 310, 105        // inside #inked, on the text of the child that takes its colour by inheritance
+@(private = "file") INK_WAIT_MS :: 400
+@(private = "file") INK_MOVED_LEAST :: 10               // the channel moved this much between two pictures, at least (the clock gives about 25)
+
+// A colour by the clock, on an element and on the child that inherits it: it goes on under the task, with no scroll.
+@(test)
+a_colour_and_what_inherits_it_go_on_under_a_task :: proc(t: ^testing.T) {
+	s := open(t)
+	short := false
+	corner := e2e.box_model(s, "#sticky").window
+	ox, oy := int(corner.x) - STICKY_LEFT, int(corner.y) - STICKY_TOP
+	e2e.eval(s, "inked.style.animationPlayState = 'running'; 1")
+	shots := while_held(s, &short, {e2e.busy_capture(), e2e.busy_wait(INK_WAIT_MS), e2e.busy_capture()})
+	a, b := e2e.pixel(shots[0], ox + INK_X, oy + INK_ROW), e2e.pixel(shots[1], ox + INK_X, oy + INK_ROW)
+	testing.expectf(t, int(b.b) - int(a.b) >= INK_MOVED_LEAST, "the inherited colour goes on under the task: blue %d, then %d", a.b, b.b)
+}
+
+// At rest a page of scroll-driven animations draws nothing: a layout that moved a timeline asks for one more frame, not for frames for ever.
+@(test)
+a_page_of_timelines_at_rest_draws_no_frames :: proc(t: ^testing.T) {
+	s := open(t)
+	scroll_to(s, 1000)
+	e2e.wait_at_rest(s)
+}
+
 // A task that changes the document leaves nothing to paint from (the layout's items hold what it changed): the frames show the page's last pixels, moved.
 @(test)
 a_task_that_changes_the_document_stops_the_layout_values :: proc(t: ^testing.T) {
@@ -267,6 +302,77 @@ a_task_that_changes_the_document_stops_the_layout_values :: proc(t: ^testing.T) 
 	shots := while_held(s, &short, notches[:])
 	testing.expectf(t, run_right(shots[0], oy + ROW_BAR, ox, BAR_COLOR) == 0, "the bar stays as it was painted")
 	testing.expect_value(t, e2e.eval(s, "document.querySelector('#head').textContent"), "changed")
+}
+
+@(private = "file") PERF_NOTCH :: 0.25         // a quarter of a notch at every frame
+@(private = "file") PERF_STEPS :: 240
+@(private = "file") PERF_FRAMES :: 600
+@(private = "file") PERF_OUT :: "build/scroll_driven_frames_%d.tsv"
+@(private = "file") PERF_TASKS_MS :: [?]int{50, 200, 500}
+@(private = "file") PERF_BAR_ROW, PERF_HEADER_X :: 2, 6   // inside the reading bar; inside the header, left of what it holds
+@(private = "file") HEADER_WITHIN :: 2         // a pixel of the header, against the first one (the page around it is near that colour)
+
+// The demo under tasks back to back, frame by frame (Timeline.every): when each frame came, whether it was made under a task, and what it shows of the
+// reading bar's width and the header's height against the scroll it shows. An opt-in measure: PERF_OUT has every frame.
+@(test)
+the_demo_frame_by_frame_under_tasks :: proc(t: ^testing.T) {
+	if base.perf_skip("scroll-driven animations frame by frame") { return }
+	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, url = e2e.file_url(fmt.tprintf("%s/examples/site/scroll_driven.html", e2e.repo_root()))})
+	e2e.wait_load(s)
+	e2e.wait_frames(s)
+	for ms in PERF_TASKS_MS { measure_tasks(t, s, ms) }
+}
+
+@(private = "file")
+measure_tasks :: proc(t: ^testing.T, s: ^e2e.Session, task_ms: int) {
+	e2e.eval(s, fmt.tprintf("document.getElementById('load').value = '%d'; window.scrollTo(0, 0); 1", task_ms))
+	e2e.wait_frames(s)
+	corner := e2e.box_model(s, "#bar").window
+	ox, oy := int(corner.x), int(corner.y)
+	range_px := number(s, "document.documentElement.scrollHeight - innerHeight")
+	width := number(s, "innerWidth")
+	steps := make([dynamic]e2e.Busy_Step, context.temp_allocator)
+	for _ in 0 ..< PERF_STEPS { append(&steps, e2e.busy_wheel(s, PERF_NOTCH, WHEEL_AT)) }
+	context = s.ctx
+	browser.control_timeline_start(s.app, 1, PERF_FRAMES, every = true)
+	e2e.while_busy(s, steps[:])
+	e2e.wait_until_plain(s, proc(s: ^e2e.Session) -> bool { return e2e.busy_left(s) == 0 }, "the steps taken")
+	browser.timeline_end(s.app)
+	defer browser.timeline_free(&s.app.remote.tl)
+	frames := s.app.remote.tl.frames[:]
+	b := strings.builder_make(context.temp_allocator)
+	fmt.sbprintln(&b, "frame\tms\tgap_ms\tchrome\tscroll\tbar_px\tbar_wanted\theader_px")
+	worst_gap, worst_lag, lag_sum, chrome, moved, last_ms := 0.0, 0.0, 0.0, 0, 0, 0.0
+	last_bar := -1
+	for f, i in frames {
+		bar := 0
+		for x in ox ..< f.w {
+			c := f.pixels[(((oy + PERF_BAR_ROW) * f.w) + x) * 4:]
+			if !close_to({c[0], c[1], c[2]}, {0xb4, 0x53, 0x2a}) { break }
+			bar += 1
+		}
+		card := f.pixels[(((oy + PERF_BAR_ROW + 6) * f.w) + ox + PERF_HEADER_X) * 4:]
+		header := 0
+		for y in oy + PERF_BAR_ROW + 6 ..< f.h {
+			c := f.pixels[((y * f.w) + ox + PERF_HEADER_X) * 4:]
+			if abs(int(c[0]) - int(card[0])) > HEADER_WITHIN { break }
+			header += 1
+		}
+		wanted := width * f64(f.scroll) / range_px
+		gap := i > 0 ? f.ms - last_ms : 0
+		last_ms = f.ms
+		fmt.sbprintfln(&b, "%d\t%.1f\t%.1f\t%v\t%.0f\t%d\t%.0f\t%d", f.n, f.ms, gap, f.nested, f.scroll, bar, wanted, header)
+		worst_gap = max(worst_gap, gap)
+		worst_lag = max(worst_lag, abs(f64(bar) - wanted))
+		lag_sum += abs(f64(bar) - wanted)
+		if f.nested { chrome += 1 }
+		if bar != last_bar { moved += 1 }
+		last_bar = bar
+	}
+	_ = os.write_entire_file(fmt.tprintf(PERF_OUT, task_ms), transmute([]u8)strings.to_string(b))
+	span := len(frames) > 1 ? frames[len(frames) - 1].ms - frames[0].ms : 0
+	tab := browser.current_tab(s.app)
+	fmt.printfln("the demo under %d ms tasks: %d frames in %.0f ms (%.1f a second), %d made under a task, %d with a new width of the bar; worst gap %.1f ms, the bar %.1f px at worst and %.1f px on average from where the scroll puts it; a whole layout %.2f ms, the last one made in a chrome frame %.2f ms", task_ms, len(frames), span, f64(len(frames)) * 1000 / max(span, 1), chrome, moved, worst_gap, worst_lag, lag_sum / f64(max(len(frames), 1)), tab.full_layout_ms, tab.shown.ms)
 }
 
 // While the task holds the thread, then the page takes the scroll: the pictures of the capture steps.

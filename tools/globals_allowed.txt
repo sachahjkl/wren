@@ -499,3 +499,4 @@ style/scroll_timeline.odin RANGE_NAMES const  # a table
 style/scroll_timeline.odin AXIS_NAMES const  # a table
 style/scroll_timeline.odin SCROLLER_NAMES const  # a table
 page/web_animations_scroll.odin web_progress_timeline_vt const  # a host object's table of procedures
+browser/shell_shown.odin SHELL_SHOWN_PREFS const  # a table
