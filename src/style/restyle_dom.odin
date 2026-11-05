@@ -1192,6 +1192,7 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 	if len(frontier) == 0 { return }
 	// every slot a thread may write exists beforehand: the array does not move while they run
 	styled_size(s, int(doc.nodes.used))
+	if s.state.controls.settle != nil { s.state.controls.settle(s.state.controls.user) }   // (their queries only read, as in a full pass)
 	count := min(len(frontier), threads * 4)
 	job := Par_Tasks{tasks = make([]Par_Task, count, context.temp_allocator)}
 	for i in 0 ..< count {

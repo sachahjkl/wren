@@ -600,6 +600,31 @@ restyle_dom_parallel :: proc(t: ^testing.T) {
 	testing.expect_value(t, verify_styles(f.eng, f.doc, f.st, context.temp_allocator), "")
 }
 
+// A subtree restyled by the threads with a forms model: what the model fills in lazily is filled in on this thread first, as a full
+// pass does (two threads building a radio group's list crashed in cnn.com's restyles, once its restyles were large enough).
+@(test)
+restyle_dom_parallel_settles_the_controls :: proc(t: ^testing.T) {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>.wide :not(.nz) { padding-top: 1px }</style><body>`)
+	for _ in 0 ..< 400 { strings.write_string(&sb, "<section><p>t</p><ol><li>a</li></ol></section>") }
+	f := rx_load(strings.to_string(sb))
+	defer rx_unload(f)
+	pool := host.thread_pool_make(3)
+	defer host.thread_pool_destroy(pool)
+	f.eng.settings.inc_parallel_min = 100
+	settled := 0
+	f.st.state.controls = Control_Provider{
+		query = proc(user: rawptr, el: base.Handle, q: Control_Query) -> (bool, bool) { return false, false },
+		settle = proc(user: rawptr) { (^int)(user)^ += 1 },
+		user = &settled,
+	}
+	dom.set_attribute(f.doc, dom.find_first_by_tag(f.doc, "body"), "class", "wide")
+	_, ok := restyle_dom(f.eng, f.doc, f.st, pool)
+	testing.expectf(t, ok, "not partial (%s)", f.eng.last_restyle.fallback)
+	testing.expect(t, f.eng.last_restyle.parallel, "the subtree went to the threads")
+	testing.expect_value(t, settled, 1)
+}
+
 // A class on the root element that changes its font size or line height, its subtree large enough for the threads:
 // the root is restyled on this thread, where the change of the root font size is seen (the deferred root was not
 // checked: every rem kept the old size); a change of the root line height (rlh) falls back to a full pass as well.
