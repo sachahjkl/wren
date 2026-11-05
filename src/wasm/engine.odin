@@ -486,8 +486,8 @@ wt_enter :: proc(inst: ^Instance) -> bool {
 			if inst.opt.soft_call_ms > 0 { s.soft_deadline = time.tick_add(time.tick_now(), time.Duration(inst.opt.soft_call_ms) * time.Millisecond) }
 		}
 		if wt.rs.fuel {
-			fuel := inst.budget < 0 ? max(u64) : u64(inst.budget)
-			if e := wasmtime_context_set_fuel(s.ctx, fuel); e != nil { wasmtime_error_delete(e) }
+			inst.fuel_given = inst.budget < 0 ? max(u64) : u64(inst.budget)
+			if e := wasmtime_context_set_fuel(s.ctx, inst.fuel_given); e != nil { wasmtime_error_delete(e) }
 		}
 		wasmtime_context_set_epoch_deadline(s.ctx, 1)
 		if sync.atomic_add(&wt.running, 1) == 0 { sync.futex_signal(&wt.running) }
@@ -506,6 +506,10 @@ wt_leave :: proc(inst: ^Instance) {
 	if inst.depth == 0 {
 		sync.atomic_sub(&wt.running, 1)
 		inst.wt.deadline = {}
+		if wt.rs.fuel {
+			left: u64
+			if e := wasmtime_context_get_fuel(inst.wt.ctx, &left); e != nil { wasmtime_error_delete(e) } else { inst.fuel_used += inst.fuel_given - left }
+		}
 	}
 }
 

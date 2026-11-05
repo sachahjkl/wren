@@ -264,6 +264,7 @@ foreign wasmtime_lib {
 	wasmtime_store_epoch_deadline_callback :: proc(s: wt_store, f: wt_epoch_callback, data: rawptr, finalizer: wt_finalizer) ---
 	wasmtime_context_get_data :: proc(ctx: wt_context) -> rawptr ---
 	wasmtime_context_set_fuel :: proc(ctx: wt_context, fuel: u64) -> wt_error ---
+	wasmtime_context_get_fuel :: proc(ctx: wt_context, fuel: ^u64) -> wt_error ---
 	wasmtime_context_set_epoch_deadline :: proc(ctx: wt_context, ticks_beyond_current: u64) ---
 
 	wasmtime_error_new :: proc(msg: cstring) -> wt_error ---
