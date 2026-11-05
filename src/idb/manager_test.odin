@@ -110,26 +110,57 @@ new_client :: proc(h: ^Harness, origin := "http://a.test") -> ^Client {
 	return client_create(&h.m, origin, proc(c: ^Client) {}, nil)
 }
 
-// The first words of what is freed are overwritten, as glibc's heap does and Windows' mostly does not: what reads a block it just freed reads this.
-@(private = "file") SCRIBBLE_WORDS :: 2
+// What is freed is overwritten, as glibc's heap does in part and Windows' mostly does not: what reads a block it just freed reads this. (`free` gives no size: the allocator keeps them.)
+@(private = "file") Scribble :: struct { inner: runtime.Allocator, sizes: map[rawptr]int }
+@(private = "file") SCRIBBLED :: 0xFF
 
 @(private = "file")
 scribble_proc :: proc(data: rawptr, mode: runtime.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, loc := #caller_location) -> ([]byte, runtime.Allocator_Error) {
-	if mode == .Free && old_memory != nil { for &w in ([^]u64)(old_memory)[:SCRIBBLE_WORDS] { w = max(u64) } }
-	inner := (^runtime.Allocator)(data)
-	return inner.procedure(inner.data, mode, size, alignment, old_memory, old_size, loc)
+	s := (^Scribble)(data)
+	if old_memory != nil && (mode == .Free || mode == .Resize || mode == .Resize_Non_Zeroed) {
+		if mode == .Free { slice.fill(([^]byte)(old_memory)[:s.sizes[old_memory]], SCRIBBLED) }
+		delete_key(&s.sizes, old_memory)
+	}
+	out, err := s.inner.procedure(s.inner.data, mode, size, alignment, old_memory, old_size, loc)
+	if err == .None && raw_data(out) != nil { s.sizes[raw_data(out)] = len(out) }
+	return out, err
+}
+
+@(private = "file")
+scribble_make :: proc(s: ^Scribble) -> runtime.Allocator {
+	s.inner = context.allocator
+	s.sizes = make(map[rawptr]int)
+	return {scribble_proc, s}
 }
 
 // The deferred unlock of client_destroy read the manager from the client it had just freed: a segmentation fault on Linux when a page with a database closed (github.com, npr.org).
 @(test)
 a_client_is_not_read_once_it_is_freed :: proc(t: ^testing.T) {
-	inner := context.allocator
-	context.allocator = {scribble_proc, &inner}
+	s: Scribble
+	defer delete(s.sizes)
+	context.allocator = scribble_make(&s)
 	h: Harness
 	harness_init(&h, "scribble")
 	defer harness_destroy(&h)
 	client_destroy(new_client(&h))
 	testing.expect_value(t, len(h.m.clients), 0)
+}
+
+// close_connection pumped the queue of the database it read from the connection it had just closed and freed (vimeo.com, YouTube, under a heap that poisons what is freed).
+@(test)
+a_connection_is_not_read_once_it_is_freed :: proc(t: ^testing.T) {
+	s: Scribble
+	defer delete(s.sizes)
+	context.allocator = scribble_make(&s)
+	h: Harness
+	harness_init(&h, "scribble_conn")
+	defer harness_destroy(&h)
+	c := new_client(&h)
+	defer client_destroy(c)
+	conn, evs := open_and_upgrade(&h, c, "d", 1, true, nil)
+	delete(evs)
+	testing.expect_value(t, close_connection(c, conn), Error.None)
+	testing.expect_value(t, len(h.m.conns), 0)
 }
 
 // Everything that arrived for the client since the last call, as "kind req/conn/tx" strings.
