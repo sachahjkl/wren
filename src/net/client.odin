@@ -58,6 +58,9 @@ Timing :: struct {
 	done:         f32,   // the last byte of the body (Done)
 }
 
+// Event.protocol
+PROTOCOL_HTTP_1 :: 0
+
 // Pointers inside an Event are valid only during the callback.
 Event :: struct {
 	kind:         Event_Kind,
@@ -152,12 +155,17 @@ Request :: struct {
 @(private)
 Delayed :: struct { ev: Event, due: f64 }
 
+// A host's requests in flight. Its last answer says what they cost: on HTTP/1.1 a connection each, so few (max_per_host); on HTTP/2 and 3 a stream of one connection (max_streams_per_host).
+// A host that multiplexes keeps its entry when nothing is in flight: the next page asks it again.
+@(private)
+Host_Slots :: struct { active: int, multiplexed: bool }
+
 Client :: struct {
 	loop:          ^host.Loop,
 	session:       HINTERNET,
 	requests:      base.Pool(Request),
 	queues:        [Priority][dynamic]base.Handle,
-	active:        map[string]int,
+	hosts:         map[string]Host_Slots,
 	active_total:  int,
 	settings:      Settings,
 	shutting_down: bool,
@@ -228,8 +236,8 @@ client_destroy :: proc(c: ^Client) {
 	delete(c.events)
 	delete(c.scratch)
 	for &q in c.queues { delete(q) }
-	for k in c.active { delete(k, heap()) }
-	delete(c.active)
+	for k in c.hosts { delete(k, heap()) }
+	delete(c.hosts)
 	delete(c.settings.user_agent)
 	delete(c.settings.extra_ca_file)
 	delete(c.settings.hosts)
@@ -267,7 +275,7 @@ pump :: proc(c: ^Client) {
 			h := q[i]
 			r := base.pool_get(&c.requests, h)
 			if r == nil || r.state != .Queued { continue }   // cancelled while waiting
-			if c.active_total < c.settings.max_total && c.active[r.host_key] < c.settings.max_per_host {
+			if c.active_total < c.settings.max_total && host_has_slot(c, r.host_key) {
 				activate(c, h, r)
 			} else {
 				q[w] = h
@@ -279,14 +287,23 @@ pump :: proc(c: ^Client) {
 }
 
 @(private)
+host_has_slot :: proc(c: ^Client, key: string) -> bool {
+	s := c.hosts[key]
+	return s.active < (s.multiplexed ? c.settings.max_streams_per_host : c.settings.max_per_host)
+}
+
+// The entry of a host (the map owns its key: requests come and go).
+@(private)
+host_slots :: proc(c: ^Client, key: string) -> ^Host_Slots {
+	if key not_in c.hosts { c.hosts[strings.clone(key, heap())] = {} }
+	return &c.hosts[key]
+}
+
+@(private)
 activate :: proc(c: ^Client, h: base.Handle, r: ^Request) {
 	r.state = .Active
 	c.active_total += 1
-	if n, ok := c.active[r.host_key]; ok {
-		c.active[r.host_key] = n + 1
-	} else {
-		c.active[strings.clone(r.host_key, heap())] = 1   // the map owns its key: requests come and go
-	}
+	host_slots(c, r.host_key).active += 1
 	if r.link != nil {
 		// the request starts after its latency and the time its head and body need to go up
 		now := now_ms(c)
@@ -472,11 +489,11 @@ release :: proc(c: ^Client, h: base.Handle) -> bool {
 	if r.host_key != "" {
 		if r.state == .Active {
 			c.active_total -= 1
-			if n := c.active[r.host_key]; n <= 1 {
-				k, _ := delete_key(&c.active, r.host_key)
+			s := host_slots(c, r.host_key)
+			s.active -= 1
+			if s.active == 0 && !s.multiplexed {
+				k, _ := delete_key(&c.hosts, r.host_key)
 				delete(k, heap())
-			} else {
-				c.active[r.host_key] = n - 1
 			}
 			freed_slot = true
 		}
@@ -554,7 +571,11 @@ process_event :: proc(c: ^Client, ev: ^Event) {
 	switch ev.kind {
 	case .Headers:
 		r.status = ev.status
+		host := r.host_key != "" ? host_slots(c, r.host_key) : nil
+		was := host != nil && host.multiplexed
+		if host != nil { host.multiplexed = ev.protocol != PROTOCOL_HTTP_1 }
 		deliver(r, ev)
+		if !was && ev.protocol != PROTOCOL_HTTP_1 { pump(c) }   // (what waited for a connection of its own goes now)
 	case .Data:
 		n := len(ev.data)
 		job := r.job
