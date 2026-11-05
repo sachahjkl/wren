@@ -1000,6 +1000,12 @@ compositor_moves :: proc(props: Prop_Set) -> Prop_Set {
 	return moves
 }
 
+// Something among `props` is more than the compositor can show over the last layout.
+compositor_lays_out :: proc(props: Prop_Set) -> bool {
+	list, records := COMPOSITOR_PROPS, RECORD_PROPS
+	return ps_intersect(props, ps_union(ps_of(..list[:]), ps_of(..records[:]))) != props
+}
+
 // The RECORD_PROPS among `props`.
 compositor_record_props :: proc(props: Prop_Set) -> Prop_Set {
 	list := RECORD_PROPS
@@ -1029,7 +1035,7 @@ progress_shown :: proc(at: ^Anim_Run, shown: []Shown_Offset) {
 // is what scripts read. The page's tick takes over at its turn from the same clock. An animation on a scroll or view timeline
 // stands where `shown` puts its scroller. Left out: elements a script animates (Web Animations), animations whose keyframes were
 // not resolved for the element's style yet, effects that do not run. Returns whether one of the values changes at every frame.
-timeline_compositor_values :: proc(tl: ^Timeline, s: ^Styled, wall_ms: f64, shown: []Shown_Offset, out: ^[dynamic]Compositor_Value) -> (moving: bool) {
+timeline_compositor_values :: proc(tl: ^Timeline, s: ^Styled, wall_ms: f64, shown: []Shown_Offset, lays_out: bool, out: ^[dynamic]Compositor_Value) -> (moving: bool) {
 	if tl == nil || s == nil || !tl.has_wall || len(tl.elements) == 0 { return false }
 	list, records := COMPOSITOR_PROPS, RECORD_PROPS
 	allowed := ps_union(ps_of(..list[:]), ps_of(..records[:]))
@@ -1050,7 +1056,7 @@ timeline_compositor_values :: proc(tl: ^Timeline, s: ^Styled, wall_ms: f64, show
 			ps_add(&props, tr.prop)
 			if phase, _ := transition_progress(tr, tl.now); phase != .After { live = true }
 		}
-		if !live || ps_empty(props) || ps_intersect(props, allowed) != props { continue }
+		if !live || ps_empty(props) || (!lays_out && ps_intersect(props, allowed) != props) { continue }
 		c := new(Computed, context.temp_allocator)
 		c^ = b^
 		for r in ea.runs {

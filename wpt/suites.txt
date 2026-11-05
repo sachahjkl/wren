@@ -66,3 +66,6 @@ webgl
 css/css-multicol
 css/css-writing-modes
 html/semantics/forms/the-label-element
+scroll-animations/css
+scroll-animations/scroll-timelines
+scroll-animations/view-timelines

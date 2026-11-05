@@ -595,7 +595,8 @@ computed_value :: proc(cs: ^style.Computed, name_in: string, used: Used_Box) -> 
 		return css_length(l)
 	case "anchor-name", "anchor-scope", "position-anchor", "position-area", "position-try", "position-try-fallbacks", "position-try-order", "position-visibility":
 		return style.anchor_prop_text(cs, name)
-	case "animation-timeline", "animation-range-start", "animation-range-end", "scroll-timeline-name", "scroll-timeline-axis", "view-timeline-name", "view-timeline-axis", "view-timeline-inset", "timeline-scope":
+	case "animation-timeline", "animation-range", "animation-range-start", "animation-range-end", "scroll-timeline", "scroll-timeline-name", "scroll-timeline-axis", "view-timeline", "view-timeline-name", "view-timeline-axis", "view-timeline-inset", "timeline-scope",
+	     "animation-name":
 		return style.timeline_prop_text(cs, name, css_length)
 	case "margin-top", "margin-right", "margin-bottom", "margin-left":
 		s := side(name)

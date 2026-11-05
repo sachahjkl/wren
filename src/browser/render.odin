@@ -79,13 +79,19 @@ layout_destroy :: proc(l: ^Layout) { composite_forget(l); text_clip_forget(l); l
 // `viewport`: size of the page area in physical pixels; `scale`: physical pixels per CSS px. `images_gen` /
 // `fonts_gen`: change counters of the natural sizes of images and of the page's web fonts (lay.Input).
 layout_document :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, measure: ^Measure, style_settings: ^style.Settings, viewport: draw.Vec2, scale, band_h: f32, images_gen: u64 = 0, fonts_gen: u64 = 0) {
-	lay.run(l, lay.Input{
+	input := layout_input(d, styled, measure, style_settings, viewport, scale, band_h, images_gen, fonts_gen)
+	lay.run(l, input)
+}
+
+// What a pass of the page's layout reads.
+layout_input :: proc(d: ^dom.Document, styled: ^style.Styled, measure: ^Measure, style_settings: ^style.Settings, viewport: draw.Vec2, scale, band_h: f32, images_gen, fonts_gen: u64) -> lay.Input {
+	return lay.Input{
 		doc = d, styled = styled, settings = &the_app.page_render.settings,
 		text = page_text_api(&the_app.page_render.fonts, measure, style_settings),
 		replaced = the_app.page_render.replaced,
 		viewport = viewport, scale = scale, band_h = band_h,
 		images_generation = images_gen, fonts_generation = fonts_gen,
-	})
+	}
 }
 
 // The page's scroll offset: anchored boxes whose fallbacks or visibility follow it make the layout stale.

@@ -10,13 +10,23 @@ package browser
 //     group: it waits for the page), not for a box in a 3D plane, not for an element a script animates;
 //   * a scroll container scrolled by the wheel or the thumb of its bar (Shell_Frames.boxes) shows at that offset; the layout
 //     takes it at the page's turn (shell_frames.odin shell_take_scroll), whose frame fires its scroll event as for any scroll;
-//   * the focused field's caret blinks by the clock (forms_shell.odin caret_phase).
+//   * the focused field's caret blinks by the clock (forms_shell.odin caret_phase);
+//   * a scroll-driven animation stands at the offset its scroller is shown at (style.Shown_Offset), whatever it changes;
+//   * colours, shadows, radii, filters, clip-paths (style.RECORD_PROPS) are written in the style record the box and its items hold, an
+//     overlay of the timeline's (Compositor_Value.record), and the compositor records the chunks they are in again; descendants that
+//     inherit such a value get it the same way;
+//   * values that change the layout (width, height, font-size...), when a whole pass of this page is cheap enough
+//     (browser.shell.shown_layout_max_ms): written in the records as well, and laid out in a whole pass over a layout of the tab's own
+//     (Tab.shown, shell_shown_layout), never the one scripts read. The display items of that pass hold strings of the document as the
+//     tab's do: it only runs, and is only painted, while nothing changed since the tab's was painted (shell_layout_paintable).
 // These values are set on the layout for one use (a paint, a hit test) and put back at once (Shown): nothing of the page runs
 // meanwhile, and what its scripts read stays what their turn left (getComputedStyle, getAnimations, scrollTop, the boxes).
 
 import "base:runtime"
+import "core:time"
 import "toolkit:draw"
 import "wb:base"
+import "wb:config"
 import lay "wb:layout"
 import "wb:page"
 import "wb:style"
@@ -37,7 +47,22 @@ Shown :: struct {
 	scrolls: [dynamic]Shown_Scroll,
 	records: [dynamic]Shown_Record,
 	radii:   [dynamic]Shown_Radii,
+	relayout: bool,   // the values set change the layout: painted from a pass of its own (shell_shown_layout)
 }
+
+// The layout a chrome frame paints when it shows animated layout values (Tab.shown).
+Shown_Layout :: struct {
+	layout: Layout,
+	page:   ^page.Page,   // the page it was last made for
+	ms:     f64,          // how long that pass took
+}
+
+SHELL_SHOWN_PREFS := [?]config.Def{
+	{name = "browser.shell.shown_layout_max_ms", kind = .Float, default = {f = 4}, bounded = true, min = 0, max = 100, unit = "ms",
+		description = "While a page keeps the interface thread busy, its animations of layout properties (width, height, font-size...) go on when a whole layout of the page takes less than this: it is made in each interface frame, on a copy, without touching what scripts read. 0: they wait for the page."},
+}
+
+register_shell_shown_prefs :: proc(p: ^config.Prefs) { config.register(p, SHELL_SHOWN_PREFS[:]) }
 
 Shown_Mat :: struct { space: i32, mat: lay.Matrix }
 Shown_Alpha :: struct { group: i32, alpha: f32 }
@@ -48,7 +73,7 @@ Shown_Radii :: struct { clip: i32, radii: [4]f32 }
 // Sets on the tab's layout what the chrome frame shows (its animations at the frame's time, the containers scrolled); the
 // caller puts it back with shell_shown_put before anything of the page can run. Nothing is set when the layout cannot be read
 // (the page thread has it).
-shell_shown_set :: proc(app: ^App, t: ^Tab) -> (sh: Shown) {
+shell_shown_set :: proc(app: ^App, t: ^Tab, painting := false) -> (sh: Shown) {
 	sh.t = t
 	l := &t.layout
 	if app.chrome_frames.page_locked || t.page == nil || !l.valid { return }
@@ -60,9 +85,17 @@ shell_shown_set :: proc(app: ^App, t: ^Tab) -> (sh: Shown) {
 	sh.records = make([dynamic]Shown_Record, context.temp_allocator)
 	sh.radii = make([dynamic]Shown_Radii, context.temp_allocator)
 	vals := make([dynamic]style.Compositor_Value, context.temp_allocator)
-	shell_animated(app, t, &vals)
+	shell_animated(app, t, painting && shell_shown_lays_out(app, t), &vals)
 	t.scroll = shell_shown_scroll(t).y   // (after those: what the chrome frames scrolled is added to the tab's offset, once)
+	for v in vals { if style.compositor_lays_out(v.props) { sh.relayout = true } }
 	for v in vals {
+		if sh.relayout {
+			if v.record != nil {
+				append(&sh.records, Shown_Record{v.record, v.record^})
+				v.record^ = v.cs^
+			}
+			continue
+		}
 		bi := lay.box_index(l, v.node)
 		if bi == lay.NONE || .Foreign in l.boxes[bi].flags { continue }
 		records := style.compositor_record_props(v.props)
@@ -98,6 +131,31 @@ shell_shown_set :: proc(app: ^App, t: ^Tab) -> (sh: Shown) {
 	return
 }
 
+// A chrome frame may lay out what its animations change: a whole pass of the page is cheap enough to pay in a frame, and it has not been too long lately.
+@(private = "file")
+shell_shown_lays_out :: proc(app: ^App, t: ^Tab) -> bool {
+	limit := config.float_of(&app.prefs, "browser.shell.shown_layout_max_ms")
+	if limit <= 0 || t.full_layout_ms <= 0 || t.full_layout_ms > limit { return false }
+	return t.shown.page != t.page || t.shown.ms <= limit
+}
+
+// The layout to paint: the tab's, or when values that lay out are set (Shown.relayout) a whole pass over its own layout from the same document and styles
+// (shell_shown_set wrote those values in the records of their boxes for this paint). What it reads is the tab's: nothing changed since it
+// was painted (shell_layout_paintable: the document's strings are those the tab's layout holds). Nothing of it outlives the paint.
+shell_shown_layout :: proc(app: ^App, t: ^Tab, sh: ^Shown, size: draw.Vec2) -> ^lay.Layout {
+	if !sh.relayout { return &t.layout }
+	t0 := time.tick_now()
+	s := &t.shown
+	s.page = t.page
+	clear(&s.layout.scroll)
+	for node, off in t.layout.scroll { s.layout.scroll[node] = off }
+	lay.set_doc_scroll_x(&s.layout, t.layout.doc_scroll_x)
+	input := layout_input(t.page.doc, t.page.styled, &app.measure, &app.page_settings.style, size, page_scale(app), app.cfg.layout_band_px, t.image_sizes, u64(t.web_fonts))
+	lay.run_shown(&s.layout, input)
+	s.ms = time.duration_milliseconds(time.tick_since(t0))
+	return &s.layout
+}
+
 // The clips of a box whose record changed for this paint take its radii.
 @(private = "file")
 shell_shown_radii :: proc(sh: ^Shown, l: ^lay.Layout, bi: i32) {
@@ -131,7 +189,7 @@ shell_shown_wanted :: proc(app: ^App, t: ^Tab) -> (wanted, moving: bool) {
 	tmp := runtime.default_temp_allocator_temp_begin()   // (also asked between two instructions of the guest: shell_preempt)
 	defer runtime.default_temp_allocator_temp_end(tmp)
 	vals := make([dynamic]style.Compositor_Value, context.temp_allocator)
-	moving = shell_animated(app, t, &vals)
+	moving = shell_animated(app, t, shell_shown_lays_out(app, t), &vals)
 	wanted = len(vals) > 0 || (app.chrome_frames.pending_tab == t.id && len(app.chrome_frames.boxes) > 0)
 	if f := t.page.formctl != nil ? page.page_forms(t.page) : nil; f != nil {
 		if on, caret, period := caret_phase(app, f); caret && period > 0 {
@@ -145,9 +203,9 @@ shell_shown_wanted :: proc(app: ^App, t: ^Tab) -> (wanted, moving: bool) {
 // The values at the chrome frame's time of the page's animations the compositor runs (none while a style pass's threads write the
 // styles they are read from). True: one moves at every frame.
 @(private = "file")
-shell_animated :: proc(app: ^App, t: ^Tab, out: ^[dynamic]style.Compositor_Value) -> bool {
+shell_animated :: proc(app: ^App, t: ^Tab, lays_out: bool, out: ^[dynamic]style.Compositor_Value) -> bool {
 	if app.chrome_frames.styling { return false }
-	return page.animations_compositor_values(t.page, pacer_of(app).frame_ms, shell_shown_offsets(app, t), out)
+	return page.animations_compositor_values(t.page, pacer_of(app).frame_ms, shell_shown_offsets(app, t), lays_out, out)
 }
 
 // Where this frame shows the scrollers it moved (CSS px), for the animations those drive.
