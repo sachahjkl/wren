@@ -1,6 +1,6 @@
 package e2e_scenarios
 
-// What the user does while the page's script keeps the thread (examples/site/busy.html hold(): one task that runs until the
+// What the user does while the page's script keeps the thread (examples/site/busy_probe.html hold(): one task that runs until the
 // window's height changes). The input comes in the chrome frames made under that task, one step a frame (e2e.while_busy), and
 // the pictures are those frames'; the last step changes the window's height and lets the task end. Then the page's turn:
 //   * a drag over the text shows its selection under the task (painted from the page's last layout), the task saw none of
@@ -57,7 +57,7 @@ open :: proc(t: ^testing.T, extra: []string = nil, loc := #caller_location) -> ^
 	prefs := make([dynamic]string, context.temp_allocator)
 	append(&prefs, fmt.tprintf("browser.selection.background=%s", HIGHLIGHT), fmt.tprintf("browser.selection.inactive_background=%s", HIGHLIGHT))
 	append(&prefs, ..extra)
-	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, prefs = prefs[:], url = e2e.file_url(fmt.tprintf("%s/examples/site/busy.html", e2e.repo_root()))}, loc)
+	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, prefs = prefs[:], url = e2e.file_url(fmt.tprintf("%s/examples/site/busy_probe.html", e2e.repo_root()))}, loc)
 	e2e.wait_idle(s)
 	e2e.eval(s, "for (const e of document.querySelectorAll('.moving')) e.style.animation = 'none'; 1")   // (two pictures of the page are alike)
 	e2e.wait_frames(s)

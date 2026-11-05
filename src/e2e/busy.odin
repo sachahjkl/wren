@@ -1,7 +1,7 @@
 package e2e
 
 // Input while a page keeps the browser's thread (browser/busy_input.odin): steps taken one per chrome frame, in order, from the
-// next long script on. A page that holds its thread until innerWidth changes (examples/site/busy.html hold()) lets go at the
+// next long script on. A page that holds its thread until innerWidth changes (examples/site/busy_probe.html hold()) lets go at the
 // `busy_resize` step; the steps before it, and the pictures of the `busy_capture` ones, all happen under it.
 
 import "wb:browser"

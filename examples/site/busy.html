@@ -1,73 +1,232 @@
 <!doctype html>
+<html lang="en">
 <meta charset="utf-8">
-<title>Busy page</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Selecting on a busy page</title>
 <style>
-  body { margin: 0; font: 16px/1.4 sans-serif; }
-  header { padding: 8px 12px; background: #eee; }
-  #sel { font: 32px/40px sans-serif; margin: 16px 12px; }
-  #more { margin: 0 12px 16px; }
-  a#link { display: inline-block; padding: 4px 8px; margin: 0 12px; color: #00c; }
-  a#link:hover { background: #c00; color: #fff; }
-  #field { margin: 8px 12px; font-size: 20px; }
-  #scroller { height: 120px; overflow: auto; margin: 8px 12px; border: 1px solid #888; }
-  .moving { display: inline-block; width: 60px; height: 60px; margin: 12px; background: #08a; }
-  #spin { animation: spin 1s linear infinite; }
-  #pulse { animation: pulse 1s ease-in-out infinite alternate; }
-  #hoverbox { transition: transform 0.3s; }
-  #hoverbox:hover { transform: translateX(40px); }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes pulse { from { opacity: 1; } to { opacity: 0.2; } }
-  #tall { height: 2000px; background: linear-gradient(#fff, #fd8); }
-</style>
-<header>
-  <label>Each task <input id="ms" type="range" min="100" max="400" step="50" value="200"> <output id="ms_out">200</output> ms</label>
-  <button id="loop">Busy loop</button>
-  <button id="once">One long task</button>
-  <span id="status">0 tasks</span>
-</header>
-<p id="sel">Select this line of words while the page is busy.</p>
-<p id="more">While the page runs its tasks, drag over the text, scroll with the wheel, the keys or the scroll bar, move over the
-  link and the boxes, type in the field, resize the window, switch tabs and open the menu: what follows at once runs off the
-  page's turn, what waits is the page's.</p>
-<a id="link" href="#top">A link with a :hover style</a>
-<div><input id="field" value="A field and its caret"></div>
-<div id="scroller"></div>
-<div><span id="spin" class="moving"></span><span id="pulse" class="moving"></span><span id="hoverbox" class="moving"></span></div>
-<div id="tall"></div>
-<script>
-  // How long hold() keeps the thread at most (a test lets go of it first, by making the window shorter or taller).
-  const HOLD_LIMIT_MS = 30000;
-  // The pause between two tasks of the busy loop: a frame of the page between them.
-  const GAP_MS = 16;
-  const ms = document.getElementById("ms"), out = document.getElementById("ms_out"), status = document.getElementById("status");
-  const loop = document.getElementById("loop"), scroller = document.getElementById("scroller");
-  for (let i = 1; i <= 40; i++) { const d = document.createElement("div"); d.textContent = "Line " + i + " of the scroll box"; scroller.appendChild(d); }
-  ms.oninput = () => { out.textContent = ms.value; };
-  let tasks = 0, looping = false;
-  function task() {
-    const end = performance.now() + Number(ms.value);
-    while (performance.now() < end) {}
-    status.textContent = ++tasks + " tasks";
-    if (looping) setTimeout(task, GAP_MS);
+  :root {
+    --night: #101a4d; --night-line: #2c3a7a; --night-text: #dfe5ff; --night-muted: #aeb8e6;
+    --paper: #eef0fa; --ink: #141c4a; --ink-soft: #3f4a7c; --ink-faint: #5d678f;
+    --sun: #ffe135; --mint: #7ee2a8; --rose: #ff85c0; --sky: #3b9dff; --rule: #cfd5ea;
   }
-  loop.onclick = () => { looping = !looping; loop.textContent = looping ? "Stop" : "Busy loop"; if (looping) setTimeout(task, GAP_MS); };
-  document.getElementById("once").onclick = () => setTimeout(task, 0);
+  * { box-sizing: border-box; }
+  html { background: var(--paper); }
+  body { margin: 0; color: var(--ink); font: 19px/1.62 "Segoe UI", system-ui, sans-serif; }
 
-  // For tests: one task that keeps the thread until the window's height changes, and what the page saw then.
-  window.changes = 0;
-  window.downs = 0;
-  window.boxScrolls = 0;
-  scroller.addEventListener("scroll", () => { window.boxScrolls++; });
-  document.addEventListener("selectionchange", () => { window.changes++; });
-  document.addEventListener("mousedown", () => { window.downs++; });
-  window.hold = () => {
-    window.released = false;
-    setTimeout(() => {
-      const h = innerHeight, begun = performance.now();
-      while (innerHeight == h && performance.now() - begun < HOLD_LIMIT_MS) {}
-      window.held = { selection: String(getSelection()), changes: window.changes, downs: window.downs, scrollY: scrollY, boxTop: scroller.scrollTop, boxScrolls: window.boxScrolls, ms: performance.now() - begun };
-      window.released = innerHeight != h;
-    }, 0);
-    return "held";
+  /* The panel stays in view: what the two threads do can be watched while the text below is selected. */
+  #panel { position: sticky; top: 0; z-index: 1; padding: 16px 28px 14px; background: var(--night); color: var(--night-text); user-select: none; box-shadow: 0 6px 22px rgb(16 26 77 / 0.28); }
+  .controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-bottom: 12px; }
+  #toggle { padding: 10px 26px; border: 0; border-radius: 3px; background: var(--sun); color: var(--ink); font: 600 18px/1.3 "Segoe UI", system-ui, sans-serif; cursor: pointer; }
+  #toggle.idle { background: var(--night-line); color: var(--night-text); }
+  .length { display: flex; gap: 10px; align-items: center; font-size: 17px; }
+  #ms { width: 130px; accent-color: var(--sky); }
+  .listener { display: flex; gap: 8px; align-items: center; font-size: 15px; color: var(--night-muted); }
+  .track { display: grid; grid-template-columns: 120px 1fr; align-items: center; height: 28px; font-size: 16px; }
+  .lane { position: relative; height: 16px; border-bottom: 1px solid var(--night-line); }
+  .dot { position: absolute; top: 2px; left: 0; width: 16px; height: 16px; border-radius: 50%; }
+  #render-dot { background: var(--mint); animation: glide 2.4s ease-in-out infinite alternate; }
+  #main-dot { background: var(--rose); }
+  @keyframes glide { to { left: calc(100% - 16px); } }
+  .numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0 28px; margin: 10px 0 0; font-size: 15.5px; color: var(--night-muted); }
+  .numbers div { display: flex; justify-content: space-between; line-height: 1.55; }
+  .numbers b { color: var(--night-text); font-variant-numeric: tabular-nums; }
+
+  main { max-width: 860px; margin: 0 auto; padding: 34px 28px 90px; }
+  h1 { margin: 0 0 18px; font: 900 56px/1.1 "Segoe UI", system-ui, sans-serif; letter-spacing: -0.5px; }
+  h2 { display: inline-block; margin: 52px 0 14px; padding: 2px 10px; background: var(--sun); font: 900 33px/1.3 "Segoe UI", system-ui, sans-serif; }
+  h3 { margin: 30px 0 6px; font: 700 23px/1.3 "Segoe UI", system-ui, sans-serif; }
+  p { margin: 0 0 15px; }
+  .lead { font-size: 22px; line-height: 1.5; }
+  .note { max-width: 640px; color: var(--ink-soft); font-size: 18px; }
+  .hint { color: var(--ink-faint); font-size: 17px; }
+  .prose { font-family: Georgia, "Times New Roman", serif; font-size: 20px; }
+  a { color: #1456c8; }
+  a:hover { background: var(--ink); color: var(--paper); }
+  code { padding: 1px 5px; border-radius: 3px; background: #dfe3f3; font: 0.88em Consolas, monospace; }
+  blockquote { margin: 20px 0; padding: 4px 0 4px 20px; border-left: 5px solid var(--rose); color: var(--ink-soft); font-style: italic; }
+  ul, ol { margin: 0 0 15px; padding-left: 26px; }
+  li { margin-bottom: 6px; }
+  table { width: 100%; margin: 16px 0; border-collapse: collapse; font-size: 17px; }
+  th, td { padding: 8px 12px; border-bottom: 1px solid var(--rule); text-align: left; }
+  th { background: #e2e6f6; }
+  pre { margin: 16px 0; padding: 14px 16px; overflow: auto; border-radius: 4px; background: var(--night); color: var(--night-text); font: 15px/1.55 Consolas, monospace; }
+  .columns { column-count: 2; column-gap: 34px; font-size: 17.5px; }
+  .card { margin: 18px 0; padding: 16px 20px; border-radius: 8px; background: #fff; box-shadow: 0 1px 5px rgb(20 28 74 / 0.14); }
+  .rtl { direction: rtl; }
+  #scroller { height: 190px; overflow: auto; margin: 16px 0; padding: 10px 16px; border-radius: 8px; background: #fff; box-shadow: inset 0 0 0 1px var(--rule); font-size: 17px; }
+  input.field, textarea { width: 100%; margin: 8px 0; padding: 9px 12px; border: 1px solid #aab3d4; border-radius: 4px; background: #fff; color: var(--ink); font: 18px/1.45 "Segoe UI", system-ui, sans-serif; }
+  textarea { height: 104px; }
+  @media (max-width: 640px) {
+    h1 { font-size: 40px; }
+    .columns { column-count: 1; }
+    #panel { padding: 12px 16px; }
+    main { padding: 24px 16px 60px; }
+  }
+</style>
+
+<section id="panel">
+  <div class="controls">
+    <button id="toggle">Main thread is busy</button>
+    <label class="length"><input id="ms" type="range" min="100" max="800" step="50" value="400"> <span><span id="ms-out">400</span> ms tasks</span></label>
+    <label class="listener"><input id="listen" type="checkbox"> a mousemove listener on the page</label>
+  </div>
+  <div class="track"><span>Render thread</span><div class="lane"><span id="render-dot" class="dot"></span></div></div>
+  <div class="track"><span>Main thread</span><div class="lane"><span id="main-dot" class="dot"></span></div></div>
+  <div class="numbers">
+    <div><span>Characters main sees</span><b id="seen">0</b></div>
+    <div><span>selectionchange events</span><b id="changes">0</b></div>
+    <div><span>Last main thread stall</span><b><span id="stall">0</span> ms</b></div>
+  </div>
+</section>
+
+<main>
+  <h1>Selecting text while the page works</h1>
+  <p class="lead">This page keeps its own thread busy on purpose. Press anywhere in the text below and drag: the highlight should stay under your pointer, while the pink dot freezes and the numbers above stop counting. The green dot belongs to the compositor and never stops.</p>
+  <p class="note">The press itself is the page's to answer, so it can wait for the end of a task. Once a drag has begun, each move is worked out from the last layout, and the page hears about the result when its turn comes.</p>
+  <p class="hint">Move the slider to make the tasks longer. Tick the box above to give the page a <code>mousemove</code> listener: moves must then reach the script first, and the highlight waits for the main thread, as it must.</p>
+
+  <h2>Plain paragraphs</h2>
+  <h3>Short lines, then long ones</h3>
+  <p class="hint">Drag across all of these slowly, then fast. Go up and down over the line breaks, and back past where you started.</p>
+  <p>A long task does not announce itself. It arrives between two frames, takes the thread, and until it ends nothing written in script can run: no timers, no listeners, no animation frames. For the person at the screen this is the moment a site feels stuck, even if it is doing exactly what it was asked to do.</p>
+  <p>Most of that feeling comes from small things. A caret that stops blinking. A scroll bar that does not follow the hand. A selection that jumps forward in one piece after half a second. None of them needs the script's permission, and a browser that waits for it anyway makes the page look worse than it is.</p>
+  <p>So the work is divided. What depends on the page's code waits for the page. What only depends on what was last laid out can go on, and the two meet again at the next turn of the loop, in the order things happened, as if the script had been there all along.</p>
+
+  <h3>Words of every length</h3>
+  <p>Double click a word, triple click a paragraph, then drag from there: the selection should grow by whole words or whole paragraphs. Try it on antidisestablishmentarianism, on a-hyphenated-compound-word, on <em>emphasised words</em>, on <strong>strong ones</strong>, on <code>inline_code()</code> and on a <a href="#links">link in the middle of a sentence</a> that lights up under the pointer.</p>
+  <p class="prose">The serif paragraph is here for its different widths. Reading is a rhythm, and a selection that lags breaks it: the eye goes to the end of the line and finds nothing there yet. A long sentence such as this one, which keeps adding clause after clause while the thread stays occupied, gives the highlight plenty of room to fall behind, and shows at once whether it does.</p>
+
+  <h2>Mixed content</h2>
+  <h3>A list</h3>
+  <ul>
+    <li>Drag from the middle of this item into the next one.</li>
+    <li>The markers stay out of the selection, though they sit beside it.</li>
+    <li>A longer item that wraps over more than one line, so that the highlight has to follow a break inside a list, with the indent the first line and the following ones share.</li>
+  </ul>
+  <ol>
+    <li>Press on a word.</li>
+    <li>Hold while a task runs.</li>
+    <li>Let go during the task, and see that the gesture is over when the page returns.</li>
+  </ol>
+
+  <h3>A quotation</h3>
+  <blockquote>Nothing moved on the screen, so I clicked again. Then everything happened twice.</blockquote>
+
+  <h3>A table</h3>
+  <table>
+    <tr><th>What the hand does</th><th>Who answers</th><th>While a task runs</th></tr>
+    <tr><td>Drag over text</td><td>The browser</td><td>Follows at once</td></tr>
+    <tr><td>Scroll bar's thumb</td><td>The browser</td><td>Follows at once</td></tr>
+    <tr><td>Click a button</td><td>The page</td><td>Waits for its turn</td></tr>
+    <tr><td>Type in a field</td><td>The page</td><td>Appears at its turn</td></tr>
+  </table>
+
+  <h3>Code</h3>
+  <pre>function task(ms) {
+  const end = performance.now() + ms;
+  while (performance.now() &lt; end) {}   // nothing else runs here
+}</pre>
+
+  <h3>Two columns</h3>
+  <p class="hint">A drag that leaves one column for the other has to follow the reading order, not the straight line under the pointer.</p>
+  <div class="columns">
+    <p>Text in columns is laid out in fragments, one box per column. The end of the first column and the top of the second sit far apart on the screen and next to each other in the document, and a selection has to know which of the two it is talking about.</p>
+    <p>Keep dragging down this column and across to the next one. The highlight should run down to the bottom, start again at the top on the right, and never fill the gap in between, even while the main thread is away.</p>
+    <p>Then go back the other way, which is where a mistake would show: the focus passes behind the anchor, and what was selected on one side of it lets go.</p>
+  </div>
+
+  <h3>Boxes on the page</h3>
+  <div class="card">A card with a shadow, in a box of its own. Start a drag inside it and leave through the bottom edge: the selection carries on into the text below.</div>
+  <p>This paragraph comes after the card, so the selection crosses from one block to the next, through whatever separates them.</p>
+
+  <h3>Other scripts</h3>
+  <p>Accents and punctuation: déjà vu, naïve, Ærøskøbing, «&nbsp;guillemets&nbsp;», “curly quotes”, and an em dash — like this one.</p>
+  <p>日本語の文章を選択しても、ハイライトはポインターについて行きます。</p>
+  <p class="rtl">نص من اليمين إلى اليسار: يجب أن يتبع التحديد المؤشر هنا أيضا.</p>
+
+  <h2>Things that scroll</h2>
+  <p>Drag past the top or the bottom of the window to scroll while selecting. The wheel works during a drag too.</p>
+  <div id="scroller"></div>
+
+  <h2 id="links">Fields</h2>
+  <p>A field has a caret of its own, which goes on blinking under a task. What you type waits for the page, and comes in order.</p>
+  <input class="field" value="Select part of this line, then type">
+  <textarea>A text area, with lines of its own.
+Drag across them, then double click a word.</textarea>
+
+  <h2>A longer read</h2>
+  <p class="hint">Enough text to drag all the way down the page.</p>
+  <div id="story"></div>
+</main>
+
+<script>
+  // The pause between two tasks: a frame of the page between them.
+  const GAP_MS = 16;
+  // How far the main thread's dot goes in a second, as a share of its lane.
+  const LAPS_PER_SECOND = 0.42;
+  const SCROLLER_LINES = 40;
+
+  const STORY = [
+    "The town had one clock, and it was wrong. Nobody minded, because everyone knew by how much. The baker set his ovens by it and added eleven minutes; the school rang its bell and took off four; the ferry left when the ferryman had finished his coffee, and the clock had no part in that.",
+    "When a new mayor had it repaired, the town lost a week. Bread came out pale. Children waited in an empty yard. People stood on the quay looking at the water, then at the tower, then at each other, with the expression of someone who has walked into a room and forgotten why.",
+    "It is a mistake to think that an exact answer is always the useful one. A thing that is reliably wrong can be read, like the lean of an old fence or the sound of a stair. What people cannot read is a thing that was steady and then is not, or that answers late, or that answers twice.",
+    "The clockmaker who had done the work was called back. She listened to the complaints, which took most of an afternoon, and asked for a ladder. Up in the tower she looked for a while at the mechanism, oiled what did not need oiling, and came down without having changed anything at all.",
+    "Tell them it runs eleven minutes fast, she said to the mayor, and tell them the school's bell is four behind that. He objected that this was absurd. She said it was what they already knew, and that a clock is something people agree on before it is a machine.",
+    "The notice went up on Monday. By Wednesday the bread was brown again. The ferry was still late, but it was late in the way it had always been, and on the quay the people looked at the water and nowhere else.",
+  ];
+
+  const $ = id => document.getElementById(id);
+  const toggle = $("toggle"), ms = $("ms"), mainDot = $("main-dot");
+
+  for (let i = 1; i <= SCROLLER_LINES; i++) {
+    const line = document.createElement("div");
+    line.textContent = "Line " + i + " of a box that scrolls on its own, wide enough to be selected";
+    $("scroller").append(line);
+  }
+  for (let round = 0; round < 3; round++) {
+    for (const text of STORY) {
+      const p = document.createElement("p");
+      p.className = "prose";
+      p.textContent = text;
+      $("story").append(p);
+    }
+  }
+
+  let busy = true, changes = 0;
+
+  function task() {
+    if (!busy) return;
+    const begun = performance.now(), end = begun + Number(ms.value);
+    while (performance.now() < end) {}
+    $("stall").textContent = Math.round(performance.now() - begun);
+    setTimeout(task, GAP_MS);
+  }
+
+  function frame(now) {
+    const lane = mainDot.parentElement.clientWidth - mainDot.offsetWidth;
+    const lap = (now / 1000 * LAPS_PER_SECOND) % 2;
+    mainDot.style.transform = "translateX(" + (lap < 1 ? lap : 2 - lap) * lane + "px)";
+    $("seen").textContent = String(getSelection()).length;
+    $("changes").textContent = changes;
+    requestAnimationFrame(frame);
+  }
+
+  function moved() {}
+
+  toggle.onclick = () => {
+    busy = !busy;
+    toggle.textContent = busy ? "Main thread is busy" : "Main thread is idle";
+    toggle.classList.toggle("idle", !busy);
+    if (busy) setTimeout(task, GAP_MS);
   };
+  ms.oninput = () => { $("ms-out").textContent = ms.value; };
+  $("listen").onchange = e => {
+    if (e.target.checked) document.addEventListener("mousemove", moved);
+    else document.removeEventListener("mousemove", moved);
+  };
+  document.addEventListener("selectionchange", () => { changes++; });
+
+  requestAnimationFrame(frame);
+  setTimeout(task, GAP_MS);
 </script>
+</html>

@@ -1,0 +1,73 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Busy page</title>
+<style>
+  body { margin: 0; font: 16px/1.4 sans-serif; }
+  header { padding: 8px 12px; background: #eee; }
+  #sel { font: 32px/40px sans-serif; margin: 16px 12px; }
+  #more { margin: 0 12px 16px; }
+  a#link { display: inline-block; padding: 4px 8px; margin: 0 12px; color: #00c; }
+  a#link:hover { background: #c00; color: #fff; }
+  #field { margin: 8px 12px; font-size: 20px; }
+  #scroller { height: 120px; overflow: auto; margin: 8px 12px; border: 1px solid #888; }
+  .moving { display: inline-block; width: 60px; height: 60px; margin: 12px; background: #08a; }
+  #spin { animation: spin 1s linear infinite; }
+  #pulse { animation: pulse 1s ease-in-out infinite alternate; }
+  #hoverbox { transition: transform 0.3s; }
+  #hoverbox:hover { transform: translateX(40px); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { from { opacity: 1; } to { opacity: 0.2; } }
+  #tall { height: 2000px; background: linear-gradient(#fff, #fd8); }
+</style>
+<header>
+  <label>Each task <input id="ms" type="range" min="100" max="400" step="50" value="200"> <output id="ms_out">200</output> ms</label>
+  <button id="loop">Busy loop</button>
+  <button id="once">One long task</button>
+  <span id="status">0 tasks</span>
+</header>
+<p id="sel">Select this line of words while the page is busy.</p>
+<p id="more">While the page runs its tasks, drag over the text, scroll with the wheel, the keys or the scroll bar, move over the
+  link and the boxes, type in the field, resize the window, switch tabs and open the menu: what follows at once runs off the
+  page's turn, what waits is the page's.</p>
+<a id="link" href="#top">A link with a :hover style</a>
+<div><input id="field" value="A field and its caret"></div>
+<div id="scroller"></div>
+<div><span id="spin" class="moving"></span><span id="pulse" class="moving"></span><span id="hoverbox" class="moving"></span></div>
+<div id="tall"></div>
+<script>
+  // How long hold() keeps the thread at most (a test lets go of it first, by making the window shorter or taller).
+  const HOLD_LIMIT_MS = 30000;
+  // The pause between two tasks of the busy loop: a frame of the page between them.
+  const GAP_MS = 16;
+  const ms = document.getElementById("ms"), out = document.getElementById("ms_out"), status = document.getElementById("status");
+  const loop = document.getElementById("loop"), scroller = document.getElementById("scroller");
+  for (let i = 1; i <= 40; i++) { const d = document.createElement("div"); d.textContent = "Line " + i + " of the scroll box"; scroller.appendChild(d); }
+  ms.oninput = () => { out.textContent = ms.value; };
+  let tasks = 0, looping = false;
+  function task() {
+    const end = performance.now() + Number(ms.value);
+    while (performance.now() < end) {}
+    status.textContent = ++tasks + " tasks";
+    if (looping) setTimeout(task, GAP_MS);
+  }
+  loop.onclick = () => { looping = !looping; loop.textContent = looping ? "Stop" : "Busy loop"; if (looping) setTimeout(task, GAP_MS); };
+  document.getElementById("once").onclick = () => setTimeout(task, 0);
+
+  // For tests: one task that keeps the thread until the window's height changes, and what the page saw then.
+  window.changes = 0;
+  window.downs = 0;
+  window.boxScrolls = 0;
+  scroller.addEventListener("scroll", () => { window.boxScrolls++; });
+  document.addEventListener("selectionchange", () => { window.changes++; });
+  document.addEventListener("mousedown", () => { window.downs++; });
+  window.hold = () => {
+    window.released = false;
+    setTimeout(() => {
+      const h = innerHeight, begun = performance.now();
+      while (innerHeight == h && performance.now() - begun < HOLD_LIMIT_MS) {}
+      window.held = { selection: String(getSelection()), changes: window.changes, downs: window.downs, scrollY: scrollY, boxTop: scroller.scrollTop, boxScrolls: window.boxScrolls, ms: performance.now() - begun };
+      window.released = innerHeight != h;
+    }, 0);
+    return "held";
+  };
+</script>
