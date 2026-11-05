@@ -213,3 +213,16 @@ checks_are_counted_from_what_a_step_says :: proc(t: ^testing.T) {
 	log := "[Package: x] Finished 12 tests in 1ms. All tests were successful.\nPASS a thing\n  ok \n7 passed, 0 failure(s)\n880 tests in 48 folders, 8 at a time\nnothing here\n"
 	testing.expect_value(t, count_checks(log), 12 + 1 + 1 + 7 + 880)
 }
+
+// A name cut short keeps what tells it apart: two steps on one log, the second removing it under the first, made a step that had passed a failure.
+@(test)
+two_steps_never_share_a_log :: proc(t: ^testing.T) {
+	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
+	cfg := Config{}
+	seen := make(map[string]string)
+	for s in build_table(&cfg) {
+		log := log_path_of(s.name)
+		testing.expectf(t, log not_in seen, "%s and %s write the same log, %s", s.name, seen[log], log)
+		seen[log] = s.name
+	}
+}

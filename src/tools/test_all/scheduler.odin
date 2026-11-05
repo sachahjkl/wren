@@ -1,6 +1,7 @@
 package test_all
 
 import "core:fmt"
+import "core:hash"
 import "core:os"
 import "core:slice"
 import "core:strings"
@@ -105,6 +106,8 @@ short_name :: proc(name: string) -> string {
 }
 
 // (a step of a scenario split by test or group, "<scenario> [<part>]": its part keeps its own file, past the scenario's slug)
+// A name cut short keeps a hash of the whole: two steps that differ only past the cut ("... on poisoned memory: style" and ": layout") shared one file, the one that
+// started second removed it under the other, and a step that had passed found no line to say so.
 log_path_of :: proc(name: string) -> string {
 	SLUG_MOST :: 60
 	if strings.has_suffix(name, "]") {
@@ -127,7 +130,8 @@ log_path_of :: proc(name: string) -> string {
 		}
 	}
 	slug := strings.to_string(b)
-	return fmt.aprintf("%s/%s.log", LOG_DIR, slug[:min(SLUG_MOST, len(slug))])
+	if len(slug) <= SLUG_MOST { return fmt.aprintf("%s/%s.log", LOG_DIR, slug) }
+	return fmt.aprintf("%s/%s_%08x.log", LOG_DIR, slug[:SLUG_MOST], hash.fnv32a(transmute([]u8)slug))
 }
 
 // Whether the marks let it run here, saying so when not.
