@@ -14,13 +14,15 @@ import "wb:remote/api"
 import "wb:tools/tooling"
 import "wb:tools/wrentool/bench"
 
-WATERFALL_FLAGS :: "-Urls= -List= -OutDir= -Exe= -Runs= -Pref= -LimitMs="
+WATERFALL_FLAGS :: "-Urls= -List= -OutDir= -Exe= -Runs= -Pref= -LimitMs= -Idle"
 WATERFALL_OUT :: "build/waterfall"
 WATERFALL_RUNS :: 1
 WATERFALL_LIMIT_MS :: 30_000
 // What the page gets after the load event to finish the requests it has going, before the list is read.
 WATERFALL_AFTER :: 500 * time.Millisecond
-WATERFALL_HEADER :: "run\tload_api_ms\tpaint\tinteractive\tdcl\tload\trequests\th1\th2\th3\tcached\tfailed\thosts\tkb\tqueued\tmax_queued\tdns\tconnect\ttls\twait\tbody\tlast_end\tgaps\tcpu_ms\turl"
+// -Idle: the list is read when the network has been quiet, at the latest after this. The load event says little of a page whose embeds start while it is awaited: what comes after it is the same work.
+WATERFALL_IDLE_LIMIT :: 45 * time.Second
+WATERFALL_HEADER :: "idle_ms\trun\tload_api_ms\tpaint\tinteractive\tdcl\tload\trequests\th1\th2\th3\tcached\tfailed\thosts\tkb\tqueued\tmax_queued\tdns\tconnect\ttls\twait\tbody\tlast_end\tgaps\tcpu_ms\turl"
 
 // The phases of a load's requests, summed: they overlap, a sum says where requests spent their time, not the page.
 Waterfall_Sums :: struct {
@@ -55,7 +57,7 @@ run_waterfall :: proc(args: []string) -> int {
 	fmt.println(WATERFALL_HEADER)
 	for url in urls {
 		for run in 0 ..< tooling.flag_int(f, "-Runs", WATERFALL_RUNS) {
-			waterfall_load(exe, out, url, run, prefs[:], limit)
+			waterfall_load(exe, out, url, run, prefs[:], limit, tooling.flag_has(f, "-Idle"))
 			free_all(context.temp_allocator)
 		}
 	}
@@ -63,7 +65,7 @@ run_waterfall :: proc(args: []string) -> int {
 }
 
 @(private = "file")
-waterfall_load :: proc(exe, out, url: string, run: int, prefs: []string, limit: time.Duration) {
+waterfall_load :: proc(exe, out, url: string, run: int, prefs: []string, limit: time.Duration, idle: bool) {
 	slug := compare_slug(url)
 	profile := fmt.tprintf("%s/profile_%s", out, slug)
 	base.remove_tree(profile)
@@ -77,11 +79,17 @@ waterfall_load :: proc(exe, out, url: string, run: int, prefs: []string, limit: 
 	e := api.navigate(s, url, .Load, limit)
 	took := time.duration_milliseconds(time.tick_since(at))
 	after, _ := api.stats(s)
-	time.sleep(WATERFALL_AFTER)
+	idle_ms := 0.0
+	if idle {
+		_ = api.wait_idle(s, WATERFALL_IDLE_LIMIT)
+		idle_ms = time.duration_milliseconds(time.tick_since(at))
+	} else {
+		time.sleep(WATERFALL_AFTER)
+	}
 	n, ne := api.network(s)
-	if ne != .None { fmt.printfln("%d\tno answer: %v\t%s", run, ne, url); return }
+	if ne != .None { fmt.printfln("0\t%d\tno answer: %v\t%s", run, ne, url); return }
 	m := waterfall_sums(&n)
-	fmt.printfln("%d\t%.0f%s\t%.0f\t%.0f\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%s", run, took, e == .Timeout ? "!" : "",
+	fmt.printfln("%.0f\t%d\t%.0f%s\t%.0f\t%.0f\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%s", idle_ms, run, took, e == .Timeout ? "!" : "",
 		n.doc.paint, n.doc.interactive, n.doc.dcl, n.doc.load, m.count, m.h1, m.h2, m.h3, m.cached, m.failed, m.hosts, m.bytes >> 10,
 		m.queued, m.max_queued, m.dns, m.connect, m.tls, m.wait, m.body, m.last_end, m.gaps, after.cpu_time_ms - before.cpu_time_ms, url)
 	waterfall_write(fmt.tprintf("%s/%s_%d.tsv", out, slug, run), &n)
