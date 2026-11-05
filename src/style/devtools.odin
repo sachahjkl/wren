@@ -100,7 +100,7 @@ dev_matched_rules :: proc(e: ^Engine, doc: ^dom.Document, state: State, el: base
 // Replaces the declarations of `rule` (the pane's own copy of them, with the edits and without the ones switched off) and has
 // the engine rebuild what depends on them. The new values are parsed in the sheet's own memory.
 dev_set_rule_decls :: proc(e: ^Engine, sheet: ^Sheet, rule: ^css.Rule, decls: []Dev_Decl) {
-	if sheet == nil || sheet.sheet == nil || rule == nil { return }
+	if !dev_rule_stands(e, sheet, rule) { return }
 	a := sheet.sheet.alloc
 	opt := parse_options(&e.settings)
 	out := make([]css.Declaration, len(decls), a)
@@ -115,6 +115,26 @@ dev_set_rule_decls :: proc(e: ^Engine, sheet: ^Sheet, rule: ^css.Rule, decls: []
 	}
 	rule.declarations = out[:n]
 	sheet_changed(e, sheet)
+}
+
+// The pane keeps a rule and its sheet between two frames, and the page's scripts run in between: they are compared with what the
+// engine holds, never read, until found there (a sheet that went took its rules with it).
+@(private)
+dev_rule_stands :: proc(e: ^Engine, sheet: ^Sheet, rule: ^css.Rule) -> bool {
+	in_rules :: proc(rules: []^css.Rule, rule: ^css.Rule) -> bool {
+		for r in rules {
+			if r == nil { continue }
+			if r == rule || in_rules(r.nested, rule) || in_rules(r.rules, rule) { return true }
+		}
+		return false
+	}
+	in_sheet :: proc(s, sheet: ^Sheet, rule: ^css.Rule) -> bool {
+		if s == sheet { return s.sheet != nil && in_rules(s.sheet.rules, rule) }
+		for &slot in s.imports { if slot.child != nil && in_sheet(slot.child, sheet, rule) { return true } }
+		return false
+	}
+	for s in e.sheets { if in_sheet(s, sheet, rule) { return true } }
+	return false
 }
 
 @(private)
