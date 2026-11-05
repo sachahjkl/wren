@@ -909,6 +909,31 @@ addEventListener("load", () => {
 	close_page(pr, min_checks = 5)
 }
 
+// A blob: URL says nothing of an opaque origin (blob:null/...): the worker it starts in the realm that made it is of that origin, and
+// another opaque origin given the same URL is refused. A sandboxed embed of a site starts its workers so.
+@(test)
+frames_sandbox_blob_worker :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	pr := load(t, `<body>
+<iframe id=maker sandbox="allow-scripts" srcdoc="<script>const src='importScripts(URL.createObjectURL(new Blob([&quot;self.x=7&quot;],{type:&quot;text/javascript&quot;})));postMessage(self.origin+&quot; &quot;+self.x)';const u=URL.createObjectURL(new Blob([src],{type:'text/javascript'}));const w=new Worker(u);w.onmessage=e=>parent.postMessage('own worker '+e.data,'*');w.onerror=e=>parent.postMessage('own worker failed '+e.message,'*');parent.postMessage({url:u},'*')</script>"></iframe>
+<iframe id=other sandbox="allow-scripts" srcdoc="<script>addEventListener('message',e=>{let w;try{w=new Worker(e.data)}catch(x){parent.postMessage('foreign refused','*');return}w.onmessage=()=>parent.postMessage('foreign ran','*');w.onerror=()=>parent.postMessage('foreign refused','*')});parent.postMessage('other ready','*')</script>"></iframe>
+<script>
+let url, ready, sent = 0;
+const pass = () => { if (url && ready && !(sent++)) document.getElementById("other").contentWindow.postMessage(url, "*"); };
+addEventListener("message", e => {
+  if (e.data.url) url = e.data.url; else if (e.data === "other ready") ready = true; else log(e.data);
+  pass();
+});
+</script></body>`)
+	check(pr, wait_note(pr, "own worker null 7"), "a blob: worker of an opaque origin starts, of that origin, and reads a blob: URL it made")
+	check(pr, wait_note(pr, "foreign refused"), "another opaque origin may not start it")
+	check(pr, !said(pr, "foreign ran"), "and it did not run")
+	close_page(pr, min_checks = 3)
+}
+
 // A value for an HTML attribute in double quotes.
 html_attr :: proc(s: string) -> string {
 	r, _ := strings.replace_all(s, "&", "&amp;", context.temp_allocator)

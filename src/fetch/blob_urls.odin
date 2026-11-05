@@ -75,6 +75,16 @@ delete_map_key :: proc(m: ^map[string]^Blob_Url, key: string) -> (string, ^Blob_
 	return k, v, true
 }
 
+// The origin of `u` as the URL Standard has it: a blob: URL that names something is of the origin that made it, which a
+// blob:null/... does not say in its text (url.origin_of alone makes a new opaque origin of it).
+url_origin :: proc(u: url.URL, allocator := context.allocator) -> url.Origin {
+	if u.scheme == "blob" {
+		sync.mutex_guard(&blob_store.mu)
+		if b := blob_store.urls[blob_key(u.href)]; b != nil { return url.origin_clone(b.origin, allocator) }
+	}
+	return url.origin_of(u, allocator)
+}
+
 // The load of a blob: URL: a network error when it names nothing, or names what another origin made.
 @(private)
 blob_hop :: proc(t: ^Task) {
