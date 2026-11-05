@@ -43,8 +43,8 @@ Settings :: struct {
 LOOPBACK_ONLY_ENV :: "WREN_NETWORK_LOOPBACK_ONLY"
 
 PREFS := [?]config.Def{
-	{name = "network.preconnect.enabled", kind = .Bool, default = {b = true},
-		description = "Follow <link rel=preconnect> and dns-prefetch: connections and names ready before the requests that need them. Hosts the content blocker refuses are not contacted."},
+	{name = "network.preconnect.enabled", kind = .Bool, default = {b = false},
+		description = "Follow <link rel=preconnect> and dns-prefetch: connections and names ready before the requests that need them. Off: no gain was measured on the pages tried. Hosts the content blocker refuses are not contacted."},
 	{name = "network.backend", kind = .String, default = {s = "rust"}, choices = {"rust", "winhttp"}, restart = true,
 		description = "The network stack. rust: the built-in stack, the same on every platform (HTTP/1.1, HTTP/2, HTTP/3 raced against TCP, WebSockets, TLS 1.2 and 1.3 checked against the system's trust store, the system proxy settings). It does not run proxy auto-configuration scripts: where the system proxy is set by one (PAC), WinHTTP is used. winhttp: the operating system's (Windows only; no HTTP/3). The WREN_NET_BACKEND environment variable overrides it."},
 	{name = "network.http3.race_ms", kind = .Int, default = {i = 250}, bounded = true, min = 0, max = 60_000, unit = "ms",

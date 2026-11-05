@@ -1569,6 +1569,8 @@ jsload_a_preconnect_opens_its_connection_unless_the_blocker_refuses :: proc(t: ^
 	defer end()
 	serve(t)
 	origin :: proc(name: string) -> string { return fmt.tprintf("http://%s:%d/", name, testenv.port(PLAIN_HTTP)) }
+	client.settings.preconnect = true
+	defer client.settings.preconnect = false
 	names := PRECONNECT_NAMES
 	kept := loader.interceptor
 	defer loader.interceptor = kept
