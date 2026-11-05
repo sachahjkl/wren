@@ -21,6 +21,7 @@ import "wb:fetch"
 import "wb:host"
 import "wb:html"
 import "wb:http"
+import "wb:js"
 import "wb:page"
 import "wb:tools/testenv"
 import "wb:tools/testhost"
@@ -1012,6 +1013,24 @@ jsload_large_scripts_compile_off_thread :: proc(t: ^testing.T) {
 	log.infof("MEASURE 2 x 512 KiB scripts compiled off-thread: %d jobs, %.1f ms of compilation on %d thread(s); page done in %.1f ms", after.jobs - before.jobs, after.total_ms - before.total_ms, after.threads, ms)
 	check(pr, after.jobs - before.jobs == 2, "large scripts are compiled on the compile threads")
 	check(pr, noted(pr, "big a 512") && noted(pr, "big b 512"), "and run from the bytecode they made")
+	close_page(pr, min_checks = 2)
+}
+
+// A classic script of another origin, fetched without CORS (the scripts of a CDN), runs from what the compile thread made of it: one
+// compilation, not a second one on the interface thread. Its errors are muted, which the bytecode does not know.
+@(test)
+jsload_a_large_script_of_another_origin_compiles_once :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
+	other_origin := testenv.url("http://localhost:8765/jsload/big?kb=512&id=cdn")
+	jobs, hits := page.compile_stats().jobs, js.cache_stats().memory_hits
+	pr := load(t, "a script of another origin", concat(`<!doctype html><head><script src="`, other_origin, `"></script><script>wrenTest.note("cdn done")</script></head>`))
+	wait_note(pr, "cdn done")
+	check(pr, page.compile_stats().jobs - jobs == 1, "it went to a compile thread")
+	check(pr, js.cache_stats().memory_hits - hits == 1, "and ran from that bytecode")
 	close_page(pr, min_checks = 2)
 }
 
