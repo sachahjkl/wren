@@ -24,9 +24,11 @@
   .track { display: grid; grid-template-columns: 120px 1fr; align-items: center; height: 28px; font-size: 16px; }
   .lane { position: relative; height: 16px; border-bottom: 1px solid var(--night-line); }
   .dot { position: absolute; top: 2px; left: 0; width: 16px; height: 16px; border-radius: 50%; }
-  #render-dot { background: var(--mint); animation: glide 2.4s ease-in-out infinite alternate; }
+  /* A transform, on a box as wide as the lane: what the compositor can run with the page's thread away. */
+  #render-rider { position: absolute; inset: 0; animation: glide 2.4s ease-in-out infinite alternate; }
+  #render-dot { background: var(--mint); }
   #main-dot { background: var(--rose); }
-  @keyframes glide { to { left: calc(100% - 16px); } }
+  @keyframes glide { to { transform: translateX(calc(100% - 16px)); } }
   .numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0 28px; margin: 10px 0 0; font-size: 15.5px; color: var(--night-muted); }
   .numbers div { display: flex; justify-content: space-between; line-height: 1.55; }
   .numbers b { color: var(--night-text); font-variant-numeric: tabular-nums; }
@@ -70,7 +72,7 @@
     <label class="length"><input id="ms" type="range" min="100" max="800" step="50" value="400"> <span><span id="ms-out">400</span> ms tasks</span></label>
     <label class="listener"><input id="listen" type="checkbox"> a mousemove listener on the page</label>
   </div>
-  <div class="track"><span>Render thread</span><div class="lane"><span id="render-dot" class="dot"></span></div></div>
+  <div class="track"><span>Render thread</span><div class="lane"><div id="render-rider"><span id="render-dot" class="dot"></span></div></div></div>
   <div class="track"><span>Main thread</span><div class="lane"><span id="main-dot" class="dot"></span></div></div>
   <div class="numbers">
     <div><span>Characters main sees</span><b id="seen">0</b></div>
@@ -198,7 +200,7 @@ Drag across them, then double click a word.</textarea>
     if (!busy) return;
     const begun = performance.now(), end = begun + Number(ms.value);
     while (performance.now() < end) {}
-    $("stall").textContent = Math.round(performance.now() - begun);
+    show("stall", Math.round(performance.now() - begun));
     setTimeout(task, GAP_MS);
   }
 
@@ -206,9 +208,15 @@ Drag across them, then double click a word.</textarea>
     const lane = mainDot.parentElement.clientWidth - mainDot.offsetWidth;
     const lap = (now / 1000 * LAPS_PER_SECOND) % 2;
     mainDot.style.transform = "translateX(" + (lap < 1 ? lap : 2 - lap) * lane + "px)";
-    $("seen").textContent = String(getSelection()).length;
-    $("changes").textContent = changes;
+    show("seen", String(getSelection()).length);
+    show("changes", changes);
     requestAnimationFrame(frame);
+  }
+
+  // Only what changed: a number written again at each frame is a change of the document at each frame.
+  function show(id, value) {
+    const text = String(value);
+    if ($(id).textContent !== text) $(id).textContent = text;
   }
 
   function moved() {}
