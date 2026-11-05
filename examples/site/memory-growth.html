@@ -1,0 +1,38 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Memory growth</title>
+<style id="sheet"></style>
+<p>A page unlike the one before it (<code>?n=</code>): functions of its own hot enough to be compiled, styles, nodes and an image of its own. What a long session on many sites leaves behind, in a loop: <code>src/tools/e2e/memory_growth.odin</code>.</p>
+<div id="nodes"></div>
+<script>
+const n = Number(new URLSearchParams(location.search).get("n") || 0);
+const FUNCTIONS = 40, CALLS = 1200, RULES = 200, NODES = Number(new URLSearchParams(location.search).get("nodes") || 300);
+
+let css = "";
+for (let i = 0; i < RULES; i++) css += `.r${n}_${i} { margin-left: ${i % 7}px; color: rgb(${i % 255}, ${n % 255}, 9) }\n`;
+document.getElementById("sheet").textContent = css;
+
+const nodes = document.getElementById("nodes");
+for (let i = 0; i < NODES; i++) {
+	const d = document.createElement("div");
+	d.className = `r${n}_${i % RULES}`;
+	d.textContent = `node ${i} of page ${n}`;
+	nodes.append(d);
+}
+
+const img = new Image();
+img.src = `/images/f/noise.png?n=${n}`;
+document.body.append(img);
+
+// ?heap=<MB>: what the script keeps alive as long as the page lives
+const kept = [];
+for (let i = 0; i < Number(new URLSearchParams(location.search).get("heap") || 0); i++) kept.push(new Uint8Array(1 << 20).fill(i));
+window.kept = kept;
+
+let sum = 0;
+for (let f = 0; f < FUNCTIONS; f++) {
+	const fn = new Function("a", `return (a * ${n * FUNCTIONS + f + 3} + ${f}) % 1000003`);
+	for (let i = 0; i < CALLS; i++) sum = fn(sum);
+}
+document.title = `page ${n}: ${sum}`;
+</script>
