@@ -577,8 +577,9 @@ open_database :: proc(c: ^Client, name: string, version: u64, has_version: bool)
 	req.name = strings.clone(name)
 	req.version, req.has_version = version, has_version
 	append(&ds.queue, req)
+	id := req.id   // (db_pump may answer it and free it)
 	db_pump(o, ds)
-	return req.id
+	return id
 }
 
 delete_database :: proc(c: ^Client, name: string) -> u64 {
@@ -594,8 +595,9 @@ delete_database :: proc(c: ^Client, name: string) -> u64 {
 	req.client = c
 	req.name = strings.clone(name)
 	append(&ds.queue, req)
+	id := req.id   // (db_pump may answer it and free it)
 	db_pump(o, ds)
-	return req.id
+	return id
 }
 
 // The names and versions of the origin's databases, as a List event.

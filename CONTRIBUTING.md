@@ -50,7 +50,9 @@
   memory shared between threads or kept by a cache comes from `base.process_allocator()`, never from
   `runtime.default_context()` / `runtime.heap_allocator()`: in the check builds those are the tracker. Data kept on
   purpose until the process ends comes from `base.permanent_allocator()`. A global map or list goes away with its
-  last entry. `src\tools\endurance` shows what keeps growing while the browser runs.
+  last entry. `src\tools\endurance` shows what keeps growing while the browser runs. Arenas are `base.Arena`
+  (`src/base/arena.odin`), not `core:mem/virtual`: the check builds poison what they free
+  ([docs/testing.md](docs/testing.md#freed-memory-made-loud)).
 - Comments say why, in English, as dense as the code around them. Commit messages are in English.
 - **CHANGELOG: one fragment per change in [changelog.d/](changelog.d/README.md)**, never an edit of `CHANGELOG.md`
   (two branches that both edited `## [Unreleased]` conflicted at every merge):
