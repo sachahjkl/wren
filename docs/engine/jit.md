@@ -254,6 +254,7 @@ deopt, what it refused or left to the interpreter's code, and at each interrupt 
 
 ## Tests
 
+- `build\jsengine_jit.exe cost --pref wasm.wasmtime.fuel=true examples\jsbench\cost.js`: what the interpreter's paths cost in Wasm instructions, each against its limit; `run examples\jsbench\hotcheck.js`: what its hot loop answers, against the language (the file passes in Node).
 - `build\jsengine_jit.exe verify -jit -jit-sync examples\jsbench\jitcheck.js`: the script runs interpreted, then with
   the JIT, and what it prints must be the same. Its loops run long enough to be compiled, then are called again with
   other shapes, prototypes, getters, frozen objects, proxies, values of other types, more shapes than a site takes,
