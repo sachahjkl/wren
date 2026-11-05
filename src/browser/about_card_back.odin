@@ -120,10 +120,10 @@ back_normal_map :: proc(allocator := context.allocator) -> []u8 {
 back_engraving :: proc(fs: ^font.State, renderer: u64, text: string, allocator := context.allocator) -> (texels: []u8, ok: bool) {
 	semibold, found := engrave_font(fs, renderer, true)
 	if !found { return nil, false }
-	blits := make([dynamic]Blit, context.temp_allocator)
+	glyphs := make([dynamic]Glyph_Place, context.temp_allocator)
 	w := engrave_width(fs, semibold, text, BACK_TEXT_SIZE, BACK_TEXT_TRACK) - BACK_TEXT_TRACK * BACK_TEXT_SIZE
-	engrave_line(fs, semibold, &blits, ENGRAVE_SCALE, text, 220 - w / 2, BACK_TEXT_BASELINE, BACK_TEXT_SIZE, BACK_TEXT_TRACK, false)
-	cov := engrave_coverage(fs, blits[:], ENGRAVE_W, ENGRAVE_H)
+	engrave_line(fs, semibold, &glyphs, ENGRAVE_SCALE, text, 220 - w / 2, BACK_TEXT_BASELINE, BACK_TEXT_SIZE, BACK_TEXT_TRACK, false)
+	cov := engrave_coverage(fs, glyphs[:], ENGRAVE_W, ENGRAVE_H)
 	defer delete(cov)
 	return engrave_raise(cov, ENGRAVE_W, ENGRAVE_H, allocator), true
 }

@@ -5,8 +5,12 @@ import "core:fmt"
 import "core:strings"
 
 // What is portable already (docs/portability.md): odin check for Linux of every package that is, then the unit tests of those that have tests, with the flags of the Windows steps (-vet, the memory
-// check; RLIMIT_STACK instead of /STACK). Needs build/wasmtime-linux (wrentool fetch wasmtime), build/lexbor-linux (wrentool build lexbor) and build/native-linux (wrentool build native).
+// check; RLIMIT_STACK instead of /STACK). Needs build/wasmtime-linux (wrentool fetch wasmtime), build/lexbor-linux (wrentool build lexbor) and build/native-linux (wrentool build native -Features text,a11y).
 // Packages move from "not yet" to these lists as they are ported; tests that measure time stay out.
+
+// The tests of src/browser run on Linux (the package as a whole does not pass there yet).
+BROWSER_LINUX_TESTS :: "-define:ODIN_TEST_NAMES=browser.the_lettering_of_the_card_is_raised_on_every_system"
+
 linux_table :: proc(cfg: ^Config) -> []Step {
 	t: [dynamic]Step
 	// (js/image is out until the JS engine's wasm can be built on Linux. idb is checked but its tests are out: two of them, a failed request and a failed write, fail on the GitHub runner and pass in WSL; not understood yet)
@@ -32,5 +36,7 @@ linux_table :: proc(cfg: ^Config) -> []Step {
 		linux_unit(&t, p, nil)
 	}
 	for p in ONE_AT_A_TIME { linux_unit(&t, p, {ONE_THREAD}) }
+	// browser: the tests of its own that hold on Linux, with the text backend Wren has there (build/native-linux built with -Features text,a11y)
+	if wgpu { linux_unit(&t, "browser", {BROWSER_LINUX_TESTS, "-define:FONT_BACKEND=native", "-define:FONT_NATIVE_LINK=false"}) }
 	return t[:]
 }

@@ -31,7 +31,8 @@ deps() {
   wrentool fetch wasmtime
   wrentool fetch wgpu
   CC="${CC:-clang}" wrentool build lexbor
-  wrentool build native -Profile "$PROFILE"
+  # the features of the browser's (wren below): the unit tests link the same library (src/tools/test_all: the browser's own shape text)
+  wrentool build native -Profile "$PROFILE" -Features text,a11y
 }
 
 # odin check and the unit tests: the test program of the repository, built each time (a second).

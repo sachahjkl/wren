@@ -6,9 +6,9 @@ import "toolkit:font"
 
 ////////////////////////////////
 // The text of the licence card, RAISED: instead of white HTML text over the foil, the name, the e-mail, the date and the order number stand
-// out of the metal like the embossed lettering of a bank card. They are rasterized here, natively, with the toolkit's own glyph rasterizer
-// (the same bitmaps the page's text uses, so the letters are as sharp as the page's), into a coverage field the size of the card at 3 texels
-// per CSS pixel; a short blur of that field is the height of the lettering, and its gradient the normals of a real bevel (the same helpers
+// out of the metal like the embossed lettering of a bank card. They are rasterized here, natively, from the glyphs' outlines (font.glyph_outline
+// filled by the toolkit's software rasterizer, font.colr_cover: the same shapes on every system; the glyph atlas has no bitmaps of plain text
+// off Windows, where Slug draws the outlines), into a coverage field the size of the card at 3 texels per CSS pixel; a short blur of that field is the height of the lettering, and its gradient the normals of a real bevel (the same helpers
 // raise the word and the tick of the seal: about_card_seal.odin). card-foil (shaders/card_foil.wgsl) lights it with the same lights as the
 // rest of the card and makes the letters silver.
 //
@@ -28,26 +28,16 @@ BEVEL_K :: 5.0          // how steep the flanks are made (the steepest slope of 
 // The attribute of the card's box the text comes from: six fields, one per line (see card_engrave_fields).
 ENGRAVE_ATTR :: "data-engrave"
 
+@(private = "file") ENGRAVE_FLATNESS_PX :: 0.05   // how far a glyph's curves may stray from their outline, texels
+@(private = "file") ENGRAVE_SAMPLES :: 4          // coverage samples per texel row (font.colr_cover: across a row it is exact)
+
+// A glyph placed on the field: its face and index, its size in texels to the em, its pen on the baseline in texels.
 @(private)
-Blit :: struct {
-	page:   int,
-	uv:     [4]f32,
-	x, y:   int,
-}
-
-@(private = "file")
-Pages :: struct { data: [dynamic][]u8, size: [dynamic]int }
-
-@(private = "file")
-page_upload :: proc(user: rawptr, page: int, kind: font.Page_Kind, x, y, w, h: int, pixels: []u8, stride: int) {
-	p := (^Pages)(user)
-	if kind != .Gray { return }
-	for len(p.data) <= page { append(&p.data, nil); append(&p.size, 0) }
-	size := stride   // a gray page: one byte a texel, stride is its width (the atlas is locked here: no calls back into it)
-	if p.data[page] == nil { p.data[page] = make([]u8, size * size); p.size[page] = size }
-	for row in 0 ..< h {
-		copy(p.data[page][(y + row) * size + x:][:w], pixels[row * stride:][:w])
-	}
+Glyph_Place :: struct {
+	face:   font.Font_Id,
+	gid:    u16,
+	size:   f32,
+	x, y:   f32,
 }
 
 @(private = "file") @(thread_local) engr_cache: struct { state: ^font.State, renderer: u64, id: [2]font.Font_Id, ok: [2]bool }
@@ -64,20 +54,15 @@ engrave_font :: proc(fs: ^font.State, renderer: u64, bold: bool) -> (font.Font_I
 }
 
 // One line of text shaped and placed, in texels: `x` is its left (or right, when `right`) edge and `baseline` its baseline, in CSS px of the
-// design, `scale` texels to a CSS px. The glyph bitmaps are collected as blits for engrave_coverage.
+// design, `scale` texels to a CSS px. The glyphs are collected, placed, for engrave_coverage.
 @(private)
-engrave_line :: proc(fs: ^font.State, id: font.Font_Id, blits: ^[dynamic]Blit, scale: f32, text: string, x, baseline, size_css, track_em: f32, right: bool) {
+engrave_line :: proc(fs: ^font.State, id: font.Font_Id, glyphs: ^[dynamic]Glyph_Place, scale: f32, text: string, x, baseline, size_css, track_em: f32, right: bool) {
 	if text == "" { return }
 	size := size_css * scale
 	sh := font.shape(fs, id, size, text, {letter_spacing = track_em * size}, context.temp_allocator)
 	x0 := x * scale - (right ? sh.width - track_em * size : 0)
-	y0 := int(math.round(baseline * scale))
-	for g in sh.glyphs {
-		ix, sub := font.subpixel(fs, x0 + g.x)
-		gi := font.glyph_image(fs, g.face, g.id, size, sub)
-		if gi.page < 0 || gi.color { continue }
-		append(blits, Blit{page = int(gi.page), uv = gi.uv, x = int(ix + gi.offset.x), y = y0 + int(math.round(g.y)) + int(gi.offset.y)})
-	}
+	y0 := math.round(baseline * scale)
+	for g in sh.glyphs { append(glyphs, Glyph_Place{face = g.face, gid = g.id, size = size, x = x0 + g.x, y = y0 + g.y}) }
 }
 
 @(private)
@@ -86,23 +71,24 @@ engrave_width :: proc(fs: ^font.State, id: font.Font_Id, text: string, size_css,
 	return font.measure(fs, id, size_css, text, {letter_spacing = track_em * size_css})
 }
 
-// The coverage (0 .. 1) of W x H texels from the glyph bitmaps in `blits`, in `allocator`.
+// The coverage (0 .. 1) of W x H texels from the outlines of `glyphs`, in `allocator`.
 @(private)
-engrave_coverage :: proc(fs: ^font.State, blits: []Blit, W, H: int, allocator := context.allocator) -> []f32 {
-	pages: Pages
-	defer { for d in pages.data { delete(d) }; delete(pages.data); delete(pages.size) }
-	for i in 0 ..< font.atlas_page_count(fs) { font.atlas_sync_page(fs, i, 0, &pages, page_upload) }
+engrave_coverage :: proc(fs: ^font.State, glyphs: []Glyph_Place, W, H: int, allocator := context.allocator) -> []f32 {
 	cov := make([]f32, W * H, allocator)
-	for b in blits {
-		if b.page >= len(pages.data) || pages.data[b.page] == nil { continue }
-		size := pages.size[b.page]
-		x0, y0, x1, y1 := int(b.uv[0]), int(b.uv[1]), int(b.uv[2]), int(b.uv[3])
-		for sy in y0 ..< y1 {
-			for sx in x0 ..< x1 {
-				dx, dy := b.x + (sx - x0), b.y + (sy - y0)
-				if dx < 0 || dy < 0 || dx >= W || dy >= H { continue }
-				v := f32(pages.data[b.page][sy * size + sx]) / 255
-				cov[dy * W + dx] = max(cov[dy * W + dx], v)
+	o: font.Outline
+	defer font.outline_destroy(&o)
+	for g in glyphs {
+		clear(&o.quads)
+		clear(&o.ends)
+		if g.size <= 0 || !font.glyph_outline(fs, g.face, g.gid, ENGRAVE_FLATNESS_PX / g.size, &o) { continue }
+		// em units, y up, to texels, y down, the pen at (x, y)
+		m := font.Mat{g.size, 0, 0, -g.size, g.x, g.y}
+		rect, part, ok := font.colr_cover(&o, m, {0, 0, W, H}, ENGRAVE_SAMPLES, context.temp_allocator)
+		if !ok { continue }
+		w := rect[2] - rect[0]
+		for y in rect[1] ..< rect[3] {
+			for x in rect[0] ..< rect[2] {
+				cov[y * W + x] = max(cov[y * W + x], part[(y - rect[1]) * w + (x - rect[0])])
 			}
 		}
 	}
@@ -169,31 +155,31 @@ card_engraving :: proc(fs: ^font.State, renderer: u64, fields: string, allocator
 	regular_id, ok2 := engrave_font(fs, renderer, false)
 	if !ok1 || !ok2 { return nil, false }
 
-	blits := make([dynamic]Blit, context.temp_allocator)
-	line :: proc(fs: ^font.State, id: font.Font_Id, blits: ^[dynamic]Blit, text: string, x, baseline, size_css, track_em: f32, right: bool) {
-		engrave_line(fs, id, blits, ENGRAVE_SCALE, text, x, baseline, size_css, track_em, right)
+	glyphs := make([dynamic]Glyph_Place, context.temp_allocator)
+	line :: proc(fs: ^font.State, id: font.Font_Id, glyphs: ^[dynamic]Glyph_Place, text: string, x, baseline, size_css, track_em: f32, right: bool) {
+		engrave_line(fs, id, glyphs, ENGRAVE_SCALE, text, x, baseline, size_css, track_em, right)
 	}
 	width :: engrave_width
 
 	// the layout of the card's 440 x 277 px design (about_card.odin: padding 18 22, the logo, the middle block, the two meta blocks)
-	line(fs, semibold, &blits, parts[0], 57, 38, 17, 0.02, false)
-	line(fs, semibold, &blits, strings.to_upper(parts[1], context.temp_allocator), 418, 36, 11, 0.16, true)
+	line(fs, semibold, &glyphs, parts[0], 57, 38, 17, 0.02, false)
+	line(fs, semibold, &glyphs, strings.to_upper(parts[1], context.temp_allocator), 418, 36, 11, 0.16, true)
 	name_size: f32 = 24
 	if w := width(fs, semibold, parts[2], 24, 0); w > 396 { name_size = max(24 * 396 / w, 13) }
-	line(fs, semibold, &blits, parts[2], 22, 134, name_size, 0, false)
-	line(fs, semibold, &blits, parts[3], 22, 152, 12, 0, false)
+	line(fs, semibold, &glyphs, parts[2], 22, 134, name_size, 0, false)
+	line(fs, semibold, &glyphs, parts[3], 22, 152, 12, 0, false)
 	x := f32(22)
 	if parts[4] != "" {
-		line(fs, semibold, &blits, "ISSUED", x, 233, 10, 0.14, false)
-		line(fs, semibold, &blits, parts[4], x, 254, 13, 0, false)
+		line(fs, semibold, &glyphs, "ISSUED", x, 233, 10, 0.14, false)
+		line(fs, semibold, &glyphs, parts[4], x, 254, 13, 0, false)
 		x += max(width(fs, regular_id, "ISSUED", 10, 0.14), width(fs, regular_id, parts[4], 13, 0)) + 26
 	}
 	if parts[5] != "" {
-		line(fs, semibold, &blits, "ORDER", x, 233, 10, 0.14, false)
-		line(fs, semibold, &blits, parts[5], x, 254, 13, 0, false)
+		line(fs, semibold, &glyphs, "ORDER", x, 233, 10, 0.14, false)
+		line(fs, semibold, &glyphs, parts[5], x, 254, 13, 0, false)
 	}
 
-	cov := engrave_coverage(fs, blits[:], W, H)
+	cov := engrave_coverage(fs, glyphs[:], W, H)
 	defer delete(cov)
 	return engrave_raise(cov, W, H, allocator), true
 }
