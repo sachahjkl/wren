@@ -38,7 +38,7 @@ package wasm
 // the labels of every branch are computed again, which is why the whole code section is decoded.
 
 import "core:mem"
-import vmem "core:mem/virtual"
+import "wb:base"
 
 @(private = "file")
 Func_Type :: struct {
@@ -530,10 +530,10 @@ delegate_label :: proc(body: []u8, at: int, stack: []Frame, tries: []Try_Info) -
 // own error then stands.
 translate_legacy_exceptions :: proc(image: []byte, allocator: mem.Allocator) -> []byte {
 	if len(image) < 8 { return nil }
-	arena: vmem.Arena
-	if vmem.arena_init_growing(&arena) != nil { return nil }
-	defer vmem.arena_destroy(&arena)
-	context.allocator = vmem.arena_allocator(&arena)
+	arena: base.Arena
+	if base.arena_init_growing(&arena) != nil { return nil }
+	defer base.arena_destroy(&arena)
+	context.allocator = base.arena_allocator(&arena)
 
 	t := Translator{types = make([dynamic]Func_Type), type_of = make(map[string]int), added = make([dynamic]u8), tag_types = make([dynamic]u32), func_types = make([dynamic]u32)}
 	code_start, code_end, type_start, type_end := -1, -1, -1, -1

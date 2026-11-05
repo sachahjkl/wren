@@ -10,7 +10,6 @@ package style
 // writing. What compiling inline styles finds out about the engine is collected per pass and merged afterwards on the
 // calling thread.
 
-import "core:mem/virtual"
 import "wb:base"
 import "wb:dom"
 import "wb:host"
@@ -37,7 +36,7 @@ Par_Job :: struct {
 	frames: []Par_Frame,
 	ranges: [][2]int,
 	passes: []^Pass,
-	arenas: []^virtual.Arena,
+	arenas: []^base.Arena,
 }
 
 // Returns what the passes counted of the boxes shown (counters_tally): those that show a counter or a quote, and those
@@ -97,7 +96,7 @@ style_document_parallel :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, stat
 	job := Par_Job{e = e, s = s, doc = doc, state = state, frames = frontier[:]}
 	job.ranges = ranges[:]
 	job.passes = make([]^Pass, tasks, context.temp_allocator)
-	job.arenas = make([]^virtual.Arena, tasks, context.temp_allocator)
+	job.arenas = make([]^base.Arena, tasks, context.temp_allocator)
 	for &a in job.arenas { a = thread_arena_take(e) }
 	host.parallel_for(pool, tasks, proc(data: rawptr, i: int) {
 		j := (^Par_Job)(data)
@@ -162,32 +161,33 @@ flat_sizes :: proc(doc: ^dom.Document) -> []i32 {
 // rebuilds 10 000 nodes a frame). Its header comes from the process's allocator (the caller's may not be thread-safe: a
 // test's). One block, committed as it fills, so an emptied arena keeps its pages.
 @(private)
-thread_arena_take :: proc(e: ^Engine) -> ^virtual.Arena {
+thread_arena_take :: proc(e: ^Engine) -> ^base.Arena {
 	if a, ok := pop_safe(&e.spare_arenas); ok {
-		e.spare_arena_bytes -= int(a.curr_block.committed)
+		e.spare_arena_bytes -= base.arena_committed(a)
 		return a
 	}
-	arena := new(virtual.Arena, base.process_allocator())
-	_ = virtual.arena_init_growing(arena, STYLED_RESERVE)
-	arena.default_commit_size = THREAD_ARENA_COMMIT   // (else 8 MB at a time: a task styles a few hundred elements)
+	arena := new(base.Arena, base.process_allocator())
+	_ = base.arena_init_growing(arena, STYLED_RESERVE)
+	when !base.POISON_MEMORY { arena.default_commit_size = THREAD_ARENA_COMMIT }   // (else 8 MB at a time: a task styles a few hundred elements)
 	return arena
 }
 
 // Keeps `a` for a later pass while the spares hold no more than style.recycle_bytes; frees it otherwise. It is emptied
 // by the style thread that takes it next: thread_arena_begin.
 @(private)
-thread_arena_give :: proc(e: ^Engine, a: ^virtual.Arena) {
-	if e == nil || a.curr_block == nil || a.curr_block.prev != nil || e.spare_arena_bytes + int(a.curr_block.committed) > e.settings.recycle_bytes { thread_arena_free(a); return }
-	e.spare_arena_bytes += int(a.curr_block.committed)
+thread_arena_give :: proc(e: ^Engine, a: ^base.Arena) {
+	when base.POISON_MEMORY { base.arena_free_all(a) }   // (what the pass held is over now, not when a thread takes it)
+	if e == nil || !base.arena_one_block(a) || e.spare_arena_bytes + base.arena_committed(a) > e.settings.recycle_bytes { thread_arena_free(a); return }
+	e.spare_arena_bytes += base.arena_committed(a)
 	append(&e.spare_arenas, a)
 }
 
 // On the style thread, before its task: what the arena held in an earlier pass goes (not zeroed: style_arena_allocator).
 @(private)
-thread_arena_begin :: proc(a: ^virtual.Arena) { style_arena_empty(a) }
+thread_arena_begin :: proc(a: ^base.Arena) { style_arena_empty(a) }
 
 @(private)
-thread_arena_free :: proc(a: ^virtual.Arena) {
-	virtual.arena_destroy(a)
+thread_arena_free :: proc(a: ^base.Arena) {
+	base.arena_destroy(a)
 	free(a, base.process_allocator())
 }

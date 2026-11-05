@@ -18,6 +18,7 @@ linux_table :: proc(cfg: ^Config) -> []Step {
 		"webauthn", "desktop", "remote", "tools/testenv", "net", "fetch", "media", "page", "blocker", "remote/api", "remote/client", "tools/crashtrace", "tools/wpt/reftest", "tools/wpt", "tools/test_all", "tools/endurance", "browser", "e2e", "tools/e2e"}
 	UNITS := []string{"base", "host", "css", "http", "xml", "adblock", "canvas2d", "dom", "url", "html", "cookies", "csp", "forms", "style", "layout", "webfont", "js", "httpcache", "webauthn", "desktop", "net", "fetch", "media", "blocker", "page", "tools/crashtrace", "tools/wpt/reftest"}
 	ONE_AT_A_TIME := []string{"wasm", "remote", "remote/api", "remote/client"}   // (one channel per process, as on Windows)
+	POISONED := []string{"base", "style", "layout"}
 	// browser is the first package that imports toolkit:render: its check needs libwgpu_native.a beside Odin's wgpu vendor package, which a bare WSL checkout may not have.
 	wgpu := linux_has_wgpu_library()
 	js_stub := linux_prepare_stubs()
@@ -36,6 +37,11 @@ linux_table :: proc(cfg: ^Config) -> []Step {
 		linux_unit(&t, p, nil)
 	}
 	for p in ONE_AT_A_TIME { linux_unit(&t, p, {ONE_THREAD}) }
+	// freed memory poisoned (src/base/poison_linux.odin: free and realloc of the whole program)
+	for p in POISONED {
+		argv := join({"odin", "test", fmt.aprintf("src/%s", p), "-vet", WB, TOOLKIT, MEM_CHECK, POISON}, {out_flag(fmt.aprintf("build/linux/%s_poison_test", p))})
+		append(&t, Step{name = fmt.aprintf("unit tests on poisoned memory: %s", p), actions = slice_of(Command{argv = argv, pkg = fmt.aprintf("src/%s", p), rule = .Says_Successful})})
+	}
 	// browser: the tests of its own that hold on Linux, with the text backend Wren has there (build/native-linux built with -Features text,a11y)
 	if wgpu { linux_unit(&t, "browser", {BROWSER_LINUX_TESTS, "-define:FONT_BACKEND=native", "-define:FONT_NATIVE_LINK=false"}) }
 	return t[:]

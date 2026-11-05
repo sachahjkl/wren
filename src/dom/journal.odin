@@ -1,7 +1,6 @@
 package dom
 
 import "base:runtime"
-import "core:mem/virtual"
 import "core:strings"
 import "wb:base"
 
@@ -50,7 +49,7 @@ Journal :: struct {
 	max:     int,
 	from:    u64,                      // complete for every mutation after this value of `mutations`
 	entries: [dynamic]Journal_Entry,
-	names:   virtual.Arena,            // attribute names of the entries
+	names:   base.Arena,            // attribute names of the entries
 	names_ready: bool,
 	watch:   Watch,
 	live_bytes: int,                   // bytes of the names and old values the entries still hold (the rest of the arena is garbage)
@@ -79,7 +78,7 @@ journal_free :: proc(d: ^Document) {
 	delete(j.entries)
 	j.entries = nil
 	watch_free(&j.watch)
-	if j.names_ready { virtual.arena_destroy(&j.names); j.names_ready = false }
+	if j.names_ready { base.arena_destroy(&j.names); j.names_ready = false }
 	j.live_bytes = 0
 }
 
@@ -111,32 +110,32 @@ journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Hand
 		for drop < len(j.entries) && j.entries[drop].mutation == j.from { drop += 1 }
 		for e in j.entries[:drop] { j.live_bytes -= len(e.name) + len(e.old) }
 		remove_range(&j.entries, 0, drop)
-		if j.names_ready && len(j.entries) == 0 { virtual.arena_free_all(&j.names) }
+		if j.names_ready && len(j.entries) == 0 { base.arena_free_all(&j.names) }
 	}
 	nm := ""
 	if name != "" {
-		if !j.names_ready { _ = virtual.arena_init_growing(&j.names, 4096); j.names_ready = true }
+		if !j.names_ready { _ = base.arena_init_growing(&j.names, 4096); j.names_ready = true }
 		if len(j.entries) == 0 {
-			virtual.arena_free_all(&j.names)
+			base.arena_free_all(&j.names)
 			j.live_bytes = 0
 		} else if int(j.names.total_used) > max(64 * j.max + 4096, 2 * j.live_bytes) {
 			// names of forgotten entries add up: keep only those still referenced (when they are at least half of the
 			// arena: a journal whose live names alone pass the bound copied them all at every record)
-			fresh: virtual.Arena
-			_ = virtual.arena_init_growing(&fresh, 4096)
+			fresh: base.Arena
+			_ = base.arena_init_growing(&fresh, 4096)
 			for &e in j.entries {
-				if e.name != "" { e.name = strings.clone(e.name, virtual.arena_allocator(&fresh)) }
-				if e.old != "" { e.old = strings.clone(e.old, virtual.arena_allocator(&fresh)) }
+				if e.name != "" { e.name = strings.clone(e.name, base.arena_allocator(&fresh)) }
+				if e.old != "" { e.old = strings.clone(e.old, base.arena_allocator(&fresh)) }
 			}
-			virtual.arena_destroy(&j.names)
+			base.arena_destroy(&j.names)
 			j.names = fresh
 			j.compactions += 1
 		}
-		nm = strings.clone(name, virtual.arena_allocator(&j.names))
+		nm = strings.clone(name, base.arena_allocator(&j.names))
 	}
 	// the old data of a text change is for the hook only: readers of the journal do not need it
 	ov := ""
-	if old != "" && kind == .Attribute { ov = strings.clone(old, virtual.arena_allocator(&j.names)) }
+	if old != "" && kind == .Attribute { ov = strings.clone(old, base.arena_allocator(&j.names)) }
 	j.live_bytes += len(nm) + len(ov)
 	append(&j.entries, Journal_Entry{kind = kind, node = node, parent = parent, prev = prev, next = next, name = nm, old = ov, had_old = had_old, ns = ns, batch = d.batch, mutation = d.mutations, watch = watch, watch_gen = d.journal.watch.gen})
 }

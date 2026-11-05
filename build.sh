@@ -7,6 +7,7 @@
 #   ./build.sh check      odin check for Linux and the unit tests of every portable package (src/tools/test_all)
 #   ./build.sh crash      the crash reports end to end (wrentool crash-e2e)
 #   ./build.sh wren       attempt to link build/wren (needs libwgpu_native.a and ./build.sh deps; src/browser type-checks now)
+#   ./build.sh wren-check build/wren_check, as build.bat check: debug, every allocation tracked, freed memory poisoned
 #   ./build.sh release    build/wren as the release has it: the release channel, the Rust library with fat LTO (wrentool package packs it)
 #   ./build.sh all        deps, check, crash
 #   ./build.sh help
@@ -58,7 +59,7 @@ link_flags() {
 }
 
 wren() {
-  local out="build/wren"
+  local out="${WREN_OUT:-build/wren}"
   # The text and accessibility backends are compiled into the native library here (build.bat's default features);
   # the toolkit is then told not to link them itself (-define:FONT_NATIVE_LINK=false / -define:A11Y_NATIVE_LINK=false).
   wrentool build native -Profile "$PROFILE" -Features text,a11y
@@ -73,7 +74,7 @@ wren() {
   fi
   flags+=(-define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false)
   echo "linking $out (needs the build artifacts from ./build.sh deps; the system's libopus, libasound and libfontconfig; at run time libwayland-client / libxkbcommon or libxcb, and Vulkan or GL for wgpu)"
-  "$ODIN" build src/browser -out:"$out" "${flags[@]}" -o:speed
+  "$ODIN" build src/browser -out:"$out" "${flags[@]}" ${WREN_ODIN_FLAGS:--o:speed}
 }
 
 case "${1:-help}" in
@@ -81,7 +82,8 @@ case "${1:-help}" in
   check) tests ;;
   crash) wrentool crash-e2e ;;
   wren)  wren ;;
+  wren-check) WREN_OUT=build/wren_check WREN_ODIN_FLAGS="-debug -use-separate-modules -define:WREN_TRACK_MEMORY=true -define:WREN_POISON_MEMORY=true"; wren ;;
   release) PROFILE=release; WREN_CHANNEL=release; wren ;;
   all)   deps; tests; wrentool crash-e2e ;;
-  *)     sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *)     sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac

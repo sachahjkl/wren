@@ -2,7 +2,6 @@ package style
 
 import "base:runtime"
 import "core:math"
-import "core:mem/virtual"
 import "core:strconv"
 import "core:strings"
 import "wb:base"
@@ -64,7 +63,7 @@ Script_Run :: struct {
 	node:        base.Handle,   // NIL: an effect without a target
 	timing:      Effect_Timing,
 	clock:       Script_Clock,
-	set_arena:   virtual.Arena, // the compiled keyframes and the timing's easing
+	set_arena:   base.Arena, // the compiled keyframes and the timing's easing
 	skey:        [3]f64,        // phase, progress, in effect at the last tick
 }
 
@@ -208,8 +207,8 @@ script_keyframes_compile :: proc(e: ^Engine, packed: string, a: runtime.Allocato
 
 @(private)
 script_run_free :: proc(sr: ^Script_Run) {
-	virtual.arena_destroy(&sr.set_arena)
-	virtual.arena_destroy(&sr.frames_arena)
+	base.arena_destroy(&sr.set_arena)
+	base.arena_destroy(&sr.frames_arena)
 	free(sr)
 }
 
@@ -257,18 +256,18 @@ script_attach :: proc(tl: ^Timeline, sr: ^Script_Run, h: base.Handle) {
 // Creates or replaces the keyframe effect of animation `id`: its target (NIL: none), its keyframes (packed), its timing
 // (the easing as text) and composite operation. ok false (nothing changed): an easing does not parse.
 timeline_script_put :: proc(tl: ^Timeline, id: u64, node: base.Handle, packed: string, timing: Effect_Timing, easing: string, composite: Composition) -> bool {
-	arena: virtual.Arena
-	_ = virtual.arena_init_growing(&arena, 16 * 1024)
-	a := virtual.arena_allocator(&arena)
+	arena: base.Arena
+	_ = base.arena_init_growing(&arena, 16 * 1024)
+	a := base.arena_allocator(&arena)
 	t := timing
 	t.easing = Easing{kind = .Linear}
 	if easing != "" && easing != "linear" {
 		ez, ok := parse_easing_text(tl.engine, easing, a)
-		if !ok { virtual.arena_destroy(&arena); return false }
+		if !ok { base.arena_destroy(&arena); return false }
 		t.easing = ez
 	}
 	set, ok := script_keyframes_compile(tl.engine, packed, a)
-	if !ok { virtual.arena_destroy(&arena); return false }
+	if !ok { base.arena_destroy(&arena); return false }
 	sr := tl.scripts[id] or_else nil
 	if sr == nil {
 		sr = new(Script_Run)
@@ -277,10 +276,10 @@ timeline_script_put :: proc(tl: ^Timeline, id: u64, node: base.Handle, packed: s
 		sr.key = {-1, -1, -1}
 		sr.skey = {-1, -1, -1}
 		sr.clock.rate = 1
-		_ = virtual.arena_init_growing(&sr.frames_arena, 16 * 1024)
+		_ = base.arena_init_growing(&sr.frames_arena, 16 * 1024)
 		tl.scripts[id] = sr
 	} else {
-		virtual.arena_destroy(&sr.set_arena)
+		base.arena_destroy(&sr.set_arena)
 	}
 	sr.set_arena = arena
 	sr.set = set

@@ -39,6 +39,7 @@ process_allocators :: proc(t: ^testing.T) {
 	s3 := mem_stats()
 	testing.expect_value(t, s3.live_blocks, s0.live_blocks)
 	testing.expect_value(t, s3.live_bytes, s0.live_bytes)
+	when POISON_MEMORY { return }   // (there it ends the process: src\tools\e2e\crash_reports.odin)
 	// a double free is refused and counted; a block the tracker never saw is freed on the heap
 	q := new(int, a)
 	free(q, a)

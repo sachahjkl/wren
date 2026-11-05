@@ -8,7 +8,6 @@ package browser
 // reused for something else. Its first shortcut is the one shown in menus and in the palette; the others are aliases.
 
 import "core:fmt"
-import "core:mem/virtual"
 import "core:strings"
 import "toolkit:platform"
 import "toolkit:ui"
@@ -46,7 +45,7 @@ Command :: struct {
 Command_Registry :: struct {
 	list:  [dynamic]Command,
 	index: map[string]int,
-	arena: virtual.Arena,       // titles, keywords and shortcut lists of the commands
+	arena: base.Arena,       // titles, keywords and shortcut lists of the commands
 	built: bool,
 }
 
@@ -66,7 +65,7 @@ commands_destroy :: proc(r: ^Command_Registry) {
 	if !r.built { return }
 	delete(r.list)
 	delete(r.index)
-	virtual.arena_destroy(&r.arena)
+	base.arena_destroy(&r.arena)
 	r^ = {}
 }
 
@@ -173,12 +172,12 @@ tab_host :: proc(t: ^Tab) -> string {
 commands_build :: proc(r: ^Command_Registry) {
 	if r.built { return }
 	r.built = true
-	_ = virtual.arena_init_growing(&r.arena)
-	a := virtual.arena_allocator(&r.arena)
+	_ = base.arena_init_growing(&r.arena)
+	a := base.arena_allocator(&r.arena)
 	r.index = make(map[string]int)
 	r.list = make([dynamic]Command)
-	keys :: proc(a: ^virtual.Arena, list: ..Shortcut) -> []Shortcut {
-		out := make([]Shortcut, len(list), virtual.arena_allocator(a))
+	keys :: proc(a: ^base.Arena, list: ..Shortcut) -> []Shortcut {
+		out := make([]Shortcut, len(list), base.arena_allocator(a))
 		copy(out, list)
 		return out
 	}
@@ -425,7 +424,7 @@ commands_build :: proc(r: ^Command_Registry) {
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.favs.cfg.side_collapsed },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tabs_toggle_collapsed(app) }})
 	for np in ui.NAMED_PALETTES {
-		name := base.ascii_lower_clone(np.name, virtual.arena_allocator(&r.arena))
+		name := base.ascii_lower_clone(np.name, base.arena_allocator(&r.arena))
 		slug, _ := strings.replace_all(name, " ", "_", context.temp_allocator)
 		add(r, {name = fmt.aprintf("view.theme.%s", slug, allocator = a), title = fmt.aprintf("Theme: %s", np.name, allocator = a), category = "View",
 			keywords = np.palette.dark ? "colors appearance palette dark" : "colors appearance palette light", arg = name,

@@ -1,0 +1,16 @@
+# Pages of this repository for `wrentool sweep` on a build with freed memory poisoned (test_all, the Linux job of the CI): no network.
+# What keeps records across passes and threads: style passes, animations, partial restyles, frames, the DOM rebuilt by scripts.
+examples/site/animations.html
+examples/site/web-animations.html
+examples/site/js-dom.html
+examples/site/mutation.html
+examples/site/mutation_class.html
+examples/site/forms.html
+examples/site/images.html
+examples/site/layout.html
+examples/site/shadow-dom.html
+examples/site/popover.html
+examples/site/dialog.html
+examples/site/effects.html
+examples/site/frames.html
+examples/site/firstpaint/held-styles.html

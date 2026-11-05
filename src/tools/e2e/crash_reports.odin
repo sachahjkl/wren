@@ -42,6 +42,31 @@ each_way_of_dying_leaves_a_report_with_its_cause_and_a_minidump :: proc(t: ^test
 	}
 }
 
+@(private = "file")
+Poison_Mode :: struct { name, cause, said: string }
+
+// (crashmodes_poison: the build with freed memory poisoned, base/poison.odin)
+@(private = "file") POISON_MODES := [?]Poison_Mode{
+	{"freed_read", "a pointer read from freed memory", ""}, {"arena_read", "a pointer read from freed memory", ""},
+	{"double_free", "illegal instruction", "memory: fatal: double free"}, {"freed_write", "illegal instruction", "memory: fatal: a write to freed memory"},
+}
+
+@(test)
+freed_memory_ends_the_process_with_a_report_that_says_so :: proc(t: ^testing.T) {
+	root := e2e.temp_folder(t)
+	exe := e2e.build_path("crashmodes_poison", ".exe")
+	for m in POISON_MODES {
+		dir := fmt.tprintf("%s/%s", root, m.name)
+		_ = os.make_directory_all(dir)
+		p := e2e.program(t, {exe, m.name, dir})
+		code := e2e.program_wait(p)
+		_, said := e2e.program_output(p)
+		reports := e2e.files_with_prefix(dir, "crash ", ".txt")
+		text := len(reports) == 1 ? e2e.read_text(reports[0]) : ""
+		testing.expectf(t, strings.contains(text, m.cause) && strings.contains(text, "#00 0x") && strings.contains(said, m.said), "%s: a report with the cause and a stack: exit %d, %d report(s): %s, it said: %s", m.name, code, len(reports), text, said)
+	}
+}
+
 @(test)
 a_fail_fast_is_reported_by_the_next_start_once :: proc(t: ^testing.T) {
 	dir := e2e.temp_folder(t)

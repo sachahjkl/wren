@@ -12,9 +12,9 @@ package base
 // tracked too, but counted apart and never reported as a leak.
 //
 // What the tracker does not see: the temporary allocators (per-thread arenas, freed in bulk), the virtual memory
-// arenas (base.Scope, vmem.Arena: VirtualAlloc), native libraries (Wasmtime, Lexbor, the image decoders, DirectWrite,
+// arenas (base.Scope, base.Arena: VirtualAlloc), native libraries (Wasmtime, Lexbor, the image decoders, DirectWrite,
 // Direct3D) and memory a foreign context allocates on the heap directly. src\tools\endurance watches the process's
-// private bytes and handles for those.
+// private bytes and handles for those. Reads of freed memory: poison.odin.
 
 import "base:runtime"
 import "core:debug/trace"
@@ -32,6 +32,7 @@ TRACK_MEMORY :: #config(WREN_TRACK_MEMORY, false)
 process_context :: #force_inline proc "contextless" () -> runtime.Context {
 	c := runtime.default_context()
 	when TRACK_MEMORY { c.allocator = runtime.Allocator{tracker_proc, &tracker} }
+	when POISON_MEMORY { c.temp_allocator = poison_temp_allocator() }
 	return c
 }
 
@@ -73,6 +74,7 @@ mem_stats :: proc "contextless" () -> (s: Mem_Stats) {
 // frees: 0 means clean. Call it after everything was shut down (threads joined, pages closed, caches stopped). A normal
 // build reports nothing and returns 0.
 mem_report :: proc(title: string, file := "") -> (problems: int) {
+	when POISON_MEMORY { poison_check() }
 	when TRACK_MEMORY {
 		context.allocator = runtime.heap_allocator()
 		Group :: struct { loc: runtime.Source_Code_Location, stack: Stack, blocks: int, bytes: int }
@@ -230,6 +232,7 @@ tracker_proc :: proc(data: rawptr, mode: runtime.Allocator_Mode, size, alignment
 			remove(t, old_memory, e)
 			t.freed[old_memory] = {}
 		} else if old_memory in t.freed {
+			when POISON_MEMORY { sync.mutex_unlock(&t.lock); poison_fail("double free", old_memory, 0) }
 			if want_stacks() { _ = trace.capture_fill(stack[:], 1) }
 			append(&t.bad, Bad_Free{old_memory, loc, stack})
 			t.stats.bad_frees += 1

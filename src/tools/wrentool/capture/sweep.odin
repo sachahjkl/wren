@@ -32,7 +32,7 @@ SWEEP_SCROLLS :: 6
 SWEEP_NOTCHES :: 4.0
 SWEEP_FRAMES :: 3
 // What the standard error says when something went wrong.
-SWEEP_ALARMS :: []string{"panic", "assertion", "Assertion", "bounds", "leak", "bad free", "double free", "use-after", "AddressSanitizer", "ERROR: ", "fatal"}
+SWEEP_ALARMS :: []string{"memory: fatal", "panic", "assertion", "Assertion", "bounds", "leak", "bad free", "double free", "use-after", "AddressSanitizer", "ERROR: ", "fatal"}
 SWEEP_ALARM_LINES :: 6
 SWEEP_DEVTOOLS_PANELS :: []string{"console", "elements", "network"}
 SWEEP_LINE_MAX :: 200
@@ -87,7 +87,7 @@ run_sweep :: proc(args: []string) -> int {
 		if err != nil { fmt.eprintfln("cannot read %s", list); return EXIT_USAGE }
 		for raw in strings.split_lines(string(data)) {
 			line := strings.trim_space(raw)
-			if line != "" && !strings.has_prefix(line, "#") { append(&urls, line) }
+			if line != "" && !strings.has_prefix(line, "#") { append(&urls, sweep_address(line)) }
 		}
 	}
 	if len(urls) == 0 { fmt.eprintln("wrentool sweep -Urls a,b | -List file[,file] [-OutDir dir] [-Exe path] [-Shard i -Shards n] [-Pref a=b] [-Keep] [-OneProcess]"); return EXIT_USAGE }
@@ -128,6 +128,15 @@ run_sweep :: proc(args: []string) -> int {
 	}
 	fmt.printfln("%d pages, %d with a failure: %s/summary_%d.tsv", pages, failed, r.out, shard)
 	return failed > 0 ? 1 : 0
+}
+
+// A line of a list: an address, or a file of this repository (tools/sweep_local.txt: no network).
+@(private = "file")
+sweep_address :: proc(line: string) -> string {
+	if strings.contains(line, "://") { return line }
+	path, _ := filepath.abs(line, context.allocator)
+	path, _ = strings.replace_all(path, "\\", "/")
+	return strings.concatenate({"file://", strings.has_prefix(path, "/") ? "" : "/", path})
 }
 
 @(private = "file")

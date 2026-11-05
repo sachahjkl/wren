@@ -2,7 +2,6 @@ package style
 
 import "base:runtime"
 import "core:fmt"
-import "core:mem/virtual"
 import "core:slice"
 import "core:strings"
 import "wb:base"
@@ -52,7 +51,7 @@ Rule_Set :: struct {
 	try_rules:      map[string]^Try_Rule,   // @position-try rules by name (anchor.odin); their memory is the set's
 	// shadow sets only
 	key:            string,
-	set_arena:      virtual.Arena,
+	set_arena:      base.Arena,
 	set_alloc:      runtime.Allocator,
 	copies:         [dynamic]^Sheet,   // the copies of the sheets it was compiled from
 	set_env:        css.Media_Env,     // the environment it was compiled for
@@ -100,7 +99,7 @@ set_free :: proc(rs: ^Rule_Set) {
 	delete(rs.copies)
 	delete(rs.kf_sets)
 	delete(rs.key)
-	virtual.arena_destroy(&rs.set_arena)
+	base.arena_destroy(&rs.set_arena)
 	free(rs)
 }
 
@@ -290,8 +289,8 @@ sheet_copy :: proc(e: ^Engine, s: ^Sheet, depth := 0) -> ^Sheet {
 set_compile :: proc(e: ^Engine, key: string, sheets: []^Sheet) -> ^Rule_Set {
 	rs := new(Rule_Set)
 	rs.key = strings.clone(key)
-	_ = virtual.arena_init_growing(&rs.set_arena)
-	rs.set_alloc = virtual.arena_allocator(&rs.set_arena)
+	_ = base.arena_init_growing(&rs.set_arena)
+	rs.set_alloc = base.arena_allocator(&rs.set_arena)
 	rs.set_env = e.env
 	e.shadow.next_gen += 1
 	rs.gen = e.shadow.next_gen

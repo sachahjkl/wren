@@ -60,7 +60,7 @@ VARIANTS := [Variant]Variant_Spec{
 	// debug information, Odin's bounds checks and assertions, the contracts checked in debug builds only (thread ownership), and every allocation of the process tracked (src\base\memory.odin). At
 	// exit the blocks still allocated go to <profile>\memtrack.txt (or WREN_MEMTRACK_REPORT); WREN_MEMTRACK_FAIL=1 makes them exit code 3, WREN_MEMTRACK_STACK=1 records each block's call stack.
 	// Never shipped: the tracker serializes every allocation.
-	.Check   = {name = "check", about = "debug, every allocation tracked, leak report       -> build\\wren_check.exe", program = "wren_check", flags = {"-debug", "-define:WREN_TRACK_MEMORY=true"}, separate_modules = true},
+	.Check   = {name = "check", about = "debug, allocations tracked, freed memory poisoned -> build\\wren_check.exe", program = "wren_check", flags = {"-debug", "-define:WREN_TRACK_MEMORY=true", "-define:WREN_POISON_MEMORY=true"}, separate_modules = true},
 	// one module: LLVM inlines across packages
 	.Release = {name = "release", about = "what the release packages (one module, amber icon) -> build\\wren.exe", program = "wren", flags = {"-o:speed"}, native_release = true, release_channel = true, store_symbols = true, channel_file = true},
 }

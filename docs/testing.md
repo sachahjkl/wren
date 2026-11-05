@@ -266,6 +266,24 @@ build\wrentool shots -Site http://wren.localhost/site/ -Only css-grid
 
 `-Site` makes the `site:` pages of `wrentool shots` and `wrentool capture` come from that address, so the address bar of a screenshot says `wren.localhost/site/grid.html` and not the path of a checkout. The names of `.localhost` only reach this computer. The default stays the files of `examples\site`.
 
+## Freed memory made loud
+
+A read of freed memory is silent on Windows: the heap and the arenas hand the same addresses out again, the bytes stay readable. `-define:WREN_POISON_MEMORY=true` makes it loud (`src/base/poison.odin`). `build.bat check` (`build\wren_check.exe`), `./build.sh wren-check` and `build\e2e_test.exe` have it; a normal build has nothing of it: `base.Arena` and its calls are then `core:mem/virtual`'s own names.
+
+- **Every block freed** is filled with `0xDD` and stays out of the heap (the quarantine: 1 GiB or a million blocks, oldest out first). A pointer read from it is not canonical: the read through it faults at once, and the crash report says `reading address 0xFFFFFFFFFFFFFFFF (not canonical: a pointer read from freed memory)`. A block that grows always moves, so a pointer into a dynamic array kept across an `append` sees the same.
+- **The C heap** of the whole program goes through it: on Windows `HeapFree` and `HeapReAlloc` are replaced in the import table of the executable (the Odin runtime, the Rust library, Lexbor, the static C runtime; the system's DLLs keep their own), on Linux `free` and `realloc` are the executable's own symbols, in front of glibc's. It starts in a second, where AddressSanitizer stalls for a minute in the Direct3D device.
+- **Arenas**: `base.Arena` takes its chunks from the heap: `arena_free_all`, `arena_destroy`, a rolled back `arena_temp_end`, `free_all(context.temp_allocator)` of a `base.process_context()`, `base.scope_close`, a style arena emptied or recycled send their memory through the quarantine, and the next pass has other addresses. A removed `base.Pool` slot is poison too.
+- **Fatal at once**, with a crash report (`memory: fatal: ...` on the standard error): a double free, a free or a resize of what the heap does not know, and a write to a block in quarantine, seen when it leaves or at `base.mem_report`. `WREN_MEMTRACK_STACK=1` adds the stack of the free.
+
+It does not see the system's DLLs, the pools inside Lexbor, the toolkit's own arenas (`ui`, `font`, `dbus`), Wasm linear memories, or a read of a plain number from a freed block (it gets `0xDD...`, wrong but not fatal; a write to it is seen). PageHeap would catch those reads too, but it is an entry under `HKLM\...\Image File Execution Options`, a setting of the machine: not something a test may change.
+
+```
+build.bat check
+build\wrentool sweep -List tools\site_compare_list.txt,tools\site_compare_list2.txt -Exe build\wren_check.exe -CloseMs 60000 -PingMs 60000
+```
+
+`test_all` has it in every end-to-end test, in the unit tests of `base`, `style` and `layout`, in the crash reports (`crashmodes_poison`), and `-CI` and full runs visit the pages of `tools/sweep_local.txt` on the check build (a minute, no network; a line of a list that is no address is a file of the repository). So does the Linux job of the CI.
+
 ## Tools beside the tests
 
 Anything with a window runs on the desktop of its own that `src/tools/test_all` makes, or through `build\wrentool desktop <program> [arguments]`; no tool takes the person's focus or holds a lock. `build\wrentool help` lists the other commands, by family: deps (`fetch`, `build`, `symbols`, `crash-symbolize`), `bench` (opt-in measures: `perf`, `shell`, `js`, `idle`, `webgl`, `blocker`, `sidebar`, `startup`, `cadence`), `capture` / `shots` / `compare` (headless pictures, Wren against Edge), `gen` (generated data and fixtures), `docs`, and the release helpers (`package`, `sign`, `winget`, `notes`, `experimental`, `smoke`). A fresh checkout builds it with `odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe`. Only `tools/make_logo.ps1` stays a script.

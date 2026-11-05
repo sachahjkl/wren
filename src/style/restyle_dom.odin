@@ -2,7 +2,6 @@ package style
 
 import "core:fmt"
 import "core:mem"
-import "core:mem/virtual"
 import "core:os"
 import "core:slice"
 import "core:strings"
@@ -71,7 +70,7 @@ Walker :: struct {
 	s:        ^Styled,
 	doc:      ^dom.Document,
 	p:        ^Pass,
-	arena:    ^virtual.Arena,   // where p allocates
+	arena:    ^base.Arena,   // where p allocates
 	marks:    ^map[base.Handle]u8,
 	// main thread: changes are applied at once; a task (parallel) records them in `results`
 	task:     bool,
@@ -1072,13 +1071,13 @@ settle :: proc(w: ^Walker, h: base.Handle, c: ^Computed) -> (cur: ^Computed, cha
 @(private = "file")
 restyle_one :: proc(w: ^Walker, f: ^Frame, n: ^dom.Node) -> (cur: ^Computed, changed: bool, old_base: ^Computed) {
 	w.marked += 1
-	tmp := virtual.arena_temp_begin(w.arena)
+	tmp := base.arena_temp_begin(w.arena)
 	made := w.p.share.count
 	c, _ := compute_element(w.p, f.h, n, f.parent, &f.bloom, f.ctx, int(f.depth))
 	cur, changed, old_base = settle(w, f.h, c)
-	if changed { virtual.arena_temp_ignore(tmp); return }
+	if changed { base.arena_temp_ignore(tmp); return }
 	if w.p.share.count != made { share_replace_last(&w.p.share, cur) }
-	virtual.arena_temp_end(tmp)
+	base.arena_temp_end(tmp)
 	return
 }
 
@@ -1141,7 +1140,7 @@ walk :: proc(w: ^Walker, start: []Frame) {
 Par_Task :: struct {
 	w:      Walker,
 	frames: []Frame,
-	arena:  ^virtual.Arena,
+	arena:  ^base.Arena,
 }
 
 @(private = "file")

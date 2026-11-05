@@ -2,7 +2,6 @@ package adblock
 
 import "base:runtime"
 import "core:mem"
-import "core:mem/virtual"
 import "core:slice"
 import "core:strings"
 import "wb:base"
@@ -31,7 +30,7 @@ Source_Stat :: struct {
 }
 
 Builder :: struct {
-	arena:        virtual.Arena,
+	arena:        base.Arena,
 	alloc:        mem.Allocator,
 	env:          Env,
 	include:      Include_Proc,
@@ -43,8 +42,8 @@ Builder :: struct {
 }
 
 builder_init :: proc(b: ^Builder, env := Env{}) {
-	_ = virtual.arena_init_growing(&b.arena)
-	b.alloc = virtual.arena_allocator(&b.arena)
+	_ = base.arena_init_growing(&b.arena)
+	b.alloc = base.arena_allocator(&b.arena)
 	b.env = env
 	if b.env.defs == nil { b.env.defs = DEFAULT_ENV_DEFS[:] }
 	b.net = make([dynamic]Net_Draft, 0, 1024)
@@ -54,7 +53,7 @@ builder_init :: proc(b: ^Builder, env := Env{}) {
 
 builder_destroy :: proc(b: ^Builder) {
 	delete(b.net); delete(b.cos); delete(b.sources); delete(b.texts)
-	virtual.arena_destroy(&b.arena)
+	base.arena_destroy(&b.arena)
 	b^ = {}
 }
 
@@ -653,10 +652,10 @@ _ :: runtime
 // How many lines of a downloaded list are filters (and how many are not understood): a body that is not a list
 // (an error page, a login wall) has none, and replaces nothing.
 validate_list :: proc(text: string) -> (valid, invalid: int) {
-	arena: virtual.Arena
-	_ = virtual.arena_init_growing(&arena)
-	defer virtual.arena_destroy(&arena)
-	alloc := virtual.arena_allocator(&arena)
+	arena: base.Arena
+	_ = base.arena_init_growing(&arena)
+	defer base.arena_destroy(&arena)
+	alloc := base.arena_allocator(&arena)
 	rest := text
 	n := 0
 	for len(rest) > 0 {
@@ -668,7 +667,7 @@ validate_list :: proc(text: string) -> (valid, invalid: int) {
 		p := parse_line(t, 0, 0, alloc)
 		if p.kind == .None { if !is_comment_line(t) { invalid += 1 } } else { valid += 1 }
 		n += 1
-		if n % 4096 == 0 { virtual.arena_free_all(&arena) }
+		if n % 4096 == 0 { base.arena_free_all(&arena) }
 	}
 	return
 }

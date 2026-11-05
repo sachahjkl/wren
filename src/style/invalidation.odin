@@ -1,7 +1,6 @@
 package style
 
 import "base:runtime"
-import "core:mem/virtual"
 import "core:slice"
 import "core:strings"
 import "core:sync"
@@ -454,7 +453,7 @@ Subject_Key :: struct { kind: Subject_Key_Kind, name: string }
 @(private = "file")
 Key_Sets :: struct {
 	mu:    sync.Mutex,
-	arena: virtual.Arena,
+	arena: base.Arena,
 	ready: bool,
 	sets:  [dynamic][]Subject_Key,   // set n is sets[n - 1]
 	index: map[string]u32,           // canonical text -> number
@@ -467,8 +466,8 @@ key_sets: Key_Sets
 @(private = "file")
 key_sets_init :: proc() {
 	if key_sets.ready { return }
-	_ = virtual.arena_init_growing(&key_sets.arena)
-	a := virtual.arena_allocator(&key_sets.arena)
+	_ = base.arena_init_growing(&key_sets.arena)
+	a := base.arena_allocator(&key_sets.arena)
 	key_sets.sets = make([dynamic][]Subject_Key, a)
 	key_sets.index = make(map[string]u32, 64, a)
 	for &m in key_sets.single { m = make(map[string]u32, 64, a) }
@@ -488,7 +487,7 @@ key_sets_intern :: proc(keys: []Subject_Key) -> u32 {
 	key_sets_init()
 	text := key_text(keys, context.temp_allocator)
 	if n, ok := key_sets.index[text]; ok { return n }
-	a := virtual.arena_allocator(&key_sets.arena)
+	a := base.arena_allocator(&key_sets.arena)
 	own := make([]Subject_Key, len(keys), a)
 	for k, i in keys { own[i] = Subject_Key{k.kind, strings.clone(k.name, a)} }
 	append(&key_sets.sets, own)
@@ -560,7 +559,7 @@ subject_keys :: proc(c: ^css.Complex) -> u32 {
 	key_sets_init()
 	if n, ok := key_sets.single[best.kind][best.name]; ok { return n }
 	n := key_sets_intern([]Subject_Key{best})
-	key_sets.single[best.kind][strings.clone(best.name, virtual.arena_allocator(&key_sets.arena))] = n
+	key_sets.single[best.kind][strings.clone(best.name, base.arena_allocator(&key_sets.arena))] = n
 	return n
 }
 

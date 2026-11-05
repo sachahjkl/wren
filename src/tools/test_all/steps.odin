@@ -90,6 +90,10 @@ COMMON_NEEDS :: Products{.JS_Engine, .Launcher, .Native}
 MEM_CHECK :: "-define:ODIN_TEST_FAIL_ON_BAD_MEMORY=true"
 // The end-to-end tools track every allocation of the process and fail when anything is left once they have shut down (src/tools/testenv/memory.odin); never in the builds of the browser.
 TRACK :: "-define:WREN_TRACK_MEMORY=true"
+// Freed memory poisoned and kept out of the heap (src/base/poison.odin): the end-to-end tools and the unit tests of what keeps records across passes; a read of it ends the step.
+POISON :: "-define:WREN_POISON_MEMORY=true"
+// How long a close and the interface's answer may take on the check build (no optimisation, every allocation tracked).
+SWEEP_CHECK_MS :: "60000"
 ONE_THREAD :: "-define:ODIN_TEST_THREADS=1"
 TOOLKIT :: "-collection:toolkit=ext/gui_toolkit"
 WB :: "-collection:wb=src"
@@ -235,6 +239,9 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 		// (media: av1_software_player_seeks_and_ends_on_a_machine_short_of_processors spins on every core for half a minute, on purpose: what runs beside it has none left)
 		unit(&t, fmt.aprintf("unit tests: %s", pkg), fmt.aprintf("src/%s", pkg), exe(fmt.aprintf("build/%s_test", pkg)), flags, marks = pkg == "media" ? {.Alone} : {})
 	}
+	unit(&t, "unit tests of freed memory made loud: base (src\\base\\poison.odin: the heap, arenas, scopes, temporary allocators, pools, the C runtime)", "src/base", exe("build/base_poison_test"), {TOOLKIT, WB, POISON})
+	unit(&t, "unit tests of the style passes and of layout on poisoned memory: style", "src/style", exe("build/style_poison_test"), {TOOLKIT, WB, POISON})
+	unit(&t, "unit tests of the style passes and of layout on poisoned memory: layout", "src/layout", exe("build/layout_poison_test"), {TOOLKIT, WB, POISON})
 	// (the Tracy and ETW variants type-checked, not linked: their library is fetched only for the builds that ask for it)
 	append(&t, Step{name = "the external profilers (src\\trace: zones paired on every path, TraceLogging's bytes, the provider's GUID in tools\\wren.wprp and tools\\wren_regions.xml; the Tracy and ETW builds of src\\trace and src\\wasm type-check)",
 		actions = slice_of(odin_test("src/trace", exe("build/trace_test"), strs(WB)), Command{argv = strs("odin", "check", "src/trace", WB, "-vet", "-no-entry-point", "-define:WREN_TRACY=true", "-define:WREN_ETW=true"), pkg = "src/trace"},
@@ -309,7 +316,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	e2e_step(&t, "one Wren per profile (src\\tools\\e2e\\instance.odin: a second start hands its addresses over and ends with code 0; another profile, another executable, --new-window, a first one that does not answer keep their own; hidden windows)", "instance", browser = true, each_test = true)
 	e2e_step(&t, "Setup (src\\tools\\e2e\\setup.odin: the real dialog, registry and files against throwaway roots: install, uninstall of the running copy, standalone, the automatic opening and its exceptions, the daily update check)", "setup", marks = {.No_CI}, browser = true)   // (on a runner the running copy was not out of the way once: cause not found; it runs here)
 	append(&t, Step{name = "crash reports (src\\tools\\e2e\\crash_reports.odin: src/tools/crashmodes dies by an access violation, an assertion, a stack overflow, a corrupted heap, a fail-fast: each leaves a report with a stack and a minidump, or the session file the next start turns into an unclean-exit report)",
-		actions = slice_of(odin_build("src/tools/crashmodes", "build/crashmodes.exe", {WB, "-debug", "-vet"}), e2e_run("crash_reports")), needs = COMMON_NEEDS + {.E2E, .Test_Server}, inputs = .Tree, marks = {.No_CI}})   // (on a runner overflow_thread left no report once: cause not found; it runs here)
+		actions = slice_of(odin_build("src/tools/crashmodes", "build/crashmodes.exe", {WB, "-debug", "-vet"}), odin_build("src/tools/crashmodes", "build/crashmodes_poison.exe", {WB, "-debug", "-vet", POISON}), e2e_run("crash_reports")), needs = COMMON_NEEDS + {.E2E, .Test_Server}, inputs = .Tree, marks = {.No_CI}})   // (on a runner overflow_thread left no report once: cause not found; it runs here)
 	e2e_step(&t, "the system menu of the Wren icon (src\\tools\\e2e\\system_menu.odin: a click opens it, a frame is made in its loop, a key closes it, tabs on top and in a sidebar; the menu was opened during the build and its frames were built inside it, the crash of the 2026-10-26 experimental build; a hidden window)", "system_menu", browser = true)
 	e2e_step(&t, "who chose an address (src\\tools\\e2e\\nav_trust.odin: a page asking by script for about:sites?clear=..., a file or a share is refused and F5, Back and Forward never obey it; the same addresses typed by the person, and the links of about:sites, still work)", "nav_trust", weight = 20)
 	e2e_step(&t, "about:config end to end (src\\tools\\e2e\\config.odin: search, a switch, a number, a value out of range, a choice, reset, details, a category by type-ahead, all from the keyboard; no window at all)", "config")
@@ -360,7 +367,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "graphics toolkit interaction states tests (hover, press and selection at once, transitions on demand, palette cross-fade, state fills in both blend spaces; no window)", actions = slice_of(toolkit_suite("states", exe("build/toolkit_states_test"), toolkit_one))})
 
 	// The test program (src/tools/e2e, docs/testing.md): one program on Odin's test runner that links the browser, built once, every allocation tracked (what that costs a step does not show: 2 % of 500 s of CPU); a step runs the tests of one file of it, in a process of its own.
-	append(&t, Step{name = "build the test program (src\\tools\\e2e: the browser in the tests' process, no window, the real renderer offscreen, every allocation tracked: a test that leaves anything allocated fails)", actions = slice_of(odin_build("src/tools/e2e", exe("build/e2e_test"), join({TRACK}, E2E_BUILD_FLAGS))), needs = COMMON_NEEDS + {.Browser}, makes = {.E2E}})   // (it links build/native, which the browser's build makes)
+	append(&t, Step{name = "build the test program (src\\tools\\e2e: the browser in the tests' process, no window, the real renderer offscreen, every allocation tracked, freed memory poisoned: a test that leaves anything allocated fails, a read of what was freed ends it)", actions = slice_of(odin_build("src/tools/e2e", exe("build/e2e_test"), join({TRACK, POISON}, E2E_BUILD_FLAGS))), needs = COMMON_NEEDS + {.Browser}, makes = {.E2E}})   // (it links build/native, which the browser's build makes)
 	append(&t, Step{name = "the Wasm guests of the pages of the web tests",
 		actions = slice_of(
 			guest("examples/e2e", "build/e2e.wasm"), guest("examples/counter", "examples/site/counter.wasm"), guest("examples/formstest", "examples/site/formstest.wasm"), guest("examples/fetchpage", "examples/site/fetchpage.wasm"),
@@ -388,6 +395,9 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 		endurance_args := join({exe("build/endurance"), "-timeout", fmt.aprint(ENDURANCE_LIMIT_SECONDS * cfg.slow)}, cfg.quick ? strs("-cycles", "8", "-warmup", "3", "-no-native") : nil)
 		append(&t, Step{name = "browser check build: a scripted session (tabs, JavaScript, images, forms, back/forward cache, palette, history) exits with nothing allocated; tabs opened and closed by the dozen leave nothing growing (tracked bytes, handles; the native memory too in full runs)",
 			actions = slice_of(e2e_run("memcheck"), tool_build("src/tools/endurance", exe("build/endurance")), Command{argv = endurance_args}), weight = 120, needs = COMMON_NEEDS + {.Check_Browser, .E2E, .Test_Server}, inputs = .Tree, limit = LONG_STEP_SECONDS})
+		// Freed memory poisoned (the check build): the pages of tools/sweep_local.txt visited as a person does, headless, no network; a read of what was freed ends the visit with a report.
+		append(&t, Step{name = "local pages on the check build (wrentool sweep -List tools\\sweep_local.txt: load, scroll, developer tools, back, reload, a tab, loads cut short, close, with freed memory poisoned)",
+			actions = slice_of(tool_build("src/tools/wrentool", exe("build/wrentool_step")), Command{argv = strs(exe("build/wrentool_step"), "sweep", "-List", "tools/sweep_local.txt", "-Exe", exe("build/wren_check"), "-OutDir", "build/sweep_local", "-CloseMs", SWEEP_CHECK_MS, "-PingMs", SWEEP_CHECK_MS)}), weight = 60, needs = COMMON_NEEDS + {.Check_Browser}, inputs = .Tree})
 		// 2. The remote control channel (every allocation tracked): a session that touches the whole channel exits with nothing allocated.
 		append(&t, Step{name = "remote control on the check build: a driven session (navigate, script, input, capture, events, a client that vanishes, reset, checkpoints, quit) leaves nothing allocated (src\\tools\\e2e\\remote_check.odin)",
 			actions = slice_of(e2e_run("remote_check")), weight = 30, needs = COMMON_NEEDS + {.Check_Browser, .E2E, .Test_Server}, inputs = .Tree})

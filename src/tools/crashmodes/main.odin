@@ -2,12 +2,15 @@ package crashmodes
 
 // Makes the process die in one of the ways a Wren has died, to see which leave a crash report (crashtrace): the report goes to the folder
 // given as the second argument. Run by src\tools\e2e\crash_reports.odin and the @(test) of src/tools/wrentool/deps/symbols_test.odin (Windows), wrentool crash-e2e (Linux).
-//   crashmodes <mode> <dir>     modes: access, assert, bounds, overflow, overflow_thread, heap (a double free), failfast, clean, exit
+//   crashmodes <mode> <dir>     modes: access, assert, bounds, overflow, overflow_thread, heap (a double free), failfast, clean, exit, freed_read, arena_read, double_free, freed_write
 
 import "base:intrinsics"
 import "core:os"
 import "core:thread"
+import "wb:base"
 import "wb:tools/crashtrace"
+
+Record :: struct { value: ^int }
 
 recurse :: proc(n: int) -> int {
 	buf: [256]u8
@@ -36,6 +39,32 @@ die :: proc(mode: string) {
 	case "overflow_thread":
 		t := thread.create_and_start(proc() { _ = recurse(0) })
 		thread.join(t)
+	// (a build with -define:WREN_POISON_MEMORY=true: test_all's crashmodes_poison)
+	case "freed_read":
+		// a record holding a pointer, freed: what a stale ^Computed of a paint reads
+		kept := new(Record)
+		kept.value = new(int)
+		value := kept.value
+		free(kept)
+		free(value)
+		_ = intrinsics.volatile_load(kept.value)
+	case "arena_read":
+		// the same in an arena emptied by a new pass
+		arena: base.Arena
+		_ = base.arena_init_growing(&arena)
+		kept := new(Record, base.arena_allocator(&arena))
+		kept.value = new(int, base.arena_allocator(&arena))
+		base.arena_free_all(&arena)
+		_ = intrinsics.volatile_load(kept.value)
+	case "double_free":
+		p := new(int)
+		free(p)
+		free(p)
+	case "freed_write":
+		p := new(int)
+		free(p)
+		intrinsics.volatile_store(p, 1)
+		base.mem_report("crashmodes")
 	case:
 		die_system(mode)   // heap, failfast, clean, exit: the system's ways (die_<os>.odin)
 	}

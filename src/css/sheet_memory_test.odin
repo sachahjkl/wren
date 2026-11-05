@@ -1,6 +1,6 @@
 package css
 
-import "core:mem/virtual"
+import "wb:base"
 import "core:strings"
 import "core:testing"
 
@@ -19,12 +19,12 @@ dropped :: proc(s: ^Stylesheet) {
 // A name's fast path stops at what it does not take: the rest is read as before, the start kept.
 @(test)
 names_with_an_escape_or_beyond_ascii_keep_their_start :: proc(t: ^testing.T) {
-	arena: virtual.Arena
-	_ = virtual.arena_init_growing(&arena)
-	defer virtual.arena_destroy(&arena)
+	arena: base.Arena
+	_ = base.arena_init_growing(&arena)
+	defer base.arena_destroy(&arena)
 	names := [?][2]string{{`ab\63 d`, "abcd"}, {"café-x", "café-x"}, {`--x\:y`, "--x:y"}, {"plain-name_1", "plain-name_1"}}
 	for n in names {
-		toks := tokenize(n[0], virtual.arena_allocator(&arena))
+		toks := tokenize(n[0], base.arena_allocator(&arena))
 		testing.expect_value(t, len(toks), 1)
 		testing.expect_value(t, toks[0].text, n[1])
 	}

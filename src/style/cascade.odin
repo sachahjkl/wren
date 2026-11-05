@@ -4,7 +4,6 @@ import "base:intrinsics"
 import "base:runtime"
 import "core:fmt"
 import "core:mem"
-import "core:mem/virtual"
 import "core:strings"
 import "core:sync"
 import "wb:base"
@@ -82,7 +81,7 @@ Custom_Cand :: struct {
 
 // The result of a style pass.
 Styled :: struct {
-	arena:          virtual.Arena,
+	arena:          base.Arena,
 	alloc:          runtime.Allocator,
 	by_node:        [dynamic]^Computed,
 	nodes:          [dynamic]base.Handle,   // whose style by_node[i] is (a record may be shared; a recycled index holds another node's)
@@ -104,7 +103,7 @@ Styled :: struct {
 	scheme_metas:   [dynamic]base.Handle,   // every <meta name="color-scheme" content> of the document
 	state:          State,       // the dynamic state these styles were computed for (target_id owned by `alloc`)
 	base_used:      uint,        // arena use right after the full pass: what partial restyles add on top is waste
-	thread_arenas:  [dynamic]^virtual.Arena,   // a parallel pass: the computed styles of each thread (parallel.odin)
+	thread_arenas:  [dynamic]^base.Arena,   // a parallel pass: the computed styles of each thread (parallel.odin)
 	// animations (timeline.odin): a node whose `by_node` entry is an animated copy maps here to its cascaded style
 	overlaid:       map[base.Handle]^Computed,
 	animated:       Prop_Set,              // properties the last tick of the timeline may have changed in overlay records
@@ -156,7 +155,7 @@ styled_destroy :: proc(s: ^Styled) {
 	delete(s.scheme_metas)
 	inline_cache_destroy(s)
 	journal_destroy(s)
-	virtual.arena_destroy(&s.arena)
+	base.arena_destroy(&s.arena)
 	free(s)
 }
 
@@ -169,32 +168,36 @@ STYLED_RESERVE :: uint(1) << 33
 // what is allocated from them is zeroed when it is handed out (style_arena_proc), except computed styles and their
 // groups, which the cascade overwrites whole (record_new, group_take). A virtual arena zeroes what it held when it is
 // emptied, so that every allocation finds zeroed memory: for computed styles that was zeroing them twice.
-style_arena_allocator :: proc(a: ^virtual.Arena) -> runtime.Allocator { return {procedure = style_arena_proc, data = a} }
+style_arena_allocator :: proc(a: ^base.Arena) -> runtime.Allocator { return {procedure = style_arena_proc, data = a} }
 
 @(private)
 style_arena_proc :: proc(data: rawptr, mode: runtime.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, loc := #caller_location) -> ([]byte, runtime.Allocator_Error) {
 	#partial switch mode {
 	case .Alloc:
-		b, err := virtual.arena_allocator_proc(data, .Alloc_Non_Zeroed, size, alignment, nil, 0, loc)
+		b, err := base.arena_allocator_proc(data, .Alloc_Non_Zeroed, size, alignment, nil, 0, loc)
 		if err == nil { mem.zero_slice(b) }
 		return b, err
 	case .Resize:
-		b, err := virtual.arena_allocator_proc(data, .Resize_Non_Zeroed, size, alignment, old_memory, old_size, loc)
+		b, err := base.arena_allocator_proc(data, .Resize_Non_Zeroed, size, alignment, old_memory, old_size, loc)
 		if err == nil && len(b) > old_size { mem.zero_slice(b[old_size:]) }
 		return b, err
 	case .Free_All:
-		style_arena_empty((^virtual.Arena)(data))
+		style_arena_empty((^base.Arena)(data))
 		return nil, nil
 	}
-	return virtual.arena_allocator_proc(data, mode, size, alignment, old_memory, old_size, loc)
+	return base.arena_allocator_proc(data, mode, size, alignment, old_memory, old_size, loc)
 }
 
 // Empties a style arena, keeping its pages and what they hold (see style_arena_allocator).
-style_arena_empty :: proc(a: ^virtual.Arena) {
-	if a.curr_block == nil || a.total_used == 0 { return }
-	if a.curr_block.prev != nil { virtual.arena_free_all(a); return }   // (blocks past the first: one reserved block, never)
-	a.curr_block.used = 0
-	a.total_used = 0
+style_arena_empty :: proc(a: ^base.Arena) {
+	when base.POISON_MEMORY {
+		base.arena_free_all(a)
+	} else {
+		if a.curr_block == nil || a.total_used == 0 { return }
+		if a.curr_block.prev != nil { base.arena_free_all(a); return }   // (blocks past the first: one reserved block, never)
+		a.curr_block.used = 0
+		a.total_used = 0
+	}
 }
 
 // A computed style that the caller overwrites whole: not zeroed first.
@@ -221,7 +224,7 @@ styled_recycle :: proc(e: ^Engine, s: ^Styled) {
 			s.by_node, s.nodes = nil, nil
 		}
 	}
-	if e == nil || e.has_spare || int(s.arena.total_used) > e.settings.recycle_bytes || s.arena.curr_block == nil || s.arena.curr_block.prev != nil {
+	if e == nil || e.has_spare || int(s.arena.total_used) > e.settings.recycle_bytes || !base.arena_one_block(&s.arena) {
 		styled_destroy(s)
 		return
 	}
@@ -482,7 +485,7 @@ Pass :: struct {
 	changed:  bool,            // ... and report whether some element really changed
 	layout_changed: bool,      // ... in a way that is not paint-only (paint_change.odin)
 	alloc:    runtime.Allocator,   // where computed styles go: the Styled's arena, or this thread's in a parallel pass
-	scratch:  virtual.Arena,       // what styling one element needs only while it runs (var() substitution: build_style)
+	scratch:  base.Arena,       // what styling one element needs only while it runs (var() substitution: build_style)
 	stats:    Compile_Stats,   // merged into the engine by pass_destroy (on the thread that owns the engine)
 	counters: ^Counter_State,  // full pass: counters and quotes, resolved in tree order
 	unscoped: bool,            // partial restyle: a change reaches counters, the caller must do a full pass
@@ -669,9 +672,9 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	// custom properties (the maps exist only for elements that declare some)
 	// one budget for every substitution of the element (custom properties and declarations): what var() may cost one
 	// element is bounded, whatever the number of its declarations; the token trees go to the pass's scratch arena
-	scratch := virtual.arena_temp_begin(&p.scratch)
-	defer virtual.arena_temp_end(scratch)
-	env := Var_Env{engine = e, alloc = a, scratch = virtual.arena_allocator(&p.scratch), budget = e.settings.max_var_bytes, cx = &cx}
+	scratch := base.arena_temp_begin(&p.scratch)
+	defer base.arena_temp_end(scratch)
+	env := Var_Env{engine = e, alloc = a, scratch = base.arena_allocator(&p.scratch), budget = e.settings.max_var_bytes, cx = &cx}
 	env.parent = c.custom
 	defer {   // (a table that grew while it was used is another block of memory: the pass keeps the one it has now)
 		if env.resolved != nil { p.res_map = env.resolved }
@@ -1079,7 +1082,7 @@ pass_destroy :: proc(p: ^Pass) {
 	for l in p.lists { delete(l) }
 	share_destroy(&p.share)
 	sib_match_destroy(&p.sib)
-	virtual.arena_destroy(&p.scratch)
+	base.arena_destroy(&p.scratch)
 	free(p, p.made_with)
 }
 
@@ -1226,7 +1229,7 @@ styled_make :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 		s.arena = e.spare
 		e.spare, e.has_spare = {}, false
 	} else {
-		_ = virtual.arena_init_growing(&s.arena, STYLED_RESERVE)
+		_ = base.arena_init_growing(&s.arena, STYLED_RESERVE)
 	}
 	// the slots of a recycled pass: their pages mapped already (styled_size zeroes what it hands out)
 	s.by_node, s.nodes = e.spare_by_node, e.spare_nodes

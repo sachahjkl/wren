@@ -325,7 +325,8 @@ back/forward cache, the palette, history, then a normal exit with nothing left) 
 [`src/tools/endurance`](src/tools/endurance) (400 tabs and 2,000 navigations: the tracked bytes, the private bytes
 and the kernel, GDI and USER handles must stop growing). [`src/tools/test_all/asan.odin`](src/tools/test_all/asan.odin) builds the unit tests
 and the browser with AddressSanitizer. `-CI` and full runs include the check build's session and a short endurance
-run.
+run. The check build and the end-to-end tools also poison what is freed and keep it out of the heap, arenas and the C
+heap included: a read of it ends the run with a crash report ([docs/testing.md](docs/testing.md#freed-memory-made-loud)).
 
 Two standard conformance suites run too, pinned by commit and checked against committed expectations, so that any
 regression fails the run:

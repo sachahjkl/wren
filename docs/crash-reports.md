@@ -23,6 +23,7 @@ Wren 0.4.0 (g6933902 2026-10-26)
   profile build has its PDB beside it: the frames have names, files and lines. **A release has no PDB** (`-debug` would
   change the program: `ODIN_DEBUG`, the Direct3D debug layer, other code), so its own frames say `?` or the nearest
   export, which is wrong; the offsets are what counts.
+- `reading address 0xFFFFFFFFFFFFFFFF`: not -1. The system gives that for any address that is not canonical: the bytes of something else read as a pointer, most often a record freed and written over. The report adds `(not canonical)`, and in a build with freed memory poisoned `a pointer read from freed memory` ([testing](testing.md#freed-memory-made-loud)).
 
 ## The symbols of a build
 

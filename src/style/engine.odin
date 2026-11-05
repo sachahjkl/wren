@@ -2,7 +2,6 @@ package style
 
 import "base:runtime"
 import "core:fmt"
-import "core:mem/virtual"
 import "core:os"
 import "core:slice"
 import "core:time"
@@ -113,7 +112,7 @@ Engine :: struct {
 	forced_hidden: map[base.Handle]struct{},   // elements the embedder hides (engine_set_hidden)
 	top_layer:     [dynamic]base.Handle,       // the embedder's top layer, the fullscreen element aside (engine_set_top_layer)
 	sheets:    [dynamic]^Sheet,        // browser, user, then document sheets
-	arena:     virtual.Arena,          // compiled rules and index entries
+	arena:     base.Arena,          // compiled rules and index entries
 	alloc:     runtime.Allocator,
 	// the document's rules (UA, user, author sheets of the document and its adopted sheets): index, layers, what they
 	// depend on; shadow trees have rule sets of their own (scope.odin)
@@ -140,11 +139,11 @@ Engine :: struct {
 	rebuilds:  u64,                       // counts rebuilds: compiled keyframes and faces are stale after one
 	cur_base_url: string,                 // while flattening: the URL of the sheet being read
 	kf_order:  u32,
-	spare:     virtual.Arena,             // the memory of a recycled style pass (see styled_recycle)
+	spare:     base.Arena,             // the memory of a recycled style pass (see styled_recycle)
 	has_spare: bool,
 	spare_by_node: [dynamic]^Computed,    // the slots of a recycled pass, empty, their room kept (see styled_recycle)
 	spare_nodes:   [dynamic]base.Handle,
-	spare_arenas: [dynamic]^virtual.Arena,   // style threads' arenas given back by recycled passes, emptied, for the next ones (parallel.odin)
+	spare_arenas: [dynamic]^base.Arena,   // style threads' arenas given back by recycled passes, emptied, for the next ones (parallel.odin)
 	spare_arena_bytes: int,                  // what they held (bounded by recycle_bytes)
 	ignored_properties: int,           // declarations naming a property this engine does not implement
 	ua:        ^Sheet,
@@ -158,7 +157,7 @@ Engine :: struct {
 	last_restyle:    Restyle_Stats,    // diagnostics of the last restyle_dom
 	probe_base:      ^Computed,        // initial values for validating declarations (compile_declarations), made once per configuration
 	probe_inherited: ^Inherited_Group, // ... its inherited ones
-	compile_scratch: virtual.Arena,    // what validating declarations needs only while it runs (compile_declarations, owner thread)
+	compile_scratch: base.Arena,    // what validating declarations needs only while it runs (compile_declarations, owner thread)
 }
 
 ////////////////////////////////
@@ -172,8 +171,8 @@ engine_make :: proc(settings: Settings) -> ^Engine {
 	}
 	e := new(Engine)
 	e.settings = clone_settings(settings)
-	_ = virtual.arena_init_growing(&e.arena)
-	e.alloc = virtual.arena_allocator(&e.arena)
+	_ = base.arena_init_growing(&e.arena)
+	e.alloc = base.arena_allocator(&e.arena)
 	e.env = css.Media_Env{type = .Screen, width = DEFAULT_VIEWPORT_W, height = DEFAULT_VIEWPORT_H, dppx = 1, color_bits = 24}
 	pc := pointer_caps   // (the devices before the first style computation too: matchMedia may come first)
 	e.env.hover, e.env.pointer_fine, e.env.pointer_none = pc.hover, pc.fine, pc.none
@@ -206,8 +205,8 @@ engine_destroy :: proc(e: ^Engine) {
 	delete(e.top_layer)
 	rule_set_clear(&e.rules)
 	shadow_styles_destroy(e)
-	virtual.arena_destroy(&e.arena)
-	virtual.arena_destroy(&e.compile_scratch)
+	base.arena_destroy(&e.arena)
+	base.arena_destroy(&e.compile_scratch)
 	delete(e.font_faces)
 	delete(e.faces)
 	delete(e.keyframes)
@@ -217,7 +216,7 @@ engine_destroy :: proc(e: ^Engine) {
 	delete(e.container_pending)
 	delete(e.media_seen)
 	delete(e.gates); delete(e.gate_on); delete(e.gate_touched)
-	if e.has_spare { virtual.arena_destroy(&e.spare) }
+	if e.has_spare { base.arena_destroy(&e.spare) }
 	delete(e.spare_by_node)
 	delete(e.spare_nodes)
 	for a in e.spare_arenas { thread_arena_free(a) }
@@ -626,14 +625,14 @@ note_relative_units :: proc(vs: []css.Value, st: ^Compile_Stats) {
 // dropped: that goes to `scratch` (the engine's own when nil: the thread that owns the engine; a style thread passes
 // its pass's), reset before returning. (It went to `a`: two computed styles per rule, most of a big site's compiled
 // rules, and per element with a style attribute or presentational hints.)
-compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Allocator, stats: ^Compile_Stats = nil, scratch: ^virtual.Arena = nil) -> (out: []Pre_Decl, customs: []Custom_Decl) {
+compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Allocator, stats: ^Compile_Stats = nil, scratch: ^base.Arena = nil) -> (out: []Pre_Decl, customs: []Custom_Decl) {
 	local: Compile_Stats
 	st := stats != nil ? stats : &local
 	defer if stats == nil { stats_merge(e, local) }
 	sc := scratch != nil ? scratch : &e.compile_scratch
-	mark := virtual.arena_temp_begin(sc)
-	defer virtual.arena_temp_end(mark)
-	sa := virtual.arena_allocator(sc)
+	mark := base.arena_temp_begin(sc)
+	defer base.arena_temp_end(mark)
+	sa := base.arena_allocator(sc)
 	res := make([dynamic]Pre_Decl, sa)
 	cus := make([dynamic]Custom_Decl, sa)
 	probe := probe_context(e, sa)
@@ -1088,10 +1087,10 @@ supports_block :: proc(e: ^Engine, children: []css.Value) -> bool {
 	if !known || len(value) == 0 { return false }
 	if contains_var(value) { return true }
 	if css_wide_keyword(value) != "" { return true }
-	arena: virtual.Arena
-	_ = virtual.arena_init_growing(&arena)
-	defer virtual.arena_destroy(&arena)
-	a := virtual.arena_allocator(&arena)
+	arena: base.Arena
+	_ = base.arena_init_growing(&arena)
+	defer base.arena_destroy(&arena)
+	a := base.arena_allocator(&arena)
 	cx := probe_context(e, a)
 	if sh != .None {
 		longs, ok := expand_shorthand(sh, value, a)

@@ -8,7 +8,6 @@ package page
 // again and those whose result changed get their "change" event from a task of their own (never in the middle of a
 // style computation), as CSSOM View's "evaluate media queries and report changes" says.
 
-import "core:mem/virtual"
 import "core:strings"
 import "wb:base"
 import "wb:css"
@@ -19,7 +18,7 @@ Media_Query_List :: struct {
 	page:    ^Page,
 	self:    u64,
 	media:   string,               // owned: the query as serialized for mql.media
-	arena:   virtual.Arena,
+	arena:   base.Arena,
 	list:    css.Media_Query_List, // in `arena`
 	invalid: bool,                 // did not parse: "not all"
 	matches: bool,                 // the result last reported
@@ -42,7 +41,7 @@ mql_vt := Object_VTable{
 		if mp, ok := media_pages[p]; ok {
 			for h, i in mp.lists { if h == m.self { unordered_remove(&mp.lists, i); break } }
 		}
-		virtual.arena_destroy(&m.arena)
+		base.arena_destroy(&m.arena)
 		delete(m.media)
 		free(m)
 	},
@@ -170,7 +169,7 @@ MediaQueryList_create :: proc(c: ^Call, query: string) -> u64 {
 	p := c.page
 	m := new(Media_Query_List)
 	m.page = p
-	alloc := virtual.arena_allocator(&m.arena)
+	alloc := base.arena_allocator(&m.arena)
 	opt := p.engine != nil ? style.parse_options(&p.engine.settings) : css.Parse_Options{}
 	vals := css.parse_component_values(query, opt, alloc)
 	if strings.trim_space(query) == "" {

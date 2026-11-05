@@ -11,7 +11,6 @@ package page
 //     (javascript.dom.selector_cache_entries) so that a selector used in a loop is parsed once.
 //   * DOMTokenList and DOMStringMap work directly on the content attribute.
 
-import "core:mem/virtual"
 import "core:strings"
 import "wb:base"
 import "wb:css"
@@ -36,7 +35,7 @@ Js_Dom_State :: struct {
 @(private)
 Selector_Entry :: struct {
 	text:  string,          // owned
-	arena: virtual.Arena,
+	arena: base.Arena,
 	list:  css.Selector_List,
 	used:  u64,
 }
@@ -49,7 +48,7 @@ js_dom_state :: proc(p: ^Page) -> ^Js_Dom_State {
 		p := (^Page)(data)
 		s := p.jsdom
 		if s == nil { return }
-		for &e in s.selectors { delete(e.text); virtual.arena_destroy(&e.arena) }
+		for &e in s.selectors { delete(e.text); base.arena_destroy(&e.arena) }
 		delete(s.selectors)
 		observers_destroy(p, &s.observers)
 		delete(s.style_names)
@@ -89,16 +88,16 @@ selector_list :: proc(p: ^Page, text: string) -> (list: css.Selector_List, ok: b
 	}
 	if cap <= 0 { return parse(p, text, context.temp_allocator) }
 	e := Selector_Entry{text = strings.clone(text), used = s.sel_clock}
-	_ = virtual.arena_init_growing(&e.arena, 4096)
-	l, good := parse(p, text, virtual.arena_allocator(&e.arena))
-	if !good { delete(e.text); virtual.arena_destroy(&e.arena); return nil, false }
+	_ = base.arena_init_growing(&e.arena, 4096)
+	l, good := parse(p, text, base.arena_allocator(&e.arena))
+	if !good { delete(e.text); base.arena_destroy(&e.arena); return nil, false }
 	e.list = l
 	if len(s.selectors) >= cap {
 		// the least recently used goes
 		oldest := 0
 		for x, i in s.selectors { if x.used < s.selectors[oldest].used { oldest = i } }
 		delete(s.selectors[oldest].text)
-		virtual.arena_destroy(&s.selectors[oldest].arena)
+		base.arena_destroy(&s.selectors[oldest].arena)
 		s.selectors[oldest] = e
 	} else {
 		append(&s.selectors, e)
