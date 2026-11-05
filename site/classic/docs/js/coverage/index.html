@@ -53,6 +53,8 @@
 <li class="lvl3"><a href="#keyframeeffect-animationeffect">KeyframeEffect : AnimationEffect</a></li>
 <li class="lvl3"><a href="#animationtimeline">AnimationTimeline</a></li>
 <li class="lvl3"><a href="#documenttimeline-animationtimeline">DocumentTimeline : AnimationTimeline</a></li>
+<li class="lvl3"><a href="#scrolltimeline-animationtimeline">ScrollTimeline : AnimationTimeline</a></li>
+<li class="lvl3"><a href="#viewtimeline-scrolltimeline">ViewTimeline : ScrollTimeline</a></li>
 <li class="lvl3"><a href="#audiodata">AudioData</a></li>
 <li class="lvl3"><a href="#audiodecoder">AudioDecoder</a></li>
 <li class="lvl3"><a href="#audioencoder">AudioEncoder</a></li>
@@ -83,6 +85,9 @@
 <li class="lvl3"><a href="#cssrulelist">CSSRuleList</a></li>
 <li class="lvl3"><a href="#cssstyledeclaration">CSSStyleDeclaration</a></li>
 <li class="lvl3"><a href="#cssstyleproperties-cssstyledeclaration">CSSStyleProperties : CSSStyleDeclaration</a></li>
+<li class="lvl3"><a href="#cssstylevalue">CSSStyleValue</a></li>
+<li class="lvl3"><a href="#cssnumericvalue-cssstylevalue">CSSNumericValue : CSSStyleValue</a></li>
+<li class="lvl3"><a href="#cssunitvalue-cssnumericvalue">CSSUnitValue : CSSNumericValue</a></li>
 <li class="lvl3"><a href="#cache">Cache</a></li>
 <li class="lvl3"><a href="#cachestorage">CacheStorage</a></li>
 <li class="lvl3"><a href="#canvasgradient">CanvasGradient</a></li>
@@ -447,10 +452,10 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <div class="table-box"><table>
 <thead><tr><th></th><th style="text-align:right">count</th></tr></thead>
 <tbody>
-<tr><td>interfaces, namespaces in the table</td><td style="text-align:right">606</td></tr>
-<tr><td>exposed by default</td><td style="text-align:right">390</td></tr>
-<tr><td>members</td><td style="text-align:right">5312</td></tr>
-<tr><td>members implemented</td><td style="text-align:right">3876 (73.0 %)</td></tr>
+<tr><td>interfaces, namespaces in the table</td><td style="text-align:right">608</td></tr>
+<tr><td>exposed by default</td><td style="text-align:right">395</td></tr>
+<tr><td>members</td><td style="text-align:right">5321</td></tr>
+<tr><td>members implemented</td><td style="text-align:right">3891 (73.1 %)</td></tr>
 </tbody>
 </table></div>
 <h2 id="by-specification"><a class="anchor" href="#by-specification" aria-hidden="true">#</a>By specification</h2>
@@ -475,10 +480,10 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <tr><td><code>css-properties-values-api.idl</code></td><td style="text-align:right">1 (1)</td><td style="text-align:right">4 / 4</td></tr>
 <tr><td><code>css-transitions-2.idl</code></td><td style="text-align:right">2 (1)</td><td style="text-align:right">1 / 1</td></tr>
 <tr><td><code>css-transitions.idl</code></td><td style="text-align:right">1 (1)</td><td style="text-align:right">4 / 5</td></tr>
-<tr><td><code>css-typed-om.idl</code></td><td style="text-align:right">37 (0)</td><td style="text-align:right">3 / 126</td></tr>
+<tr><td><code>css-typed-om.idl</code></td><td style="text-align:right">37 (3)</td><td style="text-align:right">6 / 126</td></tr>
 <tr><td><code>css-view-transitions.idl</code></td><td style="text-align:right">3 (0)</td><td style="text-align:right">0 / 10</td></tr>
 <tr><td><code>cssom-view.idl</code></td><td style="text-align:right">5 (4)</td><td style="text-align:right">24 / 28</td></tr>
-<tr><td><code>cssom.idl</code></td><td style="text-align:right">16 (15)</td><td style="text-align:right">66 / 149</td></tr>
+<tr><td><code>cssom.idl</code></td><td style="text-align:right">16 (15)</td><td style="text-align:right">69 / 149</td></tr>
 <tr><td><code>dom.idl</code></td><td style="text-align:right">35 (31)</td><td style="text-align:right">596 / 700</td></tr>
 <tr><td><code>element-timing.idl</code></td><td style="text-align:right">1 (1)</td><td style="text-align:right">12 / 12</td></tr>
 <tr><td><code>encoding.idl</code></td><td style="text-align:right">4 (4)</td><td style="text-align:right">19 / 19</td></tr>
@@ -513,6 +518,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <tr><td><code>resource-timing.idl</code></td><td style="text-align:right">1 (1)</td><td style="text-align:right">25 / 29</td></tr>
 <tr><td><code>scheduling-apis.idl</code></td><td style="text-align:right">4 (4)</td><td style="text-align:right">9 / 9</td></tr>
 <tr><td><code>screen-orientation.idl</code></td><td style="text-align:right">1 (0)</td><td style="text-align:right">1 / 5</td></tr>
+<tr><td><code>scroll-animations.idl</code></td><td style="text-align:right">2 (2)</td><td style="text-align:right">7 / 7</td></tr>
 <tr><td><code>scroll-to-text-fragment.idl</code></td><td style="text-align:right">1 (0)</td><td style="text-align:right">0 / 0</td></tr>
 <tr><td><code>selection-api.idl</code></td><td style="text-align:right">1 (1)</td><td style="text-align:right">24 / 25</td></tr>
 <tr><td><code>service-workers.idl</code></td><td style="text-align:right">14 (14)</td><td style="text-align:right">84 / 90</td></tr>
@@ -527,7 +533,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <tr><td><code>urlpattern.idl</code></td><td style="text-align:right">1 (1)</td><td style="text-align:right">13 / 13</td></tr>
 <tr><td><code>user-timing.idl</code></td><td style="text-align:right">2 (2)</td><td style="text-align:right">3 / 3</td></tr>
 <tr><td><code>web-animations-2.idl</code></td><td style="text-align:right">4 (1)</td><td style="text-align:right">3 / 14</td></tr>
-<tr><td><code>web-animations.idl</code></td><td style="text-align:right">5 (5)</td><td style="text-align:right">38 / 47</td></tr>
+<tr><td><code>web-animations.idl</code></td><td style="text-align:right">5 (5)</td><td style="text-align:right">40 / 49</td></tr>
 <tr><td><code>web-locks.idl</code></td><td style="text-align:right">2 (2)</td><td style="text-align:right">5 / 5</td></tr>
 <tr><td><code>webaudio.idl</code></td><td style="text-align:right">37 (0)</td><td style="text-align:right">7 / 204</td></tr>
 <tr><td><code>webauthn.idl</code></td><td style="text-align:right">4 (4)</td><td style="text-align:right">22 / 22</td></tr>
@@ -642,6 +648,21 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <ul>
 <li><code>constructor()</code>: C <code>wjr_DocumentTimeline_constructor</code></li>
 </ul>
+<h3 id="scrolltimeline-animationtimeline"><a class="anchor" href="#scrolltimeline-animationtimeline" aria-hidden="true">#</a>ScrollTimeline : AnimationTimeline</h3>
+<p>3 / 3 members.</p>
+<ul>
+<li><code>constructor()</code>: C <code>wjr_ScrollTimeline_constructor</code></li>
+<li><code>readonly source</code>: C <code>wjr_ScrollTimeline_get_source</code></li>
+<li><code>readonly axis</code>: C <code>wjr_ScrollTimeline_get_axis</code></li>
+</ul>
+<h3 id="viewtimeline-scrolltimeline"><a class="anchor" href="#viewtimeline-scrolltimeline" aria-hidden="true">#</a>ViewTimeline : ScrollTimeline</h3>
+<p>4 / 4 members.</p>
+<ul>
+<li><code>constructor()</code>: C <code>wjr_ViewTimeline_constructor</code></li>
+<li><code>readonly subject</code>: C <code>wjr_ViewTimeline_get_subject</code></li>
+<li><code>readonly startOffset</code>: C <code>wjr_ViewTimeline_get_startOffset</code></li>
+<li><code>readonly endOffset</code>: C <code>wjr_ViewTimeline_get_endOffset</code></li>
+</ul>
 <h3 id="audiodata"><a class="anchor" href="#audiodata" aria-hidden="true">#</a>AudioData</h3>
 <p>11 / 11 members.</p>
 <ul>
@@ -745,14 +766,14 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>readonly size</code>: C <code>wjr_ByteLengthQueuingStrategy_get_size</code></li>
 </ul>
 <h3 id="css"><a class="anchor" href="#css" aria-hidden="true">#</a>CSS</h3>
-<p>3 / 68 members.</p>
+<p>6 / 68 members.</p>
 <ul>
 <li><code>supports()</code>: C <code>wjr_CSS_supports</code></li>
 <li><code>supports()</code>: C <code>wjr_CSS_supports</code></li>
 <li><code>readonly highlights</code>: not supported</li>
 <li><code>registerProperty()</code>: not supported</li>
-<li><code>number()</code>: not supported</li>
-<li><code>percent()</code>: not supported</li>
+<li><code>number()</code>: C <code>wjr_CSS_number</code></li>
+<li><code>percent()</code>: C <code>wjr_CSS_percent</code></li>
 <li><code>cap()</code>: not supported</li>
 <li><code>ch()</code>: not supported</li>
 <li><code>em()</code>: not supported</li>
@@ -801,7 +822,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>in()</code>: not supported</li>
 <li><code>pt()</code>: not supported</li>
 <li><code>pc()</code>: not supported</li>
-<li><code>px()</code>: not supported</li>
+<li><code>px()</code>: C <code>wjr_CSS_px</code></li>
 <li><code>deg()</code>: not supported</li>
 <li><code>grad()</code>: not supported</li>
 <li><code>rad()</code>: not supported</li>
@@ -953,6 +974,35 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <p>1 / 1 members.</p>
 <ul>
 <li><code>cssFloat</code>: C <code>wjr_CSSStyleProperties_get_cssFloat</code></li>
+</ul>
+<h3 id="cssstylevalue"><a class="anchor" href="#cssstylevalue" aria-hidden="true">#</a>CSSStyleValue</h3>
+<p>0 / 3 members.</p>
+<ul>
+<li><code>stringifier</code>: not supported</li>
+<li><code>static parse()</code>: not supported</li>
+<li><code>static parseAll()</code>: not supported</li>
+</ul>
+<h3 id="cssnumericvalue-cssstylevalue"><a class="anchor" href="#cssnumericvalue-cssstylevalue" aria-hidden="true">#</a>CSSNumericValue : CSSStyleValue</h3>
+<p>0 / 11 members.</p>
+<ul>
+<li><code>add()</code>: not supported</li>
+<li><code>sub()</code>: not supported</li>
+<li><code>mul()</code>: not supported</li>
+<li><code>div()</code>: not supported</li>
+<li><code>min()</code>: not supported</li>
+<li><code>max()</code>: not supported</li>
+<li><code>equals()</code>: not supported</li>
+<li><code>to()</code>: not supported</li>
+<li><code>toSum()</code>: not supported</li>
+<li><code>type()</code>: not supported</li>
+<li><code>static parse()</code>: not supported</li>
+</ul>
+<h3 id="cssunitvalue-cssnumericvalue"><a class="anchor" href="#cssunitvalue-cssnumericvalue" aria-hidden="true">#</a>CSSUnitValue : CSSNumericValue</h3>
+<p>3 / 3 members.</p>
+<ul>
+<li><code>constructor()</code>: C <code>wjr_CSSUnitValue_constructor</code></li>
+<li><code>value</code>: C <code>wjr_CSSUnitValue_get_value</code></li>
+<li><code>readonly unit</code>: C <code>wjr_CSSUnitValue_get_unit</code></li>
 </ul>
 <h3 id="cache"><a class="anchor" href="#cache" aria-hidden="true">#</a>Cache</h3>
 <p>7 / 7 members.</p>
@@ -1924,8 +1974,10 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>onprioritychange</code>: generic (event handler)</li>
 </ul>
 <h3 id="animation-eventtarget"><a class="anchor" href="#animation-eventtarget" aria-hidden="true">#</a>Animation : EventTarget</h3>
-<p>24 / 25 members.</p>
+<p>26 / 27 members.</p>
 <ul>
+<li><code>rangeStart</code>: C <code>wjr_Animation_get_rangeStart</code></li>
+<li><code>rangeEnd</code>: C <code>wjr_Animation_get_rangeEnd</code></li>
 <li><code>startTime</code>: C <code>wjr_Animation_get_startTime</code></li>
 <li><code>currentTime</code>: C <code>wjr_Animation_get_currentTime</code></li>
 <li><code>trigger</code>: not supported</li>
@@ -6338,7 +6390,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>timeEnd()</code>: C <code>wjr_console_timeEnd</code></li>
 </ul>
 <h2 id="not-exposed-nothing-implemented"><a class="anchor" href="#not-exposed-nothing-implemented" aria-hidden="true">#</a>Not exposed (nothing implemented)</h2>
-<p>AnimationNodeList, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, BarProp, CSSNumericArray, CSSStartingStyleRule, CSSViewTransitionRule, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, CaretPosition, ChapterInformation, ClipboardItem, CookieStoreManager, FederatedCredential, PasswordCredential, OverconstrainedError, QuotaExceededError, AudioProcessingEvent, BeforeUnloadEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ExtendableCookieChangeEvent, NotificationEvent, FontFaceSetLoadEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, TrackEvent, TextEvent, EventCounts, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, BaseAudioContext, AudioContext, OfflineAudioContext, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaStream, MediaStreamTrack, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, ScreenOrientation, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, External, FetchLaterResult, FileReaderSync, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, GroupEffect, SequenceEffect, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, MediaDeviceInfo, InputDeviceInfo, MediaMetadata, MediaSession, MimeType, MimeTypeArray, NavigationPrecommitController, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor</p>
+<p>AnimationNodeList, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, BarProp, CSSNumericArray, CSSStartingStyleRule, CSSViewTransitionRule, CSSPageDescriptors, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, CaretPosition, ChapterInformation, ClipboardItem, CookieStoreManager, FederatedCredential, PasswordCredential, OverconstrainedError, QuotaExceededError, AudioProcessingEvent, BeforeUnloadEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ExtendableCookieChangeEvent, NotificationEvent, FontFaceSetLoadEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, TrackEvent, TextEvent, EventCounts, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, BaseAudioContext, AudioContext, OfflineAudioContext, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaStream, MediaStreamTrack, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, ScreenOrientation, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, External, FetchLaterResult, FileReaderSync, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, GroupEffect, SequenceEffect, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, MediaDeviceInfo, InputDeviceInfo, MediaMetadata, MediaSession, MimeType, MimeTypeArray, NavigationPrecommitController, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/api/README/"><span>Previous</span><strong>Web API of Wren (Wasm imports)</strong></a>
 <a class="doc-next" href="../../../docs/api/README/"><span>Next</span><strong>Web API of Wren (Wasm imports)</strong></a>

@@ -44,6 +44,7 @@
 <ul>
 <li><a href="#types">Types</a></li>
 <li class="lvl3"><a href="#handle-animation-object">handle Animation : Object</a></li>
+<li class="lvl3"><a href="#handle-progresstimeline-object">handle ProgressTimeline : Object</a></li>
 <li class="lvl3"><a href="#enum-animationplaystate-i32">enum AnimationPlayState : i32</a></li>
 <li class="lvl3"><a href="#enum-animationreplacestate-i32">enum AnimationReplaceState : i32</a></li>
 <li class="lvl3"><a href="#struct-cssanimationinfo">struct CssAnimationInfo</a></li>
@@ -77,6 +78,14 @@
 <li class="lvl3"><a href="#animation-cssbind">Animation_cssBind</a></li>
 <li class="lvl3"><a href="#animation-cssname">Animation_cssName</a></li>
 <li class="lvl3"><a href="#documenttimeline-currenttime">DocumentTimeline_currentTime</a></li>
+<li class="lvl3"><a href="#progresstimeline-create">ProgressTimeline_create</a></li>
+<li class="lvl3"><a href="#progresstimeline-currenttime">ProgressTimeline_currentTime</a></li>
+<li class="lvl3"><a href="#progresstimeline-source">ProgressTimeline_source</a></li>
+<li class="lvl3"><a href="#progresstimeline-offset">ProgressTimeline_offset</a></li>
+<li class="lvl3"><a href="#animation-setprogresstimeline">Animation_setProgressTimeline</a></li>
+<li class="lvl3"><a href="#animation-isprogress">Animation_isProgress</a></li>
+<li class="lvl3"><a href="#animation-setrange">Animation_setRange</a></li>
+<li class="lvl3"><a href="#animation-range">Animation_range</a></li>
 <li class="lvl3"><a href="#animation-valideasing">Animation_validEasing</a></li>
 </ul>
 </nav>
@@ -93,6 +102,9 @@ timelineTime, NaN for null).</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="handle-animation-object"><a class="anchor" href="#handle-animation-object" aria-hidden="true">#</a>handle <code>Animation</code> : <code>Object</code></h3>
 <p>Checked by the browser on every call (<code>lookup_Animation</code>).</p>
+<h3 id="handle-progresstimeline-object"><a class="anchor" href="#handle-progresstimeline-object" aria-hidden="true">#</a>handle <code>ProgressTimeline</code> : <code>Object</code></h3>
+<p>A ScrollTimeline or ViewTimeline (src/page/web_animations_scroll.odin).</p>
+<p>Checked by the browser on every call (<code>lookup_ProgressTimeline</code>).</p>
 <h3 id="enum-animationplaystate-i32"><a class="anchor" href="#enum-animationplaystate-i32" aria-hidden="true">#</a>enum <code>AnimationPlayState</code> : i32</h3>
 <div class="table-box"><table>
 <thead><tr><th>member</th><th style="text-align:right">value</th><th></th></tr></thead>
@@ -122,6 +134,11 @@ timelineTime, NaN for null).</p>
 <tr><td><code>delay</code></td><td><code>f64</code></td><td></td></tr>
 <tr><td><code>duration</code></td><td><code>f64</code></td><td></td></tr>
 <tr><td><code>iterations</code></td><td><code>f64</code></td><td></td></tr>
+<tr><td><code>timeline_kind</code></td><td><code>i32</code></td><td>The timeline: 0 the document's, 1 scroll, 2 view (<code>timeline</code>, <code>source</code>, <code>subject</code>, <code>axis</code>), 3 none.</td></tr>
+<tr><td><code>timeline</code></td><td><code>u64</code></td><td></td></tr>
+<tr><td><code>source</code></td><td><code>u64</code></td><td></td></tr>
+<tr><td><code>subject</code></td><td><code>u64</code></td><td></td></tr>
+<tr><td><code>axis</code></td><td><code>i32</code></td><td></td></tr>
 </tbody>
 </table></div>
 <h2 id="functions"><a class="anchor" href="#functions" aria-hidden="true">#</a>Functions</h2>
@@ -258,6 +275,39 @@ whole document when <code>root</code> is 0, in composite order: 8 bytes per hand
 <div class="code"><pre><code>f64 DocumentTimeline_currentTime()</code></pre></div>
 <p>document.timeline.currentTime (NaN: null)</p>
 <p>Host: <code>DocumentTimeline_currentTime :: proc(c: ^Call) -&gt; f64</code></p>
+<h3 id="progresstimeline-create"><a class="anchor" href="#progresstimeline-create" aria-hidden="true">#</a><code>ProgressTimeline_create</code></h3>
+<div class="code"><pre><code>u64 ProgressTimeline_create(optional Element source, bool none, optional Element subject, i32 axis, string inset)</code></pre></div>
+<p>new ScrollTimeline({source, axis}), new ViewTimeline({subject, axis, inset}): <code>source</code> absent with <code>none</code>: a null source; absent
+without it: the viewport. <code>subject</code>: a view timeline's. <code>axis</code>: 0 block, 1 inline, 2 x, 3 y. <code>inset</code> as CSS text.</p>
+<p>Host: <code>ProgressTimeline_create :: proc(c: ^Call, source: Api_Element, none: bool, subject: Api_Element, axis: i32, inset: string) -&gt; u64</code></p>
+<h3 id="progresstimeline-currenttime"><a class="anchor" href="#progresstimeline-currenttime" aria-hidden="true">#</a><code>ProgressTimeline_currentTime</code></h3>
+<div class="code"><pre><code>f64 ProgressTimeline_currentTime(ProgressTimeline timeline)</code></pre></div>
+<p>timeline.currentTime, in percents (NaN: null).</p>
+<p>Host: <code>ProgressTimeline_currentTime :: proc(c: ^Call, timeline: Api_ProgressTimeline) -&gt; f64</code></p>
+<h3 id="progresstimeline-source"><a class="anchor" href="#progresstimeline-source" aria-hidden="true">#</a><code>ProgressTimeline_source</code></h3>
+<div class="code"><pre><code>u64 ProgressTimeline_source(ProgressTimeline timeline)</code></pre></div>
+<p>The scroller a view timeline found for its subject (0: the viewport).</p>
+<p>Host: <code>ProgressTimeline_source :: proc(c: ^Call, timeline: Api_ProgressTimeline) -&gt; u64</code></p>
+<h3 id="progresstimeline-offset"><a class="anchor" href="#progresstimeline-offset" aria-hidden="true">#</a><code>ProgressTimeline_offset</code></h3>
+<div class="code"><pre><code>f64 ProgressTimeline_offset(ProgressTimeline timeline, i32 which)</code></pre></div>
+<p>ViewTimeline startOffset (0) and endOffset (1), CSS px.</p>
+<p>Host: <code>ProgressTimeline_offset :: proc(c: ^Call, timeline: Api_ProgressTimeline, which: i32) -&gt; f64</code></p>
+<h3 id="animation-setprogresstimeline"><a class="anchor" href="#animation-setprogresstimeline" aria-hidden="true">#</a><code>Animation_setProgressTimeline</code></h3>
+<div class="code"><pre><code>void Animation_setProgressTimeline(Animation animation, ProgressTimeline timeline)</code></pre></div>
+<p>animation.timeline = a ScrollTimeline or ViewTimeline.</p>
+<p>Host: <code>Animation_setProgressTimeline :: proc(c: ^Call, animation: Api_Animation, timeline: Api_ProgressTimeline)</code></p>
+<h3 id="animation-isprogress"><a class="anchor" href="#animation-isprogress" aria-hidden="true">#</a><code>Animation_isProgress</code></h3>
+<div class="code"><pre><code>bool Animation_isProgress(Animation animation)</code></pre></div>
+<p>The animation's times are percents of a ScrollTimeline or ViewTimeline.</p>
+<p>Host: <code>Animation_isProgress :: proc(c: ^Call, animation: Api_Animation) -&gt; bool</code></p>
+<h3 id="animation-setrange"><a class="anchor" href="#animation-setrange" aria-hidden="true">#</a><code>Animation_setRange</code></h3>
+<div class="code"><pre><code>bool Animation_setRange(Animation animation, i32 which, string text)</code></pre></div>
+<p>rangeStart (0) or rangeEnd (1) as CSS text; false when it is not one.</p>
+<p>Host: <code>Animation_setRange :: proc(c: ^Call, animation: Api_Animation, which: i32, text: string) -&gt; bool</code></p>
+<h3 id="animation-range"><a class="anchor" href="#animation-range" aria-hidden="true">#</a><code>Animation_range</code></h3>
+<div class="code"><pre><code>string Animation_range(Animation animation, i32 which)</code></pre></div>
+<p>rangeStart (0) or rangeEnd (1) as CSS text.</p>
+<p>Host: <code>Animation_range :: proc(c: ^Call, animation: Api_Animation, which: i32) -&gt; string</code></p>
 <h3 id="animation-valideasing"><a class="anchor" href="#animation-valideasing" aria-hidden="true">#</a><code>Animation_validEasing</code></h3>
 <div class="code"><pre><code>bool Animation_validEasing(string easing)</code></pre></div>
 <p>Whether <code>easing</code> is an easing function (CSS Easing 2).</p>
