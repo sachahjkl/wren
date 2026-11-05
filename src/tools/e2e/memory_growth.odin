@@ -70,6 +70,8 @@ compiled_modules_stay_within_their_limit :: proc(t: ^testing.T) {
 
 @(test)
 a_long_session_levels_off :: proc(t: ^testing.T) {
+	keep := base.poison_quarantine_limit(0)   // (private bytes count what is freed otherwise)
+	defer base.poison_quarantine_limit(keep)
 	server := e2e.test_server(t)
 	s := e2e.start(t, {size = SIZE})
 	for n in 1 ..= WARM_PAGES { visit(s, server, n) }
@@ -102,6 +104,8 @@ a_tab_forgets_the_size_of_a_large_page :: proc(t: ^testing.T) {
 
 @(test)
 closing_tabs_gives_their_memory_back :: proc(t: ^testing.T) {
+	keep := base.poison_quarantine_limit(0)   // (private bytes count what is freed otherwise)
+	defer base.poison_quarantine_limit(keep)
 	server := e2e.test_server(t)
 	s := e2e.start(t, {size = SIZE, prefs = {"history.bfcache.enabled=false"}})
 	visit(s, server, 0)

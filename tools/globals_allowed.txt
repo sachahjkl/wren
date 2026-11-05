@@ -333,7 +333,6 @@ style/font_features.odin EAST_ASIAN_NAMES const  # a table
 style/font_features.odin FONT_RESETS const  # a table
 style/fontface.odin FONT_STRETCH_KW const  # a table
 style/hints.odin hint_complex const  # a shared, read-only selector record
-style/invalidation.odin key_sets process  # the interned key sets, locked (the pages' engines run on their own threads)
 style/layout_change.odin change_once const  # a table built once
 style/layout_change.odin layout_only_set const  # ... the table
 style/layout_change.odin layout_runs const  # ... the table

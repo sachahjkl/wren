@@ -62,6 +62,7 @@ when POISON_MEMORY {
 }
 
 @(private) quarantine: Quarantine
+@(private) quarantine_limit := QUARANTINE_BYTES
 
 @(private)
 table_slot :: #force_inline proc "contextless" (p: rawptr) -> int {
@@ -138,7 +139,7 @@ quarantine_put :: proc "contextless" (heap, ptr: rawptr, size: int) {
 	if stacks { e.freed_by = stack }
 	q.count += 1
 	q.bytes += size
-	for q.bytes > QUARANTINE_BYTES && n < QUARANTINE_EVICT_MAX { quarantine_pop(q, &out[n]); n += 1 }
+	for q.bytes > quarantine_limit && n < QUARANTINE_EVICT_MAX { quarantine_pop(q, &out[n]); n += 1 }
 	sync.mutex_unlock(&q.lock)
 	for &b in out[:n] {
 		quarantined_check(&b)
@@ -338,3 +339,15 @@ poison_temp_cleaner :: proc "contextless" () {
 }
 
 } // when POISON_MEMORY
+
+// How many freed bytes wait in quarantine, the previous limit returned: what measures the process's memory asks for none,
+// its private bytes being otherwise what was freed.
+poison_quarantine_limit :: proc(bytes: int) -> (previous: int) {
+	when POISON_MEMORY {
+		sync.mutex_lock(&quarantine.lock)
+		defer sync.mutex_unlock(&quarantine.lock)
+		previous = quarantine_limit
+		quarantine_limit = bytes
+	}
+	return
+}
