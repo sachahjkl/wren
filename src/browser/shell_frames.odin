@@ -18,8 +18,8 @@ package browser
 //     see them): the page is painted again from its last layout when nothing it was painted from has changed since
 //     (shell_paint_layout: what comes into view is there), else that copy moves; the document takes the position before
 //     the input that waited is given to the page (it was aimed at what the screen showed);
-//   * a text selection's drag shows what it selects at once (selection_shell.odin Sel_Preview); its moves wait for the page
-//     as any input does, and select when they get there;
+//   * a text selection's drag shows what it selects at once, from its press, and scrolls past the view's edge
+//     (selection_shell.odin Sel_Preview); its press and moves wait for the page as any input does, and select when they get there;
 //   * painted from that layout, the page's CSS animations of transform and opacity go on, a scroll container under the
 //     wheel or the thumb of its bar scrolls, and the focused field's caret blinks (shell_shown.odin);
 //   * the browser's shortcuts and the tab keys reach the chrome at once when no key listener could see them; the commands
@@ -332,7 +332,7 @@ shell_preempt :: proc(user: rawptr) {
 	// own, a wake it asked for (a caret's blink), or the page's animations the compositor runs and its caret's blink
 	// (shell_shown.odin). Otherwise the page keeps the thread: no cost to a busy page nobody touches.
 	unseen := (app.chrome_frames.phase == .Loop || app.chrome_frames.phase == .Anim) && !app.chrome_frames.outer_taken && len(app.chrome_frames.outer) > 0   // the frame's own input, not drawn yet
-	if !unseen && !shell_input_pending() && !busy_input_pending(app) && !ui.needs_frame(wnd.ui) && !(ui.wake_ms(wnd.ui) > 0 && since >= f64(ui.wake_ms(wnd.ui))) && !shell_page_moves(app) { return }
+	if !unseen && !shell_input_pending() && !busy_input_pending(app) && !ui.needs_frame(wnd.ui) && !(ui.wake_ms(wnd.ui) > 0 && since >= f64(ui.wake_ms(wnd.ui))) && !shell_page_moves(app) && !selection_preview_scrolls(app) { return }
 	shell_chrome_frame(app)
 }
 
@@ -413,6 +413,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	polled := platform.poll_events(wnd.win, false)   // (nil inside the system's resize loop: nothing new to read)
 	platform.frame_gate_stage(gate, .Building)
 	chrome := shell_split_input(app, polled)
+	selection_preview_frame(app)   // a drag past the view's edge scrolls (selection_shell.odin)
 	pacer_begin_frame(app, chrome)
 	render.resize(&app.r, wnd.win.size)
 	size := draw.Vec2{f32(wnd.win.size.x), f32(wnd.win.size.y)}
@@ -496,6 +497,7 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 		app.chrome_frames.press_to_page[button] = over_page
 		if over_page {
 			app.chrome_frames.page_keyboard = true
+			if !shell_deferred_buttons_or_keys(app) { selection_preview_press(app, t, ev) }   // a text selection's press: its gesture, shown now (selection_shell.odin)
 			append(&app.chrome_frames.deferred, ev)
 		} else {
 			app.chrome_frames.page_keyboard = false
@@ -552,7 +554,6 @@ shell_pending_for :: proc(app: ^App, t: ^Tab) {
 shell_async_scroll :: proc(app: ^App, t: ^Tab, d: draw.Vec2) { shell_async_scroll_to(app, t, shell_shown_scroll(t) + d) }
 
 // The document of a busy page shown at `to` (clamped to its range), and scrolled there when the page has its turn.
-@(private = "file")
 shell_async_scroll_to :: proc(app: ^App, t: ^Tab, to: draw.Vec2) {
 	shell_pending_for(app, t)
 	lo, limit: draw.Vec2

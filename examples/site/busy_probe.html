@@ -59,13 +59,15 @@
   window.boxScrolls = 0;
   scroller.addEventListener("scroll", () => { window.boxScrolls++; });
   document.addEventListener("selectionchange", () => { window.changes++; });
-  document.addEventListener("mousedown", () => { window.downs++; });
-  window.hold = () => {
+  function down() { window.downs++; }
+  document.addEventListener("mousedown", down);
+  window.hold = (mutates = false) => {
     window.released = false;
     setTimeout(() => {
       const h = innerHeight, begun = performance.now();
       while (innerHeight == h && performance.now() - begun < HOLD_LIMIT_MS) {}
       window.held = { selection: String(getSelection()), changes: window.changes, downs: window.downs, scrollY: scrollY, boxTop: scroller.scrollTop, boxScrolls: window.boxScrolls, ms: performance.now() - begun };
+      if (mutates) status.textContent = "held";
       window.released = innerHeight != h;
     }, 0);
     return "held";

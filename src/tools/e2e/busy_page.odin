@@ -6,6 +6,8 @@ package e2e_scenarios
 //   * a drag over the text shows its selection under the task (painted from the page's last layout), the task saw none of
 //     it (no selectionchange, an empty getSelection()), and once it ran the selection is the one the drag made; with a
 //     mousemove listener the drag waits for the page as before, and selects the same;
+//   * so does a drag whose press came under the task (but on the selection, or with a mousedown listener: it waits), and past
+//     the view's edge the drag scrolls the page under the task;
 //   * the thumb of the document's scroll bar and Page Down scroll the page under the task, with what was below the fold
 //     painted (the busy frame is the page as it shows once it ran), and the presses on the bar are not the page's;
 //   * Ctrl+L takes the address bar under the task;
@@ -33,6 +35,9 @@ import "wb:e2e"
 @(private = "file") SAME_MOST_DIFFERENT :: 200    // ... but for this many pixels (the edges of the glyphs)
 @(private = "file") SCROLLED_LEAST :: 50          // the page moved at least this much (CSS px)
 @(private = "file") EMPTY :: e2e.Point{500, 500}   // the tall box under everything: a press there selects nothing and gives the page the keyboard
+@(private = "file") NO_MOUSEDOWN :: "document.removeEventListener('mousedown', down); 1"   // the page's own count of presses, which would have them run its code
+@(private = "file") PAST_EDGE :: 30               // how far below the view a drag goes (CSS px)
+@(private = "file") EDGE_WAIT_MS :: 300           // under the task, with the pointer there
 
 // The animations the compositor runs: a box slid sideways and one faded, both linear, long enough to be under way all along.
 @(private = "file") SLIDE_PX :: 800
@@ -66,18 +71,27 @@ open :: proc(t: ^testing.T, extra: []string = nil, loc := #caller_location) -> ^
 
 // The task holds the thread while `steps` are taken, then lets go; the pictures of the capture steps.
 @(private = "file")
-while_held :: proc(s: ^e2e.Session, short: ^bool, steps: []e2e.Busy_Step, loc := #caller_location) -> []e2e.Image {
+while_held :: proc(s: ^e2e.Session, short: ^bool, steps: []e2e.Busy_Step, hold := "hold()", loc := #caller_location) -> []e2e.Image {
 	short^ = !short^
 	size := short^ ? SHORTER : SIZE
 	all := make([dynamic]e2e.Busy_Step, context.temp_allocator)
 	append(&all, ..steps)
 	append(&all, e2e.busy_resize(size))
 	e2e.wait_frames(s, loc = loc)   // (what the page last painted is what it is now: what the chrome frames paint again)
-	e2e.eval(s, "hold()", loc = loc)
+	e2e.eval(s, hold, loc = loc)
 	e2e.while_busy(s, all[:], loc)
 	e2e.wait_js(s, "window.released === true", loc = loc)
 	testing.expectf(s.t, e2e.busy_left(s, loc) == 0, "every step was taken under the task", loc = loc)
 	return e2e.busy_shots(s, loc)
+}
+
+// The topmost row of the picture with some of the highlight (-1: none).
+@(private = "file")
+highlight_top :: proc(img: e2e.Image) -> int {
+	for y in 0 ..< img.height {
+		if highlighted(img, {0, f64(y), f64(img.width), 1}) > 0 { return y }
+	}
+	return -1
 }
 
 @(private = "file")
@@ -136,6 +150,69 @@ a_drag_selects_while_the_page_is_busy :: proc(t: ^testing.T) {
 	e2e.release(s, to)
 	testing.expect_value(t, e2e.eval(s, "String(getSelection())"), selected)
 	testing.expectf(t, e2e.eval_f64(s, "window.moves") >= 1, "the page saw the moves")
+}
+
+// The line's own drag, begun under the task: the press waits for the page with its moves, and the highlight does not.
+@(test)
+a_drag_begun_under_the_task_shows_from_its_press :: proc(t: ^testing.T) {
+	s := open(t)
+	short := false
+	line := e2e.box_model(s, "#sel")
+	y := line.box.y + line.box.h / 2
+	from, mid, to := e2e.Point{line.box.x + DRAG_FROM_X, y}, e2e.Point{line.box.x + DRAG_MID_X, y}, e2e.Point{line.box.x + DRAG_TO_X, y}
+	words := e2e.Rect{line.window.x, line.window.y, DRAG_MID_X, line.window.h}
+	e2e.eval(s, NO_MOUSEDOWN)
+
+	shots := while_held(s, &short, {e2e.busy_press(s, from), e2e.busy_move(s, mid), e2e.busy_move(s, to), e2e.busy_capture(), e2e.busy_release(s, to)})
+	testing.expectf(t, highlighted(shots[0], words) >= HIGHLIGHT_LEAST, "the drag shows before its press had its turn: %d px of the highlight", highlighted(shots[0], words))
+	testing.expect_value(t, e2e.eval(s, "held.selection"), "")   // the task saw none of it
+	selected := e2e.eval(s, "String(getSelection())")
+	testing.expectf(t, len(selected) > len("Select this line"), "the page's turn selected what the drag showed: %q", selected)
+
+	// a press on the selection may drag it: it stays as it is
+	shots = while_held(s, &short, {e2e.busy_press(s, mid), e2e.busy_capture(), e2e.busy_release(s, mid)})
+	testing.expectf(t, highlighted(shots[0], words) >= HIGHLIGHT_LEAST, "a press on the selection leaves it shown: %d px", highlighted(shots[0], words))
+
+	// a mousedown listener may cancel the press: the gesture waits for its turn, and selects the same
+	e2e.click_at(s, EMPTY)
+	e2e.eval(s, "document.addEventListener('mousedown', down); 1")
+	shots = while_held(s, &short, {e2e.busy_press(s, from), e2e.busy_move(s, mid), e2e.busy_move(s, to), e2e.busy_capture(), e2e.busy_release(s, to)})
+	testing.expectf(t, highlighted(shots[0], words) == 0, "with a mousedown listener nothing shows before the page's turn: %d px", highlighted(shots[0], words))
+	testing.expect_value(t, e2e.eval(s, "String(getSelection())"), selected)
+}
+
+// The task changed the document: the press's turn finds the layout old and the gesture begins a frame later, from where the moves that came with it left the pointer.
+@(test)
+a_press_that_waits_for_a_layout_keeps_its_moves :: proc(t: ^testing.T) {
+	s := open(t)
+	short := false
+	line := e2e.box_model(s, "#sel")
+	y := line.box.y + line.box.h / 2
+	from, to := e2e.Point{line.box.x + DRAG_FROM_X, y}, e2e.Point{line.box.x + DRAG_TO_X, y}
+	e2e.eval(s, NO_MOUSEDOWN)
+	while_held(s, &short, {e2e.busy_press(s, from), e2e.busy_move(s, to)}, "hold(true)")
+	e2e.wait_js(s, "String(getSelection()).length > 'Select this'.length")
+	e2e.release(s, to)
+}
+
+// Past the bottom of the view the drag scrolls the page under the task, and what comes into view is selected: the highlight's top goes up with the line it began on.
+@(test)
+a_drag_past_the_edge_scrolls_under_the_task :: proc(t: ^testing.T) {
+	s := open(t)
+	short := false
+	line := e2e.box_model(s, "#sel")
+	y := line.box.y + line.box.h / 2
+	from, mid := e2e.Point{line.box.x + DRAG_FROM_X, y}, e2e.Point{line.box.x + DRAG_MID_X, y}
+	below := e2e.Point{line.box.x + DRAG_MID_X, e2e.eval_f64(s, "innerHeight") + PAST_EDGE}
+
+	e2e.press(s, from)
+	shots := while_held(s, &short, {e2e.busy_move(s, mid), e2e.busy_capture(), e2e.busy_move(s, below), e2e.busy_wait(EDGE_WAIT_MS), e2e.busy_capture()})
+	top0, top1 := highlight_top(shots[0]), highlight_top(shots[1])
+	testing.expectf(t, top0 >= 0 && top1 >= 0 && top0 - top1 >= SCROLLED_LEAST, "the page moved under the task: the highlight's top at %d, then at %d", top0, top1)
+	testing.expect_value(t, e2e.eval_f64(s, "held.scrollY"), 0)   // the task saw none of it
+	testing.expectf(t, e2e.eval_f64(s, "scrollY") >= SCROLLED_LEAST, "the document took the offset: %s", e2e.eval(s, "String(scrollY)"))
+	testing.expect_value(t, e2e.eval(s, "String(getSelection()).includes('While the page runs')"), "true")
+	e2e.release(s, below)
 }
 
 @(test)
