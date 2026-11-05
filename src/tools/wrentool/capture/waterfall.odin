@@ -22,7 +22,7 @@ WATERFALL_LIMIT_MS :: 30_000
 WATERFALL_AFTER :: 500 * time.Millisecond
 // -Idle: the list is read when the network has been quiet, at the latest after this. The load event says little of a page whose embeds start while it is awaited: what comes after it is the same work.
 WATERFALL_IDLE_LIMIT :: 45 * time.Second
-WATERFALL_HEADER :: "idle_ms\trun\tload_api_ms\tpaint\tinteractive\tdcl\tload\trequests\th1\th2\th3\tcached\tfailed\thosts\tkb\tqueued\tmax_queued\tdns\tconnect\ttls\twait\tbody\tlast_end\tgaps\tcpu_ms\turl"
+WATERFALL_HEADER :: "idle_ms\trun\tload_api_ms\tpaint\tcontentful\tinteractive\tdcl\tload\trequests\th1\th2\th3\tcached\tfailed\thosts\tkb\tqueued\tmax_queued\tdns\tconnect\ttls\twait\tbody\tlast_end\tgaps\tcpu_ms\turl"
 
 // The phases of a load's requests, summed: they overlap, a sum says where requests spent their time, not the page.
 Waterfall_Sums :: struct {
@@ -89,8 +89,8 @@ waterfall_load :: proc(exe, out, url: string, run: int, prefs: []string, limit: 
 	n, ne := api.network(s)
 	if ne != .None { fmt.printfln("0\t%d\tno answer: %v\t%s", run, ne, url); return }
 	m := waterfall_sums(&n)
-	fmt.printfln("%.0f\t%d\t%.0f%s\t%.0f\t%.0f\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%s", idle_ms, run, took, e == .Timeout ? "!" : "",
-		n.doc.paint, n.doc.interactive, n.doc.dcl, n.doc.load, m.count, m.h1, m.h2, m.h3, m.cached, m.failed, m.hosts, m.bytes >> 10,
+	fmt.printfln("%.0f\t%d\t%.0f%s\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%s", idle_ms, run, took, e == .Timeout ? "!" : "",
+		n.doc.paint, n.doc.contentful, n.doc.interactive, n.doc.dcl, n.doc.load, m.count, m.h1, m.h2, m.h3, m.cached, m.failed, m.hosts, m.bytes >> 10,
 		m.queued, m.max_queued, m.dns, m.connect, m.tls, m.wait, m.body, m.last_end, m.gaps, after.cpu_time_ms - before.cpu_time_ms, url)
 	waterfall_write(fmt.tprintf("%s/%s_%d.tsv", out, slug, run), &n)
 }

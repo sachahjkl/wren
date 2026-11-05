@@ -26,6 +26,7 @@ Render_Block :: struct {
 	adopted_ms: f64,    // ... since (the loop's clock)
 	collecting: bool,   // between adoption and the first paint: sheets and imports found now are the parser's
 	painted:    bool,   // the shell painted the document once
+	frame_ms:   f64,    // what its last frame took (style and layout): the turns scripts give back are worth that much (pump_slice)
 }
 
 First_Paint_State :: enum u8 {

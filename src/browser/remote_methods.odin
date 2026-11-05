@@ -1437,7 +1437,7 @@ m_network :: proc(app: ^App, c: ^Call) -> Reply {
 	b := builder()
 	j_begin(&b)
 	j_int(&b, "bytes", i64(x.bytes))
-	j_num(&b, "interactive", x.doc.interactive); j_num(&b, "dcl", x.doc.dcl); j_num(&b, "load", x.doc.load); j_num(&b, "paint", x.doc.paint)
+	j_num(&b, "interactive", x.doc.interactive); j_num(&b, "dcl", x.doc.dcl); j_num(&b, "load", x.doc.load); j_num(&b, "paint", x.doc.paint); j_num(&b, "contentful", x.doc.contentful)
 	j_key(&b, "requests"); j_begin(&b, '[')
 	for en in x.requests {
 		j_key(&b, ""); j_begin(&b)

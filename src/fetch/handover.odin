@@ -25,7 +25,7 @@ task_hand_over :: proc(l: ^Loader, h: base.Handle, scope: ^base.Scope, on_event:
 	t.scope, t.cleanup = scope, 0
 	if scope != nil { t.cleanup = base.on_close(scope, task_scope_closed, new_clone(Kick{l, h})) }
 	t.on_event, t.user = on_event, user
-	t.collect = collect
+	t.collect, t.peek = collect, false
 	clear(&t.collected)
 	t.cache.store = false   // a download is not kept in the HTTP cache
 	clear(&t.cache.body)

@@ -43,6 +43,9 @@ SCRIPT_AFTER_REL_CHANGE_MS :: 300
 POLL_NEVER_MS :: 600_000         // a poll of the waiting page that never comes within a test
 PUMP_SLICE_MS :: 20
 PUMP_SCRIPT_MS :: 30             // past the slice
+SLICE_PER_FRAME :: 3
+SLICE_LONGER_THAN_THE_TEST_MS :: 60_000
+FRAME_COST_MS :: 100             // three times this is past the scripts of the test, whatever else the machine does
 SHEET_IN_WAIT_SECONDS :: 20.0    // far below the poll: only ends a run that fails
 SCAN_WAIT_SECONDS :: 10.0        // only ends a run that fails
 SCAN_SVG :: `<svg xmlns="http://www.w3.org/2000/svg" width="3" height="2"/>`
@@ -1101,6 +1104,71 @@ jsload_preload_scanner_honours_the_document_s_policies :: proc(t: ^testing.T) {
 	page_load(pr, markup)
 	wait_note(pr, "after")
 	close_page(pr, min_checks = 2)
+}
+
+// The parser gives the loop a turn too, between inline scripts: a document of them is no task of its own, or a frame would wait for its end.
+@(test)
+jsload_the_parser_gives_the_loop_a_turn :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	settings.js_load.pump_slice_ms = PUMP_SLICE_MS
+	first := fmt.tprintf(`<script>setTimeout(() => log("a turn of the loop"), 0); const end = performance.now() + %d; while (performance.now() < end); log("first script")</script>`, PUMP_SCRIPT_MS)
+	content := strings.repeat(`<p>x</p>`, page.REVEAL_TURN_MIN_NODES * 2, context.temp_allocator)
+	pr := load(t, "parser turn", concat(`<!doctype html><head>`, PRELUDE, first, `</head><body>`, content, `<script>log("second script")</script></body>`))
+	wait_note(pr, "second script")
+	check(pr, in_order(pr, "first script", "a turn of the loop") && in_order(pr, "a turn of the loop", "second script"), "the loop had a turn between the two inline scripts")
+	close_page(pr, min_checks = 1)
+}
+
+// Once the page painted, what its frames cost sets the length of the turns: frames do not double the time to DOMContentLoaded of a page where each costs more than the
+// scripts around it.
+@(test)
+jsload_the_turns_follow_what_the_page_s_frames_cost :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	settings.js_load.pump_slice_ms = PUMP_SLICE_MS
+	settings.js_load.slice_per_frame = SLICE_PER_FRAME
+	busy := fmt.tprintf(`{{ const end = performance.now() + %d; while (performance.now() < end); }}`, PUMP_SCRIPT_MS)
+	content := strings.repeat(`<p>x</p>`, page.REVEAL_TURN_MIN_NODES * 2, context.temp_allocator)
+	markup := concat(`<!doctype html><head>`, PRELUDE, `<script>setTimeout(() => log("a turn of the loop"), 0);`, busy, `log("first script")</script></head><body>`, content,
+		`<script>`, busy, `log("second script")</script></body>`)
+	pr := page_make(t, "costly frames", testenv.url(BASE))
+	page.load_html(pr.p, transmute([]byte)markup)
+	page.first_paint_done(pr.p)
+	page.scripts_frame_took(pr.p, FRAME_COST_MS)
+	page.scripts_start(pr.p)
+	wait_note(pr, "a turn of the loop")
+	check(pr, in_order(pr, "second script", "a turn of the loop"), "the scripts ran past the plain slice: a frame of the page costs more than that")
+	close_page(pr, min_checks = 1)
+}
+
+// What the parser attached can paint before the long script that comes next: a turn of the loop for the frame, once; none when the document painted.
+@(test)
+jsload_the_first_paint_comes_before_the_next_script :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	content := strings.repeat(`<p>x</p>`, page.REVEAL_TURN_MIN_NODES * 2, context.temp_allocator)
+	markup := concat(`<!doctype html><head>`, PRELUDE, `<script>setTimeout(() => log("a turn of the loop"), 0)</script></head><body>`, content, `<script>log("the long script")</script></body>`)
+	pr := load(t, "first paint", markup)
+	wait_note(pr, "the long script")
+	wait_note(pr, "a turn of the loop")
+	check(pr, in_order(pr, "a turn of the loop", "the long script"), "the loop had a turn before the script")
+	close_page(pr, min_checks = 1)
+
+	pr = page_make(t, "painted", testenv.url(BASE))
+	settings.js_load.pump_slice_ms = SLICE_LONGER_THAN_THE_TEST_MS
+	page.load_html(pr.p, transmute([]byte)markup)
+	page.first_paint_done(pr.p)
+	page.scripts_start(pr.p)
+	wait_note(pr, "a turn of the loop")
+	check(pr, in_order(pr, "the long script", "a turn of the loop"), "painted, the parser has nothing to wait for")
+	close_page(pr, min_checks = 1)
 }
 
 // A script turns the parser's <link> into something else while the document is parsed: the scripts after it (which wait for pending

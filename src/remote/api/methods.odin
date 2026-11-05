@@ -665,7 +665,7 @@ Net_Request :: struct {
 }
 
 // When the page got there, in ms from its first request (0: not yet).
-Doc_Marks :: struct { interactive, dcl, load, paint: f64 }
+Doc_Marks :: struct { interactive, dcl, load, paint, contentful: f64 }
 
 // What a tab's page fetched: `bytes` transferred in all.
 Network :: struct {
@@ -681,7 +681,7 @@ network :: proc(s: ^Session, clear := false, loc := #caller_location) -> (r: Net
 	o := request(s, "Wren.network", &p) or_return
 	a, _ := remote.param_array(o, "requests")
 	r.bytes = i_of(o, "bytes")
-	r.doc = {f_of(o, "interactive"), f_of(o, "dcl"), f_of(o, "load"), f_of(o, "paint")}
+	r.doc = {f_of(o, "interactive"), f_of(o, "dcl"), f_of(o, "load"), f_of(o, "paint"), f_of(o, "contentful")}
 	r.requests = make([]Net_Request, len(a), context.temp_allocator)
 	for item, i in a {
 		x, _ := item.(json.Object)
