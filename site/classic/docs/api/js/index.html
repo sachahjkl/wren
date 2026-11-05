@@ -54,6 +54,7 @@
 <li class="lvl3"><a href="#engine-locale">Engine_locale</a></li>
 <li class="lvl3"><a href="#engine-jitcompile">Engine_jitCompile</a></li>
 <li class="lvl3"><a href="#engine-jitpoll">Engine_jitPoll</a></li>
+<li class="lvl3"><a href="#engine-span">Engine_span</a></li>
 <li class="lvl3"><a href="#node-wrap">Node_wrap</a></li>
 <li class="lvl3"><a href="#document-createelementwrapped">Document_createElementWrapped</a></li>
 <li class="lvl3"><a href="#document-createtextwrapped">Document_createTextWrapped</a></li>
@@ -130,6 +131,10 @@ ticket when it compiles it in the background: Engine_jitPoll then tells when it 
 <p>The table index of the function of an Engine_jitCompile ticket once compiled and attached; -1 while it still
 compiles; 0 when it failed (the ticket is then forgotten).</p>
 <p>Host: <code>Engine_jitPoll :: proc(c: ^Call, ticket: i32) -&gt; i32</code></p>
+<h3 id="engine-span"><a class="anchor" href="#engine-span" aria-hidden="true">#</a><code>Engine_span</code></h3>
+<div class="code"><pre><code>void Engine_span(i32 kind, bool begin)</code></pre></div>
+<p>WREN_SPANS (base/spans.odin): the engine enters (<code>begin</code>) or leaves a stage of its own work: a Span_Kind.</p>
+<p>Host: <code>Engine_span :: proc(c: ^Call, kind: i32, begin: bool)</code></p>
 <h3 id="node-wrap"><a class="anchor" href="#node-wrap" aria-hidden="true">#</a><code>Node_wrap</code></h3>
 <div class="code"><pre><code>u32 Node_wrap(Node node)</code></pre></div>
 <p>A JavaScript object (its wrapper) now refers to <code>node</code>: pins it (it stays alive while pinned, even out of the tree)
