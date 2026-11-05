@@ -2339,6 +2339,67 @@ The sheets' 1 MiB arena blocks and the heap's native part (Wasmtime's stores, Le
 Tests: `src/tools/e2e/memory_growth.odin`, on a local page: the back/forward cache counts what the scripts of its pages hold (fails without: 5 pages of 24 MB in 64 MB), compiled modules stay within their limit (fails
 without: 367 kept for at most 150), a tab forgets the size of a large page (fails without: 101 MB carried), a long session levels off, closing tabs gives their memory back.
 
+## What changed, round 28: pages get going earlier during load
+
+The browser: development builds with the native library `quick`. Two arms, the order turning at each run: base (7f692633 with the `contentful` mark added and nothing else) and the round's binary (cb1e93d1), one load at a time, a fresh process and a throwaway profile each, cold caches.
+Median, range in brackets, ms from the first request. Conditions: public sites over the Internet, 5 runs, two other agents at work on the machine, ads and videos changing from one load to the next; generated pages on loopback, 7 runs. A `load` of 0 in a range is a run the 30 s limit ended (6 of 20 base runs, 5 of 20 of the round's, all sites together), and those zeros count in the medians of both arms. What is inside the ranges is not claimed.
+
+**The measure.** `paint` counts a blank frame: when a hold ends with nothing to show, the document is "painted". `wrentool waterfall` now has `contentful`, the first frame with text, an image or a control (`layout_contentful`).
+
+1. **A document's requests leave while its bytes arrive** (`src/html/preload_scan.odin`, `src/page/preload_scan.odin`, `src/fetch/speculative.odin`, `html.preload.*`). A tokenizer over the raw bytes keeps the states that decide where a tag is a tag (comments, raw text, the escaped states of a script's text, `<template>`, foreign content) and reads what the bytes name; requests are made with what the element would ask (base URL, `crossorigin`, media, `referrerpolicy`, nonce). On the window thread: all of cnn.com's 6.8 MB is a matter of milliseconds and a request can only be made there. A `<meta>` Content-Security-Policy stops the scan; the response's policy refuses silently, the element reports.
+   Reuse is in `fetch.start`: a request of the same document with the same URL, destination, mode, credentials and script type (HTML's preload key) follows the entry made ahead, gets what it has and the rest as it comes. No consumer changed, each follower goes through the policy with its own nonce, integrity stays with the element, and the tools see one row. A `<link rel=preload>` follows without consuming, for the element that may have asked first.
+   cnn.com's first subresource request: 454 ms, the next ones 1 314, against 129 (one run each). **github.com: 260 requests -> 177**, the same in every run: 83 scripts were fetched twice, their `<link rel=modulepreload>` and their element, the cache keeping neither in flight. No URL of the base is missing in the round's list (one run compared).
+   An `<img>` now resolves against `<base href>`: `select_source` used the document's URL.
+   Tests: e2e `jsload_preload_scanner_asks_ahead_and_the_elements_take_the_requests` (one server hit each, in flight and already in), `..._leaves_alone_what_is_not_markup`, `..._honours_the_document_s_policies`, `a_document_s_requests_leave_while_its_end_is_held` (the real shell: the server holds the end of the document until it sees the request), `preload_scan_*` (every cut of the bytes).
+2. **A sheet that arrives restyles what it matches** (`src/style/sheet_arrival.odin`, `style.incremental.sheets`). Its rules join the index as it stands, numbered in its place (rules of a sheet start `SHEET_ORDER_GAP` after the last one's: a sheet that comes between two has room), the invalidation index grows by them, and the elements go through an index of the sheet's own keys, the cascade's lookups on its entries alone; `restyle_roots` does the rest. On cnn.com a sheet that came took about 250 ms, rebuild and full pass; now 2 ms for the rules, 8 to 15 for the elements. Most of the 250 was not the pass (100 ms) but the rebuild and the invalidation index, built again from every rule (160 ms), which is why it had to grow too.
+   Also: `insertRule` at the end of a sheet is an arrival (143 calls on cnn.com, each a rebuild); a `<link>` inserted, or read back by `.sheet`, no longer marks the styles stale; a sheet whose element the parser's reveal brings back where it was needs no rebuild (held sheets sort last, where they are in the document).
+   A rebuild and full pass stay for `@layer`, `@property`, `@position-try`, `@import`, `::part()`, `::slotted()`, `:host`, `@keyframes` of a name in use, adopted sheets, a sheet removed or changed, and a sheet that matches more than `style.incremental.max_ratio` of the document.
+   Test of the equivalence: `sheets_that_arrive_in_any_order_give_a_full_pass_s_styles`: four sheets in four orders, after each one every element against a full pass of an engine of its own that had them from the start, and against `verify_styles`. Others: `a_sheet_that_arrives_restyles_what_it_matches` (one element changes, at most three looked at), `a_rule_inserted_at_the_end_of_a_sheet_arrives_like_a_sheet`, `sheets_that_reach_further_keep_the_rebuild`.
+3. **cnn.com's two modes of first paint, explained and gone.** Its body ends with an inline script of 3.7 s. The document is revealed in 50 ms up to it: whether a frame came before that script or after it was the whole difference, and the frame of the quick mode was blank (`contentful` is over 5 s in both). So: the parser stops before a script when what it attached can paint, nothing holds it back, and at least `REVEAL_TURN_MIN_NODES` were attached, for `javascript.load.paint_wait_ms` (24), three times at most. It also gives the loop a turn between inline scripts (`reveal_run`'s budget), which it never did: they were one task.
+   Tests: `jsload_the_first_paint_comes_before_the_next_script`, `jsload_the_parser_gives_the_loop_a_turn`.
+4. **Frames between scripts in proportion to what they cost** (`javascript.load.slice_per_frame`, 3): once a page painted, scripts and the parser run at least three times what its last frame took before the loop gets a turn. That is round 26's later DOMContentLoaded: a slice of 50 ms between frames of 200. Test: `jsload_the_turns_follow_what_the_page_s_frames_cost`.
+5. **The marking stops when a full pass is shorter** (`restyle_dom`). Found by item 3, which made it common: 8 400 nodes attached between two passes, under `:has()` anchors, 114 000 answers, 8.7 s, to end in "too much changed" and a full pass of 0.2 s. It made `load` bimodal, 16 and 32 s. The elements alone were under the limit, among the parser's text nodes: a journal longer than the limit now goes straight to the full pass, and the answers have a limit. Test: `restyle_dom_stops_marking_when_a_full_pass_is_shorter`.
+
+Loopback:
+
+| | before | after |
+|---|---|---|
+| a document held 400 ms, two sheets and six scripts of 150 ms in its head: load | 1 040 (785-7 717) | 574 (428-1 286) |
+| 2 000 paragraphs, then an inline script of 1.5 s: contentful | 1 532 (1 527-1 830) | 27 (23-106) |
+| ... load | 1 519 (1 516-1 794) | 1 554 (1 548-1 650) |
+| 20 000 alike elements, fifteen sheets that come one by one: quiet network | 3 378 (3 331-7 866) | 3 975 (3 393-5 559) |
+| ... CPU | 406 (312-1 531) | 969 (594-1 500) |
+| ... contentful | 233 (199-4 047) | 571 (187-1 731) |
+
+Public pages:
+
+| | contentful before | after | DOMContentLoaded before | after | load before | after | CPU before | after |
+|---|---|---|---|---|---|---|---|---|
+| cnn.com | 7 338 (5 692-16 263) | 1 026 (678-12 403) | 7 762 (4 116-21 785) | 5 072 (3 978-26 131) | 14 892 (0-28 954) | 10 436 (0-16 655) | 24 953 (17 078-40 156) | 22 047 (17 734-34 344) |
+| npr.org | 2 373 (1 045-12 620) | 3 153 (2 093-4 966) | 14 175 (8 537-20 975) | 11 316 (8 136-16 698) | 15 269 (0-29 658) | 15 834 (0-30 927) | 25 078 (19 359-37 859) | 19 953 (19 188-34 641) |
+| github.com | 3 069 (1 260-4 030) | 2 386 (1 375-4 932) | 8 335 (2 598-10 587) | 5 107 (2 257-12 620) | 9 099 (2 599-11 412) | 5 109 (2 259-12 630) | 11 438 (6 859-17 969) | 8 578 (5 984-16 219) |
+| theverge.com | 1 520 (1 028-3 491) | 1 335 (852-2 707) | 5 343 (1 081-11 642) | 4 086 (1 159-6 724) | 8 697 (0-17 140) | 8 938 (0-24 606) | 23 031 (16 094-37 734) | 27 453 (15 750-36 766) |
+
+cnn.com alone, the round's binary with one part off, 5 runs:
+
+| | contentful | DOMContentLoaded | load | CPU |
+|---|---|---|---|---|
+| the round | 1 026 (678-12 403) | 5 072 (3 978-26 131) | 10 436 (0-16 655) | 22 047 (17 734-34 344) |
+| `html.preload.enabled=false` | 949 (739-14 458) | 4 477 (3 975-27 213) | 9 155 (0-19 135) | 17 328 (14 734-28 656) |
+| `style.incremental.sheets=false` | 903 (791-5 435) | 6 553 (4 265-16 979) | 10 813 (0-17 850) | 20 922 (16 312-36 109) |
+
+Read plainly. **One thing is out of the noise on public pages: cnn.com's contentful paint**, 7.3 -> 1.0 s by the median, though one run in five still took 12 s; its ranges do not separate because of that run. The request counts of github.com are exact. **DOMContentLoaded is better by its median on all four, 20 to 39 %, and its ranges meet on all four**: round 26's loss looks recovered, it is not proved. Load: better by the median on cnn.com and github.com, unchanged on npr.org and theverge.com, ranges meeting everywhere. The two halves of the title do not show on cnn.com's load: with the scanner off, or the sheets, the medians stay inside each other's ranges. What decides there is still the engine running the pages' scripts. On loopback the scanner and the first paint are clear.
+
+**What got worse.**
+- **npr.org's contentful, 2 373 -> 3 153**, ranges meeting; not looked into.
+- **A page of alike elements**: the generated page's CPU is more than double, its contentful later. A full pass there is nearly free (the elements share their styles), and walking 40 000 elements for each sheet, on one thread, fifteen times, is not (the likely reason, from what a sheet costs on cnn.com; not profiled). Contentful at 571 rather than 233: the guess is that the script after the paint turn changes the document under a layout on the page thread, which is then made again. Not verified.
+- The long script's page: load 35 ms later, what its first frame costs.
+- theverge.com's CPU 23.0 -> 27.5 s, inside the ranges.
+
+**Not kept / left.** `too much changed` is now most of cnn.com's full passes, 17 of 31 in one load: an element inserted near the top of the body, a sibling combinator, 3 900 elements marked of 10 800; about 2 s a load. Partial passes of 0.5 to 1 s after DOM changes (`restyle_dom`), which cost more than the full pass they avoid: `has_flip_scan` takes 12 to 150 microseconds an answer, it reads what was added. The body of a sheet that arrives early waits for its element to be parsed off the window thread; the same for a script's compilation. A sheet with `@import` still makes a full pass, and so does its import; `insertRule` before the end too, and the removal of a sheet. Images of `srcset` are chosen with a root font size of 16.
+
+Tests: `test_all -Quick -NoAsan` on the unit tests of html, fetch, page, style and browser, the end-to-end tests of pages, JavaScript loading, the web APIs, nested documents, the HTTP cache, the content blocker, site compatibility and fonts: all pass but one step. **`a_drag_selects_while_the_page_is_busy` fails on its own 6 times in 6 with the base binary as with this one**, and sometimes passes beside other tests: marked `.Flaky`, not looked into. WPT: `html/semantics/scripting-1`, `custom-elements`, `css/cssom`: 0 regressions, 4 improvements. The WPT runner parses as `src/tools/headless` does, without the scanner: it covers the reveal and the styles, not item 1. Not run: the full suite, the unit tests under AddressSanitizer. **The equivalence of item 2 is tested on generated documents only**: the one run with `style.incremental.verify` on cnn.com hit the 30 s limit before any sheet took the scoped path. The public arms are of cb1e93d1; the commit after it gives a document's first script the same turn (the 27 ms above) and was measured on loopback only.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
