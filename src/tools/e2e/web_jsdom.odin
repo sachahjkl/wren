@@ -706,9 +706,13 @@ jsdom_every_page_has_a_test :: proc(t: ^testing.T) {
 @(test) jsdom_xhtml :: proc(t: ^testing.T) { page_test(t, "xhtml.xhtml", checks = 10) }
 @(test) jsdom_xml :: proc(t: ^testing.T) { page_test(t, "xml.html", checks = 38) }
 @(test) jsdom_xmlserializer :: proc(t: ^testing.T) { page_test(t, "xmlserializer.html", checks = 11) }
+// Its many nodes are one long script: past the second of the hard stop on a machine at work, and what it measures is memory.
+@(private = "file") LEAKS_SLOW_SCRIPT_MS :: 120_000
 
 @(test)
-jsdom_leaks :: proc(t: ^testing.T) { page_test(t, "leaks.html", checks = 4, after = proc(pr: ^Probe, _: ^Layout_Host) { leak_checks(pr) }) }
+jsdom_leaks :: proc(t: ^testing.T) {
+	page_test(t, "leaks.html", checks = 4, prepare = proc() { settings.js.slow_script_ms = LEAKS_SLOW_SCRIPT_MS }, after = proc(pr: ^Probe, _: ^Layout_Host) { leak_checks(pr) })
+}
 
 @(test)
 jsdom_layout_page :: proc(t: ^testing.T) { page_test(t, "layout.html", checks = 43, after = proc(pr: ^Probe, lh: ^Layout_Host) { layout_cost_checks(pr); resize_checks(pr, lh) }) }

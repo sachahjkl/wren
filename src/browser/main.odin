@@ -1433,6 +1433,11 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 		if t.layout.mutations != t.page.doc.mutations || page.wants_animation_frame(t.page) || page.animations_active(t.page) {
 			own.page_snapshot_wanted = true
 		}
+		// (a click that clears a selection runs no task and changes no node: the pixels kept would show it again under the next long script)
+		if s := shell_snapshot_of(t.id); s != nil {
+			a, b, _ := page.selection_range(t.page)
+			if a != s.selection[0] || b != s.selection[1] { own.page_snapshot_wanted = true }
+		}
 	}
 	events = shell_page_phase_end(app, events)   // shell_frames.odin: the scroll and the actions of chrome frames, before the build
 	platform.frame_gate_stage(gate, .Building)
