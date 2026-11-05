@@ -489,6 +489,7 @@ Key_Sets :: struct {
 	sets:  [dynamic][]Subject_Key,   // set n is sets[n - 1]
 	index: map[string]u32,           // canonical text -> number
 	single: [Subject_Key_Kind]map[string]u32,   // the one-key sets by name (the rules' subjects: found without building their text)
+	unions: map[u64]u32,             // the union of two sets (key_sets_union): each sheet that comes builds the index again, from the same pairs
 }
 
 @(private = "file")
@@ -499,6 +500,7 @@ key_sets_init :: proc(ks: ^Key_Sets) {
 	ks.sets = make([dynamic][]Subject_Key, a)
 	ks.index = make(map[string]u32, 64, a)
 	for &m in ks.single { m = make(map[string]u32, 64, a) }
+	ks.unions = make(map[u64]u32, 64, a)
 	ks.ready = true
 }
 
@@ -536,6 +538,15 @@ key_sets_union :: proc(ks: ^Key_Sets, x, y: u32) -> u32 {
 	if x == y { return x }
 	sync.mutex_lock(&ks.mu)
 	defer sync.mutex_unlock(&ks.mu)
+	pair := u64(min(x, y)) << 32 | u64(max(x, y))
+	if n, ok := ks.unions[pair]; ok { return n }
+	n := key_sets_union_of(ks, x, y)
+	ks.unions[pair] = n
+	return n
+}
+
+@(private = "file")
+key_sets_union_of :: proc(ks: ^Key_Sets, x, y: u32) -> u32 {
 	a, b := ks.sets[x - 1], ks.sets[y - 1]
 	all := make([dynamic]Subject_Key, 0, len(a) + len(b), context.temp_allocator)
 	for k in a { append(&all, k) }

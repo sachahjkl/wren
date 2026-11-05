@@ -600,6 +600,21 @@ restyle_dom_parallel :: proc(t: ^testing.T) {
 	testing.expect_value(t, verify_styles(f.eng, f.doc, f.st, context.temp_allocator), "")
 }
 
+// The index is built again for each sheet that comes, and from the same subjects: their unions are found, not made (cnn.com: 9 % of its
+// style passes went in reach_union, for each of a dozen sheets).
+@(test)
+restyle_dom_unions_of_subjects_are_kept :: proc(t: ^testing.T) {
+	f := rx_load(`<style>.a .x { color: red } .a .y { color: blue } .a .z { color: green }</style><body><p class=a>`)
+	defer rx_unload(f)
+	_ = inv_index(f.eng)
+	unions, sets := len(f.eng.key_sets.unions), len(f.eng.key_sets.sets)
+	testing.expect(t, unions > 0, "the rules of .a reach several subjects")
+	f.eng.rebuilds += 1
+	_ = inv_index(f.eng)
+	testing.expect_value(t, len(f.eng.key_sets.unions), unions)
+	testing.expect_value(t, len(f.eng.key_sets.sets), sets)
+}
+
 // A subtree restyled by the threads with a forms model: what the model fills in lazily is filled in on this thread first, as a full
 // pass does (two threads building a radio group's list crashed in cnn.com's restyles, once its restyles were large enough).
 @(test)

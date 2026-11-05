@@ -2,7 +2,7 @@
 
 Le paquet `frontend` est la moitié « amont » du moteur JavaScript écrit en Odin. Il transforme du source
 ECMAScript en **bytecode QuickJS-ng 0.17**, identique octet pour octet à ce que produit `JS_WriteObject`
-(`BC_VERSION 28`, drapeaux `JS_WRITE_OBJ_BYTECODE | JS_WRITE_OBJ_STRIP_SOURCE`). L'autre moitié (E2 : valeurs,
+(`BC_VERSION 28`, drapeaux `JS_WRITE_OBJ_BYTECODE | JS_WRITE_OBJ_STRIP_SOURCE`), à deux choix près depuis le round 31 de [performance.md](../performance.md) : `o["x"]` est `o.x`, et `return f()` reste un appel et un retour (plus de `tail_call`). L'autre moitié (E2 : valeurs,
 objets, GC, interpréteur, fonctions natives) relit ce bytecode. Les deux moitiés ne se rencontrent qu'au
 **format de bytecode** : `opcodes.odin`, `atoms.odin`, `serialize.odin`.
 
