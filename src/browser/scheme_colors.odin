@@ -68,7 +68,18 @@ control_palette :: proc(cs: ^style.Computed) -> Control_Palette {
 }
 
 // The colors of a scroll bar (arrow: of the arrow buttons of classic bars).
-Bar_Colors :: struct { thumb, track, arrow: css.Color }
+Bar_Colors :: struct {
+	thumb, track, arrow: css.Color,
+	thumb_hover, thumb_pressed, button_hover, button_pressed: css.Color,   // what the pointer does to them (bar_states)
+}
+
+// How far a part of a bar goes from its color when the pointer is on it or holds it, toward white or black.
+@(private = "file") BAR_THUMB_HOVER_MIX :: 0.13
+@(private = "file") BAR_THUMB_PRESSED_MIX :: 0.38
+@(private = "file") BAR_BUTTON_HOVER_MIX :: 0.1
+@(private = "file") BAR_BUTTON_PRESSED_MIX :: 0.28
+// Under this a color of the page's scrollbar-color is dark: its states go toward white.
+@(private = "file") BAR_DARK_BELOW :: 0.5
 
 // Scroll bar colors for a scroller (or the document) whose used color scheme is `scheme` and whose style is `cs` (nil:
 // none): those of overlay or classic bars in that scheme (the layout preferences in the light one,
@@ -83,5 +94,19 @@ scrollbar_colors :: proc(scheme: style.Scheme, cs: ^style.Computed) -> (c: Bar_C
 	case: c = {thumb = set.classic_thumb, track = set.classic_track, arrow = set.classic_arrow}
 	}
 	if cs != nil && !cs.scrollbar_color.auto { c = {thumb = cs.scrollbar_color.thumb, track = cs.scrollbar_color.track, arrow = cs.scrollbar_color.thumb} }
+	bar_states(&c, cs != nil && !cs.scrollbar_color.auto ? bar_luma(c.thumb) < BAR_DARK_BELOW : dark)
 	return
+}
+
+@(private = "file")
+bar_luma :: proc(c: css.Color) -> f32 { return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] }
+
+// The colors of a bar under the pointer, from its own: a light bar darkens, a dark one lights up, and what is see-through fills in.
+@(private = "file")
+bar_states :: proc(c: ^Bar_Colors, lighten: bool) {
+	toward := css.Color{0, 0, 0, 1}
+	if lighten { toward = {1, 1, 1, 1} }
+	mixed :: proc(from, to: css.Color, f: f32) -> css.Color { return from + (to - from) * f }
+	c.thumb_hover, c.thumb_pressed = mixed(c.thumb, toward, BAR_THUMB_HOVER_MIX), mixed(c.thumb, toward, BAR_THUMB_PRESSED_MIX)
+	c.button_hover, c.button_pressed = mixed(c.track, toward, BAR_BUTTON_HOVER_MIX), mixed(c.track, toward, BAR_BUTTON_PRESSED_MIX)
 }

@@ -591,6 +591,7 @@ shell_bar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, over_page: bool)
 			rail := bar_rail(track, vertical)
 			s.drag = Scrollbar_Drag{active = true, node = base.NIL_HANDLE, vertical = vertical, grab = p[ax] - thumb.min[ax],
 				track_min = rail.min[ax], travel = (rail.max[ax] - rail.min[ax]) - (thumb.max[ax] - thumb.min[ax]), lo = snap.lo[ax], limit = snap.limit[ax]}
+			bar_over_set(app, {&t.layout, base.NIL_HANDLE, vertical, {.Thumb, true}})
 			return true
 		}
 		return shell_box_bar_press(app, t, p)   // a container's thumb, shown from the layout (shell_shown.odin)
@@ -613,6 +614,7 @@ shell_bar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, over_page: bool)
 	case .Mouse_Release:
 		if ev.button != .Left || !s.drag.active || (s.drag.node != base.NIL_HANDLE && !shell_layout_paintable(app, t)) { return false }
 		s.drag = {}
+		scrollbar_over_move(app, t, ev.pos, over_page)
 		return true
 	}
 	return false
@@ -808,13 +810,14 @@ shell_paint_page :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect)
 			draw.pop_clip(dc)
 		}
 	}
+	bars := &t.layout
 	if s.bar {
 		t := s.limit.y > s.lo.y ? clamp((scroll.y - s.lo.y) / (s.limit.y - s.lo.y), 0, 1) : 0
-		paint_bar(dc, draw.rect_shift(s.bar_track, rect.min), draw.rect_shift(thumb_along(s.bar_track, s.bar_thumb, true, t), rect.min), true, s.bar_colors)
+		paint_bar(dc, draw.rect_shift(s.bar_track, rect.min), draw.rect_shift(thumb_along(s.bar_track, s.bar_thumb, true, t), rect.min), true, s.bar_colors, bar_look(bars, base.NIL_HANDLE, true))
 	}
 	if s.bar_x {
 		t := s.limit.x > s.lo.x ? clamp((scroll.x - s.lo.x) / (s.limit.x - s.lo.x), 0, 1) : 0
-		paint_bar(dc, draw.rect_shift(s.bar_x_track, rect.min), draw.rect_shift(thumb_along(s.bar_x_track, s.bar_x_thumb, false, t), rect.min), false, s.bar_colors)
+		paint_bar(dc, draw.rect_shift(s.bar_x_track, rect.min), draw.rect_shift(thumb_along(s.bar_x_track, s.bar_x_thumb, false, t), rect.min), false, s.bar_colors, bar_look(bars, base.NIL_HANDLE, false))
 	}
 	if s.bar_corner.max != s.bar_corner.min { draw.rect(dc, draw.rect_shift(s.bar_corner, rect.min), to_draw(s.bar_colors.track)) }
 	draw.pop_clip(dc)

@@ -38,6 +38,7 @@ Page_Render :: struct {
 	bare:       proc(user: rawptr, doc: ^dom.Document, node: base.Handle) -> bool,   // controls drawn entirely by `content` (no box)
 	replaced:   lay.Replaced_Api,   // natural sizes of images / videos, from whoever decodes them
 	watch_layout, watch_font: int,
+	bar:        Bar_Over,   // smooth_scroll.odin: the scroll bar under the pointer
 }
 
 
@@ -190,32 +191,35 @@ paint_doc_scrollbar :: proc(l: ^Layout, dc: ^draw.Context, page_origin, size: dr
 paint_doc_bars :: proc(l: ^Layout, dc: ^draw.Context, page_origin, size: draw.Vec2, page_scroll: f32, col: Bar_Colors) {
 	origin := draw.Vec2{math.round(page_origin.x), math.round(page_origin.y)}
 	if track, thumb, ok := lay.doc_scrollbar(l, size, math.round(page_scroll)); ok {
-		paint_bar(dc, draw.rect_shift(dr(track), origin), draw.rect_shift(dr(thumb), origin), true, col)
+		paint_bar(dc, draw.rect_shift(dr(track), origin), draw.rect_shift(dr(thumb), origin), true, col, bar_look(l, base.NIL_HANDLE, true))
 	}
 	if track, thumb, ok := lay.doc_scrollbar_x(l, size); ok {
-		paint_bar(dc, draw.rect_shift(dr(track), origin), draw.rect_shift(dr(thumb), origin), false, col)
+		paint_bar(dc, draw.rect_shift(dr(track), origin), draw.rect_shift(dr(thumb), origin), false, col, bar_look(l, base.NIL_HANDLE, false))
 	}
 	if corner, ok := lay.doc_scroll_corner(l, size); ok { draw.rect(dc, draw.rect_shift(dr(corner), origin), to_draw(col.track)) }
 }
 
 // One scroll bar (window pixels): an overlay bar is a rounded track and thumb; a classic bar fills its track, with its
 // arrow buttons at the ends and a square thumb (none when there is nothing to scroll).
-paint_bar :: proc(dc: ^draw.Context, track, thumb: draw.Rect, vertical: bool, col: Bar_Colors) {
+paint_bar :: proc(dc: ^draw.Context, track, thumb: draw.Rect, vertical: bool, col: Bar_Colors, look: Bar_Look) {
 	ax := vertical ? 0 : 1   // across the bar
+	thumb_color := col.thumb
+	if look.part == .Thumb { thumb_color = look.pressed ? col.thumb_pressed : col.thumb_hover }
 	if the_app.page_render.settings.scrollbar_overlay {
 		rad := (track.max[ax] - track.min[ax]) * 0.5
 		if col.track.a > 0 { draw.rect(dc, track, to_draw(col.track), rad) }
-		draw.rect(dc, thumb, to_draw(col.thumb), (thumb.max[ax] - thumb.min[ax]) * 0.5)
+		draw.rect(dc, thumb, to_draw(thumb_color), (thumb.max[ax] - thumb.min[ax]) * 0.5)
 		return
 	}
 	if col.track.a > 0 { draw.rect(dc, track, to_draw(col.track)) }
 	start, end, _ := lay.classic_parts(lay.Rect{track.min, track.max}, vertical)
 	for button, i in ([2]lay.Rect{start, end}) {
 		if button.max == button.min { continue }
+		if look.part == (i == 0 ? Bar_Part.Start : Bar_Part.End) { draw.rect(dc, dr(button), to_draw(look.pressed ? col.button_pressed : col.button_hover)) }
 		p := lay.classic_arrow(button, vertical, i == 1)
 		draw.triangle(dc, p[0], p[1], p[2], to_draw(col.arrow))
 	}
-	if thumb.max != thumb.min { draw.rect(dc, thumb, to_draw(col.thumb)) }
+	if thumb.max != thumb.min { draw.rect(dc, thumb, to_draw(thumb_color)) }
 }
 
 // The box whose background is the canvas's (CSS Backgrounds §2.11.2): the root element's, or the body's when the root
@@ -284,7 +288,7 @@ paint_item :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, v: ^lay.View
 		col := scrollbar_colors(it.cs != nil ? it.cs.used_scheme : .Light, it.cs)
 		vertical := .Vertical in it.flags
 		th := lay.scrollbar_thumb(l, v, it)
-		paint_bar(dc, r, th == {} ? {} : draw.rect_shift(dr(th), origin), vertical, col)
+		paint_bar(dc, r, th == {} ? {} : draw.rect_shift(dr(th), origin), vertical, col, bar_look(l, l.boxes[it.box].node, vertical))
 		// the corner between a box's two classic bars goes with its vertical one
 		if g := l.boxes[it.box].gutter; vertical && g[2] > 0 { draw.rect(dc, {{r.min.x, r.max.y}, {r.max.x, r.max.y + g[2]}}, to_draw(col.track)) }
 	}

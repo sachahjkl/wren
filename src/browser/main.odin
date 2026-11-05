@@ -1089,6 +1089,7 @@ page_move_flush :: proc(app: ^App, t: ^Tab, last_move: platform.Event) {
 	// (the pointer over a menu, a chrome widget that overlaps the page or the statistics panel is not over the page: its hover state and
 	// its pointer events stay where they were: the card under a menu used to light up as the pointer crossed the menu)
 	over_chrome := ui.ctx_menu_any_open() || ui.hot_key() != 0 || hud_captures(app, last_move.pos)
+	scrollbar_over_move(app, t, last_move.pos, !over_chrome && draw.rect_contains(wnd.page_rect, last_move.pos))
 	if !over_chrome && draw.rect_contains(wnd.page_rect, last_move.pos) && t.layout.valid { hovered = hit_or_root(t, hit_test(&t.layout, last_move.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll)) }
 	st := t.page.style_state
 	was := st.hover
@@ -1121,6 +1122,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		// Escape or the pointer leaving the window ends a middle-click autoscroll session (page_autoscroll.odin)
 		if ev.kind == .Key_Press && ev.key == .Escape && autoscroll_running_page(app) { autoscroll_page_cancel(app); consume(app, index); continue }
 		if ev.kind == .Mouse_Leave && autoscroll_running_page(app) { autoscroll_page_cancel(app) }
+		if ev.kind == .Mouse_Leave { scrollbar_over_move(app, t, ev.pos, false) }
 		// drag and drop, fingers and pens, a cancelled touch's mouse emulation (dnd_shell.odin, page_input.odin)
 		if dnd_route(app, t, ev) || route_device_pointer(app, t, ev) || page_drop_emulated(app, ev) { if t.page == nil { return }; continue }
 		if ev.kind == .Mouse_Release && ev.button == .Left { window_own(app).selection.pending = false }   // whichever handler below takes the release (selection_pointer_up)
