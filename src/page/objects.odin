@@ -22,6 +22,7 @@ OBJECT_TAG :: u64(1) << 63
 
 Object_VTable :: struct {
 	name:    string,                          // interface name, for messages ("EventSource")
+	script_let_go: proc(p: ^Page, data: rawptr) -> bool,   // the wrapper a script owned is gone (Object_release): true when something else still holds the object, which then stays
 	destroy: proc(p: ^Page, data: rawptr),    // frees `data`; called on release and when the page closes (p.closed is then true)
 }
 
