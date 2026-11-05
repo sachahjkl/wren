@@ -1463,15 +1463,17 @@ foreign _wr_wj_dom {
 	// The identity of cssRules[index], a number never given to another rule of the page (0 past the end): the rule
 	// list gives a rule the same object across insertions and deletions around it.
 	@(link_name = "CSSStyleSheet_ruleId") wr_CSSStyleSheet_ruleId :: proc(sheet: u64, index: u32) -> u32 ---
-	// customElements.define(name, ...) succeeded: elements of that local name now queue reactions.
-	@(link_name = "CustomElements_define") wr_CustomElements_define :: proc(name: [^]u8, name_len: u32) ---
+	// customElements.define(name, ...) succeeded: elements of that local name now queue reactions; a form-associated
+	// definition makes its elements controls of their forms.
+	@(link_name = "CustomElements_define") wr_CustomElements_define :: proc(name: [^]u8, name_len: u32, form_associated: i32) ---
 	// The size CustomElements_take needs now (0: nothing queued): the engine sizes its buffer with it, as the take
 	// empties the queue (it must not be called twice to learn its size).
 	@(link_name = "CustomElements_pending") wr_CustomElements_pending :: proc() -> u32 ---
-	// The queued reactions, taken: per reaction u8 kind (1 upgrade, 2 connected, 3 disconnected, 4 attribute changed)
-	// and u64 element; an attribute change adds its name, old value and new value (u32 length + UTF-8 each) and a u8
-	// of flags (1: there was an old value, 2: there is a new one). Each element stays pinned until
-	// CustomElements_release.
+	// The queued reactions, taken: per reaction u8 kind (1 upgrade, 2 connected, 3 disconnected, 4 attribute changed,
+	// 5 adopted, 6 form associated, 7 form disabled, 8 form reset) and u64 element; an attribute change adds its name,
+	// old value and new value (u32 length + UTF-8 each) and a u8 of flags (1: there was an old value, 2: there is a new
+	// one); an adoption the two Document nodes; a form owner's change the form (0: none); a disabledness change a u8
+	// (1: disabled). Each element (and form) stays pinned until CustomElements_release.
 	@(link_name = "CustomElements_take") wr_CustomElements_take :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	// The engine wrapped the elements of the last take (its wrappers pin them now).
 	@(link_name = "CustomElements_release") wr_CustomElements_release :: proc(elements: [^]u64, elements_len: u32) ---
@@ -1479,6 +1481,15 @@ foreign _wr_wj_dom {
 	@(link_name = "CustomElements_create") wr_CustomElements_create :: proc(name: [^]u8, name_len: u32, _ret: ^u64) -> i32 ---
 	// The element's custom element state: 0 undefined, 1 custom, 2 failed.
 	@(link_name = "Element_setCustomState") wr_Element_setCustomState :: proc(element: u64, state: u32) ---
+	// A form-associated custom element (custom, of a form-associated definition)? ElementInternals' form members
+	// refuse the others.
+	@(link_name = "Element_isFormAssociated") wr_Element_isFormAssociated :: proc(element: u64) -> i32 ---
+	// ElementInternals.setFormValue(value): `kind` 0 null, 1 the string `value`, 2 the entries of the FormData
+	// `entries`, 3 the first entry of the FormData `entries` (a File given alone: named by the element's name).
+	@(link_name = "Element_setFormValue") wr_Element_setFormValue :: proc(element: u64, kind: u32, value: [^]u8, value_len: u32, entries: u64) ---
+	// ElementInternals.setValidity(flags, message): the ValidityState flags (forms.ValidityState), the message while
+	// any is set.
+	@(link_name = "Element_setFormValidity") wr_Element_setFormValidity :: proc(element: u64, flags: u32, message: [^]u8, message_len: u32) ---
 	// document.readyState: "loading", "interactive" or "complete".
 	@(link_name = "Document_readyState") wr_Document_readyState :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	// document.currentScript: the classic script element running, null otherwise.

@@ -3,7 +3,7 @@
 // wj_ce_process the browser calls to run the queued reactions). The registry, definitions, upgrades and reactions are
 // kept as engine objects (Map / WeakMap / Set) so object identity and the Map/Set/constructor semantics match the old
 // JavaScript exactly. Each definition `def` is a plain object { name, ctor, the four callbacks, observed, noShadow,
-// noInternals }.
+// noInternals, formAssociated and, when it is, the four callbacks of a form-associated custom element }.
 package odin_glue
 
 import "../odin/wj"
@@ -13,6 +13,9 @@ CE_CONNECTED :: 2
 CE_DISCONNECTED :: 3
 CE_ATTRIBUTE :: 4
 CE_ADOPTED :: 5
+CE_FORM_ASSOCIATED :: 6
+CE_FORM_DISABLED :: 7
+CE_FORM_RESET :: 8
 CE_STATE_CUSTOM :: 1
 CE_STATE_FAILED :: 2
 
@@ -114,7 +117,7 @@ ce_set_state :: proc "c" (ctx: ^wj.Context, el: wj.JSValue, state: i32) {
 	wj.wr_Element_setCustomState(o.handle, u32(state))
 }
 @(private = "file")
-ce_browser_define :: proc "c" (name: [^]u8, length: uint) { wj.wr_CustomElements_define(name, u32(length)) }
+ce_browser_define :: proc "c" (name: [^]u8, length: uint, form_associated: bool) { wj.wr_CustomElements_define(name, u32(length), form_associated ? 1 : 0) }
 @(private = "file")
 ce_browser_disable :: proc "c" (name: [^]u8, length: uint, shadow: bool, internals: bool) { wj.wr_CustomElements_disable(name, u32(length), shadow ? 1 : 0, internals ? 1 : 0) }
 
@@ -156,7 +159,8 @@ ce_take_records :: proc "c" (ctx: ^wj.Context) -> wj.JSValue {
 	b := ([^]u8)(wj.libc_malloc(uint(n)))
 	if b == nil { wj.JS_FreeValue(ctx, out); return wj.JS_ThrowOutOfMemory(ctx) }
 	wj.memcpy(b, wj.wj_scratch.data, uint(n))
-	handles := ([^]u64)(wj.libc_malloc((uint(n) / 9 + 1) * size_of(u64)))
+	// an element per reaction of 9 bytes at least, a form too in one of 17: at most one handle per 8 bytes
+	handles := ([^]u64)(wj.libc_malloc((uint(n) / 8 + 1) * size_of(u64)))
 	nh := u32(0); k := u32(0)
 	i := uint(0)
 	for handles != nil && i + 9 <= uint(n) {
@@ -188,6 +192,16 @@ ce_take_records :: proc "c" (ctx: ^wj.Context) -> wj.JSValue {
 			wj.array_set(ctx, rec, 2, wj.wj_wrap_node(ctx, rd_u64(b[i:])))
 			wj.array_set(ctx, rec, 3, wj.wj_wrap_node(ctx, rd_u64(b[i + 8:])))
 			i += 16
+		}
+		if kind == CE_FORM_ASSOCIATED && i + 8 <= uint(n) {
+			form := rd_u64(b[i:])
+			i += 8
+			wj.array_set(ctx, rec, 2, form != 0 ? wj.wj_wrap_node(ctx, form) : wj.NULL)
+			if form != 0 { handles[nh] = form; nh += 1 }
+		}
+		if kind == CE_FORM_DISABLED && i + 1 <= uint(n) {
+			wj.array_set(ctx, rec, 2, wj.new_bool(b[i] != 0))
+			i += 1
 		}
 		wj.array_set(ctx, out, k, rec); k += 1
 	}
@@ -471,7 +485,17 @@ ce_define :: proc "c" (ctx: ^wj.Context, namev: wj.JSValue, ctor: wj.JSValue, op
 					wj.JS_SetPropertyStr(ctx, def, "noInternals", wj.new_bool(noInternals))
 					fa := wj.JS_GetPropertyStr(ctx, ctor, "formAssociated")
 					if wj.is_exception(fa) { ok = false }
-					else { wj.JS_FreeValue(ctx, fa) }
+					else {
+						form_associated := wj.JS_ToBool(ctx, fa) != 0
+						wj.JS_FreeValue(ctx, fa)
+						wj.JS_SetPropertyStr(ctx, def, "formAssociated", wj.new_bool(form_associated))
+						// a form-associated definition's callbacks (HTML "define": read only then)
+						for callback in FACE_CALLBACKS {
+							if !form_associated || !ok { break }
+							if !read_callback(ctx, proto, callback, &cb) { ok = false; break }
+							wj.JS_SetPropertyStr(ctx, def, callback, cb)
+						}
+					}
 				}
 			}
 		}
@@ -489,7 +513,9 @@ ce_define :: proc "c" (ctx: ^wj.Context, namev: wj.JSValue, ctor: wj.JSValue, op
 	wj.JS_FreeValue(ctx, nsv); wj.JS_FreeValue(ctx, niv)
 	nblen := wj.strlen(namebuf)
 	if noShadow || noInternals { ce_browser_disable(wj.cstr_bytes(namebuf), nblen, noShadow, noInternals) }
-	ce_browser_define(wj.cstr_bytes(namebuf), nblen)
+	fav := wj.JS_GetPropertyStr(ctx, def, "formAssociated")
+	ce_browser_define(wj.cstr_bytes(namebuf), nblen, wj.JS_ToBool(ctx, fav) != 0)
+	wj.JS_FreeValue(ctx, fav)
 	list := ce_by_name_elements(ctx, wj.cstr_bytes(namebuf), nblen)
 	ln := i64(0); wj.JS_GetLength(ctx, list, &ln)
 	for i in 0..<ln { el := wj.JS_GetPropertyInt64(ctx, list, i); try_upgrade(ctx, el); wj.JS_FreeValue(ctx, el) }
@@ -590,6 +616,18 @@ ce_process :: proc "c" (ctx: ^wj.Context) {
 					wj.JS_FreeValue(ctx, args[0]); wj.JS_FreeValue(ctx, args[1])
 				}
 				wj.JS_FreeValue(ctx, d)
+			} else if kind == CE_FORM_ASSOCIATED || kind == CE_FORM_DISABLED || kind == CE_FORM_RESET {
+				d := map_get(ctx, ce_defs, el)
+				if !wj.is_undefined(d) {
+					arg := wj.JS_GetPropertyInt64(ctx, r, 2)   // the form, or whether it is disabled
+					switch kind {
+					case CE_FORM_ASSOCIATED: react(ctx, d, el, "formAssociatedCallback", 1, &arg)
+					case CE_FORM_DISABLED:   react(ctx, d, el, "formDisabledCallback", 1, &arg)
+					case:                    react(ctx, d, el, "formResetCallback", 0, nil)
+					}
+					wj.JS_FreeValue(ctx, arg)
+				}
+				wj.JS_FreeValue(ctx, d)
 			}
 			wj.JS_FreeValue(ctx, el); wj.JS_FreeValue(ctx, r)
 		}
@@ -599,8 +637,10 @@ ce_process :: proc "c" (ctx: ^wj.Context) {
 
 // ---- install the state at pre-initialization ----
 
+@(private = "file") FACE_CALLBACKS := [?]cstring{ "formAssociatedCallback", "formResetCallback", "formDisabledCallback", "formStateRestoreCallback" }
 @(private = "file") CE_RESERVED := [?]cstring{ "annotation-xml", "color-profile", "font-face", "font-face-src", "font-face-uri", "font-face-format", "font-face-name", "missing-glyph" }
-@(private = "file") PCEN : cstring : "^[a-z][\\-.0-9_a-z\\u00B7\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u203F-\\u2040\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD\\u{10000}-\\u{EFFFF}]*-[\\-.0-9_a-z\\u00B7\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u203F-\\u2040\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD\\u{10000}-\\u{EFFFF}]*$"
+// HTML "valid custom element name" (whatwg/html#7991): an ASCII lower alpha, then no ASCII upper alpha, whitespace, NUL, / or >, a hyphen
+@(private = "file") PCEN : cstring : "^[a-z][^\\0\\t\\n\\f\\r />A-Z]*-[^\\0\\t\\n\\f\\r />A-Z]*$"
 
 @(export, link_name = "wj_install_custom_elements")
 wj_install_custom_elements :: proc "c" (ctx: ^wj.Context) {

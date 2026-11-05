@@ -407,12 +407,13 @@ Host: `CSSStyleSheet_ruleId :: proc(c: ^Call, sheet: u64, index: u32) -> u32`
 ### `CustomElements_define`
 
 ```
-void CustomElements_define(string name)
+void CustomElements_define(string name, bool form_associated)
 ```
 
-customElements.define(name, ...) succeeded: elements of that local name now queue reactions.
+customElements.define(name, ...) succeeded: elements of that local name now queue reactions; a form-associated
+definition makes its elements controls of their forms.
 
-Host: `CustomElements_define :: proc(c: ^Call, name: string)`
+Host: `CustomElements_define :: proc(c: ^Call, name: string, form_associated: bool)`
 
 ### `CustomElements_pending`
 
@@ -431,10 +432,11 @@ Host: `CustomElements_pending :: proc(c: ^Call) -> u32`
 bytes CustomElements_take()
 ```
 
-The queued reactions, taken: per reaction u8 kind (1 upgrade, 2 connected, 3 disconnected, 4 attribute changed)
-and u64 element; an attribute change adds its name, old value and new value (u32 length + UTF-8 each) and a u8
-of flags (1: there was an old value, 2: there is a new one). Each element stays pinned until
-CustomElements_release.
+The queued reactions, taken: per reaction u8 kind (1 upgrade, 2 connected, 3 disconnected, 4 attribute changed,
+5 adopted, 6 form associated, 7 form disabled, 8 form reset) and u64 element; an attribute change adds its name,
+old value and new value (u32 length + UTF-8 each) and a u8 of flags (1: there was an old value, 2: there is a new
+one); an adoption the two Document nodes; a form owner's change the form (0: none); a disabledness change a u8
+(1: disabled). Each element (and form) stays pinned until CustomElements_release.
 
 Host: `CustomElements_take :: proc(c: ^Call) -> []u8`
 
@@ -469,6 +471,39 @@ void Element_setCustomState(Element element, u32 state)
 The element's custom element state: 0 undefined, 1 custom, 2 failed.
 
 Host: `Element_setCustomState :: proc(c: ^Call, element: Api_Element, state: u32)`
+
+### `Element_isFormAssociated`
+
+```
+bool Element_isFormAssociated(Element element)
+```
+
+A form-associated custom element (custom, of a form-associated definition)? ElementInternals' form members
+refuse the others.
+
+Host: `Element_isFormAssociated :: proc(c: ^Call, element: Api_Element) -> bool`
+
+### `Element_setFormValue`
+
+```
+void Element_setFormValue(Element element, u32 kind, string value, u64 entries)
+```
+
+ElementInternals.setFormValue(value): `kind` 0 null, 1 the string `value`, 2 the entries of the FormData
+`entries`, 3 the first entry of the FormData `entries` (a File given alone: named by the element's name).
+
+Host: `Element_setFormValue :: proc(c: ^Call, element: Api_Element, kind: u32, value: string, entries: u64)`
+
+### `Element_setFormValidity`
+
+```
+void Element_setFormValidity(Element element, u32 flags, string message)
+```
+
+ElementInternals.setValidity(flags, message): the ValidityState flags (forms.ValidityState), the message while
+any is set.
+
+Host: `Element_setFormValidity :: proc(c: ^Call, element: Api_Element, flags: u32, message: string)`
 
 ### `Document_readyState`
 

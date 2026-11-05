@@ -129,7 +129,7 @@ has_activation :: proc(f: ^Forms, h: base.Handle) -> bool {
 	case .Input:
 		#partial switch input_type_of(n) { case .Checkbox, .Radio, .Submit, .Image, .Reset, .Button, .File, .Color: return true }
 	case .Button, .Label: return true
-	case .None, .Textarea, .Select, .Option, .Optgroup, .Fieldset, .Legend, .Output, .Form, .Object, .Datalist, .Dialog:
+	case .None, .Textarea, .Select, .Option, .Optgroup, .Fieldset, .Legend, .Output, .Form, .Object, .Datalist, .Dialog, .Custom:
 	}
 	if n != nil && (n.name == "a" || n.name == "area") && has_attr(n, "href") { return true }
 	if n != nil && n.name == "summary" && details_of_summary(f, h) != base.NIL_HANDLE { return true }
@@ -314,7 +314,7 @@ activate :: proc(f: ^Forms, at, target: base.Handle, info: Click_Info, was_check
 		sub := info
 		sub.offset = {}
 		click(f, ctl, sub)
-	case .None, .Textarea, .Select, .Option, .Optgroup, .Fieldset, .Legend, .Output, .Form, .Object, .Datalist, .Dialog:
+	case .None, .Textarea, .Select, .Option, .Optgroup, .Fieldset, .Legend, .Output, .Form, .Object, .Datalist, .Dialog, .Custom:
 		// (a <summary> has no kind of its own)
 		if n != nil && n.name == "summary" {
 			if d := details_of_summary(f, at); d != base.NIL_HANDLE { toggle_details(f, d) }
@@ -536,7 +536,9 @@ reset_control :: proc(f: ^Forms, h: base.Handle) {
 	n := element(f, h)
 	c := control_of(f, h)
 	if c == nil { return }
-	switch kind_of(n) {
+	switch kind(f, h) {
+	case .Custom:
+		face_tell(f, h, .Reset)   // its formResetCallback resets it
 	case .Input:
 		c.dirty_value = false
 		c.dirty_checked = false

@@ -121,8 +121,9 @@ is_placeholder_label_option :: proc(f: ^Forms, sel, o: base.Handle) -> bool {
 validity :: proc(f: ^Forms, h: base.Handle) -> Validity {
 	n := element(f, h)
 	v: Validity
-	k := kind_of(n)
+	k := kind(f, h)
 	c := control_peek(f, h)
+	if k == .Custom { return c.face_flags }   // what its ElementInternals set
 	if c != nil && c.custom_error != "" { v += {.Custom_Error} }
 	#partial switch k {
 	case .Input:
@@ -265,7 +266,7 @@ validation_message :: proc(f: ^Forms, h: base.Handle, allocator := context.temp_
 	n := element(f, h)
 	fr := f.settings.language == .French
 	c := control_peek(f, h)
-	if .Custom_Error in v { return strings.clone(c.custom_error, allocator) }
+	if .Custom_Error in v || kind(f, h) == .Custom { return strings.clone(c.custom_error, allocator) }
 	t := input_type_of(n)
 	k := kind_of(n)
 	if .Value_Missing in v {
@@ -500,9 +501,7 @@ Style_Bits :: bit_set[Style_Bit; u16]
 // Everything the dynamic pseudo-classes of a control depend on.
 style_bits :: proc(f: ^Forms, h: base.Handle) -> Style_Bits {
 	b: Style_Bits
-	n := element(f, h)
-	k := kind_of(n)
-	if k == .None { return b }
+	if kind(f, h) == .None { return b }
 	if is_disabled(f, h) { b += {.Disabled} }
 	if is_read_write(f, h) { b += {.Read_Write} }
 	if matches_checked(f, h) { b += {.Checked} }

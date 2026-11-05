@@ -312,7 +312,7 @@ value :: proc(f: ^Forms, h: base.Handle) -> string {
 		v, _ := attr(n, "value")
 		return v
 	case .Output: return dom.text_content(f.doc, h)
-	case .None, .Optgroup, .Fieldset, .Legend, .Form, .Label, .Object, .Datalist, .Dialog:
+	case .None, .Optgroup, .Fieldset, .Legend, .Form, .Label, .Object, .Datalist, .Dialog, .Custom:
 	}
 	return ""
 }
@@ -370,7 +370,7 @@ set_value :: proc(f: ^Forms, h: base.Handle, v: string, by_user := false) -> Err
 		changed(f, h)
 	case .Output:
 		dom.set_text_content(f.doc, h, v)
-	case .None, .Optgroup, .Fieldset, .Legend, .Form, .Label, .Object, .Datalist, .Dialog:
+	case .None, .Optgroup, .Fieldset, .Legend, .Form, .Label, .Object, .Datalist, .Dialog, .Custom:
 		return .Not_Supported
 	}
 	return .None

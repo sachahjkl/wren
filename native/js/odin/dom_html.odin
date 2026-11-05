@@ -1,7 +1,7 @@
 // dom_html.odin: members of HTML elements the generated glue cannot make: attributes "limited to only known values"
 // (crossOrigin, referrerPolicy, loading, method, enctype...), URLs with a fallback (form.action), numbers with their
 // clamping (progress, meter, textarea.cols), script.textContent / innerText (Trusted Types overloads), validity
-// (ValidityState), setRangeText's overloads, the live lists of forms (selectedOptions, fieldset.elements, labels),
+// (ValidityState, and ElementInternals' form members of a form-associated custom element), setRangeText's overloads, the live lists of forms (selectedOptions, fieldset.elements, labels),
 // and a few members of Document and Element over existing browser functions. HTML §2.6.1 for the reflection rules.
 // Ported from native/js/runtime/dom_html.c, same symbols and behaviour.
 //
@@ -461,6 +461,134 @@ validity_flag :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, flag: Maybe(wj.wr_Va
 @(export, link_name = "wjr_ValidityState_get_badInput")        wjr_ValidityState_get_badInput        :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return validity_flag(ctx, t, .Bad_Input) }
 @(export, link_name = "wjr_ValidityState_get_customError")     wjr_ValidityState_get_customError     :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return validity_flag(ctx, t, .Custom_Error) }
 @(export, link_name = "wjr_ValidityState_get_valid")           wjr_ValidityState_get_valid           :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return validity_flag(ctx, t, nil) }
+
+// ---- ElementInternals of a form-associated custom element: its form members (the browser's forms model holds them) ----
+
+// The kinds of a submission value (api/js_custom_elements.widl Element_setFormValue).
+@(private = "file") FACE_VALUE_NULL :: 0
+@(private = "file") FACE_VALUE_STRING :: 1
+@(private = "file") FACE_VALUE_ENTRIES :: 2
+@(private = "file") FACE_VALUE_FILE :: 3
+
+// The element of the internals `t` when it is a form-associated custom element, else 0 with NotSupportedError thrown.
+@(private = "file")
+face_of :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> u64 {
+	o := wj.wj_this(ctx, t, ifc("ElementInternals"))
+	if o == nil { return 0 }
+	el := wj.wr_ElementInternals_element(o.handle)
+	if el == 0 || wj.wr_Element_isFormAssociated(el) == 0 {
+		wj.wj_throw_dom(ctx, "NotSupportedError", "The target element is not a form-associated custom element.")
+		return 0
+	}
+	return el
+}
+
+// setFormValue(value, state): a File, a string or a FormData (copied now), or null; the state is for a restore this
+// browser does not do
+@(export, link_name = "wjr_ElementInternals_setFormValue")
+wjr_ElementInternals_setFormValue :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	el := face_of(ctx, t)
+	if el == 0 { return wj.EXCEPTION }
+	if argc < 1 { return wj.wj_throw_arity(ctx, "setFormValue", 1, argc) }
+	v := argv[0]
+	switch {
+	case wj.is_nullish(v):   // (undefined is null: the union is nullable)
+		wj.wr_Element_setFormValue(el, FACE_VALUE_NULL, wj.empty_ptr(), 0, 0)
+	case web_formdata_is(v):
+		wj.wr_Element_setFormValue(el, FACE_VALUE_ENTRIES, wj.empty_ptr(), 0, web_formdata_handle(v))
+	case wj.wj_unwrap(v, ifc("File")) != nil:
+		// a File alone: the first entry of a FormData made for it
+		fd := web_formdata_new(ctx)
+		if wj.is_exception(fd) { return fd }
+		defer wj.JS_FreeValue(ctx, fd)
+		append_fn := wj.JS_GetPropertyStr(ctx, fd, "append")
+		args := [2]wj.JSValue{wj.JS_NewString(ctx, ""), v}
+		r := wj.JS_Call(ctx, append_fn, fd, 2, &args[0])
+		wj.JS_FreeValue(ctx, args[0]); wj.JS_FreeValue(ctx, append_fn)
+		if wj.is_exception(r) { return r }
+		wj.JS_FreeValue(ctx, r)
+		wj.wr_Element_setFormValue(el, FACE_VALUE_FILE, wj.empty_ptr(), 0, web_formdata_handle(fd))
+	case:
+		s: wj.Str
+		if !wj.web_to_usv(ctx, v, &s) { return wj.EXCEPTION }
+		wj.wr_Element_setFormValue(el, FACE_VALUE_STRING, s.ptr != nil ? s.ptr : wj.empty_ptr(), u32(s.len), 0)
+		wj.wj_str_free(ctx, &s)
+	}
+	return wj.UNDEFINED
+}
+
+// ValidityStateFlags' members in the order of the browser's flags (forms.Validity_Flag)
+@(private = "file") VALIDITY_FLAG_NAMES := [?]cstring{
+	"valueMissing", "typeMismatch", "patternMismatch", "tooLong", "tooShort", "rangeUnderflow", "rangeOverflow",
+	"stepMismatch", "badInput", "customError",
+}
+
+// setValidity(flags, message, anchor): a flag set needs a message; the anchor (where the bubble points) is not used
+@(export, link_name = "wjr_ElementInternals_setValidity")
+wjr_ElementInternals_setValidity :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	el := face_of(ctx, t)
+	if el == 0 { return wj.EXCEPTION }
+	flags: u32
+	dict := wj.arg(argc, argv, 0)
+	for name, i in VALIDITY_FLAG_NAMES {
+		f: wj.JSValue
+		if !wj.web_dict_get(ctx, dict, name, &f) { return wj.EXCEPTION }
+		if wj.JS_ToBool(ctx, f) != 0 { flags |= 1 << u32(i) }
+		wj.JS_FreeValue(ctx, f)
+	}
+	msg := wj.arg(argc, argv, 1)
+	s: wj.Str
+	if !wj.is_undefined(msg) && !wj.wj_to_str(ctx, msg, &s, 0, "") { return wj.EXCEPTION }
+	defer wj.wj_str_free(ctx, &s)
+	if flags != 0 && s.len == 0 { return wj.wj_throw_type(ctx, "Failed to execute 'setValidity' on 'ElementInternals': The second argument should not be empty if one or more flags are true.") }
+	wj.wr_Element_setFormValidity(el, flags, s.ptr != nil ? s.ptr : wj.empty_ptr(), u32(s.len))
+	return wj.UNDEFINED
+}
+
+@(export, link_name = "wjr_ElementInternals_get_form")
+wjr_ElementInternals_get_form :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
+	el := face_of(ctx, t)
+	return el != 0 ? wj.wj_wrap_node(ctx, wj.wr_HTMLInputElement_form(el)) : wj.EXCEPTION
+}
+
+@(export, link_name = "wjr_ElementInternals_get_willValidate")
+wjr_ElementInternals_get_willValidate :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
+	el := face_of(ctx, t)
+	return el != 0 ? wj.new_bool(wj.wr_HTMLInputElement_willValidate(el) != 0) : wj.EXCEPTION
+}
+
+@(export, link_name = "wjr_ElementInternals_get_validity")
+wjr_ElementInternals_get_validity :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
+	el := face_of(ctx, t)
+	return el != 0 ? wj.dom_new(ctx, ifc("ValidityState"), DOM_VALIDITY, t, el, nil) : wj.EXCEPTION
+}
+
+@(export, link_name = "wjr_ElementInternals_get_validationMessage")
+wjr_ElementInternals_get_validationMessage :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
+	el := face_of(ctx, t)
+	if el == 0 { return wj.EXCEPTION }
+	n := wj.wr_HTMLInputElement_validationMessage(el, wj.wj_scratch.data, wj.wj_scratch.cap)
+	if n > 0 && u32(n) > wj.wj_scratch.cap && wj.wj_scratch_grow(u32(n)) { n = wj.wr_HTMLInputElement_validationMessage(el, wj.wj_scratch.data, wj.wj_scratch.cap) }
+	return wj.new_string_len(ctx, wj.wj_scratch.data, n > 0 && u32(n) <= wj.wj_scratch.cap ? uint(n) : 0)
+}
+
+@(export, link_name = "wjr_ElementInternals_checkValidity")
+wjr_ElementInternals_checkValidity :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	el := face_of(ctx, t)
+	return el != 0 ? wj.new_bool(wj.wr_HTMLInputElement_checkValidity(el) != 0) : wj.EXCEPTION
+}
+
+@(export, link_name = "wjr_ElementInternals_reportValidity")
+wjr_ElementInternals_reportValidity :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	el := face_of(ctx, t)
+	return el != 0 ? wj.new_bool(wj.wr_HTMLInputElement_reportValidity(el) != 0) : wj.EXCEPTION
+}
+
+@(export, link_name = "wjr_ElementInternals_get_labels")
+wjr_ElementInternals_get_labels :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
+	el := face_of(ctx, t)
+	return el != 0 ? wj.dom_live_list(ctx, t, el, i32(Form_Collection.Labels), nil, 0, ifc("NodeList")) : wj.EXCEPTION
+}
 
 // ---- setRangeText(replacement) / setRangeText(replacement, start, end, selectMode) ----
 

@@ -140,6 +140,7 @@ page_mutation_hook :: proc(user: rawptr, d: ^dom.Document, e: ^dom.Journal_Entry
 	if p.closed || p.jsdom == nil { return }
 	if len(p.jsdom.observers.on_node) > 0 { mutation_hook(user, d, e) }
 	if len(p.jsdom.ce.defined) > 0 || len(p.jsdom.ce.moved_in) > 0 { ce_mutation(p, d, e) }
+	if p.formctl != nil && len(p.formctl.model.faces) > 0 { face_mutation(p, d, e) }
 }
 
 @(private)

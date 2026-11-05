@@ -133,20 +133,15 @@ can_host_shadow :: proc(d: ^Document, h: base.Handle) -> bool {
 	return is_valid_custom_element_name(n.name)
 }
 
-// HTML "valid custom element name": a PotentialCustomElementName (starts with a-z, has a hyphen, no ASCII upper case,
-// only PCENChars) that is none of the reserved names.
+// HTML "valid custom element name": starts with an ASCII lower alpha, has a hyphen, no ASCII upper alpha, whitespace, NUL,
+// '/' or '>' (whatwg/html#7991: a valid element local name that starts with a letter), and is none of the reserved names.
 is_valid_custom_element_name :: proc(name: string) -> bool {
 	if len(name) == 0 || name[0] < 'a' || name[0] > 'z' { return false }
 	hyphen := false
-	for r in name {
-		switch {
-		case r == '-': hyphen = true
-		case r == '.' || r == '_' || (r >= '0' && r <= '9') || (r >= 'a' && r <= 'z'):
-		case r == 0xB7 || (r >= 0xC0 && r <= 0xD6) || (r >= 0xD8 && r <= 0xF6) || (r >= 0xF8 && r <= 0x37D) ||
-		     (r >= 0x37F && r <= 0x1FFF) || (r >= 0x200C && r <= 0x200D) || (r >= 0x203F && r <= 0x2040) ||
-		     (r >= 0x2070 && r <= 0x218F) || (r >= 0x2C00 && r <= 0x2FEF) || (r >= 0x3001 && r <= 0xD7FF) ||
-		     (r >= 0xF900 && r <= 0xFDCF) || (r >= 0xFDF0 && r <= 0xFFFD) || (r >= 0x10000 && r <= 0xEFFFF):
-		case: return false
+	for c in transmute([]u8)name {
+		switch c {
+		case '-': hyphen = true
+		case 'A'..='Z', 0, '\t', '\n', '\f', '\r', ' ', '/', '>': return false
 		}
 	}
 	if !hyphen { return false }

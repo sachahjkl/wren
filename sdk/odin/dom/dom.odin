@@ -68,12 +68,15 @@ foreign _m_dom {
 	@(link_name = "CSSStyleSheet_titleOf") _CSSStyleSheet_titleOf :: proc(sheet: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "CSSStyleSheet_rulesVersion") _CSSStyleSheet_rulesVersion :: proc(sheet: u64) -> u32 ---
 	@(link_name = "CSSStyleSheet_ruleId") _CSSStyleSheet_ruleId :: proc(sheet: u64, index: u32) -> u32 ---
-	@(link_name = "CustomElements_define") _CustomElements_define :: proc(name: [^]u8, name_len: u32) ---
+	@(link_name = "CustomElements_define") _CustomElements_define :: proc(name: [^]u8, name_len: u32, form_associated: i32) ---
 	@(link_name = "CustomElements_pending") _CustomElements_pending :: proc() -> u32 ---
 	@(link_name = "CustomElements_take") _CustomElements_take :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "CustomElements_release") _CustomElements_release :: proc(elements: [^]u64, elements_len: u32) ---
 	@(link_name = "CustomElements_create") _CustomElements_create :: proc(name: [^]u8, name_len: u32, _ret: ^u64) -> core.Error ---
 	@(link_name = "Element_setCustomState") _Element_setCustomState :: proc(element: u64, state: u32) ---
+	@(link_name = "Element_isFormAssociated") _Element_isFormAssociated :: proc(element: u64) -> i32 ---
+	@(link_name = "Element_setFormValue") _Element_setFormValue :: proc(element: u64, kind: u32, value: [^]u8, value_len: u32, entries: u64) ---
+	@(link_name = "Element_setFormValidity") _Element_setFormValidity :: proc(element: u64, flags: u32, message: [^]u8, message_len: u32) ---
 	@(link_name = "Document_readyState") _Document_readyState :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Document_currentScript") _Document_currentScript :: proc() -> Element ---
 	@(link_name = "Window_document") _Window_document :: proc() -> Node ---
@@ -751,9 +754,10 @@ CSSStyleSheet_ruleId :: proc "contextless" (sheet: u64, index: u32) -> u32 {
 	return _CSSStyleSheet_ruleId(sheet, index)
 }
 
-// customElements.define(name, ...) succeeded: elements of that local name now queue reactions.
-CustomElements_define :: proc "contextless" (name: string) {
-	_CustomElements_define(raw_data(name), u32(len(name)))
+// customElements.define(name, ...) succeeded: elements of that local name now queue reactions; a form-associated
+// definition makes its elements controls of their forms.
+CustomElements_define :: proc "contextless" (name: string, form_associated: bool) {
+	_CustomElements_define(raw_data(name), u32(len(name)), i32(1 if form_associated else 0))
 }
 
 // The size CustomElements_take needs now (0: nothing queued): the engine sizes its buffer with it, as the take
@@ -762,10 +766,11 @@ CustomElements_pending :: proc "contextless" () -> u32 {
 	return _CustomElements_pending()
 }
 
-// The queued reactions, taken: per reaction u8 kind (1 upgrade, 2 connected, 3 disconnected, 4 attribute changed)
-// and u64 element; an attribute change adds its name, old value and new value (u32 length + UTF-8 each) and a u8
-// of flags (1: there was an old value, 2: there is a new one). Each element stays pinned until
-// CustomElements_release.
+// The queued reactions, taken: per reaction u8 kind (1 upgrade, 2 connected, 3 disconnected, 4 attribute changed,
+// 5 adopted, 6 form associated, 7 form disabled, 8 form reset) and u64 element; an attribute change adds its name,
+// old value and new value (u32 length + UTF-8 each) and a u8 of flags (1: there was an old value, 2: there is a new
+// one); an adoption the two Document nodes; a form owner's change the form (0: none); a disabledness change a u8
+// (1: disabled). Each element (and form) stays pinned until CustomElements_release.
 CustomElements_take :: proc "contextless" (buf: []u8) -> ([]u8, core.Error) {
 	n := _CustomElements_take(raw_data(buf), u32(len(buf)))
 	if n < 0 { return {}, core.Error(n) }
@@ -808,6 +813,24 @@ CustomElements_create :: proc "contextless" (name: string) -> (result: u64, err:
 // The element's custom element state: 0 undefined, 1 custom, 2 failed.
 Element_setCustomState :: proc "contextless" (element: $T_element, state: u32) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
 	_Element_setCustomState(u64(element), state)
+}
+
+// A form-associated custom element (custom, of a form-associated definition)? ElementInternals' form members
+// refuse the others.
+Element_isFormAssociated :: proc "contextless" (element: $T_element) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _Element_isFormAssociated(u64(element)) != 0
+}
+
+// ElementInternals.setFormValue(value): `kind` 0 null, 1 the string `value`, 2 the entries of the FormData
+// `entries`, 3 the first entry of the FormData `entries` (a File given alone: named by the element's name).
+Element_setFormValue :: proc "contextless" (element: $T_element, kind: u32, value: string, entries: u64) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	_Element_setFormValue(u64(element), kind, raw_data(value), u32(len(value)), entries)
+}
+
+// ElementInternals.setValidity(flags, message): the ValidityState flags (forms.ValidityState), the message while
+// any is set.
+Element_setFormValidity :: proc "contextless" (element: $T_element, flags: u32, message: string) where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	_Element_setFormValidity(u64(element), flags, raw_data(message), u32(len(message)))
 }
 
 // document.readyState: "loading", "interactive" or "complete".

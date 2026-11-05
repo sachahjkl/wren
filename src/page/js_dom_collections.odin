@@ -249,7 +249,7 @@ collection_vt := Object_VTable{name = "DOMCollection", destroy = proc(p: ^Page, 
 @(private)
 uses_attributes :: proc(k: Collection_Kind) -> bool {
 	#partial switch k {
-	case .Class_Names, .Name, .Links, .Anchors, .Form_Elements, .Labels: return true
+	case .Class_Names, .Name, .Links, .Anchors, .Form_Elements, .Fieldset_Elements, .Labels: return true   // (an upgrade to a form-associated custom element changes attr_version)
 	}
 	return false
 }
@@ -368,11 +368,13 @@ collection_accepts :: proc(p: ^Page, col: ^Dom_Collection, h: base.Handle, n: ^d
 			t, _ := attr_of(n, "type")
 			return !base.ascii_equal_fold(t, "image")
 		}
+		return forms.is_face(page_forms(p), h)
 	case .Fieldset_Elements:
 		if !html { return false }
 		switch n.name {
 		case "button", "fieldset", "input", "object", "output", "select", "textarea": return true
 		}
+		return forms.is_face(page_forms(p), h)
 	case .Map_Areas: return html && n.name == "area"
 	case .Selected_Options, .Labels: return false   // collection_refresh
 	}

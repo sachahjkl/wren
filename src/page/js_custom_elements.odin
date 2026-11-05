@@ -7,7 +7,9 @@ package page
 //   * upgrade: an element with a defined name and no state yet was created by createElement, or inserted (by the
 //     parser, innerHTML, a script);
 //   * connected / disconnected: a custom element entered / left the document;
-//   * attribute changed: an attribute of a custom element changed (the engine keeps those its definition observes).
+//   * attribute changed: an attribute of a custom element changed (the engine keeps those its definition observes);
+//   * a form-associated custom element's form owner changed, it became disabled or enabled, its form was reset (package
+//     forms tells them: forms_face_callback).
 // The queue is drained by the engine (`wj_ce_process`) at the end of the browser call that filled it ([CEReactions]:
 // api_end, in every generated host function), at each microtask checkpoint, and after the parser inserted nodes.
 // Nothing of this runs before a page defines its first custom element: the mutation hook is off until then.
@@ -15,12 +17,16 @@ package page
 import "core:strings"
 import "wb:base"
 import "wb:dom"
+import "wb:forms"
 
 CE_UPGRADE      :: u8(1)
 CE_CONNECTED    :: u8(2)
 CE_DISCONNECTED :: u8(3)
 CE_ATTRIBUTE    :: u8(4)
 CE_ADOPTED      :: u8(5)
+CE_FORM_ASSOCIATED :: u8(6)
+CE_FORM_DISABLED   :: u8(7)
+CE_FORM_RESET      :: u8(8)
 
 // Element states (HTML "custom element state"): no entry = "undefined" (or not a custom element at all).
 CE_STATE_CUSTOM :: u8(1)
@@ -29,7 +35,7 @@ CE_STATE_FAILED :: u8(2)
 @(private) CE_MAX_DEPTH :: 64   // nested drains (reactions making reactions); deeper ones wait for the outer drain
 
 Custom_Elements :: struct {
-	defined: map[string]bool,           // owned keys
+	defined: map[string]bool,           // owned keys; true: the definition is form-associated
 	state:   map[base.Handle]u8,
 	queue:   [dynamic]Ce_Reaction,
 	depth:   int,                       // nested drains: a reaction's own DOM calls run what they queue before they return
@@ -43,6 +49,8 @@ Ce_Reaction :: struct {
 	name, old, value: string,        // attribute changes: owned
 	has_old, has_new: bool,
 	old_doc, new_doc: base.Handle,   // adoption (frames_access.odin)
+	form:             base.Handle,   // form associated: the new form owner (pinned while queued), NIL for none
+	disabled:         bool,          // form disabled: the new disabledness
 }
 
 // The document of a reaction's element: a queue may hold an element moved to another document (its definition stays in this realm).
@@ -77,7 +85,10 @@ ce_destroy :: proc(p: ^Page, ce: ^Custom_Elements) {
 
 @(private)
 ce_reaction_free :: proc(p: ^Page, r: ^Ce_Reaction) {
-	if d := ce_doc_of(p, r.element); d != nil { dom.unpin(d, r.element) }
+	if d := ce_doc_of(p, r.element); d != nil {
+		dom.unpin(d, r.element)
+		if r.form != base.NIL_HANDLE { dom.unpin(d, r.form) }
+	}
 	delete(r.name); delete(r.old); delete(r.value)
 }
 
@@ -87,12 +98,14 @@ ce_queue :: proc(p: ^Page, ce: ^Custom_Elements, r: Ce_Reaction) {
 		// an element moved here reacts in the realm that defined it: its queue, its next checkpoint if it is not running
 		owner := ce_reacting_page(p, ce, r.element)
 		if owner == nil || owner.jsdom == nil || !dom.pin(p.doc, r.element) { return }
+		if r.form != base.NIL_HANDLE { dom.pin(p.doc, r.form) }
 		append(&owner.jsdom.ce.queue, r)
 		if owner.objects.depth == 0 { host_post_checkpoint(owner) }
 		return
 	}
 	d := ce_doc_of(p, r.element)
 	if d == nil || !dom.pin(d, r.element) { return }
+	if r.form != base.NIL_HANDLE { dom.pin(d, r.form) }
 	append(&ce.queue, r)
 }
 
@@ -141,13 +154,49 @@ ce_mutation :: proc(p: ^Page, d: ^dom.Document, e: ^dom.Journal_Entry) {
 		root := dom.shadow_including_root(d, e.parent)
 		if rn := dom.get(d, root); root == d.root || (rn != nil && rn.as_document) { ce_walk(p, ce, d, e.node, false, true) }
 	case .Attribute:
-		if ce.state[e.node] != CE_STATE_CUSTOM { return }
-		cur, has := dom.get_attribute(d, e.node, e.name)
-		ce_queue(p, ce, Ce_Reaction{
-			kind = CE_ATTRIBUTE, element = e.node, name = strings.clone(e.name),
-			old = strings.clone(e.old), has_old = e.had_old, value = strings.clone(cur), has_new = has,
-		})
+		if ce.state[e.node] == CE_STATE_CUSTOM {
+			cur, has := dom.get_attribute(d, e.node, e.name)
+			ce_queue(p, ce, Ce_Reaction{
+				kind = CE_ATTRIBUTE, element = e.node, name = strings.clone(e.name),
+				old = strings.clone(e.old), has_old = e.had_old, value = strings.clone(cur), has_new = has,
+			})
+		}
 	}
+}
+
+// The document's mutation hook, form-associated custom elements' part: their form owners and disabledness after an
+// insertion, a removal, a form, id or disabled attribute's change (not after a style attribute an animation writes).
+@(private)
+face_mutation :: proc(p: ^Page, d: ^dom.Document, e: ^dom.Journal_Entry) {
+	if d != p.doc { return }
+	#partial switch e.kind {
+	case .Insert, .Remove:
+	case .Attribute: if e.name != "form" && e.name != "id" && e.name != "disabled" { return }
+	case: return
+	}
+	forms.face_sync(p.formctl.model)
+}
+
+// A form-associated custom element's callback is due (package forms): its reaction.
+@(private)
+forms_face_callback :: proc(user: rawptr, h: base.Handle, cb: forms.Face_Callback, form: base.Handle) {
+	p := (^Page)(user)
+	ce := ce_of(p)
+	if ce == nil { return }
+	switch cb {
+	case .Associated: ce_queue(p, ce, Ce_Reaction{kind = CE_FORM_ASSOCIATED, element = h, form = form})
+	case .Disabled:   ce_queue(p, ce, Ce_Reaction{kind = CE_FORM_DISABLED, element = h, disabled = true})
+	case .Enabled:    ce_queue(p, ce, Ce_Reaction{kind = CE_FORM_DISABLED, element = h})
+	case .Reset:      ce_queue(p, ce, Ce_Reaction{kind = CE_FORM_RESET, element = h})
+	}
+}
+
+// The element became custom: a form-associated one is a control of the forms model from now on.
+@(private)
+ce_became_custom :: proc(p: ^Page, ce: ^Custom_Elements, h: base.Handle) {
+	n := dom.get(p.doc, h)
+	if n == nil || !ce.defined[n.name] || p.formctl == nil { return }
+	forms.face_add(p.formctl.model, h)
 }
 
 // Runs the queued reactions in the engine ([CEReactions]: at the end of the browser call that queued them).
@@ -175,9 +224,9 @@ api_end :: #force_inline proc(c: ^Call) {
 	if c.page != nil && c.page.jsdom != nil && len(c.page.jsdom.ce.queue) > c.ce_mark && !c.hold_reactions { custom_elements_flush(c.page) }
 }
 
-CustomElements_define :: proc(c: ^Call, name: string) {
+CustomElements_define :: proc(c: ^Call, name: string, form_associated: bool) {
 	ce := &js_dom_state(c.page).ce
-	if !(name in ce.defined) { ce.defined[strings.clone(name)] = true }
+	if !(name in ce.defined) { ce.defined[strings.clone(name)] = form_associated }
 	mo_hook_update(c.page)
 }
 
@@ -186,13 +235,22 @@ CustomElements_pending :: proc(c: ^Call) -> u32 {
 	ce := ce_of(c.page)
 	if ce == nil { return 0 }
 	n := 0
-	for r in ce.queue { n += 9 + (r.kind == CE_ATTRIBUTE ? 13 + len(r.name) + len(r.old) + len(r.value) : 0) + (r.kind == CE_ADOPTED ? 16 : 0) }
+	for r in ce.queue {
+		n += 9
+		switch r.kind {
+		case CE_ATTRIBUTE: n += 13 + len(r.name) + len(r.old) + len(r.value)
+		case CE_ADOPTED: n += 16
+		case CE_FORM_ASSOCIATED: n += 8
+		case CE_FORM_DISABLED: n += 1
+		}
+	}
 	return u32(n)
 }
 
 // The queued reactions, taken: per reaction u8 kind, u64 element, then for an attribute change u32 + bytes for the
 // name, the old value and the new one, and a u8 of flags (1: there was an old value, 2: there is a new one); for an
-// adoption the two Document nodes.
+// adoption the two Document nodes; for a form owner's change the form (0: none); for a disabledness change a u8 (1:
+// disabled).
 CustomElements_take :: proc(c: ^Call) -> []u8 {
 	ce := ce_of(c.page)
 	if ce == nil || len(ce.queue) == 0 { return nil }
@@ -217,8 +275,13 @@ CustomElements_take :: proc(c: ^Call) -> []u8 {
 			put_u64(&b, u64(r.old_doc))
 			put_u64(&b, u64(r.new_doc))
 		}
-		// the engine wraps the element before anything can free it: its wrapper pins it from then on
-		if ed := ce_doc_of(c.page, r.element); ed != nil { dom.pin(ed, r.element) }
+		if r.kind == CE_FORM_ASSOCIATED { put_u64(&b, u64(r.form)) }
+		if r.kind == CE_FORM_DISABLED { put_u8(&b, r.disabled ? 1 : 0) }
+		// the engine wraps the element (and the form) before anything can free it: its wrapper pins it from then on
+		if ed := ce_doc_of(c.page, r.element); ed != nil {
+			dom.pin(ed, r.element)
+			if r.form != base.NIL_HANDLE { dom.pin(ed, r.form) }
+		}
 		ce_reaction_free(c.page, &r)
 	}
 	clear(&ce.queue)
@@ -236,8 +299,10 @@ CustomElements_create :: proc(c: ^Call, name: string) -> (u64, Api_Error) {
 	d := call_doc(c)
 	if d == nil { return 0, fail(c, .Invalid_State, "no document") }
 	h := dom.create_element_ns(d, name, .HTML)
-	js_dom_state(c.page).ce.state[h] = CE_STATE_CUSTOM
+	ce := &js_dom_state(c.page).ce
+	ce.state[h] = CE_STATE_CUSTOM
 	dom.custom_element_set_defined(d, h, true)
+	ce_became_custom(c.page, ce, h)
 	return u64(h), .None
 }
 
@@ -246,6 +311,7 @@ Element_setCustomState :: proc(c: ^Call, element: Api_Element, state: u32) {
 	h := H(element.handle)
 	if state == 0 { delete_key(&ce.state, h) } else { ce.state[h] = u8(state) }
 	dom.custom_element_set_defined(c.page.doc, h, state == u32(CE_STATE_CUSTOM))
+	if state == u32(CE_STATE_CUSTOM) { ce_became_custom(c.page, ce, h) }
 }
 
 // A clone made in the document's own realm (cloneNode of a node of the document, importNode): its elements of a defined
