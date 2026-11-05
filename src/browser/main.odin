@@ -1796,9 +1796,10 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("bfcache_shutdown")
 	bfcache_shutdown(app)
 	host.shutdown_step("tab_free")
-	for t in tabs_all(app) { tab_free(app, t) }   // (their session storage goes with the storage manager below)
-	host.shutdown_step("clear")
+	// (out of the strips first, as a tab closed by hand: a request that ends with its tab looks the tabs up, net_observe)
+	tabs := tabs_all(app)
 	windows_forget_tabs(app)
+	for t in tabs { tab_free(app, t) }   // (their session storage goes with the storage manager below)
 	host.shutdown_step("urlbar_destroy")
 	urlbar_destroy(app)   // urlbar.odin
 	sidebar_destroy(&window_own(app).sidebar)   // tab_sidebar.odin
