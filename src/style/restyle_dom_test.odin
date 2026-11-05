@@ -909,3 +909,18 @@ restyle_dom_has_chain :: proc(t: ^testing.T) {
 	dom.release(f.doc, k1)
 	expect_partial(t, f, "the last one of that ancestor")
 }
+// A style attribute of another text that computes to the same style: the restyle gives back what it allocated, not what the
+// inline cache keeps (the cache's key and rule were read from memory a later allocation had taken: npr.org, freed memory poisoned).
+@(test)
+a_restyle_that_changes_nothing_leaves_the_inline_cache_whole :: proc(t: ^testing.T) {
+	f := rx_load(`<!doctype html><body><p id=a style="color: red">a</p></body>`)
+	defer rx_unload(f)
+	a := by_id(f, "a")
+	texts := []string{"color:red", "color: red;", "color : red"}
+	for text in texts {
+		dom.set_attribute(f.doc, a, "style", text)
+		expect_partial(t, f, text, 1)
+	}
+	for text in texts { testing.expectf(t, text in f.st.inline_rules, "%q is still found", text) }
+	for k, r in f.st.inline_rules { testing.expectf(t, r != nil && len(r.decls) == 1, "%q keeps its rule", k) }
+}
