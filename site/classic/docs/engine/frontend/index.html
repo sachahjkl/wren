@@ -54,7 +54,7 @@
 
 <p>Le paquet <code>frontend</code> est la moitié « amont » du moteur JavaScript écrit en Odin. Il transforme du source
 ECMAScript en <strong>bytecode QuickJS-ng 0.17</strong>, identique octet pour octet à ce que produit <code>JS_WriteObject</code>
-(<code>BC_VERSION 28</code>, drapeaux <code>JS_WRITE_OBJ_BYTECODE | JS_WRITE_OBJ_STRIP_SOURCE</code>). L'autre moitié (E2 : valeurs,
+(<code>BC_VERSION 28</code>, drapeaux <code>JS_WRITE_OBJ_BYTECODE | JS_WRITE_OBJ_STRIP_SOURCE</code>), à deux choix près depuis le round 31 de <a href="../../../docs/performance/">performance.md</a> : <code>o["x"]</code> est <code>o.x</code>, et <code>return f()</code> reste un appel et un retour (plus de <code>tail_call</code>). L'autre moitié (E2 : valeurs,
 objets, GC, interpréteur, fonctions natives) relit ce bytecode. Les deux moitiés ne se rencontrent qu'au
 <strong>format de bytecode</strong> : <code>opcodes.odin</code>, <code>atoms.odin</code>, <code>serialize.odin</code>.</p>
 <p>Le paquet compile pour <code>windows_amd64</code>, <code>linux_amd64</code> et <code>freestanding_wasm32</code>. Toute allocation passe par
