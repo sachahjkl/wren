@@ -136,21 +136,35 @@ sp_concat :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Valu
 }
 
 // Find `pat` in `s` at or after `from` (-1 if absent).
+// The search of indexOf, includes, split, replace: the units of each width read straight, the first and the last unit
+// of the pattern tried before the rest.
+@(private = "file")
+units_index_of :: proc "contextless" (h: [^]$H, n: int, p: [^]$P, m: int, from: int) -> int {
+	c0, cl := H(p[0]), H(p[m - 1])
+	if P(c0) != p[0] || P(cl) != p[m - 1] {return -1}   // (a unit no string of this width holds)
+	last := m - 1
+	outer: for i := from; i <= n - m; i += 1 {
+		if h[i] != c0 || h[i + last] != cl {continue}
+		for j in 1 ..< last {
+			if P(h[i + j]) != p[j] {continue outer}
+		}
+		return i
+	}
+	return -1
+}
+
 str_index_of :: proc(rt: ^Runtime, s, pat: ^JS_String, from: int) -> int {
 	fs := str_flat(rt, s)
 	fp := str_flat(rt, pat)
 	n, m := int(fs.len), int(fp.len)
 	if m == 0 {return from <= n ? from : -1}
 	if m > n {return -1}
-	c0 := str_at(fp, 0)
-	outer: for i := from; i <= n - m; i += 1 {
-		if str_at(fs, i) != c0 {continue}
-		for j in 1 ..< m {
-			if str_at(fs, i + j) != str_at(fp, j) {continue outer}
-		}
-		return i
+	if fs.is_wide {
+		if fp.is_wide {return units_index_of(str_u16(fs), n, str_u16(fp), m, from)}
+		return units_index_of(str_u16(fs), n, str_u8(fp), m, from)
 	}
-	return -1
+	if fp.is_wide {return units_index_of(str_u8(fs), n, str_u16(fp), m, from)}
+	return units_index_of(str_u8(fs), n, str_u8(fp), m, from)
 }
 
 str_last_index_of :: proc(rt: ^Runtime, s, pat: ^JS_String, from: int) -> int {
@@ -683,6 +697,29 @@ get_substitution :: proc(ctx: ^Context, sb: ^String_Builder, matched: ^JS_String
 	return true
 }
 
+// A replacement without `$`, of one match in a Latin-1 string (the replace of a URL's scheme, of a query, of a class name): the result made at once. Nil: another case.
+@(private = "file")
+replace_once_latin1 :: proc(rt: ^Runtime, s, rs: ^JS_String, pos, matched: int) -> ^JS_String {
+	fs, fr := str_flat(rt, s), str_flat(rt, rs)
+	if fs.is_wide || fr.is_wide {return nil}
+	r := str_u8(fr)[:fr.len]
+	for c in r {if c == '$' {return nil}}
+	tail := int(fs.len) - pos - matched
+	total := pos + len(r) + tail
+	if total > STRING_LEN_MAX {return nil}
+	if total == 0 {return rt.empty_string}
+	if total == 1 {
+		c := pos == 1 ? str_u8(fs)[0] : len(r) == 1 ? r[0] : str_u8(fs)[pos + matched]
+		if rt.char_strings[c] != nil {return rt.char_strings[c]}
+	}
+	out := str_alloc(rt, total, false)
+	d := str_u8(out)
+	copy(d[:pos], str_u8(fs)[:pos])
+	copy(d[pos:][:len(r)], r)
+	copy(d[pos + len(r):][:tail], str_u8(fs)[pos + matched:][:tail])
+	return out
+}
+
 @(private = "file")
 string_replace_generic :: proc(ctx: ^Context, s: ^JS_String, search: Value, replace: Value, all: bool) -> Value {
 	rt := ctx.rt
@@ -694,15 +731,18 @@ string_replace_generic :: proc(ctx: ^Context, s: ^JS_String, search: Value, repl
 		rs = to_str(ctx, replace)
 		if rs == nil {return EXCEPTION}
 	}
+	p := str_index_of(rt, s, ss, 0)
+	if p < 0 {return mk_str(s)}
+	if !functional && !all {
+		if r := replace_once_latin1(rt, s, rs, p, int(ss.len)); r != nil {return mk_str(r)}
+	}
 	positions := make([dynamic]int, 0, 4, tmp(rt))
 	adv := max(int(ss.len), 1)
-	p := str_index_of(rt, s, ss, 0)
 	for p >= 0 {
 		append(&positions, p)
 		if !all {break}
 		p = str_index_of(rt, s, ss, p + adv)
 	}
-	if len(positions) == 0 {return mk_str(s)}
 	sb := sb_init(rt, int(s.len))
 	end := 0
 	for pos in positions {
