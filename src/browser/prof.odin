@@ -73,6 +73,13 @@ Phase_Clock :: struct {
 }
 
 
+// When the phase that runs started (WREN_SPANS), and what a span calls it.
+phase_span_start: [Phase]i64
+PHASE_NAMES := [Phase]string{
+	.None = "none", .Idle = "idle", .Frame = "frame", .Wait = "wait", .Events = "events", .Loop = "loop", .Input = "input", .Build_UI = "build_ui", .UI_Draw = "ui_draw", .Styles = "styles", .Layout = "layout",
+	.Paint_Items = "paint_items", .Submit = "submit", .Present = "present", .Animation = "animation", .Tex_Create = "tex_create", .Tex_Upload = "tex_upload",
+}
+
 // The phases as zones of the external profilers (package trace: Tracy, ETW), made once at the process's start (trace_start).
 phase_sites: [Phase]trace.Site
 
@@ -118,6 +125,7 @@ qpc_ms_since :: proc "contextless" (t0: i64) -> f64 {
 
 prof_begin :: proc "contextless" (p: Phase) {
 	trace.begin(&phase_sites[p])
+	phase_span_start[p] = base.span_now()
 	if !the_app.phase_clock.on { return }
 	the_app.phase_clock.started[p] = qpc()
 	the_app.phase_clock.cur = p
@@ -125,6 +133,7 @@ prof_begin :: proc "contextless" (p: Phase) {
 
 prof_end :: proc "contextless" (p: Phase) {
 	trace.end(&phase_sites[p])
+	base.span_add(.Phase, phase_span_start[p], PHASE_NAMES[p])
 	if !the_app.phase_clock.on { return }
 	the_app.phase_clock.acc[p] += f64(qpc() - the_app.phase_clock.started[p]) * 1000 / the_app.phase_clock.freq
 	// the phase that was running underneath (if any) resumes

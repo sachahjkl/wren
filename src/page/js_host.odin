@@ -58,6 +58,15 @@ Engine_jitPoll :: proc(c: ^Call, ticket: i32) -> i32 {
 	return js.jit_poll(c.inst, ticket)
 }
 
+// The stages of the engine's work seen from WREN_SPANS. They do not overlap but for a collection during a compilation.
+@(private = "file", thread_local) engine_span_start: [base.Span_Kind]i64
+
+Engine_span :: proc(c: ^Call, kind: i32, begin: bool) {
+	k := base.Span_Kind(kind)
+	if begin { engine_span_start[k] = base.span_now(); return }
+	base.span_add(k, engine_span_start[k], "")
+}
+
 Engine_timezoneOffset :: proc(c: ^Call, time_ms: f64) -> i32 { return js.timezone_offset(time_ms) }
 
 Engine_timeZone :: proc(c: ^Call) -> string { return js.timezone_name() }

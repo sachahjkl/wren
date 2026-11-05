@@ -97,6 +97,7 @@ Script_Fetch :: struct {
 	opaque:     bool,                   // no-cors cross-origin: integrity cannot be checked
 	claimed:    bool,                   // an element uses it (a preload nobody claimed is dropped with the page)
 	compiling:  bool,                   // its bytecode is being made on another thread
+	span_start, span_arrived, span_compiled: i64,   // (WREN_SPANS) its request, its last byte, its bytecode
 	parser_inserted: bool,
 }
 
@@ -718,6 +719,7 @@ script_execute :: proc(p: ^Page, sc: ^Page_Script) {
 	// the result: a fetched classic script (checked), a module graph
 	if sc.download != nil && sc.state == .Fetching {
 		f := sc.download
+		script_life_spans(f, sc.url)
 		if f.state == .Failed {
 			sc.state = .Failed
 		} else {
@@ -778,6 +780,16 @@ script_execute :: proc(p: ^Page, sc: ^Page_Script) {
 	sc.source = nil
 	if sc.external { dispatch_event(p, sc.element, dom.Event{type = "load"}) }
 	if !p.closed { script_retire(p, sc) }
+}
+
+// WREN_SPANS: the life of an external script up to its run.
+@(private)
+script_life_spans :: proc(f: ^Script_Fetch, url: string) {
+	if !base.spans_enabled() || f.span_arrived == 0 { return }
+	compiled := max(f.span_compiled, f.span_arrived)
+	base.span_add_until(.Fetch, f.span_start, f.span_arrived, url, copy_label = true)
+	base.span_add_until(.Compile_Wait, f.span_arrived, compiled, url, copy_label = true)
+	base.span_add(.Turn_Wait, compiled, url, copy_label = true)
 }
 
 // A script that ran (or failed) is forgotten with what it alone used: a page inserting scripts for its whole life
@@ -891,6 +903,7 @@ the_end :: proc(p: ^Page) -> bool {
 		}
 		s.content_loaded = true
 		s.timing.dcl_ms = now_ms(p)
+		if frame_navigable_of(p) == nil { base.span_mark("DOMContentLoaded") }
 		dispatch_event(p, p.doc.root, dom.Event{type = "DOMContentLoaded", bubbles = true})
 		s.timing.dcl_end_ms = now_ms(p)
 		return true
@@ -906,6 +919,7 @@ the_end :: proc(p: ^Page) -> bool {
 	ready_state_set(p, .Complete)
 	if p.closed { return true }
 	s.timing.load_ms = now_ms(p)
+	if frame_navigable_of(p) == nil { base.span_mark("load") }
 	fire_window_event(p, dom.Event{type = "load"})
 	s.timing.load_end_ms = now_ms(p)
 	if p.closed { return true }
@@ -1003,6 +1017,7 @@ script_fetch_start :: proc(p: ^Page, u: string, cors: Cors_Setting, nonce: strin
 	f.cors = cors
 	f.state = .Fetching
 	f.parser_inserted = parser_inserted
+	f.span_start = base.span_now()
 	append(&s.fetches, f)
 	mode := cors == .No_Cors ? fetch.Mode.No_Cors : fetch.Mode.Cors
 	cred := cors == .Anonymous ? fetch.Credentials.Same_Origin : fetch.Credentials.Include
@@ -1048,6 +1063,7 @@ script_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		} else {
 			append(&f.bytes, ..ev.data)
 			f.state = .Ready
+			f.span_arrived = base.span_now()
 			compile_offthread(p, f)
 		}
 		scripts_pump(p)

@@ -25,6 +25,7 @@ when wj.WJ_JSRT {
 		// its trace goes to the profile of the page's functions, never to the console, where a test compares what the scripts print)
 		if max_bytecode_bytes > 0 {jsrt.jit_cfg.max_code_bytes = int(max_bytecode_bytes)}
 		jsrt.jit_configure(flags & 1 != 0 && max_functions != 0, wj.wr_Engine_jitCompile, wj.wr_Engine_jitPoll, nil, int(call_threshold))
+		jsrt.jit_cfg.loop_sightings = int(loop_threshold)
 	}
 
 	// WREN_JS_PROFILE: why code stays in the interpreter. What the JIT refuses and every deopt counted in the profile of the page's functions (wj_profile_dump).
@@ -32,6 +33,19 @@ when wj.WJ_JSRT {
 	wj_jit_trace :: proc "c" (on: i32) {
 		jsrt.jit_cfg.log = on != 0 ? proc(msg: string) { wj.prof_note(msg) } : nil
 		jsrt.jit_cfg.trace = on != 0
+	}
+
+	// WREN_SPANS: the engine says when it compiles, collects, reads bytecode and translates.
+	@(export, link_name = "wj_spans_on")
+	wj_spans_on :: proc "c" () {
+		jsrt.span_hook = proc "c" (kind: i32, begin: bool) { wj.wr_Engine_span(kind, begin ? 1 : 0) }
+	}
+
+	// WREN_JS_PROFILE_TIME: the counter of the interrupt checks (wj_profile_tick_address).
+	@(export, link_name = "wj_profile_counter_address")
+	wj_profile_counter_address :: proc "c" () -> u32 {
+		rt := cast(^jsrt.Runtime)wj.JS_GetRuntime(wj.wj_the_realm.ctx)
+		return u32(uintptr(&rt.interrupt_counter))
 	}
 
 	@(export, link_name = "wj_jit_stat")

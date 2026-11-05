@@ -1,6 +1,7 @@
 package wasm
 
 import "core:time"
+import "wb:base"
 
 // Time spent in guest code on the calling thread: from the outermost host -> guest call to its return, whatever the
 // instance (a guest calling the host which calls another guest counts once). Off by default; a thread turns it on for
@@ -24,6 +25,25 @@ guest_timing :: proc(on: bool) { guest_clock.on = on }
 // Nanoseconds spent in guest code and outermost calls on this thread since measuring began (monotonic: take
 // differences).
 guest_time :: proc() -> (ns: i64, calls: i64) { return guest_clock.ns, guest_clock.calls }
+
+// WREN_SPANS: the outermost calls of this thread, by the export they call.
+@(private, thread_local) guest_span_depth: int
+@(private, thread_local) guest_span_start: i64
+@(private, thread_local) guest_span_label: string
+
+@(private)
+guest_span_enter :: #force_inline proc() {
+	if !base.spans_enabled() { return }
+	if guest_span_depth == 0 { guest_span_start = base.span_now() }
+	guest_span_depth += 1
+}
+
+@(private)
+guest_span_leave :: #force_inline proc() {
+	if !base.spans_enabled() || guest_span_depth == 0 { return }
+	guest_span_depth -= 1
+	if guest_span_depth == 0 { base.span_add(.Guest, guest_span_start, guest_span_label) }
+}
 
 @(private)
 guest_clock_enter :: #force_inline proc() {

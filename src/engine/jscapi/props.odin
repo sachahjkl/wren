@@ -580,7 +580,9 @@ JS_ReadObject :: proc "c" (c: ^Context, buf: [^]u8, buf_len: uint, flags: i32) -
 	}
 	m := js.host_enter(ctx.rt)
 	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
+	js.span_stage(.deserialize, true)
 	v := js.read_object(ctx, buf[:buf_len])
+	js.span_stage(.deserialize, false)
 	// a module read is among the loaded ones (as in QuickJS), found by name when it is imported
 	if v.tag == .module { js.module_register(ctx.rt, cast(^js.Module)v.u.ptr) }
 	return own(ctx.rt, v)

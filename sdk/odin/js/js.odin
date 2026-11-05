@@ -38,6 +38,7 @@ foreign _m_js {
 	@(link_name = "Engine_locale") _Engine_locale :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Engine_jitCompile") _Engine_jitCompile :: proc(module: [^]u8, module_len: u32) -> i32 ---
 	@(link_name = "Engine_jitPoll") _Engine_jitPoll :: proc(ticket: i32) -> i32 ---
+	@(link_name = "Engine_span") _Engine_span :: proc(kind: i32, begin: i32) ---
 	@(link_name = "Node_wrap") _Node_wrap :: proc(node: u64) -> u32 ---
 	@(link_name = "Document_createElementWrapped") _Document_createElementWrapped :: proc(local_name: [^]u8, local_name_len: u32, _ret: ^WrappedNode) -> core.Error ---
 	@(link_name = "Document_createTextWrapped") _Document_createTextWrapped :: proc(text: [^]u8, text_len: u32, _ret: ^WrappedNode) -> core.Error ---
@@ -138,6 +139,11 @@ Engine_jitCompile :: proc "contextless" (module: []u8) -> i32 {
 // compiles; 0 when it failed (the ticket is then forgotten).
 Engine_jitPoll :: proc "contextless" (ticket: i32) -> i32 {
 	return _Engine_jitPoll(ticket)
+}
+
+// WREN_SPANS (base/spans.odin): the engine enters (`begin`) or leaves a stage of its own work: a Span_Kind.
+Engine_span :: proc "contextless" (kind: i32, begin: bool) {
+	_Engine_span(kind, i32(1 if begin else 0))
 }
 
 // A JavaScript object (its wrapper) now refers to `node`: pins it (it stays alive while pinned, even out of the tree)

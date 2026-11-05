@@ -10,6 +10,7 @@
 //                                               measures realm creation (instantiate + start) and its memory
 //   jsengine verify [-jit-threshold n] [-jit-step] file.js...
 //   jsengine reach file.js   (the JIT: nothing refused, the hot code compiled)
+//   jsengine cold file.js    (the JIT: nothing translated at the default thresholds)
 //                                               runs each script interpreted and with the JIT: same output
 //                                               measures realm creation (instantiate + start) and its memory
 // Only the engine's own imports are provided (console, errors, time zone, clock): anything of the web API traps.
@@ -165,9 +166,12 @@ engine_jit_poll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 	return nil
 }
 
+engine_span :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap { return nil }
+
 IMPORTS := [?]wasm.Import{
 	{module = "js", name = "Engine_jitPoll", fn = engine_jit_poll, params = {.I32}, results = {.I32}},
 	{module = "js", name = "Engine_jitCompile", fn = engine_jit, params = {.I32, .I32}, results = {.I32}},
+	{module = "js", name = "Engine_span", fn = engine_span, params = {.I32, .I32}},
 	{module = "js", name = "Engine_console", fn = engine_console, params = {.I32, .I32, .I32}},
 	{module = "js", name = "Engine_reportException", fn = engine_report, params = {.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}},
 	{module = "js", name = "Engine_storeBytecode", fn = engine_store, params = {.I32, .I32}},
@@ -245,6 +249,26 @@ jit_trace_start :: proc(inst: ^wasm.Instance) {
 	wasm.call_raw(inst, "wj_jit_trace", on[:])
 }
 
+// jsengine cold file.js: the script at the default thresholds, compiled synchronously: nothing of it may be translated. A translation costs a load
+// more than a function called a few thousand times gives back.
+cmd_cold :: proc(args: []string) {
+	c := parse_common(args)
+	jit.enabled = true
+	jit.background_threads = 0
+	setup()
+	r, ok := realm_new(read_file(c.image), c.raw)
+	if !ok { os.exit(1) }
+	for path in c.rest {
+		if js.eval_script(r.inst, read_file(path), path) != .Ok { fmt.eprintln("cold: the script failed:", r.inst.last_error); os.exit(1) }
+	}
+	st, _ := js.jit_stats(r.inst)
+	fmt.printfln("cold: %d translated", int(st.compiled))
+	if st.compiled > 0 {
+		fmt.eprintln("cold: FAILED")
+		os.exit(1)
+	}
+}
+
 // The lines of the JIT in the profile of the page's functions: "count<TAB>count<TAB>jit: ...".
 jit_trace_lines :: proc(inst: ^wasm.Instance) -> []string {
 	r, res := wasm.call_i32(inst, "wj_alloc", i32(JIT_TRACE_BYTES))
@@ -263,7 +287,7 @@ jit_trace_print :: proc(inst: ^wasm.Instance) {
 	for line in jit_trace_lines(inst) { fmt.eprintln(line) }
 }
 
-// jsengine reach file.js: the script with the JIT, as a page runs it (the default thresholds, compiled synchronously so that
+// jsengine reach file.js: the script with the JIT, as a page runs it (at the thresholds given, compiled synchronously so that
 // the result does not depend on a compile thread): nothing refused, and most of the interpreter's interrupt checks in
 // compiled code (at its budget exits) rather than in code it left to the interpreter.
 cmd_reach :: proc(args: []string) {
@@ -333,6 +357,7 @@ main :: proc() {
 	case "mem": cmd_mem(os.args[2:])
 	case "verify": cmd_verify(os.args[2:])
 	case "reach": cmd_reach(os.args[2:])
+	case "cold": cmd_cold(os.args[2:])
 	case: usage()
 	}
 }

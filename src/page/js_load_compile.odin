@@ -11,6 +11,7 @@ package page
 
 import "core:sync"
 import "core:time"
+import "wb:base"
 import "wb:host"
 import "wb:js"
 import "wb:wasm"
@@ -183,11 +184,13 @@ compile_main :: proc(data: rawptr) {
 		sync.mutex_unlock(&the_pages.compiler.mu)
 		if inst != nil && !inst.dead {
 			t0 := time.tick_now()
+			at := base.span_now()
 			ctx_page.js.pending_key = job.key
 			ctx_page.js.has_pending_key = true
 			job.ok = js.compile(inst, job.source, job.url, flags = job.module != "" ? {.Module} : {}) == .Ok
 			ctx_page.js.has_pending_key = false
 			job.ms = time.duration_milliseconds(time.tick_since(t0))
+			base.span_add(.Off_Thread, at, job.url, copy_label = true)
 		}
 		sync.mutex_lock(&the_pages.compiler.mu)
 		the_pages.compiler.jobs += 1
@@ -220,7 +223,7 @@ compile_done :: proc(data: rawptr) {
 		return
 	}
 	for f in p.scripts.fetches {
-		if f == job.download { f.compiling = false; scripts_pump(p); return }
+		if f == job.download { f.compiling = false; f.span_compiled = base.span_now(); scripts_pump(p); return }
 	}
 }
 

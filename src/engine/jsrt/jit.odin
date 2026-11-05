@@ -57,7 +57,7 @@ JIT_MAX_REJITS :: 8
 JIT_MAX_DEOPTS :: 16   // deopt exits after which a loop is not compiled again
 JIT_MAX_LEARNS :: 12   // learn exits (a site that missed) after which a loop is not compiled again
 JIT_DEFAULT_MAX_CODE_BYTES :: 64 << 10   // the largest function compiled when the host does not choose
-JIT_DEFAULT_CALL_THRESHOLD :: 2000        // the calls after which a function is compiled whole, when the host does not choose
+JIT_DEFAULT_CALL_THRESHOLD :: 100_000     // the calls after which a function is compiled whole, when the host does not choose
 JIT_CALLS_NEVER :: min(int) / 2          // where a function that is not compiled whole counts its calls from
 JIT_MAX_NEST :: 128    // compiled code running one inside another (a call made by compiled code to compiled code): past it, interpreted
 JIT_PROBE :: 64        // entries after which a loop that runs too few iterations per entry is dropped
@@ -96,6 +96,7 @@ Jit_Cfg :: struct {
 	trace:          bool,
 	max_code_bytes: int,
 	call_threshold: int,
+	loop_sightings: int,   // the interrupt checks that must meet a loop's back edge before it is compiled
 	compile:        proc "contextless" (module: [^]u8, n: u32) -> i32,   // Engine_jitCompile: a table index, 0 refused, < 0 a ticket
 	poll:           proc "contextless" (ticket: i32) -> i32,             // Engine_jitPoll
 	log:            proc(msg: string),
@@ -462,6 +463,7 @@ Jit_Loop :: struct {
 	runs:       int,   // entries of its code, for the share of them that leaves through a deopt
 	rt:         ^Runtime,
 	recorded:   int,   // the runs recorded before it was compiled (jit_record)
+	sightings:  int,   // the interrupt checks that met its back edge
 	colds:      int,   // cold exits since the last translation
 	hit:        []u8,  // the bytecode the recorded runs reached, a bit per byte (nil: all of it is compiled)
 	edges:      int,   // back edges of the run being recorded
@@ -634,6 +636,8 @@ jit_back_edge :: proc(ctx: ^Context, f: ^Frame, b: ^Function_Bytecode, target, r
 			info.n += 1
 		}
 		if jl.state == .fresh && jl.recorded == 0 {
+			jl.sightings += 1
+			if jl.sightings < jit_cfg.loop_sightings {return .none, 0, 0}
 			// (one iteration recorded, up to this back edge)
 			jl.recorded = 1
 			jl.edges = 0
@@ -4657,6 +4661,8 @@ jit_has_mapped_arguments :: proc(b: ^Function_Bytecode) -> bool {
 @(private = "file")
 jit_build :: proc(ctx: ^Context, f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, sp: int) {
 	rt := ctx.rt
+	span_stage(.jit, true)
+	defer span_stage(.jit, false)
 	saved := context.allocator
 	context.allocator = tmp(rt)
 	defer context.allocator = saved
