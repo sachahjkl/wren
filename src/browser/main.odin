@@ -1148,6 +1148,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		case .Mouse_Press:
 			// a press of any button ends a latched autoscroll session, and only that (page_autoscroll.odin)
 			if autoscroll_page_click(app) { continue }
+			if side_button_command(ev.button) != .None { continue }   // (the release acts, and a page has no such button to be told of)
 			if !inside || !t.layout.valid { continue }
 			if ui.ctx_menu_any_open() { continue }   // the press closes the menu (the toolkit's)
 			local := ev.pos - wnd.page_rect.min + doc_scroll_vec(t)
@@ -1162,6 +1163,10 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			if ev.button == .Left && !draggable { selection_pointer_down(app, t, ev, pressed, allowed) }
 			if ev.button == .Right { page_context_press(app, t, ev.pos) }
 		case .Mouse_Release:
+			if c := side_button_command(ev.button); c != .None {
+				host.post(&app.loop, app_command_run, new_clone(App_Command_Post{app, c}))
+				continue
+			}
 			if autoscroll_page_release(app, ev) { continue }   // the middle button up: hold mode ends, a tap latches (page_autoscroll.odin)
 			if ev.button == .Left { page_set_active(t.page, base.NIL_HANDLE) }
 			dragged := selection_pointer_up(app, t, ev)   // before anything that may skip the release: a gesture left open selects text under a button that is no longer held

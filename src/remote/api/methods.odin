@@ -448,8 +448,8 @@ style_of :: proc(list: []Style_Property, name: string) -> string {
 ////////////////////////////////
 // Input: Wren's own path (platform.inject_event), never the machine's mouse or keyboard
 
-Button :: enum u8 { Left, Right, Middle }
-BUTTON_NAMES := [Button]string{.Left = "left", .Right = "right", .Middle = "middle"}
+Button :: enum u8 { Left, Right, Middle, Back, Forward }
+BUTTON_NAMES := [Button]string{.Left = "left", .Right = "right", .Middle = "middle", .Back = "back", .Forward = "forward"}
 
 // What a point is measured from: the page's corner in CSS pixels, or the window's in its pixels.
 Space :: enum u8 { Page, Window }

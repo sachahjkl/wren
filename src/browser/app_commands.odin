@@ -7,6 +7,7 @@ package browser
 // systems the toolkit surfaces no such events, so app_commands_other.odin's init / destroy are honest no-ops; this file
 // holds the pure mapping, the preference and the command runner all backends share.
 
+import "toolkit:platform"
 import "wb:config"
 
 APP_COMMAND_PREFS := [?]config.Def{
@@ -26,6 +27,15 @@ browser_command_of_appcommand :: proc(cmd: int) -> Browser_Command {
 	case 3: return .Refresh   // APPCOMMAND_BROWSER_REFRESH
 	case 4: return .Stop      // APPCOMMAND_BROWSER_STOP
 	case 7: return .Home      // APPCOMMAND_BROWSER_HOME
+	}
+	return .None
+}
+
+// The side buttons of the mouse. On Windows the hook of app_commands_windows.odin takes them before the toolkit; these come from X11, Wayland and a driven session.
+side_button_command :: proc(b: platform.Mouse_Button) -> Browser_Command {
+	#partial switch b {
+	case .Back: return .Back
+	case .Forward: return .Forward
 	}
 	return .None
 }

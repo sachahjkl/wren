@@ -5,6 +5,7 @@ package e2e_scenarios
 // loads again and its state is restored, once the late part of the page has come). The time of each traversal is logged. And back and forward
 // in a frame of examples/site/history/framed.html.
 
+import "core:fmt"
 import "core:log"
 import "core:strings"
 import "core:testing"
@@ -142,4 +143,26 @@ window_open_keeps_the_initial_window :: proc(t: ^testing.T) {
 	e2e.wait_until(s, string(OTHER_HOST), at_address, "the window opened to another origin")
 	e2e.wait_load(s)
 	e2e.expect_eval(s, "String(window.kept)", "undefined", "a window opened to another origin has a Window of its own")
+}
+
+// The side buttons of the mouse, as X11 and Wayland give them: the release goes through the history, and the page hears of neither.
+@(private = "file") SIDE_BUTTON_AT :: e2e.Point{100, 100}
+@(private = "file") ON_NEXT :: `location.pathname.endsWith("next.html")`
+
+@(test)
+the_side_buttons_of_the_mouse_go_through_the_history :: proc(t: ^testing.T) {
+	server := e2e.test_server(t)
+	s := e2e.start(t, {size = HISTORY_SIZE, url = e2e.url(server, LONG_PAGE), prefs = {"history.bfcache.enabled=false"}})
+	e2e.wait_load(s)
+	e2e.navigate(s, e2e.url(server, "/site/history/next.html"))
+	e2e.eval(s, `window.heard = 0; addEventListener("mousedown", () => heard++); addEventListener("mouseup", () => heard++); 1`)
+	e2e.press(s, SIDE_BUTTON_AT, button = .Back)
+	e2e.expect_eval(s, `String(heard)`, "0", "the page hears nothing of a side button")
+	e2e.expect_eval(s, fmt.tprintf("String(%s)", ON_NEXT), "true", "the press alone goes nowhere")
+	e2e.release(s, SIDE_BUTTON_AT, button = .Back)
+	e2e.wait_until(s, "long.html", at_address, "the page before")
+	e2e.wait_load(s)
+	e2e.press(s, SIDE_BUTTON_AT, button = .Forward)
+	e2e.release(s, SIDE_BUTTON_AT, button = .Forward)
+	e2e.wait_until(s, string(NEXT_PAGE), at_address, "the page after")
 }
