@@ -1,8 +1,18 @@
 # Crash reports and the symbols of a build
 
 When Wren crashes, `src/tools/crashtrace` writes `<profile>\crashes\crash <date> <time>.txt` (the faulting thread's
-stack) and a minidump beside it (`.dmp`). A session that ended with no chance to write one (a fail-fast, a kill) is
-reported at the next start as `unclean exit <date>.txt`. A crash that wrote its report leaves none, nor does a close ended by the shutdown watchdog (`shutdown.log` in the profile says what it waited for).
+stack) and a minidump beside it (`.dmp`). A program that ended itself with its session open (`ExitProcess` or `TerminateProcess`, whoever called them in the executable) leaves
+`exit <date>.txt` with the stack that asked for it. A session that ended with no chance to write one is reported at the next start as `unclean exit <date>.txt`, which says what is left to know: Windows'
+Application Error event of that process (a fail-fast), a restart of the machine, or a kill from outside. A crash that wrote its report leaves none, nor does a close ended by the shutdown watchdog
+(`shutdown.log` in the profile says what it waited for).
+
+What is written and when, for a report to survive what caused it:
+
+- Every faulting thread waits for the report. A second fault (the threads of a pass reading the same freed block) used to end the process under the writer.
+- The filter runs only if the system's search for a handler walks the stack to the thread's start. On a stack it cannot follow (a return address written over, a jump through a bad pointer) it gives
+  up and ends the process with no handler called. The vectored handler walks the stack the same way first, for every `0xC...` code, and reports when the walk stops short.
+- The stack is walked in a copy (`crashtrace.Stack_Copy`): the walk of a damaged stack ends, it does not fault. The report's thread falling on something else ends that thread; what it wrote stays.
+- The text comes first, addresses before names, the session file goes as soon as the cause is written, and the minidump comes last: DbgHelp allocates and takes locks that the crash may have left held.
 
 ## What a report says
 

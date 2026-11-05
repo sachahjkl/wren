@@ -19,6 +19,7 @@ Mode :: struct { name, cause: string }
 // (each writes a minidump: they run side by side)
 @(private = "file") MODES := [?]Mode{
 	{"access", "access violation"}, {"assert", "illegal instruction"}, {"overflow", "stack overflow"}, {"overflow_thread", "stack overflow"}, {"heap", "heap corruption"},
+	{"two_threads", "access violation"}, {"pool", "access violation"}, {"timer", "access violation"}, {"window_procedure", "access violation"}, {"wild_stack", "access violation"},
 }
 
 @(test)
@@ -39,6 +40,22 @@ each_way_of_dying_leaves_a_report_with_its_cause_and_a_minidump :: proc(t: ^test
 		dumps := e2e.files_with_prefix(dirs[i], "crash ", ".dmp")
 		text := len(reports) == 1 ? e2e.read_text(reports[0]) : ""
 		testing.expectf(t, len(reports) == 1 && len(dumps) == 1 && strings.contains(text, m.cause) && strings.contains(text, "#00 0x"), "%s: a report with the cause and a stack, and a minidump: exit %d, %d report(s), %d dump(s): %s", m.name, code, len(reports), len(dumps), text)
+	}
+}
+
+// An end the program chose with its session open (a library that gives up, a path that forgot the session) says who asked for it, and is no "unclean exit" at the next start.
+@(test)
+an_end_of_its_own_leaves_a_report_with_the_stack_that_asked_for_it :: proc(t: ^testing.T) {
+	root := e2e.temp_folder(t)
+	exe := e2e.build_path("crashmodes", ".exe")
+	for mode in ([]string{"exit", "terminate"}) {
+		dir := fmt.tprintf("%s/%s", root, mode)
+		_ = os.make_directory_all(dir)
+		e2e.program_wait(e2e.program(t, {exe, mode, dir}))
+		testing.expectf(t, !os.exists(fmt.tprintf("%s/session.txt", dir)), "%s: the report ends the session", mode)
+		reports := e2e.files_with_prefix(dir, "exit ", ".txt")
+		text := len(reports) == 1 ? e2e.read_text(reports[0]) : ""
+		testing.expectf(t, strings.contains(text, "ended itself") && strings.contains(text, "exit code 9") && strings.contains(text, "crashmodes::die"), "%s: who asked for it: %d report(s): %s", mode, len(reports), text)
 	}
 }
 

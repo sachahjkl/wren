@@ -6,7 +6,7 @@ package crashtrace
 // it a crash under load left only a "Fault offset" in the Windows event log. Importing the package installs it.
 //
 // The stack is unwound from the exception's context with the unwind tables of the modules (RtlVirtualUnwind; Wasmtime
-// registers those of the code it compiles). Only the faulting thread is shown.
+// registers those of the code it compiles), in a copy of it (stack_copy_take). Only the faulting thread is shown.
 
 import "base:intrinsics"
 import "base:runtime"
@@ -15,7 +15,7 @@ import "core:strconv"
 import "core:strings"
 import win "core:sys/windows"
 
-@(private = "file")
+@(private)
 MAX_FRAMES :: 64
 // What a pointer read from freed memory looks like: the upper half of base.POISON_BYTE's pattern.
 POISON_LOW_BITS :: 32
@@ -38,6 +38,16 @@ foreign kernel32 {
 foreign kernel32 {
 	GetLocalTime :: proc(lpSystemTime: ^win.SYSTEMTIME) ---
 	GetModuleHandleExW :: proc(dwFlags: win.DWORD, lpModuleName: rawptr, phModule: ^win.HMODULE) -> win.BOOL ---
+	ExitThread :: proc(dwExitCode: win.DWORD) -> ! ---
+	GetCurrentThreadStackLimits :: proc(LowLimit, HighLimit: ^uint) ---
+	GetExitCodeThread :: proc(hThread: win.HANDLE, lpExitCode: ^win.DWORD) -> win.BOOL ---
+	GetTickCount64 :: proc() -> u64 ---
+	FileTimeToSystemTime :: proc(lpFileTime: ^win.FILETIME, lpSystemTime: ^win.SYSTEMTIME) -> win.BOOL ---
+}
+
+@(private, default_calling_convention = "system")
+foreign kernel32 {
+	RtlCaptureContext :: proc(ContextRecord: ^win.CONTEXT) ---
 }
 
 // The fingerprint of a build: the link time stamp and the image size of its PE header, "%08X%X" (what a symbol server keys
@@ -74,6 +84,117 @@ module_of :: proc(pc: u64, name_buf: []u8) -> (name: string, base: u64, ok: bool
 	return string(name_buf[:k]), u64(uintptr(h)), true
 }
 
+////////////////////////////////
+// A stack read from a distance
+
+// How much of a stack is copied; what a frame reads past the end of the copy stays in the buffer.
+STACK_COPY_MOST :: 1 << 20
+@(private = "file") STACK_COPY_SLACK :: 1 << 20
+@(private = "file") FRAME_REGISTER_BYTE :: 3   // of UNWIND_INFO: the frame register in its low bits
+@(private = "file") FRAME_REGISTER_MASK :: 0xF
+
+// A thread's stack, copied from its stack pointer up. A stack is walked in a copy, never in place: the walk of a stack that is not what it should be (code without
+// unwind tables took one word for a return address and every frame after it is wrong; a report of a stack that was written over) reads through whatever it found, and
+// RtlVirtualUnwind has no way to say it could not. In place that ended the process, in the copy it ends the walk (WREN_SAMPLE_STACK on cnn.com: "reading address 0x2000010").
+// And a sampler walks after the thread it stopped has gone on: the lookup of an unwind table takes a lock of the loader, which the stopped thread may hold.
+Stack_Copy :: struct {
+	bytes:     [^]u8,
+	low, high: u64,   // what was copied, in the thread's addresses
+}
+
+stack_copy_init :: proc "contextless" (c: ^Stack_Copy) -> bool {
+	c.bytes = ([^]u8)(win.VirtualAlloc(nil, STACK_COPY_MOST + STACK_COPY_SLACK, win.MEM_COMMIT | win.MEM_RESERVE, win.PAGE_READWRITE))
+	return c.bytes != nil
+}
+
+stack_copy_destroy :: proc "contextless" (c: ^Stack_Copy) {
+	if c.bytes != nil { win.VirtualFree(c.bytes, 0, win.MEM_RELEASE) }
+	c^ = {}
+}
+
+// Copies the stack `rsp` is on: what the system gives from there to the end of its committed part (a thread's stack or a fiber's, there is no need to know which). The thread is stopped, or
+// waits. Nothing of it is touched but through ReadProcessMemory, which fails where a read would fault. False: the stack pointer points at nothing that can be read.
+stack_copy_take :: proc "contextless" (c: ^Stack_Copy, rsp: u64) -> bool {
+	c.low, c.high = 0, 0
+	if c.bytes == nil { return false }
+	info: win.MEMORY_BASIC_INFORMATION
+	if win.VirtualQuery(rawptr(uintptr(rsp)), &info, size_of(info)) == 0 || info.State != win.MEM_COMMIT { return false }
+	end := u64(uintptr(info.BaseAddress)) + u64(info.RegionSize)
+	size := min(end - rsp, STACK_COPY_MOST)
+	got: uint
+	if !win.ReadProcessMemory(win.GetCurrentProcess(), rawptr(uintptr(rsp)), c.bytes, uint(size), &got) || got == 0 { return false }
+	c.low, c.high = rsp, rsp + u64(got)
+	return true
+}
+
+// The return addresses of the stack in `c`, innermost first, starting from the registers `ctx` (which the walk changes). The count written in `pcs`: at least the first address.
+stack_walk :: proc "contextless" (c: ^Stack_Copy, ctx: ^win.CONTEXT, pcs: []u64) -> int {
+	stack_rebase(c, ctx)
+	n := 0
+	for n < len(pcs) && ctx.Rip != 0 {
+		pcs[n] = ctx.Rip
+		n += 1
+		if !stack_step(c, ctx) { break }
+	}
+	return n
+}
+
+// What points into the stack points into the copy, whatever register it came back in.
+@(private = "file")
+stack_rebase :: proc "contextless" (c: ^Stack_Copy, ctx: ^win.CONTEXT) {
+	for r in ([?]^u64{&ctx.Rsp, &ctx.Rbp, &ctx.Rbx, &ctx.Rsi, &ctx.Rdi, &ctx.R12, &ctx.R13, &ctx.R14, &ctx.R15}) {
+		if r^ >= c.low && r^ < c.high { r^ = r^ - c.low + u64(uintptr(c.bytes)) }
+	}
+}
+
+@(private = "file")
+stack_holds :: proc "contextless" (c: ^Stack_Copy, at: u64) -> bool {
+	buffer := u64(uintptr(c.bytes))
+	return at >= buffer && at + size_of(u64) <= buffer + (c.high - c.low)
+}
+
+// From a frame to its caller. False: the walk went out of the stack, or would read through a register that is not on it.
+@(private = "file")
+stack_step :: proc "contextless" (c: ^Stack_Copy, ctx: ^win.CONTEXT) -> bool {
+	if !stack_holds(c, ctx.Rsp) { return false }
+	image: u64
+	fn := RtlLookupFunctionEntry(ctx.Rip, &image, nil)
+	if fn == nil {
+		// a leaf, or code without tables: the return address is on top of the stack
+		ctx.Rip = (^u64)(uintptr(ctx.Rsp))^
+		ctx.Rsp += size_of(u64)
+	} else {
+		// (registers in the order of the context, Rax first: the numbers of the unwind codes)
+		frame := int(([^]u8)(uintptr(image + u64(fn.unwind)))[FRAME_REGISTER_BYTE] & FRAME_REGISTER_MASK)
+		if frame != 0 && !stack_holds(c, ([^]u64)(&ctx.Rax)[frame]) { return false }
+		handler_data: rawptr
+		establisher: u64
+		RtlVirtualUnwind(0, image, ctx.Rip, fn, ctx, &handler_data, &establisher, nil)
+	}
+	stack_rebase(c, ctx)
+	return true
+}
+
+// Whether the system's search for a handler, which walks the same stack, gets to the thread's start: the filter is called from there. On a stack it cannot follow to the end (out of the thread's
+// limits at some frame: a return address or a frame pointer written over, a jump through a bad pointer) it gives up and ends the process, and no handler of ours would have run.
+@(private = "file")
+search_reaches_the_filter :: proc "contextless" (at: ^win.CONTEXT) -> bool {
+	low, high: uint
+	GetCurrentThreadStackLimits(&low, &high)
+	if at.Rsp < u64(low) || at.Rsp >= u64(high) { return false }
+	stack: Stack_Copy
+	if !stack_copy_init(&stack) { return true }   // (not known: the filter's turn)
+	defer stack_copy_destroy(&stack)
+	if !stack_copy_take(&stack, at.Rsp) { return false }
+	cut_short := stack.high - stack.low == STACK_COPY_MOST
+	ctx := at^
+	stack_rebase(&stack, &ctx)
+	for ctx.Rip != 0 {
+		if !stack_step(&stack, &ctx) { return cut_short }
+	}
+	return true
+}
+
 @(private = "file")
 installed: bool
 
@@ -99,36 +220,46 @@ set_report_dir :: proc(dir: string, header := "") {
 	report_header_len = copy(report_header[:], header)
 }
 
+// The report's two files: "<dir>\<stem> <date> <time>.txt" is opened here, the dump's path kept for the end (write_dump).
+@(private = "file") report_path: [len(report_dir) + 80]u16
+@(private = "file") report_path_stem: int
+
 @(private = "file")
-open_report :: proc(info: ^win.EXCEPTION_POINTERS, tid: win.DWORD) {
+report_extension :: proc(e: string) { for c, i in e { report_path[report_path_stem + i] = u16(c) }; report_path[report_path_stem + len(e)] = 0 }
+
+@(private = "file")
+open_report :: proc(kind: string) {
 	if report_dir[0] == 0 { return }
 	win.CreateDirectoryW(cstring16(&report_dir[0]), nil)
 	st: win.SYSTEMTIME
 	GetLocalTime(&st)
 	name: [64]u8
-	stem := fmt.bprintf(name[:], "\\crash %04d-%02d-%02d %02d-%02d-%02d", st.year, st.month, st.day, st.hour, st.minute, st.second)
-	path: [len(report_dir) + 80]u16
+	stem := fmt.bprintf(name[:], "\\%s %04d-%02d-%02d %02d-%02d-%02d", kind, st.year, st.month, st.day, st.hour, st.minute, st.second)
 	n := 0
-	for report_dir[n] != 0 { path[n] = report_dir[n]; n += 1 }
-	for c in stem { path[n] = u16(c); n += 1 }
-	ext :: proc(path: []u16, n: int, e: string) { for c, i in e { path[n + i] = u16(c) }; path[n + len(e)] = 0 }
-
-	ext(path[:], n, ".dmp")
-	dump := win.CreateFileW(cstring16(&path[0]), win.GENERIC_WRITE, 0, nil, win.CREATE_ALWAYS, win.FILE_ATTRIBUTE_NORMAL, nil)
-	if dump != win.INVALID_HANDLE_VALUE {
-		mei := win.MINIDUMP_EXCEPTION_INFORMATION{ThreadId = tid, ExceptionPointers = info, ClientPointers = false}
-		// MiniDumpWithIndirectlyReferencedMemory | MiniDumpWithThreadInfo
-		win.MiniDumpWriteDump(win.GetCurrentProcess(), win.GetCurrentProcessId(), dump, win.MINIDUMP_TYPE(0x1040), &mei, nil, nil)
-		win.CloseHandle(dump)
-	}
-	ext(path[:], n, ".txt")
-	report_file = win.CreateFileW(cstring16(&path[0]), win.GENERIC_WRITE, win.FILE_SHARE_READ, nil, win.CREATE_ALWAYS, win.FILE_ATTRIBUTE_NORMAL, nil)
+	for report_dir[n] != 0 { report_path[n] = report_dir[n]; n += 1 }
+	for c in stem { report_path[n] = u16(c); n += 1 }
+	report_path_stem = n
+	report_extension(".txt")
+	report_file = win.CreateFileW(cstring16(&report_path[0]), win.GENERIC_WRITE, win.FILE_SHARE_READ, nil, win.CREATE_ALWAYS, win.FILE_ATTRIBUTE_NORMAL, nil)
 	if report_file == win.INVALID_HANDLE_VALUE { report_file = nil; return }
 	if report_header_len > 0 {
 		written: win.DWORD
 		win.WriteFile(report_file, &report_header[0], win.DWORD(report_header_len), &written, nil)
 		win.WriteFile(report_file, raw_data(string("\n")), 1, &written, nil)
 	}
+}
+
+// The minidump, last of all: the system stops every other thread for it and allocates, and one of them may hold the heap's lock.
+@(private = "file")
+write_dump :: proc(info: ^win.EXCEPTION_POINTERS, tid: win.DWORD) {
+	if report_dir[0] == 0 || report_path_stem == 0 { return }
+	report_extension(".dmp")
+	dump := win.CreateFileW(cstring16(&report_path[0]), win.GENERIC_WRITE, 0, nil, win.CREATE_ALWAYS, win.FILE_ATTRIBUTE_NORMAL, nil)
+	if dump == win.INVALID_HANDLE_VALUE { return }
+	mei := win.MINIDUMP_EXCEPTION_INFORMATION{ThreadId = tid, ExceptionPointers = info, ClientPointers = false}
+	// MiniDumpWithIndirectlyReferencedMemory | MiniDumpWithThreadInfo
+	win.MiniDumpWriteDump(win.GetCurrentProcess(), win.GetCurrentProcessId(), dump, win.MINIDUMP_TYPE(0x1040), &mei, nil, nil)
+	win.CloseHandle(dump)
 }
 
 @(init, private = "file")
@@ -146,6 +277,78 @@ install :: proc "contextless" () {
 	// a stack overflow often leaves the filter no room. The vectored handler is called first for those two (and for a failed
 	// security check raised as an exception); it only reports, the process dies as it would have.
 	win.AddVectoredExceptionHandler(0, on_fatal)
+	exit_watch_install()
+}
+
+////////////////////////////////
+// An end the program chose itself
+
+// A session that ends through ExitProcess or a TerminateProcess of itself, without end_session (a library that gives up, an exit forgotten on a path), left the same nothing as a kill: an "unclean
+// exit" that could only say it did not know. The calls are in the import table of the executable, whoever made them there (the Odin runtime, the C runtime, the Rust library), and leave a report
+// "exit <date>.txt" with the stack that asked for the end. What remains unexplained at the next start then came from outside.
+@(private = "file") session_open: i32
+@(private = "file") real_exit: proc "system" (code: u32)
+@(private = "file") real_terminate: proc "system" (process: win.HANDLE, code: u32) -> win.BOOL
+@(private = "file") IMPORT_BY_ORDINAL :: u64(1) << 63
+@(private = "file") IMPORT_HINT_BYTES :: 2
+@(private = "file") Import_Descriptor :: struct { names, stamp, chain, dll, slots: u32 }
+
+@(private = "file")
+exit_watch_install :: proc "contextless" () {
+	image := uintptr(win.GetModuleHandleW(nil))
+	nt := (^win.IMAGE_NT_HEADERS64)(image + uintptr((^win.IMAGE_DOS_HEADER)(image).e_lfanew))
+	imports := ([^]Import_Descriptor)(image + uintptr(nt.OptionalHeader.ImportTable.VirtualAddress))
+	for d := 0; imports[d].dll != 0; d += 1 {
+		names := ([^]u64)(image + uintptr(imports[d].names))
+		slots := ([^]uintptr)(image + uintptr(imports[d].slots))
+		for i := 0; names[i] != 0; i += 1 {
+			if names[i] & IMPORT_BY_ORDINAL != 0 { continue }
+			switch cstring(rawptr(image + uintptr(names[i]) + IMPORT_HINT_BYTES)) {
+			case "ExitProcess":
+				real_exit = auto_cast rawptr(slots[i])
+				import_write(&slots[i], uintptr(rawptr(watched_exit)))
+			case "TerminateProcess":
+				real_terminate = auto_cast rawptr(slots[i])
+				import_write(&slots[i], uintptr(rawptr(watched_terminate)))
+			}
+		}
+	}
+}
+
+@(private = "file")
+import_write :: proc "contextless" (slot: ^uintptr, value: uintptr) {
+	old: u32
+	win.VirtualProtect(slot, size_of(uintptr), win.PAGE_READWRITE, &old)
+	slot^ = value
+	win.VirtualProtect(slot, size_of(uintptr), old, &old)
+}
+
+@(private = "file")
+watched_exit :: proc "system" (code: u32) {
+	report_own_end(code)
+	real_exit(code)
+}
+
+@(private = "file")
+watched_terminate :: proc "system" (process: win.HANDLE, code: u32) -> win.BOOL {
+	if process == win.GetCurrentProcess() { report_own_end(code) }
+	return real_terminate(process, code)
+}
+
+@(private = "file")
+report_own_end :: proc "contextless" (code: u32) {
+	if intrinsics.atomic_exchange(&session_open, 0) == 0 { return }
+	context = runtime.default_context()   // memcheck: not the tracker (a thread that ends the process may hold its lock)
+	ctx: win.CONTEXT
+	RtlCaptureContext(&ctx)
+	open_report("exit")
+	buf: [8192]u8
+	emit(fmt.bprintf(buf[:], "\n*** the program ended itself with the session open: exit code %d (0x%08X), thread %d", i32(code), code, win.GetCurrentThreadId()))
+	emit(build_line(buf[:]))
+	end_session()
+	report_stack(&ctx, buf[:])
+	emit("*** end of the stack\n")
+	if report_file != nil { win.CloseHandle(report_file); report_file = nil }
 }
 
 @(private = "file", default_calling_convention = "system")
@@ -162,17 +365,31 @@ pending_thread: win.DWORD
 
 @(private = "file")
 on_crash :: proc "system" (info: ^win.EXCEPTION_POINTERS) -> win.LONG {
+	// The thread that writes the report fell on what it reads. What it has written stays: the filter is the only place to see this, the vectored handler is also shown the faults that DbgHelp
+	// catches itself.
+	if writer_thread != 0 && writer_thread == win.GetCurrentThreadId() && writer_thread != pending_thread {
+		if report_file != nil { win.CloseHandle(report_file); report_file = nil }
+		win.SetEvent(report_done)
+		ExitThread(0)
+	}
 	hand_over(info)
 	return 0   // EXCEPTION_CONTINUE_SEARCH: the process dies as it would have (exit code, event log)
 }
 
 @(private = "file")
 on_fatal :: proc "system" (info: ^win.EXCEPTION_POINTERS) -> win.LONG {
-	switch u32(info.ExceptionRecord.ExceptionCode) {
+	code := u32(info.ExceptionRecord.ExceptionCode)
+	switch code {
 	case 0xC0000374, 0xC00000FD, 0xC0000409: hand_over(info)
+	case:
+		// Errors of the processor and the system (0xC...): most are someone's to handle, or reach the filter. Those on a stack the system cannot walk reach neither.
+		if code & ERROR_SEVERITY_MASK == ERROR_SEVERITY && !search_reaches_the_filter(info.ContextRecord) { hand_over(info) }
 	}
 	return 0   // EXCEPTION_CONTINUE_SEARCH
 }
+
+@(private = "file") ERROR_SEVERITY_MASK :: 0xF000_0000
+@(private = "file") ERROR_SEVERITY :: 0xC000_0000
 
 // The report is written by a thread of its own, with a stack of its own, while the faulting thread waits: the faulting thread may
 // have none left (a stack overflow), and the dump of a process is best written by a thread that is not the one in trouble.
@@ -184,24 +401,37 @@ report_wake, report_done: win.HANDLE
 @(private = "file")
 report_thread: win.HANDLE
 
+@(private = "file") REPORT_LIMIT_MS :: 60_000   // what the system is left to die of, past this: a report stuck on a lock has what it wrote before
+@(private = "file") STILL_ACTIVE :: 259
+@(private = "file") writer_thread: win.DWORD   // who is writing the report
+
+// Every faulting thread stays here until the report is written. The first fault's goes to the writer; a second one (the threads of a pass read the same freed block a moment apart) returned at
+// once, its filter said to go on, and the system ended the process under the writer: no report at all, or the start of one.
 @(private = "file")
 hand_over :: proc "contextless" (info: ^win.EXCEPTION_POINTERS) {
-	if intrinsics.atomic_exchange(&reported, 1) != 0 { return }
+	if intrinsics.atomic_exchange(&reported, 1) != 0 {
+		if report_done != nil && writer_thread != win.GetCurrentThreadId() { win.WaitForSingleObject(report_done, REPORT_LIMIT_MS) }
+		return
+	}
 	pending, pending_thread = info, win.GetCurrentThreadId()
-	if report_thread != nil && report_wake != nil && report_done != nil {
+	// (the parked thread is gone in what runs after ExitProcess, which ended every other thread)
+	code: win.DWORD
+	if report_thread != nil && report_wake != nil && report_done != nil && GetExitCodeThread(report_thread, &code) && code == STILL_ACTIVE {
 		win.SetEvent(report_wake)
-		win.WaitForSingleObject(report_done, 60_000)
+		win.WaitForSingleObject(report_done, REPORT_LIMIT_MS)
 		return
 	}
 	h := win.CreateThread(nil, 4 << 20, write_report_thread, nil, 0, nil)
 	if h == nil { write_report_thread(nil); return }   // (no thread to be had: here, as before)
-	win.WaitForSingleObject(h, 60_000)
+	win.WaitForSingleObject(h, REPORT_LIMIT_MS)
 }
 
 @(private = "file")
 write_report_thread :: proc "system" (_: rawptr) -> win.DWORD {
 	context = runtime.default_context()   // memcheck: not the tracker (the crashing thread may hold its lock)
+	writer_thread = win.GetCurrentThreadId()
 	write_report(pending, pending_thread)
+	if report_done != nil { win.SetEvent(report_done) }
 	return 0
 }
 
@@ -210,7 +440,6 @@ write_report_thread :: proc "system" (_: rawptr) -> win.DWORD {
 parked_report_thread :: proc "system" (_: rawptr) -> win.DWORD {
 	win.WaitForSingleObject(report_wake, win.INFINITE)
 	write_report_thread(nil)
-	win.SetEvent(report_done)
 	return 0
 }
 @(private = "file")
@@ -240,10 +469,7 @@ poison_in_registers :: proc(c: ^win.CONTEXT) -> bool {
 write_report :: proc(info: ^win.EXCEPTION_POINTERS, tid: win.DWORD) {
 	rec := info.ExceptionRecord
 	ctx := info.ContextRecord^   // unwound in a copy
-	process := win.GetCurrentProcess()
-	win.SymSetOptions(win.SYMOPT_LOAD_LINES | win.SYMOPT_DEFERRED_LOADS)
-	win.SymInitialize(process, nil, true)
-	open_report(info, tid)
+	open_report("crash")
 
 	buf: [8192]u8
 	b := fmt.bprintf(buf[:], "\n*** crash: %s (0x%08X) at 0x%X, thread %d", code_name(u32(rec.ExceptionCode)), u32(rec.ExceptionCode), uintptr(rec.ExceptionAddress), tid)
@@ -255,27 +481,40 @@ write_report :: proc(info: ^win.EXCEPTION_POINTERS, tid: win.DWORD) {
 	}
 	emit(b)
 	emit(build_line(buf[:]))
-
-	for i in 0 ..< MAX_FRAMES {
-		pc := ctx.Rip
-		if pc == 0 { break }
-		emit(frame_line(buf[:], process, i, pc))
-		image_base: u64
-		fn := RtlLookupFunctionEntry(pc, &image_base, nil)
-		if fn == nil {
-			// a leaf function: the return address is on top of the stack
-			if ctx.Rsp == 0 { break }
-			ctx.Rip = (^u64)(uintptr(ctx.Rsp))^
-			ctx.Rsp += 8
-		} else {
-			handler_data: rawptr
-			establisher: u64
-			RtlVirtualUnwind(0, image_base, pc, fn, &ctx, &handler_data, &establisher, nil)
-		}
-	}
+	end_session()   // (the report says it now: the next start has no unclean exit to report for this end)
+	report_stack(&ctx, buf[:])
 	emit("*** end of the stack\n")
 	if report_file != nil { win.CloseHandle(report_file); report_file = nil }
-	end_session()   // (the report says all: the next start has no unclean exit to report for this end)
+	write_dump(info, tid)
+}
+
+// The frames of a report. First their addresses, in the file, with nothing asked of what may be broken: the symbols are DbgHelp's, which allocates and takes locks, and the crash may have left
+// them held (a heap found damaged, a thread stopped inside the loader). Then, when the names came, they take the place of the addresses.
+@(private = "file")
+report_stack :: proc(ctx: ^win.CONTEXT, buf: []u8) {
+	pcs: [MAX_FRAMES]u64
+	stack: Stack_Copy
+	if stack_copy_init(&stack) { stack_copy_take(&stack, ctx.Rsp) }
+	n := stack_walk(&stack, ctx, pcs[:])
+	stack_copy_destroy(&stack)
+	start: win.LARGE_INTEGER
+	if report_file != nil {
+		win.SetFilePointerEx(report_file, 0, &start, win.FILE_CURRENT)
+		written: win.DWORD
+		for pc, i in pcs[:n] {
+			line := frame_line(buf, nil, i, pc)
+			win.WriteFile(report_file, raw_data(line), win.DWORD(len(line)), &written, nil)
+			win.WriteFile(report_file, raw_data(string("\r\n")), 2, &written, nil)
+		}
+	}
+	process := win.GetCurrentProcess()
+	win.SymSetOptions(win.SYMOPT_LOAD_LINES | win.SYMOPT_DEFERRED_LOADS)
+	win.SymInitialize(process, nil, true)
+	if report_file != nil {
+		win.SetFilePointerEx(report_file, start, nil, win.FILE_BEGIN)
+		win.SetEndOfFile(report_file)
+	}
+	for pc, i in pcs[:n] { emit(frame_line(buf, process, i, pc)) }
 }
 
 // "build <exe> <fingerprint>, base 0x..., size 0x...": which build crashed and where it was loaded. A release has no PDB:
@@ -303,7 +542,7 @@ frame_line :: proc(buf: []u8, process: win.HANDLE, i: int, pc: u64) -> string {
 	disp: u64
 	name := "?"
 	name_buf: [SYM_NAME * 3]u8
-	if win.SymFromAddrW(process, pc, &disp, sym) {
+	if process != nil && win.SymFromAddrW(process, pc, &disp, sym) {
 		w := ([^]u16)(&sym.Name[0])[:sym.NameLen]
 		n := 0
 		for c in w { if n < len(name_buf) - 1 { name_buf[n] = c < 128 ? u8(c) : '?'; n += 1 } }
@@ -314,7 +553,7 @@ frame_line :: proc(buf: []u8, process: win.HANDLE, i: int, pc: u64) -> string {
 	ldisp: win.DWORD
 	file_buf: [512]u8
 	file := ""
-	if win.SymGetLineFromAddrW64(process, pc, &ldisp, &line) && line.FileName != nil {
+	if process != nil && win.SymGetLineFromAddrW64(process, pc, &ldisp, &line) && line.FileName != nil {
 		w := ([^]u16)(rawptr(line.FileName))
 		n := 0
 		for n < len(file_buf) - 1 && w[n] != 0 { file_buf[n] = w[n] < 128 ? u8(w[n]) : '?'; n += 1 }
@@ -332,32 +571,24 @@ frame_line :: proc(buf: []u8, process: win.HANDLE, i: int, pc: u64) -> string {
 // crash's. `thread` needs THREAD_SUSPEND_RESUME and THREAD_GET_CONTEXT (OpenThread with the thread's id).
 dump_thread :: proc(thread: win.HANDLE, what: string) {
 	context = runtime.default_context()   // memcheck: not the tracker (the dumped thread may hold its lock)
+	stack: Stack_Copy
+	if !stack_copy_init(&stack) { emit("*** dump: no memory for the stack"); return }
+	defer stack_copy_destroy(&stack)
 	if win.SuspendThread(thread) == ~win.DWORD(0) { emit("*** dump: cannot suspend the thread"); return }
-	defer win.ResumeThread(thread)
 	ctx: win.CONTEXT
 	ctx.ContextFlags = 0x0010000B   // CONTEXT_FULL (AMD64)
-	if !win.GetThreadContext(thread, &ctx) { emit("*** dump: cannot read the thread's context"); return }
+	got := win.GetThreadContext(thread, &ctx)
+	if got { stack_copy_take(&stack, ctx.Rsp) }
+	win.ResumeThread(thread)
+	if !got { emit("*** dump: cannot read the thread's context"); return }
+	pcs: [MAX_FRAMES]u64
+	n := stack_walk(&stack, &ctx, pcs[:])
 	process := win.GetCurrentProcess()
 	win.SymSetOptions(win.SYMOPT_LOAD_LINES | win.SYMOPT_DEFERRED_LOADS)
 	win.SymInitialize(process, nil, true)
 	buf: [8192]u8
 	emit(fmt.bprintf(buf[:], "\n*** stack of %s", what))
-	for i in 0 ..< MAX_FRAMES {
-		pc := ctx.Rip
-		if pc == 0 { break }
-		emit(frame_line(buf[:], process, i, pc))
-		image_base: u64
-		fn := RtlLookupFunctionEntry(pc, &image_base, nil)
-		if fn == nil {
-			if ctx.Rsp == 0 { break }
-			ctx.Rip = (^u64)(uintptr(ctx.Rsp))^
-			ctx.Rsp += 8
-		} else {
-			handler_data: rawptr
-			establisher: u64
-			RtlVirtualUnwind(0, image_base, pc, fn, &ctx, &handler_data, &establisher, nil)
-		}
-	}
+	for pc, i in pcs[:n] { emit(frame_line(buf[:], process, i, pc)) }
 	emit("*** end of the stack\n")
 }
 
@@ -407,9 +638,11 @@ begin_session :: proc() {
 	win.GetSystemTimeAsFileTime(&ft)
 	text := fmt.tprintf("%d\n%d\n%s\n", win.GetCurrentProcessId(), u64(ft.dwHighDateTime) << 32 | u64(ft.dwLowDateTime), string(report_header[:report_header_len]))
 	write_file(path, transmute([]u8)text)
+	intrinsics.atomic_store(&session_open, 1)
 }
 
 end_session :: proc() {
+	intrinsics.atomic_store(&session_open, 0)
 	if report_dir[0] == 0 { return }
 	path := session_path()
 	win.DeleteFileW(cstring16(&path[0]))
@@ -483,7 +716,7 @@ process_is :: proc(pid: u32, started: u64) -> bool {
 unclean_report_begin :: proc(prev: string, out: ^strings.Builder) {
 	st: win.SYSTEMTIME
 	GetLocalTime(&st)
-	fmt.sbprintf(out, "%s\n\n*** a session ended without a crash report: no stack, the filter was not run (a fail-fast, the system or a watchdog ended the process).\nThe session file said (process id, start, program):\n%s\n", string(report_header[:report_header_len]), prev)
+	fmt.sbprintf(out, "%s\n\n*** a session ended without a crash report: no stack, the filter was not run, and it did not end itself (a fail-fast, or it was ended from outside).\nThe session file said (process id, start, program):\n%s\n", string(report_header[:report_header_len]), prev)
 	name: [64]u8
 	stem := fmt.bprintf(name[:], "\\unclean exit %04d-%02d-%02d %02d-%02d-%02d.txt", st.year, st.month, st.day, st.hour, st.minute, st.second)
 	n := 0
@@ -505,24 +738,43 @@ unclean_report_write :: proc(text: string) {
 unclean_thread :: proc "system" (_: rawptr) -> win.DWORD {
 	context = runtime.default_context()   // memcheck: not the tracker (a thread of its own, started at the start-up)
 	prev := unclean_text
-	pid, _ := parse_session(prev)
+	pid, started := parse_session(prev)
 	out := strings.builder_make(context.allocator)
 	strings.write_string(&out, unclean_report_head)
-	// Windows' own record: the Application Error event (id 1000) of that process id, which names the exception code and the offset
-	events := run_hidden("wevtutil.exe", "qe Application \"/q:*[System[(EventID=1000)]]\" /c:40 /rd:true /f:text")
-	hex := fmt.tprintf("0x%X", pid)
-	dec := fmt.tprintf("%d", pid)
-	found := false
-	for block in strings.split(events, "Event[", context.temp_allocator) {
-		if strings.contains(strings.to_upper(block, context.temp_allocator), hex) || strings.contains(block, fmt.tprintf(" %s ", dec)) {
-			fmt.sbprintf(&out, "\nWindows' event for process %d:\n%s\n", pid, block)
-			found = true
-			break
-		}
-	}
-	if !found { fmt.sbprintf(&out, "\n(no Application Error event for process %d: it was closed or killed from outside, or by an exit of its own)\n", pid) }
+	// Windows' own record: the Application Error event (id 1000) of that process, which names the exception code and the offset
+	events := run_hidden("wevtutil.exe", application_error_query(pid, started))
+	ft: win.FILETIME
+	win.GetSystemTimeAsFileTime(&ft)
+	now := u64(ft.dwHighDateTime) << 32 | u64(ft.dwLowDateTime)
+	strings.write_string(&out, unclean_cause(pid, events, session_before_boot(started, now, GetTickCount64())))
 	unclean_report_write(strings.to_string(out))
 	return 0
+}
+
+// The query of that one event, in the process's own time: a machine that runs tests has more of them than a look through the last few sees, and a process id comes back.
+// (The process id is the event's data as it writes it, 0x and small letters. Looking for it in the text of the last 40 events, upper-cased against a "0x" that was not, found
+// no event in 43 reports, 11 of which had one.)
+@(private)
+application_error_query :: proc(pid: u32, started: u64) -> string {
+	ft := win.FILETIME{dwLowDateTime = u32(started), dwHighDateTime = u32(started >> 32)}
+	st: win.SYSTEMTIME
+	FileTimeToSystemTime(&ft, &st)
+	return fmt.tprintf("qe Application \"/q:*[System[(EventID=1000) and TimeCreated[@SystemTime>='%04d-%02d-%02dT%02d:%02d:%02dZ']] and EventData[Data='0x%x']]\" /c:1 /rd:true /f:text", st.year, st.month, st.day, st.hour, st.minute, st.second, pid)
+}
+
+// Whether the machine started after the session did (FILETIMEs, the uptime in milliseconds): its power or its restart ended the session.
+@(private)
+session_before_boot :: proc(started, now, uptime_ms: u64) -> bool {
+	FILETIME_TICKS_PER_MS :: 10_000
+	return started < now - uptime_ms * FILETIME_TICKS_PER_MS
+}
+
+// What the end was. Every end the process sees leaves a report of its own, so what is left has few causes.
+@(private)
+unclean_cause :: proc(pid: u32, events: string, before_boot: bool) -> string {
+	if strings.contains(events, "Event[") { return fmt.tprintf("\nWindows' event for process %d:\n%s\n", pid, events) }
+	if before_boot { return fmt.tprintf("\n(the machine restarted while process %d ran: a shutdown, a power cut or a crash of the system ended it)\n", pid) }
+	return fmt.tprintf("\n(process %d was killed from outside: no report, no end of its own, no Application Error event, and the machine did not restart)\n", pid)
 }
 
 // The program `name` of the system folder (System32), by its full path and as the application of the process: given a bare name,
