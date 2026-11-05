@@ -218,6 +218,7 @@ Computed :: struct {
 	custom:     ^Custom_Props,
 	before, after: ^Computed,   // generated boxes (nil when `content` is none/normal)
 	selection:  ^Computed,      // ::selection rules of the element (nil: none; colors only are used)
+	highlights: []Highlight_Style, // ::highlight(name) rules of the element, a style per name (colors only are used)
 	placeholder: ^Computed,     // ::placeholder of a text field (nil: none)
 	backdrop:   ^Computed,      // ::backdrop of a top layer element (nil: none, or display: none)
 }

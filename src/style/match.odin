@@ -662,7 +662,7 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 		_, ok := attr(n, "open")
 		return ok
 	case .Never: return false
-	case .Before, .After, .First_Line, .First_Letter, .Selection, .Placeholder, .Marker, .Backdrop, .Slotted, .Part, .Other_Element: return false
+	case .Before, .After, .First_Line, .First_Letter, .Selection, .Highlight, .Placeholder, .Marker, .Backdrop, .Slotted, .Part, .Other_Element: return false
 	}
 	return false
 }

@@ -23,3 +23,29 @@ selection_colors :: proc(s: ^Styled, d: ^dom.Document, el: base.Handle) -> (fg: 
 	}
 	return
 }
+
+// The style of ::highlight(name) rules an element matched (Computed.highlights).
+Highlight_Style :: struct {
+	name:  string,
+	style: ^Computed,
+}
+
+// ::highlight(name) (CSS Custom Highlight API §3): as ::selection, for the highlight of that name. A highlight has no colors of its own: `has_*` false, it paints nothing of them.
+highlight_colors :: proc(s: ^Styled, d: ^dom.Document, el: base.Handle, name: string) -> (fg: css.Color, has_fg: bool, bg: css.Color, has_bg: bool) {
+	for cur := el; cur != base.NIL_HANDLE; {
+		n := dom.get(d, cur)
+		if n == nil { break }
+		if n.kind == .Element {
+			if c := style_of(s, cur); c != nil {
+				for hs in c.highlights {
+					if hs.name != name { continue }
+					if !has_fg && !ps_has(hs.style.inherits, .Color) { fg, has_fg = hs.style.color, true }
+					if !has_bg && hs.style.background_color.a > 0 { bg, has_bg = hs.style.background_color, true }
+				}
+				if has_fg && has_bg { return }
+			}
+		}
+		cur = n.parent
+	}
+	return
+}

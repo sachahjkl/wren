@@ -1,0 +1,11 @@
+/// What the CSS Custom Highlight API has registered (CSS.highlights), for the painter: the objects are native/js/odin/web_highlight.js,
+/// which sends the whole registry again after a change, in a microtask (src/page/highlights.odin).
+[Exposed=Window]
+module highlight {
+  /// The registry starts over, empty.
+  void Highlights_clear();
+  /// A registered highlight, the one the next Highlights_addRange calls fill.
+  void Highlights_add(string name, i32 priority);
+  /// A range of the last highlight added. One of another document is left out.
+  void Highlights_addRange(Node start, u32 start_offset, Node end, u32 end_offset);
+}

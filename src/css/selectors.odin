@@ -73,7 +73,7 @@ Pseudo :: enum u8 {
 	// (a custom element's custom state, ElementInternals.states; the name in `name`); :has-slotted
 	Host, Host_Context, State, Has_Slotted,
 	// pseudo-elements
-	Before, After, First_Line, First_Letter, Selection, Placeholder, Marker, Backdrop,
+	Before, After, First_Line, First_Letter, Selection, Highlight, Placeholder, Marker, Backdrop,
 	Slotted,        // ::slotted(<compound>): the argument in Complex.slotted
 	Part,           // ::part(<ident>+): the names in Complex.parts
 	Other_Element,  // a valid pseudo-element that generates nothing here (::file-selector-button, ::-webkit-*...)
@@ -267,6 +267,7 @@ parse_complex :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relat
 			if pe != .None {
 				// a pseudo-element must end the selector
 				c.pseudo_element = pe
+				if pe == .Highlight { c.parts = s.names }
 				if pe == .Slotted || pe == .Part {
 					if pe == .Slotted {
 						c.slotted = new(Compound, a)
@@ -407,6 +408,13 @@ parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, ns: ^N
 						}
 						if len(names) == 0 { return {}, .None, 0, false }
 						return Simple{names = names[:]}, .Part, 3, true
+					case "highlight":
+						// ::highlight(<custom-highlight-name>)
+						args := trim_values(vs[2].children)
+						if len(args) != 1 || args[0].kind != .Token || args[0].tok.kind != .Ident { return {}, .None, 0, false }
+						names := make([]string, 1, a)
+						names[0] = strings.clone(args[0].tok.text, a)
+						return Simple{names = names}, .Highlight, 3, true
 					}
 					if functional_pseudo_element(vs[2]) { return {}, .Other_Element, 3, true }
 				}
@@ -461,11 +469,11 @@ pseudo_element_of :: proc(name: string) -> (Pseudo, bool) {
 	return .None, false
 }
 
-// ::part(), ::slotted(), ::highlight()...: valid functional pseudo-elements that match no box of this engine.
+// ::cue(), ::picker()...: valid functional pseudo-elements that match no box of this engine.
 @(private)
 functional_pseudo_element :: proc(f: Value) -> bool {
 	switch base.ascii_lower(f.tok.text) {
-	case "part", "slotted", "highlight", "cue", "cue-region", "picker", "view-transition-group", "view-transition-image-pair",
+	case "part", "slotted", "cue", "cue-region", "picker", "view-transition-group", "view-transition-image-pair",
 	     "view-transition-old", "view-transition-new", "scroll-button":
 		return true
 	}

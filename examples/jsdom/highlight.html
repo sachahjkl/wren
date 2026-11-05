@@ -1,0 +1,69 @@
+<!doctype html>
+<html><head><title>highlight</title>
+<style>::highlight(kw) { color: rgb(0, 0, 255); }</style></head>
+<body><p id="p">one two</p>
+<script>
+(() => {
+  const text = document.getElementById("p").firstChild;
+  const range = (a, b) => { const r = new Range(); r.setStart(text, a); r.setEnd(text, b); return r; };
+  const r1 = range(0, 3), r2 = range(4, 7);
+
+  // Highlight: a set of ranges
+  const h = new Highlight(r1);
+  eq("priority", h.priority, 0);
+  eq("type", h.type, "highlight");
+  eq("size of what the constructor took", h.size, 1);
+  t("has", h.has(r1) && !h.has(r2));
+  eq("add returns the set", h.add(r2), h);
+  h.add(r2);
+  eq("a range goes in once", h.size, 2);
+  eq("iteration order", [...h].length, 2);
+  t("iterates the ranges in order", [...h][0] === r1 && [...h][1] === r2);
+  t("keys and @@iterator are values", Highlight.prototype.keys === Highlight.prototype.values && Highlight.prototype[Symbol.iterator] === Highlight.prototype.values);
+  t("entries are pairs", [...h.entries()][0][0] === r1 && [...h.entries()][0][1] === r1);
+  let seen = 0;
+  h.forEach(function (v, k, set) { if (v === k && set === h && this === r1) seen++; }, r1);
+  eq("forEach", seen, 2);
+  t("delete", h.delete(r2) && !h.delete(r2) && h.size === 1);
+  h.clear();
+  eq("clear", h.size, 0);
+  h.add(new StaticRange({ startContainer: text, startOffset: 0, endContainer: text, endOffset: 1 }));
+  eq("a StaticRange is a range too", h.size, 1);
+  throws("only ranges", () => h.add({}), "TypeError");
+  throws("only ranges, at the constructor", () => new Highlight(1), "TypeError");
+  h.priority = 2.9;
+  eq("priority is a long", h.priority, 2);
+  h.type = "spelling-error";
+  eq("type", h.type, "spelling-error");
+  h.type = "nothing";
+  eq("an unknown type changes nothing", h.type, "spelling-error");
+
+  // the registry
+  const reg = CSS.highlights;
+  t("CSS.highlights is a HighlightRegistry, the same each time", reg instanceof HighlightRegistry && reg === CSS.highlights);
+  eq("its tag", Object.prototype.toString.call(reg), "[object HighlightRegistry]");
+  throws("no constructor", () => new HighlightRegistry(), "TypeError");
+  eq("set returns the registry", reg.set("kw", h), reg);
+  t("get, has", reg.get("kw") === h && reg.has("kw") && !reg.has("no"));
+  eq("size", reg.size, 1);
+  t("iterates its entries", [...reg][0][0] === "kw" && [...reg][0][1] === h);
+  eq("keys", [...reg.keys()].join(), "kw");
+  t("values", [...reg.values()][0] === h);
+  let visits = 0;
+  reg.forEach((v, k, m) => { if (v === h && k === "kw" && m === reg) visits++; });
+  eq("forEach", visits, 1);
+  throws("a value is a Highlight", () => reg.set("x", {}), "TypeError");
+  t("delete", reg.delete("kw") && !reg.delete("kw") && reg.size === 0);
+  reg.set("kw", h);
+  reg.clear();
+  eq("clear", reg.size, 0);
+
+  // ::highlight() is a selector of its own
+  t("CSS.supports", CSS.supports("selector(::highlight(kw))"));
+  t("one name only", !CSS.supports("selector(::highlight(a b))") && !CSS.supports("selector(::highlight())"));
+  eq("selectorText", document.styleSheets[0].cssRules[0].selectorText, "::highlight(kw)");
+
+  done();
+})();
+</script>
+</body></html>

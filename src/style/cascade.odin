@@ -491,7 +491,7 @@ substitute :: proc(env: ^Var_Env, vs: []css.Value, depth: int) -> ([]css.Value, 
 
 // The lists of entries an element matched (Pass.lists): its own, then those of the pseudo-elements that get a style.
 @(private)
-Entry_List :: enum u8 { Element, Before, After, Selection, Placeholder, Backdrop }
+Entry_List :: enum u8 { Element, Before, After, Selection, Highlight, Placeholder, Backdrop }
 
 // The list of a pseudo-element's entries; false: a pseudo-element that gets no style of its own.
 @(private)
@@ -501,6 +501,7 @@ entry_list_of :: proc(pe: css.Pseudo) -> (Entry_List, bool) {
 	case .Before: return .Before, true
 	case .After: return .After, true
 	case .Selection: return .Selection, true
+	case .Highlight: return .Highlight, true
 	case .Placeholder: return .Placeholder, true
 	case .Backdrop: return .Backdrop, true
 	}
@@ -1049,6 +1050,8 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 	}
 	// ::selection: only its colors are used (the painter looks for the nearest element that has one)
 	if len(kept[.Selection]) > 0 { c.selection = build_style(p, h, c, kept[.Selection][:], nil) }
+	// ::highlight(name): the same, a style per name
+	if len(kept[.Highlight]) > 0 { c.highlights = highlight_styles(p, h, c, kept[.Highlight][:]) }
 	// ::placeholder: what the forms painter reads of it (its color, opacity, font and alignment)
 	if len(kept[.Placeholder]) > 0 { c.placeholder = build_style(p, h, c, kept[.Placeholder][:], nil) }
 	// ::backdrop: a box under the element, in the top layer with it (layout's visit), so out of flow (CSS Position 4
@@ -1066,6 +1069,21 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 		share_put(&p.share, inline_text, c)
 	}
 	return c, false
+}
+
+// The ::highlight(name) entries of an element, a style for each name.
+@(private)
+highlight_styles :: proc(p: ^Pass, h: base.Handle, c: ^Computed, entries: []Entry) -> []Highlight_Style {
+	out := make([dynamic]Highlight_Style, 0, len(entries), p.alloc)
+	group := make([dynamic]Entry, 0, len(entries), context.temp_allocator)
+	outer: for ent in entries {
+		name := ent.complex.parts[0]
+		for hs in out { if hs.name == name { continue outer } }
+		clear(&group)
+		for other in entries { if other.complex.parts[0] == name { append(&group, other) } }
+		append(&out, Highlight_Style{name, build_style(p, h, c, group[:], nil)})
+	}
+	return out[:]
 }
 
 // Element `h` is in the top layer: the fullscreen element, a showing popover, a modal dialog (engine_set_top_layer).
