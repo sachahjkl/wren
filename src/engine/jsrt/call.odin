@@ -73,7 +73,7 @@ frame_slots :: #force_inline proc(b: ^Function_Bytecode, arg_buf_len: int) -> (n
 
 // Lay out a frame's arguments, locals, stack and closure-cell array over `mem`.
 @(private = "file")
-frame_layout :: proc(f: ^Frame, b: ^Function_Bytecode, mem: [^]Value, args: []Value, arg_buf_len: int) {
+frame_layout :: #force_inline proc(f: ^Frame, b: ^Function_Bytecode, mem: [^]Value, args: []Value, arg_buf_len: int) {
 	n := len(args)
 	for i in 0 ..< n {mem[i] = args[i]}
 	total, ref_values := frame_slots(b, arg_buf_len)
@@ -224,22 +224,41 @@ closure_bind :: proc(ctx: ^Context, o: ^Object, b: ^Function_Bytecode, cur: [^]^
 // js_closure: a function object for bytecode `b` created in frame `f`.
 make_closure :: proc(ctx: ^Context, b: ^Function_Bytecode, cur: [^]^Var_Ref, f: ^Frame) -> Value {
 	rt := ctx.rt
-	o := object_new_proto(ctx, function_proto_for_kind(ctx, b.func_kind), .bytecode_function)
+	generator := b.func_kind == .generator || b.func_kind == .async_generator
+	o := object_new_shape(rt, closure_shape(ctx, b.func_kind, generator || b.has_prototype), .bytecode_function)
 	closure_bind(ctx, o, b, cur, f)
-	name := b.func_name == ATOM_NULL ? pa(.A_empty_string) : b.func_name
-	define_value(ctx, o, pa(.A_length), mk_int(i32(b.defined_arg_count)), {.configurable})
-	define_value(ctx, o, pa(.A_name), atom_to_value(rt, name), {.configurable})
-	if b.func_kind == .generator || b.func_kind == .async_generator {
+	o.slots[CLOSURE_SLOT_LENGTH].value = mk_int(i32(b.defined_arg_count))
+	o.slots[CLOSURE_SLOT_NAME].value = atom_to_value(rt, b.func_name == ATOM_NULL ? pa(.A_empty_string) : b.func_name)
+	if generator {
 		cls: Class_ID = b.func_kind == .async_generator ? .async_generator : .generator
-		proto := object_new_proto(ctx, ctx.class_proto[cls])
-		define_value(ctx, o, pa(.A_prototype), mk_obj(proto), {.writable})
+		o.slots[CLOSURE_SLOT_PROTOTYPE].value = mk_obj(object_new_proto(ctx, ctx.class_proto[cls]))
 	} else if b.has_prototype {
 		o.is_constructor = true
-		proto := new_plain_object(ctx)
-		define_value(ctx, proto, pa(.A_constructor), mk_obj(o), CW)
-		define_value(ctx, o, pa(.A_prototype), mk_obj(proto), {.writable})
+		proto := object_new_shape(rt, ctx.ctor_proto_shape, .object)
+		proto.slots[0].value = mk_obj(o)
+		o.slots[CLOSURE_SLOT_PROTOTYPE].value = mk_obj(proto)
 	}
 	return mk_obj(o)
+}
+
+// Where a closure keeps what every closure has.
+CLOSURE_SLOT_LENGTH :: 0
+CLOSURE_SLOT_NAME :: 1
+CLOSURE_SLOT_PROTOTYPE :: 2
+
+// The shape of a fresh closure of that kind: made once a realm, nothing to look up or define for each closure.
+@(private = "file")
+closure_shape :: proc(ctx: ^Context, kind: Func_Kind, prototype: bool) -> ^Shape {
+	at := &ctx.closure_shapes[kind][int(prototype)]
+	if at^ == nil {
+		rt := ctx.rt
+		sh := shape_root_for(rt, function_proto_for_kind(ctx, kind))
+		sh = shape_transition(rt, sh, pa(.A_length), {.configurable}, .data)
+		sh = shape_transition(rt, sh, pa(.A_name), {.configurable}, .data)
+		if prototype {sh = shape_transition(rt, sh, pa(.A_prototype), {.writable}, .data)}
+		at^ = sh
+	}
+	return at^
 }
 
 // A top-level script/eval function: no captured cells.

@@ -629,7 +629,7 @@ object_new_proto :: proc(ctx: ^Context, proto: ^Object, class: Class_ID = .objec
 }
 
 new_plain_object :: proc(ctx: ^Context) -> ^Object {
-	return object_new_proto(ctx, ctx.class_proto[.object])
+	return object_new_shape(ctx.rt, ctx.plain_shape, .object)
 }
 
 // A fresh Array with `n` slots of capacity and length 0.

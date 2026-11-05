@@ -13,6 +13,7 @@ import "core:mem/tlsf"
 import "core:strings"
 import "core:sys/windows"
 import capi "wb:engine/jscapi"
+import js "wb:engine/jsrt"
 
 @(private = "file") checks, fails: int
 @(private = "file") finalized, freed_buffers: int
@@ -345,6 +346,14 @@ capi_main :: proc() -> int {
 	eval(ctx, "keep = null; 0")
 	capi.JS_RunGC(rt)
 	check(finalized == base + 1, "dropped, then collected")
+	// the finalizers' pass goes through the objects of such classes, not through the heap: what is listed is what lives
+	listed := len((cast(^js.Runtime)rt).host_finals)
+	eval(ctx, "globalThis.two = [mk(1), mk(2)]; globalThis.plain = []; for (var i = 0; i < 1000; i++) plain.push({}); mk(3); 0")
+	capi.JS_RunGC(rt)
+	check(len((cast(^js.Runtime)rt).host_finals) == listed + 2, fmt.tprintf("two more points listed (%d, then %d)", listed, len((cast(^js.Runtime)rt).host_finals)))
+	eval(ctx, "two = plain = null; 0")
+	capi.JS_RunGC(rt)
+	check(len((cast(^js.Runtime)rt).host_finals) == listed, "and off the list when collected")
 
 	// the epilogue: once a collection, after its finalizers (the glue unpins the nodes they released in one call)
 	capi.JS_SetGCEpilogue(rt, count_epilogue, nil)

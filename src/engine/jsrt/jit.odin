@@ -1616,7 +1616,7 @@ j_reload :: proc(c: ^Jc, d: int) {
 @(private = "file")
 jit_is_call :: proc(op: Opcode) -> bool {
 	#partial switch op {
-	case .call0, .call1, .call2, .call3, .call, .call_method, .tail_call, .tail_call_method, .call_constructor: return true
+	case .call0, .call1, .call2, .call3, .call, .call_method, .call_constructor: return true
 	}
 	return false
 }
@@ -3368,11 +3368,10 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 		return false
 	}
 	next := pc + int(opcode_info[op].size)
-	tail := op == .tail_call || op == .tail_call_method
 	if c.inl_depth == 0 {
 		any := false
 		for d in low ..< n {any = any || c.st.t[d] == .M}
-		if slow := jit_site_of(c.jl, pc, false); any || (slow != nil && slow.slow) {return j_call_any(c, argc, kind, low, pc, next, tail)}
+		if slow := jit_site_of(c.jl, pc, false); any || (slow != nil && slow.slow) {return j_call_any(c, argc, kind, low, next, pc)}
 	} else {
 		for d in low ..< n {
 			if c.st.t[d] == .M {
@@ -3393,18 +3392,14 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 		if site.callee == nil {
 			j_stub(c, pc, .deopt, JIT_AUX_CALLEE)
 			c.st.n = low
-			d := j_push(c, .V)
-			if tail {
-				j_return(c, d)
-				return false
-			}
+			j_push(c, .V)
 			return true
 		}
 		fv = mk_obj(site.callee)
 	}
 	// (block $join, around the callees inlined at a polymorphic site and the call made for the others)
 	joined := false
-	if fv.tag == .object && kind != .construct && !tail {
+	if fv.tag == .object && kind != .construct {
 		fo := as_obj(fv)
 		if mi := math_intrinsic_of(fo); mi != .none && j_math(c, fo, mi, argc, low, pc) {return true}
 		if kind == .method && string_is_char_code_at(fo) && j_char_code_at(c, fo, argc, low, pc) {return true}
@@ -3443,11 +3438,11 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 			j_fail(c, "a call at a polymorphic site of a function that is not compiled whole")
 			return false
 		}
-		return j_call_any(c, argc, kind, low, pc, next, tail)
+		return j_call_any(c, argc, kind, low, next, pc)
 	}
 	j_flush_objs(c)
 	j_materialize(c, true)
-	direct := !tail && j_direct_ok(c, as_obj(fv))
+	direct := j_direct_ok(c, as_obj(fv))
 	if direct {
 		// block $result: the direct call, which leaves through its end with the result in the frame; else block $slow
 		// (one of its checks failed): the helper's call
@@ -3506,11 +3501,6 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 	j_lget(c, P_STACK)
 	j_mem(c, W_I64_LOAD, 3, off + 8)
 	j_lset(c, c.sl0 + u32(d))
-	if tail {
-		// (the function returns the call's result: nothing of it runs after the call, where there may be no instruction)
-		j_return(c, d)
-		return false
-	}
 	j_retake_arrays(c, next)
 	if joined {
 		j_op(c, W_END)
@@ -3521,7 +3511,7 @@ jit_call_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, argc: int, kind: Jit_Call_K
 
 // A call made by the helper whatever the callee is: a function interpreted, a native, a callee that keeps changing.
 @(private = "file")
-j_call_any :: proc(c: ^Jc, argc: int, kind: Jit_Call_Kind, low: int, pc: int, next: int, tail: bool) -> bool {
+j_call_any :: proc(c: ^Jc, argc: int, kind: Jit_Call_Kind, low: int, next: int, pc: int) -> bool {
 	n := c.st.n
 	if !c.calls {
 		c.jl.slow = true
@@ -3549,10 +3539,6 @@ j_call_any :: proc(c: ^Jc, argc: int, kind: Jit_Call_Kind, low: int, pc: int, ne
 	d := j_push(c, .V)
 	j_reload(c, d)
 	for k in 0 ..< c.st.n {c.st.k[k] = nil}
-	if tail {
-		j_return(c, d)
-		return false
-	}
 	j_retake_arrays(c, next)
 	return true
 }
@@ -4052,7 +4038,7 @@ jit_inlinable :: proc(c: ^Jc, b: ^Function_Bytecode, kind: Jit_Call_Kind) -> boo
 			continue
 		}
 		#partial switch op {
-		case .op_return, .return_undef, .tail_call, .tail_call_method:
+		case .op_return, .return_undef:
 			return true
 		case .push_this:
 			// (a sloppy function's `this` is its call's object only when there is one)
@@ -4113,12 +4099,6 @@ j_inline :: proc(c: ^Jc, f: ^Frame, fo: ^Object, op: Opcode, argc: int, kind: Ji
 			}
 			if o == .return_undef {
 				result = j_push_undefined(c)
-				break
-			}
-			if o == .tail_call || o == .tail_call_method {
-				// (the call's result is the callee's)
-				method := o == .tail_call_method
-				if jit_call_insn(c, f, method ? .call_method : .call, jr_u16(b.code, cp + 1), method ? .method : .call, cp) {result = c.st.n - 1}
 				break
 			}
 			if !jit_insn(c, f, o, cp) {break}
@@ -4797,7 +4777,7 @@ jit_translate :: proc(c: ^Jc, f: ^Frame) -> Jit_Outcome {
 			if pc + size < c.rend {leader[pc + size - c.header] = true}
 		}
 		#partial switch op {
-		case .call0, .call1, .call2, .call3, .call, .call_method, .call_constructor, .tail_call, .tail_call_method:
+		case .call0, .call1, .call2, .call3, .call, .call_method, .call_constructor:
 			c.calls = true
 		}
 		pc += size
@@ -5364,7 +5344,7 @@ jit_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
 	     .typeof_is_undefined, .typeof_is_function, .get_field, .get_field2, .put_field, .put_var, .strict_eq, .strict_neq,
 	     .eq, .neq, .lnot, .if_true, .if_false, .if_true8, .if_false8, .op_return, .put_var_ref, .put_var_ref0, .put_var_ref1, .put_var_ref2,
 	     .put_var_ref3, .put_var_ref_check, .set_var_ref, .set_var_ref0, .set_var_ref1, .set_var_ref2, .set_var_ref3, .call0,
-	     .call1, .call2, .call3, .call, .tail_call, .call_method, .tail_call_method, .call_constructor, .define_field, .array_from,
+	     .call1, .call2, .call3, .call, .call_method, .call_constructor, .define_field, .array_from,
 	     .add:
 	case:
 		for i in max(0, n - int(opcode_info[op].n_pop)) ..< n {
@@ -5696,9 +5676,9 @@ jit_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
 		return false
 	case .call0, .call1, .call2, .call3:
 		return jit_call_insn(c, f, op, int(op) - int(Opcode.call0), .call, pc)
-	case .call, .tail_call:
+	case .call:
 		return jit_call_insn(c, f, op, jr_u16(code, pc + 1), .call, pc)
-	case .call_method, .tail_call_method:
+	case .call_method:
 		return jit_call_insn(c, f, op, jr_u16(code, pc + 1), .method, pc)
 	case .call_constructor:
 		return jit_call_insn(c, f, op, jr_u16(code, pc + 1), .construct, pc)

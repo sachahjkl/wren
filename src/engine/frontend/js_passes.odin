@@ -389,7 +389,7 @@ resolve_variables :: proc(ps: ^Pass_State, s: ^Func_Def) -> bool {
 			} else {
 				no_change = true
 			}
-		case O(.goto), O(.tail_call), O(.tail_call_method), O(.ret_), O(.return_undef), O(.throw_), O(.throw_error), O(.ret):
+		case O(.goto), O(.ret_), O(.return_undef), O(.throw_), O(.throw_error), O(.ret):
 			line := -1
 			col := -1
 			append(&bc_out, ..bc_buf[pos:pos + l])
@@ -822,17 +822,9 @@ resolve_labels :: proc(ps: ^Pass_State, s: ^Func_Def) -> bool {
 			}
 			ls.first_reloc = nil
 		case O(.call), O(.call_method):
-			argc := int(get_u16(bc_buf, pos + 1))
-			if code_match(&cc, pos_next, O(.ret_), -1) {
-				if cc.line_num >= 0 {line_num = cc.line_num}
-				if cc.col_num >= 0 {col_num = cc.col_num}
-				pc2(s, sl_size, &bc_out, line_num, col_num)
-				put_short_code(&bc_out, op + 1, argc)
-				pos_next = skip_dead_code(s, bc_buf, bc_len, cc.pos, &line_num, &col_num)
-			} else {
-				pc2(s, sl_size, &bc_out, line_num, col_num)
-				put_short_code(&bc_out, op, argc)
-			}
+			// (`return f()` stays a call and a return: the interpreter makes them without a nested run of itself)
+			pc2(s, sl_size, &bc_out, line_num, col_num)
+			put_short_code(&bc_out, op, int(get_u16(bc_buf, pos + 1)))
 		case O(.ret_), O(.return_undef), O(.return_async), O(.throw_), O(.throw_error):
 			pos_next = skip_dead_code(s, bc_buf, bc_len, pos_next, &line_num, &col_num)
 			next = .no_change
@@ -1448,7 +1440,7 @@ compute_stack_size :: proc(fd: ^Func_Def, allocator: runtime.Allocator) -> (int,
 		catch_level := 0
 		check_catch := false
 		#partial switch Opcode(op) {
-		case .tail_call, .tail_call_method, .ret_, .return_undef, .return_async, .throw_, .throw_error, .ret:
+		case .ret_, .return_undef, .return_async, .throw_, .throw_error, .ret:
 			terminal = true
 		case .goto:
 			pos_next = pos + 1 + int(i32(get_u32(bc_buf, pos + 1)))

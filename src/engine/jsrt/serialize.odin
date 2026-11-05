@@ -657,7 +657,7 @@ verify_stack :: proc(r: ^Reader, b: ^Function_Bytecode) -> bool {
 		branch_len := stack_len
 		terminal := false
 		#partial switch op {
-		case .tail_call, .tail_call_method, .op_return, .return_undef, .return_async, .op_throw, .throw_error, .ret:
+		case .op_return, .return_undef, .return_async, .op_throw, .throw_error, .ret:
 			terminal = true
 		case .goto: pos_next = pos + 1 + rd32(code, pos + 1)
 		case .goto16: pos_next = pos + 1 + int(i16(u16(rd16(code, pos + 1))))

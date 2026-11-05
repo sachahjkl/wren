@@ -74,6 +74,8 @@ realm_init :: proc(ctx: ^Context) {
 	rt := ctx.rt
 	op := object_new_shape(rt, shape_root_for(rt, nil), .object)
 	ctx.class_proto[.object] = op
+	ctx.plain_shape = shape_root_for(rt, op)
+	ctx.ctor_proto_shape = shape_transition(rt, ctx.plain_shape, pa(.A_constructor), CW, .data)
 	fp := object_new_proto(ctx, op, .c_function)
 	fp.data = Native_Data{fn = function_proto_call, realm = ctx}
 	ctx.function_proto = fp
