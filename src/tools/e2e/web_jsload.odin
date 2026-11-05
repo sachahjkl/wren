@@ -43,6 +43,10 @@ SCRIPT_AFTER_REL_CHANGE_MS :: 300
 POLL_NEVER_MS :: 600_000         // a poll of the waiting page that never comes within a test
 RECURSION_CALLS :: 330          // the calls through `new`, spread or a Proxy a script reaches at the least
 RECURSION_NATIVE_CALLS :: 170   // through a native that calls back
+// The components nested in the render of jsload_a_deep_render_is_not_blanked_by_a_swallowed_overflow, about 12 KiB of the engine's stack each: 80 are the 768 to 1024 KiB that
+// YouTube's results take (the engine's budget ended this page at 59 levels at 768 KiB, it ends it at 125 at 1536)
+RENDER_LEVELS :: 80
+RENDER_RESULTS :: 4
 PUMP_SLICE_MS :: 20
 PUMP_SCRIPT_MS :: 30             // past the slice
 SLICE_PER_FRAME :: 3
@@ -1440,4 +1444,73 @@ log("alive");
 		check(pr, noted(pr, fmt.tprintf("%s RangeError deep", name)), fmt.tprintf("recursion through %s goes deep and ends in a RangeError (%v)", name, pr.section.notes))
 	}
 	close_page(pr, min_checks = 6)
+}
+
+// YouTube's search on 0.6.29: its results are one synchronous render, 627 frames of script from a promise's job through a listener, a promise's executor and a setter into
+// components that read computed values in effects. Past the engine's stack that render ends in a RangeError, and a component's own try/catch takes it for a failed component:
+// an empty text node in its place, and nothing reaches window.onerror or unhandledrejection, so the page stays on its spinner. This page renders that way at that depth, with the
+// same kinds of frames: every result is there and no component took an overflow for its own failure.
+@(test)
+jsload_a_deep_render_is_not_blanked_by_a_swallowed_overflow :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	script := concat(`<script>
+const levels = `, fmt.tprint(RENDER_LEVELS), `, results = `, fmt.tprint(RENDER_RESULTS), `;
+let swallowed = 0;
+const computed = fn => {
+  let dirty = true, value, error;
+  return () => {
+    if (dirty) { dirty = false; try { value = fn(); } catch (e) { error = e; } }
+    if (error) { throw error; }
+    return value;
+  };
+};
+const effect = fn => { const e = { run() { fn.call(this); } }; e.run(); };
+const mount = (kind, props, ...children) => {
+  let out;
+  effect(() => { try { out = kind(props, ...children); } catch (e) { swallowed++; out = document.createTextNode(""); } });
+  return out;
+};
+class Component {
+  constructor(kind, props, children) { this.kind = kind; this.props = props; this.children = children; }
+  render() { return mount(this.kind, { ...this.props }, ...this.children); }
+}
+const h = (kind, props, ...children) => new Component(kind, props, children);
+const Box = (props, child) => {
+  const box = document.createElement("div");
+  const shown = computed(() => props.shown);
+  if (shown()) { box.append(child.render()); }
+  return box;
+};
+const Result = props => {
+  const p = document.createElement("p");
+  p.className = "result";
+  p.textContent = computed(() => props.title)();
+  return p;
+};
+const List = props => {
+  const list = document.createElement("div");
+  list.append(...props.items.map(title => h(Result, { title }).render()));
+  return list;
+};
+const host = document.body;
+Object.defineProperty(host, "data", { set(items) {
+  let tree = h(List, { items });
+  for (let i = 0; i < levels; i++) { tree = h(Box, { shown: true }, tree); }
+  host.append(tree.render());
+} });
+const page = new EventTarget();
+page.addEventListener("page-data", e => { new Promise(resolve => { host.data = e.detail; resolve(); }); });
+Promise.resolve().then(() => {
+  page.dispatchEvent(new CustomEvent("page-data", { detail: Array.from({ length: results }, (_, i) => "result " + i) }));
+  log("rendered " + document.querySelectorAll(".result").length + ", swallowed " + swallowed);
+  log("done");
+});
+</script>`)
+	pr := load(t, "deep-render", concat(`<!doctype html><head>`, PRELUDE, `</head><body>`, script, `</body>`))
+	wait_note(pr, "done")
+	check(pr, noted(pr, fmt.tprintf("rendered %d, swallowed 0", RENDER_RESULTS)), fmt.tprintf("a render %d components deep has its %d results, no overflow taken for a component's failure (%v)", RENDER_LEVELS, RENDER_RESULTS, pr.section.notes))
+	close_page(pr, min_checks = 1)
 }
