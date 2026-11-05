@@ -80,6 +80,8 @@ DEMOS := [?]Demo{
 		"The parent writes in blank frames (<code>contentDocument</code>, <code>document.write</code>), moves its elements there and listens to them; a frame reads <code>parent.document</code> and calls a function of the parent.", false, "", false},
 	{.E2e, "Frames: the child page", "frames_child.html",
 		"The document loaded in the frames of the frames demo.", false, "", false},
+	{.E2e, "A long article to zoom", "zoom_article.html",
+		"Ctrl+wheel far down a page long enough for its layout to run beside the window: every frame shows the article.", false, "", false},
 	{.E2e, "Custom highlights", "highlight.html",
 		"Words marked by <code>CSS.highlights</code> and painted by <code>::highlight()</code>: colours by priority, without touching the DOM.", false, "", false},
 	{.E2e, "History: a long page", "history/long.html",
