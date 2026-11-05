@@ -8,6 +8,7 @@ Js_Load_Settings :: struct {
 	scripts_wait_styles:  bool,   // parser-blocking scripts wait for the stylesheets that block scripts
 	load_waits_resources: bool,   // the load event waits for images, stylesheets and fonts
 	load_timeout_ms:      f64,    // ... at most this long after DOMContentLoaded (-1 = no limit)
+	pump_slice_ms:        f64,    // scripts run back to back for this long before a turn of the loop (0 = no limit)
 	write_max_bytes:      int,    // document.write: total markup one document may write
 	write_max_depth:      int,    // document.write: nested writes (a written script writing...)
 	module_max_count:     int,    // modules in one page's module map
@@ -20,6 +21,8 @@ Js_Load_Settings :: struct {
 }
 
 JS_LOAD_PREFS := [?]config.Def{
+	{name = "javascript.load.pump_slice_ms", kind = .Int, default = {i = 50}, bounded = true, min = 0, max = 10_000, unit = "ms",
+		description = "How long a loading page's scripts run one after the other before the loop gets a turn: a frame paints what is there, what the network brought is taken in. 0: they run until none is ready, whatever that takes. 50: what the web calls a long task."},
 	{name = "javascript.load.poll_ms", kind = .Int, default = {i = 16}, bounded = true, min = 1, max = 10_000, unit = "ms",
 		description = "How often a loading page looks again whether something it waits for is there (the load event waiting for images, stylesheets and fonts; a script waiting for a stylesheet)."},
 	{name = "javascript.load.scripts_wait_for_stylesheets", kind = .Bool, default = {b = true},
@@ -51,6 +54,7 @@ JS_LOAD_PREFS := [?]config.Def{
 js_load_settings_from_prefs :: proc(p: ^config.Prefs) -> Js_Load_Settings {
 	return Js_Load_Settings{
 		poll_ms = f64(config.int_of(p, "javascript.load.poll_ms")),
+		pump_slice_ms = f64(config.int_of(p, "javascript.load.pump_slice_ms")),
 		scripts_wait_styles = config.bool_of(p, "javascript.load.scripts_wait_for_stylesheets"),
 		load_waits_resources = config.bool_of(p, "javascript.load.event_waits_for_resources"),
 		load_timeout_ms = f64(config.int_of(p, "javascript.load.event_timeout_ms")),

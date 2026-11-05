@@ -41,6 +41,8 @@ SHEET_NEVER_WAITED_FOR_MS :: 3000   // still on its way when the page has closed
 SHEET_REL_CHANGED_MS :: 200
 SCRIPT_AFTER_REL_CHANGE_MS :: 300
 POLL_NEVER_MS :: 600_000         // a poll of the waiting page that never comes within a test
+PUMP_SLICE_MS :: 20
+PUMP_SCRIPT_MS :: 30             // past the slice
 SHEET_IN_WAIT_SECONDS :: 20.0    // far below the poll: only ends a run that fails
 
 SCRIPTS_IN_ORDER_PAGE :: 8       // at least: those of test_order's page that run
@@ -945,6 +947,23 @@ jsload_a_sheet_in_lets_the_parser_and_the_load_go_on :: proc(t: ^testing.T) {
 	check(pr, wait_note(pr, "after the sheet", SHEET_IN_WAIT_SECONDS), "the parser's script ran once the sheet was in")
 	check(pr, wait_note(pr, "loaded", SHEET_IN_WAIT_SECONDS), "the load event fired once the sheet's load event had")
 	close_page(pr, min_checks = 2)
+}
+
+// Scripts that are ready do not run back to back for ever: past the slice the loop gets a turn (a frame, what the network brought; here
+// the page's own timer) between two of them. They ran in one go before: bbc.com painted 3 s after its document was interactive.
+@(test)
+jsload_ready_scripts_give_the_loop_a_turn :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	settings.js_load.pump_slice_ms = PUMP_SLICE_MS
+	first := fmt.tprintf(`setTimeout(() => log("a turn of the loop"), 0); const end = performance.now() + %d; while (performance.now() < end); log("first script")`, PUMP_SCRIPT_MS)
+	pr := load(t, "turn", concat(`<!doctype html><head>`, PRELUDE, `<script defer src="`, gen(first, ARRIVES_SOON_MS, "&k=turn1"), `"></script>`,
+		`<script defer src="`, gen(`log("second script")`, ARRIVES_SOON_MS, "&k=turn2"), `"></script></head><body><p>x</p></body>`))
+	wait_note(pr, "second script")
+	check(pr, in_order(pr, "first script", "a turn of the loop") && in_order(pr, "a turn of the loop", "second script"), "the loop had a turn between the two scripts")
+	close_page(pr, min_checks = 1)
 }
 
 // A script turns the parser's <link> into something else while the document is parsed: the scripts after it (which wait for pending

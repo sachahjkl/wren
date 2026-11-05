@@ -130,6 +130,8 @@ Page_Scripts :: struct {
 	written:      int,                     // bytes document.write inserted
 	poll:         base.Handle,             // a timer looking again at what the page waits for
 	pumping:      bool,
+	pump_ran_ms:  f64,                     // what the pump has run since it last gave the turn back
+	pump_resume:  base.Handle,             // the timer that takes it up again after giving the turn back
 	modules:      ^Module_State,           // js_load_modules.odin
 	timing:       Script_Timing,
 	// <link> elements scripts inserted before the first paint: they do not block it (render_blocking.odin)
@@ -736,13 +738,27 @@ script_retire :: proc(p: ^Page, sc: ^Page_Script) {
 // The event loop's part: what may run now
 
 // Runs what may run now, in HTML's order, then the document's life cycle events. Called whenever something a script
-// waits for arrives, and by the poll timer while the page waits for stylesheets or resources.
+// waits for arrives, and by the poll timer while the page waits for stylesheets or resources. Each script is a task of
+// its own in HTML: once the pump has run javascript.load.pump_slice_ms it gives the turn back, so that a frame can paint
+// what is there and what the network brought is taken in, and goes on at the next turn. Until then it is not called again.
 scripts_pump :: proc(p: ^Page) {
 	s := p.scripts
-	if s == nil || p.closed || s.pumping { return }
+	if s == nil || p.closed || s.pumping || s.pump_resume != base.NIL_HANDLE { return }
 	s.pumping = true
 	defer if !p.closed && p.scripts != nil { p.scripts.pumping = false }
+	slice := p.settings.js_load.pump_slice_ms
+	start := now_ms(p)
 	for progressed := true; progressed && !p.closed; {
+		if slice > 0 && s.pump_ran_ms + now_ms(p) - start >= slice {
+			s.pump_ran_ms = 0
+			s.pump_resume = host.set_timer(p.loop, 0, 0, proc(data: rawptr) {
+				pg := (^Page)(data)
+				if pg.closed || pg.scripts == nil { return }
+				pg.scripts.pump_resume = base.NIL_HANDLE
+				scripts_pump(pg)
+			}, p, p.scope)
+			return
+		}
 		progressed = false
 		// async scripts: whenever they are ready
 		for i := 0; i < len(s.asap); i += 1 {
@@ -776,7 +792,10 @@ scripts_pump :: proc(p: ^Page) {
 		}
 		if the_end(p) { progressed = true }
 	}
-	if !p.closed { poll_schedule(p) }
+	if !p.closed {
+		s.pump_ran_ms += now_ms(p) - start
+		poll_schedule(p)
+	}
 }
 
 // HTML "the end": deferred scripts in order, DOMContentLoaded, then (once async and in-order scripts ran and the
