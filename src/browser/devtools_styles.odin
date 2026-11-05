@@ -350,11 +350,13 @@ Sty_Row :: struct { kind: Sty_Row_Kind, b, d: int }
 STY_DECL_X :: 18
 STY_SWITCH_W :: 16
 
+// What a row paints, made when it is built and painted when the frame is: its input may replace the blocks in between (a value
+// stepped, a declaration switched), so it holds copies of its own, in the frame's memory.
 @(private = "file")
 Sty_Draw :: struct {
 	row:      Sty_Row,
-	block:    ^Sty_Block,
-	decl:     ^Sty_Decl,
+	block:    Sty_Block,
+	decl:     Sty_Decl,
 	hot, editing: bool,
 	filter:   string,
 	hit:      bool,
@@ -520,8 +522,13 @@ styles_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 			r := rows[k]
 			blk := &s.blocks[r.b]
 			d := ui.frame_new(Sty_Draw)
-			d.row, d.block = r, blk
-			if r.kind == .Decl { d.decl = &blk.decls[r.d] }
+			fa := ui.frame_allocator()
+			d.row = r
+			d.block = {kind = blk.kind, inherited = blk.inherited, selector = strings.clone(blk.selector, fa), source = strings.clone(blk.source, fa), media = strings.clone(blk.media, fa)}
+			if r.kind == .Decl {
+				dc := &blk.decls[r.d]
+				d.decl = {name = strings.clone(dc.name, fa), value = strings.clone(dc.value, fa), enabled = dc.enabled, important = dc.important, overridden = dc.overridden}
+			}
 			d.first_of_block = r.kind == .Head && k > 0
 			editing_here := s.editing && r.kind == .Decl && s.edit_b == r.b && s.edit_d == r.d
 			d.editing = editing_here
