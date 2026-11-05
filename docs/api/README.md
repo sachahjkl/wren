@@ -93,6 +93,7 @@ function not exposed to workers is not instantiated.
 | [`frames`](frames.md) | `wren:frames` | 29 | Window | Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin, frames_access.odin; |
 | [`fs`](fs.md) | `wren:fs` | 20 | Window, Worker | File handles (WHATWG File System, WICG File System Access; src/page/fs_store.odin, fs_api.odin; |
 | [`fullscreen`](fullscreen.md) | `wren:fullscreen` | 6 | Window | The Fullscreen API (src/page/fullscreen.odin): an element fills the screen. The page keeps one fullscreen element per |
+| [`highlight`](highlight.md) | `wren:highlight` | 3 | Window | What the CSS Custom Highlight API has registered (CSS.highlights), for the painter: the objects are native/js/odin/web_highlight.js, |
 | [`history`](history.md) | `wren:history` | 14 | Window | Window, Location and History (HTML). Navigations requested by a module happen from a task of their own, never |
 | [`idb`](idb.md) | `wren:idb` | 1 | Window, Worker | IndexedDB (the JavaScript engine's prelude, native/js/lazy/idb.js, is the only caller). One entry point: the |
 | [`images`](images.md) | `wren:images` | 6 | Window, Worker | Images: HTMLImageElement (<img> and <input type=image>) and decoding image files from buffers. naturalWidth and |
@@ -131,4 +132,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | `wren:websocket` | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | `wren:workers` | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1607 imports in 1508 functions.
+1610 imports in 1511 functions.

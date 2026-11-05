@@ -21,6 +21,12 @@ test("storage: estimate, persisted, persist", async () => {
   eq(typeof navigator.storage, "object", "navigator.storage");
   eq(Object.prototype.toString.call(navigator.storage), "[object StorageManager]", "a StorageManager");
   const e = await navigator.storage.estimate(); ok(e.quota > 0 && e.usage >= 0, "estimate: " + JSON.stringify(e));
+  // Chromium's deprecated quota objects: what navigator.storage says, with callbacks
+  for (const name of ["webkitTemporaryStorage", "webkitPersistentStorage"]) {
+    const [usage, quota] = await new Promise((yes, no) => navigator[name].queryUsageAndQuota((u, q) => yes([u, q]), no));
+    ok(usage >= 0 && quota === e.quota, name + " says what navigator.storage says");
+    ok(await new Promise((yes, no) => navigator[name].requestQuota(1024, yes, no)) === 1024, name + " gives a request what fits");
+  }
   eq(await navigator.storage.persisted(), false, "not persisted");
   eq(await navigator.storage.persist(), true, "persist grants");
   eq(await navigator.storage.persisted(), true, "persisted now");

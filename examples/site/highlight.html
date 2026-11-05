@@ -1,0 +1,21 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>highlight</title>
+<style>
+body { margin: 0; font: 40px sans-serif; background: #fff; color: #000; }
+p { margin: 0; height: 60px; }
+::highlight(word) { color: #0000ff; background-color: #ffff00; }
+::highlight(over) { background-color: #00ff00; }
+</style></head>
+<body><p id="p">words here</p><p id="q">words here</p>
+<script>
+// Painted by src/tools/e2e/highlight.odin: what the picture shows follows the registry and the ranges.
+const first = document.getElementById("p").firstChild, second = document.getElementById("q").firstChild;
+const word = new Range();
+word.setStart(first, 0);
+word.setEnd(first, 5);
+const under = new Highlight(word), over = new Range();
+over.setStart(second, 0);
+over.setEnd(second, 5);
+const low = new Highlight(over), high = new Highlight(over);
+CSS.highlights.set("word", under);
+</script></body></html>

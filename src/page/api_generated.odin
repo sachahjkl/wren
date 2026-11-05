@@ -13288,6 +13288,70 @@ _t_fullscreen_Document_fullscreen :: proc "c" (env: rawptr, caller: wasm.Caller,
 	return nil
 }
 
+// Highlights_clear :: proc(c: ^Call)
+@(private = "file")
+_t_highlight_Highlights_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	Highlights_clear(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Highlights_add :: proc(c: ^Call, name: string, priority: i32)
+@(private = "file")
+_t_highlight_Highlights_add :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "highlight.Highlights_add", "name") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "highlight.Highlights_add: argument name is not valid UTF-8") }
+		return wasm.trap_new("highlight.Highlights_add: argument name is not valid UTF-8")
+	}
+	_p1 := a[2].i32
+	Highlights_add(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Highlights_addRange :: proc(c: ^Call, start: Api_Node, start_offset: u32, end: Api_Node, end_offset: u32)
+@(private = "file")
+_t_highlight_Highlights_addRange :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "highlight.Highlights_addRange: argument start is not a live Node") }
+		return wasm.trap_new("highlight.Highlights_addRange: argument start is not a live Node")
+	}
+	_p1 := u32(a[1].i32)
+	api_route(&c, u64(a[2].i64))
+	_p2 := Api_Node{handle = u64(a[2].i64)}
+	_p2.data = lookup_Node(&c, _p2.handle)
+	if _p2.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "highlight.Highlights_addRange: argument end is not a live Node") }
+		return wasm.trap_new("highlight.Highlights_addRange: argument end is not a live Node")
+	}
+	_p3 := u32(a[3].i32)
+	Highlights_addRange(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
 // Window_self :: proc(c: ^Call) -> u64
 @(private = "file")
 _t_history_Window_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -39327,6 +39391,9 @@ api_imports := [?]wasm.Import{
 	{module = "fullscreen", name = "ShadowRoot_fullscreenElement", fn = _t_fullscreen_ShadowRoot_fullscreenElement, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "fullscreen", name = "Document_fullscreenEnabled", fn = _t_fullscreen_Document_fullscreenEnabled, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "fullscreen", name = "Document_fullscreen", fn = _t_fullscreen_Document_fullscreen, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "highlight", name = "Highlights_clear", fn = _t_highlight_Highlights_clear, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{}},
+	{module = "highlight", name = "Highlights_add", fn = _t_highlight_Highlights_add, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32}, wide_results = []wasm.Val_Kind{}},
+	{module = "highlight", name = "Highlights_addRange", fn = _t_highlight_Highlights_addRange, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I64, .I32}, results = []wasm.Val_Kind{}},
 	{module = "history", name = "Window_self", fn = _t_history_Window_self, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "history", name = "Document_self", fn = _t_history_Document_self, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "history", name = "Location_get", fn = _t_history_Location_get, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},

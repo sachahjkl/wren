@@ -860,6 +860,7 @@ range_set :: proc "contextless" (ctx: ^wj.Context, d: ^wj.Dom_Impl, which: int, 
 	wj.JS_FreeValue(ctx, d.values[which])
 	d.values[which] = wj.JS_DupValue(ctx, node)
 	d.rect[which] = f64(off)
+	highlight_range_moved(ctx)
 }
 
 // DOM "set the start or end": the checks, and the other end follows when the range would be inverted.

@@ -64,11 +64,12 @@ Page_Activity :: struct {
 	rules:     bool,
 	pixels:    u64,
 	selection: u64,
+	highlights: u64,
 	href:      string,
 }
 
 page_activity :: proc(p: ^Page) -> Page_Activity {
-	a := Page_Activity{pixels = images_pixels_generation(p), selection = p.selection.serial, href = p.env.location.href}
+	a := Page_Activity{pixels = images_pixels_generation(p), selection = p.selection.serial, highlights = highlights_serial(p), href = p.env.location.href}
 	if p.doc != nil { a.mutations = p.doc.mutations }
 	if p.engine != nil { a.rules = p.engine.dirty }
 	return a

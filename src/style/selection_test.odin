@@ -41,3 +41,19 @@ focus_visible_follows_the_state :: proc(t: ^testing.T) {
 	c = style_of(f.st, a)
 	testing.expect(t, close_to(c.background_color, {0, 0, 1, 1}), ":focus-visible from the keyboard")
 }
+
+@(test)
+highlight_pseudo_element :: proc(t: ^testing.T) {
+	f := fixture_load(`<style>::highlight(a) { background: rgb(255, 0, 0); color: white } p::highlight(a) { color: rgb(0, 0, 255) } ::highlight(b) { color: rgb(0, 255, 0) }</style>
+<p id=p><span id=s>one</span></p><div id=d>two</div>`)
+	defer fixture_unload(f)
+	fg, has_fg, bg, has_bg := highlight_colors(f.st, f.doc, dom.find_by_id(f.doc, "p"), "a")
+	testing.expect(t, has_fg && has_bg && close_to(fg, {0, 0, 1, 1}) && close_to(bg, {1, 0, 0, 1}), "the more specific rule wins, the other's background stays")
+	fg, has_fg, _, _ = highlight_colors(f.st, f.doc, dom.find_by_id(f.doc, "d"), "a")
+	testing.expect(t, has_fg && close_to(fg, {1, 1, 1, 1}), "a rule of no element matches them all")
+	fg, has_fg, _, has_bg = highlight_colors(f.st, f.doc, dom.find_by_id(f.doc, "s"), "b")
+	testing.expect(t, has_fg && close_to(fg, {0, 1, 0, 1}) && !has_bg, "a name is a highlight of its own")
+	_, has_fg, _, has_bg = highlight_colors(f.st, f.doc, dom.find_by_id(f.doc, "s"), "c")
+	testing.expect(t, !has_fg && !has_bg, "no rule: no color of its own")
+	testing.expect(t, style_of(f.st, dom.find_by_id(f.doc, "d")).background_color.a == 0, "::highlight() does not style the element")
+}

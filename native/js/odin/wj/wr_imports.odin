@@ -227,6 +227,8 @@ wr_FullscreenNavigation :: enum i32 {
 	Hide = 2,
 }
 
+// module highlight: types
+
 // module history: types
 // The Window object (an EventTarget: popstate, hashchange, storage...).
 wr_Window :: distinct u64
@@ -2793,6 +2795,18 @@ foreign _wr_wj_fullscreen {
 	@(link_name = "Document_fullscreenEnabled") wr_Document_fullscreenEnabled :: proc() -> i32 ---
 	// document.fullscreen (legacy): the document has a fullscreen element.
 	@(link_name = "Document_fullscreen") wr_Document_fullscreen :: proc() -> i32 ---
+}
+
+// module highlight
+foreign import _wr_wj_highlight "highlight"
+@(default_calling_convention = "contextless")
+foreign _wr_wj_highlight {
+	// The registry starts over, empty.
+	@(link_name = "Highlights_clear") wr_Highlights_clear :: proc() ---
+	// A registered highlight, the one the next Highlights_addRange calls fill.
+	@(link_name = "Highlights_add") wr_Highlights_add :: proc(name: [^]u8, name_len: u32, priority: i32) ---
+	// A range of the last highlight added. One of another document is left out.
+	@(link_name = "Highlights_addRange") wr_Highlights_addRange :: proc(start: u64, start_offset: u32, end: u64, end_offset: u32) ---
 }
 
 // module history

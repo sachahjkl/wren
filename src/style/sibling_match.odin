@@ -226,7 +226,7 @@ compound_deps :: proc(comp: css.Compound, depth: int) -> (own, above: bool) {
 			switch s.pseudo {
 			// what the element's tag, attributes and ancestors decide, or nothing
 			case .None, .Root, .Target, .Required, .Optional, .Lang, .Dir, .Open, .Autofill, .Never,
-			     .Before, .After, .First_Line, .First_Letter, .Selection, .Placeholder, .Marker, .Backdrop, .Slotted, .Part, .Other_Element:
+			     .Before, .After, .First_Line, .First_Letter, .Selection, .Highlight, .Placeholder, .Marker, .Backdrop, .Slotted, .Part, .Other_Element:
 			case .Not, .Is, .Where:
 				o, a := list_deps(s.list, depth)
 				own ||= o

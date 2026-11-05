@@ -665,7 +665,7 @@ page_test :: proc(t: ^testing.T, name: string, checks: int, prepare: proc() = ni
 
 PAGES := [?]string{
 	"animations.html", "bench.html", "compat.html", "css-animations.html", "cssom.html", "custom.html", "dnd.html", "domparser-xml.html",
-	"elements.html", "events.html", "fullscreen.html", "html.html", "intersection.html", "layout.html", "leaks.html", "navigation.html",
+	"elements.html", "events.html", "fullscreen.html", "highlight.html", "html.html", "intersection.html", "layout.html", "leaks.html", "navigation.html",
 	"observer.html", "popover.html", "resize.html", "scripts.html", "shadow.html", "style.html", "template_stamp.html", "traversal.html",
 	"tree.html", "videoquality.html", "xhtml.xhtml", "xml.html", "xmlserializer.html",
 }
@@ -686,6 +686,7 @@ jsdom_every_page_has_a_test :: proc(t: ^testing.T) {
 
 @(test) jsdom_animations :: proc(t: ^testing.T) { page_test(t, "animations.html", checks = 81) }
 @(test) jsdom_compat :: proc(t: ^testing.T) { page_test(t, "compat.html", checks = 39) }
+@(test) jsdom_highlight :: proc(t: ^testing.T) { page_test(t, "highlight.html", checks = 35) }
 @(test) jsdom_css_animations :: proc(t: ^testing.T) { page_test(t, "css-animations.html", checks = 28) }
 @(test) jsdom_cssom :: proc(t: ^testing.T) { page_test(t, "cssom.html", checks = 94) }
 @(test) jsdom_custom :: proc(t: ^testing.T) { page_test(t, "custom.html", checks = 43) }

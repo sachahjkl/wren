@@ -127,6 +127,7 @@ Page :: struct {
 	images:       Page_Images,          // <img>, CSS images, Image_decode (images.odin)
 	render:       Render_Block,         // what the first paint waits for (render_blocking.odin)
 	selection:    Page_Selection,       // the document's selection (selection.odin)
+	highlights:   ^Page_Highlights,     // CSS.highlights (highlights.odin); nil until a script registers one
 	js:           ^Js_Realm,            // the JavaScript realm, created on first use (js_realm.odin)
 	wasm_store:   ^wasm.User_Store,     // what the page's JavaScript made with the WebAssembly API, on first use (webassembly.odin)
 	font_face_sheets: [dynamic]^style.Sheet,   // of FontFace objects added to document.fonts (fontface.odin)
