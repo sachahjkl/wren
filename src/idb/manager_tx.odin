@@ -108,9 +108,10 @@ close_connection :: proc(c: ^Client, id: u64) -> Error {
 	context.allocator = m.allocator
 	conn, ok := m.conns[id]
 	if !ok || conn.client != c { return .Not_Found }
+	o, ds := conn.o, conn.ds   // (conn_try_close may free it)
 	conn.close_pending = true
 	conn_try_close(m, conn)
-	db_pump(conn.o, conn.ds)
+	db_pump(o, ds)
 	return .None
 }
 
