@@ -205,6 +205,7 @@ bfcache_evict :: proc(app: ^App) {
 		ordered_remove(&app.bf.entries, 0)
 		bf_entry_free(e, close = true)
 		app.bf.evictions += 1
+		memory_trim_soon(app)
 	}
 	if app.bf.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.bf.timer); app.bf.timer = base.NIL_HANDLE }
 	if len(app.bf.entries) > 0 {
@@ -219,6 +220,7 @@ bfcache_evict :: proc(app: ^App) {
 
 // A tab closes: its cached pages go (its scope closes them: only the rest is freed here).
 bfcache_drop_tab :: proc(app: ^App, t: ^Tab) {
+	memory_trim_soon(app)
 	for i := len(app.bf.entries) - 1; i >= 0; i -= 1 {
 		e := app.bf.entries[i]
 		if e.tab != t.id { continue }

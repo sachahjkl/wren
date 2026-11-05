@@ -58,6 +58,7 @@ Page_Thread :: struct {
 	job:      Layout_Job,
 	stop:     bool,
 	passes:   u64,           // passes run on the thread (statistics)
+	shrink_temp: bool,       // (atomic) memory is being given back: after its next pass the thread's arena goes back to its first size
 	thread_id: int,          // the page thread's id (page_world_check)
 }
 
@@ -144,8 +145,9 @@ page_thread_main :: proc(data: rawptr) {
 		layout_job_run(&p.job)
 		used, grew := temp.total_used, temp.curr_block != nil && temp.curr_block.prev != nil
 		free_all(context.temp_allocator)
-		if grew && temp.backing_allocator.procedure != nil {
-			size := used <= PAGE_TEMP_KEEP_MAX ? used * PAGE_TEMP_ROOM_NUM / PAGE_TEMP_ROOM_DEN : PAGE_TEMP_FIRST
+		shrink := sync.atomic_exchange(&p.shrink_temp, false)
+		if (grew || shrink) && temp.backing_allocator.procedure != nil {
+			size := grew && !shrink && used <= PAGE_TEMP_KEEP_MAX ? used * PAGE_TEMP_ROOM_NUM / PAGE_TEMP_ROOM_DEN : PAGE_TEMP_FIRST
 			runtime.arena_destroy(&temp)
 			_ = runtime.arena_init(&temp, size, base.process_allocator())
 		}
