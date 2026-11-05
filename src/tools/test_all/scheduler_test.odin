@@ -234,23 +234,22 @@ two_steps_never_share_a_log :: proc(t: ^testing.T) {
 // A file of end-to-end tests belongs to a step: without one its tests compile, and nothing ever runs them (page_scrollbars.odin was one).
 @(test)
 every_file_of_end_to_end_tests_has_a_step :: proc(t: ^testing.T) {
-	when ODIN_OS == .Windows {
-		context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
-		cfg := Config{perf = true}   // (the steps of -Perf too)
-		seen := make(map[string]bool)
-		seen[E2E_HARNESS] = true     // (its one test ends every process of web tests: Command.also)
-		for s in build_table(&cfg) {
-			for a in s.actions {
-				if c, ok := a.(Command); ok && c.tests_of != "" { seen[filepath.base(c.tests_of)] = true }
-			}
+	if ODIN_OS != .Windows { return }   // (Linux's table runs a part of them)
+	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
+	cfg := Config{perf = true}   // (the steps of -Perf too)
+	seen := make(map[string]bool)
+	seen[E2E_HARNESS] = true     // (its one test ends every process of web tests: Command.also)
+	for s in build_table(&cfg) {
+		for a in s.actions {
+			if c, ok := a.(Command); ok && c.tests_of != "" { seen[filepath.base(c.tests_of)] = true }
 		}
-		folder := #directory + "/../e2e"
-		files, err := os.read_all_directory_by_path(folder, context.allocator)
-		testing.expect_value(t, err, nil)
-		for f in files {
-			if !strings.has_suffix(f.name, ".odin") { continue }
-			names, _ := declared_tests(f.fullpath)   // (none in the helpers of a test: it says so as `why`)
-			testing.expectf(t, len(names) == 0 || f.name in seen, "%s has tests and no step", f.name)
-		}
+	}
+	folder := #directory + "/../e2e"
+	files, err := os.read_all_directory_by_path(folder, context.allocator)
+	testing.expect_value(t, err, nil)
+	for f in files {
+		if !strings.has_suffix(f.name, ".odin") { continue }
+		names, _ := declared_tests(f.fullpath)   // (none in the helpers of a test: it says so as `why`)
+		testing.expectf(t, len(names) == 0 || f.name in seen, "%s has tests and no step", f.name)
 	}
 }

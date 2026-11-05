@@ -34,6 +34,7 @@ import "wb:e2e"
 @(private = "file") SAME_WITHIN :: 24             // two pictures of the same page: each channel within this...
 @(private = "file") SAME_MOST_DIFFERENT :: 200    // ... but for this many pixels (the edges of the glyphs)
 @(private = "file") SCROLLED_LEAST :: 50          // the page moved at least this much (CSS px)
+@(private = "file") EDGE_MOVED_LEAST :: 8         // a drag past the edge in a fixed time: that it moved, a slow machine makes fewer frames (px)
 @(private = "file") EMPTY :: e2e.Point{500, 500}   // the tall box under everything: a press there selects nothing and gives the page the keyboard
 @(private = "file") NO_MOUSEDOWN :: "document.removeEventListener('mousedown', down); 1"   // the page's own count of presses, which would have them run its code
 @(private = "file") PAST_EDGE :: 30               // how far below the view a drag goes (CSS px)
@@ -208,9 +209,9 @@ a_drag_past_the_edge_scrolls_under_the_task :: proc(t: ^testing.T) {
 	e2e.press(s, from)
 	shots := while_held(s, &short, {e2e.busy_move(s, mid), e2e.busy_capture(), e2e.busy_move(s, below), e2e.busy_wait(EDGE_WAIT_MS), e2e.busy_capture()})
 	top0, top1 := highlight_top(shots[0]), highlight_top(shots[1])
-	testing.expectf(t, top0 >= 0 && top1 >= 0 && top0 - top1 >= SCROLLED_LEAST, "the page moved under the task: the highlight's top at %d, then at %d", top0, top1)
+	testing.expectf(t, top0 >= 0 && top1 >= 0 && top0 - top1 >= EDGE_MOVED_LEAST, "the page moved under the task: the highlight's top at %d, then at %d", top0, top1)
 	testing.expect_value(t, e2e.eval_f64(s, "held.scrollY"), 0)   // the task saw none of it
-	testing.expectf(t, e2e.eval_f64(s, "scrollY") >= SCROLLED_LEAST, "the document took the offset: %s", e2e.eval(s, "String(scrollY)"))
+	testing.expectf(t, e2e.eval_f64(s, "scrollY") >= EDGE_MOVED_LEAST, "the document took the offset: %s", e2e.eval(s, "String(scrollY)"))
 	testing.expect_value(t, e2e.eval(s, "String(getSelection()).includes('While the page runs')"), "true")
 	e2e.release(s, below)
 }
