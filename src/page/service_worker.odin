@@ -278,8 +278,11 @@ sw_reg_free :: proc(r: ^Sw_Registration) {
 
 // Stops every worker and forgets the registrations of the profile (storage_manager_destroy; pages are closed).
 sw_registry_shutdown :: proc() {
-	for r in the_pages.sw_registry.regs { sw_reg_free(r) }
-	delete(the_pages.sw_registry.regs)
+	// (out of the registry first: the worker's page that closes asks it whether it is a host, sw_page_gone)
+	regs := the_pages.sw_registry.regs
+	the_pages.sw_registry.regs = nil
+	for r in regs { sw_reg_free(r) }
+	delete(regs)
 	for _, f in the_pages.sw_registry.fetches { sw_fetch_free(f) }
 	delete(the_pages.sw_registry.fetches)
 	for _, q in the_pages.sw_registry.inbox { for m in q { delete(m) }; delete(q) }
