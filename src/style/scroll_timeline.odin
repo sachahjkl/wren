@@ -384,6 +384,30 @@ timeline_prop_text :: proc(c: ^Computed, name: string, length_text: proc(l: Leng
 		if c.timeline_scope.all { return "all" }
 		if len(c.timeline_scope.names) == 0 { return "none" }
 		append(&parts, ..c.timeline_scope.names)
+	case "scroll-timeline":
+		for s, i in c.scroll_timeline_name {
+			axis := list_at(c.scroll_timeline_axis, i, Timeline_Axis.Block)
+			label := s == "" ? "none" : s
+			append(&parts, axis == .Block ? label : strings.concatenate({label, " ", AXIS_NAMES[axis]}, context.temp_allocator))
+		}
+	case "view-timeline":
+		for s, i in c.view_timeline_name {
+			axis := list_at(c.view_timeline_axis, i, Timeline_Axis.Block)
+			inset := list_at(c.view_timeline_inset, i, AUTO_INSET)
+			one := make([dynamic]string, context.temp_allocator)
+			append(&one, s == "" ? "none" : s)
+			if axis != .Block { append(&one, AXIS_NAMES[axis]) }
+			if inset != AUTO_INSET { append(&one, inset_pair_text(inset, length_text)) }
+			append(&parts, strings.join(one[:], " ", context.temp_allocator))
+		}
+	case "animation-range":
+		for r, i in c.animation_range_start {
+			end := list_at(c.animation_range_end, i, Anim_Range{})
+			a, b := range_text_of(r, 0, length_text), range_text_of(end, 100, length_text)
+			same := end == Anim_Range{} || (r.name != .Normal && a == b)   // (the end the start alone stands for)
+			append(&parts, same ? a : strings.concatenate({a, " ", b}, context.temp_allocator))
+		}
+	case "animation-name": for s in c.animation_name { append(&parts, s == "" ? "none" : s) }
 	}
 	return strings.join(parts[:], ", ", context.temp_allocator)
 }

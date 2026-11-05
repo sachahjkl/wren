@@ -110,6 +110,8 @@ Tab :: struct {
 	scroll_dpi: f32,            // the window scale `scroll` was in (zoom.odin tab_scale_follow; 0: not known yet)
 	layout_ms: f64,             // page_thread.odin: how long its last layout pass took (whether the next goes to the page thread)
 	layout_ms_known: bool,
+	full_layout_ms: f64,        // how long its last whole layout pass took (what a chrome frame would pay to lay out animated values: shell_shown.odin)
+	shown:    Shown_Layout,      // its layout for what a chrome frame shows of animated layout values (shell_shown.odin)
 	scroll_target: base.Handle, // what keyboard scrolling moves: the last element pressed in the page (its scroll container)
 	fragment_done: bool,         // the document scrolled to its fragment (page.scroll_to_fragment), or its entry is being restored
 	web_fonts: int,              // faces of the page's @font-face already handed to the font registry
@@ -384,6 +386,7 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 	net_log_destroy(&t.net)
 	console_log_destroy(t)
 	layout_destroy(&t.layout)
+	layout_destroy(&t.shown.layout)
 	smooth_destroy(&t.smooth)
 	free(t)
 }

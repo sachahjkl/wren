@@ -36,6 +36,7 @@ SHARED_PATTERNS := []string{"/resources/", "/common/", "/interfaces/", "/images/
 	"/css/support/inheritance-testcommon.js", "/css/support/interpolation-testcommon.js", "/css/support/shorthand-testcommon.js",
 	"/css/css-conditional/container-queries/support/cq-testcommon.js", "/css/css-typed-om/resources/testhelper.js",
 	"/css/css-transitions/support/helper.js", "/html/semantics/popovers/resources/popover-utils.js",
+	"/web-animations/testcommon.js", "/web-animations/resources/", "/css/css-animations/support/", "/css/css-transitions/support/",
 	"/css/reference/"}   // (the references reftests of many folders share)
 // The base port's offset of the WPT origin (tools/testserver/ports.go).
 WPT_PORT_OFFSET :: 3

@@ -16,7 +16,7 @@
   #fade { top: 50px; width: 50px; height: 30px; background: #0a8; animation: fade linear both; animation-timeline: scroll(root); }
   #tint { top: 90px; width: 50px; height: 30px; animation: tint linear both; animation-timeline: scroll(root); }
   #bar { top: 130px; height: 10px; background: #a08; animation: grow linear both; animation-timeline: scroll(root); }
-  #head { top: 150px; width: 300px; overflow: hidden; background: #eee; animation: shrink linear both; animation-timeline: scroll(root); }
+  #head { top: 150px; width: 300px; overflow: hidden; background: #468; animation: shrink linear both; animation-timeline: scroll(root); }
   #post { position: absolute; top: 1500px; left: 0; height: 100px; background: #880; animation: widen linear both; animation-timeline: view(); }
   #range { position: absolute; top: 2500px; left: 0; height: 100px; width: 100px; background: #088; animation: slide linear both; animation-timeline: view(); animation-range: entry 0% entry 100%; }
   #box { position: absolute; top: 3000px; left: 0; width: 200px; height: 100px; overflow: auto; scroll-timeline: --box; }
@@ -55,6 +55,7 @@
     const h = innerHeight;
     setTimeout(() => {
       const begun = performance.now();
+      if (window.mutate) document.querySelector('#head').textContent = 'changed';
       while (innerHeight == h && performance.now() - begun < HOLD_LIMIT_MS) {}
       window.scrolled_in_task = scrollY;
       window.width_in_task = getComputedStyle(bar).width;

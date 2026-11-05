@@ -195,6 +195,80 @@ what_a_scroll_timeline_drives_follows_the_wheel_under_a_task :: proc(t: ^testing
 	near(t, number(s, "new DOMMatrix(getComputedStyle(slide).transform).m41"), f64(x1), "the page's turn goes on from there")
 }
 
+@(private = "file") BAR_COLOR :: [3]u8{0xaa, 0x00, 0x88}
+@(private = "file") ROW_BAR :: 135
+@(private = "file") BAR_PX :: 600.0
+@(private = "file") HEAD_BG :: [3]u8{0x44, 0x66, 0x88}
+@(private = "file") HEAD_X, HEAD_TOP :: 290, 150
+@(private = "file") HEAD_FROM, HEAD_TO :: 120.0, 40.0
+@(private = "file") POST_LEFT_ROW_MARGIN :: 50    // a row inside the post, from its top
+@(private = "file") POST_COLOR :: [3]u8{0x88, 0x88, 0x00}
+
+// The length of the run of `color` along row `y`, from `x`.
+@(private = "file")
+run_right :: proc(img: e2e.Image, y, x: int, color: [3]u8) -> int {
+	n := 0
+	for i in x ..< img.width {
+		if !close_to(e2e.pixel(img, i, y).rgb, color) { break }
+		n += 1
+	}
+	return n
+}
+
+// The length of the run of `color` down column `x`, from `y`.
+@(private = "file")
+run_down :: proc(img: e2e.Image, x, y: int, color: [3]u8) -> int {
+	n := 0
+	for i in y ..< img.height {
+		if !close_to(e2e.pixel(img, x, i).rgb, color) { break }
+		n += 1
+	}
+	return n
+}
+
+// Layout properties in the chrome frames under a task: a bar's width, a header's height. The task reads what its turn left, and the page's turn shows the same.
+@(test)
+layout_values_of_a_timeline_follow_the_wheel_under_a_task :: proc(t: ^testing.T) {
+	s := open(t)
+	short := false
+	corner := e2e.box_model(s, "#sticky").window
+	ox, oy := int(corner.x) - STICKY_LEFT, int(corner.y) - STICKY_TOP
+	notches := make([dynamic]e2e.Busy_Step, context.temp_allocator)
+	append(&notches, e2e.busy_capture())
+	for _ in 0 ..< NOTCHES { append(&notches, e2e.busy_wheel(s, 1, WHEEL_AT)) }
+	append(&notches, e2e.busy_capture())
+	shots := while_held(s, &short, notches[:])
+	testing.expect_value(t, e2e.eval(s, "width_in_task"), "0px")
+	e2e.wait_frames(s)
+	e2e.wait_frames(s)
+	p := number(s, "scrollY") / number(s, "document.documentElement.scrollHeight - innerHeight")
+	testing.expectf(t, p > 0, "the page took the scroll")
+	before, after := shots[0], shots[1]
+	testing.expectf(t, run_right(before, oy + ROW_BAR, ox, BAR_COLOR) == 0, "the bar starts empty")
+	bar := run_right(after, oy + ROW_BAR, ox, BAR_COLOR)
+	testing.expectf(t, abs(f64(bar) - BAR_PX * p) <= SHOWN_WITHIN_PX, "the bar's width follows under the task: %d, the scroll says %v", bar, BAR_PX * p)
+	head := run_down(after, ox + HEAD_X, oy + HEAD_TOP, HEAD_BG)
+	want := HEAD_FROM + (HEAD_TO - HEAD_FROM) * p
+	testing.expectf(t, abs(f64(head) - want) <= SHOWN_WITHIN_PX, "the header's height follows under the task: %d, the scroll says %v", head, want)
+	near(t, number(s, "parseFloat(getComputedStyle(bar).width)"), f64(bar), "the page's turn goes on from there")
+}
+
+// A task that changes the document leaves nothing to paint from (the layout's items hold what it changed): the frames show the page's last pixels, moved.
+@(test)
+a_task_that_changes_the_document_stops_the_layout_values :: proc(t: ^testing.T) {
+	s := open(t)
+	short := false
+	corner := e2e.box_model(s, "#sticky").window
+	ox, oy := int(corner.x) - STICKY_LEFT, int(corner.y) - STICKY_TOP
+	e2e.eval(s, "window.mutate = true; 1")
+	notches := make([dynamic]e2e.Busy_Step, context.temp_allocator)
+	for _ in 0 ..< NOTCHES { append(&notches, e2e.busy_wheel(s, 1, WHEEL_AT)) }
+	append(&notches, e2e.busy_capture())
+	shots := while_held(s, &short, notches[:])
+	testing.expectf(t, run_right(shots[0], oy + ROW_BAR, ox, BAR_COLOR) == 0, "the bar stays as it was painted")
+	testing.expect_value(t, e2e.eval(s, "document.querySelector('#head').textContent"), "changed")
+}
+
 // While the task holds the thread, then the page takes the scroll: the pictures of the capture steps.
 @(private = "file")
 while_held :: proc(s: ^e2e.Session, short: ^bool, steps: []e2e.Busy_Step, loc := #caller_location) -> []e2e.Image {

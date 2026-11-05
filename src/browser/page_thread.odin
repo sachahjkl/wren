@@ -67,6 +67,7 @@ Page_Thread :: struct {
 page_layout :: proc(app: ^App, t: ^Tab, styled: ^style.Styled, size: draw.Vec2, scale: f32, fonts_gen: u64) {
 	t0 := time.tick_now()
 	defer t.layout_ms, t.layout_ms_known = time.duration_milliseconds(time.tick_since(t0)), true
+	defer if t.layout.last_pass == .Full { t.full_layout_ms = time.duration_milliseconds(time.tick_since(t0)) }
 	// CSS Scroll Anchoring (wb:layout scroll_anchor.odin): what the reader looks at stays put when content above it changes size
 	anchor := lay.scroll_anchor_select(&t.layout, styled, scale, t.scroll, size.y)
 	defer if shift := lay.scroll_anchor_shift(&t.layout, anchor); shift != 0 {

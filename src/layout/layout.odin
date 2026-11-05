@@ -31,6 +31,18 @@ run :: proc(l: ^Layout, input: Input) {
 	read_pass(l, input.styled)
 }
 
+// A whole pass over a layout of its own, for one paint: what a chrome frame shows of animated layout values (browser/shell_shown.odin).
+// It holds no claim on the styles (read_pass): its boxes are not read once painted, and the next pass starts from nothing.
+run_shown :: proc(l: ^Layout, input: Input) {
+	l.valid = false
+	run_full(l, input)
+	for pass in 0 ..< BAR_PASSES_MAX {
+		if !bars_settle(l, pass == 0) { break }
+		run_full(l, input)
+	}
+	clear(&l.bar_dirty)
+}
+
 // What the layout reads from now on; the pass it read until now may go (at the end of a pass: it read the old records to the last).
 @(private)
 read_pass :: proc(l: ^Layout, s: ^style.Styled) {

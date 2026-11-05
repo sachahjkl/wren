@@ -59,6 +59,15 @@ reading_subject :: proc(user: rawptr, subject, source: base.Handle) -> (lo, hi: 
 	return lo, hi, true
 }
 
+// The frame's step: from the layout the page last gave scripts. (The shell's frames measure on the layout they make: browser/page_frame.odin.)
+@(private)
+scroll_timelines_frame :: proc(p: ^Page) {
+	if p.worker != nil { return }
+	jl := &js_dom_state(p).layout
+	if !jl.has || jl.result == nil { return }
+	scroll_timelines_sample(p, jl.result, jl.embedder.viewport(jl.embedder.user, p))
+}
+
 // Measures the page's timelines on layout `l`, shown as `vp` says. True: what they show moved.
 scroll_timelines_sample :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) -> bool {
 	if p == nil || p.closed || p.styled == nil || l == nil || !l.valid || p.doc == nil { return false }
