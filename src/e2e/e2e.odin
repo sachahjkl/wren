@@ -927,6 +927,13 @@ stats :: proc(s: ^Session, loc := #caller_location) -> Stats {
 	return browser.control_stats(s.app, back)
 }
 
+// The browser gives back now what it gives back when left alone.
+memory_trim :: proc(s: ^Session, loc := #caller_location) {
+	context = s.ctx
+	enter(s, loc)
+	browser.memory_trim(s.app)
+}
+
 // All of them: the process's, the stores', the frames as a measure reads them.
 stats_all :: proc(s: ^Session, loc := #caller_location) -> Stats {
 	back := s.test.temp_allocator

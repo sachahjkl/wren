@@ -201,6 +201,8 @@ DEMOS := [?]Demo{
 	{.Network, "Cookies and redirects", "/start",
 		"Sets a cookie, then redirects to the counter page: the cookie and the redirect show in the page information of the address bar.", true, "", false},
 
+	{.Performance, "Memory growth", "memory-growth.html",
+		"A page unlike the one before it at each <code>?n=</code>: functions hot enough to be compiled, styles, nodes, an image; <code>?heap=</code> keeps that many MB alive in its script. What a long session on many sites leaves behind, in a loop.", false, "", false},
 	{.Performance, "Mutation every frame", "mutation.html",
 		"A module builds about 10 000 elements, then changes one span's text every 16 ms: only that paragraph is laid out again.", false, "", false},
 	{.Performance, "Class toggled every frame", "mutation_class.html",
