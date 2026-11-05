@@ -107,6 +107,7 @@ Page_Snapshot :: struct {
 	image:  draw.Backdrop,   // kept texture; image.origin: the screen pixel of texel 0 when captured
 	rect:   draw.Rect,       // page area when captured (screen)
 	scroll: draw.Vec2,       // the document's scroll then (device px)
+	selection: [2]lay.Text_Pos,   // what it shows selected: a selection that changes makes it old, with no task and no node changed
 	lo, limit: draw.Vec2,    // the document's scroll range then
 	bar:    bool,            // the document had a vertical scroll bar: not in the pixels (it would move with them), drawn again by shell_paint_page
 	bar_track, bar_thumb: draw.Rect,       // its track and thumb (relative to the page area's corner)
@@ -722,6 +723,7 @@ shell_capture :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect, ca
 		render.unkeep_target(dc.renderer, s.image.image.tex)
 	}
 	s.image, s.rect, s.scroll, s.canvas, s.gen, s.used, s.page = bd, rect, doc_scroll_vec(t), canvas, gen, app.chrome_frames.frame_no, t.page
+	s.selection[0], s.selection[1], _ = page.selection_range(t.page)
 	s.lo.x, s.limit.x = lay.doc_scroll_x_range(&t.layout, draw.rect_size(rect).x)
 	s.lo.y, s.limit.y = lay.doc_scroll_y_range(&t.layout, draw.rect_size(rect).y)
 	// (more than fit: the last one takes the rest, as their union)

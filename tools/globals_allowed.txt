@@ -357,6 +357,7 @@ style/restyle_dom.odin trace_note process  # ... the anchor being applied
 style/restyle_dom.odin trace_why process  # ... why it flipped
 style/restyle_dom_test.odin TAGS test
 style/restyle_dom_test.odin CLASSES test
+style/sheet_arrival_test.odin SHEETS test
 style/settings.odin PREFS const  # a table
 style/shorthands.odin tables_ready const  # a table built once
 style/shorthands.odin prop_by_name const  # ... the table
