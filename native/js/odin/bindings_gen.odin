@@ -26007,15 +26007,15 @@ wj_install_bindings :: proc "c" () {
 	m_DecompressionStream[0] = wj.Member{name = "readable", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_DecompressionStream_get_readable, set = nil}
 	m_DecompressionStream[1] = wj.Member{name = "writable", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_DecompressionStream_get_writable, set = nil}
 	m_ElementInternals[0] = wj.Member{name = "shadowRoot", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_ElementInternals_get_shadowRoot, set = nil}
-	m_ElementInternals[1] = wj.Member{name = "setFormValue", kind = wj.M_METHOD, flags = 0, length = 1, fn = nil}
-	m_ElementInternals[2] = wj.Member{name = "form", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
-	m_ElementInternals[3] = wj.Member{name = "setValidity", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
-	m_ElementInternals[4] = wj.Member{name = "willValidate", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
-	m_ElementInternals[5] = wj.Member{name = "validity", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
-	m_ElementInternals[6] = wj.Member{name = "validationMessage", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
-	m_ElementInternals[7] = wj.Member{name = "checkValidity", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
-	m_ElementInternals[8] = wj.Member{name = "reportValidity", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
-	m_ElementInternals[9] = wj.Member{name = "labels", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
+	m_ElementInternals[1] = wj.Member{name = "setFormValue", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_ElementInternals_setFormValue}
+	m_ElementInternals[2] = wj.Member{name = "form", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_ElementInternals_get_form, set = nil}
+	m_ElementInternals[3] = wj.Member{name = "setValidity", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_ElementInternals_setValidity}
+	m_ElementInternals[4] = wj.Member{name = "willValidate", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_ElementInternals_get_willValidate, set = nil}
+	m_ElementInternals[5] = wj.Member{name = "validity", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_ElementInternals_get_validity, set = nil}
+	m_ElementInternals[6] = wj.Member{name = "validationMessage", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_ElementInternals_get_validationMessage, set = nil}
+	m_ElementInternals[7] = wj.Member{name = "checkValidity", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_ElementInternals_checkValidity}
+	m_ElementInternals[8] = wj.Member{name = "reportValidity", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_ElementInternals_reportValidity}
+	m_ElementInternals[9] = wj.Member{name = "labels", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_ElementInternals_get_labels, set = nil}
 	m_ElementInternals[10] = wj.Member{name = "states", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 27, get = wjr_ElementInternals_get_states, set = nil}
 	m_ElementInternals[11] = wj.Member{name = "role", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_ElementInternals_get_role, set = wjg_ElementInternals_set_role}
 	m_ElementInternals[12] = wj.Member{name = "ariaActiveDescendantElement", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}

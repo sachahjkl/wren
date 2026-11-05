@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 606 |
 | exposed by default | 390 |
 | members | 5312 |
-| members implemented | 3867 (72.8 %) |
+| members implemented | 3876 (73.0 %) |
 
 ## By specification
 
@@ -53,7 +53,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (8) | 126 / 126 |
 | `hr-time.idl` | 1 (1) | 15 / 17 |
-| `html.idl` | 161 (139) | 1585 / 1830 |
+| `html.idl` | 161 (139) | 1594 / 1830 |
 | `intersection-observer.idl` | 2 (2) | 20 / 20 |
 | `is-input-pending.idl` | 1 (1) | 1 / 1 |
 | `largest-contentful-paint.idl` | 1 (1) | 9 / 9 |
@@ -1087,18 +1087,18 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### ElementInternals
 
-46 / 63 members.
+55 / 63 members.
 
 - `readonly shadowRoot`: C `wjr_ElementInternals_get_shadowRoot`
-- `setFormValue()`: not supported
-- `readonly form`: not supported
-- `setValidity()`: not supported
-- `readonly willValidate`: not supported
-- `readonly validity`: not supported
-- `readonly validationMessage`: not supported
-- `checkValidity()`: not supported
-- `reportValidity()`: not supported
-- `readonly labels`: not supported
+- `setFormValue()`: C `wjr_ElementInternals_setFormValue`
+- `readonly form`: C `wjr_ElementInternals_get_form`
+- `setValidity()`: C `wjr_ElementInternals_setValidity`
+- `readonly willValidate`: C `wjr_ElementInternals_get_willValidate`
+- `readonly validity`: C `wjr_ElementInternals_get_validity`
+- `readonly validationMessage`: C `wjr_ElementInternals_get_validationMessage`
+- `checkValidity()`: C `wjr_ElementInternals_checkValidity`
+- `reportValidity()`: C `wjr_ElementInternals_reportValidity`
+- `readonly labels`: C `wjr_ElementInternals_get_labels`
 - `readonly states`: C `wjr_ElementInternals_get_states`
 - `role` (ARIAMixin): generic (reflects a content attribute)
 - `ariaActiveDescendantElement` (ARIAMixin): not supported

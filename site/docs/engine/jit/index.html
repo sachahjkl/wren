@@ -292,8 +292,12 @@ data property, the getter read from its <code>Getset</code> and checked to be a 
 loop's <code>hot_native_getter</code>: a DOM attribute's, Map's <code>size</code>) or a function of the script's, else the interpreter reads
 it; the helper <code>wj_jit_get</code> (<code>jit_getter</code>) calls it (a native through <code>call_native</code>, a script's as compiled code calls
 bytecode: its frame pushed, its compiled code run when it has some), the operand stack and the objects held written to
-the frame first, the held arrays taken again after. A write whose site's first shape finds an accessor writes through
-setters the same way (<code>j_call_setter</code>, <code>wj_jit_set</code>). An exception is exact: the helper puts the context's thrower in
+the frame first, the held arrays taken again after. A getter of the script's that can be compiled whole, the one the
+translation sees (in the prototype that holds it, or in the object it sees), is called directly as a function is
+(<code>j_direct_call</code>, below): its frame pushed by the code, <code>this</code> the object, the result at the read's place; any other
+getter the read finds (a closure of other code, a native, one not compiled yet) goes through the helper. A write whose
+site's first shape finds an accessor writes through setters the way the helper calls getters (<code>j_call_setter</code>,
+<code>wj_jit_set</code>). An exception is exact: the helper puts the context's thrower in
 the object's place (<code>Context.jit_thrower</code>, an object whose property of that name is an accessor with <code>jit_rethrow</code> as
 its getter and its setter), the code leaves through a throw exit, and the interpreter makes the read or the write
 again, which throws the exception pending. Host objects without exotic hooks
@@ -330,10 +334,14 @@ marked by the collector through <code>Function_Bytecode.jit</code>): an address 
 construction makes when the constructor's own <code>prototype</code> is the object the translation saw (<code>j_ctor_proto</code>: the
 callee's shape and the slot's value guarded; the root shape of that prototype is a constant). It does what <code>cell_new</code>
 and <code>object_new_shape</code> do: a block of the object's pool class popped from the free list (zeroed) or cut from the bump
-chunk, linked first in the runtime's cells, counted and charged to the heap, the object's class, bits, shape and inline
-slots written. An empty free list at the chunk's end, or a guard that fails, makes the object through the helper
-<code>wj_jit_new</code> (<code>jit_new</code>), which also makes an Array of entries (<code>array_from</code>, an array literal) and the other
-constructions (<code>create_from_ctor</code>). The collector's contract is the engine's own either way: allocation never collects,
+chunk (<code>j_pool_take</code>), linked first in the runtime's cells, counted and charged to the heap (<code>j_cell_new</code>), the
+object's class, bits, shape and inline slots written (<code>j_object_init</code>). An array literal (<code>array_from</code>) is made the
+same way as <code>array_from_values</code> makes it: three blocks (its values, its one slot, the object), the entries stored into
+the values, the length into the slot, the data an <code>Array_Data</code> (the union's tag written as an <code>Object_Data</code> of that
+variant has it); a literal of more entries than a pool block holds (<code>JIT_ARR_MAX</code>) goes to the helper. An empty free
+list at the chunk's end gives back the blocks already taken (as <code>raw_free</code> does) and, like a guard that fails, makes
+the object through the helper <code>wj_jit_new</code> (<code>jit_new</code>), which also makes the other constructions
+(<code>create_from_ctor</code>). The collector's contract is the engine's own either way: allocation never collects,
 a collection runs only at a safe point, and the compiled code reaches one only through a call (whose helper writes the
 operand stack and the objects held in locals to the frame first) or an exit; the helper drops the temporary roots of
 the allocation (<code>temp_roots</code> back to the frame's height) and the code's own allocation pushes none, the object being in
@@ -342,7 +350,13 @@ of the object it made until the next join (<code>Jit_State.k</code>), and append
 grown when full.</p>
 <p>A construction <code>new F(...)</code> of a constructor that can be compiled whole (not a derived class's) is a direct call
 (below): the object made by the helper is the callee's <code>this</code>, new.target the constructor, the result the callee's
-when it returns an object, else the object.</p>
+when it returns an object, else the object. A function without an operand stack (<code>function Empty() {}</code>: its only
+return is <code>return_undef</code>) is compiled whole too; its frame begins where its stack would, so its code writes no result
+and its callers take undefined (<code>jit_result</code>).</p>
+<h2 id="numbers-of-other-values"><a class="anchor" href="#numbers-of-other-values" aria-hidden="true">#</a>Numbers of other values</h2>
+<p>An arithmetic or bitwise instruction takes a V entry as a number: its tag guarded to be an int (or a double, once the
+site met one), else a learn exit. A bitwise operation's site that met undefined, null or a bool (<code>Jit_Site.odd</code>) takes
+them too, as ToInt32 makes them (0, 0, 0 or 1): <code>m.get(k) | 0</code> of a key the map does not have stays compiled.</p>
 <h2 id="strings"><a class="anchor" href="#strings" aria-hidden="true">#</a>Strings</h2>
 <p>A <code>+</code> whose site met a string adds values through the helper <code>wj_jit_add</code> (<code>jit_add</code>): the two entries written to the
 frame, <code>op_add</code> makes the string (a rope or an append buffer, as the engine builds them), the result a V; <code>s += x</code> of
@@ -358,7 +372,11 @@ functions that are inlined in their turn, one level down) is translated in place
 entries. The callee is guarded (the object the call finds is the one it was inlined for); a deopt anywhere in it
 leaves the call itself to the interpreter, with the caller's stack as it was, so nothing it did is done twice. The
 first such exit translates the loop again with the callee's numbers taken for doubles (<code>inl_wide</code>), the second
-(<code>JIT_AUX_NO_INLINE</code>) leaves the call to the interpreter for good.</li>
+(<code>JIT_AUX_NO_INLINE</code>) leaves the call to the interpreter for good. A call site keeps the functions it met
+(<code>Jit_Site.callees</code>, <code>JIT_SITE_SHAPES</code> of them: the one the translation sees, and each one a guard's miss learns);
+with two or more, each is inlined behind a check of the callee (<code>j_inline_poly</code>, at the loop's own level), its result
+a value; another callee is a learn exit while the site takes more, else the call is made (directly or through the
+helper).</li>
 <li><strong>Math and strings</strong>: <code>Math.abs</code>, <code>floor</code>, <code>ceil</code>, <code>trunc</code>, <code>sqrt</code>, <code>min</code>, <code>max</code>, <code>imul</code> of numbers are computed
 inline, and <code>s.charCodeAt(i)</code> of a flat string and an index within it, the callee guarded (a rope, an index out of
 the string: the interpreter makes the call, and flattens the rope).</li>
@@ -378,7 +396,7 @@ table (imported by the module, <code>"e" "table"</code>), the frame is popped as
 lives across the call but in its frame (its operand stack materialized, its objects written back), so no register
 state is saved. When the callee's code leaves other than by its return, the helper <code>wj_jit_finish</code>
 (<code>jit_call_finish</code>) interprets the rest of the call on its frame; an exception comes back as a throw exit of the
-caller. Any check that fails (another callee, not compiled, no room in the value stack's segment, too deep) makes
+caller (a getter's: the object's place takes the context's thrower, as the helper of getters leaves it). Any check that fails (another callee, not compiled, no room in the value stack's segment, too deep) makes
 the call through the helper instead, which pushes the frame the same way and enters the callee's code if it has
 some, else interprets it.</li>
 <li>A call of bytecode that cannot be compiled whole (a function with loops, a generator...) keeps the loop interpreted:
@@ -430,6 +448,7 @@ what compiled code would leave unrooted.</li>
 <li><a href="#what-the-code-holds">What the code holds</a></li>
 <li><a href="#properties">Properties</a></li>
 <li><a href="#objects-made-by-compiled-code">Objects made by compiled code</a></li>
+<li><a href="#numbers-of-other-values">Numbers of other values</a></li>
 <li><a href="#strings">Strings</a></li>
 <li><a href="#calls">Calls</a></li>
 <li><a href="#exits">Exits</a></li>

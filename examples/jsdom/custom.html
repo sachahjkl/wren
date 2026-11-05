@@ -101,6 +101,43 @@ customElements.define("x-fail", XFail);
 const f = document.createElement("x-fail");
 t("a constructor that throws leaves the element failed (not constructed)", f instanceof HTMLElement && f.localName === "x-fail" && !f.made);
 
+// a form-associated custom element: a control of its form, its value and validity its internals' (Shoelace, Material Web)
+const calls = [];
+class XField extends HTMLElement {
+  static formAssociated = true;
+  constructor() { super(); this.i = this.attachInternals(); }
+  formAssociatedCallback(form) { calls.push("form " + (form ? form.id : "null")); }
+  formDisabledCallback(disabled) { calls.push("disabled " + disabled); }
+  formResetCallback() { calls.push("reset"); }
+}
+customElements.define("x-field", XField);
+const form = document.createElement("form");
+form.id = "fa";
+const field = document.createElement("x-field");
+field.setAttribute("name", "who");
+form.append(field);
+document.body.append(form);
+eq("formAssociatedCallback when it joins a form", calls.join(), "form fa");
+t("its internals' form, and a listed element of the form", field.i.form === form && form.elements.length === 1 && form.elements[0] === field);
+field.i.setFormValue("ada");
+eq("setFormValue: the value submitted under its name", new FormData(form).get("who"), "ada");
+const many = new FormData();
+many.append("x", "1");
+many.append("y", "2");
+field.i.setFormValue(many);
+eq("... a FormData: its entries", [...new FormData(form)].join(";"), "x,1;y,2");
+field.i.setValidity({ valueMissing: true }, "needed");
+t("setValidity: invalid with the message", !field.i.checkValidity() && field.i.validity.valueMissing && field.i.validationMessage === "needed" && !form.checkValidity());
+throws("a flag needs a message", () => field.i.setValidity({ customError: true }), "TypeError");
+field.i.setValidity({});
+t("... and valid again", field.i.validity.valid && field.i.willValidate);
+field.setAttribute("disabled", "");
+form.reset();
+field.remove();
+eq("disabled, reset, then out of the form", calls.join(), "form fa,disabled true,reset,form null");
+customElements.define("x-plain", class extends HTMLElement {});
+throws("the form members of a custom element that is not form-associated", () => document.createElement("x-plain").attachInternals().form, "NotSupportedError");
+
 (async () => {
   await later();
   t("whenDefined resolves with the constructor", defined === XItem);

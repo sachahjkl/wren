@@ -688,7 +688,7 @@ jsdom_every_page_has_a_test :: proc(t: ^testing.T) {
 @(test) jsdom_compat :: proc(t: ^testing.T) { page_test(t, "compat.html", checks = 39) }
 @(test) jsdom_css_animations :: proc(t: ^testing.T) { page_test(t, "css-animations.html", checks = 28) }
 @(test) jsdom_cssom :: proc(t: ^testing.T) { page_test(t, "cssom.html", checks = 94) }
-@(test) jsdom_custom :: proc(t: ^testing.T) { page_test(t, "custom.html", checks = 34) }
+@(test) jsdom_custom :: proc(t: ^testing.T) { page_test(t, "custom.html", checks = 43) }
 @(test) jsdom_domparser_xml :: proc(t: ^testing.T) { page_test(t, "domparser-xml.html", checks = 46) }
 @(test) jsdom_elements :: proc(t: ^testing.T) { page_test(t, "elements.html", checks = 193) }
 @(test) jsdom_html :: proc(t: ^testing.T) { page_test(t, "html.html", checks = 183, after = proc(pr: ^Probe, _: ^Layout_Host) { dialog_dismiss_checks(pr) }) }

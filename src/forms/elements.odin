@@ -45,7 +45,12 @@ element :: proc(f: ^Forms, h: base.Handle) -> ^dom.Node {
 	return n
 }
 
-kind :: proc(f: ^Forms, h: base.Handle) -> Kind { return kind_of(element(f, h)) }
+// Its category: kind_of, or Custom for a form-associated custom element.
+kind :: proc(f: ^Forms, h: base.Handle) -> Kind {
+	n := element(f, h)
+	if c := control_peek(f, h); n != nil && c != nil && c.kind == .Custom { return .Custom }
+	return kind_of(n)
+}
 
 input_type_of :: proc(n: ^dom.Node) -> Input_Type {
 	t, ok := attr(n, "type")
@@ -96,7 +101,7 @@ type_name :: proc(f: ^Forms, h: base.Handle) -> string {
 	case .Button: return button_type_name(n)
 	case .Fieldset: return "fieldset"
 	case .Output: return "output"
-	case .None, .Option, .Optgroup, .Legend, .Form, .Label, .Object, .Datalist, .Dialog:
+	case .None, .Option, .Optgroup, .Legend, .Form, .Label, .Object, .Datalist, .Dialog, .Custom:
 	}
 	return ""
 }
@@ -136,26 +141,27 @@ LENGTH_APPLIES :: TEXT_LIKE
 PATTERN_APPLIES :: TEXT_LIKE
 SUBMIT_BUTTONS :: bit_set[Input_Type]{.Submit, .Image}
 
-// listed: button, fieldset, input, object, output, select, textarea
+// listed: button, fieldset, input, object, output, select, textarea, form-associated custom elements
 is_listed :: proc(k: Kind) -> bool {
-	#partial switch k { case .Button, .Fieldset, .Input, .Object, .Output, .Select, .Textarea: return true }
+	#partial switch k { case .Button, .Fieldset, .Input, .Object, .Output, .Select, .Textarea, .Custom: return true }
 	return false
 }
 
 is_submittable :: proc(k: Kind) -> bool {
-	#partial switch k { case .Button, .Input, .Select, .Textarea: return true }
+	#partial switch k { case .Button, .Input, .Select, .Textarea, .Custom: return true }
 	return false
 }
 
 is_resettable :: proc(k: Kind) -> bool {
-	#partial switch k { case .Input, .Output, .Select, .Textarea: return true }
+	#partial switch k { case .Input, .Output, .Select, .Textarea, .Custom: return true }
 	return false
 }
 
-// labelable: button, input (not hidden), meter, output, progress, select, textarea
+// labelable: button, input (not hidden), meter, output, progress, select, textarea, form-associated custom elements
 is_labelable :: proc(f: ^Forms, h: base.Handle) -> bool {
 	n := element(f, h)
 	if n == nil { return false }
+	if is_face(f, h) { return true }
 	switch n.name {
 	case "button", "meter", "output", "progress", "select", "textarea": return true
 	case "input": return input_type_of(n) != .Hidden
@@ -169,7 +175,7 @@ is_submit_button :: proc(f: ^Forms, h: base.Handle) -> bool {
 	switch kind_of(n) {
 	case .Button: return button_type_of(n) == .Submit
 	case .Input: return input_type_of(n) in SUBMIT_BUTTONS
-	case .None, .Textarea, .Select, .Option, .Optgroup, .Fieldset, .Legend, .Output, .Form, .Label, .Object, .Datalist, .Dialog:
+	case .None, .Textarea, .Select, .Option, .Optgroup, .Fieldset, .Legend, .Output, .Form, .Label, .Object, .Datalist, .Dialog, .Custom:
 	}
 	return false
 }
@@ -212,7 +218,7 @@ find_id_in_tree :: proc(f: ^Forms, root: base.Handle, id: string) -> base.Handle
 // otherwise the nearest ancestor <form>. NIL for elements that are not form-associated.
 form_owner :: proc(f: ^Forms, h: base.Handle) -> base.Handle {
 	n := element(f, h)
-	k := kind_of(n)
+	k := kind(f, h)
 	if !is_listed(k) && k != .Label && k != .Legend && k != .Option { return base.NIL_HANDLE }
 	if k == .Label {
 		// label.form: the form owner of the labeled control
@@ -248,7 +254,7 @@ form_owner :: proc(f: ^Forms, h: base.Handle) -> base.Handle {
 // options, a disabled optgroup parent.
 is_disabled :: proc(f: ^Forms, h: base.Handle) -> bool {
 	n := element(f, h)
-	k := kind_of(n)
+	k := kind(f, h)
 	#partial switch k {
 	case .Option:
 		if has_attr(n, "disabled") { return true }
@@ -257,7 +263,7 @@ is_disabled :: proc(f: ^Forms, h: base.Handle) -> bool {
 		return kind_of(pn) == .Optgroup && has_attr(pn, "disabled")
 	case .Optgroup:
 		return has_attr(n, "disabled")
-	case .Button, .Input, .Select, .Textarea, .Fieldset, .Output, .Object:
+	case .Button, .Input, .Select, .Textarea, .Fieldset, .Output, .Object, .Custom:
 		if k != .Output && k != .Object && has_attr(n, "disabled") { return true }
 		if k == .Output || k == .Object { return false }   // never disabled
 		child := h
@@ -305,10 +311,12 @@ in_datalist :: proc(f: ^Forms, h: base.Handle) -> bool {
 // Barred from constraint validation (§4.10.20.1 and the per-type rules).
 is_barred :: proc(f: ^Forms, h: base.Handle) -> bool {
 	n := element(f, h)
-	k := kind_of(n)
+	k := kind(f, h)
 	if !is_submittable(k) { return true }
 	if is_disabled(f, h) || in_datalist(f, h) { return true }
 	#partial switch k {
+	case .Custom:
+		if has_attr(n, "readonly") { return true }
 	case .Input:
 		t := input_type_of(n)
 		if t == .Hidden || t == .Reset || t == .Button { return true }
@@ -346,7 +354,7 @@ form_elements :: proc(f: ^Forms, form: base.Handle, allocator := context.temp_al
 	walk_elements(f, tree_root(f, form), &all)
 	for h in all {
 		n := element(f, h)
-		k := kind_of(n)
+		k := kind(f, h)
 		if !is_listed(k) { continue }
 		if k == .Input && input_type_of(n) == .Image { continue }
 		if form_owner(f, h) == form { append(&out, h) }

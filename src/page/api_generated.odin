@@ -14214,7 +14214,7 @@ _t_dom_CSSStyleSheet_ruleId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	return nil
 }
 
-// CustomElements_define :: proc(c: ^Call, name: string)
+// CustomElements_define :: proc(c: ^Call, name: string, form_associated: bool)
 @(private = "file")
 _t_dom_CustomElements_define :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -14229,7 +14229,8 @@ _t_dom_CustomElements_define :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CustomElements_define: argument name is not valid UTF-8") }
 		return wasm.trap_new("dom.CustomElements_define: argument name is not valid UTF-8")
 	}
-	CustomElements_define(&c, _p0)
+	_p1 := a[2].i32 != 0
+	CustomElements_define(&c, _p0, _p1)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
@@ -14330,6 +14331,88 @@ _t_dom_Element_setCustomState :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	}
 	_p1 := u32(a[1].i32)
 	Element_setCustomState(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Element_isFormAssociated :: proc(c: ^Call, element: Api_Element) -> bool
+@(private = "file")
+_t_dom_Element_isFormAssociated :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_isFormAssociated: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_isFormAssociated: argument element is not a live Element")
+	}
+	_r := Element_isFormAssociated(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Element_setFormValue :: proc(c: ^Call, element: Api_Element, kind: u32, value: string, entries: u64)
+@(private = "file")
+_t_dom_Element_setFormValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.Element_setFormValue", "value") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Element_setFormValue: argument value is not valid UTF-8") }
+		return wasm.trap_new("dom.Element_setFormValue: argument value is not valid UTF-8")
+	}
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_setFormValue: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_setFormValue: argument element is not a live Element")
+	}
+	_p1 := u32(a[1].i32)
+	api_route(&c, u64(a[4].i64))
+	_p3 := u64(a[4].i64)
+	Element_setFormValue(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Element_setFormValidity :: proc(c: ^Call, element: Api_Element, flags: u32, message: string)
+@(private = "file")
+_t_dom_Element_setFormValidity :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.Element_setFormValidity", "message") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Element_setFormValidity: argument message is not valid UTF-8") }
+		return wasm.trap_new("dom.Element_setFormValidity: argument message is not valid UTF-8")
+	}
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Element_setFormValidity: argument element is not a live Element") }
+		return wasm.trap_new("dom.Element_setFormValidity: argument element is not a live Element")
+	}
+	_p1 := u32(a[1].i32)
+	Element_setFormValidity(&c, _p0, _p1, _p2)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
@@ -39287,12 +39370,15 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "CSSStyleSheet_titleOf", fn = _t_dom_CSSStyleSheet_titleOf, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "CSSStyleSheet_rulesVersion", fn = _t_dom_CSSStyleSheet_rulesVersion, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "CSSStyleSheet_ruleId", fn = _t_dom_CSSStyleSheet_ruleId, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
-	{module = "dom", name = "CustomElements_define", fn = _t_dom_CustomElements_define, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "CustomElements_define", fn = _t_dom_CustomElements_define, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32}, wide_results = []wasm.Val_Kind{}},
 	{module = "dom", name = "CustomElements_pending", fn = _t_dom_CustomElements_pending, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "CustomElements_take", fn = _t_dom_CustomElements_take, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "CustomElements_release", fn = _t_dom_CustomElements_release, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "dom", name = "CustomElements_create", fn = _t_dom_CustomElements_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Element_setCustomState", fn = _t_dom_Element_setCustomState, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Element_isFormAssociated", fn = _t_dom_Element_isFormAssociated, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Element_setFormValue", fn = _t_dom_Element_setFormValue, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I64}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "Element_setFormValidity", fn = _t_dom_Element_setFormValidity, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "dnd", name = "DataTransfer_create", fn = _t_dnd_DataTransfer_create, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "dnd", name = "DataTransfer_get_dropEffect", fn = _t_dnd_DataTransfer_get_dropEffect, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dnd", name = "DataTransfer_set_dropEffect", fn = _t_dnd_DataTransfer_set_dropEffect, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},

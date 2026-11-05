@@ -87,6 +87,9 @@
 <li class="lvl3"><a href="#customelements-release">CustomElements_release</a></li>
 <li class="lvl3"><a href="#customelements-create">CustomElements_create</a></li>
 <li class="lvl3"><a href="#element-setcustomstate">Element_setCustomState</a></li>
+<li class="lvl3"><a href="#element-isformassociated">Element_isFormAssociated</a></li>
+<li class="lvl3"><a href="#element-setformvalue">Element_setFormValue</a></li>
+<li class="lvl3"><a href="#element-setformvalidity">Element_setFormValidity</a></li>
 <li class="lvl3"><a href="#document-readystate">Document_readyState</a></li>
 <li class="lvl3"><a href="#document-currentscript">Document_currentScript</a></li>
 <li class="lvl3"><a href="#window-document">Window_document</a></li>
@@ -633,9 +636,10 @@ object for as long as the element keeps that sheet. A &lt;style&gt; gets its she
 list gives a rule the same object across insertions and deletions around it.</p>
 <p>Host: <code>CSSStyleSheet_ruleId :: proc(c: ^Call, sheet: u64, index: u32) -&gt; u32</code></p>
 <h3 id="customelements-define"><a class="anchor" href="#customelements-define" aria-hidden="true">#</a><code>CustomElements_define</code></h3>
-<div class="code"><pre><code>void CustomElements_define(string name)</code></pre></div>
-<p>customElements.define(name, ...) succeeded: elements of that local name now queue reactions.</p>
-<p>Host: <code>CustomElements_define :: proc(c: ^Call, name: string)</code></p>
+<div class="code"><pre><code>void CustomElements_define(string name, bool form_associated)</code></pre></div>
+<p>customElements.define(name, ...) succeeded: elements of that local name now queue reactions; a form-associated
+definition makes its elements controls of their forms.</p>
+<p>Host: <code>CustomElements_define :: proc(c: ^Call, name: string, form_associated: bool)</code></p>
 <h3 id="customelements-pending"><a class="anchor" href="#customelements-pending" aria-hidden="true">#</a><code>CustomElements_pending</code></h3>
 <div class="code"><pre><code>u32 CustomElements_pending()</code></pre></div>
 <p>The size CustomElements_take needs now (0: nothing queued): the engine sizes its buffer with it, as the take
@@ -643,10 +647,11 @@ empties the queue (it must not be called twice to learn its size).</p>
 <p>Host: <code>CustomElements_pending :: proc(c: ^Call) -&gt; u32</code></p>
 <h3 id="customelements-take"><a class="anchor" href="#customelements-take" aria-hidden="true">#</a><code>CustomElements_take</code></h3>
 <div class="code"><pre><code>bytes CustomElements_take()</code></pre></div>
-<p>The queued reactions, taken: per reaction u8 kind (1 upgrade, 2 connected, 3 disconnected, 4 attribute changed)
-and u64 element; an attribute change adds its name, old value and new value (u32 length + UTF-8 each) and a u8
-of flags (1: there was an old value, 2: there is a new one). Each element stays pinned until
-CustomElements_release.</p>
+<p>The queued reactions, taken: per reaction u8 kind (1 upgrade, 2 connected, 3 disconnected, 4 attribute changed,
+5 adopted, 6 form associated, 7 form disabled, 8 form reset) and u64 element; an attribute change adds its name,
+old value and new value (u32 length + UTF-8 each) and a u8 of flags (1: there was an old value, 2: there is a new
+one); an adoption the two Document nodes; a form owner's change the form (0: none); a disabledness change a u8
+(1: disabled). Each element (and form) stays pinned until CustomElements_release.</p>
 <p>Host: <code>CustomElements_take :: proc(c: ^Call) -&gt; []u8</code></p>
 <h3 id="customelements-release"><a class="anchor" href="#customelements-release" aria-hidden="true">#</a><code>CustomElements_release</code></h3>
 <div class="code"><pre><code>void CustomElements_release(u64[] elements)</code></pre></div>
@@ -661,6 +666,21 @@ CustomElements_release.</p>
 <div class="code"><pre><code>void Element_setCustomState(Element element, u32 state)</code></pre></div>
 <p>The element's custom element state: 0 undefined, 1 custom, 2 failed.</p>
 <p>Host: <code>Element_setCustomState :: proc(c: ^Call, element: Api_Element, state: u32)</code></p>
+<h3 id="element-isformassociated"><a class="anchor" href="#element-isformassociated" aria-hidden="true">#</a><code>Element_isFormAssociated</code></h3>
+<div class="code"><pre><code>bool Element_isFormAssociated(Element element)</code></pre></div>
+<p>A form-associated custom element (custom, of a form-associated definition)? ElementInternals' form members
+refuse the others.</p>
+<p>Host: <code>Element_isFormAssociated :: proc(c: ^Call, element: Api_Element) -&gt; bool</code></p>
+<h3 id="element-setformvalue"><a class="anchor" href="#element-setformvalue" aria-hidden="true">#</a><code>Element_setFormValue</code></h3>
+<div class="code"><pre><code>void Element_setFormValue(Element element, u32 kind, string value, u64 entries)</code></pre></div>
+<p>ElementInternals.setFormValue(value): <code>kind</code> 0 null, 1 the string <code>value</code>, 2 the entries of the FormData
+<code>entries</code>, 3 the first entry of the FormData <code>entries</code> (a File given alone: named by the element's name).</p>
+<p>Host: <code>Element_setFormValue :: proc(c: ^Call, element: Api_Element, kind: u32, value: string, entries: u64)</code></p>
+<h3 id="element-setformvalidity"><a class="anchor" href="#element-setformvalidity" aria-hidden="true">#</a><code>Element_setFormValidity</code></h3>
+<div class="code"><pre><code>void Element_setFormValidity(Element element, u32 flags, string message)</code></pre></div>
+<p>ElementInternals.setValidity(flags, message): the ValidityState flags (forms.ValidityState), the message while
+any is set.</p>
+<p>Host: <code>Element_setFormValidity :: proc(c: ^Call, element: Api_Element, flags: u32, message: string)</code></p>
 <h3 id="document-readystate"><a class="anchor" href="#document-readystate" aria-hidden="true">#</a><code>Document_readyState</code></h3>
 <div class="code"><pre><code>string Document_readyState()</code></pre></div>
 <p>document.readyState: "loading", "interactive" or "complete".</p>

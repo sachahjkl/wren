@@ -19,7 +19,8 @@ import "core:strings"
 import "wb:base"
 import "wb:dom"
 
-Kind :: enum u8 { None, Input, Textarea, Select, Button, Option, Optgroup, Fieldset, Legend, Output, Form, Label, Object, Datalist, Dialog }
+// Custom: a form-associated custom element (custom.odin), known by its record, never by its name (kind_of says None).
+Kind :: enum u8 { None, Input, Textarea, Select, Button, Option, Optgroup, Fieldset, Legend, Output, Form, Label, Object, Datalist, Dialog, Custom }
 
 Input_Type :: enum u8 {
 	Text, Search, Tel, Url, Email, Password, Date, Month, Week, Time, Datetime_Local, Number, Range, Color,
@@ -94,6 +95,13 @@ Control :: struct {
 	style_bits:      Style_Bits,  // pseudo-class state last reported (style invalidation)
 	style_known:     bool,
 	image_coords:    [2]i32,      // last activation point of an image button
+	// a form-associated custom element (custom.odin): its submission value (ElementInternals.setFormValue), its
+	// validity flags (setValidity; the message is custom_error), the form owner and disabledness its callbacks last heard
+	face_value:      [dynamic]Entry,
+	face_list:       bool,        // a FormData's entries, with their names (else one entry, named by the element)
+	face_flags:      Validity,
+	face_owner:      base.Handle,
+	face_disabled:   bool,
 }
 
 Submit_Method :: enum u8 { Get, Post, Dialog }
@@ -160,6 +168,9 @@ Host :: struct {
 	// The activation of a link (<a> / <area> with href) clicked by a script (element.click(), a dispatched click): the
 	// page follows it. A user's click is the embedder's (it follows links itself). Optional.
 	follow_link:     proc(user: rawptr, link: base.Handle),
+	// A form-associated custom element's callback is due (custom.odin): its form owner changed (`form`), it became
+	// disabled or enabled, its form was reset. Optional.
+	face_callback:   proc(user: rawptr, h: base.Handle, cb: Face_Callback, form: base.Handle),
 }
 
 Report :: struct {
@@ -185,6 +196,7 @@ Forms :: struct {
 	focus_by_key: bool,          // the focus came from the keyboard (:focus-visible)
 	seq:          u64,
 	patterns:     map[string]^Regex,   // compiled `pattern` attributes (nil: invalid), keyed by source
+	faces:        [dynamic]base.Handle,   // the form-associated custom elements (custom.odin), in no order
 }
 
 Radio_Key :: struct { owner: base.Handle, name: string }
@@ -212,6 +224,7 @@ forms_destroy :: proc(f: ^Forms) {
 	delete(f.radio_cache)
 	clear_patterns(f)
 	delete(f.patterns)
+	delete(f.faces)
 	delete(f.report.message)
 	free(f)
 }
@@ -275,6 +288,7 @@ control_free :: proc(c: ^Control) {
 	delete(c.files)
 	undo_clear(&c.undo); delete(c.undo)
 	undo_clear(&c.redo); delete(c.redo)
+	entries_destroy(&c.face_value)
 	free(c)
 }
 
@@ -290,6 +304,7 @@ collect :: proc(f: ^Forms) {
 		control_free(f.controls[h])
 		delete_key(&f.controls, h)
 	}
+	for i := len(f.faces) - 1; i >= 0; i -= 1 { if !(f.faces[i] in f.controls) { unordered_remove(&f.faces, i) } }
 	if f.focus != base.NIL_HANDLE && !is_connected(f, f.focus) { f.focus = base.NIL_HANDLE }
 	if f.report.node != base.NIL_HANDLE && dom.get(f.doc, f.report.node) == nil { f.report.node = base.NIL_HANDLE }
 }

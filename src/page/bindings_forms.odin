@@ -80,6 +80,7 @@ forms_attach :: proc(p: ^Page) {
 			if p.engine != nil { p.engine.restyle_needed = true }
 		},
 		formdata = formdata_event,
+		face_callback = forms_face_callback,
 		now_ms = proc(user: rawptr) -> f64 { return f64(host.now_ns((^Page)(user).loop)) / 1e6 },
 		focus_changed = proc(user: rawptr, focus: base.Handle, by_keyboard: bool) {
 			p := (^Page)(user)
@@ -263,7 +264,7 @@ forms_style_query :: proc(user: rawptr, el: base.Handle, q: style.Control_Query)
 	if q == .Popover_Open { return popover_showing(p, el), true }   // (popover.odin)
 	if q == .Modal { return dialog_is_modal(p, el), true }           // (dialog_modal.odin)
 	if q == .Modal_Active { return dialog_top_modal(p) != base.NIL_HANDLE, true }
-	k := forms.kind_of(n)
+	k := forms.kind(f, el)
 	if k == .None && n.name != "progress" { return false, false }
 	switch q {
 	case .Popover_Open, .Modal, .Modal_Active: return false, false
@@ -271,7 +272,7 @@ forms_style_query :: proc(user: rawptr, el: base.Handle, q: style.Control_Query)
 	case .Indeterminate: return forms.matches_indeterminate(f, el), true
 	case .Default: return forms.matches_default(f, el), true
 	case .Disabled:
-		#partial switch k { case .Input, .Button, .Select, .Textarea, .Option, .Optgroup, .Fieldset: return forms.is_disabled(f, el), true }
+		#partial switch k { case .Input, .Button, .Select, .Textarea, .Option, .Optgroup, .Fieldset, .Custom: return forms.is_disabled(f, el), true }
 		return false, false
 	case .Read_Write:
 		#partial switch k { case .Input, .Textarea: return forms.is_read_write(f, el), true }
@@ -564,4 +565,36 @@ HTMLDialogElement_returnValue :: proc(c: ^Call, dialog: Api_Element) -> string {
 @(private)
 forms_repaint :: proc(p: ^Page) {
 	if pf := p.formctl; pf != nil && pf.embedder.changed != nil { pf.embedder.changed(pf.embedder.user, p) }
+}
+
+////////////////////////////////
+// Form-associated custom elements: what their ElementInternals set (forms custom.odin)
+
+Element_isFormAssociated :: proc(c: ^Call, element: Api_Element) -> bool { return forms.is_face(F(c), H(element.handle)) }
+
+// The kinds of a submission value (api/js_custom_elements.widl).
+@(private) FACE_VALUE_NULL :: 0
+@(private) FACE_VALUE_STRING :: 1
+@(private) FACE_VALUE_ENTRIES :: 2
+@(private) FACE_VALUE_FILE :: 3
+
+Element_setFormValue :: proc(c: ^Call, element: Api_Element, kind: u32, value: string, entries: u64) {
+	list: [dynamic]forms.Entry
+	switch kind {
+	case FACE_VALUE_NULL:
+	case FACE_VALUE_STRING:
+		append(&list, forms.Entry{name = strings.clone(""), value = strings.clone(value)})
+	case FACE_VALUE_ENTRIES, FACE_VALUE_FILE:
+		fd := formdata_get(c.page, entries)
+		if fd == nil { break }
+		for e in fd.entries {
+			append(&list, forms.entry_clone(e))
+			if kind == FACE_VALUE_FILE { break }
+		}
+	}
+	forms.face_set_value(F(c), H(element.handle), list, kind == FACE_VALUE_ENTRIES)
+}
+
+Element_setFormValidity :: proc(c: ^Call, element: Api_Element, flags: u32, message: string) {
+	forms.face_set_validity(F(c), H(element.handle), transmute(forms.Validity)flags, message)
 }

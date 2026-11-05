@@ -288,7 +288,7 @@
 	Applies parent/child relationship of "tablist"/"tab" via Element Internals: FAIL
 	Applies parent/child relationship of "tree"/"treeitem" via Element Internals: FAIL
 /custom-elements/HTMLElement-attachInternals.html: OK
-	If a custom element definition for the local name of the element doesn't exist, throw an NotSupportedError: FAIL
+	If a custom element definition for the local name of the element doesn't exist, throw an NotSupportedError: PASS
 	If a custom element definition for the local name of the element has disable internals flag, throw a NotSupportedError: PASS
 	Successful attachInternals() and the second call.: PASS
 	attachInternals() throws a NotSupportedError if it is called for a customized built-in element: FAIL
@@ -658,9 +658,9 @@
 	behaviors is a read-only frozen array: FAIL
 	behaviors returns empty array when no behaviors configured: FAIL
 /custom-elements/element-internals-shadowroot.html: ERROR
-	ElementInternals *can* be called after constructor, upgrade case: FAIL
+	ElementInternals *can* be called after constructor, upgrade case: PASS
 	ElementInternals cannot be called after constructor calls it, create case: PASS
-	ElementInternals cannot be called before constructor, upgrade case: FAIL
+	ElementInternals cannot be called before constructor, upgrade case: PASS
 	ElementInternals disabled by disabledFeatures: PASS
 	ElementInternals.shadowRoot allows access to closed shadow root: PASS
 	ElementInternals.shadowRoot allows access to open shadow root: PASS
@@ -675,112 +675,112 @@
 	Setting an observed attribute on an element with attributeChangedCallback while it has a connectedCallback in its custom element reaction queue must not result in connectedCallback getting invoked before the attribute change completes: FAIL
 	Setting an observed attribute on an element with attributeChangedCallback while it has a connectedCallback in its custom element reaction queue must result in connectedCallback getting invoked before the attribute change completes: FAIL
 /custom-elements/form-associated/ElementInternals-NotSupportedError.html: OK
-	Form-related operations and attributes should throw NotSupportedErrors for non-form-associated custom elements.: FAIL
+	Form-related operations and attributes should throw NotSupportedErrors for non-form-associated custom elements.: PASS
 /custom-elements/form-associated/ElementInternals-behavior-accessibility.tentative.html: ERROR
 /custom-elements/form-associated/ElementInternals-form.html: OK
-	ElementInternals.form should return the target element's form owner: FAIL
-	ElementInternals.form should throws NotSupportedError if the target element is not a form-associated custom element: FAIL
+	ElementInternals.form should return the target element's form owner: PASS
+	ElementInternals.form should throws NotSupportedError if the target element is not a form-associated custom element: PASS
 /custom-elements/form-associated/ElementInternals-labels.html: OK
-	ElementInternals.labels should throw NotSupportedError if the target element is not a form-associated custom element: FAIL
-	LABEL association: FAIL
-	LABEL click: FAIL
+	ElementInternals.labels should throw NotSupportedError if the target element is not a form-associated custom element: PASS
+	LABEL association: PASS
+	LABEL click: PASS
 /custom-elements/form-associated/ElementInternals-setFormValue-nullish-value.html: OK
-	ElementInternals.setFormValue(null) clears submission value: FAIL
-	ElementInternals.setFormValue(undefined) clears submission value: FAIL
+	ElementInternals.setFormValue(null) clears submission value: PASS
+	ElementInternals.setFormValue(undefined) clears submission value: PASS
 /custom-elements/form-associated/ElementInternals-setFormValue.html: OK
-	ElementInternals.setFormValue() should throw NotSupportedError if the target element is not a form-associated custom element: FAIL
-	Multiple values - name content attribute is ignored: FAIL
+	ElementInternals.setFormValue() should throw NotSupportedError if the target element is not a form-associated custom element: PASS
+	Multiple values - name content attribute is ignored: PASS
 	Newline normalization - \\n in FormData filename (formdata): FAIL
-	Newline normalization - \\n in FormData filename (urlencoded): FAIL
+	Newline normalization - \\n in FormData filename (urlencoded): PASS
 	Newline normalization - \\n in FormData name (formdata): FAIL
-	Newline normalization - \\n in FormData name (urlencoded): FAIL
+	Newline normalization - \\n in FormData name (urlencoded): PASS
 	Newline normalization - \\n in FormData value (formdata): FAIL
-	Newline normalization - \\n in FormData value (urlencoded): FAIL
+	Newline normalization - \\n in FormData value (urlencoded): PASS
 	Newline normalization - \\n in filename (formdata): FAIL
-	Newline normalization - \\n in filename (urlencoded): FAIL
+	Newline normalization - \\n in filename (urlencoded): PASS
 	Newline normalization - \\n in name (formdata): FAIL
-	Newline normalization - \\n in name (urlencoded): FAIL
+	Newline normalization - \\n in name (urlencoded): PASS
 	Newline normalization - \\n in value (formdata): FAIL
-	Newline normalization - \\n in value (urlencoded): FAIL
+	Newline normalization - \\n in value (urlencoded): PASS
 	Newline normalization - \\n\\r in FormData filename (formdata): FAIL
-	Newline normalization - \\n\\r in FormData filename (urlencoded): FAIL
+	Newline normalization - \\n\\r in FormData filename (urlencoded): PASS
 	Newline normalization - \\n\\r in FormData name (formdata): FAIL
-	Newline normalization - \\n\\r in FormData name (urlencoded): FAIL
+	Newline normalization - \\n\\r in FormData name (urlencoded): PASS
 	Newline normalization - \\n\\r in FormData value (formdata): FAIL
-	Newline normalization - \\n\\r in FormData value (urlencoded): FAIL
+	Newline normalization - \\n\\r in FormData value (urlencoded): PASS
 	Newline normalization - \\n\\r in filename (formdata): FAIL
-	Newline normalization - \\n\\r in filename (urlencoded): FAIL
+	Newline normalization - \\n\\r in filename (urlencoded): PASS
 	Newline normalization - \\n\\r in name (formdata): FAIL
-	Newline normalization - \\n\\r in name (urlencoded): FAIL
+	Newline normalization - \\n\\r in name (urlencoded): PASS
 	Newline normalization - \\n\\r in value (formdata): FAIL
-	Newline normalization - \\n\\r in value (urlencoded): FAIL
+	Newline normalization - \\n\\r in value (urlencoded): PASS
 	Newline normalization - \\r in FormData filename (formdata): FAIL
-	Newline normalization - \\r in FormData filename (urlencoded): FAIL
+	Newline normalization - \\r in FormData filename (urlencoded): PASS
 	Newline normalization - \\r in FormData name (formdata): FAIL
-	Newline normalization - \\r in FormData name (urlencoded): FAIL
+	Newline normalization - \\r in FormData name (urlencoded): PASS
 	Newline normalization - \\r in FormData value (formdata): FAIL
-	Newline normalization - \\r in FormData value (urlencoded): FAIL
+	Newline normalization - \\r in FormData value (urlencoded): PASS
 	Newline normalization - \\r in filename (formdata): FAIL
-	Newline normalization - \\r in filename (urlencoded): FAIL
+	Newline normalization - \\r in filename (urlencoded): PASS
 	Newline normalization - \\r in name (formdata): FAIL
-	Newline normalization - \\r in name (urlencoded): FAIL
+	Newline normalization - \\r in name (urlencoded): PASS
 	Newline normalization - \\r in value (formdata): FAIL
-	Newline normalization - \\r in value (urlencoded): FAIL
+	Newline normalization - \\r in value (urlencoded): PASS
 	Newline normalization - \\r\\n in FormData filename (formdata): FAIL
-	Newline normalization - \\r\\n in FormData filename (urlencoded): FAIL
+	Newline normalization - \\r\\n in FormData filename (urlencoded): PASS
 	Newline normalization - \\r\\n in FormData name (formdata): FAIL
-	Newline normalization - \\r\\n in FormData name (urlencoded): FAIL
+	Newline normalization - \\r\\n in FormData name (urlencoded): PASS
 	Newline normalization - \\r\\n in FormData value (formdata): FAIL
-	Newline normalization - \\r\\n in FormData value (urlencoded): FAIL
+	Newline normalization - \\r\\n in FormData value (urlencoded): PASS
 	Newline normalization - \\r\\n in filename (formdata): FAIL
-	Newline normalization - \\r\\n in filename (urlencoded): FAIL
+	Newline normalization - \\r\\n in filename (urlencoded): PASS
 	Newline normalization - \\r\\n in name (formdata): FAIL
-	Newline normalization - \\r\\n in name (urlencoded): FAIL
+	Newline normalization - \\r\\n in name (urlencoded): PASS
 	Newline normalization - \\r\\n in value (formdata): FAIL
-	Newline normalization - \\r\\n in value (urlencoded): FAIL
-	Null value should submit nothing: FAIL
-	Single value - Non-empty name exists: FAIL
-	Single value - empty name exists: FAIL
+	Newline normalization - \\r\\n in value (urlencoded): PASS
+	Null value should submit nothing: PASS
+	Single value - Non-empty name exists: PASS
+	Single value - empty name exists: PASS
 	Single value - name is missing: PASS
-	setFormValue with an empty FormData should submit nothing: FAIL
+	setFormValue with an empty FormData should submit nothing: PASS
 /custom-elements/form-associated/ElementInternals-setValidity-normalize-newlines.html: OK
-	setValidity() should normalize newlines with another validity flag set: FAIL
-	setValidity() should normalize newlines with the customError flag set: FAIL
+	setValidity() should normalize newlines with another validity flag set: PASS
+	setValidity() should normalize newlines with the customError flag set: PASS
 /custom-elements/form-associated/ElementInternals-submit-behavior-dialog.tentative.html: ERROR
 /custom-elements/form-associated/ElementInternals-submit-behavior.tentative.html: ERROR
 /custom-elements/form-associated/ElementInternals-target-element-is-held-strongly.html: ERROR
 	Target element of ElementsInternals is held strongly and doesn't get GCed if there are no other references: TIMEOUT
 /custom-elements/form-associated/ElementInternals-validation.html: OK
 	"anchor" argument of setValidity(): FAIL
-	"anchor" argument of setValidity(): passing self: FAIL
-	Custom control affects :valid :invalid for FORM and FIELDSET: FAIL
-	Custom control affects validation at the owner form: FAIL
-	checkValidity(): FAIL
-	checkValidity() should throw NotSupportedError if the target element is not a form-associated custom element: FAIL
-	reportValidity(): FAIL
-	reportValidity() should throw NotSupportedError if the target element is not a form-associated custom element: FAIL
-	validity and setValidity(): FAIL
-	validity.customError should be false if not explicitly set via setValidity(): FAIL
-	willValidate: FAIL
-	willValidate after upgrade: FAIL
-	willValidate after upgrade (document.createElement): FAIL
-	willValidate should throw NotSupportedError if the target element is not a form-associated custom element: FAIL
+	"anchor" argument of setValidity(): passing self: PASS
+	Custom control affects :valid :invalid for FORM and FIELDSET: PASS
+	Custom control affects validation at the owner form: PASS
+	checkValidity(): PASS
+	checkValidity() should throw NotSupportedError if the target element is not a form-associated custom element: PASS
+	reportValidity(): PASS
+	reportValidity() should throw NotSupportedError if the target element is not a form-associated custom element: PASS
+	validity and setValidity(): PASS
+	validity.customError should be false if not explicitly set via setValidity(): PASS
+	willValidate: PASS
+	willValidate after upgrade: PASS
+	willValidate after upgrade (document.createElement): PASS
+	willValidate should throw NotSupportedError if the target element is not a form-associated custom element: PASS
 /custom-elements/form-associated/disabled-delegatesFocus.html: OK
 	Focus events fire on disabled form-associated custom elements with delegatesFocus: FAIL
 /custom-elements/form-associated/fieldset-elements-after-upgrade.html: OK
-	Upgrading form-associated custom elements updates all ancestor fieldsets, including inside legend: FAIL
+	Upgrading form-associated custom elements updates all ancestor fieldsets, including inside legend: PASS
 /custom-elements/form-associated/fieldset-elements-during-construction.html: OK
-	Form associated custom element isn't a fieldset listed element until fully custom: FAIL
+	Form associated custom element isn't a fieldset listed element until fully custom: PASS
 /custom-elements/form-associated/fieldset-elements.html: OK
-	Form associated custom elements should work with fieldset.elements: FAIL
+	Form associated custom elements should work with fieldset.elements: PASS
 /custom-elements/form-associated/focusability.html: OK
 	Focusability of form-associated custom elements: FAIL
 /custom-elements/form-associated/form-associated-callback.html: OK
 	Associate by parser, customized at element creation: FAIL
 	Disassociation: FAIL
 	Parsed, connected, then upgraded: FAIL
-	Updating "form" content attribute: FAIL
-	Updating "id" attribute of form element: FAIL
+	Updating "form" content attribute: PASS
+	Updating "id" attribute of form element: PASS
 /custom-elements/form-associated/form-disabled-callback.html: ERROR
 	A disabled form-associated custom element should not provide an entry for it: PASS
 	A disabled form-associated custom element should not submit an entry for it: FAIL
@@ -798,18 +798,18 @@
 	Custom element inside the first legend of a disabled fieldset is not disabled: FAIL
 	Legend of an inner fieldset does not shield from an outer disabled fieldset: FAIL
 	Toggling disabled on the fieldset does not affect a custom element inside its first legend: FAIL
-	fieldset.elements includes custom elements inside the legend: FAIL
+	fieldset.elements includes custom elements inside the legend: PASS
 /custom-elements/form-associated/form-elements-namedItem.html: OK
 	Form associated custom elements should work with document.forms.elements.namedItem(): FAIL
 	Form associated custom elements should work with document.forms.elements.namedItem() after updating the name attribute: FAIL
 	Form associated custom elements should work with document.forms.elements.namedItem() after upgrading: FAIL
 /custom-elements/form-associated/form-reset-callback.html: OK
 	Clicking a reset button invokes formResetCallback in a microtask: FAIL
-	form.reset() should trigger formResetCallback: FAIL
+	form.reset() should trigger formResetCallback: PASS
 	form.reset(): formResetCallback is called synchronously at the end of form reset, with custom element reaction timing, *after* built-in form control reset algorithms run.: FAIL
 /custom-elements/form-associated/label-delegatesFocus.html: OK
-	Clicking on a label for a form associated custom element with delegatesFocus should focus the custom element's focus delegate.: FAIL
-	Clicking on a span in a label for a form associated custom element with delegatesFocus should focus the custom element's focus delegate.: FAIL
+	Clicking on a label for a form associated custom element with delegatesFocus should focus the custom element's focus delegate.: PASS
+	Clicking on a span in a label for a form associated custom element with delegatesFocus should focus the custom element's focus delegate.: PASS
 /custom-elements/historical.html: OK
 	ShadowRoot doesn't have importNode or createElement[NS]: PASS
 	attachShadow() does not recognize a registry member: PASS
@@ -1718,9 +1718,9 @@
 	Element names: defining an element named a-A should throw a SyntaxError: PASS
 	Element names: defining an element named a-Z should throw a SyntaxError: PASS
 	Element names: defining an element named a-a should succeed: PASS
-	Element names: defining an element named a-a× should succeed: FAIL
-	Element names: defining an element named a-a　 should succeed: FAIL
-	Element names: defining an element named a-a󰀀 should succeed: FAIL
+	Element names: defining an element named a-a× should succeed: PASS
+	Element names: defining an element named a-a　 should succeed: PASS
+	Element names: defining an element named a-a󰀀 should succeed: PASS
 	Element names: defining an element named a-漢字 should succeed: PASS
 	Element names: defining an element named a-𠀋 should succeed: PASS
 	Element names: defining an element named aa- should succeed: PASS
@@ -3694,7 +3694,7 @@
 	Valid custom element name: code points: [120,45,101,108,101,109,101,110,116], string: "x-element": PASS
 	Valid custom element name: code points: [121,45,101,108,101,109,101,110,116], string: "y-element": PASS
 	Valid custom element name: code points: [122,45,101,108,101,109,101,110,116], string: "z-element": PASS
-	Valid custom element name: code points: [97,1,45,101,108,101,109,101,110,116], string: "a-element": FAIL
+	Valid custom element name: code points: [97,1,45,101,108,101,109,101,110,116], string: "a-element": PASS
 	Valid custom element name: code points: [97,100,45,101,108,101,109,101,110,116], string: "ad-element": PASS
 	Valid custom element name: code points: [97,101,45,101,108,101,109,101,110,116], string: "ae-element": PASS
 	Valid custom element name: code points: [97,102,45,101,108,101,109,101,110,116], string: "af-element": PASS
@@ -3705,7 +3705,7 @@
 	Valid custom element name: code points: [97,107,45,101,108,101,109,101,110,116], string: "ak-element": PASS
 	Valid custom element name: code points: [97,108,45,101,108,101,109,101,110,116], string: "al-element": PASS
 	Valid custom element name: code points: [97,109,45,101,108,101,109,101,110,116], string: "am-element": PASS
-	Valid custom element name: code points: [97,11,45,101,108,101,109,101,110,116], string: "a-element": FAIL
+	Valid custom element name: code points: [97,11,45,101,108,101,109,101,110,116], string: "a-element": PASS
 	Valid custom element name: code points: [97,110,110,111,116,97,116,105,111,110,45,120,109,108,45,99,117,115,116,111,109], string: "annotation-xml-custom": PASS
 	Valid custom element name: code points: [97,110,45,101,108,101,109,101,110,116], string: "an-element": PASS
 	Valid custom element name: code points: [97,111,45,101,108,101,109,101,110,116], string: "ao-element": PASS
@@ -3720,46 +3720,46 @@
 	Valid custom element name: code points: [97,120,45,101,108,101,109,101,110,116], string: "ax-element": PASS
 	Valid custom element name: code points: [97,121,45,101,108,101,109,101,110,116], string: "ay-element": PASS
 	Valid custom element name: code points: [97,122,45,101,108,101,109,101,110,116], string: "az-element": PASS
-	Valid custom element name: code points: [97,123,45,101,108,101,109,101,110,116], string: "a{-element": FAIL
-	Valid custom element name: code points: [97,124,45,101,108,101,109,101,110,116], string: "a|-element": FAIL
-	Valid custom element name: code points: [97,125,45,101,108,101,109,101,110,116], string: "a}-element": FAIL
-	Valid custom element name: code points: [97,126,45,101,108,101,109,101,110,116], string: "a~-element": FAIL
-	Valid custom element name: code points: [97,127,45,101,108,101,109,101,110,116], string: "a-element": FAIL
+	Valid custom element name: code points: [97,123,45,101,108,101,109,101,110,116], string: "a{-element": PASS
+	Valid custom element name: code points: [97,124,45,101,108,101,109,101,110,116], string: "a|-element": PASS
+	Valid custom element name: code points: [97,125,45,101,108,101,109,101,110,116], string: "a}-element": PASS
+	Valid custom element name: code points: [97,126,45,101,108,101,109,101,110,116], string: "a~-element": PASS
+	Valid custom element name: code points: [97,127,45,101,108,101,109,101,110,116], string: "a-element": PASS
 	Valid custom element name: code points: [97,127345,45,101,108,101,109,101,110,116], string: "a🅱-element": PASS
 	Valid custom element name: code points: [97,127382,45,101,108,101,109,101,110,116], string: "a🆖-element": PASS
-	Valid custom element name: code points: [97,14,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,15,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,16,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,17,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,18,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,19,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,2,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,20,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,21,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,22,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,23,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,24,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,25,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,26,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,27,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,28,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,29,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,3,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,30,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,31,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,33,45,101,108,101,109,101,110,116], string: "a!-element": FAIL
-	Valid custom element name: code points: [97,34,45,101,108,101,109,101,110,116], string: "a"-element": FAIL
-	Valid custom element name: code points: [97,35,45,101,108,101,109,101,110,116], string: "a#-element": FAIL
-	Valid custom element name: code points: [97,36,45,101,108,101,109,101,110,116], string: "a$-element": FAIL
-	Valid custom element name: code points: [97,37,45,101,108,101,109,101,110,116], string: "a%-element": FAIL
-	Valid custom element name: code points: [97,38,45,101,108,101,109,101,110,116], string: "a&-element": FAIL
-	Valid custom element name: code points: [97,39,45,101,108,101,109,101,110,116], string: "a'-element": FAIL
-	Valid custom element name: code points: [97,4,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,40,45,101,108,101,109,101,110,116], string: "a(-element": FAIL
-	Valid custom element name: code points: [97,41,45,101,108,101,109,101,110,116], string: "a)-element": FAIL
-	Valid custom element name: code points: [97,42,45,101,108,101,109,101,110,116], string: "a*-element": FAIL
-	Valid custom element name: code points: [97,43,45,101,108,101,109,101,110,116], string: "a+-element": FAIL
-	Valid custom element name: code points: [97,44,45,101,108,101,109,101,110,116], string: "a,-element": FAIL
+	Valid custom element name: code points: [97,14,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,15,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,16,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,17,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,18,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,19,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,2,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,20,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,21,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,22,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,23,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,24,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,25,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,26,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,27,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,28,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,29,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,3,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,30,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,31,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,33,45,101,108,101,109,101,110,116], string: "a!-element": PASS
+	Valid custom element name: code points: [97,34,45,101,108,101,109,101,110,116], string: "a"-element": PASS
+	Valid custom element name: code points: [97,35,45,101,108,101,109,101,110,116], string: "a#-element": PASS
+	Valid custom element name: code points: [97,36,45,101,108,101,109,101,110,116], string: "a$-element": PASS
+	Valid custom element name: code points: [97,37,45,101,108,101,109,101,110,116], string: "a%-element": PASS
+	Valid custom element name: code points: [97,38,45,101,108,101,109,101,110,116], string: "a&-element": PASS
+	Valid custom element name: code points: [97,39,45,101,108,101,109,101,110,116], string: "a'-element": PASS
+	Valid custom element name: code points: [97,4,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,40,45,101,108,101,109,101,110,116], string: "a(-element": PASS
+	Valid custom element name: code points: [97,41,45,101,108,101,109,101,110,116], string: "a)-element": PASS
+	Valid custom element name: code points: [97,42,45,101,108,101,109,101,110,116], string: "a*-element": PASS
+	Valid custom element name: code points: [97,43,45,101,108,101,109,101,110,116], string: "a+-element": PASS
+	Valid custom element name: code points: [97,44,45,101,108,101,109,101,110,116], string: "a,-element": PASS
 	Valid custom element name: code points: [97,45,100], string: "a-d": PASS
 	Valid custom element name: code points: [97,45,101,108,101,109,101,110,116], string: "a-element": PASS
 	Valid custom element name: code points: [97,45,101], string: "a-e": PASS
@@ -3781,56 +3781,56 @@
 	Valid custom element name: code points: [97,45,117], string: "a-u": PASS
 	Valid custom element name: code points: [97,45,118], string: "a-v": PASS
 	Valid custom element name: code points: [97,45,119], string: "a-w": PASS
-	Valid custom element name: code points: [97,45,11], string: "a-": FAIL
+	Valid custom element name: code points: [97,45,11], string: "a-": PASS
 	Valid custom element name: code points: [97,45,120], string: "a-x": PASS
 	Valid custom element name: code points: [97,45,121], string: "a-y": PASS
 	Valid custom element name: code points: [97,45,122], string: "a-z": PASS
-	Valid custom element name: code points: [97,45,123], string: "a-{": FAIL
-	Valid custom element name: code points: [97,45,124], string: "a-|": FAIL
-	Valid custom element name: code points: [97,45,125], string: "a-}": FAIL
-	Valid custom element name: code points: [97,45,126], string: "a-~": FAIL
+	Valid custom element name: code points: [97,45,123], string: "a-{": PASS
+	Valid custom element name: code points: [97,45,124], string: "a-|": PASS
+	Valid custom element name: code points: [97,45,125], string: "a-}": PASS
+	Valid custom element name: code points: [97,45,126], string: "a-~": PASS
 	Valid custom element name: code points: [97,45,127345], string: "a-🅱": PASS
 	Valid custom element name: code points: [97,45,127382], string: "a-🆖": PASS
-	Valid custom element name: code points: [97,45,127], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,14], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,15], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,16], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,17], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,18], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,19], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,1], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,20], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,21], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,22], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,23], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,24], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,25], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,26], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,27], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,28], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,29], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,2], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,30], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,31], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,33], string: "a-!": FAIL
-	Valid custom element name: code points: [97,45,34], string: "a-"": FAIL
-	Valid custom element name: code points: [97,45,35], string: "a-#": FAIL
-	Valid custom element name: code points: [97,45,36], string: "a-$": FAIL
-	Valid custom element name: code points: [97,45,37], string: "a-%": FAIL
-	Valid custom element name: code points: [97,45,38], string: "a-&": FAIL
-	Valid custom element name: code points: [97,45,39], string: "a-'": FAIL
-	Valid custom element name: code points: [97,45,3], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,40], string: "a-(": FAIL
-	Valid custom element name: code points: [97,45,41], string: "a-)": FAIL
-	Valid custom element name: code points: [97,45,42], string: "a-*": FAIL
-	Valid custom element name: code points: [97,45,43], string: "a-+": FAIL
-	Valid custom element name: code points: [97,45,44], string: "a-,": FAIL
+	Valid custom element name: code points: [97,45,127], string: "a-": PASS
+	Valid custom element name: code points: [97,45,14], string: "a-": PASS
+	Valid custom element name: code points: [97,45,15], string: "a-": PASS
+	Valid custom element name: code points: [97,45,16], string: "a-": PASS
+	Valid custom element name: code points: [97,45,17], string: "a-": PASS
+	Valid custom element name: code points: [97,45,18], string: "a-": PASS
+	Valid custom element name: code points: [97,45,19], string: "a-": PASS
+	Valid custom element name: code points: [97,45,1], string: "a-": PASS
+	Valid custom element name: code points: [97,45,20], string: "a-": PASS
+	Valid custom element name: code points: [97,45,21], string: "a-": PASS
+	Valid custom element name: code points: [97,45,22], string: "a-": PASS
+	Valid custom element name: code points: [97,45,23], string: "a-": PASS
+	Valid custom element name: code points: [97,45,24], string: "a-": PASS
+	Valid custom element name: code points: [97,45,25], string: "a-": PASS
+	Valid custom element name: code points: [97,45,26], string: "a-": PASS
+	Valid custom element name: code points: [97,45,27], string: "a-": PASS
+	Valid custom element name: code points: [97,45,28], string: "a-": PASS
+	Valid custom element name: code points: [97,45,29], string: "a-": PASS
+	Valid custom element name: code points: [97,45,2], string: "a-": PASS
+	Valid custom element name: code points: [97,45,30], string: "a-": PASS
+	Valid custom element name: code points: [97,45,31], string: "a-": PASS
+	Valid custom element name: code points: [97,45,33], string: "a-!": PASS
+	Valid custom element name: code points: [97,45,34], string: "a-"": PASS
+	Valid custom element name: code points: [97,45,35], string: "a-#": PASS
+	Valid custom element name: code points: [97,45,36], string: "a-$": PASS
+	Valid custom element name: code points: [97,45,37], string: "a-%": PASS
+	Valid custom element name: code points: [97,45,38], string: "a-&": PASS
+	Valid custom element name: code points: [97,45,39], string: "a-'": PASS
+	Valid custom element name: code points: [97,45,3], string: "a-": PASS
+	Valid custom element name: code points: [97,45,40], string: "a-(": PASS
+	Valid custom element name: code points: [97,45,41], string: "a-)": PASS
+	Valid custom element name: code points: [97,45,42], string: "a-*": PASS
+	Valid custom element name: code points: [97,45,43], string: "a-+": PASS
+	Valid custom element name: code points: [97,45,44], string: "a-,": PASS
 	Valid custom element name: code points: [97,45,45,101,108,101,109,101,110,116], string: "a--element": PASS
 	Valid custom element name: code points: [97,45,45], string: "a--": PASS
 	Valid custom element name: code points: [97,45,46], string: "a-.": PASS
 	Valid custom element name: code points: [97,45,48], string: "a-0": PASS
 	Valid custom element name: code points: [97,45,49], string: "a-1": PASS
-	Valid custom element name: code points: [97,45,4], string: "a-": FAIL
+	Valid custom element name: code points: [97,45,4], string: "a-": PASS
 	Valid custom element name: code points: [97,45,50], string: "a-2": PASS
 	Valid custom element name: code points: [97,45,51], string: "a-3": PASS
 	Valid custom element name: code points: [97,45,52], string: "a-4": PASS
@@ -3839,23 +3839,23 @@
 	Valid custom element name: code points: [97,45,55], string: "a-7": PASS
 	Valid custom element name: code points: [97,45,56], string: "a-8": PASS
 	Valid custom element name: code points: [97,45,57], string: "a-9": PASS
-	Valid custom element name: code points: [97,45,58], string: "a-:": FAIL
-	Valid custom element name: code points: [97,45,59], string: "a-;": FAIL
-	Valid custom element name: code points: [97,45,5], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,60], string: "a-<": FAIL
-	Valid custom element name: code points: [97,45,61], string: "a-=": FAIL
-	Valid custom element name: code points: [97,45,63], string: "a-?": FAIL
-	Valid custom element name: code points: [97,45,64], string: "a-@": FAIL
+	Valid custom element name: code points: [97,45,58], string: "a-:": PASS
+	Valid custom element name: code points: [97,45,59], string: "a-;": PASS
+	Valid custom element name: code points: [97,45,5], string: "a-": PASS
+	Valid custom element name: code points: [97,45,60], string: "a-<": PASS
+	Valid custom element name: code points: [97,45,61], string: "a-=": PASS
+	Valid custom element name: code points: [97,45,63], string: "a-?": PASS
+	Valid custom element name: code points: [97,45,64], string: "a-@": PASS
 	Valid custom element name: code points: [97,45,65536], string: "a-𐀀": PASS
-	Valid custom element name: code points: [97,45,6], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,7], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,8], string: "a-": FAIL
-	Valid custom element name: code points: [97,45,91], string: "a-[": FAIL
-	Valid custom element name: code points: [97,45,92], string: "a-\\": FAIL
-	Valid custom element name: code points: [97,45,93], string: "a-]": FAIL
-	Valid custom element name: code points: [97,45,94], string: "a-^": FAIL
+	Valid custom element name: code points: [97,45,6], string: "a-": PASS
+	Valid custom element name: code points: [97,45,7], string: "a-": PASS
+	Valid custom element name: code points: [97,45,8], string: "a-": PASS
+	Valid custom element name: code points: [97,45,91], string: "a-[": PASS
+	Valid custom element name: code points: [97,45,92], string: "a-\\": PASS
+	Valid custom element name: code points: [97,45,93], string: "a-]": PASS
+	Valid custom element name: code points: [97,45,94], string: "a-^": PASS
 	Valid custom element name: code points: [97,45,95], string: "a-_": PASS
-	Valid custom element name: code points: [97,45,96], string: "a-`": FAIL
+	Valid custom element name: code points: [97,45,96], string: "a-`": PASS
 	Valid custom element name: code points: [97,45,97], string: "a-a": PASS
 	Valid custom element name: code points: [97,45,98], string: "a-b": PASS
 	Valid custom element name: code points: [97,45,99], string: "a-c": PASS
@@ -3863,7 +3863,7 @@
 	Valid custom element name: code points: [97,46,45,101,108,101,109,101,110,116], string: "a.-element": PASS
 	Valid custom element name: code points: [97,48,45,101,108,101,109,101,110,116], string: "a0-element": PASS
 	Valid custom element name: code points: [97,49,45,101,108,101,109,101,110,116], string: "a1-element": PASS
-	Valid custom element name: code points: [97,5,45,101,108,101,109,101,110,116], string: "a-element": FAIL
+	Valid custom element name: code points: [97,5,45,101,108,101,109,101,110,116], string: "a-element": PASS
 	Valid custom element name: code points: [97,50,45,101,108,101,109,101,110,116], string: "a2-element": PASS
 	Valid custom element name: code points: [97,51,45,101,108,101,109,101,110,116], string: "a3-element": PASS
 	Valid custom element name: code points: [97,52,45,101,108,101,109,101,110,116], string: "a4-element": PASS
@@ -3872,22 +3872,22 @@
 	Valid custom element name: code points: [97,55,45,101,108,101,109,101,110,116], string: "a7-element": PASS
 	Valid custom element name: code points: [97,56,45,101,108,101,109,101,110,116], string: "a8-element": PASS
 	Valid custom element name: code points: [97,57,45,101,108,101,109,101,110,116], string: "a9-element": PASS
-	Valid custom element name: code points: [97,58,45,101,108,101,109,101,110,116], string: "a:-element": FAIL
-	Valid custom element name: code points: [97,59,45,101,108,101,109,101,110,116], string: "a;-element": FAIL
-	Valid custom element name: code points: [97,6,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,60,45,101,108,101,109,101,110,116], string: "a<-element": FAIL
-	Valid custom element name: code points: [97,61,45,101,108,101,109,101,110,116], string: "a=-element": FAIL
-	Valid custom element name: code points: [97,63,45,101,108,101,109,101,110,116], string: "a?-element": FAIL
-	Valid custom element name: code points: [97,64,45,101,108,101,109,101,110,116], string: "a@-element": FAIL
+	Valid custom element name: code points: [97,58,45,101,108,101,109,101,110,116], string: "a:-element": PASS
+	Valid custom element name: code points: [97,59,45,101,108,101,109,101,110,116], string: "a;-element": PASS
+	Valid custom element name: code points: [97,6,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,60,45,101,108,101,109,101,110,116], string: "a<-element": PASS
+	Valid custom element name: code points: [97,61,45,101,108,101,109,101,110,116], string: "a=-element": PASS
+	Valid custom element name: code points: [97,63,45,101,108,101,109,101,110,116], string: "a?-element": PASS
+	Valid custom element name: code points: [97,64,45,101,108,101,109,101,110,116], string: "a@-element": PASS
 	Valid custom element name: code points: [97,65536,45,101,108,101,109,101,110,116], string: "a𐀀-element": PASS
-	Valid custom element name: code points: [97,7,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,8,45,101,108,101,109,101,110,116], string: "a-element": FAIL
-	Valid custom element name: code points: [97,91,45,101,108,101,109,101,110,116], string: "a[-element": FAIL
-	Valid custom element name: code points: [97,92,45,101,108,101,109,101,110,116], string: "a\\-element": FAIL
-	Valid custom element name: code points: [97,93,45,101,108,101,109,101,110,116], string: "a]-element": FAIL
-	Valid custom element name: code points: [97,94,45,101,108,101,109,101,110,116], string: "a^-element": FAIL
+	Valid custom element name: code points: [97,7,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,8,45,101,108,101,109,101,110,116], string: "a-element": PASS
+	Valid custom element name: code points: [97,91,45,101,108,101,109,101,110,116], string: "a[-element": PASS
+	Valid custom element name: code points: [97,92,45,101,108,101,109,101,110,116], string: "a\\-element": PASS
+	Valid custom element name: code points: [97,93,45,101,108,101,109,101,110,116], string: "a]-element": PASS
+	Valid custom element name: code points: [97,94,45,101,108,101,109,101,110,116], string: "a^-element": PASS
 	Valid custom element name: code points: [97,95,45,101,108,101,109,101,110,116], string: "a_-element": PASS
-	Valid custom element name: code points: [97,96,45,101,108,101,109,101,110,116], string: "a`-element": FAIL
+	Valid custom element name: code points: [97,96,45,101,108,101,109,101,110,116], string: "a`-element": PASS
 	Valid custom element name: code points: [97,97,45,101,108,101,109,101,110,116], string: "aa-element": PASS
 	Valid custom element name: code points: [97,98,45,101,108,101,109,101,110,116], string: "ab-element": PASS
 	Valid custom element name: code points: [97,99,45,101,108,101,109,101,110,116], string: "ac-element": PASS

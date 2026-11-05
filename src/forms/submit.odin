@@ -154,8 +154,14 @@ construct_entry_list :: proc(f: ^Forms, form: base.Handle, submitter: base.Handl
 	for field in form_submittables(f, form) {
 		n := element(f, field)
 		if n == nil { continue }
-		k := kind_of(n)
+		k := kind(f, field)
 		if in_datalist(f, field) || is_disabled(f, field) { continue }
+		if k == .Custom {
+			name, _ := attr(n, "name")
+			face_entries(control_peek(f, field), name, &list)
+			if len(list) > f.settings.max_entries { entries_destroy(&list); return nil, false }
+			continue
+		}
 		if k == .Button && field != submitter { continue }
 		t := input_type_of(n)
 		if k == .Input {
@@ -227,7 +233,7 @@ crlf :: proc(s: string, allocator := context.temp_allocator) -> string {
 
 // The name/value pairs of the urlencoded and text/plain encodings: newlines normalized, files replaced by their name.
 @(private)
-pair_value :: proc(e: Entry) -> string { return e.is_file ? e.file.name : crlf(e.value) }
+pair_value :: proc(e: Entry) -> string { return crlf(e.is_file ? e.file.name : e.value) }
 
 urlencode :: proc(list: []Entry, allocator := context.allocator, charset := "UTF-8") -> string {
 	sb := strings.builder_make(allocator)

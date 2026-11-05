@@ -386,6 +386,10 @@ Element_attachInternals :: proc(c: ^Call, element: Api_Element) -> (u64, Api_Err
 	if n.ns != .HTML || !dom.is_valid_custom_element_name(n.name) {
 		return 0, fail(c, .Not_Supported, "Failed to execute 'attachInternals' on 'HTMLElement': Unable to attach ElementInternals to non-custom elements.")
 	}
+	// HTML: custom, or precustomized (its constructor runs: the state the upgrade sets before it, js_custom_elements.odin)
+	if ce := ce_of(p); ce == nil || ce.state[H(element.handle)] == 0 {
+		return 0, fail(c, .Not_Supported, "Failed to execute 'attachInternals' on 'HTMLElement': the element is not a custom element yet (it has no definition).")
+	}
 	s := shadow_state(p)
 	if s.disabled[n.name] & 2 != 0 {
 		return 0, fail(c, .Not_Supported, "Failed to execute 'attachInternals' on 'HTMLElement': ElementInternals is disabled by disabledFeature static field.")

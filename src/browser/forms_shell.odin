@@ -548,7 +548,7 @@ control_intrinsic_size :: proc(app: ^App, p: ^page.Page, h: base.Handle, cs: ^st
 		return {w + 18, line * f32(forms.display_size(f, h))}
 	case .Button:
 		return {font.text_width(&app.fonts, fid, size, forms.collapse_ws(dom.text_content(p.doc, h))), line}
-	case .None, .Option, .Optgroup, .Fieldset, .Legend, .Output, .Form, .Label, .Object, .Datalist, .Dialog:
+	case .None, .Option, .Optgroup, .Fieldset, .Legend, .Output, .Form, .Label, .Object, .Datalist, .Dialog, .Custom:
 	}
 	return {0, 0}
 }
@@ -797,7 +797,7 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 		}
 	case .Button:
 		centered_text(dc, fonts, fid, size, content, fg, button_label(f, node), line_h = lh)
-	case .None, .Option, .Optgroup, .Fieldset, .Legend, .Output, .Form, .Label, .Object, .Datalist, .Dialog:
+	case .None, .Option, .Optgroup, .Fieldset, .Legend, .Output, .Form, .Label, .Object, .Datalist, .Dialog, .Custom:
 	}
 }
 
