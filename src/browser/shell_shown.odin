@@ -122,7 +122,21 @@ shell_shown_wanted :: proc(app: ^App, t: ^Tab) -> (wanted, moving: bool) {
 @(private = "file")
 shell_animated :: proc(app: ^App, t: ^Tab, out: ^[dynamic]style.Compositor_Value) -> bool {
 	if app.chrome_frames.styling { return false }
-	return page.animations_compositor_values(t.page, pacer_of(app).frame_ms, out)
+	return page.animations_compositor_values(t.page, pacer_of(app).frame_ms, shell_shown_offsets(app, t), out)
+}
+
+// Where this frame shows the scrollers it moved (CSS px), for the animations those drive.
+@(private = "file")
+shell_shown_offsets :: proc(app: ^App, t: ^Tab) -> []style.Shown_Offset {
+	if app.chrome_frames.pending_tab != t.id { return nil }
+	scale := f64(page_scale(app))
+	out := make([dynamic]style.Shown_Offset, 0, len(app.chrome_frames.boxes) + 1, context.temp_allocator)
+	if app.chrome_frames.pending_scroll != {} {
+		doc := shell_shown_scroll(t)
+		append(&out, style.Shown_Offset{base.NIL_HANDLE, {f64(doc.x) / scale, f64(doc.y) / scale}})
+	}
+	for b in app.chrome_frames.boxes { append(&out, style.Shown_Offset{b.node, {f64(b.to.x) / scale, f64(b.to.y) / scale}}) }
+	return out[:]
 }
 
 // A chrome frame painting the page from its layout: the caret as the clock has it (the shell's own state: the next full frame

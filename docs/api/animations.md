@@ -20,6 +20,12 @@ Odin: `import "wren:animations"`.
 
 Checked by the browser on every call (`lookup_Animation`).
 
+### handle `ProgressTimeline` : `Object`
+
+A ScrollTimeline or ViewTimeline (src/page/web_animations_scroll.odin).
+
+Checked by the browser on every call (`lookup_ProgressTimeline`).
+
 ### enum `AnimationPlayState` : i32
 
 | member | value | |
@@ -48,6 +54,11 @@ A CSS animation or transition among Animation_relevant's handles (src/page/web_a
 | `delay` | `f64` |  |%!(EXTRA false)
 | `duration` | `f64` |  |%!(EXTRA false)
 | `iterations` | `f64` |  |%!(EXTRA false)
+| `timeline_kind` | `i32` | The timeline: 0 the document's, 1 scroll, 2 view (`timeline`, `source`, `subject`, `axis`), 3 none. |%!(EXTRA false)
+| `timeline` | `u64` |  |%!(EXTRA false)
+| `source` | `u64` |  |%!(EXTRA false)
+| `subject` | `u64` |  |%!(EXTRA false)
+| `axis` | `i32` |  |%!(EXTRA false)
 
 ## Functions
 
@@ -364,6 +375,77 @@ f64 DocumentTimeline_currentTime()
 document.timeline.currentTime (NaN: null)
 
 Host: `DocumentTimeline_currentTime :: proc(c: ^Call) -> f64`
+
+### `ProgressTimeline_create`
+
+```
+u64 ProgressTimeline_create(optional Element source, bool none, optional Element subject, i32 axis, string inset)
+```
+
+new ScrollTimeline({source, axis}), new ViewTimeline({subject, axis, inset}): `source` absent with `none`: a null source; absent
+without it: the viewport. `subject`: a view timeline's. `axis`: 0 block, 1 inline, 2 x, 3 y. `inset` as CSS text.
+
+Host: `ProgressTimeline_create :: proc(c: ^Call, source: Api_Element, none: bool, subject: Api_Element, axis: i32, inset: string) -> u64`
+
+### `ProgressTimeline_currentTime`
+
+```
+f64 ProgressTimeline_currentTime(ProgressTimeline timeline)
+```
+
+timeline.currentTime, in percents (NaN: null).
+
+Host: `ProgressTimeline_currentTime :: proc(c: ^Call, timeline: Api_ProgressTimeline) -> f64`
+
+### `ProgressTimeline_offset`
+
+```
+f64 ProgressTimeline_offset(ProgressTimeline timeline, i32 which)
+```
+
+ViewTimeline startOffset (0) and endOffset (1), CSS px.
+
+Host: `ProgressTimeline_offset :: proc(c: ^Call, timeline: Api_ProgressTimeline, which: i32) -> f64`
+
+### `Animation_setProgressTimeline`
+
+```
+void Animation_setProgressTimeline(Animation animation, ProgressTimeline timeline)
+```
+
+animation.timeline = a ScrollTimeline or ViewTimeline.
+
+Host: `Animation_setProgressTimeline :: proc(c: ^Call, animation: Api_Animation, timeline: Api_ProgressTimeline)`
+
+### `Animation_isProgress`
+
+```
+bool Animation_isProgress(Animation animation)
+```
+
+The animation's times are percents of a ScrollTimeline or ViewTimeline.
+
+Host: `Animation_isProgress :: proc(c: ^Call, animation: Api_Animation) -> bool`
+
+### `Animation_setRange`
+
+```
+bool Animation_setRange(Animation animation, i32 which, string text)
+```
+
+rangeStart (0) or rangeEnd (1) as CSS text; false when it is not one.
+
+Host: `Animation_setRange :: proc(c: ^Call, animation: Api_Animation, which: i32, text: string) -> bool`
+
+### `Animation_range`
+
+```
+string Animation_range(Animation animation, i32 which)
+```
+
+rangeStart (0) or rangeEnd (1) as CSS text.
+
+Host: `Animation_range :: proc(c: ^Call, animation: Api_Animation, which: i32) -> string`
 
 ### `Animation_validEasing`
 

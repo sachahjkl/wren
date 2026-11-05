@@ -57,6 +57,9 @@ Web_Animation :: struct {
 	css:           u64,          // a CSS animation's or transition's serial on the style timeline (web_animations_css.odin); 0: a script's
 	css_transition: bool,
 	css_name:      string,       // owned: animationName / transitionProperty
+	progress:      u64,          // its timeline, a ScrollTimeline or ViewTimeline (web_animations_scroll.odin); 0: the document.s. Its times are then percents
+	range:         [2]style.Anim_Range,   // rangeStart, rangeEnd
+	auto_align:    bool,         // its start time follows the attachment range (it was not set)
 }
 
 @(private)
@@ -161,6 +164,10 @@ anim_end :: proc(a: ^Web_Animation) -> f64 {
 		info, ok := style.timeline_css_info(a.page.anim.timeline, a.css)
 		return ok ? info.delay + info.duration * info.iterations : 0
 	}
+	if a.progress != 0 {
+		r := anim_range_percent(a)
+		return a.has_effect ? r[1] - r[0] : 0
+	}
 	if !a.has_effect { return 0 }
 	t := style.timeline_script_timing(a.page.anim.timeline, a.id)
 	return t != nil ? style.effect_end_time(t^) : 0
@@ -170,12 +177,13 @@ anim_end :: proc(a: ^Web_Animation) -> f64 {
 anim_current :: proc(a: ^Web_Animation) -> (f64, bool) {
 	if a.css != 0 {
 		info, ok := style.timeline_css_info(a.page.anim.timeline, a.css)
-		if !ok || info.canceled { return 0, false }
+		if !ok || info.canceled || info.inactive { return 0, false }
 		return info.current, true
 	}
 	if a.has_hold { return a.hold, true }
 	if !a.timeline || !a.has_start { return 0, false }
-	return (anims_now(a.page) - a.start) * a.rate, true
+	now, ok := anim_now(a)
+	return (now - a.start) * a.rate, ok
 }
 
 @(private)
@@ -205,11 +213,22 @@ anim_play_state :: proc(a: ^Web_Animation) -> Api_AnimationPlayState {
 	return .Running
 }
 
+// The timing of its effect as its timeline counts it (temp allocator); nil: none.
+@(private)
+anim_timing :: proc(a: ^Web_Animation) -> ^style.Effect_Timing {
+	t := style.timeline_script_timing(a.page.anim.timeline, a.id)
+	if t == nil || a.progress == 0 { return t }
+	n := new(style.Effect_Timing, context.temp_allocator)
+	r := anim_range_percent(a)
+	n^ = style.effect_timing_normalised(t^, r[1] - r[0])
+	return n
+}
+
 // The effect is current or in effect (Web Animations 1 §4.6): the animation is relevant (getAnimations, keep alive).
 @(private)
 anim_relevant :: proc(a: ^Web_Animation) -> bool {
 	if !a.has_effect || a.replace == .Removed { return false }
-	t := style.timeline_script_timing(a.page.anim.timeline, a.id)
+	t := anim_timing(a)
 	if t == nil { return false }
 	cur, has := anim_current(a)
 	if !has { return false }
@@ -245,7 +264,7 @@ anim_changed :: proc(a: ^Web_Animation) {
 	p := a.page
 	if p.closed || a.css != 0 { return }   // a CSS one: the style timeline runs it
 	if a.has_effect {
-		clock := style.Script_Clock{start = a.start, hold = a.hold, has_start = a.has_start, has_hold = a.has_hold, rate = a.rate, timeline = a.timeline}
+		clock := style.Script_Clock{start = a.start, hold = a.hold, has_start = a.has_start, has_hold = a.has_hold, rate = a.rate, timeline = a.timeline, progress = a.progress, range = a.range}
 		if a.replace == .Removed { clock = {rate = 1} }   // removed: no local time, no values
 		style.timeline_script_clock(p.anim.timeline, a.id, clock)
 	}
@@ -275,12 +294,12 @@ anim_queue_event :: proc(a: ^Web_Animation, type: string, current: f64) {
 // "Update an animation's finished state"
 @(private)
 anim_update_finished :: proc(a: ^Web_Animation, did_seek, sync: bool) {
-	now := anims_now(a.page)
+	now, active := anim_now(a)
 	unconstrained: f64
 	has_unc: bool
 	if did_seek {
 		unconstrained, has_unc = anim_current(a)
-	} else if a.timeline && a.has_start {
+	} else if a.timeline && a.has_start && active {
 		unconstrained, has_unc = (now - a.start) * a.rate, true
 	}
 	if has_unc && a.has_start && a.pending == .None {
@@ -319,12 +338,14 @@ anim_silently_set_current :: proc(a: ^Web_Animation, seek: f64, has_seek: bool) 
 		_, has := anim_current(a)
 		return !has
 	}
-	if a.has_hold || !a.has_start || !a.timeline || a.rate == 0 {
+	now, active := anim_now(a)
+	if a.has_hold || !a.has_start || !a.timeline || a.rate == 0 || !active {
 		a.hold, a.has_hold = seek, true
 	} else {
-		a.start, a.has_start = anims_now(a.page) - seek / a.rate, true
+		a.start, a.has_start = now - seek / a.rate, true
 	}
 	if !a.timeline { a.has_start = false }
+	a.auto_align = false
 	a.has_prev = false
 	return true
 }
@@ -338,6 +359,20 @@ anim_play :: proc(a: ^Web_Animation, auto_rewind: bool) -> (ok: bool) {
 	rate := anim_effective_rate(a)
 	cur, has := anim_current(a)
 	end := anim_end(a)
+	if a.progress != 0 {
+		// on a progress timeline a play aligns with the attachment range, unless a time was set while it was held
+		if a.pending != .None { a.pending = .None; has_pending_ready = true }
+		if !a.has_hold || (auto_rewind && (cur < 0 || cur >= end)) {
+			a.auto_align = true
+			a.has_start, a.has_hold = false, false
+		} else {
+			a.has_start = false
+		}
+		if !has_pending_ready { anim_new_ready(a) }
+		a.pending = .Play
+		anim_update_finished(a, false, false)
+		return true
+	}
 	switch {
 	case rate > 0 && auto_rewind && (!has || cur < 0 || cur >= end):
 		seek, has_seek = 0, true
@@ -394,7 +429,11 @@ anim_commit_pending :: proc(a: ^Web_Animation, ready: f64) {
 	case .None:
 		return
 	case .Play:
-		if a.has_hold {
+		if a.auto_align && a.progress != 0 {
+			anim_apply_pending_rate(a)
+			a.start, a.has_start = anim_range_percent(a)[a.rate < 0 ? 1 : 0], true
+			a.has_hold = false
+		} else if a.has_hold {
 			anim_apply_pending_rate(a)
 			a.start = a.rate == 0 ? ready : ready - a.hold / a.rate
 			a.has_start = true
@@ -445,7 +484,9 @@ web_animations_update :: proc(p: ^Page) {
 	snapshot := make([dynamic]^Web_Animation, 0, len(w.list), context.temp_allocator)
 	append(&snapshot, ..w.list[:])
 	for a in snapshot {
-		if a.pending != .None { anim_commit_pending(a, now) } else { anim_update_finished(a, false, false) }
+		ready, active := anim_now(a)
+		if a.progress == 0 { ready = now }
+		if a.pending != .None && active { anim_commit_pending(a, ready) } else { anim_update_finished(a, false, false) }   // (no time yet: pending until there is one)
 	}
 	// removing replaced animations (Web Animations 1 §5.5)
 	later := make([dynamic]u64, 0, len(snapshot), context.temp_allocator)
@@ -487,6 +528,10 @@ anims_schedule :: proc(p: ^Page) {
 	want :: proc(due: ^f64, ms: f64) { if due^ < 0 || ms < due^ { due^ = max(ms, 0) } }
 	if len(w.events) > 0 { want(&due, 0) }
 	for a in w.list {
+		if a.progress != 0 {
+			if _, active := anim_now(a); active && a.pending != .None { want(&due, 0) }   // (the scroll that moves it brings its frames)
+			continue
+		}
 		if a.pending != .None { want(&due, 0); continue }
 		if a.has_hold || !a.has_start || !a.timeline || a.rate == 0 || a.finished != .Pending { continue }
 		cur, _ := anim_current(a)
@@ -538,7 +583,7 @@ Animation_setEffect :: proc(c: ^Call, animation: Api_Animation, target: Api_Elem
 	a := animation.data
 	p := c.page
 	t := style.Effect_Timing{
-		delay = delay, end_delay = end_delay, duration = math.is_nan(duration) ? 0 : max(duration, 0),
+		delay = delay, end_delay = end_delay, duration = math.is_nan(duration) ? 0 : max(duration, 0), auto_duration = math.is_nan(duration),
 		iterations = max(iterations, 0), iteration_start = max(iteration_start, 0),
 		direction = style.Anim_Direction(clamp(direction, 0, 3)), fill = style.Fill_Mode(clamp(fill, 0, 3)),
 	}
@@ -575,9 +620,10 @@ Animation_clearEffect :: proc(c: ^Call, animation: Api_Animation) {
 
 Animation_setTimeline :: proc(c: ^Call, animation: Api_Animation, document_timeline: bool) {
 	a := animation.data
-	if a.timeline == document_timeline { return }
+	if a.timeline == document_timeline && a.progress == 0 { return }
 	prev, has_prev := anim_current(a)
-	a.timeline = document_timeline
+	if a.progress != 0 { has_prev = false }   // (percents are no times of the document timeline)
+	a.timeline, a.progress = document_timeline, 0
 	if has_prev { anim_silently_set_current(a, prev, true) }
 	anim_update_finished(a, false, false)
 	anim_changed(a)
@@ -614,8 +660,8 @@ Animation_finish :: proc(c: ^Call, animation: Api_Animation) -> Api_Error {
 	anim_apply_pending_rate(a)
 	limit := a.rate > 0 ? end : 0
 	anim_silently_set_current(a, limit, true)
-	if !a.has_start && a.timeline {
-		a.start, a.has_start = anims_now(c.page) - limit / a.rate, true
+	if now, active := anim_now(a); !a.has_start && a.timeline && active {
+		a.start, a.has_start = now - limit / a.rate, true
 	}
 	if a.pending == .Pause && a.has_start {
 		a.has_hold = false
@@ -700,7 +746,7 @@ Animation_updatePlaybackRate :: proc(c: ^Call, animation: Api_Animation, rate: f
 	case state == .Idle || state == .Paused || !has:
 		anim_apply_pending_rate(a)
 	case state == .Finished:
-		now := anims_now(c.page)
+		now, _ := anim_now(a)
 		unconstrained := a.has_start ? (now - a.start) * a.rate : cur
 		a.start = rate == 0 ? now : now - unconstrained / rate
 		a.has_start = true
@@ -761,8 +807,11 @@ Animation_startTime :: proc(c: ^Call, animation: Api_Animation) -> f64 {
 		// a running one started `current` ago on the timeline; a paused or idle one has none
 		cur, has := anim_current(a)
 		if !has || anim_play_state(a) == .Paused { return math.nan_f64() }
+		info, _ := style.timeline_css_timeline(c.page.anim.timeline, a.css)
+		if info.kind == .Scroll || info.kind == .View { return info.range[0] }
 		return style.timeline_now(c.page.anim.timeline) - cur + anims_zero(c.page)
 	}
+	if a.progress != 0 { return a.has_start ? a.start : math.nan_f64() }
 	return a.has_start ? a.start + anims_zero(c.page) : math.nan_f64()
 }
 
@@ -773,7 +822,8 @@ Animation_set_startTime :: proc(c: ^Call, animation: Api_Animation, time: f64) {
 	if !a.timeline && has_new { a.has_hold = false }
 	anim_apply_pending_rate(a)
 	prev, has_prev := anim_current(a)
-	a.start, a.has_start = has_new ? time - anims_zero(c.page) : 0, has_new
+	a.start, a.has_start = has_new ? time - (a.progress != 0 ? 0 : anims_zero(c.page)) : 0, has_new
+	a.auto_align = false
 	if has_new {
 		if a.rate != 0 { a.has_hold = false }
 	} else {
@@ -812,7 +862,7 @@ Animation_computedTiming :: proc(c: ^Call, animation: Api_Animation, which: i32)
 	cur, has := anim_current(a)
 	if a.css != 0 { return which == 0 && has ? cur : nan }
 	if which == 0 { return has && a.has_effect ? cur : nan }
-	t := a.has_effect ? style.timeline_script_timing(c.page.anim.timeline, a.id) : nil
+	t := a.has_effect ? anim_timing(a) : nil
 	if t == nil || !has { return nan }
 	st := style.effect_state(t^, cur, true, a.rate < 0)
 	if !st.has_active { return nan }

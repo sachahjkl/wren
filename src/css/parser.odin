@@ -62,6 +62,7 @@ Rule :: struct {
 
 Keyframe :: struct {
 	offsets:      []f32,        // 0..1 (from = 0, to = 1)
+	ranges:       []string,     // for each offset, the timeline range it is in ("": the animation; `entry 50%`)
 	declarations: []Declaration,
 }
 
@@ -857,20 +858,34 @@ parse_keyframes :: proc(p: ^Parser, body: []Value) -> []Keyframe {
 		blk := body[i]
 		i += 1
 		offs := make([dynamic]f32, p.a)
+		ranges := make([dynamic]string, p.a)
+		range := ""
 		valid := true
 		for v in sel {
+			ident := v.kind == .Token && v.tok.kind == .Ident
 			switch {
 			case v.kind == .Token && v.tok.kind == .Comma:
 			case v.kind == .Token && v.tok.kind == .Whitespace:
-			case v.kind == .Token && v.tok.kind == .Ident && base.ascii_equal_fold(v.tok.text, "from"): append(&offs, 0)
-			case v.kind == .Token && v.tok.kind == .Ident && base.ascii_equal_fold(v.tok.text, "to"): append(&offs, 1)
-			case v.kind == .Token && v.tok.kind == .Percentage && v.tok.num >= 0 && v.tok.num <= 100: append(&offs, f32(v.tok.num / 100))
+			case ident && base.ascii_equal_fold(v.tok.text, "from"): append(&offs, 0); append(&ranges, "")
+			case ident && base.ascii_equal_fold(v.tok.text, "to"): append(&offs, 1); append(&ranges, "")
+			case ident && keyframe_range_name(v.tok.text) && range == "": range = v.tok.text
+			case v.kind == .Token && v.tok.kind == .Percentage && (range != "" || v.tok.num >= 0 && v.tok.num <= 100):
+				append(&offs, f32(v.tok.num / 100))
+				append(&ranges, range)
+				range = ""
 			case: valid = false
 			}
 		}
-		if !valid || len(offs) == 0 { continue }
+		if !valid || len(offs) == 0 || range != "" { continue }
 		decls, _ := parse_block_contents(p, blk.children, nil)
-		append(&out, Keyframe{offs[:], decls})
+		append(&out, Keyframe{offs[:], ranges[:], decls})
 	}
 	return out[:]
+}
+
+// A timeline range name: a keyframe selector may be in one (`entry 50%`).
+@(private = "file")
+keyframe_range_name :: proc(id: string) -> bool {
+	for n in ([?]string{"cover", "contain", "entry", "exit", "entry-crossing", "exit-crossing"}) { if base.ascii_equal_fold(id, n) { return true } }
+	return false
 }

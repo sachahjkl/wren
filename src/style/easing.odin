@@ -246,7 +246,7 @@ apply_animation_list :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		for part, i in parts {
 			items := css.trim_values(part)
 			if len(items) != 1 { return false }
-			if p == .Animation_Duration && ident_lower(items[0]) == "auto" { out[i] = 0; continue }
+			if p == .Animation_Duration && ident_lower(items[0]) == "auto" { out[i] = ANIM_DURATION_AUTO; continue }
 			t, ok := parse_time(items[0], p == .Transition_Delay || p == .Animation_Delay)
 			if !ok { return false }
 			out[i] = t
@@ -350,6 +350,8 @@ Animation_Spec :: struct {
 	fill:        Fill_Mode,
 	play_state:  Play_State,
 	composition: Composition,
+	timeline:    Anim_Timeline,
+	range_start, range_end: Anim_Range,
 }
 
 // The i-th animation of `c` (one per entry of animation-name).
@@ -364,6 +366,9 @@ animation_at :: proc(c: ^Computed, i: int) -> Animation_Spec {
 		fill = list_at(c.animation_fill_mode, i, Fill_Mode.None),
 		play_state = list_at(c.animation_play_state, i, Play_State.Running),
 		composition = list_at(c.animation_composition, i, Composition.Replace),
+		timeline = list_at(c.animation_timeline, i, Anim_Timeline{kind = .Auto}),
+		range_start = list_at(c.animation_range_start, i, Anim_Range{}),
+		range_end = list_at(c.animation_range_end, i, Anim_Range{}),
 	}
 }
 

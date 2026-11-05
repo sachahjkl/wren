@@ -97,6 +97,11 @@ Anim_Run :: struct {
 	set:         ^Keyframes_Set,   // the keyframes of a script's effect (script_anim.odin); nil: the @keyframes `name`
 	serial:      u64,          // its identity for scripts (css_anim_api.odin): never reused
 	forced:      Css_Forced,   // what a script's pause() / play() / cancel() set over animation-play-state
+	timeline:    Anim_Timeline,       // animation-timeline (.Auto: the document's; its name in spec_arena). Another: `local` is progress (scroll_timeline.odin)
+	index:       int,                 // its place in the animation-* lists
+	src:         Timeline_Source,     // what that timeline reads
+	progress:    Progress_Timeline,   // that timeline as last measured
+	phase_seen:  Phase,               // the phase its events last told (a progress-based animation goes back and forth)
 }
 
 // A script's hold on a CSS animation (CSSAnimation.pause / play / cancel): it wins over animation-play-state until
@@ -152,6 +157,7 @@ Timeline :: struct {
 	retired:     [dynamic]^Anim_Run,   // animations that ended in this restyle, freed once update_element is done with the old style
 	scripts:     map[u64]^Script_Run,  // the effects of Web Animations, by animation (script_anim.odin)
 	css_serial:  u64,                  // the last serial given to a CSS animation or transition
+	progress_timelines: map[u64]^Script_Timeline,   // the ScrollTimeline and ViewTimeline objects of scripts
 }
 
 timeline_make :: proc(e: ^Engine) -> ^Timeline {
@@ -175,6 +181,8 @@ timeline_destroy :: proc(tl: ^Timeline, s: ^Styled = nil) {
 	delete(tl.elements)
 	for _, sr in tl.scripts { script_run_free(sr) }
 	delete(tl.scripts)
+	for _, st in tl.progress_timelines { free(st) }
+	delete(tl.progress_timelines)
 	for _, ov in tl.overlays { overlay_retire(s, ov) }
 	delete(tl.overlays)
 	delete(tl.order)
@@ -494,7 +502,13 @@ sync_runs :: proc(tl: ^Timeline, ea: ^Element_Anim, c: ^Computed) {
 		base.arena_free_all(&r.spec_arena)
 		spec.easing = clone_easing(spec.easing, base.arena_allocator(&r.spec_arena))
 		spec.name = r.name
-		if mode_of(tl) == .Reduce {
+		r.index = i
+		r.timeline = spec.timeline
+		r.timeline.name = strings.clone(spec.timeline.name, base.arena_allocator(&r.spec_arena))
+		spec.timeline, spec.range_start, spec.range_end = {}, {}, {}   // (in the style's memory: the sample reads them again)
+		if r.timeline.kind != .Auto {
+			spec = spec_normalised(spec)
+		} else if mode_of(tl) == .Reduce {
 			d, dl := reduced(tl, f64(spec.duration), f64(spec.delay))
 			spec.duration, spec.delay = f32(d), f32(dl)
 			if math.is_inf(spec.iterations) { spec.iterations = 1 }
@@ -668,6 +682,7 @@ Run_State :: struct {
 @(private)
 run_state :: proc(r: ^Anim_Run) -> (st: Run_State) {
 	if r.forced == .Canceled { return }   // canceled by a script: idle, no effect
+	if r.timeline.kind != .Auto && !r.progress.active { return }   // an inactive timeline: no current time
 	dur := max(f64(r.spec.duration), 0)
 	iters := max(f64(r.spec.iterations), 0)
 	st.t = r.local - f64(r.spec.delay)
@@ -688,7 +703,9 @@ run_state :: proc(r: ^Anim_Run) -> (st: Run_State) {
 	case .Active:
 		overall = st.t / dur
 	case .After:
-		if fill != .Forwards && fill != .Both { return }
+		// (a scroller at the very end of its range still shows the end of an animation that reaches it: the boundary is the active phase's)
+		at_limit := r.timeline.kind != .Auto && r.progress.offset >= r.progress.hi && st.t <= st.active
+		if fill != .Forwards && fill != .Both && !at_limit { return }
 		overall = math.is_inf(iters) ? 0 : iters
 	}
 	st.effect = true
@@ -720,16 +737,30 @@ ensure_frames :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, ea: ^Elemen
 	if set == nil || ea.base == nil { return }
 	parent: ^Computed
 	if n := dom.get(doc, ea.node); n != nil && n.parent != base.NIL_HANDLE { parent = base_style_of(s, n.parent) }
-	frames := make([]Frame_Value, len(set.frames), a)
+	frames := make([dynamic]Frame_Value, 0, len(set.frames), a)
 	props := set.props
-	for &block, i in set.frames {
+	for &block in set.frames {
+		offset, used := keyframe_offset(r, &block)
+		if !used { continue }
 		c, extra := compute_keyframe(tl.engine, &block, ea.base, parent, s.initial, s.root_font_size, a)
-		frames[i] = Frame_Value{offset = f64(block.offset), c = c, props = ps_union(block.props, extra), easing = clone_easing(block.easing, a), has_easing = block.has_easing,
-			composition = block.composition, has_composition = block.has_composition}
+		append(&frames, Frame_Value{offset = offset, c = c, props = ps_union(block.props, extra), easing = clone_easing(block.easing, a), has_easing = block.has_easing,
+			composition = block.composition, has_composition = block.has_composition})
 		props = ps_union(props, extra)
 	}
-	r.frames = frames
+	slice.stable_sort_by(frames[:], proc(a, b: Frame_Value) -> bool { return a.offset < b.offset })
+	r.frames = frames[:]
 	r.props = props
+}
+
+// Where a keyframe stands in its animation. One at a named range (`entry 50%`) has a place only on a timeline with that range, within the attachment range.
+@(private)
+keyframe_offset :: proc(r: ^Anim_Run, block: ^Keyframe_Block) -> (offset: f64, used: bool) {
+	if block.range == .Normal { return f64(block.offset), true }
+	t := &r.progress
+	if !t.active || t.end <= t.start { return 0, false }
+	span := t.ranges[block.range]
+	offset = (span[0] + (span[1] - span[0]) * f64(block.offset) - t.start) / (t.end - t.start)
+	return offset, offset >= 0 && offset <= 1
 }
 
 // Writes the animation's values into dst (the element's overlay). `scratch` is a temporary for underlying values.
@@ -846,6 +877,10 @@ timeline_tick :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wall_ms: f6
 			}
 		}
 		for r in ea.runs {
+			if r.timeline.kind != .Auto {
+				if progress_tick(tl, ea, r) { changed = true }
+				continue
+			}
 			if run_running(r) { r.local += now - r.last_now }
 			r.last_now = now
 			if r.forced == .Canceled { continue }
@@ -892,6 +927,34 @@ timeline_tick :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wall_ms: f6
 	return true
 }
 
+// The tick of an animation on a progress timeline: it stands where its timeline was last measured, and asks for no frame of its own
+// (the scroll that moves it brings one). Its events follow its phase, either way (CSS Animations 2 §4.3).
+@(private)
+progress_tick :: proc(tl: ^Timeline, ea: ^Element_Anim, r: ^Anim_Run) -> (changed: bool) {
+	r.last_now = tl.now
+	if r.forced == .Canceled { return }
+	if run_running(r) && r.progress.active { r.local = progress_local(&r.progress, r.progress.offset) }
+	st := run_state(r)
+	key := [3]f64{f64(st.phase), st.directed, st.effect ? 1 : 0}
+	if key != r.key { r.key = key; changed = true }
+	if !r.progress.active { return }
+	if st.phase == .Active && r.spec.duration > 0 {
+		it := math.floor(st.t / f64(r.spec.duration))
+		if r.iteration >= 0 && it != r.iteration { push_event(tl, .Animation_Iteration, ea.node, r.name, it * f64(r.spec.duration)) }
+		r.iteration = it
+	}
+	if !r.started || st.phase != r.phase_seen {
+		was := r.started ? r.phase_seen : Phase.Before
+		if st.phase != was {
+			if was != .Active && st.phase != was { push_event(tl, .Animation_Start, ea.node, r.name, 0) }
+			if st.phase != .Active { push_event(tl, .Animation_End, ea.node, r.name, st.active) }
+		}
+		r.started, r.ended = st.phase != .Before || r.started, st.phase == .After
+		r.phase_seen = st.phase
+	}
+	return
+}
+
 ////////////////////////////////
 // The compositor's values
 
@@ -905,12 +968,30 @@ Compositor_Value :: struct {
 	props: Prop_Set,    // what is animated (some of COMPOSITOR_PROPS)
 }
 
+// Where a chrome frame shows a scroller (CSS px; `source` NIL: the document).
+Shown_Offset :: struct {
+	source: base.Handle,
+	pos:    [2]f64,
+}
+
+// `at` (a copy of a progress-based run) at the offset its scroller is shown at, if the chrome frame moved it.
+@(private)
+progress_shown :: proc(at: ^Anim_Run, shown: []Shown_Offset) {
+	if !run_running(at) || !at.progress.active { return }
+	for o in shown {
+		if o.source != at.progress.source { continue }
+		at.progress.offset = progress_offset(&at.progress, o.pos)
+		at.local = progress_local(&at.progress, at.progress.offset)
+		return
+	}
+}
+
 // The values at `wall_ms` of the elements whose effects are CSS animations and transitions of COMPOSITOR_PROPS only, written
 // into `out` without moving the timeline: its clock, runs, events and overlays stay as the page's last tick left them, and that
-// is what scripts read. The page's tick takes over at its turn from the same clock. Left out: elements a script animates (Web
-// Animations), animations whose keyframes were not resolved for the element's style yet, effects that do not run. Returns
-// whether one of the values changes at every frame.
-timeline_compositor_values :: proc(tl: ^Timeline, s: ^Styled, wall_ms: f64, out: ^[dynamic]Compositor_Value) -> (moving: bool) {
+// is what scripts read. The page's tick takes over at its turn from the same clock. An animation on a scroll or view timeline
+// stands where `shown` puts its scroller. Left out: elements a script animates (Web Animations), animations whose keyframes were
+// not resolved for the element's style yet, effects that do not run. Returns whether one of the values changes at every frame.
+timeline_compositor_values :: proc(tl: ^Timeline, s: ^Styled, wall_ms: f64, shown: []Shown_Offset, out: ^[dynamic]Compositor_Value) -> (moving: bool) {
 	if tl == nil || s == nil || !tl.has_wall || len(tl.elements) == 0 { return false }
 	list := COMPOSITOR_PROPS
 	allowed := ps_of(..list[:])
@@ -925,7 +1006,7 @@ timeline_compositor_values :: proc(tl: ^Timeline, s: ^Styled, wall_ms: f64, out:
 		for r in ea.runs {
 			if !r.frames_ready || r.frames_gen != ea.base_gen || r.frames_rebuilds != tl.engine.rebuilds { continue elements }
 			props = ps_union(props, r.props)
-			if run_running(r) && run_state(r).phase != .After { live = true }
+			if run_running(r) && (run_state(r).phase != .After || r.timeline.kind != .Auto) { live = true }
 		}
 		for tr in ea.transitions {
 			ps_add(&props, tr.prop)
@@ -936,10 +1017,13 @@ timeline_compositor_values :: proc(tl: ^Timeline, s: ^Styled, wall_ms: f64, out:
 		c^ = b^
 		for r in ea.runs {
 			at := r^   // (a copy at that instant: the run keeps the page's time)
-			if run_running(&at) { at.local += now - at.last_now }
-			st := run_state(&at)
-			if st.phase == .Active && run_running(&at) { moving = true }
-			apply_run(&at, st, c, scratch, &ctx)
+			if at.timeline.kind != .Auto {
+				progress_shown(&at, shown)
+			} else {
+				if run_running(&at) { at.local += now - at.last_now }
+				if run_state(&at).phase == .Active && run_running(&at) { moving = true }
+			}
+			apply_run(&at, run_state(&at), c, scratch, &ctx)
 		}
 		for tr in ea.transitions {
 			if phase, _ := transition_progress(tr, now); phase == .Active { moving = true }
@@ -1040,7 +1124,7 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 		if style_of(s, ea.node) == nil { continue }
 		has := len(ea.transitions) > 0
 		for r in ea.runs { if run_state(r).effect { has = true } }
-		for sr in ea.scripts { if script_state_of(sr, tl.now).has_active { has = true } }
+		for sr in ea.scripts { if script_state_of(tl, sr, tl.now).has_active { has = true } }
 		if !has { continue }
 		if ea.base == nil {   // an element only scripts animate, not restyled since
 			ea.base = base_style_of(s, ea.node)
@@ -1058,7 +1142,7 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 		}
 		// Web Animations, above the CSS animations (composite order: CSS animations first)
 		for sr in ea.scripts {
-			es := script_state_of(sr, tl.now)
+			es := script_state_of(tl, sr, tl.now)
 			if !es.has_active { continue }
 			ensure_frames(tl, doc, s, ea, &sr.run)
 			animated = ps_union(animated, apply_run(&sr.run, Run_State{effect = true, directed = es.progress, before = es.before_flag}, &ov.c, scratch, &ctx))

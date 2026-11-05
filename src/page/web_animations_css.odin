@@ -72,7 +72,17 @@ Animation_cssBind :: proc(c: ^Call, animation: Api_Animation, notify: u32, user:
 	if a.css == 0 { return {} }
 	a.instance, a.notify, a.user = c.owner, notify, u32(user)
 	info, _ := style.timeline_css_info(c.page.anim.timeline, a.css)
-	return {kind = a.css_transition ? 2 : 1, target = u64(a.target), delay = info.delay, duration = info.duration, iterations = info.iterations}
+	out := Api_CssAnimationInfo{kind = a.css_transition ? 2 : 1, target = u64(a.target), delay = info.delay, duration = info.duration, iterations = info.iterations}
+	// the timeline it runs on, as an object of its own (web_animations_scroll.odin)
+	t, on := style.timeline_css_timeline(c.page.anim.timeline, a.css)
+	if on && (t.kind == .Scroll || t.kind == .View) {
+		out.timeline_kind = t.kind == .View ? 2 : 1
+		out.timeline = css_timeline_object(c, t)
+		out.source, out.subject, out.axis = u64(t.source), u64(t.subject), i32(t.axis)
+	} else if on && t.kind == .None {
+		out.timeline_kind = 3
+	}
+	return out
 }
 
 Animation_cssName :: proc(c: ^Call, animation: Api_Animation) -> string {

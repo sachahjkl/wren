@@ -38,6 +38,12 @@ page_update :: proc(app: ^App) {
 	page_prepare(app, t, size)
 }
 
+// The viewport of the tab's page in a page area of `size` (device px).
+@(private = "file")
+page_viewport :: proc(t: ^Tab, size: draw.Vec2, scale: f32) -> page.Viewport {
+	return {width = f64(size.x) / f64(scale), height = f64(size.y) / f64(scale), scale = f64(scale), scroll_x = f64(doc_scroll_vec(t).x) / f64(scale), scroll_y = f64(t.scroll) / f64(scale)}
+}
+
 page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	page_world_check("page_prepare: a chrome frame, or the page thread has the layout")
 	page_prep := &window_own(app).page_prep
@@ -57,6 +63,7 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	loaf_style_ms, loaf_layout_ms: f64
 	loaf_t0 := qpc()
 	prof_begin(.Styles)
+	page.scroll_timelines_sample(t.page, &t.layout, page_viewport(t, size, scale))   // scroll-driven animations stand where the scrollers do now
 	styled := page.styles(t.page, size.x / scale, size.y / scale, f64(scale))
 	prof_end(.Styles)
 	loaf_style_ms = qpc_ms_since(loaf_t0)
@@ -109,7 +116,8 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	doc_scroll_x_set(t, t.layout.doc_scroll_x, size.x)
 	// Performance Timeline entries that depend on the paint (page/timeline_lcp.odin): the largest contentful paint and the
 	// element-timing entries from the layout just settled, and the layout shifts against the previous frame
-	vp := page.Viewport{width = f64(size.x) / f64(scale), height = f64(size.y) / f64(scale), scale = f64(scale), scroll_x = f64(doc_scroll_vec(t).x) / f64(scale), scroll_y = f64(t.scroll) / f64(scale)}
+	vp := page_viewport(t, size, scale)
+	if page.scroll_timelines_sample(t.page, &t.layout, vp) { request_frames(app, 2) }   // (this layout moved a timeline: the next frame shows it)
 	page.timeline_present(t.page, &t.layout, vp)
 	page.timeline_loaf_render(t.page, loaf_style_ms, loaf_layout_ms)
 	page.scripts_frame_took(t.page, loaf_style_ms + loaf_layout_ms)

@@ -457,6 +457,13 @@ reveal_in_scroll_containers :: proc(l: ^Layout, node: base.Handle) -> bool {
 	return changed
 }
 
+// The scrollport of a scroll container (device px).
+scroll_port :: proc(l: ^Layout, node: base.Handle) -> (Rect, bool) {
+	bi := box_index(l, node)
+	if bi == NONE || l.boxes[bi].scroll_space == NONE { return {}, false }
+	return l.spaces[l.boxes[bi].scroll_space].port, true
+}
+
 // Largest scroll offset of a scroll container.
 scroll_max :: proc(l: ^Layout, node: base.Handle) -> (Vec2, bool) {
 	bi := box_index(l, node)

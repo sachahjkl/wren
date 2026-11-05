@@ -1,0 +1,62 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Scroll-driven animations: what the tests measure</title>
+<!-- What src/tools/e2e/scroll_driven.odin measures: every kind of value on a scroll or a view timeline. The readable page is examples/site/scroll_driven.html. -->
+<style>
+  html, body { margin: 0; }
+  body { height: 4000px; position: relative; }
+  .fixed { position: fixed; left: 0; }
+  @keyframes slide { from { transform: translateX(0); } to { transform: translateX(400px); } }
+  @keyframes fade { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes tint { from { background-color: rgb(255, 0, 0); } to { background-color: rgb(0, 0, 255); } }
+  @keyframes grow { from { width: 0; } to { width: 600px; } }
+  @keyframes shrink { from { height: 120px; font-size: 40px; } to { height: 40px; font-size: 16px; } }
+  @keyframes widen { from { width: 100px; } to { width: 500px; } }
+  #slide { top: 10px; width: 50px; height: 30px; background: #08a; animation: slide linear both; animation-timeline: scroll(root); }
+  #fade { top: 50px; width: 50px; height: 30px; background: #0a8; animation: fade linear both; animation-timeline: scroll(root); }
+  #tint { top: 90px; width: 50px; height: 30px; animation: tint linear both; animation-timeline: scroll(root); }
+  #bar { top: 130px; height: 10px; background: #a08; animation: grow linear both; animation-timeline: scroll(root); }
+  #head { top: 150px; width: 300px; overflow: hidden; background: #eee; animation: shrink linear both; animation-timeline: scroll(root); }
+  #post { position: absolute; top: 1500px; left: 0; height: 100px; background: #880; animation: widen linear both; animation-timeline: view(); }
+  #range { position: absolute; top: 2500px; left: 0; height: 100px; width: 100px; background: #088; animation: slide linear both; animation-timeline: view(); animation-range: entry 0% entry 100%; }
+  #box { position: absolute; top: 3000px; left: 0; width: 200px; height: 100px; overflow: auto; scroll-timeline: --box; }
+  #box > div { height: 1000px; }
+  #inner { position: absolute; top: 3000px; left: 300px; width: 50px; height: 50px; background: #808; animation: slide linear both; animation-timeline: --box; }
+  #scope { timeline-scope: --far; }
+  #far { position: absolute; top: 3200px; left: 0; width: 200px; height: 100px; overflow: auto; scroll-timeline: --far; }
+  #far > div { height: 1000px; }
+  #farther { position: absolute; top: 3200px; left: 300px; width: 50px; height: 50px; background: #288; animation: slide linear both; animation-timeline: --far; }
+  @keyframes named { entry 0% { opacity: 0; } entry 100% { opacity: 1; } exit 0% { opacity: 1; } exit 100% { opacity: 0; } }
+  #kf { position: absolute; top: 3500px; left: 0; width: 100px; height: 100px; background: #828; animation: named linear both; animation-timeline: view(); }
+  #none { position: absolute; top: 3700px; left: 0; width: 100px; height: 50px; background: #333; animation: slide linear both; animation-timeline: none; }
+</style>
+<div id=slide class=fixed></div>
+<div id=fade class=fixed></div>
+<div id=tint class=fixed></div>
+<div id=bar class=fixed></div>
+<div id=head class=fixed>Header</div>
+<div id=post></div>
+<div id=range></div>
+<div id=scope>
+  <div id=far><div></div></div>
+  <div id=farther></div>
+</div>
+<div id=box><div></div></div>
+<div id=kf></div>
+<div id=none></div>
+<script>
+  // How long hold() keeps the thread at most (a test lets go of it first, by making the window shorter or taller).
+  const HOLD_LIMIT_MS = 30000;
+  window.hold = () => {
+    window.released = false;
+    window.scrolled_in_task = -1;
+    const h = innerHeight;
+    setTimeout(() => {
+      const begun = performance.now();
+      while (innerHeight == h && performance.now() - begun < HOLD_LIMIT_MS) {}
+      window.scrolled_in_task = scrollY;
+      window.width_in_task = getComputedStyle(bar).width;
+      window.released = innerHeight != h;
+    }, 0);
+  };
+</script>

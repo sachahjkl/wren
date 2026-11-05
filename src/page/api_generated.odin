@@ -36,6 +36,13 @@ Api_Animation :: struct {
 	data:   ^Web_Animation,
 }
 
+// A ScrollTimeline or ViewTimeline (src/page/web_animations_scroll.odin).
+// A live ProgressTimeline: its handle and what lookup_ProgressTimeline found.
+Api_ProgressTimeline :: struct {
+	handle: u64,
+	data:   ^Web_Progress_Timeline,
+}
+
 Api_AnimationPlayState :: enum i32 {
 	Idle = 0,
 	Running = 1,
@@ -56,6 +63,11 @@ Api_CssAnimationInfo :: struct {
 	delay: f64,
 	duration: f64,
 	iterations: f64,
+	timeline_kind: i32,
+	timeline: u64,
+	source: u64,
+	subject: u64,
+	axis: i32,
 }
 
 // Any host object (not a node). Released with Object_release; freed with the page in any case.
@@ -2102,7 +2114,7 @@ _t_animations_Animation_cssBind :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	context = wasm.default_context()
 	c := api_begin(f.inst)
 	defer if c.routed { api_unroute(&c) }
-	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 40)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 80)
 	if !_rk { return wasm.trap_bounds(&f, "animations.Animation_cssBind", "result pointer") }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
@@ -2121,6 +2133,11 @@ _t_animations_Animation_cssBind :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	intrinsics.unaligned_store((^f64)(&_rs[16]), _r.delay)
 	intrinsics.unaligned_store((^f64)(&_rs[24]), _r.duration)
 	intrinsics.unaligned_store((^f64)(&_rs[32]), _r.iterations)
+	intrinsics.unaligned_store((^i32)(&_rs[40]), _r.timeline_kind)
+	intrinsics.unaligned_store((^u64)(&_rs[48]), _r.timeline)
+	intrinsics.unaligned_store((^u64)(&_rs[56]), _r.source)
+	intrinsics.unaligned_store((^u64)(&_rs[64]), _r.subject)
+	intrinsics.unaligned_store((^i32)(&_rs[72]), _r.axis)
 	return nil
 }
 
@@ -2162,6 +2179,197 @@ _t_animations_DocumentTimeline_currentTime :: proc "c" (env: rawptr, caller: was
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].f64 = _r
+	return nil
+}
+
+// ProgressTimeline_create :: proc(c: ^Call, source: Api_Element, none: bool, subject: Api_Element, axis: i32, inset: string) -> u64
+@(private = "file")
+_t_animations_ProgressTimeline_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n4 := wasm.addr(&f, a[5])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[4]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "animations.ProgressTimeline_create", "inset") }
+	_p4 := string(_s4[:_n4])
+	if !wasm.valid_utf8(_p4) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "animations.ProgressTimeline_create: argument inset is not valid UTF-8") }
+		return wasm.trap_new("animations.ProgressTimeline_create: argument inset is not valid UTF-8")
+	}
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	if _p0.handle != 0 { _p0.data = lookup_Element(&c, _p0.handle) }
+	if _p0.handle != 0 && _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.ProgressTimeline_create: argument source is not a live Element") }
+		return wasm.trap_new("animations.ProgressTimeline_create: argument source is not a live Element")
+	}
+	_p1 := a[1].i32 != 0
+	api_route(&c, u64(a[2].i64))
+	_p2 := Api_Element{handle = u64(a[2].i64)}
+	if _p2.handle != 0 { _p2.data = lookup_Element(&c, _p2.handle) }
+	if _p2.handle != 0 && _p2.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.ProgressTimeline_create: argument subject is not a live Element") }
+		return wasm.trap_new("animations.ProgressTimeline_create: argument subject is not a live Element")
+	}
+	_p3 := a[3].i32
+	_r := ProgressTimeline_create(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// ProgressTimeline_currentTime :: proc(c: ^Call, timeline: Api_ProgressTimeline) -> f64
+@(private = "file")
+_t_animations_ProgressTimeline_currentTime :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_ProgressTimeline{handle = u64(a[0].i64)}
+	_p0.data = lookup_ProgressTimeline(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.ProgressTimeline_currentTime: argument timeline is not a live ProgressTimeline") }
+		return wasm.trap_new("animations.ProgressTimeline_currentTime: argument timeline is not a live ProgressTimeline")
+	}
+	_r := ProgressTimeline_currentTime(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// ProgressTimeline_offset :: proc(c: ^Call, timeline: Api_ProgressTimeline, which: i32) -> f64
+@(private = "file")
+_t_animations_ProgressTimeline_offset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_ProgressTimeline{handle = u64(a[0].i64)}
+	_p0.data = lookup_ProgressTimeline(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.ProgressTimeline_offset: argument timeline is not a live ProgressTimeline") }
+		return wasm.trap_new("animations.ProgressTimeline_offset: argument timeline is not a live ProgressTimeline")
+	}
+	_p1 := a[1].i32
+	_r := ProgressTimeline_offset(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// Animation_setProgressTimeline :: proc(c: ^Call, animation: Api_Animation, timeline: Api_ProgressTimeline)
+@(private = "file")
+_t_animations_Animation_setProgressTimeline :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_setProgressTimeline: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_setProgressTimeline: argument animation is not a live Animation")
+	}
+	api_route(&c, u64(a[1].i64))
+	_p1 := Api_ProgressTimeline{handle = u64(a[1].i64)}
+	_p1.data = lookup_ProgressTimeline(&c, _p1.handle)
+	if _p1.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_setProgressTimeline: argument timeline is not a live ProgressTimeline") }
+		return wasm.trap_new("animations.Animation_setProgressTimeline: argument timeline is not a live ProgressTimeline")
+	}
+	Animation_setProgressTimeline(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Animation_isProgress :: proc(c: ^Call, animation: Api_Animation) -> bool
+@(private = "file")
+_t_animations_Animation_isProgress :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_isProgress: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_isProgress: argument animation is not a live Animation")
+	}
+	_r := Animation_isProgress(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Animation_setRange :: proc(c: ^Call, animation: Api_Animation, which: i32, text: string) -> bool
+@(private = "file")
+_t_animations_Animation_setRange :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "animations.Animation_setRange", "text") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "animations.Animation_setRange: argument text is not valid UTF-8") }
+		return wasm.trap_new("animations.Animation_setRange: argument text is not valid UTF-8")
+	}
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_setRange: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_setRange: argument animation is not a live Animation")
+	}
+	_p1 := a[1].i32
+	_r := Animation_setRange(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Animation_range :: proc(c: ^Call, animation: Api_Animation, which: i32) -> string
+@(private = "file")
+_t_animations_Animation_range :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "animations.Animation_range", "result buffer") }
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_range: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_range: argument animation is not a live Animation")
+	}
+	_p1 := a[1].i32
+	_r := Animation_range(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
+	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
 
@@ -38906,6 +39114,13 @@ api_imports := [?]wasm.Import{
 	{module = "animations", name = "Animation_cssBind", fn = _t_animations_Animation_cssBind, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "animations", name = "Animation_cssName", fn = _t_animations_Animation_cssName, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "animations", name = "DocumentTimeline_currentTime", fn = _t_animations_DocumentTimeline_currentTime, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.F64}},
+	{module = "animations", name = "ProgressTimeline_create", fn = _t_animations_ProgressTimeline_create, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "animations", name = "ProgressTimeline_currentTime", fn = _t_animations_ProgressTimeline_currentTime, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "animations", name = "ProgressTimeline_offset", fn = _t_animations_ProgressTimeline_offset, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.F64}},
+	{module = "animations", name = "Animation_setProgressTimeline", fn = _t_animations_Animation_setProgressTimeline, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{}},
+	{module = "animations", name = "Animation_isProgress", fn = _t_animations_Animation_isProgress, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "animations", name = "Animation_setRange", fn = _t_animations_Animation_setRange, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "animations", name = "Animation_range", fn = _t_animations_Animation_range, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "animations", name = "Animation_validEasing", fn = _t_animations_Animation_validEasing, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "async", name = "queueMicrotask", fn = _t_async_queueMicrotask, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}},
 	{module = "async", name = "Promise_create", fn = _t_async_Promise_create, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},

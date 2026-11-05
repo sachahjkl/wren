@@ -998,11 +998,243 @@ wjr_DocumentTimeline_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.J
 	return wj.wj_new_object_for(ctx, jsb.iface_of(DocumentTimeline), new_target, t, timeline_free)
 }
 
+// ---- CSSUnitValue: what the times of a progress timeline are (the rest of CSS Typed OM is not supported) ----
+
+@(private = "file") CSSUnitValue :: distinct u64
+@(private = "file") CSS_UNIT_BYTES :: 16   // the longest unit name kept
+@(private = "file") Unit_Value :: struct { value: f64, unit: [CSS_UNIT_BYTES]u8, n: int }
+
+@(private = "file")
+unit_free :: proc "c" (p: rawptr) { wj.libc_free(p) }
+
+@(private = "file")
+unit_new :: proc "contextless" (ctx: ^wj.Context, new_target: wj.JSValue, value: f64, unit: string) -> wj.JSValue {
+	u := (^Unit_Value)(wj.libc_calloc(1, size_of(Unit_Value)))
+	if u == nil { return wj.JS_ThrowOutOfMemory(ctx) }
+	u.value = value
+	u.n = min(len(unit), CSS_UNIT_BYTES)
+	for i in 0 ..< u.n { u.unit[i] = unit[i] }
+	return wj.wj_new_object_for(ctx, jsb.iface_of(CSSUnitValue), new_target, u, unit_free)
+}
+
+@(private = "file")
+unit_of :: proc "contextless" (v: wj.JSValue) -> ^Unit_Value {
+	o := wj.wj_unwrap(v, jsb.iface_of(CSSUnitValue))
+	return o != nil && o.impl_free == unit_free ? (^Unit_Value)(o.impl) : nil
+}
+
+@(private = "file")
+percent_value :: proc "contextless" (ctx: ^wj.Context, v: f64) -> wj.JSValue {
+	return wj.is_nan(v) ? wj.NULL : unit_new(ctx, wj.UNDEFINED, v, "percent")
+}
+
+@(export, link_name = "wjr_CSSUnitValue_constructor")
+wjr_CSSUnitValue_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	if wj.is_undefined(new_target) { return wj.JS_ThrowTypeError(ctx, "Constructor CSSUnitValue requires 'new'") }
+	if argc < 2 { return wj.wj_throw_arity(ctx, "CSSUnitValue", 2, argc) }
+	d: f64
+	if !wj.wj_to_double(ctx, argv[0], &d, true) { return wj.EXCEPTION }
+	s: wj.Str
+	if !wj.wj_to_str(ctx, argv[1], &s, 0, "") { return wj.EXCEPTION }
+	defer wj.wj_str_free(ctx, &s)
+	return unit_new(ctx, new_target, d, string(wj.str_slice(s)))
+}
+
+@(export, link_name = "wjr_CSSUnitValue_get_value")
+wjr_CSSUnitValue_get_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	u := unit_of(this_val)
+	return u != nil ? wj.new_float64(ctx, u.value) : wj.JS_ThrowTypeError(ctx, "Illegal invocation")
+}
+
+@(export, link_name = "wjr_CSSUnitValue_set_value")
+wjr_CSSUnitValue_set_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
+	u := unit_of(this_val)
+	if u == nil { return wj.JS_ThrowTypeError(ctx, "Illegal invocation") }
+	d: f64
+	if !wj.wj_to_double(ctx, v, &d, true) { return wj.EXCEPTION }
+	u.value = d
+	return wj.UNDEFINED
+}
+
+@(export, link_name = "wjr_CSSUnitValue_get_unit")
+wjr_CSSUnitValue_get_unit :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	u := unit_of(this_val)
+	return u != nil ? wj.new_string_len(ctx, string(u.unit[:u.n])) : wj.JS_ThrowTypeError(ctx, "Illegal invocation")
+}
+
+@(private = "file")
+css_factory :: proc "contextless" (ctx: ^wj.Context, argc: i32, argv: [^]wj.JSValue, unit: string) -> wj.JSValue {
+	d: f64
+	if argc < 1 || !wj.wj_to_double(ctx, argv[0], &d, true) { return wj.EXCEPTION }
+	return unit_new(ctx, wj.UNDEFINED, d, unit)
+}
+
+@(export, link_name = "wjr_CSS_percent")
+wjr_CSS_percent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return css_factory(ctx, argc, argv, "percent") }
+@(export, link_name = "wjr_CSS_px")
+wjr_CSS_px :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return css_factory(ctx, argc, argv, "px") }
+@(export, link_name = "wjr_CSS_number")
+wjr_CSS_number :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return css_factory(ctx, argc, argv, "number") }
+
+// ---- ScrollTimeline, ViewTimeline ----
+
+@(private = "file") ScrollTimeline :: distinct u64
+@(private = "file") ViewTimeline   :: distinct u64
+@(private = "file") AXIS_NAMES := [4]string{"block", "inline", "x", "y"}
+@(private = "file") INSET_TEXT_BYTES :: 128   // an inset as CSS text
+
+@(private = "file")
+Progress :: struct {
+	source, subject: wj.JSValue,
+	axis:            i32,
+}
+
+@(private = "file")
+progress_free :: proc "c" (p: rawptr) {
+	t := (^Progress)(p)
+	rt := wj.web_rt()
+	wj.JS_FreeValueRT(rt, t.source)
+	wj.JS_FreeValueRT(rt, t.subject)
+	wj.libc_free(t)
+}
+
+@(private = "file")
+progress_mark :: proc "c" (rt: rawptr, p: rawptr, mark_func: rawptr) {
+	t := (^Progress)(p)
+	wj.wj_mark(rt, t.source, mark_func)
+	wj.wj_mark(rt, t.subject, mark_func)
+}
+
+@(private = "file")
+progress_of :: proc "contextless" (v: wj.JSValue) -> ^Progress {
+	o := wj.obj_of(v)
+	return o != nil && o.impl_free == progress_free ? (^Progress)(o.impl) : nil
+}
+
+// The wrapper of a timeline the browser made: `source` and `subject` are taken.
+@(private = "file")
+progress_wrap :: proc "contextless" (ctx: ^wj.Context, new_target: wj.JSValue, host: u64, iface: i32, source, subject: wj.JSValue, axis: i32) -> wj.JSValue {
+	t := (^Progress)(wj.libc_calloc(1, size_of(Progress)))
+	if t == nil { return wj.JS_ThrowOutOfMemory(ctx) }
+	t.source, t.subject, t.axis = source, subject, axis
+	obj := wj.wj_wrap_owned(ctx, host, iface, new_target)
+	if wj.is_exception(obj) { progress_free(t); return obj }
+	wj.web_set_impl(obj, t, progress_free, progress_mark)
+	return obj
+}
+
+@(private = "file")
+scrolling_element :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
+	h := wj.wr_Document_scrollingElement()
+	return h != 0 ? wj.wj_wrap_node(ctx, h) : wj.NULL
+}
+
+// Element handle of a value (0: not an element).
+@(private = "file")
+element_handle :: proc "contextless" (v: wj.JSValue) -> u64 {
+	if o := wj.wj_unwrap(v, jsb.iface_of(Element)); o != nil { return o.handle }
+	return 0
+}
+
+@(export, link_name = "wjr_ScrollTimeline_constructor")
+wjr_ScrollTimeline_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	if wj.is_undefined(new_target) { return wj.JS_ThrowTypeError(ctx, "Constructor ScrollTimeline requires 'new'") }
+	opt := wj.arg(argc, argv, 0)
+	if !wj.web_dict_check(ctx, opt, "ScrollTimeline") { return wj.EXCEPTION }
+	source: wj.JSValue
+	if !wj.web_dict_get(ctx, opt, "source", &source) { return wj.EXCEPTION }
+	has: bool
+	axis: i32
+	if !read_enum(ctx, opt, "axis", AXIS_NAMES[:], "ScrollAxis", &has, &axis) { wj.JS_FreeValue(ctx, source); return wj.EXCEPTION }
+	if !wj.is_nullish(source) && element_handle(source) == 0 {
+		wj.JS_FreeValue(ctx, source)
+		return wj.JS_ThrowTypeError(ctx, "Failed to construct 'ScrollTimeline': source is not of type 'Element'.")
+	}
+	none_source := wj.is_null(source)
+	if wj.is_undefined(source) { source = scrolling_element(ctx) }
+	host: u64
+	jsb.host(&host, api_decl.ProgressTimeline_create, wj.wr_ProgressTimeline_create, element_handle(source), none_source, u64(0), axis, "auto")
+	return progress_wrap(ctx, new_target, host, jsb.iface_of(ScrollTimeline), source, wj.NULL, axis)
+}
+
+@(export, link_name = "wjr_ViewTimeline_constructor")
+wjr_ViewTimeline_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	if wj.is_undefined(new_target) { return wj.JS_ThrowTypeError(ctx, "Constructor ViewTimeline requires 'new'") }
+	opt := wj.arg(argc, argv, 0)
+	if !wj.web_dict_check(ctx, opt, "ViewTimeline") { return wj.EXCEPTION }
+	subject: wj.JSValue
+	if !wj.web_dict_get(ctx, opt, "subject", &subject) { return wj.EXCEPTION }
+	if element_handle(subject) == 0 {
+		wj.JS_FreeValue(ctx, subject)
+		return wj.JS_ThrowTypeError(ctx, "Failed to construct 'ViewTimeline': subject is not of type 'Element'.")
+	}
+	has: bool
+	axis: i32
+	if !read_enum(ctx, opt, "axis", AXIS_NAMES[:], "ScrollAxis", &has, &axis) { wj.JS_FreeValue(ctx, subject); return wj.EXCEPTION }
+	text: [INSET_TEXT_BYTES]u8
+	n := 0
+	inset: wj.JSValue
+	if !wj.web_dict_get(ctx, opt, "inset", &inset) { wj.JS_FreeValue(ctx, subject); return wj.EXCEPTION }
+	if wj.is_undefined(inset) {
+		n = copy(text[:], "auto")
+	} else {
+		s, ss := key_string(ctx, inset)   // (a sequence as its text: "10px,20px" stands for the two)
+		if s != nil {
+			n = copy(text[:], ss)
+			for i in 0 ..< n { if text[i] == ',' { text[i] = ' ' } }
+			wj.JS_FreeCString(ctx, s)
+		}
+	}
+	wj.JS_FreeValue(ctx, inset)
+	host: u64
+	jsb.host(&host, api_decl.ProgressTimeline_create, wj.wr_ProgressTimeline_create, u64(0), false, element_handle(subject), axis, string(text[:n]))
+	return progress_wrap(ctx, new_target, host, jsb.iface_of(ViewTimeline), wj.NULL, subject, axis)
+}
+
+@(export, link_name = "wjr_ScrollTimeline_get_source")
+wjr_ScrollTimeline_get_source :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	t := progress_of(this_val)
+	return t != nil ? wj.JS_DupValue(ctx, t.source) : wj.JS_ThrowTypeError(ctx, "Illegal invocation")
+}
+
+@(export, link_name = "wjr_ScrollTimeline_get_axis")
+wjr_ScrollTimeline_get_axis :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	t := progress_of(this_val)
+	return t != nil ? name_value(ctx, AXIS_NAMES[:], t.axis) : wj.JS_ThrowTypeError(ctx, "Illegal invocation")
+}
+
+@(export, link_name = "wjr_ViewTimeline_get_subject")
+wjr_ViewTimeline_get_subject :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	t := progress_of(this_val)
+	return t != nil ? wj.JS_DupValue(ctx, t.subject) : wj.JS_ThrowTypeError(ctx, "Illegal invocation")
+}
+
+@(private = "file")
+view_offset :: proc(ctx: ^wj.Context, this_val: wj.JSValue, which: i32) -> wj.JSValue {
+	o := wj.wj_this(ctx, this_val, jsb.iface_of(ViewTimeline))
+	if o == nil { return wj.EXCEPTION }
+	v: f64
+	jsb.host(&v, api_decl.ProgressTimeline_offset, wj.wr_ProgressTimeline_offset, o.handle, which)
+	return unit_new(ctx, wj.UNDEFINED, v, "px")
+}
+
+@(export, link_name = "wjr_ViewTimeline_get_startOffset")
+wjr_ViewTimeline_get_startOffset :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { context = jsb.glue_context(); return view_offset(ctx, t, 0) }
+@(export, link_name = "wjr_ViewTimeline_get_endOffset")
+wjr_ViewTimeline_get_endOffset :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { context = jsb.glue_context(); return view_offset(ctx, t, 1) }
+
 @(export, link_name = "wjr_AnimationTimeline_get_currentTime")
 wjr_AnimationTimeline_get_currentTime :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	context = jsb.glue_context()
 	o := wj.wj_this(ctx, this_val, jsb.iface_of(AnimationTimeline))
 	if o == nil { return wj.EXCEPTION }
+	if progress_of(this_val) != nil {
+		percent: f64
+		jsb.host(&percent, api_decl.ProgressTimeline_currentTime, wj.wr_ProgressTimeline_currentTime, o.handle)
+		return percent_value(ctx, percent)
+	}
 	origin := o.impl != nil && o.impl_free == timeline_free ? (^Timeline)(o.impl).origin : 0
 	now: f64
 	jsb.host(&now, api_decl.DocumentTimeline_currentTime, wj.wr_DocumentTimeline_currentTime)
@@ -1011,7 +1243,8 @@ wjr_AnimationTimeline_get_currentTime :: proc "c" (ctx: ^wj.Context, this_val: w
 
 @(export, link_name = "wjr_AnimationTimeline_get_duration")
 wjr_AnimationTimeline_get_duration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
-	return wj.wj_this(ctx, this_val, jsb.iface_of(AnimationTimeline)) != nil ? wj.NULL : wj.EXCEPTION
+	if wj.wj_this(ctx, this_val, jsb.iface_of(AnimationTimeline)) == nil { return wj.EXCEPTION }
+	return progress_of(this_val) != nil ? percent_value(ctx, 100) : wj.NULL
 }
 
 // ---- Animation ----
@@ -1235,8 +1468,110 @@ an_set_timeline :: proc(ctx: ^wj.Context, a: ^Anim, v: wj.JSValue) -> bool {
 	}
 	wj.JS_FreeValue(ctx, a.timeline)
 	a.timeline = wj.JS_DupValue(ctx, v)
-	jsb.host(&none, api_decl.Animation_setTimeline, wj.wr_Animation_setTimeline, a.host, !wj.is_null(v))
+	if progress_of(v) != nil {
+		jsb.host(&none, api_decl.Animation_setProgressTimeline, wj.wr_Animation_setProgressTimeline, a.host, wj.obj_of(v).handle)
+	} else {
+		jsb.host(&none, api_decl.Animation_setTimeline, wj.wr_Animation_setTimeline, a.host, !wj.is_null(v))
+	}
 	return true
+}
+
+// A range end as CSS text, in `buf`: a string, a CSSUnitValue, a TimelineRangeOffset.
+@(private = "file") RANGE_TEXT_BYTES :: 96
+
+@(private = "file")
+range_text :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue, buf: ^[RANGE_TEXT_BYTES]u8) -> (text: string, ok: bool) {
+	unit_text :: proc "contextless" (u: ^Unit_Value, buf: []u8) -> int {
+		suffix := string(u.unit[:u.n])
+		if suffix == "percent" { suffix = "%" }
+		n := int(wj.snprintf(raw_data(buf), uint(len(buf)), "%.17g", u.value))
+		return n + copy(buf[clamp(n, 0, len(buf)):], suffix)
+	}
+	if u := unit_of(v); u != nil { return string(buf[:unit_text(u, buf[:])]), true }
+	if wj.is_object(v) {
+		name, offset: wj.JSValue
+		if !wj.web_dict_get(ctx, v, "rangeName", &name) || !wj.web_dict_get(ctx, v, "offset", &offset) { return "", false }
+		defer { wj.JS_FreeValue(ctx, name); wj.JS_FreeValue(ctx, offset) }
+		n := 0
+		if !wj.is_nullish(name) {
+			c, cs := key_string(ctx, name)
+			if c == nil { return "", false }
+			n = copy(buf[:], cs)
+			wj.JS_FreeCString(ctx, c)
+		}
+		if u := unit_of(offset); u != nil {
+			if n > 0 && n < RANGE_TEXT_BYTES { buf[n] = ' '; n += 1 }
+			n += unit_text(u, buf[n:])
+		}
+		return string(buf[:n]), true
+	}
+	c, cs := key_string(ctx, v)
+	if c == nil { return "", false }
+	n := copy(buf[:], cs)
+	wj.JS_FreeCString(ctx, c)
+	return string(buf[:n]), true
+}
+
+@(private = "file")
+an_set_range :: proc(ctx: ^wj.Context, a: ^Anim, which: i32, v: wj.JSValue) -> bool {
+	buf: [RANGE_TEXT_BYTES]u8
+	text, ok := range_text(ctx, v, &buf)
+	if !ok { return false }
+	good: bool
+	jsb.host(&good, api_decl.Animation_setRange, wj.wr_Animation_setRange, a.host, which, text)
+	if !good { wj.JS_ThrowTypeError(ctx, "The value is not a timeline range."); return false }
+	return true
+}
+
+@(private = "file")
+an_get_range :: proc(ctx: ^wj.Context, a: ^Anim, which: i32) -> wj.JSValue {
+	s: string
+	jsb.host(&s, api_decl.Animation_range, wj.wr_Animation_range, a.host, which)
+	if s == "normal" { return wj.new_string_len(ctx, s) }
+	// "<name> <offset>", "<name>" or "<offset>": a TimelineRangeOffset
+	out := wj.JS_NewObject(ctx)
+	name, offset := s, ""
+	for i in 0 ..< len(s) {
+		if s[i] == ' ' { name, offset = s[:i], s[i + 1:]; break }
+	}
+	if len(name) > 0 && (name[0] >= '0' && name[0] <= '9' || name[0] == '-' || name[0] == '.') { name, offset = "", s }
+	if name != "" { wj.JS_SetPropertyStr(ctx, out, "rangeName", wj.new_string_len(ctx, name)) }
+	if offset == "" { offset = which == 0 ? "0%" : "100%" }
+	k := len(offset) - 1
+	if offset[k] == '%' {
+		wj.JS_SetPropertyStr(ctx, out, "offset", unit_new(ctx, wj.UNDEFINED, wj.strtod(raw_data(offset), nil), "percent"))
+	} else if k > 1 {
+		wj.JS_SetPropertyStr(ctx, out, "offset", unit_new(ctx, wj.UNDEFINED, wj.strtod(raw_data(offset), nil), offset[k - 1:]))
+	}
+	return out
+}
+
+@(export, link_name = "wjr_Animation_get_rangeStart")
+wjr_Animation_get_rangeStart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	a := an_this(ctx, this_val)
+	return a != nil ? an_get_range(ctx, a, 0) : wj.EXCEPTION
+}
+
+@(export, link_name = "wjr_Animation_set_rangeStart")
+wjr_Animation_set_rangeStart :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	a := an_this(ctx, this_val)
+	return a != nil && an_set_range(ctx, a, 0, v) ? wj.UNDEFINED : wj.EXCEPTION
+}
+
+@(export, link_name = "wjr_Animation_get_rangeEnd")
+wjr_Animation_get_rangeEnd :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	a := an_this(ctx, this_val)
+	return a != nil ? an_get_range(ctx, a, 1) : wj.EXCEPTION
+}
+
+@(export, link_name = "wjr_Animation_set_rangeEnd")
+wjr_Animation_set_rangeEnd :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	a := an_this(ctx, this_val)
+	return a != nil && an_set_range(ctx, a, 1, v) ? wj.UNDEFINED : wj.EXCEPTION
 }
 
 @(export, link_name = "wjr_Animation_constructor")
@@ -1336,6 +1671,7 @@ wjr_Animation_get_finished :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) 
 @(private = "file")
 numberish :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue, out: ^f64) -> bool {
 	if wj.is_null(v) { out^ = NAN; return true }
+	if u := unit_of(v); u != nil { out^ = u.value; return true }
 	if !wj.wj_to_double(ctx, v, out, false) { return false }
 	if !wj.is_finite(out^) { wj.JS_ThrowTypeError(ctx, "The provided double value is non-finite."); return false }
 	return true
@@ -1348,7 +1684,15 @@ wjr_Animation_get_startTime :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue)
 	if a == nil { return wj.EXCEPTION }
 	t: f64
 	jsb.host(&t, api_decl.Animation_startTime, wj.wr_Animation_startTime, a.host)
-	return nullable(ctx, t)
+	return an_time(ctx, a, t)
+}
+
+// A time of the animation: a percentage on a progress timeline, else milliseconds.
+@(private = "file")
+an_time :: proc(ctx: ^wj.Context, a: ^Anim, t: f64) -> wj.JSValue {
+	progress: bool
+	jsb.host(&progress, api_decl.Animation_isProgress, wj.wr_Animation_isProgress, a.host)
+	return progress ? percent_value(ctx, t) : nullable(ctx, t)
 }
 
 @(export, link_name = "wjr_Animation_set_startTime")
@@ -1368,7 +1712,7 @@ wjr_Animation_get_currentTime :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 	if a == nil { return wj.EXCEPTION }
 	t: f64
 	jsb.host(&t, api_decl.Animation_currentTime, wj.wr_Animation_currentTime, a.host)
-	return nullable(ctx, t)
+	return an_time(ctx, a, t)
 }
 
 @(export, link_name = "wjr_Animation_set_currentTime")
@@ -1407,9 +1751,11 @@ wjr_Animatable_animate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc
 	options := wj.arg(argc, argv, 1)
 	effect := fx_new(ctx, wj.UNDEFINED, this_val, argv[0], options)
 	if wj.is_exception(effect) { return effect }
-	id, timeline := wj.UNDEFINED, wj.UNDEFINED
+	id, timeline, range_start, range_end := wj.UNDEFINED, wj.UNDEFINED, wj.UNDEFINED, wj.UNDEFINED
+	defer { wj.JS_FreeValue(ctx, range_start); wj.JS_FreeValue(ctx, range_end) }
 	if wj.is_object(options) {
-		if !wj.web_dict_get(ctx, options, "id", &id) || !wj.web_dict_get(ctx, options, "timeline", &timeline) {
+		if !wj.web_dict_get(ctx, options, "id", &id) || !wj.web_dict_get(ctx, options, "timeline", &timeline) ||
+		   !wj.web_dict_get(ctx, options, "rangeStart", &range_start) || !wj.web_dict_get(ctx, options, "rangeEnd", &range_end) {
 			wj.JS_FreeValue(ctx, id)
 			wj.JS_FreeValue(ctx, effect)
 			return wj.EXCEPTION
@@ -1425,6 +1771,8 @@ wjr_Animatable_animate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc
 		if wj.is_exception(s) { ok = false } else { wj.JS_FreeValue(ctx, a.id); a.id = s }
 	}
 	if ok && !wj.is_undefined(timeline) { ok = an_set_timeline(ctx, a, timeline) }
+	if ok && !wj.is_undefined(range_start) { ok = an_set_range(ctx, a, 0, range_start) }
+	if ok && !wj.is_undefined(range_end) { ok = an_set_range(ctx, a, 1, range_end) }
 	wj.JS_FreeValue(ctx, id)
 	wj.JS_FreeValue(ctx, timeline)
 	if ok {
@@ -1453,6 +1801,16 @@ css_wrap :: proc(ctx: ^wj.Context, host: Animation) -> wj.JSValue {
 	obj := wj.wj_wrap_owned(ctx, u64(host), iface, wj.UNDEFINED)
 	if wj.is_exception(obj) { an_free(a); return obj }
 	anim_attach(ctx, a, obj)
+	if info.timeline_kind != 0 {
+		wj.JS_FreeValue(ctx, a.timeline)
+		a.timeline = wj.NULL
+		if info.timeline_kind != 3 {
+			source := info.source != 0 ? wj.wj_wrap_node(ctx, info.source) : scrolling_element(ctx)
+			subject := info.subject != 0 ? wj.wj_wrap_node(ctx, info.subject) : wj.NULL
+			timeline_iface := info.timeline_kind == 2 ? jsb.iface_of(ViewTimeline) : jsb.iface_of(ScrollTimeline)
+			a.timeline = progress_wrap(ctx, wj.UNDEFINED, info.timeline, timeline_iface, source, subject, info.axis)
+		}
+	}
 	target := wj.wj_wrap_node(ctx, info.target)
 	if wj.is_exception(target) { wj.JS_FreeValue(ctx, wj.JS_GetException(ctx)); target = wj.NULL }
 	fx := fx_new(ctx, wj.UNDEFINED, target, wj.NULL, wj.UNDEFINED)

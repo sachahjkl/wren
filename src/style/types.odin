@@ -351,6 +351,14 @@ Motion_Group :: struct {
 	animation_fill_mode: []Fill_Mode,
 	animation_play_state: []Play_State,
 	animation_composition: []Composition,
+	animation_timeline:  []Anim_Timeline,
+	animation_range_start, animation_range_end: []Anim_Range,
+	scroll_timeline_name: []string,          // "" = none
+	scroll_timeline_axis: []Timeline_Axis,
+	view_timeline_name:  []string,           // "" = none
+	view_timeline_axis:  []Timeline_Axis,
+	view_timeline_inset: []View_Inset,
+	timeline_scope:      Timeline_Scope,
 }
 
 // Grid placement and templates (stored for the grid layout).
@@ -448,6 +456,7 @@ Prop :: enum u8 {
 	Transition_Property, Transition_Duration, Transition_Timing_Function, Transition_Delay, Transition_Behavior,
 	Animation_Name, Animation_Duration, Animation_Timing_Function, Animation_Delay, Animation_Iteration_Count,
 	Animation_Direction, Animation_Fill_Mode, Animation_Play_State, Animation_Composition,
+	Animation_Timeline, Animation_Range_Start, Animation_Range_End, Scroll_Timeline_Name, Scroll_Timeline_Axis, View_Timeline_Name, View_Timeline_Axis, View_Timeline_Inset, Timeline_Scope,
 	Counter_Reset, Counter_Increment, Counter_Set, Quotes,
 	Object_Position, Filter, Backdrop_Filter, Clip_Path, Clip, Isolation, Mix_Blend_Mode,
 	Will_Change, Contain, Content_Visibility, Scroll_Behavior, Overflow_Anchor, Overscroll_Behavior_X, Overscroll_Behavior_Y, Touch_Action,
@@ -492,5 +501,5 @@ Short :: enum u8 {
 	Grid_Template, Grid, Grid_Row, Grid_Column, Grid_Area,
 	Container, Border_Block, Border_Inline, Border_Block_Width, Border_Block_Style, Border_Block_Color,
 	Border_Inline_Width, Border_Inline_Style, Border_Inline_Color,
-	Mask, Position_Try,
+	Mask, Position_Try, Animation_Range, Scroll_Timeline, View_Timeline,
 }

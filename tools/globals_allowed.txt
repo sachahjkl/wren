@@ -490,3 +490,12 @@ js/timezone_windows.odin tz_name_cache process  # the machine's time zone, read 
 js/timezone_windows.odin tz_name_len process  # ... its length
 js/timezone_windows.odin tz_name_done process  # ... it was read
 js/touch.odin hardware_touch_points process  # the machine's touch screen
+style/values.odin AUTO_DURATION const  # a table
+style/values.odin AUTO_TIMELINE const  # a table
+style/values.odin NORMAL_RANGE const  # a table
+style/values.odin BLOCK_AXIS const  # a table
+style/values.odin AUTO_INSETS const  # a table
+style/scroll_timeline.odin RANGE_NAMES const  # a table
+style/scroll_timeline.odin AXIS_NAMES const  # a table
+style/scroll_timeline.odin SCROLLER_NAMES const  # a table
+page/web_animations_scroll.odin web_progress_timeline_vt const  # a host object's table of procedures

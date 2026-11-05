@@ -419,6 +419,15 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Animation_Fill_Mode: return fa(&c.animation_fill_mode), nil
 	case .Animation_Play_State: return fa(&c.animation_play_state), nil
 	case .Animation_Composition: return fa(&c.animation_composition), nil
+	case .Animation_Timeline: return fa(&c.animation_timeline), nil
+	case .Animation_Range_Start: return fa(&c.animation_range_start), nil
+	case .Animation_Range_End: return fa(&c.animation_range_end), nil
+	case .Scroll_Timeline_Name: return fa(&c.scroll_timeline_name), nil
+	case .Scroll_Timeline_Axis: return fa(&c.scroll_timeline_axis), nil
+	case .View_Timeline_Name: return fa(&c.view_timeline_name), nil
+	case .View_Timeline_Axis: return fa(&c.view_timeline_axis), nil
+	case .View_Timeline_Inset: return fa(&c.view_timeline_inset), nil
+	case .Timeline_Scope: return fa(&c.timeline_scope), nil
 	case .Counter_Reset: return fa(&c.counter_reset), nil
 	case .Counter_Increment: return fa(&c.counter_increment), nil
 	case .Counter_Set: return fa(&c.counter_set), nil

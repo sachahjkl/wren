@@ -8,6 +8,8 @@
 [Exposed=Window]
 module animations {
   handle Animation : Object = Web_Animation via lookup_Animation;
+  /// A ScrollTimeline or ViewTimeline (src/page/web_animations_scroll.odin).
+  handle ProgressTimeline : Object = Web_Progress_Timeline via lookup_ProgressTimeline;
 
   enum AnimationPlayState : i32 { Idle, Running, Paused, Finished }
   enum AnimationReplaceState : i32 { Active, Removed, Persisted }
@@ -82,6 +84,12 @@ module animations {
     f64 delay;
     f64 duration;
     f64 iterations;
+    /// The timeline: 0 the document's, 1 scroll, 2 view (`timeline`, `source`, `subject`, `axis`), 3 none.
+    i32 timeline_kind;
+    u64 timeline;
+    u64 source;
+    u64 subject;
+    i32 axis;
   }
   /// What a CSS animation or transition is, for its wrapper; `notify(user)` then runs as for Animation_create.
   CssAnimationInfo Animation_cssBind(Animation animation, MicrotaskCallback notify, i32 user);
@@ -89,6 +97,21 @@ module animations {
   string Animation_cssName(Animation animation);
   /// document.timeline.currentTime (NaN: null)
   f64 DocumentTimeline_currentTime();
+  /// new ScrollTimeline({source, axis}), new ViewTimeline({subject, axis, inset}): `source` absent with `none`: a null source; absent
+  /// without it: the viewport. `subject`: a view timeline's. `axis`: 0 block, 1 inline, 2 x, 3 y. `inset` as CSS text.
+  u64 ProgressTimeline_create(optional Element source, bool none, optional Element subject, i32 axis, string inset);
+  /// timeline.currentTime, in percents (NaN: null).
+  f64 ProgressTimeline_currentTime(ProgressTimeline timeline);
+  /// ViewTimeline startOffset (0) and endOffset (1), CSS px.
+  f64 ProgressTimeline_offset(ProgressTimeline timeline, i32 which);
+  /// animation.timeline = a ScrollTimeline or ViewTimeline.
+  void Animation_setProgressTimeline(Animation animation, ProgressTimeline timeline);
+  /// The animation's times are percents of a ScrollTimeline or ViewTimeline.
+  bool Animation_isProgress(Animation animation);
+  /// rangeStart (0) or rangeEnd (1) as CSS text; false when it is not one.
+  bool Animation_setRange(Animation animation, i32 which, string text);
+  /// rangeStart (0) or rangeEnd (1) as CSS text.
+  string Animation_range(Animation animation, i32 which);
   /// Whether `easing` is an easing function (CSS Easing 2).
   bool Animation_validEasing(string easing);
 }
