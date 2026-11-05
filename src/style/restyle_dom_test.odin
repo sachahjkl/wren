@@ -346,6 +346,28 @@ restyle_dom_generated_content :: proc(t: ^testing.T) {
 }
 
 @(test)
+restyle_dom_stops_marking_when_a_full_pass_is_shorter :: proc(t: ^testing.T) {
+	// elements attached under many :has() anchors, too few to say so by their number: the marking stops when its answers are past what a full pass costs
+	GROUPS :: 500
+	PER_ELEMENT :: 6   // anchors above an inserted element
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>.a:has(.b) { color: red } .c:has(.b) { color: blue }</style>`)
+	for i in 0 ..< GROUPS { fmt.sbprintf(&sb, `<div class="a c"><div class="a c"><div class="a c" id=g%d></div></div></div>`, i) }
+	f := rx_load(strings.to_string(sb))
+	defer rx_unload(f)
+	watch_prepare(f.eng, f.doc)
+	for i in 0 ..< GROUPS {
+		el := dom.create_element(f.doc, "i")
+		dom.set_attribute(f.doc, el, "class", "b")
+		dom.append_child(f.doc, by_id(f, fmt.tprintf("g%d", i)), el)
+	}
+	_, ok := restyle_dom(f.eng, f.doc, f.st)
+	testing.expect(t, !ok && f.eng.last_restyle.fallback == "too much changed", "it gave up")
+	limit := max(int(f.eng.settings.inc_max_ratio * f32(f.doc.nodes.count)), FLIP_LIMIT_MIN)
+	testing.expectf(t, f.eng.last_restyle.flips > limit / 2 && f.eng.last_restyle.flips <= limit + PER_ELEMENT, "at the limit of %d, not at the %d answers of all the elements: %d", limit, GROUPS * PER_ELEMENT, f.eng.last_restyle.flips)
+}
+
+@(test)
 restyle_dom_falls_back :: proc(t: ^testing.T) {
 	f := rx_load(`<style>p { color: red }</style><div id=d><p>x</p></div>`)
 	defer rx_unload(f)

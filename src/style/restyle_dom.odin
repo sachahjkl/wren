@@ -11,6 +11,9 @@ import "wb:css"
 import "wb:dom"
 import "wb:host"
 
+// The answers of the exact :has() anchors a marking may take at the least, whatever the size of the document.
+FLIP_LIMIT_MIN :: 1024
+
 // Restyle after DOM mutations. Instead of computing every style again, the mutation journal of the document
 // (dom.journal_since) says what changed since the styles were computed, and the invalidation index of the rules
 // (invalidation.odin) says which elements that can affect:
@@ -37,6 +40,7 @@ Restyle_Stats :: struct {
 	parallel: bool,     // forced subtrees were shared out between threads
 	rewalked: bool,     // counters and quotes were resolved again
 	fallback: string,   // why the last restyle_dom could not be partial ("" when it was)
+	flips:    int,      // answers of the exact :has() anchors it took to mark what changed
 }
 
 @(private = "file") M_SELF :: u8(1)
@@ -145,6 +149,7 @@ Marker :: struct {
 	emptied: map[Walk_Key]bool,   // children_removed per parent, per index
 	keyed:   map[[2]u64]bool,      // (element, key set) subtrees scanned by mark_keyed
 	flips:   map[Flip_Key]bool,    // has_flip answered in this pass
+	flip_limit: int,               // ... past this many of them, a full pass is shorter than the marking
 	has_walked: map[Has_Walk_Key]int,   // has_invalidate: the closest hop each ancestor was reached at in this pass
 	exact:   bool,                 // the members of the exact anchors can be used
 }
@@ -785,6 +790,11 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 	attr_order := make([dynamic]string, 0, 16, context.temp_allocator)
 	for &en in entries {
 		if m.fail != "" { return }
+		// (cnn.com: 8 000 elements the parser attached under 80 :has() anchors, 114 000 answers, 8.7 s, to find that a full pass of 0.2 s was due)
+		if len(m.flips) > m.flip_limit {
+			m.fail = "too much changed"
+			return
+		}
 		switch en.kind {
 		case .Insert:
 			n := dom.get(doc, en.node)
@@ -1243,6 +1253,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	// out (on a page that rebuilds a list of 2 500 items every frame, the marking cost twice the full pass)
 	limit := f64(e.settings.inc_max_ratio) * f64(max(doc.nodes.count, 1))
 	if !shadows && !trace_restyle() && inserted_exceed(doc, entries, limit) { return fail(e, "too much changed") }
+	if f64(len(entries)) > limit { return fail(e, "too much changed") }   // (whatever they are: the elements alone were not, among the parser's text nodes)
 	exact := false   // the members of the exact :has() anchors are of the document before these mutations (watch_sync was made by a pass that came before)
 	if !shadows && ix.uses_has { exact = !watch_sync(ix, doc) }
 
@@ -1268,8 +1279,10 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	}
 	clear(&e.shadow.changed)
 	m.exact = exact
+	m.flip_limit = max(int(limit), FLIP_LIMIT_MIN)
 	members_prepare(&m, entries)
 	mark_mutations(&m, entries)
+	e.last_restyle.flips = len(m.flips)
 	if m.fail != "" { return fail(e, m.fail) }
 	work := estimate(&m)
 	if f64(work) > limit {
