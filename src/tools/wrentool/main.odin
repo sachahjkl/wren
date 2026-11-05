@@ -35,7 +35,7 @@ COMMANDS := []Command{
 	{name = "shots", about = "[-Only a,b] [-Width n] [-Height n] [-NoConvert] [-Exe path]: the README's and the site's pictures, headless", run = capture.run_shots},
 	{name = "compare", about = "-Urls a,b | -List f [-OutDir d] [-Width n] [-Height n] [-Dark] [-Js] [-Exe path]: Wren against headless Edge", run = capture.run_compare},
 	{name = "waterfall", about = "-Urls a,b | -List f [-OutDir d] [-Exe path] [-Runs n] [-Pref a=b]: where a first load's time goes, request by request, in a fresh Wren each", run = capture.run_waterfall},
-	{name = "sweep", about = "-Urls a,b | -List f[,g] [-OutDir d] [-Exe path] [-Shard i -Shards n] [-Pref a=b] [-OneProcess]: real pages visited headless (scroll, devtools, a link, back, reload, a tab, close); crashes, hangs, times", run = capture.run_sweep},
+	{name = "sweep", about = "-Urls a,b | -List f[,g] [-OutDir d] [-Exe path] [-Shard i -Shards n] [-Pref a=b] [-OneProcess] [-MemoryReports]: real pages visited headless (scroll, devtools, a link, back, reload, a tab, close); crashes, hangs, times", run = capture.run_sweep},
 	{name = "gen", about = "psl | unicode [-Force] | idna | media-fixtures | video-fixtures | perf-media [-Force] | rust-crates [-Check]", run = gen.run_gen},
 	{name = "docs", about = "[-Check] [-NoBuild] [-ChartUpdate]: the documentation site, its links checked", run = gen.run_docs},
 	{name = "license", about = "keygen | pubkey | issue | verify ...: Wren's licences (docs/licence.md)", run = gen.run_license},

@@ -13,7 +13,7 @@ import "wb:remote/api"
 import "wb:tools/tooling"
 import "wb:tools/wrentool/bench"
 
-SWEEP_FLAGS :: "-Urls= -List= -OutDir= -Exe= -Shard= -Shards= -Pref= -CloseMs= -PingMs= -Keep -OneProcess"
+SWEEP_FLAGS :: "-Urls= -List= -OutDir= -Exe= -Shard= -Shards= -Pref= -CloseMs= -PingMs= -Keep -OneProcess -MemoryReports"
 SWEEP_OUT :: "build/sweep"
 SWEEP_SIZE :: [2]int{1280, 800}
 // A page may take this long to load; past it the visit goes on with what is there (slow is not a failure).
@@ -69,6 +69,8 @@ Sweep_Run :: struct {
 	exe, out:  string,
 	prefs:     []string,
 	keep:      bool,   // the profile stays when a page passed too
+	memory_reports: bool,   // the biggest allocations after each page: <slug>.vmmap.txt
+	memory:    ^os.File,    // memory_<shard>.tsv
 	one:       bool,   // one Wren for every page, until it dies: what a long session does
 	close_ms:  int,    // how long a close may take (0: what api.finish gives; a sanitizer build needs more)
 	ping_ms:   int,    // how long the interface may take to answer, twice
@@ -91,7 +93,7 @@ run_sweep :: proc(args: []string) -> int {
 		}
 	}
 	if len(urls) == 0 { fmt.eprintln("wrentool sweep -Urls a,b | -List file[,file] [-OutDir dir] [-Exe path] [-Shard i -Shards n] [-Pref a=b] [-Keep] [-OneProcess]"); return EXIT_USAGE }
-	r := Sweep_Run{exe = strings.clone(tooling.flag(f, "-Exe", bench.WREN_EXE)), keep = tooling.flag_has(f, "-Keep"), one = tooling.flag_has(f, "-OneProcess"), close_ms = tooling.flag_int(f, "-CloseMs", 0), ping_ms = tooling.flag_int(f, "-PingMs", SWEEP_PING_MS)}
+	r := Sweep_Run{exe = strings.clone(tooling.flag(f, "-Exe", bench.WREN_EXE)), keep = tooling.flag_has(f, "-Keep"), memory_reports = tooling.flag_has(f, "-MemoryReports"), one = tooling.flag_has(f, "-OneProcess"), close_ms = tooling.flag_int(f, "-CloseMs", 0), ping_ms = tooling.flag_int(f, "-PingMs", SWEEP_PING_MS)}
 	if !os.exists(r.exe) { fmt.eprintfln("%s is missing (build.bat)", r.exe); return 1 }
 	out := tooling.flag(f, "-OutDir", SWEEP_OUT)
 	_ = os.make_directory_all(out)   // (before abs: on Linux it asks the system, for what exists)
@@ -108,6 +110,11 @@ run_sweep :: proc(args: []string) -> int {
 	fmt.fprint(summary, "verdict\turl\tstep")
 	for name in SWEEP_STEP_NAMES { fmt.fprintf(summary, "\t%s_ms", name) }
 	fmt.fprintln(summary, "\tslow\tjs_errors\tnodes\tmemory_mb\texit\tlink\tnote")
+	memory, merr := os.open(fmt.tprintf("%s/memory_%d.tsv", r.out, shard), {.Write, .Create, .Trunc})
+	if merr != nil { fmt.eprintfln("cannot write in %s", r.out); return 1 }
+	defer os.close(memory)
+	fmt.fprintln(memory, "url\tprivate\tworking_set\theap_used\theap_committed\tvm_rw\tvm_exec\twasm_modules\twasm_code\tinstances\tjs_cache\timages\timage_mb\tfonts\thttp_resident\tgpu_images\tgpu_glyphs\tgpu_targets\tgpu_outlines\tpictures\tpages\tkept_pages\tkept\tthreads")
+	r.memory = memory
 
 	failed, pages := 0, 0
 	for url, i in urls {
@@ -334,7 +341,24 @@ sweep_died :: proc(r: ^Sweep_Run, v: ^Sweep_Visit) {
 sweep_measure :: proc(r: ^Sweep_Run, v: ^Sweep_Visit) {
 	s := &r.wren.session
 	if lines, e := api.console(s); e == .None { for l in lines { if l.level == "error" { v.js_errors += 1 } } }
-	if st, e := api.stats(s); e == .None { v.nodes, v.memory_mb = st.nodes, st.private_bytes >> 20 }
+	if st, e := api.stats(s); e == .None {
+		v.nodes, v.memory_mb = st.nodes, st.private_bytes >> 20
+		sweep_memory_row(r, v.url, st)
+	}
+	if !r.memory_reports { return }
+	_ = api.memory_report(s, fmt.tprintf("%s/%s.vmmap.txt", r.out, v.slug))
+	_ = api.memory_trim(s)
+	_ = api.wait_frames(s, SWEEP_FRAMES, SWEEP_FRAMES_LIMIT)
+	if st, e := api.stats(s); e == .None { sweep_memory_row(r, fmt.tprintf("%s (trimmed)", v.url), st) }
+	_ = api.memory_report(s, fmt.tprintf("%s/%s.trimmed.vmmap.txt", r.out, v.slug))
+}
+
+// Where the private bytes are after each page: memory_<shard>.tsv beside the summary.
+@(private = "file")
+sweep_memory_row :: proc(r: ^Sweep_Run, url: string, st: api.Stats) {
+	m := st.memory
+	fmt.fprintfln(r.memory, "%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d", url, st.private_bytes >> 20, st.working_set_bytes >> 20, m.heap_allocated >> 20, m.heap_committed >> 20, m.vm_rw >> 20, m.vm_exec >> 20,
+		m.wasm_modules, m.wasm_code_bytes >> 20, m.wasm_instances, m.js_cache_bytes >> 20, m.image_entries, m.image_bytes >> 20, m.font_bytes >> 20, m.http_resident_bytes >> 20, m.gpu_images >> 20, m.gpu_glyphs >> 20, m.gpu_targets >> 20, m.gpu_outlines >> 20, m.pictures_bytes >> 20, m.pages_bytes >> 20, m.bfcache_bytes >> 20, st.bfcache.cached, st.threads)
 }
 
 @(private = "file")

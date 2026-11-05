@@ -96,6 +96,8 @@ remote_dispatch_in_window :: proc(app: ^App, c: ^Call) -> Reply {
 	case "Wren.type":            return m_type(app, c)
 	case "Wren.key":             return m_key(app, c)
 	case "Wren.stats":           return m_stats(app, c)
+	case "Wren.memoryTrim":      return m_memory_trim(app)
+	case "Wren.memoryReport":    return m_memory_report(c)
 	case "Wren.console":         return m_console(app, c)
 	case "Wren.network":         return m_network(app, c)
 	case "Wren.getPref":         return m_pref_get(app, c)
@@ -1261,6 +1263,25 @@ key_from_name :: proc(n: string) -> (platform.Key, bool) {
 // Introspection
 
 @(private = "file")
+m_memory_trim :: proc(app: ^App) -> Reply {
+	memory_trim(app)
+	return done("{}")
+}
+
+// How many allocations a report the channel asks for lists: enough to see what the small ones add up to.
+@(private = "file") MEMORY_REPORT_LINES :: 400
+
+@(private = "file")
+m_memory_report :: proc(c: ^Call) -> Reply {
+	file, _ := remote.param_string(c.params, "file")
+	if file == "" { return fail(remote.ERR_PARAMS, "file: where the report goes") }
+	memory_map_report(file, MEMORY_REPORT_LINES)
+	memory_heap_report(strings.concatenate({file, ".heap"}, context.temp_allocator), MEMORY_REPORT_LINES)
+	base.mem_snapshot(strings.concatenate({file, ".live"}, context.temp_allocator))
+	return done("{}")
+}
+
+@(private = "file")
 m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	reset_latency, _ := remote.param_bool(c.params, "resetLatency")
 	reset_frames, _ := remote.param_bool(c.params, "resetFrames")
@@ -1284,6 +1305,14 @@ stats_json :: proc(b: ^strings.Builder, s: api.Stats) {
 	}
 	j_int(b, "pid", i64(s.pid)); j_num(b, "uptimeMs", s.uptime_ms); j_num(b, "fps", s.fps)
 	j_int(b, "workingSetBytes", i64(s.working_set_bytes)); j_int(b, "privateBytes", i64(s.private_bytes))
+	m := s.memory
+	j_key(b, "memory"); j_begin(b)
+	j_int(b, "heapAllocated", i64(m.heap_allocated)); j_int(b, "heapCommitted", i64(m.heap_committed)); j_int(b, "vmRw", i64(m.vm_rw)); j_int(b, "vmExec", i64(m.vm_exec))
+	j_int(b, "wasmModules", i64(m.wasm_modules)); j_int(b, "wasmCodeBytes", i64(m.wasm_code_bytes)); j_int(b, "wasmInstances", i64(m.wasm_instances))
+	j_int(b, "jsCacheEntries", i64(m.js_cache_entries)); j_int(b, "jsCacheBytes", i64(m.js_cache_bytes)); j_int(b, "imageEntries", i64(m.image_entries)); j_int(b, "imageBytes", i64(m.image_bytes))
+	j_int(b, "fontEntries", i64(m.font_entries)); j_int(b, "fontBytes", i64(m.font_bytes)); j_int(b, "httpResidentBytes", i64(m.http_resident_bytes))
+	j_int(b, "gpuImages", i64(m.gpu_images)); j_int(b, "gpuGlyphs", i64(m.gpu_glyphs)); j_int(b, "gpuTargets", i64(m.gpu_targets)); j_int(b, "gpuOutlines", i64(m.gpu_outlines)); j_int(b, "pagesBytes", i64(m.pages_bytes)); j_int(b, "bfcacheBytes", i64(m.bfcache_bytes)); j_int(b, "picturesBytes", i64(m.pictures_bytes)); j_int(b, "trims", i64(m.trims))
+	j_end(b)
 	loop_rates_json(b, s.loop)
 	j_int(b, "framesDrawn", i64(s.frames_drawn)); j_int(b, "framesPresented", i64(s.frames_presented)); j_num(b, "framePeriodMs", s.frame_period_ms)
 	j_int(b, "chromeFrames", i64(s.chrome_frames)); j_int(b, "fullFrames", i64(s.full_frames))

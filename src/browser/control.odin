@@ -20,9 +20,12 @@ import "wb:cookies"
 import "wb:fetch"
 import "wb:host"
 import "wb:httpcache"
+import "wb:js"
 import "wb:page"
 import "wb:remote"
 import "wb:remote/api"
+import "wb:wasm"
+import "wb:webfont"
 
 // How long a wait of an in-process call looks again at what it waits for (ms): the loop sleeps in between.
 CONTROL_POLL_MS :: 1
@@ -771,8 +774,27 @@ control_stats_all :: proc(app: ^App, allocator := context.temp_allocator) -> api
 	st.threads, st.handles, st.gdi_objects, st.user_objects = process_thread_count(), int(pc.handles), int(pc.gdi), int(pc.user)
 	st.cookies, st.storage_sites = cookies.count(&app.profile.jar), len(page.storage_sites(&app.storage))
 	if app.profile.cache != nil { st.cache_entries = int(httpcache.summary(app.profile.cache).entries) }
+	st.memory = control_memory(app)
 	st.history_visits, st.closed_tabs, st.downloads_active, st.checkpoints = len(app.ghist.visits), len(app.closed_tabs), downloads_active(app), len(app.remote.checkpoints)
 	return st
+}
+
+// Where the private bytes are (Wren.stats).
+control_memory :: proc(app: ^App) -> (m: api.Memory_Stats) {
+	sp := memory_split()
+	m.heap_allocated, m.heap_committed, m.vm_rw, m.vm_exec = int(sp.heap_allocated), int(sp.heap_committed), int(sp.vm_rw), int(sp.vm_exec)
+	wc, jc, is := wasm.cache_stats(), js.cache_stats(), page.images_stats(nil)
+	m.wasm_modules, m.wasm_code_bytes, m.wasm_instances = wc.entries, wc.code_bytes, wasm.instances_alive()
+	m.js_cache_entries, m.js_cache_bytes, m.image_entries, m.image_bytes = jc.entries, jc.bytes, is.entries, is.bytes
+	_, _, m.font_entries, m.font_bytes = webfont.decoded_cache_stats()
+	if app.profile.cache != nil { m.http_resident_bytes = int(httpcache.summary(app.profile.cache).resident_bytes) }
+	tm := render.texture_memory(&app.r)
+	m.gpu_images, m.gpu_glyphs, m.gpu_targets, m.gpu_outlines = tm.images, tm.glyphs, tm.targets, tm.slug
+	for t in tabs_all(app) { if t.page != nil { m.pages_bytes += page.memory_held(t.page) } }
+	for e in app.bf.entries { m.bfcache_bytes += e.bytes }
+	m.pictures_bytes, _ = draw.retained_bytes(&app.dc)
+	m.trims = memory_trim_count(app)
+	return
 }
 
 // What the frames' numbers count from now on: `frames` the presents and a window's loops, `latency` the probe's.
