@@ -267,7 +267,11 @@ parse_complex :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, relat
 			if pe != .None {
 				// a pseudo-element must end the selector
 				c.pseudo_element = pe
-				if pe == .Highlight { c.parts = s.names }
+				if pe == .Highlight {
+					// (nothing follows a highlight: ::selection:hover is no selector)
+					if i < len(vs) && !is_ws_value(vs[i]) { return {}, false }
+					c.parts = s.names
+				}
 				if pe == .Slotted || pe == .Part {
 					if pe == .Slotted {
 						c.slotted = new(Compound, a)
@@ -385,7 +389,13 @@ parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, ns: ^N
 			if len(vs) > 1 && vs[1].kind == .Token && vs[1].tok.kind == .Colon {
 				// ::pseudo-element
 				if len(vs) > 2 && vs[2].kind == .Token && vs[2].tok.kind == .Ident {
-					if elem, good := pseudo_element_of(vs[2].tok.text); good { return {}, elem, 3, true }
+					if elem, good := pseudo_element_of(vs[2].tok.text); good {
+						if elem != .Highlight { return {}, elem, 3, true }
+						// (a highlight the browser makes: its name in the parts, as a custom one's)
+						names := make([]string, 1, a)
+						names[0] = strings.concatenate({"::", base.ascii_lower(vs[2].tok.text)}, a)
+						return Simple{names = names}, elem, 3, true
+					}
 				}
 				if len(vs) > 2 && vs[2].kind == .Function {
 					fname := base.ascii_lower(vs[2].tok.text)
@@ -409,9 +419,9 @@ parse_simple :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector_List, ns: ^N
 						if len(names) == 0 { return {}, .None, 0, false }
 						return Simple{names = names[:]}, .Part, 3, true
 					case "highlight":
-						// ::highlight(<custom-highlight-name>)
+						// ::highlight(<custom-highlight-name> | *)
 						args := trim_values(vs[2].children)
-						if len(args) != 1 || args[0].kind != .Token || args[0].tok.kind != .Ident { return {}, .None, 0, false }
+						if len(args) != 1 || args[0].kind != .Token || (args[0].tok.kind != .Ident && !(args[0].tok.kind == .Delim && args[0].tok.text == "*")) { return {}, .None, 0, false }
 						names := make([]string, 1, a)
 						names[0] = strings.clone(args[0].tok.text, a)
 						return Simple{names = names}, .Highlight, 3, true
@@ -459,7 +469,8 @@ pseudo_element_of :: proc(name: string) -> (Pseudo, bool) {
 	case "marker": return .Marker, true
 	case "backdrop": return .Backdrop, true
 	case "-webkit-input-placeholder": return .Placeholder, true
-	case "file-selector-button", "details-content", "target-text", "spelling-error", "grammar-error", "search-text", "cue",
+	case "target-text", "spelling-error", "grammar-error": return .Highlight, true
+	case "file-selector-button", "details-content", "search-text", "cue",
 	     "view-transition", "checkmark", "picker-icon", "scroll-marker", "scroll-marker-group", "scroll-button", "column":
 		return .Other_Element, true
 	}

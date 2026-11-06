@@ -37,7 +37,8 @@ PAINT_PROPS :: [?]Prop{
 	.Object_Position, .Filter, .Backdrop_Filter, .Clip_Path, .Clip,
 	.Scroll_Behavior, .Overflow_Anchor, .Overscroll_Behavior_X, .Overscroll_Behavior_Y, .Caret_Color, .Accent_Color,
 	.Mask_Image, .Mask_Mode, .Mask_Repeat, .Mask_Position, .Mask_Size, .Mask_Origin, .Mask_Clip, .Mask_Composite,
-	.Text_Fill_Color, .Wren_Shader,
+	.Text_Fill_Color, .Text_Stroke_Color, .Text_Stroke_Width, .Text_Emphasis_Color, .Text_Emphasis_Style, .Text_Emphasis_Position, .Text_Emphasis_Skip,
+	.Text_Underline_Position, .Text_Decoration_Skip_Ink, .Text_Decoration_Skip_Spaces, .Text_Decoration_Inset, .Wren_Shader,
 }
 
 @(private) tiers_once: sync.Once
@@ -63,7 +64,7 @@ tiers_init :: proc() {
 		skip[{.Main, offset_of(Computed, inherits)}] = true
 		skip[{.Main, offset_of(Computed, custom)}] = true
 		// (painted only: their colors, the placeholder's font)
-		skip[{.Main, offset_of(Computed, selection)}] = true
+		skip[{.Main, offset_of(Computed, highlights)}] = true
 		skip[{.Main, offset_of(Computed, placeholder)}] = true
 		layout_fields = make([dynamic]Field_Info, 0, len(computed_fields), base.permanent_allocator())
 		for f in computed_fields { if !skip[{f.group, f.offset}] { append(&layout_fields, f) } }

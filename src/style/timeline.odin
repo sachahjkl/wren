@@ -976,7 +976,7 @@ RECORD_PROPS :: [?]Prop{
 	.Color, .Background_Color, .Background_Position, .Background_Size, .Border_Top_Color, .Border_Right_Color, .Border_Bottom_Color, .Border_Left_Color,
 	.Border_Top_Left_Radius, .Border_Top_Right_Radius, .Border_Bottom_Right_Radius, .Border_Bottom_Left_Radius, .Box_Shadow, .Text_Shadow,
 	.Text_Decoration_Color, .Outline_Color, .Outline_Offset, .Filter, .Backdrop_Filter, .Clip_Path, .Object_Position, .Caret_Color, .Accent_Color,
-	.Mask_Position, .Mask_Size, .Text_Fill_Color,
+	.Mask_Position, .Mask_Size, .Text_Fill_Color, .Text_Stroke_Color, .Text_Emphasis_Color, .Text_Stroke_Width,
 }
 
 @(private)

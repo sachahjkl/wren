@@ -549,51 +549,59 @@ text_shape_options :: proc(l: ^Layout, cs: ^style.Computed, level: u8, extra: f3
 	})
 }
 
-// Draws one text fragment: shaped (cached by the toolkit) and drawn glyph by glyph from the atlas (draw.glyph_run).
-@(private = "file")
-draw_run :: proc(dc: ^draw.Context, fid: font.Font_Id, size: f32, pos: draw.Vec2, col: draw.Color, text: string, opts: font.Shape_Options) {
-	sh := font.shape(dc.fonts, fid, size, text, opts, context.temp_allocator)
-	draw.glyph_run(dc, size, pos, col, sh.glyphs)
-}
-
 @(private = "file")
 paint_text :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect, off: draw.Vec2) {
 	cs := it.cs
 	fi := lay.item_font(l, it)
 	if cs == nil || fi == nil || it.text == "" { return }
-	if web_text_invisible(l, cs) { return }   // its web font is loading, in its block period (web_font_faces.odin)
-	if .Vertical in it.flags { paint_text_vertical(l, dc, it, r, off); return }
-	fid := font.Font_Id(fi.font)
-	baseline := it.baseline + off.y
-	opts := text_shape_options(l, cs, it.level, it.extra)
+	tp := text_paint_make(l, dc, it, fi, r, off)
+	overlays := selection_overlays(&tp)
+	if web_text_invisible(l, cs) {   // its web font is loading, in its block period (web_font_faces.odin)
+		selection_paint_backgrounds(&tp, overlays)
+		return
+	}
+	lines := deco_lines_of(&tp)
+	emphasis := cs.text_emphasis_style.shape != .None
 	for i := len(cs.text_shadow) - 1; i >= 0; i -= 1 {
 		s := cs.text_shadow[i]
-		if s.color.a <= 0 { continue }
-		col := to_draw(s.color)
-		pos := draw.Vec2{r.min.x + s.x * l.scale, baseline + s.y * l.scale}
-		if s.blur > 0 && the_app.effects_settings.exact_shadows {
-			// a gaussian of half the blur radius (CSS Backgrounds §7.2), through a layer
-			ink := draw.rect_pad(draw.rect_shift(r, {s.x, s.y} * l.scale), fi.size * 0.5)
-			id, key, anchor := fx_cache_text_shadow(it, i, fid, fi.size, col, pos, r, opts)   // kept from frame to frame
-			if draw.push_effects(dc, ink, draw.Layer_Effects{alpha = 1, filters = {draw.filter_blur(s.blur * 0.5 * l.scale)}, cache_id = id, cache_key = key, cache_anchor = anchor}) {
-				draw_run(dc, fid, fi.size, pos, col, it.text, opts)
-			}
-			draw.pop_layer(dc)
-			continue
+		if s.color.a > 0 { paint_text_shadow(&tp, lines, s, i, emphasis) }
+	}
+	selection_paint_backgrounds(&tp, overlays)
+	parts := selection_text_parts(&tp, overlays)
+	selection_paint_lines(&tp, lines, parts, overlays, .Underline)
+	selection_paint_lines(&tp, lines, parts, overlays, .Overline)
+	selection_paint_text(&tp, parts, emphasis)
+	selection_paint_lines(&tp, lines, parts, overlays, .Line_Through)
+}
+
+// A shadow of the text and of all drawn with it (CSS Text Decoration 4 §4).
+@(private = "file")
+paint_text_shadow :: proc(tp: ^Text_Paint, lines: []Deco_Line, s: style.Shadow, index: int, emphasis: bool) {
+	l, dc, it, r := tp.l, tp.dc, tp.it, tp.r
+	col := to_draw(s.color)
+	shift := draw.Vec2{s.x, s.y} * l.scale
+	all :: proc(tp: ^Text_Paint, lines: []Deco_Line, shift: draw.Vec2, col: draw.Color, emphasis: bool) {
+		c := col
+		for &d in lines { deco_paint(tp, &d, .Underline, shift, &c) }
+		for &d in lines { deco_paint(tp, &d, .Overline, shift, &c) }
+		text_ink_draw(tp, shift, {fill = col, stroke = col, width = tp.cs.text_stroke_width * tp.l.scale})
+		if emphasis { emphasis_paint(tp, 0, len(tp.it.text), shift, col) }
+		for &d in lines { deco_paint(tp, &d, .Line_Through, shift, &c) }
+	}
+	if s.blur > 0 && the_app.effects_settings.exact_shadows {
+		// a gaussian of half the blur radius (CSS Backgrounds §7.2), through a layer
+		ink := draw.rect_pad(draw.rect_shift(r, shift), tp.fi.size * 0.5)
+		id, key: u64
+		anchor: draw.Vec2
+		if !tp.vertical { id, key, anchor = fx_cache_text_shadow(it, index, font.Font_Id(tp.fi.font), tp.fi.size, col, {r.min.x, tp.baseline} + shift, r, tp.opts) }   // kept from frame to frame
+		if draw.push_effects(dc, ink, draw.Layer_Effects{alpha = 1, filters = {draw.filter_blur(s.blur * 0.5 * l.scale)}, cache_id = id, cache_key = key, cache_anchor = anchor}) {
+			all(tp, lines, shift, col, emphasis)
 		}
-		if s.blur > 0 { col.a *= 0.6 }
-		draw_run(dc, fid, fi.size, pos, col, it.text, opts)
+		draw.pop_layer(dc)
+		return
 	}
-	col := to_draw(cs.color)
-	fill := to_draw(style.text_fill(cs))   // -webkit-text-fill-color (background-clip: text pages make it transparent)
-	if fill.a > 0 { draw_run(dc, fid, fi.size, {r.min.x, baseline}, fill, it.text, opts) }
-	if it.deco != {} {
-		dcol := to_draw(it.deco_color)
-		if it.deco_color.a == 0 { dcol = col }
-		d := deco_line(deco_source(l, it), dcol, fi, l.scale)
-		d.color = dcol   // (the item's, read when painted)
-		deco_paint_row(dc, r.min.x, r.max.x, baseline, fi, it.deco, d)
-	}
+	if s.blur > 0 { col.a *= 0.6 }
+	all(tp, lines, shift, col, emphasis)
 }
 
 // A rule between columns: a border that has only one side.
@@ -613,81 +621,91 @@ paint_column_rule :: proc(dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect
 // One run of a vertical line along the y axis: glyphs turned a quarter turn (Sideways_Lr: the other way, read upwards), with
 // their baseline at x = `bx`, from `py`.
 @(private = "file")
-draw_run_turned :: proc(dc: ^draw.Context, sh: font.Shaped, size: f32, bx, py: f32, col: draw.Color, ccw: bool) {
+draw_run_turned :: proc(dc: ^draw.Context, sh: font.Shaped, size: f32, bx, py: f32, ink: Text_Ink, ccw: bool) {
 	m := ccw ? draw.Affine{a = 0, b = -1, c = 1, d = 0, e = bx, f = py} : draw.Affine{a = 0, b = 1, c = -1, d = 0, e = bx, f = py}
 	draw.push_transform(dc, m)
-	draw.glyph_run(dc, size, {}, col, sh.glyphs)
+	draw_glyphs(dc, size, {}, ink, sh.glyphs)
 	draw.pop_transform(dc)
 }
 
-// A line of vertical text: upright characters one by one, centered on the line's baseline, others in runs turned sideways
+@(private = "file")
+draw_glyphs :: proc(dc: ^draw.Context, size: f32, pos: draw.Vec2, ink: Text_Ink, glyphs: []font.Glyph_Pos) {
+	if ink.fill.a > 0 { draw.glyph_run(dc, size, pos, ink.fill, glyphs) }
+	if ink.width > 0 && ink.stroke.a > 0 { draw.glyph_run_stroke(dc, size, pos, ink.stroke, glyphs, ink.width) }
+}
+
+// The pieces of a line of vertical text, one after the other: upright characters one by one, centered on the line's baseline, others in runs turned sideways
 // (the toolkit's shaper has no vertical direction: `vert` turns punctuation, advances come from layout: lay.upright_advance).
-draw_vertical_text :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, fi: ^lay.Font_Info, bx, top, bottom: f32, col: draw.Color, opts_in: font.Shape_Options) {
+Vertical_Walk :: struct {
+	l:      ^Layout,
+	dc:     ^draw.Context,
+	it:     ^lay.Display_Item,
+	fi:     ^lay.Font_Info,
+	opts:   font.Shape_Options,
+	orient: style.Text_Orientation,
+	ccw:    bool,
+	bx:     f32,
+	turned_x: f32,
+	height: f32,
+	pen:    f32,
+	pos:    int,
+}
+
+// A piece: upright, its glyphs' origin is at (x, y); turned, its baseline is at x, and it starts from y.
+Vertical_Piece :: struct {
+	text:    string,
+	sh:      font.Shaped,
+	upright: bool,
+	x, y:    f32,
+}
+
+vertical_walk :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, fi: ^lay.Font_Info, bx, top, bottom: f32, opts_in: font.Shape_Options) -> Vertical_Walk {
 	cs := it.cs
-	fid := font.Font_Id(fi.font)
-	size := fi.size
 	ccw := cs.writing_mode == .Sideways_Lr
 	orient := cs.text_orientation
 	if cs.writing_mode == .Sideways_Rl || cs.writing_mode == .Sideways_Lr { orient = .Sideways }
 	opts := opts_in
 	opts.one_run = true
-	height := fi.raw_ascent + fi.raw_descent
 	// the middle of the em box of glyphs turned sideways sits on a central baseline
-	turned_x := fi.vmode == .Central ? bx - (fi.raw_ascent - fi.raw_descent) * 0.5 : bx
-	if cs.text_combine_upright == .All {
+	return {l, dc, it, fi, opts, orient, ccw, bx, fi.vmode == .Central ? bx - (fi.raw_ascent - fi.raw_descent) * 0.5 : bx, fi.raw_ascent + fi.raw_descent, ccw ? bottom : top, 0}
+}
+
+vertical_next :: proc(w: ^Vertical_Walk) -> (p: Vertical_Piece, ok: bool) {
+	run := lay.next_vertical_run(w.it.text, w.pos, w.orient) or_return
+	piece := w.it.text[run.start:run.end]
+	w.pos = run.end
+	size := w.fi.size
+	sh := font.shape(w.dc.fonts, font.Font_Id(w.fi.font), size, piece, w.opts, context.temp_allocator)
+	if run.upright {
+		rn, _ := utf8.decode_rune_in_string(piece)
+		adv := lay.upright_advance(rn, size, w.height)
+		p = {piece, sh, true, w.bx - sh.width * 0.5, w.pen + (adv - w.height) * 0.5 + w.fi.raw_ascent}
+		w.pen += adv + w.it.cs.letter_spacing * w.l.scale
+		return p, true
+	}
+	p = {piece, sh, false, w.turned_x, w.pen}
+	w.pen += w.ccw ? -sh.width : sh.width
+	return p, true
+}
+
+// A line of vertical text.
+draw_vertical_text :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, fi: ^lay.Font_Info, bx, top, bottom: f32, ink: Text_Ink, opts_in: font.Shape_Options) {
+	size := fi.size
+	w := vertical_walk(l, dc, it, fi, bx, top, bottom, opts_in)
+	if it.cs.text_combine_upright == .All {
 		// one upright character an em high: squeezed into an em
-		sh := font.shape(dc.fonts, fid, size, it.text, opts, context.temp_allocator)
+		sh := font.shape(dc.fonts, font.Font_Id(fi.font), size, it.text, w.opts, context.temp_allocator)
 		s := sh.width > size && sh.width > 0 ? size / sh.width : 1
-		w := sh.width * s
-		m := draw.Affine{a = s, d = 1, e = bx - w * 0.5, f = top + (size - height) * 0.5 + fi.raw_ascent}
+		width := sh.width * s
+		m := draw.Affine{a = s, d = 1, e = bx - width * 0.5, f = top + (size - w.height) * 0.5 + fi.raw_ascent}
 		draw.push_transform(dc, m)
-		draw.glyph_run(dc, size, {}, col, sh.glyphs)
+		draw_glyphs(dc, size, {}, ink, sh.glyphs)
 		draw.pop_transform(dc)
 		return
 	}
-	pen := ccw ? bottom : top
-	pos := 0
 	for {
-		run, ok := lay.next_vertical_run(it.text, pos, orient)
-		if !ok { break }
-		piece := it.text[run.start:run.end]
-		pos = run.end
-		if run.upright {
-			rn, _ := utf8.decode_rune_in_string(piece)
-			adv := lay.upright_advance(rn, size, height)
-			sh := font.shape(dc.fonts, fid, size, piece, opts, context.temp_allocator)
-			y := pen + (adv - height) * 0.5 + fi.raw_ascent
-			draw.glyph_run(dc, size, {bx - sh.width * 0.5, y}, col, sh.glyphs)
-			pen += adv + cs.letter_spacing * l.scale
-			continue
-		}
-		sh := font.shape(dc.fonts, fid, size, piece, opts, context.temp_allocator)
-		draw_run_turned(dc, sh, size, turned_x, pen, col, ccw)
-		pen += ccw ? -sh.width : sh.width
-	}
-}
-
-@(private = "file")
-paint_text_vertical :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect, off: draw.Vec2) {
-	cs := it.cs
-	fi := lay.item_font(l, it)
-	bx := it.baseline + off.x
-	opts := text_shape_options(l, cs, it.level, it.extra)
-	for i := len(cs.text_shadow) - 1; i >= 0; i -= 1 {
-		s := cs.text_shadow[i]
-		if s.color.a <= 0 { continue }
-		col := to_draw(s.color)
-		if s.blur > 0 { col.a *= 0.6 }
-		draw_vertical_text(l, dc, it, fi, bx + s.x * l.scale, r.min.y + s.y * l.scale, r.max.y + s.y * l.scale, col, opts)
-	}
-	fill := to_draw(style.text_fill(cs))
-	if fill.a > 0 { draw_vertical_text(l, dc, it, fi, bx, r.min.y, r.max.y, fill, opts) }
-	if it.deco != {} {
-		dcol := to_draw(it.deco_color)
-		if it.deco_color.a == 0 { dcol = to_draw(cs.color) }
-		d := deco_line(deco_source(l, it), dcol, fi, l.scale)
-		d.color = dcol
-		deco_paint_column(dc, r, cs.writing_mode == .Sideways_Lr, it.deco, d)
+		p := vertical_next(&w) or_break
+		if p.upright { draw_glyphs(dc, size, {p.x, p.y}, ink, p.sh.glyphs) } else { draw_run_turned(dc, p.sh, size, p.x, p.y, ink, w.ccw) }
 	}
 }
 
@@ -700,7 +718,7 @@ paint_marker :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: dr
 	if .Vertical in it.flags {
 		bx := it.baseline + off.x
 		if it.text != "" {
-			draw_vertical_text(l, dc, it, fi, bx, r.min.y, r.max.y, col, {})
+			draw_vertical_text(l, dc, it, fi, bx, r.min.y, r.max.y, {fill = col}, {})
 			return
 		}
 		s := r.max.y - r.min.y

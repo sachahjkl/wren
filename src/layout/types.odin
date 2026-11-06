@@ -225,6 +225,7 @@ Box :: struct {
 	items, lines: [2]i32,           // Ifc: [start, end) into Layout.inline_items / Layout.lines
 	cur_anon:  i32,                 // building: the anonymous box that collects the current run of children
 	fi:        i32,                 // font of the box's own text (index into Layout.fonts)
+	deco_up:   i32,                 // a decorating box: the next one out (NONE: none; decorations.odin)
 	mc:        i32,                 // a multi-column container: its record in Layout.mc_records (NONE: none yet)
 	// box model, device px: top, right, bottom, left
 	margin, border, padding: [4]f32,
@@ -279,7 +280,7 @@ Inline_Item :: struct {
 	node:  base.Handle,             // Text: the element that owns it
 	source: base.Handle,            // Text: the DOM text node it shows (NIL: generated content, markers)
 	deco:  style.Decorations,       // Text: decorations of its ancestors up to the formatting context (CSS Text Decoration §2)
-	deco_box: i32,                  // Text: the box the decoration color comes from (NONE: none; read when painted)
+	deco_box: i32,                  // Text: the nearest box that draws them (NONE: none; decorations.odin)
 	fb:      Fallback_State,        // Text: whether its text falls back to other faces than its font's first (line-height:
 	fb_font: Font,                  // normal counts them: used_fonts_extent), found for this font
 }
@@ -367,8 +368,7 @@ Display_Item :: struct {
 	text:     string,
 	baseline: f32,                  // Text, Marker: y of the baseline (Vertical: x)
 	extra:    f32,
-	deco_color: css.Color,
-	deco_box: i32,                  // Text: the box the decoration color comes from (NONE: none)
+	deco_box: i32,                  // Text: the nearest box that draws them (NONE: none; decorations.odin)
 	item:     i32,                  // Text from a fragment: its inline item (whose style it shows), else NONE
 }
 

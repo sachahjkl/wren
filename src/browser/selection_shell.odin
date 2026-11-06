@@ -17,10 +17,10 @@ package browser
 import "core:fmt"
 import "core:math"
 import "core:mem"
+import "core:slice"
 import "core:strings"
 import "core:time"
 import "toolkit:draw"
-import "toolkit:font"
 import "toolkit:platform"
 import "wb:base"
 import "wb:config"
@@ -93,7 +93,6 @@ interaction_destroy :: proc(app: ^App) {
 @(private = "file")
 page_viewport :: proc(app: ^App) -> [2]f32 { return draw.rect_size(active_window(app).page_rect) }
 
-@(private = "file")
 text_api :: proc(app: ^App) -> lay.Text_Api { return page_text_api(&app.page_render.fonts, &app.measure, &app.page_settings.style) }
 
 // The text position under a window point (ok = false: no text, or a layout older than the document).
@@ -517,6 +516,8 @@ selection_paint_key :: proc() -> u64 {
 	on := the_app.spaint.on
 	mix(&h, mem.ptr_to_bytes(&on))
 	if hl := the_app.spaint.highlights; hl != nil { mix(&h, mem.ptr_to_bytes(&hl.serial)) }
+	// (what the rules of highlights say: only in the style, not in what an item's record keeps)
+	if st := the_app.spaint.styled; st != nil && (on || the_app.spaint.highlights != nil) { mix(&h, mem.ptr_to_bytes(&st.serial)) }
 	if on {
 		mix(&h, mem.ptr_to_bytes(&the_app.spaint.start)); mix(&h, mem.ptr_to_bytes(&the_app.spaint.end))
 		mix(&h, mem.ptr_to_bytes(&the_app.spaint.bg)); mix(&h, mem.ptr_to_bytes(&the_app.spaint.fg))
@@ -599,166 +600,257 @@ item_index :: proc(l: ^Layout, it: ^lay.Display_Item) -> int {
 	return i >= 0 && i < len(l.items) ? i : -1
 }
 
-// The colors of the selection over the text of element `el` (its ::selection, else the browser's).
+// The paint of the selection over the text of element `el`: its page's ::selection, else the browser's colors; those go together (CSS Pseudo 4 §3.3): a page's color alone
+// has no background, a page's background alone leaves the text as it is.
 @(private = "file")
-colors_for :: proc(el: base.Handle) -> (bg, fg: draw.Color, keep: bool) {
-	bg, fg, keep = the_app.spaint.bg, the_app.spaint.fg, the_app.spaint.keep_fg
-	if the_app.spaint.styled == nil { return }
-	sfg, has_fg, sbg, has_bg := style.selection_colors(the_app.spaint.styled, the_app.spaint.doc, el)
-	if has_bg { bg = to_draw(sbg) }
-	if has_fg { fg, keep = to_draw(sfg), false } else if has_bg { keep = true }   // a page background alone keeps the text's color
+selection_paint_of :: proc(el: base.Handle) -> (o: Text_Overlay) {
+	sp := &the_app.spaint
+	if sp.styled != nil { o.paint = style.highlight_paint(sp.styled, sp.doc, el, .Selection) }
+	overlay_colors(&o)
+	if !o.paint.declared_color && !o.paint.has_background {
+		o.background = sp.bg
+		if !sp.keep_fg { o.color, o.has_color = sp.fg, true }
+	}
 	return
+}
+
+// What the page says of an overlay's colors.
+@(private = "file")
+overlay_colors :: proc(o: ^Text_Overlay) {
+	if o.paint.has_background { o.background = to_draw(o.paint.background) }
+	if o.paint.has_color { o.color, o.has_color = to_draw(o.paint.color), true }
 }
 
 @(private = "file")
 span_rect :: proc(l: ^Layout, it: ^lay.Display_Item, r: draw.Rect, a, b: int) -> draw.Rect {
 	// caret positions through the shaped clusters: a right-to-left item has the start of the range on the right
-	ca, cb := lay.item_caret_x(l, it, a, the_app.spaint.api), lay.item_caret_x(l, it, b, the_app.spaint.api)
+	api := text_api(the_app)
+	ca, cb := lay.item_caret_x(l, it, a, api), lay.item_caret_x(l, it, b, api)
 	x0, x1 := min(ca, cb), max(ca, cb)
 	if .Vertical in it.flags { return {{r.min.x, math.floor(r.min.y + x0)}, {r.max.x, math.ceil(r.min.y + x1)}} }
 	return {{math.floor(r.min.x + x0), r.min.y}, {math.ceil(r.min.x + x1), r.max.y}}
 }
 
-// The painter, before item `it` (drawn at `r`, window pixels): highlights of the selection and of find matches.
+// The painter, before item `it` (drawn at `r`, window pixels): the caret of text dragged here.
 selection_paint_under :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect) {
-	if it.kind != .Text || (!the_app.spaint.on && the_app.spaint.find == nil && !the_app.spaint.has_drop && the_app.spaint.highlights == nil) { return }
+	if it.kind != .Text || !the_app.spaint.has_drop { return }
 	idx := item_index(l, it)
 	if idx < 0 { return }
-	if the_app.spaint.highlights != nil { highlights_paint_under(l, dc, it, idx, r) }
-	if the_app.spaint.has_drop {
-		// the drop caret, in the piece of text it falls in (the item's start owns a position between two items)
-		if node, lo, hi, ok := lay.item_source(l, the_app.spaint.doc, idx); ok && node == the_app.spaint.drop.node && the_app.spaint.drop.offset >= lo && the_app.spaint.drop.offset <= hi {
-			if n := dom.get(the_app.spaint.doc, node); n != nil && hi <= len(n.text) {
-				k := lay.source_to_item(it.text, n.text[lo:hi], the_app.spaint.drop.offset - lo)
-				if .Vertical in it.flags {
-					y := math.round(r.min.y + lay.item_caret_x(l, it, k, the_app.spaint.api))
-					w := max(math.round((r.max.x - r.min.x) / 16), 1)
-					draw.rect(dc, {{r.min.x, y}, {r.max.x, y + w}}, the_app.spaint.drop_color)
-				} else {
-					x := math.round(r.min.x + lay.item_caret_x(l, it, k, the_app.spaint.api))
-					w := max(math.round((r.max.y - r.min.y) / 16), 1)
-					draw.rect(dc, {{x, r.min.y}, {x + w, r.max.y}}, the_app.spaint.drop_color)
+	// the drop caret, in the piece of text it falls in (the item's start owns a position between two items)
+	if node, lo, hi, ok := lay.item_source(l, the_app.spaint.doc, idx); ok && node == the_app.spaint.drop.node && the_app.spaint.drop.offset >= lo && the_app.spaint.drop.offset <= hi {
+		if n := dom.get(the_app.spaint.doc, node); n != nil && hi <= len(n.text) {
+			k := lay.source_to_item(it.text, n.text[lo:hi], the_app.spaint.drop.offset - lo)
+			if .Vertical in it.flags {
+				y := math.round(r.min.y + lay.item_caret_x(l, it, k, the_app.spaint.api))
+				w := max(math.round((r.max.x - r.min.x) / 16), 1)
+				draw.rect(dc, {{r.min.x, y}, {r.max.x, y + w}}, the_app.spaint.drop_color)
+			} else {
+				x := math.round(r.min.x + lay.item_caret_x(l, it, k, the_app.spaint.api))
+				w := max(math.round((r.max.y - r.min.y) / 16), 1)
+				draw.rect(dc, {{x, r.min.y}, {x + w, r.max.y}}, the_app.spaint.drop_color)
+			}
+		}
+	}
+}
+
+// The painter, after item `it`: selected images and controls under a wash of the selection's background, else its color (CSS Pseudo 4 §3.6.4).
+selection_paint_over :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect) {
+	if !the_app.spaint.on || (it.kind != .Replaced && it.kind != .Control) { return }
+	if it.node == base.NIL_HANDLE || !lay.node_in_range(the_app.spaint.doc, it.node, the_app.spaint.start, the_app.spaint.end) { return }
+	o := selection_paint_of(it.node)
+	wash := o.background.a > 0 ? o.background : o.color
+	wash.a *= 0.5
+	draw.rect(dc, r, wash)
+}
+
+// A highlight over a part of a text item, from the lowest up: bytes [a, b), and `rect` that its background fills.
+Text_Overlay :: struct {
+	a, b:      int,
+	rect:      draw.Rect,
+	paint:     style.Highlight_Paint,
+	background: draw.Color,
+	color:     draw.Color,   // of its text: its own, or the one of the layers below (currentcolor)
+	has_color: bool,
+	selection: bool,
+}
+
+// The rectangle of the selection on `it`: past the end of this piece of text when the selection goes on, over the collapsed space after it (not drawn by any item) or the
+// line's end, as browsers do.
+@(private = "file")
+selection_rect :: proc(tp: ^Text_Paint, idx, a, b: int) -> draw.Rect {
+	l, it := tp.l, tp.it
+	rect := span_rect(l, it, tp.r, a, b)
+	if b == len(it.text) && !strings.has_suffix(it.text, " ") {
+		if node, _, hi, ok := lay.item_source(l, the_app.spaint.doc, idx); ok && lay.pos_compare(the_app.spaint.doc, {node, hi}, the_app.spaint.end) < 0 {
+			// after the logical end: on the left of a right-to-left item
+			if .Vertical in it.flags {
+				rect.max.y += math.ceil(tp.fi.space)
+			} else if it.level & 1 == 1 { rect.min.x -= math.ceil(tp.fi.space) } else { rect.max.x += math.ceil(tp.fi.space) }
+		}
+	}
+	return rect
+}
+
+// The highlights over the item, by their overlays (CSS Pseudo 4 §3.6): nil, most of the time.
+selection_overlays :: proc(tp: ^Text_Paint) -> []Text_Overlay {
+	sp := &the_app.spaint
+	if !sp.on && sp.highlights == nil { return nil }
+	l, it := tp.l, tp.it
+	idx := item_index(l, it)
+	if idx < 0 || sp.styled == nil { return nil }
+	out: [dynamic]Text_Overlay
+	if hl := sp.highlights; hl != nil {
+		if node, _, _, ok := lay.item_source(l, sp.doc, idx); ok {
+			if spans, has := hl.spans[node]; has {
+				out = make([dynamic]Text_Overlay, 0, len(spans) + 1, context.temp_allocator)
+				for s in spans {
+					a, b, in_item := lay.item_range(l, sp.doc, idx, {node, s.lo}, {node, s.hi})
+					if !in_item || a == b { continue }
+					h := &hl.list[s.highlight]
+					o := Text_Overlay{a = a, b = b, rect = span_rect(l, it, tp.r, a, b), paint = style.highlight_paint(sp.styled, sp.doc, it.node, h.kind, h.name)}
+					overlay_colors(&o)
+					if h.kind == .Target_Text && !o.paint.declared_color && !o.paint.has_background {
+						o.color, o.has_color = to_draw(style.settings_color(&the_app.page_settings.style, .Mark_Text, it.cs.used_scheme)), true
+						o.background = to_draw(style.settings_color(&the_app.page_settings.style, .Mark, it.cs.used_scheme))
+					}
+					append(&out, o)
 				}
 			}
 		}
 	}
-	if !the_app.spaint.on && the_app.spaint.find == nil { return }
-	if the_app.spaint.find != nil { find_paint_item(the_app.spaint.find, l, dc, it, idx, r) }
-	if !the_app.spaint.on { return }
-	a, b, ok := lay.item_range(l, the_app.spaint.doc, idx, the_app.spaint.start, the_app.spaint.end)
-	if !ok || !lay.is_selectable(the_app.spaint.doc, the_app.spaint.styled, it.node) { return }
-	bg, _, _ := colors_for(it.node)
-	rect := span_rect(l, it, r, a, b)
-	// the selection goes on past this piece of text: the collapsed space after it (not drawn by any item) or the
-	// line's end is highlighted too, as browsers do
-	if b == len(it.text) && !strings.has_suffix(it.text, " ") {
-		if node, _, hi, sok := lay.item_source(l, the_app.spaint.doc, idx); sok && lay.pos_compare(the_app.spaint.doc, {node, hi}, the_app.spaint.end) < 0 {
-			if fi := lay.item_font(l, it); fi != nil {
-				// after the logical end: on the left of a right-to-left item
-				if .Vertical in it.flags {
-					rect.max.y += math.ceil(fi.space)
-				} else if it.level & 1 == 1 { rect.min.x -= math.ceil(fi.space) } else { rect.max.x += math.ceil(fi.space) }
+	if sp.on {
+		if a, b, ok := lay.item_range(l, sp.doc, idx, sp.start, sp.end); ok && lay.is_selectable(sp.doc, sp.styled, it.node) {
+			if out == nil { out = make([dynamic]Text_Overlay, 0, 1, context.temp_allocator) }
+			o := selection_paint_of(it.node)
+			o.a, o.b, o.rect, o.selection = a, b, selection_rect(tp, idx, a, b), true
+			append(&out, o)
+		}
+	}
+	// (currentcolor: of the next layer below, where they overlap)
+	for &o, i in out {
+		if o.has_color { continue }
+		o.color = to_draw(it.cs.color)
+		for k := i - 1; k >= 0; k -= 1 {
+			if out[k].has_color && out[k].a < o.b && o.a < out[k].b { o.color = out[k].color; break }
+		}
+	}
+	return out[:]
+}
+
+// Their backgrounds, each with its text-shadow, then find's matches and the selection above them (§3.6.1, §3.6.2).
+selection_paint_backgrounds :: proc(tp: ^Text_Paint, overlays: []Text_Overlay) {
+	sp := &the_app.spaint
+	find_painted := sp.find == nil
+	find_matches :: proc(tp: ^Text_Paint) {
+		if idx := item_index(tp.l, tp.it); idx >= 0 { find_paint_item(the_app.spaint.find, tp.l, tp.dc, tp.it, idx, tp.r) }
+	}
+	for &o in overlays {
+		if o.selection && !find_painted { find_matches(tp); find_painted = true }
+		if o.background.a > 0 { draw.rect(tp.dc, o.rect, o.background) }
+		if len(o.paint.shadows) == 0 { continue }
+		draw.push_clip(tp.dc, o.rect)
+		for i := len(o.paint.shadows) - 1; i >= 0; i -= 1 {
+			s := o.paint.shadows[i]
+			if s.color.a <= 0 { continue }
+			col := to_draw(s.color)
+			if s.blur > 0 { col.a *= 0.6 }
+			text_ink_draw(tp, draw.Vec2{s.x, s.y} * tp.l.scale, {fill = col})
+		}
+		draw.pop_clip(tp.dc)
+	}
+	if !find_painted { find_matches(tp) }
+}
+
+// A part of the item under the same highlights: how its text is drawn.
+Text_Part :: struct {
+	a, b:      int,
+	clip:      draw.Rect,
+	ink:       Text_Ink,
+	emphasis:  draw.Color,
+	line:      draw.Color,   // of the lines of the boxes that decorate it, where `recolored`
+	recolored: bool,
+}
+
+// How far past the ends of the item its first and last parts go: glyphs and strokes that overhang are theirs.
+@(private = "file") PART_OVERHANG_EMS :: 2
+
+// The item cut where its highlights begin and end; nil: it is whole.
+selection_text_parts :: proc(tp: ^Text_Paint, overlays: []Text_Overlay) -> []Text_Part {
+	if len(overlays) == 0 { return nil }
+	cuts := make([dynamic]int, 0, len(overlays) * 2 + 2, context.temp_allocator)
+	append(&cuts, 0, len(tp.it.text))
+	for o in overlays { append(&cuts, o.a, o.b) }
+	slice.sort(cuts[:])
+	parts := make([dynamic]Text_Part, 0, len(cuts), context.temp_allocator)
+	api := text_api(the_app)
+	at := tp.vertical ? tp.r.min.y : tp.r.min.x
+	over := tp.fi.size * PART_OVERHANG_EMS
+	base_ink := text_ink_of(tp.cs, tp.l.scale)
+	base_emphasis := to_draw(style.emphasis_color(tp.cs))
+	follows_color := tp.cs.text_stroke_color.auto
+	for i in 1 ..< len(cuts) {
+		a, b := cuts[i - 1], cuts[i]
+		if a == b { continue }
+		lo, hi := math.round(at + lay.item_caret_x(tp.l, tp.it, a, api)), math.round(at + lay.item_caret_x(tp.l, tp.it, b, api))
+		rtl := lo > hi
+		if rtl { lo, hi = hi, lo }
+		if a == 0 { if rtl { hi += over } else { lo -= over } }
+		if b == len(tp.it.text) { if rtl { lo -= over } else { hi += over } }
+		p := Text_Part{a = a, b = b, ink = base_ink, emphasis = base_emphasis}
+		p.clip = tp.vertical ? draw.Rect{{tp.r.min.x - over, lo}, {tp.r.max.x + over, hi}} : draw.Rect{{lo, tp.r.min.y - over}, {hi, tp.r.max.y + over}}
+		for &o in overlays {
+			if o.a > a || o.b < b { continue }
+			hp := &o.paint
+			if o.has_color {
+				p.ink.fill = o.color
+				p.line, p.recolored = o.color, true
+				if follows_color { p.ink.stroke = o.color }
+				if tp.cs.text_emphasis_color.auto { p.emphasis = o.color }
 			}
+			if hp.has_line_color { p.line, p.recolored = to_draw(hp.line_color), true }
+			if hp.has_fill { p.ink.fill = to_draw(hp.fill) }
+			if hp.has_stroke { p.ink.stroke = to_draw(hp.stroke) }
+			if hp.has_stroke_width { p.ink.width = hp.stroke_width * tp.l.scale }
+		}
+		append(&parts, p)
+	}
+	return parts[:]
+}
+
+// The lines of kind `line`: of the boxes that decorate the item, in the color of what is over them, then of each highlight, in the order of its layer (§3.6.3).
+selection_paint_lines :: proc(tp: ^Text_Paint, lines: []Deco_Line, parts: []Text_Part, overlays: []Text_Overlay, line: style.Decoration) {
+	if len(parts) == 0 {
+		for &d in lines { deco_paint(tp, &d, line) }
+		return
+	}
+	if len(lines) > 0 {
+		for &p in parts {
+			draw.push_clip(tp.dc, p.clip)
+			for &d in lines { deco_paint(tp, &d, line, {}, p.recolored ? &p.line : nil) }
+			draw.pop_clip(tp.dc)
 		}
 	}
-	draw.rect(dc, rect, bg)
-}
-
-// Bytes [a, b) of the text of item `it` drawn again, in `fg`.
-@(private = "file")
-text_again :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect, a, b: int, fg: draw.Color) {
-	fi := lay.item_font(l, it)
-	if fi == nil || it.cs == nil { return }
-	draw.push_clip(dc, span_rect(l, it, r, a, b))
-	if .Vertical in it.flags {
-		draw_vertical_text(l, dc, it, fi, it.baseline + (r.min.x - it.rect.min.x), r.min.y, r.max.y, fg, text_shape_options(l, it.cs, it.level, it.extra))
-	} else {
-		baseline := it.baseline + (r.min.y - it.rect.min.y)
-		sel_draw_run(dc, font.Font_Id(fi.font), fi.size, {r.min.x, baseline}, fg, it.text, text_shape_options(l, it.cs, it.level, it.extra))
-	}
-	draw.pop_clip(dc)
-}
-
-// The lines of a highlight's text-decoration (`source`: nil for none) over bytes [a, b) of item `it`.
-@(private = "file")
-decoration_again :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect, a, b: int, source: ^style.Computed, color: draw.Color) {
-	fi := lay.item_font(l, it)
-	if source == nil || fi == nil { return }
-	span := span_rect(l, it, r, a, b)
-	d := deco_line(source, color, fi, l.scale)
-	if .Vertical in it.flags {
-		deco_paint_column(dc, span, it.cs.writing_mode == .Sideways_Lr, source.text_decoration, d)
-	} else {
-		deco_paint_row(dc, span.min.x, span.max.x, it.baseline + (r.min.y - it.rect.min.y), fi, source.text_decoration, d)
+	for &o in overlays {
+		if o.paint.lines == {} { continue }
+		lo, hi := tp.vertical ? o.rect.min.y : o.rect.min.x, tp.vertical ? o.rect.max.y : o.rect.max.x
+		d := deco_line_of_highlight(tp, &o.paint, lo, hi, o.color)
+		deco_paint(tp, &d, line)
 	}
 }
 
-// What of CSS.highlights falls on item `idx`, lowest priority first: `each` with the bytes of the item and the highlight.
-@(private = "file")
-highlights_of_item :: proc(l: ^Layout, idx: int, data: Highlight_Draw, each: proc(data: Highlight_Draw, a, b: int, name: string)) {
-	hl := the_app.spaint.highlights
-	node, _, _, ok := lay.item_source(l, the_app.spaint.doc, idx)
-	if !ok { return }
-	spans, has := hl.spans[node]
-	if !has { return }
-	for s in spans {
-		if a, b, in_item := lay.item_range(l, the_app.spaint.doc, idx, {node, s.lo}, {node, s.hi}); in_item { each(data, a, b, hl.list[s.highlight].name) }
+// The glyphs and their emphasis marks, each part as what is over it says.
+selection_paint_text :: proc(tp: ^Text_Paint, parts: []Text_Part, emphasis: bool) {
+	if len(parts) == 0 {
+		text_ink_draw(tp, {}, text_ink_of(tp.cs, tp.l.scale))
+		if emphasis { emphasis_paint(tp, 0, len(tp.it.text), {}, to_draw(style.emphasis_color(tp.cs))) }
+		return
 	}
-}
-
-Highlight_Draw :: struct { l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect }
-
-// The backgrounds of the highlights over item `it`, under its text and the selection.
-@(private = "file")
-highlights_paint_under :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, idx: int, r: draw.Rect) {
-	highlights_of_item(l, idx, Highlight_Draw{l, dc, it, r}, proc(h: Highlight_Draw, a, b: int, name: string) {
-		if the_app.spaint.styled == nil { return }
-		_, _, bg, has_bg := style.highlight_colors(the_app.spaint.styled, the_app.spaint.doc, h.it.node, name)
-		if has_bg { draw.rect(h.dc, span_rect(h.l, h.it, h.r, a, b), to_draw(bg)) }
-	})
-}
-
-// Their colors, on the text just drawn: the highest priority last.
-@(private = "file")
-highlights_paint_over :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect) {
-	idx := item_index(l, it)
-	if idx < 0 { return }
-	highlights_of_item(l, idx, Highlight_Draw{l, dc, it, r}, proc(h: Highlight_Draw, a, b: int, name: string) {
-		if the_app.spaint.styled == nil { return }
-		fg, has_fg, _, _ := style.highlight_colors(the_app.spaint.styled, the_app.spaint.doc, h.it.node, name)
-		if has_fg { text_again(h.l, h.dc, h.it, h.r, a, b, to_draw(fg)) }
-		decoration_again(h.l, h.dc, h.it, h.r, a, b, style.highlight_decoration(the_app.spaint.styled, the_app.spaint.doc, h.it.node, name), has_fg ? to_draw(fg) : to_draw(h.it.cs.color))
-	})
-}
-
-// The painter, after item `it`: selected text again in the highlight text color; selected images and controls tinted.
-selection_paint_over :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect) {
-	if the_app.spaint.highlights != nil && it.kind == .Text { highlights_paint_over(l, dc, it, r) }
-	if !the_app.spaint.on { return }
-	#partial switch it.kind {
-	case .Text:
-		idx := item_index(l, it)
-		if idx < 0 { return }
-		a, b, ok := lay.item_range(l, the_app.spaint.doc, idx, the_app.spaint.start, the_app.spaint.end)
-		if !ok || !lay.is_selectable(the_app.spaint.doc, the_app.spaint.styled, it.node) { return }
-		_, fg, keep := colors_for(it.node)
-		if !keep { text_again(l, dc, it, r, a, b, fg) }
-		if the_app.spaint.styled != nil {
-			decoration_again(l, dc, it, r, a, b, style.selection_decoration(the_app.spaint.styled, the_app.spaint.doc, it.node), keep ? to_draw(it.cs.color) : fg)
-		}
-	case .Replaced, .Control:
-		if it.node == base.NIL_HANDLE || !lay.node_in_range(the_app.spaint.doc, it.node, the_app.spaint.start, the_app.spaint.end) { return }
-		bg, _, _ := colors_for(it.node)
-		bg.a *= 0.5
-		draw.rect(dc, r, bg)
+	for &p in parts {
+		draw.push_clip(tp.dc, p.clip)
+		text_ink_draw(tp, {}, p.ink)
+		draw.pop_clip(tp.dc)
+		if emphasis { emphasis_paint(tp, p.a, p.b, {}, p.emphasis) }
 	}
-}
-
-// The painter's text run (render.odin draw_run): the fragment shaped as painted (one directional run, spacing and
-// justification in the shaper), so the selected glyphs land exactly on the ones drawn under them.
-sel_draw_run :: proc(dc: ^draw.Context, fid: font.Font_Id, size: f32, pos: draw.Vec2, col: draw.Color, text: string, opts: font.Shape_Options) {
-	sh := font.shape(dc.fonts, fid, size, text, opts, context.temp_allocator)
-	draw.glyph_run(dc, size, pos, col, sh.glyphs)
 }
 
 _ :: css

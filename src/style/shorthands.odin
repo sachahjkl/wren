@@ -81,6 +81,7 @@ tables_build :: proc() {
 		"filter", "backdrop-filter", "appearance", "clip-path", "hyphens", "text-decoration-style", "text-decoration-color",
 		"text-decoration-line", "text-decoration-thickness", "text-underline-offset", "font-variant-caps", "background-clip",
 		"background-origin", "user-select", "column-count", "column-width", "columns", "column-gap", "text-decoration",
+		"text-decoration-skip-ink", "text-underline-position",
 	}) {
 		alias_by_name[strings.concatenate({"-webkit-", name})] = name
 		alias_by_name[strings.concatenate({"-moz-", name})] = name
@@ -184,6 +185,8 @@ short_longhands :: proc(s: Short) -> []Prop {
 	@(static) inset := [?]Prop{.Top, .Right, .Bottom, .Left}
 	@(static) list_style := [?]Prop{.List_Style_Type, .List_Style_Position}
 	@(static) text_decoration := [?]Prop{.Text_Decoration_Line, .Text_Decoration_Color, .Text_Decoration_Style, .Text_Decoration_Thickness}
+	@(static) text_emphasis := [?]Prop{.Text_Emphasis_Style, .Text_Emphasis_Color}
+	@(static) text_stroke := [?]Prop{.Text_Stroke_Width, .Text_Stroke_Color}
 	@(static) outline := [?]Prop{.Outline_Width, .Outline_Style, .Outline_Color}
 	@(static) place_content := [?]Prop{.Align_Content, .Justify_Content}
 	@(static) place_items := [?]Prop{.Align_Items, .Justify_Items}
@@ -238,6 +241,8 @@ short_longhands :: proc(s: Short) -> []Prop {
 	case .Inset: return inset[:]
 	case .List_Style: return list_style[:]
 	case .Text_Decoration: return text_decoration[:]
+	case .Text_Emphasis: return text_emphasis[:]
+	case .Text_Stroke: return text_stroke[:]
 	case .Outline: return outline[:]
 	case .Place_Content: return place_content[:]
 	case .Place_Items: return place_items[:]
@@ -526,15 +531,20 @@ expand_shorthand :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -> ([]
 	case .Text_Decoration:
 		lines := make([dynamic]css.Value, a)
 		col, style, thick: []css.Value
+		lines_at := -1   // (`||`: the words of the line are together)
 		for it, i in items {
 			if it.kind == .Token && it.tok.kind == .Ident {
 				switch base.ascii_lower(it.tok.text) {
-				case "none", "underline", "overline", "line-through", "blink": append(&lines, it); continue
+				case "none", "underline", "overline", "line-through", "blink", "spelling-error", "grammar-error":
+					if lines_at >= 0 && lines_at != i - 1 { return nil, false }
+					lines_at = i
+					append(&lines, it)
+					continue
 				case "solid", "double", "dotted", "dashed", "wavy":
 					if style != nil { return nil, false }
 					style = items[i:i + 1]
 					continue
-				case "from-font", "auto":
+				case "from-font", "auto", "thin", "medium", "thick":
 					if thick != nil { return nil, false }
 					thick = items[i:i + 1]
 					continue
@@ -552,6 +562,32 @@ expand_shorthand :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -> ([]
 		emit(&res, .Text_Decoration_Color, or_initial(col))
 		emit(&res, .Text_Decoration_Style, or_initial(style))
 		emit(&res, .Text_Decoration_Thickness, or_initial(thick))
+
+	case .Text_Emphasis:
+		// (style and color; the position is not reset)
+		style := make([dynamic]css.Value, a)
+		col: []css.Value
+		for it, i in items {
+			if is_emphasis_style_item(it) { append(&style, it); continue }
+			if col != nil { return nil, false }
+			col = items[i:i + 1]
+		}
+		emit(&res, .Text_Emphasis_Style, len(style) > 0 ? join_items(style[:], a) : INITIAL_KW[:])
+		emit(&res, .Text_Emphasis_Color, or_initial(col))
+
+	case .Text_Stroke:
+		width, col: []css.Value
+		for it, i in items {
+			if is_line_width_item(it) {
+				if width != nil { return nil, false }
+				width = items[i:i + 1]
+				continue
+			}
+			if col != nil { return nil, false }
+			col = items[i:i + 1]
+		}
+		emit(&res, .Text_Stroke_Width, or_initial(width))
+		emit(&res, .Text_Stroke_Color, or_initial(col))
 
 	case .Font:
 		return expand_font(vs, a)

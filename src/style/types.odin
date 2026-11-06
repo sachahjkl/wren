@@ -67,7 +67,7 @@ White_Space :: enum u8 { Normal, Nowrap, Pre, Pre_Wrap, Pre_Line, Break_Spaces }
 Word_Break :: enum u8 { Normal, Break_All, Keep_All, Break_Word }
 Overflow_Wrap :: enum u8 { Normal, Break_Word, Anywhere }
 Direction :: enum u8 { Ltr, Rtl }
-Decoration :: enum u8 { Underline, Overline, Line_Through }
+Decoration :: enum u8 { Underline, Overline, Line_Through, Blink, Spelling_Error, Grammar_Error }   // (Blink: kept, never drawn: browsers do not)
 Decorations :: bit_set[Decoration; u8]
 List_Style_Type :: enum u8 { None, Disc, Circle, Square, Decimal, Decimal_Leading_Zero, Lower_Alpha, Upper_Alpha, Lower_Roman, Upper_Roman, Lower_Greek }
 List_Style_Position :: enum u8 { Outside, Inside }
@@ -174,7 +174,7 @@ Computed :: struct {
 	text_decoration_color: css.Color,
 	text_ellipsis: bool,
 	text_decoration_style: Text_Decoration_Style,
-	text_decoration_thickness: Length,      // Auto, Normal (= from-font) or Px
+	text_decoration_thickness: Length,      // Auto, Normal (= from-font), Px, Percent (of 1em) or Calc
 	unicode_bidi:            Unicode_Bidi,
 	// --- background (the image layers: background_group) ---
 	background_color: css.Color,
@@ -218,8 +218,7 @@ Computed :: struct {
 	inherits:   Prop_Set,       // inherited properties whose value came from the parent (not set by a declaration)
 	custom:     ^Custom_Props,
 	before, after: ^Computed,   // generated boxes (nil when `content` is none/normal)
-	selection:  ^Computed,      // ::selection rules of the element (nil: none; colors only are used)
-	highlights: []Highlight_Style, // ::highlight(name) rules of the element, a style per name (colors only are used)
+	highlights: []Highlight_Style, // what the element's rules say of ::selection, ::highlight(name) and the other highlights (selection.odin)
 	placeholder: ^Computed,     // ::placeholder of a text field (nil: none)
 	backdrop:   ^Computed,      // ::backdrop of a top layer element (nil: none, or display: none)
 }
@@ -269,7 +268,16 @@ Inherited_Group :: struct {
 	visibility: Visibility,
 	font_stretch:      f32,                 // percentage, 100 = normal
 	font_variant_caps: Font_Variant_Caps,
-	text_underline_offset: Length,          // Auto or Px
+	text_underline_offset: Length,          // Auto, Px, Percent (of 1em) or Calc
+	text_underline_position: Text_Underline_Position,
+	text_decoration_skip_ink: Text_Decoration_Skip_Ink,
+	text_decoration_skip_spaces: Skip_Spaces,
+	text_emphasis_style: Text_Emphasis_Style,
+	text_emphasis_color: Auto_Color,
+	text_emphasis_position: Text_Emphasis_Position,
+	text_emphasis_skip: Emphasis_Skips,
+	text_stroke_width: f32,                 // -webkit-text-stroke-width
+	text_stroke_color: Auto_Color,          // -webkit-text-stroke-color, auto = currentcolor
 	white_space_collapse: White_Space_Collapse,   // `white_space` above is derived from these two
 	text_wrap_mode:    Text_Wrap_Mode,
 	text_wrap_style:   Text_Wrap_Style,
@@ -386,6 +394,7 @@ Mask_Group :: struct {
 // Effects, counters, containment, container queries, scrolling and anchors: properties few elements set.
 Rare_Group :: struct {
 	object_position:   [2]Length,
+	text_decoration_inset: [2]Length,      // start, end (Auto: the line's own)
 	filter:            []Filter_Op,
 	backdrop_filter:   []Filter_Op,
 	clip_path:         ^Clip_Path,         // nil = none
@@ -433,6 +442,8 @@ Prop :: enum u8 {
 	Color_Scheme, Writing_Mode, Font_Size, Color,
 	Font_Family, Font_Weight, Font_Style, Font_Stretch, Font_Variant_Caps, Line_Height, Letter_Spacing, Word_Spacing, Text_Align,
 	Text_Decoration_Line, Text_Decoration_Color, Text_Decoration_Style, Text_Decoration_Thickness, Text_Underline_Offset,
+	Text_Underline_Position, Text_Decoration_Skip_Ink, Text_Decoration_Skip_Spaces, Text_Decoration_Inset,
+	Text_Emphasis_Style, Text_Emphasis_Color, Text_Emphasis_Position, Text_Emphasis_Skip, Text_Stroke_Width, Text_Stroke_Color,
 	Text_Transform, Text_Indent, Text_Overflow, White_Space_Collapse, Text_Wrap_Mode, Text_Wrap_Style, Word_Break,
 	Overflow_Wrap, Hyphens, Tab_Size, Direction, Text_Shadow,
 	Font_Feature_Settings, Font_Variation_Settings, Font_Kerning, Font_Variant_Ligatures, Font_Variant_Numeric,
@@ -483,6 +494,8 @@ INHERITED_PROPS :: [?]Prop{
 	.Color_Scheme, .Font_Size, .Color, .Font_Family, .Font_Weight, .Font_Style, .Font_Stretch, .Font_Variant_Caps, .Line_Height,
 	.Letter_Spacing, .Word_Spacing, .Text_Align, .Text_Transform, .Text_Indent, .White_Space_Collapse, .Text_Wrap_Mode,
 	.Text_Wrap_Style, .Word_Break, .Overflow_Wrap, .Hyphens, .Tab_Size, .Direction, .Text_Shadow, .Text_Underline_Offset,
+	.Text_Underline_Position, .Text_Decoration_Skip_Ink, .Text_Decoration_Skip_Spaces,
+	.Text_Emphasis_Style, .Text_Emphasis_Color, .Text_Emphasis_Position, .Text_Emphasis_Skip, .Text_Stroke_Width, .Text_Stroke_Color,
 	.Visibility, .List_Style_Type, .List_Style_Position, .Cursor, .Pointer_Events, .Border_Collapse, .Border_Spacing,
 	.Quotes, .Caret_Color, .Accent_Color, .Scrollbar_Color, .Orphans, .Widows, .Writing_Mode, .Text_Orientation,
 	.Text_Combine_Upright,
@@ -495,7 +508,7 @@ INHERITED_PROPS :: [?]Prop{
 Short :: enum u8 {
 	None,
 	Margin, Padding, Border, Border_Width, Border_Style, Border_Color, Border_Top, Border_Right, Border_Bottom, Border_Left,
-	Border_Radius, Background, Font, Flex, Flex_Flow, Gap, Overflow, Inset, List_Style, Text_Decoration, Outline,
+	Border_Radius, Background, Font, Flex, Flex_Flow, Gap, Overflow, Inset, List_Style, Text_Decoration, Text_Emphasis, Text_Stroke, Outline,
 	Place_Content, Place_Items, Place_Self,
 	Margin_Block, Margin_Inline, Padding_Block, Padding_Inline, Inset_Block, Inset_Inline,
 	White_Space, Text_Wrap, Font_Variant, Transition, Animation, Overscroll_Behavior, Columns, Column_Rule,

@@ -193,7 +193,7 @@ transform_refresh_path :: proc(t: ^testing.T) {
 	tx_state(f, style.State{hover = el(f, "u")}, 650)
 	testing.expectf(t, f.l.last_pass == .Refresh, "a color change of underlined text refreshes: %v", f.l.last_pass)
 	blue := false
-	for &it in f.l.items { if it.kind == .Text && it.node == el(f, "u") { blue = it.deco_color.b > 0.9 && it.cs.color.b > 0.9 } }
+	for &it in f.l.items { if it.kind == .Text && it.node == el(f, "u") { blue = f.l.boxes[it.deco_box].cs.text_decoration_color.b > 0.9 && it.cs.color.b > 0.9 } }
 	testing.expect(t, blue, "text and underline take the new color")
 	full = f.l.passes[.Full]
 	tx_state(f, style.State{hover = el(f, "w")}, 700)
