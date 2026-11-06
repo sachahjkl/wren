@@ -200,6 +200,12 @@ const e2 = document.getElementById("box");
 for (let i = 0; i < 50; i++) { e2.style.width = (100 + i) + "px"; void e2.offsetWidth; }`), "probe.js")
 	n2 := page.layout_updates(p)
 	check(pr, n2 - n1 == LAYOUT_MUTATIONS, fmt.tprintf("a reading after a mutation brings the layout up to date (%d updates)", n2 - n1))
+	page.js_run(p, transmute([]byte)string(`window.scrollTo(0, 0); void document.getElementById("box").offsetWidth;`), "probe.js")
+	n3 := page.layout_updates(p)
+	page.js_run(p, transmute([]byte)string(`
+const e3 = document.getElementById("box");
+for (let i = 0; i < 50; i++) { e3.style.width = (200 + i) + "px"; void window.scrollY; void window.pageXOffset; }`), "probe.js")
+	check(pr, page.layout_updates(p) == n3, "the scroll offsets at the origin ask for no layout")
 }
 
 // How many times the page said this.
