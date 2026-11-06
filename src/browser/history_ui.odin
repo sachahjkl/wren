@@ -79,9 +79,7 @@ is_history_address :: proc(a: string) -> bool { return a == HISTORY_URL || strin
 
 // about:history is a view of the browser, like about:config: no page, no origin. Typed in a tab, it shows that tab's tree.
 show_history :: proc(app: ^App, t: ^Tab, address := HISTORY_URL) {
-	base.scope_close(t.nav)
-	t.nav = base.scope_make("navigation", t.scope)
-	t.page, t.load, t.kind = nil, nil, .History
+	nav_show_view(app, t, .History)
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	console_reset(t)

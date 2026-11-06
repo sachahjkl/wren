@@ -75,7 +75,8 @@ Doc_Load :: struct {
 	task:       base.Handle,             // the document's request (Escape stops it)
 	stopped:    bool,                    // Escape stopped it: the tab no longer shows it loading
 	failed:     Load_Failure,            // the tab shows an error page (the security chip says so)
-	pushed:     bool,                    // the navigation added a history entry (a download takes it back: download.odin)
+	pushed:     bool,                    // the navigation added a history entry (it goes if the navigation ends with no document: nav_cancel)
+	left_entry: u64,                     // a traversal: the entry it left (... the tab goes back there)
 	action:     Doc_Action,              // what the answer is shown as (download.odin doc_action)
 	cache:      fetch.Cache_Mode,        // the document's cache mode; Reload: its subresources too (http_cache_ui.odin)
 	from_cache: fetch.Cache_Outcome,     // where the document came from (the status bar says so)
@@ -201,7 +202,6 @@ App :: struct {
 	pass_order:    [dynamic]^Browser_Window, // windows.odin: the windows of a pass of the loop, in order
 	pass_causes:   [dynamic]Frame_Causes,    // windows.odin: ... and why each draws
 	wake_target:   rawptr,                   // windows.odin: the window the loop waits on (wake_window; read atomically, from any thread)
-	first_paint_timer: base.Handle,          // first_paint.odin: a frame when a held or blocked first paint ends
 	print_last:    time.Tick,                // print.odin: the last window.print()
 	render_settings: Render_Settings,        // render_settings.odin
 	chrome_cfg:    Chrome_Style_Settings,    // chrome_style.odin
@@ -373,7 +373,7 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 	tab_nav_destroy(app, t)
 	base.scope_close(t.scope)   // page, instances, DOM, requests, timers: all gone (a held page too)
 	page.navigable_top_free(t.top)   // (the windows holding it see it closed)
-	hold_destroy(t)
+	hold_step(app, t, .Tab_Gone)
 	page_fonts_drop(&app.page_render.fonts, t)   // its web fonts (fonts.odin)
 	page.session_destroy(&t.session)
 	delete(t.url); delete(t.title); delete(t.status)
@@ -447,7 +447,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	// document's (document_event); a navigation already under way leaves it as any page
 	blank := t.load == nil && page.navigable_blank_window(t.top, t.page) ? t.page : nil
 	if blank == nil { leave_page(app, t) }   // the entry being left keeps what it shows; the page may go to the back/forward cache
-	t.nav_state.no_store = false
+	nav_to(app, t, .Requested)
 	pushed := false
 	if record {
 		cur := page.session_current(&t.session)
@@ -461,7 +461,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if restore { timing_begin(t, false) }
 	defer if restore { restore_begin(app, t, entry) }
 	license_file := is_license_file_address(target) && verdict.acts   // license_shell.odin
-	if is_builtin_address(target) || license_file { hold_release(app, t); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
+	if is_builtin_address(target) || license_file || is_cache_address(target) || is_sites_address(target) { hold_step(app, t, .Over); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
 	if target == "about:config" { show_config(app, t); return }
 	if is_history_address(target) { show_history(app, t, target); return }
 	if is_blocker_address(target) { show_blocker(app, t, target); return }   // blocker_dashboard.odin
@@ -472,8 +472,8 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if target == ABOUT_URL { show_about_pages(app, t); return }
 	if is_wren_address(target) { show_wren_page(app, t, target, verdict.acts); return }   // about_wren.odin
 	if license_file { license_open_file(app, t, target); return }
-	if is_cache_address(target) { hold_release(app, t); bfcache_take(app, t); show_cache_page(app, t, target, verdict.acts); return }   // http_cache_ui.odin
-	if is_sites_address(target) { hold_release(app, t); bfcache_take(app, t); show_sites_page(app, t, target, verdict.acts); return }   // site_data_ui.odin
+	if is_cache_address(target) { show_cache_page(app, t, target, verdict.acts); return }   // http_cache_ui.odin
+	if is_sites_address(target) { show_sites_page(app, t, target, verdict.acts); return }   // site_data_ui.odin
 	load := new(Doc_Load)
 	load.tab = t
 	load.started_ns = host.now_ns(&app.loop)
@@ -490,12 +490,10 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	// the previous page stays on screen until this one paints, or closes now (first_paint.odin)
 	load.blank = blank
 	if blank == nil {
-		hold_begin(app, t, target)
-		t.nav = base.scope_make("navigation", t.scope)
-		t.page = nil
+		hold_step(app, t, .Navigation, target)
+		nav_fresh(t, .Web)
 	}
 	load_measure_begin(app, t, target)   // blocker_measure.odin
-	t.kind = .Web
 	base.on_close(t.nav, load_closed, load)
 	t.load = load
 	t.scroll_target = base.NIL_HANDLE
@@ -570,6 +568,7 @@ go_entry :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry) {
 		}
 	}
 	leave_page(app, t)
+	left := page.session_current(&t.session)
 	page.session_goto(&t.session, e)
 	sync_history(app, t)
 	if bfcache_restore(app, t, e) {
@@ -577,6 +576,7 @@ go_entry :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry) {
 		return
 	}
 	navigate(app, t, strings.clone(e.url, context.temp_allocator), record = false, restore = true, cache = history_cache_mode(app), origin = .Replay)
+	if t.load != nil && left != nil { t.load.left_entry = left.id }
 }
 
 same_document_url :: proc(app: ^App, t: ^Tab, address: string) {
@@ -636,10 +636,8 @@ page_open_window :: proc(user: rawptr, p: ^page.Page, req: page.Open_Request) ->
 	wnd := active_window(app)
 	t := tab_new(app)
 	wnd.current = len(wnd.tabs) - 1
-	t.kind = .Web
-	t.nav = base.scope_make("navigation", t.scope)
-	t.page = page.auxiliary_document(t.top, req, t.nav, console_sink, t)
-	attach_page(app, t, t.page)
+	nav_fresh(t, .Web)
+	nav_adopt(app, t, page.auxiliary_document(t.top, req, t.nav, console_sink, t))
 	page.render_begin(t.page)
 	if page.open_is_blank(req.url) {
 		delete(t.url)
@@ -689,9 +687,7 @@ load_closed :: proc(data: rawptr) {
 
 // about:config is a view of the browser itself, not a document: it has no page, no origin, no scripts.
 show_config :: proc(app: ^App, t: ^Tab) {
-	base.scope_close(t.nav)
-	t.nav = base.scope_make("navigation", t.scope)
-	t.page, t.load, t.kind = nil, nil, .Config
+	nav_show_view(app, t, .Config)
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	console_reset(t)
@@ -711,8 +707,7 @@ show_error_page :: proc(app: ^App, load: ^Doc_Load, e: Error_Text) {
 	}
 	if load.page == nil {
 		load.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, "about:blank", console_sink, t)
-		t.page = load.page
-		attach_page(app, t, load.page)
+		nav_adopt(app, t, load.page)
 	}
 	load.failed = e.kind == .Tls ? .Tls : .Other
 	title := error_tab_title(t.url)
@@ -767,7 +762,10 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		t.url = strings.clone(shown)
 		address_set(app, t, shown)
 		// an image is shown by a document the browser writes once the image is in (download.odin show_image_document)
-		if load.action == .Image && !load.view_source { return }
+		if load.action == .Image && !load.view_source {
+			nav_to(app, t, .Responded)
+			return
+		}
 		// the document exists from here on, with the origin of its *final* URL
 		if cc, ok := http.get_header(r.headers, "cache-control"); ok && base.ascii_contains_fold(cc, "no-store") { t.nav_state.no_store = true }
 		// a redirect: the entry is the final address
@@ -779,8 +777,7 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			start_ns = load.started_ns, response_ns = load.response_ns, reload = load.cache == .Reload || load.cache == .No_Cache,
 			status = r.status, from_cache = r.cache == .Hit, mime = load.mime, redirects = r.redirected ? 1 : 0,
 		})
-		attach_page(app, t, load.page)
-		t.page = load.page
+		nav_adopt(app, t, load.page)
 		if !load.view_source && r.status < 400 { global_history_visit(app, t, r.url, "") }
 		csp_h := http.get_all(r.headers, "content-security-policy")
 		ro_h := http.get_all(r.headers, "content-security-policy-report-only")
@@ -948,7 +945,6 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		if t != nil { loading_bar(app, t, dc, b.rect) }   // (the full frames draw it: it would blink between the two kinds)
 		return
 	}
-	for other in wnd.tabs { if other != t { hold_release(app, other) } }   // a frame held in a tab not shown is of no use
 	if t == nil || t.kind != .Web {
 		draw.rect(dc, b.rect, to_draw(expected_canvas(app)))
 		return

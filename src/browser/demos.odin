@@ -460,11 +460,7 @@ demos_html :: proc(app: ^App) -> string {
 // Built like the start page: an ordinary document styled by the engine; its links open the pages as if typed in the
 // address bar (navigate: a built-in page is the browser's own UI, so it may open local files).
 show_demos :: proc(app: ^App, t: ^Tab) {
-	base.scope_close(t.nav)
-	t.nav = base.scope_make("navigation", t.scope)
-	t.load, t.kind = nil, .Web
-	t.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, DEMOS_URL, console_sink, t)
-	attach_page(app, t, t.page)
+	nav_show_page(app, t, DEMOS_URL)
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0

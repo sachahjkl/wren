@@ -1,6 +1,7 @@
 // First paint tests (color schemes, render-blocking stylesheets, paint holding; examples/site/firstpaint*.html):
 //
-//	/firstpaint/f/NAME?delay=MS   a file of examples/site/firstpaint, after MS milliseconds (a slow stylesheet or font)
+//	/firstpaint/f/NAME?delay=MS       a file of examples/site/firstpaint, after MS milliseconds (a slow stylesheet or font)
+//	/firstpaint/second-hangs?key=K    a page, the first time for K; then no answer until the client goes (a traversal that does not arrive)
 package testserver
 
 import (
@@ -10,10 +11,21 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 func registerFirstPaintHandlers(mux *http.ServeMux) {
+	var seen sync.Map
+	mux.HandleFunc("/firstpaint/second-hangs", func(w http.ResponseWriter, r *http.Request) {
+		if _, again := seen.LoadOrStore(r.URL.Query().Get("key"), true); again {
+			<-r.Context().Done()
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.Write([]byte("<!doctype html><title>Asked once</title><p>This address answers once."))
+	})
 	mux.HandleFunc("/firstpaint/f/", func(w http.ResponseWriter, r *http.Request) {
 		name := filepath.Base(strings.TrimPrefix(r.URL.Path, "/firstpaint/f/"))
 		if d, _ := strconv.Atoi(r.URL.Query().Get("delay")); d > 0 && d <= 60000 {

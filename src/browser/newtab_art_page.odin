@@ -82,12 +82,8 @@ home_query :: proc(app: ^App, t: ^Tab, target: string, acts: bool) {
 // Loads the art page HTML into the tab, like show_home.
 @(private = "file")
 art_show_page :: proc(app: ^App, t: ^Tab, html: string, it: ^Art_Item) {
-	base.scope_close(t.nav)
-	t.nav = base.scope_make("navigation", t.scope)
-	t.load, t.kind = nil, .Web
-	t.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, HOME_URL, console_sink, t)
+	nav_show_page(app, t, HOME_URL)
 	if it != nil { art_page_reads(t.page, it) }
-	attach_page(app, t, t.page)
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0

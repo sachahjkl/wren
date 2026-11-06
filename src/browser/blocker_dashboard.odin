@@ -82,9 +82,7 @@ dash_destroy :: proc() {
 }
 
 show_blocker :: proc(app: ^App, t: ^Tab, address: string) {
-	base.scope_close(t.nav)
-	t.nav = base.scope_make("navigation", t.scope)
-	t.page, t.load, t.kind = nil, nil, .Blocker
+	nav_show_view(app, t, .Blocker)
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	for l in t.console { delete(l) }

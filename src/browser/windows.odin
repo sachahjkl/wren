@@ -33,6 +33,7 @@ import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
+import "wb:base"
 import "wb:config"
 import "wb:host"
 import "wb:page"
@@ -104,6 +105,7 @@ Window_Own :: struct {
 	page_info_request:     bool,              // chrome.odin: the security chip's page information
 	main_menu_request:     bool,              // chrome.odin: the main menu (Alt+F / Alt+E)
 	blocker_panel_request: bool,              // blocker_ui.odin: the content blocker's panel
+	first_paint_timer:   base.Handle,         // first_paint.odin: a frame when a held or blocked first paint ends
 	downloads_panel_request: bool,            // downloads_ui.odin: the downloads button's drop-down (a download began)
 }
 

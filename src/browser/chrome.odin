@@ -745,6 +745,6 @@ stop_loading :: proc(app: ^App, t: ^Tab) {
 	if load.task != base.NIL_HANDLE { fetch.cancel(&app.loader, load.task); load.task = base.NIL_HANDLE; stopped = true }
 	for s in load.slots { if s.state == .Pending { s.state = .Failed; stopped = true } }
 	if stopped { set_status(t, "Stopped"); load.stopped = true }
-	if load.page == nil { t.load = nil }   // nothing arrived: the tab is no longer loading (the scope still owns the load)
+	if nav_pending(t) { nav_cancel(app, t, load, .Stopped) }   // nothing arrived: the tab goes back to what it showed
 	request_frames(app, 2)
 }

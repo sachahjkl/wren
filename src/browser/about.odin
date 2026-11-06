@@ -215,11 +215,7 @@ dev_badge_html :: proc(with_commit := true) -> string {
 // on (browser.newtab.art.*), it shows a painting instead (newtab_art_page.odin); `want_next` asks for a different one.
 show_home :: proc(app: ^App, t: ^Tab, want_next := false) {
 	if art_newtab_maybe(app, t, want_next) { return }
-	base.scope_close(t.nav)
-	t.nav = base.scope_make("navigation", t.scope)
-	t.load, t.kind = nil, .Web
-	t.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, HOME_URL, console_sink, t)
-	attach_page(app, t, t.page)   // links and location work from the start page too
+	nav_show_page(app, t, HOME_URL)
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0

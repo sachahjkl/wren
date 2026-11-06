@@ -826,8 +826,7 @@ shell_paint_page :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect)
 	if s == nil || s.image.image.tex == 0 || s.gen != render.targets_generation(dc.renderer) { return false }
 	if s.page != t.page {
 		// another document since: its last frame stays only as long as the full frames hold it (first_paint.odin: hold_paint)
-		h := &t.hold
-		if !h.active || h.page != s.page || (h.committed && shell_elapsed_ms(h.commit) >= app.scheme_ui.timeout_ms) { return false }
+		if t.hold.page != s.page || hold_expired(app, t) { return false }
 	}
 	s.used = app.chrome_frames.frame_no
 	draw.rect(dc, rect, s.canvas)
