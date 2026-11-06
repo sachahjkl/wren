@@ -393,8 +393,9 @@ answer :: proc(s: ^Session, o: ^browser.Control_Outcome, rep: browser.Reply, wha
 		if rep.code != 0 { failed(s, fmt.tprintf("%s: %s", what, rep.message), loc) }
 		return
 	}
-	if !browser.control_run(s.app, o) { failed(s, fmt.tprintf("%s: the browser ended meanwhile", what), loc) }
-	if o.code != 0 { failed(s, fmt.tprintf("%s: %s", what, o.message), loc) }
+	kept := strings.clone(what, s.test.temp_allocator)   // (the frames the wait makes empty the temporary memory it was made in)
+	if !browser.control_run(s.app, o) { failed(s, fmt.tprintf("%s: the browser ended meanwhile", kept), loc) }
+	if o.code != 0 { failed(s, fmt.tprintf("%s: %s", kept, o.message), loc) }
 }
 
 // A deadline in the milliseconds of an op.

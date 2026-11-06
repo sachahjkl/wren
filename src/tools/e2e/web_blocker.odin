@@ -142,9 +142,21 @@ log_text :: proc(d: ^Doc) -> string {
 	return h == base.NIL_HANDLE ? "" : dom.text_content(d.page.doc, h)
 }
 
+// Where a load that never ended stands: the failure of blocker_a_dynamic_allow_rule, seen under a loaded machine only, said nothing of it.
+load_stuck :: proc(w: ^Setup, d: ^Doc, loc := #caller_location) {
+	s := d.page != nil ? d.page.scripts : nil
+	if s == nil {
+		testing.expectf(w.t, false, "the load stands at: loader held %v, a page %v, parsed %v", loader.hold, d.page != nil, d.parsed, loc = loc)
+		return
+	}
+	ps := &s.parser
+	testing.expectf(w.t, false, "the load stands at: loader held %v, ready state %v, parser at %d of %d, paused %v, a script pending %v, a pump to come %v, fetches %d, log %q",
+		loader.hold, s.ready_state, ps.next, len(ps.queue), ps.paused, ps.pending != nil, s.pump_resume != base.NIL_HANDLE, len(s.fetches), log_text(d), loc = loc)
+}
+
 load :: proc(w: ^Setup, address: string, loc := #caller_location) -> ^Doc {
 	d := open_doc(w, address)
-	wait_until(w.t, address, d, is_loaded, LOAD_LIMIT, loc)
+	if !wait_until(w.t, address, d, is_loaded, LOAD_LIMIT, loc) { load_stuck(w, d, loc) }
 	return d
 }
 
