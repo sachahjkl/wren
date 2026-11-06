@@ -251,8 +251,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 		flags := []string{TOOLKIT, WB}
 		// (images: its tests share the process-wide decoder pool and one of them sets its idle time: one test at a time)
 		if pkg == "images" { flags = {TOOLKIT, WB, ONE_THREAD} }
-		// (media: av1_software_player_seeks_and_ends_on_a_machine_short_of_processors spins on every core for half a minute, on purpose: what runs beside it has none left)
-		unit(&t, fmt.aprintf("unit tests: %s", pkg), fmt.aprintf("src/%s", pkg), exe(fmt.aprintf("build/%s_test", pkg)), flags, marks = pkg == "media" ? {.Alone} : {})
+		unit(&t, fmt.aprintf("unit tests: %s", pkg), fmt.aprintf("src/%s", pkg), exe(fmt.aprintf("build/%s_test", pkg)), flags)
 	}
 	unit(&t, "unit tests of freed memory made loud: base (src\\base\\poison.odin: the heap, arenas, scopes, temporary allocators, pools, the C runtime)", "src/base", exe("build/base_poison_test"), {TOOLKIT, WB, POISON})
 	unit(&t, "unit tests of the style passes and of layout on poisoned memory: style", "src/style", exe("build/style_poison_test"), {TOOLKIT, WB, POISON})
