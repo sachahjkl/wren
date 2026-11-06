@@ -2761,6 +2761,32 @@ Read plainly. **npr.org: -13 %, ranges separate**, its CPU too. **cnn.com: -21 %
 Tests: `jsengine cost` (`cost.js`, 19 cases, limits a tenth over: the base fails 15 of them), `hotcheck.js` (passes in Node), jitcheck and recursion interpreted and compiled, `build\test_all.exe -Quick -NoAsan`: no step failed.
 
 ||||||| parent of eb61d939 (Round 33 in docs/performance.md)
+## What changed, round 35: what kept the first paint of heavy pages back
+
+Rounds 33 and 34 made the scripts cheaper; the first paint still came behind them. Development builds, `wrentool waterfall`, a fresh process and a throwaway profile for each load, no other work on the machine. `WREN_SPANS`, then the reason `first_paint_state` gave at each frame and the decisions of `paint_turn_due`, printed for the measure and removed after it.
+
+**What was found.**
+- **A web font held the whole page.** `first_paint_state` waited for fonts in their block period, up to 3 s, though text waiting for its font is drawn invisible anyway. An A/B on bbc.com, `style.webfonts.block_period_ms=0` against the default, 5 runs interleaved: first paint 298-417 ms against 984-1 210, ranges apart. Round 34 had put this page's two modes down to a race of timers: that was not it. Only a font of the HTTP cache keeps the paint back now. `first-contentful-paint` used to be `first-paint` under another name; it now comes when a frame shows something, text waiting for its font not counting, and a held page stays for it.
+- **A script past its slice was followed by the next inline one.** After a parser-blocking script, `reveal_run` started with a new budget: npr.org's page script ran right behind 316 ms of Stripe's, in one task, with its last stylesheet delivered at the end of it. The stylesheet's bytes were there; its parse took 19 ms. The pump now stops there, and a reveal stops at a script once its budget is spent.
+- **An async script went before the frame of a sheet that had just arrived**, in the same turn of the loop: npr.org's 0.9 s script, and its two modes of first paint, 1.4 and 2.6 s. `paint_turn_due` was only asked before the parser's own scripts; it is asked before async and ordered ones too.
+- **The three turns for the first paint were spent in the `<head>`.** cnn.com took them at nodes 0, 54 and 97, where nothing can show, and had none left at node 11 234 before an inline script of 0.9 s. A turn now needs something in the body, and twice what the last one had attached.
+- **A font of the HTTP cache was waited for up to its limit of 500 ms.** Preloaded fonts count as cached, and their delivery sits behind the page's scripts, not "a few milliseconds" away: theverge.com waited the whole limit. It is 100 ms now (`style.webfonts.cached_block_period_ms`).
+
+**Figures.** First paint, range of the runs, ms. The run counts are in the column titles.
+
+| page | fonts fixed, the pump fixed (5 runs) | the turns and the cached font too (4 runs) | Edge (5 runs) |
+|---|---|---|---|
+| theverge.com | 736-787 | 394-475 | 316-340 |
+| npr.org | 876-1 405 | 484-702 | 272-700 |
+| cnn.com | 1 593-1 695 | 549-721 | 292-376 |
+| bbc.com/news | 256-429 | 157-287 | 156-424 |
+
+Load of the same last series against Edge, ms: theverge.com 5 190-5 453 against 1 660-1 924, npr.org 4 062-4 500 against 1 007-1 385, cnn.com 4 450-4 696 against 765-1 221, bbc.com/news 923-2 367 against 375-534. Load is not changed by this round. On theverge.com and npr.org the window thread is busy about 90 % of the time between DOMContentLoaded and load, in one measured run each: what is left there is the pages' scripts.
+
+The sweep of 74 pages passes without a failure. Its mean load is 1 548 ms, against 1 706 before rounds 33 and 34; its median rose from 783 to 1 023. That rise is no regression as far as was checked: the pages behind the largest rises are at their old figures measured alone (wikipedia 366-394 ms, MDN 387-396 with one run at 942), or were a site's check page in the earlier sweep (4 nodes, against 5 556 for the real page on gitlab.com/explore; npmjs.com alternates between them from one load to the next).
+
+**Tests.** `a_font_on_its_way_holds_its_text_and_not_the_page` (the page's background on screen, first-contentful-paint with the font), `jsload_a_long_script_gives_the_loop_a_turn_before_the_next_inline_one`, `jsload_a_head_of_scripts_leaves_the_turns_for_the_body`. The async and ordered scripts' turn has no test of its own: the race needs a sheet and a script in one turn of the loop, which a fixture does not make surely. It was seen in the measure only.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)

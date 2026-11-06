@@ -91,6 +91,7 @@
 <li><a href="#what-changed-round-32-css-off-the-pages-thread">What changed, round 32: CSS off the page's thread</a></li>
 <li><a href="#what-changed-round-33-the-style-work-that-holds-heavy-loads-on-the-window-thread">What changed, round 33: the style work that holds heavy loads on the window thread</a></li>
 <li><a href="#what-changed-round-34-what-the-wasm-of-the-engine-really-runs">What changed, round 34: what the Wasm of the engine really runs</a></li>
+<li><a href="#what-changed-round-35-what-kept-the-first-paint-of-heavy-pages-back">What changed, round 35: what kept the first paint of heavy pages back</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
@@ -2743,6 +2744,29 @@ keyless: desc, all_next, all_prev, sib_desc, set = 0     (.flex-variant *)</code
 <p><strong>Not verified.</strong> Tracy, ETW: not used. The release build, memory on a long session, WPT, the full suite, AddressSanitizer: not run. <code>hotcheck.js</code>, <code>jitcheck.js</code> and <code>objectspread.js</code> pass under <code>JSRT_GC_STRESS=8192</code> and <code>JSRT_GC_POISON</code>.</p>
 <p>Tests: <code>jsengine cost</code> (<code>cost.js</code>, 19 cases, limits a tenth over: the base fails 15 of them), <code>hotcheck.js</code> (passes in Node), jitcheck and recursion interpreted and compiled, <code>build\test_all.exe -Quick -NoAsan</code>: no step failed.</p>
 <p>||||||| parent of eb61d939 (Round 33 in docs/performance.md)</p>
+<h2 id="what-changed-round-35-what-kept-the-first-paint-of-heavy-pages-back"><a class="anchor" href="#what-changed-round-35-what-kept-the-first-paint-of-heavy-pages-back" aria-hidden="true">#</a>What changed, round 35: what kept the first paint of heavy pages back</h2>
+<p>Rounds 33 and 34 made the scripts cheaper; the first paint still came behind them. Development builds, <code>wrentool waterfall</code>, a fresh process and a throwaway profile for each load, no other work on the machine. <code>WREN_SPANS</code>, then the reason <code>first_paint_state</code> gave at each frame and the decisions of <code>paint_turn_due</code>, printed for the measure and removed after it.</p>
+<p><strong>What was found.</strong></p>
+<ul>
+<li><strong>A web font held the whole page.</strong> <code>first_paint_state</code> waited for fonts in their block period, up to 3 s, though text waiting for its font is drawn invisible anyway. An A/B on bbc.com, <code>style.webfonts.block_period_ms=0</code> against the default, 5 runs interleaved: first paint 298-417 ms against 984-1 210, ranges apart. Round 34 had put this page's two modes down to a race of timers: that was not it. Only a font of the HTTP cache keeps the paint back now. <code>first-contentful-paint</code> used to be <code>first-paint</code> under another name; it now comes when a frame shows something, text waiting for its font not counting, and a held page stays for it.</li>
+<li><strong>A script past its slice was followed by the next inline one.</strong> After a parser-blocking script, <code>reveal_run</code> started with a new budget: npr.org's page script ran right behind 316 ms of Stripe's, in one task, with its last stylesheet delivered at the end of it. The stylesheet's bytes were there; its parse took 19 ms. The pump now stops there, and a reveal stops at a script once its budget is spent.</li>
+<li><strong>An async script went before the frame of a sheet that had just arrived</strong>, in the same turn of the loop: npr.org's 0.9 s script, and its two modes of first paint, 1.4 and 2.6 s. <code>paint_turn_due</code> was only asked before the parser's own scripts; it is asked before async and ordered ones too.</li>
+<li><strong>The three turns for the first paint were spent in the <code>&lt;head&gt;</code>.</strong> cnn.com took them at nodes 0, 54 and 97, where nothing can show, and had none left at node 11 234 before an inline script of 0.9 s. A turn now needs something in the body, and twice what the last one had attached.</li>
+<li><strong>A font of the HTTP cache was waited for up to its limit of 500 ms.</strong> Preloaded fonts count as cached, and their delivery sits behind the page's scripts, not "a few milliseconds" away: theverge.com waited the whole limit. It is 100 ms now (<code>style.webfonts.cached_block_period_ms</code>).</li>
+</ul>
+<p><strong>Figures.</strong> First paint, range of the runs, ms. The run counts are in the column titles.</p>
+<div class="table-box"><table>
+<thead><tr><th>page</th><th>fonts fixed, the pump fixed (5 runs)</th><th>the turns and the cached font too (4 runs)</th><th>Edge (5 runs)</th></tr></thead>
+<tbody>
+<tr><td>theverge.com</td><td>736-787</td><td>394-475</td><td>316-340</td></tr>
+<tr><td>npr.org</td><td>876-1 405</td><td>484-702</td><td>272-700</td></tr>
+<tr><td>cnn.com</td><td>1 593-1 695</td><td>549-721</td><td>292-376</td></tr>
+<tr><td>bbc.com/news</td><td>256-429</td><td>157-287</td><td>156-424</td></tr>
+</tbody>
+</table></div>
+<p>Load of the same last series against Edge, ms: theverge.com 5 190-5 453 against 1 660-1 924, npr.org 4 062-4 500 against 1 007-1 385, cnn.com 4 450-4 696 against 765-1 221, bbc.com/news 923-2 367 against 375-534. Load is not changed by this round. On theverge.com and npr.org the window thread is busy about 90 % of the time between DOMContentLoaded and load, in one measured run each: what is left there is the pages' scripts.</p>
+<p>The sweep of 74 pages passes without a failure. Its mean load is 1 548 ms, against 1 706 before rounds 33 and 34; its median rose from 783 to 1 023. That rise is no regression as far as was checked: the pages behind the largest rises are at their old figures measured alone (wikipedia 366-394 ms, MDN 387-396 with one run at 942), or were a site's check page in the earlier sweep (4 nodes, against 5 556 for the real page on gitlab.com/explore; npmjs.com alternates between them from one load to the next).</p>
+<p><strong>Tests.</strong> <code>a_font_on_its_way_holds_its_text_and_not_the_page</code> (the page's background on screen, first-contentful-paint with the font), <code>jsload_a_long_script_gives_the_loop_a_turn_before_the_next_inline_one</code>, <code>jsload_a_head_of_scripts_leaves_the_turns_for_the_body</code>. The async and ordered scripts' turn has no test of its own: the race needs a sheet and a script in one turn of the loop, which a fixture does not make surely. It was seen in the measure only.</p>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
