@@ -393,3 +393,42 @@ var by_first_key = [];
 for (var k = 0; k < 40; k++) {var made = {}; made["k" + k] = k; by_first_key.push(made);}
 for (var k = 0; k < 40; k++) same(by_first_key[k]["k" + k], k, "a first key");
 same(Object.keys({k7: 1, a: 2}).join(), "k7,a", "a literal on them");
+
+// A new key on an ordinary object: what the prototypes said of it once (Transition.walked) holds until they change.
+function Walked() {this.fresh = 1;}
+function made_with_walked() {return new Walked();}
+for (var k = 0; k < 3; k++) same(Object.keys(made_with_walked()).join(), "fresh", "a new key, again");
+var seen_by_setter = 0;
+Object.defineProperty(Walked.prototype, "fresh", {set(v) {seen_by_setter = v;}, configurable: true});
+same(Object.keys(made_with_walked()).length, 0, "a setter on the prototype takes it");
+same(seen_by_setter, 1, "and sees the value");
+delete Walked.prototype.fresh;
+for (var k = 0; k < 3; k++) same(made_with_walked().fresh, 1, "gone, the key is the object's");
+Object.defineProperty(Object.prototype, "fresh", {value: 2, writable: false, configurable: true});
+same(Object.keys(made_with_walked()).length, 0, "read-only further up, nothing is added");
+delete Object.prototype.fresh;
+for (var k = 0; k < 3; k++) same(Object.keys(made_with_walked()).join(), "fresh", "and again");
+Object.defineProperty(Object.prototype, "fresh", {value: 3, writable: true, configurable: true});
+same(Object.keys(made_with_walked()).join(), "fresh", "writable further up, it is added");
+Object.defineProperty(Object.prototype, "fresh", {writable: false});
+same(Object.keys(made_with_walked()).length, 0, "made read-only since");
+delete Object.prototype.fresh;
+for (var k = 0; k < 3; k++) made_with_walked();
+var trapped = [];
+Object.setPrototypeOf(Walked.prototype, new Proxy({}, {set(t, key, v, r) {trapped.push(key); return true;}}));
+same(Object.keys(made_with_walked()).length, 0, "a proxy behind the prototype takes it");
+same(trapped.join(), "fresh", "by its trap");
+Object.setPrototypeOf(Walked.prototype, Object.prototype);
+for (var k = 0; k < 3; k++) made_with_walked();
+Object.freeze(Walked.prototype);
+same(Object.keys(made_with_walked()).join(), "fresh", "a frozen prototype without the key takes nothing away");
+var strict_set = (function () {"use strict"; return function (o) {o.locked = 1;};})();
+var locked_proto = {};
+var locked_a = Object.create(locked_proto), locked_b = Object.create(locked_proto);
+strict_set(locked_a);
+Object.defineProperty(locked_proto, "locked", {value: 0, writable: false});
+var refused = false;
+try {strict_set(locked_b);} catch (e) {refused = e instanceof TypeError;}
+same(refused, true, "strict code is told");
+var not_extensible = Object.preventExtensions(Object.create(Walked.prototype));
+same((function () {not_extensible.fresh = 1; return "fresh" in not_extensible;})(), false, "an object that takes no key");

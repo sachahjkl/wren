@@ -9,16 +9,17 @@ package wasm
 //
 //   * At build time `poll_instrument` puts at the head of every Wasm loop of the image
 //         i32.const 0  i32.load offset=<word>  if  call $wren.poll  end
-//     A poll cannot be forgotten: a loop has one unless its function is named in the list given here (the interpreter's
-//     hot loop, which polls by its own count of back edges and must call nothing: src/engine/jsrt/interp_hot.odin).
+//     A poll cannot be forgotten: a loop has one unless its function is named in the list given here (POLL_EXEMPT of
+//     src/tools/jsengine: the interpreter's dispatch and the making of a call, which look at the word by themselves).
 //     The word's address goes in a custom section (POLL_SECTION), which is also what says that the image has polls.
 //   * While a call is in progress the instance's word is on a list (Wt_Global.polls): at each tick the ticker raises the
 //     words of that list. At its next poll the module calls `wren.poll`, which does what the epoch's callback does (wt_tick):
 //     the deadlines, the stop flag, the profiler's tick, the preemption hook. A trap from there is a trap at a
 //     loop head, as the epoch's was.
-//   * Code that does not go through a loop head of the image reaches a poll by itself: the interpreter's calls
-//     (frame_push), its back edges every INTERRUPT_POLL_EVERY (poll_interrupt), the JIT's direct calls (a helper) and its
-//     back edges (the budget, which leaves for the interpreter).
+//   * Code that does not go through a polled loop reaches the word by itself (jsrt.poll_host): the interpreter's calls
+//     (frame_push, interp_call), its back edges every INTERRUPT_POLL_EVERY (poll_interrupt), the JIT's direct calls (a
+//     helper) and its back edges (the budget, which leaves for the interpreter). What has no poll is a recursion in
+//     a native with no loop on its way: it ends at the stack's limit, unless it branches as well.
 //
 // A page's own modules are not trusted to poll, and never run here: Options.polled is the embedder's word for an image
 // it built, and an image without the section stays on the engine with epochs whatever is asked.

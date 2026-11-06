@@ -685,9 +685,18 @@ fail_set :: #force_inline proc(ctx: ^Context, a: Atom, throw_flag: bool) -> int 
 set_property :: proc(ctx: ^Context, obj: Value, a: Atom, val: Value, receiver: Value, throw_flag: bool) -> int {
 	rt := ctx.rt
 	p: ^Object
+	walks := false   // a new key of an ordinary object: the walk below may say so for the next ones (Transition.walked)
 	#partial switch obj.tag {
 	case .object:
 		p = as_obj(obj)
+		sh := p.shape
+		if p.class == .object && receiver.tag == .object && as_obj(receiver) == p && !sh.is_dict && sh.lazy == nil && p.extensible {
+			walks = true
+			if t := shape_transition_of(sh, a, CWE, .data); t != nil && t.walked == rt.chain_generation {
+				object_take_transition(rt, p, t.to).value = val
+				return 1
+			}
+		}
 	case .undefined, .null:
 		throw_type_error(ctx, cat(ctx, "cannot set property '", atom_utf8(rt, a), "' of ", is_null(obj) ? "null" : "undefined"))
 		return -1
@@ -735,9 +744,11 @@ set_property :: proc(ctx: ^Context, obj: Value, a: Atom, val: Value, receiver: V
 				s.value = val
 				return 1
 			}
+			walks = false
 			break
 		}
 		// exotic own properties not stored in the shape
+		if p.class != .object {walks = false}
 		if p.fast_array {
 			if idx, isi := atom_array_index(a); isi {
 				ad := &p.data.(Array_Data)
@@ -790,7 +801,8 @@ set_property :: proc(ctx: ^Context, obj: Value, a: Atom, val: Value, receiver: V
 		}
 		return define_own_property(ctx, r, a, data_desc(val, CWE), throw_flag)
 	}
-	i := shape_find(r.shape, a)
+	// (`walks`: the walk began at the receiver and did not find it)
+	i := walks ? -1 : shape_find(r.shape, a)
 	if i >= 0 {
 		prop := r.shape.props[i]
 		if prop.kind == .accessor || .writable not_in prop.flags {return fail_set(ctx, a, throw_flag)}
@@ -804,8 +816,12 @@ set_property :: proc(ctx: ^Context, obj: Value, a: Atom, val: Value, receiver: V
 		}
 		return 0
 	}
+	from := r.shape
 	s := add_property(rt, r, a, CWE)
 	s.value = val
+	if walks && !r.watch_index {
+		if _, isi := atom_array_index(a); !isi {chain_walked(rt, from, a)}
+	}
 	return 1
 }
 

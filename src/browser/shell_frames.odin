@@ -5,8 +5,8 @@ package browser
 // A page's work runs on the window's thread: its scripts (JavaScript and Wasm modules), events, timers and animation
 // frames during the frame's "page phase" (loop tasks, page input, animation frames), then its style, layout and paint.
 // A script that runs for 200 ms used to freeze the whole window for 200 ms: tabs, address bar, menus, scrolling and
-// resizing. Now the chrome preempts the page: while a guest call runs in the page phase, the Wasm engine's epoch
-// callback hands the thread to `shell_preempt` (wasm.set_preempt_hook) at every tick, and once the page has held the
+// resizing. Now the chrome preempts the page: while a guest call runs in the page phase, the Wasm engine's tick (its epoch, a poll in the JavaScript engine: wasm/poll.odin)
+// hands the thread to `shell_preempt` (wasm.set_preempt_hook), and once the page has held the
 // thread longer than browser.shell.preempt_after_ms, a *chrome frame* is drawn there, between two instructions of the
 // guest, at the frame rate:
 //   * the chrome is built and drawn as usual, with the input that came meanwhile;

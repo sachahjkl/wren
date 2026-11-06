@@ -1,6 +1,6 @@
 package wasm
 
-// Preemption of long guest calls by the embedder: while a call runs on the thread that installed the hook, the epoch
+// Preemption of long guest calls by the embedder: while a call runs on the thread that installed the hook, the epoch or poll (poll.odin)
 // callback hands that thread to the hook at every tick (the browser draws its interface there, so a script that keeps
 // the window's thread for 200 ms does not freeze the tabs, the address bar or scrolling). The hook runs on the guest's
 // own thread, between two of its instructions: whatever the guest holds stays as it is, and the hook must not call into
@@ -49,7 +49,7 @@ refuse_calls :: proc(on: bool) -> (previous: bool) {
 // Times the hook ran.
 preempt_count :: proc() -> u64 { return preempt.ran }
 
-// From the epoch callback: hands the thread to the hook, and moves the call's deadlines by the time it took.
+// From a tick (wt_tick): hands the thread to the hook, and moves the call's deadlines by the time it took.
 @(private)
 preempt_tick :: proc(inst: ^Instance) {
 	if preempt.hook == nil || preempt.preempting || sync.current_thread_id() != preempt.thread { return }

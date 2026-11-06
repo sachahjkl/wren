@@ -544,10 +544,11 @@ cmd_snapshot :: proc(args: []string) {
 		time.duration_milliseconds(time.tick_since(t0)), args[1], len(polled) / 1024)
 }
 
-// The functions of the image whose loops have no poll: they count their back edges themselves and must stay free of calls
-// (src/engine/jsrt/interp_hot.odin), so what they run reaches poll_host. Nothing else belongs here: a loop that polls is the
-// only thing that stops a native (src/wasm/poll.odin).
-POLL_EXEMPT :: []string{"jsrt::[interp_hot.odin]::hot_loop", "jsrt::interp_run"}
+// The functions of the image whose loops have no poll. hot_loop, hot_run and interp_run are the interpreter's dispatch: what runs
+// forever there passes a back edge, which reaches poll_host by its count (a call in hot_loop costs every instruction its registers).
+// interp_call, frame_push and hot_return make a call of a script: they look at the word at their entry, their loops go over a frame.
+// Nothing else belongs here: a loop's poll is what stops a native (src/wasm/poll.odin).
+POLL_EXEMPT :: []string{"jsrt::[interp_hot.odin]::hot_loop", "jsrt::[interp_hot.odin]::hot_run", "jsrt::[interp_hot.odin]::hot_return", "jsrt::interp_run", "jsrt::interp_call", "jsrt::frame_push"}
 
 Common :: struct {
 	image: string,

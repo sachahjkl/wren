@@ -41,3 +41,5 @@ COST_CASES.push(["filter over 8", 16800, function (n) {for (var i = 0; i < n; i+
 COST_CASES.push(["new Promise", 6700, function (n) {for (var i = 0; i < n; i++) sink = new Promise(no_op);}]);
 COST_CASES.push(["{...o} of 8", 4700, function (n) {for (var i = 0; i < n; i++) sink = {...eight};}]);
 COST_CASES.push(["a function called", 1250, function (n) {var f = no_op; for (var i = 0; i < n; i++) f();}]);
+function Fields() {this.a = 1; this.b = 2; this.c = 3;}
+COST_CASES.push(["new with three fields", 4350, function (n) {for (var i = 0; i < n; i++) sink = new Fields();}]);
