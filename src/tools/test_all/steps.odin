@@ -273,6 +273,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	unit(&t, "unit tests: remote client (wren ctl: options, help, picture diff)", "src/remote/client", exe("build/remote_client_test"), {ONE_THREAD, WB})
 
 	e2e_step(&t, "a frame held through a navigation stands while its page makes style passes (src\\tools\\e2e\\held_styles.odin: what crashed in background_has_url; freed memory poisoned)", "held_styles")
+	e2e_step(&t, "a font on its way holds its text and not the page (src\\tools\\e2e\\font_first_paint.odin)", "font_first_paint")
 	// (what only pages of their own saw: a flag of a freed block read as a plain value)
 	page_tests := odin_test("src/page", exe("build/page_poison_test"), {TOOLKIT, WB, POISON})
 	page_tests.env = strs("WREN_POISON_PAGES=1")

@@ -155,10 +155,10 @@ shared_faces_destroy :: proc(pf: ^Page_Fonts) {
 ////////////////////////////////
 // Invisible text in a block period (CSS Fonts 4 §4.9)
 //
-// Once a page is shown, text whose first usable family is a web font still loading in its block period
-// (page.fonts_blocking_families: font-display auto / block, the short period of fallback / optional, a font the HTTP
-// cache holds) is laid out with the fallback font, as other browsers do, but not drawn; it appears with its font, or
-// in the fallback font when the period ends. (Before the first paint, the paint itself waits: page/render_blocking.odin.)
+// Text whose first usable family is a web font still loading in its block period (page.fonts_blocking_families:
+// font-display auto / block, the short period of fallback / optional, a font the HTTP cache holds) is laid out with
+// the fallback font, as other browsers do, but not drawn; it appears with its font, or in the fallback font when the
+// period ends. The page around it paints meanwhile (page/render_blocking.odin).
 
 Blocking_Text :: struct {
 	families: [dynamic]string,   // owned, lower case

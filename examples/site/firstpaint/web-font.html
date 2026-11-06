@@ -1,0 +1,8 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>A page whose text waits for its font</title>
+<style>
+  @font-face { font-family: Late; src: url(/firstpaint/f/slow-font.woff2?delay=1500) format("woff2"); }
+  body { margin: 0; background: #123; color: #fff; font: 24px Late; }
+</style>
+<p>This text waits for its web font; the page around it does not.</p>

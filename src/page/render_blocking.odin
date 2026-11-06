@@ -14,10 +14,9 @@ import "wb:style"
 //     browser lays the document out at once, so "block the content after them" is "block the first paint"), the
 //     @imports of those and of <style> elements; a sheet whose media does not match does not block; a <link> or
 //     <style> a script adds blocks only with blocking="render";
-//   * web fonts used by the page while in their block period (auto / block: style.webfonts.block_period_ms; fallback /
-//     optional: style.webfonts.short_block_period_ms; a font the HTTP cache holds fresh, even swap:
-//     style.webfonts.cached_block_period_ms). The first paint waits; after it, text waiting for its font is drawn
-//     invisible (fonts_blocking_families, the shell's fonts.odin).
+//   * a web font the HTTP cache holds fresh, for the milliseconds it takes (style.webfonts.cached_block_period_ms). One
+//     that comes from the network holds its text, not the page: that text is drawn invisible through its block period
+//     (fonts_blocking_families, the shell's fonts.odin), as in other browsers. bbc.com, ready at 0.3 s, waited 1.1 s for its fonts.
 // Stylesheets block at most style.render_blocking.timeout_ms. Parsing itself is not blocked. The shell asks
 // `first_paint_state` before painting a new document and says `first_paint_done` once it has.
 
@@ -26,7 +25,8 @@ Render_Block :: struct {
 	adopted_ms: f64,    // ... since (the loop's clock)
 	collecting: bool,   // between adoption and the first paint: sheets and imports found now are the parser's
 	painted:    bool,   // the shell painted the document once
-	frame_ms:   f64,    // what its last frame took (style and layout): the turns scripts give back are worth that much (pump_slice)
+	contentful: bool,   // ... with something to see in it
+	frame_ms:  f64,    // what its last frame took (style and layout): the turns scripts give back are worth that much (pump_slice)
 }
 
 First_Paint_State :: enum u8 {
@@ -50,11 +50,19 @@ first_paint_done :: proc(p: ^Page) {
 	if p.render.painted { return }
 	p.render.painted = true
 	p.render.collecting = false
-	timeline_painted(p)   // first-paint, first-contentful-paint (timeline.odin)
+	timeline_painted(p)   // first-paint (timeline.odin)
 	if p.scripts != nil {
 		p.scripts.timing.paint_ms = now_ms(p)
 		clear(&p.scripts.inserted_links)
 	}
+}
+
+// The shell: a frame of this page showed text, an image or a control for the first time.
+first_contentful_done :: proc(p: ^Page) {
+	if p.render.contentful { return }
+	p.render.contentful = true
+	timeline_contentful(p)
+	if p.scripts != nil { p.scripts.timing.contentful_ms = now_ms(p) }
 }
 
 // Whether `owner` (<link> or <style>) may block the first paint: a parser's element before that paint, or any element
@@ -114,13 +122,15 @@ pending_blocking_sheet :: proc(p: ^Page) -> string {
 	return ""
 }
 
-// A web font used by the page in its block period: its family, else "".
+// A web font the first paint waits for: one of the HTTP cache on its way.
+@(private)
+font_holds_first_paint :: proc(f: ^Web_Font) -> bool { return f.cached && (f.state == .Queued || f.state == .Loading) }
+
+// A web font the first paint waits for now: its family, else "".
 @(private)
 pending_blocking_font :: proc(p: ^Page, now: f64) -> string {
-	s := &p.settings.style
 	for _, f in p.fonts.faces {
-		if f.state != .Queued && f.state != .Loading { continue }
-		if now - f.started_ms < font_block_ms(s, f) { return f.family }   // (fonts.odin: font-display, the HTTP cache)
+		if font_holds_first_paint(f) && now - f.started_ms < p.settings.style.webfont_cached_block_ms { return f.family }
 	}
 	return ""
 }
@@ -148,8 +158,7 @@ first_paint_next_deadline_ms :: proc(p: ^Page) -> f64 {
 	consider :: proc(best: ^f64, at, now: f64) { if at > now && (best^ < 0 || at - now < best^) { best^ = at - now } }
 	consider(&best, p.render.adopted_ms + s.render_block_ms, now)
 	for _, f in p.fonts.faces {
-		if f.state != .Queued && f.state != .Loading { continue }
-		consider(&best, f.started_ms + font_block_ms(s, f), now)
+		if font_holds_first_paint(f) { consider(&best, f.started_ms + s.webfont_cached_block_ms, now) }
 	}
 	return best
 }

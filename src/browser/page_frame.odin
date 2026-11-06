@@ -71,7 +71,7 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	page_prep.canvas = styled.canvas
 	first := !t.page.render.painted
 	if first {
-		// render-blocking stylesheets and fonts first (page/render_blocking.odin): meanwhile the old frame, or the canvas
+		// what blocks rendering first (page/render_blocking.odin): meanwhile the old frame, or the canvas
 		if state, _ := page.first_paint_state(t.page); state != .Ready {
 			page_prep.state, page_prep.blocked = .Hold, true
 			first_paint_wake(app, t)
@@ -121,7 +121,7 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	page.timeline_present(t.page, &t.layout, vp)
 	page.timeline_loaf_render(t.page, loaf_style_ms, loaf_layout_ms)
 	page.scripts_frame_took(t.page, loaf_style_ms + loaf_layout_ms)
-	if t.page.scripts != nil && t.page.scripts.timing.contentful_ms == 0 && layout_contentful(&t.layout) { page.scripts_contentful(t.page) }
+	if !t.page.render.contentful && layout_contentful(&t.layout) { page.first_contentful_done(t.page) }
 	page.timeline_layout_shift_check(t.page, &t.layout, vp)
 	frames_prepare(app, t, size, scale)   // its frames at their boxes' sizes (frames_shell.odin)
 	page_prep.state = .Ready
