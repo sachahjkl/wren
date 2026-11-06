@@ -1,3 +1,0 @@
-type: Fixed
-
-**Reflected attributes as HTML says**: `inputMode` and `enterKeyHint` of every element and a media element's `loading` (limited to their keywords), `input.size` (20 by default), `document.fgColor` / `linkColor` / `vlinkColor` / `alinkColor` / `bgColor` (the body's attributes), `object.codeBase` (a URL); a nullable string set to `undefined` (`el.ariaLabel = undefined`, `crossOrigin`) removes its attribute; `null` sets "" where the IDL says so (`table.bgColor`); an unsigned long out of range sets the default, a clamped one (`colSpan`, `rowSpan`) clamps any integer; `maxlength` / `minlength` and a canvas's size are read by the rules for non-negative integers ("+5%" is 5, "-0" is 0); a number after a vertical tab is none.
