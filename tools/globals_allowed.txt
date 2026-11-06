@@ -243,6 +243,7 @@ page/js_realm.odin js_on_realm process  # a tool's procedure for each new realm,
 page/js_realm.odin js_on_realm_started process  # ... and once one has started
 page/js_realm.odin js_engine_once process  # the engine is loaded once
 page/js_realm.odin js_read_ahead process  # the engine's compiled code read ahead at the process's start: its thread, its state (atomic)
+page/js_realm.odin js_first_realm_ns process  # what the process's first realm held its thread for (atomic): a measure of the process's start
 page/js_resize_observer.odin ro_vt const  # a host object's table of procedures
 page/js_shadow.odin internals_vt const  # a host object's table of procedures
 page/js_web_media.odin media_pages thread  # the media queries of the thread's pages
