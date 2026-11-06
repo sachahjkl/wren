@@ -41,7 +41,7 @@ Restyle_Stats :: struct {
 	rewalked: bool,     // counters and quotes were resolved again
 	fallback: string,   // why the last restyle_dom could not be partial ("" when it was)
 	flips:    int,      // answers of the exact :has() anchors it took to mark what changed
-	flip_steps: int,    // elements walked through to give them
+	flip_steps: int,    // elements walked through to give them, and anchors gone through for attributes
 }
 
 @(private = "file") M_SELF :: u8(1)
@@ -1851,8 +1851,10 @@ members_prepare :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 			}
 		case .Attribute:
 			n := dom.get(doc, en.node)
-			if n == nil || n.kind != .Element { continue }
+			if n == nil || n.kind != .Element || !has_reads_attr(ix, en.name) { continue }
+			in_tree := connected(doc, en.node)
 			for &ha in ix.has_anchors {
+				m.flip_steps += 1
 				if !ha.exact || ha.members == nil { continue }
 				// an attribute the chain reads, on an element that has members below it: any answer may have flipped
 				if ha.chain && !ha.members.dirty && chain_reads_change(&ha, &en, n) {
@@ -1861,7 +1863,7 @@ members_prepare :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 				}
 				if !arg_reads_attr(&ha, en.name) { continue }
 				was := en.node in ha.members.set
-				now := connected(doc, en.node) && matches_compound(&m.mc, en.node, ha.arg)
+				now := in_tree && matches_compound(&m.mc, en.node, ha.arg)
 				if now && !was {
 					ha.members.set[en.node] = {}
 					append(&ha.members.added, en.node)
@@ -1884,6 +1886,16 @@ members_prepare :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 		}
 		for x in gone { ha.members.lost_held = true; delete_key(&ha.members.held, x) }
 	}
+}
+
+// Some :has() argument reads the attribute `name`: the journal of a page is mostly attributes none of them does.
+@(private = "file")
+has_reads_attr :: proc(ix: ^Inv_Index, name: string) -> bool {
+	switch name {
+	case "class": return len(ix.has_classes) > 0
+	case "id": return len(ix.has_ids) > 0
+	}
+	return name in ix.has_attrs
 }
 
 // Whether member `x` of a two-compound chain has an element above it that matches the first compound, as of the document now (`moved`:

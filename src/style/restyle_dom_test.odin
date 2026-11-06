@@ -892,6 +892,21 @@ restyle_dom_has_flips_walk_the_members_once :: proc(t: ^testing.T) {
 	testing.expectf(t, f.eng.last_restyle.flip_steps <= 2 * (BOXES + 2 * DEPTH), "%d steps", f.eng.last_restyle.flip_steps)
 }
 
+// A page's journal is mostly attributes no :has() reads: the anchors are not gone through for each.
+@(test)
+restyle_dom_attributes_no_has_reads_cost_the_anchors_nothing :: proc(t: ^testing.T) {
+	f := rx_load(`<style>div:has(.m) { margin: 1px } p:has(> .n) { margin: 2px } section:has([data-y]) { margin: 3px }</style><div id=d><i class=m>m</i></div><p id=p><b class=n>n</b></p><section><b data-y>y</b></section>`)
+	defer rx_unload(f)
+	dom.set_attribute(f.doc, by_id(f, "p"), "data-a", "1")
+	expect_partial(t, f, "the first restyle makes the members")
+	for i in 0 ..< 3 { dom.set_attribute(f.doc, by_id(f, "d"), fmt.tprintf("data-z%d", i), "1") }
+	expect_partial(t, f, "attributes no argument names", 0)
+	testing.expect_value(t, f.eng.last_restyle.flip_steps, 0)
+	dom.set_attribute(f.doc, by_id(f, "d"), "data-y", "1")
+	expect_partial(t, f, "one that an argument names")
+	testing.expect(t, f.eng.last_restyle.flip_steps > 0)
+}
+
 // Random mutations
 
 @(private = "file")
