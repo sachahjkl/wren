@@ -1233,8 +1233,10 @@ hidden_above :: proc(p: ^Pass, h: base.Handle) -> bool {
 // Computes the style of every element of the document. With a thread pool and at least `min_nodes` nodes, the
 // work is shared between threads (parallel.odin); the result is the same.
 compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State, pool: ^host.Thread_Pool = nil, min_nodes := 0) -> ^Styled {
+	if e.departures_due { rules_stale(e) }
 	if e.dirty { engine_rebuild(e, doc) }
 	if e.arrivals_due { fresh_clear(e) }   // (this pass reads the rules that were added)
+	clear(&e.hidden_changed)
 	shadow_prepare(e, doc)
 	clear(&e.shadow.changed)   // a full pass covers whatever changed
 	clear(&e.container_pending)

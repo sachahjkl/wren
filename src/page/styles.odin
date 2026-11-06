@@ -396,6 +396,13 @@ decode_css :: proc(data: []byte, max_bytes: int) -> []byte {
 	return d.text
 }
 
+// The parser is done: the stylesheets its reveal kept in place are read again (js_load.odin). What changed makes the rules dirty, as any sheet
+// does; a full pass here was one more for every page.
+@(private)
+styles_parsed :: proc(p: ^Page) {
+	if p.styled != nil && !p.style_stale { sync_styles(p) } else { p.style_stale = true }
+}
+
 // The computed styles for the document as it is now, doing as little as the changes since the last call allow:
 //   * sheets changed                   -> read the stylesheets again, full restyle
 //   * DOM changed                      -> partial restyle of what the mutations can reach (style.restyle_dom), else full
@@ -447,6 +454,12 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 	sheet_partial := false
 	if !full && e.arrivals_due {
 		if _, ok := style.restyle_arrivals(e, p.doc, p.styled, style_threads(p)); ok { sheet_partial = true } else { full, why = true, e.last_restyle.fallback }
+	}
+	if !full && style.engine_departures_due(e) {
+		if _, ok := style.restyle_departures(e, p.doc, p.styled, style_threads(p)); ok { sheet_partial = true } else { full, why = true, e.last_restyle.fallback }
+	}
+	if !full && style.engine_hidden_changed(e) {
+		if _, ok := style.restyle_hidden(e, p.doc, p.styled, style_threads(p)); ok { mq_partial = true } else { full, why = true, e.last_restyle.fallback }
 	}
 
 	if full {

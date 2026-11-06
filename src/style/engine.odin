@@ -83,6 +83,8 @@ Import_Slot :: struct {
 	child:     ^Sheet,
 	requested: bool,
 	failed:    bool,
+	placed:    bool,   // it has no sheet yet and its parent's rules are in the index: numbers wait for it, from `order`
+	order:     u32,
 }
 
 Sheet :: struct {
@@ -136,6 +138,10 @@ Engine :: struct {
 	dirty_other: bool,                 // ... and not only by sheets that arrived, which engine_extend may add to the index (sheet_arrival.odin)
 	arrived:   [dynamic]^Sheet,        // ... those sheets
 	arrived_rules: [dynamic]Arrived_Rule,   // ... and rules inserted at the end of a sheet in the index
+	arrived_imports: [dynamic]^Import_Slot, // ... and imports of sheets in the index, in their places
+	departed:  [dynamic]^Sheet,        // sheets that left, kept until the next rebuild: the invalidation index points into them (sheet_arrival.odin)
+	departures_due: bool,              // ... some still have their rules in the index
+	hidden_changed: [dynamic]base.Handle,   // elements forced hidden or shown since the last pass
 	arrivals_due: bool,                // engine_extend added rules that restyle_arrivals is to apply
 	fresh:     Rule_Set,               // ... those rules, by the keys of their selectors
 	fresh_on:  bool,                   // engine_extend is flattening: entries go to `fresh` too
@@ -224,6 +230,10 @@ engine_destroy :: proc(e: ^Engine) {
 	index_free(&e.fresh.index)
 	delete(e.arrived)
 	delete(e.arrived_rules)
+	delete(e.arrived_imports)
+	delete(e.hidden_changed)
+	departed_free(e)
+	delete(e.departed)
 	shadow_styles_destroy(e)
 	base.arena_destroy(&e.arena)
 	base.arena_destroy(&e.compile_scratch)
@@ -394,9 +404,8 @@ rules_stale :: proc(e: ^Engine) {
 engine_remove_sheet :: proc(e: ^Engine, s: ^Sheet) {
 	for x, i in e.sheets {
 		if x == s {
-			sheet_changed(e, s)
 			ordered_remove(&e.sheets, i)
-			sheet_free(s)
+			sheet_departs(e, s)
 			return
 		}
 	}
@@ -433,7 +442,7 @@ engine_set_hidden :: proc(e: ^Engine, h: base.Handle, hidden: bool) {
 		if h not_in e.forced_hidden { return }
 		delete_key(&e.forced_hidden, h)
 	}
-	e.restyle_needed = true
+	append(&e.hidden_changed, h)
 }
 
 // The top layer besides the fullscreen element (HTML: the showing popovers, in the order shown): their ancestors lose
@@ -448,9 +457,8 @@ engine_set_top_layer :: proc(e: ^Engine, elements: []base.Handle) {
 }
 
 engine_clear_hidden :: proc(e: ^Engine) {
-	if len(e.forced_hidden) == 0 { return }
+	for h in e.forced_hidden { append(&e.hidden_changed, h) }
 	clear(&e.forced_hidden)
-	e.restyle_needed = true
 }
 
 // Removes every sheet that came from the document (used when the page changes or its <style> elements do).
@@ -589,6 +597,7 @@ resolve_import :: proc(e: ^Engine, parent: ^Sheet, slot: ^Import_Slot, sheet: ^c
 	s.imports = make([dynamic]Import_Slot)
 	for r in s.sheet.rules { if r.kind == .Import { append(&s.imports, Import_Slot{rule = r}) } }
 	slot.child = s
+	if import_arrives(e, parent, slot) { return true }
 	sheet_changed(e, s)
 	return true
 }
@@ -945,25 +954,36 @@ flatten_sheet :: proc(e: ^Engine, s: ^Sheet, lc_in: LayerCtx) {
 		if r.kind == .Import {
 			slot := &s.imports[import_idx]
 			import_idx += 1
-			if slot.child == nil { continue }
-			if len(r.supports) > 0 && !supports_condition(e, r.supports) { continue }
-			if len(r.media) > 0 {
-				e.media_dependent = true
-				e.cur.conditional = true
-				if !css.media_matches(r.media, e.env) { continue }
+			if slot.child == nil {
+				// (numbers for it: what it holds comes before the rest of this sheet, whenever it arrives: sheet_arrival.odin)
+				slot.placed, slot.order = true, e.cur.order
+				e.cur.order += IMPORT_ORDER_GAP
+				continue
 			}
-			child_lc := lc
-			if r.layer != "" || strings.has_prefix(r.layer, "\x00") {
-				path := r.layer
-				if path == "\x00anonymous" { e.anon_layers += 1; path = fmt.tprintf("\x00anon%d", e.anon_layers) }
-				if lc.path != "" { path = strings.concatenate({lc.path, ".", path}, context.temp_allocator) }
-				child_lc = LayerCtx{path = path, rank = layer_rank(e, path)}
-			}
-			flatten_sheet(e, slot.child, child_lc)
+			flatten_import(e, slot, lc)
 			continue
 		}
 		flatten_rule(e, r, s.origin, lc)
 	}
+}
+
+@(private)
+flatten_import :: proc(e: ^Engine, slot: ^Import_Slot, lc: LayerCtx) {
+	r := slot.rule
+	if len(r.supports) > 0 && !supports_condition(e, r.supports) { return }
+	if len(r.media) > 0 {
+		e.media_dependent = true
+		e.cur.conditional = true
+		if !css.media_matches(r.media, e.env) { return }
+	}
+	child_lc := lc
+	if r.layer != "" || strings.has_prefix(r.layer, "\x00") {
+		path := r.layer
+		if path == "\x00anonymous" { e.anon_layers += 1; path = fmt.tprintf("\x00anon%d", e.anon_layers) }
+		if lc.path != "" { path = strings.concatenate({lc.path, ".", path}, context.temp_allocator) }
+		child_lc = LayerCtx{path = path, rank = layer_rank(e, path)}
+	}
+	flatten_sheet(e, slot.child, child_lc)
 }
 
 // The author sheets' places in shadow-including tree order: the sheets of a shadow tree in its own order. The walk ends at the
@@ -1011,6 +1031,7 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 	defer { rebuild_total.n += 1; rebuild_total.ns += i64(time.tick_since(t0)); rebuild_total.sheets += len(e.sheets) }
 	free_all(e.alloc)
 	rule_set_clear(&e.rules)
+	departed_free(e)
 	e.cur = &e.rules
 	e.viewport_units = false
 	clear(&e.font_faces)
@@ -1023,6 +1044,7 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 	e.media_dependent, e.anon_layers = false, 0
 	clear(&e.arrived)
 	clear(&e.arrived_rules)
+	clear(&e.arrived_imports)
 	fresh_clear(e)
 	gates_reset(e)
 	clear(&e.media_seen)

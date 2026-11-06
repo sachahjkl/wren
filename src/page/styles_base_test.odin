@@ -39,3 +39,31 @@ style_sheets_resolve_against_the_base_url :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, found, "the <style> sheet is registered")
 }
+
+// Nothing that leaves the computed styles alone makes a full pass: a face a script adds to document.fonts, the end of the parsing.
+@(test)
+a_font_face_and_the_end_of_parsing_make_no_full_pass :: proc(t: ^testing.T) {
+	test_pages(t)
+	context.allocator = runtime.heap_allocator()   // (the tree builder's heap: offthread_test.odin)
+	loop: host.Loop
+	host.loop_init(&loop)
+	defer host.loop_destroy(&loop)
+	settings := settings_default()
+	defer settings_destroy(&settings)
+	settings.threads.style_threads = 0
+	loader: fetch.Loader
+	scope := base.scope_make("test")
+	defer base.scope_close(scope)
+	p := page_create(&loop, &loader, &settings, scope, "file:///C:/saved/page.html")
+	defer page_close(p)
+	load_html(p, transmute([]byte)string(`<!doctype html><style>p { color: red }</style><p>x`))
+	styles(p, 800, 600, 1)
+	full := the_pages.styles_stats.full
+	c := Call{page = p}
+	testing.expect(t, FontFace_addRule(&c, `@font-face { font-family: f; src: url(a.woff2) }`) >= 0)
+	styles(p, 800, 600, 1)
+	testing.expect_value(t, the_pages.styles_stats.full, full)
+	styles_parsed(p)
+	styles(p, 800, 600, 1)
+	testing.expect_value(t, the_pages.styles_stats.full, full)
+}

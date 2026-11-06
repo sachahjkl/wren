@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:strings"
 import "core:testing"
 import "wb:base"
+import "wb:css"
 import "wb:dom"
 import "wb:html"
 
@@ -186,7 +187,6 @@ sheets_that_reach_further_keep_the_rebuild :: proc(t: ^testing.T) {
 		`@layer one { .a { color: rgb(1, 1, 1) } }`,
 		`@layer one, two;`,
 		`@property --x { syntax: "<length>"; inherits: true; initial-value: 1px }`,
-		`@import "other.css"; .a { color: rgb(1, 1, 1) }`,
 		`.outer::part(p) { color: red } .a { color: rgb(1, 1, 1) }`,
 		`.a::part(p) { color: red }`,
 		`:host { color: red }`,
@@ -234,4 +234,132 @@ sheets_that_reach_everything_make_a_full_pass :: proc(t: ^testing.T) {
 		defer styled_destroy(full)
 		testing.expect_value(t, differs_from_all_at_once(f.doc, full, {}, sheet, 0), "")
 	}
+}
+
+// A <style> that goes takes back what it gave the elements it matched, and no full pass is made; a mutation that came with it is seen by the
+// rules it took away: the element that stopped matching one is restyled too.
+@(test)
+a_sheet_that_goes_restyles_what_it_matched :: proc(t: ^testing.T) {
+	f := fixture_load(`<!doctype html><style>.a { color: rgb(9, 0, 0) } section { padding-left: 1px }</style><style id=gone>.a { color: rgb(1, 0, 0) } .k .b { margin-left: 3px } section > .c::before { content: "x" }</style>
+		<body><div id=k class=k><p id=b class=b>b</p></div><p id=a class=a>a</p><section><i class=c>c</i></section><section><i>d</i></section><section><i>e</i></section><section><i>f</i></section><section><i>g</i></section>`, {journal = 1 << 16, partial = true})
+	defer fixture_unload(f)
+	doc, e := f.doc, f.eng
+	rebuilds := e.rebuilds
+	testing.expect_value(t, style_of(f.st, dom.find_by_id(doc, "a")).color, css.Color{1.0 / 255, 0, 0, 1})
+	gone := dom.find_by_id(doc, "gone")
+	dom.remove_child(doc, dom.get(doc, gone).parent, gone)
+	dom.set_attribute(doc, dom.find_by_id(doc, "k"), "class", "other")
+	sync_document_sheets(e, doc, "about:test")
+	testing.expect(t, !e.dirty, "the rules stand until the mutations are marked")
+	_, ok := restyle_dom(e, doc, f.st)
+	testing.expect(t, ok, "the mutations are scoped")
+	_, ok = restyle_departures(e, doc, f.st)
+	testing.expect(t, ok, "so is the sheet")
+	testing.expect_value(t, e.rebuilds, rebuilds)
+	testing.expect(t, e.last_restyle.marked <= 3, "what the sheet matched")
+	testing.expect_value(t, verify_styles(e, doc, f.st, context.temp_allocator), "")
+	testing.expect_value(t, style_of(f.st, dom.find_by_id(doc, "a")).color, css.Color{9.0 / 255, 0, 0, 1})
+}
+
+// A sheet that goes while a full pass is due is simply not there.
+@(test)
+a_sheet_that_goes_before_a_full_pass :: proc(t: ^testing.T) {
+	f := fixture_load(`<!doctype html><style id=gone>.a { color: rgb(1, 0, 0) }</style><body><p id=a class=a>a</p>`, {journal = 1 << 16, partial = true})
+	defer fixture_unload(f)
+	gone := dom.find_by_id(f.doc, "gone")
+	dom.remove_child(f.doc, dom.get(f.doc, gone).parent, gone)
+	sync_document_sheets(f.eng, f.doc, "about:test")
+	old := f.st
+	f.st = compute_styles(f.eng, f.doc, {})
+	styled_destroy(old)
+	testing.expect(t, !f.eng.departures_due && len(f.eng.departed) == 0)
+	testing.expect(t, style_of(f.st, dom.find_by_id(f.doc, "a")).color != css.Color{1.0 / 255, 0, 0, 1})
+}
+
+// What a sheet with more than plain rules does stays the rebuild's.
+@(test)
+a_sheet_with_keyframes_that_goes_is_a_rebuild :: proc(t: ^testing.T) {
+	f := fixture_load(`<!doctype html><style id=gone>@keyframes k { to { opacity: 0 } } .a { color: rgb(1, 0, 0) }</style><body><p class=a>a</p>`, {journal = 1 << 16, partial = true})
+	defer fixture_unload(f)
+	gone := dom.find_by_id(f.doc, "gone")
+	dom.remove_child(f.doc, dom.get(f.doc, gone).parent, gone)
+	sync_document_sheets(f.eng, f.doc, "about:test")
+	testing.expect(t, f.eng.dirty && !f.eng.departures_due)
+}
+
+// An element the embedder hides (a blocked image, a cosmetic filter) is restyled with what it holds, not the document with it.
+@(test)
+an_element_forced_hidden_restyles_itself :: proc(t: ^testing.T) {
+	f := fixture_load(`<!doctype html><body><div id=x><i>a</i></div><p>b</p><p>c</p><p>d</p>`, {journal = 1 << 16, partial = true})
+	defer fixture_unload(f)
+	x := dom.find_by_id(f.doc, "x")
+	engine_set_hidden(f.eng, x, true)
+	testing.expect(t, !f.eng.restyle_needed, "no full pass for it")
+	_, ok := restyle_hidden(f.eng, f.doc, f.st)
+	testing.expect(t, ok)
+	testing.expect_value(t, f.eng.last_restyle.marked, 1)
+	testing.expect_value(t, style_of(f.st, x).display, Display.None)
+	engine_set_hidden(f.eng, x, false)
+	_, ok = restyle_hidden(f.eng, f.doc, f.st)
+	testing.expect(t, ok && style_of(f.st, x).display != Display.None)
+	testing.expect_value(t, verify_styles(f.eng, f.doc, f.st, context.temp_allocator), "")
+}
+// An @import comes after its sheet, in its place: before the rest of its sheet, after what comes before. No rebuild, no full pass.
+@(test)
+an_import_arrives_in_its_place :: proc(t: ^testing.T) {
+	f := fixture_load(`<!doctype html><head><style>.a { color: rgb(1, 0, 0) } .b { color: rgb(1, 0, 0) }</style><link id=l rel=stylesheet href=s.css></head><body><p id=a class=a>a</p><p id=b class=b>b</p><p id=c>c</p>`, {journal = 1 << 16, partial = true})
+	defer fixture_unload(f)
+	doc, e := f.doc, f.eng
+	s := engine_add_sheet(e, `@import url(x.css); .b { color: rgb(2, 0, 0) }`, dom.find_by_id(doc, "l"), from_link = true)
+	testing.expect(t, engine_extend(e, doc, f.st), "the sheet joins the rules, its @import to come")
+	_, ok := restyle_arrivals(e, doc, f.st)
+	testing.expect(t, ok)
+	testing.expect(t, engine_resolve_import(e, s, &s.imports[0], `.a { color: rgb(3, 0, 0) } .b { color: rgb(4, 0, 0) }`, "x.css"))
+	testing.expect(t, !e.dirty_other, "not a rebuild")
+	testing.expect(t, engine_extend(e, doc, f.st), "the @import joins them")
+	_, ok = restyle_arrivals(e, doc, f.st)
+	testing.expect(t, ok)
+	testing.expect_value(t, e.last_restyle.marked, 2)
+	testing.expect_value(t, style_of(f.st, dom.find_by_id(doc, "a")).color, css.Color{3.0 / 255, 0, 0, 1})
+	testing.expect_value(t, style_of(f.st, dom.find_by_id(doc, "b")).color, css.Color{2.0 / 255, 0, 0, 1})
+	testing.expect_value(t, verify_styles(e, doc, f.st, context.temp_allocator), "")
+}
+
+// <link media=print onload="this.media='all'">: the sheet that gave nothing arrives.
+@(test)
+a_sheet_whose_media_comes_true_arrives :: proc(t: ^testing.T) {
+	f := fixture_load(`<!doctype html><head><link id=l rel=stylesheet href=s.css media=print></head><body><p id=a class=a>a</p><p>b</p><p>c</p>`, {journal = 1 << 16, partial = true})
+	defer fixture_unload(f)
+	doc, e := f.doc, f.eng
+	s := engine_add_sheet(e, `.a { color: rgb(3, 0, 0) }`, dom.find_by_id(doc, "l"), media = "print", from_link = true)
+	testing.expect(t, engine_extend(e, doc, f.st))
+	_, ok := restyle_arrivals(e, doc, f.st)
+	testing.expect(t, ok)
+	sheet_set_media(e, s, "")
+	testing.expect(t, !e.dirty_other, "not a rebuild")
+	testing.expect(t, engine_extend(e, doc, f.st))
+	_, ok = restyle_arrivals(e, doc, f.st)
+	testing.expect(t, ok)
+	testing.expect_value(t, e.last_restyle.marked, 1)
+	testing.expect_value(t, verify_styles(e, doc, f.st, context.temp_allocator), "")
+}
+
+// The text of a <style> changed (what CSS-in-JS does): the sheet goes, the new one arrives, and the mutation is no reason for a full pass.
+@(test)
+a_style_element_rewritten_is_a_sheet_that_goes_and_one_that_comes :: proc(t: ^testing.T) {
+	f := fixture_load(`<!doctype html><head><style id=s>.a { color: rgb(1, 0, 0) }</style></head><body><p id=a class=a>a</p><p id=b class=b>b</p><p>c</p><p>d</p><p>e</p>`, {journal = 1 << 16, partial = true})
+	defer fixture_unload(f)
+	doc, e := f.doc, f.eng
+	dom.set_text_content(doc, dom.find_by_id(doc, "s"), `.b { color: rgb(2, 0, 0) }`)
+	testing.expect(t, dom_touches_sheets(e, doc, f.st, nil))
+	sync_document_sheets(e, doc, "about:test")
+	testing.expect(t, engine_extend(e, doc, f.st))
+	_, ok := restyle_dom(e, doc, f.st)
+	testing.expect(t, ok, "the text is the sheet's: nothing a rule reads")
+	_, ok = restyle_arrivals(e, doc, f.st)
+	testing.expect(t, ok)
+	_, ok = restyle_departures(e, doc, f.st)
+	testing.expect(t, ok)
+	testing.expect_value(t, verify_styles(e, doc, f.st, context.temp_allocator), "")
+	testing.expect_value(t, style_of(f.st, dom.find_by_id(doc, "b")).color, css.Color{2.0 / 255, 0, 0, 1})
 }
