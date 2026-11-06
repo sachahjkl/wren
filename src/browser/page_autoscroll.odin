@@ -165,6 +165,10 @@ autoscroll_page_event :: proc(app: ^App, ev: platform.Event, index: int) -> bool
 
 // Every frame before smooth_tick: feeds the pointer, and scrolls the node by the velocity integrated against the
 // frame's dt (CSS px per second -> device px this frame). True while a session is live (the loop keeps drawing).
+// How far a frame moves the page: CSS px/s over the time the frame really took, in device px (smooth_scroll's; +y toward the end).
+// The time of a frame, not the screen's period: a page that scrolls at 60 frames on a 180 Hz screen would go at a third of its speed.
+autoscroll_frame_delta :: proc(vel: draw.Vec2, seconds: f32, scale: f32) -> draw.Vec2 { return vel * seconds * scale }
+
 autoscroll_tick :: proc(app: ^App, t: ^Tab) -> bool {
 	g := gesture_of(app)
 	if g.owner != .Autoscroll { return false }
@@ -177,13 +181,10 @@ autoscroll_tick :: proc(app: ^App, t: ^Tab) -> bool {
 	ui.autoscroll_point(&ps.auto, pos)
 	vel := ui.autoscroll_velocity(&ps.auto, app.autoscroll_cfg.cfg)   // CSS px / s
 	scale := max(page_scale(app), 0.01)
-	dt := pacer_of(app).period_ms / 1000.0
 	if vel != {} {
 		node := ps.is_doc ? base.NIL_HANDLE : ps.node
-		// CSS px/s -> device px this frame; smooth_scroll takes device px (+y toward the end). Instant: the curve here
-		// is the smoothing; what the scroller has no room for goes to those around it
-		delta := draw.Vec2{f32(f64(vel.x) * dt) * scale, f32(f64(vel.y) * dt) * scale}
-		scroll_chain_by(app, t, node, delta)
+		// Instant: the curve here is the smoothing; what the scroller has no room for goes to those around it
+		scroll_chain_by(app, t, node, autoscroll_frame_delta(vel, frame_seconds(app), scale))
 	}
 	request_frames(app, 2)
 	return true

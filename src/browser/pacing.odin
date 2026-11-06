@@ -179,6 +179,12 @@ pacer_wake :: proc(app: ^App) {
 // The pacing of the window being framed (the active one; an App with no window: its bare window's).
 pacer_of :: proc(app: ^App) -> ^Pacer { return &active_window(app).pacer }
 
+// How long this frame took since the last one, for what moves by time (frames made on demand: a period each).
+frame_seconds :: proc(app: ^App) -> f32 {
+	pacer := pacer_of(app)
+	return app.frames_at_once ? f32(pacer.period_ms / 1000) : pacer.dt
+}
+
 // The frame's time of the window being painted, for paint code that is given no App (compositor.odin, paint_planes.odin);
 // 0 with no App (a test that paints a layout alone).
 frame_now_ms :: proc() -> f64 { return the_app != nil ? pacer_of(the_app).frame_ms : 0 }
