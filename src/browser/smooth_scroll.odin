@@ -139,8 +139,8 @@ Scroller_Anim :: struct {
 	applied: [2]f32,          // what the animation last set: a different offset means someone else moved it
 }
 
+// A thumb held (Pointer_Gesture.thumb).
 Scrollbar_Drag :: struct {
-	active:   bool,
 	node:     base.Handle,    // NIL: the document's bar
 	vertical: bool,
 	grab:     f32,            // pointer to thumb start, along the bar
@@ -148,9 +148,9 @@ Scrollbar_Drag :: struct {
 	lo, limit: f32,           // the scroller's offsets, smallest and largest
 }
 
-// An arrow button of a classic scroll bar held down: its scroller steps again by the clock while the pointer is on it.
+// An arrow button of a classic scroll bar held down (Pointer_Gesture.arrow): its scroller steps again by the clock while the pointer is on it.
 Arrow_Hold :: struct {
-	active, over: bool,
+	over:     bool,
 	node:     base.Handle,    // NIL: the document
 	button:   lay.Rect,       // viewport px
 	step:     [2]f32,         // device px, each time
@@ -170,8 +170,6 @@ Bar_Over :: struct {
 Smooth_Scroll :: struct {
 	page:  rawptr,            // the page the offsets belong to (another one: forgotten)
 	anims: [dynamic]Scroller_Anim,
-	drag:  Scrollbar_Drag,
-	arrow: Arrow_Hold,
 }
 
 // A held arrow steps again after this long, then this often (Blink's timings).
@@ -204,13 +202,11 @@ smooth_allowed :: proc(app: ^App) -> bool {
 	return true
 }
 
-// The tab's scrolling state (its page's: another page's is forgotten). The chrome frames' scroll bar drag is this one too
-// (shell_frames.odin shell_bar_event).
+// The tab's scrolling state (its page's: another page's is forgotten).
 smooth_of :: proc(t: ^Tab) -> ^Smooth_Scroll {
 	s := &t.smooth
 	if s.page != rawptr(t.page) {
 		clear(&s.anims)
-		s.drag, s.arrow = {}, {}
 		s.page = t.page
 	}
 	return s
@@ -311,7 +307,6 @@ smooth_scroll_by :: proc(app: ^App, t: ^Tab, node: base.Handle, delta: [2]f32, d
 // Stops the animations of a tab where they are (a new document, a jump).
 smooth_stop :: proc(t: ^Tab) {
 	clear(&t.smooth.anims)
-	t.smooth.drag, t.smooth.arrow = {}, {}
 }
 
 // Every frame, before the page is drawn: moves the animated scrollers to their place at the frame's time. True while
@@ -321,9 +316,11 @@ smooth_tick :: proc(app: ^App, t: ^Tab) -> bool {
 	page_world_check("smooth_tick: scrollers moved in a chrome frame, or during a page thread pass")
 	s := smooth_of(t)
 	now := pacer_of(app).frame_ms
-	if s.arrow.active && s.arrow.over && now >= s.arrow.next_ms {
-		smooth_scroll_by(app, t, s.arrow.node, s.arrow.step, app.smooth_cfg.key_ms)
-		s.arrow.next_ms = now + ARROW_REPEAT_MS
+	g := gesture_of(app)
+	held := g.owner == .Arrow
+	if held && g.arrow.over && now >= g.arrow.next_ms {
+		smooth_scroll_by(app, t, g.arrow.node, g.arrow.step, app.smooth_cfg.key_ms)
+		g.arrow.next_ms = now + ARROW_REPEAT_MS
 	}
 	for i := len(s.anims) - 1; i >= 0; i -= 1 {
 		a := &s.anims[i]
@@ -350,7 +347,7 @@ smooth_tick :: proc(app: ^App, t: ^Tab) -> bool {
 		a.applied = scroller_set(t, a.node, next)
 		if !busy { unordered_remove(&s.anims, i) }
 	}
-	return len(s.anims) > 0 || s.arrow.active
+	return len(s.anims) > 0 || held
 }
 
 ////////////////////////////////
@@ -570,8 +567,7 @@ bar_part_at :: proc(hit: Bar_Hit, p: draw.Vec2) -> Bar_Part {
 
 // The pointer moved to `pos` (window coordinates), or left the page (`over` false). A bar with nothing to scroll answers nothing, and a part held stays held.
 scrollbar_over_move :: proc(app: ^App, t: ^Tab, pos: draw.Vec2, over: bool) {
-	s := smooth_of(t)
-	if s.drag.active || s.arrow.active { return }
+	if g := gesture_of(app); g.owner == .Thumb || g.owner == .Arrow { return }
 	now: Bar_Over
 	if over && t.layout.valid {
 		p := pos - active_window(app).page_rect.min
@@ -582,64 +578,90 @@ scrollbar_over_move :: proc(app: ^App, t: ^Tab, pos: draw.Vec2, over: bool) {
 	bar_over_set(app, now)
 }
 
-// Pointer events for the scroll bars of the page (`ev.pos` in window coordinates). True when the event was theirs: a
-// press on a bar, the moves and the release of a thumb drag.
-scrollbar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
+// A left press on a scroll bar of the page (`ev.pos` in window coordinates): the bar's, to its release. True when it was one: the thumb and an
+// arrow own it, a press on the track pages at once and is spent.
+scrollbar_press :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 	wnd := active_window(app)
-	if t.page == nil || !t.layout.valid { return false }
-	s := smooth_of(t)
+	if ev.kind != .Mouse_Press || ev.button != .Left || !t.layout.valid || !draw.rect_contains(wnd.page_rect, ev.pos) { return false }
+	g := gesture_of(app)
+	if !gesture_free(g) { return false }
 	p := ev.pos - wnd.page_rect.min
-	#partial switch ev.kind {
-	case .Mouse_Press:
-		if ev.button != .Left || !draw.rect_contains(wnd.page_rect, ev.pos) { return false }
-		hit, ok := scrollbar_at(app, t, p)
-		when PACING_DEBUG { fmt.eprintln("scrollbar press", p, ok, hit) }
-		if !ok { return false }
-		if hit.limit <= hit.lo { return true }   // a classic bar with nothing to scroll still takes its press
-		ax := hit.vertical ? 1 : 0
-		for r, i in hit.arrows {
-			if !lay.rect_contains(r, p) { continue }
-			// an arrow: a line that way, again and again while it is held (smooth_tick)
-			s.arrow = Arrow_Hold{active = true, over = true, node = hit.node, button = r, next_ms = pacer_of(app).frame_ms + ARROW_REPEAT_DELAY_MS}
-			s.arrow.step[ax] = (i == 0 ? -1 : 1) * app.cfg.key_line_px * t.layout.scale
-			bar_over_set(app, {&t.layout, hit.node, hit.vertical, {i == 0 ? .Start : .End, true}})
-			smooth_scroll_by(app, t, hit.node, s.arrow.step, app.smooth_cfg.key_ms)
-			return true
-		}
-		if p[ax] >= hit.thumb.min[ax] && p[ax] < hit.thumb.max[ax] {
-			// the thumb follows the pointer from where it was grabbed
-			s.drag = Scrollbar_Drag{active = true, node = hit.node, vertical = hit.vertical, grab = p[ax] - hit.thumb.min[ax],
-				track_min = hit.rail.min[ax], travel = (hit.rail.max[ax] - hit.rail.min[ax]) - (hit.thumb.max[ax] - hit.thumb.min[ax]), lo = hit.lo, limit = hit.limit}
-			if a := find_anim(s, hit.node); a != nil { a.axis = {} }
-			bar_over_set(app, {&t.layout, hit.node, hit.vertical, {.Thumb, true}})
-		} else {
-			// a page toward the pointer
-			step := max(hit.port * app.cfg.key_page_fraction, app.cfg.key_line_px * t.layout.scale)
-			d: [2]f32
-			d[ax] = p[ax] < hit.thumb.min[ax] ? -step : step
-			smooth_scroll_by(app, t, hit.node, d, app.smooth_cfg.page_ms)
-		}
+	hit, ok := scrollbar_at(app, t, p)
+	when PACING_DEBUG { fmt.eprintln("scrollbar press", p, ok, hit) }
+	if !ok { return false }
+	if hit.limit <= hit.lo { gesture_take(app, t, .Spent, .Left); return true }   // a classic bar with nothing to scroll still takes its press
+	ax := hit.vertical ? 1 : 0
+	for r, i in hit.arrows {
+		if !lay.rect_contains(r, p) { continue }
+		// an arrow: a line that way, again and again while it is held (smooth_tick)
+		gesture_take(app, t, .Arrow, .Left)
+		g.arrow = Arrow_Hold{over = true, node = hit.node, button = r, next_ms = pacer_of(app).frame_ms + ARROW_REPEAT_DELAY_MS}
+		g.arrow.step[ax] = (i == 0 ? -1 : 1) * app.cfg.key_line_px * t.layout.scale
+		bar_over_set(app, {&t.layout, hit.node, hit.vertical, {i == 0 ? .Start : .End, true}})
+		smooth_scroll_by(app, t, hit.node, g.arrow.step, app.smooth_cfg.key_ms)
 		return true
+	}
+	if p[ax] >= hit.thumb.min[ax] && p[ax] < hit.thumb.max[ax] {
+		// the thumb follows the pointer from where it was grabbed
+		gesture_take(app, t, .Thumb, .Left).thumb = Scrollbar_Drag{node = hit.node, vertical = hit.vertical, grab = p[ax] - hit.thumb.min[ax],
+			track_min = hit.rail.min[ax], travel = (hit.rail.max[ax] - hit.rail.min[ax]) - (hit.thumb.max[ax] - hit.thumb.min[ax]), lo = hit.lo, limit = hit.limit}
+		if a := find_anim(smooth_of(t), hit.node); a != nil { a.axis = {} }
+		bar_over_set(app, {&t.layout, hit.node, hit.vertical, {.Thumb, true}})
+	} else {
+		// a page toward the pointer
+		gesture_take(app, t, .Spent, .Left)
+		step := max(hit.port * app.cfg.key_page_fraction, app.cfg.key_line_px * t.layout.scale)
+		d: [2]f32
+		d[ax] = p[ax] < hit.thumb.min[ax] ? -step : step
+		smooth_scroll_by(app, t, hit.node, d, app.smooth_cfg.page_ms)
+	}
+	return true
+}
+
+// The bar held is let go: it answers the pointer again.
+bar_let_go :: proc(app: ^App, t: ^Tab, ev: platform.Event, over: bool) {
+	gesture_end(gesture_of(app))
+	scrollbar_over_move(app, t, ev.pos, over)
+}
+
+// The owner Thumb's events (route_page_input): the moves and the release of the left button. A chrome frame does the same on what it shows
+// (shell_frames.odin shell_bar_event): a drag begun in one kind of frame goes on in the other.
+scrollbar_thumb_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
+	wnd := active_window(app)
+	g := gesture_of(app)
+	#partial switch ev.kind {
 	case .Mouse_Move:
-		if s.arrow.active {
-			s.arrow.over = lay.rect_contains(s.arrow.button, p)
-			return true
-		}
-		if !s.drag.active { return false }
-		dr := s.drag
+		if !t.layout.valid { return true }
+		p := ev.pos - wnd.page_rect.min
+		dr := g.thumb
 		ax := dr.vertical ? 1 : 0
 		f := dr.travel > 0 ? clamp((p[ax] - dr.grab - dr.track_min) / dr.travel, 0, 1) : 0
 		cur, _, ok := scroller_state(app, t, dr.node)
-		if !ok { s.drag = {}; return false }
+		if !ok { gesture_cancel(app); return false }
 		cur[ax] = dr.lo + f * (dr.limit - dr.lo)
 		scroller_set(t, dr.node, cur)
 		when PACING_DEBUG { fmt.eprintln("scrollbar drag", p, f, cur) }
 		request_frames(app, 2)
 		return true
 	case .Mouse_Release:
-		if ev.button != .Left || (!s.drag.active && !s.arrow.active) { return false }
-		s.drag, s.arrow = {}, {}
-		scrollbar_over_move(app, t, ev.pos, draw.rect_contains(wnd.page_rect, ev.pos))
+		if ev.button != .Left { return false }
+		bar_let_go(app, t, ev, draw.rect_contains(wnd.page_rect, ev.pos))
+		return true
+	}
+	return false
+}
+
+// The owner Arrow's events: it steps while the pointer is on it (smooth_tick).
+scrollbar_arrow_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
+	wnd := active_window(app)
+	g := gesture_of(app)
+	#partial switch ev.kind {
+	case .Mouse_Move:
+		g.arrow.over = lay.rect_contains(g.arrow.button, ev.pos - wnd.page_rect.min)
+		return true
+	case .Mouse_Release:
+		if ev.button != .Left { return false }
+		bar_let_go(app, t, ev, draw.rect_contains(wnd.page_rect, ev.pos))
 		return true
 	}
 	return false

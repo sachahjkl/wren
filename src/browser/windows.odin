@@ -82,7 +82,8 @@ Window_Own :: struct {
 	full:                Window_Full,         // window_chrome.odin: the bars shown over the page in the window's full screen
 	cursor:              Page_Cursor_View,    // page_cursor.odin: the window's cursors made from page images, what it shows
 	urlbar:              Urlbar_View,         // urlbar.odin: the address bar's suggestions
-	selection:           Selection_Shell,     // selection_shell.odin: the text selection gesture in the page shown
+	gesture:             Pointer_Gesture,     // pointer_gesture.odin: who owns the pressed button of the page shown
+	dimg:                Dnd_Image,           // dnd_image.odin: the picture of a drag from the page
 	strip:               Tab_Strip,           // tab_strip.odin: the tabs' scroll, the tab dragged, the tabs' box
 	sidebar:             Tab_Sidebar,         // tab_sidebar.odin: the sidebar's width handle, whether it was shown
 	find:                Find_State,          // find_bar.odin: the find bar, its text and its matches
@@ -91,10 +92,9 @@ Window_Own :: struct {
 	chip_segment:        Chip_Segment,        // chrome.odin: the security chip's segment of the address bar, as drawn
 	chip_icon:           Chip_Icon,           // chrome.odin: the security chip's icon, as drawn
 	ctx_menu:            Context_Menu_State,  // context_menu.odin: the context menu asked for, and the one open
-	frames:              Frames_Input,        // frames_shell.odin: the frame hovered, focused, pressed
+	frames:              Frames_Input,        // frames_shell.odin: the frame hovered, focused
 	nav_press:           Nav_Press,           // history_ui.odin: the back/forward button held down
 	devices:             Device_Input,        // page_input.odin: the fingers and pens over the page
-	autoscroll:          Page_Autoscroll,     // page_autoscroll.odin: the middle-click autoscroll session of the page
 	page_prep:           Page_Prep,           // page_frame.odin: the page as prepared in the page phase, for its paint
 	page_snapshot_wanted: bool,               // shell_frames.odin: the frame keeps the page's pixels for chrome frames
 	page_painted:        Paint_Source,        // shell_frames.odin: what the page's last frame was painted from, besides its layout
@@ -119,6 +119,7 @@ window_own :: proc(app: ^App) -> ^Window_Own { return &active_window(app).own }
 // window is the active one (its developer tools are read as dev()).
 window_own_destroy :: proc(app: ^App, own: ^Window_Own) {
 	assert(own == window_own(app))
+	gesture_destroy(app, own)
 	devtools_view_destroy(app)   // devtools.odin: their window closes with this one
 	page_cursor_view_destroy(&own.cursor)
 	urlbar_view_destroy(&own.urlbar)

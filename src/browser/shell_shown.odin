@@ -267,7 +267,7 @@ shell_wheel_box :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2) -> (taken, wait: bo
 }
 
 // A press on the thumb of a container's bar of a busy page that can be painted from its layout: the drag is the shell's, as
-// in a full frame (smooth_scroll.odin scrollbar_event: the same Scrollbar_Drag, which a frame of the other kind goes on with).
+// in a full frame (the gesture's owner is Thumb: a frame of the other kind goes on with it).
 shell_box_bar_press :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> bool {
 	if !shell_layout_paintable(app, t) { return false }
 	sh := shell_shown_set(app, t)
@@ -276,7 +276,7 @@ shell_box_bar_press :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> bool {
 	if !ok || hit.node == base.NIL_HANDLE || hit.limit <= hit.lo { return false }
 	ax := hit.vertical ? 1 : 0
 	if p[ax] < hit.thumb.min[ax] || p[ax] >= hit.thumb.max[ax] { return false }   // (the track and the arrows: the page's turn)
-	smooth_of(t).drag = Scrollbar_Drag{active = true, node = hit.node, vertical = hit.vertical, grab = p[ax] - hit.thumb.min[ax],
+	gesture_take(app, t, .Thumb, .Left).thumb = Scrollbar_Drag{node = hit.node, vertical = hit.vertical, grab = p[ax] - hit.thumb.min[ax],
 		track_min = hit.rail.min[ax], travel = (hit.rail.max[ax] - hit.rail.min[ax]) - (hit.thumb.max[ax] - hit.thumb.min[ax]), lo = hit.lo, limit = hit.limit}
 	bar_over_set(app, {&t.layout, hit.node, hit.vertical, {.Thumb, true}})
 	return true

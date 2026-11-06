@@ -95,13 +95,6 @@ Forms_View :: struct {
 	scroll:       map[base.Handle][2]f32,
 	page_focus:   bool,
 	consumed:     [dynamic]bool,
-	drag:         Drag_Kind,
-	drag_node:    base.Handle,
-	press_target: base.Handle,
-	press_down:   bool,
-	click_count:  int,
-	last_click:   time.Tick,
-	last_click_pos: [2]f32,
 	popup:        Popup,
 	caret_epoch:  time.Tick,
 	blink_on:     bool,
@@ -110,10 +103,16 @@ Forms_View :: struct {
 	report_timer: base.Handle,   // ... while the validation bubble is shown
 	last_serial:  u64,
 	autofocus_page: u64,
+}
+
+// What a left press did to a form control (Pointer_Gesture.field).
+Field_Press :: struct {
+	drag:     Drag_Kind,     // what follows the pointer
+	node:     base.Handle,
 	// a press inside the selection of a text field: it may drag the selected text (dnd_shell.odin); a release without a
 	// drag puts the caret there
-	sel_press:    base.Handle,
-	sel_press_at: int,
+	sel:      base.Handle,
+	sel_at:   int,
 }
 
 // The form controls' view of the window being framed (each window has its own: Window_Own.forms).
@@ -184,7 +183,6 @@ forms_shell_frame :: proc(app: ^App) {
 		clear(&fv.scroll)
 		fv.page_id = f.id
 		fv.popup.open = false
-		fv.drag = .None
 		fv.page_focus = true
 	}
 	// autofocus once the document's scripts had their turn
@@ -890,7 +888,7 @@ paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: 
 // A press kept a field's selection for a drag (forms_pointer_down): the field, its selection and text. The drag took
 // it: the release is no longer a click in the selection.
 forms_take_selection_press :: proc(app: ^App, p: ^page.Page) -> (field: base.Handle, a, b: int, text: string, ok: bool) {
-	h := forms_view(app).sel_press
+	h := gesture_of(app).field.sel
 	if h == base.NIL_HANDLE || p == nil || p.formctl == nil || dom.get(p.doc, h) == nil { return }
 	f := page.page_forms(p)
 	a, b, _ = forms.selection(f, h)
@@ -898,7 +896,6 @@ forms_take_selection_press :: proc(app: ^App, p: ^page.Page) -> (field: base.Han
 	return h, a, b, forms.copy_text(f, h), true
 }
 
-forms_drop_selection_press :: proc(app: ^App) { forms_view(app).sel_press = base.NIL_HANDLE }
 
 // The offset (bytes of its edit text) of text field `h` under `pos` (window px), as a press would put the caret: where
 // text dragged over it would be dropped.
@@ -1157,7 +1154,7 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 			idx := fv.popup.first + int((ev.pos.y - fv.popup.rect.min.y) / max(fv.popup.row_h, 1))
 			if idx != fv.popup.hover { fv.popup.hover = idx; request_frames(app) }
 		}
-		if fv.drag != .None && fv.press_down { pointer_drag(app, t, f, ev.pos); request_frames(app) }
+		if gesture_of(app).field.drag != .None { pointer_drag(app, t, f, ev.pos); request_frames(app) }
 		return false
 	case .Scroll:
 		if fv.popup.open && draw.rect_contains(fv.popup.rect, ev.pos) {
@@ -1433,7 +1430,8 @@ forms_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.
 	// what the pointer is over for the scripts: an empty part of the page (the canvas, a `pointer-events: none` overlay) is the root
 	// element's, as in other browsers (hit_or_root)
 	et := hit_or_root(t, target)
-	fv.press_target, fv.press_down = et, ev.button == .Left
+	g := gesture_of(app)
+	if ev.button == .Left && g.button == .Left { g.target = et }
 	if et == base.NIL_HANDLE {
 		if ev.button == .Left { forms.blur(f) }
 		return true
@@ -1451,15 +1449,7 @@ forms_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.
 		return true
 	}
 	if ev.button != .Left { return true }
-	// click counting (double click selects a word, triple the whole field)
-	now := press_time(ev)
-	if time.duration_milliseconds(time.tick_diff(fv.last_click, now)) <= double_click_ms(app) && abs(ev.pos.x - fv.last_click_pos.x) < 4 * scale && abs(ev.pos.y - fv.last_click_pos.y) < 4 * scale {
-		fv.click_count += 1
-	} else {
-		fv.click_count = 1
-	}
-	fv.last_click, fv.last_click_pos = now, ev.pos
-
+	clicks := g.clicks.count   // (a double click selects a word, a triple one the whole field)
 	ft := focus_target(f, target)
 	if ft == base.NIL_HANDLE { forms.blur(f); return true }
 	if forms.kind(f, ft) != .Label { forms.focus(f, ft) }
@@ -1472,27 +1462,26 @@ forms_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.
 		ftext, origin := layout_field(app, f, ft, pt)
 		pos := hit_text(ftext, painted_local(pt, ev.pos) - origin, pt.size, pt.font, &app.fonts)
 		src := forms.edit_text(f, ft)
-		fv.sel_press = base.NIL_HANDLE
 		sa, sb, _ := forms.selection(f, ft)
 		draggable_text := sa != sb && pos >= sa && pos <= sb && forms.copy_text(f, ft) != "" && dnd_page_events(app)
 		switch {
-		case fv.click_count == 1 && draggable_text && .Shift not_in ev.mods:
+		case clicks == 1 && draggable_text && .Shift not_in ev.mods:
 			// inside the selection: kept for a drag of the text; a release without one collapses it here
-			fv.sel_press, fv.sel_press_at = ft, pos
+			g.field.sel, g.field.sel_at = ft, pos
 			return true
-		case fv.click_count == 2:
+		case clicks == 2:
 			a, b := forms.word_at(src, pos)
 			forms.set_selection(f, ft, a, b, .Forward)
-		case fv.click_count >= 3:
+		case clicks >= 3:
 			forms.select_all(f, ft)
 		case .Shift in ev.mods:
 			move_to(f, ft, pos, true)
 		case:
 			forms.set_selection(f, ft, pos, pos)
 		}
-		fv.drag, fv.drag_node = .Text, ft
+		g.field.drag, g.field.node = .Text, ft
 	case forms.kind(f, ft) == .Input && forms.input_type(f, ft) == .Range && forms.is_mutable(f, ft):
-		fv.drag, fv.drag_node = .Range, ft
+		g.field.drag, g.field.node = .Range, ft
 		set_range_from_x(p, f, ft, pt, painted_local(pt, ev.pos).x)
 	case forms.kind(f, ft) == .Select && !forms.is_disabled(f, ft):
 		if forms.is_dropdown(f, ft) {
@@ -1528,12 +1517,13 @@ set_range_from_x :: proc(p: ^page.Page, f: ^forms.Forms, h: base.Handle, pt: Pai
 @(private = "file")
 pointer_drag :: proc(app: ^App, t: ^Tab, f: ^forms.Forms, pos: [2]f32) {
 	fv := forms_view(app)
-	h := fv.drag_node
+	press := &gesture_of(app).field
+	h := press.node
 	pt, ok := fv.painted[h]
-	if !ok || dom.get(f.doc, h) == nil { fv.drag = .None; return }
-	switch fv.drag {
+	if !ok || dom.get(f.doc, h) == nil { press.drag = .None; return }
+	switch press.drag {
 	case .Text:
-		if f.focus != h { fv.drag = .None; return }
+		if f.focus != h { press.drag = .None; return }
 		ftext, origin := layout_field(app, f, h, pt)
 		local := painted_local(pt, pos) - origin
 		pos2 := hit_text(ftext, local, pt.size, pt.font, &app.fonts)
@@ -1544,27 +1534,25 @@ pointer_drag :: proc(app: ^App, t: ^Tab, f: ^forms.Forms, pos: [2]f32) {
 	}
 }
 
-// A release: mouseup, the end of a drag; returns the click target (the common ancestor of the press and release targets).
-forms_pointer_up :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Handle, local: [2]f32) -> (click_target: base.Handle, ok: bool) {
+// A release (`ended`: of a left press that had its turn): mouseup, the end of a drag; returns the click target (the common ancestor of the press and
+// release targets).
+forms_pointer_up :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Handle, local: [2]f32, ended: Ended_Press) -> (click_target: base.Handle, ok: bool) {
 	fv := forms_view(app)
 	p := t.page
 	if p == nil { return }
 	scale := page_scale(app)
-	was_down := fv.press_down
-	fv.press_down = false
-	if fv.drag == .Range && p.formctl != nil {
+	press := ended.field
+	if press.drag == .Range && p.formctl != nil {
 		f := page.page_forms(p)
-		if dom.get(p.doc, fv.drag_node) != nil {
-			if c := forms.control_peek(f, fv.drag_node); c != nil { c.user_validity = true }
-			page.dispatch_event(p, fv.drag_node, dom.Event{type = "change", bubbles = true})
+		if dom.get(p.doc, press.node) != nil {
+			if c := forms.control_peek(f, press.node); c != nil { c.user_validity = true }
+			page.dispatch_event(p, press.node, dom.Event{type = "change", bubbles = true})
 		}
 	}
-	fv.drag = .None
-	if fv.sel_press != base.NIL_HANDLE && p.formctl != nil {
+	if press.sel != base.NIL_HANDLE && p.formctl != nil {
 		// a click inside a field's selection (no drag came of it): the caret goes there
 		f := page.page_forms(p)
-		if dom.get(p.doc, fv.sel_press) != nil { forms.set_selection(f, fv.sel_press, fv.sel_press_at, fv.sel_press_at); caret_reset(fv) }
-		fv.sel_press = base.NIL_HANDLE
+		if dom.get(p.doc, press.sel) != nil { forms.set_selection(f, press.sel, press.sel_at, press.sel_at); caret_reset(fv) }
 	}
 	cx, cy := page_client_xy(t, local, scale)
 	et := hit_or_root(t, target)   // (a release outside the page, or over its empty part: the root element's, which the press' document keeps)
@@ -1574,10 +1562,9 @@ forms_pointer_up :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Ha
 			page.dispatch_event(p, up_target, dom.Event{type = "mouseup", bubbles = true, cancelable = true, x = cx, y = cy, button = i32(ev.button), mods = dom_mods(ev.mods), buttons = dom_buttons(ev.buttons)})
 		}
 	}
-	if t.page != p { return }
-	if t.page != p || !was_down || et == base.NIL_HANDLE || fv.press_target == base.NIL_HANDLE { return }
+	if t.page != p || et == base.NIL_HANDLE || ended.target == base.NIL_HANDLE { return }
 	// common ancestor of where the button went down and where it came up
-	for a := fv.press_target; a != base.NIL_HANDLE; {
+	for a := ended.target; a != base.NIL_HANDLE; {
 		if dom.is_ancestor_or_self(p.doc, a, et) { return a, true }
 		n := dom.get(p.doc, a)
 		if n == nil { break }

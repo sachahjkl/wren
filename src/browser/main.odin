@@ -254,8 +254,7 @@ App :: struct {
 	lm_report_path: string,
 	lm_settle_ms:  f64,
 	lm_checked:    bool,
-	dnd:           Dnd_Shell,                // dnd_shell.odin: the drag of a page
-	dimg:          Dnd_Image,                // dnd_image.odin: its picture
+	dnd:           Dnd_Shell,                // dnd_shell.odin: drags of the system over the windows
 	dnd_last_picture: Dnd_Picture,
 	dsk:           Desktop_Shell,            // desktop_shell.odin: the desktop integration's job and status
 	recovery:      Recovery,                 // crash_recovery.odin: the profile's marker and snapshot
@@ -1105,17 +1104,17 @@ page_move_flush :: proc(app: ^App, t: ^Tab, last_move: platform.Event) {
 // Mouse and wheel events that land on the page become DOM events / scrolling.
 route_page_input :: proc(app: ^App, events: []platform.Event) {
 	wnd := active_window(app)
+	gesture_follow(app)
 	t := current_tab(app)
 	if t == nil || t.page == nil || t.kind != .Web { return }
 	page_world_check("route_page_input: page input in a chrome frame, or during a page thread pass")
 	scale := page_scale(app)
+	g := gesture_of(app)
 	last_move: platform.Event
 	have_move := false
 	defer if have_move && t.page != nil { page_move_flush(app, t, last_move) }
 	for ev, index in events {
 		inside := draw.rect_contains(wnd.page_rect, ev.pos)
-		// a press on the page: its moves and its release are the page's in chrome frames too, wherever the pointer is then (shell_frames.odin)
-		if ev.kind == .Mouse_Press || ev.kind == .Mouse_Release { app.chrome_frames.press_to_page[int(ev.button) % len(app.chrome_frames.press_to_page)] = ev.kind == .Mouse_Press && inside }
 		// the pointer got where it is before the button went down or up: the move's events (mouseover of a handle a script reads
 		// on the press, mousemove) come first, in the order they happened
 		if (ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && have_move && t.page != nil {
@@ -1123,19 +1122,33 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			have_move = false
 			if t.page == nil { return }
 		}
-		// Escape or the pointer leaving the window ends a middle-click autoscroll session (page_autoscroll.odin)
-		if ev.kind == .Key_Press && ev.key == .Escape && autoscroll_running_page(app) { autoscroll_page_cancel(app); consume(app, index); continue }
-		if ev.kind == .Mouse_Leave && autoscroll_running_page(app) { autoscroll_page_cancel(app) }
 		if ev.kind == .Mouse_Leave { scrollbar_over_move(app, t, ev.pos, false) }
-		// drag and drop, fingers and pens, a cancelled touch's mouse emulation (dnd_shell.odin, page_input.odin)
-		if dnd_route(app, t, ev) || route_device_pointer(app, t, ev) || page_drop_emulated(app, ev) { if t.page == nil { return }; continue }
-		if ev.kind == .Mouse_Release && ev.button == .Left { window_own(app).selection.pending = false }   // whichever handler below takes the release (selection_pointer_up)
+		gesture_follow(app)
+		gesture_note(app, ev, inside)
+		// who holds the pointer has it first; what it leaves goes on below
+		took := false
+		switch g.owner {
+		case .Idle, .Page_Press, .Press_Pending, .Selecting:
+		case .Spent:          took = gesture_spent_event(g, ev)
+		case .Drag_Candidate: took = dnd_candidate_event(app, t, ev)      // dnd_shell.odin
+		case .Page_Drag:      took = dnd_drag_event(app, t, ev)
+		case .Thumb:          took = scrollbar_thumb_event(app, t, ev)    // smooth_scroll.odin
+		case .Arrow:          took = scrollbar_arrow_event(app, t, ev)
+		case .Autoscroll:     took = autoscroll_page_event(app, ev, index)   // page_autoscroll.odin
+		case .Frame:          took = (ev.kind == .Mouse_Move || ev.kind == .Mouse_Release) && frames_route_pointer(app, t, ev, index)   // frames_shell.odin
+		}
+		if t.page == nil { return }
+		if took { continue }
+		ended: Ended_Press
+		if ev.kind == .Mouse_Release { ended = gesture_release(app, ev) }
+		// fingers and pens, a cancelled touch's mouse emulation (page_input.odin)
+		if route_device_pointer(app, t, ev) || page_drop_emulated(app, ev) { if t.page == nil { return }; continue }
 		if dev().picking && (ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && devtools_pick_event(app, t, int(ev.kind), ev.pos, ev.kind == .Mouse_Press) { continue }   // the element picker of the developer tools (devtools_elements.odin)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, wnd.page_rect)) }
 		if fullscreen_shell_escape(app, ev) { consume(app, index); continue }   // Escape leaves a page's full screen, the page does not see it (fullscreen_shell.odin)
-		if !hud_captures(app, ev.pos) && scrollbar_event(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
-		// pointer events over a frame, and the keyboard of a frame that has it, are its document's (frames_shell.odin)
-		if !hud_captures(app, ev.pos) && frames_route_pointer(app, t, ev, index) { continue }
+		if !hud_captures(app, ev.pos) && scrollbar_press(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
+		// pointer events over a frame, and the keyboard of a frame that has it, are its document's (frames_shell.odin); a press elsewhere keeps its moves
+		if !hud_captures(app, ev.pos) && (ev.kind != .Mouse_Move || gesture_free(g)) && frames_route_pointer(app, t, ev, index) { continue }
 		if frames_route_keys(app, ev, index) { continue }
 		// form controls first: keyboard for the focused field, the open drop-down list (forms_shell.odin)
 		if forms_route_event(app, t, ev, index) { continue }
@@ -1146,7 +1159,6 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			last_move, have_move = ev, true   // only the last position of the frame matters: hit test once, after the loop
 			selection_pointer_move(app, t, ev.pos)
 		case .Scroll:
-			autoscroll_page_cancel(app)   // a wheel notch ends an autoscroll session (page_autoscroll.odin)
 			if inside && .Ctrl in ev.mods {
 				// Ctrl+wheel zooms the page (wheel up = delta.y < 0 = bigger)
 				if ev.delta.y != 0 { zoom_step(app, t, ev.delta.y < 0 ? 1 : -1) }
@@ -1155,35 +1167,34 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 				smooth_wheel(app, t, ev.pos - wnd.page_rect.min, d, wheel_is_precise(ev.delta))   // smooth_scroll.odin
 			}
 		case .Mouse_Press:
-			// a press of any button ends a latched autoscroll session, and only that (page_autoscroll.odin)
-			if autoscroll_page_click(app) { continue }
 			if side_button_command(ev.button) != .None { continue }   // (the release acts, and a page has no such button to be told of)
 			if !inside || !t.layout.valid { continue }
 			if ui.ctx_menu_any_open() { continue }   // the press closes the menu (the toolkit's)
 			local := ev.pos - wnd.page_rect.min + doc_scroll_vec(t)
 			pressed := hit_test(&t.layout, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll)
 			t.scroll_target = pressed
+			free := gesture_free(g)
+			if ev.button == .Left && free { gesture_press(app, t, t.page, .Page_Press, ev) }
 			allowed := forms_pointer_down(app, t, ev, pressed, local)
 			if t.page == nil { return }
 			// the middle button starts autoscroll when the page did not cancel the mousedown and it is not a link
-			if ev.button == .Middle && autoscroll_page_press(app, t, ev, pressed, allowed) { continue }
-			if ev.button == .Left { page_set_active(t.page, pressed) }   // :active while the button is held
-			if ev.button == .Left { selection_press_count(app, ev) }
-			draggable := ev.button == .Left && allowed && dnd_press(app, t, ev, pressed)   // dnd_shell.odin: a press that may become a drag selects nothing
-			if ev.button == .Left && !draggable { selection_pointer_down(app, t, ev, pressed, allowed) }
+			if ev.button == .Middle && free && autoscroll_page_press(app, t, ev, pressed, allowed) { continue }
+			// the left one decides who owns the press
+			if ev.button == .Left && g.owner == .Page_Press {
+				page_set_active(t.page, pressed)   // :active while the button is held
+				draggable := allowed && dnd_press(app, t, ev, pressed)   // dnd_shell.odin: a press that may become a drag selects nothing
+				if !draggable { selection_pointer_down(app, t, ev, pressed, allowed) }
+			}
 			if ev.button == .Right { page_context_press(app, t, ev.pos) }
 		case .Mouse_Release:
 			if c := side_button_command(ev.button); c != .None {
 				host.post(&app.loop, app_command_run, new_clone(App_Command_Post{app, c}))
 				continue
 			}
-			if autoscroll_page_release(app, ev) { continue }   // the middle button up: hold mode ends, a tap latches (page_autoscroll.odin)
-			if ev.button == .Left { page_set_active(t.page, base.NIL_HANDLE) }
-			dragged := selection_pointer_up(app, t, ev)   // before anything that may skip the release: a gesture left open selects text under a button that is no longer held
 			if !t.layout.valid { continue }
 			local := ev.pos - wnd.page_rect.min + doc_scroll_vec(t)
 			released := inside ? hit_test(&t.layout, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll) : base.NIL_HANDLE
-			target, clicked := forms_pointer_up(app, t, ev, released, local)
+			target, clicked := forms_pointer_up(app, t, ev, released, local, ended)
 			if t.page == nil { return }
 			// a middle release on a link opens it in a new tab (Chrome: autoscroll bailed on the link at the press);
 			// forms_pointer_up only reports `clicked` for the left button, so the middle case is handled here
@@ -1196,7 +1207,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 				}
 			}
 			if ev.button == .Right && inside { page_context_menu(app, t, released, ev.pos, local, .Shift in ev.mods) }
-			if !clicked || t.page == nil || dragged { continue }
+			if !clicked || t.page == nil || ended.dragged { continue }
 			not_prevented := forms_click(app, t, target, ev, local)
 			if t.page == nil { return }
 			// default action: following a link, unless a listener called preventDefault
