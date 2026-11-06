@@ -3228,7 +3228,7 @@ No code changed in this round: it asks what a load is still waiting for, on the 
 
 **So the rest is execution.** `javascript.jit.call_threshold` was measured in round 39: 10 000 costs CPU and 1 000 doubles it, Cranelift costing more than the code it makes gives back. Not run again.
 
-**Left.** A baseline compiler, bytecode to machine code in one pass with no optimising back end, is what would make a low threshold pay. It is the first lever of this list that is not a few percent; it is also an estimate, nothing of it measured, and it is a project of its own. Generations in the collector can take at most what `Gc` is, 300 ms here.
+**Left.** A baseline compiler was the idea: code made cheaply would let a low threshold pay. The nearest measure says otherwise. `wasm.wasmtime.opt_level=none` keeps the shipped engine and compiles only what the JIT makes without optimising, 3 runs: theverge.com CPU 8.5-9.0 s at `speed` and 100 000, 8.5-10.7 at `none`, 9.8-11.8 at `none` and 10 000, 17.5-19.8 at `none` and 1 000; load 5.2-5.3, 5.0-6.4, 5.1-6.2, 5.5-7.2 s. npr.org load 3.8-4.4 at `speed`, 4.5-5.9 at `none`, 5.0-5.2 at `none` and 1 000. What compiling early costs is not only Cranelift's optimisation. Not tried: the single-pass register allocator, and a compiler written for this, which is why this is no proof. Winch is out: it takes the whole engine with it (theverge.com 6.1 s against 4.4, one run) and its code does not mix with Cranelift's. Generations in the collector can take at most what `Gc` is, 300 ms here.
 
 ## Inventory
 
