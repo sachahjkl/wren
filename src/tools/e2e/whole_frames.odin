@@ -24,6 +24,7 @@ import "wb:e2e"
 @(private = "file") SCROLLED_NOTCHES :: 12
 @(private = "file") SCROLL_SETTLE_FRAMES :: 30
 @(private = "file") ZOOM_NOTCHES := [?]f64{-1, -1, 1, 1}
+@(private = "file") ZOOM_ROUNDS_MOST :: 8
 @(private = "file") PAPER_COLOR := e2e.Color{250, 248, 240, 255}
 // How far in from the page area's top and bottom its column is looked at, and how much of it: half its width, its height.
 @(private = "file") EDGE_PX :: 20
@@ -125,20 +126,24 @@ a_tab_closed_in_the_sidebar_leaves_every_frame_whole :: proc(t: ^testing.T) { cl
 zoom_frames :: proc(t: ^testing.T, s: ^e2e.Session) {
 	e2e.scroll(s, SCROLLED_NOTCHES)
 	e2e.wait_frames(s, SCROLL_SETTLE_FRAMES)
-	record(s)
-	for notches in ZOOM_NOTCHES {
-		e2e.scroll(s, notches, ctrl = true)
-		e2e.wait_frames(s, FRAMES_AFTER)
-	}
-	frames := recorded(t, s)
-	defer forget(s)
-	page := s.app.active.page_rect
 	chrome_frames := 0
-	for f in frames {
-		if f.nested { chrome_frames += 1 }
-		for y in ([2]int{int(page.min.y) + EDGE_PX, int(page.max.y) - EDGE_PX}) {
-			testing.expectf(t, paper_at(f, y), "the article at y %d in frame %d (a chrome frame: %v)", y, f.n, f.nested)
+	// (a chrome frame comes when a layout outlasts a frame, which a fast layout may not: the zooms again until one has, they end where they began)
+	for _ in 0 ..< ZOOM_ROUNDS_MOST {
+		record(s)
+		for notches in ZOOM_NOTCHES {
+			e2e.scroll(s, notches, ctrl = true)
+			e2e.wait_frames(s, FRAMES_AFTER)
 		}
+		frames := recorded(t, s)
+		page := s.app.active.page_rect
+		for f in frames {
+			if f.nested { chrome_frames += 1 }
+			for y in ([2]int{int(page.min.y) + EDGE_PX, int(page.max.y) - EDGE_PX}) {
+				testing.expectf(t, paper_at(f, y), "the article at y %d in frame %d (a chrome frame: %v)", y, f.n, f.nested)
+			}
+		}
+		forget(s)
+		if chrome_frames > 0 { break }
 	}
 	testing.expect(t, chrome_frames > 0, "the layouts of the zoom ran on the page thread, with chrome frames")
 }
