@@ -24,6 +24,34 @@ selection_colors :: proc(s: ^Styled, d: ^dom.Document, el: base.Handle) -> (fg: 
 	return
 }
 
+// What draws the text decoration of ::selection over `el`: the nearest element whose rule sets one, as for its colors. nil: none.
+selection_decoration :: proc(s: ^Styled, d: ^dom.Document, el: base.Handle) -> ^Computed {
+	for cur := el; cur != base.NIL_HANDLE; {
+		n := dom.get(d, cur)
+		if n == nil { break }
+		if n.kind == .Element {
+			if c := style_of(s, cur); c != nil && c.selection != nil && c.selection.text_decoration != {} { return c.selection }
+		}
+		cur = n.parent
+	}
+	return nil
+}
+
+// The same for ::highlight(name).
+highlight_decoration :: proc(s: ^Styled, d: ^dom.Document, el: base.Handle, name: string) -> ^Computed {
+	for cur := el; cur != base.NIL_HANDLE; {
+		n := dom.get(d, cur)
+		if n == nil { break }
+		if n.kind == .Element {
+			if c := style_of(s, cur); c != nil {
+				for hs in c.highlights { if hs.name == name && hs.style.text_decoration != {} { return hs.style } }
+			}
+		}
+		cur = n.parent
+	}
+	return nil
+}
+
 // The style of ::highlight(name) rules an element matched (Computed.highlights).
 Highlight_Style :: struct {
 	name:  string,
