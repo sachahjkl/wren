@@ -10,6 +10,37 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.6.32] - 2026-11-06
+
+### Changed
+- **The toolkit goes to 0.86.0**: what lasts over frames there says what state it is in (autoscroll, tab reordering, the owner of an instance, drags), and its menus, dialogs, text fields, Undo and find in page get many fixes.
+- **A change of the root's font size made while a page loads is no longer missed by the layout** (it kept the old font until the next change that reached the root), and anonymous boxes no longer keep the custom properties of a style record that went.
+- **Pages that use `:has()` restyle far less while they load**: a change is read by the anchors it concerns, partial passes read classes as bits and answer `:has()` from what they know, restyles share out work by weight between the style threads, a script writing in a form control no longer restyles the document, `window.scrollY` at the top asks for no layout: cnn.com loads about 19 % sooner and paints first about 24 % sooner.
+
+### Fixed
+- **Ctrl+L and the menus in full screen show the bars at once**: Ctrl+L, Alt+F, Tab past the end of the page and the other commands of the bars waited for the pointer to reach the top of the screen, and the keyboard went nowhere meanwhile.
+- **A press the system took is no click, and a press on the window's frame ends what the page was doing**: a button whose release the system made no longer clicks, opens a menu or latches autoscroll, and a latched autoscroll no longer goes on after a press on the title bar, under a long script too.
+- **Letters typed after a click on a busy page wait for the page**: they landed in the address bar when the address bar had the keyboard before the click.
+- **The idle memory trim leaves every window its page**: a second window no longer showed its page's background for a frame when a long script followed an idle moment.
+- **The keyboard no longer stays in a frame the user left**: after a tab switch the letters went to the frame of the hidden tab, and after the address bar to the frame instead of the page. A frame gets the keyboard back with its tab.
+- **What is typed in the address bar stays**: a tab switched or closed from outside (a script, a remote call), or a page changing its address, no longer replaces it, even with all of it selected; Escape or a new tab gives it up.
+- **What shows under a long script is what the page last showed**: a hover no longer goes back to the state before it, and a tab that lost its kept picture to the idle memory trim takes it again instead of showing the page's background.
+- **Input that waits for a busy page stays that page's**: a press or a key made under a long script no longer lands on the tab shown by the time the script ends, at the first tab's coordinates, nor on the page of another window whose frame came first.
+- **A home tab keeps its empty address bar**: switching back to it or pressing Escape put "about:home" in the field.
+- **A crash after a stable restore could lose the tabs**: when a virus scanner or anything else had `running.txt` open at the moment the run became stable, the write was refused and never tried again, so the next crash was taken for the second in a row. The marker and the crash snapshot are now written again until they go through.
+- **A blank frame or window a script reached no longer counts as loading**: its document said `complete` while the back/forward cache and the tab's restore still waited for a load event that would never come.
+- **A script before the first paint waits for the frame, not for a fixed time**: a frame later than 24 ms no longer lost its turn to the script, and deferred scripts, modules and async scripts that come once the document is parsed get that turn too (`javascript.load.paint_deadline_ms` replaces `javascript.load.paint_wait_ms`).
+- **A text selection dragged over a frame goes on following the pointer**, as a drag begun in the frame does over the page around it.
+- **A press on a scroll bar's track is the bar's up to its release**: the page no longer got a `mouseup` with no `mousedown`.
+- **A drag from a page is its window's**: an event in another window of the browser no longer cancelled it.
+- **The element picker turned on during a press no longer leaves text selection open**: moving the pointer after the release no longer selected text.
+- **A press whose page goes away while it waits for a layout goes with it**: on the next page, moving the pointer with no button down no longer selected text.
+- **A page left behind no longer rewrites the next entry**: a page that keeps running behind its held frame called `history.replaceState` or `pushState` from a timer, and the address landed in the history entry of the page being loaded; it now gets a `SecurityError`, as a document that is not fully active does.
+- **`unload` fires once per document**: a page that clicked a download link ran `pagehide` and `unload` when the navigation started, came back when the answer turned out to be a download, and ran them again at the next navigation. Such a document no longer goes into the back/forward cache either.
+- **Escape during a drag from a page ends it for good**: the release that follows is no longer a click, which followed the link the drag began on.
+- **A scroll bar's thumb or arrow held while the tab changes lets go**: the page no longer followed the pointer with no button down once back on that tab, an arrow no longer scrolled it for ever, and `:active` no longer stayed on the page left under the press.
+- **Stop before the server answers goes back to the page**: Escape during a navigation that had no answer yet left a tab with the old frame on screen and no page behind it, no input, the address of the page that never came and its entry in the history; the page comes back, alive, at its address and on its entry, a stopped back or forward included. A navigation that turns out to be a download gives the page back the same way, with its scroll position, its error chip and its `no-store` kept.
+
 ## [0.6.31] - 2026-11-06
 
 ### Added
@@ -1229,7 +1260,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.6.31...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.6.32...HEAD
+[0.6.32]: https://github.com/sachahjkl/wren/compare/v0.6.31...v0.6.32
 [0.6.31]: https://github.com/sachahjkl/wren/compare/v0.6.30...v0.6.31
 [0.6.30]: https://github.com/sachahjkl/wren/compare/v0.6.29...v0.6.30
 [0.6.29]: https://github.com/sachahjkl/wren/compare/v0.6.28...v0.6.29

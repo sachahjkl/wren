@@ -47,11 +47,28 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-6-31">
+      <article class="release latest" id="v0-6-32">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-11-06">November 6, 2026</time></p>
-          <div class="release-title"><h3>0.6.31</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.6.32</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>Navigation</strong>: Escape before a page answers no longer leaves a dead tab, a document unloads once, and a page you have left no longer writes into the next page's history entry.</li>
+            <li><strong>Mouse</strong>: one owner for the pressed button. A press no longer survives a navigation or a tab switch, Escape during a drag really ends it, and a scroll bar's arrow held across a tab switch no longer keeps the browser busy.</li>
+            <li><strong>Keyboard and address bar</strong>: letters no longer go to a frame of a hidden tab, what you are typing in the address bar stays, Ctrl+L works in full screen with the bars hidden.</li>
+            <li><strong>Busy pages</strong>: input held under a long script no longer lands on another tab or window, and every window keeps its picture of the page, so a page does not show its background alone.</li>
+            <li><strong>Page loads</strong>: deferred scripts and modules wait for the first paint, and cnn.com loads about a fifth faster with less style work.</li>
+            <li><strong>Crash recovery</strong>: its files are written again when another program holds them open, as a virus scanner can.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.6.32.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.6.32">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-6-31">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-11-06">November 6, 2026</time></p>
+          <div class="release-title"><h3>0.6.31</h3></div>
           <ul class="release-list">
             <li><strong>First paint</strong>: a web font on its way no longer holds the whole page back, and long scripts leave room for the first frame. Measured from a first load: cnn.com about 1.6 s down to 0.5 s, theverge.com 0.75 s to 0.45 s, bbc.com 1.1 s to about 0.2 s.</li>
             <li><strong>Loads</strong>: a faster JavaScript engine and far fewer full style passes. cnn.com from about 6.3 s to 3.5 s; Wren is still 2 to 4 times slower than Edge on these heavy pages.</li>
