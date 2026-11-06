@@ -56,6 +56,8 @@ Level :: enum {
 world_level: Level
 storage_made: bool
 current: ^testing.T
+began: time.Tick                      // of the test that runs, and its name: WREN_E2E_TRACE says how long each took
+began_name: string
 
 loop:     host.Loop
 client:   net.Client
@@ -70,6 +72,7 @@ pages:    page.Pages               // what the pages share (bound to the thread 
 // The first thing a test does, after `context.allocator = base.process_allocator()` (what the Wasm imports make and free goes through
 // the process's allocator: core:testing's tracker of the test does not know that memory; the process's finds the leaks in the last test).
 begin :: proc(t: ^testing.T, level := Level.Pages, loc := #caller_location) {
+	began, began_name = time.tick_now(), loc.procedure
 	current = t
 	testing.set_fail_timeout(t, TEST_LIMIT, loc)
 	page.bind(&pages)
@@ -93,6 +96,7 @@ begin :: proc(t: ^testing.T, level := Level.Pages, loc := #caller_location) {
 
 // With `defer`, after `begin`.
 end :: proc() {
+	if _, trace := os.lookup_env("WREN_E2E_TRACE", context.temp_allocator); trace { fmt.eprintfln("web %9.1f ms  %s", time.duration_milliseconds(time.tick_since(began)), began_name) }
 	drain()
 	page.settings_destroy(&settings)
 	current = nil

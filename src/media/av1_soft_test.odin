@@ -9,9 +9,12 @@ import "wb:base"
 
 SEEK_TEST_DECODER_THREADS :: 2       // half the processors of a CI runner
 SEEK_TEST_SPINNERS_PER_CORE :: 2
-SEEK_TEST_ROUNDS :: 16               // (without the fix: 3 runs of 4 stuck within 12 rounds, at the seek or on the way to the end)
+SEEK_TEST_ROUNDS :: 16               // (test_all -Perf, with the spinners; without the fix: 3 runs of 4 stuck within 12 rounds, at the seek or on the way to the end)
+SEEK_TEST_ROUNDS_USUAL :: 2          // every run: the real player gets through a seek to its end; the bug itself is av1_software_asks_one_question_per_coded_frame
 SEEK_TEST_ROUND_LIMIT :: 30 * time.Second   // (a round of a 4 s clip, seeking near its end, takes a second or two)
 SEEK_TEST_LOOK :: 5 * time.Millisecond
+QUESTION_TEST_FRAMES :: 8
+QUESTION_TEST_PULLS :: 4              // more than one: a caller that pulls until it is told to send
 SEEK_TEST_PLAYED :: Time(300_000_000)
 SEEK_TEST_TARGET :: Time(3_300_000_000)
 
@@ -60,10 +63,43 @@ av1_software_decoder_decodes_the_clip :: proc(t: ^testing.T) {
 	frame_release(&kept)   // after the decoder: the context closes with its last picture
 }
 
+// What the stuck decoder came from, with no thread and no clock (the failure below): rav1d is asked for a picture once per coded frame, however many times its
+// caller pulls, and more than that only once the data has ended.
+@(test)
+av1_software_asks_one_question_per_coded_frame :: proc(t: ^testing.T) {
+	data := fixture("clip.webm")
+	defer delete(data)
+	if !testing.expect(t, len(data) > 0, "clip.webm missing") { return }
+	c: Collected
+	defer collected_free(&c)
+	demuxer: Webm_Demuxer
+	webm_init(&demuxer, collector(&c))
+	testing.expect_value(t, webm_feed(&demuxer, data), Parse_Error.None)
+	webm_destroy(&demuxer)
+	if !testing.expect(t, len(c.samples) >= 1 && len(c.samples[0]) >= QUESTION_TEST_FRAMES) { return }
+	dec := av1_soft_create(c.tracks[0])
+	if !testing.expect(t, dec != nil, "the decoder opens") { return }
+	defer dec.destroy(dec)
+	a := (^Av1_Soft)(dec.impl)
+	for i in 0 ..< QUESTION_TEST_FRAMES {
+		s := c.samples[0][i]
+		for !dec.push(dec, &s) {
+			f: Video_Frame
+			if dec.pull(dec, &f) == .Frame { frame_release(&f) }
+		}
+		for _ in 0 ..< QUESTION_TEST_PULLS {
+			f: Video_Frame
+			if dec.pull(dec, &f) == .Frame { frame_release(&f) }
+		}
+		testing.expectf(t, a.questions <= i + 1, "%d coded frames, %d questions: a second one with nothing sent tells rav1d to drain", i + 1, a.questions)
+	}
+}
+
 // The CI's failure: on a machine short of processors, rav1d left its workers parked with a frame unfinished when it was asked for a
 // picture twice between two coded frames, and the video thread waited for ever (a seek that never ended, a player that could not be
 // destroyed). What a machine with few processors has, with threads that take them all; the player is the real one, and it must
-// finish the seek and reach the end, every time.
+// finish the seek and reach the end, every time. Threads that take every processor for half a minute cost 390 s of CPU in each run for a failure that came 3 times in 4: they run with -Perf.
+// In every run the failure is simulated by what caused it (the test below) and no machine has to be short of anything.
 @(test)
 av1_software_player_seeks_and_ends_on_a_machine_short_of_processors :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()   // (what the player's threads free is theirs: the same allocator)
@@ -97,14 +133,14 @@ av1_software_player_seeks_and_ends_on_a_machine_short_of_processors :: proc(t: ^
 	}
 	stop: bool
 	spinners := make([dynamic]^thread.Thread, context.temp_allocator)
-	for _ in 0 ..< SEEK_TEST_SPINNERS_PER_CORE * os.get_processor_core_count() {
+	for _ in 0 ..< (base.perf_enabled() ? SEEK_TEST_SPINNERS_PER_CORE * os.get_processor_core_count() : 0) {
 		append(&spinners, thread.create_and_start_with_data(&stop, proc(stop: rawptr) { for !sync.atomic_load((^bool)(stop)) {} }))
 	}
 	defer {
 		sync.atomic_store(&stop, true)
 		for s in spinners { thread.join(s); thread.destroy(s) }
 	}
-	for round in 0 ..< SEEK_TEST_ROUNDS {
+	for round in 0 ..< (base.perf_enabled() ? SEEK_TEST_ROUNDS : SEEK_TEST_ROUNDS_USUAL) {
 		p := player_create(video, audio, PLAYER_SETTINGS_DEFAULT, nil, nil)
 		player_set_source_ended(p, true)
 		player_play(p)

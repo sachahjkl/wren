@@ -102,6 +102,7 @@ Av1_Soft :: struct {
 	track:    Track,
 	refs:     int,      // atomic: the decoder itself and every picture handed out; the last one closes the context
 	output:   Av1_Output,
+	questions: int,     // wm_av1_get so far (av1_software_asks_one_question_per_coded_frame counts them)
 }
 
 av1_soft_supported :: proc() -> Decoder_Support { return {supported = true} }
@@ -143,6 +144,7 @@ av1_soft_pull :: proc(d: ^Video_Decoder, out: ^Video_Frame) -> Pull_Result {
 	a := (^Av1_Soft)(d.impl)
 	if a.output == .Asked { return .Need_Input }
 	pic: Av1_Picture
+	a.questions += 1
 	answer := wm_av1_get(a.ctx, &pic)
 	switch a.output {
 	case .May_Ask:     a.output = .Asked
