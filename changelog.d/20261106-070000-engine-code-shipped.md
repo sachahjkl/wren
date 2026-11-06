@@ -1,3 +1,0 @@
-type: Changed
-
-**The first page after an install or an update no longer compiles the JavaScript engine** (`src/wasm/shipped.odin`): its machine code is made at build time and ships inside the program, for any x86-64, and the script compile threads no longer compile a copy each for the other Wasmtime engine, what most of the cost was: on cnn.com the first paint of a new profile goes from 3.3 s to 0.6 s, and from 17.7 s to 0.75 s on two cores, for 6.5 s of CPU instead of 45, the same as any later start. `wren.exe` is 22 MB larger, and code that does not fit (a changed `wasm.wasmtime.*` preference) is compiled once, from the start of the process.
