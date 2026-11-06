@@ -950,7 +950,7 @@ FORCE_TIMEOUT :: `(function () { try { if (typeof timeout === "function") { time
 // job or media playing / loading.
 page_busy :: proc(p: ^page.Page) -> bool {
 	if p == nil || p.closed { return false }
-	if p.scripts != nil && p.scripts.ready_state != .Complete { return true }
+	if p.scripts != nil && page.document_ready_state(p) != .Complete { return true }
 	return p.timers.count > 0 || p.fetches.count > 0 || fetch.in_flight(p.loader) > 0 || page.wants_animation_frame(p) || len(p.workers.hosts) > 0 || page.shared_workers_live() > 0 || len(p.offthread.jobs) > 0 || p.crypto_jobs > 0 || page.media_busy(p) || page.idb_busy(p)
 }
 
@@ -1083,7 +1083,7 @@ child_main :: proc(out_path: string) -> int {
 			headless.pump(d, PUMP_SLICE_MS, got_result_or_request)
 			if cs.got || d.failed != "" { break }
 			// autofocus once the document's scripts had their turn, as the shell does (forms_shell_frame)
-			if !cs.autofocused && d.page != nil && !d.page.closed && d.page.scripts != nil && d.page.scripts.ready_state != .Loading && d.page.formctl != nil {
+			if !cs.autofocused && d.page != nil && !d.page.closed && d.page.scripts != nil && page.document_ready_state(d.page) != .Loading && d.page.formctl != nil {
 				cs.autofocused = true
 				forms.run_autofocus(page.page_forms(d.page))
 			}

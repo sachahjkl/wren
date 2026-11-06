@@ -329,7 +329,7 @@ tab_refresh :: proc(app: ^App, t: ^Tab, icon_px: int) {
 		return
 	}
 	if !p.render.adopted { return }   // no document yet (the parse runs on a thread)
-	loaded := p.scripts != nil && p.scripts.loaded
+	loaded := p.scripts != nil && p.scripts.phase == .Complete
 	same := rawptr(p) == t.icon.page && rawptr(p.doc) == t.icon.doc
 	if same && p.doc.mutations == t.icon.mutations && loaded == t.icon.loaded { return }
 	now := f64(host.now_ns(&app.loop)) / 1e6

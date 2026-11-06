@@ -52,6 +52,7 @@ PUMP_SLICE_MS :: 20
 PUMP_SCRIPT_MS :: 30             // past the slice
 COMPILE_TAKES_IT_MS :: 500       // what a compile thread has to take a job, on a loaded machine of two processors
 SLICE_PER_FRAME :: 3
+FRAME_LATE :: 40 * time.Millisecond   // a frame that takes its time
 SLICE_LONGER_THAN_THE_TEST_MS :: 60_000
 FRAME_COST_MS :: 100             // three times this is past the scripts of the test, whatever else the machine does
 SCAN_SVG :: `<svg xmlns="http://www.w3.org/2000/svg" width="3" height="2"/>`
@@ -1245,6 +1246,96 @@ jsload_the_first_paint_comes_before_the_next_script :: proc(t: ^testing.T) {
 	page.scripts_start(pr.p)
 	wait_note(pr, "the first script")
 	check(pr, in_order(pr, "a turn before it", "the first script"), "the loop had a turn before the document's first script")
+	close_page(pr, min_checks = 1)
+}
+
+// A paint turn lasts until the frame: one that comes after what used to be the wait still finds the script waiting, and the script runs behind it.
+@(test)
+jsload_a_paint_turn_waits_for_a_late_frame :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	virtual_clock(t)
+	content := strings.repeat(`<p>x</p>`, page.REVEAL_TURN_MIN_NODES * 2, context.temp_allocator)
+	pr := load(t, "late frame", concat(`<!doctype html><head>`, PRELUDE, `</head><body>`, content, `<script>log("the script")</script></body>`))
+	drain()
+	check(pr, !noted(pr, "the script"), "the parser stopped before the script")
+	host.clock_advance(&loop, FRAME_LATE)
+	check(pr, !noted(pr, "the script"), "a late frame is waited for")
+	page.first_paint_done(pr.p)
+	drain()
+	check(pr, noted(pr, "the script"), "the frame ends the turn")
+	close_page(pr, min_checks = 1)
+}
+
+// No frame comes: the script runs at the deadline, and a page that showed it has no frame coming waits no more. Not shown, it does not wait at all.
+@(test)
+jsload_a_paint_turn_ends_at_its_deadline_once :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	virtual_clock(t)
+	content := strings.repeat(`<p>x</p>`, page.REVEAL_TURN_MIN_NODES * 2, context.temp_allocator)
+	markup := concat(`<!doctype html><head>`, PRELUDE, `</head><body>`, content, `<script>log("one")</script>`, content, content, content, `<script>log("two")</script></body>`)
+	deadline := time.Duration(settings.js_load.paint_deadline_ms) * time.Millisecond
+	pr := load(t, "no frame", markup)
+	drain()
+	host.clock_advance(&loop, deadline - time.Millisecond)
+	check(pr, !noted(pr, "one"), "the turn lasts until its deadline")
+	host.clock_advance(&loop, time.Millisecond)
+	drain()
+	check(pr, noted(pr, "one") && noted(pr, "two"), "the deadline ends it, and there is no other")
+	close_page(pr, min_checks = 1)
+
+	pr = page_make(t, "hidden", testenv.url(BASE))
+	page.set_page_visible(pr.p, false)
+	page_load(pr, markup)
+	drain()
+	check(pr, noted(pr, "two"), "a page that is not shown has no frame to wait for")
+	close_page(pr, min_checks = 1)
+
+	// (the clock stands still: a wait for a frame would never end)
+	pr = load(t, "a frame's document", concat(`<!doctype html>`, PRELUDE, `<iframe srcdoc="`, content, `<script>parent.log('in the frame')</script>"></iframe>`))
+	check(pr, wait_note(pr, "in the frame"), "a frame's document does not wait for a frame of its own")
+	close_page(pr, min_checks = 1)
+
+	// the frame came and held the page: it showed nothing of it, and that is the end of the turn all the same
+	pr = load(t, "held", markup)
+	drain()
+	page.paint_turn_over(pr.p)
+	drain()
+	check(pr, noted(pr, "one"), "the frame that held the page ended the turn")
+	close_page(pr, min_checks = 1)
+}
+
+// What a load's end runs has the turn too: a <head> with a deferred script gives the parser no turn, and it arrives once the body is there.
+@(test)
+jsload_a_deferred_script_goes_behind_the_first_paint :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	settings.js_load.paint_deadline_ms = SLICE_LONGER_THAN_THE_TEST_MS
+	content := strings.repeat(`<p>x</p>`, page.REVEAL_TURN_MIN_NODES * 2, context.temp_allocator)
+	pr := load(t, "deferred", concat(`<!doctype html><head>`, PRELUDE, `<script defer src="`, gen(`log("deferred")`, ARRIVES_SOON_MS, "&k=deferred1"), `"></script></head><body>`, content, `</body>`))
+	wait_until(t, "the deferred script, or its turn", pr, proc(pr: ^Probe) -> bool { return noted(pr, "deferred") || page.paint_turn_waiting(pr.p) })
+	check(pr, !noted(pr, "deferred"), "the frame goes first")
+	page.first_paint_done(pr.p)
+	wait_note(pr, "deferred")
+	close_page(pr, min_checks = 1)
+}
+
+// A document a script reached before anything loaded it is a finished one, for all that asks: no load is under way.
+@(test)
+jsload_a_frame_a_script_reached_is_not_loading :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	pr := load(t, "reached", concat(`<!doctype html>`, PRELUDE, `<iframe></iframe><script>log(document.querySelector("iframe").contentDocument.readyState)</script>`))
+	wait_note(pr, "complete")
+	kids := page.frames_children(pr.p)
+	check(pr, len(kids) == 1 && .Loading not_in page.bfcache_blockers(kids[0].page), "its document says complete, and no load holds it")
 	close_page(pr, min_checks = 1)
 }
 

@@ -146,9 +146,8 @@ frames_make_live :: proc(p: ^Page) {
 	if p.frames == nil || !p.frames.complete { return }
 	if !p.render.adopted { render_begin(p) }   // (it is shown from now on: nothing else would say its document is there)
 	s := scripts_of(p)
-	if s.started { return }
-	s.started = true
-	s.ready_state = .Complete
+	if s.phase != .Not_Started { return }
+	doc_phase_set(p, .Complete)
 	scripts_install_hooks(p)
 }
 

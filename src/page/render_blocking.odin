@@ -54,6 +54,7 @@ first_paint_done :: proc(p: ^Page) {
 	if p.scripts != nil {
 		p.scripts.timing.paint_ms = now_ms(p)
 		clear(&p.scripts.inserted_links)
+		paint_turn_over(p)
 	}
 }
 

@@ -77,7 +77,7 @@ measure :: proc(url, profile_dir: string, with_blocker: bool, timeout_s, settle_
 	for {
 		headless.pump(d, 20)
 		el := f64(time.tick_since(t0)) / 1e6
-		if !interactive && d.page != nil && d.parsed && d.page.scripts != nil && d.page.scripts.ready_state != .Loading {
+		if !interactive && d.page != nil && d.parsed && d.page.scripts != nil && page.document_ready_state(d.page) != .Loading {
 			interactive = true
 			s.interactive_ms = el
 		}

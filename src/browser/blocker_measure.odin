@@ -55,7 +55,7 @@ load_measure_painted :: proc(t: ^Tab) {
 	if !the_app.lm.active || t.id != the_app.lm.tab || t.page == nil { return }
 	ms := time.duration_milliseconds(time.tick_since(the_app.lm.start))
 	if the_app.lm.paint_ms == 0 && t.page.render.painted { the_app.lm.paint_ms = ms }
-	if the_app.lm.done_ms == 0 && t.page.scripts != nil && t.page.scripts.ready_state == .Complete { the_app.lm.done_ms = ms }
+	if the_app.lm.done_ms == 0 && t.page.scripts != nil && t.page.scripts.phase == .Complete { the_app.lm.done_ms = ms }
 }
 
 @(private = "file")

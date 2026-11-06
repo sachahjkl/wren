@@ -126,7 +126,7 @@ is_loaded :: proc(d: ^Doc) -> bool {
 	if d.failed != "" { return true }
 	if d.page == nil || !d.parsed { return false }
 	s := d.page.scripts
-	return s == nil || s.ready_state == .Complete
+	return s == nil || page.document_ready_state(d.page) == .Complete
 }
 
 close_doc :: proc(d: ^Doc) { base.scope_close(d.scope) }
@@ -150,12 +150,12 @@ load_stuck :: proc(w: ^Setup, d: ^Doc, loc := #caller_location) {
 		return
 	}
 	ps := &s.parser
-	timer := base.pool_get(&loop.timers, s.pump_resume)
+	timer := base.pool_get(&loop.timers, s.pump.resume)
 	queued := 0
-	for e in loop.queue.queue { if e.handle == s.pump_resume { queued += 1 } }
-	testing.expectf(w.t, false, "its pump: timer alive %v, due in %v ns, %d entries of %d in the queue, virtual clock %v, slice %v, ran %v, paint wait %v, turns %d, pumping %v", timer != nil, timer != nil ? timer.deadline - host.now_ns(&loop) : 0, queued, len(loop.queue.queue), loop.virtual != nil, settings.js_load.pump_slice_ms, s.pump_ran_ms, s.paint_wait, ps.paint_turns, s.pumping, loc = loc)
-	testing.expectf(w.t, false, "the load stands at: loader held %v, ready state %v, parser at %d of %d, paused %v, a script pending %v, a pump to come %v, fetches %d, log %q",
-		loader.hold, s.ready_state, ps.next, len(ps.queue), ps.paused, ps.pending != nil, s.pump_resume != base.NIL_HANDLE, len(s.fetches), log_text(d), loc = loc)
+	for e in loop.queue.queue { if e.handle == s.pump.resume { queued += 1 } }
+	testing.expectf(w.t, false, "its pump: %v, timer alive %v, due in %v ns, %d entries of %d in the queue, virtual clock %v, slice %v, ran %v, turns %d", s.pump.state, timer != nil, timer != nil ? timer.deadline - host.now_ns(&loop) : 0, queued, len(loop.queue.queue), loop.virtual != nil, settings.js_load.pump_slice_ms, s.pump.ran_ms, ps.paint_turns, loc = loc)
+	testing.expectf(w.t, false, "the load stands at: loader held %v, phase %v, parser at %d of %d, a script pending %v, fetches %d, log %q",
+		loader.hold, s.phase, ps.next, len(ps.queue), ps.pending != nil, len(s.fetches), log_text(d), loc = loc)
 }
 
 load :: proc(w: ^Setup, address: string, loc := #caller_location) -> ^Doc {

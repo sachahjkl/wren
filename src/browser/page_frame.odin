@@ -72,6 +72,7 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	hud_styles(t.page, styled)
 	page_prep.canvas = styled.canvas
 	first := !t.page.render.painted
+	defer if first { page.paint_turn_over(pinned) }   // (this frame showed it, or held it: the script waiting for a frame runs)
 	if first {
 		// what blocks rendering first (page/render_blocking.odin): meanwhile the old frame, or the canvas
 		if state, _ := page.first_paint_state(t.page); state != .Ready {

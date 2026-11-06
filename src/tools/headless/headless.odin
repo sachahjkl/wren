@@ -407,7 +407,7 @@ loaded :: proc(d: ^Doc) -> bool {
 	if d.failed != "" { return true }
 	if d.page == nil || !d.parsed || (d.loading != nil && d.task != base.NIL_HANDLE) { return false }
 	s := d.page.scripts
-	return s == nil || s.ready_state == .Complete
+	return s == nil || page.document_ready_state(d.page) == .Complete
 }
 
 // Closes the document, the windows it opened, and frees them.
