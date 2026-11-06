@@ -21,6 +21,7 @@ Fixture :: struct {
 	url:      string,
 	encoding: string,                 // the document's ("" = UTF-8)
 	style_changes: int,
+	style_changed_last: base.Handle,
 	edit_on_beforeinput: bool,
 }
 
@@ -42,7 +43,7 @@ fx_make :: proc(src: string, doc_url := "http://example.test/dir/page.html") -> 
 		document_url = proc(user: rawptr) -> string { return (^Fixture)(user).url },
 		document_encoding = proc(user: rawptr) -> string { return (^Fixture)(user).encoding },
 		navigate = proc(user: rawptr, s: ^Submission) { append(&(^Fixture)(user).subs, s) },
-		style_changed = proc(user: rawptr) { (^Fixture)(user).style_changes += 1 },
+		style_changed = proc(user: rawptr, h: base.Handle) { (^Fixture)(user).style_changes += 1; (^Fixture)(user).style_changed_last = h },
 		now_ms = proc(user: rawptr) -> f64 { return (^Fixture)(user).clock },
 	})
 	return x
@@ -713,6 +714,21 @@ pseudo_class_state :: proc(t: ^testing.T) {
 	before = x.style_changes
 	edit(f, id(x, "p"), .Insert_Text, "b")
 	testing.expect_value(t, x.style_changes, before)   // nothing a pseudo-class sees changed
+}
+
+// What a change of checkedness reaches: a checkbox is one control, a radio button its group.
+@(test)
+checkedness_says_which_control_changed :: proc(t: ^testing.T) {
+	x := fx_make(`<form id=f><input id=cb type=checkbox><input id=r1 type=radio name=g><input id=r2 type=radio name=g></form>`)
+	defer fx_destroy(x)
+	f := x.f
+	testing.expect_value(t, set_checked(f, id(x, "cb"), true), Error.None)
+	testing.expect_value(t, x.style_changed_last, id(x, "cb"))
+	before := x.style_changes
+	testing.expect_value(t, set_checked(f, id(x, "cb"), true), Error.None)
+	testing.expect_value(t, x.style_changes, before)   // already so: nothing a pseudo-class sees changed
+	testing.expect_value(t, set_checked(f, id(x, "r1"), true), Error.None)
+	testing.expect_value(t, x.style_changed_last, base.NIL_HANDLE)
 }
 
 @(test)

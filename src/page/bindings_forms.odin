@@ -75,9 +75,9 @@ forms_attach :: proc(p: ^Page) {
 		document_url = proc(user: rawptr) -> string { return (^Page)(user).env.location.href },
 		document_encoding = proc(user: rawptr) -> string { return document_encoding((^Page)(user)) },
 		navigate = forms_plan_navigation,
-		style_changed = proc(user: rawptr) {
+		style_changed = proc(user: rawptr, h: base.Handle) {
 			p := (^Page)(user)
-			if p.engine != nil { p.engine.restyle_needed = true }
+			if p.engine != nil { style.engine_control_changed(p.engine, h) }
 		},
 		formdata = formdata_event,
 		face_callback = forms_face_callback,

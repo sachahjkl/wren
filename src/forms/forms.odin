@@ -145,7 +145,7 @@ Host :: struct {
 	// run the navigation later (it may be inside a guest call).
 	navigate:      proc(user: rawptr, s: ^Submission),
 	// Something a pseudo-class depends on changed: computed styles are stale.
-	style_changed: proc(user: rawptr),
+	style_changed: proc(user: rawptr, h: base.Handle),   // `h`: the control whose pseudo-classes changed; NIL_HANDLE: anything may have
 	// Optional: fire `formdata` at `form` with a FormData over `entries` (listeners may change them).
 	formdata:      proc(user: rawptr, form: base.Handle, entries: ^[dynamic]Entry),
 	now_ms:        proc(user: rawptr) -> f64,
@@ -353,7 +353,7 @@ changed :: proc(f: ^Forms, h: base.Handle) {
 	if !c.style_known || bits != c.style_bits {
 		c.style_known = true
 		c.style_bits = bits
-		if f.host.style_changed != nil { f.host.style_changed(f.host.user) }
+		if f.host.style_changed != nil { f.host.style_changed(f.host.user, h) }
 	}
 }
 
@@ -361,5 +361,5 @@ changed :: proc(f: ^Forms, h: base.Handle) {
 @(private)
 changed_widely :: proc(f: ^Forms) {
 	f.serial += 1
-	if f.host.style_changed != nil { f.host.style_changed(f.host.user) }
+	if f.host.style_changed != nil { f.host.style_changed(f.host.user, base.NIL_HANDLE) }
 }
