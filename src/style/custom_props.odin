@@ -125,27 +125,10 @@ unordered_remove_string :: proc(s: ^[]string, i: int) {
 	s^ = s[:len(s) - 1]
 }
 
-// Value equality of two sets (whatever their layering).
+// Value equality of two sets (whatever their layering): by what they hash to, each name with its value. Reading them was 4 % of cnn.com's
+// window thread: a restyle asks this of every element, for the hundreds of names of :root at the bottom of their layers.
 custom_equal :: proc(a, b: ^Custom_Props) -> bool {
 	if a == b { return true }
 	if a == nil || b == nil { return false }
-	// (a variable changed high in the tree: every element under it asks this, for hundreds of names)
-	if a.total != b.total || a.digest != b.digest { return false }
-	// the usual case of a restyle: the same layering, layer by layer
-	if a.parent == b.parent || (a.parent != nil && b.parent != nil && a.depth == b.depth) {
-		if len(a.values) == len(b.values) && len(a.removed) == len(b.removed) && layer_equal(a, b) {
-			if a.parent == b.parent || custom_equal(a.parent, b.parent) { return true }
-		}
-	}
-	// otherwise every name of one set looked up in the other (the totals are equal)
-	fa := custom_flatten(a, context.temp_allocator)
-	for k, v in fa { if w, ok := custom_get(b, k); !ok || w != v { return false } }
-	return true
-}
-
-@(private)
-layer_equal :: proc(a, b: ^Custom_Props) -> bool {
-	for k, v in a.values { if w, ok := b.values[k]; !ok || w != v { return false } }
-	for r in a.removed { if removed_index(b, r) < 0 { return false } }
-	return true
+	return a.total == b.total && a.digest == b.digest
 }

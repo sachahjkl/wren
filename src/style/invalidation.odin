@@ -1,6 +1,5 @@
 package style
 
-import "base:runtime"
 import "core:strings"
 import "core:sync"
 import "wb:base"
@@ -9,8 +8,6 @@ import "wb:dom"
 
 // An invalidation chain with more steps than this becomes "all the next": a set that large filters little.
 INV_MAX_NEXT :: 64
-// A set of more subjects than this is no set (an element's keys are looked up in a set: Marker.key_maps, so its size costs little).
-INV_MAX_SUBJECTS :: 1024
 // How deep :is() inside :is() is followed for the keys a compound requires.
 COMPOUND_KEYS_DEPTH :: 4
 
@@ -240,6 +237,7 @@ Has_Feat :: struct {
 	classes, ids, attrs, types: map[string]bool,
 	mask:     u64,    // their bits of the document's dom.Watch (watch_sync): a subtree that holds none of them cannot make the anchor match
 	unkeyed:  bool,   // the argument also asks something a key does not name (*, :not(), :nth-child(), a sibling combinator): any element may change it
+	empty:    bool,   // the argument reads :empty: a change of text under the anchor may change it
 }
 
 Inv_Index :: struct {
@@ -354,6 +352,8 @@ inv_visit_index :: proc(ix: ^Inv_Index, index: ^Index) {
 	for _, l in index.by_class { inv_visit(ix, l) }
 	for _, l in index.by_tag { inv_visit(ix, l) }
 	for _, l in index.by_attr { inv_visit(ix, l) }
+	for _, l in index.by_attr_name { inv_visit(ix, l) }
+	inv_visit(ix, index.root)
 	inv_visit(ix, index.universal)
 	inv_visit(ix, index.backdrop)
 }
@@ -461,7 +461,7 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 				keyed_add(ix, &ix.pos_bwd, comp, total)
 			}
 		case .Empty:
-			if in_has { ix.has_empty = true } else { ix.empty = reach_union(ix.keys, ix.empty, total) }
+			if in_has { has_reads_empty(ix) } else { ix.empty = reach_union(ix.keys, ix.empty, total) }
 		case .Not, .Is, .Where:
 			analyze_list(ix, s.list, total, in_has, depth)
 		case .Has:
@@ -511,7 +511,7 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 			attr_dep(ix, "placeholder", total, in_has)
 			attr_dep(ix, "value", total, in_has)
 			attr_dep(ix, "type", total, in_has)
-			if in_has { ix.has_empty = true } else { ix.empty = reach_union(ix.keys, ix.empty, total) }
+			if in_has { has_reads_empty(ix) } else { ix.empty = reach_union(ix.keys, ix.empty, total) }
 			ix.uses_controls = true
 			ix.controls = reach_union(ix.keys, ix.controls, subtree)
 		case .Checked, .Disabled, .Enabled, .Read_Only, .Read_Write, .Valid, .Invalid, .User_Valid, .User_Invalid,
@@ -528,6 +528,12 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 		}
 	}
 	return false
+}
+
+@(private = "file")
+has_reads_empty :: proc(ix: ^Inv_Index) {
+	ix.has_empty = true
+	if ix.collect != nil { ix.collect.empty = true }
 }
 
 // How far above the element that changed an anchor of this :has() argument can be: the number of child combinators the
@@ -560,8 +566,8 @@ has_hops :: proc(list: ^css.Selector_List) -> int {
 
 // An element that can be a rule's subject has the subject compound's class, id or type: a change that reaches a whole
 // subtree (`.a .b`: .a changed) only needs the elements of it that carry the subject's key looked at, not every one
-// restyled. A key set is an interned list of such keys (class, id or type names), the Reach holds its number; unions of
-// reaches union their sets. An engine's, freed with it (interned, so a rebuild of the same rules adds nothing): process-wide
+// restyled. A key set is such keys (class, id, attribute or type names), the Reach holds its number; unions of
+// reaches union their sets. An engine's, freed with it (found again, so a rebuild of the same rules adds nothing): process-wide
 // they were bounded by the names of every sheet of every site seen, tens of MB after a few dozen sites; a lock because the
 // restyle of a page may run beside its own style threads.
 Subject_Key_Kind :: enum u8 { Class, Id, Type, Attr }
@@ -570,14 +576,21 @@ Subject_Key :: struct { kind: Subject_Key_Kind, name: string }
 // The first block of an engine's sets: most pages name a few hundred keys, an iframe of an advert a handful.
 @(private = "file") KEY_SETS_BLOCK :: 64 << 10
 
+// A set of keys: one key, or the union of two sets, kept as such: an index is built for each sheet that comes, and most of its reaches are
+// never asked what they hold (made list by list and sorted, their unions were 13 % of cnn.com's style passes).
+@(private)
+Key_Set :: struct {
+	key:         Subject_Key,
+	left, right: u32,   // 0: one key
+}
+
 @(private)
 Key_Sets :: struct {
 	mu:    sync.Mutex,
 	arena: base.Arena,
 	ready: bool,
-	sets:  [dynamic][]Subject_Key,   // set n is sets[n - 1]
-	index: map[string]u32,           // canonical text -> number
-	single: [Subject_Key_Kind]map[string]u32,   // the one-key sets by name (the rules' subjects: found without building their text)
+	sets:  [dynamic]Key_Set,         // set n is sets[n - 1]
+	single: [Subject_Key_Kind]map[string]u32,   // the one-key sets by name
 	unions: map[u64]u32,             // the union of two sets (key_sets_union): each sheet that comes builds the index again, from the same pairs
 }
 
@@ -586,8 +599,7 @@ key_sets_init :: proc(ks: ^Key_Sets) {
 	if ks.ready { return }
 	_ = base.arena_init_growing(&ks.arena, KEY_SETS_BLOCK)
 	a := base.arena_allocator(&ks.arena)
-	ks.sets = make([dynamic][]Subject_Key, a)
-	ks.index = make(map[string]u32, 64, a)
+	ks.sets = make([dynamic]Key_Set, a)
 	for &m in ks.single { m = make(map[string]u32, 64, a) }
 	ks.unions = make(map[u64]u32, 64, a)
 	ks.ready = true
@@ -599,28 +611,6 @@ key_sets_destroy :: proc(ks: ^Key_Sets) {
 	ks^ = {}
 }
 
-@(private = "file")
-key_text :: proc(keys: []Subject_Key, a: runtime.Allocator) -> string {
-	sb := strings.builder_make(a)
-	for k in keys { strings.write_byte(&sb, u8(k.kind) + '0'); strings.write_string(&sb, k.name); strings.write_byte(&sb, 0) }
-	return strings.to_string(sb)
-}
-
-// The number of the (sorted, distinct) key list, made when new.
-@(private = "file")
-key_sets_intern :: proc(ks: ^Key_Sets, keys: []Subject_Key) -> u32 {
-	key_sets_init(ks)
-	text := key_text(keys, context.temp_allocator)
-	if n, ok := ks.index[text]; ok { return n }
-	a := base.arena_allocator(&ks.arena)
-	own := make([]Subject_Key, len(keys), a)
-	for k, i in keys { own[i] = Subject_Key{k.kind, strings.clone(k.name, a)} }
-	append(&ks.sets, own)
-	n := u32(len(ks.sets))
-	ks.index[strings.clone(text, a)] = n
-	return n
-}
-
 @(private)
 key_sets_union :: proc(ks: ^Key_Sets, x, y: u32) -> u32 {
 	if x == 0 || y == 0 { return 0 }   // (one of them is unrestricted)
@@ -629,37 +619,29 @@ key_sets_union :: proc(ks: ^Key_Sets, x, y: u32) -> u32 {
 	defer sync.mutex_unlock(&ks.mu)
 	pair := u64(min(x, y)) << 32 | u64(max(x, y))
 	if n, ok := ks.unions[pair]; ok { return n }
-	n := key_sets_union_of(ks, x, y)
+	append(&ks.sets, Key_Set{left = x, right = y})
+	n := u32(len(ks.sets))
 	ks.unions[pair] = n
 	return n
 }
 
-@(private = "file")
-key_sets_union_of :: proc(ks: ^Key_Sets, x, y: u32) -> u32 {
-	before :: proc(p, q: Subject_Key) -> bool { return p.kind != q.kind ? p.kind < q.kind : p.name < q.name }
-	a, b := ks.sets[x - 1], ks.sets[y - 1]
-	all := make([dynamic]Subject_Key, 0, len(a) + len(b), context.temp_allocator)
-	// (both sorted)
-	for len(a) > 0 && len(b) > 0 {
-		switch {
-		case before(a[0], b[0]): append(&all, a[0]); a = a[1:]
-		case before(b[0], a[0]): append(&all, b[0]); b = b[1:]
-		case: append(&all, a[0]); a, b = a[1:], b[1:]
-		}
-	}
-	append(&all, ..a)
-	append(&all, ..b)
-	if len(all) > INV_MAX_SUBJECTS { return 0 }   // (a set that large filters little)
-	return key_sets_intern(ks, all[:])
-}
-
-// The keys of a set (valid as long as the engine).
+// Calls `each` with every key of a set.
 @(private)
-key_set_keys :: proc(ks: ^Key_Sets, n: u32) -> []Subject_Key {
+key_set_each :: proc(ks: ^Key_Sets, n: u32, user: rawptr, each: proc(user: rawptr, k: Subject_Key)) {
 	sync.mutex_lock(&ks.mu)
 	defer sync.mutex_unlock(&ks.mu)
-	if n == 0 || int(n) > len(ks.sets) { return nil }
-	return ks.sets[n - 1]
+	if n == 0 || int(n) > len(ks.sets) { return }
+	seen := make([]bool, len(ks.sets) + 1, context.temp_allocator)   // (the unions share their parts)
+	stack := make([dynamic]u32, 0, 64, context.temp_allocator)
+	append(&stack, n)
+	for len(stack) > 0 {
+		x := pop(&stack)
+		if seen[x] { continue }
+		seen[x] = true
+		s := ks.sets[x - 1]
+		if s.left == 0 { each(user, s.key); continue }
+		append(&stack, s.left, s.right)
+	}
 }
 
 @(private = "file")
@@ -708,8 +690,10 @@ subject_keys :: proc(ks: ^Key_Sets, c: ^css.Complex, depth := 0) -> u32 {
 	defer sync.mutex_unlock(&ks.mu)
 	key_sets_init(ks)
 	if n, ok := ks.single[best.kind][best.name]; ok { return n }
-	n := key_sets_intern(ks, []Subject_Key{best})
-	ks.single[best.kind][strings.clone(best.name, base.arena_allocator(&ks.arena))] = n
+	name := strings.clone(best.name, base.arena_allocator(&ks.arena))
+	append(&ks.sets, Key_Set{key = {best.kind, name}})
+	n := u32(len(ks.sets))
+	ks.single[best.kind][name] = n
 	return n
 }
 

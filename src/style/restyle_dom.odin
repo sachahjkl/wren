@@ -82,6 +82,7 @@ Walker :: struct {
 	results:  [dynamic]Result,
 	defer_subtrees: bool,
 	defer_forced: bool,   // frames forced by a parent that changed (not only subtrees restyled whole) go to the threads too
+	defer_big: bool,      // an element that changed what a large subtree inherits: that subtree goes to the threads, restyled whole
 	deferred: [dynamic]Frame,
 	changed, marked: int,
 	layout_changed: bool,
@@ -319,14 +320,15 @@ key_lookup_of :: proc(m: ^Marker, set: u32) -> ^Key_Lookup {
 	l := new(Key_Lookup, a)
 	l.classes, l.ids, l.types = make(map[string]struct{}, 16, a), make(map[string]struct{}, 4, a), make(map[string]struct{}, 4, a)
 	l.attrs = make([dynamic]string, 0, 4, a)
-	for k in key_set_keys(&m.e.key_sets, set) {
+	key_set_each(&m.e.key_sets, set, l, proc(user: rawptr, k: Subject_Key) {
+		l := (^Key_Lookup)(user)
 		switch k.kind {
 		case .Class: l.classes[k.name] = {}
 		case .Id: l.ids[k.name] = {}
 		case .Type: l.types[k.name] = {}
 		case .Attr: append(&l.attrs, k.name)
 		}
-	}
+	})
 	m.key_maps[set] = l
 	return l
 }
@@ -339,7 +341,6 @@ mark_keyed :: proc(m: ^Marker, h: base.Handle, set: u32) {
 	done := [2]u64{u64(h), u64(set)}
 	if done in m.keyed { return }
 	m.keyed[done] = true
-	if len(key_set_keys(&m.e.key_sets, set)) == 0 { mark(m, h, true); return }
 	keys := key_lookup_of(m, set)
 	stack := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
 	append(&stack, h)
@@ -477,7 +478,7 @@ has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Chang
 // or of anything: every anchor is concerned).
 @(private = "file")
 Has_Change :: struct {
-	kind:  enum u8 { None, Class, Id, Attr, Tree },   // Tree: elements came or went (mask: which watched features they held; known: it was looked at)
+	kind:  enum u8 { None, Class, Id, Attr, Tree, Empty },   // Tree: elements came or went (mask: which watched features they held; known: it was looked at); Empty: an element's text came or went
 	name:  string,
 	mask:  u64,
 	known: bool,
@@ -491,6 +492,7 @@ has_tests :: proc(f: Has_Feat, c: Has_Change) -> bool {
 	case .Class: return c.name in f.classes
 	case .Id: return c.name in f.ids
 	case .Attr: return c.name in f.attrs
+	case .Empty: return f.empty
 	}
 	return true
 }
@@ -499,7 +501,7 @@ has_tests :: proc(f: Has_Feat, c: Has_Change) -> bool {
 empty_changed :: proc(m: ^Marker, p: base.Handle) {
 	for ix in ixs_for(m, p) {
 		if reach_any(ix.empty) { apply(m, p, ix.empty) }
-		if ix.has_empty { has_invalidate(m, p, false) }
+		if ix.has_empty { has_invalidate(m, p, false, Has_Change{kind = .Empty}) }
 	}
 }
 
@@ -1226,6 +1228,14 @@ walk :: proc(w: ^Walker, start: []Frame) {
 				if f.parent == nil && (nc.font_size != s.root_font_size || used_line_height(nc, s.line_height_normal) != s.root_line_height) { w.root_font = true }
 			}
 			cur = nc
+			if inh_changed && !sub && w.defer_big && subtree_over(doc, f.h, w.e.settings.inc_parallel_min) {
+				child_bloom := f.bloom
+				bloom_add_element(&child_bloom, n)
+				for ch := dom.flat_first_child(doc, f.h); ch != base.NIL_HANDLE; ch = dom.flat_next(doc, ch) {
+					if is_element_node(doc, ch) { append(&w.deferred, Frame{h = ch, parent = cur, bloom = child_bloom, force = true, sub = true, ctx = child_ctx(w.p, f.h, f.ctx, ch)}) }
+				}
+				continue
+			}
 		} else {
 			sib_pass_by(w.p, n, int(f.depth))
 		}
@@ -1248,6 +1258,24 @@ walk :: proc(w: ^Walker, start: []Frame) {
 	}
 }
 
+// More than `limit` elements under `h`.
+@(private = "file")
+subtree_over :: proc(doc: ^dom.Document, h: base.Handle, limit: int) -> bool {
+	n := 0
+	stack := make([dynamic]base.Handle, 0, 64, context.temp_allocator)
+	append(&stack, h)
+	for len(stack) > 0 {
+		x := pop(&stack)
+		for ch := dom.flat_first_child(doc, x); ch != base.NIL_HANDLE; ch = dom.flat_next(doc, ch) {
+			if !is_element_node(doc, ch) { continue }
+			n += 1
+			if n > limit { return true }
+			append(&stack, ch)
+		}
+	}
+	return false
+}
+
 @(private = "file")
 Par_Task :: struct {
 	w:      Walker,
@@ -1268,7 +1296,7 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 	doc := w.doc
 	s := w.s
 	threads := host.thread_pool_size(pool)
-	w.defer_subtrees, w.defer_forced = false, false
+	w.defer_subtrees, w.defer_forced, w.defer_big = false, false, false
 	// subtrees restyled whole: their tops are expanded until there are enough to go round; frames that only have to be
 	// restyled (marked, or forced) go as they are, their walk below them being the thread's
 	frontier := make([dynamic]Frame, 0, len(w.deferred), context.temp_allocator)
@@ -1411,7 +1439,9 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	}
 	if m.removed_any { s.removed_any = true }
 
-	w.defer_subtrees = pool != nil && host.thread_pool_size(pool) > 1 && work >= e.settings.inc_parallel_min
+	w.defer_big = pool != nil && host.thread_pool_size(pool) > 1
+	w.defer_subtrees = w.defer_big && work >= e.settings.inc_parallel_min
+	w.defer_forced = w.defer_subtrees   // (marked one by one, a third of a document on this thread cost more than a full pass on all of them)
 	if len(m.marked) > 0 {
 		start := make([dynamic]Frame, 0, 4, context.temp_allocator)
 		root := dom.get(doc, doc.root)
@@ -1487,7 +1517,8 @@ restyle_roots :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, p: ^Pass, root
 		}
 	}
 	w := Walker{e = e, s = s, doc = doc, p = p, arena = &s.arena, marks = marks}
-	w.defer_forced = pool != nil && host.thread_pool_size(pool) > 1 && len(roots) >= e.settings.media_parallel_min
+	w.defer_big = pool != nil && host.thread_pool_size(pool) > 1
+	w.defer_forced = w.defer_big && len(roots) >= e.settings.media_parallel_min
 	w.defer_subtrees = w.defer_forced
 	start := make([dynamic]Frame, 0, 4, context.temp_allocator)
 	top := dom.get(doc, doc.root)

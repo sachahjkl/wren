@@ -167,3 +167,12 @@ custom_layer_owns_its_strings :: proc(t: ^testing.T) {
 	_, gone := custom_get(p, "--gone")
 	testing.expect(t, !gone)
 }
+// Sets alike are told by their digests: nothing of them is read, whatever their layers.
+@(test)
+custom_properties_equal_sets_are_not_read :: proc(t: ^testing.T) {
+	a, b := custom_begin(nil, CUSTOM_TEST_LAYERS, context.temp_allocator), custom_begin(nil, CUSTOM_TEST_LAYERS, context.temp_allocator)
+	custom_set(a, "--a", "1")
+	custom_set(b, "--a", "1")
+	b.values = nil
+	testing.expect(t, custom_equal(a, b))
+}

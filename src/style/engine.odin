@@ -65,11 +65,15 @@ Entry :: struct {
 
 // Most keys of the index hold one or two entries.
 KEY_ENTRIES_RESERVE :: 2
+// A selector whose subject is an :is() is listed under each of its alternatives, up to this many: past them it is tried for every element.
+INDEX_ALTERNATIVES_MAX :: 16
 
 Index :: struct {
 	by_id, by_class, by_tag: map[string][dynamic]Entry,
 	by_attr:                 map[string][dynamic]Entry,   // [name=value]: key is name, NUL, value
 	attr_names:              map[string]bool,             // names used by by_attr, so elements skip the other attributes
+	by_attr_name:            map[string][dynamic]Entry,   // [name], [name^=value]...: the elements that have the attribute are tried
+	root:                    [dynamic]Entry,              // :root: the document element alone is tried
 	universal:               [dynamic]Entry,
 	backdrop:                [dynamic]Entry,   // ::backdrop, whatever its subject: tried for the elements of the top layer only
 }
@@ -271,7 +275,8 @@ index_free :: proc(ix: ^Index) {
 	for _, v in ix.by_class { delete(v) }
 	for _, v in ix.by_tag { delete(v) }
 	for k, v in ix.by_attr { delete(k); delete(v) }
-	delete(ix.by_id); delete(ix.by_class); delete(ix.by_tag); delete(ix.by_attr); delete(ix.attr_names); delete(ix.universal); delete(ix.backdrop)
+	for _, v in ix.by_attr_name { delete(v) }
+	delete(ix.by_id); delete(ix.by_class); delete(ix.by_tag); delete(ix.by_attr); delete(ix.by_attr_name); delete(ix.attr_names); delete(ix.root); delete(ix.universal); delete(ix.backdrop)
 	ix^ = {}
 }
 
@@ -746,38 +751,80 @@ bucket_add :: proc(e: ^Engine, ent_in: Entry) {
 		e.fresh_other ||= e.fresh_on
 		if host_only { return }
 	}
+	into(&rs.index, ent, last)
+	if e.fresh_on { into(&e.fresh.index, ent, last) }
+}
+
+@(private = "file")
+into :: proc(ix: ^Index, ent: Entry, comp: css.Compound) {
+	// (the UA's `::backdrop` and Tailwind's `*, ::before, ::after, ::backdrop` would be tried for every element)
+	if ent.complex.pseudo_element == .Backdrop { append(&ix.backdrop, ent); return }
+	if fill(ix, ent, comp) { return }
+	// a compound of an :is() of such goes to the list of each alternative: an element with two of them gets the entry twice, which changes
+	// nothing in what it matches
+	for &s in comp.simples {
+		if s.kind != .Pseudo_Class || (s.pseudo != .Is && s.pseudo != .Where) || s.list == nil { continue }
+		if len(s.list^) > INDEX_ALTERNATIVES_MAX || !alternatives_keyed(s.list^) { continue }
+		for &c in s.list^ { fill(ix, ent, c.compounds[len(c.compounds) - 1]) }
+		return
+	}
+	append(&ix.universal, ent)
+}
+
+@(private = "file")
+add :: proc(m: ^map[string][dynamic]Entry, key: string, ent: Entry, own_key := false) {
+	list, ok := m[key]
+	if !ok && own_key { m[strings.clone(key)] = {} }   // the key is a temporary: the map keeps its own copy
+	if !ok { list = make([dynamic]Entry, 0, KEY_ENTRIES_RESERVE) }
+	append(&list, ent)
+	m[key] = list
+}
+
+// Into the list of what the compound requires of an element, the rarest first. False: it requires nothing that has a list.
+@(private = "file")
+fill :: proc(ix: ^Index, ent: Entry, comp: css.Compound) -> bool {
 	var_id, var_class, var_tag: string
-	var_attr: ^css.Simple
-	for &s in last.simples {
+	var_attr, var_attr_name: ^css.Simple
+	root := false
+	for &s in comp.simples {
 		#partial switch s.kind {
 		case .Id: if var_id == "" { var_id = s.name }
 		case .Class: if var_class == "" { var_class = s.name }
 		case .Type: if var_tag == "" { var_tag = s.name }
-		case .Attribute: if var_attr == nil && s.op == .Equals && !s.ci { var_attr = &s }
+		case .Attribute:
+			if var_attr == nil && s.op == .Equals && !s.ci { var_attr = &s }
+			if var_attr_name == nil { var_attr_name = &s }
+		case .Pseudo_Class: root ||= s.pseudo == .Root
 		}
 	}
-	add :: proc(m: ^map[string][dynamic]Entry, key: string, ent: Entry, own_key := false) {
-		list, ok := m[key]
-		if !ok && own_key { m[strings.clone(key)] = {} }   // the key is a temporary: the map keeps its own copy
-		if !ok { list = make([dynamic]Entry, 0, KEY_ENTRIES_RESERVE) }
-		append(&list, ent)
-		m[key] = list
+	switch {
+	case var_id != "": add(&ix.by_id, var_id, ent)
+	case var_class != "": add(&ix.by_class, var_class, ent)
+	case var_attr != nil:
+		add(&ix.by_attr, strings.concatenate({var_attr.name, "\x00", var_attr.value}, context.temp_allocator), ent, own_key = true)
+		ix.attr_names[var_attr.name] = true
+	case var_tag != "": add(&ix.by_tag, var_tag, ent)
+	case var_attr_name != nil: add(&ix.by_attr_name, var_attr_name.name, ent)
+	case root: append(&ix.root, ent)
+	case: return false
 	}
-	fill :: proc(ix: ^Index, ent: Entry, var_id, var_class, var_tag: string, var_attr: ^css.Simple) {
-		switch {
-		// (the UA's `::backdrop` and Tailwind's `*, ::before, ::after, ::backdrop` would be tried for every element)
-		case ent.complex.pseudo_element == .Backdrop: append(&ix.backdrop, ent)
-		case var_id != "": add(&ix.by_id, var_id, ent)
-		case var_class != "": add(&ix.by_class, var_class, ent)
-		case var_attr != nil:
-			add(&ix.by_attr, strings.concatenate({var_attr.name, "\x00", var_attr.value}, context.temp_allocator), ent, own_key = true)
-			ix.attr_names[var_attr.name] = true
-		case var_tag != "": add(&ix.by_tag, var_tag, ent)
-		case: append(&ix.universal, ent)
+	return true
+}
+
+// Every alternative of an :is() requires something of the element that has a list of its own.
+@(private = "file")
+alternatives_keyed :: proc(list: css.Selector_List) -> bool {
+	for &c in list {
+		if len(c.compounds) == 0 || c.pseudo_element != .None { return false }
+		keyed := false
+		for &s in c.compounds[len(c.compounds) - 1].simples {
+			#partial switch s.kind {
+			case .Id, .Class, .Type, .Attribute: keyed = true
+			}
 		}
+		if !keyed { return false }
 	}
-	fill(&rs.index, ent, var_id, var_class, var_tag, var_attr)
-	if e.fresh_on { fill(&e.fresh.index, ent, var_id, var_class, var_tag, var_attr) }
+	return len(list) > 0
 }
 
 @(private)
