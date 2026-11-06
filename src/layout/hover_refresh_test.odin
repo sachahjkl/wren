@@ -71,6 +71,27 @@ inline_transform_refreshes :: proc(t: ^testing.T) {
 	testing.expectf(t, f.l.last_pass != .Refresh, "another attribute is not taken for a style (%v)", f.l.last_pass)
 }
 
+// An anonymous box holds what its parent passes on: a custom property that changes alone is paint-only, and the table it had goes with
+// the old record (what layout.incremental.verify found on cnn.com, a flex item made of text under an element whose variable moved).
+@(test)
+refresh_gives_anonymous_boxes_their_custom_properties :: proc(t: ^testing.T) {
+	f := fixture_load(`<div id=x style="display: flex; --v: 1">text<p>p</p></div>`, o = {journal = true})
+	defer fixture_unload(f)
+	x := dom.find_by_id(f.doc, "x")
+	dom.set_attribute(f.doc, x, "style", "display: flex; --v: 2")
+	_, ok := style.restyle_dom(f.eng, f.doc, f.st)
+	testing.expect(t, ok, "restyled in place")
+	fixture_run(f)
+	testing.expectf(t, f.l.last_pass == .Refresh, "a custom property alone: a refresh (%v)", f.l.last_pass)
+	anon := 0
+	for &b in f.l.boxes {
+		if .Dead in b.flags || b.node != base.NIL_HANDLE || b.parent == NONE || f.l.boxes[b.parent].node != x { continue }
+		anon += 1
+		testing.expect(t, b.cs.custom == style.style_of(f.st, x).custom, "the table of its parent's record")
+	}
+	testing.expect(t, anon > 0, "the text is in an anonymous box")
+}
+
 @(test)
 hover_refreshes_one_link_of_alike_ones :: proc(t: ^testing.T) {
 	f := fixture_load(HOVER_LINKS, o = {journal = true})

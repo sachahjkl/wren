@@ -103,6 +103,7 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 			pc := l.boxes[b.parent].cs
 			// its inherited group is the parent's (anon_style): the one of a restyled parent, the old one being in an arena that may be gone
 			b.cs.inherited_group = pc.inherited_group
+			b.cs.custom = pc.custom   // (its custom properties too: paint-only values may be all that changed, with them; and that table goes with the old record)
 			for p in anon { style.copy_prop(b.cs, pc, p) }
 			continue
 		}
