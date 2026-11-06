@@ -2632,6 +2632,62 @@ out of date until the next tick (a whole task without movement, every other task
 hit element from the layout, but what a rule gives it is a restyle, and the cascade writes the styles it reads; a table of what each `:hover` rule would give, made at the page's turn, is
 as long as the rules that match. Left for the day a page shows the need.
 
+## What changed, round 33: the style work that holds heavy loads on the window thread
+
+The first item of the list after round 31. Development builds, `wrentool waterfall`, each load in a fresh process with a throwaway profile, base (d594ba72) and round interleaved, the order turning, 5 runs, median (range), ms; public sites. The Edge figures are those this list has kept since rounds 30 and 31. ETW was not used (elevation), nor Tracy: `WREN_RESTYLE_TRACE` and the sampler under `page::styles` said what was needed.
+
+**The rule nobody had found.** `WREN_RESTYLE_TRACE` now says, for every subtree marked whole, which line marked it and for which mutation (the mutation, the attribute's two values), and one line per pass. On cnn.com it was not a rule, it was a union. What reads an element's place among its siblings was one `Reach` for the whole page: `pos_fwd`, `pos_bwd`, `sib_rel` were each the union of all the rules' reaches, and a union of sets of subjects past 64 keys, or with one `*` in it, is no set. A real cnn.com, printed by that trace:
+
+```
+pos_fwd: self, desc, all_next, sib_desc, set = 0
+sib_rel: self, desc, next = 1, set = 0     (.zone--t-dark + .flex-experiment :is(...), .flex-experiment[data-flex-zone-theme] + :is(...))
+keyless: desc, all_next, all_prev, sib_desc, set = 0     (.flex-variant *)
+```
+So a `<div>` added to `<body>`, a banner, marked every following child of `<body>` whole, through `:last-child` and `:nth-last-child(1 of .zone)` compounds; removed, every child of it (`children_removed` walked all children whatever had happened, with a `mark` that ignored even the sets). `.layout__content-wrapper` and `header` are children of `<body>`: 3 467 + 769 elements, for six mutations. It took three faults to make it: the union, the removal's walk of all the children, and `*` compounds' reach under an element spoiling the set of what they reach beside it. The earlier note of a sibling combinator was right and incomplete.
+
+Fixed, each with its test, all seen failing without the fix:
+1. **Positions and sibling relations are read by key** (`Keyed_Reach`): the reach of `.x:first-child .y` is kept under `.x`, of `.x + .y .z` under `.y`, looked up from the classes, id and tag of the element the walk meets; `:is()` and `:nth-child(of S)` by the keys of their alternatives. `restyle_dom_insertion_reaches_by_the_key_of_the_position`, `restyle_dom_nth_of_selector_is_read_by_its_keys`.
+2. **A removal is read from where it was**, as an insertion: the journal had the neighbours all along. Forward positions from the next element, backward ones from the previous, relations from the next one, and what the removed element's own features reached, each feature apart (a union would be as wide as the widest). When that cannot be told (the neighbour left too, the element is destroyed, an attribute of it changed in the same batch: what it showed its siblings is not what it has), all the children, by key. `restyle_dom_removal_reaches_what_follows_it`, `restyle_dom_removed_element_as_it_was`; `restyle_dom_random` has six seeds and eleven more sibling rules.
+3. **Subjects**: an attribute is a key, an `:is()` subject is the keys of its alternatives, keyless compounds keep what they reach beside an element apart from what they reach under it, a set has no limit of size: looked up by the element's keys (`Key_Lookup`), not compared key by key. `restyle_dom_subjects_of_is_and_attributes`, `restyle_dom_keyless_reach_keeps_its_subjects`, `restyle_dom_many_subjects_stay_a_set`.
+4. **Key sets are unions kept as such** (`Key_Set`): made list by list and sorted, with limits gone, they were 13 % of `page::styles`, for sets most of which nobody ever reads. `restyle_dom_unions_of_subjects_are_kept`.
+5. **`has_flip` by bits made once a batch** (`Flip_Above`): each answer walked every member up to the root. Now the members are walked up once, stopping at a bit already set. `restyle_dom_has_flips_walk_the_members_once` (a count of steps). A class attribute rewritten above a member no longer dirties a chain that names no class that came or went: `layout  cnn` to `layout cnn` on `<body>` marked every anchor (`restyle_dom_has_chain_reads_the_classes_that_changed`). A text that comes or goes concerns the anchors that read `:empty` (`restyle_dom_text_reaches_the_anchors_of_empty`: 9 % of `page::styles`). Attributes no `:has()` names go through no anchor (`restyle_dom_attributes_no_has_reads_cost_the_anchors_nothing`).
+6. **Marks by handle index**, an array of bytes instead of a map; `estimate` is the walk's own way down the marks, stopped past the limit, where it walked up from each mark.
+
+**Why a partial restyle of a third of a document cost more than a full pass** (round 31's question): one thread against seven. A subtree forced by what it inherits, or elements marked one by one, stayed on the window thread: 4 348 elements, all changed, 230 to 300 ms, a full pass of 11 000 costing 70. An inherited change that reaches more than `style.incremental.parallel_min` elements now goes to the threads as a subtree marked whole does, and so do marks past that number. `restyle_dom_parallel_what_an_inherited_change_forces`.
+
+**Rules tried.** A count of what was tried on cnn.com: 4.8 million selectors for 54 000 elements matched, 88 an element after the Bloom filter, 50 of them for every element: thirteen `:root` rules, `[dir]`, `[hidden]`, `[popover]`, `:is(...)`. Rules are now listed by attribute name, `:root` apart, and under each alternative of an `:is()` subject of keys (`rules_are_listed_by_what_their_subject_requires`).
+
+**Full passes that had no reason.** A sheet that goes (`restyle_departures`): its rules stay in force until the mutations are marked, so that an element that stopped matching one of them with the same mutations is found; then its entries move out of the index into `Engine.fresh`, the elements are run through them, those that match are restyled; the sheet's memory stays until the next rebuild, the invalidation index pointing into it, and it is a superset of the rules until then. A `<style>` rewritten is one that goes and one that comes. An `@import` keeps numbers in its sheet (`IMPORT_ORDER_GAP`) and arrives as a sheet does. A sheet whose `media` comes true, `media=print onload=...`, arrives. An element forced hidden is restyled alone (`restyle_hidden`): every image a blocker collapsed made a full pass. The end of parsing and `document.fonts.add` make none. Found on the way: **a face added to `document.fonts` was dropped by the next read of the sheets**, having no element, and its slot pointed at freed memory.
+
+cnn.com, profile builds, 3 runs each interleaved, the first of each on a loaded machine and left out, ms (the build counted per process):
+
+| | base | round |
+|---|---|---|
+| full passes | 28: 1 433, 1 466 | 8: 579, 353 |
+| ... "too much changed" | 19: 931, 937 | 1: 33, 35 |
+| partial passes after the DOM | 246: 638, 619 | 265: 850, 939 |
+| readings' forced layouts, style included | 2 236, 2 256 | 1 608, 1 490 |
+| samples under `page::styles` | 1 196, 1 183 | 782, 829 |
+
+Base and round, 5 runs, a quiet machine; Edge from the list:
+
+| | load before | load after | CPU before | CPU after | DOMContentLoaded before | after | Edge load |
+|---|---|---|---|---|---|---|---|
+| cnn.com | 6 285 (5 936-11 198) | **5 286 (4 724-7 236)** | 11 938 (11 594-17 594) | **7 641 (7 406-11 344)** | 2 799 (2 649-5 149) | **2 093 (2 024-3 162)** | 900 |
+| theverge.com | 6 451 (6 359-6 792) | 5 971 (5 829-10 915) | 10 578 (10 188-11 438) | 9 438 (8 703-15 141) | 926 (891-942) | 894 (859-3 150) | 2 300 |
+| npr.org | 4 937 (4 677-5 941) | 4 615 (4 533-4 909) | 7 125 (6 625-8 891) | 6 328 (6 062-6 781) | 2 354 (2 289-2 833) | 2 379 (2 297-2 566) | 1 500 |
+| bbc.com/news | 2 847 (2 544-2 967) | 2 862 (2 451-3 121) | 3 953 (3 594-4 000) | 3 938 (3 672-4 125) | 620 (576-626) | 607 (569-762) | 600 |
+
+Read plainly. **cnn.com is the sure result**: -16 % on the load, -25 % on DOMContentLoaded, -36 % of CPU, ranges separate but for one loaded run on each side, and in two earlier series of the round the same (7 388 -> 6 133; DOMContentLoaded 2 943 -> 2 194, CPU 12 172 -> 8 797, whose load was 6 723 -> 6 462 with ranges meeting). theverge.com: -7 % here, -14 % in both earlier series, lower ends separate each time, CPU -11 to -17 %: a gain, of about that size. npr.org: -6 % here, ranges meeting, within noise in the two earlier series; its CPU -7 to -11 %. bbc.com/news: nothing: 38 style passes that cost 140 ms. **Wren stays 2.6 to 5.9 times Edge** (theverge.com 2.6, npr.org 3.1, bbc.com/news 4.8, cnn.com 5.9). What holds these loads now is what held them before style: `page::styles` is a fifth of cnn.com's busy window thread, and 6 % or less of the others'.
+
+`style.incremental.verify` on the four pages, every partial pass against a full one, 370 passes: no difference. WPT: css/css-nesting, css/css-shadow, css/cssom, scroll-animations/css, dom/nodes: no regression. `test_all -Quick -NoAsan`: 198 steps pass; `unit tests: httpcache` failed once in that run, two tests of a memory failure in code this round does not touch, and passed three times alone: not looked into.
+
+**Measured, not done.**
+- **`getComputedStyle` that styles only the ancestors of its element.** What it costs is the style pass: `js_layout_now` 897 samples, `page::styles` under it 877: layout is 2 % of a forced read, so a style-only read saves nothing, as round 31 said. The chain alone would put off a pass that the next geometry read, `element_geometry` as many samples as `js_dom_styled`, asks for anyway; with marks kept between passes, restyled elements settled twice and transitions read from what the chain has seen. Worth at most 5 % of the style work; not done.
+- **Class bits in partial passes**: `matches_simple` is a fifth of `page::styles`, and a full pass has what a partial one has not, the classes of each element as bits. Not tried: a tenth of that at best.
+- A full pass in itself: 45 to 70 ms now, for 12 000 elements. Its window thread share is small (rebuild 6 ms, `compute_styles` 17 ms without what it takes of the tasks, `css_note_element` 10); the eight that remain are passes without a reason to find (`an environment change`, `@keyframes that elements use`, `form controls inserted`).
+
+**Left.** Mid-sheet `insertRule` and `deleteRule` still rebuild. `restyle_needed` with no more said of it (`an environment change`, the empty reason): 2 to 4 passes on each of these pages, not identified. `:has()` anchors that are not exact (a sibling combinator in the argument, `unkeyed`) answer no flip. `mark_keyed` scans a subtree once per element and set: sets of one root could share a scan (6 % of `page::styles`).
 ## What changed, round 34: what the Wasm of the engine really runs
 
 The engine's share of a heavy load, read this time in the code it compiles to. Development builds, `wrentool waterfall`, each load in a fresh process with a throwaway profile, one browser and two engine images by `WREN_JS_IMAGE`, base (d594ba72) and round interleaved, the order turning, 5 runs, median (range), ms; public sites, other agents at work on the machine.
@@ -2704,6 +2760,7 @@ Read plainly. **npr.org: -13 %, ranges separate**, its CPU too. **cnn.com: -21 %
 
 Tests: `jsengine cost` (`cost.js`, 19 cases, limits a tenth over: the base fails 15 of them), `hotcheck.js` (passes in Node), jitcheck and recursion interpreted and compiled, `build\test_all.exe -Quick -NoAsan`: no step failed.
 
+||||||| parent of eb61d939 (Round 33 in docs/performance.md)
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -2884,8 +2941,10 @@ After round 30. A heavy page's load is the window thread's, busy from the first 
 
 After round 31. "A call through one site" was the wrong name for npr.org's first item: what cost was inside the callees, one instruction in eight of what real pages run leaving the interpreter's hot loop (round 31: `this`, element reads of names, bitwise operators on doubles, `===` of strings, closures, object literals). In order: **cnn.com's full style passes** (18 of 27 for "too much changed", 4 200 of 11 200 elements marked whole by half a dozen mutations on `div`s: which rule; a partial restyle of a third of the document is slower than a full pass, why); **what the engine costs on a page, whatever the path**: a call of a function is 900 of a method call's Wasm instructions (`frame_push`, `hot_return`), a callback from a native a nested `interp_run` (2 600 an element of `forEach`); `new` the same; a compiler for a load (a baseline, Winch not tried); then the collection (10 to 13 % of the engine: generations), a lazy `prototype`; `getComputedStyle` without layout is worth 5 to 10 ms a call, no more. Measure with `jsengine cost` first: wall time on this machine, these weeks, says little under 10 %.
 
+After round 33. The first item of the list after round 31 is done for what it named: cnn.com's marks were unions of reaches, not a rule; 28 full passes are 8, the load -16 %, its CPU -36 % (round 33). A forced read's cost is the style pass, not layout. What leads now, on all four pages, is the engine: the list after round 31 from its second item on. Of style: what `restyle_needed` is asked for, mid-sheet `insertRule`, `mark_keyed`.
 After round 34. Reading the machine code paid more than any profile so far. In order: **the epoch check** (12 to 20 % of all the engine's code: an engine of its own for the JavaScript image, polls in the natives); **what a first paint waits for in a frame** (bbc.com/news: three timers of 300 to 430 ms before it); compile on arrival by default (DOMContentLoaded -18 to -32 % on two pages, 3 runs); verification at the first closure; `set_property` of a new key without the walk of the prototypes; then the callback from a native, the collection. `-o:speed` is the engine's level now: what is said above of -o:size is history.
 
+||||||| parent of eb61d939 (Round 33 in docs/performance.md)
 1. **The script stage of DOM-heavy pages, what is left** (`js_nodes10k` on a quiet machine after round 25, 5 runs: a frame of 16.9 ms
    (16.8 to 17.4), the Animation phase 10.5 ms, where this list kept 17.7 and 11.8; the 20.6 to 29.5 ms first noted for that day were
    the load of the agents working beside the measure, nothing to bisect). In order of the engine's samples: the interpreter itself (`interp_hot` 17 % before round 15's 15 to 25 %
