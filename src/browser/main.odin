@@ -126,6 +126,7 @@ Tab :: struct {
 	smooth:   Smooth_Scroll,     // scroll animations and scroll bar drags (smooth_scroll.odin)
 	nav_state: Tab_Nav,          // restoring entries, leaving pages, the back/forward cache (history_restore.odin, bfcache.odin)
 	frame:    ^Frame_View,       // non-nil: the stand-in tab of a frame's document, not a tab (frames_shell.odin)
+	keyboard_frame: Frame_Document,   // keyboard.odin: the frame document that had the keyboard when another tab took the window
 	pinned:   bool,              // tab_groups.odin: at the start of the window's tabs, its icon alone
 	group:    u64,               // tab_groups.odin: the id of its group in its window (0: none)
 	muted:    bool,              // tab_sound.odin: its pages make no sound (they are not told)
@@ -240,7 +241,6 @@ App :: struct {
 	outline_cache: map[u64]^canvas2d.Path,   // canvas_shell.odin: the outlines of the canvases' text
 	frame_views:   map[^page.Page]^Frame_View,   // frames_shell.odin: the views of the frames (iframes) of the pages
 	paint_stack:   [dynamic]^page.Page,      // frames_shell.odin: the documents being painted, innermost last
-	page_focus_leave_backward: bool,         // forms_shell.odin: Shift+Tab left the page before its first element
 	os_anim:       Os_Anim,                  // os_settings.odin
 	font_watch, text_watch: int,             // font_settings.odin: the preference watches
 	look_watch:    Look_Watch,               // appearance_windows.odin: the system's colours, read and watched
@@ -307,7 +307,7 @@ tab_open :: proc(app: ^App, address := "", from: ^page.Page = nil, origin := Nav
 	wnd := active_window(app)
 	t := tab_new(app)
 	wnd.current = len(wnd.tabs) - 1
-	ui.field_set(&wnd.address, address)
+	if address != "" { t.url = strings.clone(address) }   // (what the field shows until navigate says better: that may wait for the page holding the thread)
 	// an empty address opens the homepage; one that is refused (nav_trust.odin) leaves the homepage too, not an empty tab
 	if !navigate(app, t, address, from, origin = origin) { navigate(app, t, "") }
 	return t
@@ -317,7 +317,8 @@ tab_open :: proc(app: ^App, address := "", from: ^page.Page = nil, origin := Nav
 // when browser.newtab.focus_address says so (on by default, as Chromium does).
 tab_open_new :: proc(app: ^App) -> ^Tab {
 	t := tab_open(app)
-	if config.bool_of(&app.prefs, "browser.newtab.focus_address") { active_window(app).focus_address = true }
+	address_sync(app, active_window(app), drop_edit = true)   // (the user asked for a new tab: what was typed is not for it)
+	if config.bool_of(&app.prefs, "browser.newtab.focus_address") { window_ask(app, .Address_Focus) }
 	return t
 }
 
@@ -357,7 +358,6 @@ tab_close_in :: proc(app: ^App, w: ^Browser_Window, index: int) {
 	} else {
 		if index < cur^ { cur^ -= 1 }   // (the tabs after it shift down: the current one stays the current one)
 		cur^ = clamp(cur^, 0, len(tabs) - 1)
-		ui.field_set(window_address(app, w), tabs[cur^].url)
 	}
 	recovery_touch(app)
 }
@@ -441,6 +441,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	}
 	if verdict.refuse != "" { nav_refused(t, from, target, verdict.refuse); return false }
 	accepted = true   // (from here on the early returns of the built-in pages are acceptances)
+	address_let_go(app, t)
 	target = verdict.address
 	cache_prof_leave(t)   // (profile build: what the page cost, http_cache_ui.odin)
 	// a window's initial about:blank stays, shown and in its scope, until the response says whether its Window is the next
@@ -504,7 +505,6 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	t.url = strings.clone(shown)
 	delete(t.title)
 	t.title = default_tab_title(shown, context.allocator)   // until the document says better (favicon.odin)
-	address_set(app, t, shown)
 	set_status(t, "loading...")
 
 	load.task = fetch.start(&app.loader, {
@@ -582,7 +582,6 @@ go_entry :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry) {
 same_document_url :: proc(app: ^App, t: ^Tab, address: string) {
 	delete(t.url)
 	t.url = strings.clone(address)
-	address_set(app, t, address)
 	recovery_touch(app)
 }
 
@@ -642,7 +641,6 @@ page_open_window :: proc(user: rawptr, p: ^page.Page, req: page.Open_Request) ->
 	if page.open_is_blank(req.url) {
 		delete(t.url)
 		t.url = strings.clone(req.url)
-		address_set(app, t, t.url)
 	} else {
 		navigate(app, t, req.url, req.source)   // (a noreferrer window still sends the Referer: the shell's navigations have no such option)
 	}
@@ -694,7 +692,6 @@ show_config :: proc(app: ^App, t: ^Tab) {
 	delete(t.url); t.url = strings.clone("about:config")
 	delete(t.title); t.title = strings.clone("Configuration")
 	set_status(t, "about:config")
-	address_set(app, t, "about:config")
 }
 
 // An HTML page the browser makes up when a load fails, so the tab always shows something readable.
@@ -760,7 +757,6 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		shown := load.view_source ? strings.concatenate({VIEW_SOURCE, r.url}, context.temp_allocator) : r.url
 		delete(t.url)
 		t.url = strings.clone(shown)
-		address_set(app, t, shown)
 		// an image is shown by a document the browser writes once the image is in (download.odin show_image_document)
 		if load.action == .Image && !load.view_source {
 			nav_to(app, t, .Responded)
@@ -1065,6 +1061,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	// notices go over the page, not over the title bar's window buttons
 	if pr := active_window(app).page_rect; pr.max.y > pr.min.y { ui.set_toast_area(pr) }
 	ui.toasts_build()
+	keyboard_follow(app)   // (what this build did to the focus: the paint asks who has the keyboard)
 }
 
 // href of the nearest <a> at or above `h`.
@@ -1929,7 +1926,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("interaction_destroy")
 	interaction_destroy(app)
 	host.shutdown_step("ui.field_destroy")
-	ui.field_destroy(&app.bare.address)   // (the windows' with their toolkit states: windows_destroy_ui)
+	address_destroy(&app.bare)   // (the windows' with their toolkit states: windows_destroy_ui)
 	host.shutdown_step("console_eval_destroy")
 	console_eval_destroy()
 	host.shutdown_step("session_destroy")

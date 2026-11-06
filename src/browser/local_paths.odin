@@ -1,6 +1,5 @@
 package browser
 
-import "toolkit:ui"
 import "wb:config"
 import "wb:fetch"
 
@@ -54,7 +53,6 @@ open_dropped_paths :: proc(app: ^App, paths: []string) {
 	// the first one is shown (the others wait in their tabs, as when links open in the background)
 	if first >= 0 && first < len(wnd.tabs) {
 		wnd.current = first
-		if t := current_tab(app); t != nil { ui.field_set(&wnd.address, t.url) }
 	}
 	request_frames(app, 3)
 }

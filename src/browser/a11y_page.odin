@@ -95,7 +95,7 @@ page_a11y_graft :: proc(app: ^App, t: ^Tab, pb: ^ui.Box) {
 	if !a11y.settings_from_prefs(&app.prefs).enabled { return }
 	ui.a11y_set(pb, {graft = page_tree_id(t.id)})
 	window_own(app).a11y.grafted = t.id
-	if forms_view(app).page_focus && ui.focus_key() == 0 { ui.a11y_focus_on(pb.key) }
+	if o := keyboard_owner(app); o == .Page || o == .Frame { ui.a11y_focus_on(pb.key) }
 }
 
 // After the chrome's build (its tree sent): the page's requests, then its tree and its frames' when they changed.
@@ -175,7 +175,7 @@ page_a11y_frame :: proc(app: ^App) {
 focus_chain :: proc(app: ^App, top: ^page.Page) -> []^page.Page {
 	out := make([dynamic]^page.Page, 0, 4, context.temp_allocator)
 	append(&out, top)
-	target := window_own(app).frames.focus
+	target := keyboard_of(app).frame
 	if target == nil || target == top { return out[:] }
 	find :: proc(p, target: ^page.Page, out: ^[dynamic]^page.Page) -> bool {
 		if p.frames == nil { return false }
@@ -222,7 +222,7 @@ doc_tree_update :: proc(app: ^App, pa: ^Page_A11y, d: ^Doc_Tree, t: ^Tab, viewpo
 	if p.doc == nil || f == nil { return false }
 	fc := Frame_Ctx{parent = p}
 	focus := base.NIL_HANDLE
-	if forms_view(app).page_focus {
+	if page_shows_focus(app) {
 		for doc, i in chain {
 			if doc != p { continue }
 			focus = i + 1 < len(chain) ? frame_element(p, chain[i + 1]) : f.focus
@@ -342,9 +342,7 @@ page_a11y_request :: proc(app: ^App, t: ^Tab, p: ^page.Page, r: platform.A11y_Re
 		page.click_element(p, h)
 	case .Focus:
 		if forms.focus(f, h, by_keyboard = true) {
-			forms_view(app).page_focus = true
-			window_own(app).frames.focus = t.frame != nil ? p : nil
-			ui.set_focus(0)
+			keyboard_take(app, t.frame != nil ? .Frame : .Page, p)
 			scroll_into_view(app, t, h)
 		}
 	case .Blur:

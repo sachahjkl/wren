@@ -118,7 +118,6 @@ chrome_start :: proc(t: ^testing.T, o := Chrome_Options{}, loc := #caller_locati
 		x.kind = .Web
 		append(&w.wnd.tabs, x)
 	}
-	ui.field_set(&w.wnd.address, w.wnd.tabs[0].url)
 	testing.cleanup(t, proc(p: rawptr) { chrome_end((^Chrome_World)(p)) }, w)
 	w.s = session.attach(t, {win = win, state = w.wnd.ui, renderer = o.pixels ? &app.r : nil, frame = chrome_frame, user = w}, loc)
 	session.frame(w.s)

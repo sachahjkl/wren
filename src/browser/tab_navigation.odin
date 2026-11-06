@@ -109,7 +109,6 @@ nav_cancel :: proc(app: ^App, t: ^Tab, load: ^Doc_Load, how: Nav_End) {
 	if t.hold.state != .None {
 		hold_step(app, t, .Back)
 		set_status(t, how == .Stopped ? "Stopped" : "Done")
-		address_set(app, t, t.url == HOME_URL ? "" : t.url)
 		return
 	}
 	if cur := page.session_current(&t.session); cur != nil {

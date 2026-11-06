@@ -274,5 +274,4 @@ show_cache_page :: proc(app: ^App, t: ^Tab, target: string, acts: bool) {
 	delete(t.url); t.url = strings.clone(shown)
 	delete(t.title); t.title = strings.clone("HTTP cache")
 	set_status(t, cleared ? "the HTTP cache was cleared" : CACHE_URL)
-	address_set(app, t, shown)
 }

@@ -90,7 +90,6 @@ show_blocker :: proc(app: ^App, t: ^Tab, address: string) {
 	delete(t.url); t.url = strings.clone(address)
 	delete(t.title); t.title = strings.clone(i18n.tr("Content blocker"))
 	set_status(t, "about:blocker")
-	address_set(app, t, address)
 	if i := strings.index_byte(address, '#'); i >= 0 {
 		frag := address[i + 1:]
 		for n, tb in DASH_NAMES { if n == frag { app.dash.tab = int(tb) } }
@@ -189,7 +188,6 @@ blocker_page :: proc(app: ^App, t: ^Tab) {
 				if ui.tabs("###bd_tabs", labels, nil, &app.dash.tab) {
 					a := fmt.tprintf("about:blocker#%s", DASH_NAMES[Dash_Tab(app.dash.tab)])
 					delete(t.url); t.url = strings.clone(a)
-					address_set(app, t, a)
 				}
 			}
 			ui.hline(ui.fill())

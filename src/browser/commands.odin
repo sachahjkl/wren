@@ -281,10 +281,10 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "nav.home", title = "Home", category = "Navigation", glyph = GLYPH_HOME, keywords = "start page homepage", keys = keys(&r.arena, {key = .Home, mods = alt}),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, app.cfg.homepage, origin = .User) }})
 	add(r, {name = "nav.focus_address", title = "Focus the address bar", category = "Navigation", keywords = "location url edit", keys = keys(&r.arena, {key = .L, mods = ctrl}, {key = .D, mods = alt}),
-		chrome_only = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { active_window(app).focus_address = true }})
+		chrome_only = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_ask(app, .Address_Focus) }})
 	add(r, {name = "nav.focus_toggle", title = "Address bar or page", category = "Navigation", keywords = "focus switch keyboard", keys = keys(&r.arena, {key = .F6}, {key = .F6, mods = shift}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) {
-			if ui.focus_key() != 0 && ui.focus_key() == address_key(app) { ui.set_focus(0); forms_focus_from_chrome(app, t, 1) } else { active_window(app).focus_address = true }
+			if keyboard_owner(app) == .Chrome_Field { forms_focus_from_chrome(app, t, 1) } else { window_ask(app, .Address_Focus) }
 		}})
 
 	// --- the interface's own zoom (chrome_zoom.odin)
@@ -321,7 +321,7 @@ commands_build :: proc(r: ^Command_Registry) {
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.url != "" },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { clip_set(t.url); ui.toast(.Info, "Address copied") }})
 	add(r, {name = "page.info", title = "Page information", category = "Page", glyph = GLYPH_INFO, keywords = "security certificate cookies connection",
-		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_own(app).page_info_request = true }})
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_ask(app, .Page_Info) }})
 	add(r, {name = "page.javascript_site", title = "JavaScript on this site", category = "Page", keywords = "script js enable disable block allow",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return tab_host(t) != "" },
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return js_on_for(&app.prefs, tab_host(t)) },
@@ -448,7 +448,7 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "browser.command_palette", title = "Command palette…", category = "Browser", keys = keys(&r.arena, {key = .P, mods = cs}, {key = .K, mods = ctrl, pref = "browser.palette.ctrl_k"}),
 		hidden = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { palette_toggle(app) }})
 	add(r, {name = "browser.main_menu", title = "Open the main menu", category = "Browser", keys = keys(&r.arena, {key = .F, mods = alt}, {key = .E, mods = alt}),
-		hidden = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_own(app).main_menu_request = true }})
+		hidden = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_ask(app, .Main_Menu) }})
 	add(r, {name = "browser.history", title = "History", category = "Browser", keywords = "about:history visited pages past", url = HISTORY_URL, keys = keys(&r.arena, {key = .H, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_history(app, t, false) }})
 	add(r, {name = "browser.downloads", title = "Downloads", category = "Browser", keywords = "about:downloads files saved folder progress", url = DOWNLOADS_URL, keys = keys(&r.arena, {key = .J, mods = ctrl}),
@@ -464,7 +464,7 @@ commands_build :: proc(r: ^Command_Registry) {
 	blocker_on := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.bl.started && app.bl.b.cfg.enabled }
 	web_http := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { _, ok := blocker_page_host(t); return ok && app.bl.started }
 	add(r, {name = "blocker.panel", title = i18n.tr("Blocker: open the panel"), category = "Blocker", keywords = "ads adblock shield tracker matrix",
-		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_own(app).blocker_panel_request = true; request_frames(app, 3) }})
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_ask(app, .Blocker_Panel); request_frames(app, 3) }})
 	add(r, {name = "blocker.picker", title = i18n.tr("Blocker: block an element\u2026"), category = "Blocker", keywords = "ads element picker zapper hide",
 		keys = keys(&r.arena, {key = .K, mods = cs}), enabled = web_http, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_picker_begin(app, t) }})
 	add(r, {name = "blocker.dashboard", title = i18n.tr("Blocker: dashboard"), category = "Blocker", keywords = "lists filters rules whitelist statistics", url = "about:blocker",

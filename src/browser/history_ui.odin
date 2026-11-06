@@ -86,7 +86,6 @@ show_history :: proc(app: ^App, t: ^Tab, address := HISTORY_URL) {
 	delete(t.url); t.url = strings.clone(address)
 	delete(t.title); t.title = strings.clone("History")
 	set_status(t, HISTORY_URL)
-	address_set(app, t, address)
 	if address == HISTORY_URL + "#tree" { app.hview.mode = 1 }
 	page.session_set_title(&t.session, "History")
 	if !app.hview.keep_tree || tab_by_id(app, app.hview.tree_tab) == nil { app.hview.tree_tab = t.id }
@@ -104,7 +103,7 @@ open_history :: proc(app: ^App, from: ^Tab, tree: bool) {
 			app.hview.keep_tree = false
 			tab_reveal(app, x)
 			a := tree ? HISTORY_URL + "#tree" : HISTORY_URL
-			if x.url != a { delete(x.url); x.url = strings.clone(a); address_set(app, x, a) }
+			if x.url != a { delete(x.url); x.url = strings.clone(a) }
 			return
 		}
 	}
@@ -334,7 +333,6 @@ history_page :: proc(app: ^App, t: ^Tab) {
 					// the address says which part is shown (a reload keeps it)
 					a := app.hview.mode == 1 ? HISTORY_URL + "#tree" : HISTORY_URL
 					delete(t.url); t.url = strings.clone(a)
-					address_set(app, t, a)
 					page.session_replace(&t.session, a, set_state = false)
 					sync_history(app, t)
 				}

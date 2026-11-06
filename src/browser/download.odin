@@ -432,7 +432,7 @@ download_from_navigation :: proc(app: ^App, load: ^Doc_Load, task: base.Handle, 
 	if !download_open_temp(app, d) {
 		download_fail(d, fmt.tprintf("cannot write in %s", d.dir))
 	} else {
-		window_own(app).downloads_panel_request = true   // the button's drop-down shows it running (downloads_ui.odin)
+		window_ask(app, .Downloads_Panel)   // the button's drop-down shows it running (downloads_ui.odin)
 		if app.dls.cfg.button == "never" { ui.toast(.Info, "Downloading %s", d.name) }
 		if app.dls.cfg.ask {
 			d.asking = true

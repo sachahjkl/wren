@@ -88,5 +88,4 @@ show_about_pages :: proc(app: ^App, t: ^Tab) {
 	delete(t.url); t.url = strings.clone(ABOUT_URL)
 	delete(t.title); t.title = strings.clone("Built-in pages")
 	set_status(t, ABOUT_URL)
-	address_set(app, t, ABOUT_URL)
 }

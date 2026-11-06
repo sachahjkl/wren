@@ -267,5 +267,4 @@ show_sites_page :: proc(app: ^App, t: ^Tab, target: string, acts: bool) {
 	delete(t.url); t.url = strings.clone(shown)
 	delete(t.title); t.title = strings.clone(i18n.tr("Site data"))
 	set_status(t, notice != "" ? notice : SITES_URL)
-	address_set(app, t, shown)
 }

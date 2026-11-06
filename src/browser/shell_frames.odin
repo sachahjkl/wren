@@ -161,7 +161,6 @@ Shell_Frames :: struct {
 	pending_scroll: draw.Vec2,   // scroll taken by chrome frames for the current tab's document (the wheel, the bar's thumb, the keys; device px)
 	pending_tab: u64,
 	boxes:      [dynamic]Box_Scroll,   // the containers of that tab's document chrome frames scrolled (the wheel, a bar's thumb: shell_shown.odin)
-	page_keyboard: bool,         // chrome frames: whether the page has the keyboard (followed through presses)
 	snaps:      [dynamic]Page_Snapshot,
 	frame_no:   u64,
 	frames:     u64,             // chrome frames made (statistics)
@@ -456,7 +455,6 @@ shell_chrome_frame :: proc(app: ^App) {
 @(private = "file")
 shell_split_input :: proc(app: ^App, polled: []platform.Event) -> []platform.Event {
 	chrome := make([dynamic]platform.Event, 0, len(polled) + len(app.chrome_frames.outer), context.temp_allocator)
-	app.chrome_frames.page_keyboard = page_has_keyboard(app)
 	if !app.chrome_frames.outer_taken {
 		#partial switch app.chrome_frames.phase {
 		case .Loop:
@@ -495,11 +493,11 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 		if hold_buttons_and_keys { append(&app.chrome_frames.deferred, ev); return }
 		if over_page { g.held += {ev.button} } else { g.held -= {ev.button} }
 		if over_page {
-			app.chrome_frames.page_keyboard = true
+			keyboard_press(app, true)
 			if !shell_deferred_buttons_or_keys(app) { selection_preview_press(app, t, ev) }   // a text selection's press: its gesture, shown now (selection_shell.odin)
 			append(&app.chrome_frames.deferred, ev)
 		} else {
-			app.chrome_frames.page_keyboard = false
+			keyboard_press(app, false)
 			append(chrome, ev)
 		}
 	case .Mouse_Release:
@@ -523,7 +521,7 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 		if over_page { append(&app.chrome_frames.deferred, ev); return }   // zoom: the page's layout
 		append(chrome, ev)
 	case .Key_Press, .Key_Release, .Text:
-		if hold_buttons_and_keys || app.chrome_frames.page_keyboard {
+		if hold_buttons_and_keys || page_has_keyboard(app) {
 			if !hold_buttons_and_keys && page_shown && shell_page_key(app, t, ev, chrome) { return }
 			append(&app.chrome_frames.deferred, ev)
 			return

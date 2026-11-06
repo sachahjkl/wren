@@ -198,6 +198,7 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 		// not being edited: the address shows from its start (scheme and host), as in Chrome, not scrolled to its end
 		// (by key: the focused box's name is last frame's, its text may be gone with that frame's memory)
 		window_own(app).address_key = ui.key_from_string(ui.parent_box().key, "###address")
+		address_sync(app, wnd)
 		urlbar_keys(app, t)   // the suggestions' keys, before the field sees them (urlbar.odin)
 		if ui.focus_key() != window_own(app).address_key {
 			wnd.address.cursor, wnd.address.mark, wnd.address.scroll_x = 0, 0, 0
@@ -209,16 +210,13 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 		security_chip(app, t, inset, h - 2 * inset, field_radius, res.box)
 		zoom_overlay(app, t, res.box, h)
 	}
-	if bw := active_window(app); bw.focus_address {
-		bw.focus_address = false
+	if window_asked(app, .Address_Focus) {
 		if b := res.box; b != nil {   // the field's own box: it sits in the address bar's container
 			if ui.focus_key() != b.key { urlbar_view(app).key_focus = true }   // the list waits for a click (urlbar_keys)
 			ui.set_focus(b.key)
 			ui.field_select_all(&wnd.address)
-			forms_page_blur(app)
 		}
 	}
-	if res.focused { forms_page_blur(app) }
 	if urlbar_edited(app, t, res) {
 		res.committed = false   // Enter opened the chosen suggestion
 	}
@@ -227,11 +225,10 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 		address := strings.clone(strings.trim_space(ui.field_string(&wnd.address)), context.temp_allocator)
 		if address != "" {
 			navigate(app, t, address_or_search(app, address), origin = .User)
-			ui.set_focus(0)
 			forms_focus_from_chrome(app, t, 1)   // the page has the keyboard after a navigation from the address bar
 		}
 	}
-	if res.cancelled && t != nil { ui.field_set(&wnd.address, t.url) }   // Escape restores the address of the page
+	if res.cancelled { address_sync(app, wnd, drop_edit = true) }   // Escape restores the address of the page
 	if res.right_clicked { address_context_menu(app, ui.mouse_pos()) }
 	if res.focused && (ui.key_press(.Menu) || ui.key_press(.F10, {.Shift})) {
 		address_context_menu(app, {res.box.rect.min.x + em, res.box.rect.max.y}, keyboard = true)
@@ -286,7 +283,6 @@ tab_select :: proc(app: ^App, i: int) {
 	wnd := active_window(app)
 	if i < 0 || i >= len(wnd.tabs) || i == wnd.current { return }
 	wnd.current = i
-	ui.field_set(&wnd.address, wnd.tabs[i].url)
 	request_frames(app, 2)
 	recovery_touch(app)
 }
@@ -294,18 +290,13 @@ tab_select :: proc(app: ^App, i: int) {
 // The page area is a Tab stop of the chrome: Tab from the address bar gives the page the keyboard (its first focusable
 // element, or its last one with Shift+Tab); Shift+Tab past the page's first element comes back to the chrome.
 page_area_focus :: proc(app: ^App, t: ^Tab, pb: ^ui.Box) {
-	if app.page_focus_leave_backward {
-		app.page_focus_leave_backward = false
+	if window_asked(app, .Leave_Page_Backward) {
 		ui.focus_step(active_window(app).ui, pb.key, -1)
 		return
 	}
 	if ui.focus_key() != pb.key { return }
-	ui.set_focus(0)
 	forms_focus_from_chrome(app, t, ui.tab_direction(active_window(app).ui) < 0 ? -1 : 1)
 }
-
-// (Window_Own.page_info_request, set by the page's context menu, opens the page information popup of the security chip;
-// Window_Own.main_menu_request, set by Alt+F / Alt+E, the main menu.)
 
 // The key of the window's address field (set when it is built): whether it has the keyboard is asked by key, never by
 // ui.focused_name(), which reads the name of a box of the last frame (freed when the build starts).
@@ -444,7 +435,7 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 			ui.label(fmt.aprintf("%s###sec_label", sec.label, allocator = ui.frame_allocator()))
 		}
 		ui.spacer(ui.px(em * 0.65))
-		if own.page_info_request { own.page_info_request = false; sig.clicked = !ui.ctx_menu_is_open(ui.key_from_string(ui.parent_box().parent.key, "###page_info")) }
+		if window_asked(app, .Page_Info, ui.parent_box()) { sig.clicked = !ui.ctx_menu_is_open(ui.key_from_string(ui.parent_box().parent.key, "###page_info")) }
 		if sig.clicked {
 			key := ui.key_from_string(ui.parent_box().parent.key, "###page_info")
 			if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else {
@@ -633,11 +624,8 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 	ui.pop_tags()
 	sig := ui.signal(b)
 	key := ui.key_from_string(b.parent.key, "###main_menu")
-	if own := window_own(app); own.main_menu_request {
-		// Alt+F / Alt+E: opened from the keyboard, its first item active
-		own.main_menu_request = false
-		if !ui.ctx_menu_is_open(key) { ui.ctx_menu_open_rect(key, b.rect, b.key, from_keyboard = true) }
-	}
+	// Alt+F / Alt+E: opened from the keyboard, its first item active
+	if window_asked(app, .Main_Menu, b) && !ui.ctx_menu_is_open(key) { ui.ctx_menu_open_rect(key, b.rect, b.key, from_keyboard = true) }
 	if sig.clicked {
 		if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else {
 			ui.ctx_menu_open_rect(key, b.rect, b.key)

@@ -60,7 +60,8 @@ chrome_zoom_events :: proc(app: ^App, events: []platform.Event) -> []platform.Ev
 				if e.delta.y != 0 { chrome_zoom_step(app, e.delta.y < 0 ? 1 : -1) }
 			}
 		case .Key_Press:
-			if (e.mods == {.Ctrl} || e.mods == {.Ctrl, .Shift}) && ui.focus_key() != 0 && !forms_view(app).page_focus {
+			owner := keyboard_owner(app)
+			if (e.mods == {.Ctrl} || e.mods == {.Ctrl, .Shift}) && (owner == .Chrome_Field || (owner == .Chrome && ui.focus_key() != 0)) {
 				#partial switch e.key {
 				case .Equal, .Num_Add: take = true; chrome_zoom_step(app, 1)
 				case .Minus, .Num_Subtract: take = true; chrome_zoom_step(app, -1)

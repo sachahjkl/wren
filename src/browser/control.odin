@@ -362,7 +362,6 @@ control_new_tab :: proc(app: ^App, address: string, background := false) -> ^Tab
 	t := tab_open(app, address, origin = .User)
 	if background && was >= 0 && was < len(wnd.tabs) - 1 {
 		wnd.current = was
-		if cur := current_tab(app); cur != nil { ui.field_set(&wnd.address, cur.url) }
 	}
 	return t
 }
@@ -492,6 +491,7 @@ control_devtools :: proc(app: ^App, panel, dock: string) -> string {
 control_urlbar :: proc(app: ^App, allocator := context.temp_allocator) -> api.Urlbar {
 	w := app.active
 	uv := urlbar_view(app)
+	address_sync(app, active_window(app))   // (a call may come before the next build)
 	bar := api.Urlbar{open = uv.open, text = strings.clone(ui.field_string(&active_window(app).address), allocator)}
 	if b, ok := w.ui.boxes[window_own(app).address_key]; ok { bar.field = api_rect(b.rect) }
 	if !uv.open { return bar }

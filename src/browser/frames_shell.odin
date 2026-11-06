@@ -48,7 +48,6 @@ frame_tab_ids: u64 = FRAME_TAB_IDS_FROM
 // A window's pointer and keyboard among the frames of its page (Window_Own.frames).
 Frames_Input :: struct {
 	hover: ^page.Page,   // the frame document whose :hover is set
-	focus: ^page.Page,   // the frame document that got the last press (keyboard goes there)
 }
 
 // Shell start-up: the page package tells us about each document a frame gets.
@@ -94,13 +93,13 @@ frame_view_closed :: proc(data: rawptr) {
 	fv, ok := the_app.frame_views[p]
 	if !ok { return }
 	delete_key(&the_app.frame_views, p)
-	forget :: proc(fi: ^Frames_Input, p: ^page.Page) {
-		if fi.hover == p { fi.hover = nil }
-		if fi.focus == p { fi.focus = nil }
+	forget :: proc(own: ^Window_Own, p: ^page.Page) {
+		if own.frames.hover == p { own.frames.hover = nil }
+		keyboard_frame_closed(&own.keyboard, p)
 	}
 	if the_app != nil {
-		for w in the_app.windows { forget(&w.own.frames, p) }
-		forget(&the_app.bare.own.frames, p)
+		for w in the_app.windows { forget(&w.own, p) }
+		forget(&the_app.bare.own, p)
 	}
 	page_fonts_drop(&the_app.page_render.fonts, &fv.tab)
 	layout_destroy(&fv.tab.layout)
@@ -334,10 +333,12 @@ frames_route_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int)
 		ended = gesture_release(app, ev)
 	}
 	if ev.kind == .Mouse_Press {
-		fi.focus = fv != nil ? fv.tab.page : nil
-		if fv != nil && gesture_free(g) {
-			gesture_press(app, t, fv.tab.page, .Frame, ev)
-			g.frame = fv.tab.page
+		if fv != nil {
+			keyboard_move(app, .Frame, fv.tab.page)
+			if gesture_free(g) {
+				gesture_press(app, t, fv.tab.page, .Frame, ev)
+				g.frame = fv.tab.page
+			}
 		}
 	}
 	// the document a button was pressed in keeps the moves while it is held, wherever the pointer goes (an implicit capture:
@@ -444,9 +445,10 @@ frames_route_keys :: proc(app: ^App, ev: platform.Event, index: int) -> bool {
 
 // The frame document that has the keyboard (the last press went into it), its stand-in tab; nil: the tab's document.
 frames_focused :: proc(app: ^App) -> ^Frame_View {
-	focus := window_own(app).frames.focus
-	if focus == nil { return nil }
-	return frame_view_of(focus)
+	if keyboard_owner(app) != .Frame { return nil }
+	fv := frame_view_of(keyboard_of(app).frame)
+	if fv == nil || (fv.host != nil && fv.host != current_tab(app)) { return nil }   // (its tab went: keyboard_document comes after the input of this frame)
+	return fv
 }
 
 // A link followed in a frame's document (its default action): the frame navigates, or the navigable the link's target
