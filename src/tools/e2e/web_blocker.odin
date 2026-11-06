@@ -17,6 +17,7 @@ import "wb:cookies"
 import "wb:dom"
 import "wb:fetch"
 import "wb:http"
+import "wb:host"
 import "wb:httpcache"
 import "wb:page"
 import "wb:tools/testenv"
@@ -150,6 +151,10 @@ load_stuck :: proc(w: ^Setup, d: ^Doc, loc := #caller_location) {
 		return
 	}
 	ps := &s.parser
+	timer := base.pool_get(&loop.timers, s.pump_resume)
+	queued := 0
+	for e in loop.queue.queue { if e.handle == s.pump_resume { queued += 1 } }
+	testing.expectf(w.t, false, "its pump: timer alive %v, due in %v ns, %d entries of %d in the queue, virtual clock %v, slice %v, ran %v, paint wait %v, turns %d, pumping %v", timer != nil, timer != nil ? timer.deadline - host.now_ns(&loop) : 0, queued, len(loop.queue.queue), loop.virtual != nil, settings.js_load.pump_slice_ms, s.pump_ran_ms, s.paint_wait, ps.paint_turns, s.pumping, loc = loc)
 	testing.expectf(w.t, false, "the load stands at: loader held %v, ready state %v, parser at %d of %d, paused %v, a script pending %v, a pump to come %v, fetches %d, log %q",
 		loader.hold, s.ready_state, ps.next, len(ps.queue), ps.paused, ps.pending != nil, s.pump_resume != base.NIL_HANDLE, len(s.fetches), log_text(d), loc = loc)
 }
