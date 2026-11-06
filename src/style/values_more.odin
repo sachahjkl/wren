@@ -417,8 +417,19 @@ stop_position :: proc(cx: ^Cx, v: css.Value, angular: bool) -> (Length, bool) {
 
 // The part before the first comma, when it is not a color stop (is_head = false: it is the first stop).
 @(private)
-parse_gradient_head :: proc(cx: ^Cx, g: ^Gradient, items: []css.Value, legacy: bool) -> (is_head: bool, ok: bool) {
-	if len(items) == 0 { return false, false }
+parse_gradient_head :: proc(cx: ^Cx, g: ^Gradient, head: []css.Value, legacy: bool) -> (is_head: bool, ok: bool) {
+	if len(head) == 0 { return false, false }
+	items := head
+	// `in <space>` comes before what the gradient says of its shape, or after it (CSS Images 4)
+	leading := !legacy && ident_lower(items[0]) == "in"
+	if leading {
+		n := 0
+		sp, good := parse_color_space(items, &n, &g.hue)
+		if !good { return false, false }
+		g.space = sp
+		items = items[n:]
+		if len(items) == 0 { return true, true }
+	}
 	i := 0
 	switch g.kind {
 	case .Linear:
@@ -504,10 +515,12 @@ parse_gradient_head :: proc(cx: ^Cx, g: ^Gradient, items: []css.Value, legacy: b
 		g.position = pos
 		i = k
 	}
-	sp, good := parse_color_space(items, &i, &g.hue)
-	if !good { return false, false }
-	g.space = sp
-	if i == 0 { return false, true }   // nothing recognised: the first part is a color stop
+	if !leading {
+		sp, good := parse_color_space(items, &i, &g.hue)
+		if !good { return false, false }
+		g.space = sp
+		if i == 0 { return false, true }   // nothing recognised: the first part is a color stop
+	}
 	if i != len(items) { return false, false }
 	return true, true
 }

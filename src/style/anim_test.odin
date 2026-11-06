@@ -509,7 +509,9 @@ gradients_and_backgrounds :: proc(t: ^testing.T) {
 		#d { background-image: conic-gradient(from 90deg, red, 50%, blue) }
 		#e { background-image: linear-gradient(to top right, red, blue) }
 		#bad { background-image: linear-gradient(red) }
-	</style><div id=a></div><div id=b></div><div id=c></div><div id=d></div><div id=e></div><div id=bad></div>`)
+		#f { background: radial-gradient(in oklch circle at 85% 12%, red, transparent 42%), linear-gradient(in hsl longer hue 90deg, red, blue), repeating-linear-gradient(in oklch, red, blue 10px), #123 }
+		#g { background-image: linear-gradient(in oklch 90deg in srgb, red, blue) }
+	</style><div id=a></div><div id=b></div><div id=c></div><div id=d></div><div id=e></div><div id=bad></div><div id=f></div><div id=g></div>`)
 	defer fixture_unload(f)
 	a := node(f, "a")
 	layers := background_layers(a)
@@ -531,6 +533,18 @@ gradients_and_backgrounds :: proc(t: ^testing.T) {
 	e := node(f, "e").background_image.grad
 	testing.expect(t, e.to_corner && math.abs(gradient_angle(e, 100, 100) - math.PI / 4) < 1e-4)
 	testing.expect(t, node(f, "bad").background_image.grad != nil, "one stop is a solid color")
+	// the interpolation method first (a gradient the whole declaration used to go with)
+	lead := background_layers(node(f, "f"))
+	testing.expect(t, len(lead) == 4, "every layer of the declaration")
+	if len(lead) == 4 {
+		r := lead[0].image.grad
+		testing.expect(t, r != nil && r.kind == .Radial && r.shape == .Circle && r.space == .Oklch && r.position[0].v == 85 && len(r.stops) == 2)
+		l := lead[1].image.grad
+		testing.expect(t, l != nil && l.space == .Hsl && l.hue == .Longer && math.abs(l.angle - math.PI / 2) < 1e-4)
+		p := lead[2].image.grad
+		testing.expect(t, p != nil && p.repeating && p.space == .Oklch && len(p.stops) == 2, "the method alone")
+	}
+	testing.expect(t, node(f, "g").background_image.grad == nil, "said twice: invalid")
 }
 
 @(test)

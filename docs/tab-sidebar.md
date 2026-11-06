@@ -10,7 +10,7 @@ reordering are those of the row of tabs (`src/browser/tab_strip.odin`); `src/bro
 | `browser.tabs.sidebar_width` | 240 | 120 to 640 interface pixels (times the display scale), never more than half of the window. Dragging the inner edge changes it; the value is written when the button goes up. |
 | `browser.tabs.sidebar_collapsed` | off | Icons only. |
 | `browser.tabs.sidebar_collapsed_width` | 48 | 32 to 96 interface pixels. |
-| `browser.tabs.sidebar_animation_ms` | 180 | 0 to 2000 ms: opening and closing to icons (0: at once). |
+| `browser.tabs.sidebar_animation_ms` | 240 | 0 to 2000 ms: opening and closing to icons (0: at once). |
 | `browser.tabs.sidebar_row_em` | 2.4 | 1.6 to 5 em: the height of a tab. |
 | `browser.tabs.sidebar_address_min_em` | 10 | 4 to 40 em: the narrowest address bar in the title bar (below it, parts of the toolbar make room). |
 
@@ -37,9 +37,9 @@ toolbar's buttons are (both styles, both widths; centred in the narrow column).
 
 ### Opening and closing
 
-Icons only and the titles are the two ends of one layout, not two layouts: `open` (0 closed, 1 open) is eased by the
-toolkit's `ui.anim` toward what `browser.tabs.sidebar_collapsed` says, in `browser.tabs.sidebar_animation_ms` (95 % of the
-way), and everything is placed from it:
+Icons only and the titles are the two ends of one layout, not two layouts: `open` (0 closed, 1 open) goes by the toolkit's
+`ui.tween` to what `browser.tabs.sidebar_collapsed` says, in `browser.tabs.sidebar_animation_ms`, slowly at both ends, and
+everything is placed from it, each thing straight from one end to the other:
 
 * the width goes from the icons-only width to the open one (`sidebar_open_extent`), so the page widens or narrows a little
   each frame instead of jumping;

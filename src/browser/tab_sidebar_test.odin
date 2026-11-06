@@ -95,10 +95,11 @@ sidebar_opens_without_a_jump :: proc(t: ^testing.T) {
 	testing.expect_value(t, side_title_alpha(0.2), 0)
 	testing.expect_value(t, side_title_alpha(1), 1)
 	testing.expect_value(t, side_icon_x(40, 16, 10, 0), 12)   // centred in the narrow row
-	testing.expect_value(t, side_icon_x(200, 16, 10, 1), 10)  // at the padding of the open row
+	testing.expect_value(t, side_icon_x(40, 16, 10, 1), 10)   // at the padding of the open row
+	testing.expect_value(t, side_icon_x(40, 16, 10, 0.5), 11) // and straight between: never past either end
 	bw, bh, inset: f32 = 38, 35, 6
-	closed := side_header_layout(48, bw, bh, inset, 0)
-	opened := side_header_layout(240, bw, bh, inset, 1)
+	closed := side_header_layout(48, 48, bw, bh, inset, 0)
+	opened := side_header_layout(240, 48, bw, bh, inset, 1)
 	testing.expect_value(t, closed.h, inset * 3 + bh * 2)      // one above the other
 	testing.expect_value(t, closed.toggle, [2]f32{5, inset})
 	testing.expect_value(t, closed.add, [2]f32{5, inset * 2 + bh})
@@ -112,17 +113,17 @@ sidebar_opens_without_a_jump :: proc(t: ^testing.T) {
 	for k in 1 ..= steps {
 		o := f32(k) / steps
 		e := sidebar_open_extent(48, 240, o)
-		l := side_header_layout(e, bw, bh, inset, o)
+		l := side_header_layout(e, 48, bw, bh, inset, o)
+		testing.expect(t, (l.toggle.x - prev.toggle.x) * (opened.toggle.x - closed.toggle.x) >= 0, "the toggle goes one way")
+		testing.expect(t, l.add.x >= prev.add.x, "the new tab button goes one way")
 		testing.expect(t, e >= prev_e && e - prev_e <= (240 - 48) / f32(steps) + 1)
 		testing.expect(t, abs(l.h - prev.h) <= bh / f32(steps) + 1)
-		testing.expect(t, abs(l.add.x - prev.add.x) <= 240 / f32(steps) + 1 && abs(l.add.y - prev.add.y) <= (inset + bh) / f32(steps) + 1)
+		testing.expect(t, abs(l.add.x - prev.add.x) <= 2 * 240 / f32(steps) + 1 && abs(l.add.y - prev.add.y) <= (inset + bh) / f32(steps) + 1)
 		testing.expect(t, abs(l.toggle.x - prev.toggle.x) <= 240 / f32(steps) + 1)
 		a := side_title_alpha(o)
 		testing.expect(t, a >= prev_a)
 		prev_e, prev, prev_a = e, l, a
 	}
-	testing.expect(t, sidebar_open_rate(0) > 1e6)                  // at once
-	testing.expect(t, abs(1 - math.pow(2, -sidebar_open_rate(180) * 0.18) - 0.95) < 0.001)   // 95 % of the way in 180 ms
 }
 
 // The page and the sidebar share the body without overlapping, whatever the position: the sidebar's width and the page's
