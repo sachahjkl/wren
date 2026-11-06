@@ -9,6 +9,7 @@ package jsrt_judge
 
 import "base:runtime"
 import "core:fmt"
+import "core:mem"
 import "core:mem/tlsf"
 import "core:strings"
 import "core:sys/windows"
@@ -510,6 +511,30 @@ capi_main :: proc() -> int {
 	fn2 := capi.JS_ReadObject(ctx, img, size, capi.READ_OBJ_BYTECODE)
 	capi.JS_FreeValue(ctx, capi.JS_EvalFunction(ctx, fn2))
 	check(is_int(eval(ctx, "viaImage"), 42), "the image runs")
+	capi.js_free(ctx, img)
+	capi.JS_FreeValue(ctx, fnv)
+
+	// --- a function broken in the stream: the script loads and runs, a call of that function throws, each time; no stream can hold
+	// the instruction a function that has not run starts with ---
+	PUSH_I32 :: 1
+	LAZY_BODY :: u8(js.Opcode.lazy_body)
+	marked := [?]u8{PUSH_I32, 0xb1, 0xcb, 0x74, 0}   // push_i32 7654321
+	code = "globalThis.broken = function () { return 7654321; }; globalThis.sound = function () { return 5; };"
+	fnv = capi.JS_Eval(ctx, raw_data(code), uint(len(code)), "broken.js", capi.EVAL_FLAG_COMPILE_ONLY)
+	img = capi.JS_WriteObject(ctx, &size, fnv, capi.WRITE_OBJ_BYTECODE)
+	at := -1
+	for i in 0 ..< int(size) - len(marked) {
+		if mem.compare(img[i:i + len(marked)], marked[:]) == 0 {at = i}
+	}
+	check(at >= 0, "the function's code is in the stream")
+	img[at] = LAZY_BODY
+	fn2 = capi.JS_ReadObject(ctx, img, size, capi.READ_OBJ_BYTECODE)
+	check(capi.tag_of(fn2) != capi.TAG_EXCEPTION, "a stream with a broken function loads")
+	capi.JS_FreeValue(ctx, capi.JS_EvalFunction(ctx, fn2))
+	check(is_int(eval(ctx, "sound()"), 5), "the other functions run")
+	caught := "(function () { try { broken() } catch (e) { return e instanceof SyntaxError ? 1 : 2 } return 0 })()"
+	check(is_int(eval(ctx, caught), 1), "the broken function throws at its call")
+	check(is_int(eval(ctx, caught), 1), "... and at its next")
 	capi.js_free(ctx, img)
 	capi.JS_FreeValue(ctx, fnv)
 

@@ -71,7 +71,7 @@ fp_to_string :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> V
 		#partial switch o.class {
 		case .bytecode_function:
 			b := o.data.(Func_Data).bc
-			if b != nil && len(b.source) > 0 {
+			if b != nil && bytecode_ready(ctx, b) && len(b.source) > 0 {
 				if b.source_string == nil {b.source_string = str_from_utf8(rt, string(b.source))}
 				return mk_str(b.source_string)
 			}

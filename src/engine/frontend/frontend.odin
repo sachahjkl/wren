@@ -1,7 +1,7 @@
 package frontend
 
 // frontend: the ECMAScript front-end of the Odin JavaScript engine. It turns JavaScript source into QuickJS-ng
-// 0.17 bytecode, byte-for-byte identical to what JS_WriteObject writes (BC_VERSION 28) but for two choices of its own: `o["x"]` is
+// 0.17 bytecode, byte-for-byte identical to what JS_WriteObject writes (BC_VERSION 28) but for a function's record, laid out for a lazy reader (serialize.odin), and for two choices of its own: `o["x"]` is
 // `o.x`, and `return f()` a call and a return (no tail_call: the interpreter makes those without a nested run). It is the E1 half of the
 // engine; the E2 half (values, objects, GC, interpreter, built-ins) reads that bytecode. The two halves meet only
 // at the bytecode format (opcodes.odin, atoms.odin, serialize.odin).

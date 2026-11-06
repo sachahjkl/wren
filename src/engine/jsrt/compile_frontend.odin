@@ -98,22 +98,11 @@ frontend_compile :: proc(ctx: ^Context, req: ^Compile_Request) -> Value {
 	}
 	// The serialized form is built on the host heap (it grows by realloc, and its buffers are freed as soon as
 	// they are done with) and the arena goes before the bytecode is read, so the compiler's transient memory is
-	// returned for the runtime's heap to reuse instead of adding to it.
-	wa := req.keep_image ? rt_allocator(rt) : rt.allocator
-	bytes := fe.write_object_of(res, wa)
+	// returned for the runtime's heap to reuse instead of adding to it. The functions keep it (Bytecode_Store).
+	bytes := fe.write_object_of(res, rt_allocator(rt))
 	compile_alloc_release(&counter)
 	mem.dynamic_arena_destroy(&arena)
-	v := read_object(ctx, bytes)
-	if req.keep_image && v.tag == .function_bc {
-		b := cast(^Function_Bytecode)v.u.ptr
-		b.image = bytes
-	} else if req.keep_image && v.tag == .module && (cast(^Module)v.u.ptr).func_bc != nil {
-		// a module's image is the whole module (requests, exports, imports, then its function): the function holds it
-		(cast(^Module)v.u.ptr).func_bc.image = bytes
-	} else {
-		delete(bytes, wa)
-	}
-	return v
+	return read_object_own(ctx, bytes)
 }
 
 // An atom's UTF-8 text copied into `a` (the front-end's scratch arena).

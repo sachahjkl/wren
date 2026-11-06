@@ -66,17 +66,19 @@ Function_Bytecode :: struct {
 	vardefs:                   []Var_Def,
 	closure_vars:              []Closure_Var,
 	cpool:                     []Value,
-	code:                      []u8,
+	code:                      []u8, // LAZY_CODE until the function first runs (serialize.odin, bytecode_ready)
+	store:                     ^Bytecode_Store, // the stream it was read from
+	body_at:                   u32, // where its body is there
+	body_len:                  u32, // 0: the body was read
 	realm:                     ^Context,
 	filename:                  Atom,
 	line_num:                  int,
 	col_num:                   int,
-	pc2line:                   []u8,
-	source:                    []u8,
+	pc2line:                   []u8, // (in the store)
+	source:                    []u8, // (in the store)
 	source_string:             ^JS_String, // cached Function.prototype.toString text
 	catch_levels:              []Catch_Level, // verified operand stack height at each catch handler
-	image:                     []u8, // the serialized form this function was read from, kept on request (Compile_Request.keep_image)
-	jit:                       ^Jit_Info, // the loops of this function and the function itself as the JIT looked at them (jit.odin), allocated on first use
+	jit:                      ^Jit_Info, // the loops of this function and the function itself as the JIT looked at them (jit.odin), allocated on first use
 	jit_active:                int,       // how many of them are compiled or being compiled (the interpreter then offers each back edge)
 	jit_calls:                 int,       // calls counted toward compiling the whole function (jit.odin, jit_fn_enter)
 }
@@ -98,15 +100,20 @@ function_bc_new :: proc(rt: ^Runtime) -> ^Function_Bytecode {
 
 function_bc_finalize :: proc(rt: ^Runtime, b: ^Function_Bytecode) {
 	a := rt_allocator(rt)
-	if b.vardefs != nil {delete(b.vardefs, a)}
+	function_bc_free_body(rt, b)
 	if b.closure_vars != nil {delete(b.closure_vars, a)}
-	if b.cpool != nil {delete(b.cpool, a)}
-	if b.code != nil {delete(b.code, a)}
-	if b.pc2line != nil {delete(b.pc2line, a)}
-	if b.source != nil {delete(b.source, a)}
-	if b.catch_levels != nil {delete(b.catch_levels, a)}
-	if b.image != nil {delete(b.image, a)}
 	if b.jit != nil {jit_free(b.jit, a)}
+	store_release(rt, b.store)
+}
+
+// What reading its body made.
+function_bc_free_body :: proc(rt: ^Runtime, b: ^Function_Bytecode) {
+	a := rt_allocator(rt)
+	if b.vardefs != nil {delete(b.vardefs, a)}
+	if b.cpool != nil {delete(b.cpool, a)}
+	if raw_data(b.code) != raw_data(LAZY_CODE[:]) {delete(b.code, a)}
+	if b.catch_levels != nil {delete(b.catch_levels, a)}
+	b.vardefs, b.cpool, b.catch_levels, b.pc2line, b.source = nil, nil, nil, nil, nil
 }
 
 // The source line of instruction `pc`, decoded from the pc2line table (QuickJS's format: a leb128

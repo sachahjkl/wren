@@ -2,6 +2,7 @@
 // browser knows of each request: the wait for a slot, the name, the connection, the handshake, the server, the body. One line per load on the standard output, the requests in <OutDir>/<slug>_<run>.tsv.
 // What is not the network shows in `gaps`: the time before the load event when no request of the page was in flight.
 // -Cold: without the disk cache of compiled modules the measuring tools share: the empty cache of a new profile, or of a profile after an update.
+// -Warm: the page loaded once in a Wren of its own first, on the same profile: the load measured is the second, a new process with the disk caches (HTTP, bytecode) of the first.
 package capture
 
 import "core:fmt"
@@ -15,7 +16,7 @@ import "wb:remote/api"
 import "wb:tools/tooling"
 import "wb:tools/wrentool/bench"
 
-WATERFALL_FLAGS :: "-Urls= -List= -OutDir= -Exe= -Runs= -Pref= -LimitMs= -Idle -Stderr= -Cold"
+WATERFALL_FLAGS :: "-Urls= -List= -OutDir= -Exe= -Runs= -Pref= -LimitMs= -Idle -Stderr= -Cold -Warm"
 WATERFALL_OUT :: "build/waterfall"
 WATERFALL_RUNS :: 1
 WATERFALL_LIMIT_MS :: 30_000
@@ -44,7 +45,7 @@ run_waterfall :: proc(args: []string) -> int {
 			if line != "" && !strings.has_prefix(line, "#") { append(&urls, line) }
 		}
 	}
-	if len(urls) == 0 { fmt.eprintln("wrentool waterfall -Urls a,b | -List file [-OutDir dir] [-Exe path] [-Runs n] [-Pref a=b] [-LimitMs n] [-Cold]"); return EXIT_USAGE }
+	if len(urls) == 0 { fmt.eprintln("wrentool waterfall -Urls a,b | -List file [-OutDir dir] [-Exe path] [-Runs n] [-Pref a=b] [-LimitMs n] [-Cold] [-Warm]"); return EXIT_USAGE }
 	exe := tooling.flag(f, "-Exe", bench.WREN_EXE)
 	if !os.exists(exe) { fmt.eprintfln("%s is missing (build.bat)", exe); return 1 }
 	dir := tooling.flag(f, "-OutDir", WATERFALL_OUT)
@@ -58,7 +59,7 @@ run_waterfall :: proc(args: []string) -> int {
 	fmt.println(WATERFALL_HEADER)
 	for url in urls {
 		for run in 0 ..< tooling.flag_int(f, "-Runs", WATERFALL_RUNS) {
-			waterfall_load(exe, out, url, run, prefs[:], limit, tooling.flag_has(f, "-Idle"), tooling.flag(f, "-Stderr"), tooling.flag_has(f, "-Cold"))
+			waterfall_load(exe, out, url, run, prefs[:], limit, tooling.flag_has(f, "-Idle"), tooling.flag(f, "-Stderr"), tooling.flag_has(f, "-Cold"), tooling.flag_has(f, "-Warm"))
 			free_all(context.temp_allocator)
 		}
 	}
@@ -66,11 +67,18 @@ run_waterfall :: proc(args: []string) -> int {
 }
 
 @(private = "file")
-waterfall_load :: proc(exe, out, url: string, run: int, prefs: []string, limit: time.Duration, idle: bool, stderr: string, cold: bool) {
+waterfall_load :: proc(exe, out, url: string, run: int, prefs: []string, limit: time.Duration, idle: bool, stderr: string, cold, warm: bool) {
 	slug := compare_slug(url)
 	profile := fmt.tprintf("%s/profile_%s", out, slug)
 	base.remove_tree(profile)
 	defer base.remove_tree(profile)
+	if warm {
+		first: bench.Wren
+		if !bench.start(&first, {exe = exe, profile = profile, window = .Headless, size = SWEEP_SIZE, prefs = prefs, stderr = stderr, cold = cold}) { return }
+		_ = api.navigate(&first.session, url, .Load, limit)
+		time.sleep(WATERFALL_AFTER)
+		bench.stop(&first)
+	}
 	w: bench.Wren
 	started := time.tick_now()
 	if !bench.start(&w, {exe = exe, profile = profile, window = .Headless, size = SWEEP_SIZE, prefs = prefs, stderr = stderr, cold = cold}) { return }

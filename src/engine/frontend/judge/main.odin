@@ -633,6 +633,19 @@ decode_function :: proc(d: ^Dec, depth: int) {
 	stack := dec_leb(d)
 	var_ref := dec_leb(d)
 	closure := dec_leb(d)
+	dbg_filename := dec_leb(d)
+	line := dec_leb(d)
+	col := dec_leb(d)
+	closure_idx := make([]int, int(closure), context.temp_allocator)
+	closure_flags := make([]int, int(closure), context.temp_allocator)
+	for i in 0 ..< int(closure) {
+		closure_idx[i] = int(dec_leb(d))
+		closure_flags[i] = int(dec_leb(d))
+	}
+	d.pos += fe.BODY_LENGTH_BYTES
+	for i in 0 ..< int(closure) {
+		fmt.printfln("%s  closure[%d] name=%s idx=%d flags=%d", ind, i, atom_label(dec_leb(d)), closure_idx[i], closure_flags[i])
+	}
 	cpool := dec_leb(d)
 	bclen := dec_leb(d)
 	fmt.printfln("%sarg=%d var=%d defined=%d stack=%d var_ref=%d closure=%d cpool=%d bc_len=%d", ind, arg_count, var_count, defined, stack, var_ref, closure, cpool, bclen)
@@ -647,12 +660,6 @@ decode_function :: proc(d: ^Dec, depth: int) {
 		if captured != 0 {dec_leb(d)}
 		fmt.printfln("%s  var[%d] name=%s lvl=%d next=%d flags=%02x", ind, i, atom_label(nm), lvl, nxt, vf)
 	}
-	for i in 0 ..< closure {
-		nm := dec_leb(d)
-		vi := dec_leb(d)
-		cf := dec_leb(d)
-		fmt.printfln("%s  closure[%d] name=%s idx=%d flags=%d", ind, i, atom_label(nm), vi, cf)
-	}
 	for i in 0 ..< cpool {
 		fmt.printfln("%s  cpool[%d]:", ind, i)
 		decode_const(d, depth + 2)
@@ -661,9 +668,6 @@ decode_function :: proc(d: ^Dec, depth: int) {
 	fmt.printfln("%sbytecode:", ind)
 	disasm(d, int(bclen), depth + 1)
 	// debug
-	dbg_filename := dec_leb(d)
-	line := dec_leb(d)
-	col := dec_leb(d)
 	pc2line := dec_leb(d)
 	pc_hex := hex_prefix(d.buf[d.pos:d.pos + int(pc2line)], int(pc2line))
 	d.pos += int(pc2line)

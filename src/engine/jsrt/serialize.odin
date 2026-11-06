@@ -1,14 +1,18 @@
 package jsrt
 
-// The serialized-bytecode reader: parses JS_WriteObject(..., JS_WRITE_OBJ_BYTECODE) output of
-// QuickJS-ng 0.17 (BC_VERSION 28) — what the reference C compiler and the Odin front-end (E1) emit.
+// The serialized-bytecode reader: parses the stream of the Odin front-end (E1), the layout of
+// JS_WriteObject(..., JS_WRITE_OBJ_BYTECODE) of QuickJS-ng 0.17 but for a function's record (BC_VERSION).
+//
+// Most functions of a page's scripts never run. A function is read in two steps: its head when its parent's constant pool is read
+// (what a closure and a frame need), its body at its first run (bytecode_ready), from the stream, which stays in memory
+// (Bytecode_Store). A script's atoms are read the same way, at their first use. Until then the function's code is LAZY_CODE.
 //
 // Every read is bounds-checked and every count is validated against the remaining input, so a
-// corrupt or hostile buffer yields a SyntaxError, never an out-of-bounds access. Operands of the
-// instruction stream are checked against the function's own tables (constant pool, locals,
-// closure cells) by verify_function, which also keeps the interpreter's indexing safe.
+// corrupt or hostile buffer yields a SyntaxError, never an out-of-bounds access: from read_object for the top-level function, from
+// the first call for the others. Operands of the instruction stream are checked against the function's own tables (constant
+// pool, locals, closure cells) by verify_function, which also keeps the interpreter's indexing safe.
 
-BC_MAX_NESTING :: 1000            // values nested in one another
+BC_MAX_NESTING :: 16              // values nested in one another (a template object is 3; the functions of a pool are not read within it)
 BC_COUNT_LIMIT :: 1 << 24         // the elements of a table, unless the table says otherwise
 BC_BIGINT_COUNT_LIMIT :: 1 << 27  // the bytes of a bigint
 BC_SOURCE_COUNT_LIMIT :: 1 << 30  // the bytes of a function's source text
@@ -40,25 +44,59 @@ BC_Tag :: enum u8 {
 	symbol,
 }
 
-BC_VERSION :: 28
+BC_VERSION :: 29 // 28 is QuickJS's: frontend/serialize.odin says what differs
+
+// A script's stream, shared by the functions read from it: the bodies not read yet are in it, the line tables and the source
+// of those that were point into it. Never written to: JS_WriteObject hands it out as it came.
+Bytecode_Store :: struct {
+	buf:     []u8,
+	atoms:   []Atom, // the stream's atoms, ATOM_NULL until read if atom_at has an offset
+	atom_at: []u32,
+	refs:    int,    // the functions, and a reader at work
+}
+
+@(private = "file")
+store_new :: proc(rt: ^Runtime, buf: []u8) -> ^Bytecode_Store {
+	s := new(Bytecode_Store, rt_allocator(rt))
+	s.buf = buf
+	s.refs = 1
+	return s
+}
+
+store_release :: proc(rt: ^Runtime, s: ^Bytecode_Store) {
+	s.refs -= 1
+	if s.refs > 0 {return}
+	a := rt_allocator(rt)
+	delete(s.buf, a)
+	delete(s.atoms, a)
+	delete(s.atom_at, a)
+	free(s, a)
+}
 
 @(private = "file")
 Reader :: struct {
-	ctx:        ^Context,
-	buf:        []u8,
-	pos:        int,
-	err:        bool,
-	msg:        string,
-	atoms:      []Atom, // decoded header atoms
-	first_atom: u32,
-	depth:      int,
+	ctx:   ^Context,
+	store: ^Bytecode_Store,
+	buf:   []u8,
+	pos:   int,
+	err:   bool,
+	msg:   string,
+	depth: int,
 }
 
 // Parse a serialized value. Returns a .function_bc / .module / ordinary value, or EXCEPTION.
 read_object :: proc(ctx: ^Context, buf: []u8) -> Value {
+	own := make([]u8, len(buf), rt_allocator(ctx.rt))
+	copy(own, buf)
+	return read_object_own(ctx, own)
+}
+
+// read_object of a stream made with rt_allocator: the functions keep it.
+read_object_own :: proc(ctx: ^Context, buf: []u8) -> Value {
 	rt := ctx.rt
-	r := Reader{ctx = ctx, buf = buf, first_atom = PREDEF_ATOM_COUNT}
-	defer if r.atoms != nil {delete(r.atoms, rt.allocator)}
+	store := store_new(rt, buf)
+	defer store_release(rt, store)
+	r := Reader{ctx = ctx, store = store, buf = buf}
 	rt.gc_disabled += 1
 	defer rt.gc_disabled -= 1
 	if !read_header(&r) {
@@ -68,6 +106,15 @@ read_object :: proc(ctx: ^Context, buf: []u8) -> Value {
 	if r.err || is_exception(v) {
 		if has_exception(ctx) {return EXCEPTION}
 		return throw_syntax_error(ctx, r.msg != "" ? r.msg : "invalid bytecode")
+	}
+	// (what runs at once is read now: a caller can still compile the source instead)
+	top: ^Function_Bytecode
+	#partial switch v.tag {
+	case .function_bc: top = cast(^Function_Bytecode)v.u.ptr
+	case .module: top = (cast(^Module)v.u.ptr).func_bc
+	}
+	if top != nil {
+		if msg := function_body(ctx, top); msg != "" {return throw_syntax_error(ctx, msg)}
 	}
 	return v
 }
@@ -152,45 +199,68 @@ read_header :: proc(r: ^Reader) -> bool {
 	_ = u32_(r) // checksum (not verified)
 	n := count(r, 1)
 	if r.err {return false}
-	r.atoms = make([]Atom, n, rt.allocator)
+	a := rt_allocator(rt)
+	st := r.store
+	st.atoms = make([]Atom, n, a)
+	st.atom_at = make([]u32, n, a)
 	for i in 0 ..< n {
+		at := r.pos
 		t := u8_(r)
 		if r.err {return false}
 		if t & 0x80 != 0 {
-			a: u32 = 0
-			if t & 0x40 != 0 {a = leb(r)}
-			a = (a << 6) | u32(t & 0x3f)
-			if a >= PREDEF_ATOM_COUNT {fail(r, "invalid const atom"); return false}
-			r.atoms[i] = Atom(a)
+			c: u32 = 0
+			if t & 0x40 != 0 {c = leb(r)}
+			c = (c << 6) | u32(t & 0x3f)
+			if c >= PREDEF_ATOM_COUNT {fail(r, "invalid const atom"); return false}
+			st.atoms[i] = Atom(c)
 			continue
 		}
 		if t < 1 || t > 4 {fail(r, "invalid atom type"); return false}
-		s := read_string(r)
-		if s == nil {return false}
-		switch t {
-		case 1:
-			r.atoms[i] = atom_from_string(rt, s)
-		case:
-			// symbols in a bytecode atom table: fresh symbols with that description
-			sym := symbol_new_raw(rt, mk_str(s), t == 4)
-			sym.is_registered = t == 2
-			r.atoms[i] = atom_from_symbol(rt, sym)
-		}
+		st.atom_at[i] = u32(at)
+		packed := leb(r)
+		if r.err {return false}
+		size := packed & 1 != 0 ? int(packed >> 1) * 2 : int(packed >> 1)
+		if int(packed >> 1) > STRING_LEN_MAX || size > len(r.buf) - r.pos {fail(r, "invalid string length"); return false}
+		r.pos += size
 	}
 	return !r.err
+}
+
+// The atom the table has at `i`, read at its first use.
+@(private = "file")
+atom_load :: proc(r: ^Reader, i: int) -> Atom {
+	rt := r.ctx.rt
+	st := r.store
+	saved := r.pos
+	defer r.pos = saved
+	r.pos = int(st.atom_at[i])
+	t := u8_(r)
+	s := read_string(r)
+	if s == nil {return ATOM_NULL}
+	if t == 1 {
+		st.atoms[i] = atom_from_string(rt, s)
+	} else {
+		// symbols in a bytecode atom table: fresh symbols with that description
+		sym := symbol_new_raw(rt, mk_str(s), t == 4)
+		sym.is_registered = t == 2
+		st.atoms[i] = atom_from_symbol(rt, sym)
+	}
+	return st.atoms[i]
 }
 
 // bc_idx_to_atom: a stream atom index (tagged int, predefined, or header table).
 @(private = "file")
 idx_atom :: proc(r: ^Reader, idx: u32) -> Atom {
 	if idx & ATOM_TAG_INT != 0 {return Atom(idx)}
-	if idx < r.first_atom {return Atom(idx)}
-	off := idx - r.first_atom
-	if int(off) >= len(r.atoms) {
+	if idx < PREDEF_ATOM_COUNT {return Atom(idx)}
+	off := int(idx - PREDEF_ATOM_COUNT)
+	st := r.store
+	if off >= len(st.atoms) {
 		fail(r, "invalid atom index")
 		return ATOM_NULL
 	}
-	return r.atoms[off]
+	if st.atoms[off] == ATOM_NULL && st.atom_at[off] != 0 {return atom_load(r, off)}
+	return st.atoms[off]
 }
 
 // bc_get_atom: leb128 with bit 0 = tagged int.
@@ -216,7 +286,8 @@ read_string :: proc(r: ^Reader) -> ^JS_String {
 	need := wide ? n * 2 : n
 	if n > STRING_LEN_MAX || need > len(r.buf) - r.pos {fail(r, "invalid string length"); return nil}
 	if wide {
-		u := make([]u16, n, tmp(rt))
+		u := make([]u16, n, rt.allocator)
+		defer delete(u, rt.allocator)
 		for i in 0 ..< n {u[i] = u16(r.buf[r.pos + 2 * i]) | u16(r.buf[r.pos + 2 * i + 1]) << 8}
 		r.pos += need
 		return str_from_u16(rt, u)
@@ -325,6 +396,9 @@ read_function :: proc(r: ^Reader) -> Value {
 	a := rt_allocator(rt)
 	b := function_bc_new(rt)
 	b.realm = r.ctx
+	b.store = r.store
+	b.store.refs += 1
+	b.code = LAZY_CODE[:]
 	flags := u16_(r)
 	idx: uint = 0
 	bit :: proc(f: u16, idx: ^uint, n: uint) -> u16 {
@@ -356,12 +430,49 @@ read_function :: proc(r: ^Reader) -> Value {
 	b.stack_size = u16v(r)
 	b.var_ref_count = u16v(r)
 	b.closure_var_count = u16v(r)
+	if b.has_debug {
+		b.filename = atom_(r)
+		b.line_num = int(leb(r))
+		b.col_num = int(leb(r))
+	}
+	if r.err {return EXCEPTION}
+	if b.closure_var_count > 0 {
+		if int(b.closure_var_count) * 2 > len(r.buf) - r.pos {fail(r, "invalid closure count"); return EXCEPTION}
+		b.closure_vars = make([]Closure_Var, int(b.closure_var_count), a)
+		for i in 0 ..< int(b.closure_var_count) {
+			cv := &b.closure_vars[i]
+			vi := leb(r)
+			if vi > 0xffff {fail(r, "invalid closure index"); return EXCEPTION}
+			cv.var_idx = u16(vi)
+			cf := leb(r)
+			cv.closure_type = Closure_Type(cf & 7)
+			cv.is_const = (cf >> 3) & 1 != 0
+			cv.is_lexical = (cf >> 4) & 1 != 0
+			cv.var_kind = u8((cf >> 5) & 0xf)
+			if r.err {return EXCEPTION}
+		}
+	}
+	body_len := int(u32_(r))
+	if r.err {return EXCEPTION}
+	if body_len == 0 || body_len > len(r.buf) - r.pos {fail(r, "invalid function body"); return EXCEPTION}
+	b.body_at = u32(r.pos)
+	b.body_len = u32(body_len)
+	r.pos += body_len
+	rt.functions_read += 1
+	return mk_ptr(.function_bc, b)
+}
+
+// What is not needed before the function runs. The line table and the source stay in the stream.
+@(private = "file")
+read_body :: proc(r: ^Reader, b: ^Function_Bytecode) -> bool {
+	a := rt_allocator(r.ctx.rt)
+	for &cv in b.closure_vars {cv.name = atom_(r)}
 	cpool_count := count(r, 1)
 	code_len := count(r, 1)
 	local_count := count(r, 4)
-	if r.err {return EXCEPTION}
-	if local_count != 0 && local_count != int(b.arg_count) + int(b.var_count) {fail(r, "invalid local count"); return EXCEPTION}
-	if local_count == 0 && int(b.arg_count) + int(b.var_count) != 0 {fail(r, "missing variable definitions"); return EXCEPTION}
+	if r.err {return false}
+	if local_count != 0 && local_count != int(b.arg_count) + int(b.var_count) {fail(r, "invalid local count"); return false}
+	if local_count == 0 && int(b.arg_count) + int(b.var_count) != 0 {fail(r, "missing variable definitions"); return false}
 	if local_count > 0 {
 		b.vardefs = make([]Var_Def, local_count, a)
 		for i in 0 ..< local_count {
@@ -376,27 +487,10 @@ read_function :: proc(r: ^Reader) -> Value {
 			vd.is_captured = (vf >> 6) & 1 != 0
 			if vd.is_captured {
 				k := leb(r)
-				if k >= u32(b.var_ref_count) {fail(r, "invalid var_ref index"); return EXCEPTION}
+				if k >= u32(b.var_ref_count) {fail(r, "invalid var_ref index"); return false}
 				vd.var_ref_idx = u16(k)
 			}
-			if r.err {return EXCEPTION}
-		}
-	}
-	if b.closure_var_count > 0 {
-		if int(b.closure_var_count) * 3 > len(r.buf) - r.pos {fail(r, "invalid closure count"); return EXCEPTION}
-		b.closure_vars = make([]Closure_Var, int(b.closure_var_count), a)
-		for i in 0 ..< int(b.closure_var_count) {
-			cv := &b.closure_vars[i]
-			cv.name = atom_(r)
-			vi := leb(r)
-			if vi > 0xffff {fail(r, "invalid closure index"); return EXCEPTION}
-			cv.var_idx = u16(vi)
-			cf := leb(r)
-			cv.closure_type = Closure_Type(cf & 7)
-			cv.is_const = (cf >> 3) & 1 != 0
-			cv.is_lexical = (cf >> 4) & 1 != 0
-			cv.var_kind = u8((cf >> 5) & 0xf)
-			if r.err {return EXCEPTION}
+			if r.err {return false}
 		}
 	}
 	if cpool_count > 0 {
@@ -404,36 +498,79 @@ read_function :: proc(r: ^Reader) -> Value {
 		for i in 0 ..< cpool_count {b.cpool[i] = UNDEFINED}
 		for i in 0 ..< cpool_count {
 			v := read_value(r)
-			if r.err || is_exception(v) {return EXCEPTION}
+			if r.err || is_exception(v) {return false}
 			b.cpool[i] = v
 		}
 	}
-	if code_len > len(r.buf) - r.pos {fail(r, "truncated bytecode"); return EXCEPTION}
-	b.code = make([]u8, code_len, a)
-	copy(b.code, r.buf[r.pos:r.pos + code_len])
+	if code_len == 0 {fail(r, "empty bytecode"); return false}
+	if code_len > len(r.buf) - r.pos {fail(r, "truncated bytecode"); return false}
+	code := make([]u8, code_len, a)
+	copy(code, r.buf[r.pos:r.pos + code_len])
+	b.code = code
 	r.pos += code_len
-	if !remap_code_atoms(r, b) {return EXCEPTION}
+	if !remap_code_atoms(r, b) {return false}
 	if b.has_debug {
-		b.filename = atom_(r)
-		b.line_num = int(leb(r))
-		b.col_num = int(leb(r))
 		n := count(r, 1)
-		if r.err {return EXCEPTION}
-		if n > 0 {
-			b.pc2line = make([]u8, n, a)
-			copy(b.pc2line, r.buf[r.pos:r.pos + n])
-			r.pos += n
-		}
+		if r.err {return false}
+		b.pc2line = r.buf[r.pos:r.pos + n]
+		r.pos += n
 		sn := count(r, 1, BC_SOURCE_COUNT_LIMIT)
-		if r.err {return EXCEPTION}
-		if sn > 0 {
-			b.source = make([]u8, sn, a)
-			copy(b.source, r.buf[r.pos:r.pos + sn])
-			r.pos += sn
-		}
+		if r.err {return false}
+		b.source = r.buf[r.pos:r.pos + sn]
+		r.pos += sn
 	}
-	if !verify_function(r, b) {return EXCEPTION}
-	return mk_ptr(.function_bc, b)
+	return true
+}
+
+// The code of a function that has not run: one instruction, which makes it ready and starts it again. Whatever enters a function
+// ends up here, so nothing runs unread or unchecked, and a call pays nothing for it. What a frame is made of (the counts of the
+// function's head) does not need the body; stack_size is checked against the code before anything uses the stack.
+LAZY_CODE := [1]u8{u8(Opcode.lazy_body)}
+
+// Reads and verifies the function's body if it never ran. "": it may run. Else why not: it stays as it was, each call fails again.
+bytecode_check :: proc(ctx: ^Context, b: ^Function_Bytecode) -> string {
+	if b.body_len == 0 {return ""}
+	span_stage(.deserialize, true)
+	defer span_stage(.deserialize, false)
+	return function_body(ctx, b)
+}
+
+@(private = "file")
+function_body :: proc(ctx: ^Context, b: ^Function_Bytecode) -> string {
+	rt := ctx.rt
+	end := int(b.body_at) + int(b.body_len)
+	r := Reader{ctx = b.realm, store = b.store, buf = b.store.buf[:end], pos = int(b.body_at)}
+	// (a body read makes strings and the heads of the functions in it, held by nothing yet)
+	rt.gc_disabled += 1
+	defer rt.gc_disabled -= 1
+	if read_body(&r, b) && r.pos == end && verify_function(&r, b) {
+		b.body_len = 0
+		rt.functions_verified += 1
+		return ""
+	}
+	function_bc_free_body(rt, b)
+	b.code = LAZY_CODE[:]
+	return r.msg != "" ? r.msg : "invalid bytecode"
+}
+
+// bytecode_check, its failure thrown: a SyntaxError from the call, in place of the one the reader gave for the whole script.
+bytecode_ready :: proc(ctx: ^Context, b: ^Function_Bytecode) -> bool {
+	msg := bytecode_check(ctx, b)
+	if msg != "" {
+		throw_syntax_error(ctx, msg)
+		return false
+	}
+	return true
+}
+
+// Reads the body of the function and of those nested in it, as their first runs would: the fuzzer's way to every body. False: one failed.
+bytecode_read_all :: proc(ctx: ^Context, b: ^Function_Bytecode) -> bool {
+	if bytecode_check(ctx, b) != "" {return false}
+	ok := true
+	for c in b.cpool {
+		if c.tag == .function_bc {ok = bytecode_read_all(ctx, cast(^Function_Bytecode)c.u.ptr) && ok}
+	}
+	return ok
 }
 
 // Rewrite the atom operands of the instruction stream to runtime atoms.
@@ -470,7 +607,10 @@ remap_code_atoms :: proc(r: ^Reader, b: ^Function_Bytecode) -> bool {
 verify_function :: proc(r: ^Reader, b: ^Function_Bytecode) -> bool {
 	code := b.code
 	n := len(code)
-	starts := make([]bool, n + 1, tmp(r.ctx.rt))
+	// (not the scratch memory: it lasts until the outermost call returns, and a page's first calls of its functions come within one)
+	rt := r.ctx.rt
+	starts := make([]bool, n + 1, rt.allocator)
+	defer delete(starts, rt.allocator)
 	pos := 0
 	for pos < n {
 		starts[pos] = true
@@ -599,14 +739,20 @@ verify_stack :: proc(r: ^Reader, b: ^Function_Bytecode) -> bool {
 	n := len(code)
 	if n == 0 {return bad_code(r, "empty bytecode")}
 	rt := r.ctx.rt
-	level := make([]i32, n, tmp(rt))
-	catch_tab := make([]i32, n, tmp(rt))
+	level := make([]i32, n, rt.allocator)
+	defer delete(level, rt.allocator)
+	catch_tab := make([]i32, n, rt.allocator)
+	defer delete(catch_tab, rt.allocator)
 	for i in 0 ..< n {level[i] = -1}
-	work := make([dynamic]int, 0, 64, tmp(rt))
-	catches := make([dynamic]Catch_Level, 0, 4, tmp(rt))
-	defer if len(catches) > 0 {
-		b.catch_levels = make([]Catch_Level, len(catches), rt_allocator(rt))
-		copy(b.catch_levels, catches[:])
+	work := make([dynamic]int, 0, 64, rt.allocator)
+	defer delete(work)
+	catches := make([dynamic]Catch_Level, 0, 4, rt.allocator)
+	defer {
+		if len(catches) > 0 && b.catch_levels == nil {
+			b.catch_levels = make([]Catch_Level, len(catches), rt_allocator(rt))
+			copy(b.catch_levels, catches[:])
+		}
+		delete(catches)
 	}
 	max_len := 0
 	limit := int(b.stack_size)

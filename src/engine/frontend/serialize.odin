@@ -2,10 +2,9 @@ package frontend
 
 import "base:runtime"
 
-// Serialization to the QuickJS-ng 0.17 JS_WriteObject byte stream (BC_VERSION 28), as produced by
-// JS_WriteObject(ctx, obj, JS_WRITE_OBJ_BYTECODE | JS_WRITE_OBJ_STRIP_SOURCE): a script's top-level function, or
-// a module record wrapping it. This is the contract with E2 (which reads it back) and what the differential judge
-// compares byte for byte.
+// Serialization to the byte stream of QuickJS-ng 0.17's JS_WriteObject, as produced by
+// JS_WriteObject(ctx, obj, JS_WRITE_OBJ_BYTECODE | JS_WRITE_OBJ_STRIP_SOURCE), a function's record laid out for a lazy reader
+// (BC_VERSION): a script's top-level function, or a module record wrapping it. This is the contract with E2 (which reads it back).
 //
 // Container layout (JS_WriteObject2 + JS_WriteObjectAtoms):
 //   [BC_VERSION u8] [checksum u32] [atom_count leb128] [atoms...] [object...]
@@ -115,7 +114,11 @@ BC_TAG_TEMPLATE_OBJECT :: 11
 BC_TAG_FUNCTION_BYTECODE :: 12
 BC_TAG_MODULE :: 13
 
-BC_VERSION :: 28
+// 29, not QuickJS's 28: a function's record is its head (flags, name, counts, position, closure variables without their names)
+// then its body, u32 length first (the closure variables' names, the constant pool, the locals, the code, the line table,
+// the source): the reader goes over the body of a function that has not run, the functions nested in it with it.
+BC_VERSION :: 29
+BODY_LENGTH_BYTES :: 4
 
 JS_ATOM_TYPE_STRING :: 1
 
@@ -156,6 +159,25 @@ write_function :: proc(w: ^Writer, b: ^Function_Bytecode) {
 	put_leb128(w, u32(b.stack_size))
 	put_leb128(w, u32(b.var_ref_count))
 	put_leb128(w, u32(len(b.closure_var)))
+	if w.allow_debug {
+		put_atom(w, b.filename)
+		put_leb128(w, u32(b.line_num))
+		put_leb128(w, u32(b.col_num))
+	}
+	for &cv in b.closure_var {
+		put_leb128(w, u32(cv.var_idx))
+		cf: u32 = 0
+		ci: uint = 0
+		set_flags(&cf, &ci, u32(cv.closure_type), 3)
+		set_flag(&cf, &ci, cv.is_const, 1)
+		set_flag(&cf, &ci, cv.is_lexical, 1)
+		set_flags(&cf, &ci, u32(cv.var_kind), 4)
+		put_leb128(w, cf)
+	}
+	// the body: what the reader skips until the function first runs (BC_VERSION's note above)
+	length_at := len(w.buf)
+	put_u32w(w, 0)
+	for &cv in b.closure_var {put_atom(w, cv.var_name)}
 	put_leb128(w, u32(len(b.cpool)))
 	put_leb128(w, u32(len(b.byte_code)))
 	if b.vardefs != nil {
@@ -179,30 +201,18 @@ write_function :: proc(w: ^Writer, b: ^Function_Bytecode) {
 	} else {
 		put_leb128(w, 0)
 	}
-	for &cv in b.closure_var {
-		put_atom(w, cv.var_name)
-		put_leb128(w, u32(cv.var_idx))
-		cf: u32 = 0
-		ci: uint = 0
-		set_flags(&cf, &ci, u32(cv.closure_type), 3)
-		set_flag(&cf, &ci, cv.is_const, 1)
-		set_flag(&cf, &ci, cv.is_lexical, 1)
-		set_flags(&cf, &ci, u32(cv.var_kind), 4)
-		put_leb128(w, cf)
-	}
 	for c in b.cpool {
 		write_value(w, c)
 	}
 	write_bytecode(w, b.byte_code)
 	if w.allow_debug {
-		put_atom(w, b.filename)
-		put_leb128(w, u32(b.line_num))
-		put_leb128(w, u32(b.col_num))
 		put_leb128(w, u32(len(b.pc2line)))
 		append(&w.buf, ..b.pc2line)
 		put_leb128(w, u32(len(b.source))) // empty unless the compile kept the source
 		append(&w.buf, ..b.source)
 	}
+	n := u32(len(w.buf) - length_at - BODY_LENGTH_BYTES)
+	for i in 0 ..< BODY_LENGTH_BYTES {w.buf[length_at + i] = u8(n >> uint(8 * i))}
 }
 
 // write_bytecode copies the code, rewriting each atom operand to its serialized index (JS_WriteFunctionBytecode).

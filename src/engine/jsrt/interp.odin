@@ -161,6 +161,11 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 			when JSRT_TRACE_LAST_OP {trace_last_op = op; trace_last_bc = b}
 			pc += 1
 			#partial switch op {
+			case .lazy_body:
+				if !bytecode_ready(ctx, b) {exc = true; continue}
+				f.pc = 0
+				f.sp = sp
+				continue frames
 			case .push_i32:
 				stack[sp] = mk_int(i32(rd_u32(code, pc)))
 				sp += 1

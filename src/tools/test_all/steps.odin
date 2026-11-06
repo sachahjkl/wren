@@ -384,6 +384,8 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 			Command{argv = strs(exe("build/jsengine_jit"), "cold", "-image", "build/js/wren_js.wasm", "examples/jsbench/jitcold.js")},
 			Command{argv = strs(exe("build/jsengine_jit"), "run", "-image", "build/js/wren_js.wasm", "examples/jsbench/hotcheck.js")},
 			Command{argv = strs(exe("build/jsengine_jit"), "cost", "-image", "build/js/wren_js.wasm", "--pref", "wasm.wasmtime.fuel=true", "examples/jsbench/cost.js")},
+			Command{argv = strs(exe("build/jsengine_jit"), "lazy", "-image", "build/js/wren_js.wasm")},
+			Command{argv = strs(exe("build/jsengine_jit"), "lazy", "-image", "build/js/wren_js.wasm", "-jit", "-jit-threshold", "1", "-jit-loop", "1", "-jit-sync")},
 			Command{argv = strs(exe("build/jsengine_jit"), "polls", "-image", "build/js/wren_js.wasm")},
 			Command{argv = strs(exe("build/jsengine_jit"), "hung", "-image", "build/js/wren_js.wasm", "examples/jsbench/hung.js")},
 			Command{argv = join({exe("build/test262"), "-jit", "-jit-sync", "-jit-threshold", "2", "-jit-loop", "1"}, test262_quick)},
