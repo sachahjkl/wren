@@ -3150,6 +3150,34 @@ keyless: desc, all_next, all_prev, sib_desc, set = 0     (.flex-variant *)</code
 <li><code>style.incremental.parallel_min</code> 512 and 128 (cnn.com, 3 runs): worse, style 1 263 to 1 457 and 1 801 ms, CPU 7 000 to 8 641 and 9 234. Stays 2 048.</li>
 </ul>
 <p><strong>Left.</strong> What is left of a partial pass is matching: 90 to 150 us an element on the window thread, <code>:has()</code> that is not exact a third of it (nested, or with a sibling combinator). <code>Collection_length</code> was not looked at. Full passes that remain, 40 to 110 ms each: <code>a sheet came with @keyframes that elements use</code> (the three heavy pages), <code>a sheet came that styles another tree</code>, <code>style rules changed</code> (which sheet, not identified), <code>form controls inserted</code> (radio buttons), the first ones. 90 to 170 ms a load of sheets arriving (<code>fresh_hits</code> walks the document for each). Layout's <code>too much changed</code>: 5 to 10 ms a time, 30 times on theverge.com.</p>
+<h2 id="what-changed-round-42-the-documents-load-as-two-state-machines"><a class="anchor" href="#what-changed-round-42-the-documents-load-as-two-state-machines" aria-hidden="true">#</a>What changed, round 42: the document's load as two state machines</h2>
+<p>The pump and the document's life cycle were a bool, a handle, a bool and a float, then four bools beside <code>ready_state</code>. They are <code>Pump_State</code> and <code>Doc_Phase</code> now, with one transition proc each (<code>pump_to</code>, <code>doc_phase_set</code>). A paint turn was a timer of 24 ms; it ends with <code>first_paint_done</code>, or at <code>javascript.load.paint_deadline_ms</code> (100). Development builds, <code>wrentool waterfall</code>, a base binary kept apart, each pair of loads back to back, a load started only with the machine under 25 % busy.</p>
+<p><strong>What was found.</strong></p>
+<ul>
+<li><strong>The frame is not late on these pages: it is long.</strong> A trace of the turns: the yield comes, the frame starts in the same few ms, and the turn ends 35 to 270 ms later, inside it. No top-level page of the four reached the deadline. The 100 ms is a bound, not a measured figure.</li>
+<li><strong>Stripe's hidden frames spent the wait on nothing</strong>: a document that is never shown waited for the whole deadline inside npr.org's and cnn.com's load. A frame's document, a page not shown and a page that has missed one deadline get no turn now.</li>
+<li><p><strong>The first form of this work was worse on npr.org</strong>: first paints of 1.0 to 1.6 s in 3 runs of 11, against none over 811 ms for the base. Two things were changed, and neither alone was shown to be the cause (with the first alone, 1.1 and 1.4 s in 10 runs on a busy machine).</p>
+<ul>
+<li>A frame held by a sheet ended the turn: one traced run had the reveal attach a body <code>&lt;link&gt;</code> and the frame find the page blocked. The turn now goes on; only a frame that laid the page out and found nothing to show ends it.</li>
+<li>The reveal went back to the pump before each script, which let what was ready of the async scripts in between the parser's, in front of the body. It stops where it did now, and <code>paint_turn_due</code> is asked by the reveal and by <code>pump_turn</code>.</li>
+</ul></li>
+<li><strong>Deferred scripts, modules and async scripts once parsing was done had no turn</strong>: <code>the_end</code> never asked, and the others' test read a parser position that <code>parser_finish</code> had reset. They have one now, with the first frame given a chance to run first.</li>
+</ul>
+<p><strong>Figures.</strong> Range of the runs, ms. The series of 5 was made of all four pages, the series of 8 of one page alone.</p>
+<div class="table-box"><table>
+<thead><tr><th>page</th><th>first paint, base</th><th>new</th><th>load, base</th><th>new</th></tr></thead>
+<tbody>
+<tr><td>cnn.com (5)</td><td>491-547</td><td>472-543</td><td>3 649-3 984</td><td>3 406-3 847</td></tr>
+<tr><td>npr.org (5)</td><td>549-698</td><td>507-575</td><td>3 992-4 139</td><td>3 656-3 777</td></tr>
+<tr><td>npr.org (8)</td><td>510-900</td><td>486-688</td><td>3 396-4 503</td><td>3 617-3 905</td></tr>
+<tr><td>theverge.com (5)</td><td>339-363</td><td>290-368</td><td>4 139-4 757</td><td>4 104-4 756</td></tr>
+<tr><td>bbc.com/news (5)</td><td>168-218</td><td>159-253</td><td>2 080-2 152</td><td>2 127-2 374</td></tr>
+<tr><td>bbc.com/news (8)</td><td>98-241</td><td>110-260</td><td>539-2 319</td><td>549-2 340</td></tr>
+</tbody>
+</table></div>
+<p>The ranges overlap on every page but npr.org's load in the series of 5: what this round gives is the state, not time. npr.org has one mode of first paint in these 13 runs, and its base has none of its old slow one either, so that says little. bbc.com/news has one too, under 300 ms in both; its load has two, about 0.6-0.9 s and 2.1-2.3 s, in both binaries.</p>
+<p><strong>Tests.</strong> <code>jsload_a_paint_turn_waits_for_a_late_frame</code>, <code>jsload_a_paint_turn_ends_at_its_deadline_once</code>, <code>jsload_a_deferred_script_goes_behind_the_first_paint</code>, <code>jsload_a_frame_a_script_reached_is_not_loading</code>. The first three on a virtual clock or on no clock at all.</p>
+<p><strong>Left.</strong> <code>the_end</code> does not wait for sheets before a deferred script, as HTML says it should ("a style sheet that is blocking scripts"): the order of scripts stayed as it was. <code>Doc_Parser.active</code> is <code>.Parsing</code> by another name but for the steps of <code>parser_finish</code> before the phase changes.</p>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
@@ -3425,6 +3453,7 @@ must call nothing itself (<code>interp_hot.odin</code>'s header says how).</li>
 <li><a href="#what-changed-round-39-what-is-left-of-the-load-and-three-settings-measured-again">What changed, round 39: what is left of the load, and three settings measured again</a></li>
 <li><a href="#what-changed-round-41-a-page-blank-after-an-idle-moment">What changed, round 41: a page blank after an idle moment</a></li>
 <li><a href="#what-changed-round-40-what-a-style-and-layout-pass-costs-during-a-load">What changed, round 40: what a style and layout pass costs during a load</a></li>
+<li><a href="#what-changed-round-42-the-documents-load-as-two-state-machines">What changed, round 42: the document's load as two state machines</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
