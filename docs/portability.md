@@ -202,7 +202,8 @@ and GitHub's repository page load and draw. What it took:
   a Vulkan or GL driver at run time. On NixOS: `nix shell` with clang, lld, nasm, pkg-config, rustup (1.99.1), and
   `LIBRARY_PATH` / `LD_LIBRARY_PATH` for those libraries.
 - `build/js/wren_js.wasm` is the JS engine's image: a Windows build makes it (`src\tools\buildjs`) and the file is
-  portable, so a Linux checkout copies it.
+  portable, so a Linux checkout copies it. Its machine code (`build/js/wren_js.code`, which the program ships) is not:
+  `./build.sh wren` makes it from that image (`wrentool build jscode`).
 
 A bug Linux found: `Performance_timeline` freed the navigation entry's strings (a `defer` in the `if` block) before
 marshalling them, so `performance.getEntriesByType("navigation")` read freed memory. The Windows heap kept the bytes,

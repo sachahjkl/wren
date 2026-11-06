@@ -33,6 +33,8 @@ import "wb:host"
 
 Cache_Stats :: struct {
 	memory_hits:  int,
+	shipped_hits: int,   // taken from the code shipped with the program (shipped.odin)
+	shipped_refused: int,   // shipped code that did not fit (another configuration, Wasmtime, or the CPU)
 	disk_hits:    int,
 	compiles:     int,
 	disk_rejects: int,   // files refused (MAC, format, or Wasmtime) and deleted
@@ -143,9 +145,9 @@ cached_free :: proc(c: ^Cached) {
 }
 
 // The compiled module of `image`, ready to instantiate (`pre`), or an error message (allocated). Pair with
-// cache_release. `disk_only`: nil and no error when the module is neither in memory nor on disk (nothing compiled).
+// cache_release. `no_compile`: nil and no error when the module is not to be had without compiling it.
 @(private)
-cache_acquire :: proc(image: []byte, known: ^Digest = nil, disk_only := false, polled := false) -> (c: ^Cached, err: string) {
+cache_acquire :: proc(image: []byte, known: ^Digest = nil, no_compile := false, polled := false) -> (c: ^Cached, err: string) {
 	caller := context.allocator
 	engine := polled ? wt.polled_engine : wt.engine
 	context.allocator = base.process_allocator()
@@ -157,6 +159,7 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, disk_only := false, p
 		key, hashed = sha256(image)
 		if !hashed { return nil, strings.clone("cannot hash the module", caller) }
 	}
+	image_key := key
 	if polled {
 		key[0] ~= CACHE_KEY_POLLED   // (the same image for the other engine is another entry)
 	}
@@ -172,23 +175,24 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, disk_only := false, p
 		return found, ""
 	}
 	sync.mutex_unlock(&cache.lock)
-	if disk_only && !cache.disk { return nil, "" }
+	if no_compile && !cache.disk && len(shipped_code) == 0 { return nil, "" }
 
 	info, aerr := analyze_image(image)
 	if aerr != "" { return nil, strings.clone(aerr, caller) }
 	filekey: Digest
 	path: string
 	defer delete(path)
-	module: wt_module
+	module := shipped_load(image_key, polled)
+	from_shipped := module != nil
 	from_disk := false
-	if cache.disk {
+	if cache.disk && module == nil {
 		fingerprint := polled ? wt.polled_fingerprint : wt.fingerprint
 		filekey, _ = sha256(key[:], fingerprint[:])
 		path = disk_path(&cache.files, filekey)
 		module = disk_load(path, filekey, engine)
 		from_disk = module != nil
 	}
-	if module == nil && disk_only { return nil, "" }
+	if module == nil && no_compile { return nil, "" }
 	if module == nil {
 		patched, copied := patch_image(image, info)
 		e := wasmtime_module_new(engine, raw_data(patched), len(patched), &module)
@@ -215,7 +219,11 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, disk_only := false, p
 
 	sync.mutex_lock(&cache.lock)
 	defer sync.mutex_unlock(&cache.lock)
-	if from_disk { cache.stats.disk_hits += 1 } else { cache.stats.compiles += 1 }
+	switch {
+	case from_shipped: cache.stats.shipped_hits += 1
+	case from_disk:    cache.stats.disk_hits += 1
+	case:              cache.stats.compiles += 1
+	}
 	if found, ok := cache.entries[key]; ok {   // compiled by another thread meanwhile
 		cached_free(c)
 		found.users += 1
@@ -235,13 +243,16 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, disk_only := false, p
 	return c, ""
 }
 
-// The compiled module of `image` read from the disk cache into memory ahead of its first instance (a process's first
-// JavaScript realm: page.js_startup), its imports resolved. False when it was not (not on disk, or memory keeps no
-// module): nothing is compiled. Any thread.
+// The compiled module of `image` read into memory ahead of its first instance (a process's first JavaScript realm:
+// page.js_startup), from the shipped code or the disk cache, its imports resolved. False when it was not (memory keeps no
+// module, or it is in neither). In neither, a program with shipped code compiles it here: that code was refused, so
+// this is the one compile of the process (each realm and compile thread that came to it first compiled the whole engine
+// again, at once), begun before any page needs it and on no page's thread. A program without has nothing compiled:
+// a test's process that runs no script pays nothing. Any thread.
 read_ahead :: proc(image: []byte, known: ^Digest = nil, opt: Options = {}) -> bool {
 	if cache.max_bytes <= 0 { return false }
 	_, polled := polled_image(image, opt)
-	c, err := cache_acquire(image, known, disk_only = true, polled = polled)
+	c, err := cache_acquire(image, known, no_compile = len(shipped_code) == 0, polled = polled)
 	delete(err)
 	if c == nil { return false }
 	cache_release(c)

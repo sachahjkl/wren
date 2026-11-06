@@ -9,6 +9,7 @@ package wasm
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
+import "core:slice"
 import "core:strings"
 import "core:sync"
 import "core:testing"
@@ -753,4 +754,96 @@ polls :: proc(t: ^testing.T) {
 		testing.expectf(t, res == .Trapped && strings.contains(other.last_error, "wasm.max_call_ms"), "the epoch ends it (%s)", other.last_error)
 		destroy(other)
 	}
+}
+
+// The code a program ships (shipped.odin): taken with nothing compiled and nothing read from the disk. It is the polled engine's, as the JavaScript engine's image is.
+@(test)
+shipped_code_is_taken_and_nothing_is_compiled :: proc(t: ^testing.T) {
+	dir := temp_dir(t, "shipped")
+	defer testenv.remove_tree(dir)
+	defer shipped_set(nil)
+	setup(t, dir)
+	image, _, err := poll_instrument(wat(t, POLL_MODULE), POLL_WORD, {}, context.temp_allocator)
+	testing.expect_value(t, err, "")
+	blob, merr := shipped_make(image, true, allocator = context.temp_allocator)
+	testing.expect_value(t, merr, "")
+
+	setup(t, dir)   // a new install: the disk has nothing
+	shipped_set(blob)
+	testing.expect(t, read_ahead(image, nil, {polled = true}), "the shipped code read ahead")
+	o := options_default()
+	o.polled = true
+	inst := make_instance(t, image, o)
+	if inst != nil {
+		testing.expect(t, inst.wt.polled, "on the engine without epoch checks")
+		n, res := call_i32(inst, "counted")
+		testing.expect(t, res == .Ok && n == 1000, "the shipped code runs")
+		destroy(inst)
+	}
+	cache_flush()
+	s := cache_stats()
+	testing.expectf(t, s.shipped_hits == 1 && s.compiles == 0 && s.disk_hits == 0 && s.disk_writes == 0 && s.shipped_refused == 0, "from the program, nothing compiled, nothing written: %v", s)
+	testing.expect_value(t, len(cache_files(dir)), 0)
+	runtime_destroy()
+}
+
+@(private = "file")
+run_add :: proc(t: ^testing.T, image: []byte) -> (i32, Call_Result) {
+	inst := make_instance(t, image)
+	if inst == nil { return 0, .Trapped }
+	defer destroy(inst)
+	return call_i32(inst, "add", 40, 2)
+}
+
+// Shipped code that does not fit: the module compiles and runs, and the next start finds it on the disk as before.
+@(test)
+refused_shipped_code_falls_back :: proc(t: ^testing.T) {
+	dir := temp_dir(t, "refused")
+	defer testenv.remove_tree(dir)
+	defer shipped_set(nil)
+	setup(t, dir)
+	image := wat(t, MODULE)
+	good, merr := shipped_make(image, false, allocator = context.temp_allocator)
+	testing.expect_value(t, merr, "")
+
+	// Wasmtime's own refusal: what follows the header is not what it wrote (another version comes to the same check)
+	spoiled := slice.clone(good, context.temp_allocator)
+	spoiled[size_of(Shipped_Header)] ~= 0xff
+	setup(t, dir)
+	shipped_set(spoiled)
+	r, res := run_add(t, image)
+	testing.expect(t, res == .Ok && r == 42, "it runs all the same")
+	cache_flush()
+	s := cache_stats()
+	testing.expectf(t, s.shipped_refused == 1 && s.shipped_hits == 0 && s.compiles == 1 && s.disk_writes == 1, "refused, compiled, kept on the disk: %v", s)
+
+	// the next start: refused again, the disk has it
+	setup(t, dir)
+	shipped_set(spoiled)
+	r, res = run_add(t, image)
+	s = cache_stats()
+	testing.expectf(t, res == .Ok && s.shipped_refused == 1 && s.disk_hits == 1 && s.compiles == 0, "from the disk: %v", s)
+
+	// another configuration (a wasm.wasmtime.* preference): the blob is passed by before Wasmtime sees it
+	setup(t, "", proc(rs: ^Runtime_Settings) { rs.opt_level = .None })
+	shipped_set(good)
+	r, res = run_add(t, image)
+	s = cache_stats()
+	testing.expectf(t, res == .Ok && s.shipped_refused == 1 && s.compiles == 1, "another configuration compiles: %v", s)
+
+	// the code of another image never runs, and that is no refusal: any other module of the runtime comes this way
+	setup(t, "")
+	shipped_set(good)
+	destroy(make_instance(t, wat(t, NO_MEMORY_MODULE)))
+	s = cache_stats()
+	testing.expectf(t, s.shipped_hits == 0 && s.shipped_refused == 0 && s.compiles == 1, "another image compiles: %v", s)
+
+	// refused, the read-ahead compiles: once, ahead of the instance, which finds the module in memory
+	setup(t, "")
+	shipped_set(spoiled)
+	testing.expect(t, read_ahead(image), "compiled ahead")
+	r, res = run_add(t, image)
+	s = cache_stats()
+	testing.expectf(t, res == .Ok && s.compiles == 1 && s.memory_hits == 1, "one compile, ahead of the instance: %v", s)
+	runtime_destroy()
 }

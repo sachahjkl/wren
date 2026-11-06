@@ -63,7 +63,9 @@ wren() {
   # The text and accessibility backends are compiled into the native library here (build.bat's default features);
   # the toolkit is then told not to link them itself (-define:FONT_NATIVE_LINK=false / -define:A11Y_NATIVE_LINK=false).
   wrentool build native -Profile "$PROFILE" -Features text,a11y
-  local flags=(-collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -target:linux_amd64)
+  # the engine's machine code, which the program ships: made here, it is this system's (the image comes from Windows, code does not travel)
+  wrentool build jscode
+  local flags=(-collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -target:linux_amd64 -define:WREN_SHIPPED_CODE=true)
   flags+=(-extra-linker-flags:"$(link_flags)")
   # as build.bat: the channel, the first block of each thread's temporary allocator (1 MiB), the version of the sources
   flags+=(-define:WREN_CHANNEL="${WREN_CHANNEL:-dev}" -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=65536)

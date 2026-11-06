@@ -88,7 +88,7 @@ pinned in the script) into `build\wasmtime`; the static `wasmtime.lib` is linked
 12 MB). It needs `ws2_32 advapi32 userenv ntdll shell32 ole32 bcrypt kernel32` and the C runtime, linked in as for every native library of Wren
 (`libcmt libucrt libvcruntime`, the static C runtime that Odin's `core:c/libc` is: `wren.exe` needs no runtime DLL), declared in `src/wasm/wasmtime.odin`. Modules are compiled by Cranelift (or Winch,
 `wasm.wasmtime.compiler`), kept in a memory cache and in an HMAC-authenticated disk cache of the profile
-(`wasm-cache`), and every call from the host has a wall-clock deadline (`wasm.max_call_ms`, epoch interruption; the JavaScript engine's image runs on a second Wasmtime engine without epoch checks and polls at the head of its loops, `src/wasm/poll.odin`; with
+(`wasm-cache`); the JavaScript engine's image is not compiled on the user's machine at all: its machine code is made at build time and shipped in `wren.exe` (`src/wasm/shipped.odin`, `jsengine precompile`), with the disk cache's path behind it when it does not fit (a changed `wasm.wasmtime.*` preference, a CPU without its features). Every call from the host has a wall-clock deadline (`wasm.max_call_ms`, epoch interruption; the JavaScript engine's image runs on a second Wasmtime engine without epoch checks and polls at the head of its loops, `src/wasm/poll.odin`; with
 `wasm.wasmtime.fuel`, also an instruction budget). `src/tools/wasmbench` compares the compiler configurations and
 measures host calls.
 
