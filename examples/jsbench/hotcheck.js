@@ -432,3 +432,39 @@ try {strict_set(locked_b);} catch (e) {refused = e instanceof TypeError;}
 same(refused, true, "strict code is told");
 var not_extensible = Object.preventExtensions(Object.create(Walked.prototype));
 same((function () {not_extensible.fresh = 1; return "fresh" in not_extensible;})(), false, "an object that takes no key");
+
+// A greedy loop of one character is one state for the whole run; a search that starts with such a run goes on after it.
+same(/a+b/.exec("xaaab").index, 1, "a run, from its first position");
+same(/a*ab/.exec("aaab")[0], "aaab", "a run gives back what follows needs");
+same(/\S+\.\S+/.exec("a.b.c d")[0], "a.b.c", "the last place the next character is");
+same(/(\S+)@(\S+)/.exec("x y@z").slice(1).join(), "y,z", "captures around runs");
+same(/([^"]*)"/.exec('abc"d')[1], "abc", "a class run and its capture");
+same(/.*b/.exec("aab\nb")[0], "aab", "a dot run stops at the line's end");
+same(/a+/i.exec("xAaA")[0], "AaA", "a run without regard to case");
+same(/\w+(?=!)/.exec("hello! you")[0], "hello", "a run before a lookahead");
+same(/(?<=\s)\S+/.exec("ab cd")[0], "cd", "a run after a lookbehind");
+same(/(?=(a+))a*b\1/.exec("baaabac")[0], "aba", "a run inside a lookahead keeps its capture");
+same(/(a+)b\1/.exec("aaabaa")[0], "aabaa", "a back reference starts further in the run");
+same(/a+(?:b|c)/.exec("aaad aac")[0], "aac", "a run, then an alternative");
+same(/(?:a+b)+/.exec("aabab")[0], "aabab", "a run in a loop");
+same("a@ b c@".replace(/\S+@/g, "#"), "# b #", "a global search over runs");
+var sticky_run = /a+b/y;
+sticky_run.lastIndex = 1;
+same(sticky_run.exec("aaab")[0], "aab", "sticky: the run from lastIndex");
+same(/\u{1F600}+x/u.exec("\u{1F600}\u{1F600}x")[0].length, 5, "a run of pairs");
+same(/\S+x/u.exec("\u{1F600}\u{1F600}x")[0].length, 5, "a class over pairs");
+var long_token = "";
+for (var i = 0; i < 2000; i++) {long_token += "abcdefghij";}
+same(/\S+(@|%40)\S+\.\S+/.test(long_token), false, "no match in a long run");
+same(/\S+@/.test(long_token + "@"), true, "a match at the end of a long run");
+
+// indexOf a word at a time: units on either side of a word's end, bytes with the high bit, wide strings against narrow patterns.
+same("abcdefgh!".indexOf("!"), 8, "the first unit past a word");
+same("aaaaaaaaaaaaaaab".indexOf("ab"), 14, "first and last unit in different words");
+same("\xff\x80\x7f\x01\x00".indexOf("\x7f"), 2, "the high bit and a borrow");
+same("\x01\x01\x01\x02\x01\x01\x01\x01".indexOf("\x02"), 3, "a byte above a borrow");
+same("ĀāĂăĄą".indexOf("ą"), 5, "wide units");
+same("ĀaĂb".indexOf("ab"), -1, "a pattern apart in a wide string");
+same("abc".indexOf("Ā"), -1, "a unit a narrow string does not hold");
+same("xxxxxxxxxxxxabcabc".indexOf("abc", 13), 15, "from a position");
+same("xxxxxxxxabcdefghijkl".lastIndexOf("abc"), 8, "lastIndexOf is another search");

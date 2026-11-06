@@ -3,6 +3,7 @@ package jsrt
 // String: the constructor, the statics, String.prototype and the String iterator (ECMA-262 §22.1).
 // Case mapping and normalization come from the Unicode tables of src/engine/unicode.
 
+import "base:intrinsics"
 import ucd "wb:engine/unicode"
 
 @(private = "file")
@@ -137,16 +138,34 @@ sp_concat :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Valu
 
 // Find `pat` in `s` at or after `from` (-1 if absent).
 // The search of indexOf, includes, split, replace: the units of each width read straight, the first and the last unit
-// of the pattern tried before the rest.
+// of the pattern tried before the rest, a word of positions at a time: of a word x, (x - ONES) & ~x & HIGHS has its lowest bit in the
+// first unit that is zero (a bit above that one may be a borrow's, which is why only the lowest is read), and x is the units that
+// differ from the pattern's first or last.
 @(private = "file")
 units_index_of :: proc "contextless" (h: [^]$H, n: int, p: [^]$P, m: int, from: int) -> int {
+	UNIT_BITS :: 8 * size_of(H)
+	ONES :: max(u64) / (1 << UNIT_BITS - 1)   // (a one in each unit)
+	HIGHS :: ONES << (UNIT_BITS - 1)
+	WORD_UNITS :: size_of(u64) / size_of(H)
 	c0, cl := H(p[0]), H(p[m - 1])
 	if P(c0) != p[0] || P(cl) != p[m - 1] {return -1}   // (a unit no string of this width holds)
 	last := m - 1
-	outer: for i := from; i <= n - m; i += 1 {
-		if h[i] != c0 || h[i + last] != cl {continue}
+	first_units, last_units := ONES * u64(c0), ONES * u64(cl)
+	i := from
+	outer: for i <= n - m {
+		if i + last + WORD_UNITS <= n {
+			a := intrinsics.unaligned_load(cast(^u64)&h[i]) ~ first_units
+			b := intrinsics.unaligned_load(cast(^u64)&h[i + last]) ~ last_units
+			x := a | b
+			zero := (x - ONES) & ~x & HIGHS
+			if zero == 0 {i += WORD_UNITS; continue}
+			i += int(intrinsics.count_trailing_zeros(zero)) / UNIT_BITS
+		} else if h[i] != c0 || h[i + last] != cl {
+			i += 1
+			continue
+		}
 		for j in 1 ..< last {
-			if P(h[i + j]) != p[j] {continue outer}
+			if P(h[i + j]) != p[j] {i += 1; continue outer}
 		}
 		return i
 	}

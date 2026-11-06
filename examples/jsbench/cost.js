@@ -43,3 +43,6 @@ COST_CASES.push(["{...o} of 8", 4700, function (n) {for (var i = 0; i < n; i++) 
 COST_CASES.push(["a function called", 1250, function (n) {var f = no_op; for (var i = 0; i < n; i++) f();}]);
 function Fields() {this.a = 1; this.b = 2; this.c = 3;}
 COST_CASES.push(["new with three fields", 4350, function (n) {for (var i = 0; i < n; i++) sink = new Fields();}]);
+var run_of_text = "https://example.com/a-long-path-of-an-article/with?utm_source=abc&utm_medium=social&id=0123456789#fragment";
+var email_like = /\S+(@|%40)\S+\.\S+/;
+COST_CASES.push(["a search that starts with a run", 19000, function (n) {for (var i = 0; i < n; i++) sink = email_like.test(run_of_text);}]);

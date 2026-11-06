@@ -267,18 +267,27 @@ timeline_data :: proc(ctx: ^wj.Context, kind: Kind, from: u64, next: ^u64) -> wj
 	return arr
 }
 
-// The entries of `kind` as objects.
+// The entries of `kind` as objects; of that name only when one is given (a page asks for one entry among the page's hundreds, often).
 @(private = "file")
-timeline_entries :: proc(ctx: ^wj.Context, kind: Kind, from: u64, next: ^u64) -> wj.JSValue {
+timeline_entries :: proc(ctx: ^wj.Context, kind: Kind, from: u64, next: ^u64, name := "") -> wj.JSValue {
 	data := timeline_data(ctx, kind, from, next)
 	if wj.is_exception(data) { return data }
 	out := wj.JS_NewArray(ctx)
 	n: i64
 	wj.JS_GetLength(ctx, data, &n)
+	kept: u32
 	for i in 0 ..< n {
-		e := timeline_entry_new(ctx, kind, wj.JS_GetPropertyInt64(ctx, data, i))
+		item := wj.JS_GetPropertyInt64(ctx, data, i)
+		if name != "" {
+			nm := wj.JS_GetPropertyStr(ctx, item, "name")
+			same := str_value_is(ctx, nm, name)
+			wj.JS_FreeValue(ctx, nm)
+			if !same { wj.JS_FreeValue(ctx, item); continue }
+		}
+		e := timeline_entry_new(ctx, kind, item)
 		if wj.is_exception(e) { wj.free_values(ctx, data, out); return e }
-		wj.array_set(ctx, out, u32(i), e)
+		wj.array_set(ctx, out, kept, e)
+		kept += 1
 	}
 	wj.JS_FreeValue(ctx, data)
 	return out
@@ -991,7 +1000,7 @@ sort_by_start :: proc "contextless" (ctx: ^wj.Context, arr: wj.JSValue) {
 // What the timeline buffer holds of `type`: marks and measures from the browser's list, navigation / resource / paint
 // entries from its timeline; the slow-event entries are only for observers (as in Chromium).
 @(private = "file")
-buffered_entries :: proc(ctx: ^wj.Context, type: Kind) -> wj.JSValue {
+buffered_entries :: proc(ctx: ^wj.Context, type: Kind, name := "") -> wj.JSValue {
 	// event, first-input, longtask, largest-contentful-paint, layout-shift and element are delivered to observers only
 	// (as in Chromium): performance.getEntriesByType returns nothing for them; a PerformanceObserver with buffered: true
 	// sees the ones already recorded. visibility-state is likewise observer-only.
@@ -1000,19 +1009,19 @@ buffered_entries :: proc(ctx: ^wj.Context, type: Kind) -> wj.JSValue {
 	     .Long_Animation_Frame, .Script:
 		return wj.JS_NewArray(ctx)
 	}
-	if type >= .Navigation { return timeline_entries(ctx, type, 0, nil) }
-	return entries(ctx, "", type)
+	if type >= .Navigation { return timeline_entries(ctx, type, 0, nil, name) }
+	return entries(ctx, name, type)
 }
 
-// Every entry of the buffer, in start time order.
+// Every entry of the buffer (of that name, when one is given), in start time order.
 @(private = "file")
-all_entries :: proc(ctx: ^wj.Context) -> wj.JSValue {
-	arr := entries(ctx, "", .Any)
+all_entries :: proc(ctx: ^wj.Context, name := "") -> wj.JSValue {
+	arr := entries(ctx, name, .Any)
 	if wj.is_exception(arr) { return arr }
 	len_: i64
 	wj.JS_GetLength(ctx, arr, &len_)
 	for k in Kind.Navigation ..= Kind.Paint {
-		more := timeline_entries(ctx, k, 0, nil)
+		more := timeline_entries(ctx, k, 0, nil, name)
 		if wj.is_exception(more) { wj.JS_FreeValue(ctx, arr); return more }
 		n: i64
 		wj.JS_GetLength(ctx, more, &n)
@@ -1022,7 +1031,7 @@ all_entries :: proc(ctx: ^wj.Context) -> wj.JSValue {
 		}
 		wj.JS_FreeValue(ctx, more)
 	}
-	sort_by_start(ctx, arr)
+	if len_ > 1 { sort_by_start(ctx, arr) }
 	return arr
 }
 
@@ -1065,17 +1074,7 @@ wjr_Performance_getEntriesByName :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 	}
 	// "" means any name for the browser: an empty name matches no entry (names are not empty)
 	if n.len == 0 { return wj.JS_NewArray(ctx) }
-	if type == .Mark || type == .Measure { return entries(ctx, str_view(n), type) }
-	// the buffer (of one kind, or all of them) then the entries with this name
-	all := type == .Any ? all_entries(ctx) : buffered_entries(ctx, type)
-	if wj.is_exception(all) { return all }
-	src := "((a, n) => a.filter((e) => e.name === n))"
-	f := wj.JS_Eval(ctx, raw_data(src), uint(len(src)), "<performance>", wj.EVAL_TYPE_GLOBAL)
-	args := [2]wj.JSValue{all, wj.new_string_len(ctx, str_view(n))}
-	r := wj.is_exception(f) ? f : wj.JS_Call(ctx, f, wj.UNDEFINED, 2, &args[0])
-	wj.free_values(ctx, args[0], args[1])
-	if !wj.is_exception(f) { wj.JS_FreeValue(ctx, f) }
-	return r
+	return type == .Any ? all_entries(ctx, str_view(n)) : buffered_entries(ctx, type, str_view(n))
 }
 
 @(private = "file")
