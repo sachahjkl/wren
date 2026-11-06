@@ -5,6 +5,7 @@ import "core:os"
 import "core:slice"
 import "core:sync"
 import "core:testing"
+import "core:thread"
 import "wb:base"
 import "wb:host"
 
@@ -311,6 +312,8 @@ optional_codecs_asked_after_the_probe :: proc(t: ^testing.T) {
 	testing.expect_value(t, heif, codecs.heif)
 }
 
+@(private = "file") LOCK_TRIES :: 100000
+
 // The probe holds nothing the window thread takes: a submit during it does not wait (it took 18 to 21 ms of legacy-html.html's
 // load), and the job is run by another thread meanwhile.
 @(test)
@@ -324,8 +327,13 @@ a_submit_does_not_wait_for_the_codecs_probe :: proc(t: ^testing.T) {
 	decoder_start(2)
 	defer decoder_stop()
 	sync.sema_wait(&gate.entered)
-	free_now := sync.mutex_try_lock(&dec.mu)
-	if free_now { sync.mutex_unlock(&dec.mu) }
+	// (the pool's other thread takes the lock for a moment on its way to waiting: held for the probe, it would stay held through every try)
+	free_now := false
+	for _ in 0 ..< LOCK_TRIES {
+		free_now = sync.mutex_try_lock(&dec.mu)
+		if free_now { sync.mutex_unlock(&dec.mu); break }
+		thread.yield()
+	}
 	testing.expect(t, free_now, "the pool's lock is free during the probe")
 	testing.expect(t, !sync.atomic_load(&codecs.probed), "the probe is still held")
 	sync.sema_post(&gate.release)

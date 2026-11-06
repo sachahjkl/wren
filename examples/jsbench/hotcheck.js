@@ -468,3 +468,46 @@ same("ĀaĂb".indexOf("ab"), -1, "a pattern apart in a wide string");
 same("abc".indexOf("Ā"), -1, "a unit a narrow string does not hold");
 same("xxxxxxxxxxxxabcabc".indexOf("abc", 13), 15, "from a position");
 same("xxxxxxxxabcdefghijkl".lastIndexOf("abc"), 8, "lastIndexOf is another search");
+
+// The matcher's runs (lre_exec.odin): a greedy loop of one character gives back what follows needs, and a search goes on after a run only when no start inside it can match.
+function match(re, text, index, want) {
+	var m = re.exec(text);
+	same(m ? m.index + ":" + JSON.stringify(Array.from(m)) : null, want === null ? null : index + ":" + JSON.stringify(want), String(re) + " of " + text);
+}
+match(/a+ab/, "aaab", 0, ["aaab"]);
+match(/a*b/, "aaac", 0, null);
+match(/a*/, "baaa", 0, [""]);
+match(/(a+)(a+)/, "aaa", 0, ["aaa", "aa", "a"]);
+match(/(a*)(a*)/, "aa", 0, ["aa", "aa", ""]);
+match(/a+b/, "aac aab", 4, ["aab"]);
+match(/[^"]*"/, 'abc"def"', 0, ['abc"']);
+match(/.*x/, "ab\ncdx", 3, ["cdx"]);
+match(/.*x/s, "ab\ncdx", 0, ["ab\ncdx"]);
+match(/a+(?=b)/, "aaab", 0, ["aaa"]);
+match(/a+(?!b)/, "aaab", 0, ["aa"]);
+match(/(a+)b\1/, "aaabaa", 1, ["aabaa", "aa"]);   // (a start inside the run matches where the first did not: a back reference reads the start)
+match(/\w+(?<=ab)c/, "xabc", 0, ["xabc"]);
+match(/(x+)y|(x+)z/, "xxz", 0, ["xxz", null, "xx"]);
+match(/(?:a+b)+c/, "aabab", 0, null);
+match(/(?:a+b)+c/, "aababc", 0, ["aababc"]);
+match(/(?=(a+))a*b\1/, "baaabac", 3, ["aba", "a"]);   // (the states of a lookahead that matched are gone, its captures are not)
+match(/(?=a+b)a+c|a/, "aab", 0, ["a"]);
+match(/A+b/i, "xaAaB", 1, ["aAaB"]);
+match(/[^a]+$/, "a\uffff\uffff", 1, ["\uffff\uffff"]);
+match(/\u4e2d+\u6587/, "\u4e2d\u4e2d\u4e2d\u6587", 0, ["\u4e2d\u4e2d\u4e2d\u6587"]);
+match(/\S+x/u, "\ud83d\ude00\ud83d\ude00x", 0, ["\ud83d\ude00\ud83d\ude00x"]);
+match(/\S+(@|%40)\S+\.\S+/, "x".repeat(100000), 0, null);   // (over the positions of a run from each of them, this does not end)
+
+// indexOf a word at a time: the pattern on each side of a word, in both widths, with candidates that are not it
+for (var width = 0; width < 2; width++) {
+	var filler = width ? "\u4e2d" : "x";
+	for (var before = 0; before < 20; before++) {
+		var text = filler.repeat(before) + "needle" + filler.repeat(19 - before);
+		same(text.indexOf("needle"), before, "indexOf after " + before);
+		same(text.indexOf("n"), before, "one unit after " + before);
+		same(text.indexOf("needle", before + 1), -1, "from past it, after " + before);
+		same(text.indexOf("nexdle"), -1, "the ends alike");
+	}
+}
+same("a".repeat(30).concat("b").indexOf("aab"), 28, "candidates in a row");
+same("abc".indexOf("\u4e2d"), -1, "a unit no string of this width holds");
