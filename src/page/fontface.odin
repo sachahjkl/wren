@@ -24,6 +24,6 @@ FontFace_removeRule :: proc(c: ^Call, id: i32) {
 	if p.engine == nil || id < 0 || int(id) >= len(p.font_face_sheets) || p.font_face_sheets[id] == nil { return }
 	style.engine_remove_sheet(p.engine, p.font_face_sheets[id])
 	p.font_face_sheets[id] = nil
-	p.engine.restyle_needed = true
+	p.engine.restyle_needed, p.engine.restyle_why = true, "a font face rule left"
 	p.style_stale = true
 }

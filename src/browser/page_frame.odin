@@ -90,6 +90,7 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 		loaf_layout_ms = qpc_ms_since(loaf_lt0)
 		prof_end(.Layout)
 		prof_layout(&t.layout)
+		layout_trace("frame", &t.layout, loaf_style_ms, loaf_layout_ms)
 		if t.layout.inc.verify_failures != failures {
 			tab_log(t, .Warn, fmt.tprintf("layout.incremental.verify: incremental layout differs from a full one: %s", t.layout.inc.verify_report))
 		}
