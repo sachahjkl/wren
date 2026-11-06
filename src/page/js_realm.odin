@@ -17,6 +17,7 @@ package page
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:time"
 import "core:sync"
 import "wb:base"
 import "wb:config"
@@ -104,6 +105,12 @@ Js_Read_Ahead :: struct {
 @(private)
 js_read_ahead: Js_Read_Ahead
 
+// How long the process's first window realm held its thread for the engine's code and instance, in ms (0: none yet). What a first page pays when the code had to be compiled.
+@(private)
+js_first_realm_ns: i64
+
+js_first_realm_ms :: proc() -> f64 { return f64(sync.atomic_load(&js_first_realm_ns)) / f64(time.Millisecond) }
+
 @(private)
 js_read_ahead_start :: proc() {
 	sync.atomic_store(&js_read_ahead.state, sync.Futex(Js_Read_Ahead_State.Running))
@@ -152,9 +159,11 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 	}
 	// (a worker terminated while it starts: nothing went wrong, a page may well do that at once)
 	stopping := proc(opt: ^wasm.Options) -> bool { return opt.stop != nil && bool(sync.atomic_load(opt.stop)) }
+	waited_at := time.tick_now()
 	js_read_ahead_wait()
 	opt.polled = js_polled()
 	inst, err := wasm.instance_create(js_engine_image(), p, p.scope, opt, "javascript", nil, js_image_digest())
+	if p.worker == nil { sync.atomic_compare_exchange_strong(&js_first_realm_ns, 0, i64(time.tick_since(waited_at))) }
 	if inst == nil {
 		r.failed = true
 		if !stopping(&opt) { log(p, .Error, fmt.tprintf("JavaScript could not start: %s", err)) }
@@ -330,6 +339,7 @@ js_node_interface :: proc(p: ^Page, n: ^dom.Node) -> u32 {
 // `profile_dir` is ""). Process end: js_shutdown (after every page is closed).
 js_startup :: proc(prefs: ^config.Prefs, profile_dir: string) {
 	js_image_from_env()   // (WREN_JS_IMAGE: js_profile.odin)
+	js_code_from_env()
 	s := js.settings_from_prefs(prefs, profile_dir)
 	defer js.settings_destroy(&s)
 	js.cache_start(s.cache)

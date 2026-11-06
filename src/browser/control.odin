@@ -772,6 +772,7 @@ control_stats_all :: proc(app: ^App, allocator := context.temp_allocator) -> api
 	st.prefs_cache_applied, st.prefs_downloads_applied = int(app.prefs_apply_counts[.Http_Cache]), int(app.prefs_apply_counts[.Downloads])
 	if t := current_tab(app); t != nil && t.page != nil { st.layout_items = len(t.layout.items) }
 	st.cpu_time_ms, st.cpu_user_ms, st.cpu_kernel_ms = process_cpu_ms()
+	st.js_first_realm_ms = page.js_first_realm_ms()
 	pc := process_counters()
 	st.threads, st.handles, st.gdi_objects, st.user_objects = process_thread_count(), int(pc.handles), int(pc.gdi), int(pc.user)
 	st.cookies, st.storage_sites = cookies.count(&app.profile.jar), len(page.storage_sites(&app.storage))
@@ -787,6 +788,7 @@ control_memory :: proc(app: ^App) -> (m: api.Memory_Stats) {
 	m.heap_allocated, m.heap_committed, m.vm_rw, m.vm_exec = int(sp.heap_allocated), int(sp.heap_committed), int(sp.vm_rw), int(sp.vm_exec)
 	wc, jc, is := wasm.cache_stats(), js.cache_stats(), page.images_stats(nil)
 	m.wasm_modules, m.wasm_code_bytes, m.wasm_instances = wc.entries, wc.code_bytes, wasm.instances_alive()
+	m.wasm_compiles, m.wasm_shipped_hits, m.wasm_shipped_refused = wc.compiles, wc.shipped_hits, wc.shipped_refused
 	m.js_cache_entries, m.js_cache_bytes, m.image_entries, m.image_bytes = jc.entries, jc.bytes, is.entries, is.bytes
 	_, _, m.font_entries, m.font_bytes = webfont.decoded_cache_stats()
 	if app.profile.cache != nil { m.http_resident_bytes = int(httpcache.summary(app.profile.cache).resident_bytes) }

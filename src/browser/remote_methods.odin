@@ -1311,6 +1311,7 @@ stats_json :: proc(b: ^strings.Builder, s: api.Stats) {
 	j_key(b, "memory"); j_begin(b)
 	j_int(b, "heapAllocated", i64(m.heap_allocated)); j_int(b, "heapCommitted", i64(m.heap_committed)); j_int(b, "vmRw", i64(m.vm_rw)); j_int(b, "vmExec", i64(m.vm_exec))
 	j_int(b, "wasmModules", i64(m.wasm_modules)); j_int(b, "wasmCodeBytes", i64(m.wasm_code_bytes)); j_int(b, "wasmInstances", i64(m.wasm_instances))
+	j_int(b, "wasmCompiles", i64(m.wasm_compiles)); j_int(b, "wasmShippedHits", i64(m.wasm_shipped_hits)); j_int(b, "wasmShippedRefused", i64(m.wasm_shipped_refused))
 	j_int(b, "jsCacheEntries", i64(m.js_cache_entries)); j_int(b, "jsCacheBytes", i64(m.js_cache_bytes)); j_int(b, "imageEntries", i64(m.image_entries)); j_int(b, "imageBytes", i64(m.image_bytes))
 	j_int(b, "fontEntries", i64(m.font_entries)); j_int(b, "fontBytes", i64(m.font_bytes)); j_int(b, "httpResidentBytes", i64(m.http_resident_bytes))
 	j_int(b, "gpuImages", i64(m.gpu_images)); j_int(b, "gpuGlyphs", i64(m.gpu_glyphs)); j_int(b, "gpuTargets", i64(m.gpu_targets)); j_int(b, "gpuOutlines", i64(m.gpu_outlines)); j_int(b, "pagesBytes", i64(m.pages_bytes)); j_int(b, "bfcacheBytes", i64(m.bfcache_bytes)); j_int(b, "picturesBytes", i64(m.pictures_bytes)); j_int(b, "trims", i64(m.trims))
@@ -1402,6 +1403,7 @@ stats_json :: proc(b: ^strings.Builder, s: api.Stats) {
 	if s.layout_items > 0 { j_int(b, "layoutItems", i64(s.layout_items)) }
 	// the process and the state a reset empties (so that a test can see both the cost of what it did and that a reset worked)
 	j_num(b, "cpuTimeMs", s.cpu_time_ms); j_num(b, "cpuUserMs", s.cpu_user_ms); j_num(b, "cpuKernelMs", s.cpu_kernel_ms)
+	j_num(b, "jsFirstRealmMs", s.js_first_realm_ms)
 	j_int(b, "threads", i64(s.threads)); j_int(b, "handles", i64(s.handles)); j_int(b, "gdiObjects", i64(s.gdi_objects)); j_int(b, "userObjects", i64(s.user_objects))
 	j_int(b, "cookies", i64(s.cookies)); j_int(b, "storageSites", i64(s.storage_sites)); j_int(b, "cacheEntries", i64(s.cache_entries))
 	j_int(b, "historyVisits", i64(s.history_visits)); j_int(b, "closedTabs", i64(s.closed_tabs)); j_int(b, "downloadsActive", i64(s.downloads_active))

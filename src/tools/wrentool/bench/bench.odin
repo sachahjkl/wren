@@ -114,6 +114,7 @@ Start :: struct {
 	stderr:  string,      // a file for its standard error
 	url:     string,
 	no_url:  bool,
+	cold:    bool,        // no shared disk cache of compiled modules: what a new profile finds
 }
 
 // A Wren that answers. What it could not do is said on standard error.
@@ -126,7 +127,7 @@ start :: proc(w: ^Wren, o: Start) -> bool {
 	if o.url != "" { append(&extra, o.url) }
 	// (the engine's compiled code shared on the disk, as a test's: a throwaway profile would compile it at each start, for half a minute under load)
 	cwd, _ := os.get_working_directory(context.temp_allocator)
-	append(&env, fmt.tprintf("WREN_TEST_WASM_CACHE=%s/%s", cwd, WASM_CACHE))
+	append(&env, fmt.tprintf("WREN_TEST_WASM_CACHE=%s", o.cold ? "" : fmt.tprintf("%s/%s", cwd, WASM_CACHE)))
 	opt := api.Launch_Options{exe = o.exe, profile = o.profile, window = o.window, dpi = o.dpi, prefs = o.prefs, extra = extra[:], no_address = o.url != "" || o.no_url,
 		start = {env = env[:], stderr = {file = o.stderr}}}
 	why: string
