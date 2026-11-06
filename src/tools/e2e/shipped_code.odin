@@ -13,14 +13,27 @@ import "wb:remote/api"
 @(private = "file") OTHER_CONFIGURATION :: "wasm.wasmtime.max_stack_bytes=16777216"
 @(private = "file") SCRIPT :: "String(6 * 7)"
 @(private = "file") SCRIPT_RESULT :: "42"
-@(private = "file") PAGE :: "data:text/html,<!doctype html><title>t</title><p>x"
+@(private = "file") EXTERNAL_SCRIPT :: "script.js"
+@(private = "file") EXTERNAL_SOURCE :: "var a = 1"
+@(private = "file") PAGE :: "<!doctype html><title>t</title><script src=script.js></script><p>x"
+// Every script goes to a compile thread, which has an instance of the engine of its own: the code must serve it too (it ran on the other Wasmtime engine, and each thread compiled the image).
+@(private = "file") SCRIPTS_TO_COMPILE_THREADS :: []string{"javascript.compile.offthread_min_bytes=0", "javascript.bytecode_cache.min_source_bytes=0"}
+@(private = "file") REALM_AND_COMPILE_THREAD :: 2
 
 @(private = "file")
 scripted :: proc(t: ^testing.T, prefs: []string) -> ^e2e.Wren_Process {
-	p := e2e.launch(t, {profile = e2e.temp_profile(t), prefs = prefs, start = {env = NO_SHARED_CACHE}})
-	_ = api.navigate(p.s, PAGE, .Load)
+	all := make([dynamic]string, context.temp_allocator)
+	append(&all, ..SCRIPTS_TO_COMPILE_THREADS)
+	append(&all, ..prefs)
+	p := e2e.launch(t, {profile = e2e.temp_profile(t), prefs = all[:], start = {env = NO_SHARED_CACHE}})
+	dir := e2e.temp_folder(t)
+	page := fmt.tprintf("%s/page.html", dir)
+	e2e.write_text(page, PAGE)
+	e2e.write_text(fmt.tprintf("%s/%s", dir, EXTERNAL_SCRIPT), EXTERNAL_SOURCE)
+	_ = api.navigate(p.s, e2e.file_url(page), .Load)
 	got, _ := api.eval(p.s, SCRIPT)
 	testing.expect_value(t, got, SCRIPT_RESULT)
+	api.wait_until(p.s, proc(s: ^api.Session) -> bool { st, _ := api.stats(s); return st.memory.wasm_instances >= REALM_AND_COMPILE_THREAD }, "the compile thread's instance")
 	return p
 }
 
