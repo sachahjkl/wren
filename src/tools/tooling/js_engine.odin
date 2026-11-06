@@ -30,7 +30,7 @@ Js_Options :: struct {
 	names:       bool,       // the function names kept in the module (a readable profile)
 	no_snapshot: bool,       // stop at the raw module
 	test262:     bool,       // the test image: $262, print, the module loader (native/js/odin/test262_host.odin)
-	odin_opt:    string,     // the -o: of the glue and engine ("": size)
+	odin_opt:    string,     // the -o: of the glue and engine ("": speed)
 	odin_flags:  []string,   // more flags for them (WREN_ODIN_FLAGS, ;-separated)
 	log:         string,     // "": standard output
 }
@@ -131,7 +131,7 @@ js_stamp :: proc(o: Js_Options) -> string {
 build_js_engine :: proc(options: Js_Options) -> bool {
 	o := options
 	if o.out == "" { o.out = JS_OUT_DEFAULT }
-	if o.odin_opt == "" { o.odin_opt = "size" }
+	if o.odin_opt == "" { o.odin_opt = "speed" }
 	raw := fmt.tprintf("%s/wren_js_raw.wasm", o.out)
 	final := fmt.tprintf("%s/wren_js.wasm", o.out)
 	stamp_file := fmt.tprintf("%s/STAMP", o.out)
@@ -149,7 +149,7 @@ build_js_engine :: proc(options: Js_Options) -> bool {
 	if !os.exists(wasm_ld) { say(o.log, fmt.tprintfln("%s not found (it ships with Odin)", wasm_ld)); return false }
 	_ = os.make_directory_all(o.out)
 
-	// The glue and engine to one freestanding wasm32 object, no Odin runtime start-up (wj_preinit runs it), -o:size to match the engine's size budget.
+	// The glue and engine to one freestanding wasm32 object, no Odin runtime start-up (wj_preinit runs it). -o:speed: the natives gain more than the interpreter loses on a page (round 34 of docs/performance.md).
 	object := fmt.tprintf("%s/odin_glue.o", o.out)
 	cmd := make([dynamic]string, context.temp_allocator)
 	append(&cmd, odin_program(), "build", "native/js/odin", "-build-mode:obj", "-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-vet",
