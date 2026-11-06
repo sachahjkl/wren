@@ -2760,6 +2760,62 @@ Read plainly. **npr.org: -13 %, ranges separate**, its CPU too. **cnn.com: -21 %
 
 Tests: `jsengine cost` (`cost.js`, 19 cases, limits a tenth over: the base fails 15 of them), `hotcheck.js` (passes in Node), jitcheck and recursion interpreted and compiled, `build\test_all.exe -Quick -NoAsan`: no step failed.
 
+## What changed, round 36: the JavaScript engine without Wasmtime's epoch checks
+
+Round 34's largest item: the epoch check, at each function entry and loop head of the engine's code, 12 to 20 % of everything. Development builds, one browser and two engine images by `WREN_JS_IMAGE`, base (41efe7b3) and round interleaved, the order turning; other agents' test suites at work on the machine for much of it (16 threads, `odin` alone at 1 000 % of one when looked at).
+
+**The design.** What the epoch gives is that the host gets the thread back where a module may run forever. That is a loop: a recursion ends at the stack's limit. So the check moved into the image, and the image moved to a Wasmtime engine that has none (`src/wasm/poll.odin`; the configuration is per engine, compiled in, and a deserialized module must match it):
+- **A pass over the image's code at build time** (`poll_instrument`, in `jsengine snapshot`) puts `i32.load word; if; call $wren.poll; end` at the head of every Wasm loop. A forgotten poll is not possible: enumerating the long loops of the natives by hand was asked for, the pass does it by construction: 8 087 loops in 8 788 functions, 8 044 with a poll. The 43 others are in the six functions of `POLL_EXEMPT`: `hot_loop`, `hot_run`, `interp_run` (the dispatch: their back edges count, and reach the word every `INTERRUPT_POLL_EVERY`), `interp_call`, `frame_push`, `hot_return` (the making of a call: they look at the word at their entry, their loops go over a frame). A name of the list that does not exist fails the build.
+- **The word** is in guest memory; while a call is in progress the instance is on the ticker's list and each tick raises it. `wren.poll` then does what the epoch's callback did (`wt_tick`, shared by the two): the stop flag, the deadlines, the soft flag, the profile's tick, the preemption hook. A trap from there is a trap at a loop head, as before; chrome frames run there as before.
+- **What runs a script without a polled loop** looks at the word itself (`jsrt.poll_host`): `frame_push`, `interp_call`, `poll_interrupt`, and the JIT's direct calls, by a helper. This was not there before and is new in kind: the interpreter counts back edges, not calls, so a recursion that branches and has no loop was only ever stopped by the epoch at a function entry. Compiled loops had their budget already.
+- **A page's modules stay on the engine with epochs.** `Options.polled` is the embedder's word for its own image and the custom section `wren.poll` the image's: both are needed, so a page's module can neither ask for it nor get it by naming the import, and `WREN_JS_IMAGE` with an older image just runs as it did: the A/B below is one browser. `wasm.wasmtime.js_polls=false` puts any image back. `WREN_WASM_PROFILE` and `jsengine -profile` run on the epochs: a sample falls at a check, and there are none at function entries here.
+
+Other options, weighed: *fewer checks by how the hot loop is structured*: round 34 tried one (`s` hidden from LLVM), 0.97 of the base where the checks were two an instruction; the checks stay at every function entry whatever the loop does. *A poll of a flag only in the interpreter, epochs kept*: not possible, they are per engine. *A patched Wasmtime skipping named functions*: it is a pinned release. *A protection fault as the kill* (the guest's memory taken away, Wasmtime's handler traps): would catch a loop with no poll, but a host function reading that memory meanwhile would crash the browser: not needed once every loop has its poll.
+
+**What it gave beyond the check.** Round 34's next item, the memory's base and `ip` reloaded at dispatch: the check's cold path was the last call in `hot_loop`. Without it the memory's base stays in a register: one load in the whole function, at its entry. `ip` is still stored and reloaded at each dispatch (`movq %r9, 0x18(%rsp)`, 451 references to the slot, regalloc2 over the 250-way table): not touched.
+
+**New keys** (round 34's next item, `new` walking the prototypes). `Transition.walked`: the generation in which a set found a key nowhere on the prototypes, none of them other than ordinary objects. Until `Runtime.chain_generation` moves, a set of that key on an ordinary object of that shape takes the transition and looks at nothing. It moves only when an object on such a chain (`OBJ_ON_WALKED_CHAIN`) gets a setter, a read-only property, other attributes or another prototype: a plain method added to a prototype does not stop a set, and does not move it. A key found on the way is not recorded (a `delete` would show what was behind it). And the walk that begins at the receiver no longer looks for the key in it a second time. Test: `hotcheck.js` (passes in Node), `cost.js`.
+
+Interpreted, `examples/jsbench/micro.js`, ns, 3 runs interleaved, median (range); *polls* is the image before the last two steps (call path exempt, new keys):
+
+| | base | polls | round |
+|---|---|---|---|
+| int loop | 29.3 (29.2-29.6) | 23.2 (23.0-23.4) | **22.5 (22.5-24.1)** |
+| float loop | 33.1 (32.8-34.0) | 25.6 (25.5-26.2) | **25.5 (25.0-25.6)** |
+| a small function called | 79.0 (78.6-80.6) | 65.8 (65.2-65.8) | **65.2 (65.2-67.4)** |
+| fib, a call | 71.3 (71.0-73.6) | 61.7 (61.0-62.0) | **55.3 (54.5-56.6)** |
+| closure counter | 73.4 (73.2-74.9) | 59.8 (59.8-60.4) | **56.1 (55.9-57.5)** |
+| property get | 50.7 (50.4-51.2) | 38.4 (37.0-38.6) | **38.1 (37.2-41.2)** |
+| a method on a prototype | 136.1 (133.5-136.1) | 103.5 (103.5-104.0) | **104.9 (104.0-106.3)** |
+| `new Point` | 296.5 (293.7-297.6) | 238.4 (237.5-239.4) | **195.5 (194.6-204.1)** |
+| array read | 44.1 (43.1-44.8) | 34.7 (34.6-34.8) | **33.3 (33.1-33.4)** |
+| `Math.floor`, `Math.abs` | 137.3 (136.1-138.0) | 110.2 (109.2-111.6) | **110.2 (109.2-110.2)** |
+| for-of, an element | 38.4 (38.4-39.3) | 31.7 (31.6-32.3) | **31.6 (31.6-31.7)** |
+| string concat, `charCodeAt` | 186.0 (186.0-187.9) | 143.7 (143.1-144.3) | 162.8 (162.1-164.0) |
+
+All twenty cases of the file are better than the base with ranges separate. **-12 to -34 %**, most -20 to -25 %: what the epoch was said to cost, and a little more. An image with no poll at all, on the same engine, is the bound: a loop 22.6, `Math.floor` 113.8, for-of 31.5: the polls of the natives cost nothing that shows, and those of the call path did (fib 61.4 against 54.0), which is why the call path is exempt. The string case is the one that moved back between two images of this round, for changes that do not touch it (152 with new keys alone, 144 before): a matter of the code's placement is the likely reading, not proven.
+
+Instructions (`jsengine cost`): the polls are counted, the checks never were: 0 to +3.6 % on every case. `new` with three fields 4 972 -> 3 933. The count says nothing of this round's main item.
+
+Pages, 7 runs, ms, median (range):
+
+| | load base | load round | CPU base | CPU round | DOMContentLoaded base | round |
+|---|---|---|---|---|---|---|
+| cnn.com | 4 111 (3 947-4 313) | 4 246 (4 127-4 601) | 6 734 (6 141-7 172) | 7 016 (6 844-7 500) | 2 121 (1 933-2 175) | 2 196 (2 071-2 281) |
+| npr.org | 4 260 (3 926-4 432) | **3 835 (3 530-4 074)** | 6 047 (5 781-6 344) | 5 812 (5 609-6 375) | 2 340 (2 248-2 441) | 2 180 (2 027-2 366) |
+| theverge.com | 5 261 (5 203-5 541) | **4 844 (4 309-4 915)** | 8 672 (7 828-8 828) | 8 078 (7 406-8 109) | 869 (820-884) | 851 (829-862) |
+| bbc.com/news | 2 291 (718-2 610) | 2 272 (1 573-2 392) | 3 297 (2 125-3 516) | 3 516 (2 984-3 703) | 670 (601-914) | 667 (563-754) |
+
+Read plainly. **theverge.com: -8 %, ranges separate** (-17 % in a first series of 5, separate too). npr.org: -10 %, ranges overlap a little (-9 % in the first series, overlapping): a gain, its size not settled. **cnn.com: no gain.** +3 % here (overlapping), +3 % in the first series (separate by one millisecond), -3 % in a second series. bbc.com/news: the same, its load has two modes. **CPU went up on the two that did not gain**: bbc.com/news +7, +11, +4 %, cnn.com +4, +4, +6 % in the three series, ranges mostly overlapping. Not explained. Scripts that do the same work faster cannot be the cause by themselves; what was ruled out: the same image on the engine with epochs is in between, not lower; a realm's creation and private memory are the same (7 146 against 7 135 KiB). The reading left is that these two loads wait for something else than scripts, the CPU is read at the load event plus 500 ms, and a faster engine does more of what comes after by then: **not proven**: it wants the engine's own time on the window thread, for fixed work, and `wasm.guest_time` is not in `api.stats`. With the JIT, `realworld.js` and `macro.js`, 3 runs: under the other agents' load, ranges of a factor 2, nothing to read in them: `forEach` 109 -> 68 ns, `JSON.parse` 4 715 -> 2 411 by the medians, others the other way. **What holds for certain is the interpreter, by micro.js; the loads have not followed the way those figures would say.**
+
+**Not kept.** `interp_run` with its polls: `new Point` 254 against 240 ns, the rest within noise. An image with no polls in natives, of course, measured as the bound only.
+
+**Open.** `ip` at dispatch. The native callback: not touched: `forEach` 11 236 instructions for 8, against 11 156. A recursion in a native with no loop on its way has no poll, and ends at the stack's limit, unless it branches: none was found, the engine was not audited for it.
+
+**Not verified.** Tracy, ETW: not used. The release build, memory on a long session, WPT, the full suite, AddressSanitizer: not run. `hotcheck.js`, `jitcheck.js` and `objectspread.js` pass under `JSRT_GC_STRESS=8192` and `JSRT_GC_POISON`.
+
+Tests: the wasm unit test `polls` (the pass, the section, the deadline and the hook through a poll, what stays on epochs); `jsengine polls` (no loop without a poll outside the list; an image without polls fails it); `jsengine hung` (`hung.js`: 20 things that never end, each in a fresh realm, interpreted and compiled: the host's hook runs about 100 times under each and the deadline ends it; a built image without polls hangs at the first native, one without the JIT's check at the closure that branches, and the watchdog says which); `js_hostile_a_native_that_never_ends`; `the_caret_blinks_while_a_native_keeps_the_thread` (frames under a native, with no back edge between them; times out on an image without polls); `hotcheck.js`, `cost.js` (20 cases: the base fails the new one). `build\test_all.exe -Quick -NoAsan`: 198 steps pass, test262 with and without the JIT among them, `busy_page` too; one fails, the documentation site, which this branch does not regenerate (`docs/*.md` changed, `site/` is left to the merge).
+
 ||||||| parent of eb61d939 (Round 33 in docs/performance.md)
 ## What changed, round 35: what kept the first paint of heavy pages back
 
@@ -2969,6 +3025,7 @@ After round 31. "A call through one site" was the wrong name for npr.org's first
 
 After round 33. The first item of the list after round 31 is done for what it named: cnn.com's marks were unions of reaches, not a rule; 28 full passes are 8, the load -16 %, its CPU -36 % (round 33). A forced read's cost is the style pass, not layout. What leads now, on all four pages, is the engine: the list after round 31 from its second item on. Of style: what `restyle_needed` is asked for, mid-sheet `insertRule`, `mark_keyed`.
 After round 34. Reading the machine code paid more than any profile so far. In order: **the epoch check** (12 to 20 % of all the engine's code: an engine of its own for the JavaScript image, polls in the natives); **what a first paint waits for in a frame** (bbc.com/news: three timers of 300 to 430 ms before it); compile on arrival by default (DOMContentLoaded -18 to -32 % on two pages, 3 runs); verification at the first closure; `set_property` of a new key without the walk of the prototypes; then the callback from a native, the collection. `-o:speed` is the engine's level now: what is said above of -o:size is history.
+After round 36. The epoch check is gone from the engine (round 36), `new` no longer walks the prototypes for a new key. The interpreter is 12 to 34 % faster by micro.js; two of the four loads followed. In order: **the engine's time on the window thread for a load, measured as such** (`wasm.guest_time` in `api.stats`): CPU to the load event no longer says it, cnn.com and bbc.com/news spend more of it than before for reasons not established; then what a first paint waits for in a frame, compile on arrival by default, verification at the first closure, `ip` at dispatch, the callback from a native, the collection.
 
 ||||||| parent of eb61d939 (Round 33 in docs/performance.md)
 1. **The script stage of DOM-heavy pages, what is left** (`js_nodes10k` on a quiet machine after round 25, 5 runs: a frame of 16.9 ms
