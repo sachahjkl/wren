@@ -818,6 +818,7 @@ cmd_startup :: proc(args: []string) {
 		t0 := time.tick_now()
 		// the instantiation alone, for comparison
 		opt := wasm.options_default()
+		opt.polled = true
 		probe, _ := wasm.instance_create(image, nil, nil, opt, "probe")
 		append(&inst_times, time.duration_milliseconds(time.tick_since(t0)))
 		wasm.destroy(probe)
