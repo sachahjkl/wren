@@ -55,6 +55,9 @@ force_async :: #force_inline proc(f: Script_Flags) -> bool { return f & {.Parser
 
 // Turns of the loop the parser gives for the first paint.
 PAINT_TURNS_MAX :: 3
+// Each attaches this many times what the last one had, and none comes before the body has something: cnn.com spent all three in its <head>,
+// and its 11 000 nodes then waited for an inline script of 0.9 s.
+PAINT_TURN_GROWTH :: 2
 // What the parser attaches at the least between two turns: a short document is revealed in one go, as it always was (its frames and
 // what they send are not there before the scripts that follow them).
 REVEAL_TURN_MIN_NODES :: 32
@@ -333,7 +336,9 @@ scripts_start :: proc(p: ^Page) {
 paint_turn_due :: proc(p: ^Page) -> bool {
 	s := p.scripts
 	ps := &s.parser
-	if p.render.painted || ps.paint_turns >= PAINT_TURNS_MAX || ps.next - ps.turn_next < REVEAL_TURN_MIN_NODES || p.settings.js_load.pump_slice_ms <= 0 { return false }
+	if p.render.painted || ps.paint_turns >= PAINT_TURNS_MAX || p.settings.js_load.pump_slice_ms <= 0 { return false }
+	if ps.next < max(ps.turn_next + REVEAL_TURN_MIN_NODES, ps.turn_next * PAINT_TURN_GROWTH) { return false }
+	if body := dom.get(p.doc, p.body); body == nil || body.first_child == base.NIL_HANDLE { return false }
 	if state, _ := first_paint_state(p); state != .Ready { return false }
 	ps.turn_next = ps.next
 	ps.paint_turns += 1
