@@ -99,7 +99,7 @@ popover_forget :: proc(p: ^Page, s: ^Popover_State, i: int) {
 @(private)
 popover_restyle :: proc(p: ^Page) {
 	if p.engine == nil { return }
-	p.engine.restyle_needed = true
+	p.engine.restyle_needed, p.engine.restyle_why = true, "a popover opened or closed"
 	// the showing popovers are the top layer: their ancestors no longer hold them inside the page
 	s := popover_state(p)
 	if s == nil {

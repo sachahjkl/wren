@@ -5,9 +5,12 @@ package browser
 // takes (page.styles, then layout_document when stale: incremental, only what changed). Reading in a loop costs
 // nothing more once they are up to date (the page checks first, js_dom_layout.odin).
 
+import "core:fmt"
+import "core:time"
 import draw "toolkit:draw"
 import lay "wb:layout"
 import "wb:page"
+import "wb:style"
 
 // Called when a document is attached to its tab (attach_page).
 attach_js_layout :: proc(app: ^App, t: ^Tab, p: ^page.Page) {
@@ -36,7 +39,9 @@ js_layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 	scale := page_scale(app)
 	ls := &app.page_render.settings
 	page.set_layout_journal(p, ls.incremental ? ls.inc_journal : 0)
+	t_read := time.tick_now()
 	styled := page.styles(p, size.x / scale, size.y / scale, f64(scale))
+	style_took := time.tick_since(t_read)
 	// natural sizes of images, canvases, videos and inline SVG come from the page being laid out. A layout asked for by a
 	// script before any frame of this page made it the shell's page (the first read of a layout in a page just navigated to)
 	// read the page of the previous frame: another document, or one already freed.
@@ -49,9 +54,19 @@ js_layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 	if layout_stale(&t.layout, p.doc, styled, size, scale, t.image_sizes, fonts_gen) {
 		page_layout(app, t, styled, size, scale, fonts_gen)   // page_thread.odin: a long one on the page thread, the chrome drawing meanwhile
 		prof_layout(&t.layout)
+		layout_trace("read", &t.layout, time.duration_milliseconds(style_took), time.duration_milliseconds(time.tick_since(t_read) - style_took))
 	}
 	request_frames(app, 2)   // what the script changed is to be painted
 	return &t.layout
+}
+
+// (WREN_RESTYLE_TRACE) one line per layout pass, as a script's reading (`read`) or a frame (`frame`) asked for it.
+layout_trace :: proc(who: string, l: ^lay.Layout, style_ms, layout_ms: f64) {
+	if !style.trace_restyle() { return }
+	@(static) failures: int
+	if l.inc.verify_failures != failures { failures = l.inc.verify_failures; fmt.eprintfln("layout.incremental.verify: %s", l.inc.verify_report) }
+	fmt.eprintfln("layout pass: %s %v style %.1f layout %.1f ms, steps %.1f %.1f %.1f %.1f %.1f, %d boxes, rebuilt %d, laid %d, verify failures %d: %s", who, l.last_pass, style_ms, layout_ms,
+		l.stats[0], l.stats[1], l.stats[2], l.stats[3], l.stats[4], len(l.boxes), l.inc.last_rebuilt, l.inc.last_laid, l.inc.verify_failures, l.inc.fallback)
 }
 
 @(private = "file")

@@ -174,6 +174,8 @@ Engine :: struct {
 	next_rule_id:  u32,                // CSSOM rule lists: the identity of each rule (cssom.odin)
 	viewport_units:  bool,             // some value uses vw/vh/vmin/vmax: a viewport change restyles
 	restyle_needed:  bool,             // set by `engine_set_environment`; the page clears it after restyling
+	restyle_why:     string,           // who set it last, for the measures (a constant)
+	controls_changed: [dynamic]base.Handle,   // controls whose pseudo-classes may have changed since the last pass (engine_control_changed)
 	journal_max:     int,              // > 0: passes keep a layout journal of at most this many entries (journal.odin)
 	last_restyle:    Restyle_Stats,    // diagnostics of the last restyle_dom
 	probe_base:      ^Computed,        // initial values for validating declarations (compile_declarations), made once per configuration
@@ -453,7 +455,17 @@ engine_set_top_layer :: proc(e: ^Engine, elements: []base.Handle) {
 	if slice.equal(e.top_layer[:], elements) { return }
 	clear(&e.top_layer)
 	append(&e.top_layer, ..elements)
-	e.restyle_needed = true
+	e.restyle_needed, e.restyle_why = true, "the top layer changed"
+}
+
+// The pseudo-classes of control `h` may have changed: it is looked at as a mutation is (restyle_dom.odin control_changed). NIL_HANDLE: anything
+// of the forms may have (a radio group, a form reset...), or too many of them: a full pass. Takes effect at the next style computation.
+engine_control_changed :: proc(e: ^Engine, h: base.Handle) {
+	if h == base.NIL_HANDLE || !e.settings.inc_enabled || len(e.controls_changed) >= CONTROLS_CHANGED_MAX {
+		e.restyle_needed, e.restyle_why = true, "a form control changed what its style reads"
+		return
+	}
+	if !slice.contains(e.controls_changed[:], h) { append(&e.controls_changed, h) }
 }
 
 engine_clear_hidden :: proc(e: ^Engine) {
@@ -1089,13 +1101,13 @@ engine_set_environment :: proc(e: ^Engine, env: css.Media_Env) -> bool {
 	// resized between two breakpoints keeps them)
 	flipped := changed && e.media_dependent && media_flipped(e)
 	if flipped { rules_stale(e) }
-	if changed && e.shadow.media_dependent { e.shadow.dirty = true; e.restyle_needed = true }
+	if changed && e.shadow.media_dependent { e.shadow.dirty = true; e.restyle_needed, e.restyle_why = true, "the environment changed and shadow rules depend on it" }
 	// styles depend on the viewport only through conditional rules and viewport units, and on the color scheme through
 	// light-dark() and media queries; anything else (a plain width change) needs layout only
 	size_changed := old.width != env.width || old.height != env.height
 	if changed && ((size_changed && (flipped || e.shadow.media_dependent || e.viewport_units)) || old.prefers_dark != env.prefers_dark ||
 	   old.dppx != env.dppx || old.prefers_reduced_motion != env.prefers_reduced_motion || old.prefers_more_contrast != env.prefers_more_contrast) {
-		e.restyle_needed = true
+		e.restyle_needed, e.restyle_why = true, "the viewport, the color scheme or the resolution changed"
 	}
 	return changed
 }

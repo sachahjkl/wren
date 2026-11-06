@@ -57,7 +57,7 @@ engine_set_container_sizes :: proc(e: ^Engine, sizes: map[base.Handle][2]f32) ->
 	for h, s in sizes { e.container_sizes[h] = s }
 	if !e.container_dependent { return false }
 	if gone || !e.settings.cq_partial || !e.settings.inc_enabled {
-		e.restyle_needed = true
+		e.restyle_needed, e.restyle_why = true, "a container left the list"
 		clear(&e.container_pending)
 		return true
 	}

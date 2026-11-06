@@ -421,9 +421,9 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 	// sheets that arrived join the rules as they stand; restyle_arrivals below applies them
 	if p.styled != nil && !p.style_stale && !e.restyle_needed { _ = style.engine_extend(e, p.doc, p.styled) }
 	full := p.styled == nil || p.style_stale || e.dirty || e.restyle_needed
-	why := p.styled == nil ? "no styles yet" : p.style_stale ? "the page's styles were marked stale" : e.dirty ? e.last_restyle.fallback : e.restyle_needed ? "an environment change asked for one" : ""
+	why := p.styled == nil ? "no styles yet" : p.style_stale ? "the page's styles were marked stale" : e.dirty ? e.last_restyle.fallback : e.restyle_needed ? e.restyle_why : ""
 	partial, dom_partial := false, false
-	if !full && (p.styled.mutations != p.doc.mutations || e.shadow.dirty) {
+	if !full && (p.styled.mutations != p.doc.mutations || e.shadow.dirty || len(e.controls_changed) > 0) {
 		full, why = true, "shadow tree rules changed"
 		if e.settings.inc_enabled {
 			owners := make([dynamic]base.Handle, 0, len(p.link_loads), context.temp_allocator)
