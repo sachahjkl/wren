@@ -172,22 +172,25 @@ fullscreen_bars :: proc(app: ^App, t: ^Tab) {
 	if !platform.is_fullscreen(wnd.win) { fw.revealed = false; return }
 	if !app.wchrome.cfg.reveal || fullscreen_shell_active(app.active) { fw.revealed = false; return }   // (a page's own full screen keeps the whole window)
 	m := ui.mouse_pos()
+	asked := window_own(app).asked & BAR_REQUESTS != {}   // what a command asks of them comes now, not at the pointer's next visit
 	if !fw.revealed {
-		fw.revealed = m.y >= 0 && m.y < app.wchrome.cfg.reveal_px && m.x >= 0 && m.x < f32(wnd.win.size.x)
+		fw.revealed = asked || (m.y >= 0 && m.y < app.wchrome.cfg.reveal_px && m.x >= 0 && m.x < f32(wnd.win.size.x))
 	} else {
 		// they stay while the pointer is over them, a menu of theirs is open or the address bar has the keyboard
 		over := m.y < fw.overlay.max.y + ui.font_size()
-		fw.revealed = over || ui.ctx_menu_any_open() || (ui.focus_key() != 0 && ui.focus_key() == address_key(app))
+		fw.revealed = asked || over || ui.ctx_menu_any_open() || (ui.focus_key() != 0 && ui.focus_key() == address_key(app))
 	}
 	if !fw.revealed { fw.overlay = {}; return }
+	placed := fw.overlay != {}
 	ui.next({fixed_x = 0, fixed_y = 0, width = ui.px(f32(wnd.win.size.x)), height = ui.children_sum(), axis = .Y})
 	col := ui.build_box({.Draw_Background, .Draw_Side_Bottom}, "###fullscreen_bars")
 	if ui.parent(col) {
 		tab_strip(app, false)
 		toolbar_row(app, t)   // chrome_style.odin
 	}
+	if placed { window_own(app).asked -= BAR_REQUESTS }   // (built with a place, and nothing there took it: it would hold the bars for ever)
 	// (the rect is last layout's: one more frame when it moved, so that the capture follows)
-	if col.rect != fw.overlay { request_frames(app, 2) }
+	if asked || col.rect != fw.overlay { request_frames(app, 2) }
 	fw.overlay = col.rect
 }
 

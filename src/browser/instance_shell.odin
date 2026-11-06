@@ -217,7 +217,6 @@ instance_open :: proc(d: ^Instance_Open, closing: bool) {
 	// the first of the new tabs is shown (the others wait, as with files dropped on the window)
 	if first >= 0 && first < len(wnd.tabs) {
 		wnd.current = first
-		if t := current_tab(app); t != nil { ui.field_set(&wnd.address, t.url) }
 	}
 	if closing { return }   // (nothing comes forward: the window is going)
 	if d.setup { setup_open(app, .Command) }

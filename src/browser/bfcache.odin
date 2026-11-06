@@ -289,7 +289,6 @@ bfcache_restore :: proc(app: ^App, t: ^Tab, entry: ^page.History_Entry) -> bool 
 	tab_icon_destroy(&t.icon)
 	console_reset(t)
 	set_status(t, "Restored from the back/forward cache")
-	address_set(app, t, t.url)
 	bf_entry_free(e, close = false)
 	app.bf.restores += 1
 	global_history_visit(app, t, t.url, t.title)

@@ -114,11 +114,9 @@ tab_moves_between_windows :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(a.ctx.tabs), 2)
 	testing.expect_value(t, a.ctx.current, 1)
 	testing.expect_value(t, a.ctx.tabs[a.ctx.current].url, "a3")   // the tab that took its place is shown
-	testing.expect_value(t, ui.field_string(&a.ctx.address), "a3")
 	testing.expect_value(t, len(b.ctx.tabs), 2)
 	testing.expect(t, b.ctx.tabs[0] == moved)   // the same Tab: its page was not touched
 	testing.expect_value(t, b.ctx.current, 0)   // and it is the one shown
-	testing.expect_value(t, ui.field_string(&b.ctx.address), "a2")
 	testing.expect(t, !a.closing && !b.closing)
 	w, i := window_of_tab(app, moved)
 	testing.expect(t, w == b && i == 0)

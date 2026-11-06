@@ -49,7 +49,6 @@ show_downloads :: proc(app: ^App, t: ^Tab, address: string) {
 	delete(t.url); t.url = strings.clone(address)
 	delete(t.title); t.title = strings.clone(i18n.tr("Downloads"))
 	set_status(t, DOWNLOADS_URL)
-	address_set(app, t, address)
 	app.dview.focus_search = true
 	downloads_mark_seen(app)
 }
@@ -697,10 +696,7 @@ downloads_button :: proc(app: ^App, t: ^Tab) {
 	sig := ui.signal(b)
 	key := ui.key_from_string(b.parent.key, "###downloads_panel")
 	// a download began: the drop-down opens under the button, once the button has a place (the frame it first shows, it has none)
-	if own := window_own(app); own.downloads_panel_request && b.rect.max.x > b.rect.min.x {
-		own.downloads_panel_request = false
-		if !ui.ctx_menu_is_open(key) { ui.ctx_menu_open_rect(key, b.rect, b.key) }
-	}
+	if window_asked(app, .Downloads_Panel, b) && !ui.ctx_menu_is_open(key) { ui.ctx_menu_open_rect(key, b.rect, b.key) }
 	if sig.clicked {
 		if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else { ui.ctx_menu_open_rect(key, b.rect, b.key) }
 	}

@@ -162,7 +162,6 @@ chrome_open :: proc(app: ^App, address: string, pos: [2]f32) {
 	if address == "" { return }
 	if over_address(app, pos) && current_tab(app) != nil {
 		navigate(app, current_tab(app), address, origin = .User)
-		ui.field_set(&active_window(app).address, current_tab(app).url)
 	} else {
 		tab_open(app, address, origin = .User)
 	}
@@ -589,7 +588,6 @@ default_drop :: proc(app: ^App, d: ^platform.Drag_Data, pos: [2]f32, over_page: 
 	}
 	if a, ok := dropped_address(d); ok && current_tab(app) != nil {
 		navigate(app, current_tab(app), a, origin = .User)
-		ui.field_set(&active_window(app).address, current_tab(app).url)
 		request_frames(app, 3)
 	}
 }

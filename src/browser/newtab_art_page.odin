@@ -92,7 +92,6 @@ art_show_page :: proc(app: ^App, t: ^Tab, html: string, it: ^Art_Item) {
 	delete(t.url); t.url = strings.clone(HOME_URL)
 	delete(t.title); t.title = strings.clone(i18n.tr("New tab"))
 	set_status(t, HOME_URL)
-	address_set(app, t, "")   // like the start page: an empty address bar
 }
 
 // Whether the window is wider than tall (the "smart" orientation match). Uses the active window's last painted page

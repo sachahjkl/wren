@@ -113,6 +113,10 @@ task_lint_globals :: proc(t: ^Task_Run) -> bool {
 	return lint_globals(log = t.log)
 }
 
+task_lint_address :: proc(t: ^Task_Run) -> bool {
+	return lint_address(log = t.log)
+}
+
 task_lint_test_inits :: proc(t: ^Task_Run) -> bool {
 	return lint_test_inits(log = t.log)
 }

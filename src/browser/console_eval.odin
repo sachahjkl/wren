@@ -52,7 +52,7 @@ console_eval_row :: proc(app: ^App, t: ^Tab, row_h: f32) {
 	if focused { box.border = app.dtc.accent }
 	res := var_res
 	if res.focused {
-		forms_page_blur(app)
+		keyboard_leave_page(app)
 		console_eval_keys(app, t, c)
 	}
 	if res.changed { console_eval_update(c) }

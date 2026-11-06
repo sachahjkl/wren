@@ -224,5 +224,4 @@ show_home :: proc(app: ^App, t: ^Tab, want_next := false) {
 	delete(t.url); t.url = strings.clone(HOME_URL)
 	delete(t.title); t.title = strings.clone("New tab")
 	set_status(t, fmt.tprintf("%s %s", APP_NAME, APP_VERSION))
-	address_set(app, t, "")   // the start page shows an empty address bar
 }

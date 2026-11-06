@@ -19,7 +19,6 @@ import "core:unicode/utf8"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
-import "toolkit:ui"
 import "wb:base"
 import "wb:dom"
 import "wb:fetch"
@@ -93,7 +92,6 @@ Forms_View :: struct {
 	page_id:      u64,
 	painted:      map[base.Handle]Painted,
 	scroll:       map[base.Handle][2]f32,
-	page_focus:   bool,
 	consumed:     [dynamic]bool,
 	popup:        Popup,
 	caret_epoch:  time.Tick,
@@ -148,7 +146,7 @@ blink_ms :: proc(app: ^App) -> int {
 caret_phase :: proc(app: ^App, f: ^forms.Forms) -> (on, caret: bool, period: int) {
 	fv := forms_view(app)
 	a, b, _ := forms.selection(f, f.focus)
-	if !fv.page_focus || !forms.is_text_field(f, f.focus) || !window_is_front(app) || a != b || !forms.is_mutable(f, f.focus) { return false, false, 0 }
+	if !page_shows_focus(app) || !forms.is_text_field(f, f.focus) || !window_is_front(app) || a != b || !forms.is_mutable(f, f.focus) { return false, false, 0 }
 	period = blink_ms(app)
 	if period <= 0 { return true, true, 0 }
 	elapsed := time.duration_milliseconds(time.tick_since(fv.caret_epoch))
@@ -183,7 +181,7 @@ forms_shell_frame :: proc(app: ^App) {
 		clear(&fv.scroll)
 		fv.page_id = f.id
 		fv.popup.open = false
-		fv.page_focus = true
+		keyboard_document(app, t)
 	}
 	// autofocus once the document's scripts had their turn
 	if fv.autofocus_page != f.id && (t.load == nil || t.load.next_run >= len(t.load.slots)) {
@@ -682,7 +680,7 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 	if fv.page_id != f.id { clear(&fv.painted); clear(&fv.scroll); fv.page_id = f.id }
 	// (a picture of the page painted off the screen, a drag image: not where the pointer finds the control)
 	if !draw.offscreen_active(dc) { fv.painted[node] = pt }
-	focused := f.focus == node && fv.page_focus
+	focused := f.focus == node && page_shows_focus(app)
 	disabled := forms.is_disabled(f, node)
 	if disabled { draw.push_alpha(dc, 0.55) }
 	defer if disabled { draw.pop_alpha(dc) }
@@ -1138,8 +1136,8 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 	f := page.page_forms(p)
 	#partial switch ev.kind {
 	case .Mouse_Press:
-		inside := draw.rect_contains(active_window(app).page_rect, ev.pos)
-		fv.page_focus = inside
+		// (a frame's document: frames_route_pointer gave it the keyboard)
+		if t.frame == nil { keyboard_move(app, draw.rect_contains(active_window(app).page_rect, ev.pos) ? .Page : .Chrome) }
 		if fv.popup.open {
 			if draw.rect_contains(fv.popup.rect, ev.pos) {
 				popup_pick(app, f, ev.pos, .Ctrl in ev.mods)
@@ -1165,18 +1163,18 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 		}
 		return false
 	case .Key_Press:
-		if !keyboard_to_page(app) { return false }
+		if !page_has_keyboard(app) { return false }
 		used := route_key(app, t, p, f, ev)
 		if used { consume(app, index); caret_reset(fv); request_frames(app) }
 		return used
 	case .Key_Release:
-		if !keyboard_to_page(app) { return false }
+		if !page_has_keyboard(app) { return false }
 		code, name := dom_key(ev.key, .Shift in ev.mods)
 		target := f.focus != base.NIL_HANDLE ? f.focus : p.body
 		page.dispatch_event(p, target, dom.Event{type = "keyup", bubbles = true, cancelable = true, key = code, text = name, mods = dom_mods(ev.mods)})
 		return false
 	case .Text:
-		if !keyboard_to_page(app) { return false }
+		if !page_has_keyboard(app) { return false }
 		if fv.popup.open { consume(app, index); return true }
 		if ev.text < 32 || .Ctrl in ev.mods && .Alt not_in ev.mods { return false }
 		buf, n := utf8.encode_rune(ev.text)
@@ -1192,19 +1190,10 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 	return false
 }
 
-@(private = "file")
-keyboard_to_page :: proc(app: ^App) -> bool { return forms_view(app).page_focus && ui.focus_key() == 0 && !ui.ctx_menu_any_open() && !setup_captures(app) }
-
-// Set when Shift+Tab leaves the page before its first element: the chrome takes the focus back from the page area.
-
-// The page has the keyboard (its own focus, not the chrome's).
-page_has_keyboard :: proc(app: ^App) -> bool { return keyboard_to_page(app) }
-
 // The chrome's Tab order reached the page area: the page takes the keyboard, its first (Tab) or last (Shift+Tab)
 // element the focus (none: the page itself, keyboard scrolling works).
 forms_focus_from_chrome :: proc(app: ^App, t: ^Tab, dir: int) {
-	fv := forms_view(app)
-	fv.page_focus = true
+	keyboard_take(app)
 	if t == nil || t.page == nil || t.page.formctl == nil { return }
 	p := t.page
 	f := page.page_forms(p)
@@ -1213,9 +1202,6 @@ forms_focus_from_chrome :: proc(app: ^App, t: ^Tab, dir: int) {
 	if forms.focus_next(f, dir < 0 ? -1 : 1, visible, p) { scroll_into_view(app, t, f.focus) }
 	request_frames(app)
 }
-
-// The page gives up the keyboard (a chrome widget took it).
-forms_page_blur :: proc(app: ^App) { forms_view(app).page_focus = false }
 
 // A key whose default action is the browser's, never the page's (after its keydown, which the page may cancel).
 browser_shortcut :: proc(ev: platform.Event) -> bool {
@@ -1247,8 +1233,8 @@ route_key :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, ev: platfo
 		// past the last (or before the first) element: the chrome's Tab order continues, from the address bar onwards
 		// or back from the page area
 		forms.blur(f)
-		fv.page_focus = false
-		if shift { app.page_focus_leave_backward = true } else { active_window(app).focus_address = true }
+		keyboard_move(app, .Chrome)
+		window_ask(app, shift ? .Leave_Page_Backward : .Address_Focus)
 		return true
 	}
 	if !forms.is_text_field(f, h) && selection_key(app, t, p, ev) { return true }

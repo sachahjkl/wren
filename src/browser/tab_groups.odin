@@ -300,7 +300,6 @@ window_select :: proc(app: ^App, w: ^Browser_Window, i: int) {
 	tabs := window_tabs(app, w)
 	if i < 0 || i >= len(tabs) { return }
 	window_current(app, w)^ = i
-	ui.field_set(window_address(app, w), tabs[i].url)
 	window_request(app, w, 2)
 }
 

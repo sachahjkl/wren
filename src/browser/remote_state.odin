@@ -19,7 +19,6 @@ import "core:fmt"
 import "core:slice"
 import "core:strings"
 import "toolkit:platform"
-import "toolkit:ui"
 import "wb:base"
 import "wb:config"
 import "wb:cookies"
@@ -235,7 +234,6 @@ tabs_reset :: proc(app: ^App, address: string, closed: ^int) -> ^Tab {
 		closed^ += 1
 	}
 	for t, i in wnd.tabs { if t == fresh { wnd.current = i } }
-	ui.field_set(&wnd.address, fresh.url)
 	closed_tabs_destroy(app)
 	request_frames(app, 3)
 	return fresh
@@ -413,7 +411,6 @@ control_checkpoint_restore :: proc(app: ^App, name: string) -> (cur: ^Tab, sum: 
 	for t, i in wnd.tabs { if t == blank { tab_close(app, i); break } }
 	wnd.current = clamp(cp.current, 0, len(wnd.tabs) - 1)
 	cur = current_tab(app)
-	if cur != nil { ui.field_set(&wnd.address, cur.url) }
 	r := &app.remote
 	clear(&r.loaded)
 	for t in tabs_all(app) { r.loaded[t.id] = false }

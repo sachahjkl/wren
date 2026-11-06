@@ -44,7 +44,6 @@ Window_Ctx :: struct {
 	current:          int,            // the tab shown (an index in tabs)
 	groups:           [dynamic]Tab_Group,   // tab_groups.odin: the groups its tabs are in (freed with the window)
 	address:          ui.Text_Field,  // the address field
-	focus_address:    bool,           // Ctrl+L: focus the address field in the next build
 	page_rect:        draw.Rect,      // where the page was painted last frame (physical pixels)
 	frames_requested: int,            // frames asked for (request_frames, window_request): the loop counts one off per frame
 	asked_by:   runtime.Source_Code_Location,   // the last who asked for frames (loop_rates.odin)
@@ -88,12 +87,15 @@ Window_Own :: struct {
 	strip:               Tab_Strip,           // tab_strip.odin: the tabs' scroll, the tab dragged, the tabs' box
 	sidebar:             Tab_Sidebar,         // tab_sidebar.odin: the sidebar's width handle, whether it was shown
 	find:                Find_State,          // find_bar.odin: the find bar, its text and its matches
-	forms:               Forms_View,          // forms_shell.odin: the form controls as painted, the keyboard in the page, the drop-down
+	forms:               Forms_View,          // forms_shell.odin: the form controls as painted, the drop-down
+	keyboard:            Keyboard,            // keyboard.odin: who has the keyboard
+	address_text:        Address_Text,        // windows.odin: what the address field took from the tab
+	asked:               Chrome_Requests,     // what a command, a menu or the page asked of the next build
 	address_key:         ui.Key,              // chrome.odin: the address field's key, set when it is built
 	chip_segment:        Chip_Segment,        // chrome.odin: the security chip's segment of the address bar, as drawn
 	chip_icon:           Chip_Icon,           // chrome.odin: the security chip's icon, as drawn
 	ctx_menu:            Context_Menu_State,  // context_menu.odin: the context menu asked for, and the one open
-	frames:              Frames_Input,        // frames_shell.odin: the frame hovered, focused
+	frames:              Frames_Input,        // frames_shell.odin: the frame hovered
 	nav_press:           Nav_Press,           // history_ui.odin: the back/forward button held down
 	devices:             Device_Input,        // page_input.odin: the fingers and pens over the page
 	page_prep:           Page_Prep,           // page_frame.odin: the page as prepared in the page phase, for its paint
@@ -101,12 +103,7 @@ Window_Own :: struct {
 	page_painted:        Paint_Source,        // shell_frames.odin: what the page's last frame was painted from, besides its layout
 	a11y:                Page_A11y,           // a11y_page.odin: the accessibility trees of the page shown and its frames
 	devtools:            Devtools,            // devtools.odin: the window's developer tools, docked or in a window of their own (dev())
-	// what a command, a menu or the page asked of the next build (a popup opened from the chrome)
-	page_info_request:     bool,              // chrome.odin: the security chip's page information
-	main_menu_request:     bool,              // chrome.odin: the main menu (Alt+F / Alt+E)
-	blocker_panel_request: bool,              // blocker_ui.odin: the content blocker's panel
 	first_paint_timer:   base.Handle,         // first_paint.odin: a frame when a held or blocked first paint ends
-	downloads_panel_request: bool,            // downloads_ui.odin: the downloads button's drop-down (a download began)
 }
 
 // The window being framed (the active one); an App with no window (a test's) has one of its own, never shown.
@@ -257,7 +254,6 @@ tab_reveal :: proc(app: ^App, t: ^Tab) {
 		cur := window_current(app, w)
 		if cur^ != i {
 			cur^ = i
-			ui.field_set(window_address(app, w), t.url)
 			recovery_touch(app)
 		}
 		window_request(app, w, 2)
@@ -265,18 +261,74 @@ tab_reveal :: proc(app: ^App, t: ^Tab) {
 	window_focus(app, w, true)
 }
 
-// The tab's address, shown in the address field of the window where the tab is the current one (nowhere else: a tab in the
-// background shows it when it is selected). A field that has the keyboard is the user's: what they typed stays when the page
-// arrives, and what is shown in its place stays selected, for the next letter to replace (a new tab whose home page comes late).
-address_set :: proc(app: ^App, t: ^Tab, text: string) {
-	w, i := window_of_tab(app, t)
-	if w == nil || window_current(app, w)^ != i { return }
+// What the address field of a tab says: its address, nothing for the start page.
+tab_address :: proc(t: ^Tab) -> string {
+	if t == nil || t.url == HOME_URL { return "" }
+	return t.url
+}
+
+// The field follows the window's current tab, or the user: what differs from what the tab gave it is theirs (typed, a row of the list chosen).
+Address_Text :: struct {
+	shown: string,   // owned: what address_sync put in the field last
+	tab:   u64,      // the tab it came from (0: a navigation took the field back)
+}
+
+// Brings the field in step with its tab, before each build of it: the one writer of its text (test_all: lint_address.odin). What the user edited stays while the keyboard is
+// there, whatever the tabs do; once it left, until another tab shows, the address changes or a navigation takes the field back. With the keyboard there and nothing edited,
+// what comes stays selected, for the next letter to replace (a new tab whose home page comes late); a caret the user put in it holds the text back until it goes. `drop_edit`: the
+// user gave it up (Escape, a new tab).
+address_sync :: proc(app: ^App, w: ^Browser_Window, drop_edit := false) {
+	a := &w.own.address_text
 	field := window_address(app, w)
-	focused := w == app.active && ui.focus_key() != 0 && ui.focus_key() == address_key(app)
-	all_selected := min(field.cursor, field.mark) == 0 && max(field.cursor, field.mark) == len(ui.field_string(field))
-	if focused && !all_selected { return }
-	ui.field_set(field, text)
+	t := window_current_tab(app, w)
+	want := tab_address(t)
+	id := t != nil ? t.id : 0
+	text := ui.field_string(field)
+	if text == want && a.shown == want { a.tab = id; return }
+	focused := w == app.active && w.own.address_key != 0 && ui.focus_key() == w.own.address_key
+	whole := min(field.cursor, field.mark) == 0 && max(field.cursor, field.mark) == len(text)
+	edited := text != a.shown || (focused && !whole)
+	if edited && !drop_edit && (focused || (a.tab == id && a.shown == want)) { return }
+	delete(a.shown)
+	a.shown = strings.clone(want)
+	a.tab = id
+	ui.field_set(field, want)
 	if focused { ui.field_select_all(field) }
+}
+
+address_destroy :: proc(w: ^Browser_Window) {
+	ui.field_destroy(&w.address)
+	delete(w.own.address_text.shown)
+}
+
+// A navigation of the tab: what was typed and left in its field goes with the next build, even for the same address (Enter on "example.com" at https://example.com/).
+address_let_go :: proc(app: ^App, t: ^Tab) {
+	w, i := window_of_tab(app, t)
+	if w != nil && window_current(app, w)^ == i { w.own.address_text.tab = 0 }
+}
+
+// What a command, a menu or the page asks of the chrome's next build, in the window concerned: the part of the chrome that can do it takes it when it is built.
+Chrome_Request :: enum u8 {
+	Address_Focus,         // chrome.odin: the keyboard to the address field (Ctrl+L, a new tab, Tab past the page's last element)
+	Leave_Page_Backward,   // chrome.odin: Shift+Tab before the page's first element: the chrome's Tab stop before the page
+	Page_Info,             // chrome.odin: the security chip's page information
+	Main_Menu,             // chrome.odin: the main menu (Alt+F / Alt+E)
+	Blocker_Panel,         // blocker_ui.odin: the content blocker's panel
+	Downloads_Panel,       // downloads_ui.odin: the downloads button's drop-down (a download began)
+}
+Chrome_Requests :: bit_set[Chrome_Request; u8]
+
+// What the bars of full screen come for when they are not there (a download does not bring them).
+BAR_REQUESTS :: Chrome_Requests{.Address_Focus, .Page_Info, .Main_Menu, .Blocker_Panel}
+
+window_ask :: proc(app: ^App, r: Chrome_Request) { window_own(app).asked += {r} }
+
+// Whether it was asked, and then it is taken. `placed`: what opens under this box waits until the box has a place (the frame it first shows, it has none).
+window_asked :: proc(app: ^App, r: Chrome_Request, placed: ^ui.Box = nil) -> bool {
+	own := window_own(app)
+	if r not_in own.asked || (placed != nil && placed.rect.max.x <= placed.rect.min.x) { return false }
+	own.asked -= {r}
+	return true
 }
 
 // What the tasks of the loop (and anything else made outside a frame) asked of the active window's frames, for the others too: the
@@ -448,7 +500,7 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 	window_deactivate(app)
 	delete(w.tabs)
 	tab_groups_destroy(&w.groups)
-	ui.field_destroy(&w.address)
+	address_destroy(w)
 	// the swap chain: another window's becomes the renderer's own when it is the primary one that goes
 	idx := -1
 	for x, i in app.windows { if x == w { idx = i } }
@@ -624,8 +676,7 @@ tab_move :: proc(app: ^App, t: ^Tab, dest: ^Browser_Window, at := -1, devtools_f
 	sc^ = tab_list_take(st, sc^, si)
 	dc := window_current(app, dest)
 	dc^, _ = tab_list_put(dt, dc^, at, t, true)
-	if len(st) > 0 { ui.field_set(window_address(app, src), st[sc^].url) } else { src.closing = true }
-	ui.field_set(window_address(app, dest), t.url)
+	if len(st) == 0 { src.closing = true }
 	if devtools_follow && showing { devtools_follow_tab(app, src, dest) }   // devtools.odin
 	if len(st) > 0 { tabs_fix(app, src) }
 	tabs_fix(app, dest)
@@ -650,8 +701,7 @@ window_new :: proc(app: ^App) -> ^Browser_Window {
 	t := tab_open(app)   // (in the active window, then taken from it: the window it left shows what it showed)
 	nw := tab_to_new_window(app, t, src, nil, false, true)
 	window_current(app, src)^ = clamp(was, 0, max(len(window_tabs(app, src)) - 1, 0))
-	if cur := window_current_tab(app, src); cur != nil { ui.field_set(window_address(app, src), cur.url) }
-	if nw != nil && config.bool_of(&app.prefs, "browser.newtab.focus_address") { nw.ctx.focus_address = true }
+	if nw != nil && config.bool_of(&app.prefs, "browser.newtab.focus_address") { nw.own.asked += {.Address_Focus} }
 	return nw
 }
 
@@ -703,7 +753,7 @@ windows_forget_tabs :: proc(app: ^App) {
 // The toolkit states of every window, and their address fields.
 windows_destroy_ui :: proc(app: ^App) {
 	for w in app.windows {
-		ui.field_destroy(&w.address)
+		address_destroy(w)
 		ui.destroy(w.ui)
 	}
 }

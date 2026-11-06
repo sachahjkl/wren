@@ -469,7 +469,6 @@ show_demos :: proc(app: ^App, t: ^Tab) {
 	delete(t.url); t.url = strings.clone(DEMOS_URL)
 	delete(t.title); t.title = strings.clone("Demos and tests")
 	set_status(t, DEMOS_URL)
-	address_set(app, t, DEMOS_URL)
 }
 
 // A document of the browser itself (about:home, about:demos): what it opens is opened by the browser's UI.

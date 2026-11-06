@@ -37,8 +37,7 @@ image_document_events :: proc(app: ^App, events: []platform.Event) -> []platform
 		case .Mouse_Press:
 			take = over && ev.button == .Left
 			if !take { break }
-			forms_view(app).page_focus = true   // (the page's keyboard, as a press on a page gives it)
-			ui.set_focus(0)
+			keyboard_take(app)   // (the page's keyboard, as a press on a page gives it)
 			page.image_document_press(p, at)
 		case .Mouse_Move:
 			page.image_document_move(p, at)
