@@ -18,8 +18,8 @@ import "wb:url"
 // The first paint of a new document, without a white flash in between (what browsers call paint holding):
 //   * when a tab navigates, the page it showed stays on screen, frozen (no input reaches it, it is not laid out
 //     again; it keeps running until the new document arrives, as in other browsers before the commit) while the new
-//     one loads, then until the new document's first useful paint: its render-blocking stylesheets and fonts are
-//     there (page/render_blocking.odin) and its layout shows something (text, an image, a control...). After
+//     one loads, then until the new document's first useful paint: its render-blocking stylesheets are there
+//     (page/render_blocking.odin) and its layout shows something (text with its font, an image, a control...). After
 //     browser.paint_holding.timeout_ms past the arrival of the new document, its canvas color is shown instead (no
 //     longer the old page) until it can paint. Chromium holds for up to about a second; 1000 ms here.
 //   * the old page is closed as soon as it is no longer shown;
@@ -222,12 +222,13 @@ hold_commit :: proc(app: ^App, t: ^Tab) {
 	if h.active && !app.scheme_ui.cross_origin && t.page != nil && h.page != nil && !url.same_origin(t.page.env.origin, h.page.env.origin) { hold_release(app, t) }
 }
 
-// Something of the layout is content (CSS Paint Timing's "contentful": text, images, form controls, list markers).
+// Something of the layout is content (CSS Paint Timing's "contentful": text, images, form controls, list markers). Text waiting for its
+// font is drawn invisible: it is not, and a held page stays on screen for it (the page's families were read before the layout: adopt_web_fonts).
 layout_contentful :: proc(l: ^Layout) -> bool {
 	if !l.valid { return false }
 	for &it in l.items {
 		#partial switch it.kind {
-		case .Text: if strings.trim_space(it.text) != "" { return true }
+		case .Text: if strings.trim_space(it.text) != "" && !web_text_invisible(l, it.cs) { return true }
 		case .Replaced, .Control, .Marker: return true
 		}
 	}

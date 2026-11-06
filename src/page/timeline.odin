@@ -13,8 +13,8 @@ package page
 //     frames made, from the loader's observers (fetch/observe.odin): started, answered, done. Failed and cancelled
 //     requests make none. At most performance.resource_timing_entries are kept (the oldest go first, which also keeps
 //     observers fed; browsers drop the newest and fire resourcetimingbufferfull).
-//   * paint       (PerformancePaintTiming): first-paint and first-contentful-paint, when the shell painted the document
-//     the first time (the shell has no finer test of "contentful": both have the same time).
+//   * paint       (PerformancePaintTiming): first-paint when the shell painted the document the first time,
+//     first-contentful-paint when a frame showed text, an image or a control (text waiting for its font does not count).
 //   * event, first-input (PerformanceEventTiming): input events whose listeners took long (dispatch_event measures them:
 //     processingStart / End, the duration rounded up to 8 ms as the specification does) and the first one of any length.
 //
@@ -547,8 +547,14 @@ timeline_painted :: proc(p: ^Page) {
 	t.painted = true
 	now := page_now_ms(p)
 	timeline_add(p, .Paint, Tl_Entry{name = strings.clone("first-paint"), start = now})
-	timeline_add(p, .Paint, Tl_Entry{name = strings.clone("first-contentful-paint"), start = now})
 	timeline_visibility_state(p, !p.web.visible)   // the page's visibility when it is first shown (timeline_lcp.odin)
+}
+
+// A frame of the page shows something for the first time: a page's text may wait for its font after the first paint.
+@(private)
+timeline_contentful :: proc(p: ^Page) {
+	if p.web == nil || p.worker != nil { return }
+	if t := tl_of(p); t != nil { timeline_add(p, .Paint, Tl_Entry{name = strings.clone("first-contentful-paint"), start = page_now_ms(p)}) }
 }
 
 ////////////////////////////////

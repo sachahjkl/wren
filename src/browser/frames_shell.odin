@@ -183,6 +183,7 @@ frame_prepare :: proc(app: ^App, fv: ^Frame_View, size: draw.Vec2, scale: f32) {
 	styled = settle_container_queries(app, t, styled, size, scale, fonts_gen)
 	images_after_layout(t, size, scale)
 	if !p.render.painted { page.first_paint_done(p) }
+	if !p.render.contentful && layout_contentful(&t.layout) { page.first_contentful_done(p) }
 	lo_y, hi_y := lay.doc_scroll_y_range(&t.layout, size.y)
 	t.scroll = clamp(t.scroll, lo_y, hi_y)
 	doc_scroll_x_set(t, t.layout.doc_scroll_x, size.x)

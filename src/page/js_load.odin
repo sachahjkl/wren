@@ -351,11 +351,6 @@ pump_slice :: proc(p: ^Page) -> f64 {
 	return max(slice, p.render.frame_ms * p.settings.js_load.slice_per_frame)
 }
 
-// The shell: a frame of this page showed text, an image or a control for the first time.
-scripts_contentful :: proc(p: ^Page) {
-	if p.scripts != nil && p.scripts.timing.contentful_ms == 0 { p.scripts.timing.contentful_ms = now_ms(p) }
-}
-
 // The shell: what the frame of this page took.
 scripts_frame_took :: proc(p: ^Page, ms: f64) { p.render.frame_ms = ms }
 
