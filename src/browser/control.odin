@@ -576,7 +576,7 @@ control_pref :: proc(app: ^App, name: string, allocator := context.temp_allocato
 	p = {
 		name = strings.clone(e.def.name, allocator), text = strings.clone(config.value_string(&app.prefs, config.Ref(i)), allocator),
 		default_text = strings.clone(config.default_string(&app.prefs, config.Ref(i)), allocator),
-		source = base.ascii_lower_clone(fmt.tprintf("%v", e.source), allocator), locked = e.locked, restart = e.def.restart,
+		source = base.ascii_lower_clone(fmt.tprintf("%v", e.source), allocator), locked = e.source == .Policy, restart = e.def.restart,
 	}
 	switch e.def.kind {
 	case .Bool:   p.value = e.value.b

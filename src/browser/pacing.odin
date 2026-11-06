@@ -383,7 +383,7 @@ pacer_inner_frame :: proc(app: ^App) {
 	pacer := &wnd.pacer
 	resized := wnd.win.size != pacer.size
 	pacer.size = wnd.win.size
-	platform.cadence_inner_frame(&pacer.cadence, resized, wnd.presented)
+	platform.cadence_inner_frame(&pacer.cadence, resized, wnd.presented, time.tick_now()._nsec)
 }
 
 // After the frame's events are read: its time, its dt, and what the renderer should credit it with.

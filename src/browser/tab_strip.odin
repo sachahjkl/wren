@@ -361,7 +361,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 	if (sig.pressed || sig.clicked) && !on { tab_select(app, i) }   // the press selects; Enter / Space too
 	if sig.right_clicked { tab_context_menu(app, i, ui.mouse_pos()) }
 	if sig.middle_clicked && app.favs.cfg.middle_close { shell_after_build(app, {kind = .Close_Tab, tab = t.id}); return }
-	if !(classic && own.strip.drag.active) { tip(sig, t.title) }   // (classic: the title's tip does not cover the tab being dragged)
+	if !(classic && own.strip.drag.held != 0) { tip(sig, t.title) }   // (classic: the title's tip does not cover the tab being dragged)
 	// drag to reorder (straight down starts a drag too: it may leave the bar)
 	if sig.dragging && app.favs.cfg.drag_reorder && (n > 1 || app.favs.cfg.drag_detach) {
 		ui.reorder_begin(&own.strip.drag, t.id, ui.reorder_moved(sig.drag_delta, .X, app.favs.cfg.drag_detach), app.favs.cfg.drag_threshold * dpi,
@@ -372,7 +372,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 			request_frames(app, 2)
 			// far enough below (or above) the row: the tab leaves for a window of its own (tab_drag.odin)
 			if app.favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), false, app.favs.cfg.detach_distance_em * em) {
-				own.strip.drag.active = false
+				own.strip.drag.held = 0
 				shell_after_build(app, {kind = .Tear_Off, tab = t.id, at = ui.mouse_pos()})
 			}
 		}

@@ -587,7 +587,7 @@ config_list_keys :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs) {
 		return
 	}
 	e := config.entry(prefs, row.ref)
-	locked := e.locked || e.source == .Command_Line
+	locked := e.source == .Policy || e.source == .Command_Line
 	if v.list.activated && !locked {
 		if e.def.kind == .Bool {
 			config_apply(v, prefs, st, name, e.value.b ? "false" : "true")
@@ -791,7 +791,7 @@ config_row :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: config.R
 config_editor :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: config.Ref, e: ^config.Entry, st: ^Row_State, title: string) {
 	em := ui.font_size()
 	name := e.def.name
-	locked := e.locked || e.source == .Command_Line
+	locked := e.source == .Policy || e.source == .Command_Line
 	id := fmt.tprintf("###cfg_%s", name)
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.1))})
 	if ui.row(.Center) {

@@ -97,7 +97,7 @@ Page_Autoscroll :: struct {
 	tab:     rawptr,        // the tab the session scrolls; a different one ends it
 }
 
-autoscroll_running_page :: proc(app: ^App) -> bool { return window_own(app).autoscroll.auto.active }
+autoscroll_running_page :: proc(app: ^App) -> bool { return window_own(app).autoscroll.auto.phase != .Off }
 
 // A middle-button press on the page: tries to start a session. `allowed` is false when the page cancelled the mousedown
 // (then nothing starts, like Chrome). `pressed` is the hit element. Returns true when a session started (the press must
@@ -141,7 +141,7 @@ autoscroll_page_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: b
 // (handled in the wheel case). Returns true when the event was the session's.
 autoscroll_page_release :: proc(app: ^App, ev: platform.Event) -> bool {
 	ps := &window_own(app).autoscroll
-	if !ps.auto.active || ev.button != .Middle || !ps.auto.held { return false }
+	if ps.auto.phase != .Holding || ev.button != .Middle { return false }
 	if !ui.autoscroll_release(&ps.auto, app.autoscroll_cfg.cfg, frame_now_ms()) { autoscroll_end(app) }
 	request_frames(app, 2)
 	return true
@@ -157,7 +157,7 @@ autoscroll_page_click :: proc(app: ^App) -> bool {
 // A wheel notch, Escape, lost capture or a window move ends the session.
 autoscroll_page_cancel :: proc(app: ^App) {
 	ps := &window_own(app).autoscroll
-	if ps.auto.active { autoscroll_end(app) }
+	if ps.auto.phase != .Off { autoscroll_end(app) }
 }
 
 @(private = "file")
@@ -173,7 +173,7 @@ autoscroll_end :: proc(app: ^App) {
 // frame's dt (CSS px per second -> device px this frame). True while a session is live (the loop keeps drawing).
 autoscroll_tick :: proc(app: ^App, t: ^Tab) -> bool {
 	ps := &window_own(app).autoscroll
-	if !ps.auto.active { return false }
+	if ps.auto.phase == .Off { return false }
 	wnd := active_window(app)
 	// the page went away, or its tab changed: end it (the pointer leaving the window is a Mouse_Leave,
 	// which route_page_input turns into autoscroll_page_cancel; mouse_valid is not polled here, as the chrome's
@@ -200,14 +200,14 @@ autoscroll_tick :: proc(app: ^App, t: ^Tab) -> bool {
 // The cursor the session asks for (over the page area); .Arrow when none is active.
 autoscroll_page_cursor :: proc(app: ^App) -> (platform.Cursor, bool) {
 	ps := &window_own(app).autoscroll
-	if !ps.auto.active { return .Arrow, false }
+	if ps.auto.phase == .Off { return .Arrow, false }
 	return ui.autoscroll_cursor(&ps.auto, app.autoscroll_cfg.cfg), true
 }
 
 // Draws the anchor marker over everything (window pixels). Called after the UI tree and the page are composed.
 autoscroll_paint :: proc(app: ^App, dc: ^draw.Context) {
 	ps := &window_own(app).autoscroll
-	if !ps.auto.active { return }
+	if ps.auto.phase == .Off { return }
 	st := active_window(app).ui
 	plate := ui.color_from_tags(st, 0, "background")
 	ink := ui.color_from_tags(st, 0, "text")
