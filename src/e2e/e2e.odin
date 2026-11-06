@@ -53,6 +53,9 @@ FAILURE_CONSOLE :: "failure_console.txt"
 // rest_turns: how often what wakes the loop wakes it. wait_at_rest: how long without a frame counts as settled (scenarios keep the status bar's window far below it).
 REST_WAKE_MS :: 1
 REST_QUIET :: 500 * time.Millisecond
+// How long wait_idle and wait_stable want their state to hold. A client over the channel looks from outside, so browser.remote.idle_ms (400 ms) bridges the moments between two requests of a
+// chain; here the state is looked at on the loop's own turns, and what follows a timer or a reply says so itself (wait_js, wait_selector). Each of the 400 ms was a wait for nothing: a test of 70 hovers took 28 s.
+HOLD_MS :: 1
 // The stack the script engine's calls need (what /STACK:67108864 gives on Windows).
 STACK_BYTES :: 64 * 1024 * 1024
 
@@ -426,8 +429,8 @@ wait_kind :: proc(s: ^Session, kind: api.Wait, what: string, l: browser.Wait_Lim
 }
 
 wait_load :: proc(s: ^Session, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) { wait_kind(s, .Load, "wait_load", {timeout_ms = ms_of(deadline)}, loc) }
-wait_idle :: proc(s: ^Session, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) { wait_kind(s, .Idle, "wait_idle", {timeout_ms = ms_of(deadline)}, loc) }
-wait_stable :: proc(s: ^Session, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) { wait_kind(s, .Stable, "wait_stable", {timeout_ms = ms_of(deadline)}, loc) }
+wait_idle :: proc(s: ^Session, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) { wait_kind(s, .Idle, "wait_idle", {timeout_ms = ms_of(deadline), idle_ms = HOLD_MS}, loc) }
+wait_stable :: proc(s: ^Session, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) { wait_kind(s, .Stable, "wait_stable", {timeout_ms = ms_of(deadline), idle_ms = HOLD_MS}, loc) }
 
 // `n` more frames have been made (they are, as soon as they are asked for).
 wait_frames :: proc(s: ^Session, n := 2, loc := #caller_location) {
