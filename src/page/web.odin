@@ -100,6 +100,8 @@ Web_State :: struct {
 	traverse_queued: u64,            // the key navigation.traverseTo() asked for during a traversal's navigate event: after it (0: none)
 	nav_scrolled_from: [2]f64,       // CSS px: the document's scroll position when an intercepted traversal fired (history_scroll.odin)
 	unloading:       int,            // beforeunload, pagehide or unload is running (HTML "unload counter")
+	left:            bool,           // the tab has gone on without it while it runs on behind a held frame: the session is the next document's (page_set_left)
+	unloaded:        bool,           // pagehide and unload ran: once (a navigation that came to nothing gives the document back, page_unload)
 	perf:            [dynamic]Perf_Entry,
 	perf_warned:     bool,
 	event_details:   [dynamic]Event_Detail,   // StorageEvent / PopStateEvent / HashChangeEvent fields while dispatching

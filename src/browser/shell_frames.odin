@@ -125,7 +125,7 @@ Page_Snapshot :: struct {
 	used:   u64,             // chrome_frames.frame_no when last captured or shown (least recently used go first)
 }
 
-Shell_Action_Kind :: enum u8 { Command, Navigate, Reload, History, Entry, Close_Tab, Tear_Off, Prefs }
+Shell_Action_Kind :: enum u8 { Command, Navigate, Reload, Stop, History, Entry, Close_Tab, Tear_Off, Prefs }
 
 // Something the chrome asked of pages during a chrome frame, done at the end of the page phase, or what a build asked of the list of tabs,
 // done before the next frame of its window (shell_after_build).
@@ -720,6 +720,8 @@ shell_run_action :: proc(app: ^App, a: Shell_Action) {
 		from: ^page.Page   // (the page may be gone by now: it is passed only if a tab still has it)
 		for tab in tabs_all(app) { if a.from != nil && tab.page == a.from { from = a.from; break } }
 		navigate(app, t, a.text, from, user_activation = a.flag, record = a.record, restore = a.restore, cache = a.cache, origin = a.origin)
+	case .Stop:
+		stop_loading(app, t)
 	case .Reload:
 		reload(app, t, a.flag)
 	case .History:

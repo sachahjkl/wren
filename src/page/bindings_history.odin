@@ -381,6 +381,7 @@ history_change :: proc(c: ^Call, state_arg, url_arg: Maybe(string), replace: boo
 	s := &p.settings.web
 	state, has_state := state_arg.?
 	u, has_url := url_arg.?
+	if page_top(p).web.left { return fail(c, .Security, "SecurityError: the document is not fully active") }   // (the session is the next document's: page_set_left)
 	if has_state && len(state) > s.history_max_state_bytes { return fail(c, .Data_Clone, "DataCloneError: the state is over history.max_state_bytes") }
 	if len(u) > s.url_max_length { return fail(c, .Type, "TypeError: the URL is too long (url.max_length)") }
 	target := p.env.location

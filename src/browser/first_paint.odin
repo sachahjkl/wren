@@ -16,9 +16,9 @@ import "wb:style"
 import "wb:url"
 
 // The first paint of a new document, without a white flash in between (what browsers call paint holding):
-//   * when a tab navigates, the page it showed stays on screen, frozen (no input reaches it, it is not laid out
-//     again; it keeps running until the new document arrives, as in other browsers before the commit) while the new
-//     one loads, then until the new document's first useful paint: its render-blocking stylesheets are there
+//   * when a tab navigates, the frame of the page it showed stays on screen (no input reaches the page, it is not laid
+//     out again; it was left: frozen for the back/forward cache, or unloaded and running until the hold ends) while the
+//     new one loads, then until the new document's first useful paint: its render-blocking stylesheets are there
 //     (page/render_blocking.odin) and its layout shows something (text with its font, an image, a control...). After
 //     browser.paint_holding.timeout_ms past the arrival of the new document, its canvas color is shown instead (no
 //     longer the old page) until it can paint. Chromium holds for up to about a second; 1000 ms here.
@@ -168,6 +168,7 @@ hold_step :: proc(app: ^App, t: ^Tab, ev: Hold_Event, target := "") {
 			t.nav_state.bf_entry = 0
 			h.canvas = t.page.styled != nil ? t.page.styled.canvas : expected_canvas(app)
 			page.set_page_visible(t.page, false)   // its timers slow down to background pace; nothing paints it again
+			page.page_set_left(t.page, true)
 			t.nav = nil
 		} else {
 			bfcache_take(app, t)   // (not kept: it goes with the scope, what is held, if anything, stays)
@@ -192,6 +193,7 @@ hold_step :: proc(app: ^App, t: ^Tab, ev: Hold_Event, target := "") {
 		t.fragment_done = true   // (it is where it was)
 		h.state, h.nav, h.page, h.load, h.bf_entry = .None, nil, nil, nil, 0
 		t.nav_state.left = nil
+		page.page_set_left(t.page, false)
 		page.page_thaw(t.page, visible = current_tab(app) == t)   // frozen for the back/forward cache when it was left (bfcache.odin)
 		base.scope_close(left)   // the navigation's scope: its Doc_Load (a download's request is the download's now)
 		delete(t.url)

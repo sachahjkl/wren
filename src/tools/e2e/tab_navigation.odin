@@ -8,6 +8,7 @@ import "core:testing"
 import "wb:base"
 import "wb:browser"
 import "wb:e2e"
+import "wb:page"
 
 @(private = "file") NAV_SIZE :: [2]int{1000, 700}
 @(private = "file") OLD_PAGE :: "/site/history/other.html"
@@ -78,9 +79,9 @@ stop_of_a_traversal_stays_on_the_entry :: proc(t: ^testing.T) {
 	testing.expect_value(t, tab(s).session.index, 2)   // (about:blank, the page that hangs, this one)
 }
 
-// `unload` once per document, and none for a navigation that never left it.
+// `unload` once per document, however many navigations leave it: a download leaves it (when a navigation starts, tab_navigation.odin) and gives it back.
 @(test)
-a_download_does_not_unload_the_page :: proc(t: ^testing.T) {
+a_document_unloads_once :: proc(t: ^testing.T) {
 	server := e2e.test_server(t)
 	dir := e2e.temp_folder(t, "downloads")
 	s := e2e.start(t, {size = NAV_SIZE, prefs = {NO_BLOCKER, "browser.download.button=never", "browser.download.ask=false", fmt.tprintf("browser.download.directory=%s", dir)}})
@@ -91,9 +92,40 @@ a_download_does_not_unload_the_page :: proc(t: ^testing.T) {
 	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool { return len(e2e.downloads(s)) >= 1 }, "the navigation to become a download")
 	e2e.wait_frames(s, 2)
 	expect_page_back(t, s, url, entries)
-	testing.expect_value(t, e2e.eval(s, "localStorage.unloads"), "0")
+	testing.expect_value(t, e2e.eval(s, "localStorage.unloads"), "1")
 	e2e.navigate(s, e2e.url(server, NEXT_PAGE))
 	testing.expect_value(t, e2e.eval(s, "localStorage.unloads"), "1")
+}
+
+// A page that may not be kept runs on behind its frame while the next one loads, and the session is the next one's by then: the address it asks for must not land in that entry.
+@(test)
+a_page_left_writes_in_no_entry_of_the_next :: proc(t: ^testing.T) {
+	server := e2e.test_server(t)
+	s := e2e.start(t, {size = NAV_SIZE, prefs = {NO_BLOCKER}})
+	unkept_page(s, e2e.url(server, OLD_PAGE))
+	e2e.eval(s, `setInterval(() => { try { history.replaceState(null, "", "?moved") } catch (e) {} console.log("tried") }, 1); 1`)
+	e2e.eval(s, `history.replaceState(null, "", "?before"); 1`)
+	next := e2e.url(server, NO_ANSWER)
+	e2e.navigate_begin(s, next)
+	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool {
+		for l in e2e.console(s) { if l.text == "tried" { return true } }
+		return false
+	}, "the held page's timer")
+	testing.expect_value(t, page.session_current(&tab(s).session).url, next)
+}
+
+// Held, cached, back: the document has its history again.
+@(test)
+a_page_back_from_the_cache_has_its_history :: proc(t: ^testing.T) {
+	server := e2e.test_server(t)
+	s := e2e.start(t, {size = NAV_SIZE, prefs = {NO_BLOCKER}})
+	e2e.navigate(s, e2e.url(server, OLD_PAGE))
+	e2e.wait_frames(s, 2)
+	e2e.navigate(s, e2e.url(server, NEXT_PAGE))
+	e2e.wait_frames(s, 2)
+	e2e.go_back(s)
+	testing.expect_value(t, e2e.stats(s).bfcache.restores, 1)
+	testing.expect_value(t, e2e.eval(s, `history.replaceState(null, "", "?again"); location.search`), "?again")
 }
 
 // A built-in page's navigation is a navigation: what reads the time it started does not get the last one's.

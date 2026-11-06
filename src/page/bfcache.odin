@@ -24,6 +24,7 @@ Bfcache_Blocker :: enum u8 {
 	Worker,
 	Request_In_Flight,    // a fetch, a script, a stylesheet, a font still loading
 	Loading,              // the load event has not fired yet
+	Unloaded,             // its unload ran, for a navigation that came to nothing: it stays a document, not one to keep (HTML "salvageable")
 	Closed,
 }
 
@@ -33,6 +34,7 @@ Bfcache_Blockers :: bit_set[Bfcache_Blocker]
 bfcache_blockers :: proc(p: ^Page) -> Bfcache_Blockers {
 	out: Bfcache_Blockers
 	if p == nil || p.closed || p.web == nil { return {.Closed} }
+	if p.web.unloaded { return {.Unloaded} }
 	w := p.web
 	if w.window != 0 && (object_has_listener(p, w.window, "unload") || object_has_listener(p, w.window, "beforeunload")) { out += {.Unload_Listener} }
 	it: u32
@@ -102,9 +104,10 @@ fire_page_transition :: proc(p: ^Page, type: string, persisted: bool) {
 }
 
 // A document that is not kept goes: its frames' documents first, then pagehide (not persisted) and unload (HTML "unload a
-// document and its descendants"). While that runs it starts no navigation.
+// document and its descendants"), once. While that runs it starts no navigation.
 page_unload :: proc(p: ^Page) {
-	if p == nil || p.closed || p.web.frozen { return }
+	if p == nil || p.closed || p.web.frozen || p.web.unloaded { return }
+	p.web.unloaded = true
 	if p.frames != nil {
 		ids := make([dynamic]u64, 0, len(p.frames.children), context.temp_allocator)
 		for n in p.frames.children { append(&ids, n.id) }
@@ -119,6 +122,9 @@ page_unload :: proc(p: ^Page) {
 	fire_window_event(p, dom.Event{type = "unload"})
 	if !p.closed { p.web.unloading -= 1 }
 }
+
+// The tab's history goes on without the document, or takes it back. It may run on while its frame is held (first_paint.odin), and writes in no entry of the next one.
+page_set_left :: proc(p: ^Page, left: bool) { p.web.left = left }
 
 // The document is about to be left: beforeunload (no prompt: a script's navigation has no user activation to ask with, HTML
 // "prompt to unload"). While that runs it starts no navigation.
