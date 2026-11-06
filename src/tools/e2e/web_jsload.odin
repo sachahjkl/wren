@@ -1197,6 +1197,23 @@ jsload_the_turns_follow_what_the_page_s_frames_cost :: proc(t: ^testing.T) {
 	close_page(pr, min_checks = 1)
 }
 
+// The turns are for what can show: a <head> of scripts spends none of them, and the script after the body's content still has one (cnn.com's inline script of 0.9 s).
+@(test)
+jsload_a_head_of_scripts_leaves_the_turns_for_the_body :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	metas := strings.repeat(`<meta name=x>`, page.REVEAL_TURN_MIN_NODES + 1, context.temp_allocator)
+	head := strings.repeat(concat(`<script>0</script>`, metas), page.PAINT_TURNS_MAX + 1, context.temp_allocator)
+	content := strings.repeat(`<p>x</p>`, page.REVEAL_TURN_MIN_NODES * 2, context.temp_allocator)
+	pr := load(t, "long head", concat(`<!doctype html><head>`, PRELUDE, head, `<script>setTimeout(() => log("a turn of the loop"), 0)</script></head><body>`, content, `<script>log("the long script")</script></body>`))
+	wait_note(pr, "the long script")
+	wait_note(pr, "a turn of the loop")
+	check(pr, in_order(pr, "a turn of the loop", "the long script"), "the loop had a turn before the script of the body")
+	close_page(pr, min_checks = 1)
+}
+
 // What the parser attached can paint before the long script that comes next: a turn of the loop for the frame, once; none when the document painted.
 @(test)
 jsload_the_first_paint_comes_before_the_next_script :: proc(t: ^testing.T) {
