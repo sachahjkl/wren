@@ -1953,6 +1953,31 @@ copy_data_properties :: proc(ctx: ^Context, target, source, excluded: Value, set
 	rt := ctx.rt
 	src := as_obj(source)
 	excl: ^Object = excluded.tag == .object ? as_obj(excluded) : nil
+	if excl == nil && copy_source_is_plain(rt, src) {
+		// the keys in the shape's order, the values from the slots: unless a setter of the target changes the source
+		sh := src.shape
+		for p, i in sh.props {
+			v: Value
+			if src.shape == sh {
+				if .enumerable not_in p.flags {continue}
+				v = src.slots[i].value
+			} else {
+				e := own_enumerable(ctx, src, p.atom)
+				if e < 0 {return false}
+				if e == 0 {continue}
+				v = get(ctx, source, p.atom)
+				if is_exception(v) {return false}
+			}
+			if setprop {
+				if set(ctx, target, p.atom, v) < 0 {return false}
+			} else if slot := object_append_by_transition(rt, as_obj(target), p.atom, CWE); slot != nil {
+				slot.value = v
+			} else if create_data_property(ctx, as_obj(target), p.atom, v) < 0 {
+				return false
+			}
+		}
+		return true
+	}
 	keys := make([dynamic]Atom, 0, 16, tmp(rt))
 	if !own_property_keys(ctx, src, &keys) {return false}
 	for k in keys {
@@ -1971,6 +1996,18 @@ copy_data_properties :: proc(ctx: ^Context, target, source, excluded: Value, set
 		} else {
 			if create_data_property(ctx, as_obj(target), k, v) < 0 {return false}
 		}
+	}
+	return true
+}
+
+// An ordinary object of a shared shape with data properties only, under string keys that are not indices: its own keys are its
+// shape's, in that order.
+@(private = "file")
+copy_source_is_plain :: proc(rt: ^Runtime, src: ^Object) -> bool {
+	sh := src.shape
+	if src.class != .object || src.host_exotic || sh.is_dict || sh.lazy != nil {return false}
+	for p in sh.props {
+		if p.kind != .data || atom_is_int(p.atom) || rt.atoms[p.atom].sym != nil {return false}
 	}
 	return true
 }

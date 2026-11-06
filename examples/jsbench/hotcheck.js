@@ -338,3 +338,58 @@ same(kept2[0], 3, "no shared state");
 same(kept[0] + kept[1], 7, "after the call");
 function arguments_many() {return arguments.length;}
 same(arguments_many.apply(null, new Array(1000)), 1000, "a thousand");
+
+
+// Arrays on the natives' short way, and where they must not take it.
+class Sub extends Array {}
+same(new Sub(1, 2, 3).slice(1) instanceof Sub, true, "species of a subclass");
+same([1, 2, 3].map(function (x) {return x * 2;}).join(), "2,4,6", "map");
+same([1, 2, 3, 4].filter(function (x) {return x % 2;}).length, 2, "filter");
+same(1 in [, 1].concat([, 2]), true, "concat keeps what is there");
+same(0 in [, 1].concat([, 2]), false, "concat keeps a hole");
+same([, 1].concat([, 2]).length, 4, "concat counts holes");
+same(2 in [1, , 3].slice(0), true, "slice past a hole");
+same(1 in [1, , 3].slice(0), false, "slice keeps a hole");
+var shrinking = [1, 2, 3, 4];
+same(shrinking.map(function (x, i) {if (i === 0) shrinking.length = 2; return x;}).length, 4, "map over an array that shrinks");
+var species_array = [1, 2];
+species_array.constructor = function (n) {return {length: n, marked: true};};
+species_array.constructor[Symbol.species] = species_array.constructor;
+same(species_array.slice(0).marked, true, "a constructor of the array's own");
+var saved_species = Object.getOwnPropertyDescriptor(Array, Symbol.species);
+Object.defineProperty(Array, Symbol.species, {configurable: true, get: function () {return function (n) {return {length: n, marked: 1};};}});
+same([1].slice(0).marked, 1, "Array[@@species] replaced");
+Object.defineProperty(Array, Symbol.species, saved_species);
+same([1].slice(0).marked, undefined, "and put back");
+var saved_constructor = Array.prototype.constructor;
+Array.prototype.constructor = function () {return {marked: 2};};
+Array.prototype.constructor[Symbol.species] = Array.prototype.constructor;
+same([1].slice(0).marked, 2, "Array.prototype.constructor replaced");
+Array.prototype.constructor = saved_constructor;
+var fixed_length = [1, 2, 3];
+Object.defineProperty(fixed_length, "length", {writable: false});
+throws(function () {"use strict"; fixed_length.push(4);}, TypeError, "a fixed length");
+
+// {...o} and Object.assign by the source's shape.
+var order = {b: 1, a: 2};
+same(Object.keys({...order}).join(), "b,a", "the source's order");
+same(Object.keys({...{2: 1, b: 2, 1: 3}}).join(), "1,2,b", "indices first");
+var hidden = {a: 1};
+Object.defineProperty(hidden, "h", {value: 2, enumerable: false});
+same("h" in {...hidden}, false, "not enumerable");
+var symbol_key = Symbol("s");
+same(({...{[symbol_key]: 1, a: 2}})[symbol_key], 1, "symbols");
+var calls = 0;
+same(({...{get a() {calls += 1; return 3;}}}).a, 3, "a getter read");
+same(calls, 1, "once");
+same(Object.getOwnPropertyDescriptor({a: 0, ...{a: 1}}, "a").value, 1, "over what is there");
+var source_changes = {a: 1, b: 2};
+var with_setter = {set a(v) {delete source_changes.b;}};
+Object.assign(with_setter, source_changes);
+same("b" in with_setter, false, "a setter that changes the source");
+
+// A shape's transitions past those a list holds, and after the collection took some.
+var by_first_key = [];
+for (var k = 0; k < 40; k++) {var made = {}; made["k" + k] = k; by_first_key.push(made);}
+for (var k = 0; k < 40; k++) same(by_first_key[k]["k" + k], k, "a first key");
+same(Object.keys({k7: 1, a: 2}).join(), "k7,a", "a literal on them");
