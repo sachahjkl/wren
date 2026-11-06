@@ -116,6 +116,7 @@ runs:
         path: |
           build/js/wren_js.wasm
           build/js/wren_js_raw.wasm
+          build/js/wren_js.code
           build/js/STAMP
           build/js-test262/wren_js.wasm
           build/js-test262/wren_js_raw.wasm

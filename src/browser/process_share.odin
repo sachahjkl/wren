@@ -2,6 +2,7 @@ package browser
 
 import "core:sync"
 import "wb:host"
+import js_code "wb:js/image/code"
 import "wb:page"
 import "wb:wasm"
 import "wb:tools/crashtrace"
@@ -75,6 +76,7 @@ process_setup :: proc(app: ^App) -> bool {
 	wasm.configure(rs)
 	wasm.runtime_settings_destroy(&rs)
 	if !page.register_imports() { wasm.runtime_destroy(); crashtrace.end_session(); return false }
+	wasm.shipped_set(js_code.CODE)
 	page.js_startup(&app.prefs, app.cfg.persist_profile ? app.profile_dir : "")
 	return true
 }

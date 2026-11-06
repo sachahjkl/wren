@@ -1,5 +1,6 @@
 // jsengine: the JavaScript engine module (native/js) outside the browser.
 //   jsengine snapshot <raw.wasm> <out.wasm>     pre-initializes the engine and puts its polls in (src/tools/buildjs runs it)
+//   jsengine precompile <image.wasm> <out.code> [a,b | native]   its machine code, which the program ships (src/wasm/shipped.odin)
 //   jsengine run [-image m.wasm] [-raw] [-e code] [-profile out.json] [file.js ...]
 //                                               runs scripts in a fresh realm; console output on stdout, uncaught
 //                                               errors on stderr; exit code 1 when one was uncaught; -profile samples
@@ -214,6 +215,7 @@ IMPORTS := [?]wasm.Import{
 
 usage :: proc() -> ! {
 	fmt.eprintln("usage: jsengine snapshot <raw.wasm> <out.wasm>")
+	fmt.eprintln("       jsengine precompile <image.wasm> <out.code> [a,b | native]")
 	fmt.eprintln("       jsengine run [-image m.wasm] [-raw] [-e code] [file.js ...]")
 	fmt.eprintln("       jsengine bench [-image m.wasm] [-raw] [-iterations n] <dir> [names...]")
 	fmt.eprintln("       jsengine startup [-image m.wasm] [-raw] [-n count]")
@@ -505,6 +507,7 @@ main :: proc() {
 	if len(os.args) < 2 { usage() }
 	switch os.args[1] {
 	case "snapshot": cmd_snapshot(os.args[2:])
+	case "precompile": cmd_precompile(os.args[2:])
 	case "run": cmd_run(os.args[2:])
 	case "bench": cmd_bench(os.args[2:])
 	case "startup": cmd_startup(os.args[2:])
@@ -544,6 +547,21 @@ cmd_snapshot :: proc(args: []string) {
 		time.duration_milliseconds(time.tick_since(t0)), args[1], len(polled) / 1024)
 }
 
+// jsengine precompile <image.wasm> <out.code> [a,b | native]: the image's machine code, as the program ships it (src/wasm/shipped.odin), or for
+// other CPU features than the baseline it has, for a measure: those named, or this machine's.
+cmd_precompile :: proc(args: []string) {
+	if len(args) < 2 { usage() }
+	setup()
+	t0 := time.tick_now()
+	features: []string
+	native := len(args) > 2 && args[2] == "native"
+	if len(args) > 2 && !native { features = strings.split(args[2], ",") }
+	blob, err := wasm.shipped_make(read_file(args[0]), true, features, native)
+	if err != "" { fmt.eprintln("jsengine precompile:", err); os.exit(1) }
+	if werr := os.write_entire_file(args[1], blob); werr != nil { fmt.eprintln("jsengine precompile: cannot write", args[1]); os.exit(1) }
+	fmt.printfln("precompile: %.1f ms -> %s (%d KiB)", time.duration_milliseconds(time.tick_since(t0)), args[1], len(blob) / 1024)
+}
+
 // The functions of the image whose loops have no poll. hot_loop, hot_run and interp_run are the interpreter's dispatch: what runs
 // forever there passes a back edge, which reaches poll_host by its count (a call in hot_loop costs every instruction its registers).
 // interp_call, frame_push and hot_return make a call of a script: they look at the word at their entry, their loops go over a frame.
@@ -571,6 +589,7 @@ parse_common :: proc(args: []string) -> (c: Common) {
 		a := args[i]
 		switch a {
 		case "-image": i += 1; c.image = args[i]
+		case "-code": i += 1; wasm.shipped_set(read_file(args[i]))
 		case "-raw": c.raw = true
 		case "-e": i += 1; append(&c.evals, args[i])
 		case "-iterations": i += 1; c.iterations = max(1, tooling.parse_digits(args[i]))

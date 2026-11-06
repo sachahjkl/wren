@@ -103,6 +103,7 @@ run :: proc(args: []string) -> int {
 	what := len(args) > 0 ? args[0] : VARIANTS[.Dev].name
 	switch what {
 	case "lexbor", "native", "tracy": return deps.run_build(args)
+	case "jscode": return tooling.build_js_code({}) ? 0 : 1
 	case "help", "-h", "--help", "/?": usage(); return 0
 	}
 	for spec, v in VARIANTS {
@@ -220,6 +221,7 @@ common_flags :: proc(o: Options) -> []string {
 	if o.label != "" { append(&f, fmt.tprintf("-define:WREN_VERSION_LABEL=%s", o.label)) }
 	if o.accept_dev_key { append(&f, "-define:WREN_ACCEPT_DEV_LICENSE_KEY=true") }
 	if o.embedded_license != "" { append(&f, fmt.tprintf("-define:WREN_EMBEDDED_LICENSE=%s", o.embedded_license)) }
+	append(&f, "-define:WREN_SHIPPED_CODE=true")   // (the engine's machine code in the program: src/js/image/code)
 	append(&f, "-vet", "-subsystem:windows")
 	if o.wgpu { append(&f, "-define:TOOLKIT_RENDER=wgpu", "-define:WGPU_SHARED=true") }
 	if o.tracy { append(&f, "-define:WREN_TRACY=true") }

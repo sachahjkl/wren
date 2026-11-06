@@ -119,10 +119,18 @@ config_text :: proc(rs: Runtime_Settings, epoch: bool, allocator := context.temp
 }
 
 // A Wasmtime engine of this configuration. `epoch`: its code checks the epoch at function entries and loop heads.
+// `target`: it compiles for this triple, with the CPU features named and no others, instead of this machine's (shipped.odin).
 @(private)
-wt_engine_new :: proc(rs: Runtime_Settings, epoch: bool) -> wt_engine {
+wt_engine_new :: proc(rs: Runtime_Settings, epoch: bool, target := "", features: []string = nil) -> wt_engine {
 	f := effective_features(rs)
 	c := wasm_config_new()
+	if target != "" {
+		if e := wasmtime_config_target_set(c, strings.clone_to_cstring(target, context.temp_allocator)); e != nil {
+			wasmtime_error_delete(e)
+			return nil
+		}
+		for name in features { wasmtime_config_cranelift_flag_enable(c, strings.clone_to_cstring(name, context.temp_allocator)) }
+	}
 	wasmtime_config_strategy_set(c, rs.compiler == .Winch ? WT_STRATEGY_WINCH : WT_STRATEGY_CRANELIFT)
 	switch rs.opt_level {
 	case .None:           wasmtime_config_cranelift_opt_level_set(c, WT_OPT_NONE)

@@ -9,7 +9,7 @@ import "core:strings"
 // Wren's JavaScript engine: the Odin engine (src/engine/jsrt, through the QuickJS C API of src/engine/jscapi) and the browser's bindings (native/js/odin, with the generated
 // native/js/odin/bindings_gen.odin), compiled to WebAssembly, then pre-initialized: the engine, its intrinsics and the bindings set up once, at build time, and stored in the module's
 // memory image, so that a realm starts from that image instead of running the engine's start-up code. Outputs, in <out>: wren_js_raw.wasm, the engine as compiled (a WASI reactor);
-// wren_js.wasm, the pre-initialized module the browser embeds (src/js/engine.odin). The linker is the wasm-ld that ships with Odin. Nothing happens when <out>/STAMP matches the hash of
+// wren_js.wasm, the pre-initialized module the browser embeds (src/js/engine.odin); wren_js.code, its machine code, which the program embeds as well (not the test image's). The linker is the wasm-ld that ships with Odin. Nothing happens when <out>/STAMP matches the hash of
 // every input (the glue, the engine and the host package that pre-initializes it).
 
 // Not used to build anything: test262's configuration, and the reference wrentool bench js measures against, are QuickJS-ng's release source (src/browser/about_wren_test.odin and
@@ -21,6 +21,7 @@ QJS_SHA256 :: "559bc4c420475e55c7ab4510adbc562f55d7524d75e8e89d79ce4bb02f5687d9"
 // recursion that runs past it goes on in the engine's heap (src/engine/jsrt/stack.odin, for which the host moves the stack pointer: the export). The engine's limit comes from what the linker made of this.
 WASM_STACK_BYTES :: 2 << 20
 JS_OUT_DEFAULT :: "build/js"
+JS_CODE_NAME :: "wren_js.code"   // the machine code of wren_js.wasm, which the program ships (src/wasm/shipped.odin, src/js/image/code)
 THIS_FILE :: "src/tools/tooling/js_engine.odin"
 BYTES_PER_KIB :: 1024
 
@@ -127,6 +128,27 @@ js_stamp :: proc(o: Js_Options) -> string {
 	return sha256_of(all.buf[:], context.temp_allocator)
 }
 
+// src/tools/jsengine, in <out>: the tool that pre-initializes the image and compiles it.
+@(private = "file")
+build_jsengine_tool :: proc(o: Js_Options) -> (exe: string, ok: bool) {
+	exe = fmt.tprintf("%s/jsengine%s", o.out, EXE_SUFFIX)
+	build := make([dynamic]string, context.temp_allocator)
+	append(&build, odin_program(), "build", "src/tools/jsengine", "-collection:wb=src", "-vet", fmt.tprintf("-out:%s", exe), "-o:speed")
+	append(&build, ..STACK_FLAGS)
+	if run({command = build[:], log = o.log}) != 0 { say(o.log, "building src/tools/jsengine failed\n"); return "", false }
+	return exe, true
+}
+
+// The image's machine code for this system, from an image built elsewhere: only Windows builds the image, and code is made for the system it runs on (Linux: build.sh).
+build_js_code :: proc(options: Js_Options) -> bool {
+	o := options
+	if o.out == "" { o.out = JS_OUT_DEFAULT }
+	final := fmt.tprintf("%s/wren_js.wasm", o.out)
+	if !os.exists(final) { say(o.log, fmt.tprintfln("%s is missing", final)); return false }
+	exe := build_jsengine_tool(o) or_return
+	return run({command = {exe, "precompile", final, fmt.tprintf("%s/%s", o.out, JS_CODE_NAME)}, log = o.log}) == 0
+}
+
 // Builds it unless it is up to date. False: said in the log.
 build_js_engine :: proc(options: Js_Options) -> bool {
 	o := options
@@ -136,7 +158,7 @@ build_js_engine :: proc(options: Js_Options) -> bool {
 	final := fmt.tprintf("%s/wren_js.wasm", o.out)
 	stamp_file := fmt.tprintf("%s/STAMP", o.out)
 	stamp := js_stamp(o)
-	if !o.force && os.exists(final) {
+	if !o.force && os.exists(final) && (o.test262 || os.exists(fmt.tprintf("%s/%s", o.out, JS_CODE_NAME))) {
 		known, err := os.read_entire_file(stamp_file, context.temp_allocator)
 		if err == nil && strings.trim_space(string(known)) == stamp {
 			say(o.log, fmt.tprintfln("wren_js up to date in %s", o.out))
@@ -169,12 +191,9 @@ build_js_engine :: proc(options: Js_Options) -> bool {
 
 	// Pre-initialize (src/tools/jsengine: runs wj_preinit under Wasmtime and writes the snapshot). Wasm calls run on the main thread: room for wasm.wasmtime.max_stack_bytes.
 	// (in <out>: the test image of test262 is built beside the browser's engine, at the same time)
-	exe := fmt.tprintf("%s/jsengine%s", o.out, EXE_SUFFIX)
-	build := make([dynamic]string, context.temp_allocator)
-	append(&build, odin_program(), "build", "src/tools/jsengine", "-collection:wb=src", "-vet", fmt.tprintf("-out:%s", exe), "-o:speed")
-	append(&build, ..STACK_FLAGS)
-	if run({command = build[:], log = o.log}) != 0 { say(o.log, "building src/tools/jsengine failed\n"); return false }
+	exe := build_jsengine_tool(o) or_return
 	if run({command = {exe, "snapshot", raw, final}, log = o.log}) != 0 { say(o.log, "the pre-initialization of the engine failed\n"); return false }
+	if !o.test262 && run({command = {exe, "precompile", final, fmt.tprintf("%s/%s", o.out, JS_CODE_NAME)}, log = o.log}) != 0 { say(o.log, "the engine's machine code could not be made\n"); return false }
 	if os.write_entire_file(stamp_file, stamp) != nil { return false }
 	if fi, err := os.stat(final, context.temp_allocator); err == nil {
 		say(o.log, fmt.tprintfln("built %s (%d KiB)", final, fi.size / BYTES_PER_KIB))
