@@ -313,17 +313,33 @@ window_simulate_dpi :: proc(app: ^App, w: ^Browser_Window, dpi: int) {
 
 // The window's state and rectangle as asked (the parts that are not asked for stay): `Browser.setWindowBounds`, and the reset and
 // the checkpoints of remote_state.odin.
+// The state a headless window says it is in. (Each system's window keeps it in a field of its own.)
+@(private = "file")
+window_emulated_state :: proc(w: ^platform.Window, state: string) {
+	when ODIN_OS == .Windows {
+		switch state {
+		case "normal":     w.off_state = .Normal
+		case "minimized":  w.off_state = .Minimized
+		case "maximized":  w.off_state = .Maximized
+		case "fullscreen": w.off_state = .Fullscreen
+		}
+	} else {
+		switch state {
+		case "normal":     w.show = .Normal
+		case "minimized":  w.show = .Minimized
+		case "maximized":  w.show = .Maximized
+		case "fullscreen": w.show = .Fullscreen
+		}
+	}
+}
+
 window_apply :: proc(app: ^App, state: string, has_state: bool, w, h, left, top: int, has_w, has_h, has_l, has_t: bool) {
 	wnd := active_window(app)
 	if platform.is_offscreen(wnd.win) {
 		// a headless window: the state and the rectangle are emulated, the client size is set straight (no window frame)
 		if has_state {
-			switch state {
-			case "normal":     if platform.is_fullscreen(wnd.win) { toggle_fullscreen(app) }; wnd.win.off_state = .Normal
-			case "minimized":  wnd.win.off_state = .Minimized
-			case "maximized":  wnd.win.off_state = .Maximized
-			case "fullscreen": wnd.win.off_state = .Fullscreen
-			}
+			if state == "normal" && platform.is_fullscreen(wnd.win) { toggle_fullscreen(app) }
+			window_emulated_state(wnd.win, state)
 		}
 		if has_l || has_t { platform.move_window(wnd.win, has_l ? left : wnd.win.off_place[0], has_t ? top : wnd.win.off_place[1]) }
 		if has_w || has_h {
