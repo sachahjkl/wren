@@ -2994,7 +2994,7 @@ Load, the first series having left a doubt on theverge.com (3 runs of 5 at 4.8 s
 | npr.org | 2 211 (2 120-2 372) | 2 104 (1 977-2 300) | 3 878 (3 798-4 083) | 3 770 (2 988-4 080) |
 | cnn.com | 2 153 (2 066-2 359) | 2 010 (1 930-2 289) | 4 152 (3 996-4 574) | 4 132 (3 972-4 401) |
 
-DOMContentLoaded gains on all three, ranges apart on none, theverge.com by its six best runs of eight. Load is within noise on all three: +5 % on theverge.com by the median may be a real cost, not proven.
+DOMContentLoaded gains on all three, ranges apart on theverge.com. Load is within noise on all three: +5 % on theverge.com by the median may be a real cost, not proven.
 
 ## Inventory
 
