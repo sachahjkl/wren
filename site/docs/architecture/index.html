@@ -260,7 +260,7 @@ is answered.</li>
 (so waiting never counts against connect timeouts); reading pauses when 1 MB is queued for a request; <code>max_body</code>
 caps a response; at most 20 redirects (the Fetch Standard's number); cookies: at most 180 per site and 3000 in
 total with LRU eviction; at most 1000 preflight cache entries; guest memory is capped; every host → guest call has
-a deadline (epoch interruption): a spinning script is stopped, the instance lives on. Every one of these numbers is
+a deadline (epoch interruption; polls of its own in the JavaScript engine, <code>src/wasm/poll.odin</code>): a spinning script is stopped, the instance lives on. Every one of these numbers is
 a preference (<code>about:config</code>).</li>
 <li><strong>The guest cannot reach host memory.</strong> Every address + length pair of an import is checked by its generated
 trampoline against the guest's linear memory before our code runs; strings are copied out through caller-provided
@@ -319,7 +319,7 @@ pinned in the script) into <code>build\wasmtime</code>; the static <code>wasmtim
 12 MB). It needs <code>ws2_32 advapi32 userenv ntdll shell32 ole32 bcrypt kernel32</code> and the C runtime, linked in as for every native library of Wren
 (<code>libcmt libucrt libvcruntime</code>, the static C runtime that Odin's <code>core:c/libc</code> is: <code>wren.exe</code> needs no runtime DLL), declared in <code>src/wasm/wasmtime.odin</code>. Modules are compiled by Cranelift (or Winch,
 <code>wasm.wasmtime.compiler</code>), kept in a memory cache and in an HMAC-authenticated disk cache of the profile
-(<code>wasm-cache</code>), and every call from the host has a wall-clock deadline (<code>wasm.max_call_ms</code>, epoch interruption; with
+(<code>wasm-cache</code>), and every call from the host has a wall-clock deadline (<code>wasm.max_call_ms</code>, epoch interruption; the JavaScript engine's image runs on a second Wasmtime engine without epoch checks and polls at the head of its loops, <code>src/wasm/poll.odin</code>; with
 <code>wasm.wasmtime.fuel</code>, also an instruction budget). <code>src/tools/wasmbench</code> compares the compiler configurations and
 measures host calls.</p>
 <h2 id="the-web-api-one-description-everything-generated"><a class="anchor" href="#the-web-api-one-description-everything-generated" aria-hidden="true">#</a>The web API: one description, everything generated</h2>
