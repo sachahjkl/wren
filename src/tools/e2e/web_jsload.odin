@@ -50,6 +50,7 @@ RENDER_LEVELS :: 80
 RENDER_RESULTS :: 4
 PUMP_SLICE_MS :: 20
 PUMP_SCRIPT_MS :: 30             // past the slice
+COMPILE_TAKES_IT_MS :: 500       // what a compile thread has to take a job, on a loaded machine of two processors
 SLICE_PER_FRAME :: 3
 SLICE_LONGER_THAN_THE_TEST_MS :: 60_000
 FRAME_COST_MS :: 100             // three times this is past the scripts of the test, whatever else the machine does
@@ -1329,7 +1330,8 @@ jsload_large_inline_scripts_compile_ahead :: proc(t: ^testing.T) {
 	settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
 	jobs, hits := page.compile_stats().jobs, js.cache_stats().memory_hits
 	sb := strings.builder_make(context.temp_allocator)
-	strings.write_string(&sb, `<!doctype html><head><script>wrenTest.note("first")</script><script>`)
+	// (the first script leaves a compile thread the time to take it: not taken at its turn, a script is compiled here, as it should be)
+	fmt.sbprintf(&sb, `<!doctype html><head><script>{{ const end = performance.now() + %d; while (performance.now() < end); }} wrenTest.note("first")</script><script>`, COMPILE_TAKES_IT_MS)
 	lines := OFFTHREAD_MIN_BYTES / 16
 	for i in 0 ..< lines { fmt.sbprintf(&sb, "var v%d = %d;\n", i, i) }
 	fmt.sbprintf(&sb, `wrenTest.note("inline ran " + (v3 + 1) + " " + new Error("x").stack.includes(":%d:"));`, lines + 1)
