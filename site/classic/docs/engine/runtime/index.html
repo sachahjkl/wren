@@ -229,7 +229,12 @@ Uint8Array base64/hex, <code>Error.prototype.stack</code>. <code>Intl</code> sta
 <p><strong>Regular expressions.</strong> Literals reach the runtime already compiled by the front‑end to the <strong>bytecode of
 QuickJS's libregexp</strong>; <code>lre_exec.odin</code> executes that format (and a verifier checks it before use), so
 literals and <code>new RegExp</code> share one matcher. Unicode properties, case folding and the properties of strings
-(<code>\p{RGI_Emoji}</code> …) come from tables generated from the pinned UCD.</p>
+(<code>\p{RGI_Emoji}</code> …) come from tables generated from the pinned UCD. The matcher recognises a greedy loop of one character
+(<code>\S+</code>, <code>[^"]*</code>, <code>.*</code>) as the compiler emits it and takes the run at once, with one state of the kind <code>.run</code> for all of
+its positions, the character that follows the loop tried before it goes back to a position (the format does not change, and a
+subject read as code points takes the bytecode's way). A search whose regexp starts with such a run, without back references,
+goes on after the run when it fails: what follows was tried at every position a later start could reach, so
+<code>/\S+@\S+\.\S+/</code> on a long token is linear where backtracking is quadratic.</p>
 <h2 id="embedding-interface-embedodin-runtimeodin"><a class="anchor" href="#embedding-interface-embedodin-runtimeodin" aria-hidden="true">#</a>Embedding interface (<code>embed.odin</code>, <code>runtime.odin</code>)</h2>
 <p><code>engine_new</code> / <code>context_new</code> / <code>eval_source</code> / <code>eval_bytecode</code> / <code>call_function</code> / <code>run_jobs</code> /
 <code>retain</code> / <code>release</code> / <code>heap_stats</code>, with the hooks in <code>Host_Config</code>: <code>compile</code>, <code>load_module</code>,

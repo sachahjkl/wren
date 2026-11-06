@@ -172,6 +172,21 @@ section("live collections", () => {
   eq("getElementsByTagName('*')", document.getElementById("host").getElementsByTagName("*").length, 2);
   eq("getElementsByTagNameNS svg", document.getElementsByTagNameNS("http://www.w3.org/2000/svg", "circle").length, 1);
   eq("getElementsByName", document.getElementsByName("q")[0].value, "v");
+  // (a name nothing has is answered without a walk: what follows has to be seen all the same)
+  const named_late = document.getElementsByName("named-late");
+  eq("no element of that name", named_late.length + ":" + typeof window["named-late"], "0:undefined");
+  const late_form = document.createElement("form");
+  late_form.setAttribute("name", "named-late");
+  document.body.appendChild(late_form);
+  eq("an element inserted", named_late.length + ":" + document.getElementsByName("named-late").length, "1:1");
+  eq("and the window's named property", window["named-late"] === late_form, true);
+  late_form.setAttribute("name", "named-other");
+  eq("the attribute changed", named_late.length + ":" + document.getElementsByName("named-other").length, "0:1");
+  const detached_name = document.createElement("div");
+  detached_name.setAttribute("name", "named-away");
+  eq("an element out of the document", document.getElementsByName("named-away").length, 0);
+  late_form.remove();
+  eq("the element removed", document.getElementsByName("named-other").length, 0);
   eq("document.forms", document.forms.length + ":" + document.forms[0].id, "1:form1");
   eq("document.forms by name", document.forms.namedItem("f1").id, "form1");
   eq("document.images", document.images[0].id, "img1");

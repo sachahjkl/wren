@@ -116,6 +116,7 @@ Page :: struct {
 	speculation:  ^fetch.Speculation,   // what was asked ahead of the parser (fetch/speculative.odin)
 	import_loads: [dynamic]^Style_Load,
 	web:          ^Web_State,           // platform web APIs (web.odin)
+	names:        Name_Filter,          // what names the document's elements have (js_dom_collections.odin)
 	formctl:      ^Page_Forms,          // form controls (bindings_forms.odin)
 	// threads (worker.odin, offthread.odin)
 	worker:       ^Worker_Global,       // non-nil: this Page is the global scope of a dedicated worker, on its thread, without a document

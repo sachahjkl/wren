@@ -188,7 +188,12 @@ Uint8Array base64/hex, `Error.prototype.stack`. `Intl` stays on the host (Wren's
 **Regular expressions.** Literals reach the runtime already compiled by the front‑end to the **bytecode of
 QuickJS's libregexp**; `lre_exec.odin` executes that format (and a verifier checks it before use), so
 literals and `new RegExp` share one matcher. Unicode properties, case folding and the properties of strings
-(`\p{RGI_Emoji}` …) come from tables generated from the pinned UCD.
+(`\p{RGI_Emoji}` …) come from tables generated from the pinned UCD. The matcher recognises a greedy loop of one character
+(`\S+`, `[^"]*`, `.*`) as the compiler emits it and takes the run at once, with one state of the kind `.run` for all of
+its positions, the character that follows the loop tried before it goes back to a position (the format does not change, and a
+subject read as code points takes the bytecode's way). A search whose regexp starts with such a run, without back references,
+goes on after the run when it fails: what follows was tried at every position a later start could reach, so
+`/\S+@\S+\.\S+/` on a long token is linear where backtracking is quadratic.
 
 ## Embedding interface (`embed.odin`, `runtime.odin`)
 
