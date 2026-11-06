@@ -42,8 +42,9 @@ PACER_LIVE_HZ_PERIOD_NS :: 100_000_000
 PACING_DEBUG :: #config(PACING_DEBUG, false)
 _ :: fmt   // PACING_DEBUG only
 
-// The ends of browser.frame.cap, around its rates.
+// What browser.frame.cap says that is not a rate.
 FRAME_CAP_AUTO :: "auto"
+FRAME_CAP_CUSTOM :: "custom"
 FRAME_CAP_UNCAPPED :: "uncapped"
 
 FRAME_PREFS := [?]config.Def{
@@ -53,8 +54,10 @@ FRAME_PREFS := [?]config.Def{
 		description = "A screen with a variable or dynamic refresh rate (G-Sync, FreeSync, Windows 11's dynamic refresh rate, which rests at 60 Hz and goes up to 180 Hz while something moves) reports the rate it rests at, not the one it shows frames at. auto: when the monitor offers modes above the rate it reports, frames aim for the highest (browser.frame.target_hz = auto) and are timed by the browser, never faster, whatever the input rate (a mouse at 1000 Hz makes a frame per period, not per move). on: the same for a screen that reports its top rate but varies it (G-Sync without a dynamic rate). off: the rate the system reports. Reported as `variableRefresh`, `hz`, `hzMax` and `hzNow` in `wren ctl stats`."},
 	{name = "browser.frame.max_hz", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 1000, unit = "Hz",
 		description = "Most frames per second whatever the monitor (0 = no limit), e.g. 60 to save power on a 180 Hz monitor."},
-	{name = "browser.frame.cap", kind = .String, default = {s = FRAME_CAP_AUTO}, choices = {FRAME_CAP_AUTO, "60", "120", "240", FRAME_CAP_UNCAPPED},
-		description = "Most frames per second while something moves. auto: what the monitor shows. A number: that ceiling (with browser.frame.max_hz, the lower of the two). uncapped: as fast as they can be made, each shown at once, whatever the monitor and the other limits say; it costs power and may tear. Nothing moves: no frames, whatever this says."},
+	{name = "browser.frame.cap", kind = .String, default = {s = FRAME_CAP_AUTO}, choices = {FRAME_CAP_AUTO, "60", "120", "240", FRAME_CAP_CUSTOM, FRAME_CAP_UNCAPPED},
+		description = "Most frames per second while something moves. auto: what the monitor shows. A number: that ceiling (with browser.frame.max_hz, the lower of the two). custom: the ceiling browser.frame.cap_custom_hz says. uncapped: as fast as they can be made, each shown at once, whatever the monitor and the other limits say; it costs power and may tear. Nothing moves: no frames, whatever this says."},
+	{name = "browser.frame.cap_custom_hz", kind = .Int, default = {i = 90}, bounded = true, min = 10, max = 1000, unit = "Hz",
+		description = "The ceiling of browser.frame.cap = custom."},
 	{name = "browser.frame.present_mode", kind = .String, default = {s = "vsync"}, choices = {"vsync", "tearing"},
 		description = "vsync: each frame waits for a refresh of the monitor (no tearing). tearing: frames are shown as soon as they are ready, for variable refresh monitors (G-Sync, FreeSync), which then refresh when a frame comes; the browser paces them at browser.frame.target_hz. Without the system's support for it, vsync."},
 	{name = "browser.frame.wait_timeout_ms", kind = .Int, default = {i = 100}, bounded = true, min = 1, max = 2000, unit = "ms",
@@ -107,7 +110,8 @@ pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
 	cap := config.string_of(p, "browser.frame.cap")
 	s.cap = cap
 	s.uncapped = cap == FRAME_CAP_UNCAPPED
-	if hz := parse_target_hz(cap); hz > 0 { s.max_hz = s.max_hz > 0 ? min(s.max_hz, hz) : hz }
+	hz := cap == FRAME_CAP_CUSTOM ? f64(config.int_of(p, "browser.frame.cap_custom_hz")) : parse_target_hz(cap)
+	if hz > 0 { s.max_hz = s.max_hz > 0 ? min(s.max_hz, hz) : hz }
 	switch config.string_of(p, "browser.frame.variable_refresh") {
 	case "on":  s.variable = .On
 	case "off": s.variable = .Off

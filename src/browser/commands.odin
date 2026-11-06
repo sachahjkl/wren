@@ -332,7 +332,7 @@ commands_build :: proc(r: ^Command_Registry) {
 
 	// --- view
 	// the frame rate (pacing.odin): the choices of browser.frame.cap, in their order
-	cap_titles := [?][2]string{{FRAME_CAP_AUTO, i18n.tr("Frame rate: auto")}, {"60", i18n.tr("Frame rate: 60")}, {"120", i18n.tr("Frame rate: 120")}, {"240", i18n.tr("Frame rate: 240")}, {FRAME_CAP_UNCAPPED, i18n.tr("Frame rate: uncapped")}}
+	cap_titles := [?][2]string{{FRAME_CAP_AUTO, i18n.tr("Frame rate: auto")}, {"60", i18n.tr("Frame rate: 60")}, {"120", i18n.tr("Frame rate: 120")}, {"240", i18n.tr("Frame rate: 240")}, {FRAME_CAP_CUSTOM, i18n.tr("Frame rate: custom (browser.frame.cap_custom_hz)")}, {FRAME_CAP_UNCAPPED, i18n.tr("Frame rate: uncapped")}}
 	for x in cap_titles {
 		add(r, {name = fmt.aprintf("view.frame_cap.%s", x[0], allocator = a), title = x[1], category = "View", arg = x[0], keywords = "fps limit cap uncapped unlimited vsync frames per second",
 			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.pacing.cfg.cap == c.arg },
