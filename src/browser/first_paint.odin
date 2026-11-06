@@ -297,7 +297,7 @@ first_paint_due :: proc(app: ^App) -> (due: bool, laid: u64) {
 	laid = t.layout.mutations
 	pp := &window_own(app).page_prep
 	blocked := pp.tab == t && pp.page == t.page && pp.blocked
-	if t.page.render.painted || (laid == t.page.doc.mutations && !blocked) { return }
+	if t.page.render.painted || (laid == t.page.doc.mutations && !blocked && !page.paint_turn_waiting(t.page)) { return }
 	state, _ := page.first_paint_state(t.page)
 	return state == .Ready, laid
 }

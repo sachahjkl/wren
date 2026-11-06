@@ -56,7 +56,7 @@ bfcache_blockers :: proc(p: ^Page) -> Bfcache_Blockers {
 	if webauthn_busy(p) { out += {.Request_In_Flight} }   // a passkey dialog is open for it
 	if s := p.scripts; s != nil {
 		for f in s.fetches { if f.task != base.NIL_HANDLE { out += {.Request_In_Flight} } }
-		if s.started && !s.loaded { out += {.Loading} }
+		if s.phase >= .Parsing && s.phase < .Complete { out += {.Loading} }
 	}
 	return out
 }

@@ -570,7 +570,7 @@ tab_loaded :: proc(app: ^App, t: ^Tab) -> bool {
 		for s in load.slots { if s.state == .Pending || s.state == .Ready { return false } }
 		if load.bytes > 0 && !t.page.render.adopted { return false }   // (still being parsed)
 	}
-	if s := t.page.scripts; s != nil && s.started && s.ready_state != .Complete { return false }
+	if s := t.page.scripts; s != nil && s.phase != .Not_Started && s.phase != .Complete { return false }
 	return true
 }
 

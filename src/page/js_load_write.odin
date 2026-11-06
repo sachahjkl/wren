@@ -207,11 +207,7 @@ document_open :: proc(p: ^Page) -> bool {
 	p.doc_el, p.head, p.body = base.NIL_HANDLE, base.NIL_HANDLE, base.NIL_HANDLE
 	ps.active = true
 	ps.script_created = true
-	s.ready_state = .Loading
-	s.parse_done = false
-	s.content_loaded = false
-	s.loaded = false
-	s.started = true
+	doc_phase_set(p, .Parsing)
 	if p.doc.hooks.inserted == nil { scripts_install_hooks(p) }
 	p.style_stale = true
 	return true

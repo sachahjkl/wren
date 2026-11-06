@@ -42,6 +42,26 @@ Script_State :: enum u8 { Fetching, Ready, Failed, Done }
 
 Ready_State :: enum u8 { Loading, Interactive, Complete }
 
+// Where a document stands in its load (doc_phase_set); readyState is read from it (document_ready_state).
+Doc_Phase :: enum u8 {
+	Not_Started,      // no parser ran: readyState is what the page's adoption says
+	Parsing,          // "loading": the parser's reveal, or the parser of document.open
+	Deferred,         // "stop parsing" happened, "interactive": the deferred scripts, then DOMContentLoaded
+	Content_Loaded,   // DOMContentLoaded fired: async and ordered scripts and resources hold the load event
+	Complete,         // "complete": the load event fired, or nothing was left to load (frames_make_live)
+}
+
+// What the pump does (pump_to).
+Pump_State :: enum u8 {
+	Idle,          // what comes next calls it
+	Running,
+	Yield_Slice,   // it gave the loop a turn: it goes on at the next one
+	Yield_Paint,   // ... for the first paint: until the frame came (paint_turn_over) or the deadline passed
+}
+
+// What the pump can do now, in HTML's order (pump_next). Every step but End is a script, or may be one.
+Pump_Step :: enum u8 { End, Async, In_Order, Pending, Reveal, Deferred }
+
 // The per-element state HTML keeps on a script element. "Force async" is true for a script element made by a script
 // until its async attribute is touched: here it is the absence of Parser_Inserted, From_Fragment and Async_Touched.
 // Moved_Out: the element went to another document of the tab (frames_adopt) after it was prepared here: it does not run
@@ -116,11 +136,16 @@ Doc_Parser :: struct {
 	pending:         ^Page_Script,          // the pending parsing-blocking script
 	nesting:         int,                   // script nesting level
 	revealing:       int,                   // attaching nodes: the DOM hooks ignore them
-	paused:          bool,                  // reveal_run stopped for a turn of the loop: scripts_pump goes on
 	turn_next:       int,                   // where it was at the last turn given for the first paint (paint_turn_due)
 	paint_turns:     int,                   // how many of them
 	executing:       int,                   // parser-inserted scripts running: the insertion point is defined
 	waiting_since:   f64,                   // a script waits for stylesheets since (loop clock, ms)
+}
+
+Script_Pump :: struct {
+	state:  Pump_State,
+	ran_ms: f64,           // what it has run since it last gave the turn back
+	resume: base.Handle,   // the timer of a yield
 }
 
 Page_Scripts :: struct {
@@ -132,22 +157,14 @@ Page_Scripts :: struct {
 	in_order:     [dynamic]^Page_Script,   // inserted by scripts, not async: in order, as soon as possible
 	asap:         [dynamic]^Page_Script,   // async: whenever ready
 	current:      base.Handle,             // document.currentScript
-	ready_state:  Ready_State,
-	started:      bool,
-	parse_done:   bool,                    // "stop parsing" happened
+	phase:        Doc_Phase,
 	ahead:        [dynamic]^Compile_Job,   // inline scripts on a compile thread (compile_done takes them out)
-	content_loaded: bool,                  // DOMContentLoaded fired
-	loaded:       bool,                    // load fired
 	ignore_destructive_writes: int,
 	write_depth:  int,
 	moving:       int,                     // moveBefore calls under way: what they insert prepares no script
 	written:      int,                     // bytes document.write inserted
 	poll:         base.Handle,             // a timer looking again at what the page waits for
-	pumping:      bool,
-	pump_ran_ms:  f64,                     // what the pump has run since it last gave the turn back
-	pump_resume:  base.Handle,             // the timer that takes it up again after giving the turn back
-
-	paint_wait:   bool,                    // the turn given back is for the first paint (paint_turn_due): the frame has that long to come
+	pump:         Script_Pump,
 	modules:      ^Module_State,           // js_load_modules.odin
 	timing:       Script_Timing,
 	// <link> elements scripts inserted before the first paint: they do not block it (render_blocking.odin)
@@ -228,7 +245,6 @@ scripts_of :: proc(p: ^Page) -> ^Page_Scripts {
 	if p.scripts == nil {
 		p.scripts = new(Page_Scripts)
 		p.scripts.parser.stop = -1
-		p.scripts.ready_state = p.render.adopted ? .Complete : .Loading
 		base.on_close(p.scope, scripts_free, p)
 	}
 	return p.scripts
@@ -280,9 +296,8 @@ scripts_start :: proc(p: ^Page) {
 		return
 	}
 	s := scripts_of(p)
-	if s.started { return }
-	s.started = true
-	s.ready_state = .Loading
+	if s.phase != .Not_Started { return }
+	doc_phase_set(p, .Parsing)
 	s.timing.started_ms = now_ms(p)
 	scripts_install_hooks(p)
 	d := p.doc
@@ -321,30 +336,51 @@ scripts_start :: proc(p: ^Page) {
 		if p.doc_el != base.NIL_HANDLE && !dom.is_connected(d, p.doc_el) { p.doc_el = base.NIL_HANDLE }
 	}
 	frames_scan(p)   // the frames of what stays connected (before the first script): theirs now (frames.odin)
-	if p.closed { return }
-	slice := pump_slice(p)
-	reveal_run(p, slice)
-	if p.closed { return }
-	if s.parser.paused { s.pump_ran_ms = slice }
 	scripts_pump(p)
 }
 
-// Whether the document should paint before the script the parser is at runs. What is there can be painted, nothing holds it back, and
+// The one way the document's phase changes. readystatechange goes with it, but for document.open, which sets the readiness without one.
+@(private)
+doc_phase_set :: proc(p: ^Page, to: Doc_Phase) {
+	before := document_ready_state(p)
+	p.scripts.phase = to
+	if to != .Parsing && document_ready_state(p) != before { dispatch_event(p, p.doc.root, dom.Event{type = "readystatechange"}) }
+}
+
+// The document's readiness (HTML "current document readiness").
+document_ready_state :: proc(p: ^Page) -> Ready_State {
+	phase := p.scripts != nil ? p.scripts.phase : .Not_Started
+	switch phase {
+	case .Not_Started:              return p.render.adopted ? .Complete : .Loading
+	case .Parsing:                  return .Loading
+	case .Deferred, .Content_Loaded: return .Interactive
+	case .Complete:                 return .Complete
+	}
+	return .Complete
+}
+
+// Whether the document should paint before the script that comes next runs. What is there can be painted, nothing holds it back, and
 // the script may be long: cnn.com's body ends with an inline script of 3.7 s, and whether a frame came before it or after it were the two
-// modes of its first paint. A few such turns at most: a page that is not shown has no frame coming.
+// modes of its first paint. A few such turns at most, and none for a page no frame comes for: it is not shown, one turn went by without one, or it is a frame's document
+// (shown with its parent, or not at all: Stripe's hidden frames spent their wait on nothing, inside npr.org's load).
 @(private)
 paint_turn_due :: proc(p: ^Page) -> bool {
 	s := p.scripts
 	ps := &s.parser
-	if p.render.painted || ps.paint_turns >= PAINT_TURNS_MAX || p.settings.js_load.pump_slice_ms <= 0 { return false }
-	if ps.next < max(ps.turn_next + REVEAL_TURN_MIN_NODES, ps.turn_next * PAINT_TURN_GROWTH) { return false }
+	if p.render.painted || ps.paint_turns >= PAINT_TURNS_MAX || p.settings.js_load.pump_slice_ms <= 0 || !p.web.visible || frame_navigable_of(p) != nil { return false }
+	if s.phase == .Parsing && ps.next < max(ps.turn_next + REVEAL_TURN_MIN_NODES, ps.turn_next * PAINT_TURN_GROWTH) { return false }
 	if body := dom.get(p.doc, p.body); body == nil || body.first_child == base.NIL_HANDLE { return false }
-	if state, _ := first_paint_state(p); state != .Ready { return false }
-	ps.turn_next = ps.next
-	ps.paint_turns += 1
-	s.paint_wait = true
-	return true
+	state, _ := first_paint_state(p)
+	return state == .Ready
 }
+
+// The frame came, or looked at the document and showed nothing of it: the script that waited for it runs at the loop's next turn, not inside the frame.
+paint_turn_over :: proc(p: ^Page) {
+	if p.scripts != nil && p.scripts.pump.state == .Yield_Paint { pump_to(p, .Yield_Slice) }
+}
+
+// The shell: a frame is waited for now.
+paint_turn_waiting :: proc(p: ^Page) -> bool { return p.scripts != nil && p.scripts.pump.state == .Yield_Paint }
 
 // How long the pump and the parser's reveal run before the loop gets a turn. A turn is what a frame takes, on a page of ten thousand elements
 // more than the scripts it comes between: once the document has painted, they run long enough that frames take
@@ -363,9 +399,9 @@ scripts_frame_took :: proc(p: ^Page, ms: f64) { p.render.frame_ms = ms }
 // The parser's reveal
 
 // Attaches the parser's next nodes until a parser-blocking script waits, the queue (or a nested reveal's part of it)
-// is done, or the page closes. Preparing a script element at its end tag. After `budget_ms` (0: no limit) it stops where it is,
-// as a parser does between tokens (ps.paused): cnn.com's body, with its hundreds of inline scripts, was 3.8 s without a frame, and
-// whether the page got a frame before them or not were the two modes of its first paint. scripts_pump goes on.
+// is done, or the page closes. Preparing a script element at its end tag. With a budget (`budget_ms`, 0: none, what document.write reveals) it
+// stops where it is once that is spent, as a parser does between tokens, and before each script, for the pump to say whether that runs now: cnn.com's body, with its
+// hundreds of inline scripts, was 3.8 s without a frame, and whether the page got a frame before them or not were the two modes of its first paint.
 @(private)
 reveal_run :: proc(p: ^Page, budget_ms: f64 = 0) {
 	s := p.scripts
@@ -375,13 +411,9 @@ reveal_run :: proc(p: ^Page, budget_ms: f64 = 0) {
 	for !p.closed && ps.active && ps.pending == nil {
 		end := ps.stop >= 0 ? ps.stop : len(ps.queue)
 		if ps.next >= end { break }
-		if budget_ms > 0 && ps.stop < 0 {
-			at_script := is_script_element(dom.get(d, ps.queue[ps.next].node))
-			spent := now_ms(p) - start >= budget_ms
-			if (spent && (ps.next - from >= REVEAL_TURN_MIN_NODES || (at_script && ps.next > from))) || (at_script && paint_turn_due(p)) {
-				ps.paused = true
-				break
-			}
+		if budget_ms > 0 && ps.stop < 0 && ps.next > from {
+			if is_script_element(dom.get(d, ps.queue[ps.next].node)) { break }
+			if ps.next - from >= REVEAL_TURN_MIN_NODES && now_ms(p) - start >= budget_ms { break }
 		}
 		it := ps.queue[ps.next]
 		ps.next += 1
@@ -465,19 +497,10 @@ parser_finish :: proc(p: ^Page) {
 	clear(&ps.queue)
 	ps.next = 0
 	ps.insert = -1
-	s.parse_done = true
 	s.timing.parsed_ms = now_ms(p)
 	if the_pages.embedder.parsed != nil { the_pages.embedder.parsed(the_pages.embedder.user, p) }
 	styles_parsed(p)
-	ready_state_set(p, .Interactive)
-}
-
-@(private)
-ready_state_set :: proc(p: ^Page, rs: Ready_State) {
-	s := p.scripts
-	if s.ready_state == rs { return }
-	s.ready_state = rs
-	dispatch_event(p, p.doc.root, dom.Event{type = "readystatechange"})
+	doc_phase_set(p, .Deferred)
 }
 
 // Whether the reveal is under way (styles.odin keeps the stylesheets of the not yet revealed part meanwhile).
@@ -828,117 +851,134 @@ script_retire :: proc(p: ^Page, sc: ^Page_Script) {
 // what is there and what the network brought is taken in, and goes on at the next turn. Until then it is not called again.
 scripts_pump :: proc(p: ^Page) {
 	s := p.scripts
-	if s == nil || p.closed || s.pumping || s.pump_resume != base.NIL_HANDLE { return }
-	s.pumping = true
-	defer if !p.closed && p.scripts != nil { p.scripts.pumping = false }
+	if s == nil || p.closed || s.pump.state != .Idle { return }
+	pump_to(p, .Running)
 	slice := pump_slice(p)
-	start := now_ms(p)
-	for progressed := true; progressed && !p.closed; {
-		if (slice > 0 && s.pump_ran_ms + now_ms(p) - start >= slice) || s.paint_wait {
-
-			s.pump_ran_ms = 0
-			wait := s.paint_wait ? p.settings.js_load.paint_wait_ms : 0
-			s.paint_wait = false
-			s.pump_resume = host.set_timer(p.loop, wait, 0, proc(data: rawptr) {
-				pg := (^Page)(data)
-				if pg.closed || pg.scripts == nil { return }
-				pg.scripts.pump_resume = base.NIL_HANDLE
-				scripts_pump(pg)
-			}, p, p.scope)
+	start := now_ms(p) - s.pump.ran_ms
+	for !p.closed {
+		step, sc := pump_next(p)
+		left := slice - (now_ms(p) - start)
+		if turn := pump_turn(p, step, sc, slice > 0 && left <= 0); turn != .Running {
+			pump_to(p, turn)
 			return
 		}
-		progressed = false
-		// async scripts: whenever they are ready
-		for i := 0; i < len(s.asap); i += 1 {
-			sc := s.asap[i]
-			if !script_ready(sc) { continue }
-			if paint_turn_due(p) { break }   // (a sheet came with this turn: npr.org's script of 0.9 s ran right after its last one, and the paint after it)
-			ordered_remove(&s.asap, i)
+		switch step {
+		case .Async:
+			for x, i in s.asap { if x == sc { ordered_remove(&s.asap, i); break } }
 			script_execute(p, sc)
-			progressed = true
-			break
-		}
-		if p.closed { return }
-		if s.paint_wait { progressed = true; continue }
-		// scripts inserted by scripts, in order
-		if len(s.in_order) > 0 && script_ready(s.in_order[0]) {
-			if paint_turn_due(p) { progressed = true; continue }
-			sc := s.in_order[0]
+		case .In_Order:
 			ordered_remove(&s.in_order, 0)
 			script_execute(p, sc)
-			progressed = true
-			continue
-		}
-		// the parser's pending parsing-blocking script, then the rest of the document
-		ps := &s.parser
-		if ps.pending != nil && script_ready(ps.pending) && !script_blocking_style(p) {
-			if paint_turn_due(p) {
-				progressed = true
-				continue
-			}
-			sc := ps.pending
-			ps.pending = nil
-			ps.waiting_since = 0
+		case .Pending:
+			s.parser.pending = nil
+			s.parser.waiting_since = 0
 			script_execute(p, sc)
-			if p.closed { return }
-			// (a long one spent the slice: what comes next, an inline script perhaps, waits for the turn)
-			if slice > 0 && s.pump_ran_ms + now_ms(p) - start >= slice { ps.paused = true } else { reveal_run(p, slice) }
-			progressed = true
-			continue
+		case .Deferred:
+			ordered_remove(&s.deferred, 0)
+			script_execute(p, sc)
+		case .Reveal:
+			reveal_run(p, slice > 0 ? left : 0)
+		case .End:
+			if the_end(p) { continue }
+			s.pump.ran_ms = now_ms(p) - start
+			pump_to(p, .Idle)
+			poll_schedule(p)
+			return
 		}
-		if ps.paused && ps.pending == nil {
-			ps.paused = false
-			reveal_run(p, slice)
-			progressed = true
-			continue
-		}
-		if the_end(p) { progressed = true }
-	}
-	if !p.closed {
-		s.pump_ran_ms += now_ms(p) - start
-		poll_schedule(p)
 	}
 }
 
-// HTML "the end": deferred scripts in order, DOMContentLoaded, then (once async and in-order scripts ran and the
+// What may run now, in HTML's order: async scripts whenever they are ready, then scripts inserted by scripts in their order, then the parser's pending
+// parsing-blocking script and the rest of the document, then the deferred scripts. End: none of them (the_end looks at what is left).
+@(private)
+pump_next :: proc(p: ^Page) -> (Pump_Step, ^Page_Script) {
+	s := p.scripts
+	ps := &s.parser
+	for sc in s.asap { if script_ready(sc) { return .Async, sc } }
+	if len(s.in_order) > 0 && script_ready(s.in_order[0]) { return .In_Order, s.in_order[0] }
+	if ps.pending != nil {
+		if script_ready(ps.pending) && !script_blocking_style(p) { return .Pending, ps.pending }
+		return .End, nil
+	}
+	if ps.active && ps.stop < 0 && (ps.next < len(ps.queue) || !ps.script_created) { return .Reveal, nil }
+	if s.phase == .Deferred && len(s.deferred) > 0 && script_ready(s.deferred[0]) { return .Deferred, s.deferred[0] }
+	return .End, nil
+}
+
+// The pump's one rule for a turn of the loop, before `step`: a script waits for the first paint when that is due; anything goes behind the turn of a slice that is `spent`.
+@(private)
+pump_turn :: proc(p: ^Page, step: Pump_Step, sc: ^Page_Script, spent: bool) -> Pump_State {
+	ps := &p.scripts.parser
+	at_script := sc != nil || (step == .Reveal && ps.next < len(ps.queue) && is_script_element(dom.get(p.doc, ps.queue[ps.next].node)))
+	if at_script && paint_turn_due(p) { return .Yield_Paint }
+	return spent ? .Yield_Slice : .Running
+}
+
+// The one way the pump's state changes. A yield arms what takes the pump up again; whatever it left, the timer of the last one goes.
+@(private)
+pump_to :: proc(p: ^Page, to: Pump_State) {
+	s := p.scripts
+	pump := &s.pump
+	if pump.resume != base.NIL_HANDLE {
+		host.clear_timer(p.loop, pump.resume)
+		pump.resume = base.NIL_HANDLE
+	}
+	pump.state = to
+	wait: f64
+	switch to {
+	case .Idle, .Running: return
+	case .Yield_Slice:
+	case .Yield_Paint:
+		wait = p.settings.js_load.paint_deadline_ms
+		s.parser.turn_next = s.parser.next
+		s.parser.paint_turns += 1
+	}
+	pump.ran_ms = 0
+	pump.resume = host.set_timer(p.loop, wait, 0, proc(data: rawptr) {
+		pg := (^Page)(data)
+		if pg.closed || pg.scripts == nil { return }
+		s := pg.scripts
+		s.pump.resume = base.NIL_HANDLE
+		if s.pump.state == .Yield_Paint { s.parser.paint_turns = PAINT_TURNS_MAX }   // (past the deadline: no frame is coming)
+		pump_to(pg, .Idle)
+		scripts_pump(pg)
+	}, p, p.scope)
+}
+
+// HTML "the end", past the deferred scripts (the pump's): DOMContentLoaded, then (once async and in-order scripts ran and the
 // resources that delay it arrived) readyState complete and load. True when it did something.
 @(private)
 the_end :: proc(p: ^Page) -> bool {
 	s := p.scripts
-	if !s.parse_done { return false }
-	if !s.content_loaded {
-		if len(s.deferred) > 0 {
-			sc := s.deferred[0]
-			if !script_ready(sc) { return false }
-			ordered_remove(&s.deferred, 0)
-			script_execute(p, sc)
-			return true
-		}
-		s.content_loaded = true
+	#partial switch s.phase {
+	case .Deferred:
+		if len(s.deferred) > 0 { return false }
+		doc_phase_set(p, .Content_Loaded)
 		s.timing.dcl_ms = now_ms(p)
 		if frame_navigable_of(p) == nil { base.span_mark("DOMContentLoaded") }
 		dispatch_event(p, p.doc.root, dom.Event{type = "DOMContentLoaded", bubbles = true})
 		s.timing.dcl_end_ms = now_ms(p)
 		return true
+	case .Content_Loaded:
+		if len(s.asap) > 0 || len(s.in_order) > 0 { return false }
+		// the parsed document's <img> elements start their requests at an image pass (images.odin): one now, so that they
+		// delay the load instead of coming after it (a page whose images nothing follows, ready false, has none to wait for)
+		if p.images.ready { images_sync(p) }
+		if load_delayed(p) { return false }
+		fetch.speculation_end(p.speculation)   // (what no element took by now is not for this load)
+		s.timing.complete_ms = now_ms(p)
+		doc_phase_set(p, .Complete)
+		if p.closed { return true }
+		s.timing.load_ms = now_ms(p)
+		if frame_navigable_of(p) == nil { base.span_mark("load") }
+		fire_window_event(p, dom.Event{type = "load"})
+		s.timing.load_end_ms = now_ms(p)
+		if p.closed { return true }
+		frames_document_complete(p)   // a nested document: its container's load event (frames.odin)
+		fire_window_event(p, dom.Event{type = "pageshow"})
+		return true
 	}
-	if s.loaded || len(s.asap) > 0 || len(s.in_order) > 0 { return false }
-	// the parsed document's <img> elements start their requests at an image pass (images.odin): one now, so that they
-	// delay the load instead of coming after it (a page whose images nothing follows, ready false, has none to wait for)
-	if p.images.ready { images_sync(p) }
-	if load_delayed(p) { return false }
-	s.loaded = true
-	fetch.speculation_end(p.speculation)   // (what no element took by now is not for this load)
-	s.timing.complete_ms = now_ms(p)
-	ready_state_set(p, .Complete)
-	if p.closed { return true }
-	s.timing.load_ms = now_ms(p)
-	if frame_navigable_of(p) == nil { base.span_mark("load") }
-	fire_window_event(p, dom.Event{type = "load"})
-	s.timing.load_end_ms = now_ms(p)
-	if p.closed { return true }
-	frames_document_complete(p)   // a nested document: its container's load event (frames.odin)
-	fire_window_event(p, dom.Event{type = "pageshow"})
-	return true
+	return false
 }
 
 // Whether the document's load event still waits for resources (HTML "delay the load event": images, stylesheets,
@@ -976,7 +1016,7 @@ resources_delay_load :: proc(p: ^Page) -> bool {
 @(private)
 poll_schedule :: proc(p: ^Page) {
 	s := p.scripts
-	waiting := (s.parser.pending != nil && script_ready(s.parser.pending)) || (s.content_loaded && !s.loaded && len(s.asap) == 0 && len(s.in_order) == 0)
+	waiting := (s.parser.pending != nil && script_ready(s.parser.pending)) || (s.phase == .Content_Loaded && len(s.asap) == 0 && len(s.in_order) == 0)
 	if !waiting || s.poll != base.NIL_HANDLE { return }
 	s.poll = host.set_timer(p.loop, p.settings.js_load.poll_ms, 0, proc(data: rawptr) {
 		pg := (^Page)(data)
@@ -1358,9 +1398,7 @@ Engine_queueRejectionCheck :: proc(c: ^Call) {
 }
 
 Document_readyState :: proc(c: ^Call) -> string {
-	s := c.page.scripts
-	if s == nil { return c.page.render.adopted ? "complete" : "loading" }
-	switch s.ready_state {
+	switch document_ready_state(c.page) {
 	case .Loading: return "loading"
 	case .Interactive: return "interactive"
 	case .Complete: return "complete"

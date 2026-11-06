@@ -148,7 +148,7 @@ restore_arm :: proc(app: ^App, t: ^Tab, ms: f64) {
 
 @(private = "file")
 page_loaded :: proc(p: ^page.Page) -> bool {
-	if p.scripts != nil && p.scripts.started { return p.scripts.loaded }
+	if p.scripts != nil && p.scripts.phase != .Not_Started { return p.scripts.phase == .Complete }
 	return p.render.painted
 }
 

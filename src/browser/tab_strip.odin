@@ -64,7 +64,7 @@ tab_busy :: proc(t: ^Tab) -> bool {
 		if t.load.task != base.NIL_HANDLE { return true }
 		for s in t.load.slots { if s.state == .Pending { return true } }
 	}
-	if p := t.page; p != nil && t.load != nil && p.scripts != nil && p.scripts.started && !p.scripts.loaded { return true }
+	if p := t.page; p != nil && t.load != nil && p.scripts != nil && p.scripts.phase != .Not_Started && p.scripts.phase != .Complete { return true }
 	return false
 }
 
