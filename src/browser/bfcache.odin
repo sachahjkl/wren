@@ -273,6 +273,7 @@ bfcache_restore :: proc(app: ^App, t: ^Tab, entry: ^page.History_Entry) -> bool 
 	layout_destroy(&t.layout)
 	t.nav, t.page, t.layout, t.load, t.kind = e.nav, e.page, e.layout, nil, .Web
 	page.navigable_attach(t.top, t.page)   // (the tab's window shows it again: its WindowProxy is the tab's)
+	page.page_set_left(t.page, false)
 	page_fonts_transfer(&app.page_render.fonts, e, t)
 	t.web_font_page, t.web_fonts, t.image_sizes = e.page, e.web_fonts, e.image_sizes
 	t.scroll, t.scroll_target = e.scroll, base.NIL_HANDLE

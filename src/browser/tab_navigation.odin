@@ -8,7 +8,12 @@ package browser
 //
 // Beside it the frame of the old page (Paint_Hold, first_paint.odin) goes None -> Waiting -> Counting -> None by hold_step.
 // What the tab shows changes here and in the back/forward cache only (bfcache_take, bfcache_restore): `t.page` and `t.nav`
-// have no other writer. What ends a page's life leaves the draw: nav_tick, in the page phase of each frame.
+// have no other writer (but hold_step giving a page back, and blank_close). What ends a page's life leaves the draw: nav_tick, in the page phase of each frame.
+//
+// The page is left when the navigation starts (leave_page), not when the next document arrives as in HTML: the session
+// has the new entry from that moment (history_push), so what a pagehide or unload listener writes in the history would
+// land in the next document's entry, and a page that runs on loses its held frame at its first change, where a frozen one
+// keeps it. A navigation that comes to nothing gives the document back as it left: frozen (pageshow), or unloaded (once).
 
 import "core:strings"
 import "wb:base"
