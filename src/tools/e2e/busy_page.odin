@@ -38,6 +38,10 @@ import "wb:e2e"
 @(private = "file") EMPTY :: e2e.Point{500, 500}   // the tall box under everything: a press there selects nothing and gives the page the keyboard
 @(private = "file") NO_MOUSEDOWN :: "document.removeEventListener('mousedown', down); 1"   // the page's own count of presses, which would have them run its code
 @(private = "file") PAST_EDGE :: 30               // how far below the view a drag goes (CSS px)
+@(private = "file") CLICK_PAST_WORDS :: 8         // past the end of the words dragged over, on the line (CSS px)
+@(private = "file") TINT_LEAST :: 160            // the channel of a ::selection colour, at least...
+@(private = "file") TINT_MOST :: 60              // ... and the others, at most
+@(private = "file") TINT_PIXELS :: 40            // pixels of each colour along the line, at least
 @(private = "file") EDGE_WAIT_MS :: 300           // under the task, with the pointer there
 
 // The animations the compositor runs: a box slid sideways and one faded, both linear, long enough to be under way all along.
@@ -180,6 +184,70 @@ a_drag_begun_under_the_task_shows_from_its_press :: proc(t: ^testing.T) {
 	shots = while_held(s, &short, {e2e.busy_press(s, from), e2e.busy_move(s, mid), e2e.busy_move(s, to), e2e.busy_capture(), e2e.busy_release(s, to)})
 	testing.expectf(t, highlighted(shots[0], words) == 0, "with a mousedown listener nothing shows before the page's turn: %d px", highlighted(shots[0], words))
 	testing.expect_value(t, e2e.eval(s, "String(getSelection())"), selected)
+}
+
+// A click elsewhere takes the selection away at once, under the task as on a page at rest: on text, on nothing, and it is what the page's turn does too.
+@(test)
+a_click_elsewhere_clears_the_selection_under_the_task :: proc(t: ^testing.T) {
+	s := open(t)
+	short := false
+	line := e2e.box_model(s, "#sel")
+	y := line.box.y + line.box.h / 2
+	from, to := e2e.Point{line.box.x + DRAG_FROM_X, y}, e2e.Point{line.box.x + DRAG_TO_X, y}
+	words := e2e.Rect{line.window.x, line.window.y, DRAG_TO_X, line.window.h}
+	e2e.eval(s, NO_MOUSEDOWN)
+	for elsewhere, i in ([]e2e.Point{EMPTY, {line.box.x + DRAG_TO_X + CLICK_PAST_WORDS, y}}) {
+		e2e.press(s, from)
+		e2e.hover(s, to)
+		e2e.release(s, to)
+		e2e.wait_frames(s)
+		testing.expect(t, e2e.eval(s, "String(getSelection())") != "", "a selection to take away")
+		shots := while_held(s, &short, {e2e.busy_capture(), e2e.busy_press(s, elsewhere), e2e.busy_capture(), e2e.busy_release(s, elsewhere), e2e.busy_capture()})
+		testing.expectf(t, highlighted(shots[0], words) >= HIGHLIGHT_LEAST, "click %d: the selection is on screen first: %d px", i, highlighted(shots[0], words))
+		testing.expectf(t, highlighted(shots[1], words) == 0, "click %d: the press took it away: %d px left", i, highlighted(shots[1], words))
+		testing.expectf(t, highlighted(shots[2], words) == 0, "click %d: it stays away: %d px left", i, highlighted(shots[2], words))
+		testing.expect_value(t, e2e.eval(s, "String(getSelection())"), "")
+	}
+}
+
+// The task changed the document, and a click's press and release have their turn together: the press waits for a layout, its release must not end it. The click was lost, the selection
+// stayed, and what the chrome frames had taken away came back.
+@(test)
+a_click_whose_press_waits_for_a_layout_still_clears_the_selection :: proc(t: ^testing.T) {
+	s := open(t)
+	short := false
+	line := e2e.box_model(s, "#sel")
+	y := line.box.y + line.box.h / 2
+	from, to := e2e.Point{line.box.x + DRAG_FROM_X, y}, e2e.Point{line.box.x + DRAG_TO_X, y}
+	e2e.eval(s, NO_MOUSEDOWN)
+	e2e.press(s, from)
+	e2e.hover(s, to)
+	e2e.release(s, to)
+	e2e.wait_frames(s)
+	testing.expect(t, e2e.eval(s, "String(getSelection())") != "", "a selection to take away")
+	while_held(s, &short, {e2e.busy_press(s, EMPTY), e2e.busy_release(s, EMPTY)}, "hold(true)")
+	e2e.wait_frames(s)
+	e2e.wait_frames(s)
+	testing.expect_value(t, e2e.eval(s, "String(getSelection())"), "")
+}
+
+// What a chrome frame shows of a drag has each word's own ::selection colour, as the page's frame would.
+@(test)
+each_word_keeps_its_selection_colour_under_the_task :: proc(t: ^testing.T) {
+	s := open(t)
+	short := false
+	line := e2e.box_model(s, "#tinted")
+	y := line.box.y + line.box.h / 2
+	from, to := e2e.Point{line.box.x + DRAG_FROM_X, y}, e2e.Point{line.box.x + line.box.w - DRAG_FROM_X, y}
+	e2e.eval(s, NO_MOUSEDOWN)
+	shots := while_held(s, &short, {e2e.busy_press(s, from), e2e.busy_move(s, to), e2e.busy_capture(), e2e.busy_release(s, to)})
+	red, blue := 0, 0
+	for x in int(line.window.x) ..< int(line.window.x + line.window.w) {
+		c := e2e.pixel(shots[0], x, int(line.window.y + line.window.h / 2))
+		if c[0] > TINT_LEAST && c[1] < TINT_MOST && c[2] < TINT_MOST { red += 1 }
+		if c[2] > TINT_LEAST && c[0] < TINT_MOST && c[1] < TINT_MOST { blue += 1 }
+	}
+	testing.expectf(t, red >= TINT_PIXELS && blue >= TINT_PIXELS, "both colours under the task: %d red, %d blue pixels of the line", red, blue)
 }
 
 // The task changed the document: the press's turn finds the layout old and the gesture begins a frame later, from where the moves that came with it left the pointer.

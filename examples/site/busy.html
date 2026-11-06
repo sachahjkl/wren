@@ -29,6 +29,14 @@
   #render-dot { background: var(--mint); }
   #main-dot { background: var(--rose); }
   @keyframes glide { to { transform: translateX(calc(100% - 16px)); } }
+  .tint-sun::selection { background: #ffe135; color: #101a4d; }
+  .tint-rose::selection { background: #ff85c0; color: #101a4d; }
+  .tint-mint::selection { background: #7ee2a8; color: #101a4d; }
+  .tint-sky::selection { background: #3b9dff; color: #fff; }
+  .tint-night::selection { background: #101a4d; color: #ffe135; }
+  ::highlight(found) { background: #ffe135; color: #101a4d; }
+  ::highlight(checked) { background: #7ee2a8; color: #101a4d; }
+  ::highlight(misspelt) { background: #ffd0d8; color: #b00020; }
   .numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0 28px; margin: 10px 0 0; font-size: 15.5px; color: var(--night-muted); }
   .numbers div { display: flex; justify-content: space-between; line-height: 1.55; }
   .numbers b { color: var(--night-text); font-variant-numeric: tabular-nums; }
@@ -97,6 +105,14 @@
   <h3>Words of every length</h3>
   <p>Double click a word, triple click a paragraph, then drag from there: the selection should grow by whole words or whole paragraphs. Try it on antidisestablishmentarianism, on a-hyphenated-compound-word, on <em>emphasised words</em>, on <strong>strong ones</strong>, on <code>inline_code()</code> and on a <a href="#links">link in the middle of a sentence</a> that lights up under the pointer.</p>
   <p class="prose">The serif paragraph is here for its different widths. Reading is a rhythm, and a selection that lags breaks it: the eye goes to the end of the line and finds nothing there yet. A long sentence such as this one, which keeps adding clause after clause while the thread stays occupied, gives the highlight plenty of room to fall behind, and shows at once whether it does.</p>
+
+  <h2>Colours of a selection</h2>
+  <h3>Each word its own colour</h3>
+  <p class="hint">Drag across this line: <code>::selection</code> gives every word the colour its own rule says, under the task too. Click anywhere else and they all go at once.</p>
+  <p class="lead"><span class="tint-sun">Yellow words,</span> <span class="tint-rose">pink words,</span> <span class="tint-mint">green words,</span> <span class="tint-sky">blue words</span> and <span class="tint-night">a dark line</span> in one selection, then plain ones after it.</p>
+  <h3>Highlights a script sets</h3>
+  <p class="hint">These are not a selection: <code>CSS.highlights</code> marks ranges of text with no element around them. They stay under a selection and when it goes.</p>
+  <p id="marked">Search results are one use of it: this sentence has a found word, a checked word and a mispelt word, all set by a few lines of script.</p>
 
   <h2>Mixed content</h2>
   <h3>A list</h3>
@@ -194,6 +210,14 @@ Drag across them, then double click a word.</textarea>
     }
   }
 
+  // The ranges of the three highlights of #marked, by the words they mark.
+  const marked = $("marked").firstChild;
+  for (const [name, word] of [["found", "found word"], ["checked", "checked word"], ["misspelt", "mispelt word"]]) {
+    const range = new Range(), at = marked.data.indexOf(word);
+    range.setStart(marked, at);
+    range.setEnd(marked, at + word.length);
+    CSS.highlights.set(name, new Highlight(range));
+  }
   let busy = true, changes = 0;
 
   function task() {

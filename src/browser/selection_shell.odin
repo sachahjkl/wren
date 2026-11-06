@@ -47,6 +47,7 @@ Selection_Gesture :: struct {
 	scroller:    base.Handle,         // what auto-scroll moves (NIL: the document)
 	press:       platform.Event,      // Press_Pending: the press that had its turn, kept for a fresh layout (none yet: a chrome frame opened the gesture)
 	selected_by_drag: bool,           // the gesture selected text: its release is not a click
+	released:    bool,                // Press_Pending: its release came first: the press still has its effect, then the gesture is over
 	stale:       bool,                // a move found the layout older than the document: the gesture extends to the pointer once it is fresh
 	preview:     Sel_Preview,
 }
@@ -405,9 +406,10 @@ selection_shell_frame :: proc(app: ^App) {
 	if t == nil || t.page == nil || t.kind != .Web { return }
 	if g.owner == .Press_Pending && g.sel.press.kind == .Mouse_Press && layout_fresh(t) {
 		// (the moves that came with the press found no gesture: it goes on from where they left the pointer)
-		mouse, press := g.sel.mouse, g.sel.press
+		mouse, press, released := g.sel.mouse, g.sel.press, g.sel.released
 		start_gesture(app, t, press)
 		g.sel.mouse = mouse
+		if released { gesture_end(g) }
 		if g.owner == .Selecting && past_threshold(app, g.sel, mouse) {
 			g.sel.moved = true
 			extend_to(app, t, mouse)
