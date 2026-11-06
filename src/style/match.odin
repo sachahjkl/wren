@@ -1,6 +1,7 @@
 package style
 
 import "core:strings"
+import "core:sync"
 import "wb:base"
 import "wb:css"
 import "wb:dom"
@@ -65,9 +66,14 @@ Match_Ctx :: struct {
 	// :has() answered in this pass: (anchor, argument list) -> matched. A rule such as `:not(:has(.x)) > .item .by` asks it of the
 	// same ancestor for every element under it, each time scanning the ancestor's whole subtree.
 	has_memo: map[Has_Key]bool,
-	// a full pass (the document does not change during one): the classes of each element as bits of their hashes, by node index
-	// (class_bits_fill). Most selectors tried on an element name a class it does not have.
+	// a pass that reads many elements (the document does not change during one): the classes of each element as bits of their hashes, by node index,
+	// 0 when not read yet
+	// (class_bits_fill, class_bits_begin). Most selectors tried on an element name a class it does not have.
 	class_bits: []u64,
+	// a restyle knows what the elements that match some :has() are (Has_Anchor.members): the answer without the walk of the subtree. known = false: walk it
+	has_known: proc(user: rawptr, anchor: base.Handle, list: css.Selector_List) -> (answer: bool, known: bool),
+	has_known_user: rawptr,
+	has_scans: int,   // :has() arguments looked for in subtrees
 }
 
 @(private)
@@ -500,7 +506,15 @@ matches_simple :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 		v, ok := attr(n, "id")
 		return ok && v == s.name
 	case .Class:
-		if s.hash != 0 && m.class_bits != nil && (m.class_bits[base.handle_index(el)] >> (s.hash & CLASS_BIT_MASK)) & 1 == 0 { return false }
+		if s.hash != 0 && m.class_bits != nil {
+			word := &m.class_bits[base.handle_index(el)]
+			bits := word^
+			if bits == 0 {
+				bits = class_bits_of(n)
+				sync.atomic_store_explicit(word, bits, .Relaxed)   // (the threads of a partial pass: whoever writes writes the same)
+			}
+			if (bits >> (s.hash & CLASS_BIT_MASK)) & 1 == 0 { return false }
+		}
 		return has_class(n, s.name)
 	case .Attribute: return attr_matches(n, s)
 	case .Nesting:

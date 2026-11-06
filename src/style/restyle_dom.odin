@@ -1405,6 +1405,8 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	exact := false   // the members of the exact :has() anchors are of the document before these mutations (watch_sync was made by a pass that came before)
 	if !shadows && ix.uses_has { exact = !watch_sync(ix, doc) }
 
+	class_bits_begin(e, doc)
+	defer e.class_bits_live = false
 	m := Marker{e = e, s = s, doc = doc, ix = ix, shadows = shadows}
 	m.marks = make([]u8, int(doc.nodes.used), context.temp_allocator)
 	m.marked = make([dynamic]base.Handle, 0, 64, context.temp_allocator)
@@ -1414,6 +1416,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	m.flips = make(map[Flip_Key]bool, 16, context.temp_allocator)
 	m.has_walked = make(map[Has_Walk_Key]int, 16, context.temp_allocator)
 	match_ctx_init(&m.mc, doc, s.state, context.temp_allocator)
+	m.mc.class_bits = e.class_bits[:]
 	w := Walker{e = e, s = s, doc = doc, marks = m.marks}
 	w.p = pass_make(e, s, doc, s.state)
 	w.arena = &s.arena
