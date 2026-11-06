@@ -3144,6 +3144,80 @@ Read plainly. **`Deserialize`: -44 to -64 %, 41 to 132 ms of the window thread a
 
 **Not verified.** The release build, a long session, the full WPT, the full test262, AddressSanitizer, Tracy, ETW: not run. Other agents were at work on the machine for part of the series. How much of a real page's functions run: not counted.
 
+## What changed, round 44: what collections cost a load
+
+Round 43 left collections as the largest item of the window thread beyond executing scripts, 150 to 640 ms a load; round 34 said "generations: not started". Development builds, `wrentool waterfall -Runs 1` in a loop, a fresh process and a throwaway profile for each load, base (387e8ace) kept apart, the order turning; `Gc` spans of the thread of the load event, up to it. A build with temporary spans for each stage of a collection, and a census of what each one found, says what follows; it is not in the tree.
+
+**What a collection was.** One heap per realm: a page, each frame, each worker. Two triggers: the heap past a threshold, at the next safe point, and the DOM's (`js_after_task`, the document's nodes doubled past 4 096): one or two a load. The first threshold is `javascript.gc_threshold_bytes` (2 MB), then max(2 x what the last one left, that + 4 MB). A load is 9 (cnn.com) to 19 (npr.org) collections on the page's realm, more on its frames'; those of a heap under 20 MB cost 1 to 3 ms, the last ones of theverge.com 77 to 139 ms each: the cost is in the five largest. They do not find a heap that only grows: 1 252 830 cells become 362 008, 175 MB become 79.
+
+| one load, base | collections | ms | mark | sweep | ns a cell swept | ns a live cell marked |
+|---|---|---|---|---|---|---|
+| cnn.com | 10 | 188 | 60 | 109 | 35 | 45 |
+| npr.org | 21 | 480 | 149 | 258 | 30 | 55 |
+| theverge.com | 21 | 631 | 201 | 371 | 56 | 70 |
+| bbc.com/news | 13 | 200 | 68 | 120 | 44 | 57 |
+
+(All realms and past the load event, the census adding a little to the sweep.) **The sweep is 55 to 60 % of a collection, the marking 30 %.** The prologue, the roots and the finalizers are the rest, a few ms, but on npr.org while 26 000 wrappers are alive (roots 14, prologue 4, finalizers 6 ms). Of theverge.com's largest heap, what lives: 213 000 objects (124 000 plain, 45 000 arrays, 29 000 functions), 86 000 strings, 36 000 closure cells, 18 000 functions' bytecode: 32 MB of cells in a heap of 79, the rest slots, array storage and script streams, which cost the collector nothing. What dies: 620 000 objects, 176 000 strings, 92 000 closure cells. Plain objects and strings: neither wrappers (a few thousand), nor shapes, nor bytecode dominate.
+
+**1. The cells in an array** (`Runtime.cells`, `Cell.gc_next` gone). Walking the list alone took 40 ns a cell, 53 ms for 1.35 million: each cell's address was in the one before, one cache miss after another. From an array the addresses are known ahead, the misses overlap: 30 to 56 -> 21 to 42 ns a cell. A cell is 4 bytes smaller (`Object` 56 -> 52, a string 40 -> 36), which an array entry costs back; a realm starts 128 KB larger (6 720 -> 6 848 KiB of linear memory: the list has its capacity at once). The code the JIT writes pushes on the list and leaves for its helper when it is full (`j_cell_room`). Order kept: newest first, finalizers read what is older. +9 instructions a cell in `jsengine cost`. On a heap allocated in order and never reused (a temporary bench: 800 000 cells) list and array cost the same: the gain is that of a heap that has been swept.
+
+**2. Heap growth at 250 %** (`GC_HEAP_GROWTH_PERCENT`, was 200). Dead cells are paid for once whatever the policy, the live ones at each collection: fewer collections cut the marking and the sweep of what lives. 7 runs, median (range), items 1 and 2 only, ms and MB:
+
+| | collections to the load, 200 % | 250 % | 300 % | `Gc` ms 200 % | 250 % | 300 % | private MB 200 % | 250 % | 300 % |
+|---|---|---|---|---|---|---|---|---|---|
+| cnn.com | 9 | 7 | 6 | 131 (105-170) | 86 (81-104) | 79 (73-89) | 996 | 1 022 | 1 021 |
+| npr.org | 19 | 14 | 11 | 268 (265-279) | 200 (187-220) | 175 (172-280) | 862 | 901 | 985 |
+| theverge.com | 17 | 13 | 10 | 389 (312-514) | 289 (276-436) | 209 (205-440) | 972 | 997 | 1 034 |
+| bbc.com/news | 11 | 9 | 8 | 109 (0-138) | 96 (0-117) | 79 (9-88) | 678 | 667 | 700 |
+
+300 % takes 25 to 80 ms more off and costs 40 to 80 MB more on the two largest: the line is 250. A growth by the load's phase or by the survivors was not built: half the heap dies at the large collections of these loads, so the survivors would not have told it to wait.
+
+**3. The sweep by steps** (`Gc_Sweep`, `gc_sweep_step`). After the marking nothing reaches a dead cell: weak references cleared, caches pruned, host finalizers run; a dead cell only waits. Past 65 536 cells the sweep stops being one pause: the threshold is put 128 KB above the heap, and each time the safe point finds it passed, 8 192 cells are swept per 128 KB allocated since the last step (compiled code polls seldom: a step can be large). The mutator's new cells go after those of the marking. What the collection left is the heap less what was allocated since, so the next threshold does not grow with the sweep's length. `gc_collect` (the host's, `js.collect`) still does all at once; so do a census, the teardown and a memory limit reached (`gc_sweep_finish`). The total does not change; the longest pause is the marking.
+
+Base and round, 7 runs, median (range); a second series gave the same to a few %:
+
+| | load before | after | CPU before | after | `Gc` ms before | after | longest pause before | after |
+|---|---|---|---|---|---|---|---|---|
+| cnn.com | 3 749 (3 446-4 652) | 3 815 (3 250-3 950) | 6 047 (5 719-6 484) | 6 047 (5 422-7 234) | 152 (140-176) | **101 (85-113)** | 49 (42-50) | **16 (13-23)** |
+| npr.org | 3 968 (3 852-4 658) | 3 786 (3 502-4 498) | 5 891 (5 453-6 781) | 5 500 (5 312-6 297) | 317 (304-428) | **210 (178-228)** | 36 (32-99) | 24 (21-42) |
+| theverge.com | 4 264 (4 100-5 232) | 4 094 (3 883-6 438) | 7 438 (7 188-8 875) | 7 297 (6 656-9 172) | 506 (476-551) | 306 (280-631) | 105 (96-111) | 39 (36-124) |
+| bbc.com/news | 2 167 (531-4 206) | 2 117 (2 026-3 342) | 3 609 (1 312-5 516) | 3 625 (3 438-4 297) | 166 (0-269) | 94 (78-132) | 37 (0-68) | 13 (12-20) |
+
+The second series, load: cnn.com 3 753 -> 3 646, npr.org 4 169 -> 3 857, theverge.com 4 340 -> 3 997, bbc.com/news 2 204 -> 2 156; `Gc` 137 -> 90, 307 -> 181, 504 -> 286, 159 -> 89; pause 45 -> 15, 37 -> 26, 98 -> 37, 36 -> 13.
+
+Read plainly. **`Gc` to the load: -33 to -43 %, 50 to 200 ms of the window thread; ranges apart on cnn.com and npr.org, on theverge.com but for one run of the slow machine (631, its pause 124 with it).** **Longest pause: 2.7 to 3 times shorter, 1.5 on npr.org**, ranges apart on cnn.com, on theverge.com but for that run. **Load and CPU: not proven.** The medians move as they should on the two pages that are busiest (npr.org -5 and -7 %, theverge.com -4 and -8 % in the two series), cnn.com not at all, and every range overlaps. Of the 200 ms that leave the thread on theverge.com not all come back: a heap that grows further is memory touched for the first time, and cold. bbc.com/news has its modes (a load of 500 to 900 ms, or of 2 s): its medians say which mode came up more often, and nothing of this round; its pause and `Gc` are read within the 2 s mode.
+
+**Memory.** After the load, 7 runs, medians, MB:
+
+| | private before | after | what the pages hold (their linear memories) before | after |
+|---|---|---|---|---|
+| cnn.com | 1 037 | 1 034 | 388 | 464 |
+| npr.org | 849 | 906 | 436 | 542 |
+| theverge.com | 966 | 1 012 | 527 | 595 |
+| bbc.com/news | 675 | 685 | 243 | 267 |
+
+Private: 0 to +7 % (+57 MB at worst). Realm memory: **+10 to +24 %**, 24 to 106 MB: a linear memory never shrinks, so a heap's peak stays as its size, and a peak is now 2.5 x what is live where it was 2 x. Item 2 is the cause: item 1 alone is within 3 % of the base in private bytes, either way, and item 3 within 2 % of item 2. Why the private bytes move less than the linear memories was not looked into.
+
+**Steady state.** `jsengine cost`: every case within 2.5 % of the base, `new Promise` 7 % less. `micro.js`, interpreted, 7 runs interleaved, median per test: `new Point` 209 -> 190 ns, geometric mean of the 21 tests 0.98.
+
+**Measured, not kept.**
+- **Reading ahead in the sweep** (a load of the cell 12 entries on, Wasm having no prefetch): sweep against marking the same on all four pages, one load each.
+- **A ring in the marking** (a cell's mark read 8 cells after its address is met, so its miss overlaps; what OCaml 5 does): 44 -> 42 ms on a bench of 800 000 live cells: not worth a subtle marking (a value in the ring is not marked yet when the weak pass asks).
+
+**Left, and why.**
+- **Generations**: not built. A nursery needs a write barrier in the interpreter's stores, the natives' and the JIT's, or moving cells, which nothing here can do (host handles, addresses in bytecode and in compiled code). What it would remove is what is left: of theverge.com's 833 000 objects at its largest collection 620 000 were dead, and would never be touched. The simpler means got 40 % at no risk to the stores; the barrier is a round of its own, on the JIT's and the hot loop's instruction count.
+- **The marking is now the pause**: 37 ms on theverge.com, of which the roots and the wrappers' prologue 3 to 8; 24 on npr.org. Incremental marking needs the same barrier.
+- **The DOM's trigger** stays: it is 1 or 2 collections a load, and the removed nodes wait for it.
+- `javascript.gc_threshold_bytes` said the wrong thing ("half the live heap"); it says what it does now. Its floor (`JS_SetGCThresholdFloor`) is stored and read by nothing: the first threshold is all it sets.
+
+**How the new states are covered.** A cell's list and its survivors: `jsengine gc`, interpreted and compiled (the code's own allocation past the list's first growths): 20 000 objects kept are 20 000 cells more after a collection, to the slack of a script's own; all still readable after a million of garbage, cells back where they were. Collections per volume: as many as the garbage over 1.5 x the heap, within a quarter (18 interpreted, 15 compiled; about 27 at 200 %, past the margin). Steps: more steps than sweeps, when interpreted. Under `JSRT_GC_STRESS=8192` with `JSRT_GC_POISON`, the lazy path on from the first cell, a step of 4 096 cells each 2 KB: `hotcheck.js`, `jitcheck.js` (interpreted, compiled), `objectspread.js`, `recursion.js`, `jsengine lazy` (both): pass; `jsengine gc` passes but for its count of collections, which stress changes on purpose. A finalizer runs in creation order, newest first, whether between two steps or not, so a function still finds its bytecode and an iterator its map; a block freed by a step can be reused by the mutator, which is the one thing new, and no finalizer reads what is newer than its cell.
+
+`jsengine cost` now collects before it measures: where a collection fell moved a case by up to 550 instructions an iteration when a heap's size changed by a byte, which is not the path it says it measures. `wrentool waterfall` has one column more, what the pages hold.
+
+**Tests.** `build\test_all.exe -Quick -NoAsan`: test262 with and without the JIT, the leak checks of `web_jsdom`, `memory_growth`: pass. `a font on its way holds its text` failed once with 12 steps at work, a first paint before the font, and passed alone: a matter of time in that test, not of this round, not investigated further.
+
+**Not verified.** The release build, a long session, the full WPT, the full test262, AddressSanitizer, Tracy, ETW: not run. The slow runs of the machine came in these series too. A sweep that is interrupted by a memory limit: read, not tested by a count.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)

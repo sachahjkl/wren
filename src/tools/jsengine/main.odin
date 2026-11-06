@@ -17,6 +17,7 @@
 //                                               measures realm creation (instantiate + start) and its memory
 //   jsengine hung file.js    (what never ends is stopped, and the host gets its turns under it)
 //   jsengine polls           (the loops of the image have their polls)
+//   jsengine gc [-image m.wasm] [-jit ...]   (what the collector keeps and how often it runs, by the counts)
 // Only the engine's own imports are provided (console, errors, time zone, clock): anything of the web API traps.
 package jsengine
 
@@ -328,6 +329,7 @@ cmd_cost :: proc(args: []string) {
 		limit, _ := strconv.parse_int(fields[1])
 		spend(r, fmt.tprintf("COST_CASES[%d][2](%d)", i, COST_ITERATIONS))   // (what a first run makes, shapes and atoms, is not the case's)
 		empty := spend(r, fmt.tprintf("COST_CASES[%d][2](0)", i))
+		js.collect(r.inst)   // (what is measured is the path: where a collection falls moves with every byte of the heap)
 		full := spend(r, fmt.tprintf("COST_CASES[%d][2](%d)", i, COST_ITERATIONS))
 		cost := int((full - empty) / COST_ITERATIONS)
 		fmt.printfln("%8d %8d %s", cost, limit, fields[0])
@@ -545,9 +547,72 @@ print_jit_stats :: proc(inst: ^wasm.Instance) {
 	fmt.eprintfln("jit: steps by opcode:%s", strings.to_string(b))
 }
 
+// jsengine gc: objects kept past the first growths of the list of cells, then garbage of a known volume.
+GC_TEST_KEPT :: 20_000
+GC_TEST_MIN_HEADROOM :: 4 << 20  // jsrt GC_MIN_ALLOCATION
+GC_TEST_GROWTH :: 1.5            // jsrt GC_HEAP_GROWTH_PERCENT: what the heap grows by, of what a collection left
+GC_TEST_GARBAGE :: 1_000_000
+GC_TEST_SAMPLE :: 10_000
+GC_TEST_CELLS_SLACK :: 64     // what else a script leaves in the heap: its function, its strings
+GC_TEST_MARGIN_PERCENT :: 25  // of the collections expected: the headroom is the heap after each one, which the moment of the safe point moves a little
+
+// jsengine gc: what the collector keeps and how often it runs, by the counts. An object made in a loop (by the code itself under -jit) is
+// one cell, listed: the cells after a collection are those kept, exactly, each still readable, and they stay so through garbage;
+// the garbage costs a collection each time the heap has grown by half as much again as what the last one left.
+cmd_gc :: proc(args: []string) {
+	c := parse_common(args)
+	setup()
+	r, ok := realm_new(read_file(c.image), c.raw)
+	if !ok { os.exit(1) }
+	run :: proc(r: Realm, source: string) {
+		if js.eval_script(r.inst, transmute([]byte)source, "gc") != .Ok { fmt.eprintln("gc: the script failed:", r.inst.last_error); os.exit(1) }
+	}
+	failed := false
+	run(r, "var kept = []; function keep(n) { for (var i = 0; i < n; i++) kept.push({i: i}); }; function waste(n) { var o; for (var i = 0; i < n; i++) o = {i: i}; return o; }; function check(n) { var sum = 0; for (var i = 0; i < n; i++) sum += kept[i].i; if (sum !== n * (n - 1) / 2) throw 0; }; keep(1); waste(1); check(1); kept.length = 0")
+	js.collect(r.inst)
+	_, cells0, _ := js.collection_counts(r.inst)
+	run(r, fmt.tprintf("keep(%d)", GC_TEST_KEPT))
+	js.collect(r.inst)
+	_, cells1, _ := js.collection_counts(r.inst)
+	if cells1 - cells0 < GC_TEST_KEPT || cells1 - cells0 > GC_TEST_KEPT + GC_TEST_CELLS_SLACK {
+		fmt.eprintfln("gc: %d cells after %d objects kept", cells1 - cells0, GC_TEST_KEPT)
+		failed = true
+	}
+	run(r, fmt.tprintf("check(%d)", GC_TEST_KEPT))
+	js.collect(r.inst)
+	heap1 := js.heap_bytes(r.inst)
+	run(r, fmt.tprintf("waste(%d)", GC_TEST_SAMPLE))   // (less than a collection's worth: what an object costs here)
+	bytes_each := (js.heap_bytes(r.inst) - heap1) / GC_TEST_SAMPLE
+	js.collect(r.inst)
+	n0, _, steps0 := js.collection_counts(r.inst)
+	run(r, fmt.tprintf("waste(%d)", GC_TEST_GARBAGE))
+	n1, _, steps1 := js.collection_counts(r.inst)
+	js.collect(r.inst)
+	_, cells2, _ := js.collection_counts(r.inst)
+	expected := GC_TEST_GARBAGE * bytes_each / max(heap1 * GC_TEST_GROWTH, GC_TEST_MIN_HEADROOM)
+	got := f64(n1 - n0)
+	if abs(got - expected) > expected * GC_TEST_MARGIN_PERCENT / 100 {
+		fmt.eprintfln("gc: %.0f collections for %d objects of %.0f bytes on a heap of %.0f, about %.0f expected", got, GC_TEST_GARBAGE, bytes_each, heap1, expected)
+		failed = true
+	}
+	// (past jsrt's GC_SWEEP_LAZY_CELLS the sweeps go by steps, the mutator between them; compiled code polls so seldom that a step finishes one)
+	if !jit.enabled && steps1 - steps0 <= n1 - n0 {
+		fmt.eprintfln("gc: %d steps for %d sweeps", steps1 - steps0, n1 - n0)
+		failed = true
+	}
+	if cells2 - cells1 > GC_TEST_CELLS_SLACK || cells1 - cells2 > GC_TEST_CELLS_SLACK {
+		fmt.eprintfln("gc: %d cells after the garbage, %d before", cells2, cells1)
+		failed = true
+	}
+	run(r, fmt.tprintf("check(%d)", GC_TEST_KEPT))
+	if failed { os.exit(1) }
+	fmt.printfln("gc: %d kept, %.0f collections", GC_TEST_KEPT, got)
+}
+
 main :: proc() {
 	if len(os.args) < 2 { usage() }
 	switch os.args[1] {
+	case "gc": cmd_gc(os.args[2:])
 	case "snapshot": cmd_snapshot(os.args[2:])
 	case "precompile": cmd_precompile(os.args[2:])
 	case "run": cmd_run(os.args[2:])

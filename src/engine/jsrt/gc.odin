@@ -26,17 +26,26 @@ package jsrt
 // Weak references (WeakMap/WeakSet keys, WeakRef targets, FinalizationRegistry targets) are
 // ephemerons processed after the strong marking reaches a fixpoint; shape transition caches and the
 // per-prototype root shapes are weak too.
+//
+// A collection marks at a safe point, all at once; its sweep may go by steps at the next ones (gc_sweep_step): nothing
+// reaches a dead cell any more, so it can wait. What needs the list of cells whole finishes the sweep first (gc_sweep_finish).
 
 import "base:intrinsics"
 import "base:runtime"
 import "core:mem"
 
-// When the next collection runs: once the heap has grown this many times over since the last one ...
-GC_HEAP_GROWTH :: 2
+// When the next collection runs: once the heap is this share of what the last one left (docs/performance.md, round 44: at 200 %
+// a load marks its live heap 1.4 times as often, at 300 % it keeps a tenth more private memory for what is left to gain) ...
+GC_HEAP_GROWTH_PERCENT :: 250
 // ... and by this many bytes at least, so that a small heap does not collect all the time. Also the first threshold.
 GC_MIN_ALLOCATION :: 4 << 20
 // -define:JSRT_GC_STRESS=<bytes>: a collection each time this much was allocated, to find what is not rooted (0: off). Never in a shipped build.
 GC_STRESS_BYTES :: #config(JSRT_GC_STRESS, 0)
+// A sweep of more cells than this is done in steps, after the mutator has allocated a little: one of a heap of a million cells takes longer
+// than the marking, under a frame. A step takes about a quarter of a millisecond, and frees more than was allocated since the last.
+GC_SWEEP_LAZY_CELLS :: 0 when GC_STRESS_BYTES > 0 else 64 * 1024
+GC_SWEEP_STEP_CELLS :: 4096 when GC_STRESS_BYTES > 0 else 8192
+GC_SWEEP_STEP_BYTES :: GC_STRESS_BYTES / 4 when GC_STRESS_BYTES > 0 else 128 * 1024
 // -define:JSRT_GC_POISON=true: a swept cell is finalized but its memory is never reused and its kind becomes CELL_DEAD, and reading a value
 // that points at one traps there (as_obj & co., mark_cell): the first use of what was collected too early has a stack, instead of reading
 // whatever the block holds next. With JSRT_GC_STRESS, to find what is not rooted. Never in a shipped build.
@@ -55,7 +64,6 @@ Cell_Kind :: enum u8 {
 }
 
 Cell :: struct {
-	gc_next: ^Cell,
 	size:    u32, // bytes charged for the cell itself
 	ext:     u32, // references held by the host (persist / the C API's owned references): each one is a root
 	kind:    Cell_Kind,
@@ -220,7 +228,9 @@ mem_array :: proc(rt: ^Runtime, $T: typeid, n: int) -> [^]T {
 // Would allocating `extra` more bytes exceed the host's budget? Large allocations check this first and
 // throw instead of growing past the limit.
 mem_over_limit :: proc(rt: ^Runtime, extra: i64) -> bool {
-	return rt.config.malloc_limit >= 0 && rt.heap_bytes + extra > rt.config.malloc_limit
+	if rt.config.malloc_limit < 0 {return false}
+	if rt.heap_bytes + extra > rt.config.malloc_limit {gc_sweep_finish(rt)}
+	return rt.heap_bytes + extra > rt.config.malloc_limit
 }
 
 // --- cells ---
@@ -230,9 +240,7 @@ cell_new :: proc(rt: ^Runtime, $T: typeid, kind: Cell_Kind, extra := 0) -> ^T {
 	c := cast(^Cell)mem_alloc(rt, size)
 	c.size = u32(size)
 	c.kind = kind
-	c.gc_next = rt.cells
-	rt.cells = c
-	rt.cell_count += 1
+	list_push(&rt.cells, c)
 	list_push(&rt.temp_roots, c)
 	return cast(^T)c
 }
@@ -316,10 +324,18 @@ gc_should_run :: #force_inline proc "contextless" (rt: ^Runtime) -> bool {
 gc_safepoint :: proc(ctx: ^Context) -> bool {
 	rt := ctx.rt
 	if gc_should_run(rt) {
-		gc_collect(rt)
+		if rt.sweep.left > 0 {
+			gc_sweep_step(rt)
+		} else {
+			gc_mark(rt)
+			if rt.sweep.left < GC_SWEEP_LAZY_CELLS {gc_sweep_finish(rt)} else {rt.gc_threshold = rt.heap_bytes + GC_SWEEP_STEP_BYTES}
+		}
 		if rt.config.malloc_limit >= 0 && rt.heap_bytes > rt.config.malloc_limit {
-			throw_uncatchable(ctx, "out of memory")
-			return false
+			gc_sweep_finish(rt)
+			if rt.heap_bytes > rt.config.malloc_limit {
+				throw_uncatchable(ctx, "out of memory")
+				return false
+			}
 		}
 	}
 	return true
@@ -346,8 +362,19 @@ mark_values :: proc(rt: ^Runtime, vs: []Value) {
 	}
 }
 
+// A whole collection, at once.
 gc_collect :: proc(rt: ^Runtime) {
 	if rt.in_gc {return}
+	gc_mark(rt)
+	gc_sweep_finish(rt)
+}
+
+// The first half of a collection: what is live is marked, the host told, nothing but the cells themselves left to free
+// (Runtime.sweep). From here to the end of the sweep nothing points at a dead cell: the weak references are cleared,
+// finalizers of host objects have run. A dead cell only waits for its turn, and the mutator may run.
+@(private = "file")
+gc_mark :: proc(rt: ^Runtime) {
+	gc_sweep_finish(rt)
 	rt.in_gc = true
 	defer rt.in_gc = false
 	span_stage(.gc, true)
@@ -360,15 +387,10 @@ gc_collect :: proc(rt: ^Runtime) {
 	gc_process_weak(rt)
 	gc_prune_ext(rt)
 	host_run_finalizers(rt)
-	gc_sweep(rt)
+	gc_clear_weak_caches(rt)
+	rt.sweep = {left = len(rt.cells), kept = len(rt.cells), heap = rt.heap_bytes}
 
 	rt.gc_count += 1
-	// Next collection when the heap has grown by the live size again (GC_MIN_ALLOCATION of headroom at least).
-	if GC_STRESS_BYTES > 0 {
-		rt.gc_threshold = rt.heap_bytes + GC_STRESS_BYTES
-	} else {
-		rt.gc_threshold = max(rt.heap_bytes * GC_HEAP_GROWTH, rt.heap_bytes + GC_MIN_ALLOCATION)
-	}
 	if rt.config.gc_epilogue != nil {rt.config.gc_epilogue(rt, rt.config.gc_prologue_user)}
 	dt := now_ns(rt) - t0
 	rt.gc_last_pause_ns = dt
@@ -647,8 +669,8 @@ weak_key_live :: proc(v: Value) -> bool {
 }
 
 @(private = "file")
-gc_sweep :: proc(rt: ^Runtime) {
-	// weak caches first: they point at cells about to be freed (the shapes that have any, listed as they were traced: a
+gc_clear_weak_caches :: proc(rt: ^Runtime) {
+	// they point at cells about to be freed (the shapes that have any, listed as they were traced: a
 	// walk of every cell for them cost as much as the sweep)
 	for sh in rt.gc_shapes {
 		before := len(sh.transitions)
@@ -674,29 +696,61 @@ gc_sweep :: proc(rt: ^Runtime) {
 			i += 1
 		}
 	}
-	prev: ^Cell = nil
-	dead: ^Cell = nil // GC_POISON: the cells of this sweep (a finalizer may still read another one of them)
-	c := rt.cells
-	for c != nil {
-		next := c.gc_next
+}
+
+// More of the sweep, in proportion to what was allocated since the last step, from the newest (a finalizer reads what is older than its cell: a function its bytecode, an
+// iterator its map; those are still there). The survivors gather up to the cells made since the marking, in their order.
+gc_sweep_step :: proc(rt: ^Runtime, all := false) {
+	rt.in_gc = true
+	defer rt.in_gc = false
+	span_stage(.gc, true)
+	defer span_stage(.gc, false)
+	sw := &rt.sweep
+	cells := rt.cells[:]
+	rt.gc_sweep_steps += 1
+	made := max(rt.heap_bytes - sw.heap, 0)
+	sw.made += made
+	stop := all ? 0 : max(sw.left - GC_SWEEP_STEP_CELLS * int(1 + made / GC_SWEEP_STEP_BYTES), 0)
+	dead: [dynamic]^Cell // GC_POISON: the cells of this step (a finalizer may still read another one of them)
+	for i := sw.left - 1; i >= stop; i -= 1 {
+		c := cells[i]
 		if c.mark || c.pinned {
 			c.mark = false
-			prev = c
+			sw.kept -= 1
+			cells[sw.kept] = c
 		} else {
-			if prev == nil {rt.cells = next} else {prev.gc_next = next}
 			cell_finalize(rt, c)
-			rt.cell_count -= 1
 			when GC_POISON {
 				rt.heap_bytes -= i64(c.size)
-				c.gc_next = dead
-				dead = c
+				append(&dead, c)
 			} else {
 				mem_free(rt, c, int(c.size))
 			}
 		}
-		c = next
 	}
-	for d := dead; d != nil; d = d.gc_next {d.kind = CELL_DEAD}
+	sw.left = stop
+	for d in dead {d.kind = CELL_DEAD}
+	delete(dead)
+	sw.heap = rt.heap_bytes
+	if sw.left > 0 {
+		rt.gc_threshold = rt.heap_bytes + GC_SWEEP_STEP_BYTES
+		return
+	}
+	survivors := len(cells) - sw.kept
+	copy(cells, cells[sw.kept:])
+	resize(&rt.cells, survivors)
+	// Next collection when the heap has grown by GC_HEAP_GROWTH_PERCENT of what the collection left (GC_MIN_ALLOCATION of headroom at least).
+	left := rt.heap_bytes - sw.made
+	if GC_STRESS_BYTES > 0 {
+		rt.gc_threshold = rt.heap_bytes + GC_STRESS_BYTES
+	} else {
+		rt.gc_threshold = max(left * GC_HEAP_GROWTH_PERCENT / 100, left + GC_MIN_ALLOCATION)
+	}
+}
+
+// What is left of the sweep, at once.
+gc_sweep_finish :: proc(rt: ^Runtime) {
+	if rt.sweep.left > 0 && !rt.in_gc {gc_sweep_step(rt, all = true)}
 }
 
 // Release the out-of-line storage a cell owns (not the cell itself).
@@ -722,17 +776,14 @@ cell_finalize :: proc(rt: ^Runtime, c: ^Cell) {
 
 // Free every cell (runtime teardown).
 gc_free_all :: proc(rt: ^Runtime) {
+	gc_sweep_finish(rt)
 	host_finalize_all(rt)
 	if rt.config.gc_epilogue != nil {rt.config.gc_epilogue(rt, rt.config.gc_prologue_user)}
-	c := rt.cells
-	for c != nil {
-		next := c.gc_next
+	#reverse for c in rt.cells {
 		cell_finalize(rt, c)
 		mem_free(rt, c, int(c.size))
-		c = next
 	}
-	rt.cells = nil
-	rt.cell_count = 0
+	clear(&rt.cells)
 }
 
 // A context-allocator wrapper so packages that allocate through `context.allocator` (bigint,

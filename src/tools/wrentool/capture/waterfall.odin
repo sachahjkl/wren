@@ -100,9 +100,9 @@ waterfall_load :: proc(exe, out, url: string, run: int, prefs: []string, limit: 
 	n, ne := api.network(s)
 	if ne != .None { fmt.printfln("0\t%d\tno answer: %v\t%s", run, ne, url); return }
 	m := waterfall_sums(&n)
-	fmt.printfln("%.0f\t%d\t%.0f%s\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%.0f\t%s", idle_ms, run, took, e == .Timeout ? "!" : "",
+	fmt.printfln("%.0f\t%d\t%.0f%s\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%.0f\t%d\t%s", idle_ms, run, took, e == .Timeout ? "!" : "",
 		n.doc.paint, n.doc.contentful, n.doc.interactive, n.doc.dcl, n.doc.load, m.count, m.h1, m.h2, m.h3, m.cached, m.failed, m.hosts, m.bytes >> 10,
-		m.queued, m.max_queued, m.dns, m.connect, m.tls, m.wait, m.body, m.last_end, m.gaps, after.cpu_time_ms - before.cpu_time_ms, start_ms, after.cpu_time_ms, after.private_bytes >> 20, after.working_set_bytes >> 20, after.memory.wasm_compiles, after.memory.wasm_shipped_hits, after.memory.wasm_shipped_refused, after.js_first_realm_ms, url)
+		m.queued, m.max_queued, m.dns, m.connect, m.tls, m.wait, m.body, m.last_end, m.gaps, after.cpu_time_ms - before.cpu_time_ms, start_ms, after.cpu_time_ms, after.private_bytes >> 20, after.working_set_bytes >> 20, after.memory.wasm_compiles, after.memory.wasm_shipped_hits, after.memory.wasm_shipped_refused, after.js_first_realm_ms, after.memory.pages_bytes >> 20, url)
 	waterfall_write(fmt.tprintf("%s/%s_%d.tsv", out, slug, run), &n)
 }
 
