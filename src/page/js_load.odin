@@ -463,7 +463,7 @@ parser_finish :: proc(p: ^Page) {
 	s.parse_done = true
 	s.timing.parsed_ms = now_ms(p)
 	if the_pages.embedder.parsed != nil { the_pages.embedder.parsed(the_pages.embedder.user, p) }
-	p.style_stale = true   // stylesheets the reveal kept in place are read again (styles.odin)
+	styles_parsed(p)
 	ready_state_set(p, .Interactive)
 }
 

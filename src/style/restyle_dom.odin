@@ -802,10 +802,6 @@ attribute_changed :: proc(m: ^Marker, ch: Attr_Change) {
 	}
 	cur, has_cur := attr(n, ch.name)
 	if has_cur == ch.had_old && cur == ch.old { return }
-	if (n.name == "style" || n.name == "link") && (!m.shadows || dom.containing_shadow_root(m.doc, h) == base.NIL_HANDLE) {
-		m.fail = "stylesheet element changed"
-		return
-	}
 	switch ch.name {
 	case "part", "exportparts":
 		// ::part() rules of outer trees: the element (or, through exportparts, parts deeper in its shadow tree)
@@ -953,7 +949,6 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 			n := dom.get(doc, en.node)
 			p := n != nil ? n.parent : en.parent
 			if !is_element_node(doc, p) || !connected(doc, p) { continue }
-			if pn := dom.get(doc, p); pn.name == "style" && !in_shadow(m, p) { m.fail = "stylesheet text changed"; return }
 			empty_changed(m, p)
 		case .Attribute:
 			if !is_element_node(doc, en.node) { continue }

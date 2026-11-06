@@ -69,7 +69,7 @@ sync_document_sheets :: proc(e: ^Engine, doc: ^dom.Document, base_url: string, a
 	back := false
 	for i := len(e.sheets) - 1; i >= 0; i -= 1 {
 		s := e.sheets[i]
-		if s.origin != .Author || s.constructed { continue }
+		if s.origin != .Author || s.constructed || s.owner == base.NIL_HANDLE { continue }   // (no element: a face of document.fonts)
 		keep := false
 		found := false
 		if s.from_link {
@@ -93,9 +93,8 @@ sync_document_sheets :: proc(e: ^Engine, doc: ^dom.Document, base_url: string, a
 		// the owner is back in the tree: the rebuilds made meanwhile ordered the sheet as if it were nowhere
 		if found && keep && s.detached { s.detached = false; back = true }
 		if !keep {
-			sheet_changed(e, s)
-			sheet_free(s)
 			ordered_remove(&e.sheets, i)
+			sheet_departs(e, s)
 		}
 	}
 	if back && !e.dirty_other && !sheets_sorted(e, doc) { rules_stale(e) }   // (usually they are where the rules say: after the others)

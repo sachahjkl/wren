@@ -187,6 +187,13 @@ sheet_set_media :: proc(e: ^Engine, s: ^Sheet, media: string) {
 	s.media = nil
 	if media != "" { s.media = css.parse_media_query_list(css.parse_component_values(media, parse_options(&e.settings), context.temp_allocator), e.alloc) }
 	s.version += 1
+	// (media=print onload=this.media='all': a sheet that gave nothing arrives now)
+	if s.indexed && s.order_first == s.order_last && s.origin == .Author && !s.constructed && s.scope == base.NIL_HANDLE {
+		s.indexed = false
+		e.dirty = true
+		append(&e.arrived, s)
+		return
+	}
 	sheet_changed(e, s)
 }
 
