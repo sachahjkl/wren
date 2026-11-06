@@ -98,6 +98,8 @@ restyle_media :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Th
 	if e.restyle_needed { return mq_fail(e, "a full pass is due") }
 	if s.mutations != doc.mutations { return mq_fail(e, "the document changed") }
 	if int(s.arena.total_used) - int(s.base_used) + s.partial_bytes > e.settings.restyle_waste_bytes { return mq_fail(e, "memory left by partial restyles") }
+	class_bits_begin(e, doc)
+	defer e.class_bits_live = false
 	p := pass_make(e, s, doc, s.state)
 	defer pass_destroy(p)
 

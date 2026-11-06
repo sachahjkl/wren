@@ -9,9 +9,9 @@ class_bits_of_a_full_pass :: proc(t: ^testing.T) {
 	defer fixture_unload(f)
 	x, y, z := dom.find_by_id(f.doc, "x"), dom.find_by_id(f.doc, "y"), dom.find_by_id(f.doc, "z")
 	bit :: proc(name: string) -> u64 { return 1 << (css.class_hash(name) & CLASS_BIT_MASK) }
-	testing.expect_value(t, f.eng.class_bits[base.handle_index(x)], bit("a") | bit("b") | bit("c"))
-	testing.expect_value(t, f.eng.class_bits[base.handle_index(y)], bit("d"))
-	testing.expect_value(t, f.eng.class_bits[base.handle_index(z)], u64(0))
+	testing.expect_value(t, f.eng.class_bits[base.handle_index(x)], CLASS_BITS_READ | bit("a") | bit("b") | bit("c"))
+	testing.expect_value(t, f.eng.class_bits[base.handle_index(y)], CLASS_BITS_READ | bit("d"))
+	testing.expect_value(t, f.eng.class_bits[base.handle_index(z)], CLASS_BITS_READ)
 	testing.expect(t, !f.eng.class_bits_live, "the bits are of the pass: the document may change after it")
 	testing.expect_value(t, style_of(f.st, x).margin[.Top].v, 1)
 	testing.expect_value(t, style_of(f.st, x).padding[.Top].v, 3)

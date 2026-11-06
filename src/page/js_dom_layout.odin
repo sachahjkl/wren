@@ -567,7 +567,8 @@ Window_pageXOffset :: proc(c: ^Call) -> f64 { return scroll_now(c).scroll_x }
 Window_pageYOffset :: proc(c: ^Call) -> f64 { return scroll_now(c).scroll_y }
 
 // The document's scroll offsets as they are after what the script changed: the layout brought up to date moves them (its
-// scroll range, scroll anchoring: wb:layout scroll_anchor.odin), as browsers do when a script reads them.
+// scroll range, scroll anchoring: wb:layout scroll_anchor.odin), as browsers do when a script reads them. At the origin they
+// move no one: a range holds it, anchoring does not act there, and where most reads of a load are made, they were a style pass each.
 @(private = "file")
 scroll_now :: proc(c: ^Call) -> Viewport {
 	if c.page.worker != nil { return {} }
