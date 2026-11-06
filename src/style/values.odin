@@ -206,6 +206,11 @@ initial_computed :: proc(s: ^Settings, inh: ^Inherited_Group) -> Computed {
 	c.font_stretch = 100
 	c.text_decoration_thickness = auto_length
 	c.text_underline_offset = auto_length
+	c.text_decoration_skip_spaces = {.Start, .End}
+	c.text_emphasis_color = Auto_Color{auto = true}
+	c.text_emphasis_position = {auto = true}
+	c.text_emphasis_skip = {.Spaces, .Punctuation}
+	c.text_stroke_color = Auto_Color{auto = true}
 	c.caret_color = Auto_Color{auto = true}
 	c.accent_color = Auto_Color{auto = true}
 	c.text_fill_color = Auto_Color{auto = true}
@@ -229,6 +234,7 @@ initial_groups_fill :: proc(c: ^Computed) {
 	c.transform_origin = {Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}}
 	c.perspective_origin = {Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}}
 	c.object_position = {Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}}
+	c.text_decoration_inset = {px(0), px(0)}
 	c.position_visibility = {.Anchor_Visible}
 	c.transform_box = .View_Box
 	// the list-valued properties keep their initial value as a one-element list, so that a missing list is never an
@@ -407,7 +413,7 @@ parse_font_family :: proc(cx: ^Cx, input: []css.Value) -> ([]string, bool) {
 }
 
 @(private)
-parse_shadows :: proc(cx: ^Cx, input: []css.Value) -> ([]Shadow, bool) {
+parse_shadows :: proc(cx: ^Cx, input: []css.Value, text := false) -> ([]Shadow, bool) {
 	vs := css.trim_values(input)
 	if id, ok := ident_raw(vs); ok && base.ascii_equal_fold(id, "none") { return nil, true }
 	out := make([dynamic]Shadow, cx.alloc)
@@ -415,15 +421,26 @@ parse_shadows :: proc(cx: ^Cx, input: []css.Value) -> ([]Shadow, bool) {
 		s := Shadow{color = cx.c.color}
 		nums := 0
 		lens: [4]f32
+		colored, lengths_ended := false, false
 		for it in split_items(part) {
-			if it.kind == .Token && it.tok.kind == .Ident && base.ascii_equal_fold(it.tok.text, "inset") { s.inset = true; continue }
+			if it.kind == .Token && it.tok.kind == .Ident && base.ascii_equal_fold(it.tok.text, "inset") {
+				if text { return nil, false }
+				s.inset = true
+				if nums > 0 { lengths_ended = true }
+				continue
+			}
 			one := [1]css.Value{it}
 			if l, ok := parse_length(cx, one[:], {.Negative}); ok && l.kind == .Px {
-				if nums >= 4 { return nil, false }
+				if nums >= (text ? 3 : 4) || lengths_ended || (nums == 2 && l.v < 0 && !is_calc_function(it)) { return nil, false }
 				lens[nums] = l.v; nums += 1
 				continue
 			}
-			if col, ok := parse_color(cx, one[:]); ok { s.color = col; continue }
+			if col, ok := parse_color(cx, one[:]); ok {
+				if colored { return nil, false }
+				s.color, colored = col, true
+				if nums > 0 { lengths_ended = true }
+				continue
+			}
 			return nil, false
 		}
 		if nums < 2 { return nil, false }
@@ -565,13 +582,23 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	case .Text_Decoration_Line:
 		if id, ok := ident_raw(vs); ok && base.ascii_equal_fold(id, "none") { c.text_decoration = {}; return true }
 		set: Decorations
-		for it in split_items(vs) {
+		items := split_items(vs)
+		for it in items {
 			if it.kind != .Token || it.tok.kind != .Ident { return false }
 			switch base.ascii_lower(it.tok.text) {
-			case "underline": set += {.Underline}
-			case "overline": set += {.Overline}
-			case "line-through": set += {.Line_Through}
-			case "blink":
+			case "underline", "overline", "line-through", "blink":
+				one := Decoration.Underline
+				switch base.ascii_lower(it.tok.text) {
+				case "overline": one = .Overline
+				case "line-through": one = .Line_Through
+				case "blink": one = .Blink
+				}
+				if one in set { return false }
+				set += {one}
+			case "spelling-error", "grammar-error":
+				// (alone: the line of an error is not one of a set)
+				if len(items) != 1 { return false }
+				set = base.ascii_equal_fold(it.tok.text, "spelling-error") ? {.Spelling_Error} : {.Grammar_Error}
 			case: return false
 			}
 		}
@@ -603,7 +630,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		c.tab_size, c.tab_spaces = l.v, false
 	case .Direction: return set_enum(vs, &c.direction)
 	case .Text_Shadow:
-		sh, ok := parse_shadows(cx, vs)
+		sh, ok := parse_shadows(cx, vs, text = true)
 		if !ok { return false }
 		c.text_shadow = sh
 	case .Display:
@@ -939,6 +966,9 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		return apply_container_prop(cx, p, vs)
 	case .Mask_Image, .Mask_Mode, .Mask_Repeat, .Mask_Position, .Mask_Size, .Mask_Origin, .Mask_Clip, .Mask_Composite, .Text_Fill_Color:
 		return apply_mask_prop(cx, p, vs)
+	case .Text_Underline_Position, .Text_Decoration_Skip_Ink, .Text_Decoration_Skip_Spaces, .Text_Decoration_Inset, .Text_Emphasis_Style, .Text_Emphasis_Color,
+	     .Text_Emphasis_Position, .Text_Emphasis_Skip, .Text_Stroke_Width, .Text_Stroke_Color:
+		return apply_text_decor_prop(cx, p, vs)
 	case .Wren_Shader:
 		return apply_shader_prop(cx, p, vs)
 	case .Anchor_Name, .Anchor_Scope, .Position_Anchor, .Position_Area, .Position_Try_Fallbacks, .Position_Try_Order, .Position_Visibility:

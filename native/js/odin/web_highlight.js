@@ -17,11 +17,15 @@
     return s;
   };
   const entries = new MapC();   // CSS.highlights: name -> Highlight
+  const registered_at = new MapC();   // name -> the turn it was last set
+  let registrations = 0;
   let queued = false;
   const send = () => {
     queued = false;
     native.clear();
-    for (const [name, h] of entries) {
+    // (the map keeps a name where it first came; the last registered is above, whatever its place)
+    const order = [...entries].sort((a, b) => registered_at.get(a[0]) - registered_at.get(b[0]));
+    for (const [name, h] of order) {
       const s = states.get(h);
       native.add(name, s.priority);
       for (const r of s.ranges) native.range(apply(startContainer, r, []), apply(startOffset, r, []), apply(endContainer, r, []), apply(endOffset, r, []));
@@ -50,16 +54,17 @@
     add(r) { const s = stateOf(this); s.ranges.add(isRange(r)); registered(s); return this; }
     delete(r) { const s = stateOf(this), gone = s.ranges.delete(r); if (gone) registered(s); return gone; }
     clear() { const s = stateOf(this); s.ranges.clear(); registered(s); }
-    forEach(f, thisArg) {
+    forEach(f, thisArg = undefined) {
       const s = stateOf(this);
       callable(f, "Highlight");
       s.ranges.forEach(r => apply(f, thisArg, [r, r, this]));
     }
     values() { return stateOf(this).ranges.values(); }
+    keys() { return stateOf(this).ranges.values(); }
     entries() { return stateOf(this).ranges.entries(); }
   }
 
-  let constructing = false;
+  let constructing = false, highlights;
   class HighlightRegistry {
     constructor() { if (!constructing) throw new TE("Illegal constructor"); }
     get size() { return entries.size; }
@@ -70,6 +75,7 @@
       if (old !== undefined) states.get(old).names--;
       s.names++;
       entries.set(key, h);
+      registered_at.set(key, ++registrations);
       changed();
       return this;
     }
@@ -86,7 +92,7 @@
       entries.clear();
       changed();
     }
-    forEach(f, thisArg) {
+    forEach(f, thisArg = undefined) {
       callable(f, "HighlightRegistry");
       entries.forEach((h, name) => apply(f, thisArg, [h, name, this]));
     }
@@ -95,11 +101,15 @@
     entries() { return entries.entries(); }
     // What the rectangles of its ranges put under the point, the highest priority first (equal priorities: the last registered).
     highlightsFromPoint(x, y) {
+      if (this !== highlights) throw new TE("Illegal invocation");
+      if (arguments.length < 2) throw new TE("Failed to execute 'highlightsFromPoint' on 'HighlightRegistry': 2 arguments required.");
       const px = +x, py = +y, hits = [];
-      let order = 0;
-      for (const h of entries.values()) {
-        const s = states.get(h), ranges = [];
+      if (!isFinite(px) || !isFinite(py)) throw new TE("Failed to execute 'highlightsFromPoint' on 'HighlightRegistry': the coordinates are not finite.");
+      if (px < 0 || py < 0 || px >= document.documentElement.clientWidth || py >= document.documentElement.clientHeight) return hits;
+      for (const [name, h] of entries) {
+        const s = states.get(h), ranges = [], order = registered_at.get(name);
         for (const r of s.ranges) {
+          if (apply(startContainer, r, []) === apply(endContainer, r, []) && apply(startOffset, r, []) === apply(endOffset, r, [])) continue;   // (collapsed: not rendered)
           const live = new RangeC();
           live.setStart(apply(startContainer, r, []), apply(startOffset, r, []));
           live.setEnd(apply(endContainer, r, []), apply(endOffset, r, []));
@@ -107,8 +117,7 @@
             if (px >= b.left && px < b.right && py >= b.top && py < b.bottom) { ranges.push(r); break; }
           }
         }
-        if (ranges.length > 0) hits.push({ highlight: h, ranges, priority: s.priority, order: order });
-        order++;
+        if (ranges.length > 0) hits.push({ highlight: h, ranges, priority: s.priority, order });
       }
       hits.sort((a, b) => b.priority - a.priority || b.order - a.order);
       return hits.map(hit => ({ highlight: hit.highlight, ranges: hit.ranges }));
@@ -125,11 +134,11 @@
     if (also) defineProperty(proto, also, { value: proto[iterator], writable: true, enumerable: true, configurable: true });
     defineProperty(proto, symTag, { value: C.name, configurable: true });
   };
-  webidl(Highlight, "values", "keys");
+  webidl(Highlight, "values");
   webidl(HighlightRegistry, "entries");
 
   constructing = true;
-  const highlights = new HighlightRegistry();
+  highlights = new HighlightRegistry();
   constructing = false;
   native.watch(() => { if (entries.size > 0) changed(); });
 

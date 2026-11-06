@@ -155,6 +155,7 @@ Everything below exists in the code today and is covered by the tests of [`src/t
 - HTML forms: every control, constraint validation, `FormData`, submission in its three encodings.
 
 **Painting and text**
+- CSS Text Decoration 3 and 4: every line of every decorating box with its own style, colour and thickness, `text-decoration-skip-ink` from glyph outlines, `text-underline-position`, `text-decoration-skip-spaces`, `text-decoration-inset`, `text-emphasis`, `-webkit-text-stroke`, in rows, columns and right to left. Highlights as CSS Pseudo 4 paints them: `::selection`, `::target-text` (text fragments), `::spelling-error`, `::grammar-error` and `::highlight()`, each with its own cascade, stacked by overlay and priority. Left out, no browser having them: `text-decoration-skip-self`, `text-decoration-skip-box`, the `text-decoration-skip` shorthand.
 - A retained compositor: the display list is recorded into GPU-side pictures and replayed; scrolling and transform
   animations change matrices only. Shaders are precompiled: the first frame of the start page is drawn about 0.3 s
   after launch (1.8 s before).

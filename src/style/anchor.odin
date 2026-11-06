@@ -670,6 +670,7 @@ canonical_declared :: proc(p: Prop, vs: []css.Value, alloc := context.temp_alloc
 			write_canonical(&sb, css.trim_values(vs))
 			return strings.to_string(sb)
 		}
+	case: return text_decor_canonical(p, vs, alloc)
 	}
 	return ""
 }

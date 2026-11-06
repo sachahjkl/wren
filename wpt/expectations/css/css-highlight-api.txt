@@ -1,0 +1,198 @@
+# web-platform-tests expectations of Wren for css/css-highlight-api, written by build/wpt -update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/css/css-highlight-api/Highlight-iteration-with-modifications.html: OK
+	Highlight iteration includes ranges added after starting the iteration (Set-like behavior): PASS
+	Highlight iteration includes ranges added after starting the iteration when there were already ranges (Set-like behavior): PASS
+	Highlight iteration is not modified when a range that was already visited is deleted and there are still ranges to visit: PASS
+	Highlight iteration skips all ranges when .clear() is called before visiting them (Set-like behavior): PASS
+	Highlight iteration skips ranges deleted before being visited (Set-like behavior): PASS
+	Highlight iteration skips ranges deleted before being visited even when other ranges remain (Set-like behavior): PASS
+/css/css-highlight-api/Highlight-iteration.html: OK
+	Highlight can be iterated over all of its ranges initializing the iterator with .entries() and adding a range by passing it to the add function: PASS
+	Highlight can be iterated over all of its ranges initializing the iterator with .entries() and adding a range by passing it to the constructor: PASS
+	Highlight can be iterated over all of its ranges initializing the iterator with .entries() and adding two ranges by passing them to the add function: PASS
+	Highlight can be iterated over all of its ranges initializing the iterator with .entries() and adding two ranges by passing them to the constructor: PASS
+	Highlight can be iterated over all of its ranges initializing the iterator with customHighlight.keys() and adding a range by passing it to the add function: PASS
+	Highlight can be iterated over all of its ranges initializing the iterator with customHighlight.keys() and adding a range by passing it to the constructor: PASS
+	Highlight can be iterated over all of its ranges initializing the iterator with customHighlight.keys() and adding two ranges by passing them to the add function: PASS
+	Highlight can be iterated over all of its ranges initializing the iterator with customHighlight.keys() and adding two ranges by passing them to the constructor: PASS
+	Highlight can be iterated over all of its ranges initializing the iterator with customHighlight.values() and adding a range by passing it to the add function: PASS
+	Highlight can be iterated over all of its ranges initializing the iterator with customHighlight.values() and adding a range by passing it to the constructor: PASS
+	Highlight can be iterated over all of its ranges initializing the iterator with customHighlight.values() and adding two ranges by passing them to the add function: PASS
+	Highlight can be iterated over all of its ranges initializing the iterator with customHighlight.values() and adding two ranges by passing them to the constructor: PASS
+	Highlight can be iterated over all of its ranges initializing the iterator with customHighlight[Symbol.iterator]() and adding a range by passing it to the add function: PASS
+	Highlight can be iterated over all of its ranges initializing the iterator with customHighlight[Symbol.iterator]() and adding a range by passing it to the constructor: PASS
+	Highlight can be iterated over all of its ranges initializing the iterator with customHighlight[Symbol.iterator]() and adding two ranges by passing them to the add function: PASS
+	Highlight can be iterated over all of its ranges initializing the iterator with customHighlight[Symbol.iterator]() and adding two ranges by passing them to the constructor: PASS
+	Highlight can be iterated through using forEach when it has one range that was added by passing it to the add function: PASS
+	Highlight can be iterated through using forEach when it has one range that was added by passing it to the constructor: PASS
+	Highlight can be iterated through using forEach when it has two ranges that were added by passing them to the add function: PASS
+	Highlight can be iterated through using forEach when it has two ranges that were added by passing them to the constructor: PASS
+	Highlight can be iterated through when it's empty using forEach.: PASS
+	Highlight can be iterated when it's empty initializing the iterator with .entries(): PASS
+	Highlight can be iterated when it's empty initializing the iterator with customHighlight.keys(): PASS
+	Highlight can be iterated when it's empty initializing the iterator with customHighlight.values(): PASS
+	Highlight can be iterated when it's empty initializing the iterator with customHighlight[Symbol.iterator](): PASS
+/css/css-highlight-api/Highlight-multiple-type-attribute.html: OK
+	Highlight type has a limited set of types: PASS
+/css/css-highlight-api/Highlight-setlike-tampered-Set-prototype.html: OK
+	Highlight is a setlike interface that works as expected even if Set.prototype is tampered.: FAIL
+/css/css-highlight-api/Highlight-setlike.html: OK
+	Highlight add and has methods work as expected (using the following combination of ranges [[object Range], [object Range], [object Range]]): PASS
+	Highlight add and has methods work as expected (using the following combination of ranges [[object Range], [object StaticRange], [object Range]]): PASS
+	Highlight add and has methods work as expected (using the following combination of ranges [[object StaticRange], [object Range], [object StaticRange]]): PASS
+	Highlight add and has methods work as expected (using the following combination of ranges [[object StaticRange], [object StaticRange], [object StaticRange]]): PASS
+	Highlight add method is chainable (using the following combination of ranges [[object Range], [object Range], [object Range]]): PASS
+	Highlight add method is chainable (using the following combination of ranges [[object Range], [object StaticRange], [object Range]]): PASS
+	Highlight add method is chainable (using the following combination of ranges [[object StaticRange], [object Range], [object StaticRange]]): PASS
+	Highlight add method is chainable (using the following combination of ranges [[object StaticRange], [object StaticRange], [object StaticRange]]): PASS
+	Highlight clear method works as expected (using the following combination of ranges [[object Range], [object Range], [object Range]]): PASS
+	Highlight clear method works as expected (using the following combination of ranges [[object Range], [object StaticRange], [object Range]]): PASS
+	Highlight clear method works as expected (using the following combination of ranges [[object StaticRange], [object Range], [object StaticRange]]): PASS
+	Highlight clear method works as expected (using the following combination of ranges [[object StaticRange], [object StaticRange], [object StaticRange]]): PASS
+	Highlight constructor behaves like a set when using equal ranges (using the following combination of ranges [[object Range], [object Range], [object Range]]): PASS
+	Highlight constructor behaves like a set when using equal ranges (using the following combination of ranges [[object Range], [object StaticRange], [object Range]]): PASS
+	Highlight constructor behaves like a set when using equal ranges (using the following combination of ranges [[object StaticRange], [object Range], [object StaticRange]]): PASS
+	Highlight constructor behaves like a set when using equal ranges (using the following combination of ranges [[object StaticRange], [object StaticRange], [object StaticRange]]): PASS
+	Highlight constructor works as expected when called with one range (using the following combination of ranges [[object Range], [object Range], [object Range]]): PASS
+	Highlight constructor works as expected when called with one range (using the following combination of ranges [[object Range], [object StaticRange], [object Range]]): PASS
+	Highlight constructor works as expected when called with one range (using the following combination of ranges [[object StaticRange], [object Range], [object StaticRange]]): PASS
+	Highlight constructor works as expected when called with one range (using the following combination of ranges [[object StaticRange], [object StaticRange], [object StaticRange]]): PASS
+	Highlight constructor works as expected when called with two ranges (using the following combination of ranges [[object Range], [object Range], [object Range]]): PASS
+	Highlight constructor works as expected when called with two ranges (using the following combination of ranges [[object Range], [object StaticRange], [object Range]]): PASS
+	Highlight constructor works as expected when called with two ranges (using the following combination of ranges [[object StaticRange], [object Range], [object StaticRange]]): PASS
+	Highlight constructor works as expected when called with two ranges (using the following combination of ranges [[object StaticRange], [object StaticRange], [object StaticRange]]): PASS
+	Highlight delete method works as expected (using the following combination of ranges [[object Range], [object Range], [object Range]]): PASS
+	Highlight delete method works as expected (using the following combination of ranges [[object Range], [object StaticRange], [object Range]]): PASS
+	Highlight delete method works as expected (using the following combination of ranges [[object StaticRange], [object Range], [object StaticRange]]): PASS
+	Highlight delete method works as expected (using the following combination of ranges [[object StaticRange], [object StaticRange], [object StaticRange]]): PASS
+	Highlight initializes empty (if no ranges are provided) and with priority 0.: PASS
+/css/css-highlight-api/Highlight-type-attribute.tentative.html: OK
+	Highlight has a mutable 'type' attribute that is a HighlightType enum.: PASS
+/css/css-highlight-api/HighlightRegistry-highlightsFromPoint-ranges.html: OK
+	CSS.highlights.highlightsFromPoint() returns HighlightHitResults with the Highlights and their corresponding Ranges and StaticRanges present at the given point in the right order on multi-line text.: FAIL
+/css/css-highlight-api/HighlightRegistry-highlightsFromPoint.html: OK
+	CSS.highlights.highlightsFromPoint() does not return highlights with only collapsed ranges.: PASS
+	CSS.highlights.highlightsFromPoint() returns all overlapping ranges within the same highlight.: FAIL
+	CSS.highlights.highlightsFromPoint() returns empty array for coordinates outside the viewport.: PASS
+	CSS.highlights.highlightsFromPoint() returns empty array when called on a display:none iframe document.: FAIL
+	CSS.highlights.highlightsFromPoint() returns the Highlights with their corresponding ranges present at the given point in the right order.: FAIL
+	CSS.highlights.highlightsFromPoint() should return an empty array when called with a point outside the document.: PASS
+	CSS.highlights.highlightsFromPoint() should throw when called with incorrect parameters.: FAIL
+	CSS.highlights.highlightsFromPoint() skips invalid StaticRanges.: FAIL
+/css/css-highlight-api/HighlightRegistry-iteration-with-modifications.html: OK
+	HighlightRegistry iteration doesn't visit a highlight name again when it is overwritten with .set() after being visited (Map-like behavior): PASS
+	HighlightRegistry iteration includes Highlights added after starting the iteration (Map-like behavior): PASS
+	HighlightRegistry iteration includes Highlights added after starting the iteration when there were already Highlights (Map-like behavior): PASS
+	HighlightRegistry iteration is not modified when a Highlight that was already visited is deleted and there are still Highlights to visit: PASS
+	HighlightRegistry iteration skips Highlights deleted before being visited (Map-like behavior): PASS
+	HighlightRegistry iteration skips Highlights deleted before being visited even when other Highlights remain (Map-like behavior): PASS
+	HighlightRegistry iteration skips all Highlights when .clear() is called before visiting them (Map-like behavior): PASS
+	HighlightRegistry iteration terminates when every visited highlight name is overwritten with .set() (Map-like behavior): PASS
+/css/css-highlight-api/HighlightRegistry-iteration.html: OK
+	HighlightRegistry can be iterated over all of its Highlights after adding one of them initializing the iterator with CSS.highlights.entries(): PASS
+	HighlightRegistry can be iterated over all of its Highlights after adding one of them initializing the iterator with CSS.highlights.values(): PASS
+	HighlightRegistry can be iterated over all of its Highlights after adding one of them initializing the iterator with CSS.highlights[Symbol.iterator](): PASS
+	HighlightRegistry can be iterated over all of its Highlights after adding two of them initializing the iterator with CSS.highlights.entries(): PASS
+	HighlightRegistry can be iterated over all of its Highlights after adding two of them initializing the iterator with CSS.highlights.values(): PASS
+	HighlightRegistry can be iterated over all of its Highlights after adding two of them initializing the iterator with CSS.highlights[Symbol.iterator](): PASS
+	HighlightRegistry can be iterated over all of its highlight names after adding one of them initializing the iterator with CSS.highlights.keys(): PASS
+	HighlightRegistry can be iterated over all of its highlight names after adding two of them initializing the iterator with CSS.highlights.keys(): PASS
+	HighlightRegistry can be iterated through when it has one Highlight using forEach.: PASS
+	HighlightRegistry can be iterated through when it has two Highlights using forEach.: PASS
+	HighlightRegistry can be iterated through when it's empty using forEach.: PASS
+	HighlightRegistry can be iterated when it's empty initializing the iterator with CSS.highlights.entries(): PASS
+	HighlightRegistry can be iterated when it's empty initializing the iterator with CSS.highlights.keys(): PASS
+	HighlightRegistry can be iterated when it's empty initializing the iterator with CSS.highlights.values(): PASS
+	HighlightRegistry can be iterated when it's empty initializing the iterator with CSS.highlights[Symbol.iterator](): PASS
+/css/css-highlight-api/HighlightRegistry-maplike-tampered-Map-prototype.html: OK
+	HighlightRegistry is a maplike interface that works as expected even if Map.prototype is tampered.: FAIL
+/css/css-highlight-api/HighlightRegistry-maplike.html: OK
+	HighlightRegistry has a maplike interface.: PASS
+	HighlightRegistry initializes as it should.: PASS
+	HighlightRegistry.set() with an existing name preserves the insertion order (Map-like behavior): PASS
+/css/css-highlight-api/custom-highlight-universal-escaped-star.tentative.html: OK
+	::highlight(\\*) computed style is the escaped literal name's rule, merged with the universal base: FAIL
+/css/css-highlight-api/custom-highlight-universal-parsing-and-computed-style.tentative.html: OK
+	"::highlight()" should be an invalid selector: PASS
+	"::highlight(* foo)" should be an invalid selector: PASS
+	"::highlight(*)" should be a valid selector: PASS
+	"::highlight(**)" should be an invalid selector: PASS
+	"::highlight(*.class)" should be an invalid selector: PASS
+	"::highlight(foo*)" should be an invalid selector: PASS
+	":root::highlight(*)" should be a valid selector: PASS
+	"div::highlight(*)" should be a valid selector: PASS
+	named highlight merges with the universal base on the same element: PASS
+	named highlight without its own rule falls back to the universal style: PASS
+/css/css-highlight-api/highlight-priority.html: OK
+	Highlight priority attribute is mutable: PASS
+/css/css-highlight-api/highlight-pseudo-computed.html: OK
+	Different getComputedStyle() for ::highlight(bar) and same element: PASS
+	getComputedStyle() for :::highlight(foo) should not return a style.: FAIL
+	getComputedStyle() for ::highlight should not return a style.: FAIL
+	getComputedStyle() for ::highlight(foo bar) should not return a style.: FAIL
+	getComputedStyle() for ::highlight(foo): PASS
+	getComputedStyle() for ::highlight(foo)( should not return a style.: FAIL
+	getComputedStyle() for ::highlight(foo)() should not return a style.: FAIL
+	getComputedStyle() for ::highlight(foo)(foo) should not return a style.: FAIL
+	getComputedStyle() for ::highlight(foo)) should not return a style.: FAIL
+	getComputedStyle() for ::highlight(foo). should not return a style.: FAIL
+	getComputedStyle() for ::highlight(foo): should not return a style.: FAIL
+	getComputedStyle() for ::highlight(foo,bar) should not return a style.: FAIL
+/css/css-highlight-api/highlight-pseudo-from-font-computed.html: OK
+	getComputedStyle() for div specific highlight: PASS
+	getComputedStyle() for root element: PASS
+	getComputedStyle() for root highlight applied to div: PASS
+/css/css-highlight-api/highlight-pseudo-parsing.html: OK
+	".a::highlight(foo)" should be a valid selector: PASS
+	"::before::highlight(foo)" should be an invalid selector: PASS
+	"::highlight" should be an invalid selector: PASS
+	"::highlight(\\\\*)" should be a valid selector: PASS
+	"::highlight(\\\\31\\\\32\\\\33)" should be a valid selector: PASS
+	"::highlight(foo) div" should be an invalid selector: PASS
+	"::highlight(foo)" should be a valid selector: PASS
+	"::highlight(foo).a" should be an invalid selector: PASS
+	"::highlight(foo)::after" should be an invalid selector: PASS
+	"::highlight(foo):hover" should be an invalid selector: PASS
+	"::highlight(multi\\\\ word)" should be a valid selector: PASS
+	"::part(my-part)::highlight(foo)" should be a valid selector: FAIL
+	":not(::highlight(foo))" should be an invalid selector: FAIL
+	":root::highlight(\\\\*)" should be a valid selector: PASS
+	"div ::highlight(foo)" should be a valid selector: PASS
+	"div::highlight(\\\\*)" should be a valid selector: PASS
+/css/css-highlight-api/historical.window.html: OK
+	HighlightRegister was renamed: PASS
+/css/css-highlight-api/idlharness.window.html: OK
+	CSS namespace: attribute highlights: PASS
+	CSS namespace: operation escape(CSSOMString): PASS
+	Highlight interface object length: PASS
+	Highlight interface object name: PASS
+	Highlight interface: attribute priority: PASS
+	Highlight interface: attribute type: PASS
+	Highlight interface: existence and properties of interface object: PASS
+	Highlight interface: existence and properties of interface prototype object: PASS
+	Highlight interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Highlight interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	Highlight interface: new Highlight(new Range()) must inherit property "priority" with the proper type: PASS
+	Highlight interface: new Highlight(new Range()) must inherit property "type" with the proper type: PASS
+	Highlight interface: setlike<AbstractRange>: PASS
+	Highlight must be primary interface of new Highlight(new Range()): PASS
+	HighlightRegistry interface object length: PASS
+	HighlightRegistry interface object name: PASS
+	HighlightRegistry interface: CSS.highlights must inherit property "highlightsFromPoint(float, float, optional HighlightsFromPointOptions)" with the proper type: PASS
+	HighlightRegistry interface: calling highlightsFromPoint(float, float, optional HighlightsFromPointOptions) on CSS.highlights with too few arguments must throw TypeError: PASS
+	HighlightRegistry interface: existence and properties of interface object: PASS
+	HighlightRegistry interface: existence and properties of interface prototype object: PASS
+	HighlightRegistry interface: existence and properties of interface prototype object's "constructor" property: PASS
+	HighlightRegistry interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	HighlightRegistry interface: maplike<DOMString, Highlight>: PASS
+	HighlightRegistry interface: operation highlightsFromPoint(float, float, optional HighlightsFromPointOptions): PASS
+	HighlightRegistry must be primary interface of CSS.highlights: PASS
+	Partial interface HighlightRegistry: member names are unique: PASS
+	Partial interface HighlightRegistry: original interface defined: PASS
+	Partial namespace CSS: member names are unique: PASS
+	Partial namespace CSS: original namespace defined: PASS
+	Stringification of CSS.highlights: PASS
+	Stringification of new Highlight(new Range()): PASS
+	idl_test setup: PASS
+	idl_test validation: PASS

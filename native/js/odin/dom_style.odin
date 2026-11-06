@@ -55,9 +55,10 @@ import "../odin/wj"
 	"position-try-fallbacks", "position-try-order", "position-visibility", "quotes", "resize", "right", "rotate", "row-gap",
 	"scale", "scroll-behavior", "scroll-margin", "scroll-padding", "scroll-snap-align", "scroll-snap-type", "scroll-timeline", "scroll-timeline-axis", "scroll-timeline-name",
 	"scrollbar-color", "scrollbar-gutter", "scrollbar-width", "stroke", "stroke-width", "tab-size", "table-layout",
-	"text-align", "text-align-last", "text-decoration", "text-decoration-color", "text-decoration-line",
-	"text-decoration-style", "text-decoration-thickness", "text-indent", "text-overflow", "text-rendering",
-	"text-shadow", "text-transform", "text-underline-offset", "text-wrap", "text-wrap-mode", "text-wrap-style", "timeline-scope", "top",
+	"text-align", "text-align-last", "text-decoration", "text-decoration-color", "text-decoration-inset", "text-decoration-line",
+	"text-decoration-skip-ink", "text-decoration-skip-spaces", "text-decoration-style", "text-decoration-thickness", "text-emphasis", "text-emphasis-color",
+	"text-emphasis-position", "text-emphasis-skip", "text-emphasis-style", "text-indent", "text-overflow", "text-rendering",
+	"text-shadow", "text-transform", "text-underline-offset", "text-underline-position", "text-wrap", "text-wrap-mode", "text-wrap-style", "timeline-scope", "top",
 	"touch-action", "transform", "transform-box", "transform-origin", "transform-style", "transition",
 	"transition-behavior", "transition-delay", "transition-duration", "transition-property",
 	"transition-timing-function", "translate", "unicode-bidi", "user-select", "vertical-align", "view-timeline", "view-timeline-axis", "view-timeline-inset", "view-timeline-name", "visibility",
@@ -68,7 +69,7 @@ import "../odin/wj"
 	"-webkit-align-items", "-webkit-animation", "-webkit-appearance", "-webkit-backface-visibility",
 	"-webkit-background-clip", "-webkit-border-radius", "-webkit-box-shadow", "-webkit-box-sizing", "-webkit-filter",
 	"-webkit-flex", "-webkit-flex-direction", "-webkit-justify-content", "-webkit-line-clamp", "-webkit-mask",
-	"-webkit-mask-image", "-webkit-text-fill-color", "-webkit-text-size-adjust", "-webkit-text-stroke",
+	"-webkit-mask-image", "-webkit-text-fill-color", "-webkit-text-size-adjust", "-webkit-text-stroke", "-webkit-text-stroke-color", "-webkit-text-stroke-width",
 	"-webkit-transform", "-webkit-transform-origin", "-webkit-transition", "-webkit-user-select",
 }
 

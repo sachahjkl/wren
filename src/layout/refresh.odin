@@ -165,10 +165,6 @@ refresh_paint_values :: proc(l: ^Layout, input: Input) -> bool {
 		it := &l.items[ii]
 		if l.boxes[it.box].cs.background_color == st.canvas { it.flags += {.No_Background} } else { it.flags -= {.No_Background} }
 	}
-	for ii in l.deco_items {
-		it := &l.items[ii]
-		it.deco_color = l.boxes[it.deco_box].cs.text_decoration_color
-	}
 	for &g in l.groups { g.alpha = max(l.boxes[g.box].cs.opacity, 0) }
 	groups_reach(l)
 	transforms := false   // some transform moved: the scrollable overflow follows

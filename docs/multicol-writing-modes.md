@@ -97,7 +97,7 @@ Writing modes:
 - `text-orientation: mixed` follows a table of ranges, not the whole of UTR #50's classes (Tr and Tu: upright, with what `vert` gives).
 - `text-combine-upright: digits <n>` is kept as a value and combines nothing (as Blink); `all` applies to a text of an element as one unit, and scales horizontally only.
 - `clip` (the CSS 2 property) clips an absolutely positioned box by its physical rect(), from the top-left corner of its border box in every writing mode (`layout/effects.odin` `clip_rect`), through the group of a clip-path: such a box is a stacking context, which in Blink it is not.
-- `ruby` has no layout in this engine. `text-emphasis`, `text-underline-position` are not there (underlines are on the left of a vertical line).
+- `ruby` has no layout in this engine. `text-emphasis` and `text-underline-position` follow the line: marks on the right or the left, underlines by `left` and `right` (`auto`: the under side, the right in Japanese and Korean, as Blink), and `text-decoration-skip-ink` leaves its gaps down a column, for glyphs turned sideways and upright alike.
 - `caret` in vertical editable text: `<input>` and `<textarea>` stay horizontal controls. `<meter>` and `<progress>` follow their own writing mode and direction; the rasteriser of the reference tests draws no control, so `forms/meter-*` and `forms/progress-*` cannot tell.
 - Baselines across frames: an orthogonal box has none (it is aligned by its margin edge); `dominant-baseline` is not there.
 

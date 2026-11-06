@@ -232,6 +232,7 @@ block_value :: proc(block: []Style_Decl, name: string) -> (value: string, import
 		}
 		return strings.join(vals[:], " ", context.temp_allocator), imp
 	}
+	if sh == .Text_Decoration && len(vals) == 4 { return style.text_decoration_canonical(vals[0], vals[1], vals[2], vals[3], context.temp_allocator), imp }
 	// border: the same width, style and color on every side
 	if sh == .Border && len(vals) == 12 {
 		for k in 0 ..< 3 {
@@ -428,9 +429,11 @@ COMPUTED_PROPERTIES :: [?]string{
 	"outline-offset", "outline-style", "outline-width", "overflow-wrap", "overflow-x", "overflow-y", "padding-bottom",
 	"padding-left", "padding-right", "padding-top", "pointer-events", "position", "position-anchor", "position-area", "position-try-fallbacks",
 	"position-try-order", "position-visibility", "right", "row-gap", "table-layout", "text-align",
-	"text-combine-upright", "text-decoration-color", "text-decoration-line", "text-decoration-style", "text-indent", "text-orientation", "text-overflow", "text-shadow",
-	"text-transform", "top", "transform", "transform-origin", "unicode-bidi", "user-select", "vertical-align", "visibility",
+	"text-combine-upright", "text-decoration-color", "text-decoration-inset", "text-decoration-line", "text-decoration-skip-ink", "text-decoration-skip-spaces", "text-decoration-style",
+	"text-decoration-thickness", "text-emphasis-color", "text-emphasis-position", "text-emphasis-skip", "text-emphasis-style", "text-indent", "text-orientation", "text-overflow", "text-shadow",
+	"text-transform", "text-underline-offset", "text-underline-position", "top", "transform", "transform-origin", "unicode-bidi", "user-select", "vertical-align", "visibility",
 	"white-space", "widows", "width", "word-break", "word-spacing", "writing-mode", "z-index",
+	"-webkit-text-stroke-color", "-webkit-text-stroke-width",
 }
 
 ComputedStyle_count :: proc(c: ^Call) -> u32 { return len(COMPUTED_PROPERTIES) }
@@ -492,13 +495,22 @@ kw :: proc(v: any) -> string {
 
 @(private)
 css_length :: proc(l: style.Length) -> string {
+	CALC_STEPS :: 1000   // (what is worked out of two sums, to what such values say)
 	switch l.kind {
 	case .Auto: return "auto"
 	case .None: return "none"
 	case .Normal: return "normal"
 	case .Px: return css_px(l.v)
 	case .Percent: return strings.concatenate({css_num(l.v), "%"}, context.temp_allocator)
-	case .Calc: return "calc(0px)"
+	case .Calc:
+		// (px and a percentage are all a computed one has left; both nothing: a length with a percentage is a percentage)
+		at_zero := css.eval_calc(l.calc, css.Length_Context{percent_base = 0})
+		at_hundred := css.eval_calc(l.calc, css.Length_Context{percent_base = 100})
+		px := f32(math.round(at_zero * CALC_STEPS) / CALC_STEPS)
+		percent := f32(math.round((at_hundred - at_zero) * CALC_STEPS) / CALC_STEPS)
+		if percent == 0 && px != 0 { return css_px(px) }
+		if px == 0 { return strings.concatenate({css_num(percent), "%"}, context.temp_allocator) }
+		return fmt.tprintf("calc(%s%% %s %s)", css_num(percent), px < 0 ? "-" : "+", css_px(abs(px)))
 	case .Min_Content: return "min-content"
 	case .Max_Content: return "max-content"
 	case .Fit_Content: return "fit-content"
@@ -696,13 +708,62 @@ computed_value :: proc(cs: ^style.Computed, name_in: string, used: Used_Box) -> 
 		return kw(cs.text_align)
 	case "text-decoration-line":
 		if cs.text_decoration == {} { return "none" }
-		parts := make([dynamic]string, 0, 3, context.temp_allocator)
+		parts := make([dynamic]string, 0, 4, context.temp_allocator)
 		if .Underline in cs.text_decoration { append(&parts, "underline") }
 		if .Overline in cs.text_decoration { append(&parts, "overline") }
 		if .Line_Through in cs.text_decoration { append(&parts, "line-through") }
+		if .Blink in cs.text_decoration { append(&parts, "blink") }
+		if .Spelling_Error in cs.text_decoration { append(&parts, "spelling-error") }
+		if .Grammar_Error in cs.text_decoration { append(&parts, "grammar-error") }
 		return strings.join(parts[:], " ", context.temp_allocator)
 	case "text-decoration-color": return css_color(cs.text_decoration_color)
 	case "text-decoration-style": return kw(cs.text_decoration_style)
+	case "text-decoration-thickness":
+		#partial switch cs.text_decoration_thickness.kind {
+		case .Auto: return "auto"
+		case .Normal: return "from-font"
+		}
+		return css_length(cs.text_decoration_thickness)
+	case "text-underline-offset": return cs.text_underline_offset.kind == .Auto ? "auto" : css_length(cs.text_underline_offset)
+	case "text-underline-position":
+		pos := cs.text_underline_position
+		parts := make([dynamic]string, 0, 2, context.temp_allocator)
+		if pos.place != .Auto { append(&parts, kw(pos.place)) }
+		if pos.side != .Auto { append(&parts, kw(pos.side)) }
+		return len(parts) == 0 ? "auto" : strings.join(parts[:], " ", context.temp_allocator)
+	case "text-decoration-skip-ink": return kw(cs.text_decoration_skip_ink)
+	case "text-decoration-skip-spaces":
+		skip := cs.text_decoration_skip_spaces
+		switch {
+		case .All in skip: return "all"
+		case skip == {}: return "none"
+		case skip == {.Start, .End}: return "start end"
+		}
+		return .Start in skip ? "start" : "end"
+	case "text-decoration-inset":
+		inset := cs.text_decoration_inset
+		if inset[0].kind == .Auto { return "auto" }
+		a, b := css_length(inset[0]), css_length(inset[1])
+		return a == b ? a : strings.concatenate({a, " ", b}, context.temp_allocator)
+	case "text-emphasis-style":
+		st := cs.text_emphasis_style
+		#partial switch st.shape {
+		case .None: return "none"
+		case .String: return fmt.tprintf("\"%s\"", st.text)
+		case .Auto: st.shape = style.is_vertical_mode(cs.writing_mode) ? .Sesame : .Circle
+		}
+		return st.open ? strings.concatenate({"open ", kw(st.shape)}, context.temp_allocator) : kw(st.shape)
+	case "text-emphasis-color": return css_color(style.emphasis_color(cs))
+	case "text-emphasis-position":
+		pos := cs.text_emphasis_position
+		if pos.auto { return "auto" }
+		return strings.concatenate({pos.under ? "under" : "over", pos.left ? " left" : ""}, context.temp_allocator)
+	case "text-emphasis-skip":
+		parts := make([dynamic]string, 0, 4, context.temp_allocator)
+		for k in style.Emphasis_Skip { if k in cs.text_emphasis_skip { append(&parts, kw(k)) } }
+		return strings.join(parts[:], " ", context.temp_allocator)
+	case "-webkit-text-stroke-color": return css_color(style.stroke_color(cs))
+	case "-webkit-text-stroke-width": return css_length(style.px(cs.text_stroke_width))
 	case "text-transform": return kw(cs.text_transform)
 	case "text-indent": return css_length(cs.text_indent)
 	case "text-overflow": return cs.text_ellipsis ? "ellipsis" : "clip"
@@ -852,7 +913,16 @@ computed_shorthand :: proc(cs: ^style.Computed, name: string, used: Used_Box) ->
 		return r == c ? r : strings.concatenate({r, " ", c}, context.temp_allocator)
 	case "flex": return strings.join({get(cs, used, "flex-grow"), get(cs, used, "flex-shrink"), get(cs, used, "flex-basis")}, " ", context.temp_allocator)
 	case "flex-flow": return strings.join({get(cs, used, "flex-direction"), get(cs, used, "flex-wrap")}, " ", context.temp_allocator)
-	case "text-decoration": return strings.join({get(cs, used, "text-decoration-line"), get(cs, used, "text-decoration-style"), get(cs, used, "text-decoration-color")}, " ", context.temp_allocator)
+	case "text-decoration":
+		// (the shortest that says it: what has its initial value goes)
+		parts := make([dynamic]string, 0, 4, context.temp_allocator)
+		if cs.text_decoration != {} { append(&parts, get(cs, used, "text-decoration-line")) }
+		if cs.text_decoration_thickness.kind != .Auto { append(&parts, get(cs, used, "text-decoration-thickness")) }
+		if cs.text_decoration_style != .Solid { append(&parts, get(cs, used, "text-decoration-style")) }
+		if cs.text_decoration_color != cs.color { append(&parts, get(cs, used, "text-decoration-color")) }
+		return len(parts) == 0 ? "none" : strings.join(parts[:], " ", context.temp_allocator)
+	case "text-emphasis": return strings.join({get(cs, used, "text-emphasis-style"), get(cs, used, "text-emphasis-color")}, " ", context.temp_allocator)
+	case "-webkit-text-stroke": return strings.join({get(cs, used, "-webkit-text-stroke-width"), get(cs, used, "-webkit-text-stroke-color")}, " ", context.temp_allocator)
 	case "background":
 		if len(cs.background_images) > 1 { return "" }   // (the longhands below answer for the first layer)
 		return fmt.tprintf("%s %s %s %s %s / %s %s %s", get(cs, used, "background-color"), get(cs, used, "background-image"), get(cs, used, "background-repeat"),
@@ -897,6 +967,10 @@ ComputedStyle_get :: proc(c: ^Call, element: Api_Element, pseudo: string, name: 
 	cs := style.style_of(st, h)
 	if cs == nil { return "" }
 	used: Used_Box
+	if kind, name_of, is_highlight, valid := style.highlight_pseudo_parse(pseudo); is_highlight {
+		if !valid { return "" }
+		cs = style.highlight_computed(st, p.doc, h, kind, name_of, context.temp_allocator)
+	}
 	switch pseudo {
 	case "::before", ":before":
 		cs = cs.before
