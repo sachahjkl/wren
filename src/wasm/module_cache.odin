@@ -28,6 +28,8 @@ import "wb:host"
 // What a module costs beyond its machine code (its mappings, whole pages, and the engine's tables of it), measured: 1300 modules of the JIT, 14 KB of
 // code each, took 40 KB each of private bytes. A session makes thousands of them: counted by their code alone, 256 MB of it were 700 MB.
 @(private) MODULE_BYTES :: 32 << 10
+// Flips a bit of the key of a module compiled for the engine without epoch checks.
+@(private) CACHE_KEY_POLLED :: 1
 
 Cache_Stats :: struct {
 	memory_hits:  int,
@@ -52,6 +54,7 @@ Cached :: struct {
 	memory_export: string,
 	table_export:  string,
 	memory64:      bool,      // memory 0 is 64-bit
+	polled:        bool,      // compiled for the engine without epoch checks (poll.odin)
 	code_bytes:    int,
 	users:         int,
 	last_use:      u64,
@@ -142,8 +145,9 @@ cached_free :: proc(c: ^Cached) {
 // The compiled module of `image`, ready to instantiate (`pre`), or an error message (allocated). Pair with
 // cache_release. `disk_only`: nil and no error when the module is neither in memory nor on disk (nothing compiled).
 @(private)
-cache_acquire :: proc(image: []byte, known: ^Digest = nil, disk_only := false) -> (c: ^Cached, err: string) {
+cache_acquire :: proc(image: []byte, known: ^Digest = nil, disk_only := false, polled := false) -> (c: ^Cached, err: string) {
 	caller := context.allocator
+	engine := polled ? wt.polled_engine : wt.engine
 	context.allocator = base.process_allocator()
 	key: Digest
 	if known != nil {
@@ -152,6 +156,9 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, disk_only := false) -
 		hashed: bool
 		key, hashed = sha256(image)
 		if !hashed { return nil, strings.clone("cannot hash the module", caller) }
+	}
+	if polled {
+		key[0] ~= CACHE_KEY_POLLED   // (the same image for the other engine is another entry)
 	}
 
 	sync.mutex_lock(&cache.lock)
@@ -175,15 +182,16 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, disk_only := false) -
 	module: wt_module
 	from_disk := false
 	if cache.disk {
-		filekey, _ = sha256(key[:], wt.fingerprint[:])
+		fingerprint := polled ? wt.polled_fingerprint : wt.fingerprint
+		filekey, _ = sha256(key[:], fingerprint[:])
 		path = disk_path(&cache.files, filekey)
-		module = disk_load(path, filekey)
+		module = disk_load(path, filekey, engine)
 		from_disk = module != nil
 	}
 	if module == nil && disk_only { return nil, "" }
 	if module == nil {
 		patched, copied := patch_image(image, info)
-		e := wasmtime_module_new(wt.engine, raw_data(patched), len(patched), &module)
+		e := wasmtime_module_new(engine, raw_data(patched), len(patched), &module)
 		if copied { delete(patched) }
 		if e != nil {
 			text := wt_error_text(e, context.temp_allocator)
@@ -199,6 +207,7 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, disk_only := false) -
 	c.memory_export = strings.clone(info.memory_export)
 	c.table_export = strings.clone(info.table_export)
 	c.memory64 = info.memory64
+	c.polled = polled
 	start, end: rawptr
 	wasmtime_module_image_range(module, &start, &end)
 	c.code_bytes = int(uintptr(end) - uintptr(start))
@@ -229,9 +238,10 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, disk_only := false) -
 // The compiled module of `image` read from the disk cache into memory ahead of its first instance (a process's first
 // JavaScript realm: page.js_startup), its imports resolved. False when it was not (not on disk, or memory keeps no
 // module): nothing is compiled. Any thread.
-read_ahead :: proc(image: []byte, known: ^Digest = nil) -> bool {
+read_ahead :: proc(image: []byte, known: ^Digest = nil, opt: Options = {}) -> bool {
 	if cache.max_bytes <= 0 { return false }
-	c, err := cache_acquire(image, known, disk_only = true)
+	_, polled := polled_image(image, opt)
+	c, err := cache_acquire(image, known, disk_only = true, polled = polled)
 	delete(err)
 	if c == nil { return false }
 	cache_release(c)
@@ -299,11 +309,11 @@ ensure_pre :: proc(c: ^Cached) {
 	v: wt_ptr_vec
 	wasmtime_module_imports(c.module, &v)
 	defer wasm_importtype_vec_delete(&v)
-	l := wt.linker
+	l := c.polled ? wt.polled_linker : wt.linker
 	clone: wt_linker
-	shadow :: proc(clone: ^wt_linker, l: ^wt_linker) {
+	shadow :: proc(clone: ^wt_linker, l: ^wt_linker, from: wt_linker) {
 		if clone^ != nil { return }
-		clone^ = wasmtime_linker_clone(wt.linker)
+		clone^ = wasmtime_linker_clone(from)
 		wasmtime_linker_allow_shadowing(clone^, true)
 		l^ = clone^
 	}
@@ -324,7 +334,7 @@ ensure_pre :: proc(c: ^Cached) {
 		wide := c.memory64 && im != nil && im.wide_params != nil
 		if im != nil && import_matches(ty, im, wide) {
 			if !wide { continue }
-			shadow(&clone, &l)
+			shadow(&clone, &l, c.polled ? wt.polled_linker : wt.linker)
 			if !define_import(clone, im, true) {
 				c.link_error = fmt.aprintf("cannot link %s.%s with 64-bit addresses", mod, name)
 				wasmtime_linker_delete(clone)
@@ -332,7 +342,7 @@ ensure_pre :: proc(c: ^Cached) {
 			}
 			continue
 		}
-		shadow(&clone, &l)
+		shadow(&clone, &l, c.polled ? wt.polled_linker : wt.linker)
 		s := new(Stub)
 		if im == nil {
 			s.message = fmt.aprintf("call to the import %s.%s, which the browser does not provide", mod, name)
@@ -360,12 +370,12 @@ ensure_pre :: proc(c: ^Cached) {
 
 // A module from the disk cache, or nil (missing, refused: then the file is deleted).
 @(private)
-disk_load :: proc(path: string, filekey: Digest) -> wt_module {
+disk_load :: proc(path: string, filekey: Digest, engine: wt_engine) -> wt_module {
 	data, payload := disk_read(&cache.files, path, filekey)
 	if data == nil { return nil }
 	defer delete(data, base.process_allocator())
 	m: wt_module
-	if e := wasmtime_module_deserialize(wt.engine, raw_data(payload), len(payload), &m); e != nil {
+	if e := wasmtime_module_deserialize(engine, raw_data(payload), len(payload), &m); e != nil {
 		wasmtime_error_delete(e)
 		disk_reject(&cache.files, path)
 		return nil

@@ -562,6 +562,7 @@ interp_call :: proc(ctx: ^Context, fo: ^Object, this: Value, new_target: Value, 
 // function's compiled code may run on it at once: the frame returned is then where it left (f.pc, f.sp), or the
 // caller's when the callee returned (its result pushed at the caller's sp).
 frame_push :: proc(ctx: ^Context, fo: ^Object, this: Value, args: []Value, jit := true) -> ^Frame {
+	poll_host()   // (a recursion that branches has no back edge, and takes the age of the universe to reach the stack's end)
 	rt := ctx.rt
 	fd := &fo.data.(Func_Data)
 	b := fd.bc

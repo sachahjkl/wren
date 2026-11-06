@@ -689,3 +689,68 @@ profiler_preference_reaches_wasmtime :: proc(t: ^testing.T) {
 	r, res := call_i32(inst, "add", 40, 2)
 	testing.expectf(t, res == .Ok && r == 42, "a call under the VTune strategy -> %v %v", r, res)
 }
+// A module with polls: its loops carry them, the deadline and the embedder's hook come through them on the engine without epoch
+// checks, and only an image the embedder calls its own runs there.
+@(private = "file") POLL_WORD :: 1024
+@(private = "file") POLL_CALL_MS :: 100
+@(private = "file") POLL_TICK_MS :: 2
+@(private = "file") POLL_MODULE :: `(module
+	(import "wren" "poll" (func $poll))
+	(memory (export "memory") 1)
+	(func $spin (export "spin") (loop $l (br $l)))
+	(func $counted (export "counted") (result i32)
+		(local $n i32)
+		(loop $l
+			(local.set $n (i32.add (local.get $n) (i32.const 1)))
+			(br_if $l (i32.lt_u (local.get $n) (i32.const 1000))))
+		(local.get $n))
+)`
+
+@(test)
+polls :: proc(t: ^testing.T) {
+	setup(t)
+	plain := wat(t, POLL_MODULE)
+	_, _, missing := poll_instrument(plain, POLL_WORD, {"no_such_function"}, context.temp_allocator)
+	testing.expect(t, missing != "", "a name of the list that is no function is an error")
+	image, stats, err := poll_instrument(plain, POLL_WORD, {"counted"}, context.temp_allocator)
+	testing.expect_value(t, err, "")
+	testing.expect_value(t, stats, Poll_Stats{functions = 2, loops = 2, polled = 1, exempt = 1})
+	word, has := poll_word_of(image)
+	testing.expect(t, has && word == POLL_WORD, "the section gives the word")
+	_, none := poll_word_of(plain)
+	testing.expect(t, !none, "a module without the section has no polls")
+	audit, without, aerr := poll_audit(image, context.temp_allocator)
+	testing.expect_value(t, aerr, "")
+	testing.expect_value(t, audit.polled, 1)
+	testing.expect_value(t, without["counted"], 1)
+	testing.expect_value(t, len(without), 1)
+
+	o := options_default()
+	o.max_call_ms = POLL_CALL_MS
+	o.polled = true
+	inst := make_instance(t, image, o)
+	if inst != nil {
+		testing.expect(t, inst.wt.polled && inst.poll_word != nil, "the image runs on the engine without epoch checks")
+		ran := 0
+		set_preempt_hook(proc(user: rawptr) { (^int)(user)^ += 1 }, &ran, tick_ms = POLL_TICK_MS)
+		_, res := call_i32(inst, "spin")
+		set_preempt_hook(nil, nil)
+		testing.expectf(t, res == .Trapped && strings.contains(inst.last_error, "wasm.max_call_ms"), "the deadline ends an endless loop through its poll (%s)", inst.last_error)
+		testing.expect(t, ran > 0, "the hook ran under the loop")
+		n, res2 := call_i32(inst, "counted")
+		testing.expect(t, res2 == .Ok && n == 1000, "a loop without a poll runs, and the instance is usable after the trap")
+		testing.expect(t, inst.poll_next == nil && inst.poll_prev == nil && wt.polls == nil, "no call in progress, no word on the ticker's list")
+		destroy(inst)
+	}
+
+	// not its own: the epoch's checks stop them, whatever the module says or the embedder asks
+	for c in ([]struct{ image: []byte, polled: bool }{{image, false}, {plain, true}}) {
+		o.polled = c.polled
+		other := make_instance(t, c.image, o)
+		if other == nil { continue }
+		testing.expect(t, !other.wt.polled && other.poll_word == nil, "it stays on the engine with epoch checks")
+		_, res := call_i32(other, "spin")
+		testing.expectf(t, res == .Trapped && strings.contains(other.last_error, "wasm.max_call_ms"), "the epoch ends it (%s)", other.last_error)
+		destroy(other)
+	}
+}

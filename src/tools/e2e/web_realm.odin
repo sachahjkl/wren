@@ -563,6 +563,22 @@ try { flood(); } catch (e) {}
 	close_page(pr, min_checks = 3)
 }
 
+// A native in a loop of its own: nothing of the engine's counts it, the flag of the slow script goes unseen. Only the poll of
+// that loop reaches it (src/wasm/poll.odin): the hard stop ends it, the page's scripts with it, and the page goes on.
+@(test)
+js_hostile_a_native_that_never_ends :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	hostile()
+	pr := load(t, "stuck native", HEAD + `<body><script>wrenTest.check(true, "the page starts")</script>
+<script>Array.prototype.lastIndexOf.call({ length: 2 ** 53 - 1 }, 1)</script></body>`)
+	pr.expect_uncaught = true
+	check(pr, console_says(pr, "wasm.max_call_ms"), "the deadline ended the native")
+	check(pr, settle() < SETTLE_TURNS, "and leaves nothing running")
+	close_page(pr, min_checks = 3)
+}
+
 @(test)
 js_hostile_an_observer_that_feeds_itself :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()

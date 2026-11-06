@@ -61,6 +61,17 @@
   document.addEventListener("selectionchange", () => { window.changes++; });
   function down() { window.downs++; }
   document.addEventListener("mousedown", down);
+  // The same inside a native: an array-like this long is a tenth of a second or more of a loop in the engine.
+  const NATIVE_LENGTH = 1 << 23;
+  window.holdNative = () => {
+    window.released = false;
+    setTimeout(() => {
+      const h = innerHeight, begun = performance.now(), like = { length: NATIVE_LENGTH };
+      while (innerHeight == h && performance.now() - begun < HOLD_LIMIT_MS) Array.prototype.lastIndexOf.call(like, 1);
+      window.released = innerHeight != h;
+    }, 0);
+    return "held";
+  };
   window.hold = (mutates = false) => {
     window.released = false;
     setTimeout(() => {

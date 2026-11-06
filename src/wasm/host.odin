@@ -61,6 +61,12 @@ import_key :: proc(module, name: string, allocator := context.temp_allocator) ->
 register :: proc(imports: []Import) -> bool {
 	sync_lock()
 	defer sync_unlock()
+	return register_unlocked(imports)
+}
+
+// Under runtime_lock.
+@(private)
+register_unlocked :: proc(imports: []Import) -> bool {
 	context.allocator = base.process_allocator()
 	fresh := make([dynamic]^Import, 0, len(imports), context.temp_allocator)
 	seen := make(map[string]bool, len(imports), context.temp_allocator)
@@ -97,6 +103,7 @@ register :: proc(imports: []Import) -> bool {
 		append(&registry, im)
 		registry_index[import_key(im.module, im.name, base.process_allocator())] = im
 		if wt.engine != nil { ok &&= define_import(wt.linker, im, false) }
+		if wt.polled_linker != nil { ok &&= define_import(wt.polled_linker, im, false) }
 	}
 	if wt.engine != nil { wt.linker_gen += 1 }
 	return ok

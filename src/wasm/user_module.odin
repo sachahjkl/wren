@@ -145,7 +145,7 @@ user_module_compile :: proc(image: []byte, partition: string = "") -> (c: User_C
 		// (a module's compiled form depends on the settings: the fingerprint)
 		filekey, _ = sha256(transmute([]byte)string("page module"), transmute([]byte)partition, image, wt.fingerprint[:])
 		path = disk_path(&cache.files, filekey)
-		if c.module = disk_load(path, filekey); c.module != nil {
+		if c.module = disk_load(path, filekey, wt.engine); c.module != nil {
 			sync.mutex_guard(&cache.lock)
 			cache.stats.disk_hits += 1
 			return

@@ -106,7 +106,7 @@ jit_cfg: Jit_Cfg
 
 // The engine's procedures compiled code calls: exported by the glue (native/js/odin/jit.odin) under these names,
 // imported by a module whose loop calls (function index = the helper's), each (i32...) -> i32.
-Jit_Helper :: enum u8 {call, array, finish, new, reserve, add, streq, get, set, step, truthy}
+Jit_Helper :: enum u8 {call, array, finish, new, reserve, add, streq, get, set, step, truthy, poll}
 
 Jit_Helper_Def :: struct {
 	name:   string,
@@ -125,6 +125,7 @@ JIT_HELPERS :: [Jit_Helper]Jit_Helper_Def {
 	.set     = {"wj_jit_set", 6},
 	.step    = {"wj_jit_step", 3},
 	.truthy  = {"wj_jit_truthy", 3},
+	.poll    = {"wj_jit_poll", 0},
 }
 
 // The engine's table, which a module whose code calls compiled code directly imports ("e" "table": the host gives it
@@ -3887,6 +3888,13 @@ j_direct_call :: proc(c: ^Jc, fo: ^Object, argc: int, kind: Jit_Call_Kind, low: 
 		j_mem(c, W_I32_STORE, 2, off)
 	}
 	j_st32(c, P_FRAME, FRAME_PC, i32(next))
+	// compiled code calling compiled code passes no back edge, nor frame_push: its recursions look at the host's word here
+	j_ld32(c, uintptr(&poll_word), 0)
+	j_op(c, W_IF)
+	j_op(c, W_VOID)
+	j_helper(c, .poll)
+	j_op(c, W_DROP)
+	j_op(c, W_END)
 	// the call (T3: the index of the code called)
 	j_ld32(c, info, INFO_FN_INDEX)
 	j_lset(c, I_T3)

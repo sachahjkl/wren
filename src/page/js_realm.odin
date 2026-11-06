@@ -15,6 +15,7 @@ package page
 //     (a trap in the middle of the engine would leave its heap inconsistent).
 
 import "core:fmt"
+import "core:os"
 import "core:strings"
 import "core:sync"
 import "wb:base"
@@ -58,6 +59,9 @@ js_on_realm_started: proc(p: ^Page)
 
 // The engine image pages run.
 js_engine_image :: proc() -> []byte { return js_image_override != nil ? js_image_override : js_image.IMAGE }
+
+// The image runs on the engine without epoch checks (wasm/poll.odin), but for a sampling profile of the engine (WREN_WASM_PROFILE): a sample falls at a check, and those are at function entries.
+js_polled :: proc() -> bool { return os.get_env("WREN_WASM_PROFILE", context.temp_allocator) == "" }
 
 @(private)
 js_engine_once: sync.Once
@@ -104,7 +108,7 @@ js_read_ahead: Js_Read_Ahead
 js_read_ahead_start :: proc() {
 	sync.atomic_store(&js_read_ahead.state, sync.Futex(Js_Read_Ahead_State.Running))
 	js_read_ahead.th = host.thread_start(proc(_: rawptr) {
-		_ = wasm.read_ahead(js_engine_image(), js_image_digest())
+		_ = wasm.read_ahead(js_engine_image(), js_image_digest(), {polled = js_polled()})
 		sync.atomic_store(&js_read_ahead.state, sync.Futex(Js_Read_Ahead_State.Done))
 		sync.futex_broadcast(&js_read_ahead.state)
 	}, nil, name = "wren-js-read-ahead")
@@ -149,6 +153,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 	// (a worker terminated while it starts: nothing went wrong, a page may well do that at once)
 	stopping := proc(opt: ^wasm.Options) -> bool { return opt.stop != nil && bool(sync.atomic_load(opt.stop)) }
 	js_read_ahead_wait()
+	opt.polled = js_polled()
 	inst, err := wasm.instance_create(js_engine_image(), p, p.scope, opt, "javascript", nil, js_image_digest())
 	if inst == nil {
 		r.failed = true

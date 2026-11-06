@@ -12,14 +12,14 @@ import "core:time"
 // Starts sampling `inst`, created from `image`. False when the image is not in the code cache or a profile runs.
 profile_start :: proc(inst: ^Instance, image: []byte) -> bool {
 	if inst == nil || inst.wt.profiler != nil { return false }
-	c, err := cache_acquire(image)
+	c, err := cache_acquire(image, polled = inst.wt.polled)
 	delete(err)
 	if c == nil { return false }
 	defer cache_release(c)
 	name := wt_byte_vec{size = uint(len(inst.name)), data = raw_data(inst.name)}
 	mods := [1]wt_profiler_module{{name = &name, mod = c.module}}
 	interval := u64(max(wt.rs.epoch_tick_ms, 1)) * 1_000_000
-	inst.wt.profiler = wasmtime_guestprofiler_new(wt.engine, &name, interval, &mods[0], 1)
+	inst.wt.profiler = wasmtime_guestprofiler_new(inst.wt.polled ? wt.polled_engine : wt.engine, &name, interval, &mods[0], 1)
 	inst.wt.profile_last = time.tick_now()
 	return inst.wt.profiler != nil
 }

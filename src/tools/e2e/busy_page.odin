@@ -319,6 +319,18 @@ a_scroll_box_scrolls_while_the_page_is_busy :: proc(t: ^testing.T) {
 
 @(test)
 the_caret_blinks_while_the_page_is_busy :: proc(t: ^testing.T) {
+	caret_blinks(t, "hold()")
+}
+
+// The frames under a native: a few long calls of it, each with a loop of its own, and no back edge of the script between two frames. What
+// gives them their turn is the poll of that loop (src/wasm/poll.odin).
+@(test)
+the_caret_blinks_while_a_native_keeps_the_thread :: proc(t: ^testing.T) {
+	caret_blinks(t, "holdNative()")
+}
+
+@(private = "file")
+caret_blinks :: proc(t: ^testing.T, hold: string) {
 	s := open(t, {fmt.tprintf("forms.caret.blink_ms=%d", CARET_BLINK_MS)})
 	short := false
 	field := e2e.box_model(s, "#field")
@@ -328,7 +340,7 @@ the_caret_blinks_while_the_page_is_busy :: proc(t: ^testing.T) {
 		if i > 0 { append(&steps, e2e.busy_wait(CARET_GAP_MS)) }
 		append(&steps, e2e.busy_capture())
 	}
-	shots := while_held(s, &short, steps[:])
+	shots := while_held(s, &short, steps[:], hold)
 	toggled := 0
 	for sh in shots[1:] { if differing(shots[0], sh, field.window) > 0 { toggled += 1 } }
 	testing.expectf(t, toggled > 0, "the caret blinks under the task: %d of %d pictures differ from the first", toggled, len(shots) - 1)
