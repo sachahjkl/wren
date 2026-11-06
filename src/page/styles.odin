@@ -477,6 +477,7 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 		style.styled_recycle(e, old)
 		p.style_stale = false
 		e.restyle_needed = false
+		clear(&e.controls_changed)
 		fonts_sync(p)
 		// later mutations restyle partially: they need the document's mutation journal from now on
 		if e.settings.inc_enabled {

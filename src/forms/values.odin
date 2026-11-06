@@ -513,7 +513,7 @@ set_checked :: proc(f: ^Forms, h: base.Handle, v: bool, dirty := true) -> Error 
 		}
 	}
 	changed(f, h)
-	changed_widely(f)
+	if t == .Radio { changed_widely(f) }   // (its group; a checkbox's form follows from the control: scripts set this on page after page, a full style pass each)
 	return .None
 }
 

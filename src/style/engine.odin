@@ -13,6 +13,8 @@ import "wb:dom"
 // The viewport before the embedder has given one.
 DEFAULT_VIEWPORT_W :: 1280
 DEFAULT_VIEWPORT_H :: 800
+// Controls changed between two passes past which a full pass is cheaper than the search of each one.
+CONTROLS_CHANGED_MAX :: 64
 
 // The style engine: stylesheets in, an index of rules out. `compute_styles` (cascade.odin) then turns a document into
 // computed styles.
@@ -234,6 +236,7 @@ engine_destroy :: proc(e: ^Engine) {
 	delete(e.arrived_rules)
 	delete(e.arrived_imports)
 	delete(e.hidden_changed)
+	delete(e.controls_changed)
 	departed_free(e)
 	delete(e.departed)
 	shadow_styles_destroy(e)

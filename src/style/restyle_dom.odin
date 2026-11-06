@@ -869,6 +869,30 @@ attribute_changed_in :: proc(m: ^Marker, ix: ^Inv_Index, ch: Attr_Change, n: ^do
 	}
 }
 
+// What the attributes the forms model falls back on stand for in the arguments of :has(): a change of the state of a control is read
+// as one of them.
+@(private = "file")
+CONTROL_STATE_ATTRIBUTES :: [?]string{"checked", "selected", "type", "disabled", "readonly", "contenteditable", "required", "value", "placeholder"}
+
+// The pseudo-classes of control `h` may have changed: what the rules that ask the forms model reach from it, as for an attribute of
+// a form control (attribute_changed_in). A script writing a value in a field made a full pass of the document, whatever the rules said.
+@(private = "file")
+control_changed :: proc(m: ^Marker, h: base.Handle) {
+	n := dom.get(m.doc, h)
+	if n == nil || n.kind != .Element || !connected(m.doc, h) { return }
+	for ix in ixs_for(m, h) {
+		if !ix.uses_controls { continue }
+		if control_groups_used(m.e, ix, m.s) {
+			if group_control(m.doc, h, n) { m.fail = "a control of a group changed"; return }
+			mark_form_ancestors(m, h)
+		}
+		apply(m, h, ix.controls)
+		for name in CONTROL_STATE_ATTRIBUTES {
+			if name in ix.has_attrs { has_invalidate(m, h, false, Has_Change{kind = .Attr, name = name}) }
+		}
+	}
+}
+
 // Marks what the mutations since `s` reach. A non-empty m.fail: the change cannot be scoped.
 @(private = "file")
 mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
@@ -1362,7 +1386,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	e.last_restyle = {}
 	shadows := dom.has_shadow_trees(doc)
 	if e.dirty { return fail(e, "rules changed") }
-	if s.mutations == doc.mutations && !e.shadow.dirty && len(e.shadow.changed) == 0 { return false, true }
+	if s.mutations == doc.mutations && !e.shadow.dirty && len(e.shadow.changed) == 0 && len(e.controls_changed) == 0 { return false, true }
 	if !e.settings.inc_enabled { return fail(e, "disabled") }
 	// the rule sets of shadow trees whose sheets changed: their hosts are restyled with their flat subtrees
 	if e.shadow.dirty { scopes_resolve(e, doc) }
@@ -1407,6 +1431,11 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	m.flip_limit = max(int(limit), FLIP_LIMIT_MIN)
 	members_prepare(&m, entries)
 	mark_mutations(&m, entries)
+	for h in e.controls_changed {
+		if m.fail != "" { break }
+		control_changed(&m, h)
+	}
+	if m.fail == "" { marks_keyed_scan(&m) }
 	e.last_restyle.flips = len(m.flips)
 	e.last_restyle.flip_steps = m.flip_steps
 	if m.fail != "" { return fail(e, m.fail) }
@@ -1477,6 +1506,8 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	}
 	if w.motion { sync.atomic_store(&s.motion, true) }
 	s.mutations = doc.mutations
+	clear(&e.controls_changed)
+	e.last_restyle.has_scans = w.p.mc.has_scans
 	e.last_restyle.marked = w.marked
 	e.last_restyle.changed = w.changed
 	e.last_restyle.rewalked = rewalked
