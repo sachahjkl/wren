@@ -32,6 +32,16 @@ array_append_ok :: #force_inline proc(ctx: ^Context, o: ^Object) -> bool {
 	return o.shape.proto == ctx.class_proto[.array] && ctx.std_array_proto && !ctx.rt.std_protos_touched
 }
 
+// Is `o` an Array whose length already is `n`: a set that would change nothing and is seen by nothing?
+@(private = "file")
+array_length_is :: proc(o: Value, n: i64) -> bool {
+	if o.tag != .object {return false}
+	a := as_obj(o)
+	if a.class != .array {return false}
+	l := a.slots[0].value
+	return l.tag == .int && i64(l.u.i) == n
+}
+
 set_length :: proc(ctx: ^Context, o: Value, n: i64) -> bool {
 	return set(ctx, o, pa(.A_length), mk_i64(n), true) >= 0
 }
@@ -47,6 +57,7 @@ this_obj :: proc(ctx: ^Context, this: Value) -> (Value, i64, bool) {
 
 // ArraySpeciesCreate.
 array_species_create :: proc(ctx: ^Context, original: Value, length: i64) -> Value {
+	if array_species_is_default(ctx, original) {return array_create(ctx, length)}
 	ia := is_array_value(ctx, original)
 	if ia < 0 {return EXCEPTION}
 	if ia == 0 {return array_create(ctx, length)}
@@ -65,6 +76,34 @@ array_species_create :: proc(ctx: ^Context, original: Value, length: i64) -> Val
 	if is_undefined(c) {return array_create(ctx, length)}
 	if !is_constructor(c) {return throw_type_error(ctx, "species is not a constructor")}
 	return construct(ctx, c, {mk_i64(length)}, c)
+}
+
+// An array of this realm that nothing was added to, under an untouched Array.prototype.constructor and Array[@@species]: what
+// ArraySpeciesCreate reads, read here without a [[Get]] or the getter's call.
+@(private = "file")
+array_species_is_default :: proc(ctx: ^Context, original: Value) -> bool {
+	if original.tag != .object || as_obj(original).shape != ctx.array_shape {return false}
+	ap := ctx.class_proto[.array]
+	i := shape_find(ap.shape, pa(.A_constructor))
+	if i < 0 || ap.shape.props[i].kind != .data {return false}
+	c := ap.slots[i].value
+	if c.tag != .object || as_obj(c) != ctx.array_ctor {return false}
+	ctor := ctx.array_ctor
+	j := shape_find(ctor.shape, well_known_atom(.species))
+	if j < 0 || ctor.shape.props[j].kind != .accessor {return false}
+	g := ctor.slots[j].getset.getter
+	if g == nil || g.class != .c_function {return false}
+	return g.data.(Native_Data).fn == species_getter
+}
+
+// Element k of a fast array, rooted as get_index does: no step of the object protocol to take. False: the protocol's.
+array_element :: #force_inline proc(rt: ^Runtime, o: ^Object, k: i64) -> (v: Value, ok: bool) {
+	if !o.fast_array {return}
+	ad := &o.data.(Array_Data)
+	if u64(k) >= u64(ad.count) {return}
+	v = ad.values[k]
+	root(rt, v)
+	return v, true
 }
 
 // ArrayCreate(length).
@@ -217,6 +256,11 @@ ap_concat :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Valu
 			if n + l > MAX_SAFE_INT {return throw_type_error(ctx, "array too long")}
 			eo := as_obj(e)
 			for k in 0 ..< l {
+				if v, fast := array_element(ctx.rt, eo, k); fast {
+					if create_data_index(ctx, ao, n, v) < 0 {return EXCEPTION}
+					n += 1
+					continue
+				}
 				h := has_index(ctx, eo, k)
 				if h < 0 {return EXCEPTION}
 				if h == 1 {
@@ -232,7 +276,7 @@ ap_concat :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Valu
 			n += 1
 		}
 	}
-	if !set_length(ctx, a, n) {return EXCEPTION}
+	if !array_length_is(a, n) && !set_length(ctx, a, n) {return EXCEPTION}
 	return a
 }
 
@@ -293,11 +337,14 @@ ap_iterate :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 	m := temp_mark(rt)
 	for k in 0 ..< n {
 		temp_reset(rt, m)
-		h := has_index(ctx, oo, k)
-		if h < 0 {return EXCEPTION}
-		if h == 0 {continue}
-		v := get_index(ctx, o, k)
-		if is_exception(v) {return EXCEPTION}
+		v, fast := array_element(rt, oo, k)
+		if !fast {
+			h := has_index(ctx, oo, k)
+			if h < 0 {return EXCEPTION}
+			if h == 0 {continue}
+			v = get_index(ctx, o, k)
+			if is_exception(v) {return EXCEPTION}
+		}
 		r := call(ctx, cb, this_arg, {v, mk_i64(k), o})
 		if is_exception(r) {return EXCEPTION}
 		switch magic {
@@ -745,6 +792,11 @@ ap_slice :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value
 	oo := as_obj(o)
 	idx: i64 = 0
 	for ; k < final; k += 1 {
+		if v, fast := array_element(ctx.rt, oo, k); fast {
+			if create_data_index(ctx, as_obj(a), idx, v) < 0 {return EXCEPTION}
+			idx += 1
+			continue
+		}
 		h := has_index(ctx, oo, k)
 		if h < 0 {return EXCEPTION}
 		if h == 1 {
@@ -754,7 +806,7 @@ ap_slice :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value
 		}
 		idx += 1
 	}
-	if !set_length(ctx, a, idx) {return EXCEPTION}
+	if !array_length_is(a, idx) && !set_length(ctx, a, idx) {return EXCEPTION}
 	return a
 }
 

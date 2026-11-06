@@ -56,11 +56,11 @@ coro_free :: proc(rt: ^Runtime, co: ^Coro) {
 	if co.frame != nil {
 		f := co.frame
 		if f.storage != nil {mem_free(rt, f.storage, f.storage_len * size_of(Value))}
-		free(f, rt_allocator(rt))
+		mem_delete(rt, f)
 		co.frame = nil
 	}
 	delete(co.queue)
-	free(co, rt_allocator(rt))
+	mem_delete(rt, co)
 }
 
 // Finish a coroutine: close its closure cells (they stay usable by closures) and drop the frame.
@@ -74,7 +74,7 @@ coro_complete :: proc(rt: ^Runtime, co: ^Coro) {
 
 @(private = "file")
 coro_new :: proc(ctx: ^Context, kind: Coro_Kind, holder: ^Object, fo: ^Object, this: Value, args: []Value) -> ^Coro {
-	co := new(Coro, rt_allocator(ctx.rt))
+	co := mem_new(ctx.rt, Coro)
 	co.kind = kind
 	co.resolve = UNDEFINED
 	co.reject = UNDEFINED

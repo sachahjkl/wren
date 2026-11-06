@@ -285,7 +285,16 @@ set_home_object :: proc(func: Value, home: Value) {
 // A native function object.
 new_native_function :: proc(ctx: ^Context, fn: Native_Proc, name: string, length: int, magic: i32 = 0, kind: Native_Kind = .function, proto: ^Object = nil) -> ^Object {
 	rt := ctx.rt
-	o := object_new_proto(ctx, proto != nil ? proto : ctx.function_proto, .c_function)
+	if proto == nil || proto == ctx.function_proto {
+		// (the shape of a plain closure, without its prototype: nothing to define, and resolving functions come two by promise)
+		o := object_new_shape(rt, closure_shape(ctx, .normal, false), .c_function)
+		o.data = Native_Data{fn = fn, realm = ctx, magic = magic}
+		set_native_kind(o, kind)
+		o.slots[CLOSURE_SLOT_LENGTH].value = mk_int(i32(length))
+		o.slots[CLOSURE_SLOT_NAME].value = mk_str(name == "" ? rt.empty_string : str_interned(rt, str_from_utf8(rt, name)))
+		return o
+	}
+	o := object_new_proto(ctx, proto, .c_function)
 	o.data = Native_Data{fn = fn, realm = ctx, magic = magic}
 	set_native_kind(o, kind)
 	object_reserve_exact(rt, o, 2)
@@ -639,7 +648,7 @@ coro_frame_new :: proc(ctx: ^Context, fo: ^Object, this: Value, args: []Value) -
 	realm := b.realm != nil ? b.realm : ctx
 	arg_buf_len := max(len(args), int(b.arg_count))
 	total, _ := frame_slots(b, arg_buf_len)
-	f := new(Frame, rt_allocator(rt))
+	f := mem_new(rt, Frame)
 	mem := mem_array(rt, Value, max(total, 1))
 	f.storage = mem
 	f.storage_len = max(total, 1)
@@ -657,7 +666,7 @@ coro_frame_free :: proc(rt: ^Runtime, f: ^Frame) {
 	if f == nil {return}
 	close_var_refs(f)
 	if f.storage != nil {mem_free(rt, f.storage, f.storage_len * size_of(Value))}
-	free(f, rt_allocator(rt))
+	mem_delete(rt, f)
 }
 
 // Resume a suspended coroutine frame until it yields, awaits, returns or throws.

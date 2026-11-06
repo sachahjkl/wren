@@ -39,7 +39,7 @@ promise_data :: proc(v: Value) -> ^Promise_Data {
 
 promise_new_raw :: proc(ctx: ^Context, proto: ^Object) -> ^Object {
 	o := object_new_proto(ctx, proto, .promise)
-	pd := new(Promise_Data, rt_allocator(ctx.rt))
+	pd := mem_new(ctx.rt, Promise_Data)
 	pd.result = UNDEFINED
 	pd.reactions = make([dynamic]Promise_Reaction, rt_allocator(ctx.rt))
 	o.data = pd

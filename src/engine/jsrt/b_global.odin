@@ -407,7 +407,6 @@ async_from_sync_method :: proc(ctx: ^Context, this: Value, args: []Value, magic:
 
 // --- Promise registration ---
 
-@(private = "file")
 species_getter :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {return this}
 
 install_species :: proc(ctx: ^Context, c: ^Object) {

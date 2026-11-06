@@ -41,7 +41,7 @@ Iter_State :: struct {
 
 iter_state_new :: proc(ctx: ^Context, proto: ^Object, class: Class_ID, kind: Iter_Kind, target: Value) -> ^Object {
 	o := object_new_proto(ctx, proto, class)
-	st := new(Iter_State, rt_allocator(ctx.rt))
+	st := mem_new(ctx.rt, Iter_State)
 	st.kind = kind
 	st.target = target
 	st.a = UNDEFINED
@@ -58,7 +58,7 @@ iter_state_free :: proc(rt: ^Runtime, st: ^Iter_State) {
 	}
 	delete(st.keys)
 	delete(st.buf)
-	free(st, rt_allocator(rt))
+	mem_delete(rt, st)
 }
 
 iter_state_trace :: proc(rt: ^Runtime, st: ^Iter_State) {

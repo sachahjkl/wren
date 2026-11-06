@@ -203,6 +203,15 @@ mem_resize :: proc(rt: ^Runtime, p: rawptr, old_size, new_size: int) -> rawptr {
 	return np
 }
 
+// What belongs to one cell, from the pool: the general allocator costs several times more. mem_delete gives it back.
+mem_new :: #force_inline proc(rt: ^Runtime, $T: typeid) -> ^T {
+	return cast(^T)mem_alloc(rt, size_of(T))
+}
+
+mem_delete :: #force_inline proc(rt: ^Runtime, p: ^$T) {
+	mem_free(rt, p, size_of(T))
+}
+
 // A typed array of `n` T from the heap (zeroed).
 mem_array :: proc(rt: ^Runtime, $T: typeid, n: int) -> [^]T {
 	return cast([^]T)mem_alloc(rt, n * size_of(T))
@@ -249,7 +258,7 @@ root_cell :: #force_inline proc(rt: ^Runtime, c: ^Cell) {
 	if c != nil {list_push(&rt.temp_roots, c)}
 }
 
-temp_mark :: #force_inline proc(rt: ^Runtime) -> int {return len(rt.temp_roots)}
+temp_mark :: #force_inline proc "contextless" (rt: ^Runtime) -> int {return len(rt.temp_roots)}
 
 // Odin's resize is a call, and this runs at each call, return and back edge.
 temp_reset :: #force_inline proc "contextless" (rt: ^Runtime, m: int) {
