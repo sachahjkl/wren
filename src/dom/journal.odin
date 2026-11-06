@@ -156,6 +156,7 @@ Watch :: struct {
 }
 
 WATCH_KNOWN :: u64(1) << 63
+WATCH_BITS :: 62   // the bits of a mask that name features
 
 @(private)
 watch_free :: proc(w: ^Watch) {
@@ -190,7 +191,7 @@ watch_bit :: proc(d: ^Document, kind: Feature, name: string) -> u64 {
 	}
 	if b, ok := m[name]; ok { return b }
 	n := len(w.tags) + len(w.attrs) + len(w.ids) + len(w.classes)
-	b := u64(1) << u32(min(n, 62))
+	b := u64(1) << u32(n % WATCH_BITS)   // (past them, bits are shared: a false hit costs a look; all on the last one, as they were, any subtree held every feature past the 62nd)
 	m[strings.clone(name)] = b
 	return b
 }

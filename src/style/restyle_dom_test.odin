@@ -6,6 +6,7 @@ import "core:math/rand"
 import "core:strings"
 import "core:testing"
 import "wb:base"
+import "wb:css"
 import "wb:dom"
 import "wb:host"
 
@@ -228,6 +229,118 @@ restyle_dom_has_child_combinator_reaches_one_level :: proc(t: ^testing.T) {
 	expect_partial(t, f, "sibling anchor", 3)
 }
 
+// One `:has(+ .m)` in a sheet says nothing of the other anchors: `:has(.k:hover)` can only be an ancestor of what changed, not the
+// siblings before it, nor those of its ancestors. On cnn.com every <script> added to <head> restyled all of <head>.
+@(test)
+restyle_dom_has_siblings_concern_those_that_read_them :: proc(t: ^testing.T) {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>:has(.k:hover) { margin: 1px } :has(+ .m) { padding: 1px } i:has(~ .n) { outline: 1px solid red }</style><div id=r>`)
+	for _ in 0 ..< 30 { strings.write_string(&sb, "<p><i>t</i></p>") }
+	strings.write_string(&sb, `<section id=s></section></div>`)
+	f := rx_load(strings.to_string(sb))
+	defer rx_unload(f)
+	s := by_id(f, "s")
+	n := dom.create_element(f.doc, "b")
+	dom.set_attribute(f.doc, n, "class", "k")
+	dom.append_child(f.doc, s, n)
+	expect_partial(t, f, "an element the descendant anchor tests", 8)   // itself, then s, r, body, html: not the 30 <p> before s
+	dom.remove_child(f.doc, s, n)
+	expect_partial(t, f, "and it goes", 8)
+	dom.release(f.doc, n)
+	// what reads siblings still does: the element before the one that comes, and after one that goes
+	m := dom.create_element(f.doc, "u")
+	dom.set_attribute(f.doc, m, "class", "m")
+	dom.insert_before(f.doc, by_id(f, "r"), m, s)
+	expect_partial(t, f, ":has(+ .m) on the element before")
+	dom.remove_child(f.doc, by_id(f, "r"), m)
+	expect_partial(t, f, ":has(+ .m) after it left")
+	dom.release(f.doc, m)
+	last := dom.get(f.doc, by_id(f, "r")).last_child
+	o := dom.create_element(f.doc, "u")
+	dom.set_attribute(f.doc, o, "class", "n")
+	dom.append_child(f.doc, last, o)
+	expect_partial(t, f, ":has(~ .n) among the children")
+	dom.remove_child(f.doc, last, o)
+	expect_partial(t, f, ":has(~ .n) when it left")
+	dom.release(f.doc, o)
+}
+
+// A rule of `:has(.a)` alone is tried on every element restyled. What holds a member is known: no subtree is walked, and the answer is
+// what the walk would say, an element that left taken into account.
+@(test)
+restyle_dom_has_answered_from_the_members :: proc(t: ^testing.T) {
+	f := rx_load(`<style>:has(.m) { margin: 1px } .t { padding: 1px }</style><div id=r><div id=a><p id=p>x</p><i class=m id=i>y</i></div><div id=b><p id=q>z</p></div></div>`)
+	defer rx_unload(f)
+	dom.set_attribute(f.doc, by_id(f, "r"), "title", "x")
+	expect_partial(t, f, "a first change")   // (it takes the members)
+	dom.set_attribute(f.doc, by_id(f, "a"), "class", "t")
+	dom.set_attribute(f.doc, by_id(f, "b"), "class", "t")
+	expect_partial(t, f, "an element with a member under it, one without")
+	testing.expect_value(t, f.eng.last_restyle.has_scans, 0)
+	testing.expect_value(t, style_of(f.st, by_id(f, "a")).margin[.Top].v, 1)
+	testing.expect_value(t, style_of(f.st, by_id(f, "b")).margin[.Top].v, 0)
+	// the member moves, and what is restyled in the same batch reads where it is now
+	i := by_id(f, "i")
+	dom.remove_child(f.doc, by_id(f, "a"), i)
+	dom.append_child(f.doc, by_id(f, "b"), i)
+	dom.set_attribute(f.doc, by_id(f, "a"), "class", "")
+	dom.set_attribute(f.doc, by_id(f, "b"), "class", "")
+	expect_partial(t, f, "a member that moved")
+	testing.expect_value(t, style_of(f.st, by_id(f, "a")).margin[.Top].v, 0)
+	testing.expect_value(t, style_of(f.st, by_id(f, "b")).margin[.Top].v, 1)
+}
+
+// `:has(.k:hover)` with nothing hovered is false without a look at the subtree; with something hovered, it is looked for.
+@(test)
+restyle_dom_has_of_a_state_nothing_is_in :: proc(t: ^testing.T) {
+	f := rx_load(`<style>:has(.k:hover) { margin: 1px } .t { padding: 1px }</style><div id=a><i class=k id=i>x</i></div>`)
+	defer rx_unload(f)
+	dom.set_attribute(f.doc, by_id(f, "a"), "class", "t")
+	expect_partial(t, f, "nothing hovered")
+	testing.expect_value(t, f.eng.last_restyle.has_scans, 0)
+	testing.expect_value(t, style_of(f.st, by_id(f, "a")).margin[.Top].v, 0)
+	f.st.state.hover = by_id(f, "i")
+	dom.set_attribute(f.doc, by_id(f, "a"), "class", "")
+	_, ok := restyle_dom(f.eng, f.doc, f.st)
+	testing.expect(t, ok && f.eng.last_restyle.has_scans > 0, "something hovered: the subtree is looked at")
+	testing.expect_value(t, style_of(f.st, by_id(f, "a")).margin[.Top].v, 1)
+}
+
+// A :has() anchor marks every ancestor of what changed with one set of keys: those subtrees are inside one another, the outermost says
+// it all, and the sets of one element take one walk.
+@(test)
+restyle_dom_keyed_marks_walk_a_subtree_once :: proc(t: ^testing.T) {
+	ELEMENTS :: 200
+	DEPTH :: 6
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>:has(.k:hover) .y { margin: 1px } :has(.k:hover) .z { padding: 1px }</style>`)
+	for i in 0 ..< DEPTH { fmt.sbprintf(&sb, "<div id=d%d>", i) }
+	for _ in 0 ..< ELEMENTS { strings.write_string(&sb, "<p>t</p>") }
+	f := rx_load(strings.to_string(sb))
+	defer rx_unload(f)
+	n := dom.create_element(f.doc, "i")
+	dom.set_attribute(f.doc, n, "class", "k")
+	dom.append_child(f.doc, by_id(f, fmt.tprintf("d%d", DEPTH - 1)), n)
+	expect_partial(t, f, "a key under the anchors")
+	testing.expectf(t, f.eng.last_restyle.keyed_steps <= ELEMENTS + 2 * DEPTH + 2, "%d elements looked at for %d in the document", f.eng.last_restyle.keyed_steps, ELEMENTS)
+}
+
+// `:has(:is(.x, .y) .k)` names its keys as surely as `:has(.x .k)` does: an element with none of them that comes under an anchor is
+// nothing to it.
+@(test)
+restyle_dom_has_alternatives_are_keys :: proc(t: ^testing.T) {
+	f := rx_load(`<style>:has(:is(.x, .y) .k:hover) .w { margin: 1px }</style><div id=r><div id=a><span class=w>t</span></div><div id=b></div></div>`)
+	defer rx_unload(f)
+	n := dom.create_element(f.doc, "i")
+	dom.append_child(f.doc, by_id(f, "b"), n)
+	expect_partial(t, f, "an element that holds none of the keys", 1)   // itself
+	k := dom.create_element(f.doc, "i")
+	dom.set_attribute(f.doc, k, "class", "k")
+	dom.append_child(f.doc, by_id(f, "b"), k)
+	expect_partial(t, f, "one that holds a key")
+	testing.expect(t, f.eng.last_restyle.marked > 1, "the anchors are looked at")
+}
+
 // `.a .b`: a class toggled on the ancestor restyles the `.b` elements under it, not its whole subtree (the reach names its
 // subject's key); unions of rules with other subjects keep every key; a subject with no key restyles the subtree.
 @(test)
@@ -391,9 +504,13 @@ restyle_dom_falls_back :: proc(t: ^testing.T) {
 	// the root font size: every rem follows
 	g := rx_load(`<style>.r { font-size: 20px } p { margin: 1rem }</style><p id=p>x</p>`)
 	defer rx_unload(g)
+	seen := g.st.serial
 	dom.set_attribute(g.doc, dom.find_first_by_tag(g.doc, "html"), "class", "r")
 	ok3 := rx_step(t, g, "root font size")
 	testing.expect(t, !ok3)
+	// the partial attempt replaced the root's record, so the full pass finds it equal: a reader of the old styles cannot go by that pass's journal
+	_, complete := journal_since(g.st, seen)
+	testing.expect(t, !complete, "what layout saw is older than the journal")
 }
 
 // With a forms model (a control provider), what can reach other controls' state falls back to a full pass; the rest
@@ -416,6 +533,36 @@ restyle_dom_forms_shadow_root :: proc(t: ^testing.T) {
 	dom.remove_child(f.doc, by_id(f, "d"), p)
 	dom.release(f.doc, p)
 	expect_partial(t, f, "an element gone from a document with a shadow tree and no radio buttons")
+}
+
+// A script that writes in a field: the state of one control changed, not the document. What the rules that ask the forms model reach
+// from it is restyled, its form with it; a radio button, whose group is out of sight, still asks for a full pass.
+@(test)
+restyle_dom_control_state_stays_with_the_control :: proc(t: ^testing.T) {
+	OTHERS :: 40
+	invalid := false
+	provider := Control_Provider{
+		query = proc(user: rawptr, el: base.Handle, q: Control_Query) -> (bool, bool) { return (^bool)(user)^ && q == .Invalid, q == .Invalid },
+		user = &invalid,
+	}
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>input:invalid { color: red } input:invalid + span { margin: 2px } form:invalid { padding: 3px } p { margin: 1px } div:has(input:invalid) { outline: 1px solid red }</style>`)
+	strings.write_string(&sb, `<div id=d><form id=f><input id=i><span id=s>x</span><input id=r type=radio></form></div>`)
+	for _ in 0 ..< OTHERS { strings.write_string(&sb, "<p>t</p>") }
+	f := rx_load(strings.to_string(sb))
+	defer rx_unload(f)
+	f.st.state.controls = provider
+	invalid = true
+	engine_control_changed(f.eng, by_id(f, "i"))
+	testing.expect(t, !f.eng.restyle_needed, "no full pass is asked for")
+	expect_partial(t, f, "one field", OTHERS / 2)   // the form and what it holds, the <div> of :has(): not the <p>s
+	testing.expect(t, style_of(f.st, by_id(f, "i")).color == {1, 0, 0, 1})
+	testing.expect(t, len(f.eng.controls_changed) == 0, "done")
+	engine_control_changed(f.eng, by_id(f, "r"))
+	ok := rx_step(t, f, "a radio button")
+	testing.expect(t, !ok && f.eng.last_restyle.fallback == "a control of a group changed")
+	engine_control_changed(f.eng, base.NIL_HANDLE)
+	testing.expect(t, f.eng.restyle_needed, "anything may have changed: a full pass")
 }
 
 @(test)
@@ -619,6 +766,48 @@ restyle_dom_parallel_what_an_inherited_change_forces :: proc(t: ^testing.T) {
 	dom.set_attribute(f.doc, by_id(f, "big"), "class", "on")
 	_, ok = restyle_dom(f.eng, f.doc, f.st, pool)
 	testing.expect(t, ok && f.eng.last_restyle.parallel, "the subtree went to the threads")
+	testing.expect_value(t, verify_styles(f.eng, f.doc, f.st, context.temp_allocator), "")
+}
+
+// `.a .b` is tried on the ancestors of `.b`: a partial pass reads each class attribute once, as a full pass does, and an element it
+// did not meet is not read at all.
+@(test)
+restyle_dom_reads_each_class_attribute_once :: proc(t: ^testing.T) {
+	f := rx_load(`<style>.y .z .b { color: red }</style><div id=top class="x y"><div id=mid class="z"><p id=p class=q>t</p></div></div><div id=other class=w>u</div>`)
+	defer rx_unload(f)
+	dom.set_attribute(f.doc, by_id(f, "p"), "class", "b")
+	_, ok := restyle_dom(f.eng, f.doc, f.st)   // (rx_step would make a full pass after it, which reads them all)
+	testing.expect(t, ok && f.eng.last_restyle.marked == 1, "one element")
+	word :: proc(f: ^Rx, id: string) -> u64 { return f.eng.class_bits[base.handle_index(by_id(f, id))] }
+	bit :: proc(class: string) -> u64 { return 1 << (css.class_hash(class) & CLASS_BIT_MASK) }
+	testing.expect(t, word(f, "mid") & CLASS_BITS_READ != 0 && word(f, "mid") & bit("z") != 0, "its parent was read")
+	testing.expect(t, word(f, "top") & bit("x") != 0 && word(f, "top") & bit("y") != 0, "and above it")
+	testing.expect_value(t, word(f, "other"), 0)
+	testing.expect(t, !f.eng.class_bits_live, "they are of that pass")
+}
+
+// A page is rarely a balanced tree. Forty small children beside one that holds nearly everything: their number looked like enough
+// to go round, and the big one went to one thread whole.
+@(test)
+restyle_dom_parallel_shares_out_by_weight :: proc(t: ^testing.T) {
+	SMALL :: 40
+	IN_MAIN :: 600
+	THREADS :: 3
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>.on { color: red }</style><body><div id=top>`)
+	for _ in 0 ..< SMALL { strings.write_string(&sb, "<i>u</i>") }
+	strings.write_string(&sb, `<main><div><div>`)
+	for _ in 0 ..< IN_MAIN { strings.write_string(&sb, "<p>t</p>") }
+	strings.write_string(&sb, `</div></div></main></div>`)
+	f := rx_load(strings.to_string(sb))
+	defer rx_unload(f)
+	pool := host.thread_pool_make(THREADS)
+	defer host.thread_pool_destroy(pool)
+	f.eng.settings.inc_parallel_min = SMALL
+	dom.set_attribute(f.doc, by_id(f, "top"), "class", "on")
+	_, ok := restyle_dom(f.eng, f.doc, f.st, pool)
+	testing.expect(t, ok && f.eng.last_restyle.parallel, "the subtree went to the threads")
+	testing.expectf(t, f.eng.last_restyle.largest_task * THREADS <= IN_MAIN, "the heaviest task holds %d elements of %d", f.eng.last_restyle.largest_task, IN_MAIN + SMALL)
 	testing.expect_value(t, verify_styles(f.eng, f.doc, f.st, context.temp_allocator), "")
 }
 
@@ -1087,6 +1276,16 @@ restyle_dom_has_members_found_by_their_keys :: proc(t: ^testing.T) {
 		if ha.arg.simples[0].name == "k1" && len(ha.arg.simples) == 1 { want += 1 }
 		testing.expectf(t, ha.members != nil && len(ha.members.set) == want, "%s: %d members, %d expected", ha.arg.simples[0].name, ha.members == nil ? -1 : len(ha.members.set), want)
 	}
+	// what comes later is read the same way: a subtree that holds all the keys, once, not once per anchor
+	came := dom.create_element(f.doc, "section")
+	for i in 0 ..< ELEMENTS {
+		x := dom.create_element(f.doc, "b")
+		dom.set_attribute(f.doc, x, "class", fmt.tprintf("k%d", i % ANCHORS))
+		dom.append_child(f.doc, came, x)
+	}
+	dom.append_child(f.doc, by_id(f, "box"), came)
+	expect_partial(t, f, "a subtree that came")
+	testing.expectf(t, ix.members_tested > 0 && ix.members_tested <= KEYED + ANCHORS, "%d tests of an element against an argument, at most %d expected", ix.members_tested, KEYED + ANCHORS)
 }
 
 // A :has() of tags, ids, classes and attributes keeps the elements that match its argument; the subtree of an anchor is restyled

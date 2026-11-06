@@ -1,5 +1,6 @@
 package dom
 
+import "core:fmt"
 import "core:testing"
 
 @(test)
@@ -81,4 +82,19 @@ journal_compaction_amortized :: proc(t: ^testing.T) {
 	live := 0
 	for x in d.journal.entries { live += len(x.name) + len(x.old) }
 	testing.expect_value(t, d.journal.live_bytes, live)
+}
+// Past the bits of a mask features share them: spread out, not all on the last one, which any subtree with one of them then answered for all.
+@(test)
+watch_bits_are_spread_past_their_number :: proc(t: ^testing.T) {
+	d := document_create(nil)
+	defer document_destroy(d)
+	seen: u64
+	last: u64
+	for i in 0 ..< 2 * WATCH_BITS {
+		last = watch_bit(d, .Class, fmt.tprintf("k%d", i))
+		seen |= last
+	}
+	testing.expect_value(t, seen, (u64(1) << WATCH_BITS) - 1)
+	testing.expect(t, watch_bit(d, .Class, "k0") == watch_bit(d, .Class, fmt.tprintf("k%d", WATCH_BITS)), "they share the first")
+	testing.expect(t, watch_bit(d, .Class, "k1") != watch_bit(d, .Class, "k0"), "and only by turn")
 }
