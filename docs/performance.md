@@ -3230,6 +3230,74 @@ No code changed in this round: it asks what a load is still waiting for, on the 
 
 **Left.** A baseline compiler was the idea: code made cheaply would let a low threshold pay. The nearest measure says otherwise. `wasm.wasmtime.opt_level=none` keeps the shipped engine and compiles only what the JIT makes without optimising, 3 runs: theverge.com CPU 8.5-9.0 s at `speed` and 100 000, 8.5-10.7 at `none`, 9.8-11.8 at `none` and 10 000, 17.5-19.8 at `none` and 1 000; load 5.2-5.3, 5.0-6.4, 5.1-6.2, 5.5-7.2 s. npr.org load 3.8-4.4 at `speed`, 4.5-5.9 at `none`, 5.0-5.2 at `none` and 1 000. What compiling early costs is not only Cranelift's optimisation. The single-pass register allocator for the whole engine is worse still, 3 runs: theverge.com load 4.0-4.3 s becomes 7.2-7.5, npr.org 3.8-3.9 becomes 6.4-9.6 (whether the shipped code was still used was not checked). Not tried: a compiler written for this, which is why this is no proof. Winch is out: it takes the whole engine with it (theverge.com 6.1 s against 4.4, one run) and its code does not mix with Cranelift's. Generations in the collector can take at most what `Gc` is, 300 ms here.
 
+## What changed, round 46: what the interpreter and the runtime spend on a page
+
+Development builds, `wrentool waterfall -Runs 1` in a loop, a fresh process and a throwaway profile for each load, base (90c6e06c) kept apart, the order turning; `Guest`: the outermost calls into the engine on the window thread, up to the load event (`WREN_SPANS`). Public sites; a second agent was at work on the machine for part of the series.
+
+**The measure.** `WREN_WASM_PROFILE` and `WREN_JS_PROFILE` each take their samples where the code polls, and both misled this round (below). A temporary change of `WREN_SAMPLE_STACK`, not in the tree, wrote the whole walked stack of each 1 ms sample of the window thread with the allocation of its instruction pointer; a throwaway script named the frames from the ELF of `build/js/wren_js.code` (the engine's allocation holds that file, so an address less its base is an offset in it) and from the linker's map. No poll in it: a sample of the engine says the instruction, and `objdump -D -b binary -mi386:x86-64` on the bytes of a function says which. One load each, the share of `Guest`, a frame's sample going to the innermost category on its stack, %:
+
+| | theverge.com | npr.org | cnn.com | bbc.com/news |
+|---|---|---|---|---|
+| the interpreter's loops (`hot_loop`, `interp_run`) | 24.1 | 17.0 | 9.8 | 41.0 |
+| calls (`frame_push`, `hot_call`, `call_native`, `interp_call`...) | 14.4 | 17.9 | 12.0 | 20.0 |
+| allocation | 15.1 | 9.9 | 10.4 | 11.5 |
+| the browser's imports | 14.0 | 10.1 | 43.2 | 3.8 |
+| collections | 9.9 | 8.2 | 4.1 | 4.6 |
+| properties | 7.1 | 3.5 | 7.5 | 5.3 |
+| strings | 2.8 | 13.1 | 2.1 | 2.2 |
+| the bridge to the glue | 3.7 | 11.4 | 1.9 | 3.1 |
+| regular expressions | 6.1 | 1.6 | 4.3 | 1.7 |
+| compiled code | 0.0 | 5.5 | 0.0 | 3.8 |
+| reading bytecode | 2.1 | 0.7 | 2.7 | 1.1 |
+| compiling, translating | 0.7 | 1.1 | 2.0 | 1.8 |
+
+The profile is flat, and **almost nothing of a load runs in the code the JIT makes**: 2 samples of 2 266 on theverge.com. What stands out is what is not the interpreter: an algorithm, twice.
+
+**1. A greedy loop of one character, in the matcher** (`lre_exec.odin`). `d` of concert_ads.js, 6 % of theverge.com's script, is `/\S+(@|%40)\S+\.\S+/.test(url)`. As bytecode a run is a state pushed and an instruction dispatched for each character, then again going back; and it is quadratic: the search starts again at each position of the token. `exec_backtrack` now recognises `x+` and `x*` of one character (`\S`, a class, `.`) as the compiler emits them, the format unchanged, and takes the run at once, with one state of a new kind for all its positions (`.run`: the state and an undo record of the low end), going back only to where the character that follows the loop can match. `exec_search`: a regexp that starts with a run, without back references, goes on after the run when it fails, since what follows was tried at each position a later start could reach. That pattern on a URL of 150 characters, native, 2 000 tests: 442 -> 8 ms (Node 40). Regular expressions of theverge.com 6.1 -> 2.2 % of `Guest`. `\w+` and `[^"]*` on short subjects: 55 -> 53, 174 -> 158 ms, what is left there is the call.
+
+**2. `indexOf` a word at a time** (`units_index_of`). OtAutoBlock.js looks each script up in a table of thousands of tags (`d.indexOf(F)`, `k.Tag.indexOf(d)`): `str_index_of` was 9 % of npr.org's `Guest`. The first and last units of the pattern are tried on 8 bytes (or 4 wide units) at once with the zero-byte trick; ctz gives the first candidate. 1 MB: 24 -> 10 ms, short strings 106 -> 91 (the call is most of those). `sp_index_of` 9 -> 3 % of npr.org.
+
+**3. Names nothing has** (`Name_Filter`, `js_dom_collections.odin`). `window.x`, `typeof x` of a name no script defined reach the window's named properties, and each was `getElementsByName`: a walk of the document. A bit per name's hash, made again by one walk when the tree or an attribute has moved; a clear bit is the answer, a set one the walk. Walks of the document by `Collection_length` over 20 us, 3 loads each: **cnn.com 282-301 (88-99 ms) -> 50-51 (24-28 ms), theverge.com 398-407 (57-61 ms) -> 58-61 (14-16 ms)**. Its 45 to 70 ms do not show alone in a load: the series against item 1 disagree (cnn.com's CPU -8 % with ranges apart in the first, the same in the second).
+
+**4. `Shape`: what a lookup reads, together.** `lazy`, 56 bytes from `props`, was a cache line more for each `get_field` that misses: `hot_loop`'s samples sit on the loads of the shape's fields. Free; its effect is not separated from items 1 and 2.
+
+**5. `getEntriesByName`.** The whole timeline as objects, sorted, then filtered by a function compiled at each call. It now filters before it makes objects, and neither compiles nor sorts what is empty. 3 000 calls among 300 marks, a page of its own, 5 runs: 2 914 (2 906-2 955) -> 144 (142-146) ms. On theverge.com it does not show: 2.1 -> 1.9 % of `Guest`, what is left being the JSON below.
+
+Base and round, 7 runs, three arms interleaved, median (range), ms; *items 1, 2, 4, 5*, then *all*:
+
+| | | load | CPU | `Guest` | DOMContentLoaded |
+|---|---|---|---|---|---|
+| theverge.com | base | 3 944 (3 838-3 992) | 6 562 (6 094-6 844) | 3 074 (2 564-3 170) | 610 (576-638) |
+| | items | 3 769 (3 692-3 823) | 6 438 (6 234-6 906) | 2 925 (2 866-2 961) | 613 (594-672) |
+| | all | **3 648 (3 585-3 721)** | 6 406 (6 109-6 547) | 2 803 (2 763-2 834) | 601 (560-609) |
+| npr.org | base | 4 045 (3 671-4 344) | 5 656 (5 219-5 922) | 3 024 (2 425-3 132) | 2 245 (2 095-2 398) |
+| | items | 3 764 (3 689-4 343) | 5 688 (5 094-5 797) | 2 807 (2 547-3 317) | 2 200 (2 013-2 511) |
+| | all | 3 890 (3 643-4 131) | 5 703 (5 203-5 953) | 2 772 (2 098-3 130) | 2 144 (1 969-2 380) |
+| cnn.com | base | 3 412 (3 146-3 733) | 5 641 (5 500-6 078) | 1 688 (1 501-1 713) | 1 648 (1 623-2 014) |
+| | items | 3 355 (3 096-3 595) | 5 531 (5 266-5 906) | 1 664 (1 610-1 853) | 1 657 (1 595-1 900) |
+| | all | 3 571 (3 183-3 854) | 5 547 (5 188-6 141) | 1 647 (1 535-1 897) | 1 877 (1 590-1 984) |
+| bbc.com/news | base | 1 906 (452-2 032) | 2 922 (1 047-3 125) | 1 392 (144-1 563) | 432 (399-540) |
+| | items | 738 (451-1 999) | 2 016 (1 031-3 078) | 307 (144-1 509) | 451 (382-531) |
+| | all | 487 (424-2 034) | 1 156 (953-3 172) | 148 (135-1 565) | 431 (371-482) |
+
+An earlier series, base and items, 5 runs: theverge.com load 4 026 (3 855-4 137) -> 3 787 (3 573-3 850), CPU 6 781 -> 6 188, `Guest` 3 160 -> 2 766; npr.org load 4 102 (3 637-4 649) -> 3 845 (3 740-4 234), DOMContentLoaded 2 434 -> 2 197, `Guest` 3 035 -> 2 783.
+
+Read plainly. **theverge.com: load -7.5 %, ranges apart in both series; `Guest` -9 %, apart but for one fast run of the base.** npr.org: load -4 and -6 %, `Guest` -8 %, in both series; ranges overlap, so not proven by itself. cnn.com: no change in the load, the +5 % of `all` inside its range and not in the series before (3 481 against 3 588); its regexps were not this one. bbc.com/news has its modes, a load of 450 ms or of 2 s with a `Guest` of 150 ms or of 1.5 s: the medians say which came up, and nothing of this round.
+
+**Measured, not kept.**
+- **More of the full dispatch's instructions out of it** (`Hot_Exit.op`, a procedure for `put_array_el` that appends or writes a typed array or a key, `instanceof`, `in`, `for_in_next`, `==` of strings, `arguments`, `new`; `try` in the loop; `if (string)` and `x == null` without leaving). A temporary histogram: 5 to 10 million stops a load, `put_array_el`, `eq`, `if_false8`, `op_catch`, `for_in_next` first after the returns. Natively those cases went 10 to 45 % faster. In Wasm `micro.js` lost by it, 3 runs, geometric mean 1.019: an int loop +8 %, a call +8 %, `new Point` +13 %, a write of an array -17 %, `try` -8 %. On the four pages, 5 runs, `Guest` the same or worse (theverge.com 3 012 -> 3 031, npr.org 2 672 -> 2 946, cnn.com 1 710 -> 1 787, bbc.com/news 1 527 -> 1 492). What one more way out of `hot_loop` costs each instruction, the stops did not give back.
+- **The next block of a free list read ahead.** 75 % of `mem_alloc`'s samples are on one load, the `next` of a block popped: the lists are in the order of the sweep, and the block is cold. A load of the next block's first word at each pop, whose value nothing waits for: a bench of objects and closures on a heap with holes 755 -> 825 ms. Not a prefetch: the load holds the retirement back.
+
+**Hypotheses retracted.**
+- `shell_preempt`, 7 to 8 % of the window thread's samples, under `Guest`: real time 30 ms over 1 726 calls, 0.7 %. The sampler's millisecond and the ticker's are the same system tick: the samples fall where the tick lands, in the poll that follows it. Left out of the table above.
+- `M` of OneTrust's otTCF.js, 7 to 23 % of `WREN_JS_PROFILE_TIME` on three pages, is babel's `_objectSpread2`, and looked like a cliff in `Object.defineProperties`. Run alone, natively, on 4 to 3 000 keys, it costs what Node's own does for the same natives. The profile's sample waits for the next back edge, so a function with a loop collects the time of what it calls (read in the code, not measured).
+
+**Left, by what was seen.** `cnn.com`'s imports are style and layout forced by reads (43 % of its `Guest`), npr.org's `getPropertyValue` 9 %, `getBoundingClientRect` 2 to 3 %: not the engine. Of `hot_loop`, 22 % of the samples are at the dispatch (`ip` in a stack slot, the indirect jump), about 16 % on the misses of `get_field` (the object's shape, the shape's fields, the slot): an inline cache would save the search, not the misses. `mem_alloc`'s miss, 3 % of `Guest`. `new URL` 2 % of theverge.com. `performance.getEntries*` still has the browser write the whole timeline in JSON at each call. Native callbacks: `interp_call` and `call_native` have nothing that stands out; `ip` at dispatch and source sharing in bytecode: not touched.
+
+**Tests.** `hotcheck.js` (passes in Node): runs with captures, lookahead and lookbehind, back references, sticky, global, `u`, long tokens; `indexOf` across a word's end, the high bit and a borrow, wide against narrow. `cost.js`: "a search that starts with a run", 121 247 instructions where a quadratic search takes millions. `examples/jsdom/elements.html`: a name nothing has, then an element inserted, an attribute changed, an element out of the document, one removed, through `getElementsByName` and the window. Throwaway: 58 000 random regexps on three subjects each, and 400 000 `indexOf`, `includes`, `split` and `replace`, the engine against Node: no difference. `build\test_all.exe -Quick -NoAsan`: 207 steps pass. `a font on its way holds its text` fails, here and with the sources of this round taken back to the base (first-contentful-paint before the font): not this round's, not looked into. The poisoned step of IndexedDB and loads cut short ended once in an access violation on a thread of the compiler (rayon, in the log) with every step at work, and passed alone: not explained. The documentation site passes once generated.
+
+**Not verified.** The release build, a long session, the full WPT, the full test262, AddressSanitizer: not run.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -3414,6 +3482,7 @@ After round 33. The first item of the list after round 31 is done for what it na
 After round 34. Reading the machine code paid more than any profile so far. In order: **the epoch check** (12 to 20 % of all the engine's code: an engine of its own for the JavaScript image, polls in the natives); **what a first paint waits for in a frame** (bbc.com/news: three timers of 300 to 430 ms before it); compile on arrival by default (DOMContentLoaded -18 to -32 % on two pages, 3 runs); verification at the first closure; `set_property` of a new key without the walk of the prototypes; then the callback from a native, the collection. `-o:speed` is the engine's level now: what is said above of -o:size is history.
 After round 36. The epoch check is gone from the engine (round 36), `new` no longer walks the prototypes for a new key. The interpreter is 12 to 34 % faster by micro.js; two of the four loads followed. In order: **the engine's time on the window thread for a load, measured as such** (`wasm.guest_time` in `api.stats`): CPU to the load event no longer says it, cnn.com and bbc.com/news spend more of it than before for reasons not established; then what a first paint waits for in a frame, compile on arrival by default, verification at the first closure, `ip` at dispatch, the callback from a native, the collection.
 After round 40. A forced read's and a frame's pass on cnn.com: partial passes restyled what no change reached, through :has() above all (round 40): load -19 %. In order, of style: what :has() that is not exact costs a restyle, the full passes that remain (@keyframes in use, sheets that style another tree), resh_hits for each sheet that arrives. A read answered from less than the whole layout is worth a tenth of a read.
+After round 46. What a load runs is flat and interpreted: the two items that paid were algorithms (a regexp quadratic on a token, a walk of the document for each name nothing has), found by reading a sampler that does not wait for a poll. In order, of the engine: what scripts force of style and layout (43 % of cnn.com's `Guest`), `get_field`'s misses, the free lists' cold blocks, `new URL`, the timeline in JSON at each call; `ip` at dispatch and native callbacks showed nothing of their own.
 
 ||||||| parent of eb61d939 (Round 33 in docs/performance.md)
 1. **The script stage of DOM-heavy pages, what is left** (`js_nodes10k` on a quiet machine after round 25, 5 runs: a frame of 16.9 ms
