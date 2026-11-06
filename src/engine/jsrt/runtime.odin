@@ -371,6 +371,7 @@ Context :: struct {
 	rx_snap_n:       int,
 	array_shape:     ^Shape, // shape of a fresh Array (proto + length)
 	plain_shape:     ^Shape, // shape of a fresh {}
+	mapped_args_shapes: [MAPPED_ARGUMENTS_SHAPES][MAPPED_ARGUMENTS_SHAPES]^Shape, // by arguments passed and mapped (build_mapped_arguments)
 	ctor_proto_shape: ^Shape, // the object a function's prototype starts as: constructor
 	closure_shapes:  [Func_Kind][2]^Shape, // shape of a fresh closure (closure_shape), without and with its prototype
 	arguments_shape: ^Shape,

@@ -445,8 +445,13 @@ hot_define_field :: #force_no_inline proc(h: ^Hot) -> bool {
 	if o.tag != .object {return false}
 	p := as_obj(o)
 	a := Atom(rd32(ip[1:]))
-	if p.class != .object || !p.extensible || p.shape.lazy != nil || shape_lookup(p.shape, a) >= 0 {return false}
-	add_property(h.rt, p, a, CWE).value = s[-1]
+	if p.class != .object || !p.extensible || p.shape.lazy != nil {return false}
+	slot := object_append_by_transition(h.rt, p, a, CWE)
+	if slot == nil {
+		if shape_lookup(p.shape, a) >= 0 {return false}
+		slot = add_property(h.rt, p, a, CWE)
+	}
+	slot.value = s[-1]
 	h.s = intrinsics.ptr_offset(s, -1)
 	h.ip = ip[5:]
 	return true

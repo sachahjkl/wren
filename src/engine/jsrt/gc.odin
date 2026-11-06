@@ -486,6 +486,9 @@ mark_context :: proc(rt: ^Runtime, ctx: ^Context) {
 	mark_cell(rt, ctx.array_shape)
 	mark_cell(rt, ctx.plain_shape)
 	mark_cell(rt, ctx.ctor_proto_shape)
+	for &shapes in ctx.mapped_args_shapes {
+		for sh in shapes {if sh != nil {mark_cell(rt, sh)}}
+	}
 	for &shapes in ctx.closure_shapes {for sh in shapes {mark_cell(rt, sh)}}
 	mark_cell(rt, ctx.arguments_shape)
 	mark_cell(rt, ctx.regexp_shape)
@@ -639,6 +642,7 @@ gc_sweep :: proc(rt: ^Runtime) {
 	// weak caches first: they point at cells about to be freed (the shapes that have any, listed as they were traced: a
 	// walk of every cell for them cost as much as the sweep)
 	for sh in rt.gc_shapes {
+		before := len(sh.transitions)
 		for i := 0; i < len(sh.transitions); {
 			if !sh.transitions[i].to.mark {
 				unordered_remove(&sh.transitions, i)
@@ -646,6 +650,7 @@ gc_sweep :: proc(rt: ^Runtime) {
 				i += 1
 			}
 		}
+		if len(sh.transitions) != before {shape_hash_transitions(rt, sh, rebuild = true)}
 	}
 	clear(&rt.gc_shapes)
 	for proto, sh in rt.shape_root {

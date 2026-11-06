@@ -1807,11 +1807,23 @@ build_arguments :: proc(ctx: ^Context, args: []Value) -> Value {
 
 // What a mapped arguments object has beside its elements: length, its iterator, callee.
 MAPPED_ARGUMENTS_OTHER_PROPERTIES :: 3
+// The argument counts whose shapes a realm keeps, by how many are mapped.
+MAPPED_ARGUMENTS_SHAPES :: 8
 
 // The mapped (sloppy) arguments object: the first `mapped` elements alias the parameters. Its shape comes by transitions: one
 // shape for all the calls of the same argument count, none made for each call (a dictionary was 1 us of each call).
 build_mapped_arguments :: proc(ctx: ^Context, f: ^Frame, mapped: int) -> Value {
 	rt := ctx.rt
+	known := f.argc < MAPPED_ARGUMENTS_SHAPES ? ctx.mapped_args_shapes[f.argc][mapped] : nil
+	if known != nil {
+		o := object_new_shape(rt, known, .mapped_arguments)
+		for i in 0 ..< mapped {o.slots[i].var_ref = get_var_ref(rt, f, i, true)}
+		for i in mapped ..< f.argc {o.slots[i].value = f.args[i]}
+		o.slots[f.argc].value = mk_int(i32(f.argc))
+		o.slots[f.argc + 1].value = mk_obj(ctx.array_proto_values)
+		o.slots[f.argc + 2].value = f.func
+		return mk_obj(o)
+	}
 	o := object_new_proto(ctx, ctx.class_proto[.object], .mapped_arguments)
 	object_reserve_exact(rt, o, f.argc + MAPPED_ARGUMENTS_OTHER_PROPERTIES)
 	for i in 0 ..< f.argc {
@@ -1830,6 +1842,7 @@ build_mapped_arguments :: proc(ctx: ^Context, f: ^Frame, mapped: int) -> Value {
 	s.value = mk_obj(ctx.array_proto_values)
 	s = add_property(rt, o, pa(.A_callee), CW)
 	s.value = f.func
+	if f.argc < MAPPED_ARGUMENTS_SHAPES {ctx.mapped_args_shapes[f.argc][mapped] = o.shape}
 	return mk_obj(o)
 }
 

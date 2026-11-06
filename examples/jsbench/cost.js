@@ -23,3 +23,8 @@ var COST_CASES = [
 	["an arrow function", 3700, function (n) {for (var i = 0; i < n; i++) sink = () => i;}],
 	["arguments of a sloppy function", 5600, function (n) {for (var i = 0; i < n; i++) count_arguments(i);}],
 ];
+
+// Objects used as maps: each first key a transition of the shape of `{}`, which every object literal starts from.
+var first_keys = [];
+for (var i = 0; i < 3000; i++) {var o = {}; o["first" + i] = i; first_keys.push(o);}
+COST_CASES.push(["{a} beside 3000 first keys", 1350, function (n) {for (var i = 0; i < n; i++) sink = {a: 1};}]);
