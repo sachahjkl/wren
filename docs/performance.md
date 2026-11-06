@@ -2961,6 +2961,41 @@ And the order is forced: the system loads drivers one at a time. WARP asked whil
 
 **Kept.** `wrentool bench startup` works again: it ended with "error 2", `CreateProcessW` not finding `build/wren_prof.exe` with its forward slash (`api.process_start` now writes the program as Windows does).
 
+## What changed, round 39: what is left of the load, and three settings measured again
+
+The window thread between DOMContentLoaded and load, spans of one run each: busy about 90 % of the time on theverge.com and npr.org, and on cnn.com 55 % in tasks and 19 % in the phase `animation`. `EventTarget_dispatchEngineEvent` is the listeners' JavaScript, not a cost of its own. Spans now cover `web_animations`, `resize_observers` and `intersection_observers`.
+
+**The phase `animation` of cnn.com is not animation.** 1 611 ms in 83 frames, of which `resize_observers` 252. Most of the rest is `run_scroll_steps` asking `js_layout_now` for the layout: the frame's style and layout, under another name, which is why `layout` shows 42 ms. It is not done twice (`js_layout_update` fills the tab's layout). What it costs is rendering during the load, beside about 1.1 s of reads that force it.
+
+**Settings, interleaved, the first pass after a build left out.**
+
+| setting | result |
+|---|---|
+| `javascript.load.slice_per_frame` 3, 8, 30 (3 pages, 4 runs) | nothing: load within noise on all three. Stays 3 |
+| `javascript.jit.call_threshold` 100 000, 10 000, 1 000 (4 pages, 4 runs) | worse: theverge.com CPU 7.1-8.2 s becomes 8.3-10.1 s at 10 000 and 15.2-15.7 s at 1 000. Stays 100 000 |
+| `javascript.compile.offthread_min_bytes` 64 KB, 4 KB, 0 (6 pages, 5 runs) | better: 4 KB is the new default |
+
+DOMContentLoaded and first paint, ms, 64 KB against 4 KB:
+
+| page | DOMContentLoaded 64 KB | 4 KB | first paint 64 KB | 4 KB |
+|---|---|---|---|---|
+| theverge.com | 980-1 018 | 863-900 | 466-500 | 472-505 |
+| bbc.com/news | 671-808 | 573-649 | 177-204 | 139-184 |
+| odin-lang.org | 351-619 | 308-389 | 225-509 | 198-272 |
+| a local page (`busy.html`) | 42-43 | 41-54 | 34-35 | 33-46 |
+
+The ranges of DOMContentLoaded are apart on theverge.com and bbc.com. At 0 a local page takes 2 ms more; at 4 KB one run in five did on two pages, which may be noise.
+
+Load, the first series having left a doubt on theverge.com (3 runs of 5 at 4.8 s or more with 4 KB, none with 64 KB): 8 more runs interleaved, median (range), ms.
+
+| page | DOMContentLoaded 64 KB | 4 KB | load 64 KB | 4 KB |
+|---|---|---|---|---|
+| theverge.com | 955 (941-1 586) | 848 (811-882) | 4 355 (3 712-4 962) | 4 568 (4 313-4 878) |
+| npr.org | 2 211 (2 120-2 372) | 2 104 (1 977-2 300) | 3 878 (3 798-4 083) | 3 770 (2 988-4 080) |
+| cnn.com | 2 153 (2 066-2 359) | 2 010 (1 930-2 289) | 4 152 (3 996-4 574) | 4 132 (3 972-4 401) |
+
+DOMContentLoaded gains on all three, ranges apart on none, theverge.com by its six best runs of eight. Load is within noise on all three: +5 % on theverge.com by the median may be a real cost, not proven.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
