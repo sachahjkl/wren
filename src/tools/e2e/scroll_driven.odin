@@ -239,7 +239,7 @@ run_down :: proc(img: e2e.Image, x, y: int, color: [3]u8) -> int {
 // Layout properties in the chrome frames under a task: a bar's width, a header's height. The task reads what its turn left, and the page's turn shows the same.
 @(test)
 layout_values_of_a_timeline_follow_the_wheel_under_a_task :: proc(t: ^testing.T) {
-	s := open(t)
+	s := open(t, {"browser.shell.shown_layout_max_ms=100"})   // (past its budget a whole pass is left out, as it should be: on a slow machine that is not what is tested here)
 	short := false
 	corner := e2e.box_model(s, "#sticky").window
 	ox, oy := int(corner.x) - STICKY_LEFT, int(corner.y) - STICKY_TOP

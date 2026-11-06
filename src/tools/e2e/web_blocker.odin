@@ -26,7 +26,7 @@ PROFILE :: "build/blockertest_profile"
 TAB :: 1
 ADS :: "http://127.0.0.1:8765/site/blocker/ads.html"
 WATCH :: "http://127.0.0.1:8765/site/blocker/ytwatch.html"
-LOAD_LIMIT :: 20.0
+LOAD_LIMIT :: 120.0   // (the first script of a process compiles the engine when its cache is cold: over 20 s on two processors, in one turn of the loop)
 BLOCKED_ON_THE_ADS_PAGE :: 3       // script, frame, fetch (no image is asked for without a layout)
 MIN_JOURNAL_ENTRIES :: 4
 CONF_HEAD :: "version\t1\n[lists]\n[sites]\n[rules]\n[my-filters]\n"
