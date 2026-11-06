@@ -16,7 +16,6 @@ package browser
 // slower frame.
 
 import "core:sync"
-import "toolkit:render"
 import "wb:config"
 
 // A page gone: the trim that follows, once what it started has ended, and at most this often when pages go one after the other.
@@ -100,7 +99,7 @@ memory_trim_tick :: proc(app: ^App) {
 memory_trim :: proc(app: ^App) {
 	app.trim_state.count += 1
 	app.trim_state.last, app.trim_state.page_gone = shell_now_ns(), false
-	render.release_targets(&app.r)
+	shell_release_targets(app)   // shell_frames.odin
 	sync.atomic_store(&app.pt.shrink_temp, true)
 	memory_trim_native(app)
 }

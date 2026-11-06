@@ -248,7 +248,7 @@
 <li><strong>Loads</strong>: a faster JavaScript engine and far fewer full style passes. cnn.com from about 6.3 s to 3.5 s; Wren is still 2 to 4 times slower than Edge on these heavy pages.</li>
 <li><strong>First page after an install or an update</strong>: the engine's machine code now ships in the program, instead of being compiled on the first script. On cnn.com, first paint goes from 3.3 s to 0.6 s on a new profile, and from 17.7 s to 0.75 s on two cores. The program is about 22 MB larger for it.</li>
 <li><strong>Busy pages</strong>: selection, scroll bars, the caret and CSS animations keep working while a script holds the page, and scripts can be interrupted inside the engine's own loops.</li>
-<li><strong>Fixes</strong>: YouTube search finishes again, Ctrl+T gives the keyboard to the address bar, triple click selects reliably, scroll bars answer the pointer, and closing a background tab or zooming with the wheel no longer blinks.</li>
+<li><strong>Fixes</strong>: YouTube search finishes again, Ctrl+T gives the keyboard to the address bar, triple click selects reliably, scroll bars answer the pointer, and a page no longer blinks when a background tab closes, under the wheel's zoom, or at the first zoom or long script after a few idle seconds.</li>
 </ul>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/releases/v0.6.30/"><span>Previous</span><strong>Wren 0.6.30</strong></a>

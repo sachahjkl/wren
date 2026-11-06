@@ -2996,6 +2996,12 @@ Load, the first series having left a doubt on theverge.com (3 runs of 5 at 4.8 s
 
 DOMContentLoaded gains on all three, ranges apart on theverge.com. Load is within noise on all three: +5 % on theverge.com by the median may be a real cost, not proven.
 
+## What changed, round 41: a page blank after an idle moment
+
+`memory_trim` (5 s of rest, or a page gone) released every pooled target, the kept picture of the page on screen too. `shell_paint_page` refused it by its generation (a trace: kept 1, renderer 2) and the first chrome frame after a pause, under a Ctrl+wheel or a long script, showed the page's background alone. `zoom_frames` caught it on CI once it zoomed until a chrome frame came, in about one run in four with its two tests in one process on WARP and two processors; alone it never failed in 12 runs, their wait is what reached the idle time. A first explanation, pixels kept before a scroll, was wrong: it was tried and dropped, the kept scroll was right in the failing runs.
+
+The trim now leaves that one picture (`release_targets(r, keep)`, `shell_release_targets`) and carries it to the new generation: one window's page of memory stays through a trim. Test: `a_trim_leaves_the_chrome_frames_the_page_on_screen`, which fails without it; with it, 14 runs of 14 on WARP and two processors.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)

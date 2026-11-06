@@ -955,6 +955,16 @@ shell_snapshots_clear :: proc(app: ^App) {
 	for len(app.chrome_frames.snaps) > 0 { shell_snapshot_drop(app, len(app.chrome_frames.snaps) - 1) }
 }
 
+// The layer targets go, for the memory they hold (memory_trim.odin), but the picture of the tab on screen: the first chrome frame after an idle moment
+// is what it is kept for, and without it a Ctrl+wheel or a long script showed the page's background for a frame.
+shell_release_targets :: proc(app: ^App) {
+	t := current_tab(app)
+	s := t != nil ? shell_snapshot_of(t.id) : nil
+	kept := s != nil && s.image.image.tex != 0 && s.gen == render.targets_generation(&app.r)
+	render.release_targets(&app.r, kept ? s.image.image.tex : 0)
+	if kept { s.gen = render.targets_generation(&app.r) }
+}
+
 // Once per full frame: the snapshots of closed tabs go.
 shell_snapshots_frame :: proc(app: ^App) {
 	for i := len(app.chrome_frames.snaps) - 1; i >= 0; i -= 1 {
