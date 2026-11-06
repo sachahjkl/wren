@@ -363,12 +363,22 @@ one, so that a table that dies is given back at once. <code>js_create_function</
 one buffer (<code>serialize.odin</code>). The 650 KiB bundle of <code>examples/jsbench/page_gen.js</code> asked the arena for 14.6 MB, now 6.5.</li>
 </ul>
 <h2 id="serializedbytecode-reader-and-verifier-serializeodin"><a class="anchor" href="#serializedbytecode-reader-and-verifier-serializeodin" aria-hidden="true">#</a>Serialized‑bytecode reader and verifier (<code>serialize.odin</code>)</h2>
-<p>Parses <code>JS_WriteObject(..., JS_WRITE_OBJ_BYTECODE)</code> for <code>BC_VERSION 28</code>: header, atom table (both atom
-encodings of the format), function bytecode (flags, vardefs, closure vars, cpool, bytecode, debug info,
-source), BigInt, arrays, objects, modules. After the instruction stream is read, its atom operands are
-rewritten in place and a <strong>stack‑height verifier</strong> checks the code. The interpreter trusts the <em>types</em> of
-operands (as QuickJS does: bytecode comes from the compiler); the reader and verifier guarantee shape and
-stack discipline, not type correctness.</p>
+<p>Parses the stream of the front‑end, <code>BC_VERSION 29</code>: QuickJS's <code>JS_WriteObject(..., JS_WRITE_OBJ_BYTECODE)</code> (28) but for a
+function's record, which is a <strong>head</strong> (flags, name, counts, position, closure variables without their names) and a
+<strong>body</strong> with its length in front (closure names, cpool, vardefs, bytecode, line table, source). Also the atom table
+(both atom encodings of the format), BigInt, arrays, objects, modules.</p>
+<p>Most functions of a page never run, so a function is read in two steps. <code>read_object</code> keeps the stream
+(<code>Bytecode_Store</code>, shared by the functions read from it, freed with the last of them; <code>JS_WriteObject</code> hands it out), goes
+over the atom table noting where each atom is, and reads the top‑level function, head and body. A head is read with its
+parent's cpool; a body, and with it the heads of the functions it holds, at the function's first run. An atom is read at
+its first use. Until then the function's <code>code</code> is <code>LAZY_CODE</code>, one instruction (<code>lazy_body</code>, past <code>OPCODE_COUNT</code>: no
+stream can hold it) that reads the body and starts the frame again: every way into a function ends there, and a call
+pays nothing for it. The JIT reads the body itself at its entry when its threshold is 1, and does not compile or inline
+what has not run. <code>Function.prototype.toString</code> reads the body. The line table and the source stay in the stream.</p>
+<p>Once a body is read, the atom operands of its code (a copy) are rewritten and a <strong>stack‑height verifier</strong> checks it. The
+interpreter trusts the <em>types</em> of operands (as QuickJS does: bytecode comes from the compiler); the reader and verifier
+guarantee shape and stack discipline, not type correctness. A stream that fails: <code>read_object</code> throws for the top‑level
+function (the browser then compiles the source); a nested function throws a <code>SyntaxError</code> at each of its calls.</p>
 <h2 id="interpreter-interpodin-opsodin-coroodin"><a class="anchor" href="#interpreter-interpodin-opsodin-coroodin" aria-hidden="true">#</a>Interpreter (<code>interp.odin</code>, <code>ops.odin</code>, <code>coro.odin</code>)</h2>
 <p>A <code>switch</code>‑dispatch loop over the QuickJS instruction set. The common instructions (locals, arguments,
 integer / float arithmetic, comparisons, branches, <code>get_field</code> / <code>put_field</code> with the prototype walk, array
