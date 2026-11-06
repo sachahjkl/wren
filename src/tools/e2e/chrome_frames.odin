@@ -322,6 +322,11 @@ the_frame_rate_is_a_choice :: proc(t: ^testing.T) {
 	e2e.wait_frames(s)
 	for w in s.app.windows { testing.expect_value(t, w.pacer.hz, min(auto_hz, 60)) }
 
+	e2e.pref_set(s, "browser.frame.cap_custom_hz", "45")
+	e2e.run_command(s, "view.frame_cap.custom")
+	e2e.wait_frames(s)
+	for w in s.app.windows { testing.expect_value(t, w.pacer.hz, min(auto_hz, 45)) }
+
 	e2e.run_command(s, "view.frame_cap.uncapped")
 	e2e.wait_frames(s)
 	for w in s.app.windows { testing.expect(t, w.pacer.cadence.uncapped, "every window") }

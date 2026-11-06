@@ -11,6 +11,7 @@ import "toolkit:font"
 import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
+import "wb:config"
 import "wb:cookies"
 import "wb:fetch"
 import "wb:i18n"
@@ -668,6 +669,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 				menu_command(app, t, "view.frame_cap.60")
 				menu_command(app, t, "view.frame_cap.120")
 				menu_command(app, t, "view.frame_cap.240")
+				menu_command(app, t, "view.frame_cap.custom", title = fmt.tprintf("Frame rate: custom (%d)", int(config.int_of(&app.prefs, "browser.frame.cap_custom_hz"))))
 				menu_command(app, t, "view.frame_cap.uncapped")
 			}
 			menu_command(app, t, "view.title_statistics")
