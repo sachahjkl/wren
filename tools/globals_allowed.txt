@@ -358,6 +358,7 @@ style/props.odin initial_groups const  # ... the groups of the initial values: r
 style/restyle_dom.odin trace_roots process  # a trace for debugging (WREN_RESTYLE_TRACE), one thread at a time
 style/restyle_dom.odin trace_note process  # ... the anchor being applied
 style/restyle_dom.odin trace_why process  # ... why it flipped
+style/restyle_dom.odin trace_cause process  # ... the mutation being marked
 style/restyle_dom_test.odin TAGS test
 style/restyle_dom_test.odin CLASSES test
 style/sheet_arrival_test.odin SHEETS test
