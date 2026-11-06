@@ -1,7 +1,6 @@
 package style
 
 import "base:runtime"
-import "core:slice"
 import "core:strings"
 import "core:sync"
 import "wb:base"
@@ -10,8 +9,10 @@ import "wb:dom"
 
 // An invalidation chain with more steps than this becomes "all the next": a set that large filters little.
 INV_MAX_NEXT :: 64
-// So does one of more subjects than this.
-INV_MAX_SUBJECTS :: 64
+// A set of more subjects than this is no set (an element's keys are looked up in a set: Marker.key_maps, so its size costs little).
+INV_MAX_SUBJECTS :: 1024
+// How deep :is() inside :is() is followed for the keys a compound requires.
+COMPOUND_KEYS_DEPTH :: 4
 
 // Invalidation sets (in the spirit of Blink's and Stylo's): for every feature a selector can test on an element (a class,
 // an id, an attribute, a tag, a structural or attribute-driven pseudo-class), which elements a change of that feature
@@ -37,6 +38,85 @@ Reach :: struct {
 
 @(private)
 reach_any :: proc(r: Reach) -> bool { return r.self || r.desc || r.next > 0 || r.all_next || r.all_prev }
+
+// What an element's place among its siblings reaches, by the key its compound requires of that element: `.x:first-child .y`
+// and `.x + .y .z` are looked at for the elements that carry `.x` alone. One union for all the rules of a page gave the reach of
+// its widest rule to every element of every list: on cnn.com a <div> added to <body> marked every child of <body> whole, through
+// `:last-child` compounds and `.zone--t-dark + .flex-experiment :is(...)`, a third of the document for a banner.
+Keyed_Reach :: struct {
+	by_class, by_id, by_tag: map[string]Reach,
+	any:  Reach,   // compounds that require no key
+	used: bool,    // something reaches
+}
+
+@(private = "file")
+keyed_free :: proc(k: ^Keyed_Reach) {
+	for key in k.by_class { delete(key) }
+	for key in k.by_id { delete(key) }
+	for key in k.by_tag { delete(key) }
+	delete(k.by_class); delete(k.by_id); delete(k.by_tag)
+}
+
+// :is(), :where(), `&` of a parent's list, :nth-child(... of S): the element is one of the alternatives.
+@(private = "file")
+simple_alternatives :: proc(s: ^css.Simple) -> bool {
+	if s.list == nil || len(s.list^) == 0 { return false }
+	if s.kind == .Nesting { return true }
+	return s.kind == .Pseudo_Class && (s.pseudo == .Is || s.pseudo == .Where || s.pseudo == .Nth_Child || s.pseudo == .Nth_Last_Child)
+}
+
+// `comp` requires a key of the element: a class, an id, a type, or one in each alternative of an :is().
+@(private = "file")
+compound_keyed :: proc(comp: css.Compound, depth := 0) -> bool {
+	if depth > COMPOUND_KEYS_DEPTH { return false }
+	for &s in comp.simples {
+		#partial switch s.kind {
+		case .Class, .Id, .Type: return true
+		}
+		if simple_alternatives(&s) && list_keyed(s.list^, depth) { return true }
+	}
+	return false
+}
+
+@(private = "file")
+list_keyed :: proc(list: css.Selector_List, depth: int) -> bool {
+	for &c in list {
+		if len(c.compounds) == 0 || !compound_keyed(c.compounds[len(c.compounds) - 1], depth + 1) { return false }
+	}
+	return true
+}
+
+@(private = "file")
+keyed_add :: proc(ix: ^Inv_Index, k: ^Keyed_Reach, comp: css.Compound, r: Reach) {
+	k.used = true
+	if compound_keyed(comp) { keyed_put(ix, k, comp, r) } else { k.any = reach_union(ix.keys, k.any, r) }
+}
+
+// (`comp` is keyed: compound_keyed)
+@(private = "file")
+keyed_put :: proc(ix: ^Inv_Index, k: ^Keyed_Reach, comp: css.Compound, r: Reach) {
+	best: ^css.Simple
+	for &s in comp.simples {
+		#partial switch s.kind {
+		case .Id: best = &s
+		case .Class: if best == nil || best.kind == .Type { best = &s }
+		case .Type: if best == nil { best = &s }
+		}
+	}
+	if best != nil {
+		#partial switch best.kind {
+		case .Id: merge(ix, &k.by_id, best.name, r)
+		case .Class: merge(ix, &k.by_class, best.name, r)
+		case .Type: merge(ix, &k.by_tag, best.name, r)
+		}
+		return
+	}
+	for &s in comp.simples {
+		if !simple_alternatives(&s) || !list_keyed(s.list^, 0) { continue }
+		for &c in s.list^ { keyed_put(ix, k, c.compounds[len(c.compounds) - 1], r) }
+		return
+	}
+}
 
 @(private)
 reach_union :: proc(ks: ^Key_Sets, a, b: Reach) -> Reach {
@@ -172,12 +252,11 @@ Inv_Index :: struct {
 	by_id:      map[string]Reach,
 	by_attr:    map[string]Reach,   // attribute name (lower case): attribute selectors and pseudo-classes that read it
 	by_tag:     map[string]Reach,   // for inserted elements: what their tag makes them match beyond themselves
-	keyless:    Reach,              // compounds with no class, id, attribute or tag: any element may match them
-	pos_fwd:    Reach,              // :first-child, :nth-child()... (index from the start): applied from each sibling
-	pos_bwd:    Reach,              // :last-child, :nth-last-child()... (index from the end)
+	keyless:    Reach,              // compounds with no class, id, attribute or tag: any element may match them; what they reach among siblings
+	pos_fwd:    Keyed_Reach,        // :first-child, :nth-child()... (index from the start): applied from each sibling
+	pos_bwd:    Keyed_Reach,        // :last-child, :nth-last-child()... (index from the end)
 	empty:      Reach,              // :empty (and :placeholder-shown of a textarea): applied from the parent
-	sib_rel:    Reach,              // the element right of a sibling combinator: applied from the next sibling of an insertion
-	sib_any:    bool,               // some sibling combinator exists
+	sib_rel:    Keyed_Reach,        // the element right of a sibling combinator: applied from the next sibling of an insertion or a removal
 	controls:   Reach,              // pseudo-classes answered by the forms model: applied from any element whose attributes change
 	uses_controls: bool,
 	// ... some of them answer for one control from others (its radio group, its form's controls): :checked,
@@ -204,6 +283,7 @@ inv_free :: proc(ix: ^Inv_Index) {
 	for k in ix.has_ids { delete(k) }
 	for k in ix.has_attrs { delete(k) }
 	delete(ix.by_class); delete(ix.by_id); delete(ix.by_attr); delete(ix.by_tag)
+	keyed_free(&ix.pos_fwd); keyed_free(&ix.pos_bwd); keyed_free(&ix.sib_rel)
 	delete(ix.has_classes); delete(ix.has_ids); delete(ix.has_attrs)
 	for &ha in ix.has_anchors {
 		for k in ha.feat.classes { delete(k) }
@@ -300,7 +380,17 @@ watch_refresh :: proc(e: ^Engine, doc: ^dom.Document) {
 analyze_compound :: proc(ix: ^Inv_Index, comp: css.Compound, total: Reach) {
 	keyed := false
 	for &s in comp.simples { if analyze_simple(ix, &s, comp, total, false, 0) { keyed = true } }
-	if !keyed { ix.keyless = reach_union(ix.keys, ix.keyless, total) }
+	if !keyed && !compound_keyed(comp) { keyless_add(ix, total) }
+}
+
+// An element that comes or goes is restyled itself with what it holds: of a compound any element may match, what is kept is what it reaches
+// among its siblings (the subjects of .a * next to it would leave no set for those of :not(.b) ~ .c .d).
+@(private = "file")
+keyless_add :: proc(ix: ^Inv_Index, r: Reach) {
+	r := r
+	r.self, r.desc = false, false
+	if !r.sib_desc { r.set = 0 }
+	if reach_any(r) { ix.keyless = reach_union(ix.keys, ix.keyless, r) }
 }
 
 @(private = "file")
@@ -318,9 +408,8 @@ analyze_complex :: proc(ix: ^Inv_Index, c: ^css.Complex, outer: Reach, in_has: b
 		for cb in c.combinators { if cb == .Next_Sibling || cb == .Subsequent_Sibling { ix.has_sibling = true; if ix.collect != nil { ix.collect.unkeyed = true } } }
 	}
 	for j in 0 ..< len(c.combinators) {
-		if c.combinators[j] == .Next_Sibling || c.combinators[j] == .Subsequent_Sibling {
-			ix.sib_any = true
-			if !in_has { ix.sib_rel = reach_union(ix.keys, ix.sib_rel, reach_compose(reach_from(c, j + 1), outer)) }
+		if !in_has && (c.combinators[j] == .Next_Sibling || c.combinators[j] == .Subsequent_Sibling) {
+			keyed_add(ix, &ix.sib_rel, c.compounds[j + 1], reach_compose(reach_from(c, j + 1), outer))
 		}
 	}
 	for k in 0 ..< len(c.compounds) {
@@ -330,7 +419,7 @@ analyze_complex :: proc(ix: ^Inv_Index, c: ^css.Complex, outer: Reach, in_has: b
 		for &s in comp.simples {
 			if analyze_simple(ix, &s, comp, total, in_has, depth) { keyed = true }
 		}
-		if !keyed && !in_has { ix.keyless = reach_union(ix.keys, ix.keyless, total) }
+		if !keyed && !in_has && !compound_keyed(comp) { keyless_add(ix, total) }
 		if !keyed && in_has && ix.collect != nil { ix.collect.unkeyed = true }
 	}
 }
@@ -361,15 +450,15 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 	case .Pseudo_Class:
 		#partial switch s.pseudo {
 		case .First_Child, .Nth_Child, .First_Of_Type, .Nth_Of_Type:
-			if !in_has { ix.pos_fwd = reach_union(ix.keys, ix.pos_fwd, total) }
+			if !in_has { keyed_add(ix, &ix.pos_fwd, comp, total) }
 			if s.list != nil { analyze_list(ix, s.list, reach_compose(Reach{self = true, all_next = true, all_prev = true}, total), in_has, depth) }
 		case .Last_Child, .Nth_Last_Child, .Last_Of_Type, .Nth_Last_Of_Type:
-			if !in_has { ix.pos_bwd = reach_union(ix.keys, ix.pos_bwd, total) }
+			if !in_has { keyed_add(ix, &ix.pos_bwd, comp, total) }
 			if s.list != nil { analyze_list(ix, s.list, reach_compose(Reach{self = true, all_next = true, all_prev = true}, total), in_has, depth) }
 		case .Only_Child, .Only_Of_Type:
 			if !in_has {
-				ix.pos_fwd = reach_union(ix.keys, ix.pos_fwd, total)
-				ix.pos_bwd = reach_union(ix.keys, ix.pos_bwd, total)
+				keyed_add(ix, &ix.pos_fwd, comp, total)
+				keyed_add(ix, &ix.pos_bwd, comp, total)
 			}
 		case .Empty:
 			if in_has { ix.has_empty = true } else { ix.empty = reach_union(ix.keys, ix.empty, total) }
@@ -475,7 +564,7 @@ has_hops :: proc(list: ^css.Selector_List) -> int {
 // reaches union their sets. An engine's, freed with it (interned, so a rebuild of the same rules adds nothing): process-wide
 // they were bounded by the names of every sheet of every site seen, tens of MB after a few dozen sites; a lock because the
 // restyle of a page may run beside its own style threads.
-Subject_Key_Kind :: enum u8 { Class, Id, Type }
+Subject_Key_Kind :: enum u8 { Class, Id, Type, Attr }
 Subject_Key :: struct { kind: Subject_Key_Kind, name: string }
 
 // The first block of an engine's sets: most pages name a few hundred keys, an iframe of an advert a handful.
@@ -547,15 +636,19 @@ key_sets_union :: proc(ks: ^Key_Sets, x, y: u32) -> u32 {
 
 @(private = "file")
 key_sets_union_of :: proc(ks: ^Key_Sets, x, y: u32) -> u32 {
+	before :: proc(p, q: Subject_Key) -> bool { return p.kind != q.kind ? p.kind < q.kind : p.name < q.name }
 	a, b := ks.sets[x - 1], ks.sets[y - 1]
 	all := make([dynamic]Subject_Key, 0, len(a) + len(b), context.temp_allocator)
-	for k in a { append(&all, k) }
-	for k in b {
-		dup := false
-		for e in all { if e.kind == k.kind && e.name == k.name { dup = true; break } }
-		if !dup { append(&all, k) }
+	// (both sorted)
+	for len(a) > 0 && len(b) > 0 {
+		switch {
+		case before(a[0], b[0]): append(&all, a[0]); a = a[1:]
+		case before(b[0], a[0]): append(&all, b[0]); b = b[1:]
+		case: append(&all, a[0]); a, b = a[1:], b[1:]
+		}
 	}
-	slice.sort_by(all[:], proc(p, q: Subject_Key) -> bool { return p.kind != q.kind ? p.kind < q.kind : p.name < q.name })
+	append(&all, ..a)
+	append(&all, ..b)
 	if len(all) > INV_MAX_SUBJECTS { return 0 }   // (a set that large filters little)
 	return key_sets_intern(ks, all[:])
 }
@@ -574,31 +667,43 @@ key_rank :: proc(k: Subject_Key_Kind) -> int {
 	switch k {
 	case .Id: return 0
 	case .Class: return 1
-	case .Type: return 2
+	case .Attr: return 2
+	case .Type: return 3
 	}
-	return 3
+	return 4
 }
 
-// The key set of a selector's subject: one required class, id or type of its last compound (an id, else a class, else a
-// type). 0 when there is none (`*`, only attributes or pseudo-classes).
+// The key set of a selector's subject: one required class, id, attribute or type of its last compound (an id, else a class, else an
+// attribute, else a type), or for a compound of none of them the keys of the alternatives of an :is() (`.a :is(h2, h3)`). 0 when
+// there is none (`*`, only other pseudo-classes).
 @(private)
-subject_keys :: proc(ks: ^Key_Sets, c: ^css.Complex) -> u32 {
+subject_keys :: proc(ks: ^Key_Sets, c: ^css.Complex, depth := 0) -> u32 {
 	if len(c.compounds) == 0 { return 0 }
 	comp := c.compounds[len(c.compounds) - 1]
 	best: Subject_Key
 	have := false
 	for s in comp.simples {
 		k: Subject_Key
-		switch s.kind {
+		#partial switch s.kind {
 		case .Id: k = {.Id, s.name}
 		case .Class: k = {.Class, s.name}
 		case .Type: k = {.Type, s.name}
-		case .Universal, .Attribute, .Pseudo_Class, .Nesting: continue
+		case .Attribute: k = {.Attr, s.name}
+		case: continue
 		}
-		// the rarest first: an id, then a class, then a tag
+		// the rarest first: an id, then a class, then an attribute, then a tag
 		if !have || key_rank(k.kind) < key_rank(best.kind) { best, have = k, true }
 	}
-	if !have { return 0 }
+	if !have {
+		if depth > COMPOUND_KEYS_DEPTH { return 0 }
+		for &s in comp.simples {
+			if !simple_alternatives(&s) { continue }
+			set := subject_keys(ks, &s.list^[0], depth + 1)
+			for &alt in s.list^[1:] { set = key_sets_union(ks, set, subject_keys(ks, &alt, depth + 1)) }
+			if set != 0 { return set }
+		}
+		return 0
+	}
 	sync.mutex_lock(&ks.mu)
 	defer sync.mutex_unlock(&ks.mu)
 	key_sets_init(ks)
@@ -778,3 +883,4 @@ plain_compound :: proc(comp: css.Compound, allow_logical: bool) -> bool {
 	}
 	return true
 }
+
