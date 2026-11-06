@@ -55,6 +55,9 @@ MARKER_MAX_BYTES :: 512
 // A snapshot above this is neither written nor read: a file this program wrote is far smaller (a hundred tabs with their
 // histories are about a megabyte).
 SNAPSHOT_MAX_BYTES :: 64 << 20
+// A write refused is made again this much later: the rename over a file fails while anything has it open, even to read it (a virus scanner, the indexer, a test
+// that watches it), and a marker left saying "restoring" makes the next crash look like the second in a row.
+RECOVERY_WRITE_RETRY_MS :: 100
 
 ////////////////////////////////
 // The marker and the decision (pure)
@@ -340,13 +343,18 @@ recovery_open :: proc(app: ^App, rest: []string) -> bool {
 }
 
 // The run lived long enough: the next start, if this one ends abnormally, restores again.
-@(private = "file")
 recovery_stable :: proc(data: rawptr) {
-	the_app.recovery.stable_timer = base.NIL_HANDLE
-	host.quiet_note(&(^App)(data).loop)   // (the disk, not the screen)
-	if !the_app.recovery.active || the_app.recovery.closing || !the_app.recovery.self.restoring { return }
-	the_app.recovery.self.restoring = false
-	recovery_mark(the_app.recovery.dir, the_app.recovery.self)
+	app := (^App)(data)
+	app.recovery.stable_timer = base.NIL_HANDLE
+	host.quiet_note(&app.loop)   // (the disk, not the screen)
+	if !app.recovery.active || app.recovery.closing || !app.recovery.self.restoring { return }
+	stable := app.recovery.self
+	stable.restoring = false
+	if !recovery_mark(app.recovery.dir, stable) {
+		app.recovery.stable_timer = host.set_timer(&app.loop, RECOVERY_WRITE_RETRY_MS, 0, recovery_stable, app)
+		return
+	}
+	app.recovery.self = stable
 }
 
 // Something that the snapshot holds changed (a tab opened, closed or moved, an entry added, a document loaded): the snapshot
@@ -358,7 +366,6 @@ recovery_touch :: proc(app: ^App) {
 	app.recovery.snap_timer = host.set_timer(&app.loop, f64(config.int_of(&app.prefs, "browser.session.crash_snapshot_ms")), 0, recovery_fire, app)
 }
 
-@(private = "file")
 Snapshot_Job :: struct {
 	path, data: string,
 	ok:         bool,
@@ -390,7 +397,6 @@ snapshot_work :: proc(data: rawptr) {
 	j.ok = blocker.write_file_atomic(j.path, transmute([]byte)j.data)
 }
 
-@(private = "file")
 snapshot_done :: proc(data: rawptr) {
 	j := (^Snapshot_Job)(data)
 	if the_app != nil { host.quiet_note(&the_app.loop) }
@@ -400,6 +406,11 @@ snapshot_done :: proc(data: rawptr) {
 		the_app.recovery.last = j.data
 	} else {
 		delete(j.data)
+		// (nothing else asks for it again until the next change, and the tabs of this one would be lost in a crash)
+		the_app.recovery.dirty = true
+		if the_app.recovery.snap_timer == base.NIL_HANDLE && the_app.recovery.active && !the_app.recovery.closing {
+			the_app.recovery.snap_timer = host.set_timer(&the_app.loop, RECOVERY_WRITE_RETRY_MS, 0, recovery_fire, the_app)
+		}
 	}
 	delete(j.path)
 	free(j)
