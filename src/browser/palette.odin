@@ -760,7 +760,7 @@ palette_collect :: proc(app: ^App, text: string) {
 			s, lo, hi, ok := match(app, &fq, name, e.def.description)
 			if !ok { continue }
 			push(app, {kind = .Pref, ref = r, title = name, category = "Setting", score = s, range_lo = lo, range_hi = hi,
-				usage = usage_of(app, strings.concatenate({"pref:", name}, context.temp_allocator), now), disabled = e.locked}, &order)
+				usage = usage_of(app, strings.concatenate({"pref:", name}, context.temp_allocator), now), disabled = e.source == .Policy}, &order)
 		}
 	}
 	if mode == .Source || (mode == .All && q != "") {
@@ -1108,7 +1108,7 @@ palette_row :: proc(app: ^App, t: ^Tab, i: int, w, rh, pad: f32, cols: [2]f32, m
 			for _, b in state { if n == 23 { cut = b; break }; n += 1 }
 			state = strings.concatenate({state[:cut], "…"}, context.temp_allocator)
 		}
-		if e.source != .Default { state = strings.concatenate({state, e.locked ? "  (locked)" : "  (modified)"}, context.temp_allocator) }
+		if e.source != .Default { state = strings.concatenate({state, (e.source == .Policy) ? "  (locked)" : "  (modified)"}, context.temp_allocator) }
 		ident = u64(r.ref)
 	case .Source:
 		ident = fnv(u64(r.index), r.key)

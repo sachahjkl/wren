@@ -168,7 +168,7 @@ closure_against_the_compilers_import_graph :: proc(t: ^testing.T) {
 	for pkg in ([]string{"src/url", "src/page", "src/tools/wpt", "ext/gui_toolkit/tests/keyboard"}) {
 		mine, ok := closure_packages(&c, {pkg})
 		testing.expectf(t, ok && len(mine) > 0, "%s: its packages are found", pkg)
-		graph, _ := tooling.capture({tooling.odin_program(), "check", pkg, TOOLKIT, WB, ONE_THREAD, "-show-import-graph", "-no-entry-point"})
+		graph, _ := tooling.capture({tooling.odin_program(), "check", pkg, TOOLKIT, WB, ONE_THREAD, "-show-import-graph", "-no-entry-point", "-ignore-warnings"})
 		graph, _ = strings.replace_all(graph, "\\", "/", context.temp_allocator)
 		root := here(".")
 		root, _ = strings.replace_all(root, "\\", "/", context.temp_allocator)

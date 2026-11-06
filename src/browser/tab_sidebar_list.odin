@@ -226,7 +226,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 		if gap >= 0 { drop_ghost(app, area, true, gap - area.view_off.y, rh, row_x, row_w) }
 	}
 	// the dragged row's place moves its tab: in the list (and in or out of a group), or up to the pinned tabs
-	if dragged >= 0 && drag_y >= 0 && own.strip.drag.active {
+	if dragged >= 0 && drag_y >= 0 && own.strip.drag.held != 0 {
 		t := wnd.tabs[dragged]
 		pins := ui.prev_box("###pins")
 		over_pins := ui.mouse_pos().y < area.rect.min.y - (pinned_count(wnd.tabs[:]) > 0 ? 0 : rh * 0.4)
@@ -340,7 +340,7 @@ sidebar_pins :: proc(app: ^App, pos: Tabs_Position, open, extent: f32, cc: ^Clas
 			if (sig.pressed || sig.clicked) && !on { tab_select(app, k) }
 			if sig.right_clicked { tab_context_menu(app, k, ui.mouse_pos()) }
 			if sig.middle_clicked && app.favs.cfg.middle_close { shell_after_build(app, {kind = .Close_Tab, tab = t.id}); return }
-			if !own.strip.drag.active { sidebar_tip(sig, t) }
+			if own.strip.drag.held == 0 { sidebar_tip(sig, t) }
 			if sig.pressed { own.sidebar.pin_grab = ui.mouse_pos() - b.rect.min + {gap, gap} }
 			if sig.dragging && app.favs.cfg.drag_reorder {
 				ui.reorder_begin(&own.strip.drag, t.id, max(abs(sig.drag_delta.x), abs(sig.drag_delta.y)), app.favs.cfg.drag_threshold * dpi, 0, 0)
@@ -479,7 +479,7 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 	if (sig.pressed || sig.clicked) && !on { tab_select(app, i) }   // the press selects; Enter / Space too
 	if sig.right_clicked { tab_context_menu(app, i, ui.mouse_pos()) }
 	if sig.middle_clicked && app.favs.cfg.middle_close { shell_after_build(app, {kind = .Close_Tab, tab = t.id}); return }
-	if !own.strip.drag.active { sidebar_tip(sig, t) }
+	if own.strip.drag.held == 0 { sidebar_tip(sig, t) }
 
 	// drag to reorder, along Y (straight out sideways starts a drag too: it may leave the bar)
 	if sig.dragging && app.favs.cfg.drag_reorder && (n > 1 || app.favs.cfg.drag_detach) {
@@ -493,7 +493,7 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 		request_frames(app, 2)
 		// far enough beside the list: the tab leaves for a window of its own (tab_drag.odin)
 		if app.favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), true, app.favs.cfg.detach_distance_em * em) {
-			own.strip.drag.active = false
+			own.strip.drag.held = 0
 			dragging = false
 			shell_after_build(app, {kind = .Tear_Off, tab = t.id, at = ui.mouse_pos()})
 		}
