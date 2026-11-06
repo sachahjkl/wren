@@ -428,7 +428,8 @@ and GitHub's repository page load and draw. What it took:</p>
 a Vulkan or GL driver at run time. On NixOS: <code>nix shell</code> with clang, lld, nasm, pkg-config, rustup (1.99.1), and
 <code>LIBRARY_PATH</code> / <code>LD_LIBRARY_PATH</code> for those libraries.</li>
 <li><code>build/js/wren_js.wasm</code> is the JS engine's image: a Windows build makes it (<code>src\tools\buildjs</code>) and the file is
-portable, so a Linux checkout copies it.</li>
+portable, so a Linux checkout copies it. Its machine code (<code>build/js/wren_js.code</code>, which the program ships) is not:
+<code>./build.sh wren</code> makes it from that image (<code>wrentool build jscode</code>).</li>
 </ul>
 <p>A bug Linux found: <code>Performance_timeline</code> freed the navigation entry's strings (a <code>defer</code> in the <code>if</code> block) before
 marshalling them, so <code>performance.getEntriesByType("navigation")</code> read freed memory. The Windows heap kept the bytes,
