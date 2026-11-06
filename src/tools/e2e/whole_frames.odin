@@ -6,6 +6,7 @@ package e2e_scenarios
 import "core:fmt"
 import "core:testing"
 import "toolkit:draw"
+import "toolkit:render"
 import "toolkit:ui"
 import "wb:browser"
 import "wb:e2e"
@@ -162,6 +163,21 @@ paper_at :: proc(f: browser.Tl_Frame, y: int) -> bool {
 @(test)
 ctrl_wheel_over_a_long_page_keeps_it_in_every_frame :: proc(t: ^testing.T) {
 	s := e2e.start(t, {size = WINDOW_SIZE, url = e2e.file_url(fmt.tprintf("%s/%s", e2e.repo_root(), ARTICLE))})
+	zoom_frames(t, s)
+}
+
+// An idle browser gives its layer targets back (memory_trim.odin), but the picture of the page on screen: it went with them, and the first chrome frame after an
+// idle moment showed the page's background alone (seen with two tests in a process, whose wait reached the idle time).
+@(test)
+a_trim_leaves_the_chrome_frames_the_page_on_screen :: proc(t: ^testing.T) {
+	s := e2e.start(t, {size = WINDOW_SIZE, url = e2e.file_url(fmt.tprintf("%s/%s", e2e.repo_root(), ARTICLE))})
+	e2e.wait_frames(s, SCROLL_SETTLE_FRAMES)
+	context = s.ctx
+	tab := browser.current_tab(s.app)
+	testing.expect(t, browser.shell_snapshot_of(tab.id) != nil, "a picture of the page is kept")
+	browser.memory_trim(s.app)
+	kept := browser.shell_snapshot_of(tab.id)
+	testing.expect_value(t, kept.gen, render.targets_generation(&s.app.r))
 	zoom_frames(t, s)
 }
 

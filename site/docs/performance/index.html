@@ -3091,6 +3091,9 @@ keyless: desc, all_next, all_prev, sib_desc, set = 0     (.flex-variant *)</code
 </tbody>
 </table></div>
 <p>DOMContentLoaded gains on all three, ranges apart on theverge.com. Load is within noise on all three: +5 % on theverge.com by the median may be a real cost, not proven.</p>
+<h2 id="what-changed-round-41-a-page-blank-after-an-idle-moment"><a class="anchor" href="#what-changed-round-41-a-page-blank-after-an-idle-moment" aria-hidden="true">#</a>What changed, round 41: a page blank after an idle moment</h2>
+<p><code>memory_trim</code> (5 s of rest, or a page gone) released every pooled target, the kept picture of the page on screen too. <code>shell_paint_page</code> refused it by its generation (a trace: kept 1, renderer 2) and the first chrome frame after a pause, under a Ctrl+wheel or a long script, showed the page's background alone. <code>zoom_frames</code> caught it on CI once it zoomed until a chrome frame came, in about one run in four with its two tests in one process on WARP and two processors; alone it never failed in 12 runs, their wait is what reached the idle time. A first explanation, pixels kept before a scroll, was wrong: it was tried and dropped, the kept scroll was right in the failing runs.</p>
+<p>The trim now leaves that one picture (<code>release_targets(r, keep)</code>, <code>shell_release_targets</code>) and carries it to the new generation: one window's page of memory stays through a trim. Test: <code>a_trim_leaves_the_chrome_frames_the_page_on_screen</code>, which fails without it; with it, 14 runs of 14 on WARP and two processors.</p>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
@@ -3363,6 +3366,7 @@ must call nothing itself (<code>interp_hot.odin</code>'s header says how).</li>
 <li><a href="#what-changed-round-37-a-first-page-after-an-install-or-an-update">What changed, round 37: a first page after an install or an update</a></li>
 <li><a href="#what-was-measured-and-left-round-38-a-first-frame-on-the-software-rasterizer">What was measured and left, round 38: a first frame on the software rasterizer</a></li>
 <li><a href="#what-changed-round-39-what-is-left-of-the-load-and-three-settings-measured-again">What changed, round 39: what is left of the load, and three settings measured again</a></li>
+<li><a href="#what-changed-round-41-a-page-blank-after-an-idle-moment">What changed, round 41: a page blank after an idle moment</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
