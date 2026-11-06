@@ -3002,6 +3002,67 @@ DOMContentLoaded gains on all three, ranges apart on theverge.com. Load is withi
 
 The trim now leaves that one picture (`release_targets(r, keep)`, `shell_release_targets`) and carries it to the new generation: one window's page of memory stays through a trim. Test: `a_trim_leaves_the_chrome_frames_the_page_on_screen`, which fails without it; with it, 14 runs of 14 on WARP and two processors.
 
+## What changed, round 40: what a style and layout pass costs during a load
+
+Round 39 left about 2.4 s of cnn.com's 4.2 s in style and layout, in frames and in reads that force them. Development builds, `wrentool waterfall`, each load in a fresh process with a throwaway profile; base (093a91ab) and round interleaved, the order turning; temporary laps around the steps of a pass, removed after; then `wrentool bench perf -Sample` with `WREN_SAMPLE_UNDER`.
+
+**It is style, again, and not what a full pass costs.** A pass of cnn.com, read or frame, spent 90 % of its time in style. Laps of one quiet load, ms:
+
+| | style 1 685 | | layout 178 |
+|---|---|---|---|
+| walking what was marked, on the window thread | 633 | a full layout of 2 500 boxes | 5 to 7 each |
+| full passes (7) | 355 | | |
+| reading the mutations (`mark_mutations`) | 256 | | |
+| what went to the style threads | 194 | | |
+| the members of the `:has()` anchors | 144 | | |
+| sheets that came or went | 88 | | |
+
+Partial passes were not slow per element, they restyled what no change reached: 15 700 elements for 9 100 changed, and 177 elements for one changed, six times running. 27 elements could cost 100 ms, 4 300 cost 200.
+
+**Layout is incremental on these mutations.** Most passes lay out a few boxes to a few hundred of 2 500. It falls to a full pass when the plan of the children fails and the container to rebuild holds half the boxes (`too much changed`, `<body>`, a `<div>` of 1 150 boxes): 5 to 10 ms, what the rebuild would have cost. Left as it is. So a read from less than the whole document would save a tenth of what a read costs; not done, nor `getComputedStyle` without layout (a layout is 1 to 5 ms of a read of 37).
+
+**The caller of `restyle_needed`.** Every setter now names itself (`Engine.restyle_why`), so `an environment change` and the empty reason of round 33 are gone from the reports. It was the forms: `.checked` written on a checkbox (25 times over three loads, `changed_widely`) and the first change of any control, each a full pass of the document, 2 to 3 a page, whatever the rules said. Now `engine_control_changed` hands the control to `restyle_dom`, which marks what the rules that ask the forms model reach from it, as for an attribute: its form when groups are asked about, a full pass for a radio button or a control owned through `form=`, whose group is out of sight. `restyle_dom_control_state_stays_with_the_control`, `checkedness_says_which_control_changed`. The empty reason: with one of these pending, `engine_extend` was not called, so rules made dirty meanwhile had no fallback to give; `style rules changed` says it now.
+
+**Fixed, each with its test, biggest first.**
+1. **One `:has(+ .x)` in a sheet tried every anchor on every sibling** (`Inv_Index.has_sibling` was one flag for the page). A `<script>` added to `<head>` tested 100 anchors on each element before it, 5 000 answers, and bare anchors marked all of `<head>`; a removal asked it of every child of the parent, with each its walk up. Siblings are now read by the anchors whose argument has a sibling combinator (`Has_Feat.sibling`), and what left a parent starts one level below it. `restyle_dom_has_siblings_concern_those_that_read_them`.
+2. **What went to the style threads went to one.** `run_deferred` opened the tops of the subtrees until their number looked like enough, and shared them out by number: under `<body>` 110 frames, one of them holding nearly all, 190 ms for 4 300 elements. It now opens what is too heavy and shares out by weight, as the full pass does (`ranges_by_weight`): 45 to 75 ms. npr.org too. `restyle_dom_parallel_shares_out_by_weight` (`largest_task`).
+3. **Partial passes read class attributes as text.** `matches_simple` was 27 % of `page::styles`: round 33's "class bits in partial passes", estimated at a tenth of that. Bits of an element's classes are filled as it is met (`class_bits_begin`, a word by node, 0 until read), in every partial pass: 16 %. `restyle_dom_reads_each_class_attribute_once`.
+4. **`:has()` answered from what is known.** Elements restyled asked every bare `:has(.x)` of their subtree, 11 % of `page::styles`, and `<body>` is an element. The exact anchors keep their members: `has_answer` reads the bit `members_above` makes once a batch, on the window thread's pass (`restyle_dom_has_answered_from_the_members`). A chain or `:has(> .a)` is answered only when no member is below. `:has(.menu:hover)` with nothing under the pointer looks at nothing, which is every load (`restyle_dom_has_of_a_state_nothing_is_in`).
+5. **`:has(:is(.a, .b) .k)` counted as naming no key**: every insertion concerned it. `restyle_dom_has_alternatives_are_keys`. **The document's watch gave the same last bit to every feature past the 62nd**: on cnn.com any subtree held all of them. Now by turn. `watch_bits_are_spread_past_their_number`.
+6. **`mark_keyed`** (6 to 8 %, round 33's note): an anchor marks every ancestor with one set, subtrees inside one another, each scanned. Scans now wait for the end of the mutations; a root under a root of the same set adds nothing, the sets of one element take one walk. `restyle_dom_keyed_marks_walk_a_subtree_once` (`keyed_steps`).
+7. **`members_prepare`**: anchor by anchor over each subtree that came. One walk, each element against the anchors of its own keys (`members_candidates`, as `members_scan` did). `restyle_dom_has_members_found_by_their_keys`.
+8. **`window.scrollX`, `scrollY` at the origin ask for no layout**: no range or anchoring moves them there. On theverge.com and npr.org, read after each mutation, a pass each: npr.org's layout passes 450 to 70. `layout_cost_checks`.
+
+**Two differences of `layout.incremental.verify` that were already there.** Round 33 checked style alone. A refresh left anonymous boxes the custom properties of the old record (cnn.com, a flex item made of text; a table in an arena that may be gone): `refresh_gives_anonymous_boxes_their_custom_properties`. And a partial pass that stops for the root font size replaced records and left the serial, so the full pass after it found them equal and its journal said nothing: layout kept the old font of the root (npr.org, 1 load in 3). The serial moves now (`styled_superseded`).
+
+`WREN_RESTYLE_TRACE` now also says each layout pass, `read` or `frame`, with its style and layout times, steps and fallback, and the report of a failed verification on the path of the reads.
+
+The sampler, cnn.com, profile builds, a long run each, ms:
+
+| | base | round |
+|---|---|---|
+| layouts forced by readings, style included | 686: 1 753 | 596: 1 327 |
+| partial passes after the DOM | 262: 1 046 | 260: 689 |
+| full passes | 8: 464 | 6: 366 |
+
+Base and round, 8 runs interleaved (theverge.com 16), median (range), ms:
+
+| | load before | after | DOMContentLoaded before | after | first paint before | after | CPU before | after |
+|---|---|---|---|---|---|---|---|---|
+| cnn.com | 5 551 (4 545-6 000) | **4 504 (4 323-4 850)** | 2 576 (2 132-2 983) | **2 216 (2 022-2 516)** | 724 (619-1 024) | **548 (512-624)** | 8 454 (7 984-9 516) | 7 570 (6 828-8 969) |
+| theverge.com | 5 671 (5 322-10 251) | 5 672 (5 350-8 749) | 897 (799-1 405) | 890 (749-1 223) | 436 (384-887) | 518 (386-647) | 9 266 (8 469-14 141) | 9 328 (8 547-10 953) |
+| npr.org | 5 313 (4 558-8 758) | 5 044 (4 133-9 388) | 2 998 (2 414-4 524) | 3 054 (2 482-6 221) | 840 (598-1 566) | 833 (591-3 671) | 7 110 (6 250-10 234) | 7 258 (6 422-9 062) |
+| bbc.com/news | 2 634 (657-5 639) | 2 697 (654-4 400) | 652 (573-1 272) | 626 (530-1 210) | 166 (127-418) | 176 (128-460) | 4 320 (1 875-5 281) | 4 234 (1 500-5 578) |
+
+Read plainly. **cnn.com is the result**: -19 % on the load, all eight of the base's runs above the round's median and seven above its worst, the first paint -24 % with ranges apart but for one run; DOMContentLoaded and CPU move the same way, ranges meeting. The machine ran other work through most of the series: the loads of round 39, 4.1 s, were not seen on either side. **The other three are within noise**, and were expected to be near it: their style is 350 to 600 ms of a load, most of it full passes and sheets. theverge.com's first paint has two modes, near 400 and near 530, on both sides; the round is more often in the second (median +82 ms over 16 runs, ranges the same): not proven either way, and not `scrollY` (that change alone, 8 runs: 513 against 510). bbc.com/news answered a smaller page once on each side (657, 654).
+
+`style.incremental.verify` and `layout.incremental.verify` on the four pages: no difference, 325 passes of style in the last series. WPT: dom/nodes, css/css-shadow, css/css-ui, css/css-transforms, css/cssom, css/css-nesting, html/semantics/forms/the-label-element, 912 tests: no regression. css/cssom-view and css/selectors are not in the checkout (`wpt/suites.txt`).
+
+**Measured, not done.**
+- `style.incremental.parallel_min` 512 and 128 (cnn.com, 3 runs): worse, style 1 263 to 1 457 and 1 801 ms, CPU 7 000 to 8 641 and 9 234. Stays 2 048.
+
+**Left.** What is left of a partial pass is matching: 90 to 150 us an element on the window thread, `:has()` that is not exact a third of it (nested, or with a sibling combinator). `Collection_length` was not looked at. Full passes that remain, 40 to 110 ms each: `a sheet came with @keyframes that elements use` (the three heavy pages), `a sheet came that styles another tree`, `style rules changed` (which sheet, not identified), `form controls inserted` (radio buttons), the first ones. 90 to 170 ms a load of sheets arriving (`fresh_hits` walks the document for each). Layout's `too much changed`: 5 to 10 ms a time, 30 times on theverge.com.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -3185,6 +3246,7 @@ After round 31. "A call through one site" was the wrong name for npr.org's first
 After round 33. The first item of the list after round 31 is done for what it named: cnn.com's marks were unions of reaches, not a rule; 28 full passes are 8, the load -16 %, its CPU -36 % (round 33). A forced read's cost is the style pass, not layout. What leads now, on all four pages, is the engine: the list after round 31 from its second item on. Of style: what `restyle_needed` is asked for, mid-sheet `insertRule`, `mark_keyed`.
 After round 34. Reading the machine code paid more than any profile so far. In order: **the epoch check** (12 to 20 % of all the engine's code: an engine of its own for the JavaScript image, polls in the natives); **what a first paint waits for in a frame** (bbc.com/news: three timers of 300 to 430 ms before it); compile on arrival by default (DOMContentLoaded -18 to -32 % on two pages, 3 runs); verification at the first closure; `set_property` of a new key without the walk of the prototypes; then the callback from a native, the collection. `-o:speed` is the engine's level now: what is said above of -o:size is history.
 After round 36. The epoch check is gone from the engine (round 36), `new` no longer walks the prototypes for a new key. The interpreter is 12 to 34 % faster by micro.js; two of the four loads followed. In order: **the engine's time on the window thread for a load, measured as such** (`wasm.guest_time` in `api.stats`): CPU to the load event no longer says it, cnn.com and bbc.com/news spend more of it than before for reasons not established; then what a first paint waits for in a frame, compile on arrival by default, verification at the first closure, `ip` at dispatch, the callback from a native, the collection.
+After round 40. A forced read's and a frame's pass on cnn.com: partial passes restyled what no change reached, through :has() above all (round 40): load -19 %. In order, of style: what :has() that is not exact costs a restyle, the full passes that remain (@keyframes in use, sheets that style another tree), resh_hits for each sheet that arrives. A read answered from less than the whole layout is worth a tenth of a read.
 
 ||||||| parent of eb61d939 (Round 33 in docs/performance.md)
 1. **The script stage of DOM-heavy pages, what is left** (`js_nodes10k` on a quiet machine after round 25, 5 runs: a frame of 16.9 ms
