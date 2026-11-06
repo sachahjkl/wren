@@ -571,6 +571,7 @@ Window_pageYOffset :: proc(c: ^Call) -> f64 { return scroll_now(c).scroll_y }
 @(private = "file")
 scroll_now :: proc(c: ^Call) -> Viewport {
 	if c.page.worker != nil { return {} }
+	if vp := viewport_now(c); vp.scroll_x == 0 && vp.scroll_y == 0 { return vp }
 	js_layout_now(c.page)
 	return viewport_now(c)
 }
