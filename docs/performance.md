@@ -3298,6 +3298,32 @@ Read plainly. **theverge.com: load -7.5 %, ranges apart in both series; `Guest` 
 
 **Not verified.** The release build, a long session, the full WPT, the full test262, AddressSanitizer: not run.
 
+## What changed, round 47: four engineering ideas measured before they were built
+
+No code of the engine changed in this round but for tests: `hotcheck.js` holds the matcher's runs, and the codec probe test no longer takes the moment the pool's other thread holds the lock for the probe's. The matcher of round 46 was compared with Node on 41 500 random regexps over random subjects: 11 differences, all `/u` where V8 stops in the middle of a pair and Wren goes by `AdvanceStringIndex`. test262's `built-ins/RegExp`: 0 errors in 1 879 tests.
+
+Development builds, `wrentool waterfall -Runs 1`, interleaved, ms; `Guest`: the window thread's outermost calls into the engine, whole trace (so past the load event). Public sites, each change a temporary one, none in the tree.
+
+**Scripts of frames on their own threads: no.** `Guest` by realm, one load. The frames' realms on the window thread hold 148 of 2 158 ms on cnn.com (7 %), 119 of 4 810 on npr.org (2.5 %), 38 of 3 897 on theverge.com (1 %). That is all such threads could take off, before what crossing them costs. theverge.com's 732 ms of another realm are a worker, already on a thread of its own.
+
+**Inline caches: no.** The interpreter has none (`hot_find` searches at each `get_field`). The ceiling was measured rather than the thing built: a direct-mapped cache of (shape, atom) to holder and slot, 4 096 entries, without the guards of the prototype chain a real one needs, 5 runs:
+
+| | load base | load cache | `Guest` base | `Guest` cache |
+|---|---|---|---|---|
+| cnn.com | 3 140-3 586 | 3 317-3 439 | 1 800-1 912 | 1 789-1 933 |
+| npr.org | 3 602-3 991 | 3 562-3 917 | 3 973-4 427 | 4 035-4 183 |
+| theverge.com | 3 686-3 777 | 3 782-3 854 (2 runs) | 3 623-3 857 | 3 585-3 642 (2 runs) |
+
+theverge.com's 3 other runs ended at about 700 ms with the page's scripts broken: without guards the cache gives wrong answers, and those runs say nothing. No load gained; guards would take some of what is left. As round 46 read it, the time of a lookup is the misses on the object and the shape, which a cache does not avoid.
+
+**JIT profiles kept across visits: no.** What they would give is compiled code early. `javascript.jit.call_threshold` 2 000 against 100 000, 4 runs: ten times as many translations on the window thread (`Jit` 122 ms in 1 225 spans against 10 in 90 on theverge.com), `Guest` 3 728-3 837 against 3 577-3 868 and 4 157-4 416 against 4 045-4 285 on npr.org, theverge.com's load 4 176-4 284 against 3 705-3 807. Not the same thing as code there from the first call, which was not measured; but the code that came earlier took nothing off, and attaching it stays on the window thread however it was made.
+
+**Generations in the collector: no measured gain in a load.** `gc_collect` turned off, 4 runs: theverge.com `Guest` 3 575-3 698 -> 3 352-3 470 (-6 %), its load 3 696-3 873 -> 3 675-3 913; cnn.com and npr.org nothing, inside their ranges. This is not the whole of the collector: `Gc` spans remained (theverge.com 450-510 -> 280-320 ms, about as many spans) and what still makes them was not traced. `javascript.gc_threshold_bytes` at 1 GB is no measure of it, it only moves the first collection.
+
+**Threaded dispatch by tail calls: not built, by arithmetic.** `hot_loop` and `interp_run` are 10 to 41 % of `Guest` (round 46) and 22 % of `hot_loop`'s samples are at the dispatch: 2 to 9 % of `Guest` is the whole of what it could touch, for a rewrite of every instruction, the JIT's exits included. Not measured.
+
+**Read plainly.** A `Guest` 6 % shorter on theverge.com did not move its load, in two of these series. What ends these loads is no longer the sum of the script's time; what does was not established here. In order: what scripts force of style and layout (43 % of cnn.com's `Guest`), then the critical path to the load event itself.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -3482,7 +3508,7 @@ After round 33. The first item of the list after round 31 is done for what it na
 After round 34. Reading the machine code paid more than any profile so far. In order: **the epoch check** (12 to 20 % of all the engine's code: an engine of its own for the JavaScript image, polls in the natives); **what a first paint waits for in a frame** (bbc.com/news: three timers of 300 to 430 ms before it); compile on arrival by default (DOMContentLoaded -18 to -32 % on two pages, 3 runs); verification at the first closure; `set_property` of a new key without the walk of the prototypes; then the callback from a native, the collection. `-o:speed` is the engine's level now: what is said above of -o:size is history.
 After round 36. The epoch check is gone from the engine (round 36), `new` no longer walks the prototypes for a new key. The interpreter is 12 to 34 % faster by micro.js; two of the four loads followed. In order: **the engine's time on the window thread for a load, measured as such** (`wasm.guest_time` in `api.stats`): CPU to the load event no longer says it, cnn.com and bbc.com/news spend more of it than before for reasons not established; then what a first paint waits for in a frame, compile on arrival by default, verification at the first closure, `ip` at dispatch, the callback from a native, the collection.
 After round 40. A forced read's and a frame's pass on cnn.com: partial passes restyled what no change reached, through :has() above all (round 40): load -19 %. In order, of style: what :has() that is not exact costs a restyle, the full passes that remain (@keyframes in use, sheets that style another tree), resh_hits for each sheet that arrives. A read answered from less than the whole layout is worth a tenth of a read.
-After round 46. What a load runs is flat and interpreted: the two items that paid were algorithms (a regexp quadratic on a token, a walk of the document for each name nothing has), found by reading a sampler that does not wait for a poll. In order, of the engine: what scripts force of style and layout (43 % of cnn.com's `Guest`), `get_field`'s misses, the free lists' cold blocks, `new URL`, the timeline in JSON at each call; `ip` at dispatch and native callbacks showed nothing of their own.
+After round 47: frames on threads, inline caches, kept JIT profiles and generations were measured and take nothing off a load; see that round. After round 46. What a load runs is flat and interpreted: the two items that paid were algorithms (a regexp quadratic on a token, a walk of the document for each name nothing has), found by reading a sampler that does not wait for a poll. In order, of the engine: what scripts force of style and layout (43 % of cnn.com's `Guest`), `get_field`'s misses, the free lists' cold blocks, `new URL`, the timeline in JSON at each call; `ip` at dispatch and native callbacks showed nothing of their own.
 
 ||||||| parent of eb61d939 (Round 33 in docs/performance.md)
 1. **The script stage of DOM-heavy pages, what is left** (`js_nodes10k` on a quiet machine after round 25, 5 runs: a frame of 16.9 ms
