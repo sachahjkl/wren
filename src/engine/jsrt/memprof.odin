@@ -30,11 +30,10 @@ Prof_Row :: enum u8 {
 	obj_promise,
 	obj_other,
 	function_bc,
-	bc_code,    // code + pc2line + catch_levels
+	bc_code,    // code + catch_levels
 	bc_cpool,
 	bc_defs,    // vardefs + closure_vars
-	bc_source,
-	bc_image,
+	bc_image,   // the streams the functions were read from, with their line tables and source
 	var_ref,
 	module,
 	atom_table, // count = atoms, extra = entry array + hash
@@ -42,6 +41,7 @@ Prof_Row :: enum u8 {
 	pool_chunks,// count = chunks, cell_bytes = chunk bytes, slack = never handed out yet
 	runtime_misc, // value stack segments, gray/temp_roots capacity
 	arenas,     // count = compiles, cell_bytes = largest front-end arena (blocks), extra = retained scratch + regexp arena blocks
+	functions,  // count = functions read, cell_bytes = those that ran (their body read and verified)
 }
 
 Prof_Cell :: struct {
@@ -154,11 +154,10 @@ heap_profile :: proc(rt: ^Runtime) -> (p: Heap_Profile) {
 			add_extra :: proc(p: ^Heap_Profile, row: Prof_Row, bytes: int) {
 				p.rows[row].extra_bytes += i64(bytes)
 			}
-			add_extra(&p, .bc_code, len(b.code) + len(b.pc2line) + len(b.catch_levels) * size_of(Catch_Level))
+			add_extra(&p, .bc_code, len(b.code) + len(b.catch_levels) * size_of(Catch_Level))
 			add_extra(&p, .bc_cpool, len(b.cpool) * size_of(Value))
 			add_extra(&p, .bc_defs, len(b.vardefs) * size_of(Var_Def) + len(b.closure_vars) * size_of(Closure_Var))
-			add_extra(&p, .bc_source, len(b.source))
-			add_extra(&p, .bc_image, len(b.image))
+			add_extra(&p, .bc_image, len(b.store.buf) / b.store.refs) // (its share: the row sums to the stream)
 		case .var_ref:
 			add(&p, .var_ref, int(c.size), 0, 0)
 		case .module:
@@ -180,6 +179,7 @@ heap_profile :: proc(rt: ^Runtime) -> (p: Heap_Profile) {
 	for seg in rt.vstack {p.rows[.runtime_misc].extra_bytes += i64(len(seg.data) * size_of(Value))}
 	p.rows[.runtime_misc].extra_bytes += i64(cap(rt.gray) + cap(rt.temp_roots)) * size_of(rawptr)
 	p.rows[.arenas] = {i64(rt.compile_count), i64(rt.compile_peak_bytes), i64(arena_blocks(&rt.scratch) + arena_blocks(&rt.regexp_arena)), i64(rt.compile_peak_blocks)}
+	p.rows[.functions] = {i64(rt.functions_read), i64(rt.functions_verified), 0, 0}
 	return
 }
 

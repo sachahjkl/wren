@@ -131,12 +131,24 @@ The linear memory of a Wasm module only grows, so what counts is the high-water 
 
 ## Serialized‑bytecode reader and verifier (`serialize.odin`)
 
-Parses `JS_WriteObject(..., JS_WRITE_OBJ_BYTECODE)` for `BC_VERSION 28`: header, atom table (both atom
-encodings of the format), function bytecode (flags, vardefs, closure vars, cpool, bytecode, debug info,
-source), BigInt, arrays, objects, modules. After the instruction stream is read, its atom operands are
-rewritten in place and a **stack‑height verifier** checks the code. The interpreter trusts the *types* of
-operands (as QuickJS does: bytecode comes from the compiler); the reader and verifier guarantee shape and
-stack discipline, not type correctness.
+Parses the stream of the front‑end, `BC_VERSION 29`: QuickJS's `JS_WriteObject(..., JS_WRITE_OBJ_BYTECODE)` (28) but for a
+function's record, which is a **head** (flags, name, counts, position, closure variables without their names) and a
+**body** with its length in front (closure names, cpool, vardefs, bytecode, line table, source). Also the atom table
+(both atom encodings of the format), BigInt, arrays, objects, modules.
+
+Most functions of a page never run, so a function is read in two steps. `read_object` keeps the stream
+(`Bytecode_Store`, shared by the functions read from it, freed with the last of them; `JS_WriteObject` hands it out), goes
+over the atom table noting where each atom is, and reads the top‑level function, head and body. A head is read with its
+parent's cpool; a body, and with it the heads of the functions it holds, at the function's first run. An atom is read at
+its first use. Until then the function's `code` is `LAZY_CODE`, one instruction (`lazy_body`, past `OPCODE_COUNT`: no
+stream can hold it) that reads the body and starts the frame again: every way into a function ends there, and a call
+pays nothing for it. The JIT reads the body itself at its entry when its threshold is 1, and does not compile or inline
+what has not run. `Function.prototype.toString` reads the body. The line table and the source stay in the stream.
+
+Once a body is read, the atom operands of its code (a copy) are rewritten and a **stack‑height verifier** checks it. The
+interpreter trusts the *types* of operands (as QuickJS does: bytecode comes from the compiler); the reader and verifier
+guarantee shape and stack discipline, not type correctness. A stream that fails: `read_object` throws for the top‑level
+function (the browser then compiles the source); a nested function throws a `SyntaxError` at each of its calls.
 
 ## Interpreter (`interp.odin`, `ops.odin`, `coro.odin`)
 

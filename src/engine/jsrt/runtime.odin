@@ -122,7 +122,6 @@ Compile_Request :: struct {
 	scope_idx: int,
 	// eval_direct: the caller's flags (the eval code inherits them).
 	in_class_field: bool,
-	keep_image: bool, // keep the serialized bytecode on the resulting function (the C API's JS_WriteObject returns it)
 	strip_source: bool, // the functions keep no source, whatever config.strip_source says
 	user:      rawptr,
 }
@@ -243,6 +242,8 @@ Runtime :: struct {
 	compile_count:  int, // front-end compiles so far, and the most block memory one of their arenas held (memprof.odin)
 	compile_peak_bytes: int,
 	compile_peak_blocks: int,
+	functions_read:     int, // functions whose head was read, and of them those whose body was read and verified, at their first run (serialize.odin)
+	functions_verified: int,
 	regexp_arena:   mem.Dynamic_Arena, // per-exec scratch of the regexp matcher (reset after each match)
 
 	// host hooks for agents ($262.agent) and misc.

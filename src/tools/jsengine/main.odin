@@ -339,6 +339,48 @@ cmd_cost :: proc(args: []string) {
 	}
 }
 
+// jsengine lazy: a script of this many functions, one of them with this many inside it.
+LAZY_FUNCTIONS :: 1000
+LAZY_NESTED :: 10
+LAZY_SHOWN :: 60 // what a failure says of its script
+
+// jsengine lazy: what the engine reads of a script is what runs of it, by the counts: a function's head with its parent's body, its
+// body at its first run, once. With a collection between a script's end and its functions' first runs: they outlive the
+// top-level function that held the stream.
+cmd_lazy :: proc(args: []string) {
+	c := parse_common(args)
+	setup()
+	r, ok := realm_new(read_file(c.image), c.raw)
+	if !ok { os.exit(1) }
+	failed := false
+	step :: proc(r: Realm, failed: ^bool, source: string, heads, bodies: i64) {
+		h0, b0 := js.function_counts(r.inst)
+		if js.eval_script(r.inst, transmute([]byte)source, "lazy") != .Ok { fmt.eprintln("lazy: the script failed:", source[:min(len(source), LAZY_SHOWN)], r.inst.last_error); os.exit(1) }
+		h1, b1 := js.function_counts(r.inst)
+		if h1 - h0 != heads || b1 - b0 != bodies {
+			fmt.eprintfln("lazy: %d heads and %d bodies read, %d and %d expected: %s", h1 - h0, b1 - b0, heads, bodies, source[:min(len(source), LAZY_SHOWN)])
+			failed^ = true
+		}
+	}
+	b := strings.builder_make()
+	for i in 0 ..< LAZY_FUNCTIONS { fmt.sbprintfln(&b, "function f%d(a) {{ return a + %d; }}", i, i) }
+	strings.write_string(&b, "function outer() {\n")
+	for i in 0 ..< LAZY_NESTED { fmt.sbprintfln(&b, "function in%d() {{ return %d; }}", i, i) }
+	strings.write_string(&b, "return in3(); }\nvar got = f3(1);")
+	// (each step is a script: its own top-level function, a head and a body)
+	step(r, &failed, strings.to_string(b), 1 + LAZY_FUNCTIONS + 1, 1 + 1)
+	step(r, &failed, "if (got !== 4 || f3(2) !== 5) throw 0", 1, 1)
+	js.collect(r.inst)
+	step(r, &failed, "if (f4(2) !== 6) throw 0", 1, 1 + 1)
+	step(r, &failed, "if (outer() !== 3) throw 0", 1 + LAZY_NESTED, 1 + 1 + 1)
+	step(r, &failed, "if (outer() !== 3) throw 0", 1, 1)
+	step(r, &failed, "if (f5.toString() !== 'function f5(a) { return a + 5; }') throw 0", 1, 1 + 1)
+	step(r, &failed, "if (f5(0) !== 5) throw 0", 1, 1)
+	step(r, &failed, "if (f6.length !== 1 || f6.name !== 'f6') throw 0", 1, 1)
+	if failed { os.exit(1) }
+	fmt.println("lazy: ok")
+}
+
 // jsengine hung: a call is given this long; the hook runs at this tick; a case that keeps the thread this long has gone past its polls.
 HUNG_CALL_MS :: 150
 HUNG_TICK_MS :: 1
@@ -516,6 +558,7 @@ main :: proc() {
 	case "reach": cmd_reach(os.args[2:])
 	case "cold": cmd_cold(os.args[2:])
 	case "cost": cmd_cost(os.args[2:])
+	case "lazy": cmd_lazy(os.args[2:])
 	case "hung": cmd_hung(os.args[2:])
 	case "polls": cmd_polls(os.args[2:])
 	case: usage()

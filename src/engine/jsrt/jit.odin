@@ -273,7 +273,7 @@ jit_fn_kind_ok :: proc(b: ^Function_Bytecode) -> bool {
 // refused before.
 @(private = "file")
 jit_fn_compilable :: proc(b: ^Function_Bytecode) -> bool {
-	return jit_fn_kind_ok(b) && (b.jit == nil || b.jit.fn.state != .never)
+	return b.body_len == 0 && jit_fn_kind_ok(b) && (b.jit == nil || b.jit.fn.state != .never)
 }
 
 // A call of a bytecode function made by compiled code: a plain function's frame pushed as the interpreter pushes it and
@@ -660,6 +660,7 @@ jit_fn_enter :: proc(ctx: ^Context, f: ^Frame) -> (res: Jit_Resume, pc: int, sp:
 	} else {
 		b := f.bc
 		rt := ctx.rt
+		if bytecode_check(ctx, b) != "" {return .none, 0, 0}   // (a threshold of 1: its first call; the interpreter throws)
 		if b.jit != nil && b.jit.fn.state == .compiled && rt.jit_depth < JIT_MAX_NEST && !gc_should_run(rt) {return jit_run(ctx, f, b, &b.jit.fn)}
 		if !jit_fn_kind_ok(b) {
 			b.jit_calls = JIT_CALLS_NEVER

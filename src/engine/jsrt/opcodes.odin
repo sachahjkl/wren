@@ -258,6 +258,7 @@ Opcode :: enum u8 {
 	is_null = 249,
 	typeof_is_undefined = 250,
 	typeof_is_function = 251,
+	lazy_body = 252, // not of QuickJS, past OPCODE_COUNT so that no stream may hold it: the code of a function that has not run yet (LAZY_CODE)
 }
 
 OPCODE_COUNT :: 252
@@ -556,4 +557,5 @@ opcode_info := [Opcode]Op_Info{
 	.is_null = {1, 1, 1, .none, true},
 	.typeof_is_undefined = {1, 1, 1, .none, true},
 	.typeof_is_function = {1, 1, 1, .none, true},
+	.lazy_body = {1, 0, 0, .none, false},
 }

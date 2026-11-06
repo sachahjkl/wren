@@ -472,7 +472,6 @@ eval_impl :: proc(ctx: ^js.Context, input: [^]u8, input_len: uint, filename: cst
 		source   = input_len == 0 ? "" : string(input[:input_len]),
 		filename = string(filename),
 		strict   = flags & EVAL_FLAG_STRICT != 0,
-		keep_image = flags & EVAL_FLAG_COMPILE_ONLY != 0, // a compiled function may be written out (JS_WriteObject)
 		strip_source = flags & EVAL_FLAG_WREN_STRIP_SOURCE != 0,
 	}
 	switch flags & EVAL_TYPE_MASK {
@@ -546,8 +545,8 @@ JS_JSONStringify :: proc "c" (c: ^Context, obj: JSValue, replacer: JSValue, spac
 	return own(ctx.rt, js.json_stringify_value(ctx, dec(obj), dec(replacer), dec(space0)))
 }
 
-// Writing a compiled function out (JS_WRITE_OBJ_BYTECODE): the engine keeps the image a function compiled with
-// JS_EVAL_FLAG_COMPILE_ONLY was read from, and returns a copy (in the host heap; js_free releases it). Data
+// Writing a compiled function out (JS_WRITE_OBJ_BYTECODE): the engine keeps the stream a function was read from,
+// the module's for a module, and returns a copy (in the host heap; js_free releases it). Data
 // (the structured clone format, JS_WRITE_OBJ_REFERENCE) is not implemented: the clone code falls back to its
 // own walk.
 JS_WriteObject :: proc "c" (c: ^Context, psize: ^uint, obj: JSValue, flags: i32) -> [^]u8 {
@@ -557,14 +556,15 @@ JS_WriteObject :: proc "c" (c: ^Context, psize: ^uint, obj: JSValue, flags: i32)
 	if flags & WRITE_OBJ_BYTECODE != 0 && (tag_of(obj) == TAG_FUNCTION_BYTECODE || tag_of(obj) == TAG_MODULE) {
 		b: ^js.Function_Bytecode
 		if tag_of(obj) == TAG_MODULE {
-			if m := cast(^js.Module)ptr_of(obj); m.func_bc != nil { b = m.func_bc }   // (a module's image is kept by its function)
+			if m := cast(^js.Module)ptr_of(obj); m.func_bc != nil { b = m.func_bc }   // (a module's stream is kept by its function)
 		} else {
 			b = cast(^js.Function_Bytecode)ptr_of(obj)
 		}
-		if b != nil && len(b.image) > 0 {
-			raw, _ := mem.alloc(len(b.image), JS_ALLOC_ALIGN, host_allocator)
-			mem.copy(raw, raw_data(b.image), len(b.image))
-			if psize != nil {psize^ = uint(len(b.image))}
+		if b != nil {
+			image := b.store.buf
+			raw, _ := mem.alloc(len(image), JS_ALLOC_ALIGN, host_allocator)
+			mem.copy(raw, raw_data(image), len(image))
+			if psize != nil {psize^ = uint(len(image))}
 			return cast([^]u8)raw
 		}
 	}

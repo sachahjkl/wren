@@ -119,7 +119,7 @@ fuzz_main :: proc(dir: string, iterations: int, seed: u64) -> int {
 		rt := js.engine_new(context.allocator, cfgr)
 		ctx := js.context_new(rt)
 		v := js.read_object(ctx, img)
-		if !js.is_exception(v) {
+		if !js.is_exception(v) && (v.tag != .function_bc || js.bytecode_read_all(ctx, cast(^js.Function_Bytecode)v.u.ptr)) {
 			accepted += 1
 			// The interpreter trusts operand types (as QuickJS does: bytecode comes from the compiler), so a
 			// mutant that survives the reader and the stack verifier can still be type-confused; running
