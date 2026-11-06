@@ -16,6 +16,8 @@ import "wb:host"
 
 // Rounds of splitting the subtrees too big to be one task.
 STYLE_SPLIT_MAX_ROUNDS :: 64
+// A subtree of this many elements or fewer is never opened: too little to be worth a task of its own.
+STYLE_SPLIT_MIN_ELEMENTS :: 24
 // What a style thread's arena commits at a time.
 THREAD_ARENA_COMMIT :: 256 << 10
 
@@ -58,7 +60,7 @@ style_document_parallel :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, stat
 	total := 0
 	for f in frontier { total += int(sizes[base.handle_index(f.h)]) }
 	// a subtree above this many elements is opened on this thread (its children go on the frontier); the rest is shared out
-	limit := max(total / (threads * 8), 24)
+	limit := max(total / (threads * 8), STYLE_SPLIT_MIN_ELEMENTS)
 	// the root element always on this thread (it sets the root font size); then every subtree that is too big to be a task
 	for round := 0; len(frontier) > 0 && round < STYLE_SPLIT_MAX_ROUNDS; round += 1 {
 		next := make([dynamic]Par_Frame, context.temp_allocator)
@@ -79,22 +81,12 @@ style_document_parallel :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, stat
 	}
 	if len(frontier) == 0 { return }
 
-	// contiguous ranges of about the same weight (the elements they hold), at most four per thread
-	wanted := min(len(frontier), threads * 4)
-	weight := 0
-	for f in frontier { weight += max(int(sizes[base.handle_index(f.h)]), 1) }
-	ranges := make([dynamic][2]int, 0, wanted + 1, context.temp_allocator)
-	start, acc := 0, 0
-	for f, i in frontier {
-		acc += max(int(sizes[base.handle_index(f.h)]), 1)
-		if acc * wanted >= weight * (len(ranges) + 1) || i == len(frontier) - 1 {
-			append(&ranges, [2]int{start, i + 1})
-			start = i + 1
-		}
-	}
+	weights := make([]int, len(frontier), context.temp_allocator)
+	for f, i in frontier { weights[i] = max(int(sizes[base.handle_index(f.h)]), 1) }
+	ranges := ranges_by_weight(weights, threads)
 	tasks := len(ranges)
 	job := Par_Job{e = e, s = s, doc = doc, state = state, frames = frontier[:]}
-	job.ranges = ranges[:]
+	job.ranges = ranges
 	job.passes = make([]^Pass, tasks, context.temp_allocator)
 	job.arenas = make([]^base.Arena, tasks, context.temp_allocator)
 	for &a in job.arenas { a = thread_arena_take(e) }
@@ -115,6 +107,24 @@ style_document_parallel :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, stat
 		pass_destroy(job.passes[i])
 	}
 	return
+}
+
+// Contiguous ranges of about the same weight (the elements they hold), at most four per thread. In the temporary allocator.
+@(private)
+ranges_by_weight :: proc(weights: []int, threads: int) -> [][2]int {
+	wanted := min(len(weights), threads * 4)
+	weight := 0
+	for x in weights { weight += x }
+	ranges := make([dynamic][2]int, 0, wanted + 1, context.temp_allocator)
+	start, acc := 0, 0
+	for x, i in weights {
+		acc += x
+		if acc * wanted >= weight * (len(ranges) + 1) || i == len(weights) - 1 {
+			append(&ranges, [2]int{start, i + 1})
+			start = i + 1
+		}
+	}
+	return ranges[:]
 }
 
 // How many elements each element's subtree holds (itself included), by the index of its handle: the flat tree, as the style
