@@ -43,12 +43,13 @@ Shape :: struct {
 	proto:       ^Object,
 	props:       [dynamic]Shape_Prop,
 	hash:        []u32, // index+1 into props, built when len(props) > SHAPE_LINEAR_MAX
-	transitions: [dynamic]Transition,
-	transition_hash: []u32, // index+1 into transitions, kept past TRANSITIONS_LINEAR_MAX (the shape every `{}` starts from has a transition per first key)
 	lazy:        ^Lazy_Members, // the members of the object that are not defined yet (see object_set_lazy)
 	version:     u32,  // a dictionary shape's changes in place (its keys, their attributes, its prototype): compiled code
 	                   // guards it with the shape (jit.odin)
 	is_dict:     bool,
+	// (what a lookup reads is above, in as few cache lines as it can be: a get_field that misses waits on each of them)
+	transitions: [dynamic]Transition,
+	transition_hash: []u32, // index+1 into transitions, kept past TRANSITIONS_LINEAR_MAX (the shape every `{}` starts from has a transition per first key)
 }
 
 // An object whose members are defined when first needed (a Web IDL prototype: most pages touch a few of the hundreds

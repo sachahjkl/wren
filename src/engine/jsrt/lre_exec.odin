@@ -18,6 +18,7 @@ LRE_STACK_MAX :: 8 << 20 // backtrack stack words before "out of memory in regex
 LRE_SEARCH_ANY_LEN :: 1 // the search prefix (has_search_prefix): the size of its any, of its goto, and its whole
 LRE_SEARCH_GOTO_LEN :: 5
 LRE_SEARCH_PREFIX_LEN :: 11
+RUN_SPLIT_LEN :: 5 // a split or a goto with its offset
 
 Lre_Status :: enum u8 {
 	no_match,
@@ -30,7 +31,8 @@ Lre_Status :: enum u8 {
 lre_flags :: #force_inline proc(bc: []u8) -> int {return int(bc[0]) | int(bc[1]) << 8}
 lre_capture_count :: #force_inline proc(bc: []u8) -> int {return int(bc[2])}
 lre_register_count :: #force_inline proc(bc: []u8) -> int {return int(bc[3])}
-lre_alloc_count :: #force_inline proc(bc: []u8) -> int {return 2 * lre_capture_count(bc) + lre_register_count(bc)}
+// (the last word is the matcher's: run_low)
+lre_alloc_count :: #force_inline proc(bc: []u8) -> int {return 2 * lre_capture_count(bc) + lre_register_count(bc) + 1}
 lre_bytecode_len :: #force_inline proc(bc: []u8) -> int {return int(rd_u32(bc, 4))}
 
 // lre_check_bytecode: a header and a body that fit in the buffer (anything read from serialized
@@ -185,9 +187,11 @@ State_Type :: enum {
 	split,
 	lookahead,
 	negative_lookahead,
+	run,
 }
 
-// A saved state is 3 stack words: pc, position, and (bp << 2 | type).
+// A saved state is 3 stack words: pc, position, and (bp << 2 | type). A .run stands for the positions of a run below its own, down to
+// the one in the undo record that follows it: run_low, the last word of the captures, holds it once the state is popped.
 @(private = "file")
 Exec :: struct {
 	stack:     [dynamic]int,
@@ -228,6 +232,15 @@ lre_exec :: proc(ctx: ^Context, capture: []int, bc: []u8, str: ^JS_String, cinde
 	return exec_backtrack(&e, &sub, bc[:end], LRE_HEADER_LEN, cptr)
 }
 
+// Whether c is in the ranges of a .range instruction, the last of which may run to the end of the code units.
+@(private = "file")
+range_holds :: #force_inline proc(bc: []u8, p, cnt: int, c: u32) -> bool {
+	if c < rd_u16(bc, p) {return false}
+	high := rd_u16(bc, p + (cnt - 1) * 4 + 2)
+	if c >= 0xffff && high == 0xffff {return true}
+	return c <= high && range_has(bc, p, cnt, c)
+}
+
 // A regexp that is not sticky starts with a lazy `.*?` (lre_compile): split_goto_first +6; any; goto -11. Run as bytecode, that
 // pushes and pops a state for each position of the subject; exec_search tries the positions itself.
 @(private = "file")
@@ -249,13 +262,111 @@ range_has :: #force_inline proc(bc: []u8, p, cnt: int, c: u32) -> bool {
 	return false
 }
 
+// A greedy loop of one character (`S+`, `[^"]*`, `.*`) as lre_compile emits it: `atom; split_goto_first atom` for x+, `split_next_first
+// out; atom; goto split` for x*. Run as bytecode that is a state pushed and an instruction dispatched for each character, and
+// again on the way back. exec_backtrack instead takes the run at once and keeps one state of the kind .run for all of its positions.
+// One instruction that reads one character, and how many bytes it is.
+@(private = "file")
+run_atom_size :: #force_inline proc(bc: []u8, p: int) -> int {
+	#partial switch fe.REOP(bc[p]) {
+	case .char, .char_i: return 3
+	case .dot, .any, .space, .not_space: return 1
+	case .range, .range_i: return 3 + 4 * int(rd_u16(bc, p + 1))
+	}
+	return 0
+}
+
+// The end of the run of the atom at `p` from `from`: one code unit a character (a subject of pairs takes the bytecode's way).
+@(private = "file")
+run_end :: proc(e: ^Exec, s: ^Subject, bc: []u8, p: int, from: int) -> int {
+	i, n := from, s.n
+	#partial switch fe.REOP(bc[p]) {
+	case .char:
+		v := rd_u16(bc, p + 1)
+		for i < n && unit(s, i) == v {i += 1}
+	case .char_i:
+		v := rd_u16(bc, p + 1)
+		for i < n && fe.lre_canonicalize(unit(s, i), e.is_unicode) == v {i += 1}
+	case .dot:
+		for i < n && !is_line_terminator(unit(s, i)) {i += 1}
+	case .any:
+		i = n
+	case .space:
+		for i < n && lre_is_space(unit(s, i)) {i += 1}
+	case .not_space:
+		for i < n && !lre_is_space(unit(s, i)) {i += 1}
+	case .range, .range_i:
+		cnt := int(rd_u16(bc, p + 1))
+		fold := fe.REOP(bc[p]) == .range_i
+		for i < n {
+			c := unit(s, i)
+			if fold {c = fe.lre_canonicalize(c, e.is_unicode)}
+			if !range_holds(bc, p + 3, cnt, c) {break}
+			i += 1
+		}
+	}
+	return i
+}
+
+// The next position of a run down from `from`, at most `low`, where the character that follows the run can match, when that is
+// what comes after it.
+@(private = "file")
+run_back :: #force_inline proc(s: ^Subject, bc: []u8, pc, from, low: int) -> int {
+	if fe.REOP(bc[pc]) != .char {return from}
+	v := rd_u16(bc, pc + 1)
+	i := from
+	for i > low && (i >= s.n || unit(s, i) != v) {i -= 1}
+	return i
+}
+
+// A loop of one character at `p` (an atom, or the split before it), read as run_atom_size says: where its atom is, and where a
+// match goes on after it. 0: not such a loop.
+@(private = "file")
+run_at :: #force_inline proc(bc: []u8, p: int) -> (atom: int, out: int) {
+	end := len(bc)
+	if fe.REOP(bc[p]) == .split_next_first {
+		if p + RUN_SPLIT_LEN >= end {return}
+		size := run_atom_size(bc, p + RUN_SPLIT_LEN)
+		at := p + RUN_SPLIT_LEN + size
+		if size == 0 || at + RUN_SPLIT_LEN > end || fe.REOP(bc[at]) != .goto || int(i32(rd_u32(bc, at + 1))) != -(size + 2 * RUN_SPLIT_LEN) {return}
+		return p + RUN_SPLIT_LEN, at + RUN_SPLIT_LEN
+	}
+	size := run_atom_size(bc, p)
+	at := p + size
+	if size == 0 || at + RUN_SPLIT_LEN > end || fe.REOP(bc[at]) != .split_goto_first || int(i32(rd_u32(bc, at + 1))) != -(size + RUN_SPLIT_LEN) {return}
+	return p, at + RUN_SPLIT_LEN
+}
+
+// Whether what follows the start of a match depends on nothing but the position: the captures are read by a back reference only.
+@(private = "file")
+has_back_reference :: proc(bc: []u8) -> bool {
+	pc := LRE_HEADER_LEN
+	for pc < len(bc) {
+		op := fe.REOP(bc[pc])
+		size := int(fe.reop_size[op])
+		#partial switch op {
+		case .range, .range_i: size += 4 * int(rd_u16(bc, pc + 1))
+		case .range32, .range32_i: size += 8 * int(rd_u16(bc, pc + 1))
+		case .back_reference, .back_reference_i, .backward_back_reference, .backward_back_reference_i: return true
+		}
+		pc += size
+	}
+	return false
+}
+
 // The search of a regexp that is not sticky: each position in turn, skipping at once those where the instruction that must match
-// first (a character or a range, right after the save of the start) cannot.
+// first (a character or a range, right after the save of the start) cannot. A regexp that starts with a run (`S+@`): a failure at i
+// tried what follows at every position of the run, and a start further in the run would try some of the same: it fails as well, so the
+// search goes on after the run, where the bytecode's way is quadratic in the length of a run.
 @(private = "file")
 exec_search :: proc(e: ^Exec, s: ^Subject, bc: []u8, from: int) -> Lre_Status {
 	start := LRE_HEADER_LEN + LRE_SEARCH_PREFIX_LEN
 	first := start
 	if first + 2 <= len(bc) && bc[first] == u8(fe.REOP.save_start) {first += 2}
+	lead := first
+	for lead + 2 <= len(bc) && bc[lead] == u8(fe.REOP.save_start) {lead += 2}
+	lead_atom, _ := run_at(bc, lead)
+	if s.utf || (lead_atom != 0 && has_back_reference(bc)) {lead_atom = 0}
 	// (over UTF-16 in unicode mode a position may be the middle of a pair: no shortcut there)
 	want_char, want_range := false, false
 	val: u32
@@ -290,7 +401,9 @@ exec_search :: proc(e: ^Exec, s: ^Subject, bc: []u8, from: int) -> Lre_Status {
 		// what was saved outside any state (no state below it to undo it, as the prefix's was): the captures and registers as they were
 		for sp := len(e.stack); sp > 0; sp -= 2 {e.capture[e.stack[sp - 2]] = e.stack[sp - 1]}
 		if cptr >= n {return .no_match}
+		tried := cptr
 		_, cptr = get_char(s, cptr)
+		if lead_atom != 0 {cptr = max(cptr, run_end(e, s, bc, lead_atom, tried))}
 		if poll(e) {return .timeout}
 	}
 }
@@ -346,6 +459,7 @@ exec_backtrack :: proc(e: ^Exec, s: ^Subject, bc: []u8, pc0: int, cptr0: int) ->
 	stack := &e.stack
 	bp := 0
 	n := s.n
+	run_low := len(capture) - 1
 
 	save :: #force_inline proc(stack: ^[dynamic]int, capture: []int, idx: int, value: int) {
 		st_push2(stack, idx, capture[idx])
@@ -440,6 +554,20 @@ exec_backtrack :: proc(e: ^Exec, s: ^Subject, bc: []u8, pc0: int, cptr0: int) ->
 		case .split_goto_first, .split_next_first:
 			val := int(i32(rd_u32(bc, pc)))
 			pc += 4
+			if !s.utf && (opcode == .split_goto_first ? val < 0 : val > 0) {
+				atom, out := run_at(bc, opcode == .split_goto_first ? pc + val : pc - RUN_SPLIT_LEN)
+				if atom != 0 && (opcode == .split_next_first || out == pc) {
+					low := cptr
+					top := run_end(e, s, bc, atom, cptr)
+					pc = out
+					cptr = run_back(s, bc, pc, top, low)
+					if cptr > low {
+						push_state(stack, &bp, pc, cptr, .run)
+						st_push2(stack, run_low, low)
+					}
+					break
+				}
+			}
 			pc1: int
 			if opcode == .split_next_first {
 				pc1 = pc + val
@@ -675,7 +803,17 @@ exec_backtrack :: proc(e: ^Exec, s: ^Subject, bc: []u8, pc0: int, cptr0: int) ->
 			w := stack[sp - 1]
 			bp = w >> 2
 			st_truncate(stack, sp - 3)
-			if State_Type(w & 3) != .lookahead {break}
+			type := State_Type(w & 3)
+			if type == .run {
+				low := capture[run_low]
+				cptr = run_back(s, bc, pc, cptr - 1, low)
+				if cptr > low {
+					push_state(stack, &bp, pc, cptr, .run)
+					st_push2(stack, run_low, low)
+				}
+				break
+			}
+			if type != .lookahead {break}
 		}
 		if poll(e) {return .timeout}
 	}
