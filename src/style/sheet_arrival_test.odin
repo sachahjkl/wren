@@ -276,15 +276,32 @@ a_sheet_that_goes_before_a_full_pass :: proc(t: ^testing.T) {
 	testing.expect(t, style_of(f.st, dom.find_by_id(f.doc, "a")).color != css.Color{1.0 / 255, 0, 0, 1})
 }
 
-// What a sheet with more than plain rules does stays the rebuild's.
+// @keyframes and @font-face go with their sheet; @keyframes that elements run are the full pass's.
 @(test)
-a_sheet_with_keyframes_that_goes_is_a_rebuild :: proc(t: ^testing.T) {
-	f := fixture_load(`<!doctype html><style id=gone>@keyframes k { to { opacity: 0 } } .a { color: rgb(1, 0, 0) }</style><body><p class=a>a</p>`, {journal = 1 << 16, partial = true})
+a_sheet_with_keyframes_that_goes :: proc(t: ^testing.T) {
+	SHEET :: `<!doctype html><style id=gone>@keyframes k { to { opacity: 0 } } @font-face { font-family: f; src: url(a.woff2) } .a { color: rgb(1, 0, 0) }</style>`
+	f := fixture_load(strings.concatenate({SHEET, `<body><p class=a>a</p>`}, context.temp_allocator), {journal = 1 << 16, partial = true})
 	defer fixture_unload(f)
 	gone := dom.find_by_id(f.doc, "gone")
 	dom.remove_child(f.doc, dom.get(f.doc, gone).parent, gone)
 	sync_document_sheets(f.eng, f.doc, "about:test")
-	testing.expect(t, f.eng.dirty && !f.eng.departures_due)
+	testing.expect(t, !f.eng.dirty && f.eng.departures_due)
+	testing.expect(t, keyframes_lookup(f.eng, "k") != nil && len(f.eng.font_faces) == 1, "until the mutations are marked")
+	_, ok := restyle_dom(f.eng, f.doc, f.st)
+	testing.expect(t, ok)
+	_, ok = restyle_departures(f.eng, f.doc, f.st)
+	testing.expect(t, ok)
+	testing.expect(t, keyframes_lookup(f.eng, "k") == nil && len(f.eng.font_faces) == 0)
+
+	running := fixture_load(strings.concatenate({SHEET, `<body><p class=a style="animation: k 1s">a</p>`}, context.temp_allocator), {journal = 1 << 16, partial = true})
+	defer fixture_unload(running)
+	gone = dom.find_by_id(running.doc, "gone")
+	dom.remove_child(running.doc, dom.get(running.doc, gone).parent, gone)
+	sync_document_sheets(running.eng, running.doc, "about:test")
+	_, ok = restyle_dom(running.eng, running.doc, running.st)
+	testing.expect(t, ok)
+	_, ok = restyle_departures(running.eng, running.doc, running.st)
+	testing.expect(t, !ok, "what runs needs the full pass")
 }
 
 // An element the embedder hides (a blocked image, a cosmetic filter) is restyled with what it holds, not the document with it.

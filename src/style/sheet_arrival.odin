@@ -240,17 +240,24 @@ departed_free :: proc(e: ^Engine) {
 	e.departures_due = false
 }
 
-// Rules that style the elements they match and nothing else.
+// Rules that style the elements they match and nothing else, or that the engine keeps by their number (@keyframes, @font-face).
 @(private = "file")
 rules_plain :: proc(list: []^css.Rule) -> bool {
 	for r in list {
 		#partial switch r.kind {
 		case .Style: if !rules_plain(r.nested) { return false }
 		case .Media, .Supports, .Container: if !rules_plain(r.rules) { return false }
+		case .Keyframes, .Font_Face, .Namespace, .Unknown:
 		case: return false
 		}
 	}
 	return true
+}
+
+@(private = "file")
+in_ranges :: proc(order: u32, ranges: [][2]u32) -> bool {
+	for r in ranges { if order > r[0] && order <= r[1] { return true } }
+	return false
 }
 
 // `s` went, and is out of Engine.sheets.
@@ -274,9 +281,12 @@ engine_departures_due :: proc(e: ^Engine) -> bool { return e.departures_due }
 entries_split :: proc(list: ^[dynamic]Entry, ranges: [][2]u32, gone: ^[dynamic]Entry) {
 	kept := 0
 	for ent in list {
-		out := false
-		for r in ranges { if ent.rule.order > r[0] && ent.rule.order <= r[1] { out = true; break } }
-		if out { if gone != nil { append(gone, ent) } } else { list[kept] = ent; kept += 1 }
+		if in_ranges(ent.rule.order, ranges) {
+			if gone != nil { append(gone, ent) }
+		} else {
+			list[kept] = ent
+			kept += 1
+		}
 	}
 	resize(list, kept)
 }
@@ -309,13 +319,22 @@ index_take :: proc(e: ^Engine, ranges: [][2]u32) {
 	entries_split(&rs.index.universal, ranges, &to.universal)
 	entries_split(&rs.index.backdrop, ranges, &to.backdrop)
 	entries_split(&rs.state_entries, ranges, nil)
+	frames := len(e.keyframes)
+	for i := len(e.keyframes) - 1; i >= 0; i -= 1 { if in_ranges(e.keyframes[i].order, ranges) { ordered_remove(&e.keyframes, i) } }
+	if len(e.keyframes) < frames {
+		clear(&e.keyframe_sets)
+		compile_keyframes(e)
+	}
+	faces := len(e.font_faces)
+	for i := len(e.font_faces) - 1; i >= 0; i -= 1 { if in_ranges(e.font_faces[i].order, ranges) { ordered_remove(&e.font_faces, i) } }
+	if len(e.font_faces) < faces { parse_font_faces(e) }
 }
 
 // Whether a rule of the sheets that go styles another tree: what it reaches there is not found by matching the elements of this one.
 @(private = "file")
 styles_other_trees :: proc(rs: ^Rule_Set, ranges: [][2]u32) -> bool {
 	for list in ([3][dynamic]Entry{rs.slotted_entries, rs.part_entries, rs.host_entries}) {
-		for ent in list { for r in ranges { if ent.rule.order > r[0] && ent.rule.order <= r[1] { return true } } }
+		for ent in list { if in_ranges(ent.rule.order, ranges) { return true } }
 	}
 	return false
 }
@@ -356,6 +375,11 @@ restyle_departures :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^ho
 		if x.indexed { append(&ranges, [2]u32{x.order_first, x.order_last}); x.indexed = false }
 	}
 	if styles_other_trees(&e.rules, ranges[:]) { return arrival_fail(e, "a sheet that styled another tree went") }
+	if sync.atomic_load(&s.motion) {
+		used := make(map[string]bool, 16, context.temp_allocator)
+		animation_names(s, &used)
+		for x in e.departed { if keyframes_in_use(x.sheet.rules, &used) { return arrival_fail(e, "a sheet went with @keyframes that elements use") } }
+	}
 	e.departures_due = false
 	index_take(e, ranges[:])
 	defer fresh_clear(e)
