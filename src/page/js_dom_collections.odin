@@ -11,6 +11,7 @@ package page
 //     (javascript.dom.selector_cache_entries) so that a selector used in a loop is parsed once.
 //   * DOMTokenList and DOMStringMap work directly on the content attribute.
 
+import "core:hash"
 import "core:strings"
 import "wb:base"
 import "wb:css"
@@ -244,6 +245,50 @@ collection_vt := Object_VTable{name = "DOMCollection", destroy = proc(p: ^Page, 
 	free(col)
 }}
 
+// What a window's named properties ask (window.x of a name the page's script does not define, typeof x...) and getElementsByName: which
+// names the document's elements have. Pages ask for names nothing has, one after the other: each was a walk of the document. A bit
+// per name's hash, made again by one walk when the tree or an attribute has moved: a clear bit is an answer, a set one is the walk.
+NAME_FILTER_WORDS :: 256
+
+Name_Filter :: struct {
+	bits:           [NAME_FILTER_WORDS]u64,
+	doc:            ^dom.Document,
+	tree_v, attr_v: u64,
+}
+
+@(private = "file")
+name_filter_bit :: #force_inline proc(name: string) -> (word: int, bit: u64) {
+	h := hash.fnv64a(transmute([]u8)name)
+	return int(h >> 6) % NAME_FILTER_WORDS, 1 << (h & 63)
+}
+
+@(private = "file")
+name_filter_holds :: proc(p: ^Page, name: string) -> bool {
+	d, nf := p.doc, &p.names
+	if nf.doc != d || nf.tree_v != d.tree_version || nf.attr_v != d.attr_version {
+		nf.bits = {}
+		nf.doc, nf.tree_v, nf.attr_v = d, d.tree_version, d.attr_version
+		for cur := dom.next_in_tree(d, d.root, d.root); cur != base.NIL_HANDLE; cur = dom.next_in_tree(d, cur, d.root) {
+			n := dom.get(d, cur)
+			if n.kind != .Element || n.ns != .HTML { continue }
+			if v, ok := attr_of(n, "name"); ok {
+				word, bit := name_filter_bit(v)
+				nf.bits[word] |= bit
+			}
+		}
+	}
+	word, bit := name_filter_bit(name)
+	return nf.bits[word] & bit != 0
+}
+
+@(private = "file")
+name_walk :: proc(p: ^Page, col: ^Dom_Collection) {
+	d := p.doc
+	for cur := dom.next_in_tree(d, col.root, col.root); cur != base.NIL_HANDLE; cur = dom.next_in_tree(d, cur, col.root) {
+		if collection_accepts(p, col, cur, dom.get(d, cur)) { append(&col.items, cur) }
+	}
+}
+
 // Whether the collection's membership depends on attributes too (not only on the tree).
 @(private)
 uses_attributes :: proc(k: Collection_Kind) -> bool {
@@ -429,7 +474,10 @@ collection_refresh :: proc(p: ^Page, col: ^Dom_Collection) {
 			n := dom.get(d, cur)
 			if n.kind == .Element && n.ns == .HTML && n.name == "label" && forms.labeled_control(f, cur) == col.root { append(&col.items, cur) }
 		}
-	case .Tag_Name, .Tag_Name_NS, .Class_Names, .Name, .Forms, .Images, .Links, .Scripts, .Embeds, .Anchors, .All, .Options, .Form_Elements, .Fieldset_Elements, .Map_Areas:
+	case .Name:
+		if col.root == d.root && !name_filter_holds(p, col.arg) { return }
+		name_walk(p, col)
+	case .Tag_Name, .Tag_Name_NS, .Class_Names, .Forms, .Images, .Links, .Scripts, .Embeds, .Anchors, .All, .Options, .Form_Elements, .Fieldset_Elements, .Map_Areas:
 		for cur := dom.next_in_tree(d, col.root, col.root); cur != base.NIL_HANDLE; cur = dom.next_in_tree(d, cur, col.root) {
 			if collection_accepts(p, col, cur, dom.get(d, cur)) { append(&col.items, cur) }
 		}
