@@ -36,7 +36,7 @@
 <div id="tall"></div>
 <script>
   // How long hold() keeps the thread at most (a test lets go of it first, by making the window shorter or taller).
-  const HOLD_LIMIT_MS = 30000;
+  const HOLD_LIMIT_MS = 85000;   // (a net for a test that died, under wait_js's deadline: on a software rasterizer and two processors the steps take 30 s)
   // The pause between two tasks of the busy loop: a frame of the page between them.
   const GAP_MS = 16;
   const ms = document.getElementById("ms"), out = document.getElementById("ms_out"), status = document.getElementById("status");
