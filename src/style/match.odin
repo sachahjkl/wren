@@ -705,6 +705,9 @@ matches_has :: proc(m: ^Match_Ctx, anchor: base.Handle, list: css.Selector_List)
 	memo := !m.ignore_state && m.featureless == base.NIL_HANDLE && m.has_memo.allocator.procedure != nil && len(list) > 0
 	key := Has_Key{anchor, raw_data(list)}
 	if memo { if r, ok := m.has_memo[key]; ok { return r } }
+	if m.has_known != nil && !m.ignore_state && m.featureless == base.NIL_HANDLE {
+		if answer, known := m.has_known(m.has_known_user, anchor, list); known { return answer }
+	}
 	r := matches_has_scan(m, anchor, list)
 	if memo { m.has_memo[key] = r }
 	return r
@@ -712,7 +715,19 @@ matches_has :: proc(m: ^Match_Ctx, anchor: base.Handle, list: css.Selector_List)
 
 @(private)
 matches_has_scan :: proc(m: ^Match_Ctx, anchor: base.Handle, list: css.Selector_List) -> bool {
+	// `:has(.menu:hover)` with nothing under the pointer: no element of any subtree. Sheets have these on bare anchors, tried on
+	// <body> and <html> at each restyle: what they cost was the whole document, while a page loads and the pointer is elsewhere.
+	asks_for_nothing :: proc(m: ^Match_Ctx, c: ^css.Complex) -> bool {
+		if m.ignore_state || len(c.compounds) == 0 { return false }
+		for s in c.compounds[len(c.compounds) - 1].simples {
+			if s.kind != .Pseudo_Class { continue }
+			if (s.pseudo == .Hover && m.state.hover == base.NIL_HANDLE) || (s.pseudo == .Active && m.state.active == base.NIL_HANDLE) { return true }
+		}
+		return false
+	}
 	for &c in list {
+		if asks_for_nothing(m, &c) { continue }
+		m.has_scans += 1
 		switch c.leading {
 		case .Descendant, .Child:
 			if has_in_subtree(m, anchor, anchor, &c) { return true }

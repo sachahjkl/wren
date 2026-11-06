@@ -155,7 +155,8 @@ Marker :: struct {
 	// walk of the children, not 2 500 (each over every child).
 	walked:  map[Walk_Key]bool,   // positional walks from an element, forward or backward, per index
 	emptied: map[Walk_Key]bool,   // children_removed per parent, per index
-	keyed:   map[[2]u64]bool,      // (element, key set) subtrees scanned by mark_keyed
+	keyed:   map[[2]u64]bool,      // (element, key set) subtrees to scan (mark_keyed)
+	exact_lists: map[rawptr]^Has_Anchor,   // has_answer: the anchors it can answer for, by their arguments
 	flips:   map[Flip_Key]bool,    // has_flip answered in this pass
 	flip_limit: int,               // ... past this many of them, a full pass is shorter than the marking
 	has_walked: map[Has_Walk_Key]int,   // has_invalidate: the closest hop each ancestor was reached at in this pass
@@ -336,24 +337,53 @@ key_lookup_of :: proc(m: ^Marker, set: u32) -> ^Key_Lookup {
 	return l
 }
 
-// Marks the descendants of `h` that carry one of the keys of set `set` (their own marks only: what they pass on to their
-// children, the walk finds out). The scan is made once per element and set in a pass.
+// The descendants of `h` that carry one of the keys of set `set` are to be marked (their own marks only: what they pass on to
+// their children, the walk finds out). Noted, for marks_keyed_scan.
 @(private = "file")
 mark_keyed :: proc(m: ^Marker, h: base.Handle, set: u32) {
 	if m.keyed == nil { m.keyed = make(map[[2]u64]bool, 16, context.temp_allocator) }
-	done := [2]u64{u64(h), u64(set)}
-	if done in m.keyed { return }
-	m.keyed[done] = true
-	keys := key_lookup_of(m, set)
+	m.keyed[[2]u64{u64(h), u64(set)}] = true
+}
+
+// What mark_keyed noted, once all the mutations are read. A :has() anchor marks every ancestor with the same set, so a subtree inside
+// another of the same set adds nothing, and the sets of one element take one walk: scanned as they came, they were 8 % of a restyle.
+@(private = "file")
+marks_keyed_scan :: proc(m: ^Marker) {
+	if len(m.keyed) == 0 { return }
+	roots := make(map[base.Handle][dynamic]u32, len(m.keyed), context.temp_allocator)
+	outer: for pair in m.keyed {
+		h, set := base.Handle(pair[0]), u32(pair[1])
+		for a := parent_element(&m.mc, h); a != base.NIL_HANDLE; a = parent_element(&m.mc, a) {
+			if ([2]u64{u64(a), u64(set)}) in m.keyed { continue outer }
+		}
+		if h not_in roots { roots[h] = make([dynamic]u32, 0, 2, context.temp_allocator) }
+		append(&roots[h], set)
+	}
 	stack := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
-	append(&stack, h)
-	for len(stack) > 0 {
-		x := pop(&stack)
-		for ch := dom.flat_first_child(m.doc, x); ch != base.NIL_HANDLE; ch = dom.flat_next(m.doc, ch) {
-			n := dom.get(m.doc, ch)
-			if n == nil || n.kind != .Element { continue }
-			if carries_key(n, keys) { mark(m, ch, false) }
-			append(&stack, ch)
+	for h, sets in roots {
+		keys := key_lookup_of(m, sets[0])
+		if len(sets) > 1 {
+			all := new_clone(Key_Lookup{classes = make(map[string]struct{}, 64, context.temp_allocator), ids = make(map[string]struct{}, 4, context.temp_allocator), types = make(map[string]struct{}, 4, context.temp_allocator), attrs = make([dynamic]string, 0, 4, context.temp_allocator)}, context.temp_allocator)
+			for set in sets {
+				one := key_lookup_of(m, set)
+				for k in one.classes { all.classes[k] = {} }
+				for k in one.ids { all.ids[k] = {} }
+				for k in one.types { all.types[k] = {} }
+				append(&all.attrs, ..one.attrs[:])
+			}
+			keys = all
+		}
+		clear(&stack)
+		append(&stack, h)
+		for len(stack) > 0 {
+			x := pop(&stack)
+			for ch := dom.flat_first_child(m.doc, x); ch != base.NIL_HANDLE; ch = dom.flat_next(m.doc, ch) {
+				n := dom.get(m.doc, ch)
+				if n == nil || n.kind != .Element { continue }
+				m.e.last_restyle.keyed_steps += 1
+				if carries_key(n, keys) { mark(m, ch, false) }
+				append(&stack, ch)
+			}
 		}
 	}
 }
@@ -421,9 +451,12 @@ list_has_has :: proc(list: css.Selector_List, depth := 0) -> bool {
 }
 
 // :has() anchors whose argument may have changed because something at or under `x` did: x's ancestors (and, when
-// :has() arguments use sibling combinators, the earlier siblings of x and of its ancestors). x itself when `self`.
+// :has() arguments use sibling combinators, the earlier siblings of x and of its ancestors, for those arguments alone: one
+// `:has(+ .x)` in a sheet tried every anchor of the page on every sibling, and on cnn.com a <script> added to <head> restyled all of
+// <head>, 5 000 answers a mutation). x itself when `self`. `beside`: x alone, for the anchors that read siblings. `from_hop`:
+// how far below x the change is (a child that left: 1, not one of x's own siblings' concern).
 @(private = "file")
-has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Change{}) {
+has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Change{}, beside := false, from_hop := 0) {
 	ix := ix_of(m, x)
 	if !ix.uses_has || len(ix.has_anchors) == 0 { return }
 	feat := feat
@@ -432,19 +465,22 @@ has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Chang
 	// a feature that changed on an element: only the anchors whose :has() tests it can be affected (a bare
 	// `:not(:has(.a))` is every element's candidate: without this every class change restyled the document). Decided once here,
 	// not for each ancestor and sibling: on a deep page that lookup was the hottest part of a restyle.
-	stack: [32]^Has_Anchor
-	concerned := len(ix.has_anchors) <= len(stack) ? stack[:] : make([]^Has_Anchor, len(ix.has_anchors), context.temp_allocator)
-	n := 0
+	stack, stack_beside: [32]^Has_Anchor
+	wide := len(ix.has_anchors) > len(stack)
+	concerned := wide ? make([]^Has_Anchor, len(ix.has_anchors), context.temp_allocator) : stack[:]
+	readers := wide ? make([]^Has_Anchor, len(ix.has_anchors), context.temp_allocator) : stack_beside[:]   // those of them that read siblings
+	n, n_readers := 0, 0
 	// the farthest level any of them reaches: the walk up stops there
 	top := 0
 	for &ha in ix.has_anchors {
-		if !has_tests(ha.feat, feat) { continue }
+		if !has_tests(ha.feat, feat) || (beside && !ha.feat.sibling) { continue }
 		concerned[n] = &ha
 		n += 1
+		if ha.feat.sibling { readers[n_readers] = &ha; n_readers += 1 }
 		if ha.hops < 0 { top = -1 } else if top >= 0 { top = max(top, ha.hops) }
 	}
 	if n == 0 { return }
-	concerned = concerned[:n]
+	concerned, readers = concerned[:n], readers[:n_readers]
 	test :: proc(m: ^Marker, anchors: []^Has_Anchor, a: base.Handle, hop: int) {
 		for hap in anchors {
 			ha := hap
@@ -458,8 +494,9 @@ has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Chang
 			}
 		}
 	}
-	if self { test(m, concerned, x, 0) }
-	hop := 0
+	if self { test(m, concerned, x, from_hop) }
+	if beside { return }
+	hop := from_hop
 	for cur := x; cur != base.NIL_HANDLE; cur = parent_element(&m.mc, cur) {
 		if top >= 0 && hop > top { break }
 		if cur != x {
@@ -470,8 +507,8 @@ has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Chang
 			m.has_walked[key] = hop
 			test(m, concerned, cur, hop)
 		}
-		if ix.has_sibling {
-			for ps := prev_element(&m.mc, cur); ps != base.NIL_HANDLE; ps = prev_element(&m.mc, ps) { test(m, concerned, ps, hop) }
+		if n_readers > 0 {
+			for ps := prev_element(&m.mc, cur); ps != base.NIL_HANDLE; ps = prev_element(&m.mc, ps) { test(m, readers, ps, hop) }
 		}
 		hop += 1
 	}
@@ -583,12 +620,12 @@ children_removed :: proc(m: ^Marker, en: ^dom.Journal_Entry, gone: ^dom.Node) {
 	if is_element_node(m.doc, p) { empty_changed(m, p) }
 	mask, mask_gen := en.watch, en.watch_gen
 	if ix := ix_of(m, first != base.NIL_HANDLE ? first : p); ix.uses_has {
-		if is_element_node(m.doc, p) { has_invalidate(m, p, true, Has_Change{kind = .Tree, mask = mask, known = mask & dom.WATCH_KNOWN != 0 && mask_gen == m.doc.journal.watch.gen}) }
+		if is_element_node(m.doc, p) { has_invalidate(m, p, true, Has_Change{kind = .Tree, mask = mask, known = mask & dom.WATCH_KNOWN != 0 && mask_gen == m.doc.journal.watch.gen}, from_hop = 1) }
 		if key := (Walk_Key{p, ix, 3}); ix.has_sibling && key not_in m.emptied {
 			m.emptied[key] = true
 			pn = dom.get(m.doc, p)
 			for ch := pn.first_child; ch != base.NIL_HANDLE; ch = dom.get(m.doc, ch).next {
-				if is_element_node(m.doc, ch) { has_invalidate(m, ch, true, Has_Change{kind = .Tree, mask = mask, known = mask & dom.WATCH_KNOWN != 0 && mask_gen == m.doc.journal.watch.gen}) }
+				if is_element_node(m.doc, ch) { has_invalidate(m, ch, true, Has_Change{kind = .Tree, mask = mask, known = mask & dom.WATCH_KNOWN != 0 && mask_gen == m.doc.journal.watch.gen}, beside = true) }
 			}
 		}
 	}
@@ -1320,8 +1357,8 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 	s := w.s
 	threads := host.thread_pool_size(pool)
 	w.defer_subtrees, w.defer_forced, w.defer_big = false, false, false
-	// subtrees restyled whole: their tops are expanded until there are enough to go round; frames that only have to be
-	// restyled (marked, or forced) go as they are, their walk below them being the thread's
+	// subtrees restyled whole are opened until none is too big for a task; frames that only have to be restyled (marked, or
+	// forced) go as they are, their walk below them being the thread's
 	frontier := make([dynamic]Frame, 0, len(w.deferred), context.temp_allocator)
 	alone := make([dynamic]Frame, 0, 8, context.temp_allocator)
 	for f in w.deferred { if f.sub { append(&frontier, f) } else { append(&alone, f) } }
@@ -1346,6 +1383,7 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 			}
 		}
 		frontier = next
+		if !opened { break }
 	}
 	append(&frontier, ..alone[:])
 	if len(frontier) == 0 { return }
@@ -1467,6 +1505,9 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	}
 
 	members_commit(&m)
+	if !shadows && ix.uses_has && ix.watched == doc && ix.watched_gen == doc.journal.watch.gen {
+		w.p.mc.has_known, w.p.mc.has_known_user = has_answer, &m
+	}
 
 	// from here on the styles change
 	for h in m.removed {
@@ -1881,29 +1922,39 @@ members_prepare :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 	if !any { return }
 	doc := m.doc
 	known_mask :: proc(ha: ^Has_Anchor) -> u64 { return ha.last_mask & ~dom.WATCH_KNOWN }
+	keys: Members_Index
+	ix.members_tested = 0
 	for &en in entries {
 		switch en.kind {
 		case .Insert:
 			n := dom.get(doc, en.node)
 			if n == nil || n.kind != .Element || !connected(doc, en.node) { continue }
-			w := dom.subtree_watch(doc, en.node)
-			for &ha in ix.has_anchors {
-				if !ha.exact || ha.members == nil { continue }
-				if w & known_mask(&ha) != known_mask(&ha) { continue }   // a key of its argument is not in the subtree
-				stack := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
-				append(&stack, en.node)
-				for len(stack) > 0 {
-					x := pop(&stack)
-					xn := dom.get(doc, x)
-					if xn == nil || xn.kind != .Element { continue }
-					// (also one the set already had: it was taken out of the tree and put back, maybe somewhere else)
-					if matches_compound(&m.mc, x, ha.arg) {
-						ha.members.set[x] = {}
-						append(&ha.members.added, x)
-						if ha.first_mask != 0 { member_held(m, &ha, x, true) }
+			if keys.by_class == nil { keys, _ = members_index_make(ix) }
+			// one walk of what came, each element against the anchors of its own keys: anchor by anchor, a subtree of 500 elements
+			// under a hundred anchors was as many answers, and a tenth of what a restyle cost on cnn.com
+			Candidates :: struct { m: ^Marker, watched: u64 }
+			c := Candidates{m, dom.subtree_watch(doc, en.node)}
+			stack := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
+			append(&stack, en.node)
+			for len(stack) > 0 {
+				x := pop(&stack)
+				xn := dom.get(doc, x)
+				if xn == nil || xn.kind != .Element { continue }
+				members_candidates(&keys, x, xn, &c, proc(user: rawptr, x: base.Handle, list: []^Has_Anchor) {
+					c := (^Candidates)(user)
+					c.m.ix.members_tested += len(list)
+					for ha in list {
+						mask := ha.last_mask & ~dom.WATCH_KNOWN
+						if c.watched & mask != mask { continue }   // a key of its argument is not in the subtree
+						// (also one the set already had: it was taken out of the tree and put back, maybe somewhere else)
+						if matches_compound(&c.m.mc, x, ha.arg) {
+							ha.members.set[x] = {}
+							append(&ha.members.added, x)
+							if ha.first_mask != 0 { member_held(c.m, ha, x, true) }
+						}
 					}
-					for ch := xn.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
-				}
+				})
+				for ch := xn.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
 			}
 		case .Remove:
 			known := en.watch & dom.WATCH_KNOWN != 0 && en.watch_gen == doc.journal.watch.gen
@@ -2025,6 +2076,23 @@ bits_up :: proc(m: ^Marker, bits: []u64, from: base.Handle, only := false) {
 	}
 	if only { if from != stop && from != base.NIL_HANDLE { bit_set_at(bits, from) }; return }
 	for cur := from; cur != stop && cur != base.NIL_HANDLE && cur != doc.root; cur = dom.get(doc, cur).parent { bit_set_at(bits, cur) }
+}
+
+// `:has(.a)` of an element being restyled, from the members of the anchor (Match_Ctx.has_known): they are those of the document as it
+// is now, and which elements have one under them is a bit, found once a batch. A walk of the subtree for each list, for a rule with no
+// other compound that every element is tried on, was a tenth of what a restyle cost on cnn.com.
+@(private = "file")
+has_answer :: proc(user: rawptr, anchor: base.Handle, list: css.Selector_List) -> (answer: bool, known: bool) {
+	m := (^Marker)(user)
+	if m.exact_lists == nil {
+		m.exact_lists = make(map[rawptr]^Has_Anchor, len(m.ix.has_anchors), context.temp_allocator)
+		for &ha in m.ix.has_anchors {
+			if ha.exact && ha.members != nil { m.exact_lists[ha.list] = &ha }
+		}
+	}
+	ha := m.exact_lists[raw_data(list)] or_return
+	under := bit_at(members_above(m, ha), anchor)
+	return under, !under || (!ha.chain && !ha.child_only)   // (a chain, or `:has(> .a)`, with a member somewhere below: only the walk says)
 }
 
 // The elements with a member of the anchor under them, as of this batch's start and what came since (Has_Members.dirty).

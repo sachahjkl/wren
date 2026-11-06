@@ -182,6 +182,7 @@ reach_from :: proc(c: ^css.Complex, k: int) -> Reach {
 @(private)
 Has_Anchor :: struct {
 	compound: css.Compound,
+	list:     rawptr,   // the argument of its :has(), as matches_has is asked it
 	reach:    Reach,
 	feat:     Has_Feat,
 	hops:     int,   // how many levels above a changed element the anchor can be (-1: any: the argument has a descendant combinator)
@@ -237,6 +238,7 @@ Has_Feat :: struct {
 	classes, ids, attrs, types: map[string]bool,
 	mask:     u64,    // their bits of the document's dom.Watch (watch_sync): a subtree that holds none of them cannot make the anchor match
 	unkeyed:  bool,   // the argument also asks something a key does not name (*, :not(), :nth-child(), a sibling combinator): any element may change it
+	sibling:  bool,   // the argument has a sibling combinator: the anchor may stand before what changed, or before one of its ancestors (the others are read up the ancestors alone)
 	empty:    bool,   // the argument reads :empty: a change of text under the anchor may change it
 }
 
@@ -404,8 +406,8 @@ analyze_list :: proc(ix: ^Inv_Index, list: ^css.Selector_List, outer: Reach, in_
 analyze_complex :: proc(ix: ^Inv_Index, c: ^css.Complex, outer: Reach, in_has: bool, depth: int) {
 	if depth > MAX_DEPTH { ix.give_up = true; return }
 	if in_has {
-		if c.relative && (c.leading == .Next_Sibling || c.leading == .Subsequent_Sibling) { ix.has_sibling = true; if ix.collect != nil { ix.collect.unkeyed = true } }
-		for cb in c.combinators { if cb == .Next_Sibling || cb == .Subsequent_Sibling { ix.has_sibling = true; if ix.collect != nil { ix.collect.unkeyed = true } } }
+		if c.relative && (c.leading == .Next_Sibling || c.leading == .Subsequent_Sibling) { has_reads_siblings(ix) }
+		for cb in c.combinators { if cb == .Next_Sibling || cb == .Subsequent_Sibling { has_reads_siblings(ix) } }
 	}
 	for j in 0 ..< len(c.combinators) {
 		if !in_has && (c.combinators[j] == .Next_Sibling || c.combinators[j] == .Subsequent_Sibling) {
@@ -420,7 +422,7 @@ analyze_complex :: proc(ix: ^Inv_Index, c: ^css.Complex, outer: Reach, in_has: b
 			if analyze_simple(ix, &s, comp, total, in_has, depth) { keyed = true }
 		}
 		if !keyed && !in_has && !compound_keyed(comp) { keyless_add(ix, total) }
-		if !keyed && in_has && ix.collect != nil { ix.collect.unkeyed = true }
+		if !keyed && in_has && ix.collect != nil && !compound_keyed(comp) { ix.collect.unkeyed = true }
 	}
 }
 
@@ -472,7 +474,7 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 				ix.collect = &feat
 				analyze_list(ix, s.list, total, true, depth)
 				ix.collect = saved
-				ha := Has_Anchor{compound = comp, reach = total, feat = feat, hops = has_hops(s.list)}
+				ha := Has_Anchor{compound = comp, reach = total, feat = feat, hops = has_hops(s.list), list = s.list != nil ? raw_data(s.list^) : nil}
 				if s.list != nil && len(s.list^) == 1 && !feat.unkeyed {
 					c := &s.list^[0]
 					if len(c.compounds) > 0 && (c.leading == .Descendant || c.leading == .Child) && c.pseudo_element == .None && c.slotted == nil {
@@ -528,6 +530,12 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 		}
 	}
 	return false
+}
+
+@(private = "file")
+has_reads_siblings :: proc(ix: ^Inv_Index) {
+	ix.has_sibling = true
+	if ix.collect != nil { ix.collect.unkeyed, ix.collect.sibling = true, true }
 }
 
 @(private = "file")
@@ -747,7 +755,7 @@ watch_sync :: proc(ix: ^Inv_Index, doc: ^dom.Document, force := false) -> (fresh
 
 // The exact anchors by what the last compound of their argument requires, as the rule index keeps rules by their subject: an
 // element is tested against the anchors of its own class tokens, id, attributes and tag, not against all of them.
-@(private = "file")
+@(private)
 Members_Index :: struct {
 	by_class, by_id, by_attr, by_tag: map[string][dynamic]^Has_Anchor,
 	any: [dynamic]^Has_Anchor,   // no key: every element
@@ -778,31 +786,64 @@ members_index_add :: proc(x: ^Members_Index, ha: ^Has_Anchor) {
 	}
 }
 
-// The members of the exact anchors: one walk of the document.
-@(private = "file")
-members_scan :: proc(ix: ^Inv_Index, doc: ^dom.Document) {
-	keys: Members_Index
+// The exact anchors that have their members kept, by the keys of their arguments. In the temporary allocator.
+@(private)
+members_index_make :: proc(ix: ^Inv_Index) -> (keys: Members_Index, any: bool) {
 	keys.by_class = make(map[string][dynamic]^Has_Anchor, allocator = context.temp_allocator)
 	keys.by_id = make(map[string][dynamic]^Has_Anchor, allocator = context.temp_allocator)
 	keys.by_attr = make(map[string][dynamic]^Has_Anchor, allocator = context.temp_allocator)
 	keys.by_tag = make(map[string][dynamic]^Has_Anchor, allocator = context.temp_allocator)
 	keys.any = make([dynamic]^Has_Anchor, context.temp_allocator)
-	any := false
+	for &ha in ix.has_anchors {
+		if !ha.exact || ha.members == nil { continue }
+		members_index_add(&keys, &ha)
+		any = true
+	}
+	return
+}
+
+// Hands `test` the anchors element `h` is a candidate of, list by list.
+@(private)
+members_candidates :: proc(keys: ^Members_Index, h: base.Handle, n: ^dom.Node, user: rawptr, test: proc(user: rawptr, h: base.Handle, list: []^Has_Anchor)) {
+	if len(keys.any) > 0 { test(user, h, keys.any[:]) }
+	if l, found := keys.by_tag[n.name]; found { test(user, h, l[:]) }
+	for a in n.attrs {
+		if l, found := keys.by_attr[a.name]; found { test(user, h, l[:]) }
+		switch a.name {
+		case "id": if l, found := keys.by_id[a.value]; found { test(user, h, l[:]) }
+		case "class":
+			rest := a.value
+			for len(rest) > 0 {
+				for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
+				end := 0
+				for end < len(rest) && !is_space(rest[end]) { end += 1 }
+				if end > 0 { if l, found := keys.by_class[rest[:end]]; found { test(user, h, l[:]) } }
+				rest = rest[end:]
+			}
+		}
+	}
+}
+
+// The members of the exact anchors: one walk of the document.
+@(private = "file")
+members_scan :: proc(ix: ^Inv_Index, doc: ^dom.Document) {
 	for &ha in ix.has_anchors {
 		if !ha.exact { continue }
 		if ha.members == nil { ha.members = new(Has_Members) }
 		clear(&ha.members.set); clear(&ha.members.added); clear(&ha.members.removed); clear(&ha.members.held)
 		ha.members.dirty, ha.members.lost_held, ha.members.head_touched = false, false, false
-		members_index_add(&keys, &ha)
-		any = true
 	}
+	keys, any := members_index_make(ix)
 	if !any { return }
 	mc: Match_Ctx
 	match_ctx_init(&mc, doc, State{}, context.temp_allocator)
 	ix.members_tested = 0
-	test :: proc(ix: ^Inv_Index, mc: ^Match_Ctx, h: base.Handle, list: []^Has_Anchor) {
-		ix.members_tested += len(list)
-		for ha in list { if matches_compound(mc, h, ha.arg) { ha.members.set[h] = {} } }
+	Scan :: struct { ix: ^Inv_Index, mc: ^Match_Ctx }
+	scan := Scan{ix, &mc}
+	test :: proc(user: rawptr, h: base.Handle, list: []^Has_Anchor) {
+		s := (^Scan)(user)
+		s.ix.members_tested += len(list)
+		for ha in list { if matches_compound(s.mc, h, ha.arg) { ha.members.set[h] = {} } }
 	}
 	stack := make([dynamic]base.Handle, 0, 64, context.temp_allocator)
 	append(&stack, doc.root)
@@ -810,25 +851,7 @@ members_scan :: proc(ix: ^Inv_Index, doc: ^dom.Document) {
 		h := pop(&stack)
 		n := dom.get(doc, h)
 		if n == nil { continue }
-		if n.kind == .Element {
-			test(ix, &mc, h, keys.any[:])
-			if l, found := keys.by_tag[n.name]; found { test(ix, &mc, h, l[:]) }
-			for a in n.attrs {
-				if l, found := keys.by_attr[a.name]; found { test(ix, &mc, h, l[:]) }
-				switch a.name {
-				case "id": if l, found := keys.by_id[a.value]; found { test(ix, &mc, h, l[:]) }
-				case "class":
-					rest := a.value
-					for len(rest) > 0 {
-						for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
-						end := 0
-						for end < len(rest) && !is_space(rest[end]) { end += 1 }
-						if end > 0 { if l, found := keys.by_class[rest[:end]]; found { test(ix, &mc, h, l[:]) } }
-						rest = rest[end:]
-					}
-				}
-			}
-		}
+		if n.kind == .Element { members_candidates(&keys, h, n, &scan, test) }
 		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
 	}
 	for &ha in ix.has_anchors {
