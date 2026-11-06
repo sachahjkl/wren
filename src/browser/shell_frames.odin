@@ -161,7 +161,6 @@ Shell_Frames :: struct {
 	pending_scroll: draw.Vec2,   // scroll taken by chrome frames for the current tab's document (the wheel, the bar's thumb, the keys; device px)
 	pending_tab: u64,
 	boxes:      [dynamic]Box_Scroll,   // the containers of that tab's document chrome frames scrolled (the wheel, a bar's thumb: shell_shown.odin)
-	press_to_page: [8]bool,      // per mouse button: its press went to the page, in a chrome frame or a full one (its moves and its release follow)
 	page_keyboard: bool,         // chrome frames: whether the page has the keyboard (followed through presses)
 	snaps:      [dynamic]Page_Snapshot,
 	frame_no:   u64,
@@ -479,9 +478,9 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 	t := current_tab(app)
 	page_shown := t != nil && t.kind == .Web
 	over_page := page_shown && draw.rect_contains(wnd.page_rect, ev.pos) && !ui.ctx_menu_any_open() && !hud_captures(app, ev.pos)
-	button := int(ev.button) % len(app.chrome_frames.press_to_page)
+	g := gesture_of(app)
 	if page_shown && !hold_buttons_and_keys && shell_bar_event(app, t, ev, over_page) {
-		if ev.kind != .Mouse_Move { app.chrome_frames.press_to_page[button] = false }
+		if ev.kind != .Mouse_Move { g.held -= {ev.button} }
 		if ev.kind == .Mouse_Move { append(chrome, ev) }   // (the chrome's hover)
 		return
 	}
@@ -489,12 +488,12 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 	case .Mouse_Move:
 		append(chrome, ev)   // hover of the chrome (and its own pointer capture)
 		// the page's hover, later; and the drag of a press that went to the page, wherever the pointer goes, as full frames give it
-		dragging := app.chrome_frames.press_to_page[int(platform.Mouse_Button.Left)] && .Left in ev.buttons
+		dragging := .Left in g.held && .Left in ev.buttons
 		if over_page || (page_shown && dragging) { append(&app.chrome_frames.deferred, ev) }
 		if page_shown && dragging { selection_preview_move(app, t, ev.pos) }   // a text selection's drag: what it will select, shown now (selection_shell.odin)
 	case .Mouse_Press:
 		if hold_buttons_and_keys { append(&app.chrome_frames.deferred, ev); return }
-		app.chrome_frames.press_to_page[button] = over_page
+		if over_page { g.held += {ev.button} } else { g.held -= {ev.button} }
 		if over_page {
 			app.chrome_frames.page_keyboard = true
 			if !shell_deferred_buttons_or_keys(app) { selection_preview_press(app, t, ev) }   // a text selection's press: its gesture, shown now (selection_shell.odin)
@@ -504,8 +503,8 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 			append(chrome, ev)
 		}
 	case .Mouse_Release:
-		if hold_buttons_and_keys || app.chrome_frames.press_to_page[button] {
-			app.chrome_frames.press_to_page[button] = false
+		if hold_buttons_and_keys || ev.button in g.held {
+			g.held -= {ev.button}
 			append(&app.chrome_frames.deferred, ev)
 			return
 		}
@@ -568,19 +567,19 @@ shell_async_scroll_to :: proc(app: ^App, t: ^Tab, to: draw.Vec2) {
 }
 
 // The document's scroll bars of a busy page, on its last frame: the press on a thumb, the drag's moves and its release are
-// the shell's, as in a full frame (smooth_scroll.odin scrollbar_event, whose Scrollbar_Drag this is: a drag begun in one kind
-// of frame goes on in the other), and the document is shown where the thumb puts it, as under the wheel. A container's thumb
+// the shell's, as in a full frame (the gesture's owner is Thumb in either: a drag begun in one kind of frame goes on in the
+// other), and the document is shown where the thumb puts it, as under the wheel. A container's thumb
 // likewise while the page can be painted from its last layout (shell_shown.odin: the bar is found there, the container shown
 // at its new offset), else it waits. A press waits for the page while presses or keys it has not had yet wait (it must not
 // overtake them), and so does one on a container's track or arrows.
 @(private = "file")
 shell_bar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, over_page: bool) -> bool {
-	s := smooth_of(t)
+	g := gesture_of(app)
 	p := ev.pos - active_window(app).page_rect.min
 	#partial switch ev.kind {
 	case .Mouse_Press:
 		snap := shell_snapshot_of(t.id)
-		if ev.button != .Left || !over_page || snap == nil || snap.page != t.page || shell_deferred_buttons_or_keys(app) { return false }
+		if ev.button != .Left || !over_page || !gesture_free(g) || snap == nil || snap.page != t.page || shell_deferred_buttons_or_keys(app) { return false }
 		shown := shell_shown_scroll(t)
 		for vertical in ([2]bool{true, false}) {
 			if !(vertical ? snap.bar : snap.bar_x) { continue }
@@ -590,7 +589,7 @@ shell_bar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, over_page: bool)
 			thumb := thumb_along(track, vertical ? snap.bar_thumb : snap.bar_x_thumb, vertical, at)
 			if !draw.rect_contains(thumb, p) { continue }
 			rail := bar_rail(track, vertical)
-			s.drag = Scrollbar_Drag{active = true, node = base.NIL_HANDLE, vertical = vertical, grab = p[ax] - thumb.min[ax],
+			gesture_take(app, t, .Thumb, .Left).thumb = Scrollbar_Drag{node = base.NIL_HANDLE, vertical = vertical, grab = p[ax] - thumb.min[ax],
 				track_min = rail.min[ax], travel = (rail.max[ax] - rail.min[ax]) - (thumb.max[ax] - thumb.min[ax]), lo = snap.lo[ax], limit = snap.limit[ax]}
 			bar_over_set(app, {&t.layout, base.NIL_HANDLE, vertical, {.Thumb, true}})
 			return true
@@ -598,8 +597,8 @@ shell_bar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, over_page: bool)
 		return shell_box_bar_press(app, t, p)   // a container's thumb, shown from the layout (shell_shown.odin)
 	case .Mouse_Move:
 		// (a container's drag goes on while its page can be painted from its layout; else its moves wait for the page)
-		if !s.drag.active || (s.drag.node != base.NIL_HANDLE && !shell_layout_paintable(app, t)) { return false }
-		dr := s.drag
+		if !shell_holds_thumb(app, g, t) { return false }
+		dr := g.thumb
 		ax := dr.vertical ? 1 : 0
 		f := dr.travel > 0 ? clamp((p[ax] - dr.grab - dr.track_min) / dr.travel, 0, 1) : 0
 		if dr.node != base.NIL_HANDLE {
@@ -613,12 +612,17 @@ shell_bar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, over_page: bool)
 		shell_async_scroll_to(app, t, to)
 		return true
 	case .Mouse_Release:
-		if ev.button != .Left || !s.drag.active || (s.drag.node != base.NIL_HANDLE && !shell_layout_paintable(app, t)) { return false }
-		s.drag = {}
-		scrollbar_over_move(app, t, ev.pos, over_page)
+		if ev.button != .Left || !shell_holds_thumb(app, g, t) { return false }
+		bar_let_go(app, t, ev, over_page)
 		return true
 	}
 	return false
+}
+
+// The thumb held is `t`'s, and a chrome frame can follow it: a container's while its page can be painted from its layout.
+@(private = "file")
+shell_holds_thumb :: proc(app: ^App, g: ^Pointer_Gesture, t: ^Tab) -> bool {
+	return g.owner == .Thumb && g.tab == t && t.page == g.top && (g.thumb.node == base.NIL_HANDLE || shell_layout_paintable(app, t))
 }
 
 // A key meant for the busy page that its turn would not give it anything to run for: no key listener anywhere (keydown,

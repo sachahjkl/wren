@@ -41,35 +41,35 @@ register_dnd_prefs :: proc(p: ^config.Prefs) {
 	register_touch_prefs(p)                  // touch_shell.odin
 }
 
-Dnd_Shell :: struct {
-	// a press that may become a drag
-	candidate:   bool,
-	cand_page:   ^page.Page,
-	cand_source: base.Handle,
-	cand_kind:   page.Drag_Source_Kind,
-	cand_pos:    [2]f32,
-	cand_local:  [2]f32,
-	cand_text:   string,          // owned: the selection's text
-	cand_field:  base.Handle,     // the selection is a text field's (bytes cand_a..cand_b)
-	cand_a, cand_b: int,
-	cand_host:   base.Handle,     // the selection is inside this editing host (range cand_range)
-	cand_range:  [2]lay.Text_Pos,
-	// a drag from the page
-	active:      bool,
-	src_page:    ^page.Page,
-	// a drag of the system over the window
-	external:    bool,
-	ext_page:    ^page.Page,
-	// both
-	over_chrome: bool,
+// A press that may become a drag (Pointer_Gesture.candidate).
+Drag_Candidate :: struct {
+	source: base.Handle,
+	kind:   page.Drag_Source_Kind,
+	pos:    [2]f32,
+	local:  [2]f32,
+	text:   string,          // owned: the selection's text
+	field:  base.Handle,     // the selection is a text field's (bytes a..b)
+	a, b:   int,
+	host:   base.Handle,     // the selection is inside this editing host (range `range`)
+	range:  [2]lay.Text_Pos,
+}
+
+// A drag from the page (Pointer_Gesture.drag; its document is the gesture's).
+Page_Drag :: struct {
 	op:          page.Drag_Op,
-	ole:         bool,            // the window is an OLE drop target
-	// the system's drag of a page's drag (hand_off): its tab, and whether it is back over the page
-	sync_tab:    ^Tab,
-	sync_over:   bool,
+	over_chrome: bool,
+	sync_over:   bool,            // the system's drag (hand_off) is back over the page
 	// the pointer left the window while the picture is still being read back
 	handoff_pending: bool,
 	handoff_frames:  int,
+}
+
+// Drags of the system over a window.
+Dnd_Shell :: struct {
+	external:    bool,
+	ext_page:    ^page.Page,
+	over_chrome: bool,
+	ole:         bool,            // the window is an OLE drop target
 }
 
 @(private = "file") HANDOFF_WAIT_FRAMES :: 4
@@ -88,9 +88,7 @@ dnd_window_attach :: proc(w: ^platform.Window) { if the_app.dnd.ole { platform.d
 dnd_window_detach :: proc(w: ^platform.Window) { if the_app.dnd.ole { platform.drop_target_enable(w, false) } }
 
 dnd_destroy :: proc(app: ^App) {
-	dnd_image_end(app)
 	if app.dnd.ole && active_window(app).win != nil { platform.drop_target_enable(active_window(app).win, false) }
-	delete(app.dnd.cand_text)
 	app.dnd = {}
 }
 
@@ -193,20 +191,21 @@ web_tab :: proc(app: ^App) -> ^Tab {
 // A left press on the page that mousedown did not cancel: may it become a drag? True when the press must not start a
 // text selection (it is on something draggable, or inside the selection).
 dnd_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: base.Handle) -> bool {
-	dnd_clear_candidate()
 	p := t.page
-	if p == nil || ev.button != .Left || !dnd_page_events(app) { return false }
+	if !dnd_page_events(app) { return false }
+	g := gesture_of(app)
 	source, kind := page.drag_source_for(p, pressed)
 	text := ""
+	c: Drag_Candidate
 	// selected text of a field (the press kept the selection: forms_shell.odin)
 	if kind == .None {
 		if field, a, b, ftext, ok := forms_take_selection_press(app, p); ok && field == pressed {
 			kind, text, source = .Selection, ftext, field
-			app.dnd.cand_field, app.dnd.cand_a, app.dnd.cand_b = field, a, b
+			c.field, c.a, c.b = field, a, b
 		}
 	}
 	// (the second or third click of a series selects more: it does not take the selection away)
-	if kind == .None && page.selection_active(p) && window_own(app).selection.clicks == 1 {
+	if kind == .None && page.selection_active(p) && click_in_text(g.clicks.count) == 1 {
 		if tp, ok := position_of(app, t, ev.pos); ok {
 			a, b, _ := page.selection_range(p)
 			if lay.pos_compare(p.doc, a, tp) <= 0 && lay.pos_compare(p.doc, tp, b) < 0 {
@@ -214,32 +213,24 @@ dnd_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: base.Handle) 
 				source = pressed != base.NIL_HANDLE ? pressed : p.body
 				// inside an editing host: a move takes the text out of it
 				if host := page.editing_host_of(p, a.node); host != base.NIL_HANDLE && host == page.editing_host_of(p, b.node) {
-					app.dnd.cand_host, app.dnd.cand_range = host, {a, b}
+					c.host, c.range = host, {a, b}
 				}
 			}
 		}
 	}
 	if kind == .None { return false }
-	app.dnd.candidate, app.dnd.cand_page, app.dnd.cand_source, app.dnd.cand_kind = true, p, source, kind
-	app.dnd.cand_pos, app.dnd.cand_local = ev.pos, ev.pos - active_window(app).page_rect.min + doc_scroll_vec(t)
-	app.dnd.cand_text = strings.clone(text)
+	c.source, c.kind = source, kind
+	c.pos, c.local = ev.pos, ev.pos - active_window(app).page_rect.min + doc_scroll_vec(t)
+	c.text = strings.clone(text)
+	g.owner, g.candidate = .Drag_Candidate, c
 	return true
 }
 
-@(private = "file")
-dnd_clear_candidate :: proc() {
-	delete(the_app.dnd.cand_text)
-	the_app.dnd.candidate, the_app.dnd.cand_text, the_app.dnd.cand_page = false, "", nil
-	the_app.dnd.cand_field, the_app.dnd.cand_host = base.NIL_HANDLE, base.NIL_HANDLE
-}
-
-// Whether a drag (from the page, or of the system) is in progress: page input is the drag's.
-dnd_active :: proc() -> bool { return the_app.dnd.active }
-
 // The window's cursor while a drag from the page is in progress (the operation a drop would do here).
 dnd_cursor :: proc() -> (platform.Cursor, bool) {
-	if !the_app.dnd.active { return .Arrow, false }
-	switch the_app.dnd.op {
+	g := gesture_of(the_app)
+	if g.owner != .Page_Drag { return .Arrow, false }
+	switch g.drag.op {
 	case .Copy: return .Copy, true
 	case .Link: return .Alias, true
 	case .Move: return .Arrow, true
@@ -248,14 +239,23 @@ dnd_cursor :: proc() -> (platform.Cursor, bool) {
 	return .Arrow, true
 }
 
+// The drag came to its end, its button up. (A drop's script may have taken the page away: its drag is over with it.)
 @(private = "file")
-end_page_drag :: proc(app: ^App, op: page.Drag_Op) {
-	p := app.dnd.src_page
-	app.dnd.active, app.dnd.src_page, app.dnd.op, app.dnd.over_chrome = false, nil, .None, false
-	app.dnd.handoff_pending = false
+end_page_drag :: proc(app: ^App, t: ^Tab, op: page.Drag_Op) {
+	g := gesture_of(app)
+	if g.owner != .Page_Drag { return }
+	p := g.doc
+	gesture_end(g)
 	dnd_image_end(app)
 	dnd_image_target(nil)
-	if p != nil { page.drag_finish(p, op) }
+	if t.page == p { page.drag_finish(p, op) }
+}
+
+// The gesture was cancelled (gesture_cancel: Escape, the tab or the page changed): `p` is told, with its dragleave.
+dnd_drag_cancelled :: proc(app: ^App, p: ^page.Page) {
+	dnd_image_end(app)
+	dnd_image_target(nil)
+	if p != nil { page.drag_cancel(p) }
 }
 
 // The pointer left the window during a drag from the page: the system's drag takes over until the drop, with the
@@ -265,11 +265,11 @@ end_page_drag :: proc(app: ^App, op: page.Drag_Op) {
 @(private = "file")
 hand_off :: proc(app: ^App, t: ^Tab) {
 	wnd := active_window(app)
-	p := app.dnd.src_page
+	g := gesture_of(app)
+	p := g.doc
 	page.drag_leave_page(p)
 	set_caret(app, p, nil)
 	dnd_image_target(nil)
-	if t.page != p { end_page_drag(app, .None); return }
 	pl, allowed := page.drag_session_payload(p)
 	data: platform.Drag_Data
 	defer { delete(data.files); delete(data.custom) }
@@ -277,24 +277,22 @@ hand_off :: proc(app: ^App, t: ^Tab) {
 	data.text, data.html, data.url = pl.text, pl.html, pl.url
 	if data.url != "" && data.text == "" { data.text = data.url }
 	for e in pl.custom { append(&data.custom, platform.Drag_Entry{e.mime, e.data}) }
-	if platform.drag_data_empty(data) || allowed == {} { end_page_drag(app, .None); return }
+	if platform.drag_data_empty(data) || allowed == {} { end_page_drag(app, t, .None); return }
 	// the remote control's drag goes on through the window's own drop target; a window nobody sees (driven by it)
 	// never runs the system's drag, which would follow the real mouse of the person at the computer
 	steps, scripted := remote_drag_steps(app)   // remote_methods.odin
 	if scripted {
 		platform.drag_script(wnd.win, steps)
 	} else if !platform.is_window_visible(wnd.win) {
-		end_page_drag(app, .None)
+		end_page_drag(app, t, .None)
 		return
 	}
 	platform.drop_sync_set(wnd.win, dnd_sync, app)
 	defer platform.drop_sync_set(wnd.win, nil, nil)
-	app.dnd.sync_tab, app.dnd.sync_over = t, false
+	g.drag.sync_over = false
 	dnd_image_system_shows(true)
 	effect, _ := platform.drag_start(wnd.win, data, effects_of(allowed), dnd_image_system())
-	app.dnd.sync_tab = nil
-	if t.page != p { app.dnd.src_page = nil }
-	end_page_drag(app, op_of(effect))
+	end_page_drag(app, t, op_of(effect))
 	request_frames(app, 2)
 }
 
@@ -303,29 +301,29 @@ hand_off :: proc(app: ^App, t: ^Tab) {
 @(private = "file")
 dnd_sync :: proc(user: rawptr, w: ^platform.Window, ev: platform.Event) -> Maybe(platform.Drop_Effect) {
 	app := (^App)(user)
-	t := app.dnd.sync_tab
-	p := app.dnd.src_page
-	if t == nil || p == nil || t.page != p || page.drag_session(p) == nil { return nil }
+	g := gesture_of(app)
+	if g.owner != .Page_Drag || g.tab.page != g.doc || page.drag_session(g.doc) == nil { return nil }
+	t, p := g.tab, g.doc
 	over_page := draw.rect_contains(active_window(app).page_rect, ev.pos)
 	#partial switch ev.kind {
 	case .Drop_Enter, .Drop_Over:
 		if !over_page {
-			if app.dnd.sync_over { page.drag_leave_page(p); set_caret(app, p, nil) }
-			app.dnd.sync_over = false
+			if g.drag.sync_over { page.drag_leave_page(p); set_caret(app, p, nil) }
+			g.drag.sync_over = false
 			pl, _ := page.drag_session_payload(p)
 			return pl.url != "" ? platform.drop_effect_for(ev.drop_allowed, ev.mods, .Link) : nil
 		}
-		app.dnd.sync_over = true
+		g.drag.sync_over = true
 		hit, cx, cy := page_point(app, t, ev.pos)
 		op, ok := page.drag_update(p, hit, cx, cy, dom_mods(ev.mods))
 		if !ok { return nil }
 		follow_caret(app, t, p, ev.pos)
 		return effect_of(op)
 	case .Drop_Leave:
-		if app.dnd.sync_over { page.drag_leave_page(p); set_caret(app, p, nil) }
-		app.dnd.sync_over = false
+		if g.drag.sync_over { page.drag_leave_page(p); set_caret(app, p, nil) }
+		g.drag.sync_over = false
 	case .Drop:
-		app.dnd.sync_over = false
+		g.drag.sync_over = false
 		if !over_page {
 			pl, _ := page.drag_session_payload(p)
 			if pl.url != "" { chrome_open(app, strings.clone(pl.url, context.temp_allocator), ev.pos); return .Link }
@@ -385,81 +383,78 @@ set_caret :: proc(app: ^App, p: ^page.Page, c: Maybe(page.Drop_Caret)) {
 
 // The drop caret in text field `node` (forms_shell.odin paints it), when text is dragged over it.
 dnd_field_caret :: proc(node: base.Handle) -> (int, bool) {
-	for p in ([]^page.Page{the_app.dnd.src_page, the_app.dnd.ext_page}) {
+	g := gesture_of(the_app)
+	for p in ([]^page.Page{g.owner == .Page_Drag ? g.doc : nil, the_app.dnd.ext_page}) {
 		if p == nil { continue }
 		if c, ok := page.drag_caret(p); ok && c.field && c.node == node { return c.offset, true }
 	}
 	return 0, false
 }
 
-// The frame's events, while a press may become a drag or a drag from the page goes on (route_page_input, before any
-// other handler). True when the event was the drag's.
-dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
-	wnd := active_window(app)
-	if app.dnd.candidate && !app.dnd.active {
-		#partial switch ev.kind {
-		case .Mouse_Move:
-			if .Left not_in ev.buttons || t.page != app.dnd.cand_page { dnd_clear_candidate(); return false }
-			d := ev.pos - app.dnd.cand_pos
-			th := platform.drag_threshold(wnd.win)
-			if abs(d.x) < th.x && abs(d.y) < th.y { return true }
-			p := t.page
-			cx, cy := page_client_xy(t, app.dnd.cand_local, page_scale(app))
-			source, kind, text := app.dnd.cand_source, app.dnd.cand_kind, strings.clone(app.dnd.cand_text, context.temp_allocator)
-			field, fa, fb := app.dnd.cand_field, app.dnd.cand_a, app.dnd.cand_b
-			host, hrange := app.dnd.cand_host, app.dnd.cand_range
-			press := app.dnd.cand_pos
-			dnd_clear_candidate()
-			forms_drop_selection_press(app)   // (the release is the drag's, not a click in the field's selection)
-			window_own(app).selection.down = false   // the selection gesture, if any, is over
-			if !page.drag_start(p, source, kind, cx, cy, dom_mods(ev.mods), text) || t.page != p { return true }
-			if field != base.NIL_HANDLE { page.drag_set_source_field(p, field, fa, fb) }
-			if host != base.NIL_HANDLE { page.drag_set_source_range(p, host, hrange[0], hrange[1]) }
-			app.dnd.active, app.dnd.src_page = true, p
-			app.dnd.handoff_pending, app.dnd.handoff_frames = false, 0
-			page_set_active(p, base.NIL_HANDLE)
-			dnd_image_begin(app, t, p, press)   // dnd_image.odin: grabbed where the press was
-			return dnd_route(app, t, ev)
-		case .Mouse_Release:
-			if ev.button == .Left {
-				if app.dnd.cand_kind == .Selection && t.page == app.dnd.cand_page { page.selection_clear(t.page) }   // a click in the selection
-				dnd_clear_candidate()
-			}
-		}
-		return false
+// The owner Drag_Candidate's events (route_page_input). True when the event was the press's. Past the system's threshold it is a drag; the
+// release goes on to the page as a click, and in the selection it was on, a click there empties it.
+dnd_candidate_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
+	g := gesture_of(app)
+	c := &g.candidate
+	#partial switch ev.kind {
+	case .Mouse_Move:
+		d := ev.pos - c.pos
+		th := platform.drag_threshold(active_window(app).win)
+		if abs(d.x) < th.x && abs(d.y) < th.y { return true }
+		p := t.page
+		cx, cy := page_client_xy(t, c.local, page_scale(app))
+		source, kind, text := c.source, c.kind, strings.clone(c.text, context.temp_allocator)
+		field, fa, fb := c.field, c.a, c.b
+		host, hrange := c.host, c.range
+		press := c.pos
+		g.owner, g.field = .Page_Press, {}   // (a dragstart cancelled: the press goes on as the page's)
+		if !page.drag_start(p, source, kind, cx, cy, dom_mods(ev.mods), text) || t.page != p { return true }
+		if field != base.NIL_HANDLE { page.drag_set_source_field(p, field, fa, fb) }
+		if host != base.NIL_HANDLE { page.drag_set_source_range(p, host, hrange[0], hrange[1]) }
+		g.owner, g.drag = .Page_Drag, {}
+		page_set_active(p, base.NIL_HANDLE)
+		dnd_image_begin(app, t, p, press)   // dnd_image.odin: grabbed where the press was
+		return dnd_drag_event(app, t, ev)
+	case .Mouse_Release:
+		if ev.button == .Left && c.kind == .Selection { page.selection_clear(t.page) }   // a click in the selection
 	}
-	if !app.dnd.active { return false }
-	p := app.dnd.src_page
-	if t.page != p || p == nil { end_page_drag(app, .None); return false }
+	return false
+}
+
+// The owner Page_Drag's events (route_page_input). True when the event was the drag's.
+dnd_drag_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
+	wnd := active_window(app)
+	g := gesture_of(app)
+	p := g.doc
 	#partial switch ev.kind {
 	case .Mouse_Move:
 		size := [2]f32{f32(wnd.win.size.x), f32(wnd.win.size.y)}
 		if ev.pos.x < 0 || ev.pos.y < 0 || ev.pos.x >= size.x || ev.pos.y >= size.y {
 			// the picture is read back from a frame or two after the drag started: the system's drag waits for it (a
 			// few frames at most: dnd_events)
-			if dnd_image_waiting() && app.dnd.handoff_frames < HANDOFF_WAIT_FRAMES {
-				app.dnd.handoff_pending = true
+			if dnd_image_waiting() && g.drag.handoff_frames < HANDOFF_WAIT_FRAMES {
+				g.drag.handoff_pending = true
 				request_frames(app, 2)
 				return true
 			}
-			app.dnd.handoff_pending = false
+			g.drag.handoff_pending = false
 			hand_off(app, t)
 			return true
 		}
-		app.dnd.handoff_pending = false
+		g.drag.handoff_pending = false
 		dnd_image_move(ev.pos)
 		if draw.rect_contains(wnd.page_rect, ev.pos) {
-			app.dnd.over_chrome = false
+			g.drag.over_chrome = false
 			hit, cx, cy := page_point(app, t, ev.pos)
 			op, ok := page.drag_update(p, hit, cx, cy, dom_mods(ev.mods))
-			if !ok { end_page_drag(app, .None); return true }
-			app.dnd.op = op
+			if !ok { end_page_drag(app, t, .None); return true }
+			g.drag.op = op
 			follow_caret(app, t, p, ev.pos)
 		} else {
-			if !app.dnd.over_chrome { page.drag_leave_page(p); set_caret(app, p, nil); dnd_image_target(nil) }
-			app.dnd.over_chrome = true
+			if !g.drag.over_chrome { page.drag_leave_page(p); set_caret(app, p, nil); dnd_image_target(nil) }
+			g.drag.over_chrome = true
 			pl, _ := page.drag_session_payload(p)
-			app.dnd.op = pl.url != "" ? .Link : .None
+			g.drag.op = pl.url != "" ? .Link : .None
 		}
 		request_frames(app, 2)
 		return true
@@ -469,23 +464,19 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 	case .Mouse_Release:
 		if ev.button != .Left { return true }
 		op := page.Drag_Op.None
-		if app.dnd.over_chrome {
+		if g.drag.over_chrome {
 			pl, _ := page.drag_session_payload(p)
 			if pl.url != "" { chrome_open(app, strings.clone(pl.url, context.temp_allocator), ev.pos); op = .Link }
 		} else {
 			hit, cx, cy := page_point(app, t, ev.pos)
 			op = page.drag_drop(p, hit, cx, cy, dom_mods(ev.mods)).op
 		}
-		if t.page != p { app.dnd.src_page = nil }
-		end_page_drag(app, op)
+		end_page_drag(app, t, op)
 		request_frames(app, 2)
 		return true
 	case .Key_Press:
 		if ev.key == .Escape {
-			app.dnd.active, app.dnd.src_page, app.dnd.op = false, nil, .None
-			dnd_image_end(app)
-			dnd_image_target(nil)
-			page.drag_cancel(p)
+			gesture_cancel(app)
 			return true
 		}
 	case .Mouse_Press:
@@ -500,14 +491,11 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 // Every event of the frame (main.odin, before the page's routing): the Drop_* events of the toolkit.
 dnd_events :: proc(app: ^App, events: []platform.Event) {
 	touch_frame(app)   // touch_shell.odin: a finger held still (the long press), every frame while one is down
-	if app.dnd.handoff_pending {
-		app.dnd.handoff_frames += 1
-		if t := current_tab(app); t != nil && app.dnd.active && t.page == app.dnd.src_page {
-			if !dnd_image_waiting() || app.dnd.handoff_frames >= HANDOFF_WAIT_FRAMES { app.dnd.handoff_pending = false; hand_off(app, t) }
-			else { request_frames(app, 2) }
-		} else {
-			app.dnd.handoff_pending = false
-		}
+	gesture_follow(app)
+	if g := gesture_of(app); g.owner == .Page_Drag && g.drag.handoff_pending {
+		g.drag.handoff_frames += 1
+		if !dnd_image_waiting() || g.drag.handoff_frames >= HANDOFF_WAIT_FRAMES { g.drag.handoff_pending = false; hand_off(app, g.tab) }
+		else { request_frames(app, 2) }
 	}
 	for ev in events {
 		#partial switch ev.kind {

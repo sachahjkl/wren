@@ -49,7 +49,6 @@ frame_tab_ids: u64 = FRAME_TAB_IDS_FROM
 Frames_Input :: struct {
 	hover: ^page.Page,   // the frame document whose :hover is set
 	focus: ^page.Page,   // the frame document that got the last press (keyboard goes there)
-	press: ^page.Page,   // where the button went down (its release goes there too)
 }
 
 // Shell start-up: the page package tells us about each document a frame gets.
@@ -98,7 +97,6 @@ frame_view_closed :: proc(data: rawptr) {
 	forget :: proc(fi: ^Frames_Input, p: ^page.Page) {
 		if fi.hover == p { fi.hover = nil }
 		if fi.focus == p { fi.focus = nil }
-		if fi.press == p { fi.press = nil }
 	}
 	if the_app != nil {
 		for w in the_app.windows { forget(&w.own.frames, p) }
@@ -314,6 +312,7 @@ frames_route_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int)
 	case: return false
 	}
 	fi := &window_own(app).frames
+	g := gesture_of(app)
 	fv := frame_under(app, t, ev.pos, wnd.page_rect)
 	// hover leaves a frame the pointer left
 	if ev.kind == .Mouse_Move {
@@ -328,27 +327,30 @@ frames_route_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int)
 		fi.hover = now
 	}
 	// a release goes where the press went (the click is the press target's), a frame or the tab's document
+	ended: Ended_Press
 	if ev.kind == .Mouse_Release {
-		pf := fi.press
-		fi.press = nil
-		fv = frame_view_of(pf)
-		if pf != nil && fv == nil { return true }   // that frame is gone
+		if g.owner != .Frame { return false }
+		fv = frame_view_of(g.frame)
+		ended = gesture_release(app, ev)
 	}
 	if ev.kind == .Mouse_Press {
 		fi.focus = fv != nil ? fv.tab.page : nil
-		fi.press = fi.focus
+		if fv != nil && gesture_free(g) {
+			gesture_press(app, t, fv.tab.page, .Frame, ev)
+			g.frame = fv.tab.page
+		}
 	}
 	// the document a button was pressed in keeps the moves while it is held, wherever the pointer goes (an implicit capture:
 	// a drag started in a frame goes on over the page around it)
 	captured := false
-	if ev.kind == .Mouse_Move && ev.buttons != {} && fi.press != nil {
-		if pv := frame_view_of(fi.press); pv != nil && pv != fv { fv, captured = pv, true }
+	if ev.kind == .Mouse_Move && g.owner == .Frame {
+		if pv := frame_view_of(g.frame); pv != nil && pv != fv { fv, captured = pv, true }
 	}
 	if fv == nil { return false }
 	saved := wnd.page_rect
 	wnd.page_rect = fv.rect
 	defer wnd.page_rect = saved
-	used := frame_pointer_event(app, fv, ev, index)
+	used := frame_pointer_event(app, fv, ev, index, ended)
 	if ev.kind == .Mouse_Move && fv.tab.page != nil {
 		hovered := draw.rect_contains(fv.rect, ev.pos) ? hit_test(&fv.tab.layout, ev.pos - fv.rect.min, draw.rect_size(fv.rect), fv.tab.scroll) : base.NIL_HANDLE
 		if captured || draw.rect_contains(fv.rect, ev.pos) { hovered = hit_or_root(&fv.tab, hovered) }   // (the root element when no box is there, or outside it while its button is held)
@@ -367,7 +369,7 @@ frames_route_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int)
 // The page's pointer handling, on a frame's document (route_page_input's, without what concerns the tab: history,
 // zoom, the context menu). False for a wheel the frame cannot use: it scrolls the parent (scroll chaining).
 @(private = "file")
-frame_pointer_event :: proc(app: ^App, fv: ^Frame_View, ev: platform.Event, index: int) -> bool {
+frame_pointer_event :: proc(app: ^App, fv: ^Frame_View, ev: platform.Event, index: int, ended: Ended_Press) -> bool {
 	t := &fv.tab
 	if forms_route_event(app, t, ev, index) { return true }
 	if t.page == nil { return true }
@@ -395,12 +397,11 @@ frame_pointer_event :: proc(app: ^App, fv: ^Frame_View, ev: platform.Event, inde
 		t.scroll_target = pressed
 		forms_pointer_down(app, t, ev, pressed, local)
 		if t.page == nil { return true }
-		if ev.button == .Left { page_set_active(t.page, pressed) }
+		if ev.button == .Left && gesture_of(app).owner == .Frame { page_set_active(t.page, pressed) }
 	case .Mouse_Release:
-		if ev.button == .Left { page_set_active(t.page, base.NIL_HANDLE) }
 		local := ev.pos - rect.min + doc_scroll_vec(t)
 		released := draw.rect_contains(rect, ev.pos) ? hit_test(&t.layout, ev.pos - rect.min, size, t.scroll) : base.NIL_HANDLE
-		target, clicked := forms_pointer_up(app, t, ev, released, local)
+		target, clicked := forms_pointer_up(app, t, ev, released, local, ended)
 		if !clicked || t.page == nil { return true }
 		not_prevented := forms_click(app, t, target, ev, local)
 		if t.page == nil || !not_prevented || ev.button != .Left { return true }

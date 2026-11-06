@@ -28,7 +28,7 @@ tab_scale_follow :: proc(app: ^App, t: ^Tab) {
 		t.scroll *= k
 		lay.set_doc_scroll_x(&t.layout, t.layout.doc_scroll_x * k)
 		clear(&t.smooth.anims)   // (an animation's ends were in the old pixels)
-		t.smooth.drag.active = false
+		if g := gesture_of(app); g.owner == .Thumb && g.tab == t { gesture_cancel(app) }   // (so were the thumb's)
 		request_frames(app, 2)
 	}
 	t.scroll_dpi = now

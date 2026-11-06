@@ -843,7 +843,7 @@ control_stats :: proc(app: ^App, allocator := context.temp_allocator) -> api.Sta
 // clicks twice in a row far sooner than a person does.
 control_forget_clicks :: proc(app: ^App) {
 	active_window(app).ui.last_click_key = 0
-	window_own(app).selection.clicks, window_own(app).selection.last_click = 0, {}
+	click_forget(gesture_of(app))
 }
 
 // The browser's list of downloads.

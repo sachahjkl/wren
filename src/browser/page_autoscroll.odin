@@ -94,10 +94,7 @@ Page_Autoscroll :: struct {
 	node:    base.Handle,
 	is_doc:  bool,          // the scroller is the document (NIL handle); kept apart from a real NIL node
 	anchor:  draw.Vec2,     // window pixels
-	tab:     rawptr,        // the tab the session scrolls; a different one ends it
 }
-
-autoscroll_running_page :: proc(app: ^App) -> bool { return window_own(app).autoscroll.auto.phase != .Off }
 
 // A middle-button press on the page: tries to start a session. `allowed` is false when the page cancelled the mousedown
 // (then nothing starts, like Chrome). `pressed` is the hit element. Returns true when a session started (the press must
@@ -110,7 +107,7 @@ autoscroll_page_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: b
 	if ui.ctx_menu_any_open() { return false }
 	// a link opens a new tab instead (handled by the release path); do not autoscroll over it
 	if _, ok := anchor_href(t.page.doc, pressed); ok { return false }
-	// not while the pointer is in a text field or over a scroll bar (scrollbar_event ran first and returned)
+	// not while the pointer is in a text field or over a scroll bar (scrollbar_press ran first and returned)
 	if p := t.page; p.formctl != nil {
 		f := page.page_forms(p)
 		for cur := pressed; cur != base.NIL_HANDLE; cur = forms.parent_element(f, cur) {
@@ -118,7 +115,6 @@ autoscroll_page_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: b
 		}
 	}
 	// the scroller under the pointer that can move, and the axes it offers (chained to the document)
-	ps := &wnd.own.autoscroll
 	p := ev.pos - wnd.page_rect.min
 	node, can_x, can_y, is_doc, found := scroller_axes_under(app, t, p)
 	if !found { return false }
@@ -128,59 +124,51 @@ autoscroll_page_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: b
 	case can_x:          axes = .X
 	case:                axes = .Y
 	}
+	ps := &gesture_take(app, t, .Autoscroll, .Middle).autoscroll
 	ps.node = node
 	ps.is_doc = is_doc
-	ps.tab = t.page
 	ps.anchor = ev.pos
 	ui.autoscroll_begin(&ps.auto, ev.pos, axes, held = true, now_ms = frame_now_ms())
 	request_frames(app, 2)
 	return true
 }
 
-// The release of the middle button: a tap latches toggle mode on, otherwise hold mode ends. `wheel` ends the session
-// (handled in the wheel case). Returns true when the event was the session's.
-autoscroll_page_release :: proc(app: ^App, ev: platform.Event) -> bool {
-	ps := &window_own(app).autoscroll
-	if ps.auto.phase != .Holding || ev.button != .Middle { return false }
-	if !ui.autoscroll_release(&ps.auto, app.autoscroll_cfg.cfg, frame_now_ms()) { autoscroll_end(app) }
-	request_frames(app, 2)
-	return true
-}
-
-// Any other press ends a latched session, and that press is swallowed (it only ends autoscroll, as the browsers do).
-autoscroll_page_click :: proc(app: ^App) -> bool {
-	ps := &window_own(app).autoscroll
-	if ui.autoscroll_click(&ps.auto) { autoscroll_end(app); return true }
+// The owner Autoscroll's events (route_page_input): a wheel notch, Escape or the pointer leaving the window end the session; the release of the
+// middle button ends hold mode, a tap latches; any press ends a latched session, and that press is swallowed (it only ends autoscroll, as the
+// browsers do). True when the event was the session's.
+autoscroll_page_event :: proc(app: ^App, ev: platform.Event, index: int) -> bool {
+	g := gesture_of(app)
+	#partial switch ev.kind {
+	case .Key_Press:
+		if ev.key != .Escape { return false }
+		gesture_cancel(app)
+		consume(app, index)
+		return true
+	case .Mouse_Leave, .Scroll:
+		gesture_cancel(app)
+	case .Mouse_Press:
+		if !ui.autoscroll_click(&g.autoscroll.auto) { return false }
+		gesture_end(g)
+		return true
+	case .Mouse_Release:
+		if ev.button != .Middle || !(g.autoscroll.auto.phase == .Holding) { return false }
+		if !ui.autoscroll_release(&g.autoscroll.auto, app.autoscroll_cfg.cfg, frame_now_ms()) { gesture_end(g) }
+		request_frames(app, 2)
+		return true
+	}
 	return false
-}
-
-// A wheel notch, Escape, lost capture or a window move ends the session.
-autoscroll_page_cancel :: proc(app: ^App) {
-	ps := &window_own(app).autoscroll
-	if ps.auto.phase != .Off { autoscroll_end(app) }
-}
-
-@(private = "file")
-autoscroll_end :: proc(app: ^App) {
-	ps := &window_own(app).autoscroll
-	ui.autoscroll_cancel(&ps.auto)
-	ps.node = base.NIL_HANDLE
-	ps.is_doc = false
-	ps.tab = nil
 }
 
 // Every frame before smooth_tick: feeds the pointer, and scrolls the node by the velocity integrated against the
 // frame's dt (CSS px per second -> device px this frame). True while a session is live (the loop keeps drawing).
 autoscroll_tick :: proc(app: ^App, t: ^Tab) -> bool {
-	ps := &window_own(app).autoscroll
-	if ps.auto.phase == .Off { return false }
+	g := gesture_of(app)
+	if g.owner != .Autoscroll { return false }
+	ps := &g.autoscroll
 	wnd := active_window(app)
-	// the page went away, or its tab changed: end it (the pointer leaving the window is a Mouse_Leave,
-	// which route_page_input turns into autoscroll_page_cancel; mouse_valid is not polled here, as the chrome's
+	// (the pointer leaving the window is a Mouse_Leave, which ends the session; mouse_valid is not polled here, as the chrome's
 	// toolkit state may briefly report it false right after an injected press)
-	if t == nil || t.page == nil || rawptr(t.page) != ps.tab || !t.layout.valid {
-		autoscroll_end(app); return false
-	}
+	if !t.layout.valid { gesture_cancel(app); return false }
 	pos := wnd.ui.mouse   // the window's toolkit state tracks the pointer in window pixels (same events as the page)
 	ui.autoscroll_point(&ps.auto, pos)
 	vel := ui.autoscroll_velocity(&ps.auto, app.autoscroll_cfg.cfg)   // CSS px / s
@@ -199,15 +187,16 @@ autoscroll_tick :: proc(app: ^App, t: ^Tab) -> bool {
 
 // The cursor the session asks for (over the page area); .Arrow when none is active.
 autoscroll_page_cursor :: proc(app: ^App) -> (platform.Cursor, bool) {
-	ps := &window_own(app).autoscroll
-	if ps.auto.phase == .Off { return .Arrow, false }
-	return ui.autoscroll_cursor(&ps.auto, app.autoscroll_cfg.cfg), true
+	g := gesture_of(app)
+	if g.owner != .Autoscroll { return .Arrow, false }
+	return ui.autoscroll_cursor(&g.autoscroll.auto, app.autoscroll_cfg.cfg), true
 }
 
 // Draws the anchor marker over everything (window pixels). Called after the UI tree and the page are composed.
 autoscroll_paint :: proc(app: ^App, dc: ^draw.Context) {
-	ps := &window_own(app).autoscroll
-	if ps.auto.phase == .Off { return }
+	g := gesture_of(app)
+	if g.owner != .Autoscroll { return }
+	ps := &g.autoscroll
 	st := active_window(app).ui
 	plate := ui.color_from_tags(st, 0, "background")
 	ink := ui.color_from_tags(st, 0, "text")
