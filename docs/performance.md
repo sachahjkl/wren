@@ -3063,6 +3063,35 @@ Read plainly. **cnn.com is the result**: -19 % on the load, all eight of the bas
 
 **Left.** What is left of a partial pass is matching: 90 to 150 us an element on the window thread, `:has()` that is not exact a third of it (nested, or with a sibling combinator). `Collection_length` was not looked at. Full passes that remain, 40 to 110 ms each: `a sheet came with @keyframes that elements use` (the three heavy pages), `a sheet came that styles another tree`, `style rules changed` (which sheet, not identified), `form controls inserted` (radio buttons), the first ones. 90 to 170 ms a load of sheets arriving (`fresh_hits` walks the document for each). Layout's `too much changed`: 5 to 10 ms a time, 30 times on theverge.com.
 
+## What changed, round 42: the document's load as two state machines
+
+The pump and the document's life cycle were a bool, a handle, a bool and a float, then four bools beside `ready_state`. They are `Pump_State` and `Doc_Phase` now, with one transition proc each (`pump_to`, `doc_phase_set`). A paint turn was a timer of 24 ms; it ends with `first_paint_done`, or at `javascript.load.paint_deadline_ms` (100). Development builds, `wrentool waterfall`, a base binary kept apart, each pair of loads back to back, a load started only with the machine under 25 % busy.
+
+**What was found.**
+- **The frame is not late on these pages: it is long.** A trace of the turns: the yield comes, the frame starts in the same few ms, and the turn ends 35 to 270 ms later, inside it. No top-level page of the four reached the deadline. The 100 ms is a bound, not a measured figure.
+- **Stripe's hidden frames spent the wait on nothing**: a document that is never shown waited for the whole deadline inside npr.org's and cnn.com's load. A frame's document, a page not shown and a page that has missed one deadline get no turn now.
+- **The first form of this work was worse on npr.org**: first paints of 1.0 to 1.6 s in 3 runs of 11, against none over 811 ms for the base. Two things were changed, and neither alone was shown to be the cause (with the first alone, 1.1 and 1.4 s in 10 runs on a busy machine).
+  - A frame held by a sheet ended the turn: one traced run had the reveal attach a body `<link>` and the frame find the page blocked. The turn now goes on; only a frame that laid the page out and found nothing to show ends it.
+  - The reveal went back to the pump before each script, which let what was ready of the async scripts in between the parser's, in front of the body. It stops where it did now, and `paint_turn_due` is asked by the reveal and by `pump_turn`.
+- **Deferred scripts, modules and async scripts once parsing was done had no turn**: `the_end` never asked, and the others' test read a parser position that `parser_finish` had reset. They have one now, with the first frame given a chance to run first.
+
+**Figures.** Range of the runs, ms. The series of 5 was made of all four pages, the series of 8 of one page alone.
+
+| page | first paint, base | new | load, base | new |
+|---|---|---|---|---|
+| cnn.com (5) | 491-547 | 472-543 | 3 649-3 984 | 3 406-3 847 |
+| npr.org (5) | 549-698 | 507-575 | 3 992-4 139 | 3 656-3 777 |
+| npr.org (8) | 510-900 | 486-688 | 3 396-4 503 | 3 617-3 905 |
+| theverge.com (5) | 339-363 | 290-368 | 4 139-4 757 | 4 104-4 756 |
+| bbc.com/news (5) | 168-218 | 159-253 | 2 080-2 152 | 2 127-2 374 |
+| bbc.com/news (8) | 98-241 | 110-260 | 539-2 319 | 549-2 340 |
+
+The ranges overlap on every page but npr.org's load in the series of 5: what this round gives is the state, not time. npr.org has one mode of first paint in these 13 runs, and its base has none of its old slow one either, so that says little. bbc.com/news has one too, under 300 ms in both; its load has two, about 0.6-0.9 s and 2.1-2.3 s, in both binaries.
+
+**Tests.** `jsload_a_paint_turn_waits_for_a_late_frame`, `jsload_a_paint_turn_ends_at_its_deadline_once`, `jsload_a_deferred_script_goes_behind_the_first_paint`, `jsload_a_frame_a_script_reached_is_not_loading`. The first three on a virtual clock or on no clock at all.
+
+**Left.** `the_end` does not wait for sheets before a deferred script, as HTML says it should ("a style sheet that is blocking scripts"): the order of scripts stayed as it was. `Doc_Parser.active` is `.Parsing` by another name but for the steps of `parser_finish` before the phase changes.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
