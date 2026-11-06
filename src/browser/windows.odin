@@ -491,6 +491,7 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 	was_front := app.front == w
 	// its tabs go with it (made active: what a tab's end reads is its window's), then what it owns
 	window_activate(app, w)
+	closed_window_push(app, w)   // closed_tabs.odin
 	for len(w.tabs) > 0 {
 		t := pop(&w.tabs)
 		tab_discard(app, t)
@@ -597,6 +598,7 @@ windows_pass :: proc(app: ^App) -> bool {
 	}
 	app.pass_first = false
 	if app.quitting { return false }
+	session_open_other_windows(app)   // (windows Ctrl+Shift+T brought back)
 	// a closed window closes; the last one ends the loop
 	for w in app.windows {
 		if platform.is_closed(w.win) {
@@ -620,9 +622,8 @@ windows_pass :: proc(app: ^App) -> bool {
 	return true
 }
 
-// A tab taken out of its window for good: its page and everything the shell keeps for it go, and it can be reopened (closed tabs).
+// A tab taken out of its window for good: its page and everything the shell keeps for it go.
 tab_discard :: proc(app: ^App, t: ^Tab) {
-	closed_tabs_push(app, t.url)
 	key := strings.clone(tab_key(t), context.temp_allocator)
 	tab_free(app, t)
 	page.storage_drop_session(&app.storage, key)

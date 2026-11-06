@@ -234,7 +234,7 @@ tabs_reset :: proc(app: ^App, address: string, closed: ^int) -> ^Tab {
 		closed^ += 1
 	}
 	for t, i in wnd.tabs { if t == fresh { wnd.current = i } }
-	closed_tabs_destroy(app)
+	closed_tabs_clear(app)
 	request_frames(app, 3)
 	return fresh
 }

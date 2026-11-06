@@ -778,7 +778,7 @@ control_stats_all :: proc(app: ^App, allocator := context.temp_allocator) -> api
 	st.cookies, st.storage_sites = cookies.count(&app.profile.jar), len(page.storage_sites(&app.storage))
 	if app.profile.cache != nil { st.cache_entries = int(httpcache.summary(app.profile.cache).entries) }
 	st.memory = control_memory(app)
-	st.history_visits, st.closed_tabs, st.downloads_active, st.checkpoints = len(app.ghist.visits), len(app.closed_tabs), downloads_active(app), len(app.remote.checkpoints)
+	st.history_visits, st.closed_tabs, st.downloads_active, st.checkpoints = len(app.ghist.visits), len(closed_items(app)), downloads_active(app), len(app.remote.checkpoints)
 	return st
 }
 

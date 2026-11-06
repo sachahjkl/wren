@@ -196,9 +196,11 @@ App :: struct {
 	wchrome:       Window_Chrome,            // window_chrome.odin: its preferences, the program's icon, the system menu asked for
 	tsh:           Touch_Shell,              // touch_shell.odin: touch input and its preferences
 	tab_drag:      Tab_Drag,                 // tab_drag.odin: the tab being dragged
-	closed_tabs:   [dynamic]string,          // context_menu.odin: the tabs closed, to reopen (owned)
+	closed:        Closed_Tabs,              // closed_tabs.odin: what was closed, to reopen
 	session_last:  string,                   // session.odin: the session written last (nothing is written when it did not change)
-	rest_text:     string,                   // session.odin: a session whose other windows open once the renderer exists
+	rest_text:     string,                   // session.odin: a session whose windows from rest_from on are still to open
+	rest_from:     int,
+	rest_focus:    bool,                     // ... the last one comes to the front
 	trim_state:    Trim_State,               // memory_trim.odin
 	pass_order:    [dynamic]^Browser_Window, // windows.odin: the windows of a pass of the loop, in order
 	pass_causes:   [dynamic]Frame_Causes,    // windows.odin: ... and why each draws
@@ -346,7 +348,7 @@ tab_close_in :: proc(app: ^App, w: ^Browser_Window, index: int) {
 	tabs := window_tabs(app, w)
 	t := tabs[index]
 	if shell_defer({kind = .Close_Tab, tab = t.id}) { return }   // (shell_frames.odin: its page may be the one running)
-	closed_tabs_push(app, t.url)
+	closed_tab_push(app, w, t, index)   // closed_tabs.odin
 	ordered_remove(tabs, index)
 	tab_groups_prune(tabs[:], &w.groups)   // tab_groups.odin: its group goes with its last tab
 	key := strings.clone(tab_key(t), context.temp_allocator)
@@ -1671,6 +1673,7 @@ app_start :: proc(args: []string) -> ^App {
 	prof_mark(.Navigation)
 	if !recovery_open(app, rest[:]) {   // crash_recovery.odin: the tabs of a session that ended abnormally (the command line's addresses follow them)
 		if !(len(rest) == 0 && session_restore(app)) {   // session.odin
+			app.closed.session_waits = true   // (Ctrl+Shift+T brings it back: closed_tabs.odin)
 			pinned_restore(app)   // (the pinned tabs come back without the session: browser.tabs.restore_pinned)
 			tab_open(app, address, origin = .User)
 		}

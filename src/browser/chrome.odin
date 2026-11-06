@@ -638,7 +638,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		// the items are commands of the registry (commands.odin): same titles, shortcuts and conditions as elsewhere
 		web := t != nil && t.kind == .Web
 		if menu_command(app, t, "tab.new") { return }
-		if menu_command(app, t, "tab.reopen_closed") { return }
+		if menu_command(app, t, "tab.reopen_closed", title = closed_reopen_title(app)) { return }
 		if menu_command(app, t, "tab.close") { return }
 		ui.menu_separator()
 		menu_command(app, t, "nav.back")
@@ -675,6 +675,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 			menu_command(app, t, "view.chrome_style.classic")
 			menu_command(app, t, "view.chrome_style.modern")
 		}
+		menu_command(app, t, "browser.session_restore")
 		menu_command(app, t, "browser.command_palette")
 		menu_command(app, t, "browser.settings")
 		menu_command(app, t, "browser.setup")

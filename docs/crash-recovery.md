@@ -3,7 +3,7 @@
 After Wren ends abnormally (a crash, a kill, a power cut) the next start opens the tabs again, with no setting to turn on, and never
 loops on a page that crashes it. `browser.session.crash_recovery` (on by default) is the switch; it needs `browser.profile.persist`
 (a throwaway profile writes nothing). Code: `src/browser/crash_recovery.odin` (decision, files, snapshot), `crash_banner.odin` (the bar).
-It is separate from `browser.session.restore` (reopen the tabs after a normal end, off by default).
+It is separate from `browser.session.restore` (reopen the tabs after a normal end, off by default: [closed tabs and sessions](closed-tabs.md)).
 
 ## Files in the profile
 
