@@ -2843,6 +2843,83 @@ The sweep of 74 pages passes without a failure. Its mean load is 1 548 ms, again
 
 **Tests.** `a_font_on_its_way_holds_its_text_and_not_the_page` (the page's background on screen, first-contentful-paint with the font), `jsload_a_long_script_gives_the_loop_a_turn_before_the_next_inline_one`, `jsload_a_head_of_scripts_leaves_the_turns_for_the_body`. The async and ordered scripts' turn has no test of its own: the race needs a sheet and a script in one turn of the loop, which a fixture does not make surely. It was seen in the measure only.
 
+## What changed, round 37: a first page after an install or an update
+
+The image's machine code lived in the profile's disk cache, so a profile's first script compiled the engine with Cranelift, after each install and each update, and no bench saw it: they share `build/wasm_cache`. Development builds, 16 threads, base (ef5d1efd) and round interleaved, the order turning; `wrentool waterfall`, each load a fresh process and a throwaway profile; **cold** is the new `-Cold`: no shared cache either. 5 runs, median (range), ms. *2 cores*: the tool started from a process with `ProcessorAffinity = 3`.
+
+**What was found first.** The whole engine compiles in 0.6 s of wall clock and about 3.5 s of CPU here, yet a cold cnn.com used 38 s more CPU than a warm one. With the shipped code in place the load still did: the new counters said 4 refusals, as many as compile threads. Round 36 moved the realms to a Wasmtime engine without epochs and left the **script compile threads** (`compile_main`) on the other one: each of the 4 compiled the whole image for that engine, at the same time, on a new profile, and every process kept a second module of 25 MB. Warm, the disk cache hid it. They now run on the realms' engine. This, and not the size of the engine, was most of the 49 s of the report.
+
+**The design.**
+- **The code ships inside the program** (`src/wasm/shipped.odin`). A release is one portable `.exe` (winget's `portable`, the update replaces one file): a file beside it would be a change of what a release is, so the blob is `#load`ed (`src/js/image/code`), in `wren` only: `-define:WREN_SHIPPED_CODE=true` from `wrentool build` and `build.sh`, and then a missing file is a failed build. Test programs do not carry it, and keep the shared disk cache.
+- **`jsengine precompile`** makes it right after the snapshot (`build_js_engine`, one stamp with the image); on Linux `wrentool build jscode` from the image that comes from Windows, since code does not travel. The header holds the image's digest and the configuration's fingerprint; Wasmtime checks its version, its settings and the CPU itself. It comes from the same file as the program: no MAC, no read of a file, no write to the profile.
+- **Taken first** by the read-ahead of `js_startup`, on its thread: the realm finds it in memory (1 ms). After the copy the program's pages leave the working set (`VirtualUnlock`, -21 MB).
+- **What does not fit is passed by**, counted, and takes the disk cache's path as before. Refused, the read-ahead compiles it: once, begun at the process's start, on no page's thread, and whatever else wants the engine waits for that. In a program without shipped code the read-ahead still compiles nothing: a test's process that runs no script pays nothing.
+
+**Which CPU features.** The target's baseline: SSE2, what any x86-64 runs, so no CPU refuses it. `micro.js`, 20 cases, 4 runs interleaved, geometric mean of the medians, ns:
+
+| baseline | + SSE4.2, POPCNT (v2) | v2 + AVX | v2 + BMI, LZCNT | this machine's (= v3: AVX2, BMI, FMA, LZCNT) |
+|---|---|---|---|---|
+| **47.22** | 47.20 | 46.42 | 48.65 | 48.94 |
+
+Nothing to gain from newer instructions: the engine is integer and memory code. What moves between these is placement: `a[i & 1023] = i` 42 ns with the first three, 54 with the last two, typed arrays 44 against 49 the other way, each with ranges separate. That is the noise a build of the image has anyway, not a property of a feature. On pages, the warm rows below are that same comparison, native against baseline.
+
+Pages, 16 threads, first paint / load / CPU of the load:
+
+| | cold before | cold after | warm before | warm after |
+|---|---|---|---|---|
+| cnn.com, paint | 3 282 (3 168-3 430) | **613 (523-736)** | 581 (537-630) | 599 (527-768) |
+| load | 7 604 (7 510-7 768) | **4 248 (3 943-4 336)** | 4 167 (4 104-4 522) | 4 253 (3 878-4 364) |
+| CPU | 45 219 (44 781-46 031) | **6 500 (6 188-6 719)** | 7 031 (6 875-7 156) | **6 531 (6 297-6 672)** |
+| bbc.com/news, paint | 675 (657-706) | **111 (105-149)** | 102 (98-108) | 110 (97-114) |
+| load | 5 151 (5 071-5 290) | **1 999 (653-2 124)** | 2 057 (2 001-2 298) | 1 988 (604-2 024) |
+| CPU | 41 641 (41 016-41 953) | **2 953 (2 359-3 094)** | 3 344 (3 062-3 453) | **2 703 (1 969-2 844)** |
+| local (`startup.html`), paint | 542 (541-555) | **5 (4-5)** | 5 (5-5) | 5 (4-6) |
+| CPU | 6 703 (6 609-6 734) | **31 (16-62)** | 16 (0-47) | 16 (0-31) |
+
+Pinned to 2 cores:
+
+| | cold before | cold after | warm before | warm after |
+|---|---|---|---|---|
+| cnn.com, paint | 17 692 (17 654-17 746) | **754 (696-975)** | 1 026 (872-1 206) | 804 (744-1 026) |
+| load | 23 127 (22 927-23 331) | **5 300 (5 226-5 529)** | 5 640 (5 539-5 778) | **5 244 (4 874-5 329)** |
+| CPU | 43 031 (42 172-43 312) | **7 625 (7 547-7 828)** | 8 609 (8 047-8 812) | **7 656 (7 609-7 875)** |
+| bbc.com/news, paint | 3 363 (3 310-3 453) | **189 (182-301)** | 200 (188-352) | 288 (195-361) |
+| load | 20 524 (18 905-20 722) | **2 547 (1 043-2 577)** | 2 761 (1 116-2 875) | 2 547 (947-2 839) |
+| CPU | 39 156 (37 406-39 500) | **3 609 (1 594-3 656)** | 3 891 (1 938-4 016) | 3 484 (1 531-3 812) |
+| local, paint | 3 170 (3 140-3 201) | **6 (6-6)** | 6 (6-6) | 6 (5-6) |
+
+Read plainly. **Cold is now warm**: the two "after" columns overlap on every line. **Warm did not get worse where it is proven; where ranges overlap nothing is proven**: paint and load on 16 threads overlap. Separate: warm CPU on cnn.com and bbc.com/news (-7, -19 % on 16 threads), load and CPU on cnn.com on 2 cores (-7, -11 %): the second module neither read nor checked, and bytecode compiled by code without epochs. bbc.com/news on 2 cores, warm paint: 200 against 288, overlapping, the one median that moved the wrong way; its first paint has two modes. In the cold bbc.com/news rows some runs fall in the page's quick mode (653, 1 043): the page's own, seen in round 36 too. What the page's own JIT compiles still counts as compiles (5 to 70 small modules): those go on going through the profile's disk cache, and warm here means the shared one has them.
+
+Process, local page, 16 threads / 2 cores:
+
+| | before, warm | after |
+|---|---|---|
+| start to answering, ms | 176 (170-181) / 248 (246-273) | 187 (182-191) / 235 (234-320) |
+| private, MB | 130 (128-132) / 126 | 129 (128-131) / 127 |
+| working set, MB | 107 (106-109) / 103 | 135 (134-135), 3 runs, 16 threads (156 before the `VirtualUnlock`) |
+| private on cnn.com, MB | 882 (864-896) | 836 (789-865) |
+| `wren.exe` | 72.7 MB | **94.9 MB** |
+
+The start is **+11 ms on 16 threads, ranges separate** (the copy of 21 MB beside the window's start, not explained further), and no worse on 2 cores. **The working set of a small page is +28 MB**: 21 of them were the program's pages and are gone, 28 remain and are not explained: the private bytes are the same and in the base they are partly not resident. On a real page the two meet (cnn.com 813 against 821, before the `VirtualUnlock`). A new profile's `wasm-cache` no longer gets its 25 MB file; every other row here was measured before that one change.
+
+Refused (here `wasm.wasmtime.max_stack_bytes` changed, which is how a user gets there; a CPU no longer does):
+
+| | 16 threads | 2 cores |
+|---|---|---|
+| first realm holds its thread, local page | 303 (247-310) | 1 853 (100-2 211) |
+| cnn.com paint / load / CPU | 705 / 4 189 / 10 172 | 2 556 / 7 117 / 11 859 |
+| process start | 293 (+110) | 1 213 (959-1 909) |
+
+That is the old cold row (17.7 s on 2 cores) with one compile in it instead of five. **In this case the thread is still stopped** when a script comes before the compile is done, up to 2 s on 2 cores: js_realm waits. What scripts do meanwhile is nothing, as before; and the compile's threads take the two cores from the window's start.
+
+**Not kept.** *A file beside the exe with `wasmtime_module_deserialize_file`*: a lazy mapping, no copy, shared between processes, and no release is more than one file today. *Compressing the blob*: 22 MB is 4.6 MB in Brotli (58 ms to decode by the command-line tool), 6.0 MB in gzip; Brotli's decoder is in the native library, but no encoder is in the build, and each start would pay it or the profile would have to keep the result as before. Left open below. *Winch first*: one load, cold, of the local page, 41 ms and 2.3 s of CPU, against 300 ms with Cranelift when refused: a baseline tier for a case this rare is a second code path, and it does not run tail calls. *Ship native as well as generic*: nothing to gain, see the table.
+
+**Open.** The size: +22 MB on a 73 MB download, the price of this round; a compressed blob is the way to take 17 of them back. The window thread in the refused case. The 28 MB of working set and the 11 ms of start.
+
+**Not verified.** The release build (`wrentool build release`, fat LTO): the numbers and the exe's size are development builds'. The Linux build of the blob: `odin check` for Linux of `src/wasm` and `src/tools/jsengine` pass, `build.sh` and `wrentool smoke`'s new check were not run there. A CPU with nothing but SSE2. WPT, AddressSanitizer: not run.
+
+Tests: wasm units `shipped_code_is_taken_and_nothing_is_compiled` (`compiles == 0`, nothing read or written, on the polled engine) and `refused_shipped_code_falls_back` (Wasmtime's refusal, the next start from the disk, another configuration, another image, the read-ahead's one compile); e2e `shipped_code`, the real program on a new profile with no shared cache and a script on a compile thread: `a_new_profile_runs_scripts_on_the_shipped_code_and_compiles_nothing`, which said "1 taken, 2 compiled, 4 refused" before the compile threads moved, `another_configuration_passes_the_shipped_code_by_and_scripts_run`, which said 2 compiled. `wrentool smoke` checks it in the package. `wrentool waterfall` gives `start_ms`, `cpu_all_ms`, memory, `compiles`, `shipped`, `refused`, `realm_ms`; `WREN_JS_CODE` (not in a release) and `jsengine run -code` run other code for an A/B.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
