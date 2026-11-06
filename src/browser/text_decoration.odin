@@ -18,8 +18,8 @@ DECO_DASH :: 3
 DECO_DASH_GAP :: 2
 DECO_WAVE_LENGTH :: 5
 DECO_WAVE_HEIGHT :: 1
-// A wave is drawn in steps of this many pixels.
-DECO_WAVE_STEP :: 1
+// Points of a wave's polyline, a length of it.
+DECO_WAVE_POINTS :: 10
 
 Deco_Line :: struct {
 	kind:   style.Text_Decoration_Style,
@@ -50,6 +50,17 @@ deco_dashes :: proc(dc: ^draw.Context, lo, hi, at, on, off, t: f32, column: bool
 	for a := lo; a < hi; a += on + off { deco_piece(dc, a, min(a + on, hi), at, at + t, column, col) }
 }
 
+// Round dots, whole ones only, spread to fill the line.
+@(private = "file")
+deco_dots :: proc(dc: ^draw.Context, lo, hi, at, t: f32, column: bool, col: draw.Color) {
+	count := max(int((hi - lo) / (t * (DECO_DOT + DECO_DOT_GAP))), 1)
+	step := (hi - lo) / f32(count)
+	for i in 0 ..< count {
+		a := lo + step * f32(i)
+		draw.rect(dc, column ? draw.Rect{{at, a}, {at + t, a + t}} : draw.Rect{{a, at}, {a + t, at + t}}, col, t * 0.5)
+	}
+}
+
 // Where a wave of thickness `t` stands, `along` the line.
 @(private = "file")
 deco_wave :: proc(along, t: f32) -> f32 { return t * DECO_WAVE_HEIGHT * math.sin(along * math.TAU / (t * DECO_WAVE_LENGTH)) }
@@ -63,13 +74,18 @@ deco_stroke :: proc(dc: ^draw.Context, lo, hi, at: f32, column: bool, d: Deco_Li
 	case .Double:
 		deco_piece(dc, lo, hi, at, at + t, column, d.color)
 		deco_piece(dc, lo, hi, at + t * (1 + DECO_DOUBLE_GAP), at + t * (2 + DECO_DOUBLE_GAP), column, d.color)
-	case .Dotted: deco_dashes(dc, lo, hi, at, t * DECO_DOT, t * DECO_DOT_GAP, t, column, d.color)
+	case .Dotted: deco_dots(dc, lo, hi, at, t, column, d.color)
 	case .Dashed: deco_dashes(dc, lo, hi, at, t * DECO_DASH, t * DECO_DASH_GAP, t, column, d.color)
 	case .Wavy:
-		for a := lo; a < hi; a += DECO_WAVE_STEP {
-			y0, y1 := at + deco_wave(a - lo, t), at + deco_wave(a + DECO_WAVE_STEP - lo, t)
-			deco_piece(dc, a, min(a + DECO_WAVE_STEP, hi), min(y0, y1), max(y0, y1) + t, column, d.color)
+		points := make([dynamic]draw.Vec2, 0, int((hi - lo) / (t * DECO_WAVE_LENGTH) * DECO_WAVE_POINTS) + 2, context.temp_allocator)
+		step := t * DECO_WAVE_LENGTH / DECO_WAVE_POINTS
+		for a := lo; ; a += step {
+			along := min(a, hi)
+			across := at + t * 0.5 + deco_wave(along - lo, t)
+			append(&points, column ? draw.Vec2{across, along} : draw.Vec2{along, across})
+			if a >= hi { break }
 		}
+		draw.polyline(dc, points[:], t, d.color)
 	}
 }
 
