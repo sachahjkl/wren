@@ -59,6 +59,8 @@ Start_Options :: struct {
 	seed:           u64,
 	max_heap_bytes: i64,
 	gc_threshold:   i64,
+	gc_growth_percent: int,   // 0: the engine's
+	gc_min_growth:  i64,
 	expose_unimplemented: bool,   // interfaces with nothing implemented are on the global anyway
 	unimplemented_throw:  bool,   // unimplemented members exist and throw NotSupportedError (else absent)
 	no_touch_handlers:    bool,   // the ontouch* attributes and the Touch* interfaces are removed (browser.touch.expose)
@@ -71,7 +73,7 @@ Worker_Scope :: enum u8 { Dedicated, Shared, Service }
 
 // Starts a realm on a fresh instance of the engine (pre-initialized or not). False when the engine refused.
 realm_start :: proc(inst: ^wasm.Instance, o: Start_Options) -> bool {
-	argv: [8]u32
+	argv: [11]u32
 	argv[0] = u32(o.kind)
 	flags: u32
 	if o.expose_unimplemented { flags |= 1 }
@@ -90,6 +92,9 @@ realm_start :: proc(inst: ^wasm.Instance, o: Start_Options) -> bool {
 	tb := transmute(u64)th
 	argv[3], argv[4] = u32(hb), u32(hb >> 32)
 	argv[5], argv[6] = u32(tb), u32(tb >> 32)
+	argv[8] = u32(o.gc_growth_percent)
+	gb := transmute(u64)f64(o.gc_min_growth)
+	argv[9], argv[10] = u32(gb), u32(gb >> 32)
 	if wasm.call_raw(inst, "wj_realm_start", argv[:], 1) != .Ok { return false }
 	return i32(argv[0]) == 0
 }

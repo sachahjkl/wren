@@ -36,9 +36,9 @@ import "core:mem"
 
 // When the next collection runs: once the heap is this share of what the last one left (docs/performance.md, round 44: at 200 %
 // a load marks its live heap 1.4 times as often, at 300 % it keeps a tenth more private memory for what is left to gain) ...
-GC_HEAP_GROWTH_PERCENT :: 250
+GC_DEFAULT_GROWTH_PERCENT :: 250
 // ... and by this many bytes at least, so that a small heap does not collect all the time. Also the first threshold.
-GC_MIN_ALLOCATION :: 4 << 20
+GC_DEFAULT_MIN_GROWTH :: 4 << 20
 // -define:JSRT_GC_STRESS=<bytes>: a collection each time this much was allocated, to find what is not rooted (0: off). Never in a shipped build.
 GC_STRESS_BYTES :: #config(JSRT_GC_STRESS, 0)
 // A sweep of more cells than this is done in steps, after the mutator has allocated a little: one of a heap of a million cells takes longer
@@ -739,12 +739,12 @@ gc_sweep_step :: proc(rt: ^Runtime, all := false) {
 	survivors := len(cells) - sw.kept
 	copy(cells, cells[sw.kept:])
 	resize(&rt.cells, survivors)
-	// Next collection when the heap has grown by GC_HEAP_GROWTH_PERCENT of what the collection left (GC_MIN_ALLOCATION of headroom at least).
+	// Next collection when the heap has grown by gc_growth_percent of what the collection left (gc_min_growth of headroom at least).
 	left := rt.heap_bytes - sw.made
 	if GC_STRESS_BYTES > 0 {
 		rt.gc_threshold = rt.heap_bytes + GC_STRESS_BYTES
 	} else {
-		rt.gc_threshold = max(left * GC_HEAP_GROWTH_PERCENT / 100, left + GC_MIN_ALLOCATION)
+		rt.gc_threshold = max(left * rt.gc_growth_percent / 100, left + rt.gc_min_growth)
 	}
 }
 

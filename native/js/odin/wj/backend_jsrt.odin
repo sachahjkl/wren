@@ -202,7 +202,7 @@ js_string_codePointRange :: proc "c" (ctx: ^Context, this_val: JSValue, argc: i3
 	JS_SetGCPrologue :: jscapi.JS_SetGCPrologue
 	JS_SetGCEpilogue :: jscapi.JS_SetGCEpilogue
 	JS_SetGCThreshold :: jscapi.JS_SetGCThreshold
-	JS_SetGCThresholdFloor :: jscapi.JS_SetGCThresholdFloor
+	JS_SetGCGrowth :: jscapi.JS_SetGCGrowth
 	JS_SetHostPromiseRejectionTracker :: jscapi.JS_SetHostPromiseRejectionTracker
 	JS_SetImmutableArrayBuffer :: jscapi.JS_SetImmutableArrayBuffer
 	JS_SetInterruptHandler :: jscapi.JS_SetInterruptHandler
