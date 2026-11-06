@@ -74,6 +74,12 @@ run_smoke :: proc(args: []string) -> int {
 		return e == .None ? text : api.last_failure().message
 	}
 	check_has(&s, "script runs", "Wren 4", eval(ses, "document.getElementById('a').textContent + ' ' + (2 + 2)"))
+	if st, _ := api.stats(ses); st.memory.wasm_shipped_hits == 1 && st.memory.wasm_compiles == 0 {
+		fmt.println("PASS the engine's code is the program's: nothing compiled")
+	} else {
+		fmt.printfln("FAIL the engine's code: %d taken from the program, %d refused, %d compiled", st.memory.wasm_shipped_hits, st.memory.wasm_shipped_refused, st.memory.wasm_compiles)
+		s.failed += 1
+	}
 	check_has(&s, "layout", "true", eval(ses, "document.getElementById('a').getBoundingClientRect().height > 10"))
 	// deep recursion on the main thread: the same limits as on Windows, without a ulimit from the caller
 	check_has(&s, "deep recursion", "RangeError", eval(ses, SMOKE_RECURSION))

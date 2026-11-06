@@ -857,6 +857,7 @@ Stats :: struct {
 	layout_items:        int,
 	// the process, and what a reset takes away
 	cpu_time_ms, cpu_user_ms, cpu_kernel_ms: f64,
+	js_first_realm_ms:   f64,      // what the process's first realm held its thread for (0: none yet)
 	threads, handles, gdi_objects, user_objects: int,
 	cookies, storage_sites, cache_entries, history_visits, closed_tabs, downloads_active, checkpoints: int,
 }
@@ -867,6 +868,8 @@ Memory_Stats :: struct {
 	vm_rw, vm_exec:                  int,   // private committed pages, by kind
 	wasm_modules, wasm_code_bytes:   int,   // compiled modules kept
 	wasm_instances:                  int,   // instances alive: pages, workers
+	wasm_compiles:                   int,   // modules compiled in this process
+	wasm_shipped_hits, wasm_shipped_refused: int,   // modules taken from the code in the program; that code refused
 	js_cache_entries, js_cache_bytes: int,  // bytecode in memory
 	image_entries, image_bytes:      int,   // decoded images kept
 	font_entries, font_bytes:        int,   // decoded web fonts
@@ -948,6 +951,7 @@ stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc :=
 		memory = {
 			heap_allocated = i_of(mem, "heapAllocated"), heap_committed = i_of(mem, "heapCommitted"), vm_rw = i_of(mem, "vmRw"), vm_exec = i_of(mem, "vmExec"),
 			wasm_modules = i_of(mem, "wasmModules"), wasm_code_bytes = i_of(mem, "wasmCodeBytes"), wasm_instances = i_of(mem, "wasmInstances"),
+			wasm_compiles = i_of(mem, "wasmCompiles"), wasm_shipped_hits = i_of(mem, "wasmShippedHits"), wasm_shipped_refused = i_of(mem, "wasmShippedRefused"),
 			js_cache_entries = i_of(mem, "jsCacheEntries"), js_cache_bytes = i_of(mem, "jsCacheBytes"), image_entries = i_of(mem, "imageEntries"), image_bytes = i_of(mem, "imageBytes"),
 			font_entries = i_of(mem, "fontEntries"), font_bytes = i_of(mem, "fontBytes"), http_resident_bytes = i_of(mem, "httpResidentBytes"),
 			gpu_images = i_of(mem, "gpuImages"), gpu_glyphs = i_of(mem, "gpuGlyphs"), gpu_targets = i_of(mem, "gpuTargets"), gpu_outlines = i_of(mem, "gpuOutlines"), pages_bytes = i_of(mem, "pagesBytes"), bfcache_bytes = i_of(mem, "bfcacheBytes"), pictures_bytes = i_of(mem, "picturesBytes"), trims = i_of(mem, "trims"),
@@ -981,7 +985,7 @@ stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc :=
 		variable_refresh = b_of(o, "variableRefresh"), frame_cap_strict = b_of(o, "frameCapStrict"), frame_states = s_of(o, "frameStates"), frame_state = s_of(o, "frameState"),
 		resize_echoes_skipped = i_of(o, "resizeEchoesSkipped"), resize_frame_causes = s_of(o, "resizeFrameCauses"),
 		prefs_cache_applied = i_of(o, "prefsCacheApplied"), prefs_downloads_applied = i_of(o, "prefsDownloadsApplied"), layout_items = i_of(o, "layoutItems"),
-		cpu_time_ms = f_of(o, "cpuTimeMs"), cpu_user_ms = f_of(o, "cpuUserMs"), cpu_kernel_ms = f_of(o, "cpuKernelMs"),
+		cpu_time_ms = f_of(o, "cpuTimeMs"), cpu_user_ms = f_of(o, "cpuUserMs"), cpu_kernel_ms = f_of(o, "cpuKernelMs"), js_first_realm_ms = f_of(o, "jsFirstRealmMs"),
 		threads = i_of(o, "threads"), handles = i_of(o, "handles"), gdi_objects = i_of(o, "gdiObjects"), user_objects = i_of(o, "userObjects"),
 		cookies = i_of(o, "cookies"), storage_sites = i_of(o, "storageSites"), cache_entries = i_of(o, "cacheEntries"), history_visits = i_of(o, "historyVisits"), closed_tabs = i_of(o, "closedTabs"),
 		downloads_active = i_of(o, "downloadsActive"), checkpoints = i_of(o, "checkpoints"),

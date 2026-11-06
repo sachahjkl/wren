@@ -1,6 +1,7 @@
 // `wrentool waterfall`: where a first load's time goes. Each page in a Wren of its own, headless, a throwaway profile (no cache, no connection), navigated from the blank page; then what the
 // browser knows of each request: the wait for a slot, the name, the connection, the handshake, the server, the body. One line per load on the standard output, the requests in <OutDir>/<slug>_<run>.tsv.
 // What is not the network shows in `gaps`: the time before the load event when no request of the page was in flight.
+// -Cold: without the disk cache of compiled modules the measuring tools share: the empty cache of a new profile, or of a profile after an update.
 package capture
 
 import "core:fmt"
@@ -14,7 +15,7 @@ import "wb:remote/api"
 import "wb:tools/tooling"
 import "wb:tools/wrentool/bench"
 
-WATERFALL_FLAGS :: "-Urls= -List= -OutDir= -Exe= -Runs= -Pref= -LimitMs= -Idle -Stderr="
+WATERFALL_FLAGS :: "-Urls= -List= -OutDir= -Exe= -Runs= -Pref= -LimitMs= -Idle -Stderr= -Cold"
 WATERFALL_OUT :: "build/waterfall"
 WATERFALL_RUNS :: 1
 WATERFALL_LIMIT_MS :: 30_000
@@ -43,7 +44,7 @@ run_waterfall :: proc(args: []string) -> int {
 			if line != "" && !strings.has_prefix(line, "#") { append(&urls, line) }
 		}
 	}
-	if len(urls) == 0 { fmt.eprintln("wrentool waterfall -Urls a,b | -List file [-OutDir dir] [-Exe path] [-Runs n] [-Pref a=b] [-LimitMs n]"); return EXIT_USAGE }
+	if len(urls) == 0 { fmt.eprintln("wrentool waterfall -Urls a,b | -List file [-OutDir dir] [-Exe path] [-Runs n] [-Pref a=b] [-LimitMs n] [-Cold]"); return EXIT_USAGE }
 	exe := tooling.flag(f, "-Exe", bench.WREN_EXE)
 	if !os.exists(exe) { fmt.eprintfln("%s is missing (build.bat)", exe); return 1 }
 	dir := tooling.flag(f, "-OutDir", WATERFALL_OUT)
@@ -57,7 +58,7 @@ run_waterfall :: proc(args: []string) -> int {
 	fmt.println(WATERFALL_HEADER)
 	for url in urls {
 		for run in 0 ..< tooling.flag_int(f, "-Runs", WATERFALL_RUNS) {
-			waterfall_load(exe, out, url, run, prefs[:], limit, tooling.flag_has(f, "-Idle"), tooling.flag(f, "-Stderr"))
+			waterfall_load(exe, out, url, run, prefs[:], limit, tooling.flag_has(f, "-Idle"), tooling.flag(f, "-Stderr"), tooling.flag_has(f, "-Cold"))
 			free_all(context.temp_allocator)
 		}
 	}
@@ -65,13 +66,15 @@ run_waterfall :: proc(args: []string) -> int {
 }
 
 @(private = "file")
-waterfall_load :: proc(exe, out, url: string, run: int, prefs: []string, limit: time.Duration, idle: bool, stderr: string) {
+waterfall_load :: proc(exe, out, url: string, run: int, prefs: []string, limit: time.Duration, idle: bool, stderr: string, cold: bool) {
 	slug := compare_slug(url)
 	profile := fmt.tprintf("%s/profile_%s", out, slug)
 	base.remove_tree(profile)
 	defer base.remove_tree(profile)
 	w: bench.Wren
-	if !bench.start(&w, {exe = exe, profile = profile, window = .Headless, size = SWEEP_SIZE, prefs = prefs, stderr = stderr}) { return }
+	started := time.tick_now()
+	if !bench.start(&w, {exe = exe, profile = profile, window = .Headless, size = SWEEP_SIZE, prefs = prefs, stderr = stderr, cold = cold}) { return }
+	start_ms := time.duration_milliseconds(time.tick_since(started))
 	defer bench.stop(&w)
 	s := &w.session
 	before, _ := api.stats(s)
@@ -89,9 +92,9 @@ waterfall_load :: proc(exe, out, url: string, run: int, prefs: []string, limit: 
 	n, ne := api.network(s)
 	if ne != .None { fmt.printfln("0\t%d\tno answer: %v\t%s", run, ne, url); return }
 	m := waterfall_sums(&n)
-	fmt.printfln("%.0f\t%d\t%.0f%s\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%s", idle_ms, run, took, e == .Timeout ? "!" : "",
+	fmt.printfln("%.0f\t%d\t%.0f%s\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%.0f\t%s", idle_ms, run, took, e == .Timeout ? "!" : "",
 		n.doc.paint, n.doc.contentful, n.doc.interactive, n.doc.dcl, n.doc.load, m.count, m.h1, m.h2, m.h3, m.cached, m.failed, m.hosts, m.bytes >> 10,
-		m.queued, m.max_queued, m.dns, m.connect, m.tls, m.wait, m.body, m.last_end, m.gaps, after.cpu_time_ms - before.cpu_time_ms, url)
+		m.queued, m.max_queued, m.dns, m.connect, m.tls, m.wait, m.body, m.last_end, m.gaps, after.cpu_time_ms - before.cpu_time_ms, start_ms, after.cpu_time_ms, after.private_bytes >> 20, after.working_set_bytes >> 20, after.memory.wasm_compiles, after.memory.wasm_shipped_hits, after.memory.wasm_shipped_refused, after.js_first_realm_ms, url)
 	waterfall_write(fmt.tprintf("%s/%s_%d.tsv", out, slug, run), &n)
 }
 
