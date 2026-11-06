@@ -38,6 +38,9 @@ Restyle_Stats :: struct {
 	marked:   int,      // elements restyled
 	changed:  int,      // ... whose style changed
 	parallel: bool,     // forced subtrees were shared out between threads
+	largest_task: int,  // ... the elements of the heaviest task
+	keyed_steps: int,   // elements looked at for the keys of what a change reaches
+	has_scans: int,     // :has() arguments looked for in subtrees
 	rewalked: bool,     // counters and quotes were resolved again
 	fallback: string,   // why the last restyle_dom could not be partial ("" when it was)
 	flips:    int,      // answers of the exact :has() anchors it took to mark what changed
@@ -1307,8 +1310,9 @@ Par_Tasks :: struct {
 	tasks: []Par_Task,
 }
 
-// Forced subtrees deferred by the walk, shared out between the threads of `pool`. Their tops are expanded breadth
-// first on this thread until there are enough to go round.
+// Forced subtrees deferred by the walk, shared out between the threads of `pool`. The subtrees too big to be one task are
+// opened on this thread: a page is rarely a balanced tree, and on cnn.com all that is under `<body>` went to one thread (4 300
+// elements, 190 ms), the frontier having enough frames beside it to look shared out.
 @(private = "file")
 run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 	if len(w.deferred) == 0 { return }
@@ -1321,11 +1325,19 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 	frontier := make([dynamic]Frame, 0, len(w.deferred), context.temp_allocator)
 	alone := make([dynamic]Frame, 0, 8, context.temp_allocator)
 	for f in w.deferred { if f.sub { append(&frontier, f) } else { append(&alone, f) } }
-	for depth := 0; len(frontier) > 0 && len(frontier) + len(alone) < threads * 8 && depth < 16; depth += 1 {
-		next := make([dynamic]Frame, 0, len(frontier) * 4, context.temp_allocator)
+	sizes := flat_sizes(doc)
+	weight_of :: proc(sizes: []i32, f: Frame) -> int { return f.sub ? max(int(sizes[base.handle_index(f.h)]), 1) : 1 }
+	total := len(alone)
+	for f in frontier { total += weight_of(sizes, f) }
+	limit := max(total / (threads * 8), STYLE_SPLIT_MIN_ELEMENTS)
+	for round := 0; len(frontier) > 0 && round < STYLE_SPLIT_MAX_ROUNDS; round += 1 {
+		next := make([dynamic]Frame, 0, len(frontier) * 2, context.temp_allocator)
+		opened := false
 		for &f in frontier {
+			if weight_of(sizes, f) <= limit { append(&next, f); continue }
 			n := dom.get(doc, f.h)
 			if n == nil || n.kind != .Element { continue }
+			opened = true
 			nc, _, _ := restyle_one(w, &f, n)
 			child_bloom := f.bloom
 			bloom_add_element(&child_bloom, n)
@@ -1340,11 +1352,17 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 	// every slot a thread may write exists beforehand: the array does not move while they run
 	styled_size(s, int(doc.nodes.used))
 	if s.state.controls.settle != nil { s.state.controls.settle(s.state.controls.user) }   // (their queries only read, as in a full pass)
-	count := min(len(frontier), threads * 4)
+	weights := make([]int, len(frontier), context.temp_allocator)
+	for f, i in frontier { weights[i] = weight_of(sizes, f) }
+	ranges := ranges_by_weight(weights, threads)
+	count := len(ranges)
 	job := Par_Tasks{tasks = make([]Par_Task, count, context.temp_allocator)}
 	for i in 0 ..< count {
 		t := &job.tasks[i]
-		t.frames = frontier[i * len(frontier) / count:(i + 1) * len(frontier) / count]
+		t.frames = frontier[ranges[i][0]:ranges[i][1]]
+		task_weight := 0
+		for x in weights[ranges[i][0]:ranges[i][1]] { task_weight += x }
+		w.e.last_restyle.largest_task = max(w.e.last_restyle.largest_task, task_weight)
 		t.w = Walker{e = w.e, s = s, doc = doc, task = true, marks = w.marks}   // (the marks are only read meanwhile)
 		t.arena = thread_arena_take(w.e)
 	}
