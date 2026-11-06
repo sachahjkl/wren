@@ -2,21 +2,17 @@ package jsrt
 
 // The interpreter's hot loop.
 //
-// interp_run (interp.odin) is one very large procedure: with its hundreds of live values the code generator
-// keeps `sp`, `locals`, `args`, `code` ... in stack slots and reloads them in every handler. The commonest
-// instructions run here instead, in a loop whose few live values (ip, s, locals, args, the constant pool) stay
-// in registers, with raw pointers instead of slices and indices (no bounds checks: the reader's verifier has
-// checked every operand index, jump target and stack height).
+// interp_run (interp.odin) is one very large procedure: with its hundreds of live values the code generator keeps `sp`,
+// `locals`, `args`, `code` ... in stack slots and reloads them in every handler. The commonest instructions run here instead,
+// in hot_loop, a procedure of its own with raw pointers instead of slices and indices (no bounds checks: the reader's
+// verifier has checked every operand index, jump target and stack height).
 //
-// The loop itself calls nothing. Wasmtime's code saves no register across a Wasm call, so a value the loop
-// carries across a call in one handler must be split around it or kept in a stack slot, and where the register
-// allocator drew that line moved with any change of the code around the loop (round 13 of docs/performance.md:
-// a test of one bit in a property lookup slowed every instruction by 12 %). What needs a call (a call
-// instruction, a return, a getter, an object made, a read that is the engine's) is a procedure of its own,
-// never inlined, that reads and writes the loop's registers in a `Hot` in memory: they are written before the
-// call and read back after it, so none of them lives across one. A loop that calls nothing is inlined into
-// interp_run (#force_inline): the full dispatch and the loop then pass pc and sp without a call. Leaving the loop for
-// the full dispatch costs more than such a procedure: what real pages run often stays here (round 31).
+// hot_loop calls nothing, not one call: Wasmtime's code saves no register across a Wasm call, and with a call anywhere in
+// the switch Cranelift's allocator keeps `ip` and `s` in stack slots for every instruction (round 34 of docs/performance.md
+// reads the machine code). What needs a call (a call instruction, a return, a getter, an object made, a read that is the
+// engine's) leaves the loop with its Hot_Exit: hot_run makes it with a procedure of its own, never inlined, that reads and
+// writes the loop's registers in a `Hot` in memory, and enters the loop again. Leaving for the full dispatch costs more than
+// such a procedure: what real pages run often stays here (round 31).
 //
 // Contract: run from (pc0, sp0) until an instruction this loop does not handle, or whose fast path does not
 // apply (operand types, a due collection / interrupt at a back edge ...). The instruction has had NO effect
@@ -25,9 +21,8 @@ package jsrt
 // when a collection is due.
 
 import "base:intrinsics"
-import "base:runtime"
 
-#assert(size_of(Value) == 16 && offset_of(Value, u) == 8 && size_of(Tag) == 1)
+#assert(size_of(Value) == 16 && offset_of(Value, u) == 8 && size_of(Tag) == 8)
 
 @(private = "file")
 put_int :: #force_inline proc "contextless" (p: ^Value, v: i32) {
@@ -219,6 +214,28 @@ Hot :: struct {
 	regs:   Hot_Regs,
 	moved:  bool,
 	thrown: bool,
+	getter: ^Object, // (Hot_Exit.get_field, .var_getter)
+	from:   ^Object, // (Hot_Exit.get_field)
+}
+
+// Why hot_loop stopped: .stop for the full dispatch, the others for the procedure of that name.
+@(private = "file")
+Hot_Exit :: enum u8 {
+	stop,
+	call,
+	ret,
+	get_field,
+	var_getter,
+	add,
+	get_el,
+	get_length,
+	put_field,
+	define_field,
+	object,
+	closure,
+	array_from,
+	typeof,
+	push_atom,
 }
 
 // A call instruction (call0 ... call3, call, call_method): a native function called at once, its result replacing the
@@ -492,22 +509,56 @@ hot_push_atom :: #force_no_inline proc(h: ^Hot) {
 // callee raised an exception; pc is past the call and sp still above its arguments, as the unwinder expects.
 interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int) -> (f: ^Frame, pc: int, sp: int, moved: bool, thrown: bool) {
 	h := Hot{ctx = ctx, rt = rt, f = f_in, regs = hot_regs(f_in)}
-	regs := h.regs
-	ip := regs.code[pc0:]
-	s := regs.stack[sp0:]
+	h.ip = h.regs.code[pc0:]
+	h.s = h.regs.stack[sp0:]
+	hot_run(&h)
+	return h.f, int(uintptr(h.ip) - uintptr(h.regs.code)), int(uintptr(h.s) - uintptr(h.regs.stack)) / size_of(Value), h.moved, h.thrown
+}
+
+// The loop and what it leaves for: a procedure that makes the instruction, and back to the loop unless it says to stop.
+@(private = "file")
+hot_run :: #force_no_inline proc(h: ^Hot) {
+	for {
+		go := true
+		exit := hot_loop(h)
+		op := Opcode(h.ip[0])
+		switch exit {
+		case .stop:         return
+		case .call:         go = hot_call(h, op)
+		case .ret:          go = hot_return(h, op)
+		case .get_field:    go = hot_get_field(h, op, h.getter, h.from)
+		case .var_getter:   go = hot_get_var_getter(h, h.getter)
+		case .add:          go = hot_add(h)
+		case .get_el:       go = hot_get_el(h, op)
+		case .get_length:   go = hot_get_length(h)
+		case .put_field:    go = hot_put_field(h)
+		case .define_field: go = hot_define_field(h)
+		case .object:       hot_object(h)
+		case .closure:
+			if op == .fclosure8 {hot_closure(h, int(h.ip[1]), 2)} else {hot_closure(h, int(rd32(h.ip[1:])), 5)}
+		case .array_from:   hot_array_from(h)
+		case .typeof:       hot_typeof(h)
+		case .push_atom:    hot_push_atom(h)
+		}
+		if !go {return}
+	}
+}
+
+// The instructions that call nothing, from (h.ip, h.s): what is left of them there is for hot_run. A procedure of its own, without a
+// single call: the register allocator keeps the few values that live through the switch in registers only if nothing clobbers them.
+@(private = "file")
+hot_loop :: #force_no_inline proc(h: ^Hot) -> Hot_Exit #no_bounds_check #no_type_assert {
+	ip, s := h.ip, h.s
+	locals, args := h.regs.locals, h.regs.args
 	loop: for {
 		op := Opcode(ip[0])
 		#partial switch op {
 		case .call0, .call1, .call2, .call3, .call, .call_method:
 			h.ip, h.s = ip, s
-			go := hot_call(&h, op)
-			ip, s, regs = h.ip, h.s, h.regs
-			if !go {break loop}
+			return .call
 		case .op_return, .return_undef:
 			h.ip, h.s = ip, s
-			go := hot_return(&h, op)
-			ip, s, regs = h.ip, h.s, h.regs
-			if !go {break loop}
+			return .ret
 		case .push_this:
 			// (a value to box, or the global object in place of undefined: the full dispatch)
 			t := h.f.this_val
@@ -516,107 +567,107 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			s = s[1:]
 			ip = ip[1:]
 		case .get_loc0, .get_loc1, .get_loc2, .get_loc3:
-			s[0] = regs.locals[int(op) - int(Opcode.get_loc0)]
+			s[0] = locals[int(op) - int(Opcode.get_loc0)]
 			s = s[1:]
 			ip = ip[1:]
 		case .put_loc0, .put_loc1, .put_loc2, .put_loc3:
-			regs.locals[int(op) - int(Opcode.put_loc0)] = s[-1]
+			locals[int(op) - int(Opcode.put_loc0)] = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
 		case .set_loc0, .set_loc1, .set_loc2, .set_loc3:
-			regs.locals[int(op) - int(Opcode.set_loc0)] = s[-1]
+			locals[int(op) - int(Opcode.set_loc0)] = s[-1]
 			ip = ip[1:]
 		case .get_loc8:
-			s[0] = regs.locals[ip[1]]
+			s[0] = locals[ip[1]]
 			s = s[1:]
 			ip = ip[2:]
 		case .put_loc8:
-			regs.locals[ip[1]] = s[-1]
+			locals[ip[1]] = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[2:]
 		case .set_loc8:
-			regs.locals[ip[1]] = s[-1]
+			locals[ip[1]] = s[-1]
 			ip = ip[2:]
 		case .get_loc:
-			s[0] = regs.locals[rd16(ip[1:])]
+			s[0] = locals[rd16(ip[1:])]
 			s = s[1:]
 			ip = ip[3:]
 		case .put_loc:
-			regs.locals[rd16(ip[1:])] = s[-1]
+			locals[rd16(ip[1:])] = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[3:]
 		case .set_loc:
-			regs.locals[rd16(ip[1:])] = s[-1]
+			locals[rd16(ip[1:])] = s[-1]
 			ip = ip[3:]
 		case .get_loc0_loc1:
-			s[0] = regs.locals[0]
-			s[1] = regs.locals[1]
+			s[0] = locals[0]
+			s[1] = locals[1]
 			s = s[2:]
 			ip = ip[1:]
 		case .get_arg0, .get_arg1, .get_arg2, .get_arg3:
-			s[0] = regs.args[int(op) - int(Opcode.get_arg0)]
+			s[0] = args[int(op) - int(Opcode.get_arg0)]
 			s = s[1:]
 			ip = ip[1:]
 		case .put_arg0, .put_arg1, .put_arg2, .put_arg3:
-			regs.args[int(op) - int(Opcode.put_arg0)] = s[-1]
+			args[int(op) - int(Opcode.put_arg0)] = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
 		case .set_arg0, .set_arg1, .set_arg2, .set_arg3:
-			regs.args[int(op) - int(Opcode.set_arg0)] = s[-1]
+			args[int(op) - int(Opcode.set_arg0)] = s[-1]
 			ip = ip[1:]
 		case .get_arg:
-			s[0] = regs.args[rd16(ip[1:])]
+			s[0] = args[rd16(ip[1:])]
 			s = s[1:]
 			ip = ip[3:]
 		case .put_arg:
-			regs.args[rd16(ip[1:])] = s[-1]
+			args[rd16(ip[1:])] = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[3:]
 		case .set_arg:
-			regs.args[rd16(ip[1:])] = s[-1]
+			args[rd16(ip[1:])] = s[-1]
 			ip = ip[3:]
 		case .get_var_ref0, .get_var_ref1, .get_var_ref2, .get_var_ref3:
-			s[0] = regs.var_refs[int(op) - int(Opcode.get_var_ref0)].pvalue^
+			s[0] = h.regs.var_refs[int(op) - int(Opcode.get_var_ref0)].pvalue^
 			s = s[1:]
 			ip = ip[1:]
 		case .put_var_ref0, .put_var_ref1, .put_var_ref2, .put_var_ref3:
-			regs.var_refs[int(op) - int(Opcode.put_var_ref0)].pvalue^ = s[-1]
+			h.regs.var_refs[int(op) - int(Opcode.put_var_ref0)].pvalue^ = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
 		case .set_var_ref0, .set_var_ref1, .set_var_ref2, .set_var_ref3:
-			regs.var_refs[int(op) - int(Opcode.set_var_ref0)].pvalue^ = s[-1]
+			h.regs.var_refs[int(op) - int(Opcode.set_var_ref0)].pvalue^ = s[-1]
 			ip = ip[1:]
 		case .get_var_ref:
-			s[0] = regs.var_refs[rd16(ip[1:])].pvalue^
+			s[0] = h.regs.var_refs[rd16(ip[1:])].pvalue^
 			s = s[1:]
 			ip = ip[3:]
 		case .put_var_ref:
-			regs.var_refs[rd16(ip[1:])].pvalue^ = s[-1]
+			h.regs.var_refs[rd16(ip[1:])].pvalue^ = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[3:]
 		case .set_var_ref:
-			regs.var_refs[rd16(ip[1:])].pvalue^ = s[-1]
+			h.regs.var_refs[rd16(ip[1:])].pvalue^ = s[-1]
 			ip = ip[3:]
 		case .get_loc_check:
-			v := regs.locals[rd16(ip[1:])]
+			v := locals[rd16(ip[1:])]
 			if v.tag == .uninitialized {break loop}
 			s[0] = v
 			s = s[1:]
 			ip = ip[3:]
 		case .put_loc_check:
-			l := &regs.locals[rd16(ip[1:])]
+			l := &locals[rd16(ip[1:])]
 			if l.tag == .uninitialized {break loop}
 			l^ = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[3:]
 		case .get_var_ref_check:
-			v := regs.var_refs[rd16(ip[1:])].pvalue^
+			v := h.regs.var_refs[rd16(ip[1:])].pvalue^
 			if v.tag == .uninitialized {break loop}
 			s[0] = v
 			s = s[1:]
 			ip = ip[3:]
 		case .put_var_ref_check:
-			l := regs.var_refs[rd16(ip[1:])].pvalue
+			l := h.regs.var_refs[rd16(ip[1:])].pvalue
 			if l.tag == .uninitialized {break loop}
 			l^ = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
@@ -639,11 +690,11 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			s = s[1:]
 			ip = ip[5:]
 		case .push_const8:
-			s[0] = regs.cpool[ip[1]]
+			s[0] = h.regs.cpool[ip[1]]
 			s = s[1:]
 			ip = ip[2:]
 		case .push_const:
-			s[0] = regs.cpool[rd32(ip[1:])]
+			s[0] = h.regs.cpool[rd32(ip[1:])]
 			s = s[1:]
 			ip = ip[5:]
 		case .undefined:
@@ -726,7 +777,7 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			ip = ip[1:]
 
 		case .inc_loc, .dec_loc:
-			l := &regs.locals[ip[1]]
+			l := &locals[ip[1]]
 			if l.tag != .int || l.u.i == max(i32) || l.u.i == min(i32) {break loop}
 			put_int(l, op == .inc_loc ? l.u.i + 1 : l.u.i - 1)
 			ip = ip[2:]
@@ -763,7 +814,7 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			}
 			ip = ip[1:]
 		case .add_loc:
-			l := &regs.locals[ip[1]]
+			l := &locals[ip[1]]
 			y := s[-1]
 			if l.tag == .int && y.tag == .int {
 				put_i64(l, i64(l.u.i) + i64(y.u.i))
@@ -783,10 +834,7 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 				put_f64(&s[-2], as_f64(x) + as_f64(y))
 			} else {
 				h.ip, h.s = ip, s
-				go := hot_add(&h)
-				ip, s, regs = h.ip, h.s, h.regs
-				if !go {break loop}
-				continue loop
+				return .add
 			}
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
@@ -950,7 +998,7 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			if !ok {break loop}
 			d := int(i8(ip[1]))
 			if t == (op == .if_true8) {
-				if d < 0 && !hot_back_edge(&h, regs.root_base, intrinsics.ptr_offset(ip, 1 + d)) {break loop}
+				if d < 0 && !hot_back_edge(h, intrinsics.ptr_offset(ip, 1 + d)) {break loop}
 				ip = intrinsics.ptr_offset(ip, 1 + d)
 			} else {
 				ip = ip[2:]
@@ -961,7 +1009,7 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			if !ok {break loop}
 			d := int(i32(rd32(ip[1:])))
 			if t == (op == .if_true) {
-				if d < 0 && !hot_back_edge(&h, regs.root_base, intrinsics.ptr_offset(ip, 1 + d)) {break loop}
+				if d < 0 && !hot_back_edge(h, intrinsics.ptr_offset(ip, 1 + d)) {break loop}
 				ip = intrinsics.ptr_offset(ip, 1 + d)
 			} else {
 				ip = ip[5:]
@@ -969,24 +1017,22 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			s = intrinsics.ptr_offset(s, -1)
 		case .goto8:
 			d := int(i8(ip[1]))
-			if d < 0 && !hot_back_edge(&h, regs.root_base, intrinsics.ptr_offset(ip, 1 + d)) {break loop}
+			if d < 0 && !hot_back_edge(h, intrinsics.ptr_offset(ip, 1 + d)) {break loop}
 			ip = intrinsics.ptr_offset(ip, 1 + d)
 		case .goto16:
 			d := int(i16(u16(rd16(ip[1:]))))
-			if d < 0 && !hot_back_edge(&h, regs.root_base, intrinsics.ptr_offset(ip, 1 + d)) {break loop}
+			if d < 0 && !hot_back_edge(h, intrinsics.ptr_offset(ip, 1 + d)) {break loop}
 			ip = intrinsics.ptr_offset(ip, 1 + d)
 		case .goto:
 			d := int(i32(rd32(ip[1:])))
-			if d < 0 && !hot_back_edge(&h, regs.root_base, intrinsics.ptr_offset(ip, 1 + d)) {break loop}
+			if d < 0 && !hot_back_edge(h, intrinsics.ptr_offset(ip, 1 + d)) {break loop}
 			ip = intrinsics.ptr_offset(ip, 1 + d)
 
 		case .push_atom_value:
 			a := Atom(rd32(ip[1:]))
 			if atom_is_int(a) {
 				h.ip, h.s = ip, s
-				hot_push_atom(&h)
-				ip, s, regs = h.ip, h.s, h.regs
-				continue loop
+				return .push_atom
 			}
 			e := &h.rt.atoms[a]
 			if e.sym != nil {
@@ -1009,14 +1055,10 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 				}
 			}
 			h.ip, h.s = ip, s
-			go := hot_get_el(&h, op)
-			ip, s, regs = h.ip, h.s, h.regs
-			if !go {break loop}
+			return .get_el
 		case .get_array_el2:
 			h.ip, h.s = ip, s
-			go := hot_get_el(&h, op)
-			ip, s, regs = h.ip, h.s, h.regs
-			if !go {break loop}
+			return .get_el
 		case .put_array_el:
 			o, k := s[-3], s[-2]
 			if o.tag != .object || k.tag != .int || k.u.i < 0 {break loop}
@@ -1046,10 +1088,8 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 				case .data: s[0] = g.slots[j].value
 				case .accessor:
 					h.ip, h.s = ip, s
-					go := hot_get_var_getter(&h, g.slots[j].getset.getter)
-					ip, s, regs = h.ip, h.s, h.regs
-					if !go {break loop}
-					continue loop
+					h.getter = g.slots[j].getset.getter
+					return .var_getter
 				case: break loop
 				}
 			}
@@ -1081,10 +1121,8 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			if o.tag == .object {v, getter, p, found = hot_find(as_obj(o), Atom(rd32(ip[1:])))}
 			if found != .value {
 				h.ip, h.s = ip, s
-				go := hot_get_field(&h, op, getter, p)
-				ip, s, regs = h.ip, h.s, h.regs
-				if !go {break loop}
-				continue loop
+				h.getter, h.from = getter, p
+				return .get_field
 			}
 			if op == .get_field2 {
 				s[0] = v
@@ -1107,9 +1145,7 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 				continue loop
 			}
 			h.ip, h.s = ip, s
-			go := hot_get_length(&h)
-			ip, s, regs = h.ip, h.s, h.regs
-			if !go {break loop}
+			return .get_length
 		case .put_field:
 			o := s[-2]
 			a := Atom(rd32(ip[1:]))
@@ -1127,34 +1163,25 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 				}
 			}
 			h.ip, h.s = ip, s
-			go := hot_put_field(&h)
-			ip, s, regs = h.ip, h.s, h.regs
-			if !go {break loop}
+			return .put_field
 		case .define_field:
 			h.ip, h.s = ip, s
-			go := hot_define_field(&h)
-			ip, s, regs = h.ip, h.s, h.regs
-			if !go {break loop}
+			return .define_field
 		case .object:
 			h.ip, h.s = ip, s
-			hot_object(&h)
-			ip, s, regs = h.ip, h.s, h.regs
+			return .object
 		case .fclosure8:
 			h.ip, h.s = ip, s
-			hot_closure(&h, int(ip[1]), 2)
-			ip, s, regs = h.ip, h.s, h.regs
+			return .closure
 		case .fclosure:
 			h.ip, h.s = ip, s
-			hot_closure(&h, int(rd32(ip[1:])), 5)
-			ip, s, regs = h.ip, h.s, h.regs
+			return .closure
 		case .array_from:
 			h.ip, h.s = ip, s
-			hot_array_from(&h)
-			ip, s, regs = h.ip, h.s, h.regs
+			return .array_from
 		case .op_typeof:
 			h.ip, h.s = ip, s
-			hot_typeof(&h)
-			ip, s, regs = h.ip, h.s, h.regs
+			return .typeof
 		case .to_propkey:
 			v := s[-1]
 			if v.tag != .int && v.tag != .string && v.tag != .symbol {break loop}
@@ -1164,30 +1191,23 @@ interp_hot :: #force_inline proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0:
 			if (v.tag != .int && v.tag != .string && v.tag != .symbol) || s[-2].tag == .undefined || s[-2].tag == .null {break loop}
 			ip = ip[1:]
 		case .set_loc_uninitialized:
-			regs.locals[rd16(ip[1:])] = UNINITIALIZED
+			locals[rd16(ip[1:])] = UNINITIALIZED
 			ip = ip[3:]
 		case:
 			break loop
 		}
 	}
-	return h.f, int(uintptr(ip) - uintptr(regs.code)), int(uintptr(s) - uintptr(regs.stack)) / size_of(Value), h.moved, h.thrown
+	h.ip, h.s = ip, s
+	return .stop
 }
 
-// Is the loop at target one the JIT took (out of line: only a function with a compiled loop asks)?
+// A back edge: false when the loop must leave: a function with a loop the JIT compiled or is compiling, whose back edges go
+// through the full dispatch, which offers them to the JIT; an interrupt to poll or a collection due. Calls nothing.
 @(private = "file")
-hot_jit_taken :: #force_no_inline proc "contextless" (h: ^Hot, target: [^]u8) -> bool {
-	b := h.f.bc
-	return jit_loop_taken(b.jit, int(uintptr(target) - uintptr(raw_data(b.code))))
-}
-
-// A back edge to `target`: false when the loop must leave (a loop the JIT compiled or is compiling, whose back edges go
-// through the full dispatch, which offers them to the JIT; an interrupt to poll or a collection due). Calls nothing.
-@(private = "file")
-hot_back_edge :: #force_inline proc "contextless" (h: ^Hot, root_base: int, target: [^]u8) -> bool {
-	if h.f.bc.jit_active != 0 && hot_jit_taken(h, target) {return false}
+hot_back_edge :: #force_inline proc "contextless" (h: ^Hot, target: [^]u8) -> bool {
+	if h.f.bc.jit_active != 0 {return false}
 	rt := h.rt
-	temp := cast(^runtime.Raw_Dynamic_Array)&rt.temp_roots
-	if temp.len > root_base {temp.len = root_base}
+	temp_reset(rt, h.regs.root_base)
 	rt.interrupt_counter += 1
 	return rt.interrupt_counter < INTERRUPT_POLL_EVERY && !gc_should_run(rt)
 }

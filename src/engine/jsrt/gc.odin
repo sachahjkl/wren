@@ -118,6 +118,13 @@ pool_free_chunks :: proc(rt: ^Runtime) {
 	rt.pool_left = 0
 }
 
+// Zeroes `n` bytes, a multiple of the word, word by word: memory.fill is a call out of the compiled code in Wasmtime, for the
+// few words a frame or a cell clears. (Volatile: LLVM makes a memset of a plain loop.)
+words_clear :: #force_inline proc "contextless" (p: rawptr, n: int) {
+	w := cast([^]u64)p
+	for i in 0 ..< n / size_of(u64) {intrinsics.volatile_store(&w[i], 0)}
+}
+
 @(private = "file")
 raw_alloc :: #force_inline proc(rt: ^Runtime, size: int) -> rawptr {
 	if size <= POOL_MAX_BYTES {
@@ -125,7 +132,7 @@ raw_alloc :: #force_inline proc(rt: ^Runtime, size: int) -> rawptr {
 		c := n / POOL_GRAIN
 		if b := rt.pool_free[c]; b != nil {
 			rt.pool_free[c] = b.next
-			intrinsics.mem_zero(b, n)
+			words_clear(b, n)
 			return b
 		}
 		if rt.pool_left < n {
@@ -244,8 +251,10 @@ root_cell :: #force_inline proc(rt: ^Runtime, c: ^Cell) {
 
 temp_mark :: #force_inline proc(rt: ^Runtime) -> int {return len(rt.temp_roots)}
 
-temp_reset :: #force_inline proc(rt: ^Runtime, m: int) {
-	if len(rt.temp_roots) > m {resize(&rt.temp_roots, m)}
+// Odin's resize is a call, and this runs at each call, return and back edge.
+temp_reset :: #force_inline proc "contextless" (rt: ^Runtime, m: int) {
+	temp := cast(^runtime.Raw_Dynamic_Array)&rt.temp_roots
+	if temp.len > m {temp.len = m}
 }
 
 // Host handles: keep a value alive across host turns. A count in the cell header (O(1), no table); the
@@ -277,14 +286,14 @@ unpersist :: proc(rt: ^Runtime, v: Value) {
 // of the interrupt poll and the collection trigger (the slow path only when one is due).
 // back_edge when nothing is due (true), without any slow path (false: take back_edge).
 back_edge_cheap :: #force_inline proc(rt: ^Runtime, root_base: int) -> bool {
-	if len(rt.temp_roots) > root_base {resize(&rt.temp_roots, root_base)}
+	temp_reset(rt, root_base)
 	rt.interrupt_counter += 1
 	return rt.interrupt_counter < INTERRUPT_POLL_EVERY && !gc_should_run(rt)
 }
 
 back_edge :: #force_inline proc(ctx: ^Context, root_base: int) -> bool {
 	rt := ctx.rt
-	if len(rt.temp_roots) > root_base {resize(&rt.temp_roots, root_base)}
+	temp_reset(rt, root_base)
 	rt.interrupt_counter += 1
 	if rt.interrupt_counter < INTERRUPT_POLL_EVERY && !gc_should_run(rt) {return true}
 	return !poll_interrupt(ctx) && gc_safepoint(ctx)
