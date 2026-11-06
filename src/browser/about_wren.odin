@@ -450,11 +450,7 @@ show_wren_page :: proc(app: ^App, t: ^Tab, address: string, acts := false, notic
 	if query != "" && !sample { shown = WREN_URL }
 	if hash := strings.index_byte(shown, '#'); hash >= 0 && strings.has_prefix(shown, WREN_URL) { shown = WREN_URL }
 
-	base.scope_close(t.nav)
-	t.nav = base.scope_make("navigation", t.scope)
-	t.load, t.kind = nil, .Web
-	t.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, shown, console_sink, t)
-	attach_page(app, t, t.page)
+	nav_show_page(app, t, shown)
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0

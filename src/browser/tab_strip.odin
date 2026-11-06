@@ -71,7 +71,7 @@ tab_busy :: proc(t: ^Tab) -> bool {
 // The loading indicator still turns (browser.tabs.spinner_max_s after the navigation started, it stands still).
 spinner_turning :: proc(app: ^App, t: ^Tab) -> bool {
 	if app.favs.cfg.spinner_max_ms <= 0 { return true }
-	return shell_elapsed_ms(t.hold.started) < app.favs.cfg.spinner_max_ms
+	return shell_elapsed_ms(t.nav_state.started) < app.favs.cfg.spinner_max_ms
 }
 
 ////////////////////////////////
@@ -436,7 +436,7 @@ tab_icon_of :: proc(app: ^App, t: ^Tab, size: f32) -> ^Tab_Icon_Draw {
 		waiting := t.page == nil
 		d.kind = waiting ? .Waiting : .Spinner
 		if !waiting { d.color = ui.color("accent") }
-		ms := shell_elapsed_ms(t.hold.started)
+		ms := shell_elapsed_ms(t.nav_state.started)
 		period: f64 = waiting ? 1600 : 900
 		d.phase = spinner_turning(app, t) ? f32(math.mod(ms, period) / period) : 0
 		return d

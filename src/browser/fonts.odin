@@ -461,12 +461,12 @@ fonts_color_join :: proc(app: ^App) {
 
 // Faces the page downloaded (@font-face) join the font registry of the painter; the layout is redone with them. A new
 // page in the tab drops the faces of the one before, unless that page is still on screen while the new one prepares
-// its first paint (first_paint.odin): its faces then go with the held frame (`&t.hold`, dropped by hold_release).
+// its first paint (first_paint.odin): its faces then go with the held frame (`&t.hold`, dropped when the hold ends).
 // font-display is the page's business (page/fonts.odin): a face too late for its period never becomes ready.
 adopt_web_fonts :: proc(t: ^Tab) {
 	pf := &the_app.page_render.fonts
 	if t.web_font_page != rawptr(t.page) {
-		if t.hold.active && t.web_font_page != nil && rawptr(t.hold.page) == t.web_font_page {
+		if t.web_font_page != nil && rawptr(t.hold.page) == t.web_font_page {
 			page_fonts_drop(pf, &t.hold)
 			page_fonts_transfer(pf, t, &t.hold)
 		}

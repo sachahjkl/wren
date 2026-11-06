@@ -254,12 +254,8 @@ show_cache_page :: proc(app: ^App, t: ^Tab, target: string, acts: bool) {
 		page.session_replace(&t.session, CACHE_URL)
 		sync_history(app, t)
 	}
-	base.scope_close(t.nav)
-	t.nav = base.scope_make("navigation", t.scope)
-	t.load, t.kind = nil, .Web
 	shown := cleared ? CACHE_URL : target
-	t.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, shown, console_sink, t)
-	attach_page(app, t, t.page)
+	nav_show_page(app, t, shown)
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0

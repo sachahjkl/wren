@@ -277,8 +277,7 @@ show_image_document :: proc(app: ^App, load: ^Doc_Load) {
 	// (the page is made now, with the document right away: the image response itself made none)
 	if load.page == nil {
 		load.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, load.final_url, console_sink, t)
-		attach_page(app, t, load.page)
-		t.page = load.page
+		nav_adopt(app, t, load.page)
 	}
 	page.load_html(load.page, transmute([]byte)html)
 	page.image_document_begin(load.page)
@@ -440,7 +439,7 @@ download_from_navigation :: proc(app: ^App, load: ^Doc_Load, task: base.Handle, 
 			host.run_blocking(&app.blocking, download_dialog_work, download_dialog_done, d)
 		}
 	}
-	download_restore_tab(app, load)   // `load` is gone after this
+	nav_cancel(app, load.tab, load, .Downloaded)   // `load` is gone after this
 	request_frames(app, 2)
 }
 
@@ -461,54 +460,6 @@ download_open_temp :: proc(app: ^App, d: ^Download) -> bool {
 		if !os.exists(path) { return false }
 	}
 	return false
-}
-
-// The navigation did not happen: the tab shows what it showed before (the held page, else the previous entry), or
-// closes when it was opened for this alone.
-@(private = "file")
-download_restore_tab :: proc(app: ^App, load: ^Doc_Load) {
-	t := load.tab
-	if load.pushed {
-		page.session_drop_current(&t.session)
-		sync_history(app, t)
-	}
-	if t.hold.active && t.hold.page != nil {
-		h := &t.hold
-		old := t.nav
-		t.nav, t.page = h.nav, h.page
-		t.layout, h.layout = h.layout, t.layout
-		t.scroll = h.scroll
-		h.active, h.nav, h.page, h.bf_entry = false, nil, nil, 0
-		t.nav_state.left = nil
-		page.page_thaw(t.page)   // frozen for the back/forward cache when it was left (bfcache.odin)
-		t.load = nil
-		base.scope_close(old)   // the navigation's scope: its Doc_Load (the request is the download's now)
-		delete(t.url)
-		t.url = strings.clone(t.page.env.location.href)
-		delete(t.title)
-		t.title = default_tab_title(t.url, context.allocator)
-		tab_icon_destroy(&t.icon)   // the title and icon are read again from the page
-		set_status(t, "Done")
-		address_set(app, t, t.url == HOME_URL ? "" : t.url)
-		return
-	}
-	if cur := page.session_current(&t.session); cur != nil && bfcache_restore(app, t, cur) { return }
-	if e := page_session_current(t); e != "" {
-		navigate(app, t, e, record = false, restore = true, origin = .Replay)
-		return
-	}
-	if w, _ := window_of_tab(app, t); w != nil && (len(window_tabs(app, w)) > 1 || len(app.windows) > 1) {
-		tab_close_tab(app, t)
-		return
-	}
-	navigate(app, t, "", record = false)
-}
-
-@(private = "file")
-page_session_current :: proc(t: ^Tab) -> string {
-	cur := page.session_current(&t.session)
-	if cur == nil { return "" }
-	return strings.clone(cur.url, context.temp_allocator)
 }
 
 @(private = "file")

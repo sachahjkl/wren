@@ -79,11 +79,7 @@ about_pages_html :: proc() -> string {
 
 // An ordinary document, like the start page: its links open as if typed in the address bar.
 show_about_pages :: proc(app: ^App, t: ^Tab) {
-	base.scope_close(t.nav)
-	t.nav = base.scope_make("navigation", t.scope)
-	t.load, t.kind = nil, .Web
-	t.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, ABOUT_URL, console_sink, t)
-	attach_page(app, t, t.page)
+	nav_show_page(app, t, ABOUT_URL)
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0

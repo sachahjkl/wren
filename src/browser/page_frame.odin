@@ -31,6 +31,8 @@ Page_Prep :: struct {
 
 // The page phase: the current tab's page prepared for the page area of the last frame.
 page_update :: proc(app: ^App) {
+	nav_tick(app)
+	defer nav_tick(app)   // (a first paint in this phase lets the old page go before the draw)
 	t := current_tab(app)
 	if t == nil || t.kind != .Web || t.page == nil { return }
 	size := draw.rect_size(active_window(app).page_rect)
@@ -48,7 +50,7 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	page_world_check("page_prepare: a chrome frame, or the page thread has the layout")
 	page_prep := &window_own(app).page_prep
 	page_prep^ = Page_Prep{frame = app.chrome_frames.frame_no, tab = t, page = t.page, size = size, scale = page_scale(app), state = .None, canvas = expected_canvas(app)}
-	hold_commit(app, t)
+	nav_arrived(app, t)
 	scale := page_prep.scale
 	// an incremental layout reads what the style passes changed (layout.incremental.*)
 	ls := &app.page_render.settings
@@ -100,13 +102,13 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	images_after_layout(t, size, scale)
 	if first {
 		// the first useful paint: something to see, or nothing left to wait for once the hold is over
-		if t.hold.active && !layout_contentful(&t.layout) && hold_wait_ms(t) > 0 {
+		if t.hold.state != .None && !layout_contentful(&t.layout) && hold_wait_ms(t) > 0 {
 			page_prep.state = .Hold
 			first_paint_wake(app, t)
 			return
 		}
 		page.first_paint_done(t.page)
-		hold_release(app, t)
+		nav_painted(app, t)
 		prof_first_paint(t)
 	}
 	restore_tick(app, t, size)   // history_restore.odin: an entry shown again comes back where it was

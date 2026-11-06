@@ -30,16 +30,30 @@ import "wb:url"
 // A frozen frame is painted only while it is still exact: if the old document changed meanwhile (its scripts run until
 // it is closed), its canvas color is shown instead.
 
+Hold_State :: enum u8 {
+	None,
+	Waiting,    // the old frame stands, with no limit: the new document has not arrived
+	Counting,   // it has (Tab_Nav.arrived): the old frame stands until browser.paint_holding.timeout_ms past that
+}
+
+// What happens to a hold (hold_step).
+Hold_Event :: enum u8 {
+	Navigation,   // a navigation leaves the tab's page: its frame is held if it can be, else it goes; what was held waits for the new document
+	Arrival,      // the page phase saw the new document
+	Over,         // the old page goes: closed, or into the back/forward cache
+	Back,         // the navigation did not happen: the old page is the tab's again
+	Tab_Gone,     // the tab's scope closed it
+}
+
 Paint_Hold :: struct {
-	active:    bool,
+	state:     Hold_State,
 	nav:       ^base.Scope,   // the old navigation: its page and everything it started
 	page:      ^page.Page,
+	load:      ^Doc_Load,     // (the old navigation's: the tab's again if the page comes back)
+	no_store:  bool,          // (the same)
 	layout:    Layout,        // its last layout (painted as is); reused as the tab's next layout memory
 	scroll:    f32,
 	canvas:    css.Color,     // the old page's canvas
-	commit:    i64,           // when the new document arrived (the loop's clock, ns: shell_elapsed_ms)
-	committed: bool,          // ... it has (for this navigation)
-	started:   i64,           // (the same) when the navigation started (held or not: time to first paint)
 	// the held page goes into the back/forward cache when the hold ends (bfcache.odin), with what the tab had of it
 	bf_entry:  u64,
 	zoom:      f32,
@@ -139,65 +153,85 @@ NS_PER_MS_F :: 1e6
 // The loop's clock. (A unit test's App is not the_app: there none, and time stands still.)
 shell_now_ns :: proc() -> i64 { return the_app != nil ? host.now_ns(&the_app.loop) : 0 }
 
-// Navigation of `t` to `target` starts: its page is held (or closed), and the tab is ready for a new navigation scope.
-// Closes the previous navigation scope in every case but the held one.
-hold_begin :: proc(app: ^App, t: ^Tab, target: string) {
-	t.hold.started = host.now_ns(&app.loop)
-	t.hold.committed = false
-	if holdable(t, target) {
-		hold_release(app, t)   // a page already held goes: the current one painted after it
-		h := &t.hold
-		h.active = true
-		h.nav, h.page = t.nav, t.page
-		h.layout, t.layout = t.layout, h.layout   // the held frame; the tab gets the old memory back
-		h.scroll = t.scroll
-		h.bf_entry, h.zoom, h.image_sizes, h.web_fonts = t.nav_state.bf_entry, t.zoom, t.image_sizes, t.web_fonts
-		t.nav_state.bf_entry = 0
-		h.canvas = t.page.styled != nil ? t.page.styled.canvas : expected_canvas(app)
-		page.set_page_visible(t.page, false)   // its timers slow down to background pace; nothing paints it again
-	} else if !bfcache_take(app, t) {
-		base.scope_close(t.nav)   // the page that was never painted (or nothing): what is held, if anything, stays
-	} else {
-		base.scope_close(t.nav)   // (the empty scope the cached page left)
-	}
-	t.nav = nil
-	layout_reset(&t.layout)
-}
-
-// Stops holding: the old page closes.
-hold_release :: proc(app: ^App, t: ^Tab) {
+// The one place a hold changes.
+hold_step :: proc(app: ^App, t: ^Tab, ev: Hold_Event, target := "") {
 	h := &t.hold
-	if !h.active { return }
-	if !bfcache_take_held(app, t) {
-		base.scope_close(h.nav)   // the old page, its modules and every request it still had
-		layout_reset(&h.layout)
+	switch ev {
+	case .Navigation:
+		if holdable(t, target) {
+			hold_step(app, t, .Over)   // a page already held goes: the current one painted after it
+			h.state = .Waiting
+			h.nav, h.page, h.load, h.no_store = t.nav, t.page, t.load, t.nav_state.no_store
+			h.layout, t.layout = t.layout, h.layout   // the held frame; the tab gets the old memory back
+			h.scroll = t.scroll
+			h.bf_entry, h.zoom, h.image_sizes, h.web_fonts = t.nav_state.bf_entry, t.zoom, t.image_sizes, t.web_fonts
+			t.nav_state.bf_entry = 0
+			h.canvas = t.page.styled != nil ? t.page.styled.canvas : expected_canvas(app)
+			page.set_page_visible(t.page, false)   // its timers slow down to background pace; nothing paints it again
+			t.nav = nil
+		} else {
+			bfcache_take(app, t)   // (not kept: it goes with the scope, what is held, if anything, stays)
+			if h.state == .Counting { h.state = .Waiting }
+		}
+		layout_reset(&t.layout)
+	case .Arrival:
+		if h.state == .Waiting { h.state = .Counting }
+	case .Over:
+		if h.state == .None { return }
+		if !bfcache_take_held(app, t) {
+			base.scope_close(h.nav)   // the old page, its modules and every request it still had
+			layout_reset(&h.layout)
+		}
+		page_fonts_drop(&app.page_render.fonts, h)   // its web faces, if the new page took over the tab's (fonts.odin)
+		h.state, h.nav, h.page, h.load = .None, nil, nil, nil
+	case .Back:
+		left := t.nav
+		t.nav, t.page, t.load, t.nav_state.no_store = h.nav, h.page, h.load, h.no_store
+		t.layout, h.layout = h.layout, t.layout
+		t.scroll = h.scroll
+		t.fragment_done = true   // (it is where it was)
+		h.state, h.nav, h.page, h.load, h.bf_entry = .None, nil, nil, nil, 0
+		t.nav_state.left = nil
+		page.page_thaw(t.page, visible = current_tab(app) == t)   // frozen for the back/forward cache when it was left (bfcache.odin)
+		base.scope_close(left)   // the navigation's scope: its Doc_Load (a download's request is the download's now)
+		delete(t.url)
+		t.url = strings.clone(t.page.env.location.href)
+		delete(t.title)
+		t.title = default_tab_title(t.url, context.allocator)
+		tab_icon_destroy(&t.icon)   // the title and icon are read again from the page
+		nav_to(app, t, .Painted)
+	case .Tab_Gone:
+		h.state, h.nav, h.page, h.load = .None, nil, nil, nil
+		layout_destroy(&h.layout)
+		page_fonts_drop(&app.page_render.fonts, h)
 	}
-	page_fonts_drop(&app.page_render.fonts, h)   // its web faces, if the new page took over the tab's (fonts.odin)
-	h.active, h.nav, h.page = false, nil, nil
 }
 
-// Tab closing: the held page went with the tab's scope.
-hold_destroy :: proc(t: ^Tab) {
-	t.hold.active, t.hold.nav, t.hold.page = false, nil, nil
-	layout_destroy(&t.hold.layout)
-	page_fonts_drop(&the_app.page_render.fonts, &t.hold)
+// The limit of the hold has passed.
+hold_expired :: proc(app: ^App, t: ^Tab) -> bool {
+	return t.hold.state == .Counting && shell_elapsed_ms(t.nav_state.arrived) >= app.scheme_ui.timeout_ms
+}
+
+// The old page has no reason to stay: the new one painted, its limit passed, or the new document's origin may not show under it.
+hold_ended :: proc(app: ^App, t: ^Tab) -> bool {
+	h := &t.hold
+	if h.state != .Counting { return false }
+	if t.nav_state.phase == .Painted || hold_expired(app, t) { return true }
+	return !app.scheme_ui.cross_origin && t.page != nil && h.page != nil && !url.same_origin(t.page.env.origin, h.page.env.origin)
 }
 
 // Whether the held frame still says what its page is: its items read the document's text. The page runs: a script that reads a computed style makes a pass of its own with
 // no layout to go with it (js_dom_styled); the held layout reads the records of its own pass, which stands as long as it does (style.styled_read_begin).
 hold_exact :: proc(h: ^Paint_Hold) -> bool {
-	return h.active && h.page != nil && h.layout.valid && h.layout.mutations == h.page.doc.mutations
+	return h.page != nil && h.layout.valid && h.layout.mutations == h.page.doc.mutations
 }
 
-// Paints what the tab shows while its page cannot paint: the held frame if it is still exact and not timed out, else
-// `fallback` as the canvas. Returns true when the held frame was painted.
+// Paints what the tab shows while its page cannot paint: the held frame if it is still exact, else `fallback` as the
+// canvas. Returns true when the held frame was painted.
 hold_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect, fallback: css.Color) -> bool {
 	h := &t.hold
-	if h.active && h.committed && shell_elapsed_ms(h.commit) >= app.scheme_ui.timeout_ms {
-		hold_release(app, t)
-	}
 	if !hold_exact(h) {
-		draw.rect(dc, r, to_draw(h.active ? h.canvas : fallback))
+		draw.rect(dc, r, to_draw(h.state != .None ? h.canvas : fallback))
 		return false
 	}
 	size := draw.rect_size(r)
@@ -211,15 +245,6 @@ hold_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect, fallback
 	images_after_paint(app)
 	draw.pop_clip(dc)
 	return true
-}
-
-// The new document of `t` arrived: the hold now counts down (and ends at once across origins when that is not allowed).
-hold_commit :: proc(app: ^App, t: ^Tab) {
-	h := &t.hold
-	if h.committed { return }
-	h.committed = true
-	h.commit = shell_now_ns()
-	if h.active && !app.scheme_ui.cross_origin && t.page != nil && h.page != nil && !url.same_origin(t.page.env.origin, h.page.env.origin) { hold_release(app, t) }
 }
 
 // Something of the layout is content (CSS Paint Timing's "contentful": text, images, form controls, list markers). Text waiting for its
@@ -238,8 +263,8 @@ layout_contentful :: proc(l: ^Layout) -> bool {
 // Milliseconds before the hold of `t` times out (the shell wakes up then); -1 when there is none.
 hold_wait_ms :: proc(t: ^Tab) -> f64 {
 	h := &t.hold
-	if !h.active || !h.committed { return -1 }
-	return max(the_app.scheme_ui.timeout_ms - shell_elapsed_ms(h.commit), 0)
+	if h.state != .Counting { return -1 }
+	return max(the_app.scheme_ui.timeout_ms - shell_elapsed_ms(t.nav_state.arrived), 0)
 }
 
 // The first paint of the tab's new page happened now: the profile build records how long it took (WREN_PROF set:
@@ -248,8 +273,8 @@ hold_wait_ms :: proc(t: ^Tab) -> f64 {
 prof_first_paint :: proc(t: ^Tab) {
 	when PROFILE {
 		if !prof.on { return }
-		since_nav := shell_elapsed_ms(t.hold.started)
-		since_doc := t.hold.committed ? shell_elapsed_ms(t.hold.commit) : -1
+		since_nav := shell_elapsed_ms(t.nav_state.started)
+		since_doc := t.nav_state.arrived != 0 ? shell_elapsed_ms(t.nav_state.arrived) : -1
 		path := strings.concatenate({prof.out, ".firstpaint.txt"}, context.temp_allocator)
 		f, err := os.open(path, {.Write, .Create, .Append}, os.Permissions_Default_File)
 		if err != nil { return }
@@ -282,13 +307,14 @@ first_paint_wake :: proc(app: ^App, t: ^Tab) {
 		if d := page.first_paint_next_deadline_ms(t.page); d >= 0 && (wait < 0 || d < wait) { wait = d }
 	}
 	if wait < 0 { return }
-	if app.first_paint_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.first_paint_timer) }
-	app.first_paint_timer = host.set_timer(&app.loop, max(wait, 1), 0, proc(data: rawptr) {
-		app := (^App)(data)
-		app.first_paint_timer = base.NIL_HANDLE
-		a := (^App)(data)
-		request_frames(a, 2)
-	}, app)
+	own := window_own(app)
+	if own.first_paint_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, own.first_paint_timer) }
+	own.first_paint_timer = host.set_timer(&app.loop, max(wait, 1), 0, proc(data: rawptr) {
+		w := window_by_id(the_app, int(uintptr(data)))
+		if w == nil { return }
+		w.own.first_paint_timer = base.NIL_HANDLE
+		window_request(the_app, w, 2)
+	}, rawptr(uintptr(active_window(app).id)))
 }
 
 // A thin bar along the top of the page while the tab loads a document that has not painted yet. (The pointer shows
@@ -299,7 +325,7 @@ loading_bar :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect) {
 	h := max(2 * scale, 1)
 	w := r.max.x - r.min.x
 	// indeterminate: a segment sweeping across, eased in time since the navigation started
-	ms := shell_elapsed_ms(t.hold.started)
+	ms := shell_elapsed_ms(t.nav_state.started)
 	k := f32(math.mod(ms, 1400) / 1400)
 	seg := w * 0.3
 	x := r.min.x - seg + (w + seg) * k
@@ -313,6 +339,6 @@ loading_bar :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect) {
 // The tab is loading a document that has not painted yet.
 tab_loading :: proc(t: ^Tab) -> bool {
 	if t == nil || t.kind != .Web { return false }
-	if t.page == nil { return t.load != nil }
-	return !t.page.render.painted && (t.load != nil || t.hold.active)
+	if t.page == nil { return nav_pending(t) }
+	return !t.page.render.painted && (t.load != nil || t.hold.state != .None)
 }

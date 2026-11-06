@@ -295,7 +295,7 @@ forms_content_painter :: proc(user: rawptr, dc: ^draw.Context, doc: ^dom.Documen
 	t := current_tab(app)
 	if t == nil { return false }
 	p := t.page
-	if t.hold.active && t.hold.page != nil && t.hold.page.doc == doc { p = t.hold.page }   // the frame held through a navigation
+	if t.hold.page != nil && t.hold.page.doc == doc { p = t.hold.page }   // the frame held through a navigation
 	if p == nil || p.doc != doc || p.formctl == nil { return false }
 	paint_control(dc, &app.fonts, font_id != 0 ? font_id : app.ui_font, node, content, border, cs, p, time.tick_now())
 	return true

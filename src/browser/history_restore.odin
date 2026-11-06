@@ -47,6 +47,9 @@ Traverse_Timing :: struct {
 
 // The tab's part of this (one field of Tab).
 Tab_Nav :: struct {
+	phase:    Nav_Phase,   // tab_navigation.odin
+	started:  i64,         // when the navigation started, held or not, a built-in page's too (the loop's clock, ns: shell_elapsed_ms)
+	arrived:  i64,         // (the same) when the page phase first saw its document (0: not yet)
 	restore:  Restore,
 	timing:   Traverse_Timing,
 	left:     rawptr,   // the page leave_page already handled (once per page)

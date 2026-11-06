@@ -42,9 +42,7 @@ downloads_ui_destroy :: proc() {
 }
 
 show_downloads :: proc(app: ^App, t: ^Tab, address: string) {
-	base.scope_close(t.nav)
-	t.nav = base.scope_make("navigation", t.scope)
-	t.page, t.load, t.kind = nil, nil, .Downloads
+	nav_show_view(app, t, .Downloads)
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	console_reset(t)

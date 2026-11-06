@@ -131,14 +131,14 @@ bfcache_take :: proc(app: ^App, t: ^Tab) -> bool {
 	page_fonts_transfer(&app.page_render.fonts, t, e)   // its web faces stay with its layout
 	t.layout = {}
 	t.web_font_page, t.web_fonts = nil, 0
-	t.nav = base.scope_make("navigation", t.scope)
-	t.page = nil
+	t.nav = nil   // (the entry has it)
+	nav_fresh(t, t.kind)
 	t.nav_state.bf_entry = 0
 	bf_store(app, e)
 	return true
 }
 
-// The held frame's page (first_paint.odin hold_release) goes into the cache instead of closing. False: not kept.
+// The held frame's page (first_paint.odin hold_step) goes into the cache instead of closing. False: not kept.
 bfcache_take_held :: proc(app: ^App, t: ^Tab) -> bool {
 	h := &t.hold
 	id := h.bf_entry
@@ -261,7 +261,7 @@ bfcache_restore :: proc(app: ^App, t: ^Tab, entry: ^page.History_Entry) -> bool 
 	e := app.bf.entries[at]
 	ordered_remove(&app.bf.entries, at)
 	// the tab's own page, frozen by leave_page when it may be kept, or closed
-	hold_release(app, t)
+	hold_step(app, t, .Over)
 	if bfcache_take(app, t) {
 		base.scope_close(t.nav)   // the empty one it left
 	} else {
@@ -278,6 +278,7 @@ bfcache_restore :: proc(app: ^App, t: ^Tab, entry: ^page.History_Entry) -> bool 
 	t.scroll, t.scroll_target = e.scroll, base.NIL_HANDLE
 	if app.hcfg.restore_zoom && e.zoom > 0 { t.zoom = e.zoom }
 	t.nav_state.no_store = e.no_store
+	nav_to(app, t, .Painted)
 	t.nav_state.left = nil
 	t.fragment_done = true   // (it is where it was)
 	delete(t.url); t.url = e.url

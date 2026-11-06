@@ -274,6 +274,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 
 	e2e_step(&t, "a frame held through a navigation stands while its page makes style passes (src\\tools\\e2e\\held_styles.odin: what crashed in background_has_url; freed memory poisoned)", "held_styles")
 	e2e_step(&t, "a font on its way holds its text and not the page (src\\tools\\e2e\\font_first_paint.odin)", "font_first_paint")
+	e2e_step(&t, "a navigation that ends with no document gives the old page back, and a held page goes in the page phase (src\\tools\\e2e\\tab_navigation.odin: Stop, a stopped traversal, a download, one unload per document, each window's wake)", "tab_navigation")
 	// (what only pages of their own saw: a flag of a freed block read as a plain value)
 	page_tests := odin_test("src/page", exe("build/page_poison_test"), {TOOLKIT, WB, POISON})
 	page_tests.env = strs("WREN_POISON_PAGES=1")
