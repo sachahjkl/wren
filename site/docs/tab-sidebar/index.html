@@ -252,7 +252,7 @@ reordering are those of the row of tabs (<code>src/browser/tab_strip.odin</code>
 <tr><td><code>browser.tabs.sidebar_width</code></td><td>240</td><td>120 to 640 interface pixels (times the display scale), never more than half of the window. Dragging the inner edge changes it; the value is written when the button goes up.</td></tr>
 <tr><td><code>browser.tabs.sidebar_collapsed</code></td><td>off</td><td>Icons only.</td></tr>
 <tr><td><code>browser.tabs.sidebar_collapsed_width</code></td><td>48</td><td>32 to 96 interface pixels.</td></tr>
-<tr><td><code>browser.tabs.sidebar_animation_ms</code></td><td>180</td><td>0 to 2000 ms: opening and closing to icons (0: at once).</td></tr>
+<tr><td><code>browser.tabs.sidebar_animation_ms</code></td><td>240</td><td>0 to 2000 ms: opening and closing to icons (0: at once).</td></tr>
 <tr><td><code>browser.tabs.sidebar_row_em</code></td><td>2.4</td><td>1.6 to 5 em: the height of a tab.</td></tr>
 <tr><td><code>browser.tabs.sidebar_address_min_em</code></td><td>10</td><td>4 to 40 em: the narrowest address bar in the title bar (below it, parts of the toolbar make room).</td></tr>
 </tbody>
@@ -273,9 +273,9 @@ body:                  as above</code></pre></div>
 <p>The sidebar's header holds the icons-only toggle and the new-tab button: the "+" glyph alone, lit under the pointer as the
 toolbar's buttons are (both styles, both widths; centred in the narrow column).</p>
 <h3 id="opening-and-closing"><a class="anchor" href="#opening-and-closing" aria-hidden="true">#</a>Opening and closing</h3>
-<p>Icons only and the titles are the two ends of one layout, not two layouts: <code>open</code> (0 closed, 1 open) is eased by the
-toolkit's <code>ui.anim</code> toward what <code>browser.tabs.sidebar_collapsed</code> says, in <code>browser.tabs.sidebar_animation_ms</code> (95 % of the
-way), and everything is placed from it:</p>
+<p>Icons only and the titles are the two ends of one layout, not two layouts: <code>open</code> (0 closed, 1 open) goes by the toolkit's
+<code>ui.tween</code> to what <code>browser.tabs.sidebar_collapsed</code> says, in <code>browser.tabs.sidebar_animation_ms</code>, slowly at both ends, and
+everything is placed from it, each thing straight from one end to the other:</p>
 <ul>
 <li>the width goes from the icons-only width to the open one (<code>sidebar_open_extent</code>), so the page widens or narrows a little
 each frame instead of jumping;</li>

@@ -663,6 +663,13 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 			menu_command(app, t, "view.status_bar")
 			menu_command(app, t, "view.smooth_scrolling")
 			menu_command(app, t, "view.frame_statistics")
+			if ui.menu_submenu("Frame rate###frame_cap_sub") {
+				menu_command(app, t, "view.frame_cap.auto")
+				menu_command(app, t, "view.frame_cap.60")
+				menu_command(app, t, "view.frame_cap.120")
+				menu_command(app, t, "view.frame_cap.240")
+				menu_command(app, t, "view.frame_cap.uncapped")
+			}
 			menu_command(app, t, "view.title_statistics")
 			menu_command(app, t, "view.devtools")
 			menu_command(app, t, "view.console")

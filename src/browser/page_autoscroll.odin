@@ -20,14 +20,18 @@ import "wb:config"
 import "wb:forms"
 import "wb:page"
 
+// The top speed, reached far from the anchor: the two go together, so that the curve near the anchor is the same whatever the top.
+AUTOSCROLL_TOP_SPEED :: 23250
+AUTOSCROLL_FULL_DISTANCE :: 335
+
 AUTOSCROLL_PREFS := [?]config.Def{
 	{name = "browser.scroll.autoscroll.enabled", kind = .Bool, default = {b = true},
 		description = "A press of the middle mouse button (the wheel) on the page starts autoscroll: moving the pointer away from where it was pressed scrolls, the farther the faster. Press again, Escape or a wheel notch ends it."},
-	{name = "browser.scroll.autoscroll.max_speed", kind = .Float, default = {f = 15000}, bounded = true, min = 100, max = 200000, unit = "px/s",
+	{name = "browser.scroll.autoscroll.max_speed", kind = .Float, default = {f = AUTOSCROLL_TOP_SPEED}, bounded = true, min = 100, max = 200000, unit = "px/s",
 		description = "The fastest autoscroll goes, in CSS pixels per second, reached when the pointer is 'full distance' past the dead zone."},
 	{name = "browser.scroll.autoscroll.dead_zone", kind = .Float, default = {f = 12}, bounded = true, min = 0, max = 200, unit = "px",
 		description = "No scrolling while the pointer is within this many pixels of the anchor (a still disc around it)."},
-	{name = "browser.scroll.autoscroll.full_distance", kind = .Float, default = {f = 300}, bounded = true, min = 20, max = 4000, unit = "px",
+	{name = "browser.scroll.autoscroll.full_distance", kind = .Float, default = {f = AUTOSCROLL_FULL_DISTANCE}, bounded = true, min = 20, max = 4000, unit = "px",
 		description = "How far past the dead zone the pointer must be for autoscroll to reach its top speed."},
 	{name = "browser.scroll.autoscroll.doubling_distance", kind = .Float, default = {f = 60}, bounded = true, min = 10, max = 4000, unit = "px",
 		description = "The speed grows geometrically with the distance from the anchor: it doubles for every this many pixels past the dead zone (speed = max * (2^(x/D) - 1) / (2^(F/D) - 1), x the distance past the dead zone, D this, F the full distance). Smaller: gentler near the anchor and steeper far out; much larger than the full distance: nearly linear."},

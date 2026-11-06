@@ -435,7 +435,7 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 		isz := f32(tab_icon_px(app))
 		// (one layout whatever `open` is: the icon slides from the middle of the narrow row to its place, the title and the
 		// close button fade in behind it, clipped by the row while it widens)
-		ix := side_icon_x(row_w, isz, math.round(em * 0.65), open)
+		ix := side_icon_x(row_w - window_own(app).sidebar.past_closed, isz, math.round(em * 0.65), open)
 		ui.spacer(ui.px(ix))
 		ui.next({width = ui.px(isz), height = ui.pct(1)})
 		ui.custom("###icon", tab_icon_draw, tab_icon_of(app, t, isz))
@@ -518,7 +518,7 @@ sidebar_group_row :: proc(app: ^App, it: Side_Item, row_x, row_w, inset, open: f
 	renaming := own.sidebar.renaming == g.id && open >= 1
 	if ui.parent(b) {
 		isz := f32(tab_icon_px(app))
-		ui.spacer(ui.px(side_icon_x(row_w, isz, math.round(em * 0.65), open)))
+		ui.spacer(ui.px(side_icon_x(row_w - window_own(app).sidebar.past_closed, isz, math.round(em * 0.65), open)))
 		chip := ui.frame_new(Group_Chip)
 		chip^ = {color = group_color(g.color), collapsed = g.collapsed, text = ui.color("text")}
 		ui.next({width = ui.px(isz), height = ui.pct(1)})

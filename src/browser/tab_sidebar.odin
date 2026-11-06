@@ -44,7 +44,7 @@ SIDEBAR_PREFS := [?]config.Def{
 		description = i18n.tr("The tab sidebar shows only the icons of the tabs (the button at the top of the sidebar, or Ctrl+Shift+Comma, toggles it).")},
 	{name = "browser.tabs.sidebar_collapsed_width", kind = .Int, default = {i = 48}, bounded = true, min = 32, max = 96, unit = "px",
 		description = i18n.tr("Width of the tab sidebar when it shows only icons (interface pixels, times the display scale).")},
-	{name = "browser.tabs.sidebar_animation_ms", kind = .Int, default = {i = 180}, bounded = true, min = 0, max = 2000, unit = "ms",
+	{name = "browser.tabs.sidebar_animation_ms", kind = .Int, default = {i = 240}, bounded = true, min = 0, max = 2000, unit = "ms",
 		description = i18n.tr("How long the tab sidebar takes to open or close to its icons (the titles fade in or out while its width changes). 0: at once. The system's setting to reduce animations turns it off too.")},
 	{name = "browser.tabs.sidebar_pins_max", kind = .Float, default = {f = 0.4}, bounded = true, min = 0.1, max = 0.9,
 		description = i18n.tr("Most of the window's height the pinned tabs take at the top of the tab sidebar (a share: 0.4 is 40 %); beyond, they scroll.")},
@@ -73,6 +73,7 @@ tabs_in_sidebar :: proc(app: ^App) -> bool {
 
 // A window's tab sidebar from frame to frame (Window_Own.sidebar).
 Tab_Sidebar :: struct {
+	past_closed: f32,  // how much wider than its icons-only width it is this frame (it opens or closes; the rows place their icons by it)
 	live_w:    f32,    // CSS px while the width handle is held (0: the preference's)
 	grab_w:    f32,    // the width when the handle was pressed
 	press_x:   f32,    // the pointer's x when it was pressed (window px)
@@ -130,8 +131,6 @@ sidebar_split :: proc(body: draw.Rect, pos: Tabs_Position, extent: f32) -> (bar,
 	return
 }
 
-// The rate of ui.anim (halvings per second) that goes 95 % of the way in `ms`; 0 ms: at once.
-sidebar_open_rate :: proc(ms: f32) -> f32 { return ms <= 0 ? 1e9 : 4321 / ms }
 
 // The sidebar's width while it opens or closes: from its icons-only width (`open` 0) to its own (1).
 sidebar_open_extent :: proc(closed, opened, open: f32) -> f32 { return math.round(math.lerp(closed, opened, clamp(open, 0, 1))) }
@@ -139,9 +138,10 @@ sidebar_open_extent :: proc(closed, opened, open: f32) -> f32 { return math.roun
 // How much the titles show at `open`: nothing while the rows are too narrow for any of a title, all of it when open.
 side_title_alpha :: proc(open: f32) -> f32 { return clamp((open - 0.25) / 0.75, 0, 1) }
 
-// Where a row's icon starts: centred in the row when closed, at the row's padding when open, and between while it moves.
-side_icon_x :: proc(row_w, icon, pad, open: f32) -> f32 {
-	return math.round(math.lerp(max((row_w - icon) * 0.5, 0), pad, clamp(open, 0, 1)))
+// Where a row's icon starts: centred in the narrow row (`closed_row_w`) when closed, at the row's padding when open, and straight
+// from one to the other while it moves (the middle of the widening row would take it out and back).
+side_icon_x :: proc(closed_row_w, icon, pad, open: f32) -> f32 {
+	return math.round(math.lerp(max((closed_row_w - icon) * 0.5, 0), pad, clamp(open, 0, 1)))
 }
 
 // The header's two buttons (`bw` x `bh`): one above the other in the narrow column, side by side when open (the toggle at the
@@ -151,9 +151,9 @@ Side_Header_Layout :: struct {
 	toggle, add: [2]f32,   // top-left corners in the header
 }
 
-side_header_layout :: proc(extent, bw, bh, inset, open: f32) -> (l: Side_Header_Layout) {
+side_header_layout :: proc(extent, closed, bw, bh, inset, open: f32) -> (l: Side_Header_Layout) {
 	o := clamp(open, 0, 1)
-	mid := (extent - bw) * 0.5
+	mid := (closed - bw) * 0.5   // (of the narrow column: the middle of the widening one would take them out and back)
 	l.h = math.round(math.lerp(inset * 3 + bh * 2, bh + inset * 2, o))
 	l.toggle = {math.round(math.lerp(mid, inset * 2, o)), inset}
 	l.add = {math.round(math.lerp(mid, extent - inset * 2 - bw, o)), math.round(math.lerp(inset * 2 + bh, inset, o))}
@@ -335,14 +335,12 @@ tab_sidebar :: proc(app: ^App, pos: Tabs_Position) {
 	win_w := f32(active_window(app).win.size.x)
 	closed_e := sidebar_extent(win_w, width_css, dpi, true, app.favs.cfg.side_collapsed_w)
 	opened_e := sidebar_extent(win_w, width_css, dpi, false, app.favs.cfg.side_collapsed_w)
-	// 0: icons only, 1: the titles; eased between when the preference changes (the toolkit's animation: it asks for the
-	// frames while it moves, and none after), and done once the width is within half a pixel of its end (the ease's tail
-	// would ask for frames that change nothing)
-	akey := ui.key_from_string(0, "###side_open")
+	// 0: icons only, 1: the titles; from one to the other in a set time when the preference changes (the toolkit asks for the
+	// frames while it moves, and none after)
 	target: f32 = app.favs.cfg.side_collapsed ? 0 : 1
-	open := ui.anim(akey, target, sidebar_open_rate(app.favs.cfg.side_anim_ms))
-	if abs(open - target) * abs(opened_e - closed_e) < 0.5 { open = ui.anim(akey, target, sidebar_open_rate(0)) }
+	open := ui.tween(ui.key_from_string(0, "###side_open"), target, app.favs.cfg.side_anim_ms)
 	extent := sidebar_open_extent(closed_e, opened_e, open)
+	own.sidebar.past_closed = extent - closed_e
 	ui.reorder_frame(&own.strip.drag)   // the button went up (wherever): no drag
 	favicon_frame(app)
 
@@ -362,7 +360,7 @@ tab_sidebar :: proc(app: ^App, pos: Tabs_Position) {
 	}
 	if ui.parent(bar) {
 		sidebar_edge(pos, extent, cc)   // first: the current tab of the classic style is drawn over it
-		sidebar_header(app, pos, open, extent)
+		sidebar_header(app, pos, open, extent, closed_e)
 		sidebar_list(app, pos, open, extent, cc)
 	}
 	if open >= 1 { sidebar_handle(app, pos, bar, extent, dpi) }
@@ -394,13 +392,13 @@ side_toggle_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 
 // The header: the toggle and the new-tab button, placed by side_header_layout (no jump while the sidebar opens or closes).
 @(private = "file")
-sidebar_header :: proc(app: ^App, pos: Tabs_Position, open, extent: f32) {
+sidebar_header :: proc(app: ^App, pos: Tabs_Position, open, extent, closed: f32) {
 	em := ui.font_size()
 	bw := math.round(em * 2.4)
 	bh := ui.dense(em * 2.2)
 	inset := math.round(em * 0.35)
 	collapsed := app.favs.cfg.side_collapsed
-	l := side_header_layout(extent, bw, bh, inset, open)
+	l := side_header_layout(extent, closed, bw, bh, inset, open)
 	toggle := proc(app: ^App, pos: Tabs_Position, collapsed: bool, bw, bh, em: f32, at: [2]f32) {
 		ui.next({fixed_x = at.x, fixed_y = at.y, width = ui.px(bw), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
 		tb: ^ui.Box

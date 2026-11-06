@@ -15,6 +15,7 @@ import "wb:browser"
 import "wb:e2e"
 
 @(private = "file") SIZE :: [2]int{800, 600}
+@(private = "file") FRAME_CAP_LOW :: 30   // (below every rate browser.frame.cap offers)
 @(private = "file") SHORTER :: [2]int{800, 590}          // what lets the script go
 @(private = "file") HOLD_LIMIT_MS :: "85000"             // (a net for a test that died, under wait_js's deadline)
 // The script: `turn` starts it (a task of the loop; requestAnimationFrame: in a frame of the page's own window), `mutates`: the first thing it does is change the document, and from
@@ -306,4 +307,33 @@ a_press_on_the_frame_under_a_script_ends_it_too :: proc(t: ^testing.T) {
 	e2e.wait_frames(s)
 	while_held(s, {{kind = .Event, ev = {kind = .Frame_Press}}})
 	expect_no_autoscroll(t, s)
+}
+
+// browser.frame.cap from its commands: a rate is the ceiling of every window, uncapped takes every wait away and the frames' time still goes forward, auto gives the monitor's rate back.
+@(test)
+the_frame_rate_is_a_choice :: proc(t: ^testing.T) {
+	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, url = "about:blank", software = true})
+	e2e.run_command(s, "window.new")
+	auto_hz := browser.active_window(s.app).pacer.hz
+	testing.expect(t, auto_hz > FRAME_CAP_LOW, "a screen faster than the rate this asks for, or the rate cannot show")
+
+	e2e.run_command(s, "view.frame_cap.60")
+	testing.expect_value(t, e2e.pref_get(s, "browser.frame.cap"), "60")
+	e2e.wait_frames(s)
+	for w in s.app.windows { testing.expect_value(t, w.pacer.hz, min(auto_hz, 60)) }
+
+	e2e.run_command(s, "view.frame_cap.uncapped")
+	e2e.wait_frames(s)
+	for w in s.app.windows { testing.expect(t, w.pacer.cadence.uncapped, "every window") }
+	d := platform.frame_decision(&browser.active_window(s.app).pacer.cadence, {now_ns = 1, presented = true})
+	testing.expect(t, d.wait_ns == 0 && !d.wait_swap_chain && d.present_at_once, "no slot, no wait for the screen")
+	times := e2e.eval(s, `new Promise(done => { const seen = []; const next = at => { seen.push(at); seen.length < 5 ? requestAnimationFrame(next) : done(String(seen.every((x, i) => !i || x >= seen[i - 1]))) }; requestAnimationFrame(next) })`, await = true)
+	testing.expect_value(t, times, "true")
+
+	e2e.run_command(s, "view.frame_cap.auto")
+	e2e.wait_frames(s)
+	for w in s.app.windows {
+		testing.expect(t, !w.pacer.cadence.uncapped, "and back")
+		testing.expect_value(t, w.pacer.hz, auto_hz)
+	}
 }

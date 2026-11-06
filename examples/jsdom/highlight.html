@@ -19,7 +19,7 @@
   eq("a range goes in once", h.size, 2);
   eq("iteration order", [...h].length, 2);
   t("iterates the ranges in order", [...h][0] === r1 && [...h][1] === r2);
-  t("keys and @@iterator are values", Highlight.prototype.keys === Highlight.prototype.values && Highlight.prototype[Symbol.iterator] === Highlight.prototype.values);
+  t("keys is its own function, @@iterator is values", Highlight.prototype.keys.name === "keys" && Highlight.prototype[Symbol.iterator] === Highlight.prototype.values);
   t("entries are pairs", [...h.entries()][0][0] === r1 && [...h.entries()][0][1] === r1);
   let seen = 0;
   h.forEach(function (v, k, set) { if (v === k && set === h && this === r1) seen++; }, r1);
