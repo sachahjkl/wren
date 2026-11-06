@@ -219,6 +219,7 @@ Runtime :: struct {
 	exception:      Value, // the pending exception; UNINITIALIZED when none
 	uncatchable:    bool,  // the pending exception cannot be caught (interrupt / OOM)
 	std_protos_touched: bool, // an index key or a new prototype on some realm's Array/Object.prototype
+	chain_generation: u32,   // moves when an object on a walked chain gets a setter or a read-only property, or another prototype (Transition.walked; 0 is no generation)
 	stack_limit:    uintptr, // lowest host stack address a call may start from (stack.odin; set at the outermost entry)
 	stack_bound:    uintptr, // what stack_limit is unless the machine's stack ran low
 	stack_floor:    uintptr, // lowest host stack address a native's own recursion may reach
@@ -393,6 +394,7 @@ runtime_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) ->
 	if rt.config.max_stack_depth <= 0 {rt.config.max_stack_depth = DEFAULT_MAX_STACK_DEPTH}
 	if rt.config.max_stack_bytes <= 0 {rt.config.max_stack_bytes = DEFAULT_MAX_STACK_BYTES}
 	rt.gc_threshold = GC_STRESS_BYTES > 0 ? GC_STRESS_BYTES : GC_MIN_ALLOCATION
+	rt.chain_generation = 1
 	rt.exception = UNINITIALIZED
 	rt.gray = make([dynamic]^Cell, 0, GC_LIST_INITIAL_CAP, allocator)
 	rt.gc_shapes = make([dynamic]^Shape, 0, GC_LIST_INITIAL_CAP, allocator)

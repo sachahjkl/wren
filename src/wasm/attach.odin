@@ -1,7 +1,7 @@
 package wasm
 
 // Modules made at run time by a module itself (the JavaScript engine's JIT, native/js/jit): compiled like any module
-// (Cranelift, same engine configuration: epoch interruption, limits), instantiated in the store of the instance that
+// (Cranelift, the Wasmtime engine of their maker: without epoch checks for the JavaScript engine, whose JIT emits its own), instantiated in the store of the instance that
 // made them, their imports taken from that instance's exports (module "e", by export name: its memory, its helpers),
 // and their function "f" put in that instance's table, where its own code calls it like a C function pointer. The new
 // code runs in the same sandbox as its maker: it can only reach the maker's memory and the maker's exports.

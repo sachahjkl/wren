@@ -35,6 +35,7 @@ Transition :: struct {
 	flags: Prop_Flags,
 	kind:  Prop_Kind,
 	to:    ^Shape, // weak: swept when unreachable
+	walked: u32,   // the Runtime.chain_generation in which a set found this key nowhere on the prototypes: until it moves, a set of `a` on an ordinary object of this shape need not look (set_property)
 }
 
 Shape :: struct {
@@ -82,6 +83,8 @@ Prop_Slot :: struct #raw_union {
 // Cell.flags of an object: it was once a WeakMap or WeakSet key, a WeakRef target or a FinalizationRegistry target or
 // token (never cleared). An object that was never one can only be told apart from a copy of itself by a reference to it.
 OBJ_HELD_WEAKLY :: u8(1 << 0)
+// On the prototype chain of a transition that says it was walked (Transition.walked): what could stop a set on that chain moves Runtime.chain_generation.
+OBJ_ON_WALKED_CHAIN :: u8(1 << 1)
 
 // Whether `o` is as it was made with prototype `proto`: no own property, extensible, never held weakly. A host may then
 // let it go and make the same object again when a script asks for it (src/engine/jscapi JS_IsUntouched).
@@ -508,6 +511,7 @@ add_property :: proc(rt: ^Runtime, o: ^Object, a: Atom, flags: Prop_Flags, kind:
 	if o.watch_index {
 		if _, isi := atom_index(rt, a); isi {rt.std_protos_touched = true}
 	}
+	if kind != .data || .writable not_in flags {chain_changed(rt, o)}
 	shape_ensure(o.shape)
 	sh := o.shape
 	if sh.is_dict {
@@ -543,7 +547,7 @@ shape_transition :: #force_inline proc(rt: ^Runtime, sh: ^Shape, a: Atom, flags:
 	append(&next.props, Shape_Prop{a, flags, kind})
 	shape_build_hash(rt, next)
 	if !next.is_dict {
-		append(&sh.transitions, Transition{a, flags, kind, next})
+		append(&sh.transitions, Transition{atom = a, flags = flags, kind = kind, to = next})
 		shape_hash_transitions(rt, sh)
 	}
 	return next
@@ -551,9 +555,14 @@ shape_transition :: #force_inline proc(rt: ^Runtime, sh: ^Shape, a: Atom, flags:
 
 // Where a transition of `sh` leads, nil when it has none: so `a` is not a key of `sh` when it has one.
 shape_next :: #force_inline proc "contextless" (sh: ^Shape, a: Atom, flags: Prop_Flags, kind: Prop_Kind) -> ^Shape {
+	t := shape_transition_of(sh, a, flags, kind)
+	return t != nil ? t.to : nil
+}
+
+shape_transition_of :: #force_inline proc "contextless" (sh: ^Shape, a: Atom, flags: Prop_Flags, kind: Prop_Kind) -> ^Transition {
 	if sh.transition_hash == nil {
-		for t in sh.transitions {
-			if t.atom == a && t.flags == flags && t.kind == kind {return t.to}
+		for &t in sh.transitions {
+			if t.atom == a && t.flags == flags && t.kind == kind {return &t}
 		}
 		return nil
 	}
@@ -563,9 +572,34 @@ shape_next :: #force_inline proc "contextless" (sh: ^Shape, a: Atom, flags: Prop
 		v := sh.transition_hash[h]
 		if v == 0 {return nil}
 		t := &sh.transitions[v - 1]
-		if t.atom == a && t.flags == flags && t.kind == kind {return t.to}
+		if t.atom == a && t.flags == flags && t.kind == kind {return t}
 		h = (h + 1) & mask
 	}
+}
+
+// Something that can stop a set was put on `o`, or its prototype changed: what was walked through it no longer holds.
+chain_changed :: #force_inline proc "contextless" (rt: ^Runtime, o: ^Object) {
+	if o.flags & OBJ_ON_WALKED_CHAIN != 0 {rt.chain_generation += 1}
+}
+
+// `o` goes to the shape `to` of a transition of its own: the slot of the key that comes with it, empty.
+object_take_transition :: #force_inline proc(rt: ^Runtime, o: ^Object, to: ^Shape) -> ^Prop_Slot {
+	o.shape = to
+	n := len(to.props)
+	slots_reserve(rt, o, n)
+	s := &o.slots[n - 1]
+	s^ = {}
+	return s
+}
+
+// A set of `a` on `o` made it a new property by the transition from `from`, having found it nowhere on the prototypes (none of them
+// exotic for this key): the next one on that shape need not look. Only a key nothing holds: a property found on the way
+// could go by `delete` and show what was behind it.
+chain_walked :: proc(rt: ^Runtime, from: ^Shape, a: Atom) {
+	t := shape_transition_of(from, a, CWE, .data)
+	if t == nil {return}
+	for p := from.proto; p != nil; p = p.shape.proto {p.flags |= OBJ_ON_WALKED_CHAIN}
+	t.walked = rt.chain_generation
 }
 
 // After a transition was added or the sweep took some: the table made again when the list has outgrown it, else the new one entered.
@@ -624,6 +658,7 @@ remove_property_at :: proc(rt: ^Runtime, o: ^Object, idx: int) {
 set_property_flags :: proc(rt: ^Runtime, o: ^Object, idx: int, flags: Prop_Flags, kind: Prop_Kind) {
 	p := o.shape.props[idx]
 	if p.flags == flags && p.kind == kind {return}
+	chain_changed(rt, o)
 	object_make_dict(rt, o)
 	o.shape.props[idx].flags = flags
 	o.shape.props[idx].kind = kind
@@ -633,6 +668,7 @@ set_property_flags :: proc(rt: ^Runtime, o: ^Object, idx: int, flags: Prop_Flags
 set_object_proto :: proc(rt: ^Runtime, o: ^Object, proto: ^Object) {
 	if o.shape.proto == proto {return}
 	if o.watch_index {rt.std_protos_touched = true}
+	chain_changed(rt, o)
 	if len(o.shape.props) == 0 && !o.shape.is_dict {
 		o.shape = shape_root_for(rt, proto)
 		return

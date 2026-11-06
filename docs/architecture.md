@@ -22,7 +22,7 @@ feature list, see the [README](../README.md).
    (so waiting never counts against connect timeouts); reading pauses when 1 MB is queued for a request; `max_body`
    caps a response; at most 20 redirects (the Fetch Standard's number); cookies: at most 180 per site and 3000 in
    total with LRU eviction; at most 1000 preflight cache entries; guest memory is capped; every host → guest call has
-   a deadline (epoch interruption): a spinning script is stopped, the instance lives on. Every one of these numbers is
+   a deadline (epoch interruption; polls of its own in the JavaScript engine, `src/wasm/poll.odin`): a spinning script is stopped, the instance lives on. Every one of these numbers is
    a preference (`about:config`).
 6. **The guest cannot reach host memory.** Every address + length pair of an import is checked by its generated
    trampoline against the guest's linear memory before our code runs; strings are copied out through caller-provided
@@ -88,7 +88,7 @@ pinned in the script) into `build\wasmtime`; the static `wasmtime.lib` is linked
 12 MB). It needs `ws2_32 advapi32 userenv ntdll shell32 ole32 bcrypt kernel32` and the C runtime, linked in as for every native library of Wren
 (`libcmt libucrt libvcruntime`, the static C runtime that Odin's `core:c/libc` is: `wren.exe` needs no runtime DLL), declared in `src/wasm/wasmtime.odin`. Modules are compiled by Cranelift (or Winch,
 `wasm.wasmtime.compiler`), kept in a memory cache and in an HMAC-authenticated disk cache of the profile
-(`wasm-cache`), and every call from the host has a wall-clock deadline (`wasm.max_call_ms`, epoch interruption; with
+(`wasm-cache`), and every call from the host has a wall-clock deadline (`wasm.max_call_ms`, epoch interruption; the JavaScript engine's image runs on a second Wasmtime engine without epoch checks and polls at the head of its loops, `src/wasm/poll.odin`; with
 `wasm.wasmtime.fuel`, also an instruction budget). `src/tools/wasmbench` compares the compiler configurations and
 measures host calls.
 
