@@ -51,7 +51,7 @@ PREFS := [?]config.Def{
 		description = "Let pages start workers whose script is JavaScript (new Worker(url)), each with its own realm on its own thread."},
 	{name = "javascript.webassembly.enabled", kind = .Bool, default = {b = true},
 		description = "Give the pages' realms the WebAssembly object (WebAssembly.validate, compile, Module, Instance, Memory, Table, Global, Tag...), so they can run their own WebAssembly modules (Blazor, Emscripten, wasm-bindgen). Off: such a page finds no WebAssembly, as in a browser without it."},
-	{name = "javascript.compile.offthread_min_bytes", kind = .Int, default = {i = 64 << 10}, bounded = true, min = 0, max = 1 << 30, bytes = true, unit = "bytes",
+	{name = "javascript.compile.offthread_min_bytes", kind = .Int, default = {i = 4 << 10}, bounded = true, min = 0, max = 1 << 30, bytes = true, unit = "bytes",
 		description = "External classic scripts of a document at least this large (and at least javascript.bytecode_cache.min_source_bytes) are compiled to bytecode on a background thread while the page does other work, when the bytecode cache is on (0 = all of them, the maximum = none)."},
 	{name = "javascript.bytecode_cache.memory_bytes", kind = .Int, default = {i = 32 << 20}, bounded = true, min = 0, max = 1 << 34, bytes = true, unit = "bytes", restart = true,
 		description = "Compiled scripts (bytecode) kept in memory, shared by every page and tab: a script loaded again is not parsed again. 0 = no memory cache."},
