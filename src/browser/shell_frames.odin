@@ -1097,23 +1097,14 @@ shell_snapshots_clear :: proc(app: ^App) {
 }
 
 // The layer targets go, for the memory they hold (memory_trim.odin), but the pictures of the tabs on screen, one a window: the first chrome frame after an idle moment
-// is what they are kept for, and without one a Ctrl+wheel or a long script showed the page's background for a frame. (render.release_targets spares one texture: the others
-// stand outside the pool for the call.)
+// is what they are kept for, and without one a Ctrl+wheel or a long script showed the page's background for a frame.
 shell_release_targets :: proc(app: ^App) {
 	shown := make([dynamic]render.Texture, context.temp_allocator)
 	for &s in app.chrome_frames.snaps {
 		if tab_on_screen(app, s.tab) && shell_snapshot_alive(app, &s) { append(&shown, s.image.image.tex) }
 	}
-	spared := make(type_of(app.r.targets), context.temp_allocator)
-	#reverse for p, i in app.r.targets {
-		if slice.contains(shown[:], p.tex) {
-			append(&spared, p)
-			unordered_remove(&app.r.targets, i)
-		}
-	}
 	gen := render.targets_generation(&app.r)
-	render.release_targets(&app.r)
-	append(&app.r.targets, ..spared[:])
+	render.release_targets(&app.r, shown[:])
 	for &s in app.chrome_frames.snaps {
 		if s.gen == gen && slice.contains(shown[:], s.image.image.tex) { s.gen = render.targets_generation(&app.r) }
 	}
