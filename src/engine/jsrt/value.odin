@@ -13,7 +13,10 @@ package jsrt
 import "base:intrinsics"
 import "core:math"
 
-Tag :: enum u8 {
+// A word, as wide as the payload: a Value then has no padding. With a byte and seven of padding, -o:size copied a Value field by
+// field, the padding byte by byte: 7 loads and 7 stores more for each `put_loc` (round 34 of docs/performance.md). What writes a
+// tag writes the word (the JIT's code too); what reads one may read its first byte.
+Tag :: enum u64 {
 	undefined = 0,
 	null,
 	bool,

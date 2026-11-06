@@ -77,7 +77,7 @@ frame_layout :: #force_inline proc(f: ^Frame, b: ^Function_Bytecode, mem: [^]Val
 	n := len(args)
 	for i in 0 ..< n {mem[i] = args[i]}
 	total, ref_values := frame_slots(b, arg_buf_len)
-	for i in n ..< total - ref_values {mem[i] = UNDEFINED}
+	words_clear(&mem[n], (total - ref_values - n) * size_of(Value))   // (UNDEFINED is all zero)
 	f.args = mem
 	f.arg_buf_len = arg_buf_len
 	f.argc = n

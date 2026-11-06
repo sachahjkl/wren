@@ -185,7 +185,7 @@ jit_call :: proc(f: ^Frame, sp: int, argc: int, kind_in: Jit_Call_Kind, pc: int)
 	}
 	f.stack[kind == .call ? base - 1 : base - 2] = r
 	// (what the frame needs is on its stack: the temporaries of the call go, as at a back edge)
-	if len(rt.temp_roots) > f.root_base {resize(&rt.temp_roots, f.root_base)}
+	temp_reset(rt, f.root_base)
 	return .made
 }
 
@@ -235,7 +235,7 @@ jit_step :: proc(f: ^Frame, pc: int, sp: int) -> bool {
 	f.root_base = root_base
 	if kind == .exception {return true}
 	// (what the frame needs is on its stack: the temporaries of the instruction go, as at a back edge)
-	if len(rt.temp_roots) > root_base {resize(&rt.temp_roots, root_base)}
+	temp_reset(rt, root_base)
 	return false
 }
 
@@ -333,7 +333,7 @@ jit_new :: proc(f: ^Frame, kind: Jit_New_Kind, a: int, argc: int) -> ^Object {
 		}
 		o = as_obj(v)
 	}
-	if len(rt.temp_roots) > f.root_base {resize(&rt.temp_roots, f.root_base)}
+	temp_reset(rt, f.root_base)
 	return o
 }
 
@@ -365,7 +365,7 @@ jit_add :: proc(f: ^Frame, sp: int, slot: int) -> bool {
 	if is_exception(r) {return false}
 	to^ = r
 	// (the result is in the frame: the temporaries of the conversions go)
-	if len(rt.temp_roots) > f.root_base {resize(&rt.temp_roots, f.root_base)}
+	temp_reset(rt, f.root_base)
 	return true
 }
 
@@ -4289,8 +4289,9 @@ j_store_low :: proc(c: ^Jc, base: u32, off: u32, src: u32) {
 @(private = "file")
 j_store_tag :: proc(c: ^Jc, base: u32, off: u32, tag: Tag) {
 	j_lget(c, base)
-	j_i32(c, i32(tag))
-	j_mem(c, W_I32_STORE8, 0, off)
+	j_op(c, W_I64_CONST)
+	w_sleb(&c.out, i64(tag))
+	j_mem(c, W_I64_STORE, 3, off)
 }
 
 // the stack entries back into the frame's operand stack (in a callee being inlined, the caller's at the call); exact:
@@ -5173,7 +5174,8 @@ j_store_entry :: proc(c: ^Jc, d: int, base: u32, off: u32, exiting := false, exa
 	case .V:
 		j_lget(c, base)
 		j_lget(c, j_si(c, d))
-		j_mem(c, W_I32_STORE8, 0, off)
+		j_op(c, W_I64_EXTEND_I32_U)
+		j_mem(c, W_I64_STORE, 3, off)
 		j_lget(c, base)
 		j_lget(c, c.sl0 + u32(d))
 		j_mem(c, W_I64_STORE, 3, off + 8)
@@ -5205,7 +5207,8 @@ j_store_entry :: proc(c: ^Jc, d: int, base: u32, off: u32, exiting := false, exa
 			j_i32(c, i32(Tag.int))
 			j_l_not_i32(c, d)
 			j_op(c, W_SELECT)
-			j_mem(c, W_I32_STORE8, 0, off)
+			j_op(c, W_I64_EXTEND_I32_U)
+			j_mem(c, W_I64_STORE, 3, off)
 			j_lget(c, base)
 			j_lget(c, c.sl0 + u32(d))
 			j_op(c, W_F64_CONVERT_I64_S)
