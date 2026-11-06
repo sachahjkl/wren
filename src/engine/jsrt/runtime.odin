@@ -159,6 +159,14 @@ Host_Snapshot :: struct {
 	off, n: int,
 }
 
+// The sweep of a collection in progress, from the end of Runtime.cells as it was at the marking: a mark bit says what lives.
+Gc_Sweep :: struct {
+	left: int, // the cells not looked at yet are the first `left` (0: no sweep in progress)
+	kept: int, // cells[kept:] are the survivors so far, then the cells made since the marking
+	heap: i64, // the heap after the last step
+	made: i64, // what was allocated since the marking: it says nothing of what the collection left
+}
+
 Runtime :: struct {
 	host_snapshots:     [HOST_SNAPSHOTS]Host_Snapshot,
 	host_snapshot_next: int,
@@ -167,11 +175,12 @@ Runtime :: struct {
 	config:         Host_Config,
 
 	// heap
-	cells:          ^Cell, // every live cell, newest first
+	cells:          [dynamic]^Cell, // every cell, oldest first: the sweep reads them from here and not from one to the next
 	heap_bytes:     i64,   // bytes currently allocated through the runtime
-	cell_count:     int,
 	gc_threshold:   i64,   // run a collection at the next safe point once heap_bytes passes this
 	gc_count:       int,
+	sweep:          Gc_Sweep,
+	gc_sweep_steps: int,
 	gc_last_pause_ns: i64,
 	gc_max_pause_ns:  i64,
 	peak_heap_bytes:  i64,
@@ -397,6 +406,7 @@ runtime_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) ->
 	rt.gc_threshold = GC_STRESS_BYTES > 0 ? GC_STRESS_BYTES : GC_MIN_ALLOCATION
 	rt.chain_generation = 1
 	rt.exception = UNINITIALIZED
+	rt.cells = make([dynamic]^Cell, 0, GC_LIST_INITIAL_CAP, allocator)
 	rt.gray = make([dynamic]^Cell, 0, GC_LIST_INITIAL_CAP, allocator)
 	rt.gc_shapes = make([dynamic]^Shape, 0, GC_LIST_INITIAL_CAP, allocator)
 	rt.temp_roots = make([dynamic]^Cell, 0, GC_LIST_INITIAL_CAP, allocator)
@@ -439,6 +449,7 @@ runtime_free :: proc(rt: ^Runtime) {
 	stack_segments_free(rt)
 	for &seg in rt.vstack {delete(seg.data, allocator)}
 	delete(rt.vstack)
+	delete(rt.cells)
 	delete(rt.gray)
 	delete(rt.gc_shapes)
 	delete(rt.temp_roots)

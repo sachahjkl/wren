@@ -184,7 +184,7 @@ Heap_Stats :: struct {
 }
 
 heap_stats :: proc(rt: ^Runtime) -> Heap_Stats {
-	return Heap_Stats{rt.heap_bytes, rt.peak_heap_bytes, rt.cell_count, rt.gc_count, rt.gc_last_pause_ns, rt.gc_max_pause_ns}
+	return Heap_Stats{rt.heap_bytes, rt.peak_heap_bytes, len(rt.cells), rt.gc_count, rt.gc_last_pause_ns, rt.gc_max_pause_ns}
 }
 
 // Collect now (only call between host turns, when no native code holds unrooted values).

@@ -42,6 +42,7 @@ Prof_Row :: enum u8 {
 	runtime_misc, // value stack segments, gray/temp_roots capacity
 	arenas,     // count = compiles, cell_bytes = largest front-end arena (blocks), extra = retained scratch + regexp arena blocks
 	functions,  // count = functions read, cell_bytes = those that ran (their body read and verified)
+	collections, // count = collections, cell_bytes = cells in the heap, extra_bytes = steps of their sweeps
 }
 
 Prof_Cell :: struct {
@@ -59,6 +60,7 @@ Heap_Profile :: struct {
 PROF_FIELDS :: 4
 
 heap_profile :: proc(rt: ^Runtime) -> (p: Heap_Profile) {
+	gc_sweep_finish(rt) // (a sweep in progress has cells that are gone in the list)
 	p.heap_bytes = rt.heap_bytes
 	add :: proc(p: ^Heap_Profile, row: Prof_Row, cell, extra, slack: int) {
 		r := &p.rows[row]
@@ -67,7 +69,7 @@ heap_profile :: proc(rt: ^Runtime) -> (p: Heap_Profile) {
 		r.extra_bytes += i64(extra)
 		r.slack_bytes += i64(slack)
 	}
-	for c := rt.cells; c != nil; c = c.gc_next {
+	for c in rt.cells {
 		switch c.kind {
 		case .string:
 			s := cast(^JS_String)c
@@ -177,9 +179,10 @@ heap_profile :: proc(rt: ^Runtime) -> (p: Heap_Profile) {
 	}
 	p.rows[.pool_chunks].slack_bytes = i64(rt.pool_left)
 	for seg in rt.vstack {p.rows[.runtime_misc].extra_bytes += i64(len(seg.data) * size_of(Value))}
-	p.rows[.runtime_misc].extra_bytes += i64(cap(rt.gray) + cap(rt.temp_roots)) * size_of(rawptr)
+	p.rows[.runtime_misc].extra_bytes += i64(cap(rt.cells) + cap(rt.gray) + cap(rt.temp_roots)) * size_of(rawptr)
 	p.rows[.arenas] = {i64(rt.compile_count), i64(rt.compile_peak_bytes), i64(arena_blocks(&rt.scratch) + arena_blocks(&rt.regexp_arena)), i64(rt.compile_peak_blocks)}
 	p.rows[.functions] = {i64(rt.functions_read), i64(rt.functions_verified), 0, 0}
+	p.rows[.collections] = {i64(rt.gc_count), i64(len(rt.cells)), i64(rt.gc_sweep_steps), 0}
 	return
 }
 
