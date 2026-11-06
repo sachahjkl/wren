@@ -45,7 +45,7 @@ attach_function :: proc(inst: ^Instance, code: []byte, max_functions := 0) -> (i
 	if !inst.wt.has_table { return 0, "the module has no table" }
 	if max_functions > 0 && inst.wt.attached >= max_functions { return 0, "too many functions attached" }
 	t0 := time.tick_now()
-	cached, cerr := cache_acquire(code)
+	cached, cerr := cache_acquire(code, polled = inst.wt.polled)
 	if cached == nil {
 		defer delete(cerr)
 		attach_count(false, len(code), time.tick_since(t0), 0)
@@ -134,6 +134,7 @@ Attach_Job :: struct {
 	err:        string,
 	done:       bool,
 	compile_ns: i64,
+	polled:     bool,      // for the engine of its instance
 }
 
 @(private)
@@ -171,6 +172,7 @@ attach_start :: proc(inst: ^Instance, code: []byte, threads: int, max_functions 
 	}
 	job := new(Attach_Job)
 	job.inst = inst
+	job.polled = inst.wt.polled
 	job.ticket = attach_pool.next
 	job.code = make([]byte, len(code))
 	copy(job.code, code)
@@ -282,7 +284,7 @@ attach_worker :: proc() {
 		sync.mutex_unlock(&attach_pool.lock)
 
 		t0 := time.tick_now()
-		module, msg := cache_acquire(job.code)
+		module, msg := cache_acquire(job.code, polled = job.polled)
 		ns := i64(time.tick_since(t0))
 
 		sync.mutex_lock(&attach_pool.lock)

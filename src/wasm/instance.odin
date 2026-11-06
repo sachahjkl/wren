@@ -30,6 +30,7 @@ Options :: struct {
 	max_memories:       i64,
 	stop:               ^b32,  // optional atomic flag: once true, running code is interrupted and new calls refused
 	soft_call_ms:       i64,   // with Instance.soft_flag: past this, the flag is raised and the call goes on (-1/0 = none)
+	polled:             bool,  // the image is the embedder's own: if it has polls, it runs without epoch checks (poll.odin)
 }
 
 Instance :: struct {
@@ -58,6 +59,9 @@ Instance :: struct {
 	poll_counter:      ^i32,
 	soft_flag:         ^i32,
 	soft_fired:        int,     // calls interrupted this way
+	poll_word:         ^i32,    // in a module with polls (poll.odin): raised by the ticker; nil: the epoch's checks stop it
+	poll_next:         ^Instance,   // the calls in progress with a word (Wt_Global.polls)
+	poll_prev:         ^Instance,
 	// Argument errors of host functions that do not raise (a dead handle...) give the zero result and an exception
 	// record instead of a trap: a module whose own state a trap would corrupt (the JavaScript engine) checks instead.
 	lenient:           bool,

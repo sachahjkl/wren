@@ -11,6 +11,12 @@ import jsrt "wb:engine/jsrt"
 _jit_import :: jsrt.JIT_MAX_LOOPS
 _Jit_Context :: runtime.Context
 
+// What the image's polls call (src/wasm/poll.odin).
+foreign import wren_host "wren"
+foreign wren_host {
+	@(link_name = "poll") wren_poll :: proc "c" () ---
+}
+
 when wj.WJ_JSRT {
 
 	// The context of the helpers compiled code calls, made once (a call of compiled code to compiled code goes through
@@ -46,6 +52,7 @@ when wj.WJ_JSRT {
 		wj.JS_SetMaxStackSize(rt, uint(uintptr(&__stack_high) - uintptr(&__stack_low)) - jsrt.STACK_SEGMENT_KEPT)
 		jsrt.stack_move_hook = proc "contextless" (sp: uintptr) -> uintptr { return uintptr(wj.wr_Engine_stackMove(u32(sp))) }
 		jsrt.native_stack_low_hook = proc "contextless" () -> bool { return wj.wr_Engine_nativeStackLow() != 0 }
+		jsrt.poll_hook = proc "contextless" () { wren_poll() }
 	}
 
 	// WREN_SPANS: the engine says when it compiles, collects, reads bytecode and translates.
@@ -127,6 +134,16 @@ when wj.WJ_JSRT {
 		context = jit_context
 		return jsrt.jit_truthy(tag, lo, hi) ? 1 : 0
 	}
+
+	@(export, link_name = "wj_jit_poll")
+	wj_jit_poll :: proc "c" () -> i32 {
+		wren_poll()
+		return 0
+	}
+
+	// The word the host raises (src/wasm/poll.odin; `jsengine snapshot` puts its address in the image).
+	@(export, link_name = "wj_poll_address")
+	wj_poll_address :: proc "c" () -> u32 { return u32(uintptr(&jsrt.poll_word)) }
 
 	@(export, link_name = "wj_jit_array")
 	wj_jit_array :: proc "c" (f: ^jsrt.Frame, slot: i32, kind: i32, out: ^jsrt.Jit_Arr) -> i32 {

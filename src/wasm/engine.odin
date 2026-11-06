@@ -8,7 +8,8 @@ package wasm
 //   * Interruption: the engine's epoch is advanced every wasm.wasmtime.epoch_tick_ms by a thread that only ticks while
 //     some call is running (`running` counts outermost calls in progress; it sleeps on that counter otherwise, so an
 //     idle browser has no timer). Each store sets its deadline one tick ahead and a callback decides at every tick:
-//     continue, or trap because the call is past wasm.max_call_ms or its stop flag is set (worker terminated).
+//     continue, or trap because the call is past wasm.max_call_ms or its stop flag is set (worker terminated). The
+//     JavaScript engine's image runs on a second Engine without those checks: it polls by itself (poll.odin).
 //   * Native stack: compiled code may use wasm.wasmtime.max_stack_bytes from the outermost entry; a call is refused when
 //     the thread has less than that plus wasm.wasmtime.host_stack_reserve_bytes left (a real overflow would kill the
 //     process).
@@ -69,6 +70,7 @@ Wt_State :: struct {
 	free_slots:   [dynamic]u32,   // table slots detach_function cleared
 	attach_pending: int,          // attach_start jobs not polled yet
 	attach_done:  ^u32,           // a word of the module's memory bumped when one of its jobs is compiled (attach_notify)
+	polled:       bool,           // on the engine without epoch checks (poll.odin)
 }
 
 @(private)
@@ -78,7 +80,12 @@ Wt_Global :: struct {
 	linker_gen:   u64,                 // bumped when host functions are added: cached InstancePres are rebuilt
 	rs:           Runtime_Settings,    // the configuration the engine was built with
 	fingerprint:  Digest,              // of that configuration: part of every disk cache key
+	polled_engine: wt_engine,          // the same without epoch checks, for images with polls (poll.odin): their code is compiled for it
+	polled_linker: wt_linker,
+	polled_fingerprint: Digest,
 	running:      sync.Futex,          // outermost calls in progress, all stores
+	polls:        ^Instance,           // those with a word (poll.odin)
+	polls_lock:   sync.Mutex,
 	ticker:       ^thread.Thread,
 	ticker_stop:  b32,
 	start_failed: bool,
@@ -104,19 +111,16 @@ effective_features :: proc(rs: Runtime_Settings) -> Features {
 }
 
 @(private)
-config_text :: proc(rs: Runtime_Settings, allocator := context.temp_allocator) -> string {
+config_text :: proc(rs: Runtime_Settings, epoch: bool, allocator := context.temp_allocator) -> string {
 	f := effective_features(rs)
-	return fmt.aprintf("wasmtime %s|compiler %v|opt %v|fuel %v|epoch true|nan %v|stack %d|reservation %d|guard %d|may_move false|features %v",
-		WASMTIME_VERSION, rs.compiler, rs.opt_level, rs.fuel, rs.nan_canonicalization, rs.max_stack_bytes, rs.memory_reservation, rs.memory_guard, f,
+	return fmt.aprintf("wasmtime %s|compiler %v|opt %v|fuel %v|epoch %v|nan %v|stack %d|reservation %d|guard %d|may_move false|features %v",
+		WASMTIME_VERSION, rs.compiler, rs.opt_level, rs.fuel, epoch, rs.nan_canonicalization, rs.max_stack_bytes, rs.memory_reservation, rs.memory_guard, f,
 		allocator = allocator)
 }
 
-// Under runtime_lock.
+// A Wasmtime engine of this configuration. `epoch`: its code checks the epoch at function entries and loop heads.
 @(private)
-wt_start :: proc(rs: Runtime_Settings) -> bool {
-	if wt.engine != nil { return true }
-	if wt.start_failed { return false }
-	context.allocator = base.process_allocator()
+wt_engine_new :: proc(rs: Runtime_Settings, epoch: bool) -> wt_engine {
 	f := effective_features(rs)
 	c := wasm_config_new()
 	wasmtime_config_strategy_set(c, rs.compiler == .Winch ? WT_STRATEGY_WINCH : WT_STRATEGY_CRANELIFT)
@@ -128,7 +132,7 @@ wt_start :: proc(rs: Runtime_Settings) -> bool {
 	wasmtime_config_parallel_compilation_set(c, rs.parallel_compilation)
 	wasmtime_config_profiler_set(c, u8(rs.profiler))   // (wasm.wasmtime.profiler: its choices are what the library has)
 	wasmtime_config_cranelift_nan_canonicalization_set(c, rs.nan_canonicalization)
-	wasmtime_config_epoch_interruption_set(c, true)
+	wasmtime_config_epoch_interruption_set(c, epoch)
 	wasmtime_config_consume_fuel_set(c, rs.fuel)
 	// Wasmtime refuses a wasm stack larger than its async stack size (2 MiB by default), even without async calls
 	wasmtime_config_async_stack_size_set(c, uint(max(2 << 20, rs.max_stack_bytes + rs.host_stack_reserve)))
@@ -157,14 +161,32 @@ wt_start :: proc(rs: Runtime_Settings) -> bool {
 	wasmtime_config_wasm_gc_set(c, f.gc)
 	wasmtime_config_wasm_wide_arithmetic_set(c, f.wide_arithmetic)
 	wasmtime_config_gc_support_set(c, f.reference_types || f.gc || f.exceptions || f.function_references)
-	wt.engine = wasm_engine_new_with_config(c)   // takes the config
+	return wasm_engine_new_with_config(c)   // takes the config
+}
+
+// Under runtime_lock.
+@(private)
+wt_start :: proc(rs: Runtime_Settings) -> bool {
+	if wt.engine != nil { return true }
+	if wt.start_failed { return false }
+	context.allocator = base.process_allocator()
+	if !register_unlocked(POLL_IMPORTS[:]) { wt.start_failed = true; return false }
+	wt.engine = wt_engine_new(rs, true)
 	if wt.engine == nil { wt.start_failed = true; return false }
+	if rs.js_polls {
+		wt.polled_engine = wt_engine_new(rs, false)
+		if wt.polled_engine == nil { wasm_engine_delete(wt.engine); wt.engine = nil; wt.start_failed = true; return false }
+		text := config_text(rs, false)
+		wt.polled_fingerprint, _ = sha256(transmute([]byte)text)
+		wt.polled_linker = wasmtime_linker_new(wt.polled_engine)
+	}
 	wt.rs = clone_settings(rs)
-	text := config_text(rs)
+	text := config_text(rs, true)
 	wt.fingerprint, _ = sha256(transmute([]byte)text)
 	wt.linker = wasmtime_linker_new(wt.engine)
 	for im in registry {
 		if !define_import(wt.linker, im, false) { return false }
+		if wt.polled_linker != nil && !define_import(wt.polled_linker, im, false) { return false }
 	}
 	wt.linker_gen += 1
 	sync.atomic_store(&wt.ticker_stop, false)
@@ -202,6 +224,10 @@ wt_stop :: proc() {
 	host.shutdown_step("wasm.runtime_destroy: engine delete")
 	wasmtime_linker_delete(wt.linker)
 	wasm_engine_delete(wt.engine)
+	if wt.polled_engine != nil {
+		wasmtime_linker_delete(wt.polled_linker)
+		wasm_engine_delete(wt.polled_engine)
+	}
 	runtime_settings_destroy(&wt.rs)
 	wt = {}
 }
@@ -217,6 +243,7 @@ wt_ticker_main :: proc(_: rawptr) {
 		}
 		ticker_sleep(ticker_period_ms())   // preempt.odin
 		wasmtime_engine_increment_epoch(wt.engine)
+		polls_raise()
 	}
 	ticker_sleep_destroy()
 }
@@ -282,12 +309,12 @@ wt_trap_text :: proc(t: wt_trap, allocator := context.allocator) -> string {
 	return strings.to_string(b)
 }
 
+// A tick seen by the module's own thread, at a check of the epoch or at a poll (poll.odin): the call goes on, or the reason it ends.
 @(private)
-wt_on_epoch :: proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) -> wt_error {
-	inst := (^Instance)(data)
+wt_tick :: proc "c" (inst: ^Instance) -> cstring {
 	if inst.opt.stop != nil && sync.atomic_load(inst.opt.stop) {
 		inst.wt.stopped = true
-		return wasmtime_error_new("interrupted: the module is being stopped")
+		return "interrupted: the module is being stopped"
 	}
 	if inst.wt.soft_deadline != {} && inst.soft_flag != nil && time.tick_diff(inst.wt.soft_deadline, time.tick_now()) >= 0 {
 		sync.atomic_store(inst.soft_flag, 1)
@@ -298,7 +325,7 @@ wt_on_epoch :: proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) 
 	inst.wt.deadline_ticks += 1
 	if inst.wt.deadline != {} && inst.wt.deadline_ticks >= HARD_STOP_MIN_TICKS && time.tick_diff(inst.wt.deadline, time.tick_now()) >= 0 {
 		inst.wt.timed_out = true
-		return wasmtime_error_new("interrupted: the call ran longer than wasm.max_call_ms")
+		return "interrupted: the call ran longer than wasm.max_call_ms"
 	}
 	if inst.wt.profiler != nil { profile_sample(inst) }
 	if inst.poll_tick != nil {
@@ -309,6 +336,12 @@ wt_on_epoch :: proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) 
 		context = base.process_context()
 		preempt_tick(inst)   // preempt.odin: the embedder's turn on this thread
 	}
+	return nil
+}
+
+@(private)
+wt_on_epoch :: proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) -> wt_error {
+	if why := wt_tick((^Instance)(data)); why != nil { return wasmtime_error_new(why) }
 	delta^ = 1
 	kind^ = WT_UPDATE_DEADLINE_CONTINUE
 	return nil
@@ -317,7 +350,8 @@ wt_on_epoch :: proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) 
 @(private)
 wt_instantiate :: proc(inst: ^Instance, image: []byte, filter: Import_Filter, digest: ^Digest = nil) -> (ok: bool, err: string) {
 	name := inst.name
-	c, cerr := cache_acquire(image, digest)
+	poll_word, polled := polled_image(image, inst.opt)
+	c, cerr := cache_acquire(image, digest, polled = polled)
 	defer delete(cerr)
 	if c == nil { return false, fmt.aprintf("%s: %s", name, cerr) }
 	defer cache_release(c)
@@ -331,13 +365,14 @@ wt_instantiate :: proc(inst: ^Instance, image: []byte, filter: Import_Filter, di
 	if c.link_error != "" { return false, fmt.aprintf("%s: %s", name, c.link_error) }
 
 	s := &inst.wt
-	s.store = wasmtime_store_new(wt.engine, inst, nil)
+	s.polled = polled
+	s.store = wasmtime_store_new(polled ? wt.polled_engine : wt.engine, inst, nil)
 	s.ctx = wasmtime_store_context(s.store)
 	o := inst.opt
 	wasmtime_store_limiter(s.store, i64(o.max_pages) * 65536, o.max_table_elements, -1, o.max_tables, o.max_memories)
-	wasmtime_store_epoch_deadline_callback(s.store, wt_on_epoch, inst, nil)
+	if !polled { wasmtime_store_epoch_deadline_callback(s.store, wt_on_epoch, inst, nil) }
 
-	// the start function runs here: same deadline and interruption as a call
+	// the start function runs here: same deadline and interruption as a call (an image with polls has none: poll_instrument comes after the snapshot)
 	if !wt_enter(inst) { return false, strings.clone(inst.last_error) }
 	trap: wt_trap
 	e := wasmtime_instance_pre_instantiate(c.pre, s.ctx, &s.instance, &trap)
@@ -354,6 +389,11 @@ wt_instantiate :: proc(inst: ^Instance, image: []byte, filter: Import_Filter, di
 		inst.mem_base = wasmtime_memory_data(s.ctx, &s.memory)
 		inst.mem_size = u64(wasmtime_memory_data_size(s.ctx, &s.memory))
 		inst.memory64 = c.memory64
+		if polled {
+			word := guest_bytes(inst, u64(poll_word), size_of(i32))
+			if word == nil { return false, fmt.aprintf("%s: the word of its polls is outside its memory", name) }
+			inst.poll_word = (^i32)(raw_data(word))
+		}
 	}
 	if c.table_export != "" && wasmtime_instance_export_get(s.ctx, &s.instance, raw_data(c.table_export), len(c.table_export), &ext) && ext.kind == WT_EXTERN_TABLE {
 		s.table = ext.of.table
@@ -489,7 +529,8 @@ wt_enter :: proc(inst: ^Instance) -> bool {
 			inst.fuel_given = inst.budget < 0 ? max(u64) : u64(inst.budget)
 			if e := wasmtime_context_set_fuel(s.ctx, inst.fuel_given); e != nil { wasmtime_error_delete(e) }
 		}
-		wasmtime_context_set_epoch_deadline(s.ctx, 1)
+		if !s.polled { wasmtime_context_set_epoch_deadline(s.ctx, 1) }
+		if inst.poll_word != nil { polls_join(inst) }
 		if sync.atomic_add(&wt.running, 1) == 0 { sync.futex_signal(&wt.running) }
 	}
 	inst.depth += 1
@@ -504,6 +545,7 @@ wt_leave :: proc(inst: ^Instance) {
 	guest_clock_leave()
 	inst.depth -= 1
 	if inst.depth == 0 {
+		if inst.poll_word != nil { polls_leave(inst) }
 		sync.atomic_sub(&wt.running, 1)
 		inst.wt.deadline = {}
 		if wt.rs.fuel {

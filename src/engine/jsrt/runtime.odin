@@ -11,6 +11,7 @@ package jsrt
 // Everything is allocator-injected and OS-free, so the package builds for freestanding_wasm32.
 
 import "base:runtime"
+import "base:intrinsics"
 import "core:mem"
 
 // Back edges and calls between two polls of the interrupt hook.
@@ -507,11 +508,21 @@ take_exception :: proc(ctx: ^Context) -> Value {
 
 // --- the interrupt/limit checks run at safe points ---
 
+// A word the host raises every few milliseconds while a script runs, and what to do when it is: hand it the thread (it may stop the call there and then). In Wasm the
+// image's loops look at it too (src/wasm/poll.odin); here are the places that run a script without passing a loop of the image.
+poll_word: i32
+poll_hook: proc "contextless" ()
+
+poll_host :: #force_inline proc "contextless" () {
+	if intrinsics.volatile_load(&poll_word) != 0 && poll_hook != nil {poll_hook()}
+}
+
 poll_interrupt :: proc(ctx: ^Context) -> bool {
 	rt := ctx.rt
 	rt.interrupt_counter += 1
 	if rt.interrupt_counter < INTERRUPT_POLL_EVERY {return false}
 	rt.interrupt_counter = 0
+	poll_host()
 	if jit_cfg.trace {jit_note_sample(rt)}
 	if rt.config.interrupt != nil && rt.config.interrupt(rt, rt.config.interrupt_user) {
 		throw_uncatchable(ctx, "interrupted")

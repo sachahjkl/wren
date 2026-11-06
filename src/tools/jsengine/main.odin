@@ -1,5 +1,5 @@
 // jsengine: the JavaScript engine module (native/js) outside the browser.
-//   jsengine snapshot <raw.wasm> <out.wasm>     pre-initializes the engine (src/tools/buildjs runs it)
+//   jsengine snapshot <raw.wasm> <out.wasm>     pre-initializes the engine and puts its polls in (src/tools/buildjs runs it)
 //   jsengine run [-image m.wasm] [-raw] [-e code] [-profile out.json] [file.js ...]
 //                                               runs scripts in a fresh realm; console output on stdout, uncaught
 //                                               errors on stderr; exit code 1 when one was uncaught; -profile samples
@@ -14,6 +14,8 @@
 //   jsengine cost --pref wasm.wasmtime.fuel=true file.js   (what each of the file's cases costs in Wasm instructions, against its limit)
 //                                               runs each script interpreted and with the JIT: same output
 //                                               measures realm creation (instantiate + start) and its memory
+//   jsengine hung file.js    (what never ends is stopped, and the host gets its turns under it)
+//   jsengine polls           (the loops of the image have their polls)
 // Only the engine's own imports are provided (console, errors, time zone, clock): anything of the web API traps.
 package jsengine
 
@@ -25,6 +27,7 @@ import "core:path/filepath"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
+import "core:thread"
 import "core:time"
 import "wb:js"
 import "wb:wasm"
@@ -241,9 +244,13 @@ Realm :: struct {
 image_digest: wasm.Digest
 image_digest_of: rawptr
 
+// A sampling profile runs on the engine with epoch checks: a sample falls at a check, and those are at function entries too.
+profiled: bool
+
 realm_new :: proc(image: []byte, raw: bool, call_ms: i64 = -1, kind := js.Realm_Kind.Window) -> (r: Realm, ok: bool) {
 	opt := wasm.options_default()
 	opt.max_call_ms = call_ms
+	opt.polled = !profiled
 	if image_digest_of != raw_data(image) { image_digest, _ = wasm.digest(image); image_digest_of = raw_data(image) }
 	inst, err := wasm.instance_create(image, nil, nil, opt, "jsengine", nil, &image_digest)
 	if inst == nil { fmt.eprintln("jsengine:", err); return }
@@ -326,6 +333,92 @@ cmd_cost :: proc(args: []string) {
 	}
 	if failed > 0 {
 		fmt.eprintfln("cost: %d cases over their limits", failed)
+		os.exit(1)
+	}
+}
+
+// jsengine hung: a call is given this long; the hook runs at this tick; a case that keeps the thread this long has gone past its polls.
+HUNG_CALL_MS :: 150
+HUNG_TICK_MS :: 1
+HUNG_LIMIT :: 60 * time.Second
+
+// jsengine hung file.js: every case of the file (HUNG_CASES, [name, source]) keeps the thread for good. The host's hook must run under it
+// and its deadline end it, in the interpreter and in compiled code; a loop without a poll hangs this tool, and the watchdog says which.
+cmd_hung :: proc(args: []string) {
+	c := parse_common(args)
+	setup()
+	if len(c.rest) != 1 { usage() }
+	image := read_file(c.image)
+	source := read_file(c.rest[0])
+	@(static) current: string
+	@(static) started: time.Tick
+	Watch :: proc() {
+		for {
+			time.sleep(time.Second)
+			if time.tick_since(started) > HUNG_LIMIT {
+				fmt.eprintfln("hung: FAILED: nothing stopped \"%s\": a loop that does not poll", current)
+				os.exit(1)
+			}
+		}
+	}
+	started = time.tick_now()
+	_ = thread.create_and_start(Watch)
+	names: [dynamic]string
+	{
+		r, ok := realm_new(image, c.raw)
+		if !ok { os.exit(1) }
+		quiet = true
+		if js.eval_script(r.inst, source, c.rest[0]) != .Ok { fmt.eprintln("hung: the script failed:", r.inst.last_error); os.exit(1) }
+		strings.builder_reset(&console_out)
+		if js.eval_script(r.inst, transmute([]byte)string("console.log(HUNG_CASES.map(c => c[0]).join('\\n'))"), "hung") != .Ok { fmt.eprintln("hung: no HUNG_CASES"); os.exit(1) }
+		for name in strings.split_lines(strings.trim_space(strings.to_string(console_out)), context.temp_allocator) { append(&names, strings.clone(name)) }
+		wasm.destroy(r.inst)
+	}
+	failed := 0
+	for name, i in names {
+		for compiled in ([]bool{false, true}) {
+			current = name
+			started = time.tick_now()
+			jit.enabled = compiled
+			if compiled { jit.call_threshold, jit.loop_threshold, jit.background_threads = 1, 1, 0 }
+			r, ok := realm_new(image, c.raw, HUNG_CALL_MS)
+			if !ok { os.exit(1) }
+			if js.eval_script(r.inst, source, c.rest[0]) != .Ok { fmt.eprintln("hung: the script failed:", r.inst.last_error); os.exit(1) }
+			ran := 0
+			wasm.set_preempt_hook(proc(user: rawptr) { (^int)(user)^ += 1 }, &ran, tick_ms = HUNG_TICK_MS)
+			res := js.eval_script(r.inst, transmute([]byte)fmt.tprintf("eval(HUNG_CASES[%d][1])", i), "hung")
+			wasm.set_preempt_hook(nil, nil)
+			spent := time.duration_milliseconds(time.tick_since(started))
+			good := res != .Ok && strings.contains(r.inst.last_error, "wasm.max_call_ms") && ran > 0
+			fmt.printfln("%s %4d turns %6.0f ms  %s%s", good ? "ok    " : "FAILED", ran, spent, name, compiled ? " (compiled)" : "")
+			if !good {
+				fmt.eprintfln("hung: %s: %v, %d turns of the hook: %s", name, res, ran, r.inst.last_error)
+				failed += 1
+			}
+			wasm.destroy(r.inst)
+		}
+	}
+	if failed > 0 {
+		fmt.eprintfln("hung: %d cases failed", failed)
+		os.exit(1)
+	}
+}
+
+// jsengine polls: every loop of the image has its poll but those of POLL_EXEMPT, and they are there (a name that changed).
+cmd_polls :: proc(args: []string) {
+	c := parse_common(args)
+	setup()
+	stats, without, err := wasm.poll_audit(read_file(c.image))
+	if err != "" { fmt.eprintln("polls:", err); os.exit(1) }
+	fmt.printfln("%d functions, %d loops, %d with a poll", stats.functions, stats.loops, stats.polled)
+	bad := 0
+	for name, loops in without {
+		exempt := slice.contains(POLL_EXEMPT, name)
+		fmt.printfln("%6d without one in %s", loops, name)
+		if !exempt { bad += 1 }
+	}
+	if bad > 0 || stats.polled == 0 {
+		fmt.eprintln("polls: FAILED: loops without a poll, and no reason for it")
 		os.exit(1)
 	}
 }
@@ -420,6 +513,8 @@ main :: proc() {
 	case "reach": cmd_reach(os.args[2:])
 	case "cold": cmd_cold(os.args[2:])
 	case "cost": cmd_cost(os.args[2:])
+	case "hung": cmd_hung(os.args[2:])
+	case "polls": cmd_polls(os.args[2:])
 	case: usage()
 	}
 }
@@ -435,11 +530,24 @@ cmd_snapshot :: proc(args: []string) {
 	// the JIT grows the engine's table (wasm.attach_function)
 	out, err = wasm.unbound_tables(out)
 	if err != "" { fmt.eprintln("jsengine snapshot:", err); os.exit(1) }
-	if werr := os.write_entire_file(args[1], out); werr != nil { fmt.eprintln("jsengine snapshot: cannot write", args[1]); os.exit(1) }
-	fmt.printfln("snapshot: memory %d KiB, %d segments (%d KiB of data), %d globals, %.1f ms -> %s (%d KiB)",
-		stats.memory_bytes / 1024, stats.segments, stats.data_bytes / 1024, stats.globals,
-		time.duration_milliseconds(time.tick_since(t0)), args[1], len(out) / 1024)
+	// the polls, in place of the epoch's checks (src/wasm/poll.odin)
+	probe, perr := wasm.instance_create(out, nil, nil, wasm.options_default(), "snapshot")
+	if probe == nil { fmt.eprintln("jsengine snapshot:", perr); os.exit(1) }
+	word, res := wasm.call_i32(probe, "wj_poll_address")
+	if res != .Ok { fmt.eprintln("jsengine snapshot: no wj_poll_address"); os.exit(1) }
+	wasm.destroy(probe)
+	polled, polls, ierr := wasm.poll_instrument(out, u32(word), POLL_EXEMPT)
+	if ierr != "" { fmt.eprintln("jsengine snapshot:", ierr); os.exit(1) }
+	if werr := os.write_entire_file(args[1], polled); werr != nil { fmt.eprintln("jsengine snapshot: cannot write", args[1]); os.exit(1) }
+	fmt.printfln("snapshot: memory %d KiB, %d segments (%d KiB of data), %d globals, %d functions, %d loops, %d with a poll, %.1f ms -> %s (%d KiB)",
+		stats.memory_bytes / 1024, stats.segments, stats.data_bytes / 1024, stats.globals, polls.functions, polls.loops, polls.polled,
+		time.duration_milliseconds(time.tick_since(t0)), args[1], len(polled) / 1024)
 }
+
+// The functions of the image whose loops have no poll: they count their back edges themselves and must stay free of calls
+// (src/engine/jsrt/interp_hot.odin), so what they run reaches poll_host. Nothing else belongs here: a loop that polls is the
+// only thing that stops a native (src/wasm/poll.odin).
+POLL_EXEMPT :: []string{"jsrt::[interp_hot.odin]::hot_loop", "jsrt::interp_run"}
 
 Common :: struct {
 	image: string,
@@ -467,7 +575,7 @@ parse_common :: proc(args: []string) -> (c: Common) {
 		case "-iterations": i += 1; c.iterations = max(1, tooling.parse_digits(args[i]))
 		case "-n": i += 1; c.count = max(1, tooling.parse_digits(args[i]))
 		case "-q": quiet = true
-		case "-profile": i += 1; c.profile = args[i]
+		case "-profile": i += 1; c.profile = args[i]; profiled = true
 		case "-jit": jit.enabled = true
 		case "-jit-threshold": i += 1; jit.call_threshold = max(1, tooling.parse_digits(args[i]))
 		case "-jit-step": jit.step_only = true

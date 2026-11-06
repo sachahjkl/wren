@@ -536,6 +536,7 @@ eval_in :: proc(inst: ^wasm.Instance, source: []byte, name: string, flags: i32) 
 // One run of a test in one mode (run-test262's run_test_buf + eval_buf): "" when it passed, else why it failed.
 run_one :: proc(t: ^Test_Info, buf: []byte, strict: bool) -> (failure: string, trapped: bool) {
 	opt := wasm.options_default()
+	opt.polled = true
 	opt.max_call_ms = timeout_ms * 2
 	opt.soft_call_ms = timeout_ms
 	inst, err := wasm.instance_create(image, nil, nil, opt, "test262", nil, &image_digest)
