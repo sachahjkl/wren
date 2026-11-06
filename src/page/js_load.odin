@@ -370,9 +370,13 @@ reveal_run :: proc(p: ^Page, budget_ms: f64 = 0) {
 	for !p.closed && ps.active && ps.pending == nil {
 		end := ps.stop >= 0 ? ps.stop : len(ps.queue)
 		if ps.next >= end { break }
-		if budget_ms > 0 && ps.stop < 0 && ((now_ms(p) - start >= budget_ms && ps.next - from >= REVEAL_TURN_MIN_NODES) || (is_script_element(dom.get(d, ps.queue[ps.next].node)) && paint_turn_due(p))) {
-			ps.paused = true
-			break
+		if budget_ms > 0 && ps.stop < 0 {
+			at_script := is_script_element(dom.get(d, ps.queue[ps.next].node))
+			spent := now_ms(p) - start >= budget_ms
+			if (spent && (ps.next - from >= REVEAL_TURN_MIN_NODES || (at_script && ps.next > from))) || (at_script && paint_turn_due(p)) {
+				ps.paused = true
+				break
+			}
 		}
 		it := ps.queue[ps.next]
 		ps.next += 1
@@ -843,14 +847,17 @@ scripts_pump :: proc(p: ^Page) {
 		for i := 0; i < len(s.asap); i += 1 {
 			sc := s.asap[i]
 			if !script_ready(sc) { continue }
+			if paint_turn_due(p) { break }   // (a sheet came with this turn: npr.org's script of 0.9 s ran right after its last one, and the paint after it)
 			ordered_remove(&s.asap, i)
 			script_execute(p, sc)
 			progressed = true
 			break
 		}
 		if p.closed { return }
+		if s.paint_wait { progressed = true; continue }
 		// scripts inserted by scripts, in order
 		if len(s.in_order) > 0 && script_ready(s.in_order[0]) {
+			if paint_turn_due(p) { progressed = true; continue }
 			sc := s.in_order[0]
 			ordered_remove(&s.in_order, 0)
 			script_execute(p, sc)
@@ -869,7 +876,8 @@ scripts_pump :: proc(p: ^Page) {
 			ps.waiting_since = 0
 			script_execute(p, sc)
 			if p.closed { return }
-			reveal_run(p, slice)
+			// (a long one spent the slice: what comes next, an inline script perhaps, waits for the turn)
+			if slice > 0 && s.pump_ran_ms + now_ms(p) - start >= slice { ps.paused = true } else { reveal_run(p, slice) }
 			progressed = true
 			continue
 		}

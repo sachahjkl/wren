@@ -979,6 +979,21 @@ jsload_ready_scripts_give_the_loop_a_turn :: proc(t: ^testing.T) {
 	close_page(pr, min_checks = 1)
 }
 
+// Nor do inline scripts past a long one: npr.org's page script ran right after 316 ms of Stripe's, its last stylesheet waiting behind them.
+@(test)
+jsload_a_long_script_gives_the_loop_a_turn_before_the_next_inline_one :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	settings.js_load.pump_slice_ms = PUMP_SLICE_MS
+	busy := fmt.tprintf(`setTimeout(() => log("a turn of the loop"), 0); const end = performance.now() + %d; while (performance.now() < end); log("first script")`, PUMP_SCRIPT_MS)
+	pr := load(t, "inline after long", concat(`<!doctype html><head>`, PRELUDE, `<script>`, busy, `</script><script>log("second script")</script></head><body><p>x</p></body>`))
+	wait_note(pr, "second script")
+	check(pr, in_order(pr, "first script", "a turn of the loop") && in_order(pr, "a turn of the loop", "second script"), "the loop had a turn between the two inline scripts")
+	close_page(pr, min_checks = 1)
+}
+
 Scan_Hits :: struct { t: ^testing.T, paths: []string }
 
 // What the preload scanner read of `markup` so far went out: the server was asked for each of `paths`.
