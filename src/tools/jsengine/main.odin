@@ -250,7 +250,7 @@ image_digest_of: rawptr
 // A sampling profile runs on the engine with epoch checks: a sample falls at a check, and those are at function entries too.
 profiled: bool
 
-realm_new :: proc(image: []byte, raw: bool, call_ms: i64 = -1, kind := js.Realm_Kind.Window) -> (r: Realm, ok: bool) {
+realm_new :: proc(image: []byte, raw: bool, call_ms: i64 = -1, kind := js.Realm_Kind.Window, growth := 0) -> (r: Realm, ok: bool) {
 	opt := wasm.options_default()
 	opt.max_call_ms = call_ms
 	opt.polled = !profiled
@@ -264,7 +264,7 @@ realm_new :: proc(image: []byte, raw: bool, call_ms: i64 = -1, kind := js.Realm_
 	}
 	seed: u64
 	wasm.random_bytes(slice.bytes_from_ptr(&seed, 8))
-	if !js.realm_start(inst, {kind = kind, seed = seed, max_heap_bytes = 1 << 30, gc_threshold = 2 << 20}) {
+	if !js.realm_start(inst, {kind = kind, seed = seed, max_heap_bytes = 1 << 30, gc_threshold = 2 << 20, gc_growth_percent = growth, gc_min_growth = GC_TEST_LEAST_GROWTH}) {
 		fmt.eprintln("jsengine: wj_realm_start failed:", inst.last_error)
 		wasm.destroy(inst)
 		return
@@ -549,8 +549,11 @@ print_jit_stats :: proc(inst: ^wasm.Instance) {
 
 // jsengine gc: objects kept past the first growths of the list of cells, then garbage of a known volume.
 GC_TEST_KEPT :: 20_000
-GC_TEST_MIN_HEADROOM :: 4 << 20  // jsrt GC_MIN_ALLOCATION
-GC_TEST_GROWTH :: 1.5            // jsrt GC_HEAP_GROWTH_PERCENT: what the heap grows by, of what a collection left
+GC_TEST_TIGHT_PERCENT :: 120      // two growths of a realm, and the least it grows by
+GC_TEST_LOOSE_PERCENT :: 600
+GC_TEST_LEAST_GROWTH :: 64 << 10
+GC_TEST_MIN_HEADROOM :: 4 << 20  // jsrt GC_DEFAULT_MIN_GROWTH
+GC_TEST_GROWTH :: 1.5            // jsrt GC_DEFAULT_GROWTH_PERCENT: what the heap grows by, of what a collection left
 GC_TEST_GARBAGE :: 1_000_000
 GC_TEST_SAMPLE :: 10_000
 GC_TEST_CELLS_SLACK :: 64     // what else a script leaves in the heap: its function, its strings
@@ -602,6 +605,20 @@ cmd_gc :: proc(args: []string) {
 	}
 	if cells2 - cells1 > GC_TEST_CELLS_SLACK || cells1 - cells2 > GC_TEST_CELLS_SLACK {
 		fmt.eprintfln("gc: %d cells after the garbage, %d before", cells2, cells1)
+		failed = true
+	}
+	// the growth a realm is started with is what paces its collections (javascript.gc_heap_growth_percent)
+	paced :: proc(c: Common, growth: int) -> int {
+		r, ok := realm_new(read_file(c.image), c.raw, growth = growth)
+		if !ok { os.exit(1) }
+		source := fmt.tprintf("var kept = []; for (var i = 0; i < %d; i++) kept.push({i: i}); for (var i = 0; i < %d; i++) { var o = {i: i}; }", GC_TEST_KEPT, GC_TEST_GARBAGE)
+		if js.eval_script(r.inst, transmute([]byte)source, "gc") != .Ok { fmt.eprintln("gc: the script failed:", r.inst.last_error); os.exit(1) }
+		n, _, _ := js.collection_counts(r.inst)
+		return int(n)
+	}
+	tight, loose := paced(c, GC_TEST_TIGHT_PERCENT), paced(c, GC_TEST_LOOSE_PERCENT)
+	if tight <= loose {
+		fmt.eprintfln("gc: %d collections at %d %%, %d at %d %%", tight, GC_TEST_TIGHT_PERCENT, loose, GC_TEST_LOOSE_PERCENT)
 		failed = true
 	}
 	run(r, fmt.tprintf("check(%d)", GC_TEST_KEPT))

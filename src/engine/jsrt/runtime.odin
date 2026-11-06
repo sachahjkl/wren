@@ -178,6 +178,8 @@ Runtime :: struct {
 	cells:          [dynamic]^Cell, // every cell, oldest first: the sweep reads them from here and not from one to the next
 	heap_bytes:     i64,   // bytes currently allocated through the runtime
 	gc_threshold:   i64,   // run a collection at the next safe point once heap_bytes passes this
+	gc_growth_percent: i64,   // ... set after a collection to this much of what it left (javascript.gc_heap_growth_percent)
+	gc_min_growth:  i64,   // ... and this many bytes more at least (javascript.gc_min_growth_bytes)
 	gc_count:       int,
 	sweep:          Gc_Sweep,
 	gc_sweep_steps: int,
@@ -403,7 +405,8 @@ runtime_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) ->
 	rt.config = config
 	if rt.config.max_stack_depth <= 0 {rt.config.max_stack_depth = DEFAULT_MAX_STACK_DEPTH}
 	if rt.config.max_stack_bytes <= 0 {rt.config.max_stack_bytes = DEFAULT_MAX_STACK_BYTES}
-	rt.gc_threshold = GC_STRESS_BYTES > 0 ? GC_STRESS_BYTES : GC_MIN_ALLOCATION
+	rt.gc_threshold = GC_STRESS_BYTES > 0 ? GC_STRESS_BYTES : GC_DEFAULT_MIN_GROWTH
+	rt.gc_growth_percent, rt.gc_min_growth = GC_DEFAULT_GROWTH_PERCENT, GC_DEFAULT_MIN_GROWTH
 	rt.chain_generation = 1
 	rt.exception = UNINITIALIZED
 	rt.cells = make([dynamic]^Cell, 0, GC_LIST_INITIAL_CAP, allocator)

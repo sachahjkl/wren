@@ -3161,7 +3161,7 @@ Round 43 left collections as the largest item of the window thread beyond execut
 
 **1. The cells in an array** (`Runtime.cells`, `Cell.gc_next` gone). Walking the list alone took 40 ns a cell, 53 ms for 1.35 million: each cell's address was in the one before, one cache miss after another. From an array the addresses are known ahead, the misses overlap: 30 to 56 -> 21 to 42 ns a cell. A cell is 4 bytes smaller (`Object` 56 -> 52, a string 40 -> 36), which an array entry costs back; a realm starts 128 KB larger (6 720 -> 6 848 KiB of linear memory: the list has its capacity at once). The code the JIT writes pushes on the list and leaves for its helper when it is full (`j_cell_room`). Order kept: newest first, finalizers read what is older. +9 instructions a cell in `jsengine cost`. On a heap allocated in order and never reused (a temporary bench: 800 000 cells) list and array cost the same: the gain is that of a heap that has been swept.
 
-**2. Heap growth at 250 %** (`GC_HEAP_GROWTH_PERCENT`, was 200). Dead cells are paid for once whatever the policy, the live ones at each collection: fewer collections cut the marking and the sweep of what lives. 7 runs, median (range), items 1 and 2 only, ms and MB:
+**2. Heap growth at 250 %** (`javascript.gc_heap_growth_percent`, was 200). Dead cells are paid for once whatever the policy, the live ones at each collection: fewer collections cut the marking and the sweep of what lives. 7 runs, median (range), items 1 and 2 only, ms and MB:
 
 | | collections to the load, 200 % | 250 % | 300 % | `Gc` ms 200 % | 250 % | 300 % | private MB 200 % | 250 % | 300 % |
 |---|---|---|---|---|---|---|---|---|---|

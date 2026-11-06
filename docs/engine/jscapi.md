@@ -100,8 +100,8 @@ The API itself is tested natively by `judge capi` (61 checks); the glue runs on 
 9. **Performance**: each API call enters/leaves the host bracket and copies the Odin context (the engine's own speed
     is in [runtime.md](runtime.md)).
 10. **Memory**: a tracing heap holds garbage until the next collection (1.6× QuickJS on allocation‑heavy
-    scripts); `JS_SetGCThresholdFloor` raises the threshold now and is not re‑applied after a collection
-    (the engine keeps `max(2 × live, live + 4 MiB)`).
+    scripts); `JS_SetGCGrowth` says when the next collection comes (`javascript.gc_heap_growth_percent`,
+    `javascript.gc_min_growth_bytes`).
 11. **The ownership model** is the most likely source of defects (a missing `JS_FreeValue` leaks a root, an extra one
     lets a value die early): a debug counter of `ext` per cell is easy to add in `ext_ref`/`ext_unref`.
 

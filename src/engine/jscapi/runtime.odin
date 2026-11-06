@@ -34,7 +34,6 @@ State :: struct {
 	mod_loader:         Module_Loader2,
 	mod_check:          Module_Check_Attrs,
 	mod_opaque:         rawptr,
-	gc_floor:           i64,
 	classes:            [dynamic]^Class_Entry,
 }
 
@@ -138,12 +137,10 @@ JS_GetGCThreshold :: proc "c" (r: ^Runtime) -> uint {
 	return uint(jrt(r).gc_threshold)
 }
 
-// The threshold after a collection is never below this: jsrt keeps min 4 MiB of headroom already; a larger
-// floor is honored through the prologue (it raises the threshold before the next allocation burst).
-JS_SetGCThresholdFloor :: proc "c" (r: ^Runtime, floor: uint) {
+// After a collection the next one waits for the heap to reach `percent` of what it left, `min_bytes` more at least.
+JS_SetGCGrowth :: proc "c" (r: ^Runtime, percent: uint, min_bytes: uint) {
 	rt := jrt(r)
-	state_of(rt).gc_floor = i64(floor)
-	if js.GC_STRESS_BYTES == 0 && rt.gc_threshold < i64(floor) {rt.gc_threshold = i64(floor)}
+	rt.gc_growth_percent, rt.gc_min_growth = i64(percent), i64(min_bytes)
 }
 
 JS_SetGCPrologue :: proc "c" (r: ^Runtime, cb: GC_Prologue, opaque: rawptr) {

@@ -35,8 +35,8 @@ export_JS_SetMemoryLimit :: proc "c" (r: ^Runtime, limit: uint) {JS_SetMemoryLim
 export_JS_SetGCThreshold :: proc "c" (r: ^Runtime, gc_threshold: uint) {JS_SetGCThreshold(r, gc_threshold)}
 @(export, link_name = "JS_GetGCThreshold")
 export_JS_GetGCThreshold :: proc "c" (r: ^Runtime) -> uint {return JS_GetGCThreshold(r)}
-@(export, link_name = "JS_SetGCThresholdFloor")
-export_JS_SetGCThresholdFloor :: proc "c" (r: ^Runtime, floor: uint) {JS_SetGCThresholdFloor(r, floor)}
+@(export, link_name = "JS_SetGCGrowth")
+export_JS_SetGCGrowth :: proc "c" (r: ^Runtime, percent: uint, min_bytes: uint) {JS_SetGCGrowth(r, percent, min_bytes)}
 @(export, link_name = "JS_SetGCPrologue")
 export_JS_SetGCPrologue :: proc "c" (r: ^Runtime, cb: GC_Prologue, opaque: rawptr) {JS_SetGCPrologue(r, cb, opaque)}
 @(export, link_name = "JS_SetGCEpilogue")

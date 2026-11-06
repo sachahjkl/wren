@@ -305,7 +305,7 @@ remove_touch_handlers :: proc "contextless" (ctx: ^wj.Context) {
 
 // Run time, once per realm: kind 1 = Window, 2 = Worker. `seed` reseeds Math.random. flags: START_*. 0 ok.
 @(export, link_name = "wj_realm_start")
-wj_realm_start :: proc "c" (kind: i32, seed: i64, memory_limit: f64, gc_threshold: f64, flags: i32) -> i32 {
+wj_realm_start :: proc "c" (kind: i32, seed: i64, memory_limit: f64, gc_threshold: f64, flags: i32, gc_growth_percent: i32, gc_min_growth: f64) -> i32 {
 	wj.wj_start_frames = flags & START_FRAMES != 0   // a page's realm: the frames.* imports exist (the engine run alone has none)
 	wj.wj_start_expose_unimplemented = flags & START_EXPOSE_UNIMPLEMENTED != 0
 	wj.wj_start_unimplemented_throw = flags & START_UNIMPLEMENTED_THROW != 0
@@ -317,10 +317,8 @@ wj_realm_start :: proc "c" (kind: i32, seed: i64, memory_limit: f64, gc_threshol
 	wj.wj_stack_enter(ctx)
 	wj.JS_SetRandomState(ctx, u64(seed))
 	if memory_limit > 0 { wj.JS_SetMemoryLimit(rt, uint(memory_limit)) }
-	if gc_threshold > 0 {
-		wj.JS_SetGCThreshold(rt, uint(gc_threshold))
-		wj.JS_SetGCThresholdFloor(rt, uint(gc_threshold))
-	}
+	if gc_threshold > 0 { wj.JS_SetGCThreshold(rt, uint(gc_threshold)) }
+	if gc_growth_percent > 0 { wj.JS_SetGCGrowth(rt, uint(gc_growth_percent), uint(gc_min_growth)) }
 	wj.wj_the_realm.kind = kind
 	scope := kind
 	if kind == wj.EXPOSE_WORKER && flags & START_SHARED_WORKER != 0 { scope = wj.EXPOSE_SHARED_WORKER }

@@ -181,7 +181,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 	wasm.random_bytes(([^]u8)(&seed)[:8])
 	kind := p.worker != nil ? js.Realm_Kind.Worker : js.Realm_Kind.Window
 	start := js.Start_Options{
-		kind = kind, seed = seed, max_heap_bytes = p.settings.js.max_heap_bytes, gc_threshold = p.settings.js.gc_threshold_bytes,
+		kind = kind, seed = seed, max_heap_bytes = p.settings.js.max_heap_bytes, gc_threshold = p.settings.js.gc_threshold_bytes, gc_growth_percent = p.settings.js.gc_heap_growth_percent, gc_min_growth = p.settings.js.gc_min_growth_bytes,
 		expose_unimplemented = p.settings.js.expose_unimplemented, unimplemented_throw = p.settings.js.unimplemented_throw,
 		no_touch_handlers = kind == .Window && !p.settings.js.touch_handlers,
 		frames = true,
