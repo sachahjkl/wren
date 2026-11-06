@@ -120,7 +120,7 @@ what_a_client_reads_over_the_channel :: proc(t: ^testing.T) {
 	api.navigate(s, e2e.url(server, FIXTURE))
 
 	c: api.Conn
-	testing.expect(t, api.connect(&c, p.wren.name, api.START_WAIT_MS))
+	testing.expect(t, api.connect(&c, p.wren.name, e2e.PROCESS_WAIT_MS))
 	defer api.disconnect(&c)
 	testing.expect(t, strings.has_prefix(exchange(t, &c, `{"id":"a","method":"Remote.ping"}`), `{"id":"a","result":{`), "the answer keeps a string id")
 	testing.expect(t, strings.contains(exchange(t, &c, `{"id":2,"method":"No.such"}`), `"code":-32601`), "an unknown method is -32601")
@@ -169,7 +169,7 @@ what_a_client_reads_over_the_channel :: proc(t: ^testing.T) {
 a_client_that_vanishes_takes_its_wait_along :: proc(t: ^testing.T) {
 	p := e2e.launch(t)
 	c: api.Conn
-	testing.expect(t, api.connect(&c, p.wren.name, api.START_WAIT_MS))
+	testing.expect(t, api.connect(&c, p.wren.name, e2e.PROCESS_WAIT_MS))
 	testing.expect_value(t, api.write_line(&c, WAIT_NEVER_ANSWERED, api.CALL_WAIT_MS), api.Error.None)
 	api.wait_until(p.s, proc(s: ^api.Session) -> bool { st, _ := api.stats(s); return st.pending_ops >= 1 }, "the wait to be registered")
 	api.disconnect(&c)
@@ -182,7 +182,7 @@ a_client_that_vanishes_takes_its_wait_along :: proc(t: ^testing.T) {
 an_oversized_message_ends_its_connection_only :: proc(t: ^testing.T) {
 	p := e2e.launch(t)
 	c: api.Conn
-	testing.expect(t, api.connect(&c, p.wren.name, api.START_WAIT_MS))
+	testing.expect(t, api.connect(&c, p.wren.name, e2e.PROCESS_WAIT_MS))
 	defer api.disconnect(&c)
 	giant := strings.repeat("A", GIANT_REQUEST_BYTES, context.temp_allocator)
 	wrote := api.write_line(&c, giant, api.CALL_WAIT_MS)
@@ -204,12 +204,12 @@ the_pipe_survives_clients_that_go_at_once_and_is_this_users_only :: proc(t: ^tes
 	for i in 0 ..< CONNECT_AND_GO {
 		c: api.Conn
 		// (the first waits for the instance the server makes after the one the session holds: under load its accept thread may not have run within all the others)
-		if api.connect(&c, p.wren.name, i == 0 ? api.START_WAIT_MS : 0) { connected += 1; api.disconnect(&c) }
+		if api.connect(&c, p.wren.name, i == 0 ? e2e.PROCESS_WAIT_MS : 0) { connected += 1; api.disconnect(&c) }
 		free_all(context.temp_allocator)
 	}
 	testing.expect(t, connected > 0, "they connected")
 	// (a new connection on the session's name: the one it holds was there before them)
-	fresh := api.Session{name = p.wren.name, connect_wait_ms = api.START_WAIT_MS}
+	fresh := api.Session{name = p.wren.name, connect_wait_ms = e2e.PROCESS_WAIT_MS}
 	who, e := api.ping(&fresh)
 	testing.expectf(t, e == .None && who.pid == p.wren.pid, "the server answers a new client after them: %v", e)
 	api.close_session(&fresh)
@@ -306,7 +306,7 @@ quit_with_a_client_connected :: proc(t: ^testing.T) {
 	p := e2e.launch(t, {profile = profile})
 	name := strings.clone(p.wren.name, context.temp_allocator)
 	c: api.Conn
-	testing.expect(t, api.connect(&c, name, api.START_WAIT_MS))
+	testing.expect(t, api.connect(&c, name, e2e.PROCESS_WAIT_MS))
 	defer api.disconnect(&c)
 	EXIT_CODE :: 7   // (one nothing else ends with)
 	testing.expect_value(t, e2e.quit(p, EXIT_CODE), EXIT_CODE)

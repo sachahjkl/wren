@@ -61,7 +61,7 @@ rounds_with_the_tabs :: proc(t: ^testing.T, position: string) {
 		before, _ := api.stats(p.s)
 		// (the answer needs frames the menu's loop makes, or its end: another connection, that this one does not wait for)
 		clicker: api.Conn
-		testing.expect(t, api.connect(&clicker, p.wren.name, api.START_WAIT_MS))
+		testing.expect(t, api.connect(&clicker, p.wren.name, e2e.PROCESS_WAIT_MS))
 		defer api.disconnect(&clicker)
 		testing.expect_value(t, api.write_line(&clicker, fmt.tprintf(`{{"id":1,"method":"Wren.click","params":{{"button":"left","count":1,"x":%v,"y":%v,"space":"window"}}}}`, ICON.x, ICON.y), CLICK_ANSWER_MS), api.Error.None)
 		e2e.wait_for(t, who.pid, proc(pid: int) -> bool { return menu_of(pid) != nil }, fmt.tprintf("the system menu, %s, round %d", position, round))

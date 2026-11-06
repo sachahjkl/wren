@@ -117,6 +117,10 @@ task_lint_address :: proc(t: ^Task_Run) -> bool {
 	return lint_address(log = t.log)
 }
 
+task_lint_sleeps :: proc(t: ^Task_Run) -> bool {
+	return lint_test_sleeps(log = t.log)
+}
+
 task_lint_test_inits :: proc(t: ^Task_Run) -> bool {
 	return lint_test_inits(log = t.log)
 }

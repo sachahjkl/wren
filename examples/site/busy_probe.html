@@ -35,8 +35,6 @@
 <div><span id="spin" class="moving"></span><span id="pulse" class="moving"></span><span id="hoverbox" class="moving"></span></div>
 <div id="tall"></div>
 <script>
-  // How long hold() keeps the thread at most (a test lets go of it first, by making the window shorter or taller).
-  const HOLD_LIMIT_MS = 85000;   // (a net for a test that died, under wait_js's deadline: on a software rasterizer and two processors the steps take 30 s)
   // The pause between two tasks of the busy loop: a frame of the page between them.
   const GAP_MS = 16;
   const ms = document.getElementById("ms"), out = document.getElementById("ms_out"), status = document.getElementById("status");
@@ -66,8 +64,8 @@
   window.holdNative = () => {
     window.released = false;
     setTimeout(() => {
-      const h = innerHeight, begun = performance.now(), like = { length: NATIVE_LENGTH };
-      while (innerHeight == h && performance.now() - begun < HOLD_LIMIT_MS) Array.prototype.lastIndexOf.call(like, 1);
+      const h = innerHeight, like = { length: NATIVE_LENGTH };
+      while (innerHeight == h) Array.prototype.lastIndexOf.call(like, 1);
       window.released = innerHeight != h;
     }, 0);
     return "held";
@@ -76,7 +74,7 @@
     window.released = false;
     setTimeout(() => {
       const h = innerHeight, begun = performance.now();
-      while (innerHeight == h && performance.now() - begun < HOLD_LIMIT_MS) {}
+      while (innerHeight == h) {}
       window.held = { selection: String(getSelection()), changes: window.changes, downs: window.downs, scrollY: scrollY, boxTop: scroller.scrollTop, boxScrolls: window.boxScrolls, ms: performance.now() - begun };
       if (mutates) status.textContent = "held";
       window.released = innerHeight != h;

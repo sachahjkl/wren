@@ -192,8 +192,8 @@ a_start_while_the_first_one_closes_loses_nothing :: proc(t: ^testing.T) {
 	api.close_session(a.s)
 	// (with a channel of its own, to close it if it keeps a process: it takes the profile over, or hands its address over and ends)
 	b := e2e.launch_begin(t, {hidden = true, profile = profile, single_instance = true, prefs = {RESTORE_PREF}, no_address = true, extra = {"about:wren"}, start = {env = SINGLE_ON}})
-	api.connect_launched(b.s, &b.wren, api.START_WAIT_MS)
-	testing.expect(t, api.process_wait(&a.wren.process, api.QUIT_WAIT_MS), "the first one has closed")
+	api.connect_launched(b.s, &b.wren, e2e.PROCESS_WAIT_MS)
+	testing.expect(t, api.process_wait(&a.wren.process, e2e.PROCESS_WAIT_MS), "the first one has closed")
 	a.ended = true
 	testing.expect_value(t, e2e.quit(b), 0)
 	session := e2e.read_text(fmt.tprintf("%s/session.txt", profile))

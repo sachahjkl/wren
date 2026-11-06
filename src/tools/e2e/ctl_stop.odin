@@ -71,7 +71,7 @@ stop_ends_the_wren_it_started_and_its_throwaway_profile :: proc(t: ^testing.T) {
 	name := strings.trim_space(started.out)
 	testing.expectf(t, started.code == 0 && name != "", "start gives a name: %d, %q, %q", started.code, started.out, started.err)
 	profile := fmt.tprintf(`%s\profile-%s`, api.state_dir(), name)
-	s := api.Session{name = name, connect_wait_ms = api.START_WAIT_MS}
+	s := api.Session{name = name, connect_wait_ms = e2e.PROCESS_WAIT_MS}
 	ping, e := api.ping(&s)
 	testing.expect_value(t, e, api.Error.None)
 	api.close_session(&s)

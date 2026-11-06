@@ -26,9 +26,6 @@ BASE :: "http://127.0.0.1:8765"   // on the server's block of ports through test
 PAGE :: BASE + "/jsweb/page"
 DIR :: "examples/jsweb"
 STORAGE_QUOTA_BYTES :: 4000
-LONG_SECTION_SECONDS :: 120.0
-WEBGL_SECTION_SECONDS :: 300.0
-SKIP_TEST_SECONDS :: 30.0
 SLOW_SCRIPT_MS :: 120_000   // a task that waits for the software rasterizer, 2000 sounds in one task: slow on a loaded machine, and the hard stop is four times the limit on scripts
 IDB_QUOTA_TEST_BYTES :: 1 << 20
 CUT_SECTIONS := [?]string{"abort", "blob", "canvas", "canvas_gc", "compat", "compile_large", "core", "fetch", "fetch_objects", "gc", "geometry", "history", "htmlmedia", "idb", "idb_buckets", "idb_clear", "idb_keys", "idb_pages_a", "idb_pages_b", "idb_persist", "idb_quota", "idb_worker", "media", "message", "navigator", "perf_crypto", "perf_timeline", "sockets", "storage", "storage_listener", "streams", "url", "webassembly", "webaudio", "webaudio_autoplay", "webcrypto", "xhr"}
@@ -164,10 +161,10 @@ adapter_probe :: proc() -> (testhost.Skip_Verdict, string) {
 @(test) jsweb_blob :: proc(t: ^testing.T) { section(t, "blob", tests = 4) }
 @(test) jsweb_streams :: proc(t: ^testing.T) { section(t, "streams", tests = 11) }
 @(test) jsweb_fetch_objects :: proc(t: ^testing.T) { section(t, "fetch_objects", tests = 4) }
-@(test) jsweb_fetch_api :: proc(t: ^testing.T) { section(t, "fetch", tests = 8, seconds = LONG_SECTION_SECONDS) }
+@(test) jsweb_fetch_api :: proc(t: ^testing.T) { section(t, "fetch", tests = 8) }
 @(test) jsweb_xhr :: proc(t: ^testing.T) { section(t, "xhr", tests = 8) }
 @(test) jsweb_perf_crypto :: proc(t: ^testing.T) { section(t, "perf_crypto", tests = 2) }
-@(test) jsweb_webcrypto :: proc(t: ^testing.T) { section(t, "webcrypto", tests = 15, seconds = LONG_SECTION_SECONDS) }
+@(test) jsweb_webcrypto :: proc(t: ^testing.T) { section(t, "webcrypto", tests = 15) }
 @(test) jsweb_message :: proc(t: ^testing.T) { section(t, "message", tests = 5) }
 @(test) jsweb_sockets :: proc(t: ^testing.T) { section(t, "sockets", tests = 3) }
 @(test) jsweb_canvas :: proc(t: ^testing.T) { section(t, "canvas", tests = 16) }
@@ -176,8 +173,8 @@ adapter_probe :: proc() -> (testhost.Skip_Verdict, string) {
 @(test) jsweb_idb_worker :: proc(t: ^testing.T) { section(t, "idb_worker", tests = 4) }
 @(test) jsweb_idb_buckets :: proc(t: ^testing.T) { section(t, "idb_buckets", tests = 3) }
 @(test) jsweb_idb_keys :: proc(t: ^testing.T) { section(t, "idb_keys", tests = 4) }
-@(test) jsweb_htmlmedia :: proc(t: ^testing.T) { section(t, "htmlmedia", tests = 12, seconds = LONG_SECTION_SECONDS) }
-@(test) jsweb_mse :: proc(t: ^testing.T) { section(t, "mse", tests = 13, seconds = LONG_SECTION_SECONDS) }
+@(test) jsweb_htmlmedia :: proc(t: ^testing.T) { section(t, "htmlmedia", tests = 12) }
+@(test) jsweb_mse :: proc(t: ^testing.T) { section(t, "mse", tests = 13) }
 
 // The JIT on DOM objects (examples/jsweb/jit_dom.js): every function compiled at its first call, on the page's thread.
 @(test)
@@ -202,7 +199,7 @@ jsweb_mse_builtin_decoders :: proc(t: ^testing.T) {
 		media.set_software_preferred(false)
 		media.set_software_threads(0)
 	}
-	script(t, "mse", tests = 13, seconds = LONG_SECTION_SECONDS)
+	script(t, "mse", tests = 13)
 }
 
 @(test)
@@ -220,13 +217,13 @@ jsweb_idb :: proc(t: ^testing.T) {
 @(test)
 jsweb_idb_bench :: proc(t: ^testing.T) {
 	if base.perf_skip("web tests, jsweb_idb_bench: IndexedDB micro-benchmarks") { return }
-	section(t, "idb_bench", tests = 3, seconds = LONG_SECTION_SECONDS)
+	section(t, "idb_bench", tests = 3)
 }
 
 @(test)
 jsweb_bench :: proc(t: ^testing.T) {
 	if base.perf_skip("web tests, jsweb_bench: the cost of a web API call") { return }
-	section(t, "bench", tests = 1, seconds = LONG_SECTION_SECONDS)
+	section(t, "bench", tests = 1)
 }
 
 @(test)
@@ -269,7 +266,7 @@ jsweb_webgl_api :: proc(t: ^testing.T) {
 	webgl_settings()
 	actions := make(map[string]Action, context.temp_allocator)
 	actions["frame"] = proc(pr: ^Probe) -> string { page.images_sync(pr.p); page.canvas_frame(pr.p); return "" }
-	script(t, "webgl", tests = 23, actions = actions, seconds = WEBGL_SECTION_SECONDS)
+	script(t, "webgl", tests = 23, actions = actions)
 }
 
 @(test)
@@ -522,7 +519,7 @@ jsweb_a_skip_that_is_not_true_of_the_machine_fails_the_section :: proc(t: ^testi
 	defer section_end()
 	settings.webgl.enabled = false
 	pr := open(t, "webgl_skip")
-	wait_script(pr, seconds = SKIP_TEST_SECONDS)
+	wait_script(pr)
 	page.page_close(pr.p)
 	pr.p = nil
 	testing.expect(t, pr.section.skipped, "the script said it could not run")

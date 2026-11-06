@@ -31,7 +31,6 @@ BIG_MESSAGE :: 3 << 20
 MAX_MESSAGE :: 100_000              // under the 300 kB text the guest asks for
 HANDSHAKE_TIMEOUT_MS :: 500
 STRESS_SOCKETS :: 50
-STRESS_WAIT :: 240.0                // seconds: only ends a run that fails
 PAGE_MEMORY_BOUND :: 52 << 20
 PROCESS_GROWTH_BOUND :: 512 << 20
 KIB :: 1024
@@ -388,7 +387,7 @@ stress :: proc(t: ^testing.T, parallel: int) {
 		w.peak_mem = max(w.peak_mem, int(base.process_memory().private))
 		_, over := result(w.p, S_STRESS)
 		return over
-	}, STRESS_WAIT)
+	})
 	s, _ := result(pr.p, S_STRESS)
 	check(pr, s == "closed:50 ok:50", fmt.tprintf("every socket echoed its megabyte and closed (got %q)", s))
 	growth := watch.peak_mem - mem_before

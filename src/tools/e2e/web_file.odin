@@ -16,7 +16,6 @@ import "wb:url"
 SITE :: "build/filetest_site"
 SORTED_MAX_ENTRIES :: 1
 DEFAULT_MAX_ENTRIES :: 5000
-RUN_LIMIT :: 120.0
 
 Result :: struct {
 	done, failed, redirected: bool,
@@ -51,7 +50,7 @@ on_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 run_fetch :: proc(t: ^testing.T, d: fetch.Request_Desc) -> Result {
 	r := new(Result, context.temp_allocator)
 	fetch.start(&loader, {request = d, on_event = on_event, user = r, collect = true})
-	if !wait_until(t, d.url, r, proc(r: ^Result) -> bool { return r.done }, RUN_LIMIT) { r.failed, r.detail = true, "timeout" }
+	if !wait_until(t, d.url, r, proc(r: ^Result) -> bool { return r.done }) { r.failed, r.detail = true, "timeout" }
 	return r^
 }
 

@@ -664,11 +664,19 @@ windows_cleanup_later_deletes_after_the_process_ends :: proc(t: ^testing.T) {
 	a, b := fmt.tprintf("%s\\a.exe.old", dir), fmt.tprintf("%s\\wren_install.txt", dir)
 	_ = os.write_entire_file(a, "x")
 	_ = os.write_entire_file(b, "x")
-	p, err := os.process_start(os.Process_Desc{command = {"cmd.exe", "/d", "/c", "ping -n 4 127.0.0.1 >nul"}})
+	// (a shell reading a pipe nobody writes to lives until the test ends it: the end of the program is the test's to decide, not a time)
+	input, feed, perr := os.pipe()
+	testing.expect(t, perr == nil, "a pipe")
+	if perr != nil { return }
+	defer os.close(feed)
+	p, err := os.process_start(os.Process_Desc{command = {"cmd.exe", "/d", "/q"}, stdin = input})
+	os.close(input)
 	testing.expect(t, err == nil, "a process to wait for")
 	if err != nil { return }
 	ok := cleanup_later({a, b}, dir, u32(p.pid))
 	testing.expect(t, ok, "the helper starts")
+	testing.expect(t, os.exists(a) && os.exists(b), "nothing is deleted while the process lives")
+	_ = os.process_kill(p)
 	t0 := time.now()
 	for time.since(t0) < CLEANUP_WAIT && os.exists(dir) { time.sleep(CLEANUP_POLL) }
 	_, _ = os.process_wait(p)

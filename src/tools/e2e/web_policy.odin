@@ -31,7 +31,6 @@ BODY_CAP :: 1 << 20
 BIG_BODY :: "/big?mb=50"
 MIN_MODULE_BYTES :: 100
 HSTS_HEADER :: "max-age=3600"
-RUN_LIMIT :: 120.0
 SLOW_BYTES_THAT_TAKE_A_SERVER_TICK :: 2      // /slow sends a byte at each of its ticks
 
 Result :: struct {
@@ -84,7 +83,7 @@ on_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 run_fetch :: proc(t: ^testing.T, d: fetch.Request_Desc) -> Result {
 	r := new(Result, context.temp_allocator)
 	fetch.start(&loader, {request = d, on_event = on_event, user = r, collect = true})
-	if !wait_until(t, d.url, r, proc(r: ^Result) -> bool { return r.done }, RUN_LIMIT) { r.failed, r.detail = true, "timeout" }
+	if !wait_until(t, d.url, r, proc(r: ^Result) -> bool { return r.done }) { r.failed, r.detail = true, "timeout" }
 	last = r^
 	return r^
 }

@@ -57,7 +57,7 @@ build_path :: proc(name: string, extension := "") -> string { return fmt.tprintf
 // A Wren in a process of its own, its channel open.
 launch :: proc(t: ^testing.T, o := Process_Options{}, loc := #caller_location) -> ^Wren_Process {
 	p := launch_begin(t, o, loc)
-	if api.connect_launched(p.s, &p.wren, api.START_WAIT_MS) != .None { stop_test(t, api.last_failure().message, loc) }
+	if api.connect_launched(p.s, &p.wren, PROCESS_WAIT_MS) != .None { stop_test(t, api.last_failure().message, loc) }
 	return p
 }
 
@@ -76,7 +76,7 @@ launch_begin :: proc(t: ^testing.T, o := Process_Options{}, loc := #caller_locat
 	}
 	testing.cleanup(t, proc(ptr: rawptr) {
 		p := (^Wren_Process)(ptr)
-		if !p.ended { p.s.on_failure = nil; api.finish(p.s, &p.wren, true) }
+		if !p.ended { p.s.on_failure = nil; api.finish(p.s, &p.wren, true, wait_ms = PROCESS_WAIT_MS) }
 		delete(p.wren.name)
 		delete(p.wren.profile)
 		free(p.s)
@@ -97,7 +97,7 @@ launch_begin :: proc(t: ^testing.T, o := Process_Options{}, loc := #caller_locat
 quit :: proc(p: ^Wren_Process, exit_code := 0, loc := #caller_location) -> int {
 	if p.ended { return p.code }
 	p.s.on_failure = nil
-	code, forced := api.finish(p.s, &p.wren, true, exit_code)
+	code, forced := api.finish(p.s, &p.wren, true, exit_code, PROCESS_WAIT_MS)
 	p.ended, p.code = true, code
 	if forced { stop_test(p.t, "the Wren did not close in time: it was ended", loc) }
 	return code

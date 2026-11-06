@@ -81,7 +81,7 @@ closing_with_every_processor_busy :: proc(t: ^testing.T) {
 		profile := e2e.temp_profile(t)
 		p := playing(t, url, profile)
 		listener: api.Conn
-		testing.expect(t, api.connect(&listener, p.wren.name, api.START_WAIT_MS))
+		testing.expect(t, api.connect(&listener, p.wren.name, e2e.PROCESS_WAIT_MS))
 		began := time.tick_now()
 		EXIT_CODE :: 3
 		testing.expect_value(t, e2e.quit(p, EXIT_CODE), EXIT_CODE)
@@ -96,7 +96,7 @@ closing_with_every_processor_busy :: proc(t: ^testing.T) {
 		pid := p.wren.pid
 		began = time.tick_now()
 		close_all_windows(pid)
-		testing.expect(t, api.process_wait(&p.wren.process, int(api.QUIT_WAIT_MS)), "it ends")
+		testing.expect(t, api.process_wait(&p.wren.process, int(e2e.PROCESS_WAIT_MS)), "it ends")
 		took = time.tick_since(began)
 		p.s.on_failure = nil
 		testing.expectf(t, took < CLOSE_LIMIT, "round %d: the window closed with a video playing: %v", round, took)

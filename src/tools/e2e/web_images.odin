@@ -53,7 +53,6 @@ MANY :: 200                   // 200 images of 1 megapixel
 MANY_PX :: 1000
 MANY_PER_FRAME :: 20
 MANY_JOBS :: 2 * MANY         // a probe and a decode each
-MANY_WAIT :: 60.0
 CACHE_SLACK_BYTES :: 100 << 20
 
 IDS := [?]string{
@@ -459,7 +458,7 @@ images_200_of_a_megapixel :: proc(t: ^testing.T) {
 	wait(pr, "200 sizes", proc(pr: ^Probe) -> bool {
 		for i in 0 ..< MANY { if state(pr, fmt.tprintf("g%d", i)).state != .Ready { return false } }
 		return true
-	}, MANY_WAIT)
+	})
 	sizes_known := time.tick_since(started)
 	ids: [MANY]u64
 	for i in 0 ..< MANY { ids[i] = state(pr, fmt.tprintf("g%d", i)).id }
@@ -477,7 +476,7 @@ images_200_of_a_megapixel :: proc(t: ^testing.T) {
 		turn(s.pr)
 		s.longest = max(s.longest, time.tick_since(turn_started))
 		return s.shown >= MANY
-	}, MANY_WAIT)
+	})
 	check(pr, shown, "every image was shown")
 	decoded := time.tick_since(started)
 	after := images.decoder_stats()

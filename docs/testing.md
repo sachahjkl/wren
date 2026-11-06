@@ -212,6 +212,10 @@ stalled machine would. `loop_wait` on such a clock does not wait for a timer. Pr
 A test does not sleep to wait for another thread: it waits on the state (a semaphore, a completion posted to the loop,
 `base.await` when the code under test has no signal). The few real sleeps left in unit tests measure the real clock, and say so.
 
+A test **simulates** a failure, it does not wait for it. In this order: a fake at a seam (a reader that holds a file open and lets go, a count of what was asked), the loop's virtual clock, a clock moved on both sides (`httpcache.clock_ahead_s` and the test server's `/cache/clock`), a condition or a gate of the test server (`?gate=K` holds an answer until the test calls `e2e.open_gate(server, K)`: a slow response whose end the test decides, `tools/testserver/gate.go`). A real wait stays only where a real client's or the system's timer is what is measured. `tools/test_sleeps_allowed.txt` lists the sleeps left in test sources, with why; `src/tools/test_all/lint_sleeps.odin` fails on any other.
+
+No passing test depends on the speed of the machine: a barrier has one limit, `e2e.DEFAULT_DEADLINE` (`DEFAULT_WAIT` in the web tests), under the test's own, and it only ends a failing run. Do not add a longer one for a slow runner, and do not add a preference or a variable that only shortens a timeout for a test.
+
 ## The web tests
 
 Everything under the browser's window (fetch, the network stacks, the HTTP cache, the content blocker, pages and their scripts, Wasm guests, workers, images, forms, frames: no shell, no frame) is tested by the same program: the files `src/tools/e2e/web_<subject>.odin`, which never start the browser the program links. One file per subject (`web_cache.odin`, `web_frames.odin`, `web_jsweb.odin`...), `#+private file` with its own helpers, its tests named after it (`cache_freshness`); what they share is `web_harness.odin`. A step's result depends on those two files and what they import, not on the browser (`Step.sources`).

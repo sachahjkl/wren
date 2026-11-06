@@ -54,7 +54,7 @@ reset_puts_back_all_it_names :: proc(t: ^testing.T, p: ^e2e.Wren_Process, server
 
 	// a client waiting for something that will not come: the reset ends its wait with an error
 	waiter: api.Conn
-	testing.expect(t, api.connect(&waiter, p.wren.name, api.START_WAIT_MS))
+	testing.expect(t, api.connect(&waiter, p.wren.name, e2e.PROCESS_WAIT_MS))
 	defer api.disconnect(&waiter)
 	testing.expect_value(t, api.write_line(&waiter, WAIT_NEVER_ANSWERED, api.CALL_WAIT_MS), api.Error.None)
 	api.wait_until(s, proc(s: ^api.Session) -> bool { st, _ := api.stats(s); return st.pending_ops >= 1 }, "the wait to be registered")
