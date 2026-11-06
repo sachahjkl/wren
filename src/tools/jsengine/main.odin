@@ -611,7 +611,7 @@ cmd_gc :: proc(args: []string) {
 	paced :: proc(c: Common, growth: int) -> int {
 		r, ok := realm_new(read_file(c.image), c.raw, growth = growth)
 		if !ok { os.exit(1) }
-		source := fmt.tprintf("var kept = []; for (var i = 0; i < %d; i++) kept.push({i: i}); for (var i = 0; i < %d; i++) { var o = {i: i}; }", GC_TEST_KEPT, GC_TEST_GARBAGE)
+		source := fmt.tprintf("(function () {{ var kept = []; for (var i = 0; i < %d; i++) kept.push({{i: i}}); var o; for (var i = 0; i < %d; i++) o = {{i: i}}; return kept.length; }})()", GC_TEST_KEPT, GC_TEST_GARBAGE)
 		if js.eval_script(r.inst, transmute([]byte)source, "gc") != .Ok { fmt.eprintln("gc: the script failed:", r.inst.last_error); os.exit(1) }
 		n, _, _ := js.collection_counts(r.inst)
 		return int(n)
