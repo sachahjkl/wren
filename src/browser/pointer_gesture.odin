@@ -201,7 +201,7 @@ gesture_note :: proc(app: ^App, ev: platform.Event, inside: bool) {
 		if ev.kind == .Mouse_Press && ev.button == g.button { g.owner = .Idle }   // here it is: it decides, what was shown of it stays until then
 		return
 	}
-	if g.owner == .Idle || g.owner == .Autoscroll { return }
+	if g.owner == .Idle || g.owner == .Autoscroll || (g.owner == .Press_Pending && g.sel.released && ev.kind == .Mouse_Move) { return }
 	up := ev.kind == .Mouse_Move && g.button not_in ev.buttons && g.owner != .Thumb
 	if !up && !(ev.kind == .Mouse_Press && ev.button == g.button) { return }
 	if g.owner != .Spent { gesture_cancel(app) }
@@ -216,7 +216,8 @@ gesture_release :: proc(app: ^App, ev: platform.Event) -> (ended: Ended_Press) {
 	case .Page_Press, .Press_Pending, .Selecting, .Drag_Candidate, .Frame:
 		ended = {g.target, g.field, g.owner == .Selecting && g.sel.selected_by_drag}
 		page_set_active(g.doc, base.NIL_HANDLE)
-		gesture_end(g)
+		// (a press waiting for a layout is a click all the same: selection_shell_frame gives it its effect, then ends it)
+		if g.owner == .Press_Pending && g.sel.press.kind == .Mouse_Press { g.sel.released = true } else { gesture_end(g) }
 	}
 	return
 }
