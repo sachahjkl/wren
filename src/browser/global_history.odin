@@ -46,7 +46,6 @@ Global_History :: struct {
 	timer:    base.Handle,
 }
 
-@(private = "file")
 now_ms :: proc() -> i64 { return time.time_to_unix_nano(time.now()) / 1e6 }
 
 visits_destroy :: proc(list: ^[dynamic]Visit) {
@@ -294,4 +293,5 @@ global_history_remove :: proc(app: ^App, ids: []u64) {
 
 global_history_remove_range :: proc(app: ^App, from_ms, to_ms: i64) {
 	if history_delete(&app.ghist.visits, nil, from_ms, to_ms) > 0 { global_history_changed(app) }
+	closed_forget_range(app, from_ms, to_ms)   // closed_tabs.odin: what was closed then holds those pages too
 }

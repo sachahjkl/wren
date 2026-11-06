@@ -58,7 +58,7 @@ INTERACTION_PREFS := [?]config.Def{
 	{name = "browser.search.engine", kind = .String, default = {s = "duckduckgo"}, category = "search",
 		description = "The default search engine: words typed in the address bar that are not an address, the context menu's \"Search for\". The id of an engine of the list (Search engines, above: duckduckgo, bing, google, qwant, ecosia, startpage, wikipedia, or one added); an id the list lacks means its first engine."},
 	{name = "browser.tabs.closed_max", kind = .Int, default = {i = 25}, bounded = true, min = 0, max = 1000, category = "tabs",
-		description = "Closed tabs Ctrl+Shift+T can reopen (most recent first)."},
+		description = "What Ctrl+Shift+T can reopen, most recent first: closed tabs and windows, and the session before. Kept in the profile from one run to the next."},
 	{name = "browser.view_source.colors", kind = .Bool, default = {b = true},
 		description = "view-source: pages color tags, attributes and comments."},
 }

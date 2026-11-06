@@ -849,6 +849,13 @@ close_tab :: proc(s: ^Session, id: int, loc := #caller_location) {
 	enter(s, loc)
 	if !browser.control_close_tab(s.app, id) { failed(s, fmt.tprintf("no tab %d", id), loc) }
 }
+// The window the calls are about goes, with its tabs, at the end of the pass.
+close_window :: proc(s: ^Session, loc := #caller_location) {
+	context = s.ctx
+	enter(s, loc)
+	if why := browser.control_close_window(s.app); why != "" { failed(s, why, loc) }
+}
+
 
 // The tab goes to a new window of its own: that window's id.
 move_tab_to_new_window :: proc(s: ^Session, id: int, loc := #caller_location) -> int {

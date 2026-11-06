@@ -214,6 +214,7 @@
 <p class="doc-sec-title">More</p>
 <ul class="doc-links">
 <li><a href="../../docs/README/">Writing documentation</a></li>
+<li><a href="../../docs/closed-tabs/">Closed tabs and sessions</a></li>
 <li><a href="../../docs/engine/bigint/">bigint: arbitrary-precision integers for the JavaScript engine</a></li>
 <li><a href="../../docs/engine/datetime/">datetime (package jsdate): the JavaScript engine's Date</a></li>
 <li><a href="../../docs/engine/frontend/">Moteur JavaScript — front-end E1 (src/engine/frontend)</a></li>
@@ -244,7 +245,7 @@
 <p>After Wren ends abnormally (a crash, a kill, a power cut) the next start opens the tabs again, with no setting to turn on, and never
 loops on a page that crashes it. <code>browser.session.crash_recovery</code> (on by default) is the switch; it needs <code>browser.profile.persist</code>
 (a throwaway profile writes nothing). Code: <code>src/browser/crash_recovery.odin</code> (decision, files, snapshot), <code>crash_banner.odin</code> (the bar).
-It is separate from <code>browser.session.restore</code> (reopen the tabs after a normal end, off by default).</p>
+It is separate from <code>browser.session.restore</code> (reopen the tabs after a normal end, off by default: <a href="../../docs/closed-tabs/">closed tabs and sessions</a>).</p>
 <h2 id="files-in-the-profile"><a class="anchor" href="#files-in-the-profile" aria-hidden="true">#</a>Files in the profile</h2>
 <div class="table-box"><table>
 <thead><tr><th>File</th><th>Meaning</th></tr></thead>

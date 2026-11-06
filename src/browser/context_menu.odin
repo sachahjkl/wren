@@ -336,7 +336,7 @@ tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 	ui.menu_separator()
 	if ui.menu_item("Close tab", "Ctrl+W", icon = GLYPH_CLOSE).clicked { tab_close(app, r.tab); return }
 	if ui.menu_item("Close other tabs", enabled = len(wnd.tabs) > 1).clicked { close_other_tabs(app, r.tab); return }
-	if ui.menu_item("Reopen closed tab", "Ctrl+Shift+T", enabled = len(app.closed_tabs) > 0).clicked { reopen_closed_tab(app) }
+	if ui.menu_item(closed_reopen_title(app), "Ctrl+Shift+T", enabled = len(closed_items(app)) > 0).clicked { reopen_closed_tab(app) }
 	ui.menu_separator()
 	menu_command(app, t, "tab.move_to_new_window")
 	if len(app.windows) > 1 {
@@ -412,25 +412,6 @@ address_target_in :: proc(se: ^Search_Engines, default_id, input: string) -> (ta
 ////////////////////////////////
 // Tabs
 
-closed_tabs_destroy :: proc(app: ^App) {
-	for s in app.closed_tabs { delete(s) }
-	delete(app.closed_tabs)
-	app.closed_tabs = nil
-}
-
-// A tab closing (tab_close): its address can be reopened.
-closed_tabs_push :: proc(app: ^App, address: string) {
-	if address == "" || app.ix.closed_tabs_max <= 0 { return }
-	append(&app.closed_tabs, strings.clone(address))
-	for len(app.closed_tabs) > app.ix.closed_tabs_max { delete(app.closed_tabs[0]); ordered_remove(&app.closed_tabs, 0) }
-}
-
-reopen_closed_tab :: proc(app: ^App) {
-	if len(app.closed_tabs) == 0 { return }
-	address := pop(&app.closed_tabs)
-	defer delete(address)
-	open_in_new_tab(app, address, origin = .Replay)
-}
 
 // A link of the page followed (a click, Enter on it): a fragment of the same document scrolls, anything else navigates.
 follow_link :: proc(app: ^App, t: ^Tab, href: string, link: base.Handle) {

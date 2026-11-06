@@ -192,7 +192,7 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "tab.new", title = "New tab", category = "Tabs", glyph = GLYPH_ADD, keys = keys(&r.arena, {key = .T, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_open_new(app) }})
 	add(r, {name = "tab.reopen_closed", title = "Reopen closed tab", category = "Tabs", keywords = "undo close restore", keys = keys(&r.arena, {key = .T, mods = cs}),
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(app.closed_tabs) > 0 },
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(closed_items(app)) > 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { reopen_closed_tab(app) }})
 	add(r, {name = "tab.close", title = "Close tab", category = "Tabs", glyph = GLYPH_CLOSE, keys = keys(&r.arena, {key = .W, mods = ctrl}, {key = .F4, mods = ctrl}),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_close(app, active_window(app).current) }})
@@ -252,6 +252,9 @@ commands_build :: proc(r: ^Command_Registry) {
 	}
 	add(r, {name = "window.new", title = "New window", category = "Window", keywords = "open another", keys = keys(&r.arena, {key = .N, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { window_new(app) }})
+	add(r, {name = "browser.session_restore", title = i18n.tr("Restore tabs at start-up"), category = "Tabs", keywords = "session reopen previous startup",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return config.bool_of(&app.prefs, "browser.session.restore") },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "browser.session.restore", !config.bool_of(&app.prefs, "browser.session.restore")) }})
 	add(r, {name = "tab.restore_crashed", title = "Restore the tabs of the session that crashed", category = "Tabs", keywords = "crash recovery reopen saved",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.recovery.backup != "" },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { recovery_restore_backup(app) }})

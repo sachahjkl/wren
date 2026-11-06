@@ -22,6 +22,7 @@ browser/canvas_shell.odin color_glyph_cache thread  # the cache of the colour gl
 browser/canvas_shell.odin color_glyph_next_uid thread  # the next name of a cached colour glyph bitmap, of that thread
 browser/cdp.odin the_cdp process  # the DevTools-protocol server of the process (the debugging port: one per process)
 browser/chrome_style.odin CHROME_PREFS const  # a table
+browser/closed_tabs.odin CLOSED_PREFS const  # a table
 browser/commands.odin RESERVED_SHORTCUTS const  # a table
 browser/compositor.odin COMPOSITOR_PREFS const  # a table
 browser/compositor.odin composite_stats thread  # the last composited frame's diagnostics, of the thread that paints

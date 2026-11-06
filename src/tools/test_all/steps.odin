@@ -483,6 +483,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 		append(&t, Step{name = "the names of a release's crash frames (src\\tools\\wrentool\\deps\\symbols_test.odin: the report of a build with no PDB gives its fingerprint and offsets, wrentool crash-symbolize names them from the map, or through the minidump)",
 			actions = slice_of(odin_test("src/tools/wrentool/deps", exe("build/wrentool_deps_test"), strs(WB), false)), inputs = .Tree})
 		e2e_step(&t, "tab sidebar features that need a page or a profile (src\\tools\\e2e\\sidebar_tabs.odin, no window at all: the sound of a tab, what comes back at the next start)", "sidebar_tabs")
+		e2e_step(&t, "what Ctrl+Shift+T brings back and the option that reopens the session (src\\tools\\e2e\\closed_tabs.odin, no window at all: a tab with its history, a window, the session before)", "closed_tabs")
 		// (frames counted against the screen's refresh: on a loaded CI runner one frame in two came late; a measure with a real pointer, not a test of a tool: run with -Ui)
 		append(&t, Step{name = "splitters dragged (wrentool bench cadence, no window shown: the developer tools docked right and bottom, the tab sidebar's handle; their frames are drags of the cadence model and, on a variable refresh screen, presented at once; the rates are printed, never checked)",
 			actions = slice_of(tool_build("src/tools/wrentool", exe("build/wrentool_step")), Command{argv = strs(exe("build/wrentool_step"), "bench", "cadence")}), marks = {.Ui_Only}, needs = COMMON_NEEDS + {.Browser}, inputs = .Tree})

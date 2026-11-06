@@ -687,7 +687,7 @@ results_key :: proc(app: ^App) -> u64 {
 	h = mix(h, app.prefs.version)
 	h = mix(h, u64(active_window(app).current))
 	h = mix(h, app.cpal.usage.version)
-	h = mix(h, u64(len(app.closed_tabs)))
+	h = mix(h, u64(len(closed_items(app))))
 	for t in tabs_all(app) { h = mix(h, t.id); h = fnv(h, t.title); h = fnv(h, t.url) }
 	t := current_tab(app)
 	for &c, i in commands(app) { if command_enabled(app, t, &c) { h = mix(h, u64(i) + 1) } }
@@ -745,9 +745,10 @@ palette_collect :: proc(app: ^App, text: string) {
 		}
 	}
 	if mode == .Tabs || (mode == .All && q != "") {
-		for i := len(app.closed_tabs) - 1; i >= 0; i -= 1 {
-			u := app.closed_tabs[i]
-			title := default_tab_title(u)
+		closed := closed_items(app)
+		for i := len(closed) - 1; i >= 0; i -= 1 {
+			u := closed[i].address
+			title := closed_item_label(closed[i])
 			s, lo, hi, ok := match(app, &fq, title, u)
 			if !ok { continue }
 			push(app, {kind = .Closed_Tab, index = i, key = u, title = title, detail = u, category = "Closed tab", score = s, range_lo = lo, range_hi = hi}, &order)
@@ -867,10 +868,7 @@ palette_execute :: proc(app: ^App, i: int, new_tab: bool) {
 	case .Closed_Tab:
 		address := strings.clone(r.key, context.temp_allocator)
 		palette_close(app)
-		for k := len(app.closed_tabs) - 1; k >= 0; k -= 1 {
-			if app.closed_tabs[k] == address { delete(app.closed_tabs[k]); ordered_remove(&app.closed_tabs, k); break }
-		}
-		open_in_new_tab(app, address, origin = .User)
+		reopen_closed_address(app, address)
 	case .Pref:
 		e := config.entry(&app.prefs, r.ref)
 		name := strings.clone(e.def.name, context.temp_allocator)
