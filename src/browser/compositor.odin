@@ -4,7 +4,6 @@ import "core:math"
 import "toolkit:draw"
 import "wb:base"
 import "wb:config"
-import "wb:css"
 import "wb:dom"
 import "wb:host"
 import lay "wb:layout"
@@ -114,7 +113,7 @@ Comp :: struct {
 	node_items: map[base.Handle][dynamic]i32,   // items by node, for animated elements (node_items_ok: up to date)
 	node_items_ok: bool,
 	clip_radii: [dynamic][4]f32,         // per clip, as recorded
-	deco_colors: [dynamic]css.Color,     // per Layout.deco_items, as recorded
+	deco_keys:  [dynamic]u64,            // per Layout.deco_items, what the boxes that decorate them were when recorded
 	floors:     [dynamic][dynamic]i32,   // per group: the clips pushed around it (paint_effects.odin, open_group)
 	group_units: [dynamic]int,
 	pool:       [dynamic]^draw.Picture,  // pictures of dropped chunks
@@ -143,7 +142,7 @@ composite_forget :: proc(l: ^Layout) {
 	delete_key(&comps, l)
 	for &ch in c.chunks { chunk_free(c, &ch) }
 	for p in c.pool { picture_free(c, p) }
-	delete(c.chunks); delete(c.item_hash); delete(c.item_cs); delete(c.item_chunk); delete(c.clip_radii); delete(c.deco_colors)
+	delete(c.chunks); delete(c.item_hash); delete(c.item_cs); delete(c.item_chunk); delete(c.clip_radii); delete(c.deco_keys)
 	for _, v in c.node_items { delete(v) }
 	delete(c.node_items)
 	for f in c.floors { delete(f) }
@@ -172,7 +171,9 @@ chunk_free :: proc(c: ^Comp, ch: ^Comp_Chunk) {
 // opacity, filter, backdrop-filter, clip-path, blend mode).
 @(private)
 RASTER_PROPS :: [?]style.Prop{
-	.Color, .Text_Shadow, .Text_Decoration_Line, .Text_Decoration_Color, .Text_Decoration_Style, .Text_Decoration_Thickness,
+	.Color, .Text_Shadow, .Text_Decoration_Line, .Text_Decoration_Color, .Text_Decoration_Style, .Text_Decoration_Thickness, .Text_Underline_Offset, .Text_Underline_Position,
+	.Text_Decoration_Skip_Ink, .Text_Decoration_Skip_Spaces, .Text_Decoration_Inset, .Text_Emphasis_Style, .Text_Emphasis_Color, .Text_Emphasis_Position, .Text_Emphasis_Skip,
+	.Text_Stroke_Width, .Text_Stroke_Color,
 	.Letter_Spacing, .Word_Spacing,
 	.Border_Top_Color, .Border_Right_Color, .Border_Bottom_Color, .Border_Left_Color,
 	.Border_Top_Style, .Border_Right_Style, .Border_Bottom_Style, .Border_Left_Style,
@@ -264,6 +265,19 @@ raster_hash :: proc(cs: ^style.Computed, cache: ^map[^style.Computed]u64) -> u64
 	h = hash_of(h, cs.text_orientation)
 	h = hash_of(h, cs.text_combine_upright)
 	h = hash_length(h, cs.text_decoration_thickness)
+	h = hash_length(h, cs.text_underline_offset)
+	h = hash_length(hash_length(h, cs.text_decoration_inset[0]), cs.text_decoration_inset[1])
+	h = hash_of(h, cs.text_underline_position)
+	h = hash_of(h, cs.text_decoration_skip_ink)
+	h = hash_of(h, cs.text_decoration_skip_spaces)
+	h = hash_of(h, cs.text_emphasis_style.shape)
+	h = hash_of(h, cs.text_emphasis_style.open)
+	h = hash_bytes(h, raw_data(cs.text_emphasis_style.text), len(cs.text_emphasis_style.text))
+	h = hash_of(h, cs.text_emphasis_color)
+	h = hash_of(h, cs.text_emphasis_position)
+	h = hash_of(h, cs.text_emphasis_skip)
+	h = hash_of(h, cs.text_stroke_width)
+	h = hash_of(h, cs.text_stroke_color)
 	h = mix(h, u64(transmute(u32)cs.letter_spacing) | u64(transmute(u32)cs.word_spacing) << 32)
 	h = hash_of(h, cs.border_color)
 	h = hash_of(h, cs.border_style)
@@ -375,7 +389,7 @@ item_hash :: proc(c: ^Comp, l: ^Layout, it: ^lay.Display_Item, cache: ^map[^styl
 	h = mix(h, u64(transmute(u32)it.baseline) | u64(transmute(u32)it.extra) << 32)
 	deco := it.deco
 	h = hash_bytes(h, &deco, size_of(deco))
-	h = hash_bytes(h, &it.deco_color, size_of(it.deco_color))
+	if deco != {} { h = mix(h, lay.item_deco_key(l, it)) }
 	h = mix(h, raster_hash(it.cs, cache))
 	// a fieldset's border follows its legend
 	if it.kind == .Box {
@@ -485,8 +499,8 @@ rebuild :: proc(c: ^Comp, l: ^Layout) {
 	c.chunks = next
 	c.node_items_ok = false   // made when an animation needs it (node_items_make)
 	resize(&c.clip_radii, len(l.clips))
-	resize(&c.deco_colors, len(l.deco_items))
-	for i, k in l.deco_items { c.deco_colors[k] = l.items[i].deco_color }
+	resize(&c.deco_keys, len(l.deco_items))
+	for i, k in l.deco_items { c.deco_keys[k] = lay.item_deco_key(l, &l.items[i]) }
 	for &cl, i in l.clips { c.clip_radii[i] = cl.radii }
 	group_units(c, l)
 	c.items_len = n
@@ -574,11 +588,12 @@ check_paint_values :: proc(c: ^Comp, l: ^Layout) {
 			if list, ok := c.node_items[h]; ok { for i in list { check(c, l, int(i), &cache, &chain) } }
 		}
 	}
-	// decoration colors follow their box (refresh rewrites them)
-	if len(c.deco_colors) == len(l.deco_items) {
+	// decorations follow their boxes, which may not be the item's
+	if len(c.deco_keys) == len(l.deco_items) {
 		for i, k in l.deco_items {
-			if l.items[i].deco_color == c.deco_colors[k] { continue }
-			c.deco_colors[k] = l.items[i].deco_color
+			key := lay.item_deco_key(l, &l.items[i])
+			if key == c.deco_keys[k] { continue }
+			c.deco_keys[k] = key
 			check(c, l, int(i), &cache, &chain)
 		}
 	}

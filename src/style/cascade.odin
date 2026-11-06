@@ -510,6 +510,7 @@ entry_list_of :: proc(pe: css.Pseudo) -> (Entry_List, bool) {
 
 @(private)
 Pass :: struct {
+	highlight:   ^Highlight_Style,     // making the style of a highlight pseudo-element: what its rules say goes there (selection.odin)
 	saw_logical: bool,                 // a flow-relative declaration was considered for this element (writing_modes.odin)
 	flow_map:    ^[Prop]Prop,          // considering again: where flow-relative declarations go
 	e:        ^Engine,
@@ -639,7 +640,7 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 @(private)
 is_color_prop :: proc(pr: Prop) -> bool {
 	#partial switch pr {
-	case .Color_Scheme, .Color, .Background_Color, .Background_Image, .Text_Decoration_Color, .Border_Top_Color, .Border_Right_Color, .Border_Bottom_Color, .Border_Left_Color, .Outline_Color, .Box_Shadow, .Text_Shadow, .Caret_Color, .Accent_Color, .Text_Fill_Color, .Scrollbar_Color:
+	case .Color_Scheme, .Color, .Background_Color, .Background_Image, .Text_Decoration_Color, .Border_Top_Color, .Border_Right_Color, .Border_Bottom_Color, .Border_Left_Color, .Outline_Color, .Box_Shadow, .Text_Shadow, .Caret_Color, .Accent_Color, .Text_Fill_Color, .Text_Stroke_Color, .Text_Emphasis_Color, .Scrollbar_Color:
 		return true
 	}
 	return false
@@ -776,6 +777,7 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 
 	var_decls: [dynamic]^Pre_Decl
 	for pr in p.touched {
+		if p.highlight != nil && !highlight_applies(pr) { continue }
 		cand := p.ws[pr]
 		if cand.decl.has_var {
 			if var_decls == nil { var_decls = make([dynamic]^Pre_Decl, context.temp_allocator) }
@@ -811,7 +813,10 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 				cx_copy_prop(&cx, parent != nil ? parent : s.initial, pr)
 				ps_add(&cx.explicit, pr)
 				if parent != nil { ps_add(&c.inherits, pr) }
-			case "initial": cx_copy_prop(&cx, s.initial, pr); ps_remove(&c.inherits, pr)
+			case "initial":
+				cx_copy_prop(&cx, s.initial, pr)
+				ps_remove(&c.inherits, pr)
+				if p.highlight != nil { ps_add(&p.highlight.declared, pr) }
 			case "unset": apply_unset(&cx, pr)
 			case "revert", "revert-layer":
 				if prev, found := revert_candidate(entries, inline_rule, pr, cand.key, kw == "revert", parent, p.own_depth); found {
@@ -820,7 +825,13 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 				}
 				apply_unset(&cx, pr)
 			case:
-				if apply_prop(&cx, pr, vals) { ps_remove(&c.inherits, pr) } else { apply_unset(&cx, pr) }
+				if apply_prop(&cx, pr, vals) {
+					ps_remove(&c.inherits, pr)
+					if p.highlight != nil {
+						ps_add(&p.highlight.declared, pr)
+						if id, is_id := ident_raw(vals); is_id && base.ascii_equal_fold(id, "currentcolor") { ps_add(&p.highlight.current, pr) }
+					}
+				} else { apply_unset(&cx, pr) }
 			}
 			break
 		}
@@ -1054,10 +1065,7 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 		if pc.display == .None || pc.content.kind != .Items { continue }
 		if i == 1 { c.before = pc } else { c.after = pc }
 	}
-	// ::selection: only its colors are used (the painter looks for the nearest element that has one)
-	if len(kept[.Selection]) > 0 { c.selection = build_style(p, h, c, kept[.Selection][:], nil) }
-	// ::highlight(name): the same, a style per name
-	if len(kept[.Highlight]) > 0 { c.highlights = highlight_styles(p, h, c, kept[.Highlight][:]) }
+	if len(kept[.Selection]) > 0 || len(kept[.Highlight]) > 0 { c.highlights = highlight_styles(p, h, c, kept[.Selection][:], kept[.Highlight][:]) }
 	// ::placeholder: what the forms painter reads of it (its color, opacity, font and alignment)
 	if len(kept[.Placeholder]) > 0 { c.placeholder = build_style(p, h, c, kept[.Placeholder][:], nil) }
 	// ::backdrop: a box under the element, in the top layer with it (layout's visit), so out of flow (CSS Position 4
@@ -1077,17 +1085,37 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 	return c, false
 }
 
-// The ::highlight(name) entries of an element, a style for each name.
+// A style of the highlight rules `entries`: the font of the element, which em units follow, and what they give a value.
+@(private = "file")
+highlight_style :: proc(p: ^Pass, h: base.Handle, c: ^Computed, kind: Highlight_Kind, name: string, entries: []Entry) -> Highlight_Style {
+	hs := Highlight_Style{kind = kind, name = name}
+	p.highlight = &hs
+	hs.style = build_style(p, h, c, entries, nil)
+	p.highlight = nil
+	return hs
+}
+
+// The highlights of an element: ::selection, and a style for each name of the others. ::highlight(*) goes with every custom name.
 @(private)
-highlight_styles :: proc(p: ^Pass, h: base.Handle, c: ^Computed, entries: []Entry) -> []Highlight_Style {
-	out := make([dynamic]Highlight_Style, 0, len(entries), p.alloc)
-	group := make([dynamic]Entry, 0, len(entries), context.temp_allocator)
-	outer: for ent in entries {
+highlight_styles :: proc(p: ^Pass, h: base.Handle, c: ^Computed, selection, others: []Entry) -> []Highlight_Style {
+	out := make([dynamic]Highlight_Style, 0, len(others) + 1, p.alloc)
+	if len(selection) > 0 { append(&out, highlight_style(p, h, c, .Selection, "", selection)) }
+	group := make([dynamic]Entry, 0, len(others), context.temp_allocator)
+	outer: for ent in others {
 		name := ent.complex.parts[0]
-		for hs in out { if hs.name == name { continue outer } }
+		kind := Highlight_Kind.Custom
+		switch name {
+		case HIGHLIGHT_NAME_TARGET_TEXT: kind = .Target_Text
+		case HIGHLIGHT_NAME_SPELLING_ERROR: kind = .Spelling_Error
+		case HIGHLIGHT_NAME_GRAMMAR_ERROR: kind = .Grammar_Error
+		}
+		for hs in out { if hs.kind == kind && hs.name == name { continue outer } }
 		clear(&group)
-		for other in entries { if other.complex.parts[0] == name { append(&group, other) } }
-		append(&out, Highlight_Style{name, build_style(p, h, c, group[:], nil)})
+		for other in others {
+			n := other.complex.parts[0]
+			if n == name || (kind == .Custom && n == HIGHLIGHT_NAME_ANY) { append(&group, other) }
+		}
+		append(&out, highlight_style(p, h, c, kind, name, group[:]))
 	}
 	return out[:]
 }

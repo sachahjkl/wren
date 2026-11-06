@@ -63,10 +63,16 @@ target_set :: proc(p: ^Page, el: base.Handle) {
 // scrolling, unless `to_top` (the Navigation API's push, replace and reload: the beginning of the document). `animate`:
 // as the document's scroll-behavior says (a new document jumps).
 scroll_to_fragment :: proc(p: ^Page, to_top := false, animate := true) {
+	passage, has_passage := text_directive_apply(p)
 	el, top := indicated_part(p)
 	target_set(p, el)
 	smooth := animate && smooth_scrolling(p)
-	if el != base.NIL_HANDLE {
+	if has_passage {
+		// (the element that holds the text: what a text directive shows, whatever else the URL says)
+		holder := passage.node
+		if n := dom.get(p.doc, holder); n != nil && n.kind == .Text { holder = n.parent }
+		scroll_into_view(p, holder, .Center, .Nearest, smooth)
+	} else if el != base.NIL_HANDLE {
 		scroll_into_view(p, el, .Start, .Nearest, smooth)
 	} else if top || to_top {
 		js_layout_now(p)   // (the range the document scrolls in is the one it has now)

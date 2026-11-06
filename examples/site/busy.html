@@ -37,6 +37,25 @@
   ::highlight(found) { background: #ffe135; color: #101a4d; }
   ::highlight(checked) { background: #7ee2a8; color: #101a4d; }
   ::highlight(misspelt) { text-decoration: underline wavy #d40000; }
+  ::highlight(low) { background: #ffb3b3; color: #7a0019; }
+  ::highlight(high) { background: #b3d4ff; text-decoration: overline 3px #1456c8; text-shadow: 2px 2px #8fb5ff; }
+  .lines p { margin: 0 0 8px; font-size: 23px; }
+  .lines .skip { text-decoration: underline 2px #d40000; text-underline-offset: 4px; }
+  .lines .noskip { text-decoration: underline 2px #d40000; text-underline-offset: 4px; text-decoration-skip-ink: none; }
+  .lines .styles u { margin-right: 14px; text-decoration-color: #1456c8; text-decoration-thickness: 2px; }
+  .lines .nested { text-decoration: underline wavy #d40000 2px; text-underline-offset: 6px; }
+  .lines .nested s { text-decoration: line-through dotted #1456c8 3px; }
+  .lines .nested b { text-decoration: overline #0a8a3c 2px; }
+  .lines .place span { margin-right: 14px; text-decoration: underline #1456c8; }
+  .lines .shadow { text-decoration: underline 2px #d40000; text-shadow: 0 5px 2px #8fb5ff; }
+  .lines .marks span { margin-right: 22px; line-height: 2; }
+  .lines .stroke { font-size: 40px; font-weight: 900; -webkit-text-stroke: 1.5px #1456c8; -webkit-text-fill-color: #ffe135; }
+  .lines .columns { display: flex; gap: 30px; height: 190px; }
+  .lines .columns div { writing-mode: vertical-rl; font-size: 22px; }
+  .lines .rtl { direction: rtl; text-decoration: underline wavy #d40000; }
+  .lines .ends { white-space: pre; text-decoration: underline #1456c8; text-decoration-inset: 12px; }
+  .lines .own::selection { color: #fff; background: #1456c8; text-decoration: underline wavy #ffe135; text-shadow: 1px 1px #0a8a3c; }
+  ::target-text { background: #ffe135; color: #101a4d; }
   .numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0 28px; margin: 10px 0 0; font-size: 15.5px; color: var(--night-muted); }
   .numbers div { display: flex; justify-content: space-between; line-height: 1.55; }
   .numbers b { color: var(--night-text); font-variant-numeric: tabular-nums; }
@@ -113,6 +132,37 @@
   <h3>Highlights a script sets</h3>
   <p class="hint">These are not a selection: <code>CSS.highlights</code> marks ranges of text with no element around them. They stay under a selection and when it goes.</p>
   <p id="marked">Search results are one use of it: this sentence has a found word, a checked word and a mispelt word, all set by a few lines of script.</p>
+
+  <h2 id="lines">Lines of text</h2>
+  <div class="lines">
+    <h3>Ink</h3>
+    <p class="skip">Skipping: a gypsy jumps by quaggy pools, the line leaves a gap at each descender.</p>
+    <p class="noskip">Not skipping: a gypsy jumps by quaggy pools, the line goes through.</p>
+    <h3>Styles</h3>
+    <p class="styles"><u>solid</u><u style="text-decoration-style: double">double</u><u style="text-decoration-style: dotted">dotted</u><u style="text-decoration-style: dashed">dashed</u><u style="text-decoration-style: wavy">wavy</u></p>
+    <h3>Each box its own line</h3>
+    <p class="nested">The wave of one box <s>with the dots of the next <b>and an overline of a third</b> inside</s> it.</p>
+    <h3>Where a line goes</h3>
+    <p class="place"><span style="text-underline-position: under">under</span><span style="text-underline-position: from-font">from the font</span><span style="text-decoration-thickness: from-font">font thickness</span><span style="text-decoration-thickness: 15%">15% thick</span><span style="text-underline-offset: 40%">40% down</span></p>
+    <p class="ends">   a line that leaves its spaces and stops short of its ends   </p>
+    <p class="shadow">A blurred shadow has the line too.</p>
+    <h3>Emphasis marks</h3>
+    <p class="marks"><span style="text-emphasis: filled circle #d40000">circles</span><span style="text-emphasis: open dot #1456c8">dots</span><span style="text-emphasis: triangle #0a8a3c">triangles</span><span style="text-emphasis: filled sesame #d40000; text-emphasis-position: under right">sesame under</span><span style="text-emphasis: '*' #1456c8">a string</span></p>
+    <h3>Strokes</h3>
+    <p class="stroke">Outlined letters</p>
+    <h3>Vertical and right to left</h3>
+    <div class="columns">
+      <div style="text-decoration: underline 2px #d40000; text-orientation: sideways">gypsy jumps by</div>
+      <div style="text-decoration: underline wavy #1456c8; text-underline-position: right">on the right</div>
+      <div style="text-emphasis: filled sesame #0a8a3c">sesame marks</div>
+      <div lang="ja" style="text-decoration: underline #d40000; text-emphasis: dot #1456c8">&#x7E26;&#x66F8;&#x304D;&#x306E;&#x6587;&#x7AE0;</div>
+    </div>
+    <p class="rtl" dir="rtl">&#x645;&#x631;&#x62D;&#x628;&#x627; &#x628;&#x627;&#x644;&#x639;&#x627;&#x644;&#x645; gypsy</p>
+    <h3>Highlights over each other</h3>
+    <p id="overlap">The highlight of the higher priority is over the other where they meet, with its own line and shadow, and a selection is over both.</p>
+    <p class="own">This text has a selection that draws a wavy line and a shadow of its own. Select it.</p>
+    <p class="hint">In this page's address, <a href="#:~:text=Skipping,descender">#:~:text=Skipping,descender</a> marks a passage with <code>::target-text</code>.</p>
+  </div>
 
   <h2>Mixed content</h2>
   <h3>A list</h3>
@@ -217,6 +267,16 @@ Drag across them, then double click a word.</textarea>
     range.setStart(marked, at);
     range.setEnd(marked, at + word.length);
     CSS.highlights.set(name, new Highlight(range));
+  }
+  // Two highlights that overlap, by their priorities.
+  const overlap = $("overlap").firstChild;
+  for (const [name, from, to, priority] of [["low", 4, 60, 0], ["high", 30, 90, 1]]) {
+    const range = new Range();
+    range.setStart(overlap, from);
+    range.setEnd(overlap, to);
+    const highlight = new Highlight(range);
+    highlight.priority = priority;
+    CSS.highlights.set(name, highlight);
   }
   let busy = true, changes = 0;
 

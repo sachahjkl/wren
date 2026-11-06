@@ -288,7 +288,7 @@ draw_run :: proc(rc: ^Raster, it: ^lay.Display_Item, cs: ^style.Computed, fi: ^l
 // Underline, overline and line-through: along the run, on the side of the glyphs' top and bottom in a vertical one.
 @(private = "file")
 draw_decorations :: proc(rc: ^Raster, it: ^lay.Display_Item, cs: ^style.Computed, fi: ^lay.Font_Info) {
-	col := it.deco_color
+	col := rc.l.boxes[it.deco_box].cs.text_decoration_color
 	if col.a == 0 { col = cs.color }
 	t := max(1, math.round(fi.size / DECO_THICKNESS_FRACTION))
 	band :: proc(rc: ^Raster, it: ^lay.Display_Item, offset, t: f32, col: css_.Color) {

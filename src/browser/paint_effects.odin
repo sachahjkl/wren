@@ -246,7 +246,9 @@ item_ink_local :: proc(l: ^Layout, it: ^lay.Display_Item) -> lay.Rect {
 			pad = max(pad, (cs.outline_width + max(cs.outline_offset, 0)) * s + 2)
 		case .Text, .Marker:
 			pad = max(pad, 4 * s)
-			for sh in cs.text_shadow { pad = max(pad, (max(abs(sh.x), abs(sh.y)) + sh.blur) * s + 4 * s) }
+			deco := deco_ink_reach(l, it)
+			pad = max(pad, deco)
+			for sh in cs.text_shadow { pad = max(pad, (max(abs(sh.x), abs(sh.y)) + sh.blur) * s + 4 * s + deco) }
 		}
 	}
 	return lay.Rect{it.rect.min - pad, it.rect.max + pad}
@@ -263,7 +265,7 @@ item_units :: proc(it: ^lay.Display_Item) -> int {
 		if len(cs.box_shadow) > 0 { n += 1 }
 		for s in style.Side { if cs.border_width[s] > 0 { n += 1; break } }
 		return n
-	case .Text: return len(cs.text_shadow) > 0 || it.deco != {} ? 2 : 1
+	case .Text: return len(cs.text_shadow) > 0 || it.deco != {} || cs.text_emphasis_style.shape != .None || cs.text_stroke_width > 0 ? 2 : 1
 	case .Control, .Replaced: return 2
 	}
 	return 1

@@ -283,4 +283,13 @@ mask_names :: proc() {
 	delete_key(&prop_by_name, prop_names[.Text_Fill_Color])
 	prop_names[.Text_Fill_Color] = "-webkit-text-fill-color"
 	prop_by_name["-webkit-text-fill-color"] = .Text_Fill_Color
+	for name in ([?]string{"text-emphasis", "text-emphasis-style", "text-emphasis-color", "text-emphasis-position"}) {
+		alias_by_name[strings.concatenate({"-webkit-", name})] = name
+	}
+	delete_key(&prop_by_name, prop_names[.Text_Stroke_Width])
+	delete_key(&prop_by_name, prop_names[.Text_Stroke_Color])
+	prop_names[.Text_Stroke_Width], prop_names[.Text_Stroke_Color] = "-webkit-text-stroke-width", "-webkit-text-stroke-color"
+	prop_by_name["-webkit-text-stroke-width"], prop_by_name["-webkit-text-stroke-color"] = .Text_Stroke_Width, .Text_Stroke_Color
+	delete_key(&short_by_name, "text-stroke")
+	short_by_name["-webkit-text-stroke"] = .Text_Stroke
 }

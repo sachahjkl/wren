@@ -1,0 +1,1426 @@
+# web-platform-tests expectations of Wren for css/css-text-decor, written by build/wpt -update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/css/css-text-decor/animations/discrete-no-interpolation.html: OK
+	CSS Animations: property <text-decoration-line> from [initial] to [underline] at (-0.3) should be [initial]: PASS
+	CSS Animations: property <text-decoration-line> from [initial] to [underline] at (0) should be [initial]: PASS
+	CSS Animations: property <text-decoration-line> from [initial] to [underline] at (0.3) should be [initial]: PASS
+	CSS Animations: property <text-decoration-line> from [initial] to [underline] at (0.5) should be [underline]: PASS
+	CSS Animations: property <text-decoration-line> from [initial] to [underline] at (0.6) should be [underline]: PASS
+	CSS Animations: property <text-decoration-line> from [initial] to [underline] at (1) should be [underline]: PASS
+	CSS Animations: property <text-decoration-line> from [initial] to [underline] at (1.5) should be [underline]: PASS
+	CSS Animations: property <text-decoration-style> from [initial] to [dashed] at (-0.3) should be [initial]: PASS
+	CSS Animations: property <text-decoration-style> from [initial] to [dashed] at (0) should be [initial]: PASS
+	CSS Animations: property <text-decoration-style> from [initial] to [dashed] at (0.3) should be [initial]: PASS
+	CSS Animations: property <text-decoration-style> from [initial] to [dashed] at (0.5) should be [dashed]: PASS
+	CSS Animations: property <text-decoration-style> from [initial] to [dashed] at (0.6) should be [dashed]: PASS
+	CSS Animations: property <text-decoration-style> from [initial] to [dashed] at (1) should be [dashed]: PASS
+	CSS Animations: property <text-decoration-style> from [initial] to [dashed] at (1.5) should be [dashed]: PASS
+	CSS Animations: property <text-decoration-thickness> from [auto] to [123px] at (-0.3) should be [auto]: PASS
+	CSS Animations: property <text-decoration-thickness> from [auto] to [123px] at (0) should be [auto]: PASS
+	CSS Animations: property <text-decoration-thickness> from [auto] to [123px] at (0.3) should be [auto]: PASS
+	CSS Animations: property <text-decoration-thickness> from [auto] to [123px] at (0.5) should be [123px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [auto] to [123px] at (0.6) should be [123px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [auto] to [123px] at (1) should be [123px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [auto] to [123px] at (1.5) should be [123px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [from-font] to [123px] at (-0.3) should be [from-font]: PASS
+	CSS Animations: property <text-decoration-thickness> from [from-font] to [123px] at (0) should be [from-font]: PASS
+	CSS Animations: property <text-decoration-thickness> from [from-font] to [123px] at (0.3) should be [from-font]: PASS
+	CSS Animations: property <text-decoration-thickness> from [from-font] to [123px] at (0.5) should be [123px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [from-font] to [123px] at (0.6) should be [123px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [from-font] to [123px] at (1) should be [123px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [from-font] to [123px] at (1.5) should be [123px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [initial] to [123px] at (-0.3) should be [initial]: PASS
+	CSS Animations: property <text-decoration-thickness> from [initial] to [123px] at (0) should be [initial]: PASS
+	CSS Animations: property <text-decoration-thickness> from [initial] to [123px] at (0.3) should be [initial]: PASS
+	CSS Animations: property <text-decoration-thickness> from [initial] to [123px] at (0.5) should be [123px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [initial] to [123px] at (0.6) should be [123px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [initial] to [123px] at (1) should be [123px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [initial] to [123px] at (1.5) should be [123px]: PASS
+	CSS Animations: property <text-emphasis-position> from [initial] to [under right] at (-0.3) should be [initial]: PASS
+	CSS Animations: property <text-emphasis-position> from [initial] to [under right] at (0) should be [initial]: PASS
+	CSS Animations: property <text-emphasis-position> from [initial] to [under right] at (0.3) should be [initial]: PASS
+	CSS Animations: property <text-emphasis-position> from [initial] to [under right] at (0.5) should be [under right]: PASS
+	CSS Animations: property <text-emphasis-position> from [initial] to [under right] at (0.6) should be [under right]: PASS
+	CSS Animations: property <text-emphasis-position> from [initial] to [under right] at (1) should be [under right]: PASS
+	CSS Animations: property <text-emphasis-position> from [initial] to [under right] at (1.5) should be [under right]: PASS
+	CSS Animations: property <text-emphasis-style> from [initial] to [dot] at (-0.3) should be [initial]: PASS
+	CSS Animations: property <text-emphasis-style> from [initial] to [dot] at (0) should be [initial]: PASS
+	CSS Animations: property <text-emphasis-style> from [initial] to [dot] at (0.3) should be [initial]: PASS
+	CSS Animations: property <text-emphasis-style> from [initial] to [dot] at (0.5) should be [dot]: PASS
+	CSS Animations: property <text-emphasis-style> from [initial] to [dot] at (0.6) should be [dot]: PASS
+	CSS Animations: property <text-emphasis-style> from [initial] to [dot] at (1) should be [dot]: PASS
+	CSS Animations: property <text-emphasis-style> from [initial] to [dot] at (1.5) should be [dot]: PASS
+	CSS Animations: property <text-underline-position> from [initial] to [under] at (-0.3) should be [initial]: PASS
+	CSS Animations: property <text-underline-position> from [initial] to [under] at (0) should be [initial]: PASS
+	CSS Animations: property <text-underline-position> from [initial] to [under] at (0.3) should be [initial]: PASS
+	CSS Animations: property <text-underline-position> from [initial] to [under] at (0.5) should be [under]: PASS
+	CSS Animations: property <text-underline-position> from [initial] to [under] at (0.6) should be [under]: PASS
+	CSS Animations: property <text-underline-position> from [initial] to [under] at (1) should be [under]: PASS
+	CSS Animations: property <text-underline-position> from [initial] to [under] at (1.5) should be [under]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-line> from [initial] to [underline] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-line> from [initial] to [underline] at (0) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-line> from [initial] to [underline] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-line> from [initial] to [underline] at (0.5) should be [underline]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-line> from [initial] to [underline] at (0.6) should be [underline]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-line> from [initial] to [underline] at (1) should be [underline]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-line> from [initial] to [underline] at (1.5) should be [underline]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-style> from [initial] to [dashed] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-style> from [initial] to [dashed] at (0) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-style> from [initial] to [dashed] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-style> from [initial] to [dashed] at (0.5) should be [dashed]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-style> from [initial] to [dashed] at (0.6) should be [dashed]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-style> from [initial] to [dashed] at (1) should be [dashed]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-style> from [initial] to [dashed] at (1.5) should be [dashed]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [auto] to [123px] at (-0.3) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [auto] to [123px] at (0) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [auto] to [123px] at (0.3) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [auto] to [123px] at (0.5) should be [123px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [auto] to [123px] at (0.6) should be [123px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [auto] to [123px] at (1) should be [123px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [auto] to [123px] at (1.5) should be [123px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [from-font] to [123px] at (-0.3) should be [from-font]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [from-font] to [123px] at (0) should be [from-font]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [from-font] to [123px] at (0.3) should be [from-font]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [from-font] to [123px] at (0.5) should be [123px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [from-font] to [123px] at (0.6) should be [123px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [from-font] to [123px] at (1) should be [123px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [from-font] to [123px] at (1.5) should be [123px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [initial] to [123px] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [initial] to [123px] at (0) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [initial] to [123px] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [initial] to [123px] at (0.5) should be [123px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [initial] to [123px] at (0.6) should be [123px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [initial] to [123px] at (1) should be [123px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-decoration-thickness> from [initial] to [123px] at (1.5) should be [123px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-emphasis-position> from [initial] to [under right] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-emphasis-position> from [initial] to [under right] at (0) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-emphasis-position> from [initial] to [under right] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-emphasis-position> from [initial] to [under right] at (0.5) should be [under right]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-emphasis-position> from [initial] to [under right] at (0.6) should be [under right]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-emphasis-position> from [initial] to [under right] at (1) should be [under right]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-emphasis-position> from [initial] to [under right] at (1.5) should be [under right]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-emphasis-style> from [initial] to [dot] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-emphasis-style> from [initial] to [dot] at (0) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-emphasis-style> from [initial] to [dot] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-emphasis-style> from [initial] to [dot] at (0.5) should be [dot]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-emphasis-style> from [initial] to [dot] at (0.6) should be [dot]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-emphasis-style> from [initial] to [dot] at (1) should be [dot]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-emphasis-style> from [initial] to [dot] at (1.5) should be [dot]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-underline-position> from [initial] to [under] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-underline-position> from [initial] to [under] at (0) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-underline-position> from [initial] to [under] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-underline-position> from [initial] to [under] at (0.5) should be [under]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-underline-position> from [initial] to [under] at (0.6) should be [under]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-underline-position> from [initial] to [under] at (1) should be [under]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <text-underline-position> from [initial] to [under] at (1.5) should be [under]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-line> from [initial] to [underline] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-line> from [initial] to [underline] at (0) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-line> from [initial] to [underline] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-line> from [initial] to [underline] at (0.5) should be [underline]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-line> from [initial] to [underline] at (0.6) should be [underline]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-line> from [initial] to [underline] at (1) should be [underline]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-line> from [initial] to [underline] at (1.5) should be [underline]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-style> from [initial] to [dashed] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-style> from [initial] to [dashed] at (0) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-style> from [initial] to [dashed] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-style> from [initial] to [dashed] at (0.5) should be [dashed]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-style> from [initial] to [dashed] at (0.6) should be [dashed]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-style> from [initial] to [dashed] at (1) should be [dashed]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-style> from [initial] to [dashed] at (1.5) should be [dashed]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [auto] to [123px] at (-0.3) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [auto] to [123px] at (0) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [auto] to [123px] at (0.3) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [auto] to [123px] at (0.5) should be [123px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [auto] to [123px] at (0.6) should be [123px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [auto] to [123px] at (1) should be [123px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [auto] to [123px] at (1.5) should be [123px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [from-font] to [123px] at (-0.3) should be [from-font]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [from-font] to [123px] at (0) should be [from-font]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [from-font] to [123px] at (0.3) should be [from-font]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [from-font] to [123px] at (0.5) should be [123px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [from-font] to [123px] at (0.6) should be [123px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [from-font] to [123px] at (1) should be [123px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [from-font] to [123px] at (1.5) should be [123px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [initial] to [123px] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [initial] to [123px] at (0) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [initial] to [123px] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [initial] to [123px] at (0.5) should be [123px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [initial] to [123px] at (0.6) should be [123px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [initial] to [123px] at (1) should be [123px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-decoration-thickness> from [initial] to [123px] at (1.5) should be [123px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-emphasis-position> from [initial] to [under right] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-emphasis-position> from [initial] to [under right] at (0) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-emphasis-position> from [initial] to [under right] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-emphasis-position> from [initial] to [under right] at (0.5) should be [under right]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-emphasis-position> from [initial] to [under right] at (0.6) should be [under right]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-emphasis-position> from [initial] to [under right] at (1) should be [under right]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-emphasis-position> from [initial] to [under right] at (1.5) should be [under right]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-emphasis-style> from [initial] to [dot] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-emphasis-style> from [initial] to [dot] at (0) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-emphasis-style> from [initial] to [dot] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-emphasis-style> from [initial] to [dot] at (0.5) should be [dot]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-emphasis-style> from [initial] to [dot] at (0.6) should be [dot]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-emphasis-style> from [initial] to [dot] at (1) should be [dot]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-emphasis-style> from [initial] to [dot] at (1.5) should be [dot]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-underline-position> from [initial] to [under] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-underline-position> from [initial] to [under] at (0) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-underline-position> from [initial] to [under] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-underline-position> from [initial] to [under] at (0.5) should be [under]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-underline-position> from [initial] to [under] at (0.6) should be [under]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-underline-position> from [initial] to [under] at (1) should be [under]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <text-underline-position> from [initial] to [under] at (1.5) should be [under]: PASS
+	CSS Transitions with transition: all: property <text-decoration-line> from [initial] to [underline] at (-0.3) should be [underline]: PASS
+	CSS Transitions with transition: all: property <text-decoration-line> from [initial] to [underline] at (0) should be [underline]: PASS
+	CSS Transitions with transition: all: property <text-decoration-line> from [initial] to [underline] at (0.3) should be [underline]: PASS
+	CSS Transitions with transition: all: property <text-decoration-line> from [initial] to [underline] at (0.5) should be [underline]: PASS
+	CSS Transitions with transition: all: property <text-decoration-line> from [initial] to [underline] at (0.6) should be [underline]: PASS
+	CSS Transitions with transition: all: property <text-decoration-line> from [initial] to [underline] at (1) should be [underline]: PASS
+	CSS Transitions with transition: all: property <text-decoration-line> from [initial] to [underline] at (1.5) should be [underline]: PASS
+	CSS Transitions with transition: all: property <text-decoration-style> from [initial] to [dashed] at (-0.3) should be [dashed]: PASS
+	CSS Transitions with transition: all: property <text-decoration-style> from [initial] to [dashed] at (0) should be [dashed]: PASS
+	CSS Transitions with transition: all: property <text-decoration-style> from [initial] to [dashed] at (0.3) should be [dashed]: PASS
+	CSS Transitions with transition: all: property <text-decoration-style> from [initial] to [dashed] at (0.5) should be [dashed]: PASS
+	CSS Transitions with transition: all: property <text-decoration-style> from [initial] to [dashed] at (0.6) should be [dashed]: PASS
+	CSS Transitions with transition: all: property <text-decoration-style> from [initial] to [dashed] at (1) should be [dashed]: PASS
+	CSS Transitions with transition: all: property <text-decoration-style> from [initial] to [dashed] at (1.5) should be [dashed]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [auto] to [123px] at (-0.3) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [auto] to [123px] at (0) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [auto] to [123px] at (0.3) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [auto] to [123px] at (0.5) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [auto] to [123px] at (0.6) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [auto] to [123px] at (1) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [auto] to [123px] at (1.5) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [from-font] to [123px] at (-0.3) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [from-font] to [123px] at (0) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [from-font] to [123px] at (0.3) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [from-font] to [123px] at (0.5) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [from-font] to [123px] at (0.6) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [from-font] to [123px] at (1) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [from-font] to [123px] at (1.5) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [initial] to [123px] at (-0.3) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [initial] to [123px] at (0) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [initial] to [123px] at (0.3) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [initial] to [123px] at (0.5) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [initial] to [123px] at (0.6) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [initial] to [123px] at (1) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [initial] to [123px] at (1.5) should be [123px]: PASS
+	CSS Transitions with transition: all: property <text-emphasis-position> from [initial] to [under right] at (-0.3) should be [under right]: PASS
+	CSS Transitions with transition: all: property <text-emphasis-position> from [initial] to [under right] at (0) should be [under right]: PASS
+	CSS Transitions with transition: all: property <text-emphasis-position> from [initial] to [under right] at (0.3) should be [under right]: PASS
+	CSS Transitions with transition: all: property <text-emphasis-position> from [initial] to [under right] at (0.5) should be [under right]: PASS
+	CSS Transitions with transition: all: property <text-emphasis-position> from [initial] to [under right] at (0.6) should be [under right]: PASS
+	CSS Transitions with transition: all: property <text-emphasis-position> from [initial] to [under right] at (1) should be [under right]: PASS
+	CSS Transitions with transition: all: property <text-emphasis-position> from [initial] to [under right] at (1.5) should be [under right]: PASS
+	CSS Transitions with transition: all: property <text-emphasis-style> from [initial] to [dot] at (-0.3) should be [dot]: PASS
+	CSS Transitions with transition: all: property <text-emphasis-style> from [initial] to [dot] at (0) should be [dot]: PASS
+	CSS Transitions with transition: all: property <text-emphasis-style> from [initial] to [dot] at (0.3) should be [dot]: PASS
+	CSS Transitions with transition: all: property <text-emphasis-style> from [initial] to [dot] at (0.5) should be [dot]: PASS
+	CSS Transitions with transition: all: property <text-emphasis-style> from [initial] to [dot] at (0.6) should be [dot]: PASS
+	CSS Transitions with transition: all: property <text-emphasis-style> from [initial] to [dot] at (1) should be [dot]: PASS
+	CSS Transitions with transition: all: property <text-emphasis-style> from [initial] to [dot] at (1.5) should be [dot]: PASS
+	CSS Transitions with transition: all: property <text-underline-position> from [initial] to [under] at (-0.3) should be [under]: PASS
+	CSS Transitions with transition: all: property <text-underline-position> from [initial] to [under] at (0) should be [under]: PASS
+	CSS Transitions with transition: all: property <text-underline-position> from [initial] to [under] at (0.3) should be [under]: PASS
+	CSS Transitions with transition: all: property <text-underline-position> from [initial] to [under] at (0.5) should be [under]: PASS
+	CSS Transitions with transition: all: property <text-underline-position> from [initial] to [under] at (0.6) should be [under]: PASS
+	CSS Transitions with transition: all: property <text-underline-position> from [initial] to [under] at (1) should be [under]: PASS
+	CSS Transitions with transition: all: property <text-underline-position> from [initial] to [under] at (1.5) should be [under]: PASS
+	CSS Transitions: property <text-decoration-line> from [initial] to [underline] at (-0.3) should be [underline]: PASS
+	CSS Transitions: property <text-decoration-line> from [initial] to [underline] at (0) should be [underline]: PASS
+	CSS Transitions: property <text-decoration-line> from [initial] to [underline] at (0.3) should be [underline]: PASS
+	CSS Transitions: property <text-decoration-line> from [initial] to [underline] at (0.5) should be [underline]: PASS
+	CSS Transitions: property <text-decoration-line> from [initial] to [underline] at (0.6) should be [underline]: PASS
+	CSS Transitions: property <text-decoration-line> from [initial] to [underline] at (1) should be [underline]: PASS
+	CSS Transitions: property <text-decoration-line> from [initial] to [underline] at (1.5) should be [underline]: PASS
+	CSS Transitions: property <text-decoration-style> from [initial] to [dashed] at (-0.3) should be [dashed]: PASS
+	CSS Transitions: property <text-decoration-style> from [initial] to [dashed] at (0) should be [dashed]: PASS
+	CSS Transitions: property <text-decoration-style> from [initial] to [dashed] at (0.3) should be [dashed]: PASS
+	CSS Transitions: property <text-decoration-style> from [initial] to [dashed] at (0.5) should be [dashed]: PASS
+	CSS Transitions: property <text-decoration-style> from [initial] to [dashed] at (0.6) should be [dashed]: PASS
+	CSS Transitions: property <text-decoration-style> from [initial] to [dashed] at (1) should be [dashed]: PASS
+	CSS Transitions: property <text-decoration-style> from [initial] to [dashed] at (1.5) should be [dashed]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [auto] to [123px] at (-0.3) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [auto] to [123px] at (0) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [auto] to [123px] at (0.3) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [auto] to [123px] at (0.5) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [auto] to [123px] at (0.6) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [auto] to [123px] at (1) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [auto] to [123px] at (1.5) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [from-font] to [123px] at (-0.3) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [from-font] to [123px] at (0) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [from-font] to [123px] at (0.3) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [from-font] to [123px] at (0.5) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [from-font] to [123px] at (0.6) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [from-font] to [123px] at (1) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [from-font] to [123px] at (1.5) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [initial] to [123px] at (-0.3) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [initial] to [123px] at (0) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [initial] to [123px] at (0.3) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [initial] to [123px] at (0.5) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [initial] to [123px] at (0.6) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [initial] to [123px] at (1) should be [123px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [initial] to [123px] at (1.5) should be [123px]: PASS
+	CSS Transitions: property <text-emphasis-position> from [initial] to [under right] at (-0.3) should be [under right]: PASS
+	CSS Transitions: property <text-emphasis-position> from [initial] to [under right] at (0) should be [under right]: PASS
+	CSS Transitions: property <text-emphasis-position> from [initial] to [under right] at (0.3) should be [under right]: PASS
+	CSS Transitions: property <text-emphasis-position> from [initial] to [under right] at (0.5) should be [under right]: PASS
+	CSS Transitions: property <text-emphasis-position> from [initial] to [under right] at (0.6) should be [under right]: PASS
+	CSS Transitions: property <text-emphasis-position> from [initial] to [under right] at (1) should be [under right]: PASS
+	CSS Transitions: property <text-emphasis-position> from [initial] to [under right] at (1.5) should be [under right]: PASS
+	CSS Transitions: property <text-emphasis-style> from [initial] to [dot] at (-0.3) should be [dot]: PASS
+	CSS Transitions: property <text-emphasis-style> from [initial] to [dot] at (0) should be [dot]: PASS
+	CSS Transitions: property <text-emphasis-style> from [initial] to [dot] at (0.3) should be [dot]: PASS
+	CSS Transitions: property <text-emphasis-style> from [initial] to [dot] at (0.5) should be [dot]: PASS
+	CSS Transitions: property <text-emphasis-style> from [initial] to [dot] at (0.6) should be [dot]: PASS
+	CSS Transitions: property <text-emphasis-style> from [initial] to [dot] at (1) should be [dot]: PASS
+	CSS Transitions: property <text-emphasis-style> from [initial] to [dot] at (1.5) should be [dot]: PASS
+	CSS Transitions: property <text-underline-position> from [initial] to [under] at (-0.3) should be [under]: PASS
+	CSS Transitions: property <text-underline-position> from [initial] to [under] at (0) should be [under]: PASS
+	CSS Transitions: property <text-underline-position> from [initial] to [under] at (0.3) should be [under]: PASS
+	CSS Transitions: property <text-underline-position> from [initial] to [under] at (0.5) should be [under]: PASS
+	CSS Transitions: property <text-underline-position> from [initial] to [under] at (0.6) should be [under]: PASS
+	CSS Transitions: property <text-underline-position> from [initial] to [under] at (1) should be [under]: PASS
+	CSS Transitions: property <text-underline-position> from [initial] to [under] at (1.5) should be [under]: PASS
+	Web Animations: property <text-decoration-line> from [initial] to [underline] at (-0.3) should be [initial]: PASS
+	Web Animations: property <text-decoration-line> from [initial] to [underline] at (0) should be [initial]: PASS
+	Web Animations: property <text-decoration-line> from [initial] to [underline] at (0.3) should be [initial]: PASS
+	Web Animations: property <text-decoration-line> from [initial] to [underline] at (0.5) should be [underline]: PASS
+	Web Animations: property <text-decoration-line> from [initial] to [underline] at (0.6) should be [underline]: PASS
+	Web Animations: property <text-decoration-line> from [initial] to [underline] at (1) should be [underline]: PASS
+	Web Animations: property <text-decoration-line> from [initial] to [underline] at (1.5) should be [underline]: PASS
+	Web Animations: property <text-decoration-style> from [initial] to [dashed] at (-0.3) should be [initial]: PASS
+	Web Animations: property <text-decoration-style> from [initial] to [dashed] at (0) should be [initial]: PASS
+	Web Animations: property <text-decoration-style> from [initial] to [dashed] at (0.3) should be [initial]: PASS
+	Web Animations: property <text-decoration-style> from [initial] to [dashed] at (0.5) should be [dashed]: PASS
+	Web Animations: property <text-decoration-style> from [initial] to [dashed] at (0.6) should be [dashed]: PASS
+	Web Animations: property <text-decoration-style> from [initial] to [dashed] at (1) should be [dashed]: PASS
+	Web Animations: property <text-decoration-style> from [initial] to [dashed] at (1.5) should be [dashed]: PASS
+	Web Animations: property <text-decoration-thickness> from [auto] to [123px] at (-0.3) should be [auto]: PASS
+	Web Animations: property <text-decoration-thickness> from [auto] to [123px] at (0) should be [auto]: PASS
+	Web Animations: property <text-decoration-thickness> from [auto] to [123px] at (0.3) should be [auto]: PASS
+	Web Animations: property <text-decoration-thickness> from [auto] to [123px] at (0.5) should be [123px]: PASS
+	Web Animations: property <text-decoration-thickness> from [auto] to [123px] at (0.6) should be [123px]: PASS
+	Web Animations: property <text-decoration-thickness> from [auto] to [123px] at (1) should be [123px]: PASS
+	Web Animations: property <text-decoration-thickness> from [auto] to [123px] at (1.5) should be [123px]: PASS
+	Web Animations: property <text-decoration-thickness> from [from-font] to [123px] at (-0.3) should be [from-font]: PASS
+	Web Animations: property <text-decoration-thickness> from [from-font] to [123px] at (0) should be [from-font]: PASS
+	Web Animations: property <text-decoration-thickness> from [from-font] to [123px] at (0.3) should be [from-font]: PASS
+	Web Animations: property <text-decoration-thickness> from [from-font] to [123px] at (0.5) should be [123px]: PASS
+	Web Animations: property <text-decoration-thickness> from [from-font] to [123px] at (0.6) should be [123px]: PASS
+	Web Animations: property <text-decoration-thickness> from [from-font] to [123px] at (1) should be [123px]: PASS
+	Web Animations: property <text-decoration-thickness> from [from-font] to [123px] at (1.5) should be [123px]: PASS
+	Web Animations: property <text-decoration-thickness> from [initial] to [123px] at (-0.3) should be [initial]: PASS
+	Web Animations: property <text-decoration-thickness> from [initial] to [123px] at (0) should be [initial]: PASS
+	Web Animations: property <text-decoration-thickness> from [initial] to [123px] at (0.3) should be [initial]: PASS
+	Web Animations: property <text-decoration-thickness> from [initial] to [123px] at (0.5) should be [123px]: PASS
+	Web Animations: property <text-decoration-thickness> from [initial] to [123px] at (0.6) should be [123px]: PASS
+	Web Animations: property <text-decoration-thickness> from [initial] to [123px] at (1) should be [123px]: PASS
+	Web Animations: property <text-decoration-thickness> from [initial] to [123px] at (1.5) should be [123px]: PASS
+	Web Animations: property <text-emphasis-position> from [initial] to [under right] at (-0.3) should be [initial]: PASS
+	Web Animations: property <text-emphasis-position> from [initial] to [under right] at (0) should be [initial]: PASS
+	Web Animations: property <text-emphasis-position> from [initial] to [under right] at (0.3) should be [initial]: PASS
+	Web Animations: property <text-emphasis-position> from [initial] to [under right] at (0.5) should be [under right]: PASS
+	Web Animations: property <text-emphasis-position> from [initial] to [under right] at (0.6) should be [under right]: PASS
+	Web Animations: property <text-emphasis-position> from [initial] to [under right] at (1) should be [under right]: PASS
+	Web Animations: property <text-emphasis-position> from [initial] to [under right] at (1.5) should be [under right]: PASS
+	Web Animations: property <text-emphasis-style> from [initial] to [dot] at (-0.3) should be [initial]: PASS
+	Web Animations: property <text-emphasis-style> from [initial] to [dot] at (0) should be [initial]: PASS
+	Web Animations: property <text-emphasis-style> from [initial] to [dot] at (0.3) should be [initial]: PASS
+	Web Animations: property <text-emphasis-style> from [initial] to [dot] at (0.5) should be [dot]: PASS
+	Web Animations: property <text-emphasis-style> from [initial] to [dot] at (0.6) should be [dot]: PASS
+	Web Animations: property <text-emphasis-style> from [initial] to [dot] at (1) should be [dot]: PASS
+	Web Animations: property <text-emphasis-style> from [initial] to [dot] at (1.5) should be [dot]: PASS
+	Web Animations: property <text-underline-position> from [initial] to [under] at (-0.3) should be [initial]: PASS
+	Web Animations: property <text-underline-position> from [initial] to [under] at (0) should be [initial]: PASS
+	Web Animations: property <text-underline-position> from [initial] to [under] at (0.3) should be [initial]: PASS
+	Web Animations: property <text-underline-position> from [initial] to [under] at (0.5) should be [under]: PASS
+	Web Animations: property <text-underline-position> from [initial] to [under] at (0.6) should be [under]: PASS
+	Web Animations: property <text-underline-position> from [initial] to [under] at (1) should be [under]: PASS
+	Web Animations: property <text-underline-position> from [initial] to [under] at (1.5) should be [under]: PASS
+/css/css-text-decor/animations/text-decoration-thickness-interpolation.html: OK
+	CSS Animations: property <text-decoration-thickness> from [100%] to [0%] at (0) should be [100%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [0%] at (0.3) should be [70%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [0%] at (0.6) should be [40%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [0%] at (1) should be [0%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [0em] at (0) should be [100%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [0em] at (0.3) should be [70%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [0em] at (0.6) should be [40%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [0em] at (1) should be [0%]: FAIL
+	CSS Animations: property <text-decoration-thickness> from [100%] to [0px] at (0) should be [100%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [0px] at (0.3) should be [70%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [0px] at (0.6) should be [40%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [0px] at (1) should be [0%]: FAIL
+	CSS Animations: property <text-decoration-thickness> from [100%] to [200%] at (0) should be [100%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [200%] at (0.3) should be [130%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [200%] at (0.6) should be [160%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [200%] at (1) should be [200%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [2em] at (0) should be [100%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [2em] at (0.3) should be [calc(70% + 9.6px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [2em] at (0.6) should be [calc(40% + 19.2px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [2em] at (1) should be [calc(0% + 32px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [32px] at (0) should be [100%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [32px] at (0.3) should be [calc(70% + 9.6px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [32px] at (0.6) should be [calc(40% + 19.2px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [32px] at (1) should be [calc(0% + 32px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [0%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [0%] at (0.3) should be [calc(0% + 11.2px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [0%] at (0.6) should be [calc(0% + 6.4px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [0%] at (1) should be [0%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [0em] at (0) should be [16px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [0em] at (0.3) should be [11.2px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [0em] at (0.6) should be [6.4px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [0em] at (1) should be [0px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [0px] at (0) should be [16px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [0px] at (0.3) should be [11.2px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [0px] at (0.6) should be [6.4px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [0px] at (1) should be [0px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [200%] at (1) should be [200%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [2em] at (0) should be [16px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [2em] at (0.3) should be [20.8px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [2em] at (0.6) should be [25.6px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [2em] at (1) should be [32px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [32px] at (0) should be [16px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [32px] at (0.3) should be [20.8px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [32px] at (0.6) should be [25.6px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [32px] at (1) should be [32px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [0%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [0%] at (0.3) should be [calc(0% + 11.2px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [0%] at (0.6) should be [calc(0% + 6.4px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [0%] at (1) should be [0%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [0em] at (0) should be [16px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [0em] at (0.3) should be [11.2px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [0em] at (0.6) should be [6.4px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [0em] at (1) should be [0px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [0px] at (0) should be [16px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [0px] at (0.3) should be [11.2px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [0px] at (0.6) should be [6.4px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [0px] at (1) should be [0px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [200%] at (1) should be [200%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [2em] at (0) should be [16px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [2em] at (0.3) should be [20.8px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [2em] at (0.6) should be [25.6px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [2em] at (1) should be [32px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [32px] at (0) should be [16px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [32px] at (0.3) should be [20.8px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [32px] at (0.6) should be [25.6px]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [32px] at (1) should be [32px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [0%] at (0) should be [100%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [0%] at (0.3) should be [70%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [0%] at (0.6) should be [40%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [0%] at (1) should be [0%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [0em] at (0) should be [100%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [0em] at (0.3) should be [70%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [0em] at (0.6) should be [40%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [0em] at (1) should be [0%]: FAIL
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [0px] at (0) should be [100%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [0px] at (0.3) should be [70%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [0px] at (0.6) should be [40%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [0px] at (1) should be [0%]: FAIL
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [200%] at (0) should be [100%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [200%] at (0.3) should be [130%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [200%] at (0.6) should be [160%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [200%] at (1) should be [200%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [2em] at (0) should be [100%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [2em] at (0.3) should be [calc(70% + 9.6px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [2em] at (0.6) should be [calc(40% + 19.2px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [2em] at (1) should be [calc(0% + 32px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [32px] at (0) should be [100%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [32px] at (0.3) should be [calc(70% + 9.6px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [32px] at (0.6) should be [calc(40% + 19.2px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [32px] at (1) should be [calc(0% + 32px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [0%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [0%] at (0.3) should be [calc(0% + 11.2px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [0%] at (0.6) should be [calc(0% + 6.4px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [0%] at (1) should be [0%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [0em] at (0) should be [16px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [0em] at (0.3) should be [11.2px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [0em] at (0.6) should be [6.4px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [0em] at (1) should be [0px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [0px] at (0) should be [16px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [0px] at (0.3) should be [11.2px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [0px] at (0.6) should be [6.4px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [0px] at (1) should be [0px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [200%] at (1) should be [200%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [2em] at (0) should be [16px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [2em] at (0.3) should be [20.8px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [2em] at (0.6) should be [25.6px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [2em] at (1) should be [32px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [32px] at (0) should be [16px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [32px] at (0.3) should be [20.8px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [32px] at (0.6) should be [25.6px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [32px] at (1) should be [32px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [0%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [0%] at (0.3) should be [calc(0% + 11.2px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [0%] at (0.6) should be [calc(0% + 6.4px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [0%] at (1) should be [0%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [0em] at (0) should be [16px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [0em] at (0.3) should be [11.2px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [0em] at (0.6) should be [6.4px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [0em] at (1) should be [0px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [0px] at (0) should be [16px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [0px] at (0.3) should be [11.2px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [0px] at (0.6) should be [6.4px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [0px] at (1) should be [0px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [200%] at (1) should be [200%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [2em] at (0) should be [16px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [2em] at (0.3) should be [20.8px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [2em] at (0.6) should be [25.6px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [2em] at (1) should be [32px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [32px] at (0) should be [16px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [32px] at (0.3) should be [20.8px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [32px] at (0.6) should be [25.6px]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [32px] at (1) should be [32px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [0%] at (0) should be [100%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [0%] at (0.3) should be [70%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [0%] at (0.6) should be [40%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [0%] at (1) should be [0%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [0em] at (0) should be [100%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [0em] at (0.3) should be [70%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [0em] at (0.6) should be [40%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [0em] at (1) should be [0%]: FAIL
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [0px] at (0) should be [100%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [0px] at (0.3) should be [70%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [0px] at (0.6) should be [40%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [0px] at (1) should be [0%]: FAIL
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [200%] at (0) should be [100%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [200%] at (0.3) should be [130%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [200%] at (0.6) should be [160%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [200%] at (1) should be [200%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [2em] at (0) should be [100%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [2em] at (0.3) should be [calc(70% + 9.6px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [2em] at (0.6) should be [calc(40% + 19.2px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [2em] at (1) should be [calc(0% + 32px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [32px] at (0) should be [100%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [32px] at (0.3) should be [calc(70% + 9.6px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [32px] at (0.6) should be [calc(40% + 19.2px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [32px] at (1) should be [calc(0% + 32px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [0%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [0%] at (0.3) should be [calc(0% + 11.2px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [0%] at (0.6) should be [calc(0% + 6.4px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [0%] at (1) should be [0%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [0em] at (0) should be [16px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [0em] at (0.3) should be [11.2px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [0em] at (0.6) should be [6.4px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [0em] at (1) should be [0px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [0px] at (0) should be [16px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [0px] at (0.3) should be [11.2px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [0px] at (0.6) should be [6.4px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [0px] at (1) should be [0px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [200%] at (1) should be [200%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [2em] at (0) should be [16px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [2em] at (0.3) should be [20.8px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [2em] at (0.6) should be [25.6px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [2em] at (1) should be [32px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [32px] at (0) should be [16px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [32px] at (0.3) should be [20.8px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [32px] at (0.6) should be [25.6px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [32px] at (1) should be [32px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [0%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [0%] at (0.3) should be [calc(0% + 11.2px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [0%] at (0.6) should be [calc(0% + 6.4px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [0%] at (1) should be [0%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [0em] at (0) should be [16px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [0em] at (0.3) should be [11.2px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [0em] at (0.6) should be [6.4px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [0em] at (1) should be [0px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [0px] at (0) should be [16px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [0px] at (0.3) should be [11.2px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [0px] at (0.6) should be [6.4px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [0px] at (1) should be [0px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [200%] at (1) should be [200%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [2em] at (0) should be [16px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [2em] at (0.3) should be [20.8px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [2em] at (0.6) should be [25.6px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [2em] at (1) should be [32px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [32px] at (0) should be [16px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [32px] at (0.3) should be [20.8px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [32px] at (0.6) should be [25.6px]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [32px] at (1) should be [32px]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [0%] at (0) should be [100%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [0%] at (0.3) should be [70%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [0%] at (0.6) should be [40%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [0%] at (1) should be [0%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [0em] at (0) should be [100%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [0em] at (0.3) should be [70%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [0em] at (0.6) should be [40%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [0em] at (1) should be [0%]: FAIL
+	Web Animations: property <text-decoration-thickness> from [100%] to [0px] at (0) should be [100%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [0px] at (0.3) should be [70%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [0px] at (0.6) should be [40%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [0px] at (1) should be [0%]: FAIL
+	Web Animations: property <text-decoration-thickness> from [100%] to [200%] at (0) should be [100%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [200%] at (0.3) should be [130%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [200%] at (0.6) should be [160%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [200%] at (1) should be [200%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [2em] at (0) should be [100%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [2em] at (0.3) should be [calc(70% + 9.6px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [2em] at (0.6) should be [calc(40% + 19.2px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [2em] at (1) should be [calc(0% + 32px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [32px] at (0) should be [100%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [32px] at (0.3) should be [calc(70% + 9.6px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [32px] at (0.6) should be [calc(40% + 19.2px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [32px] at (1) should be [calc(0% + 32px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [0%] at (0) should be [calc(0% + 16px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [0%] at (0.3) should be [calc(0% + 11.2px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [0%] at (0.6) should be [calc(0% + 6.4px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [0%] at (1) should be [0%]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [0em] at (0) should be [16px]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [0em] at (0.3) should be [11.2px]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [0em] at (0.6) should be [6.4px]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [0em] at (1) should be [0px]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [0px] at (0) should be [16px]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [0px] at (0.3) should be [11.2px]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [0px] at (0.6) should be [6.4px]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [0px] at (1) should be [0px]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [200%] at (1) should be [200%]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [2em] at (0) should be [16px]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [2em] at (0.3) should be [20.8px]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [2em] at (0.6) should be [25.6px]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [2em] at (1) should be [32px]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [32px] at (0) should be [16px]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [32px] at (0.3) should be [20.8px]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [32px] at (0.6) should be [25.6px]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [32px] at (1) should be [32px]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [0%] at (0) should be [calc(0% + 16px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [0%] at (0.3) should be [calc(0% + 11.2px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [0%] at (0.6) should be [calc(0% + 6.4px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [0%] at (1) should be [0%]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [0em] at (0) should be [16px]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [0em] at (0.3) should be [11.2px]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [0em] at (0.6) should be [6.4px]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [0em] at (1) should be [0px]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [0px] at (0) should be [16px]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [0px] at (0.3) should be [11.2px]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [0px] at (0.6) should be [6.4px]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [0px] at (1) should be [0px]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [200%] at (1) should be [200%]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [2em] at (0) should be [16px]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [2em] at (0.3) should be [20.8px]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [2em] at (0.6) should be [25.6px]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [2em] at (1) should be [32px]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [32px] at (0) should be [16px]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [32px] at (0.3) should be [20.8px]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [32px] at (0.6) should be [25.6px]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [32px] at (1) should be [32px]: PASS
+/css/css-text-decor/animations/text-underline-offset-interpolation.html: OK
+	CSS Animations: property <text-underline-offset> from [0%] to [100%] at (0) should be [0%]: PASS
+	CSS Animations: property <text-underline-offset> from [0%] to [100%] at (0.3) should be [30%]: PASS
+	CSS Animations: property <text-underline-offset> from [0%] to [100%] at (0.6) should be [60%]: PASS
+	CSS Animations: property <text-underline-offset> from [0%] to [100%] at (1) should be [100%]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [0%] at (0) should be [100%]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [0%] at (0.3) should be [70%]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [0%] at (0.6) should be [40%]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [0%] at (1) should be [0%]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [0em] at (0) should be [calc(100% + 0em)]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [0em] at (0.3) should be [calc(70% + 0em)]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [0em] at (0.6) should be [calc(40% + 0em)]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [0em] at (1) should be [calc(0% + 0em)]: FAIL
+	CSS Animations: property <text-underline-offset> from [100%] to [0px] at (0) should be [100%]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [0px] at (0.3) should be [70%]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [0px] at (0.6) should be [40%]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [0px] at (1) should be [0%]: FAIL
+	CSS Animations: property <text-underline-offset> from [100%] to [200%] at (0) should be [100%]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [200%] at (0.3) should be [130%]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [200%] at (0.6) should be [160%]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [200%] at (1) should be [200%]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [2em] at (0) should be [100%]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [2em] at (0.3) should be [calc(70% + 9.6px)]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [2em] at (0.6) should be [calc(40% + 19.2px)]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [2em] at (1) should be [calc(0% + 32px)]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [32px] at (0) should be [calc(100% + 0px)]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [32px] at (0.3) should be [calc(70% + 9.6px)]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [32px] at (0.6) should be [calc(40% + 19.2px)]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [32px] at (1) should be [calc(0% + 32px)]: PASS
+	CSS Animations: property <text-underline-offset> from [15px] to [0px] at (0) should be [15px]: PASS
+	CSS Animations: property <text-underline-offset> from [15px] to [0px] at (0.3) should be [10.5px]: PASS
+	CSS Animations: property <text-underline-offset> from [15px] to [0px] at (0.6) should be [6px]: PASS
+	CSS Animations: property <text-underline-offset> from [15px] to [0px] at (1) should be [0px]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [0%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [0%] at (0.3) should be [calc(0% + 11.2px)]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [0%] at (0.6) should be [calc(0% + 6.4px)]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [0%] at (1) should be [0%]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [0em] at (0) should be [16px]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [0em] at (0.3) should be [11.2px]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [0em] at (0.6) should be [6.4px]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [0em] at (1) should be [0px]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [0px] at (0) should be [16px]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [0px] at (0.3) should be [11.2px]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [0px] at (0.6) should be [6.4px]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [0px] at (1) should be [0px]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [200%] at (1) should be [200%]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [2em] at (0) should be [16px]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [2em] at (0.3) should be [20.8px]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [2em] at (0.6) should be [25.6px]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [2em] at (1) should be [32px]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [32px] at (0) should be [16px]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [32px] at (0.3) should be [20.8px]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [32px] at (0.6) should be [25.6px]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [32px] at (1) should be [32px]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [0%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [0%] at (0.3) should be [calc(0% + 11.2px)]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [0%] at (0.6) should be [calc(0% + 6.4px)]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [0%] at (1) should be [0%]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [0em] at (0) should be [16px]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [0em] at (0.3) should be [11.2px]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [0em] at (0.6) should be [6.4px]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [0em] at (1) should be [0px]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [0px] at (0) should be [16px]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [0px] at (0.3) should be [11.2px]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [0px] at (0.6) should be [6.4px]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [0px] at (1) should be [0px]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [200%] at (1) should be [200%]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [2em] at (0) should be [16px]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [2em] at (0.3) should be [20.8px]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [2em] at (0.6) should be [25.6px]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [2em] at (1) should be [32px]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [32px] at (0) should be [16px]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [32px] at (0.3) should be [20.8px]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [32px] at (0.6) should be [25.6px]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [32px] at (1) should be [32px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [0%] to [100%] at (0) should be [0%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [0%] to [100%] at (0.3) should be [30%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [0%] to [100%] at (0.6) should be [60%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [0%] to [100%] at (1) should be [100%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [0%] at (0) should be [100%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [0%] at (0.3) should be [70%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [0%] at (0.6) should be [40%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [0%] at (1) should be [0%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [0em] at (0) should be [calc(100% + 0em)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [0em] at (0.3) should be [calc(70% + 0em)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [0em] at (0.6) should be [calc(40% + 0em)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [0em] at (1) should be [calc(0% + 0em)]: FAIL
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [0px] at (0) should be [100%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [0px] at (0.3) should be [70%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [0px] at (0.6) should be [40%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [0px] at (1) should be [0%]: FAIL
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [200%] at (0) should be [100%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [200%] at (0.3) should be [130%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [200%] at (0.6) should be [160%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [200%] at (1) should be [200%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [2em] at (0) should be [100%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [2em] at (0.3) should be [calc(70% + 9.6px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [2em] at (0.6) should be [calc(40% + 19.2px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [2em] at (1) should be [calc(0% + 32px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [32px] at (0) should be [calc(100% + 0px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [32px] at (0.3) should be [calc(70% + 9.6px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [32px] at (0.6) should be [calc(40% + 19.2px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [32px] at (1) should be [calc(0% + 32px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [15px] to [0px] at (0) should be [15px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [15px] to [0px] at (0.3) should be [10.5px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [15px] to [0px] at (0.6) should be [6px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [15px] to [0px] at (1) should be [0px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [0%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [0%] at (0.3) should be [calc(0% + 11.2px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [0%] at (0.6) should be [calc(0% + 6.4px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [0%] at (1) should be [0%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [0em] at (0) should be [16px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [0em] at (0.3) should be [11.2px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [0em] at (0.6) should be [6.4px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [0em] at (1) should be [0px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [0px] at (0) should be [16px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [0px] at (0.3) should be [11.2px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [0px] at (0.6) should be [6.4px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [0px] at (1) should be [0px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [200%] at (1) should be [200%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [2em] at (0) should be [16px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [2em] at (0.3) should be [20.8px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [2em] at (0.6) should be [25.6px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [2em] at (1) should be [32px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [32px] at (0) should be [16px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [32px] at (0.3) should be [20.8px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [32px] at (0.6) should be [25.6px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [32px] at (1) should be [32px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [0%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [0%] at (0.3) should be [calc(0% + 11.2px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [0%] at (0.6) should be [calc(0% + 6.4px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [0%] at (1) should be [0%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [0em] at (0) should be [16px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [0em] at (0.3) should be [11.2px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [0em] at (0.6) should be [6.4px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [0em] at (1) should be [0px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [0px] at (0) should be [16px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [0px] at (0.3) should be [11.2px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [0px] at (0.6) should be [6.4px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [0px] at (1) should be [0px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [200%] at (1) should be [200%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [2em] at (0) should be [16px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [2em] at (0.3) should be [20.8px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [2em] at (0.6) should be [25.6px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [2em] at (1) should be [32px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [32px] at (0) should be [16px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [32px] at (0.3) should be [20.8px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [32px] at (0.6) should be [25.6px]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [32px] at (1) should be [32px]: PASS
+	CSS Transitions: property <text-underline-offset> from [0%] to [100%] at (0) should be [0%]: PASS
+	CSS Transitions: property <text-underline-offset> from [0%] to [100%] at (0.3) should be [30%]: PASS
+	CSS Transitions: property <text-underline-offset> from [0%] to [100%] at (0.6) should be [60%]: PASS
+	CSS Transitions: property <text-underline-offset> from [0%] to [100%] at (1) should be [100%]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [0%] at (0) should be [100%]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [0%] at (0.3) should be [70%]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [0%] at (0.6) should be [40%]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [0%] at (1) should be [0%]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [0em] at (0) should be [calc(100% + 0em)]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [0em] at (0.3) should be [calc(70% + 0em)]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [0em] at (0.6) should be [calc(40% + 0em)]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [0em] at (1) should be [calc(0% + 0em)]: FAIL
+	CSS Transitions: property <text-underline-offset> from [100%] to [0px] at (0) should be [100%]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [0px] at (0.3) should be [70%]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [0px] at (0.6) should be [40%]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [0px] at (1) should be [0%]: FAIL
+	CSS Transitions: property <text-underline-offset> from [100%] to [200%] at (0) should be [100%]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [200%] at (0.3) should be [130%]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [200%] at (0.6) should be [160%]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [200%] at (1) should be [200%]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [2em] at (0) should be [100%]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [2em] at (0.3) should be [calc(70% + 9.6px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [2em] at (0.6) should be [calc(40% + 19.2px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [2em] at (1) should be [calc(0% + 32px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [32px] at (0) should be [calc(100% + 0px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [32px] at (0.3) should be [calc(70% + 9.6px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [32px] at (0.6) should be [calc(40% + 19.2px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [32px] at (1) should be [calc(0% + 32px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [15px] to [0px] at (0) should be [15px]: PASS
+	CSS Transitions: property <text-underline-offset> from [15px] to [0px] at (0.3) should be [10.5px]: PASS
+	CSS Transitions: property <text-underline-offset> from [15px] to [0px] at (0.6) should be [6px]: PASS
+	CSS Transitions: property <text-underline-offset> from [15px] to [0px] at (1) should be [0px]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [0%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [0%] at (0.3) should be [calc(0% + 11.2px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [0%] at (0.6) should be [calc(0% + 6.4px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [0%] at (1) should be [0%]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [0em] at (0) should be [16px]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [0em] at (0.3) should be [11.2px]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [0em] at (0.6) should be [6.4px]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [0em] at (1) should be [0px]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [0px] at (0) should be [16px]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [0px] at (0.3) should be [11.2px]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [0px] at (0.6) should be [6.4px]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [0px] at (1) should be [0px]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [200%] at (1) should be [200%]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [2em] at (0) should be [16px]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [2em] at (0.3) should be [20.8px]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [2em] at (0.6) should be [25.6px]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [2em] at (1) should be [32px]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [32px] at (0) should be [16px]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [32px] at (0.3) should be [20.8px]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [32px] at (0.6) should be [25.6px]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [32px] at (1) should be [32px]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [0%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [0%] at (0.3) should be [calc(0% + 11.2px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [0%] at (0.6) should be [calc(0% + 6.4px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [0%] at (1) should be [0%]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [0em] at (0) should be [16px]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [0em] at (0.3) should be [11.2px]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [0em] at (0.6) should be [6.4px]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [0em] at (1) should be [0px]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [0px] at (0) should be [16px]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [0px] at (0.3) should be [11.2px]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [0px] at (0.6) should be [6.4px]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [0px] at (1) should be [0px]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [200%] at (1) should be [200%]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [2em] at (0) should be [16px]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [2em] at (0.3) should be [20.8px]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [2em] at (0.6) should be [25.6px]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [2em] at (1) should be [32px]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [32px] at (0) should be [16px]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [32px] at (0.3) should be [20.8px]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [32px] at (0.6) should be [25.6px]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [32px] at (1) should be [32px]: PASS
+	Web Animations: property <text-underline-offset> from [0%] to [100%] at (0) should be [0%]: PASS
+	Web Animations: property <text-underline-offset> from [0%] to [100%] at (0.3) should be [30%]: PASS
+	Web Animations: property <text-underline-offset> from [0%] to [100%] at (0.6) should be [60%]: PASS
+	Web Animations: property <text-underline-offset> from [0%] to [100%] at (1) should be [100%]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [0%] at (0) should be [100%]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [0%] at (0.3) should be [70%]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [0%] at (0.6) should be [40%]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [0%] at (1) should be [0%]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [0em] at (0) should be [calc(100% + 0em)]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [0em] at (0.3) should be [calc(70% + 0em)]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [0em] at (0.6) should be [calc(40% + 0em)]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [0em] at (1) should be [calc(0% + 0em)]: FAIL
+	Web Animations: property <text-underline-offset> from [100%] to [0px] at (0) should be [100%]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [0px] at (0.3) should be [70%]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [0px] at (0.6) should be [40%]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [0px] at (1) should be [0%]: FAIL
+	Web Animations: property <text-underline-offset> from [100%] to [200%] at (0) should be [100%]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [200%] at (0.3) should be [130%]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [200%] at (0.6) should be [160%]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [200%] at (1) should be [200%]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [2em] at (0) should be [100%]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [2em] at (0.3) should be [calc(70% + 9.6px)]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [2em] at (0.6) should be [calc(40% + 19.2px)]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [2em] at (1) should be [calc(0% + 32px)]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [32px] at (0) should be [calc(100% + 0px)]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [32px] at (0.3) should be [calc(70% + 9.6px)]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [32px] at (0.6) should be [calc(40% + 19.2px)]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [32px] at (1) should be [calc(0% + 32px)]: PASS
+	Web Animations: property <text-underline-offset> from [15px] to [0px] at (0) should be [15px]: PASS
+	Web Animations: property <text-underline-offset> from [15px] to [0px] at (0.3) should be [10.5px]: PASS
+	Web Animations: property <text-underline-offset> from [15px] to [0px] at (0.6) should be [6px]: PASS
+	Web Animations: property <text-underline-offset> from [15px] to [0px] at (1) should be [0px]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [0%] at (0) should be [calc(0% + 16px)]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [0%] at (0.3) should be [calc(0% + 11.2px)]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [0%] at (0.6) should be [calc(0% + 6.4px)]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [0%] at (1) should be [0%]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [0em] at (0) should be [16px]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [0em] at (0.3) should be [11.2px]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [0em] at (0.6) should be [6.4px]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [0em] at (1) should be [0px]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [0px] at (0) should be [16px]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [0px] at (0.3) should be [11.2px]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [0px] at (0.6) should be [6.4px]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [0px] at (1) should be [0px]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [200%] at (1) should be [200%]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [2em] at (0) should be [16px]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [2em] at (0.3) should be [20.8px]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [2em] at (0.6) should be [25.6px]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [2em] at (1) should be [32px]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [32px] at (0) should be [16px]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [32px] at (0.3) should be [20.8px]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [32px] at (0.6) should be [25.6px]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [32px] at (1) should be [32px]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [0%] at (0) should be [calc(0% + 16px)]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [0%] at (0.3) should be [calc(0% + 11.2px)]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [0%] at (0.6) should be [calc(0% + 6.4px)]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [0%] at (1) should be [0%]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [0em] at (0) should be [16px]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [0em] at (0.3) should be [11.2px]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [0em] at (0.6) should be [6.4px]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [0em] at (1) should be [0px]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [0px] at (0) should be [16px]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [0px] at (0.3) should be [11.2px]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [0px] at (0.6) should be [6.4px]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [0px] at (1) should be [0px]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [200%] at (1) should be [200%]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [2em] at (0) should be [16px]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [2em] at (0.3) should be [20.8px]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [2em] at (0.6) should be [25.6px]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [2em] at (1) should be [32px]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [32px] at (0) should be [16px]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [32px] at (0.3) should be [20.8px]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [32px] at (0.6) should be [25.6px]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [32px] at (1) should be [32px]: PASS
+/css/css-text-decor/inheritance.html: OK
+	Property text-decoration-color does not inherit: PASS
+	Property text-decoration-color has initial value rgba(2, 3, 4, 0.5): PASS
+	Property text-decoration-line does not inherit: PASS
+	Property text-decoration-line has initial value none: PASS
+	Property text-decoration-skip-ink has initial value auto: PASS
+	Property text-decoration-skip-ink inherits: PASS
+	Property text-decoration-style does not inherit: PASS
+	Property text-decoration-style has initial value solid: PASS
+	Property text-emphasis-color has initial value rgba(2, 3, 4, 0.5): PASS
+	Property text-emphasis-color inherits: PASS
+	Property text-emphasis-position has initial value auto: PASS
+	Property text-emphasis-position inherits: PASS
+	Property text-emphasis-style has initial value none: PASS
+	Property text-emphasis-style inherits: PASS
+	Property text-shadow has initial value none: PASS
+	Property text-shadow inherits: PASS
+	Property text-underline-position has initial value auto: PASS
+	Property text-underline-position inherits: PASS
+/css/css-text-decor/parsing/text-decoration-color-computed.html: OK
+	Property text-decoration-color value 'currentcolor': PASS
+	Property text-decoration-color value 'inherit': FAIL
+	Property text-decoration-color value 'rgb(0, 0, 255)': PASS
+/css/css-text-decor/parsing/text-decoration-color-invalid.html: OK
+	e.style['text-decoration-color'] = "50%" should not set the property value: PASS
+	e.style['text-decoration-color'] = "auto" should not set the property value: PASS
+	e.style['text-decoration-color'] = "invert" should not set the property value: PASS
+	e.style['text-decoration-color'] = "red green" should not set the property value: PASS
+/css/css-text-decor/parsing/text-decoration-color-valid.html: OK
+	e.style['text-decoration-color'] = "currentcolor" should set the property value: PASS
+	e.style['text-decoration-color'] = "red" should set the property value: PASS
+	e.style['text-decoration-color'] = "rgba(10, 20, 30, 0.4)" should set the property value: PASS
+/css/css-text-decor/parsing/text-decoration-computed.html: OK
+	Property text-decoration value '10px': PASS
+	Property text-decoration value 'auto': PASS
+	Property text-decoration value 'currentcolor': PASS
+	Property text-decoration value 'double overline underline': PASS
+	Property text-decoration value 'from-font': PASS
+	Property text-decoration value 'line-through': PASS
+	Property text-decoration value 'none': PASS
+	Property text-decoration value 'rgba(10, 20, 30, 0.4) dotted': PASS
+	Property text-decoration value 'solid': PASS
+	Property text-decoration value 'underline dashed rgb(0, 255, 0)': PASS
+	Property text-decoration value 'underline overline line-through blink red': PASS
+	Property text-decoration value 'underline overline line-through blink': PASS
+	Property text-decoration value 'underline overline line-through red': PASS
+	Property text-decoration value 'underline red from-font': PASS
+/css/css-text-decor/parsing/text-decoration-inset-computed.html: OK
+	Property text-decoration-inset value '-1ch -1ch': FAIL
+	Property text-decoration-inset value '-1em': PASS
+	Property text-decoration-inset value '0 20%': PASS
+	Property text-decoration-inset value '0': PASS
+	Property text-decoration-inset value '0.5em': PASS
+	Property text-decoration-inset value '0px 0px': PASS
+	Property text-decoration-inset value '0px': PASS
+	Property text-decoration-inset value '10% 20%': PASS
+	Property text-decoration-inset value '10%': PASS
+	Property text-decoration-inset value '10px -20%': PASS
+	Property text-decoration-inset value '1ch -1ch': FAIL
+	Property text-decoration-inset value '1px 2px': PASS
+	Property text-decoration-inset value 'auto': PASS
+	Property text-decoration-inset value 'calc(10% + 1ch) calc(-20%)': FAIL
+	Property text-decoration-inset value 'calc(10% - 1em) 0': PASS
+	Property text-decoration-inset value 'calc(1em / 4) calc(-1ch)': FAIL
+/css/css-text-decor/parsing/text-decoration-inset-invalid.html: OK
+	e.style['text-decoration-inset'] = "0 auto" should not set the property value: PASS
+	e.style['text-decoration-inset'] = "10% auto" should not set the property value: PASS
+	e.style['text-decoration-inset'] = "1px auto" should not set the property value: PASS
+	e.style['text-decoration-inset'] = "45deg" should not set the property value: PASS
+	e.style['text-decoration-inset'] = "auto -1px" should not set the property value: PASS
+	e.style['text-decoration-inset'] = "auto auto" should not set the property value: PASS
+	e.style['text-decoration-inset'] = "auto none" should not set the property value: PASS
+	e.style['text-decoration-inset'] = "none" should not set the property value: PASS
+	e.style['text-decoration-inset'] = "normal" should not set the property value: PASS
+/css/css-text-decor/parsing/text-decoration-inset-valid.html: OK
+	e.style['text-decoration-inset'] = "-1ch -1ch" should set the property value: PASS
+	e.style['text-decoration-inset'] = "-1em" should set the property value: PASS
+	e.style['text-decoration-inset'] = "0 20%" should set the property value: PASS
+	e.style['text-decoration-inset'] = "0" should set the property value: PASS
+	e.style['text-decoration-inset'] = "0.5em" should set the property value: PASS
+	e.style['text-decoration-inset'] = "0px 0px" should set the property value: PASS
+	e.style['text-decoration-inset'] = "0px" should set the property value: PASS
+	e.style['text-decoration-inset'] = "10% 20%" should set the property value: PASS
+	e.style['text-decoration-inset'] = "10%" should set the property value: PASS
+	e.style['text-decoration-inset'] = "10px -20%" should set the property value: PASS
+	e.style['text-decoration-inset'] = "1ch -1ch" should set the property value: PASS
+	e.style['text-decoration-inset'] = "1px 2px" should set the property value: PASS
+	e.style['text-decoration-inset'] = "auto" should set the property value: PASS
+	e.style['text-decoration-inset'] = "calc(10% + 1ch) calc(-20%)" should set the property value: PASS
+	e.style['text-decoration-inset'] = "calc(10% - 1em) 0" should set the property value: PASS
+	e.style['text-decoration-inset'] = "calc(1em / 4) calc(-1ch)" should set the property value: FAIL
+/css/css-text-decor/parsing/text-decoration-invalid.html: OK
+	e.style['text-decoration'] = "double overline underline dotted" should not set the property value: PASS
+	e.style['text-decoration'] = "overline blue underline" should not set the property value: PASS
+	e.style['text-decoration'] = "red line-through green" should not set the property value: PASS
+/css/css-text-decor/parsing/text-decoration-line-computed.html: OK
+	Property text-decoration-line value 'blink': PASS
+	Property text-decoration-line value 'grammar-error': PASS
+	Property text-decoration-line value 'line-through blink': PASS
+	Property text-decoration-line value 'line-through': PASS
+	Property text-decoration-line value 'none': PASS
+	Property text-decoration-line value 'overline blink': PASS
+	Property text-decoration-line value 'overline line-through blink': PASS
+	Property text-decoration-line value 'overline line-through': PASS
+	Property text-decoration-line value 'overline': PASS
+	Property text-decoration-line value 'spelling-error': PASS
+	Property text-decoration-line value 'underline blink': PASS
+	Property text-decoration-line value 'underline line-through blink': PASS
+	Property text-decoration-line value 'underline line-through': PASS
+	Property text-decoration-line value 'underline overline blink': PASS
+	Property text-decoration-line value 'underline overline line-through blink': PASS
+	Property text-decoration-line value 'underline overline line-through': PASS
+	Property text-decoration-line value 'underline overline': PASS
+	Property text-decoration-line value 'underline': PASS
+/css/css-text-decor/parsing/text-decoration-line-invalid.html: OK
+	e.style['text-decoration-line'] = "auto" should not set the property value: PASS
+	e.style['text-decoration-line'] = "blink line-through blink" should not set the property value: PASS
+	e.style['text-decoration-line'] = "blink underline line-through grammar-error" should not set the property value: PASS
+	e.style['text-decoration-line'] = "linethrough" should not set the property value: PASS
+	e.style['text-decoration-line'] = "none spelling-error" should not set the property value: PASS
+	e.style['text-decoration-line'] = "none underline" should not set the property value: PASS
+	e.style['text-decoration-line'] = "noone" should not set the property value: PASS
+	e.style['text-decoration-line'] = "null" should not set the property value: PASS
+	e.style['text-decoration-line'] = "over-line" should not set the property value: PASS
+	e.style['text-decoration-line'] = "spelling-error grammar-error" should not set the property value: PASS
+	e.style['text-decoration-line'] = "spelling-error overline" should not set the property value: PASS
+	e.style['text-decoration-line'] = "under-line" should not set the property value: PASS
+	e.style['text-decoration-line'] = "underline none overline" should not set the property value: PASS
+	e.style['text-decoration-line'] = "underline underline" should not set the property value: PASS
+/css/css-text-decor/parsing/text-decoration-line-valid.html: OK
+	e.style['text-decoration-line'] = "blink line-through overline underline" should set the property value: PASS
+	e.style['text-decoration-line'] = "blink line-through overline" should set the property value: PASS
+	e.style['text-decoration-line'] = "blink line-through underline overline" should set the property value: PASS
+	e.style['text-decoration-line'] = "blink line-through underline" should set the property value: PASS
+	e.style['text-decoration-line'] = "blink line-through" should set the property value: PASS
+	e.style['text-decoration-line'] = "blink overline line-through underline" should set the property value: PASS
+	e.style['text-decoration-line'] = "blink overline line-through" should set the property value: PASS
+	e.style['text-decoration-line'] = "blink overline underline line-through" should set the property value: PASS
+	e.style['text-decoration-line'] = "blink overline underline" should set the property value: PASS
+	e.style['text-decoration-line'] = "blink overline" should set the property value: PASS
+	e.style['text-decoration-line'] = "blink underline line-through overline" should set the property value: PASS
+	e.style['text-decoration-line'] = "blink underline line-through" should set the property value: PASS
+	e.style['text-decoration-line'] = "blink underline overline line-through" should set the property value: PASS
+	e.style['text-decoration-line'] = "blink underline overline" should set the property value: PASS
+	e.style['text-decoration-line'] = "blink underline" should set the property value: PASS
+	e.style['text-decoration-line'] = "blink" should set the property value: PASS
+	e.style['text-decoration-line'] = "grammar-error" should set the property value: PASS
+	e.style['text-decoration-line'] = "line-through blink overline underline" should set the property value: PASS
+	e.style['text-decoration-line'] = "line-through blink overline" should set the property value: PASS
+	e.style['text-decoration-line'] = "line-through blink underline overline" should set the property value: PASS
+	e.style['text-decoration-line'] = "line-through blink underline" should set the property value: PASS
+	e.style['text-decoration-line'] = "line-through blink" should set the property value: PASS
+	e.style['text-decoration-line'] = "line-through overline blink underline" should set the property value: PASS
+	e.style['text-decoration-line'] = "line-through overline blink" should set the property value: PASS
+	e.style['text-decoration-line'] = "line-through overline underline blink" should set the property value: PASS
+	e.style['text-decoration-line'] = "line-through overline underline" should set the property value: PASS
+	e.style['text-decoration-line'] = "line-through overline" should set the property value: PASS
+	e.style['text-decoration-line'] = "line-through underline blink overline" should set the property value: PASS
+	e.style['text-decoration-line'] = "line-through underline blink" should set the property value: PASS
+	e.style['text-decoration-line'] = "line-through underline overline blink" should set the property value: PASS
+	e.style['text-decoration-line'] = "line-through underline overline" should set the property value: PASS
+	e.style['text-decoration-line'] = "line-through underline" should set the property value: PASS
+	e.style['text-decoration-line'] = "line-through" should set the property value: PASS
+	e.style['text-decoration-line'] = "none" should set the property value: PASS
+	e.style['text-decoration-line'] = "overline blink line-through underline" should set the property value: PASS
+	e.style['text-decoration-line'] = "overline blink line-through" should set the property value: PASS
+	e.style['text-decoration-line'] = "overline blink underline line-through" should set the property value: PASS
+	e.style['text-decoration-line'] = "overline blink underline" should set the property value: PASS
+	e.style['text-decoration-line'] = "overline blink" should set the property value: PASS
+	e.style['text-decoration-line'] = "overline line-through blink underline" should set the property value: PASS
+	e.style['text-decoration-line'] = "overline line-through blink" should set the property value: PASS
+	e.style['text-decoration-line'] = "overline line-through underline blink" should set the property value: PASS
+	e.style['text-decoration-line'] = "overline line-through underline" should set the property value: PASS
+	e.style['text-decoration-line'] = "overline line-through" should set the property value: PASS
+	e.style['text-decoration-line'] = "overline underline blink line-through" should set the property value: PASS
+	e.style['text-decoration-line'] = "overline underline blink" should set the property value: PASS
+	e.style['text-decoration-line'] = "overline underline line-through blink" should set the property value: PASS
+	e.style['text-decoration-line'] = "overline underline line-through" should set the property value: PASS
+	e.style['text-decoration-line'] = "overline underline" should set the property value: PASS
+	e.style['text-decoration-line'] = "overline" should set the property value: PASS
+	e.style['text-decoration-line'] = "spelling-error" should set the property value: PASS
+	e.style['text-decoration-line'] = "underline blink line-through overline" should set the property value: PASS
+	e.style['text-decoration-line'] = "underline blink line-through" should set the property value: PASS
+	e.style['text-decoration-line'] = "underline blink overline line-through" should set the property value: PASS
+	e.style['text-decoration-line'] = "underline blink overline" should set the property value: PASS
+	e.style['text-decoration-line'] = "underline blink" should set the property value: PASS
+	e.style['text-decoration-line'] = "underline line-through blink overline" should set the property value: PASS
+	e.style['text-decoration-line'] = "underline line-through blink" should set the property value: PASS
+	e.style['text-decoration-line'] = "underline line-through overline blink" should set the property value: PASS
+	e.style['text-decoration-line'] = "underline line-through overline" should set the property value: PASS
+	e.style['text-decoration-line'] = "underline line-through" should set the property value: PASS
+	e.style['text-decoration-line'] = "underline overline blink line-through" should set the property value: PASS
+	e.style['text-decoration-line'] = "underline overline blink" should set the property value: PASS
+	e.style['text-decoration-line'] = "underline overline line-through blink" should set the property value: PASS
+	e.style['text-decoration-line'] = "underline overline line-through" should set the property value: PASS
+	e.style['text-decoration-line'] = "underline overline" should set the property value: PASS
+	e.style['text-decoration-line'] = "underline" should set the property value: PASS
+/css/css-text-decor/parsing/text-decoration-shorthand.html: OK
+	e.style['text-decoration'] = "overline from-font dotted green" should not set unrelated longhands: PASS
+	e.style['text-decoration'] = "overline from-font dotted green" should set text-decoration-color: PASS
+	e.style['text-decoration'] = "overline from-font dotted green" should set text-decoration-line: PASS
+	e.style['text-decoration'] = "overline from-font dotted green" should set text-decoration-style: PASS
+	e.style['text-decoration'] = "overline from-font dotted green" should set text-decoration-thickness: PASS
+/css/css-text-decor/parsing/text-decoration-skip-ink-computed.html: OK
+	Property text-decoration-skip-ink value 'all': PASS
+	Property text-decoration-skip-ink value 'auto': PASS
+	Property text-decoration-skip-ink value 'none': PASS
+/css/css-text-decor/parsing/text-decoration-skip-ink-invalid.html: OK
+	e.style['text-decoration-skip-ink'] = "-13%" should not set the property value: PASS
+	e.style['text-decoration-skip-ink'] = "-5em" should not set the property value: PASS
+	e.style['text-decoration-skip-ink'] = "0" should not set the property value: PASS
+	e.style['text-decoration-skip-ink'] = "10px" should not set the property value: PASS
+	e.style['text-decoration-skip-ink'] = "20%" should not set the property value: PASS
+	e.style['text-decoration-skip-ink'] = "al" should not set the property value: PASS
+	e.style['text-decoration-skip-ink'] = "auto all" should not set the property value: PASS
+	e.style['text-decoration-skip-ink'] = "auto none" should not set the property value: PASS
+	e.style['text-decoration-skip-ink'] = "edges" should not set the property value: PASS
+	e.style['text-decoration-skip-ink'] = "invalid" should not set the property value: PASS
+	e.style['text-decoration-skip-ink'] = "non" should not set the property value: PASS
+	e.style['text-decoration-skip-ink'] = "none all" should not set the property value: PASS
+	e.style['text-decoration-skip-ink'] = "otto" should not set the property value: PASS
+/css/css-text-decor/parsing/text-decoration-skip-ink-valid.html: OK
+	e.style['text-decoration-skip-ink'] = "all" should set the property value: PASS
+	e.style['text-decoration-skip-ink'] = "auto" should set the property value: PASS
+	e.style['text-decoration-skip-ink'] = "none" should set the property value: PASS
+/css/css-text-decor/parsing/text-decoration-skip-spaces-computed.html: OK
+	Property text-decoration-skip-spaces value 'all': PASS
+	Property text-decoration-skip-spaces value 'end': PASS
+	Property text-decoration-skip-spaces value 'none': PASS
+	Property text-decoration-skip-spaces value 'start end': PASS
+	Property text-decoration-skip-spaces value 'start': PASS
+/css/css-text-decor/parsing/text-decoration-skip-spaces-invalid.html: OK
+	e.style['text-decoration-skip-spaces'] = "0" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "10px" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "20%" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "all end" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "all start" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "auto" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "box-decoration" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "edges" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "end all" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "ends" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "invalid" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "none all" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "none end" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "none start" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "star" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "start all" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "start end all" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "start none" should not set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "underline" should not set the property value: PASS
+/css/css-text-decor/parsing/text-decoration-skip-spaces-valid.html: OK
+	e.style['text-decoration-skip-spaces'] = "all" should set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "end start" should set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "end" should set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "none" should set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "start end" should set the property value: PASS
+	e.style['text-decoration-skip-spaces'] = "start" should set the property value: PASS
+/css/css-text-decor/parsing/text-decoration-style-computed.html: OK
+	Property text-decoration-style value 'dashed': PASS
+	Property text-decoration-style value 'dotted': PASS
+	Property text-decoration-style value 'double': PASS
+	Property text-decoration-style value 'solid': PASS
+	Property text-decoration-style value 'wavy': PASS
+/css/css-text-decor/parsing/text-decoration-style-invalid.html: OK
+	e.style['text-decoration-style'] = "groove" should not set the property value: PASS
+	e.style['text-decoration-style'] = "solid wavy" should not set the property value: PASS
+/css/css-text-decor/parsing/text-decoration-style-valid.html: OK
+	e.style['text-decoration-style'] = "dashed" should set the property value: PASS
+	e.style['text-decoration-style'] = "dotted" should set the property value: PASS
+	e.style['text-decoration-style'] = "double" should set the property value: PASS
+	e.style['text-decoration-style'] = "solid" should set the property value: PASS
+	e.style['text-decoration-style'] = "wavy" should set the property value: PASS
+/css/css-text-decor/parsing/text-decoration-valid.html: OK
+	e.style['text-decoration'] = "10px" should set the property value: PASS
+	e.style['text-decoration'] = "auto" should set the property value: PASS
+	e.style['text-decoration'] = "currentcolor" should set the property value: PASS
+	e.style['text-decoration'] = "double overline underline" should set the property value: PASS
+	e.style['text-decoration'] = "from-font" should set the property value: PASS
+	e.style['text-decoration'] = "line-through 20px" should set the property value: PASS
+	e.style['text-decoration'] = "line-through" should set the property value: PASS
+	e.style['text-decoration'] = "none" should set the property value: PASS
+	e.style['text-decoration'] = "overline 3em" should set the property value: PASS
+	e.style['text-decoration'] = "overline green from-font" should set the property value: PASS
+	e.style['text-decoration'] = "rgba(10, 20, 30, 0.4) dotted" should set the property value: PASS
+	e.style['text-decoration'] = "solid" should set the property value: PASS
+	e.style['text-decoration'] = "underline auto" should set the property value: PASS
+	e.style['text-decoration'] = "underline dashed green" should set the property value: PASS
+	e.style['text-decoration'] = "underline overline line-through blink red" should set the property value: PASS
+	e.style['text-decoration'] = "underline overline line-through blink" should set the property value: PASS
+	e.style['text-decoration'] = "underline overline line-through red" should set the property value: PASS
+/css/css-text-decor/parsing/text-emphasis-computed.html: OK
+	Property text-emphasis value ''*'': PASS
+	Property text-emphasis value 'black': PASS
+	Property text-emphasis value 'currentColor': PASS
+	Property text-emphasis value 'dot red': PASS
+	Property text-emphasis value 'dot': PASS
+	Property text-emphasis value 'none': PASS
+	Property text-emphasis value 'open sesame': PASS
+/css/css-text-decor/parsing/text-emphasis-position-computed.html: OK
+	Property text-emphasis-position value 'auto': PASS
+	Property text-emphasis-position value 'over left': PASS
+	Property text-emphasis-position value 'over right': PASS
+	Property text-emphasis-position value 'over': PASS
+	Property text-emphasis-position value 'under left': PASS
+	Property text-emphasis-position value 'under right': PASS
+	Property text-emphasis-position value 'under': PASS
+/css/css-text-decor/parsing/text-emphasis-position-invalid.html: OK
+	e.style['text-emphasis-position'] = "auto auto" should not set the property value: PASS
+	e.style['text-emphasis-position'] = "auto left" should not set the property value: PASS
+	e.style['text-emphasis-position'] = "left over right" should not set the property value: PASS
+	e.style['text-emphasis-position'] = "over auto" should not set the property value: PASS
+	e.style['text-emphasis-position'] = "under right over" should not set the property value: PASS
+/css/css-text-decor/parsing/text-emphasis-position-valid.html: OK
+	e.style['text-emphasis-position'] = "auto" should set the property value: PASS
+	e.style['text-emphasis-position'] = "over left" should set the property value: PASS
+	e.style['text-emphasis-position'] = "over" should set the property value: PASS
+	e.style['text-emphasis-position'] = "right under" should set the property value: PASS
+	e.style['text-emphasis-position'] = "under" should set the property value: PASS
+/css/css-text-decor/parsing/text-emphasis-style-computed-vertical-lr.html: OK
+	Property text-emphasis-style value '"*"': PASS
+	Property text-emphasis-style value 'dot': PASS
+	Property text-emphasis-style value 'double-circle': PASS
+	Property text-emphasis-style value 'filled circle': PASS
+	Property text-emphasis-style value 'filled': PASS
+	Property text-emphasis-style value 'none': PASS
+	Property text-emphasis-style value 'open sesame': PASS
+	Property text-emphasis-style value 'open': PASS
+	Property text-emphasis-style value 'triangle': PASS
+/css/css-text-decor/parsing/text-emphasis-style-computed.html: OK
+	Property text-emphasis-style value '"*"': PASS
+	Property text-emphasis-style value 'dot': PASS
+	Property text-emphasis-style value 'double-circle': PASS
+	Property text-emphasis-style value 'filled circle': PASS
+	Property text-emphasis-style value 'filled': PASS
+	Property text-emphasis-style value 'none': PASS
+	Property text-emphasis-style value 'open sesame': PASS
+	Property text-emphasis-style value 'open': PASS
+	Property text-emphasis-style value 'triangle': PASS
+/css/css-text-decor/parsing/text-underline-position-computed.html: OK
+	Property text-underline-position value 'auto': PASS
+	Property text-underline-position value 'from-font left': PASS
+	Property text-underline-position value 'from-font': PASS
+	Property text-underline-position value 'left': PASS
+	Property text-underline-position value 'right': PASS
+	Property text-underline-position value 'under left': PASS
+	Property text-underline-position value 'under': PASS
+/css/css-text-decor/parsing/text-underline-position-invalid.html: OK
+	e.style['text-underline-position'] = "auto from-font" should not set the property value: PASS
+	e.style['text-underline-position'] = "auto under" should not set the property value: PASS
+	e.style['text-underline-position'] = "left auto" should not set the property value: PASS
+	e.style['text-underline-position'] = "left right" should not set the property value: PASS
+	e.style['text-underline-position'] = "right under left" should not set the property value: PASS
+	e.style['text-underline-position'] = "under from-font" should not set the property value: PASS
+/css/css-text-decor/parsing/text-underline-position-valid.html: OK
+	e.style['text-underline-position'] = "auto" should set the property value: PASS
+	e.style['text-underline-position'] = "from-font left" should set the property value: PASS
+	e.style['text-underline-position'] = "from-font" should set the property value: PASS
+	e.style['text-underline-position'] = "left" should set the property value: PASS
+	e.style['text-underline-position'] = "right from-font" should set the property value: PASS
+	e.style['text-underline-position'] = "right under" should set the property value: PASS
+	e.style['text-underline-position'] = "right" should set the property value: PASS
+	e.style['text-underline-position'] = "under left" should set the property value: PASS
+	e.style['text-underline-position'] = "under" should set the property value: PASS
+/css/css-text-decor/text-decoration-skip-ink.html: OK
+	Body must have text-decoration-skip-ink auto by default.: PASS
+	Property text-decoration-skip-ink must support values auto, none and all.: PASS
+/css/css-text-decor/text-decoration-thickness-computed.html: OK
+	Property text-decoration-thickness value '200%': PASS
+	Property text-decoration-thickness value '2em': PASS
+	Property text-decoration-thickness value '32px': PASS
+	Property text-decoration-thickness value 'auto': PASS
+	Property text-decoration-thickness value 'calc(0.5em - 0px)': PASS
+	Property text-decoration-thickness value 'calc(10px - 8px)': PASS
+	Property text-decoration-thickness value 'calc(200% - 0.5em)': PASS
+	Property text-decoration-thickness value 'calc(200% - 0px)': PASS
+	Property text-decoration-thickness value 'calc(200% - 50%)': PASS
+	Property text-decoration-thickness value 'calc(200% - 8px)': PASS
+	Property text-decoration-thickness value 'calc(2em - 0.5em)': PASS
+	Property text-decoration-thickness value 'calc(2em - 0px)': PASS
+	Property text-decoration-thickness value 'calc(2em - 50%)': PASS
+	Property text-decoration-thickness value 'calc(2em - 8px)': PASS
+	Property text-decoration-thickness value 'calc(50% - 0px)': PASS
+	Property text-decoration-thickness value 'from-font': PASS
+/css/css-text-decor/text-decoration-thickness-initial.html: OK
+	Initial value of text-decoration-thickness should be auto: PASS
+/css/css-text-decor/text-decoration-thickness-invalid.html: OK
+	e.style['text-decoration-thickness'] = "!@#$%^&" should not set the property value: PASS
+	e.style['text-decoration-thickness'] = "-10" should not set the property value: PASS
+	e.style['text-decoration-thickness'] = "10e2" should not set the property value: PASS
+	e.style['text-decoration-thickness'] = "60002020" should not set the property value: PASS
+	e.style['text-decoration-thickness'] = "asdlflj" should not set the property value: PASS
+	e.style['text-decoration-thickness'] = "from font" should not set the property value: PASS
+	e.style['text-decoration-thickness'] = "otto" should not set the property value: PASS
+/css/css-text-decor/text-decoration-thickness-valid.html: OK
+	e.style['text-decoration-thickness'] = "-10px" should set the property value: PASS
+	e.style['text-decoration-thickness'] = "-27%" should set the property value: PASS
+	e.style['text-decoration-thickness'] = "-49em" should set the property value: PASS
+	e.style['text-decoration-thickness'] = "10%" should set the property value: PASS
+	e.style['text-decoration-thickness'] = "2001em" should set the property value: PASS
+	e.style['text-decoration-thickness'] = "53px" should set the property value: PASS
+	e.style['text-decoration-thickness'] = "auto" should set the property value: PASS
+	e.style['text-decoration-thickness'] = "calc(-50em + 13px)" should set the property value: PASS
+	e.style['text-decoration-thickness'] = "calc(100% - 40em)" should set the property value: PASS
+	e.style['text-decoration-thickness'] = "calc(40% - 20px)" should set the property value: PASS
+	e.style['text-decoration-thickness'] = "calc(40em - 10px)" should set the property value: PASS
+	e.style['text-decoration-thickness'] = "from-font" should set the property value: PASS
+/css/css-text-decor/text-emphasis-unrepresentable-characters.html: OK
+	Emphasis marks for unrepresentable characters should not crash: PASS
+/css/css-text-decor/text-shadow/parsing/text-shadow-computed.html: OK
+	Property text-shadow value '10px 20px': PASS
+	Property text-shadow value '10px 20px, 30px 40px': PASS
+	Property text-shadow value 'calc(-0.5em + 10px) calc(-0.5em + 10px) calc(-0.5em + 10px)': PASS
+	Property text-shadow value 'calc(0.5em + 10px) calc(0.5em + 10px) calc(0.5em + 10px)': PASS
+	Property text-shadow value 'lime 10px 20px 30px, red 40px 50px': PASS
+	Property text-shadow value 'none': PASS
+	Property text-shadow value 'red 10px 20px 30px': PASS
+/css/css-text-decor/text-shadow/parsing/text-shadow-invalid.html: OK
+	e.style['text-shadow'] = "10% 20px" should not set the property value: PASS
+	e.style['text-shadow'] = "10px 20% 30px" should not set the property value: PASS
+	e.style['text-shadow'] = "10px 20px -30px" should not set the property value: PASS
+	e.style['text-shadow'] = "10px 20px 30px 40px" should not set the property value: PASS
+	e.style['text-shadow'] = "10px" should not set the property value: PASS
+	e.style['text-shadow'] = "auto" should not set the property value: PASS
+	e.style['text-shadow'] = "lime 10px 20px 30%" should not set the property value: PASS
+	e.style['text-shadow'] = "red 10px 20px blue" should not set the property value: PASS
+/css/css-text-decor/text-shadow/parsing/text-shadow-valid.html: OK
+	e.style['text-shadow'] = "-10px 20px 30px" should set the property value: PASS
+	e.style['text-shadow'] = "10px -20px 30px" should set the property value: PASS
+	e.style['text-shadow'] = "10px 20px 30px lime" should set the property value: FAIL
+	e.style['text-shadow'] = "10px 20px 30px" should set the property value: PASS
+	e.style['text-shadow'] = "10px 20px" should set the property value: PASS
+	e.style['text-shadow'] = "10px 20px, 30px 40px" should set the property value: PASS
+	e.style['text-shadow'] = "calc(1em + 2px) calc(3em + 4px) calc(5em + 6px)" should set the property value: PASS
+	e.style['text-shadow'] = "lime 10px 20px 30px, blue 40px 50px" should set the property value: PASS
+	e.style['text-shadow'] = "none" should set the property value: PASS
+	e.style['text-shadow'] = "rgb(255, 0, 0) 10px 20px" should set the property value: PASS
+/css/css-text-decor/text-underline-offset-computed.html: OK
+	Property text-underline-offset value '200%': PASS
+	Property text-underline-offset value '2em': PASS
+	Property text-underline-offset value '32px': PASS
+	Property text-underline-offset value 'auto': PASS
+	Property text-underline-offset value 'calc(0.5em - 0px)': PASS
+	Property text-underline-offset value 'calc(10px - 8px)': PASS
+	Property text-underline-offset value 'calc(200% - 0.5em)': PASS
+	Property text-underline-offset value 'calc(200% - 0px)': PASS
+	Property text-underline-offset value 'calc(200% - 50%)': PASS
+	Property text-underline-offset value 'calc(200% - 8px)': PASS
+	Property text-underline-offset value 'calc(2em - 0.5em)': PASS
+	Property text-underline-offset value 'calc(2em - 0px)': PASS
+	Property text-underline-offset value 'calc(2em - 50%)': PASS
+	Property text-underline-offset value 'calc(2em - 8px)': PASS
+	Property text-underline-offset value 'calc(50% - 0px)': PASS
+/css/css-text-decor/text-underline-offset-initial.html: OK
+	Initial value of text-underline-offset: PASS
+/css/css-text-decor/text-underline-offset-invalid.html: OK
+	e.style['text-underline-offset'] = "!@#$%^&" should not set the property value: PASS
+	e.style['text-underline-offset'] = "-10" should not set the property value: PASS
+	e.style['text-underline-offset'] = "10e2" should not set the property value: PASS
+	e.style['text-underline-offset'] = "60002020" should not set the property value: PASS
+	e.style['text-underline-offset'] = "asdlflj" should not set the property value: PASS
+	e.style['text-underline-offset'] = "from font" should not set the property value: PASS
+	e.style['text-underline-offset'] = "from-font" should not set the property value: PASS
+	e.style['text-underline-offset'] = "otto" should not set the property value: PASS
+/css/css-text-decor/text-underline-offset-valid.html: OK
+	e.style['text-underline-offset'] = "-10px" should set the property value: PASS
+	e.style['text-underline-offset'] = "-30%" should set the property value: PASS
+	e.style['text-underline-offset'] = "-49em" should set the property value: PASS
+	e.style['text-underline-offset'] = "187%" should set the property value: PASS
+	e.style['text-underline-offset'] = "2001em" should set the property value: PASS
+	e.style['text-underline-offset'] = "5%" should set the property value: PASS
+	e.style['text-underline-offset'] = "53px" should set the property value: PASS
+	e.style['text-underline-offset'] = "89%" should set the property value: PASS
+	e.style['text-underline-offset'] = "auto" should set the property value: PASS
+	e.style['text-underline-offset'] = "calc(-13em + 50px)" should set the property value: PASS
+	e.style['text-underline-offset'] = "calc(40em - 10px)" should set the property value: PASS
+	e.style['text-underline-offset'] = "calc(45% - 0.3em)" should set the property value: PASS

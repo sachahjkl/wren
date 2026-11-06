@@ -1013,13 +1013,13 @@ apply_prop_more :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 			case "auto": dst^ = auto_length; return true
 			case "from-font": if p == .Text_Decoration_Thickness { dst^ = Length{kind = .Normal}; return true }
 			}
+			if w, known := line_width_keyword(id); known && p == .Text_Decoration_Thickness { dst^ = px(w); return true }
 			return false
 		}
-		flags := Len_Flags{.Percent}
-		if p == .Text_Underline_Offset { flags += {.Negative} }
-		l, ok := parse_length(cx, vs, flags)
+		// (a negative thickness is valid: its line is as thin as a line goes)
+		l, ok := parse_length(cx, vs, {.Percent, .Negative})
 		if !ok { return false }
-		dst^ = px(resolve(l, c.font_size))   // a percentage of 1em
+		dst^ = l   // (a percentage is of 1em, and inherits as one: the painter's)
 	case .White_Space_Collapse: return set_enum(vs, &c.white_space_collapse)
 	case .Text_Wrap_Mode: return set_enum(vs, &c.text_wrap_mode)
 	case .Text_Wrap_Style: return set_enum(vs, &c.text_wrap_style)

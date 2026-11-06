@@ -175,7 +175,7 @@ compare_layouts :: proc(a, b: ^Layout, allocator := context.temp_allocator) -> (
 		cs_same := p.cs == q.cs || (p.item < 0 && p.box >= 0 && (a.boxes[p.box].node == base.NIL_HANDLE || .Foreign in a.boxes[p.box].flags))
 		if p.kind != q.kind || p.flags != q.flags || p.space != q.space || p.clip != q.clip || p.group != q.group || !beq(&m, p.box, q.box) ||
 		   p.node != q.node || !req(p.rect, q.rect) || p.text != q.text || !font_eq(&m, p.fi, q.fi) || !feq(p.baseline, q.baseline) ||
-		   !feq(p.extra, q.extra) || p.deco != q.deco || p.deco_color != q.deco_color || !beq(&m, p.deco_box, q.deco_box) || !cs_same {
+		   !feq(p.extra, q.extra) || p.deco != q.deco || !beq(&m, p.deco_box, q.deco_box) || !cs_same {
 			fail(&m, "display item %d: %v %q %v / %v %q %v", i, p.kind, p.text, p.rect, q.kind, q.text, q.rect)
 		}
 	}
