@@ -2920,6 +2920,47 @@ That is the old cold row (17.7 s on 2 cores) with one compile in it instead of f
 
 Tests: wasm units `shipped_code_is_taken_and_nothing_is_compiled` (`compiles == 0`, nothing read or written, on the polled engine) and `refused_shipped_code_falls_back` (Wasmtime's refusal, the next start from the disk, another configuration, another image, the read-ahead's one compile); e2e `shipped_code`, the real program on a new profile with no shared cache and a script on a compile thread: `a_new_profile_runs_scripts_on_the_shipped_code_and_compiles_nothing`, which said "1 taken, 2 compiled, 4 refused" before the compile threads moved, `another_configuration_passes_the_shipped_code_by_and_scripts_run`, which said 2 compiled. `wrentool smoke` checks it in the package. `wrentool waterfall` gives `start_ms`, `cpu_all_ms`, memory, `compiles`, `shipped`, `refused`, `realm_ms`; `WREN_JS_CODE` (not in a release) and `jsengine run -code` run other code for an A/B.
 
+## What was measured and left, round 38: a first frame on the software rasterizer
+
+The window's first present comes 220 ms after the process starts, and 125 of them are the main thread waiting for the graphics driver (`D3D11CreateDevice`: 160 ms on this RTX 4070 SUPER, 17 on WARP). The idea: draw the first frames on WARP through the same code, then move to the hardware device with nothing to see. **It works and it is not shipped: the first present comes later, not earlier.** The code is kept out of master: Wren's branch `warp-first-frame-experiment`, the toolkit's `warp-first-frame`.
+
+**What was built.** A preload thread that makes WARP then the hardware device; `render.device_move` between two frames of `windows_pass` (never in a chrome frame); textures read back and remade with the same handles and contents, canvases and their masks included, so that no owner sees a change (`device_generation` stays, `heap_generation` and `targets_generation` move); a new composition chain presented behind the old one; the GPU waited for; `SetContent` and one `Commit`; the old chain and the WARP device released 100 ms later, on a thread. The window's swap chain is a composition one by default (`browser.window.fixed_surface`), which is what makes this possible: an HWND flip chain must go before the next one is made. A device-removed recovery was the seam, but as it stands it loses the textures' contents, and a frame that waits for a re-upload is a blink. Video was held off the WARP device (a decoder on it could not reach the hardware one). WebGL has its own device in its own process and hands over CPU frames: it does not care.
+
+**Why it loses.** WARP compiles a pixel shader when it first draws with it, per pipeline state, and shares nothing between objects:
+
+| WARP, 16 threads | ms |
+|---|---|
+| device (first in the process) | 17 |
+| shader objects (`CreatePixelShader`...) | 6 |
+| first draw of `rect_ps` (114 KB of DXBC) | 87-96 |
+| the same, another blend state or another target format | 87-96 again |
+| the same bytes in a new shader object | 87 again |
+| Wren's first frame: two compiles, then Slug's | 110 + 88 + 10 |
+
+So the first frame costs 200 ms of compiling, more than the driver it was to avoid. It cannot be moved out of the way: compiled on a thread from the device's creation (tried: the shaders ready at 154 ms) the real frame still paid its 197 ms, its state not being the one warmed; warmed exactly, it would still take 37 + 200 ms on one thread, later than today's 219, and two devices share no code. Binding every texture slot in all frames does not remove the second compile (tried).
+
+And the order is forced: the system loads drivers one at a time. WARP asked while the hardware device loads is ready when that is, at 167 ms; asked first, at 17 ms, and the hardware device then comes 30 to 60 ms later than without it.
+
+**Numbers.** `wrentool bench startup -Device` (on the experiment's branch), profile build, hidden window on its own desktop, `about:home`, on and off interleaved, median (range), ms. The first two columns were taken on an idle machine, 3 runs; the others, 9 runs, with other work at 60 to 90 % of the CPU, which is why they are all higher.
+
+| | off, idle | on, idle | off, loaded | on, loaded |
+|---|---|---|---|---|
+| first present | 219 (215-240) | 298 (293-299) | 379 (306-409) | 432 (323-476) |
+| first frame with content | 219 (215-241) | 298 (293-299) | 379 (306-410) | 432 (323-476) |
+| hardware device ready | 170 (170-190) | 233 (232-235) | 300 (249-338) | 345 (271-366) |
+| window on the hardware device | 219 | 528 (527-541) | 379 | 682 (563-723) |
+| CPU of the process after 1.5 s | 375 (281-469) | 1 516 (1 406-2 859) | 531 (453-703) | 1 563 (1 438-1 766) |
+| peak working set, MB | 137 | 186 | 139 | 186 |
+| private bytes, MB | 155 | 179 | 154 | 180 |
+
+`examples/site/zoom_article.html` as a file, 9 runs, loaded: first present 359 (295-403) off and 359 (335-413) on, first frame with content 368 (309-416) and 609 (575-690). Two cores (`ProcessorAffinity = 3`), 5 runs, loaded: first present 462 (407-477) and 933 (868-992). The move itself takes 12 to 28 ms. After it, the first hardware frame came 230 ms later than the move's start in every run, a pause whose cause was not looked for.
+
+**Flashes.** Not the reason it was left, but what was seen. A throwaway program swapped a WARP chain and a hardware chain in one visual, red and green, while `PrintWindow(PW_RENDERFULLCONTENT)` read the composed window on its own desktop (it works there; it needs the window's thread to pump, so it sees no more than one sample per 20 ms). With `SetContent` and `Commit` right after `Present` and the old chain released at once: 6 black samples in 53 swaps (1 218 samples), 2 in another 53. With the GPU waited for and the old chain kept 100 ms: none in two runs of 12 swaps (2 446 samples). So a composition swap is not free of blanks by itself; the order matters. That sample is small, and no check of Wren's own frames across a move was made, the feature having lost before that.
+
+**What would change the answer.** A much smaller shader for the first frame: the compile follows the size. That is a second shader to keep equal to the first, or a visible change at the switch. Not worth it for what is left on the table on this machine: at best the 80 ms between a frame at 140 and today's 219, for 1.1 s of CPU and 50 MB more at each start.
+
+**Kept.** `wrentool bench startup` works again: it ended with "error 2", `CreateProcessW` not finding `build/wren_prof.exe` with its forward slash (`api.process_start` now writes the program as Windows does).
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)

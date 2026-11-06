@@ -75,13 +75,23 @@ quote_arg :: proc(s: string) -> string {
 	return strings.concatenate({`"`, strings.trim_right(s, `\`), `"`}, context.temp_allocator)
 }
 
+// The command line of `args`. The program as Windows spells a path: CreateProcessW does not find a relative one written with forward slashes (error 2).
+@(private)
+command_line :: proc(args: []string) -> string {
+	line := strings.builder_make(context.temp_allocator)
+	for a, i in args {
+		if i > 0 { strings.write_byte(&line, ' ') }
+		program, _ := strings.replace_all(a, "/", `\`, context.temp_allocator)
+		strings.write_string(&line, quote_arg(i == 0 ? program : a))
+	}
+	return strings.to_string(line)
+}
+
 // Starts `args` (args[0] the program). err "": started.
 process_start :: proc(args: []string, o := Start_Options{}) -> (p: Process, pid: int, err: string) {
-	line := strings.builder_make(context.temp_allocator)
-	for a, i in args { if i > 0 { strings.write_byte(&line, ' ') }; strings.write_string(&line, quote_arg(a)) }
 	si := win.STARTUPINFOW{cb = size_of(win.STARTUPINFOW)}
 	pi: win.PROCESS_INFORMATION
-	wline := win.utf8_to_wstring(strings.to_string(line), context.temp_allocator)
+	wline := win.utf8_to_wstring(command_line(args), context.temp_allocator)
 	redirected := o.stdout != {} || o.stderr != {} || o.merged
 	if redirected {
 		si.dwFlags = win.STARTF_USESTDHANDLES
