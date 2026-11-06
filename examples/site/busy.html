@@ -21,7 +21,7 @@
   .length { display: flex; gap: 10px; align-items: center; font-size: 17px; }
   #ms { width: 130px; accent-color: var(--sky); }
   .listener { display: flex; gap: 8px; align-items: center; font-size: 15px; color: var(--night-muted); }
-  .track { display: grid; grid-template-columns: 120px 1fr; align-items: center; height: 28px; font-size: 16px; }
+  .track { display: grid; grid-template-columns: 120px 1fr; align-items: center; height: 28px; font-size: 16px; overflow: hidden; }   /* (the rider is as wide as its lane, and moves by it: it would make the page scroll) */
   .lane { position: relative; height: 16px; border-bottom: 1px solid var(--night-line); }
   .dot { position: absolute; top: 2px; left: 0; width: 16px; height: 16px; border-radius: 50%; }
   /* A transform, on a box as wide as the lane: what the compositor can run with the page's thread away. */
