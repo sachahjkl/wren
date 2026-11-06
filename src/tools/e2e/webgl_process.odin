@@ -8,8 +8,10 @@ package e2e_scenarios
 
 import "core:fmt"
 import win "core:sys/windows"
+import "core:strings"
 import "core:testing"
 import "core:time"
+import "wb:browser"
 import "wb:e2e"
 import "wb:remote/api"
 import "wb:webgl"
@@ -105,13 +107,13 @@ own_program :: proc() -> string { return program_of(win.GetCurrentProcess()) }
 
 // A page got no context. That passes only if the machine says the same when asked on its own: a true skip, printed and counted. Anything else fails.
 @(private = "file")
-machine_has_no_adapter :: proc(t: ^testing.T, loc := #caller_location) {
+machine_has_no_adapter :: proc(t: ^testing.T, page_said := "", loc := #caller_location) {
 	verdict, why := webgl.adapter_probe(PROBE_SETTINGS)
 	if verdict == .Absent {
 		fmt.printfln("SKIP [webgl_process] %s: %s", loc.procedure, why)
 		return
 	}
-	testing.expectf(t, false, "the page got no WebGL context, and the machine does not say it has no adapter: %v: %s", verdict, why, loc = loc)
+	testing.expectf(t, false, "the page got no WebGL context, and the machine does not say it has no adapter: %v: %s; the page was told: %s", verdict, why, page_said, loc = loc)
 }
 @(private = "file") PROBE_SETTINGS :: webgl.Settings{max_bytes = 64 << 20, gpu_hang_ms = webgl.DEFAULT_GPU_HANG_MS, gpu_max_restarts = webgl.DEFAULT_GPU_MAX_RESTARTS, gpu_restart_window_ms = webgl.DEFAULT_GPU_RESTART_WINDOW_S * webgl.MS_PER_S, gpu_idle_exit_ms = webgl.DEFAULT_GPU_IDLE_EXIT_S * webgl.MS_PER_S}
 
@@ -122,7 +124,10 @@ open_gl_page :: proc(t: ^testing.T, loc := #caller_location) -> (s: ^e2e.Session
 	page = e2e.file_page(e2e.temp_folder(t), "gl.html", GL_PAGE, loc)
 	e2e.navigate(s, page, loc = loc)
 	if e2e.eval(s, "String(window.has)", loc = loc) != "true" {
-		machine_has_no_adapter(t, loc)
+		context = s.ctx
+		said := strings.builder_make(context.temp_allocator)
+		for l in browser.control_console(browser.current_tab(s.app)) { fmt.sbprintf(&said, "%s; ", l.text) }
+		machine_has_no_adapter(t, strings.to_string(said), loc)
 		return s, page, false
 	}
 	testing.expect_value(t, e2e.eval(s, "green(a.gl)", loc = loc), GREEN_PIXEL, loc = loc)   // a context draws
