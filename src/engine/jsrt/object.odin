@@ -594,7 +594,7 @@ shape_hash_transitions :: proc(rt: ^Runtime, sh: ^Shape, rebuild := false) {
 // The property `a` appended by its transition, when `sh` is a shared shape that has one: the caller then knows `a` is new.
 object_append_by_transition :: #force_inline proc(rt: ^Runtime, o: ^Object, a: Atom, flags: Prop_Flags) -> ^Prop_Slot {
 	sh := o.shape
-	if sh.is_dict || o.watch_index {return nil}
+	if sh.is_dict || o.watch_index || o.class != .object || !o.extensible || sh.lazy != nil {return nil}
 	to := shape_next(sh, a, flags, .data)
 	if to == nil {return nil}
 	o.shape = to
