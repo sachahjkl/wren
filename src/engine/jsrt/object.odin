@@ -43,6 +43,7 @@ Shape :: struct {
 	props:       [dynamic]Shape_Prop,
 	hash:        []u32, // index+1 into props, built when len(props) > SHAPE_LINEAR_MAX
 	transitions: [dynamic]Transition,
+	transition_hash: []u32, // index+1 into transitions, kept past TRANSITIONS_LINEAR_MAX (the shape every `{}` starts from has a transition per first key)
 	lazy:        ^Lazy_Members, // the members of the object that are not defined yet (see object_set_lazy)
 	version:     u32,  // a dictionary shape's changes in place (its keys, their attributes, its prototype): compiled code
 	                   // guards it with the shape (jit.odin)
@@ -64,6 +65,7 @@ Lazy_Members :: struct {
 }
 
 SHAPE_LINEAR_MAX :: 8
+TRANSITIONS_LINEAR_MAX :: 8
 SHAPE_SHARED_MAX :: 48 // beyond this many properties an object switches to a dictionary shape
 
 Getset :: struct {
@@ -372,6 +374,7 @@ shape_finalize :: proc(rt: ^Runtime, sh: ^Shape) {
 	delete(sh.props)
 	delete(sh.transitions)
 	if sh.hash != nil {delete(sh.hash, rt_allocator(rt))}
+	if sh.transition_hash != nil {delete(sh.transition_hash, rt_allocator(rt))}
 }
 
 // The shared empty shape for objects created with `proto`.
@@ -535,16 +538,69 @@ add_property :: proc(rt: ^Runtime, o: ^Object, a: Atom, flags: Prop_Flags, kind:
 // first time; a dictionary shape of its own past SHAPE_SHARED_MAX properties, which no transition keeps). Inlined in
 // add_property: out of line, a closure took 5 % longer to make (its four properties; docs/performance.md, round 22).
 shape_transition :: #force_inline proc(rt: ^Runtime, sh: ^Shape, a: Atom, flags: Prop_Flags, kind: Prop_Kind) -> ^Shape {
-	for t in sh.transitions {
-		if t.atom == a && t.flags == flags && t.kind == kind {return t.to}
-	}
+	if to := shape_next(sh, a, flags, kind); to != nil {return to}
 	next := shape_clone(rt, sh, len(sh.props) >= SHAPE_SHARED_MAX)
 	append(&next.props, Shape_Prop{a, flags, kind})
 	shape_build_hash(rt, next)
 	if !next.is_dict {
 		append(&sh.transitions, Transition{a, flags, kind, next})
+		shape_hash_transitions(rt, sh)
 	}
 	return next
+}
+
+// Where a transition of `sh` leads, nil when it has none: so `a` is not a key of `sh` when it has one.
+shape_next :: #force_inline proc "contextless" (sh: ^Shape, a: Atom, flags: Prop_Flags, kind: Prop_Kind) -> ^Shape {
+	if sh.transition_hash == nil {
+		for t in sh.transitions {
+			if t.atom == a && t.flags == flags && t.kind == kind {return t.to}
+		}
+		return nil
+	}
+	mask := u32(len(sh.transition_hash) - 1)
+	h := atom_mix(a) & mask
+	for {
+		v := sh.transition_hash[h]
+		if v == 0 {return nil}
+		t := &sh.transitions[v - 1]
+		if t.atom == a && t.flags == flags && t.kind == kind {return t.to}
+		h = (h + 1) & mask
+	}
+}
+
+// After a transition was added or the sweep took some: the table made again when the list has outgrown it, else the new one entered.
+shape_hash_transitions :: proc(rt: ^Runtime, sh: ^Shape, rebuild := false) {
+	n := len(sh.transitions)
+	if n <= TRANSITIONS_LINEAR_MAX {
+		if sh.transition_hash != nil {delete(sh.transition_hash, rt_allocator(rt)); sh.transition_hash = nil}
+		return
+	}
+	first := n - 1
+	if rebuild || n * 2 > len(sh.transition_hash) {
+		if sh.transition_hash != nil {delete(sh.transition_hash, rt_allocator(rt))}
+		size := 16
+		for size < n * 4 {size *= 2}
+		sh.transition_hash = make([]u32, size, rt_allocator(rt))
+		first = 0
+	}
+	mask := u32(len(sh.transition_hash) - 1)
+	for i in first ..< n {
+		h := atom_mix(sh.transitions[i].atom) & mask
+		for sh.transition_hash[h] != 0 {h = (h + 1) & mask}
+		sh.transition_hash[h] = u32(i + 1)
+	}
+}
+
+// The property `a` appended by its transition, when `sh` is a shared shape that has one: the caller then knows `a` is new.
+object_append_by_transition :: #force_inline proc(rt: ^Runtime, o: ^Object, a: Atom, flags: Prop_Flags) -> ^Prop_Slot {
+	sh := o.shape
+	if sh.is_dict || o.watch_index {return nil}
+	to := shape_next(sh, a, flags, .data)
+	if to == nil {return nil}
+	o.shape = to
+	n := len(to.props)
+	slots_reserve(rt, o, n)
+	return &o.slots[n - 1]
 }
 
 // Room for n slots in o (the JIT's code, which appends properties itself: jit.odin).
