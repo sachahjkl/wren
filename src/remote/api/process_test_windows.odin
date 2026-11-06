@@ -16,6 +16,11 @@ a_process_is_the_one_written_down_by_creation_time_and_program :: proc(t: ^testi
 	testing.expect(t, !same_process({image = `C:\x.exe`}, {image = `C:\x.exe`}), "no creation time written")
 }
 
+// (wrentool bench startup starts build/wren_prof.exe: with its forward slash left in, CreateProcessW ended with error 2)
+@(test)
+a_program_is_spelled_as_windows_spells_a_path :: proc(t: ^testing.T) {
+	testing.expect_value(t, command_line({"build/wren_prof.exe", "--profile", "a/b", "about:home"}), `build\wren_prof.exe --profile a/b about:home`)
+}
 @(test)
 this_process_can_be_told_again :: proc(t: ^testing.T) {
 	h := win.OpenProcess(win.PROCESS_QUERY_LIMITED_INFORMATION, false, win.GetCurrentProcessId())
