@@ -590,19 +590,9 @@ paint_text :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw
 	if it.deco != {} {
 		dcol := to_draw(it.deco_color)
 		if it.deco_color.a == 0 { dcol = col }
-		t := max(1, math.round(fi.size / 15))
-		if .Underline in it.deco {
-			y := math.round(baseline + max(fi.descent * 0.35, 1))
-			draw.rect(dc, {{r.min.x, y}, {r.max.x, y + t}}, dcol)
-		}
-		if .Overline in it.deco {
-			y := math.round(baseline - fi.ascent)
-			draw.rect(dc, {{r.min.x, y}, {r.max.x, y + t}}, dcol)
-		}
-		if .Line_Through in it.deco {
-			y := math.round(baseline - fi.x_height * 0.5 - t * 0.5)
-			draw.rect(dc, {{r.min.x, y}, {r.max.x, y + t}}, dcol)
-		}
+		d := deco_line(deco_source(l, it), dcol, fi, l.scale)
+		d.color = dcol   // (the item's, read when painted)
+		deco_paint_row(dc, r.min.x, r.max.x, baseline, fi, it.deco, d)
 	}
 }
 
@@ -695,17 +685,9 @@ paint_text_vertical :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item
 	if it.deco != {} {
 		dcol := to_draw(it.deco_color)
 		if it.deco_color.a == 0 { dcol = to_draw(cs.color) }
-		t := max(1, math.round(fi.size / 15))
-		// over and under are on the sides of the line's ascent and descent: to the right and left, turned the other way when read upwards
-		ccw := cs.writing_mode == .Sideways_Lr
-		under := ccw ? r.max.x - t : r.min.x
-		over := ccw ? r.min.x : r.max.x - t
-		if .Underline in it.deco { draw.rect(dc, {{under, r.min.y}, {under + t, r.max.y}}, dcol) }
-		if .Overline in it.deco { draw.rect(dc, {{over, r.min.y}, {over + t, r.max.y}}, dcol) }
-		if .Line_Through in it.deco {
-			x := (r.min.x + r.max.x) * 0.5 - t * 0.5
-			draw.rect(dc, {{x, r.min.y}, {x + t, r.max.y}}, dcol)
-		}
+		d := deco_line(deco_source(l, it), dcol, fi, l.scale)
+		d.color = dcol
+		deco_paint_column(dc, r, cs.writing_mode == .Sideways_Lr, it.deco, d)
 	}
 }
 

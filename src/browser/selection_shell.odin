@@ -679,6 +679,20 @@ text_again :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw
 	draw.pop_clip(dc)
 }
 
+// The lines of a highlight's text-decoration (`source`: nil for none) over bytes [a, b) of item `it`.
+@(private = "file")
+decoration_again :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect, a, b: int, source: ^style.Computed, color: draw.Color) {
+	fi := lay.item_font(l, it)
+	if source == nil || fi == nil { return }
+	span := span_rect(l, it, r, a, b)
+	d := deco_line(source, color, fi, l.scale)
+	if .Vertical in it.flags {
+		deco_paint_column(dc, span, it.cs.writing_mode == .Sideways_Lr, source.text_decoration, d)
+	} else {
+		deco_paint_row(dc, span.min.x, span.max.x, it.baseline + (r.min.y - it.rect.min.y), fi, source.text_decoration, d)
+	}
+}
+
 // What of CSS.highlights falls on item `idx`, lowest priority first: `each` with the bytes of the item and the highlight.
 @(private = "file")
 highlights_of_item :: proc(l: ^Layout, idx: int, data: Highlight_Draw, each: proc(data: Highlight_Draw, a, b: int, name: string)) {
@@ -713,6 +727,7 @@ highlights_paint_over :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_It
 		if the_app.spaint.styled == nil { return }
 		fg, has_fg, _, _ := style.highlight_colors(the_app.spaint.styled, the_app.spaint.doc, h.it.node, name)
 		if has_fg { text_again(h.l, h.dc, h.it, h.r, a, b, to_draw(fg)) }
+		decoration_again(h.l, h.dc, h.it, h.r, a, b, style.highlight_decoration(the_app.spaint.styled, the_app.spaint.doc, h.it.node, name), has_fg ? to_draw(fg) : to_draw(h.it.cs.color))
 	})
 }
 
@@ -727,8 +742,10 @@ selection_paint_over :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Ite
 		a, b, ok := lay.item_range(l, the_app.spaint.doc, idx, the_app.spaint.start, the_app.spaint.end)
 		if !ok || !lay.is_selectable(the_app.spaint.doc, the_app.spaint.styled, it.node) { return }
 		_, fg, keep := colors_for(it.node)
-		if keep { return }
-		text_again(l, dc, it, r, a, b, fg)
+		if !keep { text_again(l, dc, it, r, a, b, fg) }
+		if the_app.spaint.styled != nil {
+			decoration_again(l, dc, it, r, a, b, style.selection_decoration(the_app.spaint.styled, the_app.spaint.doc, it.node), keep ? to_draw(it.cs.color) : fg)
+		}
 	case .Replaced, .Control:
 		if it.node == base.NIL_HANDLE || !lay.node_in_range(the_app.spaint.doc, it.node, the_app.spaint.start, the_app.spaint.end) { return }
 		bg, _, _ := colors_for(it.node)
