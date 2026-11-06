@@ -374,7 +374,7 @@ paint_turn_due :: proc(p: ^Page) -> bool {
 	return state == .Ready
 }
 
-// The frame came, or looked at the document and showed nothing of it: the script that waited for it runs at the loop's next turn, not inside the frame.
+// The frame came, or laid the document out and found nothing to show in it: the script that waited for it runs at the loop's next turn, not inside the frame. (A frame held by a sheet says nothing: the turn goes on, the sheet may come.)
 paint_turn_over :: proc(p: ^Page) {
 	if p.scripts != nil && p.scripts.pump.state == .Yield_Paint { pump_to(p, .Yield_Slice) }
 }
@@ -400,7 +400,7 @@ scripts_frame_took :: proc(p: ^Page, ms: f64) { p.render.frame_ms = ms }
 
 // Attaches the parser's next nodes until a parser-blocking script waits, the queue (or a nested reveal's part of it)
 // is done, or the page closes. Preparing a script element at its end tag. With a budget (`budget_ms`, 0: none, what document.write reveals) it
-// stops where it is once that is spent, as a parser does between tokens, and before each script, for the pump to say whether that runs now: cnn.com's body, with its
+// stops where it is once that is spent, as a parser does between tokens, or at a script a paint turn goes before; the pump goes on from there: cnn.com's body, with its
 // hundreds of inline scripts, was 3.8 s without a frame, and whether the page got a frame before them or not were the two modes of its first paint.
 @(private)
 reveal_run :: proc(p: ^Page, budget_ms: f64 = 0) {
@@ -411,9 +411,10 @@ reveal_run :: proc(p: ^Page, budget_ms: f64 = 0) {
 	for !p.closed && ps.active && ps.pending == nil {
 		end := ps.stop >= 0 ? ps.stop : len(ps.queue)
 		if ps.next >= end { break }
-		if budget_ms > 0 && ps.stop < 0 && ps.next > from {
-			if is_script_element(dom.get(d, ps.queue[ps.next].node)) { break }
-			if ps.next - from >= REVEAL_TURN_MIN_NODES && now_ms(p) - start >= budget_ms { break }
+		if budget_ms > 0 && ps.stop < 0 {
+			at_script := is_script_element(dom.get(d, ps.queue[ps.next].node))
+			if at_script && paint_turn_due(p) { break }
+			if (ps.next - from >= REVEAL_TURN_MIN_NODES || (at_script && ps.next > from)) && now_ms(p) - start >= budget_ms { break }
 		}
 		it := ps.queue[ps.next]
 		ps.next += 1
@@ -857,8 +858,7 @@ scripts_pump :: proc(p: ^Page) {
 	start := now_ms(p) - s.pump.ran_ms
 	for !p.closed {
 		step, sc := pump_next(p)
-		left := slice - (now_ms(p) - start)
-		if turn := pump_turn(p, step, sc, slice > 0 && left <= 0); turn != .Running {
+		if turn := pump_turn(p, step, sc, slice > 0 && now_ms(p) - start >= slice); turn != .Running {
 			pump_to(p, turn)
 			return
 		}
@@ -873,11 +873,13 @@ scripts_pump :: proc(p: ^Page) {
 			s.parser.pending = nil
 			s.parser.waiting_since = 0
 			script_execute(p, sc)
+			// (the parser goes on from its script, unless that spent the slice: npr.org's next inline script waited for the turn)
+			if !p.closed && (slice <= 0 || now_ms(p) - start < slice) { reveal_run(p, slice) }
 		case .Deferred:
 			ordered_remove(&s.deferred, 0)
 			script_execute(p, sc)
 		case .Reveal:
-			reveal_run(p, slice > 0 ? left : 0)
+			reveal_run(p, slice)
 		case .End:
 			if the_end(p) { continue }
 			s.pump.ran_ms = now_ms(p) - start
