@@ -1448,7 +1448,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	render.resize(&app.r, active_window(app).win.size)
 	size := draw.Vec2{f32(active_window(app).win.size.x), f32(active_window(app).win.size.y)}
 	// (a program in this process makes frames as fast as it asks for them: the interface's animations go by frames of the usual length, so that what a barrier waits for ends in a few of them, the same way each time)
-	dt := app.frames_at_once ? f32(wnd.pacer.period_ms / 1000) : wnd.pacer.dt
+	dt := frame_seconds(app)
 
 	base_style := chrome_frame_style(app)
 	window_chrome_frame(app)   // window_chrome.odin
