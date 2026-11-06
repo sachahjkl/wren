@@ -34,7 +34,7 @@ Frame :: struct {
 	fcb:    i32,               // containing block of fixed descendants: the root, or the nearest transformed ancestor
 	depth:  i32,
 	deco:   style.Decorations, // text decorations propagated from ancestors
-	deco_box: i32,             // the box whose text-decoration-color draws them (NONE: none)
+	deco_box: i32,             // the nearest box that draws them (NONE: none; the others: Box.deco_up)
 	font_el: base.Handle,      // the element whose children these are (NIL: none, or not an element's box), and its font
 	fi:     i32,
 }
@@ -264,11 +264,11 @@ child_frame :: proc(c: ^Ctx, bi: i32, f: Frame, has_block: bool, sum: ^Style_Sum
 	}
 	if b.kind != .Inline && (sum != nil ? .Contains_Fixed in sum.bits : contains_fixed(b.cs)) { g.cb, g.fcb = bi, bi }
 	if .Atomic in b.flags || .Float in b.flags || .Abs in b.flags || b.kind == .Flex || b.kind == .Grid || b.kind == .Table {
-		g.deco = {}   // decorations do not propagate into atomic inlines, floats and absolutely positioned boxes
+		g.deco, g.deco_box = {}, NONE   // decorations do not propagate into atomic inlines, floats and absolutely positioned boxes
 	}
 	deco := sum != nil ? sum.deco : b.cs.text_decoration
 	g.deco += deco
-	if deco != {} { g.deco_box = bi }
+	if deco != {} { b.deco_up, g.deco_box = g.deco_box, bi }
 	g.font_el, g.fi = .Pseudo in b.flags ? base.NIL_HANDLE : b.node, b.fi
 	switch b.kind {
 	case .Inline: g.mode = .Inline

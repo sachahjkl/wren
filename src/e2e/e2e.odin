@@ -35,6 +35,9 @@ import "wb:base"
 import "wb:host"
 import "toolkit:platform"
 import "wb:browser"
+import "wb:dom"
+import "wb:page"
+import "wb:style"
 import "wb:remote/api"
 
 // What a test may take in all before the runner stops it (a barrier's deadline comes first).
@@ -389,6 +392,23 @@ tab_of :: proc(s: ^Session, loc: runtime.Source_Code_Location) -> ^browser.Tab {
 	t := browser.control_tab(s.app, s.tab)
 	if t == nil { failed(s, fmt.tprintf("no tab %d", s.tab), loc) }
 	return t
+}
+
+// What a spell checker would do: bytes [lo, hi) of the text of the element of this id are marked as ::spelling-error or ::grammar-error, in place of what was.
+mark_text :: proc(s: ^Session, kind: style.Highlight_Kind, id: string, lo, hi: int, loc := #caller_location) {
+	context = s.ctx
+	enter(s, loc)
+	p := tab_of(s, loc).page
+	el := dom.find_by_id(p.doc, id)
+	if el == base.NIL_HANDLE { failed(s, fmt.tprintf("no element %q", id), loc) }
+	text := dom.get(p.doc, el).first_child
+	page.marks_set(p, kind, {{{text, lo}, {text, hi}}})
+}
+
+// A file in another place.
+copy_file :: proc(from, to: string) {
+	data, err := os.read_entire_file(from, context.temp_allocator)
+	if err == nil { _ = os.write_entire_file(to, data) }
 }
 
 // A call's answer: it waits for it, running the loop. What failed ends the test.

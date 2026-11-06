@@ -371,7 +371,7 @@ inc_decoration_color_follows_restyles :: proc(t: ^testing.T) {
 	demo_frame(d, "")
 	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
 	red := false
-	for &it in d.l.items { if it.kind == .Text && it.deco != {} { red = it.deco_color.r > 0.9 && it.deco_color.b < 0.1 } }
+	for &it in d.l.items { if it.kind == .Text && it.deco != {} { c := d.l.boxes[it.deco_box].cs.text_decoration_color; red = c.r > 0.9 && c.b < 0.1 } }
 	testing.expect(t, red, "the underline is red")
 }
 // A grid item in fixed tracks is not laid out by the track sizing: one whose content changed is laid out when placed

@@ -127,8 +127,6 @@ emit_lines :: proc(p: ^Paint_Ctx, ri: i32, owner: i32) {
 					item := &c.l.inline_items[f.item]
 					if item.cs.visibility != .Visible { continue }
 					it.cs, it.node, it.deco, it.deco_box = item.cs, item.node, item.deco, item.deco_box
-					// the decorating box's current color (a paint-only restyle changes it without making the items again)
-					if item.deco_box >= 0 { it.deco_color = c.l.boxes[item.deco_box].cs.text_decoration_color }
 					it.item = f.item
 					if item.cs.pointer_events { it.flags += {.Hit} }
 				} else {

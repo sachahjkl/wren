@@ -261,9 +261,12 @@ frames_paint_content :: proc(app: ^App, dc: ^draw.Context, d: ^dom.Document, nod
 	}
 	append(&app.paint_stack, t.page)
 	saved := images_shell_page_swap(t.page)
+	parent_highlights := app.spaint   // (its own selection and highlights)
+	selection_paint_begin(app, t)
 	draw.push_clip(dc, content)
 	paint(&t.layout, dc, t.page.doc, content.min, size, t.scroll, content, doc_scrollbar = !fv.no_scroll)
 	draw.pop_clip(dc)
+	app.spaint = parent_highlights
 	images_shell_page_swap(saved)
 	pop(&app.paint_stack)
 	return true

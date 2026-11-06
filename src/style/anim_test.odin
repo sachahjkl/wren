@@ -604,7 +604,7 @@ more_properties :: proc(t: ^testing.T) {
 	tx := node(f, "tx")
 	testing.expect(t, tx.text_decoration_style == .Dotted && tx.text_decoration_thickness.v == 2 && .Underline in tx.text_decoration)
 	testing.expect(t, tx.font_variant_caps == .Small_Caps && tx.font_stretch == 75 && tx.font_weight == 700 && tx.font_size == 20)
-	testing.expect(t, math.abs(tx.text_underline_offset.v - 5) < 1e-3, "a percentage of 1em")
+	testing.expect(t, tx.text_underline_offset.kind == .Percent && tx.text_underline_offset.v == 25, "a percentage stays one")
 	mi := node(f, "mi")
 	testing.expect(t, len(mi.will_change) == 2 && mi.contain == {.Size, .Layout, .Style, .Paint} && mi.content_visibility == .Hidden)
 	testing.expect(t, !mi.caret_color.auto && mi.accent_color.auto && mi.appearance == .Auto && mi.resize == .Both)

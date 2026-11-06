@@ -1,0 +1,927 @@
+# web-platform-tests expectations of Wren for css/css-pseudo, written by build/wpt -update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/css/css-pseudo/CSSPseudoElement-convertPoint.tentative.html: OK
+	CSSPseudoElement should have coordinate conversion methods: FAIL
+	convertPointFromNode converts coordinates correctly: FAIL
+	convertPointFromNode returns DOMPoint: FAIL
+	convertPointFromNode works with Document as source: FAIL
+	convertPointFromNode works with Element as source: FAIL
+	convertQuadFromNode returns DOMQuad: FAIL
+	convertRectFromNode returns DOMQuad: FAIL
+/css/css-pseudo/CSSPseudoElement-geometry-edge-cases.tentative.html: OK
+	convertPointFromNode handles source pseudo with no layout: FAIL
+	convertPointFromNode preserves z and w coordinates: FAIL
+	convertQuadFromNode works with element as source: FAIL
+	convertRectFromNode works with element as source: FAIL
+	getBoxQuads accepts empty options object: FAIL
+	getBoxQuads accepts null options: FAIL
+	getBoxQuads accepts undefined options: FAIL
+	getBoxQuads handles zero-size pseudo-element: FAIL
+	getBoxQuads returns empty array for pseudo with no generated content: FAIL
+	getBoxQuads returns empty array when pseudo-element has display:none: FAIL
+	getBoxQuads returns empty array when pseudo-element has no content (not generated): FAIL
+	getBoxQuads works correctly for visibility:hidden pseudo-element: FAIL
+	getBoxQuads works for floated pseudo-element: FAIL
+	getBoxQuads works for inline display pseudo-element: FAIL
+	getBoxQuads works with CSSPseudoElement as relativeTo: FAIL
+	getBoxQuads works with another element as relativeTo: FAIL
+	getBoxQuads works with document as relativeTo: FAIL
+	getBoxQuads works with empty content pseudo-element: FAIL
+	getBoxQuads works with transformed pseudo-element: FAIL
+	pseudo() returns CSSPseudoElement even if pseudo not currently generated: FAIL
+	pseudo() returns cached CSSPseudoElement instance: FAIL
+	pseudo() returns null for invalid pseudo-element syntax: FAIL
+	pseudo() returns null for unsupported pseudo-element types: FAIL
+/css/css-pseudo/CSSPseudoElement-getBoxQuads.tentative.html: OK
+	CSSPseudoElement should have getBoxQuads method: FAIL
+	getBoxQuads returns DOMQuad for ::before: FAIL
+	getBoxQuads should return an array: FAIL
+	getBoxQuads with box="border" returns border box dimensions: FAIL
+	getBoxQuads with box="content" returns content box dimensions: FAIL
+	getBoxQuads with box="margin" returns margin box dimensions: FAIL
+	getBoxQuads with box="padding" returns padding box dimensions: FAIL
+	getBoxQuads works for ::after pseudo-element: FAIL
+/css/css-pseudo/CSSPseudoElement-identity.html: OK
+	CSS Pseudo Test: CSSPseudoElement stable identity: FAIL
+/css/css-pseudo/CSSPseudoElement-scroll-button.html: OK
+	A physical direction returns the CSSPseudoElement of the logical direction it maps to: FAIL
+	Each direction refers to its own scroll button: FAIL
+	Physical directions map according to the writing mode: FAIL
+	Pseudo-elements don't have scroll buttons: FAIL
+	The direction is ASCII case-insensitive: FAIL
+	pseudo() returns a CSSPseudoElement for ::scroll-button(): FAIL
+	pseudo() returns a CSSPseudoElement for ::scroll-button() of a disconnected element: FAIL
+	pseudo() returns null for ::scroll-button(*): FAIL
+	selectorText of ::scroll-button() includes the logical direction: FAIL
+	selectorText of ::scroll-button() with a physical direction depends on the direction: FAIL
+	selectorText of ::scroll-button() with a physical direction depends on the writing mode: FAIL
+	selectorText of ::scroll-button() with a physical direction is the logical direction it maps to: FAIL
+/css/css-pseudo/CSSPseudoElement-selectorText.html: OK
+	selectorText is serialized in lowercase: FAIL
+	selectorText of a pseudo-element of a disconnected element: FAIL
+	selectorText of a sub-pseudo-element only includes its own pseudo-element: FAIL
+	selectorText of pseudo-elements without arguments: FAIL
+/css/css-pseudo/CSSPseudoElement-view-transitions-scoped.tentative.html: OK
+	CSSPseudoElement hierarchy works for scoped view transitions: FAIL
+	CSSPseudoElement proxies are identity-consistent across multiple view transitions on the same element: FAIL
+/css/css-pseudo/CSSPseudoElement-view-transitions.tentative.html: OK
+	CSSPseudoElement can represent view transition pseudo-elements: FAIL
+	CSSPseudoElement for view transitions is identity-consistent and can be fetched directly from originating element: FAIL
+	CSSPseudoElement hierarchy is correctly built when querying sub-pseudo-elements: FAIL
+	CSSPseudoElement isolates view transitions with different names and validates them during traversal: FAIL
+	selectorText of view transition pseudo-elements includes the name: FAIL
+/css/css-pseudo/backdrop-animate.html: OK
+	'backgroundColor' animation: FAIL
+/css/css-pseudo/backdrop-pseudo-element-click.html: OK
+	Clicking on dialog's ::backdrop sets pseudoTarget to the CSSPseudoElement: FAIL
+/css/css-pseudo/before-in-display-none-thcrash.html: OK
+	Invalidating style inside display:none with ::before should not crash.: PASS
+/css/css-pseudo/chrome-486467574.html: OK
+	computed ::selection color should follow the configured rule: PASS
+/css/css-pseudo/events-on-after-before-marker.tentative.html: OK
+	click exiting ::after gives LCA as target and null pseudoTarget: FAIL
+	click from ::after::marker to ::after fires on ::after with pseudoTarget: FAIL
+	click on ::before/::after/::marker sets event.pseudoTarget: FAIL
+	nested ::after::marker: click sets pseudoTarget and parent chain is correct: FAIL
+/css/css-pseudo/events-on-pseudo-element-mutation.tentative.html: ERROR
+/css/css-pseudo/events-on-pseudo-element-shadow-dom.html: OK
+	event.pseudoTarget is null when clicking ::after::marker retargeted across shadow boundary: FAIL
+	event.pseudoTarget is null when clicking ::before::marker retargeted across shadow boundary: FAIL
+	event.pseudoTarget is null when retargeted across shadow boundary: FAIL
+	event.pseudoTarget is preserved when clicking host ::after::marker pseudo-element: FAIL
+	event.pseudoTarget is preserved when clicking host ::before::marker pseudo-element: FAIL
+	event.pseudoTarget is preserved when clicking host pseudo-element: FAIL
+/css/css-pseudo/events-on-pseudo-element.tentative.html: ERROR
+/css/css-pseudo/events-on-view-transition-pseudos.tentative.html: OK
+	Clicking on ::view-transition-new(name) sets event.pseudoTarget to the same CSSPseudoElement as pseudo(): FAIL
+	Clicking on view transition pseudo elements sets event.pseudoTarget correctly: FAIL
+/css/css-pseudo/file-selector-button-inherit.html: OK
+	::file-selector-button should inherit from its originating element: FAIL
+/css/css-pseudo/first-letter-allowed-properties.html: OK
+	backgroundAttachment should be applied to first-letter pseudo elements.: FAIL
+	backgroundBlendMode should be applied to first-letter pseudo elements.: FAIL
+	backgroundClip should be applied to first-letter pseudo elements.: FAIL
+	backgroundColor should be applied to first-letter pseudo elements.: FAIL
+	backgroundImage should be applied to first-letter pseudo elements.: FAIL
+	backgroundOrigin should be applied to first-letter pseudo elements.: FAIL
+	backgroundPosition should be applied to first-letter pseudo elements.: FAIL
+	backgroundRepeat should be applied to first-letter pseudo elements.: FAIL
+	backgroundSize should be applied to first-letter pseudo elements.: FAIL
+	border should be applied to first-letter pseudo elements.: FAIL
+	borderImage should be applied to first-letter pseudo elements.: FAIL
+	borderRadius should be applied to first-letter pseudo elements.: FAIL
+	boxShadow should be applied to first-letter pseudo elements.: FAIL
+	color should be applied to first-letter pseudo elements.: FAIL
+	float should be applied to first-letter pseudo elements.: FAIL
+	font should be applied to first-letter pseudo elements.: FAIL
+	fontFeatureSettings should be applied to first-letter pseudo elements.: FAIL
+	fontKerning should be applied to first-letter pseudo elements.: FAIL
+	fontSizeAdjust should be applied to first-letter pseudo elements.: FAIL
+	fontVariationSettings should be applied to first-letter pseudo elements.: FAIL
+	letterSpacing should be applied to first-letter pseudo elements.: FAIL
+	margin should be applied to first-letter pseudo elements.: FAIL
+	opacity should be applied to first-letter pseudo elements.: FAIL
+	padding should be applied to first-letter pseudo elements.: FAIL
+	position should not be applied to first-letter pseudo elements.: PASS
+	pre test setup: PASS
+	textDecoration should be applied to first-letter pseudo elements.: FAIL
+	textJustify should be applied to first-letter pseudo elements.: FAIL
+	textShadow should be applied to first-letter pseudo elements.: FAIL
+	textTransform should be applied to first-letter pseudo elements.: FAIL
+	textUnderlinePosition should be applied to first-letter pseudo elements.: FAIL
+	transform should not be applied to first-letter pseudo elements.: PASS
+	transition should not be applied to first-letter pseudo elements.: PASS
+	verticalAlign should be applied to first-letter pseudo elements.: FAIL
+	wordBreak should not be applied to first-letter pseudo elements.: PASS
+	wordSpacing should be applied to first-letter pseudo elements.: FAIL
+/css/css-pseudo/first-letter-crash.html: OK
+	first-letter-crash: PASS
+/css/css-pseudo/first-letter-punctuation-and-space.html: OK
+	Following punctuation ! (\\u+0021) of category Po should be included: FAIL
+	Following punctuation " (\\u+0022) of category Po should be included: FAIL
+	Following punctuation # (\\u+0023) of category Po should be included: FAIL
+	Following punctuation ) (\\u+0029) of category Pe should be included: FAIL
+	Following punctuation ] (\\u+005d) of category Pe should be included: FAIL
+	Following punctuation _ (\\u+005f) of category Pc should be included: FAIL
+	Following punctuation } (\\u+007d) of category Pe should be included: FAIL
+	Following punctuation « (\\u+00ab) of category Pi should be included: FAIL
+	Following punctuation » (\\u+00bb) of category Pf should be included: FAIL
+	Following punctuation ‘ (\\u+2018) of category Pi should be included: FAIL
+	Following punctuation ’ (\\u+2019) of category Pf should be included: FAIL
+	Following punctuation “ (\\u+201c) of category Pi should be included: FAIL
+	Following punctuation ” (\\u+201d) of category Pf should be included: FAIL
+	Following punctuation ‿ (\\u+203f) of category Pc should be included: FAIL
+	Intervening space \\u+0020 before the first-letter should be included: FAIL
+	Intervening space \\u+00a0 before the first-letter should be included: FAIL
+	Intervening space \\u+2000 before the first-letter should be included: FAIL
+	Intervening space \\u+2001 before the first-letter should be included: FAIL
+	Intervening typographic space \\u+2000 after the first-letter should be included: FAIL
+	Intervening typographic space \\u+2001 after the first-letter should be included: FAIL
+	Multiple following punctuation characters _)« should be included: FAIL
+	Multiple intervening spaces before the first-letter should be included: FAIL
+	Multiple intervening typographic spaces after the first-letter should be included: FAIL
+	Multiple preceding punctuation characters _-( should be included: FAIL
+	Preceding punctuation ! (\\u+0021) of category Po should be included: FAIL
+	Preceding punctuation " (\\u+0022) of category Po should be included: FAIL
+	Preceding punctuation # (\\u+0023) of category Po should be included: FAIL
+	Preceding punctuation ( (\\u+0028) of category Ps should be included: FAIL
+	Preceding punctuation ) (\\u+0029) of category Pe should be included: FAIL
+	Preceding punctuation - (\\u+002d) of category Pd should be included: FAIL
+	Preceding punctuation [ (\\u+005b) of category Ps should be included: FAIL
+	Preceding punctuation ] (\\u+005d) of category Pe should be included: FAIL
+	Preceding punctuation _ (\\u+005f) of category Pc should be included: FAIL
+	Preceding punctuation { (\\u+007b) of category Ps should be included: FAIL
+	Preceding punctuation } (\\u+007d) of category Pe should be included: FAIL
+	Preceding punctuation « (\\u+00ab) of category Pi should be included: FAIL
+	Preceding punctuation » (\\u+00bb) of category Pf should be included: FAIL
+	Preceding punctuation – (\\u+2013) of category Pd should be included: FAIL
+	Preceding punctuation ‘ (\\u+2018) of category Pi should be included: FAIL
+	Preceding punctuation ’ (\\u+2019) of category Pf should be included: FAIL
+	Preceding punctuation “ (\\u+201c) of category Pi should be included: FAIL
+	Preceding punctuation ” (\\u+201d) of category Pf should be included: FAIL
+	Preceding punctuation ‿ (\\u+203f) of category Pc should be included: FAIL
+/css/css-pseudo/first-line-allowed-properties.html: OK
+	backgroundAttachment should be applied to first-line pseudo elements (display:block): FAIL
+	backgroundAttachment should be applied to first-line pseudo elements (display:flex): FAIL
+	backgroundAttachment should be applied to first-line pseudo elements (display:inline): FAIL
+	backgroundBlendMode should be applied to first-line pseudo elements (display:block): FAIL
+	backgroundBlendMode should be applied to first-line pseudo elements (display:flex): FAIL
+	backgroundBlendMode should be applied to first-line pseudo elements (display:inline): FAIL
+	backgroundClip should be applied to first-line pseudo elements (display:block): FAIL
+	backgroundClip should be applied to first-line pseudo elements (display:flex): FAIL
+	backgroundClip should be applied to first-line pseudo elements (display:inline): FAIL
+	backgroundColor should be applied to first-line pseudo elements (display:block): FAIL
+	backgroundColor should be applied to first-line pseudo elements (display:flex): FAIL
+	backgroundColor should be applied to first-line pseudo elements (display:inline): FAIL
+	backgroundImage should be applied to first-line pseudo elements (display:block): FAIL
+	backgroundImage should be applied to first-line pseudo elements (display:flex): FAIL
+	backgroundImage should be applied to first-line pseudo elements (display:inline): FAIL
+	backgroundOrigin should be applied to first-line pseudo elements (display:block): FAIL
+	backgroundOrigin should be applied to first-line pseudo elements (display:flex): FAIL
+	backgroundOrigin should be applied to first-line pseudo elements (display:inline): FAIL
+	backgroundPosition should be applied to first-line pseudo elements (display:block): FAIL
+	backgroundPosition should be applied to first-line pseudo elements (display:flex): FAIL
+	backgroundPosition should be applied to first-line pseudo elements (display:inline): FAIL
+	backgroundRepeat should be applied to first-line pseudo elements (display:block): FAIL
+	backgroundRepeat should be applied to first-line pseudo elements (display:flex): FAIL
+	backgroundRepeat should be applied to first-line pseudo elements (display:inline): FAIL
+	backgroundSize should be applied to first-line pseudo elements (display:block): FAIL
+	backgroundSize should be applied to first-line pseudo elements (display:flex): FAIL
+	backgroundSize should be applied to first-line pseudo elements (display:inline): FAIL
+	border should not be applied to first-line pseudo elements (display:block): PASS
+	border should not be applied to first-line pseudo elements (display:flex): PASS
+	border should not be applied to first-line pseudo elements (display:inline): PASS
+	borderImage should not be applied to first-line pseudo elements (display:block): PASS
+	borderImage should not be applied to first-line pseudo elements (display:flex): PASS
+	borderImage should not be applied to first-line pseudo elements (display:inline): PASS
+	borderRadius should not be applied to first-line pseudo elements (display:block): PASS
+	borderRadius should not be applied to first-line pseudo elements (display:flex): PASS
+	borderRadius should not be applied to first-line pseudo elements (display:inline): PASS
+	color should be applied to first-line pseudo elements (display:block): FAIL
+	color should be applied to first-line pseudo elements (display:flex): FAIL
+	color should be applied to first-line pseudo elements (display:inline): FAIL
+	fontFamily should be applied to first-line pseudo elements (display:block): FAIL
+	fontFamily should be applied to first-line pseudo elements (display:flex): FAIL
+	fontFamily should be applied to first-line pseudo elements (display:inline): FAIL
+	fontFeatureSettings should be applied to first-line pseudo elements (display:block): FAIL
+	fontFeatureSettings should be applied to first-line pseudo elements (display:flex): FAIL
+	fontFeatureSettings should be applied to first-line pseudo elements (display:inline): FAIL
+	fontKerning should be applied to first-line pseudo elements (display:block): FAIL
+	fontKerning should be applied to first-line pseudo elements (display:flex): FAIL
+	fontKerning should be applied to first-line pseudo elements (display:inline): FAIL
+	fontSize should be applied to first-line pseudo elements (display:block): FAIL
+	fontSize should be applied to first-line pseudo elements (display:flex): FAIL
+	fontSize should be applied to first-line pseudo elements (display:inline): FAIL
+	fontSizeAdjust should be applied to first-line pseudo elements (display:block): FAIL
+	fontSizeAdjust should be applied to first-line pseudo elements (display:flex): FAIL
+	fontSizeAdjust should be applied to first-line pseudo elements (display:inline): FAIL
+	fontStyle should be applied to first-line pseudo elements (display:block): FAIL
+	fontStyle should be applied to first-line pseudo elements (display:flex): FAIL
+	fontStyle should be applied to first-line pseudo elements (display:inline): FAIL
+	fontVariant should be applied to first-line pseudo elements (display:block): FAIL
+	fontVariant should be applied to first-line pseudo elements (display:flex): FAIL
+	fontVariant should be applied to first-line pseudo elements (display:inline): FAIL
+	fontVariationSettings should be applied to first-line pseudo elements (display:block): FAIL
+	fontVariationSettings should be applied to first-line pseudo elements (display:flex): FAIL
+	fontVariationSettings should be applied to first-line pseudo elements (display:inline): FAIL
+	fontWeight should be applied to first-line pseudo elements (display:block): FAIL
+	fontWeight should be applied to first-line pseudo elements (display:flex): FAIL
+	fontWeight should be applied to first-line pseudo elements (display:inline): FAIL
+	letterSpacing should be applied to first-line pseudo elements (display:block): FAIL
+	letterSpacing should be applied to first-line pseudo elements (display:flex): FAIL
+	letterSpacing should be applied to first-line pseudo elements (display:inline): FAIL
+	margin should not be applied to first-line pseudo elements (display:block): PASS
+	margin should not be applied to first-line pseudo elements (display:flex): PASS
+	margin should not be applied to first-line pseudo elements (display:inline): PASS
+	opacity should be applied to first-line pseudo elements (display:block): FAIL
+	opacity should be applied to first-line pseudo elements (display:flex): FAIL
+	opacity should be applied to first-line pseudo elements (display:inline): FAIL
+	padding should not be applied to first-line pseudo elements (display:block): PASS
+	padding should not be applied to first-line pseudo elements (display:flex): PASS
+	padding should not be applied to first-line pseudo elements (display:inline): PASS
+	position should not be applied to first-line pseudo elements (display:block): PASS
+	position should not be applied to first-line pseudo elements (display:flex): PASS
+	position should not be applied to first-line pseudo elements (display:inline): PASS
+	retrieve style rule: PASS
+	textDecoration should be applied to first-line pseudo elements (display:block): FAIL
+	textDecoration should be applied to first-line pseudo elements (display:flex): FAIL
+	textDecoration should be applied to first-line pseudo elements (display:inline): FAIL
+	textJustify should be applied to first-line pseudo elements (display:block): FAIL
+	textJustify should be applied to first-line pseudo elements (display:flex): FAIL
+	textJustify should be applied to first-line pseudo elements (display:inline): FAIL
+	textShadow should be applied to first-line pseudo elements (display:block): FAIL
+	textShadow should be applied to first-line pseudo elements (display:flex): FAIL
+	textShadow should be applied to first-line pseudo elements (display:inline): FAIL
+	textTransform should be applied to first-line pseudo elements (display:block): FAIL
+	textTransform should be applied to first-line pseudo elements (display:flex): FAIL
+	textTransform should be applied to first-line pseudo elements (display:inline): FAIL
+	textUnderlinePosition should be applied to first-line pseudo elements (display:block): FAIL
+	textUnderlinePosition should be applied to first-line pseudo elements (display:flex): FAIL
+	textUnderlinePosition should be applied to first-line pseudo elements (display:inline): FAIL
+	transform should not be applied to first-line pseudo elements (display:block): PASS
+	transform should not be applied to first-line pseudo elements (display:flex): PASS
+	transform should not be applied to first-line pseudo elements (display:inline): PASS
+	transition should not be applied to first-line pseudo elements (display:block): PASS
+	transition should not be applied to first-line pseudo elements (display:flex): PASS
+	transition should not be applied to first-line pseudo elements (display:inline): PASS
+	verticalAlign should be applied to first-line pseudo elements (display:block): FAIL
+	verticalAlign should be applied to first-line pseudo elements (display:flex): FAIL
+	verticalAlign should be applied to first-line pseudo elements (display:inline): FAIL
+	wordBreak should not be applied to first-line pseudo elements (display:block): PASS
+	wordBreak should not be applied to first-line pseudo elements (display:flex): PASS
+	wordBreak should not be applied to first-line pseudo elements (display:inline): PASS
+	wordSpacing should be applied to first-line pseudo elements (display:block): FAIL
+	wordSpacing should be applied to first-line pseudo elements (display:flex): FAIL
+	wordSpacing should be applied to first-line pseudo elements (display:inline): FAIL
+/css/css-pseudo/first-line-first-letter-insert-crash.html: OK
+	Should not crash when inserting an element inside a :first-line pseudo.: PASS
+/css/css-pseudo/focus-visible-originating-element.html: OK
+	CSS Test: ::before matches when originating element has :focus-visible selector: FAIL
+/css/css-pseudo/highlight-cascade/highlight-cascade-007.html: OK
+	M span::selection’s font-size is the same as in M span: PASS
+	M span::selection’s inherited text-shadow respects M’s font-size: PASS
+	M::selection’s font-size is the same as in M: PASS
+	M::selection’s own text-shadow respects M’s font-size: PASS
+	U span::selection’s font-size is the same as in U span: PASS
+	U span::selection’s own text-decoration-thickness respects U span’s font-size: PASS
+	U::selection’s font-size is the same as in U: PASS
+	U::selection’s own text-decoration-thickness respects U’s font-size: PASS
+	W span::selection’s inherited text-shadow respects W’s line-height: PASS
+	W span::selection’s line-height is the same as in W span: PASS
+	W::selection’s line-height is the same as in W: PASS
+	W::selection’s own text-shadow respects W’s line-height: PASS
+/css/css-pseudo/highlight-cascade/highlight-cascade-009.html: OK
+	body ::selection uses its own custom property: PASS
+	body ::selection uses the originating custom property: PASS
+	div::selection properties are not present on the originating element: PASS
+	div::selection uses its own custom property: PASS
+	div::selection uses the originating element custom property: PASS
+/css/css-pseudo/highlight-cascade/highlight-cascade-010.html: OK
+	the custom property receives its initial value from a deferred registration: FAIL
+/css/css-pseudo/highlight-cascade/highlight-cascade-011.html: OK
+	--background-color has no computed value on div::selection: PASS
+	div::selection does not inherit custom properties from the highlight parent: PASS
+/css/css-pseudo/highlight-cascade/highlight-cascade-parent-style-change.html: OK
+	A highlight pseudo-element inherits from the parent's new style, not its previous one: PASS
+/css/css-pseudo/highlight-cascade/highlight-cascade-shadow-boundary.html: OK
+	A highlight pseudo-element in a shadow tree inherits from the shadow host's: PASS
+	A highlight pseudo-element of slotted content inherits through the slot: PASS
+/css/css-pseudo/highlight-cascade/highlight-currentcolor-computed-inheritance.html: OK
+	getComputedStyle() for ::grammar-error: PASS
+	getComputedStyle() for ::highlight(foo): PASS
+	getComputedStyle() for ::search-text: FAIL
+	getComputedStyle() for ::selection: PASS
+	getComputedStyle() for ::spelling-error: PASS
+	getComputedStyle() for ::target-text: PASS
+/css/css-pseudo/highlight-cascade/highlight-currentcolor-computed-visited.html: OK
+	getComputedStyle() for ::grammar-error at #target1: PASS
+	getComputedStyle() for ::grammar-error at #target2: PASS
+	getComputedStyle() for ::highlight(foo) at #target1: PASS
+	getComputedStyle() for ::highlight(foo) at #target2: PASS
+	getComputedStyle() for ::search-text at #target1: FAIL
+	getComputedStyle() for ::search-text at #target2: FAIL
+	getComputedStyle() for ::selection at #target1: PASS
+	getComputedStyle() for ::selection at #target2: PASS
+	getComputedStyle() for ::spelling-error at #target1: PASS
+	getComputedStyle() for ::spelling-error at #target2: PASS
+	getComputedStyle() for ::target-text at #target1: PASS
+	getComputedStyle() for ::target-text at #target2: PASS
+/css/css-pseudo/highlight-cascade/highlight-currentcolor-computed.html: OK
+	getComputedStyle() for ::grammar-error at #target1: PASS
+	getComputedStyle() for ::grammar-error at #target2: PASS
+	getComputedStyle() for ::highlight(foo) at #target1: PASS
+	getComputedStyle() for ::highlight(foo) at #target2: PASS
+	getComputedStyle() for ::search-text at #target1: FAIL
+	getComputedStyle() for ::search-text at #target2: FAIL
+	getComputedStyle() for ::selection at #target1: PASS
+	getComputedStyle() for ::selection at #target2: PASS
+	getComputedStyle() for ::spelling-error at #target1: PASS
+	getComputedStyle() for ::spelling-error at #target2: PASS
+	getComputedStyle() for ::target-text at #target1: PASS
+	getComputedStyle() for ::target-text at #target2: PASS
+/css/css-pseudo/highlight-cascade/highlight-pseudos-computed-search-text.tentative.html: OK
+	getComputedStyle() for :::search-text should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::search-text: FAIL
+	getComputedStyle() for ::search-text( should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::search-text() should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::search-text(foo) should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::search-text) should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::search-text. should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::search-text: should return an empty CSSStyleDeclaration: PASS
+/css/css-pseudo/highlight-cascade/highlight-pseudos-computed.html: OK
+	Different getComputedStyle() for ::highlight(bar) and same element: PASS
+	getComputedStyle() for :::grammar-error should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for :::highlight(foo) should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for :::selection should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for :::spelling-error should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for :::target-text should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::grammar-error: PASS
+	getComputedStyle() for ::grammar-error( should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::grammar-error() should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::grammar-error(foo) should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::grammar-error) should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::grammar-error. should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::grammar-error: should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::highlight(foo): PASS
+	getComputedStyle() for ::highlight(foo)( should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::highlight(foo)() should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::highlight(foo)(foo) should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::highlight(foo)) should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::highlight(foo). should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::highlight(foo): should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::selection: PASS
+	getComputedStyle() for ::selection( should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::selection() should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::selection(foo) should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::selection) should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::selection. should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::selection: should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::spelling-error: PASS
+	getComputedStyle() for ::spelling-error( should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::spelling-error() should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::spelling-error(foo) should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::spelling-error) should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::spelling-error. should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::spelling-error: should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::target-text: PASS
+	getComputedStyle() for ::target-text( should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::target-text() should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::target-text(foo) should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::target-text) should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::target-text. should return an empty CSSStyleDeclaration: PASS
+	getComputedStyle() for ::target-text: should return an empty CSSStyleDeclaration: PASS
+/css/css-pseudo/highlight-cascade/highlight-pseudos-inheritance-computed-001.html: OK
+	getComputedStyle() for ::grammar-error at #child1: PASS
+	getComputedStyle() for ::grammar-error at #child2: PASS
+	getComputedStyle() for ::highlight(foo) at #child1: PASS
+	getComputedStyle() for ::highlight(foo) at #child2: PASS
+	getComputedStyle() for ::search-text at #child1: FAIL
+	getComputedStyle() for ::search-text at #child2: FAIL
+	getComputedStyle() for ::selection at #child1: PASS
+	getComputedStyle() for ::selection at #child2: PASS
+	getComputedStyle() for ::spelling-error at #child1: PASS
+	getComputedStyle() for ::spelling-error at #child2: PASS
+	getComputedStyle() for ::target-text at #child1: PASS
+	getComputedStyle() for ::target-text at #child2: PASS
+/css/css-pseudo/highlight-cascade/highlight-pseudos-visited-computed-001.html: OK
+	getComputedStyle() for ::grammar-error at #target1: PASS
+	getComputedStyle() for ::grammar-error at #target2: PASS
+	getComputedStyle() for ::highlight(foo) at #target1: PASS
+	getComputedStyle() for ::highlight(foo) at #target2: PASS
+	getComputedStyle() for ::search-text at #target1: FAIL
+	getComputedStyle() for ::search-text at #target2: FAIL
+	getComputedStyle() for ::selection at #target1: PASS
+	getComputedStyle() for ::selection at #target2: PASS
+	getComputedStyle() for ::spelling-error at #target1: PASS
+	getComputedStyle() for ::spelling-error at #target2: PASS
+	getComputedStyle() for ::target-text at #target1: PASS
+	getComputedStyle() for ::target-text at #target2: PASS
+/css/css-pseudo/hit-testing-active-pseudo-layout-on-mouseup.html: ERROR
+	Multiple clicks should all trigger: FAIL
+/css/css-pseudo/hover-on-pseudo-elements.tentative.html: OK
+	CSS Test: :hover on ::after, ::before, and ::marker pseudo-elements: FAIL
+/css/css-pseudo/idlharness.html: OK
+	CSSPseudoElement interface object length: FAIL
+	CSSPseudoElement interface object name: FAIL
+	CSSPseudoElement interface: attribute element: FAIL
+	CSSPseudoElement interface: attribute parent: FAIL
+	CSSPseudoElement interface: attribute selectorText: FAIL
+	CSSPseudoElement interface: attribute type: FAIL
+	CSSPseudoElement interface: beforeElements.item(0) must inherit property "element" with the proper type: FAIL
+	CSSPseudoElement interface: beforeElements.item(0) must inherit property "parent" with the proper type: FAIL
+	CSSPseudoElement interface: beforeElements.item(0) must inherit property "pseudo(CSSOMString)" with the proper type: FAIL
+	CSSPseudoElement interface: beforeElements.item(0) must inherit property "selectorText" with the proper type: FAIL
+	CSSPseudoElement interface: beforeElements.item(0) must inherit property "type" with the proper type: FAIL
+	CSSPseudoElement interface: calling pseudo(CSSOMString) on beforeElements.item(0) with too few arguments must throw TypeError: FAIL
+	CSSPseudoElement interface: existence and properties of interface object: FAIL
+	CSSPseudoElement interface: existence and properties of interface prototype object: FAIL
+	CSSPseudoElement interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	CSSPseudoElement interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	CSSPseudoElement interface: operation pseudo(CSSOMString): FAIL
+	CSSPseudoElement must be primary interface of beforeElements.item(0): FAIL
+	Element includes ChildNode: member names are unique: PASS
+	Element includes NonDocumentTypeChildNode: member names are unique: PASS
+	Element includes ParentNode: member names are unique: PASS
+	Element includes Slottable: member names are unique: PASS
+	Element interface: operation pseudo(CSSOMString): FAIL
+	Partial interface Element: member names are unique: PASS
+	Partial interface Element: original interface defined: PASS
+	Partial interface Element[2]: member names are unique: PASS
+	Stringification of beforeElements.item(0): FAIL
+	idl_test setup: FAIL
+	idl_test validation: PASS
+/css/css-pseudo/input-element-pseudo-open-click.optional.html: OK
+	CSS :open for <input type=color>: FAIL
+	CSS :open for <input type=date>: FAIL
+	CSS :open for <input type=datetime-local>: FAIL
+	CSS :open for <input type=month>: FAIL
+	CSS :open for <input type=text list=datalist>: FAIL
+	CSS :open for <input type=time>: FAIL
+	CSS :open for <input type=week>: FAIL
+/css/css-pseudo/input-element-pseudo-open.optional.html: OK
+	CSS :open for <input type=color>: FAIL
+	CSS :open for <input type=date>: FAIL
+	CSS :open for <input type=datetime-local>: FAIL
+	CSS :open for <input type=month>: FAIL
+	CSS :open for <input type=text list=datalist>: FAIL
+	CSS :open for <input type=time>: FAIL
+	CSS :open for <input type=week>: FAIL
+/css/css-pseudo/marker-animate.html: OK
+	'color' + 'opacity' animation: FAIL
+	'color' animation: FAIL
+	'opacity' animation: PASS
+/css/css-pseudo/marker-computed-content.html: OK
+	Computed 'content' for list-item ::marker, variant default: PASS
+	Computed 'content' for list-item ::marker, variant image: FAIL
+	Computed 'content' for list-item ::marker, variant none: FAIL
+	Computed 'content' for list-item ::marker, variant normal: PASS
+	Computed 'content' for list-item ::marker, variant string: FAIL
+	Computed 'content' for non-list-item ::marker, variant default: PASS
+	Computed 'content' for non-list-item ::marker, variant image: FAIL
+	Computed 'content' for non-list-item ::marker, variant none: FAIL
+	Computed 'content' for non-list-item ::marker, variant normal: PASS
+	Computed 'content' for non-list-item ::marker, variant string: FAIL
+/css/css-pseudo/marker-computed-size.html: OK
+	::marker with custom image contents: FAIL
+	::marker with custom string and image contents: FAIL
+	::marker with custom string contents: FAIL
+	::marker with no box due to 'content': PASS
+	::marker with no box due to 'list-style': PASS
+	Decimal ::marker: FAIL
+	Decimal ::marker with custom value: FAIL
+	String ::marker: FAIL
+/css/css-pseudo/marker-default-styles.html: OK
+	Computed value of 'font-variant-numeric' for inside decimal: FAIL
+	Computed value of 'font-variant-numeric' for inside marker: FAIL
+	Computed value of 'font-variant-numeric' for inside string: FAIL
+	Computed value of 'font-variant-numeric' for inside symbol: FAIL
+	Computed value of 'font-variant-numeric' for outside decimal: FAIL
+	Computed value of 'font-variant-numeric' for outside marker: FAIL
+	Computed value of 'font-variant-numeric' for outside string: FAIL
+	Computed value of 'font-variant-numeric' for outside symbol: FAIL
+	Computed value of 'text-indent' for inside decimal: FAIL
+	Computed value of 'text-indent' for inside marker: FAIL
+	Computed value of 'text-indent' for inside string: FAIL
+	Computed value of 'text-indent' for inside symbol: FAIL
+	Computed value of 'text-indent' for outside decimal: FAIL
+	Computed value of 'text-indent' for outside marker: FAIL
+	Computed value of 'text-indent' for outside string: FAIL
+	Computed value of 'text-indent' for outside symbol: FAIL
+	Computed value of 'text-transform' for inside decimal: FAIL
+	Computed value of 'text-transform' for inside marker: FAIL
+	Computed value of 'text-transform' for inside string: FAIL
+	Computed value of 'text-transform' for inside symbol: FAIL
+	Computed value of 'text-transform' for outside decimal: FAIL
+	Computed value of 'text-transform' for outside marker: FAIL
+	Computed value of 'text-transform' for outside string: FAIL
+	Computed value of 'text-transform' for outside symbol: FAIL
+	Computed value of 'unicode-bidi' for inside decimal: FAIL
+	Computed value of 'unicode-bidi' for inside marker: FAIL
+	Computed value of 'unicode-bidi' for inside string: FAIL
+	Computed value of 'unicode-bidi' for inside symbol: FAIL
+	Computed value of 'unicode-bidi' for outside decimal: FAIL
+	Computed value of 'unicode-bidi' for outside marker: FAIL
+	Computed value of 'unicode-bidi' for outside string: FAIL
+	Computed value of 'unicode-bidi' for outside symbol: FAIL
+/css/css-pseudo/marker-display-computed.html: OK
+	Computed 'display' for inside ::marker, variant color: FAIL
+	Computed 'display' for inside ::marker, variant content: FAIL
+	Computed 'display' for inside ::marker, variant default: FAIL
+	Computed 'display' for inside ::marker, variant string: FAIL
+	Computed 'display' for outside ::marker, variant color: FAIL
+	Computed 'display' for outside ::marker, variant content: FAIL
+	Computed 'display' for outside ::marker, variant default: FAIL
+	Computed 'display' for outside ::marker, variant string: FAIL
+/css/css-pseudo/marker-hit-testing.html: OK
+	inside image ::marker: PASS
+	inside image ::marker's content: PASS
+	inside marker ::marker: PASS
+	inside marker ::marker's content: PASS
+	inside nested image ::marker: FAIL
+	inside nested image ::marker's content: FAIL
+	inside nested string ::marker: FAIL
+	inside nested string ::marker's content: FAIL
+	inside string ::marker: PASS
+	inside string ::marker's content: PASS
+	outside image ::marker: FAIL
+	outside image ::marker's content: FAIL
+	outside marker ::marker: FAIL
+	outside marker ::marker's content: FAIL
+	outside nested image ::marker: FAIL
+	outside nested image ::marker's content: FAIL
+	outside nested string ::marker: FAIL
+	outside nested string ::marker's content: FAIL
+	outside string ::marker: FAIL
+	outside string ::marker's content: FAIL
+/css/css-pseudo/marker-intrinsic-contribution-001.html: OK
+	Intrinsic contribution of inside content marker: FAIL
+	Intrinsic contribution of inside decimal marker: FAIL
+	Intrinsic contribution of inside string marker: FAIL
+	Intrinsic contribution of inside symbol marker: FAIL
+	Intrinsic contribution of outside content marker: PASS
+	Intrinsic contribution of outside decimal marker: PASS
+	Intrinsic contribution of outside string marker: PASS
+	Intrinsic contribution of outside symbol marker: PASS
+/css/css-pseudo/marker-reverted-styles.html: OK
+	Reverted computed values for inside decimal: PASS
+	Reverted computed values for inside marker: PASS
+	Reverted computed values for inside string: PASS
+	Reverted computed values for inside symbol: PASS
+	Reverted computed values for outside decimal: PASS
+	Reverted computed values for outside marker: PASS
+	Reverted computed values for outside string: PASS
+	Reverted computed values for outside symbol: PASS
+/css/css-pseudo/marker-variable-computed-style.html: OK
+	getComputedStyle() for color defined by variable in ::marker: FAIL
+	getComputedStyle() for opacity defined by variable in ::marker: FAIL
+/css/css-pseudo/parsing/highlight-pseudos-search-text.tentative.html: OK
+	".a::search-text" should be a valid selector: PASS
+	".a::search-text:current" should be a valid selector: PASS
+	".a::search-text:not(:current)" should be a valid selector: PASS
+	"::before::search-text" should be an invalid selector: PASS
+	"::before::search-text:current" should be an invalid selector: PASS
+	"::before::search-text:not(:current)" should be an invalid selector: PASS
+	"::part(my-part)::search-text" should be a valid selector: FAIL
+	"::part(my-part)::search-text:current" should be a valid selector: FAIL
+	"::part(my-part)::search-text:not(:current)" should be a valid selector: FAIL
+	"::search-text div" should be an invalid selector: PASS
+	"::search-text" should be a valid selector: PASS
+	"::search-text.a" should be an invalid selector: PASS
+	"::search-text::after" should be an invalid selector: PASS
+	"::search-text:current div" should be an invalid selector: PASS
+	"::search-text:current" should be a valid selector: PASS
+	"::search-text:current(*)" should be an invalid selector: FAIL
+	"::search-text:current.a" should be an invalid selector: PASS
+	"::search-text:current::after" should be an invalid selector: PASS
+	"::search-text:current:current(*)" should be an invalid selector: FAIL
+	"::search-text:current:future" should be an invalid selector: FAIL
+	"::search-text:current:hover" should be an invalid selector: FAIL
+	"::search-text:current:past" should be an invalid selector: FAIL
+	"::search-text:future" should be an invalid selector: FAIL
+	"::search-text:hover" should be an invalid selector: FAIL
+	"::search-text:not(:current) div" should be an invalid selector: PASS
+	"::search-text:not(:current)" should be a valid selector: PASS
+	"::search-text:not(:current).a" should be an invalid selector: PASS
+	"::search-text:not(:current)::after" should be an invalid selector: PASS
+	"::search-text:not(:current):current(*)" should be an invalid selector: FAIL
+	"::search-text:not(:current):future" should be an invalid selector: FAIL
+	"::search-text:not(:current):hover" should be an invalid selector: FAIL
+	"::search-text:not(:current):past" should be an invalid selector: FAIL
+	"::search-text:past" should be an invalid selector: FAIL
+	":not(::search-text)" should be an invalid selector: FAIL
+	":not(::search-text:current)" should be an invalid selector: FAIL
+	":not(::search-text:not(:current))" should be an invalid selector: FAIL
+	"div ::search-text" should be a valid selector: PASS
+	"div ::search-text:current" should be a valid selector: PASS
+	"div ::search-text:not(:current)" should be a valid selector: PASS
+/css/css-pseudo/parsing/highlight-pseudos.html: OK
+	".a::grammar-error" should be a valid selector: PASS
+	".a::selection" should be a valid selector: PASS
+	".a::spelling-error" should be a valid selector: PASS
+	".a::target-text" should be a valid selector: PASS
+	"::before::grammar-error" should be an invalid selector: PASS
+	"::before::selection" should be an invalid selector: PASS
+	"::before::spelling-error" should be an invalid selector: PASS
+	"::before::target-text" should be an invalid selector: PASS
+	"::grammar-error div" should be an invalid selector: PASS
+	"::grammar-error" should be a valid selector: PASS
+	"::grammar-error.a" should be an invalid selector: PASS
+	"::grammar-error::after" should be an invalid selector: PASS
+	"::grammar-error:hover" should be an invalid selector: PASS
+	"::part(my-part)::grammar-error" should be a valid selector: FAIL
+	"::part(my-part)::selection" should be a valid selector: PASS
+	"::part(my-part)::spelling-error" should be a valid selector: FAIL
+	"::part(my-part)::target-text" should be a valid selector: FAIL
+	"::selection div" should be an invalid selector: PASS
+	"::selection" should be a valid selector: PASS
+	"::selection.a" should be an invalid selector: PASS
+	"::selection::after" should be an invalid selector: PASS
+	"::selection:hover" should be an invalid selector: FAIL
+	"::spelling-error div" should be an invalid selector: PASS
+	"::spelling-error" should be a valid selector: PASS
+	"::spelling-error.a" should be an invalid selector: PASS
+	"::spelling-error::after" should be an invalid selector: PASS
+	"::spelling-error:hover" should be an invalid selector: PASS
+	"::target-text div" should be an invalid selector: PASS
+	"::target-text" should be a valid selector: PASS
+	"::target-text.a" should be an invalid selector: PASS
+	"::target-text::after" should be an invalid selector: PASS
+	"::target-text:hover" should be an invalid selector: PASS
+	":not(::grammar-error)" should be an invalid selector: FAIL
+	":not(::selection)" should be an invalid selector: FAIL
+	":not(::spelling-error)" should be an invalid selector: FAIL
+	":not(::target-text)" should be an invalid selector: FAIL
+	"div ::grammar-error" should be a valid selector: PASS
+	"div ::selection" should be a valid selector: PASS
+	"div ::spelling-error" should be a valid selector: PASS
+	"div ::target-text" should be a valid selector: PASS
+/css/css-pseudo/parsing/marker-supported-properties-in-animation.html: OK
+	Animation of color in ::marker: FAIL
+	Animation of content in ::marker: FAIL
+	Animation of cursor in ::marker: FAIL
+	Animation of direction in ::marker: PASS
+	Animation of display in ::marker: FAIL
+	Animation of float in ::marker: FAIL
+	Animation of font in ::marker: FAIL
+	Animation of font-family in ::marker: FAIL
+	Animation of font-feature-settings in ::marker: FAIL
+	Animation of font-kerning in ::marker: FAIL
+	Animation of font-size in ::marker: FAIL
+	Animation of font-size-adjust in ::marker: FAIL
+	Animation of font-stretch in ::marker: FAIL
+	Animation of font-style in ::marker: FAIL
+	Animation of font-synthesis in ::marker: FAIL
+	Animation of font-synthesis-small-caps in ::marker: FAIL
+	Animation of font-synthesis-style in ::marker: FAIL
+	Animation of font-synthesis-weight in ::marker: FAIL
+	Animation of font-variant in ::marker: FAIL
+	Animation of font-variant-caps in ::marker: FAIL
+	Animation of font-variant-east-asian in ::marker: FAIL
+	Animation of font-variant-ligatures in ::marker: FAIL
+	Animation of font-variant-numeric in ::marker: FAIL
+	Animation of font-variant-position in ::marker: FAIL
+	Animation of font-weight in ::marker: FAIL
+	Animation of hyphens in ::marker: FAIL
+	Animation of letter-spacing in ::marker: FAIL
+	Animation of line-break in ::marker: FAIL
+	Animation of line-height in ::marker: FAIL
+	Animation of list-style in ::marker: FAIL
+	Animation of list-style-image in ::marker: FAIL
+	Animation of list-style-position in ::marker: PASS
+	Animation of list-style-type in ::marker: PASS
+	Animation of overflow-wrap in ::marker: FAIL
+	Animation of position in ::marker: PASS
+	Animation of quotes in ::marker: FAIL
+	Animation of tab-size in ::marker: FAIL
+	Animation of text-combine-upright in ::marker: PASS
+	Animation of text-decoration-skip-ink in ::marker: FAIL
+	Animation of text-emphasis in ::marker: FAIL
+	Animation of text-emphasis-color in ::marker: FAIL
+	Animation of text-emphasis-position in ::marker: FAIL
+	Animation of text-emphasis-style in ::marker: FAIL
+	Animation of text-shadow in ::marker: FAIL
+	Animation of text-transform in ::marker: FAIL
+	Animation of unicode-bidi in ::marker: PASS
+	Animation of white-space in ::marker: FAIL
+	Animation of word-break in ::marker: FAIL
+	Animation of word-spacing in ::marker: FAIL
+	Transition of color in ::marker: FAIL
+	Transition of content in ::marker: FAIL
+	Transition of cursor in ::marker: FAIL
+	Transition of direction in ::marker: FAIL
+	Transition of display in ::marker: FAIL
+	Transition of float in ::marker: FAIL
+	Transition of font in ::marker: FAIL
+	Transition of font-family in ::marker: FAIL
+	Transition of font-feature-settings in ::marker: FAIL
+	Transition of font-kerning in ::marker: FAIL
+	Transition of font-size in ::marker: FAIL
+	Transition of font-size-adjust in ::marker: FAIL
+	Transition of font-stretch in ::marker: FAIL
+	Transition of font-style in ::marker: FAIL
+	Transition of font-synthesis in ::marker: FAIL
+	Transition of font-synthesis-small-caps in ::marker: FAIL
+	Transition of font-synthesis-style in ::marker: FAIL
+	Transition of font-synthesis-weight in ::marker: FAIL
+	Transition of font-variant in ::marker: FAIL
+	Transition of font-variant-caps in ::marker: FAIL
+	Transition of font-variant-east-asian in ::marker: FAIL
+	Transition of font-variant-ligatures in ::marker: FAIL
+	Transition of font-variant-numeric in ::marker: FAIL
+	Transition of font-variant-position in ::marker: FAIL
+	Transition of font-weight in ::marker: FAIL
+	Transition of hyphens in ::marker: FAIL
+	Transition of letter-spacing in ::marker: FAIL
+	Transition of line-break in ::marker: FAIL
+	Transition of line-height in ::marker: FAIL
+	Transition of list-style in ::marker: FAIL
+	Transition of list-style-image in ::marker: FAIL
+	Transition of list-style-position in ::marker: PASS
+	Transition of list-style-type in ::marker: PASS
+	Transition of overflow-wrap in ::marker: FAIL
+	Transition of position in ::marker: PASS
+	Transition of quotes in ::marker: FAIL
+	Transition of tab-size in ::marker: FAIL
+	Transition of text-combine-upright in ::marker: FAIL
+	Transition of text-decoration-skip-ink in ::marker: FAIL
+	Transition of text-emphasis in ::marker: FAIL
+	Transition of text-emphasis-color in ::marker: FAIL
+	Transition of text-emphasis-position in ::marker: FAIL
+	Transition of text-emphasis-style in ::marker: FAIL
+	Transition of text-shadow in ::marker: FAIL
+	Transition of text-transform in ::marker: FAIL
+	Transition of unicode-bidi in ::marker: FAIL
+	Transition of white-space in ::marker: FAIL
+	Transition of word-break in ::marker: FAIL
+	Transition of word-spacing in ::marker: FAIL
+/css/css-pseudo/parsing/marker-supported-properties.html: OK
+	Property animation value '1s linear 2s infinite alternate forwards paused anim' in ::marker: FAIL
+	Property animation-composition value 'add' in ::marker: FAIL
+	Property animation-delay value '1s' in ::marker: FAIL
+	Property animation-direction value 'alternate' in ::marker: FAIL
+	Property animation-duration value '2s' in ::marker: FAIL
+	Property animation-fill-mode value 'forwards' in ::marker: FAIL
+	Property animation-iteration-count value 'infinite' in ::marker: FAIL
+	Property animation-name value 'anim' in ::marker: FAIL
+	Property animation-play-state value 'paused' in ::marker: FAIL
+	Property animation-range value 'contain 10px cover 20px' in ::marker: FAIL
+	Property animation-range-end value 'cover 20px' in ::marker: FAIL
+	Property animation-range-start value 'contain 10px' in ::marker: FAIL
+	Property animation-timeline value 'scroll()' in ::marker: FAIL
+	Property animation-timing-function value 'linear' in ::marker: FAIL
+	Property color value 'rgb(0, 100, 200)' in ::marker: FAIL
+	Property content value '"foo"' in ::marker: FAIL
+	Property cursor value 'move' in ::marker: FAIL
+	Property direction value 'rtl' in ::marker: FAIL
+	Property display value 'none' in ::marker: FAIL
+	Property float value 'right' in ::marker: FAIL
+	Property font value 'italic small-caps 900 expanded 25px / 50px Ahem' in ::marker: FAIL
+	Property font-family value 'Ahem' in ::marker: FAIL
+	Property font-feature-settings value '"smcp"' in ::marker: FAIL
+	Property font-kerning value 'none' in ::marker: FAIL
+	Property font-size value '25px' in ::marker: FAIL
+	Property font-size-adjust value '1' in ::marker: FAIL
+	Property font-stretch value 'expanded' in ::marker: FAIL
+	Property font-style value 'italic' in ::marker: FAIL
+	Property font-synthesis value 'none' in ::marker: FAIL
+	Property font-synthesis-small-caps value 'none' in ::marker: FAIL
+	Property font-synthesis-style value 'none' in ::marker: FAIL
+	Property font-synthesis-weight value 'none' in ::marker: FAIL
+	Property font-variant value 'small-caps' in ::marker: FAIL
+	Property font-variant-caps value 'small-caps' in ::marker: FAIL
+	Property font-variant-east-asian value 'full-width' in ::marker: FAIL
+	Property font-variant-ligatures value 'historical-ligatures' in ::marker: FAIL
+	Property font-variant-numeric value 'slashed-zero' in ::marker: FAIL
+	Property font-variant-position value 'sub' in ::marker: FAIL
+	Property font-weight value '900' in ::marker: FAIL
+	Property hyphens value 'none' in ::marker: FAIL
+	Property letter-spacing value '10px' in ::marker: FAIL
+	Property line-break value 'anywhere' in ::marker: FAIL
+	Property line-height value '50px' in ::marker: FAIL
+	Property list-style value 'inside url('foo') decimal' in ::marker: FAIL
+	Property list-style-image value 'url('foo')' in ::marker: FAIL
+	Property list-style-position value 'inside' in ::marker: PASS
+	Property list-style-type value 'decimal' in ::marker: PASS
+	Property overflow-wrap value 'anywhere' in ::marker: FAIL
+	Property position value 'absolute' in ::marker: PASS
+	Property quotes value '"«" "»"' in ::marker: FAIL
+	Property tab-size value '10px' in ::marker: FAIL
+	Property text-combine-upright value 'all' in ::marker: FAIL
+	Property text-decoration-skip-ink value 'none' in ::marker: FAIL
+	Property text-emphasis value 'dot rgb(0, 255, 0)' in ::marker: FAIL
+	Property text-emphasis-color value 'rgb(0, 255, 0)' in ::marker: FAIL
+	Property text-emphasis-position value 'under left' in ::marker: FAIL
+	Property text-emphasis-style value 'dot' in ::marker: FAIL
+	Property text-shadow value 'rgb(0, 255, 0) 1px 2px 3px' in ::marker: FAIL
+	Property text-transform value 'uppercase' in ::marker: FAIL
+	Property transition value 'display 1s linear 2s' in ::marker: FAIL
+	Property transition-delay value '1s' in ::marker: FAIL
+	Property transition-duration value '2s' in ::marker: FAIL
+	Property transition-property value 'display' in ::marker: FAIL
+	Property transition-timing-function value 'linear' in ::marker: FAIL
+	Property unicode-bidi value 'plaintext' in ::marker: FAIL
+	Property white-space value 'nowrap' in ::marker: FAIL
+	Property word-break value 'break-word' in ::marker: FAIL
+	Property word-spacing value '10px' in ::marker: FAIL
+/css/css-pseudo/parsing/tree-abiding-pseudo-elements.html: OK
+	"*::after" should be a valid selector: PASS
+	"*::before" should be a valid selector: PASS
+	"*::marker" should be a valid selector: PASS
+	"*::placeholder" should be a valid selector: PASS
+	"::after *" should be an invalid selector: PASS
+	"::after" should be a valid selector: PASS
+	"::after::after" should be an invalid selector: PASS
+	"::after::before" should be an invalid selector: PASS
+	"::after::marker" should be a valid selector: FAIL
+	"::after::placeholder" should be an invalid selector: PASS
+	"::before *" should be an invalid selector: PASS
+	"::before" should be a valid selector: PASS
+	"::before::after" should be an invalid selector: PASS
+	"::before::before" should be an invalid selector: PASS
+	"::before::marker" should be a valid selector: FAIL
+	"::before::placeholder" should be an invalid selector: PASS
+	"::file-selector-button" should be a valid selector: PASS
+	"::file-selector-button#class" should be an invalid selector: PASS
+	"::file-selector-button#id" should be an invalid selector: PASS
+	"::file-selector-button::before" should be an invalid selector: PASS
+	"::file-selector-button:active" should be a valid selector: PASS
+	"::file-selector-button:focus" should be a valid selector: PASS
+	"::file-selector-button:host" should be an invalid selector: FAIL
+	"::file-selector-button:hover" should be a valid selector: PASS
+	"::file-selector-button:is(:hover)" should be a valid selector: PASS
+	"::marker *" should be an invalid selector: PASS
+	"::marker" should be a valid selector: PASS
+	"::marker::after" should be an invalid selector: PASS
+	"::marker::before" should be an invalid selector: PASS
+	"::marker::marker" should be an invalid selector: PASS
+	"::marker::placeholder" should be an invalid selector: PASS
+	"::placeholder *" should be an invalid selector: PASS
+	"::placeholder" should be a valid selector: PASS
+	"::placeholder::after" should be an invalid selector: PASS
+	"::placeholder::before" should be an invalid selector: PASS
+	"::placeholder::marker" should be an invalid selector: PASS
+	"::placeholder::placeholder" should be an invalid selector: PASS
+	"foo.bar[baz]::after" should be a valid selector: PASS
+	"foo.bar[baz]::before" should be a valid selector: PASS
+	"foo.bar[baz]::marker" should be a valid selector: PASS
+	"foo.bar[baz]::placeholder" should be a valid selector: PASS
+/css/css-pseudo/placeholder-inherit.html: OK
+	::placeholder should inherit from its originating element: PASS
+/css/css-pseudo/pseudo-element-removal.html: OK
+	Removing pseudo element under mouse should not crash: PASS
+/css/css-pseudo/pseudo-replaced-elements.html: OK
+	INPUT  checkbox: PASS
+	INPUT  color: PASS
+	INPUT  date: PASS
+	INPUT  datetime-local: PASS
+	INPUT  file: PASS
+	INPUT  hidden: PASS
+	INPUT  radio: PASS
+	INPUT  range: PASS
+	INPUT  search: PASS
+	INPUT  text: PASS
+	INPUT  time: PASS
+	INPUT appearance: none; checkbox: FAIL
+	INPUT appearance: none; color: PASS
+	INPUT appearance: none; date: PASS
+	INPUT appearance: none; datetime-local: PASS
+	INPUT appearance: none; file: PASS
+	INPUT appearance: none; hidden: PASS
+	INPUT appearance: none; radio: FAIL
+	INPUT appearance: none; range: PASS
+	INPUT appearance: none; search: PASS
+	INPUT appearance: none; text: PASS
+	INPUT appearance: none; time: PASS
+	VIDEO  : PASS
+	VIDEO  true: PASS
+/css/css-pseudo/scroll-button-pseudo-element-click.html: OK
+	Clicking a ::scroll-button() sets pseudoTarget to its CSSPseudoElement: FAIL
+/css/css-pseudo/selection-universal-shadow-dom.html: OK
+	getComputedStyle() for #target ::selection: PASS
+/css/css-pseudo/text-selection.html: OK
+	Selection contained in ::before: PASS
+	Selection contained in ::before-marker: PASS
+	Selection contained in ::marker: PASS
+	Selection ending in ::before: FAIL
+	Selection ending in ::before-marker: FAIL
+	Selection ending in ::marker: FAIL

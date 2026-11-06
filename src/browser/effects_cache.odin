@@ -591,7 +591,7 @@ fx_settings_apply :: proc(app: ^App) {
 // The cache parameters of a blurred text shadow drawn through a layer (render.odin, paint_text): its text, font,
 // color and offset relative to the item.
 fx_cache_text_shadow :: proc(it: ^lay.Display_Item, shadow: int, fid: font.Font_Id, size: f32, col: draw.Color, pos: draw.Vec2, r: draw.Rect, opts: font.Shape_Options) -> (id, key: u64, anchor: draw.Vec2) {
-	if !the_app.fx_settings.enabled || !the_app.fx_settings.text_shadows { return }
+	if !the_app.fx_settings.enabled || !the_app.fx_settings.text_shadows || it.deco != {} { return }   // (its lines are in the shadow too)
 	id = fx_mix(fx_mix(fx_mix(0x7473, u64(it.node)), u64(shadow)), u64(transmute(u32)it.rect.min.x) | u64(transmute(u32)it.rect.min.y) << 32)
 	key = fx_mix(fx_mix(0x74657874, u64(len(it.text))), fx_bytes(u64(fid), raw_data(it.text), len(it.text)))
 	key = fx_f32(key, size)

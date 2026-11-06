@@ -10,8 +10,10 @@ import "core:strings"
 import "wb:base"
 import "wb:dom"
 import lay "wb:layout"
+import "wb:style"
 
 Page_Highlight :: struct {
+	kind:     style.Highlight_Kind,  // Custom: of CSS.highlights; the others are the browser's
 	name:     string,
 	priority: i32,
 	order:    int,                   // its place in the registry: equal priorities paint in that order
@@ -24,7 +26,7 @@ Highlight_Span :: struct {
 }
 
 Page_Highlights :: struct {
-	list:      [dynamic]Page_Highlight,   // as sent; by priority once `sorted`
+	list:      [dynamic]Page_Highlight,   // as sent; by overlay and priority once `sorted`
 	sorted:    bool,
 	spans:     map[base.Handle][dynamic]Highlight_Span,   // in painting order
 	serial:    u64,                       // changes on every change of the registry (the painter records again)
@@ -65,21 +67,46 @@ highlights_empty :: proc(h: ^Page_Highlights) {
 
 Highlights_clear :: proc(c: ^Call) {
 	h := highlights_of(c.page)
-	highlights_empty(h)
+	marks_remove(h, .Custom)
+	h.serial += 1
+}
+
+// Takes away what the list has of `kind`.
+@(private = "file")
+marks_remove :: proc(h: ^Page_Highlights, kind: style.Highlight_Kind) {
+	spans_empty(h)
+	for i := len(h.list) - 1; i >= 0; i -= 1 {
+		if h.list[i].kind != kind { continue }
+		delete(h.list[i].name)
+		delete(h.list[i].ranges)
+		ordered_remove(&h.list, i)
+	}
 	h.sorted = false
+}
+
+// What the browser marks in the document, in place of what it marked of this `kind` (::target-text, ::spelling-error, ::grammar-error).
+marks_set :: proc(p: ^Page, kind: style.Highlight_Kind, ranges: [][2]lay.Text_Pos) {
+	h := highlights_of(p)
+	marks_remove(h, kind)
+	if len(ranges) > 0 {
+		m := Page_Highlight{kind = kind, name = strings.clone(""), order = len(h.list)}
+		append(&m.ranges, ..ranges)
+		append(&h.list, m)
+	}
 	h.serial += 1
 }
 
 Highlights_add :: proc(c: ^Call, name: string, priority: i32) {
 	h := highlights_of(c.page)
 	append(&h.list, Page_Highlight{name = strings.clone(name), priority = priority, order = len(h.list)})
+	h.sorted = false
 	h.serial += 1
 }
 
 Highlights_addRange :: proc(c: ^Call, start: Api_Node, start_offset: u32, end: Api_Node, end_offset: u32) {
 	p := c.page
 	h := highlights_of(p)
-	if len(h.list) == 0 { return }
+	if len(h.list) == 0 || h.list[len(h.list) - 1].kind != .Custom { return }
 	a, ok1 := from_utf16_offset(p.doc, H(start.handle), start_offset)
 	b, ok2 := from_utf16_offset(p.doc, H(end.handle), end_offset)
 	if !ok1 || !ok2 { return }
@@ -108,19 +135,39 @@ spans_add :: proc(p: ^Page, h: ^Page_Highlights, index: int, a, b: lay.Text_Pos)
 	}
 }
 
+// The ranges of a highlight that overlap are one (CSS Custom Highlight API §4.2.4): its background is not drawn twice. Spans stay by highlight, in painting order.
+@(private = "file")
+spans_union :: proc(list: ^[dynamic]Highlight_Span) {
+	slice.sort_by(list[:], proc(x, y: Highlight_Span) -> bool { return x.highlight != y.highlight ? x.highlight < y.highlight : x.lo < y.lo })
+	out := 0
+	for s in list {
+		if out > 0 && list[out - 1].highlight == s.highlight && s.lo <= list[out - 1].hi {
+			list[out - 1].hi = max(list[out - 1].hi, s.hi)
+			continue
+		}
+		list[out] = s
+		out += 1
+	}
+	resize(list, out)
+}
+
 // What is highlighted of the document, for a frame's painter: the highlights by priority, and their spans by text node. Nil: nothing.
 highlights_paint :: proc(p: ^Page) -> ^Page_Highlights {
 	h := p.highlights
 	if h == nil || len(h.list) == 0 { return nil }
 	if h.made_at == h.serial && h.mutations == p.doc.mutations { return h }
 	if !h.sorted {
-		slice.sort_by(h.list[:], proc(x, y: Page_Highlight) -> bool { return x.priority != y.priority ? x.priority < y.priority : x.order < y.order })
+		slice.sort_by(h.list[:], proc(x, y: Page_Highlight) -> bool {
+			if x.kind != y.kind { return x.kind < y.kind }
+			return x.priority != y.priority ? x.priority < y.priority : x.order < y.order
+		})
 		h.sorted = true
 	}
 	spans_empty(h)
 	for x, i in h.list {
 		for r in x.ranges { spans_add(p, h, i, r[0], r[1]) }
 	}
+	for _, &list in h.spans { spans_union(&list) }
 	h.made_at, h.mutations = h.serial, p.doc.mutations
 	return h
 }

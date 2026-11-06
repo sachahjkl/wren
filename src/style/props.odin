@@ -293,6 +293,16 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Text_Decoration_Style: return fa(&c.text_decoration_style), nil
 	case .Text_Decoration_Thickness: return fa(&c.text_decoration_thickness), nil
 	case .Text_Underline_Offset: return fa(&c.text_underline_offset), nil
+	case .Text_Underline_Position: return fa(&c.text_underline_position), nil
+	case .Text_Decoration_Skip_Ink: return fa(&c.text_decoration_skip_ink), nil
+	case .Text_Decoration_Skip_Spaces: return fa(&c.text_decoration_skip_spaces), nil
+	case .Text_Decoration_Inset: return fa(&c.text_decoration_inset), nil
+	case .Text_Emphasis_Style: return fa(&c.text_emphasis_style), nil
+	case .Text_Emphasis_Color: return fa(&c.text_emphasis_color), nil
+	case .Text_Emphasis_Position: return fa(&c.text_emphasis_position), nil
+	case .Text_Emphasis_Skip: return fa(&c.text_emphasis_skip), nil
+	case .Text_Stroke_Width: return fa(&c.text_stroke_width), nil
+	case .Text_Stroke_Color: return fa(&c.text_stroke_color), nil
 	case .Text_Transform: return fa(&c.text_transform), nil
 	case .Text_Indent: return fa(&c.text_indent), nil
 	case .Text_Overflow: return fa(&c.text_ellipsis), nil

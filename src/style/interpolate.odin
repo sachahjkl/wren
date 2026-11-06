@@ -560,6 +560,7 @@ clamp_prop :: proc(c: ^Computed, p: Prop) {
 	case .Column_Width: clamp_len(&c.column_width)
 	case .Column_Count: if c.column_count < 0 { c.column_count = 0 }
 	case .Text_Decoration_Thickness: clamp_len(&c.text_decoration_thickness)
+	case .Text_Stroke_Width: c.text_stroke_width = max(c.text_stroke_width, 0)
 	case .Border_Spacing: c.border_spacing = {max(c.border_spacing[0], 0), max(c.border_spacing[1], 0)}
 	case .Background_Size:
 		for &s in c.background_sizes { clamp_len(&s.w); clamp_len(&s.h) }

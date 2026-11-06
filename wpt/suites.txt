@@ -69,3 +69,6 @@ html/semantics/forms/the-label-element
 scroll-animations/css
 scroll-animations/scroll-timelines
 scroll-animations/view-timelines
+css/css-text-decor
+css/css-highlight-api
+css/css-pseudo only=.,highlight-cascade,parsing
