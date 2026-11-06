@@ -1313,7 +1313,7 @@ const a = frame("allowed"); a.src = "%s"; document.body.appendChild(a);
 const r = frame("refused"); r.src = "%s"; r.onload = () => log("refused " + (r.contentDocument === null)); document.body.appendChild(r);
 log("attribute " + (s.csp === policy && s.getAttribute("csp") === policy));
 </script></body>`, strings.concatenate({"`", probe[:len(probe) - len("</script>")], "<\\/script>`"}, context.temp_allocator), doc(SAME, probe, "Allow-CSP-From: *"), doc(SAME, probe)))
-	check(pr, said(pr, "attribute true"), "iframe.csp reflects the csp attribute")
+	check(pr, wait_note(pr, "attribute true"), "iframe.csp reflects the csp attribute")   // (it was read at once: on a loaded machine the page had not said it yet)
 	check(pr, wait_note(pr, "srcdoc SecurityError"), "a srcdoc document takes the required policy: its sandbox directive forbids document.domain")
 	check(pr, wait_note(pr, "allowed SecurityError"), "a response with Allow-CSP-From: * takes the required policy and its sandbox")
 	check(pr, wait_note(pr, "refused true"), "a response that does not take the required policy is refused: an error document of an opaque origin")
