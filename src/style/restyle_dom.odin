@@ -1485,6 +1485,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 		// harmless (records replaced as a full pass would), and the caller now does one
 		s.mutations = 0
 		e.last_restyle.fallback = "root font size changed"
+		styled_superseded(s)
 		return w.changed > 0, false
 	}
 	if w.changed > 0 {
@@ -1495,6 +1496,15 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 		update_canvas(s, doc)
 	}
 	return w.changed > 0, true
+}
+
+// A partial pass replaced records and hands over to a full one, which compares its records with these: what it replaced would
+// be in no journal, and a layout that read the serial before it would hear of nothing (the root's font, once on npr.org). The serial
+// moves: that reader is older than what the full pass's journal is complete for.
+@(private = "file")
+styled_superseded :: proc(s: ^Styled) {
+	styled_serial += 1
+	s.serial = styled_serial
 }
 
 // Restyles `roots` in place: elements whose own rules changed and that no rule change reaches below (the elements that a flipped
@@ -1526,6 +1536,7 @@ restyle_roots :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, p: ^Pass, root
 	e.last_restyle.marked, e.last_restyle.changed = w.marked, w.changed
 	if w.root_font {
 		e.last_restyle.fallback = "root font size changed"
+		styled_superseded(s)
 		return w.changed > 0, false
 	}
 	if w.rewalk {
