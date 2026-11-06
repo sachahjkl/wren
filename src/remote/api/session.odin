@@ -166,10 +166,10 @@ connect_launched :: proc(s: ^Session, l: ^Launched, wait_ms: int) -> Error {
 
 // Ends a Wren we started: asks it to close, waits, and as a last resort ends this very process (the one we hold); removes
 // a profile that was made for it. `code`: the exit code it is asked to end with. `forced`: it had to be ended; `exit_code`: what it ended with (-1: not known).
-finish :: proc(s: ^Session, l: ^Launched, ask: bool, code := 0) -> (exit_code: int, forced: bool) {
+finish :: proc(s: ^Session, l: ^Launched, ask: bool, code := 0, wait_ms := CLOSE_WAIT_MS) -> (exit_code: int, forced: bool) {
 	if ask && s.connected { _ = browser_close(s, code) }
 	if s.connected { disconnect(&s.conn); s.connected = false }
-	if !process_wait(&l.process, CLOSE_WAIT_MS) {
+	if !process_wait(&l.process, wait_ms) {
 		process_kill(&l.process)
 		forced = true
 	}

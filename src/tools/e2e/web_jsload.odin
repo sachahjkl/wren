@@ -54,8 +54,6 @@ COMPILE_TAKES_IT_MS :: 500       // what a compile thread has to take a job, on 
 SLICE_PER_FRAME :: 3
 SLICE_LONGER_THAN_THE_TEST_MS :: 60_000
 FRAME_COST_MS :: 100             // three times this is past the scripts of the test, whatever else the machine does
-SHEET_IN_WAIT_SECONDS :: 20.0    // far below the poll: only ends a run that fails
-SCAN_WAIT_SECONDS :: 10.0        // only ends a run that fails
 SCAN_SVG :: `<svg xmlns="http://www.w3.org/2000/svg" width="3" height="2"/>`
 SCAN_SVG_WIDTH :: 3
 
@@ -958,8 +956,8 @@ jsload_a_sheet_in_lets_the_parser_and_the_load_go_on :: proc(t: ^testing.T) {
 	settings.js_load.poll_ms = POLL_NEVER_MS
 	pr := load(t, "sheet in", concat(`<!doctype html><head>`, PRELUDE, `<link rel=stylesheet href="`, css("p { color: red }", ARRIVES_SOON_MS, "nopoll"),
 		`"><script>log("after the sheet"); addEventListener("load", () => log("loaded"))</script></head><body><p>x</p></body>`))
-	check(pr, wait_note(pr, "after the sheet", SHEET_IN_WAIT_SECONDS), "the parser's script ran once the sheet was in")
-	check(pr, wait_note(pr, "loaded", SHEET_IN_WAIT_SECONDS), "the load event fired once the sheet's load event had")
+	check(pr, wait_note(pr, "after the sheet"), "the parser's script ran once the sheet was in")
+	check(pr, wait_note(pr, "loaded"), "the load event fired once the sheet's load event had")
 	close_page(pr, min_checks = 2)
 }
 
@@ -1002,7 +1000,7 @@ scan_asked :: proc(t: ^testing.T, paths: ..string) -> bool {
 	return wait_until(t, "the requests the scanner made", Scan_Hits{t, paths}, proc(w: Scan_Hits) -> bool {
 		for p in w.paths { if hits(w.t, p) != 1 { return false } }
 		return true
-	}, seconds = SCAN_WAIT_SECONDS)
+	})
 }
 
 // A document's bytes read as they arrive, cut anywhere: `first` of them, then the rest, then the end of the document.

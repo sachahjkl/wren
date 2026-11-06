@@ -26,7 +26,6 @@ PROFILE :: "build/blockertest_profile"
 TAB :: 1
 ADS :: "http://127.0.0.1:8765/site/blocker/ads.html"
 WATCH :: "http://127.0.0.1:8765/site/blocker/ytwatch.html"
-LOAD_LIMIT :: 120.0   // (the first script of a process compiles the engine when its cache is cold: over 20 s on two processors, in one turn of the loop)
 BLOCKED_ON_THE_ADS_PAGE :: 3       // script, frame, fetch (no image is asked for without a layout)
 MIN_JOURNAL_ENTRIES :: 4
 CONF_HEAD :: "version\t1\n[lists]\n[sites]\n[rules]\n[my-filters]\n"
@@ -62,7 +61,7 @@ setup :: proc(t: ^testing.T, w: ^Setup) {
 
 // The index the lists compile to is in force.
 index_ready :: proc(w: ^Setup) -> bool {
-	return wait_until(w.t, "the first index", w.t, proc(_: ^testing.T) -> bool { return !loader.hold }, LOAD_LIMIT)
+	return wait_until(w.t, "the first index", w.t, proc(_: ^testing.T) -> bool { return !loader.hold })
 }
 
 shut :: proc(w: ^Setup) {
@@ -161,7 +160,7 @@ load_stuck :: proc(w: ^Setup, d: ^Doc, loc := #caller_location) {
 
 load :: proc(w: ^Setup, address: string, loc := #caller_location) -> ^Doc {
 	d := open_doc(w, address)
-	if !wait_until(w.t, address, d, is_loaded, LOAD_LIMIT, loc) { load_stuck(w, d, loc) }
+	if !wait_until(w.t, address, d, is_loaded, loc = loc) { load_stuck(w, d, loc) }
 	return d
 }
 
@@ -171,7 +170,7 @@ Waiting_Log :: struct { d: ^Doc, text: string }
 wait_log :: proc(d: ^Doc, text: string, loc := #caller_location) -> bool {
 	ok := wait_until(d.w.t, fmt.tprintf("%q in the log", text), Waiting_Log{d, text}, proc(w: Waiting_Log) -> bool {
 		return strings.contains(log_text(w.d), w.text)
-	}, LOAD_LIMIT, loc)
+	}, loc = loc)
 	if !ok { testing.expectf(d.w.t, false, "the log so far: %q", log_text(d), loc = loc) }
 	return ok
 }

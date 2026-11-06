@@ -51,16 +51,13 @@
 <div id=kf></div>
 <div id=none></div>
 <script>
-  // How long hold() keeps the thread at most (a test lets go of it first, by making the window shorter or taller).
-  const HOLD_LIMIT_MS = 30000;
   window.hold = () => {
     window.released = false;
     window.scrolled_in_task = -1;
     const h = innerHeight;
     setTimeout(() => {
-      const begun = performance.now();
       if (window.mutate) document.querySelector('#head').textContent = 'changed';
-      while (innerHeight == h && performance.now() - begun < HOLD_LIMIT_MS) {}
+      while (innerHeight == h) {}
       window.scrolled_in_task = scrollY;
       window.width_in_task = getComputedStyle(bar).width;
       window.released = innerHeight != h;

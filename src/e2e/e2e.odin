@@ -39,8 +39,8 @@ import "wb:remote/api"
 
 // What a test may take in all before the runner stops it (a barrier's deadline comes first).
 TEST_LIMIT :: 5 * time.Minute
-// How long a barrier may take before the test is said to have failed.
-DEFAULT_DEADLINE :: api.DEFAULT_DEADLINE
+// How long a barrier may take before the test is said to have failed: under TEST_LIMIT, and far above what any machine takes. It only ends a failing run, so no passing test depends on the speed of the machine.
+DEFAULT_DEADLINE :: 4 * time.Minute
 // The window when a test does not say.
 DEFAULT_SIZE :: [2]int{1280, 800}
 // 96 dots per inch: a scale of 1.
@@ -56,6 +56,8 @@ REST_QUIET :: 500 * time.Millisecond
 // How long wait_idle and wait_stable want their state to hold. A client over the channel looks from outside, so browser.remote.idle_ms (400 ms) bridges the moments between two requests of a
 // chain; here the state is looked at on the loop's own turns, and what follows a timer or a reply says so itself (wait_js, wait_selector). Each of the 400 ms was a wait for nothing: a test of 70 hovers took 28 s.
 HOLD_MS :: 1
+// The same for a process: to start, to close.
+PROCESS_WAIT_MS :: int(DEFAULT_DEADLINE / time.Millisecond)
 // The stack the script engine's calls need (what /STACK:67108864 gives on Windows).
 STACK_BYTES :: 64 * 1024 * 1024
 

@@ -5,8 +5,7 @@
 // Authorization, 206, POST, HEAD), cookies not replayed, stale-while-revalidate, cached redirects, CORS on a stored response, and the
 // disk cache across a restart (damaged files ignored).
 //
-// The cache judges freshness on the wall clock against the server's Date header (httpcache.now_s): the two tests of a response that goes
-// stale wait for the real clock to pass the entry's `fresh_until`, on purpose. That is the time they take.
+// The cache judges freshness on the wall clock against the server's Date header (httpcache.now_s): a test of a response that goes stale moves both (go_stale) and waits for nothing.
 package e2e_scenarios
 
 import "core:fmt"
@@ -150,12 +149,15 @@ entry_of :: proc(address: string) -> ^httpcache.Entry {
 	return nil
 }
 
-// The real clock has passed the end of the freshness of what is stored for this address.
-wait_stale :: proc(t: ^testing.T, address: string, loc := #caller_location) {
-	wait_until(t, "the stored response to go stale", address, proc(a: string) -> bool {
-		e := entry_of(a)
-		return e != nil && httpcache.now_s() >= e.fresh_until
-	}, loc = loc)
+// The freshness of what is stored for this address has passed: the clocks of the cache and of the server go there together (they stay ahead for what follows in this process).
+go_stale :: proc(w: World, address: string, loc := #caller_location) {
+	e := entry_of(address)
+	testing.expect(w.t, e != nil, "the response is stored", loc = loc)
+	if e == nil { return }
+	ahead := httpcache.clock_ahead_s + max(e.fresh_until - httpcache.now_s(), 0)
+	r := run_fetch(w.t, {url = testenv.url(fmt.tprintf("%s/cache/clock?ahead=%d", A, ahead)), mode = .Navigate})
+	testing.expect(w.t, r.body == "ok", "the server's clock moves", loc = loc)
+	httpcache.clock_ahead_s = ahead
 }
 
 @(test)
@@ -241,7 +243,6 @@ cache_revalidation :: proc(t: ^testing.T) {
 	testing.expect(t, r2.status == 304 && r2.cache == .Network, "a request with its own If-None-Match goes to the server (mode no-store)")
 }
 
-// On the real clock (see the top of the file).
 @(test)
 cache_a_304_makes_the_stored_response_fresh_again :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
@@ -252,7 +253,7 @@ cache_a_304_makes_the_stored_response_fresh_again :: proc(t: ^testing.T) {
 
 	u, k := res("refresh", "cc=max-age%3D2&etag=r")
 	get(w, u)
-	wait_stale(t, u)
+	go_stale(w, u)
 	r2 := get(w, u)
 	r3 := get(w, u)
 	n, nm := count(w, k)
@@ -387,7 +388,6 @@ cache_cors_is_checked_on_a_stored_response :: proc(t: ^testing.T) {
 
 Refreshing :: struct { address: string, stale_until: i64 }
 
-// On the real clock (see the top of the file).
 @(test)
 cache_stale_while_revalidate :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
@@ -399,7 +399,7 @@ cache_stale_while_revalidate :: proc(t: ^testing.T) {
 	// (HTTP dates have whole seconds: a response may be a second old when it arrives)
 	u, k := res("swr", "cc=max-age%3D3%2C%20stale-while-revalidate%3D60")
 	r1 := get(w, u)
-	wait_stale(t, u)
+	go_stale(w, u)
 	stale_until := entry_of(u).fresh_until
 	r2 := get(w, u)
 	testing.expect(t, r2.cache == .Stale && r2.body == r1.body, "stale-while-revalidate: the stale response at once")

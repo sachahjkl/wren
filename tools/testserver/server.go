@@ -144,6 +144,7 @@ func Start(o Options) (int, error) {
 	registerMediaHandlers(mux)
 	registerVideoHandlers(mux)
 	registerFirstPaintHandlers(mux)
+	registerGateHandlers(mux)
 	registerJSLoadHandlers(mux)
 	registerJSWebHandlers(mux)
 	registerDownloadHandlers(mux)

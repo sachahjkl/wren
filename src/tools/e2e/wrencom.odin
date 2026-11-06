@@ -132,14 +132,14 @@ an_interface_start_lets_go_at_once :: proc(t: ^testing.T) {
 	name := fmt.tprintf("wrencom-%s", e2e.unique())
 	started := e2e.run(t, {com, "--headless", "--no-single-instance", "--profile", fmt.tprintf("%s/profile_gui", root), fmt.tprintf("--remote=%s", name), "about:blank"}, {env = env})
 	testing.expect_value(t, started.code, 0)
-	s := api.Session{name = name, connect_wait_ms = api.START_WAIT_MS}
+	s := api.Session{name = name, connect_wait_ms = e2e.PROCESS_WAIT_MS}
 	who, e := api.ping(&s)
 	testing.expectf(t, e == .None, "the Wren it started answers: %v", e)
 	process, opened := api.process_open(who.pid)
 	testing.expect(t, opened)
 	defer api.process_release(&process)
 	api.quit(&s)
-	testing.expect(t, api.process_wait(&process, api.QUIT_WAIT_MS), "quit: it has closed")
+	testing.expect(t, api.process_wait(&process, e2e.PROCESS_WAIT_MS), "quit: it has closed")
 	api.close_session(&s)
 }
 
@@ -151,7 +151,7 @@ the_launcher_dies_with_its_child :: proc(t: ^testing.T) {
 	com, env := side_by_side(t, root)
 	name := fmt.tprintf("wrencom-%s", e2e.unique())
 	launcher := e2e.program(t, {com, "--cli", "--headless", "--no-single-instance", "--profile", fmt.tprintf("%s/profile_job", root), fmt.tprintf("--remote=%s", name), "about:blank"}, {env = env})
-	s := api.Session{name = name, connect_wait_ms = api.START_WAIT_MS}
+	s := api.Session{name = name, connect_wait_ms = e2e.PROCESS_WAIT_MS}
 	who, e := api.ping(&s)
 	testing.expectf(t, e == .None, "the Wren it started answers: %v", e)
 	api.close_session(&s)

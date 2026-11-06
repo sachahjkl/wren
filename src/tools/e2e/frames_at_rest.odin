@@ -106,13 +106,14 @@ caret_draws_its_own_pixels :: proc(t: ^testing.T, hidden := false, software := f
 the_address_bars_caret_draws_at_its_flips :: proc(t: ^testing.T) {
 	s := e2e.start(t, {url = "about:blank", prefs = {STATUS_WINDOW_PREF}})
 	e2e.wait_idle(s)
+	e2e.wait_at_rest(s)   // (what a start still has to draw is not the caret's)
 	e2e.address_bar_open(s)
 	e2e.wait_at_rest(s, moving_ok = true)
 	began := time.tick_now()
 	before := e2e.stats(s).loop.frames
 	e2e.rest_turns(s, REST_TURNS)
 	frames := e2e.stats(s).loop.frames - before
-	flips := int(time.duration_milliseconds(time.tick_since(began))) / INTERFACE_CARET_FLIP_MS
+	flips := (int(time.duration_milliseconds(time.tick_since(began))) + INTERFACE_CARET_FLIP_MS - 1) / INTERFACE_CARET_FLIP_MS   // (what began counts: 2.1 s holds a fourth flip)
 	testing.expectf(t, frames <= flips + 1, "%d frames for %d flips:%s", frames, flips, reasons(s))
 }
 

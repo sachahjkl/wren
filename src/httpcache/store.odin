@@ -211,7 +211,10 @@ find :: proc(c: ^Cache, key: string) -> ^Entry {
 	return c.entries[key] or_else nil
 }
 
-now_s :: proc() -> i64 { return time.to_unix_seconds(time.now()) }
+// What a test adds to the wall clock (atomic), to see a response go stale without waiting for it. 0 outside tests.
+clock_ahead_s: i64
+
+now_s :: proc() -> i64 { return time.to_unix_seconds(time.now()) + sync.atomic_load(&clock_ahead_s) }
 now_ms :: proc() -> i64 { return time.to_unix_nanoseconds(time.now()) / 1_000_000 }
 
 // Makes `e` resident. Already resident: false (nothing to wait for). Else `fn(user, ok)` is called from the loop when

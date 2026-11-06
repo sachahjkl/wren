@@ -34,7 +34,7 @@ a_driven_session_on_the_check_build_leaves_nothing_allocated :: proc(t: ^testing
 	s := p.s
 
 	listener: api.Conn
-	testing.expect(t, api.connect(&listener, p.wren.name, api.START_WAIT_MS))
+	testing.expect(t, api.connect(&listener, p.wren.name, e2e.PROCESS_WAIT_MS))
 	testing.expect_value(t, api.write_line(&listener, SUBSCRIBE, api.CALL_WAIT_MS), api.Error.None)
 
 	api.navigate(s, e2e.url(server, "/site/remote/fixture.htm"))

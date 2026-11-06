@@ -250,6 +250,17 @@ the_code_a_test_file_runs_at_every_start_is_found :: proc(t: ^testing.T) {
 }
 
 @(test)
+a_sleep_of_a_test_is_counted_and_a_listed_one_says_why :: proc(t: ^testing.T) {
+	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
+	TEXT :: "\ttime." + "sleep(x)\n\twin." + "Sleep(1); windows." + "Sleep(2)\n\ty := 1 // time." + "sleep(x) is gone\n"   // (in pieces: this file is counted too)
+	testing.expect_value(t, count_test_sleeps(TEXT), 3)
+	allowed, bad := parse_test_sleeps_allowed("# a comment\nsrc/a_test.odin 2  # why\nsrc/b_test.odin 1\nsrc/c_test.odin two  # why\n")
+	testing.expect_value(t, len(allowed), 1)
+	testing.expect_value(t, allowed["src/a_test.odin"], 2)
+	testing.expect_value(t, len(bad), 2)
+}
+
+@(test)
 a_unicode_case_call_passes_only_listed :: proc(t: ^testing.T) {
 	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
 	testing.expect(t, calls_unicode_case("\tif strings.equal_fold(a, b) {"), "a call")

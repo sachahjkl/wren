@@ -6,6 +6,7 @@
 //	/cache/count?name=NAME   how many requests NAME got, and how many were answered 304: "N M" (no-store)
 //	/cache/last?name=NAME    the request fields of the last request for NAME, one per line (no-store)
 //	/cache/reset             forgets every count
+//	/cache/clock?ahead=S     the Date and Expires of what follows are S seconds ahead of the real time: a test moves the cache's clock and this one together, and waits for nothing
 //	/cache/font.woff2?...    the font of examples/site/fonts (the cache tests' web font), with the same parameters
 package testserver
 
@@ -17,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -35,6 +37,12 @@ func cacheEtagMatches(inm, etag string) bool {
 		}
 	}
 	return false
+}
+
+var cacheAheadSeconds atomic.Int64
+
+func cacheNow() time.Time {
+	return time.Now().UTC().Add(time.Duration(cacheAheadSeconds.Load()) * time.Second)
 }
 
 func registerCacheHandlers(mux *http.ServeMux) {
@@ -74,7 +82,7 @@ func registerCacheHandlers(mux *http.ServeMux) {
 			h.Set("Access-Control-Allow-Origin", v)
 		}
 		if v, err := strconv.Atoi(q.Get("expires")); err == nil {
-			h.Set("Expires", time.Now().UTC().Add(time.Duration(v)*time.Second).Format(http.TimeFormat))
+			h.Set("Expires", cacheNow().Add(time.Duration(v)*time.Second).Format(http.TimeFormat))
 		}
 		etag := q.Get("etag")
 		if etag != "" {
@@ -85,7 +93,7 @@ func registerCacheHandlers(mux *http.ServeMux) {
 			lm = start.Add(-time.Duration(v) * time.Second)
 			h.Set("Last-Modified", lm.Format(http.TimeFormat))
 		}
-		h.Set("Date", time.Now().UTC().Format(http.TimeFormat))
+		h.Set("Date", cacheNow().Format(http.TimeFormat))
 		notModified := false
 		if inm := r.Header.Get("If-None-Match"); inm != "" && etag != "" {
 			notModified = cacheEtagMatches(inm, `"`+etag+`"`)
@@ -148,6 +156,12 @@ func registerCacheHandlers(mux *http.ServeMux) {
 		cacheCounts.Unlock()
 		w.Header().Set("Cache-Control", "no-store")
 		fmt.Fprint(w, s)
+	})
+	mux.HandleFunc("/cache/clock", func(w http.ResponseWriter, r *http.Request) {
+		ahead, _ := strconv.ParseInt(r.URL.Query().Get("ahead"), 10, 64)
+		cacheAheadSeconds.Store(ahead)
+		w.Header().Set("Cache-Control", "no-store")
+		fmt.Fprint(w, "ok")
 	})
 	mux.HandleFunc("/cache/reset", func(w http.ResponseWriter, r *http.Request) {
 		cacheCounts.Lock()

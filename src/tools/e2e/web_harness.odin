@@ -36,7 +36,7 @@ BLOCKING_THREADS :: 2
 SCRIPT_CACHE_BYTES :: 16 << 20
 STORAGE_ROOT :: "build/web_profile"   // a folder per process in it: subjects run side by side, and each empties its profile first
 TEST_LIMIT :: 5 * time.Minute          // ends a test that hangs
-DEFAULT_WAIT :: 60.0                   // seconds: only ends a run that fails
+DEFAULT_WAIT :: 240.0                  // seconds, under TEST_LIMIT: only ends a run that fails. The one limit of what waits: no passing test depends on the speed of the machine (a limit per test was raised by hand each time a runner was slower)
 LOOP_LOOK_MS :: 5                      // the most the loop waits before a test looks again: anything that happens ends the wait sooner
 DRAIN_MAX_TURNS :: 1000
 UNCAUGHT :: "Uncaught"
