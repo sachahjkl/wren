@@ -180,7 +180,8 @@ press_waits_turn :: proc(g: ^Pointer_Gesture) -> bool { return g.owner == .Press
 
 // A pointer event of a full frame, before anyone looks at it: which buttons are the page's now, and whether the gesture lost its release:
 // its button is up (a move says which are down), or it comes down again. A thumb is left out: it can begin in a chrome frame ahead of the
-// moves still waiting in the queue, which were made with no button. A latched autoscroll holds none.
+// moves still waiting in the queue, which were made with no button. A latched autoscroll holds none. What the window was doing ends with a
+// press on its frame, and the gesture of a button whose release the system made: the system has the pointer now, no click comes of it.
 gesture_note :: proc(app: ^App, ev: platform.Event, inside: bool) {
 	g := gesture_of(app)
 	#partial switch ev.kind {
@@ -188,6 +189,10 @@ gesture_note :: proc(app: ^App, ev: platform.Event, inside: bool) {
 		if inside { g.held += {ev.button} } else { g.held -= {ev.button} }
 	case .Mouse_Release:
 		g.held -= {ev.button}
+		if ev.lost && ev.button == g.button && !gesture_free(g) { gesture_cancel(app) }
+	case .Frame_Press:
+		if !gesture_free(g) { gesture_cancel(app) }
+		return
 	case .Mouse_Move:
 	case:
 		return

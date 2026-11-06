@@ -25,7 +25,8 @@ package browser
 //   * the browser's shortcuts and the tab keys reach the chrome at once when no key listener could see them; the commands
 //     that act on the chrome alone (the address bar, the next tab) are done there and then;
 //   * input meant for the page (presses, keys while the page has the keyboard) waits, in order, for the next full
-//     frame (`deferred`), and so do the moves and the release of a press the page had;
+//     frame of its window (`deferred`), and so do the moves and the release of a press the page had; it is the document's it was
+//     aimed at: when its tab shows something else by then, it is dropped;
 //   * what the chrome would do to pages (navigate, reload, close a tab, history, commands, a preference change) is
 //     queued and done at the end of the page phase (`actions`), never under the running guest.
 // Nothing of the page runs in a chrome frame: no task, timer, script, style, layout or paint, and a guest call refused
@@ -41,6 +42,7 @@ package browser
 
 import "base:runtime"
 import "core:math"
+import "core:slice"
 import "core:time"
 import "toolkit:draw"
 import "toolkit:platform"
@@ -98,9 +100,39 @@ Shell_Phase :: enum u8 {
 	Anim,   // animation frames, styles, layout: the frame's input left for the chrome (chrome frames take it)
 }
 
+// What of the page is another's while a chrome frame is made.
+Page_Work :: enum u8 {
+	None,
+	Styles,   // a style pass's threads write styles (its wait lends the thread to chrome frames): the page's animations are not sampled
+	Layout,   // the current tab's layout runs on the page thread (page_thread.odin): not even read
+}
+
+// An event held for the next full frame, and whose it is.
+Deferred_Input :: struct {
+	ev:     platform.Event,
+	window: int,          // the window it came to: its frames take it
+	tab:    u64,          // the tab it was aimed at, with the document shown then (0: the chrome's, whatever the window shows)
+	page:   ^page.Page,
+}
+
 SNAPSHOT_STUCK_MAX :: 16
 // What the offsets of a zoom there and back miss their value by, at most.
 @(private = "file") SNAPSHOT_ZOOM_ROUNDING_PX :: 0.5
+
+// What a tab's kept picture is (shell_snapshot_state: the one place that says).
+Snapshot_State :: enum u8 {
+	None,      // no picture of the tab
+	Lost,      // its texture went: the pool was emptied, the device lost
+	Foreign,   // of another document, which no full frame holds on screen any more
+	Held,      // of the document the tab left, which the full frames still hold (first_paint.odin)
+	Fresh,     // of the document the tab shows
+}
+
+// Where what scrolls stood in a picture (not in Paint_Source: a chrome frame paints the layout at any offset, a picture only shows what it has).
+Snapshot_View :: struct {
+	doc:   draw.Vec2,
+	boxes: draw.Vec2,   // the scroll containers' offsets, added up
+}
 
 // The last frame of a tab's page, kept on the GPU.
 Page_Snapshot :: struct {
@@ -109,7 +141,8 @@ Page_Snapshot :: struct {
 	image:  draw.Backdrop,   // kept texture; image.origin: the screen pixel of texel 0 when captured
 	rect:   draw.Rect,       // page area when captured (screen)
 	scroll: draw.Vec2,       // the document's scroll then (device px)
-	selection: [2]lay.Text_Pos,   // what it shows selected: a selection that changes makes it old, with no task and no node changed
+	source: Paint_Source,    // what it was painted from: when that moved it is old (shell_capture_due)
+	view:   Snapshot_View,   // where what scrolls stood in it
 	lo, limit: draw.Vec2,    // the document's scroll range then
 	bar:    bool,            // the document had a vertical scroll bar: not in the pixels (it would move with them), drawn again by shell_paint_page
 	bar_track, bar_thumb: draw.Rect,       // its track and thumb (relative to the page area's corner)
@@ -150,13 +183,12 @@ Shell_Frames :: struct {
 	phase:      Shell_Phase,
 	phase_start: time.Tick,
 	nested:     bool,            // a chrome frame is being made (under a guest call, a style pass, a layout pass)
-	page_locked: bool,           // the current tab's layout runs on the page thread (page_thread.odin): not even read
-	styling:    bool,            // a style pass's threads run (its wait lends the thread to chrome frames): the page's animations are not sampled
+	page_work:  Page_Work,
 	last_present: time.Tick,
 	outer:      [dynamic]platform.Event,   // the full frame's own input (copied: chrome frames poll again)
 	outer_taken: bool,           // a chrome frame used it (its page part went to `deferred`)
 	outer_busy_input: bool,      // phase Page: the full frame's input has presses or keys the chrome has not seen yet
-	deferred:   [dynamic]platform.Event,   // input for the page (or held back), for the next full frame, in order
+	deferred:   [dynamic]Deferred_Input,   // input for the page (or held back), for the next full frame of its window, in order
 	actions:    [dynamic]Shell_Action,
 	pending_scroll: draw.Vec2,   // scroll taken by chrome frames for the current tab's document (the wheel, the bar's thumb, the keys; device px)
 	pending_tab: u64,
@@ -164,6 +196,7 @@ Shell_Frames :: struct {
 	snaps:      [dynamic]Page_Snapshot,
 	frame_no:   u64,
 	frames:     u64,             // chrome frames made (statistics)
+	captured:   u64,             // pictures kept (statistics)
 	skipped:    u64,             // preemptions that found the screen not ready for a frame
 }
 
@@ -208,10 +241,8 @@ shell_nested :: proc() -> bool { return the_app.chrome_frames.nested }
 // After the frame polled its input: the input held back by chrome frames comes first; the page phase begins.
 shell_frame_begin :: proc(app: ^App, events: []platform.Event) -> []platform.Event {
 	// (a copy: a chrome frame polls again, which overwrites the window's list)
-	all := make([dynamic]platform.Event, 0, len(app.chrome_frames.deferred) + len(events), context.temp_allocator)
-	append(&all, ..app.chrome_frames.deferred[:])
+	all := shell_deferred_take(app)
 	append(&all, ..events)
-	clear(&app.chrome_frames.deferred)
 	evs := all[:]
 	shell_keep_outer(evs)
 	app.chrome_frames.outer_busy_input = false
@@ -242,12 +273,7 @@ shell_keep_outer :: proc(events: []platform.Event) {
 // only its page part, in `deferred`, is left, and the chrome already saw the rest).
 shell_after_loop :: proc(app: ^App, events: []platform.Event) -> []platform.Event {
 	out := events
-	if app.chrome_frames.outer_taken {
-		evs := make([]platform.Event, len(app.chrome_frames.deferred), context.temp_allocator)
-		copy(evs, app.chrome_frames.deferred[:])
-		clear(&app.chrome_frames.deferred)
-		out = evs
-	}
+	if app.chrome_frames.outer_taken { out = shell_deferred_take(app)[:] }
 	app.chrome_frames.phase = .Input
 	app.chrome_frames.outer_busy_input = false
 	shell_take_scroll(app)
@@ -339,8 +365,8 @@ shell_preempt :: proc(user: rawptr) {
 @(private = "file")
 shell_preempt_styling :: proc(user: rawptr) {
 	app := (^App)(user)
-	app.chrome_frames.styling = true
-	defer app.chrome_frames.styling = false
+	app.chrome_frames.page_work = .Styles
+	defer app.chrome_frames.page_work = .None
 	shell_preempt(user)
 }
 
@@ -455,6 +481,7 @@ shell_chrome_frame :: proc(app: ^App) {
 @(private = "file")
 shell_split_input :: proc(app: ^App, polled: []platform.Event) -> []platform.Event {
 	chrome := make([dynamic]platform.Event, 0, len(polled) + len(app.chrome_frames.outer), context.temp_allocator)
+	shell_deferred_follow(app)
 	if !app.chrome_frames.outer_taken {
 		#partial switch app.chrome_frames.phase {
 		case .Loop:
@@ -477,6 +504,7 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 	page_shown := t != nil && t.kind == .Web
 	over_page := page_shown && draw.rect_contains(wnd.page_rect, ev.pos) && !ui.ctx_menu_any_open() && !hud_captures(app, ev.pos)
 	g := gesture_of(app)
+	shown_tab := page_shown ? t : nil
 	if page_shown && !hold_buttons_and_keys && shell_bar_event(app, t, ev, over_page) {
 		if ev.kind != .Mouse_Move { g.held -= {ev.button} }
 		if ev.kind == .Mouse_Move { append(chrome, ev) }   // (the chrome's hover)
@@ -487,23 +515,23 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 		append(chrome, ev)   // hover of the chrome (and its own pointer capture)
 		// the page's hover, later; and the drag of a press that went to the page, wherever the pointer goes, as full frames give it
 		dragging := .Left in g.held && .Left in ev.buttons
-		if over_page || (page_shown && dragging) { append(&app.chrome_frames.deferred, ev) }
+		if over_page || (page_shown && dragging) { shell_hold(app, ev, t) }
 		if page_shown && dragging { selection_preview_move(app, t, ev.pos) }   // a text selection's drag: what it will select, shown now (selection_shell.odin)
 	case .Mouse_Press:
-		if hold_buttons_and_keys { append(&app.chrome_frames.deferred, ev); return }
+		if hold_buttons_and_keys { shell_hold(app, ev, over_page ? t : nil); return }
 		if over_page { g.held += {ev.button} } else { g.held -= {ev.button} }
 		if over_page {
 			keyboard_press(app, true)
 			if !shell_deferred_buttons_or_keys(app) { selection_preview_press(app, t, ev) }   // a text selection's press: its gesture, shown now (selection_shell.odin)
-			append(&app.chrome_frames.deferred, ev)
+			shell_hold(app, ev, t)
 		} else {
 			keyboard_press(app, false)
 			append(chrome, ev)
 		}
 	case .Mouse_Release:
 		if hold_buttons_and_keys || ev.button in g.held {
+			shell_hold(app, ev, ev.button in g.held ? shown_tab : nil)
 			g.held -= {ev.button}
-			append(&app.chrome_frames.deferred, ev)
 			return
 		}
 		append(chrome, ev)
@@ -512,24 +540,69 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 			d := wheel_axes(ev) * wheel_step(app, (wnd.page_rect.max - wnd.page_rect.min) / max(page_scale(app), 0.01)) * page_scale(app)
 			// a container under the pointer takes it (shell_shown.odin), shown at once when it can be, else at the page's turn
 			if taken, wait := shell_wheel_box(app, t, ev.pos - wnd.page_rect.min, d); taken {
-				if wait { append(&app.chrome_frames.deferred, ev) }
+				if wait { shell_hold(app, ev, t) }
 				return
 			}
 			shell_async_scroll(app, t, d)
 			return
 		}
-		if over_page { append(&app.chrome_frames.deferred, ev); return }   // zoom: the page's layout
+		if over_page { shell_hold(app, ev, t); return }   // zoom: the page's layout
 		append(chrome, ev)
 	case .Key_Press, .Key_Release, .Text:
 		if hold_buttons_and_keys || page_has_keyboard(app) {
 			if !hold_buttons_and_keys && page_shown && shell_page_key(app, t, ev, chrome) { return }
-			append(&app.chrome_frames.deferred, ev)
+			shell_hold(app, ev, shown_tab)
 			return
 		}
 		append(chrome, ev)
+	case .Frame_Press:
+		append(chrome, ev)
+		shell_hold(app, ev, nil)   // (what the window was doing is over for its gesture too, at the full frame: gesture_note)
 	case:
 		append(chrome, ev)
 	}
+}
+
+// `ev` waits for the next full frame of the window, for what tab `t` shows now (nil: for the chrome).
+@(private = "file")
+shell_hold :: proc(app: ^App, ev: platform.Event, t: ^Tab) {
+	append(&app.chrome_frames.deferred, Deferred_Input{ev = ev, window = active_window(app).id, tab = t != nil ? t.id : 0, page = t != nil ? t.page : nil})
+}
+
+// What waits for a document the active window no longer shows goes, and what its press kept with the page: what the user aimed at is gone. (Nothing of another window's: its tab
+// is shown there.) A window closed took what waited for it along.
+@(private = "file")
+shell_deferred_follow :: proc(app: ^App) {
+	t := current_tab(app)
+	g := gesture_of(app)
+	id := active_window(app).id
+	kept := 0
+	for d in app.chrome_frames.deferred {
+		if d.window == id && d.tab != 0 && (t == nil || t.id != d.tab || t.page != d.page) {
+			if d.ev.kind == .Mouse_Press { g.held -= {d.ev.button} }
+			continue
+		}
+		if window_by_id(app, d.window) == nil { continue }
+		app.chrome_frames.deferred[kept] = d
+		kept += 1
+	}
+	resize(&app.chrome_frames.deferred, kept)
+}
+
+// The events that waited for this frame's window, in order. (The frame's temporary memory: a chrome frame polls again, which overwrites the window's list.)
+@(private = "file")
+shell_deferred_take :: proc(app: ^App) -> [dynamic]platform.Event {
+	shell_deferred_follow(app)
+	id := active_window(app).id
+	out := make([dynamic]platform.Event, 0, len(app.chrome_frames.deferred), context.temp_allocator)
+	kept := 0
+	for d in app.chrome_frames.deferred {
+		if d.window == id { append(&out, d.ev); continue }
+		app.chrome_frames.deferred[kept] = d
+		kept += 1
+	}
+	resize(&app.chrome_frames.deferred, kept)
+	return out
 }
 
 // Where a chrome frame shows the tab's document: its offsets and the wheel taken meanwhile.
@@ -554,12 +627,12 @@ shell_async_scroll :: proc(app: ^App, t: ^Tab, d: draw.Vec2) { shell_async_scrol
 shell_async_scroll_to :: proc(app: ^App, t: ^Tab, to: draw.Vec2) {
 	shell_pending_for(app, t)
 	lo, limit: draw.Vec2
-	if !app.chrome_frames.page_locked {   // (page thread: not read)
+	if app.chrome_frames.page_work != .Layout {   // (page thread: not read)
 		size := draw.rect_size(active_window(app).page_rect)
 		lo.x, limit.x = lay.doc_scroll_x_range(&t.layout, size.x)
 		lo.y, limit.y = lay.doc_scroll_y_range(&t.layout, size.y)
 	}
-	if s := shell_snapshot_of(t.id); s != nil { lo, limit = {min(lo.x, s.lo.x), min(lo.y, s.lo.y)}, {max(limit.x, s.limit.x), max(limit.y, s.limit.y)} }
+	if s := shell_picture(app, t); s != nil { lo, limit = {min(lo.x, s.lo.x), min(lo.y, s.lo.y)}, {max(limit.x, s.limit.x), max(limit.y, s.limit.y)} }
 	from := draw.Vec2{t.layout.doc_scroll_x, t.scroll}
 	app.chrome_frames.pending_scroll = draw.Vec2{clamp(to.x, lo.x, limit.x), clamp(to.y, lo.y, limit.y)} - from
 }
@@ -576,8 +649,8 @@ shell_bar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, over_page: bool)
 	p := ev.pos - active_window(app).page_rect.min
 	#partial switch ev.kind {
 	case .Mouse_Press:
-		snap := shell_snapshot_of(t.id)
-		if ev.button != .Left || !over_page || !gesture_free(g) || snap == nil || snap.page != t.page || shell_deferred_buttons_or_keys(app) { return false }
+		snap, state := shell_snapshot_state(app, t)
+		if ev.button != .Left || !over_page || !gesture_free(g) || state != .Fresh || shell_deferred_buttons_or_keys(app) { return false }
 		shown := shell_shown_scroll(t)
 		for vertical in ([2]bool{true, false}) {
 			if !(vertical ? snap.bar : snap.bar_x) { continue }
@@ -655,8 +728,10 @@ shell_page_key :: proc(app: ^App, t: ^Tab, ev: platform.Event, chrome: ^[dynamic
 // Presses, releases or keys wait for the page.
 @(private = "file")
 shell_deferred_buttons_or_keys :: proc(app: ^App) -> bool {
-	for ev in app.chrome_frames.deferred {
-		#partial switch ev.kind {
+	id := active_window(app).id
+	for d in app.chrome_frames.deferred {
+		if d.window != id { continue }
+		#partial switch d.ev.kind {
 		case .Mouse_Press, .Mouse_Release, .Key_Press, .Key_Release, .Text: return true
 		}
 	}
@@ -742,10 +817,47 @@ shell_snapshot_of :: proc(tab: u64) -> ^Page_Snapshot {
 	return nil
 }
 
-// After the page was painted (page_draw, in its clip): its pixels are kept for chrome frames, when the frame found them
-// worth keeping (Window_Own.page_snapshot_wanted).
+// What the tab's kept picture is: the one proc that says. A picture is shown while the document it shows is on screen for the full frames too; anything else asks here.
+shell_snapshot_state :: proc(app: ^App, t: ^Tab) -> (^Page_Snapshot, Snapshot_State) {
+	s := shell_snapshot_of(t.id)
+	if s == nil { return nil, .None }
+	if !shell_snapshot_alive(app, s) { return s, .Lost }
+	if s.page == t.page { return s, .Fresh }
+	// another document since: its last frame stays only as long as the full frames hold it (first_paint.odin: hold_paint)
+	return s, t.hold.page == s.page && !hold_expired(app, t) ? .Held : .Foreign
+}
+
+// The picture that may be shown of the tab now (nil: none).
+shell_picture :: proc(app: ^App, t: ^Tab) -> ^Page_Snapshot {
+	s, state := shell_snapshot_state(app, t)
+	return state == .Fresh || state == .Held ? s : nil
+}
+
+// Its texture is still there.
+@(private = "file")
+shell_snapshot_alive :: proc(app: ^App, s: ^Page_Snapshot) -> bool {
+	return s.image.image.tex != 0 && s.gen == render.targets_generation(&app.r)
+}
+
+// Where what scrolls stands in tab `t` now.
+@(private = "file")
+shell_view :: proc(t: ^Tab) -> Snapshot_View {
+	v := Snapshot_View{doc = doc_scroll_vec(t)}
+	for _, off in t.layout.scroll { v.boxes += off }
+	return v
+}
+
+// The frame just painted says something the tab's picture does not: its document, what that was painted from, its size, where it is scrolled. (A frame that says the same, a
+// hover of the chrome, a caret's blink, costs no copy of the page.)
+@(private = "file")
+shell_capture_due :: proc(app: ^App, t: ^Tab, rect: draw.Rect) -> bool {
+	s, state := shell_snapshot_state(app, t)
+	return state != .Fresh || s.source != paint_source(t) || s.view != shell_view(t) || s.rect != rect || s.scale != page_scale(app)
+}
+
+// After the page was painted (page_draw, in its clip): its pixels are kept for chrome frames.
 shell_capture :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect, canvas: draw.Color) {
-	if !app.chrome_frames.cfg.snapshot || !app.chrome_frames.cfg.preempt || !window_own(app).page_snapshot_wanted { return }
+	if !app.chrome_frames.cfg.snapshot || !app.chrome_frames.cfg.preempt || !shell_capture_due(app, t, rect) { return }
 	bd := draw.backdrop_capture(dc, rect, nil)
 	if bd.image.tex == 0 { return }
 	if !render.keep_target(dc.renderer, bd.image.tex) { render.release_target(dc.renderer, bd.image.tex); return }
@@ -756,11 +868,12 @@ shell_capture :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect, ca
 		shell_snapshots_trim(app, max(app.chrome_frames.cfg.snapshot_tabs - 1, 0))
 		append(&app.chrome_frames.snaps, Page_Snapshot{tab = t.id})
 		s = &app.chrome_frames.snaps[len(app.chrome_frames.snaps) - 1]
-	} else if s.image.image.tex != 0 && s.gen == gen {
+	} else if shell_snapshot_alive(app, s) {
 		render.unkeep_target(dc.renderer, s.image.image.tex)
 	}
+	app.chrome_frames.captured += 1
 	s.image, s.rect, s.scroll, s.canvas, s.gen, s.used, s.page, s.scale = bd, rect, doc_scroll_vec(t), canvas, gen, app.chrome_frames.frame_no, t.page, page_scale(app)
-	s.selection[0], s.selection[1], _ = page.selection_range(t.page)
+	s.source, s.view = paint_source(t), shell_view(t)
 	s.lo.x, s.limit.x = lay.doc_scroll_x_range(&t.layout, draw.rect_size(rect).x)
 	s.lo.y, s.limit.y = lay.doc_scroll_y_range(&t.layout, draw.rect_size(rect).y)
 	// (more than fit: the last one takes the rest, as their union)
@@ -822,12 +935,8 @@ shell_kept_scroll :: proc(app: ^App, t: ^Tab, s: ^Page_Snapshot) -> draw.Vec2 {
 // Draws a tab's last page frame in the page area, moved by the wheel taken meanwhile and anchored at the top left.
 // False when there is none (the caller shows something else).
 shell_paint_page :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) -> bool {
-	s := shell_snapshot_of(t.id)
-	if s == nil || s.image.image.tex == 0 || s.gen != render.targets_generation(dc.renderer) { return false }
-	if s.page != t.page {
-		// another document since: its last frame stays only as long as the full frames hold it (first_paint.odin: hold_paint)
-		if t.hold.page != s.page || hold_expired(app, t) { return false }
-	}
+	s := shell_picture(app, t)
+	if s == nil { return false }
 	s.used = app.chrome_frames.frame_no
 	draw.rect(dc, rect, s.canvas)
 	scroll := shell_kept_scroll(app, t, s)
@@ -871,29 +980,49 @@ shell_paint_page :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect)
 	return true
 }
 
-// What a page's frame was painted from besides its layout (page_paint). While none of it has moved, a chrome frame may paint
-// the page again from that layout: the same pixels, but for what the shell changed meanwhile.
+// What a page's frame was painted from besides its layout (page_paint), and all that moves its pixels but scrolling. While none of it has moved, a chrome frame may paint
+// the page again from that layout, and the picture kept of it stands (shell_capture_due). The shell reads it, it asks nothing of what changes it: a task, a hover and an
+// animation come to the same fields.
 Paint_Source :: struct {
 	page:      ^page.Page,
 	mutations: u64,    // the document's (the layout painted was made from it)
+	styles:    u64,    // the style pass the layout took: a hover, a focus, an animation
 	pixels:    u64,    // its images' and canvases' pixels
 	forms:     u64,    // what its form controls show
+	selection: u64,    // what it shows selected, a click that clears it runs no task and changes no node
+	highlights: u64,   // what it shows found
 	rules:     bool,   // its style rules changed since its styles were computed
 }
 
 paint_source :: proc(t: ^Tab) -> Paint_Source {
+	s := Paint_Source{page = t.page}
+	paint_source_add(&s, t)
+	return s
+}
+
+// A frame's document is painted in its parent's frame: what moves it moves that.
+@(private = "file")
+paint_source_add :: proc(s: ^Paint_Source, t: ^Tab) {
 	p := t.page
 	a := page.page_activity(p)
-	s := Paint_Source{page = p, mutations = a.mutations, pixels = a.pixels, rules = a.rules}
-	if p.formctl != nil && p.formctl.model != nil { s.forms = p.formctl.model.serial }
-	return s
+	s.mutations += a.mutations
+	s.styles += t.layout.serial
+	s.pixels += a.pixels
+	s.selection += a.selection
+	s.highlights += a.highlights
+	s.rules ||= a.rules
+	if p.formctl != nil && p.formctl.model != nil { s.forms += p.formctl.model.serial }
+	if p.frames == nil { return }
+	for n in page.frames_children(p) {
+		if fv := frame_view_of(n.page); fv != nil { paint_source_add(s, &fv.tab) }
+	}
 }
 
 // The current tab's page can be painted from the layout of its last frame in a chrome frame: that layout is not on the page
 // thread, was painted at this size, and nothing it was painted from has changed since (the script holding the thread changed
 // nothing yet that shows); the page has no frames (their documents are laid out as they are painted).
 shell_layout_paintable :: proc(app: ^App, t: ^Tab) -> bool {
-	if app.chrome_frames.page_locked || t.page == nil || !t.layout.valid { return false }
+	if app.chrome_frames.page_work == .Layout || t.page == nil || !t.layout.valid { return false }
 	own := window_own(app)
 	prep := &own.page_prep
 	if prep.tab != t || prep.page != t.page || prep.state != .Ready || prep.size != draw.rect_size(active_window(app).page_rect) || prep.scale != page_scale(app) { return false }
@@ -931,14 +1060,23 @@ shell_layout_wanted :: proc(app: ^App, t: ^Tab) -> bool {
 	return scrolled || selection_preview_shown(app, t) || shown
 }
 
-// Keeps at most `keep` snapshots (the current tab's and the most recently used).
+// A window shows the tab.
+@(private = "file")
+tab_on_screen :: proc(app: ^App, id: u64) -> bool {
+	if t := current_tab(app); t != nil && t.id == id { return true }
+	for w in app.windows {
+		if w.current >= 0 && w.current < len(w.tabs) && w.tabs[w.current].id == id { return true }
+	}
+	return false
+}
+
+// Keeps at most `keep` snapshots (those of the tabs the windows show and the most recently used).
 @(private = "file")
 shell_snapshots_trim :: proc(app: ^App, keep: int) {
-	cur := current_tab(app)
 	for len(app.chrome_frames.snaps) > keep {
 		worst := -1
 		for s, i in app.chrome_frames.snaps {
-			if cur != nil && s.tab == cur.id { continue }
+			if tab_on_screen(app, s.tab) { continue }
 			if worst < 0 || s.used < app.chrome_frames.snaps[worst].used { worst = i }
 		}
 		if worst < 0 { break }
@@ -948,8 +1086,8 @@ shell_snapshots_trim :: proc(app: ^App, keep: int) {
 
 @(private = "file")
 shell_snapshot_drop :: proc(app: ^App, i: int) {
-	s := app.chrome_frames.snaps[i]
-	if s.image.image.tex != 0 && s.gen == render.targets_generation(&app.r) { render.unkeep_target(&app.r, s.image.image.tex) }
+	s := &app.chrome_frames.snaps[i]
+	if shell_snapshot_alive(app, s) { render.unkeep_target(&app.r, s.image.image.tex) }
 	unordered_remove(&app.chrome_frames.snaps, i)
 }
 
@@ -958,14 +1096,27 @@ shell_snapshots_clear :: proc(app: ^App) {
 	for len(app.chrome_frames.snaps) > 0 { shell_snapshot_drop(app, len(app.chrome_frames.snaps) - 1) }
 }
 
-// The layer targets go, for the memory they hold (memory_trim.odin), but the picture of the tab on screen: the first chrome frame after an idle moment
-// is what it is kept for, and without it a Ctrl+wheel or a long script showed the page's background for a frame.
+// The layer targets go, for the memory they hold (memory_trim.odin), but the pictures of the tabs on screen, one a window: the first chrome frame after an idle moment
+// is what they are kept for, and without one a Ctrl+wheel or a long script showed the page's background for a frame. (render.release_targets spares one texture: the others
+// stand outside the pool for the call.)
 shell_release_targets :: proc(app: ^App) {
-	t := current_tab(app)
-	s := t != nil ? shell_snapshot_of(t.id) : nil
-	kept := s != nil && s.image.image.tex != 0 && s.gen == render.targets_generation(&app.r)
-	render.release_targets(&app.r, kept ? s.image.image.tex : 0)
-	if kept { s.gen = render.targets_generation(&app.r) }
+	shown := make([dynamic]render.Texture, context.temp_allocator)
+	for &s in app.chrome_frames.snaps {
+		if tab_on_screen(app, s.tab) && shell_snapshot_alive(app, &s) { append(&shown, s.image.image.tex) }
+	}
+	spared := make(type_of(app.r.targets), context.temp_allocator)
+	#reverse for p, i in app.r.targets {
+		if slice.contains(shown[:], p.tex) {
+			append(&spared, p)
+			unordered_remove(&app.r.targets, i)
+		}
+	}
+	gen := render.targets_generation(&app.r)
+	render.release_targets(&app.r)
+	append(&app.r.targets, ..spared[:])
+	for &s in app.chrome_frames.snaps {
+		if s.gen == gen && slice.contains(shown[:], s.image.image.tex) { s.gen = render.targets_generation(&app.r) }
+	}
 }
 
 // Once per full frame: the snapshots of closed tabs go.

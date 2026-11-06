@@ -6,7 +6,7 @@ package browser
 // (its last pass took browser.shell.page_thread_min_ms or more, or none is known yet), then waits for it and makes
 // chrome frames meanwhile (shell_frames.odin), at the frame rate. While the pass runs, the layout, the document, the
 // styles and the page's fonts belong to the page thread: the chrome frames draw the page's last frame (the snapshot)
-// and read nothing of its layout (chrome_frames.page_locked). What the pass reads besides (measuring text: the font
+// and read nothing of its layout (chrome_frames.page_work). What the pass reads besides (measuring text: the font
 // state and the measure cache are made for several threads; natural sizes of images: only read, nothing decodes into
 // the cache meanwhile since no loop task runs) is safe to share. Only one pass at a time; the thread has the window
 // thread's stack (deep documents recurse).
@@ -86,8 +86,8 @@ page_layout :: proc(app: ^App, t: ^Tab, styled: ^style.Styled, size: draw.Vec2, 
 		if app.pt.thread == nil { layout_job_run(&job); return }
 	}
 	app.pt.job = job
-	app.chrome_frames.page_locked = true
-	defer app.chrome_frames.page_locked = false
+	app.chrome_frames.page_work = .Layout
+	defer app.chrome_frames.page_work = .None
 	sync.sema_post(&app.pt.go)
 	app.pt.passes += 1
 	// chrome frames while it runs, at the frame rate (shell_preempt decides when one is due)
@@ -96,11 +96,11 @@ page_layout :: proc(app: ^App, t: ^Tab, styled: ^style.Styled, size: draw.Vec2, 
 
 // Debug builds: who may touch the current page's world (its layout, document, styles) now. Not a chrome frame (it
 // draws the page's last frame, nothing of the page runs or is laid out there); not the interface thread while the
-// page thread lays the page out (page_locked). Called where the shell reads or changes a layout.
+// page thread lays the page out (Page_Work.Layout). Called where the shell reads or changes a layout.
 page_world_check :: #force_inline proc(what: string) {
 	when ODIN_DEBUG {
 		if the_app.chrome_frames.nested { panic(what) }
-		if the_app.chrome_frames.page_locked && sync.current_thread_id() != sync.atomic_load(&the_app.pt.thread_id) { panic(what) }
+		if the_app.chrome_frames.page_work == .Layout && sync.current_thread_id() != sync.atomic_load(&the_app.pt.thread_id) { panic(what) }
 	}
 }
 

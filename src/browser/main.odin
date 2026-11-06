@@ -1118,6 +1118,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		if ev.kind == .Mouse_Leave { scrollbar_over_move(app, t, ev.pos, false) }
 		gesture_follow(app)
 		gesture_note(app, ev, inside)
+		if ev.lost { gesture_spent_event(g, ev); continue }   // (the system took the pointer: its release is nobody's, no mouseup, no click)
 		// who holds the pointer has it first; what it leaves goes on below
 		took := false
 		switch g.owner {
@@ -1438,19 +1439,6 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	}
 	fullscreen_shell_frame(app, app.active)   // a page's full screen ends with its tab being shown (fullscreen_shell.odin)
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
-	// the page's pixels are worth keeping for chrome frames (shell_capture) only when it may run a long pass this frame
-	own := &wnd.own
-	own.page_snapshot_wanted = ran > 0
-	if t := current_tab(app); t != nil && t.page != nil {
-		if t.layout.mutations != t.page.doc.mutations || page.wants_animation_frame(t.page) || page.animations_active(t.page) {
-			own.page_snapshot_wanted = true
-		}
-		// (a click that clears a selection runs no task and changes no node: the pixels kept would show it again under the next long script)
-		if s := shell_snapshot_of(t.id); s != nil {
-			a, b, _ := page.selection_range(t.page)
-			if a != s.selection[0] || b != s.selection[1] { own.page_snapshot_wanted = true }
-		}
-	}
 	events = shell_page_phase_end(app, events)   // shell_frames.odin: the scroll and the actions of chrome frames, before the build
 	platform.frame_gate_stage(gate, .Building)
 	shell_snapshots_frame(app)
@@ -1493,6 +1481,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	prof_end(.UI_Draw)
 	// nothing asked for more since (window_request cleared it), the caret is where it was, and the status bar is what this window last drew: only the caret's pixels are drawn
 	// again. (A frame's GPU time lands frames later, and another window's frames make samples too. Such a frame is whole, and no sample: it brings no more of them.)
+	own := &wnd.own
 	if caret := forms_view(app).caret_painted; wnd.errand == .Caret && caret.exact && own.status_drawn == app.hud.changes {
 		draw.damage_begin(&app.dc)
 		draw.damage(&app.dc, caret.at)

@@ -101,8 +101,7 @@ video_fast_path_record :: proc(app: ^App, p: ^page.Page, node: base.Handle, tex:
 // how many were drawn.
 video_fast_path_overlay :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) -> int {
 	if app.vfast.mode == .Off { return 0 }
-	s := shell_snapshot_of(t.id)
-	if s == nil { return 0 }   // no page frame to overlay onto
+	if _, state := shell_snapshot_state(app, t); state != .Fresh { return 0 }   // no frame of this page to overlay onto
 	drawn := 0
 	// the snapshot's shift this chrome frame (same as shell_paint_page): the page area moved and the wheel scrolled it
 	scroll := shell_shown_scroll(t)
