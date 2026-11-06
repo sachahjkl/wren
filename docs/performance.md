@@ -3218,6 +3218,18 @@ Private: 0 to +7 % (+57 MB at worst). Realm memory: **+10 to +24 %**, 24 to 106 
 
 **Not verified.** The release build, a long session, the full WPT, the full test262, AddressSanitizer, Tracy, ETW: not run. The slow runs of the machine came in these series too. A sweep that is interrupted by a memory limit: read, not tested by a count.
 
+## What changed, round 45: what is left of a load is the speed of the scripts
+
+No code changed in this round: it asks what a load is still waiting for, on the tree with text decoration merged.
+
+**No regression from the merge.** Development builds, `wrentool waterfall -Runs 1`, 4 runs interleaved against 5cbd26be: theverge.com load 4 213-4 305 before, 4 247-5 169 after, CPU 7 156-8 656 and 7 406-8 766; cnn.com load 3 887-4 197 and 3 614-4 178, CPU 6 125-6 812 and 6 281-6 609; first paint the same. A single run of 6.7 s came out of nothing but the machine: one run proves nothing here.
+
+**The page thread does not wait.** One load of theverge.com under `WREN_SPANS`, by 500 ms: `wait` 86 ms in the first bucket and none after, `Guest` 200 to 900 ms in nearly every bucket, about 4.7 s of a 7 s trace; `Gc` 302, `Deserialize` 124, `Compile` 21, `Jit` 7. `Compile_Wait` adds up to 939 ms but it is no block: it runs from a script's arrival to its bytecode being taken. `recaptcha__en.js` is compiled in 222 ms and taken 840 ms later, because the thread is running other scripts, in order. Taking bytecode sooner would change nothing.
+
+**So the rest is execution.** `javascript.jit.call_threshold` was measured in round 39: 10 000 costs CPU and 1 000 doubles it, Cranelift costing more than the code it makes gives back. Not run again.
+
+**Left.** A baseline compiler, bytecode to machine code in one pass with no optimising back end, is what would make a low threshold pay. It is the first lever of this list that is not a few percent; it is also an estimate, nothing of it measured, and it is a project of its own. Generations in the collector can take at most what `Gc` is, 300 ms here.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
