@@ -22,6 +22,7 @@ import "wb:tools/testenv"
 import "wb:tools/testhost"
 import "wb:webgl"
 
+POISONED_TEST_LIMIT :: 15 * time.Minute   // ends a test that hangs, as TEST_LIMIT, where each allocation costs a system call
 BASE :: "http://127.0.0.1:8765"   // on the server's block of ports through testenv.url (addresses and scripts)
 PAGE :: BASE + "/jsweb/page"
 DIR :: "examples/jsweb"
@@ -206,6 +207,7 @@ jsweb_mse_builtin_decoders :: proc(t: ^testing.T) {
 jsweb_idb :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	section_begin(t)
+	testing.set_fail_timeout(t, POISONED_TEST_LIMIT)   // (its step puts every block on pages of its own: 4 min 50 on a quiet machine)
 	defer section_end()
 	pr := open(t, "idb")
 	pr.expect_uncaught = true   // (a request's handler that throws aborts its transaction, and the exception is reported)
