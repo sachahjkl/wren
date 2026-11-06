@@ -227,6 +227,8 @@ compile_main :: proc(data: rawptr) {
 	// wasm.max_call_ms (1 s by default) a large bundle trapped here, the thread's engine was dead for good, and the interface
 	// thread compiled the bundle and every later one itself, inside the task the slow script limit measures.
 	opt.max_call_ms = -1
+	// The realms' engine and code. On the other Wasmtime engine each thread that came first compiled the whole image for it, at once: 4 x 8 s of CPU on a new profile, and a second module kept.
+	opt.polled = js_polled()
 	js_read_ahead_wait()
 	inst, err := wasm.instance_create(js_engine_image(), ctx_page, nil, opt, "javascript compiler", nil, js_image_digest())
 	delete(err)
