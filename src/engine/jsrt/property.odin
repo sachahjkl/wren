@@ -858,6 +858,21 @@ create_data_property :: proc(ctx: ^Context, o: ^Object, a: Atom, val: Value, thr
 }
 
 create_data_index :: proc(ctx: ^Context, o: ^Object, idx: i64, val: Value, throw_flag := true) -> int {
+	if o.shape == ctx.array_shape && o.fast_array && o.extensible {
+		// (the shape says `length` is writable, and nothing else is defined on the array)
+		ad := &o.data.(Array_Data)
+		if u64(idx) < u64(ad.count) {
+			ad.values[idx] = val
+			return 1
+		}
+		if idx == i64(ad.count) {
+			array_reserve(ctx.rt, ad, ad.count + 1)
+			ad.values[ad.count] = val
+			ad.count += 1
+			if l := o.slots[0].value; l.tag == .int && i64(l.u.i) <= idx {o.slots[0].value = mk_u32(ad.count)}
+			return 1
+		}
+	}
 	a := idx >= 0 && idx <= i64(ATOM_MAX_INT) ? atom_from_u32(u32(idx)) : number_to_atom(ctx, f64(idx))
 	return create_data_property(ctx, o, a, val, throw_flag)
 }

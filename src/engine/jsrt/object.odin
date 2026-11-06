@@ -749,7 +749,7 @@ object_finalize :: proc(rt: ^Runtime, o: ^Object) {
 		native_data_free(rt, &o.data.(Native_Data))
 	case ^Bound_Data:
 		delete(d.args, rt_allocator(rt))
-		free(d, rt_allocator(rt))
+		mem_delete(rt, d)
 	case ^Prim_Data:
 		mem_free(rt, d, size_of(Prim_Data))
 	case ^Date_Data:
@@ -776,7 +776,7 @@ object_finalize :: proc(rt: ^Runtime, o: ^Object) {
 		free(d, rt_allocator(rt))
 	case ^Promise_Data:
 		delete(d.reactions)
-		free(d, rt_allocator(rt))
+		mem_delete(rt, d)
 	case ^Coro:
 		coro_free(rt, d)
 	case ^Iter_State:

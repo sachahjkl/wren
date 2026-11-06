@@ -26,7 +26,7 @@ fp_bind :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value 
 	proto := get_prototype_of(ctx, target)
 	if is_exception(proto) {return EXCEPTION}
 	o := object_new_proto(ctx, proto.tag == .object ? as_obj(proto) : nil, .bound_function)
-	bd := new(Bound_Data, rt_allocator(rt))
+	bd := mem_new(rt, Bound_Data)
 	bd.target = this
 	bd.this = arg(args, 0)
 	if len(args) > 1 {
