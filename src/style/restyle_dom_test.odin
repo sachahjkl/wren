@@ -600,6 +600,76 @@ restyle_dom_parallel :: proc(t: ^testing.T) {
 	testing.expect_value(t, verify_styles(f.eng, f.doc, f.st, context.temp_allocator), "")
 }
 
+// One element marked, what it passes on reaching a large subtree (cnn.com: 4 300 elements forced by one change, 300 ms on this thread, a full
+// pass of all 11 000 on the threads costing 70): it goes to the threads, as a subtree marked whole does.
+@(test)
+restyle_dom_parallel_what_an_inherited_change_forces :: proc(t: ^testing.T) {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>.on { color: red }</style><body><div id=big><main>`)
+	for _ in 0 ..< 300 { strings.write_string(&sb, "<section><p><b>t</b></p></section>") }
+	strings.write_string(&sb, `</main></div><div id=small><i>u</i></div>`)
+	f := rx_load(strings.to_string(sb))
+	defer rx_unload(f)
+	pool := host.thread_pool_make(3)
+	defer host.thread_pool_destroy(pool)
+	f.eng.settings.inc_parallel_min = 100
+	dom.set_attribute(f.doc, by_id(f, "small"), "class", "on")
+	_, ok := restyle_dom(f.eng, f.doc, f.st, pool)
+	testing.expect(t, ok && !f.eng.last_restyle.parallel, "a small subtree stays on this thread")
+	dom.set_attribute(f.doc, by_id(f, "big"), "class", "on")
+	_, ok = restyle_dom(f.eng, f.doc, f.st, pool)
+	testing.expect(t, ok && f.eng.last_restyle.parallel, "the subtree went to the threads")
+	testing.expect_value(t, verify_styles(f.eng, f.doc, f.st, context.temp_allocator), "")
+}
+
+// A reach of many subjects still names them: past a hundred classes it restyled the whole subtree.
+@(test)
+restyle_dom_many_subjects_stay_a_set :: proc(t: ^testing.T) {
+	SUBJECTS :: 300
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, "<style>")
+	for i in 0 ..< SUBJECTS { fmt.sbprintf(&sb, ".a .k%d ", i); strings.write_string(&sb, "{ margin: 1px } ") }
+	strings.write_string(&sb, "</style><div id=x><i class=k7>k</i>")
+	strings.write_string(&sb, boxes(BOXES, BOX_SPANS, "box"))
+	strings.write_string(&sb, "</div>")
+	f := rx_load(strings.to_string(sb))
+	defer rx_unload(f)
+	dom.set_attribute(f.doc, by_id(f, "x"), "class", "a")
+	expect_partial(t, f, "the class of the ancestors", 2)
+}
+
+// Rules are tried for the elements that can match them: `[data-q]`, `:root`, `:is(.a, b)` in a list of their own, not for every element.
+@(test)
+rules_are_listed_by_what_their_subject_requires :: proc(t: ^testing.T) {
+	f := rx_load(`<style>:root { margin: 1px } [data-q] { margin: 2px } [title^=x] { margin: 3px } :is(.a, b) { margin: 4px } :where(#i, u) > :is(.c, [lang]) { margin: 5px } * { padding: 1px } :is(.a, *) { padding: 2px }</style>
+		<body><p id=d data-q=ltr></p><p id=t title=xy></p><p id=two class=a><b id=b></b></p><u><i id=c class=c></i><i id=l lang=fr></i></u>`)
+	defer rx_unload(f)
+	ix := &f.eng.rules.index
+	universal_before := 0
+	for ent in ix.universal { if ent.rule.origin != .Author { universal_before += 1 } }
+	testing.expect_value(t, len(ix.root), 1)
+	testing.expect_value(t, len(ix.by_attr_name["data-q"]), 1)
+	testing.expect_value(t, len(ix.by_attr_name["title"]), 1)
+	testing.expect_value(t, len(ix.universal) - universal_before, 2)   // (`*`, and `:is(.a, *)`)
+	margin :: proc(f: ^Rx, id: string) -> f32 { return style_of(f.st, by_id(f, id)).margin[.Top].v }
+	testing.expect_value(t, style_of(f.st, dom.find_first_by_tag(f.doc, "html")).margin[.Top].v, f32(1))
+	testing.expect_value(t, margin(f, "d"), f32(2))
+	testing.expect_value(t, margin(f, "t"), f32(3))
+	testing.expect_value(t, margin(f, "two"), f32(4))
+	testing.expect_value(t, margin(f, "b"), f32(4))
+	testing.expect_value(t, margin(f, "c"), f32(5))
+	testing.expect_value(t, margin(f, "l"), f32(5))
+}
+
+// A text that comes or goes concerns the anchors that read :empty, not all of them.
+@(test)
+restyle_dom_text_reaches_the_anchors_of_empty :: proc(t: ^testing.T) {
+	f := rx_load(strings.concatenate({`<style>.t:has(.m ~ .n) * { color: red } .u:has(:empty) { color: blue }</style><div id=t class=t><i class=m></i><i class=n>n</i><p id=p>x</p>`, boxes(BOXES, BOX_SPANS, "box"), `</div>`}, context.temp_allocator))
+	defer rx_unload(f)
+	dom.set_text_content(f.doc, by_id(f, "p"), "")
+	expect_partial(t, f, "a text gone under an anchor that does not read it", 1)
+}
+
 // The index is built again for each sheet that comes, and from the same subjects: their unions are found, not made (cnn.com: 9 % of its
 // style passes went in reach_union, for each of a dozen sheets).
 @(test)

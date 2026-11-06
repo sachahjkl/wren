@@ -205,7 +205,7 @@ restyle_arrivals :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host
 	if !e.arrivals_due { return false, true }
 	defer fresh_clear(e)
 	ix := &e.fresh.index
-	if len(ix.by_id) + len(ix.by_class) + len(ix.by_tag) + len(ix.by_attr) + len(ix.universal) + len(ix.backdrop) == 0 { return false, true }
+	if len(ix.by_id) + len(ix.by_class) + len(ix.by_tag) + len(ix.by_attr) + len(ix.by_attr_name) + len(ix.root) + len(ix.universal) + len(ix.backdrop) == 0 { return false, true }
 	if s.mutations != doc.mutations { return arrival_fail(e, "the document changed") }
 	if int(s.arena.total_used) - int(s.base_used) + s.partial_bytes > e.settings.restyle_waste_bytes { return arrival_fail(e, "memory left by partial restyles") }
 	p := pass_make(e, s, doc, s.state)

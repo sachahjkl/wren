@@ -625,6 +625,12 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 			if l, found := ix.by_attr[key]; found { check(p, el, l[:], ancestors, rec) }
 		}
 	}
+	if len(ix.by_attr_name) > 0 {
+		for a in n.attrs { if l, found := ix.by_attr_name[a.name]; found { check(p, el, l[:], ancestors, rec) } }
+	}
+	if len(ix.root) > 0 {
+		if pn := dom.get(p.mc.doc, n.parent); pn != nil && pn.kind == .Document { check(p, el, ix.root[:], ancestors, rec) }
+	}
 	if l, found := ix.by_tag[n.name]; found { check(p, el, l[:], ancestors, rec) }
 	check(p, el, ix.universal[:], ancestors, rec)
 	if len(ix.backdrop) > 0 && in_top_layer(p, el) { check(p, el, ix.backdrop[:], ancestors, rec) }
