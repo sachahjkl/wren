@@ -7,6 +7,7 @@ var HUNG_CASES = [
   ["a loop that calls", "function f() {} for (;;) f();"],
   ["a loop of natives", "for (;;) Math.floor(1.5);"],
   ["recursion that branches", "function f(n) { if (n === 0) return 0; return f(n - 1) + f(n - 1); } f(200);"],
+  ["a closure that branches", "(function () { function f(n) { if (n === 0) return 0; return f(n - 1) + f(n - 1); } return f(40); })();"],
   ["methods that branch", "var o = { f(n) { if (n > 0) { this.f(n - 1); this.f(n - 1); } } }; o.f(200);"],
   ["a getter that branches", "var o = { d: 200, get g() { if (this.d <= 0) return 0; this.d--; var r = this.g + this.g; this.d++; return r; } }; o.g;"],
   ["a generator without end", "function* g() { for (;;) yield 1; } for (var x of g());"],

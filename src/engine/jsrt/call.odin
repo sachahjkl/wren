@@ -514,6 +514,7 @@ function_realm :: proc(ctx: ^Context, f_in: Value) -> ^Context {
 // --- interpreter activation ---
 
 interp_call :: proc(ctx: ^Context, fo: ^Object, this: Value, new_target: Value, args: []Value) -> Value {
+	poll_host()
 	rt := ctx.rt
 	fd := &fo.data.(Func_Data)
 	b := fd.bc
