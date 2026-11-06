@@ -145,8 +145,11 @@ build_js_code :: proc(options: Js_Options) -> bool {
 	if o.out == "" { o.out = JS_OUT_DEFAULT }
 	final := fmt.tprintf("%s/wren_js.wasm", o.out)
 	if !os.exists(final) { say(o.log, fmt.tprintfln("%s is missing", final)); return false }
+	code := fmt.tprintf("%s/%s", o.out, JS_CODE_NAME)
+	// (the empty file test_all leaves where no image was built: no engine in the program, no code for it)
+	if info, err := os.stat(final, context.temp_allocator); err == nil && info.size == 0 { return os.write_entire_file(code, "") == nil }
 	exe := build_jsengine_tool(o) or_return
-	return run({command = {exe, "precompile", final, fmt.tprintf("%s/%s", o.out, JS_CODE_NAME)}, log = o.log}) == 0
+	return run({command = {exe, "precompile", final, code}, log = o.log}) == 0
 }
 
 // Builds it unless it is up to date. False: said in the log.
