@@ -667,6 +667,161 @@ restyle_dom_root_font_with_threads :: proc(t: ^testing.T) {
 }
 
 ////////////////////////////////
+// A place among siblings, read by key
+
+// A list of `n` boxes of `each` spans, each box of class `cls`.
+@(private = "file")
+boxes :: proc(n, each: int, cls: string) -> string {
+	sb := strings.builder_make(context.temp_allocator)
+	for _ in 0 ..< n {
+		fmt.sbprintf(&sb, "<div class=%q>", cls)
+		for _ in 0 ..< each { strings.write_string(&sb, "<span>x</span>") }
+		strings.write_string(&sb, "</div>")
+	}
+	return strings.to_string(sb)
+}
+
+@(private = "file")
+BOXES :: 20
+@(private = "file")
+BOX_SPANS :: 5
+
+// cnn.com: `.zone--t-dark + .flex-experiment :is(...)` and `:last-child` compounds: a <div> added to or removed from <body> restyled every child
+// of it whole, a third of the document.
+@(test)
+restyle_dom_removal_reaches_what_follows_it :: proc(t: ^testing.T) {
+	f := rx_load(strings.concatenate({`<style>.a + .b .c { color: red } .q + .r * { margin: 1px }</style><div id=l><p id=a class=a>a</p><p id=gap>g</p><div id=b class=b><i id=c class=c>c</i></div>`, boxes(BOXES, BOX_SPANS, "box"), `</div>`}, context.temp_allocator))
+	defer rx_unload(f)
+	testing.expect(t, style_of(f.st, by_id(f, "c")).color != {1, 0, 0, 1})
+	dom.remove_child(f.doc, by_id(f, "l"), by_id(f, "gap"))
+	expect_partial(t, f, "the element between .a and .b removed", 3)
+	testing.expect(t, style_of(f.st, by_id(f, "c")).color == {1, 0, 0, 1})
+}
+
+@(test)
+restyle_dom_insertion_reaches_by_the_key_of_the_position :: proc(t: ^testing.T) {
+	f := rx_load(strings.concatenate({`<style>.w:last-child * { color: red } .z:first-child * { color: blue } p:nth-child(2) * { color: green }</style><div id=l><div id=w class=w><b id=wb>x</b></div>`, boxes(BOXES, BOX_SPANS, "box"), `</div>`}, context.temp_allocator))
+	defer rx_unload(f)
+	l := by_id(f, "l")
+	dom.append_child(f.doc, l, dom.create_element(f.doc, "div"))
+	expect_partial(t, f, "an element added after boxes no rule reads the place of", 3)   // (it, and .w and what it holds: no longer the last)
+	w := by_id(f, "w")
+	dom.remove_child(f.doc, l, w)
+	dom.append_child(f.doc, l, w)
+	expect_partial(t, f, ".w moved to the end", 3)
+	testing.expect(t, style_of(f.st, by_id(f, "wb")).color == {1, 0, 0, 1})
+}
+
+// `:nth-last-child(1 of .z)`: only an element of .z can match, whatever the walk of the siblings meets.
+@(test)
+restyle_dom_nth_of_selector_is_read_by_its_keys :: proc(t: ^testing.T) {
+	f := rx_load(strings.concatenate({`<style>:nth-last-child(1 of .z) * { color: red }</style><div id=l><div id=z class=z><b id=zb>x</b></div>`, boxes(BOXES, BOX_SPANS, "box"), `</div>`}, context.temp_allocator))
+	defer rx_unload(f)
+	n := dom.create_element(f.doc, "div")
+	dom.append_child(f.doc, by_id(f, "l"), n)
+	expect_partial(t, f, "a plain element added", 3)
+	testing.expect(t, style_of(f.st, by_id(f, "zb")).color == {1, 0, 0, 1})
+	dom.set_attribute(f.doc, n, "class", "z")
+	expect_partial(t, f, "the last one is .z now")
+	testing.expect(t, style_of(f.st, by_id(f, "zb")).color != {1, 0, 0, 1})
+}
+
+// The subjects a sibling's change restyles under the element beside it: those of an :is(), or of an attribute, not the whole subtree.
+@(test)
+restyle_dom_subjects_of_is_and_attributes :: proc(t: ^testing.T) {
+	f := rx_load(strings.concatenate({`<style>.p + .q :is(h2, h3) { color: red } .p + .q [data-k] { color: blue }</style><div id=l><p id=p class=p>p</p><p id=gap>g</p><div id=q class=q><h2 id=h>t</h2><b id=k data-k>u</b>`, boxes(BOXES, BOX_SPANS, "box"), `</div></div>`}, context.temp_allocator))
+	defer rx_unload(f)
+	dom.remove_child(f.doc, by_id(f, "l"), by_id(f, "gap"))
+	expect_partial(t, f, "the gap closed", 3)
+	testing.expect(t, style_of(f.st, by_id(f, "h")).color == {1, 0, 0, 1})
+	testing.expect(t, style_of(f.st, by_id(f, "k")).color == {0, 0, 1, 1})
+}
+
+// What rules of any element reach beside it says nothing of what they reach under it: `:not(.z) *` left no set for `:not(.b) ~ .c .d`.
+@(test)
+restyle_dom_keyless_reach_keeps_its_subjects :: proc(t: ^testing.T) {
+	f := rx_load(strings.concatenate({`<style>:not(.z) * { margin: 1px } :not(.b) ~ .c .d { color: red }</style><div id=l><div id=x class=b>x</div><div id=c class=c><i id=d class=d>d</i>`, boxes(BOXES, BOX_SPANS, "box"), `</div></div>`}, context.temp_allocator))
+	defer rx_unload(f)
+	l := by_id(f, "l")
+	dom.insert_before(f.doc, l, dom.create_element(f.doc, "p"), by_id(f, "x"))
+	expect_partial(t, f, "an element that matches the left compound added", 4)
+	testing.expect(t, style_of(f.st, by_id(f, "d")).color == {1, 0, 0, 1})
+}
+
+// What a removed element showed its siblings when the styles were made, not what it has now.
+@(test)
+restyle_dom_removed_element_as_it_was :: proc(t: ^testing.T) {
+	f := rx_load(`<style>.a ~ .b { color: red } .e + .f { color: blue }</style><div id=l><p id=a class=a>a</p><p id=gone>t</p><p id=b class=b>b</p><p id=e class=e>e</p><p id=f class=f>f</p><p id=g>g</p></div>`)
+	defer rx_unload(f)
+	l := by_id(f, "l")
+	a := by_id(f, "a")
+	dom.remove_attribute(f.doc, a, "class")
+	dom.remove_child(f.doc, l, a)
+	expect_partial(t, f, "class taken away, then the element")
+	testing.expect(t, style_of(f.st, by_id(f, "b")).color != {1, 0, 0, 1})
+	// the node beside it left too: its place is not known
+	e, ff, g := by_id(f, "e"), by_id(f, "f"), by_id(f, "g")
+	dom.remove_child(f.doc, l, e)
+	dom.remove_child(f.doc, l, ff)
+	dom.insert_before(f.doc, l, ff, g)
+	dom.insert_before(f.doc, l, e, ff)
+	expect_partial(t, f, "both taken out and put back")
+	testing.expect(t, style_of(f.st, ff).color == {0, 0, 1, 1})
+	dom.remove_child(f.doc, l, e)
+	dom.release(f.doc, e)
+	expect_partial(t, f, "the element destroyed")
+	testing.expect(t, style_of(f.st, ff).color != {0, 0, 1, 1})
+}
+
+// `:has(.h .m)`: a class attribute rewritten above a member says nothing of the chain unless a class it names came or went
+// (cnn.com: `layout  cnn` to `layout cnn` on <body>, and every anchor of the page restyled).
+@(test)
+restyle_dom_has_chain_reads_the_classes_that_changed :: proc(t: ^testing.T) {
+	f := rx_load(strings.concatenate({`<style>.t:has(.h .m) * { color: red }</style><div id=t class=t><div id=h class="h  k"><i class=m>m</i></div>`, boxes(BOXES, BOX_SPANS, "box"), `</div>`}, context.temp_allocator))
+	defer rx_unload(f)
+	h := by_id(f, "h")
+	dom.set_attribute(f.doc, h, "data-a", "1")
+	expect_partial(t, f, "the first restyle makes the members")
+	member :: proc(f: ^Rx, h: base.Handle) {
+		n := dom.create_element(f.doc, "i")
+		dom.set_attribute(f.doc, n, "class", "m")
+		dom.append_child(f.doc, h, n)
+	}
+	// (with a member that comes, which asks whether the answer flipped)
+	dom.set_attribute(f.doc, h, "class", "h k")
+	member(f, h)
+	expect_partial(t, f, "spaces", 1)
+	dom.set_attribute(f.doc, h, "class", "h k z")
+	member(f, h)
+	expect_partial(t, f, "a class the chain does not name", 1)
+	dom.set_attribute(f.doc, h, "class", "k z")
+	expect_partial(t, f, "the class of the chain")
+	testing.expect(t, f.eng.last_restyle.marked > BOXES)
+}
+
+// What the flips of an anchor cost: its members walked up once a batch, not for each element asked about.
+@(test)
+restyle_dom_has_flips_walk_the_members_once :: proc(t: ^testing.T) {
+	DEPTH :: 12
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>div:has(.m) > .y { color: red }</style>`)
+	for _ in 0 ..< DEPTH { strings.write_string(&sb, `<div class=y>`) }
+	strings.write_string(&sb, `<div id=in>`)
+	for _ in 0 ..< BOXES { strings.write_string(&sb, `<i class=m>m</i>`) }
+	strings.write_string(&sb, `</div>`)
+	for _ in 0 ..< DEPTH { strings.write_string(&sb, `</div>`) }
+	f := rx_load(strings.to_string(sb))
+	defer rx_unload(f)
+	dom.set_attribute(f.doc, by_id(f, "in"), "data-a", "1")
+	expect_partial(t, f, "the first restyle makes the members")
+	n := dom.create_element(f.doc, "i")
+	dom.set_attribute(f.doc, n, "class", "m")
+	dom.append_child(f.doc, by_id(f, "in"), n)
+	expect_partial(t, f, "one more member")
+	testing.expect(t, f.eng.last_restyle.flips >= DEPTH)
+	testing.expectf(t, f.eng.last_restyle.flip_steps <= 2 * (BOXES + 2 * DEPTH), "%d steps", f.eng.last_restyle.flip_steps)
+}
+
 // Random mutations
 
 @(private = "file")
@@ -679,10 +834,16 @@ p:empty { min-height: 5px } section:has(.a) { outline: 1px solid red } div:has(>
 .f::before { content: "<" attr(data-x) ">" } ol li::after { content: counter(list-item) } h3 { counter-increment: hh } h3::before { content: counter(hh) ": " }
 :is(.a, .b) > span { text-indent: 3px } div:not(.c) > p { text-align: center } .g { font-size: 1.5em } .h { border-width: inherit; border-style: solid }
 section > :first-child + * { line-height: 2 } .a:nth-child(3) ~ li { color: purple }
+.b + .c span { color: olive } .c ~ .d > span { color: navy } .e + :is(div, p) b { color: maroon } :is(.f, .g) ~ .h span { color: lime }
+:nth-last-child(1 of .a) span { color: aqua } .a:not(.x) + * { letter-spacing: 2px } :not(.a) + .b .c { color: gray } .b + [data-x] span { color: silver }
+:first-child ~ .g > * { margin-left: 1px } .x:last-child span { color: fuchsia } :not(.d) ~ .f { word-spacing: 1px }
 `
 
 @(private = "file")
 RESTYLE_SEED :: #config(RESTYLE_SEED, 20261019)
+// (each a document and its mutations of its own: what goes wrong among siblings needs the right neighbours)
+@(private = "file")
+RESTYLE_SEEDS :: 6
 
 @(private = "file")
 TAGS := [?]string{"div", "p", "span", "section", "li", "ul", "ol", "h3", "b"}
@@ -691,7 +852,15 @@ CLASSES := [?]string{"a", "b", "c", "d", "e", "f", "g", "h", "x"}
 
 @(test)
 restyle_dom_random :: proc(t: ^testing.T) {
-	rng := rand.create(RESTYLE_SEED)
+	for seed in 0 ..< RESTYLE_SEEDS {
+		restyle_dom_random_from(t, RESTYLE_SEED + u64(seed))
+		if t.error_count > 0 { return }
+	}
+}
+
+@(private = "file")
+restyle_dom_random_from :: proc(t: ^testing.T, seed: u64) {
+	rng := rand.create(seed)
 	context.random_generator = rand.default_random_generator(&rng)
 	sb := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&sb, "<style>%s</style><div id=root>", RANDOM_CSS)

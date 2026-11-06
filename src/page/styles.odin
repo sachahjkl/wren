@@ -479,6 +479,7 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 			if e.settings.inc_verify {
 				if diff := style.verify_styles(e, p.doc, p.styled, context.temp_allocator); diff != "" {
 					log(p, .Warn, fmt.tprintf("style.incremental.verify: partial restyle differs from a full one: %s", diff))
+					if style.trace_restyle() { fmt.eprintfln("style.incremental.verify: %s", diff) }
 
 				}
 			}
@@ -487,6 +488,7 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 	style.timeline_tick(p.anim.timeline, p.doc, p.styled, now)
 	animations_after_tick(p)
 	styles_note(full, dom_partial || sheet_partial, partial, cq_partial, mq_partial, time.tick_since(t0), why)
+	if style.trace_restyle() && (full || dom_partial || sheet_partial) { fmt.eprintfln("style pass: %s %.1f ms, %d restyled, %d changed: %s", full ? "full" : "partial", time.duration_milliseconds(time.tick_since(t0)), e.last_restyle.marked, e.last_restyle.changed, full ? why : "") }
 
 	if full { the_pages.styles_stats.full_bytes += i64(style.styled_bytes(p.styled)) }
 	return p.styled

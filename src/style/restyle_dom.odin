@@ -41,6 +41,7 @@ Restyle_Stats :: struct {
 	rewalked: bool,     // counters and quotes were resolved again
 	fallback: string,   // why the last restyle_dom could not be partial ("" when it was)
 	flips:    int,      // answers of the exact :has() anchors it took to mark what changed
+	flip_steps: int,    // elements walked through to give them
 }
 
 @(private = "file") M_SELF :: u8(1)
@@ -75,7 +76,7 @@ Walker :: struct {
 	doc:      ^dom.Document,
 	p:        ^Pass,
 	arena:    ^base.Arena,   // where p allocates
-	marks:    ^map[base.Handle]u8,
+	marks:    []u8,   // by handle index (Marker.marks); nil: none
 	// main thread: changes are applied at once; a task (parallel) records them in `results`
 	task:     bool,
 	results:  [dynamic]Result,
@@ -130,7 +131,10 @@ Marker :: struct {
 	s:     ^Styled,
 	doc:   ^dom.Document,
 	ix:    ^Inv_Index,
-	marks: map[base.Handle]u8,
+	marks: []u8,                     // by handle index: M_SELF, M_SUB, M_CHILD
+	marked: [dynamic]base.Handle,    // the elements that have marks
+	key_maps: map[u32]^Key_Lookup,   // the sets of keys asked about in this pass
+	attr_touched: map[base.Handle]struct{},   // elements that had an attribute changed in this batch: what they showed their siblings is not what they have now
 	mc:    Match_Ctx,
 	rewalk: bool,       // counters and quotes must be resolved again
 	removed: [dynamic]base.Handle,   // removed elements still alive (their styles are dropped)
@@ -152,6 +156,9 @@ Marker :: struct {
 	flip_limit: int,               // ... past this many of them, a full pass is shorter than the marking
 	has_walked: map[Has_Walk_Key]int,   // has_invalidate: the closest hop each ancestor was reached at in this pass
 	exact:   bool,                 // the members of the exact anchors can be used
+	above:   map[^Has_Anchor][]u64,          // members_above
+	flip_above: map[^Has_Anchor]^Flip_Above, // flip_above_of
+	flip_steps: int,                         // Restyle_Stats.flip_steps
 }
 
 @(private = "file")
@@ -160,27 +167,24 @@ Walk_Key :: struct { h: base.Handle, ix: ^Inv_Index, dir: u8 }
 @(private = "file")
 mark :: proc(m: ^Marker, h: base.Handle, sub: bool, loc := #caller_location) {
 	if !is_element_node(m.doc, h) { return }
-	if sub && trace_restyle() && flat_parent_element(m.doc, h) == base.NIL_HANDLE { trace_roots[fmt.aprintf("%d %s", loc.line, trace_note)] += 1 }
-	bits := m.marks[h]
+	if sub && trace_restyle() { trace_roots[fmt.aprintf("%d %s | %s", loc.line, trace_note, trace_cause)] += 1 }
+	bits := mark_bits(m.marks, h)^
 	nb := bits | (sub ? M_SUB : M_SELF)
 	if nb == bits { return }
-	m.marks[h] = nb
+	mark_bits(m.marks, h)^ = nb
 	if bits != 0 { return }   // its ancestors were flagged with it
+	append(&m.marked, h)
 	// the walk goes down the flat tree: so does the trail to the marked element
-	if m.shadows {
-		for p := flat_parent_element(m.doc, h); p != base.NIL_HANDLE; p = flat_parent_element(m.doc, p) {
-			pb := m.marks[p]
-			if pb & M_CHILD != 0 { break }
-			m.marks[p] = pb | M_CHILD
-		}
-		return
-	}
-	for p := parent_element(&m.mc, h); p != base.NIL_HANDLE; p = parent_element(&m.mc, p) {
-		pb := m.marks[p]
-		if pb & M_CHILD != 0 { break }
-		m.marks[p] = pb | M_CHILD
+	for p := m.shadows ? flat_parent_element(m.doc, h) : parent_element(&m.mc, h); p != base.NIL_HANDLE; p = m.shadows ? flat_parent_element(m.doc, p) : parent_element(&m.mc, p) {
+		pb := mark_bits(m.marks, p)
+		if pb^ & M_CHILD != 0 { break }
+		if pb^ == 0 { append(&m.marked, p) }
+		pb^ |= M_CHILD
 	}
 }
+
+@(private = "file")
+mark_bits :: #force_inline proc(marks: []u8, h: base.Handle) -> ^u8 { return &marks[base.handle_index(h)] }
 
 // The invalidation index of the rules of the tree `h` is in.
 @(private = "file")
@@ -251,6 +255,12 @@ apply :: proc(m: ^Marker, h: base.Handle, r: Reach, loc := #caller_location) {
 	} else if r.self {
 		mark(m, h, false)
 	}
+	apply_gap(m, next_element(m, h), prev_element(&m.mc, h), r)
+}
+
+// Marks what `r` reaches among siblings, read from a place in a list of them: `nx` the first element after it, `pv` the first before it.
+@(private = "file")
+apply_gap :: proc(m: ^Marker, nx, pv: base.Handle, r: Reach) {
 	sibs :: proc(m: ^Marker, x: base.Handle, r: Reach) {
 		if r.sib_desc && r.set != 0 && !m.shadows {
 			mark(m, x, false)
@@ -261,15 +271,64 @@ apply :: proc(m: ^Marker, h: base.Handle, r: Reach, loc := #caller_location) {
 	}
 	if r.next > 0 || r.all_next {
 		k := 0
-		for x := next_element(m, h); x != base.NIL_HANDLE; x = next_element(m, x) {
+		for x := nx; x != base.NIL_HANDLE; x = next_element(m, x) {
 			k += 1
 			if !r.all_next && k > r.next { break }
 			sibs(m, x, r)
 		}
 	}
 	if r.all_prev {
-		for x := prev_element(&m.mc, h); x != base.NIL_HANDLE; x = prev_element(&m.mc, x) { sibs(m, x, r) }
+		for x := pv; x != base.NIL_HANDLE; x = prev_element(&m.mc, x) { sibs(m, x, r) }
 	}
+}
+
+// What `k` reaches from element `x`, by the keys `x` carries.
+@(private = "file")
+apply_keyed :: proc(m: ^Marker, x: base.Handle, k: ^Keyed_Reach) {
+	if reach_any(k.any) { apply(m, x, k.any) }
+	n := dom.get(m.doc, x)
+	if r, ok := k.by_tag[n.name]; ok { apply(m, x, r) }
+	if len(k.by_id) > 0 {
+		if id, has := attr(n, "id"); has { if r, ok := k.by_id[id]; ok { apply(m, x, r) } }
+	}
+	if len(k.by_class) == 0 { return }
+	if cls, has := attr(n, "class"); has {
+		rest := cls
+		for len(rest) > 0 {
+			for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
+			end := 0
+			for end < len(rest) && !is_space(rest[end]) { end += 1 }
+			if end > 0 { if r, ok := k.by_class[rest[:end]]; ok { apply(m, x, r) } }
+			rest = rest[end:]
+		}
+	}
+}
+
+// A set of keys as a scan of a subtree asks it: an element's own keys looked up, whatever the size of the set.
+@(private = "file")
+Key_Lookup :: struct {
+	classes, ids, types: map[string]struct{},
+	attrs: [dynamic]string,
+}
+
+@(private = "file")
+key_lookup_of :: proc(m: ^Marker, set: u32) -> ^Key_Lookup {
+	if l, ok := m.key_maps[set]; ok { return l }
+	if m.key_maps == nil { m.key_maps = make(map[u32]^Key_Lookup, 8, context.temp_allocator) }
+	a := context.temp_allocator
+	l := new(Key_Lookup, a)
+	l.classes, l.ids, l.types = make(map[string]struct{}, 16, a), make(map[string]struct{}, 4, a), make(map[string]struct{}, 4, a)
+	l.attrs = make([dynamic]string, 0, 4, a)
+	for k in key_set_keys(&m.e.key_sets, set) {
+		switch k.kind {
+		case .Class: l.classes[k.name] = {}
+		case .Id: l.ids[k.name] = {}
+		case .Type: l.types[k.name] = {}
+		case .Attr: append(&l.attrs, k.name)
+		}
+	}
+	m.key_maps[set] = l
+	return l
 }
 
 // Marks the descendants of `h` that carry one of the keys of set `set` (their own marks only: what they pass on to their
@@ -280,8 +339,8 @@ mark_keyed :: proc(m: ^Marker, h: base.Handle, set: u32) {
 	done := [2]u64{u64(h), u64(set)}
 	if done in m.keyed { return }
 	m.keyed[done] = true
-	keys := key_set_keys(&m.e.key_sets, set)
-	if len(keys) == 0 { mark(m, h, true); return }
+	if len(key_set_keys(&m.e.key_sets, set)) == 0 { mark(m, h, true); return }
+	keys := key_lookup_of(m, set)
 	stack := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
 	append(&stack, h)
 	for len(stack) > 0 {
@@ -296,21 +355,20 @@ mark_keyed :: proc(m: ^Marker, h: base.Handle, set: u32) {
 }
 
 @(private = "file")
-carries_key :: proc(n: ^dom.Node, keys: []Subject_Key) -> bool {
-	for k in keys {
-		switch k.kind {
-		case .Type: if base.ascii_equal_fold(n.name, k.name) { return true }
-		case .Id: if v, ok := attr(n, "id"); ok && base.ascii_equal_fold(v, k.name) { return true }
-		case .Class:
-			if v, ok := attr(n, "class"); ok {
-				rest := v
-				for len(rest) > 0 {
-					for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
-					end := 0
-					for end < len(rest) && !is_space(rest[end]) { end += 1 }
-					if end > 0 && base.ascii_equal_fold(rest[:end], k.name) { return true }
-					rest = rest[end:]
-				}
+carries_key :: proc(n: ^dom.Node, keys: ^Key_Lookup) -> bool {
+	if n.name in keys.types { return true }
+	for a in n.attrs {
+		for k in keys.attrs { if base.ascii_equal_fold(a.name, k) { return true } }
+		switch a.name {
+		case "id": if a.value in keys.ids { return true }
+		case "class":
+			rest := a.value
+			for len(rest) > 0 {
+				for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
+				end := 0
+				for end < len(rest) && !is_space(rest[end]) { end += 1 }
+				if end > 0 && rest[:end] in keys.classes { return true }
+				rest = rest[end:]
 			}
 		}
 	}
@@ -450,21 +508,8 @@ empty_changed :: proc(m: ^Marker, p: base.Handle) {
 children_inserted :: proc(m: ^Marker, p, at: base.Handle) {
 	for ix in ixs_for_children(m, p, at) {
 		// a walk that reaches an element an earlier walk went through stops: the rest is the earlier one's (Marker.walked)
-		if reach_any(ix.pos_fwd) {
-			for x := at; x != base.NIL_HANDLE; x = next_element(m, x) {
-				if walk_seen(m, x, ix, 0) { break }
-				apply(m, x, ix.pos_fwd)
-			}
-		}
-		if reach_any(ix.pos_bwd) {
-			for x := at; x != base.NIL_HANDLE; x = prev_element(&m.mc, x) {
-				if walk_seen(m, x, ix, 1) { break }
-				apply(m, x, ix.pos_bwd)
-			}
-		}
-		if ix.sib_any && reach_any(ix.sib_rel) {
-			if nx := next_element(m, at); nx != base.NIL_HANDLE { apply(m, nx, ix.sib_rel) }
-		}
+		position_changed(m, ix, at, at)
+		if nx := next_element(m, at); nx != base.NIL_HANDLE && ix.sib_rel.used { apply_keyed(m, nx, &ix.sib_rel) }
 	}
 	if is_element_node(m.doc, p) { empty_changed(m, p) }
 	has_invalidate(m, at, false, Has_Change{kind = .Tree, mask = dom.subtree_watch(m.doc, at), known = m.doc.journal.watch.on})
@@ -479,32 +524,59 @@ walk_seen :: proc(m: ^Marker, x: base.Handle, ix: ^Inv_Index, dir: u8) -> bool {
 	return false
 }
 
-// An element left `p` (where among the children is not known any more).
+// The elements from `nx` on and from `pv` back have another index among their siblings than they had.
 @(private = "file")
-children_removed :: proc(m: ^Marker, p: base.Handle, mask: u64, mask_gen: u32) {
+position_changed :: proc(m: ^Marker, ix: ^Inv_Index, nx, pv: base.Handle) {
+	if ix.pos_fwd.used {
+		for x := nx; x != base.NIL_HANDLE; x = next_element(m, x) {
+			if walk_seen(m, x, ix, 0) { break }
+			apply_keyed(m, x, &ix.pos_fwd)
+		}
+	}
+	if ix.pos_bwd.used {
+		for x := pv; x != base.NIL_HANDLE; x = prev_element(&m.mc, x) {
+			if walk_seen(m, x, ix, 1) { break }
+			apply_keyed(m, x, &ix.pos_bwd)
+		}
+	}
+}
+
+// The first element, going by `next` (or back), from the node `from` that stood beside a removed one, still under `p`. `ok` false: `from`
+// left too: the place is not known any more.
+@(private = "file")
+element_from :: proc(m: ^Marker, p, from: base.Handle, back: bool) -> (x: base.Handle, ok: bool) {
+	for cur := from; cur != base.NIL_HANDLE; {
+		n := dom.get(m.doc, cur)
+		if n == nil || n.parent != p { return base.NIL_HANDLE, false }
+		if n.kind == .Element { return cur, true }
+		cur = back ? n.prev : n.next
+	}
+	return base.NIL_HANDLE, true
+}
+
+// An element left `en.parent`, from between `en.prev` and `en.next`. `gone`: the element as it was, nil when that is not known (destroyed
+// since, or an attribute of it changed in this batch): what it showed its siblings is then looked for from all of them.
+@(private = "file")
+children_removed :: proc(m: ^Marker, en: ^dom.Journal_Entry, gone: ^dom.Node) {
+	p := en.parent
 	pn := dom.get(m.doc, p)
 	first := pn.first_child
 	for first != base.NIL_HANDLE && !is_element_node(m.doc, first) { first = dom.get(m.doc, first).next }
 	if first != base.NIL_HANDLE {
+		nx, nx_ok := element_from(m, p, en.next, false)
+		pv, pv_ok := element_from(m, p, en.prev, true)
 		for ix in ixs_for_children(m, p, first) {
-			// the same parent again: the same walk of the same children (Marker.emptied)
-			key := Walk_Key{p, ix, 2}
-			if key in m.emptied { continue }
-			m.emptied[key] = true
-			pos := reach_union(ix.keys, ix.pos_fwd, ix.pos_bwd)
-			if reach_any(pos) || ix.sib_any {
-				every := reach_union(ix.keys, pos, ix.sib_rel)
-				every.self = true
-				for ch := pn.first_child; ch != base.NIL_HANDLE; ch = dom.get(m.doc, ch).next {
-					if !is_element_node(m.doc, ch) { continue }
-					apply(m, ch, every)
-					if ix.sib_any { mark(m, ch, every.desc || every.sib_desc) }
-				}
-				pn = dom.get(m.doc, p)
+			if gone == nil || !nx_ok || !pv_ok {
+				children_all_changed(m, ix, p)
+				continue
 			}
+			position_changed(m, ix, nx, pv)
+			if nx != base.NIL_HANDLE && ix.sib_rel.used { apply_keyed(m, nx, &ix.sib_rel) }
+			for r in feature_reaches(ix, gone) { apply_gap(m, nx, pv, r) }
 		}
 	}
 	if is_element_node(m.doc, p) { empty_changed(m, p) }
+	mask, mask_gen := en.watch, en.watch_gen
 	if ix := ix_of(m, first != base.NIL_HANDLE ? first : p); ix.uses_has {
 		if is_element_node(m.doc, p) { has_invalidate(m, p, true, Has_Change{kind = .Tree, mask = mask, known = mask & dom.WATCH_KNOWN != 0 && mask_gen == m.doc.journal.watch.gen}) }
 		if key := (Walk_Key{p, ix, 3}); ix.has_sibling && key not_in m.emptied {
@@ -517,6 +589,45 @@ children_removed :: proc(m: ^Marker, p: base.Handle, mask: u64, mask_gen: u32) {
 	}
 }
 
+// Anything may have changed among the children of `p`: each is looked at for what reads its place or its siblings. The same parent again:
+// the same walk of the same children (Marker.emptied).
+@(private = "file")
+children_all_changed :: proc(m: ^Marker, ix: ^Inv_Index, p: base.Handle) {
+	key := Walk_Key{p, ix, 2}
+	if key in m.emptied { return }
+	m.emptied[key] = true
+	for ch := dom.get(m.doc, p).first_child; ch != base.NIL_HANDLE; ch = dom.get(m.doc, ch).next {
+		if !is_element_node(m.doc, ch) { continue }
+		apply_keyed(m, ch, &ix.pos_fwd)
+		apply_keyed(m, ch, &ix.pos_bwd)
+		apply_keyed(m, ch, &ix.sib_rel)
+	}
+}
+
+// What the features of `n` reach among its siblings, one reach for each: a union would be as wide as the widest.
+@(private = "file")
+feature_reaches :: proc(ix: ^Inv_Index, n: ^dom.Node) -> []Reach {
+	out := make([dynamic]Reach, 0, 8, context.temp_allocator)
+	add :: proc(out: ^[dynamic]Reach, r: Reach) {
+		r := r
+		r.self, r.desc = false, false
+		if reach_any(r) { append(out, r) }
+	}
+	add(&out, ix.keyless)
+	if t, ok := ix.by_tag[n.name]; ok { add(&out, t) }
+	for a in n.attrs {
+		if x, ok := ix.by_attr[a.name]; ok { add(&out, x) }
+		switch a.name {
+		case "id": if x, ok := ix.by_id[a.value]; ok { add(&out, x) }
+		case "class":
+			cls := make(map[string]bool, 8, context.temp_allocator)
+			each_class(a.value, &cls)
+			for c in cls { if x, ok := ix.by_class[c]; ok { add(&out, x) } }
+		}
+	}
+	return out[:]
+}
+
 // What an inserted element's own features reach beyond its subtree (which is restyled whole anyway).
 @(private = "file")
 inserted_features :: proc(m: ^Marker, h: base.Handle, n: ^dom.Node) {
@@ -525,20 +636,7 @@ inserted_features :: proc(m: ^Marker, h: base.Handle, n: ^dom.Node) {
 
 @(private = "file")
 inserted_features_of :: proc(m: ^Marker, ix: ^Inv_Index, h: base.Handle, n: ^dom.Node) {
-	r := ix.keyless
-	if t, ok := ix.by_tag[n.name]; ok { r = reach_union(ix.keys, r, t) }
-	for a in n.attrs {
-		if x, ok := ix.by_attr[a.name]; ok { r = reach_union(ix.keys, r, x) }
-		switch a.name {
-		case "id": if x, ok := ix.by_id[a.value]; ok { r = reach_union(ix.keys, r, x) }
-		case "class":
-			cls := make(map[string]bool, 8, context.temp_allocator)
-			each_class(a.value, &cls)
-			for c in cls { if x, ok := ix.by_class[c]; ok { r = reach_union(ix.keys, r, x) } }
-		}
-	}
-	r.self, r.desc = false, false
-	if reach_any(r) { apply(m, h, r) }
+	for r in feature_reaches(ix, n) { apply(m, h, r) }
 }
 
 
@@ -786,10 +884,13 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 	local_controls := !controls && s.state.controls.query != nil
 	in_shadow :: proc(m: ^Marker, h: base.Handle) -> bool { return m.shadows && dom.containing_shadow_root(m.doc, h) != base.NIL_HANDLE }
 	structure := false
+	m.attr_touched = make(map[base.Handle]struct{}, 16, context.temp_allocator)
+	for &en in entries { if en.kind == .Attribute { m.attr_touched[en.node] = {} } }
 	attrs := make(map[string]Attr_Change, 16, context.temp_allocator)
 	attr_order := make([dynamic]string, 0, 16, context.temp_allocator)
 	for &en in entries {
 		if m.fail != "" { return }
+		if trace_restyle() { nn := dom.get(doc, en.node); pp := dom.get(doc, en.parent); trace_cause = fmt.aprintf("%v <%s>.%s in <%s>", en.kind, nn != nil ? nn.name : "gone", en.name, pp != nil ? pp.name : "-") }
 		// (cnn.com: 8 000 elements the parser attached under 80 :has() anchors, 114 000 answers, 8.7 s, to find that a full pass of 0.2 s was due)
 		if len(m.flips) > m.flip_limit {
 			m.fail = "too much changed"
@@ -845,7 +946,7 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 				if controls && p_ok && !scope_controls(m, en.node, en.parent) { m.fail = "form controls removed"; return }
 				if local_controls && p_ok && legend_in(doc, en.node) { mark(m, en.parent, true) }
 			}
-			if p_ok { children_removed(m, en.parent, en.watch, en.watch_gen) }
+			if p_ok { children_removed(m, &en, en.node in m.attr_touched ? nil : n) }
 		case .Text:
 			n := dom.get(doc, en.node)
 			p := n != nil ? n.parent : en.parent
@@ -887,6 +988,7 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 		if m.fail != "" { return }
 		ch := attrs[k]
 		if !connected(doc, ch.h) { continue }
+		if trace_restyle() { nn := dom.get(doc, ch.h); cc, _ := attr(nn, ch.name); trace_cause = fmt.aprintf("attr %s of <%s> %q -> %q", ch.name, nn.name, ch.old[:min(len(ch.old), 50)], cc[:min(len(cc), 50)]) }
 		if fresh != nil && in_fresh_insert(doc, &fresh, ch.h) { continue }
 		attribute_changed(m, ch)
 	}
@@ -910,11 +1012,12 @@ trace_roots: map[string]int   // (WREN_RESTYLE_TRACE) the lines of restyle_dom.o
 @(private = "file")
 trace_note: string            // (WREN_RESTYLE_TRACE) the :has() anchor being applied
 @(private = "file")
+trace_cause: string           // (WREN_RESTYLE_TRACE) the mutation being marked
+@(private = "file")
 trace_why: string             // (WREN_RESTYLE_TRACE) why has_flip answered that the answer of an anchor flipped
 
 // WREN_RESTYLE_TRACE=1: what made a restyle too big to scope, on standard error (for the measuring tools): the mutations, and the
 // elements whose whole subtree was marked, the biggest first.
-@(private)
 trace_restyle :: proc() -> bool {
 	@(static) known, on: bool
 	if !known { known = true; on = os.get_env("WREN_RESTYLE_TRACE", context.temp_allocator) != "" }
@@ -933,8 +1036,8 @@ trace_keys :: proc(set: map[string]bool) -> string {
 trace_marks :: proc(m: ^Marker, work: int, entries: []dom.Journal_Entry) {
 	Row :: struct { h: base.Handle, size: int }
 	rows := make([dynamic]Row, 0, 16, context.temp_allocator)
-	for h, bits in m.marks {
-		if bits & M_SUB == 0 { continue }
+	for h in m.marked {
+		if mark_bits(m.marks, h)^ & M_SUB == 0 { continue }
 		size := 0
 		stack := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
 		append(&stack, h)
@@ -1019,26 +1122,23 @@ bit_set_at :: #force_inline proc(bits: []u64, h: base.Handle) {
 	bits[i >> 6] |= u64(1) << (i & 63)
 }
 
-// Elements marked, counting whole subtrees (the work a restyle will do at least).
+// Elements marked, counting whole subtrees (the work a restyle will do at least): the walk's own way down the marks, stopped past `limit`.
 @(private = "file")
-estimate :: proc(m: ^Marker) -> int {
+estimate :: proc(m: ^Marker, limit: f64) -> int {
 	n := 0
-	for h, bits in m.marks {
-		if bits & (M_SELF | M_SUB) == 0 { continue }
-		covered := false
-		for p := flat_parent_element(m.doc, h); p != base.NIL_HANDLE; p = flat_parent_element(m.doc, p) {
-			if m.marks[p] & M_SUB != 0 { covered = true; break }
-		}
-		if covered { continue }
-		if bits & M_SUB == 0 { n += 1; continue }
-		stack := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
-		append(&stack, h)
-		for len(stack) > 0 {
-			x := pop(&stack)
-			n += 1
-			for ch := dom.flat_first_child(m.doc, x); ch != base.NIL_HANDLE; ch = dom.flat_next(m.doc, ch) {
-				if is_element_node(m.doc, ch) { append(&stack, ch) }
-			}
+	F :: struct { h: base.Handle, sub: bool }
+	stack := make([dynamic]F, 0, 64, context.temp_allocator)
+	for ch := dom.get(m.doc, m.doc.root).first_child; ch != base.NIL_HANDLE; ch = dom.get(m.doc, ch).next {
+		if is_element_node(m.doc, ch) { append(&stack, F{ch, false}) }
+	}
+	for len(stack) > 0 && f64(n) <= limit {
+		f := pop(&stack)
+		bits := mark_bits(m.marks, f.h)^
+		sub := f.sub || bits & M_SUB != 0
+		if sub || bits & M_SELF != 0 { n += 1 }
+		if !sub && bits & M_CHILD == 0 { continue }
+		for ch := dom.flat_first_child(m.doc, f.h); ch != base.NIL_HANDLE; ch = dom.flat_next(m.doc, ch) {
+			if is_element_node(m.doc, ch) && (sub || mark_bits(m.marks, ch)^ != 0) { append(&stack, F{ch, sub}) }
 		}
 	}
 	return n
@@ -1104,7 +1204,7 @@ walk :: proc(w: ^Walker, start: []Frame) {
 		f := pop(&stack)
 		n := dom.get(doc, f.h)
 		if n == nil || n.kind != .Element { continue }
-		bits := w.marks^[f.h] if w.marks != nil else 0
+		bits := w.marks != nil ? mark_bits(w.marks, f.h)^ : 0
 		sub := f.sub || bits & M_SUB != 0
 		cur := base_style_of(s, f.h)
 		inh_changed, other_changed := false, false
@@ -1136,7 +1236,7 @@ walk :: proc(w: ^Walker, start: []Frame) {
 		for ch := dom.flat_last_child(doc, f.h); ch != base.NIL_HANDLE; ch = dom.flat_prev(doc, ch) {
 			cn := dom.get(doc, ch)
 			if cn.kind != .Element { continue }
-			cb := w.marks^[ch] if w.marks != nil else 0
+			cb := w.marks != nil ? mark_bits(w.marks, ch)^ : 0
 			force := sub || inh_changed
 			if !force && other_changed {
 				// only non-inherited values changed: what takes them explicitly (`inherit`) follows
@@ -1259,14 +1359,15 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	if !shadows && ix.uses_has { exact = !watch_sync(ix, doc) }
 
 	m := Marker{e = e, s = s, doc = doc, ix = ix, shadows = shadows}
-	m.marks = make(map[base.Handle]u8, 64, context.temp_allocator)
+	m.marks = make([]u8, int(doc.nodes.used), context.temp_allocator)
+	m.marked = make([dynamic]base.Handle, 0, 64, context.temp_allocator)
 	m.removed = make([dynamic]base.Handle, 0, 4, context.temp_allocator)
 	m.walked = make(map[Walk_Key]bool, 16, context.temp_allocator)
 	m.emptied = make(map[Walk_Key]bool, 4, context.temp_allocator)
 	m.flips = make(map[Flip_Key]bool, 16, context.temp_allocator)
 	m.has_walked = make(map[Has_Walk_Key]int, 16, context.temp_allocator)
 	match_ctx_init(&m.mc, doc, s.state, context.temp_allocator)
-	w := Walker{e = e, s = s, doc = doc, marks = &m.marks}
+	w := Walker{e = e, s = s, doc = doc, marks = m.marks}
 	w.p = pass_make(e, s, doc, s.state)
 	w.arena = &s.arena
 	defer pass_destroy(w.p)
@@ -1284,8 +1385,9 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	members_prepare(&m, entries)
 	mark_mutations(&m, entries)
 	e.last_restyle.flips = len(m.flips)
+	e.last_restyle.flip_steps = m.flip_steps
 	if m.fail != "" { return fail(e, m.fail) }
-	work := estimate(&m)
+	work := estimate(&m, limit)
 	if f64(work) > limit {
 		if trace_restyle() { trace_marks(&m, work, entries) }
 		return fail(e, "too much changed")
@@ -1310,11 +1412,11 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	if m.removed_any { s.removed_any = true }
 
 	w.defer_subtrees = pool != nil && host.thread_pool_size(pool) > 1 && work >= e.settings.inc_parallel_min
-	if len(m.marks) > 0 {
+	if len(m.marked) > 0 {
 		start := make([dynamic]Frame, 0, 4, context.temp_allocator)
 		root := dom.get(doc, doc.root)
 		for ch := root.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next {
-			if m.marks[ch] != 0 { append(&start, Frame{h = ch}) }
+			if mark_bits(m.marks, ch)^ != 0 { append(&start, Frame{h = ch}) }
 		}
 		walk(&w, start[:])
 		run_deferred(&w, pool)
@@ -1375,22 +1477,22 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 // they take a changed value explicitly), as after a DOM change. `p`: a pass of `s` (it is not destroyed here). ok = false: it
 // cannot be scoped (the root font size changed) and the caller makes a full pass; `changed`: some computed style differs.
 restyle_roots :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, p: ^Pass, roots: []base.Handle, pool: ^host.Thread_Pool = nil) -> (changed: bool, ok: bool) {
-	marks := make(map[base.Handle]u8, len(roots) * 2, context.temp_allocator)
+	marks := make([]u8, int(doc.nodes.used), context.temp_allocator)
 	for h in roots {
-		marks[h] |= M_SELF
+		mark_bits(marks, h)^ |= M_SELF
 		for a := flat_parent_element(doc, h); a != base.NIL_HANDLE; a = flat_parent_element(doc, a) {
-			b := marks[a]
-			if b & M_CHILD != 0 { break }
-			marks[a] = b | M_CHILD
+			b := mark_bits(marks, a)
+			if b^ & M_CHILD != 0 { break }
+			b^ |= M_CHILD
 		}
 	}
-	w := Walker{e = e, s = s, doc = doc, p = p, arena = &s.arena, marks = &marks}
+	w := Walker{e = e, s = s, doc = doc, p = p, arena = &s.arena, marks = marks}
 	w.defer_forced = pool != nil && host.thread_pool_size(pool) > 1 && len(roots) >= e.settings.media_parallel_min
 	w.defer_subtrees = w.defer_forced
 	start := make([dynamic]Frame, 0, 4, context.temp_allocator)
 	top := dom.get(doc, doc.root)
 	for ch := top.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next {
-		if marks[ch] != 0 { append(&start, Frame{h = ch}) }
+		if mark_bits(marks, ch)^ != 0 { append(&start, Frame{h = ch}) }
 	}
 	walk(&w, start[:])
 	run_deferred(&w, pool)
@@ -1727,8 +1829,8 @@ members_prepare :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 			for &ha in ix.has_anchors {
 				if !ha.exact || ha.members == nil { continue }
 				// an attribute the chain reads, on an element that has members below it: any answer may have flipped
-				if ha.chain && !ha.members.dirty && chain_reads_attr(&ha, en.name) {
-					for x in ha.members.set { if x != en.node && is_below(doc, x, en.node) { ha.members.dirty = true; break } }
+				if ha.chain && !ha.members.dirty && chain_reads_change(&ha, &en, n) {
+					ha.members.dirty = bit_at(members_above(m, &ha), en.node)
 					if ha.members.dirty && trace_restyle() { trace_roots[fmt.aprintf("dirty by [%s] of <%s> %s -> %s", en.name, n.name, en.had_old ? en.old : "(none)", dom.get_attribute(doc, en.node, en.name) or_else "(none)")] += 1 }
 				}
 				if !arg_reads_attr(&ha, en.name) { continue }
@@ -1797,57 +1899,150 @@ has_flip :: proc(m: ^Marker, ha: ^Has_Anchor, a: base.Handle) -> bool {
 	return r
 }
 
+// What has_flip asks of the members of an anchor for each element it is asked of, as bits by handle index, made once a batch: which
+// elements have a member that stayed under them, one that came, a place one left. An answer for each ancestor of each change, each a
+// walk of every member up to the root, was 0.5 to 1 s of cnn.com's partial passes.
+@(private = "file")
+Flip_Above :: struct {
+	stayed, came, left: []u64,   // (child_only: of the parents alone)
+	unknown_left: bool,          // a member left a place that is gone: not known where it was
+	added: map[base.Handle]struct{},   // Has_Members.added
+}
+
+// Sets the bit of each element from `from` up (of `from` alone: `only`). Bits are set on the way to the root alone: an element not in the document says nothing.
+@(private = "file")
+bits_up :: proc(m: ^Marker, bits: []u64, from: base.Handle, only := false) {
+	doc := m.doc
+	stop := base.NIL_HANDLE
+	for cur := from; cur != doc.root && cur != base.NIL_HANDLE; {
+		m.flip_steps += 1
+		n := dom.get(doc, cur)
+		if n == nil { return }
+		if bit_at(bits, cur) { stop = cur; break }
+		cur = n.parent
+		if cur == base.NIL_HANDLE { return }
+	}
+	if only { if from != stop && from != base.NIL_HANDLE { bit_set_at(bits, from) }; return }
+	for cur := from; cur != stop && cur != base.NIL_HANDLE && cur != doc.root; cur = dom.get(doc, cur).parent { bit_set_at(bits, cur) }
+}
+
+// The elements with a member of the anchor under them, as of this batch's start and what came since (Has_Members.dirty).
+@(private = "file")
+members_above :: proc(m: ^Marker, ha: ^Has_Anchor) -> []u64 {
+	if bits, ok := m.above[ha]; ok { return bits }
+	if m.above == nil { m.above = make(map[^Has_Anchor][]u64, 8, context.temp_allocator) }
+	bits := make([]u64, (int(m.doc.nodes.used) + 63) / 64, context.temp_allocator)
+	for x in ha.members.set {
+		if n := dom.get(m.doc, x); n != nil { bits_up(m, bits, n.parent) }
+	}
+	m.above[ha] = bits
+	return bits
+}
+
+@(private = "file")
+flip_above_of :: proc(m: ^Marker, ha: ^Has_Anchor) -> ^Flip_Above {
+	if f, ok := m.flip_above[ha]; ok { return f }
+	if m.flip_above == nil { m.flip_above = make(map[^Has_Anchor]^Flip_Above, 8, context.temp_allocator) }
+	doc := m.doc
+	mem := ha.members
+	words := (int(doc.nodes.used) + 63) / 64
+	f := new(Flip_Above, context.temp_allocator)
+	bits := make([]u64, 3 * words, context.temp_allocator)
+	f.stayed, f.came, f.left = bits[:words], bits[words:2 * words], bits[2 * words:]
+	f.added = make(map[base.Handle]struct{}, len(mem.added), context.temp_allocator)
+	for x in mem.added {
+		f.added[x] = {}
+		if n := dom.get(doc, x); n != nil { bits_up(m, f.came, n.parent, ha.child_only) }
+	}
+	gone := make([dynamic]base.Handle, 0, 4, context.temp_allocator)
+	for x in mem.set {
+		n := dom.get(doc, x)
+		if n == nil { append(&gone, x); continue }
+		if x not_in f.added { bits_up(m, f.stayed, n.parent, ha.child_only) }
+	}
+	for x in gone { delete_key(&mem.set, x) }
+	for p in mem.removed {
+		if dom.get(doc, p) == nil { f.unknown_left = true; continue }
+		if ha.child_only { bit_set_at(f.left, p) } else {
+			// (where the member left from may have left the document too: its ancestors are what it can tell)
+			for cur := p; cur != base.NIL_HANDLE && !bit_at(f.left, cur); {
+				m.flip_steps += 1
+				bit_set_at(f.left, cur)
+				cn := dom.get(doc, cur)
+				if cn == nil { break }
+				cur = cn.parent
+			}
+		}
+	}
+	m.flip_above[ha] = f
+	return f
+}
+
 @(private = "file")
 has_flip_scan :: proc(m: ^Marker, ha: ^Has_Anchor, a: base.Handle) -> bool {
 	doc := m.doc
 	mem := ha.members
+	f := flip_above_of(m, ha)
 	valid :: proc(m: ^Marker, x: base.Handle) -> bool { return dom.get(m.doc, x) != nil && connected(m.doc, x) }
 	// x is under a (a child of it when child_only)
 	under :: proc(m: ^Marker, ha: ^Has_Anchor, a, x: base.Handle) -> bool {
 		xn := dom.get(m.doc, x)
 		if xn == nil { return false }
 		if ha.child_only { return xn.parent == a }
-		for cur := xn.parent; cur != base.NIL_HANDLE; {
-			if cur == a { return true }
-			cn := dom.get(m.doc, cur)
-			if cn == nil { return false }
-			cur = cn.parent
-		}
-		return false
+		return is_below(m.doc, x, a)
 	}
-	is_added :: proc(mem: ^Has_Members, x: base.Handle) -> bool {
-		for y in mem.added { if y == x { return true } }
-		return false
-	}
-	gone := make([dynamic]base.Handle, 0, 4, context.temp_allocator)
 	stayed := false
-	for x in mem.set {
-		if dom.get(doc, x) == nil { append(&gone, x); continue }
-		if is_added(mem, x) { continue }
-		if !valid(m, x) { continue }
-		if under(m, ha, a, x) && chain_holds(m, ha, a, x) { stayed = true; break }
-	}
-	for x in gone { delete_key(&mem.set, x) }
-	if stayed { return false }
-	now := false
-	for x in mem.added { if valid(m, x) && under(m, ha, a, x) && chain_holds(m, ha, a, x) { now = true; trace_why = "a member came"; break } }
-	before := false
-	// (a two-compound chain: only a member that was under a head can have made the answer true, see Has_Members.held)
-	for p in mem.removed {
-		if ha.first_mask != 0 && !mem.lost_held { break }
-		if p == a { before = true; trace_why = "a member left the anchor"; break }
-		pn := dom.get(doc, p)
-		if pn == nil { before = true; trace_why = "a member left, its parent is gone"; break }   // not known where it was
-		if ha.child_only { continue }
-		for cur := pn.parent; cur != base.NIL_HANDLE; {
-			if cur == a { before = true; trace_why = "a member left under the anchor"; break }
-			cn := dom.get(doc, cur)
-			if cn == nil { break }
-			cur = cn.parent
+	if bit_at(f.stayed, a) {
+		stayed = !ha.chain
+		if ha.chain {
+			for x in mem.set {
+				if dom.get(doc, x) == nil || x in f.added || !valid(m, x) { continue }
+				if under(m, ha, a, x) && chain_holds(m, ha, a, x) { stayed = true; break }
+			}
 		}
-		if before { break }
 	}
+	if stayed { return false }
+	now := bit_at(f.came, a)
+	if now && ha.chain {
+		now = false
+		for x in mem.added { if valid(m, x) && under(m, ha, a, x) && chain_holds(m, ha, a, x) { now = true; break } }
+	}
+	if now { trace_why = "a member came" }
+	// (a two-compound chain: only a member that was under a head can have made the answer true, see Has_Members.held)
+	before := (ha.first_mask == 0 || mem.lost_held) && (f.unknown_left || bit_at(f.left, a))
+	if before { trace_why = "a member left" }
 	return now != before
+}
+
+// Could the attribute change `en` on the element `n` ABOVE a member change what the chain of `ha` matches? A class attribute says which
+// classes came and went: one rewritten with the same tokens (cnn.com, `layout  cnn` to `layout cnn` on <body>), or with others the chain
+// does not name, changes nothing there.
+@(private = "file")
+chain_reads_change :: proc(ha: ^Has_Anchor, en: ^dom.Journal_Entry, n: ^dom.Node) -> bool {
+	if !chain_reads_attr(ha, en.name) { return false }
+	if en.name != "class" { return true }
+	before := make(map[string]bool, 8, context.temp_allocator)
+	now := make(map[string]bool, 8, context.temp_allocator)
+	if en.had_old { each_class(en.old, &before) }
+	if v, has := attr(n, "class"); has { each_class(v, &now) }
+	for c in before { if c not_in now && chain_reads_class(ha, c) { return true } }
+	for c in now { if c not_in before && chain_reads_class(ha, c) { return true } }
+	return false
+}
+
+@(private = "file")
+chain_reads_class :: proc(ha: ^Has_Anchor, class: string) -> bool {
+	for comp in ha.cx.compounds[:len(ha.cx.compounds) - 1] { if compound_names_class(comp, class) { return true } }
+	return false
+}
+
+@(private = "file")
+compound_names_class :: proc(comp: css.Compound, class: string) -> bool {
+	for sp in comp.simples {
+		if sp.kind == .Class && sp.name == class { return true }
+		if sp.list != nil { for &cx in sp.list^ { for c in cx.compounds { if compound_names_class(c, class) { return true } } } }
+	}
+	return false
 }
 
 // Could a change of attribute `name` on an element ABOVE a member change what the chain of `ha` matches? Only the compounds before
