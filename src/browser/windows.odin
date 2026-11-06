@@ -99,7 +99,6 @@ Window_Own :: struct {
 	nav_press:           Nav_Press,           // history_ui.odin: the back/forward button held down
 	devices:             Device_Input,        // page_input.odin: the fingers and pens over the page
 	page_prep:           Page_Prep,           // page_frame.odin: the page as prepared in the page phase, for its paint
-	page_snapshot_wanted: bool,               // shell_frames.odin: the frame keeps the page's pixels for chrome frames
 	page_painted:        Paint_Source,        // shell_frames.odin: what the page's last frame was painted from, besides its layout
 	a11y:                Page_A11y,           // a11y_page.odin: the accessibility trees of the page shown and its frames
 	devtools:            Devtools,            // devtools.odin: the window's developer tools, docked or in a window of their own (dev())

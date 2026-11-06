@@ -76,7 +76,7 @@ Shown_Radii :: struct { clip: i32, radii: [4]f32 }
 shell_shown_set :: proc(app: ^App, t: ^Tab, painting := false) -> (sh: Shown) {
 	sh.t = t
 	l := &t.layout
-	if app.chrome_frames.page_locked || t.page == nil || !l.valid { return }
+	if app.chrome_frames.page_work == .Layout || t.page == nil || !l.valid { return }
 	sh.set = true
 	sh.scroll = t.scroll
 	sh.mats = make([dynamic]Shown_Mat, context.temp_allocator)
@@ -185,7 +185,7 @@ shell_shown_put :: proc(sh: ^Shown) {
 // The chrome frame has something of its own to show of the tab's page over its last layout: an animation the compositor runs,
 // a container it scrolled, a blinking caret. `moving`: it changes by itself (the next chrome frame shows something new).
 shell_shown_wanted :: proc(app: ^App, t: ^Tab) -> (wanted, moving: bool) {
-	if t.page == nil || app.chrome_frames.page_locked { return }
+	if t.page == nil || app.chrome_frames.page_work == .Layout { return }
 	tmp := runtime.default_temp_allocator_temp_begin()   // (also asked between two instructions of the guest: shell_preempt)
 	defer runtime.default_temp_allocator_temp_end(tmp)
 	any: bool
@@ -204,7 +204,7 @@ shell_shown_wanted :: proc(app: ^App, t: ^Tab) -> (wanted, moving: bool) {
 // styles they are read from). True: one moves at every frame.
 @(private = "file")
 shell_animated :: proc(app: ^App, t: ^Tab, lays_out: bool, out: ^[dynamic]style.Compositor_Value) -> (moving, any: bool) {
-	if app.chrome_frames.styling { return }
+	if app.chrome_frames.page_work == .Styles { return }
 	return page.animations_compositor_values(t.page, pacer_of(app).frame_ms, shell_shown_offsets(app, t), lays_out, out)
 }
 
@@ -256,7 +256,7 @@ shell_box_scroll_to :: proc(app: ^App, t: ^Tab, node: base.Handle, to: draw.Vec2
 // way takes it (shown at once when the page can be painted from its layout, else it waits for the page), else the document.
 // False: the document's.
 shell_wheel_box :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2) -> (taken, wait: bool) {
-	if app.chrome_frames.page_locked || !t.layout.valid { return false, false }
+	if app.chrome_frames.page_work == .Layout || !t.layout.valid { return false, false }
 	sh := shell_shown_set(app, t)
 	node := wheel_scroller(app, t, p, d)
 	shell_shown_put(&sh)
