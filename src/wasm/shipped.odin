@@ -59,6 +59,7 @@ shipped_load :: proc(image: Digest, polled: bool) -> wt_module {
 		wasmtime_error_delete(e)
 		return shipped_refuse()
 	}
+	shipped_pages_drop(code)
 	return m
 }
 
