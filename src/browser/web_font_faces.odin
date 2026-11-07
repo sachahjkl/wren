@@ -190,7 +190,7 @@ blocking_text_update :: proc(pf: ^Page_Fonts, t: ^Tab) {
 		b.timer = host.set_timer(&the_app.loop, next_ms + 1, 0, proc(data: rawptr) {
 			the_app.page_render.fonts.blocking.timer = base.NIL_HANDLE
 			request_frames(the_app, 2)
-		}, nil)
+		}, nil, class = .Input)
 	}
 }
 

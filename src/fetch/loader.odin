@@ -40,7 +40,7 @@ hold_requests :: proc(l: ^Loader, on: bool) {
 	if l == nil || l.hold == on { return }
 	l.hold = on
 	if on { return }
-	for h in l.held { host.post(l.loop, kick, new_clone(Kick{l, h})) }
+	for h in l.held { host.post(l.loop, kick, new_clone(Kick{l, h}), .Arrival) }
 	clear(&l.held)
 }
 
@@ -69,6 +69,7 @@ Stage :: enum u8 { Created, Preflight, Fetching, Local }
 Task :: struct {
 	loader:   ^Loader,
 	self:     base.Handle,
+	work:     base.Work,   // who asked: what the answer calls works for them
 
 	// the request, owned
 	target:          url.URL,   // the current URL of the request (changes on redirects)
@@ -147,7 +148,7 @@ Kick :: struct { l: ^Loader, h: base.Handle }
 start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 	r := d.request
 	t := Task{
-		loader = l, mode = r.mode, credentials = r.credentials, redirect = r.redirect, destination = r.destination,
+		loader = l, work = host.work_now(l.loop, answer_class(r.destination)), mode = r.mode, credentials = r.credentials, redirect = r.redirect, destination = r.destination,
 		referrer_policy = r.referrer_policy, no_referrer = r.no_referrer, user_activation = r.user_activation,
 		initiator = r.initiator, max_body = r.max_body, on_event = d.on_event, user = d.user, scope = d.scope, collect = d.collect,
 		script = r.script, parser_inserted = r.parser_inserted, ping = r.ping, skip_service_worker = r.skip_service_worker,
@@ -158,6 +159,7 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 	t.nonce = strings.clone(r.nonce)
 	t.method = http.normalize_method(r.method == "" ? "GET" : r.method)
 
+	if r.mode == .Navigate && r.destination == .Document { base.span_mark("navigate") }
 	u, ok := url.parse_absolute(r.url)
 	if ok { t.target = u } else { t.early_error = .Bad_URL }
 	if ok && l.observer.block != nil && l.observer.block(l.observer.user, t.scope, t.target.href) { t.early_error = .Blocked_By_Client }
@@ -194,7 +196,7 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 			navigate = r.mode == .Navigate, parser = r.parser_inserted, initiator_url = init_url})
 	}
 	if d.scope != nil { tp.cleanup = base.on_close(d.scope, task_scope_closed, new_clone(Kick{l, h})) }
-	host.post(l.loop, kick, new_clone(Kick{l, h}))
+	host.post(l.loop, kick, new_clone(Kick{l, h}), .Arrival)
 	return h
 }
 
@@ -305,7 +307,7 @@ deliver :: proc(t: ^Task, ev: ^Event) {
 			observe(t, Observed{kind = .Failed, error = ev.error, detail = ev.detail, bytes = t.obs_bytes, blocked_by = ev.error == .Blocked_By_Client ? ev.detail : ""})
 		}
 	}
-	if t.on_event != nil { t.on_event(t.user, t.self, ev) }
+	if t.on_event != nil { answer(t, ev) }
 }
 
 @(private)
@@ -772,7 +774,7 @@ main_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 			if t.peek && t.on_event != nil {
 				// (not a piece of a body for the observers: they get the whole of it on Done)
 				out := Event{kind = .Data, data = t.collected[:]}
-				t.on_event(t.user, t.self, &out)
+				answer(t, &out)
 			}
 		} else if len(data) > 0 || t.filter.push == nil {
 			out := Event{kind = .Data, data = data}
@@ -1257,4 +1259,21 @@ content_security_check :: proc(t: ^Task) -> bool {
 		return false
 	}
 	return true
+}
+// What the answer to a request is, among the work of the thread: what a document waits for, or a page's own exchange.
+@(private)
+answer_class :: proc(d: Destination) -> base.Work_Class {
+	#partial switch d {
+	case .Empty, .Report, .Manifest: return .Background
+	}
+	return .Arrival
+}
+
+// Hands an event to who asked for it (the task may be gone when that returns).
+@(private)
+answer :: proc(t: ^Task, ev: ^Event) {
+	loop := t.loader.loop
+	scope := host.work_enter(loop, t.work)
+	t.on_event(t.user, t.self, ev)
+	host.work_leave(loop, scope)
 }

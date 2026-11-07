@@ -15,6 +15,7 @@ package page
 import "core:fmt"
 import "core:strings"
 import "wb:base"
+import "wb:host"
 import "wb:dom"
 import "wb:wasm"
 
@@ -115,7 +116,7 @@ object_add_listener :: proc(p: ^Page, h: u64, type: string, callback, user: u32,
 	}
 	id := p.doc.next_listener
 	p.doc.next_listener += 1
-	append(&o.listeners, dom.Listener{id = id, type = strings.clone(type), callback = callback, user = user, owner = owner, once = once, capture = capture})
+	append(&o.listeners, dom.Listener{id = id, type = strings.clone(type), callback = callback, user = user, owner = owner, once = once, capture = capture, work = page_work(p, .Background)})
 	return id, .None
 }
 
@@ -184,7 +185,9 @@ object_dispatch :: proc(p: ^Page, h: u64, proto: dom.Event) -> bool {
 		inst := instance_by_index(p, l.owner)
 		if inst != nil {
 			loaf_set_invoker(p, .Event_Listener, proto.type)   // Long Animation Frames: invoker is the event type
+			scope := host.work_enter(p.loop, callback_work(l.work, p.loop.work.class))
 			call_guest(p, inst, l.callback, argv[:])
+			host.work_leave(p.loop, scope)
 		}
 		e := base.pool_get(&p.dp.events, eh)
 		if e == nil || e.stop_immediate { break }

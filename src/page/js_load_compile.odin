@@ -287,7 +287,7 @@ compile_main :: proc(data: rawptr) {
 		if !job.ok { the_pages.compiler.failed += 1 }
 		the_pages.compiler.total_ms += job.ms
 		// once stopping, the interface loop may be gone: the result stays in the cache only
-		if the_pages.compiler.stop { compile_job_free(job) } else { host.post(job.ui_loop, compile_done, job) }
+		if the_pages.compiler.stop { compile_job_free(job) } else { host.post(job.ui_loop, compile_done, job, .Arrival) }
 		sync.mutex_unlock(&the_pages.compiler.mu)
 		free_all(context.temp_allocator)
 	}

@@ -108,6 +108,7 @@ timeline_present :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 	}
 
 	if best.node != base.NIL_HANDLE && best.area > t.lcp_largest {
+		if frame_navigable_of(p) == nil { base.span_mark("largest-contentful-paint") }
 		t.lcp_largest = best.area
 		lcp_add_entry(p, t, best, now_ms)
 	}

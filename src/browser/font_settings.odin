@@ -138,7 +138,7 @@ font_settings_init :: proc(app: ^App) {
 	// color glyphs drawn on their thread: a frame shows them (host.post wakes the loop from any thread)
 	font.set_color_ready_callback(&app.fonts, proc(user: rawptr) {
 		a := (^App)(user)
-		host.post(&a.loop, proc(data: rawptr) { app := (^App)(data); request_frames(app, 2) }, a)
+		host.post(&a.loop, proc(data: rawptr) { app := (^App)(data); request_frames(app, 2) }, a, .Input)
 	}, app)
 	app.font_watch = config.watch(&app.prefs, "font.", font_prefs_changed, app)
 	app.text_watch = config.watch(&app.prefs, "text.", font_prefs_changed, app)

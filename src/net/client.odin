@@ -533,7 +533,7 @@ push_event :: proc(c: ^Client, ev: Event) {
 	post := !c.drain_pending
 	c.drain_pending = true
 	sync.mutex_unlock(&c.mu)
-	if post { host.post(c.loop, drain, c) }
+	if post { host.post(c.loop, drain, c, .Arrival) }
 }
 
 @(private)

@@ -358,7 +358,7 @@ styles_sync_soon :: proc(p: ^Page) {
 		p.link_sync_timer = base.NIL_HANDLE
 		if p.closed || p.engine == nil || p.doc == nil { return }
 		sync_styles(p)   // (what it changed marks the rules dirty)
-	}, p, p.scope)
+	}, p, p.scope, .Arrival)
 }
 
 // Whether `node` is in the part of the document the parser's reveal has not attached yet (js_load.odin).

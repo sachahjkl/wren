@@ -75,6 +75,7 @@ Web_State :: struct {
 	id:              u64,       // 0 for a worker's realm (not in the live-page registry)
 	live:            bool,
 	visible:         bool,
+	own_origin:      u32,       // its origin's number on the loop (work.odin), once asked for
 	origin_ns:       i64,       // loop clock at creation: performance.now() == 0
 	origin_unix_ms:  f64,       // performance.timeOrigin
 	timer_nesting:   int,       // nesting level of the timer task running now, 0 outside timer tasks
@@ -255,17 +256,17 @@ Page_Task :: struct {
 
 // Queues `fn` as a task of the page on its loop. It runs with p == nil when the page closed meanwhile. A worker's realm
 // (on its own thread, not in the registry of live pages) is followed through its scope instead of its id.
-post_page_task :: proc(p: ^Page, fn: Page_Task_Proc, data: rawptr) {
+post_page_task :: proc(p: ^Page, fn: Page_Task_Proc, data: rawptr, class := base.Work_Class.Background) {
 	if p.web == nil || p.web.id == 0 {
 		t := new(Realm_Task)
 		t^ = Realm_Task{page = p, fn = fn, data = data}
 		t.cleanup = base.on_close(p.scope, proc(d: rawptr) { (^Realm_Task)(d).dead = true }, t)
-		host.post(p.loop, run_realm_task, t)
+		host.post(p.loop, run_realm_task, t, class)
 		return
 	}
 	t := new(Page_Task)
 	t^ = Page_Task{id = p.web.id, fn = fn, data = data}
-	host.post(p.loop, run_page_task, t)
+	host.post_work(p.loop, run_page_task, t, page_work(p, class))
 }
 
 // The page tasks still in the loop's queue when the browser exits: none of their pages is left, so each one frees its data

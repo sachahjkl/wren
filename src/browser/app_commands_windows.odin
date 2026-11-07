@@ -51,14 +51,14 @@ cmd_subclass :: proc "system" (hwnd: win.HWND, msg: win.UINT, wparam: win.WPARAM
 		case 1: c = .Back      // XBUTTON1
 		case 2: c = .Forward   // XBUTTON2
 		}
-		if c != .None { host.post(&app.loop, app_command_run, new_clone(App_Command_Post{app, c})) }
+		if c != .None { host.post(&app.loop, app_command_run, new_clone(App_Command_Post{app, c}), .Input) }
 		return 1   // (no WM_APPCOMMAND follows: DefWindowProc is not called)
 	case WM_APPCOMMAND:
 		raw := int(win.HIWORD(u32(lparam)))
 		if raw & FAPPCOMMAND_MOUSE != 0 { break }   // (the buttons above)
 		c = browser_command_of_appcommand(raw & 0x0FFF)
 		if c != .None {
-			host.post(&app.loop, app_command_run, new_clone(App_Command_Post{app, c}))
+			host.post(&app.loop, app_command_run, new_clone(App_Command_Post{app, c}), .Input)
 			return 1
 		}
 	}

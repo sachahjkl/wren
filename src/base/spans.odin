@@ -1,7 +1,8 @@
 package base
 
 // WREN_SPANS=<prefix>: what a process's threads spend their time on, span by span, written as <prefix>.<pid>.tsv when the
-// process ends (start ms, duration ms, thread, kind, label). For the measuring tools: the frame's phases and the sampling
+// process ends (start ms, duration ms, thread, kind, label, and for what has an owner: class, page, origin, third party;
+// `wrentool threadtime` reads them). For the measuring tools: the frame's phases and the sampling
 // profile say how much, these say in which order and on behalf of what: which task, which script, how long it waited for its
 // bytes and for its bytecode, what the engine did inside it. A span is one store in a table made once; off, one test of a flag.
 // Spans of one thread nest by their times: what a span spent itself is its time less the spans inside it.
@@ -33,6 +34,23 @@ Span_Kind :: enum u8 {
 	Compile_Wait, // ... from there to its bytecode (off-thread compile)
 	Turn_Wait,    // ... from there to its run
 	Off_Thread,   // a compile thread at work
+	Work,         // inside a task, what another owner does: a script's run, a response's callback, a listener
+	Origin,       // not time: this thread's number for an origin (Work.origin), its name the label
+}
+
+// The classes of work on a thread. What a loop may put off is the last one (host: Scheduling).
+Work_Class :: enum u8 {
+	Background,   // timers, and whatever nobody said is more
+	Arrival,      // parsing, and what arrives for it: scripts, sheets, what the pump does next
+	Input,        // input and paint
+}
+
+// Who a task or a timer works for, and what kind of work it is. The zero value: the browser's own, in the background.
+Work :: struct {
+	page:        u32,    // the document's (0: the browser's own work)
+	origin:      u32,    // the script's that asked for it, as far as it is known, numbered by the thread's loop (0: none)
+	class:       Work_Class,
+	third_party: bool,   // that origin is not of the site of the page on top
 }
 
 Span :: struct {
@@ -41,6 +59,7 @@ Span :: struct {
 	line:      i32,
 	thread:    i32,
 	kind:      Span_Kind,
+	work:      Work,
 }
 
 @(private = "file")
@@ -92,12 +111,12 @@ span_now :: #force_inline proc "contextless" () -> i64 {
 }
 
 // A span from `start` (span_now) to now. A string that does not outlive the call is copied (`copy_label`).
-span_add :: proc "contextless" (kind: Span_Kind, start: i64, label: string, line: i32 = 0, copy_label := false) {
+span_add :: proc "contextless" (kind: Span_Kind, start: i64, label: string, line: i32 = 0, copy_label := false, work := Work{}) {
 	if !spans.on { return }
-	span_add_until(kind, start, span_now(), label, line, copy_label)
+	span_add_until(kind, start, span_now(), label, line, copy_label, work)
 }
 
-span_add_until :: proc "contextless" (kind: Span_Kind, start, end: i64, label: string, line: i32 = 0, copy_label := false) {
+span_add_until :: proc "contextless" (kind: Span_Kind, start, end: i64, label: string, line: i32 = 0, copy_label := false, work := Work{}) {
 	if !spans.on { return }
 	i := sync.atomic_add(&spans.count, 1)
 	if i >= len(spans.table) { return }
@@ -110,7 +129,7 @@ span_add_until :: proc "contextless" (kind: Span_Kind, start, end: i64, label: s
 			copy(spans.labels[at:][:len(label)], label)
 		}
 	}
-	spans.table[i] = Span{start = start, ns = end - start, label = text, line = line, thread = i32(sync.current_thread_id()), kind = kind}
+	spans.table[i] = Span{start = start, ns = end - start, label = text, line = line, thread = i32(sync.current_thread_id()), kind = kind, work = work}
 }
 
 span_mark :: proc "contextless" (label: string) { span_add(.Mark, span_now(), label) }
@@ -124,6 +143,7 @@ spans_write :: proc() {
 	for s in spans.table[:n] {
 		fmt.sbprintf(&b, "%.3f\t%.3f\t%d\t%v\t%s", f64(s.start) / NS_PER_MS, f64(s.ns) / NS_PER_MS, s.thread, s.kind, s.label)
 		if s.line != 0 { fmt.sbprintf(&b, ":%d", s.line) }
+		if s.kind == .Task || s.kind == .Work || s.kind == .Origin || s.kind == .Realm { fmt.sbprintf(&b, "\t%v\t%d\t%d\t%v", s.work.class, s.work.page, s.work.origin, s.work.third_party) }
 		strings.write_byte(&b, '\n')
 	}
 	_ = os.write_entire_file(spans.path, transmute([]byte)strings.to_string(b))

@@ -731,6 +731,9 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	t := load.tab
 	app := the_app
 	defer { request_frames(app, 3) }
+	// (its bytes and the scan for what to ask for next are the document's work, not the browser's)
+	scope := host.work_enter(&app.loop, load.page != nil ? page.page_work(load.page, .Arrival) : app.loop.work)
+	defer host.work_leave(&app.loop, scope)
 	switch ev.kind {
 	case .Response:
 		r := ev.response
@@ -1184,7 +1187,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			if ev.button == .Right { page_context_press(app, t, ev.pos) }
 		case .Mouse_Release:
 			if c := side_button_command(ev.button); c != .None {
-				host.post(&app.loop, app_command_run, new_clone(App_Command_Post{app, c}))
+				host.post(&app.loop, app_command_run, new_clone(App_Command_Post{app, c}), .Input)
 				continue
 			}
 			if !t.layout.valid { continue }
