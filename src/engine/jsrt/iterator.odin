@@ -21,35 +21,52 @@ Iter_Kind :: enum u8 {
 	async_from_sync,
 }
 
-// One struct for every built-in iterator; the meaning of the generic slots depends on `kind`.
+// One struct for every built-in iterator; the meaning of the generic slots depends on `kind`. What only the iterators of
+// iterators and of regexps hold is in an Iter_Extra: an iterator of an array, a map, a string or a for-in is a third of the size.
 Iter_State :: struct {
 	kind:    Iter_Kind,
-	target:  Value, // iterated object (array, map, set, string, underlying iterator)
-	a:       Value, // helper: next method / async-from-sync: next method / regexp: the regexp
-	b:       Value, // helper: mapper/predicate / concat: iterables list
-	c:       Value, // helper: inner iterator (flatMap) / regexp: the string
-	d:       Value, // helper: inner next method
-	index:   i64,
-	count:   i64,
 	sub:     u8,    // helper kind / regexp flags
 	done:    bool,
 	running: bool,
 	partial: bool,          // helper windows: yield a partial final window
+	target:  Value, // iterated object (array, map, set, string, underlying iterator)
+	index:   i64,
+	count:   i64,
 	keys:    [dynamic]Atom, // for-in snapshot
-	buf:     [dynamic]Value, // helper chunks/windows: buffered values
+	using extra: ^Iter_Extra, // nil but for the kinds of iter_state_extra
 }
 
-// The state is in the object's cell (an iterator of a `for...of` or of a destructuring lives as long as its state).
+Iter_Extra :: struct {
+	a:   Value, // helper: next method / async-from-sync: next method / regexp: the regexp
+	b:   Value, // helper: mapper/predicate / concat: iterables list
+	c:   Value, // helper: inner iterator (flatMap) / regexp: the string
+	d:   Value, // helper: inner next method
+	buf: [dynamic]Value, // helper chunks/windows: buffered values
+}
+
+@(private = "file")
+iter_state_extra :: proc "contextless" (kind: Iter_Kind) -> bool {
+	#partial switch kind {
+	case .helper, .wrap, .concat, .async_from_sync, .regexp_string: return true
+	}
+	return false
+}
+
+// The state is in the object's cell, its Iter_Extra after it (an iterator of a `for...of` or of a destructuring lives as long as its state).
 iter_state_new :: proc(ctx: ^Context, proto: ^Object, class: Class_ID, kind: Iter_Kind, target: Value) -> ^Object {
 	rt := ctx.rt
-	o := object_new_shape(rt, shape_root_for(rt, proto), class, size_of(Iter_State))
+	extra := iter_state_extra(kind)
+	o := object_new_shape(rt, shape_root_for(rt, proto), class, size_of(Iter_State) + (extra ? size_of(Iter_Extra) : 0))
 	st := cast(^Iter_State)object_tail(o)
 	st.kind = kind
 	st.target = target
-	st.a = UNDEFINED
-	st.b = UNDEFINED
-	st.c = UNDEFINED
-	st.d = UNDEFINED
+	if extra {
+		st.extra = cast(^Iter_Extra)(uintptr(st) + size_of(Iter_State))
+		st.a = UNDEFINED
+		st.b = UNDEFINED
+		st.c = UNDEFINED
+		st.d = UNDEFINED
+	}
 	o.data = st
 	return o
 }
@@ -59,12 +76,13 @@ iter_state_free :: proc(rt: ^Runtime, st: ^Iter_State) {
 		map_iterator_release(st)
 	}
 	delete(st.keys)
-	delete(st.buf)
+	if st.extra != nil {delete(st.buf)}
 }
 
 iter_state_trace :: proc(rt: ^Runtime, st: ^Iter_State) {
-	for v in st.buf {mark_value(rt, v)}
 	mark_value(rt, st.target)
+	if st.extra == nil {return}
+	for v in st.buf {mark_value(rt, v)}
 	mark_value(rt, st.a)
 	mark_value(rt, st.b)
 	mark_value(rt, st.c)
