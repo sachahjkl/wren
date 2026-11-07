@@ -356,7 +356,7 @@ shell_preempt :: proc(user: rawptr) {
 	// own, a wake it asked for (a caret's blink), or the page's animations the compositor runs and its caret's blink
 	// (shell_shown.odin). Otherwise the page keeps the thread: no cost to a busy page nobody touches.
 	unseen := (app.chrome_frames.phase == .Loop || app.chrome_frames.phase == .Anim) && !app.chrome_frames.outer_taken && len(app.chrome_frames.outer) > 0   // the frame's own input, not drawn yet
-	if !unseen && !shell_input_pending() && !busy_input_pending(app) && !ui.needs_frame(wnd.ui) && !(ui.wake_ms(wnd.ui) > 0 && since >= f64(ui.wake_ms(wnd.ui))) && !shell_page_moves(app) && !selection_preview_scrolls(app) { return }
+	if !unseen && !shell_input_pending() && !busy_input_pending(app) && !ui.needs_frame(wnd.ui) && !(ui.wake_ms(wnd.ui) > 0 && since >= f64(ui.wake_ms(wnd.ui))) && !shell_page_moves(app) && !selection_preview_scrolls(app) && !autoscroll_moves(app) { return }
 	shell_chrome_frame(app)
 }
 
@@ -439,6 +439,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	chrome := shell_split_input(app, polled)
 	selection_preview_frame(app)   // a drag past the view's edge scrolls (selection_shell.odin)
 	pacer_begin_frame(app, chrome)
+	autoscroll_chrome_frame(app)   // page_autoscroll.odin: its time is this frame's
 	render.resize(&app.r, wnd.win.size)
 	size := draw.Vec2{f32(wnd.win.size.x), f32(wnd.win.size.y)}
 	base_style := chrome_frame_style(app)
@@ -461,6 +462,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
 	ui.draw_tree(wnd.ui, &app.dc)
+	autoscroll_paint(app, &app.dc)
 	draw.end_frame(&app.dc)
 	platform.frame_gate_stage(gate, .Presenting)
 	remote_capture_arm(app)   // remote_shell.odin: a capture of this window
@@ -505,6 +507,10 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 	over_page := page_shown && draw.rect_contains(wnd.page_rect, ev.pos) && !ui.ctx_menu_any_open() && !hud_captures(app, ev.pos)
 	g := gesture_of(app)
 	shown_tab := page_shown ? t : nil
+	if g.owner == .Autoscroll && !hold_buttons_and_keys && autoscroll_event(app, ev) {
+		if ev.kind == .Mouse_Release { g.held -= {ev.button} }
+		return
+	}
 	if page_shown && !hold_buttons_and_keys && shell_bar_event(app, t, ev, over_page) {
 		if ev.kind != .Mouse_Move { g.held -= {ev.button} }
 		if ev.kind == .Mouse_Move { append(chrome, ev) }   // (the chrome's hover)

@@ -141,12 +141,18 @@ autoscroll_page_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: b
 // middle button ends hold mode, a tap latches; any press ends a latched session, and that press is swallowed (it only ends autoscroll, as the
 // browsers do). True when the event was the session's.
 autoscroll_page_event :: proc(app: ^App, ev: platform.Event, index: int) -> bool {
+	took := autoscroll_event(app, ev)
+	if took && ev.kind == .Key_Press { consume(app, index) }
+	return took
+}
+
+// What an event does to the session, in a full frame or a chrome frame (shell_frames.odin).
+autoscroll_event :: proc(app: ^App, ev: platform.Event) -> bool {
 	g := gesture_of(app)
 	#partial switch ev.kind {
 	case .Key_Press:
 		if ev.key != .Escape { return false }
 		gesture_cancel(app)
-		consume(app, index)
 		return true
 	case .Mouse_Leave, .Scroll:
 		gesture_cancel(app)
@@ -188,6 +194,25 @@ autoscroll_tick :: proc(app: ^App, t: ^Tab) -> bool {
 	}
 	request_frames(app, 2)
 	return true
+}
+
+// The session moves the page: a chrome frame is wanted though no input comes.
+autoscroll_moves :: proc(app: ^App) -> bool {
+	g := gesture_of(app)
+	return g.owner == .Autoscroll && ui.autoscroll_velocity(&g.autoscroll.auto, app.autoscroll_cfg.cfg) != {}
+}
+
+// A chrome frame, under a page that keeps the thread: the session goes on, as the wheel does, on what the frame shows; the
+// document and the containers take the position at the page's turn (shell_take_scroll).
+autoscroll_chrome_frame :: proc(app: ^App) {
+	g := gesture_of(app)
+	t := current_tab(app)
+	if g.owner != .Autoscroll || t == nil || t != g.tab || t.page != g.top { return }
+	ps := &g.autoscroll
+	ui.autoscroll_point(&ps.auto, active_window(app).ui.mouse)
+	vel := ui.autoscroll_velocity(&ps.auto, app.autoscroll_cfg.cfg)
+	if vel == {} { return }
+	shell_chain_by(app, t, ps.is_doc ? base.NIL_HANDLE : ps.node, autoscroll_frame_delta(vel, frame_seconds(app), max(page_scale(app), 0.01)))
 }
 
 // The cursor the session asks for (over the page area); .Arrow when none is active.

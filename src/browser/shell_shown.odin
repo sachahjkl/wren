@@ -252,6 +252,26 @@ shell_box_scroll_to :: proc(app: ^App, t: ^Tab, node: base.Handle, to: draw.Vec2
 	append(&app.chrome_frames.boxes, Box_Scroll{node, v})
 }
 
+// A busy page moved by `d` device px from container `node` out (NIL: the document), as scroll_chain_by: what a container has no room
+// for goes to those around it, then to the document. A container waits when the page cannot be painted from its layout.
+shell_chain_by :: proc(app: ^App, t: ^Tab, node: base.Handle, d: draw.Vec2) {
+	rest := d
+	if node != base.NIL_HANDLE {
+		if !shell_layout_paintable(app, t) { return }
+		l := &t.layout
+		if bi := lay.box_index(l, node); bi != lay.NONE {
+			for sp := l.boxes[bi].scroll_space; sp != lay.NONE && rest != {}; sp = l.spaces[sp].parent {
+				if l.spaces[sp].kind != .Scroll { continue }
+				box := l.boxes[l.spaces[sp].box].node
+				from := shell_box_shown(app, t, box)
+				shell_box_scroll_to(app, t, box, from + rest)
+				rest -= shell_box_shown(app, t, box) - from
+			}
+		}
+	}
+	if rest != {} { shell_async_scroll_to(app, t, shell_shown_scroll(t) + rest) }
+}
+
 // The wheel over a busy page at `p` (page-area px), `d` device px: the container under the pointer that can still move that
 // way takes it (shown at once when the page can be painted from its layout, else it waits for the page), else the document.
 // False: the document's.
