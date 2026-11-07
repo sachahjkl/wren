@@ -27,6 +27,20 @@ css_anim_control :: proc(a: ^Web_Animation, op: Css_Anim_Op) {
 	}
 }
 
+// The timeline at the document's time before a script reads it: an animation nobody sees ticks only every unseen_tick_ms for the
+// screen (style.timeline_behind), never for a script.
+@(private)
+css_catch_up :: proc(p: ^Page) {
+	if style.timeline_behind(p.anim.timeline, document_time_ms(p)) { _ = js_dom_styled(p) }
+}
+
+// What a script reads of a CSS animation or transition, at the document's time.
+@(private)
+css_info :: proc(a: ^Web_Animation) -> (style.Css_Anim_Info, bool) {
+	css_catch_up(a.page)
+	return style.timeline_css_info(a.page.anim.timeline, a.css)
+}
+
 // The Animation object of a CSS animation or transition (made on first sight).
 @(private)
 css_anim_object :: proc(p: ^Page, info: style.Css_Anim_Info) -> u64 {
@@ -49,6 +63,7 @@ css_anim_object :: proc(p: ^Page, info: style.Css_Anim_Info) -> u64 {
 // ones a script canceled, and the finished ones that do not fill, are not relevant.
 @(private)
 css_relevant :: proc(p: ^Page, d: ^dom.Document, r: base.Handle, subtree: bool, in_scope: proc(d: ^dom.Document, target, r: base.Handle, subtree: bool) -> bool, out: ^[dynamic]u8) {
+	css_catch_up(p)
 	tl := p.anim.timeline
 	nodes := style.timeline_css_nodes(tl)
 	if len(nodes) == 0 { return }
@@ -71,7 +86,7 @@ Animation_cssBind :: proc(c: ^Call, animation: Api_Animation, notify: u32, user:
 	a := animation.data
 	if a.css == 0 { return {} }
 	a.instance, a.notify, a.user = c.owner, notify, u32(user)
-	info, _ := style.timeline_css_info(c.page.anim.timeline, a.css)
+	info, _ := css_info(a)
 	out := Api_CssAnimationInfo{kind = a.css_transition ? 2 : 1, target = u64(a.target), delay = info.delay, duration = info.duration, iterations = info.iterations}
 	// the timeline it runs on, as an object of its own (web_animations_scroll.odin)
 	t, on := style.timeline_css_timeline(c.page.anim.timeline, a.css)

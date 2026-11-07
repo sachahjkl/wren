@@ -157,7 +157,7 @@ PREFS := [?]config.Def{
 	{name = "style.animations.time_scale", kind = .Float, default = {f = 1}, bounded = true, min = 0.01, max = 100,
 		description = "Speed of the document clock that drives transitions and animations (0.1 = ten times slower). A debugging aid."},
 	{name = "style.animations.unseen_tick_ms", kind = .Float, default = {f = 250}, bounded = true, min = 0, max = 10_000, unit = "ms",
-		description = "A running animation or transition of an element nobody can see (no box: not rendered; or, for what only paints, the element and what it holds far from the viewport) asks for no frame of its own at every refresh: its values move on this often, and at its events (iterations, end). What moves the page or scrolls it ticks every animation as before. 0: every frame, seen or not."},
+		description = "A running animation or transition of an element nobody can see (no box: not rendered; or, for what only paints, the element and what it holds far from the viewport) asks for no frame of its own at every refresh: it is painted this often, and at its events (iterations, end); a script that reads it (getComputedStyle, getAnimations) gets its value at that moment. What moves the page or scrolls it ticks every animation as before. 0: every frame, seen or not."},
 	{name = "style.animations.max_running", kind = .Int, default = {i = 20_000}, bounded = true, min = 1, max = 10_000_000,
 		description = "Most transitions and animations alive at once in one document; past it new ones do not start (their end values apply)."},
 	{name = "style.animations.max_events_per_tick", kind = .Int, default = {i = 10_000}, bounded = true, min = 10, max = 10_000_000,

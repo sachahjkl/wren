@@ -107,3 +107,71 @@ an_animation_of_a_size_tells_the_probe_it_moves_boxes :: proc(t: ^testing.T) {
 	testing.expect(t, len(fk.boxes) == 1 && fk.boxes[0], "width moves boxes")
 	testing.expect_value(t, timeline_next_ms(f.tl), 0)
 }
+
+// The unseen tick is for the screen: once a tick let an animation wait, a reading at a later instant is behind and ticks first (the page's
+// styles_clean); at the instant of the tick, or when every animation is seen, it is not.
+@(test)
+a_reading_after_an_unseen_tick_is_behind :: proc(t: ^testing.T) {
+	fk := Seen_Fake{seen = false}
+	defer fake_free(&fk)
+	f := open_seen(SPIN, &fk)
+	defer fixture_unload(f)
+	timeline_tick(f.tl, f.doc, f.st, 100)
+	testing.expect(t, !timeline_behind(f.tl, 100), "at the tick's own instant")
+	testing.expect(t, timeline_behind(f.tl, 200), "100 ms later")
+	timeline_tick(f.tl, f.doc, f.st, 200)
+	a := style_of(f.st, dom.find_by_id(f.doc, "a")).transform[0]
+	timeline_tick(f.tl, f.doc, f.st, 300)
+	b := style_of(f.st, dom.find_by_id(f.doc, "a")).transform[0]
+	testing.expectf(t, a != b, "a tick at the reading's instant moves the value: %v, then %v", a, b)
+	fk.seen = true
+	timeline_tick(f.tl, f.doc, f.st, 400)
+	testing.expect(t, !timeline_behind(f.tl, 500), "seen: the frames tick it")
+}
+
+// CSS Animations 1 §3: display: none ends the animations of the element and of what it holds (animationcancel), it does not tick them
+// slowly; shown again, they start over.
+@(private = "file") HIDDEN_PARENT :: `<style>
+	@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+	#s { animation: spin 1000ms linear infinite }
+	#p:hover { display: none }
+	#n { animation: spin 1000ms linear infinite; display: none }
+</style><div id=p><div id=s></div></div><div id=n></div>`
+
+// A state change at `ms` as the page makes it: a partial restyle, else a full pass.
+@(private = "file")
+state_at :: proc(f: ^Fixture, st: State, ms: f64) {
+	if _, ok := restyle_state(f.eng, f.doc, f.st, st); ok {
+		timeline_restyled_dom(f.tl, f.doc, f.st, ms)
+	} else {
+		old := f.st
+		f.st = compute_styles(f.eng, f.doc, st)
+		timeline_restyled(f.tl, f.doc, old, f.st, ms)
+		styled_destroy(old)
+	}
+	timeline_tick(f.tl, f.doc, f.st, ms)
+}
+
+@(test)
+display_none_ends_an_animation_and_showing_starts_it_again :: proc(t: ^testing.T) {
+	fk := Seen_Fake{seen = false}
+	defer fake_free(&fk)
+	f := open_seen(HIDDEN_PARENT, &fk)
+	defer fixture_unload(f)
+	s, n, p := dom.find_by_id(f.doc, "s"), dom.find_by_id(f.doc, "n"), dom.find_by_id(f.doc, "p")
+	timeline_tick(f.tl, f.doc, f.st, 0)
+	testing.expect_value(t, len(timeline_css_animations(f.tl, n)), 0)   // (display: none of its own: never started)
+	timeline_tick(f.tl, f.doc, f.st, 300)
+	testing.expect_value(t, len(timeline_css_animations(f.tl, s)), 1)
+	timeline_clear_events(f.tl)
+	state_at(f, State{hover = p}, 400)
+	cancels := 0
+	for e in timeline_events(f.tl) { if e.kind == .Animation_Cancel && e.node == s { cancels += 1 } }
+	testing.expect_value(t, cancels, 1)
+	testing.expect_value(t, len(timeline_css_animations(f.tl, s)), 0)
+	testing.expectf(t, timeline_next_ms(f.tl) < 0 && !timeline_behind(f.tl, 900), "nothing runs, nothing waits for a tick: %v", timeline_next_ms(f.tl))
+	timeline_clear_events(f.tl)
+	state_at(f, State{}, 900)
+	runs := timeline_css_animations(f.tl, s)
+	testing.expectf(t, len(runs) == 1 && runs[0].current == 0, "shown again, it starts over: %v", runs)
+}

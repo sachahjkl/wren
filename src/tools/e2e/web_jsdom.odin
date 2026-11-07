@@ -744,6 +744,35 @@ jsdom_dnd :: proc(t: ^testing.T) {
 	page_test(t, "dnd.html", checks = DND_CHECKS, prepare = proc() { settings.js.touch_handlers, settings.js.touch_points = true, TOUCH_POINTS }, after = proc(pr: ^Probe, _: ^Layout_Host) { dnd_checks(pr) })
 }
 
+// An animation far below the viewport ticks at style.animations.unseen_tick_ms for the screen (page/animations_seen.odin); a script reads it at
+// the document's time all the same. On the virtual clock: a style pass as a frame makes it (the timeline asks who sees the element, from the
+// layout a reading made), then two readings 100 ms apart, inside the unseen tick: getComputedStyle and the CSSAnimation's currentTime both moved.
+UNSEEN_PAGE :: `<!doctype html><style>@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } } body { margin: 0 } #s { width: 40px; height: 40px; animation: spin 1000ms linear infinite }</style><div style="height: 20000px"></div><div id=s></div>`
+UNSEEN_READ_GAP :: 100 * time.Millisecond
+UNSEEN_CHECKS :: 2
+
+@(test)
+jsdom_unseen_animation_reads_the_clock :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t, .Pages)
+	defer end()
+	virtual_clock(t)
+	lh := layout_host_make()
+	defer layout_host_destroy(lh)
+	pr := page_make(t, "unseen.html", strings.concatenate({ADDRESS, "unseen.html"}, context.temp_allocator))
+	page.set_layout_embedder(pr.p, {user = lh, update = layout_update, viewport = layout_viewport, scroll_to = layout_scroll})
+	page_load(pr, UNSEEN_PAGE)
+	drain()
+	run(pr, `getComputedStyle(document.getElementById("s")).transform`)   // (the layout the probe reads)
+	_ = page.styles(pr.p, VIEW_W, VIEW_H, 1)   // a frame's style pass: nobody sees #s
+	check(pr, page.animations_next_ms(pr.p) > 0 && !page.animations_active(pr.p), fmt.tprintf("the animation waits for its unseen tick: next in %v ms", page.animations_next_ms(pr.p)))
+	run(pr, `window.s = document.getElementById("s"); window.a = getComputedStyle(s).transform; window.c = document.getAnimations()[0].currentTime`)
+	host.clock_advance(&loop, UNSEEN_READ_GAP)
+	run(pr, `wrenTest.check(getComputedStyle(s).transform != a, "getComputedStyle 100 ms later: " + a + " then " + getComputedStyle(s).transform)`)
+	run(pr, `wrenTest.check(document.getAnimations()[0].currentTime > c, "currentTime 100 ms later: " + c + " then " + document.getAnimations()[0].currentTime)`)
+	close_page(pr, min_checks = UNSEEN_CHECKS + 1)
+}
+
 // (the micro-benchmarks only measure: a performance run, test_all -Perf)
 @(test)
 jsdom_bench :: proc(t: ^testing.T) {

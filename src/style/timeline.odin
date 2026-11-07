@@ -163,6 +163,7 @@ Timeline :: struct {
 	css_serial:  u64,                  // the last serial given to a CSS animation or transition
 	progress_timelines: map[u64]^Script_Timeline,   // the ScrollTimeline and ViewTimeline objects of scripts
 	seen:        Seen_Probe,   // who can see an animated element (timeline_set_seen); none: everyone
+	throttled:   bool,         // the last tick let an animation nobody sees wait past the next frame (timeline_behind)
 }
 
 // Whether an animated element can be seen, as the page's last layout says (page/animations_seen.odin). An animation moves at every frame
@@ -177,11 +178,16 @@ Seen_Probe :: struct {
 
 timeline_set_seen :: proc(tl: ^Timeline, probe: Seen_Probe) { tl.seen = probe }
 
+// The unseen tick governs what is painted, never what a script reads: a reading of the styles or of the animations at `wall_ms` later
+// than the last tick, when that tick let an unseen animation wait, ticks first (page/js_dom_layout.odin styles_clean, web_animations_css.odin).
+timeline_behind :: proc(tl: ^Timeline, wall_ms: f64) -> bool { return tl != nil && tl.throttled && tl.has_wall && wall_ms > tl.last_wall }
+
 // The questions of one tick: the probe begins only if one is asked.
 @(private)
 Seen_Ask :: struct {
-	tl:    ^Timeline,
-	begun: bool,
+	tl:        ^Timeline,
+	begun:     bool,
+	throttled: bool,   // an answer let an animation wait
 }
 
 // When an active animation of `node` animating `props` wants its next tick: 0 when it can be seen (or nobody says), else `until`
@@ -196,6 +202,7 @@ seen_wait :: proc(a: ^Seen_Ask, node: base.Handle, props: Prop_Set, until: f64) 
 		if tl.seen.begin != nil { tl.seen.begin(tl.seen.user) }
 	}
 	if tl.seen.seen(tl.seen.user, node, !paint_only(props)) { return 0 }
+	a.throttled = true
 	return max(min(until, every), 0)
 }
 
@@ -982,6 +989,7 @@ timeline_tick :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wall_ms: f6
 	}
 	if len(tl.scripts) > 0 && script_tick(tl, now, &next) { changed = true }
 	tl.next_ms = next
+	tl.throttled = ask.throttled
 	// a finished transition leaves the cascaded value in place; the overlays that pointed into it are rebuilt below
 	// before anything reads them
 	for tr in finished { remove_finished(tl, tr) }

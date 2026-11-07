@@ -129,8 +129,9 @@ a_running_animation_draws :: proc(t: ^testing.T) {
 	testing.expectf(t, last.causes[.Page] > first.causes[.Page], "its frames are the page's: %v, then %v:%s", first.causes, last.causes, reasons(s))
 }
 
-// An animation nobody can see (style.Seen_Probe, page/animations_seen.odin) asks for no frame of its own: a spinner inside an element that is not rendered, one far below
-// the fold. Its look again (style.animations.unseen_tick_ms) is past the turns watched, and its events (one iteration a minute) too: a frame among them would be a frame for it.
+// An animation nobody can see asks for no frame of its own. Under display: none it does not run at all (CSS Animations 1: the style timeline ends it,
+// style/anim_seen_test.odin); far below the fold it ticks at style.animations.unseen_tick_ms (style.Seen_Probe, page/animations_seen.odin), past the turns watched
+// here, and its events (one iteration a minute) too: a frame among them would be a frame for it.
 @(private = "file") UNSEEN_PREFS :: []string{STATUS_WINDOW_PREF, "style.animations.unseen_tick_ms=10000"}
 @(private = "file") SPIN_STYLE :: `<style>@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } } .spin { width: 40px; height: 40px; background: #06c; animation: spin 60s linear infinite } body { margin: 0 }</style>`
 @(private = "file") HIDDEN_SPINNER_PAGE :: `<!doctype html><meta charset="utf-8"><title>hidden spinner</title>` + SPIN_STYLE + `<p>A page.</p><div style="display: none"><div class="spin"></div></div>`
@@ -139,7 +140,7 @@ a_running_animation_draws :: proc(t: ^testing.T) {
 @(private = "file") GROWER_BELOW_PAGE :: `<!doctype html><meta charset="utf-8"><title>grower below</title><style>@keyframes grow { from { width: 0px } to { width: 100px } } .grow { height: 40px; background: #06c; animation: grow 60s linear infinite } body { margin: 0 }</style><p>A page.</p><div style="height: 20000px"></div><div class="grow"></div>`
 
 @(test)
-an_animation_in_an_element_not_rendered_draws_nothing_at_rest :: proc(t: ^testing.T) {
+an_animation_under_display_none_draws_nothing_at_rest :: proc(t: ^testing.T) {
 	draws_nothing(t, e2e.file_page(e2e.temp_folder(t), "hidden.html", HIDDEN_SPINNER_PAGE), UNSEEN_PREFS)
 }
 

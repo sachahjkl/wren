@@ -3,7 +3,7 @@ package page
 // Who can see an animated element (style.Seen_Probe): the timeline asks it before it asks for the next frame. The answer comes
 // from the layout the last frame painted, and only when that layout is the page as it is now (no mutation, no style pass, the same
 // viewport since): otherwise every element counts as seen, and the frame that follows lays out and asks again. An element is unseen
-//   * when it has no box: it is not rendered (display: none, or inside such an element); display: contents is seen;
+//   * when it has no box and is not display: contents (display: none never gets here: the timeline ends those animations, CSS Animations 1);
 //   * when what is animated only paints (style.paint_only) and the boxes of the element and of everything it holds lie farther
 //     than SEEN_MARGIN_VIEWPORTS viewports from the one shown.
 // What moves boxes is seen as soon as it has one: a change of its size moves the boxes around it.
