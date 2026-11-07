@@ -341,7 +341,7 @@ tab_sidebar :: proc(app: ^App, pos: Tabs_Position) {
 	open := ui.tween(ui.key_from_string(0, "###side_open"), target, app.favs.cfg.side_anim_ms)
 	extent := sidebar_open_extent(closed_e, opened_e, open)
 	own.sidebar.past_closed = extent - closed_e
-	ui.reorder_frame(&own.strip.drag)   // the button went up (wherever): no drag
+	own.strip.dragged = strip_dragged(active_window(app))
 	favicon_frame(app)
 
 	// classic (chrome_style.odin): the panel is the tab bar, its current tab flows into the page; the toolbar's line along
