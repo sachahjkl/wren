@@ -168,6 +168,7 @@ Engine :: struct {
 	spare_by_node: [dynamic]^Computed,    // the slots of a recycled pass, empty, their room kept (see styled_recycle)
 	spare_nodes:   [dynamic]base.Handle,
 	key_sets: Key_Sets,                      // what the invalidation indexes of its rules name (invalidation.odin)
+	matched:  Matched_Store,                 // what its elements matched (matched.odin)
 	spare_arenas: [dynamic]^base.Arena,   // style threads' arenas given back by recycled passes, emptied, for the next ones (parallel.odin)
 	spare_arena_bytes: int,                  // what they held (bounded by recycle_bytes)
 	ended:     [dynamic]^Styled,          // passes replaced that a layout still reads (styled_read_begin)
@@ -261,6 +262,7 @@ engine_destroy :: proc(e: ^Engine) {
 	for a in e.spare_arenas { thread_arena_free(a) }
 	delete(e.spare_arenas)
 	key_sets_destroy(&e.key_sets)
+	matched_destroy(&e.matched)
 	settings_destroy(&e.settings)
 	free(e)
 }
@@ -1051,6 +1053,7 @@ rebuild_total: Rebuild_Total
 engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 	t0 := time.tick_now()
 	defer { rebuild_total.n += 1; rebuild_total.ns += i64(time.tick_since(t0)); rebuild_total.sheets += len(e.sheets) }
+	matched_reset(&e.matched)   // (what they point at goes now)
 	free_all(e.alloc)
 	rule_set_clear(&e.rules)
 	departed_free(e)

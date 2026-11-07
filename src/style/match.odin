@@ -152,7 +152,13 @@ value_equals :: proc(a, b: string, ci: bool) -> bool { return ci ? base.ascii_eq
 @(private)
 attr_matches :: proc(n: ^dom.Node, s: css.Simple) -> bool {
 	v, ok := attr(n, s.name)
-	if !ok { return false }
+	return attr_value_matches(ok, v, s)
+}
+
+// The attribute selector `s` of an attribute of value `v`, or of none.
+@(private)
+attr_value_matches :: proc(has: bool, v: string, s: css.Simple) -> bool {
+	if !has { return false }
 	if s.op == .Exists { return true }
 	want := s.value
 	switch s.op {

@@ -36,6 +36,7 @@ FLIP_LIMIT_MIN :: 1024
 
 Restyle_Stats :: struct {
 	marked:   int,      // elements restyled
+	taken:    int,      // ... from what they matched before, without matching (matched.odin)
 	changed:  int,      // ... whose style changed
 	parallel: bool,     // forced subtrees were shared out between threads
 	largest_task: int,  // ... the elements of the heaviest task
@@ -59,6 +60,7 @@ Frame :: struct {
 	bloom:  Bloom,
 	force:  bool,   // restyle this element (its parent changed what it may take from it)
 	sub:    bool,   // inside a subtree restyled whole
+	whole:  bool,   // ... that a mark says may match otherwise, not only one that inherits otherwise
 	ctx:    Elem_Ctx,   // the tree it is matched in (scope.odin)
 	depth:  i32,    // below the top of the walk (sibling_match.odin: a walk in tree order; the tops of a walk, and the
 	                // breadth-first expansion of run_deferred, are at 0, where only siblings share)
@@ -141,7 +143,7 @@ Marker :: struct {
 	key_maps: map[u32]^Key_Lookup,   // the sets of keys asked about in this pass
 	attr_touched: map[base.Handle]struct{},   // elements that had an attribute changed in this batch: what they showed their siblings is not what they have now
 	came:  map[base.Handle]struct{},   // elements put somewhere in this batch: each is restyled whole, wherever it stands now (edges_changed)
-	lost:  map[base.Handle]struct{},   // parents an element left in this batch (edges_changed)
+	lost:  map[base.Handle][dynamic]Lost_Place,   // parents an element left in this batch, and from where (edges_changed)
 	mc:    Match_Ctx,
 	rewalk: bool,       // counters and quotes must be resolved again
 	removed: [dynamic]base.Handle,   // removed elements still alive (their styles are dropped)
@@ -171,6 +173,10 @@ Marker :: struct {
 
 @(private = "file")
 Walk_Key :: struct { h: base.Handle, ix: ^Inv_Index, dir: u8 }
+
+// The nodes beside an element when it left its parent (the journal's).
+@(private = "file")
+Lost_Place :: struct { prev, next: base.Handle }
 
 @(private = "file")
 mark :: proc(m: ^Marker, h: base.Handle, sub: bool, loc := #caller_location) {
@@ -597,20 +603,41 @@ edges_changed :: proc(m: ^Marker, ix: ^Inv_Index, p: base.Handle) {
 	key := Walk_Key{p, ix, 4}
 	if key in m.emptied { return }
 	m.emptied[key] = true
+	// `depth` elements in from the edge, those that came aside (the zone): what stands past them was past that place before. In the zone, what
+	// stands before the first element that came, and before the place of the first that left, kept its index: what follows is restyled.
+	// (:nth-child(3): an element whose index was or is 3 has at most two before it that did not come.) Read as one, a removal anywhere restyled
+	// the first three children of <body> with what they hold, and an element appended to a list of two the two before it.
+	along :: proc(m: ^Marker, p, from: base.Handle, k: ^Keyed_Reach, depth: int, back: bool) {
+		next :: proc(m: ^Marker, x: base.Handle, back: bool) -> base.Handle { return back ? prev_element(&m.mc, x) : next_element(m, x) }
+		zone := make([dynamic]base.Handle, 0, 8, context.temp_allocator)
+		moved := -1   // the first element of the zone whose index may differ
+		for x, kept := from, 0; x != base.NIL_HANDLE; x = next(m, x, back) {
+			append(&zone, x)
+			if x in m.came { if moved < 0 { moved = len(zone) - 1 } } else { kept += 1 }
+			if kept == max(depth, 1) { break }
+		}
+		// the element that stood next to a removed one on the edge's side: what follows it in the zone moved (none, gone, moved itself: all of it)
+		for at in m.lost[p] {
+			beside, known := element_from(m, p, back ? at.next : at.prev, !back)
+			from_here := 0
+			if known && beside != base.NIL_HANDLE && beside not_in m.came {
+				i, found := slice.linear_search(zone[:], beside)
+				if !found { continue }   // past the zone
+				from_here = i + 1
+			}
+			if moved < 0 || from_here < moved { moved = from_here }
+		}
+		if moved < 0 { return }
+		for x in zone[moved:] { apply_keyed(m, x, k) }
+	}
 	pn := dom.get(m.doc, p)
 	if ix.edge_first.used {
 		first, _ := element_from(m, p, pn.first_child, false)
-		for x := first; x != base.NIL_HANDLE && (p in m.lost || x != first || x in m.came); x = next_element(m, x) {
-			apply_keyed(m, x, &ix.edge_first)
-			if x not_in m.came { break }
-		}
+		along(m, p, first, &ix.edge_first, ix.edge_first_depth, false)
 	}
 	if ix.edge_last.used {
 		last, _ := element_from(m, p, pn.last_child, true)
-		for x := last; x != base.NIL_HANDLE && (p in m.lost || x != last || x in m.came); x = prev_element(&m.mc, x) {
-			apply_keyed(m, x, &ix.edge_last)
-			if x not_in m.came { break }
-		}
+		along(m, p, last, &ix.edge_last, ix.edge_last_depth, true)
 	}
 }
 
@@ -918,7 +945,15 @@ attribute_changed_in :: proc(m: ^Marker, ix: ^Inv_Index, ch: Attr_Change, n: ^do
 	case "lang", "xml:lang":
 		if m.s.counters_used { m.rewalk = true }   // quotes follow the language
 	}
-	if r, ok := ix.by_attr[ch.name]; ok { apply(m, h, r) }
+	// (a class rewritten with the same tokens passed under `[class*=...]`: 224 elements of cnn.com)
+	if tests := ix.attr_tests[ch.name]; len(tests) > ATTR_TESTS_MAX {
+		if r, ok := ix.by_attr[ch.name]; ok { apply(m, h, r) }
+	} else {
+		if r, ok := ix.attr_other[ch.name]; ok { apply(m, h, r) }
+		for &x in tests {
+			if attr_value_matches(ch.had_old, ch.old, x.simple^) != attr_value_matches(has_cur, cur, x.simple^) { apply(m, h, x.reach) }
+		}
+	}
 	if ch.name in ix.has_attrs { has_invalidate(m, h, false, Has_Change{kind = .Attr, name = ch.name}) }
 	if hint, subtree := hint_attribute(n.name, ch.name); hint || subtree { mark(m, h, subtree) }
 	if ix.uses_controls && is_form_attr(ch.name) {
@@ -980,12 +1015,14 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 	structure := false
 	m.attr_touched = make(map[base.Handle]struct{}, 16, context.temp_allocator)
 	m.came = make(map[base.Handle]struct{}, 16, context.temp_allocator)
-	m.lost = make(map[base.Handle]struct{}, 16, context.temp_allocator)
+	m.lost = make(map[base.Handle][dynamic]Lost_Place, 16, context.temp_allocator)
 	for &en in entries {
 		#partial switch en.kind {
 		case .Attribute: m.attr_touched[en.node] = {}
 		case .Insert: m.came[en.node] = {}
-		case .Remove: m.lost[en.parent] = {}
+		case .Remove:
+			if en.parent not_in m.lost { m.lost[en.parent] = make([dynamic]Lost_Place, 0, 2, context.temp_allocator) }
+			append(&m.lost[en.parent], Lost_Place{en.prev, en.next})
 		}
 	}
 	attrs := make(map[string]Attr_Change, 16, context.temp_allocator)
@@ -1283,12 +1320,12 @@ settle :: proc(w: ^Walker, h: base.Handle, c: ^Computed) -> (cur: ^Computed, cha
 // allocated (the share table, if it took it, gets the equal record in force instead): restyles that change nothing
 // leave nothing behind, but for what the inline cache kept of a new style attribute: it outlives the element's pass.
 @(private = "file")
-restyle_one :: proc(w: ^Walker, f: ^Frame, n: ^dom.Node) -> (cur: ^Computed, changed: bool, old_base: ^Computed) {
+restyle_one :: proc(w: ^Walker, f: ^Frame, n: ^dom.Node, unmarked: bool) -> (cur: ^Computed, changed: bool, old_base: ^Computed) {
 	w.marked += 1
 	tmp := base.arena_temp_begin(w.arena)
 	made := w.p.share.count
 	kept := w.s.inline_rules_made
-	c, _ := compute_element(w.p, f.h, n, f.parent, &f.bloom, f.ctx, int(f.depth))
+	c, _ := compute_element(w.p, f.h, n, f.parent, &f.bloom, f.ctx, int(f.depth), unmarked)
 	cur, changed, old_base = settle(w, f.h, c)
 	if changed || w.s.inline_rules_made != kept { base.arena_temp_ignore(tmp); return }
 	if w.p.share.count != made { share_replace_last(&w.p.share, cur) }
@@ -1309,12 +1346,13 @@ walk :: proc(w: ^Walker, start: []Frame) {
 		if n == nil || n.kind != .Element { continue }
 		bits := w.marks != nil ? mark_bits(w.marks, f.h)^ : 0
 		sub := f.sub || bits & M_SUB != 0
+		whole := f.whole || bits & M_SUB != 0
 		cur := base_style_of(s, f.h)
 		inh_changed, other_changed := false, false
 		if f.force || sub || bits & M_SELF != 0 {
 			// (never the root element: the root font size and line height are checked below, on this thread)
 			if w.defer_subtrees && sub && !f.sub && f.parent != nil {
-				append(&w.deferred, Frame{h = f.h, parent = f.parent, bloom = f.bloom, force = true, sub = true, ctx = f.ctx})
+				append(&w.deferred, Frame{h = f.h, parent = f.parent, bloom = f.bloom, force = true, sub = true, whole = whole, ctx = f.ctx})
 				continue
 			}
 			// marked, or forced by its parent's change: restyled whatever happens, and its parent's style is final (the walk
@@ -1323,7 +1361,7 @@ walk :: proc(w: ^Walker, start: []Frame) {
 				append(&w.deferred, Frame{h = f.h, parent = f.parent, bloom = f.bloom, force = true, ctx = f.ctx})
 				continue
 			}
-			nc, changed, old := restyle_one(w, &f, n)
+			nc, changed, old := restyle_one(w, &f, n, !whole && bits & M_SELF == 0)
 			if changed {
 				if old == nil || !inherited_equal(old, nc) || container_changed(old, nc) { inh_changed = true } else { other_changed = true }
 				if f.parent == nil && (nc.font_size != s.root_font_size || used_line_height(nc, s.line_height_normal) != s.root_line_height) { w.root_font = true }
@@ -1354,7 +1392,7 @@ walk :: proc(w: ^Walker, start: []Frame) {
 				co := base_style_of(s, ch)
 				force = co == nil || !ps_empty(ps_intersect(co.inherits, noninh))
 			}
-			if force || cb != 0 { append(&stack, Frame{h = ch, parent = cur, bloom = child_bloom, force = force, sub = sub, ctx = child_ctx(w.p, f.h, f.ctx, ch), depth = f.depth + 1}) }
+			if force || cb != 0 { append(&stack, Frame{h = ch, parent = cur, bloom = child_bloom, force = force, sub = sub, whole = whole, ctx = child_ctx(w.p, f.h, f.ctx, ch), depth = f.depth + 1}) }
 		}
 	}
 }
@@ -1417,11 +1455,11 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 			n := dom.get(doc, f.h)
 			if n == nil || n.kind != .Element { continue }
 			opened = true
-			nc, _, _ := restyle_one(w, &f, n)
+			nc, _, _ := restyle_one(w, &f, n, !f.whole && (w.marks == nil || mark_bits(w.marks, f.h)^ & (M_SELF | M_SUB) == 0))
 			child_bloom := f.bloom
 			bloom_add_element(&child_bloom, n)
 			for ch := dom.flat_first_child(doc, f.h); ch != base.NIL_HANDLE; ch = dom.flat_next(doc, ch) {
-				if is_element_node(doc, ch) { append(&next, Frame{h = ch, parent = nc, bloom = child_bloom, force = true, sub = true, ctx = child_ctx(w.p, f.h, f.ctx, ch)}) }
+				if is_element_node(doc, ch) { append(&next, Frame{h = ch, parent = nc, bloom = child_bloom, force = true, sub = true, whole = f.whole || (w.marks != nil && mark_bits(w.marks, f.h)^ & M_SUB != 0), ctx = child_ctx(w.p, f.h, f.ctx, ch)}) }
 			}
 		}
 		frontier = next
@@ -1460,6 +1498,7 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 	for &t in job.tasks {
 		append(&s.thread_arenas, t.arena)
 		s.partial_bytes += int(t.arena.total_used)
+		w.p.matched_taken += t.w.p.matched_taken
 		pass_destroy(t.w.p)
 		for r in t.w.results {
 			if s.track_changes { append(&s.changes, Style_Change{node = r.h, old = r.old, new = r.new}) }
@@ -1614,6 +1653,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	e.last_restyle.has_scans = w.p.mc.has_scans
 	e.last_restyle.has_steps = w.p.mc.has_steps
 	e.last_restyle.marked = w.marked
+	e.last_restyle.taken = w.p.matched_taken
 	e.last_restyle.changed = w.changed
 	e.last_restyle.rewalked = rewalked
 	if w.root_font {
@@ -1670,6 +1710,7 @@ restyle_roots :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, p: ^Pass, root
 	run_deferred(&w, pool)
 	delete(w.deferred)
 	e.last_restyle.marked, e.last_restyle.changed = w.marked, w.changed
+	e.last_restyle.taken = p.matched_taken
 	if w.root_font {
 		e.last_restyle.fallback = "root font size changed"
 		styled_superseded(s)
@@ -1880,6 +1921,15 @@ verify_styles :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, allocator := c
 					where_ = fmt.tprintf(" in the shadow tree of <%s>", hn != nil ? hn.name : "?")
 				}
 				return fmt.aprintf("<%s id=%q class=%q> (node %v)%s: %s differs", n.name, id, cls, h, where_, what, allocator = allocator)
+			}
+			// (a list is true or it is nil: a store that went full keeps none, and the two passes may stand either side of it)
+			if sync.atomic_load(&s.matched_gen) == full.matched_gen {
+				x, y := matched_of(s, h), matched_of(full, h)
+				if x != nil && y != nil && !matched_same(x, y) {
+					id, _ := attr(n, "id")
+					cls, _ := attr(n, "class")
+					return fmt.aprintf("<%s id=%q class=%q> (node %v): its list of matched rules differs: %d rules, expected %d", n.name, id, cls, h, len(x.rules), len(y.rules), allocator = allocator)
+				}
 			}
 		}
 		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev { append(&stack, ch) }

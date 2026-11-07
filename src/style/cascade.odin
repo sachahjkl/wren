@@ -86,6 +86,8 @@ Styled :: struct {
 	alloc:          runtime.Allocator,
 	by_node:        [dynamic]^Computed,
 	nodes:          [dynamic]base.Handle,   // whose style by_node[i] is (a record may be shared; a recycled index holds another node's)
+	matched:        [dynamic]^Matched_List,   // what the element of the slot matched (matched.odin): by slot and not in the record, which elements with other lists may keep
+	matched_gen:    u64,                      // the generation of the store it reads (0: none)
 	initial:        ^Computed,
 	root_font_size: f32,
 	root_line_height: f32,   // px: what rlh means
@@ -186,6 +188,7 @@ styled_destroy :: proc(s: ^Styled) {
 	styled_read_caught_up(s)
 	delete(s.dead_overlays)
 	delete(s.by_node)
+	delete(s.matched)
 	delete(s.nodes)
 	for a in s.thread_arenas { thread_arena_free(a) }
 	delete(s.thread_arenas)
@@ -270,6 +273,7 @@ styled_recycle :: proc(e: ^Engine, s: ^Styled) {
 		return
 	}
 	delete(s.by_node)
+	delete(s.matched)
 	delete(s.nodes)
 	delete(s.overlaid)
 	delete(s.changes)
@@ -320,8 +324,10 @@ styled_put :: proc(s: ^Styled, h: base.Handle, c: ^Computed) {
 styled_size :: proc(s: ^Styled, n: int) {
 	if n <= len(s.by_node) { return }
 	if n > cap(s.by_node) { reserve(&s.by_node, max(n, 2 * cap(s.by_node))); reserve(&s.nodes, max(n, 2 * cap(s.nodes))) }
+	if n > cap(s.matched) { reserve(&s.matched, max(n, 2 * cap(s.matched))) }
 	resize(&s.by_node, n)
 	resize(&s.nodes, n)
+	resize(&s.matched, n)
 }
 
 // Empties the slot of `h` when it holds `h`'s style; returns whether it did.
@@ -527,6 +533,9 @@ Pass :: struct {
 	lists:    [Entry_List][dynamic]Entry,   // matched entries: the element's, its pseudo-elements'
 	fresh_probe: bool,         // sheet_arrival.odin: only what the context's rule set says, no other tree's
 	gate_probe: []bool,        // media_gate.odin: the entries of the gates in it are the only ones matched, on or off (which elements a flip reaches)
+	matched_on: bool,          // the lists of s are in force (matched_holds)
+	matched_taken: int,        // elements styled from their list
+	unmarked: bool,            // style_subtree: nothing but what elements inherit moved: their lists hold
 	compare:  bool,            // partial restyle: keep the old computed style when nothing changed
 	changed:  bool,            // ... and report whether some element really changed
 	layout_changed: bool,      // ... in a way that is not paint-only (paint_change.odin)
@@ -1024,9 +1033,14 @@ may_have_content :: proc(entries: []Entry) -> bool {
 
 @(private)
 // `depth`: the element's depth below where the walk started, for the matching its family shares (sibling_match.odin);
-// < 0: none.
-compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Computed, ancestors: ^Bloom, ctx: Elem_Ctx = {}, depth := -1) -> (c: ^Computed, shared: bool) {
-	match_element(p, h, n, ancestors, ctx, depth)
+// < 0: none. `unmarked`: nothing says that what it matches may have changed (matched.odin).
+compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Computed, ancestors: ^Bloom, ctx: Elem_Ctx = {}, depth := -1, unmarked := false) -> (c: ^Computed, shared: bool) {
+	if unmarked && matched_take(p, h, ctx) {
+		sib_pass_by(p, n, depth)
+	} else {
+		match_element(p, h, n, ancestors, ctx, depth)
+		matched_keep(p, h)
+	}
 	hinted := add_hint_entry(p, h, n)
 
 	inline_text: string
@@ -1147,6 +1161,7 @@ pass_make :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, state: State) -> ^
 	p.made_with = context.allocator
 	p.e, p.s, p.opt = e, s, parse_options(&e.settings)
 	p.alloc = s.alloc
+	p.matched_on = matched_holds(e, s, doc)
 	match_ctx_init(&p.mc, doc, state)
 	if e.class_bits_live { p.mc.class_bits = e.class_bits[:] }
 	// the fullscreen element is in the top layer: what its ancestors would do to it (a stacking context under a masthead,
@@ -1206,7 +1221,7 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 		}
 		n := dom.get(doc, f.h)
 		if n == nil || n.kind != .Element { continue }
-		c, shared := compute_element(p, f.h, n, f.parent, &f.bloom, f.ctx, int(f.depth))
+		c, shared := compute_element(p, f.h, n, f.parent, &f.bloom, f.ctx, int(f.depth), p.unmarked)
 		hidden := f.hidden || c.display == .None
 		if p.compare {
 			old := style_of(s, f.h)
@@ -1354,6 +1369,7 @@ styled_make :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 	s.canvas = s.canvas_schemes[s.root_scheme]
 	s.canvas_default = s.canvas
 	s.page_scheme, _ = page_color_scheme(doc, &s.scheme_metas)
+	matched_begin(e, s)
 	journal_init(e, s)
 	return s
 }

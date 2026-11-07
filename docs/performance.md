@@ -3519,6 +3519,53 @@ Owners cost nothing that shows: base and round, no spans, 6 runs interleaved, th
 **Tests.** `work_passes_from_a_task_to_what_it_makes`, `a_post_from_another_thread_inherits_nothing` (host, a virtual clock), `work_of_a_timer_is_the_script_that_set_it_and_what_it_scheduled` (a page with a script of another site: its timers, a timer it chained, its fetch's answer, its listener called by the page's script; the page's own timer is first party), `threadtime_counts_each_instant_once_for_the_innermost_owner`, `threadtime_settles_at_the_first_quiet_window_after_the_load`, the spans' columns in `spans_keep_what_was_added_and_stop_at_their_room`. `build\test_all.exe -Quick -NoAsan`: 210 steps pass, the two of `base` failed on that test's old expectation, and pass since it says the new columns.
 
 **Not verified.** Three runs of each site on a loaded machine; a final series on the bench is to come. `Input` holds what a frame does for a page without saying which. The origin of a callback is who registered it as far as a scope said so; promise jobs count for whoever runs the checkpoint. `third_party` compares sites, and a company's own CDN counts as a third party. Workers have owners on their own loops, which the report does not read. The ceiling assumes a paint can only gain what ran before it on the thread.
+## What changed, round 52: what an element matched, kept
+
+Development builds, `wrentool waterfall -Runs 1`, a fresh process and a throwaway profile for each load. Temporary code, none in the tree: a tally of the elements each kind of pass matched and the time the matching took (summed over the style threads), and switches that turn each item off in the same binary, which is what the base below is. Other work ran on the machine all along: the times are of a loaded machine, the counts are not.
+
+**The ceiling first.** One load each, base: elements restyled for what they inherit alone, matched all the same, and what their matching took:
+
+| | forced by a parent (restyle_dom) | a container's size (restyle_containers) | shadow trees |
+|---|---|---|---|
+| cnn.com | 9 232, 571 ms | 1 217, 64 ms | none |
+| npr.org | 2 | 2 340, 63 ms | none |
+| theverge.com | 4 | 3 533, 22 ms | none |
+| bbc.com/news | 0 | 4 | none |
+
+It pays on cnn.com, and on the container walks of the others.
+
+**1. What an element matched is kept, and a pass whose cause is inheritance alone reuses it** (`matched.odin`). A selector never reads a computed style: an element forced by its parent, or under a container whose size moved, matches what it matched, and only the cascade runs again. A list per element (`Styled.matched`, by slot, a pointer), the lists kept once each in the engine (`Matched_Store`, hash consing on rule and selector, outliving a Styled: the next full pass finds them). A stale list is ruled out by where it is written and read, not by invalidations:
+- it is written where matching happens (`compute_element`), for every element matched by any pass, whatever its record does next;
+- it is read only for an element no mark names (`Frame.whole`, `M_SELF`; `Pass.unmarked` for the container walk, which requires the styles to be of the document as it is). Every pass that may change what an element matches (mutations, states, @media, sheets that come or go) marks what it reaches and so matches it again;
+- the lists point at rules: `engine_rebuild` ends them all (`Matched_Store.gen`); a Styled of another generation reads and writes none;
+- @container conditions, hints and the style attribute are not in a list: the cascade reads them each time;
+- a document with a shadow tree has no lists (`matched_holds`): which tree's rules an element sees follows the flat tree. None of the four sites has one;
+- `verify_styles` compares every list with a full pass's, so every restyle test checks them (`restyle_dom_random` now writes a custom property on its root in a tenth of its steps), and so does `style.incremental.verify` on a page: the 4 sites twice, 669 partial passes after DOM changes, @media flips and sheets, no difference.
+
+Memory: the lists of cnn.com are 717 for 13 000 elements, 170 KB, and the slots 8 bytes each, 105 KB: 3.7 % of its 7.4 MB of styles. npr.org 130 + 123 KB, theverge.com 174 + 51, bbc.com/news 37 + 15. A store past 16 MB keeps no new list and starts over at the next full pass (`MATCHED_MAX_BYTES`). Taken a load: cnn.com 10 464 to 11 699 elements, 3.5 to 3.9 ms for all of them; npr.org 2 342, theverge.com 4 441 to 4 884. `matched_an_inherited_change_matches_nothing`, `matched_every_kind_of_pass_keeps_the_list`, `matched_go_with_the_rules`, `matched_lists_are_shared`, `matched_past_the_limit_matching_runs`, `matched_shadow_trees_match`.
+
+**2. An attribute selector is asked of the old value and the new** (`Inv_Index.attr_tests`). `[class*=x] .y` reached its subtree at any change of `class`, a class rewritten with the same tokens too; now only when its answer flips. Pseudo-classes read from attributes (`:any-link`) keep what they reach (`attr_other`). Past `ATTR_TESTS_MAX` (256) selectors of one name, the union as before: cnn.com has 85 of `class`. `restyle_dom_attribute_selectors_read_old_and_new`. Not measured apart.
+
+**3. `:nth-child(3)` and `:nth-last-child(-n + 2)` are read from the end of the list, as `:first-child`** (`nth_edge_depth`, `edges_changed`). An element whose index was or is b has fewer than b elements before it that did not come in the batch: what stands past the first b of them, and before the first that came or the place of the first that left, kept its index. On theverge.com an element added at the end of a list walked back over all its siblings for `:nth-last-child(2)`: elements restyled by restyle_dom before the load 3 344 to 1 334 (medians), the walk back 2 820 to 28. Read first as "something left this parent", it quadrupled cnn.com's (4 170 to 16 000): a removal anywhere restyled the first three children of `<body>` with what they hold. The place of each removal is in the journal (`Lost_Place`). `restyle_dom_nth_near_the_edge`; `restyle_dom_random` has these rules now.
+
+Base and round, 4 runs each, interleaved, the order turning, median (range), ms; style is `page.styles` on the window thread before the load event, the style threads' work inside it:
+
+| | | style (full + DOM + containers) | DOM passes | container passes | elements matched by restyle_dom, and their matching (CPU) | DOMContentLoaded | load | CPU |
+|---|---|---|---|---|---|---|---|---|
+| cnn.com | base | 1 106 (915-1 124) | 631 (487-675) | 140 (103-169) | 9 024 (8 826-9 208), 347 (292-371) | 1 970 (1 660-2 083) | 4 283 (3 113-4 709) | 7 703 (6 047-8 125) |
+| | round | **805 (533-868)** | 531 (393-559) | **21 (16-27)** | 4 783 (3 339-4 968), 184 (105-189) | 1 690 (1 670-1 884) | 3 523 (2 916-3 918) | 6 586 (5 953-6 969) |
+| npr.org | base | | 238 (214-343) | 70 (66-103) | | | 4 893 (4 452-5 732) | |
+| | round | | 239 (199-309) | **34 (27-40)** | | | 5 097 (4 881-5 430) | |
+| theverge.com | base | | 85 (78-92) | 52 (42-67) | 3 344 (3 324-3 696) | | 5 622 (5 107-6 682) | |
+| | round | | 98 (82-109) | 38 (26-44) | 1 334 (1 325-1 350) | | 5 775 (4 828-6 442) | |
+
+Read plainly. **cnn.com: the window thread's style before the load -27 %, ranges apart; its container passes -85 %, ranges apart**; what it matches in DOM passes halves. DOMContentLoaded and the load: medians -14 % and -18 %, ranges overlapping: not proven on a machine this loaded. npr.org: container passes halve, ranges apart; the load nothing. theverge.com: the elements it restyles fall by 60 %, cheap ones: the time does not show it. bbc.com/news: nothing to take (the four runs say the same).
+
+**Left, by what was seen.** An element taken from its list still runs the cascade and the comparison: on cnn.com the forced ones are 4 800 a pass whose custom properties really change. `:nth-last-child(1 of S)` with an S of no key walks back over every sibling of what is added (cnn.com, 1 546 to 1 885 elements a load, none of which changes): the walk could count the elements that match S, as item 3 counts those that did not come. Documents with shadow trees match as before.
+
+**Tests.** `restyle_dom_random` and the style tests on poisoned memory pass, every list compared at every step. `inc_demo_pages` with `WREN_DEMOS_STEPS=150` on poisoned memory: seeds 777 to 800 and 853 pass (777 to 800 also before items 2 and 3). WPT without -quick: `css/css-nesting` 24, `css/css-shadow`, `css/cssom`, `dom/nodes` 379: no regression (`css/css-shadow` and `css/cssom` say better than their expectations on `::part()` and `text-decoration` serialization, as before this round). `build\test_all.exe -Quick -NoAsan`: 209 steps pass, WPT's sample fails on four tests (a `text-decoration-thickness` transition, `HTMLCollection-as-prototype`, two of cross-origin policies, timeouts), with every core busy; each passes alone.
+
+**Not verified.** The release build, a long session, the full WPT, AddressSanitizer: not run. The series ran with other work on the machine: the final series on a replay bench is to come.
 
 ## Inventory
 
