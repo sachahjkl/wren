@@ -18,6 +18,10 @@ import "wb:style"
 // layout.incremental.verify), which is what `--pref style.incremental.verify=true --pref layout.incremental.verify=true`
 // does in the browser. Linked sheets found next to the page are loaded too.
 
+// Enough boxes around a reduced case for what it changes to stay a small part of the document (inc_max_ratio: "too much changed").
+@(private = "file")
+FILLER_BLOCKS :: `<p>a</p><p>b</p><p>c</p><p>d</p><p>e</p><p>f</p><p>g</p><p>h</p><p>i</p><p>j</p><p>k</p><p>l</p><p>m</p><p>n</p><p>o</p><p>p</p>`
+
 @(private = "file")
 Demo :: struct {
 	doc:    ^dom.Document,
@@ -69,11 +73,15 @@ demo_frame :: proc(d: ^Demo, dir: string) -> (style_diff: string) {
 	d.now += 16
 	env := style.media_env_from(&d.eng.settings, f64(d.vp.x / 1.25), f64(d.vp.y / 1.25), 1.25, false)
 	style.engine_set_environment(d.eng, env)
+	if d.st != nil && !d.eng.restyle_needed { _ = style.engine_extend(d.eng, d.doc, d.st) }
 	full := d.st == nil || d.eng.dirty || d.eng.restyle_needed
 	partial := false
 	if !full && (d.st.mutations != d.doc.mutations || d.eng.shadow.dirty) {
 		full = true
-		if style.dom_touches_sheets(d.eng, d.doc, d.st, nil) { demo_sheets(d, dir) }
+		if style.dom_touches_sheets(d.eng, d.doc, d.st, nil) {
+			demo_sheets(d, dir)
+			_ = style.engine_extend(d.eng, d.doc, d.st)
+		}
 		if !d.eng.dirty {
 			if _, ok := style.restyle_dom(d.eng, d.doc, d.st); ok { full, partial = false, true }
 		}
@@ -83,6 +91,12 @@ demo_frame :: proc(d: ^Demo, dir: string) -> (style_diff: string) {
 	}
 	if !full && d.eng.gates_pending {   // a media query changed value: the elements its rules reach (style/media_gate.odin)
 		if _, ok := style.restyle_media(d.eng, d.doc, d.st); !ok { full = true } else { partial = true }
+	}
+	if !full && d.eng.arrivals_due {   // sheets that came or went: the elements their rules reach (style/sheet_arrival.odin)
+		if _, ok := style.restyle_arrivals(d.eng, d.doc, d.st); !ok { full = true } else { partial = true }
+	}
+	if !full && style.engine_departures_due(d.eng) {
+		if _, ok := style.restyle_departures(d.eng, d.doc, d.st); !ok { full = true } else { partial = true }
 	}
 	if full {
 		demo_sheets(d, dir)
@@ -390,12 +404,105 @@ inc_grid_item_in_fixed_tracks :: proc(t: ^testing.T) {
 // container.
 @(test)
 inc_boxless_element_hidden :: proc(t: ^testing.T) {
-	for s in ([]string{`<p>one<br id=x>two</p><p>after</p>`, `<p>a <span id=x style="display:contents"><b>bold</b></span> z</p><p>after</p>`}) {
+	for s in ([]string{`<p>one<br id=x>two</p><p>after</p>`, `<p>a <span id=x style="display:contents"><b>bold</b></span> z</p><p>after</p>`,
+		// (a <br> in the anonymous block beside a block child, then beside one in an inline-block, inside its context's items)
+		`<div>one<br id=x>two<p>block</p></div>`, `<p>a <span style="display:inline-block">b<br id=x>c<div>block</div></span> z</p>`}) {
 		d := demo_load(s)
 		defer demo_unload(d)
 		dom.set_attribute(d.doc, dom.find_by_id(d.doc, "x"), "style", "display:none")
 		demo_frame(d, "")
 		testing.expectf(t, d.l.inc.verify_failures == 0, "%s: %s", s, d.l.inc.verify_report)
+	}
+}
+// A block inserted first among the children of a container with a ::before goes after what that generated: its box was placed
+// first, before the anonymous block of the ::before.
+@(test)
+inc_child_inserted_after_generated_content :: proc(t: ^testing.T) {
+	d := demo_load(`<style>.n::before { content: "Note: " }</style><ol class=n><li id=a>one</li></ol>` + FILLER_BLOCKS)
+	defer demo_unload(d)
+	a := dom.find_by_id(d.doc, "a")
+	e := dom.create_element(d.doc, "div")
+	dom.insert_before(d.doc, dom.get(d.doc, a).parent, e, a)
+	demo_frame(d, "")
+	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
+	testing.expect_value(t, d.l.last_pass, Pass_Kind.Incremental)
+}
+// A transform promised by an animation is a transform: nothing on an inline box. Its element's record has one already and the
+// animation crosses no threshold of the style's, so a stacking context of the full pass alone was left to differ.
+@(test)
+inc_transform_animation_on_an_inline_box :: proc(t: ^testing.T) {
+	d := demo_load(`<style>@keyframes spin { to { transform: rotate(360deg) } } .c { animation: spin 4s linear infinite }</style><p><span id=s style="transform:rotate(3deg)">text</span></p><p>after</p>`)
+	defer demo_unload(d)
+	s := dom.find_by_id(d.doc, "s")
+	dom.set_attribute(d.doc, s, "class", "c")
+	demo_frame(d, "")
+	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
+	testing.expect(t, .Stacking not_in d.l.boxes[box_index(&d.l, s)].flags, "an inline box is not transformed")
+}
+// An element that made its content without a box of its own and gets a box: what its content made in its container goes (the plan
+// of one child left the old boxes beside the new one).
+@(test)
+inc_element_without_box_gets_one :: proc(t: ^testing.T) {
+	srcs := []string{`<div><p>before</p><section id=x style="display:contents"><p>one</p><p>two</p></section></div>` + FILLER_BLOCKS,
+		`<div id=h><template shadowrootmode=open><div><p>before</p><slot id=x></slot></div></template><p>one</p><p>two</p></div>` + FILLER_BLOCKS}
+	for s in srcs {
+		d := demo_load(s)
+		defer demo_unload(d)
+		x := base.NIL_HANDLE
+		for h := d.doc.root; h != base.NIL_HANDLE; h = dom.next_shadow_including(d.doc, h, d.doc.root) {
+			if v, ok := dom.get_attribute(d.doc, h, "id"); ok && v == "x" { x = h }
+		}
+		dom.set_attribute(d.doc, x, "style", "display:grid")
+		demo_frame(d, "")
+		testing.expectf(t, d.l.inc.verify_failures == 0, "%s: %s", s, d.l.inc.verify_report)
+		testing.expect_value(t, d.l.last_pass, Pass_Kind.Incremental)
+	}
+}
+// A box below clearance keeps the top margin of its first child inside; a float grown shorter leaves it no clearance, and that
+// margin collapses through it: its cached height is not for that.
+@(test)
+inc_box_that_stops_clearing_a_float :: proc(t: ^testing.T) {
+	d := demo_load(`<div id=f style="float:left;width:10px;height:100px"></div><div style="height:50px"></div><div style="clear:both"><p style="margin:20px 0 0">text</p></div>` + FILLER_BLOCKS)
+	defer demo_unload(d)
+	dom.set_attribute(d.doc, dom.find_by_id(d.doc, "f"), "style", "float:left;width:10px;height:10px")
+	demo_frame(d, "")
+	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
+	testing.expect_value(t, d.l.last_pass, Pass_Kind.Incremental)
+}
+// A <style> that goes with its parent: a frame does what the page does (page.styles), the elements of its rules restyled.
+@(test)
+inc_style_element_removed_with_its_parent :: proc(t: ^testing.T) {
+	d := demo_load(`<div id=d><style>.x { fill: rgb(255, 128, 0) }</style></div><p class=x>text</p>`)
+	defer demo_unload(d)
+	dom.set_text_content(d.doc, dom.find_by_id(d.doc, "d"), "gone")
+	testing.expect_value(t, demo_frame(d, ""), "")
+	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
+}
+// An empty inline box on a line of its own in one layout and past the end of the last line in the next has no fragment there: it
+// keeps no position of the layout before.
+@(test)
+inc_empty_inline_box_that_loses_its_fragment :: proc(t: ^testing.T) {
+	d := demo_load(`<div id=d style="width:40px">aaa bbb <span id=s></span></div>` + FILLER_BLOCKS)
+	defer demo_unload(d)
+	s := box_index(&d.l, dom.find_by_id(d.doc, "s"))
+	testing.expect(t, d.l.boxes[s].size.y > 0, "the box has a fragment on the second line")
+	dom.set_attribute(d.doc, dom.find_by_id(d.doc, "d"), "style", "width:60px")
+	demo_frame(d, "")
+	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
+	testing.expect_value(t, d.l.last_pass, Pass_Kind.Incremental)
+	testing.expect_value(t, d.l.boxes[s].size, Vec2{})
+}
+// Two empty blocks paint nothing: their places in the display list are the same. Text in the second, spliced in, then text in
+// the first: its items go before the second's (its range moved with what followed the place, and they went after).
+@(test)
+inc_text_in_empty_neighbours :: proc(t: ^testing.T) {
+	d := demo_load(`<div id=a style="height:40px"></div><div id=b style="height:40px"></div>` + FILLER_BLOCKS)
+	defer demo_unload(d)
+	for id in ([]string{"b", "a"}) {
+		dom.set_text_content(d.doc, dom.find_by_id(d.doc, id), "text")
+		demo_frame(d, "")
+		testing.expectf(t, d.l.inc.verify_failures == 0, "%s: %s", id, d.l.inc.verify_report)
+		testing.expect_value(t, d.l.last_pass, Pass_Kind.Incremental)
 	}
 }
 // An orthogonal box whose frame has no block size takes its inline size from the viewport, under inputs from its frame that
@@ -465,6 +572,11 @@ inc_anonymous_box_keeps_nothing_of_its_parents_record :: proc(t: ^testing.T) {
 	c := box_index(&e.l, dom.find_by_id(e.doc, "c"))
 	testing.expect(t, e.l.boxes[c].cs.compositing != {}, "the animation promises a transform")
 	testing.expect(t, e.l.boxes[e.l.boxes[c].first].cs.compositing == {}, "the anonymous flex item makes no such promise")
+	f := demo_load(`<style>::highlight(found) { color: red }</style><div id=g style="display:grid">text</div>`)
+	defer demo_unload(f)
+	g := box_index(&f.l, dom.find_by_id(f.doc, "g"))
+	testing.expect(t, len(f.l.boxes[g].cs.highlights) > 0, "the element's rules say what its highlights are")
+	testing.expect(t, f.l.boxes[f.l.boxes[g].first].cs.highlights == nil, "the anonymous grid item's record has none of them")
 }
 // An animated element's record is an overlay, the same address from one style pass to the next: its anonymous flex item was
 // not made again, and kept the inherited group of a pass that goes (an access violation in the verification, reading it).

@@ -208,20 +208,31 @@ rendered_without_box :: proc(c: ^Ctx, h: base.Handle) -> bool {
 	for ch := dom.flat_first_child(c.d, h); ch != base.NIL_HANDLE; ch = dom.flat_next(c.d, ch) {
 		if live_box(l, ch) != NONE { return true }
 	}
-	// the items of the formatting context it would be in
+	// the items of the formatting contexts it would be in: that of its container, of the inline box around it, or those of
+	// the anonymous boxes of a container with blocks among its children
 	for cur := up(c, h); cur != base.NIL_HANDLE; cur = up(c, cur) {
 		bi := live_box(l, cur)
 		if bi == NONE { continue }
 		b := &l.boxes[bi]
-		root := .Ifc in b.flags ? bi : b.ifc_root
-		if root == NONE { return false }
-		r := &l.boxes[root]
-		for i in r.items[0] ..< r.items[1] {
-			it := &l.inline_items[i]
-			if it.node == h { return true }
-			if it.source != base.NIL_HANDLE { if sn := dom.get(c.d, it.source); sn != nil && sn.parent == h { return true } }
-		}
-		return false
+		if b.kind == .Inline { return made_items_in(c, h, b.ifc_root) }
+		return made_items_in(c, h, bi)
+	}
+	return false
+}
+
+// Has `h` items in inline formatting context `bi`, or in one of the anonymous boxes inside it?
+@(private)
+made_items_in :: proc(c: ^Ctx, h: base.Handle, bi: i32) -> bool {
+	l := c.l
+	if bi == NONE { return false }
+	b := &l.boxes[bi]
+	for i in b.items[0] ..< b.items[1] {
+		it := &l.inline_items[i]
+		if it.node == h { return true }
+		if it.source != base.NIL_HANDLE { if sn := dom.get(c.d, it.source); sn != nil && sn.parent == h { return true } }
+	}
+	for ch := b.first; ch != NONE; ch = l.boxes[ch].next {
+		if .Anonymous in l.boxes[ch].flags && made_items_in(c, h, ch) { return true }
 	}
 	return false
 }
@@ -363,11 +374,14 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 		if e.level < .Layout { continue }   // a new record with the same layout values: re-pointed below
 		layout_changes += 1
 		bi := live_box(l, e.node)
-		if bi == NONE && hidden_now(&c, e.node) {
-			// has no box and none now; but what it made without a box of its own (a <br>, the content of display:
-			// contents) is its container's: made again
-			if rendered_without_box(&c, e.node) { if p := parent_of(&c, e.node); p != base.NIL_HANDLE { append(&containers, p) } }
-			continue
+		if bi == NONE {
+			// what it made without a box of its own (a <br>, the content of display: contents or of a slot) is its container's:
+			// made again, whether it stays without one or gets one (a plan would leave the old boxes of its content there)
+			if e.node not_in touched && rendered_without_box(&c, e.node) {
+				if p := parent_of(&c, e.node); p != base.NIL_HANDLE { append(&containers, p) }
+				continue
+			}
+			if hidden_now(&c, e.node) { continue }
 		}
 		if e.level == .Layout && bi != NONE {
 			append(&styled_dirty, bi)

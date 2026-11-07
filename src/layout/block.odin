@@ -322,7 +322,8 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flo
 			b.size.y = b.cache_h
 			return Result{h = b.cache_h}
 		}
-		if flow_ok && b.cache_flow {
+		// (top margins that collapse through it or not, as they did: what they left inside it is in its height)
+		if flow_ok && b.cache_flow && b.cache_open == (fc.open != nil) {
 			b.size.y = b.cache_h
 			if fc.open != nil { strut_merge(fc.open, b.cache_contrib) }
 			return Result{h = b.cache_h, end = b.cache_end, through = b.cache_through}
@@ -443,6 +444,7 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flo
 	if independent || flow_ok {
 		b.cache_ok = true
 		b.cache_flow = !independent
+		b.cache_open = outer_open != nil
 		b.cache_in = key
 		b.cache_h = h
 		b.cache_end, b.cache_through, b.cache_contrib = res.end, res.through, contrib

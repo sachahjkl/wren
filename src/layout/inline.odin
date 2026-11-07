@@ -1156,6 +1156,10 @@ ifc_publish :: proc(c: ^Ctx, bi: i32, out: []Frag, lines: []Line) {
 ifc_settle :: proc(c: ^Ctx, bi: i32, lines: [2]i32) {
 	b := &c.l.boxes[bi]
 	b.lines = lines
+	// (an inline box may have no fragment this time, an empty one past the end of a line: it keeps nothing of the last layout)
+	for i in b.items[0] ..< b.items[1] {
+		if it := &c.l.inline_items[i]; it.kind == .Open { ib := &c.l.boxes[it.box]; ib.pos, ib.size = {}, {} }
+	}
 	if b.lines[1] <= b.lines[0] { return }
 	fl := &c.l.lines[b.lines[0]]
 	ll := &c.l.lines[b.lines[1] - 1]
