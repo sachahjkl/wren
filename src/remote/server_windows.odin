@@ -177,7 +177,7 @@ accept_main :: proc(_: ^thread.Thread) {
 			continue
 		}
 		failures = 0
-		if sync.atomic_load(&srv.active) >= srv.max_clients {
+		if !room_for_client() {
 			win.CloseHandle(pipe)   // turned away: the client sees the pipe close
 		} else {
 			c := new(Conn, base.process_allocator())
@@ -190,11 +190,18 @@ accept_main :: proc(_: ^thread.Thread) {
 	}
 }
 
+// The other end of `c` is still open (what it wrote and has not been read counts as there too).
+@(private)
+client_there :: proc(c: ^Conn) -> bool {
+	return bool(win.PeekNamedPipe(c.pipe, nil, 0, nil, nil, nil)) || win.GetLastError() != win.ERROR_BROKEN_PIPE
+}
+
 @(private)
 client_main :: proc(t: ^thread.Thread) {
 	context = base.process_context()
 	c := (^Conn)(t.data)
-	defer { win.CloseHandle(c.pipe); conn_done(c) }
+	defer { conn_done(c); win.CloseHandle(c.pipe) }
+	if srv.client_hold != nil { srv.client_hold() }
 	read_ev := win.CreateEventW(nil, true, false, nil)
 	c.write_ev = win.CreateEventW(nil, true, false, nil)
 	defer { win.CloseHandle(read_ev); win.CloseHandle(c.write_ev) }
