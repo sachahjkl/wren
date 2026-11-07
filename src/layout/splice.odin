@@ -34,6 +34,12 @@ Snap :: struct {
 	box:       i32,
 	pos, size: Vec2,
 	marker:    Vec2,
+	baselines: [2]f32,
+}
+
+@(private)
+snap_of :: proc(bi: i32, b: ^Box) -> Snap {
+	return Snap{box = bi, pos = b.pos, size = b.size, marker = b.marker_pos, baselines = {b.baseline, b.last_baseline}}
 }
 
 // Is the content of inline formatting context `p` only text and plain inline boxes? Styles are read from `st` (the
@@ -98,20 +104,20 @@ snap_children :: proc(c: ^Ctx, bi: i32) {
 	pass.snapped[bi] = true
 	l := c.l
 	b := &l.boxes[bi]
-	append(&pass.snap, Snap{box = bi, pos = b.pos, size = b.size, marker = b.marker_pos})
+	append(&pass.snap, snap_of(bi, b))
 	for ch := b.first; ch != NONE; ch = l.boxes[ch].next {
 		k := &l.boxes[ch]
-		append(&pass.snap, Snap{box = ch, pos = k.pos, size = k.size, marker = k.marker_pos})
+		append(&pass.snap, snap_of(ch, k))
 		if k.kind == .Row_Group || k.kind == .Inline {
 			for g := k.first; g != NONE; g = l.boxes[g].next {
 				x := &l.boxes[g]
-				append(&pass.snap, Snap{box = g, pos = x.pos, size = x.size, marker = x.marker_pos})
+				append(&pass.snap, snap_of(g, x))
 			}
 		}
 	}
 	for a := b.abs_first; a != NONE; a = l.boxes[a].abs_next {
 		k := &l.boxes[a]
-		append(&pass.snap, Snap{box = a, pos = k.pos, size = k.size, marker = k.marker_pos})
+		append(&pass.snap, snap_of(a, k))
 	}
 }
 
@@ -276,6 +282,8 @@ try_splice :: proc(c: ^Ctx, roots: []i32, cand: map[i32]Splice_Root, input: Inpu
 		b := &l.boxes[s.box]
 		if .Dead in b.flags || in_root(l, s.box, inside) { continue }
 		if b.pos != s.pos || b.size != s.size { return false }
+		// (an inline-block that stays where it is, with another baseline: what is on its line with it moves)
+		if .Atomic in b.flags && s.baselines != {b.baseline, b.last_baseline} { return false }
 		if b.marker_pos != s.marker && !inside[s.box] { return false }
 	}
 	// coordinates of the new inline boxes, then the overflow test
