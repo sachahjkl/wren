@@ -72,3 +72,5 @@ record_forget :: proc(r: ^Request) {
 	delete(r.recorded_head, heap())
 	delete(r.recorded_body)
 }
+
+_ :: base   // (used only outside a release: record_from_env)

@@ -114,7 +114,7 @@ Everything the project runs besides the compiler is one Odin program, `src/tools
 `odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe` (`build.bat` builds its own and runs `wrentool build`); `build\wrentool help` lists the
 commands, by family:
 
-- build: `build [dev|quick|debug|profile|check|release]`, the browser (`build help`: the variants and the environment). While a feature is written, `build quick` is the fastest to remake (buildwren_quick.exe, nothing optimised, the engine at `-o:minimal` in buildjs_quick: about 5 s after a change of the browser, 12 s more after one of the engine, against 18 s and 107 s for `dev`); it is never what a bench or a test measures, which `dev` and `release` are;
+- build: `build [dev|quick|debug|profile|check|release|bench]`, the browser (`build help`: the variants and the environment). While a feature is written, `build quick` is the fastest to remake (buildwren_quick.exe, nothing optimised, the engine at `-o:minimal` in buildjs_quick: about 5 s after a change of the browser, 12 s more after one of the engine, against 18 s and 107 s for `dev`); it is never what a bench or a test measures, which `dev` and `release` are;
 - deps: `deps`, `fetch wasmtime|wgpu|openh264|emoji`, `build lexbor|native`, `symbols`, `symbolize`, `crash-symbolize`;
 - bench: `bench perf|shell|js|idle|webgl|blocker|sidebar|startup|cadence` (`bench help`): opt-in measures, never in the CI;
 - capture, shots, compare: a page rendered headless to a PNG, the README's and the site's pictures, Wren against Edge;

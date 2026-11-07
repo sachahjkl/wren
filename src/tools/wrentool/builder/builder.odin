@@ -1,5 +1,5 @@
 // Package builder: Wren's build on Windows, from the sources to build\wren.exe (what build.bat did; build.bat now only hands its arguments to `wrentool build`).
-//   wrentool build [dev|debug|profile|check|release]     the browser (dev by default; `wrentool build help` lists the variants and the environment)
+//   wrentool build [dev|debug|profile|check|release|bench]  the browser (dev by default; `wrentool build help` lists the variants and the environment)
 //   wrentool build lexbor|native|tracy [-Force] [-Profile p]  one dependency (package deps)
 //
 // Channel: every build is a *development* build (blueprint icon, "development build" in about:home and the menu) but `release` (amber icon). It goes in as -define:WREN_CHANNEL (about.odin:
@@ -37,7 +37,7 @@ STACK_BYTES :: 64 << 20
 TEMP_ALLOCATOR_BACKING_BYTES :: 64 << 10
 SEPARATE_MODULES :: "-use-separate-modules"
 
-Variant :: enum { Dev, Quick, Debug, Profile, Check, Release }
+Variant :: enum { Dev, Quick, Debug, Profile, Check, Release, Bench }
 
 Variant_Spec :: struct {
 	name, about:      string,
@@ -68,6 +68,10 @@ VARIANTS := [Variant]Variant_Spec{
 	.Check   = {name = "check", about = "debug, allocations tracked, freed memory poisoned -> build\\wren_check.exe", program = "wren_check", flags = {"-debug", "-define:WREN_TRACK_MEMORY=true", "-define:WREN_POISON_MEMORY=true"}, separate_modules = true},
 	// one module: LLVM inlines across packages
 	.Release = {name = "release", about = "what the release packages (one module, amber icon) -> build\\wren.exe", program = "wren", flags = {"-o:speed"}, native_release = true, release_channel = true, store_symbols = true, channel_file = true},
+	// the release's code on the development channel, for the replay bench: the release reads none of the test hooks (WREN_TEST_WORLD, WREN_TEST_RECORD: `when WREN_CHANNEL != "release"`),
+	// and WREN_ODIN_EXTRA cannot turn them on (Odin refuses a second -define of WREN_CHANNEL). Nothing else the channel changes is on a page's path: the icon,
+	// the about pages' text, the licences and updates accepted, the setup dialog at a first run (never for a --profile)
+	.Bench   = {name = "bench", about = "release code with the bench's hooks, dev channel   -> build\\wren_bench.exe", program = "wren_bench", flags = {"-o:speed"}, native_release = true},
 }
 
 // What a build is made with. The command line takes them from the environment (options_from_env); wrentool experimental sets the label and the licence itself.

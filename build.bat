@@ -1,5 +1,5 @@
 @echo off
-:: build.bat [dev|debug|profile|check|release|help]: Wren's build is `wrentool build` (src\tools\wrentool\builder\builder.odin); this only runs it,
+:: build.bat [dev|debug|profile|check|release|bench|help]: Wren's build is `wrentool build` (src\tools\wrentool\builder\builder.odin); this only runs it,
 :: through an exe of its own deleted after (two builds at once cannot share one).
 setlocal
 cd /D "%~dp0"

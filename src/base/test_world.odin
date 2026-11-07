@@ -81,3 +81,5 @@ wall_now :: proc() -> time.Time {
 	if !test_world.on { return time.now() }
 	return time.unix(0, i64(test_world.start_ms) * NS_PER_MS + i64(time.tick_since(test_world.started)))
 }
+
+_ :: os   // (read only outside a release: test_world_from_env)
