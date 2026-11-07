@@ -38,7 +38,7 @@ Span_Kind :: enum u8 {
 	Origin,       // not time: this thread's number for an origin (Work.origin), its name the label
 }
 
-// The classes of work on a thread. What a loop may put off is the last one (host: Scheduling).
+// The classes of work on a thread.
 Work_Class :: enum u8 {
 	Background,   // timers, and whatever nobody said is more
 	Arrival,      // parsing, and what arrives for it: scripts, sheets, what the pump does next
