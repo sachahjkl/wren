@@ -11,5 +11,6 @@ css_numbers_serialize_short :: proc(t: ^testing.T) {
 	testing.expect_value(t, css_num(1.0 / 3.0), "0.333333")
 	testing.expect_value(t, css_num(12), "12")
 	testing.expect_value(t, css_num(0.0000001), "0")
+	testing.expect_value(t, css_num(-0.0000001), "0")
 	testing.expect_value(t, css_px(150.25), "150.25px")
 }

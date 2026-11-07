@@ -465,6 +465,7 @@ css_num :: proc(v: f32) -> string {
 		s = s[:len(s) - 1]
 		if last == '.' { break }
 	}
+	if s == "-0" { return "0" }   // (a value a hair below zero, as an extrapolated easing makes one)
 	return strings.clone(s, context.temp_allocator)
 }
 
