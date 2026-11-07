@@ -45,11 +45,13 @@ Page_Animations :: struct {
 	task_time:    f64,          // the clock as the task under way first read it (task_held; the checkpoint that ends it lets go)
 	task_held:    bool,
 	scripted:     ^Web_Anims,   // Web Animations of scripts (web_animations.odin), made on first use
+	seen:         Anim_Seen,    // what the layout says of who sees an animated element, during a tick (animations_seen.odin)
 }
 
 @(private)
 animations_init :: proc(p: ^Page) {
 	p.anim.timeline = style.timeline_make(p.engine)
+	animations_seen_install(p)
 	p.anim.pending = make([dynamic]Pending_Anim_Event)
 }
 

@@ -162,6 +162,49 @@ Timeline :: struct {
 	scripts:     map[u64]^Script_Run,  // the effects of Web Animations, by animation (script_anim.odin)
 	css_serial:  u64,                  // the last serial given to a CSS animation or transition
 	progress_timelines: map[u64]^Script_Timeline,   // the ScrollTimeline and ViewTimeline objects of scripts
+	seen:        Seen_Probe,   // who can see an animated element (timeline_set_seen); none: everyone
+}
+
+// Whether an animated element can be seen, as the page's last layout says (page/animations.odin). An animation moves at every frame
+// only for what can be: one that nobody sees asks for its next tick at its next event, or after `anim_unseen_tick_ms` to look again
+// (a transform may bring it into view). Asked during a tick: `begin` once before the first question, then `seen` per element.
+// `moves_boxes`: what is animated is not paint-only, so its changes move other boxes, which may be seen.
+Seen_Probe :: struct {
+	user:  rawptr,
+	begin: proc(user: rawptr),
+	seen:  proc(user: rawptr, node: base.Handle, moves_boxes: bool) -> bool,
+}
+
+timeline_set_seen :: proc(tl: ^Timeline, probe: Seen_Probe) { tl.seen = probe }
+
+// The questions of one tick: the probe begins only if one is asked.
+@(private)
+Seen_Ask :: struct {
+	tl:    ^Timeline,
+	begun: bool,
+}
+
+// When an active animation of `node` animating `props` wants its next tick: 0 when it can be seen (or nobody says), else `until`
+// (ms to its next event) capped by the setting.
+@(private)
+seen_wait :: proc(a: ^Seen_Ask, node: base.Handle, props: Prop_Set, until: f64) -> f64 {
+	tl := a.tl
+	every := tl.engine.settings.anim_unseen_tick_ms
+	if every <= 0 || tl.seen.seen == nil { return 0 }
+	if !a.begun {
+		a.begun = true
+		if tl.seen.begin != nil { tl.seen.begin(tl.seen.user) }
+	}
+	if tl.seen.seen(tl.seen.user, node, !paint_only(props)) { return 0 }
+	return max(min(until, every), 0)
+}
+
+// The document time until an active run's next event: the end of its iteration, or of its active phase (+1: after it, as hold_ms).
+@(private)
+run_next_event_ms :: proc(r: ^Anim_Run, st: Run_State) -> f64 {
+	left := st.active - st.t
+	if dur := f64(r.spec.duration); dur > 0 { left = min(left, dur - math.mod(st.t, dur)) }
+	return left + 1
 }
 
 timeline_make :: proc(e: ^Engine) -> ^Timeline {
@@ -875,6 +918,7 @@ timeline_tick :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wall_ms: f6
 	changed := tl.dirty
 	next := -1.0
 	want :: proc(next: ^f64, ms: f64) { if next^ < 0 || ms < next^ { next^ = max(ms, 0) } }
+	ask := Seen_Ask{tl = tl}
 	finished := make([dynamic]^Transition, context.temp_allocator)
 	if tl.order_dirty { sort_order(tl, doc) }   // (the events reach the page in this order: a map's comes from addresses)
 	for ea in tl.order {
@@ -893,7 +937,10 @@ timeline_tick :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wall_ms: f6
 			if key != tr.key { tr.key = key; changed = true }
 			switch phase {
 			case .Before: want(&next, tr.start + tr.delay - now)
-			case .Active: want(&next, 0)
+			case .Active:
+				props: Prop_Set
+				ps_add(&props, tr.prop)
+				want(&next, seen_wait(&ask, ea.node, props, tr.start + tr.delay + tr.duration - now + 1))
 			case .After:
 			}
 		}
@@ -927,7 +974,7 @@ timeline_tick :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wall_ms: f6
 				switch st.phase {
 				case .Before: want(&next, -st.t)
 				case .Active:
-					if ms, held := hold_ms(r, st); held { want(&next, ms) } else { want(&next, 0) }
+					if ms, held := hold_ms(r, st); held { want(&next, ms) } else { want(&next, seen_wait(&ask, ea.node, r.props, run_next_event_ms(r, st))) }
 				case .After:
 				}
 			}

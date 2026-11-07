@@ -8,6 +8,7 @@ import "core:strings"
 import "core:testing"
 import "core:time"
 import "toolkit:render"
+import "wb:browser"
 import "wb:e2e"
 
 // What settles after the last frame (the status bar's numbers falling to rest) does so soon.
@@ -36,8 +37,8 @@ reasons :: proc(s: ^e2e.Session) -> string {
 }
 
 @(private = "file")
-draws_nothing :: proc(t: ^testing.T, url: string, loc := #caller_location) {
-	s := e2e.start(t, {url = url, prefs = {STATUS_WINDOW_PREF}}, loc = loc)
+draws_nothing :: proc(t: ^testing.T, url: string, prefs: []string = {STATUS_WINDOW_PREF}, loc := #caller_location) {
+	s := e2e.start(t, {url = url, prefs = prefs}, loc = loc)
 	e2e.wait_idle(s)
 	e2e.wait_at_rest(s)
 	before := e2e.stats(s).loop
@@ -126,4 +127,79 @@ a_running_animation_draws :: proc(t: ^testing.T) {
 	e2e.rest_until_frames(s, first.frames + MOVING_FRAMES)
 	last := e2e.stats(s).loop
 	testing.expectf(t, last.causes[.Page] > first.causes[.Page], "its frames are the page's: %v, then %v:%s", first.causes, last.causes, reasons(s))
+}
+
+// An animation nobody can see (style.Seen_Probe, page/animations_seen.odin) asks for no frame of its own: a spinner inside an element that is not rendered, one far below
+// the fold. Its look again (style.animations.unseen_tick_ms) is past the turns watched, and its events (one iteration a minute) too: a frame among them would be a frame for it.
+@(private = "file") UNSEEN_PREFS :: []string{STATUS_WINDOW_PREF, "style.animations.unseen_tick_ms=10000"}
+@(private = "file") SPIN_STYLE :: `<style>@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } } .spin { width: 40px; height: 40px; background: #06c; animation: spin 60s linear infinite } body { margin: 0 }</style>`
+@(private = "file") HIDDEN_SPINNER_PAGE :: `<!doctype html><meta charset="utf-8"><title>hidden spinner</title>` + SPIN_STYLE + `<p>A page.</p><div style="display: none"><div class="spin"></div></div>`
+@(private = "file") SPINNER_BELOW_PAGE :: `<!doctype html><meta charset="utf-8"><title>spinner below</title>` + SPIN_STYLE + `<p>A page.</p><div style="height: 20000px"></div><div class="spin" id="s"></div>`
+// The same far below, but what it animates is a size: it moves the boxes around it, and counts as seen.
+@(private = "file") GROWER_BELOW_PAGE :: `<!doctype html><meta charset="utf-8"><title>grower below</title><style>@keyframes grow { from { width: 0px } to { width: 100px } } .grow { height: 40px; background: #06c; animation: grow 60s linear infinite } body { margin: 0 }</style><p>A page.</p><div style="height: 20000px"></div><div class="grow"></div>`
+
+@(test)
+an_animation_in_an_element_not_rendered_draws_nothing_at_rest :: proc(t: ^testing.T) {
+	draws_nothing(t, e2e.file_page(e2e.temp_folder(t), "hidden.html", HIDDEN_SPINNER_PAGE), UNSEEN_PREFS)
+}
+
+@(test)
+an_animation_far_below_the_fold_draws_nothing_at_rest_and_draws_once_scrolled_to :: proc(t: ^testing.T) {
+	s := e2e.start(t, {url = e2e.file_page(e2e.temp_folder(t), "below.html", SPINNER_BELOW_PAGE), prefs = UNSEEN_PREFS})
+	e2e.wait_idle(s)
+	e2e.wait_at_rest(s)
+	at_rest := e2e.stats(s).loop.frames
+	e2e.rest_turns(s, REST_TURNS)
+	testing.expectf(t, e2e.stats(s).loop.frames == at_rest, "%d frames over %d turns at rest:%s", e2e.stats(s).loop.frames - at_rest, REST_TURNS, reasons(s))
+	e2e.eval(s, "document.getElementById('s').scrollIntoView(); 1")
+	first := e2e.stats(s).loop
+	e2e.rest_until_frames(s, first.frames + MOVING_FRAMES)
+	last := e2e.stats(s).loop
+	testing.expectf(t, last.causes[.Page] - first.causes[.Page] >= MOVING_FRAMES - 1, "seen, it draws at every frame: %v, then %v:%s", first.causes, last.causes, reasons(s))
+}
+
+@(test)
+an_animation_of_a_size_far_below_the_fold_draws :: proc(t: ^testing.T) {
+	s := e2e.start(t, {url = e2e.file_page(e2e.temp_folder(t), "grower.html", GROWER_BELOW_PAGE), prefs = UNSEEN_PREFS})
+	e2e.wait_idle(s)
+	first := e2e.stats(s).loop
+	e2e.rest_until_frames(s, first.frames + MOVING_FRAMES)
+	last := e2e.stats(s).loop
+	testing.expectf(t, last.causes[.Page] > first.causes[.Page], "its frames are the page's: %v, then %v:%s", first.causes, last.causes, reasons(s))
+}
+
+// A document held for its render-blocking sheet (a gate of the test server) shows the loading bar (first_paint.odin loading_bar). The bar moves at the loading
+// indicators' rate, not at every refresh, and the page's look at what it waits for (js_load.odin poll_schedule, every 16 ms) draws nothing: frames against the time
+// gone by (a slow machine makes fewer, never more), a turn of the indicators and the status bar's numbers falling to rest after it. (Before: 87 frames in 1.1 s.)
+@(private = "file") LOADING_FPS :: 4
+@(private = "file") FRAMES_A_TURN :: 2   // (the turn's, the status bar's)
+@(private = "file") FRAMES_ASKED_BEFORE :: 4   // (what the navigation's last steps asked for before the watch: an input asks for 4)
+@(private = "file") LOADING_PREFS :: []string{STATUS_WINDOW_PREF, "browser.tabs.spinner_fps=4"}
+@(private = "file") SHEET_GATE :: "loading-bar-sheet"
+
+@(private = "file")
+held_for_its_sheet :: proc(s: ^e2e.Session) -> bool {
+	context = s.ctx
+	t := browser.current_tab(s.app)
+	return t != nil && t.page != nil && browser.tab_loading(t)
+}
+
+@(test)
+the_loading_bar_moves_at_the_loading_indicators_rate :: proc(t: ^testing.T) {
+	server := e2e.test_server(t)
+	sheet := e2e.url(server, fmt.tprintf("/firstpaint/f/slow.css?gate=%s", SHEET_GATE))
+	url := e2e.file_page(e2e.temp_folder(t), "held.html", fmt.tprintf(`<!doctype html><meta charset="utf-8"><title>held</title><link rel="stylesheet" href="%s"><p>Held for its sheet.</p>`, sheet))
+	s := e2e.start(t, {url = "about:blank", prefs = LOADING_PREFS})
+	e2e.wait_idle(s)
+	e2e.navigate_begin(s, url)
+	e2e.wait_until(s, held_for_its_sheet, "the document, held for its sheet")
+	began := time.tick_now()
+	before := e2e.stats(s).loop.frames
+	e2e.rest_turns(s, REST_TURNS)
+	frames := e2e.stats(s).loop.frames - before
+	turns := (int(time.duration_milliseconds(time.tick_since(began))) * LOADING_FPS + 999) / 1000
+	testing.expect(t, held_for_its_sheet(s), "still held")
+	testing.expectf(t, frames <= FRAMES_A_TURN * turns + FRAMES_ASKED_BEFORE, "%d frames for %d turns of the bar:%s", frames, turns, reasons(s))
+	e2e.open_gate(server, SHEET_GATE)
+	e2e.wait_load(s)
 }

@@ -56,7 +56,9 @@ js_layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 		prof_layout(&t.layout)
 		layout_trace("read", &t.layout, time.duration_milliseconds(style_took), time.duration_milliseconds(time.tick_since(t_read) - style_took))
 	}
-	request_frames(app, 2)   // what the script changed is to be painted
+	// what the script changed is to be painted: by a frame to come, unless this one is the tab's rendering update (its callbacks, its page
+	// phase), which paints it. (Asked from there, each frame asked for the next: an animation ticking under a forced reading never rested.)
+	if app.rendering != t { request_frames(app, 2) }
 	return &t.layout
 }
 

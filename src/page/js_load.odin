@@ -1036,8 +1036,27 @@ poll_schedule :: proc(p: ^Page) {
 		pg := (^Page)(data)
 		if pg.closed || pg.scripts == nil { return }
 		pg.scripts.poll = base.NIL_HANDLE
+		before := poll_progress(pg)
 		scripts_pump(pg)
+		// a look that found the page as it was draws nothing (it ran every poll_ms from DOMContentLoaded to the load event, and each one made two frames)
+		if !pg.closed && pg.scripts != nil && poll_progress(pg) == before { host.quiet_note(pg.loop) }
 	}, p, p.scope, .Arrival)
+}
+
+// What a look of the poll can move: the document, its phase, what ran, what the parser waits for, the pump.
+@(private = "file")
+Poll_Progress :: struct {
+	mutations:   u64,
+	phase:       Doc_Phase,
+	scripts_run: int,
+	pending:     ^Page_Script,
+	pump:        Pump_State,
+}
+
+@(private = "file")
+poll_progress :: proc(p: ^Page) -> Poll_Progress {
+	s := p.scripts
+	return {p.doc != nil ? p.doc.mutations : 0, s.phase, s.timing.scripts_run, s.parser.pending, s.pump.state}
 }
 
 ////////////////////////////////
