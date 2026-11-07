@@ -3977,6 +3977,29 @@ Read plainly. **theverge.com settles 13 % sooner, visually ready 13 % sooner and
 
 **Not verified.** The release build. The other sites of the series (bbc.com/news). Pages whose scripts read the layout in many tasks between frames while an animation waits unseen: each such task still lays out once, which round 54 asked for and no page here showed in its spans. Whether a frame callback that reads `document.timeline.currentTime` or a style now sees the frame's time on every page as other browsers give it (the frame's own pass read it already; tests of animations pass).
 
+## What changed, round 60: WebGL contexts made ahead
+
+The fourth cost of "what is left" below: on npr.org a script asks for four WebGL contexts after the load event (two of them in
+`OffscreenCanvas`, one in a worker), and the window thread spent about 320 ms of the 3.2 s after the load waiting on them: the GPU
+process's start (about 200 ms on a desktop with a GPU) and a device made in it (70 ms, a quarter of it the context's own shaders).
+
+**What changed** ([docs/js/webgl.md](js/webgl.md#the-gpu-process), "Made ahead"):
+- the process is started on a thread of its own once a page has shown its first content (`webgl.gpu_start_ahead`, on); not at the
+  navigation, where its start and its driver competed with the first frame;
+- the process holds the next context's device, made on a thread of its own (`native/webgl/src/spare.rs`: empty, being made, ready),
+  after its start and after each context that took one; a context waits for the one being made rather than make a second;
+- what costs nothing to a browser that never sees WebGL, beyond one start: a process started ahead that goes idle without ever having
+  had a context turns the start ahead off for the browser's life (`ahead_off` in `native/webgl/src/parent.rs`). Without it, the
+  idle exit (60 s) and the next page's first paint would start a process a minute for nothing.
+
+**Tests**: `spare.rs` (the state machine with plain values: one at a time, taken once, a taker waits for the one being made, one for
+other preferences dropped, a cancel frees a waiting taker); `ipc_tests.rs` `started_ahead_a_page_finds_its_process_and_device_ready`
+and `a_process_started_ahead_for_nothing_is_not_started_ahead_again` (on the software adapter, Linux); `src/tools/e2e/webgl_process.odin`
+in the real browser. `getError`, `readPixels` and `getParameter` are the device's answers as before.
+
+**Not measured yet**: this round was finished on a Linux machine with no GPU and without the replay recordings (they are on the
+Windows machine). The npr.org window thread after the load is to be read again there with `wrentool replay run` and `threadtime`.
+
 ## Release build, rounds 51 to 58, and what is left
 
 Every series until now ran development builds (`-o:speed -debug`, one LLVM module per package). This one measures what is shipped: one module, no `-debug`, the Rust library's `release` profile (fat LTO). No engine change.

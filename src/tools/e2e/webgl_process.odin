@@ -2,7 +2,7 @@
 package e2e_scenarios
 
 // The GPU process's life in the real browser (docs/js/webgl.md), on whatever adapter the machine has (none: said, not failed), and nothing of it asked of the program: what a crash
-// and a deadlock in a driver are is done to the process from outside. A page without WebGL starts no process; the first context starts one, of the same program; killed while a page
+// and a deadlock in a driver are is done to the process from outside. A page without WebGL starts no process; the first context starts one, of the same program, unless a page's first paint started it ahead (webgl.gpu_start_ahead); killed while a page
 // draws, every context of the page and of its workers gets webglcontextlost and webglcontextrestored and goes on, unless it does not ask for it back; one that does nothing any more
 // answers no question, is killed by the watcher, and the page goes on; a browser that is killed takes its process along.
 
@@ -134,17 +134,46 @@ open_gl_page :: proc(t: ^testing.T, loc := #caller_location) -> (s: ^e2e.Session
 	return s, page, true
 }
 
+// The process is the program's: the test before has left its own, idle, and on a machine with no adapter it has asked. It goes.
+@(private = "file")
+end_the_one_left :: proc(s: ^e2e.Session) {
+	left := e2e.stats(s).gpu_process_id
+	if left == 0 { return }
+	h := process_handle(left)
+	defer win.CloseHandle(h)
+	win.TerminateProcess(h, 1)
+	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool { return e2e.stats(s).gpu_process_id == 0 }, "the process of the test before to be gone")
+}
+
+// webgl.gpu_start_ahead: a page's first paint starts the process, a page without WebGL included, and the first context of a page takes it.
+@(test)
+gpu_process_started_ahead_by_a_load :: proc(t: ^testing.T) {
+	dir := e2e.temp_folder(t)
+	s := e2e.start(t, {prefs = {fmt.tprintf(HANG_PREF, HANG_MS), fmt.tprintf(RESTARTS_PREF, RESTARTS), "webgl.gpu_start_ahead=true"}})
+	// (not ended as the next test does: a process killed is a bad end, after which nothing starts ahead; this test runs in a program of its own)
+	testing.expect_value(t, e2e.stats(s).gpu_process_id, 0)
+	starts := e2e.stats(s).gpu_process_starts
+	e2e.navigate(s, e2e.file_page(dir, "plain.html", PLAIN_PAGE))
+	testing.expect_value(t, e2e.eval(s, "document.querySelector('h1').textContent"), "no WebGL here")
+	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool { return e2e.stats(s).gpu_process_id != 0 }, "the process started ahead")
+	ahead := e2e.stats(s)
+	testing.expect_value(t, ahead.gpu_process_starts, starts + 1)
+	e2e.navigate(s, e2e.file_page(dir, "gl.html", GL_PAGE))
+	if e2e.eval(s, "String(window.has)") != "true" {
+		machine_has_no_adapter(t)
+		return
+	}
+	testing.expect_value(t, e2e.eval(s, "green(a.gl)"), GREEN_PIXEL)   // the device made ahead draws
+	testing.expect_value(t, e2e.eval(s, "green(b.gl)"), GREEN_PIXEL)   // and the next context's
+	testing.expect_value(t, e2e.stats(s).gpu_process_id, ahead.gpu_process_id)   // in the process started ahead
+	testing.expect_value(t, e2e.stats(s).gpu_process_starts, starts + 1)
+}
+
 @(test)
 gpu_process_lives_and_comes_back :: proc(t: ^testing.T) {
 	dir := e2e.temp_folder(t)
 	s := e2e.start(t, {prefs = {fmt.tprintf(HANG_PREF, HANG_MS), fmt.tprintf(RESTARTS_PREF, RESTARTS)}})
-	// (the process is the program's: the test before this one has left its own, idle, and on a machine with no adapter it has asked)
-	if left := e2e.stats(s).gpu_process_id; left != 0 {
-		h := process_handle(left)
-		defer win.CloseHandle(h)
-		win.TerminateProcess(h, 1)
-		e2e.wait_until(s, proc(s: ^e2e.Session) -> bool { return e2e.stats(s).gpu_process_id == 0 }, "the process of the test before to be gone")
-	}
+	end_the_one_left(s)
 	starts := e2e.stats(s).gpu_process_starts
 	e2e.navigate(s, e2e.file_page(dir, "plain.html", PLAIN_PAGE))
 	testing.expect_value(t, e2e.eval(s, "document.querySelector('h1').textContent"), "no WebGL here")   // a page without WebGL runs

@@ -18,7 +18,7 @@ pub mod sys;
 /// The argument that makes the program a GPU process. It is never in a command line a person types.
 pub const ROLE_ARG: &str = "--wren-gpu-process=";
 /// Told in the hello, so that a program from another build is not believed.
-pub const PROTOCOL_VERSION: u32 = 1;
+pub const PROTOCOL_VERSION: u32 = 2;
 const CONTROL_MAGIC: u32 = 0x5747_5055; // "WGPU"
 
 /// Each direction's ring. It is one copy for what passes through, whatever its size (a larger message goes through in pieces,
@@ -70,6 +70,8 @@ pub enum ToChild {
     Ping = 11,
     Exit = 12,
     Commit = 13,
+    /// The attributes a context would be made with: the next one's device is made ahead (host::prepare).
+    Prepare = 14,
     /// Test hooks: a child started without them takes these for a broken stream and ends.
     TestMisbehave = 100,
 }
@@ -90,6 +92,7 @@ impl ToChild {
             11 => ToChild::Ping,
             12 => ToChild::Exit,
             13 => ToChild::Commit,
+            14 => ToChild::Prepare,
             100 => ToChild::TestMisbehave,
             _ => return None,
         })

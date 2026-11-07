@@ -40,6 +40,8 @@ const MAX_FRAMES_IN_FLIGHT: usize = 3;
 const LOSE_ACK_WAIT: Duration = Duration::from_millis(100);
 /// A process that did not say hello by then is no process.
 const MIN_START_WAIT: Duration = Duration::from_millis(100);
+/// The shortest wait for an answer, whatever webgl.wait_ms says.
+const MIN_WAIT_MS: u32 = 100;
 
 /// How a process ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -211,6 +213,10 @@ struct GpuState {
     current: Option<Arc<Proc>>,
     deaths: VecDeque<Instant>,
     starts: u64,
+    /// Contexts the current process has had: one that goes idle with none was started ahead for nothing.
+    contexts: u64,
+    /// A process started ahead went with no context: this browser sees no WebGL, and starts none ahead again (webgl.gpu_start_ahead).
+    ahead_off: bool,
 }
 
 /// The process of a browser: one, started by the first context. (Tests make their own to kill.)
@@ -223,7 +229,7 @@ pub struct Gpu {
 impl Gpu {
     pub const fn new() -> Gpu {
         Gpu {
-            state: Mutex::new(GpuState { current: None, deaths: VecDeque::new(), starts: 0 }),
+            state: Mutex::new(GpuState { current: None, deaths: VecDeque::new(), starts: 0, contexts: 0, ahead_off: false }),
             limits: Mutex::new(None),
             hooks: AtomicBool::new(false),
         }
@@ -259,10 +265,20 @@ impl Gpu {
         if let Some(p) = st.current.clone() {
             if !p.is_dead() {
                 lock(&p.table).entries.insert(id, entry);
+                st.contexts += 1;
                 return Ok(p);
             }
             st.current = None;
         }
+        let (mut st, p) = self.start(st, wait)?;
+        lock(&p.table).entries.insert(id, entry);
+        st.contexts += 1;
+        Ok(p)
+    }
+
+    /// A new process, the browser's current one, unless the limit on restarts says no. The state's lock is held throughout, and given
+    /// back with the process.
+    fn start<'a>(&'static self, mut st: MutexGuard<'a, GpuState>, wait: Duration) -> Result<(MutexGuard<'a, GpuState>, Arc<Proc>), String> {
         let limits = self.limits();
         let now = Instant::now();
         while st.deaths.front().is_some_and(|t| now.duration_since(*t) > limits.restart_window) {
@@ -271,21 +287,59 @@ impl Gpu {
         if st.deaths.len() as u64 > limits.max_restarts as u64 {
             return Err(format!("the GPU process ended {} times in a short while: WebGL is off for now (webgl.gpu_max_restarts)", st.deaths.len()));
         }
-        let p = match Proc::start(self, wait.max(MIN_START_WAIT)) {
-            Ok(p) => p,
+        match Proc::start(self, wait.max(MIN_START_WAIT)) {
+            Ok(p) => {
+                st.starts += 1;
+                st.contexts = 0;
+                st.current = Some(p.clone());
+                Ok((st, p))
+            }
             Err((p, e)) => {
                 drop(st);
                 // (its end takes the state's lock)
                 if let Some(p) = p {
                     p.die(End::Hung);
                 }
-                return Err(e);
+                Err(e)
             }
-        };
-        st.starts += 1;
-        lock(&p.table).entries.insert(id, entry);
-        st.current = Some(p.clone());
-        Ok(p)
+        }
+    }
+
+    /// The process started, and the device of a context with these attributes made in it, before any page asks
+    /// (webgl.gpu_start_ahead): a page's first getContext then waits for neither. On a thread of its own, so that the caller (a page's
+    /// thread) never waits; nothing when a process runs or is being started, or when one ended badly lately (a restart is for a
+    /// page that asks for it). With no context, the process goes after webgl.gpu_idle_exit_s as any other; one that went without
+    /// ever having a context turns this off for the browser's life (`ahead_off`): no process started again and again for nothing.
+    pub fn start_ahead(&'static self, a: &WgAttrs) {
+        self.set_limits(a);
+        {
+            // (a lock held by someone else is a start under way, or a context being made: a process is coming)
+            let Ok(st) = self.state.try_lock() else { return };
+            if st.current.as_ref().is_some_and(|p| !p.is_dead()) || !st.deaths.is_empty() || st.ahead_off {
+                return;
+            }
+        }
+        let mut attrs = *a;
+        attrs.notify = None;
+        attrs.notify_user = std::ptr::null_mut();
+        let wait = Duration::from_millis(a.wait_ms.max(MIN_WAIT_MS) as u64);
+        let _ = std::thread::Builder::new().name("wren gpu ahead".to_string()).spawn(move || {
+            let st = lock(&self.state);
+            if st.current.as_ref().is_some_and(|p| !p.is_dead()) {
+                return;
+            }
+            let Ok((st, p)) = self.start(st, wait) else { return };
+            // (after the lock: a send that finds the process gone ends it, which takes the lock; a Create may come first, and the
+            // spare is then made after it)
+            drop(st);
+            let _ = p.send(ToChild::Prepare, 0, 0, &[&wire_attrs(&attrs)], Some(Instant::now() + wait));
+        });
+    }
+
+    fn set_limits(&self, a: &WgAttrs) {
+        if let Ok(mut l) = self.limits.lock() {
+            *l = Some(Limits::of(a));
+        }
     }
 
     fn died(&self, p: &Proc, end: End) {
@@ -310,6 +364,9 @@ impl Gpu {
         }
         if !lock(&p.table).entries.is_empty() {
             return;
+        }
+        if st.contexts == 0 {
+            st.ahead_off = true;
         }
         st.current = None;
         drop(st);
@@ -875,10 +932,8 @@ pub(crate) fn wire_attrs(a: &WgAttrs) -> Vec<u8> {
 impl Handle {
     /// A context: in a process, started now if it is the browser's first.
     pub fn create(gpu: &'static Gpu, a: &WgAttrs) -> Result<(Box<Handle>, WgInfo), String> {
-        if let Ok(mut l) = gpu.limits.lock() {
-            *l = Some(Limits::of(a));
-        }
-        let wait = Duration::from_millis(a.wait_ms.max(100) as u64);
+        gpu.set_limits(a);
+        let wait = Duration::from_millis(a.wait_ms.max(MIN_WAIT_MS) as u64);
         let mut attrs = *a;
         attrs.notify = None;
         attrs.notify_user = std::ptr::null_mut();
