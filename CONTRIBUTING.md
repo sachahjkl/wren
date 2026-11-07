@@ -119,7 +119,7 @@ commands, by family:
 - bench: `bench perf|shell|js|idle|webgl|blocker|sidebar|startup|cadence` (`bench help`): opt-in measures, never in the CI;
 - capture, shots, compare: a page rendered headless to a PNG, the README's and the site's pictures, Wren against Edge;
 - threadtime: whose work the window thread did in a load, from the files of `WREN_SPANS` (`waterfall -AfterMs n` gives the page the time to settle): by origin and class, up to the first contentful paint, the largest and settled; the frames begun and their own work by phase, their waits apart;
-$R
+- replay: `record`, `run`, `lists`: a load served again from what a site served, seeded, to prove a change of a percent ([the bench](docs/testing.md#the-replay-bench));
 - sweep: real pages visited headless as a person does (`-List tools/site_compare_list.txt`, `-Shard i -Shards n`, `-OneProcess`): crashes, hangs, unclean ends, the time of each step, in `build/sweep/summary_<shard>.tsv`;
 - gen: `gen psl|unicode|media-fixtures|video-fixtures|perf-media|rust-crates`;
 - docs and checks: `docs` (the documentation site), `license`, `i18n`, `portability`, `engine test262|rx-diff`, `changelog`;
