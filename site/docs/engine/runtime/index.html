@@ -307,6 +307,20 @@ object to a private dictionary shape.</li>
 slots of exotic kinds (Array, Function, Native, Bound, wrappers, ArrayBuffer/TypedArray/DataView,
 Map/Set, Proxy, Date, RegExp, Promise, Generator, Module namespace, Host…). Arrays keep a dense
 <code>[]Value</code> fast path.</li>
+<li><strong>The layout on wasm32</strong>, what ships (<code>#assert</code>ed in <code>object.odin</code>): a <code>Cell</code> header is 8 bytes (<code>size</code>; the kind in a
+nibble with <code>pinned</code>, <code>in_ext</code> and two bits of the kind's own in a byte; <code>mark</code> a byte; the host's count of references
+in 16 bits, which sticks at its top and makes the cell a root for good); an <code>Object</code> 40 (a native function's <code>magic</code>
+in it, so that <code>Object_Data</code> is 16, the size of its largest variant); a string header 28, a closure cell (<code>Var_Ref</code>) 32
+(detached when <code>pvalue</code> points at its own <code>value</code>). An object's slots follow it in its cell when it is made with them
+(<code>object_new_shape</code>: an empty plain object has room for 4, one of a known shape exactly its keys), and so do what was
+out of line and lives as long as the object: a closure's cells (<code>object_tail</code>), an iterator's state, the values of an
+array, of an arguments object or of a match made with their room (<code>array_like_new</code>, up to a block of the pool). Slots
+or values that grow past it take a block of their own; what was in the cell stays there, unused. A plain object is 104
+bytes, a closure 72 with its two cells, <code>[a, b]</code> 88, in one block each.</li>
+<li><strong>A function's <code>prototype</code></strong> is made when something first reads, defines or describes it (<code>Prop_Kind.lazy_prototype</code>,
+<code>function_prototype_make</code>): the slot is empty and the property's kind says so, every path that looks at a property's
+value goes by its kind, and the object then takes the shape the same keys have as data properties. An assignment
+(<code>F.prototype = {...}</code>) makes no object first (<code>function_prototype_settle</code>).</li>
 </ul>
 <h2 id="memory-management-gcodin"><a class="anchor" href="#memory-management-gcodin" aria-hidden="true">#</a>Memory management (<code>gc.odin</code>)</h2>
 <p>A <strong>precise, non‑moving, stop‑the‑world mark‑and‑sweep</strong> collector (<code>rt.cells</code> is every live cell).
@@ -339,7 +353,13 @@ lists carved out of 256 KiB chunks of the injected allocator (<code>mem_alloc</c
 <code>gc.odin</code>; callers always pass the size they allocated with). A cell costs a pop and a push, not a host
 allocation.</li>
 <li>The heap is capped by <code>Host_Config.malloc_limit</code>; all allocation goes through the injected allocator.
-A collection runs when the heap passes <code>max(2 × live, live + 4 MiB)</code>.</li>
+A collection runs when the heap passes <code>max(2.5 × live, live + 4 MiB)</code>.</li>
+<li><strong>The sweep</strong> frees a cell that owns nothing but its block (a plain object with its slots inline, a flat string, a
+closure cell, a symbol) without a finalizer (<code>cell_alone</code>), and charges the heap once a step. <code>Runtime.gc_swept</code>
+counts the cells freed and kept; <code>-define:JSRT_GC_CENSUS=true</code> counts what died by kind, as the census of the heap
+does (<code>Runtime.gc_dead</code>, <code>jsengine mem</code>, <code>WREN_JS_MEMPROF=1</code>: the census of a window's realm at its load event).</li>
+<li>The strings of numbers made lately (<code>str_from_u64</code>: <code>n.toString()</code>, an index as a key) are kept in 256 slots until the
+next collection clears them: a page that makes the same number a string for each element of a list makes it once.</li>
 </ul>
 <h3 id="where-the-memory-of-a-realm-and-of-a-page-goes-wasm-jsengine-memstartup"><a class="anchor" href="#where-the-memory-of-a-realm-and-of-a-page-goes-wasm-jsengine-memstartup" aria-hidden="true">#</a>Where the memory of a realm and of a page goes (Wasm, <code>jsengine mem|startup</code>)</h3>
 <p>The linear memory of a Wasm module only grows, so what counts is the high-water mark.</p>
@@ -468,8 +488,8 @@ atom tables</strong> from the QuickJS headers.</li>
 benchmarks; the slow cases are the ones that pay one dispatch per bytecode (<code>switch</code> on integers 62 %,
 nested integer loops 69 %: next step is superinstructions or a pre‑decoded code array), native‑to‑JS
 callbacks (<code>sort</code> comparators, <code>forEach</code>: a new <code>interp_run</code> activation each, ~1.9× slower than QuickJS) and
-destructuring. Memory is 1.4× QuickJS on allocation‑heavy scripts (a plain object costs 168 bytes: <code>Object</code>
-104 + 4 inline slots; a string header is 80 bytes; both can shrink).</p>
+destructuring. Memory is 1.4× QuickJS on allocation‑heavy scripts (natively a plain object costs 136 bytes;
+on wasm32, what ships, 104: <code>Object</code> 40 + 4 inline slots of 16; a string header is 28 bytes; what is left is mostly the 16 bytes of a <code>Value</code>).</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/engine/regexp/"><span>Previous</span><strong>engine/regexp</strong></a>
 <a class="doc-next" href="../../../docs/engine/unicode/"><span>Next</span><strong>engine/unicode (ucd)</strong></a>
