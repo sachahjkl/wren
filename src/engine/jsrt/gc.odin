@@ -50,7 +50,9 @@ GC_SWEEP_STEP_BYTES :: GC_STRESS_BYTES / 4 when GC_STRESS_BYTES > 0 else 128 * 1
 // that points at one traps there (as_obj & co., mark_cell): the first use of what was collected too early has a stack, instead of reading
 // whatever the block holds next. With JSRT_GC_STRESS, to find what is not rooted. Never in a shipped build.
 GC_POISON :: #config(JSRT_GC_POISON, false)
-CELL_DEAD :: Cell_Kind(0xDD)
+CELL_DEAD :: Cell_Kind(0xD)
+// -define:JSRT_GC_CENSUS=true: each swept cell is counted by kind (Runtime.gc_dead), for jsengine mem. Never in a shipped build.
+GC_CENSUS :: #config(JSRT_GC_CENSUS, false)
 
 Cell_Kind :: enum u8 {
 	string,
@@ -63,15 +65,23 @@ Cell_Kind :: enum u8 {
 	module,
 }
 
+// Eight bytes on every target: every cell pays for this, and what the sweep and the allocator touch of a block is what they wait for.
 Cell :: struct {
-	size:    u32, // bytes charged for the cell itself
-	ext:     u32, // references held by the host (persist / the C API's owned references): each one is a root
-	kind:    Cell_Kind,
-	mark:    bool,
-	flags:   u8, // per-kind bits
-	pinned:  bool, // never collected (atoms, interned singletons)
-	in_ext:  bool, // listed in Runtime.ext_cells
+	size:       u32, // bytes charged for the cell itself
+	using gc:   bit_field u8 {
+		kind:   Cell_Kind | 4, // (first: the JIT's code writes it as the byte of a block that is zero)
+		pinned: bool | 1, // never collected (atoms, interned singletons)
+		in_ext: bool | 1, // listed in Runtime.ext_cells
+		flags:  u8 | 2,   // per-kind bits
+	},
+	mark:       bool,
+	ext:        u16, // references held by the host (persist / the C API's owned references): each one is a root
 }
+
+// (Bytes and a field of a byte: as a bit_field of 32 bits the engine's code was 430 KiB larger, the fields read through shifts and masks.)
+// A count of host references that reaches this stays: the cell is then a root for good, which costs a cell and no correctness (a page's
+// most held cell has a few hundred).
+CELL_EXT_STUCK :: max(u16)
 
 // --- raw memory (charged to the heap) ---
 
@@ -277,7 +287,7 @@ temp_reset :: #force_inline proc "contextless" (rt: ^Runtime, m: int) {
 // Host handles: keep a value alive across host turns. A count in the cell header (O(1), no table); the
 // cells with a non-zero count are listed so the collector finds its host roots without scanning the heap.
 ext_ref :: #force_inline proc(rt: ^Runtime, c: ^Cell) {
-	c.ext += 1
+	if c.ext < CELL_EXT_STUCK {c.ext += 1}
 	if !c.in_ext {
 		c.in_ext = true
 		list_push(&rt.ext_cells, c)
@@ -286,7 +296,7 @@ ext_ref :: #force_inline proc(rt: ^Runtime, c: ^Cell) {
 
 ext_unref :: #force_inline proc "contextless" (c: ^Cell) {
 	when GC_POISON {if c.ext == 0 {intrinsics.trap()}} // a reference released twice, or one the host never owned
-	if c.ext > 0 {c.ext -= 1}
+	if c.ext > 0 && c.ext < CELL_EXT_STUCK {c.ext -= 1}
 }
 
 persist :: proc(rt: ^Runtime, v: Value) {
@@ -462,7 +472,7 @@ gc_mark_ext :: proc(rt: ^Runtime) {
 		return
 	}
 	// the counts are subtracted from in place (host_mark_value), then put back
-	saved := make([]u32, len(rt.ext_cells), rt.allocator)
+	saved := make([]u16, len(rt.ext_cells), rt.allocator)
 	defer delete(saved, rt.allocator)
 	for c, i in rt.ext_cells {saved[i] = c.ext}
 	st := Host_Mark_State{rt = rt, counting = true}
@@ -594,7 +604,7 @@ gc_trace :: proc(rt: ^Runtime, c: ^Cell) {
 		if b.jit != nil {jit_mark(rt, b.jit)}
 	case .var_ref:
 		vr := cast(^Var_Ref)c
-		if vr.is_detached {
+		if var_ref_is_detached(vr) {
 			mark_value(rt, vr.value)
 		} else {
 			mark_cell(rt, vr.owner)
@@ -711,6 +721,8 @@ gc_sweep_step :: proc(rt: ^Runtime, all := false) {
 	made := max(rt.heap_bytes - sw.heap, 0)
 	sw.made += made
 	stop := all ? 0 : max(sw.left - GC_SWEEP_STEP_CELLS * int(1 + made / GC_SWEEP_STEP_BYTES), 0)
+	kept_before := sw.kept
+	freed: i64
 	dead: [dynamic]^Cell // GC_POISON: the cells of this step (a finalizer may still read another one of them)
 	for i := sw.left - 1; i >= stop; i -= 1 {
 		c := cells[i]
@@ -719,15 +731,19 @@ gc_sweep_step :: proc(rt: ^Runtime, all := false) {
 			sw.kept -= 1
 			cells[sw.kept] = c
 		} else {
-			cell_finalize(rt, c)
+			when GC_CENSUS {census_cell(&rt.gc_dead, c, true)}
+			if !cell_alone(c) {cell_finalize(rt, c)}
+			freed += i64(c.size)
 			when GC_POISON {
-				rt.heap_bytes -= i64(c.size)
 				append(&dead, c)
 			} else {
-				mem_free(rt, c, int(c.size))
+				raw_free(rt, c, int(c.size))
 			}
 		}
 	}
+	rt.heap_bytes -= freed
+	rt.gc_swept.kept += i64(kept_before - sw.kept)
+	rt.gc_swept.dead += i64(sw.left - stop - (kept_before - sw.kept))
 	sw.left = stop
 	for d in dead {d.kind = CELL_DEAD}
 	delete(dead)
@@ -751,6 +767,22 @@ gc_sweep_step :: proc(rt: ^Runtime, all := false) {
 // What is left of the sweep, at once.
 gc_sweep_finish :: proc(rt: ^Runtime) {
 	if rt.sweep.left > 0 && !rt.in_gc {gc_sweep_step(rt, all = true)}
+}
+
+// A cell that owns nothing but its block, as most of what dies (a plain object, a flat string, a closure cell): the sweep frees it
+// without a finalizer.
+@(private = "file")
+cell_alone :: #force_inline proc "contextless" (c: ^Cell) -> bool {
+	#partial switch c.kind {
+	case .object:
+		o := cast(^Object)c
+		return o.data == nil && (o.slots == nil || slots_are_inline(o))
+	case .string:
+		return !(cast(^JS_String)c).owns_buf
+	case .symbol, .var_ref:
+		return true
+	}
+	return false
 }
 
 // Release the out-of-line storage a cell owns (not the cell itself).

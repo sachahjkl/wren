@@ -22,6 +22,7 @@ Prop_Kind :: enum u8 {
 	data,
 	accessor, // slot.getset
 	var_ref,  // slot.var_ref (mapped arguments, module namespaces): the value lives in a closure cell
+	lazy_prototype, // a function's `prototype`, not made yet (function_prototype_make): the slot is empty; only what looks at a property's value meets it
 }
 
 Shape_Prop :: struct {
@@ -106,6 +107,7 @@ Object :: struct {
 		ctor_only:      bool | 1, // a native function that throws when called without `new` (Native_Kind.constructor_only)
 		host_exotic:    bool | 1, // a host object whose class has exotic hooks, or had none defined when it was made
 	},
+	magic:          i16, // a native function's: here, it would make Native_Data the largest variant of the union
 	shape:          ^Shape,
 	slots:          [^]Prop_Slot,
 	slot_cap:       u32,
@@ -161,13 +163,12 @@ Native_Kind :: enum u8 {
 	constructor_only,// TypeError when called without `new`
 }
 
-// 16 bytes on wasm32, so that the union in Object is no larger than the array variant: the kind lives in the
-// object (ctor_only, is_constructor: native_kind) and the number of data values in the block of `data`.
+// 12 bytes on wasm32, as the array variant, the largest of the union in Object: the kind and the magic live in the object
+// (ctor_only, is_constructor: native_kind; Object.magic) and the number of data values in the block of `data`.
 Native_Data :: struct {
 	fn:    Native_Proc,
 	realm: ^Context,
 	data:  [^]Value, // after an 8-byte count (native_data_len), allocated with native_data_alloc
-	magic: i32,
 }
 
 NATIVE_DATA_HEADER :: 8
@@ -361,6 +362,11 @@ set_date :: proc(rt: ^Runtime, o: ^Object, t: f64) {
 	p := cast(^Date_Data)mem_alloc(rt, size_of(Date_Data))
 	p.t = t
 	o.data = p
+}
+
+// What a page's heap is made of, on the target that ships (docs/engine/runtime.md): a plain object is its 40 bytes and 4 inline slots.
+when ODIN_ARCH == .wasm32 {
+	#assert(size_of(Cell) == 8 && size_of(Object) == 40 && size_of(Object_Data) == 16 && size_of(Var_Ref) == 32 && size_of(JS_String) == 28)
 }
 
 // --- shapes ---
@@ -683,33 +689,45 @@ object_proto :: #force_inline proc "contextless" (o: ^Object) -> ^Object {return
 
 // --- creation ---
 
-// Plain objects carry their first slots inline, after the Object (one allocation for `new C()`).
+// Plain objects have room inline for this many slots, whatever they start with: they grow.
 INLINE_SLOTS :: 4
+// An object's slots follow it in its cell when they fit a block of the pool: one allocation, one block the sweep frees and
+// nothing for it to do. Past that they have a block of their own.
+INLINE_SLOTS_MAX :: (POOL_MAX_BYTES - size_of(Object)) / size_of(Prop_Slot)
 
-object_new_shape :: proc(rt: ^Runtime, sh: ^Shape, class: Class_ID) -> ^Object {
+// `tail`: bytes of the cell after its slots, for the caller (object_tail).
+object_new_shape :: proc(rt: ^Runtime, sh: ^Shape, class: Class_ID, tail := 0) -> ^Object {
 	n := len(sh.props)
-	if class == .object && n <= INLINE_SLOTS {
-		o := cell_new(rt, Object, .object, INLINE_SLOTS * size_of(Prop_Slot))
-		o.class = class
-		o.extensible = true
-		o.shape = sh
-		o.slots = inline_slots(o)
-		o.slot_cap = INLINE_SLOTS
-		return o
-	}
-	o := cell_new(rt, Object, .object)
+	room := class == .object ? max(n, INLINE_SLOTS) : n
+	inline := room <= INLINE_SLOTS_MAX
+	o := cell_new(rt, Object, .object, (inline ? room * size_of(Prop_Slot) : 0) + tail)
 	o.class = class
 	o.extensible = true
 	o.shape = sh
-	if n > 0 {
-		o.slots = cast([^]Prop_Slot)mem_alloc(rt, n * size_of(Prop_Slot))
-		o.slot_cap = u32(n)
+	if inline {
+		if room > 0 {
+			o.slots = inline_slots(o)
+			o.slot_cap = u32(room)
+		}
+	} else {
+		o.slots = cast([^]Prop_Slot)mem_alloc(rt, room * size_of(Prop_Slot))
+		o.slot_cap = u32(room)
 	}
 	return o
 }
 
+// What object_new_shape left after the slots of `o`, while they are still those it was made with.
+object_tail :: #force_inline proc "contextless" (o: ^Object) -> rawptr {
+	return rawptr(uintptr(o) + size_of(Object) + uintptr(o.slot_cap) * size_of(Prop_Slot))
+}
+
 inline_slots :: #force_inline proc "contextless" (o: ^Object) -> [^]Prop_Slot {
 	return cast([^]Prop_Slot)(uintptr(o) + size_of(Object))
+}
+
+// Is `p` in the cell of `c` (the tail of a function: its closure cells)?
+cell_holds :: #force_inline proc "contextless" (c: ^Cell, p: rawptr) -> bool {
+	return uintptr(p) - uintptr(c) < uintptr(c.size)
 }
 
 // Are o's slots the inline ones (not a separate allocation)?
@@ -781,7 +799,7 @@ object_finalize :: proc(rt: ^Runtime, o: ^Object) {
 	case Mapped_Args_Data:
 		if d.refs != nil {mem_free(rt, d.refs, int(d.count) * size_of(^Var_Ref))}
 	case Func_Data:
-		if d.var_refs != nil && d.bc != nil {mem_free(rt, d.var_refs, int(d.bc.closure_var_count) * size_of(^Var_Ref))}
+		if d.var_refs != nil && d.bc != nil && !cell_holds(o, d.var_refs) {mem_free(rt, d.var_refs, int(d.bc.closure_var_count) * size_of(^Var_Ref))}
 	case Native_Data:
 		native_data_free(rt, &o.data.(Native_Data))
 	case ^Bound_Data:
@@ -817,7 +835,7 @@ object_finalize :: proc(rt: ^Runtime, o: ^Object) {
 	case ^Coro:
 		coro_free(rt, d)
 	case ^Iter_State:
-		iter_state_free(rt, d)
+		iter_state_free(rt, d) // (in the object's cell)
 	case ^Module:
 	case ^Disposable_Data:
 		delete(d.stack)
@@ -845,6 +863,7 @@ object_trace :: proc(rt: ^Runtime, o: ^Object) {
 			mark_cell(rt, s.getset.setter)
 		case .var_ref:
 			mark_cell(rt, s.var_ref)
+		case .lazy_prototype:
 		}
 	}
 	switch d in o.data {
@@ -929,16 +948,16 @@ bigint_finalize :: proc(rt: ^Runtime, b: ^JS_BigInt) {
 // --- closure cells ---
 
 Var_Ref :: struct {
-	using cell:  Cell,
-	pvalue:      ^Value, // the live location: into a frame while open, &value once detached
-	value:       Value,
-	is_detached: bool,
-	owner:       ^Object, // the coroutine object whose frame holds the open variable (or nil)
+	using cell: Cell,
+	pvalue:     ^Value, // the live location: into a frame while open, &value once detached
+	owner:      ^Object, // the coroutine object whose frame holds the open variable (or nil)
+	value:      Value,
 }
+
+var_ref_is_detached :: #force_inline proc "contextless" (vr: ^Var_Ref) -> bool {return vr.pvalue == &vr.value}
 
 var_ref_new_detached :: proc(rt: ^Runtime, v: Value) -> ^Var_Ref {
 	vr := cell_new(rt, Var_Ref, .var_ref)
-	vr.is_detached = true
 	vr.value = v
 	vr.pvalue = &vr.value
 	return vr

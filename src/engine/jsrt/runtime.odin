@@ -167,6 +167,11 @@ Gc_Sweep :: struct {
 	made: i64, // what was allocated since the marking: it says nothing of what the collection left
 }
 
+// What the sweeps did since the runtime began.
+Gc_Swept :: struct {
+	dead, kept: i64, // cells freed, cells looked at and kept
+}
+
 Runtime :: struct {
 	host_snapshots:     [HOST_SNAPSHOTS]Host_Snapshot,
 	host_snapshot_next: int,
@@ -183,6 +188,8 @@ Runtime :: struct {
 	gc_count:       int,
 	sweep:          Gc_Sweep,
 	gc_sweep_steps: int,
+	gc_swept:       Gc_Swept,
+	gc_dead:        Heap_Profile, // -define:JSRT_GC_CENSUS=true: what the sweeps freed, by kind (memprof.odin)
 	gc_last_pause_ns: i64,
 	gc_max_pause_ns:  i64,
 	peak_heap_bytes:  i64,

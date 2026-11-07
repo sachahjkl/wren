@@ -103,6 +103,8 @@ get_own_property :: proc(ctx: ^Context, o: ^Object, a: Atom, d: ^Prop_Desc) -> i
 			return -1
 		}
 		d^ = data_desc(v, p.flags)
+	case .lazy_prototype:
+		d^ = data_desc(function_prototype_make(ctx, o, i), p.flags)
 	}
 	return 1
 }
@@ -262,6 +264,7 @@ ordinary_define :: proc(ctx: ^Context, o: ^Object, a: Atom, d: ^Prop_Desc, throw
 		}
 		return 1
 	}
+	if o.shape.props[i].kind == .lazy_prototype {function_prototype_make(ctx, o, i)}
 	p := o.shape.props[i]
 	s := &o.slots[i]
 	cur_is_accessor := p.kind == .accessor
@@ -553,6 +556,8 @@ get_property :: proc(ctx: ^Context, obj: Value, a: Atom, receiver: Value) -> Val
 				}
 				root(rt, v)
 				return v
+			case .lazy_prototype:
+				return function_prototype_make(ctx, o, i)
 			}
 		}
 		if o.fast_array {
@@ -741,6 +746,7 @@ set_property :: proc(ctx: ^Context, obj: Value, a: Atom, val: Value, receiver: V
 					return 1
 				}
 				if p.class == .array && a == pa(.A_length) {return array_set_length(ctx, p, val, throw_flag)}
+				if prop.kind == .lazy_prototype {function_prototype_settle(rt, p, i)}
 				s.value = val
 				return 1
 			}
@@ -806,6 +812,7 @@ set_property :: proc(ctx: ^Context, obj: Value, a: Atom, val: Value, receiver: V
 	if i >= 0 {
 		prop := r.shape.props[i]
 		if prop.kind == .accessor || .writable not_in prop.flags {return fail_set(ctx, a, throw_flag)}
+		if prop.kind == .lazy_prototype {function_prototype_settle(rt, r, i)}
 		if prop.kind == .var_ref {r.slots[i].var_ref.pvalue^ = val} else {r.slots[i].value = val}
 		return 1
 	}

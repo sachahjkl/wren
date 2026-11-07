@@ -2,8 +2,9 @@ package jsrt
 
 import "core:mem"
 
-// heap_profile_field: the index from which the counters are the entries of cell_sizes.
+// heap_profile_field: the index from which the counters are the entries of cell_sizes, then those of the census of what died (-define:JSRT_GC_CENSUS=true).
 PROF_CELL_SIZES_INDEX :: 1000
+PROF_DEAD_INDEX :: 2000
 
 // A census of the heap by kind of cell: how many, how many bytes the cells take, how many bytes they own
 // out of line, and how much of both is slack (capacity not used). Only walks the cell list; nothing is
@@ -43,6 +44,7 @@ Prof_Row :: enum u8 {
 	arenas,     // count = compiles, cell_bytes = largest front-end arena (blocks), extra = retained scratch + regexp arena blocks
 	functions,  // count = functions read, cell_bytes = those that ran (their body read and verified)
 	collections, // count = collections, cell_bytes = cells in the heap, extra_bytes = steps of their sweeps
+	swept,       // count = cells the sweeps freed, cell_bytes = cells they kept
 }
 
 Prof_Cell :: struct {
@@ -59,9 +61,8 @@ Heap_Profile :: struct {
 
 PROF_FIELDS :: 4
 
-heap_profile :: proc(rt: ^Runtime) -> (p: Heap_Profile) {
-	gc_sweep_finish(rt) // (a sweep in progress has cells that are gone in the list)
-	p.heap_bytes = rt.heap_bytes
+// Adds a cell to the census. `dead`: the sweep is at it, and what it points at may be gone already (a shape newer than the object).
+census_cell :: proc(p: ^Heap_Profile, c: ^Cell, dead: bool) {
 	add :: proc(p: ^Heap_Profile, row: Prof_Row, cell, extra, slack: int) {
 		r := &p.rows[row]
 		r.count += 1
@@ -69,103 +70,107 @@ heap_profile :: proc(rt: ^Runtime) -> (p: Heap_Profile) {
 		r.extra_bytes += i64(extra)
 		r.slack_bytes += i64(slack)
 	}
-	for c in rt.cells {
-		switch c.kind {
-		case .string:
-			s := cast(^JS_String)c
-			extra := 0
-			slack := 0
-			unit := s.is_wide ? 2 : 1
-			if s.owns_buf && s.data != nil {
-				units := str_tail(s).buf.cap > 0 ? int(str_tail(s).buf.cap) : int(s.len)
-				extra = units * unit
-				slack = (units - int(s.len)) * unit
-			}
-			row := Prof_Row.str_flat8
-			if s.is_rope {row = .str_rope} else if s.is_wide {row = .str_flat16}
-			add(&p, row, int(c.size), extra, slack)
-		case .symbol:
-			add(&p, .symbol, int(c.size), 0, 0)
-		case .bigint:
-			add(&p, .bigint, int(c.size), 0, 0)
-		case .shape:
-			sh := cast(^Shape)c
-			extra := cap(sh.props) * size_of(Shape_Prop) + cap(sh.transitions) * size_of(Transition) + len(sh.hash) * size_of(u32)
-			slack := (cap(sh.props) - len(sh.props)) * size_of(Shape_Prop) + (cap(sh.transitions) - len(sh.transitions)) * size_of(Transition)
-			add(&p, sh.is_dict ? .shape_dict : .shape, int(c.size), extra, slack)
-		case .object:
-			o := cast(^Object)c
-			extra := 0
-			slack := 0
-			if o.slots != nil && !slots_are_inline(o) {extra += int(o.slot_cap) * size_of(Prop_Slot)}
-			slack += (int(o.slot_cap) - len(o.shape.props)) * size_of(Prop_Slot)
-			row := Prof_Row.obj_other
-			switch d in o.data {
-			case Array_Data:
-				extra += int(d.cap) * size_of(Value)
-				slack += int(d.cap - d.count) * size_of(Value)
-				row = .obj_array
-			case Mapped_Args_Data:
-				extra += int(d.count) * size_of(rawptr)
-				row = .obj_arguments
-			case Func_Data:
-				if d.bc != nil {extra += int(d.bc.closure_var_count) * size_of(rawptr)}
-				row = .obj_function
-			case Native_Data:
-				extra += native_data_len(&o.data.(Native_Data)) * size_of(Value) + (d.data != nil && !native_data_is_raw(&o.data.(Native_Data)) ? NATIVE_DATA_HEADER : 0)
-				row = .obj_native
-			case ^Bound_Data:
-				extra += size_of(Bound_Data) + len(d.args) * size_of(Value)
-				row = .obj_bound
-			case ^Prim_Data:
-				extra += size_of(Prim_Data)
-			case ^Date_Data:
-				extra += size_of(Date_Data)
-			case ^RegExp_Data:
-			case ^Map_State:
-				extra += size_of(Map_State) + cap(d.entries) * size_of(Map_Entry) + len(d.index) * size_of(i32)
-				slack += (cap(d.entries) - len(d.entries)) * size_of(Map_Entry)
-				row = .obj_collection
-			case ^Weak_Ref_Data, ^Fin_Rec_Data:
-			case ^Array_Buffer:
-				extra += size_of(Array_Buffer) + d.alloc_len
-				row = .obj_buffer
-			case ^Typed_Array:
-				extra += size_of(Typed_Array)
-				row = .obj_buffer
-			case ^Proxy_Data:
-				extra += size_of(Proxy_Data)
-			case ^Promise_Data:
-				extra += size_of(Promise_Data) + cap(d.reactions) * size_of(Promise_Reaction)
-				row = .obj_promise
-			case ^Coro, ^Iter_State, ^Module, ^Disposable_Data, ^Host_Object:
-			case Internal_Data:
-				extra += int(d.count) * size_of(Value)
-			}
-			if o.data == nil {
-				#partial switch o.class {
-				case .object: row = .obj_plain
-				case .error: row = .obj_error
-				case .arguments: row = .obj_arguments
-				}
-			}
-			add(&p, row, int(c.size), extra, slack)
-		case .function_bc:
-			b := cast(^Function_Bytecode)c
-			add(&p, .function_bc, int(c.size), 0, 0)
-			add_extra :: proc(p: ^Heap_Profile, row: Prof_Row, bytes: int) {
-				p.rows[row].extra_bytes += i64(bytes)
-			}
-			add_extra(&p, .bc_code, len(b.code) + len(b.catch_levels) * size_of(Catch_Level))
-			add_extra(&p, .bc_cpool, len(b.cpool) * size_of(Value))
-			add_extra(&p, .bc_defs, len(b.vardefs) * size_of(Var_Def) + len(b.closure_vars) * size_of(Closure_Var))
-			add_extra(&p, .bc_image, len(b.store.buf) / b.store.refs) // (its share: the row sums to the stream)
-		case .var_ref:
-			add(&p, .var_ref, int(c.size), 0, 0)
-		case .module:
-			add(&p, .module, int(c.size), 0, 0)
+	switch c.kind {
+	case .string:
+		s := cast(^JS_String)c
+		extra := 0
+		slack := 0
+		unit := s.is_wide ? 2 : 1
+		if s.owns_buf && s.data != nil {
+			units := str_tail(s).buf.cap > 0 ? int(str_tail(s).buf.cap) : int(s.len)
+			extra = units * unit
+			slack = (units - int(s.len)) * unit
 		}
+		row := Prof_Row.str_flat8
+		if s.is_rope {row = .str_rope} else if s.is_wide {row = .str_flat16}
+		add(p, row, int(c.size), extra, slack)
+	case .symbol:
+		add(p, .symbol, int(c.size), 0, 0)
+	case .bigint:
+		add(p, .bigint, int(c.size), 0, 0)
+	case .shape:
+		sh := cast(^Shape)c
+		extra := cap(sh.props) * size_of(Shape_Prop) + cap(sh.transitions) * size_of(Transition) + len(sh.hash) * size_of(u32)
+		slack := (cap(sh.props) - len(sh.props)) * size_of(Shape_Prop) + (cap(sh.transitions) - len(sh.transitions)) * size_of(Transition)
+		add(p, sh.is_dict ? .shape_dict : .shape, int(c.size), extra, slack)
+	case .object:
+		o := cast(^Object)c
+		extra := 0
+		slack := 0
+		if o.slots != nil && !slots_are_inline(o) {extra += int(o.slot_cap) * size_of(Prop_Slot)}
+		if !dead {slack += (int(o.slot_cap) - len(o.shape.props)) * size_of(Prop_Slot)}
+		row := Prof_Row.obj_other
+		switch d in o.data {
+		case Array_Data:
+			extra += int(d.cap) * size_of(Value)
+			slack += int(d.cap - d.count) * size_of(Value)
+			row = .obj_array
+		case Mapped_Args_Data:
+			extra += int(d.count) * size_of(rawptr)
+			row = .obj_arguments
+		case Func_Data:
+			if d.bc != nil {extra += int(d.bc.closure_var_count) * size_of(rawptr)}
+			row = .obj_function
+		case Native_Data:
+			extra += native_data_len(&o.data.(Native_Data)) * size_of(Value) + (d.data != nil && !native_data_is_raw(&o.data.(Native_Data)) ? NATIVE_DATA_HEADER : 0)
+			row = .obj_native
+		case ^Bound_Data:
+			extra += size_of(Bound_Data) + len(d.args) * size_of(Value)
+			row = .obj_bound
+		case ^Prim_Data:
+			extra += size_of(Prim_Data)
+		case ^Date_Data:
+			extra += size_of(Date_Data)
+		case ^RegExp_Data:
+		case ^Map_State:
+			extra += size_of(Map_State) + cap(d.entries) * size_of(Map_Entry) + len(d.index) * size_of(i32)
+			slack += (cap(d.entries) - len(d.entries)) * size_of(Map_Entry)
+			row = .obj_collection
+		case ^Weak_Ref_Data, ^Fin_Rec_Data:
+		case ^Array_Buffer:
+			extra += size_of(Array_Buffer) + d.alloc_len
+			row = .obj_buffer
+		case ^Typed_Array:
+			extra += size_of(Typed_Array)
+			row = .obj_buffer
+		case ^Proxy_Data:
+			extra += size_of(Proxy_Data)
+		case ^Promise_Data:
+			extra += size_of(Promise_Data) + cap(d.reactions) * size_of(Promise_Reaction)
+			row = .obj_promise
+		case ^Coro, ^Iter_State, ^Module, ^Disposable_Data, ^Host_Object:
+		case Internal_Data:
+			extra += int(d.count) * size_of(Value)
+		}
+		if o.data == nil {
+			#partial switch o.class {
+			case .object: row = .obj_plain
+			case .error: row = .obj_error
+			case .arguments: row = .obj_arguments
+			}
+		}
+		add(p, row, int(c.size), extra, slack)
+	case .function_bc:
+		b := cast(^Function_Bytecode)c
+		add(p, .function_bc, int(c.size), 0, 0)
+		add_extra :: proc(p: ^Heap_Profile, row: Prof_Row, bytes: int) {
+			p.rows[row].extra_bytes += i64(bytes)
+		}
+		add_extra(p, .bc_code, len(b.code) + len(b.catch_levels) * size_of(Catch_Level))
+		add_extra(p, .bc_cpool, len(b.cpool) * size_of(Value))
+		add_extra(p, .bc_defs, len(b.vardefs) * size_of(Var_Def) + len(b.closure_vars) * size_of(Closure_Var))
+		if !dead {add_extra(p, .bc_image, len(b.store.buf) / b.store.refs)} // (its share: the row sums to the stream)
+	case .var_ref:
+		add(p, .var_ref, int(c.size), 0, 0)
+	case .module:
+		add(p, .module, int(c.size), 0, 0)
 	}
+}
+
+heap_profile :: proc(rt: ^Runtime) -> (p: Heap_Profile) {
+	gc_sweep_finish(rt) // (a sweep in progress has cells that are gone in the list)
+	p.heap_bytes = rt.heap_bytes
+	for c in rt.cells {census_cell(&p, c, false)}
 	p.rows[.atom_table] = {i64(len(rt.atoms)), 0, i64(cap(rt.atoms) * size_of(Atom_Entry) + len(rt.atom_hash) * size_of(u32)), i64((cap(rt.atoms) - len(rt.atoms)) * size_of(Atom_Entry))}
 	for cls in 1 ..< POOL_CLASSES {
 		for b := rt.pool_free[cls]; b != nil; b = b.next {
@@ -183,6 +188,7 @@ heap_profile :: proc(rt: ^Runtime) -> (p: Heap_Profile) {
 	p.rows[.arenas] = {i64(rt.compile_count), i64(rt.compile_peak_bytes), i64(arena_blocks(&rt.scratch) + arena_blocks(&rt.regexp_arena)), i64(rt.compile_peak_blocks)}
 	p.rows[.functions] = {i64(rt.functions_read), i64(rt.functions_verified), 0, 0}
 	p.rows[.collections] = {i64(rt.gc_count), i64(len(rt.cells)), i64(rt.gc_sweep_steps), 0}
+	p.rows[.swept] = {rt.gc_swept.dead, rt.gc_swept.kept, 0, 0}
 	return
 }
 
@@ -196,6 +202,11 @@ arena_blocks :: proc(a: ^mem.Dynamic_Arena) -> int {
 // The `index`-th counter of the profile, in row-major order (row * PROF_FIELDS + field); -1 past the end.
 // Indexes from 1000 on are the entries of cell_sizes (in field order).
 heap_profile_field :: proc(rt: ^Runtime, index: int) -> i64 {
+	if index >= PROF_DEAD_INDEX {
+		k := index - PROF_DEAD_INDEX
+		if k >= len(Prof_Row) * PROF_FIELDS {return -1}
+		return prof_cell_field(rt.gc_dead.rows[Prof_Row(k / PROF_FIELDS)], k % PROF_FIELDS)
+	}
 	if index >= PROF_CELL_SIZES_INDEX {
 		cs := cell_sizes()
 		k := index - PROF_CELL_SIZES_INDEX
@@ -204,8 +215,12 @@ heap_profile_field :: proc(rt: ^Runtime, index: int) -> i64 {
 	}
 	if index < 0 || index >= len(Prof_Row) * PROF_FIELDS {return -1}
 	p := heap_profile(rt)
-	r := p.rows[Prof_Row(index / PROF_FIELDS)]
-	switch index % PROF_FIELDS {
+	return prof_cell_field(p.rows[Prof_Row(index / PROF_FIELDS)], index % PROF_FIELDS)
+}
+
+@(private = "file")
+prof_cell_field :: proc(r: Prof_Cell, field: int) -> i64 {
+	switch field {
 	case 0: return r.count
 	case 1: return r.cell_bytes
 	case 2: return r.extra_bytes

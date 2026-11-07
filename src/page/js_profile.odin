@@ -128,6 +128,11 @@ js_profile_dump :: proc(inst: ^wasm.Instance, path: string) {
 	_ = os.write_entire_file(path, transmute([]byte)strings.to_string(sb))
 }
 
+// WREN_JS_MEMPROF=1: the census of the heap of a window's realm at its load event, on the standard error (with WREN_JS_IMAGE, what the sweeps freed: -define:JSRT_GC_CENSUS=true).
+js_census_at_load :: proc(p: ^Page) {
+	if p.js != nil && js.memprof_wanted() { js.print_profile(p.js.inst, "load") }
+}
+
 // WREN_JS_IMAGE=<file>: another engine image (one that keeps its names: buildjs -names), for WREN_WASM_PROFILE in the browser itself.
 js_image_from_env :: proc() {
 	path := os.get_env("WREN_JS_IMAGE", context.temp_allocator)

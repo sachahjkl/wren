@@ -157,10 +157,9 @@ get_var_ref :: proc(rt: ^Runtime, f: ^Frame, idx: int, is_arg: bool) -> ^Var_Ref
 }
 
 close_var_ref :: #force_inline proc(vr: ^Var_Ref) {
-	if vr.is_detached {return}
+	if var_ref_is_detached(vr) {return}
 	vr.value = vr.pvalue^
 	vr.pvalue = &vr.value
-	vr.is_detached = true
 	vr.owner = nil
 }
 
@@ -197,12 +196,13 @@ function_proto_for_kind :: proc(ctx: ^Context, k: Func_Kind) -> ^Object {
 	return ctx.function_proto
 }
 
-// Bind `b` to the closure cells it captures from the frame `f` (whose function's cells are `cur`).
-closure_bind :: proc(ctx: ^Context, o: ^Object, b: ^Function_Bytecode, cur: [^]^Var_Ref, f: ^Frame) {
+// Bind `b` to the closure cells it captures from the frame `f` (whose function's cells are `cur`). `refs`: room for them, in
+// the object's cell; nil: a block of their own.
+closure_bind :: proc(ctx: ^Context, o: ^Object, b: ^Function_Bytecode, cur: [^]^Var_Ref, f: ^Frame, refs: [^]^Var_Ref = nil) {
 	rt := ctx.rt
 	fd := Func_Data{bc = b}
 	if b.closure_var_count > 0 {
-		fd.var_refs = cast([^]^Var_Ref)mem_alloc(rt, int(b.closure_var_count) * size_of(^Var_Ref))
+		fd.var_refs = refs != nil ? refs : cast([^]^Var_Ref)mem_alloc(rt, int(b.closure_var_count) * size_of(^Var_Ref))
 		for i in 0 ..< int(b.closure_var_count) {
 			cv := &b.closure_vars[i]
 			vr: ^Var_Ref
@@ -225,20 +225,43 @@ closure_bind :: proc(ctx: ^Context, o: ^Object, b: ^Function_Bytecode, cur: [^]^
 make_closure :: proc(ctx: ^Context, b: ^Function_Bytecode, cur: [^]^Var_Ref, f: ^Frame) -> Value {
 	rt := ctx.rt
 	generator := b.func_kind == .generator || b.func_kind == .async_generator
-	o := object_new_shape(rt, closure_shape(ctx, b.func_kind, generator || b.has_prototype), .bytecode_function)
-	closure_bind(ctx, o, b, cur, f)
+	o := object_new_shape(rt, closure_shape(ctx, b.func_kind, generator || b.has_prototype), .bytecode_function, int(b.closure_var_count) * size_of(^Var_Ref))
+	closure_bind(ctx, o, b, cur, f, cast([^]^Var_Ref)object_tail(o))
 	o.slots[CLOSURE_SLOT_LENGTH].value = mk_int(i32(b.defined_arg_count))
 	o.slots[CLOSURE_SLOT_NAME].value = atom_to_value(rt, b.func_name == ATOM_NULL ? pa(.A_empty_string) : b.func_name)
 	if generator {
 		cls: Class_ID = b.func_kind == .async_generator ? .async_generator : .generator
 		o.slots[CLOSURE_SLOT_PROTOTYPE].value = mk_obj(object_new_proto(ctx, ctx.class_proto[cls]))
 	} else if b.has_prototype {
-		o.is_constructor = true
-		proto := object_new_shape(rt, ctx.ctor_proto_shape, .object)
-		proto.slots[0].value = mk_obj(o)
-		o.slots[CLOSURE_SLOT_PROTOTYPE].value = mk_obj(proto)
+		o.is_constructor = true // (the slot of its `prototype` stays empty: function_prototype_make)
 	}
 	return mk_obj(o)
+}
+
+// The `prototype` of a function, at index `i`, a property of kind .lazy_prototype, becomes a plain data property: its shape is the one
+// the same keys have that way, and the slot is the caller's to fill.
+function_prototype_settle :: proc(rt: ^Runtime, o: ^Object, i: int) {
+	sh := o.shape
+	if sh.is_dict {
+		sh.props[i].kind = .data
+		sh.version += 1
+		return
+	}
+	to := shape_root_for(rt, sh.proto)
+	for p, k in sh.props {to = shape_transition(rt, to, p.atom, p.flags, k == i ? .data : p.kind)}
+	o.shape = to
+}
+
+// A function expression's `prototype` is made when something reads it: of the closures of a page, one in twenty is ever a
+// constructor, and each of the others had an object for nothing (docs/performance.md, round 51).
+function_prototype_make :: proc(ctx: ^Context, o: ^Object, i: int) -> Value {
+	b := o.data.(Func_Data).bc
+	rt := ctx.rt
+	function_prototype_settle(rt, o, i)
+	proto := object_new_shape(rt, (b.realm != nil ? b.realm : ctx).ctor_proto_shape, .object)
+	proto.slots[0].value = mk_obj(o)
+	o.slots[i].value = mk_obj(proto)
+	return mk_obj(proto)
 }
 
 // Where a closure keeps what every closure has.
@@ -255,7 +278,7 @@ closure_shape :: proc(ctx: ^Context, kind: Func_Kind, prototype: bool) -> ^Shape
 		sh := shape_root_for(rt, function_proto_for_kind(ctx, kind))
 		sh = shape_transition(rt, sh, pa(.A_length), {.configurable}, .data)
 		sh = shape_transition(rt, sh, pa(.A_name), {.configurable}, .data)
-		if prototype {sh = shape_transition(rt, sh, pa(.A_prototype), {.writable}, .data)}
+		if prototype {sh = shape_transition(rt, sh, pa(.A_prototype), {.writable}, kind == .normal ? .lazy_prototype : .data)}
 		at^ = sh
 	}
 	return at^
@@ -283,19 +306,27 @@ set_home_object :: proc(func: Value, home: Value) {
 }
 
 // A native function object.
+@(private = "file")
+native_magic :: #force_inline proc(magic: i32) -> i16 {
+	assert(i32(i16(magic)) == magic) // (what a binding numbers its members with)
+	return i16(magic)
+}
+
 new_native_function :: proc(ctx: ^Context, fn: Native_Proc, name: string, length: int, magic: i32 = 0, kind: Native_Kind = .function, proto: ^Object = nil) -> ^Object {
 	rt := ctx.rt
 	if proto == nil || proto == ctx.function_proto {
 		// (the shape of a plain closure, without its prototype: nothing to define, and resolving functions come two by promise)
 		o := object_new_shape(rt, closure_shape(ctx, .normal, false), .c_function)
-		o.data = Native_Data{fn = fn, realm = ctx, magic = magic}
+		o.data = Native_Data{fn = fn, realm = ctx}
+		o.magic = native_magic(magic)
 		set_native_kind(o, kind)
 		o.slots[CLOSURE_SLOT_LENGTH].value = mk_int(i32(length))
 		o.slots[CLOSURE_SLOT_NAME].value = mk_str(name == "" ? rt.empty_string : str_interned(rt, str_from_utf8(rt, name)))
 		return o
 	}
 	o := object_new_proto(ctx, proto, .c_function)
-	o.data = Native_Data{fn = fn, realm = ctx, magic = magic}
+	o.data = Native_Data{fn = fn, realm = ctx}
+	o.magic = native_magic(magic)
 	set_native_kind(o, kind)
 	object_reserve_exact(rt, o, 2)
 	define_value(ctx, o, pa(.A_length), mk_int(i32(length)), {.configurable})
@@ -447,7 +478,7 @@ call_native :: proc(ctx: ^Context, o: ^Object, nd: ^Native_Data, this: Value, ar
 	rt.native_self = o
 	when JSRT_TRACE_LAST_OP {trace_native = nd.fn; trace_native_obj = o; trace_native_args = args}
 	rt.stack_depth += 1
-	r := nd.fn(realm, this, args, nd.magic)
+	r := nd.fn(realm, this, args, i32(o.magic))
 	rt.stack_depth -= 1
 	rt.native_self = saved
 	temp_reset(rt, m)
