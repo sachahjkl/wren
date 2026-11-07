@@ -211,6 +211,13 @@ a tool that waited for a line nobody logs spent its 120 s limit in every run, an
 `clock_advance(&loop, d)` runs at once what falls due on the way, each timer at its own deadline; `clock_move` only moves it, as a
 stalled machine would. `loop_wait` on such a clock does not wait for a timer. Production pays one test of a pointer.
 
+The chrome frames made while a script holds the page (`e2e.while_busy`, `src/browser/busy_input.odin`) have a clock of the test's
+too: after a step `e2e.busy_clock(ms)`, and until the steps run out, they show the page's animations `ms` after the page's last
+frame (`page.animations_wall_ms`), however long the frames took to come. What a picture shows is then a value at a known time:
+`a_colour_and_what_inherits_it_go_on_under_a_task` (`src/tools/e2e/scroll_driven.odin`) reads the animation's `currentTime` as
+the task begins and checks the colour of two pictures, 2 s and 6 s later, to a level. `busy_wait(ms)` stays for what a real
+timer decides (a caret's blink, an autoscroll's pace).
+
 A test does not sleep to wait for another thread: it waits on the state (a semaphore, a completion posted to the loop,
 `base.await` when the code under test has no signal). The few real sleeps left in unit tests measure the real clock, and say so.
 

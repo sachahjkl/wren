@@ -51,11 +51,13 @@
 <div id=kf></div>
 <div id=none></div>
 <script>
-  window.hold = () => {
+  // first: what the task does before it holds (reads the page as the task begins)
+  window.hold = (first) => {
     window.released = false;
     window.scrolled_in_task = -1;
     const h = innerHeight;
     setTimeout(() => {
+      if (first) first();
       if (window.mutate) document.querySelector('#head').textContent = 'changed';
       while (innerHeight == h) {}
       window.scrolled_in_task = scrollY;

@@ -81,6 +81,12 @@ set_frame_time :: proc(p: ^Page, ms: f64, unpin := false) {
 	p.anim.frame_time = ms
 }
 
+// The time (ms, the loop clock's scale) the timeline's clock last moved to: the page's last frame, or a task's style pass since.
+animations_wall_ms :: proc(p: ^Page) -> f64 {
+	if p == nil || p.closed { return 0 }
+	return style.timeline_wall(p.anim.timeline)
+}
+
 // Some animated value changes at every frame: the shell should request the next one.
 animations_active :: proc(p: ^Page) -> bool {
 	return p != nil && !p.closed && style.timeline_active(p.anim.timeline)

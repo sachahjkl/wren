@@ -205,7 +205,7 @@ shell_shown_wanted :: proc(app: ^App, t: ^Tab) -> (wanted, moving: bool) {
 @(private = "file")
 shell_animated :: proc(app: ^App, t: ^Tab, lays_out: bool, out: ^[dynamic]style.Compositor_Value) -> (moving, any: bool) {
 	if app.chrome_frames.page_work == .Styles { return }
-	return page.animations_compositor_values(t.page, pacer_of(app).frame_ms, shell_shown_offsets(app, t), lays_out, out)
+	return page.animations_compositor_values(t.page, busy_clock_wall(app, t.page), shell_shown_offsets(app, t), lays_out, out)
 }
 
 // Where this frame shows the scrollers it moved (CSS px), for the animations those drive.
