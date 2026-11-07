@@ -99,6 +99,8 @@ the test processes then read the disk cache of the engine (`src/wasm/module_cach
 engine's configuration, authenticated), 0.2 s of CPU instead of 5. The tests of that cache itself (`wasm.disk_cache`) keep
 their own. A release ignores the variable. `-NoCache` turns this off too.
 
+`build\e2e_test.exe` does not depend on that cache for the image: it has the machine code in it, as `wren.exe` has (`WREN_SHIPPED_CODE`, `src/js/image/code`). With `WREN_POISON_PAGES=1` a compile of the image is five minutes on a quiet machine, a system call for each of its blocks, three times that is the 15 minutes of a step; the cache is cold after every change of the engine and with `-NoCache`. `jsweb_engine_code_of_the_program` fails if that code stops fitting.
+
 ## WPT
 
 A run of WPT spent 58 % of its time on tests that time out (1300 of 8800, 50 of them for 60 s): a test expected to time out
@@ -177,7 +179,7 @@ The rules:
 
 Running them by hand: `build\e2e_test.exe -tests:the_title_shows` (no window opens, no other desktop is needed, except for a scenario with `hidden = true`), or `build\test_all.exe -Quick -NoCache -Only "src.tools.e2e"`. `WREN_E2E_TRACE=1` prints every call with its time, `WREN_PHASES=1` the phases of a start and an end of the browser (a real `wren.exe` says them too). A teardown that hangs ends the process after 10 s (`host.shutdown_watchdog`); what its threads were doing is on its standard error first, so in the step's log: `build\e2e_test.exe` answers `ctl stacks <pid> --out <file>` as a `wren.exe` does.
 
-Two things `core:testing` does not give: a test stopped by a signal (`testing.fail_now`, a panic) can happen once per run on Windows, the runner lets go of a lock it does not hold, and the next signal waits for ever; `e2e` stops its tests through a limit of 0 instead (hence the "Test timed out" after a failure's message). And checks that pass say nothing: `test_all` counts tests here, not checks.
+Two things `core:testing` does not give: a test stopped by a signal (`testing.fail_now`, a panic) can happen once per run on Windows, the runner lets go of a lock it does not hold, and the next signal waits for ever; `e2e` stops its tests through a limit of 0 instead (hence the "Test timed out" after a failure's message). And checks that pass say nothing: `test_all` counts tests here, not checks. A test that runs out of its limit has its thread terminated where it stands, and nothing of what that thread started is told: when that thread was compiling, rayon's workers go on with the jobs on its stack, gone, and fall on them with an access violation. That crash follows a "Test timed out" and says nothing of the code it stands in; what ran out of time does.
 
 ## Testing the interface with no browser around it
 
