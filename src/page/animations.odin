@@ -42,6 +42,8 @@ Page_Animations :: struct {
 	wake_at:      f64,          // document clock (ms) the wake timer is set for
 	frame_time:   f64,
 	pinned:       bool,
+	task_time:    f64,          // the clock as the task under way first read it (task_held; the checkpoint that ends it lets go)
+	task_held:    bool,
 	scripted:     ^Web_Anims,   // Web Animations of scripts (web_animations.odin), made on first use
 }
 
@@ -62,10 +64,15 @@ animations_destroy :: proc(p: ^Page) {
 	delete(p.anim.pending)
 }
 
-// The document clock in milliseconds.
+// The document clock in milliseconds. As in browsers it holds still during a task of the page (a call into its realm and the
+// microtasks after it): every style pass of a script reads the time its first one did, however long they take (HTML moves
+// the timelines at the update of animations). Between tasks, the live clock.
 document_time_ms :: proc(p: ^Page) -> f64 {
 	if p.anim.pinned { return p.anim.frame_time }
-	return f64(host.now_ns(p.loop)) / 1e6
+	now := f64(host.now_ns(p.loop)) / 1e6
+	if p.objects.depth == 0 && !p.objects.draining { return now }
+	if !p.anim.task_held { p.anim.task_time, p.anim.task_held = now, true }
+	return p.anim.task_time
 }
 
 // Pins the clock for the frame being drawn (ms, the loop clock's scale); `unpin` returns to the live clock.

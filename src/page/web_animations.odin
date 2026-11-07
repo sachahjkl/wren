@@ -79,8 +79,6 @@ Web_Anims :: struct {
 	zero:     f64,                       // performance.now() at timeline time 0
 	has_zero: bool,
 	updating: bool,
-	now:      f64,                       // the timeline's time for this task (anims_now)
-	now_valid, now_posted: bool,
 	css:      map[u64]u64,               // CSS animations and transitions given to scripts: serial -> Animation (web_animations_css.odin)
 }
 
@@ -128,24 +126,10 @@ web_animation_destroy :: proc(p: ^Page, data: rawptr) {
 ////////////////////////////////
 // Time
 
-// The timeline's time (style timeline units). As in browsers it holds still during a task: read once, it stays until
-// the next turn of the loop or the next update (a script that seeks then reads gets back what it set).
+// The timeline's time (style timeline units). It holds still during a task, as the document's clock does (document_time_ms):
+// a script that seeks then reads gets back what it set.
 @(private)
-anims_now :: proc(p: ^Page) -> f64 {
-	w := anims_of(p)
-	if !w.now_valid {
-		w.now = style.timeline_time(p.anim.timeline, document_time_ms(p))
-		w.now_valid = true
-		if !w.now_posted {
-			w.now_posted = true
-			post_page_task(p, proc(pg: ^Page, _: rawptr) {
-				if pg == nil { return }
-				if w := pg.anim.scripted; w != nil { w.now_valid, w.now_posted = false, false }
-			}, nil)
-		}
-	}
-	return w.now
-}
+anims_now :: proc(p: ^Page) -> f64 { return style.timeline_time(p.anim.timeline, document_time_ms(p)) }
 
 // What the API shows of a timeline time: performance.now()'s scale.
 @(private)
@@ -479,7 +463,6 @@ web_animations_update :: proc(p: ^Page) {
 		w.updating = false
 		anims_schedule(p)
 	}
-	w.now_valid = false   // the time of this update
 	now := anims_now(p)
 	snapshot := make([dynamic]^Web_Animation, 0, len(w.list), context.temp_allocator)
 	append(&snapshot, ..w.list[:])

@@ -261,6 +261,7 @@ microtask_checkpoint :: proc(p: ^Page) {
 	if p.objects.draining || p.closed { return }
 	p.objects.draining = true
 	defer p.objects.draining = false
+	defer if p.objects.depth == 0 { p.anim.task_held = false }   // the end of the page's task: its time moves (document_time_ms)
 	ran := 0
 	limit := p.settings.max_microtasks
 	// custom element reactions the parser's insertions queued; the browser's microtasks, then the JavaScript realm's

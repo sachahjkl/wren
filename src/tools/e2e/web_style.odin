@@ -8,8 +8,10 @@ import "core:fmt"
 import "core:math"
 import "core:strings"
 import "core:testing"
+import "core:time"
 import "wb:base"
 import "wb:dom"
+import "wb:host"
 import "wb:page"
 import "wb:style"
 import "wb:tools/testenv"
@@ -127,4 +129,45 @@ style_transitions_and_animations :: proc(t: ^testing.T) {
 	check(pr, len(p.anim.pending) == 0 && p.dp.events.count == 0, "events dispatched and freed")
 	close_page(pr, min_checks = 13)
 	testing.expect_value(t, loop.timers.count, timers)
+}
+
+// A style pass that takes this long: what a loaded machine makes of a script's every getComputedStyle (the embedder's hook
+// before each pass moves the test's clock).
+SLOW_PASS :: time.Second
+
+HELD_DOC :: `<!doctype html><html><head><style>
+@keyframes grow { from { width: 0px } to { width: 100px } }
+#a { width: 0px }
+#t { width: 0px }
+</style></head><body><div id=a>a</div><div id=t>t</div></body></html>`
+
+// What css/support/interpolation-testcommon.js does: an animation and a transition half way through 100 s, read again after
+// other changes of the same task. The document's time holds still during a task (HTML: it moves at the update of animations),
+// however long its style passes take; the next task sees it move.
+HELD_SCRIPT :: `
+const a = document.getElementById("a"), t = document.getElementById("t");
+a.style.animation = "grow 100s linear -50s";
+const first = getComputedStyle(a).width;
+t.style.transition = "width 100s linear -50s";
+getComputedStyle(t).width;
+t.style.width = "100px";
+const started = getComputedStyle(t).width;
+document.body.style.color = "red";
+const again = getComputedStyle(a).width, still = getComputedStyle(t).width;
+wrenTest.check(first == "50px" && again == first, "an animation: " + first + ", then " + again + " in the same task");
+wrenTest.check(started == "50px" && still == started, "a transition: " + started + ", then " + still + " in the same task");
+`
+
+@(test)
+style_the_document_time_holds_still_in_a_task :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	virtual_clock(t)
+	page.the_pages.embedder = {before_styles = proc(_: rawptr, _: ^page.Page) { host.clock_move(&loop, SLOW_PASS) }}
+	defer page.the_pages.embedder = {}
+	pr := open_page(t, "the document's time in a task", HELD_DOC, testenv.url(ADDRESS))
+	run(pr, HELD_SCRIPT)
+	run(pr, `document.body.style.color = "blue"; wrenTest.check(parseFloat(getComputedStyle(document.getElementById("a")).width) > 50, "the next task: later")`)
+	close_page(pr, min_checks = 3)
 }

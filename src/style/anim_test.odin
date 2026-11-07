@@ -410,6 +410,23 @@ animation_play_state_and_name_changes :: proc(t: ^testing.T) {
 	testing.expect(t, close_to(f64(node(f, "a").width.v), 80))
 }
 
+// A paused animation on a page that draws no frame is not ticked: the time until it runs again is still paused time, however
+// long the page stood still (a second here, the seconds a loaded machine takes between two frames).
+@(test)
+an_animation_run_again_after_no_tick_starts_where_it_stood :: proc(t: ^testing.T) {
+	f := open(`<style>
+		@keyframes grow { from { width: 0px } to { width: 100px } }
+		#a { animation: grow 1000ms linear both paused }
+		#a:hover { animation-play-state: running }
+	</style><div id=a></div>`)
+	defer fixture_unload(f)
+	tick(f, 100)
+	set_state(f, State{hover = dom.find_by_id(f.doc, "a")}, 1100)
+	testing.expectf(t, close_to(f64(node(f, "a").width.v), 0), "it starts from its start: %v", node(f, "a").width.v)
+	tick(f, 1400)
+	testing.expectf(t, close_to(f64(node(f, "a").width.v), 30), "then runs: %v", node(f, "a").width.v)
+}
+
 ////////////////////////////////
 // Counters, quotes, gradients, font faces, other properties
 
