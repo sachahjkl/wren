@@ -368,6 +368,7 @@ anon_style :: proc(c: ^Ctx, parent: ^style.Computed, display: style.Display) -> 
 	style.reset_noninherited(s, c.st.initial)
 	s.display = display
 	s.before, s.after = nil, nil
+	s.inherits, s.compositing = {}, {}   // (of the parent's declarations and its animations: none is an anonymous box's)
 	anon_current_color(s)
 	s.border_width = {}
 	s.outline_width = 0
