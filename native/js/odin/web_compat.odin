@@ -7,7 +7,7 @@
 //                                     clipboard-read and the powers a page can ask for, denied for the ones this browser
 //                                     lacks)
 //   document.fonts                    a FontFaceSet without font faces of its own: ready, check, load, status, the Set
-//                                     methods (the page's web fonts load as always; `await document.fonts.ready` works)
+//                                     methods; ready and status follow the page's web fonts (src/page/fontface.odin)
 //   Element.scrollIntoViewIfNeeded, the WebKit-prefixed names of the Fullscreen API (webkitRequestFullscreen,
 //   webkitFullscreenElement, onwebkitfullscreenchange...), document.execCommand("copy" / "cut"),
 //   queryCommandSupported / queryCommandEnabled: not in any IDL, defined on the prototypes at pre-initialization.
@@ -219,8 +219,7 @@ wjr_PermissionStatus_get_state :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 
 // ---- document.fonts ----
 
-// The faces a script adds are kept in a Set the FontFaceSet hides (nothing loads from them); `ready` is a promise
-// fulfilled with the set, made once.
+// The faces a script adds are kept in a Set the FontFaceSet hides (nothing loads from them).
 @(private = "file")
 fonts_store :: proc "contextless" (ctx: ^wj.Context, self: wj.JSValue) -> wj.JSValue {
 	s := wj.web_extra_get(ctx, self, "set")
@@ -342,12 +341,23 @@ wjr_FontFaceSet_load :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: 
 	return wj.is_exception(none) ? wj.web_promise_reject_pending(ctx) : wj.web_promise_take(ctx, none)
 }
 
+// ready's value: the set itself (data)
+@(private = "file")
+fonts_ready_value :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue {
+	return wj.JS_DupValue(ctx, data)
+}
+
+// The same promise until it is fulfilled and a web font is on its way again: then a new one, fulfilled once none is
+// (the browser's FontFaceSet_ready).
 @(export, link_name = "wjr_FontFaceSet_get_ready")
 wjr_FontFaceSet_get_ready :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	if !fonts_this(ctx, this_val) { return wj.EXCEPTION }
 	p := wj.web_extra_get(ctx, this_val, "ready")
-	if !wj.is_undefined(p) { return p }
-	p = wj.web_promise_resolved(ctx, this_val)
+	if !wj.is_undefined(p) {
+		if wj.JS_PromiseState(ctx, p) == .Pending || wj.wr_FontFaceSet_loading() == 0 { return p }
+		wj.JS_FreeValue(ctx, p)
+	}
+	p = wj.wj_promise_from_host(ctx, u64(wj.wr_FontFaceSet_ready()), wj.HOST_UNDEFINED, fonts_ready_value, this_val)
 	if wj.is_exception(p) { return p }
 	if !wj.web_extra_set(ctx, this_val, "ready", wj.JS_DupValue(ctx, p)) { wj.JS_FreeValue(ctx, p); return wj.EXCEPTION }
 	return p
@@ -356,7 +366,7 @@ wjr_FontFaceSet_get_ready :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -
 @(export, link_name = "wjr_FontFaceSet_get_status")
 wjr_FontFaceSet_get_status :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	if !fonts_this(ctx, this_val) { return wj.EXCEPTION }
-	return wj.new_string(ctx, "loaded")
+	return wj.new_string(ctx, wj.wr_FontFaceSet_loading() != 0 ? "loading" : "loaded")
 }
 
 // ---- Element.scrollIntoViewIfNeeded (WebKit) ----

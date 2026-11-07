@@ -27,3 +27,20 @@ FontFace_removeRule :: proc(c: ^Call, id: i32) {
 	p.engine.restyle_needed, p.engine.restyle_why = true, "a font face rule left"
 	p.style_stale = true
 }
+
+// What document.fonts waits for: a face some element uses, queued or on its way. The styles first: they queue what an element
+// asks for (CSS Font Loading 3: the set is pending on the environment while a style pass could ask for a font).
+@(private = "file")
+fonts_on_their_way :: proc(p: ^Page) -> bool {
+	js_dom_styled(p)
+	return p.fonts.loading > 0 || len(p.fonts.queue) > 0
+}
+
+FontFaceSet_loading :: proc(c: ^Call) -> bool { return fonts_on_their_way(c.page) }
+
+// Fulfilled by fonts_pump once the last of them has loaded or failed.
+FontFaceSet_ready :: proc(c: ^Call) -> u64 {
+	pr := promise_create(c.page, c.owner)
+	if fonts_on_their_way(c.page) { append(&c.page.fonts.waiting, pr) } else { promise_resolve(c.page, pr, 0) }
+	return pr
+}

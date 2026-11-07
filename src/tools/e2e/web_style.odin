@@ -171,3 +171,27 @@ style_the_document_time_holds_still_in_a_task :: proc(t: ^testing.T) {
 	run(pr, `document.body.style.color = "blue"; wrenTest.check(parseFloat(getComputedStyle(document.getElementById("a")).width) > 50, "the next task: later")`)
 	close_page(pr, min_checks = 3)
 }
+
+READY_DOC :: `<!doctype html><html><head><style>
+@font-face { font-family: Late; src: url(/site/fonts/roboto.ttf); font-display: block }
+p { font-family: Late }
+</style></head><body><p>t</p><script>
+wrenTest.check(document.fonts.status == "loading", "the face its text uses is on its way: " + document.fonts.status);
+document.fonts.ready.then(set => {
+  wrenTest.check(set === document.fonts && document.fonts.status == "loaded", "ready once it has come: " + document.fonts.status);
+  wrenTest.note("ready");
+});
+</script></body></html>`
+
+// document.fonts.ready waits for the faces the document's elements use, its styles brought up to date to know them.
+@(test)
+style_fonts_ready_waits_for_the_faces_in_use :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	serve(t)
+	pr := open_page(t, "document.fonts.ready", READY_DOC, testenv.url(ADDRESS))
+	wait_note(pr, "ready")
+	check(pr, face(pr.p, "Late") != nil && face(pr.p, "Late").state == .Ready, "the face loaded")
+	close_page(pr, min_checks = 3)
+}
