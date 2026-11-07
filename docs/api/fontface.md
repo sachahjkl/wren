@@ -3,7 +3,8 @@
 # Module `fontface`
 
 What `document.fonts.add(new FontFace(...))` puts in force: a rule of its own for the document's fonts (src/page/fonts.odin), in
-no style sheet a script can see. The objects are native/js/odin/web_fontface.js.
+no style sheet a script can see; and what `document.fonts` says of the document's web fonts. The objects are
+native/js/odin/web_fontface.js and web_compat.odin.
 
 Exposed to: Window. Source: `api/fontface.widl`.
 
@@ -32,4 +33,25 @@ void FontFace_removeRule(i32 id)
 Odin: `fontface.removeRule`.
 
 Host: `FontFace_removeRule :: proc(c: ^Call, id: i32)`
+
+### `FontFaceSet_loading`
+
+```
+bool FontFaceSet_loading()
+```
+
+A web font the document's elements use is on its way, its styles brought up to date first (they queue what an element
+asks for): document.fonts.status is "loading".
+
+Host: `FontFaceSet_loading :: proc(c: ^Call) -> bool`
+
+### `FontFaceSet_ready`
+
+```
+Promise FontFaceSet_ready()
+```
+
+Fulfilled once none is (document.fonts.ready): at once when none is now.
+
+Host: `FontFaceSet_ready :: proc(c: ^Call) -> u64`
 

@@ -61,6 +61,7 @@ Page_Fonts :: struct {
 	rebuilds:   u64,                     // the engine rebuild last looked at
 	styled:     u64,                     // the style serial last looked at
 	pass:       u64,                     // ... of the full style pass (style.Styled.pass_id)
+	waiting:    [dynamic]u64,            // promises of document.fonts.ready, fulfilled once nothing is queued or loading (fontface.odin)
 }
 
 @(private)
@@ -84,6 +85,7 @@ fonts_destroy :: proc(p: ^Page) {
 	delete(p.fonts.faces)
 	delete(p.fonts.queue)
 	delete(p.fonts.ready)
+	delete(p.fonts.waiting)
 }
 
 // Changes when new faces are ready.
@@ -162,6 +164,10 @@ fonts_pump :: proc(p: ^Page) {
 		f := p.fonts.queue[0]
 		ordered_remove(&p.fonts.queue, 0)
 		if font_start(p, f) { p.fonts.loading += 1 }
+	}
+	if p.fonts.loading == 0 && len(p.fonts.queue) == 0 {
+		for pr in p.fonts.waiting { promise_resolve(p, pr, 0) }
+		clear(&p.fonts.waiting)
 	}
 }
 

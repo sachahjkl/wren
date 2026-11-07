@@ -2437,6 +2437,11 @@ foreign _wr_wj_fontface {
 	// The @font-face rule, in force: a number for FontFace_removeRule, -1 when there is no document to style.
 	@(link_name = "FontFace_addRule") wr_FontFace_addRule :: proc(rule: [^]u8, rule_len: u32) -> i32 ---
 	@(link_name = "FontFace_removeRule") wr_FontFace_removeRule :: proc(id: i32) ---
+	// A web font the document's elements use is on its way, its styles brought up to date first (they queue what an element
+	// asks for): document.fonts.status is "loading".
+	@(link_name = "FontFaceSet_loading") wr_FontFaceSet_loading :: proc() -> i32 ---
+	// Fulfilled once none is (document.fonts.ready): at once when none is now.
+	@(link_name = "FontFaceSet_ready") wr_FontFaceSet_ready :: proc() -> u64 ---
 }
 
 // module forms

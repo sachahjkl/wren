@@ -88,7 +88,7 @@ function not exposed to workers is not instantiated.
 | [`events`](events.md) | `wren:core` | 44 | Window, Worker | Events (DOM Standard: EventTarget, Event; UI Events: MouseEvent, KeyboardEvent). Any node and any host object (a |
 | [`eventsource`](eventsource.md) | `wren:eventsource` | 7 | Window | Server-sent events (HTML EventSource) and the MessageEvent members that are not plain payload. Messages arrive as |
 | [`fetch`](fetch.md) | `wren:fetch` | 11 | Window | The promise side of the Fetch API, on the same records as the callback API of module net (a Response is a Fetch: |
-| [`fontface`](fontface.md) | `wren:fontface` | 2 | Window | What `document.fonts.add(new FontFace(...))` puts in force: a rule of its own for the document's fonts (src/page/fonts.odin), in |
+| [`fontface`](fontface.md) | `wren:fontface` | 4 | Window | What `document.fonts.add(new FontFace(...))` puts in force: a rule of its own for the document's fonts (src/page/fonts.odin), in |
 | [`forms`](forms.md) | `wren:forms` | 186 | Window | Form controls (HTML forms): values, checkedness, validity, selection, select / option / form members, focus, and |
 | [`frames`](frames.md) | `wren:frames` | 29 | Window | Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin, frames_access.odin; |
 | [`fs`](fs.md) | `wren:fs` | 20 | Window, Worker | File handles (WHATWG File System, WICG File System Access; src/page/fs_store.odin, fs_api.odin; |
@@ -132,4 +132,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | `wren:websocket` | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | `wren:workers` | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1621 imports in 1522 functions.
+1623 imports in 1524 functions.

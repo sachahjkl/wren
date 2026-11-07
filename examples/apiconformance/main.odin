@@ -836,6 +836,8 @@ foreign import _m_fontface "fontface"
 foreign _m_fontface {
 	@(link_name = "FontFace_addRule") c_FontFace_addRule :: proc(a0: i32, a1: i32) -> i32 ---
 	@(link_name = "FontFace_removeRule") c_FontFace_removeRule :: proc(a0: i32) ---
+	@(link_name = "FontFaceSet_loading") c_FontFaceSet_loading :: proc() -> i32 ---
+	@(link_name = "FontFaceSet_ready") c_FontFaceSet_ready :: proc() -> i64 ---
 }
 
 foreign import _m_forms "forms"
