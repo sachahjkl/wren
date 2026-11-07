@@ -50,3 +50,17 @@ threadtime_settles_at_the_first_quiet_window_after_the_load :: proc(t: ^testing.
 	never := Load{load_event = 0, segments = {{start = 0, end = 300}, {start = 300, end = 600}}}
 	testing.expect_value(t, settled_at(never), -1)
 }
+
+// The frame of TRACE: its layout is the frame's own, its wait no work but counted apart; one frame begun, after the paint.
+@(test)
+threadtime_splits_a_frame_by_its_phases :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	r := report_of(load_read(TRACE))
+	testing.expect_value(t, r.by_phase["layout"].settled, 20)
+	testing.expect_value(t, r.by_phase["frame"].settled, 20)       // (the frame's rest, after its layout, up to the task at 300 that is not its own)
+	testing.expect_value(t, r.by_phase[PHASE_WAIT].settled, 60)
+	testing.expect_value(t, r.by_phase[PHASE_WAIT].contentful, 30)
+	testing.expect_value(t, r.busy.settled, 100)                  // (the wait is not busy: 30 + 10 of the first task, 40 of the frame, 20 of the last)
+	testing.expect_value(t, r.frames.settled, 1)
+	testing.expect_value(t, r.frames.contentful, 1)               // (begun at 170, before the paint at 200)
+}
