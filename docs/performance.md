@@ -3983,7 +3983,7 @@ The second cost of "what is left" below, the frame's animation phase (292 / 369 
 Spans now: `scroll_steps` and `scroll_timelines` beside `web_animations`, `resize_observers`, `intersection_observers` (`run_animation_frames`,
 `page/bindings_timers.odin`).
 
-**What they say.** Live loads on Linux (Xvfb, the software Vulkan adapter, a datacenter's network: not the bench, see "Linux" below), one
+**What they say.** Live loads on Linux (Xvfb, the software Vulkan adapter, a datacenter's network: not the bench; [docs/portability.md](portability.md), slice 9), one
 page each, `WREN_SPANS`, 6 s after the load: all of the phase outside the animation frame callbacks is `scroll_steps`, and all of
 `scroll_steps` is one style pass and one layout. `run_scroll_steps` asks `js_layout_now` for the scroll offsets: the first reading of the
 frame, so the frame's own style pass and layout happen there, under the scroll steps' span, and `page_prepare`'s `styles` then finds
