@@ -19,7 +19,7 @@ import "wb:tools/tooling"
 import "wb:tools/wrentool/bench"
 import "wb:tools/wrentool/measure"
 
-REPLAY_FLAGS :: "-Urls= -Sites= -Dir= -Exe= -Arms= -ArmPref= -ListArms= -Runs= -Warmup= -Pref= -Lists= -Seed= -Out= -NoFrames"
+REPLAY_FLAGS :: "-Urls= -Sites= -Dir= -Exe= -Arms= -ArmPref= -ListArms= -Runs= -Warmup= -Pref= -Lists= -Seed= -Out= -NoFrames -Loaded"
 REPLAY_DIR :: "build/replay"
 REPLAY_WORLD_FILE :: "world.txt"   // "<seed>,<unix ms>\n<url>\n"
 REPLAY_SEED :: 51
@@ -33,27 +33,28 @@ REPLAY_RECORD_TAIL :: 10 * time.Second
 // How often the window thread's counter is read, from outside it: the system's sleep rounds this up to its tick.
 REPLAY_SAMPLE_EVERY :: 5 * time.Millisecond
 REPLAY_SETTLE_LOOK_EVERY :: 100 * time.Millisecond
-// The frames: scaled to this share of the viewport (1280 x 800 less the shell: about 160 by 90 cells), as many as a load can draw.
 // No tool holds a lock, and agents and test runs share this machine: a load starts when at most REPLAY_QUIET_SHARE of the processors are at work, and one during which others took
 // more than REPLAY_OTHERS_MOST of them is said, dropped and made again, at most REPLAY_RETRIES times. A loaded machine took a load of theverge.com from 3.5 s to 11.
+// -Loaded measures all the same, every load with its `others`: for a machine that does not go quiet, and a floor that says so.
 REPLAY_QUIET_SHARE :: 0.08
-REPLAY_QUIET_LIMIT :: 15 * time.Minute
+REPLAY_QUIET_LIMIT :: 5 * time.Minute
 REPLAY_QUIET_LOOK :: time.Second
 REPLAY_OTHERS_MOST :: 0.08
 REPLAY_RETRIES :: 5
+// The frames: scaled to this share of the viewport (1280 x 800 less the shell: about 160 by 90 cells), as many as a load can draw.
 REPLAY_FRAME_SCALE :: 0.125
+REPLAY_FRAMES_MOST :: 1500
 // `lists`: how long the fetch and the compile of the lists may take, and how long the folder stays quiet before they are taken as done.
 REPLAY_LISTS_LIMIT :: 5 * time.Minute
 REPLAY_LISTS_LOOK_EVERY :: time.Second
 REPLAY_LISTS_QUIET :: 15 * time.Second
-REPLAY_FRAMES_MOST :: 1500
 // A load's numbers, one line each in <Out>.
-REPLAY_HEADER :: "site\tarm\trun\tfcp\tready\tsettled\tcpu_settled\tload\tdcl\tcpu_load\tguest\tprocess_cpu\trequests\tfailed\texact\tnear\tunknown\tframes\tmoving\tothers"
+REPLAY_HEADER :: "site\tarm\trun\tfcp\tready\tsettled\tcpu_settled\tload\tdcl\tcpu_load\tguest\tprocess_cpu\trequests\tfailed\texact\tnear\tunknown\tframes\tmoving\tothers\tpage_clock"
 
 Replay_Load :: struct {
 	fcp, ready, settled, cpu_settled, load, dcl, cpu_load, guest, process_cpu: f64,
 	requests, failed, exact, near, unknown, frames: int,
-	moving, others: f64,
+	moving, others, page_clock: f64,   // page_clock: performance.now() at the end, against `settled`: how the test world's clock kept up
 }
 
 Replay_Arm :: struct { name, exe, lists: string, prefs: []string }
@@ -87,7 +88,7 @@ run_replay :: proc(args: []string) -> int {
 replay_usage :: proc() -> int {
 	fmt.eprintln("wrentool replay record -Urls a,b [-Dir d] [-Exe path] [-Seed n]")
 	fmt.eprintln("wrentool replay lists [-Dir d] [-Exe path]")
-	fmt.eprintln("wrentool replay run -Sites a,b [-Dir d] [-Arms x=path,y=path] [-ArmPref x:a=b,y:c=d] [-Runs n] [-Warmup n] [-Pref a=b] [-Lists folder [-ListArms x,y]] [-Out file] [-NoFrames]")
+	fmt.eprintln("wrentool replay run -Sites a,b [-Dir d] [-Arms x=path,y=path] [-ArmPref x:a=b,y:c=d] [-Runs n] [-Warmup n] [-Pref a=b] [-Lists folder [-ListArms x,y]] [-Out file] [-NoFrames] [-Loaded]")
 	return EXIT_USAGE
 }
 
@@ -293,10 +294,10 @@ replay_run :: proc(f: tooling.Flags) -> int {
 				prefs := make([dynamic]string, context.temp_allocator)
 				append(&prefs, ..common[:])
 				append(&prefs, ..arm.prefs)
-				l, loaded := replay_watched(arm, out_dir, url, world, prefs[:], rate, spec)
+				l, loaded := replay_watched(arm, out_dir, url, world, prefs[:], rate, spec, tooling.flag_has(f, "-Loaded"))
 				if !loaded { fmt.eprintfln("%s %s run %d: no load", spec, arm.name, run); continue }
 				if frames { replay_frames(&l, arm.exe, out_dir, url, world, prefs[:], arm.lists) }
-				line := fmt.tprintf("%s\t%s\t%d\t%.0f\t%.0f\t%.0f\t%.1f\t%.0f\t%.0f\t%.1f\t%.1f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%d\t%.3f", spec, arm.name, run, l.fcp, l.ready, l.settled, l.cpu_settled, l.load, l.dcl, l.cpu_load, l.guest, l.process_cpu, l.requests, l.failed, l.exact, l.near, l.unknown, l.frames, l.moving, l.others)
+				line := fmt.tprintf("%s\t%s\t%d\t%.0f\t%.0f\t%.0f\t%.1f\t%.0f\t%.0f\t%.1f\t%.1f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%d\t%.3f", spec, arm.name, run, l.fcp, l.ready, l.settled, l.cpu_settled, l.load, l.dcl, l.cpu_load, l.guest, l.process_cpu, l.requests, l.failed, l.exact, l.near, l.unknown, l.frames, l.moving, l.others, l.page_clock)
 				fmt.println(line)
 				if run >= 0 {
 					fmt.sbprintln(&table, line)
@@ -354,6 +355,7 @@ replay_load :: proc(exe, out_dir, url, world: string, prefs: []string, lists: st
 	n, _ = api.network(session)
 	samples_dump(&s, out_dir, site, rate)
 	after, _ := api.stats(session)
+	l.page_clock, _ = api.eval_f64(session, "performance.now()")
 	l.fcp, l.load, l.dcl = n.doc.contentful, n.doc.load, n.doc.dcl
 	l.cpu_load, l.guest = n.doc.load_cycles / rate, n.doc.load_guest
 	l.process_cpu = after.cpu_time_ms - before.cpu_time_ms
@@ -466,16 +468,17 @@ replay_wait_quiet :: proc() {
 
 // The measured load, made again when others took the machine during it.
 @(private = "file")
-replay_watched :: proc(arm: Replay_Arm, out_dir, url, world: string, prefs: []string, rate: f64, site: string) -> (l: Replay_Load, ok: bool) {
+replay_watched :: proc(arm: Replay_Arm, out_dir, url, world: string, prefs: []string, rate: f64, site: string, loaded: bool) -> (l: Replay_Load, ok: bool) {
 	for try in 0 ..= REPLAY_RETRIES {
-		replay_wait_quiet()
+		if !loaded { replay_wait_quiet() }
 		busy0, total0 := bench.machine_times()
 		l, ok = replay_load(arm.exe, out_dir, url, world, prefs, arm.lists, rate, site)
 		busy1, total1 := bench.machine_times()
 		// (a tick of the system is 100 ns: process_cpu is in ms)
 		own := l.process_cpu * 10_000 / f64(max(total1 - total0, 1))
 		l.others = max(machine_share(busy0, total0, busy1, total1) - own, 0)
-		if !ok || l.others <= REPLAY_OTHERS_MOST { return }
+		if !ok || loaded || l.others <= REPLAY_OTHERS_MOST { return }
+		ok = false
 		fmt.eprintfln("%s %s: others took %.0f %% of the machine, try %d", site, arm.name, 100 * l.others, try)
 	}
 	return
