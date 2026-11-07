@@ -1244,6 +1244,10 @@ section > :first-child + * { line-height: 2 } .a:nth-child(3) ~ li { color: purp
 .a:not(:has(.b)) { text-indent: 2px } .c:is(:has(+ .d), :has(~ .e)) span { color: coral } :not(:has(+ .h)) > .g { margin-right: 1px } div:has(+ .a .b) { text-indent: 4px } p:has(+ .a ~ .c) { text-indent: 5px }
 .b:has(~ .c .d) { text-indent: 6px }
 li:nth-child(3) { padding-right: 1px } :nth-last-child(-n + 3) > span { color: wheat } :nth-child(-n + 2) .c { color: bisque }
+:nth-child(2 of .b, .c) { text-indent: 7px } li:nth-child(2n of :not(.d)) { padding-bottom: 1px } :not(:nth-last-child(-n + 2 of .e)) > span { color: indigo }
+:nth-last-child(odd of .g) { margin-top: 1px } :nth-child(1 of :not(.x)) + * { word-spacing: 4px }
+p:first-of-type { margin-left: 2px } :last-of-type > span { color: orchid } .c:only-of-type { padding-left: 3px } span:nth-of-type(2) { margin-right: 2px }
+:nth-last-of-type(odd) { padding-right: 2px } :nth-of-type(-n + 2) + .b { color: sienna }
 span { padding-top: var(--w, 1px) } [class*="a b"] span { color: khaki } [data-x^="1"] + * { color: linen } [class~="c"] > span { color: plum }
 `
 
