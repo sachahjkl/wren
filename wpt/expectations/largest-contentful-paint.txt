@@ -185,13 +185,13 @@
 	Video with poster should not emit a second LCP entry after playing.: TIMEOUT
 /largest-contentful-paint/video-poster.html: TIMEOUT
 	Able to observe a video's poster image.: TIMEOUT
-/largest-contentful-paint/web-font-styled-text-resize-block.html: OK
-	LCP should be not updated if the web font styled text resize occurs during the block period.: FAIL
+/largest-contentful-paint/web-font-styled-text-resize-block.html: TIMEOUT
+	LCP should be not updated if the web font styled text resize occurs during the block period.: TIMEOUT
 /largest-contentful-paint/web-font-styled-text-resize-swap-after-interaction.html: TIMEOUT
 	LCP should be not updated if the web font styled text resize occurs after an interaction happens: TIMEOUT
-/largest-contentful-paint/web-font-styled-text-resize-swap-smaller.html: OK
-	LCP should be not updated if the web font styled text resizes to be smaller during the swap period: FAIL
-/largest-contentful-paint/web-font-styled-text-resize-swap-subnode.html: OK
-	LCP should be updated if the web font styled text resizes to be larger during the swap period: FAIL
-/largest-contentful-paint/web-font-styled-text-resize-swap.html: OK
-	LCP should be updated if the web font styled text resizes to be larger during the swap period: FAIL
+/largest-contentful-paint/web-font-styled-text-resize-swap-smaller.html: TIMEOUT
+	LCP should be not updated if the web font styled text resizes to be smaller during the swap period: TIMEOUT
+/largest-contentful-paint/web-font-styled-text-resize-swap-subnode.html: TIMEOUT
+	LCP should be updated if the web font styled text resizes to be larger during the swap period: TIMEOUT
+/largest-contentful-paint/web-font-styled-text-resize-swap.html: TIMEOUT
+	LCP should be updated if the web font styled text resizes to be larger during the swap period: TIMEOUT
