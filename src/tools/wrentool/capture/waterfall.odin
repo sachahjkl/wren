@@ -24,7 +24,7 @@ WATERFALL_LIMIT_MS :: 30_000
 WATERFALL_AFTER_MS :: 500
 // -Idle: the list is read when the network has been quiet, at the latest after this. The load event says little of a page whose embeds start while it is awaited: what comes after it is the same work.
 WATERFALL_IDLE_LIMIT :: 45 * time.Second
-WATERFALL_HEADER :: "idle_ms\trun\tload_api_ms\tpaint\tcontentful\tinteractive\tdcl\tload\trequests\th1\th2\th3\tcached\tfailed\thosts\tkb\tqueued\tmax_queued\tdns\tconnect\ttls\twait\tbody\tlast_end\tgaps\tcpu_ms\turl"
+WATERFALL_HEADER :: "idle_ms\trun\tload_api_ms\tpaint\tcontentful\tinteractive\tdcl\tload\trequests\th1\th2\th3\tcached\tfailed\thosts\tkb\tqueued\tmax_queued\tdns\tconnect\ttls\twait\tbody\tlast_end\tgaps\tcpu_ms\tstart_ms\tcpu_total_ms\tprivate_mb\tworking_set_mb\twasm_compiles\twasm_shipped_hits\twasm_shipped_refused\tfirst_realm_ms\tpages_mb\turl\tcpu_after_ms"
 
 // The phases of a load's requests, summed: they overlap, a sum says where requests spent their time, not the page.
 Waterfall_Sums :: struct {
@@ -102,7 +102,7 @@ waterfall_load :: proc(exe, out, url: string, run: int, prefs: []string, limit, 
 	n, ne := api.network(s)
 	if ne != .None { fmt.printfln("0\t%d\tno answer: %v\t%s", run, ne, url); return }
 	m := waterfall_sums(&n)
-	fmt.printfln("%.0f\t%d\t%.0f%s\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%.0f\t%d\t%s", idle_ms, run, took, e == .Timeout ? "!" : "",
+	fmt.printfln("%.0f\t%d\t%.0f%s\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%.0f\t%d\t%s\t%.0f", idle_ms, run, took, e == .Timeout ? "!" : "",
 		n.doc.paint, n.doc.contentful, n.doc.interactive, n.doc.dcl, n.doc.load, m.count, m.h1, m.h2, m.h3, m.cached, m.failed, m.hosts, m.bytes >> 10,
 		m.queued, m.max_queued, m.dns, m.connect, m.tls, m.wait, m.body, m.last_end, m.gaps, after.cpu_time_ms - before.cpu_time_ms, start_ms, after.cpu_time_ms, after.private_bytes >> 20, after.working_set_bytes >> 20, after.memory.wasm_compiles, after.memory.wasm_shipped_hits, after.memory.wasm_shipped_refused, after.js_first_realm_ms, after.memory.pages_bytes >> 20, url, end.cpu_time_ms - before.cpu_time_ms)
 	waterfall_write(fmt.tprintf("%s/%s_%d.tsv", out, slug, run), &n)
