@@ -207,8 +207,9 @@ start :: proc(t: ^testing.T, o := Options{}, loc := #caller_location) -> ^Sessio
 	args := make([dynamic]string, context.temp_allocator)
 	append(&args, o.hidden ? "--hidden" : "--headless", "--no-single-instance", "--profile", profile)
 	if o.dpi > 0 { append(&args, "--pref", fmt.tprintf("browser.ui.scale=%.4f", o.dpi / DPI_ONE)) }
-	// (nothing of the machine's or the internet's in a test: the content blocker's lists stay where they are)
-	append(&args, "--pref", "blocker.update.enabled=false", "--pref", "blocker.welcome_toast=false")
+	// (nothing of the machine's or the internet's in a test: the content blocker's lists stay where they are; no GPU process a test
+	// does not ask for, which every page's first paint would start ahead)
+	append(&args, "--pref", "blocker.update.enabled=false", "--pref", "blocker.welcome_toast=false", "--pref", "webgl.gpu_start_ahead=false")
 	for p in o.prefs { append(&args, "--pref", p) }
 	if !o.no_address { append(&args, "about:blank") }
 	{
