@@ -265,7 +265,8 @@ layout_values_of_a_timeline_follow_the_wheel_under_a_task :: proc(t: ^testing.T)
 
 @(private = "file") INK_X, INK_ROW :: 310, 105        // inside #inked, on the text of the child that takes its colour by inheritance
 @(private = "file") INK_WAIT_MS :: 400
-@(private = "file") INK_MOVED_LEAST :: 10               // the channel moved this much between two pictures, at least (the clock gives about 25)
+@(private = "file") INK_MOVED_LEAST :: 4                // the channel moved this much between two pictures, at least: 255 levels over the 16 s of #inked give 6.4
+                                                         // in INK_WAIT_MS (a long animation: a loaded machine, its frames far apart, takes both pictures before its end)
 
 // A colour by the clock, on an element and on the child that inherits it: it goes on under the task, with no scroll.
 @(test)
