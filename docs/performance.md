@@ -3977,6 +3977,81 @@ Read plainly. **theverge.com settles 13 % sooner, visually ready 13 % sooner and
 
 **Not verified.** The release build. The other sites of the series (bbc.com/news). Pages whose scripts read the layout in many tasks between frames while an animation waits unseen: each such task still lays out once, which round 54 asked for and no page here showed in its spans. Whether a frame callback that reads `document.timeline.currentTime` or a style now sees the frame's time on every page as other browsers give it (the frame's own pass read it already; tests of animations pass).
 
+## Release build, rounds 51 to 58, and what is left
+
+Every series until now ran development builds (`-o:speed -debug`, one LLVM module per package). This one measures what is shipped: one module, no `-debug`, the Rust library's `release` profile (fat LTO). No engine change.
+
+**What it took.**
+- **`wrentool build release` did not build on master**: `-vet` failed on `core:os` in `base/test_world.odin` and `wb:base` in `net/record.odin`, imports used only under `when WREN_CHANNEL != "release"` (since round 56). Each file now says `_ :: os` / `_ :: base`, as `adblock` and `blocker` do; nothing else of the code changes. The base needed the same two lines.
+- **A release ignores `WREN_TEST_WORLD` by design** (and `WREN_TEST_RECORD`, `WREN_JS_CODE`, `WREN_TEST_WASM_CACHE`): the reads are compiled out, which is what the vet error above shows. `WREN_ODIN_EXTRA=-define:WREN_CHANNEL=dev` cannot turn them back on: Odin refuses a second `-define` of a name. So **`wrentool build bench`** (new, `build\wren_bench.exe`): the release's flags and Rust profile on the development channel. The channel changes nothing else on a page's path (the icon, the about pages, the licences and updates accepted, the setup dialog's default at a first run, which a `--profile` never opens). The binaries differ by 2 KB, the icon. Every number below is of that build. One load of each through the bench, bbc.com/news: the release's page clock read 2 390 ms at the end, the bench build's 1 955, the test world's.
+- **base**: 4753a790 with fec6bde9 and 60716374 less `src/tools` and `tools`, as in "Measured together", its toolkit at 3a3ee2e6, the two lines above, built `bench` in a worktree of its own; **now**: master 00be616e, the same.
+
+**1. The series.** `wrentool replay run`, the default lists on in both arms, frames on, 9 runs a site after a warm-up, the arms interleaved, the order turning, the quiet guard on (no other agent; `others` 9 to 19 % in every load, the browser's helpers and the sampler; no load dropped). Median (range), ms (`build/replay/rel58.<site>.tsv`):
+
+| | | FCP | visually ready | settled | CPU to settled | load | DOMContentLoaded | CPU to load | `Guest` to load | verdict |
+|---|---|---|---|---|---|---|---|---|---|---|
+| cnn.com | base | 328 (320-353) | 2 597 (2 544-2 685) | 2 641 (2 604-2 718) | 2 197 (2 171-2 267) | 2 108 (2 031-2 299) | 1 151 (1 121-1 181) | 1 748 (1 694-1 945) | 1 153 (1 124-1 339) | |
+| | now | 299 (259-329) | **2 431 (2 372-2 527)** | **2 470 (2 403-2 568)** | **1 982 (1 952-2 061)** | 2 083 (1 868-2 185) | 1 088 (1 046-1 150) | 1 673 (1 484-1 760) | 1 194 (1 049-1 275) | **Gain** |
+| npr.org | base | 227 (220-239) | 4 207 (4 045-4 334) | 4 929 (4 880-5 001) | 4 311 (4 271-4 325) | 1 857 (1 834-1 874) | 1 088 (1 080-1 106) | 1 733 (1 701-1 751) | 1 459 (1 439-1 465) | |
+| | now | 204 (191-221) | **3 935 (3 911-3 960)** | **4 527 (4 469-4 567)** | **3 908 (3 850-3 945)** | **1 759 (1 739-1 790)** | 1 049 (1 038-1 084) | **1 622 (1 598-1 661)** | **1 381 (1 366-1 410)** | **Gain** |
+| theverge.com | base | 201 (188-216) | 2 121 (1 995-2 301) | 2 166 (2 044-2 321) | 1 994 (1 972-2 060) | 342 (332-2 171) | 338 (325-359) | 319 (311-2 016) | 95 (88-1 558) | |
+| | now | 194 (185-239) | 1 917 (1 875-2 159) | 1 976 (1 922-2 181) | **1 882 (1 853-1 920)** | 342 (322-1 858) | 342 (322-363) | 301 (288-1 778) | 89 (86-1 393) | Nothing |
+| bbc.com/news | base | 62 (56-77) | 1 802 (1 118-1 828) | 1 825 (1 783-1 869) | 1 763 (1 741-1 790) | 1 072 (868-1 804) | 288 (278-295) | 1 025 (826-1 763) | 850 (664-1 571) | |
+| | now | 56 (56-66) | 1 124 (1 093-1 783) | 1 813 (1 802-1 835) | 1 755 (1 734-1 768) | 1 769 (1 534-1 797) | 289 (274-301) | 1 722 (1 476-1 740) | 1 543 (1 309-1 568) | Nothing |
+
+(Bold: ranges apart.) **By mode.** theverge.com's load event at 0.3 s (early) or 1.9 to 2.2 s (late, after a script of 1.4 to 1.6 s); bbc.com/news's at 0.9 to 1.1 s, 1.5 s or 1.8 s:
+
+| | | loads | visually ready | settled | CPU to settled | load | CPU to load | `Guest` to load |
+|---|---|---|---|---|---|---|---|---|
+| theverge.com, early | base | 6 | 2 066 (1 995-2 301) | 2 110 (2 044-2 321) | 1 986 (1 972-2 060) | 342 (332-345) | 316 (311-323) | 94 (88-98) |
+| | now | 8 | 1 913 (1 875-2 159) | 1 974 (1 922-2 181) | **1 881 (1 853-1 920)** | 337 (322-368) | 296 (288-312) | 89 (86-97) |
+| theverge.com, late | base | 3 | 2 210 (2 121-2 261) | 2 256 (2 149-2 296) | 2 042 (1 989-2 043) | 2 092 (1 951-2 171) | 1 970 (1 872-2 016) | 1 551 (1 480-1 558) |
+| | now | 1 | 2 037 | 2 076 | 1 919 | 1 858 | 1 778 | 1 394 |
+| bbc.com/news, 0.9-1.1 s | base | 5 | 1 814 (1 163-1 828) | 1 843 (1 794-1 869) | 1 763 (1 744-1 790) | 872 (868-1 072) | 828 (826-1 025) | 668 (664-850) |
+| | now | 0 | | | | | | |
+| bbc.com/news, 1.5 s | base | 0 | | | | | | |
+| | now | 4 | 1 136 (1 102-1 783) | 1 809 (1 802-1 818) | 1 747 (1 734-1 755) | 1 547 (1 534-1 548) | 1 490 (1 476-1 502) | 1 313 (1 309-1 319) |
+| bbc.com/news, 1.8 s | base | 4 | 1 138 (1 118-1 811) | 1 816 (1 783-1 827) | 1 767 (1 741-1 785) | 1 780 (1 757-1 804) | 1 739 (1 717-1 763) | 1 554 (1 531-1 571) |
+| | now | 5 | 1 124 (1 093-1 144) | 1 818 (1 805-1 835) | 1 762 (1 748-1 768) | 1 792 (1 769-1 797) | 1 738 (1 722-1 740) | 1 556 (1 543-1 568) |
+
+FCP and DOMContentLoaded do not depend on the mode (theverge.com 192-201 and 336-358, bbc.com/news 56-63 and 283-290 in every group). bbc.com/news's visually ready has two modes of its own, 1.1 s or 1.8 s, whatever the load: base 4 loads of 9 at 1.1 s, now 8 of 9.
+
+Read plainly. **On the release build rounds 51 to 58 are proven on two sites by the bench's rule: cnn.com settles 6.5 % sooner with 9.8 % less CPU, npr.org 8.1 % sooner with 9.3 % less CPU its load event and its CPU and `Guest` to the load sooner too, ranges apart** (`Gain`). theverge.com: CPU to settled -5.6 % with the ranges apart (in its early mode too, -5.3 %), visually ready -9.6 % and settled -8.8 % in the medians, ranges overlapping by one load (2 159 and 2 181 of now's): `Nothing` by the rule, which asks for a mark. bbc.com/news: the same within 1 % on settled and CPU; its load comes in another mode (never at 1 s now, 5 of 9 before: a mode of the page, which round 57's series saw the other way round), and it is visually ready at 1.1 s more often (8 of 9 against 4 of 9), not proven. The development builds' series ("Measured together") proved nothing: **the release narrows a single run's spread** (npr.org's settled 4 469-4 567 against 5 459-7 860 in that series, cnn.com's 2 403-2 568 against 3 101-3 323), and that is what lets the ranges part. Beside the development build's last series, the same day, not interleaved (round 58, item 4): the release's CPU to settled is 19 % lower on cnn.com (1 982 against 2 445), 17 % on npr.org (3 908 against 4 691), 7.5 % on theverge.com (1 882 against 2 034).
+
+**2. Where the window thread's time goes now.** The bench build, the lists on, `WREN_SPANS` on 3 replayed loads a site, no frames (`build/spans/`; their settled and CPU to settled within 2 % of the series', but theverge.com's settled 5 % later, two loads of three in its late mode). `wrentool threadtime` (its settled is 10 % busy over 500 ms, which cnn.com, npr.org and theverge.com never reach and bbc.com/news once in three: "to settled" is then the end of the trace, the bench's settled plus its 500 ms window; busy to settled 2 157, 4 547, 2 078, 1 743 ms). The owners that weigh most, then the frame's phases, to settled, median (range), ms:
+
+| | owners | frames | frame's phases (no wait) |
+|---|---|---|---|
+| cnn.com | `edition.cnn.com` `Arrival` 635 (466-858), `Input` (browser) 621, `edition.cnn.com` `Background` 412, doubleclick 133, `registry.api.cnn.io` 124 + 84 | 90 | animation 292, frame 89, resize observations 80, paint items 37, submit 26, layout 25, loop 22, build UI 15, present 12, styles 12 |
+| npr.org | `www.npr.org` `Background` 867 and `Arrival` 810, `Input` (browser) 738, `prod-eks-bundles.npr.org` 614 + 113, cookielaw 493, browser's own timers 349, piano.io 177 | 86 | animation 369, frame 149, paint items 101, loop 44, layout 17, build UI 15, present 15 |
+| theverge.com | `www.theverge.com` `Background` 890 and `Arrival` 138, `Input` (browser) 462, cookielaw 371 + 45, gstatic 52 + 9 | 73 | animation 276, frame 61, paint items 48, layout 18, present 12, build UI 11, loop 11, submit 10 |
+| bbc.com/news | `static.files.bbci.co.uk` `Background` 1 165 and `Arrival` 143, privacy-mgmt 174 + 34, `Input` (browser) 129 | 29 | animation 67, layout 17, paint items 13, frame 10 |
+
+The same spans by what each instant of the thread was doing (the innermost span's own time, from the navigation to the bench's settled of each load; the sum is the thread's busy time, which matches the bench's CPU to settled to 2 %), median of 3, ms:
+
+| | busy | script (`Guest` and listeners in a dispatch) | collection | forced style and layout (geometry reads) | the frame's work (`threadtime`'s `Input` of the browser, to the end of the trace) | the rest that weighs |
+|---|---|---|---|---|---|---|
+| cnn.com | 1 951 | 972 | 32 | 260 | 621 | `net` tasks 41 |
+| npr.org | 4 369 | 2 607 | 80 | 387 | 738 | WebGL 324, `Performance_timeline` 44 |
+| theverge.com | 1 855 | 1 138 | 107 | 58 | 462 | `idb_host` tasks 38 |
+| bbc.com/news | 1 632 | 1 389 | 37 | 1 | 129 | |
+
+Found on the way: a listener that a script's own `dispatchEvent` runs has no `Guest` span (it is not an outermost call): it shows as `Work` inside `EventTarget_dispatchEngineEvent`, **1 152 ms of bbc.com/news's 1 632** (a timer's callback dispatches events whose listeners run 150 to 280 ms each), 550 on theverge.com. Script it is, counted with `Guest` above.
+
+**The five largest costs left on the window thread that a change in Wren could remove**, by what was measured; a ceiling is the whole measured time unless said, in ms of CPU to settled, and settled moves at most as much (the thread is busy 79 % of settled on cnn.com, 90 to 95 % on the others):
+
+1. **Script in the interpreter**: 972 / 2 607 / 1 138 / 1 389 ms (cnn.com, npr.org, theverge.com, bbc.com/news), half of the thread on cnn.com, 60 to 85 % on the others. Ceiling: all of it in principle; by round 56's measured ratio (the Wasm interpreter 1.46 times the same engine native, geometric mean), a native interpreter takes about a third off: **310 / 830 / 360 / 440 ms**.
+2. **The frame's own work outside scripts**, 29 to 90 frames to settled: above all the animation phase, what `run_animation_frames` does besides the callbacks (scroll steps, scroll timelines, the animations' update and the layouts their readings force), **292 / 369 / 276 / 67 ms**, 2.3 to 4.3 ms a frame, and cnn.com's resize observations, 80 ms. Ceiling: those, 290 to 370 ms on the three heavy sites. The spans do not say which of the steps it is: no span is finer there.
+3. **Style and layout forced by the scripts' geometry reads** (`getComputedStyle`, `scrollHeight`, `clientWidth`, `offsetWidth`, `getBoundingClientRect`...): **260 / 387 / 58 / 1 ms**, the reads with the passes they force. Ceiling: that, if every read found the layout up to date; it lays out because the page changed something between two reads, so a change of Wren reaches the part that is the pass's own cost (incremental style and layout), not all of it.
+4. **A WebGL context on npr.org**: one `WebGL_create` and two offscreen surfaces at 3.2 s, after the load event, **about 320 ms** (the context 220 to 282, the offscreen surfaces 63 of their own, its queries 25). Ceiling: 320 ms on npr.org, nothing on the other three.
+5. **The collector on the window thread**: **32 / 80 / 107 / 37 ms**. Ceiling: all of it, if collections left the thread (round 50 tried the collector's threads, not kept).
+
+Below these: the network's completion tasks (16 to 41 ms), `Performance_timeline` on npr.org (44), IndexedDB's host tasks on theverge.com (38), the engine's deserialize and compile (6 to 31).
+
+**Tests.** None: a measure. `wrentool build release` and `bench` build on master and on the base.
+
+**Not verified.** The release's own binary on the bench: it is the bench build less the hooks, by its flags, not measured beside it beyond one load. Which step of the animation phase costs what (no finer spans), and which share of the forced reads is the passes' cost rather than the page's changes. The second load of a session, memory, Linux. Three loads of spans a site, in theverge.com's and bbc.com/news's mixed modes (2 late and 1 early each).
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)

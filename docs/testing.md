@@ -317,6 +317,8 @@ Nothing of the machine is touched. `network.hosts=*=127.0.0.1:<port>` sends ever
 
 **The test world** (`src/base/test_world.odin`). `WREN_TEST_WORLD=<seed>,<unix ms>`, the same at the recording and at each replay; a release never reads it. `Math.random`, `crypto.getRandomValues` and `randomUUID` come from a seeded stream of the thread. `Date`, `performance.now`, `timeOrigin` and a frame's time read a clock that starts at the recording's date and moves by 2 ms at each read of that thread (about the pace of real time on these pages), so that a page's timestamps depend on what it did and not on how fast the machine ran, and a `while (Date.now() < end)` still ends. The cookies and the HTTP cache go by the recording's date plus the real time since the start: what was fresh then stays fresh, however long ago that was. The page's timers, the loop, the network and the compile threads stay real: that is what is left of the noise.
 
+**The release's code on the bench**: `wrentool build bench` (`build\wren_bench.exe`) is the release's build (one module, `-o:speed`, no `-debug`, the Rust library's `release` profile) on the development channel, which keeps the hooks a release leaves out (`WREN_TEST_WORLD`, `WREN_TEST_RECORD`). `WREN_ODIN_EXTRA` cannot do it: Odin refuses a second `-define:WREN_CHANNEL`. A release replays a recording with the machine's clock and random: two of its loads are not the same work.
+
 A run is two loads in two Wrens for each arm and each run, one warm-up first, the arms' order turning:
 
 - the load that is **measured**: nothing watches it but a thread of wrentool that reads the window thread's cycle counter every few ms (`QueryThreadCycleTime`, from outside, nothing asked of the browser);
