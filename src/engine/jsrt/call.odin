@@ -196,27 +196,36 @@ function_proto_for_kind :: proc(ctx: ^Context, k: Func_Kind) -> ^Object {
 	return ctx.function_proto
 }
 
-// Bind `b` to the closure cells it captures from the frame `f` (whose function's cells are `cur`). `refs`: room for them, in
-// the object's cell; nil: a block of their own.
-closure_bind :: proc(ctx: ^Context, o: ^Object, b: ^Function_Bytecode, cur: [^]^Var_Ref, f: ^Frame, refs: [^]^Var_Ref = nil) {
+// A function object of `b` whose cell has the room for its closure cells (function_refs), of no shape but the root one of `proto`.
+function_object_new :: proc(ctx: ^Context, proto: ^Object, b: ^Function_Bytecode) -> ^Object {
+	return object_new_shape(ctx.rt, shape_root_for(ctx.rt, proto), .bytecode_function, int(b.closure_var_count) * size_of(^Var_Ref))
+}
+
+// Where the closure cells of a function object just made are: in its cell, after its slots (object_tail). A function's cells are
+// never a block of their own, so that its finalizer reads nothing (the sweep frees cells in the order of their addresses: its
+// bytecode may be gone).
+function_refs :: #force_inline proc "contextless" (o: ^Object, b: ^Function_Bytecode) -> [^]^Var_Ref {
+	return b.closure_var_count > 0 ? cast([^]^Var_Ref)object_tail(o) : nil
+}
+
+// Bind `b` to the closure cells it captures from the frame `f` (whose function's cells are `cur`), in the room of the object's
+// cell (function_object_new, make_closure).
+closure_bind :: proc(ctx: ^Context, o: ^Object, b: ^Function_Bytecode, cur: [^]^Var_Ref, f: ^Frame) {
 	rt := ctx.rt
-	fd := Func_Data{bc = b}
-	if b.closure_var_count > 0 {
-		fd.var_refs = refs != nil ? refs : cast([^]^Var_Ref)mem_alloc(rt, int(b.closure_var_count) * size_of(^Var_Ref))
-		for i in 0 ..< int(b.closure_var_count) {
-			cv := &b.closure_vars[i]
-			vr: ^Var_Ref
-			#partial switch cv.closure_type {
-			case .local:
-				vr = get_var_ref(rt, f, int(cv.var_idx), false)
-			case .arg:
-				vr = get_var_ref(rt, f, int(cv.var_idx), true)
-			case:
-				if cur != nil {vr = cur[cv.var_idx]}
-			}
-			if vr == nil {vr = var_ref_new_detached(rt, UNDEFINED)}
-			fd.var_refs[i] = vr
+	fd := Func_Data{bc = b, var_refs = function_refs(o, b)}
+	for i in 0 ..< int(b.closure_var_count) {
+		cv := &b.closure_vars[i]
+		vr: ^Var_Ref
+		#partial switch cv.closure_type {
+		case .local:
+			vr = get_var_ref(rt, f, int(cv.var_idx), false)
+		case .arg:
+			vr = get_var_ref(rt, f, int(cv.var_idx), true)
+		case:
+			if cur != nil {vr = cur[cv.var_idx]}
 		}
+		if vr == nil {vr = var_ref_new_detached(rt, UNDEFINED)}
+		fd.var_refs[i] = vr
 	}
 	o.data = fd
 }
@@ -226,7 +235,7 @@ make_closure :: proc(ctx: ^Context, b: ^Function_Bytecode, cur: [^]^Var_Ref, f: 
 	rt := ctx.rt
 	generator := b.func_kind == .generator || b.func_kind == .async_generator
 	o := object_new_shape(rt, closure_shape(ctx, b.func_kind, generator || b.has_prototype), .bytecode_function, int(b.closure_var_count) * size_of(^Var_Ref))
-	closure_bind(ctx, o, b, cur, f, cast([^]^Var_Ref)object_tail(o))
+	closure_bind(ctx, o, b, cur, f)
 	o.slots[CLOSURE_SLOT_LENGTH].value = mk_int(i32(b.defined_arg_count))
 	o.slots[CLOSURE_SLOT_NAME].value = atom_to_value(rt, b.func_name == ATOM_NULL ? pa(.A_empty_string) : b.func_name)
 	if generator {
@@ -286,14 +295,11 @@ closure_shape :: proc(ctx: ^Context, kind: Func_Kind, prototype: bool) -> ^Shape
 
 // A top-level script/eval function: no captured cells.
 make_toplevel_function :: proc(ctx: ^Context, b: ^Function_Bytecode) -> Value {
-	o := object_new_proto(ctx, function_proto_for_kind(ctx, b.func_kind), .bytecode_function)
-	o.data = Func_Data{bc = b}
-	if b.closure_var_count > 0 {
-		// global references of top-level code resolve through the global object at run time
-		fd := &o.data.(Func_Data)
-		fd.var_refs = cast([^]^Var_Ref)mem_alloc(ctx.rt, int(b.closure_var_count) * size_of(^Var_Ref))
-		for i in 0 ..< int(b.closure_var_count) {fd.var_refs[i] = var_ref_new_detached(ctx.rt, UNDEFINED)}
-	}
+	o := function_object_new(ctx, function_proto_for_kind(ctx, b.func_kind), b)
+	refs := function_refs(o, b)
+	o.data = Func_Data{bc = b, var_refs = refs}
+	// global references of top-level code resolve through the global object at run time
+	for i in 0 ..< int(b.closure_var_count) {refs[i] = var_ref_new_detached(ctx.rt, UNDEFINED)}
 	return mk_obj(o)
 }
 

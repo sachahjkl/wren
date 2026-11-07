@@ -169,7 +169,7 @@ host_object_free :: proc(rt: ^Runtime, o: ^Object, d: ^Host_Object) {
 host_run_finalizers :: proc(rt: ^Runtime) {
 	kept := 0
 	for o in rt.host_finals {
-		if o.mark || o.pinned {
+		if cell_marked(rt, o) || o.pinned {
 			rt.host_finals[kept] = o
 			kept += 1
 		} else {

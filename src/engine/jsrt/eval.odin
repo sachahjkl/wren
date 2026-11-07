@@ -42,7 +42,7 @@ eval_direct :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref, x: Value, s
 	fb := compile(ctx, &req)
 	if is_exception(fb) {return EXCEPTION}
 	b := cast(^Function_Bytecode)fb.u.ptr
-	o := object_new_proto(ctx, ctx.function_proto, .bytecode_function)
+	o := function_object_new(ctx, ctx.function_proto, b)
 	closure_bind(ctx, o, b, var_refs, f)
 	root(rt, mk_obj(o))
 	return call(ctx, mk_obj(o), UNDEFINED, {})

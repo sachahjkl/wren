@@ -266,6 +266,7 @@ str_from_u64 :: proc(rt: ^Runtime, v: u64) -> ^JS_String {
 		n += 1
 	}
 	s := str_from_latin1(rt, buf[24 - n:])
+	s.flags |= STR_NUMBER
 	at^ = {v, s}
 	return s
 }

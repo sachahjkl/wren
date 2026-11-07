@@ -32,6 +32,9 @@ JS_String :: struct {
 }
 
 STR_TAIL :: u8(1)
+// A number's string kept in Runtime.int_strings (str_from_u64): the same string comes again for the same number, so its join with a
+// constant of the code is kept too (str_concat).
+STR_NUMBER :: u8(2)
 
 String_Tail :: struct #raw_union {
 	rope: struct {left, right: ^JS_String},
@@ -245,6 +248,13 @@ str_concat :: proc(rt: ^Runtime, a, b: ^JS_String) -> ^JS_String {
 	if total > STRING_LEN_MAX {return nil}
 	wide := a.is_wide || b.is_wide
 	if total < ROPE_MIN_LEN {
+		// a number's string and a constant (`t.toString() + ":true"` for each element of a list: 2.4 million strings a load of
+		// npr.org): their join is the same string until the next collection
+		kept: ^Concat_String
+		if (a.flags | b.flags) & STR_NUMBER != 0 && (a.pinned || a.flags & STR_NUMBER != 0) && (b.pinned || b.flags & STR_NUMBER != 0) {
+			kept = &rt.concat_strings[((uintptr(a) >> POOL_GRAIN_SHIFT) ~ (uintptr(b) >> (POOL_GRAIN_SHIFT + 2))) & (CONCAT_STRINGS - 1)]
+			if kept.a == a && kept.b == b {return kept.s}
+		}
 		fa := str_flat(rt, a)
 		fb := str_flat(rt, b)
 		s := str_alloc(rt, total, wide)
@@ -257,6 +267,7 @@ str_concat :: proc(rt: ^Runtime, a, b: ^JS_String) -> ^JS_String {
 			copy(d[:fa.len], str_u8(fa)[:fa.len])
 			copy(d[fa.len:total], str_u8(fb)[:fb.len])
 		}
+		if kept != nil {kept^ = {a, b, s}}
 		return s
 	}
 	// appending (the left side is the longer one): write into a's buffer when nobody wrote past a,

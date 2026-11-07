@@ -1097,6 +1097,21 @@ prevent_extensions :: proc(ctx: ^Context, o: ^Object) -> int {
 
 // --- descriptors <-> objects ---
 
+// The fields of a descriptor in the order ToPropertyDescriptor reads them.
+DESC_FIELDS :: [6]Desc_Field{.enumerable, .configurable, .value, .writable, .get, .set}
+
+desc_field_atom :: proc(f: Desc_Field) -> Atom {
+	switch f {
+	case .enumerable: return pa(.A_enumerable)
+	case .configurable: return pa(.A_configurable)
+	case .value: return pa(.A_value)
+	case .writable: return pa(.A_writable)
+	case .get: return pa(.A_get)
+	case .set: return pa(.A_set)
+	}
+	return ATOM_NULL
+}
+
 // ToPropertyDescriptor.
 to_property_descriptor :: proc(ctx: ^Context, v: Value, d: ^Prop_Desc) -> bool {
 	if v.tag != .object {
@@ -1105,47 +1120,48 @@ to_property_descriptor :: proc(ctx: ^Context, v: Value, d: ^Prop_Desc) -> bool {
 	}
 	o := as_obj(v)
 	d^ = Prop_Desc{value = UNDEFINED, getter = UNDEFINED, setter = UNDEFINED}
-	fields := [6]struct {
-		a: Atom,
-		f: Desc_Field,
-	}{
-		{pa(.A_enumerable), .enumerable},
-		{pa(.A_configurable), .configurable},
-		{pa(.A_value), .value},
-		{pa(.A_writable), .writable},
-		{pa(.A_get), .get},
-		{pa(.A_set), .set},
-	}
-	for f in fields {
-		h := has_property(ctx, o, f.a)
+	for f in DESC_FIELDS {
+		a := desc_field_atom(f)
+		h := has_property(ctx, o, a)
 		if h < 0 {return false}
 		if h == 0 {continue}
-		x := get(ctx, v, f.a)
+		x := get(ctx, v, a)
 		if is_exception(x) {return false}
-		d.has += {f.f}
-		switch f.f {
-		case .enumerable:
-			if to_boolean(x) {d.flags += {.enumerable}}
-		case .configurable:
-			if to_boolean(x) {d.flags += {.configurable}}
-		case .writable:
-			if to_boolean(x) {d.flags += {.writable}}
-		case .value:
-			d.value = x
-		case .get:
-			if !is_undefined(x) && !is_callable(x) {
-				throw_type_error(ctx, "getter must be a function")
-				return false
-			}
-			d.getter = x
-		case .set:
-			if !is_undefined(x) && !is_callable(x) {
-				throw_type_error(ctx, "setter must be a function")
-				return false
-			}
-			d.setter = x
-		}
+		if !desc_field_set(ctx, d, f, x) {return false}
 	}
+	return desc_check(ctx, d)
+}
+
+// One field of ToPropertyDescriptor, its value read.
+desc_field_set :: proc(ctx: ^Context, d: ^Prop_Desc, f: Desc_Field, x: Value) -> bool {
+	d.has += {f}
+	switch f {
+	case .enumerable:
+		if to_boolean(x) {d.flags += {.enumerable}}
+	case .configurable:
+		if to_boolean(x) {d.flags += {.configurable}}
+	case .writable:
+		if to_boolean(x) {d.flags += {.writable}}
+	case .value:
+		d.value = x
+	case .get:
+		if !is_undefined(x) && !is_callable(x) {
+			throw_type_error(ctx, "getter must be a function")
+			return false
+		}
+		d.getter = x
+	case .set:
+		if !is_undefined(x) && !is_callable(x) {
+			throw_type_error(ctx, "setter must be a function")
+			return false
+		}
+		d.setter = x
+	}
+	return true
+}
+
+// The end of ToPropertyDescriptor.
+desc_check :: proc(ctx: ^Context, d: ^Prop_Desc) -> bool {
 	if desc_is_accessor(d) && desc_is_data(d) {
 		throw_type_error(ctx, "cannot have both a value and an accessor")
 		return false

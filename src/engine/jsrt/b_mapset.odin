@@ -191,10 +191,25 @@ map_clear :: proc(rt: ^Runtime, ms: ^Map_State) {
 	}
 }
 
-map_iterator_release :: proc(st: ^Iter_State) {
-	if st.target.tag == .object {
-		if ms, ok := as_obj(st.target).data.(^Map_State); ok && ms.iterators > 0 {ms.iterators -= 1}
+// After the marking, before anything is freed (gc_mark): an iterator not done that dies no longer holds its map's entries in place, if its
+// map lives. Here and not in its finalizer: the sweep frees cells in the order of their addresses, and the map may be gone by then.
+gc_release_map_iters :: proc(rt: ^Runtime) {
+	kept := 0
+	for it in rt.map_iters {
+		st := it.data.(^Iter_State)
+		if st.target.tag != .object {continue} // (done: it let go of its map then)
+		if cell_marked(rt, it) {
+			rt.map_iters[kept] = it
+			kept += 1
+			continue
+		}
+		m := as_obj(st.target)
+		if cell_marked(rt, m) {
+			ms := m.data.(^Map_State)
+			if ms.iterators > 0 {ms.iterators -= 1}
+		}
 	}
+	resize(&rt.map_iters, kept)
 }
 
 // --- constructors ---
@@ -381,6 +396,7 @@ collection_iter :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -
 	pcls: Class_ID = class == .jsmap ? .map_iterator : .set_iterator
 	it := iter_state_new(ctx, ctx.class_proto[pcls], pcls, kind, this)
 	ms.iterators += 1
+	append(&ctx.rt.map_iters, it)
 	return mk_obj(it)
 }
 

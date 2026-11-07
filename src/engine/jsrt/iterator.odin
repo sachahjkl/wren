@@ -72,9 +72,6 @@ iter_state_new :: proc(ctx: ^Context, proto: ^Object, class: Class_ID, kind: Ite
 }
 
 iter_state_free :: proc(rt: ^Runtime, st: ^Iter_State) {
-	if st.kind == .map_keys || st.kind == .map_values || st.kind == .map_entries || st.kind == .set_values || st.kind == .set_entries {
-		map_iterator_release(st)
-	}
 	delete(st.keys)
 	if st.extra != nil {delete(st.buf)}
 }
@@ -129,11 +126,81 @@ get_iterator :: proc(ctx: ^Context, obj: Value, is_async: bool) -> Value {
 	}
 	m := get(ctx, obj, well_known_atom(.iterator))
 	if is_exception(m) {return EXCEPTION}
+	return iterator_from_method(ctx, obj, m)
+}
+
+// GetIteratorFromMethod: the iterator `m` (obj's @@iterator, read) makes.
+iterator_from_method :: proc(ctx: ^Context, obj, m: Value) -> Value {
 	if !is_callable(m) {return throw_type_error(ctx, "value is not iterable")}
 	it := call(ctx, m, obj, {})
 	if is_exception(it) {return EXCEPTION}
 	if it.tag != .object {return throw_type_error(ctx, "iterator must be an object")}
 	return it
+}
+
+// --- a for-of over Array.prototype.values without its iterator ---
+// When an object's @@iterator is this realm's Array.prototype.values and %ArrayIteratorPrototype%.next is still the built-in, the
+// iterator would be seen by nothing: its `next` is read once, at the start, and never called by the loop (for_of_next steps it
+// itself). So for_of_start leaves the object and an index on the operand stack in place of the iterator and its `next`
+// (for_of_fast), for_of_next steps them as the iterator would (array_values_at), and an iterator is made only if a close finds a
+// `return` to call on it (for_of_close).
+
+// Does a for-of over `obj`, whose @@iterator is `m`, go without its iterator?
+for_of_fast :: proc(ctx: ^Context, obj, m: Value) -> bool {
+	if obj.tag != .object || m.tag != .object || as_obj(m) != ctx.array_proto_values {return false}
+	proto := ctx.class_proto[.array_iterator]
+	i := shape_find(proto.shape, pa(.A_next))
+	if i < 0 || proto.shape.props[i].kind != .data {return false}
+	next := proto.slots[i].value
+	if next.tag != .object || as_obj(next).class != .c_function {return false}
+	nd, ok := as_obj(next).data.(Native_Data)
+	return ok && nd.fn == array_iterator_next_native
+}
+
+// The index of an iterator nothing made, in the place of its `next`: of a tag no Get gives, so that a `next` that is a number
+// stays an error when called.
+for_of_index :: #force_inline proc "contextless" (i: i64) -> Value {return Value{tag = .uninitialized, u = {f = f64(i)}}}
+
+// IteratorClose of what for_of_start left: an iterator and its `next`, or (for_of_fast) the object and the index of an iterator
+// nothing made. Such an iterator is made when %ArrayIteratorPrototype% or what it inherits from may have a `return`, and closed.
+for_of_close :: proc(ctx: ^Context, it, next: Value, is_exc: bool) -> int {
+	if next.tag != .uninitialized {return iterator_close(ctx, it, is_exc)}
+	for o := ctx.class_proto[.array_iterator]; o != nil; o = o.shape.proto {
+		if o.class == .proxy || o.class == .host || o.shape.lazy != nil || shape_find(o.shape, pa(.A_return)) >= 0 {
+			made := iter_state_new(ctx, ctx.class_proto[.array_iterator], .array_iterator, .array_values, it)
+			made.data.(^Iter_State).index = i64(next.u.f)
+			return iterator_close(ctx, mk_obj(made), is_exc)
+		}
+	}
+	return 0
+}
+
+// The length an Array Iterator reads of `o` at each of its steps.
+@(private = "file")
+array_iterator_length :: proc(ctx: ^Context, o: ^Object) -> (i64, bool) {
+	if o.class == .array && o.fast_array {return i64(array_length_u32(o)), true}
+	if is_typed_array_class(o.class) {
+		if typed_array_is_out_of_bounds(o) {
+			throw_type_error(ctx, "typed array is detached or out of bounds")
+			return 0, false
+		}
+		return i64(typed_array_length(ctx, o)), true
+	}
+	return length_of_array_like(ctx, mk_obj(o))
+}
+
+// A step of an iterator of Array.prototype.values over `o` at index i: (value, done, ok).
+array_values_at :: proc(ctx: ^Context, o: ^Object, i: i64) -> (Value, bool, bool) {
+	n, ok := array_iterator_length(ctx, o)
+	if !ok {return UNDEFINED, false, false}
+	if i >= n {return UNDEFINED, true, true}
+	if o.fast_array {
+		ad := array_data(o)
+		if i < i64(ad.count) {return ad.values[i], false, true}
+	}
+	v := get_index(ctx, mk_obj(o), i)
+	if is_exception(v) {return UNDEFINED, false, false}
+	return v, false, true
 }
 
 // IteratorStep + IteratorValue: (value, done, ok).
@@ -336,43 +403,29 @@ array_iterator_next_native :: proc(ctx: ^Context, this: Value, args: []Value, ma
 array_iterator_step :: proc(ctx: ^Context, st: ^Iter_State) -> (Value, bool, bool) {
 	if st.done || st.target.tag != .object {return UNDEFINED, true, true}
 	o := as_obj(st.target)
-	n: i64
-	if o.class == .array && o.fast_array {
-		n = i64(array_length_u32(o))
-	} else if is_typed_array_class(o.class) {
-		if typed_array_is_out_of_bounds(o) {
-			throw_type_error(ctx, "typed array is detached or out of bounds")
-			return UNDEFINED, false, false
-		}
-		n = i64(typed_array_length(ctx, o))
+	i := st.index
+	v: Value
+	done, ok: bool
+	if st.kind == .array_values {
+		v, done, ok = array_values_at(ctx, o, i)
 	} else {
-		ok: bool
-		n, ok = length_of_array_like(ctx, st.target)
-		if !ok {return UNDEFINED, false, false}
+		n: i64
+		n, ok = array_iterator_length(ctx, o)
+		done = i >= n
 	}
-	if st.index >= n {
+	if !ok {return UNDEFINED, false, false}
+	if done {
 		st.done = true
 		st.target = UNDEFINED
 		return UNDEFINED, true, true
 	}
-	i := st.index
 	st.index += 1
-	switch st.kind {
-	case .array_keys:
-		return mk_i64(i), false, true
-	case .array_entries:
-		v := get_index(ctx, mk_obj(o), i)
+	if st.kind == .array_keys {return mk_i64(i), false, true}
+	if st.kind == .array_entries {
+		v = get_index(ctx, mk_obj(o), i)
 		if is_exception(v) {return UNDEFINED, false, false}
-		pair := array_from_values(ctx, {mk_i64(i), v})
-		return mk_obj(pair), false, true
-	case .array_values, .map_keys, .map_values, .map_entries, .set_values, .set_entries, .string, .regexp_string, .for_in, .helper, .wrap, .concat, .async_from_sync:
+		return mk_obj(array_from_values(ctx, {mk_i64(i), v})), false, true
 	}
-	if o.fast_array {
-		ad := array_data(o)
-		if i < i64(ad.count) {return ad.values[i], false, true}
-	}
-	v := get_index(ctx, mk_obj(o), i)
-	if is_exception(v) {return UNDEFINED, false, false}
 	return v, false, true
 }
 

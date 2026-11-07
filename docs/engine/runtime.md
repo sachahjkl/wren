@@ -88,9 +88,23 @@ in the 64‑bit NaN‑boxed word QuickJS uses on wasm32, because Wren's glue is 
 
 ## Memory management (`gc.odin`)
 
-A **precise, non‑moving, stop‑the‑world mark‑and‑sweep** collector (`rt.cells` is every live cell).
-Copying a `Value` is a plain copy: there are no `dup`/`free` pairs in the interpreter and cycles need no
-special pass.
+A **precise, non‑moving, stop‑the‑world mark‑and‑sweep** collector. Copying a `Value` is a plain copy: there are no
+`dup`/`free` pairs in the interpreter and cycles need no special pass.
+
+- **Where the cells are, and their marks.** A cell of the pool (≤ 512 bytes) is known by two bits of its chunk
+  (`Chunk_Bits`, one pair of words per 32 grains of 8 bytes, after the chunk's header): one says a cell starts there,
+  the other that it is marked. A cell finds its chunk by `Runtime.chunk_table`, the chunk of each 4 KiB of the
+  addresses (chunks start on 4 KiB and are made of them: aligned on their own 256 KiB, the Wasm allocator lost up to
+  that much in front of each). A cell is made marked, and a marking starts by clearing every mark: outside a marking,
+  a cell that lives is marked (`cell_marked`). A cell over 512 bytes has its mark in its header and is listed
+  (`Runtime.big_cells`). The bits cost 1/32 of a chunk; the list of every cell they replace cost 4 bytes a cell.
+- **The sweep reads the bits, not the cells**: a group of 32 grains whose cells all live is one load, a cell that lives
+  is never touched; a dead one is finalized if it owns anything (`cell_alone`: a plain object with its slots inline, a
+  closure, a flat string, a closure cell do not) and freed at once. It goes chunk by chunk, in the order of the
+  addresses, in steps after the marking (`gc_sweep_step`: 1 MiB of chunks for each 128 KiB allocated since the last
+  step), the big cells last. So no finalizer reads another cell: a function's closure cells are always in its own cell
+  (`function_refs`), and a Map or Set iterator that dies unfinished gives its map back the right to compact at the
+  marking (`gc_release_map_iters`), not in its finalizer.
 
 - **Roots**: realms, the interpreter frame chain (arguments, locals, whole operand stacks, open closure
   cells), the job queue, the pending exception, atoms, the module registry, `temp_roots`, and the
@@ -119,12 +133,35 @@ special pass.
   allocation.
 - The heap is capped by `Host_Config.malloc_limit`; all allocation goes through the injected allocator.
   A collection runs when the heap passes `max(2.5 × live, live + 4 MiB)`.
-- **The sweep** frees a cell that owns nothing but its block (a plain object with its slots inline, a flat string, a
-  closure cell, a symbol) without a finalizer (`cell_alone`), and charges the heap once a step. `Runtime.gc_swept`
-  counts the cells freed and kept; `-define:JSRT_GC_CENSUS=true` counts what died by kind, as the census of the heap
-  does (`Runtime.gc_dead`, `jsengine mem`, `WREN_JS_MEMPROF=1`: the census of a window's realm at its load event).
+- `Runtime.gc_swept` counts the cells freed and kept (kept: counted from the bits, not read); `Runtime.gc_ns` the time
+  of the markings and sweeps (`judge eval` prints it); `-define:JSRT_GC_CENSUS=true` counts what died by kind, as the
+  census of the heap does (`Runtime.gc_dead`, `jsengine mem`, `WREN_JS_MEMPROF=1`: the census of a window's realm at its
+  load event).
 - The strings of numbers made lately (`str_from_u64`: `n.toString()`, an index as a key) are kept in 256 slots until the
-  next collection clears them: a page that makes the same number a string for each element of a list makes it once.
+  next collection clears them: a page that makes the same number a string for each element of a list makes it once. Such
+  a string (`STR_NUMBER`) joined to a constant of the code, or to another, is kept too (`Runtime.concat_strings`, 256
+  slots, cleared the same way): `t.toString() + ":true"` for each element is one string.
+
+### Allocations nothing sees
+
+Each falls back to the general path wherever the protocol can be seen; `examples/jsbench/hotcheck.js` checks each way.
+
+- **`for…of` and array destructuring over `Array.prototype.values`** (an array, `arguments`, a NodeList): when the
+  object's `@@iterator` is this realm's `values` and `%ArrayIteratorPrototype%.next` is still the built-in data property,
+  `for_of_start` leaves the object and an index on the operand stack in place of the iterator and its `next`
+  (`for_of_fast`), and `for_of_next` steps them as the iterator would, its length read again at each step
+  (`array_values_at`). A close (a `break`, a `return`, a throw, a destructuring that leaves elements) makes the
+  iterator and calls its `return` only if `%ArrayIteratorPrototype%` or what it inherits from may have one (a proxy, a
+  host object, lazy members: asked) (`for_of_close`). `yield*` keeps its iterator.
+- **A mapped `arguments` object's closure cells are in its own cell** when nothing else can hold them: no function
+  inside captures an argument, no direct eval, no coroutine (`mapped_args_in_cell`, found once a function, kept in its
+  bytecode's cell flags). The frame lists them as its own (it closes them at its return), and an open one keeps its
+  object alive (`Var_Ref.owner`).
+- **`Object.getOwnPropertyDescriptor(o, p).field`** read at once (the interpreter's hot loop: the call followed by
+  `get_field`): the field, without the descriptor; a field the descriptor would not have makes it (`descriptor_field`).
+- **`Object.defineProperty(o, p, {value: v, enumerable: !0, ...})`**, a literal of loads and constants handed to the
+  call: its fields go to the descriptor without the object, unless `Object.prototype` has a field the literal does not
+  (`hot_define_literal`, `define_property_literal`).
 
 ### Where the memory of a realm and of a page goes (Wasm, `jsengine mem|startup`)
 

@@ -323,9 +323,24 @@ value goes by its kind, and the object then takes the shape the same keys have a
 (<code>F.prototype = {...}</code>) makes no object first (<code>function_prototype_settle</code>).</li>
 </ul>
 <h2 id="memory-management-gcodin"><a class="anchor" href="#memory-management-gcodin" aria-hidden="true">#</a>Memory management (<code>gc.odin</code>)</h2>
-<p>A <strong>precise, non‑moving, stop‑the‑world mark‑and‑sweep</strong> collector (<code>rt.cells</code> is every live cell).
-Copying a <code>Value</code> is a plain copy: there are no <code>dup</code>/<code>free</code> pairs in the interpreter and cycles need no
-special pass.</p>
+<p>A <strong>precise, non‑moving, stop‑the‑world mark‑and‑sweep</strong> collector. Copying a <code>Value</code> is a plain copy: there are no
+<code>dup</code>/<code>free</code> pairs in the interpreter and cycles need no special pass.</p>
+<ul>
+<li><strong>Where the cells are, and their marks.</strong> A cell of the pool (≤ 512 bytes) is known by two bits of its chunk
+(<code>Chunk_Bits</code>, one pair of words per 32 grains of 8 bytes, after the chunk's header): one says a cell starts there,
+the other that it is marked. A cell finds its chunk by <code>Runtime.chunk_table</code>, the chunk of each 4 KiB of the
+addresses (chunks start on 4 KiB and are made of them: aligned on their own 256 KiB, the Wasm allocator lost up to
+that much in front of each). A cell is made marked, and a marking starts by clearing every mark: outside a marking,
+a cell that lives is marked (<code>cell_marked</code>). A cell over 512 bytes has its mark in its header and is listed
+(<code>Runtime.big_cells</code>). The bits cost 1/32 of a chunk; the list of every cell they replace cost 4 bytes a cell.</li>
+<li><strong>The sweep reads the bits, not the cells</strong>: a group of 32 grains whose cells all live is one load, a cell that lives
+is never touched; a dead one is finalized if it owns anything (<code>cell_alone</code>: a plain object with its slots inline, a
+closure, a flat string, a closure cell do not) and freed at once. It goes chunk by chunk, in the order of the
+addresses, in steps after the marking (<code>gc_sweep_step</code>: 1 MiB of chunks for each 128 KiB allocated since the last
+step), the big cells last. So no finalizer reads another cell: a function's closure cells are always in its own cell
+(<code>function_refs</code>), and a Map or Set iterator that dies unfinished gives its map back the right to compact at the
+marking (<code>gc_release_map_iters</code>), not in its finalizer.</li>
+</ul>
 <ul>
 <li><strong>Roots</strong>: realms, the interpreter frame chain (arguments, locals, whole operand stacks, open closure
 cells), the job queue, the pending exception, atoms, the module registry, <code>temp_roots</code>, and the
@@ -354,12 +369,34 @@ lists carved out of 256 KiB chunks of the injected allocator (<code>mem_alloc</c
 allocation.</li>
 <li>The heap is capped by <code>Host_Config.malloc_limit</code>; all allocation goes through the injected allocator.
 A collection runs when the heap passes <code>max(2.5 × live, live + 4 MiB)</code>.</li>
-<li><strong>The sweep</strong> frees a cell that owns nothing but its block (a plain object with its slots inline, a flat string, a
-closure cell, a symbol) without a finalizer (<code>cell_alone</code>), and charges the heap once a step. <code>Runtime.gc_swept</code>
-counts the cells freed and kept; <code>-define:JSRT_GC_CENSUS=true</code> counts what died by kind, as the census of the heap
-does (<code>Runtime.gc_dead</code>, <code>jsengine mem</code>, <code>WREN_JS_MEMPROF=1</code>: the census of a window's realm at its load event).</li>
+<li><code>Runtime.gc_swept</code> counts the cells freed and kept (kept: counted from the bits, not read); <code>Runtime.gc_ns</code> the time
+of the markings and sweeps (<code>judge eval</code> prints it); <code>-define:JSRT_GC_CENSUS=true</code> counts what died by kind, as the
+census of the heap does (<code>Runtime.gc_dead</code>, <code>jsengine mem</code>, <code>WREN_JS_MEMPROF=1</code>: the census of a window's realm at its
+load event).</li>
 <li>The strings of numbers made lately (<code>str_from_u64</code>: <code>n.toString()</code>, an index as a key) are kept in 256 slots until the
-next collection clears them: a page that makes the same number a string for each element of a list makes it once.</li>
+next collection clears them: a page that makes the same number a string for each element of a list makes it once. Such
+a string (<code>STR_NUMBER</code>) joined to a constant of the code, or to another, is kept too (<code>Runtime.concat_strings</code>, 256
+slots, cleared the same way): <code>t.toString() + ":true"</code> for each element is one string.</li>
+</ul>
+<h3 id="allocations-nothing-sees"><a class="anchor" href="#allocations-nothing-sees" aria-hidden="true">#</a>Allocations nothing sees</h3>
+<p>Each falls back to the general path wherever the protocol can be seen; <code>examples/jsbench/hotcheck.js</code> checks each way.</p>
+<ul>
+<li><strong><code>for…of</code> and array destructuring over <code>Array.prototype.values</code></strong> (an array, <code>arguments</code>, a NodeList): when the
+object's <code>@@iterator</code> is this realm's <code>values</code> and <code>%ArrayIteratorPrototype%.next</code> is still the built-in data property,
+<code>for_of_start</code> leaves the object and an index on the operand stack in place of the iterator and its <code>next</code>
+(<code>for_of_fast</code>), and <code>for_of_next</code> steps them as the iterator would, its length read again at each step
+(<code>array_values_at</code>). A close (a <code>break</code>, a <code>return</code>, a throw, a destructuring that leaves elements) makes the
+iterator and calls its <code>return</code> only if <code>%ArrayIteratorPrototype%</code> or what it inherits from may have one (a proxy, a
+host object, lazy members: asked) (<code>for_of_close</code>). <code>yield*</code> keeps its iterator.</li>
+<li><strong>A mapped <code>arguments</code> object's closure cells are in its own cell</strong> when nothing else can hold them: no function
+inside captures an argument, no direct eval, no coroutine (<code>mapped_args_in_cell</code>, found once a function, kept in its
+bytecode's cell flags). The frame lists them as its own (it closes them at its return), and an open one keeps its
+object alive (<code>Var_Ref.owner</code>).</li>
+<li><strong><code>Object.getOwnPropertyDescriptor(o, p).field</code></strong> read at once (the interpreter's hot loop: the call followed by
+<code>get_field</code>): the field, without the descriptor; a field the descriptor would not have makes it (<code>descriptor_field</code>).</li>
+<li><strong><code>Object.defineProperty(o, p, {value: v, enumerable: !0, ...})</code></strong>, a literal of loads and constants handed to the
+call: its fields go to the descriptor without the object, unless <code>Object.prototype</code> has a field the literal does not
+(<code>hot_define_literal</code>, <code>define_property_literal</code>).</li>
 </ul>
 <h3 id="where-the-memory-of-a-realm-and-of-a-page-goes-wasm-jsengine-memstartup"><a class="anchor" href="#where-the-memory-of-a-realm-and-of-a-page-goes-wasm-jsengine-memstartup" aria-hidden="true">#</a>Where the memory of a realm and of a page goes (Wasm, <code>jsengine mem|startup</code>)</h3>
 <p>The linear memory of a Wasm module only grows, so what counts is the high-water mark.</p>
@@ -503,6 +540,7 @@ on wasm32, what ships, 104: <code>Object</code> 40 + 4 inline slots of 16; a str
 <li><a href="#value-model-valueodin">Value model (value.odin)</a></li>
 <li><a href="#strings-atoms-shapes-objects">Strings, atoms, shapes, objects</a></li>
 <li><a href="#memory-management-gcodin">Memory management (gc.odin)</a></li>
+<li class="lvl3"><a href="#allocations-nothing-sees">Allocations nothing sees</a></li>
 <li class="lvl3"><a href="#where-the-memory-of-a-realm-and-of-a-page-goes-wasm-jsengine-memstartup">Where the memory of a realm and of a page goes (Wasm, jsengine mem|startup)</a></li>
 <li><a href="#serializedbytecode-reader-and-verifier-serializeodin">Serialized‑bytecode reader and verifier (serialize.odin)</a></li>
 <li><a href="#interpreter-interpodin-opsodin-coroodin">Interpreter (interp.odin, ops.odin, coro.odin)</a></li>

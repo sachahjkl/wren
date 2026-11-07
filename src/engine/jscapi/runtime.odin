@@ -188,8 +188,8 @@ JS_ComputeMemoryUsage :: proc "c" (r: ^Runtime, s: ^Memory_Usage) {
 	s.malloc_size = rt.heap_bytes
 	s.malloc_limit = rt.config.malloc_limit
 	s.memory_used_size = rt.heap_bytes
-	s.memory_used_count = i64(len(rt.cells))
-	s.malloc_count = i64(len(rt.cells))
+	s.memory_used_count = i64(rt.cell_count)
+	s.malloc_count = i64(rt.cell_count)
 	s.atom_count = i64(len(rt.atoms))
 }
 

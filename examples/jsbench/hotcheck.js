@@ -596,3 +596,155 @@ m.push("z");
 same(m.length + m[1] + m[3] + m.index, "4az1", "a match grown");
 var big = new Array(40).fill(1);
 same(big.length, 40, "an array whose values do not fit its cell");
+
+// for-of over Array.prototype.values without its iterator, and each way it shows: a patched Symbol.iterator or `next`, a `return`
+// found by a close (a break, a throw, a return, a destructuring), holes read through the prototype, an array that changes under the loop
+function sum_of(a) {var s = 0; for (var x of a) s += x; return s;}
+same(sum_of([1, 2, 3]), 6, "for-of over an array");
+var grown = [1, 2];
+var seen_grown = [];
+for (var g of grown) {seen_grown.push(g); if (grown.length < 4) grown.push(g * 10);}
+same(seen_grown.join(), "1,2,10,20", "an array grown under its loop");
+var shrunk = [1, 2, 3, 4];
+var seen_shrunk = [];
+for (var s2 of shrunk) {seen_shrunk.push(s2); shrunk.length = 2;}
+same(seen_shrunk.join(), "1,2", "an array shrunk under its loop");
+Array.prototype[1] = "proto";
+var holed = [0, , 2];
+same([...holed].join() + "|" + (function () {var r = []; for (var h of holed) r.push(h); return r.join();})(), "0,proto,2|0,proto,2", "a hole read through the prototype");
+delete Array.prototype[1];
+same((function () {var r = 0; for (var a of arguments) r += a; return r;})(1, 2, 3), 6, "for-of over arguments");
+var [d1, d2, ...drest] = [1, 2, 3, 4];
+same(d1 + d2 + drest.join(), "33,4", "destructuring with a rest");
+var array_iter_proto = Object.getPrototypeOf([][Symbol.iterator]());
+var real_next = array_iter_proto.next;
+var nexts = 0;
+array_iter_proto.next = function () {nexts += 1; return real_next.call(this);};
+same(sum_of([1, 2, 3]), 6, "a patched %ArrayIteratorPrototype%.next");
+same(nexts, 4, "a patched next is called for each step");
+array_iter_proto.next = real_next;
+var real_values = Array.prototype[Symbol.iterator];
+Array.prototype[Symbol.iterator] = function* () {yield 7; yield 8;};
+same(sum_of([1, 2, 3]), 15, "a patched Array.prototype[Symbol.iterator]");
+Array.prototype[Symbol.iterator] = real_values;
+var own_iter = [1, 2];
+own_iter[Symbol.iterator] = function () {return [5][Symbol.iterator]();};
+same(sum_of(own_iter), 5, "an array's own Symbol.iterator");
+var getter_reads = 0;
+Object.defineProperty(array_iter_proto, "next", {get: function () {getter_reads += 1; return real_next;}, configurable: true});
+same(sum_of([1, 2]), 3, "next as a getter");
+same(getter_reads, 1, "next read once, at the start");
+Object.defineProperty(array_iter_proto, "next", {value: real_next, writable: true, configurable: true, enumerable: false});
+var closes = [];
+array_iter_proto["return"] = function () {closes.push(this.next === real_next ? "iterator" : "?"); return {};};
+for (var b1 of [1, 2, 3]) {if (b1 == 2) break;}
+same(closes.join(), "iterator", "a break calls a return found on %ArrayIteratorPrototype%");
+try {for (var b2 of [1, 2, 3]) {throw new Error("out");}} catch (e) {}
+same(closes.length, 2, "a throw calls it too");
+(function () {for (var b3 of [1, 2]) return b3;})();
+same(closes.length, 3, "and a return");
+var [first_only] = [1, 2, 3];
+same(closes.length + first_only, 5, "and a destructuring that leaves elements");
+delete array_iter_proto["return"];
+Object.prototype["return"] = function () {closes.push("object"); return {};};
+for (var b4 of [1, 2]) {break;}
+same(closes[closes.length - 1], "object", "a return found on Object.prototype");
+delete Object.prototype["return"];
+var after = closes.length;
+for (var b5 of [1, 2]) {break;}
+same(closes.length, after, "no return: nothing called");
+var proxied_proto = Object.getPrototypeOf(array_iter_proto);
+var traps = [];
+Object.setPrototypeOf(array_iter_proto, new Proxy(proxied_proto, {get: function (t, k, r) {traps.push(String(k)); return Reflect.get(t, k, r);}}));
+for (var b6 of [1, 2]) {break;}
+same(traps.indexOf("return") >= 0, true, "a proxy under %ArrayIteratorPrototype% is asked for return");
+Object.setPrototypeOf(array_iter_proto, proxied_proto);
+var numeric_next = {};
+numeric_next[Symbol.iterator] = function () {return {next: 5, length: 2, 0: "a", 1: "b"};};
+throws(function () {for (var nn of numeric_next) {}}, TypeError, "an iterator whose next is a number");
+function* gen_star() {yield* [1, 2];}
+same([...gen_star()].join(), "1,2", "yield* over an array keeps its iterator");
+
+// a number's string joined to a constant, again and again: the same text
+var joined = [];
+for (var jn = 0; jn < 3; jn++) {for (var k2 = 10; k2 < 13; k2++) joined.push(k2.toString() + ":true", "#" + k2, k2 + "px");}
+same(joined.slice(0, 3).join(), "10:true,#10,10px", "joins of a number's string");
+same(joined.slice(-3).join(), "12:true,#12,12px", "the same joins again");
+same(joined.filter(function (x) {return x === "11:true";}).length, 3, "equal strings");
+
+// the closure cells of a mapped arguments object in its own cell, and what rules them out
+function mapped_rw(a, b) {arguments[0] = 10; b = 20; return a + arguments[1];}
+same(mapped_rw(1, 2), 30, "arguments and parameters alias");
+function mapped_kept(a) {return arguments;}
+var kept_args = mapped_kept(5);
+kept_args[0] = 6;
+same(kept_args[0] + kept_args.length, 7, "arguments after the frame's return");
+function mapped_reassigned(a, b) {var x = arguments; arguments = null; a = 3; return x;}
+var reassigned = mapped_reassigned(1, 2);
+same(reassigned[0] + reassigned[1], 5, "arguments the frame no longer holds");
+function mapped_closure(a) {var f = function () {return a;}; arguments[0] = 4; return f() + arguments[0];}
+same(mapped_closure(1), 8, "a parameter a closure captures");
+function mapped_eval(a) {eval("a = 9"); return arguments[0];}
+same(mapped_eval(1), 9, "a direct eval writes a parameter");
+function mapped_define(a) {Object.defineProperty(arguments, "0", {value: 3}); var r = a; a = 4; return r + arguments[0];}
+same(mapped_define(1), 7, "a defined element stays mapped");
+function mapped_frozen(a) {Object.freeze(arguments); a = 2; return arguments[0];}
+same(mapped_frozen(1), 1, "a frozen element is not mapped");
+function mapped_deleted(a) {delete arguments[0]; a = 2; return String(arguments[0]);}
+same(mapped_deleted(1), "undefined", "a deleted element");
+var many = [];
+for (var mi = 0; mi < 2000; mi++) many.push(mapped_kept(mi, mi + 1));
+for (var churn = 0; churn < 300000; churn++) joined[churn & 7] = {churn: churn};
+same(many[1999][0] + many[1999][1] + many[0][1], 1999 + 2000 + 1, "many arguments objects kept across collections");
+
+// Object.getOwnPropertyDescriptor(o, p).field without the descriptor, and what still reads one
+var described = {d: 1};
+Object.defineProperty(described, "h", {get: function () {return 2;}, enumerable: false, configurable: true});
+function enumerable_of(o, k) {return Object.getOwnPropertyDescriptor(o, k).enumerable;}
+function getter_of(o, k) {return Object.getOwnPropertyDescriptor(o, k).get;}
+function value_of(o, k) {return Object.getOwnPropertyDescriptor(o, k).value;}
+same(enumerable_of(described, "d") + "," + enumerable_of(described, "h"), "true,false", "a descriptor's enumerable");
+same(value_of(described, "d") + typeof getter_of(described, "h"), "1function", "a descriptor's value and get");
+same(getter_of(described, "d"), undefined, "a field a data descriptor does not have");
+Object.prototype.get = "inherited";
+same(getter_of(described, "d"), "inherited", "a field read through Object.prototype");
+delete Object.prototype.get;
+throws(function () {enumerable_of(described, "none");}, TypeError, "the descriptor of no property");
+throws(function () {enumerable_of(null, "d");}, TypeError, "of null");
+var key_reads = 0;
+same(enumerable_of(described, {toString: function () {key_reads += 1; return "d";}}), true, "a key made of an object");
+same(key_reads, 1, "its toString called once");
+var trapped = new Proxy(described, {getOwnPropertyDescriptor: function (t, k) {key_reads += 10; return Reflect.getOwnPropertyDescriptor(t, k);}});
+same(enumerable_of(trapped, "d"), true, "a proxy's descriptor");
+same(key_reads, 11, "its trap called once");
+
+// Object.defineProperty(o, p, {literal}) without the literal, and what it must still read
+function define_value(o, k, v) {return Object.defineProperty(o, k, {value: v, enumerable: !0, configurable: !0, writable: !0});}
+var defined = {};
+same(define_value(defined, "a", 5), defined, "defineProperty returns its object");
+same(JSON.stringify(Object.getOwnPropertyDescriptor(defined, "a")), '{"value":5,"writable":true,"enumerable":true,"configurable":true}', "a data property from a literal");
+function define_ro(o, k, v) {return Object.defineProperty(o, k, {value: v});}
+define_ro(defined, "b", 6);
+same(JSON.stringify(Object.getOwnPropertyDescriptor(defined, "b")), '{"value":6,"writable":false,"enumerable":false,"configurable":false}', "the fields a literal leaves out");
+Object.prototype.enumerable = true;
+define_ro(defined, "c", 7);
+same(Object.keys(defined).join(), "a,c", "a field inherited from Object.prototype");
+delete Object.prototype.enumerable;
+function define_getter(o, k, g) {return Object.defineProperty(o, k, {get: g, configurable: true});}
+define_getter(defined, "g", function () {return 8;});
+same(defined.g, 8, "an accessor from a literal");
+throws(function () {define_getter(defined, "x", 1);}, TypeError, "a getter that is no function");
+function define_both(o, k, g) {return Object.defineProperty(o, k, {get: g, value: 1});}
+throws(function () {define_both(defined, "y", function () {});}, TypeError, "an accessor with a value");
+throws(function () {define_value(1, "z", 1);}, TypeError, "on a primitive");
+throws(function () {define_value(Object.freeze({}), "z", 1);}, TypeError, "on a frozen object");
+var key_order = [];
+define_value(defined, {toString: function () {key_order.push("key"); return "k";}}, 9);
+same(key_order.join() + defined.k, "key9", "the key made once");
+var define_trap = new Proxy({}, {defineProperty: function (t, k, d) {key_order.push(Object.keys(d).sort().join("+")); return Reflect.defineProperty(t, k, d);}});
+define_value(define_trap, "p", 1);
+same(key_order[1], "configurable+enumerable+value+writable", "a proxy's trap sees the descriptor");
+function define_dup(o, k) {return Object.defineProperty(o, k, {value: 1, value: 2, writable: false, writable: true});}
+define_dup(defined, "dup");
+defined.dup = 3;
+same(defined.dup, 3, "the last of a field given twice");
