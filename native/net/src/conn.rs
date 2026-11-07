@@ -222,6 +222,13 @@ pub(crate) fn is_localhost_subdomain(host: &str) -> bool {
     h.len() > ".localhost".len() && h.ends_with(".localhost")
 }
 
+/// Whether the settings route `host` themselves, so that the system's proxy is not asked: a name they give an address (network.hosts, the
+/// one address of every host, a name under .localhost) is reached at that address. (A proxy of the environment took the replay bench's names,
+/// mapped to its local server, out to the network.) A session kept on this machine (network.loopback_only) may still have a proxy on it.
+pub(crate) fn routed_by_settings(every_host: bool, hosts: &[(String, IpAddr)], host: &str) -> bool {
+    every_host || host_override(hosts, host).is_some() || is_localhost_subdomain(host)
+}
+
 /// The addresses of `host`, through the settings' names first, then the system's resolver; with loopback_only, none that is not loopback.
 pub(crate) async fn resolve(host: &str, port: u16, s: &crate::Settings, info: &mut ConnInfo) -> Result<Vec<SocketAddr>, NetError> {
     let addrs = resolve_any(host, port, s, info).await?;
@@ -362,7 +369,7 @@ pub(crate) async fn connect(shared: &Shared, uri: &Uri, alpn: Alpn) -> Result<Co
     let secure = matches!(uri.scheme_str(), Some("https") | Some("wss"));
     let host = bare_host(uri).ok_or(NetError::new(error::ERROR_BAD_URL))?.to_string();
     let port = default_port(uri);
-    let proxy = if s.proxy_system {
+    let proxy = if s.proxy_system && !routed_by_settings(s.every_host.is_some(), &s.hosts, &host) {
         let probe: Uri = format!("{}://{}/", if secure { "https" } else { "http" }, uri.authority().map(|a| a.as_str()).unwrap_or(""))
             .parse()
             .unwrap_or_else(|_| uri.clone());
@@ -433,6 +440,15 @@ mod tests {
         assert_eq!(host_override(&hosts, "example.com"), None);
     }
 
+
+    #[test]
+    fn what_the_settings_route_does_not_go_through_the_system_proxy() {
+        let hosts = crate::parse_hosts("news.example 127.0.0.1\n");
+        assert!(routed_by_settings(false, &hosts, "cdn.news.example"), "a name of network.hosts");
+        assert!(routed_by_settings(true, &[], "anything.com"), "every host to one address");
+        assert!(routed_by_settings(false, &[], "wren.localhost"), "a name under .localhost");
+        assert!(!routed_by_settings(false, &hosts, "example.com"), "any other name: the proxy decides");
+    }
     #[test]
     fn a_name_under_localhost_is_this_machine() {
         assert!(is_localhost_subdomain("wren.localhost"));
