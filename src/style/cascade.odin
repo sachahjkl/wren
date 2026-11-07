@@ -4,6 +4,7 @@ import "base:intrinsics"
 import "base:runtime"
 import "core:fmt"
 import "core:mem"
+import "core:slice"
 import "core:strings"
 import "core:sync"
 import "wb:base"
@@ -1454,6 +1455,7 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 	p := pass_make(e, s, doc, new_state)
 	defer pass_destroy(p)
 	p.compare = true
+	defer if !ok && p.changed { styled_superseded(s) }
 
 	changed_els := make(map[base.Handle]bool, context.temp_allocator)
 	if .Hover in kinds { chain_delta(doc, old.hover, new_state.hover, &changed_els) }
@@ -1594,7 +1596,8 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 		}
 	}
 
-	for r, deep in roots {
+	for r in roots_in_order(doc, roots) {
+		deep := roots[r]
 		// a root inside a subtree that is restyled anyway adds nothing
 		covered := false
 		for anc := flat_parent_element(doc, r); anc != base.NIL_HANDLE; anc = flat_parent_element(doc, anc) {
@@ -1613,7 +1616,7 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 		old_style := base_style_of(s, r)
 		rctx := node_ctx(p, r)
 		// the root element's font size and line height are what rem and rlh mean everywhere: a change of them (html:hover,
-		// :focus-within) needs a full pass (what was done is harmless: records replaced as a full pass would)
+		// :focus-within) needs a full pass (the records replaced until then: styled_superseded)
 		root_moved :: proc(s: ^Styled, r: base.Handle, par: base.Handle) -> bool {
 			if par != base.NIL_HANDLE { return false }
 			ns := base_style_of(s, r)
@@ -1646,6 +1649,21 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 		update_canvas(s, doc)
 	}
 	return p.changed, true
+}
+
+// The roots of a partial restyle, the highest first, then by handle. A map's order comes from addresses, and in what order
+// records are replaced is what the journal and the transitions hear: it is the same in every run, and an element is restyled
+// after what it inherits from.
+@(private)
+roots_in_order :: proc(doc: ^dom.Document, roots: map[base.Handle]bool) -> []base.Handle {
+	Root :: struct { depth: int, h: base.Handle }
+	sorted := make([]Root, len(roots), context.temp_allocator)
+	i := 0
+	for r in roots { sorted[i] = {dom.depth_of(doc, r), r}; i += 1 }
+	slice.sort_by(sorted, proc(a, b: Root) -> bool { return a.depth != b.depth ? a.depth < b.depth : u64(a.h) < u64(b.h) })
+	out := make([]base.Handle, len(sorted), context.temp_allocator)
+	for r, k in sorted { out[k] = r.h }
+	return out
 }
 
 ////////////////////////////////

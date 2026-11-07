@@ -84,7 +84,8 @@ restyle_containers :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled) -> (chang
 	p := pass_make(e, s, doc, s.state)
 	defer pass_destroy(p)
 	p.compare = true
-	for r in pending {
+	defer if !ok && p.changed { styled_superseded(s) }
+	for r in roots_in_order(doc, pending) {
 		n := dom.get(doc, r)
 		if n == nil || n.kind != .Element || base_style_of(s, r) == nil { return cq_fail(e, "a container left the document") }
 		if shadows && !dom.in_flat_tree(doc, r) { return cq_fail(e, "a container left the flat tree") }

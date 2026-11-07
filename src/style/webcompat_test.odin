@@ -231,6 +231,26 @@ math_functions_and_units :: proc(t: ^testing.T) {
 	testing.expect(t, !g.z_auto && g.z_index == 5 && close_to(g.opacity, 0.25), "number calc() for integers and numbers")
 }
 
+// The first container's subtree is restyled, the second's reaches a counter: the full pass that follows compares with the
+// replaced records and its journal does not name them. The serial moves: a layout that read the old one starts over.
+@(test)
+container_restyle_given_up :: proc(t: ^testing.T) {
+	d := open_doc(`<style>
+		.wrap { container-type: inline-size } .t { padding-left: 1px } li { counter-increment: n }
+		@container (width >= 400px) { .t { padding-left: 2px } li { counter-increment: n 2 } }
+	</style><div class=wrap id=a><p class=t id=t></p></div><div><div class=wrap id=b><ol><li>x</li></ol></div></div>`)
+	defer fixture_unload(d)
+	sizes := make(map[base.Handle][2]f32, context.temp_allocator)
+	sizes[dom.find_by_id(d.doc, "a")] = {500, 40}
+	sizes[dom.find_by_id(d.doc, "b")] = {500, 40}
+	engine_set_container_sizes(d.eng, sizes)
+	serial := d.st.serial
+	_, ok := restyle_containers(d.eng, d.doc, d.st)
+	testing.expect(t, !ok, "a counter is reached")
+	testing.expect_value(t, el(d, "t").padding[.Left].v, 2)   // (the first was restyled)
+	testing.expect(t, d.st.serial != serial, "the serial moved")
+}
+
 @(test)
 container_queries :: proc(t: ^testing.T) {
 	d := open_doc(`<style>

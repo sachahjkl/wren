@@ -1637,10 +1637,10 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 // A partial pass replaced records and hands over to a full one, which compares its records with these: what it replaced would
 // be in no journal, and a layout that read the serial before it would hear of nothing (the root's font, once on npr.org). The serial
 // moves: that reader is older than what the full pass's journal is complete for.
-@(private = "file")
+// (The transitions hear of it from `changes`: timeline_restyled.)
+@(private)
 styled_superseded :: proc(s: ^Styled) {
-	styled_serial += 1
-	s.serial = styled_serial
+	s.serial = sync.atomic_add(&styled_serial, 1) + 1   // (atomic: the style threads stamp too)
 }
 
 // Restyles `roots` in place: elements whose own rules changed and that no rule change reaches below (the elements that a flipped
