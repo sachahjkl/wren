@@ -491,9 +491,13 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 			}
 		}
 	}
+	ticked := base.span_now()   // (a span, WREN_SPANS: the animations' values, apart from the style pass)
+	style.dbg_layout_anim = "" // TMPDBG
 	style.timeline_tick(p.anim.timeline, p.doc, p.styled, now)
 	animations_after_tick(p)
+	base.span_add(.Phase, ticked, style.dbg_layout_anim != "" ? fmt.tprintf("animations_tick:%s", style.dbg_layout_anim) : "animations_tick", copy_label = true) // TMPDBG
 	styles_note(full, dom_partial || sheet_partial, partial, cq_partial, mq_partial, time.tick_since(t0), why)
+	dbg_kind = full ? fmt.tprintf("full(%s@%s:%d)", why, style.dbg_stale.file_path[max(0, len(style.dbg_stale.file_path) - 12):], style.dbg_stale.line) : dom_partial ? fmt.tprintf("dom(%d/%d)", e.last_restyle.marked, e.last_restyle.changed) : sheet_partial ? "sheet" : partial ? "state" : cq_partial ? "cq" : mq_partial ? "mq" : "none" // TMPDBG
 	if style.trace_restyle() && (full || dom_partial || sheet_partial) { fmt.eprintfln("style pass: %s %.1f ms, %d restyled, %d changed: %s", full ? "full" : "partial", time.duration_milliseconds(time.tick_since(t0)), e.last_restyle.marked, e.last_restyle.changed, full ? why : "") }
 
 	if full { the_pages.styles_stats.full_bytes += i64(style.styled_bytes(p.styled)) }
@@ -539,3 +543,6 @@ styles_stats_why :: proc() -> string {
 	for v in the_pages.styles_stats.why { if v.n > 0 { fmt.sbprintf(&sb, "  full pass x %d, %.0f ms: %s\n", v.n, f64(v.ns) / 1e6, v.why) } }
 	return strings.to_string(sb)
 }
+
+dbg_kind: string // TMPDBG
+dbg_step: string // TMPDBG

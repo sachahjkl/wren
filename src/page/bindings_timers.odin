@@ -194,22 +194,30 @@ run_animation_frames :: proc(p: ^Page, now_ms: f64) -> int {
 	pin := !p.anim.pinned
 	if pin { set_frame_time(p, now_ms) }
 	defer if pin { set_frame_time(p, 0, unpin = true) }
+	// (each step a span of its own, WREN_SPANS: what the frame's animation phase spends, step by step)
+	stepped := base.span_now(); dbg_step = "scroll" // TMPDBG
 	run_scroll_steps(p)   // the step before: scroll events of what scrolled since the last frame (scroll_events.odin)
+	base.span_add(.Phase, stepped, "scroll_steps")
 	if p.closed { return 0 }
+	sampled := base.span_now()
 	scroll_timelines_frame(p)   // what scroll-driven animations read, before the update (scroll_timelines.odin)
-	updated := base.span_now()
+	base.span_add(.Phase, sampled, "scroll_timelines")
+	updated := base.span_now(); dbg_step = "anim" // TMPDBG
 	web_animations_update(p)   // update animations and send events (web_animations.odin)
 	base.span_add(.Phase, updated, "web_animations")
 	if p.closed { return 0 }
 	defer {   // the steps after the callbacks: resize observations, then intersection observations (HTML update the rendering)
+		anchored := base.span_now(); dbg_step = "anchored" // TMPDBG
 		anchored_frame_done(p)
-		observed := base.span_now()
+		base.span_add(.Phase, anchored, "anchored")
+		observed := base.span_now(); dbg_step = "ro" // TMPDBG
 		resize_observers_update(p)
 		base.span_add(.Phase, observed, "resize_observers")
-		observed = base.span_now()
+		observed = base.span_now(); dbg_step = "io" // TMPDBG
 		intersection_observers_update(p)
 		base.span_add(.Phase, observed, "intersection_observers")
 	}
+	dbg_step = "raf" // TMPDBG
 	if len(p.web.frames) == 0 { return 0 }
 	w := p.web
 	ts := base.test_world.on ? page_script_now_ms(p) : now_ms - f64(w.origin_ns) / 1e6

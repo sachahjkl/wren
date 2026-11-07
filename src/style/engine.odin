@@ -408,7 +408,7 @@ register_sheet :: proc(e: ^Engine, sheet: ^css.Stylesheet, origin: Origin, owner
 
 // What the index holds no longer stands: a rebuild is due, whatever came besides.
 @(private)
-rules_stale :: proc(e: ^Engine) {
+rules_stale :: proc(e: ^Engine, loc := #caller_location) { dbg_stale = loc // TMPDBG
 	e.dirty, e.dirty_other = true, true
 }
 
@@ -1277,3 +1277,5 @@ probe_context :: proc(e: ^Engine, a: runtime.Allocator) -> Cx {
 	return Cx{settings = &e.settings, c = c, initial = init, alloc = a, lc = css.Length_Context{font_size = 16, root_font_size = 16, vw = DEFAULT_VIEWPORT_W, vh = DEFAULT_VIEWPORT_H},
 		cenv = css.Color_Env{system = system_color, user = &e.settings}}
 }
+
+dbg_stale: runtime.Source_Code_Location // TMPDBG
