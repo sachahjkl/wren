@@ -41,6 +41,7 @@ Restyle_Stats :: struct {
 	largest_task: int,  // ... the elements of the heaviest task
 	keyed_steps: int,   // elements looked at for the keys of what a change reaches
 	has_scans: int,     // :has() arguments looked for in subtrees
+	has_steps: int,     // ... elements tried for them
 	rewalked: bool,     // counters and quotes were resolved again
 	fallback: string,   // why the last restyle_dom could not be partial ("" when it was)
 	flips:    int,      // answers of the exact :has() anchors it took to mark what changed
@@ -139,6 +140,8 @@ Marker :: struct {
 	marked: [dynamic]base.Handle,    // the elements that have marks
 	key_maps: map[u32]^Key_Lookup,   // the sets of keys asked about in this pass
 	attr_touched: map[base.Handle]struct{},   // elements that had an attribute changed in this batch: what they showed their siblings is not what they have now
+	came:  map[base.Handle]struct{},   // elements put somewhere in this batch: each is restyled whole, wherever it stands now (edges_changed)
+	lost:  map[base.Handle]struct{},   // parents an element left in this batch (edges_changed)
 	mc:    Match_Ctx,
 	rewalk: bool,       // counters and quotes must be resolved again
 	removed: [dynamic]base.Handle,   // removed elements still alive (their styles are dropped)
@@ -485,7 +488,7 @@ has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Chang
 		for hap in anchors {
 			ha := hap
 			if ha.hops >= 0 && hop > ha.hops { continue }   // (`:has(> .a)`: only the parent of the changed element)
-			if anchor_could_match(&m.mc, a, ha.compound) {
+			if anchor_could_match(&m.mc, a, ha.compound) && anchor_could_match(&m.mc, a, ha.around) {
 				trace_why = "not exact, or no members"
 				if m.exact && ha.exact && ha.members != nil && !has_flip(m, ha, a) { continue }
 				if trace_restyle() { trace_note = fmt.tprintf(":has() anchor why=%s m.exact=%v members=%v exact=%v chain=%v unkeyed=%v hops=%d classes=%s attrs=%s ids=%s types=%s", trace_why, m.exact, ha.members != nil, ha.exact, ha.chain, ha.feat.unkeyed, ha.hops, trace_keys(ha.feat.classes), trace_keys(ha.feat.attrs), trace_keys(ha.feat.ids), trace_keys(ha.feat.types)) }
@@ -551,6 +554,7 @@ children_inserted :: proc(m: ^Marker, p, at: base.Handle) {
 	for ix in ixs_for_children(m, p, at) {
 		// a walk that reaches an element an earlier walk went through stops: the rest is the earlier one's (Marker.walked)
 		position_changed(m, ix, at, at)
+		edges_changed(m, ix, p)
 		if nx := next_element(m, at); nx != base.NIL_HANDLE && ix.sib_rel.used { apply_keyed(m, nx, &ix.sib_rel) }
 	}
 	if is_element_node(m.doc, p) { empty_changed(m, p) }
@@ -583,6 +587,33 @@ position_changed :: proc(m: ^Marker, ix: ^Inv_Index, nx, pv: base.Handle) {
 	}
 }
 
+// Elements came to `p`, or left it: what stands first or last among its children, by the document as it is now. An element is first now, or it
+// was first before this batch and is still there: then all that stands before it came in this batch (nothing else can get ahead of it), so it
+// is the first of the children that did not come. One that stands first with nothing come before it, in a list nothing left, stood there before.
+// On cnn.com :last-child and the like read from every sibling of a <script> added to <body>
+// restyled 2 500 elements a load, to no effect.
+@(private = "file")
+edges_changed :: proc(m: ^Marker, ix: ^Inv_Index, p: base.Handle) {
+	key := Walk_Key{p, ix, 4}
+	if key in m.emptied { return }
+	m.emptied[key] = true
+	pn := dom.get(m.doc, p)
+	if ix.edge_first.used {
+		first, _ := element_from(m, p, pn.first_child, false)
+		for x := first; x != base.NIL_HANDLE && (p in m.lost || x != first || x in m.came); x = next_element(m, x) {
+			apply_keyed(m, x, &ix.edge_first)
+			if x not_in m.came { break }
+		}
+	}
+	if ix.edge_last.used {
+		last, _ := element_from(m, p, pn.last_child, true)
+		for x := last; x != base.NIL_HANDLE && (p in m.lost || x != last || x in m.came); x = prev_element(&m.mc, x) {
+			apply_keyed(m, x, &ix.edge_last)
+			if x not_in m.came { break }
+		}
+	}
+}
+
 // The first element, going by `next` (or back), from the node `from` that stood beside a removed one, still under `p`. `ok` false: `from`
 // left too: the place is not known any more.
 @(private = "file")
@@ -608,6 +639,7 @@ children_removed :: proc(m: ^Marker, en: ^dom.Journal_Entry, gone: ^dom.Node) {
 		nx, nx_ok := element_from(m, p, en.next, false)
 		pv, pv_ok := element_from(m, p, en.prev, true)
 		for ix in ixs_for_children(m, p, first) {
+			edges_changed(m, ix, p)
 			if gone == nil || !nx_ok || !pv_ok {
 				children_all_changed(m, ix, p)
 				continue
@@ -947,7 +979,15 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 	in_shadow :: proc(m: ^Marker, h: base.Handle) -> bool { return m.shadows && dom.containing_shadow_root(m.doc, h) != base.NIL_HANDLE }
 	structure := false
 	m.attr_touched = make(map[base.Handle]struct{}, 16, context.temp_allocator)
-	for &en in entries { if en.kind == .Attribute { m.attr_touched[en.node] = {} } }
+	m.came = make(map[base.Handle]struct{}, 16, context.temp_allocator)
+	m.lost = make(map[base.Handle]struct{}, 16, context.temp_allocator)
+	for &en in entries {
+		#partial switch en.kind {
+		case .Attribute: m.attr_touched[en.node] = {}
+		case .Insert: m.came[en.node] = {}
+		case .Remove: m.lost[en.parent] = {}
+		}
+	}
 	attrs := make(map[string]Attr_Change, 16, context.temp_allocator)
 	attr_order := make([dynamic]string, 0, 16, context.temp_allocator)
 	for &en in entries {
@@ -1570,6 +1610,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	s.mutations = doc.mutations
 	clear(&e.controls_changed)
 	e.last_restyle.has_scans = w.p.mc.has_scans
+	e.last_restyle.has_steps = w.p.mc.has_steps
 	e.last_restyle.marked = w.marked
 	e.last_restyle.changed = w.changed
 	e.last_restyle.rewalked = rewalked

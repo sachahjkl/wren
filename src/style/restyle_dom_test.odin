@@ -325,6 +325,135 @@ restyle_dom_keyed_marks_walk_a_subtree_once :: proc(t: ^testing.T) {
 	testing.expectf(t, f.eng.last_restyle.keyed_steps <= ELEMENTS + 2 * DEPTH + 2, "%d elements looked at for %d in the document", f.eng.last_restyle.keyed_steps, ELEMENTS)
 }
 
+// `:first-child`, `:last-child` and `:only-child` are read at the ends of the list: what comes in the middle of a list reaches nothing of
+// theirs, and what comes at an end reaches the element that stood there, wherever the batch left it.
+@(test)
+restyle_dom_edges_are_read_at_the_edges :: proc(t: ^testing.T) {
+	ITEMS :: 40
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>section:last-child .y { margin: 1px } section:first-child .y { padding: 1px } section:nth-child(1) .z { color: red } section:only-child .w { color: blue }</style><div id=l>`)
+	for i in 0 ..< ITEMS { fmt.sbprintf(&sb, "<section id=s%d><i class=y>a</i></section>", i) }
+	strings.write_string(&sb, `</div>`)
+	f := rx_load(strings.to_string(sb))
+	defer rx_unload(f)
+	l := by_id(f, "l")
+	s := dom.create_element(f.doc, "script")
+	dom.insert_before(f.doc, l, s, by_id(f, "s20"))
+	expect_partial(t, f, "an element in the middle of the list", 1)
+	dom.remove_child(f.doc, l, s)
+	expect_partial(t, f, "and it goes: what stands at the ends may have been next to it", 2)
+	// at the end: the last section stops being :last-child, what it holds with it
+	dom.append_child(f.doc, l, s)
+	expect_partial(t, f, "an element after the last", 2)
+	testing.expect_value(t, style_of(f.st, dom.get(f.doc, by_id(f, fmt.tprintf("s%d", ITEMS - 1))).first_child).margin[.Top].v, 0)
+	dom.remove_child(f.doc, l, s)
+	expect_partial(t, f, "and the last is the last again", 2)
+	dom.release(f.doc, s)
+	// two elements before the first, in one batch: the one that stood first is not beside the one that is first now
+	a, b := dom.create_element(f.doc, "i"), dom.create_element(f.doc, "i")
+	first := by_id(f, "s0")
+	dom.insert_before(f.doc, l, a, first)
+	dom.insert_before(f.doc, l, b, a)
+	expect_partial(t, f, "two elements before the first", 4)
+	testing.expect_value(t, style_of(f.st, dom.get(f.doc, first).first_child).padding[.Top].v, 0)
+	// the first goes elsewhere in the list and what stood after it is first, in one batch with an element that came
+	dom.remove_child(f.doc, l, a)
+	dom.remove_child(f.doc, l, b)
+	dom.release(f.doc, a)
+	dom.release(f.doc, b)
+	expect_partial(t, f, "both gone")
+	dom.remove_child(f.doc, l, first)
+	dom.append_child(f.doc, l, first)
+	expect_partial(t, f, "the first put last")
+	testing.expect_value(t, style_of(f.st, dom.get(f.doc, by_id(f, "s1")).first_child).padding[.Top].v, 1)
+	testing.expect_value(t, style_of(f.st, dom.get(f.doc, first).first_child).margin[.Top].v, 1)
+}
+
+// `.a:not(:has(.b))`: the anchor is an element that matches `.a`. Read alone, the :has() in the :not() stood for any element, and each one that
+// came restyled what the rule reaches under all its ancestors (cnn.com: `.container:nth-last-child(1 of .x):not(:has(~ [data-component-name]))`).
+@(test)
+restyle_dom_has_anchor_in_a_not_is_the_compound_around_it :: proc(t: ^testing.T) {
+	ITEMS :: 30
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>.card:not(:has(~ .stack)) .y { margin: 1px } .box:is(:has(.flag)) .y { padding: 1px }</style><div id=r><div id=c class=card><i class=y>a</i></div><div id=b class=box><i class=y>b</i></div><div id=o>`)
+	for _ in 0 ..< ITEMS { strings.write_string(&sb, "<p class=y>t</p>") }
+	strings.write_string(&sb, `</div></div>`)
+	f := rx_load(strings.to_string(sb))
+	defer rx_unload(f)
+	y_of :: proc(f: ^Rx, id: string) -> ^Computed { return style_of(f.st, dom.get(f.doc, by_id(f, id)).first_child) }
+	testing.expect_value(t, y_of(f, "c").margin[.Top].v, 1)
+	// under an element no anchor can be: the rule's .y under it are not looked at
+	n := dom.create_element(f.doc, "u")
+	dom.set_attribute(f.doc, n, "class", "stack")
+	dom.append_child(f.doc, by_id(f, "o"), n)
+	expect_partial(t, f, "a sibling of no anchor", 4)
+	dom.remove_child(f.doc, by_id(f, "o"), n)
+	expect_partial(t, f, "and it goes", 4)
+	// beside the anchor: its answer flips
+	dom.insert_before(f.doc, by_id(f, "r"), n, by_id(f, "o"))
+	expect_partial(t, f, "a sibling of the anchor")
+	testing.expect_value(t, y_of(f, "c").margin[.Top].v, 0)
+	dom.remove_child(f.doc, by_id(f, "r"), n)
+	expect_partial(t, f, "and it goes")
+	testing.expect_value(t, y_of(f, "c").margin[.Top].v, 1)
+	// in an :is(), the same
+	dom.set_attribute(f.doc, n, "class", "flag")
+	dom.append_child(f.doc, by_id(f, "b"), n)
+	expect_partial(t, f, "under the anchor of an :is()")
+	testing.expect_value(t, y_of(f, "b").padding[.Top].v, 1)
+	dom.remove_child(f.doc, by_id(f, "b"), n)
+	dom.release(f.doc, n)
+	expect_partial(t, f, "and it goes")
+	// the compound around a :not() that holds a chain is another element: it says nothing of the anchor
+	g := rx_load(`<style>.card:not(.z :has(.flag)) .y { margin: 1px }</style><div class=z id=z><div class=card id=c><p class=y>a</p><i id=i></i></div></div>`)
+	defer rx_unload(g)
+	flag := dom.create_element(g.doc, "b")
+	dom.set_attribute(g.doc, flag, "class", "flag")
+	dom.append_child(g.doc, by_id(g, "i"), flag)
+	expect_partial(t, g, "the anchor of a chain in a :not()")
+}
+
+// `:has(+ .a)` is about the next element and `:has(~ .a)` about the siblings: only `:has(+ .a .b)` and `:has(~ .a .b)` look under them.
+@(test)
+restyle_dom_has_siblings_looks_where_the_argument_can_be :: proc(t: ^testing.T) {
+	ITEMS :: 50
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>.n:has(+ .q) { margin: 1px } .s:has(~ .q) { margin: 2px } .d:has(+ .i .q) { margin: 3px } .t:has(+ .i ~ .q) { margin: 4px }</style><div id=r><i id=n class=n></i><i id=s class=s></i><i id=d class=d></i><i class=i><b id=u>x</b></i><i id=t class=t></i><i class=i></i>`)
+	for _ in 0 ..< ITEMS { strings.write_string(&sb, "<div><p><i>t</i><i>u</i></p></div>") }
+	strings.write_string(&sb, `</div>`)
+	f := rx_load(strings.to_string(sb))
+	defer rx_unload(f)
+	margin :: proc(f: ^Rx, id: string) -> f32 { return style_of(f.st, by_id(f, id)).margin[.Top].v }
+	mark_id := by_id(f, "n")
+	dom.set_attribute(f.doc, mark_id, "data-k", "1")
+	dom.set_attribute(f.doc, mark_id, "class", "n x")
+	expect_partial(t, f, ":has(+ .q) of an element with many siblings")
+	testing.expectf(t, f.eng.last_restyle.has_steps <= 2, "%d elements tried for `+ .q`", f.eng.last_restyle.has_steps)
+	s := by_id(f, "s")
+	dom.set_attribute(f.doc, s, "class", "s x")
+	expect_partial(t, f, ":has(~ .q) of an element with many siblings")
+	testing.expectf(t, f.eng.last_restyle.has_steps <= ITEMS + 6, "%d elements tried for `~ .q`: its siblings, nothing under them", f.eng.last_restyle.has_steps)
+	testing.expect_value(t, margin(f, "s"), 0)
+	// each answer still says what the argument says
+	q := dom.create_element(f.doc, "u")
+	dom.set_attribute(f.doc, q, "class", "q")
+	dom.append_child(f.doc, by_id(f, "u"), q)
+	expect_partial(t, f, "`+ .i .q` under the next element")
+	testing.expect_value(t, margin(f, "d"), 3)
+	testing.expect_value(t, margin(f, "t"), 0)
+	dom.remove_child(f.doc, dom.get(f.doc, q).parent, q)
+	dom.append_child(f.doc, by_id(f, "r"), q)
+	expect_partial(t, f, "`.q` after them")
+	testing.expect_value(t, margin(f, "d"), 0)
+	testing.expect_value(t, margin(f, "s"), 2)
+	testing.expect_value(t, margin(f, "t"), 4)
+	testing.expect_value(t, margin(f, "n"), 0)
+	dom.remove_child(f.doc, by_id(f, "r"), q)
+	dom.insert_before(f.doc, by_id(f, "r"), q, by_id(f, "s"))
+	expect_partial(t, f, "`.q` right after the first")
+	testing.expect_value(t, margin(f, "n"), 1)
+}
+
 // `:has(:is(.x, .y) .k)` names its keys as surely as `:has(.x .k)` does: an element with none of them that comes under an anchor is
 // nothing to it.
 @(test)
@@ -1111,6 +1240,9 @@ section > :first-child + * { line-height: 2 } .a:nth-child(3) ~ li { color: purp
 .b + .c span { color: olive } .c ~ .d > span { color: navy } .e + :is(div, p) b { color: maroon } :is(.f, .g) ~ .h span { color: lime }
 :nth-last-child(1 of .a) span { color: aqua } .a:not(.x) + * { letter-spacing: 2px } :not(.a) + .b .c { color: gray } .b + [data-x] span { color: silver }
 :first-child ~ .g > * { margin-left: 1px } .x:last-child span { color: fuchsia } :not(.d) ~ .f { word-spacing: 1px }
+:first-child + .b { text-indent: 1px } :last-child > .g { color: teal } .c:only-child span { color: tan } :nth-child(1) .e { word-spacing: 3px } :nth-last-child(1) + * { color: pink }
+.a:not(:has(.b)) { text-indent: 2px } .c:is(:has(+ .d), :has(~ .e)) span { color: coral } :not(:has(+ .h)) > .g { margin-right: 1px } div:has(+ .a .b) { text-indent: 4px } p:has(+ .a ~ .c) { text-indent: 5px }
+.b:has(~ .c .d) { text-indent: 6px }
 `
 
 @(private = "file")
