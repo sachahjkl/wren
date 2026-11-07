@@ -478,7 +478,10 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 		mark_box_flow_flags(l, bi)   // a margin may have become negative
 	}
 	for bi in dirty { if .Dead not_in l.boxes[bi].flags { mark_dirty(l, bi) } }
-	if vp_changed { mark_dirty(l, 0) }
+	if vp_changed {
+		mark_dirty(l, 0)
+		if l.frames_on { mark_viewport_frames(l) }
+	}
 	if images_changed { check_natural_sizes(&c) }
 	if fonts_changed { check_fonts(&c) }
 	if pass.snapping {
