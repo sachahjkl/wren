@@ -265,8 +265,8 @@ add_target :: proc(c: ^Ctx, h: base.Handle, roots, dirty: ^[dynamic]i32) -> bool
 			} else if cs := style.style_of(c.st, cur); cs != nil && cs.display == .None {
 				// inside display: none: nothing to lay out, but for a replaced element, which reads what it holds (the widest <option> of a <select>)
 				for p := up(c, cur); p != base.NIL_HANDLE; p = up(c, p) {
-					if bi := live_box(l, p); bi != NONE {
-						if l.boxes[bi].kind == .Replaced { append(dirty, bi) }
+					if around := live_box(l, p); around != NONE {
+						if l.boxes[around].kind == .Replaced { append(dirty, around) }
 						break
 					}
 				}
