@@ -3401,6 +3401,78 @@ Those series ran before `container_conds_lost` went in. The final binary against
 
 **Not verified.** The release build, a long session, the full WPT, the full test262, AddressSanitizer: not run. No other work was seen on the machine during the series; that was not checked at each load.
 
+## What changed, round 49: what a restyle marks for nothing, and what the load follows
+
+Development builds, `wrentool waterfall -Runs 1`, a fresh process and a throwaway profile for each load, base (3da0459f) kept apart, arms interleaved, the order turning. Temporary code, none in the tree: a tally of what marked each element restyled and what it cost, by rule and by cause, the style threads off so that one thread counts; ids on the loop's tasks with who posted them; a sleep after each task of the window thread; layout's reasons. Public sites.
+
+**Why the elements restyled on cnn.com changed nothing.** One load of the base, one thread: 11 815 elements restyled, match 365 ms, cascade 87, comparison 20. **Matching is 77 % of a restyle**, so a no-change element cannot be made cheap past the cascade: a record of what went into a style, to skip it, would have taken a fifth. What marked them:
+
+| | elements | changed |
+|---|---|---|
+| forced by a parent: `--scrollbar-width` and `--page-width` written on `<html>`, every element's custom properties | 4 769 | 4 769 |
+| `any` reach of a positional compound: a `<script>` added to `<body>` or to a wrapper looked at every sibling for `:last-child .x`, then under each | about 3 000 | 0 |
+| `:not(:has(~ [data-component-name="stack"]))`: read alone, the `:has()` was an anchor on any element | about 2 000 | a few |
+| the rest (a class rewritten with the same tokens under `[class*=...]`, real class changes, what was inserted) | about 2 000 | the other 380 or so |
+
+(Rounded, from two loads and the tally's rows.) Of what is marked rather than forced, 95 % changes nothing, as round 48 said; the 44 % that change in all are the ones forced, which the walk finds by comparing and no invalidation decides. And two rules out of 5 443 held 92 of 340 ms of matching: `.layout-homepage-mobile :is(.container, ...):has(+ :not(...))` and its neighbour, 120 us an answer. Tried 587 000 times in all, 50 an element, and 440 more turned down by the ancestor filter.
+
+**1. `:first-child`, `:last-child`, `:only-child` are read at the ends of a list** (`edge_first`, `edge_last`, `edges_changed`; `:nth-child(1)` too). What is first now, or stood first before this batch: that one is the first child that did not come in this batch, whatever came before it, so one look per parent per batch instead of a walk of the siblings from the place of the change. In a list nothing left and with nothing new at its end, nothing. `restyle_dom_edges_are_read_at_the_edges`; `restyle_dom_random` has these rules now.
+
+**2. A `:has()` in a `:not()`, `:is()`, `:where()` is anchored by the compound around it** (`Has_Anchor.around`). `.a:not(:has(.b))`: the element is an `.a`; the compound in the `:not()` said nothing, so every ancestor of every change was an anchor, whose reach was then scanned for its subject's keys. A `:not()` holding a chain stands for another element and keeps nothing. `restyle_dom_has_anchor_in_a_not_is_the_compound_around_it`.
+
+**3. `:has(+ .a)` tries the next element, `:has(~ .a)` the siblings** (`matches_has_scan`). Each answer went through every following sibling and all it held; only a descendant combinator in the argument goes under them, only `~` or a sibling combinator before it goes past the next one. `Restyle_Stats.has_steps`, `restyle_dom_has_siblings_looks_where_the_argument_can_be`.
+
+After them, the same load: 9 163 restyled, 4 800 of them the forced ones, match 259 ms with the tally's own cost, 453 000 tries.
+
+**What the load follows: all of the window thread, at a slope of 1.** A task on theverge.com's last wait is a script whose life is mostly waiting. Walking back from the load event by who requested and posted what, one load, ms:
+
+| hop | requested | reached the page | compile | turn | ran |
+|---|---|---|---|---|---|
+| bounce's `i.js` | 658 | 1 238 | 165 | 0 | 1 403 |
+| `runtime` | 1 404 | 1 696 | 0 | - | in a task of 149 |
+| `btloader` | 1 556 | 2 031 | 70 | 18 | 2 119, 30 ms |
+| `ads-v2` | 2 148 | 2 707 | 243 | 373 | 3 323, 4 ms |
+| a timer, 12 ms late | | | | | 3 338, 24 ms |
+| `jquery` | 3 339 | 3 575 | 19 | 0 | 3 594, 7 ms, load at 3 600 |
+
+The tasks of the chain ran 302 ms of 3 400; their own work is nothing. `ads-v2`'s last byte came 15 ms after its request and reached the page 559 ms later. Another load ended on recaptcha's frame, the next on `metrics/3OJ5...`: several chains, none the same twice. Those waits are the queue: in 3 450 ms of frames up to the load the thread waited for 68. 1 239 ms of timers, 1 045 of scripts, 285 of promise jobs after a response, 147 + 117 of posted tasks and ports, 237 of animation frames. So the question is what share of that a load depends on, and it was measured: a sleep after each task of the window thread, a fixed share of its length, 5 to 7 runs, median (range):
+
+| | +0 % | +5 % | +10 % | +20 % | +50 % |
+|---|---|---|---|---|---|
+| theverge.com | 3 439 (3 388-3 526) | 3 583 (3 536-3 675) | 3 730 (3 679-3 832) | 4 016 (3 933-4 040) | 5 395 (5 288-5 458) |
+| npr.org | 3 481 (3 443-3 883) | | | 4 194 (3 953-4 483) | 4 894 (4 768-4 961) |
+
+Straight from the origin, no floor: 1 % of the thread's tasks is 29 ms, 1 % of the load. And downward, a build with no automatic collection at all, theverge.com, 7 runs: **3 436 (3 373-3 504) -> 3 135 (3 095-3 225)**, ranges apart, for the 265 ms of `Gc` before the load event. **Each ms taken off the window thread before the load is a ms off the load.**
+
+**Why round 47 saw nothing.** Its `Guest` was of the whole trace: 535 to 806 ms of it come after the load event, how much depends on when the tool ends the process, and its `gc_collect` off left `Gc` at 280 to 320 ms, 170 ms less, some of it past the load: 100 to 170 ms expected against a range of 180 to 240 in 4 runs. Round 47's reading ("the sum of the script's time does not set the load") and round 48's "what runs between two steps" are withdrawn: it does, in the sum that ends at the load event. The hops are not a scheduling cause: a thread that waits for 2 % of the time has no gap to give, and what comes earlier for one script comes later for another, which is what round 48 saw of a body handed over sooner. No such fix was made.
+
+**Measured, built, not kept.**
+- **Plans for positioned children** (item 2 of the brief: `simple_child_style`, `simple_child_box`, the box leaving its containing block's list, `cur_anon` closed before a plan). theverge.com's `too much changed` are what round 48 said: a detector's bait elements, `position: absolute` under `<body>`, each a rebuild of 2 000 boxes past the limit of half. Full passes 21 -> 10, layout verified on the page, no failure. But a full pass there is 6.5 ms and the incremental pass that replaces it 2.8: 40 ms of 3 400. 7 runs, 3 445 (2 667-3 506) against 3 434 (3 297-3 500), nothing. `WREN_DEMOS_SEED=780` failed with it and not without it, cause not looked for. Taken out.
+- **An ancestor filter of 512 bits**, `.a.a` counted once. The classes above an element deep in cnn.com fill 256 bits to three quarters, a third of the elements passed for `.pagination *`. Two series, 7 runs: cnn.com 2 468 against 2 441, 2 450 against 2 448; npr.org 3 519 against 3 326, ranges overlapping; CPU -2 to -4 %, overlapping but for the first series. Not proven, taken out. Worth another look with the count of tries as the measure, not the load: matching is spread over the style threads.
+
+Base and round, the final binary, 7 runs, interleaved, median (range), ms:
+
+| | | load | DOMContentLoaded | CPU |
+|---|---|---|---|---|
+| cnn.com | base | 3 025 (2 863-3 073) | 1 491 | 5 266 |
+| | round | **2 478 (2 396-2 536)** | 1 389 | 5 016 |
+| npr.org | base | 3 444 (3 268-3 504) | 1 932 | 4 812 |
+| | round | 3 398 (3 136-3 829) | 1 909 | 4 734 |
+| theverge.com | base | 3 448 (3 347-3 505) | 540 | 6 031 |
+| | round | 3 402 (3 356-3 485) | 535 | 5 953 |
+| bbc.com/news | base | 1 870 (683-2 135) | 474 | 2 844 |
+| | round | 1 789 (513-2 090) | 433 | 2 688 |
+
+Read plainly. **cnn.com -18 %, ranges apart by 323 ms**; the same three changes before them gave 2 766 (2 454-5 330) to 2 500 (2 291-2 553) in an earlier series, whose base had one run of 5 330 and overlapped. npr.org and theverge.com -1 %, inside their ranges: not proven; their restyles after DOM changes were 67 and 48 ms to start with. bbc.com/news in its modes, nothing to say.
+
+**Left, by what was seen.** Since the load is the sum of the thread's work: JavaScript first on theverge.com and npr.org (2 700 of 3 400 ms). Collections are 265 ms of theverge.com's load and -301 is their ceiling, the one large thing measured here with a known return; generations would get a part of it, round 47's "no measured gain" no longer stands. On cnn.com two custom properties written on `<html>` restyle 4 800 elements: what an element matched does not depend on its parent, so a forced element needs no matching, but only a list of matched rules kept with each record says so, with what every other kind of pass must keep true; 143 ms on one thread, spread over the style threads now, not built. `any` positional reaches of `:nth-child()` and `:first-of-type` still walk; a class rewritten with the same tokens still passes under `[class*=...]` (224 elements on cnn.com, 11 ms); an attribute selector could be asked of the old and the new value.
+
+**Found, not fixed.** `inc_demo_pages` fails on the base with `WREN_DEMOS_SEED=777 WREN_DEMOS_STEPS=150` (`vertical.html`, a viewport change: a box's size) and `=779` (`interaction.html`: a style record of an anonymous box). Neither is of this round; neither seed is the default.
+
+**Tests.** `build\test_all.exe -Quick -NoAsan`: 208 steps pass, 2 fail. `a font on its way holds its text and not the page` fails alone too, and as well with `src/style` of the base: not of this round, cause not looked for. `IndexedDB, loads cut short...` timed out in `jsweb_idb` with every core busy and crashed in Wasmtime's compiler at the end of it; alone it passes. WPT, without -quick, against `wpt/expectations`: `dom/nodes` 379, `css/css-pseudo` 62, `css/cssom` 258, `css/css-nesting`, `css/css-shadow`: no regression. `shadow-dom`: one, `HighlightRegistry-highlightsFromPoint.html` (an argument's type), the same with `src/style` of the base. `css/css-writing-modes` 1 141: one, `wm-propagation-svg-root-scrollbar.svg`, the same with `src/style` of the base. `css/selectors` is not in the checkout: invalidation has the unit tests and `restyle_dom_random`.
+
+**Not verified.** The release build, a long session, the full WPT, the full test262, AddressSanitizer: not run. The chain above is of one load, by the largest script of each task, and frames and animation callbacks have no task id: it names the hops, it is no proof that they are the only path. The sleep lengthens tasks and does not shorten them; the one downward point is collections. No other work was seen on the machine during the series; that was not checked at each load.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -3585,7 +3657,7 @@ After round 33. The first item of the list after round 31 is done for what it na
 After round 34. Reading the machine code paid more than any profile so far. In order: **the epoch check** (12 to 20 % of all the engine's code: an engine of its own for the JavaScript image, polls in the natives); **what a first paint waits for in a frame** (bbc.com/news: three timers of 300 to 430 ms before it); compile on arrival by default (DOMContentLoaded -18 to -32 % on two pages, 3 runs); verification at the first closure; `set_property` of a new key without the walk of the prototypes; then the callback from a native, the collection. `-o:speed` is the engine's level now: what is said above of -o:size is history.
 After round 36. The epoch check is gone from the engine (round 36), `new` no longer walks the prototypes for a new key. The interpreter is 12 to 34 % faster by micro.js; two of the four loads followed. In order: **the engine's time on the window thread for a load, measured as such** (`wasm.guest_time` in `api.stats`): CPU to the load event no longer says it, cnn.com and bbc.com/news spend more of it than before for reasons not established; then what a first paint waits for in a frame, compile on arrival by default, verification at the first closure, `ip` at dispatch, the callback from a native, the collection.
 After round 40. A forced read's and a frame's pass on cnn.com: partial passes restyled what no change reached, through :has() above all (round 40): load -19 %. In order, of style: what :has() that is not exact costs a restyle, the full passes that remain (@keyframes in use, sheets that style another tree), resh_hits for each sheet that arrives. A read answered from less than the whole layout is worth a tenth of a read.
-After round 48: the window thread is 85 to 95 % busy up to the load event and the network is not on the path; what held cnn.com was that thread standing still for a compile (load -18 %). A body read sooner or compiled from the network takes nothing off a load: a script ready sooner waits for its turn. In order: what an element restyled costs (50 to 90 us, nine in ten for no change on cnn.com), then the tasks that stand between two steps of a page's chain of scripts. After round 47: frames on threads, inline caches, kept JIT profiles and generations were measured and take nothing off a load; see that round. After round 46. What a load runs is flat and interpreted: the two items that paid were algorithms (a regexp quadratic on a token, a walk of the document for each name nothing has), found by reading a sampler that does not wait for a poll. In order, of the engine: what scripts force of style and layout (43 % of cnn.com's `Guest`), `get_field`'s misses, the free lists' cold blocks, `new URL`, the timeline in JSON at each call; `ip` at dispatch and native callbacks showed nothing of their own.
+After round 49: a load is the sum of what the window thread runs up to it: a sleep after each task moves the load by as much, from the first percent, and without collections theverge.com loads 301 ms sooner, ranges apart; the chains of scripts wait in that queue and no reordering gives time back. What a restyle marked for nothing is gone where it was a place read wrongly (:first-child and the like, a :has() in a :not(), :has(+ x) tried on every sibling): cnn.com -18 %, ranges apart. In order: the speed of scripts, then collections (265 ms of theverge.com, the ceiling of generations), then what custom properties written on the root force on cnn.com. After round 48: the window thread is 85 to 95 % busy up to the load event and the network is not on the path; what held cnn.com was that thread standing still for a compile (load -18 %). A body read sooner or compiled from the network takes nothing off a load: a script ready sooner waits for its turn. In order: what an element restyled costs (50 to 90 us, nine in ten for no change on cnn.com), then the tasks that stand between two steps of a page's chain of scripts. After round 47: frames on threads, inline caches, kept JIT profiles and generations were measured and take nothing off a load; see that round. After round 46. What a load runs is flat and interpreted: the two items that paid were algorithms (a regexp quadratic on a token, a walk of the document for each name nothing has), found by reading a sampler that does not wait for a poll. In order, of the engine: what scripts force of style and layout (43 % of cnn.com's `Guest`), `get_field`'s misses, the free lists' cold blocks, `new URL`, the timeline in JSON at each call; `ip` at dispatch and native callbacks showed nothing of their own.
 
 ||||||| parent of eb61d939 (Round 33 in docs/performance.md)
 1. **The script stage of DOM-heavy pages, what is left** (`js_nodes10k` on a quiet machine after round 25, 5 runs: a frame of 16.9 ms
