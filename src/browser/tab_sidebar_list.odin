@@ -136,6 +136,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 	tab_list_a11y(area, true)
 	_ = ui.signal(area)   // the wheel
 	own.strip.area_key = area.key
+	tab_press_follows(wnd, own.sidebar.pins_key, area.key)   // (a pinned tab dragged down into the list: unpinned on the way)
 	total := side_list_layout(wnd.tabs[:], wnd.groups[:], rh, hh, &own.sidebar.items)
 	if cc != nil {
 		// classic: the feet of the current tab reach beyond its row, above the first and below the last: room for them inside the
@@ -177,7 +178,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 	first, last := side_visible_items(items, area.view_off.y, area.view_target.y, view_h, rh * 2)
 	dragged := -1
 	for t, i in wnd.tabs {
-		if !t.pinned && ui.reorder_dragging(&own.strip.drag, t.id) { dragged = i; break }
+		if !t.pinned && t.id == own.strip.dragged { dragged = i; break }
 	}
 	focused := focused_tab_index(app)
 	// classic: the current tab is built after the others (its feet flare over its neighbours' rows)
@@ -226,7 +227,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 		if gap >= 0 { drop_ghost(app, area, true, gap - area.view_off.y, rh, row_x, row_w) }
 	}
 	// the dragged row's place moves its tab: in the list (and in or out of a group), or up to the pinned tabs
-	if dragged >= 0 && drag_y >= 0 && own.strip.drag.held != 0 {
+	if dragged >= 0 && drag_y >= 0 {
 		t := wnd.tabs[dragged]
 		pins := ui.prev_box("###pins")
 		over_pins := ui.mouse_pos().y < area.rect.min.y - (pinned_count(wnd.tabs[:]) > 0 ? 0 : rh * 0.4)
@@ -291,8 +292,9 @@ sidebar_pins :: proc(app: ^App, pos: Tabs_Position, open, extent: f32, cc: ^Clas
 	_ = ui.signal(box)
 	ui.a11y_set(box, {name = i18n.tr("Pinned tabs")})
 	margin := math.round((extent - f32(cols) * cell) * 0.5)
+	tab_press_follows(wnd, own.strip.area_key, box.key)   // (a row of the list dragged up here: pinned on the way)
 	dragged := -1
-	for k in 0 ..< np { if ui.reorder_dragging(&own.strip.drag, wnd.tabs[k].id) { dragged = k } }
+	for k in 0 ..< np { if ui.reorder_dragging(tab_box_key(box.key, wnd.tabs[k].id)) { dragged = k } }
 	cur := wnd.tabs[wnd.current]
 	if ui.parent(box) {
 		ui.spacer(ui.px(content), exact = true)
@@ -340,18 +342,18 @@ sidebar_pins :: proc(app: ^App, pos: Tabs_Position, open, extent: f32, cc: ^Clas
 			if (sig.pressed || sig.clicked) && !on { tab_select(app, k) }
 			if sig.right_clicked { tab_context_menu(app, k, ui.mouse_pos()) }
 			if sig.middle_clicked && app.favs.cfg.middle_close { shell_after_build(app, {kind = .Close_Tab, tab = t.id}); return }
-			if own.strip.drag.held == 0 { sidebar_tip(sig, t) }
+			if own.strip.dragged == 0 { sidebar_tip(sig, t) }
 			if sig.pressed { own.sidebar.pin_grab = ui.mouse_pos() - b.rect.min + {gap, gap} }
 			if sig.dragging && app.favs.cfg.drag_reorder {
-				ui.reorder_begin(&own.strip.drag, t.id, max(abs(sig.drag_delta.x), abs(sig.drag_delta.y)), app.favs.cfg.drag_threshold * dpi, 0, 0)
+				// (held at its middle: carried down into the list, the row follows the pointer from there)
+				ui.reorder_begin(b.key, max(abs(sig.drag_delta.x), abs(sig.drag_delta.y)), app.favs.cfg.drag_threshold * dpi, cell * 0.5, 0)
 			}
-			// (also a tab of the list dragged up here: pinned on the way, it was pressed as a row of the list)
-			if ui.reorder_dragging(&own.strip.drag, t.id) {
+			// (also a tab of the list dragged up here: pinned on the way, its press was handed to this box: tab_press_follows)
+			if ui.reorder_dragging(b.key) {
 				request_frames(app, 2)
 				if ui.mouse_pos().y > box.rect.max.y + cell * 0.5 {
 					// down into the list: no longer pinned (the list carries on with the drag, the row under the pointer)
 					tab_set_pinned(app, t, false)
-					own.strip.drag.grab = cell * 0.5
 					own.strip.follow_id = t.id
 					return
 				}
@@ -385,9 +387,8 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 	dpi := ui_scale_of(app)
 	on := i == wnd.current
 	id := fmt.tprintf("###tab_%d", t.id)
-	akey := ui.key_from_string(area.key, fmt.tprintf("y%d", t.id))
 	// (list coordinates: the scroll box places the rows; the release slides from where the pointer left it)
-	y, dragging = ui.reorder_item_pos(&own.strip.drag, akey, t.id, slot, ui.mouse_pos().y - area.rect.min.y + area.view_off.y, 0, max(total - rh, 0))
+	y, dragging = ui.reorder_item_pos(tab_box_key(area.key, t.id), slot, ui.mouse_pos().y - area.rect.min.y + area.view_off.y, 0, max(total - rh, 0))
 	prev := ui.prev_box(id)
 	inside := prev != nil && ui.box_contains(prev, ui.mouse_pos()) && draw.rect_contains(area.rect, ui.mouse_pos())
 
@@ -479,22 +480,21 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 	if (sig.pressed || sig.clicked) && !on { tab_select(app, i) }   // the press selects; Enter / Space too
 	if sig.right_clicked { tab_context_menu(app, i, ui.mouse_pos()) }
 	if sig.middle_clicked && app.favs.cfg.middle_close { shell_after_build(app, {kind = .Close_Tab, tab = t.id}); return }
-	if own.strip.drag.held == 0 { sidebar_tip(sig, t) }
+	if own.strip.dragged == 0 { sidebar_tip(sig, t) }
 
 	// drag to reorder, along Y (straight out sideways starts a drag too: it may leave the bar)
 	if sig.dragging && app.favs.cfg.drag_reorder && (n > 1 || app.favs.cfg.drag_detach) {
-		ui.reorder_begin(&own.strip.drag, t.id, ui.reorder_moved(sig.drag_delta, .Y, app.favs.cfg.drag_detach), app.favs.cfg.drag_threshold * dpi,
+		ui.reorder_begin(b.key, ui.reorder_moved(sig.drag_delta, .Y, app.favs.cfg.drag_detach), app.favs.cfg.drag_threshold * dpi,
 			ui.mouse_pos().y - sig.drag_delta.y - area.rect.min.y + area.view_off.y, slot)
 	}
-	if ui.reorder_dragging(&own.strip.drag, t.id) {
+	if ui.reorder_dragging(b.key) {
 		dragging = true
 		// the list follows the pointer to its ends: a row held past the edge scrolls it
 		area.view_target.y = ui.reorder_edge_scroll(y, rh, area.view_off.y, area.size.y, limit, area.view_target.y)
 		request_frames(app, 2)
 		// far enough beside the list: the tab leaves for a window of its own (tab_drag.odin)
 		if app.favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), true, app.favs.cfg.detach_distance_em * em) {
-			own.strip.drag.held = 0
-			dragging = false
+			dragging = false   // (its box goes, and the press with it)
 			shell_after_build(app, {kind = .Tear_Off, tab = t.id, at = ui.mouse_pos()})
 		}
 	}

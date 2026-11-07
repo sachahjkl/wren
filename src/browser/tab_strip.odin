@@ -26,8 +26,32 @@ Tab_Strip :: struct {
 	offset:       f32,    // scroll of the tabs when they do not fit (physical pixels)
 	follow_id:    u64,    // the current tab the offset was last brought to (a new current tab is scrolled into view)
 	follow_n:     int,
-	drag:         ui.Reorder,   // a tab dragged along the strip or the sidebar (toolkit: ui/reorder.odin)
+	dragged:      u64,          // the tab dragged now (0: none): its box holds the press, which is the drag's (strip_dragged)
+	drag_grab:    f32,          // where the pointer took it, from its leading edge (drag_probe_note)
 	area_key:     ui.Key,       // the box holding the tabs (their keys derive from it)
+}
+
+// The key of the box of tab `id` built under the box `parent`: a tab's press is held on it, and so is its drag (ui/reorder.odin).
+tab_box_key :: proc(parent: ui.Key, id: u64) -> ui.Key { return ui.key_from_string(parent, fmt.tprintf("###tab_%d", id)) }
+
+// The tab whose box a press drags, in the strip, the sidebar's list or its pinned tabs (0: none); asked at the start of a build.
+strip_dragged :: proc(wnd: ^Browser_Window) -> u64 {
+	a := ui.active_key()
+	if a == 0 || !ui.reorder_dragging(a) { return 0 }
+	for t in wnd.tabs {
+		if a == tab_box_key(wnd.own.strip.area_key, t.id) || (wnd.own.sidebar.pins_key != 0 && a == tab_box_key(wnd.own.sidebar.pins_key, t.id)) { return t.id }
+	}
+	return 0
+}
+
+// A tab dragged from the box `from` into the box `to` (into the pinned tabs, or out of them) is built under another parent: its press,
+// and the drag with it, go on on its new box. Before that box is built.
+tab_press_follows :: proc(wnd: ^Browser_Window, from, to: ui.Key) {
+	a := ui.active_key()
+	if a == 0 || from == 0 || to == 0 { return }
+	for t in wnd.tabs {
+		if a == tab_box_key(from, t.id) { _ = ui.press_hand(a, tab_box_key(to, t.id)); return }
+	}
 }
 
 // The tab that has the keyboard, -1 when none (by key: works before the strip is built).
@@ -85,7 +109,7 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 	dpi := ui_scale_of(app)
 	h := ui.dense(em * 2.6)
 	if integrated { h = max(h, math.round(32 * dpi)) }   // never lower than the system's title bar
-	ui.reorder_frame(&own.strip.drag)   // the button went up (wherever): no drag
+	own.strip.dragged = strip_dragged(active_window(app))
 	favicon_frame(app)
 
 	classic := classic_on(app)
@@ -165,7 +189,7 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 			// is the one in front of the others, and the clicks go to what is drawn on top)
 			dragged := -1
 			for t, i in wnd.tabs {
-				if ui.reorder_dragging(&own.strip.drag, t.id) { dragged = i; break }
+				if t.id == own.strip.dragged { dragged = i; break }
 			}
 			focused := focused_tab_index(app)
 			built :: proc(i, first, last, current, dragged, focused: int) -> bool {
@@ -248,9 +272,8 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 	slot := f32(i) * w - own.strip.offset
 	if app.active != nil && app.active.dropping && i >= app.active.drop.index { slot += w }   // room for the tab carried over this bar (tab_drag.odin)
 	// (the release slides from where the pointer left it)
-	x, dragging := ui.reorder_item_pos(&own.strip.drag, ui.key_from_string(area.key, fmt.tprintf("x%d", t.id)), t.id, slot,
-		ui.mouse_pos().x - area.rect.min.x, -own.strip.offset, f32(n - 1) * w - own.strip.offset)
-	if dragging { drag_probe_note(app, ui.mouse_pos().x, x + area.rect.min.x + own.strip.drag.grab) }
+	x, dragging := ui.reorder_item_pos(tab_box_key(own.strip.area_key, t.id), slot, ui.mouse_pos().x - area.rect.min.x, -own.strip.offset, f32(n - 1) * w - own.strip.offset)
+	if dragging { drag_probe_note(app, ui.mouse_pos().x, x + area.rect.min.x + own.strip.drag_grab) }
 	prev := ui.prev_box(id)
 	inside := prev != nil && ui.box_contains(prev, ui.mouse_pos()) && draw.rect_contains(area.rect, ui.mouse_pos())
 
@@ -361,19 +384,20 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 	if (sig.pressed || sig.clicked) && !on { tab_select(app, i) }   // the press selects; Enter / Space too
 	if sig.right_clicked { tab_context_menu(app, i, ui.mouse_pos()) }
 	if sig.middle_clicked && app.favs.cfg.middle_close { shell_after_build(app, {kind = .Close_Tab, tab = t.id}); return }
-	if !(classic && own.strip.drag.held != 0) { tip(sig, t.title) }   // (classic: the title's tip does not cover the tab being dragged)
+	if !(classic && own.strip.dragged != 0) { tip(sig, t.title) }   // (classic: the title's tip does not cover the tab being dragged)
 	// drag to reorder (straight down starts a drag too: it may leave the bar)
 	if sig.dragging && app.favs.cfg.drag_reorder && (n > 1 || app.favs.cfg.drag_detach) {
-		ui.reorder_begin(&own.strip.drag, t.id, ui.reorder_moved(sig.drag_delta, .X, app.favs.cfg.drag_detach), app.favs.cfg.drag_threshold * dpi,
-			ui.mouse_pos().x - sig.drag_delta.x - area.rect.min.x, slot)
-		if ui.reorder_dragging(&own.strip.drag, t.id) {
+		press := ui.mouse_pos().x - sig.drag_delta.x - area.rect.min.x
+		if ui.reorder_begin(b.key, ui.reorder_moved(sig.drag_delta, .X, app.favs.cfg.drag_detach), app.favs.cfg.drag_threshold * dpi, press, slot) {
+			own.strip.drag_grab = press - slot
+		}
+		if ui.reorder_dragging(b.key) {
 			to := drag_slot(x + own.strip.offset, w, n)
 			if to != i { move_from^, move_to^ = i, to }
 			request_frames(app, 2)
 			// far enough below (or above) the row: the tab leaves for a window of its own (tab_drag.odin)
 			if app.favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), false, app.favs.cfg.detach_distance_em * em) {
-				own.strip.drag.held = 0
-				shell_after_build(app, {kind = .Tear_Off, tab = t.id, at = ui.mouse_pos()})
+				shell_after_build(app, {kind = .Tear_Off, tab = t.id, at = ui.mouse_pos()})   // (its box goes, and the press with it)
 			}
 		}
 	}
