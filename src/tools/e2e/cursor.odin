@@ -25,6 +25,8 @@ import "wb:e2e"
 	"n-resize", "e-resize", "s-resize", "w-resize", "ne-resize", "nw-resize", "se-resize", "sw-resize", "ew-resize", "ns-resize", "nesw-resize", "nwse-resize",
 }
 @(private = "file") DRAWN_KEYWORDS := [?]string{"context-menu", "cell", "vertical-text", "alias", "copy", "no-drop", "grab", "grabbing", "col-resize", "row-resize", "zoom-in", "zoom-out"}
+// Who shows those: the toolkit draws them on Windows, which has none of its own; an X or Wayland cursor theme has them all.
+@(private = "file") DRAWN_SOURCE :: "drawn" when ODIN_OS == .Windows else "system"
 
 // The pointer over element `id`, at this fraction of its box; the page has what it asked for (its images) and the frames have seen it.
 @(private = "file")
@@ -67,7 +69,7 @@ page_cursors :: proc(t: ^testing.T) {
 	e2e.wait_chrome_still(s)
 
 	for name in SYSTEM_KEYWORDS { expect_cursor(t, s, fmt.tprintf("k-%s", name), name) }
-	for name in DRAWN_KEYWORDS { expect_cursor(t, s, fmt.tprintf("k-%s", name), name, "drawn") }
+	for name in DRAWN_KEYWORDS { expect_cursor(t, s, fmt.tprintf("k-%s", name), name, DRAWN_SOURCE) }
 	expect_cursor(t, s, "k-auto", "default")              // (a cell's text cannot be selected: auto is the arrow)
 	expect_cursor(t, s, "k-none", "none", "hidden")
 
@@ -75,7 +77,7 @@ page_cursors :: proc(t: ^testing.T) {
 	expect_image(t, s, "svg", SVG_HOTSPOT)                // the pen, rasterized at the scale, its hotspot at its tip
 	expect_image(t, s, "set", {})                         // image-set(): the candidate for the screen
 	expect_cursor(t, s, "huge", "not-allowed")            // too large: the fallback
-	expect_cursor(t, s, "missing", "grab", "drawn")       // no such image: the fallback
+	expect_cursor(t, s, "missing", "grab", DRAWN_SOURCE)       // no such image: the fallback
 	expect_cursor(t, s, "hidden", "none", "hidden")
 
 	// what `auto` does
@@ -89,7 +91,7 @@ page_cursors :: proc(t: ^testing.T) {
 	expect_cursor(t, s, "range", "default")
 	expect_cursor(t, s, "disabled", "default")
 	expect_cursor(t, s, "editable", "text", fx = 0.9)
-	expect_cursor(t, s, "over", "copy", "drawn")          // pointer-events: none: the cursor of what is under
+	expect_cursor(t, s, "over", "copy", DRAWN_SOURCE)          // pointer-events: none: the cursor of what is under
 	expect_cursor(t, s, "scroll", "help", fx = 0.4)       // a scroll box: its cursor
 	expect_cursor(t, s, "scroll", "default", fx = 0.985)  // its scroll bar: the arrow
 
@@ -97,7 +99,7 @@ page_cursors :: proc(t: ^testing.T) {
 	over(s, "k-grab")
 	at := e2e.Point{e2e.eval_f64(s, `(r => r.left + r.width / 2)(document.getElementById("k-grab").getBoundingClientRect())`), e2e.eval_f64(s, `(r => r.top + r.height / 2)(document.getElementById("k-grab").getBoundingClientRect())`)}
 	e2e.press(s, at)
-	expect_cursor(t, s, "k-pointer", "grab", "drawn")
+	expect_cursor(t, s, "k-pointer", "grab", DRAWN_SOURCE)
 	e2e.release(s, at)
 	expect_cursor(t, s, "k-pointer", "pointer", fx = 0.4)
 
