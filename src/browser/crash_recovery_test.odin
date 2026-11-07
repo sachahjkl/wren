@@ -251,6 +251,8 @@ live_instance_is_not_a_crash :: proc(t: ^testing.T) {
 	self := current_pid()
 	created, alive := process_created(self)
 	testing.expect(t, alive && created != 0)
+	again, _ := process_created(self)
+	testing.expect_value(t, again, created)   // the same at each reading (Linux: from the boot time, not from the time now)
 	testing.expect(t, marker_process_alive(self, created))
 	testing.expect(t, !marker_process_alive(self, created + 10_000_000_000))
 	testing.expect(t, marker_process_alive(self, 0))
