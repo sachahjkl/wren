@@ -165,7 +165,7 @@ Timeline :: struct {
 	seen:        Seen_Probe,   // who can see an animated element (timeline_set_seen); none: everyone
 }
 
-// Whether an animated element can be seen, as the page's last layout says (page/animations.odin). An animation moves at every frame
+// Whether an animated element can be seen, as the page's last layout says (page/animations_seen.odin). An animation moves at every frame
 // only for what can be: one that nobody sees asks for its next tick at its next event, or after `anim_unseen_tick_ms` to look again
 // (a transform may bring it into view). Asked during a tick: `begin` once before the first question, then `seen` per element.
 // `moves_boxes`: what is animated is not paint-only, so its changes move other boxes, which may be seen.
@@ -940,7 +940,7 @@ timeline_tick :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wall_ms: f6
 			case .Active:
 				props: Prop_Set
 				ps_add(&props, tr.prop)
-				want(&next, seen_wait(&ask, ea.node, props, tr.start + tr.delay + tr.duration - now + 1))
+				want(&next, next == 0 ? 0 : seen_wait(&ask, ea.node, props, tr.start + tr.delay + tr.duration - now + 1))   // (one seen: every frame, no more questions)
 			case .After:
 			}
 		}
@@ -974,7 +974,7 @@ timeline_tick :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wall_ms: f6
 				switch st.phase {
 				case .Before: want(&next, -st.t)
 				case .Active:
-					if ms, held := hold_ms(r, st); held { want(&next, ms) } else { want(&next, seen_wait(&ask, ea.node, r.props, run_next_event_ms(r, st))) }
+					if ms, held := hold_ms(r, st); held { want(&next, ms) } else { want(&next, next == 0 ? 0 : seen_wait(&ask, ea.node, r.props, run_next_event_ms(r, st))) }
 				case .After:
 				}
 			}
