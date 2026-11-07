@@ -505,6 +505,37 @@ inc_text_in_empty_neighbours :: proc(t: ^testing.T) {
 		testing.expect_value(t, d.l.last_pass, Pass_Kind.Incremental)
 	}
 }
+// The root element is block-level whatever it says (CSS Display 3 §2.7), and over-constrained in the direction of the initial containing
+// block, the principal one: wider than the viewport from right to left it overflows on the left, and the page scrolls there.
+@(test)
+root_element_wider_than_the_viewport_from_right_to_left :: proc(t: ^testing.T) {
+	d := demo_load(`<!doctype html><html style="display:inline;direction:rtl;width:2000px;height:50px"><body></body></html>`)
+	defer demo_unload(d)
+	testing.expect_value(t, style.style_of(d.st, d.l.canvas_els[0]).display, style.Display.Block)
+	testing.expect(t, d.l.doc_min_x < 0, "the page overflows on the left")
+	_, _, bar := doc_scrollbar_x(&d.l, d.vp)
+	testing.expect(t, bar, "with a horizontal bar")
+}
+// Text changed in an inline-block that stays where it is: its baseline moves what is on its line with it, and that takes more than a splice of its own text.
+@(test)
+inc_inline_block_with_another_baseline :: proc(t: ^testing.T) {
+	d := demo_load(`<style>i { display: inline-block; width: 60px; height: 60px }</style><p style="overflow:hidden;height:40px"><i id=x>three short words</i> </p>` + FILLER_BLOCKS)
+	defer demo_unload(d)
+	dom.set_text_content(d.doc, dom.find_by_id(d.doc, "x"), "two words")
+	demo_frame(d, "")
+	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
+	testing.expect_value(t, d.l.last_pass, Pass_Kind.Incremental)
+}
+// The width of a <select> follows its options, a hidden one too: a change of its text reaches the box.
+@(test)
+inc_hidden_option_of_a_select :: proc(t: ^testing.T) {
+	d := demo_load(`<p><select><option id=o style="display:none">one</option><option>two</option></select></p>` + FILLER_BLOCKS)
+	defer demo_unload(d)
+	dom.set_text_content(d.doc, dom.find_by_id(d.doc, "o"), "a much longer text")
+	demo_frame(d, "")
+	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
+	testing.expect_value(t, d.l.last_pass, Pass_Kind.Incremental)
+}
 // An orthogonal box whose frame has no block size takes its inline size from the viewport, under inputs from its frame that
 // stay the same: a viewport that changes, in either axis, reaches it and the shrink-to-fit box around it.
 @(test)
