@@ -292,6 +292,46 @@ build\wrentool sweep -List tools\site_compare_list.txt,tools\site_compare_list2.
 
 `test_all` has it in every end-to-end test, in the unit tests of `base`, `style` and `layout`, in the crash reports (`crashmodes_poison`), `WREN_POISON_PAGES=1` for the tests that found something only with it, and `-CI` and full runs visit the pages of `tools/sweep_local.txt` on the check build (a minute, no network; a line of a list that is no address is a file of the repository). So does the Linux job of the CI.
 
+## The replay bench
+
+`wrentool waterfall` loads public sites: a request changes with the ads, a run with the network, and two arms of one binary differ by 5 %. `wrentool replay` loads what a site served once, so that a change of 1 to 5 % can be told from nothing ([round 51](performance.md#round-51-a-bench-that-can-prove-1-)).
+
+```
+build\wrentool desktop build\wrentool.exe replay record -Urls https://www.cnn.com/,https://www.npr.org/
+build\wrentool desktop build\wrentool.exe replay run -Sites https://www.cnn.com/,https://www.npr.org/ -Arms base=build\wren_base.exe,new=build\wren.exe -Runs 7 -Out build\replay\new.tsv
+```
+
+**Record** starts a Wren on a throwaway profile with `WREN_TEST_RECORD=<folder>` (`src/net/record.odin`): each answer that comes to its end is one `<number>.http` in `build/replay/<site>/`: method, URL, the head as the host got it, the decoded body. The content blocker is off, so that a recording holds all a page asks for, and it goes on for 10 s after the thread settles. A recording holds third-party content and the cookies a site set: `build/` stays out of git, and nothing of it goes anywhere else. A request cut short, a failure and a WebSocket leave nothing.
+
+**Run** serves those bytes from `tools/testserver/replay.go`, in wrentool's process (`testserver.replay_start`), with no latency of its own. The n-th ask of a method and URL gets the n-th answer, then the last again; a URL never recorded gets the first answer of its method and path, whatever the query; anything else a 404 with nothing in it, counted in `unknown` and listed in `build/replay/out/missed_<site>.txt`.
+
+Nothing of the machine is touched. `network.hosts=*=127.0.0.1:<port>` sends every connection to that one port, whatever its name and port (the first byte says TLS or plain http), the test authority signs a certificate for each name as it comes (`network.tls.extra_ca_file`), and `network.loopback_only` keeps a load on the machine. HTTP/3 is off, so a page recorded over it replays over HTTP/2.
+
+**The test world** (`src/base/test_world.odin`). `WREN_TEST_WORLD=<seed>,<unix ms>`, the same at the recording and at each replay; a release never reads it. `Math.random`, `crypto.getRandomValues` and `randomUUID` come from a seeded stream of the thread. `Date`, `performance.now`, `timeOrigin` and a frame's time read a clock that starts at the recording's date and moves by 0.1 ms at each read of that thread, so that a page's timestamps depend on what it did and not on how fast the machine ran, and a `while (Date.now() < end)` still ends. The cookies and the HTTP cache go by the recording's date plus the real time since the start: what was fresh then stays fresh, however long ago that was. The page's timers, the loop, the network and the compile threads stay real: that is what is left of the noise.
+
+A run is two loads in two Wrens for each arm and each run, one warm-up first, the arms' order turning:
+
+- the load that is **measured**: nothing watches it but a thread of wrentool that reads the window thread's cycle counter every few ms (`QueryThreadCycleTime`, from outside, nothing asked of the browser);
+- the same load with its **frames** kept (`Wren.timeline`, the page's rectangle at an eighth of its size), up to the moment the first one settled. Apart, because the copy of a frame costs the window thread about a ms: on a page that draws all the time that alone keeps the thread from looking idle.
+
+What a load says, in `<Out>` (one line a load) and `<Out>.summary.txt`; the rules are the constants of `src/tools/wrentool/measure/measure.odin`:
+
+| | | |
+|---|---|---|
+| **visually ready** | `ready` | The first frame from which the first viewport stays within 0.5 % of its last picture, cell by cell (a cell: a pixel of the frame scaled to an eighth; it differs when a channel moves by more than 16). Against the last picture, not the frame before: a slow fade is many small steps. A cell that changes 3 times or more after the load event, 300 ms apart at least, is a carousel, a video or a ticker: it is left out (`moving`: their share). |
+| **settled** | `settled` | The first moment after the load event from which the window thread stays idle for 500 ms: at most 25 % of that time on a processor. Not zero: cnn.com and theverge.com keep the thread 15 to 20 % busy for as long as they stay open. 0: not within 20 s. |
+| **CPU to settled** | `cpu_settled` | What the window thread spent from the navigation to settled, by its cycle counter (not the system's times, which move by 15.6 ms). |
+| first contentful paint | `fcp` | Beside visually ready. |
+| load, DOMContentLoaded | `load`, `dcl` | Secondary: an event is where a page's authors put it. |
+| CPU, `Guest` to the load event | `cpu_load`, `guest` | The window thread from the first request to the load event, and its time in the engine. |
+| what was asked | `requests`, `failed`, `exact`, `near`, `unknown` | A load that left its recording shows here. |
+
+**What counts as a gain** (`measure.verdict`): visually ready or settled comes sooner, with the ranges of the two arms apart, and CPU to settled does not get worse. A mark that comes sooner with more CPU says `Moved`: work put past an event is no gain. The noise floor of each metric is in [round 51](performance.md#round-51-a-bench-that-can-prove-1-): below it, a series of 7 says nothing.
+
+No tool holds a lock, and agents share this machine: a load starts when at most 8 % of the processors are at work, and one during which others took more than 8 % is said, dropped and made again (`others`: their share). `-Loaded` measures all the same, for a machine that does not go quiet; its floor says so. `wrentool desktop` ends a command after 30 minutes: a long series goes site by site.
+
+`wrentool replay lists` fetches and compiles the lists on by default, as a user has them some seconds after a first start, into `build/replay/lists`; `run -Lists build/replay/lists -ListArms x` puts them in the profile of arm `x`.
+
 ## Tools beside the tests
 
 Anything with a window runs on the desktop of its own that `src/tools/test_all` makes, or through `build\wrentool desktop <program> [arguments]`; no tool takes the person's focus or holds a lock. `build\wrentool help` lists the other commands, by family: deps (`fetch`, `build`, `symbols`, `crash-symbolize`), `bench` (opt-in measures: `perf`, `shell`, `js`, `idle`, `webgl`, `blocker`, `sidebar`, `startup`, `cadence`), `capture` / `shots` / `compare` (headless pictures, Wren against Edge), `gen` (generated data and fixtures), `docs`, and the release helpers (`package`, `sign`, `winget`, `notes`, `experimental`, `smoke`). A fresh checkout builds it with `odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe`. Only `tools/make_logo.ps1` stays a script.
