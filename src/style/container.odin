@@ -77,12 +77,13 @@ restyle_containers :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled) -> (chang
 	if s.mutations != doc.mutations { return cq_fail(e, "the document changed") }
 	if int(s.arena.total_used) - int(s.base_used) + s.partial_bytes > e.settings.restyle_waste_bytes { return cq_fail(e, "memory left by partial restyles") }
 	shadows := dom.has_shadow_trees(doc)
+	pending := make(map[base.Handle]bool, len(e.container_pending), context.temp_allocator)
+	for h in e.container_pending { if !cq_size_settled(e, doc, s, h) { pending[h] = true } }
+	clear(&e.container_pending)
+	if len(pending) == 0 { return false, true }
 	p := pass_make(e, s, doc, s.state)
 	defer pass_destroy(p)
 	p.compare = true
-	pending := make(map[base.Handle]bool, len(e.container_pending), context.temp_allocator)
-	for h in e.container_pending { pending[h] = true }
-	clear(&e.container_pending)
 	for r in pending {
 		n := dom.get(doc, r)
 		if n == nil || n.kind != .Element || base_style_of(s, r) == nil { return cq_fail(e, "a container left the document") }
@@ -107,6 +108,41 @@ restyle_containers :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled) -> (chang
 		update_canvas(s, doc)
 	}
 	return p.changed, true
+}
+
+// The size of container `h` moved, and no size feature of any @container rule answers differently for it, and no cq unit is in force: no style
+// under it can change. Its context takes the size, which the children read through the chain. A container high in the page is a walk of
+// the page otherwise: 60 ms of cnn.com's and npr.org's forced reads, for every element the same. Every condition is asked of this container, whichever
+// one a rule's name picks: a flip no rule sees costs a walk, as it did.
+@(private = "file")
+cq_size_settled :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, h: base.Handle) -> bool {
+	if e.container_units || e.container_conds_lost { return false }
+	n := dom.get(doc, h)
+	if n == nil || n.kind != .Element { return false }
+	c := base_style_of(s, h)
+	if c == nil || c.containers == nil || c.containers.node != h { return false }
+	ctx := c.containers
+	size := container_size_of(e, h, ctx.type)
+	for cond in e.container_conds { if cq_size_flips(cond, ctx.size, size) { return false } }
+	ctx.size = size
+	return true
+}
+
+// Whether condition `n` may hold at one of the sizes and not at the other. A rule holds on True alone: a first size, from Unknown to False, flips
+// nothing, which is what most containers of a page get. With a style() in it the answer is not the size's alone: any size feature that moves counts.
+@(private = "file")
+cq_size_flips :: proc(n: ^css.Cq_Node, a, b: css.Container_Size) -> bool {
+	if !cq_reads_style(n) { return (eval_cq(n, a, nil) == .True) != (eval_cq(n, b, nil) == .True) }
+	if n.kind == .Size && css.cq_eval_size(n.size, a) != css.cq_eval_size(n.size, b) { return true }
+	for k in n.kids { if cq_size_flips(k, a, b) { return true } }
+	return false
+}
+
+@(private = "file")
+cq_reads_style :: proc(n: ^css.Cq_Node) -> bool {
+	if n.kind == .Style { return true }
+	for k in n.kids { if cq_reads_style(k) { return true } }
+	return false
 }
 
 @(private = "file")
@@ -186,12 +222,18 @@ container_chain :: proc(e: ^Engine, h: base.Handle, c: ^Computed, parent: ^Compu
 	up := parent != nil ? parent.containers : nil
 	if c.container_type == .Normal || c.display == .None { return up }
 	ctx := new(Container_Ctx, a)
-	ctx^ = Container_Ctx{node = h, type = c.container_type, names = c.container_name, parent = up}
-	if s, ok := e.container_sizes[h]; ok {
-		ctx.size.w, ctx.size.has_w = f64(s.x), true
-		if c.container_type == .Size { ctx.size.h, ctx.size.has_h = f64(s.y), true }
-	}
+	ctx^ = Container_Ctx{node = h, type = c.container_type, names = c.container_name, size = container_size_of(e, h, c.container_type), parent = up}
 	return ctx
+}
+
+// The size the embedder measured for container `h`, in the axes its type queries.
+@(private = "file")
+container_size_of :: proc(e: ^Engine, h: base.Handle, type: Container_Type) -> (size: css.Container_Size) {
+	if s, ok := e.container_sizes[h]; ok {
+		size.w, size.has_w = f64(s.x), true
+		if type == .Size { size.h, size.has_h = f64(s.y), true }
+	}
+	return
 }
 
 // cq units of an element: its nearest ancestor containers for each axis.

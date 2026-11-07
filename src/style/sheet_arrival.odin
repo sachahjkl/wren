@@ -319,6 +319,9 @@ index_take :: proc(e: ^Engine, ranges: [][2]u32) {
 	entries_split(&rs.index.universal, ranges, &to.universal)
 	entries_split(&rs.index.backdrop, ranges, &to.backdrop)
 	entries_split(&rs.state_entries, ranges, nil)
+	// (what was parsed of the sheet goes with it)
+	clear(&e.container_conds)
+	e.container_conds_lost = true
 	frames := len(e.keyframes)
 	for i := len(e.keyframes) - 1; i >= 0; i -= 1 { if in_ranges(e.keyframes[i].order, ranges) { ordered_remove(&e.keyframes, i) } }
 	if len(e.keyframes) < frames {

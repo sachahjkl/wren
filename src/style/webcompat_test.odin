@@ -320,6 +320,100 @@ container_restyle_leaves_the_rest :: proc(t: ^testing.T) {
 }
 
 @(test)
+container_size_that_flips_nothing_restyles_nothing :: proc(t: ^testing.T) {
+	d := open_doc(`<style>.wrap { container-type: inline-size } @container (min-width: 400px) { .t { padding-left: 2px } } .i .k { margin: 1px }</style>
+		<div class=wrap id=w><p class=t id=t></p><div class=wrap id=in><p class=t id=u></p></div></div>`)
+	defer fixture_unload(d)
+	w, inner := dom.find_by_id(d.doc, "w"), dom.find_by_id(d.doc, "in")
+	sizes := make(map[base.Handle][2]f32, context.temp_allocator)
+	sizes[w], sizes[inner] = {100, 40}, {80, 40}
+	testing.expect(t, engine_set_container_sizes(d.eng, sizes), "first sizes")
+	_, ok := restyle_containers(d.eng, d.doc, d.st)
+	testing.expect(t, ok && len(d.eng.container_pending) == 0, "a first size below the query")
+	testing.expect(t, style_of(d.st, w).containers.size.has_w, "from unknown to below it: a rule holds on true alone, and the size is taken")
+	before, serial := el(d, "t"), d.st.serial
+	sizes[w] = {300, 40}
+	testing.expect(t, engine_set_container_sizes(d.eng, sizes), "wider, still below the query")
+	changed, ok2 := restyle_containers(d.eng, d.doc, d.st)
+	testing.expect(t, ok2 && !changed && d.st.serial == serial, "nothing to restyle")
+	testing.expect(t, el(d, "t") == before, "the records stand")
+	testing.expect(t, style_of(d.st, w).containers.size.w == 300, "the container's context has the size all the same")
+	// a descendant restyled later reads that size: past the query, the partial pass and a full one agree
+	sizes[w] = {500, 40}
+	testing.expect(t, engine_set_container_sizes(d.eng, sizes), "past the query")
+	changed3, ok3 := restyle_containers(d.eng, d.doc, d.st)
+	testing.expect(t, ok3 && changed3, "the query flips")
+	testing.expect(t, el(d, "t").padding[.Left].v == 2, "and the rule holds")
+	testing.expect(t, el(d, "u").padding[.Left].v == 0, "the nearest container of the other is 80 wide")
+	full := compute_styles(d.eng, d.doc, {})
+	defer styled_destroy(full)
+	for id in ([?]string{"w", "t", "in", "u"}) {
+		h := dom.find_by_id(d.doc, id)
+		testing.expectf(t, computed_equal(style_of(d.st, h), style_of(full, h)), "%s: the same as a full pass", id)
+	}
+}
+
+@(test)
+container_not_of_an_unknown_size :: proc(t: ^testing.T) {
+	// not (...) of a size not known is unknown too: the first size makes it true, the element must see it. A style() beside a size feature: it is the size that moves.
+	for src in ([?]string{
+		`<style>.wrap { container-type: inline-size } @container not (min-width: 400px) { .t { padding-left: 2px } }</style><div class=wrap id=w><p class=t id=t></p></div>`,
+		`<style>.wrap { container-type: inline-size; --x: 1 } @container (max-width: 400px) and style(--x: 1) { .t { padding-left: 2px } }</style><div class=wrap id=w><p class=t id=t></p></div>`,
+	}) {
+		d := open_doc(src)
+		defer fixture_unload(d)
+		sizes := make(map[base.Handle][2]f32, context.temp_allocator)
+		sizes[dom.find_by_id(d.doc, "w")] = {200, 40}
+		testing.expect(t, engine_set_container_sizes(d.eng, sizes), "a first size")
+		_, ok := restyle_containers(d.eng, d.doc, d.st)
+		testing.expect(t, ok && el(d, "t").padding[.Left].v == 2, "the condition holds at it")
+	}
+}
+
+@(test)
+container_conditions_go_with_their_sheet :: proc(t: ^testing.T) {
+	// a sheet that leaves without a rebuild takes what it parsed: its conditions are not read again, and sizes go back to the walk until the next rebuild
+	d := fixture_load(`<!doctype html><style id=gone>@container (min-width: 400px) { .t { padding-left: 2px } }</style><style>.wrap { container-type: inline-size }</style>
+		<div class=wrap id=w><p class=t id=t></p></div>`, {journal = 1 << 16, partial = true})
+	defer fixture_unload(d)
+	testing.expect_value(t, len(d.eng.container_conds), 1)
+	gone := dom.find_by_id(d.doc, "gone")
+	dom.remove_child(d.doc, dom.get(d.doc, gone).parent, gone)
+	sync_document_sheets(d.eng, d.doc, "about:test")
+	_, ok := restyle_dom(d.eng, d.doc, d.st)
+	testing.expect(t, ok, "the mutations are scoped")
+	_, ok = restyle_departures(d.eng, d.doc, d.st)
+	testing.expect(t, ok, "so is the sheet")
+	testing.expect(t, len(d.eng.container_conds) == 0 && d.eng.container_conds_lost, "its conditions went with it")
+	sizes := make(map[base.Handle][2]f32, context.temp_allocator)
+	sizes[dom.find_by_id(d.doc, "w")] = {500, 40}
+	testing.expect(t, engine_set_container_sizes(d.eng, sizes), "a size")
+	_, ok = restyle_containers(d.eng, d.doc, d.st)
+	testing.expect(t, ok && el(d, "t").padding[.Left].v == 0, "the walk, and the rule is gone")
+}
+
+@(test)
+container_units_restyle_at_any_size :: proc(t: ^testing.T) {
+	// a cq unit follows the size, in a sheet as in a style attribute: no condition says when
+	for src in ([?]string{
+		`<style>.wrap { container-type: inline-size } .t { font-size: 10cqw }</style><div class=wrap id=w><p class=t id=t></p></div>`,
+		`<style>.wrap { container-type: inline-size } @container (min-width: 4000px) { .x { top: 0 } }</style><div class=wrap id=w><p style="font-size: 10cqw" id=t></p></div>`,
+	}) {
+		d := open_doc(src)
+		defer fixture_unload(d)
+		sizes := make(map[base.Handle][2]f32, context.temp_allocator)
+		w := dom.find_by_id(d.doc, "w")
+		sizes[w] = {200, 40}
+		testing.expect(t, engine_set_container_sizes(d.eng, sizes), "a size")
+		restyle_containers(d.eng, d.doc, d.st)
+		sizes[w] = {300, 40}
+		testing.expect(t, engine_set_container_sizes(d.eng, sizes), "another")
+		_, ok := restyle_containers(d.eng, d.doc, d.st)
+		testing.expect(t, ok && close_to(el(d, "t").font_size, 30), "10cqw of 300px")
+	}
+}
+
+@(test)
 tailwind_v4_patterns :: proc(t: ^testing.T) {
 	d := open_doc(`<style>
 		@layer theme, base, components, utilities;
