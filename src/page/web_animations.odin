@@ -145,7 +145,7 @@ anims_zero :: proc(p: ^Page) -> f64 {
 @(private)
 anim_end :: proc(a: ^Web_Animation) -> f64 {
 	if a.css != 0 {
-		info, ok := style.timeline_css_info(a.page.anim.timeline, a.css)
+		info, ok := css_info(a)
 		return ok ? info.delay + info.duration * info.iterations : 0
 	}
 	if a.progress != 0 {
@@ -160,7 +160,7 @@ anim_end :: proc(a: ^Web_Animation) -> f64 {
 @(private)
 anim_current :: proc(a: ^Web_Animation) -> (f64, bool) {
 	if a.css != 0 {
-		info, ok := style.timeline_css_info(a.page.anim.timeline, a.css)
+		info, ok := css_info(a)
 		if !ok || info.canceled || info.inactive { return 0, false }
 		return info.current, true
 	}
@@ -182,7 +182,7 @@ anim_apply_pending_rate :: proc(a: ^Web_Animation) {
 
 anim_play_state :: proc(a: ^Web_Animation) -> Api_AnimationPlayState {
 	if a.css != 0 {
-		info, ok := style.timeline_css_info(a.page.anim.timeline, a.css)
+		info, ok := css_info(a)
 		switch {
 		case !ok || info.canceled: return .Idle
 		case info.finished: return .Finished
