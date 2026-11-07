@@ -3324,6 +3324,81 @@ theverge.com's 3 other runs ended at about 700 ms with the page's scripts broken
 
 **Read plainly.** A `Guest` 6 % shorter on theverge.com did not move its load, in two of these series. What ends these loads is no longer the sum of the script's time; what does was not established here. In order: what scripts force of style and layout (43 % of cnn.com's `Guest`), then the critical path to the load event itself.
 
+## What changed, round 48: what ends a load, and what a forced read pays for
+
+Development builds, `wrentool waterfall -Runs 1` under `WREN_SPANS`, a fresh process and a throwaway profile for each load, base (269c7ae2) kept apart, arms interleaved, the order turning. Temporary code, none in the tree: what `the_end` waited for at each look, laps inside `page.styles` and `restyle_dom`, what `marks_keyed_scan` marked and through which anchor. Public sites.
+
+**What a load waits for last.** Each line: what `the_end` waited for last, two loads a site, then the script's life as the spans give it.
+
+| | the last wait | |
+|---|---|---|
+| cnn.com | `boltPlayer`, 3.4 MB, in order, then `boltInstance` | request +2 684, last byte +3 037, off-thread compile 414 ms, run +3 464, load +3 587 |
+| npr.org | jwplayer's `player.js`, 1.2 MB, async; in one run of two two posters and a frame of Stripe after it | request +2 847, seen +3 398, compile 164 ms, run +3 566, load +3 617 |
+| theverge.com | a chain of async scripts: `gtm.js`, bounce's `runtime`, `main-v2`, `ads-v2`, jQuery, then recaptcha's frame | five hops, each a script that inserts the next |
+
+**The network is not on the path.** The last byte of a request comes 10 to 100 ms after it starts. What is long is the time until the page hears of it: theverge.com's `main-v2` had its last byte at +54 ms and reached the page at +814, behind a task of 738 ms (`wj_run_jobs`). The window thread is busy for 85 to 95 % of the time up to the load event: 3 606 of 3 817 ms on theverge.com, 3 241 of 3 618 on npr.org, 3 062 of 3 588 on cnn.com, and an idle frame of cnn.com's still takes 6 of its 16 ms. npr.org's three longest tasks, 812, 563 and 519 ms, are JavaScript from end to end.
+
+**A wait that no span called one.** Of 738 ms of cnn.com's inline `Script`, the first 316 are no `Guest`: the window thread stood in `compile_ahead_wait`, the 3 MB inline script's compile not done at its turn (a futex: 14.8 % of the samples of frames over 30 ms, under `js_run`). Everything queued behind it, among others `launch-*.min.js`, an async script compiled at +581 ms that ran at +1 439: it is what asks for `vendor`, `app` and through them `boltPlayer`.
+
+**1. A long inline compile holds the parser, not the thread** (`compile_ahead_holds`). An inline script of 256 KB and more whose compile is under way goes to `Doc_Parser.pending`, as one that waits for a sheet does; `compile_done` takes the pump up again. Async scripts, arrivals, timers and frames go on. On cnn.com the head of that chain runs at +677 instead of +1 439, `vendorHashes` is asked for at +875 and not at +1 959, and `boltPlayer`'s compile no longer ends with the window thread idle: it now overlaps the page's own work. `jsload_a_long_inline_compile_holds_the_parser_and_not_the_loop`, with the compile threads held by the test (`compile_hold`).
+
+**What a forced read costs.** Reads before the load event, one load, `Host` spans of 20 us and more:
+
+| | cnn.com | npr.org | theverge.com |
+|---|---|---|---|
+| `ComputedStyle_get` | 8 calls, 204 ms, longest 95 | 2, 67, 59 | 6, 43, 34 |
+| `Element_boundingRect` | 29, 27, 2 | none over 20 us | 29, 141, 49 |
+| `clientWidth`, `clientHeight`, `scrollWidth`, `offset*` | 11, 210, 56 | 3, 40, 36 | 21, 54, 32 |
+| `innerText` | 188, 88, 66 | | 1, 2, 2 |
+
+No read pays for repeated work: 233 of the 276 passes of cnn.com are under 1 ms, 34 ms in all, and the fast path of `js_layout_now` holds. A few reads each pay the catch-up of what the scripts changed since the last one: a call of `getPropertyValue` that takes 95 ms is a style pass, the string costs nothing. By kind, the passes of `page.styles` before the load event, median of 4 loads, ms / passes / elements restyled:
+
+| | full | after DOM changes | after sheets | container sizes |
+|---|---|---|---|---|
+| cnn.com, base | 197 / 6 / - | 501 / 231 / 11 246 | 162 / 5 / 4 504 | 107 / 4 / 89 |
+| cnn.com, round | 199 / 6 / - | 474 / 204 / 11 288 | 152 / 5 / 4 622 | 102 / 3 / 52 |
+| npr.org, base | 213 / 9 / - | 67 / 10 / 2 996 | 68 / 7 / 27 | 91 / 3 / 2 161 |
+| npr.org, round | 212 / 9 / - | 69 / 9 / 3 007 | 63 / 8 / 27 | 55 / 2 / 0 |
+| theverge.com, base | 186 / 11 / - | 48 / 67 / 4 370 | 32 / 4 / 24 | 89 / 5 / 588 |
+| theverge.com, round | 195 / 11 / - | 48 / 65 / 4 118 | 25 / 4 / 24 | 16 / 1 / 4 |
+
+(`elements restyled` of a container's pass count those that changed: a walk of all of them is not in it, which is what the next item is.)
+
+**2. A container's size that flips nothing restyles nothing** (`cq_size_settled`). `restyle_containers` restyled the whole subtree of each container whose size moved, on one thread: 60 ms on cnn.com and npr.org for a container high in the page, 12 to 17 ms a time on theverge.com, and most of them for the first size a container gets. It now asks the conditions of the page's `@container` rules (`Engine.container_conds`) at the old size and the new: a rule holds on True alone, so a first size from Unknown to False flips nothing. No flip and no cq unit in force (`Engine.container_units`, in a sheet or a style attribute: `compile_declarations` sees both): the container's context takes the size in place, for what is restyled later. `style()` beside a size feature: any feature that moves counts. All style before the load event, the sum of the table: **theverge.com 355 -> 284 ms, npr.org 444 -> 402, cnn.com 967 -> 931**, whose `cqw` and `cqi` keep the walk. The conditions live with their sheets: one that leaves without a rebuild ends this until the next (`Engine.container_conds_lost`), as does a sheet of a shadow tree with such rules. `container_size_that_flips_nothing_restyles_nothing`, `container_not_of_an_unknown_size`, `container_units_restyle_at_any_size`, `container_conditions_go_with_their_sheet`.
+
+Base and round, 9 runs, interleaved, median (range), ms:
+
+| | | load | DOMContentLoaded | first paint | CPU | `Guest` to the load |
+|---|---|---|---|---|---|---|
+| cnn.com | base | 3 531 (3 098-3 677) | 1 845 (1 623-1 993) | 516 (463-530) | 5 672 (5 344-6 078) | 1 608 (1 570-1 680) |
+| | round | **2 885 (2 456-2 967)** | 1 567 (1 484-1 641) | 489 (479-539) | 5 562 (4 984-5 656) | 1 519 (1 299-1 577) |
+| npr.org | base | 3 641 (3 271-3 845) | 2 021 (1 885-2 846) | 657 (532-1 346) | 5 328 (5 172-5 688) | 2 523 (2 397-2 797) |
+| | round | 3 418 (3 272-3 635) | 1 973 (1 884-2 028) | 604 (437-742) | 5 312 (4 609-5 781) | 2 471 (2 414-2 725) |
+| theverge.com | base | 3 699 (3 638-3 926) | 702 (659-831) | 392 (377-454) | 6 578 (6 438-7 188) | 2 793 (2 762-2 909) |
+| | round | 3 644 (3 566-3 719) | 684 (632-725) | 370 (353-436) | 6 766 (6 516-7 203) | 2 812 (2 766-2 867) |
+| bbc.com/news | base | 2 051 (1 359-2 148) | 529 (472-735) | 161 (147-383) | 3 250 (2 781-3 547) | 1 461 (896-1 521) |
+| | round | 1 953 (1 342-2 145) | 518 (494-577) | 157 (145-163) | 3 328 (2 688-3 750) | 1 405 (882-1 526) |
+
+Read plainly. **cnn.com: load -18 %, ranges apart**, as in the series before it (base 3 582, 3 561, 3 281 by the median, with the hold 2 542 to 2 748; one run of 3 233 touched the base's range in one of them). DOMContentLoaded -15 %, ranges meeting by 18 ms. npr.org -6 %, theverge.com -1.5 %: ranges overlap, and three other series of npr.org say +2, -2 and -8 %: not proven. bbc.com/news nothing, in its modes. Item 1 alone against item 1 and 2, 7 runs: cnn.com 2 572 and 2 542, theverge.com 3 721 and 3 672, npr.org 3 585 and 3 576: item 2 shows in the time of style above and not in a load. Two arms of the same binary on cnn.com, 7 runs, differed by 180 ms in the median (2 685, 2 864): what 7 runs of that page can tell starts there.
+
+**Measured, built, not kept.**
+- **A body held back at its first MB.** `network.queue.high_water_bytes`, 1 MiB by request, stops the reading of a body while the window thread does not take it: cnn.com's 3.4 MB took 310 ms and npr.org's 1.2 MB 394 ms in a load, 33 to 70 and 23 to 46 ms by themselves (node, the same files, HTTP/2 with a large window). An exemption for bodies kept whole, then the network stack's thread handing a script's body straight to a compile thread (the compile of `player.js` ended 330 ms before the page's turn came). It worked, measured by the spans, and took nothing off a load: without either, 7 runs: cnn.com 2 607 against 2 748, theverge.com 3 608 against 3 582, npr.org 3 466 against 3 603, ranges overlapping; CPU +5 to +9 %, npr.org's `Guest` to the load 2 509 -> 2 730: what came sooner was work that used to follow the load event. With a thread 90 % busy, a script that is ready sooner waits for its turn instead.
+- **A document's long inline scripts found in its bytes by the same thread**, compiled before the parser is done: 9 runs, cnn.com 2 689 against 2 624, DOMContentLoaded 1 581 and 1 581.
+- **`:has(+ .x)` read by the place of a change.** An element that comes or goes changes a pair of siblings only if it, or the one after it, carries a key of the argument; `+` reaches as many elements before it as it has steps. Correct against a full pass, and on cnn.com it took 27 ms off 501: most of the elements restyled come from anchors whose answer really flipped (`a member left`), the subject keys of `:has(...) .x` restyled with no change to show. Taken out.
+
+**Hypotheses retracted.**
+- "The network path halves cnn.com's tail": the first series gave it 14 %, and it was the hold, built with it. The arm without it showed that.
+- `_extendhfsf2` (4.5 % of `page::styles`) and `strncpy`, `handle_error` in the compiler's profile are no half floats, no string copies and no bounds failures: nothing calls them there. The names are the nearest symbols of code with none of its own.
+- `WREN_RESTYLE_TRACE` makes passes dearer than they are: read for times it said 1 187 ms of style on cnn.com where the sampler and the laps say 500 to 900. It names passes; it does not time them.
+
+**Left, by what was seen.** An element restyled costs 50 to 90 us on the window thread, and on cnn.com nine in ten change nothing: 11 000 elements, 470 ms. Matching is flat (`matches_simple` 15 %, `matches_compound` 6, `:has()` 12 %); an ancestor compound such as `body:not(...)` is looked for by walking up (`parent_element` 5 %). `watch_prepare` after each full pass: 14 to 23 ms of cnn.com's 80, six times a load. Full passes: `a sheet came with @keyframes that elements use` 40 to 85 ms a page, once. Layout: 25 full passes of 5 to 10 ms on theverge.com, `too much changed`: a positioned child of `<body>` has no plan (`simple_child_style`), so its container is rebuilt. The container walk of pages with cq units (cnn.com). `getComputedStyle` still lays out; on these pages a layout is a tenth of a read. The compiler: 414 ms in Wasm for boltPlayer, 230 to 260 natively (`judge speed`, 14.7 MB/s; `judge prof` now samples without deadlocking on the heap), flat; since the hold it is no longer the last wait of cnn.com.
+
+**Not established.** Why a `Guest` 6 % shorter (round 47) left theverge.com's load where it was. What is known: its load event waits for a chain whose steps queue behind whatever the window thread has, and npr.org above shows the same load with 8 % more `Guest` before it, so the sum of the script's time does not set the load; what runs between two steps does. Nothing here measured which of a page's tasks are on the chain.
+
+**Tests.** `build\test_all.exe -Quick -NoAsan`: every step passes. WPT, against `wpt/expectations`: `css/css-nesting` 24 tests, `css/css-shadow` 91, `html/semantics/scripting-1` 470, `html/webappapis/scripting/processing-model-2` 53, `dom/nodes` 379: no regression. `css/css-contain` and `css/selectors` are not in the checkout (`wpt/suites.txt`), so container queries have the unit tests alone. The series above ran before `container_conds_lost`, which only takes a saving back.
+
+**Not verified.** The release build, a long session, the full WPT, the full test262, AddressSanitizer: not run. No other work was seen on the machine during the series; that was not checked at each load.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -3508,7 +3583,7 @@ After round 33. The first item of the list after round 31 is done for what it na
 After round 34. Reading the machine code paid more than any profile so far. In order: **the epoch check** (12 to 20 % of all the engine's code: an engine of its own for the JavaScript image, polls in the natives); **what a first paint waits for in a frame** (bbc.com/news: three timers of 300 to 430 ms before it); compile on arrival by default (DOMContentLoaded -18 to -32 % on two pages, 3 runs); verification at the first closure; `set_property` of a new key without the walk of the prototypes; then the callback from a native, the collection. `-o:speed` is the engine's level now: what is said above of -o:size is history.
 After round 36. The epoch check is gone from the engine (round 36), `new` no longer walks the prototypes for a new key. The interpreter is 12 to 34 % faster by micro.js; two of the four loads followed. In order: **the engine's time on the window thread for a load, measured as such** (`wasm.guest_time` in `api.stats`): CPU to the load event no longer says it, cnn.com and bbc.com/news spend more of it than before for reasons not established; then what a first paint waits for in a frame, compile on arrival by default, verification at the first closure, `ip` at dispatch, the callback from a native, the collection.
 After round 40. A forced read's and a frame's pass on cnn.com: partial passes restyled what no change reached, through :has() above all (round 40): load -19 %. In order, of style: what :has() that is not exact costs a restyle, the full passes that remain (@keyframes in use, sheets that style another tree), resh_hits for each sheet that arrives. A read answered from less than the whole layout is worth a tenth of a read.
-After round 47: frames on threads, inline caches, kept JIT profiles and generations were measured and take nothing off a load; see that round. After round 46. What a load runs is flat and interpreted: the two items that paid were algorithms (a regexp quadratic on a token, a walk of the document for each name nothing has), found by reading a sampler that does not wait for a poll. In order, of the engine: what scripts force of style and layout (43 % of cnn.com's `Guest`), `get_field`'s misses, the free lists' cold blocks, `new URL`, the timeline in JSON at each call; `ip` at dispatch and native callbacks showed nothing of their own.
+After round 48: the window thread is 85 to 95 % busy up to the load event and the network is not on the path; what held cnn.com was that thread standing still for a compile (load -18 %). A body read sooner or compiled from the network takes nothing off a load: a script ready sooner waits for its turn. In order: what an element restyled costs (50 to 90 us, nine in ten for no change on cnn.com), then the tasks that stand between two steps of a page's chain of scripts. After round 47: frames on threads, inline caches, kept JIT profiles and generations were measured and take nothing off a load; see that round. After round 46. What a load runs is flat and interpreted: the two items that paid were algorithms (a regexp quadratic on a token, a walk of the document for each name nothing has), found by reading a sampler that does not wait for a poll. In order, of the engine: what scripts force of style and layout (43 % of cnn.com's `Guest`), `get_field`'s misses, the free lists' cold blocks, `new URL`, the timeline in JSON at each call; `ip` at dispatch and native callbacks showed nothing of their own.
 
 ||||||| parent of eb61d939 (Round 33 in docs/performance.md)
 1. **The script stage of DOM-heavy pages, what is left** (`js_nodes10k` on a quiet machine after round 25, 5 runs: a frame of 16.9 ms
