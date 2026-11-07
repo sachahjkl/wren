@@ -978,7 +978,8 @@ finish_style :: proc(cx: ^Cx, h: base.Handle) {
 	case .Size: cx_take(cx, .Contain); c.contain += {.Size, .Layout, .Style}
 	case .Inline_Size: cx_take(cx, .Contain); c.contain += {.Inline_Size, .Layout, .Style}
 	}
-	if c.position == .Absolute || c.position == .Fixed || c.float != .None { c.display = blockify(c.display) }
+	// (and the root element: CSS Display 3 §2.7)
+	if c.position == .Absolute || c.position == .Fixed || c.float != .None || cx.parent == nil { c.display = blockify(c.display) }
 	// CSS Overflow 3 §3.1: visible / clip become auto / hidden only when the other axis is neither (overflow-x: clip
 	// alone made the box a scroll container, and broke position: sticky inside it)
 	vis_or_clip :: #force_inline proc(o: Overflow) -> bool { return o == .Visible || o == .Clip }

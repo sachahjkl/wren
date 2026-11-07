@@ -407,25 +407,33 @@ space_state :: proc(rc: ^Raster, space, clip: i32) -> bool {
 	return rc.scissor[0] < rc.scissor[2] && rc.scissor[1] < rc.scissor[3]
 }
 
-// A scroll bar as the browser draws it (render.odin paint_bar): an overlay bar rounded, a classic one square with its
-// arrows (in one-pixel rows) and the corner of a box with two bars, in the light scheme's colors or scrollbar-color.
+// The colors of a bar: the light scheme's, or scrollbar-color (`cs`: the box's, nil: none).
 @(private = "file")
-paint_scrollbar :: proc(rc: ^Raster, it: ^lay.Display_Item) {
-	l := rc.l
-	overlay := l.settings.scrollbar_overlay
-	thumb_c, track_c, arrow_c := l.settings.scrollbar_thumb, l.settings.scrollbar_track, l.settings.classic_arrow
-	if !overlay { thumb_c, track_c = l.settings.classic_thumb, l.settings.classic_track }
-	if it.cs != nil && !it.cs.scrollbar_color.auto { thumb_c, track_c, arrow_c = it.cs.scrollbar_color.thumb, it.cs.scrollbar_color.track, it.cs.scrollbar_color.thumb }
-	box :: proc(rc: ^Raster, r: lay.Rect, c: css_.Color, rounded: bool) {
-		if r.max.x <= r.min.x || r.max.y <= r.min.y { return }
-		rad := rounded ? min(r.max.x - r.min.x, r.max.y - r.min.y) * SCROLLBAR_RADIUS_FACTOR : 0
-		s := Shape{rect = r, radii = {{rad, rad}, {rad, rad}, {rad, rad}, {rad, rad}}}
-		p := solid(c)
-		fill(rc, &s, &p)
-	}
-	vertical := .Vertical in it.flags
-	track := snap_rect(it.rect)
-	box(rc, track, track_c, overlay)
+Bar_Colors :: struct { thumb, track, arrow: css_.Color }
+
+@(private = "file")
+bar_colors :: proc(l: ^lay.Layout, cs: ^style.Computed) -> (c: Bar_Colors) {
+	c = {l.settings.scrollbar_thumb, l.settings.scrollbar_track, l.settings.classic_arrow}
+	if !l.settings.scrollbar_overlay { c.thumb, c.track = l.settings.classic_thumb, l.settings.classic_track }
+	if cs != nil && !cs.scrollbar_color.auto { c = {cs.scrollbar_color.thumb, cs.scrollbar_color.track, cs.scrollbar_color.thumb} }
+	return
+}
+
+@(private = "file")
+bar_rect :: proc(rc: ^Raster, r: lay.Rect, c: css_.Color, rounded: bool) {
+	if r.max.x <= r.min.x || r.max.y <= r.min.y { return }
+	rad := rounded ? min(r.max.x - r.min.x, r.max.y - r.min.y) * SCROLLBAR_RADIUS_FACTOR : 0
+	s := Shape{rect = r, radii = {{rad, rad}, {rad, rad}, {rad, rad}, {rad, rad}}}
+	p := solid(c)
+	fill(rc, &s, &p)
+}
+
+// A scroll bar as the browser draws it (render.odin paint_bar): an overlay bar rounded, a classic one square with its
+// arrows (in one-pixel rows). No `thumb`: nothing to scroll.
+@(private = "file")
+paint_bar :: proc(rc: ^Raster, track, thumb: lay.Rect, vertical: bool, col: Bar_Colors) {
+	overlay := rc.l.settings.scrollbar_overlay
+	bar_rect(rc, track, col.track, overlay)
 	if !overlay {
 		start, end, _ := lay.classic_parts(track, vertical)
 		for button, i in ([2]lay.Rect{start, end}) {
@@ -441,13 +449,38 @@ paint_scrollbar :: proc(rc: ^Raster, it: ^lay.Display_Item) {
 					x := a.x + (mid - a.y) / (b.y - a.y) * (b.x - a.x)
 					lo, hi = min(lo, x), max(hi, x)
 				}
-				if hi > lo { box(rc, lay.Rect{{lo, y}, {hi, y + 1}}, arrow_c, false) }
+				if hi > lo { bar_rect(rc, lay.Rect{{lo, y}, {hi, y + 1}}, col.arrow, false) }
 			}
 		}
-		if g := l.boxes[it.box].gutter; vertical && g[2] > 0 { box(rc, lay.Rect{{track.min.x, track.max.y}, {track.max.x, track.max.y + g[2]}}, track_c, false) }
 	}
+	bar_rect(rc, thumb, col.thumb, overlay)
+}
+
+// The bar of a box, and the corner of a box with two.
+@(private = "file")
+paint_scrollbar :: proc(rc: ^Raster, it: ^lay.Display_Item) {
+	l := rc.l
+	col := bar_colors(l, it.cs)
+	vertical := .Vertical in it.flags
+	track := snap_rect(it.rect)
 	// (the thumb comes in viewport coordinates of the item's space: back to layout coordinates)
-	if th := lay.scrollbar_thumb(l, rc.v, it); th != {} { box(rc, snap_rect(lay.rect_shift(th, -rc.offs)), thumb_c, overlay) }
+	thumb: lay.Rect
+	if th := lay.scrollbar_thumb(l, rc.v, it); th != {} { thumb = snap_rect(lay.rect_shift(th, -rc.offs)) }
+	paint_bar(rc, track, thumb, vertical, col)
+	if g := l.boxes[it.box].gutter; !l.settings.scrollbar_overlay && vertical && g[2] > 0 { bar_rect(rc, lay.Rect{{track.min.x, track.max.y}, {track.max.x, track.max.y + g[2]}}, col.track, false) }
+}
+
+// The page's horizontal bar, over all of it and in viewport coordinates (render.odin paint_doc_bars): a test may be about it (wm-propagation-svg-root-scrollbar.svg).
+// Not its thumb, and not the vertical bar: a reference compares what the viewport shows, and WPT's references often stop at the fold where their test goes on.
+@(private = "file")
+paint_doc_bar :: proc(rc: ^Raster) {
+	l := rc.l
+	set_group(rc, lay.NONE)
+	space_state(rc, lay.DOCUMENT_SPACE, lay.NONE)
+	rc.offs = {}
+	cs: ^style.Computed
+	if ri := l.canvas_items[0]; ri >= 0 && int(ri) < len(l.items) { cs = l.items[ri].cs }
+	if track, _, ok := lay.doc_scrollbar_x(l, {f32(rc.w), f32(rc.h)}); ok { paint_bar(rc, track, {}, false, bar_colors(l, cs)) }
 }
 
 @(private = "file")
@@ -481,6 +514,7 @@ render :: proc(l: ^lay.Layout, w, h: int, doc_scroll: f32, canvas: css_.Color, h
 		if !item_state(&rc, it) { continue }
 		paint_item(&rc, it)
 	}
+	paint_doc_bar(&rc)
 	set_group(&rc, lay.NONE)
 	out := Result{image = image_make(w, h, allocator), pending = rc.pending}
 	for p, i in rc.root.px {

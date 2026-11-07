@@ -313,7 +313,9 @@ adopt_document :: proc(p: ^Page, d: ^Parsed_Document) -> html.Parse_Result {
 	p.doc_el = dom.find_first_by_tag(p.doc, "html")
 	p.head = dom.find_first_by_tag(p.doc, "head")
 	p.body = dom.find_first_by_tag(p.doc, "body")
-	if p.body == base.NIL_HANDLE { blank_document(p) }   // parse failure: keep the page usable
+	// (a document of another vocabulary, an SVG, has its root element and no <body>)
+	if p.doc_el == base.NIL_HANDLE { p.doc_el = jd_document_element(p.doc) }
+	if p.doc_el == base.NIL_HANDLE { blank_document(p) }   // parse failure: keep the page usable
 	for &s in d.sheets {
 		if p.engine != nil { style.engine_add_parsed_sheet(p.engine, s.sheet, s.owner, s.media, document_base_url(p)) } else { css.stylesheet_destroy(s.sheet); free(s.sheet) }
 		s.sheet = nil
