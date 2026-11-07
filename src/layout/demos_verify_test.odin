@@ -447,6 +447,25 @@ inc_anonymous_box_current_color_after_refresh :: proc(t: ^testing.T) {
 	testing.expect_value(t, d.l.last_pass, Pass_Kind.Incremental)
 	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
 }
+// What says how a record came to be is not copied to an anonymous box: the parent's list of what it inherits, here another
+// one under the pointer, and what its animations promise (the box would have made a stacking context of its own).
+@(test)
+inc_anonymous_box_keeps_nothing_of_its_parents_record :: proc(t: ^testing.T) {
+	d := demo_load(`<style>div:hover { color: red }</style><div id=a style="display:flex">text</div><p id=p>after</p>`)
+	defer demo_unload(d)
+	d.state.hover = dom.find_by_id(d.doc, "a")
+	demo_frame(d, "")
+	testing.expect_value(t, d.l.last_pass, Pass_Kind.Refresh)
+	dom.set_attribute(d.doc, dom.find_by_id(d.doc, "p"), "style", "padding:7px")
+	demo_frame(d, "")
+	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
+	e := demo_load(`<style>@keyframes spin { to { transform: rotate(360deg) } } .c { display: flex; animation: spin 4s linear infinite }</style><div class=c id=c>text</div>`)
+	defer demo_unload(e)
+	demo_frame(e, "")
+	c := box_index(&e.l, dom.find_by_id(e.doc, "c"))
+	testing.expect(t, e.l.boxes[c].cs.compositing != {}, "the animation promises a transform")
+	testing.expect(t, e.l.boxes[e.l.boxes[c].first].cs.compositing == {}, "the anonymous flex item makes no such promise")
+}
 // An animated element's record is an overlay, the same address from one style pass to the next: its anonymous flex item was
 // not made again, and kept the inherited group of a pass that goes (an access violation in the verification, reading it).
 @(test)
