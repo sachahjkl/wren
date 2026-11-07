@@ -29,6 +29,10 @@ MARK_NAVIGATE :: "navigate"
 MARK_CONTENTFUL :: "first-contentful-paint"
 MARK_LARGEST :: "largest-contentful-paint"   // (each larger one: the last counts)
 MARK_LOAD :: "load"
+// The phases of a frame (browser/prof.odin PHASE_NAMES) that are no work: the wait for its slot, and the sleep between frames.
+PHASE_WAIT :: "wait"
+PHASE_IDLE :: "idle"
+PHASE_FRAME :: "frame"   // (one a frame: what counts them)
 // The columns of a row: start, duration, thread, kind, label, then class, page, origin, third party for what has an owner.
 COLUMNS_MIN :: 5
 COLUMNS_OWNED :: 9
@@ -51,6 +55,7 @@ Segment :: struct {
 	start, end: f64,
 	owner:      Owner,
 	task:       string,   // who posted the task it is in
+	phase:      string,   // the frame's innermost phase, when it is the frame's own work
 }
 
 // One load, from one file.
@@ -58,6 +63,8 @@ Load :: struct {
 	navigate, contentful, largest, load_event: f64,   // ms in the trace; -1: not seen
 	settled:  f64,                           // -1: not in the trace
 	segments: []Segment,
+	waits:    []Segment,   // the frames' waits for their slots
+	frames:   []f64,       // when each frame began
 }
 
 Key :: struct {
@@ -74,6 +81,8 @@ Report :: struct {
 	busy:     Sums,
 	by_owner: map[Owner]Sums,
 	by_task:  map[Key]Sums,
+	by_phase: map[string]Sums,   // the frames' own work by phase, and their waits
+	frames:   Sums,              // frames begun
 }
 
 run :: proc(args: []string) -> int {
@@ -117,6 +126,7 @@ load_read :: proc(text: string) -> Load {
 	}
 	l := Load{navigate = -1, contentful = -1, largest = -1, load_event = -1, settled = -1}
 	spans := make([dynamic]Span, context.temp_allocator)
+	frames := make([dynamic]f64)
 	for r in rows {
 		if r.thread != thread && r.cols[3] != "Mark" { continue }
 		switch r.cols[3] {
@@ -129,6 +139,7 @@ load_read :: proc(text: string) -> Load {
 			}
 		case "Phase":
 			append(&spans, Span{start = r.start, end = r.start + r.ms, kind = "Phase", label = r.cols[4]})
+			if r.cols[4] == PHASE_FRAME { append(&frames, r.start) }
 		case "Task", "Work":
 			if len(r.cols) < COLUMNS_OWNED { continue }
 			origin, known := origins[r.cols[7]]
@@ -137,27 +148,35 @@ load_read :: proc(text: string) -> Load {
 				owner = Owner{r.cols[5], known ? origin : BROWSER_ORIGIN, r.cols[8] == "true"}})
 		}
 	}
-	l.segments = segments_of(spans[:])
+	l.segments, l.waits = segments_of(spans[:])
+	l.frames = frames[:]
 	l.settled = settled_at(l)
 	return l
 }
 
 // The spans of a thread, nested by their times, as stretches: the innermost that has an owner says whose it is.
-segments_of :: proc(spans: []Span) -> []Segment {
+// A frame's own stretch (no task or script inside it) says the innermost phase it is in; a frame's wait is a stretch of no work, kept apart (`waits`).
+segments_of :: proc(spans: []Span) -> (busy, waits: []Segment) {
 	slice.sort_by(spans, proc(a, b: Span) -> bool { return a.start < b.start || (a.start == b.start && a.end > b.end) })
-	out := make([dynamic]Segment)
+	Out :: struct {
+		busy, waits: [dynamic]Segment,
+	}
+	out := Out{make([dynamic]Segment), make([dynamic]Segment)}
 	stack := make([dynamic]Span, context.temp_allocator)
-	emit :: proc(out: ^[dynamic]Segment, stack: []Span, from, to: f64) {
+	emit :: proc(out: ^Out, stack: []Span, from, to: f64) {
 		if to <= from || len(stack) == 0 { return }
 		top := stack[len(stack) - 1]
-		if top.kind == "Phase" && (top.label == "wait" || top.label == "idle") { return }
+		if top.kind == "Phase" && top.label == PHASE_IDLE { return }
+		if top.kind == "Phase" && top.label == PHASE_WAIT { append(&out.waits, Segment{start = from, end = to, phase = PHASE_WAIT}); return }
 		s := Segment{start = from, end = to, owner = Owner{CLASS_INPUT, BROWSER_ORIGIN, false}}
 		found := false
 		#reverse for sp in stack {
 			if sp.kind == "Task" { s.task = sp.label; if !found { s.owner = sp.owner }; break }
 			if sp.kind == "Work" && !found { s.owner, found = sp.owner, true }
+			if sp.kind == "Phase" && !found && s.phase == "" { s.phase = sp.label }
 		}
-		append(out, s)
+		if found || s.task != "" { s.phase = "" }   // (a task or a script inside a frame is theirs, not the frame's)
+		append(&out.busy, s)
 	}
 	at := 0.0
 	for sp in spans {
@@ -177,7 +196,7 @@ segments_of :: proc(spans: []Span) -> []Segment {
 		at = max(at, top.end)
 		pop(&stack)
 	}
-	return out[:]
+	return out.busy[:], out.waits[:]
 }
 
 // When the thread settled: the first end of work from the load event on after which a window passes nearly free. -1: the trace ends first.
@@ -206,17 +225,30 @@ report_of :: proc(l: Load) -> (r: Report) {
 	r.by_owner = make(map[Owner]Sums)
 	r.by_task = make(map[Key]Sums)
 	from := max(l.navigate, 0)
+	r.by_phase = make(map[string]Sums)
 	settled := l.settled >= 0 ? l.settled : (len(l.segments) > 0 ? l.segments[len(l.segments) - 1].end : 0)
+	// what of [start, end] falls in each window
+	within :: proc(l: Load, from, settled, start, end: f64) -> (add: Sums) {
+		if l.contentful >= 0 { add.contentful = max(min(end, l.contentful) - max(start, from), 0) }
+		if l.largest >= 0 { add.largest = max(min(end, l.largest) - max(start, from), 0) }
+		add.settled = max(min(end, settled) - max(start, from), 0)
+		return
+	}
 	for s in l.segments {
-		add: Sums
-		if l.contentful >= 0 { add.contentful = max(min(s.end, l.contentful) - max(s.start, from), 0) }
-		if l.largest >= 0 { add.largest = max(min(s.end, l.largest) - max(s.start, from), 0) }
-		add.settled = max(min(s.end, settled) - max(s.start, from), 0)
+		add := within(l, from, settled, s.start, s.end)
 		if add.settled == 0 { continue }
 		r.busy = sums_add(r.busy, add)
 		r.by_owner[s.owner] = sums_add(r.by_owner[s.owner], add)
 		k := Key{s.owner, s.task}
 		r.by_task[k] = sums_add(r.by_task[k], add)
+		if s.phase != "" { r.by_phase[s.phase] = sums_add(r.by_phase[s.phase], add) }
+	}
+	for s in l.waits { r.by_phase[s.phase] = sums_add(r.by_phase[s.phase], within(l, from, settled, s.start, s.end)) }
+	for at in l.frames {
+		if at < from || at >= settled { continue }
+		r.frames.settled += 1
+		if l.contentful >= 0 && at < l.contentful { r.frames.contentful += 1 }
+		if l.largest >= 0 && at < l.largest { r.frames.largest += 1 }
 	}
 	return
 }
@@ -298,6 +330,20 @@ print_report :: proc(loads: []Load, reports: []Report, top: int, tasks: bool) {
 	}, proc(k: Owner) -> string { return fmt.tprintf("%-10s %s", k.class, k.third_party ? "third party" : "first party, or the browser") }, top)
 	fmt.println()
 	print_rows(Owner, reports, owners, proc(r: ^Report, k: Owner) -> Sums { return r.by_owner[k] }, owner_name, top)
+	// the frames: how many, and their own work by phase (a task or a script they run is its owner's, above; their wait is no work)
+	fc := make([]f64, n, context.temp_allocator)
+	fg := make([]f64, n, context.temp_allocator)
+	fs := make([]f64, n, context.temp_allocator)
+	phases := make(map[string]bool, context.temp_allocator)
+	for &r, i in reports {
+		fc[i], fg[i], fs[i] = r.frames.contentful, r.frames.largest, r.frames.settled
+		for p in r.by_phase { phases[p] = true }
+	}
+	fmt.println()
+	fmt.printfln("%-14s %-18s %-20s %s", cell(fc), cell(fg), cell(fs), "frames begun")
+	print_rows(string, reports, phases, proc(r: ^Report, k: string) -> Sums { return r.by_phase[k] }, proc(k: string) -> string {
+		return k == PHASE_WAIT ? "frame: wait (no work)" : fmt.tprintf("frame: %s", k)
+	}, top)
 	if !tasks { return }
 	fmt.println()
 	print_rows(Key, reports, task_keys, proc(r: ^Report, k: Key) -> Sums { return r.by_task[k] }, proc(k: Key) -> string { return fmt.tprintf("%s  by %s", owner_name(k.owner), k.task) }, top)
