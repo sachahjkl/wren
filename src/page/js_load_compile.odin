@@ -7,7 +7,8 @@ package page
 // and its bytecode is there: js_run finds it in the cache and does not parse it again.
 //
 // A large inline script is known as soon as the document is parsed, long before its turn comes (cnn.com: two of 3 MB, 0.8 s of the
-// window thread): it goes to a compile thread then (compile_inline_ahead), and at its turn js_run finds the bytecode, or waits for it.
+// window thread): it goes to a compile thread then (compile_inline_ahead), and at its turn js_run finds the bytecode, or waits for it;
+// one that takes long holds the parser and not the thread (compile_ahead_holds): the loop goes on with what the page has ready.
 //
 // The threads are shared by every page, made on first use (javascript.compile.offthread_threads), and stopped by
 // compile_shutdown (js_shutdown). A job outlives its page if the page closes: the result is only cached.
@@ -21,6 +22,9 @@ import "wb:host"
 import "wb:js"
 import "wb:wasm"
 
+// An inline script at least this long, its compile not done at its turn, lets the loop run meanwhile (about 30 ms of compile, the length of a heavy page's turn).
+COMPILE_AHEAD_HOLD_BYTES :: 256 << 10
+
 @(private)
 Compile_Job :: struct {
 	page_id: u64,
@@ -33,6 +37,7 @@ Compile_Job :: struct {
 	ms:      f64,             // compile time (diagnostics)
 	ok:      bool,
 	inline:  bool,            // an inline script compiled ahead of its turn (Page_Scripts.ahead)
+	element: base.Handle,     // ... its element
 	finished: u32,            // (a futex) the compile thread is done with it: compile_ahead_wait
 }
 
@@ -46,10 +51,21 @@ Compile_Service :: struct {
 	opt:      wasm.Options,
 	stack:    int,
 	jobs:     int,          // done since the start (stats)
+	held:     bool,         // compile_hold
 	failed:   int,          // ... of which the engine did not compile (a syntax error, or the engine stopped)
 	total_ms: f64,
 }
 
+
+// (tests) While held, the compile threads start nothing: what waits for them waits, for as long as the test says.
+compile_hold :: proc(held: bool) {
+	c := &the_pages.compiler
+	sync.mutex_lock(&c.mu)
+	c.held = held
+	waiting, threads := len(c.queue), len(c.threads)
+	sync.mutex_unlock(&c.mu)
+	if !held { for _ in 0 ..< max(waiting, threads) { sync.sema_post(&c.sema) } }
+}
 
 // What the compile threads did (tests, measurements).
 Compile_Stats :: struct { threads, jobs, failed: int, total_ms: f64 }
@@ -110,6 +126,7 @@ compile_inline_ahead :: proc(p: ^Page, el: base.Handle) {
 	job := new(Compile_Job)
 	job.page_id = page_id(p)
 	job.inline = true
+	job.element = el
 	job.source = make([]byte, len(source))
 	copy(job.source, source)
 	job.url = clone_heap(u)
@@ -120,6 +137,17 @@ compile_inline_ahead :: proc(p: ^Page, el: base.Handle) {
 	append(&the_pages.compiler.queue, job)
 	sync.mutex_unlock(&the_pages.compiler.mu)
 	sync.sema_post(&the_pages.compiler.sema)
+}
+
+// Whether the parser waits for the inline script at `el` by leaving the thread to the loop. cnn.com's 3 MB script reached its turn with 320 ms of
+// its compile to go, and the window thread stood still in compile_ahead_wait for them: what had arrived, what was ready, the frames, all behind it.
+// A compile of this size takes longer than a turn of the loop does; a small one is awaited, or taken back.
+@(private)
+compile_ahead_holds :: proc(p: ^Page, el: base.Handle) -> bool {
+	for job in p.scripts.ahead {
+		if job.element == el { return len(job.source) >= COMPILE_AHEAD_HOLD_BYTES && sync.atomic_load(&job.finished) == 0 }
+	}
+	return false
 }
 
 // The script of `key` is about to run and its bytecode is not there. One compiled ahead: taken back if no thread took it (it is compiled
@@ -238,7 +266,7 @@ compile_main :: proc(data: rawptr) {
 		sync.sema_wait(&the_pages.compiler.sema)
 		sync.mutex_lock(&the_pages.compiler.mu)
 		if the_pages.compiler.stop { sync.mutex_unlock(&the_pages.compiler.mu); break }
-		if len(the_pages.compiler.queue) == 0 { sync.mutex_unlock(&the_pages.compiler.mu); continue }
+		if len(the_pages.compiler.queue) == 0 || the_pages.compiler.held { sync.mutex_unlock(&the_pages.compiler.mu); continue }
 		job := the_pages.compiler.queue[0]
 		ordered_remove(&the_pages.compiler.queue, 0)
 		sync.mutex_unlock(&the_pages.compiler.mu)
@@ -277,6 +305,7 @@ compile_done :: proc(data: rawptr) {
 	if p == nil || p.closed || p.scripts == nil { return }
 	if job.inline {
 		if i, found := slice.linear_search(p.scripts.ahead[:], job); found { ordered_remove(&p.scripts.ahead, i) }
+		scripts_pump(p)   // (the parser may be waiting for it: compile_ahead_holds)
 		return
 	}
 	if job.module != "" {

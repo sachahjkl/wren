@@ -669,6 +669,10 @@ script_prepare :: proc(p: ^Page, el: base.Handle, parser_inserted: bool) {
 		ps.waiting_since = now_ms(p)
 		return
 	}
+	if parser_inserted && compile_ahead_holds(p, sc.element) {
+		ps.pending = sc
+		return
+	}
 	script_execute(p, sc)
 }
 
@@ -899,7 +903,7 @@ pump_next :: proc(p: ^Page) -> (Pump_Step, ^Page_Script) {
 	for sc in s.asap { if script_ready(sc) { return .Async, sc } }
 	if len(s.in_order) > 0 && script_ready(s.in_order[0]) { return .In_Order, s.in_order[0] }
 	if ps.pending != nil {
-		if script_ready(ps.pending) && !script_blocking_style(p) { return .Pending, ps.pending }
+		if script_ready(ps.pending) && !script_blocking_style(p) && !compile_ahead_holds(p, ps.pending.element) { return .Pending, ps.pending }
 		return .End, nil
 	}
 	if ps.active && ps.stop < 0 && (ps.next < len(ps.queue) || !ps.script_created) { return .Reveal, nil }
