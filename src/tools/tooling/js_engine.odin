@@ -9,7 +9,7 @@ import "core:strings"
 // Wren's JavaScript engine: the Odin engine (src/engine/jsrt, through the QuickJS C API of src/engine/jscapi) and the browser's bindings (native/js/odin, with the generated
 // native/js/odin/bindings_gen.odin), compiled to WebAssembly, then pre-initialized: the engine, its intrinsics and the bindings set up once, at build time, and stored in the module's
 // memory image, so that a realm starts from that image instead of running the engine's start-up code. Outputs, in <out>: wren_js_raw.wasm, the engine as compiled (a WASI reactor);
-// wren_js.wasm, the pre-initialized module the browser embeds (src/js/engine.odin); wren_js.code, its machine code, which the program embeds as well (not the test image's). The linker is the wasm-ld that ships with Odin. Nothing happens when <out>/STAMP matches the hash of
+// wren_js.wasm, the pre-initialized module the browser embeds (src/js/engine.odin); wren_js.code, its machine code, which the program embeds as well (not the test image's). The linker is the wasm-ld that ships with Odin (on Linux, the system's lld on the PATH). Nothing happens when <out>/STAMP matches the hash of
 // every input (the glue, the engine and the host package that pre-initializes it).
 
 // Not used to build anything: test262's configuration, and the reference wrentool bench js measures against, are QuickJS-ng's release source (src/browser/about_wren_test.odin and
@@ -171,7 +171,12 @@ build_js_engine :: proc(options: Js_Options) -> bool {
 	root_text, root_code := capture({odin_program(), "root"})
 	if root_code != 0 { say(o.log, "`odin root` failed\n"); return false }
 	wasm_ld, _ := filepath.join({strings.trim_space(root_text), "bin", strings.concatenate({"wasm-ld", EXE_SUFFIX})}, context.temp_allocator)
-	if !os.exists(wasm_ld) { say(o.log, fmt.tprintfln("%s not found (it ships with Odin)", wasm_ld)); return false }
+	// (Odin's Windows release ships it; its Linux release does not, and the system's lld does: wasm-ld from the PATH)
+	if !os.exists(wasm_ld) {
+		_, found := capture({"wasm-ld", "--version"})
+		if found != 0 { say(o.log, fmt.tprintfln("%s not found, nor wasm-ld on the PATH (Odin's Windows release ships it; on Linux, lld)", wasm_ld)); return false }
+		wasm_ld = "wasm-ld"
+	}
 	_ = os.make_directory_all(o.out)
 
 	// The glue and engine to one freestanding wasm32 object, no Odin runtime start-up (wj_preinit runs it). -o:speed: the natives gain more than the interpreter loses on a page (round 34 of docs/performance.md).

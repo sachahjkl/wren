@@ -201,9 +201,12 @@ and GitHub's repository page load and draw. What it took:
 - The system's `libopus`, `libasound` and `libfontconfig` to link; `libwayland-client`, `libxkbcommon` (or `libxcb`) and
   a Vulkan or GL driver at run time. On NixOS: `nix shell` with clang, lld, nasm, pkg-config, rustup (1.99.1), and
   `LIBRARY_PATH` / `LD_LIBRARY_PATH` for those libraries.
-- `build/js/wren_js.wasm` is the JS engine's image: a Windows build makes it (`src\tools\buildjs`) and the file is
-  portable, so a Linux checkout copies it. Its machine code (`build/js/wren_js.code`, which the program ships) is not:
-  `./build.sh wren` makes it from that image (`wrentool build jscode`).
+- `build/js/wren_js.wasm` is the JS engine's image: `./build.sh deps` makes it on Linux too (`src/tools/buildjs`; the linker
+  is the system's `wasm-ld` from lld, which Odin's Linux release does not ship, and its pre-initialization needs the 64 MiB
+  stack: `ulimit -s 65536`). The file is portable, so a copy from Windows does as well. Its machine code
+  (`build/js/wren_js.code`, which the program ships) is not: `./build.sh wren` makes it from that image (`wrentool build jscode`),
+  and refuses the empty stub `test_all` leaves for `odin check`: a browser linked with it ran no script, and nothing said so
+  (the CI's Linux sweep ran so until now).
 
 A bug Linux found: `Performance_timeline` freed the navigation entry's strings (a `defer` in the `if` block) before
 marshalling them, so `performance.getEntriesByType("navigation")` read freed memory. The Windows heap kept the bytes,

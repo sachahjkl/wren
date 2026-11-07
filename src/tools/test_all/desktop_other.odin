@@ -38,7 +38,7 @@ linux_has_wgpu_library :: proc() -> bool {
 	return false
 }
 
-// Package js_image #loads build/js/wren_js.wasm, which only a Windows build makes: an empty file lets odin check go through, and the tests that run the JS engine (page, blocker) are skipped while it
+// Package js_image #loads build/js/wren_js.wasm, which ./build.sh deps makes (buildjs): an empty file lets odin check go through, and the tests that run the JS engine (page, blocker) are skipped while it
 // is a stub. Package browser #loads the third-party licence texts bundled into the executable: the build fetches them with ./build.sh deps, empty stubs let the check go through when they are absent. True: the engine is a stub.
 linux_prepare_stubs :: proc() -> (js_stub: bool) {
 	_ = os.make_directory_all("build/linux")
