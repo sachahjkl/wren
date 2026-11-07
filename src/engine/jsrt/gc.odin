@@ -392,6 +392,7 @@ gc_mark :: proc(rt: ^Runtime) {
 	t0 := now_ns(rt)
 	if rt.config.gc_prologue != nil {rt.config.gc_prologue(rt, rt.config.gc_prologue_user)}
 
+	rt.int_strings = {} // (what they hold may die: they are a cache, not roots)
 	gc_mark_roots(rt)
 	gc_drain(rt)
 	gc_process_weak(rt)
