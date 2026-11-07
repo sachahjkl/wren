@@ -222,6 +222,16 @@ frame_fallback_inline :: proc(c: ^Ctx, pf: style.Writing_Mode) -> f32 {
 	return is_vert(pf) == is_vert(c.l.boxes[0].wm) ? c.vp.y : c.vp.x
 }
 
+// The viewport changed: what frame_fallback_inline gave is out of date, and no cache says so: the orthogonal box's intrinsic
+// size and its layout are kept under the same inputs from its frame. Dirty, its ancestors' intrinsic sizes go with it.
+@(private)
+mark_viewport_frames :: proc(l: ^Layout) {
+	for i in 1 ..< i32(len(l.boxes)) {
+		b := &l.boxes[i]
+		if .Frame_Root in b.fx && .Dead not_in b.flags && frame_orthogonal(l, i) { mark_dirty(l, i) }
+	}
+}
+
 // The box in the frame of its own content; the values of its frame's are given back by frame_leave.
 @(private)
 Frame_Entry :: struct { cs: ^style.Computed, border, padding: [4]f32 }
@@ -307,6 +317,10 @@ frame_layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32) -> Resul
 frame_intrinsic :: proc(c: ^Ctx, bi: i32) -> [2]f32 {
 	b := &c.l.boxes[bi]
 	pf := frame_of(c.l, bi)
+	// (a size asked before the box's parent reached it: the box around it shrinks to fit. Its padding counts then too, and percentages
+	// resolve against zero, as in any intrinsic size; what the parent resolved stands for a cached layout of the box.)
+	margin, border, padding, gutter := b.margin, b.border, b.padding, b.gutter
+	resolve_box_model(c, b, 0)
 	own_w: f32
 	spec_ok := false
 	if v, ok := specified_height(c, b, -1); ok { own_w, spec_ok = clamp_h(c, b, v, -1), true }
@@ -316,6 +330,8 @@ frame_intrinsic :: proc(c: ^Ctx, bi: i32) -> [2]f32 {
 	c.frame_entered = bi
 	r := layout_contents(c, bi, own_w, -1, -1, nil)
 	frame_leave(c, bi, e)
+	b = &c.l.boxes[bi]
+	b.margin, b.border, b.padding, b.gutter = margin, border, padding, gutter
 	return {r.h, r.h}
 }
 

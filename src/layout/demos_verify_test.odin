@@ -398,6 +398,41 @@ inc_boxless_element_hidden :: proc(t: ^testing.T) {
 		testing.expectf(t, d.l.inc.verify_failures == 0, "%s: %s", s, d.l.inc.verify_report)
 	}
 }
+// An orthogonal box whose frame has no block size takes its inline size from the viewport, under inputs from its frame that
+// stay the same: a viewport that changes, in either axis, reaches it and the shrink-to-fit box around it.
+@(test)
+inc_orthogonal_box_follows_the_viewport :: proc(t: ^testing.T) {
+	TEXT :: "a horizontal block in a vertical parent, long enough to be wrapped at every viewport"
+	across := fmt.tprintf(`<div style="display:flex"><div style="writing-mode:vertical-rl;height:200px"><div id=o style="writing-mode:horizontal-tb">%s</div></div></div>`, TEXT)
+	along := fmt.tprintf(`<div style="float:left"><div id=o style="writing-mode:vertical-rl">%s %s %s</div></div>`, TEXT, TEXT, TEXT)
+	for c in ([]struct{src: string, a, b: Vec2}{{across, {423, 700}, {383, 700}}, {along, {1000, 500}, {1000, 300}}}) {
+		d := demo_load(c.src)
+		defer demo_unload(d)
+		o := box_index(&d.l, dom.find_by_id(d.doc, "o"))
+		sizes: [2]Vec2
+		for vp, i in ([]Vec2{c.a, c.b}) {
+			d.vp = vp
+			incremental := d.l.passes[.Incremental]   // (the scroll bars that follow may end the frame with a full pass)
+			demo_frame(d, "")
+			testing.expectf(t, d.l.inc.verify_failures == 0, "%v: %s", vp, d.l.inc.verify_report)
+			testing.expect(t, d.l.passes[.Incremental] > incremental, "an incremental pass was made")
+			sizes[i] = d.l.boxes[o].size
+		}
+		testing.expectf(t, sizes[0] != sizes[1], "the box follows the viewport: %v", sizes)
+	}
+}
+// The intrinsic size of an orthogonal box asked before its parent reached it: its padding counts in a first pass as in the
+// passes after it, which found the padding of the pass before (an inline-block around it was narrower in a full pass).
+@(test)
+inc_orthogonal_box_padding_in_a_box_that_shrinks :: proc(t: ^testing.T) {
+	d := demo_load(`<div id=o style="display:inline-block"><div id=v style="writing-mode:vertical-rl;padding:10px;height:200px">text</div></div>`)
+	defer demo_unload(d)
+	o, v := box_index(&d.l, dom.find_by_id(d.doc, "o")), box_index(&d.l, dom.find_by_id(d.doc, "v"))
+	testing.expect_value(t, d.l.boxes[o].size.x, d.l.boxes[v].size.x)
+	d.vp = {700, 700}
+	demo_frame(d, "")
+	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
+}
 // A paint-only restyle of an element whose ::before sits in an anonymous block beside block children: that generated
 // box is re-pointed to the new ::before record too (it kept the old one, and its old color).
 @(test)
