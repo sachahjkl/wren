@@ -1,11 +1,13 @@
 package browser
 
 // The status bar along the bottom of the window (browser.status_bar.*): on the left what the page is doing (loading,
-// HTTP status, size, origin, requests, cookies, DOM nodes, modules, zoom), or where the link under the pointer goes; on
-// the right the graph of the recent frames by phase (hud.odin) and compact counters. A click on the graph opens the
-// frame statistics panel above it. Ctrl+B shows / hides the bar, Ctrl+Shift+B the panel.
+// HTTP status, size, origin, requests, cookies, DOM nodes, modules, zoom); on the right the graph of the recent frames
+// by phase (hud.odin) and compact counters. A click on the graph opens the frame statistics panel above it. Ctrl+B
+// shows / hides the bar, Ctrl+Shift+B the panel. Where the link under the pointer goes is not the bar's: a small box over
+// the page's corner shows it (link_bubble).
 
 import "core:fmt"
+import "core:math"
 import "toolkit:draw"
 import "toolkit:render"
 import "toolkit:ui"
@@ -49,6 +51,42 @@ hovered_link :: proc(t: ^Tab) -> string {
 	return rok ? r.href : href
 }
 
+// The box of the link under the pointer: its text a little smaller than the interface's, at most this share of the page's
+// width (a longer address ends with "..."), its height and its padding in ems of that text.
+LINK_BUBBLE_FONT :: 0.88
+LINK_BUBBLE_MAX_WIDTH :: 0.5
+LINK_BUBBLE_HEIGHT_EM :: 1.75
+LINK_BUBBLE_PAD_EM :: 0.55
+
+// Where the link under the pointer goes, in a small box over the page's bottom left corner, as browsers show it: over the
+// page, not in the status bar, and in the bottom right corner while the pointer is where it would be. It takes no input:
+// the page under it keeps its hover and its clicks. Built at the top of the window (main.odin build_ui): window pixels.
+link_bubble :: proc(app: ^App, t: ^Tab) {
+	if !app.hud.cfg.link_preview { return }
+	link := hovered_link(t)
+	if link == "" { return }
+	area := active_window(app).page_rect
+	room := draw.rect_size(area)
+	if room.x <= 0 || room.y <= 0 { return }
+	fs := math.round(ui.font_size() * LINK_BUBBLE_FONT)
+	pad := math.round(fs * LINK_BUBBLE_PAD_EM)
+	h := ui.dense(math.round(fs * LINK_BUBBLE_HEIGHT_EM))
+	w := min(math.ceil(ui.text_width(ui.top_style().font, fs, link)) + pad * 2, math.round(room.x * LINK_BUBBLE_MAX_WIDTH))
+	r := link_bubble_rect(area, {w, h}, ui.mouse_pos())
+	if ui.tags("floating") {
+		ui.next({fixed_x = r.min.x, fixed_y = r.min.y, width = ui.px(w), height = ui.px(h), font_size = fs, text_pad = pad, radius = math.round(fs * 0.3)})
+		ui.build_box({.Draw_Background, .Draw_Border, .Draw_Text}, fmt.tprintf("%s###link_bubble", link))
+	}
+}
+
+// Where the box of `size` goes in the page's `area`: its bottom left corner, or its bottom right one when `pointer` is over the
+// first place (the box would hide what the pointer is on).
+link_bubble_rect :: proc(area: draw.Rect, size, pointer: draw.Vec2) -> draw.Rect {
+	left := draw.Rect{{area.min.x, area.max.y - size.y}, {area.min.x + size.x, area.max.y}}
+	if !draw.rect_contains(left, pointer) { return left }
+	return draw.Rect{{area.max.x - size.x, area.max.y - size.y}, {area.max.x, area.max.y}}
+}
+
 Page_State :: struct { text, tone, detail: string }
 
 // The first item of the bar: what the tab is doing.
@@ -89,12 +127,7 @@ status_bar_build :: proc(app: ^App, t: ^Tab) {
 			if b.size.x != ws.status_left_width { ws.status_left_width = b.size.x; window_request_errand(app, active_window(app), .Status_Bar, 2) }
 		}
 		if ui.status_fill("###sb_left") {
-			link := app.hud.cfg.link_preview ? hovered_link(t) : ""
-			if link != "" {
-				ui.status_item(fmt.tprintf("%s###sb_link", link), tone = "", width = ui.fill())
-			} else if t != nil {
-				status_left(app, t, avail)
-			}
+			if t != nil { status_left(app, t, avail) }
 		}
 		graph_box = status_right(app)
 	}

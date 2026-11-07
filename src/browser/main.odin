@@ -1055,6 +1055,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 			// status bar (status_bar.odin)
 			if !elem_fs { status_bar_build(app, t) }
 			fullscreen_bars(app, t)
+			link_bubble(app, t)   // status_bar.odin: where the link under the pointer goes, over the page's corner (under the floating developer tools)
 			devtools_floating(app, t)   // over the page when it is undocked
 		}
 	}
