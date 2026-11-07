@@ -182,6 +182,7 @@ reach_from :: proc(c: ^css.Complex, k: int) -> Reach {
 @(private)
 Has_Anchor :: struct {
 	compound: css.Compound,
+	around:   css.Compound,   // `.a:not(:has(.b))`: the compound around the :not(), :is() or :where() that holds this one: the same element, which must match it too
 	list:     rawptr,   // the argument of its :has(), as matches_has is asked it
 	reach:    Reach,
 	feat:     Has_Feat,
@@ -253,8 +254,10 @@ Inv_Index :: struct {
 	by_attr:    map[string]Reach,   // attribute name (lower case): attribute selectors and pseudo-classes that read it
 	by_tag:     map[string]Reach,   // for inserted elements: what their tag makes them match beyond themselves
 	keyless:    Reach,              // compounds with no class, id, attribute or tag: any element may match them; what they reach among siblings
-	pos_fwd:    Keyed_Reach,        // :first-child, :nth-child()... (index from the start): applied from each sibling
-	pos_bwd:    Keyed_Reach,        // :last-child, :nth-last-child()... (index from the end)
+	pos_fwd:    Keyed_Reach,        // :nth-child(), :first-of-type... (index from the start): applied from each sibling
+	edge_first: Keyed_Reach,        // :first-child, :only-child: only what stands first among the siblings can see a change (edges_changed)
+	edge_last:  Keyed_Reach,        // :last-child, :only-child
+	pos_bwd:    Keyed_Reach,        // :nth-last-child(), :last-of-type... (index from the end)
 	empty:      Reach,              // :empty (and :placeholder-shown of a textarea): applied from the parent
 	sib_rel:    Keyed_Reach,        // the element right of a sibling combinator: applied from the next sibling of an insertion or a removal
 	controls:   Reach,              // pseudo-classes answered by the forms model: applied from any element whose attributes change
@@ -267,6 +270,7 @@ Inv_Index :: struct {
 	has_anchors: [dynamic]Has_Anchor,
 	members_tested: int,            // the last walk for the anchors' members: how many times an element was tested against an argument
 	collect:    ^Has_Feat,          // while an anchor's :has() argument is analyzed: where its features are noted too
+	around:     css.Compound,       // while the list of a :not(), :is() or :where() is analyzed: the compound that holds it (Has_Anchor.around)
 	has_classes, has_ids, has_attrs: map[string]bool,   // features tested inside :has()
 	has_sibling: bool,              // :has() arguments reach siblings (anchors include earlier siblings)
 	has_empty:  bool,               // :empty or :placeholder-shown inside :has()
@@ -283,7 +287,7 @@ inv_free :: proc(ix: ^Inv_Index) {
 	for k in ix.has_ids { delete(k) }
 	for k in ix.has_attrs { delete(k) }
 	delete(ix.by_class); delete(ix.by_id); delete(ix.by_attr); delete(ix.by_tag)
-	keyed_free(&ix.pos_fwd); keyed_free(&ix.pos_bwd); keyed_free(&ix.sib_rel)
+	keyed_free(&ix.pos_fwd); keyed_free(&ix.pos_bwd); keyed_free(&ix.edge_first); keyed_free(&ix.edge_last); keyed_free(&ix.sib_rel)
 	delete(ix.has_classes); delete(ix.has_ids); delete(ix.has_attrs)
 	for &ha in ix.has_anchors {
 		for k in ha.feat.classes { delete(k) }
@@ -405,6 +409,10 @@ analyze_list :: proc(ix: ^Inv_Index, list: ^css.Selector_List, outer: Reach, in_
 @(private = "file")
 analyze_complex :: proc(ix: ^Inv_Index, c: ^css.Complex, outer: Reach, in_has: bool, depth: int) {
 	if depth > MAX_DEPTH { ix.give_up = true; return }
+	// (`:not(.a :has(.b))`: the anchor is an element above the one the compound around it matches)
+	around := ix.around
+	defer ix.around = around
+	if len(c.compounds) > 1 { ix.around = {} }
 	if in_has {
 		if c.relative && (c.leading == .Next_Sibling || c.leading == .Subsequent_Sibling) { has_reads_siblings(ix) }
 		for cb in c.combinators { if cb == .Next_Sibling || cb == .Subsequent_Sibling { has_reads_siblings(ix) } }
@@ -424,6 +432,12 @@ analyze_complex :: proc(ix: ^Inv_Index, c: ^css.Complex, outer: Reach, in_has: b
 		if !keyed && !in_has && !compound_keyed(comp) { keyless_add(ix, total) }
 		if !keyed && in_has && ix.collect != nil && !compound_keyed(comp) { ix.collect.unkeyed = true }
 	}
+}
+
+// `:nth-child(1)` and `:nth-last-child(1)`: :first-child and :last-child by another name.
+@(private = "file")
+nth_of_the_edge :: proc(s: ^css.Simple) -> bool {
+	return (s.pseudo == .Nth_Child || s.pseudo == .Nth_Last_Child) && s.list == nil && s.nth_a == 0 && s.nth_b == 1
 }
 
 // Records what a change of `s` reaches. Returns whether `s` is a key feature (class, id, attribute, tag).
@@ -451,13 +465,22 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 		analyze_list(ix, s.list, total, in_has, depth)
 	case .Pseudo_Class:
 		#partial switch s.pseudo {
-		case .First_Child, .Nth_Child, .First_Of_Type, .Nth_Of_Type:
-			if !in_has { keyed_add(ix, &ix.pos_fwd, comp, total) }
+		case .First_Child:
+			if !in_has { keyed_add(ix, &ix.edge_first, comp, total) }
+		case .Last_Child:
+			if !in_has { keyed_add(ix, &ix.edge_last, comp, total) }
+		case .Only_Child:
+			if !in_has {
+				keyed_add(ix, &ix.edge_first, comp, total)
+				keyed_add(ix, &ix.edge_last, comp, total)
+			}
+		case .Nth_Child, .First_Of_Type, .Nth_Of_Type:
+			if !in_has { keyed_add(ix, nth_of_the_edge(s) ? &ix.edge_first : &ix.pos_fwd, comp, total) }
 			if s.list != nil { analyze_list(ix, s.list, reach_compose(Reach{self = true, all_next = true, all_prev = true}, total), in_has, depth) }
-		case .Last_Child, .Nth_Last_Child, .Last_Of_Type, .Nth_Last_Of_Type:
-			if !in_has { keyed_add(ix, &ix.pos_bwd, comp, total) }
+		case .Nth_Last_Child, .Last_Of_Type, .Nth_Last_Of_Type:
+			if !in_has { keyed_add(ix, nth_of_the_edge(s) ? &ix.edge_last : &ix.pos_bwd, comp, total) }
 			if s.list != nil { analyze_list(ix, s.list, reach_compose(Reach{self = true, all_next = true, all_prev = true}, total), in_has, depth) }
-		case .Only_Child, .Only_Of_Type:
+		case .Only_Of_Type:
 			if !in_has {
 				keyed_add(ix, &ix.pos_fwd, comp, total)
 				keyed_add(ix, &ix.pos_bwd, comp, total)
@@ -465,7 +488,10 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 		case .Empty:
 			if in_has { has_reads_empty(ix) } else { ix.empty = reach_union(ix.keys, ix.empty, total) }
 		case .Not, .Is, .Where:
+			saved := ix.around
+			if len(saved.simples) == 0 { ix.around = comp }
 			analyze_list(ix, s.list, total, in_has, depth)
+			ix.around = saved
 		case .Has:
 			ix.uses_has = true
 			if !in_has {
@@ -474,7 +500,7 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 				ix.collect = &feat
 				analyze_list(ix, s.list, total, true, depth)
 				ix.collect = saved
-				ha := Has_Anchor{compound = comp, reach = total, feat = feat, hops = has_hops(s.list), list = s.list != nil ? raw_data(s.list^) : nil}
+				ha := Has_Anchor{compound = comp, around = ix.around, reach = total, feat = feat, hops = has_hops(s.list), list = s.list != nil ? raw_data(s.list^) : nil}
 				if s.list != nil && len(s.list^) == 1 && !feat.unkeyed {
 					c := &s.list^[0]
 					if len(c.compounds) > 0 && (c.leading == .Descendant || c.leading == .Child) && c.pseudo_element == .None && c.slotted == nil {

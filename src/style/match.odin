@@ -74,6 +74,7 @@ Match_Ctx :: struct {
 	has_known: proc(user: rawptr, anchor: base.Handle, list: css.Selector_List) -> (answer: bool, known: bool),
 	has_known_user: rawptr,
 	has_scans: int,   // :has() arguments looked for in subtrees
+	has_steps: int,   // ... elements tried for them
 }
 
 @(private)
@@ -732,11 +733,21 @@ matches_has_scan :: proc(m: ^Match_Ctx, anchor: base.Handle, list: css.Selector_
 		case .Descendant, .Child:
 			if has_in_subtree(m, anchor, anchor, &c) { return true }
 		case .Next_Sibling, .Subsequent_Sibling:
+			// what the argument can reach from here: `+ .a` the next element alone, `+ .a .b` what is under it, `~ .a` the siblings and nothing
+			// under them. Every sibling with all it holds was tried for each of them: 120 us an answer on cnn.com, a quarter of the matching
+			// of a restyle.
+			across := c.leading == .Subsequent_Sibling
+			down := false
+			for cb in c.combinators {
+				if cb == .Descendant || cb == .Child { down = true } else if !down { across = true }
+			}
 			sib := node_of(m, anchor).next
 			for sib != base.NIL_HANDLE {
 				if is_element(m, sib) {
+					m.has_steps += 1
 					if match_chain(m, sib, &c, len(c.compounds) - 1, anchor, 0) { return true }
-					if has_in_subtree(m, anchor, sib, &c) { return true }
+					if down && has_in_subtree(m, anchor, sib, &c) { return true }
+					if !across { break }
 				}
 				sib = node_of(m, sib).next
 			}
@@ -757,6 +768,7 @@ has_in_subtree :: proc(m: ^Match_Ctx, anchor, root: base.Handle, c: ^css.Complex
 		for child != base.NIL_HANDLE {
 			ch := node_of(m, child)
 			if ch.kind == .Element {
+				m.has_steps += 1
 				if match_chain(m, child, c, len(c.compounds) - 1, anchor, 0) { return true }
 				append(&stack, child)
 			}
