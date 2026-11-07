@@ -11,9 +11,10 @@ import "core:time"
 // what a recording served: the cookies and the HTTP cache (`wall_now`). The page's timers and the loop keep real time: a page's clock is not the browser's.
 TEST_WORLD_ENV :: "WREN_TEST_WORLD"
 
-// How far the page's clock moves at each read. A clock that stood still would never end `while (Date.now() < end)`; this one goes about as fast as real time
-// on the pages of round 51 (docs/performance.md), without being it.
-TEST_WORLD_TICK_MS :: 0.1
+// How far the page's clock moves at each read. A clock that stood still would never end `while (Date.now() < end)`, and one that crawls never lets a script that
+// yields after so many ms of work yield: at 0.1 ms a read, cnn.com read 1 000 times in a load of 4 s and saw 0.1 s go by. At 2 ms the pages of round 51
+// (docs/performance.md) see about the time a load takes, without it depending on how fast the machine ran.
+TEST_WORLD_TICK_MS :: 2.0
 @(private = "file") SPLITMIX_GAMMA :: u64(0x9E3779B97F4A7C15)
 @(private = "file") SPLITMIX_MIX_1 :: u64(0xBF58476D1CE4E5B9)
 @(private = "file") SPLITMIX_MIX_2 :: u64(0x94D049BB133111EB)
