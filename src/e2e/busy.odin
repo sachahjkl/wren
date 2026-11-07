@@ -42,6 +42,10 @@ busy_capture :: proc() -> Busy_Step { return {kind = .Capture} }
 // Chrome frames until `ms` have passed (what moves by the clock under the task moves meanwhile).
 busy_wait :: proc(ms: f64) -> Busy_Step { return {kind = .Wait, ms = ms} }
 
+// From the next chrome frame on, until the steps run out, the page's animations are shown `ms` after its last frame (the time its
+// timeline last moved to, page.animations_wall_ms): a clock the test sets, with no wait and whatever the machine's speed.
+busy_clock :: proc(ms: f64) -> Busy_Step { return {kind = .Clock, ms = ms} }
+
 busy_resize :: proc(size: [2]int) -> Busy_Step { return {kind = .Resize, size = size} }
 
 // The steps go to the chrome frames to come; returns at once (a barrier, wait_js on what the page sets once it let go, runs them).

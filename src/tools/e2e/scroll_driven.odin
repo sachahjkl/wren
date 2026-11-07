@@ -264,21 +264,31 @@ layout_values_of_a_timeline_follow_the_wheel_under_a_task :: proc(t: ^testing.T)
 }
 
 @(private = "file") INK_X, INK_ROW :: 310, 105        // inside #inked, on the text of the child that takes its colour by inheritance
-@(private = "file") INK_WAIT_MS :: 400
-@(private = "file") INK_MOVED_LEAST :: 4                // the channel moved this much between two pictures, at least: 255 levels over the 16 s of #inked give 6.4
-                                                         // in INK_WAIT_MS (a long animation: a loaded machine, its frames far apart, takes both pictures before its end)
+@(private = "file") INK_MS :: 16_000                    // #inked's animation, red to blue
+@(private = "file") INK_AT_MS :: [2]f64{2_000, 6_000}  // the chrome frames' clock at the two pictures, after the page's last frame
+@(private = "file") INK_WITHIN_LEVEL :: 1               // a channel against the time: the rounding of the colour, and of the animation's time the task read
 
-// A colour by the clock, on an element and on the child that inherits it: it goes on under the task, with no scroll.
+// A colour by the clock, on an element and on the child that inherits it: it goes on under the task, with no scroll. The chrome frames
+// run on the test's clock (busy_clock), from the time the task read of the animation as it began: the colour at two known times.
 @(test)
 a_colour_and_what_inherits_it_go_on_under_a_task :: proc(t: ^testing.T) {
-	s := open(t)
+	s := open(t, {"style.animations.mode=normal"})   // (whatever the system's reduced motion)
 	short := false
 	corner := e2e.box_model(s, "#sticky").window
 	ox, oy := int(corner.x) - STICKY_LEFT, int(corner.y) - STICKY_TOP
 	e2e.eval(s, "inked.style.animationPlayState = 'running'; 1")
-	shots := while_held(s, &short, {e2e.busy_capture(), e2e.busy_wait(INK_WAIT_MS), e2e.busy_capture()})
-	a, b := e2e.pixel(shots[0], ox + INK_X, oy + INK_ROW), e2e.pixel(shots[1], ox + INK_X, oy + INK_ROW)
-	testing.expectf(t, int(b.b) - int(a.b) >= INK_MOVED_LEAST, "the inherited colour goes on under the task: blue %d, then %d", a.b, b.b)
+	at := INK_AT_MS
+	shots := while_held(s, &short, {e2e.busy_clock(at[0]), e2e.busy_capture(), e2e.busy_clock(at[1]), e2e.busy_capture()},
+		hold = "hold(() => window.ink_from = inked.getAnimations()[0].currentTime)")
+	from := number(s, "ink_from")
+	for shot, i in shots {
+		p := (from + at[i]) / INK_MS
+		testing.expectf(t, p < 1, "the second picture falls inside the animation: %v ms", from + at[i])
+		c := e2e.pixel(shot, ox + INK_X, oy + INK_ROW)
+		red, blue := 255 * (1 - p), 255 * p
+		testing.expectf(t, abs(f64(c.r) - red) <= INK_WITHIN_LEVEL && abs(f64(c.b) - blue) <= INK_WITHIN_LEVEL,
+			"the inherited colour under the task, %v ms in: red %d blue %d, the clock says %.1f and %.1f", from + at[i], c.r, c.b, red, blue)
+	}
 }
 
 // At rest a page of scroll-driven animations draws nothing: a layout that moved a timeline asks for one more frame, not for frames for ever.
@@ -378,13 +388,13 @@ measure_tasks :: proc(t: ^testing.T, s: ^e2e.Session, task_ms: int) {
 
 // While the task holds the thread, then the page takes the scroll: the pictures of the capture steps.
 @(private = "file")
-while_held :: proc(s: ^e2e.Session, short: ^bool, steps: []e2e.Busy_Step, loc := #caller_location) -> []e2e.Image {
+while_held :: proc(s: ^e2e.Session, short: ^bool, steps: []e2e.Busy_Step, hold := "hold()", loc := #caller_location) -> []e2e.Image {
 	short^ = !short^
 	all := make([dynamic]e2e.Busy_Step, context.temp_allocator)
 	append(&all, ..steps)
 	append(&all, e2e.busy_resize(short^ ? SHORTER : SIZE))
 	e2e.wait_frames(s, loc = loc)
-	e2e.eval(s, "hold()", loc = loc)
+	e2e.eval(s, hold, loc = loc)
 	e2e.while_busy(s, all[:], loc)
 	e2e.wait_js(s, "window.released === true", loc = loc)
 	testing.expectf(s.t, e2e.busy_left(s, loc) == 0, "every step was taken under the task", loc = loc)

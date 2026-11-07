@@ -278,6 +278,9 @@ timeline_clear_events :: proc(tl: ^Timeline) {
 // Some value changes at every frame: the shell should keep drawing.
 timeline_active :: proc(tl: ^Timeline) -> bool { return tl != nil && tl.next_ms == 0 }
 
+// The wall time its clock last moved to (0: it never moved).
+timeline_wall :: proc(tl: ^Timeline) -> f64 { return tl != nil && tl.has_wall ? tl.last_wall : 0 }
+
 // Wall-clock milliseconds until the next change of an animated value (0 = now / every frame, -1 = nothing pending).
 timeline_next_ms :: proc(tl: ^Timeline) -> f64 {
 	if tl == nil || tl.next_ms < 0 { return -1 }
