@@ -52,8 +52,9 @@ Tcp_Server :: struct {
 	stop_ev:   win.HANDLE,         // the accept and client threads wake on it and end
 	port:      int,
 	next_id:   u64,
-	active:    int,                // clients connected (atomic)
+	active:    int,                // clients with a thread (atomic)
 	max_clients: int,
+	client_hold: proc(),           // what a client's thread does first (nil: nothing; a test holds it)
 	accept:    ^thread.Thread,
 }
 
@@ -186,13 +187,29 @@ tcp_accept_main :: proc(_: ^thread.Thread) {
 			client := win.accept(t_srv.listener, nil, nil)
 			if client == win.INVALID_SOCKET { break }
 			if win.WaitForSingleObject(t_srv.stop_ev, 0) == win.WAIT_OBJECT_0 { win.closesocket(client); return }
-			if sync.atomic_load(&t_srv.active) >= t_srv.max_clients {
+			if !tcp_room_for_client() {
 				win.closesocket(client)   // turned away
 				continue
 			}
 			tcp_start_client(client)
 		}
 	}
+}
+
+// May one more client come in? At the limit only those still there count: a client's thread may not have seen it go yet
+// (room_for_client, for the pipe). A socket closes after its client has left the list.
+@(private)
+tcp_room_for_client :: proc() -> bool {
+	if sync.atomic_load(&t_srv.active) < t_srv.max_clients { return true }
+	sync.mutex_lock(&t_srv.mu)
+	defer sync.mutex_unlock(&t_srv.mu)
+	there := 0
+	for c in t_srv.conns {
+		b: u8
+		n := win.recv(c.sock, &b, 1, win.MSG_PEEK)
+		if !c.done && (n > 0 || (n < 0 && win.WSAGetLastError() == win.WSAEWOULDBLOCK)) { there += 1 }
+	}
+	return there < t_srv.max_clients
 }
 
 @(private)
@@ -225,6 +242,7 @@ tcp_client_main :: proc(t: ^thread.Thread) {
 		sync.atomic_sub(&t_srv.active, 1)
 		tcp_notify()
 	}
+	if t_srv.client_hold != nil { t_srv.client_hold() }
 	buf: [16 << 10]byte
 	handles := [3]win.HANDLE{win.HANDLE(c.net_ev), c.wake, t_srv.stop_ev}
 	for {

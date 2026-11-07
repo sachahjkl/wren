@@ -3,6 +3,7 @@ package remote
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:sync"
 import "core:testing"
 import "core:time"
 import "wb:host"
@@ -125,6 +126,41 @@ stopping_with_clients_connected_ends_their_threads :: proc(t: ^testing.T) {
 	stop()   // joins the accept thread and both clients' threads, closes the pipes
 	testing.expect(t, !running())
 	client_close(c1); client_close(c2)
+	host.loop_drain(&loop)
+}
+
+// The threads of the clients that have gone, held up as a loaded machine holds them: they are still counted, and the client after them is at the limit.
+@(private = "file") HELD_CLIENTS :: 2
+@(private = "file") held_started: int   // (atomic)
+@(private = "file") held_release: sync.Sema
+
+@(private = "file")
+hold_first_clients :: proc() {
+	if sync.atomic_add(&held_started, 1) < HELD_CLIENTS { sync.sema_wait(&held_release) }
+}
+
+@(test)
+a_client_is_not_turned_away_by_clients_that_have_gone :: proc(t: ^testing.T) {
+	loop: host.Loop
+	host.loop_init(&loop)
+	defer host.loop_destroy(&loop)
+	seen := Seen{reply = true}
+	defer seen_destroy(&seen)
+	name := unique_name("gone")
+	testing.expect_value(t, start(&loop, name, 4096, HELD_CLIENTS, on_line, on_gone, rawptr(&seen)), "")
+	srv.client_hold = hold_first_clients
+	gone: [HELD_CLIENTS]Test_Client
+	for &c in gone { c = open_client(name) }
+	testing.expect(t, pump(&loop, proc(s: ^Seen) -> bool { return client_count() == HELD_CLIENTS }, &seen))
+	for c in gone { client_close(c) }
+	c := open_client(name)
+	testing.expect(t, c != NO_CLIENT)
+	write_text(c, "{\"id\":1}\n")
+	testing.expect(t, pump(&loop, proc(s: ^Seen) -> bool { return len(s.lines) == 1 }, &seen), "the client is served")
+	testing.expect(t, strings.has_prefix(read_text(c), `{"id":1,"result":{"ok":true}}`))
+	sync.sema_post(&held_release, HELD_CLIENTS)
+	client_close(c)
+	stop()
 	host.loop_drain(&loop)
 }
 

@@ -44,7 +44,8 @@ Server :: struct {
 	max_message: int,
 	max_clients: int,
 	next_id:     u64,
-	active:      int,   // clients connected (atomic)
+	active:      int,   // clients with a thread (atomic)
+	client_hold: proc(),   // what a client's thread does first (nil: nothing; a test holds it, as a machine under load does)
 	using sys:   Server_Sys,
 }
 
@@ -129,6 +130,20 @@ client_ids :: proc(allocator := context.temp_allocator) -> []u64 {
 // A wake for the loop: the task runs on_input (the data is not used: the server is a global).
 @(private)
 notify :: proc() { host.post(srv.loop, on_input, nil) }
+
+// May one more client come in? A client's thread is counted until it has seen the client go, and under load it may not have run
+// yet: after many clients that came and went at once, `active` is at the limit with nobody there, and the next client would be
+// sent away. So at the limit only those still there count. (Accept thread. Under srv.mu a client's handle is open: conn_done
+// comes before it closes.)
+@(private)
+room_for_client :: proc() -> bool {
+	if sync.atomic_load(&srv.active) < srv.max_clients { return true }
+	sync.mutex_lock(&srv.mu)
+	defer sync.mutex_unlock(&srv.mu)
+	there := 0
+	for c in srv.conns { if !c.done && client_there(c) { there += 1 } }
+	return there < srv.max_clients
+}
 
 // Counts `c` (its handles set) among the clients and starts its thread.
 @(private)

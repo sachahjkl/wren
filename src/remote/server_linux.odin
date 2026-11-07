@@ -161,7 +161,7 @@ accept_main :: proc(_: ^thread.Thread) {
 			c, err := linux.accept(srv.listen, cast(^linux.Sock_Addr_Un)nil, {.CLOEXEC, .NONBLOCK})
 			if err == .EINTR { continue }
 			if err != .NONE { break }   // EAGAIN: nobody else waits
-			if !same_user(c) || sync.atomic_load(&srv.active) >= srv.max_clients {
+			if !same_user(c) || !room_for_client() {
 				linux.close(c)   // turned away: the client sees the socket close
 				continue
 			}
@@ -179,11 +179,20 @@ start_client :: proc(s: linux.Fd) {
 	conn_start(c)
 }
 
+// The other end of `c` is still open (what it wrote and has not been read counts as there too).
+@(private)
+client_there :: proc(c: ^Conn) -> bool {
+	b: [1]u8
+	n, err := linux.recv(c.sock, b[:], {.PEEK, .DONTWAIT})
+	return n > 0 || err == .EAGAIN || err == .EINTR
+}
+
 @(private)
 client_main :: proc(t: ^thread.Thread) {
 	context = base.process_context()
 	c := (^Conn)(t.data)
-	defer { linux.close(c.sock); conn_done(c) }
+	defer { conn_done(c); linux.close(c.sock) }
+	if srv.client_hold != nil { srv.client_hold() }
 	buf := make([]byte, 64 << 10, base.process_allocator())
 	defer delete(buf, base.process_allocator())
 	pending := make([dynamic]byte, base.process_allocator())
