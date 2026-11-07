@@ -336,6 +336,24 @@ inc_removed_element_without_box :: proc(t: ^testing.T) {
 		testing.expectf(t, d.l.last_pass == .Incremental || d.l.inc.fallback == "too much changed", "%s: %v (%s)", s, d.l.last_pass, d.l.inc.fallback)
 	}
 }
+// A state restyle that replaced the record of one root, then gave up on another (a counter is reached): the full pass after
+// it compares with the styles the restyle left. The box of the first root is laid out again, and its transitions start
+// from what it had before (`WREN_DEMOS_SEED=853`, one run in three: which root came first was a map's order).
+@(test)
+inc_state_restyle_given_up :: proc(t: ^testing.T) {
+	d := demo_load(`<style>.b { display: inline-block; padding: 8px 16px; transition: padding 300ms } .b:hover { padding: 8px 28px }
+ol { counter-reset: n } ol:hover { counter-reset: n 3 } li { counter-increment: n }</style>
+<p><span class=b id=b>x</span></p><div><div><ol id=o><li>a</li></ol></div></div>` + FILLER_BLOCKS)
+	defer demo_unload(d)
+	d.state.hover = dom.find_by_id(d.doc, "o")
+	demo_frame(d, "")
+	partial := d.partial
+	d.state.hover = dom.find_by_id(d.doc, "b")
+	demo_frame(d, "")
+	testing.expect_value(t, d.partial, partial)   // (it did give up)
+	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
+	testing.expect_value(t, style.timeline_running(d.tl), 2)   // padding-left and padding-right
+}
 // The document as markup (shadow roots as declarative templates), for WREN_DEMOS_TRACE.
 @(private = "file")
 dump_html :: proc(d: ^dom.Document, h: base.Handle, sb: ^strings.Builder) {

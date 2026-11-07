@@ -200,7 +200,7 @@ timeline_destroy :: proc(tl: ^Timeline, s: ^Styled = nil) {
 // Cancels everything (navigation, settings that turn animations off) without events.
 timeline_reset :: proc(tl: ^Timeline, s: ^Styled) {
 	if s != nil {
-		for h in tl.overlays { journal_add(s, h, .Box) }   // back to their cascaded values, whatever was animated
+		for h in overlay_handles(tl) { journal_add(s, h, .Box) }   // back to their cascaded values, whatever was animated
 		restore_overlays(tl, s)
 	}
 	for _, ea in tl.elements { element_free(tl, ea) }
@@ -306,6 +306,9 @@ timeline_restyled :: proc(tl: ^Timeline, doc: ^dom.Document, old, s: ^Styled, wa
 	s.track_changes = true
 	if !s.motion && len(tl.elements) == 0 && len(tl.overlays) == 0 { return }   // nothing moves: no walk
 	tl.dirty, tl.order_dirty = true, true
+	// what partial restyles replaced in `old` before they handed over to this pass: their change is still to be heard
+	before := make(map[base.Handle]^Computed, context.temp_allocator)
+	if old != nil { for ch in old.changes { if ch.node not_in before { before[ch.node] = ch.old } } }
 	seen := make(map[base.Handle]bool, context.temp_allocator)
 	Frame :: struct { h: base.Handle, hidden: bool }
 	stack := make([dynamic]Frame, context.temp_allocator)
@@ -322,7 +325,7 @@ timeline_restyled :: proc(tl: ^Timeline, doc: ^dom.Document, old, s: ^Styled, wa
 		if ea != nil || (!hidden && (has_transitions(c) || has_animations(c))) {
 			old_eff: ^Computed
 			if old != nil {
-				if oc := style_of(old, f.h); oc != nil && !hidden_in(old, doc, f.h) { old_eff = oc }
+				if oc := before[f.h] or_else style_of(old, f.h); oc != nil && !hidden_in(old, doc, f.h, before) { old_eff = oc }
 			}
 			update_element(tl, doc, s, f.h, old_eff, c, hidden)
 			seen[f.h] = true
@@ -331,6 +334,7 @@ timeline_restyled :: proc(tl: ^Timeline, doc: ^dom.Document, old, s: ^Styled, wa
 	}
 	gone := make([dynamic]base.Handle, context.temp_allocator)
 	for h in tl.elements { if h not_in seen { append(&gone, h) } }
+	slice.sort(gone[:])
 	for h in gone { drop_element(tl, doc, h) }
 }
 
@@ -352,6 +356,7 @@ timeline_restyled_partial :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled,
 			// its descendants stop being rendered: their animations stop too
 			inside := make([dynamic]base.Handle, context.temp_allocator)
 			for h in tl.elements { if h != ch.node && is_inside(doc, h, ch.node) { append(&inside, h) } }
+			slice.sort(inside[:])
 			for h in inside { drop_element(tl, doc, h) }
 		}
 	}
@@ -365,6 +370,7 @@ timeline_restyled_dom :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wal
 	if s.removed_any && len(tl.elements) > 0 {
 		gone := make([dynamic]base.Handle, context.temp_allocator)
 		for h in tl.elements { if !connected(doc, h) || style_of(s, h) == nil { append(&gone, h) } }
+		slice.sort(gone[:])
 		for h in gone { drop_element(tl, doc, h) }
 	}
 	s.removed_any = false
@@ -402,13 +408,13 @@ is_inside :: proc(doc: ^dom.Document, h, ancestor: base.Handle) -> bool {
 	return false
 }
 
-// `h` or an ancestor has display: none in `s` (cascaded values).
+// `h` or an ancestor has display: none in `s` (cascaded values), or in the record of `before` that stands for its own.
 @(private)
-hidden_in :: proc(s: ^Styled, doc: ^dom.Document, h: base.Handle) -> bool {
+hidden_in :: proc(s: ^Styled, doc: ^dom.Document, h: base.Handle, before: map[base.Handle]^Computed = nil) -> bool {
 	for cur := h; cur != base.NIL_HANDLE; {
 		n := dom.get(doc, cur)
 		if n == nil || n.kind != .Element { return false }
-		if cs := base_style_of(s, cur); cs != nil && cs.display == .None { return true }
+		if cs := before[cur] or_else base_style_of(s, cur); cs != nil && cs.display == .None { return true }
 		cur = n.parent
 	}
 	return false
@@ -862,7 +868,8 @@ timeline_tick :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wall_ms: f6
 	next := -1.0
 	want :: proc(next: ^f64, ms: f64) { if next^ < 0 || ms < next^ { next^ = max(ms, 0) } }
 	finished := make([dynamic]^Transition, context.temp_allocator)
-	for _, ea in tl.elements {
+	if tl.order_dirty { sort_order(tl, doc) }   // (the events reach the page in this order: a map's comes from addresses)
+	for ea in tl.order {
 		for tr in ea.transitions {
 			phase, eased := transition_progress(tr, now)
 			if phase != .Before && !tr.start_sent {
@@ -1176,7 +1183,7 @@ sort_order :: proc(tl: ^Timeline, doc: ^dom.Document) {
 	}
 	slice.sort_by(keyed, proc(a, b: Keyed) -> bool {
 		for i in 0 ..< min(len(a.path), len(b.path)) { if a.path[i] != b.path[i] { return a.path[i] < b.path[i] } }
-		return len(a.path) < len(b.path)
+		return len(a.path) != len(b.path) ? len(a.path) < len(b.path) : u64(a.ea.node) < u64(b.ea.node)   // (nodes that are gone have one path)
 	})
 	for k, i in keyed { tl.order[i] = k.ea }
 	tl.order_dirty = false
@@ -1261,7 +1268,8 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 	stale := make([dynamic]base.Handle, context.temp_allocator)
 	// for the layout journal: what the animated values (and those going back to their cascaded values) may change
 	level := props_level(ps_union(props, tl.last_props))
-	for h, ov in tl.overlays {
+	for h in overlay_handles(tl) {
+		ov := tl.overlays[h]
 		if ov.tick != tl.tick {
 			append(&stale, h)
 			crossed := ov.sig != structure_sig(style_of(s, h))
@@ -1282,6 +1290,14 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 	s.animated = ps_union(props, tl.last_props)
 	tl.last_props = props
 	return
+}
+
+// The elements with an overlay, by handle: the journal says the same in every run (a map's order comes from addresses).
+@(private)
+overlay_handles :: proc(tl: ^Timeline) -> []base.Handle {
+	hs, _ := slice.map_keys(tl.overlays, context.temp_allocator)
+	slice.sort(hs)
+	return hs
 }
 
 // ::before / ::after take the animated inherited values of their element.
