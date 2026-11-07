@@ -377,7 +377,7 @@ hud_frame_end :: proc(app: ^App) {
 	if app.phase_clock.on { hud_sample(app, now) }
 	// what to measure from the next frame on
 	render.set_gpu_timing(&app.r, hud_wants_gpu() || prof_on())
-	wasm.guest_timing(h.cfg.wasm_timing && h.cfg.bar_visible)
+	wasm.guest_timing(h.cfg.wasm_timing && h.cfg.bar_visible || base.test_world.on)   // (a measure reads Guest at the load event)
 	if app.phase_clock.on && !h.settle_skip && (h.nums.at_ms == 0 || now - h.nums.at_ms >= h.cfg.refresh_ms) { hud_refresh(app, now) }
 	hud_title(app, now)
 	h.settle_skip = false

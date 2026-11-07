@@ -35,6 +35,7 @@ import "wb:host"
 import "wb:html"
 import "wb:http"
 import "wb:url"
+import "wb:wasm"
 
 Script_Kind :: enum u8 { Classic, Module, Import_Map }
 
@@ -182,6 +183,8 @@ Script_Timing :: struct {
 	load_end_ms:   f64,   // its listeners returned
 	paint_ms:      f64,   // the shell painted it for the first time
 	contentful_ms: f64,   // ... with something to see: the first text, image or control
+	load_cycles:   u64,   // the thread's processor time when load fired (base.thread_cycles)
+	load_guest_ns: i64,   // ... and its time in the engine (wasm.guest_time: 0 unless measured)
 	scripts_run:   int,
 }
 
@@ -978,6 +981,8 @@ the_end :: proc(p: ^Page) -> bool {
 		doc_phase_set(p, .Complete)
 		if p.closed { return true }
 		s.timing.load_ms = now_ms(p)
+		s.timing.load_cycles = base.thread_cycles()
+		s.timing.load_guest_ns, _ = wasm.guest_time()
 		if frame_navigable_of(p) == nil { base.span_mark("load") }
 		fire_window_event(p, dom.Event{type = "load"})
 		if frame_navigable_of(p) == nil { js_census_at_load(p) }   // (WREN_JS_MEMPROF: js_profile.odin)

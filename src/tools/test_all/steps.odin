@@ -269,11 +269,13 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 		actions = slice_of(tool_build("src/engine/jsrt/judge", exe("build/judge")), Command{argv = strs(exe("build/judge"), "capi")}), needs = COMMON_NEEDS})
 	// (the pipe server is one per process, so its tests run one at a time; the client's tests link the image encoder)
 	unit(&t, "unit tests: remote (protocol, pipe server: requests, answers, limits, vanishing clients, stopping with clients connected)", "src/remote", exe("build/remote_test"), {ONE_THREAD, WB})
+	unit(&t, "unit tests: measure (src\\tools\\wrentool\\measure: settled, visually ready, the noise floor, what counts as a gain)", "src/tools/wrentool/measure", exe("build/measure_test"), {WB})
 	unit(&t, "unit tests: remote api (the channel and the processes of wb:remote/api: a call through the channel and back, a process told again by its creation time)", "src/remote/api", exe("build/remote_api_test"), {ONE_THREAD, WB})
 	unit(&t, "unit tests: remote client (wren ctl: options, help, picture diff)", "src/remote/client", exe("build/remote_client_test"), {ONE_THREAD, WB})
 
 	e2e_step(&t, "a frame held through a navigation stands while its page makes style passes (src\\tools\\e2e\\held_styles.odin: what crashed in background_has_url; freed memory poisoned)", "held_styles")
 	e2e_step(&t, "a font on its way holds its text and not the page (src\\tools\\e2e\\font_first_paint.odin)", "font_first_paint")
+	e2e_step(&t, "what wrentool replay stands on: any name to a recording, the test world, a load recorded (src\\tools\\e2e\\replay_bench.odin)", "replay_bench")
 	e2e_step(&t, "a navigation that ends with no document gives the old page back, and a held page goes in the page phase (src\\tools\\e2e\\tab_navigation.odin: Stop, a stopped traversal, a download, one unload per document, each window's wake)", "tab_navigation")
 	// (what only pages of their own saw: a flag of a freed block read as a plain value)
 	page_tests := odin_test("src/page", exe("build/page_poison_test"), {TOOLKIT, WB, POISON})

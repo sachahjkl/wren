@@ -7,6 +7,7 @@ import "core:crypto"
 import "core:crypto/hash"
 import "core:crypto/hmac"
 import "core:crypto/sha2"
+import "wb:base"
 
 Digest :: [32]u8
 
@@ -29,6 +30,7 @@ sha256 :: proc(parts: ..[]byte, key: []byte = nil) -> (out: Digest, ok: bool) {
 
 @(private)
 random_fill :: proc(out: []byte) -> bool {
+	if base.test_world.on { base.test_world_random(out); return true }
 	when !crypto.HAS_RAND_BYTES { return false }
 	crypto.rand_bytes(out)
 	return true

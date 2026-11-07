@@ -9,6 +9,7 @@ import "core:encoding/json"
 import "core:fmt"
 import "core:mem"
 import "core:slice"
+import "core:sync"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:platform"
@@ -705,7 +706,8 @@ control_network :: proc(t: ^Tab, clear_after := false, allocator := context.temp
 	if t.page != nil && t.page.scripts != nil {
 		tm := &t.page.scripts.timing
 		mark :: proc(ms, t0: f64) -> f64 { return ms > 0 ? ms - t0 : 0 }
-		r.doc = {mark(tm.parsed_ms, t.net.t0_ms), mark(tm.dcl_ms, t.net.t0_ms), mark(tm.load_ms, t.net.t0_ms), mark(tm.paint_ms, t.net.t0_ms), mark(tm.contentful_ms, t.net.t0_ms)}
+		r.doc = {mark(tm.parsed_ms, t.net.t0_ms), mark(tm.dcl_ms, t.net.t0_ms), mark(tm.load_ms, t.net.t0_ms), mark(tm.paint_ms, t.net.t0_ms), mark(tm.contentful_ms, t.net.t0_ms), 0, 0}
+		if tm.load_cycles > 0 { r.doc.load_cycles, r.doc.load_guest = f64(tm.load_cycles - t.net.t0_cycles), f64(tm.load_guest_ns - t.net.t0_guest_ns) / 1e6 }
 	}
 	for en, i in t.net.entries {
 		r.requests[i] = {
@@ -772,6 +774,7 @@ control_stats_all :: proc(app: ^App, allocator := context.temp_allocator) -> api
 	st.prefs_cache_applied, st.prefs_downloads_applied = int(app.prefs_apply_counts[.Http_Cache]), int(app.prefs_apply_counts[.Downloads])
 	if t := current_tab(app); t != nil && t.page != nil { st.layout_items = len(t.layout.items) }
 	st.cpu_time_ms, st.cpu_user_ms, st.cpu_kernel_ms = process_cpu_ms()
+	st.window_thread = sync.current_thread_id()
 	st.js_first_realm_ms = page.js_first_realm_ms()
 	pc := process_counters()
 	st.threads, st.handles, st.gdi_objects, st.user_objects = process_thread_count(), int(pc.handles), int(pc.gdi), int(pc.user)
@@ -973,6 +976,15 @@ control_timeline_start :: proc(app: ^App, scale: f64, most: int, page_only := fa
 }
 
 control_timeline_state :: proc() -> (recording: bool, frames: int) { return the_app.remote.tl.on, len(the_app.remote.tl.frames) }
+
+// It ends: its frames to `file`, as they are (timeline_write_frames).
+control_timeline_frames :: proc(app: ^App, file: string) -> (why: string) {
+	tl := &app.remote.tl
+	timeline_end(app)
+	why = timeline_write_frames(tl, file)
+	timeline_free(tl)
+	return
+}
 
 // It ends: its pictures to `dir`. `document`: the timeline.json written there; `why`: what went wrong, or "".
 control_timeline_stop :: proc(app: ^App, dir: string, cols: int, all: bool) -> (document, why: string) {

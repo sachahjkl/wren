@@ -145,7 +145,7 @@ web_init :: proc(p: ^Page, live := true) {
 	}
 	w.visible = true
 	w.origin_ns = host.now_ns(p.loop)
-	w.origin_unix_ms = f64(time.time_to_unix_nano(time.now())) / 1e6
+	w.origin_unix_ms = base.test_world.on ? base.test_world_now_ms() : f64(time.time_to_unix_nano(time.now())) / 1e6
 	w.session = &w.own_session
 	session_push(w.session, p.env.location.href, w.id, max_entries = p.settings.web.history_max_entries)
 	if live { live_pages[w.id] = p }
@@ -240,6 +240,11 @@ clone_heap :: proc(s: string) -> string {
 // Milliseconds on the page's performance timeline (performance.now()).
 page_now_ms :: proc(p: ^Page) -> f64 {
 	return f64(host.now_ns(p.loop) - p.web.origin_ns) / 1e6
+}
+
+// What a script reads: the loop's clock, or the test world's (base/test_world.odin), which goes by its reads.
+page_script_now_ms :: proc(p: ^Page) -> f64 {
+	return base.test_world.on ? base.test_world_now_ms() - p.web.origin_unix_ms : page_now_ms(p)
 }
 
 ////////////////////////////////

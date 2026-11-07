@@ -149,6 +149,8 @@ Request :: struct {
 	delayed:  [dynamic]Delayed,   // events held back by the link, in order
 	timer:    base.Handle,       // the timer that starts the request or delivers the next delayed event
 	timer_owner: ^Owner,
+	recorded_head: string,          // record.odin
+	recorded_body: [dynamic]byte,
 	begin_pending: bool,         // the timer starts the request (its latency and its upload time)
 }
 
@@ -514,6 +516,7 @@ release :: proc(c: ^Client, h: base.Handle) -> bool {
 	delete(r.body)
 	if r.timer != base.NIL_HANDLE { host.clear_timer(c.loop, r.timer); free(r.timer_owner, heap()) }
 	for &d in r.delayed { free_event(&d.ev) }
+	record_forget(&r)
 	delete(r.delayed)
 	if r.scope != nil { base.run_cleanup(r.scope, r.cleanup) }
 	if freed_slot { pump(c) }
@@ -580,6 +583,7 @@ handle_event :: proc(c: ^Client, ev: ^Event) {
 process_event :: proc(c: ^Client, ev: ^Event) {
 	r := base.pool_get(&c.requests, ev.req)
 	if r == nil { return }
+	if recording() { record_event(r, ev) }
 	switch ev.kind {
 	case .Headers:
 		r.status = ev.status
