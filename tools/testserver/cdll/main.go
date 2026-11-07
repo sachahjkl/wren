@@ -9,6 +9,8 @@ import "C"
 import (
 	"io"
 	"log"
+	"net"
+	"strings"
 	"unsafe"
 
 	"wb_testserver"
@@ -45,5 +47,48 @@ func WrenTestServerCA(out *C.char, outBytes C.int) C.int {
 	copy(unsafe.Slice((*byte)(unsafe.Pointer(out)), int(outBytes)), pem)
 	return C.int(len(pem))
 }
+
+
+// A recording replayed (replay.go), on a free port: the port, or 0 and `why`. The one before, if any, goes.
+//
+//export WrenTestServerReplay
+func WrenTestServerReplay(dir *C.char, why *C.char, whyBytes C.int) C.int {
+	if replayListener != nil {
+		replayListener.Close()
+	}
+	r, err := testserver.LoadReplay(C.GoString(dir))
+	var port int
+	if err == nil {
+		port, replayListener, err = r.Serve()
+	}
+	if err != nil {
+		text := unsafe.Slice((*byte)(unsafe.Pointer(why)), int(whyBytes))
+		text[copy(text[:len(text)-1], err.Error())] = 0
+		return 0
+	}
+	replay = r
+	return C.int(port)
+}
+
+// The next load is asked as the first was.
+//
+//export WrenTestServerReplayRewind
+func WrenTestServerReplayRewind() { replay.Rewind() }
+
+// How the asks since the rewind were answered (exact, near, unknown), and the unknown ones into `out`, one a line: their length, cut to what fits.
+//
+//export WrenTestServerReplayCounts
+func WrenTestServerReplayCounts(counts *C.int, out *C.char, outBytes C.int) C.int {
+	got, missed := replay.Counts()
+	for i, n := range got {
+		unsafe.Slice(counts, len(got))[i] = C.int(n)
+	}
+	return C.int(copy(unsafe.Slice((*byte)(unsafe.Pointer(out)), int(outBytes)), strings.Join(missed, "\n")))
+}
+
+var (
+	replay         *testserver.Replay
+	replayListener net.Listener
+)
 
 func main() {}

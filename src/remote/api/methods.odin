@@ -665,7 +665,8 @@ Net_Request :: struct {
 }
 
 // When the page got there, in ms from its first request (0: not yet).
-Doc_Marks :: struct { interactive, dcl, load, paint, contentful: f64 }
+// load_cycles: the window thread's processor time from the first request to the load event (base.thread_cycles); load_guest: its ms in the engine, in a test world.
+Doc_Marks :: struct { interactive, dcl, load, paint, contentful, load_cycles, load_guest: f64 }
 
 // What a tab's page fetched: `bytes` transferred in all.
 Network :: struct {
@@ -681,7 +682,7 @@ network :: proc(s: ^Session, clear := false, loc := #caller_location) -> (r: Net
 	o := request(s, "Wren.network", &p) or_return
 	a, _ := remote.param_array(o, "requests")
 	r.bytes = i_of(o, "bytes")
-	r.doc = {f_of(o, "interactive"), f_of(o, "dcl"), f_of(o, "load"), f_of(o, "paint"), f_of(o, "contentful")}
+	r.doc = {f_of(o, "interactive"), f_of(o, "dcl"), f_of(o, "load"), f_of(o, "paint"), f_of(o, "contentful"), f_of(o, "loadCycles"), f_of(o, "loadGuest")}
 	r.requests = make([]Net_Request, len(a), context.temp_allocator)
 	for item, i in a {
 		x, _ := item.(json.Object)
@@ -857,6 +858,7 @@ Stats :: struct {
 	layout_items:        int,
 	// the process, and what a reset takes away
 	cpu_time_ms, cpu_user_ms, cpu_kernel_ms: f64,
+	window_thread: int,   // the system's id of the thread that runs the loop
 	js_first_realm_ms:   f64,      // what the process's first realm held its thread for (0: none yet)
 	threads, handles, gdi_objects, user_objects: int,
 	cookies, storage_sites, cache_entries, history_visits, closed_tabs, downloads_active, checkpoints: int,
@@ -985,7 +987,7 @@ stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc :=
 		variable_refresh = b_of(o, "variableRefresh"), frame_cap_strict = b_of(o, "frameCapStrict"), frame_states = s_of(o, "frameStates"), frame_state = s_of(o, "frameState"),
 		resize_echoes_skipped = i_of(o, "resizeEchoesSkipped"), resize_frame_causes = s_of(o, "resizeFrameCauses"),
 		prefs_cache_applied = i_of(o, "prefsCacheApplied"), prefs_downloads_applied = i_of(o, "prefsDownloadsApplied"), layout_items = i_of(o, "layoutItems"),
-		cpu_time_ms = f_of(o, "cpuTimeMs"), cpu_user_ms = f_of(o, "cpuUserMs"), cpu_kernel_ms = f_of(o, "cpuKernelMs"), js_first_realm_ms = f_of(o, "jsFirstRealmMs"),
+		cpu_time_ms = f_of(o, "cpuTimeMs"), cpu_user_ms = f_of(o, "cpuUserMs"), cpu_kernel_ms = f_of(o, "cpuKernelMs"), window_thread = int(f_of(o, "windowThread")), js_first_realm_ms = f_of(o, "jsFirstRealmMs"),
 		threads = i_of(o, "threads"), handles = i_of(o, "handles"), gdi_objects = i_of(o, "gdiObjects"), user_objects = i_of(o, "userObjects"),
 		cookies = i_of(o, "cookies"), storage_sites = i_of(o, "storageSites"), cache_entries = i_of(o, "cacheEntries"), history_visits = i_of(o, "historyVisits"), closed_tabs = i_of(o, "closedTabs"),
 		downloads_active = i_of(o, "downloadsActive"), checkpoints = i_of(o, "checkpoints"),
@@ -1457,6 +1459,15 @@ timeline_stop :: proc(s: ^Session, folder: string, cols: int, all := false, loc 
 	p_bool(&p, "all", all)
 	o := request(s, "Wren.timeline", &p) or_return
 	return {i_of(o, "count"), i_of(o, "chrome"), i_of(o, "aba"), s_of(o, "sheet")}, .None
+}
+
+// It ends: its frames as they are to `file` (control_timeline_frames).
+timeline_frames :: proc(s: ^Session, file: string, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_str(&p, "action", "frames")
+	p_str(&p, "file", file)
+	_, e := request(s, "Wren.timeline", &p)
+	return e
 }
 
 timeline_status :: proc(s: ^Session, loc := #caller_location) -> Error {

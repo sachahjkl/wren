@@ -1535,6 +1535,8 @@ main :: proc() {
 	host.thread_raise_interface()   // above the browser's background threads (host.Thread_Priority)
 	host.thread_name_self("wren-window")   // (what profilers and debuggers show)
 	base.spans_start()   // (WREN_SPANS)
+	base.test_world_from_env()   // (WREN_TEST_WORLD)
+	net.record_from_env()   // (WREN_TEST_RECORD)
 	trace_start()   // prof.odin: Tracy, ETW, when built in
 	prof_mark(.Main)
 	// (UTF-8 from the UTF-16 command line: os.args is the C runtime's ANSI)

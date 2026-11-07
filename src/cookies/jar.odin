@@ -55,7 +55,7 @@ set_value :: proc(j: ^Jar, name, domain, path, value: string) -> bool {
 }
 count :: proc(j: ^Jar) -> int { return len(j.cookies) }
 
-now_ms :: proc() -> i64 { return time.to_unix_nanoseconds(time.now()) / 1_000_000 }
+now_ms :: proc() -> i64 { return time.to_unix_nanoseconds(base.wall_now()) / 1_000_000 }
 
 Store_Result :: enum u8 {
 	Stored,

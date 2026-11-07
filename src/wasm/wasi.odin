@@ -16,6 +16,7 @@ import "core:time"
 import "wb:base"
 
 WASI_MODULE :: "wasi_snapshot_preview1"
+@(private = "file") MS_TO_NS :: 1e6
 
 // Where a guest's standard output (fd 1) and error (fd 2) go. Called on the instance's own thread.
 Wasi_Output_Proc :: #type proc(inst: ^Instance, fd: i32, text: []u8)
@@ -94,7 +95,7 @@ wasi_clock_time_get :: proc "c" (env: rawptr, caller: Caller, a: [^]Raw, _: uint
 	if !ok { return wasi_ret(a, WASI_EFAULT) }
 	ns: i64
 	if id == 0 {
-		ns = time.time_to_unix_nano(time.now())
+		ns = base.test_world.on ? i64(base.test_world_now_ms() * MS_TO_NS) : time.time_to_unix_nano(time.now())
 	} else {
 		ns = i64(time.tick_now()._nsec)
 	}

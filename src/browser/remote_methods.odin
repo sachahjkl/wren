@@ -1418,7 +1418,7 @@ stats_json :: proc(b: ^strings.Builder, s: api.Stats) {
 	j_int(b, "prefsCacheApplied", i64(s.prefs_cache_applied)); j_int(b, "prefsDownloadsApplied", i64(s.prefs_downloads_applied))
 	if s.layout_items > 0 { j_int(b, "layoutItems", i64(s.layout_items)) }
 	// the process and the state a reset empties (so that a test can see both the cost of what it did and that a reset worked)
-	j_num(b, "cpuTimeMs", s.cpu_time_ms); j_num(b, "cpuUserMs", s.cpu_user_ms); j_num(b, "cpuKernelMs", s.cpu_kernel_ms)
+	j_num(b, "cpuTimeMs", s.cpu_time_ms); j_num(b, "cpuUserMs", s.cpu_user_ms); j_num(b, "cpuKernelMs", s.cpu_kernel_ms); j_num(b, "windowThread", f64(s.window_thread))
 	j_num(b, "jsFirstRealmMs", s.js_first_realm_ms)
 	j_int(b, "threads", i64(s.threads)); j_int(b, "handles", i64(s.handles)); j_int(b, "gdiObjects", i64(s.gdi_objects)); j_int(b, "userObjects", i64(s.user_objects))
 	j_int(b, "cookies", i64(s.cookies)); j_int(b, "storageSites", i64(s.storage_sites)); j_int(b, "cacheEntries", i64(s.cache_entries))
@@ -1455,7 +1455,7 @@ m_network :: proc(app: ^App, c: ^Call) -> Reply {
 	b := builder()
 	j_begin(&b)
 	j_int(&b, "bytes", i64(x.bytes))
-	j_num(&b, "interactive", x.doc.interactive); j_num(&b, "dcl", x.doc.dcl); j_num(&b, "load", x.doc.load); j_num(&b, "paint", x.doc.paint); j_num(&b, "contentful", x.doc.contentful)
+	j_num(&b, "interactive", x.doc.interactive); j_num(&b, "dcl", x.doc.dcl); j_num(&b, "load", x.doc.load); j_num(&b, "paint", x.doc.paint); j_num(&b, "contentful", x.doc.contentful); j_num(&b, "loadCycles", x.doc.load_cycles); j_num(&b, "loadGuest", x.doc.load_guest)
 	j_key(&b, "requests"); j_begin(&b, '[')
 	for en in x.requests {
 		j_key(&b, ""); j_begin(&b)

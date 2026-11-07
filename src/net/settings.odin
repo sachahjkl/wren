@@ -60,7 +60,7 @@ PREFS := [?]config.Def{
 	{name = "network.pool.max_idle_per_host", kind = .Int, default = {i = 8}, bounded = true, min = 0, max = 256, restart = true,
 		description = "Built-in stack: idle connections kept per host for reuse."},
 	{name = "network.hosts", kind = .String, default = {s = ""}, restart = true,
-		description = "Built-in stack: names resolved here, never asked of the system: \"name=address\" pairs separated by spaces or commas; a name stands for its subdomains too (web-platform.test=127.0.0.1: www1.web-platform.test as well). Empty: none."},
+		description = "Built-in stack: names resolved here, never asked of the system: \"name=address\" pairs separated by spaces or commas; a name stands for its subdomains too (web-platform.test=127.0.0.1: www1.web-platform.test as well). *=address:port sends every connection there, whatever its name and port (wrentool replay). Empty: none."},
 	{name = "network.loopback_only", kind = .Bool, default = {b = false}, restart = true,
 		description = "Built-in stack: connect only to this machine (loopback addresses, localhost and the names of network.hosts); anything else fails at once, named on the standard error. What the tests run with (the WREN_NETWORK_LOOPBACK_ONLY=1 environment variable turns it on): nothing tested reaches the Internet."},
 	{name = "network.max_connections_per_host", kind = .Int, default = {i = 6}, bounded = true, min = 1, max = 256,

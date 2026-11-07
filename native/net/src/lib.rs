@@ -86,6 +86,7 @@ pub(crate) struct Settings {
     pub proxy_system: bool,
     pub loopback_only: bool,
     pub hosts: Vec<(String, std::net::IpAddr)>,
+    pub every_host: Option<std::net::SocketAddr>, // network.hosts "* address:port": where every connection goes, whatever its name and port
 }
 
 fn ms(v: u32) -> Option<Duration> {
@@ -116,6 +117,7 @@ impl Settings {
             proxy_system: c.proxy_system != 0,
             loopback_only: c.loopback_only != 0,
             hosts: parse_hosts(&String::from_utf8_lossy(bytes(c.hosts, c.hosts_len))),
+            every_host: parse_every_host(&String::from_utf8_lossy(bytes(c.hosts, c.hosts_len))),
         }
     }
 }
@@ -130,6 +132,11 @@ pub(crate) fn parse_hosts(text: &str) -> Vec<(String, std::net::IpAddr)> {
             Some((name, ip))
         })
         .collect()
+}
+
+/// The "* address:port" line of network.hosts, if there is one.
+pub(crate) fn parse_every_host(text: &str) -> Option<std::net::SocketAddr> {
+    text.lines().find_map(|l| l.trim().strip_prefix("* ")?.trim().parse().ok())
 }
 
 /// One event as the library keeps it until the host took it.

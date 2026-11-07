@@ -15,6 +15,7 @@ import "core:fmt"
 import "core:slice"
 import "core:strings"
 import "wb:base"
+import "wb:wasm"
 import "wb:config"
 import "wb:fetch"
 import "wb:host"
@@ -98,6 +99,8 @@ Net_Log :: struct {
 	body_bytes: i64,             // kept in the bodies of the entries
 	next_seq: int,
 	t0_ms:    f64,               // the loop's clock when the first request of the navigation began
+	t0_cycles: u64,              // ... the window thread's processor time then (base.thread_cycles)
+	t0_guest_ns: i64,            // ... and its time in the engine
 	version:  u64,               // bumped whenever an entry changed (what the view's rows depend on)
 	pending:  int,               // requests that have not ended (the status bar's count)
 	profile:  string,            // owned: the network speed of this tab (a profile's id); "" = the default (the preference)
@@ -276,7 +279,10 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 		if app.net_owner == nil { app.net_owner = make(map[u64]u64) }
 		app.net_owner[ev.id] = t.id
 		net_trim(app, &t.net)
-		if len(t.net.entries) == 0 { t.net.t0_ms = now_ms }
+		if len(t.net.entries) == 0 {
+			t.net.t0_ms, t.net.t0_cycles = now_ms, base.thread_cycles()
+			t.net.t0_guest_ns, _ = wasm.guest_time()
+		}
 		t.net.next_seq += 1
 		t.net.pending += 1
 		append(&t.net.entries, Net_Entry{

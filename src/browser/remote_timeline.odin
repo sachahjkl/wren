@@ -9,6 +9,7 @@ package browser
 // frame, and a frame whose copy is not ready when the next one ends is missed (counted in `skipped`).
 
 import "core:fmt"
+import "core:mem"
 import "core:os"
 import "core:strings"
 import "core:time"
@@ -125,6 +126,11 @@ m_timeline :: proc(app: ^App, c: ^Call) -> Reply {
 	case "status":
 		on, frames := control_timeline_state()
 		return done(fmt.tprintf(`{{"recording":%v,"frames":%d}}`, on, frames))
+	case "frames":
+		file, ok := remote.param_string(c.params, "file")
+		if !ok { return fail(remote.ERR_PARAMS, "\"file\": where the frames go") }
+		if why := control_timeline_frames(app, file); why != "" { return fail(remote.ERR_FAILED, why) }
+		return done(`{}`)
 	case "stop":
 		dir, ok := remote.param_string(c.params, "dir")
 		if !ok { return fail(remote.ERR_PARAMS, "\"dir\": the folder for the pictures") }
@@ -148,6 +154,20 @@ pixels_differing :: proc(a, b: []u8) -> int {
 		if abs(int(a[i]) - int(b[i])) > 8 || abs(int(a[i + 1]) - int(b[i + 1])) > 8 || abs(int(a[i + 2]) - int(b[i + 2])) > 8 { n += 1 }
 	}
 	return n
+}
+
+// What a tool reads: the frames one after the other, each its time in ms (f64), its width and height (i32), its RGBA pixels.
+timeline_write_frames :: proc(tl: ^Timeline, file: string) -> (why: string) {
+	b: [dynamic]u8
+	defer delete(b)
+	for &f in tl.frames {
+		size := [2]i32{i32(f.w), i32(f.h)}
+		append(&b, ..mem.ptr_to_bytes(&f.ms))
+		append(&b, ..mem.ptr_to_bytes(&size))
+		append(&b, ..f.pixels)
+	}
+	if err := os.write_entire_file(file, b[:]); err != nil { return fmt.tprintf("cannot write %s", file) }
+	return ""
 }
 
 // Writes the frames to `dir`: NNN.png, sheet.png, timeline.json and index.html (a page that shows them big, one at a time or in a strip,

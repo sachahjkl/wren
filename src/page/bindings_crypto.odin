@@ -55,6 +55,7 @@ digest :: proc(a: Digest_Algorithm, data: []byte, out: []byte) -> bool {
 
 random_bytes :: proc(out: []byte) -> bool {
 	if len(out) == 0 { return true }
+	if base.test_world.on { base.test_world_random(out); return true }
 	when !crypto.HAS_RAND_BYTES { return false }
 	crypto.rand_bytes(out)
 	return true

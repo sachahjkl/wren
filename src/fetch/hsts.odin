@@ -42,7 +42,7 @@ hsts_clear :: proc(h: ^Hsts) -> int {
 	return n
 }
 
-now_ms :: proc() -> i64 { return time.to_unix_nanoseconds(time.now()) / 1_000_000 }
+now_ms :: proc() -> i64 { return time.to_unix_nanoseconds(base.wall_now()) / 1_000_000 }
 
 // Processes a Strict-Transport-Security header received over a secure connection from `host`.
 // Returns true when the store changed.

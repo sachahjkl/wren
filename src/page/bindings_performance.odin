@@ -70,7 +70,7 @@ perf_find :: proc(p: ^Page, name: string, type: i32, index: i32) -> ^Perf_Entry 
 ////////////////////////////////
 // Imports
 
-Performance_now :: proc(c: ^Call) -> f64 { return page_now_ms(c.page) }
+Performance_now :: proc(c: ^Call) -> f64 { return page_script_now_ms(c.page) }
 Performance_timeOrigin :: proc(c: ^Call) -> f64 { return c.page.web.origin_unix_ms }
 
 // performance.mark(name, {startTime}): start < 0 or NaN = now.
@@ -78,7 +78,7 @@ Performance_mark :: proc(c: ^Call, name: string, start_time: f64) -> Api_Error {
 	p := c.page
 	if name == "" { return fail(c, .Syntax, "SyntaxError: empty mark name") }
 	t := start_time
-	if math.is_nan(t) || t < 0 { t = page_now_ms(p) }
+	if math.is_nan(t) || t < 0 { t = page_script_now_ms(p) }
 	perf_add(p, Perf_Entry{name = name, kind = .Mark, start = t})
 	return .None
 }
@@ -87,7 +87,7 @@ Performance_mark :: proc(c: ^Call, name: string, start_time: f64) -> Api_Error {
 Performance_measure :: proc(c: ^Call, name: string, start_mark: string, end_mark: string) -> Api_Error {
 	p := c.page
 	if name == "" { return fail(c, .Syntax, "SyntaxError: empty measure name") }
-	start, end := 0.0, page_now_ms(p)
+	start, end := 0.0, page_script_now_ms(p)
 	if start_mark != "" {
 		ok: bool
 		if start, ok = perf_mark_time(p, start_mark); !ok { return fail(c, .Syntax, "SyntaxError: no such mark") }

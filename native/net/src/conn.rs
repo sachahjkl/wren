@@ -235,6 +235,9 @@ pub(crate) async fn resolve(host: &str, port: u16, s: &crate::Settings, info: &m
 }
 
 async fn resolve_any(host: &str, port: u16, s: &crate::Settings, info: &mut ConnInfo) -> Result<Vec<SocketAddr>, NetError> {
+    if let Some(a) = s.every_host {
+        return Ok(vec![a]);
+    }
     if let Ok(ip) = host.parse::<IpAddr>() {
         return Ok(vec![SocketAddr::new(ip, port)]);
     }
@@ -409,6 +412,14 @@ pub(crate) async fn connect(shared: &Shared, uri: &Uri, alpn: Alpn) -> Result<Co
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_host_takes_address_and_port_and_other_lines_stay_names() {
+        let text = "web-platform.test 127.0.0.1\n* 127.0.0.1:4430\n";
+        assert_eq!(crate::parse_every_host(text), Some("127.0.0.1:4430".parse().unwrap()));
+        assert_eq!(crate::parse_every_host("web-platform.test 127.0.0.1\n"), None);
+        assert_eq!(crate::parse_hosts(text).len(), 1);
+    }
 
     #[test]
     fn a_name_and_its_subdomains_take_the_address_of_network_hosts() {

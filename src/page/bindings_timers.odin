@@ -207,7 +207,7 @@ run_animation_frames :: proc(p: ^Page, now_ms: f64) -> int {
 	}
 	if len(p.web.frames) == 0 { return 0 }
 	w := p.web
-	ts := now_ms - f64(w.origin_ns) / 1e6
+	ts := base.test_world.on ? page_script_now_ms(p) : now_ms - f64(w.origin_ns) / 1e6
 	batch := w.frames
 	w.frames = make([dynamic]Frame_Callback)
 	w.running_frames = (^[dynamic]Frame_Callback)(rawptr(&batch))   // (for the loop below: forgotten after it, or gone with the web)

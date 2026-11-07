@@ -30,6 +30,8 @@ foreign import kernel32_threads "system:Kernel32.lib"
 foreign kernel32_threads {
 	GetThreadDescription :: proc(thread: win.HANDLE, description: ^win.wstring) -> i32 ---
 	OpenThread :: proc(access: u32, inherit: win.BOOL, id: u32) -> win.HANDLE ---
+	QueryThreadCycleTime :: proc(thread: win.HANDLE, cycles: ^u64) -> win.BOOL ---
+	GetSystemTimes :: proc(idle, kernel, user: ^win.FILETIME) -> win.BOOL ---
 	LocalFree :: proc(memory: rawptr) -> rawptr ---
 }
 
@@ -80,4 +82,26 @@ qpc_now :: proc() -> i64 {
 	v: win.LARGE_INTEGER
 	win.QueryPerformanceCounter(&v)
 	return i64(v)
+}
+
+// The cycle counter of a thread of another process (base.thread_cycles, read from outside).
+Thread_Reader :: distinct win.HANDLE
+
+thread_reader :: proc(id: int) -> Thread_Reader { return Thread_Reader(OpenThread(THREAD_QUERY_LIMITED, false, u32(id))) }
+thread_reader_ok :: proc(r: Thread_Reader) -> bool { return r != nil }
+thread_reader_close :: proc(r: Thread_Reader) { win.CloseHandle(win.HANDLE(r)) }
+
+thread_read :: proc(r: Thread_Reader) -> u64 {
+	cycles: u64
+	QueryThreadCycleTime(win.HANDLE(r), &cycles)
+	return cycles
+}
+
+// What the machine's processors have spent since it started, and of that on anything but idling (100 ns units, all processors summed).
+machine_times :: proc() -> (busy, total: i64) {
+	as_i64 :: proc(t: win.FILETIME) -> i64 { return i64(t.dwHighDateTime) << 32 | i64(t.dwLowDateTime) }
+	idle, kernel, user: win.FILETIME
+	GetSystemTimes(&idle, &kernel, &user)
+	total = as_i64(kernel) + as_i64(user)   // (kernel holds idle)
+	return total - as_i64(idle), total
 }

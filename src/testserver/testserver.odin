@@ -37,6 +37,10 @@ server: struct {
 	why:   string,
 	reset: proc "c" (),
 	ca:    proc "c" (out: [^]u8, out_bytes: i32) -> i32,
+	library: dynlib.Library,
+	replay: proc "c" (dir: cstring, why: [^]u8, why_bytes: i32) -> i32,
+	replay_rewind: proc "c" (),
+	replay_counts: proc "c" (counts: [^]i32, out: [^]u8, out_bytes: i32) -> i32,
 }
 
 // The repository: a test program is in its build folder (WREN_REPO says otherwise).
@@ -81,6 +85,7 @@ start :: proc() -> (base: int, why: string) {
 			server.why = fmt.aprintf("%s is not the test server %s", path, BUILD_IT, allocator = allocator)
 			break
 		}
+		server.library = library
 		server.reset = auto_cast reset_at
 		server.ca = auto_cast ca_at
 		start_it := cast(proc "c" (base: i32, why: [^]u8, why_bytes: i32) -> i32)start_at
@@ -104,4 +109,35 @@ ca_pem :: proc(allocator := context.allocator) -> string {
 	buf: [CA_PEM_MOST]u8
 	n := server.ca(&buf[0], CA_PEM_MOST)
 	return strings.clone(string(buf[:clamp(int(n), 0, CA_PEM_MOST)]), allocator)
+}
+
+// What the server keeps of a load replayed: the n-th line of what is unknown at most.
+REPLAY_MISSED_BYTES :: 1 << 16
+
+// A recording (wrentool replay; tools/testserver/replay.go) on a port of its own: that port, or 0 and why. After `start`.
+replay_start :: proc(folder: string) -> (port: int, why: string) {
+	sync.guard(&server.lock)
+	if server.state != .Listening { return 0, "the test server is not started" }
+	if server.replay == nil {
+		start_at, has_start := dynlib.symbol_address(server.library, "WrenTestServerReplay")
+		rewind_at, has_rewind := dynlib.symbol_address(server.library, "WrenTestServerReplayRewind")
+		counts_at, has_counts := dynlib.symbol_address(server.library, "WrenTestServerReplayCounts")
+		if !has_start || !has_rewind || !has_counts { return 0, fmt.tprintf("%s has no replay %s", LIBRARY, BUILD_IT) }
+		server.replay, server.replay_rewind, server.replay_counts = auto_cast start_at, auto_cast rewind_at, auto_cast counts_at
+	}
+	reason: [WHY_BYTES]u8
+	got := server.replay(strings.clone_to_cstring(folder, context.temp_allocator), &reason[0], WHY_BYTES)
+	if got == 0 { return 0, strings.clone(string(cstring(&reason[0])), context.temp_allocator) }
+	return int(got), ""
+}
+
+// The next load is asked as the first was.
+replay_rewind :: proc() { server.replay_rewind() }
+
+// How the asks since the rewind were answered, and the unknown ones, one a line.
+replay_counts :: proc(allocator := context.allocator) -> (exact, near, unknown: int, missed: string) {
+	counts: [3]i32
+	text := make([]u8, REPLAY_MISSED_BYTES, allocator)
+	n := server.replay_counts(&counts[0], raw_data(text), REPLAY_MISSED_BYTES)
+	return int(counts[0]), int(counts[1]), int(counts[2]), string(text[:n])
 }
