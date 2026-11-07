@@ -12,6 +12,8 @@ INV_MAX_NEXT :: 64
 ATTR_TESTS_MAX :: 256
 // `:nth-child(n)` with n up to this is read from the edge of a list, as :first-child: past it, from the place of the change.
 EDGE_DEPTH_MAX :: 16
+// `:nth-child(... of S)`, `:nth-of-type()` and the like held one for each S and edge (Inv_Index.nth_of): past them, the walks of the others.
+NTH_OF_MAX :: 64
 // How deep :is() inside :is() is followed for the keys a compound requires.
 COMPOUND_KEYS_DEPTH :: 4
 
@@ -247,6 +249,18 @@ Has_Feat :: struct {
 	empty:    bool,   // the argument reads :empty: a change of text under the anchor may change it
 }
 
+// `:nth-child(An+B of S)`, S read on the element alone (local_reads), and `:nth-of-type(An+B)`, :first-of-type... (S: the type of the
+// element): an element that does not match S has no index among those that do, and changes none (restyle_dom.odin nth_of_changed);
+// whether one matches S changes with its own attributes only (never, for a type).
+Nth_Of :: struct {
+	list:  ^css.Selector_List,   // S; nil: of the type of the element
+	back:  bool,                 // :nth-last-child: counted from the end
+	depth: int,                  // read this far from the edge, in elements that match S (nth_edge_depth); 0: from the place of the change
+	reach: Keyed_Reach,          // what the compound holding it reaches, by the keys it requires
+	total: Reach,                // ... whatever they are: from an element whose keys may have changed
+	reads: map[string]bool,    // the attributes S reads (class, id, those of its attribute selectors)
+}
+
 // An attribute selector and what it reaches (`[class*=x] .y`, a class rewritten with the same tokens: nothing).
 Attr_Test :: struct {
 	simple: ^css.Simple,
@@ -266,11 +280,12 @@ Inv_Index :: struct {
 	attr_tests: map[string][dynamic]Attr_Test,   // ... the attribute selectors one by one: a change that does not flip one's answer reaches nothing through it
 	by_tag:     map[string]Reach,   // for inserted elements: what their tag makes them match beyond themselves
 	keyless:    Reach,              // compounds with no class, id, attribute or tag: any element may match them; what they reach among siblings
-	pos_fwd:    Keyed_Reach,        // :nth-child(), :first-of-type... (index from the start): applied from each sibling
+	pos_fwd:    Keyed_Reach,        // :nth-child() far from the edge, and what nth_of does not hold (index from the start): applied from each sibling
 	edge_first: Keyed_Reach,        // :first-child, :only-child: only what stands first among the siblings can see a change (edges_changed)
 	edge_last:  Keyed_Reach,        // :last-child, :only-child
 	edge_first_depth, edge_last_depth: int,   // ... and :nth-child(3), :nth-last-child(-n + 2): how far from the edge the farthest of them looks (0: the edge)
-	pos_bwd:    Keyed_Reach,        // :nth-last-child(), :last-of-type... (index from the end)
+	pos_bwd:    Keyed_Reach,        // :nth-last-child() likewise (index from the end)
+	nth_of:     [dynamic]Nth_Of,    // :nth-child(... of S), :nth-of-type(), :first-of-type...: one for each S and edge, up to NTH_OF_MAX (past it, in pos_fwd and pos_bwd)
 	empty:      Reach,              // :empty (and :placeholder-shown of a textarea): applied from the parent
 	sib_rel:    Keyed_Reach,        // the element right of a sibling combinator: applied from the next sibling of an insertion or a removal
 	controls:   Reach,              // pseudo-classes answered by the forms model: applied from any element whose attributes change
@@ -303,6 +318,8 @@ inv_free :: proc(ix: ^Inv_Index) {
 	for k in ix.has_attrs { delete(k) }
 	delete(ix.by_class); delete(ix.by_id); delete(ix.by_attr); delete(ix.attr_other); delete(ix.attr_tests); delete(ix.by_tag)
 	keyed_free(&ix.pos_fwd); keyed_free(&ix.pos_bwd); keyed_free(&ix.edge_first); keyed_free(&ix.edge_last); keyed_free(&ix.sib_rel)
+	for &of in ix.nth_of { keyed_free(&of.reach); delete(of.reads) }
+	delete(ix.nth_of)
 	delete(ix.has_classes); delete(ix.has_ids); delete(ix.has_attrs)
 	for &ha in ix.has_anchors {
 		for k in ha.feat.classes { delete(k) }
@@ -450,11 +467,105 @@ analyze_complex :: proc(ix: ^Inv_Index, c: ^css.Complex, outer: Reach, in_has: b
 }
 
 // `:nth-child(1)`, `:nth-last-child(1)`: :first-child and :last-child by another name, and `:nth-child(3)`, `:nth-last-child(-n + 2)` what they
-// are this far from the edge: what stands past that place sees no change, however far it is. 0: another selector.
+// are this far from the edge: what stands past that place sees no change, however far it is (with `of S`, or of a type, in elements that match
+// it: :first-of-type is 1). 0: another selector.
 @(private = "file")
 nth_edge_depth :: proc(s: ^css.Simple) -> int {
-	if (s.pseudo != .Nth_Child && s.pseudo != .Nth_Last_Child) || s.list != nil || s.nth_a > 0 || s.nth_b < 1 || s.nth_b > EDGE_DEPTH_MAX { return 0 }
-	return s.nth_b
+	#partial switch s.pseudo {
+	case .First_Of_Type, .Last_Of_Type: return 1
+	case .Nth_Child, .Nth_Last_Child, .Nth_Of_Type, .Nth_Last_Of_Type:
+		if s.nth_a > 0 || s.nth_b < 1 || s.nth_b > EDGE_DEPTH_MAX { return 0 }
+		return s.nth_b
+	}
+	return 0
+}
+
+// A positional pseudo-class of `comp`: one `of S` with S read on the element alone, or of a type, goes to Inv_Index.nth_of (true: S needs no
+// reach of its own), the others to `edge` when they read near it, else to `pos`.
+@(private = "file")
+positional_add :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total: Reach, edge, pos: ^Keyed_Reach, edge_depth: ^int) -> bool {
+	back := s.pseudo == .Nth_Last_Child || s.pseudo == .Last_Of_Type || s.pseudo == .Nth_Last_Of_Type
+	child := s.pseudo == .Nth_Child || s.pseudo == .Nth_Last_Child
+	if (s.list != nil || !child) && nth_of_add(ix, s.list, back, nth_edge_depth(s), comp, total) { return true }
+	from_edge := s.list == nil && child ? nth_edge_depth(s) : 0
+	edge_depth^ = max(edge_depth^, from_edge)
+	keyed_add(ix, from_edge > 0 ? edge : pos, comp, total)
+	return false
+}
+
+// `list` nil: of the type of the element. False: not held (S reads more than the element, or NTH_OF_MAX were taken).
+@(private = "file")
+nth_of_add :: proc(ix: ^Inv_Index, list: ^css.Selector_List, back: bool, depth: int, comp: css.Compound, total: Reach) -> bool {
+	// (the same S, from the same edge, in many rules: cnn.com repeats `:nth-last-child(1 of .container)` in rule after rule, and has
+	// `[class]:nth-of-type(1)`, `(2)` and `(3)`: one walk, as far as the farthest reads)
+	for &of in ix.nth_of {
+		if of.back != back || (of.list == nil) != (list == nil) || (list != nil && !lists_equal(of.list^, list^)) { continue }
+		keyed_add(ix, &of.reach, comp, total)
+		of.total = reach_union(ix.keys, of.total, total)
+		of.depth = of.depth == 0 || depth == 0 ? 0 : max(of.depth, depth)
+		return true
+	}
+	if len(ix.nth_of) >= NTH_OF_MAX { return false }
+	of := Nth_Of{list = list, back = back, depth = depth, total = total}
+	if list != nil {
+		of.reads = make(map[string]bool)
+		if !local_reads(list^, &of.reads, 0) {
+			delete(of.reads)
+			return false
+		}
+	}
+	keyed_add(ix, &of.reach, comp, total)
+	append(&ix.nth_of, of)
+	return true
+}
+
+// Two selector lists that say the same, simple by simple.
+@(private = "file")
+lists_equal :: proc(a, b: css.Selector_List, depth := 0) -> bool {
+	if len(a) != len(b) || depth > COMPOUND_KEYS_DEPTH { return false }
+	for i in 0 ..< len(a) {
+		ca, cb := a[i], b[i]
+		if len(ca.compounds) != len(cb.compounds) || len(ca.combinators) != len(cb.combinators) || ca.relative != cb.relative || ca.pseudo_element != cb.pseudo_element || ca.slotted != nil || cb.slotted != nil { return false }
+		for j in 0 ..< len(ca.combinators) { if ca.combinators[j] != cb.combinators[j] { return false } }
+		for j in 0 ..< len(ca.compounds) {
+			sa, sb := ca.compounds[j].simples, cb.compounds[j].simples
+			if len(sa) != len(sb) { return false }
+			for k in 0 ..< len(sa) {
+				x, y := sa[k], sb[k]
+				if x.kind != y.kind || x.name != y.name || x.pseudo != y.pseudo || x.op != y.op || x.value != y.value || x.ci != y.ci || x.ns != y.ns || x.nth_a != y.nth_a || x.nth_b != y.nth_b || (x.list == nil) != (y.list == nil) || len(x.names) > 0 || len(y.names) > 0 { return false }
+				if x.list != nil && !lists_equal(x.list^, y.list^, depth + 1) { return false }
+			}
+		}
+	}
+	return true
+}
+
+// The S of `:nth-child(... of S)` that Inv_Index.nth_of does not hold: a change of what it reads reaches every sibling.
+@(private = "file")
+nth_of_list :: proc(ix: ^Inv_Index, s: ^css.Simple, total: Reach, in_has: bool, depth: int) {
+	if s.list != nil { analyze_list(ix, s.list, reach_compose(Reach{self = true, all_next = true, all_prev = true}, total), in_has, depth) }
+}
+
+// Whether every selector of `list` is one compound that reads the element alone (its type, classes, id, attributes, and :is(), :where(),
+// :not() of such), with the attributes it reads in `reads`.
+@(private = "file")
+local_reads :: proc(list: css.Selector_List, reads: ^map[string]bool, depth: int) -> bool {
+	if depth > COMPOUND_KEYS_DEPTH { return false }
+	for &c in list {
+		if len(c.compounds) != 1 || c.relative || c.pseudo_element != .None || c.slotted != nil || len(c.parts) > 0 { return false }
+		for &s in c.compounds[0].simples {
+			#partial switch s.kind {
+			case .Type, .Universal:
+			case .Class: reads["class"] = true
+			case .Id: reads["id"] = true
+			case .Attribute: reads[s.name] = true
+			case .Pseudo_Class:
+				if (s.pseudo != .Not && s.pseudo != .Is && s.pseudo != .Where) || s.list == nil || !local_reads(s.list^, reads, depth + 1) { return false }
+			case: return false
+			}
+		}
+	}
+	return true
 }
 
 // Records what a change of `s` reaches. Returns whether `s` is a key feature (class, id, attribute, tag).
@@ -501,24 +612,12 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 				keyed_add(ix, &ix.edge_last, comp, total)
 			}
 		case .Nth_Child, .First_Of_Type, .Nth_Of_Type:
-			if !in_has {
-				from_edge := nth_edge_depth(s)
-				ix.edge_first_depth = max(ix.edge_first_depth, from_edge)
-				keyed_add(ix, from_edge > 0 ? &ix.edge_first : &ix.pos_fwd, comp, total)
-			}
-			if s.list != nil { analyze_list(ix, s.list, reach_compose(Reach{self = true, all_next = true, all_prev = true}, total), in_has, depth) }
+			if in_has || !positional_add(ix, s, comp, total, &ix.edge_first, &ix.pos_fwd, &ix.edge_first_depth) { nth_of_list(ix, s, total, in_has, depth) }
 		case .Nth_Last_Child, .Last_Of_Type, .Nth_Last_Of_Type:
-			if !in_has {
-				from_edge := nth_edge_depth(s)
-				ix.edge_last_depth = max(ix.edge_last_depth, from_edge)
-				keyed_add(ix, from_edge > 0 ? &ix.edge_last : &ix.pos_bwd, comp, total)
-			}
-			if s.list != nil { analyze_list(ix, s.list, reach_compose(Reach{self = true, all_next = true, all_prev = true}, total), in_has, depth) }
-		case .Only_Of_Type:
-			if !in_has {
-				keyed_add(ix, &ix.pos_fwd, comp, total)
-				keyed_add(ix, &ix.pos_bwd, comp, total)
-			}
+			if in_has || !positional_add(ix, s, comp, total, &ix.edge_last, &ix.pos_bwd, &ix.edge_last_depth) { nth_of_list(ix, s, total, in_has, depth) }
+		case .Only_Of_Type:   // (first and last of its type)
+			if !in_has && !nth_of_add(ix, nil, false, 1, comp, total) { keyed_add(ix, &ix.pos_fwd, comp, total) }
+			if !in_has && !nth_of_add(ix, nil, true, 1, comp, total) { keyed_add(ix, &ix.pos_bwd, comp, total) }
 		case .Empty:
 			if in_has { has_reads_empty(ix) } else { ix.empty = reach_union(ix.keys, ix.empty, total) }
 		case .Not, .Is, .Where:

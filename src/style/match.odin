@@ -131,7 +131,12 @@ attr :: proc(n: ^dom.Node, name: string) -> (string, bool) {
 @(private)
 has_class :: proc(n: ^dom.Node, name: string) -> bool {
 	v, ok := attr(n, "class")
-	if !ok { return false }
+	return ok && class_listed(v, name)
+}
+
+// Whether the class attribute `v` lists `name`.
+@(private)
+class_listed :: proc(v, name: string) -> bool {
 	rest := v
 	for len(rest) > 0 {
 		for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }

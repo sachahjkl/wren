@@ -47,6 +47,7 @@ Restyle_Stats :: struct {
 	fallback: string,   // why the last restyle_dom could not be partial ("" when it was)
 	flips:    int,      // answers of the exact :has() anchors it took to mark what changed
 	flip_steps: int,    // elements walked through to give them, and anchors gone through for attributes
+	nth_of_steps: int,  // elements asked whether they match the S of :nth-child(... of S), or the type of :nth-of-type() (nth_of_changed)
 }
 
 @(private = "file") M_SELF :: u8(1)
@@ -169,10 +170,15 @@ Marker :: struct {
 	above:   map[^Has_Anchor][]u64,          // members_above
 	flip_above: map[^Has_Anchor]^Flip_Above, // flip_above_of
 	flip_steps: int,                         // Restyle_Stats.flip_steps
+	of_walked: map[Of_Walk_Key]bool,         // nth_of_changed: its walks in this pass, per element (near the edge, per parent) and selector
+	of_tested: int,                          // Restyle_Stats.nth_of_steps
 }
 
 @(private = "file")
 Walk_Key :: struct { h: base.Handle, ix: ^Inv_Index, dir: u8 }
+
+@(private = "file")
+Of_Walk_Key :: struct { h: base.Handle, of: ^Nth_Of, edge: bool, typ: string }
 
 // The nodes beside an element when it left its parent (the journal's).
 @(private = "file")
@@ -561,6 +567,7 @@ children_inserted :: proc(m: ^Marker, p, at: base.Handle) {
 		// a walk that reaches an element an earlier walk went through stops: the rest is the earlier one's (Marker.walked)
 		position_changed(m, ix, at, at)
 		edges_changed(m, ix, p)
+		nth_of_changed(m, ix, p, at, at, at, dom.get(m.doc, at).name)
 		if nx := next_element(m, at); nx != base.NIL_HANDLE && ix.sib_rel.used { apply_keyed(m, nx, &ix.sib_rel) }
 	}
 	if is_element_node(m.doc, p) { empty_changed(m, p) }
@@ -603,42 +610,130 @@ edges_changed :: proc(m: ^Marker, ix: ^Inv_Index, p: base.Handle) {
 	key := Walk_Key{p, ix, 4}
 	if key in m.emptied { return }
 	m.emptied[key] = true
-	// `depth` elements in from the edge, those that came aside (the zone): what stands past them was past that place before. In the zone, what
-	// stands before the first element that came, and before the place of the first that left, kept its index: what follows is restyled.
-	// (:nth-child(3): an element whose index was or is 3 has at most two before it that did not come.) Read as one, a removal anywhere restyled
-	// the first three children of <body> with what they hold, and an element appended to a list of two the two before it.
-	along :: proc(m: ^Marker, p, from: base.Handle, k: ^Keyed_Reach, depth: int, back: bool) {
-		next :: proc(m: ^Marker, x: base.Handle, back: bool) -> base.Handle { return back ? prev_element(&m.mc, x) : next_element(m, x) }
-		zone := make([dynamic]base.Handle, 0, 8, context.temp_allocator)
-		moved := -1   // the first element of the zone whose index may differ
-		for x, kept := from, 0; x != base.NIL_HANDLE; x = next(m, x, back) {
-			append(&zone, x)
-			if x in m.came { if moved < 0 { moved = len(zone) - 1 } } else { kept += 1 }
-			if kept == max(depth, 1) { break }
-		}
-		// the element that stood next to a removed one on the edge's side: what follows it in the zone moved (none, gone, moved itself: all of it)
-		for at in m.lost[p] {
-			beside, known := element_from(m, p, back ? at.next : at.prev, !back)
-			from_here := 0
-			if known && beside != base.NIL_HANDLE && beside not_in m.came {
-				i, found := slice.linear_search(zone[:], beside)
-				if !found { continue }   // past the zone
-				from_here = i + 1
-			}
-			if moved < 0 || from_here < moved { moved = from_here }
-		}
-		if moved < 0 { return }
-		for x in zone[moved:] { apply_keyed(m, x, k) }
-	}
+	if ix.edge_first.used { along(m, p, &ix.edge_first, ix.edge_first_depth, false) }
+	if ix.edge_last.used { along(m, p, &ix.edge_last, ix.edge_last_depth, true) }
+}
+
+// `depth` elements in from the edge of `p`'s children, those that came aside (the zone): what stands past them was past that place before. In
+// the zone, what stands before the first element that came, and before the place of the first that left, kept its index: what follows is restyled.
+// (:nth-child(3): an element whose index was or is 3 has at most two before it that did not come.) Read as one, a removal anywhere restyled
+// the first three children of <body> with what they hold, and an element appended to a list of two the two before it. With `of`, only what
+// matches its S has an index and is counted (what left is taken as one of them: it is not there to be asked), and `flipped`, an element
+// whose attributes may have changed whether it matches S, moved what stands past it, itself included, as one that came or left there.
+// (`typ`: the type an `of` of a type counts.)
+@(private = "file")
+along :: proc(m: ^Marker, p: base.Handle, k: ^Keyed_Reach, depth: int, back: bool, of: ^Nth_Of = nil, flipped := base.NIL_HANDLE, typ := "") {
+	next :: proc(m: ^Marker, x: base.Handle, back: bool) -> base.Handle { return back ? prev_element(&m.mc, x) : next_element(m, x) }
 	pn := dom.get(m.doc, p)
-	if ix.edge_first.used {
-		first, _ := element_from(m, p, pn.first_child, false)
-		along(m, p, first, &ix.edge_first, ix.edge_first_depth, false)
+	from, _ := element_from(m, p, back ? pn.last_child : pn.first_child, back)
+	zone := make([dynamic]base.Handle, 0, 8, context.temp_allocator)
+	counted := make([dynamic]bool, 0, 8, context.temp_allocator)   // ... has an index (with `of`, matches S)
+	moved := -1   // the first element of the zone whose index may differ
+	for x, kept := from, 0; x != base.NIL_HANDLE; x = next(m, x, back) {
+		c := of == nil || of_matches(m, of, x, typ)
+		append(&zone, x)
+		append(&counted, c)
+		came := x in m.came || x == flipped
+		if moved < 0 && (x == flipped || (c && came)) { moved = len(zone) - 1 }
+		if !c || came { continue }
+		kept += 1
+		if kept == max(depth, 1) { break }
 	}
-	if ix.edge_last.used {
-		last, _ := element_from(m, p, pn.last_child, true)
-		along(m, p, last, &ix.edge_last, ix.edge_last_depth, true)
+	// the element that stood next to a removed one on the edge's side: what follows it in the zone moved (none, gone, moved itself: all of it)
+	for at in m.lost[p] {
+		beside, known := element_from(m, p, back ? at.next : at.prev, !back)
+		from_here := 0
+		if known && beside != base.NIL_HANDLE && beside not_in m.came {
+			i, found := slice.linear_search(zone[:], beside)
+			if !found { continue }   // past the zone
+			from_here = i + 1
+		}
+		if moved < 0 || from_here < moved { moved = from_here }
 	}
+	if moved < 0 { return }
+	for x, i in zone[moved:] {
+		if x == flipped { apply(m, x, of.total) } else if counted[moved + i] { apply_keyed(m, x, k) }
+	}
+}
+
+// Whether `x` matches the S of `of`, or is of type `typ` (in a document with shadow trees, which tree's rules it sees is the pass's: taken as yes).
+@(private = "file")
+of_matches :: proc(m: ^Marker, of: ^Nth_Of, x: base.Handle, typ: string) -> bool {
+	m.of_tested += 1
+	if m.shadows { return true }
+	if of.list == nil { return dom.get(m.doc, x).name == typ }
+	return matches_list(&m.mc, x, of.list^)
+}
+
+// Element `x`, of type `typ`, came under `p` (`nx` = `pv` = `x`), or left it from between `nx` and `pv`: the indexes among the siblings that
+// match S of :nth-child(... of S), or are of that type. An element that does not match S has no such index, and moves none: what comes or
+// goes that does not match S (S reads the element alone: one that left is asked as it was) reaches nothing through it; one that matches it
+// moves the indexes past its place, of what matches S. Near the edge (:nth-last-child(1 of S), :first-of-type), the zone of `along`, counted
+// in what matches S; else from the place on. (On cnn.com `:only-of-type`, `[class]:nth-of-type(2)` and `:nth-last-child(1 of [class*=...])`,
+// of no key, restyled every sibling the walk from an element added went over: 1 800 elements a load, to no effect.) With shadow trees, from
+// the place on, every sibling.
+@(private = "file")
+nth_of_changed :: proc(m: ^Marker, ix: ^Inv_Index, p, x, nx, pv: base.Handle, typ: string) {
+	for &of in ix.nth_of {
+		if of.list != nil && !of_matches(m, &of, x, typ) { continue }
+		if of.depth > 0 && !m.shadows {
+			key := Of_Walk_Key{p, &of, true, of.list == nil ? typ : ""}
+			if key in m.of_walked { continue }
+			m.of_walked[key] = true
+			along(m, p, &of.reach, of.depth, of.back, &of, typ = typ)
+			continue
+		}
+		of_walk(m, &of, of.back ? pv : nx, typ)
+	}
+}
+
+// From `from` on, away from the edge `of` counts from: what matches its S. A walk stops where an earlier one of this pass went through.
+@(private = "file")
+of_walk :: proc(m: ^Marker, of: ^Nth_Of, from: base.Handle, typ: string) {
+	for x := from; x != base.NIL_HANDLE; x = of.back ? prev_element(&m.mc, x) : next_element(m, x) {
+		key := Of_Walk_Key{x, of, false, of.list == nil ? typ : ""}
+		if key in m.of_walked { break }
+		m.of_walked[key] = true
+		if of_matches(m, of, x, typ) { apply_keyed(m, x, &of.reach) }
+	}
+}
+
+// An attribute of `h` changed: of the :nth-child(... of S) whose S reads it, `h` may match S now and not before, or the other way, which
+// moves the indexes past it as an element that came or left there. `h` itself is restyled: its index may have come or gone.
+@(private = "file")
+nth_of_attribute :: proc(m: ^Marker, ix: ^Inv_Index, h: base.Handle, ch: Attr_Change) {
+	n := dom.get(m.doc, h)
+	for &of in ix.nth_of {
+		if ch.name not_in of.reads { continue }
+		if !m.shadows && of_matches(m, &of, h, "") == matched_before(m, of.list^, h, n, ch) { continue }   // (a class among others: the answer holds)
+		if of.depth > 0 && !m.shadows {
+			along(m, n.parent, &of.reach, of.depth, of.back, &of, h)
+			continue
+		}
+		apply(m, h, of.total)
+		of_walk(m, &of, of.back ? prev_element(&m.mc, h) : next_element(m, h), "")
+	}
+}
+
+// Whether `h` matched `list`, a list of Nth_Of (local_reads), with the attribute `ch` names as it was before the change.
+@(private = "file")
+matched_before :: proc(m: ^Marker, list: css.Selector_List, h: base.Handle, n: ^dom.Node, ch: Attr_Change) -> bool {
+	compound: for &c in list {
+		for &s in c.compounds[0].simples {
+			ok: bool
+			switch {
+			case s.kind == .Class && ch.name == "class": ok = ch.had_old && class_listed(ch.old, s.name)
+			case s.kind == .Id && ch.name == "id": ok = ch.had_old && ch.old == s.name
+			case s.kind == .Attribute && s.name == ch.name: ok = attr_value_matches(ch.had_old, ch.old, s)
+			case s.kind == .Pseudo_Class && s.pseudo == .Not: ok = !matched_before(m, s.list^, h, n, ch)
+			case s.kind == .Pseudo_Class: ok = matched_before(m, s.list^, h, n, ch)   // (:is(), :where())
+			case: ok = matches_simple(&m.mc, h, n, s)
+			}
+			if !ok { continue compound }
+		}
+		return true
+	}
+	return false
 }
 
 // The first element, going by `next` (or back), from the node `from` that stood beside a removed one, still under `p`. `ok` false: `from`
@@ -672,6 +767,7 @@ children_removed :: proc(m: ^Marker, en: ^dom.Journal_Entry, gone: ^dom.Node) {
 				continue
 			}
 			position_changed(m, ix, nx, pv)
+			nth_of_changed(m, ix, p, en.node, nx, pv, gone.name)
 			if nx != base.NIL_HANDLE && ix.sib_rel.used { apply_keyed(m, nx, &ix.sib_rel) }
 			for r in feature_reaches(ix, gone) { apply_gap(m, nx, pv, r) }
 		}
@@ -702,6 +798,7 @@ children_all_changed :: proc(m: ^Marker, ix: ^Inv_Index, p: base.Handle) {
 		apply_keyed(m, ch, &ix.pos_fwd)
 		apply_keyed(m, ch, &ix.pos_bwd)
 		apply_keyed(m, ch, &ix.sib_rel)
+		for &of in ix.nth_of { apply_keyed(m, ch, &of.reach) }
 	}
 }
 
@@ -955,6 +1052,7 @@ attribute_changed_in :: proc(m: ^Marker, ix: ^Inv_Index, ch: Attr_Change, n: ^do
 		}
 	}
 	if ch.name in ix.has_attrs { has_invalidate(m, h, false, Has_Change{kind = .Attr, name = ch.name}) }
+	nth_of_attribute(m, ix, h, ch)
 	if hint, subtree := hint_attribute(n.name, ch.name); hint || subtree { mark(m, h, subtree) }
 	if ix.uses_controls && is_form_attr(ch.name) {
 		for f in FORM_RELATED {
@@ -1550,6 +1648,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	m.removed = make([dynamic]base.Handle, 0, 4, context.temp_allocator)
 	m.walked = make(map[Walk_Key]bool, 16, context.temp_allocator)
 	m.emptied = make(map[Walk_Key]bool, 4, context.temp_allocator)
+	m.of_walked = make(map[Of_Walk_Key]bool, 4, context.temp_allocator)
 	m.flips = make(map[Flip_Key]bool, 16, context.temp_allocator)
 	m.has_walked = make(map[Has_Walk_Key]int, 16, context.temp_allocator)
 	match_ctx_init(&m.mc, doc, s.state, context.temp_allocator)
@@ -1578,6 +1677,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	if m.fail == "" { marks_keyed_scan(&m) }
 	e.last_restyle.flips = len(m.flips)
 	e.last_restyle.flip_steps = m.flip_steps
+	e.last_restyle.nth_of_steps = m.of_tested
 	if m.fail != "" { return fail(e, m.fail) }
 	work := estimate(&m, limit)
 	if f64(work) > limit {

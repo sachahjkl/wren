@@ -246,6 +246,81 @@ restyle_dom_nth_near_the_edge :: proc(t: ^testing.T) {
 	step(t, f, 5, "three at the end (one of them back): they and the two before them")
 }
 
+// `:nth-last-child(1 of .k)`, `:nth-child(odd of .k)`, `p:last-of-type`: what comes that does not match S (or is of another type) moves no index among those that do, and near the edge
+// what matches it is counted from there: neither walks the list.
+@(test)
+restyle_dom_nth_of_reads_what_matches :: proc(t: ^testing.T) {
+	UA :: 1   // the browser's `summary:first-of-type` asks the first element of the type that came or left, from the start of the list
+	LIST :: `<ul id=l><li id=a>a</li><li id=b class=k>b</li><li id=c>c</li><li id=d>d</li><li id=e class=k>e</li><li id=f>f</li><li id=g class=k>g</li><li id=h>h</li></ul>`
+	step :: proc(t: ^testing.T, f: ^Fixture, marked, asked: int, what: string, loc := #caller_location) {
+		_, ok := restyle_dom(f.eng, f.doc, f.st)
+		testing.expectf(t, ok, "%s: not partial (%s)", what, f.eng.last_restyle.fallback, loc = loc)
+		testing.expectf(t, f.eng.last_restyle.marked == marked, "%s: %d restyled, %d expected", what, f.eng.last_restyle.marked, marked, loc = loc)
+		testing.expectf(t, f.eng.last_restyle.nth_of_steps == asked, "%s: %d elements asked about S, %d expected", what, f.eng.last_restyle.nth_of_steps, asked, loc = loc)
+		testing.expect_value(t, verify_styles(f.eng, f.doc, f.st, context.temp_allocator), "", loc = loc)
+	}
+	li :: proc(f: ^Fixture, k: bool) -> base.Handle {
+		x := dom.create_element(f.doc, "li")
+		if k { dom.set_attribute(f.doc, x, "class", "k") }
+		return x
+	}
+	{
+		f := load(`<!doctype html><style>:nth-last-child(1 of .k) { color: red }</style>` + LIST)
+		defer fixture_unload(f)
+		l := dom.find_by_id(f.doc, "l")
+		dom.append_child(f.doc, l, li(f, false))
+		step(t, f, 1, 1 + UA, "no .k at the end: itself, asked once")
+		x := li(f, true)
+		dom.append_child(f.doc, l, x)
+		step(t, f, 2, 1 + 4 + UA, "a .k at the end: itself and the .k before it, asked from the end to that one")
+		testing.expect(t, style_of(f.st, dom.find_by_id(f.doc, "g")).color.r == 0, "g is not the last .k any more")
+		dom.remove_child(f.doc, l, x)
+		step(t, f, 1, 1 + 3 + UA, "gone: the .k that is last again, asked as it was, then from the end")
+		testing.expect(t, style_of(f.st, dom.find_by_id(f.doc, "g")).color.r == 1, "g is the last .k again")
+		dom.insert_before(f.doc, l, li(f, true), dom.find_by_id(f.doc, "c"))
+		step(t, f, 1, 1 + 3 + UA, "a .k far from the end: itself, and the walk from the end stops at the first .k")
+		dom.remove_child(f.doc, l, dom.find_by_id(f.doc, "d"))
+		step(t, f, 0, 1 + UA, "no .k gone: nothing")
+		h := dom.find_by_id(f.doc, "h")
+		dom.set_attribute(f.doc, h, "class", "k")
+		step(t, f, 2, 1 + 3, "a class that makes h a .k: h and the .k before it, asked from the end to that one")
+		testing.expect(t, style_of(f.st, h).color.r == 1 && style_of(f.st, dom.find_by_id(f.doc, "g")).color.r == 0, "h is the last .k")
+		dom.remove_attribute(f.doc, h, "class")
+		step(t, f, 2, 1 + 3, "and taken away: the same two")
+		dom.set_attribute(f.doc, h, "data-z", "k")
+		step(t, f, 0, 0, "an attribute S does not read: nothing")
+		dom.set_attribute(f.doc, dom.find_by_id(f.doc, "g"), "class", "k z")
+		step(t, f, 0, 1, "a class beside .k: g matches S as it did, nothing")
+	}
+	{
+		f := load(`<!doctype html><style>:nth-child(odd of .k) { color: red }</style>` + LIST)
+		defer fixture_unload(f)
+		l := dom.find_by_id(f.doc, "l")
+		dom.insert_before(f.doc, l, li(f, false), dom.find_by_id(f.doc, "b"))
+		step(t, f, 1, 1 + UA, "no .k: itself")
+		dom.insert_before(f.doc, l, li(f, true), dom.find_by_id(f.doc, "b"))
+		step(t, f, 4, 1 + 8 + UA, "a .k: itself and the three .k after it, asked from there to the end")
+		dom.set_attribute(f.doc, dom.find_by_id(f.doc, "c"), "class", "k")
+		step(t, f, 3, 1 + 5, "c made a .k: itself and the .k after it, asked from there to the end")
+	}
+	{
+		// :last-of-type is :nth-last-child(1 of <its type>)
+		f := load(`<!doctype html><style>p:last-of-type { color: red }</style><div id=l><p>a</p><span>s</span><p>b</p><i>x</i><i>y</i><i>z</i><span>t</span><p id=c>c</p></div>`)
+		defer fixture_unload(f)
+		l, c := dom.find_by_id(f.doc, "l"), dom.find_by_id(f.doc, "c")
+		dom.append_child(f.doc, l, dom.create_element(f.doc, "i"))
+		step(t, f, 1, 4 + 4, "an <i> at the end: itself, asked back to the last <i> before it (and from the start to the first, for the browser's rule)")
+		z := dom.create_element(f.doc, "p")
+		dom.append_child(f.doc, l, z)
+		step(t, f, 2, 3 + UA, "a <p> at the end: itself and the <p> before it")
+		testing.expect(t, style_of(f.st, c).color.r == 0 && style_of(f.st, z).color.r == 1, "the new <p> is the last of its type")
+		dom.remove_child(f.doc, l, z)
+		step(t, f, 1, 2 + UA, "gone: the <p> that is last again")
+		dom.insert_before(f.doc, l, dom.create_element(f.doc, "p"), dom.get(f.doc, l).first_child)
+		step(t, f, 1, 2 + 2, "a <p> first: itself, the walk from the end stops at the last <p>")
+	}
+}
+
 // A class rewritten with the same tokens, an attribute that keeps its answer: the selectors are asked of the old value and the new, and nothing passes.
 @(test)
 restyle_dom_attribute_selectors_read_old_and_new :: proc(t: ^testing.T) {
