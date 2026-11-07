@@ -241,6 +241,7 @@ Box :: struct {
 	intr_ok:   bool,
 	cache_ok:  bool,                // layout cache: the result of the last layout_contents, valid for the same inputs
 	cache_flow: bool,               // ... laid out in its parent's block formatting context (else on its own)
+	cache_open: bool,               // ... its top margin still collapsing with what is above it (Flow_Ctx.open: not below clearance)
 	cache_through: bool,
 	cache_in:  [3]f32,
 	cache_h:   f32,

@@ -241,6 +241,8 @@ box_before :: proc(c: ^Ctx, h: base.Handle, p: i32, planned: map[base.Handle]boo
 			return x, true
 		}
 	}
+	// first among its siblings, but after the container's ::before, in a box of its own or in an anonymous block
+	if cs := style.style_of(c.st, l.boxes[p].node); cs == nil || cs.before != nil { return NONE, false }
 	return NONE, true
 }
 

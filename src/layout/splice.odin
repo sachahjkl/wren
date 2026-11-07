@@ -244,6 +244,18 @@ band_span :: proc(l: ^Layout, s: i32, r: Rect) -> [2]int {
 	return {b0, b1}
 }
 
+// The range of context `p` says where its items go: not when it is empty at the place of another empty one, of a context that
+// paints nothing either, and nothing says which of the two comes first.
+@(private)
+range_stands_alone :: proc(l: ^Layout, p: i32) -> bool {
+	r := l.inc.info[p].items
+	if r[0] != r[1] { return true }
+	for &inf, i in l.inc.info {
+		if i32(i) != p && inf.items_gen == l.inc.dl_gen && inf.items == r && .Dead not_in l.boxes[i].flags { return false }
+	}
+	return true
+}
+
 // Splices what it can. false: nothing was changed in the display list; the caller finishes and builds it as usual.
 @(private)
 try_splice :: proc(c: ^Ctx, roots: []i32, cand: map[i32]Splice_Root, input: Input) -> bool {
@@ -273,6 +285,7 @@ try_splice :: proc(c: ^Ctx, roots: []i32, cand: map[i32]Splice_Root, input: Inpu
 		sr := cand[r]
 		if !overflow_kept(l, r, sr.before, sr.any, after, has) { return false }
 	}
+	for r in roots { if !range_stands_alone(l, r) { return false } }
 	// from here on the display list changes
 	bands_kept := true
 	outlines := make([dynamic]i32, 0, 0, context.temp_allocator)
