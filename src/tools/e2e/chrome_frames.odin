@@ -28,6 +28,7 @@ import "wb:e2e"
 @(private = "file") OUTSIDE :: e2e.Point{700, 500}       // off it
 @(private = "file") RED :: e2e.Color{255, 0, 0, 255}
 @(private = "file") GREEN :: e2e.Color{0, 160, 0, 255}
+@(private = "file") WHITE :: e2e.Color{255, 255, 255, 255}
 @(private = "file") BOX :: `<!doctype html><style>html{background:#fff} body{margin:0} #b{position:absolute;left:0;top:0;width:300px;height:300px;background:rgb(0,0,255)} #b:hover{background:rgb(255,0,0)}</style><div id=b>text</div>`
 @(private = "file") GREEN_PAGE :: `<!doctype html><style>html{background:#fff} body{margin:0} #b{position:absolute;left:0;top:0;width:300px;height:300px;background:rgb(0,160,0)}</style><div id=b>text</div>`
 // Two screens of white, then the green: seen at all only when scrolled.
@@ -41,6 +42,8 @@ import "wb:e2e"
 @(private = "file") IDLE_FRAMES :: 8
 @(private = "file") AUTOSCROLL_TAPS :: "browser.scroll.autoscroll.mode=toggle"   // (a tap latches, however long it takes: no time in the test)
 @(private = "file") FAR_BELOW :: e2e.Point{100, 550}     // from AT: a session on scrolls fast
+@(private = "file") AUTOSCROLL_HELD_MS :: 100            // how long a session scrolls under a script
+@(private = "file") MARKER_REACH :: 12                   // around the anchor: the marker is drawn there
 @(private = "file") AUTOSCROLL_WATCHED_FRAMES :: 10
 
 @(private = "file")
@@ -307,6 +310,30 @@ a_press_on_the_frame_under_a_script_ends_it_too :: proc(t: ^testing.T) {
 	e2e.wait_frames(s)
 	while_held(s, {{kind = .Event, ev = {kind = .Frame_Press}}})
 	expect_no_autoscroll(t, s)
+}
+
+// A session goes on under a script, as the wheel does: the pointer moves only there and Escape ends it there, so what scrolled, chrome frames scrolled. Its marker stays.
+@(test)
+autoscroll_goes_on_under_a_script :: proc(t: ^testing.T) {
+	s := autoscroll_page(t)
+	e2e.press(s, AT, button = .Middle)
+	e2e.release(s, AT, button = .Middle)
+	e2e.wait_frames(s)
+	testing.expect_value(t, e2e.eval(s, "scrollY"), "0")
+	shots := while_held(s, {e2e.busy_capture(), e2e.busy_move(s, FAR_BELOW), e2e.busy_wait(AUTOSCROLL_HELD_MS), e2e.busy_key(s, "Escape", true)})
+	e2e.wait_frames(s)
+	testing.expectf(t, e2e.eval_f64(s, "scrollY") > 0, "the page moved under the script: %v", e2e.eval(s, "scrollY"))
+	marked := false
+	for dy in -MARKER_REACH ..= MARKER_REACH {
+		for dx in -MARKER_REACH ..= MARKER_REACH {
+			if !near(page_pixel(s, shots[0], {AT[0] + f64(dx), AT[1] + f64(dy)}), WHITE) { marked = true }
+		}
+	}
+	testing.expect(t, marked, "the marker is drawn in a chrome frame")
+	stopped := e2e.eval_f64(s, "scrollY")
+	e2e.hover(s, FAR_BELOW)
+	e2e.wait_frames(s, AUTOSCROLL_WATCHED_FRAMES)
+	testing.expect_value(t, e2e.eval_f64(s, "scrollY"), stopped)
 }
 
 // browser.frame.cap from its commands: a rate is the ceiling of every window, uncapped takes every wait away and the frames' time still goes forward, auto gives the monitor's rate back.
