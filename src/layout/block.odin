@@ -174,7 +174,8 @@ block_width :: proc(c: ^Ctx, bi: i32, cb_w, avail: f32) {
 	// auto margins share what is left (§10.3.3); over-constrained: the end margin gives way
 	free := avail - w - (b.auto_l ? 0 : b.margin[3]) - (b.auto_r ? 0 : b.margin[1])
 	pcs := c.l.boxes[b.parent].cs
-	rtl := pcs != nil && is_rtl(pcs)
+	// (the initial containing block has the principal direction: CSS Writing Modes 4 §8)
+	rtl := .Root in c.l.boxes[b.parent].flags ? principal_rtl(c) : pcs != nil && is_rtl(pcs)
 	// HTML's align attributes and <center> (-webkit-* text-align values) place a narrower block-level child whose margins
 	// are not auto as Blink does: its margin box centered, or pushed to one side
 	legacy := pcs != nil && !b.auto_l && !b.auto_r ? pcs.text_align : .Start

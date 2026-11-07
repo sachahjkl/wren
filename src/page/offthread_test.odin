@@ -154,6 +154,34 @@ document_parsed_in_the_background_is_identical_to_the_synchronous_parse :: proc(
 @(private = "file")
 Parse_Info :: struct { ok: bool, nodes: int, utf8: bool }
 
+// A document with no <body> that parsed (an SVG, a frameset) keeps its root element alone: a blank <html> came after it, and took part in its layout.
+@(test)
+adopted_document_without_a_body_has_one_root_element :: proc(t: ^testing.T) {
+	test_pages(t)
+	context.allocator = runtime.heap_allocator()   // (the tree builder's heap, as above)
+	loop: host.Loop
+	host.loop_init(&loop)
+	defer host.loop_destroy(&loop)
+	loader := fetch.Loader{loop = &loop}
+	settings := settings_default()
+	defer settings_destroy(&settings)
+	settings.threads.parse_html = false
+	settings.threads.style_threads = 0
+	scope := base.scope_make("test")
+	defer base.scope_close(scope)
+	Case :: struct { src, mime, root: string }
+	for c in ([]Case{{`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>`, "image/svg+xml", "svg"}, {`<frameset><frame></frameset>`, "", "html"}}) {
+		p := page_create(&loop, &loader, &settings, scope, "http://example.test/")
+		parse_document(p, transmute([]byte)c.src, "utf-8", proc(p: ^Page, user: rawptr, d: ^Parsed_Document) { adopt_document(p, d) }, nil, c.mime)
+		elements := 0
+		for h := dom.get(p.doc, p.doc.root).first_child; h != base.NIL_HANDLE; h = dom.get(p.doc, h).next {
+			if dom.get(p.doc, h).kind == .Element { elements += 1 }
+		}
+		testing.expect_value(t, elements, 1)
+		testing.expect_value(t, dom.get(p.doc, p.doc_el).name, c.root)
+	}
+}
+
 // The engine asks a realm's document node once (wj_document, native/js/odin/wj/qjs_platform.odin): every document a
 // page adopts, HTML or XML, parsed here or off the thread, has the document node's handle of the blank one it replaced.
 @(test)

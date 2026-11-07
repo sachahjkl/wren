@@ -9,6 +9,42 @@
   const reader = name => getOwnPropertyDescriptor(rangeProto, name).get;
   const startContainer = reader("startContainer"), startOffset = reader("startOffset"), endContainer = reader("endContainer"), endOffset = reader("endOffset");
   const isRange = r => { apply(startContainer, r, []); return r; };   // (throws for anything but an AbstractRange)
+  const ShadowRootC = global.ShadowRoot;
+  const shadowHost = getOwnPropertyDescriptor(ShadowRootC.prototype, "host").get;
+  const rootNode = global.Node.prototype.getRootNode;
+  const SHOW_TEXT = 4, TEXT_NODE = 3;
+  // HighlightsFromPointOptions: the shadow roots asked for, which a script may hold.
+  const shadowRootsOf = options => {
+    const roots = new SetC();
+    if (options === undefined || options === null) return roots;
+    if (typeof options !== "object" && typeof options !== "function") throw new TE("Failed to execute 'highlightsFromPoint' on 'HighlightRegistry': the options are not an object.");
+    const list = options.shadowRoots;
+    if (list === undefined) return roots;
+    if (list === null || typeof list[symIterator] !== "function") throw new TE("Failed to execute 'highlightsFromPoint' on 'HighlightRegistry': shadowRoots is not a sequence.");
+    for (const r of list) { apply(shadowHost, r, []); roots.add(r); }   // (throws for anything but a ShadowRoot)
+    return roots;
+  };
+  // Is the text of `r` under the point? Only text is highlighted, and only that of the tree the range is in: a range across trees paints nothing, and what a shadow host
+  // inside it shows is not in it, nor is a shadow tree nobody named.
+  const hitsRange = (r, px, py, roots) => {
+    const a = apply(startContainer, r, []), from = apply(startOffset, r, []), b = apply(endContainer, r, []), to = apply(endOffset, r, []);
+    const root = apply(rootNode, a, []);
+    if (root !== apply(rootNode, b, []) || (root instanceof ShadowRootC && !roots.has(root))) return false;
+    if (a === b && from === to) return false;   // (collapsed: not rendered)
+    const live = new RangeC(), piece = new RangeC();
+    try { live.setStart(a, from); live.setEnd(b, to); } catch { return false; }   // (a StaticRange past the end of its node)
+    const top = live.commonAncestorContainer;
+    const walker = document.createTreeWalker(top, SHOW_TEXT);
+    for (let t = top.nodeType === TEXT_NODE ? top : walker.nextNode(); t !== null; t = top.nodeType === TEXT_NODE ? null : walker.nextNode()) {
+      if (!live.intersectsNode(t)) continue;
+      piece.setStart(t, t === a ? from : 0);
+      piece.setEnd(t, t === b ? to : t.length);
+      for (const box of piece.getClientRects()) {
+        if (px >= box.left && px < box.right && py >= box.top && py < box.bottom) return true;
+      }
+    }
+    return false;
+  };
   const TYPES = ["highlight", "spelling-error", "grammar-error"];
   const states = new WeakMap();
   const stateOf = o => {
@@ -100,23 +136,16 @@
     values() { return entries.values(); }
     entries() { return entries.entries(); }
     // What the rectangles of its ranges put under the point, the highest priority first (equal priorities: the last registered).
-    highlightsFromPoint(x, y) {
+    highlightsFromPoint(x, y, options = undefined) {
       if (this !== highlights) throw new TE("Illegal invocation");
       if (arguments.length < 2) throw new TE("Failed to execute 'highlightsFromPoint' on 'HighlightRegistry': 2 arguments required.");
       const px = +x, py = +y, hits = [];
       if (!isFinite(px) || !isFinite(py)) throw new TE("Failed to execute 'highlightsFromPoint' on 'HighlightRegistry': the coordinates are not finite.");
+      const roots = shadowRootsOf(options);
       if (px < 0 || py < 0 || px >= document.documentElement.clientWidth || py >= document.documentElement.clientHeight) return hits;
       for (const [name, h] of entries) {
         const s = states.get(h), ranges = [], order = registered_at.get(name);
-        for (const r of s.ranges) {
-          if (apply(startContainer, r, []) === apply(endContainer, r, []) && apply(startOffset, r, []) === apply(endOffset, r, [])) continue;   // (collapsed: not rendered)
-          const live = new RangeC();
-          live.setStart(apply(startContainer, r, []), apply(startOffset, r, []));
-          live.setEnd(apply(endContainer, r, []), apply(endOffset, r, []));
-          for (const b of live.getClientRects()) {
-            if (px >= b.left && px < b.right && py >= b.top && py < b.bottom) { ranges.push(r); break; }
-          }
-        }
+        for (const r of s.ranges) { if (hitsRange(r, px, py, roots)) ranges.push(r); }
         if (ranges.length > 0) hits.push({ highlight: h, ranges, priority: s.priority, order });
       }
       hits.sort((a, b) => b.priority - a.priority || b.order - a.order);

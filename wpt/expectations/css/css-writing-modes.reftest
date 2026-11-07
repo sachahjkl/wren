@@ -682,7 +682,7 @@
 /css/css-writing-modes/line-box-direction-slr-053.xht: PASS
 /css/css-writing-modes/line-box-direction-slr-054.xht: PASS
 /css/css-writing-modes/line-box-direction-slr-056.xht: PASS
-/css/css-writing-modes/line-box-direction-slr-058.xht: FAIL
+/css/css-writing-modes/line-box-direction-slr-058.xht: PASS
 /css/css-writing-modes/line-box-direction-slr-060.xht: FAIL
 /css/css-writing-modes/line-box-direction-srl-042.xht: PASS
 /css/css-writing-modes/line-box-direction-srl-045.xht: PASS
@@ -691,7 +691,7 @@
 /css/css-writing-modes/line-box-direction-srl-051.xht: PASS
 /css/css-writing-modes/line-box-direction-srl-052.xht: PASS
 /css/css-writing-modes/line-box-direction-srl-055.xht: PASS
-/css/css-writing-modes/line-box-direction-srl-057.xht: FAIL
+/css/css-writing-modes/line-box-direction-srl-057.xht: PASS
 /css/css-writing-modes/line-box-direction-srl-059.xht: FAIL
 /css/css-writing-modes/line-box-direction-vlr-003.xht: PASS
 /css/css-writing-modes/line-box-direction-vlr-007.xht: PASS
@@ -700,7 +700,7 @@
 /css/css-writing-modes/line-box-direction-vlr-013.xht: PASS
 /css/css-writing-modes/line-box-direction-vlr-014.xht: PASS
 /css/css-writing-modes/line-box-direction-vlr-016.xht: PASS
-/css/css-writing-modes/line-box-direction-vlr-018.xht: FAIL
+/css/css-writing-modes/line-box-direction-vlr-018.xht: PASS
 /css/css-writing-modes/line-box-direction-vlr-020.xht: FAIL
 /css/css-writing-modes/line-box-direction-vrl-002.xht: PASS
 /css/css-writing-modes/line-box-direction-vrl-005.xht: PASS
@@ -709,7 +709,7 @@
 /css/css-writing-modes/line-box-direction-vrl-011.xht: PASS
 /css/css-writing-modes/line-box-direction-vrl-012.xht: PASS
 /css/css-writing-modes/line-box-direction-vrl-015.xht: PASS
-/css/css-writing-modes/line-box-direction-vrl-017.xht: FAIL
+/css/css-writing-modes/line-box-direction-vrl-017.xht: PASS
 /css/css-writing-modes/line-box-direction-vrl-019.xht: FAIL
 /css/css-writing-modes/line-box-height-vlr-003.xht: PASS
 /css/css-writing-modes/line-box-height-vlr-005.xht: PASS
@@ -848,7 +848,7 @@
 /css/css-writing-modes/sizing-orthog-htb-in-vrl-010.xht: FAIL
 /css/css-writing-modes/sizing-orthog-htb-in-vrl-011.xht: PASS
 /css/css-writing-modes/sizing-orthog-htb-in-vrl-012.xht: PASS
-/css/css-writing-modes/sizing-orthog-htb-in-vrl-013.xht: FAIL
+/css/css-writing-modes/sizing-orthog-htb-in-vrl-013.xht: PASS
 /css/css-writing-modes/sizing-orthog-htb-in-vrl-015.xht: PASS
 /css/css-writing-modes/sizing-orthog-htb-in-vrl-016.xht: PASS
 /css/css-writing-modes/sizing-orthog-htb-in-vrl-018.xht: PASS

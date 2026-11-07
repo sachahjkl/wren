@@ -78,8 +78,8 @@
 	CSS.highlights.highlightsFromPoint() returns empty array when called on a display:none iframe document.: FAIL
 	CSS.highlights.highlightsFromPoint() returns the Highlights with their corresponding ranges present at the given point in the right order.: FAIL
 	CSS.highlights.highlightsFromPoint() should return an empty array when called with a point outside the document.: PASS
-	CSS.highlights.highlightsFromPoint() should throw when called with incorrect parameters.: FAIL
-	CSS.highlights.highlightsFromPoint() skips invalid StaticRanges.: FAIL
+	CSS.highlights.highlightsFromPoint() should throw when called with incorrect parameters.: PASS
+	CSS.highlights.highlightsFromPoint() skips invalid StaticRanges.: PASS
 /css/css-highlight-api/HighlightRegistry-iteration-with-modifications.html: OK
 	HighlightRegistry iteration doesn't visit a highlight name again when it is overwritten with .set() after being visited (Map-like behavior): PASS
 	HighlightRegistry iteration includes Highlights added after starting the iteration (Map-like behavior): PASS
