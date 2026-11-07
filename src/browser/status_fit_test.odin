@@ -53,8 +53,13 @@ status_left_items_yield :: proc(t: ^testing.T) {
 link_bubble_goes_where_the_pointer_is_not :: proc(t: ^testing.T) {
 	area := draw.Rect{{10, 50}, {810, 650}}
 	size := draw.Vec2{200, 24}
-	left := link_bubble_rect(area, size, {400, 300})
+	left, on_left := link_bubble_rect(area, size, {400, 300})
 	testing.expect_value(t, left, draw.Rect{{10, 626}, {210, 650}})
-	right := link_bubble_rect(area, size, {20, 640})
+	testing.expect(t, on_left)
+	right, still_left := link_bubble_rect(area, size, {20, 640})
 	testing.expect_value(t, right, draw.Rect{{610, 626}, {810, 650}})
+	testing.expect(t, !still_left)
+	// rounded but at the page's corner it sits in (top-left, bottom-left, top-right, bottom-right)
+	testing.expect_value(t, link_bubble_radii(4, true), [4]f32{4, 0, 4, 4})
+	testing.expect_value(t, link_bubble_radii(4, false), [4]f32{4, 4, 4, 0})
 }

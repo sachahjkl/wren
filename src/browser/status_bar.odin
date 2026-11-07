@@ -72,19 +72,45 @@ link_bubble :: proc(app: ^App, t: ^Tab) {
 	pad := math.round(fs * LINK_BUBBLE_PAD_EM)
 	h := ui.dense(math.round(fs * LINK_BUBBLE_HEIGHT_EM))
 	w := min(math.ceil(ui.text_width(ui.top_style().font, fs, link)) + pad * 2, math.round(room.x * LINK_BUBBLE_MAX_WIDTH))
-	r := link_bubble_rect(area, {w, h}, ui.mouse_pos())
+	r, on_left := link_bubble_rect(area, {w, h}, ui.mouse_pos())
+	d := ui.frame_new(Link_Bubble_Draw)
+	d.radii = link_bubble_radii(math.round(fs * LINK_BUBBLE_RADIUS_EM), on_left)
 	if ui.tags("floating") {
-		ui.next({fixed_x = r.min.x, fixed_y = r.min.y, width = ui.px(w), height = ui.px(h), font_size = fs, text_pad = pad, radius = math.round(fs * 0.3)})
-		ui.build_box({.Draw_Background, .Draw_Border, .Draw_Text}, fmt.tprintf("%s###link_bubble", link))
+		ui.next({fixed_x = r.min.x, fixed_y = r.min.y, width = ui.px(w), height = ui.px(h)})
+		if ui.parent(ui.custom("###link_bubble", link_bubble_draw, d)) {
+			ui.next({width = ui.pct(1), height = ui.pct(1), font_size = fs, text_pad = pad})
+			ui.build_box({.Draw_Text}, fmt.tprintf("%s###link_bubble_text", link))
+		}
 	}
+}
+
+// The radius of the box's corners, in ems of its text.
+LINK_BUBBLE_RADIUS_EM :: 0.3
+
+Link_Bubble_Draw :: struct { radii: [4]f32 }
+
+// Its background and its line, rounded at every corner but the one it sits in: that one is the page's, square.
+@(private = "file")
+link_bubble_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	d := (^Link_Bubble_Draw)(user)
+	st := active_window(the_app).ui
+	fill := ui.color_from_tags(st, b.tags_key, "background")
+	line := ui.color_from_tags(st, b.tags_key, "border")
+	draw.rect_corners(dc, b.rect, {fill, fill, fill, fill}, d.radii)
+	draw.rect_corners(dc, b.rect, {line, line, line, line}, d.radii, max(1, math.round(ui.scale())))
+}
+
+// The radii of the box's corners (top-left, bottom-left, top-right, bottom-right): `radius`, but none at the page's corner it sits in.
+link_bubble_radii :: proc(radius: f32, on_left: bool) -> [4]f32 {
+	return on_left ? {radius, 0, radius, radius} : {radius, radius, radius, 0}
 }
 
 // Where the box of `size` goes in the page's `area`: its bottom left corner, or its bottom right one when `pointer` is over the
 // first place (the box would hide what the pointer is on).
-link_bubble_rect :: proc(area: draw.Rect, size, pointer: draw.Vec2) -> draw.Rect {
+link_bubble_rect :: proc(area: draw.Rect, size, pointer: draw.Vec2) -> (r: draw.Rect, on_left: bool) {
 	left := draw.Rect{{area.min.x, area.max.y - size.y}, {area.min.x + size.x, area.max.y}}
-	if !draw.rect_contains(left, pointer) { return left }
-	return draw.Rect{{area.max.x - size.x, area.max.y - size.y}, {area.max.x, area.max.y}}
+	if !draw.rect_contains(left, pointer) { return left, true }
+	return draw.Rect{{area.max.x - size.x, area.max.y - size.y}, {area.max.x, area.max.y}}, false
 }
 
 Page_State :: struct { text, tone, detail: string }
