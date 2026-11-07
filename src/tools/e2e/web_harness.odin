@@ -24,6 +24,7 @@ import "wb:base"
 import "wb:fetch"
 import "wb:host"
 import "wb:js"
+import js_code "wb:js/image/code"
 import lay "wb:layout"
 import "wb:net"
 import "wb:page"
@@ -86,6 +87,7 @@ begin :: proc(t: ^testing.T, level := Level.Pages, loc := #caller_location) {
 	}
 	if level == .Pages && world_level == .Net {
 		world_level = .Pages
+		wasm.shipped_set(js_code.CODE)   // (as the browser does: the image is not compiled in the process)
 		wasm.configure_from_args(nil)
 		testing.expect(t, page.register_imports(), "imports", loc = loc)
 		js.cache_start({memory_bytes = SCRIPT_CACHE_BYTES, min_source_bytes = 0})

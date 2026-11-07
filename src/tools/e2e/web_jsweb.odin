@@ -20,9 +20,9 @@ import "wb:media"
 import "wb:page"
 import "wb:tools/testenv"
 import "wb:tools/testhost"
+import "wb:wasm"
 import "wb:webgl"
 
-POISONED_TEST_LIMIT :: 15 * time.Minute   // ends a test that hangs, as TEST_LIMIT, where each allocation costs a system call
 BASE :: "http://127.0.0.1:8765"   // on the server's block of ports through testenv.url (addresses and scripts)
 PAGE :: BASE + "/jsweb/page"
 DIR :: "examples/jsweb"
@@ -207,12 +207,23 @@ jsweb_mse_builtin_decoders :: proc(t: ^testing.T) {
 jsweb_idb :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	section_begin(t)
-	testing.set_fail_timeout(t, POISONED_TEST_LIMIT)   // (its step puts every block on pages of its own: 4 min 50 on a quiet machine)
 	defer section_end()
 	pr := open(t, "idb")
 	pr.expect_uncaught = true   // (a request's handler that throws aborts its transaction, and the exception is reported)
 	wait_script(pr)
 	close(pr, tests = 11)
+}
+
+// The engine's image is not compiled in this program: on pages of their own, its blocks take five minutes on a quiet machine, and past a
+// test's limit on a machine at work (the step of src/tools/test_all with WREN_POISON_PAGES=1, after every change of the engine and with -NoCache).
+@(test)
+jsweb_engine_code_of_the_program :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	section_begin(t)
+	defer section_end()
+	script(t, "url", tests = 4)
+	stats := wasm.cache_stats()
+	testing.expectf(t, stats.shipped_hits >= 1 && stats.shipped_refused == 0, "the engine's code, from the program: %v", stats)
 }
 
 // (the two benchmarks only measure: performance runs, test_all -Perf)

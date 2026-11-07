@@ -98,8 +98,9 @@ ONE_THREAD :: "-define:ODIN_TEST_THREADS=1"
 TOOLKIT :: "-collection:toolkit=ext/gui_toolkit"
 WB :: "-collection:wb=src"
 GUEST_FLAGS :: []string{"-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-collection:wren=sdk/odin", "-o:size"}
+// (WREN_SHIPPED_CODE: the engine's machine code in the program, src/js/image/code: with every block on pages of its own, a compile of the image is minutes, past the limits of a test under load.)
 E2E_BUILD_FLAGS :: []string{"-build-mode:test", "-o:speed", "-debug", "-use-separate-modules", "-vet", TOOLKIT, WB, "-define:FONT_BACKEND=native", "-define:FONT_NATIVE_LINK=false",
-	"-define:A11Y_ACCESSKIT=true", "-define:A11Y_NATIVE_LINK=false", "-define:WREN_CHANNEL=dev", "-define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=65536", ONE_THREAD, "-define:ODIN_TEST_FANCY=false",
+	"-define:A11Y_ACCESSKIT=true", "-define:A11Y_NATIVE_LINK=false", "-define:WREN_CHANNEL=dev", "-define:WREN_SHIPPED_CODE=true", "-define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=65536", ONE_THREAD, "-define:ODIN_TEST_FANCY=false",
 	"-extra-linker-flags:/STACK:67108864"}
 // How long what may legitimately take long gets, seconds. (A full WPT or test262 is hours under load: a hang shows as children that stop answering, which the tools end themselves.)
 LONG_STEP_SECONDS :: 4 * 3600
