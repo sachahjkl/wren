@@ -91,13 +91,14 @@ h264_create :: proc(track: Track, prefer_gpu: bool) -> ^Video_Decoder {
 // openh264 by dlopen
 
 // The OpenH264 C API (codec_api.h). The decoder is created by the exported WelsCreateDecoder; its methods are a C++
-// vtable, which we call through pointers at the fixed slots of ISVCDecoder (the order is part of the stable ABI since
-// 1.x). Only the methods the player needs are declared.
+// vtable, which we call through pointers at the fixed slots of ISVCDecoder, every slot in codec_api.h's order up to the last one
+// called (the order is part of the stable ABI since 1.x). Only the methods the player needs are typed.
 
 @(private)
 Openh264_Vtable :: struct {
 	Initialize:            proc "c" (self: rawptr, param: ^SDecodingParam) -> i32,
 	Uninitialize:          proc "c" (self: rawptr) -> i32,
+	DecodeFrame:           rawptr,   // (deprecated, unused: its slot comes before DecodeFrameNoDelay all the same)
 	DecodeFrameNoDelay:    proc "c" (self: rawptr, src: [^]u8, src_len: i32, dst: ^[3][^]u8, info: ^SBufferInfo) -> i32,
 	DecodeFrame2:          rawptr,
 	FlushFrame:            proc "c" (self: rawptr, dst: ^[3][^]u8, info: ^SBufferInfo) -> i32,
@@ -113,12 +114,25 @@ SDecodingParam :: struct {
 	uiCpuLoad:           u32,
 	uiTargetDqLayer:     u8,
 	eEcActiveIdc:        i32,
-	bParseOnly:          b32,
+	bParseOnly:          bool,   // a C++ bool: one byte
 	sVideoProperty:      SVideoProperty,
 }
 
 @(private)
 SVideoProperty :: struct { size: u32, eVideoBsType: i32 }
+
+// The layout of codec_api.h / codec_def.h (2.x, 64-bit), checked where it is declared: a slot of the vtable missed (DecodeFrame was,
+// until Linux ran a video: every call went to the method beside it) or a field short (SBufferInfo.pDst was: the decoder wrote past
+// the caller's struct) must not compile.
+@(private = "file") OPENH264_SLOT_BYTES :: size_of(rawptr)
+@(private = "file") OPENH264_NO_DELAY_SLOT :: 3   // Initialize, Uninitialize, DecodeFrame, then DecodeFrameNoDelay
+@(private = "file") OPENH264_SET_OPTION_SLOT :: 8
+@(private = "file") OPENH264_BUFFER_INFO_BYTES :: 72
+@(private = "file") OPENH264_DECODING_PARAM_BYTES :: 32
+#assert(offset_of(Openh264_Vtable, DecodeFrameNoDelay) == OPENH264_NO_DELAY_SLOT * OPENH264_SLOT_BYTES)
+#assert(offset_of(Openh264_Vtable, SetOption) == OPENH264_SET_OPTION_SLOT * OPENH264_SLOT_BYTES)
+#assert(size_of(SBufferInfo) == OPENH264_BUFFER_INFO_BYTES)
+#assert(size_of(SDecodingParam) == OPENH264_DECODING_PARAM_BYTES)
 
 @(private)
 SSysMEMBuffer :: struct {
@@ -135,6 +149,7 @@ SBufferInfo :: struct {
 	uiOutYuvTimeStamp: u64,
 	// a union of a system-memory buffer description and a Dved one; the system one is what the decoder fills
 	UsrData:  SSysMEMBuffer,
+	pDst:     [3][^]u8,   // the picture's planes, which the decoder writes too (codec_def.h: past the union)
 }
 
 // decoded frame output (dsErrorFree == 0 means no error for the whole picture)
@@ -229,7 +244,7 @@ openh264_create :: proc(track: Track) -> ^Video_Decoder {
 	o.vt = vt
 	o.track = track_clone(track)
 	o.prefix = make([dynamic]u8, 0, 64, base.process_allocator())
-	append(&o.prefix, ..avcc_annexb_header(track.config, base.process_allocator()))
+	append(&o.prefix, ..avcc_annexb_header(track.config, context.temp_allocator))   // (copied: the prefix is the decoder's own)
 	o.scratch = make([dynamic]u8, 0, 4096, base.process_allocator())
 	param := SDecodingParam{
 		uiTargetDqLayer = 0xff,

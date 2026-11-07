@@ -31,6 +31,7 @@ wrentool() {
 deps() {
   wrentool fetch wasmtime
   wrentool fetch wgpu
+  wrentool fetch openh264   # (Cisco's binary, by digest: the H.264 decoder a development build finds in build/openh264-linux)
   CC="${CC:-clang}" wrentool build lexbor
   # the features of the browser's (wren below): the unit tests link the same library (src/tools/test_all: the browser's own shape text)
   wrentool build native -Profile "$PROFILE" -Features text,a11y

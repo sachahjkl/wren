@@ -19,11 +19,12 @@ WGPU_VERSION :: "v29.0.1.1"
 WGPU_SHA256 :: "95a4d90c071005a98d03eab348beaa6b07e16eb00d1dcdb9f8348f75eb97ec5a"
 WGPU_RELEASES :: "https://github.com/gfx-rs/wgpu-native/releases/download"
 
-// Cisco's own binary: the patent licence covers only what it ships, never a build from source. Set the digests of the release page before fetching.
+// Cisco's own binary: the patent licence covers only what it ships, never a build from source. The digests are of the .bz2 files, whose
+// contents match the MD5 Cisco signs beside them (libopenh264-<version>-<arch>.7.so.signed.md5.txt).
 OPENH264_VERSION :: "2.4.1"
-OPENH264_SHA256_LINUX_X64 :: ""
-OPENH264_SHA256_LINUX_ARM64 :: ""
-OPENH264_URL :: "http://ciscobinary.openh264.org"
+OPENH264_SHA256_LINUX_X64 :: "ca413853d99d960ebcd5ae5b4c65a85bb2b5598e9042e64700a9f4b737ca3a3f"
+OPENH264_SHA256_LINUX_ARM64 :: "cf37063a9f77cf343153e41ef73d3ac05d4825ac6099cd862b1b7799eabf74f2"
+OPENH264_URL :: "https://ciscobinary.openh264.org"
 OPENH264_SONAME :: "libopenh264.so.7"
 
 EMOJI_DEST :: "build/emoji"
