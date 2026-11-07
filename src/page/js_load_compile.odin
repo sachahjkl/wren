@@ -51,9 +51,9 @@ Compile_Service :: struct {
 	opt:      wasm.Options,
 	stack:    int,
 	jobs:     int,          // done since the start (stats)
-	held:     bool,         // compile_hold
 	failed:   int,          // ... of which the engine did not compile (a syntax error, or the engine stopped)
 	total_ms: f64,
+	held:     bool,         // compile_hold
 }
 
 
