@@ -156,6 +156,9 @@ Engine :: struct {
 	registered_noninherited: int,               // how many of them do not inherit
 	container_sizes: map[base.Handle][2]f32,    // content boxes of query containers from the last layout (container.odin)
 	container_dependent: bool,                  // some @container rule or cq unit is in force
+	container_units: bool,                      // ... a cq unit, in a sheet or a style attribute: any size change may show
+	container_conds: [dynamic]^css.Cq_Node,     // ... the conditions of the document's @container rules (cq_size_settled), which live with their sheets
+	container_conds_lost: bool,                 // ... not all of them: a sheet went without a rebuild, or one of a shadow tree has some
 	container_pending: [dynamic]base.Handle,    // containers whose size changed since the styles were computed: restyle_containers restyles their subtrees
 	rebuilds:  u64,                       // counts rebuilds: compiled keyframes and faces are stale after one
 	cur_base_url: string,                 // while flattening: the URL of the sheet being read
@@ -249,6 +252,7 @@ engine_destroy :: proc(e: ^Engine) {
 	delete(e.registered)
 	delete(e.container_sizes)
 	delete(e.container_pending)
+	delete(e.container_conds)
 	delete(e.media_seen)
 	delete(e.gates); delete(e.gate_on); delete(e.gate_touched)
 	if e.has_spare { base.arena_destroy(&e.spare) }
@@ -667,7 +671,7 @@ Compile_Stats :: struct {
 
 stats_merge :: proc(e: ^Engine, s: Compile_Stats) {
 	if s.viewport_units { e.viewport_units = true }
-	if s.container_units { e.container_dependent = true }
+	if s.container_units { e.container_dependent, e.container_units = true, true }
 	e.ignored_properties += s.ignored
 }
 
@@ -709,7 +713,7 @@ compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Al
 		return apply_prop(cx, p, vs)
 	}
 	for d in decls {
-		if !(st.viewport_units || e.viewport_units) || !(st.container_units || e.container_dependent) { note_relative_units(d.value, st) }
+		if !(st.viewport_units || e.viewport_units) || !(st.container_units || e.container_units) { note_relative_units(d.value, st) }
 		if strings.has_prefix(d.name, "--") {
 			append(&cus, Custom_Decl{name = d.name, value = d.value, important = d.important})
 			continue
@@ -895,6 +899,9 @@ flatten_rule :: proc(e: ^Engine, r: ^css.Rule, origin: Origin, lc: LayerCtx) {
 	case .Container:
 		if r.container == nil { return }
 		e.container_dependent = true
+		if r.container.cond != nil {
+			if e.cur == &e.rules { append(&e.container_conds, r.container.cond) } else { e.container_conds_lost = true }
+		}
 		cond := new(Cq_Cond, e.alloc)
 		cond^ = Cq_Cond{query = r.container, next = lc.cq}
 		sub := lc
@@ -1055,7 +1062,8 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 	clear(&e.keyframe_sets)
 	clear(&e.registered)
 	e.registered_noninherited = 0
-	e.container_dependent = false
+	e.container_dependent, e.container_units, e.container_conds_lost = false, false, false
+	clear(&e.container_conds)
 	e.media_dependent, e.anon_layers = false, 0
 	clear(&e.arrived)
 	clear(&e.arrived_rules)
