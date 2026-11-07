@@ -403,6 +403,12 @@ a tool that waited for a line nobody logs spent its 120 s limit in every run, an
 <p><code>host.Loop</code> reads its time through <code>host.now_ns</code>. A test gives the loop a <code>host.Virtual_Clock</code> (<code>clock_virtual</code>) and moves it:
 <code>clock_advance(&amp;loop, d)</code> runs at once what falls due on the way, each timer at its own deadline; <code>clock_move</code> only moves it, as a
 stalled machine would. <code>loop_wait</code> on such a clock does not wait for a timer. Production pays one test of a pointer.</p>
+<p>The chrome frames made while a script holds the page (<code>e2e.while_busy</code>, <code>src/browser/busy_input.odin</code>) have a clock of the test's
+too: after a step <code>e2e.busy_clock(ms)</code>, and until the steps run out, they show the page's animations <code>ms</code> after the page's last
+frame (<code>page.animations_wall_ms</code>), however long the frames took to come. What a picture shows is then a value at a known time:
+<code>a_colour_and_what_inherits_it_go_on_under_a_task</code> (<code>src/tools/e2e/scroll_driven.odin</code>) reads the animation's <code>currentTime</code> as
+the task begins and checks the colour of two pictures, 2 s and 6 s later, to a level. <code>busy_wait(ms)</code> stays for what a real
+timer decides (a caret's blink, an autoscroll's pace).</p>
 <p>A test does not sleep to wait for another thread: it waits on the state (a semaphore, a completion posted to the loop,
 <code>base.await</code> when the code under test has no signal). The few real sleeps left in unit tests measure the real clock, and say so.</p>
 <p>A test <strong>simulates</strong> a failure, it does not wait for it. In this order: a fake at a seam (a reader that holds a file open and lets go, a count of what was asked), the loop's virtual clock, a clock moved on both sides (<code>httpcache.clock_ahead_s</code> and the test server's <code>/cache/clock</code>), a condition or a gate of the test server (<code>?gate=K</code> holds an answer until the test calls <code>e2e.open_gate(server, K)</code>: a slow response whose end the test decides, <code>tools/testserver/gate.go</code>). A real wait stays only where a real client's or the system's timer is what is measured. <code>tools/test_sleeps_allowed.txt</code> lists the sleeps left in test sources, with why; <code>src/tools/test_all/lint_sleeps.odin</code> fails on any other.</p>
