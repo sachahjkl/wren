@@ -282,7 +282,7 @@ devtools_window_frame :: proc(app: ^App) {
 	chrome_ui_apply(app, &dw.ui)
 	ui.begin_build(&dw.ui, {
 		window_size = size, events = evs, dt = pacer_of(app).dt, animations = os_animations_enabled(app),
-		dpi_scale = ui_scale_of(app, w), base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
+		dpi_scale = ui_scale_of(app, w), base = base_style, clipboard_get = ui.window_clipboard_get, clipboard_set = ui.window_clipboard_set,
 		disable_zoom = true, window = w, frame_ms = pacer_of(app).frame_ms,
 		inactive = !window_is_front(app) && !w.active,   // (its caret: in the user's browser window's, or while it is the foreground window)
 	})

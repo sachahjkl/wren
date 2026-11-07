@@ -2,6 +2,7 @@ package browser
 
 import "core:sys/windows"
 import "core:thread"
+import "toolkit:platform"
 import "wb:css"
 import "wb:style"
 
@@ -49,7 +50,7 @@ reg_dword :: proc(key, value: string) -> (u32, bool) {
 // The platform's appearance, now.
 read_os_appearance :: proc() -> style.Os_Appearance {
 	a := style.Os_Appearance{known = true}
-	if light, ok := reg_dword(LOOK_KEYS[0], "AppsUseLightTheme"); ok { a.dark = light == 0 }
+	a.dark = platform.dark_mode_preferred()   // (the toolkit reads the app mode, AppsUseLightTheme)
 	// accent: 0xAABBGGRR
 	abgr, ok := reg_dword(LOOK_KEYS[1], "AccentColor")
 	if !ok { abgr, ok = reg_dword(LOOK_KEYS[2], "AccentColorMenu") }
