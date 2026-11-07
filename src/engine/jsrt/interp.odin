@@ -1794,19 +1794,13 @@ has_unscopable :: #force_no_inline proc(ctx: ^Context, obj: Value, a: Atom) -> i
 // The unmapped arguments object.
 build_arguments :: proc(ctx: ^Context, args: []Value) -> Value {
 	rt := ctx.rt
-	o := object_new_shape(rt, ctx.arguments_shape, .arguments)
+	o := array_like_new(rt, ctx.arguments_shape, .arguments, len(args))
 	o.slots[0].value = mk_int(i32(len(args)))
 	o.slots[1].value = mk_obj(ctx.array_proto_values)
 	o.slots[2].getset = Getset{ctx.throw_type_error, ctx.throw_type_error}
-	ad := Array_Data{}
-	if len(args) > 0 {
-		ad.values = mem_array(rt, Value, len(args))
-		for v, i in args {ad.values[i] = v}
-		ad.count = u32(len(args))
-		ad.cap = u32(len(args))
-	}
-	o.data = ad
-	o.fast_array = true
+	ad := &o.data.(Array_Data)
+	for v, i in args {ad.values[i] = v}
+	ad.count = u32(len(args))
 	return mk_obj(o)
 }
 

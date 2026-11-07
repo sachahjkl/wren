@@ -576,3 +576,23 @@ for (var i = 0; i < 100; i++) {var it = new Map([[i, i]]).entries(); open_iters.
 same(open_iters[99].next().value[1], 99, "a map's iterator kept");
 for (var k in {p: 1, q: 2}) total += k.length;
 same(total, 4501502, "for in");
+
+// Values in the array's cell: arrays made with their room that grow, shrink, turn into objects with keys; arguments; a match
+function grow_from(a, n) {for (var i = 0; i < n; i++) a.push(i); return a;}
+var lit = grow_from([7, 8, 9], 100);
+same(lit.length + lit[0] + lit[102], 103 + 7 + 99, "a literal grown past its room");
+var sl = [1, 2, 3, 4].slice(1);
+sl.length = 1; sl.push(5, 6);
+same(sl.join(), "2,5,6", "a slice shrunk then grown");
+var holes = [1, 2, 3];
+holes[10] = 4; holes.x = 1;
+same(holes.length + String(holes[5]) + holes[10], "11undefined4", "an array made slow");
+function args_as_array() {var a = Array.prototype.slice.call(arguments); a.push(arguments.length); return a.join();}
+same(args_as_array(1, 2, 3), "1,2,3,3", "arguments read");
+function args_written() {"use strict"; arguments[0] = 9; return arguments[0] + arguments.length;}
+same(args_written(1, 2), 11, "unmapped arguments written");
+var m = /(a)(b)?/.exec("xab");
+m.push("z");
+same(m.length + m[1] + m[3] + m.index, "4az1", "a match grown");
+var big = new Array(40).fill(1);
+same(big.length, 40, "an array whose values do not fit its cell");
